@@ -1,11 +1,16 @@
 /**
  * botEvents.ts — what a bot's controller hears from the fight between its own updates (game/ai.ts notifyShellResult,
  * notifyUnderFire, notifyEnemyFired, notifyFriendlyBlocked), delivered by both drivers (game/state.ts and
- * sim/authoritativeMatch.ts) through these functions, so the same hulls hear the same events in the same order and
+ * sim/authoritativeMatch.ts) through these functions, so the same hulls hear the same events in the same hull order and
  * through the same filters on both. Those callbacks draw from the bot's seeded stream (a hit reaction, an aim-error
  * resample) and can start a flank, so which hull hears what, and in which order, is simulation (2026-11-02 audit M6: the
  * two drivers each kept their own loop, and only the authority refused a bot's shot a teammate had driven into after the
- * controller's update). The controller's own handling of them is game/ai.ts's. Node-runnable, allocation-free.
+ * controller's update). Where a killing shot's delivery falls against the mode's scoring of that kill still differs
+ * (solo scores in announceDestroyed before deliverShellHit; the authority delivers in recordShellHit before
+ * recordShotDestruction scores), and no brain sees it: the controller only queues each event, and applies the phase's
+ * news in one declared order at the drivers' flush (game/ai.ts applyPendingBotNews, audit M7), after both have scored;
+ * the arrival checks read only the shooter's own state and the brain's cached spec, which the scoring does not write
+ * (round 2 U12, 2026-11-04). The controller's own handling of them is game/ai.ts's. Node-runnable, allocation-free.
  */
 import { botFriendlyFireRisk } from '../game/ai.ts';
 import type { DamageShellSpec } from './damage.ts';

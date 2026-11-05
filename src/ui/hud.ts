@@ -42,6 +42,7 @@ import { battleSightShift } from './battleSight.ts';
 import type { EventBus } from '../game/stateCore.ts';
 import type { TankState } from '../sim/movement.ts';
 import { canSelfRightTank } from '../sim/rollover.ts';
+import { roofGunSwitch, roofGunTogglable } from '../sim/roofGunSwitch.ts';
 // RULESETS (2026-09-14): the clock, the objective targets and the pre-battle rule lines read the
 // same table the sim applies (sim/matchRuleset.ts)
 import { RULESET_SCORE_TARGETS, matchRulesetFor, rulesetLines, type MatchRuleset } from '../sim/matchRuleset.ts';
@@ -3043,7 +3044,8 @@ export function initHud(bus: EventBus): HudRuntime {
     button.innerHTML=`<span class="si">${uiIconSVG(action==='lights'?'lightbulb':action,18)}</span><span class="sl">${t(`systems.${action}`)}</span><span class="sk"></span><small class="system-status num"></small>`;
     const help=t(`systems.${action}.help`);button.dataset.tip=help;button.setAttribute('aria-label',help);
     bindControl(button, () => { if (!button.disabled) bus.emit(`ui:${action==='lights' ? 'lightsToggle' : action}`, {}); });
-    return {action,button,help,label:button.querySelector<HTMLElement>('.sl')!,status:button.querySelector('small')!,key:button.querySelector<HTMLElement>('.sk')!};
+    const silencedHelp=action==='roofGun'?t('systems.roofGun.silenced'):help;
+    return {action,button,help,silencedHelp,label:button.querySelector<HTMLElement>('.sl')!,status:button.querySelector('small')!,key:button.querySelector<HTMLElement>('.sk')!};
   });
   // Owner (2026-10-14): one ordering for the row (vehicleControlOrder.ts); a jump mode puts the jump farthest left.
   const auxiliaryButton=(action:'smoke'|'lights'|'roofGun')=>auxiliaryButtons.find(item=>item.action===action)!.button;
@@ -3107,13 +3109,19 @@ export function initHud(bus: EventBus): HudRuntime {
     document.body.classList.toggle('cot-hud-aerial', !!flight?.active);
     root.classList.toggle('aerial-drone', flight?.kind === 'drone' && flight.active);
     const kit=auxiliaryCapabilities(player?.spec), state=player?.combat?.auxiliary;
-    for(const {action,button,help,label,status} of auxiliaryButtons){
+    for(const {action,button,help,silencedHelp,label,status} of auxiliaryButtons){
       setHidden(button,!(action==='smoke'?kit?.smoke.length:action==='lights'?kit?.lights:kit?.guns.length));
       const cooldown=Math.max(0,Math.ceil((state?.smokeReadyAt||0)-lastTimeS));
-      const active=action==='roofGun'?!!state?.gunOn:action==='lights'?(state?.lights===1 || (state?.lights!==0 && defaultLightsOn)):false;
+      // the roof gun by the sim's own switch law (sim/roofGunSwitch.ts, round 2 U9): the tile shows the switch (active,
+      // aria-pressed); a red module silences a switched-on gun, so the tile strikes its icon and says so, and refuses only
+      // the switch on (the crew may still turn a red gun off). `active` keeps the head action==='roofGun': it is the
+      // interaction census's mark for these toggles (INTERACTION_EXEMPT in interactionRegistry.ts)
+      const roofModule=player?.combat?.modules?.roofGun?.state, roof=action==='roofGun'?roofGunSwitch(state?.gunOn,roofModule):null;
+      const active=action==='roofGun'?roof!=='off':action==='lights'?(state?.lights===1 || (state?.lights!==0 && defaultLightsOn)):false;
       button.classList.toggle('active',active);
       if(action!=='smoke')setAttr(button,'aria-pressed',String(active));
-      setDisabled(button,!canControl||(action==='roofGun'&&player?.combat?.modules?.roofGun?.state==='red')||(action==='smoke'&&(cooldown>0||state?.smokeCharges===0)));
+      if(roof){button.classList.toggle('silenced',roof==='silenced');const tip=roof==='silenced'?silencedHelp:help;setData(button,'tip',tip);setAttr(button,'aria-label',tip);}
+      setDisabled(button,!canControl||(!!roof&&!roofGunTogglable(state?.gunOn,roofModule))||(action==='smoke'&&(cooldown>0||state?.smokeCharges===0)));
       const smokeWait=action==='smoke'&&state?.smokeCharges!==0&&cooldown>0;
       setControlText(label,action==='smoke' && state?.smokeCharges===0 ? '0'
         : smokeWait ? t('systems.cooldown',{seconds:cooldown}) : t(`systems.${action}`),smokeWait);

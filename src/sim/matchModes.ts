@@ -436,7 +436,8 @@ export interface MatchModeController<
   /**
    * The match's verdict, decided outside the mode (audit M3, 2026-11-02: the authority's time limit or elimination): the
    * controller takes it as its own result, so through the ending hold it scores, respawns and starts waves no more and
-   * never announces another winner. A result the mode already reached stands.
+   * never announces another winner. A result the mode already reached stands. What is already moving still lands
+   * (settleAfterVerdict: an air-dropped crate, the Turbo Ball in flight, a carried flag on its carrier, the boss's hp).
    */
   matchEnded(winner: ObjectiveTeam | 'draw', reason: string): void;
   requestSupply(entityId:string,kind:'ammo'|'heal',timeS:number):boolean;
@@ -874,7 +875,8 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
    * The one writer of a tank's life (ModeLife; audit M4). A move LIFE_MOVES does not list is refused (false); `restore`
    * (a migrated host taking the old one's word) sets any life. The fields follow the life: modeActive (on the field:
    * alive or down) through the drivers' setActive hook, which every move but a death calls as before; a benched hull's
-   * combat.destroyed, stop and rest clock; on a restore, combat.destroyed for every life.
+   * combat.destroyed, stop and rest clock; on a restore, combat.destroyed for every life. A move to alive takes the combat
+   * state it finds: the drivers' revive hook (reviveAtSpawn) or a migrated row (adoptLiveCombat) left it live.
    */
   function setLife(entity: Entity, next: ModeLife, restore = false): boolean {
     const from = entity.modeLife ?? 'alive';
@@ -1493,11 +1495,27 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
     }
   };
 
+  /**
+   * The second way back to alive, beside reviveAtSpawn (round 2 U9): a wreck whose combat state another hand stood live
+   * again, which in the product is a migrated host's row (migrationState applyResumeState writes combat.destroyed from the
+   * old host's newer row, a hull the old host revived after its keyframe). It begins a new life as a revive does: modeLives
+   * counts it (lag compensation's life boundary), its pending respawn is dropped (or the due revive threw the living hull
+   * back to its spawn) and its next death scores again. No mode_respawn: the revive was the old host's and was announced
+   * there. Before, it moved the life to alive and nothing else.
+   */
+  const adoptLiveCombat = (entity: Entity): void => {
+    respawnAt.delete(entity.id);
+    scoredDeaths.delete(entity.id);
+    restedAt.delete(entity.id);
+    entity.modeLives = (entity.modeLives ?? 0) + 1;
+    setLife(entity, 'alive');
+  };
+
   const observeEntityDeath = (entity: Entity, timeS: number): void => {
     // a death is the move alive -> down, and only that move (ModeLife): a benched or rescued hull is never one. A wreck
-    // whose combat state stands live again by any other hand than a revive (a migrated row) is alive again, as before.
+    // whose combat state stands live again by any other hand than a revive (a migrated row) begins a new life.
     const life = entity.modeLife ?? 'alive';
-    if (life === 'down' && !entity.combat.destroyed) { setLife(entity, 'alive'); return; }
+    if (life === 'down' && !entity.combat.destroyed) { adoptLiveCombat(entity); return; }
     if (life !== 'alive' || !entity.combat.destroyed) return;
     setLife(entity, 'down');
     if (!restedAt.has(entity.id)) restedAt.set(entity.id, timeS);
@@ -1835,16 +1853,34 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
     }
     return null;
   };
+  /** An air-dropped crate's height at `timeS`: down from its release over six seconds to its landing. */
+  const airDropY=(pickup:PickupState,timeS:number):number=>
+    (pickup.groundY??0)+Math.max(0,Math.min(1,((pickup.landAtS??0)-timeS)/6))*((pickup.startY??240)-(pickup.groundY??0));
   const stepSupport=(timeS:number):void=>{
     if(id!=='ac130')return;
     state.support={ammoReadyInS:Math.max(0,ammoAt-timeS),healReadyInS:Math.max(0,healAt-timeS)};
     for(const pickup of pickups){
       if(!pickup.active||!pickup.airDrop)continue;
       if(timeS>=(pickup.expiresAtS??Infinity)){pickup.active=false;continue;}
-      pickup.y=(pickup.groundY??0)+Math.max(0,Math.min(1,((pickup.landAtS??0)-timeS)/6))*((pickup.startY??240)-(pickup.groundY??0));
+      pickup.y=airDropY(pickup,timeS);
       if(timeS<(pickup.landAtS??0))continue;
       for(const ally of teams.alpha)if(collectPickup(pickup,ally))break;
     }
+  };
+  /**
+   * The ending hold after a verdict (the mode's own, or the match's through matchEnded): the rules stop, the bodies
+   * already moving do not (round 2 U4, 2026-11-04). An air-dropped crate on its way down lands, the Turbo Ball in flight
+   * comes down and rolls to rest, a carried CTF flag rides its carrier (syncCarriedFlag only moves it) and the juggernaut's
+   * hp line follows its hull, as the drivers keep tanks driving, wrecks settling and shells landing through the hold;
+   * nothing is collected, touched, returned, captured, scored, respawned or started. Before, step() returned at its first
+   * line, so a crate released just before the verdict hung in mid-air (the ball where it flew, a carried flag where its
+   * carrier was, the boss's hp at its verdict value under a late hit) for the whole hold, in solo and on the authority.
+   */
+  const settleAfterVerdict=(dt:number,timeS:number):void=>{
+    for(const pickup of pickups)if(pickup.active&&pickup.airDrop)pickup.y=airDropY(pickup,timeS);
+    for(const flag of flags)syncCarriedFlag(flag);
+    if(boss&&state.boss)state.boss.hp=boss.combat.hp;
+    if(ball){integrateBall(dt);bounceBallFromTerrain();containBallInWorld();}
   };
 
   const collectPickup = (pickup: PickupState, entity: Entity): boolean => {
@@ -2567,7 +2603,7 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
       if (id === 'drone' && score[team] >= scoreTarget) finish(team, 'drone_score_limit');
     },
     step(dt, timeS) {
-      if (result) return result;
+      if (result) { settleAfterVerdict(dt, timeS); return result; }
       placementTimeS = timeS;
       refreshIntel(timeS);
       handleDeathsAndRespawns(timeS);

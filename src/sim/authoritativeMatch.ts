@@ -2844,6 +2844,18 @@ export function createAuthoritativeMatch({
     return canObserveEntity(viewer, aId) && canObserveEntity(viewer, bId);
   }
 
+  /**
+   * A viewer's events, for the event batch (eventsForViewer) and the snapshot's event list alike: each judged on the
+   * authority's own event object, then handed as the viewer may read it (viewerWorldEvent's copy). canObserveRam's
+   * wreckRams and the withheld copies key on that object, so the rule must never see a copy (round 2 Q6, 2026-11-04: the
+   * snapshot judged the viewer's copies, which held only while viewerWorldEvent passed a tank_ram through unchanged).
+   */
+  function viewerEvents(viewer: AuthoritativeEntity | undefined): AuthoritativeEvent[] {
+    const out: AuthoritativeEvent[] = [];
+    for (const event of pendingEvents) if (canObserveEvent(viewer, event)) out.push(viewerWorldEvent(viewer, event));
+    return out;
+  }
+
   function canObserveEvent(viewer: AuthoritativeEntity | undefined, value: RuntimeValue): boolean {
     if (!viewer) return true;
     if (!value || typeof value !== 'object') return false;
@@ -2919,10 +2931,7 @@ export function createAuthoritativeMatch({
     get pendingEventCount(): number { return pendingEvents.length; },
 
     eventsForViewer(viewerId: string): AuthoritativeEvent[] {
-      const viewer = entityById.get(viewerId);
-      const out: AuthoritativeEvent[] = [];
-      for (const event of pendingEvents) if (canObserveEvent(viewer, event)) out.push(viewerWorldEvent(viewer, event));
-      return out;
+      return viewerEvents(entityById.get(viewerId));
     },
 
     afterEventBroadcast(): void { pendingEvents.length = 0; },
@@ -2946,12 +2955,12 @@ export function createAuthoritativeMatch({
         serverTimeMs,
         entities,
         shells,
-        events: pendingEvents.length ? pendingEvents.map((event) => viewerWorldEvent(viewer, event)) : pendingEvents,
+        // filtered here, on the authority's own event objects, as the event batch is (viewerEvents)
+        events: pendingEvents.length ? viewerEvents(viewer) : pendingEvents,
         viewerId,
         ackInputSeq,
         canObserve,
         canObserveShell,
-        canObserveEvent: (_id, event) => canObserveEvent(viewer, event),
         meta: simulation.snapshotMeta(viewerId),
       });
     },

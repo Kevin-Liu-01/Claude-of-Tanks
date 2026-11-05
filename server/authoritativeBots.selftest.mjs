@@ -7,7 +7,10 @@ import { ALL_TANK_IDS, getSpec } from '../src/vehicles/specs.ts';
 import { MAP_IDS } from '../src/world/maps/index.ts';
 import { createDedicatedWorldCollision } from './dedicatedWorldCollision.ts';
 
-const MAPS = MAP_IDS;
+// COT_BOT_SOAK_MAPS=verdant,steppe runs a capped section (the whole soak is an owner-run receipt, about 2 min a map)
+const MAPS = process.env.COT_BOT_SOAK_MAPS
+  ? process.env.COT_BOT_SOAK_MAPS.split(',').filter((id) => MAP_IDS.includes(id)) : MAP_IDS;
+assert.ok(MAPS.length > 0, 'the soak runs at least one map');
 const SPECS = ALL_TANK_IDS
   .filter((id) => ['light', 'medium', 'heavy'].includes(getSpec(id).role))
   .slice(0, 6);
@@ -36,18 +39,35 @@ for (let mapIndex = 0; mapIndex < MAPS.length; mapIndex++) {
   const stuckSeconds = new Map(match.entities.map((entity) => [entity.id, 0]));
   const maxStuckSeconds = new Map(match.entities.map((entity) => [entity.id, 0]));
   const teamById = new Map(match.entities.map((entity) => [entity.id, entity.team]));
-  let alliedRamEvents = 0;
+  let alliedContacts = 0;
+  let ramEvents = 0;
+  let ramViewerFaults = 0;
   let yieldFrames = 0;
 
   for (let tick = 0; tick < 90 * 60 && !match.result; tick++) {
     match.step({ dt: 1 / 60, inputs: new Map() });
     if ((tick + 1) % 60 !== 0) continue;
     const snapshot = match.snapshot({ tick, serverTimeMs: tick * 1000 / 60 });
-    for (const event of snapshot.events) {
-      // a teammate contact is reported with zero damage (2026-11-02 audit M6, sim/impact.ts resolveRamPairDamage);
-      // what must never happen is a damaging one
-      if (event.type === 'tank_ram' && teamById.get(event.aId) === teamById.get(event.bId) &&
-          (Number(event.damageA) > 0 || Number(event.damageB) > 0)) alliedRamEvents++;
+    const rams = snapshot.events.filter((event) => event.type === 'tank_ram');
+    // (round 2 U13 / Q6, 2026-11-04) The ally gate is the bots' right of way (1099cec7ec): no teammate contact at ram
+    // speed. Teammate contacts are reported again since 2026-11-02 audit M6 (with zero damage, sim/impact.ts
+    // resolveRamPairDamage), and round 1 narrowed this count to damaging ones, which the ram law rules out by
+    // construction, so it could not fail; it counts every reported teammate ram again. Beside it, where a ram goes: its
+    // ids and midpoint place both hulls, so a viewer that is not a party reads one only when it sees both
+    // (canObserveRam; hiddenWorldEvents.selftest), in the event batch and its snapshot alike.
+    for (const event of rams) if (teamById.get(event.aId) === teamById.get(event.bId)) alliedContacts++;
+    if (rams.length) {
+      ramEvents += rams.length;
+      for (const viewer of match.entities) {
+        const seen = [], shells = [];
+        match.observeForViewer(viewer.id, seen, shells);
+        const sees = new Set(seen.map((entity) => entity.id));
+        const view = match.snapshot({ tick, serverTimeMs: tick * 1000 / 60, viewerId: viewer.id });
+        for (const event of [...view.events, ...match.eventsForViewer(viewer.id)]) {
+          if (event.type !== 'tank_ram' || event.aId === viewer.id || event.bId === viewer.id) continue;
+          if (!(sees.has(event.aId) && sees.has(event.bId))) ramViewerFaults++;
+        }
+      }
     }
     match.afterSnapshotBroadcast();
     for (const entity of match.entities) {
@@ -69,8 +89,9 @@ for (let mapIndex = 0; mapIndex < MAPS.length; mapIndex++) {
   const worstStuck = Math.max(...maxStuckSeconds.values());
   assert.ok(mobileBots >= 4, `${mapId}: at least four of six bots must make route progress`);
   assert.ok(worstStuck <= 12, `${mapId}: deliberate-drive stall exceeded 12 s (${worstStuck})`);
-  assert.equal(alliedRamEvents, 0, `${mapId}: teammate contact must never become a damaging ram`);
-  console.log(`${mapId}: mobile=${mobileBots}/6 worstStuck=${worstStuck}s allyRams=0 yields=${yieldFrames} result=${match.result || 'live'}`);
+  assert.equal(alliedContacts, 0, `${mapId}: bots give allies right of way: no teammate contact at ram speed (${alliedContacts})`);
+  assert.equal(ramViewerFaults, 0, `${mapId}: a ram must reach no viewer outside it that does not see both hulls`);
+  console.log(`${mapId}: mobile=${mobileBots}/6 worstStuck=${worstStuck}s rams=${ramEvents} allyRams=0 ramViewerFaults=0 yields=${yieldFrames} result=${match.result || 'live'}`);
 }
 
 // Live close-contact calibration: four normal bots drive, turn, fire physical

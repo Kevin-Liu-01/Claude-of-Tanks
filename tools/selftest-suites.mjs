@@ -1827,6 +1827,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'server/match/frameView.selftest.mjs', // mp-scale-251: viewer frames from the authority's view, the same bytes; past 32 hulls
     'server/match/matchActorResume.selftest.mjs',
     'server/match/matchPhase.selftest.mjs', // 2026-11-02 audit M3: one match phase through the ending hold to the stop; a clock verdict freezes the mode controller
+    'src/sim/verdictHold.selftest.mjs', // 2026-11-04 round 2 U4: through the ending hold a falling crate lands, the ball comes down, a carried flag rides its carrier; nothing scores
     'server/match/actorEnds.selftest.mjs', // 2026-11-02 audit M3: a self-stopped actor leaves the service, a failed WELCOME detaches, a roster change follows its batch
     'server/match/stallTimeline.selftest.mjs', // 267: through a server stall the timeline keeps the wall's grid; no control past the input ring
     'server/match/service.selftest.mjs',
@@ -1867,6 +1868,7 @@ export const SELFTEST_SUITES = Object.freeze({
     // (2026-11-02 audit M6: and what each team sees, tick for tick — spotting through one factory)
     'src/sim/driverStepParity.selftest.mjs',
     'src/sim/crushPress.selftest.mjs', // 2026-11-02 audit M6: the crush press is the battle's, per hull and record, on both drivers
+    'src/game/battleExitLedgers.selftest.mjs', // 2026-11-04 round 2 U13: the crush press and ram cooldowns leave with their battle at the Garage return
     'src/sim/structureSupport.selftest.mjs',
     // 2026-10-10 (physics lane, owner: "the turret snaps into a pre-ordained resting position ... just let physics work"):
     // the game's own rigid bodies, and a dead hull's turret as one.
@@ -2771,6 +2773,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/ui/hudAmmunitionPresentation.selftest.mjs',
     'src/ui/hudConsumablePresentation.selftest.mjs',
     'src/ui/hudConsumableTray.selftest.mjs', // 2026-11-02 audit M4: a revive refills the tray (the state, or the own respawn)
+    'src/ui/roofGunTile.selftest.mjs', // 2026-11-05 round 2 U9: the roof-gun tile marks a switched-on red gun silenced, takes the switch off, refuses only on
     'src/ui/hudLifecycle.selftest.mjs', // 2026-11-02 audit F8: one HUD lifecycle; hidden cleanup; one display owner
     // brand-ui 242 (the direction's battle HUD): the team strip under the score and the kill ribbon
     'src/ui/hudTeamPips.selftest.mjs',
