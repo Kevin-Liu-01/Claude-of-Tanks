@@ -7,6 +7,8 @@
 //    Object's input gate opens across a non-storage await; the LAN service queues each room's events since mp-migration's
 //    S1, server/rooms/localRoomService.ts serialize()) a leave or a kick lands inside that await: the departed seat was
 //    handed a token for a match it is not in.
+// 3. (round 2 U6/Q3) a room persisted before the split, admin-locked while waiting, unlocked at its first touch after
+//    the deploy: the restore filled no adminLocked.
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { RoomActor } from './roomActor.ts';
@@ -119,4 +121,33 @@ function harness() {
   assert.deepEqual(Object.keys(h.actor.exportState().matchTokens), []);
   assert.deepEqual(h.matchHost.stopped, ['LOCK01'], 'the match the host started is stopped');
 }
-console.log('roomLock.selftest: the admin\'s lock outlives rounds and aborted starts; a start re-reads the room after the match host answers');
+{
+  // (round 2 U6/Q3) a room persisted before the split kept the admin's lock in `locked` alone. While the room waits that
+  // is exactly the admin's switch (the round's lock was cleared at every match end and aborted start), so the restore
+  // keeps it; before, joinLocked read the absent adminLocked as unlocked and the first touch after the deploy opened it.
+  const preSplit = (phase, locked) => {
+    const h = harness();
+    h.actor.handleOpen('a');
+    return h.send('a', 'room_create', { ...identity('admin', token('a'), token('b')), mode: 'lan', settings: { teamSize: 2, mapId: 'verdant' } }).then(() => {
+      const state = h.actor.exportState();
+      state.room.phase = phase;
+      state.room.settings.locked = locked;
+      delete state.room.settings.adminLocked;
+      const restored = harness();
+      restored.actor.restore(state);
+      restored.actor.settleAfterRestore();
+      return restored;
+    });
+  };
+  const waitingLocked = await preSplit('waiting', true);
+  assert.equal(waitingLocked.actor.snapshot.settings.adminLocked, true, 'a waiting room locked before the split restores with the admin\'s lock');
+  waitingLocked.actor.handleOpen('n'); await waitingLocked.send('n', 'room_join', identity('newcomer', token('1'), token('2')));
+  assert.equal(waitingLocked.last('n', 'error')?.payload.code, 'room_locked', 'the restored admin lock refuses a fresh join after the first touch');
+  assert.equal(waitingLocked.actor.snapshot.settings.locked, true, 'the first touch after the deploy keeps the room locked');
+  const waitingOpen = await preSplit('waiting', false);
+  assert.equal(waitingOpen.actor.snapshot.settings.adminLocked, false, 'an unlocked waiting room restores unlocked');
+  // a room written mid-round cannot tell the admin's lock from the round's; before the split its round end cleared both
+  const playing = await preSplit('playing', true);
+  assert.equal(playing.actor.snapshot.settings.adminLocked, false, 'a room written mid-round restores with no admin lock, as its round end would have left it');
+}
+console.log('roomLock.selftest: the admin\'s lock outlives rounds and aborted starts and a deploy; a start re-reads the room after the match host answers');

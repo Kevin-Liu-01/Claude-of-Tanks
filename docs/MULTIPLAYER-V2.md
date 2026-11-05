@@ -712,8 +712,8 @@ with `src/mp/room/p2pMatchHost.ts`, shared by the Durable Object and the local r
   finished match is `invalid_command`; a malformed report `invalid_payload`). `playing` moves the room to `playing`;
   `ended` with a verdict records it (`match_status ended`, the room back to `waiting`); `ended` without a verdict records
   the match as lost with reason `host_ended`. `tick` (default 0) is the authority tick the host has reached: the last
-  reported one is the `resumeTick` a successor receives. The host reports every `ROOM_MATCH_REPORT_INTERVAL_MS` (10 s)
-  and on every phase change; silence for `ROOM_MATCH_REPORT_STALE_AFTER_MS` (3 × the poll interval, 30 s — counted from
+  reported one is the `resumeTick` a successor receives. The host reports every `ROOM_MATCH_REPORT_INTERVAL_MS` (30 s)
+  and on every phase change; silence for `ROOM_MATCH_REPORT_STALE_AFTER_MS` (3 × the poll interval, 90 s — counted from
   the election until the first report) is a dropped host. The ack is `room_ack { revision }`; a report that changes
   nothing broadcasts nothing.
 - **`host_decline`**: `room_command { command: { type: 'host_decline', declined: boolean } }` from any seat in any
@@ -776,7 +776,7 @@ with `src/mp/room/p2pMatchHost.ts`, shared by the Durable Object and the local r
   constants `ROOM_MATCH_REPORT_INTERVAL_MS`, `ROOM_MATCH_REPORT_STALE_AFTER_MS`, `ROOM_MAX_VERDICT_REASON_CHARS`, and the
   types `RoomMatchReportCommand`, `RoomMatchReport`, `RoomHostDeclineCommand`, `RoomMatchReportPhase`.
 - **Requests to the client lane (P2)** — nothing on the room side depends on them, they are what the room expects: the
-  host sends `match_report` (`loading` as soon as it boots, `countdown`, `playing` with its tick, then every 10 s with the
+  host sends `match_report` (`loading` as soon as it boots, `countdown`, `playing` with its tick, then every 30 s with the
   current tick, `ended` with the verdict); a `host_only` on a report means the seat is no longer the host and should
   keep the last keyframe as a peer; a `host_changed` with a new generation is the migration (compare the generation,
   never the reason); the mobile tier and the "never host" switch send `host_decline { declined: true }` before the start
@@ -1177,7 +1177,7 @@ on the tip); offers 83 → 82, answers 55 → 54, `match_report` 38 → 38, `set
 `host_decline` 25 → 25, create / team / start 1 each; `room_state` 1,728 → 543 (the 28 sequential joins, instant by the rule,
 still fan out to every seat already present — 378 of the 543; the readies and declines that used to fan out 28 times each
 now ride one broadcast per 300 ms window); `room_ack` 93 → 93, `host_changed` 55 → 55, `match_start` 29 → 29. The steady
-state of a running match is now the host's report every 10 s and nothing else: a 30-minute 14v14 costs ≈ 220 handled
+state of a running match is now the host's report every 10 s (every 30 s since §13.29: 60 reports, not 180) and nothing else: a 30-minute 14v14 costs ≈ 220 handled
 messages at the start and per migration plus 180 reports ≈ 400 requests on the conservative rule — **≈ 250 matches a day of
 headroom (the certification's figure was 26), ≈ 2,000 on the published rule** — and a keepalive that is free at any cadence.
 Nothing else moved: 7v7 snapshot rate 30 Hz (min 29.5), host tick p50 0.4 / p95 1.1 ms, uplink 1,596 kbit/s median, 0 lost
@@ -1220,7 +1220,7 @@ only as the last resort), keeps a running host that declines without a willing s
 (`reportStaleMs`) and broadcasts the room after a decline. `tools/mp-p2p-decline.selftest.mjs` proves the client under that
 rule on the REAL actor (`server/rooms` with `matchTransport: 'p2p'`, its deadlines on a fake clock) and on the double: the hosting
 admin's Garage return with every other commander declined keeps it as host (no election), the peers wait on a lost link, the
-report budget (`ROOM_MATCH_REPORT_STALE_AFTER_MS` = 30 s) migrates with `timeout` to the last resort, which resumes from its sealed
+report budget (`ROOM_MATCH_REPORT_STALE_AFTER_MS`, 30 s then, 90 s since §13.29) migrates with `timeout` to the last resort, which resumes from its sealed
 keyframe at the continued tick; the other peer follows; the old host re-enters as a peer. The cost of P1's rule is that stall:
 30 s instead of the 8 s grace. What P1 should add: treat a decline from the RUNNING host as `left` (the client only declines
 while hosting when it is leaving the match — its actor is already gone), so the last resort is elected at once. **Done in
@@ -1232,7 +1232,7 @@ the deployed site (stamp `de5322e7d`, 2026-09-28 22:48): PASS in 87 s — A host
 over 364 snapshots in 12 s, A closed → B elected after 8,337 ms (generation 2), C live on B with +120 snapshots in 4 s, B's hull
 2.12 m from where C saw it, A back as a peer on the auto path in one attempt (compile 2,572 ms), 0 browser errors. The
 `host_only` step-down and the report cadence: the deployed run's reports are not observable from outside the Worker; the
-cadence is receipted against the real actor's rules (`matchSessionP2p.selftest`: `loading`, every phase, every 10 s; one
+cadence is receipted against the real actor's rules (`matchSessionP2p.selftest`: `loading`, every phase, every `ROOM_MATCH_REPORT_INTERVAL_MS`; one
 `ended`), and the step-down is proven end to end on the real actor by `tools/mp-p2p-stepdown.selftest.mjs` — which found a
 client bug first: a host whose ROOM socket dropped past the grace (its tab and actor alive) came back to a re-sent
 `match_start` naming the successor at generation 2, but `RoomClient.generation` / `hostId` answered from the stale start
@@ -1620,7 +1620,7 @@ the deployed Worker with the site Origin header, rooms created and left, nothing
 seat's state at that moment; a wrong outcome is a FAIL; the table prints the time to resolution and the room messages
 (client→room / room→client, keepalive frames included) per scenario, and the exit code is non-zero on any hang or failure.
 The receipt `tools/mp-room-lifecycle.selftest.mjs` (core group, ≈ 40 s) runs the fast set on the real actor;
-`npm run test:net:v2:rooms:lifecycle` adds the slow budgets (b2 the 30 s admin grace, c3 the 30 s report budget, c4 the
+`npm run test:net:v2:rooms:lifecycle` adds the slow budgets (b2 the 30 s admin grace, c3 the 90 s report budget, c4 the
 60 s link window, d4 the admin lease after every seat dropped).
 
 **The contract, where the brief left a choice.** (a) A room every seat has left keeps its code for the 24 h idle TTL
@@ -2148,7 +2148,7 @@ restored falls within the old host's.
 
 ### 13.17 A loading host keeps the match (MP stream, plan step 8, 2026-10-13)
 
-**Why.** The room replaces a p2p host whose reports stop for `ROOM_MATCH_REPORT_STALE_AFTER_MS` (30 s), counted from its
+**Why.** The room replaces a p2p host whose reports stop for `ROOM_MATCH_REPORT_STALE_AFTER_MS` (30 s then, 90 s since §13.29), counted from its
 election, and an elected host's actor boots only after its presentation has built the world (`MatchSession.enterMatch`:
 `createPresentation`, then `openPeerToPeer`). A slow entry (a cold program compile, a busy machine) cost the match its
 host before it began, and the peers a migration onto a seat that was loading too (MP-SINCE-0930 MP-S03; the rooms Worker

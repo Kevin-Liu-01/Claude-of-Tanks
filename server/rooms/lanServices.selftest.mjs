@@ -6,6 +6,8 @@
 // once. The LAN pad service removed pairings by code: an old socket's close deleted a new pairing under the same code.
 //   - a room's events run one at a time, in order;
 //   - a forgotten room's late schedule neither clears nor fires the next room's timer;
+//   - a socket that opens on a code while the room's last close still waits in the queue keeps the room under the code
+//     (round 2 U3: the close forgot the actor the new socket was queued on);
 //   - the in-process match's verdict polls its room as one of the room's events (review round 2: it ran the room's tick
 //     in the middle of the event the queue awaited), and a room the poll leaves empty is forgotten;
 //   - every p2p room has its own match host;
@@ -77,6 +79,36 @@ const closed = (ws) => new Promise((resolve) => { if (ws.readyState === WebSocke
       old.ports.schedule(Date.now() + 30); // a late timer from the old room
       await sleep(150);
       assert.equal(ticks, 0, `the old room's timer never ticks the new room (ticks ${ticks})`);
+    }
+    {
+      // (round 2 U3) the room's last socket closes while the queue still awaits an event, and a socket opens on the same
+      // code in that window: it joins the same actor, queued behind the close. The close's forgetIfEmpty found the actor
+      // empty (the new socket not yet opened) and dropped it, so the new socket sat on an actor no code named and the
+      // next socket for the code got a fresh one.
+      const actor = lan.room('ZOMBIE');
+      let release = null;
+      const order = [];
+      actor.handleMessage = async (_socketId, text) => { order.push(`start ${text}`); await new Promise((resolve) => { release = resolve; }); order.push(`end ${text}`); };
+      const first = new WebSocket(`${server.url}/rooms/ZOMBIE`);
+      await opened(first);
+      first.send(Buffer.from('slow'));
+      await until(() => release !== null, 'the slow event started');
+      first.close();
+      await closed(first);
+      await sleep(50); // the service's own close handler queued the close behind the slow event
+      const second = new WebSocket(`${server.url}/rooms/ZOMBIE`);
+      await opened(second); // the service's connection handler ran: its open is queued behind the close
+      release();
+      await until(() => actor.socketCount === 1 && order.length === 2, 'the close and the new open ran');
+      assert.equal(lan.rooms.get('ZOMBIE'), actor, 'a socket that opened behind the last close keeps its actor under the code');
+      const third = new WebSocket(`${server.url}/rooms/ZOMBIE`);
+      await opened(third);
+      await until(() => actor.socketCount === 2, 'the next socket for the code joins the same actor');
+      assert.equal(lan.room('ZOMBIE'), actor);
+      second.close();
+      third.close();
+      await Promise.all([closed(second), closed(third)]);
+      await until(() => lan.rooms.get('ZOMBIE') !== actor, 'ZOMBIE: forgotten once its last socket is gone');
     }
   } finally {
     await lan.close();

@@ -164,6 +164,8 @@ export function createLocalRoomService({
   const timers = new Map<RoomActor, ReturnType<typeof setTimeout>>();
   /** Each room's events run one at a time in arrival order, as the Durable Object's input gate runs them (audit S1). */
   const queues = new Map<RoomActor, Promise<void>>();
+  /** How many of each room's events are queued or running, the running one included (round 2 U3: forgetIfEmpty). */
+  const queued = new Map<RoomActor, number>();
   /** P1b: the wall clock of each socket's newest keepalive frame, answered here without the actor (the Worker's auto-response). */
   const keepalives = new Map<string, number>();
   let socketSeq = 0;
@@ -187,17 +189,28 @@ export function createLocalRoomService({
 
   /** Run one event of `actor` after the ones before it; a failure is logged and the queue goes on. */
   function serialize(actor: RoomActor, work: () => void | Promise<void>): Promise<void> {
+    queued.set(actor, (queued.get(actor) ?? 0) + 1);
     const next = (queues.get(actor) ?? Promise.resolve()).then(work).catch((error: unknown) => {
       roomLog.warn('room event failed', { room: actor.roomCode, error: error instanceof Error ? error.message : String(error) });
+    }).finally(() => {
+      const left = (queued.get(actor) ?? 1) - 1;
+      if (left > 0) queued.set(actor, left); else queued.delete(actor);
     });
     queues.set(actor, next);
     void next.then(() => { if (queues.get(actor) === next) queues.delete(actor); });
     return next;
   }
 
-  /** Forget a room that holds nothing, only while its code still names it; its timer goes with it. */
+  /**
+   * Forget a room that holds nothing, only while its code still names it and no later event of it waits; its timer goes
+   * with it. It runs at the end of one of the room's own events (a close, a tick, the verdict's poll), so that event is
+   * the one `queued` entry it may see. A later event leaves the room under its code (round 2 U3: a socket that opened
+   * while the last close waited in the queue joined this actor, and the close forgot it before the open ran); each later
+   * event is itself followed by a check, because a queued open or message has its socket's close behind it and a tick
+   * or poll ends with one.
+   */
   function forgetIfEmpty(code: string, actor: RoomActor): void {
-    if (!actor.empty || rooms.get(code) !== actor) return;
+    if (!actor.empty || rooms.get(code) !== actor || (queued.get(actor) ?? 0) > 1) return;
     rooms.delete(code);
     const timer = timers.get(actor);
     if (timer) { clearTimeout(timer); timers.delete(actor); }
@@ -324,6 +337,7 @@ export function createLocalRoomService({
       sockets.clear();
       rooms.clear();
       queues.clear();
+      queued.clear();
       // `wss.close` resolves only once every client socket is gone; a peer that never answers the close
       // handshake would hold the drain for ws's own 30 s timer (or a dead process for good), so the
       // sockets still open after a short grace are terminated.

@@ -5,7 +5,12 @@
 //     Two connects inside the check both passed the one-owner guard.
 // (B) onHostStart fired for a connection the menu had released to the battle owner on every later round, and the menu
 //     treated it as its own (re-adopting it beside the attached room); it now names the owner.
+// (C) (round 2 U8) the adapter's half of the seat was three nullable variables (pending, current, released) beside the
+//     menu's declared seat. Its own hold is now one declared state (idle, connecting, held) written by one owner; the
+//     seat it released to the session owner stays one separate slot, because it outlives the hold: the menu may hold
+//     nothing, or a new room of its own, while the battle owner still plays rounds on the released one.
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import { createRoomConnectionAdapter } from './playMenuAdapter.ts';
 import { createRoom, serializeRoom } from '../room/roomPolicy.ts';
 import { Listeners } from '../transport/transport.ts';
@@ -81,4 +86,42 @@ const limitPending = () => {
     'the menu hears whose seat a round starts on: its own, then the battle owner\'s');
   void connection;
 }
-console.log('playMenuAdapterSeat.selftest: a close during the limit check cancels the attempt; a released seat\'s round names its owner');
+// ---- (C) one declared hold, one writer; a released seat beside a new hold of the menu's own
+{
+  const source = readFileSync(new URL('./playMenuAdapter.ts', import.meta.url), 'utf8');
+  assert.match(source, /type AdapterHold =\s*\| \{ state: 'idle' \}\s*\| \{ state: 'connecting'; attempt: [^}]+\}\s*\| \{ state: 'held'; connection: RoomConnection \};/,
+    '(C) the adapter declares its hold: idle, connecting with its attempt, held with its connection');
+  assert.doesNotMatch(source, /\blet (pending|current)\b/, '(C) no nullable pending or current beside the hold');
+  const writes = [...source.matchAll(/\bhold = /g)].length;
+  assert.equal(writes, 1, `(C) moveHold is the hold's one writer (${writes} writes)`);
+  assert.equal([...source.matchAll(/\breleased = (?!null)/g)].length, 1, '(C) only forget() releases a seat');
+
+  const made = [];
+  const starts = [];
+  const closes = [];
+  const adapter = createRoomConnectionAdapter({
+    createRoomClient: (options) => fakeClient(options, made),
+    onHostStart: (state, connection, owner) => starts.push({ owner, generation: connection.generation }),
+    onClose: (reason) => closes.push(reason),
+  });
+  const payload = { matchId: 'm1-0000e1e2', round: 1, mapId: 'verdant', mode: 'standard', seed: 1, seat: 0, team: 'alpha', seatToken: 'x.y', matchUrl: 'rtc://ADPSEA/1', expiresAt: Date.now() + 60_000 };
+  assert.equal(adapter.current, null); assert.equal(adapter.connecting, false);
+  const first = await adapter.connect(request);
+  assert.equal(adapter.current, first, '(C) held');
+  adapter.forget();
+  assert.equal(adapter.current, null, '(C) a released seat is not the menu\'s');
+  const second = await adapter.connect(request);
+  assert.ok(second && second !== first && adapter.current === second, '(C) the menu holds a room of its own again beside the released one');
+  made[0].deliverStart(payload);
+  made[1].deliverStart({ ...payload, matchId: 'm2-0000e3e4' });
+  assert.deepEqual(starts, [{ owner: 'released', generation: first.generation }, { owner: 'menu', generation: second.generation }],
+    '(C) each room\'s round names its own owner');
+  // the battle owner leaves the released room: the menu's own hold is untouched and hears no close
+  first.session.close('left');
+  assert.equal(adapter.current, second);
+  assert.deepEqual(closes, []);
+  adapter.close('done');
+  assert.equal(adapter.current, null);
+  assert.equal(made[1].disposed || made[1].phase === 'closed', true, '(C) the menu\'s own room is left on close');
+}
+console.log('playMenuAdapterSeat.selftest: a close during the limit check cancels the attempt; a released seat\'s round names its owner; the adapter\'s hold is one declared state beside the seat it released');

@@ -479,7 +479,7 @@ describe('cot-rooms Worker with the peer-to-peer match host (the deployed shape)
     const elected = (await guest.next((message) => message.type === 'host_changed' && message.payload.generation === 2)).payload as unknown as RoomHostChangedPayload;
     expect(elected).toEqual({ hostId: 'guest', generation: 2, resumeTick: 90, reason: 'timeout', detail: 'socket_lease', hostSecret: derivedSecret(matchId) });
     expect((await storedState('ROOM23')).hostReportDueAt).not.toBeNull();
-    // its client answers at once: elected but unable — the match is lost now, not after the 30 s report budget
+    // its client answers at once: elected but unable — the match is lost now, not after the 90 s report budget
     expect((await guest.command({ type: 'host_decline', declined: true, unable: true })).type).toBe('room_ack');
     for (const client of [guest, watcher]) expect((await client.next((message) => message.type === 'match_status')).payload.status).toBe('lost');
     const lost = (await watcher.next((message) => message.type === 'room_state' && (message.payload.room as RoomSnapshot).phase === 'waiting' && (message.payload.room as RoomSnapshot).lastResult !== null)).payload.room as RoomSnapshot;

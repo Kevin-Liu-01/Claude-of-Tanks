@@ -12,7 +12,7 @@
  *   node tools/mp-room-lifecycle.mjs --rooms=ws://127.0.0.1:8791 --origin=http://127.0.0.1:0     wrangler dev of cloudflare/rooms
  *   node tools/mp-room-lifecycle.mjs --rooms=wss://cot-rooms.kk23907751.workers.dev --only=a,b,c,f,g    the deployed Worker
  *     (the site Origin header for wss:// unless --origin says otherwise; rooms are created and left, nothing is deployed)
- *   --only=a,b2,c   --skip=d,e     scenario groups (a letter) or ids       --slow    the 30 s / 60 s budgets too (b2, c3, c4, d4)
+ *   --only=a,b2,c   --skip=d,e     scenario groups (a letter) or ids       --slow    the 30-90 s budgets too (b2, c3, c4, d4)
  *   --json                          the report as JSON on stdout (the table goes to stderr)
  *
  * Scenarios: a the creator leaves an empty lobby; b1/b2 the creator leaves / drops with seats present (a seat leaving

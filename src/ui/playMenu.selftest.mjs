@@ -70,7 +70,8 @@ assert.match(source, /rejoinBtn\.addEventListener\('click', \(\) => \{\s*if \(st
 assert.match(source, /const activeSession = session \?\? \(activeRoom\?\.session as RoomSession \| undefined\) \?\? null;/,
   'a composition-held room hands its own session back for the rejoin');
 // (audit F6, 2026-11-02) the handoff moves the menu's own seat only, through its one writer (src/ui/playMenuSeat.ts)
-assert.match(source, /const own = activeSession === session;\s*if \(own\) \{\s*moveSeat\('handed_off', 'battle handoff'\);/, 'the handoff flag guards the menu\'s own session only');
+// (round 2 U8) and a seat the table refuses to hand off starts nothing
+assert.match(source, /const own = activeSession === session;\s*if \(own\) \{\s*(?:\/\/[^\n]*\n\s*)*if \(!moveSeat\('handed_off', 'battle handoff'\)\) return false;/, 'the handoff flag guards the menu\'s own session only');
 assert.match(source, /shouldAutoHandoff\(\{ seat, role, phase: next\.phase, matchId: matchIdOf\(session\), handedOffMatchId \}\)\s*&& !activeRoom && hasMatchStart\(session\);/,
   'a client auto-hands off into a running match only with its own match_start');
 assert.match(source, /room\.setAttribute\('aria-busy', String\(connecting\)\)/);

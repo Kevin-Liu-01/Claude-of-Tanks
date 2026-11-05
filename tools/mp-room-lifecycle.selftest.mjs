@@ -6,7 +6,7 @@
 // brand-new seat starts a new match on the same code; the host's tab dying migrates to a willing successor or, with
 // none, ends the match within the grace (`unable`); bogus codes, a join during playing, a double join and the 24 h
 // boundary are clean refusals; twenty rooms created and left leave actors with no socket and no deadline but the
-// idle expiry. The slow budgets (the 30 s admin grace and report budget, the 60 s link window) run with `--slow`
+// idle expiry. The slow budgets (the 30 s admin grace, the 90 s report budget, the 60 s link window) run with `--slow`
 // in `npm run test:net:v2:rooms:lifecycle`, and the same scenarios run against wrangler dev and the deployed Worker.
 import assert from 'node:assert/strict';
 import { ROOM_HOST_DISCONNECT_GRACE_MS } from '../src/mp/room/protocol.ts';

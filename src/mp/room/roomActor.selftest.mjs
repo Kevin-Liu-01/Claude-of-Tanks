@@ -1007,7 +1007,7 @@ async function startedP2pRoom({ adminDeclines = false, third = false } = {}) {
   assert.deepEqual(h.actor.snapshot.players.map((p) => p.id), ['admin']);
 }
 
-// ---- the elected last resort cannot host (`unable`): with nobody left the match is lost at once — not after the 30 s report budget
+// ---- the elected last resort cannot host (`unable`): with nobody left the match is lost at once — not after the 90 s report budget
 {
   const { h, matchId } = await startedP2pRoom();
   // the guest cannot host at all (the mobile tier says so on join); the admin hosts

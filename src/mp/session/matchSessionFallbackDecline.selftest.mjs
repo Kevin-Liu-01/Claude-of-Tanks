@@ -11,6 +11,8 @@
 // awaits. The decline branch had no supersession guard (mp-session's M2 rule, which the host.start catch keeps): the
 // superseded boot reported a failed migration, cleared the newer migration's flag and host, and told the room this
 // capable seat is unable to host.
+// Cases 3 and 4 (round 2): the guard's other two triggers, the seat leaving the match and the match link closing during
+// the key awaits, were logged as "superseded by a newer election" too. Each case checks the cause the log names.
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { RoomClient } from '../room/roomClient.ts';
@@ -62,12 +64,14 @@ async function peerOfRunningMatch() {
   const snapshotWith = (host) => ({ ...serializeRoom(room), host });
   const world = new RtcWorld();
   const cores = [];
+  const logs = [];
   let transport = null;
   const client = new RoomClient({ endpoint: 'ws://rooms.test', player: { id: 'me', name: 'Me' }, pingIntervalMs: 0, requestTimeoutMs: 60_000, createTransport: () => { transport = scriptedTransport(); return transport; } });
   const session = new MatchSession({
     room: client, clock: () => performance.now(),
     createPresentation: () => { const presentation = new RecordingPresentation(64); return { adapter: presentation, controls: null, prediction: null, dispose: () => presentation.dispose() }; },
-    p2p: { createPeerConnection: world.createPeerConnection, createHostPort: createInProcessHostPort({ world: 'terrain', onCore: (core) => cores.push(core), reportIntervalMs: 500 }), manifestBase: null, tier: 'desktop', countdownS: 1, standbyHost: false },
+    p2p: { createPeerConnection: world.createPeerConnection, createHostPort: createInProcessHostPort({ world: 'terrain', onCore: (core) => cores.push(core), reportIntervalMs: 500 }), manifestBase: null, tier: 'desktop', countdownS: 1, standbyHost: false,
+      onLog: (level, message, fields) => logs.push({ level, message, fields }) },
   });
   const events = [];
   session.onP2p((event) => events.push(event));
@@ -95,7 +99,8 @@ async function peerOfRunningMatch() {
     throw error;
   }
   const hostDeclines = (from) => transport.outbound.slice(from).filter((envelope) => envelope.payload?.command?.type === 'host_decline').map((envelope) => envelope.payload.command);
-  return { session, transport, events, hostDeclines, dispose };
+  const supersededCauses = () => logs.filter((entry) => entry.message.startsWith('elected host boot superseded')).map((entry) => entry.fields?.cause ?? entry.message);
+  return { session, transport, events, hostDeclines, dispose, supersededCauses };
 }
 
 // Case 1: the elected seat declines through the session's own owners.
@@ -132,7 +137,7 @@ async function peerOfRunningMatch() {
 
 // Case 2: generation 3 (the third seat) lands before the generation-2 boot's first key await settles.
 {
-  const { session, transport, events, hostDeclines, dispose } = await peerOfRunningMatch();
+  const { session, transport, events, hostDeclines, dispose, supersededCauses } = await peerOfRunningMatch();
   try {
     const mark = transport.outbound.length;
     const eventMark = events.length;
@@ -150,8 +155,43 @@ async function peerOfRunningMatch() {
     // the stepping-down path (booting_host -> stepping_down -> peer) on the new peer link, as matchSessionBootRace
     assert.equal(session.roleStatus, 'peer', 'this seat follows the third seat as a peer');
     assert.equal(session.role, 'peer');
+    assert.deepEqual(supersededCauses(), ['newer election'], 'the log names the newer election');
   } finally {
     await dispose();
   }
 }
-console.log('matchSessionFallbackDecline.selftest: an elected seat with no state of a running battle declines through the session\'s role machine and decline owner: a peer again, its decline its own; superseded during its key awaits, it declines nothing and the newer migration runs on');
+
+// Case 3 (round 2): the seat leaves the match (a Garage return) during the generation-2 boot's key awaits.
+{
+  const { session, transport, events, dispose, supersededCauses } = await peerOfRunningMatch();
+  try {
+    const eventMark = events.length;
+    transport.deliver({ type: 'host_changed', payload: { hostId: 'me', generation: 2, resumeTick: 1800, reason: 'timeout', hostSecret } });
+    assert.equal(session.roleStatus, 'booting_host', 'setup: the elected seat is booting its host');
+    await session.leaveMatch('garage');
+    await sleep(300);
+    assert.deepEqual(events.slice(eventMark).filter((event) => event.kind === 'migration' && event.phase === 'failed'), [], 'a boot the leave ended reports no failed migration');
+    assert.deepEqual(supersededCauses(), ['left the match'], `the log names the leave, not an election (${supersededCauses().join(', ')})`);
+    assert.equal(session.roleStatus, 'none');
+  } finally {
+    await dispose();
+  }
+}
+
+// Case 4 (round 2): the match link the boot was to serve closes during the generation-2 boot's key awaits.
+{
+  const { session, transport, events, dispose, supersededCauses } = await peerOfRunningMatch();
+  try {
+    const eventMark = events.length;
+    transport.deliver({ type: 'host_changed', payload: { hostId: 'me', generation: 2, resumeTick: 1800, reason: 'timeout', hostSecret } });
+    assert.equal(session.roleStatus, 'booting_host', 'setup: the elected seat is booting its host');
+    session.migrating.close(undefined, 'test: the match link closed'); // white-box: the session's migrating transport
+    await sleep(300);
+    assert.deepEqual(events.slice(eventMark).filter((event) => event.kind === 'migration' && event.phase === 'failed'), [], 'a boot whose link closed reports no failed migration');
+    assert.deepEqual(supersededCauses(), ['match link closed'], `the log names the closed link, not an election (${supersededCauses().join(', ')})`);
+    assert.equal(session.matchHost, null, 'no host is left booting');
+  } finally {
+    await dispose();
+  }
+}
+console.log('matchSessionFallbackDecline.selftest: an elected seat with no state of a running battle declines through the session\'s role machine and decline owner: a peer again, its decline its own; superseded during its key awaits, it declines nothing, the newer migration runs on and the log names why');

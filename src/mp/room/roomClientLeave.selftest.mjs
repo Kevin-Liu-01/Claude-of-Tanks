@@ -90,4 +90,28 @@ async function joined() {
   assert.equal(client.room, null);
   client.dispose();
 }
-console.log('roomClientLeave.selftest: a leave while reconnecting leaves on the resumed socket; a disconnect keeps no stale room, match or election');
+// ---- (C) (round 2 U8) a client that left and is admitted again is no longer leaving: `leaving` was never reset, so a
+// RoomClient reused for a fresh create or join after a leave dropped every match_start and host_changed of its new seat
+{
+  const { client, transport } = await joined();
+  const starts = [];
+  const changes = [];
+  client.onMatchStart((payload) => starts.push(payload.matchId));
+  client.onHostChanged((payload) => changes.push(payload.generation));
+  const leaving = client.leave();
+  await until(() => transport().outbound.some((envelope) => envelope.type === 'room_leave'), 'the leave reaches the room');
+  transport().deliver({ type: 'room_ack', requestId: transport().outbound.find((envelope) => envelope.type === 'room_leave').requestId, payload: { left: true } });
+  await leaving;
+  assert.equal(client.phase, 'closed', 'setup: the seat left');
+  const rejoining = client.join({ roomCode });
+  await until(() => transport().outbound.some((envelope) => envelope.type === 'room_join'), 'the fresh join is sent');
+  const request = transport().outbound.find((envelope) => envelope.type === 'room_join');
+  transport().deliver({ type: 'room_joined', requestId: request.requestId, payload: { room: { ...serializeRoom(room), host: { transport: 'p2p', hostId: 'me', generation: 1, since: 0 } }, playerId: 'me', seat: 0, chat: [] } });
+  await rejoining;
+  transport().deliver({ type: 'match_start', payload: { matchId: 'm3-0000c0c0', round: 2, mapId: 'verdant', mode: 'standard', seed: 7, seat: 0, team: 'alpha', seatToken: 'x.y', matchUrl: p2pMatchUrl(roomCode, 2), hostId: 'me', expiresAt: Date.now() + 3_600_000 } });
+  transport().deliver({ type: 'host_changed', payload: { hostId: 'me', generation: 2, resumeTick: 0, reason: 'timeout', hostSecret: 'f'.repeat(64) } });
+  assert.deepEqual(starts, ['m3-0000c0c0'], `the new seat's owners hear its match_start (${JSON.stringify(starts)})`);
+  assert.deepEqual(changes, [2], 'and its elections');
+  client.dispose();
+}
+console.log('roomClientLeave.selftest: a leave while reconnecting leaves on the resumed socket; a disconnect keeps no stale room, match or election; a client admitted again after a leave hears its new seat');
