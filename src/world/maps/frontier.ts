@@ -25,6 +25,7 @@
 import { TRODDEN_GREEN_PAINT, WORN_YARD_PAINT } from '../hardstandSurface.ts';
 
 import * as detMath from '../../sim/detMath.ts';
+import { BUILDING_STYLES } from './buildingStyleTable.ts';
 // 2026-10-05 (the map-revival lane; the owner: "make sure all maps look completely new and revitalized like verdant";
 // gauntlet wave 116: half-timbered houses "standing alone in meadows, with no courtyards and no river", the crossroads a
 // hard square of bare dirt): the village is rebuilt as the Hünfeld basin's villages stand, a Haufendorf of Hofreiten —
@@ -247,7 +248,7 @@ export default {
   },
   props: {
     // regional-buildings lane: the Hessian Fachwerk kit (maps/regional/hessian.ts)
-    architecture: 'hessian',
+    architecture: BUILDING_STYLES.frontier.kit,
     // The landmarks lane (2026-10-05; src/world/landmarks/): on the square's north-west plot the Rathaus of a Hessian
     // market village — Alsfeld's kind: the stone arcade, two storeys of render in an oak frame, the framed gables and
     // the two corner turrets under slate spires, its front to the square; on the south-east plot the village church,

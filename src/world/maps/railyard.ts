@@ -28,6 +28,7 @@
 import { WORN_YARD_PAINT } from '../hardstandSurface.ts';
 
 import * as detMath from '../../sim/detMath.ts';
+import { BUILDING_STYLES } from './buildingStyleTable.ts';
 const clamp01 = (x: number) => (x < 0 ? 0 : x > 1 ? 1 : x);
 
 // The main line's centre: a straight chord through the station square, rising 6.6 m per 100 m of easting.
@@ -361,7 +362,7 @@ export default {
 
   props: {
     // regional-buildings lane: the Ruhr colliery-junction kit (maps/regional/ruhr.ts)
-    architecture: 'ruhr',
+    architecture: BUILDING_STYLES.railyard.kit,
     plan: PLAN,
     // round 2: the settlement the props dress reaches the colonies' back streets (the graded yard stays as it was), and
     // every street in it has its kerbs and pavements

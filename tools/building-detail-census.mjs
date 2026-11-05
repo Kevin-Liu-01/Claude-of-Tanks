@@ -31,7 +31,7 @@ export const BASELINE_PATH = `${ROOT}src/world/buildingDetail.baseline.json`;
 export const DWELLINGS = new Set(['cottage', 'farmhouse', 'tavern', 'cornershop', 'rowhouse', 'rangerlodge', 'alpine', 'logcabin', 'adobe', 'bathhouse',
   'marketRow', 'compound']);
 /** The plot each builder is measured on (B1 kitBuild: the base plan's sizes). */
-const INFO = {
+export const INFO = {
   alpine: [8.7, 10.5, 6.7], logcabin: [6.2, 7.0, 4.0], onionchurch: [7.5, 10.0, 12.2], yardshed: [3.6, 3.0, 3.2],
   cottage: [6.0, 8.4, 5.0], farmhouse: [13.4, 9.9, 6.0], tavern: [9.7, 14.9, 8.4], schoolhouse: [9.1, 16.1, 11],
   cornershop: [9.0, 9.0, 7.3], barn: [8.4, 12.3, 6.2], granary: [4.2, 6.4, 4.7], woodshed: [4.3, 5.4, 3.1],
