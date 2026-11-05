@@ -286,6 +286,10 @@ export class RoomActor {
   restore(state: RoomActorState): void {
     if (!isRecord(state) || state.v !== 1 || state.roomCode !== this.roomCode) throw new Error('invalid room actor state');
     this.room = state.room;
+    // A room written before the admin lock had its own field (audit M2) kept that lock in `locked`. While the room waits,
+    // `locked` is exactly the admin's switch (the round's lock was cleared at every match end and aborted start); a room
+    // written mid-round cannot tell them apart, and its round end cleared both before the split (round 2 U6).
+    if (this.room) this.room.settings.adminLocked ??= this.room.phase === 'waiting' && this.room.settings.locked === true;
     this.resumeHashes = new Map(Object.entries(state.resumeHashes ?? {}));
     this.chat = (state.chat ?? []).slice();
     this.chatSeq = state.chatSeq ?? 0;

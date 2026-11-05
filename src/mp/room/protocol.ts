@@ -152,7 +152,10 @@ export interface RoomSettings {
   allowTeamSwitch: boolean;
   /** No fresh join now: the admin's lock, or a round starting or playing (derived by roomPolicy `joinLocked`). */
   locked: boolean;
-  /** The admin's `set_locked` switch (audit M2, 2026-11-02); absent in a room written before it: unlocked. */
+  /**
+   * The admin's `set_locked` switch (audit M2, 2026-11-02). Absent in a room written before it: RoomActor.restore reads
+   * it from `locked` while the room waits, and as unlocked mid-round (round 2 U6).
+   */
   adminLocked?: boolean;
   arrangement: TeamArrangement | null;
   campaignOperationId: string | null;
