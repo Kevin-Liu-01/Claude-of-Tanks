@@ -1184,8 +1184,15 @@ function* createFxSteps(
       particles.emit('smoke', _puffO);
     }
   });
+  // (round 2 U31) the runtime's root (fx.group: the pooled lights and the veil) and the veil every visual is made under
+  // (`group` below): the killcam's suppression hides the veil, one switch only it writes (holdReplayHidden), so each
+  // subsystem's own visibility writes are never rewritten and stand at the release (the lights stay lit in the root:
+  // the light count keeps the programs)
+  const root = new THREE.Group();
+  root.name = 'fx';
   const group = new THREE.Group();
-  group.name = 'fx';
+  group.name = 'fx-replay-veil';
+  root.add(group);
   // Drone airframes and docks are lit meshes: they join the cascade setup like every vehicle material.
   if (engineCtx?.setupShadowMaterial) {
     configureDroneMaterials({ setup: (m) => engineCtx.setupShadowMaterial?.(m), release: (m) => engineCtx.releaseShadowMaterial?.(m) });
@@ -1212,12 +1219,13 @@ function* createFxSteps(
         destroyed: !!owner.combat?.destroyed, flying: owner.aerial?.active === true };
     },
     onReturnEvent: (id, event, reason) => {
-      const log = (group.userData.droneFlightsHomeLog ??= []) as { id: string | number; event: string; reason: string }[];
+      const log = (root.userData.droneFlightsHomeLog ??= []) as { id: string | number; event: string; reason: string }[];
       log.push({ id, event, reason }); if (log.length > 32) log.shift();
     },
   });
   // Diagnostics (films and probes): the flights home in progress, read off the FX group.
-  group.userData.droneFlightsHome = () => drones.returning();
+  root.userData.droneFlightsHome = () => drones.returning();
+  root.matrixAutoUpdate = false;
   group.matrixAutoUpdate = false;
   group.add(particles.group);
   // destruction-fx lane (2026-10-07): the simulated media and the thrown material. Desktop tiers only: the phone tier
@@ -1351,6 +1359,8 @@ function* createFxSteps(
   settledFracture.matrixAutoUpdate = false;
   settledFracture.userData.staticShadowRoot = true;
   group.add(settledFracture);
+  // (round 2 U31) through the root and its veil (shadowStaticCache.ts walks a nest inside a nest)
+  root.userData.staticShadowNest = true;
   group.userData.staticShadowNest = true;
   const fractureStages: FractureStages | null = createFractureStages({
     group, settled: settledFracture, now: () => particles.getTime(), environment: bodyEnvironment, groundAt: landingGround,
@@ -1374,6 +1384,7 @@ function* createFxSteps(
    *  fading over 1.5 s) and the largest burst in that load (also fading): a burst's own dust thins by the load against its
    *  own size, unless it is far bigger than what raised the load (dcore 2026-10-11, waves 397/401). */
   const strikeDust = new Map<number, [number, number, number]>();
+  timeShifts.on('strikeDust', (delta) => { for (const last of strikeDust.values()) last[0] += delta; });
   /** The last detonation on a structure (munition:blast), for the shell event that follows it. */
   const lastBlast = { x: 0, y: 0, z: 0, structureId: -1 };
   /** (2026-11-02 audit F10) what each building has laid here: a replayed or doubled stage or breach lays nothing again */
@@ -1430,7 +1441,7 @@ function* createFxSteps(
   const _lightCool = new THREE.Color(LIGHT_COOL_HEX);
   muzzleLight.castShadow = false;
   explosionLight.castShadow = false;
-  group.add(muzzleLight, explosionLight);
+  root.add(muzzleLight, explosionLight);
   // (2026-10-14, contact r2) unshadowed, so the near hulls shadow them on the ground in the aerial pass (groundKeyLights.ts)
   registerGroundKeyLight(muzzleLight);
   registerGroundKeyLight(explosionLight);
@@ -1833,7 +1844,7 @@ function* createFxSteps(
   }
   // (fx 9) the Studio's cinematic quality writes the pools' scene tint itself (FxCinematicPort.setLightTintShading)
   let cinematicTintOwner = false;
-  group.userData.softParticles = {
+  root.userData.softParticles = {
     ...particles.softParticles,
     isActive: () => particles.softParticles.isActive()
       || (vol ? vol.isActive() : false)
@@ -2214,8 +2225,13 @@ function* createFxSteps(
   const shellMunitions = new Map<ShellId, ShellMunition>();
   const _munShell = { type: '', caliberMm: 0, name: '', guided: false as boolean | undefined, tracer: undefined as string | undefined,
     blastRadiusM: undefined as number | undefined, launcherTubes: 0 };
+  /** The fired records kept at most (a hull's kinetic hit ends its round with no expiry and leaves its record): an
+   *  overflow drops the oldest. (Round 2 U31 review: the map was cleared past 96, so a heavy fight's machine-gun rounds
+   *  dropped the class of every round in flight, and a WP smoke round's expiry read as an HE burst by its type.) */
+  const SHELL_RECORDS_MAX = 256;
   function rememberMunition(e: ShellFiredEvent): void {
-    if (shellMunitions.size > 96) shellMunitions.clear();
+    shellMunitions.delete(e.shellId);
+    if (shellMunitions.size >= SHELL_RECORDS_MAX) shellMunitions.delete(shellMunitions.keys().next().value as ShellId);
     let munition = e.munition;
     let chargeKg = e.chargeKg;
     if (!munition || !Number.isFinite(chargeKg)) {
@@ -2260,6 +2276,7 @@ function* createFxSteps(
   const CROWD_SLOTS = 48, CROWD_S = 1.0, CROWD_CELL_M = 25;
   const crowdT = new Float64Array(CROWD_SLOTS).fill(-1e9), crowdCell = new Int32Array(CROWD_SLOTS);
   let crowdNext = 0;
+  timeShifts.on('salvoCrowd', (delta) => { for (let i = 0; i < CROWD_SLOTS; i++) crowdT[i] += delta; });
   function burstCrowd(x: number, z: number): number {
     const now = particles.getTime();
     const cell = (Math.floor(x / CROWD_CELL_M) & 0xffff) * 65536 + (Math.floor(z / CROWD_CELL_M) & 0xffff);
@@ -2366,13 +2383,36 @@ function* createFxSteps(
   const burstAt = new Map<ShellId, number>();
   /** rounds whose shell:expired has landed (fx time), kept as long */
   const roundEndedAt = new Map<ShellId, number>();
+  // (round 2 U33) a rebase moves the records and every waiting hull event's time: a forward pin inside a wait drew its
+  // burst already aged, and let the round's other event draw a second one
+  timeShifts.on('heDedupe', (delta) => {
+    for (const [id, t] of burstAt) burstAt.set(id, t + delta);
+    for (const [id, t] of roundEndedAt) roundEndedAt.set(id, t + delta);
+    for (let i = 0; i < PENDING_HE_MAX; i++) pendingHe[i].at += delta;
+  });
   function recent(map: Map<ShellId, number>, id: ShellId): boolean {
     const t = map.get(id);
     return t !== undefined && particles.getTime() - t <= HE_BURST_KEEP_S;
   }
   const burstRecent = (id: ShellId): boolean => recent(burstAt, id);
+  /** The records the maps keep at most: far above the rounds a battle ends in HE_BURST_KEEP_S (the frame prunes the
+   *  older ones, so a live record goes only after this many newer rounds end inside its half second); a frozen clock
+   *  that ages nothing drops the oldest records first, never the whole map. */
+  const HE_RECORDS_MAX = 1024;
+  /** The id the Studio's stand-in bursts carry (studio.ts): no round, so no record, and each burst of a barrage draws. */
+  const STAND_IN_SHELL_ID = -1;
+  /**
+   * (round 2 U31 review) Whether an expiry ends a round, recorded whatever its class: the sim raises a round's hull
+   * events (he_pen, he_splash) by its HE class (sim/damage.ts isHeClass: types HE and HESH), which FX's charge does not
+   * follow (a WP smoke round is HE class with no charge; recording charged rounds only left its he_splash unmatched, and
+   * it drew a plate burst). HE_RECORDS_MAX keeps the battle's other rounds from crowding a record out.
+   */
+  const isRound = (id: ShellId | null | undefined): id is ShellId => id != null && id !== STAND_IN_SHELL_ID;
   function note(map: Map<ShellId, number>, id: ShellId): void {
-    if (map.size > 256) map.clear(); // leak guard (a frozen clock never ages them out)
+    // (round 2 U31) the newest last: an overflow drops the oldest record (clearing the map dropped a round's record
+    // between its hull event and its expiry, and that round burst twice)
+    map.delete(id);
+    if (map.size >= HE_RECORDS_MAX) map.delete(map.keys().next().value as ShellId);
     map.set(id, particles.getTime());
   }
   const noteBurst = (id: ShellId): void => note(burstAt, id);
@@ -2404,6 +2444,14 @@ function* createFxSteps(
     for (let i = 0; i < pendingHeCount; i++) {
       const r = pendingHe[i];
       const id = r.shellId;
+      // (round 2 U31 review) a round its fired record names uncharged (WP smoke: HE class in the sim, so its hull events
+      // come) bursts nowhere (sim/destructionEvents.ts: a screen, never a blast): each hull it reaches takes fragments
+      // at once, with no expiry to wait for and no burst to note (its expiry strikes the ground as its own)
+      const known = id != null ? shellMunitions.get(id) : undefined;
+      if (known && !(isExplosive(known.munition) && known.chargeKg > 0)) {
+        fragmentStrike(blast, r.x, r.y, r.z, r.nx, r.ny, r.nz, Math.min(0, r.at - now));
+        continue;
+      }
       // (2026-11-02 audit F10) its round burst elsewhere and the expiry has not landed yet: it waits (at most HE_WAIT_S;
       // a frozen capture never). A direct hit's never does: its round has no expiry (the solo step and a peer's
       // shell_hit end it on the hull), and its burst draws on the next update as it always did
@@ -2417,8 +2465,10 @@ function* createFxSteps(
         continue;
       }
       if (id != null) noteBurst(id);
-      const info = (id != null ? shellMunitions.get(id) : null) ?? heByCaliber(r.caliberMm);
-      if (id != null) shellMunitions.delete(id);
+      const info = known ?? heByCaliber(r.caliberMm);
+      // (round 2 U31 review) a round with its expiry still to come keeps its record for it: the late expiry's mark (the
+      // ground's, kept since U31) is its own class's, not a guess from its type (an L31 HESH, typed HE, left an HE crater)
+      if (id != null && !r.expiryDue) shellMunitions.delete(id);
       const gy = groundY(r.x, r.z);
       // (ac130-fx-228 r3) a heavy charge (the gunship's howitzer shell, a missile's warhead) on a roof still throws the
       // ground's earth: it reaches the ground from a turret's top, a light charge from a hull's side only
@@ -2433,17 +2483,20 @@ function* createFxSteps(
   /**
    * A shell ending on the ground or the water, by its munition class: explosives burst (flash, fireball, ejecta, the
    * dust cloud, surge, residue), kinetic rounds and bullets strike (a spurt of the ground along the shot, chunks).
-   * Returns false when the media layer is off (the phone tier keeps the pooled plume).
+   * Returns false when the media layer is off (the phone tier keeps the pooled plume). `noBurst` (round 2 U31): the round's
+   * burst was drawn already (at a hull, its wait over before this expiry): the ground keeps its own marks, the crater mark
+   * of a burst that dug none, the cover it clears and the water's ring, and draws no second burst.
    */
   function mediaGroundHit(pos: THREE.Vector3, info: ShellMunition, water: boolean, dir: THREE.Vector3 | null,
-    birthOffset = 0): boolean {
+    birthOffset = 0, noBurst = false): boolean {
     if (!blast) return false;
     const surface = water ? 'water' : classifyTerrain(heightField, pos.x, pos.z);
     if (isExplosive(info.munition) && info.chargeKg > 0) {
       const y = water
         ? (heightField?.getWaterSurfaceHeightAt?.(pos.x, pos.z) ?? groundY(pos.x, pos.z))
         : pos.y;
-      if (water) waterBurst(blast, { x: pos.x, y, z: pos.z, munition: info.munition, chargeKg: info.chargeKg, surface, birthOffset });
+      if (noBurst) { /* the hull's burst stands for it */ }
+      else if (water) waterBurst(blast, { x: pos.x, y, z: pos.z, munition: info.munition, chargeKg: info.chargeKg, surface, birthOffset });
       else groundBurst(blast, { x: pos.x, y, z: pos.z, munition: info.munition, chargeKg: info.chargeKg, surface, birthOffset,
         ...(dir ? { dx: dir.x, dy: dir.y, dz: dir.z } : {}) });
       // a burst that dug a crater (munition:blast named it, raised just before this event) gets its mark from the
@@ -2463,7 +2516,7 @@ function* createFxSteps(
         }
       }
     } else {
-      kineticStrike(blast, { x: pos.x, y: pos.y, z: pos.z, dx: dir ? dir.x : 0, dy: dir ? dir.y : -1, dz: dir ? dir.z : 0,
+      if (!noBurst) kineticStrike(blast, { x: pos.x, y: pos.y, z: pos.z, dx: dir ? dir.x : 0, dy: dir ? dir.y : -1, dz: dir ? dir.z : 0,
         caliberMm: info.caliberMm, munition: info.munition, surface, birthOffset });
       // a rod or an AP shot leaves a gouge, a bullet nothing worth a mark
       if (!water && craters && info.munition !== 'small_arms' && info.caliberMm >= 20) {
@@ -5644,12 +5697,15 @@ function* createFxSteps(
   const SKIRT_BUDGET = 240;
   const skirtBirths = new Float64Array(SKIRT_BUDGET);
   let skirtHead = 0, skirtCount = 0;
+  timeShifts.on('trackSkirts', (delta) => { for (let i = 0; i < SKIRT_BUDGET; i++) skirtBirths[i] += delta; });
   // the trail sources: each track's contact (skirt) and each engine's stack (exhaust), matched by place
   const TRAIL_SKIRT = 0, TRAIL_EXHAUST = 1;
   // an engine's billow bursts (exhaust): the rate while one lasts, a rise of the load that starts one, how long it lasts
   // and the rest before the next can start
   const EXHAUST_BURST_RATE = 9, EXHAUST_THROTTLE_UP = 0.3, EXHAUST_BURST_S = 0.7, EXHAUST_BURST_REST_S = 1.5;
-  const fxTrails = createTrailCadence(96);
+  const fxTrails = timeShifts.add('trailCadence', createTrailCadence(96));
+  // the exhaust's lane of each source's two values is its burst's end (fx s; the skirt leaves its lanes unread)
+  timeShifts.on('exhaustBursts', (delta) => { const aux = fxTrails.aux; for (let i = 1; i < aux.length; i += 2) aux[i] += delta; });
   function mediaTrackSkirt(pos: THREE.Vector3, dir: THREE.Vector3, intensity: number, groundType: string,
     surface: number, gy: number): void {
     if (!blast) return;
@@ -6477,33 +6533,23 @@ function* createFxSteps(
 
   let cinematicPortState: FxCinematicPort | null = null;
   /**
-   * (2026-11-02 audit F10) Under the killcam's suppression the runtime owns its scene graph's visibility: every non-light
-   * child of the group stays hidden whatever its subsystem's update writes (they write `mesh.visible = n > 0` every
-   * frame, which re-showed what the killcam had hidden; a child added meanwhile, the lens guns, was never hidden), and
-   * the release gives each the visibility its owner last asked for (the killcam's blanket true showed meshes their owners
-   * had emptied). Pooled lights stay in the scene (the light count keeps the programs). Value: what the owner wants.
+   * (2026-11-02 audit F10; round 2 U31) Under the killcam's suppression the runtime hides its visuals by the veil they are
+   * all made under (`group`), the one switch only the suppression writes. The subsystems keep writing their own
+   * children's visibility (`mesh.visible = n > 0` every frame, or once: the lens guns' hide when the camera leaves the
+   * lens), none of it is rewritten, and the release shows each as its owner last left it. A child made meanwhile is under
+   * the veil too. (Round one rewrote each child's flag and recorded what it hid: an owner's hide during the suppression
+   * read as the suppression's own, and the release showed the lens guns over a killcam that had left the lens.) Pooled
+   * lights stay in the root, lit (the light count keeps the programs).
    */
-  const replayHidden = new Map<THREE.Object3D, boolean>();
-  function holdReplayHidden(): void {
-    const children = group.children;
-    for (let i = 0; i < children.length; i++) {
-      const child = children[i];
-      if ((child as THREE.Light).isLight) continue;
-      if (child.visible) { replayHidden.set(child, true); child.visible = false; }
-      else if (!replayHidden.has(child)) replayHidden.set(child, false);
-    }
-  }
-  function releaseReplayHidden(): void {
-    for (const [child, wanted] of replayHidden) child.visible = wanted;
-    replayHidden.clear();
-  }
+  function holdReplayHidden(): void { group.visible = false; }
+  function releaseReplayHidden(): void { group.visible = true; }
   /**
    * (2026-11-02 audit F10) this runtime's binding of each bus it heard (bindBus), keyed by bus: the page binds its bus
    * and the Studio its private one to the same runtime, and binding one never undoes the other
    */
   const busBindings = new Map<FxEventBus, () => void>();
   const fx: FxRuntime = {
-    group,
+    group: root,
 
     /**
      * Hide already-recorded battle destruction while killcam shows the
@@ -6739,8 +6785,6 @@ function* createFxSteps(
         readSceneLight((engineCtx.scene?.userData ?? null) as SceneLightData | null, missileLight);
       }
       ageMissileRecords(tickDt);
-      // (2026-11-02 audit F10) last, over whatever the subsystems wrote this frame
-      if (replaySuppressed) holdReplayHidden();
     },
 
     /**
@@ -6980,8 +7024,13 @@ function* createFxSteps(
         // (2026-11-02 audit F10) the round has ended (its waiting hull events resolve now); a hull event that drew its
         // burst already (its wait ran out first) leaves the expiry no burst of its own: one explosion a round. The wall
         // still takes its hole and its own dust (stages.strike, a non-explosive wallStrike)
+        const m = info ?? munitionOfExpiry(e);
+        const charged = isExplosive(m.munition) && m.chargeKg > 0;
+        // (round 2 U31 review) every round's end is recorded, whatever FX makes of its charge (isRound): the sim's HE class
+        // raises the hull events; a Studio stand-in is no round
+        const recorded = isRound(e.shellId);
         let burstDrawn = false;
-        if (e.shellId != null) {
+        if (recorded) {
           note(roundEndedAt, e.shellId);
           burstDrawn = burstRecent(e.shellId);
         }
@@ -6990,8 +7039,6 @@ function* createFxSteps(
           else _v4.copy(_UP);
           if (blast) {
             // destruction-fx lane: the round bursts on (or chips) the wall in the wall's own material
-            const m = info ?? munitionOfExpiry(e);
-            const charged = isExplosive(m.munition) && m.chargeKg > 0;
             const explosive = charged && !burstDrawn;
             // the building the event names (any round), else the one the blast named (munition:blast, raised just before
             // this event), else the struck kind
@@ -7024,20 +7071,21 @@ function* createFxSteps(
               const dx = arrival ? arrival.x : -_v4.x, dz = arrival ? arrival.z : -_v4.z;
               stages.strike(struckId, seamOf(struckId), _v3.x, _v3.y, _v3.z, dx, dz, m.munition, m.chargeKg, m.caliberMm);
             }
-            if (e.shellId != null) noteBurst(e.shellId);
+            if (recorded) noteBurst(e.shellId);
             return;
           }
           fx.impact('structure', _v3, _v4, e.caliberMm || 90);
           return;
         }
-        // (2026-11-02 audit F10) a hull's burst stood for this round's: the ground draws none of its own
-        if (burstDrawn) return;
         if (e.hitTerrain) {
           const water = !!e.hitWater || shellPointOnWater(_v3);
-          if (mediaGroundHit(_v3, info ?? munitionOfExpiry(e), water, arrival)) {
-            if (e.shellId != null) noteBurst(e.shellId);
+          // (2026-11-02 audit F10) a hull's burst stood for this round's: the ground draws none of its own; (round 2 U31)
+          // but keeps the ground's own marks (its crater mark, the cover it clears, the water's ring)
+          if (mediaGroundHit(_v3, m, water, arrival, 0, burstDrawn)) {
+            if (recorded) noteBurst(e.shellId);
             return;
           }
+          if (burstDrawn) return;
           if (water) waterSplash(_v3, e.caliberMm || 76, false);
           else dirtPlume(_v3, e.caliberMm || 76, false);
         }

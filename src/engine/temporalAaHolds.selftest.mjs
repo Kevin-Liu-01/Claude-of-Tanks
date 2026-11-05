@@ -21,7 +21,7 @@ function between(source, start, end) {
 }
 
 assert.doesNotMatch(film, /post\.taa\.enabled\s*=|post\.upscaler\.temporalAccumulation\s*=/, 'the film writes neither field');
-assert.match(film, /temporalHold: post\.holdTemporalAA\('studio-film'\)/);
+assert.match(film, /temporalHold = post\.holdTemporalAA\('studio-film'\)/);
 assert.match(film, /state\.temporalHold\.release\(\);/);
 
 const owner = between(post, "  /** The temporal AA's effective state", '\n  });') + '\n  });';
@@ -63,4 +63,31 @@ const create = new Function('createNamedHolds', stripTypeScriptTypes(`function m
   assert.ok(p.taa.resets >= 4, 'every change reseeds the history');
 }
 
-console.log('temporalAaHolds selftest: one TAA owner; a Studio film holds it off and restores nothing stale');
+// ---- (round 2 U30) the QA tools hold it off by name too, never writing the pass ----
+// (literal paths: the selftest cache keys this receipt on each tool it reads)
+for (const [tool, source] of [
+  ['shadow-cache-truth', readFileSync(new URL('../../tools/shadow-cache-truth.mjs', import.meta.url), 'utf8')],
+  ['shadow-render-truth', readFileSync(new URL('../../tools/shadow-render-truth.mjs', import.meta.url), 'utf8')],
+  ['render-stability-audit', readFileSync(new URL('../../tools/render-stability-audit.mjs', import.meta.url), 'utf8')],
+]) {
+  assert.doesNotMatch(source, /\btaa\.enabled\s*=[^=]|temporalAccumulation\s*=[^=]/, `${tool} writes neither field`);
+  assert.match(source, /holdTemporalAA\('qa'\)/, `${tool} holds temporal AA off through post's owner`);
+  assert.match(source, /\.release\(\)/, `${tool} releases its hold`);
+}
+{
+  // a QA comparison over a Studio film's hold: each releases its own
+  const p = create(createNamedHolds);
+  const film = p.hold('studio-film');
+  const qa = p.hold('qa');
+  qa.release();
+  assert.equal(p.taa.enabled, false, 'the film still holds it off when the tool lets go');
+  p.preset(false);
+  const qa2 = p.hold('qa');
+  film.release();
+  qa2.release();
+  assert.equal(p.taa.enabled, false, 'and the tool restores no stale snapshot over the preset that changed meanwhile');
+  p.preset(true);
+  assert.equal(p.taa.enabled, true);
+}
+
+console.log('temporalAaHolds selftest: one TAA owner; a Studio film and the QA tools hold it off by name and restore nothing stale');

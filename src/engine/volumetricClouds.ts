@@ -1101,8 +1101,11 @@ export class VolumetricCloudLayer {
   /**
    * Adopt the renderer's lifetime; false when this frame must draw nothing. (2026-11-02 audit R3) the three noise
    * volumes are GPU-baked render targets with no CPU image: a restored context re-creates them empty, and the layer
-   * marched empty volumes until a reload. A renewed lifetime (not the first adoption) drops them, and the next frame's
-   * ensureVolumes() bakes them again on the new context (as skyEnvironmentCache does for the environment).
+   * marched empty volumes until a reload. A renewed lifetime (not the first adoption) drops them and bakes them again
+   * on the new context (as skyEnvironmentCache does for the environment). (Round 2 U30) in that same frame while the
+   * context is live: the first frame after a restore is the restore's own confirm frame (main.ts onRestored's
+   * post.render(0), still under the context-loss cover), so the main-thread bake (its program links, its 3D passes) is
+   * hidden there; deferred to the next frame it was the first one the player saw, a hitch right after the recovery.
    */
   private refreshLifetime(): boolean {
     const context = this.renderer.getContext();
@@ -1116,7 +1119,9 @@ export class VolumetricCloudLayer {
     for (const rt of this.volumes.targets) rt.dispose();
     this.volumes = null;
     this.bindNoise();
-    return false;
+    // a context lost again draws nothing; the next live frame's ensureVolumes() bakes
+    if (context?.isContextLost?.()) return false;
+    return this.ensureVolumes();
   }
 
   private resize(width: number, height: number): void {

@@ -26,15 +26,35 @@ function texture() { return new THREE.Data3DTexture(new Uint8Array(4), 1, 1, 1);
   layer.refreshLifetime();
   assert.equal(layer.volumes, volumes, 'an unchanged lifetime keeps them');
   // three's restore replaces renderer.info (and the GL objects behind every render target)
+  const fresh = { shape: texture(), detail: texture(), turbulence: texture(), targets: [] };
+  const bakes = [];
+  layer.ensureVolumes = function () {
+    if (this.volumes) return true;
+    bakes.push(renderer.getContext());
+    this.volumes = fresh;
+    this.bindNoise();
+    return true;
+  };
   renderer.getContext = () => contextB;
   renderer.info = infoB;
   const renewed = layer.refreshLifetime();
-  assert.equal(layer.volumes, null, 'the empty re-created volumes are dropped');
   assert.equal(first, true);
-  assert.equal(renewed, false, 'a renewed lifetime draws nothing this frame');
-  assert.deepEqual(disposed, ['shape', 'detail']);
-  assert.equal(layer.medium.tShape.value, null, 'the medium no longer samples them');
+  assert.deepEqual(disposed, ['shape', 'detail'], 'the empty re-created volumes are dropped');
+  // (round 2 U30) re-baked in the same frame: the restore's own confirm frame, still under the context-loss cover (the
+  // bake deferred to the next frame was the first one the player saw: a hitch right after the recovery)
+  assert.deepEqual(bakes, [contextB], 'a renewed lifetime bakes the volumes again in the same frame, on the new context');
+  assert.equal(renewed, true, 'and draws this frame');
+  assert.equal(layer.medium.tShape.value, fresh.shape, 'the medium samples the new volumes');
   assert.equal(layer.refreshLifetime(), true);
+  assert.equal(bakes.length, 1, 'once');
+  // a lifetime renewed while the context is lost again: nothing baked, nothing drawn
+  const contextC = { isContextLost: () => true };
+  renderer.getContext = () => contextC;
+  renderer.info = { render: {} };
+  assert.equal(layer.refreshLifetime(), false, 'a context lost again draws nothing');
+  assert.equal(layer.volumes, null, 'its volumes dropped');
+  assert.equal(layer.medium.tShape.value, null, 'the medium no longer samples them');
+  assert.equal(bakes.length, 1, 'and bakes nothing on it');
   layer.dispose();
 }
 
@@ -63,4 +83,4 @@ function texture() { return new THREE.Data3DTexture(new Uint8Array(4), 1, 1, 1);
   assert.equal(layer.volumes, null);
 }
 
-console.log('volumetricCloudsLifetime selftest: a restored context re-bakes the noise volumes; no bake after dispose');
+console.log('volumetricCloudsLifetime selftest: a restored context re-bakes the noise volumes in its own (covered) frame; no bake after dispose');

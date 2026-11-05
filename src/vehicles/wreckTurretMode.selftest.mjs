@@ -150,6 +150,28 @@ assert.equal(pageLoader.wreckTurretDriverReady(), false, 'nothing has loaded the
   assert.equal(t.visual.wreckState(), 'cookoff', 'and the restored wreck is one');
   const restored = worldOf(t.turret).distanceTo(target);
   assert.ok(restored < 1, `its turret lies where its authority had it (${restored.toFixed(2)} m off)`);
+
+  // (round 2 U32) a fresh kill's receipt, recorded on the kill's own tick (the host's pose awaited, none placed): the
+  // re-wreck awaits the host again, so the turret holds its seat instead of a local body thrown and settled at age 12
+  t.visual.resetDestroyed();
+  t.visual.syncFromState(t.state, 0, 60);
+  const seat = worldOf(t.turret).clone();
+  t.visual.setDestroyed({ pop: true });
+  t.visual.awaitWreckTurretPose(); // battlePresentation.updateDestruction: the host owns the turret's body
+  t.visual.syncFromState(t.state, 0.05, 60);
+  const fresh = recordKillcamWreck(t.visual);
+  assert.deepEqual([fresh.turretPose, fresh.authority], [null, true], 'no pose placed on the kill\'s tick, but the host owns the turret');
+  t.visual.resetDestroyed();
+  t.visual.syncFromState(t.state, 0, 60);
+  assert.equal(restoreKillcamWreck(t.visual, fresh, { destroyed: true }), true);
+  for (let f = 0; f < 3; f++) t.visual.syncFromState(t.state, 0, 60);
+  const onSeat = worldOf(t.turret).distanceTo(seat);
+  assert.ok(onSeat < 0.3, `the re-wrecked turret holds its seat for the host (${onSeat.toFixed(2)} m off; a local body throws it)`);
+  const next = hostPose(t.visual.root, 6, -5);
+  t.visual.setWreckTurretPose(next);
+  t.visual.syncFromState(t.state, 0.05, 60);
+  const placed = worldOf(t.turret).distanceTo(new THREE.Vector3(next[0], next[1], next[2]));
+  assert.ok(placed < 1, `and goes where the host's next pose puts it (${placed.toFixed(2)} m off)`);
 }
 
 console.log('wreckTurretMode.selftest: one declared turret mode; an authority declared before the kill holds, a failed physics load is reported and retried, a scripted turret hands over to its authority, a re-wreck lies where its authority had it');

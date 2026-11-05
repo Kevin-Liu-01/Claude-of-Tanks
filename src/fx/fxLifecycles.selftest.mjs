@@ -11,7 +11,8 @@
 //    direct hull hit (no expiry ever follows it) bursts on the next update, and a late wall expiry still strikes its
 //    building;
 //  - under the killcam's suppression the runtime keeps its scene graph hidden whatever its subsystems write each frame
-//    (they re-showed themselves), hides a child added meanwhile, and the release restores what each owner asked for;
+//    (they re-showed themselves), hides a child added meanwhile, and the release restores what each owner asked for
+//    (round 2 U31: by the veil its visuals are made under, never their own flags: replayVeil.selftest);
 //  - a bus takes one runtime: binding twice, or a second runtime (a failed initializer's retry) binding the same bus,
 //    never doubles the effects or leaves the first reacting; one runtime bound to two buses (the page's, then the
 //    Studio's) keeps hearing both (the Studio's binding dropped the page's: no battle FX after a Studio visit);
@@ -211,7 +212,9 @@ function fakeVisual() {
 {
   const { fx, frames } = runtime();
   frames(2);
-  const shown = () => fx.group.children.filter((c) => !c.isLight && c.visible).map((c) => c.name || c.type);
+  const veil = fx.group.getObjectByName('fx-replay-veil');
+  const drawn = (o) => { for (let n = o; n && n !== scene; n = n.parent) if (!n.visible) return false; return true; };
+  const shown = () => veil.children.filter((c) => drawn(c)).map((c) => c.name || c.type);
   // live rounds keep their subsystems writing every frame: a tracer, a wire-guided missile
   const shells = [
     { id: 71, pos: new THREE.Vector3(0, 2, 10), vel: new THREE.Vector3(0, 0, 1500), spec: { tracer: 'TANK' }, shooterId: 'g', ageS: 0.05, distM: 60 },
@@ -220,20 +223,20 @@ function fakeVisual() {
   frames(3, 1 / 60, shells);
   const before = shown();
   assert.ok(before.length > 0, `live rounds draw (${before})`);
-  const ownerHidden = fx.group.children.find((c) => !c.isLight && !c.visible);
+  const ownerHidden = veil.children.find((c) => !c.visible);
   fx.setReplaySuppressed(true);
   assert.deepEqual(shown(), [], 'the suppression hides the scene graph at once');
   frames(3, 1 / 60, shells);
   assert.deepEqual(shown(), [], 'and keeps it hidden through the subsystems\' own per-frame writes');
   const late = new THREE.Group();
   late.name = 'late-child';
-  fx.group.add(late);
+  veil.add(late);
   frames(1, 1 / 60, shells);
-  assert.equal(late.visible, false, 'a child added under the suppression is hidden too');
+  assert.equal(drawn(late), false, 'a child added under the suppression is hidden too');
   fx.setReplaySuppressed(false);
   assert.ok(before.every((name) => shown().includes(name)), 'the release shows what its owners asked for');
-  if (ownerHidden) assert.equal(ownerHidden.visible, false, 'never a mesh its owner had hidden');
-  fx.group.remove(late);
+  if (ownerHidden) assert.equal(drawn(ownerHidden), false, 'never a mesh its owner had hidden');
+  veil.remove(late);
   fx.resetAll();
 }
 

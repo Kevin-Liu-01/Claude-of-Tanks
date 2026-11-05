@@ -489,6 +489,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/ui/studioPlanView.selftest.mjs',
     'src/game/studioFilmPlan.selftest.mjs',
     'src/game/studioFilmSupport.selftest.mjs',
+    'src/game/studioFilmHolds.selftest.mjs', // 2026-11-02 audit U30 (round 2): a film entry that throws gives its governor and temporal-AA holds back
     'src/engine/filmDepthProbe.selftest.mjs',
     'src/game/studioFilmMux.selftest.mjs',
     'src/game/studioFilmAudio.selftest.mjs',
@@ -515,6 +516,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/fx/killLight.selftest.mjs',
     'src/fx/absenceGrace.selftest.mjs', // 2026-11-02 audit F10: a round missing from a frame has not ended (tracers, trails, wires, drones)
     'src/fx/fxLifecycles.selftest.mjs', // 2026-11-02 audit F10: the battle FX runtime's deferred beats, stage ledger, columns, visibility, HE dedupe, bus binding
+    'src/fx/heRoundRecords.selftest.mjs', // 2026-11-02 audit U31/U33 (round 2): an HE round's records outlast other rounds and a rebase; a late ground expiry keeps its marks
+    'src/fx/replayVeil.selftest.mjs', // 2026-11-02 audit U31 (round 2): the killcam's suppression hides the FX veil, never an owner's own flag (the lens guns)
     // 2026-10-08 (destruction core lane, P2): the Studio films the sim's own holes and falls
     'src/game/studioDestruction.selftest.mjs',
     // 2026-10-09 (destruction core lane): a Studio burst fells light props as a battle's does; strike rounds burst on the ground.
@@ -1069,6 +1072,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/fx/flipbookOrientation.selftest.mjs',
     'src/fx/clock.selftest.mjs',
     'src/fx/clockRebase.selftest.mjs', // 2026-11-02 audit R7: one registry of fx-clock shifts; embers, fracture holds and pieces keep their time
+    'src/fx/fxClockStampCensus.selftest.mjs', // 2026-11-02 audit U33/Q15 (round 2): a rebase leaves no fx-clock stamp the runtime holds (by census, no list)
     // 2026-10-10 (physics lane, for the destruction core's natural collapses): the presentation pool of falling pieces.
     'src/fx/debrisPhysics.selftest.mjs',
     'src/gallery/chunkRecovery.selftest.mjs',

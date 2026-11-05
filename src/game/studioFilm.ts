@@ -157,6 +157,9 @@ interface SavedState {
   flareDt: number | null;
 }
 
+/** A hold not taken yet (enter's state before its holds). */
+const NO_HOLD = { release(): void {} };
+
 /**
  * Offset a projection by a sub-pixel sample (temporalAA.ts applyProjectionJitter, written here so the Studio chunk
  * imports nothing from the game's entry chunk: a shared module splits into a boot request of its own).
@@ -228,20 +231,26 @@ export function createStudioFilm(ports: StudioFilmPorts) {
   function enter(width: number, height: number): void {
     if (saved) throw new Error(t('studio.error.filmActive'));
     renderer.getSize(size);
-    saved = {
+    const state: SavedState = {
       width: size.x,
       height: size.y,
       pixelRatio: renderer.getPixelRatio(),
       aspect: camera.aspect,
+      temporalHold: NO_HOLD,
+      adaptiveHold: NO_HOLD,
+      flareDt: post.lensFlare.fixedDt,
+    };
+    saved = state;
+    // (round 2 U30) the holds and the film mode are taken inside the try, so a throw from any of them leaves through
+    // leave(), which releases what was taken (taken before it, a failed setFilmMode kept the governor and temporal AA
+    // off, and the Studio refused every later film, for the page)
+    try {
       // The jittered accumulation replaces temporal AA (and its wall-clock history), and spatial RCAS only: the 0.5
       // temporal floor (TAA's box-filter softness) printed a pixel stipple over the accumulated frame in the 2026-10-01
       // A/B; the jittered gaussian reconstruction needs no extra lift. One hold switches both off.
-      temporalHold: post.holdTemporalAA('studio-film'),
-      adaptiveHold: post.holdAdaptive('studio-film'),
-      flareDt: post.lensFlare.fixedDt,
-    };
-    ports.setFilmMode(true);
-    try {
+      state.temporalHold = post.holdTemporalAA('studio-film');
+      state.adaptiveHold = post.holdAdaptive('studio-film');
+      ports.setFilmMode(true);
       post.pinDynScale(1);
       post.resetPerfTrims();
       applyFilmSize(width, height);

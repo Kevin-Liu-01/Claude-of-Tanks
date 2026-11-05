@@ -5,7 +5,8 @@
 //  - the volume media's embers (a forward rebase expired them at once);
 //  - the structure fracture's collapse face hold (a forward rebase disposed a collapsing building's redrawn faces the
 //    moment their hold began), through the fracture stages that own it;
-//  - a live runtime registers every part, and a pinned clock keeps an ember's age;
+//  - a live runtime registers these parts, and a pinned clock keeps an ember's age (round 2 U33: that the registry is
+//    complete is fxClockStampCensus.selftest's, by census, never by this list);
 //  - the debris pool reports what it cannot step under ~15 fps, and a collapse's pieces age by the pool's time (they
 //    aged by frame time while their bodies fell on the pool's);
 //  - (review r2) a building's falling rubble keeps its pool's time too: a body thrown with a delay (a collapse front, a

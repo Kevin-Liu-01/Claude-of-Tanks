@@ -509,7 +509,11 @@ function createGuard(initial: BlackWorldGuardPorts): { guard: BlackWorldGuard; u
   // (2026-11-02 audit R3) a declared state: 'pending' while the recovery machine (contextRecovery.ts, through the
   // renderer's requestContextRestore) has not answered, 'back' once it answered ready (or, on a bare renderer, the
   // restored event arrived), 'none' otherwise; a failed restoration ends the wait at once instead of a 15 s timer
+  // (round 2 U30) and the two read apart: while 'pending' no verdict is judged and none ends the wait (the frames drawn
+  // then, the restore's own confirm frame, are no picture of the returned context); 'back' waits for the first verdict
+  // after the answer (restoreBackVerdicts), which judges the restored context
   let restoreWait: 'none' | 'pending' | 'back' = 'none';
+  let restoreBackVerdicts = 0;
   let restoreTicket = 0;
   let restoreAskedAt = -1;
   // H3's MSAA-off lasts the battle it healed (eng E2): the samples and preset it lowered, taken back at the next entry
@@ -802,8 +806,14 @@ function createGuard(initial: BlackWorldGuardPorts): { guard: BlackWorldGuard; u
    * (2026-11-02 audit R3) a pure predicate: the wait ends in settleRestoreWait, once a frame, never inside a check.
    */
   function awaitingRestore(t: number): boolean {
-    return restoreWait !== 'none' && ports.game.phase === 'battle' && verdictsSinceAct === 0
-      && t - restoreAskedAt < RESTORE_WAIT_MS;
+    if (restoreWait === 'none' || ports.game.phase !== 'battle' || !(t - restoreAskedAt < RESTORE_WAIT_MS)) return false;
+    return restoreWait === 'pending' || verdictsSinceAct === restoreBackVerdicts;
+  }
+
+  /** (round 2 U30) the restore answered ready (or a bare renderer's restored event): its first verdict from now judges */
+  function restoreBack(): void {
+    restoreWait = 'back';
+    restoreBackVerdicts = verdictsSinceAct;
   }
 
   function settleRestoreWait(t: number): void {
@@ -871,8 +881,9 @@ function createGuard(initial: BlackWorldGuardPorts): { guard: BlackWorldGuard; u
 
     // a verdict point: the probe's queries answered, or a decisive CPU signal held (it needs no probe to be believed)
     const cpuOnly = (bits & CPU_DECISIVE) !== 0 && frame - lastVerdictFrame >= CPU_VERDICT_FRAMES;
-    // (an unfocused document presents nothing the player sees: no verdict either way)
-    if ((probeResult || cpuOnly) && focused()) {
+    // (an unfocused document presents nothing the player sees: no verdict either way; nor a frame drawn while H4's
+    // restore has not answered, round 2 U30)
+    if ((probeResult || cpuOnly) && focused() && restoreWait !== 'pending') {
       lastVerdictFrame = frame;
       stats.verdicts++;
       onVerdict(judgeVerdict(bits, probeResult ? answer : null), t);
@@ -1282,7 +1293,7 @@ function createGuard(initial: BlackWorldGuardPorts): { guard: BlackWorldGuard; u
     if (typeof request === 'function') {
       const answer = (outcome: RecoveryOutcome): void => {
         if (ticket !== restoreTicket || restoreWait !== 'pending') return;
-        if (outcome === 'ready') restoreWait = 'back';
+        if (outcome === 'ready') restoreBack();
         else endRestoreWait();
       };
       request().then(answer, () => answer('failed'));
@@ -1314,7 +1325,7 @@ function createGuard(initial: BlackWorldGuardPorts): { guard: BlackWorldGuard; u
   const onContextRestored = (): void => {
     // (a bare renderer without the recovery machine: the restored event is H4's return)
     if (restoreWait === 'pending' && typeof (renderer as { userData?: { requestContextRestore?: unknown } })
-      .userData?.requestContextRestore !== 'function') restoreWait = 'back';
+      .userData?.requestContextRestore !== 'function') restoreBack();
     warmProbePrograms();
   };
   // (eng D7) a page going away with an incident open reports it first: in the capture phase, ahead of the entry

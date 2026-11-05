@@ -620,6 +620,17 @@ export function createShadowStaticCache(): ShadowStaticCache {
     return target;
   }
 
+  /** (battle-spikes-253) a dynamic root holding static subtrees (the fx group's settled rubble: 158 shadow draws a frame
+   *  at Urban 14v14): those join the static layer, its other children stay dynamic; (round 2 U31) a nest inside it is
+   *  walked the same way (the fx root holds its lights and the veil its visuals are made under) */
+  function collectNest(nest: THREE.Object3D): void {
+    for (const sub of nest.children) {
+      if (isStaticShadowRoot(sub)) staticRoots.push(sub);
+      else if (sub.userData?.staticShadowNest === true) collectNest(sub);
+      else dynamicTop.push(sub);
+    }
+  }
+
   function hideAll(list: readonly THREE.Object3D[]): void {
     for (let i = 0; i < list.length; i++) {
       const o = list[i];
@@ -804,11 +815,8 @@ export function createShadowStaticCache(): ShadowStaticCache {
     for (const child of scene.children) {
       if (isStaticShadowRoot(child)) staticRoots.push(child);
       else if ((child as THREE.Light).isLight) continue;
-      else if (nested && child.userData?.staticShadowNest === true) {
-        // (battle-spikes-253) a dynamic root holding static subtrees (the fx group's settled rubble: 158 shadow draws a
-        // frame at Urban 14v14): those join the static layer, its other children stay dynamic
-        for (const sub of child.children) (isStaticShadowRoot(sub) ? staticRoots : dynamicTop).push(sub);
-      } else dynamicTop.push(child);
+      else if (nested && child.userData?.staticShadowNest === true) collectNest(child);
+      else dynamicTop.push(child);
     }
     if (!staticRoots.length) return;
     const started = performance.now();

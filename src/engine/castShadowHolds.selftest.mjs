@@ -27,6 +27,19 @@ import { markShadowOnly } from './renderLayers.ts';
   caster.castShadow = true;
   releaseCastShadowHold(caster, warm);
   assert.equal(caster.castShadow, true);
+  // (round 2 U30) the release compares by value, as its header now says: a write of false by a non-hold writer reads as
+  // the holds' own and is undone; an owner that keeps a caster off past one call takes a hold of its own, which stands
+  holdCastShadowOff(caster, warm);
+  caster.castShadow = false;
+  releaseCastShadowHold(caster, warm);
+  assert.equal(caster.castShadow, true, 'a non-hold false between hold and release is undone (the by-value rule)');
+  const lod = {};
+  holdCastShadowOff(caster, warm);
+  holdCastShadowOff(caster, lod);
+  releaseCastShadowHold(caster, warm);
+  assert.equal(caster.castShadow, false, 'an owner that holds it off keeps it off past the other hold\'s release');
+  releaseCastShadowHold(caster, lod);
+  assert.equal(caster.castShadow, true);
   const never = { castShadow: false };
   holdCastShadowOff(never, warm);
   releaseCastShadowHold(never, warm);

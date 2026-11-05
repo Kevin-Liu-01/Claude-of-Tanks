@@ -464,7 +464,8 @@ for (const preset of presets) {
     let frozenMinLuma = 765;
     let frozenMaxLuma = 0;
     const fixedProjection = { taaEnabledBefore: Boolean(D.post.taa.enabled), taaDisabledForCheck: true };
-    D.post.taa.enabled = false;
+    // (2026-11-02 audit U30, round 2) held off through post's one owner (its release resets the history); never written here
+    const taaHold = D.post.holdTemporalAA('qa');
     try {
     for (let frame = 0; frame < 6; frame++) {
       // These six fixed-state draws share one task: rAF/background producers
@@ -498,8 +499,7 @@ for (const preset of presets) {
       previousFrame = pixels;
     }
     } finally {
-      D.post.taa.enabled = fixedProjection.taaEnabledBefore;
-      if (fixedProjection.taaEnabledBefore) D.post.taa.resetHistory();
+      taaHold.release();
     }
     if (frozenClouds && savedCloudPreset) {
       frozenClouds.frozen = savedCloudFrozen;

@@ -60,9 +60,8 @@ try {
     const ctx = cv.getContext('2d', { willReadFrequently: true });
     const lights = D.lighting.csm.lights;
     const saved = lights.map((l) => l.shadow.intensity);
-    const taa = D.post?.taa;
-    const taaWas = taa ? taa.enabled : null;
-    if (taa) taa.enabled = false;
+    // (2026-11-02 audit U30, round 2) temporal AA held off through post's one owner, never written here
+    const taaHold = D.post?.holdTemporalAA ? D.post.holdTemporalAA('qa') : null;
     const ao = D.post?.gtao ?? D.post?.passes?.gtao ?? D.post?.ao;
     const aoWas = ao ? ao.enabled : null;
     if (ao) ao.enabled = false;
@@ -138,7 +137,7 @@ try {
       casters[name] = { objects: list.length, shadowPxLost: lost.onlyA, shadowPxGained: lost.onlyB };
     }
     renderAll();
-    if (taa && taaWas !== null) taa.enabled = taaWas;
+    taaHold?.release();
     if (ao && aoWas !== null) ao.enabled = aoWas;
     let proxies = 0;
     D.scene.traverse((o) => { if (o.userData?.cotCasterProxy) proxies++; });
