@@ -4,7 +4,8 @@
 //   1. Rows: the wind frame's cumulus field (cloudNoise.ts bakeCloudWeatherStreets R) holds no rows — the share of its
 //      variance carried by its across-wind profile (a ruled roll's signature) stays small, and its correlation along and
 //      across the wind past a cloud's size shows no peak. A negative control (round 71's seven ruled rolls) fails both.
-//   2. The shape volume's lattice: the medium reads it off the world's axes and through a smooth warp (cloudShaders.ts).
+//   2. The shape volume's lattice and its repeats: the medium reads it off the world's axes, through a smooth warp, and
+//      each region's billows from another height of the volume (cloudShaders.ts cl2Media).
 //   3. The prism: a convective lane's crown and rim (cloudShaders.ts cl2Shell, twinned here) take round 6's flat lid off
 //      every core and its knife-edged plate off every small cloud, the body below kept; every deck keeps that law.
 //   4. The phones' baked deck (sky.ts CLOUD_FRAG): a second copy chosen region by region, so a tile and its neighbour a
@@ -14,7 +15,7 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { bakeCloudWeatherStreets, CLOUD_WEATHER_SIZE } from './cloudNoise.ts';
-import { CLOUD_DOME_CROWN, cloudStackOf, packCloudStack } from './cloudLayers.ts';
+import { CLOUD_DOME_CROWN, cloudLaneStreetShare, cloudStackOf, cloudStreetShare, packCloudStack } from './cloudLayers.ts';
 import { deriveCloudLayerPreset, loadCloudscapeLayers } from './cloudPresets.ts';
 import { CLOUD2_PERIODS } from './cloudShaders.ts';
 import { DEFAULT_SKY_PRESET } from './sky.ts';
@@ -73,10 +74,12 @@ assert.ok(CLOUD2_PERIODS.streets >= 18000, 'the field\'s tile stands past the vi
 // ---- 2. the shape volume's lattice
 const mediaSrc = shaders.slice(shaders.indexOf('vec4 cl2Media('), shaders.indexOf('float cl2Extinction('));
 for (const line of [
-  'vec2 warp = textureLod( tTurb, sp.xz / ( CL2_TURB * 8.0 ) + vec2( 0.31, 0.67 ), 0.0 ).rg * 2.0 - 1.0;',
-  'sp.xz = mat2( 0.8, 0.6, -0.6, 0.8 ) * sp.xz + warp * ( 0.3 * uShapePeriod );',
-]) assert.ok(mediaSrc.includes(line), `the shape lookup leaves the world's axes: ${line}`);
-assert.ok(mediaSrc.indexOf('sp.xz = mat2(') < mediaSrc.indexOf('textureLod( tShape'), 'before the shape fetch');
+  'vec3 warp = textureLod( tTurb, sp.xz / ( CL2_TURB * 8.0 ) + vec2( 0.31, 0.67 ), 0.0 ).rgb * 2.0 - 1.0;',
+  'sp.xz = mat2( 0.8, 0.6, -0.6, 0.8 ) * sp.xz + warp.xy * ( 0.3 * uShapePeriod );',
+  // a region's billows from another height of the volume: a cloud a period from another is not its twin
+  'sp.y += warp.z * ( 0.15 * uShapePeriod );',
+]) assert.ok(mediaSrc.includes(line), `the shape lookup leaves the world's axes and its repeats: ${line}`);
+assert.ok(mediaSrc.indexOf('sp.y += warp.z') < mediaSrc.indexOf('textureLod( tShape'), 'before the shape fetch');
 
 // ---- 3. the prism
 const shellSrc = shaders.slice(shaders.indexOf('vec4 cl2Shell('), shaders.indexOf('vec4 cl2Media('));
@@ -126,6 +129,15 @@ assert.ok(old.top > 0.08 && old.base > 0.4, `round 6's law: a flat lid at the sl
 assert.ok(dome.top < 0.02, `the crown takes the lid off: nothing at the ceiling (${dome.top.toFixed(3)})`);
 assert.ok(dome.base < 0.6 * old.base, `the rim softens the base (${dome.base.toFixed(2)} against ${old.base.toFixed(2)})`);
 assert.ok(dome.half > 0.9 * old.half, `and the body below is round 6's (${dome.half.toFixed(2)} at half the slab against ${old.half.toFixed(2)})`);
+
+// the share of the wind frame's lobes: a full fair-weather sky keeps its clouds apart on them, a sparse one and a tower's
+// sky keep the knob's (Verdant at under a third of the knob: one mass over nine tenths of its cloud)
+assert.ok(cloudLaneStreetShare(0.35, 0.61, 0.15) > 0.5, 'a full fair-weather sky reads at least half the lobes');
+assert.equal(cloudLaneStreetShare(0.3, 0.2, 0), cloudStreetShare(0.3), 'a sparse humilis sky keeps the knob\'s share');
+assert.equal(cloudLaneStreetShare(0.1, 0.6, 1), cloudStreetShare(0.1), 'a front\'s towers keep the knob\'s share');
+assert.equal(cloudLaneStreetShare(0.9, 0.45, 0.1), cloudStreetShare(0.9), 'a street sky its knob');
+let prev = 0;
+for (let c = 0; c <= 1.25; c += 0.05) { const v = cloudLaneStreetShare(0.35, c, 0.15); assert.ok(v >= prev - 1e-12, 'rising with the cover'); prev = v; }
 
 // every map: a convective main lane domes, a deck keeps the shell law
 for (const id of MAP_IDS) {

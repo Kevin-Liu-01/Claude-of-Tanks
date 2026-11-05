@@ -13,7 +13,7 @@
 // tile with a chain of lumps on each, reproduced here from origin/main 2cd74ad446 cloudNoise.ts streetRolls), fails one.
 import assert from 'node:assert/strict';
 import { bakeCloudLocalWeather, bakeCloudWeatherStreets, CLOUD_LOCAL_SIZE, CLOUD_NOISE_SEED, CLOUD_WEATHER_SIZE } from './cloudNoise.ts';
-import { cloudStackOf, cloudStreetShare } from './cloudLayers.ts';
+import { cloudStackOf } from './cloudLayers.ts';
 import { deriveCloudLayerPreset, loadCloudscapeLayers } from './cloudPresets.ts';
 import { CLOUD2_PERIODS } from './cloudShaders.ts';
 import { DEFAULT_SKY_PRESET } from './sky.ts';
@@ -182,7 +182,8 @@ function measure(m) {
 // (2026-11-04, the 31 cumulus maps at their street shares (cloudLayers.ts cloudStreetShare): rows 0.014-0.041 against
 // 0.063-0.328 on round 71's rolls at round 71's share, every map that carried them; the autocorrelation's climb 0.079-0.160
 // — the local weather's own jittered cells, one to a cell, unchanged since round 71 — against 0.105-0.579. Rows decide;
-// the climb's bound catches a lattice.)
+// the climb's bound catches a lattice. 2026-11-05, the shares by cover too (cloudLaneStreetShare, the full skies at about
+// half the lobes): rows at most 0.041, the climb at most 0.149.)
 const ROWS_MAX = 0.05, PERIOD_MAX = 0.2;
 const report = [];
 let controlsFailed = 0, convective = 0;
@@ -200,8 +201,9 @@ for (const id of MAP_IDS) {
   assert.ok(now.rows < ROWS_MAX, `${id} (${preset.regime}): no rows across the wind (${now.rows.toFixed(3)} of the footprints' variance)`);
   assert.ok(now.period < PERIOD_MAX, `${id} (${preset.regime}): no lattice or row spacing (autocorrelation climb ${now.period.toFixed(3)})`);
   // the control: round 71's field at round 71's share of it (the regime's whole street knob)
-  const deckFactor = cloudStreetShare(preset.streets) > 0 ? lane.streets / cloudStreetShare(preset.streets) : 1;
-  const oldLane = { ...lane, streets: Math.min(1, Math.max(0, preset.streets)) * deckFactor };
+  // (cloudLayers.ts cloudStackOf on origin/main: the knob times the lane's convective share, 1 − its deck)
+  const deck = Math.max(clamp01(preset.stratiform), clamp01(preset.cells) * 0.9);
+  const oldLane = { ...lane, streets: clamp01(preset.streets) * (1 - deck) };
   if (oldLane.streets > 0.2) {
     const old = measure(footprint(preset, oldLane, control, false));
     const failed = old.rows >= ROWS_MAX || old.period >= PERIOD_MAX;

@@ -243,8 +243,12 @@ vec4 cl2Media( vec3 p, vec4 shell, vec4 hf, float lod, float detail ) {
 	// (one small 2D fetch), drifting with the shape — so no two neighbouring tiles line up. (The first GPU preview's half
 	// period at four times the scale stretched the billows up to twice over a kilometre: Verdant's big cumulus read as
 	// brushed streaks.)
-	vec2 warp = textureLod( tTurb, sp.xz / ( CL2_TURB * 8.0 ) + vec2( 0.31, 0.67 ), 0.0 ).rg * 2.0 - 1.0;
-	sp.xz = mat2( 0.8, 0.6, -0.6, 0.8 ) * sp.xz + warp * ( 0.3 * uShapePeriod );
+	// The warp only moves a tile's billows, so a cloud a period from its twin was the same cloud (the critics' "pairs of
+	// near-identical puffs"): the same fetch's vertical push reads each region's billows from another height of the
+	// volume, up to 0.15 of a period: about two of its cells between neighbouring tiles, the billows leaning under 17°.
+	vec3 warp = textureLod( tTurb, sp.xz / ( CL2_TURB * 8.0 ) + vec2( 0.31, 0.67 ), 0.0 ).rgb * 2.0 - 1.0;
+	sp.xz = mat2( 0.8, 0.6, -0.6, 0.8 ) * sp.xz + warp.xy * ( 0.3 * uShapePeriod );
+	sp.y += warp.z * ( 0.15 * uShapePeriod );
 	if ( uTurbulence > 0.0 ) {
 		// the base drags with the wind's swirl: the lowest third of each lane, by its shell
 		float k = dot( shell, clamp( ( 0.3 - hf ) / 0.3, 0.0, 1.0 ) );

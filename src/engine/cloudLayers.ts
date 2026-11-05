@@ -116,6 +116,18 @@ export function cloudStreetShare(streets: number): number {
   const s = clamp(streets, 0, 1), t = clamp((s - 0.4) / 0.35, 0, 1);
   return s * (0.3 + 0.7 * t * t * (3 - 2 * t));
 }
+/**
+ * clouds-269: a convective lane's share of the wind frame's cumulus by its cover as well as its knob. The local weather's
+ * masses are kilometres across and merge as the cover rises: at under a third of the knob Verdant's cover of 0.61 drew
+ * one mass over nine tenths of its cloud (CPU model: 13.8 km across at the median — the blind critics' "flattened deck",
+ * 0-3), so a fuller sky takes more of the lobes, which keep its clouds apart at round 71's sizes (0.55: 2.2 km at the
+ * median and the largest a fifth of the cloud; round 71 2.9 km and a fifth, in rows), while a sparse sky keeps its few
+ * large clouds (Sirocco's humilis at 0.09 won 3-0). A tower's sky takes little: the lobes would cut its towers to stubs.
+ */
+export function cloudLaneStreetShare(streets: number, cover: number, towers: number): number {
+  const t = clamp((cover - 0.25) / 0.35, 0, 1), k = 1 - clamp(towers, 0, 1);
+  return Math.max(cloudStreetShare(streets), 0.75 * t * t * (3 - 2 * t) * k * k);
+}
 /** The local weather's world period (m; cloudShaders.ts CLOUD2_PERIODS.local) and its cell channel's cell (m) on it. */
 const CLOUD_LOCAL_PERIOD_M = 48000;
 const CLOUD_LOCAL_CELL_M = 1200;
@@ -210,12 +222,13 @@ export function cloudStackOf(preset: CloudLayerPreset): CloudStack {
   // front's towers take a core of 0.74 — rays end in them sooner too: 0.4 ms of the GPU on Monsoon's sky-w)
   const core = isDeck ? mixK(DECK_BROKEN.core, DECK_CORE, closing) : 0.46 + 0.28 * clamp((preset.towers - 0.5) / 0.5, 0, 1);
   const thickness = preset.thicknessM * (1 + preset.towers * 0.6);
+  // towers stand apart (a tower's footprint is its own; a front's sky between them is open), and the envelope's clear
+  // half is paid back where it gathers the cells
+  const cover = Math.min(1.25, cloudShellCover(preset.coverage, isDeck) * (1 - 0.3 * clamp(preset.towers, 0, 1)) / (1 - 0.5 * envelope));
   lanes.push({
     baseM: preset.baseM,
     topM: preset.baseM + thickness,
-    // towers stand apart (a tower's footprint is its own; a front's sky between them is open), and the envelope's clear
-    // half is paid back where it gathers the cells
-    cover: Math.min(1.25, cloudShellCover(preset.coverage, isDeck) * (1 - 0.3 * clamp(preset.towers, 0, 1)) / (1 - 0.5 * envelope)),
+    cover,
     // a deck's extinction at a stratocumulus' (an optical depth of ten to twenty through it, not fifty: its thick cores
     // grey, not black, beside its thin lines), a closing deck's at least twenty-five (an overcast, no disc through it)
     density: isDeck
@@ -224,10 +237,9 @@ export function cloudStackOf(preset: CloudLayerPreset): CloudStack {
     // (2026-10-18, the 228 census) a thin deck draws a share of that extinction (Whiteout's pale polar stratus)
     mediumShare: isDeck ? clamp(preset.deckDensity ?? 1, 0.05, 1) : 1,
     channels,
-    // (clouds-269) a street sky reads the wind frame's cumulus at its share; a fair-weather or humilis sky at under a
-    // third of it, so the local weather's own masses carry it (the blind critics' "full, billowing cumulus" in the before,
-    // its rows gone with the rolls) and the wind frame's lobes only break them up
-    streets: cloudStreetShare(preset.streets) * (1 - deck),
+    // (clouds-269) a street sky reads the wind frame's cumulus at its knob; a fair-weather or humilis sky by its cover
+    // (cloudLaneStreetShare): the lobes keep a full sky's clouds apart, a sparse sky's few large clouds the local weather's
+    streets: cloudLaneStreetShare(preset.streets, cover, preset.towers) * (1 - deck),
     envelope,
     // (a tower's flanks at the full erosion streaked with the shape volume's grain over kilometres of height: towers take
     // a softer carving, their mass in the light)
