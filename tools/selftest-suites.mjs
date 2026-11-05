@@ -788,6 +788,8 @@ export const SELFTEST_SUITES = Object.freeze({
     // the 45-second FIFO drain. The default-build pass hosts combatAnatomy, mudguardFenderSeating,
     // vehicleMarkings and tankAssets (2026-10-02).
     'src/vehicles/fleetPassDefault.selftest.mjs',
+    // release 268 (Main): a suit-painted marking is backed by its suit within the armour's 5 cm, and by nothing farther
+    'src/vehicles/vehicleMarkingSuitBacking.selftest.mjs',
     'src/vehicles/fleetFloorClearance.selftest.mjs',
     // 267 (Main): every internal module sketch mostly inside its armour, with a KNOWN ratchet (fleet suite)
     'tools/module-outside-share.selftest.mjs',
