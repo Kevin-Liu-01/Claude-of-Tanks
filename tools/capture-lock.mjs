@@ -1168,6 +1168,15 @@ export function createCaptureLock({
           + 'export, someone else\'s hold, or a free lock): queueing as usual', log);
       }
     }
+    const classed = resolveLockClass({ option: lockClass, command });
+    // (round 2 U38) a timing hold never nests in a render one: the render group admits a second render member, so the
+    // timing work would share the GPU with another render, the exclusivity its class exists for. Queueing would wait
+    // behind its own parent, so it is refused at once, by name. A child classed by default (no class named, no script
+    // matched) asked for nothing: it nests in its parent's class, as before.
+    if (parent && parent.lockClass === 'render' && classed.lockClass === 'timing' && classed.from !== 'default') {
+      throw new Error(`capture lock: a timing hold (${classed.from}) cannot nest in the render hold of pid ${parent.pid} (${via}): a render `
+        + 'group shares the GPU with another render; run it outside that hold, or under a timing one');
+    }
     if (parent) {
       const prepared = typeof prepare === 'function' ? await prepare() : undefined;
       hold = { nested: true, parent, lockDir, pid: process.pid, ticket: null, lostNoted: false, token: { startedAt: new Date().toISOString() } };
@@ -1178,7 +1187,6 @@ export function createCaptureLock({
         ...(via === NESTED_HOLD_ENV ? {} : { via: 'lane-hold' }), command: process.argv.slice(1).join(' ').slice(0, 300) });
       return prepared;
     }
-    const classed = resolveLockClass({ option: lockClass, command });
     if (classed.from === 'default') {
       const who = (command ?? process.argv.slice(1).join(' ')).slice(0, 160);
       noteOnce(`default-class:${who}`, `[capture-lock] ${who}: classed timing by default (no script name matched), an exclusive hold; `

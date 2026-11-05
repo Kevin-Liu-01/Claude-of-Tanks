@@ -9,6 +9,7 @@
 // COT_LANE_HOLD=1 with no token (round 3): a child nests only in a live hold an ancestor of it owns (a lane-hold helper's
 // probe, parent or grandparent); a leftover export and this process's own other holds queue. On the lane's round 2 the flag
 // was ignored and a helper's probe queued behind its own parent's hold until its timeout.
+// A timing child never nests in a render hold (round 2 U38): it is refused by name; render and default-classed children nest.
 // Every hold is private (a temporary lock and queue directory); no machine lock is touched.
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
@@ -133,6 +134,56 @@ try {
     const after = await child(env, 2_000);
     assert.deepEqual([after.ok, after.nested], [true, false], 'after the parent released, the token is stale: the child holds on its own');
   }
+  // ---- (round 2 U38) a timing child never nests in a render hold ----------------------------------------------------------
+  // A child nested whatever its own class, so a timing (exclusive) probe under a render parent shared the GPU with the
+  // render group's other member: the exclusivity the class protects. It is refused at once, by name (queueing would wait
+  // behind its own parent). A render child, and a child classed by default (it named nothing), nest as before.
+  {
+    const dirs = rig('nested-class');
+    const parent = createCaptureLock(dirs);
+    await parent.acquire(2_000, { lockClass: 'render' });
+    const env = parent.nestedEnv();
+    const child = (options) => new Promise((done) => {
+      const script = `import { createCaptureLock } from ${JSON.stringify(new URL('./capture-lock.mjs', import.meta.url).href)};
+        const lock = createCaptureLock({ lockDir: ${JSON.stringify(dirs.lockDir)}, queueDir: ${JSON.stringify(dirs.queueDir)}, log: () => {} });
+        const t0 = Date.now();
+        try {
+          await lock.acquire(700, ${JSON.stringify(options)});
+          const nested = lock.nested, heldClass = lock.heldClass;
+          lock.release();
+          console.log(JSON.stringify({ ok: true, ms: Date.now() - t0, nested, heldClass }));
+        } catch (error) { console.log(JSON.stringify({ ok: false, ms: Date.now() - t0, error: error.message })); }`;
+      const proc = spawn(process.execPath, ['--input-type=module', '-e', script], { env: { ...process.env, ...env }, stdio: ['ignore', 'pipe', 'inherit'] });
+      let out = '';
+      proc.stdout.setEncoding('utf8').on('data', (chunk) => { out += chunk; });
+      proc.once('close', () => done(JSON.parse(out.trim().split('\n').at(-1))));
+    });
+    for (const [label, options] of [['lockClass timing', { lockClass: 'timing' }], ['a timing script', { command: 'node tools/frame-perf-probe.mjs' }]]) {
+      const timing = await child(options);
+      assert.equal(timing.ok, false, `${label}: a timing child does not nest in a render hold: ${JSON.stringify(timing)}`);
+      assert.match(timing.error, /cannot nest in the render hold of pid \d+/, `${label}: refused by name`);
+      assert.ok(timing.ms < 600, `${label}: at once (${timing.ms} ms), not after a wait behind its own parent`);
+    }
+    for (const [label, options] of [['a render child', { lockClass: 'render' }], ['a child classed by default', {}]]) {
+      const nested = await child(options);
+      assert.deepEqual([nested.ok, nested.nested, nested.heldClass], [true, true, 'render'], `${label} nests in the render hold: ${JSON.stringify(nested)}`);
+    }
+    parent.release();
+    // under a timing parent a timing child nests, as before
+    await parent.acquire(2_000, { lockClass: 'timing' });
+    const exclusive = await new Promise((done) => {
+      const script = `import { createCaptureLock } from ${JSON.stringify(new URL('./capture-lock.mjs', import.meta.url).href)};
+        const lock = createCaptureLock({ lockDir: ${JSON.stringify(dirs.lockDir)}, queueDir: ${JSON.stringify(dirs.queueDir)}, log: () => {} });
+        try { await lock.acquire(700, { lockClass: 'timing' }); console.log(JSON.stringify({ ok: true, nested: lock.nested })); lock.release(); }
+        catch (error) { console.log(JSON.stringify({ ok: false, error: error.message })); }`;
+      const proc = spawn(process.execPath, ['--input-type=module', '-e', script], { env: { ...process.env, ...parent.nestedEnv() }, stdio: ['ignore', 'pipe', 'inherit'] });
+      let out = '';
+      proc.stdout.setEncoding('utf8').on('data', (chunk) => { out += chunk; });
+      proc.once('close', () => done(JSON.parse(out.trim().split('\n').at(-1))));
+    });
+    assert.deepEqual([exclusive.ok, exclusive.nested], [true, true], `a timing child nests in a timing hold: ${JSON.stringify(exclusive)}`);
+    parent.release();
+  }
   // ---- COT_LANE_HOLD=1 with no token: nests only in a live hold an ancestor of this process owns (round 3) ------------
   // Lane-hold helpers outside the repo (fifo-hold.mjs: take the FIFO, then run a probe with COT_LANE_HOLD=1 and no token)
   // waited behind their own parent once round 2 ignored the flag. It is honoured again, checked: the live owner record
@@ -227,7 +278,7 @@ try {
     assert.equal(existsSync(dirs.lockDir), false, 'and the wrapper releases its own hold after');
   }
   assert.deepEqual(LOCK_ENV.filter((name) => process.env[name] !== undefined), [], 'no lock variable is set at the end');
-  console.log('capture-lock-reentry.selftest: a holding or queued instance refuses a second acquire (no leaked render slot, no wait on its own pid), checkpoint re-queues, and a child nests in its parent\'s hold through the token (runCapturedCommand hands it down) or, on COT_LANE_HOLD=1, in an ancestor\'s live hold only');
+  console.log('capture-lock-reentry.selftest: a holding or queued instance refuses a second acquire (no leaked render slot, no wait on its own pid), checkpoint re-queues, and a child nests in its parent\'s hold through the token (runCapturedCommand hands it down; a timing child never in a render hold) or, on COT_LANE_HOLD=1, in an ancestor\'s live hold only');
 } finally {
   rmSync(root, { recursive: true, force: true });
 }
