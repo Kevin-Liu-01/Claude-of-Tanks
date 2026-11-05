@@ -74,19 +74,17 @@ spec.armor.turretPivot = [M741_RING.x, M741_RING.roofY, M741_RING.z];
 spec.armor.gunPivot = [...M163_TRUNNION];
 // the fire axis on the cluster's centre line, its plane the barrels' muzzles; the cluster's clamp as its radius
 spec.armor.gunBarrel = { lengthM: M163_MUZZLE_Z, radiusM: G.muzzleClampR };
-// The open mount (r2; photos 04, 07, 08, 09): the low ring on the race (its sides and deck), the gunner's open column (its
-// wall's facets), the box shield on its left-rear face (the outer face and the two ends), the tall plate at its right and
-// the sight head on its post, all splinter protection; the gunner rides with his head and shoulders over the rim.
+// The open mount (r3; photos 04, 07, 08, 09): the low ring on the race (its sides and deck), the gunner's open column (its
+// wall's facets), the box shield square to the hull on its left (the outer face, the two ends and the inner face aft of
+// the column), the tall plate at its right and the sight head on its post, all splinter protection; the gunner rides with
+// his head and shoulders over the rim.
 const SIDES = 8;
 const drumR = T.drumR * 1.02, C = T.column, B = T.boxShield, Rp = T.radarPlate, V = M163_GUNNER.sight;
-/** The box shield's corner at lateral offset u and distance s from the column's centre, at height y. */
-const boxAt = (u: number, s: number, y: number): Point => {
-  const b = B.bearingDeg * DEG;
-  return [C.x + Math.sin(b) * s + Math.cos(b) * u, y, C.z + Math.cos(b) * s - Math.sin(b) * u];
+/** The box shield's corner on its inner (x = B.innerX) or outer face, at its front (z0) or rear (z1) end, foot or top. */
+const boxAt = (outer: boolean, end: 'z0' | 'z1', top: boolean): Point => {
+  const station = top ? B.top : B.foot;
+  return [outer ? station.outX : B.innerX, top ? B.topY : B.footY, station[end]];
 };
-const onColumn = (u: number): number => Math.sqrt(C.r * C.r - u * u);
-const boxOut: Point = [Math.sin(B.bearingDeg * DEG), 0, Math.cos(B.bearingDeg * DEG)];
-const boxSide = (sign: number): Point => [sign * Math.cos(B.bearingDeg * DEG), 0, -sign * Math.sin(B.bearingDeg * DEG)];
 spec.armor.turretPlates = [
   ...Array.from({ length: SIDES }, (_, k) => {
     const a = (360 / SIDES) * k, b = (360 / SIDES) * (k + 1);
@@ -98,11 +96,14 @@ spec.armor.turretPlates = [
     return polygon(`m163_column_${k}`, [at(a, C.r, T.deckY, C.x, C.z), at(b, C.r, T.deckY, C.x, C.z), at(b, C.r, C.topY, C.x, C.z),
       at(a, C.r, C.topY, C.x, C.z)], 12, 12);
   }),
-  facing('m163_box_outer', [boxAt(B.footHalfW, C.r + B.footDepth, B.footY), boxAt(-B.footHalfW, C.r + B.footDepth, B.footY),
-    boxAt(-B.topHalfW, C.r + B.topDepth, B.topY), boxAt(B.topHalfW, C.r + B.topDepth, B.topY)], boxOut, 12),
-  ...[-1, 1].map((sign) => facing(`m163_box_end_${sign < 0 ? 'r' : 'l'}`, [
-    boxAt(sign * B.footHalfW, onColumn(B.footHalfW), B.footY), boxAt(sign * B.footHalfW, C.r + B.footDepth, B.footY),
-    boxAt(sign * B.topHalfW, C.r + B.topDepth, B.topY), boxAt(sign * B.topHalfW, onColumn(B.topHalfW), B.topY)], boxSide(sign), 12)),
+  facing('m163_box_outer', [boxAt(true, 'z0', false), boxAt(true, 'z1', false), boxAt(true, 'z1', true), boxAt(true, 'z0', true)],
+    [1, 0, 0], 12),
+  facing('m163_box_front', [boxAt(false, 'z0', false), boxAt(true, 'z0', false), boxAt(true, 'z0', true), boxAt(false, 'z0', true)],
+    [0, 0, 1], 12),
+  facing('m163_box_rear', [boxAt(false, 'z1', false), boxAt(true, 'z1', false), boxAt(true, 'z1', true), boxAt(false, 'z1', true)],
+    [0, 0, -1], 12),
+  facing('m163_box_inner', [boxAt(false, 'z0', false), boxAt(false, 'z1', false), boxAt(false, 'z1', true), boxAt(false, 'z0', true)],
+    [-1, 0, 0], 12),
   ...boxFaces('m163_radar_plate', [Rp.x - Rp.t / 2, T.deckY, Rp.z0], [Rp.x + Rp.t / 2, Rp.topY, Rp.z1], 12, ['floor']),
   ...boxFaces('m163_sight', [V.x - V.w / 2, V.y - V.h / 2, V.z - V.d / 2], [V.x + V.w / 2, V.y + V.h / 2, V.z + V.d / 2], 6, ['floor']),
 ];
@@ -163,11 +164,12 @@ spec.visual = { ...spec.visual, scheme: 'desert', base: '#b09466', weather: '#c4
   camoScale: 0.52, marking: 'number', number: 'A21' };
 delete spec.visual.patchK;
 
-/** The farthest the build reaches from the hull origin: the muzzle with the gun forward, or the radar's rear case. */
+/** The farthest the build reaches from the hull origin (its whips aside): the muzzle with the gun forward, or the radar's
+ * outboard case. */
 function reach(record: FleetTankSpec): number {
   const [, ty, tz] = record.armor.turretPivot;
   const muzzle = Math.hypot(gx, ty + gy, tz + gz + M163_MUZZLE_Z);
-  const radar = Math.hypot(Math.hypot(R.x, tz + R.z - R.caseDz) + R.caseR, ty + R.caseTopY);
+  const radar = Math.hypot(Math.hypot(R.x - R.caseDx, tz + R.z - R.backZ - 0.03) + R.caseR, ty + R.caseTopY);
   return Math.max(muzzle, radar);
 }
 spec.armor.boundingRadiusM = Math.max(spec.armor.boundingRadiusM, reach(spec));

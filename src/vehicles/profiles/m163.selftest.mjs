@@ -8,8 +8,12 @@
 //  - the six barrels and their clamps ride one rotor group about the bore, tagged for gunRotorSpin.ts, nothing else in
 //    it; a burst spins it (the barrels' tips move round the bore, the fire axis does not) and leaves the simulation's
 //    state untouched; at rest it holds;
-//  - the radar stands right rear (-x, -z), outboard of the ring's edge, with its cases' tops at the frame's height; the
-//    gun on the left; the gunner's column open at the top; the build's length, width and height are the spec's dims (3 %);
+//  - the radar stands right rear (-x, -z), outboard of the ring's edge, its dome forward and its flat back plate square
+//    across the turret's rear, its cases left and right of the plate with their tops at the frame's height; the gun on
+//    the left; the gunner's column open at the top; the box shield's outer face square to the hull; the build's length,
+//    width and height (its whips aside) are the spec's dims (3 %);
+//  - a whip at each rear corner of the turret (r3), about 2.5 m from foot to tip, riding the turret, behind everything the
+//    gun sweeps from full depression to full elevation;
 //  - from full depression to full elevation every gun part keeps 2 cm from its turret's own stock (the cross shaft and
 //    the feed joint, bodies about the elevation axis seated in the arms, keep it at every pitch by construction: gun
 //    points within 9 cm of the axis are left out), and 2.5 cm from the hull at every 5 degrees of yaw (both ways) and
@@ -41,12 +45,12 @@ function firstHit(root, frame, start, direction, far = 1, skip = []) {
   const hit = new THREE.Raycaster(origin, dir, 0, far).intersectObjects(meshesUnder(root, skip), false)[0];
   return hit ? { point: frame.worldToLocal(hit.point.clone()), object: hit.object } : null;
 }
-/** The visible box of the meshes under root, less any field-net suit and the whips' vertex spans (a whip merged into its
- * bucket keeps its span as the 'antenna' seat role, tankFactoryCore.ts seatRoleRanges). */
-function envelope(root) {
+/** The visible box of the meshes under root, less any field-net suit, the whip fittings in `skip` and any whip's vertex
+ * spans (a whip merged into its bucket keeps its span as the 'antenna' seat role, tankFactoryCore.ts seatRoleRanges). */
+function envelope(root, skip = []) {
   root.updateMatrixWorld(true);
   const bounds = new THREE.Box3(), v = new THREE.Vector3();
-  for (const mesh of meshesUnder(root)) {
+  for (const mesh of meshesUnder(root, skip)) {
     if (/_ghillie_/.test(mesh.name)) continue;
     // (the running gear's instanced wheels and shoes: their instances' box)
     if (mesh.isInstancedMesh) { bounds.union(new THREE.Box3().setFromObject(mesh)); continue; }
@@ -112,18 +116,47 @@ try {
     const bore = firstHit(gun, gun, [bx, by, M163_GUN.barrelTipZ + 0.2], [0, 0, -1], 0.4);
     assert.ok(bore && bore.point.z < M163_GUN.barrelTipZ - M163_GUN.boreDepth + 0.006, `barrel ${k}: bored ${M163_GUN.boreDepth} m deep`);
   }
-  // the radar right rear, its cases' tops at the frame's height
-  assert.ok(M163_RADAR.x < 0 && M163_RADAR.z < 0, 'the radar stands right rear');
-  const caseTop = firstHit(turret, turret, [M163_RADAR.x, 1.6, M163_RADAR.z - M163_RADAR.caseDz], [0, -1, 0], 1);
-  assert.ok(caseTop, 'the radar\'s rear case is drawn');
-  near(caseTop.point.y, M163_RADAR.caseTopY, 0.01, 'the case\'s top');
-  assert.ok(Math.hypot(M163_RADAR.x, M163_RADAR.z) > T.drumR, 'the radar housing stands outboard of the ring\'s edge');
-  const ball = firstHit(turret, turret, [M163_RADAR.x, 1.6, M163_RADAR.z], [0, -1, 0], 1);
-  near(ball?.point.y ?? 0, M163_RADAR.y + M163_RADAR.r, 0.01, 'the housing\'s top');
+  // the radar right rear: its dome forward, its flat back plate square across the turret's rear, its cases left and right
+  // of the plate with their tops at the frame's height
+  const R = M163_RADAR;
+  assert.ok(R.x < 0 && R.z < 0, 'the radar stands right rear');
+  for (const s of [-1, 1]) {
+    const caseTop = firstHit(turret, turret, [R.x + s * R.caseDx, 1.6, R.z - R.backZ - 0.03], [0, -1, 0], 1);
+    assert.ok(caseTop, `the radar's ${s < 0 ? 'outboard' : 'inboard'} case is drawn`);
+    near(caseTop.point.y, R.caseTopY, 0.01, 'the case\'s top');
+  }
+  assert.ok(Math.hypot(R.x, R.z) > T.drumR, 'the radar housing stands outboard of the ring\'s edge');
+  const ball = firstHit(turret, turret, [R.x, 1.6, R.z], [0, -1, 0], 1);
+  near(ball?.point.y ?? 0, R.y + R.r, 0.01, 'the housing\'s top');
+  // (a ray 3.6 cm off the lathe's axis, clear of its pole's seam)
+  const pole = firstHit(turret, turret, [R.x + 0.03, R.y + 0.02, R.z + 1], [0, 0, -1], 1);
+  near(pole?.point.z ?? 0, R.z + R.r, 0.012, 'the dome\'s pole looks forward');
+  const plate = [-0.15, 0.15].map((dx) => firstHit(turret, turret, [R.x + dx, R.y + 0.2, R.z - 1], [0, 0, 1], 1)?.point.z ?? 0);
+  for (const z of plate) near(z, R.z - R.backZ - R.backT / 2, 0.004, 'the back plate square across the turret\'s rear');
   const tub = firstHit(turret, turret, [T.column.x, 1.6, T.column.z], [0, -1, 0], 1.5);
   assert.ok(tub && tub.point.y < T.column.topY - 0.2, 'the gunner\'s column is open at the top');
+  // the box shield's outer face square to the hull (one face from the side, photo 08)
+  const B = T.boxShield, midY = (B.footY + B.topY) / 2, outX = (B.foot.outX + B.top.outX) / 2;
+  for (const z of [-0.45, -0.75, -1.05]) {
+    const face = firstHit(turret, turret, [1.6, midY, z], [-1, 0, 0], 1.2);
+    near(face?.point.x ?? 0, outX, 0.004, `the box shield's outer face at z ${z}`);
+  }
+  // the whips: one at each rear corner, about 2.5 m from foot to tip, behind the gun's whole sweep
+  const whips = [];
+  root.traverse((node) => { if (node.name === 'fitting_antennaWhip') whips.push(node); });
+  assert.equal(whips.length, 2, 'a whip at each rear corner of the turret');
+  const tInvW = new THREE.Matrix4().copy(turret.matrixWorld).invert();
+  const whipBoxes = whips.map((w) => {
+    assert.ok(under(w, turret) && !under(w, gun), 'the whips ride the turret');
+    return new THREE.Box3().setFromObject(w).applyMatrix4(tInvW);
+  });
+  assert.deepEqual(whipBoxes.map((b) => Math.sign(b.getCenter(new THREE.Vector3()).x)).sort(), [-1, 1], 'one whip each side');
+  for (const b of whipBoxes) {
+    assert.ok(b.max.z < -0.75, `a whip at the turret's rear (z ${b.max.z.toFixed(2)})`);
+    near(b.max.y - b.min.y, T.whip.h + 0.12, 0.06, 'a whip about 2.5 m from foot to tip');
+  }
   // envelope, in the hull frame
-  const box = envelope(root), size = box.getSize(new THREE.Vector3());
+  const box = envelope(root, whips), size = box.getSize(new THREE.Vector3());
   near(size.y, spec.dims.heightM, spec.dims.heightM * 0.03, 'height over the radar\'s cases');
   near(size.z, spec.dims.overallLengthM, spec.dims.overallLengthM * 0.03, 'length');
   near(size.x, spec.dims.widthM, spec.dims.widthM * 0.03, 'width over the tracks');
@@ -135,17 +168,21 @@ try {
     if (Math.hypot(allPts[i + 1], allPts[i + 2]) > 0.09) gunPts.push(allPts[i], allPts[i + 1], allPts[i + 2]);
   }
   const grid = new SurfaceGrid(meshTriangles(meshesUnder(turret, [gun]), tInv).tri, { cell: 0.05, rq: 0.06 });
-  const pose = new THREE.Matrix4(), v = new THREE.Vector3();
+  const pose = new THREE.Matrix4(), v = new THREE.Vector3(), swept = new THREE.Box3();
   let worst = { d: Infinity };
   for (let deg = -spec.gunDepressionDeg; deg <= spec.gunElevationDeg; deg += 2.5) {
     pose.compose(gun.position, new THREE.Quaternion().setFromEuler(new THREE.Euler(-deg * DEG, 0, 0)), new THREE.Vector3(1, 1, 1));
     for (let i = 0; i < gunPts.length; i += 3) {
       v.set(gunPts[i], gunPts[i + 1], gunPts[i + 2]).applyMatrix4(pose);
+      swept.expandByPoint(v);
       const d = grid.distance(v.x, v.y, v.z);
       if (d < worst.d) worst = { d, deg, at: [gunPts[i], gunPts[i + 1], gunPts[i + 2]].map((n) => +n.toFixed(3)) };
     }
   }
+  for (const b of whipBoxes) assert.ok(!b.intersectsBox(swept.clone().expandByScalar(0.25)), 'the whips stand 25 cm clear of the gun\'s whole sweep');
+  const whipGap = swept.min.z - Math.max(...whipBoxes.map((b) => b.max.z));
   assert.ok(worst.d >= 0.02, `the gun keeps 2 cm from the turret at every pitch (worst ${worst.d.toFixed(3)} m at ${worst.deg} deg, gun point ${worst.at})`);
+  console.log(`${ID}: whips ${whipBoxes.map((b) => `${(b.max.y - b.min.y).toFixed(2)} m (tip ${(b.max.y + M741_RING.roofY).toFixed(2)} m up, x ${b.getCenter(v).x.toFixed(2)}, z ${b.max.z.toFixed(2)})`).join(', ')}; the gun's sweep reaches z ${swept.min.toArray().map((n) => n.toFixed(2)).join(',')} (min), ${whipGap.toFixed(2)} m ahead of the whips`);
   console.log(`${ID}: datums, rotor, bores, radar, envelope ${size.toArray().map((n) => n.toFixed(2)).join(' x ')} m, turret clearance ${worst.d.toFixed(3)} m (at ${worst.deg} deg, gun point ${worst.at})`);
 
   // the spin: a burst turns the rotor and the barrels' tips round the bore, the fire axis and the sim state stay put

@@ -32,21 +32,23 @@ special has no parents; a 20 mm gun a tier under the 35 mm Gepard at V).
 
 ## The numbers (turret-local: the race's centre at the roof, +z forward, +x the vehicle's left)
 
-r2 (2026-11-04) after a blind photo critic of r1 (6/10); each of its reads checked against the photographs.
+r2 (2026-11-04) after a blind photo critic of r1 (6/10); r3 after a fresh critic of r2 (r2 won the blind A/B 9/9). Each
+read checked against the photographs.
 
 | Part | Number | From |
 |---|---|---|
 | race | 1.40 m, its centre 1.95 m ahead of the stern, top 0.04 m over the roof | `m741Datums.ts` (the hull's builder) |
 | ring | 1.49 m across, deck 0.20 m over the roof, six slots in its side | photo 09 (the low slotted ring) |
 | gunner's column | an open tub 0.90 m across, 0.54 m over the deck (rim 0.74 m), centred 0.16 m right and 0.44 m back of the race's centre | photos 07 (from astern: the round body just right of centre), 08, 09 (behind the gun) |
-| box shield | on the column's left-rear face (135 degrees), 0.40-0.80 m over the roof, 0.52 m wide at its foot and 0.72 m at its top (its ends leaning out 14 degrees), 0.28-0.34 m deep | photos 07, 08, 09 |
+| box shield | r3: square to the hull against the column's left side and running aft past it, an open-topped box 0.32-0.78 m over the roof (85 % of the column's 0.54 m over the deck, its top 4 cm over the rim; its foot 3.8 cm over the hull's beacon as the turret turns): its flat inner face 3 cm into the column's wall (x 0.255), its outer face at x 0.72 (foot) to 0.80 (top), its ends at z -0.36/-1.12 (foot) and -0.27/-1.25 (top), so 0.76-0.98 m long and 0.47-0.55 m wide, the outer face and ends leaning out | photos 07 (its narrow end from astern), 08 (one broad flared face from the left), 09 |
 | tall plate | 0.15 x 0.70 m at the column's right, carrying the radar's arm | photos 00/03, 06 |
+| whips | r3: two `FITTINGS.antennaWhip` (a 0.12 m pot, a 2.40 m rod: 2.51 m from foot to tip, raked 6 degrees out), the left one on the box shield's top at its rear outer corner (0.68, -1.14), the right one on a bracket off the column's rear right wall (-0.42, -0.89, 0.66 m up); both on the turret, 0.7 m and more behind anything the gun sweeps; out of the body height (`tools/body-height-parts.mjs`) | photos 03, 04 (two whips about 2.5 m tall rising from the turret's rear, one each side) |
 | trunnion | x +0.32 (left), 0.58 m up, 0.30 m ahead of the race's centre | photo 04: at 20 degrees the tips 1.95 m ahead of the race's centre and 1.18 m over the roof, the feeder 0.41 m ahead and 0.72 m up |
 | Vulcan | six barrels 1.52 m on a 0.104 m circle, 31-37 mm across, bored 45 mm deep; the tips 1.66 m out; the mid clamp 30 % along from the breeches (0.57-0.63 m), the muzzle clamp (0.133 m, 7 cm deep) 0.12 m short of the tips; their spindle the fire axis's mouth at 1.655 m; the rotor housing 0.236 m across, 0.46 m long, its drive behind | WPV, IMA, photos 02, 04, 08 |
-| under the housing | a cylinder 0.08 m across pointing forward to 0.62 m (40 % of the barrels) | photos 00/01, 04 |
+| under the housing | r3: a cylinder 0.09 m across (0.64 of the cluster's 0.14 m) pointing forward from 0.03 m behind the trunnion to 0.47 m (0.50 m long, a third of the barrels), its nose ring | photos 03, 04 |
 | lamp | 0.15 m across on the mount's top | photo 06 |
-| feed | the linkless drum in the hull under the turret (1,100 ready rounds, the 1,000 stowed beside it); a ribbed chute 0.11 m across from the inboard trunnion's feed joint arching 0.2 m over the housing into the feeder | photos 08, 10 |
-| radar | the AN/VPS-2's round housing 0.56 m across, centred 0.88 m over the roof at (-0.90, -0.56), outboard of the ring's edge on a horizontal arm and brace from the tall plate; its flat face to the right front; two upright cases (0.13 x 0.56 m) seated fore and aft on it. Top 1.16 m over the roof: 3.02 m overall, 4 % over the published 2.90 m (115 in) that the photographs' radar (01: ~0.6 m across, top ~1.3 m up) overtops | MP, photos 01, 03, 06, 07 |
+| feed | the linkless drum in the hull under the turret (1,100 ready rounds, the 1,000 stowed beside it); r3: a thick segmented chute 0.12 m across (0.85 of the cluster), a rib 1.2 cm proud every 4.5 cm, from the inboard trunnion's feed joint up aft of the housing and forward over it (its arch 0.38 m over the axis, 0.42 m fore and aft, its rear inside 0.38 m of the axis so it clears the column's front at every elevation) down into the feeder | photos 08, 10 |
+| radar | the AN/VPS-2's round housing 0.56 m across, centred 0.88 m over the roof at (-0.90, -0.56), outboard of the ring's edge on a horizontal arm and brace from the tall plate; r3: its dome looking forward along the gun, its flat round back plate (0.58 m) square across the turret's rear with a stub aft, two upright cases (0.13 x 0.56 m) left and right on the back plate's edges (photo 07: the round plate facing straight aft; 01, 06: a case at the housing's rear edge in side view; 10: the round face forward; 03 at 45 degrees fits either). Top 1.16 m over the roof: 3.02 m overall, 4 % over the published 2.90 m (115 in) that the photographs' radar (01: ~0.6 m across, top ~1.3 m up) overtops | MP, photos 01, 03, 06, 07, 10 |
 | gunner | the seat in the column; the sight head 0.20 x 0.20 x 0.30 m on a post on the column's front rim, its top 1.10 m over the roof, above the breech and inboard of the gun's sweep | photos 00/01, 06 |
 | roll bar | one tube rising 0.4 m at the mount's front, bending back, level at the gunner's shoulder (0.99 m) to the column's rim, inboard of the gun's sweep | photos 02, 04, 08 |
 | hull kit | the long stowage case across the roof's left rear (0.90 x 0.24 x 0.36 m), the amber beacon at the right front | photo 03 |
@@ -57,10 +59,11 @@ r2 (2026-11-04) after a blind photo critic of r1 (6/10); each of its reads check
 |---|---|---|
 | 1 | the M113A1 hull, the trim vane, five road wheels, the race where the cargo hatch was, the commander's round hatch at the right rear; no hull whip | the M113 builder's M741 (`buildM113HullSteps(P, 'm741')`) |
 | 2 | the gun on the turret's left, the radar on the right rear (photos 04 from the left and 07 from astern, and MP) | gun left, radar right rear, outboard |
-| 3 | a low ring, an open gunner's column at its rear right, a box shield on the column's left rear, the ring's front and the gun's side open (04, 07, 08, 09) | r2: ring, column, box shield, tall plate (r1 drew one tub round the whole ring) |
+| 3 | a low ring, an open gunner's column at its rear right, a box shield square to the hull on the column's left running aft past it, the ring's front and the gun's side open (04, 07, 08, 09) | r2: ring, column, box shield, tall plate (r1 drew one tub round the whole ring); r3: the box square to the hull |
 | 4 | six barrels in a cluster, the mid clamp near the breeches and the muzzle clamp short of the tips (02, 08) | the six bored tubes, both clamps with their bolt bosses and a spindle, on the rotor |
-| 5 | the rotor housing and drive, the feeder on top, the ribbed chute arching over it, the cylinder under it, a round lamp on top (00, 01, 04, 06, 08, 10) | all of them |
-| 6 | the radar's ball ~0.6 m across high at the rear right on its arm, two upright cases on it (01, 03, 06, 07) | the housing outboard on its arm and brace, its flat face, the cases |
+| 5 | the rotor housing and drive, the feeder on top, the thick segmented chute arching over it, the fat cylinder under it, a round lamp on top (00, 01, 03, 04, 06, 08, 10) | all of them (r3: the chute and cylinder thicker) |
+| 5a | two tall whips at the turret's rear, one each side (03, 04) | r3: both, on the turret |
+| 6 | the radar's ball ~0.6 m across high at the rear right on its arm, its round face forward and a flat round plate aft, two upright cases either side of the plate (01, 03, 06, 07, 10) | r3: the housing outboard on its arm and brace, its dome forward, its back plate and stub aft, the cases left and right |
 | 7 | the gunner in his column behind his boxy sight head on a post, a tubular rail before him (00-04, 06, 10) | seat, sight head and hood, roll bar |
 | 8 | the long case on the roof's rear, the amber beacon at the front right (03) | both |
 | 9 | the 24th Infantry Division's desert sand (03), "A-21" on the trim vane | the US desert Factory coat (`service_usa_desert`); marking number A21 |
@@ -87,3 +90,6 @@ r2 (2026-11-04) after a blind photo critic of r1 (6/10); each of its reads check
 - A photo packet (`tools/photo-reference-policy.mjs`), as the 269 air-defence ids have none either.
 - (Resolved for r2: the M741 carries no hull whip, item/m113-hull-269 19c0acad47; the gun's sweep clears the hull with no
   exception.)
+- The hull's rear lower corner boxes (photo 07: two boxes standing aft at the rear plate's bottom corners over the
+  tracks, about track width, ~40 % of the rear plate's height, sloped tops, lamp openings) are the M113 builder's; the
+  M741 draws only the small tail-light boxes high on the rear plate. Asked of the hull session (r3 report).
