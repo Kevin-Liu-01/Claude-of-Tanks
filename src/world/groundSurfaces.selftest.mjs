@@ -146,6 +146,10 @@ assert.ok(GROUND_SURFACE_GLSL.includes('gGsTilt = uGsNear.x > 0.0'), 'the chunk 
 // the sown fields' level and grain read the switch (the old clamp at 0), as the hardstanding's repairs do
 assert.ok(raw.includes('if (uGsNear.w > 0.0) {\n        float gsML = max(reduxLuma(uMeanG.rgb), 1e-3);'), 'the crops keep their grain');
 assert.ok(raw.includes('if (uGsNear.w > 0.0) hp.x += 0.5 * mod(floor(hp.y), 2.0)'), 'the repairs staggered');
+// the props' foundation rings (props.ts contactDarkeningMaterial) keep two fifths of their darkening where the table runs
+const props = readFileSync(new URL('./props.ts', import.meta.url), 'utf8');
+assert.ok(props.includes('shader.uniforms.uGsContact = { value: 1 };') && props.includes('if (vColor.r < 0.5) diffuseColor.a *= mix(1.0, 0.4, uGsContact);'),
+  'the foundation rings softened, the old law at uGsContact 0');
 // the setts' joints and lost setts (roadSurfaceShader.ts) read the floor, the old law at 0
 const pave = readFileSync(new URL('./roadSurfaceShader.ts', import.meta.url), 'utf8');
 for (const t of ['if (uGsNear.z > 0.0) jointC = max(jointC, stone * uGsNear.z);', 'uGsNear.z > 0.0 ? mix(jointC, uMeanD.rgb * uSoilTint * 0.8, 0.5) : jointC * 0.6',

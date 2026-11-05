@@ -2895,15 +2895,21 @@ function contactDarkeningMaterial(tex: THREE.Texture): THREE.MeshBasicMaterial {
   mat.onBeforeCompile = (shader) => {
     shader.vertexShader = _mustReplace(shader.vertexShader, '#include <common>', '#include <common>\nvarying float vCotContactDist;');
     shader.vertexShader = _mustReplace(shader.vertexShader, '#include <project_vertex>', '#include <project_vertex>\nvCotContactDist = -mvPosition.z;');
-    shader.fragmentShader = _mustReplace(shader.fragmentShader, '#include <common>', '#include <common>\nvarying float vCotContactDist;');
+    // (ground-269, groundSurfaces.ts: the critics' first round flagged a dark strip at every wall's foot on Suzhou Creek, in
+    // the old ground and the new) a foundation's ring — the faintest kind, strength 0.45 — keeps two fifths of its
+    // darkening where the ground-surface table runs (uGsContact 1; 0 = the old law); the boulders', the crushables' and the
+    // stacks' patches as they were
+    shader.uniforms.uGsContact = { value: 1 };
+    shader.fragmentShader = _mustReplace(shader.fragmentShader, '#include <common>', '#include <common>\nvarying float vCotContactDist;\nuniform float uGsContact;');
     // (MultiplyBlending: the target × (rgb·a + 1 − a) of the premultiplied output — the ground × mix(1, the grey, a))
     shader.fragmentShader = _mustReplace(shader.fragmentShader, '#include <premultiplied_alpha_fragment>', /* glsl */`{
+  if (vColor.r < 0.5) diffuseColor.a *= mix(1.0, 0.4, uGsContact);
   float cotContactA = clamp(diffuseColor.a * 2.5 * vColor.r, 0.0, 0.8) * (1.0 - smoothstep(80.0, 160.0, vCotContactDist));
   gl_FragColor = vec4(0.56, 0.53, 0.49, cotContactA);
 }
 #include <premultiplied_alpha_fragment>`);
   };
-  mat.customProgramCacheKey = () => 'props-contact-darkening-v1';
+  mat.customProgramCacheKey = () => 'props-contact-darkening-v2';
   return mat;
 }
 

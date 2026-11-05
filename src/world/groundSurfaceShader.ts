@@ -39,17 +39,17 @@ export const GROUND_SURFACE_GLSL = /* glsl */`  // ground-269 (groundSurfaceShad
       float cured = smoothstep(0.54, 0.66, gsM.y) * (1.0 - lush);
       gsThin = smoothstep(mix(0.55, 0.50, tus), mix(0.65, 0.60, tus), gsF * 0.5 + (1.0 - gsM.x) * 0.5) * (1.0 - lush);
       // cured straw and bare soil in their own light, not the turf's (ab2: on Ruinspires' and Suzhou's muted turf the states
-      // as multiples of the green read as nothing): a sward's dead patches a pale straw (luminance ~0.15, the map's dry
-      // tint uTintA its hue), its bare earth the map's soil at ~0.10, each carrying part of the turf's own grain
-      float gsL = reduxLuma(a.rgb);
-      float grain = clamp(gsL / max(reduxLuma(uMeanG.rgb * gMeadowTint), 0.02), 0.6, 1.5);
-      vec3 strawC = vec3(0.17, 0.15, 0.09) * uTintA / max(reduxLuma(uTintA), 0.3) * (0.85 + 0.30 * gsF) * mix(1.0, grain, 0.6);
+      // as multiples of the green read as nothing): a sward's dead patches a pale straw (luminance ~0.13, the map's dry
+      // tint uTintA its hue), its bare earth the map's soil at ~0.10, each grained by the noise alone (the critics' first
+      // round on Suzhou Creek: the photo grass's blade strokes carried into the straw read as combed, curved brush strokes
+      // across the hill)
+      vec3 strawC = vec3(0.15, 0.13, 0.08) * uTintA / max(reduxLuma(uTintA), 0.3) * (0.88 + 0.24 * gsF);
       vec3 soilC = uMeanD.rgb * uSoilTint;
-      soilC *= (0.10 / max(reduxLuma(soilC), 0.02)) * (0.80 + 0.40 * gsF) * mix(1.0, grain, 0.5);
+      soilC *= (0.10 / max(reduxLuma(soilC), 0.02)) * (0.84 + 0.32 * gsF);
       vec3 gsA = a.rgb;
       gsA = mix(gsA, gsA * vec3(0.80, 0.92, 0.82), lush * 0.85);
-      gsA = mix(gsA, strawC, cured * 0.65);
-      gsA = mix(gsA, soilC, gsThin * 0.70);
+      gsA = mix(gsA, strawC, cured * 0.55);
+      gsA = mix(gsA, soilC, gsThin * 0.60);
       a.rgb = mix(a.rgb, gsA, min(1.0, gsSwardW));
       gsThin *= gsSwardW;
     }
@@ -60,11 +60,12 @@ export const GROUND_SURFACE_GLSL = /* glsl */`  // ground-269 (groundSurfaceShad
       if (gsTownW > 0.003) {
         vec2 tq = mix(vec2(0.5), nzq(uvW, 0.11, vec2(0.37, 0.83)), tileVis(3.0)); // (eased to the median past resolution)
         float tf = mix(0.5, nzq(uv, 0.31, vec2(0.71, 0.29)).y, tileVis(0.9));
-        // the floor's own tone: the map's soil greyed to a pale gravel (luminance 0.22, its hue a third kept), carrying a third
-        // of the drawn ground's grain (the woods' litter of the dirt set read as twigs and straw on a town's yards)
+        // the floor's own tone: the map's soil greyed toward a gravel, its light halfway between the drawn ground's own and a
+        // pale gravel's 0.20 (the critics' first round on Suzhou Creek: a fixed pale floor laid a flat sandy area round the
+        // towers), carrying a third of the drawn ground's grain (the woods' litter of the dirt set read as twigs and straw)
         float gL = reduxLuma(a.rgb), dL = max(reduxLuma(uMeanD.rgb), 0.02);
         vec3 grey = mix(vec3(dL), uMeanD.rgb, 0.35) * uSoilTint;
-        grey *= (0.22 / max(reduxLuma(grey), 0.02)) * mix(1.0, gL / dL, 0.33);
+        grey *= (mix(min(gL, 0.20), 0.20, 0.5) / max(reduxLuma(grey), 0.02)) * mix(1.0, gL / dL, 0.33);
         vec3 floorC;
         if (uGsTown.x < 4.5) {
           // yard: pale trodden gravel and earth, its paths paler, its hollows damp, weeds where nothing treads
@@ -80,9 +81,11 @@ export const GROUND_SURFACE_GLSL = /* glsl */`  // ground-269 (groundSurfaceShad
           float brick = smoothstep(0.54, 0.66, tq.x);
           float conc = smoothstep(0.52, 0.64, tq.y) * (1.0 - brick);
           float weeds = smoothstep(0.60, 0.70, tf) * (1.0 - brick) * (1.0 - conc);
-          floorC = grey * vec3(1.06, 1.03, 0.99) * 1.10 * (0.88 + 0.24 * tf);
-          floorC = mix(floorC, vec3(0.30, 0.17, 0.12) * (0.85 + 0.30 * tf), brick * 0.65);
-          floorC = mix(floorC, vec3(0.34, 0.33, 0.31) * (0.85 + 0.30 * tf), conc * 0.60);
+          // (round 1: "pale pink ground scattered with white and orange chips like confetti") the drifts a shade off the dust,
+          // not painted over it
+          floorC = grey * vec3(1.04, 1.02, 1.0) * (0.90 + 0.20 * tf);
+          floorC = mix(floorC, floorC * vec3(1.18, 0.86, 0.76), brick * 0.45);
+          floorC = mix(floorC, floorC * vec3(0.92, 0.93, 0.95), conc * 0.40);
           floorC = mix(floorC, uMeanG.rgb * gMeadowTint, weeds * 0.60);
           a.a = mix(a.a, 0.96, gsTownW);
         }
@@ -112,7 +115,7 @@ export const GROUND_SURFACE_GLSL = /* glsl */`  // ground-269 (groundSurfaceShad
       if (gsS > 0.003) {
         vec2 q = wp.xz / cellM, ci = floor(q), f = q - ci - 0.5;
         vec2 h = cellHash2(ci + vec2(41.0, 7.0)), h2 = cellHash2(ci + vec2(13.0, 59.0));
-        float dens = kind > 1.5 && kind < 2.5 ? 0.70 : 0.42;
+        float dens = kind > 1.5 && kind < 2.5 ? 0.70 : kind > 2.5 ? 0.26 : 0.42;
         float on = step(h.y, dens);
         float r = mix(0.16, 0.36, h.x);
         vec2 c = (h2 - 0.5) * (1.0 - 2.0 * r);
@@ -124,7 +127,9 @@ export const GROUND_SURFACE_GLSL = /* glsl */`  // ground-269 (groundSurfaceShad
         float shd = (1.0 - smoothstep(0.65, 1.15, length(d + gsSun * 0.38))) * on * (1.0 - disc);
         float gL = reduxLuma(a.rgb);
         vec3 stoneC = mix(vec3(gL), a.rgb, 0.35) * (0.80 + 0.70 * h.x);
-        if (kind > 2.5) stoneC = h2.y > 0.55 ? vec3(0.31, 0.17, 0.12) * (0.80 + 0.40 * h.x) : vec3(0.36, 0.35, 0.33) * (0.75 + 0.50 * h.x);
+        // (round 1's "confetti": the chips a fixed white and orange) a broken brick or a piece of concrete, a shade off the
+        // floor it lies on
+        if (kind > 2.5) stoneC = mix(vec3(gL), a.rgb, 0.4) * (h2.y > 0.55 ? vec3(1.12, 0.78, 0.66) : vec3(1.05, 1.05, 1.06)) * (0.72 + 0.50 * h.x);
         a.rgb = mix(a.rgb, stoneC, disc * gsS);
         a.rgb *= 1.0 - 0.38 * shd * gsS;
         n.xy += d * disc * 0.45 * gsS;
