@@ -79,7 +79,14 @@ const sourceBytes = closure.reduce((sum, file) => sum + statSync(resolve(root, f
 // 7.93 MB (7,934,589 B) at integ/267 for release 267 (the fleet at 279: the Leopard 2A7 DK, the Centurion Mk 5/2 DK and
 // the Type 90 (B); the sim's plate-along-shot planes; no builder, kit or calibration literal entered): the same rule,
 // plus 2 % (8.09 MB).
-assert.ok(sourceBytes < 8.09e6, `the host Worker's static source stays spec-sized (${(sourceBytes / 1e6).toFixed(2)} MB)`);
+// 8.16 MB (8,159,375 B, 449 files) on item/sm-fix-integration for round two of the 2026-11-02 audit (from 8,080,307 B:
+// the migration handover's restore and sealed extras, migrationState.ts +15.5 KB and migrationStore.ts +4.5 KB; the bots'
+// resume legs and event order, ai.ts +11.6 KB; the actor's unseen rounds, falls and resume hint, matchActor.ts +7.0 KB;
+// wire 11's destroyed falls and unseen rounds, codec.ts, destroyedSet.ts and constants.ts +11 KB; the sim's obstacle falls,
+// roof-gun switch and mode rules, obstacleFall.ts and roofGunSwitch.ts new, authoritativeMatch.ts and matchModes.ts +8 KB;
+// the shared row restore, authorityRow.ts new, after the client predictor it had pulled in left the Worker, above; no
+// builder, kit or calibration literal entered: the assertion above holds): the same rule, plus 2 % (8.32 MB).
+assert.ok(sourceBytes < 8.32e6, `the host Worker's static source stays spec-sized (${(sourceBytes / 1e6).toFixed(2)} MB)`);
 
 // Behaviour, in this fresh process: nothing loaded until the roster asks.
 const { createMatchActor } = await import('../../../server/match/matchActor.ts');
