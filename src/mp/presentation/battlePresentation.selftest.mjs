@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { Vector3 } from 'three';
 import { createTankState } from '../../sim/movement.ts';
+import { hullBodyMode } from '../../sim/hullBodyMode.ts';
 import { getSpec } from '../../vehicles/specs.ts';
 import { ENTITY_FLAGS, NO_ENTITY, PHASE, TEAM, VERDICT, eraPlateNames, quantizePosition, quantizeReloadS, zeroEntityRow } from '../wire/index.ts';
 import { createEntitySample } from '../match/interpolation.ts';
@@ -533,6 +534,46 @@ assert.equal(game.rosterTanks, undefined, 'dispose restores the solo roster fall
   assert.ok(Math.abs(Math.hypot(push.x, push.z) - 0.02) < 0.005);
   p.applyFrame(frame({ entities: [sample(3, -50, -50)] }));
   assert.equal(world.collide(new Vector3(20, 0, 14), 4, push), false, 'a hidden hull never pushes (its coordinates are stale)');
+  p.dispose();
+}
+
+// ------------------------------------------------------------ a remote row's body bits at the real call site (round 2, Q7)
+// applySamplePose restores ground contact, the body mode and the support from the row (wire 10, hullBodyRow.ts) onto the
+// copy the prediction world's tank contacts read. hullBodyRow.selftest drives the owner through its own replica of the
+// pose writes; this drives the presentation itself, so the call site cannot go back to the old projection
+// (tumbling = overturned || autoRighting, the support cache left at the copy's origin) with every receipt green.
+{
+  const state = { tanks: [], tankById: new Map(), player: null, shells: [], spotting: null, timeS: 0, preBattleS: 0, result: null, resultReason: null };
+  const p = createBattlePresentation({
+    engineCtx: { scene, anisotropy: 1 }, game: state, bus: { emit() {} }, worldCollision,
+    createTankVisual: fakeVisual, prepareVisualTextures: async () => {}, clock: () => nowMs,
+  });
+  await p.applyRoster(roster, context);
+  const foeCopy = () => p.actors.get('foe').state;
+  const botCopy = () => p.actors.get('bot-3').state;
+  // the stacked hull 2.5 m up and the tumbling one on the ground: neither copy was ever stepped or given a support cache
+  p.applyFrame(frame({ tick: 900, entities: [
+    sample(2, 20, 12, { y: 3.7, flags: ENTITY_FLAGS.TUMBLING | ENTITY_FLAGS.STACKED }),
+    sample(3, -50, -50, { flags: ENTITY_FLAGS.TUMBLING }),
+  ] }));
+  assert.equal(hullBodyMode(foeCopy()), 'tumbling', 'a stacked tumbling row is a tumbling copy');
+  assert.equal(foeCopy()._body.dynamicSupport, true, 'STACKED is the copy\'s support flag');
+  assert.equal(foeCopy()._sup.top, Infinity, 'the copy\'s support cache is not its own: never elevated');
+  assert.equal(hullBodyMode(botCopy()), 'tumbling', 'a plain tumble (TUMBLING alone) is the rigid phase on the copy');
+  assert.equal(botCopy().overturned, false, 'neither overturned');
+  assert.equal(botCopy()._body.autoRighting, false, 'nor righting');
+  assert.equal(botCopy()._body.dynamicSupport, false, 'and on its own support');
+  assert.equal(botCopy().grounded, true);
+  p.applyFrame(frame({ tick: 902, entities: [
+    sample(2, 20, 12, { y: 3.7, flags: ENTITY_FLAGS.AIRBORNE }),
+    sample(3, -50, -50, { flags: ENTITY_FLAGS.TUMBLING | ENTITY_FLAGS.OVERTURNED | ENTITY_FLAGS.AUTO_RIGHTING }),
+  ] }));
+  assert.equal(foeCopy().grounded, false, 'AIRBORNE: both ground copies');
+  assert.equal(foeCopy()._ride.grounded, false);
+  assert.equal(hullBodyMode(foeCopy()), 'supported', 'a row without a rigid bit is a supported hull');
+  assert.equal(foeCopy()._body.dynamicSupport, false, 'a row without STACKED clears the support');
+  assert.equal(hullBodyMode(botCopy()), 'righting', 'the righting sub-state');
+  assert.equal(botCopy().overturned, true);
   p.dispose();
 }
 
