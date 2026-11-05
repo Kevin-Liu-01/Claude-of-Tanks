@@ -199,7 +199,7 @@ function harness() {
   assert.equal(h.runtime.residencyOf(alpha), 'retired', 'a parked hero the pedestal cached is retired with it');
   assert.equal(h.runtime.residencyOf(bravo), 'retired');
   assert.equal(h.runtime.hasCached('alpha') || h.runtime.hasCached('bravo'), false, 'and leaves the cache');
-  assert.equal(alpha.root.parent, null, 'its root leaves the scene');
+  assert.equal(alpha.root.parent === null, true, 'its root leaves the scene');
   assert.equal(h.runtime.residencyOf(charlie), 'released', 'the lent hero the battle holds is the battle\'s now');
   assert.equal(charlie.root.parent === null && h.runtime.residencyOf(charlie) === 'retired', false,
     'and is never disposed under the battle');
