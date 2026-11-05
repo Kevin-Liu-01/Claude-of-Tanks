@@ -436,7 +436,8 @@ export interface MatchModeController<
   /**
    * The match's verdict, decided outside the mode (audit M3, 2026-11-02: the authority's time limit or elimination): the
    * controller takes it as its own result, so through the ending hold it scores, respawns and starts waves no more and
-   * never announces another winner. A result the mode already reached stands.
+   * never announces another winner. A result the mode already reached stands. What is already moving still lands
+   * (settleAfterVerdict: an air-dropped crate, the Turbo Ball in flight).
    */
   matchEnded(winner: ObjectiveTeam | 'draw', reason: string): void;
   requestSupply(entityId:string,kind:'ammo'|'heal',timeS:number):boolean;
@@ -1835,16 +1836,30 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
     }
     return null;
   };
+  /** An air-dropped crate's height at `timeS`: down from its release over six seconds to its landing. */
+  const airDropY=(pickup:PickupState,timeS:number):number=>
+    (pickup.groundY??0)+Math.max(0,Math.min(1,((pickup.landAtS??0)-timeS)/6))*((pickup.startY??240)-(pickup.groundY??0));
   const stepSupport=(timeS:number):void=>{
     if(id!=='ac130')return;
     state.support={ammoReadyInS:Math.max(0,ammoAt-timeS),healReadyInS:Math.max(0,healAt-timeS)};
     for(const pickup of pickups){
       if(!pickup.active||!pickup.airDrop)continue;
       if(timeS>=(pickup.expiresAtS??Infinity)){pickup.active=false;continue;}
-      pickup.y=(pickup.groundY??0)+Math.max(0,Math.min(1,((pickup.landAtS??0)-timeS)/6))*((pickup.startY??240)-(pickup.groundY??0));
+      pickup.y=airDropY(pickup,timeS);
       if(timeS<(pickup.landAtS??0))continue;
       for(const ally of teams.alpha)if(collectPickup(pickup,ally))break;
     }
+  };
+  /**
+   * The ending hold after a verdict (the mode's own, or the match's through matchEnded): the rules stop, the bodies
+   * already moving do not (round 2 U4, 2026-11-04). An air-dropped crate on its way down lands and the Turbo Ball in flight
+   * comes down and rolls to rest, as the drivers keep wrecks settling and shells landing through the hold; nothing is
+   * collected, touched, scored, respawned or started. Before, step() returned at its first line, so a crate released just
+   * before the verdict hung in mid-air (and the ball where it flew) for the whole hold, in solo and on the authority.
+   */
+  const settleAfterVerdict=(dt:number,timeS:number):void=>{
+    for(const pickup of pickups)if(pickup.active&&pickup.airDrop)pickup.y=airDropY(pickup,timeS);
+    if(ball){integrateBall(dt);bounceBallFromTerrain();containBallInWorld();}
   };
 
   const collectPickup = (pickup: PickupState, entity: Entity): boolean => {
@@ -2567,7 +2582,7 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
       if (id === 'drone' && score[team] >= scoreTarget) finish(team, 'drone_score_limit');
     },
     step(dt, timeS) {
-      if (result) return result;
+      if (result) { settleAfterVerdict(dt, timeS); return result; }
       placementTimeS = timeS;
       refreshIntel(timeS);
       handleDeathsAndRespawns(timeS);
