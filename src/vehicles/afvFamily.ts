@@ -307,7 +307,10 @@ const AFV_FAMILY_SPECS: Record<string, FleetTankSpec> = {
     // returns and the wave's equipment suite (TOW twin-box, ISU, CIV drum,
     // bustle, glacis appliqué, coax) re-seats on it. Print
     // m3a3_bradley_sipriv.glb is a rigged lowpoly (bind-pose vertex reads
-    // are scattered — the browser gate poses it correctly).
+    // are scattered — the browser gate poses it correctly). 269 (owner: "redesign the m3a3 bradley turret"): that print,
+    // the owner's low_poly_m3a3_bradley.glb, loads assembled under three's GLTFLoader in Node (its loose parts are the
+    // TOW rounds and a launch tube modelled beside the hull); the A3 turret is measured from it and the Ukrainian M2A3
+    // (profiles/bradleyA3Turret.ts).
     id: 'm3a3_bradley', name: 'M3A3 Bradley CFV', nation: 'USA', era: 'modern', role: 'ifv',
     // Tier X reconnaissance support: materially lower durability than the
     // T-90-based Terminator, paid back through fast acquisition, a modern
@@ -318,14 +321,10 @@ const AFV_FAMILY_SPECS: Record<string, FleetTankSpec> = {
     terrainResistance: { hard: 0.75, medium: 0.85, soft: 1.4 },
     pivotStyle: 'neutral',
     turretTraverseDegS: 60, gunPitchDegS: 40, gunElevationDeg: 30, gunDepressionDeg: 9,
-    // Preserve full front/side depression with the lower gun seat. Only the
-    // aft hatch sector needs a mechanical stop, shared by game and Gallery.
-    // 2026-10-20 follow-up (tools/gun-depression-sweep.mjs, nationalGunClearance.selftest.mjs): the barrel over the
-    // front quarter's hull edge and external armour at 17-39 (-7.9 at 32) and the aft stop from 148. Dead ahead the
-    // full forward depression stays: the barrel keeps 37 mm there; the mantlet's underside passes 11 mm over the roof at
-    // -9 across the front 39 degrees, where the selftest holds the barrel alone.
-    gunPitchByYawDeg: [[0, -9], [17, -9], [22, -8.5], [29, -8.4], [32, -7.9], [35, -8], [39, -9], [148, -9], [158, -5.2],
-      [159, -5], [180, -5]],
+    // Preserve full front/side depression. Only the aft hatch sector needs a mechanical stop, shared by game and Gallery.
+    // 269 (the A3 turret on the A2 shell and trunnion, the gun line 7.3 cm higher; tools/gun-depression-sweep.mjs): the
+    // front quarter keeps full depression with no mount conflict, and only the raised troop roof aft holds a stop from 160.
+    gunPitchByYawDeg: [[0, -9], [158, -9], [161, -7.7], [162, -7.4], [166, -7.4], [180, -7.8]],
     gun: {
       caliberMm: 25, reloadS: 0.33, baseAccuracy: 0.25, aimTimeS: 1.05,
       soundProfile: 'm242-bushmaster',
@@ -347,15 +346,19 @@ const AFV_FAMILY_SPECS: Record<string, FleetTankSpec> = {
       silhouetteWidthM: 3.61, silhouetteHeightM: 3.05 },
     armor: ifvArmor({
       // 268: the shared hull measured from the owner's source (modern3.ts BRADLEY_HULL): hw 1.64 -> 1.70, trkTop 0.95 ->
-      // 1.16, roofY 1.90 -> 2.06; the A3 ring on the M2's datum (profiles/bradleyScoutTurretShell.ts
-      // BRADLEY_SCOUT_TURRET_PIVOT, was [0.04, 1.895, -0.36]); the M242 to the M2's muzzle at world z 2.37 (barrelLenM
+      // 1.16, roofY 1.90 -> 2.06; the A3 ring on the M2's datum (modern3.ts BRADLEY_TURRET_RING, was
+      // [0.04, 1.895, -0.36]); the M242 to the M2's muzzle at world z 2.37 (barrelLenM
       // 2.30 -> 1.99, the drawn tube 2.42 -> 1.99).
+      // 269: the A3 turret on the family's measured A2 shell (profiles/bradleyA3Turret.ts): the M242 on the A2's trunnion,
+      // 0.305 m under the 0.77 roof as both A3 sources carry it (gunPivot [-0.06, 0.392, 0.78] -> [-0.06, 0.465, 0.60]),
+      // to the same muzzle at world z 2.37 (barrelLenM 1.99 -> 2.17); the turret envelope is the shell's, as the M2A2's
+      // (tw 0.85 -> 0.98, tFrontZ 1.00 -> 1.15, tRearZ -1.10 -> -1.20, tH 0.90 -> 0.77).
       hl: 3.27, hw: 1.70, inW: 0.95, floor: 0.45, trkTop: 1.16, roofY: 2.06,
-      turretPivot: [-0.14, 2.06, -0.40], gunPivot: [-0.06, 0.392, 0.78],
-      barrelLenM: 1.99, barrelRadM: 0.038,
+      turretPivot: [-0.14, 2.06, -0.40], gunPivot: [-0.06, 0.465, 0.60],
+      barrelLenM: 2.17, barrelRadM: 0.038,
       glacis: [45, 70, 80], lower: [45, 60, 60], side: [35, 40, 45],
       skirt: [25, 35, 70], rear: 25, roof: 20,
-      tw: 0.85, tFrontZ: 1.00, tRearZ: -1.10, tH: 0.90,
+      tw: 0.98, tFrontZ: 1.15, tRearZ: -1.20, tH: 0.77,
       cheek: [40, 70, 80], tSide: [35, 40, 45], tRear: 25, tRoof: 20,
       mantlet: [45, 70, 80],
     }),

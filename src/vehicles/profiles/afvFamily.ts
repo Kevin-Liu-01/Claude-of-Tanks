@@ -1,5 +1,4 @@
-import { BRADLEY_SCOUT_TURRET_PIVOT, buildBradleyScoutTurretShell, placeBradleyScoutCheekEra } from './bradleyScoutTurretShell.ts';
-import { buildM3BradleyGunMount } from './m3BradleyGunMount.ts';
+import { buildBradleyA3Turret, placeBradleyA3CheekEra, placeBradleyA3SideEra } from './bradleyA3Turret.ts';
 import {buildUpiorUpgrade} from './upiorUpgrade.ts';
 import type { TankBuilderPort } from '../tankFactoryCore.ts';
 import { buildT80UXHull } from './t80uX.ts';
@@ -28,7 +27,6 @@ import { mount } from './fittingMount.ts';
 import { ammoCanParts, fieldChestParts } from './fieldChest.ts';
 import { fabricBody, fabricStrap, type FabricSpec } from '../accessoryPrimitives.ts';
 import { jerrycanParts } from '../accessoryKits.ts';
-import { launchCellParts, perforatedPlate } from './missileCanisterStock.ts';
 import { buildTerminatorT90Station } from './bmptT90Station.ts';
 
 type Vec3Tuple = [number, number, number];
@@ -822,214 +820,28 @@ function buildMarder1A3(P: AfvBuilderPort): void {
 
 // ========================= M3A3 Bradley CFV =================================
 // §5.306 OWNER ORDER (verbatim): "revert our m3a3 bradley CFV except add the
-// extra equipment we added and detailing and armor". The pre-§5.286 base
-// returns — buildBradley donor hull + the low welded A3 turret below — and
-// the §5.286 wave's equipment/detailing/armor additions carry over, each
-// re-seated at this base's stations: TOW twin-box at real depth on the LEFT
-// (+X, 268: the owner's source; it had stood on −X) A3 elevating bracket,
-// stowage wing RIGHT (−X) on the freed station, ISU hood on the
-// cheek/roof junction, the CIV drum head on the tall left pedestal (the old
-// box sight's station; the wave's 2.99 crown holds), deeper mesh bustle rack
-// + standoff plate, glacis appliqué panel, coax M240 + muzzle bore/tip
-// instruments. Wave items whose stations the donor base already owns (cargo
-// hump, rear roof box, troop hatch seam, wire cutter, stern light boxes) are
-// inherited from buildBradley and NOT duplicated; the wave's skirt-bin course
-// stays out — the base's spaced side armor owns the flank (packet documents
-// every disposition).
-const M3A3_GUN_LEN = 1.99;
-
+// extra equipment we added and detailing and armor". 269 (owner 2026-11-05: "redesign the m3a3 bradley turret"): the
+// turret is the A3's (profiles/bradleyA3Turret.ts), the family's measured A2 shell, M242 and stowed TOW launcher with the
+// A3's IBAS head, Commander's Independent Viewer, side-by-side hatches, deep bustle rack and BRAT tiles; it replaced the
+// 268 scout shell squashed to 0.80 of its height (roof 0.59 m over the ring, the low-poly and Ukrainian A3 sources and
+// the A2 source stand theirs 0.70-0.77 m) and its lowered M242 on the compact M3 shield. The hull keeps its glacis
+// field, side courses and spaced side armour.
 function addM3A3Turret(P: AfvBuilderPort): void {
-  const { box, cylX, cylY, cylZ, torus, xform, buildGun } = KIT;
-  const TURRET_HEIGHT_SCALE = 0.80;
-  clearUpperStructure(P);
-  // buildBradley owns a complete A2 upper assembly. Its ordinary turret
-  // buckets are cleared by clearUpperStructure; these semantic buckets are
-  // cleared explicitly so no A2 sight, cupola or fitting survives invisibly
-  // beneath the replacement A3 station.
-  P.clear('turretEquipment', 'turretCupola', 'turretTrack');
-
-  // M2A2-derived two-man foundation, re-cut for the A3.  The former A3 was a
-  // narrow wedge hidden behind a 1.35 m-tall TOW cabinet.  This shell carries
-  // the M2's broad shoulder line and deep bustle, but keeps an A3 roof, CIV
-  // sight and left-hand elevating launcher. Every upper edge overlaps the
-  // lower ring or the roof cap: there is no daylight seam around the race.
-  // 268: the ring on the source's datum (deck 2.06, 0.14 m right, z −0.40), as the M2A2's
-  P.turretG.position.set(...BRADLEY_SCOUT_TURRET_PIVOT);
-  // Seat the gun 100 mm lower in the cheek opening. The rear deck uses a
-  // traverse-dependent depression stop instead of lifting the whole gun.
-  // Bearings and saddles share this pre-compression datum.
-  P.gunG.position.set(-0.06, 0.490, 0.78);
-  P.add('turret', cylY(0.79, 0.90, 0.13, 26), 0, 0.015, -0.08);
-  buildBradleyScoutTurretShell(P);
-  // Separate side journals preserve the 70 mm bearing insertion while
-  // leaving an actual longitudinal passage for the recoiling M242 root.
-  // A full cross-shaft/receiver would pass straight through that barrel.
-  for (const side of [-1, 1]) {
-    P.addGunExtraDark(cylX(0.095, 0.225, 24), side * 0.2475, 0, 0);
-    P.addGunExtra(cylX(0.14, 0.14, 24), side * 0.21, 0, 0.04);
-  }
-  buildM3BradleyGunMount(P);
-  // 268: the M242 to the M2's own muzzle (world z 2.37 in the owner's source; was 2.42 long, 0.47 m past it)
-  buildGun(P, { len: M3A3_GUN_LEN, r: 0.037, sleeve: true, evac: 0.34,
-    collar: true, baseR: 0.10 });
-  muzzleBore(P, { len: M3A3_GUN_LEN, r: 0.037 });
-  P.addGunExtraDark(cylZ(0.016, 0.60, 8), 0.19, 0.06, 0.72);                   // coax M240
-  muzzleTipDot(P, 0.19, 0.06, 1.01, 0.011, { parent: 'gunG' });
-
-  // Compact twin TOW box on a buried elevating bracket.  The launcher remains
-  // unmistakable, but its mass no longer substitutes for the turret.  The
-  // root, trunnion, cradle, muzzle face and rear door make one visible load
-  // path from the pod into the left side wall.
-  // 268 (the owner's source): the launcher rides the turret's LEFT, +X (it stood on −X, the vehicle's right).
-  weaponAssembly(P, () => {
-    P.add('turret', box(0.24, 0.28, 0.46), 0.76, 0.53, -0.18);
-    P.add('turret', xform(cylX(0.090, 0.22, 12), 0, 0, 0), 0.88, 0.57, -0.18);
-    P.add('turret', box(0.11, 0.33, 0.64), 0.91, 0.60, -0.20, -0.05, 0, 0);
-    // 268 round 4 (roof-pocket census, 48 cm2): the bracket's forward web, brought down onto the cheek's outer slope and
-    // in against the side cassette; the bracket ended 15 cm over the cheek, roofing a slot between root and cassette.
-    P.add('turret', orientedSlab(
-      [0.855, 0.08, 0.125], [0.955, 0.29, 0.125], [0.955, 0.29, -0.11], [0.855, 0.08, -0.11],
-      [0.855, 0.46, 0.125], [0.955, 0.46, 0.125], [0.955, 0.46, -0.11], [0.855, 0.46, -0.11]));
-    // 2026-10-21 (owner: launch tubes "like the object 695, and tagil"): the box is an open pack, four walls and a back
-    // plate around a perforated front plate 1 cm inside them; each TOW tube is a rim collar around a dark liner and a
-    // sealed terminal 6 cm behind the face, 152 mm bore (the dark face and two painted discs read as a closed lid).
-    // The turret's buckets are squashed to TURRET_HEIGHT_SCALE below and its equipment re-seated part by part, which
-    // would shear a multi-part pack. So the pack is authored at its final place (the old box's re-seated centre, y
-    // 0.6334), merged and pre-stretched by the inverse scale: one rigid launcher whose cells meet its launch exits.
-    const at = [0.91, 0.6334, -0.22, -0.05, 0, 0] as const;
-    const placed = (g: THREE.BufferGeometry) => xform(g, ...at).scale(1, 1 / TURRET_HEIGHT_SCALE, 1);
-    const tubes = [-0.095, 0.095];
-    const cell = { bore: 0.076, wall: 0.016, proud: 0.054, behind: 0.02, depth: 0.06, segments: [24, 12] as const };
-    const paint: THREE.BufferGeometry[] = [], dark: THREE.BufferGeometry[] = [];
-    for (const x of [-0.1875, 0.1875]) paint.push(xform(box(0.025, 0.395, 1.08), x, 0, 0));
-    for (const y of [-0.2075, 0.2075]) paint.push(xform(box(0.40, 0.025, 1.078), 0, y, -0.001));
-    paint.push(xform(box(0.355, 0.395, 0.025), 0, 0, -0.525));
-    paint.push(xform(perforatedPlate(0.355, 0.395, 0.02, tubes.map(y => [0, y] as const), 0.084, P.q ? 24 : 12), 0, 0, 0.53));
-    for (const y of tubes) {
-      const tube = launchCellParts(cell, P.q, 0, y, 0.53);
-      paint.push(tube.rim); dark.push(tube.bore);
-    }
-    P.add('turretDetail', placed(KIT.mergeAll(paint)));
-    P.add('turretDark', placed(KIT.mergeAll(dark)));
-    for (let k = 0; k < 3; k++) {
-      P.add('turretDark', box(0.42, 0.03, 0.05), 0.91, 0.61 + k * 0.12, -0.22, -0.05, 0, 0);
-    }
-    P.add('turretDark', box(0.36, 0.36, 0.04), 0.91, 0.71, -0.75, -0.05, 0, 0);
-
-  });
-  // Right (−X) stowage wing balances the launcher and returns through a broad
-  // mounting shoe rather than hovering over the turret flank.
-  P.add('turret', box(0.34, 0.34, 1.08), -0.91, 0.43, -0.43);
-  P.add('turretDark', box(0.30, 0.025, 1.00), -0.91, 0.615, -0.43);
-  P.addEquipment('turret', box(0.26, 0.15, 0.38), -0.91, 0.70, -0.70);
-
-  // A3 gunner's ISU hood, buried in the right cheek/roof junction.
-  P.addEquipment('turret', box(0.46, 0.30, 0.52), 0.30, 0.59, 0.28);
-  P.add('turretDark', box(0.38, 0.13, 0.04), 0.30, 0.60, 0.55);
-  P.add('turretGlass', box(0.32, 0.085, 0.016), 0.30, 0.595, 0.565);
-  P.addEquipment('turret', box(0.50, 0.045, 0.56), 0.30, 0.75, 0.26);
-
-  // Two structural crew stations, each with a visible hatch and periscope
-  // cadence. These carry the pair of shielded roof weapons below.
-  for (const station of [
-    { x: -0.31, z: -0.36, r: 0.235, yaw: -0.08 },
-    { x: 0.34, z: -0.47, r: 0.215, yaw: 0.12 },
-  ]) {
-    P.addCupola('turret', cylY(station.r * 0.92, station.r, 0.085, 18),
-      station.x, 0.755, station.z);
-    P.add('turretDark', torus(station.r * 0.80, 0.014, 18),
-      station.x, 0.800, station.z);
-    P.addCupola('turret', box(station.r * 1.42, 0.055, station.r * 1.48),
-      station.x, 0.823, station.z, 0, station.yaw, 0);
-    for (let i = -1; i <= 1; i++) {
-      P.add('turretGlass', box(0.066, 0.042, 0.024),
-        station.x + i * 0.078, 0.846, station.z + station.r * 0.73,
-        0, station.yaw, 0);
-    }
-  }
-
-  // Commander's independent viewer — the A3 recognition tell — on a tapered
-  // armored plinth. Only the plinth is structural; the sight body is semantic
-  // equipment so it cannot inflate the turret hit volume.
-  P.add('turret', orientedSlab(
-    [-0.58, 0.70, -0.22], [-0.10, 0.70, -0.22], [-0.10, 0.70, 0.16], [-0.58, 0.70, 0.16],
-    [-0.51, 0.84, -0.18], [-0.17, 0.84, -0.18], [-0.17, 0.84, 0.10], [-0.51, 0.84, 0.10]));
-  P.addEquipment('turret', box(0.30, 0.34, 0.30), -0.34, 0.91, -0.04);
-  P.addEquipment('turret', cylY(0.13, 0.15, 0.24, 16), -0.34, 1.10, -0.04);
-  P.add('turretDark', cylY(0.145, 0.145, 0.04, 16), -0.34, 1.21, -0.04);
-  P.add('turretGlass', box(0.16, 0.08, 0.02), -0.34, 1.12, 0.115);
-
-  // Deep backed bustle and open rack.  The bins overlap the shell rear and
-  // diagonal braces return the rack to both turret shoulders.
-  P.add('turret', box(1.48, 0.34, 0.48), 0, 0.39, -1.13);
-  P.add('turretDark', box(1.28, 0.16, 0.04), 0, 0.40, -1.39);
-  P.add('turretDark', box(1.58, 0.24, 0.055), 0, 0.48, -1.34);
-  mount(P, 'turret', FITTINGS.stowageRack({
-    mats: P.mats, w: 1.62, d: 0.56, h: 0.32, fill: 0.86, rails: 4, seed: 3610,
-  }), 0, 0.64, -1.24);
-  P.add('turretDetail', box(0.035, 0.28, 0.58), -0.74, 0.48, -1.20,
-    0, 0, -0.54);
-  P.add('turretDetail', box(0.035, 0.28, 0.58), 0.74, 0.48, -1.20,
-    0, 0, 0.54);
-
-  // Dense service equipment. 2026-10-08 (the owner's field standard in main 6763d7cc0, the coordinator's ruling on the
-  // lane's audit): the M3A3's armament is the 25 mm, the M240C coax and TOW, and no .50 rides its turret, so the
-  // hatch-ring M2 is gone. 2026-10-14 (VH.14, "roof weapons match the real vehicle and every drawn gun works"): no M240
-  // rides it either (roofWeaponPolicy.ts), so the shielded hatch-ring M240 the old §B3 rule kept is gone too.
-  for (const [x, z, yaw] of [
-    [-0.62, -0.76, -0.08], [0.62, -0.82, 0.08],
-    [-0.58, 0.28, -0.05], [0.58, 0.16, 0.05],
-  ]) {
-    P.addEquipment('turret', box(0.28, 0.12, 0.34), x, 0.82, z, 0, yaw, 0);
-    P.add('turretDark', box(0.22, 0.018, 0.28), x, 0.891, z, 0, yaw, 0);
-  }
-  mount(P, 'turret', FITTINGS.jerryCans({ mats: P.mats, count: 2, seed: 3618 }),
-    0.52, 0.77, -1.05);
-  mount(P, 'turret', FITTINGS.spareTrackLinks({
-    mats: P.mats, links: 4, width: 0.52, seed: 3620,
-  }), -0.48, 0.735, -1.04);
-
-  smokePair(P, 0.76, 0.47, 0.30, 4, 3640, -0.36);
-  radioPair(P, 0.86, -1.07, 3630, 0.70);
-  P.decal('turret', 'number', 'M3A3', 0.20,
-    [-1.085, 0.43 * TURRET_HEIGHT_SCALE, -0.43], -Math.PI / 2);
-
-  // Destructible BRAT-style turret cassettes. The cheek rows follow the
-  // frontal rake; the side rows stand on the dark beds authored above.
+  buildBradleyA3Turret(P);
+  // Destructible BRAT tiles (eraCluster takes turret-frame x, hull-frame y and z when turret-local).
+  const [, pivotY, pivotZ] = P.spec.armor.turretPivot;
+  const hullFrame = (put: EraPut): EraPut => (x, y, z, ...rest) => put(x, y + pivotY, z + pivotZ, ...rest);
   for (const side of [-1, 1]) {
     P.eraCluster(`m3a3_turret_cheek_${side > 0 ? 'R' : 'L'}`, (put: EraPut) => {
-      placeBradleyScoutCheekEra(side, put);
+      placeBradleyA3CheekEra(side, hullFrame(put));
     }, true);
     P.eraCluster(`m3a3_turret_side_${side > 0 ? 'R' : 'L'}`, (put: EraPut) => {
-      for (let row = 0; row < 2; row++) for (let c = 0; c < 4; c++) {
-        put(side * 1.08, BRADLEY_SCOUT_TURRET_PIVOT[1] + (0.27 + row * 0.18) * TURRET_HEIGHT_SCALE,
-          BRADLEY_SCOUT_TURRET_PIVOT[2] + .005 - c * 0.31,
-          0, side * Math.PI / 2, side * 0.025,
-          1.00, 0.96 * TURRET_HEIGHT_SCALE, 1.75);
-      }
+      placeBradleyA3SideEra(side, hullFrame(put));
     }, true);
   }
-
-  // OWNER HEIGHT ORDER (2026-08-17): shorten the complete A3 armored turret
-  // by exactly 20 percent about its ring datum. Structural armor, cupolas,
-  // glazing and backed detail scale together, while semantic equipment keeps
-  // its native dimensions and is re-seated by its lower face. Direct fitting
-  // assemblies (TOW/stowage, MGs, smoke, radios and basket contents) move to
-  // the corrected roof stations without being visually squashed. The gun rig
-  // follows the same datum so its saddle remains buried between the cheeks.
-  P.scaleBuckets([
-    'turret', 'turretDark', 'turretDetail', 'turretGlass', 'turretCupola',
-  ], 1, TURRET_HEIGHT_SCALE, 1);
-  P.forEachBucketPart(['turretEquipment'], (geo: THREE.BufferGeometry, bounds: THREE.Box3 | null) => {
-    if (!bounds) return;
-    geo.translate(0, bounds.min.y * (TURRET_HEIGHT_SCALE - 1), 0);
-  });
-  for (const child of P.turretG.children) child.position.y *= TURRET_HEIGHT_SCALE;
-
   // Retain the full-length A3 spaced side armor as the cassette backing.
   sideArmorCourse(P, { x: 1.73, y: 1.43, h: 0.58, d: 0.62, count: 8,
     front: 2.42, step: 0.71 });
-  P.topY = Math.max(P.topY || 0, 1.28);
 }
 
 function buildM3A3(P: AfvBuilderPort): void {
@@ -1116,7 +928,7 @@ function buildM3A3(P: AfvBuilderPort): void {
   // itself stays untouched in buildBradley), hinge seams + hanger blocks,
   // mounting aprons closing the skirt-top daylight, and the §B2 donor
   // bow-corner closure. CFV blank flanks hold (§5.286): no port holes.
-  bradleyFlankDressing(P, { turretSeat: 'flush' });              // (the A3's floor seats on the pre-268 sunk seat)
+  bradleyFlankDressing(P);                                        // (269: the A2 shell's seat, as the M2A2's)
   // (268: the old engine-raise cap that closed a deck-to-cradle slit is gone: the shared hull's engine-deck raise now
   // stands on the source's deck on the right, −X, and leaves no slit)
   // 268: the glacis ERA field covers the shared spare-link course's station, so the CFV racks a short run on the nose

@@ -3195,8 +3195,9 @@ export function buildBradley(...args: Parameters<typeof buildBradleySteps>): voi
 // turret's centre on the 2.525 m line; the TOW launcher erect on the LEFT (+X) side, its box over x 0.75..1.37 m and
 // y 2.75..3.30; the stowage bin on the right (−X); the antenna mast at the right rear. Turret-local frame: ring plane y 0,
 // +z forward (turretPivot [−0.14, 2.06, −0.40]). Below 0.22 m the shell keeps inside the raised troop roof's 1.21 m
-// reach and above the engine-deck raise, so nothing low meets the deck as it turns.
-const BRADLEY_TURRET = Object.freeze({
+// reach and above the engine-deck raise, so nothing low meets the deck as it turns. 269: the M3A3's A3 turret
+// (profiles/bradleyA3Turret.ts) stands on this same shell, gun and launcher (the A3 kept the A2 turret's structure).
+export const BRADLEY_TURRET = Object.freeze({
   rearZ: -1.20, faceZ: 0.70, beakZ: 1.15,
   // the source's roof plate stands at 2.83 (0.77 over the ring) behind a 3 cm chamfer from the walls' 2.79 tops; its
   // hatch rings rise to 2.93-2.99 and the sight head to 3.19
@@ -3242,8 +3243,10 @@ function bradleyTurretCheek(side: number): THREE.BufferGeometry {
   return sectionSolid([0.62, 0.72, knee, 0.94, T.beakZ].map(station), { sideQuadDiagonal: 'convex' });
 }
 
-// ODS appliqué bolted on a cheek's upper front plate: 35 mm proud on the plate's own plane, two rows of three bolts.
-function bradleyTurretCheekPlate(side: number): { plate: THREE.BufferGeometry; bolts: THREE.BufferGeometry } {
+/** A cheek's upper front plate (turret frame, side +1 the left): its inner edge by the gun bay, its outer edge and top
+ *  surface by z, its slope and outward normal (0, nY, nZ), and `at` a point `lift` off the cheek's surface along that
+ *  normal. The ODS appliqué and the A3's reactive tiles (profiles/bradleyA3Turret.ts) seat on it. */
+export function bradleyCheekPlateFrame(side: number) {
   const T = BRADLEY_TURRET;
   const inner = (side > 0 ? T.bayRightX : -T.bayLeftX) + 0.03;
   const slope = Math.atan((T.roofY - T.beakTopY) / (T.beakZ - T.faceZ));
@@ -3252,6 +3255,12 @@ function bradleyTurretCheekPlate(side: number): { plate: THREE.BufferGeometry; b
   const outerX = (z: number) => T.halfW - (T.halfW - T.beakHalfW) * (z - 0.66) / (T.beakZ - 0.66) - 0.12
     - (side > 0 ? T.plusInset : 0);
   const at = (x: number, z: number, lift: number): [number, number, number] => [side * x, topY(z) + nY * lift, z + nZ * lift];
+  return { inner, slope, nY, nZ, topY, outerX, at, z0: 0.74, z1: 1.08, thickness: 0.035 };
+}
+
+// ODS appliqué bolted on a cheek's upper front plate: 35 mm proud on the plate's own plane, two rows of three bolts.
+function bradleyTurretCheekPlate(side: number): { plate: THREE.BufferGeometry; bolts: THREE.BufferGeometry } {
+  const { inner, slope, outerX, at } = bradleyCheekPlateFrame(side);
   const [z0, z1] = [0.74, 1.08], t = 0.035;
   const plate = orientedSlab(
     at(inner, z1, -0.005), at(outerX(z1), z1, -0.005), at(outerX(z0), z0, -0.005), at(inner, z0, -0.005),
@@ -3269,7 +3278,7 @@ function bradleyTurretCheekPlate(side: number): { plate: THREE.BufferGeometry; b
 // The right-wall stowage bin (turret frame): inner face inside the wall, a floor chamfered up to the upright outer face,
 // a lid sloping up to the wall; the front quarter tapers into the cheek. Floor 0.14 (world 2.20): 5.5 cm over the engine-deck raise
 // (2.145) where its 0.99..1.64 m sweep crosses it; the troop roof (2.24) lies 1.70 m and more from the pivot.
-const BRADLEY_BIN = Object.freeze({ innerX: -0.94, outerX: -1.35, bottomY: 0.14, shoulderY: 0.38, lidY: 0.62,
+export const BRADLEY_BIN = Object.freeze({ innerX: -0.94, outerX: -1.35, bottomY: 0.14, shoulderY: 0.38, lidY: 0.62,
   lidInnerX: -1.08, z0: -0.55, z1: 0.58, noseZ: 0.80, noseX: -1.00 });
 function bradleyStowageBin(): THREE.BufferGeometry {
   const B = BRADLEY_BIN;
@@ -3282,7 +3291,7 @@ function bradleyStowageBin(): THREE.BufferGeometry {
   ], { sideQuadDiagonal: 'convex' });
 }
 
-function addBradleyTurretShell(P: Modern3BuilderPort): void {
+export function addBradleyTurretShell(P: Modern3BuilderPort): void {
   const T = BRADLEY_TURRET;
   const { box } = KIT;
   const ring = (bottomY: number) => bradleyTurretRing(T.bottomHalfW, T.halfW, T.edgeHalfW, T.roofHalfW, bottomY, T.chineY, T.edgeY, T.roofY);
@@ -3322,35 +3331,31 @@ function addBradleyTurretShell(P: Modern3BuilderPort): void {
   });
 }
 
-function addBradleyTurretKit(P: Modern3BuilderPort): void {
+/** The commander's station on the turret's RIGHT, the A2's and the A3's: raised ring, hatch lid, four vision blocks round
+ *  its front (source: its ring to 2.975 over world x −0.91..−0.30, z −1.15..−0.35). */
+export function addBradleyCommanderStation(P: Modern3BuilderPort): void {
   const T = BRADLEY_TURRET;
-  const { box, cylY, periscope, stowage } = KIT;
-  // the gunner's Integrated Sight Unit on the LEFT front of the roof (source: world x −0.05..0.70, z −0.40..0.15, top
-  // 3.19): the armoured box, its window, two door leaves
-  P.add('turret', box(0.60, 0.36, 0.46), 0.50, T.roofY + 0.17, 0.30);
-  P.add('turretDark', box(0.44, 0.15, 0.02), 0.50, T.roofY + 0.21, 0.532);
-  P.add('turretGlass', box(0.38, 0.10, 0.012), 0.50, T.roofY + 0.21, 0.542);
-  for (const dx of [-0.15, 0.15]) P.add('turretDetail', box(0.28, 0.025, 0.42), 0.50 + dx, T.roofY + 0.36, 0.28);
-  for (const side of [-1, 1]) P.add('turretDetail', bradleyTurretCheekPlate(side).bolts);
-  // the commander's station on the RIGHT: raised ring, hatch lid, four vision blocks round its front
-  // (source: its ring to 2.975 over world x −0.91..−0.30, z −1.15..−0.35)
+  const { cylY, periscope } = KIT;
   P.add('turret', cylY(0.31, 0.33, 0.13, P.q ? 22 : 14), -0.42, T.roofY + 0.055, -0.40);
   P.add('turretDetail', cylY(0.28, 0.29, 0.04, P.q ? 22 : 14), -0.42, T.roofY + 0.14, -0.40);
   for (const a of [-0.9, -0.3, 0.3, 0.9]) {
     periscope(P, 'turretDetail', -0.42 + 0.31 * Math.sin(a), T.roofY + 0.085, -0.40 + 0.31 * Math.cos(a), a);
   }
-  // the gunner's hatch on the left rear (source: 2.92-2.93)
-  P.add('turret', cylY(0.25, 0.26, 0.10, P.q ? 20 : 12), 0.40, T.roofY + 0.04, -0.62);
-  P.add('turretDark', box(0.10, 0.03, 0.05), 0.40, T.roofY + 0.10, -0.87);
-  // the stowage bin low on the right wall (source: out to world x −1.50 over y 2.20..2.42, its lid sloping up to the
-  // wall at 2.68, z −0.95..0.30 tapering into the cheek), its lid seam and two latches
+}
+
+/** The stowage bin low on the turret's right wall (source: out to world x −1.50 over y 2.20..2.42, its lid sloping up to
+ *  the wall at 2.68, z −0.95..0.30 tapering into the cheek), its lid seam and two latches. */
+export function addBradleyStowageBin(P: Modern3BuilderPort): void {
+  const { box } = KIT;
   P.add('turret', bradleyStowageBin());
   const B = BRADLEY_BIN;
   P.add('turretDark', box(0.014, 0.016, B.z1 - B.z0 - 0.08), B.outerX - 0.008, B.shoulderY, (B.z0 + B.z1) / 2 - 0.08);
   for (const z of [-0.20, 0.30]) P.add('turretDetail', box(0.03, 0.06, 0.07), B.outerX - 0.012, (B.bottomY + B.shoulderY) / 2, z);
-  // (round 3, blind A/B b2: the source's tall mast box at the right rear is gone, the M2A2 ODS carries none; the two
-  // whips stand on the roof's rear corners)
-  // 2x4 smoke dischargers on the cheek fronts (§6.5)
+}
+
+/** The 2x4 smoke dischargers on the cheek fronts (§6.5). */
+export function addBradleySmokeBanks(P: Modern3BuilderPort): void {
+  const T = BRADLEY_TURRET;
   for (const s of [-1, 1]) {
     const bank = FITTINGS.smokeBank({
       mats: P.mats, count: 4, r: 0.038, len: 0.24, pitch: -0.28, splay: s * 1.05, spacing: 0.095, seed: 6 + s,
@@ -3358,6 +3363,26 @@ function addBradleyTurretKit(P: Modern3BuilderPort): void {
     bank.position.set(s * 0.70 - (s > 0 ? T.plusInset : 0), 0.52, 0.93);
     P.turretG.add(bank);
   }
+}
+
+function addBradleyTurretKit(P: Modern3BuilderPort): void {
+  const T = BRADLEY_TURRET;
+  const { box, cylY, stowage } = KIT;
+  // the gunner's Integrated Sight Unit on the LEFT front of the roof (source: world x −0.05..0.70, z −0.40..0.15, top
+  // 3.19): the armoured box, its window, two door leaves
+  P.add('turret', box(0.60, 0.36, 0.46), 0.50, T.roofY + 0.17, 0.30);
+  P.add('turretDark', box(0.44, 0.15, 0.02), 0.50, T.roofY + 0.21, 0.532);
+  P.add('turretGlass', box(0.38, 0.10, 0.012), 0.50, T.roofY + 0.21, 0.542);
+  for (const dx of [-0.15, 0.15]) P.add('turretDetail', box(0.28, 0.025, 0.42), 0.50 + dx, T.roofY + 0.36, 0.28);
+  for (const side of [-1, 1]) P.add('turretDetail', bradleyTurretCheekPlate(side).bolts);
+  addBradleyCommanderStation(P);
+  // the gunner's hatch on the left rear (source: 2.92-2.93)
+  P.add('turret', cylY(0.25, 0.26, 0.10, P.q ? 20 : 12), 0.40, T.roofY + 0.04, -0.62);
+  P.add('turretDark', box(0.10, 0.03, 0.05), 0.40, T.roofY + 0.10, -0.87);
+  addBradleyStowageBin(P);
+  // (round 3, blind A/B b2: the source's tall mast box at the right rear is gone, the M2A2 ODS carries none; the two
+  // whips stand on the roof's rear corners)
+  addBradleySmokeBanks(P);
   // bustle rack on the rear wall, open aft, with bags; the whips
   // (source: the rack 1.0 m wide centred over the hull, 0.24..0.74 over the ring, to world z -1.85)
   const rack = FITTINGS.stowageRack({
@@ -3389,7 +3414,7 @@ function bradleyTowStowed(x: number, y: number): [number, number] {
   return [BRADLEY_TOW.x0 + (y - BRADLEY_TOW.y0), BRADLEY_TOW.y0 - (x - BRADLEY_TOW.x0)];
 }
 
-function addBradleyTowLauncher(P: Modern3BuilderPort): void {
+export function addBradleyTowLauncher(P: Modern3BuilderPort): void {
   const W = BRADLEY_TOW;
   const { box, cylZ, xform } = KIT;
   const cx = (W.x0 + W.x1) / 2, cy = (W.y0 + W.y1) / 2, cz = (W.z0 + W.z1) / 2;
