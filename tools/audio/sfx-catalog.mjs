@@ -73,7 +73,10 @@ const GUN_REPORTS = [
   ['gun_152gl', '152 mm short wide-bore gun-launcher', 'a deep, hollow boom from the short wide barrel, a soft front', 'superheavy'],
   // (two comparisons in a row, "a soft, blunt front, like heavy artillery", passed 2 of 16 as shipped; plain, 8 of 8)
   ['gun_165', '165 mm short demolition gun', 'a colossal, deep, thudding boom', 'superheavy'],
-  ['gun_170', '170 mm long heavy gun with a muzzle brake', 'a colossal, earth-shaking boom with a huge sideways blast from the brake', 'superheavy'],
+  // (world-sfx-269: "a huge sideways blast from the brake" came back a bright blast, every take under the 76 mm below
+  // 150 Hz and the calibre ladder inverted; "earth-shaking" still rumbled broadband (0.75–0.83 under 150 Hz, level with
+  // the 76 mm in the game's capture). The engine turns a brake's blast by the row's brake, so the boom is all depth.)
+  ['gun_170', '170 mm long heavy gun with a muzzle brake', 'a colossal, very deep boom', 'superheavy'],
 ];
 // The recoil past the loader: lighter guns clack, the big ones slam; the distant boom by size.
 const RECOIL = { light: 'a hard steel clack', medium: 'a heavy steel slam', heavy: 'a violent heavy steel slam', superheavy: 'a violent, massive steel slam' };
