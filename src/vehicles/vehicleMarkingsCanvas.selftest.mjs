@@ -2,9 +2,11 @@ import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import {
-  drawNationalInsignia, drawTacticalNumber, GLACIS_MARKING_OUTLINE, GLACIS_MARKING_TRACKING, SHELL_MIDDLE_CAP_LIFT,
+  drawNationalInsignia, drawTacticalNumber, GLACIS_MARKING_OUTLINE, GLACIS_MARKING_OUTLINE_FLOOR, GLACIS_MARKING_TRACKING,
+  glacisMarkingOutline, SHELL_MIDDLE_CAP_LIFT,
 } from './vehicleMarkings.ts';
 import { CMAP, GLYPHS } from '../ui/glacis.js';
+import { traceGlacis } from '../ui/glacisText.ts';
 
 function createRecordingContext() {
   const operations = [];
@@ -83,14 +85,16 @@ for (const [number, fits] of [['32', true], ['732', true], ['OTCO', false], ['KU
   assert.ok(Math.abs(mid - (bounds.y + bounds.height / 2 - capHeight / 0.7 * SHELL_MIDDLE_CAP_LIFT)) < 0.01,
     `${number}: its caps stand where the shell face's did (centre ${mid.toFixed(2)})`);
   assert.ok(Math.abs(SHELL_MIDDLE_CAP_LIFT - 0.0869) < 1e-4, 'Chakra Petch Bold\'s caps stood 0.087 em above Chrome\'s middle');
-  assert.ok(Math.abs(lineWidth - Math.max(2, capHeight / 0.7 * GLACIS_MARKING_OUTLINE)) < 0.01,
-    `${number}: its outline is ${GLACIS_MARKING_OUTLINE * 100} % of its size`);
+  assert.ok(Math.abs(lineWidth - glacisMarkingOutline(capHeight / 0.7)) < 0.01,
+    `${number}: its outline is ${GLACIS_MARKING_OUTLINE * 100} % of its size, at least ${GLACIS_MARKING_OUTLINE_FLOOR} texels`);
 }
 // glacis-269 blind critics: at Glacis's own spacing (side bearings 28 + 28 of 1000) an 8 % outline merged neighbours
 // and clogged counters. Markings space wide: any two glyphs keep 6 % of the em of paint clear between their outlines
-// (Q's tail runs to its advance by design and is left out).
+// (Q's tail runs to its advance by design and is left out). That holds from 100 px up; under it the outline is the
+// floor's 6-texel halo, and small stencils' outlines meet as the old face's did (glacis-269 round 2).
 const bearings = [...'0123456789ABCDEFGHIJKLMNOPRSTUVWXYZ-./'].map((ch) => {
-  const glyph = GLYPHS[CMAP[ch.codePointAt(0)]];
+  const name = CMAP[ch.codePointAt(0)];
+  const glyph = GLYPHS[`${name}.ss01`] ?? GLYPHS[name]; // the markings set ss01 (glacisText.ts)
   const xs = glyph.d.match(/-?\d+(?:\.\d+)?/g).map(Number).filter((_, index) => index % 2 === 0);
   return [Math.min(...xs), glyph.advance - Math.max(...xs)];
 });
@@ -117,11 +121,14 @@ for (const number of ['Kp 12', 'ПТ-76']) {
 }
 
 // Glacis (DECISIONS 2026-11-03; owner 2026-11-04: the tanks' markings only, never the HUD, so no font file ships): the
-// outline module vendored byte for byte from Princeton-Powerlifting 8eb6c4f, its licence and attribution beside it.
+// outline module vendored byte for byte from Princeton-Powerlifting 64cd265103 (Glacis 1.100), its licence and attribution
+// beside it, and the markings set its ss01 alternates (Main's ruling 2026-11-04): a closed 4 and a pointed A.
 {
   const read = (path) => readFileSync(new URL(`../../${path}`, import.meta.url));
   assert.equal(createHash('sha256').update(read('src/ui/glacis.js')).digest('hex'),
-    '5871e53fa50f001a9fea46b13f29283f6c09cb53f6fcd161907682d1777bb6f5', 'src/ui/glacis.js is the 8eb6c4f module, byte for byte');
+    'f1e65de08e42aba0ba4e6593cb15a170b927c21e4b64c30708877b5ae3fed140', 'src/ui/glacis.js is the 64cd265103 module, byte for byte');
+  const set = traceGlacis({ moveTo() {}, lineTo() {}, closePath() {} }, 'A4', 0, 0, { size: 100 }).glyphs.map((glyph) => glyph.name);
+  assert.deepEqual(set, ['A.ss01', 'four.ss01'], 'markings set the closed 4 and the pointed A');
   const ofl = read('public/fonts/glacis/OFL.txt').toString('utf8');
   assert.match(ofl, /SIL Open Font License, Version 1\.1/, 'Glacis ships its OFL text');
   assert.match(ofl, /^Copyright 2026 Kevin Liu/, 'Glacis keeps its copyright line');

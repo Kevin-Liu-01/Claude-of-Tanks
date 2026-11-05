@@ -1063,8 +1063,19 @@ const TACTICAL_NUMBER_FILL = 0.94;
  * Painted markings space wide, and a code that runs to its bounds comes down to them instead of standing taller.
  */
 export const GLACIS_MARKING_TRACKING = 80;
-/** A Glacis marking's outline at most, as a share of its size (the shell face's 8 % fills Glacis's small counters). */
+/** A Glacis marking's outline as a share of its size (the shell face's 8 % fills Glacis's small counters). */
 export const GLACIS_MARKING_OUTLINE = 0.06;
+/**
+ * The thinnest outline a Glacis marking takes, in texels of its 256 px decal: the old face's halo on a stencil
+ * (glacis-269 round 2, Main's ruling 2026-11-04). 6 % of a small stencil's size left 1.5 to 3 texels and its pale edge
+ * vanished on the camouflage (the Tamoyo's BERNARDINI and TAMOYO, blind critics); under 100 px the outline is this
+ * halo, its neighbours' outlines meeting as the old face's did.
+ */
+export const GLACIS_MARKING_OUTLINE_FLOOR = 6;
+/** The outline under a Glacis marking's lettering at `size`: one rule for every marking that has one. */
+export function glacisMarkingOutline(size: number): number {
+  return Math.max(size * GLACIS_MARKING_OUTLINE, GLACIS_MARKING_OUTLINE_FLOOR);
+}
 /**
  * How far above its anchor the shell face's capitals stood, as a share of the size. Chrome sets canvas textBaseline
  * 'middle' halfway between the face's typo ascender and descender normalised to one em (Chakra Petch Bold: 992 and 308
@@ -1084,15 +1095,17 @@ export function drawTacticalNumber(
   ctx.save();
   if (glacisSetsMarking(text)) {
     // Glacis outlines (DECISIONS 2026-11-03), sized by the measured run: the per-character rule, brought down where the
-    // spaced number and its outline would pass TACTICAL_NUMBER_FILL of the bounds (the length rule alone ran 5-8 px past
-    // a 252 px decal for OTCO, KURSK and 99A2), its caps where the shell face's stood. One path, stroked under its fill,
-    // corners mitred short.
+    // spaced number and its outline (glacisMarkingOutline) would pass TACTICAL_NUMBER_FILL of the bounds (the length rule
+    // alone ran 5-8 px past a 252 px decal for OTCO, KURSK and 99A2), its caps where the shell face's stood. One path,
+    // stroked under its fill, corners mitred short.
+    const run = glacisWidth(text, { size: 1, tracking: GLACIS_MARKING_TRACKING });
+    const fill = width * TACTICAL_NUMBER_FILL;
     const fontSize = Math.max(16, Math.min(height * 0.68, width / Math.max(1, text.length) * 1.75,
-      width * TACTICAL_NUMBER_FILL / (glacisWidth(text, { size: 1, tracking: GLACIS_MARKING_TRACKING }) + GLACIS_MARKING_OUTLINE)));
+      fill / (run + GLACIS_MARKING_OUTLINE), (fill - GLACIS_MARKING_OUTLINE_FLOOR) / run));
     ctx.beginPath();
     traceGlacis(ctx, text, x + width / 2, y + height / 2 - fontSize * SHELL_MIDDLE_CAP_LIFT,
       { size: fontSize, tracking: GLACIS_MARKING_TRACKING, align: 'center', baseline: 'middle' });
-    ctx.lineWidth = Math.max(2, fontSize * GLACIS_MARKING_OUTLINE);
+    ctx.lineWidth = glacisMarkingOutline(fontSize);
     ctx.lineJoin = 'miter';
     ctx.miterLimit = 2;
     ctx.strokeStyle = SURFACE_MARKING_STYLE.markingOutline;

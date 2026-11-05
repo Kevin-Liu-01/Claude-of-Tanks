@@ -1,5 +1,5 @@
 /*!
- * Glacis 1.000, a chamfered block typeface by Kevin Liu.
+ * Glacis 1.100, a chamfered block typeface by Kevin Liu.
  * Copyright 2026 Kevin Liu (https://powerlifting.kevinliu.studio/brand). SIL Open Font License 1.1, https://openfontlicense.org
  *
  * A zero-dependency ES module for code that draws text itself (canvas,
@@ -24,6 +24,8 @@ export const DESCENDER = -220;
 /**
  * Every glyph by name: its advance width and its outline as SVG path data.
  * Digits also come as "zero.tnum" and so on, centred on one shared advance.
+ * The ss01 alternates (the `alternates` option) are "four.ss01",
+ * "four.tnum.ss01", "A.ss01" and the accented As, "Agrave.ss01" and so on.
  * @type {Readonly<Record<string, { advance: number, d: string }>>}
  */
 export const GLYPHS = {
@@ -139,6 +141,15 @@ export const GLYPHS = {
   "nine.tnum": { advance: 560, d: "M434 0L126 0L28 -98L28 -224L182 -224L182 -133L378 -133L378 -287L126 -287L28 -385L28 -602L126 -700L434 -700L532 -602L532 -98ZM378 -567L182 -567L182 -413L378 -413Z" },
   "uni2007": { advance: 560, d: "" },
   "uni2009": { advance: 133, d: "" },
+  "four.ss01": { advance: 560, d: "M378 -700L532 -700L532 0L378 0L378 -217L28 -217L28 -350ZM252 -350L378 -350L378 -476Z" },
+  "four.tnum.ss01": { advance: 560, d: "M378 -700L532 -700L532 0L378 0L378 -217L28 -217L28 -350ZM252 -350L378 -350L378 -476Z" },
+  "A.ss01": { advance: 588, d: "M210 -700L378 -700L560 0L392 0L356 -140L232 -140L196 0L28 0ZM265 -266L323 -266L294 -378Z" },
+  "Agrave.ss01": { advance: 588, d: "M175 -868L315 -868L413 -742L273 -742ZM210 -700L378 -700L560 0L392 0L356 -140L232 -140L196 0L28 0ZM265 -266L323 -266L294 -378Z" },
+  "Aacute.ss01": { advance: 588, d: "M273 -868L413 -868L315 -742L175 -742ZM210 -700L378 -700L560 0L392 0L356 -140L232 -140L196 0L28 0ZM265 -266L323 -266L294 -378Z" },
+  "Acircumflex.ss01": { advance: 588, d: "M140 -742L238 -882L350 -882L448 -742L336 -742L294 -805L252 -742ZM210 -700L378 -700L560 0L392 0L356 -140L232 -140L196 0L28 0ZM265 -266L323 -266L294 -378Z" },
+  "Atilde.ss01": { advance: 588, d: "M154 -833L203 -882L252 -882L336 -833L385 -833L434 -882L434 -791L385 -742L336 -742L252 -791L203 -791L154 -742ZM210 -700L378 -700L560 0L392 0L356 -140L232 -140L196 0L28 0ZM265 -266L323 -266L294 -378Z" },
+  "Adieresis.ss01": { advance: 588, d: "M133 -861L252 -861L252 -742L133 -742ZM336 -861L455 -861L455 -742L336 -742ZM210 -700L378 -700L560 0L392 0L356 -140L232 -140L196 0L28 0ZM265 -266L323 -266L294 -378Z" },
+  "Aring.ss01": { advance: 588, d: "M238 -910L350 -910L399 -861L399 -791L350 -742L238 -742L189 -791L189 -861ZM259 -798L329 -798L329 -854L259 -854ZM210 -700L378 -700L560 0L392 0L356 -140L232 -140L196 0L28 0ZM265 -266L323 -266L294 -378Z" },
 };
 
 /**
@@ -174,6 +185,7 @@ export const CMAP = {
  * @property {number} [size] Font size (the em) in output units, as in CSS. Caps stand 0.7 × size. Default 1000, so output is in font units.
  * @property {number} [tracking] Extra space between glyphs, in thousandths of the em (CSS letter-spacing × 1000). Default 0.
  * @property {boolean} [tabular] Set the figures on one shared advance (the font's tnum), so counters and timers never jitter. Default false.
+ * @property {boolean} [alternates] Set the font's stylistic set 1 (ss01): a closed 4 and a pointed A (À Á Â Ã Ä Å too), on the defaults' advances. Painted small, the open 4 reads as H or Ч and the flat-topped A as R; these do not. Default false.
  * @property {"left" | "center" | "right"} [align] Where the anchor sits on the run. Default "left".
  * @property {"alphabetic" | "top" | "middle"} [baseline] What the anchor's y is: the baseline, the top of the caps, or halfway up the caps. Default "alphabetic".
  */
@@ -237,7 +249,7 @@ const r3 = (/** @type {number} */ v) => Math.round(v * 1000) / 1000 + 0; // + 0 
  * @returns {Layout}
  */
 export function layout(text, opts = {}) {
-  const { size = UPM, tracking = 0, tabular = false, align = "left", baseline = "alphabetic" } = opts;
+  const { size = UPM, tracking = 0, tabular = false, alternates = false, align = "left", baseline = "alphabetic" } = opts;
   const s = size / UPM;
   const chars = [...String(text).toUpperCase().normalize("NFC")];
   /** @type {string[]} */
@@ -249,6 +261,7 @@ export function layout(text, opts = {}) {
       name = "space";
     }
     if (tabular && GLYPHS[name + ".tnum"]) name += ".tnum";
+    if (alternates && GLYPHS[name + ".ss01"]) name += ".ss01";
     return { char, name };
   });
   let pen = 0;

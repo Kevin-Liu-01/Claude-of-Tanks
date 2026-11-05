@@ -1,5 +1,5 @@
 // Types for glacis.js, the Glacis outline module vendored byte for byte from Princeton-Powerlifting
-// (`pnpm font`, public/fonts/glacis/glacis.js at 8eb6c4f). Copyright © 2026 Kevin B. Liu; the module and the font are
+// (`pnpm font`, public/fonts/glacis/glacis.js at 64cd265103, Glacis 1.100). Copyright © 2026 Kevin B. Liu; the module and the font are
 // SIL Open Font License 1.1 (public/fonts/glacis/OFL.txt). The module is never edited here: re-copy it on a Glacis
 // release and keep these declarations equal to its JSDoc.
 
@@ -14,6 +14,8 @@ export interface GlacisOptions {
   readonly align?: 'left' | 'center' | 'right';
   /** The anchor's y: the baseline, the top of the caps, or halfway up the caps. Default 'alphabetic'. */
   readonly baseline?: 'alphabetic' | 'top' | 'middle';
+  /** Set the font's stylistic set 1 (ss01): a closed 4 and a pointed A (À Á Â Ã Ä Å too), on the defaults' advances. Default false. */
+  readonly alternates?: boolean;
 }
 
 export interface GlacisPlaced {

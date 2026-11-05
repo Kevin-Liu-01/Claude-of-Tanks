@@ -12,6 +12,13 @@
  */
 import { layout, supports, type GlacisLayout, type GlacisOptions } from './glacis.js';
 
+/**
+ * Markings set Glacis's stylistic set 1 (glacis-269 round 2, Main's ruling 2026-11-04 on the blind re-judge): a closed 4
+ * and a pointed A, on the defaults' advances. Painted small, the default open 4 read as H or Ч and the flat-topped A as R
+ * or H (3-66AR, TAMOYO, 24, 91-4087).
+ */
+const MARKING_SET = { alternates: true } as const;
+
 /** What a trace writes into: Path2D and both 2D contexts implement it. */
 interface GlacisPathSink {
   moveTo(x: number, y: number): void;
@@ -39,7 +46,7 @@ function traceGlacisRun(sink: GlacisPathSink, run: GlacisLayout, x: number, y: n
 
 /** Lay `text` out and write its outlines into `sink`; returns the run (its width, cap height, missing characters). */
 export function traceGlacis(sink: GlacisPathSink, text: string, x: number, y: number, options?: GlacisOptions): GlacisLayout {
-  const run = layout(text, options);
+  const run = layout(text, { ...options, ...MARKING_SET });
   traceGlacisRun(sink, run, x, y);
   return run;
 }
@@ -53,7 +60,7 @@ export function glacisPath(text: string, x: number, y: number, options?: GlacisO
 
 /** The run's advance width at `options` (tracking and tabular figures included), without tracing it. */
 export function glacisWidth(text: string, options?: GlacisOptions): number {
-  return layout(text, options).width;
+  return layout(text, { ...options, ...MARKING_SET }).width;
 }
 
 /**
