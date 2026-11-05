@@ -8,21 +8,21 @@
 //  - the six barrels and their clamps ride one rotor group about the bore, tagged for gunRotorSpin.ts, nothing else in
 //    it; a burst spins it (the barrels' tips move round the bore, the fire axis does not) and leaves the simulation's
 //    state untouched; at rest it holds;
-//  - the radar stands right rear (-x, -z) with its cases' tops at the frame's height; the gun on the left; the whips
-//    aside, the build's length, width and height are the spec's dims (3 %);
+//  - the radar stands right rear (-x, -z), outboard of the ring's edge, with its cases' tops at the frame's height; the
+//    gun on the left; the gunner's column open at the top; the build's length, width and height are the spec's dims (3 %);
 //  - from full depression to full elevation every gun part keeps 2 cm from its turret's own stock (the cross shaft and
 //    the feed joint, bodies about the elevation axis seated in the arms, keep it at every pitch by construction: gun
-//    points within 9 cm of the axis are left out), and 2.5 cm from the hull at every 5 degrees of yaw and pitch from the
-//    published stop (gunHullClearance.test-support.mjs's measure), the M741's whip apart (owed by the hull's builder);
-//  - the turret's crew and modules lie inside the open mount (the basket under the deck included), no crew box in a
-//    module box but the gunner's at his sight, no module in another.
+//    points within 9 cm of the axis are left out), and 2.5 cm from the hull at every 5 degrees of yaw (both ways) and
+//    pitch from the published stop (gunHullClearance.test-support.mjs; r2: the M741 carries no hull whip);
+//  - the turret's crew and modules lie inside the turret's plates (15 cm, armorInterior.ts), no crew box in a module box
+//    but the gunner's at his sight, no module in another.
 // First-party tooling: Kevin B. Liu (NOTICE.md).
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import { createTank } from '../tankFactory.ts';
 import { getSpec } from '../specs.ts';
 import { createTankState } from '../../sim/movement.ts';
-import { GUN_HULL_KEEP_M, SurfaceGrid, densePoints, meshTriangles, meshesUnder } from '../gunHullClearance.test-support.mjs';
+import { GUN_HULL_KEEP_M, SurfaceGrid, densePoints, gunHullProbe, meshTriangles, meshesUnder } from '../gunHullClearance.test-support.mjs';
 import { minimumMechanicalGunPitch } from '../../sim/gunPitchLimits.ts';
 import { GUN_ROTOR_KEY } from '../gunRotorSpin.ts';
 import { M741_COMMANDER_HATCH, M741_RING } from '../m741Datums.ts';
@@ -114,10 +114,15 @@ try {
   }
   // the radar right rear, its cases' tops at the frame's height
   assert.ok(M163_RADAR.x < 0 && M163_RADAR.z < 0, 'the radar stands right rear');
-  const caseTop = firstHit(turret, turret, [M163_RADAR.x - M163_RADAR.caseDx, 1.6, M163_RADAR.z], [0, -1, 0], 1);
-  assert.ok(caseTop, 'the radar\'s outer case is drawn');
+  const caseTop = firstHit(turret, turret, [M163_RADAR.x, 1.6, M163_RADAR.z - M163_RADAR.caseDz], [0, -1, 0], 1);
+  assert.ok(caseTop, 'the radar\'s rear case is drawn');
   near(caseTop.point.y, M163_RADAR.caseTopY, 0.01, 'the case\'s top');
-  // envelope (the whip aside), in the hull frame
+  assert.ok(Math.hypot(M163_RADAR.x, M163_RADAR.z) > T.drumR, 'the radar housing stands outboard of the ring\'s edge');
+  const ball = firstHit(turret, turret, [M163_RADAR.x, 1.6, M163_RADAR.z], [0, -1, 0], 1);
+  near(ball?.point.y ?? 0, M163_RADAR.y + M163_RADAR.r, 0.01, 'the housing\'s top');
+  const tub = firstHit(turret, turret, [T.column.x, 1.6, T.column.z], [0, -1, 0], 1.5);
+  assert.ok(tub && tub.point.y < T.column.topY - 0.2, 'the gunner\'s column is open at the top');
+  // envelope, in the hull frame
   const box = envelope(root), size = box.getSize(new THREE.Vector3());
   near(size.y, spec.dims.heightM, spec.dims.heightM * 0.03, 'height over the radar\'s cases');
   near(size.z, spec.dims.overallLengthM, spec.dims.overallLengthM * 0.03, 'length');
@@ -141,7 +146,7 @@ try {
     }
   }
   assert.ok(worst.d >= 0.02, `the gun keeps 2 cm from the turret at every pitch (worst ${worst.d.toFixed(3)} m at ${worst.deg} deg, gun point ${worst.at})`);
-  console.log(`${ID}: datums, rotor, bores, radar, envelope ${size.toArray().map((n) => n.toFixed(2)).join(' x ')} m, turret clearance ${worst.d.toFixed(3)} m`);
+  console.log(`${ID}: datums, rotor, bores, radar, envelope ${size.toArray().map((n) => n.toFixed(2)).join(' x ')} m, turret clearance ${worst.d.toFixed(3)} m (at ${worst.deg} deg, gun point ${worst.at})`);
 
   // the spin: a burst turns the rotor and the barrels' tips round the bore, the fire axis and the sim state stay put
   const state = createTankState(spec, new THREE.Vector3(0, 0, 0), 0);
@@ -188,77 +193,28 @@ try {
   console.log(`${ID}: a 0.60 s burst and its coast turned the rotor ${(spun / DEG).toFixed(0)} degrees; at rest after ${t.toFixed(1)} s`);
 } finally { tank.dispose?.(); }
 
-// The hull at every 5 degrees of yaw, every 5 degrees of pitch from the published stop to full elevation, the gun in
-// battery and at a 0.135 m stroke (gunHullClearance.test-support.mjs's measure, its grid and samples). The M741's whip
-// (profiles/m113.ts, the hull's builder's) stands 1.90 m from the race's axis at the left rear, inside the Vulcan's 1.99 m
-// reach: the barrels pass through it round yaw 140 at every pitch under ~75 degrees. A whip flexes; its move (or the
-// M741 without it: the M163's antennas stand on its turret, photos 03, 04) is owed by the hull's builder, so the whip is
-// measured apart and its window pinned here.
-function hullClearance(tank) {
-  const root = tank.root;
-  root.updateMatrixWorld(true);
-  const turret = root.getObjectByName('rig_turret'), gun = root.getObjectByName('rig_gun'), recoil = root.getObjectByName('rig_recoil');
-  const hull = turret.parent, gInv = new THREE.Matrix4().copy(gun.matrixWorld).invert(), hInv = new THREE.Matrix4().copy(hull.matrixWorld).invert();
-  const recoiling = new Set(); recoil.traverse((o) => recoiling.add(o));
-  const gunMeshes = meshesUnder(gun);
-  const fixed = densePoints(meshTriangles(gunMeshes.filter((m) => !recoiling.has(m)), gInv).tri, 0.015);
-  const moving = densePoints(meshTriangles(gunMeshes.filter((m) => recoiling.has(m)), gInv).tri, 0.015);
-  const body = [], whip = [], m = new THREE.Matrix4(), a = new THREE.Vector3();
-  for (const mesh of meshesUnder(hull, [turret])) {
-    if (mesh.isInstancedMesh) continue; // (the running gear, far under the gun's sweep)
-    m.copy(hInv).multiply(mesh.matrixWorld);
-    const pos = mesh.geometry.getAttribute('position'), idx = mesh.geometry.index, n = idx ? idx.count : pos.count;
-    const antenna = (mesh.userData.seatRoleRanges ?? []).filter((r) => r.role === 'antenna');
-    for (let i = 0; i + 2 < n; i += 3) {
-      const out = antenna.some((r) => i >= r.start && i < r.start + r.count) ? whip : body;
-      for (let k = 0; k < 3; k++) { a.fromBufferAttribute(pos, idx ? idx.getX(i + k) : i + k).applyMatrix4(m); out.push(a.x, a.y, a.z); }
+// the hull at every 5 degrees of yaw both ways, every 5 degrees of pitch from the yaw's mechanical stop to full elevation
+const probe = gunHullProbe(ID, { suit: false });
+try {
+  let worst = { d: Infinity };
+  for (let yd = 0; yd <= 180; yd += 5) for (const sign of yd % 180 ? [-1, 1] : [1]) {
+    const lo = minimumMechanicalGunPitch(spec, sign * yd * DEG);
+    const pitches = [lo];
+    for (let deg = Math.ceil(lo / DEG / 5) * 5; deg < probe.elevation / DEG; deg += 5) if (deg * DEG > lo) pitches.push(deg * DEG);
+    pitches.push(probe.elevation);
+    for (const pitch of pitches) {
+      const d = probe.distance(sign * yd * DEG, pitch, 0);
+      if (d < worst.d) worst = { d, yaw: sign * yd, pitch: +(pitch / DEG).toFixed(1), part: probe.part };
     }
   }
-  const grids = { body: new SurfaceGrid(Float64Array.from(body), { cell: 0.05, rq: 0.065 }),
-    whip: new SurfaceGrid(Float64Array.from(whip), { cell: 0.05, rq: 0.065 }) };
-  const ring = turret.position, P = new THREE.Matrix4(), q = new THREE.Quaternion(), v = new THREE.Vector3();
-  return (grid, yaw, pitch) => {
-    P.compose(gun.position, q.setFromEuler(new THREE.Euler(-pitch, 0, 0)), gun.scale);
-    const c = Math.cos(yaw), sn = Math.sin(yaw);
-    let best = Infinity;
-    for (const [pts, back] of [[fixed, 0], [moving, 0], [moving, 0.135]]) {
-      for (let i = 0; i < pts.length; i += 3) {
-        v.set(pts[i], pts[i + 1], pts[i + 2] - back).applyMatrix4(P);
-        best = Math.min(best, grids[grid].distance(ring.x + c * v.x + sn * v.z, ring.y + v.y, ring.z - sn * v.x + c * v.z));
-      }
-    }
-    return best;
-  };
-}
-{
-  const probeTank = build(ID);
-  try {
-    const distance = hullClearance(probeTank);
-    let worst = { d: Infinity };
-    const whipYaws = [];
-    for (let yd = 0; yd <= 180; yd += 5) for (const sign of yd % 180 ? [-1, 1] : [1]) {
-      const lo = minimumMechanicalGunPitch(spec, sign * yd * DEG), top = spec.gunElevationDeg * DEG;
-      const pitches = [lo];
-      for (let deg = Math.ceil(lo / DEG / 5) * 5; deg < spec.gunElevationDeg; deg += 5) if (deg * DEG > lo) pitches.push(deg * DEG);
-      pitches.push(top);
-      for (const pitch of pitches) {
-        const d = distance('body', sign * yd * DEG, pitch);
-        if (d < worst.d) worst = { d, yaw: sign * yd, pitch: +(pitch / DEG).toFixed(1) };
-        if (distance('whip', sign * yd * DEG, pitch) < GUN_HULL_KEEP_M && !whipYaws.includes(sign * yd)) whipYaws.push(sign * yd);
-      }
-    }
-    assert.ok(worst.d >= GUN_HULL_KEEP_M, `the gun keeps ${GUN_HULL_KEEP_M} m from the hull (worst ${worst.d.toFixed(3)} at yaw ${worst.yaw}, pitch ${worst.pitch})`);
-    // the whip's window, owed by the hull's builder: it may only shrink
-    assert.ok(whipYaws.every((y) => y >= 130 && y <= 150), `the M741's whip meets the gun only round yaw 140 (${whipYaws})`);
-    console.log(`${ID}: hull clearance ${worst.d.toFixed(3)} m over yaw 0-180 from each yaw's stop to ${spec.gunElevationDeg} deg `
-      + `(worst at yaw ${worst.yaw}, pitch ${worst.pitch}); the M741's whip in the gun's sweep at yaw ${whipYaws.join(', ') || 'none'} (owed)`);
-  } finally { probeTank.dispose?.(); }
-}
+  assert.ok(worst.d >= GUN_HULL_KEEP_M, `the gun keeps ${GUN_HULL_KEEP_M} m from the hull (worst ${worst.d.toFixed(3)} at yaw ${worst.yaw}, pitch ${worst.pitch}, ${worst.part})`);
+  console.log(`${ID}: hull clearance ${worst.d.toFixed(3)} m over yaw 0-360 from each yaw's stop to ${(probe.elevation / DEG).toFixed(0)} deg (worst at yaw ${worst.yaw}, pitch ${worst.pitch}${worst.part ? `, ${worst.part}` : ''})`);
+} finally { probe.dispose(); }
 
-// the turret's crew and modules inside the open mount (the basket under the deck), no crew in a module
-const R = T.shieldR + 0.01;
-const inMount = (min, max) => Math.max(Math.abs(min[0]), Math.abs(max[0])) <= R && Math.max(Math.abs(min[2]), Math.abs(max[2])) <= R
-  && min[1] >= -0.6 && max[1] <= T.leftShield.topY + 0.15;
+// the turret's crew and modules inside the turret's plates (15 cm), no crew in a module
+const plates = new THREE.Box3();
+for (const p of spec.armor.turretPlates) for (const v of p.verts) plates.expandByPoint(new THREE.Vector3(...v));
+const inMount = (min, max) => [0, 1, 2].every((k) => min[k] >= plates.min.getComponent(k) - 0.15 && max[k] <= plates.max.getComponent(k) + 0.15);
 const boxOf = (record) => [record.min, record.max];
 const turretCrew = spec.armor.crew.filter((c) => c.turretLocal);
 const turretModules = spec.armor.modules.filter((m) => m.turretLocal && m.module !== 'feedSystem');

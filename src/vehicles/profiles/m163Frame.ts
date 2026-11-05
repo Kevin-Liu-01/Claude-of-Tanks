@@ -1,23 +1,29 @@
 // M163 VADS (release 269, builder V): the measured frame both the build (profiles/m163.ts) and the combat record
-// (m163Specs.ts) read, so the drawn turret, Vulcan, drum and radar and the spec's pivots, bore, plates, modules and crew
+// (m163Specs.ts) read, so the drawn turret, Vulcan, column and radar and the spec's pivots, bore, plates, modules and crew
 // never drift apart. Dependency-free data (the spec pack imports it at boot). Turret-local: the M741's roof plane y 0 at
 // the race's centre (m741Datums.ts M741_RING, 1.95 m ahead of the stern), +z forward, +x the vehicle's LEFT. Sources and
 // the photo reading behind each number: docs/references/tanks/m163_vads.md.
 // First-party: Kevin B. Liu (NOTICE.md).
 
 /**
- * The M157 mount's open turret (photos 03, 04, 07, 08): a low drum on the M741's 1.40 m race, its deck 0.25 m over the
- * roof; the Vulcan on the left front, its linkless drum on the left rear behind it, the gunner on his seat in the middle
- * with his sight before him, the AN/VPS-2 on the right rear (Military Periscope: "VPS-2 radar on the right"; photo 07 from
- * astern, photo 04 from the left where the gunner hides it), a tall curved shield round the left rear (photos 04, 07, 08)
- * and a lower one round the right front. The race's top stands 0.04 m over the roof; the drum's foot sits 1 cm into it.
+ * The M157 mount's open turret (r2, the blind critic's read checked against photos 04, 07, 08, 09): a low ring on the
+ * M741's 1.40 m race (0.20 m: photo 09's slotted ring); the gunner's column, an open cylindrical tub at the ring's rear
+ * right quarter (photo 07 from astern: the round body just right of centre; 08, 09 from the left: behind the gun), so the
+ * ring's front and the gun's side stand open (01, 06); a flat-sided box shield on the column's left-rear face, its ends
+ * leaning out (07, 08, 09: the tray with its top level with the column's rim and above it); a tall narrow plate at the
+ * column's right that carries the radar's arm (00/03, 06). The race's top stands 0.04 m over the roof; the ring's foot
+ * sits 1 cm into it.
  */
 export const M163_TURRET = Object.freeze({
-  drumR: 0.745, footR: 0.73, footY: 0.03, deckY: 0.25,
-  /** the shields' outer radius, their plate, the left one's bearings (degrees from +z towards +x) and top, the right's */
-  shieldR: 0.785, shieldT: 0.025,
-  leftShield: Object.freeze({ fromDeg: 75, toDeg: 165, topY: 0.80 }),
-  rightShield: Object.freeze({ fromDeg: -75, toDeg: -15, topY: 0.66 }),
+  drumR: 0.745, footR: 0.73, footY: 0.03, deckY: 0.20,
+  /** the column: its centre, outer radius, wall and rim (0.90 m across, 0.54 m over the ring) */
+  column: Object.freeze({ x: -0.16, z: -0.44, r: 0.45, wall: 0.03, topY: 0.74 }),
+  /** the box shield on the column's face at a bearing from its centre (degrees from +z towards +x): its foot and top,
+   * its half-widths there (the ends leaning out 15 degrees) and its depth out from the column */
+  boxShield: Object.freeze({ bearingDeg: 135, footY: 0.40, topY: 0.80, footHalfW: 0.26, topHalfW: 0.36, footDepth: 0.28,
+    topDepth: 0.34 }),
+  /** the tall plate at the column's right that carries the radar's arm: x, its z span, its foot and top, its thickness */
+  radarPlate: Object.freeze({ x: -0.66, z0: -0.22, z1: -0.07, topY: 0.89, t: 0.035 }),
 });
 
 /** The elevation axis (turret-local): the Vulcan's trunnion on the left front at the rotor housing's rear third, 0.58 m
@@ -37,38 +43,45 @@ export const M163_GUN = Object.freeze({
   barrels: 6, pitchR: 0.052, barrelR: 0.0155, barrelRearR: 0.0185, barrelRearZ: 0.14, barrelTipZ: 1.66, boreR: 0.0101,
   boreDepth: 0.045,
   housingR: 0.118, housingFrontZ: 0.24, housingRearZ: -0.22, driveR: 0.075, driveRearZ: -0.27,
-  /** the rotor's front support ring at the housing's mouth, the mid clamp and the muzzle clamp (photos 02, 04, 08) */
+  /** the rotor's front support ring at the housing's mouth; the mid clamp 30 % along the barrels from their breeches and
+   * the muzzle clamp 0.12 m back from their tips, so the tips stand proud (r2: photos 02, 08) */
   collarR: 0.084, collarZ: [0.21, 0.34] as const,
-  midClampR: 0.066, midClampZ: [0.88, 0.94] as const,
-  muzzleClampR: 0.0665, muzzleClampZ: [1.54, 1.62] as const,
-  /** the clamp's hub on the cluster's centre line, standing 3.5 cm proud of its face to 5 mm short of the barrels' tips */
-  hubR: 0.024,
-  /** the two trunnion arms either side of the housing (turret-local x), their boss radius */
-  armInnerX: 0.115, armOuterX: 0.525, armT: 0.03, bossR: 0.075,
+  midClampR: 0.066, midClampZ: [0.57, 0.63] as const,
+  muzzleClampR: 0.0665, muzzleClampZ: [1.47, 1.54] as const,
+  /** the clamps' spindle on the cluster's centre line, from the muzzle clamp to 5 mm short of the barrels' tips */
+  hubR: 0.016,
+  /** the two trunnion arms either side of the housing (turret-local x): the inboard one the feed's pedestal; their bosses */
+  armInnerX: 0.115, armOuterX: 0.525, armT: 0.03, armInnerT: 0.05, bossR: 0.075,
+  /** the cylinder under the housing pointing forward (r2: photos 00/01, 04): 0.08 m across, 40 % of the barrels' length */
+  underR: 0.038, underY: -0.145, underZ: [-0.04, 0.62] as const,
+  /** the round lamp on the mount's top (r2: photo 06), 0.15 m across */
+  lampR: 0.075, lampX: 0.07, lampY: 0.235, lampZ: 0.15,
+  /** the ribbed linkless chute from the inboard trunnion's feed joint arching 0.2 m over the housing into the feeder
+   * (r2: photos 08, 10), 0.11 m across */
+  chuteR: 0.055,
 });
-/** The fire axis's mouth: the face of the muzzle clamp's hub on the cluster's centre line, 5 mm behind the barrels'
- * tips (the fleet carves the axis's mouth there, tankFactoryCore.ts: a 16 mm opening through the hub). */
+/** The fire axis's mouth: the face of the clamps' spindle on the cluster's centre line, 5 mm behind the barrels' tips
+ * (the fleet carves the axis's mouth there, tankFactoryCore.ts: a 12 mm opening through the spindle). */
 export const M163_MUZZLE_Z = 1.655;
-/** The hub's opening the fleet carves at the mouth (tankFactoryCore.ts P.muzzleMouth). */
-export const M163_MUZZLE_MOUTH = Object.freeze({ outerRadiusM: 0.020, innerRadiusM: 0.008 });
+/** The spindle's opening the fleet carves at the mouth (tankFactoryCore.ts P.muzzleMouth). */
+export const M163_MUZZLE_MOUTH = Object.freeze({ outerRadiusM: 0.013, innerRadiusM: 0.006 });
 
-/** The linkless drum on the turret's left rear (turret-local; photo 07: the round body behind the gun, its top level with
- * the left shield's), clear of the housing's drive at every pitch; the rest of the drum hangs in the basket. */
-export const M163_AMMO_DRUM = Object.freeze({ x: 0.30, z: -0.38, r: 0.20, topY: 0.74 });
-
-/** The gunner's seat and his sight (turret-local; photos 01, 03, 10). */
+/** The gunner's seat in his column and his sight head on its post on the column's front rim, above the gun's breech and
+ * inboard of its sweep (r2: photos 00/01, 06: a box 0.20 x 0.20 x 0.30 m, its top 1.1 m over the roof). The linkless
+ * drum lives in the hull under the turret (m163Specs.ts). */
 export const M163_GUNNER = Object.freeze({
-  seat: Object.freeze({ x: -0.08, y: 0.52, z: -0.12 }),
-  sight: Object.freeze({ x: -0.10, y: 0.84, z: 0.14, w: 0.16, h: 0.16, d: 0.20 }),
+  seat: Object.freeze({ x: -0.16, y: 0.50, z: -0.40 }),
+  sight: Object.freeze({ x: 0.02, y: 1.00, z: -0.02, w: 0.20, h: 0.20, d: 0.30 }),
 });
 
 /**
- * The AN/VPS-2 range-only radar (turret-local, right rear): its round housing 0.44 m across on a yoke and post, its dish
- * face forward, and the two upright cases either side of it (photos 01, 03, 06; photo 07's dish ~0.45 m). Its cases'
- * tops give the published 2.90 m height (en.wikipedia: 115 in).
+ * The AN/VPS-2 range-only radar (turret-local, right rear; r2, the critic's read of photos 01, 06, 07): its round housing
+ * 0.56 m across outboard of the ring's edge on a horizontal arm from the tall plate, its flat face looking out to the
+ * right front (03), and the two upright cases seated fore and aft on it. Its top and the cases' stand 1.16 m over the roof, 3.02 m overall: the published 2.90 m
+ * (115 in) sits 4 % under it, the photographs over it (01: the housing ~0.6 m across, its top ~1.3 m up).
  */
 export const M163_RADAR = Object.freeze({
-  x: -0.50, y: 0.80, z: -0.48, r: 0.22, dishR: 0.205,
-  caseR: 0.065, caseDx: 0.28, caseBottomY: 0.50, caseTopY: 1.04,
-  postR: 0.05, yokeY: 0.55,
+  x: -0.90, y: 0.88, z: -0.56, r: 0.28, dishR: 0.17, dishBearingDeg: -60,
+  caseR: 0.065, caseDz: 0.335, caseBottomY: 0.60, caseTopY: 1.16,
+  armY: 0.56, yokeY: 0.585,
 });

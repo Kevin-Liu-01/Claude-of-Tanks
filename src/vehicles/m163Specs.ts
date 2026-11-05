@@ -17,7 +17,7 @@ import { m113Mobility } from './m113Combat.ts';
 import { M113_BASE } from './m113Datums.ts';
 import { M741_RING } from './m741Datums.ts';
 import {
-  M163_AMMO_DRUM as DRUM, M163_GUN as G, M163_GUNNER, M163_MUZZLE_Z, M163_RADAR as R, M163_TRUNNION, M163_TURRET as T,
+  M163_GUN as G, M163_GUNNER, M163_MUZZLE_Z, M163_RADAR as R, M163_TRUNNION, M163_TURRET as T,
 } from './profiles/m163Frame.ts';
 
 const registries = bindFleetRegistries(TANK_SPECS, MODEL_SOURCE, ALL_TANK_IDS);
@@ -30,15 +30,27 @@ const DEG = Math.PI / 180;
 function polygon(name: string, verts: Point[], keMm: number, ceMm: number): ArmorPlate {
   return { ...plate(name, keMm, verts[0], verts[1], verts[2], { keMm, ceMm, kind: 'main' }), verts, convexPolygon: true };
 }
-/** A point at a bearing (degrees from +z towards +x) and radius, turret frame. */
-const at = (deg: number, r: number, y: number): Point => [r * Math.sin(deg * DEG), y, r * Math.cos(deg * DEG)];
-/** Facets of a curved wall round the turret's axis (its outer face), from one bearing to another. */
-function arcFacets(name: string, fromDeg: number, toDeg: number, r: number, y0: number, y1: number, facets: number,
-  mm: number): ArmorPlate[] {
-  return Array.from({ length: facets }, (_, k) => {
-    const a = fromDeg + (toDeg - fromDeg) * (k / facets), b = fromDeg + (toDeg - fromDeg) * ((k + 1) / facets);
-    return polygon(`${name}_${k}`, [at(a, r, y0), at(b, r, y0), at(b, r, y1), at(a, r, y1)], mm, mm);
-  });
+/** The polygon wound so its face looks along `outward`. */
+function facing(name: string, verts: Point[], outward: Point, mm: number): ArmorPlate {
+  const [a, b, c] = verts, u = [b[0] - a[0], b[1] - a[1], b[2] - a[2]], v = [c[0] - a[0], c[1] - a[1], c[2] - a[2]];
+  const n = [u[1] * v[2] - u[2] * v[1], u[2] * v[0] - u[0] * v[2], u[0] * v[1] - u[1] * v[0]];
+  return polygon(name, n[0] * outward[0] + n[1] * outward[1] + n[2] * outward[2] >= 0 ? verts : [...verts].reverse(), mm, mm);
+}
+/** A point at a bearing (degrees from +z towards +x) and radius about (cx, cz), turret frame. */
+const at = (deg: number, r: number, y: number, cx = 0, cz = 0): Point =>
+  [cx + r * Math.sin(deg * DEG), y, cz + r * Math.cos(deg * DEG)];
+/** An axis-aligned box's faces, less the named ones. */
+function boxFaces(name: string, min: Point, max: Point, mm: number, omit: readonly string[] = []): ArmorPlate[] {
+  const [x0, y0, z0] = min, [x1, y1, z1] = max;
+  return ([
+    ['left', [[x1, y0, z0], [x1, y0, z1], [x1, y1, z1], [x1, y1, z0]], [1, 0, 0]],
+    ['right', [[x0, y0, z0], [x0, y0, z1], [x0, y1, z1], [x0, y1, z0]], [-1, 0, 0]],
+    ['roof', [[x0, y1, z0], [x1, y1, z0], [x1, y1, z1], [x0, y1, z1]], [0, 1, 0]],
+    ['floor', [[x0, y0, z0], [x1, y0, z0], [x1, y0, z1], [x0, y0, z1]], [0, -1, 0]],
+    ['front', [[x0, y0, z1], [x1, y0, z1], [x1, y1, z1], [x0, y1, z1]], [0, 0, 1]],
+    ['rear', [[x0, y0, z0], [x1, y0, z0], [x1, y1, z0], [x0, y1, z0]], [0, 0, -1]],
+  ] as [string, Point[], Point][]).filter(([face]) => !omit.includes(face))
+    .map(([face, verts, outward]) => facing(`${name}_${face}`, verts, outward, mm));
 }
 
 // The M113A3's chassis record: its hull armour, its driver and its automotive character (the M741 is the same aluminium
@@ -51,40 +63,59 @@ stripSilhouetteDimensions(spec.dims);
 // en.wikipedia ("M163 VADS"): 12,310 kg (the M163A1), crew 4, the 6V53 of 212 hp, 64 km/h, -5 to +80 degrees; the
 // turret's 60 degrees a second in traverse and 45 in elevation (the M157 mount). The dims are the build's: the M113A1's
 // 4.863 m hull, 5.02 m over its lamp guards and tail lights; 2.72 m over the sprockets' hubs (the published 2.85 m takes
-// the side stowage the build leaves off); 2.90 m to the radar cases' tops (the published 115 in).
+// the side stowage the build leaves off); 3.02 m to the radar's top (r2: the photographs' radar, ~0.6 m across, stands
+// over the published 115 in, 2.90 m).
 Object.assign(spec, {
   hp: 1750, ...m113Mobility(12.31, 212, 64),
   turretTraverseDegS: 60, gunPitchDegS: 45, gunElevationDeg: 80, gunDepressionDeg: 5,
 });
-spec.dims = { hullLengthM: 4.86, overallLengthM: 5.02, widthM: 2.72, heightM: 2.90 };
+spec.dims = { hullLengthM: 4.86, overallLengthM: 5.02, widthM: 2.72, heightM: 3.02 };
 spec.armor.turretPivot = [M741_RING.x, M741_RING.roofY, M741_RING.z];
 spec.armor.gunPivot = [...M163_TRUNNION];
 // the fire axis on the cluster's centre line, its plane the barrels' muzzles; the cluster's clamp as its radius
 spec.armor.gunBarrel = { lengthM: M163_MUZZLE_Z, radiusM: G.muzzleClampR };
-// The open mount (photos 03, 04, 07, 08): the drum on the race (its sides and deck) and the two steel shields' facets,
-// splinter protection only; the gunner rides in the open above the deck.
+// The open mount (r2; photos 04, 07, 08, 09): the low ring on the race (its sides and deck), the gunner's open column (its
+// wall's facets), the box shield on its left-rear face (the outer face and the two ends), the tall plate at its right and
+// the sight head on its post, all splinter protection; the gunner rides with his head and shoulders over the rim.
 const SIDES = 8;
-const drumR = T.drumR * 1.02;
+const drumR = T.drumR * 1.02, C = T.column, B = T.boxShield, Rp = T.radarPlate, V = M163_GUNNER.sight;
+/** The box shield's corner at lateral offset u and distance s from the column's centre, at height y. */
+const boxAt = (u: number, s: number, y: number): Point => {
+  const b = B.bearingDeg * DEG;
+  return [C.x + Math.sin(b) * s + Math.cos(b) * u, y, C.z + Math.cos(b) * s - Math.sin(b) * u];
+};
+const onColumn = (u: number): number => Math.sqrt(C.r * C.r - u * u);
+const boxOut: Point = [Math.sin(B.bearingDeg * DEG), 0, Math.cos(B.bearingDeg * DEG)];
+const boxSide = (sign: number): Point => [sign * Math.cos(B.bearingDeg * DEG), 0, -sign * Math.sin(B.bearingDeg * DEG)];
 spec.armor.turretPlates = [
   ...Array.from({ length: SIDES }, (_, k) => {
     const a = (360 / SIDES) * k, b = (360 / SIDES) * (k + 1);
-    return polygon(`m163_drum_${k}`, [at(a, drumR, T.footY), at(b, drumR, T.footY), at(b, drumR, T.deckY), at(a, drumR, T.deckY)], 12, 12);
+    return polygon(`m163_ring_${k}`, [at(a, drumR, T.footY), at(b, drumR, T.footY), at(b, drumR, T.deckY), at(a, drumR, T.deckY)], 12, 12);
   }),
   polygon('m163_deck', Array.from({ length: SIDES }, (_, k) => at((360 / SIDES) * k, drumR, T.deckY)), 12, 12),
-  ...arcFacets('m163_shield_l', T.leftShield.fromDeg, T.leftShield.toDeg, T.shieldR, T.deckY, T.leftShield.topY, 3, 12),
-  ...arcFacets('m163_shield_r', T.rightShield.fromDeg, T.rightShield.toDeg, T.shieldR, T.deckY, T.rightShield.topY, 2, 12),
+  ...Array.from({ length: SIDES }, (_, k) => {
+    const a = (360 / SIDES) * k, b = (360 / SIDES) * (k + 1);
+    return polygon(`m163_column_${k}`, [at(a, C.r, T.deckY, C.x, C.z), at(b, C.r, T.deckY, C.x, C.z), at(b, C.r, C.topY, C.x, C.z),
+      at(a, C.r, C.topY, C.x, C.z)], 12, 12);
+  }),
+  facing('m163_box_outer', [boxAt(B.footHalfW, C.r + B.footDepth, B.footY), boxAt(-B.footHalfW, C.r + B.footDepth, B.footY),
+    boxAt(-B.topHalfW, C.r + B.topDepth, B.topY), boxAt(B.topHalfW, C.r + B.topDepth, B.topY)], boxOut, 12),
+  ...[-1, 1].map((sign) => facing(`m163_box_end_${sign < 0 ? 'r' : 'l'}`, [
+    boxAt(sign * B.footHalfW, onColumn(B.footHalfW), B.footY), boxAt(sign * B.footHalfW, C.r + B.footDepth, B.footY),
+    boxAt(sign * B.topHalfW, C.r + B.topDepth, B.topY), boxAt(sign * B.topHalfW, onColumn(B.topHalfW), B.topY)], boxSide(sign), 12)),
+  ...boxFaces('m163_radar_plate', [Rp.x - Rp.t / 2, T.deckY, Rp.z0], [Rp.x + Rp.t / 2, Rp.topY, Rp.z1], 12, ['floor']),
+  ...boxFaces('m163_sight', [V.x - V.w / 2, V.y - V.h / 2, V.z - V.d / 2], [V.x + V.w / 2, V.y + V.h / 2, V.z + V.d / 2], 6, ['floor']),
 ];
 // Turret-local volumes (internalLayoutRegistry.ts spaaM163): the Vulcan's housing, feeder and cradle about the trunnion;
-// the linkless drum on the left rear, 10 cm down into the basket; the gunner's sight before him. Hull volumes (the M741's
-// layout: the 6V53 at the front right beside the driver and its transmission ahead of it, the fuel cell on the left under the
-// basket's side, the 1,000 stowed rounds on the right, the radio on the right rear wall by the commander's hatch, the
-// race's ring over the roof's rear half).
-const [gx, gy, gz] = M163_TRUNNION, V = M163_GUNNER.sight, roof = M113_BASE.roofY, rz = M741_RING.z;
+// the gunner's sight head. Hull volumes (the M741's layout: the 6V53 at the front right beside the driver and its
+// transmission ahead of it, the fuel cell on the left, the linkless drum under the turret (1,100 ready rounds, the 1,000
+// stowed beside it), the radio on the right rear wall by the commander's hatch, the race's ring over the roof's rear half).
+const [gx, gy, gz] = M163_TRUNNION, roof = M113_BASE.roofY, rz = M741_RING.z;
 const HULL_MODULES = [
   moduleBox('engine', [-0.85, 0.45, 0.55], [-0.10, 1.55, 1.45]),
   moduleBox('transmission', [-0.85, 0.45, 1.55], [-0.08, 1.05, 2.15]),
   moduleBox('fuelTank', [0.30, 0.45, -1.10], [0.85, 1.20, -0.30]),
-  moduleBox('ammoRack', [-0.85, 0.45, -1.20], [-0.30, 1.30, -0.40]),
+  moduleBox('ammoRack', [-0.32, 0.50, rz - 0.32], [0.28, 1.55, rz + 0.30]),
   moduleBox('radio', [-0.90, 1.20, -1.60], [-0.45, 1.60, -1.25]),
   moduleBox('turretRing', [-0.63, roof - 0.18, rz - 0.59], [0.63, roof + 0.02, rz + 0.59]),
 ];
@@ -92,12 +123,11 @@ spec.armor.modules = [
   ...spec.armor.modules.filter((box) => !box.turretLocal && (box.module === 'trackL' || box.module === 'trackR')),
   ...HULL_MODULES,
   moduleBox('gun', [gx - 0.14, gy - 0.16, gz - 0.30], [gx + 0.14, gy + 0.24, gz + 0.40], true),
-  moduleBox('ammoRack', [DRUM.x - DRUM.r, -0.10, DRUM.z - DRUM.r], [DRUM.x + DRUM.r, DRUM.topY, DRUM.z + DRUM.r], true),
   moduleBox('optics', [V.x - V.w / 2, V.y - V.h / 2, V.z - V.d / 2], [V.x + V.w / 2, V.y + V.h / 2, V.z + V.d / 2], true),
 ];
 // crew 4 (en.wikipedia: commander, gunner, loader, driver): the driver at the front left (the M113A3's), the gunner on his
-// seat in the turret between the gun and the radar, the commander under his round hatch at the right rear
-// (m741Datums.ts M741_COMMANDER_HATCH), the loader opposite him on the left
+// seat in his column, the commander under his round hatch at the right rear (m741Datums.ts M741_COMMANDER_HATCH), the
+// loader opposite him on the left
 const S = M163_GUNNER.seat;
 const HULL_CREW = [
   crewBox('commander', [-0.92, 0.50, -2.25], [-0.40, 1.80, -1.66]),
@@ -106,7 +136,7 @@ const HULL_CREW = [
 spec.armor.crew = [
   ...spec.armor.crew.filter((box) => !box.turretLocal && box.crew === 'driver'),
   ...HULL_CREW,
-  crewBox('gunner', [S.x - 0.22, T.deckY + 0.03, S.z - 0.22], [S.x + 0.16, 0.92, S.z + 0.30], true),
+  crewBox('gunner', [S.x - 0.22, T.deckY + 0.03, S.z - 0.22], [S.x + 0.22, 0.92, S.z + 0.26], true),
 ];
 // The M168 (the M61A1 on the M157 mount). The game cannot fire faster than its 0.05 s floor, so the cycle is the real
 // gun's 1,000 rounds a minute (its ground rate; the 3,000 of its air bursts is below the floor), and the gunner's
@@ -133,11 +163,11 @@ spec.visual = { ...spec.visual, scheme: 'desert', base: '#b09466', weather: '#c4
   camoScale: 0.52, marking: 'number', number: 'A21' };
 delete spec.visual.patchK;
 
-/** The farthest the build reaches from the hull origin: the muzzle with the gun forward, or the radar's outer case. */
+/** The farthest the build reaches from the hull origin: the muzzle with the gun forward, or the radar's rear case. */
 function reach(record: FleetTankSpec): number {
   const [, ty, tz] = record.armor.turretPivot;
   const muzzle = Math.hypot(gx, ty + gy, tz + gz + M163_MUZZLE_Z);
-  const radar = Math.hypot(Math.hypot(R.x - R.caseDx, tz + R.z) + R.caseR, ty + R.caseTopY);
+  const radar = Math.hypot(Math.hypot(R.x, tz + R.z - R.caseDz) + R.caseR, ty + R.caseTopY);
   return Math.max(muzzle, radar);
 }
 spec.armor.boundingRadiusM = Math.max(spec.armor.boundingRadiusM, reach(spec));
