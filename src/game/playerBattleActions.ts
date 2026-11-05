@@ -218,8 +218,15 @@ export function createPlayerBattleActions<TEntity extends BattleActionEntity>({
       if (rules.hasAmmunition(player.combat, missile)) bus.emit('ui:shellSelect', { slot: missile });
       return;
     }
-    const back = atgmReturnSlot >= 0 && atgmReturnSlot < shells.length && !shells[atgmReturnSlot]?.guided
-      ? atgmReturnSlot : Math.max(0, shells.findIndex((shell) => !shell.guided));
+    // (U23, round 2) the way back: a hull whose system is the guided missile has the sim's memory of the round it left,
+    // kept for every way onto the missile (the pad's LB selects it in activateGuidedMissile, with no ui:shellSelect, and
+    // ui:shellSelect below records it too); a hull whose system is its suspension has only the last pick seen here
+    const action = player.specialAction;
+    const cannonRound = (slot: number | undefined): slot is number =>
+      Number.isInteger(slot) && slot! >= 0 && slot! < shells.length && shells[slot!]?.guided !== true;
+    const remembered = action?.kind === 'guided_missile' ? action.previousShellSlot : atgmReturnSlot;
+    const back = cannonRound(remembered) ? remembered
+      : cannonRound(atgmReturnSlot) ? atgmReturnSlot : Math.max(0, shells.findIndex((shell) => !shell.guided));
     bus.emit('ui:shellSelect', { slot: back });
   });
 
@@ -443,6 +450,7 @@ export function createPlayerBattleActions<TEntity extends BattleActionEntity>({
   return {
     shellCards,
     setTank(spec) {
+      atgmReturnSlot = -1; // a slot of the last tank's loadout means nothing on this one
       lastShells = spec.gun.shells;
       lastSpec = spec as { id?: string; era?: string; role?: string };
       shellCards.length = 0;
