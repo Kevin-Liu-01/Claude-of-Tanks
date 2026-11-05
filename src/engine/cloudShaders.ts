@@ -147,17 +147,8 @@ float cl2Height( vec3 p ) { return p.y + dot( p.xz, p.xz ) * ( 0.5 / CL2_EARTH_R
 vec4 cl2Profile( vec4 hf, vec4 bias ) {
 	return smoothstep( 0.0, 0.06, hf ) * ( 1.0 - pow( hf, 1.0 / max( bias, vec4( 0.05 ) ) ) );
 }
-// (clouds-269) the base's lift at the last cl2Weather point, 0..1 (cl2Shell reads it for the same point): one cloud's base
-// stands higher than its neighbour's, so a field of cumulus seen toward the horizon is no line of bases at one height
-float cl2BaseLift = 0.0;
 // the weather of every lane at a world xz (lod: the local weather's mip level)
 vec4 cl2Weather( vec2 xz, float h, float lod ) {
-	{
-		// three sines on incommensurate wavevectors (2-3.4 km), drifting with the weather: quasi-periodic, no fetch
-		vec2 q = xz + uLocalShift;
-		cl2BaseLift = 0.5 + ( sin( dot( q, vec2( 0.00191, 0.00083 ) ) + 1.3 ) + sin( dot( q, vec2( -0.00071, 0.00173 ) ) + 4.1 )
-			+ 0.6 * sin( dot( q, vec2( 0.00253, -0.00197 ) ) + 0.4 ) ) / 5.2;
-	}
 	if ( uWeatherWarp > 0.0 ) {
 		// the turbulence field read a little further along at every altitude: the footprint's edge moves with height (a
 		// tower was the extrusion of one outline — every wiggle of it a groove the height of the tower)
@@ -221,14 +212,15 @@ vec4 cl2Shell( float h, vec4 weather, vec2 cell, out vec4 hf ) {
 	// height under a flat lid, and every cloud stood on a knife-edged plate. A column's excess over the base footprint (0
 	// at its edge, 1 at the weather's peak) sets its crown, e^dome of the slab, over whose top quarter the density fades
 	// (to nothing at the ceiling), so the shape volume rounds every core's top into billows at its own height; the base
-	// lifts toward the edge, so a small cloud's underside rounds up instead of sitting on the plate, and every cloud's base
-	// by its own share of a fifth of the slab (cl2BaseLift: no row of bases at one height). The body below is
+	// lifts toward the edge, so a small cloud's underside rounds up instead of sitting on the plate. (A base lifted by each
+	// cloud's own share of the slab, to break the line of bases toward the horizon, drew overlapping clouds as stacked
+	// flat-bottomed tiers: the blind critics' "two stacked pancakes", 2026-11-04.) The body below is
 	// the law's above (the first GPU pass, a dome fading from 55 % of the crown, thinned every cumulus' upper half: the
 	// blind critics' "flattened", "sheet-like" clouds); a cumulonimbus' anvil keeps its band.
 	if ( dot( uLayerDome, uLayerDome ) > 0.0 ) {
 		vec4 e = clamp( ( weather - ( 1.0 - uLayerCover ) ) / max( uLayerCover, vec4( 0.02 ) ), 0.0, 1.0 );
 		vec4 crown = pow( max( e, vec4( 1e-4 ) ), max( uLayerDome, vec4( 0.05 ) ) );
-		vec4 rim = 0.1 * ( 1.0 - e ) * ( 1.0 - e ) + 0.2 * cl2BaseLift;
+		vec4 rim = 0.1 * ( 1.0 - e ) * ( 1.0 - e );
 		vec4 roundTop = max( 1.0 - smoothstep( crown * 0.75, crown, hf ), step( 0.74, hf ) * step( vec4( 1e-4 ), uLayerAnvil ) );
 		d *= mix( vec4( 1.0 ), smoothstep( rim, rim + 0.08, hf ) * roundTop, step( vec4( 1e-4 ), uLayerDome ) );
 	}
