@@ -12,6 +12,8 @@ import { stripTypeScriptTypes } from 'node:module';
 // replays the owners' call order as main.ts, the loading runtimes and the Studio film make it.
 
 const post = readFileSync(new URL('./post.ts', import.meta.url), 'utf8');
+// (the holds owner, where the tree has one: a base without it still runs the hazard case below)
+const { createNamedHolds } = await import('./namedHolds.ts').catch(() => ({ createNamedHolds: null }));
 const main = readFileSync(new URL('../main.ts', import.meta.url), 'utf8');
 const film = readFileSync(new URL('../game/studioFilm.ts', import.meta.url), 'utf8');
 
@@ -23,8 +25,48 @@ function between(source, start, end) {
   return source.slice(first, last);
 }
 
-// --- the owners route through named holds (the base wrote the one boolean from every owner) ---------------------------
+// --- (round 2 Q14) the hazard itself, first: main.ts's own governor calls on post.ts's own governor --------------------
+// Whatever shape the two files have (the base wrote the one boolean from every owner; the merged tree holds by name), the
+// calls the context hooks and ui:battleStart make run against the governor suspension post.ts declares, in the order a
+// context restore that completes during a covered battle load makes them. On the base the restore wrote false over the
+// load's true, and the governor measured loading frames.
 const contextHooks = between(main, 'renderer.userData.contextRecovery = {', "bus.on('phase:change'");
+{
+  const governorCall = (source, label) => {
+    const m = source.match(/post\.(setAdaptiveSuspended|setAdaptiveHold)\(([^)]*)\)/);
+    assert.ok(m, `main.ts's ${label} calls the governor`);
+    return new Function('post', `post.${m[1]}(${m[2]});`);
+  };
+  const onLost = governorCall(between(contextHooks, '  onLost() {', '\n  },'), 'onLost');
+  const restoreBody = between(contextHooks, '  async onRestored(', '\n  },');
+  const releases = [...restoreBody.matchAll(/post\.(setAdaptiveSuspended|setAdaptiveHold)\(([^)]*)\)/g)];
+  assert.ok(releases.length > 0, "main.ts's onRestored calls the governor");
+  const onRestored = governorCall(releases.at(-1)[0], 'onRestored');
+  const battleStart = governorCall(main.match(/bus\.on\('ui:battleStart', \(\) => ([^\n]*)\);/)?.[1] ?? '', 'ui:battleStart');
+  const optional = (start, end) => {
+    const first = post.indexOf(start);
+    return first < 0 ? '' : post.slice(first, post.indexOf(end, first + start.length));
+  };
+  const holds = optional('  const adaptiveHolds = createNamedHolds', '\n  });');
+  const methods = ['setAdaptiveSuspended(suspended) {', 'setAdaptiveHold(reason, held) {']
+    .map((start) => optional(`    ${start}`, '\n    },'))
+    .filter(Boolean).map((body) => `${body}\n    },`).join('\n');
+  const g = new Function('createNamedHolds', stripTypeScriptTypes(`function governor() {
+    const renderer = { domElement: { dataset: {} } };
+    let adaptiveSuspended = false;
+    function resetGovernorState() {}
+    ${holds ? `${holds}\n  });` : ''}
+    const api = {\n${methods}\n};
+    return { api, suspended: () => adaptiveSuspended };
+  }`) + '\nreturn governor();')(createNamedHolds);
+  battleStart(g.api); // the covered battle load
+  g.api.setAdaptiveSuspended(true); // soloBattleLoadingRuntime.begin
+  onLost(g.api); // a context loss under the cover
+  onRestored(g.api); // its restore completes while the cover is still up
+  assert.equal(g.suspended(), true, "a restore during a covered load leaves the governor off (the load's frames never govern)");
+}
+
+// --- the owners route through named holds (the base wrote the one boolean from every owner) ---------------------------
 assert.match(contextHooks, /post\.setAdaptiveHold\('context-lost', true\)/, 'a context loss takes its own governor hold');
 assert.match(contextHooks, /post\.setAdaptiveHold\('context-lost', false\)/, 'and its restore releases only that hold');
 assert.doesNotMatch(contextHooks, /setAdaptiveSuspended\(/, 'the restore no longer writes the shared loading latch');
@@ -34,7 +76,6 @@ assert.match(film, /post\.holdAdaptive\('studio-film'\)/, 'the film holds the go
 assert.match(film, /state\.adaptiveHold\.release\(\)/, 'and releases only that handle');
 
 // --- the production holds owner (post.ts) --------------------------------------------------------------------------
-const { createNamedHolds } = await import('./namedHolds.ts');
 const holdsDecl = between(post, '  const adaptiveHolds = createNamedHolds', '\n  });') + '\n  });';
 const method = (start) => between(post, `    ${start}`, '\n    },') + '\n    }';
 const createGovernor = new Function('createNamedHolds', stripTypeScriptTypes(`function governor() {

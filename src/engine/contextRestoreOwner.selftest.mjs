@@ -35,7 +35,9 @@ function fixture(onRestored, { beforeLost, onLost } = {}) {
 }
 
 {
-  // the superseded restoration sees its signal abort, and the next one starts only after it settles
+  // the superseded restoration sees its signal abort, and the next one starts only after it settles. (Round 2 Q14) the
+  // hazard is asserted first, in terms any version of the machine has (the owner's own calls): on the base a second loss
+  // and restore started a second owner restoration beside the first; the machine's new records are checked after it
   const first = deferred();
   const signals = [];
   let running = 0, maxRunning = 0;
@@ -44,23 +46,23 @@ function fixture(onRestored, { beforeLost, onLost } = {}) {
     running += 1; maxRunning = Math.max(maxRunning, running);
     try {
       if (signals.length === 1) await first.promise;
-      if (signal.aborted) throw new Error('superseded');
+      if (signal?.aborted) throw new Error('superseded');
       return true;
     } finally { running -= 1; }
   });
   f.lost(); f.restored(); await flush();
-  assert.equal(f.controller.state, 'restoring');
-  assert.equal(signals.length, 1);
-  assert.equal(signals[0].aborted, false);
+  const restoring = { state: f.controller.state, calls: signals.length, aborted: signals[0]?.aborted };
   f.lost();
-  assert.equal(signals[0].aborted, true, 'a newer loss aborts the running restoration');
-  assert.equal(f.controller.state, 'lost');
+  const lost = { state: f.controller.state, aborted: signals[0]?.aborted };
   f.restored(); await flush();
-  assert.equal(signals.length, 1, 'the newer restoration waits for the superseded one to settle');
+  const beforeSettle = signals.length;
   first.resolve(); await flush();
-  assert.equal(signals.length, 2);
-  assert.equal(signals[1].aborted, false);
   assert.equal(maxRunning, 1, 'two owner restorations never run at once');
+  assert.equal(beforeSettle, 1, 'the newer restoration waits for the superseded one to settle');
+  assert.equal(signals.length, 2, 'and starts once it has');
+  assert.deepEqual(restoring, { state: 'restoring', calls: 1, aborted: false });
+  assert.deepEqual(lost, { state: 'lost', aborted: true }, 'a newer loss aborts the running restoration');
+  assert.equal(signals[1].aborted, false);
   assert.equal(f.notices.at(-1), 'ready');
   assert.equal(f.controller.state, 'live');
 }
