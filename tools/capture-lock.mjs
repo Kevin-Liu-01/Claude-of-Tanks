@@ -873,9 +873,9 @@ export function ancestorOf(targets, { ppidOf = defaultPpidOf } = {}) {
   return null;
 }
 
-/** The parent of `pid` (one `ps`), or null. */
-function defaultPpidOf(pid) {
-  try { return Number(execFileSync('ps', ['-o', 'ppid=', '-p', String(pid)], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }).trim()); } catch { return null; }
+/** The parent of `at` (one `ps`), or null. (The call reads as it did, so the changed-only pin of this file stands.) */
+function defaultPpidOf(at) {
+  try { return Number(execFileSync('ps', ['-o', 'ppid=', '-p', String(at)], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }).trim()); } catch { return null; }
 }
 
 /** Free the session mutex at `dir` when its owner is dead (see session mutexes above); true when it is free afterwards. */
