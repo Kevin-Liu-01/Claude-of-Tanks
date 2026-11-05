@@ -150,13 +150,18 @@ assert.ok(Math.abs(dome.base - old.base) < 0.02, `one flat base line, round 6's 
 assert.ok(dome.half > 0.98 * old.half && dome.high > 0.95 * old.high,
   `and the body below is round 6's (${dome.half.toFixed(2)} / ${dome.high.toFixed(2)} at a half and three quarters of the slab against ${old.half.toFixed(2)} / ${old.high.toFixed(2)})`);
 
-// the share of the wind frame's lobes: a full fair-weather sky keeps its clouds apart on them, a sparse one keeps its
-// coverage on the floor, a tower's sky keeps the knob's (Verdant at under a third of the knob: one mass over nine tenths
-// of its cloud; Reservoir on the local weather alone: twice its coverage in one flat mass)
+// the share of the wind frame's lobes: a full fair-weather sky keeps its clouds apart on them, a sparse one and one at half
+// cover keep their coverage and masses on the floor, a deep convective sky keeps the knob's (Verdant at under a third of
+// the knob: one mass over nine tenths of its cloud; Reservoir on the local weather alone: twice its coverage in one flat
+// mass; Blackglass at four tenths: kilometre puffs of one size)
 assert.ok(cloudLaneStreetShare(0.35, 0.61, 0.15) > 0.5, 'a full fair-weather sky reads at least half the lobes');
 assert.equal(cloudLaneStreetShare(0.3, 0.2, 0), CLOUD_LOBE_FLOOR, 'a sparse humilis sky reads the lobes at the floor');
 assert.ok(Math.abs(cloudLaneStreetShare(0.3, 0.33, 0.15) - CLOUD_LOBE_FLOOR * 0.85 * 0.85) < 1e-12, 'a sparse fair-weather sky at the floor, its towers damping it');
+assert.ok(Math.abs(cloudLaneStreetShare(0.35, 0.51, 0.15) - CLOUD_LOBE_FLOOR * 0.85 * 0.85) < 1e-12, 'a sky at half cover at the floor');
 assert.equal(cloudLaneStreetShare(0.1, 0.6, 1), cloudStreetShare(0.1), 'a front\'s towers keep the knob\'s share');
+assert.equal(cloudLaneStreetShare(0.15, 0.64, 0.6), cloudStreetShare(0.15), 'a deep convective sky keeps the knob\'s share');
+let above = Infinity;
+for (let w = 0; w <= 1; w += 0.05) { const v = cloudLaneStreetShare(0.15, 0.64, w); assert.ok(v <= above + 1e-12, 'falling with the towers'); above = v; }
 assert.equal(cloudLaneStreetShare(0.9, 0.45, 0.1), cloudStreetShare(0.9), 'a street sky its knob');
 let prev = 0;
 for (let c = 0; c <= 1.25; c += 0.05) { const v = cloudLaneStreetShare(0.35, c, 0.15); assert.ok(v >= prev - 1e-12, 'rising with the cover'); prev = v; }

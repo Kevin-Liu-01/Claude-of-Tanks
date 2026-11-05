@@ -125,11 +125,17 @@ export function cloudStreetShare(streets: number): number {
  * CLOUD_LOBE_FLOOR: the local weather alone set its cover by where the map sat on it — Reservoir's view one flat mass at
  * twice its coverage (CPU model 0.19 of the sky, 8.4 km across; round 71 0.09 and 1.3 km), the blind critics' "a flat,
  * lit slab", 0-3 (2026-11-05) — and the floor brings every sparse sky back to its coverage, its clouds a little larger
- * than round 71's. A tower's sky takes little: the lobes would cut its towers to stubs.
+ * than round 71's. The share climbs only past half cover (0.47 to 0.6): a sky at half cover mixing in four tenths of the
+ * lobes cut its masses into kilometre puffs of one size (Blackglass: CPU model, the largest cloud 0.05 of the cloud and
+ * 1.7 km at the 90th percentile against round 71's 0.25 and 4.7 km — the blind critics' "small uniform cotton balls"
+ * against round 71's "large billowing cumulus with shaded undersides", Blackglass, Skybridge and Polders 0-3, 2026-11-05);
+ * at the floor its masses keep round 71's sizes (0.16 and 3.9 km). A tower's sky takes little, a deep convective one
+ * (towers 0.6 and over) none past its knob: the lobes cut its towers to stubs and sprinkled specks between them (Delta and
+ * Mangrove 1-2, "scattered thin broken fragments" against round 71's "rounded three-lobed cluster").
  */
 export function cloudLaneStreetShare(streets: number, cover: number, towers: number): number {
-  const t = clamp((cover - 0.25) / 0.35, 0, 1), k = 1 - clamp(towers, 0, 1);
-  return Math.max(cloudStreetShare(streets), Math.max(CLOUD_LOBE_FLOOR, 0.75 * t * t * (3 - 2 * t)) * k * k);
+  const t = clamp((cover - 0.47) / 0.13, 0, 1), k = 1 - clamp(towers, 0, 1), u = clamp((towers - 0.3) / 0.3, 0, 1);
+  return Math.max(cloudStreetShare(streets), Math.max(CLOUD_LOBE_FLOOR, 0.75 * t * t * (3 - 2 * t)) * k * k * (1 - u * u * (3 - 2 * u)));
 }
 /**
  * clouds-269: the least share of the wind frame's cumulus a convective lane takes (cloudLaneStreetShare; CPU model over the
