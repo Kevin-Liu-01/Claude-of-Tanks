@@ -1110,8 +1110,6 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/ui/components/surfaceStackOwnership.selftest.mjs',
     // 2026-11-02 audit F5: the Garage's one open state, the epoch its lazy openers check, the shared ready wait
     'src/ui/garageOpenState.selftest.mjs',
-    // 2026-11-02 audit R6 (round 2 U35): the consumables' smoke table is asked again under the lazy-chunk policy, never per hover
-    'src/ui/garageSmokeTableLoad.selftest.mjs',
     'src/ui/transientSurfaceRegistry.selftest.mjs',
     // 2026-10-27 (owner: "lets ensure we have good loadin gstates for everything"): every loading surface registered with
     // its lane and box for tools/loading-census.mjs, and the kit's fade-on-decode
@@ -2081,6 +2079,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/game/equipment.selftest.mjs',
     'src/game/consumables.selftest.mjs',
     'src/game/consumableLoadout.selftest.mjs',
+    // 2026-11-02 audit R6 (round 2 U35): the consumables' smoke table is asked again under the lazy-chunk policy, never per hover
+    'src/ui/garageSmokeTableLoad.selftest.mjs',
     'src/game/wheelNotches.selftest.mjs',
     'src/game/input.selftest.mjs',
     // 2026-10-23 (aim-focus 243): refused Settings relocks never latch cursor aim; a menu click is never an aim point
