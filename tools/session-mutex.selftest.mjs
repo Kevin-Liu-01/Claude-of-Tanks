@@ -133,6 +133,27 @@ try {
     assert.deepEqual([sessionMutexState(dir).state, sessionMutexHeldByAncestor(dir)], ['live', false], 'a child\'s hold is not this process\'s ancestor\'s');
     holder.kill('SIGKILL');
     await new Promise((done) => holder.once('close', done));
+    // (round 2 U38) the polite lock (visual-census --probe-lock) under the mutex's holder nests in it too: it waited behind
+    // its own parent (a live owner is never reaped), 20 min as the patient head, then stepped behind until its timeout
+    const fifo = { queueDir: join(root, 'polite-queue'), lockDir: join(root, 'polite-fifo') };
+    const census = `import { createPoliteCaptureLock } from ${JSON.stringify(new URL('./visual-census-lock.mjs', import.meta.url).href)};
+      import { sessionMutexState } from ${JSON.stringify(LOCK)};
+      const lock = createPoliteCaptureLock({ probeDir: ${JSON.stringify(dir)}, queueDir: ${JSON.stringify(fifo.queueDir)}, lockDir: ${JSON.stringify(fifo.lockDir)},
+        requeuePauseMs: 20, headPollMs: 15, patientPollMs: 20, patientHeadMs: 200, maxHolderWaitMs: 50 });
+      const t0 = Date.now();
+      try {
+        await lock.acquire(1500);
+        const ms = Date.now() - t0, held = lock.held;
+        lock.release();
+        const after = sessionMutexState(${JSON.stringify(dir)});
+        console.log(JSON.stringify({ ok: true, ms, held, after: after.state, own: after.pid === process.ppid }));
+      } catch (error) { console.log(JSON.stringify({ ok: false, ms: Date.now() - t0, error: error.message })); }`;
+    const polite = spawnSync(process.execPath, [WRAPPER, dir, '--', process.execPath, '--input-type=module', '-e', census], { encoding: 'utf8' });
+    assert.equal(polite.status, 0, polite.stderr);
+    const result = JSON.parse(polite.stdout.trim().split('\n').at(-1));
+    assert.equal(result.ok, true, `the polite lock under the mutex's holder nests in it: ${JSON.stringify(result)}`);
+    assert.deepEqual([result.held, result.after, result.own], [true, 'live', true], 'held while it ran; its release leaves the holder\'s mutex');
+    assert.equal(existsSync(dir), false, 'the wrapper released the mutex once its command ended');
   }
   console.log('session-mutex.selftest: an owned probe mutex (live kept, dead and legacy-dead reaped, a bare shell mkdir never), the polite lock on it, the shell wrapper (its wait timeout its own status), and a holder\'s descendants nesting in it');
 } finally {
