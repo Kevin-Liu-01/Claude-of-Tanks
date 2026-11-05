@@ -502,8 +502,6 @@ export function outlandAdoptable(x: number, z: number, reachM = OUTLAND_ADOPT_M)
 
 export interface TreeObstacle extends CollisionRecord {
   treeIdx: number;
-  _pressS?: number;
-  _pressT?: number;
 }
 
 interface ConcealmentDisc extends VegetationDisc {
@@ -9301,14 +9299,10 @@ function* vegetationBuildSteps(
     return felledTrees.fell(ob, dx, dz, settled);
   }
   function resetToppled(): void {
+    // (2026-11-02 audit M6; round 2 U13) a hull's press on a trunk is its battle's own ledger (sim/crushPress.ts), cleared
+    // at each battle start (game/state.ts resetBattleSession) and made per match by the authority: no press state lives
+    // on the trunk records, so the reset is the felled trees' alone
     felledTrees.restoreAll();
-    // (2026-11-02 audit M6) nothing reads these two fields any more: a hull's press on a trunk is its battle's own ledger
-    // (sim/crushPress.ts), which the solo step clears at each battle start (game/state.ts resetBattleSession) and the
-    // authority makes per match. These writes are dead and go with the fields in the press cleanup (round two).
-    for (const ob of treeObstacles) {
-      ob._pressS = 0;
-      ob._pressT = -1e9;
-    }
   }
 
   const grassSelection: {

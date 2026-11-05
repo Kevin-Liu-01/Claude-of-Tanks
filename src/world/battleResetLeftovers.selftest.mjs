@@ -48,4 +48,12 @@ assert.ok(reset.includes('trackMarks.reset();'), 'the reset section');
 assert.match(reset, /terrain\.userData\.resetWater\?\.\(\); setWater\(\[\]\);/, 'the water\'s ripples cleared (its static contacts kept)');
 assert.match(reset, /tallGrass\.pressure\?\.clear\(\); tallGrass\.pressureFine\?\.clear\(\);/, 'both press fields back at rest');
 
+// ---- (round 2 U13) no press state on the world's records: a hull's press is its battle's own ledger (sim/crushPress.ts,
+// cleared at each battle start); the resets wrote two dead fields onto every trunk and prop record, and a census tool
+// deleted them
+for (const rel of ['./vegetation.ts', './props.ts', '../../tools/tank-world-contact-census.mjs']) {
+  const text = readFileSync(new URL(rel, import.meta.url), 'utf8');
+  assert.doesNotMatch(text, /_press[ST]\b/, `${rel}: no _pressS/_pressT field, write or delete`);
+}
+
 console.log('battleResetLeftovers.selftest: the Studio\'s sweeps restored, no runtime stream draw, water and sward reset with the world');

@@ -880,8 +880,6 @@ interface PropsDestructibleMeta extends Omit<DestructiblePropType, 'cls' | 'mat'
 
 interface PropsCollisionRecord extends CollisionRecord {
   __looseStamp?: number;
-  _pressS?: number;
-  _pressT?: number;
   hedgehogId?: number;
 }
 
@@ -13108,10 +13106,7 @@ ${snowCap ? `
    */
   function restoreDestructibleRecord(rec: DestructibleRecord): void {
     crushRecordsOf(rec, false); // (2026-11-02 audit M9) every cover record of the prop stands again
-    if (rec.ob) {
-      rec.ob._pressS = 0;
-      rec.ob._pressT = -1e9;
-    }
+    // (round 2 U13) a hull's press is the battle's own ledger (sim/crushPress.ts), not a field on the record
     if (rec.loopRef) rec.loopRef.toppled = false;
     if (rec.body) {
       resetLoosePropBody(rec.body);

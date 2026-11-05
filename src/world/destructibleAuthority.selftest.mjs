@@ -356,4 +356,17 @@ try {
   } finally { tossed.dispose(); }
 }
 
+// ---- (round 2 U13) a reset leaves no press state on the world's records: the hull's press is the battle's own ledger
+// (sim/crushPress.ts); the reset wrote two dead fields onto every movement record
+{
+  const pressed = fixture([['crate', 0, 0], ['wallstone', 4, 0]]);
+  try {
+    pressed.crushDestructible(0, 1, 0, 8, 'ram');
+    pressed.resetDestructibles();
+    for (const record of pressed.records) {
+      assert.ok(record.ob && !('_pressS' in record.ob) && !('_pressT' in record.ob), `${record.kind}: no press fields on its record`);
+    }
+  } finally { pressed.dispose(); }
+}
+
 console.log('destructibleAuthority.selftest: cosmetic/authority boundary, actual solo/network callers, fixed pools, deferred blasts and rematch reset passed');
