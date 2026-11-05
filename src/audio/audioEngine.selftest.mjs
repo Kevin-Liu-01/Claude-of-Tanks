@@ -3,6 +3,7 @@ import { readFile } from 'node:fs/promises';
 import { readFileSync, readdirSync } from 'node:fs';
 import { createFakeContext, fakeBuffer } from './fakeAudioContext.test-support.mjs';
 import { createBus } from '../game/stateCore.ts';
+import { publishKillcamScreen } from '../game/killcamScreen.ts';
 import { CREW_VOICE_NATIONS } from './crewVoice.ts';
 import { emitDebrisLanding, emitTurretLanding } from '../fx/clock.ts';
 import { GAME_MODE_IDS } from '../sim/matchModes.ts';
@@ -34,6 +35,9 @@ const terrain = {
 let gameMode = 'standard';
 const audio = createAudio({ context: ctx, getMapId: () => 'urban', getGameMode: () => gameMode, getTerrain: () => terrain, tier: 'desktop' });
 const bus = createBus();
+// the replay controller's own flag (killcamScreen.ts, IR15): the kill-cam mix follows it, the edges only notify
+let replayLive = false;
+publishKillcamScreen(bus, () => replayLive);
 audio.bindBus(bus);
 assert.equal(ctx.nodes.length, 0, 'nothing is built before resume()');
 audio.resume();
@@ -374,6 +378,7 @@ assert.deepEqual(miss(10, 900), ['miss', 0], 'a round over the target is a plain
 // Kill-cam replay: a crisp blast, then debris stretched to the 0.55x replay, all on the cinematic bus.
 since = mark();
 ctx.advance(6);
+replayLive = true;
 bus.emit('killcam:begin', { kind: 'projectile' });
 bus.emit('killcam:impact', { cause: 'ammorack', pos: [-40, 0, 120], timeScale: 0.55 });
 const replay = logSince(since);
@@ -384,6 +389,7 @@ assert.ok(blast.r > 0.85, 'the blast transient stays crisp');
 assert.ok(debris?.b === 'cinematic' && debris.r > 0.5 && debris.r < 0.6, `debris stretched to the replay rate (${debris?.r})`);
 assert.equal(probe.killcamSfxLog.at(-1).slowRate, 0.55);
 assert.equal(probe.snapshot, 'killcam');
+replayLive = false;
 bus.emit('killcam:done', {});
 
 // Panning follows the camera: world −X is screen-right when looking along +Z.

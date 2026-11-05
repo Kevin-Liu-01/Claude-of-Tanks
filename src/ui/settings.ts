@@ -2203,7 +2203,12 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
       if (open) { relockOnClose = false; closePanel(); }
     });
   }
-  setInterval(updateGear, 150); // fallback only — events above hide/show instantly
+  // fallback only — events above hide/show instantly. It holds no state: it re-projects the gear and the PAUSED tag and
+  // asks the input owner to drop a veil once the battle is no longer the player's (U22 round 2, kept by design). Two of
+  // isBattleActive's inputs have no edge here: the player's death without a replay (a death replay's killcam:begin drops
+  // the veil itself) and a Watch seat ending; the network client marks a hull destroyed from its snapshot, not in the
+  // order of its tank:destroyed, so an edge read there could see the hull alive.
+  setInterval(updateGear, 150);
   updateGear();
 
   // --- controls hint strip -----------------------------------------------------------

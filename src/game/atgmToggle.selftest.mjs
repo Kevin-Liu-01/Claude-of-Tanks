@@ -100,4 +100,41 @@ row(0);
 input.press('atgm');
 assert.equal(player.input.shellSlot, 1, 'Q returns to the round the digit picked, not the lagging row\'s cannon round');
 
-console.log('atgmToggle.selftest: Q and the HUD tile toggle the guided round and back from the game state, with no HUD loaded and through a lagging network row');
+// (U23, round 2) the pad's LB enters the missile through the sim's guided-missile action (activateGuidedMissile selects it
+// itself and remembers the round it left as previousShellSlot; no ui:shellSelect): Q then returns to that round, never to
+// the last round a digit picked. And a new tank forgets the last one's return slot.
+{
+  const lb = { kind: 'guided_missile', missileSlot: 2, previousShellSlot: -1 };
+  player.specialAction = lb;
+  player.input.shellSlot = 0;
+  player.combat.shellSlot = 0;
+  input.press('shell1');
+  input.press('shell2'); // HEAT (the digit leaves Sabot: the return slot the toggle kept read Sabot from here)
+  assert.equal(player.combat.shellSlot, 1);
+  // LB: the sim's activateGuidedMissile records HEAT and selects the missile itself, then the HUD hears the change
+  lb.previousShellSlot = 1; player.combat.shellSlot = 2; player.input.shellSlot = 2;
+  bus.emit('ui:shellSelectionChanged', { slot: 2 });
+  input.press('atgm');
+  assert.equal(player.combat.shellSlot, 1, 'Q after LB returns to the HEAT round the missile left (the sim\'s memory)');
+  player.specialAction = null;
+}
+{
+  const other = createBus();
+  const tracked = { ...player, combat: { ...player.combat, shellSlot: 1, ammo: [20, 10, 4] }, input: { shellSlot: 1 }, specialAction: null };
+  const otherGame = { phase: 'battle', timeS: 0, player: tracked };
+  const actions = createPlayerBattleActions({
+    game: otherGame, bus: other, input: { onAction: () => () => {} }, rules, isSettingsOpen: () => false,
+    network: { isActive: () => false, queueConsumable() {}, queueAction() {} },
+  });
+  other.emit('ui:atgmToggle', {});
+  assert.equal(tracked.combat.shellSlot, 2, 'on the missile from HEAT');
+  // the next battle's tank: two cannon rounds the other way round, the missile last; the last tank's HEAT slot is stale
+  const nextSpec = { gun: { shells: [spec.gun.shells[1], spec.gun.shells[0], spec.gun.shells[2]] } };
+  actions.setTank(nextSpec);
+  tracked.spec = nextSpec;
+  tracked.combat.shellSlot = 2; tracked.input.shellSlot = 2; // it spawns on its missile (no pick yet this battle)
+  other.emit('ui:atgmToggle', {});
+  assert.equal(tracked.combat.shellSlot, 0, 'a new tank returns to its first cannon round, not the last tank\'s slot');
+}
+
+console.log('atgmToggle.selftest: Q and the HUD tile toggle the guided round and back from the game state, with no HUD loaded, through a lagging network row, after the pad\'s LB and across a tank change');

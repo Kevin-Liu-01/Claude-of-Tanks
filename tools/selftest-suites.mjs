@@ -1672,6 +1672,8 @@ export const SELFTEST_SUITES = Object.freeze({
     // 2026-11-02 audit F11: the engine's battle mode is one state with one transition function (next round, duplicate deaths
     // and presentations, facts before the graph, the lazy carry)
     'src/audio/battleMode.selftest.mjs',
+    // 2026-11-02 audit Q16 (round 2): sfx-smoke's synthetic deaths, read from the tool, revive first and are heard once a life
+    'src/audio/sfxSmokeDeaths.selftest.mjs',
     // 2026-11-02 audit F11: under the battle loader only its bed (the director's scene goes with the teardown's loops; the
     // battle's ambience intent is per battle)
     'src/audio/ambienceTeardown.selftest.mjs',
@@ -2781,6 +2783,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/ui/touchControlsAccess.selftest.mjs',
     'src/ui/settingsAccess.selftest.mjs',
     'src/ui/battleInputOwner.selftest.mjs', // 2026-11-02 audit F4: one battle input owner (presentation > menu > veil > play)
+    // 2026-11-02 audit IR15 (round 2): the kill-cam replay's own flag is the one screen fact the input owner reads
+    'src/game/killcamScreen.selftest.mjs',
     'src/ui/battleReportGate.selftest.mjs', // 2026-11-02 audit F4: the report gate holds for every presentation, decides again
     'src/ui/battleReportGateHud.selftest.mjs', // 2026-11-02 audit F4: shotInfo's report gate through the real HUD (replay, stale decision)
     'src/ui/hudMagazine.selftest.mjs',

@@ -9,9 +9,15 @@
 import { created, windowStub } from './hudDomHarness.test-support.mjs';
 import assert from 'node:assert/strict';
 import { createBus } from '../game/stateCore.ts';
+import { publishKillcamScreen } from '../game/killcamScreen.ts';
 import { initHud } from './hud.ts';
 
 const bus = createBus();
+// the kill-cam controller publishes its own `active` flag on the bus (killcamScreen.ts, IR15); its edges only notify
+let replayLive = false;
+publishKillcamScreen(bus, () => replayLive);
+const replayBegins = (kind) => { replayLive = true; bus.emit('killcam:begin', { kind }); };
+const replayDone = () => { replayLive = false; bus.emit('killcam:done', {}); };
 const hud = initHud(bus);
 const statsRoot = created.find((element) => element.classes.has('cot-si-stats'));
 assert.ok(statsRoot, 'the report root exists');
@@ -75,11 +81,11 @@ const newBattle = () => { hud.setMode('hidden'); hud.setMode('battle'); };
 // --- (a) a verdict during a mid-battle replay: the verdict's own camera beat takes the screen before the report ---------
 newBattle();
 assert.equal(shown(), false);
-bus.emit('killcam:begin', { kind: 'death' }); // the player's death replay, mid-battle
+replayBegins('death'); // the player's death replay, mid-battle
 ended(); // the verdict lands while it plays (the result presentation is not updated during a replay)
 for (let i = 0; i < 60; i++) frame();
 assert.equal(shown(), false, 'no report over the replay');
-bus.emit('killcam:done', {});
+replayDone();
 assert.equal(shown(), false, 'the replay\'s end does not render the report at once (the verdict has not chosen its close)');
 frame(() => bus.emit('ending:begin', { beat: 'wreckOrbit' })); // the next frame arms the verdict's wreck orbit
 for (let i = 0; i < 60; i++) frame(); // a second of the beat: neither the frame decision nor its fallback renders
@@ -100,9 +106,9 @@ ended(); // the next battle's verdict: its final-kill replay begins in the next 
 runQueued(firstBattleFrame); // the first battle's frame fires (a browser that runs it late: a throttled tab)
 advance(0);
 assert.equal(shown(), false, 'the first battle\'s frame does not decide the next battle\'s report');
-frame(() => bus.emit('killcam:begin', { kind: 'final' }));
+frame(() => replayBegins('final'));
 assert.equal(shown(), false, 'no report over the next battle\'s replay');
-bus.emit('killcam:done', {});
+replayDone();
 frame();
 assert.equal(shown(), true, 'the next battle\'s report renders after its replay');
 
@@ -114,8 +120,8 @@ newBattle();
 ended();
 advance(0); // the first battle's macrotask runs before the next battle's own frame
 assert.equal(shown(), false, 'the first battle\'s pending decision does not decide the next battle\'s report');
-frame(() => bus.emit('killcam:begin', { kind: 'final' }));
-bus.emit('killcam:done', {});
+frame(() => replayBegins('final'));
+replayDone();
 frame();
 assert.equal(shown(), true);
 
@@ -134,7 +140,23 @@ owner.closeMenu();
 frame();
 assert.equal(shown(), true, 'the report renders once the menu closes');
 
+// --- (d) U22, round 2: a menu held open past the 16 s watchdog still holds the report; its close decides again, so the
+// verdict's final-kill replay (armed by the first frame after the close) takes the screen before the report -----------
+newBattle();
+await new Promise((resolve) => realTimers.setTimeout(resolve, 300)); // the owner's done grace, on the page clock
+assert.equal(owner.openMenu(), true);
+ended();
+for (let i = 0; i < 60; i++) frame();
+advance(20_000); // the player reads the controls for 20 s; the result presentation does not advance under the menu
+assert.equal(shown(), false, 'no report under a menu held open past the watchdog');
+owner.closeMenu();
+frame(() => replayBegins('final'));
+assert.equal(shown(), false, 'the verdict\'s replay is not armed over a report already on screen');
+replayDone();
+frame();
+assert.equal(shown(), true, 'the report renders after the replay');
+
 hud.setMode('hidden');
 assert.equal(shown(), false, 'hideStats drops the report');
 for (const host of [globalThis, windowStub]) Object.assign(host, realTimers);
-console.log('battleReportGateHud.selftest: through the real HUD, a verdict during a mid-battle replay waits for its camera beat and battle:presented, a stale decision never decides the next battle\'s report, and the menu holds the report');
+console.log('battleReportGateHud.selftest: through the real HUD, a verdict during a mid-battle replay waits for its camera beat and battle:presented, a stale decision never decides the next battle\'s report, and the menu holds the report (past the watchdog too)');

@@ -61,9 +61,10 @@ import {
 } from './weaponAudio.ts';
 import { isCrewVoiceSetting, normalizeCrewVoiceSetting, resolveCrewLanguage, type CrewVoiceSetting } from './crewVoice.ts';
 import {
-  audioBattleResult, copyAudioBattleMode, createAudioBattleMode, stepAudioBattleMode,
+  AUDIO_BATTLE_FACT_EVENTS, audioBattleFact, copyAudioBattleMode, createAudioBattleMode, stepAudioBattleMode,
   type AudioBattleEdge, type AudioBattleEvent, type AudioBattleMode,
 } from './battleMode.ts';
+import { killcamOwnsScreen } from '../game/killcamScreen.ts';
 
 type Vec3 = readonly [number, number, number];
 const UNPLACED: Vec3 = Object.freeze([NaN, NaN, NaN]) as Vec3;
@@ -555,6 +556,17 @@ export function createAudio({
   // The battle mode (battleMode.ts): the phase, the stage (loading, live, over, presented), the overlays (paused,
   // kill-cam) and the battle's serial. Its one writer is applyMode(), fed by the bus facts that move it.
   const battleMode: AudioBattleMode = initialMode ? copyAudioBattleMode(initialMode) : createAudioBattleMode(initialPhase);
+  // The kill-cam overlay is the replay controller's own flag on the bound bus (src/game/killcamScreen.ts, IR15): read at
+  // its begin/done edges and every frame (syncKillcam), so a done that never reaches this mixer cannot keep the kill-cam
+  // mix, and a repeated begin or a done with no begin plays no whoosh.
+  let modeBus: EventBus | null = null;
+  const killcamLive = (): boolean => killcamOwnsScreen(modeBus);
+  const KILLCAM_ON: AudioBattleEvent = Object.freeze({ kind: 'killcam', on: true });
+  const KILLCAM_OFF: AudioBattleEvent = Object.freeze({ kind: 'killcam', on: false });
+  function syncKillcam(): void {
+    const live = killcamLive();
+    if (battleMode.killcam !== live) applyMode(live ? KILLCAM_ON : KILLCAM_OFF);
+  }
   let loading: Rig | null = null;
   let loadingActive = false;
   let ambientWanted = false;
@@ -685,23 +697,42 @@ export function createAudio({
     if (want.from < 0) want.from = ctx.currentTime;
     const elapsed = ctx.currentTime - want.from;
     const { delayS = 0, maxDurS } = want.options;
-    // a loop with a length (the heartbeat) whose moment has passed while it decoded is not started at all
-    if (maxDurS != null && maxDurS - elapsed < 0.5) { want.state = 'off'; return; }
-    const decoded = library.has(want.id);
-    const voice = pool.play(want.id, elapsed > 0.001
-      ? { ...want.options, loop: true, delayS: Math.max(0, delayS - elapsed), ...(maxDurS != null ? { maxDurS: maxDurS - elapsed } : {}) }
-      : { ...want.options, loop: true });
-    if (voice) { want.voice = voice; want.state = 'playing'; }
-    else if (decoded) want.state = 'off';
+    // a loop with a length (the heartbeat) whose moment has passed while it decoded is not started at all (and leaves
+    // the waiting list below: U34, round 2)
+    if (maxDurS != null && maxDurS - elapsed < 0.5) want.state = 'off';
     else {
-      // still decoding (the ask above queued it in the front lane): start it when it lands
-      if (!waitingLoops.includes(want)) waitingLoops.push(want);
-      const lib = library;
-      void lib.load([want.id]).then(() => { if (want.state === 'waiting' && lib.has(want.id)) startLoop(want); });
+      const decoded = library.has(want.id);
+      const voice = pool.play(want.id, elapsed > 0.001
+        ? { ...want.options, loop: true, delayS: Math.max(0, delayS - elapsed), ...(maxDurS != null ? { maxDurS: maxDurS - elapsed } : {}) }
+        : { ...want.options, loop: true });
+      if (voice) { want.voice = voice; want.state = 'playing'; }
+      else if (decoded) want.state = 'off';
+      else {
+        // still decoding (the ask above queued it in the front lane): start it when it lands. A decode that fails, or an
+        // ask inside the library's retry backoff, is asked again by sweepWaitingLoops once that backoff has run out.
+        if (!waitingLoops.includes(want)) waitingLoops.push(want);
+        const lib = library;
+        void lib.load([want.id]).then(() => { if (want.state === 'waiting' && lib.has(want.id)) startLoop(want); });
+      }
     }
     if (want.state !== 'waiting') {
       const at = waitingLoops.indexOf(want);
       if (at >= 0) waitingLoops.splice(at, 1);
+    }
+  }
+
+  /**
+   * A wanted loop whose recording failed (a transient fetch error), or that was asked for inside the library's retry
+   * backoff, waits with no load in flight: about once a second (on the audio clock) each one whose retry is due asks
+   * again (U34, round 2). In place, no allocation; startLoop may take the want off the list, so it walks backwards.
+   */
+  let loopSweepAt = 0;
+  function sweepWaitingLoops(now: number): void {
+    if (!library || waitingLoops.length === 0 || now < loopSweepAt) return;
+    loopSweepAt = now + 1;
+    for (let i = waitingLoops.length - 1; i >= 0; i--) {
+      const want = waitingLoops[i];
+      if (want && library.retryDue(want.id)) startLoop(want);
     }
   }
 
@@ -2326,6 +2357,10 @@ export function createAudio({
       scene = sceneForMap(mapId);
       atmosphere = atmosphereForMap(mapId);
       pool.setAtmosphere(atmosphere);
+      // the battle's room from its edge (U34, round 2): the loader's bed and the battle's vehicle rigs, heard under the
+      // loader, never ring in the Garage hangar's reverb; the reveal's ambientOn brings the world's loops (the director's
+      // play sets the same room again)
+      mixer.setReverb(scene.reverb);
       if (ambientWanted) ambience.play(scene, true);
     } else {
       scene = GARAGE_SCENE;
@@ -2369,7 +2404,6 @@ export function createAudio({
     lastSixthSenseAt = -99;
     lastSixthAlertAt = -99;
     heartbeatBelow = 0;
-    playerBurning = false;
     wasOverturned = false;
     wasDeep = false;
     stuckS = 0;
@@ -2806,18 +2840,16 @@ export function createAudio({
     on<ReloadEvent>('player:reload', onReload);
     // The battle mode's facts are state, not cues: they are taken whether or not the graph exists yet (resume() replays
     // the mode), and only their sounds wait for it (2026-11-02 audit F11).
-    const onFact = <T>(event: string, fact: (payload: T | undefined) => AudioBattleEvent): void => {
-      listen(event, (payload) => { applyMode(fact(payload as T | undefined)); });
-    };
-    onFact<{ phase?: string }>('phase:change', (e) => ({ kind: 'phase', phase: e?.phase || 'garage' }));
     // The battle rolls out once (a second edge never sounds the horn twice). A client that joins a running battle (a late
-    // join, a rejoin, a host migration: `late`) rolls out with no cues: it never saw the count.
-    onFact<{ late?: boolean }>('battle:rollout', (e) => ({ kind: 'rollout', late: !!e?.late }));
-    onFact<{ result?: string }>('battle:ended', (e) => ({ kind: 'ended', result: audioBattleResult(e?.result) }));
-    onFact<{ result?: string }>('battle:presented', (e) => ({ kind: 'presented', result: audioBattleResult(e?.result) }));
-    onFact<undefined>('killcam:begin', () => ({ kind: 'killcam', on: true }));
-    onFact<undefined>('killcam:done', () => ({ kind: 'killcam', on: false }));
-    onFact<{ on?: boolean }>('ui:pause', (e) => ({ kind: 'pause', on: !!e?.on }));
+    // join, a rejoin, a host migration: `late`) rolls out with no cues: it never saw the count. A kill-cam edge's fact is
+    // the replay's own flag (audioBattleFact, killcamLive). The lazy facade builds the same facts (lazyAudio.ts).
+    modeBus = bus;
+    for (const event of AUDIO_BATTLE_FACT_EVENTS) {
+      listen(event, (payload) => {
+        const fact = audioBattleFact(event, payload, killcamLive);
+        if (fact) applyMode(fact);
+      });
+    }
     // The count's last whole seconds tick (the frame owner reports each whole second once, never while PREPARING holds it).
     on<{ seconds?: number }>('battle:countdown', (e) => {
       const seconds = e?.seconds;
@@ -2881,6 +2913,7 @@ export function createAudio({
   }
 
   function update(dt: number, listener: AudioListenerPose, list: readonly RuntimeValue[], shells: readonly RuntimeValue[] = []): void {
+    syncKillcam();
     if (!ready() || !mixer || !pool || !ctx) return;
     // Keep the last finite pose: one NaN camera frame would otherwise poison every cue that frame.
     const { x: lx, y: ly, z: lz } = listener.pos;
@@ -2904,6 +2937,7 @@ export function createAudio({
     const now = ctx.currentTime;
     pool.prune(now);
     if (pendingCaptions.length) flushCaptions(now);
+    sweepWaitingLoops(now);
     mixer.update(dt);
     radio?.update();
     updateThink(now);
@@ -3067,6 +3101,7 @@ export function createAudio({
       /** The battle mode and the per-battle intents it gates (2026-11-02 audit F11). */
       battleState: () => ({ ...battleMode, ambientWanted, startEngineArmed: startEngineSoon, deathsLatched: deathLatch.size, loopsWaiting: waitingLoops.length }),
       get snapshot() { return mixer?.snapshot ?? null; },
+      get reverb() { return mixer?.reverb ?? null; },
       get tier() { return tier; },
       library: () => library?.stats() ?? null,
       /** Whether any owner pins an asset (2026-11-02 audit F11: the battle warm replaces the battle's pins only). */

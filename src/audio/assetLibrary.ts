@@ -54,6 +54,8 @@ export interface AssetLibrary {
   record(id: string): SfxAssetRecord | undefined;
   /** At least one variant decoded. */
   has(id: string): boolean;
+  /** A failed asset whose retry backoff has run out: its next request fetches it again (a wanted loop asks then). */
+  retryDue(id: string): boolean;
   /** A decoded variant, avoiding an immediate repeat; asked for before it has decoded, the asset joins the front lane. */
   pick(id: string, random: () => number): AudioBuffer | null;
   variant(id: string, index: number): AudioBuffer | null;
@@ -334,6 +336,10 @@ export function createAssetLibrary({
     has(id) {
       const entry = entries.get(id);
       return !!entry && entry.state === 'ready';
+    },
+    retryDue(id) {
+      const entry = entries.get(id);
+      return !!entry && retryDue(entry);
     },
     pick(id, random) {
       const entry = entries.get(id);

@@ -41,6 +41,10 @@ live frame: `setPose` stages, `update` commits only while the vehicle lives);
 `shotInfo.ts` owns typed resolved-hit cards, incoming-fire alerts, the bounded
 combat log, armor-diagram projection, event-derived battle statistics, and the
 killcam-aware handoff to the after-action report;
+`battleInputOwner.ts` owns who has battle input (presentation > menu > veil >
+play; one owner per bus, its kill-cam source read from the replay's own flag,
+`src/game/killcamScreen.ts`), and `battleReportGate.ts` when the report renders
+(held by a presentation on a watchdog, by the menu until it closes);
 `perfHud.ts` owns the lazy typed diagnostics surface and its bounded 4 Hz DOM
 paint;
 `studioPanel.ts` owns the typed Scene Studio workspace, actor/effect/timeline

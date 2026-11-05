@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { createSettingsAccess } from './settingsAccess.ts';
+import { publishKillcamScreen } from '../game/killcamScreen.ts';
 
 class FakeGear extends EventTarget {
   style = { display: '' };
@@ -12,6 +13,11 @@ const busHandlers = new Map();
 const input = { releaseLock() { releases++; }, onAction(_id, handler) { action = handler; } };
 const bus = { on(event, handler) { busHandlers.set(event, [...(busHandlers.get(event) ?? []), handler]); } };
 const emit = (event, payload) => { for (const handler of busHandlers.get(event) ?? []) handler(payload); };
+// the kill-cam controller publishes its own `active` flag on the bus (killcamScreen.ts, IR15); its edges only notify
+let replayLive = false;
+publishKillcamScreen(bus, () => replayLive);
+const replayBegins = () => { replayLive = true; emit('killcam:begin'); };
+const replayDone = () => { replayLive = false; emit('killcam:done'); };
 const gear = new FakeGear();
 let now = 1000;
 let modalOpen = false;
@@ -83,11 +89,11 @@ assert.equal(access.isOpen(), true);
 access.close({ noRelock: true });
 assert.equal(closes, 1);
 
-emit('killcam:begin');
+replayBegins();
 action();
 await Promise.resolve();
 assert.equal(opens, 1, 'kill-cam owns the settings action');
-emit('killcam:done');
+replayDone();
 action();
 await Promise.resolve();
 assert.equal(opens, 1, 'the replay skip key is absorbed by the done grace');
@@ -118,9 +124,9 @@ await Promise.resolve();
 assert.equal(opens, 3, 'the report keeps its Esc menu once the beat is over');
 access.close({ noRelock: true });
 // overlapping owners: the first done must not free the screen while the other still owns it
-emit('killcam:begin');
+replayBegins();
 emit('ending:begin', { beat: 'wreckOrbit' });
-emit('killcam:done');
+replayDone();
 now += 251;
 action('Escape');
 await Promise.resolve();

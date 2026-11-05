@@ -40,9 +40,18 @@ and unmuting resumes a stopped device); `listenerPoseRuntime.ts` owns
 the hybrid camera/vehicle listener. `battleMode.ts` declares the engine's
 battle mode (garage, loading, live, over, presented, with the pause and
 kill-cam overlays) and its one transition, `stepAudioBattleMode`, shared by
-the engine and the facade: route a new battle fact through it, take it
-ungated (it is state, not a cue), and reset a per-battle field only in the
-engine's `resetBattleFields()` (2026-11-02 audit F11). The two `*.generated.ts` manifests are
+the engine and the facade: build a new battle fact with `audioBattleFact` (one
+reading of a payload for both layers), route it through the transition (which
+refuses an overlay move that changes nothing or comes outside a battle), and
+take it ungated (it is state, not a cue). The kill-cam overlay's fact is the
+replay's own flag (`src/game/killcamScreen.ts`, killcam.ts `active`), read at
+each edge and by the engine every frame, never the edge itself. A field the
+engine resets has one of three owners: the phase edge (`modeEdge`: the ambience
+intent and the reload call), the battle world's teardown (`teardownBattle`:
+loops, the alarm, the heartbeat, the listener, burning), and the new battle
+(`resetBattleFields()`: every other per-battle field) (2026-11-02 audit F11).
+A wanted loop whose recording failed waits, and the engine's update asks again
+once the library's retry is due. The two `*.generated.ts` manifests are
 written by `tools/audio/build-sfx.mjs` and `tools/audio/build-voices.mjs`.
 
 ## Patterns to follow / invariants

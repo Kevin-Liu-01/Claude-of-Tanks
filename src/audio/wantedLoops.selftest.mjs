@@ -99,4 +99,91 @@ try {
   else globalThis.AudioContext = previousAC;
 }
 
+// 5. (U34, round 2) a wanted loop whose decode fails, or that is asked for inside the library's retry backoff, starts
+// once the backoff has run out (the engine's update sweeps its waiting loops about once a second; the library times its
+// backoff on performance.now, stepped here). A timed loop (the heartbeat) whose moment passes while it decodes leaves the
+// waiting list.
+{
+  let skewMs = 0;
+  const realNow = performance.now.bind(performance);
+  Object.defineProperty(performance, 'now', { configurable: true, writable: true, value: () => realNow() + skewMs });
+  try {
+    let alarmFetches = 0;
+    const failFetch = installFetch({
+      fail: (url) => url.includes('/alarm_fire_loop_') && ++alarmFetches <= 1,
+      hold: (url) => url.includes('/heartbeat_loop_'),
+    });
+    const fctx = namedContext();
+    const failing = createAudio({ context: fctx, getMapId: () => 'verdant', getGameMode: () => 'standard', getTerrain: () => terrain, tier: 'desktop' });
+    const fbus = createBus();
+    failing.bindBus(fbus);
+    failing.resume();
+    const fprobe = probeOf();
+    const self = tank('me', { isPlayer: true });
+    const run = (n) => { for (let i = 0; i < n; i++) { fctx.advance(1 / 30); failing.update(1 / 30, listener, [self]); } };
+    fbus.emit('phase:change', { phase: 'battle' });
+    run(5);
+    fbus.emit('battle:rollout', {});
+    // (a) the in-flight decode fails (a transient 404): the alarm waits, then sounds once the backoff has run out
+    fbus.emit('tank:fire', { id: 'me', burning: true });
+    run(3);
+    await settle(12);
+    run(3);
+    assert.ok(alarmFetches >= 1 && !sounding(fctx).includes('alarm_fire_loop'), 'the alarm\'s first fetch failed: silent for now');
+    skewMs += 2500; // past the 2 s first backoff
+    run(45); // one and a half seconds of frames: the sweep asks again
+    await settle(12);
+    run(3);
+    assert.ok(sounding(fctx).includes('alarm_fire_loop'), 'a wanted loop whose decode failed sounds once its retry lands');
+    fbus.emit('tank:fire', { id: 'me', burning: false });
+    run(5);
+    // (b) asked for inside the backoff: the fire again, the asset failed a moment ago (a second failure on its next ask)
+    // a fresh mixer whose first fetch fails, then the want is dropped and asked for again inside the backoff
+    const bctx = namedContext();
+    let bFetches = 0;
+    installFetch({ fail: (url) => url.includes('/alarm_fire_loop_') && ++bFetches <= 1 });
+    const backoff = createAudio({ context: bctx, getMapId: () => 'verdant', getGameMode: () => 'standard', getTerrain: () => terrain, tier: 'desktop' });
+    const bbus = createBus();
+    backoff.bindBus(bbus);
+    backoff.resume();
+    const brun = (n) => { for (let i = 0; i < n; i++) { bctx.advance(1 / 30); backoff.update(1 / 30, listener, [self]); } };
+    bbus.emit('phase:change', { phase: 'battle' });
+    brun(5);
+    bbus.emit('battle:rollout', {});
+    bbus.emit('tank:fire', { id: 'me', burning: true });
+    brun(3);
+    await settle(12);
+    bbus.emit('tank:fire', { id: 'me', burning: false }); // the fire out before the retry
+    brun(3);
+    bbus.emit('tank:fire', { id: 'me', burning: true }); // and alight again, inside the backoff
+    brun(3);
+    await settle(12);
+    assert.ok(!sounding(bctx).includes('alarm_fire_loop'), 'inside the backoff the alarm waits');
+    skewMs += 2500;
+    brun(45);
+    await settle(12);
+    brun(3);
+    assert.ok(sounding(bctx).includes('alarm_fire_loop'), 'a loop asked for inside the backoff sounds once it runs out');
+    bbus.emit('phase:change', { phase: 'garage' });
+    brun(3);
+    // (c) the heartbeat decodes after its 6 s moment: it never starts, and it leaves the waiting list
+    void failFetch;
+    self.combat.hp = Math.round(self.combat.maxHp * 0.2);
+    run(5);
+    await settle(12);
+    const waitingBefore = fprobe.battleState().loopsWaiting;
+    assert.ok(waitingBefore >= 1, `the heartbeat waits for its recording (${waitingBefore})`);
+    run(30 * 7); // seven seconds: past its moment
+    for (const held of failFetch.held.splice(0)) held.release();
+    await settle(12);
+    run(3);
+    assert.ok(!sounding(fctx).includes('heartbeat_loop'), 'a heartbeat past its moment is not started');
+    assert.equal(fprobe.battleState().loopsWaiting, waitingBefore - 1, 'and its want leaves the waiting list');
+    fbus.emit('phase:change', { phase: 'garage' });
+    run(3);
+  } finally {
+    delete performance.now;
+  }
+}
+
 console.log('wantedLoops.selftest: wanted loops start once decoded (loader, fire alarm, cook-off, heartbeat), never after their battle, and before the graph passed');
