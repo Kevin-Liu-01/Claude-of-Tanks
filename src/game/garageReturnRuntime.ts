@@ -238,7 +238,11 @@ export interface GarageReturnRuntime {
   readonly state: GarageReturnState;
   /** Ordinary Garage frames stay suppressed (the Garage is not handed over restored). */
   readonly framesSuppressed: boolean;
-  /** Resolves when the return entry in flight (swap, preparation, handoff, skipped restore) settles; null: none is. */
+  /**
+   * Resolves when no return is in flight: a Leave's whole run (its veil's fade-in, before its entry begins, included)
+   * and any return entry (swap, preparation, handoff, skipped restore); null: none is. Battle Again's lease is not
+   * waited for: its own trigger starts the next battle inside it.
+   */
   whenSettled(): Promise<void> | null;
   readonly lastTrace: GarageReturnTrace | null;
   enter(options?: GarageReturnOptions): Promise<void>;
@@ -843,12 +847,25 @@ export function createGarageReturnRuntime<Visual = object>(
     })
   );
 
+  /**
+   * (round 2 U21) The one "a return is in flight" edge every battle start waits on (main's whenGarageSettled): it read
+   * only the entry lease, so a start accepted while a Leave's veil still faded in (the lease held, the entry not yet
+   * begun) did not wait, and its cover and load ran under the veil where the return's teardown cleared them.
+   */
+  const whenSettled = (): Promise<void> | null => {
+    const leaving = transitionLease?.operation === 'leave' ? transitionLease.promise : null;
+    const entering = entryLease?.promise ?? null;
+    if (!leaving && !entering) return null;
+    return Promise.all([leaving, entering].map((lease) => lease?.then(() => {}, () => {})))
+      .then(() => whenSettled() ?? undefined);
+  };
+
   return {
     get transitioning() { return transitionLease !== null; },
     get operation() { return transitionLease?.operation ?? null; },
     get state() { return state; },
     get framesSuppressed() { return state !== 'idle'; },
-    whenSettled: () => entryLease?.promise.then(() => {}, () => {}) ?? null,
+    whenSettled,
     get lastTrace() { return lastTrace; },
     get awaitingHandoff() {
       return game.phase === 'garage' && (state === 'preparing' || state === 'prepared' || state === 'handoff');

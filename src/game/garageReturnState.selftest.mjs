@@ -116,6 +116,41 @@ function createFixture({ restore = null, clearBattle = () => {}, phase = 'battle
   assert.equal(f.runtime.state, 'idle', 'a retry from failed hands over the restored Garage');
 }
 
+// (round 2 U21) A start accepted while a Leave's veil still fades in (the Leave holds the return, its entry has not
+// begun: a tool's click or a key press on the BATTLE control, a menu start) waits for that Leave as well. whenSettled
+// read only the entry in flight, so it was null there, and the start ran its cover and its load under the veil, where
+// the return's teardown then cleared them.
+{
+  const f = createFixture();
+  const gate = deferred();
+  f.holdTransition(gate.promise);
+  const leaving = f.runtime.leave();
+  await flush(2);
+  assert.equal(f.runtime.state, 'idle', "(the Leave's entry has not begun)");
+  const settled = f.runtime.whenSettled();
+  assert.ok(settled instanceof Promise, 'a Leave whose veil is still fading in is a return in flight');
+  let done = false;
+  void settled.then(() => { done = true; });
+  await flush();
+  assert.equal(done, false);
+  gate.resolve();
+  await leaving;
+  await flush();
+  assert.equal(done, true, 'it settles once the Leave has handed over the Garage');
+  assert.equal(f.game.phase, 'garage');
+  assert.equal(f.runtime.whenSettled(), null);
+  // Battle Again's own trigger starts the next battle inside its lease: it never waits for itself
+  f.game.phase = 'battle';
+  let seen = 'unread';
+  await f.runtime.battleAgain(() => {
+    seen = f.runtime.whenSettled();
+    f.game.phase = 'battle';
+    setTimeout(() => f.setCovering(true), 5);
+    return true;
+  });
+  assert.equal(seen, null, "Battle Again's trigger is not queued behind Battle Again");
+}
+
 // The edge table is closed: every target is a declared state, and the in-flight states only settle.
 {
   const states = Object.keys(GARAGE_RETURN_EDGES);

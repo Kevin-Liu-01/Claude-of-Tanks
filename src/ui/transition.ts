@@ -70,6 +70,10 @@ interface TransitionScreen {
 
 // (2026-10-24, transitions-249; the brand lead's trace) a fading cover (.out) passes clicks to the screen showing through
 // it: it took a press on the Garage's Studio button for its last ~180 ms. An opaque cover still takes them.
+// (round 2 U21, by design) so no Garage control is ever visible under a cover that takes its press: a Garage return
+// shows the Garage under the opaque veil, and the veil passes presses from the first frame of its fade-out. A press on
+// the opaque veil is a press on the veil; a start that reaches the game under it (a key, a menu, a tool's click) waits
+// for the return (garageReturnRuntime.ts whenSettled).
 const CSS = `
 .cot-trans{position:fixed;inset:0;z-index:170;display:none;align-items:center;
   justify-content:center;flex-direction:column;background:#05080b;opacity:0;

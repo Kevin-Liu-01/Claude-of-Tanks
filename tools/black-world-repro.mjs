@@ -556,10 +556,13 @@ async function waitForCoverLift(page, timeoutMs = 240_000, retry = null) {
   let last = null;
   let retries = 0;
   while (Date.now() - t0 < timeoutMs) {
-    // a BATTLE press that landed while the Garage was still settling (the return veil) starts nothing: press it again
+    // (round 2 U21) the press lands on a settled Garage (selectMapAndBattle waits for it), and a start the game accepts
+    // under a return waits for it (garageReturnRuntime whenSettled): a press that still starts nothing is the game's
+    // defect, not the harness's timing. It is pressed again so the run goes on, and the receipt counts it
+    // (row.lift.retries, summary.droppedPresses), never silently
     if (retry && !sawCover && retries < 3 && Date.now() - t0 > 15_000 * (retries + 1) && last && !last.cover && !last.hud) {
       retries++;
-      log(`  no loading cover ${Math.round((Date.now() - t0) / 1000)} s after BATTLE: pressing it again (${retries})`);
+      log(`  DEFECT: no loading cover ${Math.round((Date.now() - t0) / 1000)} s after BATTLE on a settled Garage: the press was dropped; pressing it again (${retries})`);
       try { await retry(); } catch { /* the next poll decides */ }
     }
     last = await page.evaluate(() => {
@@ -1890,6 +1893,8 @@ try {
   const counts = {};
   for (const r of summary.runs) counts[r.verdict] = (counts[r.verdict] ?? 0) + 1;
   summary.counts = counts;
+  // (round 2 U21) BATTLE presses on a settled Garage that started nothing (each re-pressed): a game defect
+  summary.droppedPresses = summary.runs.reduce((total, r) => total + (r.lift?.retries ?? 0), 0);
   writeFileSync(path.join(out, 'summary.json'), `${JSON.stringify(summary, null, 1)}\n`);
-  log(`done: ${JSON.stringify(counts)} -> ${out}`);
+  log(`done: ${JSON.stringify(counts)}${summary.droppedPresses ? `, DEFECT: ${summary.droppedPresses} dropped BATTLE press(es)` : ''} -> ${out}`);
 }
