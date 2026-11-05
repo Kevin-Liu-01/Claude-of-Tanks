@@ -25,12 +25,15 @@
  * hands a controller is applied at a step boundary, stamped with the sim second
  * it was applied on (JevOrderBatch), and createJevReplayCommander applies the
  * same batches on the same sim seconds with no network, so a replay of the
- * inputs is the battle again. Nothing on the wall clock decides anything inside
- * the step: a request's deadline is sim seconds (requestDeadlineS); the wall
- * clock (`now`) only times the answer's latency for the stats. The commander's
- * life is one declared phase (active, stopped at the verdict, disposed at the
- * next battle or the Garage return), and the page's halt of Jev is one session
- * owner (createJevSession).
+ * inputs is the battle again. Nothing reads the wall clock inside the step: a
+ * request's deadline is sim seconds (requestDeadlineS), and the latency the stats
+ * show is the transport's own round trip, timed off the step (elapsedMs; round 2
+ * U11). The log lives for the battle: no product replay re-simulates a battle (the
+ * killcam replays captured poses) and the player's inputs are not logged, so the
+ * battle result keeps the stats only (docs/JEV-COMMANDER.md). The commander's life
+ * is one declared phase (active, stopped at the verdict, disposed at the next
+ * battle or the Garage return), and the page's halt of Jev is one session owner
+ * (createJevSession), final for the page session by the owner's 2026-10-23 rule.
  */
 import { auxiliaryCapabilities } from '../vehicles/auxiliaryInventory.ts';
 import { roleOf, type AiOrder, type AiOrderPosture } from './ai.ts';
@@ -88,9 +91,10 @@ export interface JevBattleView {
   objectiveFor?(entity: JevCommanderEntity): { readonly x: number; readonly z: number; readonly radiusM: number; readonly mission?: string } | null;
 }
 
+/** `elapsedMs`: the request's round trip on the transport's own clock, taken off the sim step (the stats' latency). */
 type JevTransportResult =
-  | { readonly ok: true; readonly body: JevResponseBody }
-  | { readonly ok: false; readonly error: string; readonly status?: number; readonly retryAfterMs?: number };
+  | { readonly ok: true; readonly body: JevResponseBody; readonly elapsedMs?: number }
+  | { readonly ok: false; readonly error: string; readonly status?: number; readonly retryAfterMs?: number; readonly elapsedMs?: number };
 
 interface JevTransport {
   /** The session id the proxy budgets by (one per page load; never a player name). */
@@ -171,8 +175,6 @@ interface JevCommanderOptions {
    * the battle ran again). The transport's own wall timeout (createJevFetchTransport timeoutMs) ends the fetch itself.
    */
   requestDeadlineS?: number;
-  /** Wall clock for latency accounting (never for the simulation). */
-  now?: () => number;
 }
 
 /** The orders one answer became, applied together at one step boundary: the battle's recorded Jev input. */
@@ -542,7 +544,6 @@ function commandsEntity(commanded: ReadonlySet<string>, entity: { readonly team:
 export function createJevCommander({
   transport, teams, cadenceS = 2, quietCadenceS = 8, orderTtlS = 5, staleAfterS = 6, requestsPerTeam = 450,
   minPostureConfidence = 0.3, minTargetConfidence = 0.4, minFocusConfidence = 0.45, logCapacity = 64, requestDeadlineS = 5,
-  now = Date.now,
 }: JevCommanderOptions): JevCommander {
   const commanded = new Set(teams);
   const stats = new Map<string, JevTeamStats>();
@@ -604,12 +605,11 @@ export function createJevCommander({
     const controller = new AbortController();
     const pending: PendingRequest = { team, issuedAtS: view.timeS, snapshot, controller };
     inFlight.set(team, pending);
-    // the stopwatch only: the latency rides the stats, never a decision of the step
-    const startedAt = now();
+    // no clock here: the transport times its own round trip, off the step (elapsedMs), for the stats alone (round 2 U11)
     const body: JevRequestBody = { v: JEV_PROTOCOL_VERSION, sid: transport.sid, kind: 'team_orders', state: snapshot.state };
     transport.send(body, controller.signal).then(
-      (result) => { if (phase !== 'disposed') arrivals.push({ pending, result, latencyMs: now() - startedAt }); },
-      (error) => { if (phase !== 'disposed') arrivals.push({ pending, result: { ok: false, error: error instanceof Error ? error.name === 'AbortError' ? 'aborted' : error.message : String(error) }, latencyMs: now() - startedAt }); },
+      (result) => { if (phase !== 'disposed') arrivals.push({ pending, result, latencyMs: result.elapsedMs ?? 0 }); },
+      (error) => { if (phase !== 'disposed') arrivals.push({ pending, result: { ok: false, error: error instanceof Error ? error.name === 'AbortError' ? 'aborted' : error.message : String(error) }, latencyMs: 0 }); },
     );
   }
 
@@ -857,21 +857,28 @@ export function createJevReplayCommander({ inputLog, teams }: { inputLog: readon
   };
 }
 
-/** The page's Jev session state (2026-11-02 audit M6): live while Jev may be asked, halted for good once it said so. */
+/**
+ * The page's Jev session state (2026-11-02 audit M6): idle until a battle first asks for Jev, live while Jev may be asked,
+ * halted for good once it said so. It only moves forward: idle -> live (the first battle's transport()) -> halted (the
+ * transport's halt, on a session-ending answer). Halted is final for the page session.
+ */
 export type JevSessionState = 'idle' | 'live' | 'halted';
 
 /**
  * The page's one Jev session: the transport the proxy budgets (one session id per page load) and its halt — the owner of
  * the latch that ends Jev for the page (out of credit, a TypeSafe 429, the session budget spent; docs/JEV-COMMANDER.md).
- * By design a halt is not lifted within the page session (the credit is hard-capped and shared); `reset` is the one
- * explicit way to start another session, a new id and a live transport, and nothing calls it on its own.
+ * Every battle edge reads it (state.ts attachBattleCommander asks for the transport at each setup); a halted session hands
+ * none, so the next battle runs the classic brain. The halt is not lifted within the page session: that is the owner's
+ * rule (2026-10-23: TypeSafe's credit is hard-capped and shared with the owner's other keys, so those answers are never
+ * retried), and a lift at the battle edge would also mint a new session id, which resets the proxy's per-session budget.
+ * A new page load is a new session. (Round 2 U11 / Q5, 2026-11-04: the `reset()` restart, which nothing in the product
+ * called, is removed rather than given a caller; the ruling is by design.)
  */
 export interface JevSession {
   readonly state: JevSessionState;
   readonly haltReason: string | null;
   /** The live transport (made on first use), or null once the session halted: the battle then runs the classic brain. */
   transport(): JevTransport | null;
-  reset(): void;
 }
 
 export function createJevSession(makeTransport: () => JevTransport): JevSession {
@@ -883,7 +890,6 @@ export function createJevSession(makeTransport: () => JevTransport): JevSession 
       current ??= makeTransport();
       return current.halted ? null : current;
     },
-    reset() { current = null; },
   };
 }
 
@@ -898,11 +904,13 @@ function sessionId(): string {
  * The browser transport: one same-origin POST per request to the proxy (or
  * VITE_JEV_URL), a bounded wait, and the proxy's error codes mapped onto the
  * commander's back-off. The session id is generated per page load and is the
- * only thing that identifies a browser to the proxy's budget.
+ * only thing that identifies a browser to the proxy's budget. Its wall-clock
+ * work (the round-trip stopwatch, the timeout) starts after the sim step that
+ * asked has returned (round 2 U11): send() yields once before it reads `now`.
  */
 export function createJevFetchTransport({
-  url = '/api/jev', fetch = globalThis.fetch, timeoutMs = 3500, sid = sessionId(),
-}: { url?: string; fetch?: typeof globalThis.fetch; timeoutMs?: number; sid?: string } = {}): JevTransport {
+  url = '/api/jev', fetch = globalThis.fetch, timeoutMs = 3500, sid = sessionId(), now = Date.now,
+}: { url?: string; fetch?: typeof globalThis.fetch; timeoutMs?: number; sid?: string; now?: () => number } = {}): JevTransport {
   let halted = false;
   let haltReason: string | null = null;
   return {
@@ -916,6 +924,10 @@ export function createJevFetchTransport({
     },
     async send(body, signal) {
       if (halted) return { ok: false, error: 'halted' };
+      await Promise.resolve(); // off the step that asked: the stopwatch and the timer run outside it
+      if (signal.aborted) return { ok: false, error: 'aborted' };
+      const sentAt = now();
+      const timed = (result: JevTransportResult): JevTransportResult => ({ ...result, elapsedMs: now() - sentAt });
       const controller = new AbortController();
       const abort = (): void => controller.abort();
       signal.addEventListener('abort', abort, { once: true });
@@ -932,12 +944,12 @@ export function createJevFetchTransport({
             ? (parsed as { error: string }).error : `http_${response.status}`;
           const retryAfterMs = parsed && typeof parsed === 'object' && typeof (parsed as { retryAfterMs?: number }).retryAfterMs === 'number'
             ? (parsed as { retryAfterMs: number }).retryAfterMs : undefined;
-          return { ok: false, error, status: response.status, ...(retryAfterMs !== undefined ? { retryAfterMs } : {}) };
+          return timed({ ok: false, error, status: response.status, ...(retryAfterMs !== undefined ? { retryAfterMs } : {}) });
         }
         const reply = readJevResponse(parsed);
-        return reply ? { ok: true, body: reply } : { ok: false, error: 'invalid_reply', status: 200 };
+        return timed(reply ? { ok: true, body: reply } : { ok: false, error: 'invalid_reply', status: 200 });
       } catch (error) {
-        return { ok: false, error: controller.signal.aborted ? (signal.aborted ? 'aborted' : 'timeout') : error instanceof Error ? error.message : String(error) };
+        return timed({ ok: false, error: controller.signal.aborted ? (signal.aborted ? 'aborted' : 'timeout') : error instanceof Error ? error.message : String(error) });
       } finally {
         clearTimeout(timer);
         signal.removeEventListener('abort', abort);

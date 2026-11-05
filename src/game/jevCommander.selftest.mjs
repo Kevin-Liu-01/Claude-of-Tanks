@@ -208,7 +208,7 @@ const tick = () => new Promise((resolve) => setTimeout(resolve, 0));
   console.log('[2] one request per team on the cadence; answers become orders the controllers take');
   const f = fixture();
   const fake = fakeTransport();
-  const commander = createJevCommander({ transport: fake.transport, teams: ['enemy', 'player'], cadenceS: 2, orderTtlS: 5, now: () => 0 });
+  const commander = createJevCommander({ transport: fake.transport, teams: ['enemy', 'player'], cadenceS: 2, orderTtlS: 5 });
   assert.equal(commander.commands(f.byId('t72b3m_2022')), true);
   assert.equal(commander.commands(f.byId('leo2a4')), true);
   assert.equal(commander.commands(f.byId('m1a1_abrams_hc')), false, 'the human player is never commanded');
@@ -287,7 +287,7 @@ const tick = () => new Promise((resolve) => setTimeout(resolve, 0));
   console.log('[3] freshness gates: stale answers, dead bots, hulls that changed a lot, unmapped postures');
   const f = fixture();
   const fake = fakeTransport();
-  const commander = createJevCommander({ transport: fake.transport, teams: ['enemy'], cadenceS: 2, staleAfterS: 6, orderTtlS: 5, now: () => 0 });
+  const commander = createJevCommander({ transport: fake.transport, teams: ['enemy'], cadenceS: 2, staleAfterS: 6, orderTtlS: 5 });
   const answerAll = (posture = 'hold') => fake.answer((id, question) => {
     if (id.startsWith('posture_')) return confident(posture, Object.keys(question.criteria));
     if (id.startsWith('target_')) return confident(Object.keys(question.criteria)[0], Object.keys(question.criteria), 0.8);
@@ -358,7 +358,7 @@ const tick = () => new Promise((resolve) => setTimeout(resolve, 0));
   const lone = fixture();
   for (const id of ['kv2', 't90ms_2011']) lone.byId(id).combat.destroyed = true;
   const loneFake = fakeTransport();
-  const loneCommander = createJevCommander({ transport: loneFake.transport, teams: ['enemy'], now: () => 0 });
+  const loneCommander = createJevCommander({ transport: loneFake.transport, teams: ['enemy'] });
   const loneView = { ...lone.view, mode: 'standard', modeState: null, objectiveFor: () => null, get timeS() { return lone.view.timeS; } };
   loneCommander.step(loneView);
   loneFake.answer((id, question) => (id.startsWith('posture_') ? confident('capture', Object.keys(question.criteria)) : null));
@@ -380,7 +380,7 @@ const tick = () => new Promise((resolve) => setTimeout(resolve, 0));
   console.log('[4] capture and support orders carry a point; the focus answer picks the capture objective');
   const f = fixture();
   const fake = fakeTransport();
-  const commander = createJevCommander({ transport: fake.transport, teams: ['player'], now: () => 0 });
+  const commander = createJevCommander({ transport: fake.transport, teams: ['player'] });
   commander.step(f.view);
   fake.answer((id, question) => {
     if (id === 'posture_b1') return confident('capture', Object.keys(question.criteria));
@@ -409,7 +409,7 @@ const tick = () => new Promise((resolve) => setTimeout(resolve, 0));
   const f = fixture();
   const fake = fakeTransport();
   fake.setMode('fail');
-  const commander = createJevCommander({ transport: fake.transport, teams: ['enemy'], cadenceS: 2, now: () => 0 });
+  const commander = createJevCommander({ transport: fake.transport, teams: ['enemy'], cadenceS: 2 });
   commander.step(f.view);
   await tick();
   f.set(1.5);           // the failure lands 1.5 s after the request went out
@@ -453,7 +453,7 @@ const tick = () => new Promise((resolve) => setTimeout(resolve, 0));
   // the budget
   const budgeted = fixture();
   const budgetFake = fakeTransport();
-  const budgetCommander = createJevCommander({ transport: budgetFake.transport, teams: ['enemy'], cadenceS: 1, requestsPerTeam: 2, now: () => 0 });
+  const budgetCommander = createJevCommander({ transport: budgetFake.transport, teams: ['enemy'], cadenceS: 1, requestsPerTeam: 2 });
   for (let i = 0; i < 6; i++) {
     budgeted.set(i * 1.5);
     budgetCommander.step(budgeted.view);
@@ -465,7 +465,7 @@ const tick = () => new Promise((resolve) => setTimeout(resolve, 0));
   // stop and dispose
   const stopped = fixture();
   const stopFake = fakeTransport();
-  const stopCommander = createJevCommander({ transport: stopFake.transport, teams: ['enemy'], now: () => 0 });
+  const stopCommander = createJevCommander({ transport: stopFake.transport, teams: ['enemy'] });
   stopCommander.step(stopped.view);
   stopCommander.stop();
   stopFake.answer((id, question) => (id.startsWith('posture_') ? confident('push', Object.keys(question.criteria)) : null));
@@ -476,7 +476,7 @@ const tick = () => new Promise((resolve) => setTimeout(resolve, 0));
   assert.equal(stopCommander.active, false);
   const disposed = fixture();
   const disposeFake = fakeTransport();
-  const disposeCommander = createJevCommander({ transport: disposeFake.transport, teams: ['enemy'], now: () => 0 });
+  const disposeCommander = createJevCommander({ transport: disposeFake.transport, teams: ['enemy'] });
   disposeCommander.step(disposed.view);
   const signal = disposeFake.requests[0].signal;
   disposeCommander.dispose();
@@ -491,7 +491,7 @@ const tick = () => new Promise((resolve) => setTimeout(resolve, 0));
   for (const id of ['t72b3m_2022', 'kv2', 't90ms_2011']) f.byId(id).state.pos.set(0, 0, 2000);
   const view = { ...f.view, spotting: { isSpotted: () => false }, get timeS() { return f.view.timeS; } };
   const fake = fakeTransport();
-  const commander = createJevCommander({ transport: fake.transport, teams: ['player'], cadenceS: 2, quietCadenceS: 8, now: () => 0 });
+  const commander = createJevCommander({ transport: fake.transport, teams: ['player'], cadenceS: 2, quietCadenceS: 8 });
   const cycle = async () => { commander.step(view); if (fake.pending) { fake.answer(() => null); await tick(); commander.step(view); } };
   for (let t = 0; t <= 17; t += 2.1) { f.set(t); await cycle(); }
   assert.equal(fake.requests.length, 3, 'over 17 s a quiet team asks at 0, ~8 and ~17 s instead of every 2 s');
@@ -510,13 +510,15 @@ const tick = () => new Promise((resolve) => setTimeout(resolve, 0));
     if (reply.hang) return new Promise((_, reject) => init.signal.addEventListener('abort', () => { const e = new Error('aborted'); e.name = 'AbortError'; reject(e); }));
     return { status: reply.status, json: async () => reply.body };
   };
-  const transport = createJevFetchTransport({ url: '/api/jev', fetch, timeoutMs: 15, sid: 'sess_fetch_0001' });
+  let wall = 1000;
+  const transport = createJevFetchTransport({ url: '/api/jev', fetch, timeoutMs: 15, sid: 'sess_fetch_0001', now: () => (wall += 7) });
   const f = fixture();
   const snapshot = buildJevTeamState(f.view, 'enemy', null);
   const body = { v: 1, sid: transport.sid, kind: 'team_orders', state: snapshot.state };
   replies.push({ status: 200, body: { v: 1, model: 'jev-1.13.0', answers: { posture_b1: { type: 'choice', choice: 'hold', probabilities: { hold: 1 }, confidence: 1 }, bogus: { type: 'noul', noul: 7 } }, usage: { input_tokens: 10, output_tokens: 2 }, latencyMs: 300 } });
   const ok = await transport.send(body, new AbortController().signal);
   assert.equal(ok.ok, true);
+  assert.equal(ok.elapsedMs, 7, 'the transport times its own round trip (round 2 U11)');
   assert.equal(calls[0].url, '/api/jev');
   assert.equal(calls[0].init.method, 'POST');
   assert.equal(calls[0].init.headers['content-type'], 'application/json');
@@ -526,7 +528,7 @@ const tick = () => new Promise((resolve) => setTimeout(resolve, 0));
   assert.equal(ok.body.usage.input_tokens, 10);
   replies.push({ status: 429, body: { error: 'session_rate_limited', retryAfterMs: 5000 } });
   const limited = await transport.send(body, new AbortController().signal);
-  assert.deepEqual(limited, { ok: false, error: 'session_rate_limited', status: 429, retryAfterMs: 5000 });
+  assert.deepEqual(limited, { ok: false, error: 'session_rate_limited', status: 429, retryAfterMs: 5000, elapsedMs: 7 });
   replies.push({ status: 503, body: { error: 'not_configured' } });
   assert.equal((await transport.send(body, new AbortController().signal)).error, 'not_configured');
   replies.push({ status: 200, body: { nonsense: true } });
@@ -554,7 +556,7 @@ console.log('jevCommander.selftest: team document, question fan-out, order appli
   tanks.push(entity('visible-enemy', 't90am', 'enemy', 0, 100));
   const view = {...f.view, tanks, mode: 'standard', modeState: null, objectiveFor: () => null, timeS: 0};
   const fake = fakeTransport();
-  const commander = createJevCommander({transport: fake.transport, teams: ['player'], now: () => 0});
+  const commander = createJevCommander({transport: fake.transport, teams: ['player']});
   for (let round = 0; round < 3; round++) {
     view.timeS = round * 2;
     commander.step(view);
@@ -605,7 +607,7 @@ console.log('jevCommander.selftest: team document, question fan-out, order appli
   const view = {...f.view, mode: 'capture_the_flag',
     modeState: {target: 7, flags: [{team:'bravo', x:90, z:90, status:'carried'}]},
     objectiveFor: () => ({x:0, z:-100, radiusM:20})};
-  const fake = fakeTransport(), commander = createJevCommander({transport:fake.transport, teams:['player'], now:()=>0});
+  const fake = fakeTransport(), commander = createJevCommander({transport:fake.transport, teams:['player']});
   commander.step(view);
   assert.match(fake.requests[0].body.state.battle.goal, /7 captures/);
   fake.answer((id,q) => id === 'focus' ? confident('flag_theirs',Object.keys(q.criteria))
@@ -617,10 +619,11 @@ console.log('jevCommander.selftest: team document, question fan-out, order appli
 }
 {
   console.log('[11] hung transports and late callbacks never strand the team; the deadline is sim seconds, never the wall clock');
-  const f=fixture(), fake=fakeTransport(); let clock=0;
-  const commander=createJevCommander({transport:fake.transport,teams:['player'],now:()=>clock});
+  const f=fixture(), fake=fakeTransport(); const wallNow=Date.now; let clock=0;
+  Date.now=()=>clock;
+  const commander=createJevCommander({transport:fake.transport,teams:['player']});
   // (2026-11-02 audit M6) a minute on the wall clock with one sim second gone — a pause, a killcam freeze — aborts nothing
-  commander.step(f.view); clock=60_000; f.set(1); commander.step(f.view);
+  commander.step(f.view); clock=60_000; f.set(1); commander.step(f.view); Date.now=wallNow;
   assert.equal(fake.requests[0].signal.aborted,false,'the wall clock decides nothing inside the step');
   assert.equal(commander.stats().failed,0);
   f.set(5.1); commander.step(f.view);
@@ -647,7 +650,7 @@ console.log('jevCommander.selftest: team document, question fan-out, order appli
     return log;
   };
   const liveLog = taken(live);
-  const commander = createJevCommander({ transport: fake.transport, teams: ['enemy', 'player'], cadenceS: 2, now: () => 0 });
+  const commander = createJevCommander({ transport: fake.transport, teams: ['enemy', 'player'], cadenceS: 2 });
   const answerAll = (index) => fake.answer((id, question) => {
     if (id.startsWith('posture_')) return confident(index % 2 ? 'push' : 'hold', Object.keys(question.criteria));
     if (id.startsWith('fire_')) return { type: 'noul', noul: 0.9 };
@@ -677,7 +680,7 @@ console.log('jevCommander.selftest: team document, question fan-out, order appli
 {
   console.log('[14] the commander\'s life only moves forward, and a quit (the Garage return) disposes it');
   const f = fixture(), fake = fakeTransport();
-  const commander = createJevCommander({ transport: fake.transport, teams: ['enemy'], now: () => 0 });
+  const commander = createJevCommander({ transport: fake.transport, teams: ['enemy'] });
   assert.equal(commander.phase, 'active');
   commander.step(f.view);
   const game = { allTanks: [], tanks: [], shells: [], player: null, spotting: null, result: null, resultReason: null, preBattleS: 0,
@@ -695,7 +698,7 @@ console.log('jevCommander.selftest: team document, question fan-out, order appli
   assert.equal(commander.active, false);
 }
 {
-  console.log('[15] the page\'s halt has one owner: the session (no transport once halted, the reason kept, an explicit reset)');
+  console.log('[15] the page\'s halt has one owner: the session (no transport once halted, the reason kept, final for the page session)');
   let made = 0;
   const session = createJevSession(() => createJevFetchTransport({ url: '/api/jev', fetch: async () => ({ status: 200, json: async () => null }), sid: `sess_owner_${++made}` }));
   assert.equal(session.state, 'idle');
@@ -706,10 +709,44 @@ console.log('jevCommander.selftest: team document, question fan-out, order appli
   transport.halt('session_budget_spent');
   assert.equal(session.state, 'halted');
   assert.equal(session.haltReason, 'upstream_out_of_credit', 'the first session-ending answer names the halt');
-  assert.equal(session.transport(), null, 'a halted session hands no transport: the next battle runs the classic brain');
-  session.reset();
-  const fresh = session.transport();
-  assert.ok(fresh && fresh !== transport && fresh.halted === false && fresh.sid !== transport.sid, 'only an explicit reset starts a new session');
+  // round 2 U11 / Q5 (2026-11-04): the halt is final for the page session by the owner's 2026-10-23 rule, and every
+  // battle edge reads it; the reset() restart nothing in the product called is gone (a lift would also mint a new
+  // session id, which resets the proxy's per-session budget)
+  assert.equal('reset' in session, false, 'no restart within the page session');
+  for (let battle = 0; battle < 3; battle++) {
+    assert.equal(session.transport(), null, 'a halted session hands no transport: every later battle runs the classic brain');
+    assert.equal(session.state, 'halted');
+  }
+  assert.equal(made, 1, 'and no second session id is minted');
+  const nextPage = createJevSession(() => createJevFetchTransport({ url: '/api/jev', fetch: async () => ({ status: 200, json: async () => null }), sid: 'sess_owner_page2' }));
+  assert.ok(nextPage.transport()?.halted === false, 'a new page load is a new session');
+}
+
+{
+  console.log('[16] the step reads no wall clock: the transport times the round trip off the step (round 2 U11)');
+  // the commander's request stopwatch was Date.now inside issue(), inside step(); the latency now rides the transport's
+  // result (elapsedMs), taken after the step that asked has returned
+  const f = fixture();
+  let inStep = false, readsInStep = 0, wall = 5000;
+  const wallNow = Date.now;
+  Date.now = () => { if (inStep) readsInStep++; return wallNow(); };
+  try {
+    const reply = { v: 1, model: 'jev-1.13.0', answers: {}, usage: { input_tokens: 1, output_tokens: 1 }, latencyMs: 300 };
+    const transport = createJevFetchTransport({ url: '/api/jev', sid: 'sess_clock_0001', fetch: async () => ({ status: 200, json: async () => reply }),
+      now: () => { if (inStep) readsInStep++; return wall += 40; } });
+    const commander = createJevCommander({ transport, teams: ['enemy'], cadenceS: 2 });
+    const step = () => { inStep = true; try { commander.step(f.view); } finally { inStep = false; } };
+    step();
+    assert.equal(readsInStep, 0, 'asking reads no clock inside the step');
+    await tick();
+    step();
+    assert.equal(readsInStep, 0, 'nor does taking the answer');
+    assert.equal(commander.stats('enemy').answered, 1);
+    assert.equal(commander.stats('enemy').lastLatencyMs, 40, 'the stats\' latency is the transport\'s own round trip');
+    commander.dispose();
+  } finally {
+    Date.now = wallNow;
+  }
 }
 
 {
@@ -719,8 +756,8 @@ console.log('jevCommander.selftest: team document, question fan-out, order appli
     const fetch = async (url, init) => { calls.push(url); return { status, json: async () => ({ error }) }; };
     const transport = createJevFetchTransport({ url: '/api/jev', fetch, sid: 'sess_credit_0001' });
     const f = fixture();
-    const commander = createJevCommander({ transport, teams: ['enemy'], cadenceS: 2, now: () => 0 });
-    commander.step(f.view);
+    const commander = createJevCommander({ transport, teams: ['enemy'], cadenceS: 2 });
+    commander.step(f.view); await tick();
     assert.equal(calls.length, 1, `${error}: the first request goes out`);
     await tick(); commander.step(f.view);
     assert.equal(transport.halted, true, `${error}: the transport halts`);
@@ -729,7 +766,7 @@ console.log('jevCommander.selftest: team document, question fan-out, order appli
     assert.equal(calls.length, 1, `${error}: never retried, however long the battle runs`);
     assert.equal(commander.stats().budgetSpent, true, 'the team reads as out of budget: the classic brain commands');
     commander.dispose();
-    const nextBattle = createJevCommander({ transport, teams: ['enemy', 'player'], now: () => 0 });
+    const nextBattle = createJevCommander({ transport, teams: ['enemy', 'player'] });
     nextBattle.step(fixture().view); await tick();
     assert.equal(calls.length, 1, `${error}: the next battle of the same session asks nothing`);
     nextBattle.dispose();
@@ -741,10 +778,10 @@ console.log('jevCommander.selftest: team document, question fan-out, order appli
   const transport = createJevFetchTransport({ url: '/api/jev', sid: 'sess_credit_0003',
     fetch: async () => { calls.push(1); return { status: 429, json: async () => ({ error: 'session_rate_limited', retryAfterMs: 5000 }) }; } });
   const f = fixture();
-  const commander = createJevCommander({ transport, teams: ['enemy'], cadenceS: 2, now: () => 0 });
+  const commander = createJevCommander({ transport, teams: ['enemy'], cadenceS: 2 });
   commander.step(f.view); await tick(); commander.step(f.view);
   assert.equal(transport.halted, false, 'a proxy throttle is not out of credit');
-  f.set(60); commander.step(f.view);
+  f.set(60); commander.step(f.view); await tick();
   assert.equal(calls.length, 2, 'it asks again after the back-off');
   commander.dispose();
   console.log('jevCommander.selftest: a spent or rate-limited TypeSafe ends Jev for the session without an error');

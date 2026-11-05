@@ -155,16 +155,23 @@ inventory, spotting and physics rules. See [Bot tactics](BOT-TACTICS.md).
 
 A five-second deadline in sim seconds (`requestDeadlineS`) gives up on a stalled request so it cannot strand a
 team (a pause or a killcam freeze stops it with the battle; the transport's own 3.5 s wall timeout ends the fetch);
-late callbacks are ignored. The wall clock only times latency for the stats; nothing in the step reads it.
+late callbacks are ignored. Nothing in the step reads the wall clock: the latency the stats show is the transport's own
+round trip (`elapsedMs`), timed after the step that asked has returned (2026-11-04, round 2 U11: the commander's
+stopwatch read `Date.now` inside the step).
 
 **Determinism (2026-11-02).** The answers are the battle's external input, like a second player's keys: when one
 arrives is the network's. Every answer's orders are applied at a step boundary and recorded with the sim second they
 were applied on (`commander.inputLog`, `JevOrderBatch`); `createJevReplayCommander` applies the same batches on the same
 sim seconds with no network, so a Jev battle is reproducible from its seed, its player inputs and that log (the classic
-brain needs no log). The commander's life is one forward-only phase (active, stopped at the verdict, disposed at the
-next battle's setup or the Garage return, whichever comes first), and the page's halt has one owner,
-`createJevSession` (state `idle` / `live` / `halted`, the first session-ending reason kept); a halt is not lifted within
-the page session. Every order expires at `untilS` = issue + `orderTtlS` (5 s); the classic brain resumes by itself. That is
+brain needs no log). The log lives for the battle and is dropped with the commander: no product replay re-simulates a
+battle (the killcam replays captured poses, `killcamCapture.ts` / `replayPose.ts`) and the player's inputs are not
+logged, so a log carried into the battle result would reproduce nothing; the result keeps `jev.stats()`. If a
+re-simulating replay is ever built, it carries the seed, the player input log and this log together. The commander's
+life is one forward-only phase (active, stopped at the verdict, disposed at the next battle's setup or the Garage
+return, whichever comes first), and the page's halt has one owner, `createJevSession` (state `idle` -> `live` ->
+`halted`, forward only, the first session-ending reason kept). Every battle edge reads it, and a halt is final for the
+page session: that is the out-of-credit rule below, and a lift would also mint a new session id, which resets the
+proxy's per-session budget (round 2 U11 / Q5 removed the unused `reset()`; a new page load is a new session). Every order expires at `untilS` = issue + `orderTtlS` (5 s); the classic brain resumes by itself. That is
 the fallback for everything: a slow proxy, a failed request (the commander backs off, doubling from one
 cadence to 30 s, or what the proxy's `retryAfterMs` asks), an exhausted budget (`requestsPerTeam` = 450 per
 battle), a low-confidence answer. The commander keeps a bounded **order log** (64 entries: bot, posture,
