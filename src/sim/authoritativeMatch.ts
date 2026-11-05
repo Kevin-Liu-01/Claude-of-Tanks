@@ -404,6 +404,12 @@ export interface AuthoritativeMatch {
   readonly phase: MatchPhase;
   readonly gameMode: GameModeId;
   readonly pendingEventCount: number;
+  /**
+   * The mode events (`mode_*`) emitted so far (round 2 U2): a migration keyframe seals the mode checkpoint, and a host
+   * that dies between a mode event and its next keyframe leaves the event out of every seat's resume (a goal, a wave, a
+   * capture replayed or lost), so the host core seals one soon after each (matchHostCore.ts housekeep).
+   */
+  readonly modeEventSerial: number;
   readonly shotFeedbackVersion: 1;
   readonly modeController: MatchModeController<AuthoritativeEntity>;
   onMatchReady(): void;
@@ -1212,7 +1218,9 @@ export function createAuthoritativeMatch({
 
   initializeBots();
 
+  let modeEventSerial = 0;
   function emit(type: string, payload: Record<string, RuntimeValue>): AuthoritativeEvent {
+    if (type.startsWith('mode_')) modeEventSerial++;
     if (type === 'tank_destroyed') modeController.recordDestruction(String(payload.id),
       typeof payload.killerId==='string'?payload.killerId:null);
     if (type === 'tank_destroyed') {
@@ -2925,6 +2933,7 @@ export function createAuthoritativeMatch({
     },
 
     get pendingEventCount(): number { return pendingEvents.length; },
+    get modeEventSerial(): number { return modeEventSerial; },
 
     eventsForViewer(viewerId: string): AuthoritativeEvent[] {
       const viewer = entityById.get(viewerId);
