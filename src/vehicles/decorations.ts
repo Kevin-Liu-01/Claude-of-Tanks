@@ -498,7 +498,8 @@ function fnv1a(str: string): number {
  * Vehicles that dress exactly as another: the Type 10 Kaitaku is the modern Type 10 with a bow kit (owner 2026-10-22),
  * so it takes the Type 10's manifest and seed; its kit reserves the bow (profiles/jgsdfDozer.ts), which keeps the bow
  * shackles and chain off the blade. The Type 90 (B) is the Type 90 with the same kit and a roof station (267).
- * The M3A2 is the M2A2 under main's classic turret (268, profiles/m3a2Bradley.ts): it draws the M2A2's kit and seed.
+ * The M3A2 is the M2A2's vehicle on the same hull (268; since 269 the M3A2 carries the source turret and the M2A2 the
+ * classic one): it draws the M2A2's kit and seed.
  */
 const DECOR_TWIN: ReadonlyMap<string, string> = new Map([['type10_dozer', 'type10'], ['type90b', 'type90'],
   ['m3a2_bradley', 'm2a2_bradley']]);
@@ -4273,9 +4274,9 @@ const LEDGE_RESEAT_HELD: ReadonlySet<string> = new Set<string>([
  */
 const CONTACT_SEAT_267: ReadonlySet<string> = new Set<string>([
   't90', 't90a_2006', 't90ms_2011', 't90ms_tagil', 't90m', 'type96_72m_lei',
-  // 268 (lane abrams-bradley-268, re-rendered on the source-measured shell: the M2A2's hung load's arm crossed its own
-  // strap, the M3A3's rear rack bracket the stern's falling corner)
-  'm2a2_bradley', 'm3a3_bradley',
+  // 268 (lane abrams-bradley-268, re-rendered on the source-measured shell: the hung load's arm on the source turret
+  // crossed its own strap, the M3A3's rear rack bracket the stern's falling corner); 269: the source turret is the M3A2's
+  'm3a2_bradley', 'm3a3_bradley',
 ]);
 
 /**

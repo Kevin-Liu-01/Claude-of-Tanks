@@ -40,7 +40,7 @@ const CURVES = {
   ua_m1a1: [],
   c1_ariete: [],
   c2_ariete: [],
-  m3a3_bradley: [[0, 39]], // the mantlet's underside 11 mm over the roof at -9; the M3 keeps its full forward depression
+  m3a3_bradley: [], // 269: the A3 turret on the A2 shell and trunnion (bradleyA3Turret.ts); the sweep finds no mount conflict
   m6_linebacker: [],
   // 268: the M3A2 under the classic turret, its turret-fixed TOW pod clear of the gun; its measured rear stops (m3a2BradleySpecs.ts)
   m3a2_bradley: [],
