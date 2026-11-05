@@ -2404,7 +2404,6 @@ export function createAudio({
     lastSixthSenseAt = -99;
     lastSixthAlertAt = -99;
     heartbeatBelow = 0;
-    playerBurning = false;
     wasOverturned = false;
     wasDeep = false;
     stuckS = 0;

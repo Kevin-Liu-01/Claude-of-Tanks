@@ -139,7 +139,9 @@ async function startRealBattleEntry() {
     window.__AUDIO_PROBE_ENTRY = window.__DEBUG.beginBattleEntry('m1a1_abrams_hc', 'desert');
   });
   await page.waitForFunction(
-    'window.__COT_AUDIO && window.__COT_AUDIO.ctx && window.__COT_AUDIO.loadingActive',
+    // (2026-11-02 audit F11, round 2) the bed sounding, not only wanted: loadingActive is the engine's intent since the
+    // wanted-loop change, which opens before a cold bed has decoded (loadingSounding is the bed itself)
+    'window.__COT_AUDIO && window.__COT_AUDIO.ctx && window.__COT_AUDIO.loadingSounding',
     { timeout: 30000 },
   );
 }
@@ -202,18 +204,18 @@ try {
   // Capture the actual loading transition before the entry promise resolves.
   // This proves the real master bus produces PCM while terrain, roster and GPU
   // warm-up work is still underway—not merely that loadingOn(true) was called.
-  const loadingActiveDuring = await page.evaluate(() => window.__COT_AUDIO.loadingActive);
+  const loadingSoundingDuring = await page.evaluate(() => window.__COT_AUDIO.loadingSounding);
   await tapStart();
   await sleep(1200);
   const loadingPcm = await tapStopAndFetch();
   const loadingAudio = capReport('battle-loading', loadingPcm);
-  if (!loadingActiveDuring || loadingAudio.rms < 0.0005) {
+  if (!loadingSoundingDuring || loadingAudio.rms < 0.0005) {
     failed = true;
-    report.errors.push(`battle loading bed inaudible (active=${loadingActiveDuring}, rms=${loadingAudio.rms.toFixed(6)})`);
+    report.errors.push(`battle loading bed inaudible (sounding=${loadingSoundingDuring}, rms=${loadingAudio.rms.toFixed(6)})`);
   }
   await page.evaluate(() => window.__AUDIO_PROBE_ENTRY);
   const loadingStopped = await page.evaluate(() => !window.__COT_AUDIO.loadingActive);
-  report.loading = { activeDuring: loadingActiveDuring, stoppedAfterEntry: loadingStopped };
+  report.loading = { soundingDuring: loadingSoundingDuring, stoppedAfterEntry: loadingStopped };
   if (!loadingStopped) {
     failed = true;
     report.errors.push('battle loading bed remained active after the battle entry completed');
