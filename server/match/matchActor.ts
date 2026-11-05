@@ -21,7 +21,7 @@ import { endingHoldExpired, matchRulesetFor, terrainVariantFor, type MatchRulese
 import { normalizeGameMode, type GameModeId } from '../../src/sim/matchModes.ts';
 import { SIM_DT } from '../../src/sim/movement.ts';
 import { setHullGrounded } from '../../src/sim/hullBodyMode.ts';
-import { reseatAuthorityBody } from '../../src/mp/match/prediction.ts';
+import { reseatAuthorityBody } from '../../src/mp/match/authorityRow.ts';
 import { createDedicatedWorldCollision } from '../dedicatedWorldCollision.ts';
 import type { WorldKernelModule } from '../../src/world/wasmWorldKernels.ts';
 import {

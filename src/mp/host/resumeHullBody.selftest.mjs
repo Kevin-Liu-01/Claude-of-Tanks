@@ -5,13 +5,13 @@
 //   - a hull in the air at the keyframe was a grounded hull to the new host: its first step seated it on the ground
 //     under it (a 4 m drop in one tick) instead of flying on;
 //   - a hull tumbling on its side came back supported, its rigid phase lost.
-// The restore is the client's own (prediction.ts applyAuthorityRow: pose, body flags, spring, ride), so the two copies of
+// The restore is the client's own (authorityRow.ts applyAuthorityRow: pose, body flags, spring, ride), so the two copies of
 // a hull take a row the same way. Built as combatMigration's handoff: the old host's keyframe through the codec, onto a
 // second actor on the same roster, both stepped one tick.
 // Review round 1: the viewer's own resume hint (matchActor.ts receiveResumeHint, P3b) writes a newer pose over the
 // restored one, and wrote the pose alone, so the contact, spring and ride the restore had seated on the older row stayed:
 // a hull airborne in the keyframe whose newer hint has it landed flew back up to the keyframe's height on the next tick.
-// The hint now seats the body on its own pose as a row does (prediction.ts reseatAuthorityBody), its contact read from
+// The hint now seats the body on its own pose as a row does (authorityRow.ts reseatAuthorityBody), its contact read from
 // its height over the ground (RESUME_HINT carries no body bits).
 import assert from 'node:assert/strict';
 import { Vector3 } from 'three';

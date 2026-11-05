@@ -705,7 +705,7 @@ function replayStateFrom(entity) {
   state.turretYaw = source.turretYaw;
   state.gunPitch = source.gunPitch;
   // ground contact and the body mode as the client's rewind restores them: the row's body bits through their owner
-  // (prediction.ts applyAuthorityRow; wire 10 carries the rigid phase itself, round 2 U14)
+  // (authorityRow.ts applyAuthorityRow; wire 10 carries the rigid phase itself, round 2 U14)
   applyHullBodyRowFlags(state, hullBodyRowFlags(source));
   // the hydropneumatic aim the client's presentation sets from the special action (prediction.ts copies it too)
   state.suspensionAim = source.suspensionAim;

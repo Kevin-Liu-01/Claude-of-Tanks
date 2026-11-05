@@ -19,7 +19,7 @@ import { applySnapshotPacket, buildSnapshotPacket, decodeMessage, encodeMessage 
 import type { EntityRow, SnapshotFrame, WireEvent } from '../wire/messages.ts';
 import { dequantizePosition, dequantizeReloadS, dequantizeUnitComponent } from '../wire/quantize.ts';
 import { bytesToBase64Url } from '../match/base64url.ts';
-import { applyAuthorityRow } from '../match/prediction.ts';
+import { applyAuthorityRow } from '../match/authorityRow.ts';
 import { MIGRATION_EVENT_KIND, MIGRATION_MAX_CHUNKS } from '../match/migrationStore.ts';
 import type { HostBootConfig, HostResumeState, MigrationEntityExtras, MigrationReload } from './hostProtocol.ts';
 import type { RoomMatchStatus } from '../room/protocol.ts';

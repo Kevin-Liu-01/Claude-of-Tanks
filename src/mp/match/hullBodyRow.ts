@@ -4,7 +4,7 @@
  * hullBearsOnBody; a plain jump more than 0.5 m up sets it too). The authority's row capture packs them
  * (server/match/entityRows.ts) through the sim's one packer (tankBodyContacts.ts hullBodyFlags, which the viewer snapshot
  * uses too); the clients restore them onto their copies of the hull: the viewer's predicted hull before its checkpoint
- * (prediction.ts applyAuthorityRow) and every presented hull (battlePresentation.ts applySamplePose), whose state the
+ * (authorityRow.ts applyAuthorityRow) and every presented hull (battlePresentation.ts applySamplePose), whose state the
  * prediction world's tank contacts read (prefersVerticalTankContact). The remote interpolator reads the rigid phase from
  * the same bits (RIGID_PHASE_ROW_FLAGS: interpolation.ts continueRow).
  *

@@ -48,6 +48,11 @@ assert.deepEqual(closure.filter((file) => FLEET_PAYLOAD.test(file)), [], 'no fle
 // (2026-10-13, HL-0: the Hinterland that replaces the ring is client-only visual too, B-architecture §4.4)
 const VISUAL_WORLD = /^src\/world\/(?:maps\/horizon|borderFarmsteads|horizonPanorama|horizonVista)\.ts$|^src\/world\/maps\/regional\/|^src\/world\/hinterland\//;
 assert.deepEqual(closure.filter((file) => VISUAL_WORLD.test(file)), [], 'no visual horizon, hinterland, farmstead or regional building kit in the host Worker');
+// The authority takes a row onto a hull through src/mp/match/authorityRow.ts, never through the client's predictor:
+// round two of the 2026-11-02 audit imported its two row helpers from prediction.ts into the host restore and the actor,
+// which put the predictor, its interpolator and the wire barrel (81 KB) into the Worker.
+const CLIENT_PRESENTATION = /^src\/mp\/match\/(?:prediction|interpolation|matchClient)\.ts$|^src\/mp\/wire\/index\.ts$/;
+assert.deepEqual(closure.filter((file) => CLIENT_PRESENTATION.test(file)), [], 'no client predictor, interpolator, match client or wire barrel in the host Worker');
 for (const file of ['server/match/matchActor.ts', 'src/vehicles/authorityFleet.ts', 'src/vehicles/fleetRegistration.ts']) {
   assert.ok(closure.includes(file), `the host Worker registers the fleet through ${file}`);
 }

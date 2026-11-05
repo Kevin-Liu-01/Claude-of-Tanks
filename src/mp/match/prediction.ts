@@ -22,11 +22,12 @@ import type {
 import type { RulesetPhysics } from '../../sim/matchRuleset.ts';
 import {
   ENTITY_FLAGS, HELD_INPUT_LEASE_TICKS, MODULE_STATE_NAMES, VIEWER_CREW, VIEWER_EQUIPMENT, VIEWER_MODULES, dequantizeAngle,
-  dequantizeMultiplier, dequantizePosition, dequantizeVelocity, wrapAngle,
+  dequantizeMultiplier, dequantizeVelocity, wrapAngle,
 } from '../wire/index.ts';
 import type { EntityRow, ViewerState } from '../wire/index.ts';
 import { applyMovementCheckpoint } from './movementCheckpoint.ts';
-import { BODY_PHASE_ROW_FLAGS, applyHullBodyRowFlags } from './hullBodyRow.ts';
+import { BODY_PHASE_ROW_FLAGS } from './hullBodyRow.ts';
+import { applyAuthorityRow } from './authorityRow.ts';
 import { publishedTrackContact } from '../../sim/trackContact.ts';
 import { lerpAngle } from './interpolation.ts';
 import type { PredictionControl } from './inputStream.ts';
@@ -226,45 +227,6 @@ function authorityAtRest(row: EntityRow): boolean {
   return !(row.flags & ACTIVE_BODY_FLAGS) &&
     Math.abs(dequantizeVelocity(row.speed)) <= REST_SPEED_MPS &&
     Math.abs(dequantizeVelocity(row.verticalSpeed)) <= REST_SPEED_MPS;
-}
-
-/**
- * The authority row's pose and body flags onto the simulation state (the checkpoint refines the integrator). Also a
- * migrated host's restore of every hull from its keyframe or newest row (migrationState.ts applyResumeState, round 2 U2):
- * the pose alone left the fresh host's ground contact, body mode, spring and ride under it, so an airborne hull fell from
- * its old ride height or snapped to the ground on the first step, and one on its side or roof came back supported.
- */
-export function applyAuthorityRow(state: TankState, row: EntityRow): void {
-  state.pos.set(dequantizePosition(row.x), dequantizePosition(row.y), dequantizePosition(row.z));
-  state.yaw = dequantizeAngle(row.yaw);
-  state.speed = dequantizeVelocity(row.speed);
-  state.verticalSpeed = dequantizeVelocity(row.verticalSpeed);
-  state.visualPitch = dequantizeAngle(row.pitch);
-  state.visualRoll = dequantizeAngle(row.roll);
-  state.turretYaw = dequantizeAngle(row.turretYaw);
-  state.gunPitch = dequantizeAngle(row.gunPitch);
-  // ground contact and the body mode, the rigid phase itself included (wire 10, hullBodyRow.ts); the viewer checkpoint
-  // restores them again right after (restoreCheckpoint)
-  applyHullBodyRowFlags(state, row.flags);
-  reseatAuthorityBody(state);
-}
-
-/**
- * The integrator's own copies seated on the pose and speeds just written (applyAuthorityRow; a migrated host's resume
- * hint, matchActor.ts receiveResumeHint, round 2 U2 review round 1: the hint wrote a newer pose over the restored row and
- * left this row's spring and ride under it, so a hull the hint had landed flew back up to the row's height).
- */
-export function reseatAuthorityBody(state: TankState): void {
-  state._prevSpeed = state.speed;
-  // the row's attitude is the spring's plus the posture held over the tracks (movement.ts state._hold, _holdSeat), which
-  // the checkpoint restores with the spring; without one, the posture the replay holds now stands in for the authority's
-  state._spring.pitch = state.visualPitch - (state._hold?.p ?? 0) - (state._holdSeat?.p ?? 0);
-  state._spring.roll = state.visualRoll - (state._hold?.r ?? 0) - (state._holdSeat?.r ?? 0);
-  state._ride.y = state.pos.y;
-  state._ride.v = state.verticalSpeed;
-  state._ride.airTime = 0;
-  // The first replay tick re-establishes terrain support at the authority pose.
-  state._ride.supportY = NaN;
 }
 
 export class LocalPredictor {
