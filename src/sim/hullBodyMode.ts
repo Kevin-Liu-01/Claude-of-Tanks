@@ -95,7 +95,10 @@ export function finishHullRighting(state: HullBodyState, upY: number): boolean {
 
 /** The overturn's hysteresis on the gravity up-vector, once per attitude update: a rigid hull enters it below
  * OVERTURN_ENTER_UP_Y and leaves it from OVERTURN_EXIT_UP_Y; a supported hull that crosses the side enters the tumble
- * with it. */
+ * with it. That entry is in the same tick (movement.ts updateHullAttitude calls this at its end): before audit M8 the
+ * end-of-attitude check set only `overturned`, and the tumble began at the next step's start, so the rest of that tick
+ * (heldGravity, levelLanding, updateVerticalContact) read a supported hull that was overturned, the dead end this machine
+ * removes. Reverting to the next-tick entry brings that state back, so the one-tick change stands (round 2, U15). */
 export function updateHullOverturn(state: HullBodyState, upY: number): void {
   const mode = hullBodyMode(state);
   if (mode === 'supported') {

@@ -11638,8 +11638,8 @@ export function* createTankRuntimeSteps(
       // impulse (a 120 mm shot now peaks ~2.4 deg of hull pitch, readable
       // side-on at 13 m; incoming-hit flinches still arrive at mag <= 2).
       const imp = Math.min(mag, 3.2) * 0.18;
-      // Accumulate; syncFromState routes into the sim mirror (state._flinch)
-      // so the terrain-contact solve accounts for the rock (see above).
+      // Accumulate into the visual's own spring, which syncFromState steps on the fx clock (audit M9: presentation only;
+      // no sim state is written and the terrain-contact solve never reads the rock).
       pendFlinchPV += f * imp;       // frontal hit rocks the nose up/back
       pendFlinchRV += r * imp * 0.8;
     },

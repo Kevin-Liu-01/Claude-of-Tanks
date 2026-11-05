@@ -176,9 +176,10 @@ export const ENTITY_FLAGS = Object.freeze({
    */
   TUMBLING: 1 << 9,
   /**
-   * The hull bears on another hull (wire 10, audit M8): on its roof, held by the contact pass, or riding above its own
-   * static support (tankBodyContacts.ts hullBearsOnBody). A client's copy of the hull has neither a contact pass nor a
-   * support cache, so its tank contacts read this bit instead (src/mp/match/hullBodyRow.ts).
+   * The hull is supported by another hull or elevated above its own static support (wire 10, audit M8): on a roof, held
+   * by the contact pass, or riding more than 0.5 m above its own static support, a plain jump included
+   * (tankBodyContacts.ts hullBearsOnBody, the dynamic-contact term). A client's copy of the hull has neither a contact
+   * pass nor a support cache, so its tank contacts read this bit instead (src/mp/match/hullBodyRow.ts).
    */
   STACKED: 1 << 10,
 } as const);
