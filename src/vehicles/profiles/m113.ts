@@ -14,7 +14,7 @@
 //   cradle on the AS4; the mouths are fleetLauncherMuzzles.ts's), two spare rounds on the FSV's and MRV's roofs, a .50 on
 //   their cupolas.
 // - a3: the US Army's M113A3 (from 1987; usaM113Specs.ts; the owner 2026-11-03: "make a USA m113 variant, that plays
-//   similar to the ares apc"): the A1's hull with the A3's armoured fuel tanks either side of the ramp, the commander's
+//   similar to the ares apc"): the A1's hull with the A2's low armoured fuel tanks either side of the ramp, the commander's
 //   cupola as its one traversing station with the M2 .50 behind an ACAV-style gun shield, a tarp roll and the cargo hatch
 //   on the roof; no TOW.
 // - m741: the M163 VADS's carrier (an M113A1; buildM113HullSteps alone, the Vulcan turret the twin-aa lane's): no cupola,
@@ -200,8 +200,8 @@ export function* buildM113HullSteps(P: TankBuilderPort, mark: M113HullMark,
   yield 'buildM113HullFittings';
 
   // ---------------------------------------------------------------- the mark's hull kit --
-  // the armoured fuel tanks either side of the ramp, their bottoms sloping up to the rear (the AS4's rear and side
-  // photographs; the A3's the same pair)
+  // the AS4's armoured fuel tanks either side of the ramp, their bottoms sloping up to the rear (its rear and side
+  // photographs)
   const addFuelTanks = (): void => {
     for (const s of [-1, 1] as const) {
       const x0 = s * 0.92, x1 = s * 1.27, z0 = D.sternZ, z1 = D.sternZ - 0.52;
@@ -215,7 +215,8 @@ export function* buildM113HullSteps(P: TankBuilderPort, mark: M113HullMark,
   // the M113A2's armoured fuel tanks, low either side of the ramp from the hull's foot, their tops falling to the rear,
   // a filler cap on each and a tail light low in each rear face (Commons photo 07 of the M163's rear, scaled on the 1.86 m
   // roof: 0.45 to 1.03 m at the plate, the rear face 0.39 m tall, the ramp's edge to the hull's side; 0.43 m deep, the
-  // 17 in the A2's tanks add to its length in TM 9-2350-277): lower and shorter than the AS4's pair
+  // 17 in the A2's tanks add to its length in TM 9-2350-277, 191 to 208.5 in on the A3): lower and shorter than the
+  // AS4's pair; the A3's and, as an option, the M741's
   const addA2FuelTanks = (): void => {
     const z0 = D.sternZ, z1 = D.sternZ - 0.43, slope = Math.atan2(0.19, 0.43);
     for (const s of [-1, 1] as const) {
@@ -256,7 +257,7 @@ export function* buildM113HullSteps(P: TankBuilderPort, mark: M113HullMark,
     for (const s of [-1, 1] as const) P.addEquipment('hull', box(0.52, 0.26, 0.70), s * 0.90, B.roofY + 0.13, D.sternZ + 0.50);
   }
   if (a3) {
-    addFuelTanks();
+    addA2FuelTanks();
     // the cargo hatch's outline on the roof's rear and a rolled tarp strapped across the roof ahead of the rear plate
     P.add('hullDark', box(1.30, 0.012, 1.10), 0, B.roofY + 0.006, D.sternZ + 1.05);
     P.addEquipment('hull', cylX(0.11, 1.40, P.q ? 16 : 10), 0, B.roofY + 0.11, D.sternZ + 0.32);
