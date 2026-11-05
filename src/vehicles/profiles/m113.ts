@@ -19,7 +19,8 @@
 //   on the roof; no TOW.
 // - m741: the M163 VADS's carrier (an M113A1; buildM113HullSteps alone, the Vulcan turret the twin-aa lane's): no cupola,
 //   the A1's internal fuel, the turret's race cut into the roof's rear half where the cargo hatch was and the commander's
-//   round hatch behind it at the right rear (m741Datums.ts; the owner's photo of 2026-11-04).
+//   round hatch behind it at the right rear (m741Datums.ts; the owner's photo of 2026-11-04); no hull whips, the M163's
+//   antennas on its turret (Commons photos 03 and 04).
 // Datums: the published M113A1 (4.863 m long, 2.686 m over the tracks, 0.43 m clearance, 0.381 m tracks, five 0.61 m road
 // wheels a side, the sprocket ahead and the idler astern, no return rollers) and the AS4's side profile (Commons,
 // scaled on its 5.53 m hull: the roof 1.96 m over its appliqué, the turret's top 2.60 m, the wheels 0.70 m apart, the ring
@@ -250,9 +251,9 @@ export function* buildM113HullSteps(P: TankBuilderPort, mark: M113HullMark): Tan
   }
   // (the AS4's whips stand over its bins: its spares stay inside; the A3 and the M741 carry no TOW)
   if (mark === 'fsv' || mark === 'mrv') addSpareTows(P, 0.60, B.roofY, D.sternZ + 0.85);
-  // the whips: two on the roof's rear corners (the M741's one on the left: its commander's hatch holds the right)
-  for (const s of [-1, 1] as const) {
-    if (m741 && s < 0) continue;
+  // the whips: two on the roof's rear corners (none on the M741: the M163's ride its turret, and a left-rear whip stood
+  // 1.90 m from the ring, inside the Vulcan's 1.99 m sweep)
+  if (!m741) for (const s of [-1, 1] as const) {
     P.add('hullDetail', cylY(0.04, 0.05, 0.07, 10), s * 0.95, B.roofY + 0.035, D.sternZ + (as4 ? 1.00 : 0.30));
     P.addEquipment('hull', antennaPart(cylY(0.012, 0.015, 2.2, 8)), s * 0.95, B.roofY + 1.17, D.sternZ + (as4 ? 1.00 : 0.30), 0, 0, s * 0.03);
   }
