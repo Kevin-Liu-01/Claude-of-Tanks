@@ -404,4 +404,15 @@ const listed = (key) => {
   assert.ok(checked >= 4, `the documented sessions were checked (${checked})`);
 }
 
+// (round 2, tools-lifecycle review) cold-load-probe hides the driver for its whole browser (a --url deployment may
+// predate the automation owner), so its recovery scenarios, which never asked for the player's path, counted as players
+// in the entry telemetry, which excludes navigator.webdriver: every page it opens turns telemetry off by URL.
+{
+  const probe = codeText(read('tools/cold-load-probe.mjs'), 'tools/cold-load-probe.mjs');
+  assert.match(probe, /--disable-blink-features=AutomationControlled/);
+  const urls = probe.split('new URL(baseUrl)').length - 1;
+  assert.ok(urls >= 4, 'its scenarios build their URLs from the base');
+  assert.equal(probe.split("searchParams.set('telemetry', 'off')").length - 1, urls, 'each one with telemetry=off');
+}
+
 console.log('game-readiness.selftest: one readiness probe over the published lifecycle; every hand-built read listed');
