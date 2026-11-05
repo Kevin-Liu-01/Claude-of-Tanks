@@ -3113,7 +3113,8 @@ export function initHud(bus: EventBus): HudRuntime {
       const active=action==='roofGun'?!!state?.gunOn:action==='lights'?(state?.lights===1 || (state?.lights!==0 && defaultLightsOn)):false;
       button.classList.toggle('active',active);
       if(action!=='smoke')setAttr(button,'aria-pressed',String(active));
-      setDisabled(button,!canControl||(action==='roofGun'&&player?.combat?.modules?.roofGun?.state==='red')||(action==='smoke'&&(cooldown>0||state?.smokeCharges===0)));
+      // a red roof gun refuses only the switch on (auxiliarySystems.ts requestAuxiliary, round 2 U9): the crew may still turn it off
+      setDisabled(button,!canControl||(action==='roofGun'&&!state?.gunOn&&player?.combat?.modules?.roofGun?.state==='red')||(action==='smoke'&&(cooldown>0||state?.smokeCharges===0)));
       const smokeWait=action==='smoke'&&state?.smokeCharges!==0&&cooldown>0;
       setControlText(label,action==='smoke' && state?.smokeCharges===0 ? '0'
         : smokeWait ? t('systems.cooldown',{seconds:cooldown}) : t(`systems.${action}`),smokeWait);

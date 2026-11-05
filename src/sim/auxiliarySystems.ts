@@ -435,7 +435,12 @@ export function requestAuxiliary(
   if (!kit) return false;
   const state = auxiliaryState(entity);
   if ((action === 'lights' || action === 'lightsOff') && kit.lights) { state.lights = action === 'lights' ? 1 : 0; return true; }
-  if (action === 'roofGun' && kit.guns.length && entity.combat.modules?.roofGun?.state !== 'red') { state.gunOn = !state.gunOn; return true; }
+  // the roof-gun switch is the crew's in every state: a red module refuses switching it on, never off (round 2 U9: the
+  // switch was locked while red, so the crew could not silence a gun that would start firing again at the repair)
+  if (action === 'roofGun' && kit.guns.length) {
+    if (!state.gunOn && entity.combat.modules?.roofGun?.state === 'red') return false;
+    state.gunOn = !state.gunOn; return true;
+  }
   if (action !== 'smoke' || !kit.smoke.length || !state.smokeCharges || now < state.smokeReadyAt) return false;
   const terrain=ground ?? (()=>entity.state.pos.y);
   const query=world&&typeof world.raycast==='function'?world as SmokeWorld:null;

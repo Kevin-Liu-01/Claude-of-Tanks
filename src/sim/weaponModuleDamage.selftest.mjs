@@ -44,6 +44,8 @@ for(const id of ['object148_proto','t90m_proryv','challenger3_proto']){
   assert(event.modulesHit.some(m=>m.module==='roofGun'),id+' actual projectile damage reaches roof module');
  }
  assert.equal(combat.modules.roofGun.state,'red');
+ // round 2 U9: the crew may switch a broken roof gun off (it starts on), never on
+ assert.equal(requestAuxiliary(target,'roofGun',1),true,'a broken roof gun can be switched off');
  assert.equal(requestAuxiliary(target,'roofGun',1),false,'broken roof gun cannot activate');
  combat.auxiliary={gunOn:true,gunYaw:0,gunPitch:0,nextShot:0,shots:0};
  assert.equal(stepRoofGun(target,1,1/60,{entities:[],visible:()=>true,clear:()=>true}),false,'damage silences active automatic fire');
