@@ -20,18 +20,23 @@
 // the bot saw, not its record: [6] it starts again after any park that could have hidden a move or a round (longer than
 // one look's shot threshold, a move, a reload begun) and after a resume with no park (a revive), and runs on through a
 // short, quiet one.
+// Review round 2: the bot's own route legs, planned from where the hull stood, outlived the hand-back on their own
+// clocks: a level route's deadline spent in the park gave its live target up as unbearable on the first tick back, and a
+// revive's dead stretch booked a failed search leg. [7] a level route and [8] a search leg hold, their clocks moved by the
+// park, only while the hull stands where it was parked; otherwise they end with no verdict and are planned from here.
 import { Vector3 } from 'three';
 import '../vehicles/fleetFactory.ts';
 import { getSpec } from '../vehicles/specs.ts';
 import { createTankState, updateTank, SIM_DT } from '../sim/movement.ts';
+import { CLASSIC_BOT_DOCTRINE } from '../sim/matchRuleset.ts';
 import { createAI, mulberry32 } from './ai.ts';
 import { leaveWatchSeat, openWatchSeats, prepareWatchSeat, takeWatchSeat } from './watchSeat.ts';
 
 let failures = 0;
 const ok = (cond, label) => { if (cond) console.log(`  ok  ${label}`); else { failures++; console.error(`FAIL  ${label}`); } };
 const field = { getHeightAt: () => 0, getNormalAt: () => ({ x: 0, y: 1, z: 0 }), getGroundType: () => 'firm' };
-function tank(id, team, x, z, yaw = 0) {
-  const spec = getSpec('t90am');
+function tank(id, team, x, z, yaw = 0, specId = 't90am') {
+  const spec = getSpec(specId);
   return { id, specId: spec.id, spec, team, isPlayer: false, state: createTankState(spec, new Vector3(x, 0, z), yaw),
     combat: { hp: 1000, maxHp: 1000, destroyed: false, reload: { t: 0, totalS: spec.gun.reloadS, kind: 'ready' }, shellSlot: 0,
       modules: {}, crew: {}, fire: { burning: false, tickTimer: 0, ticksLeft: 0 }, magazine: null },
@@ -309,6 +314,160 @@ console.log('[6] after a park that could have hidden a move or a round, the bot 
     `a 0.5 s park with the target still and silent: the view runs on (${shortQuiet.before} s at Take, ${shortQuiet.after} s after)`);
   const revived = watched({ resumeOnly: true });
   ok(revived.after <= 1.1, `a resume with no park (a revive) looks at the target afresh (${revived.before} s before, ${revived.after} s after)`);
+}
+
+/** ai.levels' deck (as ai.routeOwner [3]-[4]): a 25 m cliff north of z 40, a ramp up it at x 100..130; a floor bot under a deck enemy. */
+async function deckScene() {
+  const DECK_Y = 25, CLIFF_Z = 40;
+  const cliff = (z) => Math.max(0, Math.min(DECK_Y, (z - (CLIFF_Z - 2)) / 4 * DECK_Y));
+  const getHeightAt = (x, z) => {
+    const plateau = cliff(z);
+    if (x < 97 || x > 133) return plateau;
+    const ramped = z <= CLIFF_Z ? 0 : Math.min(DECK_Y, (z - CLIFF_Z) / 60 * DECK_Y);
+    const side = Math.max(0, Math.min(1, Math.max(100 - x, x - 130) / 3));
+    return ramped + (plateau - ramped) * side;
+  };
+  const getNormalAt = (x, z) => {
+    const e = 0.5, dx = getHeightAt(x + e, z) - getHeightAt(x - e, z), dz = getHeightAt(x, z + e) - getHeightAt(x, z - e);
+    const nx = -dx / (2 * e), nz = -dz / (2 * e), length = Math.hypot(nx, 1, nz);
+    return { x: nx / length, y: 1 / length, z: nz / length };
+  };
+  const deckField = { getHeightAt, getNormalAt, getGroundType: () => 'firm' };
+  const raycast = (origin, dir, maxDist) => {
+    for (let d = 1; d < maxDist; d += 1) {
+      if (origin.y + dir.y * d < getHeightAt(origin.x + dir.x * d, origin.z + dir.z * d)) return { dist: d };
+    }
+    return null;
+  };
+  const place = (id, team, x, z, yaw) => {
+    const t = tank(id, team, x, z, yaw, 'm1a1_abrams_hc');
+    t.state.pos.y = getHeightAt(x, z);
+    return t;
+  };
+  const { createBotNavigationGrid, planBotRoute } = await import('../sim/botRoutePlanner.ts');
+  const navigation = createBotNavigationGrid({ heightField: deckField });
+  const routeRng = mulberry32(431);
+  const floor = place('floor', 'alpha', 0, 30, 0);
+  const deck = place('deck', 'bravo', 0, 55, Math.PI);
+  const ctl = createAI(floor, { difficulty: 'normal', rng: mulberry32(73), deps: {
+    heightField: deckField, raycast, getEnemies: () => [deck], getAllies: () => [], getObstacles: () => [],
+    spotting: { isSpotted: () => true },
+    planRoute: (start, goal, options) => planBotRoute({ start, goal, navigation, rng: routeRng, role: 'brawler',
+      spec: floor.spec, useRoleDetour: false, requireGoalLevel: options?.requireGoalLevel === true }),
+  } });
+  let t = 300;
+  const run = (seconds, until) => {
+    for (let i = 0; i < Math.round(seconds / SIM_DT); i++) {
+      t += SIM_DT;
+      ctl.update(SIM_DT, t);
+      updateTank(floor, deckField, SIM_DT, null);
+      if (until && until(ctl.debugInfo())) return true;
+    }
+    return false;
+  };
+  const moveTo = (x, z) => { floor.state.pos.x = x; floor.state.pos.z = z; floor.state.pos.y = getHeightAt(x, z); floor.state.speed = 0; };
+  return { ctl, run, moveTo, clock: () => t, skip: (seconds) => { t += seconds; } };
+}
+
+console.log('[7] a level route ends with no verdict at a hand-back that finds the hull off the spot it was planned from');
+// Reproduced on dbdbfc2ad5 and 50197fdf43 (the review's probe): the route's deadline (its length at 5 m/s plus 25 s, on
+// match time) was neither moved by the park nor ended by resume(), so a park or a dead stretch past it gave the live
+// deck target up as unbearable for 75 s on the first tick back, and a hull handed back 270 m off drove the last route
+// on from there. The route now holds through a park that left the hull where it stood, its deadline moved by the park,
+// and otherwise ends with no verdict; the elevation lock re-arms from the hull as it stands, ELEVATION_LOCK_S later.
+{
+  const handBack = async ({ parkS, far = false, revive = false }) => {
+    const { ctl, run, moveTo, clock, skip } = await deckScene();
+    const routing = run(30, (info) => info.levelRouting);
+    run(2);
+    const before = ctl.debugInfo();
+    if (!revive) ctl.park?.(clock()); // a revive's resume comes with no park (both drivers' revive hooks)
+    skip(parkS);
+    if (far) moveTo(-200, -150);
+    ctl.resume(clock());
+    const back = ctl.debugInfo();
+    const handBackS = clock();
+    let oldRouteTicks = 0, nextRouteAfterS = null;
+    run(8, (info) => {
+      if (info.levelRouting && info.levelRoutes === before.levelRoutes) oldRouteTicks++;
+      if (info.levelRoutes > before.levelRoutes && nextRouteAfterS === null) nextRouteAfterS = clock() - handBackS;
+      return false;
+    });
+    return { routing, before, back, oldRouteTicks, nextRouteAfterS, after: ctl.debugInfo() };
+  };
+  const label = (r) => `verdicts ${r.before.unbearableVerdicts} -> ${r.after.unbearableVerdicts}, levelRouting ${r.before.levelRouting} -> ${r.back.levelRouting}, owner ${r.back.routeOwner}`;
+  const held = await handBack({ parkS: 200 });
+  ok(held.routing && held.before.routeOwner === 'level', `the floor bot drives a level route to the deck (owner ${held.before.routeOwner})`);
+  ok(held.after.unbearableVerdicts === held.before.unbearableVerdicts && held.back.levelRouting && held.oldRouteTicks > 400,
+    `a 200 s park with the hull where it stood: the route runs on, its deadline moved by the park (${label(held)}; ${(held.oldRouteTicks * SIM_DT).toFixed(1)} s driven after)`);
+  for (const parkS of [200, 30]) {
+    const far = await handBack({ parkS, far: true });
+    ok(far.after.unbearableVerdicts === far.before.unbearableVerdicts && !far.back.levelRouting && far.back.routeOwner !== 'level'
+      && far.oldRouteTicks === 0,
+      `a ${parkS} s park in which the watcher drove 270 m off: the route ends with no verdict and is not driven on from there (${label(far)}; ${(far.oldRouteTicks * SIM_DT).toFixed(1)} s of it after)`);
+  }
+  const revived = await handBack({ parkS: 200, revive: true });
+  ok(revived.after.unbearableVerdicts === revived.before.unbearableVerdicts && !revived.back.levelRouting
+    && revived.back.routeOwner !== 'level' && revived.oldRouteTicks === 0,
+    `a resume with no park (a revive) 200 s on: the last life's route ends with no verdict (${label(revived)})`);
+  ok(revived.nextRouteAfterS !== null && revived.nextRouteAfterS >= 6 - 0.05,
+    `and the lock re-arms from the hull as it stands: a new route ${revived.nextRouteAfterS === null ? 'never' : `${revived.nextRouteAfterS.toFixed(2)} s`} after the hand-back (ELEVATION_LOCK_S 6 s)`);
+  const toggled = await handBack({ parkS: 0.1 });
+  ok(toggled.after.unbearableVerdicts === toggled.before.unbearableVerdicts && toggled.back.levelRouting && toggled.oldRouteTicks > 400,
+    `a 0.1 s toggle: the route runs on (${label(toggled)})`);
+}
+
+console.log('[8] a search leg planned where the hull stood is planned again from here at such a hand-back, counting no failure');
+// Measured on dbdbfc2ad5: a revive 200 s after the leg began counted the dead stretch against the leg's budget, and the
+// first tick back booked a failed leg (searchFailures 0 -> 1); a hull handed back 200 m off drove the old leg's next
+// waypoint on from there (17.8 s). A park that left the hull where it stood keeps the leg, its budget moved by the park.
+{
+  const searchHandBack = ({ parkS, far = false, revive = false }) => {
+    const bot = tank('bot', 'alpha', 0, -450, 0, 'm1a1_abrams_hc');
+    const enemy = tank('enemy', 'bravo', 5, 150, 0, 'm1a1_abrams_hc'); // hidden, far: the 25 s search heads for its sector
+    const ctl = createAI(bot, { difficulty: 'normal', rng: mulberry32(9), doctrine: () => CLASSIC_BOT_DOCTRINE, deps: {
+      heightField: field, raycast: () => null, getEnemies: () => [enemy], getAllies: () => [], getObstacles: () => [],
+      spotting: { isSpotted: () => false }, getObjective: () => null,
+    } });
+    let t = 1;
+    const run = (seconds, until) => {
+      for (let i = 0; i < Math.round(seconds / SIM_DT); i++) {
+        t += SIM_DT;
+        ctl.update(SIM_DT, t);
+        updateTank(bot, field, SIM_DT, null);
+        if (until && until(ctl.debugInfo())) return true;
+      }
+      return false;
+    };
+    const searched = run(40, (info) => info.searching);
+    run(10);
+    const before = ctl.debugInfo();
+    if (!revive) ctl.park?.(t);
+    t += parkS;
+    if (far) { bot.state.pos.x += 200; bot.state.speed = 0; }
+    ctl.resume(t);
+    run(SIM_DT * 2);
+    const first = ctl.debugInfo();
+    let oldWaypointTicks = 0;
+    run(10, (info) => {
+      if (info.searchLegs === before.searchLegs && info.waypointX === before.waypointX && info.waypointZ === before.waypointZ) oldWaypointTicks++;
+      return false;
+    });
+    return { searched, before, first, oldWaypointTicks };
+  };
+  const label = (r) => `failures ${r.before.searchFailures} -> ${r.first.searchFailures}, legs ${r.before.searchLegs} -> ${r.first.searchLegs}, leg age ${r.before.searchLegAgeS} -> ${r.first.searchLegAgeS} s`;
+  const revived = searchHandBack({ parkS: 200, revive: true });
+  ok(revived.searched && revived.before.routeOwner === 'search', `the bot searches (${revived.before.searchKind}, owner ${revived.before.routeOwner})`);
+  ok(revived.first.searchFailures === revived.before.searchFailures && revived.first.searchLegs === revived.before.searchLegs + 1
+    && revived.first.searchLegAgeS < 0.1 && revived.first.routeOwner === 'search',
+    `a resume with no park (a revive) 200 s on: the next leg is planned from here, and the dead stretch is no failed leg (${label(revived)})`);
+  const far = searchHandBack({ parkS: 30, far: true });
+  ok(far.first.searchFailures === far.before.searchFailures && far.first.searchLegs === far.before.searchLegs + 1 && far.oldWaypointTicks === 0,
+    `a 30 s park in which the watcher drove 200 m off: the old leg is not driven on from there (${label(far)}; ${(far.oldWaypointTicks * SIM_DT).toFixed(1)} s of it after)`);
+  const held = searchHandBack({ parkS: 30 });
+  ok(held.first.searchLegs === held.before.searchLegs && Math.abs(held.first.searchLegAgeS - held.before.searchLegAgeS) < 0.1
+    && held.oldWaypointTicks > 300,
+    `a 30 s park with the hull where it stood: the leg runs on, its budget moved by the park (${label(held)})`);
 }
 
 if (failures) { console.error(`ai.watchResume.selftest: ${failures} failure(s)`); process.exit(1); }

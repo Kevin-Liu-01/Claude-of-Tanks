@@ -159,7 +159,8 @@ interface AiController {
   /**
    * Take the hull back after a stretch in which something else drove it (Watch mode's taken seat) or after a revive:
    * what the controller measures between its own ticks restarts from the hull as it stands now (audit M7), after a
-   * park the clocks of its own record (its last round, its last penetration) move on by the park's length, and its view
+   * park the clocks of its own record (its last round, its last penetration) move on by the park's length, its own route
+   * legs (a search leg, a level route) end with no verdict unless the hull still stands where it was parked, and its view
    * of its target (stillness, silence) starts again unless the park could hide nothing from it. `timeS` is the match
    * clock at the hand-back; `firstShellId` the battle's next shell id then (an earlier round's result is not this bot's).
    */
@@ -6881,12 +6882,17 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
   // the target as the bot last saw it when the park began (resume checks it against the target at the hand-back)
   let parkTargetId: string | null = null;
   let parkTargetX = 0, parkTargetZ = 0, parkTargetYaw = 0, parkTargetReloadT = 0;
+  // where the hull stood when the park began (resume checks the bot's own route legs against it)
+  let parkHullX = 0, parkHullZ = 0;
   /**
    * The park entry point (round 2, U18): something else drives the hull from `timeS` (the match clock) until resume().
-   * The controller is not stepped meanwhile; resume() reads how long the park lasted and what became of the target.
+   * The controller is not stepped meanwhile; resume() reads how long the park lasted, where the hull went and what
+   * became of the target.
    */
   function park(timeS?: number): void {
     parkedAtS = timeS !== undefined && Number.isFinite(timeS) ? timeS : NaN;
+    parkHullX = entity.state.pos.x;
+    parkHullZ = entity.state.pos.z;
     const seen = target && enemyAlive(target) ? target : null;
     parkTargetId = seen ? seen.id : null;
     if (!seen) return;
@@ -6906,13 +6912,15 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
    * (the *UntilS ends) expire by themselves and stay; news queued before the park is dropped. A revive hands the same
    * controller a new hull at its spawn and comes here too (both drivers' revive hooks), with no park.
    * The clocks that time this bot's own record since an event (its last round, its last penetration, its last missed
-   * round, its search leg's start and displacement) stood still with the bot (round 2, U18): they move on by the park's
-   * length (shiftRecordClocks, from park()'s clock to `timeS`), so the watcher's stretch is no silence of the bot's gun
-   * (a stalemate push, a search leg, a passive press) and a short Take and Leave changes nothing. With no park (a
-   * revive) they stay as they are. The bot's view of its target (how long it has held still, how long its gun has been
-   * silent) is no record of the bot's but what it saw, and it saw nothing while parked: it carries on only through a park
-   * that could hide nothing from it (targetViewHeldThroughPark); after any other park, and after a revive, the target is
-   * looked at afresh, as on a new target (lookAtTargetAgain). `firstShellId`, the battle's next shell id at the
+   * round) stood still with the bot (round 2, U18): they move on by the park's length (shiftRecordClocks, from park()'s
+   * clock to `timeS`), so the watcher's stretch is no silence of the bot's gun (a stalemate push, a search leg, a passive
+   * press) and a short Take and Leave changes nothing. With no park (a revive) they stay as they are. The bot's own
+   * route legs (a search leg, a level route) were planned from where the hull stood: they hold, their clocks moved on by
+   * the park, only while the hull still stands there, and otherwise end with no verdict on them (resumeOwnLegs). The
+   * bot's view of its target (how long it has held still, how long its gun has been silent) is no record of the bot's
+   * but what it saw, and it saw nothing while parked: it carries on only through a park that could hide nothing from it
+   * (targetViewHeldThroughPark); after any other park, and after a revive, the target is looked at afresh, as on a new
+   * target (lookAtTargetAgain). `firstShellId`, the battle's next shell id at the
    * hand-back, marks the rounds that are this bot's again: the result of one fired before it (the watcher's, landing
    * after Leave) is not reported to the bot (notifyShellResult). `timeS`, the match clock at the hand-back, is also the
    * clock news handed over before the next tick reads. A brain never stepped (the battle opening's hand-off) has no
@@ -6927,6 +6935,7 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     const parkS = parked ? Math.max(0, timeS - parkedAtS) : 0;
     parkedAtS = NaN;
     if (objectiveTick > 0 && parkS > 0) shiftRecordClocks(parkS);
+    resumeOwnLegs(parked, parkS);
     if (target) {
       if (parked && targetViewHeldThroughPark(parkS)) targetLastShotS += parkS; // its silence as seen runs on from Take
       else lookAtTargetAgain(nowS);
@@ -6974,9 +6983,34 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     lastFiredAtS += parkS;       // the stalemate push, the search gate and the settle's starved test
     lastPenAtS += parkS;         // the passive press (PASSIVE_PRESS_NO_PEN_S of its own shells)
     missLastShotS += parkS;      // the miss streak's settle (missedOut)
-    if (searching) {             // a search leg's budget, and a displaced leg's wait, are the bot's driving, not the park
-      searchLegStartS += parkS;
-      if (searchDisplacedAtS >= 0) searchDisplacedAtS += parkS;
+  }
+  /**
+   * The bot's own route legs at the hand-back (review round 2, U18). A search leg's list and a level route were planned
+   * from where the hull stood, and their clocks (the search leg's budget and a displaced leg's wait, the level route's
+   * deadline) time the bot's driving on them. Through a park that left the hull where it stood (within ARRIVE_DIST_M, the
+   * waypoint follower's own arrival radius) they hold, and those clocks move on by the park. After any other park, and
+   * after a revive (no park: the hull is a new one at its spawn), they end with no verdict: the level route's list is
+   * released and the elevation lock re-arms from the hull as it stands (ELEVATION_LOCK_S later), so no target is given up
+   * as unbearable on a deadline spent while the watcher drove or the hull lay dead; the search leg's own list is
+   * released, which displaces the leg (claimWaypoints), and its next leg is planned from here at the first tick back,
+   * counting no failed leg; a leg already displaced waits for the route in place from the hand-back.
+   */
+  function resumeOwnLegs(parked: boolean, parkS: number): void {
+    const st = entity.state;
+    if (parked && detMath.hypot(st.pos.x - parkHullX, st.pos.z - parkHullZ) <= ARRIVE_DIST_M) {
+      if (searching) {
+        searchLegStartS += parkS;
+        if (searchDisplacedAtS >= 0) searchDisplacedAtS += parkS;
+      }
+      if (levelRouting) levelRouteUntilS += parkS;
+      return;
+    }
+    elevationLockT = 0;
+    if (levelRouting) endLevelRoute();
+    if (searching) {
+      if (searchDisplacedAtS < 0) claimWaypoints('none', loopWaypoints);
+      searchDisplacedAtS = nowS;
+      searchNextCheckS = nowS;
     }
   }
   /**
