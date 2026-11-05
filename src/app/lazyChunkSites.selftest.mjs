@@ -114,6 +114,17 @@ const SITES = [
   // the lobby's chunk the Play menu's memo joins (playSurfaceRuntime menuPromise, in KNOWN): a bare import, asked again
   // by every Play intent after a failure
   ['src/main.ts', ["const lobbyIntentChunk = createLazyChunk(() => import('./mp/session/lobbyIntent.ts'));", 'lobbyIntentChunk.load().then(({ createLobbyIntent })'], []],
+  // (round 2 review 2) the world build coordinator's map module, which every world build awaits: its memo of the loader
+  // passed in (`if (!modulePromise) modulePromise = dependencies.loadModule()`) kept its first failure for the document, so
+  // one failed transfer failed every later battle's world build until a reload; and the consumables' smoke table, warmed
+  // on every pointer crossing into its band, whose memo (cleared on failure) every hover asked again
+  ['src/world/worldBuildCoordinator.ts', ['createLazyChunk((): Promise<WorldMapModule<World>> => dependencies.loadModule(), { now })',
+    'const loadModule = (): Promise<WorldMapModule<World>> => moduleChunk.load();'], [/\bmodulePromise\s*=\s*dependencies\.loadModule\(/]],
+  ['src/ui/garageConsumables.ts', ["createLazyChunk(() => import('../vehicles/auxiliaryInventory.ts')", 'smokeChunk.load().then(undefined, () => undefined)'],
+    [/\bsmokeLoad\s*\?\?=/]],
+  // the light model's and the cloudscapes' memos (KNOWN) rode only the battle atmosphere runtime's first acquisition, a lazy
+  // runtime owner that never loads again once ready: every prepare asks them again
+  ['src/engine/battleAtmosphereAccess.ts', ['await Promise.all([owner.preload(), loadGroundedLightModel(), loadCloudscapeLayers()])'], []],
 ];
 const offenders = [];
 for (const [file, present, absent] of SITES) {
@@ -123,20 +134,23 @@ for (const [file, present, absent] of SITES) {
 }
 assert.deepEqual(offenders, [], `a named lazy chunk is not on app/lazyChunk.ts:\n  ${offenders.join('\n  ')}`);
 
-// ---- the ratchet: a hand-made memo of a chunk (`x ??= import(...)`, `x = import(...)`, or a memo or latch its import's
-// failure handler clears) is one of these, which predate the policy and belong to other owners; a new chunk takes
-// createLazyChunk (a module failure is asked again past a backoff, a stylesheet never). Each is the policy already, or
-// outside the pages that boot it:
+// ---- the ratchet: a hand-made memo of a chunk (`x ??= import(...)`, `x = import(...)`, a memo or latch its import's
+// failure handler clears, a facade's memo cleared by identity, a `??=` memo of a call its handlers clear, or a `??=` or
+// guarded memo of a call named for loading, a loader passed in among them) is one of these, which predate the policy
+// and belong to other owners; a new chunk takes createLazyChunk (a module failure is asked again past a backoff, a
+// stylesheet never). A memo spelled otherwise is not seen. Each names why it differs:
 const KNOWN = new Set([
-  // a memo cleared on failure, asked again by the next call without the policy's backoff: none carries a stylesheet, and
-  // none has a caller that asks every frame or tick (review round 2: the AC-130 airframe's did, every frame; now held).
-  // Their callers: the battle atmosphere's covered acquisition and the shot staging (cloudscapeLoad, groundedLoad); a
-  // world build and a sky preset applied for an Earth sky (earthLandLoad); the battle's start and phase changes
-  // (battleEndGarageWarmLoad); a pointer or the focus entering the consumables band, and its picker's open (smokeLoad);
-  // the combat warm and the Studio (wreckTurretDriverLoader loading, whose selftest pins "imports nothing but types");
-  // the opening of a dossier's technical drawing section (infoGuides mounted; the drawing holds its own sheet below)
+  // a memo cleared on failure, asked again by the next call without the policy's backoff. None carries a stylesheet, and
+  // each is asked once per lifecycle edge or deliberate open, never per frame, tick, pointer move or focus move (review
+  // round 2: the AC-130 airframe's was asked every frame and the consumables' smoke table on every hover; both are held
+  // now). Their callers: every battle's covered atmosphere prepare (battleAtmosphereAccess.ts asks them at each prepare,
+  // since its runtime loads once) and the shot staging (cloudscapeLoad, groundedLoad; lightModelCore.ts also rides the
+  // horizon ring and hinterland workers, which do not carry this policy); a world build and a Studio light or map sky
+  // applied for an Earth sky (earthLandLoad); the battle's start and its phase change into battle
+  // (battleEndGarageWarmLoad); the opening of a dossier's technical drawing section (infoGuides mounted; the drawing
+  // holds its own sheet below)
   'src/engine/cloudPresets.ts cloudscapeLoad', 'src/engine/earthLandAccess.ts earthLandLoad', 'src/engine/lightModelCore.ts groundedLoad',
-  'src/main.ts battleEndGarageWarmLoad', 'src/ui/garageConsumables.ts smokeLoad', 'src/ui/infoGuides.ts mounted',
+  'src/main.ts battleEndGarageWarmLoad', 'src/ui/infoGuides.ts mounted',
   // a stylesheet alone: kept for the document, the policy's rule for a failed stylesheet (asked again it never applies)
   'src/ui/technicalDiagramLabels.ts sheet', 'src/ui/technicalDrawing.ts sheet',
   // pages that do not boot app/lazyChunk.ts (it rides the game, cn and Gallery boot chunk, vite.config.ts
@@ -164,6 +178,9 @@ const KNOWN = new Set([
   // takes index, the ICE configuration; and a warm task, not a load (the Studio effects' warm)
   'src/world/propsModelStore.ts loadPromise', 'src/ui/fleetTakes.ts request', 'src/mp/transport/iceConfig.ts inFlight',
   'src/game/battleWarmRuntime.ts studioEffectsWarmPromise',
+  // the material painter worker's font, a fetch held for that worker's realm: a failed font answers false, the client ends
+  // that worker, and the next bake starts a fresh realm that fetches it again (materialPainterWorkerClient.ts)
+  'src/vehicles/materialPainterWorker.ts ready',
   // the audio mixer's chunk (lazyAudio.ts modulePromise), cleared on failure and asked again by the next gesture or phase
   // edge (resume, the loading bed, the Garage sting), never per frame or tick, with a warning each time; the mixer's runtime
   // over it (realPromise) is an initialization. The audio owner moves it onto this policy (round 2 crossClusterNeeds)
@@ -292,6 +309,19 @@ const walk = (dir) => {
         if (/\.\s*(?:then|catch|finally)\s*\(/.test(chain)
           && new RegExp(`(?<![=!<>.\\w$])${name}\\s*=\\s*(?:false|null)\\b(?!\\s*=)`).test(chain)) found.add(`${file} ${name}`);
       }
+      // (round 2 review 2) a memo of a loader passed in, kept for the document or cleared: a guarded assignment from a call
+      // named for loading, a member call or a plain one (`if (!x) x = deps.loadModule()`, `if (x) return x; x = load…(`,
+      // `x ??= a.b.load…(`), with or without a clear. The world build coordinator's map module was one
+      // (`modulePromise = dependencies.loadModule()`, never cleared: one failed transfer failed every later world build)
+      for (const match of source.matchAll(/(?<![.\w$?!=<>])(\w+)\s*(\?\?)?=\s*(?:[\w$]+\.)*((?:load|import|preload|ensure)[\w$]*)\(/gi)) {
+        const [, name, nullish, callee] = match;
+        if (callee === 'import') continue;
+        const before = source.slice(Math.max(0, match.index - 160), match.index);
+        if (/\b(?:const|let|var)\s+$/.test(before)) continue;
+        const guard = new RegExp(`if\\s*\\(\\s*(?:!\\s*${name}|${name}\\s*===?\\s*(?:null|undefined))\\s*\\)\\s*\\{?\\s*$`
+          + `|if\\s*\\(\\s*${name}\\s*\\)\\s*return\\b[^;]*;\\s*$`);
+        if (nullish || guard.test(before)) found.add(`${file} ${name}`);
+      }
       // a default-policy chunk of several parts settles them all: Promise.all keeps whichever rejection came first
       for (const match of source.matchAll(/\bcreateLazyChunk\(/g)) {
         const open = match.index + match[0].length - 1;
@@ -334,4 +364,4 @@ for (const page of pages) {
   }
 }
 assert.deepEqual(shared, [], `a lazy stylesheet with two owners in one document (Vite's preload skips a sheet that failed at one, so the other runs unstyled; give it one owner, as ui/heroCardChunk.ts):\n  ${shared.join('\n  ')}`);
-console.log(`lazyChunkSites.selftest: ${SITES.length} sites on app/lazyChunk.ts, their loads of several parts settled by importAll; ${found.size} older hand-made memos (the policy already, or off its pages), no new one; ${sheetCount} lazy stylesheets over ${pages.length} pages, each held and with one owner per document`);
+console.log(`lazyChunkSites.selftest: ${SITES.length} sites on app/lazyChunk.ts, their loads of several parts settled by importAll; ${found.size} older hand-made memos (each with its reason in KNOWN), no new one; ${sheetCount} lazy stylesheets over ${pages.length} pages, each held and with one owner per document`);

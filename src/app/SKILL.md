@@ -20,7 +20,8 @@ policy into a second owner. Dependencies arrive through explicit typed ports.
 `lazyRuntimeOwner.ts` and `checkedIntegrationPort.ts` guard lazy integration;
 every lazy chunk's failure policy is `lazyChunk.ts` (`lazyRuntimeOwner.ts` is
 one of its chunks per facade; `lazyChunkSites.selftest.mjs` fails a new
-hand-made memo, facade or latch).
+hand-made memo, facade or latch in the spellings it reads, so a new lazy load
+starts from `createLazyChunk`).
 `watchRuntime.ts` composes Watch mode (the drone/ride camera, the controller and
 its bar) the first time a watched battle loads; main.ts keeps only the lazy owner.
 
