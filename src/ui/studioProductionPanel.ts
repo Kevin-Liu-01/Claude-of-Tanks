@@ -1,6 +1,7 @@
 /** Director workspace: curated scenes and camera tools, backed by the same Studio API as captures. */
 import { PRODUCTION_PRESETS, productionAspect, productionPreset, productionShotNames, type ProductionFormat } from '../game/studioProduction.ts';
 import { sceneLinkPath } from '../game/studioSceneLink.ts';
+import { createSessionHolder } from '../game/studioSession.ts';
 import type { StudioPanelApi } from './studioPanel.ts';
 import type { NoticeSeverity } from './components/notice.ts';
 import { uiIconSVG } from './uiIcons.ts';
@@ -188,7 +189,10 @@ export function mountStudioProductionPanel(
   director.dataset.group = 'director';
   let selectedId = PRODUCTION_PRESETS[0]?.id ?? '';
   let format: ProductionFormat = S.productionFormat;
-  let staging = false;
+  // (round 2 U36, review r2) the Director's staging, held for the session it began in, as the Studio's holders are: the
+  // panel is built once per page, and a plain flag set by a staging whose cold build an exit outlived held the Director
+  // (and, through the host, the Studio's header and keys) in the Studio entered again until that build returned
+  const staging = createSessionHolder();
   let shotSignature = '';
   const say = (text: string, error = false): void => { hosts.notice?.(text, error ? 'error' : 'info'); };
   const failure = (error: unknown): void => {
@@ -287,7 +291,7 @@ export function mountStudioProductionPanel(
    * sequence once ignored a take still loading, and the last to finish won; neither knew a queued still at every shot).
    */
   function sceneBusy(): boolean {
-    return staging || loadingTake || (hosts.busy ? hosts.busy() : S.busy() !== null);
+    return staging.held || loadingTake.held || (hosts.busy ? hosts.busy() : S.busy() !== null);
   }
   function openTemplates(): void {
     if (sceneBusy()) return;
@@ -326,12 +330,15 @@ export function mountStudioProductionPanel(
   if (hosts.head) fields.append(tankLabel); else fields.append(frameLabel, tankLabel);
   function stageSequence(): void {
     if (sceneBusy()) return;
-    staging = true; refresh(); say(productionLabel('staging'));
+    const owner = S.sessionToken();
+    const release = staging.take(owner);
+    refresh(); say(productionLabel('staging'));
     const presetId = selectedId;
     S.directProduction({ presetId, format, ...(featuredTank() ? { vehicleId: featuredTank() } : {}) })
       .then(() => { markCurrent(`seq:${presetId}`); say(productionLabel('ready')); refreshAll(); })
-      .catch(failure)
-      .finally(() => { staging = false; refresh(); });
+      // (round 2 U36) a closed session's staging ends quietly (its cancel, or a build the next session superseded)
+      .catch((error: unknown) => { if (owner.current()) failure(error); })
+      .finally(() => { release(); refresh(); });
   }
   const stage = button(productionLabel('stage'), stageSequence, `${KIT_PRIMARY} production-stage`);
   stage.dataset.productionStage = '';
@@ -349,7 +356,7 @@ export function mountStudioProductionPanel(
   takesSection.append(takesLibrary, takesStatus);
   (hosts.takes ?? director).append(takesSection);
   let takesRequested = false;
-  let loadingTake = false;
+  const loadingTake = createSessionHolder(); // (round 2 U36) a take's fetch and load, for the session it was chosen in
   // the kit's inline notice (components/notice.ts notice(): its severity's glyph, the line, a status or an alert), built as
   // nodes so no Studio sink writes text as markup (studioSceneShare.selftest §10)
   const TAKE_NOTICE_GLYPH: Readonly<Record<NoticeSeverity, string>> = { info: 'info', success: 'check', warning: 'alert', error: 'alert', progress: 'clock' };
@@ -424,7 +431,7 @@ export function mountStudioProductionPanel(
     // (audit F9) the take belongs to the session it was chosen in: one that an exit closed during the fetch refuses it,
     // instead of load() entering the Studio again over the Garage
     const owner = S.sessionToken();
-    loadingTake = true;
+    const release = loadingTake.take(owner);
     refresh();
     say(productionLabel('takeLoading'));
     fetch(path)
@@ -438,8 +445,8 @@ export function mountStudioProductionPanel(
         say(productionLabel('takeLoaded'));
         refreshAll();
       })
-      .catch(failure)
-      .finally(() => { loadingTake = false; refresh(); });
+      .catch((error: unknown) => { if (owner.current()) failure(error); })
+      .finally(() => { release(); refresh(); });
   }
 
   const sequence = node('section');
@@ -567,7 +574,7 @@ export function mountStudioProductionPanel(
   function refresh(): void {
     if (format !== S.productionFormat) setFormat(S.productionFormat);
     const recording = S.recordingStatus();
-    const locked = staging || recording.active;
+    const locked = staging.held || recording.active;
     toggle.disabled = recording.active;
     for (const element of [stage, play, restart, scrub, photo]) element.disabled = locked;
     const held = sceneBusy();
@@ -608,5 +615,5 @@ export function mountStudioProductionPanel(
   // the takes index is fetched as the panel is built, so the Director's lists are filled before it first shows: a list
   // arriving after the panel opened pushed every section under it 75 px down (248, a cold /studio)
   loadSiteTakes();
-  return { refresh, setVisible, activate, openTemplates, busy: () => staging || loadingTake };
+  return { refresh, setVisible, activate, openTemplates, busy: () => staging.held || loadingTake.held };
 }
