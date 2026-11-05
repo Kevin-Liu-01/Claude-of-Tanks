@@ -146,6 +146,9 @@ export function readinessInPage() {
       const report = !!document.querySelector('.cot-es.show');
       legacy = {
         source: 'dom',
+        // (round 2 Q21) the screen has one of the elements this fallback reads: a build whose DOM differs (an old A/B
+        // baseline) has none, and its waits fail by that name instead of a bare timeout
+        landmarks: !!document.querySelector('.cot-garage, .cot-hud, #cot-boot, .cot-studio'),
         garage: booted && !splash && !veiled && !covered && !report && shown('.cot-garage'),
         battleRevealed: !covered && shown('.cot-hud'),
         controlsReleased: null,
@@ -183,10 +186,34 @@ function wantedStates(name) {
 export function readinessExpression(name, { since = null } = {}) {
   const wanted = wantedStates(name);
   if (since !== null && !Number.isFinite(since)) throw new TypeError('game-readiness: since is a transitions count');
-  return `((read, wanted, since, name) => { const r = read(); if (!r.booted) return false;`
-    + ' if (!r.lifecycle) return r.legacy?.[name] === true;'
+  return `((read, note, wanted, since, name) => { const r = read(); if (!r.booted) return false;`
+    + ' if (!r.lifecycle) { note(r.legacy, name); return r.legacy?.[name] === true; }'
     + ' if (since !== null && !(r.transitions > since)) return false; return wanted.includes(r.state); })'
-    + `(${readinessInPage.toString()}, ${JSON.stringify(wanted)}, ${JSON.stringify(since)}, ${JSON.stringify(name)})`;
+    + `(${readinessInPage.toString()}, ${legacyReadinessNote.toString()}, ${JSON.stringify(wanted)}, ${JSON.stringify(since)}, `
+    + `${JSON.stringify(name)})`;
+}
+
+/** The prefix of the page's own note (legacyReadinessNote), which a launched browser's pages forward to the tool. */
+export const READINESS_NOTE_PREFIX = '[cot-readiness]';
+
+/**
+ * In-page (self-contained), round 2 Q21: a readiness wait on a build that publishes no lifecycle says, once a document
+ * for each definition, which legacy definition decided it. Forty-odd tools call readinessExpression and only mobilelap
+ * recorded the facts, so an A/B receipt against a pre-lifecycle baseline used the old predicate silently. The page logs
+ * it; prepareToolPage forwards the line to the tool's stderr, so every tool's log names it.
+ */
+export function legacyReadinessNote(legacy, name) {
+  const source = legacy?.source ?? 'none';
+  const blind = source === 'dom' && legacy?.landmarks === false;
+  const key = `${source}${blind ? ':blind' : ''}`;
+  try {
+    if (window.__COT_READINESS_LEGACY === key) return;
+    window.__COT_READINESS_LEGACY = key;
+    window.console?.info?.(`[cot-readiness] this build publishes no lifecycle (window.__APP_LIFECYCLE): '${name}' and every `
+      + `readiness on this page is its legacy ${source} predicate`
+      + (blind ? '; and its screen has none of the elements the DOM fallback reads (.cot-garage, .cot-hud, #cot-boot, '
+        + '.cot-studio): no wait here can pass; open it with ?debug=1' : ''));
+  } catch { /* a page that will not take the note still answers the wait */ }
 }
 
 /** The page's readiness facts now (readinessInPage), for a receipt or a `since`. */
@@ -205,13 +232,35 @@ export async function waitForReady(page, name, { since = null, ...options } = {}
     await page.waitForFunction(readinessExpression(name, { since }), options);
   } catch (cause) {
     const facts = await readGameReadiness(page).catch(() => null);
+    const first = String(cause?.message ?? cause).split('\n')[0];
     if (facts && !facts.lifecycle && facts.legacy?.[name] === null) {
       throw new Error(`game-readiness: ${name} cannot be read on this page: the build publishes no lifecycle and no `
-        + `window.__DEBUG (open it with ?debug=1) (${String(cause?.message ?? cause).split('\n')[0]})`, { cause });
+        + `window.__DEBUG (open it with ?debug=1) (${first})`, { cause });
+    }
+    // (round 2 Q21) a build whose screen the DOM fallback cannot read (an A/B baseline old enough to differ) times out
+    // by name, not as a bare timeout
+    if (facts && !facts.lifecycle && facts.legacy?.source === 'dom' && facts.legacy.landmarks === false) {
+      throw new Error(`game-readiness: ${name} cannot be read on this page: the build publishes no lifecycle and no `
+        + 'window.__DEBUG, and its screen has none of the elements the DOM fallback reads (.cot-garage, .cot-hud, '
+        + `#cot-boot, .cot-studio); open it with ?debug=1 (${first})`, { cause });
     }
     throw cause;
   }
   return readGameReadiness(page);
+}
+
+/**
+ * (round 2 Q21) The in-page expression that turns true once `phase` owns the scene (the lifecycle's `phase`, written
+ * when a hand-over begins: a Garage return writes the Garage's scene under its veil, before its screen settles). For a
+ * timing edge (how soon a Leave answered), never readiness: wait on a READY name before reading the screen. A build
+ * with no lifecycle answers from `__DEBUG.game.phase`.
+ */
+export function scenePhaseExpression(phase) {
+  if (!['garage', 'battle', 'shot', 'studio'].includes(phase)) throw new TypeError(`game-readiness: unknown app phase ${String(phase)}`);
+  return `((phase) => { let owner = null; try { owner = window.__APP_LIFECYCLE ?? null; } catch { owner = null; }`
+    + ' if (owner && typeof owner.phase === "string") return owner.phase === phase;'
+    + ' let game = null; try { game = window.__DEBUG?.game ?? null; } catch { game = null; } return !!game && game.phase === phase; })'
+    + `(${JSON.stringify(phase)})`;
 }
 
 /** The boot finished loading: the latch's harness mirror. The entry gate may still wait on the player. */
@@ -236,10 +285,21 @@ function afterEach(owner, name, prepare) {
   owner[name] = async function preparedFactory(...args) { return prepare(await original.apply(owner, args)); };
 }
 
+/** (round 2 Q21) The page's readiness note (legacyReadinessNote), forwarded to the tool's own log. */
+function forwardReadinessNotes(target) {
+  if (typeof target?.on !== 'function') return;
+  target.on('console', (message) => {
+    let text = '';
+    try { text = typeof message?.text === 'function' ? message.text() : ''; } catch { text = ''; }
+    if (text.startsWith(READINESS_NOTE_PREFIX)) process.stderr.write(`${text}\n`);
+  });
+}
+
 /** One page: the launcher's request, registered before anything else on it. */
 export async function prepareToolPage(page) {
   if (!page || typeof page !== 'object' || preparedObjects.has(page)) return page;
   preparedObjects.add(page);
+  forwardReadinessNotes(page);
   if (typeof page.addInitScript === 'function') await page.addInitScript(HARNESS_DEFAULT_SCRIPT); // playwright
   else if (typeof page.evaluateOnNewDocument === 'function') await page.evaluateOnNewDocument(HARNESS_DEFAULT_SCRIPT);
   return page;
@@ -251,6 +311,7 @@ export async function prepareToolContext(context) {
   preparedObjects.add(context);
   if (typeof context.addInitScript === 'function') {
     await context.addInitScript(HARNESS_DEFAULT_SCRIPT);
+    forwardReadinessNotes(context); // (playwright: a context's console event carries every page's)
     return context;
   }
   afterEach(context, 'newPage', prepareToolPage);

@@ -9,8 +9,8 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
-  APP_LIFECYCLE_STATES, BOOT_LOADED_EXPRESSION, READY, readGameReadiness, readinessExpression, readinessInPage,
-  waitForBootLoaded, waitForReady,
+  APP_LIFECYCLE_STATES, BOOT_LOADED_EXPRESSION, READY, prepareToolPage, readGameReadiness, readinessExpression,
+  readinessInPage, scenePhaseExpression, waitForBootLoaded, waitForReady,
 } from './game-readiness.mjs';
 import { codeText, toolCensusFiles } from './code-text.mjs';
 import { createAppLifecycle, transitionAppPhase } from '../src/game/appLifecycle.ts';
@@ -153,7 +153,7 @@ const evaluate = (win, expression, doc = { querySelector: () => null }) =>
 // 240 s. Such a page answers from what it shows; what it cannot show (the countdown) is null and fails by name.
 {
   const win = { __GAME_READY: false, getComputedStyle: (node) => node.style };
-  const dom = { splash: true, garage: 'awaiting-boot', veil: false, loader: false, hud: false, report: false, studio: false };
+  const dom = { splash: true, garage: 'awaiting-boot', veil: false, loader: false, hud: false, report: false, studio: false, blind: false };
   const box = (display, visibility = 'visible') => ({ style: { display, visibility } });
   const doc = {
     querySelector(selector) {
@@ -166,6 +166,8 @@ const evaluate = (win, expression, doc = { querySelector: () => null }) =>
         case '.cot-hud': return box(dom.hud ? 'block' : 'none');
         case '.cot-studio': return dom.studio ? box('block') : null;
         case '.cot-battle': return {};
+        // (round 2 Q21) the fallback's own landmarks: a screen it can read has one of them
+        case '.cot-garage, .cot-hud, #cot-boot, .cot-studio': return dom.blind ? null : {};
         default: throw new Error(`the probe read an unexpected selector ${selector}`);
       }
     },
@@ -222,6 +224,68 @@ const evaluate = (win, expression, doc = { querySelector: () => null }) =>
   await assert.rejects(waitForReady(page, 'battleRevealed', { timeout: 5 }), /^Error: Waiting failed: 5ms exceeded$/,
     'a wait the page can answer keeps its own timeout');
   assert.equal((await waitForReady(page, 'studio', { timeout: 5 })).legacy.studio, true);
+
+  // (round 2 Q21) a baseline whose screen the fallback cannot read (none of its elements: an old A/B build) used to
+  // time out bare; it fails by that name, and its note says so
+  dom.blind = true;
+  dom.studio = false;
+  assert.equal(evaluate(win, `(${readinessInPage})()`, doc).legacy.landmarks, false);
+  await assert.rejects(waitForReady(page, 'garage', { timeout: 5 }),
+    /garage cannot be read on this page: .*none of the elements the DOM fallback reads .*open it with \?debug=1 \(Waiting failed/);
+  dom.blind = false;
+}
+
+// (round 2 Q21) Which definition decided is never silent: some forty tools wait on readinessExpression directly and
+// only mobilelap recorded the facts, so an A/B receipt against a pre-lifecycle baseline used the old predicate unseen.
+// The page logs it once a document for each definition, and every launched browser's pages forward that line to the
+// tool's own log (prepareToolPage).
+{
+  const notes = [];
+  const win = { __GAME_READY: true, __DEBUG: { game: { phase: 'garage', preBattleS: 0, result: null } }, console: { info: (line) => notes.push(line) } };
+  const ready = (name) => evaluate(win, readinessExpression(name));
+  assert.equal(ready('garage'), true);
+  assert.equal(ready('battleLive'), false);
+  assert.equal(notes.length, 1, 'once a document for its definition');
+  assert.match(notes[0], /^\[cot-readiness\] this build publishes no lifecycle .*'garage' and every readiness on this page is its legacy debug predicate$/);
+  // a page with the lifecycle notes nothing
+  const lifecycleWin = { __GAME_READY: true, console: win.console };
+  Object.defineProperty(lifecycleWin, '__APP_LIFECYCLE', { get: () => ({ state: 'garage', phase: 'garage', screenPhase: 'garage', transitions: 0 }) });
+  assert.equal(evaluate(lifecycleWin, readinessExpression('garage')), true);
+  assert.equal(notes.length, 1);
+  // every page a launched browser hands out forwards the note to the tool's stderr, and nothing else
+  const listeners = [];
+  const toolPage = { on: (type, listener) => listeners.push([type, listener]), async evaluateOnNewDocument() {} };
+  await prepareToolPage(toolPage);
+  const written = [];
+  const write = process.stderr.write;
+  process.stderr.write = (chunk) => { written.push(String(chunk)); return true; };
+  try {
+    for (const [type, listener] of listeners) if (type === 'console') { listener({ text: () => notes[0] }); listener({ text: () => 'an ordinary page log' }); }
+  } finally { process.stderr.write = write; }
+  assert.deepEqual(written, [`${notes[0]}\n`], "the tool's log names the definition");
+}
+
+// (round 2 Q21) A timing edge is the scene's hand-over, not the settled screen: pause-probe's 'responsive' check timed
+// the Leave's click to a settled Garage (the whole cold restore) after its migration onto the probe, and a slow restore
+// failed 'responsive'. scenePhaseExpression reads who owns the scene; the settled Garage gets its own wait.
+{
+  const game = { phase: 'battle', preBattleS: 0, result: 'victory', resultTimeS: 0, timeS: 9, ruleset: matchRulesetFor('standard') };
+  const facts = { returnOwed: false };
+  const lifecycle = createAppLifecycle({ game, announce() {}, readers: { isReturnOwed: () => facts.returnOwed } });
+  const win = { __GAME_READY: true };
+  Object.defineProperty(win, '__APP_LIFECYCLE', { get: () => lifecycle.snapshot() });
+  assert.equal(evaluate(win, scenePhaseExpression('garage')), false);
+  facts.returnOwed = true;
+  transitionAppPhase(game, 'garage', { reason: 'garage-return', announce: false });
+  assert.equal(evaluate(win, scenePhaseExpression('garage')), true, 'the Garage took the scene under the veil');
+  assert.equal(evaluate(win, readinessExpression('garage')), false, 'its screen is not settled yet');
+  assert.equal(evaluate({ __DEBUG: { game: { phase: 'garage' } } }, scenePhaseExpression('garage')), true, 'a build with no lifecycle: its debug phase');
+  assert.throws(() => scenePhaseExpression('lobby'), /unknown app phase lobby/);
+  const probe = read('tools/pause-probe.mjs');
+  assert.match(probe, /waitForFunction\(scenePhaseExpression\('garage'\), \{ timeout: 15000 \}\);\n\s+const leaveElapsedMs = /,
+    "pause-probe times the Leave's responsiveness to the scene's hand-over");
+  assert.match(probe, /const leaveElapsedMs = [^\n]+\n\s+await page\.waitForFunction\(readinessExpression\('garage'\), \{ timeout: 60000 \}\);/,
+    'then waits for the settled Garage on its own budget before the checks');
 }
 
 // The census reads code, never comments, and a string that holds `/*` is code: the stripper the lane first used erased

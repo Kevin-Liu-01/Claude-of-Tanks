@@ -34,7 +34,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { createServer } from 'vite';
 import puppeteer from 'puppeteer';
-import { readinessExpression, waitForBootLoaded } from './game-readiness.mjs';
+import { readinessExpression, scenePhaseExpression, waitForBootLoaded } from './game-readiness.mjs';
 
 const SIM_DT = 1 / 60; // mirror of src/sim/movement.ts (dt-clamp assertion)
 const SHOT_DIR = path.join(process.cwd(), 'shots', 'pause-r1');
@@ -272,8 +272,12 @@ try {
   if (leave) {
     const leaveStartedAt = performance.now();
     await page.mouse.click(leave.cx, leave.cy);
-    await page.waitForFunction(readinessExpression('garage'), { timeout: 15000 });
+    // (round 2 Q21) responsiveness is the click to the Garage taking the scene (the phase edge this check timed before
+    // the lifecycle), not to a settled Garage: that also timed the whole cold restore, and a slow one on a loaded
+    // machine failed 'responsive' or timed out first. The settled Garage then gets its own budget before the checks.
+    await page.waitForFunction(scenePhaseExpression('garage'), { timeout: 15000 });
     const leaveElapsedMs = performance.now() - leaveStartedAt;
+    await page.waitForFunction(readinessExpression('garage'), { timeout: 60000 });
     st = await pauseState();
     check('leave-battle from pause lands in the garage',
       st.phase === 'garage' && !st.open && !st.paused && !st.pausedClass,
