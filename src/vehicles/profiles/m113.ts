@@ -20,8 +20,8 @@
 // - m741: the M163 VADS's carrier (an M113A1; buildM113HullSteps alone, the Vulcan turret the twin-aa lane's): no cupola,
 //   the A1's internal fuel, the turret's race cut into the roof's rear half where the cargo hatch was and the commander's
 //   round hatch behind it at the right rear (m741Datums.ts; the owner's photo of 2026-11-04); no hull whips, the M163's
-//   antennas on its turret (Commons photos 03 and 04); `a2FuelTanks` hangs the M113A2's low armoured fuel tanks either side
-//   of the ramp (the M163A1's and A2's M741A1; Commons photo 07 of the rear), off by default.
+//   antennas on its turret (Commons photos 03 and 04); `a2FuelTanks` hangs the M113A2's armoured fuel tanks either side
+//   of the ramp over the track's ends (the M163A1's and A2's M741A1; Commons photo 07 of the rear), off by default.
 // Datums: the published M113A1 (4.863 m long, 2.686 m over the tracks, 0.43 m clearance, 0.381 m tracks, five 0.61 m road
 // wheels a side, the sprocket ahead and the idler astern, no return rollers) and the AS4's side profile (Commons,
 // scaled on its 5.53 m hull: the roof 1.96 m over its appliqué, the turret's top 2.60 m, the wheels 0.70 m apart, the ring
@@ -212,19 +212,46 @@ export function* buildM113HullSteps(P: TankBuilderPort, mark: M113HullMark,
       P.add('hullDark', cylY(0.05, 0.05, 0.03, 10), s * 1.095, 1.815, D.sternZ - 0.30);
     }
   };
-  // the M113A2's armoured fuel tanks, low either side of the ramp from the hull's foot, their tops falling to the rear,
-  // a filler cap on each and a tail light low in each rear face (Commons photo 07 of the M163's rear, scaled on the 1.86 m
-  // roof: 0.45 to 1.03 m at the plate, the rear face 0.39 m tall, the ramp's edge to the hull's side; 0.43 m deep, the
-  // 17 in the A2's tanks add to its length in TM 9-2350-277): lower and shorter than the AS4's pair
+  // the M113A2's armoured fuel tanks either side of the ramp (Commons photo 07 of the M163's rear: 0.43 m deep, the 17 in
+  // the A2's tanks add to its length in TM 9-2350-277). The twin-aa lane's r7 read of 07 (builder V and the coordinator):
+  // they sit low on the plate just over the track's ends, their bottoms 0.76 m up at the top of the idlers' rims so the
+  // idlers and the track's rear wraps show under them; 0.50 m tall, a vertical rear face for the lower half carrying a
+  // tail light, then a face sloping 45 degrees forward over the upper half to a short flat top at the plate; on the right
+  // tank a flat hinged lid on the slope carrying the filler cap, on the left a recessed channel down the slope between two
+  // ridges and the cap on the slope beside it; plain outer faces (r8: nothing on or under them; each tank hangs on the
+  // rear plate by its front face)
   const addA2FuelTanks = (): void => {
-    const z0 = D.sternZ, z1 = D.sternZ - 0.43, slope = Math.atan2(0.19, 0.43);
+    const z0 = D.sternZ, z1 = D.sternZ - 0.43, yLo = 0.76, yTop = 1.26, yFace = yLo + 0.5 * (yTop - yLo), run = yTop - yFace;
+    const slope = Math.atan2(yTop - yFace, run), slopeLen = Math.hypot(yTop - yFace, run);
+    const onSlope = (u: number, out: number): [number, number] => [yFace + u * (yTop - yFace) + out * Math.cos(slope),
+      z1 + u * run - out * Math.sin(slope)];
+    // the tank's side profile [z, y], extruded across x (sectionSolid's stations along +z, turned a quarter about y)
+    const profile = [[z0, yLo], [z1, yLo], [z1, yFace], [z1 + run, yTop], [z0, yTop]] as const;
+    const ring = profile.map(([z, y]) => [-z, y] as SectionPoint);
+    let area = 0;
+    for (let i = 0; i < ring.length; i++) area += ring[i][0] * ring[(i + 1) % ring.length][1] - ring[(i + 1) % ring.length][0] * ring[i][1];
+    const wound = area > 0 ? ring : [...ring].reverse();
     for (const s of [-1, 1] as const) {
-      const lo = s < 0 ? -1.31 : 0.86, hi = s < 0 ? -0.86 : 1.31, x = s * 1.085;
-      P.addEquipment('hull', slab([lo, 0.45, z0], [hi, 0.45, z0], [hi, 0.45, z1], [lo, 0.45, z1],
-        [lo, 1.03, z0], [hi, 1.03, z0], [hi, 0.84, z1], [lo, 0.84, z1]));
-      P.add('hullDark', cylY(0.05, 0.05, 0.03, 10), x, 0.955, D.sternZ - 0.20, -slope, 0, 0);
-      P.add('hullDark', box(0.18, 0.09, 0.012), x, 0.54, z1 - 0.004);
-      P.add('hullGlass', box(0.12, 0.04, 0.012), x, 0.54, z1 - 0.010);
+      const lo = s < 0 ? -1.31 : 0.86, hi = s < 0 ? -0.86 : 1.31, x = s * 1.085, w = hi - lo;
+      P.addEquipment('hull', xform(sectionSolid([{ z: lo, ring: wound }, { z: hi, ring: wound }]), 0, 0, 0, 0, Math.PI / 2, 0));
+      if (s < 0) {
+        // the right tank's flat hinged lid on the slope, its hinge along the slope's top edge, the filler cap on it
+        const [ly, lz] = onSlope(0.5, 0.006);
+        P.add('hullDetail', box(w - 0.06, 0.012, slopeLen - 0.06), x, ly, lz, -slope, 0, 0);
+        const [hy, hz] = onSlope(0.97, 0.012);
+        P.add('hullDark', cylX(0.015, w - 0.10, 8), x, hy, hz);
+        const [cy, cz] = onSlope(0.55, 0.024);
+        P.add('hullDark', cylY(0.05, 0.05, 0.025, 10), x, cy, cz, -slope, 0, 0);
+      } else {
+        // the left tank's recessed channel down the slope between two ridges, the filler cap on the slope beside it
+        const [ry, rz] = onSlope(0.5, 0.012), [gy, gz] = onSlope(0.5, 0.001);
+        for (const dx of [-0.055, 0.055]) P.add('hullDetail', box(0.03, 0.03, slopeLen - 0.04), x + dx, ry, rz, -slope, 0, 0);
+        P.add('hullDark', box(0.08, 0.004, slopeLen - 0.06), x, gy, gz, -slope, 0, 0);
+        const [cy, cz] = onSlope(0.6, 0.024);
+        P.add('hullDark', cylY(0.05, 0.05, 0.025, 10), x + s * 0.13, cy, cz, -slope, 0, 0);
+      }
+      P.add('hullDark', box(0.18, 0.09, 0.012), x, yLo + 0.10, z1 - 0.004);
+      P.add('hullGlass', box(0.12, 0.04, 0.012), x, yLo + 0.10, z1 - 0.010);
     }
   };
   if (mark === 'mrv') {

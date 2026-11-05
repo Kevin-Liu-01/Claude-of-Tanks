@@ -64,8 +64,8 @@ stripSilhouetteDimensions(spec.dims);
 // turret's 60 degrees a second in traverse and 45 in elevation (the M157 mount). The dims are the build's: the M113A1's
 // 4.863 m hull, 5.35 m from its lamp guards to the M113A2's rear fuel tanks (r4: photo 07 is an M163A2; the M113A3's
 // 5.38 m over the same tanks); 2.72 m over the sprockets' hubs (the published 2.85 m takes the side stowage the build
-// leaves off); 3.02 m to the radar's top (r2: the photographs' radar, ~0.6 m across, stands over the published 115 in,
-// 2.90 m).
+// leaves off); 3.02 m to the radar cases' caps (r5: the photographs' cases stand 15 % of the housing's diameter over it;
+// the housing sits lower so the caps keep the r4 height, 4 % over the published 115 in, 2.90 m).
 Object.assign(spec, {
   hp: 1750, ...m113Mobility(12.31, 212, 64),
   turretTraverseDegS: 60, gunPitchDegS: 45, gunElevationDeg: 80, gunDepressionDeg: 5,
@@ -171,7 +171,7 @@ delete spec.visual.patchK;
 function reach(record: FleetTankSpec): number {
   const [, ty, tz] = record.armor.turretPivot;
   const muzzle = Math.hypot(gx, ty + gy, tz + gz + M163_MUZZLE_Z);
-  const radar = Math.hypot(Math.hypot(R.x - R.caseDx, tz + R.z - R.backZ - 0.03) + R.caseR, ty + R.caseTopY);
+  const radar = Math.hypot(Math.hypot(R.x - R.caseDx, tz + R.z - R.caseDz) + R.caseR, ty + R.caseTopY);
   return Math.max(muzzle, radar);
 }
 spec.armor.boundingRadiusM = Math.max(spec.armor.boundingRadiusM, reach(spec));
