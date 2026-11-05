@@ -420,19 +420,11 @@ vec4 slabRain( vec3 dir, float cosT, float jitter, float sceneT, out float tLaye
 		vec2 cxz = p.xz - uWindDir * fall * uRain.z;
 		float prec = cloudPrecip( cxz );
 		if ( prec <= 0.0 ) continue;
-		// clouds-269 (the owner's "less prism-y"; Monsoon's shaft "a dark grey column with straight vertical sides", flagged
-		// on both builds, 2026-11-05): the footprint is the same at every height of the fall, so a shaft stood as its
-		// outline extruded down. A slow noise drifting down the fall frays the edge at its own place at every height, the
-		// edge draws in as the rain falls (the shaft tapers toward the ground) and the density varies down the column.
-		float fray = texture( tDetail, vec3( cxz.x, 211.0 + fall * 0.6, cxz.y ) / 900.0 ).r;
-		float edge = 0.08 + 0.3 * clamp( fall / drop, 0.0, 1.0 ) + 0.4 * ( fray - 0.5 );
-		prec = smoothstep( edge, edge + 0.55, prec );
-		if ( prec <= 0.0 ) continue;
 		// streaks: the detail volume on a slice, constant down the fall (curtains), and the virga's evaporation front
 		float streak = texture( tDetail, vec3( cxz.x, 37.0, cxz.y ) / 520.0 ).r;
 		float reach = 1.0 - uRain.y * ( 0.55 + 0.45 * streak );
 		float vprof = 1.0 - smoothstep( reach - 0.18, reach + 0.04, fall / drop );
-		float rho = uRain.x * uRain.w * prec * ( 0.4 + 0.9 * streak ) * ( 0.55 + 0.9 * fray ) * vprof;
+		float rho = uRain.x * uRain.w * prec * ( 0.4 + 0.9 * streak ) * vprof;
 		if ( uRainSoft > 0.5 ) rho *= smoothstep( tStart, tStart + 1500.0, t ) * ( 1.0 - smoothstep( ${f(CLOUD_RAIN_RANGE_M[1] * 0.75)}, ${f(CLOUD_RAIN_RANGE_M[1])}, t ) )
 			* smoothstep( 0.0, 60.0, fall );
 		if ( rho <= 0.0 ) continue;
