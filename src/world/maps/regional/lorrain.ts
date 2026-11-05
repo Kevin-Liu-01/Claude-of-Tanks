@@ -906,9 +906,12 @@ const LORRAIN_BUILDERS: Readonly<Record<string, RegionalBuilder>> = Object.freez
   // (the r2 sweep, 2026-10-16: the town's sixteen row houses stood in the generic props.ts row house, its windows dark
   // plates on the render) the town house of the street rows: two or three storeys of the maison's dwelling bays, now and
   // then a shop under them (the look stream's choice), its height the plot's
+  // (buildings-270, the census: the rows read Provençal — tall, narrow, three storeys; the Moselle village's photos (Dornot,
+  // September 1944) show the maison lorraine low and wide, two storeys under the long canal-tile roof, the arched cart door
+  // of its barn beside the dwelling on the usoir) every row house two storeys, half of them a farm with its cart door
   rowhouse: (ctx) => {
-    const shop = ctx.variant() < 0.35, storeys = ctx.info.h > 9.6 ? 3 : 2;
-    return maison(ctx, { bays: shop ? ['shop', 'logis'] : ['logis', 'logis'], storeys, ...(shop ? { fascia: rgb(0x5a4a3a) } : {}) });
+    const shop = ctx.variant() < 0.35, farm = !shop && ctx.variant() < 0.5;
+    return maison(ctx, { bays: shop ? ['shop', 'logis'] : farm ? ['logis', 'cart'] : ['logis', 'logis'], storeys: 2, ...(shop ? { fascia: rgb(0x5a4a3a) } : {}) });
   },
   barn: grange,
   church,
