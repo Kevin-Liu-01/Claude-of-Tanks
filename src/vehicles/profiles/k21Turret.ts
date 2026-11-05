@@ -157,7 +157,8 @@ function addCheekBoxes(P: TankBuilderPort): void {
 
 /** Five smoke dischargers on each cheek (photos 4 and 6: two over three, domed grenade caps, the bank at mid-cheek and
  * tilted up, fanned out), on their own bracket: a plate welded flat to the cheek, a standoff block, and the cradle the
- * tubes stand in. The bank looks 22 degrees outboard and 28 degrees up; each tube fans a further 6 degrees. */
+ * tubes stand in. The bank looks 10 degrees outboard and 35 degrees up, as the photographs' do (mostly ahead and up,
+ * never out sideways past the cheek where it would read as a second gun); each tube fans a further 6 degrees. */
 function addSmokeClusters(P: TankBuilderPort): void {
   const up = new THREE.Vector3(0, 1, 0), seg = P.q ? 14 : 9;
   for (const side of [-1, 1]) {
@@ -167,7 +168,7 @@ function addSmokeClusters(P: TankBuilderPort): void {
     const plate: THREE.Vector3[] = [];
     for (const [a, b, c] of [[-1, -1, -.005], [1, -1, -.005], [-1, 1, -.005], [1, 1, -.005], [-1, -1, .025], [1, -1, .025], [-1, 1, .025], [1, 1, .025]] as const)
       plate.push(base.clone().addScaledVector(across, a * .15).addScaledVector(along, b * .13).addScaledVector(normal, c));
-    const aim = new THREE.Vector3(side * Math.sin(.38) * Math.cos(.49), Math.sin(.49), Math.cos(.38) * Math.cos(.49));
+    const aim = new THREE.Vector3(side * Math.sin(.17) * Math.cos(.61), Math.sin(.61), Math.cos(.17) * Math.cos(.61));
     const u = new THREE.Vector3().crossVectors(up, aim).normalize(), v = new THREE.Vector3().crossVectors(aim, u);
     const frame = new THREE.Matrix4().makeBasis(u, v, aim).setPosition(base.clone().addScaledVector(normal, .12));
     const parts: THREE.BufferGeometry[] = [convexStock(plate)], dark: THREE.BufferGeometry[] = [];
