@@ -969,6 +969,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/vehicles/paintCaches.selftest.mjs',
     // 2026-11-02 audit R6: the Gallery's load failure edge and latest-show waiters; the HUD editor's backdrop decode
     'src/ui/cachedFailures.selftest.mjs',
+    // 2026-11-02 audit R6 (round 2 U35): no Gallery anatomy scene is disposed mid-link, so every prepare settles
+    'src/gallery/anatomyViewLinkDispose.selftest.mjs',
     // 2026-11-02 audit R6: a failed interior-fill, turret-ring or prebuild chunk is asked again; the builder predicate needs the fills
     'src/vehicles/builderLoadFailure.selftest.mjs',
     'src/dev/debugSurface.selftest.mjs',
