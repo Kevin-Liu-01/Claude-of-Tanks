@@ -271,7 +271,22 @@ for (const invalid of ['wrong-id', 'wrong-url', 'empty-png']) {
 }
 // Exercise REAL fallback lifetime, pausing its actual scheduler and encoder.
 // Raster pixels use napi; only scheduling and the pending native callback are controlled.
-{
+// (round 2, 2026-11-04) A wait on a stubbed scheduler or a native callback fails by name. Under load the bake's slice ran
+// past the opaque yielder's 16 ms paint interval (frameScheduler.ts createOpaqueLoadingYielder), so the real fallback asked
+// waitForPaintOpportunity for a paint, which listens on the document: the old stub had no addEventListener, the fallback
+// rejected inside the client (a null result), toBlob was never reached, and `await encodedAgain` was left with nothing to
+// wake it (node rc 13, "unsettled top-level await"). The stub is now a hidden document (the paint wait takes its 34 ms
+// timer), every such wait is bounded, and the section runs twice: on the real clock, and on a clock that makes every
+// yield checkpoint paint-due, the loaded machine's path.
+const settles = (promise, label, ms = 20000) => {
+  let timer;
+  const deadline = new Promise((_, reject) => {
+    timer = setTimeout(() => reject(new assert.AssertionError({ message: `${label}: did not settle within ${ms} ms` })), ms);
+  });
+  return Promise.race([promise, deadline]).finally(() => clearTimeout(timer));
+};
+const hiddenDocument = createElement => ({ hidden: true, addEventListener() {}, removeEventListener() {}, createElement });
+async function realFallbackLifetime(clock) {
   const saved = { document: globalThis.document, Image: globalThis.Image, scheduler: globalThis.scheduler };
   const source = createCanvas(19, 13), sourceContext = source.getContext('2d');
   sourceContext.fillStyle = '#91ae37'; sourceContext.fillRect(1, 1, 17, 11);
@@ -280,36 +295,47 @@ for (const invalid of ['wrong-id', 'wrong-url', 'empty-png']) {
   let releaseYield, noteYield, encodeCallback, noteEncode;
   const yielded = new Promise(resolve => { noteYield = resolve; });
   globalThis.Image = RasterImage;
-  globalThis.document = { createElement: () => { const canvas = trackedCanvas(1, 1); owned.push(canvas); return canvas; } };
+  globalThis.document = hiddenDocument(() => { const canvas = trackedCanvas(1, 1); owned.push(canvas); return canvas; });
   globalThis.scheduler = { yield: () => { noteYield(); return new Promise(resolve => { releaseYield = resolve; }); } };
   try {
     const owner = new AbortController(), pending = prepareSchematicFallback(req, owner.signal);
-    await yielded; owner.abort(); releaseYield();
-    await assert.rejects(pending, /cancelled/); checks++;
-    check(owned.every(releasedCanvas), 'real fallback cancellation at first yield owns no live canvas');
+    await settles(yielded, `${clock}: the real fallback reaches its first task yield`); owner.abort(); releaseYield();
+    await assert.rejects(settles(pending, `${clock}: the cancelled fallback`), /cancelled/); checks++;
+    check(owned.every(releasedCanvas), `${clock}: real fallback cancellation at first yield owns no live canvas`);
     globalThis.scheduler = { yield: () => Promise.resolve() };
     const encoded = new Promise(resolve => { noteEncode = resolve; });
-    globalThis.document = { createElement: () => {
+    globalThis.document = hiddenDocument(() => {
       const canvas = trackedCanvas(1, 1); owned.push(canvas);
       canvas.toBlob = callback => { encodeCallback = callback; noteEncode(); }; return canvas;
-    } };
+    });
     const f = fixture({ worker: () => null, fallback: prepareSchematicFallback });
     const first = f.client.get('real-encode', req);
-    await encoded;
+    await settles(encoded, `${clock}: the first real fallback reaches its encoder`);
     f.timers.findLast(t => t.delay === 100 && !t.cancelled).callback();
-    equal(await first, null, 'real pending toBlob deadline settles client'); await flush();
-    check(owned.every(releasedCanvas), 'real timed-out fallback explicitly releases source and target');
+    equal(await settles(first, `${clock}: the timed-out client`), null, `${clock}: real pending toBlob deadline settles client`);
+    await flush();
+    check(owned.every(releasedCanvas), `${clock}: real timed-out fallback explicitly releases source and target`);
     encodeCallback(png); await flush();
     const encodedAgain = new Promise(resolve => { noteEncode = resolve; });
     const second = f.client.get('real-dispose', req);
-    await encodedAgain; f.client.dispose(); equal(await second, null, 'real pending encoder disposal settles client'); await flush();
-    check(owned.every(releasedCanvas), 'real encoder cancellation explicitly releases all private canvases');
+    await settles(encodedAgain, `${clock}: the second real fallback reaches its encoder`); f.client.dispose();
+    equal(await settles(second, `${clock}: the disposed client`), null, `${clock}: real pending encoder disposal settles client`);
+    await flush();
+    check(owned.every(releasedCanvas), `${clock}: real encoder cancellation explicitly releases all private canvases`);
     encodeCallback(png); await flush();
   } finally {
     for (const [key, value] of Object.entries(saved)) {
       if (value === undefined) delete globalThis[key]; else globalThis[key] = value;
     }
   }
+}
+await realFallbackLifetime('real clock');
+{
+  // every performance.now() read is 20 ms after the last: each yield checkpoint is past the 16 ms paint interval
+  let stepped = performance.now();
+  Object.defineProperty(performance, 'now', { configurable: true, writable: true, value: () => (stepped += 20) });
+  try { await realFallbackLifetime('paint-due clock'); } finally { delete performance.now; }
+  check(!Object.hasOwn(performance, 'now'), 'the stepped clock is restored');
 }
 {
   const replies = [];
