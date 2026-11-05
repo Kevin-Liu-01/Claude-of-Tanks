@@ -121,13 +121,22 @@ export function cloudStreetShare(streets: number): number {
  * masses are kilometres across and merge as the cover rises: at under a third of the knob Verdant's cover of 0.61 drew
  * one mass over nine tenths of its cloud (CPU model: 13.8 km across at the median — the blind critics' "flattened deck",
  * 0-3), so a fuller sky takes more of the lobes, which keep its clouds apart at round 71's sizes (0.55: 2.2 km at the
- * median and the largest a fifth of the cloud; round 71 2.9 km and a fifth, in rows), while a sparse sky keeps its few
- * large clouds (Sirocco's humilis at 0.09 won 3-0). A tower's sky takes little: the lobes would cut its towers to stubs.
+ * median and the largest a fifth of the cloud; round 71 2.9 km and a fifth, in rows). A sparse sky takes at least
+ * CLOUD_LOBE_FLOOR: the local weather alone set its cover by where the map sat on it — Reservoir's view one flat mass at
+ * twice its coverage (CPU model 0.19 of the sky, 8.4 km across; round 71 0.09 and 1.3 km), the blind critics' "a flat,
+ * lit slab", 0-3 (2026-11-05) — and the floor brings every sparse sky back to its coverage, its clouds a little larger
+ * than round 71's. A tower's sky takes little: the lobes would cut its towers to stubs.
  */
 export function cloudLaneStreetShare(streets: number, cover: number, towers: number): number {
   const t = clamp((cover - 0.25) / 0.35, 0, 1), k = 1 - clamp(towers, 0, 1);
-  return Math.max(cloudStreetShare(streets), 0.75 * t * t * (3 - 2 * t) * k * k);
+  return Math.max(cloudStreetShare(streets), Math.max(CLOUD_LOBE_FLOOR, 0.75 * t * t * (3 - 2 * t)) * k * k);
 }
+/**
+ * clouds-269: the least share of the wind frame's cumulus a convective lane takes (cloudLaneStreetShare; CPU model over the
+ * nine sparse skies: the cover within a fifth of round 71's, the median cloud 1.0-1.7 km against round 71's 0.7-1.3 km;
+ * none at round 11's 1.5-3.5 times the cover).
+ */
+export const CLOUD_LOBE_FLOOR = 0.35;
 /** The local weather's world period (m; cloudShaders.ts CLOUD2_PERIODS.local) and its cell channel's cell (m) on it. */
 const CLOUD_LOCAL_PERIOD_M = 48000;
 const CLOUD_LOCAL_CELL_M = 1200;

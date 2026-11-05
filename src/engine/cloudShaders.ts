@@ -233,17 +233,16 @@ vec4 cl2Shell( float h, vec4 weather, vec2 cell, out vec4 hf ) {
 vec4 cl2Media( vec3 p, vec4 shell, vec4 hf, float lod, float detail ) {
 	vec3 sp = p + uShapeShift;
 	// clouds-269: the shape volume tiles every uShapePeriod (1.6–3.2 km) on the world's axes, so wherever the weather
-	// admitted a wide area the same billows stood in rows and columns. The lookup turns off the axes (a 3-4-5 rotation)
-	// and rides a smooth warp of up to 0.3 of a period — the turbulence field's curl read at eight times its own scale
-	// (one small 2D fetch), drifting with the shape — so no two neighbouring tiles line up. (The first GPU preview's half
-	// period at four times the scale stretched the billows up to twice over a kilometre: Verdant's big cumulus read as
-	// brushed streaks.)
-	// The warp only moves a tile's billows, so a cloud a period from its twin was the same cloud (the critics' "pairs of
-	// near-identical puffs"): the same fetch's vertical push reads each region's billows from another height of the
-	// volume, up to 0.15 of a period: about two of its cells between neighbouring tiles, the billows leaning under 17°.
-	vec3 warp = textureLod( tTurb, sp.xz / ( CL2_TURB * 8.0 ) + vec2( 0.31, 0.67 ), 0.0 ).rgb * 2.0 - 1.0;
-	sp.xz = mat2( 0.8, 0.6, -0.6, 0.8 ) * sp.xz + warp.xy * ( 0.3 * uShapePeriod );
-	sp.y += warp.z * ( 0.15 * uShapePeriod );
+	// admitted a wide area the same billows stood in rows and columns. The lookup turns off the axes (a 3-4-5 rotation),
+	// and three sines on incommensurate wavevectors (11, 13 and 17 periods, drifting with the shape) lift it by up to 0.45
+	// of a period, so each region reads its billows from another height of the volume, the billows leaning under 5° at
+	// the median. Nothing moves the lookup sideways: round 11's smooth warp (the turbulence curl, up to 0.3 of a period)
+	// stretched every billow by a fifth at the median and up to 1.9 times, while it moved a cloud a period from its twin
+	// by about 200 m — Monsoon's towers "blurrier and smoother, with a smeared look", 0-3 to main's crisp lobes (2026-11-05).
+	sp.xz = mat2( 0.8, 0.6, -0.6, 0.8 ) * sp.xz;
+	vec2 lq = sp.xz * ( 6.2831853 / uShapePeriod );
+	sp.y += ( sin( lq.x / 11.0 ) + sin( dot( lq, vec2( -0.5640, 0.8258 ) ) / 13.0 + 1.3 )
+		+ sin( dot( lq, vec2( -0.3984, -0.9172 ) ) / 17.0 + 2.6 ) ) * ( 0.15 * uShapePeriod );
 	if ( uTurbulence > 0.0 ) {
 		// the base drags with the wind's swirl: the lowest third of each lane, by its shell
 		float k = dot( shell, clamp( ( 0.3 - hf ) / 0.3, 0.0, 1.0 ) );

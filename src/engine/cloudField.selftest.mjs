@@ -4,8 +4,8 @@
 //   1. Rows: the wind frame's cumulus field (cloudNoise.ts bakeCloudWeatherStreets R) holds no rows — the share of its
 //      variance carried by its across-wind profile (a ruled roll's signature) stays small, and its correlation along and
 //      across the wind past a cloud's size shows no peak. A negative control (round 71's seven ruled rolls) fails both.
-//   2. The shape volume's lattice and its repeats: the medium reads it off the world's axes, through a smooth warp, and
-//      each region's billows from another height of the volume (cloudShaders.ts cl2Media).
+//   2. The shape volume's lattice and its repeats: the medium reads it off the world's axes and each region's billows
+//      from another height of the volume, nothing moving it sideways (cloudShaders.ts cl2Media).
 //   3. The prism: a convective lane's crown (cloudShaders.ts cl2Media, twinned here) closes the shape's erosion over the
 //      top of the slab: round 6's flat lid off every core, the body below and the flat base kept; every deck keeps that law.
 //   4. The phones' baked deck (sky.ts CLOUD_FRAG): a second copy chosen region by region, so a tile and its neighbour a
@@ -15,7 +15,7 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { bakeCloudWeatherStreets, CLOUD_WEATHER_SIZE } from './cloudNoise.ts';
-import { CLOUD_DOME_DEPTH, cloudLaneStreetShare, cloudStackOf, cloudStreetShare, packCloudStack } from './cloudLayers.ts';
+import { CLOUD_DOME_DEPTH, CLOUD_LOBE_FLOOR, cloudLaneStreetShare, cloudStackOf, cloudStreetShare, packCloudStack } from './cloudLayers.ts';
 import { deriveCloudLayerPreset, loadCloudscapeLayers } from './cloudPresets.ts';
 import { CLOUD2_PERIODS } from './cloudShaders.ts';
 import { DEFAULT_SKY_PRESET } from './sky.ts';
@@ -73,13 +73,33 @@ assert.ok(CLOUD2_PERIODS.streets >= 18000, 'the field\'s tile stands past the vi
 
 // ---- 2. the shape volume's lattice
 const mediaSrc = shaders.slice(shaders.indexOf('vec4 cl2Media('), shaders.indexOf('float cl2Extinction('));
-for (const line of [
-  'vec3 warp = textureLod( tTurb, sp.xz / ( CL2_TURB * 8.0 ) + vec2( 0.31, 0.67 ), 0.0 ).rgb * 2.0 - 1.0;',
-  'sp.xz = mat2( 0.8, 0.6, -0.6, 0.8 ) * sp.xz + warp.xy * ( 0.3 * uShapePeriod );',
+const liftLines = [
+  'sp.xz = mat2( 0.8, 0.6, -0.6, 0.8 ) * sp.xz;',
+  'vec2 lq = sp.xz * ( 6.2831853 / uShapePeriod );',
   // a region's billows from another height of the volume: a cloud a period from another is not its twin
-  'sp.y += warp.z * ( 0.15 * uShapePeriod );',
-]) assert.ok(mediaSrc.includes(line), `the shape lookup leaves the world's axes and its repeats: ${line}`);
-assert.ok(mediaSrc.indexOf('sp.y += warp.z') < mediaSrc.indexOf('textureLod( tShape'), 'before the shape fetch');
+  'sp.y += ( sin( lq.x / 11.0 ) + sin( dot( lq, vec2( -0.5640, 0.8258 ) ) / 13.0 + 1.3 )',
+  '+ sin( dot( lq, vec2( -0.3984, -0.9172 ) ) / 17.0 + 2.6 ) ) * ( 0.15 * uShapePeriod );',
+];
+for (const line of liftLines) assert.ok(mediaSrc.includes(line), `the shape lookup leaves the world's axes and its repeats: ${line}`);
+assert.ok(mediaSrc.indexOf(liftLines[3]) < mediaSrc.indexOf('textureLod( tShape'), 'before the shape fetch');
+// nothing moves the lookup sideways (round 11's curl warp stretched the billows by a fifth at the median, 1.9x at worst)
+const lookupSrc = mediaSrc.slice(0, mediaSrc.indexOf('if ( uTurbulence')).replace(/\/\/.*$/gm, '');
+assert.ok(!/sp\.xz\s*\+=|warp|tTurb/.test(lookupSrc), 'no warp moves the shape lookup sideways');
+// the lift's twin (in shape periods): the billows lean under 9°, and a cloud a period off along a tile axis reads the
+// volume from another height (the shape's cells are an eighth of a period)
+function lift(x, z) {
+  const qx = x * 2 * Math.PI, qz = z * 2 * Math.PI;
+  return (Math.sin(qx / 11) + Math.sin((-0.5640 * qx + 0.8258 * qz) / 13 + 1.3) + Math.sin((-0.3984 * qx - 0.9172 * qz) / 17 + 2.6)) * 0.15;
+}
+const leans = [], twins = [];
+for (let k = 0; k < 20000; k++) {
+  const x = ((k * 0.6180339) % 1) * 2000, z = ((k * 0.7548776) % 1) * 2000, e = 1e-3;
+  leans.push(Math.atan(Math.hypot(lift(x + e, z) - lift(x - e, z), lift(x, z + e) - lift(x, z - e)) / (2 * e)) * 180 / Math.PI);
+  twins.push(((Math.abs(lift(x + 1, z) - lift(x, z)) + Math.abs(lift(x, z + 1) - lift(x, z))) / 2) * 8);
+}
+leans.sort((a, b) => a - b); twins.sort((a, b) => a - b);
+assert.ok(leans[10000] < 6 && leans[19999] < 10, `the billows lean little (median ${leans[10000].toFixed(1)}°, worst ${leans[19999].toFixed(1)}°)`);
+assert.ok(twins[10000] > 0.35, `a cloud a period off reads another height (median ${twins[10000].toFixed(2)} of a shape cell)`);
 
 // ---- 3. the prism
 const shellSrc = shaders.slice(shaders.indexOf('vec4 cl2Shell('), shaders.indexOf('vec4 cl2Media('));
@@ -130,10 +150,12 @@ assert.ok(Math.abs(dome.base - old.base) < 0.02, `one flat base line, round 6's 
 assert.ok(dome.half > 0.98 * old.half && dome.high > 0.95 * old.high,
   `and the body below is round 6's (${dome.half.toFixed(2)} / ${dome.high.toFixed(2)} at a half and three quarters of the slab against ${old.half.toFixed(2)} / ${old.high.toFixed(2)})`);
 
-// the share of the wind frame's lobes: a full fair-weather sky keeps its clouds apart on them, a sparse one and a tower's
-// sky keep the knob's (Verdant at under a third of the knob: one mass over nine tenths of its cloud)
+// the share of the wind frame's lobes: a full fair-weather sky keeps its clouds apart on them, a sparse one keeps its
+// coverage on the floor, a tower's sky keeps the knob's (Verdant at under a third of the knob: one mass over nine tenths
+// of its cloud; Reservoir on the local weather alone: twice its coverage in one flat mass)
 assert.ok(cloudLaneStreetShare(0.35, 0.61, 0.15) > 0.5, 'a full fair-weather sky reads at least half the lobes');
-assert.equal(cloudLaneStreetShare(0.3, 0.2, 0), cloudStreetShare(0.3), 'a sparse humilis sky keeps the knob\'s share');
+assert.equal(cloudLaneStreetShare(0.3, 0.2, 0), CLOUD_LOBE_FLOOR, 'a sparse humilis sky reads the lobes at the floor');
+assert.ok(Math.abs(cloudLaneStreetShare(0.3, 0.33, 0.15) - CLOUD_LOBE_FLOOR * 0.85 * 0.85) < 1e-12, 'a sparse fair-weather sky at the floor, its towers damping it');
 assert.equal(cloudLaneStreetShare(0.1, 0.6, 1), cloudStreetShare(0.1), 'a front\'s towers keep the knob\'s share');
 assert.equal(cloudLaneStreetShare(0.9, 0.45, 0.1), cloudStreetShare(0.9), 'a street sky its knob');
 let prev = 0;
