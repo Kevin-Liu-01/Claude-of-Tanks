@@ -494,8 +494,15 @@ export class MatchSession {
     }
     if (!say) return;
     if (say.declined) this.declinesInFlight++;
-    const settled = (): void => { if (say.declined) this.declinesInFlight--; };
-    void this.room.declineHost(say.declined, say.unable ? { unable: true } : {}).then(settled, settled); // the room may predate the command
+    // A refused or unanswered decline never reaches the room's record: once none is left on its way, no late one can
+    // echo, so the mark that a late one would (lateDecline) goes too (round 2 Q4: it outlived a refusal, and the next
+    // declined record in that lobby, one other code sent through the room client, was withdrawn as if it were the late one).
+    const settled = (failed: boolean): void => {
+      if (!say.declined) return;
+      this.declinesInFlight--;
+      if (failed && this.declinesInFlight === 0) this.lateDecline = false;
+    };
+    void this.room.declineHost(say.declined, say.unable ? { unable: true } : {}).then(() => settled(false), () => settled(true)); // the room may predate the command
   }
 
   /**

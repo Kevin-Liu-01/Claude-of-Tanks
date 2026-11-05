@@ -234,5 +234,39 @@ async function seat(p2p = {}, { declined = false } = {}) {
   const writes = source.match(/this\.decline\s*=(?!=)/g) ?? [];
   assert.equal(writes.length, 1, `(5) setDecline is the decline's only writer (${writes.length} writes)`);
 }
+// ---- (6) (round 2 Q4, the review of round 3's declinesInFlight fix) a late decline the room refused never reaches it:
+// the session's "my own decline is still on its way" mark (lateDecline) outlived that refusal, so the next declined
+// record in that lobby, one other code sent through the room client, was withdrawn as if it were the late one
+{
+  const { client, session, transport } = await seat();
+  const pump = setInterval(() => session.update(performance.now(), 1 / 60), 16);
+  try {
+    const matchId = 'm6-0000d6d6';
+    const hostSecret = sha256(`${SECRET}:${matchId}`);
+    const seatToken = signSeatToken(hostSecret, { v: 1, roomId: roomCode, seat: 0, playerId: 'me', name: 'Me', team: 'alpha', specId: 'm1a1_abrams_hc', iat: Date.now() - 1000, exp: Date.now() + 3_600_000 });
+    const match = { id: matchId, round: 1, status: 'playing', mapId: 'verdant', seed: 7, startedAt: 1000, endedAt: null, verdict: null };
+    transport.deliver({ type: 'room_state', payload: { room: snapshot({ host: { transport: 'p2p', hostId: 'me', generation: 1, since: 2000 }, phase: 'starting', match: { ...match, status: 'starting' } }) } });
+    transport.deliver({ type: 'match_start', payload: { matchId, round: 1, mapId: 'verdant', mode: 'standard', seed: 7, seat: 0, team: 'alpha', seatToken, matchUrl: p2pMatchUrl(roomCode, 1), hostId: 'me', hostSecret, expiresAt: Date.now() + 3_600_000 } });
+    await until(() => session.phase === 'match' && session.matchHost?.state === 'live', '(6) this seat hosts round 1');
+    await session.leaveMatch('garage');
+    const leaveSay = transport.outbound.findLast((envelope) => envelope.payload?.command?.type === 'host_decline');
+    assert.deepEqual(leaveSay.payload.command, { type: 'host_decline', declined: true, unable: true }, '(6) setup: the leave handed the match on');
+    // the room ends the match and resets every decline before it reads the leave's: the session marks its own as late
+    const ended = { host: { transport: 'p2p', hostId: null, generation: 1, since: 4000 }, phase: 'waiting', match: { ...match, status: 'ended', endedAt: 4000, verdict: { result: 'alpha', reason: 'elimination' } } };
+    transport.deliver({ type: 'room_state', payload: { room: snapshot({ ...ended, declined: false }) } });
+    // ... and then refuses it: the late decline never reaches the room
+    transport.deliver({ type: 'error', requestId: leaveSay.requestId, payload: { code: 'invalid_command', message: 'no match' } });
+    await sleep(0);
+    // a decline other code sends straight through the room client reaches the room and echoes
+    const mark = transport.outbound.length;
+    void client.declineHost(true).catch(() => {});
+    transport.deliver({ type: 'room_state', payload: { room: snapshot({ ...ended, declined: true }) } });
+    await sleep(0);
+    assert.deepEqual(declinesOf(transport, mark), [{ type: 'host_decline', declined: true }], `(6) the session leaves a decline it did not make, once its own late one was refused (${JSON.stringify(declinesOf(transport, mark))})`);
+  } finally {
+    clearInterval(pump);
+    session.dispose(); client.dispose();
+  }
+}
 for (const core of cores) core.dispose();
-console.log('matchSessionDecline.selftest: a decline lasts its match (the room resets it, the session forgets it); a seat that cannot host says so again; the session withdraws only its own late decline or one an admission finds; a refused decline stays the seat\'s and is not said on every snapshot or frame');
+console.log('matchSessionDecline.selftest: a decline lasts its match (the room resets it, the session forgets it); a seat that cannot host says so again; the session withdraws only its own late decline or one an admission finds; a refused decline stays the seat\'s and is not said on every snapshot or frame, and a refused late one marks nothing');
