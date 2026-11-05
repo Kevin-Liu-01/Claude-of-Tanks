@@ -71,6 +71,8 @@ interface GalleryVisual extends DamageLabVisual {
 interface GalleryLoadOptions {
   view?: string;
   mode?: string;
+  /** a Back or Forward move to this tank's address (popstate), not a press */
+  history?: boolean;
 }
 
 declare global {
@@ -1532,12 +1534,18 @@ function markFailedRows(): void {
  *  tank before it, while the dossier and the row had moved at the press: they go back to the shown tank (READY as it
  *  stood), and the failed vehicle's row keeps the kit's error state (no chunk needed, so it shows offline, where the
  *  toast's own chunk may not load), and its next press (a click, the [ ] keys, the history) reloads the page once online,
- *  the kit's opener rule (components/loadFailure.ts). */
+ *  the kit's opener rule (components/loadFailure.ts). (round 2, the loaders residual) Offline a history move there cannot
+ *  reload: the address, which Back or Forward had moved to the failed tank, goes back to the tank still shown (the stage,
+ *  the dossier and the row never left it). */
 async function loadTank(
   requestedId: string | null | undefined,
   options: GalleryLoadOptions = {},
 ): Promise<void> {
-  if (pressFailed(rowFor(requestedId ?? null))) return;
+  if (pressFailed(rowFor(requestedId ?? null))) {
+    // (online the page reloads at the address the history move named)
+    if (options.history && navigator.onLine === false) updateUrl();
+    return;
+  }
   const version = loadVersion + 1; // the version the load claims before its first await
   await loadTankUnguarded(requestedId, options).then(undefined, (error: unknown) => {
     if (version !== loadVersion) return;
@@ -1827,7 +1835,7 @@ document.addEventListener('keydown', (event) => {
 
 window.addEventListener('popstate', () => {
   const params = new URLSearchParams(location.search);
-  loadTank(linkTankId(params), { mode: params.get('layer') || 'appearance' });
+  loadTank(linkTankId(params), { mode: params.get('layer') || 'appearance', history: true });
 });
 new ResizeObserver(resize).observe(viewport);
 
