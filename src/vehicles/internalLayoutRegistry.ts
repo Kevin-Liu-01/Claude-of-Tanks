@@ -549,7 +549,7 @@ const IDS_BY_LAYOUT = Object.freeze({
   conceptRocketBattery: ['tos1a_tagil'],
   conceptViper: ['griffin_viper'],
   heavyWw2Six: ['kv2'],
-  casemateFour: ['jpz_e100'],
+  casemateFour: ['jpz_e100', 't95'],
   pershingFive: ['m46_patton', 'm47_patton'],
   westernManualHullAmmo: ['sabra_mk2', 'magach6b', 'magach7c', 'chieftain5', 'amx40', 'chieftain_mk10', 'k1a1', 'amx30b', 'strv81', 'chieftain3', 'chieftain_mk9', 'k1e1', 'type74', 'amx40_proto', 'type59', 'm60a1', 'amx30', 'amx30b2', 'm48a5_patton', 'm48a3_patton', 'magach3', 'm48a2ga2', 'm48_super', 'vickers_mk1', 'centurion3', 'centurion5_2', 'centurion5_2dk', 'shot_kal', 'centurion13', 'strv105', 'olifant_mk2', 'centurion5_avre', 'centurion5_1_aus', 'm60a3', 'm41a3', 'm41_bw', 'm41_jgsdf', 'm41dk1', 't49'],
   starship: ['m60a2'],
