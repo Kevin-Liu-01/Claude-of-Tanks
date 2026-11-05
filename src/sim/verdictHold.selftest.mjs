@@ -2,8 +2,10 @@
 // (round 2 U4, 2026-11-04). The mode controller hears a verdict it did not reach (matchEnded, audit M3) and takes it as
 // its own result; step() then returned at its first line, so an AC-130 supply crate released just before the verdict
 // hung in mid-air for the whole 8 s hold and the Turbo Ball stopped where it flew, in solo and on the authority (both
-// drivers keep stepping the controller through the hold). Now the crate lands and the ball comes down, and nothing is
-// collected, touched or scored.
+// drivers keep stepping the controller through the hold). A carried CTF flag hung at the verdict spot too while its
+// carrier drove on, and the juggernaut's hp line kept its verdict value under a shell landing in the hold. Now the crate
+// lands, the ball comes down, the flag rides its carrier and the hp line follows the hull; nothing is collected, touched,
+// captured or scored.
 import assert from 'node:assert/strict';
 import { createMatchModeController } from './matchModes.ts';
 
@@ -63,4 +65,59 @@ const DT = 1 / 60;
   assert.deepEqual(mode.state.score, score);
 }
 
-console.log('verdictHold: through the ending hold a falling supply crate lands and the Turbo Ball comes down; nothing is collected or scored');
+// ---- Capture the Flag: a carried flag rides its carrier through the hold; it is not captured, returned or dropped
+// (round 2 review: syncCarriedFlag ran only inside stepFlags, so the flag hung at the verdict spot while its carrier
+// drove on, and matchModeWorldPresentation draws it at flag.x/y/z)
+{
+  const carrier = tank('carrier', 'alpha', 0, -100, false), defender = tank('defender', 'bravo', 0, 100);
+  const events = [];
+  const mode = createMatchModeController({ mode: 'capture_the_flag', entities: [carrier, defender], seed: 1,
+    emit: (type, payload) => events.push({ type, payload }), setActive(target, active) { target.modeActive = active; }, revive() {} });
+  const [home, enemyFlag] = ['alpha', 'bravo'].map((team) => mode.state.flags.find((flag) => flag.team === team));
+  Object.assign(carrier.state.pos, { x: enemyFlag.x, z: enemyFlag.z });
+  let t = 1;
+  for (let i = 0; i < 30; i++, t += DT) mode.step(DT, t);
+  assert.equal(enemyFlag.status, 'carried', 'the carrier has the bravo flag');
+  assert.equal(enemyFlag.carrierId, 'carrier');
+  const before = events.length, score = { ...mode.state.score };
+  mode.matchEnded('draw', 'time_limit');
+  // the carrier drives home through the 8 s hold and ends on its own flag's base, where a live match would score
+  const from = { x: carrier.state.pos.x, z: carrier.state.pos.z }, steps = 480;
+  for (let i = 1; i <= steps; i++, t += DT) {
+    carrier.state.pos.x = from.x + (home.baseX - from.x) * (i / steps);
+    carrier.state.pos.z = from.z + (home.baseZ - from.z) * (i / steps);
+    mode.step(DT, t);
+    assert.ok(Math.hypot(enemyFlag.x - carrier.state.pos.x, enemyFlag.z - carrier.state.pos.z) < 1e-9,
+      `the carried flag rides its carrier through the hold (step ${i}: flag ${enemyFlag.x.toFixed(1)},${enemyFlag.z.toFixed(1)}, `
+      + `carrier ${carrier.state.pos.x.toFixed(1)},${carrier.state.pos.z.toFixed(1)})`);
+  }
+  assert.equal(enemyFlag.y, carrier.state.pos.y + 3.4, 'at its carried height');
+  assert.equal(enemyFlag.status, 'carried', 'not captured or dropped at the own base after the verdict');
+  assert.equal(home.status, 'home');
+  assert.deepEqual(events.slice(before), [], 'no capture, return or take is announced after the verdict');
+  assert.deepEqual(mode.state.score, score, 'and the score stands');
+  assert.deepEqual(mode.step(DT, t), { result: 'draw', reason: 'time_limit' }, 'the verdict stands');
+}
+
+// ---- Juggernaut: a shell that lands on the boss in the hold moves its hp line (the HUD's boss readout); the verdict stands
+{
+  const boss = tank('boss', 'alpha', 0, -100, false), hunter = tank('hunter', 'bravo', 0, 100);
+  const events = [];
+  const mode = createMatchModeController({ mode: 'juggernaut', entities: [boss, hunter], seed: 2,
+    emit: (type, payload) => events.push({ type, payload }), setActive(target, active) { target.modeActive = active; }, revive() {} });
+  let t = 1;
+  for (let i = 0; i < 10; i++, t += DT) mode.step(DT, t);
+  assert.equal(mode.state.boss.id, 'boss');
+  assert.equal(mode.state.boss.hp, boss.combat.hp);
+  const before = events.length;
+  mode.matchEnded('alpha', 'time_limit');
+  boss.combat.hp -= 400; // a shell already in flight lands in the hold
+  mode.step(DT, t); t += DT;
+  assert.equal(mode.state.boss.hp, boss.combat.hp, `the boss's hp line follows a late hit (${mode.state.boss.hp} vs ${boss.combat.hp})`);
+  boss.combat.hp = 0; boss.combat.destroyed = true;
+  assert.deepEqual(mode.step(DT, t), { result: 'alpha', reason: 'time_limit' }, 'a boss lost in the hold does not overturn the verdict');
+  assert.equal(mode.state.boss.hp, 0);
+  assert.deepEqual(events.slice(before), [], 'and nothing is announced');
+}
+
+console.log('verdictHold: through the ending hold a falling supply crate lands, the Turbo Ball comes down, a carried flag rides its carrier and the boss hp follows its hull; nothing is collected or scored');

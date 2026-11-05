@@ -437,7 +437,7 @@ export interface MatchModeController<
    * The match's verdict, decided outside the mode (audit M3, 2026-11-02: the authority's time limit or elimination): the
    * controller takes it as its own result, so through the ending hold it scores, respawns and starts waves no more and
    * never announces another winner. A result the mode already reached stands. What is already moving still lands
-   * (settleAfterVerdict: an air-dropped crate, the Turbo Ball in flight).
+   * (settleAfterVerdict: an air-dropped crate, the Turbo Ball in flight, a carried flag on its carrier, the boss's hp).
    */
   matchEnded(winner: ObjectiveTeam | 'draw', reason: string): void;
   requestSupply(entityId:string,kind:'ammo'|'heal',timeS:number):boolean;
@@ -1869,13 +1869,17 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
   };
   /**
    * The ending hold after a verdict (the mode's own, or the match's through matchEnded): the rules stop, the bodies
-   * already moving do not (round 2 U4, 2026-11-04). An air-dropped crate on its way down lands and the Turbo Ball in flight
-   * comes down and rolls to rest, as the drivers keep wrecks settling and shells landing through the hold; nothing is
-   * collected, touched, scored, respawned or started. Before, step() returned at its first line, so a crate released just
-   * before the verdict hung in mid-air (and the ball where it flew) for the whole hold, in solo and on the authority.
+   * already moving do not (round 2 U4, 2026-11-04). An air-dropped crate on its way down lands, the Turbo Ball in flight
+   * comes down and rolls to rest, a carried CTF flag rides its carrier (syncCarriedFlag only moves it) and the juggernaut's
+   * hp line follows its hull, as the drivers keep tanks driving, wrecks settling and shells landing through the hold;
+   * nothing is collected, touched, returned, captured, scored, respawned or started. Before, step() returned at its first
+   * line, so a crate released just before the verdict hung in mid-air (the ball where it flew, a carried flag where its
+   * carrier was, the boss's hp at its verdict value under a late hit) for the whole hold, in solo and on the authority.
    */
   const settleAfterVerdict=(dt:number,timeS:number):void=>{
     for(const pickup of pickups)if(pickup.active&&pickup.airDrop)pickup.y=airDropY(pickup,timeS);
+    for(const flag of flags)syncCarriedFlag(flag);
+    if(boss&&state.boss)state.boss.hp=boss.combat.hp;
     if(ball){integrateBall(dt);bounceBallFromTerrain();containBallInWorld();}
   };
 
