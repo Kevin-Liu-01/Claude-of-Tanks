@@ -850,38 +850,32 @@ export function sessionMutexState(dir, { lockStaleMs = DEFAULT_LOCK_STALE_MS } =
  *  its own parent (2026-11-02 audit S4, round 2). */
 export function sessionMutexHeldByAncestor(dir, { lockStaleMs = DEFAULT_LOCK_STALE_MS } = {}) {
   const { state, pid } = sessionMutexState(dir, { lockStaleMs });
-  return state === 'live' && pid > 1 && ancestorPids().has(pid);
+  return state === 'live' && pid > 1 && ancestorOf([pid]) === pid;
 }
 
-/** The ancestors of `from` in `parentOf` (pid -> ppid): `from` first, up the chain (stops at pid 1, a pid the table
- *  lacks, a cycle, or 64 levels). */
-export function ancestorChain(parentOf, from) {
-  const pids = new Set();
-  let at = from;
-  for (let depth = 0; depth < 64 && at > 1 && !pids.has(at); depth++) {
-    pids.add(at);
-    at = parentOf.get(at) ?? 0;
+/** The first of `targets` (pids) on this process's ppid chain, its parent first, or null (stops at pid 1, a failed `ps`,
+ *  a cycle or 64 levels; this process itself is never its own ancestor). Round 2 Q20: the walk read every level up to
+ *  pid 1 with one `ps` each (8 on this machine's session shells) before it asked; it now stops at the first target, so a
+ *  child of the holder needs no `ps` at all and a grandchild one. A walk that finds none still reads every level, as
+ *  before; one `ps -A` of the whole table instead cost more than the whole walk here (0.25 s for 1,200 processes). */
+export function ancestorOf(targets, { ppidOf = defaultPpidOf } = {}) {
+  const wanted = new Set([...targets].filter((pid) => Number.isSafeInteger(pid) && pid > 1 && pid !== process.pid));
+  if (!wanted.size) return null;
+  const seen = new Set();
+  let at = process.ppid;
+  for (let depth = 0; depth < 64 && at > 1 && !seen.has(at); depth++) {
+    if (wanted.has(at)) return at;
+    seen.add(at);
+    const next = ppidOf(at);
+    if (!Number.isSafeInteger(next)) break;
+    at = next;
   }
-  return pids;
+  return null;
 }
 
-/** `ps -A -o pid=,ppid=` output as a pid -> ppid map. */
-export function parsePsParents(text) {
-  const parentOf = new Map();
-  for (const line of String(text ?? '').split('\n')) {
-    const match = /^\s*(\d+)\s+(\d+)\s*$/.exec(line);
-    if (match) parentOf.set(Number(match[1]), Number(match[2]));
-  }
-  return parentOf;
-}
-
-/** This process's ancestors, its parent first, up the ppid chain (stops at pid 1, a pid gone from the table, or 64
- *  levels); this process itself is not among them. One `ps` reads the whole process table (round 2 Q20: the walk ran
- *  one `ps` per level, tens of milliseconds each on a loaded machine); a failed `ps` leaves the parent alone. */
-function ancestorPids() {
-  let table = '';
-  try { table = execFileSync('ps', ['-A', '-o', 'pid=,ppid='], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'], maxBuffer: 16 * 1024 * 1024 }); } catch { /* the parent alone */ }
-  return ancestorChain(parsePsParents(table), process.ppid);
+/** The parent of `pid` (one `ps`), or null. */
+function defaultPpidOf(pid) {
+  try { return Number(execFileSync('ps', ['-o', 'ppid=', '-p', String(pid)], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }).trim()); } catch { return null; }
 }
 
 /** Free the session mutex at `dir` when its owner is dead (see session mutexes above); true when it is free afterwards. */
@@ -1093,12 +1087,9 @@ function ancestorHold(lockDir, lockStaleMs) {
   const owner = readOwner(lockDir);
   if (owner.state !== 'ok') return null;
   const holders = isGroupToken(owner.token, at.id) ? readSlots(lockDir).map((slot) => slot.record).filter(Boolean) : [owner.token];
-  const ancestors = holders.length ? ancestorPids() : new Set();
-  for (const holder of holders) {
-    const parent = ancestors.has(holder.pid) ? nestedParent(`${holder.pid}:${holder.nonce}`, lockDir, lockStaleMs) : null;
-    if (parent) return parent;
-  }
-  return null;
+  const ancestor = holders.length ? ancestorOf(holders.map((holder) => holder.pid)) : null;
+  const holder = ancestor === null ? null : holders.find((entry) => entry.pid === ancestor);
+  return holder ? nestedParent(`${holder.pid}:${holder.nonce}`, lockDir, lockStaleMs) : null;
 }
 
 /**

@@ -31,7 +31,7 @@
 import { mkdirSync, readdirSync, statSync, unlinkSync, utimesSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { claimOwnedLock, claimSessionMutex, reapDeadLock, reapDeadSessionMutex, refreshOwnedLock, releaseOwnedLock,
-  releaseSessionMutex, sessionMutexHeldByAncestor } from './capture-lock.mjs';
+  releaseSessionMutex, sessionMutexHeldByAncestor, sessionMutexState } from './capture-lock.mjs';
 
 const DEFAULT_QUEUE_DIR = '/tmp/cot-shots.queue';
 const DEFAULT_LOCK_DIR = '/tmp/cot-shots.lock';
@@ -112,8 +112,18 @@ export function createPoliteCaptureLock({
   // 2026-10-03: a session mutex whose holder died without releasing it (a SIGKILL, a crash) stayed busy for good, and
   // every lane's captures queued behind it until someone deleted it by hand. A dead owner's mutex is reaped (capture-lock
   // reapDeadSessionMutex); a live holder's mutex never is.
+  // whether the mutex's live holder is an ancestor, asked once per holder (its directory and pid), not on every poll: a
+  // patient head polls every 2 s, and a walk that finds no ancestor reads every level of the ppid chain
+  let ancestorMemo = null;
+  const heldByAncestor = () => {
+    const state = sessionMutexState(probeDir);
+    if (state.state !== 'live' || !(state.pid > 1)) return false;
+    const key = `${state.id}:${state.pid}`;
+    if (ancestorMemo?.key !== key) ancestorMemo = { key, held: sessionMutexHeldByAncestor(probeDir) };
+    return ancestorMemo.held;
+  };
   const takeProbe = () => {
-    if (sessionMutexHeldByAncestor(probeDir)) {
+    if (heldByAncestor()) {
       if (!probeNested) log('the session mutex is held by an ancestor of this process: nested in it');
       probeNested = true;
       return true;

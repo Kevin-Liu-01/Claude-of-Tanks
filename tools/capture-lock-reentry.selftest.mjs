@@ -185,15 +185,24 @@ try {
     assert.deepEqual([exclusive.ok, exclusive.nested], [true, true], `a timing child nests in a timing hold: ${JSON.stringify(exclusive)}`);
     parent.release();
   }
-  // ---- (round 2 Q20) the ancestor chain from one process table: parent first, stops at pid 1, a gap or a cycle -----------
+  // ---- (round 2 Q20) the ancestor walk stops at the first holder it is asked about ---------------------------------------
+  // It read every level up to pid 1, one `ps` each, before it asked: a child of the holder needs none now, a grandchild one.
   {
-    const { ancestorChain, parsePsParents } = captureLock;
-    assert.equal(typeof ancestorChain, 'function', 'the walk reads one table (ancestorChain), not one ps per level');
-    const table = parsePsParents('  PID  PPID\n    1     0\n   10     1\n   20    10\n   30    20\n   40    40\n  bad line\n');
-    assert.deepEqual([...ancestorChain(table, 30)], [30, 20, 10], 'up to pid 1, which is never an ancestor that counts');
-    assert.deepEqual([...ancestorChain(table, 99)], [99], 'a pid the table lacks ends the walk after it');
-    assert.deepEqual([...ancestorChain(table, 40)], [40], 'a cycle ends it');
-    assert.deepEqual([...ancestorChain(new Map(), 1)], [], 'launchd/init alone is no ancestor');
+    const { ancestorOf } = captureLock;
+    assert.equal(typeof ancestorOf, 'function', 'the walk asks for its holders, not for the whole chain');
+    const chain = new Map([[process.ppid, 501], [501, 502], [502, 1]]);
+    let calls = 0;
+    const ppidOf = (pid) => { calls++; return chain.get(pid) ?? null; };
+    assert.equal(ancestorOf([process.ppid], { ppidOf }), process.ppid, 'the parent');
+    assert.equal(calls, 0, 'a child of the holder reads no ps');
+    calls = 0;
+    assert.equal(ancestorOf([999_999, 502], { ppidOf }), 502, 'a holder two levels above the parent');
+    assert.equal(calls, 2, 'one ps per level up to it, and no further');
+    calls = 0;
+    assert.equal(ancestorOf([999_999], { ppidOf }), null, 'no holder on the chain');
+    assert.equal(calls, 3, 'a walk that finds none reads every level, as before');
+    assert.equal(ancestorOf([process.pid, 1], { ppidOf }), null, 'this process and pid 1 are never ancestors that count');
+    assert.equal(ancestorOf([999_999], { ppidOf: (pid) => pid }), null, 'a cycle ends the walk');
   }
   // ---- COT_LANE_HOLD=1 with no token: nests only in a live hold an ancestor of this process owns (round 3) ------------
   // Lane-hold helpers outside the repo (fifo-hold.mjs: take the FIFO, then run a probe with COT_LANE_HOLD=1 and no token)
