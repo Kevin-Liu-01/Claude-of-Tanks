@@ -2212,8 +2212,13 @@ function* createFxSteps(
   const shellMunitions = new Map<ShellId, ShellMunition>();
   const _munShell = { type: '', caliberMm: 0, name: '', guided: false as boolean | undefined, tracer: undefined as string | undefined,
     blastRadiusM: undefined as number | undefined, launcherTubes: 0 };
+  /** The fired records kept at most (a hull's kinetic hit ends its round with no expiry and leaves its record): an
+   *  overflow drops the oldest. (Round 2 U31 review: the map was cleared past 96, so a heavy fight's machine-gun rounds
+   *  dropped the class of every round in flight, and a WP smoke round's expiry read as an HE burst by its type.) */
+  const SHELL_RECORDS_MAX = 256;
   function rememberMunition(e: ShellFiredEvent): void {
-    if (shellMunitions.size > 96) shellMunitions.clear();
+    shellMunitions.delete(e.shellId);
+    if (shellMunitions.size >= SHELL_RECORDS_MAX) shellMunitions.delete(shellMunitions.keys().next().value as ShellId);
     let munition = e.munition;
     let chargeKg = e.chargeKg;
     if (!munition || !Number.isFinite(chargeKg)) {
@@ -2377,9 +2382,19 @@ function* createFxSteps(
     return t !== undefined && particles.getTime() - t <= HE_BURST_KEEP_S;
   }
   const burstRecent = (id: ShellId): boolean => recent(burstAt, id);
-  /** The records the maps keep at most: far above a battle's charged rounds in HE_BURST_KEEP_S (the frame prunes the
-   *  older ones); a frozen clock that ages nothing drops the oldest records first, never the whole map. */
+  /** The records the maps keep at most: far above the rounds a battle ends in HE_BURST_KEEP_S (the frame prunes the
+   *  older ones, so a live record goes only after this many newer rounds end inside its half second); a frozen clock
+   *  that ages nothing drops the oldest records first, never the whole map. */
   const HE_RECORDS_MAX = 1024;
+  /** The id the Studio's stand-in bursts carry (studio.ts): no round, so no record, and each burst of a barrage draws. */
+  const STAND_IN_SHELL_ID = -1;
+  /**
+   * (round 2 U31 review) Whether an expiry ends a round, recorded whatever its class: the sim raises a round's hull
+   * events (he_pen, he_splash) by its HE class (sim/damage.ts isHeClass: types HE and HESH), which FX's charge does not
+   * follow (a WP smoke round is HE class with no charge; recording charged rounds only left its he_splash unmatched, and
+   * it drew a plate burst). HE_RECORDS_MAX keeps the battle's other rounds from crowding a record out.
+   */
+  const isRound = (id: ShellId | null | undefined): id is ShellId => id != null && id !== STAND_IN_SHELL_ID;
   function note(map: Map<ShellId, number>, id: ShellId): void {
     // (round 2 U31) the newest last: an overflow drops the oldest record (clearing the map dropped a round's record
     // between its hull event and its expiry, and that round burst twice)
@@ -2416,6 +2431,14 @@ function* createFxSteps(
     for (let i = 0; i < pendingHeCount; i++) {
       const r = pendingHe[i];
       const id = r.shellId;
+      // (round 2 U31 review) a round its fired record names uncharged (WP smoke: HE class in the sim, so its hull events
+      // come) bursts nowhere (sim/destructionEvents.ts: a screen, never a blast): each hull it reaches takes fragments
+      // at once, with no expiry to wait for and no burst to note (its expiry strikes the ground as its own)
+      const known = id != null ? shellMunitions.get(id) : undefined;
+      if (known && !(isExplosive(known.munition) && known.chargeKg > 0)) {
+        fragmentStrike(blast, r.x, r.y, r.z, r.nx, r.ny, r.nz, Math.min(0, r.at - now));
+        continue;
+      }
       // (2026-11-02 audit F10) its round burst elsewhere and the expiry has not landed yet: it waits (at most HE_WAIT_S;
       // a frozen capture never). A direct hit's never does: its round has no expiry (the solo step and a peer's
       // shell_hit end it on the hull), and its burst draws on the next update as it always did
@@ -2429,8 +2452,10 @@ function* createFxSteps(
         continue;
       }
       if (id != null) noteBurst(id);
-      const info = (id != null ? shellMunitions.get(id) : null) ?? heByCaliber(r.caliberMm);
-      if (id != null) shellMunitions.delete(id);
+      const info = known ?? heByCaliber(r.caliberMm);
+      // (round 2 U31 review) a round with its expiry still to come keeps its record for it: the late expiry's mark (the
+      // ground's, kept since U31) is its own class's, not a guess from its type (an L31 HESH, typed HE, left an HE crater)
+      if (id != null && !r.expiryDue) shellMunitions.delete(id);
       const gy = groundY(r.x, r.z);
       // (ac130-fx-228 r3) a heavy charge (the gunship's howitzer shell, a missile's warhead) on a roof still throws the
       // ground's earth: it reaches the ground from a turret's top, a light charge from a hull's side only
@@ -6977,9 +7002,9 @@ function* createFxSteps(
         // still takes its hole and its own dust (stages.strike, a non-explosive wallStrike)
         const m = info ?? munitionOfExpiry(e);
         const charged = isExplosive(m.munition) && m.chargeKg > 0;
-        // (round 2 U31) only a charged round has hull events to match (he_pen, he_splash): the records are its alone, so
-        // a battle's kinetic and small-arms expiries never crowd an HE round's out
-        const recorded = charged && e.shellId != null;
+        // (round 2 U31 review) every round's end is recorded, whatever FX makes of its charge (isRound): the sim's HE class
+        // raises the hull events; a Studio stand-in is no round
+        const recorded = isRound(e.shellId);
         let burstDrawn = false;
         if (recorded) {
           note(roundEndedAt, e.shellId);

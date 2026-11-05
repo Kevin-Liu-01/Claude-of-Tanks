@@ -2,7 +2,13 @@
 // one left open after its one-burst-a-round fix:
 //  - the records survive a battle's other rounds: every expiry was noted and the maps were cleared past 256 entries, so a
 //    burst of small-arms strikes between an HE round's expiry and its late hull event dropped the round's record and it
-//    burst twice. Only a charged round is recorded now, and an overflow drops the oldest record, never the map;
+//    burst twice. An overflow drops the oldest record now, never the map;
+//  - (round 2 U31 review) every round's end is recorded, whatever FX makes of its charge: the sim raises hull events by
+//    its HE class (damage.ts isHeClass), and a WP smoke round (HE class, no charge) recorded as a charged round only drew
+//    a plate burst at its he_splash. A round FX knows is uncharged strikes each hull as fragments, never a blast, on every
+//    order of its events; a Studio stand-in (-1) is no round, and each burst of a barrage draws; the fired records drop
+//    the oldest past their cap (cleared past 96, a smoke round in flight lost its class and burst as HE); a late expiry's
+//    mark is its round's class;
 //  - a terrain expiry later than its hull's burst keeps the ground's own marks: it returned before the ground hit, so the
 //    burst's crater mark, the cover it clears and the water's ring were lost, and the last blast's crater record stood
 //    (a later burst beside it read as dug and left no mark);
@@ -41,6 +47,16 @@ const bodiesHere = () => {
   return n;
 };
 const marks = () => fx.group.getObjectByName('fx-crater-marks').geometry.drawRange.count;
+// the fire puffs drawn since the last reset (the fire pool, the one at renderOrder 22: particles.ts): a blast's flash and
+// fire; fragments and a kinetic strike draw none
+const fires = () => fx.group.getObjectByName('fx-particles').children.find((m) => m.renderOrder === 22).geometry.instanceCount;
+// the kinds of the crater marks on the ground (craterMarks.ts aInfo: birth, surface, kind, seed per vertex)
+const markKinds = () => {
+  const a = fx.group.getObjectByName('fx-crater-marks').geometry.attributes.aInfo.array;
+  const kinds = new Set();
+  for (let q = 0; q < a.length; q += 4) if (a[q] > -1e8) kinds.add(a[q + 2]);
+  return [...kinds].sort();
+};
 const near = (a, b, tol = 6) => Math.abs(a - b) <= tol;
 const he = { shellType: 'HE', caliberMm: 125, munition: 'he', chargeKg: 3.4 };
 let id = 300;
@@ -111,5 +127,77 @@ const run = (script) => { fx.resetAll(); frames(2); const shellId = id++; fired(
   assert.ok(near(reset, sameFrame, 8), `a reset to 0 inside the wait: one burst (${reset} vs ${sameFrame})`);
 }
 
+// ---- (round 2 U31 review) every round is recorded, whatever FX makes of its charge ----
+{
+  // L34 WP Smoke (challengerSpecs.ts): typed HE, so HE class in the sim (its he_splash comes), 'smoke' in FX (no charge);
+  // an L31 HESH, typed HE too, as the charged control. A hull 6 m off the burst point.
+  const smoke = { shellType: 'HE', caliberMm: 120, shellName: 'L34 WP Smoke' };
+  const hesh = { shellType: 'HE', caliberMm: 120, shellName: 'L31 HESH' };
+  const fireAt = (s, spec) => emit('shell:fired', { shellId: s, shooterId: 'g', pos: [0, 30, -60], muzzlePos: [0, 30, -60],
+    dir: [0, -0.4, 0.9], ...spec });
+  const hullHit = (s, spec) => emit('shell:hit', { shellId: s, attackerId: 'g', targetId: 't', kind: 'he_splash', damage: 5,
+    pos: [6, 1.2, 0], normal: [-1, 0, 0], caliberMm: spec.caliberMm, shellType: spec.shellType, destroyed: false });
+  // as the solo step and a peer raise it: its type and calibre, no class of its own
+  const groundEnd = (s, spec) => emit('shell:expired', { shellId: s, pos: [0, 0, 0], hitTerrain: true, hitKind: 'terrain',
+    shellType: spec.shellType, caliberMm: spec.caliberMm });
+  // the fire puffs the round's end draws (its muzzle's are drawn before)
+  const endFires = (spec, script) => {
+    fx.resetAll(); frames(2);
+    const s = id++;
+    fireAt(s, spec); frames(1);
+    const before = fires();
+    script(s); frames(20);
+    return fires() - before;
+  };
+  assert.ok(endFires(hesh, (s) => { hullHit(s, hesh); groundEnd(s, hesh); }) > 0, 'control: a charged round\'s end draws its burst');
+  // the sim's order, in one frame: on 61ba7d87c5 the he_splash found no record and drew a plate burst
+  assert.equal(endFires(smoke, (s) => { hullHit(s, smoke); groundEnd(s, smoke); }), 0,
+    'a WP smoke round\'s he_splash and ground expiry in one frame: fragments on the hull, no plate burst');
+  assert.equal(endFires(smoke, (s) => { groundEnd(s, smoke); frames(3); hullHit(s, smoke); }), 0,
+    'a smoke round\'s hull event after its expiry (a peer\'s queue): fragments');
+  // on 50197fdf43 too: the wait ran out, and the hull event drew the round's burst
+  assert.equal(endFires(smoke, (s) => { hullHit(s, smoke); frames(10); groundEnd(s, smoke); }), 0,
+    'a smoke round\'s expiry later than its hull\'s wait: fragments, no plate burst');
+  assert.equal(endFires(smoke, (s) => { hullHit(s, smoke); }), 0, 'a smoke round on a hull (no expiry): fragments, no plate burst');
+  // the fired records past their old cap of 96: a heavy fight's machine guns fire 120 rounds while the smoke round flies
+  // (the bodies round the smoke round's point: the guns' muzzles lie 55 m off, and fill the fire pool)
+  const smokeEnd = (guns) => {
+    fx.resetAll(); frames(2);
+    const s = id++;
+    fireAt(s, smoke);
+    for (let k = 0; k < guns; k++) {
+      emit('shell:fired', { shellId: 700000 + id * 1000 + k, shooterId: 'mg', pos: [40, 2, 40], muzzlePos: [40, 2, 40], dir: [1, 0, 0],
+        shellType: 'AP', caliberMm: 7.62, shellName: '7.62 mm' });
+    }
+    frames(1);
+    groundEnd(s, smoke); frames(6);
+    return bodiesHere();
+  };
+  const quietSmoke = smokeEnd(0), crowdedSmoke = smokeEnd(120);
+  assert.ok(near(crowdedSmoke, quietSmoke), `a smoke round's class outlasts 120 rounds fired in its flight (${crowdedSmoke} bodies at its point vs ${quietSmoke}; an HE burst by its type draws ~60)`);
+  // a late expiry's mark is its round's class: an L31 HESH's scorch, as on time, not an HE crater guessed from its type
+  const kindsOf = (late) => {
+    fx.resetAll(); frames(2);
+    const s = id++;
+    fireAt(s, hesh);
+    if (late) { hullHit(s, hesh); frames(10); }
+    groundEnd(s, hesh); frames(2);
+    return markKinds();
+  };
+  const onTime = kindsOf(false);
+  assert.equal(onTime.length, 1, `an on-time HESH expiry leaves one kind of mark (${onTime})`);
+  assert.deepEqual(kindsOf(true), onTime, 'a late HESH expiry leaves the same mark as on time');
+  // the Studio's small barrage (studio.ts fireExplosion): its stand-in bursts all carry shell id -1 in one call
+  const barrage = (n) => {
+    fx.resetAll(); frames(2);
+    for (let k = 0; k < n; k++) emit('shell:expired', { shellId: -1, hitTerrain: true, pos: [k * 12 - 30, 0, 10] });
+    frames(6);
+    return fires();
+  };
+  const one = barrage(1), six = barrage(6);
+  assert.ok(one > 0, `a stand-in burst draws its fire (${one})`);
+  assert.ok(six >= 5 * one, `each of a barrage's six stand-in bursts draws (${six} fire puffs vs ${one} for one)`);
+}
+
 fx.resetAll();
-console.log('heRoundRecords.selftest: an HE round keeps its records through a battle\'s other rounds and a clock rebase; a late ground expiry keeps its marks');
+console.log('heRoundRecords.selftest: an HE round keeps its records through a battle\'s other rounds and a clock rebase; a late ground expiry keeps its marks; every round is recorded and an uncharged one never bursts');
