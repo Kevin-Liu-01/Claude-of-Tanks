@@ -874,10 +874,10 @@ const LEVEL_ROUTE_SLACK_S = 25;
 const LEVEL_ROUTE_STRIKES = 4;
 const UNBEARABLE_S = 75;
 const LEVEL_ROUTE_OPTIONS = Object.freeze({ requireGoalLevel: true });
-// Search goal order by how many legs have ended without contact: straight at the enemy first, then the last
-// sighting and the ring round the sector, then the ring from other sides.
 // The declared order of one hull's shell results (or hits) on a bot in one phase (round 2, U17; see pendingBefore).
 const PENDING_KIND_ORDER: readonly string[] = Object.freeze(['pen', 'he_pen', 'nonpen', 'ricochet', 'spaced_absorb', 'era']);
+// Search goal order by how many legs have ended without contact: straight at the enemy first, then the last
+// sighting and the ring round the sector, then the ring from other sides.
 const SEARCH_ORDER: ReadonlyArray<readonly string[]> = Object.freeze([
   Object.freeze(['sector', 'seen', 'objective', 'sweep', 'wide']),
   Object.freeze(['seen', 'sweep', 'sector', 'wide']),
