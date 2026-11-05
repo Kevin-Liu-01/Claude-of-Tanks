@@ -31,6 +31,7 @@ import { KIT, FITTINGS, muzzleBore, orientedSlab } from './kit.ts';
 import { antennaPart } from './antennaPart.ts';
 import { sectionSolid, type SectionPoint, type SolidSection } from './sectionSolid.ts';
 import { markSmokeTube } from '../vehicleAuxiliaryGeometry.ts';
+import { weaponAssembly } from './weaponStock.ts';
 import { steppedBuilder, type TankProfileBuild } from '../tankBuildCooperation.ts';
 import type { TankBuilderPort } from '../tankFactoryCore.ts';
 
@@ -51,10 +52,12 @@ function addTowLauncher(P: TankBuilderPort, mark: M113TowMark): void {
     const plateX = T.x + 0.13;
     P.addEquipment('turret', box(0.04, 0.52, 0.86), plateX, yMid, zMid);
     for (const z of [zMid - 0.30, zMid + 0.30]) P.addEquipment('turret', box(T.wallX - plateX + 0.01, 0.12, 0.14), (plateX + T.wallX) / 2, yMid, z);
+    // (the front collar stands 4.5 cm proud of the canister, its dark bore at the launch exit fleetLauncherMuzzles.ts
+    // fires from, 5 cm ahead of mouthZ as on the FSV and MRV: flush with the canister the exit hung 43 mm in air)
     for (const y of T.ys) {
       P.addEquipment('turret', cylZ(0.11, T.len, seg), T.x, y, zMid);
-      for (const z of [z0 + 0.04, zMid, T.mouthZ - 0.04]) P.add('turretDetail', cylZ(0.124, 0.06, seg), T.x, y, z);
-      P.add('turretDark', cylZ(0.09, 0.012, seg), T.x, y, T.mouthZ + 0.001);
+      for (const z of [z0 + 0.04, zMid, T.mouthZ + 0.015]) P.add('turretDetail', cylZ(0.124, 0.06, seg), T.x, y, z);
+      P.add('turretDark', cylZ(0.09, 0.012, seg), T.x, y, T.mouthZ + 0.046);
       P.add('turretDetail', box(0.02, 0.03, T.len * 0.8), T.x + 0.11, y, zMid);
     }
     // the canisters' straps over the cradle, the umbilical's cable to the turret
@@ -403,7 +406,8 @@ function* buildM113Steps(P: TankBuilderPort, mark: M113Mark): TankProfileBuild {
     // face's top edge in air, which the sealed check read as see-through)
     P.decal('turret', 'flag', 'au-army-kangaroo', 0.17, [-0.12, 0.14, 0.704], 0);
   }
-  if (mark !== 'a3') addTowLauncher(P, mark);
+  // the launcher is damageable weapon stock: its mouths are the drawn terminals the launches leave from
+  if (mark !== 'a3') weaponAssembly(P, () => addTowLauncher(P, mark));
   P.turretG.userData.m113TurretReceipt = Object.freeze({
     mark, roadWheels: D.wheelZs.length, length: D.length,
     turret: mark === 'fsv' ? 'saladin' : mark === 'mrv' ? 'scorpion' : a3 ? 'acav-cupola' : 'tenix', buoyancyPods: mark === 'mrv',

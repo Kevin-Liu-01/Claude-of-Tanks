@@ -57,6 +57,71 @@
   },
   "armor": {
     "schemaVersion": 3,
+    "externalWeapons": [
+      {
+        "module": "missileRack",
+        "turretLocal": true,
+        "gunFollow": false,
+        "min": [1.11,0.21,-1.16],
+        "max": [1.35,0.67,-0.12],
+        "physicalMm": 10,
+        "surfaceFingerprint": "d42b562f"
+      },
+      {
+        "module": "missileRack",
+        "turretLocal": true,
+        "gunFollow": false,
+        "min": [1.138,0.238,-0.1244],
+        "max": [1.322,0.422,-0.1036],
+        "physicalMm": 10,
+        "surfaceFingerprint": "275a2d6b"
+      },
+      {
+        "module": "missileRack",
+        "turretLocal": true,
+        "gunFollow": false,
+        "min": [1.138,0.458,-0.1244],
+        "max": [1.322,0.642,-0.1036],
+        "physicalMm": 10,
+        "surfaceFingerprint": "d4903c41"
+      },
+      {
+        "module": "missileRack",
+        "turretLocal": true,
+        "gunFollow": false,
+        "min": [1.158,0.258,-0.124],
+        "max": [1.302,0.402,-0.108],
+        "physicalMm": 10,
+        "surfaceFingerprint": "7b94e0dd"
+      },
+      {
+        "module": "missileRack",
+        "turretLocal": true,
+        "gunFollow": false,
+        "min": [1.158,0.478,-0.124],
+        "max": [1.302,0.622,-0.108],
+        "physicalMm": 10,
+        "surfaceFingerprint": "990288f3"
+      },
+      {
+        "module": "missileRack",
+        "turretLocal": true,
+        "gunFollow": false,
+        "min": [1.346,0.29,-1.06],
+        "max": [1.358,0.59,-0.22],
+        "physicalMm": 10,
+        "surfaceFingerprint": "868cc735"
+      },
+      {
+        "module": "missileRack",
+        "turretLocal": true,
+        "gunFollow": false,
+        "min": [1.16,0.67,-1.11],
+        "max": [1.2,0.73,-1.01],
+        "physicalMm": 10,
+        "surfaceFingerprint": "41f3feab"
+      }
+    ],
     "turretPivot": [0,2,-0.3],
     "plates": [
       {
@@ -839,7 +904,7 @@
     ]
   },
   "geometryHash": "b2ded0f1",
-  "metadataHash": "a18f2c4b",
+  "metadataHash": "924c2d32",
   "presentationAnchor": {
     "xM": 0,
     "zM": -0.0002
@@ -972,8 +1037,8 @@
     "technicalLabels": {
       "file": "redback_technical.json",
       "mime": "application/json",
-      "bytes": 5287,
-      "sha256": "990d9b697a3b0cc2af461637bd503bfc86389539f9817a4dd58a89d5da2ee25d"
+      "bytes": 5492,
+      "sha256": "59aa7cdde218f717ee0388d830b8a91e00db5cf4a0d856176af8bce6797cab46"
     }
   }
 }
