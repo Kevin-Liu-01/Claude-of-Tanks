@@ -611,6 +611,7 @@ export const MANUAL_SUITES = Object.freeze({
     'src/vehicles/upperReturnBandStock.selftest.mjs',
     'src/vehicles/vehicleMaterialClone.selftest.mjs',
     'src/vehicles/vehicleMaterialRegistration.selftest.mjs',
+    'src/vehicles/vehicleMarkingSuitBacking.selftest.mjs',
     'src/vehicles/vehicleReadability.selftest.mjs',
     'src/vehicles/weaponFinish.selftest.mjs',
     'src/vehicles/ztz20GunClearance.selftest.mjs',
