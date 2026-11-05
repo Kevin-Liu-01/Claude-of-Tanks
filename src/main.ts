@@ -1,4 +1,5 @@
 import './ui/richTooltip.css';
+import { installAirSupportBridge } from './game/airSupportBridge.ts';
 import { createVehicleGroundSampler } from './world/vehicleGroundSampler.ts';
 import './ui/battleUiVisibility.css';
 import './ui/hudCustomization.css';
@@ -705,6 +706,8 @@ const devTrace = traceRequested
   })
   : null;
 const bus = createBus(devTrace ? (ev, payload) => devTrace.event(ev, payload) : null);
+// Air Support (air-support-270): the strafing jet's and the AC-130's rounds fire from the aircraft (airSupportBridge.ts)
+installAirSupportBridge(bus);
 installBattleRecords(bus);
 installCampaignProgress(bus); // campaign slice 4 (2026-09-12): Frontline Assault sorties persist locally
 const game: MainGameState = createGameState<

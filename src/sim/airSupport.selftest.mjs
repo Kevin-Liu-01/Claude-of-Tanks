@@ -39,6 +39,7 @@ const world = () => ({ mapId: 'verdant', heightField: { getHeightAt: () => 0, ge
   assert.equal(killSourceOf(null, { reloadGroup: 'strike-strafe' }), 'strafe');
   assert.equal(killSourceOf(null, { reloadGroup: 'strike-bomb' }), 'bomb');
   assert.equal(killSourceOf(null, { reloadGroup: 'gunship-cannon' }), 'ac130');
+  assert.equal(killSourceOf(null, { reloadGroup: 'strike-artillery' }), 'artillery');
 }
 
 function run({ bots = [], shootDown = false, migrateAt = null } = {}) {
@@ -135,7 +136,7 @@ for (const kind of ['artillery', 'strafe', 'bomb', 'gunship']) {
 }
 const kills = first.log.filter((e) => e.type === 'tank_destroyed' && e.killerId === 'caller');
 assert.ok(first.log.some((e) => e.type === 'shell_hit' && e.attackerId === 'caller'), 'the strikes hit the enemy, credited to the caller');
-for (const kill of kills) assert.ok(['strafe', 'bomb', 'ac130'].includes(kill.source) || kill.source === undefined, `kill source ${kill.source}`);
+for (const kill of kills) assert.ok(['artillery', 'strafe', 'bomb', 'ac130'].includes(kill.source), `a strike's kill names its call-in (${kill.source})`);
 // points: each call paid its cost (the call's own tick may add one trickle point)
 for (const [kind, drop] of first.paid) assert.ok(drop >= R[kind].cost - 1 && drop <= R[kind].cost, `${kind} cost ${R[kind].cost}, paid ${drop}`);
 // the cooldown and the air cap refuse a second call at once

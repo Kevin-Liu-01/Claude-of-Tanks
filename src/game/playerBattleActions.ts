@@ -1,3 +1,6 @@
+import { strikeView } from './strikeViewState.ts';
+import { AIR_STRIKE_BITS } from '../sim/playerActions.ts';
+import { AIR_STRIKE_KINDS, type AirStrikeKind } from '../sim/matchRuleset.ts';
 import type { RuntimeValue } from '../runtimeTypes.ts';
 import type { EventBus } from './stateCore.ts';
 import type { BattleClientAccess } from './battleClientAccess.ts';
@@ -67,8 +70,8 @@ interface BattleActionGame<TEntity extends BattleActionEntity> {
   phase: string;
   timeS: number;
   player: TEntity | null;
-  /** The ruleset in force (sim/matchRuleset.ts); Turbo Ball switches consumables off. */
-  ruleset?: { consumables: boolean; ammo?: string; aerial?: string | null } | null;
+  /** The ruleset in force (sim/matchRuleset.ts); Turbo Ball switches consumables off; Air Support carries its call-ins. */
+  ruleset?: { consumables: boolean; ammo?: string; aerial?: string | null; airSupport?: object | null } | null;
 }
 
 interface ActionInput {
@@ -82,7 +85,7 @@ interface ActionInput {
 interface NetworkActionPort {
   isActive(): boolean;
   queueConsumable(slot: number): void;
-  queueAction(action: 'reloadMagazine' | 'specialAction' | 'selfRight' | 'smoke' | 'lights' | 'roofGun' | 'lightsOff' | 'drone' | 'supplyAmmo' | 'supplyHeal'): void;
+  queueAction(action: 'reloadMagazine' | 'specialAction' | 'selfRight' | 'smoke' | 'lights' | 'roofGun' | 'lightsOff' | 'drone' | 'supplyAmmo' | 'supplyHeal' | 'strikeRecon' | 'strikeArtillery' | 'strikeStrafe' | 'strikeBomb' | 'strikeGunship'): void;
 }
 
 interface PlayerBattleActionsOptions<TEntity extends BattleActionEntity> {
@@ -103,6 +106,12 @@ export interface PlayerBattleActions {
 }
 
 const SHELL_ACTIONS = ['shell1', 'shell2', 'shell3'] as const;
+/** The multiplayer command lane's name for each call-in (mp/presentation/controlSampler.ts NAMED_ACTION_BITS). */
+const STRIKE_ACTION_NAMES = Object.freeze({
+  recon: 'strikeRecon', artillery: 'strikeArtillery', strafe: 'strikeStrafe', bomb: 'strikeBomb', gunship: 'strikeGunship',
+} as const satisfies Record<AirStrikeKind, string>);
+/** A call locks the reticle (and holds the binoculars up) this long (s). */
+const STRIKE_LOCK_S = 0.9;
 const CONSUMABLE_ACTIONS = ['consumable1', 'consumable2', 'consumable3'] as const;
 
 function hasLiveCombat<TEntity extends BattleActionEntity>(
@@ -169,9 +178,48 @@ export function createPlayerBattleActions<TEntity extends BattleActionEntity>({
     }
   };
 
+  // ---- Air Support's strike view (air-support-270): X raises the binoculars; 1-5 pick the call-in; the trigger calls it
+  // at the reticle (the crew's aim point: the action bit, sim/playerActions.ts AIR_STRIKE_BITS); X, the right button
+  // or Esc lowers them. A call locks the reticle a moment, then the binoculars come down.
+  const strikeMode = (): boolean => !!game.ruleset?.airSupport;
+  const setStrikeView = (open: boolean): void => {
+    if (strikeView.open === open) return;
+    strikeView.open = open;
+    bus.emit('ui:strikeView', { open });
+  };
+  listen('ui:strikeViewToggle', () => {
+    if (!strikeView.open && (!strikeMode() || !battleInputAllowed() || !livePlayer())) return;
+    setStrikeView(!strikeView.open);
+    bus.emit('ui:click', {});
+  });
+  listen('ui:strikePick', (payload) => {
+    const kind = (payload as { kind?: RuntimeValue } | null)?.kind;
+    if (!strikeMode() || !AIR_STRIKE_KINDS.includes(kind as AirStrikeKind)) return;
+    strikeView.kind = kind as AirStrikeKind;
+    if (!strikeView.open && battleInputAllowed() && livePlayer()) setStrikeView(true);
+    bus.emit('ui:click', {});
+  });
+  listen('ui:strikeCall', () => {
+    const player = strikeView.open && battleInputAllowed() ? livePlayer() : null;
+    if (!player || game.timeS < strikeView.lockedUntilS) return;
+    if (!strikeView.ready) { bus.emit('ui:strikeDenied', { kind: strikeView.kind }); return; }
+    const kind = strikeView.kind;
+    if (network.isActive()) network.queueAction(STRIKE_ACTION_NAMES[kind]);
+    else player.input.auxiliaryBits = (player.input.auxiliaryBits || 0) | AIR_STRIKE_BITS[kind];
+    strikeView.lockedUntilS = game.timeS + STRIKE_LOCK_S;
+    bus.emit('ui:strikeCalled', { kind });
+  });
+  onAction('strikeView', () => bus.emit('ui:strikeViewToggle', {}));
+  onAction('fire', () => { if (strikeView.open) bus.emit('ui:strikeCall', {}); });
+  onAction('freeCamera', () => { if (strikeView.open) setStrikeView(false); });
+  onAction('settingsMenu', () => { if (strikeView.open) setStrikeView(false); });
+  listen('ui:strikeViewClose', () => setStrikeView(false));
+
   for (let slot = 0; slot < 3; slot++) {
     onAction(SHELL_ACTIONS[slot], () => {
       if (!battleInputAllowed()) return;
+      // in the strike view the number keys pick the call-in, never a round
+      if (strikeView.open) { bus.emit('ui:strikePick', { kind: AIR_STRIKE_KINDS[slot] }); return; }
       bus.emit('ui:shellSelect', { slot });
       bus.emit('ui:click', {});
     });
@@ -224,6 +272,7 @@ export function createPlayerBattleActions<TEntity extends BattleActionEntity>({
   for (let slot = 0; slot < 3; slot++) {
     onAction(CONSUMABLE_ACTIONS[slot], () => {
       if (!battleInputAllowed()) return;
+      if (strikeView.open) { if (AIR_STRIKE_KINDS[3 + slot]) bus.emit('ui:strikePick', { kind: AIR_STRIKE_KINDS[3 + slot] }); return; }
       bus.emit('ui:consumable', { slot });
     });
   }

@@ -47,6 +47,9 @@ export interface AirStrike {
   downedBy: string | null;
 }
 
+/** A strike as anyone may see it: its record without its caller (the flight, the footprint and the rounds need no more). */
+export type PublicStrike = Omit<AirStrike, 'callerId'>;
+
 /** What the HUD, the minimap, the world and the sounds read of the strikes, per viewer. */
 export interface AirSupportView {
   /** The mode's clock the records are on (the presentation interpolates the aircraft from it). */
@@ -56,7 +59,7 @@ export interface AirSupportView {
   /** Seconds until the viewer may call each kind again (0: ready), and whether the side's air is full. */
   cooldowns?: Record<AirStrikeKind, number>;
   teamAirFull?: boolean;
-  strikes: (Omit<AirStrike, 'callerId'> & { mine: boolean })[];
+  strikes: (PublicStrike & { mine: boolean })[];
 }
 
 export interface AirSupportCheckpoint {
@@ -69,6 +72,8 @@ export interface AirSupportCheckpoint {
   nextId: number;
   trickles: number;
   decideAt: number;
+  /** When each side's bots last sent a recon pass (absent in a checkpoint from before the gap: none). */
+  botReconAt?: Partial<Record<ObjectiveTeam, number>>;
 }
 
 export interface AirSupportEntity {
@@ -157,7 +162,7 @@ const STRAFE_STANDOFF_M = 220;
  * jet comes in from behind the caller along the heading, dives on the lane (strafe) or runs over the mark at height
  * (bomb), and climbs away; the AC-130 spirals in onto its pylon turn over the mark, holds it, and spirals out.
  */
-export function aircraftPose(rules: AirSupportRules, strike: AirStrike, timeS: number, out: Point3 & { yaw: number; bank: number }): Point3 & { yaw: number; bank: number } {
+export function aircraftPose(rules: AirSupportRules, strike: PublicStrike, timeS: number, out: Point3 & { yaw: number; bank: number }): Point3 & { yaw: number; bank: number } {
   const sinH = detMath.sin(strike.heading), cosH = detMath.cos(strike.heading);
   if (strike.kind === 'gunship') {
     const g = rules.gunship;
@@ -211,7 +216,7 @@ export function aircraftPose(rules: AirSupportRules, strike: AirStrike, timeS: n
 const _lane = { x: 0, z: 0 };
 
 /** Whether a ground point lies inside a strike's danger footprint, widened by `marginM`. */
-export function strikeCovers(rules: AirSupportRules, strike: AirStrike, x: number, z: number, marginM: number): boolean {
+export function strikeCovers(rules: AirSupportRules, strike: PublicStrike, x: number, z: number, marginM: number): boolean {
   if (strike.kind === 'bomb') return detMath.hypot(x - strike.x, z - strike.z) <= rules.bomb.radiusM + marginM;
   if (strike.kind === 'artillery') return detMath.hypot(x - strike.x, z - strike.z) <= rules.artillery.radiusM + marginM;
   if (strike.kind === 'recon') return laneCovers(strike, x, z, rules.recon.trackM * 0.5 + marginM, rules.recon.revealM + marginM);
@@ -246,6 +251,8 @@ export function createAirSupport<Entity extends AirSupportEntity>(options: AirSu
   let trickles = 0;
   let decideAt = 0;
   let nowS = 0;
+  /** When each side's bots last sent a recon pass (rules.bots.reconGapS). */
+  const botReconAt: Partial<Record<ObjectiveTeam, number>> = {};
   const byId = new Map<string, Entity>();
   for (const entity of entities) { byId.set(entity.id, entity); points.set(entity.id, rules.points.start); }
 
@@ -423,6 +430,8 @@ export function createAirSupport<Entity extends AirSupportEntity>(options: AirSu
    */
   function botCall(entity: Entity, timeS: number): void {
     const team = teamOf(entity);
+    // the side's last air slots stay free for its crews' own calls
+    if (teamAir(team, timeS) >= rules.teamAirCap - rules.bots.leaveSlots) return;
     let anySpotted = false;
     for (const kind of ['gunship', 'bomb', 'strafe', 'artillery'] as const) {
       if (refusal(entity, kind, entity.state.pos.x, entity.state.pos.z, timeS)) continue;
@@ -439,12 +448,15 @@ export function createAirSupport<Entity extends AirSupportEntity>(options: AirSu
       if (bestCount >= rules.bots.minTargets[kind]) { requestStrike(entity.id, kind, bestX, bestZ, timeS); return; }
     }
     if (anySpotted || refusal(entity, 'recon', entity.state.pos.x, entity.state.pos.z, timeS)) return;
+    // one bot recon pass a side, then a gap (a sky full of photo jets is no one's battle)
+    if (timeS - (botReconAt[team] ?? -Infinity) < rules.bots.reconGapS) return;
     // nobody in reach is spotted (or the costlier calls were not affordable): scout toward the objective, inside the reach
     const point = scoutPoint?.(entity);
     if (!point) return;
     const dx = point.x - entity.state.pos.x, dz = point.z - entity.state.pos.z, d = detMath.hypot(dx, dz);
     if (d < 60) return;
     const reach = Math.min(d, rules.callRangeM * 0.9);
+    botReconAt[team] = timeS;
     requestStrike(entity.id, 'recon', entity.state.pos.x + dx / d * reach, entity.state.pos.z + dz / d * reach, timeS);
   }
 
@@ -532,7 +544,7 @@ export function createAirSupport<Entity extends AirSupportEntity>(options: AirSu
     pointsOf: (id: string): number => points.get(id) ?? 0,
     capture(): AirSupportCheckpoint {
       return { points: [...points], cooldowns: [...cooldowns], spotted: [...spottedAt], revealed: [...revealedUntil], strikes: strikes.map((s) => ({ ...s })),
-        nextId, trickles, decideAt };
+        nextId, trickles, decideAt, botReconAt: { ...botReconAt } };
     },
     restore(saved: AirSupportCheckpoint): void {
       points.clear(); for (const [key, value] of saved.points) points.set(key, value);
@@ -541,6 +553,7 @@ export function createAirSupport<Entity extends AirSupportEntity>(options: AirSu
       revealedUntil.clear(); for (const [key, value] of saved.revealed ?? []) revealedUntil.set(key, value);
       strikes.length = 0; for (const strike of saved.strikes) strikes.push({ ...strike });
       nextId = saved.nextId; trickles = saved.trickles; decideAt = saved.decideAt;
+      delete botReconAt.alpha; delete botReconAt.bravo; Object.assign(botReconAt, saved.botReconAt ?? {});
     },
   };
 }

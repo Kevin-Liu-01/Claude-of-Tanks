@@ -358,7 +358,7 @@ export function restoreAerial(entity: AerialEntity, checkpoint: AerialCheckpoint
  * Pure and deterministic (no clock, no state): both authorities (sim/authoritativeMatch.ts, game/state.ts) stamp it on the
  * hit and the destruction they emit; presentation only renders it (ui/killSourceIdentity.ts).
  */
-type KillSource = 'ac130' | 'drone' | 'strafe' | 'bomb' | 'vehicle';
+type KillSource = 'ac130' | 'drone' | 'strafe' | 'bomb' | 'artillery' | 'vehicle';
 
 interface KillSourceShooter {
   aerial?: { kind?: string } | null;
@@ -379,6 +379,7 @@ export function killSourceOf(shooter: KillSourceShooter | null | undefined, shel
   // the AC-130 orbit fires the gunship's own rounds (above)
   if (shell?.reloadGroup === 'strike-strafe') return 'strafe';
   if (shell?.reloadGroup === 'strike-bomb') return 'bomb';
+  if (shell?.reloadGroup === 'strike-artillery') return 'artillery';
   // the FPV warhead carries the DRONE tracer (sim/munitionBlast.ts drone_fpv); a hit event carries its name
   if (shell && (shell.tracer === 'DRONE' || shell.name === DRONE_WARHEAD.name)) return 'drone';
   return 'vehicle';
@@ -386,5 +387,5 @@ export function killSourceOf(shooter: KillSourceShooter | null | undefined, shel
 
 /** A source worth showing in place of the firing vehicle (a gunship's or a drone's kill), or null. */
 export function supportKillSource(source: unknown): Exclude<KillSource, 'vehicle'> | null {
-  return source === 'ac130' || source === 'drone' || source === 'strafe' || source === 'bomb' ? source : null;
+  return source === 'ac130' || source === 'drone' || source === 'strafe' || source === 'bomb' || source === 'artillery' ? source : null;
 }

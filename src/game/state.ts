@@ -324,7 +324,7 @@ interface SoloHitEvent extends HitEvent {
   attackerName?: string;
   attackerSpecId?: string;
   /** (ac130-fx-228) the attacker's weapons platform when it is not the vehicle itself (sim/aerialCombat.ts killSourceOf) */
-  attackerSource?: 'ac130' | 'drone' | 'strafe' | 'bomb';
+  attackerSource?: 'ac130' | 'drone' | 'strafe' | 'bomb' | 'artillery';
   targetName?: string;
   targetSpecId?: string;
   targetMaxHp?: number;
@@ -2017,7 +2017,7 @@ function announceDestroyed(
   ent: SoloEntity,
   killerId: string | null,
   cause: 'ammorack' | 'shot' | 'ram' | 'fire' | HullImpactKind,
-  source: 'ac130' | 'drone' | 'strafe' | 'bomb' | null = null,
+  source: 'ac130' | 'drone' | 'strafe' | 'bomb' | 'artillery' | null = null,
 ): void {
   ent._destroyedAnnounced = true;
   game.matchModeController?.recordDestruction(ent.id, killerId, source != null && source !== 'drone');

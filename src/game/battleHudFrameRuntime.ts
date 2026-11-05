@@ -1,4 +1,5 @@
 import type { RuntimeValue } from '../runtimeTypes.ts';
+import { strikeView } from './strikeViewState.ts';
 import { Object3D, PerspectiveCamera, Vector3 } from 'three';
 
 import type { AimController, AimFrame } from './aimController.ts';
@@ -265,7 +266,8 @@ export function createBattleHudFrameRuntime<TEntity extends HudTankEntity>({
     const rttMs = pingMs();
     frameInfo.pingMs = Number.isFinite(Number(rttMs)) ? Number(rttMs) : 0;
     const watched = !player() && !!watch?.focus();
-    frameInfo.mode = (watched ? watch!.sight() : rig.mode === 'SNIPER') ? 'sniper' : 'battle';
+    // Air Support: the strike view's binoculars ride the scope's camera, never its gun sight (ui/airSupportHud.ts)
+    frameInfo.mode = (watched ? watch!.sight() : rig.mode === 'SNIPER' && !strikeView.open) ? 'sniper' : 'battle';
     frameInfo.player = focus;
     frameInfo.tanks = game.tanks;
     frameInfo.rosterTanks = game.rosterTanks ?? game.tanks;
@@ -279,7 +281,7 @@ export function createBattleHudFrameRuntime<TEntity extends HudTankEntity>({
       frameInfo.selfRightKeyLabel = caps.selfRight;
       const keys = frameInfo.auxiliaryKeyLabels!;
       for (const action of ['smoke', 'lights', 'roofGun', 'supplyAmmo', 'supplyHeal', 'aerialVision', 'drone', 'specialAction', 'atgm',
-        'reloadMagazine', 'rangeReset', 'rangeMoving'] as const) keys[action] = caps[action];
+        'reloadMagazine', 'rangeReset', 'rangeMoving', 'strikeView'] as const) keys[action] = caps[action];
     }
     updateSpotting(focus);
   };

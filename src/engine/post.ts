@@ -35,6 +35,7 @@
  *     flat sky/fog. It lands at native canvas resolution; HUD/DOM never
  *     passes through the composer, so UI text keeps full sharpness.
  */
+import { STRIKE_MARKS_GLSL, createStrikeMarkUniforms } from './strikeMarks.ts';
 import * as THREE from 'three';
 import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js';
 import { FullScreenQuad, Pass } from 'three/examples/jsm/postprocessing/Pass.js';
@@ -1058,6 +1059,8 @@ const AerialShader = {
     ...createVehicleGroundOcclusionUniforms(),
     // 2026-10-09: the ground's sky beside the world's solids (structureGroundOcclusion.ts) — uSgo 0 skips it
     ...createStructureGroundUniforms(),
+    // air-support-270: Air Support's marks on the ground (strikeMarks.ts) — uStrikeN 0 skips the block
+    ...createStrikeMarkUniforms(),
   },
   vertexShader: /* glsl */ `
     varying vec2 vUv;
@@ -1067,6 +1070,7 @@ const AerialShader = {
     }`,
   fragmentShader: /* glsl */ `
     ${ATMOSPHERE_SKY_GLSL}
+    ${STRIKE_MARKS_GLSL}
     uniform float uAtmo;
     uniform float uAtmoHorizonLum;
     uniform float uAtmoHorizonCap;
@@ -1243,6 +1247,12 @@ const AerialShader = {
         // shaded side of a hull keeps its bustle, skirt and wheel-bay depth; nothing else is a receiver
         if ( uVehOcc > 0.5 && texel.a >= ${VEHICLE_ALPHA_MIN.toFixed(1)} && -viewZ < ${VEHICLE_OCCLUSION_RANGE_M.toFixed(1)} ) {
           texel.rgb *= cotVehicleOcclusionShade( vUv, uCamPos + ray * rayT, -viewZ, texel.a );
+        }
+        // air-support-270: the call-ins' footprints and the strike view's reticle, on whatever surface is there, lit
+        // before the haze so a far mark sits in the air as the ground does (strikeMarks.ts)
+        if ( uStrikeN > 0 ) {
+          float strikePx = rayT * 2.0 * uTan.y * uInvSize.y / max( abs( ray.y ), 0.12 );
+          texel.rgb = cotStrikeMarks( uCamPos + ray * rayT, texel.rgb, strikePx );
         }
         // 2026-10-03: the ground's sky under and beside the near hulls (vehicleGroundOcclusion.ts): its ambient share (round 5:
         // the snow's cool cast). On the near hulls' own pixels: (contact round 4) the dirt a run carries toward its foot

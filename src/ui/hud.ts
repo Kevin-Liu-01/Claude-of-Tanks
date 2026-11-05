@@ -8,6 +8,8 @@ import { killSourceIdentity, vehicleName } from './killSourceIdentity.ts';
 import { createVehicleStatusStrip } from './vehicleStatus.ts';
 import { drawAerialMinimap } from './aerialMinimap.ts';
 import { createAerialHud } from './aerialHud.ts';
+import { createAirSupportHud } from './airSupportHud.ts';
+import type { AirSupportView } from '../sim/airSupport.ts';
 import { createVehicleCooldownReader } from './vehicleControlCooldown.ts';
 import { createSpecialActionPresentationReader, depletedMissileLabel, magazineFeedEmpty } from './vehicleSpecialAction.ts';
 import type { AerialView } from '../sim/aerialCombat.ts';
@@ -48,7 +50,7 @@ import { RULESET_SCORE_TARGETS, matchRulesetFor, rulesetLines, type MatchRuleset
 import { GAME_MODE_DEFINITIONS, isPracticeMode, normalizeGameMode } from '../sim/gameModeCatalog.ts';
 import { markersStandOnSpawns, objectiveMarkers, type ObjectiveMarker, type ObjectiveStateView } from './minimapObjectives.ts';
 import {
-  OBJECTIVE_PALETTE, badgeLetter, drawBallGlyph, drawCheck, drawGoalGlyph, drawHexBadge, drawLaneGlyph, drawPennant,
+  OBJECTIVE_PALETTE, badgeLetter, drawBallGlyph, drawCheck, drawGoalGlyph, drawHexBadge, drawLaneGlyph, drawPennant, drawStrikeFootprint, drawStrikeGlyph, type StrikeGlyphKind,
   drawPickupGlyph, drawProgressArc, drawSpawnGlyph, laneLetter, sideColor, sideFill, type GlyphLetter,
 } from './objectiveGlyphs.ts';
 import { shellTypeCode, shellTypeLabel } from './shellLabels.ts';
@@ -243,6 +245,8 @@ export interface HudSpottingView {
 // tactical map 2026-09-15: the objective arrays (flags, zones, ball, goals, pickups, spawns)
 // ride along structurally from the sim's presentation state for the minimap markers.
 export interface HudMatchModeState extends ObjectiveStateView {
+  /** Air Support: the viewer's ledger and every call-in's public record (sim/airSupport.ts). */
+  air?: AirSupportView;
   support?:{ammoReadyInS:number;healReadyInS:number};
   escort?: {alive:number;total:number;rescued:number;required:number;progress:number};
   boss?: { id?: string; hp: number; maxHp: number };
@@ -279,7 +283,7 @@ export interface HudFrame {
   /** Every key cap from the live bindings (game/battleKeyCaps.ts, by action id): the tray's shell digits and consumables,
    *  the minimap's and the gear's read it (the controls row's come in auxiliaryKeyLabels). */
   keyCaps?: Readonly<Record<string, string>>;
-  auxiliaryKeyLabels?: {smoke:string;lights:string;roofGun:string;missile?:string;atgm?:string;reloadMagazine?:string;specialAction?:string;drone?:string;aerialVision?:string;supplyAmmo?:string;supplyHeal?:string;rangeReset?:string;rangeMoving?:string};
+  auxiliaryKeyLabels?: {smoke:string;lights:string;roofGun:string;missile?:string;atgm?:string;reloadMagazine?:string;specialAction?:string;drone?:string;aerialVision?:string;supplyAmmo?:string;supplyHeal?:string;strikeView?:string;rangeReset?:string;rangeMoving?:string};
 }
 
 interface HudHeightField {
@@ -377,7 +381,7 @@ interface HudEventPayload extends SpectatorCardPayload, Partial<HudHitEvent> {
   vehicle?: string;
   cause?: 'shot' | 'fire' | 'ammorack' | 'ram' | 'impact' | 'fall';
   /** (ac130-fx-228) what the kill was made with when not the killer's vehicle (the authority's sim/aerialCombat.ts killSourceOf) */
-  source?: 'ac130' | 'drone';
+  source?: 'ac130' | 'drone' | 'strafe' | 'bomb' | 'artillery';
   timeS?: number;
   on?: boolean;
   shells?: string[];
@@ -2980,6 +2984,8 @@ export function initHud(bus: EventBus): HudRuntime {
   const droneLabel = requireElement<HTMLElement>(droneButton, '.sl'), droneKey = requireElement<HTMLElement>(droneButton, '.sk');
   // The drone altimeter reads the same terrain height field as the spotting line-of-sight tests (set on map load).
   const aerialHud = createAerialHud(root,bus,() => heightFieldRef);
+  // Air Support (air-support-270): the call-in strip, the strike view's binoculars and the INCOMING plate
+  const airSupportHud = createAirSupportHud(root, bus);
   const missileButton=el('button','cot-auxiliary',controlsRow);missileButton.type='button';missileButton.hidden=true;
   missileButton.innerHTML=`<span class="si">${uiIconSVG('missileRack',18)}</span><span class="sl">${t('systems.atgm')}</span><span class="sk">Q</span><small class="system-status"></small>`;
   missileButton.dataset.tip=t('systems.atgm.help');
@@ -3923,7 +3929,7 @@ export function initHud(bus: EventBus): HudRuntime {
     if (modeState.id === 'capture_the_flag') {
       return t('hud.modeStatus.flags', { target: String(modeState.target || 3) });
     }
-    if (modeState.id === 'zone_control' || modeState.id === 'mars') {
+    if (modeState.id === 'zone_control' || modeState.id === 'mars' || modeState.id === 'air_support') {
       return t('hud.modeStatus.control', { target: String(modeState.target || RULESET_SCORE_TARGETS.zone_control) });
     }
     if (modeState.id === 'turbo_ball') {
@@ -3942,7 +3948,7 @@ export function initHud(bus: EventBus): HudRuntime {
   function modeStatusIconName(modeId: string): string {
     // the mode's own icon where its definition names one the status chip has no table entry for (the practice modes)
     if (isPracticeMode(modeId)) return GAME_MODE_DEFINITIONS[modeId].icon;
-    const icon = { juggernaut: 'modeJuggernaut', infected: 'modeInfected', realistic: 'modeRealistic', gun_game: 'modeGunGame', drone: 'modeDrone', ac130: 'modeAc130' }[modeId];
+    const icon = { juggernaut: 'modeJuggernaut', infected: 'modeInfected', realistic: 'modeRealistic', gun_game: 'modeGunGame', drone: 'modeDrone', ac130: 'modeAc130', air_support: 'modeAirSupport' }[modeId];
     if (icon) return icon;
     if (modeId === 'standard') return 'modeStandard';
     if (modeId === 'capture_the_flag') return 'modeFlag';
@@ -7761,6 +7767,21 @@ export function initHud(bus: EventBus): HudRuntime {
           drawLaneGlyph(mmCtx, x, y, 6.5);
           placeMapLetter(marker.label, laneLetter(x, y, 6.5, mapLetter), LANE_GLYPH_LETTER_PX);
           break;
+        case 'strike': {
+          // Air Support (air-support-270): the call-in's footprint at the map's scale and turn (two map points along its
+          // heading give both), its badge on the mark, the dashes marching while its warning runs
+          const heading = marker.heading ?? 0;
+          const along = worldToMap(marker.x + Math.sin(heading), marker.z + Math.cos(heading));
+          const ux = along[0] - point[0], uy = along[1] - point[1], pxPerM = Math.hypot(ux, uy) || 1;
+          const march = (timeS * (marker.pulse ? 1.6 : 0.4)) % 1;
+          const urgency = marker.countdownS != null && marker.countdownS > 0 ? Math.max(0, 1 - marker.countdownS / 8) : 1;
+          drawStrikeFootprint(mmCtx, point[0], point[1], marker.radiusM != null ? { radiusPx: marker.radiusM * pxPerM }
+            : { halfLengthPx: (marker.halfLengthM ?? 0) * pxPerM, halfWidthPx: (marker.halfWidthM ?? 0) * pxPerM, angle: Math.atan2(-ux, uy) },
+            marker.side, march, urgency);
+          if (marker.pulse) halo(7, 0.6);
+          drawStrikeGlyph(mmCtx, x, y, 5.5, (marker.status ?? 'bomb') as StrikeGlyphKind, marker.side);
+          break;
+        }
         default:
           break;
       }
@@ -8917,6 +8938,9 @@ export function initHud(bus: EventBus): HudRuntime {
     const flier = frame.player || playerRef;
     aerialHud.update(flier,frame.timeS,state.camera?.fov ?? 55,frame.aim?.distM ?? 0,mode !== 'hidden',frame.auxiliaryKeyLabels?.drone ?? 'V',state.camera?.userData.thermalFlight===true,frame.auxiliaryKeyLabels?.aerialVision ?? 'I',frame.matchModeState?.support,{ammo:frame.auxiliaryKeyLabels?.supplyAmmo||'J',heal:frame.auxiliaryKeyLabels?.supplyHeal||'K'},mode==='sniper',frame.matchModeState?.escort,
       flier?.aerial?.kind !== 'gunship' || flier.visual?.root?.visible === false);
+    airSupportHud.update(frame.matchModeState?.air, frame.aim?.point ?? null, (frame.player || playerRef)?.state?.pos ?? null,
+      frame.matchModeState?.perspectiveTeam === 'bravo' ? 'bravo' : 'alpha', frame.timeS,
+      mode !== 'hidden' && !!(frame.player || playerRef) && !(frame.player || playerRef)?.combat?.destroyed, frame.auxiliaryKeyLabels?.strikeView || 'X');
     updateDriveReadout(frame.player || playerRef, frame.timeS);
     updateDamagePanelPose(state.camera);
     shotInfo.setPlayer(playerId, frame.timeS, objectiveTeam);

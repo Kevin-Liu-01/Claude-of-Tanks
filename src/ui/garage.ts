@@ -266,6 +266,7 @@ const MODE_GLYPH: Readonly<Partial<Record<GameModeId, string>>> = Object.freeze(
   zone_control: 'modeZones', capture_the_flag: 'modeFlag', frontline_assault: 'modeFrontline', turbo_ball: 'modeTurbo',
   gun_game: 'modeGunGame', mars: 'modeMars', juggernaut: 'modeJuggernaut', infected: 'modeInfected',
   endless_horde: 'modeHorde', realistic: 'modeRealistic', drone: 'modeDrone', ac130: 'modeAc130', proving_ground: 'modeProving',
+  air_support: 'modeAirSupport',
 });
 
 /** The showroom's stations (brand-ui S2, the 245 redesign): the readout's five views of the selected tank, keys 1 to 5.

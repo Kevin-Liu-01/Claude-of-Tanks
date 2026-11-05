@@ -157,10 +157,12 @@ export interface AirSupportRules {
   /** The AC-130 orbit: its ring, its time on station, the reach it engages spotted enemies in and its guns' cadence. */
   readonly gunship: AirStrikeRules & { readonly radiusM: number; readonly orbitS: number; readonly engageM: number;
     readonly cannonEveryS: number; readonly howitzerEveryS: number; readonly cannonSpreadM: number; readonly howitzerSpreadM: number };
-  /** Bots: how often a bot weighs a call, the friendly clearance it keeps, the targets each strike needs, and the margin
-   *  a bot drives clear of a footprint by. */
+  /** Bots: how often a bot weighs a call, the friendly clearance it keeps, the targets each strike needs, the margin
+   *  a bot drives clear of a footprint by, the side's air slots bots leave free (the crews' own calls are never crowded
+   *  out) and the gap between one side's bot recon passes. */
   readonly bots: { readonly decideEveryS: number; readonly friendlyClearM: number;
-    readonly minTargets: Readonly<Record<AirStrikeKind, number>>; readonly evadeMarginM: number };
+    readonly minTargets: Readonly<Record<AirStrikeKind, number>>; readonly evadeMarginM: number; readonly leaveSlots: number;
+    readonly reconGapS: number };
 }
 export const AIR_SUPPORT_RULES: AirSupportRules = Object.freeze({
   points: Object.freeze({ perDamageHp: 0.1, kill: 60, supportKill: 30, capture: 50, spot: 10, spotRepeatS: 30, downed: 80,
@@ -187,7 +189,8 @@ export const AIR_SUPPORT_RULES: AirSupportRules = Object.freeze({
   gunship: Object.freeze({ cost: 800, cooldownS: 150, warningS: 8, hp: 1400, hitRadiusM: 16, altitudeM: 180, speedMps: 42,
     radiusM: 120, orbitS: 30, engageM: 140, cannonEveryS: 0.5, howitzerEveryS: 4, cannonSpreadM: 4, howitzerSpreadM: 3 }),
   bots: Object.freeze({ decideEveryS: 2, friendlyClearM: 45,
-    minTargets: Object.freeze({ recon: 0, artillery: 2, strafe: 2, bomb: 1, gunship: 3 }), evadeMarginM: 15 }),
+    minTargets: Object.freeze({ recon: 0, artillery: 2, strafe: 2, bomb: 1, gunship: 3 }), evadeMarginM: 15, leaveSlots: 1,
+    reconGapS: 30 }),
 });
 
 type RulesetAmmo = 'spec' | 'he_only' | 'unlimited';

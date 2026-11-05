@@ -1,4 +1,5 @@
 import type { RuntimeValue } from '../runtimeTypes.ts';
+import { strikeView } from './strikeViewState.ts';
 import { createWheelNotcher } from './wheelNotches.ts';
 import { vehicleActionDefaultKeys } from './vehicleActions.ts';
 import { isCrewVoiceSetting, normalizeCrewVoiceSetting, type CrewVoiceSetting } from '../audio/crewVoice.ts';
@@ -92,6 +93,8 @@ export const ACTION_DEFS = [
   { id: 'aerialVision', label: 'flight.view.action', group: 'settings.group.flight' },
   { id: 'supplyAmmo', label: 'flight.supply.ammo', group: 'settings.group.flight' },
   { id: 'supplyHeal', label: 'flight.supply.heal', group: 'settings.group.flight' },
+  // Air Support (air-support-270): the binoculars of the strike view, where a call-in is picked, aimed and called
+  { id: 'strikeView', label: 'airSupport.view', group: 'settings.group.flight' },
   { id: 'consumable1', label: 'action.consumable1', group: 'settings.group.consumables' },
   { id: 'consumable2', label: 'action.consumable2', group: 'settings.group.consumables' },
   { id: 'consumable3', label: 'action.consumable3', group: 'settings.group.consumables' },
@@ -278,6 +281,7 @@ export const DEFAULT_BINDINGS: Partial<Record<ActionId, string>> = {
   // the vehicle's and a flight's actions: F jump / self-right, E suspension, Q ATGM, C reload, V drone, G smoke, N lights,
   // B roof gun, I sensor view, J and K supplies, the same on every vehicle (src/game/vehicleActions.ts)
   ...vehicleActionDefaultKeys(),
+  strikeView: 'KeyX', // air-support-270: the strike view (X marks the spot; every nearer letter is taken)
   autoAim: 'KeyT', // round 30: lock the sight to the enemy nearest the reticle (T again releases)
   hitboxOverlay: 'KeyH', // round 30: toggle the armour / hitbox overlay while aiming
   consumable1: 'Digit4',
@@ -1178,7 +1182,8 @@ export function createInput(opts: { lockElement?: HTMLElement | null } = {}): In
       // lock-acquiring click) never fires.
       const fireHeld = isHeld('fire');
       if (!fireHeld) fireHoldLegit = false;
-      state.fire = enabled && ((nowMillis() - firePressMs < FIRE_PRESS_BUFFER_MS) ||
+      // Air Support: with the strike view up the trigger calls the strike (game/playerBattleActions.ts), never the gun
+      state.fire = enabled && !strikeView.open && ((nowMillis() - firePressMs < FIRE_PRESS_BUFFER_MS) ||
         (fireHoldLegit && fireHeld));
       return state;
     },
