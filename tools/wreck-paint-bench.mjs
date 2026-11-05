@@ -194,7 +194,8 @@ export function registerCancellation(getOwner, emitter = process) {
   let interrupted = false;
   const stop = () => { interrupted = true; getOwner()?.stop('Interrupted'); };
   emitter.on('SIGINT', stop); emitter.on('SIGTERM', stop);
-  return { isInterrupted: () => interrupted,
+  // interrupt(): the same stop for the capture hold's own (past the cap with a waiter; round 2 U38)
+  return { isInterrupted: () => interrupted, interrupt: () => stop(),
     dispose() { emitter.off('SIGINT', stop); emitter.off('SIGTERM', stop); } };
 }
 
@@ -288,7 +289,12 @@ async function run(options) {
   const cancellation = registerCancellation(() => owner);
   try {
     write(); console.log(`[wreck-paint-bench] stage=capture_lock pid=${process.pid} output=${options.out}`);
-    hold = await openCaptureHold({ label: 'wreck-paint-bench', timeoutMs: 45 * 60 * 1000 });
+    // signals: [] (round 2 U38): registerCancellation owns SIGINT/SIGTERM, so the worker closes, then the lease goes, then the
+    // report is written; the hold's own stop reaches the run the same way
+    hold = await openCaptureHold({ label: 'wreck-paint-bench', timeoutMs: 45 * 60 * 1000, signals: [] });
+    hold.signal.addEventListener('abort', () => {
+      report.errors.push(`Capture hold stopped: ${hold.signal.reason?.message ?? hold.signal.reason}`); cancellation.interrupt();
+    }, { once: true });
     report.captureAcquiredAt = new Date().toISOString();
     assert.equal(cancellation.isInterrupted(), false, 'Interrupted while queued; no worker admitted');
     assert.deepEqual(identities(), report.sourceIdentities, 'Source changed while queued');
