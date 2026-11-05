@@ -983,6 +983,57 @@
    "uncovered": [],
    "hostSweep": []
   },
+  "itpsv_leopard2": {
+   "inputHash": "e7d79592c97dba83",
+   "runs": [
+    {
+     "index": 0,
+     "site": "adhoc:leo2a4-glacis-rack-R@<anon>@profiles/leopard2A4Kit.ts",
+     "source": "adhoc",
+     "frame": "hull",
+     "registered": true,
+     "classes": [],
+     "primary": "OK",
+     "why": {},
+     "notes": [],
+     "measures": {
+      "support": 1,
+      "gap": 0,
+      "air": 0,
+      "hidden": 0,
+      "sunkMaxM": 0,
+      "sweepM": 0,
+      "traverseM": null,
+      "exposure": 1,
+      "host": "hull<hull@profiles/leopard2Hull.ts:69>"
+     }
+    },
+    {
+     "index": 1,
+     "site": "adhoc:leo2a4-glacis-rack-L@<anon>@profiles/leopard2A4Kit.ts",
+     "source": "adhoc",
+     "frame": "hull",
+     "registered": true,
+     "classes": [],
+     "primary": "OK",
+     "why": {},
+     "notes": [],
+     "measures": {
+      "support": 1,
+      "gap": 0,
+      "air": 0,
+      "hidden": 0,
+      "sunkMaxM": 0,
+      "sweepM": 0,
+      "traverseM": null,
+      "exposure": 1,
+      "host": "hull<hull@profiles/leopard2Hull.ts:69>"
+     }
+    }
+   ],
+   "uncovered": [],
+   "hostSweep": []
+  },
   "jpz_e100": {
    "inputHash": "7fba3eaf0d080c28",
    "runs": [
@@ -2112,6 +2163,35 @@
   "marder2": {
    "inputHash": "c5d31a130b0fe5b7",
    "runs": [],
+   "uncovered": [],
+   "hostSweep": []
+  },
+  "marksman_t55": {
+   "inputHash": "0af46cea19ac5b4f",
+   "runs": [
+    {
+     "index": 0,
+     "site": "strip:strip@addFenderStowage@profiles/t54Family.ts",
+     "source": "strip",
+     "frame": "hull",
+     "registered": true,
+     "classes": [],
+     "primary": "OK",
+     "why": {},
+     "notes": [],
+     "measures": {
+      "support": 1,
+      "gap": 0,
+      "air": 0,
+      "hidden": 0,
+      "sunkMaxM": 0.01,
+      "sweepM": 0,
+      "traverseM": null,
+      "exposure": 0.92,
+      "host": "hullFixedPaintedBodywork<addFenders@profiles/t54Family.ts:245>"
+     }
+    }
+   ],
    "uncovered": [],
    "hostSweep": []
   },

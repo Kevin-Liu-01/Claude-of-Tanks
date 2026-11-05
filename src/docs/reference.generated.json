@@ -6278,6 +6278,27 @@
       "roofGun": false,
       "missile": false,
       "suspension": false
+    },
+    {
+      "id": "m163_vads",
+      "name": "M163 VADS",
+      "nation": "USA",
+      "role": "ifv",
+      "tier": 4,
+      "hp": 1750,
+      "speed": 64,
+      "reverse": 14,
+      "hull": 61.6,
+      "turret": 66,
+      "dispersion": 0.3,
+      "reload": 4,
+      "aim": 0.89,
+      "view": 440,
+      "smoke": 0,
+      "lights": true,
+      "roofGun": false,
+      "missile": false,
+      "suspension": false
     }
   ]
 }

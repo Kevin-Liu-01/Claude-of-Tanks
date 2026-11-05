@@ -61,6 +61,7 @@ export const INTERIOR_FILL_GROUP_LOADERS: Readonly<Record<string, () => Promise<
   "m41": () => import('./interiorFillGroups/m41.generated.ts'),
   "m6Linebacker": () => import('./interiorFillGroups/m6Linebacker.generated.ts'),
   "marder2": () => import('./interiorFillGroups/marder2.generated.ts'),
+  "marksman": () => import('./interiorFillGroups/marksman.generated.ts'),
   "merkava": () => import('./interiorFillGroups/merkava.generated.ts'),
   "merkavaX": () => import('./interiorFillGroups/merkavaX.generated.ts'),
   "misc": () => import('./interiorFillGroups/misc.generated.ts'),
