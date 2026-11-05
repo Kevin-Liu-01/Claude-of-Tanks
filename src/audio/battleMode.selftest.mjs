@@ -6,6 +6,7 @@
 // kept and replayed when it does (the engine directly and through the lazy facade's deferred load).
 import assert from 'node:assert/strict';
 import { createBus } from '../game/stateCore.ts';
+import { publishKillcamScreen } from '../game/killcamScreen.ts';
 import {
   installFetch, namedContext, terrain, tank, listener, sounding, probeOf, mark, since, count, settle,
 } from './engineHarness.test-support.mjs';
@@ -104,10 +105,13 @@ const destroyFoe = (bus) => bus.emit('tank:destroyed', { id: 'foe', killerId: 'm
   try {
     const cold = createAudio({ context: null, getMapId: () => 'verdant', getGameMode: () => 'standard', getTerrain: () => terrain, tier: 'desktop' });
     const bus = createBus();
+    let replayLive = false; // the replay controller's own flag (killcamScreen.ts): a kill-cam edge's fact
+    publishKillcamScreen(bus, () => replayLive);
     cold.bindBus(bus);
     bus.emit('phase:change', { phase: 'battle' });
     bus.emit('battle:rollout', { late: true });
     bus.emit('ui:pause', { on: true });
+    replayLive = true;
     bus.emit('killcam:begin', { kind: 'death' });
     cold.resume(); // the graph arrives mid-battle
     const probe = probeOf();
@@ -117,6 +121,7 @@ const destroyFoe = (bus) => bus.emit('tank:destroyed', { id: 'foe', killerId: 'm
     bus.emit('ui:pause', { on: false });
     frame();
     assert.equal(probe.snapshot, 'killcam', 'and so is the kill-cam');
+    replayLive = false;
     bus.emit('killcam:done', {});
     frame();
     assert.equal(probe.snapshot, 'battle', 'the battle mix, never the garage, once both end');
@@ -183,17 +188,120 @@ const destroyFoe = (bus) => bus.emit('tank:destroyed', { id: 'foe', killerId: 'm
   assert.equal(m.result, 'defeat', 'a presentation without its own result keeps the verdict');
   assert.equal(step({ kind: 'presented', result: 'victory' }), null, 'one presentation a battle');
   assert.equal(step({ kind: 'pause', on: true }), 'pause');
+  assert.equal(step({ kind: 'pause', on: true }), null, 'a pause already up is no move (U34, round 2)');
   assert.equal(step({ kind: 'killcam', on: true }), 'killcam');
+  assert.equal(step({ kind: 'killcam', on: true }), null, 'a repeated kill-cam begin is no move: no second whoosh in');
   assert.equal(step({ kind: 'phase', phase: 'battle' }), 'enter-battle', 'a battle edge from a battle opens a new one');
   assert.deepEqual([m.stage, m.battle, m.paused, m.killcam, m.over, m.result, m.rolledOut], ['loading', 2, false, false, false, null, false]);
   assert.equal(step({ kind: 'presented', result: 'draw' }), 'presented', 'a presentation that comes without its verdict carries it');
   assert.deepEqual([m.over, m.result], [true, 'draw']);
+  assert.equal(step({ kind: 'killcam', on: false }), null, 'a kill-cam done with no replay up is no move: no whoosh out');
   step({ kind: 'pause', on: true });
   assert.equal(step({ kind: 'phase', phase: 'garage' }), 'leave-battle');
   assert.deepEqual([m.stage, m.paused, m.over], ['garage', false, false]);
   assert.equal(step({ kind: 'phase', phase: 'garage' }), 'phase');
+  assert.equal(step({ kind: 'pause', on: true }), null, 'no pause outside a battle (the overlays are a battle\'s)');
+  assert.equal(step({ kind: 'killcam', on: true }), null, 'no kill-cam outside a battle');
+  assert.deepEqual([m.paused, m.killcam], [false, false]);
+  // one reading of a payload for both layers (the engine's and the facade's facts were built apart)
+  const { audioBattleFact, AUDIO_BATTLE_FACT_EVENTS } = await import('./battleMode.ts');
+  assert.deepEqual(audioBattleFact('phase:change', {}, () => false), { kind: 'phase', phase: 'garage' }, 'a phase edge naming no phase is the garage');
+  assert.deepEqual(audioBattleFact('phase:change', undefined, () => false), { kind: 'phase', phase: 'garage' });
+  assert.deepEqual(audioBattleFact('killcam:begin', {}, () => false), { kind: 'killcam', on: false }, 'a kill-cam edge carries the replay\'s flag');
+  assert.deepEqual(audioBattleFact('killcam:done', {}, () => true), { kind: 'killcam', on: true }, 'a stale done while the replay is up');
+  assert.equal(audioBattleFact('tank:destroyed', {}, () => false), null);
+  assert.deepEqual([...AUDIO_BATTLE_FACT_EVENTS].sort(), ['battle:ended', 'battle:presented', 'battle:rollout', 'killcam:begin', 'killcam:done', 'phase:change', 'ui:pause']);
   const late = createAudioBattleMode('battle');
   assert.deepEqual([late.phase, late.stage, late.battle], ['battle', 'loading', 1], 'a mixer adopted mid-battle starts in its loading stage');
 }
 
-console.log('battleMode.selftest: one battle mode (next round, duplicate deaths and presentations, facts before the graph, the lazy carry, the transitions) passed');
+// ------------------------------------------------------------ 5. the kill-cam overlay reads the replay's own flag (IR15, U34, Q16)
+{
+  const ctx = namedContext();
+  const audio = createAudio({ context: ctx, getMapId: () => 'verdant', getGameMode: () => 'standard', getTerrain: () => terrain, tier: 'desktop' });
+  const bus = createBus();
+  let replayLive = false;
+  publishKillcamScreen(bus, () => replayLive);
+  audio.bindBus(bus);
+  audio.resume();
+  const probe = probeOf();
+  const frame = (dt = 1 / 30) => { ctx.advance(dt); audio.update(dt, listener, tanks); };
+  bus.emit('phase:change', { phase: 'battle' });
+  await audio.warmBattleEvents(ROSTER);
+  await probe.libraryIdle();
+  for (let i = 0; i < 5; i++) frame();
+  bus.emit('battle:rollout', {});
+  for (let i = 0; i < 5; i++) frame();
+  let seq = mark(probe);
+  const second = () => { for (let i = 0; i < 30; i++) frame(); }; // past any re-trigger cooldown of the cue itself
+  replayLive = true;
+  bus.emit('killcam:begin', { kind: 'death' });
+  second();
+  bus.emit('killcam:begin', { kind: 'death' }); // the same replay's begin again (a second playForResult over it)
+  second();
+  assert.equal(count(since(seq, probe), 'killcam_in'), 1, 'a repeated begin plays no second whoosh in');
+  assert.equal(probe.snapshot, 'killcam');
+  // the replay's teardown ran, but its done never reached this mixer: the next frame reads the flag
+  seq = mark(probe);
+  replayLive = false;
+  frame();
+  assert.equal(probe.snapshot, 'battle', 'a lost done does not keep the kill-cam mix for the rest of the battle');
+  assert.equal(probe.battleState().killcam, false);
+  assert.equal(count(since(seq, probe), 'killcam_out'), 1, 'the replay\'s end is heard once');
+  second();
+  seq = mark(probe);
+  bus.emit('killcam:done', {}); // the late done itself, then a done whose begin was never heard
+  second();
+  bus.emit('killcam:done', {});
+  second();
+  assert.equal(count(since(seq, probe), 'killcam_out'), 0, 'a done with no replay up plays no whoosh out');
+  // a stale done while a replay is still up keeps the replay's mix
+  replayLive = true;
+  bus.emit('killcam:begin', { kind: 'final' });
+  bus.emit('killcam:done', {});
+  frame();
+  assert.equal(probe.snapshot, 'killcam', 'an edge never outvotes the replay\'s flag');
+  replayLive = false;
+  bus.emit('killcam:done', {});
+  frame();
+  // outside a battle (a staged replay frame in the Garage, shot tooling): no overlay, no whoosh
+  bus.emit('phase:change', { phase: 'garage' });
+  frame();
+  seq = mark(probe);
+  replayLive = true;
+  bus.emit('killcam:begin', { kind: 'death' });
+  for (let i = 0; i < 3; i++) frame();
+  assert.equal(count(since(seq, probe), 'killcam_in'), 0, 'a replay staged in the Garage sounds no battle whoosh');
+  assert.equal(probe.battleState().killcam, false);
+  replayLive = false;
+  bus.emit('killcam:done', {});
+  frame();
+}
+
+// ------------------------------------------------------------ 6. the facade reads a payload as the mixer does
+{
+  const ctx = namedContext();
+  let finish;
+  const lazy = createLazyAudio({
+    createContext: () => ctx,
+    loadMixer: () => new Promise((resolve) => { finish = resolve; }),
+    hasStickyActivation: () => true,
+    getMapId: () => 'verdant',
+    getGameMode: () => 'standard',
+    getTerrain: () => terrain,
+  });
+  const bus = createBus();
+  lazy.bindBus(bus);
+  lazy.resume();
+  bus.emit('phase:change', { phase: 'battle' });
+  bus.emit('phase:change', {}); // a phase edge naming no phase: the garage, to the facade as to the mixer
+  finish(await import('./audioEngine.ts'));
+  await lazy.preload();
+  await settle();
+  const probe = probeOf();
+  ctx.advance(1 / 30);
+  lazy.update(1 / 30, listener, tanks);
+  assert.equal(probe.battleState().phase, 'garage', 'a mixer loaded after a phase edge with no phase starts in the garage');
+}
+
+console.log('battleMode.selftest: one battle mode (next round, duplicate deaths and presentations, facts before the graph, the lazy carry, the transitions, the kill-cam flag, one payload reading) passed');

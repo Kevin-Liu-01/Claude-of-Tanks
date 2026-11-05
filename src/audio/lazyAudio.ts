@@ -17,9 +17,10 @@ import type { AudioLandmark, AudioMixer, AudioStructureMakeup, AudioTerrainProbe
 import type { EventBus } from '../game/stateCore.ts';
 import { nextPaintFrame } from '../engine/frameScheduler.ts';
 import {
-  audioBattleResult, copyAudioBattleMode, createAudioBattleMode, stepAudioBattleMode,
-  type AudioBattleEvent, type AudioBattleMode,
+  AUDIO_BATTLE_FACT_EVENTS, audioBattleFact, copyAudioBattleMode, createAudioBattleMode, stepAudioBattleMode,
+  type AudioBattleMode,
 } from './battleMode.ts';
+import { killcamOwnsScreen } from '../game/killcamScreen.ts';
 
 interface AudioMixerModule {
   /** Optional cooperative preparation the mixer may want before adoption. */
@@ -307,22 +308,15 @@ export function createLazyAudio({
         // The bound mixer independently owns the canonical full channel event.
       });
       // The mixer may arrive after the battle phase edge, its rollout or an overlay. Carry that state across the
-      // deferred transfer without re-emitting a global event.
-      const track = (event: string, fact: (payload: Record<string, unknown>) => AudioBattleEvent | null) => nextBus.on(event, (payload) => {
-        const next = fact(payload && typeof payload === 'object' ? payload as Record<string, unknown> : {});
+      // deferred transfer without re-emitting a global event. The facts are the mixer's own (audioBattleFact: one reading
+      // of each payload for both layers; a kill-cam edge reads the replay's own flag, killcamScreen.ts).
+      const killcamLive = (): boolean => killcamOwnsScreen(nextBus);
+      const stops = AUDIO_BATTLE_FACT_EVENTS.map((event) => nextBus.on(event, (payload) => {
+        const next = audioBattleFact(event, payload, killcamLive);
         if (!next || !stepAudioBattleMode(mode, next)) return;
         // the battle's world is wanted per battle (the mixer's rule): any phase edge ends the intent
         if (next.kind === 'phase') ambientRequested = false;
-      });
-      const stops = [
-        track('phase:change', (e) => (typeof e.phase === 'string' ? { kind: 'phase', phase: e.phase } : null)),
-        track('battle:rollout', (e) => ({ kind: 'rollout', late: !!e.late })),
-        track('battle:ended', (e) => ({ kind: 'ended', result: audioBattleResult(e.result) })),
-        track('battle:presented', (e) => ({ kind: 'presented', result: audioBattleResult(e.result) })),
-        track('ui:pause', (e) => ({ kind: 'pause', on: !!e.on })),
-        track('killcam:begin', () => ({ kind: 'killcam', on: true })),
-        track('killcam:done', () => ({ kind: 'killcam', on: false })),
-      ];
+      }));
       stopPhaseTracking = () => { for (const stop of stops) stop(); };
       if (real) real.bindBus(nextBus);
       // The garage has sound of its own (its hangar, its controls): the first

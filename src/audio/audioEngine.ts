@@ -61,9 +61,10 @@ import {
 } from './weaponAudio.ts';
 import { isCrewVoiceSetting, normalizeCrewVoiceSetting, resolveCrewLanguage, type CrewVoiceSetting } from './crewVoice.ts';
 import {
-  audioBattleResult, copyAudioBattleMode, createAudioBattleMode, stepAudioBattleMode,
+  AUDIO_BATTLE_FACT_EVENTS, audioBattleFact, copyAudioBattleMode, createAudioBattleMode, stepAudioBattleMode,
   type AudioBattleEdge, type AudioBattleEvent, type AudioBattleMode,
 } from './battleMode.ts';
+import { killcamOwnsScreen } from '../game/killcamScreen.ts';
 
 type Vec3 = readonly [number, number, number];
 const UNPLACED: Vec3 = Object.freeze([NaN, NaN, NaN]) as Vec3;
@@ -555,6 +556,17 @@ export function createAudio({
   // The battle mode (battleMode.ts): the phase, the stage (loading, live, over, presented), the overlays (paused,
   // kill-cam) and the battle's serial. Its one writer is applyMode(), fed by the bus facts that move it.
   const battleMode: AudioBattleMode = initialMode ? copyAudioBattleMode(initialMode) : createAudioBattleMode(initialPhase);
+  // The kill-cam overlay is the replay controller's own flag on the bound bus (src/game/killcamScreen.ts, IR15): read at
+  // its begin/done edges and every frame (syncKillcam), so a done that never reaches this mixer cannot keep the kill-cam
+  // mix, and a repeated begin or a done with no begin plays no whoosh.
+  let modeBus: EventBus | null = null;
+  const killcamLive = (): boolean => killcamOwnsScreen(modeBus);
+  const KILLCAM_ON: AudioBattleEvent = Object.freeze({ kind: 'killcam', on: true });
+  const KILLCAM_OFF: AudioBattleEvent = Object.freeze({ kind: 'killcam', on: false });
+  function syncKillcam(): void {
+    const live = killcamLive();
+    if (battleMode.killcam !== live) applyMode(live ? KILLCAM_ON : KILLCAM_OFF);
+  }
   let loading: Rig | null = null;
   let loadingActive = false;
   let ambientWanted = false;
@@ -2806,18 +2818,16 @@ export function createAudio({
     on<ReloadEvent>('player:reload', onReload);
     // The battle mode's facts are state, not cues: they are taken whether or not the graph exists yet (resume() replays
     // the mode), and only their sounds wait for it (2026-11-02 audit F11).
-    const onFact = <T>(event: string, fact: (payload: T | undefined) => AudioBattleEvent): void => {
-      listen(event, (payload) => { applyMode(fact(payload as T | undefined)); });
-    };
-    onFact<{ phase?: string }>('phase:change', (e) => ({ kind: 'phase', phase: e?.phase || 'garage' }));
     // The battle rolls out once (a second edge never sounds the horn twice). A client that joins a running battle (a late
-    // join, a rejoin, a host migration: `late`) rolls out with no cues: it never saw the count.
-    onFact<{ late?: boolean }>('battle:rollout', (e) => ({ kind: 'rollout', late: !!e?.late }));
-    onFact<{ result?: string }>('battle:ended', (e) => ({ kind: 'ended', result: audioBattleResult(e?.result) }));
-    onFact<{ result?: string }>('battle:presented', (e) => ({ kind: 'presented', result: audioBattleResult(e?.result) }));
-    onFact<undefined>('killcam:begin', () => ({ kind: 'killcam', on: true }));
-    onFact<undefined>('killcam:done', () => ({ kind: 'killcam', on: false }));
-    onFact<{ on?: boolean }>('ui:pause', (e) => ({ kind: 'pause', on: !!e?.on }));
+    // join, a rejoin, a host migration: `late`) rolls out with no cues: it never saw the count. A kill-cam edge's fact is
+    // the replay's own flag (audioBattleFact, killcamLive). The lazy facade builds the same facts (lazyAudio.ts).
+    modeBus = bus;
+    for (const event of AUDIO_BATTLE_FACT_EVENTS) {
+      listen(event, (payload) => {
+        const fact = audioBattleFact(event, payload, killcamLive);
+        if (fact) applyMode(fact);
+      });
+    }
     // The count's last whole seconds tick (the frame owner reports each whole second once, never while PREPARING holds it).
     on<{ seconds?: number }>('battle:countdown', (e) => {
       const seconds = e?.seconds;
@@ -2881,6 +2891,7 @@ export function createAudio({
   }
 
   function update(dt: number, listener: AudioListenerPose, list: readonly RuntimeValue[], shells: readonly RuntimeValue[] = []): void {
+    syncKillcam();
     if (!ready() || !mixer || !pool || !ctx) return;
     // Keep the last finite pose: one NaN camera frame would otherwise poison every cue that frame.
     const { x: lx, y: ly, z: lz } = listener.pos;

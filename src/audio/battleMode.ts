@@ -6,7 +6,11 @@
  * 'over' (the verdict is in) and 'presented' (the result screen has shown it). Paused and kill-cam are overlays on a
  * battle. Every bus fact that moves the mode goes through `stepAudioBattleMode`, which returns the edge it took, or
  * null for a move it ignores: a second rollout, a second verdict or a second presentation (a duplicated network
- * event), a rollout or a verdict outside a battle. A battle phase edge always opens a new battle, from the garage or
+ * event), a rollout or a verdict outside a battle, and an overlay move that changes nothing or comes outside a battle
+ * (a repeated kill-cam begin plays no second whoosh in, a done with no begin no whoosh out). Both layers build their
+ * facts with `audioBattleFact`, so the engine and the lazy facade read a payload the same way. The kill-cam overlay's
+ * fact is the replay's own flag (src/game/killcamScreen.ts, IR15), read at each edge and by the engine every frame, never
+ * the edge itself. A battle phase edge always opens a new battle, from the garage or
  * from another battle (a network match's next round): its stage, overlays and verdict start afresh and `battle`
  * counts it, so anything scheduled for an older battle can tell it is stale.
  *
@@ -114,12 +118,38 @@ export function stepAudioBattleMode(mode: AudioBattleMode, event: AudioBattleEve
       mode.result = event.result ?? mode.result ?? 'draw';
       return 'presented';
     case 'pause':
+      if (!inBattle(mode) || mode.paused === !!event.on) return null;
       mode.paused = !!event.on;
       return 'pause';
     case 'killcam':
+      if (!inBattle(mode) || mode.killcam === !!event.on) return null;
       mode.killcam = !!event.on;
       return 'killcam';
     default:
       return null;
+  }
+}
+
+/** The bus events whose payloads are battle-mode facts (the engine and the lazy facade subscribe to these). */
+export const AUDIO_BATTLE_FACT_EVENTS: readonly string[] = Object.freeze([
+  'phase:change', 'battle:rollout', 'battle:ended', 'battle:presented', 'ui:pause', 'killcam:begin', 'killcam:done',
+]);
+
+/**
+ * The battle-mode fact a bus event carries, or null for an event that carries none. A phase edge with no phase names the
+ * garage. A kill-cam edge carries no state of its own: its fact is `killcamLive()`, the replay controller's flag read at
+ * the edge, so a repeated begin, a stale done or a done whose begin was never heard sets nothing wrong.
+ */
+export function audioBattleFact(event: string, payload: unknown, killcamLive: () => boolean): AudioBattleEvent | null {
+  const p = payload && typeof payload === 'object' ? payload as Record<string, unknown> : {};
+  switch (event) {
+    case 'phase:change': return { kind: 'phase', phase: typeof p.phase === 'string' && p.phase ? p.phase : 'garage' };
+    case 'battle:rollout': return { kind: 'rollout', late: !!p.late };
+    case 'battle:ended': return { kind: 'ended', result: audioBattleResult(p.result) };
+    case 'battle:presented': return { kind: 'presented', result: audioBattleResult(p.result) };
+    case 'ui:pause': return { kind: 'pause', on: !!p.on };
+    case 'killcam:begin':
+    case 'killcam:done': return { kind: 'killcam', on: killcamLive() };
+    default: return null;
   }
 }
