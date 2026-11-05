@@ -11,6 +11,8 @@
 //
 // Round 3 (blind A/Bs k21turretr269 and r269b): round 1's shell, with a mantlet a third larger so the gun root reads as
 // an armoured block at overview scale, and smoke banks as compact blocks of five open tubes on flush brackets.
+// Round 4 (blind A/B k21turretr269c): a flat armoured face under the coaxial box, so box and face read as one squarer
+// block 0.45 m across, and the smoke banks seated low on the cheeks with no arm.
 import * as THREE from 'three';
 import { ConvexGeometry } from 'three/addons/geometries/ConvexGeometry.js';
 import { KIT } from './kit.ts';
@@ -139,45 +141,35 @@ function addCheekBoxes(P: TankBuilderPort): void {
   }
 }
 
-/** Five smoke dischargers on each cheek (photos 4 and 6: a compact block, two tubes over three), each tube open with a
- * rim round a dark bore. The block looks ahead, 18 degrees up and 5 degrees outboard (each tube fans 2.5 degrees more),
- * so it stays inside the turret's plan outline (x 1.0 at most) and never reads as a second gun. As the source's do, the
- * mouths stand forward of the cheek's outer half (z 0.71): the cradle rides an arm that runs back along the block's own
- * axis to a bracket plate lying flush on the cheek at mid height. */
+/** Five smoke dischargers on each cheek (photos 4 and 6: two tubes over three, low on the cheek under its box), each
+ * tube open with a rim round a dark bore. The tubes run parallel, 18 degrees up and 2 degrees outboard, and stand in one
+ * bracket seated on the cheek: a solid block whose base lies in the cheek and whose face runs parallel to it, so each
+ * tube leaves the block at its own depth: no mouth stands more than 0.24 m off the cheek, and none rides an arm. */
 function addSmokeClusters(P: TankBuilderPort): void {
-  const up = new THREE.Vector3(0, 1, 0), seg = P.q ? 14 : 9;
+  const up = new THREE.Vector3(0, 1, 0), seg = P.q ? 14 : 9, ring = P.q ? 16 : 10, length = .24, boss = .046;
   for (const side of [-1, 1]) {
-    // the cheek plane N . p = d (unit normal n), and the block's frame: its cradle's front face at the origin
-    const N = new THREE.Vector3(side * 1.08, .266, 1), d = .043 + 1.08 + .266 * 2.05, normal = N.clone().normalize();
-    const aim = new THREE.Vector3(side * Math.sin(.087) * Math.cos(.314), Math.sin(.314), Math.cos(.087) * Math.cos(.314));
-    const origin = new THREE.Vector3(side * .86, 2.40, .50);
-    const u = new THREE.Vector3().crossVectors(up, aim).normalize(), v = new THREE.Vector3().crossVectors(aim, u);
-    const frame = new THREE.Matrix4().makeBasis(u, v, aim).setPosition(origin);
-    // back along the axis to the cheek (offset `o` from its plane)
-    const toCheek = (p: THREE.Vector3, o: number) => p.clone().addScaledVector(aim, -(N.dot(p) - d - o * N.length()) / N.dot(aim));
-    const base = toCheek(origin, 0);
-    // the bracket plate: 30 x 22 cm, 20 mm proud of the cheek and 5 mm into it
-    const across = new THREE.Vector3().crossVectors(up, normal).normalize(), along = new THREE.Vector3().crossVectors(normal, across);
-    const plate: THREE.Vector3[] = [];
-    for (const [a, b, c] of [[-1, -1, -.005], [1, -1, -.005], [-1, 1, -.005], [1, 1, -.005], [-1, -1, .020], [1, -1, .020], [-1, 1, .020], [1, 1, .020]] as const)
-      plate.push(base.clone().addScaledVector(across, a * .15).addScaledVector(along, b * .11).addScaledVector(normal, c));
-    const parts: THREE.BufferGeometry[] = [convexStock(plate)], dark: THREE.BufferGeometry[] = [];
-    parts.push(box(.27, .19, .05).translate(0, 0, -.025).applyMatrix4(frame));
-    // the arm: the cradle's rear face carried back along the axis onto the plate's face
-    const arm: THREE.Vector3[] = [];
-    for (const [a, b] of [[-1, -1], [1, -1], [-1, 1], [1, 1]] as const) {
-      const p = new THREE.Vector3(a * .10, b * .065, -.045).applyMatrix4(frame);
-      arm.push(p, toCheek(p, .015));
-    }
-    parts.push(convexStock(arm));
+    // the cheek plane n . p = dn, and the tubes' common axis
+    const N = new THREE.Vector3(side * 1.08, .266, 1), n = N.clone().normalize(), dn = (.043 + 1.08 + .266 * 2.05) / N.length();
+    const aim = new THREE.Vector3(side * Math.sin(.035) * Math.cos(.314), Math.sin(.314), Math.cos(.035) * Math.cos(.314));
+    const an = aim.dot(n), u = new THREE.Vector3().crossVectors(up, aim).normalize(), v = new THREE.Vector3().crossVectors(aim, u);
+    const centre = new THREE.Vector3(side * .82, 2.26, cheekZ(.82, 2.26));
+    // along the axis onto the plane `o` off the cheek
+    const toCheek = (p: THREE.Vector3, o: number) => p.clone().addScaledVector(aim, -(n.dot(p) - dn - o) / an);
+    // each rear end's lowest rim point stands 10 mm off the cheek, inside the bracket
+    const lift = (boss * Math.sqrt(1 - an * an) + .010) / an;
+    const bracket: THREE.Vector3[] = [], dark: THREE.BufferGeometry[] = [];
     for (const [i, j] of [[-1, -1], [0, -1], [1, -1], [-.5, 1], [.5, 1]] as const) {
-      const fan = new THREE.Matrix4().makeRotationY(i * .044).premultiply(new THREE.Matrix4().makeRotationX(-j * .03))
-        .setPosition(i * .088, j * .046, -.010).premultiply(frame);
+      const rear = toCheek(centre.clone().addScaledVector(u, i * .088).addScaledVector(v, j * .046), 0).addScaledVector(aim, lift);
+      const frame = new THREE.Matrix4().makeBasis(u, v, aim).setPosition(rear);
+      for (let k = 0; k < ring; k++) {
+        const t = k / ring * Math.PI * 2, p = new THREE.Vector3(Math.cos(t) * boss, Math.sin(t) * boss, 0).applyMatrix4(frame);
+        bracket.push(p, toCheek(p, -.005));
+      }
       // each tube is its own part: the factory reads its marked mouth as a smoke socket
-      equipment(P, 'turret', 'Detail', markSmokeTube(cylZ(.041, .22, seg)).translate(0, 0, .11).applyMatrix4(fan), 0, 0, 0);
-      dark.push(new THREE.CircleGeometry(.030, seg).translate(0, 0, .2212).applyMatrix4(fan));
+      equipment(P, 'turret', 'Detail', markSmokeTube(cylZ(.041, length, seg)).translate(0, 0, length / 2 - .010).applyMatrix4(frame), 0, 0, 0);
+      dark.push(new THREE.CircleGeometry(.030, seg).translate(0, 0, length - .0088).applyMatrix4(frame));
     }
-    equipment(P, 'turret', 'Detail', KIT.mergeAll(parts), 0, 0, 0);
+    equipment(P, 'turret', 'Detail', convexStock(bracket), 0, 0, 0);
     equipment(P, 'turret', 'Dark', KIT.mergeAll(dark), 0, 0, 0);
   }
 }
@@ -264,6 +256,16 @@ export function addK21Mantlet(P: TankBuilderPort): void {
     { z: .470, ring: plate(.225, .135, .322, .038) },
     { z: .700, ring: plate(.225, .135, .327, .038) },
   ]));
+  // The armoured face under the box (photos 4, 5 and 7): a flat block as wide as the box, 0.30 m tall, standing proud of
+  // the slot ahead of the panel, chamfered round its front and at its lower corners; the flange and the collar's rings
+  // stand ahead of it. Its foot is cut back with the raked panel, so at -8 degrees it clears the panel's bolts by 28 mm.
+  const face: THREE.Vector3[] = [];
+  for (const sx of [-1, 1]) {
+    for (const [x, y, z] of [[.222, .140, .430], [.222, -.060, .430], [.222, -.110, .470], [.172, -.160, .500],
+      [.222, .140, .531], [.222, -.110, .531], [.172, -.160, .531],
+      [.204, .140, .549], [.204, -.1025, .549], [.1645, -.142, .549]] as const) face.push(new THREE.Vector3(sx * x, y, z));
+  }
+  P.addGunExtra(convexStock(face));
   const hood = new THREE.Shape(plate(.233, .127, .335, .042).map(([x, y]) => new THREE.Vector2(x, y)));
   hood.holes.push(new THREE.Path(plate(.187, .160, .300, .014).map(([x, y]) => new THREE.Vector2(x, y)).reverse()));
   P.addGunExtra(new THREE.ExtrudeGeometry(hood, { depth: .040, bevelEnabled: false, steps: 1 }), 0, 0, .694);
