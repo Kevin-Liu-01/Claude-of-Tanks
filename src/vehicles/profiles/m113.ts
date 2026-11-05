@@ -20,7 +20,8 @@
 // - m741: the M163 VADS's carrier (an M113A1; buildM113HullSteps alone, the Vulcan turret the twin-aa lane's): no cupola,
 //   the A1's internal fuel, the turret's race cut into the roof's rear half where the cargo hatch was and the commander's
 //   round hatch behind it at the right rear (m741Datums.ts; the owner's photo of 2026-11-04); no hull whips, the M163's
-//   antennas on its turret (Commons photos 03 and 04).
+//   antennas on its turret (Commons photos 03 and 04); `a2FuelTanks` hangs the M113A2's low armoured fuel tanks either side
+//   of the ramp (the M163A1's and A2's M741A1; Commons photo 07 of the rear), off by default.
 // Datums: the published M113A1 (4.863 m long, 2.686 m over the tracks, 0.43 m clearance, 0.381 m tracks, five 0.61 m road
 // wheels a side, the sprocket ahead and the idler astern, no return rollers) and the AS4's side profile (Commons,
 // scaled on its 5.53 m hull: the roof 1.96 m over its appliqué, the turret's top 2.60 m, the wheels 0.70 m apart, the ring
@@ -103,8 +104,10 @@ function addSpareTows(P: TankBuilderPort, x: number, y: number, z: number): void
 }
 
 /** The M113 hull, its running gear, its fittings and the mark's hull kit, no turret: each mark's first four steps, and the
- * M163 VADS's M741 carrier alone (the twin-aa lane: `yield* buildM113HullSteps(P, 'm741')`, its turret on M741_RING). */
-export function* buildM113HullSteps(P: TankBuilderPort, mark: M113HullMark): TankProfileBuild {
+ * M163 VADS's M741 carrier alone (the twin-aa lane: `yield* buildM113HullSteps(P, 'm741')`, its turret on M741_RING;
+ * `{ a2FuelTanks: true }` for the M741A1's external tanks). */
+export function* buildM113HullSteps(P: TankBuilderPort, mark: M113HullMark,
+  opts: { readonly a2FuelTanks?: boolean } = {}): TankProfileBuild {
   const { box, cylX, cylY, torus, xform, buildRunningGear, headlight, liftEye, periscope } = KIT;
   const slab = orientedSlab;
   const as4 = mark === 'as4', a3 = mark === 'a3', m741 = mark === 'm741';
@@ -209,6 +212,20 @@ export function* buildM113HullSteps(P: TankBuilderPort, mark: M113HullMark): Tan
       P.add('hullDark', cylY(0.05, 0.05, 0.03, 10), s * 1.095, 1.815, D.sternZ - 0.30);
     }
   };
+  // the M113A2's armoured fuel tanks, low either side of the ramp from the hull's foot, their tops falling to the rear,
+  // a filler cap on each and a tail light low in each rear face (Commons photo 07 of the M163's rear, scaled on the 1.86 m
+  // roof: 0.45 to 1.03 m, the ramp's edge to the hull's side; 0.36 m deep): lower and shorter than the AS4's pair
+  const addA2FuelTanks = (): void => {
+    const z0 = D.sternZ, z1 = D.sternZ - 0.36, slope = Math.atan2(0.10, 0.36);
+    for (const s of [-1, 1] as const) {
+      const lo = s < 0 ? -1.31 : 0.86, hi = s < 0 ? -0.86 : 1.31, x = s * 1.085;
+      P.addEquipment('hull', slab([lo, 0.45, z0], [hi, 0.45, z0], [hi, 0.45, z1], [lo, 0.45, z1],
+        [lo, 1.03, z0], [hi, 1.03, z0], [hi, 0.93, z1], [lo, 0.93, z1]));
+      P.add('hullDark', cylY(0.05, 0.05, 0.03, 10), x, 0.987, D.sternZ - 0.20, -slope, 0, 0);
+      P.add('hullDark', box(0.18, 0.09, 0.012), x, 0.54, z1 - 0.004);
+      P.add('hullGlass', box(0.12, 0.04, 0.012), x, 0.54, z1 - 0.010);
+    }
+  };
   if (mark === 'mrv') {
     // the buoyancy pods: two slab panels on each side, the full side from the glacis' top to the rear plate (the Perth and
     // Puckapunyal MRVs; the folded trim vane holds the glacis)
@@ -251,6 +268,7 @@ export function* buildM113HullSteps(P: TankBuilderPort, mark: M113HullMark): Tan
     P.add('hullDetail', cylY(R.diameter / 2, R.diameter / 2 + 0.02, R.raceTopY - R.roofY, P.q ? 32 : 20), R.x, (R.roofY + R.raceTopY) / 2, R.z);
     P.addCupola('hull', cylY(H.r - 0.01, H.r, 0.05, P.q ? 20 : 14), H.x, B.roofY + 0.025, H.z);
     P.add('hullDark', cylX(0.025, 0.30, 8), H.x, B.roofY + 0.06, H.z + H.r - 0.02);
+    if (opts.a2FuelTanks) addA2FuelTanks();
   }
   // (the AS4's whips stand over its bins: its spares stay inside; the A3 and the M741 carry no TOW)
   if (mark === 'fsv' || mark === 'mrv') addSpareTows(P, 0.60, B.roofY, D.sternZ + 0.85);
