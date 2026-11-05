@@ -36,8 +36,10 @@ const mounts: Readonly<Record<string, readonly LauncherMuzzle[]>> = {
   // (profiles/bradleyClassicTurret.ts; 7cc204ab32's gun-frame mouths, mirrored, plus the mirrored gun pivot)
   m3a2_bradley: CLASSIC_TOW_MOUTHS.map(m => turret(m.x, m.y, m.z)),
   marder1a3: [turret(.55, .92, .445)],
-  // 269: the A3 turret carries the family's stowed launcher (profiles/bradleyA3Turret.ts on modern3.ts's shell)
-  m3a3_bradley: bradley,
+  // 269: the A3 turret carries the family's stowed launcher (profiles/bradleyA3Turret.ts on modern3.ts's shell) and, the
+  // owner's second order ("a launcher aonn its other sdie"), the same launcher on the right wall, mirrored about the
+  // shell's centre plane (modern3.ts BRADLEY_TOW_MIRROR_X, -0.07): its mouths at x -0.14 - 1.105
+  m3a3_bradley: [...bradley, turret(-1.245, .68, .60), turret(-1.245, .38, .60)],
   upior: [turret(1.10, .37, .83)],
   // 267: the frangible discs on the two armoured Ataka boxes' front covers (profiles/bmptT90Station.ts), 2 x 2 a box
   bmpt_t90: [-1, 1].flatMap(s => [.85, 1.05].flatMap(x => [.77, .93].map(y => turret(s * x, y, 1.695)))),

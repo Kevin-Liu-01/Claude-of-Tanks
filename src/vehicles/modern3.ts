@@ -17,6 +17,7 @@ import { facetedSlab } from './profiles/facetedSlab.ts';
 import { declareLaunchBore, launchCellParts, perforatedPlate } from './profiles/missileCanisterStock.ts';
 import { K2_ROAD_WHEELS, k2WheelGear } from './profiles/k2RoadWheels.ts';
 import { efficientReturnRoller } from './efficientReturnRoller.ts';
+import { mirrorX } from './runningGearPrimitives.ts';
 import './modern3Specs.ts';
 import { drainTankBuild, steppedBuilder, type TankProfileBuild } from './tankBuildCooperation.ts';
 import { sectionSolid } from './profiles/sectionSolid.ts';
@@ -3278,7 +3279,7 @@ function bradleyTurretCheekPlate(side: number): { plate: THREE.BufferGeometry; b
 // The right-wall stowage bin (turret frame): inner face inside the wall, a floor chamfered up to the upright outer face,
 // a lid sloping up to the wall; the front quarter tapers into the cheek. Floor 0.14 (world 2.20): 5.5 cm over the engine-deck raise
 // (2.145) where its 0.99..1.64 m sweep crosses it; the troop roof (2.24) lies 1.70 m and more from the pivot.
-export const BRADLEY_BIN = Object.freeze({ innerX: -0.94, outerX: -1.35, bottomY: 0.14, shoulderY: 0.38, lidY: 0.62,
+const BRADLEY_BIN = Object.freeze({ innerX: -0.94, outerX: -1.35, bottomY: 0.14, shoulderY: 0.38, lidY: 0.62,
   lidInnerX: -1.08, z0: -0.55, z1: 0.58, noseZ: 0.80, noseX: -1.00 });
 function bradleyStowageBin(): THREE.BufferGeometry {
   const B = BRADLEY_BIN;
@@ -3345,7 +3346,7 @@ export function addBradleyCommanderStation(P: Modern3BuilderPort): void {
 
 /** The stowage bin low on the turret's right wall (source: out to world x −1.50 over y 2.20..2.42, its lid sloping up to
  *  the wall at 2.68, z −0.95..0.30 tapering into the cheek), its lid seam and two latches. */
-export function addBradleyStowageBin(P: Modern3BuilderPort): void {
+function addBradleyStowageBin(P: Modern3BuilderPort): void {
   const { box } = KIT;
   P.add('turret', bradleyStowageBin());
   const B = BRADLEY_BIN;
@@ -3414,13 +3415,21 @@ function bradleyTowStowed(x: number, y: number): [number, number] {
   return [BRADLEY_TOW.x0 + (y - BRADLEY_TOW.y0), BRADLEY_TOW.y0 - (x - BRADLEY_TOW.x0)];
 }
 
-export function addBradleyTowLauncher(P: Modern3BuilderPort): void {
+/** 269: the turret's centre plane between its two walls (the shell stands plusInset off its ring); a launcher built on
+ *  the right wall (`side` −1, the M3A3's second) is the left one mirrored about it. */
+const BRADLEY_TOW_MIRROR_X = -BRADLEY_TURRET.plusInset / 2;
+
+export function addBradleyTowLauncher(P: Modern3BuilderPort, side: 1 | -1 = 1): void {
   const W = BRADLEY_TOW;
   const { box, cylZ, xform } = KIT;
   const cx = (W.x0 + W.x1) / 2, cy = (W.y0 + W.y1) / 2, cz = (W.z0 + W.z1) / 2;
   const w = W.x1 - W.x0, h = W.y1 - W.y0, d = W.z1 - W.z0;
   const fold = (g: THREE.BufferGeometry) => g.applyMatrix4(BRADLEY_TOW_FOLD);
-  const add = (bucket: string, g: THREE.BufferGeometry, x = 0, y = 0, z = 0) => P.add(bucket, fold(xform(g, x, y, z)));
+  const mirror = (g: THREE.BufferGeometry) => side > 0 ? g
+    : mirrorX(g.translate(-BRADLEY_TOW_MIRROR_X, 0, 0)).translate(BRADLEY_TOW_MIRROR_X, 0, 0);
+  const add = (bucket: string, g: THREE.BufferGeometry, x = 0, y = 0, z = 0) => P.add(bucket, mirror(fold(xform(g, x, y, z))));
+  const fixed = (bucket: string, g: THREE.BufferGeometry, x: number, y: number, z: number) => side > 0
+    ? P.add(bucket, g, x, y, z) : P.add(bucket, mirror(xform(g, x, y, z)));
   weaponAssembly(P, () => {
     for (const x of [W.x0 + 0.015, W.x1 - 0.015]) add('turretDetail', box(0.03, h, d), x, cy, cz);
     for (const y of [W.y0 + 0.015, W.y1 - 0.015]) add('turretDetail', box(w, 0.03, d - 0.002), cx, y, cz);
@@ -3436,9 +3445,9 @@ export function addBradleyTowLauncher(P: Modern3BuilderPort): void {
   });
   // the hinge mount on the wall top inboard of the stowed box, the hinge drum on the pivot, and the cradle plate the
   // box lies against, from the wall's lower slope up under the hinge (it closes the slot between wall and box)
-  P.add('turretDetail', box(0.12, 0.16, 0.66), W.x0 - 0.06, W.y0 - 0.06, 0.0);
-  P.add('turretDetail', cylZ(0.05, 0.74, P.q ? 16 : 10), W.x0, W.y0, 0.0);
-  P.add('turretDetail', box(0.11, 0.60, d - 0.04), W.x0 - 0.045, W.y0 - 0.34, cz);
+  fixed('turretDetail', box(0.12, 0.16, 0.66), W.x0 - 0.06, W.y0 - 0.06, 0.0);
+  fixed('turretDetail', cylZ(0.05, 0.74, P.q ? 16 : 10), W.x0, W.y0, 0.0);
+  fixed('turretDetail', box(0.11, 0.60, d - 0.04), W.x0 - 0.045, W.y0 - 0.34, cz);
 }
 
 // ============================ 268: the Bradley hull shell (source-measured) ===================================
