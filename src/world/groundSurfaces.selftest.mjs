@@ -164,6 +164,8 @@ assert.ok(GROUND_SURFACE_GLSL.includes('gGsTilt = uGsNear.x > 0.0'), 'the chunk 
 // past ~45 m; the normal pass bounds both
 assert.ok(GROUND_SURFACE_GLSL.includes('gGsGain = gGsTilt * mix(3.0, 1.0, smoothstep(15.0, 45.0, camDist));'), 'the chunk sets the gain');
 assert.ok(raw.includes('float gsB = gsGL * (gsD < 0.0 ? gGsTilt : gGsGain);'), 'the normal pass bounds a facet\'s loss and its gain');
+assert.ok(GROUND_SURFACE_GLSL.includes('* smoothstep(0.15, 0.55, saturate(dot(normalize(cameraPosition - wp), wn)));'),
+  'the mosaic fades as the view grazes, by the mid dapple\'s law (diag2: combed strokes at a grazing view)');
 // (ab9, Ironworks: "black" lots) the works floor never under a tenth of the light; (Cinder Junction: "pale blotches …
 // repeating") its ash the 4–8 m drifts alone
 assert.ok(GROUND_SURFACE_WORKS_GLSL.includes('max(1.0, 0.10 / max(reduxLuma(a.rgb), 0.01))')
@@ -185,6 +187,8 @@ const pave = readFileSync(new URL('./roadSurfaceShader.ts', import.meta.url), 'u
 // mid grain read the floor too
 assert.equal(pave.split('if (uGsNear.z > 0.0) asph *= mix(0.90, 1.10,').length, 2, 'the asphalt\'s mid mottle, by the table');
 assert.equal(pave.split('if (uGsNear.z > 0.0) pav.rgb *= mix(0.90, 1.10,').length, 2, 'the print\'s grain, by the table');
+// (c5, Ruinspires on the phone: "a checker of flat tones") the Low tier's asphalt its 1–2 m mottle, its repairs a shade off
+assert.ok(pave.includes('if (gsPv > 0.5) asph *= mix(0.88, 1.12,') && pave.includes('asph * mix(0.78, 0.88, gsPv)'), 'the phone\'s asphalt, by the table');
 for (const t of ['if (uGsNear.z > 0.0) jointC = max(jointC, stone * uGsNear.z);', 'uGsNear.z > 0.0 ? mix(jointC, uMeanD.rgb * uSoilTint * 0.8, 0.5) : jointC * 0.6',
   'if (uGsNear.z > 0.0) jointM = max(jointM,', 'vec3 settJ = uGsNear.z > 0.0 ? sett * uGsNear.z : vec3(0.040, 0.036, 0.031);'])
   assert.ok(pave.includes(t), `the paving reads the joints' floor: ${t}`);

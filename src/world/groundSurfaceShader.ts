@@ -47,8 +47,13 @@ export const GROUND_SURFACE_GLSL = /* glsl */`  // ground-269 (groundSurfaceShad
     }
     // the open ground's 1–10 m mosaic (sward, tussock)
     float gsThin = 0.0;
+    // (c6 and diag2, Blackglass's 200 m and long views: "combed strokes", "curved striations" — with uGsOpen.y at 0 they
+    // went, with the crops' switch they stayed; resolved patches 15–20 px deep, a 2–4 m mosaic seen eight to one) the
+    // mosaic's patches lie in plan, and seen low over the sward they foreshorten into long strokes across the face, where
+    // its blades would stand between the eye and its floor: it fades as the view grazes, by the mid dapple's law
     float gsSwardW = uGsOpen.y * meadowG * (1.0 - fR) * (1.0 - max(gCropW, gSoilW)) * (1.0 - woods) * gsOff
-      * (1.0 - smoothstep(120.0, 240.0, camDist)) * tileVis(2.5);
+      * (1.0 - smoothstep(120.0, 240.0, camDist)) * tileVis(2.5)
+      * smoothstep(0.15, 0.55, saturate(dot(normalize(cameraPosition - wp), wn)));
     if (uGsOpen.x > 0.5 && uGsOpen.x < 2.5 && gsSwardW > 0.003) {
       // (ab3: at a grazing view the fine field's metre features stretched into thin arcs across the turf) each field eases to
       // its median once its features stop resolving — the patches' ~4 m and the fine field's ~1 m held while they span
@@ -93,7 +98,10 @@ export const GROUND_SURFACE_GLSL = /* glsl */`  // ground-269 (groundSurfaceShad
       // (ab8, Blackglass: the tongues read the noise texture's B channel — the woods mask, not a noise field — 48 times
       // over, and laid the map's woods in miniature through the floor as 1–2 m dark smudges) on the noise's own fields, whose
       // tile holds four to nine features: at 0.012 an 85 m tile, its tongues ~20 m
-      if (uGsTown.x > 4.5) gsTownW *= 1.0 - 0.8 * smoothstep(0.50, 0.62, nzq(uvW, 0.012, vec2(0.29, 0.71)).x);
+      // (c6, Blackglass's long view: "a grey dirt apron laid around the tower base" — at that range the floor's 9 m and 3 m
+      // fields had eased to their median, and tongues over a fifth of it left one grey-brown sheet from the road to the
+      // walls) the turf holds near half of a shelled city's open ground, its tongues' edges soft
+      if (uGsTown.x > 4.5) gsTownW *= 1.0 - 0.85 * smoothstep(0.44, 0.60, nzq(uvW, 0.012, vec2(0.29, 0.71)).x);
       if (gsTownW > 0.003) {
         vec2 tq = mix(vec2(0.5), nzq(uvW, 0.11, vec2(0.37, 0.83)), tileVis(3.0)); // (eased to the median past resolution)
         float tf = mix(0.5, nzq(uv, 0.31, vec2(0.71, 0.29)).y, tileVis(0.9));

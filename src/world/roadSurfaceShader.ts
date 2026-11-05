@@ -230,13 +230,18 @@ export const ROAD_PAVING_GLSL = /* glsl */`      // roads lane R1c (2026-10-09; 
             float wheelP = (laneP - 0.95) / 0.35;
             asph *= 1.0 + 0.10 * exp(-wheelP * wheelP) * tileVis(1.0);
             asph *= 1.0 - 0.18 * (1.0 - smoothstep(0.0, 0.45, laneP)) * smoothstep(0.55, 0.80, nz(uv, 0.21, vec2(0.13, 0.71)).g);
+            // (ground-269, c5, Ruinspires on the phone: "large plain alternating slabs … a checker of flat tones" — the aggregate
+            // gone past a metre, the repairs a tone apart) by the table, the binder's 1–2 m mottle, which the phone resolves,
+            // and the repairs a shade off the old surface (one noise read)
+            float gsPv = step(0.001, uGsNear.z);
+            if (gsPv > 0.5) asph *= mix(0.88, 1.12, smoothstep(0.30, 0.70, mix(0.5, nz(uv, 0.11, vec2(0.23, 0.61)).g, tileVis(9.0))));
             if (gRoadClass > 2.5) {
               vec2 pc = vec2(rq.x / 4.2, rq.y / 2.4), pcI = floor(pc), pcF = fract(pc);
               vec2 ph = cellHash2(pcI + vec2(53.0, 7.0));
               float inPatch = step(ph.x, 0.38);
               vec2 pe = min(pcF, 1.0 - pcF) * vec2(4.2, 2.4);
               float seam = (1.0 - smoothstep(0.03, 0.06 + gFootM, min(pe.x, pe.y))) * inPatch * tileVis(0.6);
-              asph = mix(asph, ph.y > 0.5 ? asph * 0.78 : mix(asph, vec3(0.13, 0.128, 0.122), 0.55), inPatch);
+              asph = mix(asph, ph.y > 0.5 ? asph * mix(0.78, 0.88, gsPv) : mix(asph, vec3(0.13, 0.128, 0.122), mix(0.55, 0.30, gsPv)), inPatch);
               asph *= 1.0 - 0.45 * seam;
               float crack = (1.0 - smoothstep(0.0, 0.02 + gFootM, abs(nz(uv, 0.9, vec2(0.71, 0.29)).r - 0.5) * 0.12))
                 * (1.0 - inPatch) * tileVis(0.5) * 0.5;
