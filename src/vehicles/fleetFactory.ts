@@ -231,18 +231,23 @@ const GROUP_LOADERS = Object.freeze({
 const groupLoads = new Map<FleetGroup, LazyChunk<void>>();
 const tankSpecs = TANK_SPECS;
 
+/** A group's own chunk (it registers into the kit, so it is asked only once the kit is in). */
 function groupLoad(group: FleetGroup): LazyChunk<void> {
   let load = groupLoads.get(group);
   if (!load) {
-    load = createLazyChunk(() => ensureFactoryReady().then(() => GROUP_LOADERS[group]()).then(() => undefined));
+    load = createLazyChunk(() => GROUP_LOADERS[group]().then(() => undefined));
     groupLoads.set(group, load);
   }
   return load;
 }
 
+// (round 2 U35) the kit first, outside the group's chunk: a group whose chunk wrapped the kit failed with the kit's error
+// on every ask while the kit was out, so its own count and backoff grew without its chunk ever being fetched, and once
+// the kit was back it kept failing at once with that stale error until its own backoff passed (up to a minute)
 function ensureGroup(group: FleetGroup | undefined): Promise<void> {
   if (!group) return ensureFactoryReady();
-  return groupLoad(group).load();
+  const chunk = groupLoad(group);
+  return chunk.state === 'ready' ? chunk.load() : ensureFactoryReady().then(() => chunk.load());
 }
 
 export function ensureTankBuilder(specId: string): Promise<void> {
