@@ -247,7 +247,9 @@ const READS = Object.freeze({
   appPhase: /\.phase\s*[!=]==?\s*['"`](?:battle|garage|shot|studio)['"`]|['"`](?:battle|garage|shot|studio)['"`]\s*[!=]==?\s*[\w$.?]*\.phase\b/,
   countdown: /preBattleS\s*(?:[<>]=?|[!=]==?)|(?:[<>]=?|[!=]==?)\s*[\w$.?]*preBattleS\b/,
   loader: /\.cot-bl\.(?:on|leaving)(?![-\w])|['"`]\.cot-bl['"`]/,
-  hudDisplay: /(?:getComputedStyle\(|visible\(|shown\()[^\n]{0,60}['"`]\.cot-hud['"`]/,
+  hudDisplay: /(?:getComputedStyle\(|visible\(|shown\()[^\n]{0,60}['"`]\.cot-hud['"`]|['"`]\.cot-hud:not\(/,
+  // (round 2 U40) the battle's body class, another "the battle owns the screen" (surface-pairs' battle wait read it)
+  bodyBattle: /['"`]cot-in-battle['"`]/,
   reveal: /__BATTLE_REVEAL(?!\s*=(?!=))/,
 });
 const ANY_READ = new RegExp(Object.values(READS).map((pattern) => pattern.source).join('|'));
@@ -261,6 +263,9 @@ const readsOf = (text) => Object.entries(READS).filter(([, pattern]) => pattern.
   assert.deepEqual(readsOf("'battle' === g.phase"), ['appPhase']);
   assert.deepEqual(readsOf('window.__BATTLE_REVEAL = null; game.preBattleS = 0; phase: g.phase'), [], 'writes and copies');
   assert.deepEqual(readsOf("document.querySelector('.cot-bl .hero img')"), [], 'the loading screen\'s content is not its state');
+  // (round 2 U40) surface-pairs' battle wait, in neither form the census read
+  assert.deepEqual(readsOf("document.body.classList.contains('cot-in-battle') || !!document.querySelector('.cot-hud:not([hidden])')"),
+    ['hudDisplay', 'bodyBattle']);
 }
 const doc = read('docs/AUTOMATION-PATHS.md');
 const listed = (key) => {
