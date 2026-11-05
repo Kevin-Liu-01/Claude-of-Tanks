@@ -17,12 +17,12 @@ Run times: `tools/selftest-durations.json`, else this machine's latest observati
 |---|---:|---:|
 | KEEP | 1508 | 163.4 |
 | MERGE | 0 | 0.0 |
-| MANUAL | 655 | 1157.1 |
+| MANUAL | 654 | 1156.8 |
 | RETIRE | 2 | 0.7 |
 
 | Suite run | Receipts | CPU-min | Simulated wall (min) |
 |---|---:|---:|---:|
-| Before: every receipt (npm test without the tiers) | 2164 | 1320.9 | 233.1 |
+| Before: every receipt (npm test without the tiers) | 2163 | 1320.6 | 233.1 |
 | After: the default tier | 1508 | 163.4 | 36.9 |
 
 Default tier: 12.4 % of the whole registry's CPU; 17.8 % of the 916 CPU-min the snapshot gave for the 1,863 receipts it timed. Its wall: 0.2 min exclusive receipts, 18.1 min pool, 18.6 min browser receipts.
@@ -36,8 +36,8 @@ Default tier: 12.4 % of the whole registry's CPU; 17.8 % of the 916 CPU-min the 
 | `bots` | 8 | 40.4 | bot behaviour played out on the authority (every mode, objectives, levels, approaches) |
 | `sims` | 7 | 5.0 | drone, missile, escort and counter-drone scenario runs |
 | `perf` | 4 | 2.5 | host-time budgets (tick cost, soaks, heap plateaus, restore timing): they measure the machine as much as the code |
-| `fleet` | 62 | 282.2 | fleet-wide vehicle sweeps: every playable tank built (the HIGH, LOW and default fleet passes, the lazy facade, floor clearance, vertex colours, national and fleet-wide fitting sweeps) and the whole-fleet anatomy check (tank:anatomy:check); then `node tools/gen-combat-anatomy.mjs --check --jobs=4`, `node tools/gen-vehicle-marking-seats.mjs --check`, `node tools/module-hit-probe.mjs`, `node tools/tank-assets-check.mjs --views armorSide,modulesSide,crewSide --skip-bore`, `node tools/spare-track-placement-check.mjs --ids=all --ledger=docs/geometry-gate/spare-track.json --check --quiet`, `node tools/interior-fill-exposure.mjs --all --check --jobs=4` |
-| `tanks` | 408 | 291.9 | per-tank and per-family pins (id-scoped: lane mode and tank:release:check run the ones naming or reading the lane's ids) |
+| `fleet` | 62 | 282.3 | fleet-wide vehicle sweeps: every playable tank built (the HIGH, LOW and default fleet passes, the lazy facade, floor clearance, vertex colours, national and fleet-wide fitting sweeps) and the whole-fleet anatomy check (tank:anatomy:check); then `node tools/gen-combat-anatomy.mjs --check --jobs=4`, `node tools/gen-vehicle-marking-seats.mjs --check`, `node tools/module-hit-probe.mjs`, `node tools/tank-assets-check.mjs --views armorSide,modulesSide,crewSide --skip-bore`, `node tools/spare-track-placement-check.mjs --ids=all --ledger=docs/geometry-gate/spare-track.json --check --quiet`, `node tools/interior-fill-exposure.mjs --all --check --jobs=4` |
+| `tanks` | 407 | 291.6 | per-tank and per-family pins (id-scoped: lane mode and tank:release:check run the ones naming or reading the lane's ids) |
 | `world` | 138 | 406.8 | world-wide map builds: scenery, structure collision, buildings, the wreck bake, the collision shards, civic areas, horizons and map content |
 | `ui` | 7 | 8.6 | heavy interface paint and layout sweeps |
 | `browser` | 4 | 24.7 | strenuous real-battle browser receipts (a GPU and the capture lock each) |
@@ -142,7 +142,7 @@ Sim determinism and driver boundaries, the authority rules, armour/ballistics/da
 
 None. Folding receipts saves only process starts (about a second each) and would need a per-assertion coverage review; the CPU is in the receipts that build tanks and maps, which moved to manual suites instead.
 
-## MANUAL (655)
+## MANUAL (654)
 
 | Receipt | Run (s) | Decision | Reason | Coverage now |
 |---|---:|---|---|---|
@@ -564,7 +564,6 @@ None. Folding receipts saves only process starts (about a second each) and would
 | `src/vehicles/profiles/griffinAssembledHull.selftest.mjs` | 19 | MANUAL (tanks) | per-tank pin (griffin50mm), 19 s | test:heavy -- tanks; lane mode and tank:release:check run it for its ids |
 | `src/vehicles/profiles/kf51bTurretCenter.selftest.mjs` | 19 | MANUAL (tanks) | per-tank pin (kf51_u), 19 s | test:heavy -- tanks; lane mode and tank:release:check run it for its ids |
 | `src/vehicles/profiles/leclercX.selftest.mjs` | 19 | MANUAL (tanks) | per-tank pin (leclerc_xlr), 19 s | test:heavy -- tanks; lane mode and tank:release:check run it for its ids |
-| `src/vehicles/profiles/m3BradleyGunMount.selftest.mjs` | 19 | MANUAL (tanks) | per-tank pin (m3a3_bradley), 19 s | test:heavy -- tanks; lane mode and tank:release:check run it for its ids |
 | `src/vehicles/profiles/m60a2Starship.selftest.mjs` | 19 | MANUAL (tanks) | per-tank pin (m60a2), 19 s | test:heavy -- tanks; lane mode and tank:release:check run it for its ids |
 | `src/vehicles/profiles/openYokeRwsFleet.selftest.mjs` | 19 | MANUAL (tanks) | per-family pin, 19 s | test:heavy -- tanks; lane mode and tank:release:check run it for its ids |
 | `src/vehicles/profiles/strv122XSupplied.selftest.mjs` | 19 | MANUAL (tanks) | per-tank pin (strv122), 19 s | test:heavy -- tanks; lane mode and tank:release:check run it for its ids |

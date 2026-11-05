@@ -318,3 +318,41 @@ the trim vane, inside the deck crown (`flush-glacis-carrier-and-era-r2`); the ol
 spare run on the nose shelf (the ERA field covers the shared course's glacis station). Spec fields: hw 1.64 → 1.70,
 trkTop 0.95 → 1.16, roofY 1.90 → 2.06, turretPivot as above, barrelLenM 2.30 → 1.99. `fleetLauncherMuzzles.ts` m3a3
 row x −0.91 → 0.91.
+
+## 269 — the A3 turret redesigned (owner 2026-11-05: "redesign the m3a3 bradley turret")
+
+The 268 turret was the scout shell squashed to 0.80 of its height: its roof stood 0.59 m over the ring and its M242
+0.20 m under that roof, on a compact M3 shield; the blind A/B read the turret low and the 25 mm long. Both A3 sources and
+the A2 source agree on a taller turret, so the A3 now stands on the family's measured A2 shell
+(`profiles/bradleyA3Turret.ts` on `modern3.ts` `addBradleyTurretShell`, the turret structure the A3 kept):
+
+| Measure | owner's low-poly M3A3 | Ukrainian M2A3 | built (A2 shell + A3 kit) |
+|---|---|---|---|
+| Roof over the deck | 0.69-0.76 m | 0.70 m | 0.77 m |
+| Gun line under the roof | — | 0.31 m | 0.305 m |
+| IBAS head (turret-local) | x 0.35..0.91, z 0.08..0.57, 0.26 m tall | x 0.29..0.77, z 0.03..0.47, 0.27 m | x 0.24..0.78, z 0.06..0.52, 0.34 m |
+| CIV head | x −1.30..−0.71, z −1.40..−0.89, top 0.40 m over the roof | x −1.11..−0.72, z −0.94..−0.72, top 0.70 m | x −0.99..−0.57, z −1.13..−0.81, top 0.63 m |
+| Gunner's hatch centre | 0.48, −0.31 | 0.45, −0.34 | 0.46, −0.34 |
+| Bustle aft of the rear wall | — | 0.50 m | rack 0.46 m deep, 1.30 m wide |
+
+Registration: each source scaled by its 6.55 m hull, front −Z and x mirrored into the game frame (+Z forward, +X the
+vehicle's left), its turret-local frame taken about the shared ring (x −0.14, z −0.40). The low-poly print loads assembled
+under three's GLTFLoader in Node; its loose parts are spare TOW rounds and a launch tube modelled beside the hull. The
+photographs in the research packet place the CIV on the right rear (behind the commander's hatch: rear three-quarter,
+right side) and the IBAS with its two doors open at the left front (front-left three-quarter). The BRAT tiles hold the
+spec's gameplay turret ERA zones (kept since §5.286); the 2004 Iraq head-on photograph shows boxes seated on the cheek
+plates beside the gun, where the build seats them.
+
+Built: the shared shell, M242 (A2 trunnion, gun line 2.525 m, muzzle at world z 2.37), stowed TOW launcher, right-wall
+bin, smoke banks and commander's station; the A3's IBAS head (window under a brow, doors open), the CIV on a welded
+plinth at the right rear corner (turntable, window body, armoured head whose brow overhangs the window), the gunner's
+hatch beside the commander's, a deeper bustle rack, two whips. BRAT tiles: 2 x 2 on each cheek plate
+(`m3a3_turret_cheek_R/L`), a column of two aft of the launcher on the left wall and two columns of two aft of the bin on
+the right (`m3a3_turret_side_R/L`). The hull is unchanged (the M6's hull-gear preservation rows hold).
+
+Spec (m3a3_bradley only; m6_linebacker's spec JSON is byte-identical): gunPivot [−0.06, 0.392, 0.78] → [−0.06, 0.465,
+0.60]; barrelLenM 1.99 → 2.17 (same muzzle); tw 0.85 → 0.98, tFrontZ 1.00 → 1.15, tRearZ −1.10 → −1.20, tH 0.90 → 0.77;
+gunPitchByYawDeg re-measured (tools/gun-depression-sweep.mjs: no mount conflict, full −9 to 158, the aft stop −7.4 to
+−7.8 from 161, was −5 from 159 with front dips to −7.9); `fleetLauncherMuzzles.ts` takes the shared Bradley row. The 268
+scout shell (`bradleyScoutTurretShell.ts`) and the compact M3 gun mount (`m3BradleyGunMount.ts` and its receipt) left
+with that turret.

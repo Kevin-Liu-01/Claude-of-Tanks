@@ -38,9 +38,8 @@ const mounts: Readonly<Record<string, readonly LauncherMuzzle[]>> = {
   // since 269
   m2a2_bradley: CLASSIC_TOW_MOUTHS.map(m => turret(m.x, m.y, m.z)),
   marder1a3: [turret(.55, .92, .445)],
-  // 2026-10-21: the TOW collar mouths of the rebuilt pack (profiles/afvFamily.ts addM3A3Turret), final datums.
-  // 268 (2026-11-02): the pack on the turret's LEFT, +X, as the owner's supplied Bradley carries it (was x -.91).
-  m3a3_bradley: [-1, 1].map(s => turret(.91, .6626 + s * .0949, .3633 - s * .0047, .05)),
+  // 269: the A3 turret carries the family's stowed launcher (profiles/bradleyA3Turret.ts on modern3.ts's shell)
+  m3a3_bradley: bradley,
   upior: [turret(1.10, .37, .83)],
   // 267: the frangible discs on the two armoured Ataka boxes' front covers (profiles/bmptT90Station.ts), 2 x 2 a box
   bmpt_t90: [-1, 1].flatMap(s => [.85, 1.05].flatMap(x => [.77, .93].map(y => turret(s * x, y, 1.695)))),
