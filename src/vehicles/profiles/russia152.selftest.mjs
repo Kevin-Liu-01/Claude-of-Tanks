@@ -56,9 +56,12 @@ for (const quality of ['high', 'low']) {
     const hull = (id) => box(tanks[id].root.getObjectByName('rig_hull') ?? tanks[id].hullG);
     const h292 = hull('object292'), hu = hull('t80u');
     for (const k of ['x', 'y', 'z']) assert.ok(near(h292.min[k], hu.min[k], k === 'x' ? .02 : .01) && near(h292.max[k], hu.max[k], k === 'x' ? .02 : .01), `${quality}: the Object 292's hull is the T-80U X's (${k}: ${h292.min[k].toFixed(3)}..${h292.max[k].toFixed(3)} v ${hu.min[k].toFixed(3)}..${hu.max[k].toFixed(3)})`);
-    // the T-14 152's hull is the T-14's
+    // the T-14 152's hull is the T-14's: the same length and floor; its field kit (owner 2026-11-05: the net and ghillie
+    // over the engine deck, the drapes down the rear slat cages) stands at most 2 cm wider and 3 cm higher
     const h152 = hull('t14_152'), h14 = hull('t14_armata');
-    for (const k of ['x', 'y', 'z']) assert.ok(near(h152.min[k], h14.min[k], .002) && near(h152.max[k], h14.max[k], .002), `${quality}: the T-14 152's hull is the T-14's (${k})`);
+    assert.ok(near(h152.min.z, h14.min.z, .002) && near(h152.max.z, h14.max.z, .002) && near(h152.min.y, h14.min.y, .002), `${quality}: the T-14 152's hull is the T-14's (length, floor)`);
+    assert.ok(h152.max.y >= h14.max.y - .002 && h152.max.y <= h14.max.y + .03, `${quality}: the T-14 152's kit over the T-14's deck (${h152.max.y.toFixed(3)} v ${h14.max.y.toFixed(3)})`);
+    for (const k of ['min', 'max']) assert.ok(Math.abs(h152[k].x) <= Math.abs(h14[k].x) + .02 && Math.abs(h152[k].x) >= Math.abs(h14[k].x) - .002, `${quality}: the T-14 152's kit beside the T-14's hull (x ${h152[k].x.toFixed(3)} v ${h14[k].x.toFixed(3)})`);
     // the 30 mm cannons beside the 152s are working stations that pitch in their cradles
     for (const [id, name] of [['object195', 'object195_2a42'], ['object477_molot', 'molot_gsh30']]) {
       const station = tanks[id].root.getObjectByName(name);

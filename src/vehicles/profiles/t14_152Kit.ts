@@ -63,15 +63,16 @@ function addCassette(P: TankBuilderPort, base: readonly P3[], n: P3, t0: number,
  * The skirts' new ERA: each of the T-14's five skirt panels (t14X.ts addHullSides: 0.18 m boxes, outer face x 1.852,
  * from y 0.49 to the panel's own top, 1.66 m, the leading panel 1.505 m) carries a facing of six cassettes, two along by
  * three up, wedged 55 mm at the foot to 85 mm at the head so each course shades the one under it. The facing keeps the
- * panel's outline: 10 mm in from its top, its foot and both ends, seated 3 mm into its face, so the skirt's line along
- * the hull side is the stock line and no cassette stands proud of it, short of it or off it.
+ * panel's outline: 8 mm under its top, 10 mm over its foot and 5 mm in from both ends, seated 3 mm into its face, so the
+ * skirt's top line along the hull side is the stock line, the facings' joints fall on the panels' own and no cassette
+ * stands proud of the outline, short of it or off it.
  */
 function addSkirtEra(P: TankBuilderPort): void {
   for (const side of [-1, 1]) {
     P.destructibleCluster(`skirt_era_${side < 0 ? 'L' : 'R'}`, () => {
       for (let i = 0; i < 5; i++) {
         const z0 = -1.22 + i * .93, top = z0 > 2 ? 1.66 - (z0 - 2) * .31 : 1.66;
-        const face = 1.852 - .003, gap = .014, zA = z0 + .0125, zB = z0 + .9075, yA = .50, yB = top - .01;
+        const face = 1.852 - .003, gap = .014, zA = z0 + .0075, zB = z0 + .9125, yA = .50, yB = top - .008;
         const w = (zB - zA - gap) / 2, h = (yB - yA - 2 * gap) / 3;
         for (let col = 0; col < 2; col++) for (let row = 0; row < 3; row++) {
           const za = zA + col * (w + gap), zb = za + w, ya = yA + row * (h + gap), yb = ya + h;
@@ -129,22 +130,26 @@ function addGlacisEra(P: TankBuilderPort): void {
 
 /**
  * Two pairs of 20 L cans on welded shelves in the stern's recess, outboard of the centre steps and inboard of the stern
- * lattices, their backs inside the stern's line (z -4.30; the T-14's hull length is kept) and their tops under the
- * 2A83's -6.6 degree stop over the stern. Each shelf is a 12 mm plate let into the raked stern plate on two gussets, with
- * a lip behind the cans and a strap round each pair.
+ * lattices, their backs inside the stern's line (z -4.30; the T-14's hull length is kept) and their handles 1.59 m up,
+ * under the 2A83's bore evacuator at its -6.5 degree stop over the stern with the gun-hull receipt's 25 mm to spare.
+ * Each shelf is a 12 mm plate let into the raked stern plate on two gussets, with a lip behind the cans and a strap
+ * round each pair.
  */
+/** The raked stern plate's face at height y (t14X.ts addHull: the tub's stern stations, z -3.805 at 1.20 m, -3.703 at
+ * 1.00 m, -3.602 at 0.80 m). */
+const sternFaceZ = (y: number) => (y >= 1 ? -3.703 - (y - 1) * .51 : -3.602 - (y - .8) * .505);
+
 function addSternCans(P: TankBuilderPort): void {
-  const shelfY = 1.17, cz = -4.135, back = -4.315;
+  const shelfY = 1.11, cz = -4.135, back = -4.315, front = sternFaceZ(shelfY) + .014, foot = .95;
   for (const side of [-1, 1]) {
-    const x = side * .40;
-    P.addEquipment('hullDetail', stowagePart(box(.38, .012, -3.77 - back)), x, shelfY - .006, (back - 3.77) / 2);
+    const x = side * .42;
+    P.addEquipment('hullDetail', stowagePart(box(.35, .012, front - back)), x, shelfY - .006, (front + back) / 2);
     for (const gx of [x - .15, x + .15]) {
-      P.addEquipment('hullDetail', stowagePart(slab([
-        [gx - .006, shelfY - .004, -3.772], [gx - .006, shelfY - .004, -4.12], [gx - .006, .95, -3.76], [gx - .006, .95, -3.664],
-        [gx + .006, shelfY - .004, -3.772], [gx + .006, shelfY - .004, -4.12], [gx + .006, .95, -3.76], [gx + .006, .95, -3.664],
-      ])));
+      const g = (s: number): P3[] => [[gx + s, shelfY - .004, front], [gx + s, shelfY - .004, -4.08],
+        [gx + s, foot, sternFaceZ(foot) - .07], [gx + s, foot, sternFaceZ(foot) + .014]];
+      P.addEquipment('hullDetail', stowagePart(slab([...g(-.006), ...g(.006)])));
     }
-    P.addEquipment('hullDetail', stowagePart(box(.38, .05, .012)), x, shelfY + .025, back + .006);
+    P.addEquipment('hullDetail', stowagePart(box(.35, .05, .012)), x, shelfY + .025, back + .006);
     KIT.jerryCan(P, 'hullDetail', x, shelfY + .242, cz, 0);
     // the strap round the pair's waist
     for (const dz of [-.178, .178]) P.addEquipment('hullDark', stowagePart(box(.37, .03, .006)), x, shelfY + .25, cz + dz);
@@ -214,7 +219,7 @@ function addBustleCans(P: TankBuilderPort): void {
 // -------------------------------------------------------------------------------------------- the roof and the tower --
 
 /** The weapon tower's yaw axis on the roof (turret frame) and its station's name. */
-export const T14_152_TOWER = Object.freeze({ x: .40, z: localZ(-1.72), roof: localY(2.55), name: 't14_152KordTower' });
+const T14_152_TOWER = Object.freeze({ x: .40, z: localZ(-1.72), roof: localY(2.55), name: 't14_152KordTower' });
 
 /**
  * The T-14's roof stations (t14X.ts addRoofEquipment with gun152) without its low 7.62 mm remote station and that

@@ -4,8 +4,10 @@
 // No photograph of the fitted turret is published, so the build follows the ruling: the Armata's hull and turret
 // shell, and the 2A83's own installation. The 2A83's mantlet is larger than the 2A82's and needs the room the T-14 gives
 // its lintel, so the trunnion rides 7 cm higher, a raised gun house over the breech takes the lintel's place and the
-// roof panels' centre column, and the lower bearing drops under the mantlet. First-party procedural geometry: Kevin B.
-// Liu (NOTICE.md); sources in docs/references/photos/russia-152-20261104.json.
+// roof panels' centre column, and the lower bearing drops under the mantlet. The owner's looks round (2026-11-05: "a
+// true new variation of the normal t14 armata") kits it out as a field variant over that shell: new ERA, a weapon tower
+// with a 12.7 mm Kord, fuel drums and cans (profiles/t14_152Kit.ts) and a full camouflage net (profiles/t14_152Suit.ts).
+// First-party procedural geometry: Kevin B. Liu (NOTICE.md); sources in docs/references/photos/russia-152-20261104.json.
 import { KIT } from './kit.ts';
 import { sectionSolid, type SolidSection } from './sectionSolid.ts';
 import { T14X_RING, addHull, addTurret } from './t14X.ts';
