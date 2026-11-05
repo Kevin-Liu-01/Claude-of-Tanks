@@ -64,8 +64,12 @@ const create = new Function('createNamedHolds', stripTypeScriptTypes(`function m
 }
 
 // ---- (round 2 U30) the QA tools hold it off by name too, never writing the pass ----
-for (const tool of ['shadow-cache-truth', 'shadow-render-truth', 'render-stability-audit']) {
-  const source = readFileSync(new URL(`../../tools/${tool}.mjs`, import.meta.url), 'utf8');
+// (literal paths: the selftest cache keys this receipt on each tool it reads)
+for (const [tool, source] of [
+  ['shadow-cache-truth', readFileSync(new URL('../../tools/shadow-cache-truth.mjs', import.meta.url), 'utf8')],
+  ['shadow-render-truth', readFileSync(new URL('../../tools/shadow-render-truth.mjs', import.meta.url), 'utf8')],
+  ['render-stability-audit', readFileSync(new URL('../../tools/render-stability-audit.mjs', import.meta.url), 'utf8')],
+]) {
   assert.doesNotMatch(source, /\btaa\.enabled\s*=[^=]|temporalAccumulation\s*=[^=]/, `${tool} writes neither field`);
   assert.match(source, /holdTemporalAA\('qa'\)/, `${tool} holds temporal AA off through post's owner`);
   assert.match(source, /\.release\(\)/, `${tool} releases its hold`);
