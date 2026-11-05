@@ -1110,6 +1110,9 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/ui/garageOpenState.selftest.mjs',
     // 2026-11-02 audit Q11/U24 (round 2): the ready wait rides the boot latch's edge; a read runs no waiter (the callouts once)
     'src/ui/gameReady.selftest.mjs',
+    // 2026-11-02 audit U24 (round 2): a first show waits under the boot splash only while it covers; the return sweeps
+    // the battle's hidden surfaces
+    'src/ui/garageShow.selftest.mjs',
     'src/ui/transientSurfaceRegistry.selftest.mjs',
     // 2026-10-27 (owner: "lets ensure we have good loadin gstates for everything"): every loading surface registered with
     // its lane and box for tools/loading-census.mjs, and the kit's fade-on-decode
