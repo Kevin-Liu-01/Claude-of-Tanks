@@ -8,7 +8,7 @@ import { buildFleetTrackShoe } from './abramsSourceXTrackShoe.ts';
 import { sectionSolid } from './sectionSolid.ts';
 import { EASTERN_SOURCE_STUDIES } from '../easternSourceStudyData.ts';
 import { barrel, equipment, panel, openGunTube, hullStation, optic } from './easternSourceKit.ts';
-import { addK21Mantlet, addK21Turret, K21_HATCHES, K21_TURRET, k21TurretRoofAt } from './k21Turret.ts';
+import { addK21Mantlet, addK21Turret, K21_HATCHES, K21_TURRET } from './k21Turret.ts';
 import { addK21GlacisPlates, addK21HullDeckKit, addK21TurretDeckKit } from './k21DeckKit.ts';
 import type { TankBuilderPort } from '../tankFactoryCore.ts';
 import { launchCellParts } from './missileCanisterStock.ts';
@@ -457,8 +457,8 @@ function buildK21Turret(P: TankBuilderPort): void {
     }
     // Source sight envelopes are asymmetric, with a sloped left hood and a
     // rounded right optical head. Both sit on their own finite roof mounts.
-    // 2026-11-04 round 2: both sights are 12-15 % larger, as photos 4 and 6 measure them (the gunner's box 0.57-0.62 m
-    // wide and 0.36-0.39 m tall, the commander's drum 0.44-0.48 m across), and ride the raised roof.
+    // 2026-11-04: both sights are 12-15 % larger, as photos 4 and 6 measure them (the gunner's box 0.57-0.62 m wide and
+    // 0.36-0.39 m tall, the commander's drum 0.44-0.48 m across).
     const hx = -.642, gw = 1.15, gh = 1.12;
     equipment(P, 'turret', 'Detail', sectionSolid([
         { z: -.22, ring: [[-.254 * gw, 0], [.254 * gw, 0], [.20 * gw, .3115 * gh], [-.20 * gw, .3115 * gh]] },
@@ -478,16 +478,14 @@ function buildK21Turret(P: TankBuilderPort): void {
         equipment(P, 'turret', 'Detail', box(.120 * gw, .066 * gh, .060), hx + (x - hx) * gw, roof + .06 * gh, -.126);
         equipment(P, 'turret', 'Glass', box(.095 * gw, .034 * gh, .010), hx + (x - hx) * gw, roof + .065 * gh, -.092);
     }
-    // Object_14 collars start in the rear roof shoulder (the source's 2.50638 m, now on the raised bevel, 5 mm in);
-    // Object_21 whips begin at their narrow terminal on the collar, not above a gap.
-    const collar = k21TurretRoofAt(-1.61571) - .005, lift = collar - 2.50638;
+    // Object_14 collars start in the rear roof shoulder at 2.50638 m;
+    // Object_21 whips begin at their narrow 2.673 m terminal, not above a gap.
     for (const [x, tip] of [[-.883495, 4.17597], [.884605, 4.17628]]) {
         equipment(P, 'turret', 'Detail', new THREE.LatheGeometry([
             [0, 0], [.059, 0], [.0681, .0384], [.0681, .0627], [.0337, .066],
             [.02955, .1436], [.01465, .1704], [0, .1704],
-        ].map(([r, y]) => new THREE.Vector2(r, y)), P.q ? 16 : 10), x, collar, -1.61571);
-        // the tips keep the source's 4.176 m (the published silhouette height): the whips are shorter by the lift
-        const bottom = 2.6728 + lift;
+        ].map(([r, y]) => new THREE.Vector2(r, y)), P.q ? 16 : 10), x, 2.50638, -1.61571);
+        const bottom = 2.6728;
         equipment(P, 'turret', 'Dark', antennaPart(cylY(.0058, .0126, tip - bottom, P.q ? 8 : 6)), x, (bottom + tip) / 2, -1.61599);
     }
     addBasket(P);
