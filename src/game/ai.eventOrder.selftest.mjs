@@ -7,6 +7,9 @@
 // on the lane base: two unseen guns firing and hitting in one step, told in the reverse order, left a different
 // suspect, reaction and drive. Pins: the reverse telling now gives the identical bot, tick for tick; the events wait
 // for the next update (nothing applies between ticks) and land before that tick's decisions.
+// Round 2 (U17, Q8): the order was not total. Events of one kind from one hull (two shell results on one target, two
+// hits from one gun) still applied in the order they were told: on 50197fdf43 [nonpen, nonpen, pen] on the target ended
+// in a flank and [nonpen, pen, nonpen] in engage. Pins: [3] such events, told in any order, make the same bot.
 import { Vector3 } from 'three';
 import '../vehicles/fleetFactory.ts';
 import { getSpec } from '../vehicles/specs.ts';
@@ -87,6 +90,41 @@ console.log('[2] with no flush, news waits for the next update and lands before 
   const info = s.ctl.debugInfo();
   ok(info.pendingEvents === 0 && s.ctl.targetId === 'b-right', `the next update claims the shooter (${s.ctl.targetId})`);
   ok(info.reactions === 1 && info.driveOwner === 'reaction', `and the struck hull reacts that same tick (${info.reaction}, owner ${info.driveOwner})`);
+}
+
+console.log('[3] one hull\'s events of one kind, told in another order, make the same bot');
+{
+  const spotted = new Set(['a-left', 'b-right']);
+  const orders = {
+    // three results of this bot's rounds on its target: two non-penetrations start a flank wherever the penetration falls
+    results: [['nonpen', 'nonpen', 'pen'], ['nonpen', 'pen', 'nonpen'], ['pen', 'nonpen', 'nonpen']],
+    // two rounds of one gun strike this hull, low on hit points and reloading: one bites (a backoff), one glances off (a jink)
+    hits: [[['pen', true], ['ricochet', false]], [['ricochet', false], ['pen', true]]],
+  };
+  for (const [name, tellings] of Object.entries(orders)) {
+    const runs = tellings.map((telling) => {
+      const s = scene(spotted);
+      if (name === 'hits') s.bot.combat.hp = 350;
+      for (let i = 0; i < 100 && s.ctl.targetId === null; i++) s.run(0.1); // the reaction time, then a target
+      const targetId = s.ctl.targetId;
+      if (name === 'hits') s.bot.combat.reload.t = 3;
+      for (const item of telling) {
+        if (name === 'results') s.ctl.notifyShellResult({ targetId, kind: item });
+        else s.ctl.notifyUnderFire(s.right, { selfHit: true, damaging: item[1], kind: item[0] });
+      }
+      s.run(3);
+      return { s, targetId, info: s.ctl.debugInfo() };
+    });
+    const [first, ...rest] = runs;
+    ok(first.targetId !== null, `${name}: the bot has a target before the news (${first.targetId})`);
+    for (let r = 0; r < rest.length; r++) {
+      let diverged = -1;
+      for (let i = 0; i < first.s.trace.length && diverged < 0; i++) if (first.s.trace[i] !== rest[r].s.trace[i]) diverged = i;
+      ok(diverged < 0, `${name}: [${tellings[r + 1].join(' ')}] makes the bot [${tellings[0].join(' ')}] makes`
+        + (diverged < 0 ? ` (identical for ${first.s.trace.length} ticks, mode ${first.info.mode})`
+          : ` (first difference at tick ${diverged} of ${first.s.trace.length}: ${first.s.trace[diverged]} / ${rest[r].s.trace[diverged]})`));
+    }
+  }
 }
 
 if (failures) { console.error(`ai.eventOrder.selftest: ${failures} failure(s)`); process.exit(1); }

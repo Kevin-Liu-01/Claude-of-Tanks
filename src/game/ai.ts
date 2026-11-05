@@ -153,11 +153,18 @@ interface AiController {
   /** The tier the controller was built with (the solo battle and the authority may step it down per ruleset). */
   readonly difficulty: AiDifficulty;
   /**
-   * Take the hull back after a stretch in which something else drove it (Watch mode's taken seat): what the
-   * controller measures between its own ticks, and the clocks of its own record (its last round, its last
-   * penetration), restart from the hull as it stands now (audit M7). `timeS` is the match clock at the hand-back.
+   * Something else drives the hull from `timeS` (the match clock) until resume(): Watch mode's taken seat (round 2, U18).
    */
-  resume(timeS?: number): void;
+  park(timeS?: number): void;
+  /**
+   * Take the hull back after a stretch in which something else drove it (Watch mode's taken seat) or after a revive:
+   * what the controller measures between its own ticks restarts from the hull as it stands now (audit M7), after a
+   * park the clocks of its own record (its last round, its last penetration) move on by the park's length, its own route
+   * legs (a search leg, a level route) end with no verdict unless the hull still stands where it was parked, and its view
+   * of its target (stillness, silence) starts again unless the park could hide nothing from it. `timeS` is the match
+   * clock at the hand-back; `firstShellId` the battle's next shell id then (an earlier round's result is not this bot's).
+   */
+  resume(timeS?: number, firstShellId?: number): void;
   debugInfo(): AiControllerDebugInfo;
   state: string;
 }
@@ -715,6 +722,12 @@ const PEN_DENIED_FLANK_S = 8;
 // hull has held still and whose gun has stayed silent this long is pressed to a point-blank side aspect.
 const PASSIVE_TARGET_STILL_S = 15;
 const PASSIVE_TARGET_SILENT_S = 15;
+// What one look at the target counts (updateTargetActivity): a hull below these rates is still, and a reload that jumps
+// by more than TARGET_SHOT_JUMP_S between looks is a round fired. resume() keeps the view through a park only as long
+// as these looks could have seen nothing it missed (targetViewHeldThroughPark; round 2, U18).
+const TARGET_STILL_MPS = 0.5;
+const TARGET_STILL_YAW_RATE = 0.05;
+const TARGET_SHOT_JUMP_S = 1;
 const PASSIVE_PRESS_NO_PEN_S = 15;     // this bot's own shells have not penetrated it for this long
 const PASSIVE_PRESS_STANDOFF_M = 70;   // the press point's distance from the target
 const PASSIVE_PRESS_ASPECT_RAD = 1.3;  // ~75° off the target's nose: a side plate, not a glacis
@@ -769,6 +782,9 @@ const SEARCH_LEG_STRIKES = 3;              // stuck strikes on one leg before it
 const SEARCH_GOAL_ARRIVE_M = 30;           // a goal this close is not worth a leg
 const SEARCH_PROJECTION_M = 60;            // a dry-policy route may end this far from its goal and still count
 const SEARCH_CHECK_S = 2;                  // cadence of the leg lifecycle checks
+// A displaced leg (another owner's route took its waypoints: claimWaypoints) waits for that route at most this long from
+// the displacement: the search's longest leg (round 2, U16)
+const SEARCH_DISPLACED_MAX_S = SEARCH_LEG_MAX_S;
 const PEN_GATE_RATIO_NEAR = 1.0;           // the gate ratio at point-blank range: the historical 0.9 answered the
 const PEN_GATE_RATIO_FAR = 1.15;           // penetration roll, not the lay — even at 76 m the tier's 0.47 m error
 const PEN_GATE_NEAR_M = 80;                // lands a round priced on a 0.9-1.0 lower-front strip on the glacis
@@ -868,6 +884,8 @@ const LEVEL_ROUTE_SLACK_S = 25;
 const LEVEL_ROUTE_STRIKES = 4;
 const UNBEARABLE_S = 75;
 const LEVEL_ROUTE_OPTIONS = Object.freeze({ requireGoalLevel: true });
+// The declared order of one hull's shell results (or hits) on a bot in one phase (round 2, U17; see pendingBefore).
+const PENDING_KIND_ORDER: readonly string[] = Object.freeze(['pen', 'he_pen', 'nonpen', 'ricochet', 'spaced_absorb', 'era']);
 // Search goal order by how many legs have ended without contact: straight at the enemy first, then the last
 // sighting and the ring round the sector, then the ring from other sides.
 const SEARCH_ORDER: ReadonlyArray<readonly string[]> = Object.freeze([
@@ -1305,8 +1323,18 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
   // objective, a commander's point, the support a retreat drives to); 'route' an integration's own list (an opening
   // or patrol route); 'patrol' the auto loop; 'sector', 'search' and 'level' the controller's own legs.
   let routeOwner: RouteOwner = 'none';
-  /** Take the waypoints for `owner`: an empty list, its cursor at the start. Every writer of the list comes here. */
+  /**
+   * Take the waypoints for `owner`: an empty list, its cursor at the start. Every writer of the list comes here, and so
+   * does the end of the overlay whose leg the list was (round 2, U16): a level route another owner writes over ends here,
+   * superseded, with no verdict on its target (the 'levelRoute' drive owner and updateElevationLock's end test read only
+   * the level route's own list); a search leg whose list another owner takes is displaced here (displaceSearchLeg): its
+   * own evidence (budget, strikes, the enemy's move off its sector) no longer judges or ends anything, and
+   * updateSearchLeg plans the next leg only once the route in place is used up (or SEARCH_DISPLACED_MAX_S after the
+   * displacement), counting no failed leg. A claim is never refused: the last writer has the list, as before.
+   */
   function claimWaypoints(owner: RouteOwner, loop: boolean): void {
+    if (levelRouting && owner !== 'level') supersedeLevelRoute();
+    if (searching && owner !== 'search' && owner !== 'sector' && searchDisplacedAtS < 0) displaceSearchLeg();
     waypoints.length = 0;
     wpIndex = 0;
     autoPatrolBuilt = true;
@@ -1446,7 +1474,10 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
   let flankLaneCheckS = -Infinity;
   let flankLaneClear = false;                // the flank exemption's gun-to-hull lane at the last check
   // round 62 pacing: the search for a lost enemy (beginSearchLeg / updateSearchLeg)
-  let searching = false;                     // a search leg's route is in the waypoints
+  let searching = false;                     // the search runs: its leg's route is in the waypoints, unless displaced
+  // when another owner's route took the leg's waypoints (claimWaypoints; round 2, U16); -1 while the leg drives its own
+  let searchDisplacedAtS = -1;
+  let searchLegsDisplaced = 0;               // probe-visible count of legs another owner's route displaced
   let searchKind = '';                       // probe-visible: sector | seen | objective | sweep | wide | direct
   const searchGoal = { x: 0, z: 0 };
   let searchLegs = 0;                        // probe-visible count of legs begun
@@ -1491,6 +1522,7 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
   let levelRouteUntilS = -1;
   let levelRouteStrikes = 0;
   let levelRoutes = 0;                       // probe-visible count
+  let levelRoutesSuperseded = 0;             // probe-visible count of level routes another owner's waypoints ended
   let unbearableId: string | null = null;    // the target no gun angle or route reaches…
   let unbearableUntilS = -1;                 // …until this sim second
   let unbearableVerdicts = 0;                // probe-visible count
@@ -5103,6 +5135,7 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     searchLegBudgetS = clamp(SEARCH_LEG_MIN_S + routeLengthM / SEARCH_LEG_SPEED_MPS, SEARCH_LEG_MIN_S, SEARCH_LEG_MAX_S);
     searchLegStartDistM = detMath.hypot(goalX - entity.state.pos.x, goalZ - entity.state.pos.z);
     searchStrikesAtStart = strikeEvents;
+    searchDisplacedAtS = -1;                 // the leg drives its own route
     searchNextCheckS = timeS + SEARCH_CHECK_S;
     pressUntilS = timeS + STALEMATE_PUSH_S;
     hasMoveTarget = false;
@@ -5148,14 +5181,25 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     startSearchLeg('direct', sector.x, sector.z, detMath.hypot(sector.x - position.x, sector.z - position.z), timeS);
   }
 
+  /** Another owner's route took the search leg's waypoints (claimWaypoints): the leg waits for it, judged neither way. */
+  function displaceSearchLeg(): void {
+    searchDisplacedAtS = nowS;
+    searchLegsDisplaced++;
+  }
+
   function updateSearchLeg(enemy: AiEntity, timeS: number): void {
     if (timeS < searchNextCheckS) return;
     searchNextCheckS = timeS + SEARCH_CHECK_S;
     pressUntilS = timeS + STALEMATE_PUSH_S; // the search keeps the pressure semantics of the old push windows
+    // displaced (round 2, U16): the leg's budget, strikes and sector were evidence about a route it no longer drives, so
+    // none of them ends the wait; the route in place (a commander's point, a retreat's support, the mode's route push)
+    // is driven out first, and the next leg starts its own baselines (startSearchLeg)
+    if (searchDisplacedAtS >= 0) {
+      if (routeUsedUp() || timeS - searchDisplacedAtS > SEARCH_DISPLACED_MAX_S) beginSearchLeg(enemy, timeS);
+      return;
+    }
     const position = entity.state.pos;
-    const last = waypoints.length ? waypoints[waypoints.length - 1] : null;
-    const consumed = !last || (wpIndex >= waypoints.length - 1
-      && detMath.hypot(last.x - position.x, last.z - position.z) < ARRIVE_DIST_M * 2);
+    const consumed = routeUsedUp();
     const stuck = strikeEvents - searchStrikesAtStart >= SEARCH_LEG_STRIKES;
     const overBudget = timeS - searchLegStartS > searchLegBudgetS;
     const enemyMoved = searchKind === 'sector'
@@ -5571,9 +5615,15 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
   function endLevelRoute(): void {
     levelRouting = false;
     levelRouteTargetId = null;
-    // the leg clears only its own route: one another driver wrote over it (a commander's point, the mode's route push)
-    // is that driver's, and it stays
+    // the leg clears only its own route (a route another driver wrote over it ended the leg there: claimWaypoints)
     if (routeOwner === 'level') claimWaypoints('none', loopWaypoints);
+  }
+
+  /** Another owner took the level route's waypoints (claimWaypoints): the leg ends with them, judged neither way. */
+  function supersedeLevelRoute(): void {
+    levelRouting = false;
+    levelRouteTargetId = null;
+    levelRoutesSuperseded++;
   }
 
   function markUnbearable(candidate: AiEntity, timeS: number): void {
@@ -5717,11 +5767,12 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
       prevTargetReloadT = target.combat?.reload?.t ?? 0;
     }
     // a hull this bot's ram run is pushing has not moved itself (see RAM_CONTACT_HOLD_S)
-    const still = (Math.abs(target.state.speed ?? 0) < 0.5 && Math.abs(target.state.yawRate ?? 0) < 0.05)
+    const still = (Math.abs(target.state.speed ?? 0) < TARGET_STILL_MPS
+      && Math.abs(target.state.yawRate ?? 0) < TARGET_STILL_YAW_RATE)
       || (ramming && timeS < ramContactUntilS && ramContactId === target.id);
     targetStillS = still ? targetStillS + dt : 0;
     const reloadT = target.combat?.reload?.t ?? 0;
-    if (reloadT > prevTargetReloadT + 1) targetLastShotS = timeS; // a shell left its gun
+    if (reloadT > prevTargetReloadT + TARGET_SHOT_JUMP_S) targetLastShotS = timeS; // a shell left its gun
     prevTargetReloadT = reloadT;
   }
 
@@ -6824,7 +6875,32 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
 
   // ---- main update ----------------------------------------------------------
 
-  let recordClocksStale = false; // a resume is waiting for the first tick back (restartRecordClocks)
+  // the park (Watch mode's Take control): when this controller stopped being stepped, and the first shell id that is
+  // this bot's again (a round with a lower id left the gun while something else had the hull)
+  let parkedAtS = NaN;
+  let ownShellsFromId = -Infinity;
+  // the target as the bot last saw it when the park began (resume checks it against the target at the hand-back)
+  let parkTargetId: string | null = null;
+  let parkTargetX = 0, parkTargetZ = 0, parkTargetYaw = 0, parkTargetReloadT = 0;
+  // where the hull stood when the park began (resume checks the bot's own route legs against it)
+  let parkHullX = 0, parkHullZ = 0;
+  /**
+   * The park entry point (round 2, U18): something else drives the hull from `timeS` (the match clock) until resume().
+   * The controller is not stepped meanwhile; resume() reads how long the park lasted, where the hull went and what
+   * became of the target.
+   */
+  function park(timeS?: number): void {
+    parkedAtS = timeS !== undefined && Number.isFinite(timeS) ? timeS : NaN;
+    parkHullX = entity.state.pos.x;
+    parkHullZ = entity.state.pos.z;
+    const seen = target && enemyAlive(target) ? target : null;
+    parkTargetId = seen ? seen.id : null;
+    if (!seen) return;
+    parkTargetX = seen.state.pos.x;
+    parkTargetZ = seen.state.pos.z;
+    parkTargetYaw = seen.state.yaw;
+    parkTargetReloadT = seen.combat?.reload?.t ?? 0;
+  }
   /**
    * The resume entry point (2026-11-02 audit M7). Watch mode parks a bot's controller while the watcher drives its hull
    * (game/watchSeat.ts) and hands it back on Leave; the controller was not stepped in between, so what it measures
@@ -6833,17 +6909,39 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
    * the watcher's last shot as this bot's (its spot's count, a miss at its target), and the stuck and dwell clocks ran
    * on from where the hull stood. They restart from the hull as it stands now; the mission re-plans from here at its
    * next step, and a leg, crest, cover point or vantage picked where the hull stood is dropped. Windows on match time
-   * (the *UntilS ends) expire by themselves and stay; news queued before the park is dropped. The clocks that time this
-   * bot's own record since an event grew through the park as well, though the bot saw none of it (the watcher fired,
-   * not the bot): they restart at its first tick back (restartRecordClocks), so a park longer than the doctrine's
-   * stalemate silence is no silence of the bot's (a stalemate push, a search leg) and no stretch without a
-   * penetration (the passive press). `timeS`, the match clock at the hand-back, is the clock news handed over before
-   * that tick reads. A brain never stepped (the battle opening's hand-off) has no record to restart. Allocation-free.
+   * (the *UntilS ends) expire by themselves and stay; news queued before the park is dropped. A revive hands the same
+   * controller a new hull at its spawn and comes here too (both drivers' revive hooks), with no park.
+   * The clocks that time this bot's own record since an event (its last round, its last penetration, its last missed
+   * round) stood still with the bot (round 2, U18): they move on by the park's length (shiftRecordClocks, from park()'s
+   * clock to `timeS`), so the watcher's stretch is no silence of the bot's gun (a stalemate push, a search leg, a passive
+   * press) and a short Take and Leave changes nothing. With no park (a revive) they stay as they are. The bot's own
+   * route legs (a search leg, a level route) were planned from where the hull stood: they hold, their clocks moved on by
+   * the park, only while the hull still stands there, and otherwise end with no verdict on them (resumeOwnLegs). The
+   * bot's view of its target (how long it has held still, how long its gun has been silent) is no record of the bot's
+   * but what it saw, and it saw nothing while parked: it carries on only through a park that could hide nothing from it
+   * (targetViewHeldThroughPark); after any other park, and after a revive, the target is looked at afresh, as on a new
+   * target (lookAtTargetAgain). `firstShellId`, the battle's next shell id at the
+   * hand-back, marks the rounds that are this bot's again: the result of one fired before it (the watcher's, landing
+   * after Leave) is not reported to the bot (notifyShellResult). `timeS`, the match clock at the hand-back, is also the
+   * clock news handed over before the next tick reads. A brain never stepped (the battle opening's hand-off) has no
+   * record to move. Allocation-free.
    */
-  function resume(timeS?: number): void {
+  function resume(timeS?: number, firstShellId?: number): void {
     clearPendingEvents();
-    if (timeS !== undefined && Number.isFinite(timeS)) nowS = timeS;
-    if (objectiveTick > 0) recordClocksStale = true;
+    const clock = timeS !== undefined && Number.isFinite(timeS);
+    if (clock) nowS = timeS;
+    if (firstShellId !== undefined && Number.isFinite(firstShellId)) ownShellsFromId = Math.max(ownShellsFromId, firstShellId);
+    const parked = clock && Number.isFinite(parkedAtS);
+    const parkS = parked ? Math.max(0, timeS - parkedAtS) : 0;
+    parkedAtS = NaN;
+    if (objectiveTick > 0 && parkS > 0) shiftRecordClocks(parkS);
+    resumeOwnLegs(parked, parkS);
+    if (target) {
+      if (parked && targetViewHeldThroughPark(parkS)) targetLastShotS += parkS; // its silence as seen runs on from Take
+      else lookAtTargetAgain(nowS);
+      prevTargetReloadT = target.combat?.reload?.t ?? 0;
+    }
+    parkTargetId = null;
     const st = entity.state;
     lastHp = combatHitPoints(entity);
     burstDamage = 0;
@@ -6880,15 +6978,62 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     missionRouteX = missionRouteZ = Infinity;
     missionRouteAtS = -Infinity;
   }
-  /** The first tick after a resume: the bot's own record restarts here (see resume). */
-  function restartRecordClocks(timeS: number): void {
-    recordClocksStale = false;
-    lastFiredAtS = timeS;        // the stalemate push, the search gate and the settle's starved test count silence from here
-    lastPenAtS = timeS;          // the passive press waits PASSIVE_PRESS_NO_PEN_S of its own shells again
-    targetActivityId = null;     // the target's stillness and last shot re-baseline at the next look (updateTargetActivity)
-    missStreak = 0;              // rounds in a row from one spot: the watcher's rounds broke the row
-    missStreakTargetId = null;
-    if (searching) searchLegStartS = timeS; // a search leg's budget is the bot's driving, not the park
+  /** The park's stretch is no time of the bot's own record: the clocks timed since its own events move on by it. */
+  function shiftRecordClocks(parkS: number): void {
+    lastFiredAtS += parkS;       // the stalemate push, the search gate and the settle's starved test
+    lastPenAtS += parkS;         // the passive press (PASSIVE_PRESS_NO_PEN_S of its own shells)
+    missLastShotS += parkS;      // the miss streak's settle (missedOut)
+  }
+  /**
+   * The bot's own route legs at the hand-back (review round 2, U18). A search leg's list and a level route were planned
+   * from where the hull stood, and their clocks (the search leg's budget and a displaced leg's wait, the level route's
+   * deadline) time the bot's driving on them. Through a park that left the hull where it stood (within ARRIVE_DIST_M, the
+   * waypoint follower's own arrival radius) they hold, and those clocks move on by the park. After any other park, and
+   * after a revive (no park: the hull is a new one at its spawn), they end with no verdict: the level route's list is
+   * released and the elevation lock re-arms from the hull as it stands (ELEVATION_LOCK_S later), so no target is given up
+   * as unbearable on a deadline spent while the watcher drove or the hull lay dead; the search leg's own list is
+   * released, which displaces the leg (claimWaypoints), and its next leg is planned from here at the first tick back,
+   * counting no failed leg; a leg already displaced waits for the route in place from the hand-back.
+   */
+  function resumeOwnLegs(parked: boolean, parkS: number): void {
+    const st = entity.state;
+    if (parked && detMath.hypot(st.pos.x - parkHullX, st.pos.z - parkHullZ) <= ARRIVE_DIST_M) {
+      if (searching) {
+        searchLegStartS += parkS;
+        if (searchDisplacedAtS >= 0) searchDisplacedAtS += parkS;
+      }
+      if (levelRouting) levelRouteUntilS += parkS;
+      return;
+    }
+    elevationLockT = 0;
+    if (levelRouting) endLevelRoute();
+    if (searching) {
+      if (searchDisplacedAtS < 0) claimWaypoints('none', loopWaypoints);
+      searchDisplacedAtS = nowS;
+      searchNextCheckS = nowS;
+    }
+  }
+  /**
+   * The park could hide nothing from the bot's looks at its target (updateTargetActivity), so what it saw holds: the same
+   * live target, a park no longer than TARGET_SHOT_JUMP_S (a round the looks count leaves a longer reload, which is still
+   * running at the hand-back), the hull where a still one could have stood (TARGET_STILL_* over the park) and its reload
+   * no further from ready than the park's countdown leaves it. A longer park could hold a round fired and reloaded
+   * unseen, or a drive away and back: the view starts again.
+   */
+  function targetViewHeldThroughPark(parkS: number): boolean {
+    if (!target || target.id !== parkTargetId || !enemyAlive(target) || parkS > TARGET_SHOT_JUMP_S) return false;
+    const st = target.state;
+    if (detMath.hypot(st.pos.x - parkTargetX, st.pos.z - parkTargetZ) > TARGET_STILL_MPS * parkS + 1e-3) return false;
+    if (Math.abs(wrapAngle(st.yaw - parkTargetYaw)) > TARGET_STILL_YAW_RATE * parkS + 1e-3) return false;
+    return (target.combat?.reload?.t ?? 0) <= Math.max(0, parkTargetReloadT - parkS) + 1e-3;
+  }
+  /**
+   * The target's activity as at a first look (updateTargetActivity's new-target branch), keeping the target and this
+   * bot's own penetration clock: still for no time, silent from now.
+   */
+  function lookAtTargetAgain(timeS: number): void {
+    targetStillS = 0;
+    targetLastShotS = timeS;
   }
 
   function update(dt: number, timeS: number): void {
@@ -6902,7 +7047,6 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
   function updateTick(dt: number, timeS: number): void {
     if (spec !== entity.spec) { spec = entity.spec; heSlot = findHeShellSlot(spec); chosenSlot = 0; }
     nowS = timeS;
-    if (recordClocksStale) restartRecordClocks(timeS);
     const input = entity.input;
     const cb = entity.combat;
     const allyYieldingPrev = allyYielding;
@@ -7030,17 +7174,21 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
   // arrives), and these start flanks and hit reactions, change the mode and draw from this bot's seeded stream. They
   // are queued, and applied together in one declared order: gunshots heard, then this bot's own shell results, then
   // hits on its team, then the commander's orders; within a kind by the shooter's id (a hit on this hull before a
-  // teammate's report) or the struck hull's id, and arrival order only among events with the same key. So a bot's
-  // decisions are a function of what reached it in a phase, not of the order it was told. What each event does is
-  // unchanged (the apply* functions below); the validity checks still run when the event arrives.
+  // teammate's report) or the struck hull's id, then by what the event says (pendingPayloadBefore: a shell result's
+  // kind, a hit's damage and then its kind). Events still tied are the same event told twice, which apply alike in
+  // either order. Orders alone keep their arrival order: they come from the team's one commander, in its own sequence,
+  // and the later replaces the earlier (applyOrder). So a bot's decisions are a function of what reached it in a phase,
+  // not of the order it was told. What each event does is unchanged (the apply* functions below); the validity checks
+  // still run when the event arrives.
   // Where they are applied is the drivers' (applyPendingBotNews, at the end of their fire-and-shells phase and again
   // before the first controller updates), so the news lands where the callbacks always ran: at the last tick's clock,
   // with the spotting, the mode's objective and this bot's target and mode as the phase left them, and every teammate
   // that thinks first in the next step reads this bot's answer (refreshFocusCounts, the squad's flank election, the
-  // commander's team document). Against callbacks applied one at a time, two things differ, both inside one phase: the
-  // declared order, and that an event no longer sees what a later shell of the same phase did (a hull it destroyed) or
-  // what a teammate's earlier news in the phase changed in that teammate before this bot's turn (the hulls' order
-  // decides). update() applies anything still queued first (a caller that steps a controller alone).
+  // commander's team document). Against callbacks applied one at a time, three things differ, all inside one phase:
+  // the declared order; an event now sees what a later shell of the same phase did (a hull it destroyed: the
+  // enemyAlive and acquireTarget reads run at the flush, after the phase's last shell); and it no longer sees what a
+  // teammate's earlier news in the phase changed in that teammate before this bot's turn (the hulls' order decides).
+  // update() applies anything still queued first (a caller that steps a controller alone).
   // notifyFriendlyBlocked stays immediate: it only raises a timer to a floor and counts, the same in any order, and
   // draws nothing.
   const PENDING_ENEMY_FIRED = 0, PENDING_SHELL_RESULT = 1, PENDING_UNDER_FIRE = 2, PENDING_ORDER = 3;
@@ -7077,12 +7225,36 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     event.order = null;
     return event;
   }
-  /** Declared order: kind; a hit on this hull before a teammate's report; the key (a hull id); then arrival. */
+  /**
+   * Declared order: kind; a hit on this hull before a teammate's report; the key (a hull id); what the event says
+   * (pendingPayloadBefore); then arrival, which decides only between equal events and between the commander's orders.
+   */
   function pendingBefore(a: PendingEvent, b: PendingEvent): boolean {
     if (a.rank !== b.rank) return a.rank < b.rank;
     if (a.selfHit !== b.selfHit) return a.selfHit;
     if (a.key !== b.key) return a.key < b.key;
+    if (a.rank !== PENDING_ORDER) {
+      if (pendingPayloadBefore(a, b)) return true;
+      if (pendingPayloadBefore(b, a)) return false;
+    }
     return a.seq < b.seq;
+  }
+  /**
+   * One hull's events of one kind, by what they say (round 2, U17): a hit that did damage before one that did not, then
+   * the result's kind (PENDING_KIND_ORDER, the penetrations first: a phase's non-penetrations count on from them), then
+   * any other kind by name. A gunshot heard says nothing beyond its shooter (the key).
+   */
+  function pendingPayloadBefore(a: PendingEvent, b: PendingEvent): boolean {
+    const damageA = a.damaging === true ? 0 : a.damaging === false ? 1 : 2;
+    const damageB = b.damaging === true ? 0 : b.damaging === false ? 1 : 2;
+    if (damageA !== damageB) return damageA < damageB;
+    const kindA = pendingKindRank(a.kind), kindB = pendingKindRank(b.kind);
+    if (kindA !== kindB) return kindA < kindB;
+    return (a.kind ?? '') < (b.kind ?? '');
+  }
+  function pendingKindRank(kind: string | undefined): number {
+    const index = kind === undefined ? -1 : PENDING_KIND_ORDER.indexOf(kind);
+    return index < 0 ? PENDING_KIND_ORDER.length : index;
   }
   const reactionInfo: HitReactionInfo = {};
   function drainPendingEvents(): void {
@@ -7125,11 +7297,16 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
    * Queued until the drivers' flush (see the between-tick inputs above).
    * @param {object} hitEvent HitEvent (§2.6)
    */
-  function notifyShellResult(hitEvent: Pick<HitEvent, 'targetId' | 'kind'> & Partial<Pick<HitEvent, 'shellName'>>): void {
+  function notifyShellResult(
+    hitEvent: Pick<HitEvent, 'targetId' | 'kind'> & Partial<Pick<HitEvent, 'shellName' | 'shellId'>>,
+  ): void {
     // A roof-gun bounce says nothing about the cannon's penetration solution.
     // Do not re-roll main aim or trigger a flank for each automatic-gun bullet.
     if (!hitEvent) return;
     if (hitEvent.shellName && !spec.gun.shells.some(shell => shell.name === hitEvent.shellName)) return;
+    // a round that left the gun before this controller had the hull back (the watcher's, landing after Leave) is not
+    // this bot's (resume's firstShellId; round 2, U18)
+    if (hitEvent.shellId !== undefined && hitEvent.shellId < ownShellsFromId) return;
     if (draining) { applyShellResult(hitEvent.targetId ?? null, hitEvent.kind); return; }
     const event = pendingSlot(PENDING_SHELL_RESULT, hitEvent.targetId ?? '');
     event.targetId = hitEvent.targetId ?? null;
@@ -7285,6 +7462,7 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     notifyFriendlyBlocked,
     setOrder,
     applyPendingNews: drainPendingEvents,
+    park,
     resume,
     get terrainBlocked() { return terrainBlocked; },
     hasClearShot: (id) => target?.id === id && losClear && friendlyBlockT <= 0 && gunLaneBlockedT <= 0 && penGateOk,
@@ -7334,6 +7512,9 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
       passivePressArcT: +passivePressArcT.toFixed(1),
       // round 62 pacing: the search for a lost enemy and the empty rack
       searching, searchKind, searchLegs, searchFailures,
+      searchDisplaced: searching && searchDisplacedAtS >= 0, searchLegsDisplaced, // round 2, U16
+      searchLegAgeS: searching ? +(nowS - searchLegStartS).toFixed(2) : null,
+      searchLegBudgetS: searching ? +searchLegBudgetS.toFixed(1) : null,
       searchGoalX: Math.round(searchGoal.x), searchGoalZ: Math.round(searchGoal.z),
       wpIndex, wpCount: waypoints.length, routeOwner, // audit M7: who wrote the waypoints
       pendingEvents: pendingCount, // audit M7: between-tick inputs waiting for the drivers' flush
@@ -7354,7 +7535,7 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
       zoneHoldX: Number.isFinite(zoneHoldForX) ? +zoneHold.x.toFixed(1) : null,
       zoneHoldZ: Number.isFinite(zoneHoldForZ) ? +zoneHold.z.toFixed(1) : null,
       missionReleases, missionReleased: nowS < missionReleaseUntilS, offensiveJumps, ballShots, ramHoldOffs, jockeyLegs,
-      levelRouting, levelRoutes, unbearableVerdicts, unbearable: unbearableId, elevationLockT: +elevationLockT.toFixed(1),
+      levelRouting, levelRoutes, levelRoutesSuperseded, unbearableVerdicts, unbearable: unbearableId, elevationLockT: +elevationLockT.toFixed(1),
       pressing: nowS < pressUntilS,
       pressPointX: passivePressing ? pressPoint.x : NaN, // round 67: the chosen press point (NaN while not pressing)
       pressPointZ: passivePressing ? pressPoint.z : NaN,
