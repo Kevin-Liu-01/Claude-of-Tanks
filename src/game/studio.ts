@@ -6007,9 +6007,11 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
       if (game.phase === 'studio') {
         // (audit F9) a failed entry leaves as an exit does: the Garage, its showroom and spots, the dormant battlefield
         // and its own light come back (only the active flag and the phase did before)
+        // (audit F1; round 2 IR1) the return hands the scene back with its announcement, once, when it lands: a return
+        // that failed before writing the Garage's scene is 'failed' (frames suppressed, nothing restored), and its own
+        // exit (main's enterGarageWithExit: the notice and its Retry) announces studio -> garage when it lands. A write
+        // here as well announced the Garage over the failed return and then again on the Retry.
         try { await leaveForGarage(); } catch (rollback) { console.error('[studio] the failed entry\'s Garage return failed', rollback); }
-        // (audit F1) the return hands the scene back with its announcement; one that never wrote it still does here
-        if (game.phase === 'studio') transitionAppPhase(game as { phase: AppPhase }, 'garage', { reason: 'studio:entry-failed' });
       } else if (game.phase === 'garage') {
         // (audit F1 review) the Garage took the scene back while the entry ran (studio -> garage is the Studio's one
         // hand-over): no second Garage return over it and no phase write. (integration review r2) It still leaves as an
