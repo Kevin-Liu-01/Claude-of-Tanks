@@ -1137,8 +1137,9 @@ async function main() {
   }, null, 2));
 }
 
-// an interrupted run still leaves the capture lock through the exit handler
-for (const signal of ['SIGINT', 'SIGTERM']) process.once(signal, () => process.exit(signal === 'SIGINT' ? 130 : 143));
+// (round 2 U38) a signal during the capture is the hold's (openCaptureHold's one signal owner): the browser stops, the
+// capture's finally closes Vite and the rooms and releases, then the process exits 128 + n. Outside the hold the default
+// action ends the process (a second handler here exited at once, before that finally).
 
 try {
   await main();
