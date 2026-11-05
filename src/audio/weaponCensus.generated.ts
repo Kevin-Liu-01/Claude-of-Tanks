@@ -14,6 +14,9 @@ export type FleetWeaponKey =
   | '120/separate_bag'
   | '125/two_piece'
   | '130/combustible'
+  | '152-2a73/two_piece'
+  | '152-2a83/two_piece'
+  | '152-lp83/two_piece'
   | '152/caseless'
   | '152/separate_case'
   | '165/separate_bag'
@@ -43,6 +46,9 @@ export const FLEET_WEAPON_KEYS: readonly FleetWeaponKey[] = [
   '120/separate_bag',
   '125/two_piece',
   '130/combustible',
+  '152-2a73/two_piece',
+  '152-2a83/two_piece',
+  '152-lp83/two_piece',
   '152/caseless',
   '152/separate_case',
   '165/separate_bag',
@@ -85,6 +91,9 @@ export const MAIN_GUN_LOADER: Readonly<Record<string, LoaderMake>> = {
   m1a3: 'bustle',
   mbt70: 'bustle',
   object148_proto: 'carousel_unmanned',
+  object195: 'carousel_unmanned',
+  object292: 'bustle',
+  object477_molot: 'bustle',
   pl01: 'bustle',
   pl01_105: 'bustle',
   pt64_tur: 'basket_mz',
@@ -95,6 +104,7 @@ export const MAIN_GUN_LOADER: Readonly<Record<string, LoaderMake>> = {
   pt91m: 'carousel_az',
   strv103a: 'fixed_ram',
   strv103b: 'fixed_ram',
+  t14_152: 'carousel_unmanned',
   t14_armata: 'carousel_unmanned',
   t62mv1: 'carousel_az',
   t64b1v_2022: 'basket_mz',
@@ -356,6 +366,8 @@ export const STATION_KEYS: Readonly<Record<string, readonly FleetWeaponKey[]>> =
   merkava4b: ['7.62/belt'],
   namer_ifv: ['7.62/belt'],
   object148_proto: ['30/belt'],
+  object195: ['30/belt'],
+  object477_molot: ['30/belt'],
   olifant_mk2: ['7.62/belt'],
   osorio_p1: ['12.7/belt'],
   osorio_p2: ['12.7/belt'],
@@ -377,6 +389,7 @@ export const STATION_KEYS: Readonly<Record<string, readonly FleetWeaponKey[]>> =
   strv121: ['7.62/belt'],
   strv122: ['7.62/belt'],
   strv81: ['7.62/belt'],
+  t14_152: ['7.62/belt'],
   t14_armata: ['7.62/belt'],
   t49: ['12.7/belt', '7.62/belt'],
   t62_1975: ['12.7/belt'],

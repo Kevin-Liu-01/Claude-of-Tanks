@@ -38,8 +38,10 @@ for (const [id, rec] of Object.entries(SFX_ASSETS)) {
 // our own hull's banks. 34 MB from 2026-11-04 (Main's ruling for the 269 audio stack): the three sound lanes measured
 // over main's 23.45 MB — gun-reports-269 +7.13 (every bore's reports, reloads and the ear proxy's full slots),
 // world-sfx-269 +1.86 (running gear, crashes, roofs, the modes, night life), impact-materials-269 +1.21 (struck parts,
-// grazes, near misses) — 33.65 MB. What a player pays is the battle's set, not this sum.
-assert.ok(bytes < 34 * 1024 * 1024, `sound-effect payload ${(bytes / 1048576).toFixed(1)} MB within 34 MB`);
+// grazes, near misses) — 33.65 MB. What a player pays is the battle's set, not this sum. 36 MB from 2026-11-04 (the
+// russia-152 lane, for Main's confirmation at READY): the three 152 mm bores' reports (2A83, 2A73, LP-83) and the
+// carousel and bustle loaders' 152 mm reloads, +1.67 MB, 35.35 MB; a battle decodes only its roster's bores.
+assert.ok(bytes < 36 * 1024 * 1024, `sound-effect payload ${(bytes / 1048576).toFixed(1)} MB within 36 MB`);
 
 // ---- every asset the engine and its rigs ask for exists.
 const engine = readFileSync(new URL('./audioEngine.ts', import.meta.url), 'utf8');
