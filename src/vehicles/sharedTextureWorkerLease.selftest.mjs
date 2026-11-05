@@ -21,7 +21,7 @@ const manifest = JSON.parse(readFileSync(join(dirname(canvasEntry), 'package.jso
 assert.equal(manifest.name, '@napi-rs/canvas');
 assert.equal(manifest.version, require('../../package.json').devDependencies['@napi-rs/canvas']);
 const { createCanvas, Path2D, DOMMatrix, ImageData } = require(canvasEntry);
-const globals = ['document', 'Worker', 'OffscreenCanvas', 'FontFace', 'Path2D', 'DOMMatrix', 'ImageData', 'localStorage']
+const globals = ['document', 'Worker', 'OffscreenCanvas', 'Path2D', 'DOMMatrix', 'ImageData', 'localStorage']
   .map(key => [key, Object.getOwnPropertyDescriptor(globalThis, key)]);
 const setGlobal = (key, value) => Object.defineProperty(globalThis, key, { configurable: true, value });
 let jobs = [], workers = [], postFailure = null;
@@ -40,7 +40,7 @@ class FakeWorker {
     if (postFailure) throw postFailure;
     assert.equal(this.terminated, 0, 'terminated transports cannot accept successor work');
     assert(Number.isSafeInteger(message.requestId));
-    assert.match(message.fontUrl, /\/fonts\/chakra-petch\/ChakraPetch-Bold-Latin\.woff2$/);
+    assert.deepEqual(Object.keys(message).sort(), ['request', 'requestId'], 'the worker loads no font: a message is its request alone');
     jobs.push({ owner: this, message: structuredClone(message), replied: false });
   }
   terminate() { this.terminated++; }
@@ -54,7 +54,6 @@ setGlobal('Worker', FakeWorker);
 setGlobal('OffscreenCanvas', class {
   constructor(width, height) { return createCanvas(width, height); }
 });
-setGlobal('FontFace', class {}); // Capability only; worker font errors use its failure reply.
 setGlobal('Path2D', Path2D);
 setGlobal('DOMMatrix', DOMMatrix);
 setGlobal('ImageData', ImageData);
@@ -141,7 +140,7 @@ function reply(job, failure = null) {
   job.replied = true;
   const { requestId, request } = job.message;
   if (failure === 'error') { job.owner.onerror?.({ message: 'expected transport failure' }); return; }
-  if (failure === 'font') { job.owner.onmessage?.({ data: { requestId, ok: false } }); return; }
+  if (failure === 'refused') { job.owner.onmessage?.({ data: { requestId, ok: false } }); return; }
   const result = exactBase(request);
   if (failure === 'identity') result.identity += ':stale';
   job.owner.onmessage?.({ data: { requestId, ok: true, result } });
@@ -403,7 +402,7 @@ try {
   }
   resetTransport();
 
-  for (const failure of ['font', 'error', 'identity']) {
+  for (const failure of ['refused', 'error', 'identity']) {
     const s = spec(`worker-fallback-${failure}`), expected = legacyPixels(s);
     const pending = lease(s);
     const job = await nextJob(); reply(job, failure);
@@ -704,7 +703,7 @@ try {
     const rejection = assert.rejects(pending, error => error === failure);
     const job = await nextJob(), capture = captureCanvasCreation();
     try {
-      reply(job, 'font');
+      reply(job, 'refused');
       await finishWithReplies(rejection);
     } finally { capture.restore(); }
     assert.equal(ticks, 1, 'even a null worker result honors cancellation after its real await');

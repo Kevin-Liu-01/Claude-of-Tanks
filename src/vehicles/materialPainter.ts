@@ -4,7 +4,6 @@ import { paintBrandCamo } from './brandCamoPainter.ts';
 import { paintCustomCamoStrokes } from './customCamoCanvas.ts';
 import { createCatalogCamoPainter, type CatalogCamoArtId } from './catalogCamoPainter.ts';
 import { camoPatchWorldScale } from './camoWorldScale.ts';
-import { glacisPath } from '../ui/glacisText.ts';
 import type { CustomCamoStroke } from './camoPolicy.ts';
 
 export type MaterialCanvas = HTMLCanvasElement | OffscreenCanvas;
@@ -96,15 +95,6 @@ interface MaterialBasePaintEntry<C extends MaterialCanvas> {
   feats: PlateFeatures | null;
 }
 
-/**
- * Launch night 2026-10-08 (the coordinator's markings audit): a randomly drawn hull number never comes out 14, 18 or 88,
- * numbers used as hate codes. Only those three values move, each to the next number, and no extra random draw is made,
- * so every other hull keeps exactly the number it had.
- */
-const CODED_HULL_NUMBERS: ReadonlySet<number> = new Set([14, 18, 88]);
-export function safeHullNumber(drawn: number): number {
-  return CODED_HULL_NUMBERS.has(drawn) ? drawn + 1 : drawn;
-}
 export const ALBEDO_SIZE = 2048;
 export const MAP_SIZE = 1024;
 
@@ -2419,7 +2409,7 @@ export function createMaterialPainter<C extends MaterialCanvas>(
         if (scheme === 'racing' && patches.length) {
       // ===================== CAMO PATTERN SECTION =====================
       // RACING TEAM (camo r6): twin rally stripes with a keyline down one
-      // shared diagonal, plus number roundels. patches = [red, black].
+      // shared diagonal, plus roundels. patches = [red, black].
       const red = patches[0];
       const blk = patches[1] || '#26282c';
       const ang = -0.35 + (rng() - 0.5) * 0.2;
@@ -2435,7 +2425,6 @@ export function createMaterialPainter<C extends MaterialCanvas>(
       band(cx, cy, S * 0.11, red, 0.94);               // main stripe
       band(cx + nx * S * 0.095, cy + ny * S * 0.095, S * 0.035, red, 0.94);
       band(cx - nx * S * 0.075, cy - ny * S * 0.075, S * 0.012, blk, 0.9);
-      const num = String(safeHullNumber(1 + ((rng() * 98) | 0)));
       const roundel = (x: number, y: number, r: number): void => {
         const disc = new Path2D();
         disc.arc(x, y, r, 0, Math.PI * 2);
@@ -2443,8 +2432,6 @@ export function createMaterialPainter<C extends MaterialCanvas>(
         const ring = new Path2D();
         ring.arc(x, y, r * 0.94, 0, Math.PI * 2);
         strokeWrapped(ctx, S, ring, rgb(blk, 0.92), r * 0.09);
-        // Glacis outlines (no font to load in the worker): the caps centred on the disc, so no baseline nudge
-        fillWrapped(ctx, S, glacisPath(num, x, y, { size: Math.round(r * 1.15), align: 'center', baseline: 'middle' }), rgb(blk, 0.94));
       };
       roundel(cx + nx * S * (0.26 + rng() * 0.06), cy + ny * S * 0.26, S * (0.13 + rng() * 0.03));
       roundel(cx - nx * S * (0.3 + rng() * 0.06), cy - ny * S * 0.3, S * (0.09 + rng() * 0.03));
@@ -2502,8 +2489,8 @@ export function createMaterialPainter<C extends MaterialCanvas>(
         if (scheme === 'star' && patches.length) {
       // ===================== CAMO PATTERN SECTION =====================
       // INVASION STAR (camo r7 loadout set): olive field with ONE hero circled
-      // white star + a plain satellite star + registration stencils — the
-      // Normandy air-recognition language. patches = [white].
+      // white star + a plain satellite star — the Normandy air-recognition
+      // language. patches = [white].
       const white = patches[0];
       const star = (x: number, y: number, s: number, rot: number, a: number, ring: boolean): void => {
         const q = new Path2D();
@@ -2529,8 +2516,8 @@ export function createMaterialPainter<C extends MaterialCanvas>(
       star(rng() * S, rng() * S, S * (0.12 + rng() * 0.04),
         (rng() - 0.5) * 0.5, 0.85, false);
       // camo r8 detailing: repainted-panel modulation (large soft tonal
-      // rects), hard-edged OD touch-up patches, and a real registration
-      // serial — the crafted-paint read, not decals on a flat coat.
+      // rects) and hard-edged OD touch-up patches — the crafted-paint read,
+      // not decals on a flat coat.
       for (let i = 0; i < Math.round(5 * nK); i++) {
         const q = new Path2D();
         q.rect(rng() * S, rng() * S, S * (0.14 + rng() * 0.2), S * (0.1 + rng() * 0.16));
@@ -2544,9 +2531,6 @@ export function createMaterialPainter<C extends MaterialCanvas>(
         q.rect(rng() * S, rng() * S, w2, h2);
         fillWrapped(ctx, S, q, rgb(mix(base, [20, 26, 14], 0.35), 0.55));
       }
-      const serial = `U.S.A. 30${100000 + ((rng() * 899999) | 0)}`;   // registration serial
-      const sx = rng() * S, sy = rng() * S;
-      fillWrapped(ctx, S, glacisPath(serial, sx, sy, { size: Math.round(S * 0.028), baseline: 'middle' }), rgb(white, 0.8));
       // ===================== END CAMO PATTERN SECTION =================
         }
       };
@@ -2554,8 +2538,7 @@ export function createMaterialPainter<C extends MaterialCanvas>(
         if (scheme === 'idband' && patches.length) {
       // ===================== CAMO PATTERN SECTION =====================
       // BERLIN ID BAND (camo r7 loadout set): the white air-recognition band
-      // crossing the 4BO field, plus a big white tactical number stencil.
-      // patches = [white].
+      // crossing the 4BO field. patches = [white].
       const white = patches[0];
       const y0 = S * (0.25 + rng() * 0.5);
       const band = new Path2D();
@@ -2567,9 +2550,6 @@ export function createMaterialPainter<C extends MaterialCanvas>(
       band2.moveTo(x1, -S * 0.1);
       band2.lineTo(x1, S * 1.1);
       strokeWrapped(ctx, S, band2, rgb(white, 0.82), S * 0.035);
-      const num = String(safeHullNumber(100 + ((rng() * 899) | 0)));   // tactical number
-      const nx = S * (0.25 + rng() * 0.5), ny = (y0 + S * 0.55) % S;
-      fillWrapped(ctx, S, glacisPath(num, nx, ny, { size: Math.round(S * 0.17), align: 'center', baseline: 'middle' }), rgb(white, 0.9));
       // camo r8 detailing: the band is field paint, not a sticker — eat its
       // edges with base-tone dabs, add the diagonal assault slash and a
       // Guards star outline.
@@ -2639,11 +2619,10 @@ export function createMaterialPainter<C extends MaterialCanvas>(
         if (scheme === 'usmc' && patches.length) {
       // ===================== CAMO PATTERN SECTION =====================
       // PACIFIC '45 (camo r8): USMC forest green under HARD-EDGED black wave
-      // bands, a white hull number and coral-dust stipple — sharp painted
-      // shapes, not blobs. patches = [black, coral dust, stencil white].
+      // bands and coral-dust stipple — sharp painted shapes, not blobs.
+      // patches = [black, coral dust, stencil white].
       const blk = patches[0];
       const dust = patches[1] || patches[0];
-      const white = patches[2] || '#e3ded1';
       const flow = -0.4 + rng() * 0.25;
       const paintUsmcBands = (): void => {
         for (let i = 0; i < Math.round(5 * nK); i++) {
@@ -2678,12 +2657,6 @@ export function createMaterialPainter<C extends MaterialCanvas>(
         }
       };
       paintUsmcDust();
-      const paintUsmcNumber = (): void => {
-        const num2 = String(safeHullNumber(10 + ((rng() * 89) | 0)));
-        const hx = rng() * S, hy = rng() * S;
-        fillWrapped(ctx, S, glacisPath(num2, hx, hy, { size: Math.round(S * 0.13), align: 'center', baseline: 'middle' }), rgb(white, 0.88));
-      };
-      paintUsmcNumber();
       // ===================== END CAMO PATTERN SECTION =================
         }
       };

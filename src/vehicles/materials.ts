@@ -2000,7 +2000,7 @@ function patternVisual(spec: MaterialTankSpec, patternId: MaterialPatternId): Ma
     o = { scheme: 'star', base: '#57603f', weather: '#4e5738',
       patches: ['#ded8c8'] };
   } else if (patternId === 'berlin45') {
-    // Soviet 4BO with the white air-recognition band + tactical number.
+    // Soviet 4BO with the white air-recognition band.
     o = { scheme: 'idband', base: '#4a5138', weather: '#525a3e',
       patches: ['#e0dccb'] };
   } else if (patternId === 'ardennes44') {
@@ -2011,8 +2011,8 @@ function patternVisual(spec: MaterialTankSpec, patternId: MaterialPatternId): Ma
       patches: ['#4c5539', '#6e6f64'] };
   } else if (patternId === 'pacific45') {
     // camo r8: late-war USMC — forest green under hard-edged black wave
-    // bands, white hull number, coral-dust stipple. patches = [black band,
-    // coral dust, stencil white].
+    // bands, coral-dust stipple. patches = [black band, coral dust, stencil
+    // white].
     o = { scheme: 'usmc', base: '#46543d', weather: '#3e4b36',
       patches: ['#282e26', '#c2ab84', '#e3ded1'] };
   } else if (patternId === 'jungleops') {
