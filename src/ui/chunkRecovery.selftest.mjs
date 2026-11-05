@@ -97,6 +97,30 @@ assert.match(goneBoot.replacedUrl ?? '', /[?&]_bootretry=/,
 assert.match(goneBoot.replacedUrl ?? '', /[?&]_dplreset=1(?:&|$)/,
   'runtime chunk recovery must ask middleware to expire a stale deployment pin');
 
+// (2026-11-02 audit R6, round 2 U35) every removed chunk after the reveal raises the one reload action: app/lazyChunk.ts
+// calls showRetry once per chunk it finds removed (fleet groups, fills, seats, the warm, notices) beside the gone
+// preloads this watchdog sees, and each call appended another fixed #cot-runtime-retry over the last (duplicate ids, a
+// tab stop each)
+{
+  const stacked = [];
+  const stackBoot = createHarness(true, { fetchImpl: async () => ({ status: 404 }) });
+  stackBoot.document.body.appendChild = (element) => stacked.push(element);
+  stackBoot.document.getElementById = (id) => stacked.find((element) => element.id === id) ?? null;
+  for (const chunk of ['techTree-0a1b2c', 'fleetTakes-3d4e5f']) {
+    stackBoot.listeners.get('vite:preloadError')?.({
+      payload: { message: `Failed to fetch dynamically imported module: https://game.test/assets/${chunk}.js` },
+      preventDefault() {},
+    });
+    await new Promise((resolve) => setImmediate(resolve));
+  }
+  stackBoot.window.__COT_BOOT_RECOVERY.showRetry('module');
+  stackBoot.window.__COT_BOOT_RECOVERY.showRetry('module');
+  assert.equal(stacked.length, 1, `two gone preloads and two removed lazy chunks raise one reload action (${stacked.length})`);
+  assert.equal(stacked[0].id, 'cot-runtime-retry');
+  stacked[0].onclick();
+  assert.match(stackBoot.replacedUrl ?? '', /[?&]_bootretry=/, 'the one action still reloads');
+}
+
 // a transient failure after the reveal (the chunk is still served) raises nothing: its opener retries
 const transientAppended = [];
 const transientBoot = createHarness(true, { fetchImpl: async () => ({ status: 200 }) });

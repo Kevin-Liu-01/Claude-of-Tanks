@@ -875,7 +875,9 @@
         surfaceOwned = true;
         const verdict = describe(reason);
         const stage = document.getElementById('cot-boot-stage');
-        let retry = document.getElementById('cot-boot-retry');
+        // after the reveal, the one reload action already raised (2026-11-02 audit R6, round 2 U35: every chunk lazyChunk.ts
+        // found removed, and every gone preload, appended another fixed button over the last)
+        let retry = document.getElementById('cot-boot-retry') || document.getElementById('cot-runtime-retry');
         if (stage) stage.textContent = verdict.text;
         const boot = document.getElementById('cot-boot');
         if (boot) boot.dataset.stop = verdict.kind;
