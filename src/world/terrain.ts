@@ -79,7 +79,7 @@ import { buildOutlandWaterGeometrySteps, resolveSeaOpenings, seaOpeningUniforms,
 import { cinderYardWeedsAt, groundReduxUniformValues, resolveGroundReduxProfile } from './groundRedux.ts';
 import { ROAD_CARRIAGEWAY_GLSL, ROAD_PAVING_GLSL } from './roadSurfaceShader.ts';
 // ground-269 (2026-11-04): the ground-surface table (groundSurfaces.ts) and its laws in the splat (groundSurfaceShader.ts)
-import { GROUND_SURFACE_GLSL } from './groundSurfaceShader.ts';
+import { GROUND_SURFACE_GLSL, GROUND_SURFACE_WORKS_GLSL } from './groundSurfaceShader.ts';
 import { groundSurfaceUniformValues } from './groundSurfaces.ts';
 import { LAND_BAKE_LAYERS, LAND_USE_GLSL, bakeLandUseSteps, landUseAt, landUseTierOf, landUseUniformValues, resolveLandUseProfile, withLevelPaddies, type LandFieldSample, type LandUseProfile } from './landUse.ts';
 import { drawIceCracks } from './iceCracks.ts';
@@ -7770,6 +7770,7 @@ ${ROAD_PAVING_GLSL}
       a.rgb *= 1.0 - gutter * 0.18 * gRoadTex;
     }
   }
+${GROUND_SURFACE_WORKS_GLSL}
   // r4: 0.09 -> 0.16 + a dusty desaturation pull — road shoulders must read
   // as worn verge (tracked dirt spilling off the carriageway), not clean lawn
   // running flush to the wheel ruts (critique: "no decals along road edges")

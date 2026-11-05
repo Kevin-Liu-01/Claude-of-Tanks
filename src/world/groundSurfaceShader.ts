@@ -12,9 +12,11 @@
 // - the close stones (uGsOpen.z / uGsWorn.z 1 stones, 2 grit, 3 debris): one stone per hash cell, each its own shade,
 //   domed, with its contact shadow down-sun; on the worn soil, the sward's thin patches and the town floor;
 // - the town floor (uGsTown.x 4 yard, 5 rubble): the village's worn ground is a yard of trodden earth and gravel with
-//   weeds and damp hollows, or a shelled city's dust over broken brick and masonry, not the woods' leaf litter.
-// Cost: four noise reads for the mosaic, four for the town, and one hash cell per stone layer (no loop, no neighbour
-// search, no texture fetch of a layer). uLandTier sets the phones' share: 0 (Low and the phones' lower tiers) the
+//   weeds and damp hollows, or a shelled city's dust over broken brick and masonry, not the woods' leaf litter;
+// - the works floor (uGsTown.x 6 slag; GROUND_SURFACE_WORKS_GLSL, after the roads): a works' lots, roads and hardstands,
+//   or a rail yard's cinder off its streets, carry ash drifts, rust-stained and oil-damp ground and clinker lumps.
+// Cost: four noise reads for the mosaic, five for the town, two for the works floor, and one hash cell per stone layer
+// (no loop, no neighbour search, no texture fetch of a layer). uLandTier sets the phones' share: 0 (Low and the phones' lower tiers) the
 // mosaic and the town's tones only, 1 adds the stones, 2 the full block.
 export const GROUND_SURFACE_GLSL = /* glsl */`  // ground-269 (groundSurfaceShader.ts): the ground-surface table's laws — the open ground's mosaic, the close stones and
   // the town floor, by class code (groundSurfaces.ts)
@@ -22,7 +24,9 @@ export const GROUND_SURFACE_GLSL = /* glsl */`  // ground-269 (groundSurfaceShad
     // the detail relief's cap (SPLAT_NORMAL_FRAG): the turf's own on the sward, the ground's elsewhere, none on rock
     gGsTilt = uGsNear.x > 0.0 && fR < 0.5 ? mix(uGsNear.y, uGsNear.x, clamp(meadowG, 0.0, 1.0)) : 0.0;
     vec2 gsSun = normalize(uSunDirW.xz + vec2(1e-4));
-    float gsOff = (1.0 - roadCore) * (1.0 - fMs) * (1.0 - projW);
+    // (ab7, Ironworks: the mosaic's straw and soil laid orange flecks and combed straw over the slag the works' turf had
+    // become) a works' floor is no sward and no soil of the table's: its own law draws it (GROUND_SURFACE_WORKS_GLSL)
+    float gsOff = (1.0 - roadCore) * (1.0 - fMs) * (1.0 - projW) * (1.0 - gWorksFloor);
     // the open ground's 1–10 m mosaic (sward, tussock)
     float gsThin = 0.0;
     float gsSwardW = uGsOpen.y * meadowG * (1.0 - fR) * (1.0 - max(gCropW, gSoilW)) * (1.0 - woods) * gsOff
@@ -43,9 +47,14 @@ export const GROUND_SURFACE_GLSL = /* glsl */`  // ground-269 (groundSurfaceShad
       // tint uTintA its hue), its bare earth the map's soil at ~0.10, each grained by the noise alone (the critics' first
       // round on Suzhou Creek: the photo grass's blade strokes carried into the straw read as combed, curved brush strokes
       // across the hill)
-      vec3 strawC = vec3(0.15, 0.13, 0.08) * uTintA / max(reduxLuma(uTintA), 0.3) * (0.88 + 0.24 * gsF);
+      // (ab7, Cliffbridge: on a bright steppe those levels sat under the turf, and its warm dry swaths read as dull grey-olive
+      // smudges) neither state darker than the turf it lies in: the straw a shade paler than the turf's mean, the soil a
+      // shade under it; on a muted turf the levels above
+      float turfL = reduxLuma(uMeanG.rgb * gMeadowTint);
+      vec3 strawC = vec3(0.15, 0.13, 0.08) * uTintA / max(reduxLuma(uTintA), 0.3) * max(1.0, turfL * 1.12 / 0.131)
+        * (0.88 + 0.24 * gsF);
       vec3 soilC = uMeanD.rgb * uSoilTint;
-      soilC *= (0.10 / max(reduxLuma(soilC), 0.02)) * (0.84 + 0.32 * gsF);
+      soilC *= (max(0.10, turfL * 0.92) / max(reduxLuma(soilC), 0.02)) * (0.84 + 0.32 * gsF);
       vec3 gsA = a.rgb;
       gsA = mix(gsA, gsA * vec3(0.80, 0.92, 0.82), lush * 0.85);
       gsA = mix(gsA, strawC, cured * 0.55);
@@ -55,8 +64,12 @@ export const GROUND_SURFACE_GLSL = /* glsl */`  // ground-269 (groundSurfaceShad
     }
     // the town floor: the village's worn ground (the share fD took from the village mask)
     float gsTownW = 0.0;
-    if (uGsTown.x > 0.5) {
+    if (uGsTown.x > 3.5 && uGsTown.x < 5.5) {
       gsTownW = clamp(mk.a * uTownWear * (0.35 + 0.65 * n1), 0.0, 1.0) * keepM * (1.0 - seaSand) * gsOff * (1.0 - fR);
+      // (ab7, Ruinspires: the rubble's weeds were a 3 m field, gone past ~60 m, and the floor laid one grey apron across the
+      // ground before the town — "B is greyish and flat" where the turf had run to the walls) a shelled city's turf
+      // stands through its rubble in 20 m tongues, resolved to the horizon
+      if (uGsTown.x > 4.5) gsTownW *= 1.0 - 0.8 * smoothstep(0.40, 0.56, nz(uvW, 0.047, vec2(0.29, 0.71)).b);
       if (gsTownW > 0.003) {
         vec2 tq = mix(vec2(0.5), nzq(uvW, 0.11, vec2(0.37, 0.83)), tileVis(3.0)); // (eased to the median past resolution)
         float tf = mix(0.5, nzq(uv, 0.31, vec2(0.71, 0.29)).y, tileVis(0.9));
@@ -83,7 +96,8 @@ export const GROUND_SURFACE_GLSL = /* glsl */`  // ground-269 (groundSurfaceShad
           float weeds = smoothstep(0.60, 0.70, tf) * (1.0 - brick) * (1.0 - conc);
           // (round 1: "pale pink ground scattered with white and orange chips like confetti") the drifts a shade off the dust,
           // not painted over it
-          floorC = grey * vec3(1.04, 1.02, 1.0) * (0.90 + 0.20 * tf);
+          // (and its tone in 20 m drifts too, which the far ground keeps when the 9 m and 3 m fields have eased away)
+          floorC = grey * vec3(1.04, 1.02, 1.0) * (0.90 + 0.20 * tf) * (0.90 + 0.22 * n1h);
           floorC = mix(floorC, floorC * vec3(1.18, 0.86, 0.76), brick * 0.45);
           floorC = mix(floorC, floorC * vec3(0.92, 0.93, 0.95), conc * 0.40);
           floorC = mix(floorC, uMeanG.rgb * gMeadowTint, weeds * 0.60);
@@ -138,5 +152,38 @@ export const GROUND_SURFACE_GLSL = /* glsl */`  // ground-269 (groundSurfaceShad
         n.xy += d * disc * 0.45 * gsS;
         a.a = mix(a.a, 0.90, disc * gsS);
       }
+    }
+  }`;
+
+
+/** The works floor (uGsTown.x 6: the slag and cinder classes' town floor), interpolated once in splatCompute() after the
+ * roads, so it lies over a works' lots, roads and hardstands alike (gWorksFloor) and over a rail yard's cinder off its
+ * streets (yardW): Low and the phones' lower tiers draw its tones only. */
+export const GROUND_SURFACE_WORKS_GLSL = /* glsl */`  // ground-269 (groundSurfaceShader.ts): the works floor — a slag or cinder town floor over the lots, roads and hardstands
+  // (ab7, Cinder Junction on the phone: the yard's coal-dust floor "near-black and featureless" beside the brick paths)
+  float wkF = uGsTown.x > 5.5 ? max(gWorksFloor, yardW * (1.0 - roadCore) * keepM) : 0.0;
+  if (wkF > 0.003) {
+    // (ab7, Ironworks: the slag lots, the works roads and the hardstands one black-grey tone from the chase camera to the
+    // horizon — "dark asphalt with only track prints", flat on every view) ash blown into drifts, rust-stained ground,
+    // oil-damp hollows at 4–20 m, each a multiple of the floor's own tone or a pale ash (none under 0.8 of the floor: no
+    // black); the 20 m drifts held to the horizon, the 9 m field eased to its median past resolution
+    vec2 wq = mix(vec2(0.5), nzq(uvW, 0.11, vec2(0.83, 0.47)), tileVis(3.0));
+    float ash = max(smoothstep(0.56, 0.70, wq.x), 0.6 * smoothstep(0.54, 0.72, n1h));
+    float rust = smoothstep(0.55, 0.68, wq.y) * (1.0 - ash);
+    float damp = smoothstep(0.60, 0.72, 1.0 - wq.x) * (1.0 - rust);
+    vec3 wk = mix(a.rgb, mix(vec3(reduxLuma(a.rgb)), vec3(0.170, 0.165, 0.155), 0.75), ash * 0.55);
+    wk = mix(wk, wk * vec3(1.45, 1.08, 0.80), rust * 0.65);
+    wk *= 1.0 - 0.18 * damp;
+    a.rgb = mix(a.rgb, wk, wkF);
+    a.a = mix(a.a, 0.80, damp * wkF);
+    // the clinker: one lump per 0.16 m cell within ~40 m, a shade off the floor, lit on its sun side, domed in the normal
+    float gritW = wkF * uGsTown.z * tileVis(0.16) * (1.0 - smoothstep(20.0, 45.0, camDist)) * step(0.5, uLandTier);
+    if (gritW > 0.003) {
+      vec2 gq = wp.xz / 0.16, gi = floor(gq), gf = gq - gi - 0.5;
+      vec2 gh = cellHash2(gi + vec2(23.0, 71.0));
+      vec2 gd = (gf - (gh - 0.5) * 0.4) / mix(0.22, 0.38, gh.x);
+      float gdisc = (1.0 - smoothstep(0.7, 1.0, length(gd))) * step(gh.y, 0.55);
+      a.rgb *= 1.0 + gdisc * gritW * ((gh.x - 0.5) * 0.60 + 0.20 * dot(normalize(gd + 1e-4), normalize(uSunDirW.xz + vec2(1e-4))));
+      n.xy += gd * gdisc * 0.35 * gritW;
     }
   }`;

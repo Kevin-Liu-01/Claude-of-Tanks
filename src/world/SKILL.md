@@ -35,7 +35,8 @@ props and toppling own their visual/runtime layers; `groundRedux.ts` (THREE-free
 variation, close detail, cover, the sim surface it sits on, the relief cap) and one per map (open, worn, steep, wet
 ground and the town floor); a missing row fails typecheck, `groundSurfaces.selftest.mjs` holds the sim column to the
 world's surface law, and `groundSurfaceShader.ts` draws its laws in the splat by class code (the sward's mosaic, the
-close stones, the town floor, the detail facets' cap toward a low sun); `tools/ground-surface-shots.mjs` films every map
+close stones, the town floor, the detail facets' cap toward a low sun, and after the roads the works floor of a works'
+or a rail yard's slag and cinder); `tools/ground-surface-shots.mjs` films every map
 at the gameplay cameras (chase, near, long, town, readability at 200 m and 600 m, phone) for the table's blind A/B,
 `tallGrass.ts` the instanced blade rings the hulls press flat through `groundPressure.ts` (a world-anchored GPU field,
 null on mobile and in receipts); every terrain chunk vertex carries a `fold` byte (the relief's curvature) and, on the

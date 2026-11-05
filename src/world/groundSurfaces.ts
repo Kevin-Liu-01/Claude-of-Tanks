@@ -34,9 +34,11 @@ export type GroundTextures =
 
 /** The class's 1–12 m mosaic in the material (GROUND_MACRO_CODE). sward: lush clumps, cured patches and thin sward over
  * its soil; tussock: cured tussocks with bare ground between; soil: damp and dry clods, stony patches; yard: trodden
- * earth and gravel with weed patches and damp hollows; rubble: dust, brick and masonry chips; paved, sand, snow, rock:
- * the class's own law elsewhere in the material (no mosaic of this table's); none: nothing. */
-export type GroundMacro = 'sward' | 'tussock' | 'soil' | 'yard' | 'rubble' | 'paved' | 'sand' | 'snow' | 'rock' | 'none';
+ * earth and gravel with weed patches and damp hollows; rubble: dust, brick and masonry chips; slag: a works' or a rail
+ * yard's floor — ash drifts, rust-stained and oil-damp ground, clinker lumps — over its lots, roads and hardstands, or
+ * the yard off its streets; paved, sand, snow,
+ * rock: the class's own law elsewhere in the material (no mosaic of this table's); none: nothing. */
+export type GroundMacro = 'sward' | 'tussock' | 'soil' | 'yard' | 'rubble' | 'slag' | 'paved' | 'sand' | 'snow' | 'rock' | 'none';
 /** The class's close-range detail within ~25 m (GROUND_CLOSE_CODE): stones (pebbles and clods, each its own shade and
  * contact shadow), grit (fine gravel), debris (brick and masonry chips, angular), or the class's own law elsewhere
  * (blades: the turf's 0.37 m octave; joints: a paving's; grain: sand or snow grain; none). */
@@ -76,12 +78,14 @@ export const GROUND_CLASS_IDS = Object.freeze([
 export type GroundClass = (typeof GROUND_CLASS_IDS)[number];
 
 const photo = (set: GroundPhotoSet): GroundTextures => ({ photo: set });
-/** The setts' joints' least tone as a share of their stone's (roadSurfaceShader.ts): sand and grit, never a black grid. */
-const SETTS_JOINT_FLOOR = 0.55;
+/** The setts' joints' least tone as a share of their stone's (roadSurfaceShader.ts): sand and grit, never a black grid.
+ * (ab7, Cliffbridge: at 0.55 the joints washed out and the courses lost their relief — "B's cobbles show stronger relief
+ * and block detail"; 0.42 keeps a joint a clear shade under its stone, the old joints' ~0.38 lifted only off black.) */
+const SETTS_JOINT_FLOOR = 0.42;
 /** The relief's cap by the class's macro law (the share of the direct light a facet may lose): turf soft, soils and yards
  * rougher, rock uncapped. */
 const RELIEF_TILT: Readonly<Record<GroundMacro, number>> = Object.freeze({
-  sward: 0.3, tussock: 0.35, soil: 0.45, yard: 0.4, rubble: 0.5, paved: 0.3, sand: 0.4, snow: 0.4, rock: 0, none: 0.4,
+  sward: 0.3, tussock: 0.35, soil: 0.45, yard: 0.4, rubble: 0.5, slag: 0.45, paved: 0.3, sand: 0.4, snow: 0.4, rock: 0, none: 0.4,
 });
 const painter = (name: string): GroundTextures => ({ painter: name });
 const row = (textures: GroundTextures, macro: GroundMacro, macroStrength: number, close: GroundClose, closeStrength: number,
@@ -108,10 +112,10 @@ export const GROUND_CLASSES: Readonly<Record<GroundClass, GroundClassRow>> = Obj
   forestFloor: row(photo('dirt'), 'soil', 0.5, 'none', 0, 'understorey', 'earth'),
   // Queenstown's stripped hills: conglomerate gravel (the dirt set toned pink and ochre); its tracks print as sand
   gravel: row(photo('dirt'), 'soil', 0.8, 'stones', 1, 'none', 'sand'),
-  // a rail yard's cinder and ash (terrain.ts uYardCinder)
-  cinder: row(painter('terrain.ts yard cinder over the dirt set'), 'none', 0, 'grit', 0.8, 'weeds', 'earth'),
-  // a works' slag, ballast and hardstanding (terrain.ts works floor)
-  slag: row(painter('terrain.ts worksSlag'), 'none', 0, 'grit', 0.6, 'none', 'earth'),
+  // a rail yard's cinder and ash (terrain.ts uYardCinder; its floor law, groundSurfaceShader.ts works floor)
+  cinder: row(painter('terrain.ts yard cinder over the dirt set'), 'slag', 1, 'grit', 0.8, 'weeds', 'earth'),
+  // a works' slag, ballast and hardstanding (terrain.ts worksSlag; its floor law, groundSurfaceShader.ts works floor)
+  slag: row(painter('terrain.ts worksSlag'), 'slag', 1, 'grit', 0.6, 'none', 'earth'),
   // loose sand, its ripples, and the lag of pebbles the wind leaves on it
   sand: row(photo('sand'), 'sand', 0, 'grit', 0.35, 'none', 'sand'),
   // a strand's dry sand above the swash (the shore policy prints it as sand), shells and pebbles in it
@@ -209,7 +213,7 @@ export const MAP_GROUND: Readonly<Record<MapId, MapGroundRow>> = Object.freeze({
 
 /** The material's codes for the table's laws (0 = none: the class's own law elsewhere in the material). */
 export const GROUND_MACRO_CODE: Readonly<Record<GroundMacro, number>> = Object.freeze({
-  none: 0, sward: 1, tussock: 2, soil: 3, yard: 4, rubble: 5, paved: 0, sand: 0, snow: 0, rock: 0,
+  none: 0, sward: 1, tussock: 2, soil: 3, yard: 4, rubble: 5, slag: 6, paved: 0, sand: 0, snow: 0, rock: 0,
 });
 export const GROUND_CLOSE_CODE: Readonly<Record<GroundClose, number>> = Object.freeze({
   none: 0, stones: 1, grit: 2, debris: 3, blades: 0, joints: 0, grain: 0,
@@ -224,8 +228,8 @@ export function mapGround(mapId: string | null | undefined): MapGroundRow {
  * The terrain material's four vectors for a map (one vec4 each, no sampler — the program sits at the 16-unit budget):
  * (the open ground's macro code and strength, its close code and strength), the worn ground's likewise, the town floor's
  * (macro code, close code, close strength, 1 where the map draws a town floor of this table's) and the relief caps (the
- * open ground's cap, the worn ground's, the setts' joints' floor). A town floor whose class has no macro of the table's (cinder,
- * slag, setts, packed sand) keeps the material's own law there.
+ * open ground's cap, the worn ground's, the setts' joints' floor). A town floor whose class has no macro of the table's
+ * (setts, packed sand) keeps the material's own law there.
  */
 export function groundSurfaceUniformValues(mapId: string | null | undefined): {
   open: [number, number, number, number];

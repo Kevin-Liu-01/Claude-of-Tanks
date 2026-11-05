@@ -33,6 +33,7 @@ import { createCaptureLock } from './capture-lock.mjs';
 import { isMainModule, mapProbeLaunchOptions, resolveGroundPose, sleep } from './map-probe-runtime.mjs';
 import { settleMapTextures } from './map-environment-acquisition.mjs';
 import { PINNED_SCENE, configurePinnedScene } from './pinned-scene-acquisition.mjs';
+import { decodePng } from './hud-ammo-frame-ink.mjs';
 import { censusShotView } from './visual-census.mjs';
 import { grassSettled } from './frame-budget-probe.mjs';
 import { MAP_IDS } from '../src/world/maps/mapIds.ts';
@@ -190,12 +191,13 @@ function pageNearPoint({ player, buildings }) {
 /** The readability camera: `range` metres from the hull, on a terrain sight line (3 m over the ground at 200 m, 5 m at
  * 600 m, where a 3 m eye over rolling ground rarely sees a hull's whole height), the first heading in the fan that holds
  * one, starting from the map's centre side. The camera may stand past the square on the ring. */
-function pageSpotPose({ hull, range }) {
+function pageSpotPose({ hull, range, after = -1 }) {
   const hf = window.__DEBUG.world.heightField, h = (x, z) => hf.getHeightAt(Math.max(-511, Math.min(511, x)), Math.max(-511, Math.min(511, z)));
   const base = Math.atan2(-hull.x, -hull.z);
   const ty = h(hull.x, hull.z) + 1.2, eye = range > 300 ? 5 : 3;
-  for (const off of [0, 15, -15, 30, -30, 45, -45, 60, -60, 90, -90, 120, -120, 150, -150, 180]) {
-    const a = base + (off * Math.PI) / 180, cx = hull.x + Math.sin(a) * range, cz = hull.z + Math.cos(a) * range;
+  const fan = [0, 15, -15, 30, -30, 45, -45, 60, -60, 90, -90, 120, -120, 150, -150, 180];
+  for (let index = after + 1; index < fan.length; index++) {
+    const off = fan[index], a = base + (off * Math.PI) / 180, cx = hull.x + Math.sin(a) * range, cz = hull.z + Math.cos(a) * range;
     if (Math.max(Math.abs(cx), Math.abs(cz)) > 505) continue;
     const cy = h(cx, cz) + eye;
     let clear = true;
@@ -210,7 +212,7 @@ function pageSpotPose({ hull, range }) {
       const dir = new V(hull.x - cx, ty - cy, hull.z - cz), len = dir.length();
       const hit = D.world.raycast?.(new V(cx, cy, cz), dir.normalize(), len);
       if (hit && hit.dist < len - 6) continue;
-      return { cam: [cx, cy, cz], at: [hull.x, ty, hull.z], offDeg: off, range };
+      return { cam: [cx, cy, cz], at: [hull.x, ty, hull.z], offDeg: off, range, index };
     }
   }
   return null;
@@ -373,10 +375,76 @@ async function planPoses(page, stage, wanted) {
     } else if ((name === 'spot200' || name === 'spot600') && ally) {
       const range = name === 'spot200' ? 200 : 600;
       const spot = await page.evaluate(pageSpotPose, { hull: ally, range });
-      if (spot) out.push({ name, kind: 'spot', hull: ally, pose: { cam: spot.cam, at: spot.at, fov: 55, resolved: true }, offDeg: spot.offDeg });
+      if (spot) out.push({ name, kind: 'spot', hull: ally, range, index: spot.index, pose: { cam: spot.cam, at: spot.at, fov: 55, resolved: true }, offDeg: spot.offDeg });
     }
   }
   return out;
+}
+
+/** The spot pose's hull seen on pixels: shown and hidden in a window round the frame's centre (±160 px at 200 m, ±70 px
+ * at 600 m), at least 80 / 12 pixels in the blob nearest the centre whose
+ * luminance differs by more than 12/255 (what sways between two bare frames left out); otherwise the fan's next clear heading,
+ * six tried at most (ab7, Steinburg: a wood hid the hull at 600 m, and trees are not in world.raycast). Mutates `pose`. */
+/** Pixels of the shown/hidden difference's 8-connected blob nearest the window's centre (within 12 px + 8 % of the
+ * window): a cloud that drifts between the two frames is a blob of its own, away from the centre (ab7, Ruinspires). */
+function centreBlobPixels(a, b, b2, lum) {
+  const w = a.width, h = a.height, on = new Uint8Array(w * h), seen = new Uint8Array(w * h), sway = new Uint8Array(w * h);
+  // (ab7, Railyard: at 200 m the hull stood behind the crest and the grass's sway between the two frames made a 21 000 px
+  // "hull") what moves between two bare frames, and 2 px round it, is the wind's, not the hull's
+  for (let i = 0; i < w * h; i++) {
+    if (Math.abs(lum(b.data, i * 4) - lum(b2.data, i * 4)) <= 6) continue;
+    const x = i % w, y = (i - x) / w;
+    for (let dy = -2; dy <= 2; dy++) for (let dx = -2; dx <= 2; dx++) {
+      const nx = x + dx, ny = y + dy;
+      if (nx >= 0 && nx < w && ny >= 0 && ny < h) sway[ny * w + nx] = 1;
+    }
+  }
+  for (let i = 0; i < w * h; i++) on[i] = !sway[i] && Math.abs(lum(a.data, i * 4) - lum(b.data, i * 4)) > 12 ? 1 : 0;
+  const reach = 12 + w * 0.08;
+  let best = 0, bestNear = Infinity;
+  for (let start = 0; start < w * h; start++) {
+    if (!on[start] || seen[start]) continue;
+    const stack = [start];
+    seen[start] = 1;
+    let size = 0, near = Infinity;
+    while (stack.length) {
+      const i = stack.pop(), x = i % w, y = (i - x) / w;
+      size++;
+      near = Math.min(near, Math.hypot(x - w / 2, y - h / 2));
+      for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
+        const nx = x + dx, ny = y + dy, j = ny * w + nx;
+        if (nx >= 0 && nx < w && ny >= 0 && ny < h && on[j] && !seen[j]) { seen[j] = 1; stack.push(j); }
+      }
+    }
+    if (near <= reach && (near < bestNear - 6 || (Math.abs(near - bestNear) <= 6 && size > best))) { best = size; bestNear = near; }
+  }
+  return best;
+}
+
+async function visibleSpotPose(page, pose) {
+  const half = pose.range > 300 ? 70 : 160, floor = pose.range > 300 ? 12 : 80;
+  const view = page.viewport() ?? { width: 1920, height: 1080 };
+  const clip = { x: Math.round(view.width / 2) - half, y: Math.round(view.height / 2) - half, width: 2 * half, height: 2 * half };
+  const lum = (d, o) => d[o] * 0.2126 + d[o + 1] * 0.7152 + d[o + 2] * 0.0722;
+  pose.tried = [];
+  for (let tries = 0; tries < 6; tries++) {
+    await page.evaluate(pageVehicles, { keepId: pose.hull.id, show: true });
+    await page.evaluate(externalPoseScript(pose.pose));
+    await sleep(900);
+    const a = decodePng(await page.screenshot({ type: 'png', clip }));
+    await page.evaluate(pageVehicles, { keepId: pose.hull.id, show: false });
+    await sleep(500);
+    const b = decodePng(await page.screenshot({ type: 'png', clip }));
+    await sleep(500);
+    const b2 = decodePng(await page.screenshot({ type: 'png', clip }));
+    const px = centreBlobPixels(a, b, b2, lum);
+    pose.tried.push({ offDeg: pose.offDeg, px });
+    if (px >= floor) return true;
+    const next = await page.evaluate(pageSpotPose, { hull: pose.hull, range: pose.range, after: pose.index });
+    if (!next) return false;
+    Object.assign(pose, { index: next.index, offDeg: next.offDeg, pose: { cam: next.cam, at: next.at, fov: 55, resolved: true } });
+  }
+  return false;
 }
 
 /** Every hull's AI and inputs frozen and the track prints cleared, before a map's poses (page side). */
@@ -407,6 +475,10 @@ async function shootMap(entry, options, frames) {
   const receipt = { player: stage.player, allies: stage.allies.length, poses: {}, preset: null };
   receipt.preset = await page.evaluate(() => window.__DEBUG.quality?.preset ?? window.__DEBUG.preset ?? null).catch(() => null);
   for (const pose of poses) {
+    if (pose.kind === 'spot' && !(await visibleSpotPose(page, pose))) {
+      receipt.poses[pose.name] = { hidden: true, hull: pose.hull, tried: pose.tried };
+      continue;
+    }
     if (pose.kind === 'spot') await page.evaluate(pageVehicles, { keepId: pose.hull.id, show: true });
     const resolved = pose.kind === 'chase'
       ? await page.evaluate(chasePoseScript(stage.player.yaw))
@@ -440,7 +512,7 @@ async function shootMap(entry, options, frames) {
     }
     await page.evaluate(pageSetUniforms, null);
     await page.evaluate(pageHideDecals, []);
-    receipt.poses[pose.name] = { resolved, town: pose.town ?? null, hull: pose.hull ?? null, offDeg: pose.offDeg ?? null, shots };
+    receipt.poses[pose.name] = { resolved, town: pose.town ?? null, hull: pose.hull ?? null, offDeg: pose.offDeg ?? null, tried: pose.tried ?? null, shots };
   }
   receipt.errors = entry.errors.splice(0);
   return receipt;

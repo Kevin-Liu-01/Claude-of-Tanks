@@ -9,7 +9,7 @@ import { readFileSync } from 'node:fs';
 import {
   GROUND_CLASSES, GROUND_CLASS_IDS, GROUND_CLOSE_CODE, GROUND_MACRO_CODE, MAP_GROUND, ROAD_CLASS, groundSurfaceUniformValues,
 } from './groundSurfaces.ts';
-import { GROUND_SURFACE_GLSL } from './groundSurfaceShader.ts';
+import { GROUND_SURFACE_GLSL, GROUND_SURFACE_WORKS_GLSL } from './groundSurfaceShader.ts';
 import { MAP_IDS } from './maps/mapIds.ts';
 import { getMapConfig } from './maps/index.ts';
 import { resolveSourcedTerrainPalette, sourcedTerrainLayerSet } from './sourcedTextures.ts';
@@ -107,29 +107,36 @@ for (const mapId of MAP_IDS) {
 }
 
 // 5. The material's vectors: finite, codes the chunk draws, a town floor only of the table's own laws.
-const MACRO_DRAWN = new Set([0, 1, 2, 3, 4, 5]), CLOSE_DRAWN = new Set([0, 1, 2, 3]);
+const MACRO_DRAWN = new Set([0, 1, 2, 3, 4, 5, 6]), CLOSE_DRAWN = new Set([0, 1, 2, 3]);
 for (const mapId of MAP_IDS) {
   const u = groundSurfaceUniformValues(mapId);
   for (const v of [...u.open, ...u.worn, ...u.town, ...u.near]) assert.ok(Number.isFinite(v), `${mapId}: finite`);
   assert.ok(u.near[0] > 0.2 && u.near[0] <= 0.6 && u.near[1] > 0.2 && u.near[1] <= 0.6, `${mapId}: relief caps ${u.near}`);
-  assert.equal(u.near[2], 0.55, `${mapId}: the setts' joints' floor`);
+  assert.equal(u.near[2], 0.42, `${mapId}: the setts' joints' floor`);
   assert.equal(u.near[3], 1, `${mapId}: the fields' grain and the hardstanding's staggered repairs`);
   assert.ok(MACRO_DRAWN.has(u.open[0]) && CLOSE_DRAWN.has(u.open[2]) && CLOSE_DRAWN.has(u.worn[2]), `${mapId}: drawn codes`);
-  assert.ok(u.town[0] === 0 || u.town[0] === 4 || u.town[0] === 5, `${mapId}: town floor code ${u.town[0]}`);
+  assert.ok([0, 4, 5, 6].includes(u.town[0]), `${mapId}: town floor code ${u.town[0]}`);
 }
 assert.deepEqual(groundSurfaceUniformValues('urban').town, [4, 1, 1, 1], 'Steinburg: a yard with its stones');
 assert.deepEqual(groundSurfaceUniformValues('ruinspires').town, [5, 3, 1, 1], 'Ruinspires: rubble with its debris');
-assert.deepEqual(groundSurfaceUniformValues('railyard').town, [0, 0, 0, 0], 'Cinder Junction keeps its cinder law');
+assert.deepEqual(groundSurfaceUniformValues('railyard').town, [6, 2, 0.8, 1], "Cinder Junction: its cinder under the works floor's drifts");
+assert.deepEqual(groundSurfaceUniformValues('foundry').town, [6, 2, 0.6, 1], 'Ironworks: a works floor of slag with its clinker');
 assert.deepEqual(groundSurfaceUniformValues('no-such-map'), groundSurfaceUniformValues('verdant'), 'an unknown id runs Verdant');
 
 // 6. The chunk: plain GLSL with a branch for each drawn code, interpolated once inside splatCompute() after the cover's
 // patchwork and before the borders; its uniforms declared once; the material sets them.
 assert.ok(!GROUND_SURFACE_GLSL.includes('`') && !GROUND_SURFACE_GLSL.includes('${'), 'plain GLSL');
 assert.ok(!GROUND_SURFACE_GLSL.startsWith('\n') && !GROUND_SURFACE_GLSL.endsWith('\n'), 'whole lines');
-for (const text of ['uGsOpen.x < 2.5', 'step(1.5, uGsOpen.x)', 'uGsTown.x < 4.5', 'kind > 2.5', 'kind > 1.5', 'uLandTier > 0.5'])
+for (const text of ['uGsOpen.x < 2.5', 'step(1.5, uGsOpen.x)', 'uGsTown.x > 3.5 && uGsTown.x < 5.5', 'uGsTown.x < 4.5', 'kind > 2.5',
+  'kind > 1.5', 'uLandTier > 0.5'])
   assert.ok(GROUND_SURFACE_GLSL.includes(text), `the chunk draws ${text}`);
-assert.ok(!/texture2D|textureLod\(u(Alb|Nrm)/.test(GROUND_SURFACE_GLSL), 'no layer fetch: noise reads and hash cells only');
-assert.ok(!/\bfor\s*\(|\bwhile\s*\(/.test(GROUND_SURFACE_GLSL), 'no loop (no per-pixel search)');
+assert.ok(GROUND_SURFACE_WORKS_GLSL.includes('float wkF = uGsTown.x > 5.5 ? max(gWorksFloor, yardW * (1.0 - roadCore) * keepM) : 0.0;'),
+  'the works floor by its code, over a works and a rail yard');
+for (const chunk of [GROUND_SURFACE_GLSL, GROUND_SURFACE_WORKS_GLSL]) {
+  assert.ok(!chunk.includes('`') && !chunk.includes('${'), 'plain GLSL');
+  assert.ok(!/texture2D|textureLod\(u(Alb|Nrm)/.test(chunk), 'no layer fetch: noise reads and hash cells only');
+  assert.ok(!/\bfor\s*\(|\bwhile\s*\(/.test(chunk), 'no loop (no per-pixel search)');
+}
 const raw = readFileSync(new URL('./terrain.ts', import.meta.url), 'utf8');
 const fragAt = raw.indexOf('const SPLAT_COMMON_FRAG = /* glsl */`');
 const computeAt = raw.indexOf('void splatCompute() {', fragAt);
@@ -139,6 +146,11 @@ assert.equal(raw.split('${GROUND_SURFACE_GLSL}').length, 2, 'interpolated exactl
 assert.ok(tokenAt > computeAt && tokenAt < fragEnd && raw[tokenAt - 1] === '\n', 'inside splatCompute(), on its own line');
 assert.ok(tokenAt > raw.indexOf("the cover's own patchwork at 2–8 m", computeAt) && tokenAt < raw.indexOf('the borders themselves', computeAt),
   'after the patchwork, before the borders');
+// the works floor after the roads (its roads and hardstands are its floor too), inside splatCompute(), once
+const worksAt = raw.indexOf('${GROUND_SURFACE_WORKS_GLSL}');
+assert.equal(raw.split('${GROUND_SURFACE_WORKS_GLSL}').length, 2, 'the works floor interpolated exactly once');
+assert.ok(worksAt > raw.indexOf('a.rgb *= 1.0 - gutter * 0.18 * gRoadTex;', computeAt) && worksAt < fragEnd && raw[worksAt - 1] === '\n',
+  'the works floor after the roads, inside splatCompute(), on its own line');
 assert.equal(raw.split('uniform vec4 uGsOpen, uGsWorn, uGsTown;').length, 2, 'the uniforms declared once');
 for (const name of ['uGsOpen', 'uGsWorn', 'uGsTown', 'uGsNear']) assert.ok(raw.includes(`shader.uniforms.${name} = {`), `the material sets ${name}`);
 // the relief cap: set in splatCompute by the chunk, applied in the normal pass before the world normal is composed
