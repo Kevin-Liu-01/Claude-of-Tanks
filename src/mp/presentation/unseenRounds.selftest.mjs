@@ -9,7 +9,11 @@
 //   2. the wire: the list round-trips through both encoders and the apply, and a malformed list is refused;
 //   3. the presentation: an unseen exit goes to the effects as `shell:unseen`, an ended one does not;
 //   4. the effects: a guided round reported unseen keeps its trail and wire through a long absence (the control, absent
-//      with no report, ends past the grace); a held tracer keeps its record; a held drone starts no flight home.
+//      with no report, ends past the grace); a held tracer keeps its record; a held drone starts no flight home;
+//   5. the client half of both wire-11 fields: a real MatchClient over the actor's link presents a round that left its
+//      view as unseen on the first sample without it (RemoteInterpolator.sample, then MatchClient.update), and its
+//      MatchFrame's destroyed falls line up with its destroyed list (none for a list whose falls do not), a delta's
+//      addition with its own fall, a keyframe's whole list with every fall (MatchClient.receiveSnapshot, then update).
 // Run with: node src/mp/presentation/unseenRounds.selftest.mjs
 import assert from 'node:assert/strict';
 import { createRequire } from 'node:module';
@@ -23,6 +27,8 @@ import {
 } from '../wire/index.ts';
 import { encodeSnapshotFrame } from '../wire/codec.ts';
 import { createBattlePresentation } from './index.ts';
+import { MatchClient } from '../match/index.ts';
+import { createLoopbackPair } from '../transport/loopbackTransport.ts';
 import { TRACER_ABSENCE_GRACE_S, createProjectileTracers } from '../../fx/projectileTracers.ts';
 import { createDronePresentation } from '../../fx/dronePresentation.ts';
 import { createFx } from '../../fx/effects.ts';
@@ -254,4 +260,105 @@ await ensureAuthorityFleet();
   assert.ok(!returns.some((entry) => entry.startsWith('held:')), 'the held one starts no flight home');
 }
 
-console.log('unseenRounds.selftest: the actor names a round that left its view in flight for its mark window (never an ended one), the wire carries and refuses the list, the presentation reports unseen exits, and the effects hold them (trail and wire, tracer record, drone airframe) where an unreported absence ends');
+// ---- 5. the client half: a real MatchClient over the actor's link carries both wire-11 fields to its MatchFrame ------
+{
+  let nowMs = 30_000;
+  const actor = createMatchActor({
+    roomId: 'client', mapId: 'verdant', seed: 13, countdownS: 0, world: 'terrain', now: () => nowMs, schedule: () => () => {},
+    seats: [
+      { seat: 0, playerId: 'a1', name: 'A', team: 'alpha', specId: 'm1a1_abrams_hc' },
+      { seat: 1, playerId: 'b1', name: 'B', team: 'bravo', specId: 't90am' },
+    ],
+  });
+  // the authority's rounds as in section 1 (b1's, a1 sees them until one leaves its view)
+  const round = (id) => ({ id, shooterId: 'b1', dead: false, pos: new THREE.Vector3(0, 3, id), vel: new THREE.Vector3(0, 0, 300), spec: { type: 'AP', tracer: 'AP', guided: false } });
+  const rounds = new Map([[7, round(7)], [8, round(8)], [9, round(9)]]);
+  let visibleToA = [7, 8, 9];
+  const observe = actor.authority.observeForViewer.bind(actor.authority);
+  actor.authority.observeForViewer = (viewerId, entitiesOut, shellsOut) => {
+    observe(viewerId, entitiesOut, shellsOut);
+    shellsOut.length = 0;
+    const ids = viewerId === 'a1' ? visibleToA : [...rounds.keys()];
+    for (const id of ids) if (rounds.has(id) && !rounds.get(id).dead) shellsOut.push(rounds.get(id));
+  };
+  // the destroyed list and its falls as authoritativeMatch.snapshotMeta gives them, in felling order; first a list whose
+  // falls do not line up with it (one short)
+  const RAM = 1 << 6, SHELL = 2 << 6;
+  let listed = { revision: 3, indices: [9, 2, 5], falls: [RAM | 10, SHELL | 33] };
+  const snapshotMeta = actor.authority.snapshotMeta.bind(actor.authority);
+  actor.authority.snapshotMeta = (viewerId) => ({ ...snapshotMeta(viewerId), destructibleRevision: listed.revision,
+    destroyedObstacleIndices: listed.indices, destroyedObstacleFalls: listed.falls });
+  // the seat's client over the loopback pair, its server end the actor's link (predictionStructureYield.selftest's bridge)
+  const pair = createLoopbackPair({ clock: () => nowMs, connectDelayMs: 0 });
+  pair.server.open();
+  let messageListener = null, closeListener = null, attached = false;
+  const link = {
+    label: 'a1',
+    get bufferedAmount() { return pair.server.bufferedBytes; },
+    get closed() { return pair.server.state === 'closed'; },
+    send(bytes) { if (!pair.server.send(bytes)) throw new Error('loopback refused'); pair.pump(nowMs); },
+    close(_reason, detail = '') { pair.server.close('server', detail); },
+    onMessage(listener) { messageListener = listener; },
+    onClose(listener) { closeListener = listener; },
+  };
+  pair.server.onFrame((bytes) => {
+    if (attached) { messageListener?.(bytes); return; }
+    const decoded = decodeMessage(bytes);
+    assert.ok(decoded.ok && decoded.message.type === MESSAGE_TYPE.HELLO, 'the seat says hello first');
+    attached = actor.attach(link, decoded.message, { v: 1, roomId: 'client', seat: 0, playerId: 'a1', name: 'a1', team: 'alpha',
+      specId: 'm1a1_abrams_hc', iat: 0, exp: 1 });
+  });
+  pair.server.onState((change) => { if (change.state === 'closed') closeListener?.(); });
+  const controls = () => ({ throttle: 0, steer: 0, brake: true, fire: false, aimLocked: true, aimYaw: 0, aimPitch: 0, aimDistance: 200,
+    shellSlot: 0, actionPresses: 0 });
+  const client = new MatchClient({ transport: pair.client, token: 'issued-elsewhere', clock: () => nowMs,
+    clientBuild: 'unseenRounds.selftest', controls, prediction: null });
+  client.connect();
+  const step = async () => {
+    nowMs += 1000 / 60;
+    actor.advance(nowMs);
+    pair.pump(nowMs);
+    const frame = client.update(nowMs, 1 / 60);
+    pair.pump(nowMs);
+    await new Promise((resolve) => setImmediate(resolve));
+    return frame;
+  };
+  const ids = (frame) => frame.shells.map((shell) => shell.id);
+  let frame = null;
+  for (let guard = 0; guard < 600 && !(frame && ids(frame).length === 3); guard++) frame = await step();
+  assert.ok(attached && client.welcome && frame, 'the seat is welcomed and its client samples frames');
+  assert.deepEqual(ids(frame), [7, 8, 9], 'the client presents the three rounds');
+  assert.deepEqual([...frame.unseenShells], [], 'none is out of view');
+  assert.deepEqual([...frame.destroyed], [2, 5, 9], 'the destroyed list, sorted');
+  assert.deepEqual([...frame.destroyedFalls], [], 'a list whose falls do not line up reaches the MatchFrame with none (never a shifted fall)');
+  // round 7's shooter is hidden from a1 (it flies on); round 8 strikes (dead): the first sample without them
+  visibleToA = [9];
+  rounds.get(8).dead = true;
+  let left = null;
+  for (let guard = 0; guard < 120 && !left; guard++) {
+    const next = await step();
+    if (!ids(next).includes(7)) left = next;
+  }
+  assert.ok(left, 'the round leaves the client\'s view');
+  assert.deepEqual(ids(left), [9], 'both rounds are gone from the same sample');
+  assert.deepEqual([...left.unseenShells], [7], 'on the first sample without it, the MatchFrame names the hidden round out of view, not the ended one');
+  for (let n = 0; n < 90; n++) frame = await step();
+  assert.deepEqual([...frame.unseenShells], [], 'past the mark window it is named no longer');
+  // the falls line up: an addition's fall rides its delta; the client's older indices take theirs from the next keyframe
+  listed = { revision: 4, indices: [9, 2, 5, 4], falls: [RAM | 10, SHELL | 33, RAM | 60, SHELL | 1] };
+  const keyframesBefore = client.stats().keyframes;
+  for (let guard = 0; guard < 30 && frame.destroyed.length !== 4; guard++) frame = await step();
+  assert.deepEqual([...frame.destroyed], [2, 4, 5, 9], 'the addition reaches the client');
+  assert.equal(client.stats().keyframes, keyframesBefore, 'through a delta');
+  assert.deepEqual([...frame.destroyedFalls], [0, SHELL | 1, 0, 0],
+    'the MatchFrame\'s falls line up with its list: the delta\'s addition with its own fall, the indices it held none yet');
+  const truth = [SHELL | 33, SHELL | 1, RAM | 60, RAM | 10];
+  // (a keyframe every KEYFRAME_INTERVAL_TICKS, six seconds: server/match/publisher.ts)
+  for (let guard = 0; guard < 8 * 60 && frame.destroyedFalls.join() !== truth.join(); guard++) frame = await step();
+  assert.deepEqual([...frame.destroyedFalls], truth, 'the next keyframe brings every fall, each with its index');
+  assert.ok(client.stats().keyframes > keyframesBefore, 'through a keyframe');
+  client.dispose();
+  actor.stop();
+}
+
+console.log('unseenRounds.selftest: the actor names a round that left its view in flight for its mark window (never an ended one), the wire carries and refuses the list, the presentation reports unseen exits, and the effects hold them (trail and wire, tracer record, drone airframe) where an unreported absence ends, and a real MatchClient carries the unseen rounds and the destroyed falls to its MatchFrame');

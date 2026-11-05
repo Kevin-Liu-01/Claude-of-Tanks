@@ -206,6 +206,19 @@ assert.equal(monotoneHermite(3, 5, 3, -5, 0.4, 1), 3, 'a flat segment stays flat
   assert.ok(sample.meta.battleTimeMs > 0 && sample.meta.battleTimeMs < Math.round(2 * 1000 / 60), 'the battle clock interpolates');
   assert.equal(sample.meta.phase, PHASE.PLAYING);
   assert.equal(interp.push(frame(1, [row(1)]), 5, 50), false, 'an older tick is refused');
+  assert.deepEqual(sample.unseenShells, [], 'no round left the view: none named');
+  // wire 11 (round 2, U31): the sample names the rounds its newer frame names as out of view, the frame whose shell list
+  // the sample presents (a round gone from it on this sample is named on this sample)
+  interp.push(frame(4, [row(1, { y: 1000 }), row(2, { y: 1000, flags: ENTITY_FLAGS.AIRBORNE })], { shells: [], unseenShells: [7] }),
+    2 * INTERVAL, 2 * INTERVAL + 40);
+  interp.push(frame(6, [row(1, { y: 1000 }), row(2, { y: 1000, flags: ENTITY_FLAGS.AIRBORNE })], { shells: [] }), 3 * INTERVAL, 3 * INTERVAL + 40);
+  const left = interp.sample(3.5 * INTERVAL); // renders between the frames at INTERVAL and 2 * INTERVAL (two of delay)
+  assert.equal(left.tick, 4, 'the sample\'s newer frame is the first without the round');
+  assert.equal(left.shells.length, 0, 'the round is gone from the sample');
+  assert.deepEqual(left.unseenShells, [7], 'and the sample names it out of view: the newer frame\'s list');
+  const after = interp.sample(4.5 * INTERVAL);
+  assert.equal(after.tick, 6);
+  assert.deepEqual(after.unseenShells, [], 'a newer frame that names none: none');
   interp.clear();
   assert.equal(interp.sample(0), null, 'cleared: nothing to sample');
   assert.equal(interp.bufferedFrames, 0);
