@@ -11,7 +11,7 @@
 // per map (a new one each build, so nothing carries between maps or builds) and offers it here with the building's world
 // position; a pick that a neighbour already has is stepped to the next free one, dress axes first, then the roof, the
 // render, the roof's age and the stone. Without a ledger (a receipt's bare build, a set piece) the first pick stands.
-import type { Rgb } from './geometry.ts';
+import { rgb, type Rgb } from './geometry.ts';
 import type { WeatherPalette, WeatherTints } from './weather.ts';
 
 /** What a map's buildings vary in (its row of the building-style table). */
@@ -87,4 +87,20 @@ export function pickLook(palette: WeatherPalette, variation: BuildingVariation |
   const [a0, a1] = v.roofAge;
   const roofAge = a0 + (a1 - a0) * ((tuple[n + 2] + ageFrac) / AGE_STEPS);
   return { tints: { plaster, plaster2: plaster, plaster3: plaster, stone, roof, roofAge }, dress, key: tuple.join('.') };
+}
+
+/**
+ * The paint of the building's doors and shutters (the shared `paint` axis: a row lists its place's paints as hex, e.g.
+ * '#2e6aa8'): openings.ts doorUnit and windowUnit take it over their kit's colour while the building builds. The slot is
+ * set round one synchronous builder call (regional/index.ts), so it never reaches another building.
+ */
+let paintSlot: Rgb | null = null;
+export function withPaint<T>(paint: string | undefined, build: () => T): T {
+  const prior = paintSlot;
+  paintSlot = paint && /^#[0-9a-f]{6}$/.test(paint) ? rgb(parseInt(paint.slice(1), 16)) : null;
+  try { return build(); } finally { paintSlot = prior; }
+}
+/** The building's door and shutter paint, or null (the kit's own). */
+export function paintOverride(): Rgb | null {
+  return paintSlot;
 }

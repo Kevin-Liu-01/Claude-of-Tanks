@@ -6,7 +6,7 @@
 //      inside the row's ranges and its commonest roof form among the row's forms;
 //   4. every row carries photographs (a Commons file page or another sourced page with author and license), at least two
 //      for a terrestrial place;
-//   5. the weathering and wear the row sets are shares (0–1) and its colours are hex.
+//   5. the weathering and wear the row sets are shares (0–1), its colours are hex, and its variation offers choices.
 // `node tools/building-style-reading.mjs --json=src/world/buildingStyleReading.baseline.json` refreshes the reading after
 // a kit's houses change.
 import assert from 'node:assert/strict';
@@ -33,6 +33,12 @@ for (const id of MAP_IDS) {
   for (const v of [row.weathering.damp, row.weathering.moss, row.damage.wear]) assert.ok(v >= 0 && v <= 1, `${id}: shares in 0–1`);
   for (const c of [...row.roof.colours, ...row.facade.colours]) assert.match(c, /^#[0-9a-f]{6}$/, `${id}: hex colour ${c}`);
   assert.ok(row.storeys[0] <= row.storeys[1] && row.storeyM[0] <= row.storeyM[1], `${id}: ranges ordered`);
+  // the variation: each axis offers a choice, a paint is a hex colour, the roofs' age spread lies in 0–1
+  for (const [axis, options] of Object.entries(row.variation.axes)) {
+    assert.ok(options.length >= 2 && new Set(options).size === options.length, `${id}: the ${axis} axis offers distinct options`);
+    if (axis === 'paint') for (const c of options) assert.match(c, /^#[0-9a-f]{6}$/, `${id}: paint ${c} is hex`);
+  }
+  assert.ok(row.variation.roofAge[0] >= 0 && row.variation.roofAge[0] < row.variation.roofAge[1] && row.variation.roofAge[1] <= 1, `${id}: roof age spread`);
   // 3
   const r = reading[row.kit];
   assert.ok(r, `${id}: ${row.kit} has a reading`);

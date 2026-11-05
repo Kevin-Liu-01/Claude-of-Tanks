@@ -91,7 +91,7 @@ export const BUILDING_STYLES = {
     ornament: 'white lime bands round the cell doors, hoisting beams, steep stair ramps up the stacks',
     weathering: { damp: 0.25, moss: 0.05, note: 'render worn back to the rubble at the foot and the vault crowns; no green' },
     damage: { wear: 0.15, dress: 'collapsed vaults and cells, render sheets fallen' },
-    variation: { axes: {}, roofAge: [0, 1] },
+    variation: { axes: { paint: ['#2e5f9e', '#3a7ab0', '#4e7a5a'] }, roofAge: [0, 1] },
     references: [
       { url: 'https://commons.wikimedia.org/wiki/File:Ksar_Ouled_Soltane_01.jpg', author: 'Ian Sewell', license: 'CC BY 2.5',
         shows: 'Ksar Ouled Soltane: ghorfa cells stacked 3-4 high with barrel-vaulted (rounded) tops, ochre mud-lime render, cantilevered stone/clay stairs up the faces, small plank doors, palm-trunk beams projecting as hoist poles' },
@@ -133,7 +133,7 @@ export const BUILDING_STYLES = {
     ornament: 'stone window dressings, string courses, oriels, corner Madonnas, ridge turrets',
     weathering: { damp: 0.5, moss: 0.4, note: 'soot over the openings, damp at the plinths' },
     damage: { wear: 0.25, dress: 'burnt-out upper storeys, roofs stripped to the battens, shell scars' },
-    variation: { axes: {}, roofAge: [0, 1] },
+    variation: { axes: { paint: ['#7c8a74', '#e8e4da', '#5a3a2a'] }, roofAge: [0, 1] },
     references: [
       { url: 'https://commons.wikimedia.org/wiki/File:Kronach,_Melchior-Otto-Platz_12,_002.jpg', author: 'Tilman2007', license: 'CC BY-SA 3.0',
         shows: 'Kronach, Melchior-Otto-Platz: ashlar sandstone house (buff-grey) beside a two-storey Fachwerk house with ox-blood red timbers on white infill, jettied upper floor bridging a gate, steep (~55 deg) gable roofs in red plain (beaver-tail) tile, cobbles' },
@@ -154,7 +154,7 @@ export const BUILDING_STYLES = {
     ornament: 'coped gable parapets with kneelers, granite chimney stacks',
     weathering: { damp: 0.95, moss: 0.8, note: 'orange-yellow lichen on slate and granite, green streaks under the sills' },
     damage: { wear: 0.25, dress: 'burnt and boarded windows, slates blown off' },
-    variation: { axes: {}, roofAge: [0, 1] },
+    variation: { axes: { paint: ['#2e5a8a', '#3f6a4a', '#8c2a3a', '#e8e6e0'] }, roofAge: [0, 1] },
     references: [
       { url: 'https://commons.wikimedia.org/wiki/File:Quelques_maisons_du_village_et_des_habitants_-_A20256S.jpg', author: 'Chevalier Georges', license: 'CC BY-SA 4.0',
         shows: 'Saint-Guénolé (Penmarch), 1929 autochrome: low granite-rubble longères, one under thatch, others under grey slate at ~45 deg, massive granite gable-end chimney stacks, small openings, dry-stone field walls' },
@@ -175,7 +175,7 @@ export const BUILDING_STYLES = {
     ornament: 'stone door and window surrounds, gable chimneys',
     weathering: { damp: 0.75, moss: 0.45, note: 'green-grey render bases, lichen on the tiles' },
     damage: { wear: 0.3, dress: 'burnt and boarded windows, tiles blown off' },
-    variation: { axes: {}, roofAge: [0, 1] },
+    variation: { axes: { paint: ['#7a8a8a', '#4e6a52', '#6a4a32'] }, roofAge: [0, 1] },
     references: [
       { url: 'https://commons.wikimedia.org/wiki/File:Dornot6.jpg', author: 'Unknown author (U.S. Army photograph)', license: 'Public domain',
         shows: 'Dornot, 8 Sept 1944: US infantry descending the village street to the Moselle crossing; continuous row of two-storey rendered houses, low-pitched tile roofs, gable chimneys, plain flat facades, side hills behind' },
@@ -196,7 +196,7 @@ export const BUILDING_STYLES = {
     ornament: 'painted window surrounds, a fretwork gable',
     weathering: { damp: 0.4, moss: 0.15, note: 'dust at the foot, sun-bleached sheet' },
     damage: { wear: 0.25, dress: 'burnt and boarded windows' },
-    variation: { axes: {}, roofAge: [0, 1] },
+    variation: { axes: { paint: ['#3f6fa8', '#4e7a5a', '#a8b8c8'] }, roofAge: [0, 1] },
     references: [
       { url: 'https://commons.wikimedia.org/wiki/File:%D0%A1%D1%82%D0%B0%D1%80%D0%BE%D0%B5_%D1%82%D0%B5%D1%85_%D0%B7%D0%B4%D0%B0%D0%BD%D0%B8%D0%B5_%D0%BD%D0%B0_%D0%B2%D1%8A%D0%B5%D0%B7%D0%B4%D0%B5_%D0%B2_%D1%81%D0%B5%D0%BB%D0%BE.jpg', author: 'Ivan ideia', license: 'CC BY-SA 4.0',
         shows: 'Taldy (Karaganda region): abandoned Soviet timber-clad grain elevator/silo house raised on steel legs over concrete pits, gabled corrugated asbestos-cement roofs, grey weathered boards; flat steppe horizon' },
@@ -238,7 +238,7 @@ export const BUILDING_STYLES = {
     ornament: 'carved corner posts, braces in Mann figures',
     weathering: { damp: 0.85, moss: 0.55, note: 'moss on the north slopes, damp in the sandstone' },
     damage: { wear: 0.22, dress: 'burnt and boarded windows' },
-    variation: { axes: {}, roofAge: [0.1, 1] },
+    variation: { axes: { paint: ['#4e6a52', '#6a4a32', '#8a8a86'] }, roofAge: [0.1, 1] },
     references: [
       { url: 'https://commons.wikimedia.org/wiki/File:Fachwerkhaus_Lietring_1_H%C3%BCnfeld-N%C3%BCst.jpg', author: 'Stargate22', license: 'CC0',
         shows: 'Hünfeld-Nüst, early-19th-c. farmhouse: two-storey Fachwerk with dark timbers on white infill, weather-side gable fully clad in dark brown shingle/fibre-cement slates, steep (~50 deg) red-tile roof, red Buntsandstein ashlar plinth, white-framed windows' },
@@ -259,7 +259,7 @@ export const BUILDING_STYLES = {
     ornament: 'white corner boards and window trims, carved barge boards',
     weathering: { damp: 0.7, moss: 0.45, note: 'paint weathered back on the sea side' },
     damage: { wear: 0.3, dress: 'burnt and boarded windows' },
-    variation: { axes: {}, roofAge: [0, 1] },
+    variation: { axes: { paint: ['#2e4a3a', '#7a2a22', '#e8e4da'] }, roofAge: [0, 1] },
     references: [
       { url: 'https://commons.wikimedia.org/wiki/File:Narvik_as_it_appeared_in_June_1940_after_bombardment.jpg', author: 'Franz Hollerweger / Kepplinger (via Arkivverket)', license: 'CC BY-SA 2.0',
         shows: 'Narvik, June 1940 after bombardment: burned-out timber town where only brick chimney stacks and masonry stair cores stand; surviving two-storey board houses with gable roofs on the slope behind' },
@@ -280,7 +280,7 @@ export const BUILDING_STYLES = {
     ornament: 'painted tin, the mosque\'s domes and minarets',
     weathering: { damp: 0.8, moss: 0.5, note: 'rust down the sheet, mud splash on the plinths' },
     damage: { wear: 0.2, dress: 'burnt and boarded openings' },
-    variation: { axes: {}, roofAge: [0, 1] },
+    variation: { axes: { paint: ['#3c6a3e', '#3a6a9a', '#8a5a3a'] }, roofAge: [0, 1] },
     references: [
       { url: 'https://commons.wikimedia.org/wiki/File:Village_shop_in_char_of_Sirajganj,_Bangladesh_10.jpg', author: 'Afifa Afrin', license: 'CC BY-SA 3.0',
         shows: 'village shop on a Sirajganj char: single-storey corrugated-iron box, CI walls in vertical sheets on timber/bamboo frame, shallow hipped CI roof with lean-to awning, raised earth-and-concrete plinth with steps, painted sign board' },
@@ -322,7 +322,7 @@ export const BUILDING_STYLES = {
     ornament: 'carved house horns and posts on the Angami houses, veranda fretwork',
     weathering: { damp: 0.8, moss: 0.5, note: 'monsoon green on everything, rust on the tin' },
     damage: { wear: 0.2, dress: 'shell-stripped roofs, burnt bungalows (the Tennis Court battle)' },
-    variation: { axes: {}, roofAge: [0, 1] },
+    variation: { axes: { paint: ['#4e6a48', '#7b2e2a', '#e8e4da'] }, roofAge: [0, 1] },
     references: [
       { url: 'https://commons.wikimedia.org/wiki/File:Streetscape_of_Khonoma_(2024).jpg', author: 'Ly.n0m', license: 'CC BY-SA 4.0',
         shows: 'Khonoma (Angami village near Kohima): stone-paved lane between dry-stone terrace walls, two-storey timber-plank houses with dark-stained board walls and glazed upper windows, corrugated-iron roofs (gable, ~30 deg), CI sheet walls on outbuildings' },
@@ -343,7 +343,7 @@ export const BUILDING_STYLES = {
     ornament: 'larch balconies, the chapel\'s bell-cote',
     weathering: { damp: 0.95, moss: 0.5, note: 'lichen on the lauzes, snow damp' },
     damage: { wear: 0.3, dress: 'burnt and boarded windows' },
-    variation: { axes: {}, roofAge: [0, 1] },
+    variation: { axes: { paint: ['#5a3e2a', '#3f5a4a', '#6a5a4a'] }, roofAge: [0, 1] },
     references: [
       { url: 'https://commons.wikimedia.org/wiki/File:Eglise_et_maison_particuli%C3%A8re_%C3%A0_Av%C3%A9rolle_(Altitude_2000_m)._N%C2%B0_647._-_Messines_-_btv1b10687351v.jpg', author: 'Jean Messines (RTM forestry service), via BnF Gallica', license: 'Public domain',
         shows: 'Avérolle (Bessans), 3 Sept 1929: chapel and a house at 2000 m, thick rubble walls partly limewashed, low-pitch (~25-30 deg) roofs of large stone lauzes, small deep-set openings, timber upper gable, rubble field walls' },
@@ -448,7 +448,7 @@ export const BUILDING_STYLES = {
     ornament: 'painted signs, the porch posts',
     weathering: { damp: 0.4, moss: 0.03, note: 'red dust at the foot' },
     damage: { wear: 0.15, dress: 'abandoned and fallen-in hogans' },
-    variation: { axes: {}, roofAge: [0, 1] },
+    variation: { axes: { paint: ['#3a6a9a', '#8a5a3a', '#5a7a5a'] }, roofAge: [0, 1] },
     references: [
       { url: 'https://commons.wikimedia.org/wiki/File:Oljato_Trading_Post_ruins,_January_2019.jpg', author: 'Steven Baltakatei Sandoval', license: 'CC BY-SA 4.0',
         shows: 'Oljato Trading Post (1921) ruins, Jan 2019: long single-storey building of red sandstone rubble and adobe with low-pitch/flat roof, timber porch, plank and sheet outbuildings under cottonwoods; red sand and mesa' },
@@ -469,7 +469,7 @@ export const BUILDING_STYLES = {
     ornament: 'motel signs, Bureau of Reclamation lettering',
     weathering: { damp: 0.2, moss: 0.02, note: 'runoff stains on the concrete, red dust' },
     damage: { wear: 0.18, dress: 'blown windows, shell scars on the concrete' },
-    variation: { axes: {}, roofAge: [0, 1] },
+    variation: { axes: { paint: ['#e8e4da', '#8a3a2a', '#3a5a6a'] }, roofAge: [0, 1] },
     references: [
       { url: 'https://commons.wikimedia.org/wiki/File:Glen_Canyon_Dam_1962.jpg', author: 'U.S. Bureau of Reclamation', license: 'Public domain',
         shows: 'Glen Canyon Dam under construction, 1962 (aerial): rising concrete arch in vertical block columns, cableway towers, Glen Canyon steel arch bridge across the gorge, batch plant and haul roads cut into red Navajo sandstone' },
@@ -490,7 +490,7 @@ export const BUILDING_STYLES = {
     ornament: 'white window frames, decorative anchor plates, gable vlechtingen',
     weathering: { damp: 0.8, moss: 0.5, note: 'green damp at the foot, lichen on the tiles' },
     damage: { wear: 0.2, dress: 'burnt and boarded windows, flooding marks' },
-    variation: { axes: {}, roofAge: [0, 1] },
+    variation: { axes: { paint: ['#2e5a3a', '#e8e6e0', '#3a3a3a'] }, roofAge: [0, 1] },
     references: [
       { url: 'https://commons.wikimedia.org/wiki/File:Rijksmonument_407208_Kwistenburg_Kwadendamme.JPG', author: 'M.Phernambucq', license: 'CC BY-SA 3.0',
         shows: 'Hoeve Kwistenburg, Kwadendamme (Zuid-Beveland): Zeeuwse schuur with black-tarred vertical boarded walls under a huge hipped reed-thatch roof (~50 deg) on a low brick plinth, red-brick farmhouse gable behind, small red-brick outbuilding under orange-red pantiles with white-trimmed openings' },
@@ -511,7 +511,7 @@ export const BUILDING_STYLES = {
     ornament: 'veranda lace, painted signs',
     weathering: { damp: 0.6, moss: 0.3, note: 'acid-bleached country, rust' },
     damage: { wear: 0.25, dress: 'derelict works' },
-    variation: { axes: {}, roofAge: [0, 1] },
+    variation: { axes: { paint: ['#8a2a22', '#2e4a3a', '#e8e4da'] }, roofAge: [0, 1] },
     references: [
       { url: 'https://commons.wikimedia.org/wiki/File:Sticht_Street_Queenstown,_Tasmania_from_Spion_Kop_in_1970s.jpg', author: 'JarrahTree', license: 'CC BY 2.5 au',
         shows: 'Sticht Street from Spion Kop, 1970s: hillside of single- and two-storey weatherboard houses, hipped and gable corrugated-iron roofs painted red, maroon and green, white-painted boards, brick chimneys, Federation-era civic building with parapet; denuded hills behind' },
@@ -532,7 +532,7 @@ export const BUILDING_STYLES = {
     ornament: 'mosaic panels, Antonov lettering on the hangar',
     weathering: { damp: 0.55, moss: 0.25, note: 'runoff stains on the panels' },
     damage: { wear: 0.45, dress: 'burnt hangars, shell holes, blown windows' },
-    variation: { axes: {}, roofAge: [0, 1] },
+    variation: { axes: { paint: ['#3f6fa8', '#4e7a5a', '#8a3a2a'] }, roofAge: [0, 1] },
     references: [
       { url: 'https://commons.wikimedia.org/wiki/File:Antonov_Airport_after_Russian_invasion_of_Ukraine_and_Mriya.jpg', author: 'Oleksandr Ratushniak', license: 'CC BY-SA 4.0',
         shows: 'Antonov hangar after the battle, April 2022: huge segmental-arch steel hangar with ribbed corrugated cladding, roof shredded to the frame, wrecked An-225 inside; concrete apron with debris' },
@@ -595,7 +595,7 @@ export const BUILDING_STYLES = {
     ornament: 'the triple arch, marble colonnettes, ablaq bands',
     weathering: { damp: 0.45, moss: 0.25, note: 'dark stains under the sills, lichen' },
     damage: { wear: 0.3, dress: 'shell scars, burnt houses' },
-    variation: { axes: {}, roofAge: [0, 1] },
+    variation: { axes: { paint: ['#3f6a4a', '#4c5a6a', '#6a4a32'] }, roofAge: [0, 1] },
     references: [
       { url: 'https://commons.wikimedia.org/wiki/File:Deir_El-Qamar_02.jpg', author: 'Patrice Bon', license: 'CC0',
         shows: 'Deir el Qamar square: two-storey cream-sandstone house with low hipped roof in orange-red Marseille tile, upper floor with four round-arched windows with blue-painted fanlights, arched ground-floor openings, vaulted arcades and terraced ashlar walls; more hipped-roof houses and arched loggias up the pine-clad hill' },
@@ -616,7 +616,7 @@ export const BUILDING_STYLES = {
     ornament: 'porch posts and rails',
     weathering: { damp: 0.65, moss: 0.35, note: 'humid rot and rust' },
     damage: { wear: 0.3, dress: 'burnt and boarded windows' },
-    variation: { axes: {}, roofAge: [0, 1] },
+    variation: { axes: { paint: ['#e8e4da', '#3a4a3a', '#6a4a32'] }, roofAge: [0, 1] },
     references: [
       { url: 'https://commons.wikimedia.org/wiki/File:Dogtrot_house,_Dubach,_LA_IMG_2552.JPG', author: 'Billy Hathorn', license: 'CC BY-SA 3.0',
         shows: 'dogtrot house, Dubach (north Louisiana): two pens under one broad side-gable roof (~30 deg) of rusted corrugated/5-V crimp tin, open central breezeway, full-width front porch on square posts with plain railing, brick end chimneys, raised on piers with board steps; unpainted/white-washed boards' },
@@ -637,7 +637,7 @@ export const BUILDING_STYLES = {
     ornament: 'ancestral altar and its incense, painted door boards',
     weathering: { damp: 0.8, moss: 0.5, note: 'water marks and mould on the stilts' },
     damage: { wear: 0.2, dress: 'burnt houses' },
-    variation: { axes: {}, roofAge: [0, 1] },
+    variation: { axes: { paint: ['#3a6a9a', '#8a2a22', '#3c6a3e'] }, roofAge: [0, 1] },
     references: [
       { url: 'https://commons.wikimedia.org/wiki/File:PCF_fire_hits_a_VC_village_on_the_Ca_Mau_peninsula.jpg', author: 'PHC A.R. Hill, U.S. Navy', license: 'Public domain',
         shows: 'Cà Mau peninsula village, April 1969: low hut with steep nipa-palm thatch roof hanging close to the ground, walls of palm-leaf panels, bamboo/stick fences and posts, smoke; cleared mangrove stumps behind' },
@@ -658,7 +658,7 @@ export const BUILDING_STYLES = {
     ornament: 'stone window frames, the bell-cote',
     weathering: { damp: 0.45, moss: 0.25, note: 'salt and lichen' },
     damage: { wear: 0.3, dress: 'abandoned and roofless houses' },
-    variation: { axes: {}, roofAge: [0, 1] },
+    variation: { axes: { paint: ['#3f6a4a', '#5a7a6a', '#7a5a3a'] }, roofAge: [0, 1] },
     references: [
       { url: 'https://commons.wikimedia.org/wiki/File:Li%C5%A1njak.jpg', author: 'Vurlan', license: 'CC BY-SA 4.0',
         shows: 'Lišnjak (Dalmatian hamlet): two-storey rough-coursed limestone houses with gable roofs ~30 deg in red-orange canal (kupa kanalica) tiles, partly collapsed, dry-stone walls and stone stair, small square openings, plank doors' },
@@ -679,7 +679,7 @@ export const BUILDING_STYLES = {
     ornament: 'black frame, white infill, slate-hung gables',
     weathering: { damp: 0.8, moss: 0.5, note: 'moss and damp, the Eifel rain' },
     damage: { wear: 0.2, dress: 'burnt and boarded windows' },
-    variation: { axes: {}, roofAge: [0, 1] },
+    variation: { axes: { paint: ['#3a5a40', '#6a2a22', '#8a8a86'] }, roofAge: [0, 1] },
     references: [
       { url: 'https://commons.wikimedia.org/wiki/File:Monschau,_Rur_--_2021_--_184134.jpg', author: 'Dietmar Rabich', license: 'CC BY-SA 4.0',
         shows: 'Monschau on the Rur: dark greywacke rubble mill walls along the river, 3-4 storey town houses in black-and-white Fachwerk and slate-hung facades, steep slate roofs with dormers, wooded valley slopes' },

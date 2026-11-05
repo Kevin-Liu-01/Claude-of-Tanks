@@ -22,7 +22,7 @@ import { registerLatticeFrameKit } from './latticeFall.ts';
 import { setKitPlanReader } from '../../destructionKit.ts';
 import { preloadEveryKit } from '../../kitRegistryNode.ts';
 import { climateOf, variationOf, wearOf } from '../buildingStyleTable.ts';
-import { pickLook, type AppearanceLedger } from './appearance.ts';
+import { pickLook, withPaint, type AppearanceLedger } from './appearance.ts';
 import type { ArchitectureStyle, BaseBounds, RegionalBuildContext, RegionalBuilder, RegionalGround } from './types.ts';
 
 export type { ArchitectureStyle } from './types.ts';
@@ -247,7 +247,7 @@ function* buildRegionalPartsSteps(
     const a = ctx.sunAzimuthDeg * Math.PI / 180, wx = Math.sin(a), wz = Math.cos(a), yaw = ctx.yaw ?? 0, c = Math.cos(yaw), s = Math.sin(yaw);
     return [wx * c - wz * s, wx * s + wz * c] as const;
   })() : null;
-  const [[[built, houses], ruinWalls], lattices] = withLattices(() => withRuinWalls(() => withHousePlans(() => withWear(wear, () => builder({ ...ctx, dress: look.dress })))));
+  const [[[built, houses], ruinWalls], lattices] = withLattices(() => withRuinWalls(() => withHousePlans(() => withWear(wear, () => withPaint(look.dress.paint, () => builder({ ...ctx, dress: look.dress }))))));
   yield REGIONAL_SLICE;
   // (the map-revival lane, 2026-10-07: a kit that folds its third plaster paint into its second's bucket,
   // ArchitectureStyle.foldThirdPlaster, by the colour of its own two paints)
