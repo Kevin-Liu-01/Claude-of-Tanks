@@ -20,6 +20,8 @@ import type {
 import { endingHoldExpired, matchRulesetFor, terrainVariantFor, type MatchRuleset } from '../../src/sim/matchRuleset.ts';
 import { normalizeGameMode, type GameModeId } from '../../src/sim/matchModes.ts';
 import { SIM_DT } from '../../src/sim/movement.ts';
+import { setHullGrounded } from '../../src/sim/hullBodyMode.ts';
+import { reseatAuthorityBody } from '../../src/mp/match/prediction.ts';
 import { createDedicatedWorldCollision } from '../dedicatedWorldCollision.ts';
 import type { WorldKernelModule } from '../../src/world/wasmWorldKernels.ts';
 import {
@@ -235,6 +237,35 @@ export interface ActorClientStats {
  * the LAN host's status, which fell back to 'unknown').
  */
 export type MatchActorPhase = 'loading' | 'countdown' | 'playing' | 'ending' | 'ended' | 'stopped';
+
+const battleClockScreens = new WeakMap<object, { offsetS: number; screen: Record<string, unknown> }>();
+/** A smoke screen with its launch time on the battle clock (one copy per screen and offset: the frames reuse it). */
+function smokeOnBattleClock(screen: unknown, offsetS: number): unknown {
+  if (!screen || typeof screen !== 'object' || typeof (screen as { born?: unknown }).born !== 'number') return screen;
+  const cached = battleClockScreens.get(screen);
+  if (cached && cached.offsetS === offsetS) return cached.screen;
+  const shifted = { ...(screen as Record<string, unknown>), born: Math.round(((screen as { born: number }).born + offsetS) * 1000) / 1000 };
+  battleClockScreens.set(screen, { offsetS, screen: shifted });
+  return shifted;
+}
+
+/**
+ * An authority meta on the battle clock the clients read (a resumed actor's: the authority's own clock plus what the old
+ * hosts had played, `resumedBattleTimeMs`): its battleTimeMs and every smoke screen's launch time (round 2 U2). A client
+ * ages a network screen by its battle clock (battlePresentation.ts game.timeS, auxiliaryPresentation.ts), so on a
+ * resumed host every screen read as launched `resumedBattleTimeMs` ago: past SMOKE_DURATION_S, it was never drawn. The
+ * migration keyframe's meta goes through it too (matchHostCore.ts buildKeyframe), so a resume reads every screen on one
+ * clock (migrationState.ts applyResumeState).
+ */
+export function metaOnBattleClock(meta: Record<string, unknown> | null, resumedBattleTimeMs: number): Record<string, unknown> | null {
+  if (!resumedBattleTimeMs || !meta) return meta;
+  const screens = meta.smokeScreens;
+  const offsetS = resumedBattleTimeMs / 1000;
+  return {
+    ...meta, battleTimeMs: (Number(meta.battleTimeMs) || 0) + resumedBattleTimeMs,
+    ...(Array.isArray(screens) && screens.length ? { smokeScreens: screens.map((screen) => smokeOnBattleClock(screen, offsetS)) } : {}),
+  };
+}
 /** The phase in the rooms' status vocabulary (MatchHostStatus.phase): the hold and its end are both 'ended'. */
 export type MatchStatusPhase = 'loading' | 'countdown' | 'playing' | 'ended' | 'stopped';
 
@@ -594,6 +625,9 @@ export function createMatchActor(options: MatchActorOptions): MatchActor {
   // later hint is stale (a withheld hint sent mid-fight would teleport the hull; security audit 2026-10-22)
   const driven = new Uint8Array(MAX_ENTITIES + 1);
   const RESUME_HINT_WINDOW_TICKS = TICK_HZ * 10;
+  // a hinted hull this far above the ground under it is in the air (RESUME_HINT carries no body bits); nearer, it is on
+  // the ground: a hull at rest stands about 0.02 m over the field's height on the flat, a little more across a crest
+  const RESUME_HINT_AIRBORNE_M = 0.5;
   // the tick the resumed loop started from (past resume.tick by the ticks the world stood still, MatchActorResume.dueAtMs)
   let resumedFromTick = resume ? resume.tick : 0;
   const resumeHints: ResumeHintStats = { applied: 0, rejected: 0, reasons: { noResume: 0, notRestored: 0, repeated: 0, older: 0, future: 0, tooFar: 0, noSeat: 0, late: 0 } };
@@ -607,8 +641,7 @@ export function createMatchActor(options: MatchActorOptions): MatchActor {
 
   /** The battle clock as the clients read it: the authority's, plus what the old host had already played. */
   function metaWithResumedClock(meta: Record<string, unknown> | null): Record<string, unknown> | null {
-    if (!resumedBattleTimeMs || !meta) return meta;
-    return { ...meta, battleTimeMs: (Number(meta.battleTimeMs) || 0) + resumedBattleTimeMs };
+    return metaOnBattleClock(meta, resumedBattleTimeMs);
   }
 
   function send(client: ActorClient, bytes: Uint8Array): boolean {
@@ -765,6 +798,13 @@ export function createMatchActor(options: MatchActorOptions): MatchActor {
     tank.gunPitch = dequantizeAngle(hint.gunPitch);
     tank.visualPitch = dequantizeAngle(hint.pitch);
     tank.visualRoll = dequantizeAngle(hint.roll);
+    // The restore (migrationState.ts applyResumeState through applyAuthorityRow) seated the contact, spring and ride on the
+    // restored row; the hint's pose is newer, so they are seated again on it, as a row's are (round 2 U2, review round 1:
+    // a hull airborne in the keyframe whose hint had it landed flew back up to the keyframe's height). The hint has no body
+    // bits: its height over the ground is the contact, and the restored row's body mode stands (an overturned hull stays
+    // overturned; a tumble settles on its own).
+    setHullGrounded(tank, !(tank.pos.y > authority.heightField.getHeightAt(x, z) + RESUME_HINT_AIRBORNE_M));
+    reseatAuthorityBody(tank);
     hinted[entityId] = 1;
     resumeHints.applied++;
     actorLog.info('resume hint applied', { player: client.playerId, tick: hint.tick, restoredTick, movedM: Math.round(movedM * 100) / 100 });

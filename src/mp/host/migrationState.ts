@@ -1,6 +1,7 @@
 import type { DestructionLogEntry } from '../../sim/destructionEvents.ts';
 import { mergeDestructionLogs } from '../wire/destructionLog.ts';
 import type { NewModeCheckpoint } from '../../sim/authoritativeMatch.ts';
+import type { ModeCheckpoint } from '../../sim/matchModes.ts';
 /**
  * Host migration state (P2 client lane, 2026-09-28; docs/MULTIPLAYER-V2.md §13.2 "Keyframes"): the browser host
  * broadcasts, every ROOM_MATCH_KEYFRAME_INTERVAL_MS, a keyframe of EVERY entity — sealed with AES-GCM under a key
@@ -16,14 +17,19 @@ import { eraPlateIndices } from '../wire/era.ts';
 import { ENTITY_FLAGS, INPUT_MARGIN_UNKNOWN, MAX_EVENT_JSON_BYTES, NO_TICK, PHASE, TICK_MS, VERDICT } from '../wire/constants.ts';
 import { applySnapshotPacket, buildSnapshotPacket, decodeMessage, encodeMessage } from '../wire/codec.ts';
 import type { EntityRow, SnapshotFrame, WireEvent } from '../wire/messages.ts';
-import { dequantizeAngle, dequantizePosition, dequantizeReloadS, dequantizeUnitComponent, dequantizeVelocity } from '../wire/quantize.ts';
+import { dequantizePosition, dequantizeReloadS, dequantizeUnitComponent } from '../wire/quantize.ts';
 import { bytesToBase64Url } from '../match/base64url.ts';
+import { applyAuthorityRow } from '../match/prediction.ts';
 import { MIGRATION_EVENT_KIND, MIGRATION_MAX_CHUNKS } from '../match/migrationStore.ts';
 import type { HostBootConfig, HostResumeState, MigrationEntityExtras, MigrationReload } from './hostProtocol.ts';
+import type { RoomMatchStatus } from '../room/protocol.ts';
 import { FIRE_BASE_TICKS, selectShell, strainModule, tickModuleRepairs, tickReload } from '../../sim/damage.ts';
 import type { CombatState, DamageTankSpec } from '../../sim/damage.ts';
 import { applyConsumableMultipliers } from '../../sim/consumableRules.ts';
 import type { ConsumableState } from '../../sim/consumableRules.ts';
+import { createAuxiliaryState } from '../../sim/auxiliarySystems.ts';
+import type { AuxiliaryState } from '../../sim/auxiliarySystems.ts';
+import type { SmokeScreen } from '../../sim/smokeScreen.ts';
 
 export { MIGRATION_EVENT_KIND, MigrationStore, isMigrationEventKind } from '../match/migrationStore.ts';
 export type { MigrationChunkPayload, RetainedBlob } from '../match/migrationStore.ts';
@@ -178,7 +184,9 @@ const RELOAD_KINDS = ['ready', 'shell', 'intraClip', 'magazine'] as const;
 const isReloadKind = (kind: unknown): kind is typeof RELOAD_KINDS[number] => (RELOAD_KINDS as readonly unknown[]).includes(kind);
 const finiteOr = (value: unknown, fallback: number): number => (typeof value === 'number' && Number.isFinite(value) ? value : fallback);
 const captureReload = (reload: ReloadLike | undefined): MigrationReload => [reload?.t ?? 0, reload?.totalS ?? 0, reload?.kind ?? 'ready'];
-function writeReload(target: ReloadLike | undefined, carried: MigrationReload | undefined): void {
+/** A channel at rest (loaded, no cycle running): the fresh host's own channel is that already (damage.ts createCombatState). */
+const reloadAtRest = (reload: ReloadLike | undefined): boolean => !reload || (reload.t <= 0 && reload.kind === 'ready');
+function writeReload(target: ReloadLike | undefined, carried: MigrationReload | null | undefined): void {
   if (!target || !Array.isArray(carried)) return;
   target.t = Math.max(0, finiteOr(carried[0], target.t));
   target.totalS = Math.max(0, finiteOr(carried[1], target.totalS));
@@ -208,13 +216,33 @@ function restoreShellSlot(combat: CombatState, slot: number, spec: DamageTankSpe
  * host's absolute times, read on its clock at the row's tick). The extras fill in what the row does not carry, aged by
  * the gap through the simulation's own laws. On the keyframe's own row (no gap) the extras are exact and win: the row's
  * reload times are quantized.
+ * Round 2 (U2): the gaps are sim time, and every entity ages to the resume frame. The ticks overstated the sim time when
+ * the old host's loop dropped ticks on a stall (server/match/loop.ts: the tick keeps the wall grid while the sim stands),
+ * which over-aged reloads, repairs, cooldowns, item windows and fires and ran the old-clock reading of a row's auxiliary
+ * times ahead; the frame's battle clock (sim time, matchActor.ts battleTimeMs) is exact. And a row a delta left untouched
+ * (or an interest tier held) keeps its older tick, so the keyframe's row stood for it with no gap and its extras came back
+ * unaged by up to a keyframe interval although the world had moved on: the rest of the way (`tailS`) ages them too.
  */
 interface ResumeReading {
   readonly row: EntityRow;
-  /** Seconds the row is newer than the extras (0: the keyframe's own row, or one held from before it). */
+  /** Sim seconds the row is newer than the extras (0: the keyframe's own row): the row wins for what it carries. */
   readonly gapS: number;
-  /** The old host's authority clock (s) at the row's tick; null when the keyframe did not carry it. */
+  /** Sim seconds from the row's reading to the resume frame's: everything the entity carries ages by them as well. */
+  readonly tailS: number;
+  /** The old host's authority clock (s) at the row's reading; null when the keyframe did not carry it. */
   readonly clockS: number | null;
+}
+
+/**
+ * The sim time from the extras' capture to the resume frame (round 2 U2): the two battle clocks (the frame meta's
+ * battleTimeMs, the keyframe's), never more than their ticks allow; the ticks alone for a state that names no keyframe
+ * battle clock.
+ */
+function resumeFrameGapS(state: HostResumeState, extrasTick: number): number {
+  const ticksS = Math.max(0, state.frame.tick - extrasTick) * TICK_MS / 1000;
+  const battle = state.keyframeBattleTimeMs;
+  if (typeof battle !== 'number' || !Number.isFinite(battle) || !Number.isFinite(state.battleTimeMs)) return ticksS;
+  return Math.max(0, Math.min(ticksS, (state.battleTimeMs - battle) / 1000));
 }
 
 const isDestroyedRow = (row: EntityRow): boolean => (row.flags & ENTITY_FLAGS.DESTROYED) !== 0 || row.hp <= 0;
@@ -264,6 +292,80 @@ function checkpointAfterRevives(checkpoint: NewModeCheckpoint, revived: Readonly
       ...(waves ? { waves: { ...waves, inactive: waves.inactive.filter((id) => !revived.has(id)), restedAt: waves.restedAt.filter(([id]) => !revived.has(id)) } } : {}),
     },
   };
+}
+
+type CheckpointZone = NonNullable<ModeCheckpoint['objectives']>['zones'][number];
+type CheckpointFlag = NonNullable<ModeCheckpoint['objectives']>['flags'][number];
+const finiteNumber = (value: unknown): value is number => typeof value === 'number' && Number.isFinite(value);
+const isTeam = (value: unknown): value is CheckpointFlag['team'] => value === 'alpha' || value === 'bravo';
+const FLAG_STATUSES: ReadonlySet<unknown> = new Set(['home', 'carried', 'dropped']);
+const recordOf = (value: unknown): Record<string, unknown> | null => (value && typeof value === 'object' ? value as Record<string, unknown> : null);
+
+/**
+ * A score the newest frame shows (published rounded: matchModes.ts serialize), against the keyframe's exact one: kept
+ * when it rounds to what the frame shows; else the frame's, which is exact for a mode that scores whole points, and for
+ * Zone Control's running score the least value that rounds to it, never above the old host's.
+ */
+function scoreAtFrame(held: number, shown: unknown): number {
+  if (!finiteNumber(shown) || Math.round(held) === shown) return held;
+  return Number.isInteger(held) ? shown : Math.max(held, shown - 0.5);
+}
+
+/** A zone's control, owner and contest as the newest frame shows it (by id), else the keyframe's. */
+function zoneAtFrame(zone: CheckpointZone, shown: ReadonlyMap<string, Record<string, unknown>>): CheckpointZone {
+  const view = shown.get(zone.id);
+  if (!view || !finiteNumber(view.control) || !(view.owner === null || isTeam(view.owner)) || typeof view.contested !== 'boolean') return zone;
+  return { id: zone.id, control: view.control, owner: view.owner, contested: view.contested };
+}
+
+/**
+ * The mode checkpoint carried forward to the newest frame this seat holds (round 2 U2, review round 1). The checkpoint is
+ * dated at the keyframe, the hulls at the newest frame (resumeStateFromRetained), and everything the mode did between
+ * the two came back undone: a goal or a capture, the zone's meter, the ball's flight, a flag taken, a survivor infected.
+ * The newest frame's mode state (matchModes.ts serialize, on every frame of a mode with one) holds those: the score,
+ * every flag, zone and the ball, and the infection's factions. They are written over the checkpoint's; what the frame
+ * does not show stays the keyframe's, and the mode-event keyframe (matchHostCore.ts housekeep) follows every event that
+ * changes it: the horde's queue and pool, the assault line's sector and its pool, pickups and their sequence, weapon
+ * kills, respawn timers. The line's zones are taken only while the frame shows the keyframe's sector. The goals stand
+ * where the map put them. A ball touched, scored or reset in the gap starts its idle clock at the resume (the frame
+ * carries no touch time; the new host's mode clock starts at the keyframe's).
+ */
+export function checkpointAtNewestFrame(checkpoint: NewModeCheckpoint, modeStateJson: string | null): NewModeCheckpoint {
+  const mode = checkpoint.mode;
+  if (!mode || !modeStateJson) return checkpoint;
+  let view: Record<string, unknown> | null;
+  try { view = recordOf(JSON.parse(modeStateJson)); } catch { return checkpoint; }
+  if (!view) return checkpoint;
+  const shownScore = recordOf(view.score);
+  const score = shownScore ? { alpha: scoreAtFrame(mode.score.alpha, shownScore.alpha), bravo: scoreAtFrame(mode.score.bravo, shownScore.bravo) } : mode.score;
+  const factions = Array.isArray(view.factions) ? new Map(view.factions.map(recordOf).filter((entry): entry is Record<string, unknown> => !!entry && typeof entry.id === 'string' && isTeam(entry.team))
+    .map((entry) => [entry.id as string, entry.team as CheckpointFlag['team']])) : null;
+  const teams = factions ? mode.teams.map(([id, team]): [string, typeof team] => [id, factions.get(id) ?? team]) : mode.teams;
+  const zones = new Map((Array.isArray(view.zones) ? view.zones : []).map(recordOf).filter((zone): zone is Record<string, unknown> => !!zone && typeof zone.id === 'string')
+    .map((zone) => [zone.id as string, zone]));
+  const next: ModeCheckpoint = { ...mode, score, teams };
+  const objectives = mode.objectives;
+  if (objectives) {
+    const flags = new Map((Array.isArray(view.flags) ? view.flags : []).map(recordOf).filter((flag): flag is Record<string, unknown> => !!flag && isTeam(flag.team))
+      .map((flag) => [flag.team as string, flag]));
+    const flagAtFrame = (flag: CheckpointFlag): CheckpointFlag => {
+      const shown = flags.get(flag.team);
+      if (!shown || !finiteNumber(shown.x) || !finiteNumber(shown.y) || !finiteNumber(shown.z) || !FLAG_STATUSES.has(shown.status)
+        || !(shown.carrierId === null || typeof shown.carrierId === 'string') || !(shown.returnAtS === null || finiteNumber(shown.returnAtS))) return flag;
+      return { team: flag.team, x: shown.x, y: shown.y, z: shown.z, status: shown.status as CheckpointFlag['status'], carrierId: shown.carrierId, returnAtS: shown.returnAtS };
+    };
+    let { ball, ballActiveAtS } = objectives;
+    const shownBall = recordOf(view.ball);
+    if (ball && shownBall && ['x', 'y', 'z', 'vx', 'vy', 'vz'].every((key) => finiteNumber(shownBall[key])) && (shownBall.lastTouchId === null || typeof shownBall.lastTouchId === 'string')) {
+      const changedHands = shownBall.lastTouchId !== ball.lastTouchId || score.alpha !== mode.score.alpha || score.bravo !== mode.score.bravo;
+      ball = { x: shownBall.x as number, y: shownBall.y as number, z: shownBall.z as number, vx: shownBall.vx as number, vy: shownBall.vy as number, vz: shownBall.vz as number, lastTouchId: shownBall.lastTouchId as string | null };
+      if (changedHands) ballActiveAtS = Math.max(ballActiveAtS, mode.elapsedS);
+    }
+    next.objectives = { ...objectives, flags: objectives.flags.map(flagAtFrame), zones: objectives.zones.map((zone) => zoneAtFrame(zone, zones)), ball, ballActiveAtS };
+  }
+  const line = mode.waves?.line, shownLine = recordOf(view.line);
+  if (line && shownLine && shownLine.index === line.index) next.waves = { ...mode.waves!, line: { ...line, zones: line.zones.map((zone) => zoneAtFrame(zone, zones)) } };
+  return { ...checkpoint, mode: next };
 }
 
 /** What a revive leaves of an entity's extras (reviveForMode: a fresh combat state and kit): its tallies alone. */
@@ -319,9 +421,12 @@ function rowAuxiliary(json: string | undefined, clockS: number): MigrationEntity
 
 /** The fight's counters an extras entry carries (MigrationEntityExtras), through the functions the simulation uses. */
 function restoreCombatExtras(combat: CombatState, consumables: ConsumableState | null | undefined, extras: MigrationEntityExtras, timeS: number, reading: ResumeReading): void {
-  const { row, gapS } = reading;
+  const { row, gapS, tailS } = reading;
   const newer = gapS > 0;
-  const ageS = (leftS: unknown): number => Math.max(0, finiteOr(leftS, 0) - gapS);
+  // what the row does not carry ages all the way to the resume frame (the reload channels: to the row here, applyResumeState
+  // ages them the rest of the way once the row's own are written)
+  const totalS = gapS + tailS;
+  const ageS = (leftS: unknown): number => Math.max(0, finiteOr(leftS, 0) - totalS);
   // modules: the hp, the law's state from it (damage.ts strainModule: a fresh module is at full hp), red repair progress
   if (extras.moduleHp && typeof extras.moduleHp === 'object') {
     for (const [moduleId, carried] of Object.entries(extras.moduleHp)) {
@@ -338,10 +443,11 @@ function restoreCombatExtras(combat: CombatState, consumables: ConsumableState |
   if (combat.fire) {
     combat.fire.burning = burning;
     if (burning && extras.burning && Array.isArray(extras.fire)) {
-      combat.fire.ticksLeft = Math.max(1, Math.round(finiteOr(extras.fire[0], 1)) - Math.floor(gapS / FIRE_TICK_S));
+      combat.fire.ticksLeft = Math.max(1, Math.round(finiteOr(extras.fire[0], 1)) - Math.floor(totalS / FIRE_TICK_S));
       combat.fire.tickTimer = Math.max(0, finiteOr(extras.fire[1], 0));
     } else if (burning && newer) {
-      combat.fire.ticksLeft = Math.max(2, Math.round(FIRE_BASE_TICKS * multOf(combat.equipMults as Record<string, unknown> | undefined, 'fireTicks')));
+      const budget = Math.max(2, Math.round(FIRE_BASE_TICKS * multOf(combat.equipMults as Record<string, unknown> | undefined, 'fireTicks')));
+      combat.fire.ticksLeft = Math.max(1, budget - Math.floor(tailS / FIRE_TICK_S));
       combat.fire.tickTimer = 0;
     }
   }
@@ -372,10 +478,10 @@ function restoreCombatExtras(combat: CombatState, consumables: ConsumableState |
     restoreActiveItems(consumables, combat, active, timeS);
   }
   // a red module's repair runs on through the gap (damage.ts tickModuleRepairs, at the restored repair rate)
-  if (newer) tickModuleRepairs(combat, gapS);
+  if (totalS > 0) tickModuleRepairs(combat, totalS);
   const fromRow = newer && reading.clockS !== null ? rowAuxiliary(row.auxiliaryJson, reading.clockS) : null;
   const aux = fromRow ?? extras.auxiliary;
-  const auxAgeS = fromRow ? 0 : gapS;
+  const auxAgeS = fromRow ? tailS : totalS;
   if (combat.auxiliary && aux && typeof aux === 'object') {
     const state = combat.auxiliary;
     const after = (leftS: unknown): number => timeS + Math.max(0, finiteOr(leftS, 0) - auxAgeS);
@@ -443,8 +549,9 @@ export function resumeStateFromRetained(
   destructionEvents: readonly DestructionLogEntry[] = [],
   respawns: readonly (readonly [id: string, tick: number])[] = [],
 ): { state: HostResumeState; baseTick: number; baseAtMs: number } {
-  // the extras stay the keyframe's, dated by its tick, when a newer frame moves `tick` on (applyResumeState ages them)
-  const state: HostResumeState = { ...keyframe, keyframeTick: keyframe.tick };
+  // the extras stay the keyframe's, dated by its tick and battle clock, when a newer frame moves `tick` on (applyResumeState
+  // ages them by the sim time between the two battle clocks)
+  const state: HostResumeState = { ...keyframe, keyframeTick: keyframe.tick, keyframeBattleTimeMs: keyframe.battleTimeMs };
   let baseTick = keyframe.tick;
   let baseAtMs = keyframeAtMs;
   if (latest && latest.tick > keyframe.tick && latestAtMs !== null) {
@@ -500,26 +607,70 @@ export function resumePhaseOf(state: Pick<HostResumeState, 'phase' | 'frame'>): 
   return { phase: 'playing' };
 }
 
+/**
+ * What tells an elected seat with no readable keyframe that the battle had begun (migrationFallback, round 2 U1):
+ *   - 'frame': its newest frame says playing, ended or decided;
+ *   - 'room': the room's record of the match says it played (roomPolicy.ts markMatchPlaying: a host reported 'playing');
+ *   - 'report_tick': the old host's last report to the room (the election's resumeTick, roomActor.ts migrateHost) is
+ *     dated at or past the end of the countdown. A host reports at each phase change and every
+ *     ROOM_MATCH_REPORT_INTERVAL_MS (matchHostCore.ts housekeep), so its countdown reports are dated before the countdown
+ *     ends and its first 'playing' report at or after it. The end is the seat's newest countdown frame's (its tick plus
+ *     the time it had left: any timeline), else a first boot's (the actor's tick 0 is its countdown's start,
+ *     matchActor.ts start).
+ */
+export type MigrationPlayEvidence = 'frame' | 'room' | 'report_tick';
+
 /** What an elected seat with no readable keyframe does (migrationFallback). */
 export type MigrationFallback =
-  | { kind: 'decline'; reason: 'battle_in_progress' }
-  | { kind: 'restart'; state: HostResumeState; resumeTick: number };
+  | { kind: 'decline'; reason: 'battle_in_progress'; evidence: MigrationPlayEvidence }
+  /** `lastResort`: a kept host restarting a battle that had begun (the evidence), since nobody else can host it. */
+  | { kind: 'restart'; state: HostResumeState; resumeTick: number; lastResort?: MigrationPlayEvidence };
+
+/** Ticks a report may come early of the countdown's end it is judged against (the countdown's milliseconds round to a tick). */
+const COUNTDOWN_END_SLACK_TICKS = 2;
+
+/** The first evidence that the battle had begun (MigrationPlayEvidence), or null when everything the seat holds says it had not. */
+export function migrationPlayEvidence({ latestFrame, resumeTick, countdownMs, roomMatchStatus = null }: {
+  latestFrame: SnapshotFrame | null; resumeTick: number; countdownMs: number; roomMatchStatus?: RoomMatchStatus | null;
+}): MigrationPlayEvidence | null {
+  const meta = latestFrame?.meta;
+  if (meta && (meta.phase === PHASE.PLAYING || meta.phase === PHASE.ENDED || meta.verdict !== VERDICT.NONE)) return 'frame';
+  if (roomMatchStatus === 'playing' || roomMatchStatus === 'ended' || roomMatchStatus === 'lost') return 'room';
+  // 0: the room holds no report of the current host (none yet, or the room cleared it at the previous election)
+  const reported = Math.max(0, Math.floor(Number(resumeTick) || 0));
+  const countdownEndTick = latestFrame && meta
+    ? latestFrame.tick + Math.ceil(Math.max(0, meta.countdownMs | 0) / TICK_MS)
+    : Math.ceil(Math.max(0, Number(countdownMs) || 0) / TICK_MS);
+  if (reported > 0 && reported >= countdownEndTick - COUNTDOWN_END_SLACK_TICKS) return 'report_tick';
+  return null;
+}
 
 /**
  * An elected seat whose retained keyframe is missing or cannot be opened (audit M1, 2026-11-02). It used to boot fresh at
  * tick 0 whatever the match had reached: a battle in progress restarted from its spawns, behind every client's clock
  * (a client's tick clock ignores older ticks, so its inputs ran far ahead of the new host's). Now:
- *   - the seat saw the battle playing or decided (its newest frame says so): it declines as unable, so the room elects a
- *     seat that holds a keyframe, or ends the match when none can;
+ *   - anything the seat holds says the battle had begun (migrationPlayEvidence: its newest frame, the room's record of
+ *     the match, or the old host's last report tick against the countdown's end): it declines as unable, so the room
+ *     elects a seat that holds a keyframe, or ends the match when none can. Round 2 (U1): the newest frame alone was read,
+ *     so a seat with none (welcomed, never sent a snapshot) restarted a battle in progress from its spawns whatever the
+ *     room's resume tick proved;
  *   - before the battle played (no frame yet, or only the countdown): the match starts over from its countdown on the
  *     timeline the clients already keep, at the later of the room's resume tick and the seat's newest tick plus the time
  *     since: a resume state with no rows (every hull on its spawn), so the boot takes the one resume path.
+ * A frame-less seat judges the report tick against a first boot's countdown: after an earlier restart (its countdown
+ * began later) it declines a countdown still running, the safe side (the room elects another seat, or ends the match).
+ * A kept host (matchSession.ts bootKeptHost: its re-entry decline found nobody to hand the match on to) restarts
+ * whatever the evidence, named as the last resort: a decline there ends the match for every seat.
  */
-export function migrationFallback({ latestFrame, latestFrameAtMs, nowMs, resumeTick, countdownMs }: {
+export function migrationFallback({ latestFrame, latestFrameAtMs, nowMs, resumeTick, countdownMs, roomMatchStatus = null, kept = false }: {
   latestFrame: SnapshotFrame | null; latestFrameAtMs: number | null; nowMs: number; resumeTick: number; countdownMs: number;
+  /** The room's record of the elected match (the seat's room snapshot); null when it names another match or none. */
+  roomMatchStatus?: RoomMatchStatus | null;
+  /** The room kept this seat as the host with no one else to elect (no election: the session's own last resort). */
+  kept?: boolean;
 }): MigrationFallback {
-  const phase = latestFrame?.meta.phase;
-  if (phase === PHASE.PLAYING || phase === PHASE.ENDED || (latestFrame && latestFrame.meta.verdict !== VERDICT.NONE)) return { kind: 'decline', reason: 'battle_in_progress' };
+  const evidence = migrationPlayEvidence({ latestFrame, resumeTick, countdownMs, roomMatchStatus });
+  if (evidence && !kept) return { kind: 'decline', reason: 'battle_in_progress', evidence };
   const seen = latestFrame && latestFrameAtMs !== null ? latestFrame.tick + Math.max(0, Math.ceil((nowMs - latestFrameAtMs) / TICK_MS)) : 0;
   const tick = Math.max(0, Math.floor(Number(resumeTick) || 0), seen);
   const remainingMs = Math.max(0, Math.round(Number(countdownMs) || 0));
@@ -528,7 +679,7 @@ export function migrationFallback({ latestFrame, latestFrameAtMs, nowMs, resumeT
     meta: { phase: PHASE.COUNTDOWN, countdownMs: Math.min(0xffff, remainingMs), battleTimeMs: 0, verdict: VERDICT.NONE, verdictReason: '', destructibleRevision: 0 },
     destroyed: [], destruction: [], entities: [], shells: [], viewer: null, modeStateJson: null,
   };
-  return { kind: 'restart', resumeTick: tick, state: { tick, battleTimeMs: 0, phase: 'countdown', frame, entities: [] } };
+  return { kind: 'restart', resumeTick: tick, state: { tick, battleTimeMs: 0, phase: 'countdown', frame, entities: [] }, ...(evidence ? { lastResort: evidence } : {}) };
 }
 
 /**
@@ -556,8 +707,13 @@ export function resumeHoldSeats(
  */
 export function applyResumeState(actor: MatchActor, state: HostResumeState): { restored: number; skipped: number; destroyedRestored: number; destroyedUnknown: number } {
   const extrasTick = Number.isInteger(state.keyframeTick) ? state.keyframeTick! : state.tick;
+  const frameGapS = resumeFrameGapS(state, extrasTick);
   const revived = revivedSinceKeyframe(actor, state, extrasTick);
-  if (state.modeCheckpoint) actor.authority.restoreModeCheckpoint(checkpointAfterRevives(state.modeCheckpoint, revived));
+  if (state.modeCheckpoint) {
+    // the mode as the newest frame shows it, when that frame is newer than the keyframe (review round 1)
+    const checkpoint = checkpointAfterRevives(state.modeCheckpoint, revived);
+    actor.authority.restoreModeCheckpoint(state.frame.tick > extrasTick ? checkpointAtNewestFrame(checkpoint, state.frame.modeStateJson) : checkpoint);
+  }
   let restored = 0;
   let skipped = 0;
   const extrasById = new Map(state.entities.map((entry) => [entry.entityId, entry]));
@@ -565,16 +721,9 @@ export function applyResumeState(actor: MatchActor, state: HostResumeState): { r
     const entity = actor.entityForWireId(row.entityId);
     if (!entity) { skipped++; continue; }
     const tank = entity.state;
-    tank.pos.x = dequantizePosition(row.x);
-    tank.pos.y = dequantizePosition(row.y);
-    tank.pos.z = dequantizePosition(row.z);
-    tank.yaw = dequantizeAngle(row.yaw);
-    tank.speed = dequantizeVelocity(row.speed);
-    tank.verticalSpeed = dequantizeVelocity(row.verticalSpeed);
-    tank.turretYaw = dequantizeAngle(row.turretYaw);
-    tank.gunPitch = dequantizeAngle(row.gunPitch);
-    tank.visualPitch = dequantizeAngle(row.pitch);
-    tank.visualRoll = dequantizeAngle(row.roll);
+    // the pose, ground contact and body mode (wire 10's body bits), the spring and the ride, as the client's predictor
+    // takes a row (round 2 U2: the pose alone left the fresh hull's contact, mode and ride under it)
+    applyAuthorityRow(tank, row);
     const combat = entity.combat;
     combat.hp = row.hp;
     combat.maxHp = Math.max(1, row.maxHp);
@@ -603,9 +752,11 @@ export function applyResumeState(actor: MatchActor, state: HostResumeState): { r
     // the migration seed (P3b): the actor remembers what each entity was restored from, so its own seat's hint can be bounded
     actor.noteRestoredRow(row.entityId, row.tick, tank.pos.x, tank.pos.z);
     const extras = extrasById.get(row.entityId);
-    // the row against the extras (ResumeReading): how much newer it is, and the old host's clock at its tick
-    const gapS = Math.max(0, row.tick - extrasTick) * TICK_MS / 1000;
-    const reading: ResumeReading = { row, gapS, clockS: typeof state.timeS === 'number' ? state.timeS + gapS : null };
+    // the row against the extras (ResumeReading): how much newer it is in sim time (never past the frame's battle clock),
+    // what is left to the resume frame, and the old host's clock at its reading
+    const gapS = Math.min(Math.max(0, row.tick - extrasTick) * TICK_MS / 1000, frameGapS);
+    const tailS = Math.max(0, frameGapS - gapS);
+    const reading: ResumeReading = { row, gapS, tailS, clockS: typeof state.timeS === 'number' ? state.timeS + gapS : null };
     if (extras) {
       // the tallies run on across lives; the fight is the extras' only while the hull lives the life they saw (a revived
       // hull keeps the fresh state the new host built, and what its newer row carries)
@@ -628,18 +779,54 @@ export function applyResumeState(actor: MatchActor, state: HostResumeState): { r
       }
     }
     if (gapS > 0 || !extras) restoreRowCounts(combat, row, entity.spec);
+    // every channel the rest of the way to the resume frame (a cycle that ends readies, a magazine load that ends refills)
+    if (tailS > 0) tickReload(combat, tailS);
     restored++;
   }
   const destroyed = actor.authority.restoreDestroyedObstacles(state.frame.destroyed, state.frame.meta.destructibleRevision);
   // destruction (docs/DESTRUCTION.md §8.3): stages and collapses (records, heaps, the route grid) without events
   if (state.frame.destruction?.length) actor.authority.restoreDestruction(state.frame.destruction);
+  // the smoke screens still standing (round 2 U2): the frame's meta carries them on the battle clock (matchActor.ts
+  // metaOnBattleClock), this actor's authority counts from its resumed battle time
+  const smoke = smokeScreensOf(state.frame.meta.smokeJson);
+  if (smoke.length) actor.authority.restoreSmokeScreens(smoke, -actor.resumedBattleTimeMs / 1000);
   return { restored, skipped, destroyedRestored: destroyed.restored, destroyedUnknown: destroyed.unknown };
+}
+
+/** The compact smoke screens a frame meta carries (SnapshotMeta.smokeJson), or none when it carries none or cannot be read. */
+function smokeScreensOf(json: string | undefined): SmokeScreen[] {
+  if (!json) return [];
+  try {
+    const screens = JSON.parse(json) as unknown;
+    return Array.isArray(screens) ? screens.filter((screen): screen is SmokeScreen => !!screen && typeof screen === 'object' && Number.isFinite((screen as SmokeScreen).born)) : [];
+  } catch { return []; }
 }
 
 /** Seconds left until a sim time (never negative). */
 const leftOf = (at: number, timeS: number): number => Math.max(0, Math.round((finiteOr(at, 0) - timeS) * 1000) / 1000);
 
-/** The extras beside a keyframe row: what the wire row does not carry (MigrationEntityExtras). */
+/** Each vehicle's auxiliary kit as a fresh host builds it (auxiliarySystems.ts createAuxiliaryState), by spec id. */
+const freshAuxiliary = new Map<string, AuxiliaryState>();
+function freshAuxiliaryOf(spec: { id?: string }): AuxiliaryState {
+  const key = String(spec.id ?? '');
+  let fresh = freshAuxiliary.get(key);
+  if (!fresh) { fresh = createAuxiliaryState(spec); freshAuxiliary.set(key, fresh); }
+  return fresh;
+}
+
+/** The auxiliary entry as the fresh host's own kit has it already: lights, switch and smoke charges at the start, nothing cooling down, no rounds fired. */
+function auxiliaryAtRest(entry: NonNullable<MigrationEntityExtras['auxiliary']>, fresh: AuxiliaryState): boolean {
+  return entry.lights === fresh.lights && entry.gunOn === fresh.gunOn && entry.smokeCharges === fresh.smokeCharges && entry.smokeReadyIn === 0 &&
+    entry.shots === fresh.shots && entry.nextShotIn === 0 && (entry.stations ?? []).every(([shots, nextShotIn]) => shots === 0 && nextShotIn === 0);
+}
+
+/**
+ * The extras beside a keyframe row: what the wire row does not carry (MigrationEntityExtras). Round 2 (U2): only what
+ * differs from the state a fresh host builds (restoreCombatExtras keeps the fresh entity's value for an absent field):
+ * a channel at rest is null and an all-rest list absent, a full magazine absent, a consumable block without cooldowns or
+ * active items carries its charges alone, an auxiliary kit at rest is absent. Every field written for every entity
+ * nearly doubled the sealed keyframe each peer receives every 2 s (19 KB to 36 KB typical).
+ */
 export function captureEntityExtras(actor: MatchActor): MigrationEntityExtras[] {
   const out: MigrationEntityExtras[] = [];
   const timeS = actor.authority.timeS;
@@ -659,24 +846,28 @@ export function captureEntityExtras(actor: MatchActor): MigrationEntityExtras[] 
     const extras: MigrationEntityExtras = { entityId, kills: entity.kills, damage: Math.round(entity.damage), modules, crew, burning };
     if (Object.keys(moduleHp).length) extras.moduleHp = moduleHp;
     if (burning) extras.fire = [combat.fire.ticksLeft, combat.fire.tickTimer];
-    if (combat.reloadChannels?.length) extras.reloads = combat.reloadChannels.map((channel) => captureReload(channel));
-    if (combat.gunReload) extras.gunReload = captureReload(combat.gunReload);
-    if (combat.magazine) extras.magazineRounds = combat.magazine.rounds;
+    if (combat.reloadChannels?.some((channel) => !reloadAtRest(channel))) {
+      extras.reloads = combat.reloadChannels.map((channel) => (reloadAtRest(channel) ? null : captureReload(channel)));
+    }
+    if (combat.gunReload && !reloadAtRest(combat.gunReload)) extras.gunReload = captureReload(combat.gunReload);
+    if (combat.magazine && combat.magazine.rounds !== combat.magazine.capacity) extras.magazineRounds = combat.magazine.rounds;
     if (combat.launcherSalvoShots) extras.launcherSalvoShots = combat.launcherSalvoShots;
     if (combat.launcherCursor) extras.launcherCursor = combat.launcherCursor;
     const consumables = entity.consumables;
     if (consumables) {
       const activeFor: Record<string, number> = {};
       for (const [item, until] of Object.entries(consumables.until)) if (until > timeS) activeFor[item] = leftOf(until, timeS);
-      extras.consumables = { readyIn: consumables.readyAt.map((at) => leftOf(at, timeS)), charges: consumables.charges.slice(), activeFor };
+      const readyIn = consumables.readyAt.map((at) => leftOf(at, timeS));
+      extras.consumables = { charges: consumables.charges.slice(), ...(readyIn.some((left) => left > 0) ? { readyIn } : {}), ...(Object.keys(activeFor).length ? { activeFor } : {}) };
     }
     const aux = combat.auxiliary;
     if (aux) {
-      extras.auxiliary = {
+      const auxiliary: NonNullable<MigrationEntityExtras['auxiliary']> = {
         lights: aux.lights, gunOn: aux.gunOn, smokeCharges: aux.smokeCharges, smokeReadyIn: leftOf(aux.smokeReadyAt, timeS),
         shots: aux.shots, nextShotIn: leftOf(aux.nextShot, timeS),
         ...(aux.stations?.length ? { stations: aux.stations.map((station): [number, number] => [station.shots, leftOf(station.nextShot, timeS)]) } : {}),
       };
+      if (!auxiliaryAtRest(auxiliary, freshAuxiliaryOf(entity.spec))) extras.auxiliary = auxiliary;
     }
     out.push(extras);
   }

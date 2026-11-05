@@ -10,6 +10,10 @@
 //     unanswered does not ask for a fresh link inside stall + hold; once welcomed it waits stall from the WELCOME;
 //   - core: a held seat whose link closes is no longer back (the hold waits on), one back again releases it, and a held
 //     link keeps at most 64 frames.
+// Round 2 (Q1, 2026-11-04): the allowance was RESUME_HOLD_MS from the link's open, which is about the election, before
+// the new host's boot: a boot slower than the stall clock's slack (a slower device) pushed every held seat into a fresh
+// link during the hold. It is the host's boot bound and its hold now (recovery.ts MIGRATION_WELCOME_ALLOWANCE_MS): a seat
+// whose new host boots for 10 s and then holds 3 s waits for its WELCOME without asking for a fresh link.
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import * as recoveryModule from '../match/recovery.ts';
@@ -24,6 +28,7 @@ import { ensureAuthorityFleet } from '../../vehicles/authorityFleet.ts';
 
 const { ConnectionRecovery } = recoveryModule;
 const RESUME_HOLD_MS = recoveryModule.RESUME_HOLD_MS ?? 3_000;
+const WELCOME_ALLOWANCE_MS = recoveryModule.MIGRATION_WELCOME_ALLOWANCE_MS ?? RESUME_HOLD_MS;
 const STALL_MS = 5_000;
 
 // ---- the recovery policy alone
@@ -60,7 +65,7 @@ const STALL_MS = 5_000;
     next.server.open();
     const openedAt = nowMs;
     migrating.replace(next.client, 'host changed');
-    for (let step = 0; step < 300 && stalledAt === null; step++) {
+    for (let step = 0; step < 1000 && stalledAt === null; step++) {
       nowMs += 50;
       if (welcomeAtMs !== null && nowMs - openedAt === welcomeAtMs) {
         next.server.send(encodeMessage({
@@ -77,9 +82,12 @@ const STALL_MS = 5_000;
   };
   assert.equal(run({ hostChanged: false }), STALL_MS, 'a reconnect to the same host stalls at 5 s');
   const held = run({ hostChanged: true });
-  assert.ok(held !== null && held >= STALL_MS + RESUME_HOLD_MS, `a held seat asks for no fresh link inside stall + hold (stalled ${held} ms after its link opened; the hold is ${RESUME_HOLD_MS} ms)`);
+  assert.ok(held !== null && held >= STALL_MS + WELCOME_ALLOWANCE_MS, `a held seat asks for no fresh link inside stall + its new host's boot and hold (stalled ${held} ms after its link opened; the allowance is ${WELCOME_ALLOWANCE_MS} ms)`);
   const welcomed = run({ hostChanged: true, welcomeAtMs: 7_000 });
   assert.equal(welcomed, 7_000 + STALL_MS, 'welcomed at the hold\'s end, it waits stall from the WELCOME for its first snapshot');
+  // round 2 (Q1): a slow boot (10 s) and then the whole hold (3 s): welcomed 13 s after its link opened
+  const slow = run({ hostChanged: true, welcomeAtMs: 13_000 });
+  assert.equal(slow, 13_000 + STALL_MS, `a seat whose new host boots slowly waits for its WELCOME, then stall from it (it asked for a fresh link ${slow} ms after its link opened, inside the hold)`);
 }
 
 // ---- the core's hold: a seat whose link closed is not back; a held link's frames are bounded

@@ -8,6 +8,8 @@
 //   - ended: the new actor is ended from its first tick with the old verdict, reports it, and its field stays still;
 //   - no readable keyframe: a seat that saw the battle playing declines; before the battle it restarts the countdown on
 //     the clients' timeline (migrationFallback), and the core boots that state at that tick, every hull on its spawn.
+//   - round 2 (U1, 2026-11-04): a seat with no frame, or a countdown frame only, also declines when the room's record says
+//     the match played or the old host's last report tick is at or past the countdown's end.
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { createMatchActor } from '../../../server/match/matchActor.ts';
@@ -106,7 +108,8 @@ async function newHost(resume, battleLimitS = null) {
   assert.equal(typeof migration.migrationFallback, 'function', 'the unreadable-state path is an explicit decision (migrationState.ts migrationFallback), not a silent fresh boot at tick 0');
   const playing = oldHost({ countdownS: 0, battleLimitS: 600 });
   playing.advance(90);
-  assert.deepEqual(migration.migrationFallback({ latestFrame: keyframeOf(playing.actor).frame, latestFrameAtMs: 0, nowMs: 500, resumeTick: 60, countdownMs: 5000 }), { kind: 'decline', reason: 'battle_in_progress' },
+  const declined = migration.migrationFallback({ latestFrame: keyframeOf(playing.actor).frame, latestFrameAtMs: 0, nowMs: 500, resumeTick: 60, countdownMs: 5000 });
+  assert.deepEqual({ kind: declined.kind, reason: declined.reason }, { kind: 'decline', reason: 'battle_in_progress' },
     'a seat that saw the battle playing declines (the room elects a seat with the keyframe, or ends the match)');
   playing.actor.stop();
   const counting = oldHost({ countdownS: 5, battleLimitS: 600 });
@@ -123,5 +126,50 @@ async function newHost(resume, battleLimitS = null) {
   const alice = next.actor.authority.entityById.get('alice');
   assert.ok(Math.hypot(alice.state.pos.x + 30, alice.state.pos.z) < 1, 'every hull on its spawn');
   next.dispose(); counting.actor.stop();
+}
+
+// ---- round 2 (U1): a seat with no frame, or only a countdown frame, of a battle that had begun. migrationFallback read the
+// newest frame alone: with none it restarted the countdown, every hull on its spawn, whatever the room's resume tick (the
+// old host's last report: its countdown reports are dated before the countdown ends, its first 'playing' report at or
+// after it) or the room's record of the match said.
+{
+  const countdownTicks = Math.ceil(5000 / TICK_MS);
+  const fallback = (input) => migration.migrationFallback({ latestFrame: null, latestFrameAtMs: null, nowMs: 0, resumeTick: 0, countdownMs: 5000, ...input });
+  const kindOf = (result) => result.kind === 'decline' ? `decline (${result.evidence})` : `restart at ${result.resumeTick}`;
+  // a frame-less seat (welcomed, never sent a snapshot), the old host's last report ten seconds in
+  let result = fallback({ resumeTick: 600 });
+  assert.equal(result.kind, 'decline', `no frame and a report 10 s in (a 5 s countdown, ${countdownTicks} ticks): the battle had begun (was: ${kindOf(result)}, every hull back on its spawn)`);
+  assert.equal(result.evidence, 'report_tick');
+  // the first 'playing' report is dated at the countdown's end: a battle a few ticks old is a battle in progress too
+  result = fallback({ resumeTick: countdownTicks + 3 });
+  assert.equal(result.kind, 'decline', `a report dated at the countdown's end (${countdownTicks + 3}): the battle had begun (was: ${kindOf(result)})`);
+  // the room's record says it played; the room holds no report of the current host (cleared at the previous election)
+  result = fallback({ resumeTick: 0, roomMatchStatus: 'playing' });
+  assert.equal(result.kind, 'decline', `the room's record of the match says playing (was: ${kindOf(result)})`);
+  assert.equal(result.evidence, 'room');
+  // a countdown frame, and a report past the end of the countdown that frame showed (any timeline: its own tick plus the time left)
+  const counting = oldHost({ countdownS: 5, battleLimitS: 600 });
+  counting.advance(100);
+  const seen = keyframeOf(counting.actor).frame;
+  const end = seen.tick + Math.ceil(seen.meta.countdownMs / TICK_MS);
+  result = migration.migrationFallback({ latestFrame: seen, latestFrameAtMs: 10_000, nowMs: 11_000, resumeTick: end + 20, countdownMs: 5000, roomMatchStatus: 'starting' });
+  assert.equal(result.kind, 'decline', `a countdown frame ending at ${end} and a later report at ${end + 20} (was: ${kindOf(result)})`);
+  assert.equal(result.evidence, 'report_tick');
+  counting.actor.stop();
+  // and before the battle nothing changes: a report inside the countdown, the room still starting, restart on the timeline
+  result = fallback({ resumeTick: 75, roomMatchStatus: 'starting' });
+  assert.equal(result.kind, 'restart', `a report inside the countdown with the room starting restarts the countdown (got ${kindOf(result)})`);
+  assert.equal(result.resumeTick, 75);
+  assert.equal(migration.migrationPlayEvidence({ latestFrame: null, resumeTick: 0, countdownMs: 5000, roomMatchStatus: null }), null, 'no report, no frame, no record: nothing says the battle began');
+  // a kept host (its re-entry decline found nobody to hand the match on to: matchSession.ts bootKeptHost) restarts as the
+  // named last resort, whatever the evidence: a decline there ends the match for every seat
+  result = fallback({ resumeTick: 0, roomMatchStatus: 'playing', kept: true });
+  assert.equal(result.kind, 'restart', `a kept host restarts (got ${kindOf(result)})`);
+  assert.equal(result.lastResort, 'room', 'and names what it restarts over');
+  // review round 1: on the newest tick it knows (bootKeptHost passes the election's report tick), not at 0
+  result = fallback({ resumeTick: 1800, roomMatchStatus: 'playing', kept: true });
+  assert.equal(result.kind, 'restart');
+  assert.equal(result.resumeTick, 1800, 'a kept restart runs on from the report tick');
+  assert.equal(result.state.frame.tick, 1800);
 }
 console.log('resumePhase: a migrated countdown counts on, an ended match stays ended with its verdict, and an unreadable keyframe declines a battle in progress or restarts the countdown on the clients\' timeline');

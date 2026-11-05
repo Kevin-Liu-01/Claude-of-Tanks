@@ -228,8 +228,13 @@ function authorityAtRest(row: EntityRow): boolean {
     Math.abs(dequantizeVelocity(row.verticalSpeed)) <= REST_SPEED_MPS;
 }
 
-/** The authority row's pose and body flags onto the simulation state (the checkpoint refines the integrator). */
-function applyAuthorityRow(state: TankState, row: EntityRow): void {
+/**
+ * The authority row's pose and body flags onto the simulation state (the checkpoint refines the integrator). Also a
+ * migrated host's restore of every hull from its keyframe or newest row (migrationState.ts applyResumeState, round 2 U2):
+ * the pose alone left the fresh host's ground contact, body mode, spring and ride under it, so an airborne hull fell from
+ * its old ride height or snapped to the ground on the first step, and one on its side or roof came back supported.
+ */
+export function applyAuthorityRow(state: TankState, row: EntityRow): void {
   state.pos.set(dequantizePosition(row.x), dequantizePosition(row.y), dequantizePosition(row.z));
   state.yaw = dequantizeAngle(row.yaw);
   state.speed = dequantizeVelocity(row.speed);
@@ -241,6 +246,15 @@ function applyAuthorityRow(state: TankState, row: EntityRow): void {
   // ground contact and the body mode, the rigid phase itself included (wire 10, hullBodyRow.ts); the viewer checkpoint
   // restores them again right after (restoreCheckpoint)
   applyHullBodyRowFlags(state, row.flags);
+  reseatAuthorityBody(state);
+}
+
+/**
+ * The integrator's own copies seated on the pose and speeds just written (applyAuthorityRow; a migrated host's resume
+ * hint, matchActor.ts receiveResumeHint, round 2 U2 review round 1: the hint wrote a newer pose over the restored row and
+ * left this row's spring and ride under it, so a hull the hint had landed flew back up to the row's height).
+ */
+export function reseatAuthorityBody(state: TankState): void {
   state._prevSpeed = state.speed;
   // the row's attitude is the spring's plus the posture held over the tracks (movement.ts state._hold, _holdSeat), which
   // the checkpoint restores with the spring; without one, the posture the replay holds now stands in for the authority's

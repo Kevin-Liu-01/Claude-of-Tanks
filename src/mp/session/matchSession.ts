@@ -432,11 +432,32 @@ export class MatchSession {
     return true;
   }
 
-  /** Watch a host this seat boots: its actor running moves the role from booting to live. */
+  /**
+   * Watch a host this seat boots: its actor running moves the role from booting to live. A live host that fails (its
+   * thread died: browserHostPort.ts reports a Worker error at any point as boot_failed, and the host tears itself down)
+   * hands the match on at once, as a failed boot does (round 2 Q2): the role kept live_host with the dead host and the
+   * room heard nothing, so with this page's room socket still up every peer waited for the room's report staleness (90 s)
+   * before the next election. The seat steps down as stepDown does (review round 1): its own match client moves onto a
+   * peer link, which has no target until the room names another host (roomSignaler), and follows the room's next
+   * election like any peer. Left on the dead host's loopback, which only the host's own pump drives, the client hung in
+   * 'reconnecting' with role 'none' until its recovery grace ran out, and no election could reach it. A failing boot is
+   * becomeHost's to report (its host.start rejects).
+   */
   private watchHost(host: MatchHost): void {
-    const off = host.onState((state) => {
+    const off = host.onState((state, detail) => {
       if (this.host !== host) { off(); return; }
       if (state === 'live' && this.roleState === 'booting_host') this.moveRole('live_host', 'host live');
+      if (state === 'failed' && this.roleState === 'live_host') {
+        this.log('error', 'the live host failed; handing the match on', { generation: this.room.generation, detail });
+        if (this.migrating && this.migrating.state !== 'closed') this.stepDown('host failed');
+        if (this.host === host) {
+          // no live match link to step down onto (this seat's client already ended its round): the host goes all the same
+          this.host = null;
+          this.moveRole('none', 'host failed');
+          this.p2pListeners.emit({ kind: 'role', role: null, generation: this.room.generation });
+        }
+        this.setDecline('match', { declined: true, unable: true });
+      }
       if (state === 'stopped' || state === 'failed') off();
     });
   }
@@ -1044,13 +1065,21 @@ export class MatchSession {
    * `generation + 1` through handleHostChanged: the seat then ran ahead of the room, its reports carried a generation the
    * room never issued, and the room's next real election (at that generation, naming another seat) read as "not newer"
    * and was ignored.
+   * The kept host restarts a battle that had begun (migrationFallback's last resort) on the newest tick it knows (review
+   * round 1, U1): the room's election that named it carries the old host's last report tick (roomActor.ts migrateHost),
+   * and it used to be dropped for 0, so the restart ran behind every peer's clock by the whole battle. What the seat cannot
+   * know (the ticks since that report; a reload hears no election at all) the peers' clients follow at their WELCOME
+   * (matchClient.ts receiveWelcome: a host on another timeline re-anchors the clocks).
    */
   private bootKeptHost(round: SessionRound, detail: string): void {
     const client = this.matchClient;
     const migrating = this.migrating;
     if (!client || !migrating || migrating.state === 'closed' || this.currentRound !== round) return;
     const me = this.room.playerId;
-    const change: RoomHostChangedPayload = { hostId: me, generation: this.room.generation, resumeTick: 0, reason: 'declined', ...(this.hostSecret ? { hostSecret: this.hostSecret } : {}) };
+    const election = this.room.lastHostChanged;
+    const reportTick = election && election.hostId === me && election.generation === this.room.generation && this.room.matchStart?.matchId === round.matchStart.matchId
+      ? election.resumeTick : 0;
+    const change: RoomHostChangedPayload = { hostId: me, generation: this.room.generation, resumeTick: reportTick, reason: 'declined', ...(this.hostSecret ? { hostSecret: this.hostSecret } : {}) };
     this.runningGeneration = Math.max(this.runningGeneration, change.generation);
     this.migrationsSeen++;
     this.migrationActive = true;
@@ -1058,7 +1087,7 @@ export class MatchSession {
     this.servingHostId = me;
     this.migrationHostId = me;
     this.p2pListeners.emit({ kind: 'migration', phase: 'begin', hostId: me, generation: change.generation, role: this.role, detail });
-    void this.becomeHost(client, round, change, migrating, previousHostId);
+    void this.becomeHost(client, round, change, migrating, previousHostId, true);
   }
 
   /** The room replaced this host (a host_only on a report): the actor stops, this seat follows the room's current host as a peer. */
@@ -1159,7 +1188,7 @@ export class MatchSession {
     this.peerTransport?.retarget('host changed');
   }
 
-  private async becomeHost(client: MatchClient, round: SessionRound, change: RoomHostChangedPayload, migrating: MigratingTransport, previousHostId: string | null = null): Promise<void> {
+  private async becomeHost(client: MatchClient, round: SessionRound, change: RoomHostChangedPayload, migrating: MigratingTransport, previousHostId: string | null = null, kept = false): Promise<void> {
     const me = this.room.playerId;
     const secret = change.hostSecret ?? this.hostSecret;
     if (!this.canHost || !secret) {
@@ -1210,7 +1239,9 @@ export class MatchSession {
     // no readable keyframe (audit M1, migrationState.ts migrationFallback): a battle in progress is declined, never
     // restarted at tick 0; before the battle the countdown starts over on the timeline the clients keep
     if (!resume) {
-      const fallback = migrationFallback({ latestFrame: retained.latestFrame, latestFrameAtMs: retained.latestFrameAtMs, nowMs: this.clock(), resumeTick: change.resumeTick, countdownMs: (this.p2pOptions?.countdownS ?? 5) * 1000 });
+      const roomMatch = this.room.room?.match;
+      const fallback = migrationFallback({ latestFrame: retained.latestFrame, latestFrameAtMs: retained.latestFrameAtMs, nowMs: this.clock(), resumeTick: change.resumeTick, countdownMs: (this.p2pOptions?.countdownS ?? 5) * 1000,
+        roomMatchStatus: roomMatch && roomMatch.id === round.matchStart.matchId ? roomMatch.status : null, kept });
       if (fallback.kind === 'decline') {
         // A newer election (or the round's end) landed during the key awaits above: this boot is superseded, as in the
         // host.start catch below (audit M2). Reporting a failure here cleared the newer migration's flag and host and

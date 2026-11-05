@@ -105,6 +105,12 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/mp/host/objectiveModesMigration.selftest.mjs', // 2026-11-02 audit M1: Zone Control, Mars, CTF and Turbo Ball survive a host handoff
     'src/mp/host/combatMigration.selftest.mjs', // 2026-11-02 audit M1: reload channels, module hp, fires, magazines, consumables, smoke and pillboxes survive a host handoff; a newer frame's rows win, mode stamps hold
     'src/mp/host/reviveMigration.selftest.mjs', // 2026-11-02 audit M1 (review round 2): a hull revived between the keyframe and the newest frame keeps its fresh life and is not revived again
+    'src/mp/host/resumeAging.selftest.mjs', // 2026-11-02 audit U2 (round 2): resumed extras age by the sim time between the battle clocks, an untouched row's to the resume frame too
+    'src/mp/host/resumeHullBody.selftest.mjs', // 2026-11-02 audit U2 (round 2): a migrated host restores each hull's ground contact, body mode, spring and ride from its row
+    'src/mp/host/migrationExtrasSize.selftest.mjs', // 2026-11-02 audit U2 (round 2): keyframe extras carry only what differs from a fresh host's state; the restore is unchanged
+    'src/mp/host/resumeSmoke.selftest.mjs', // 2026-11-02 audit U2 (round 2): a migrated host keeps standing smoke screens; a resumed host's frames carry them on the battle clock
+    'src/mp/host/modeEventKeyframe.selftest.mjs', // 2026-11-02 audit U2 (round 2): a migration keyframe follows a mode event within a housekeeping beat, not the 2 s cadence
+    'src/mp/host/modeFrameReconcile.selftest.mjs', // 2026-11-02 audit U2 (round 2): a migrated host resumes the score, zones, flags and ball as the seat's newest frame shows them
     'src/mp/host/resumePhase.selftest.mjs', // 2026-11-02 audit M1: a migrated countdown counts on, an ended match stays ended, an unreadable keyframe never restarts a battle
     'src/vehicles/tacticalRoles.selftest.mjs',
     'src/world/maps/earthriseCrossing.selftest.mjs',
@@ -1705,6 +1711,7 @@ export const SELFTEST_SUITES = Object.freeze({
     // 2026-10-10 (MP lane): a migrated host holds its world still until the seats that were playing are back
     'src/mp/host/resumeHold.selftest.mjs',
     'src/mp/host/resumeHoldClocks.selftest.mjs', // 2026-11-02 audit M1: a held seat's stall clock allows the resume hold; a seat whose link closed is not counted back
+    'src/mp/match/timelineRestart.selftest.mjs', // 2026-11-02 audit U1 (round 2): a client follows a host that restarts the battle behind its clocks (re-anchored, inputs admitted)
     // 2026-10-11 (MP lane): a late HELLO is admitted; a seat closed with "hello timeout" says hello again
     'src/mp/host/helloGate.selftest.mjs',
     'src/mp/host/worldCollision.selftest.mjs',
@@ -1776,6 +1783,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/mp/session/matchSessionBootRace.selftest.mjs', // 2026-11-02 audit M2: an election boot a newer election supersedes is no failure
     // 2026-11-03 integration IR11 (audit M1 x M2): an elected seat with no state of a running battle declines through the role machine and setDecline
     'src/mp/session/matchSessionFallbackDecline.selftest.mjs',
+    'src/mp/session/matchSessionLiveHostFailure.selftest.mjs', // 2026-11-02 audit Q2 (round 2): a live host whose thread fails hands the match on at once (an unable decline, the hosting role left)
     'src/mp/session/matchSessionLoadingElection.selftest.mjs', // 2026-11-02 audit M2: a seat elected while it loads keeps the election and hosts
     'src/mp/session/matchSessionEntry.selftest.mjs', // 2026-11-02 audit M2: a leave cancels a loading entry; a re-sent match_start joins it
     'src/mp/session/matchSessionTimers.selftest.mjs', // 2026-11-02 audit M2: the re-entry fallback at the room's generation; the standby on injected timers

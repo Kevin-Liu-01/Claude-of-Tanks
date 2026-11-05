@@ -248,6 +248,11 @@ export class ScriptedMatchServer {
     this.broadcastEvent({ kind: 'world_prop_destroyed', payload: { obstacleIndex: index, kind: 'fence', cause: 'script' } });
   }
 
+  /** A structure's stage for the destruction log (the fixture models no structures: the event alone, as the authority sends it). */
+  structureStage(structureId: number, stage: 'damaged' | 'breached' | 'collapsed'): void {
+    this.broadcastEvent({ kind: 'structure_stage', payload: { structureId, stage, cx: 10, cz: 20 } });
+  }
+
   private createEntity(
     entityId: number, playerId: string, team: TeamId, specId: string, x: number, z: number, yaw: number, bot: ScriptedBot | null,
   ): ServerEntity {

@@ -171,6 +171,9 @@ async function scenario(label, running = null) {
         // its own actor's reports (loading, then countdown) at generation 2: the room's next real election stays newer
         await until(() => commands('match_report').length >= 1, `${label}: the kept host reports`, 5000);
         assert.ok(commands('match_report').every((report) => report.generation === 2), JSON.stringify(commands('match_report')));
+        // round 2 U1 (review round 1): the last resort restarts on the newest tick the seat knows, the election's report
+        // tick, never at 0 behind every peer's clock (their clients follow the rest: timelineRestart.selftest.mjs)
+        assert.ok(commands('match_report').every((report) => report.tick >= resumeTick), `${label}: the kept host's restart runs from the election's tick ${resumeTick}: ${JSON.stringify(commands('match_report'))}`);
         // the two re-entry declines; welcomed by its own host, the seat may then withdraw them (willing again)
         const shape = declines().map((command) => (command.declined ? (command.unable ? 'unable' : 'declined') : 'withdrawn')).join(',');
         assert.match(shape, /^declined,declined(,withdrawn)?$/, `${label}: ${JSON.stringify(declines())}`);
