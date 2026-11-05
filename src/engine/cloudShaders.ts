@@ -50,7 +50,7 @@ export const CLOUD2_PERIODS = Object.freeze({
   /** the local weather (cloudNoise.ts bakeCloudLocalWeather) */
   local: 48000,
   /**
-   * the wind frame's cumulus field (cloudNoise.ts bakeCloudWeatherStreets R) — clouds-269: 18 km, its lobes about 0.9 km
+   * the wind frame's cumulus field (cloudNoise.ts bakeCloudWeatherStreets R) — clouds-269: 18 km, its lobes about 1 km
    * apart, so its tile's period stands past the views it fills and beats against the local weather's 48 km
    */
   streets: 18000,

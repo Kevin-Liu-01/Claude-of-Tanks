@@ -178,12 +178,15 @@ function* equaliseHistogram(field: Float32Array): Generator<void, Float32Array, 
 
 /**
  * clouds-269 (the owner, 2026-11-04: "many clouds i see are in perfect lines or grrid which is noot like real cloud
- * patterns"): the wind frame's cumulus as separate clouds, never rows. One lobe per cell of a `cells`² lattice (a sixth
- * of the cells empty), centred anywhere in its cell, the lattice itself bent by a low-frequency warp of up to a cell so
- * no row or column of it runs straight; each lobe its own radius (0.42–0.82 of a cell), along-wind aspect (1–1.3) and a
- * yaw of up to 30° off the wind, with a soft shoulder, soft-unioned with its neighbours so they merge into masses of every
- * size; a mesoscale gate gathers them into groups and clearings, a lobe whole or gone (a half-gated lobe was a fragment). Round 71's rolls (seven Gaussian ridges a tile, 1.7 km apart,
- * a chain of lumps on each) drew every cumulus sky as parallel rows of beads at one spacing.
+ * patterns"): the wind frame's cumulus as separate clouds, never rows. One lobe per cell of a `cells`² lattice (a fifth
+ * of the cells empty), centred anywhere in its cell, the lattice bent by a low-frequency warp of up to half a cell; each
+ * lobe its own radius (0.45–0.85 of a cell), along-wind aspect (1–1.3) and a yaw of up to 30° off the wind, peaked like a
+ * dome (1 − (d / r)², so the shell rounds every cloud over it), soft-unioned with its neighbours so they merge into masses
+ * of every size; a mesoscale gate gathers them into groups and clearings, a lobe whole or gone (a half-gated lobe was a
+ * fragment). Round 71's rolls (seven Gaussian ridges a tile, 1.7 km apart, a chain of lumps on each) drew every cumulus
+ * sky as parallel rows of beads at one spacing. (The first GPU passes' lobes were plateaus — a flat core inside a
+ * shoulder — which the shell stood up as mesas, the blind critics' "stacked cubes"; and a warp of a whole cell squeezed
+ * neighbours into chains.)
  */
 function* windCumulus(N: number, cells: number, seed: number, out: Float32Array): Generator<void, void, void> {
   const s = cells / N;
@@ -191,23 +194,22 @@ function* windCumulus(N: number, cells: number, seed: number, out: Float32Array)
   yield* perlin2(N, 3, seed + 1, warpX, 0.7); yield* perlin2(N, 6, seed + 2, warpX, 0.3);
   yield* perlin2(N, 3, seed + 3, warpY, 0.7); yield* perlin2(N, 6, seed + 4, warpY, 0.3);
   yield* perlin2(N, 2, seed + 5, gate, 0.6); yield* perlin2(N, 5, seed + 6, gate, 0.4);
-  const attributes = new Float64Array(cells * cells * 8);
+  const attributes = new Float64Array(cells * cells * 7);
   for (let y = 0; y < cells; y++) for (let x = 0; x < cells; x++) {
-    const i = (y * cells + x) * 8, yaw = (hash3(x, y, 5, seed) - 0.5) * 1.0;
+    const i = (y * cells + x) * 7, yaw = (hash3(x, y, 5, seed) - 0.5) * 1.0;
     attributes[i] = hash3(x, y, 1, seed);
     attributes[i + 1] = hash3(x, y, 2, seed);
-    attributes[i + 2] = 0.42 + 0.4 * hash3(x, y, 3, seed);
-    attributes[i + 3] = hash3(x, y, 4, seed) < 1 / 6 ? 0 : 0.75 + 0.25 * hash3(x, y, 8, seed);
+    attributes[i + 2] = 0.45 + 0.4 * hash3(x, y, 3, seed);
+    attributes[i + 3] = hash3(x, y, 4, seed) < 1 / 5 ? 0 : 0.75 + 0.25 * hash3(x, y, 8, seed);
     attributes[i + 4] = Math.cos(yaw);
     attributes[i + 5] = Math.sin(yaw);
     attributes[i + 6] = 1 + 0.3 * hash3(x, y, 6, seed);
-    attributes[i + 7] = 0.45 + 0.4 * hash3(x, y, 7, seed);
   }
   for (let y = 0; y < N; y++) {
     yield;
     for (let x = 0; x < N; x++) {
       const i = y * N + x;
-      const px = (x + 0.5) * s + warpX[i] * 1.1, py = (y + 0.5) * s + warpY[i] * 1.1;
+      const px = (x + 0.5) * s + warpX[i] * 0.5, py = (y + 0.5) * s + warpY[i] * 0.5;
       const cx = Math.floor(px), cy = Math.floor(py);
       // a lobe is on where the gate exceeds its own hashed threshold: groups of cumulus with clear sky between
       const g = clamp01(0.5 + gate[i] * 1.1);
@@ -216,16 +218,16 @@ function* windCumulus(N: number, cells: number, seed: number, out: Float32Array)
         const gy = cy + oy, wy = ((gy % cells) + cells) % cells;
         for (let ox = -2; ox <= 2; ox++) {
           const gx = cx + ox, wx = ((gx % cells) + cells) % cells;
-          const a = (wy * cells + wx) * 8, strength = attributes[a + 3];
+          const a = (wy * cells + wx) * 7, strength = attributes[a + 3];
           if (strength <= 0) continue;
           const dx = gx + attributes[a] - px, dy = gy + attributes[a + 1] - py;
           const along = (dx * attributes[a + 4] + dy * attributes[a + 5]) / attributes[a + 6];
           const across = -dx * attributes[a + 5] + dy * attributes[a + 4];
           const radius = attributes[a + 2], d = Math.sqrt(along * along + across * across);
           if (d >= radius) continue;
-          const t = Math.min(1, (radius - d) / (radius * attributes[a + 7]));
+          const q = d / radius;
           const on = clamp01((g - hash3(wx, wy, 9, seed) * 0.8 + 0.1) / 0.1);
-          union *= 1 - t * t * (3 - 2 * t) * strength * on;
+          union *= 1 - (1 - q * q) * strength * on;
         }
       }
       out[i] = 1 - union;
@@ -307,11 +309,11 @@ export function bakeCloudWeatherStreets(size = CLOUD_WEATHER_SIZE, seed = CLOUD_
 
 function* bakeCloudWeatherStreetsSteps(size = CLOUD_WEATHER_SIZE, seed = CLOUD_NOISE_SEED): Generator<void, Uint8Array, void> {
   const N = size, count = N * N;
-  // (clouds-269) separate cumulus on a 20-cell lattice: about 0.9 km apart on the medium's 18 km read (CLOUD2_PERIODS.streets)
+  // (clouds-269) separate cumulus on an 18-cell lattice: about 1 km apart on the medium's 18 km read (CLOUD2_PERIODS.streets)
   // (the first GPU preview's 15 cells, 1.2 km, with an along-wind aspect to 1.6, merged Steppe's cumulus into flat 2-3 km
-  // pancakes)
+  // pancakes; 20 cells left Verdant's sky "scattered and less voluminous")
   const cumulus = new Float32Array(count);
-  yield* windCumulus(N, 20, seed + 141, cumulus);
+  yield* windCumulus(N, 18, seed + 141, cumulus);
   const fine = new Float32Array(count);
   yield* perlin2(N, 24, seed + 161, fine, 0.6); yield* perlin2(N, 48, seed + 162, fine, 0.4);
   const anvil = new Float32Array(count);
