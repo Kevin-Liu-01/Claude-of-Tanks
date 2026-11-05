@@ -61,7 +61,7 @@ export const WIRE_VERSION = 11;
 // and the host handover a migration seals, which an older build would misread (round 2 U2, mp-resume): the extras'
 // reload channels at rest as null and the consumables' and auxiliary kit's at-rest fields absent (`MigrationEntityExtras`,
 // hostProtocol.ts: only what differs from a fresh host's state), and the resume state's keyframeBattleTimeMs.
-export const PROTOCOL_VERSION = 12; // wire 11, destroyed falls and unseen rounds
+export const PROTOCOL_VERSION = 12; // wire 11 (destroyed falls, unseen rounds) and the round-2 migration handover
 
 export const TICK_HZ = 60;
 /**
