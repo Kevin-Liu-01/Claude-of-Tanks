@@ -111,6 +111,9 @@ const SITES = [
     "markLoadFailed([makeOwnOption()], t('garage.camo.customStudioRetryTitle'));"], [/customCamoStudioAccess\?\.preload\(\)\.catch\(\(\) => \{\s*\}\)/]],
   ['src/ui/settingsAccess.ts', ['const chunk = createLazyChunk(() => load().then(', 'const preload = (): Promise<SettingsRuntime> => chunk.load();'],
     [/\bpending\b/, /\bopener:\s*true\b/]],
+  // the lobby's chunk the Play menu's memo joins (playSurfaceRuntime menuPromise, in KNOWN): a bare import, asked again
+  // by every Play intent after a failure
+  ['src/main.ts', ["const lobbyIntentChunk = createLazyChunk(() => import('./mp/session/lobbyIntent.ts'));", 'lobbyIntentChunk.load().then(({ createLobbyIntent })'], []],
 ];
 const offenders = [];
 for (const [file, present, absent] of SITES) {
@@ -147,6 +150,7 @@ const KNOWN = new Set([
   // (round 2 U35) facade-shaped memos that are not a chunk's load, or that sit over loads this policy already holds:
   // an initialization over a module the policy holds, made again after a failure (the effects' and the kill-cam's runtime
   // over their moduleChunk; the Studio's runtime over main.ts studioModule; the Play menu over battleModuleAccess's chunk);
+  // (the Play menu's module joins battleModuleAccess's chunk and main.ts lobbyIntentChunk)
   'src/fx/fxRuntimeAccess.ts runtimePromise', 'src/game/killcamAccess.ts runtimePromise', 'src/game/studioAccess.ts runtimePromise',
   'src/game/playSurfaceRuntime.ts menuPromise',
   // a join of loads the policy holds, cleared so the next ask reaches their own state (the mobile input's touch controls

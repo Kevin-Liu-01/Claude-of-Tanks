@@ -1476,7 +1476,10 @@ const garageMaps = [
 // the lobby's Garage presence loads with the menu and the battle composition loads on the first start,
 // both behind explicit multiplayer intent, so the solo boot path never imports src/mp.
 let multiplayerLobby: LobbyIntent | null = null;
-const loadMultiplayerLobby = (): Promise<LobbyIntent> => import('./mp/session/lobbyIntent.ts').then(({ createLobbyIntent }) => {
+// (round 2 U35 review) the lobby's chunk under the one lazy-chunk policy (app/lazyChunk.ts): every Play intent asks the
+// menu's module, which joins it, so a failed transfer was asked again at once by each intent
+const lobbyIntentChunk = createLazyChunk(() => import('./mp/session/lobbyIntent.ts'));
+const loadMultiplayerLobby = (): Promise<LobbyIntent> => lobbyIntentChunk.load().then(({ createLobbyIntent }) => {
   multiplayerLobby ??= createLobbyIntent({
     getMenu: () => playSurface.getMenuPromise(),
     setGarageStatus: (status) => garage.setRoomStatus(status),
