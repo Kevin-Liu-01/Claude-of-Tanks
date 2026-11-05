@@ -32,7 +32,7 @@ export const MARKSMAN_BODY_VERTS = Object.freeze({
   R5: [0.76, 1.30, -1.56],
   // the front: the flank chamfer's front end on the floor, the side face's front foot, the floor's front corner, the
   // crease's end, the upper chamfer's front foot, the roof's front corner
-  M1: [0.8238, 0.14, 0.839408], S: [0.92, 0.30, 0.90], F1: [0.36, 0.14, 1.20], C: [0.92, 0.95, 1.45],
+  M1: [0.8238, 0.14, 0.8394082417582418], S: [0.92, 0.30, 0.90], F1: [0.36, 0.14, 1.20], C: [0.92, 0.95, 1.45],
   F5: [0.92, 1.14, 1.26], F6: [0.76, 1.30, 1.10],
 } as const satisfies Record<string, P3>);
 
