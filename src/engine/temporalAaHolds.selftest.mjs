@@ -63,4 +63,27 @@ const create = new Function('createNamedHolds', stripTypeScriptTypes(`function m
   assert.ok(p.taa.resets >= 4, 'every change reseeds the history');
 }
 
-console.log('temporalAaHolds selftest: one TAA owner; a Studio film holds it off and restores nothing stale');
+// ---- (round 2 U30) the QA tools hold it off by name too, never writing the pass ----
+for (const tool of ['shadow-cache-truth', 'shadow-render-truth', 'render-stability-audit']) {
+  const source = readFileSync(new URL(`../../tools/${tool}.mjs`, import.meta.url), 'utf8');
+  assert.doesNotMatch(source, /\btaa\.enabled\s*=[^=]|temporalAccumulation\s*=[^=]/, `${tool} writes neither field`);
+  assert.match(source, /holdTemporalAA\('qa'\)/, `${tool} holds temporal AA off through post's owner`);
+  assert.match(source, /\.release\(\)/, `${tool} releases its hold`);
+}
+{
+  // a QA comparison over a Studio film's hold: each releases its own
+  const p = create(createNamedHolds);
+  const film = p.hold('studio-film');
+  const qa = p.hold('qa');
+  qa.release();
+  assert.equal(p.taa.enabled, false, 'the film still holds it off when the tool lets go');
+  p.preset(false);
+  const qa2 = p.hold('qa');
+  film.release();
+  qa2.release();
+  assert.equal(p.taa.enabled, false, 'and the tool restores no stale snapshot over the preset that changed meanwhile');
+  p.preset(true);
+  assert.equal(p.taa.enabled, true);
+}
+
+console.log('temporalAaHolds selftest: one TAA owner; a Studio film and the QA tools hold it off by name and restore nothing stale');

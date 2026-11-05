@@ -75,12 +75,13 @@ function installTruthHelpers(temporal) {
     return out;
   };
   const debug = () => (window.__SHADOW_DEBUG = window.__SHADOW_DEBUG || {});
-  const taaWas = { taa: D.post.taa.enabled, accumulation: D.post.upscaler.temporalAccumulation };
-  /** The scripted comparisons render without the temporal AA (no jitter, no history): a frame is a function of state. */
+  /** The scripted comparisons render without the temporal AA (no jitter, no history): a frame is a function of state.
+   *  (2026-11-02 audit U30, round 2) held off through post's one owner (a flip resets the history); never written here,
+   *  so a preset change or a film's hold meanwhile stays post's to resolve. */
+  let temporalHold = null;
   const setTemporal = (on) => {
-    D.post.taa.enabled = on && taaWas.taa;
-    D.post.upscaler.temporalAccumulation = on && taaWas.accumulation;
-    D.post.taa.resetHistory?.();
+    if (on) { temporalHold?.release(); temporalHold = null; }
+    else temporalHold ??= D.post.holdTemporalAA('qa');
   };
   setTemporal(!!temporal);
   // the volumetric clouds accumulate a jittered history every frame (16 slots, Bayer offsets): hold it (their QA

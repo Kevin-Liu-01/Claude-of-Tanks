@@ -128,8 +128,10 @@ import { createNamedHolds, type NamedHold } from './namedHolds.ts';
  * A restore during a covered load releases only its own hold, so loading frames still never govern.
  */
 export type AdaptiveHoldReason = 'loading' | 'context-lost' | 'studio-film';
-/** (2026-11-02 audit R4) who holds temporal AA off: a Studio film's jittered accumulation replaces it. */
-export type TemporalAaHoldReason = 'studio-film';
+/** (2026-11-02 audit R4) who holds temporal AA off: a Studio film's jittered accumulation replaces it; (round 2 U30) a QA
+ *  tool's fixed-state comparisons (tools/shadow-cache-truth, shadow-render-truth, render-stability-audit), which wrote the
+ *  pass directly and restored their snapshot over whatever the preset or a film had set meanwhile. */
+export type TemporalAaHoldReason = 'studio-film' | 'qa';
 /** The haze law's target terms, written in place every frame (hazeTargetTerms). */
 const hazeTermsScratch = { x: 0, y: 0 };
 
