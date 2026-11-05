@@ -199,4 +199,38 @@ frame();
 const swapped = hud.getSpawnFlags().find((flag) => flag.side === 'own');
 assert.ok(swapped.z > 0, 'after the side change the own base is the new side\'s spawn');
 
-console.log('hudLifecycle.selftest: the frame-mode entry resets, the hidden cleanup (revive count, aerial class, parked aim notice, picker of allies, ready pulse), the revive count on the battle clock, the scope attribute through a killcam, one display owner, the spectating reasons and the re-sided spawn flags pass');
+// --- (U23, round 2) a frame never writes the mode itself: one that carries 'hidden' ends the battle through the
+// lifecycle (endBattle), as setMode('hidden') does; battle <-> sniper stays a plain scope flip ---
+hud.setWatchSide(null);
+hud.setMode('hidden');
+hud.setMode('battle');
+frame();
+bus.emit('spectate:begin', { id: 'ally', name: 'Ally', vehicle: 'M1', count: 1, index: 1, allies: ['ally'] });
+allyPicker.parentNode.querySelector('.subject').dispatchEvent(new Event('click'));
+assert.equal(allyPicker.hidden, false);
+frame('sniper');
+assert.equal(allyPicker.hidden, false, 'a scope flip is not a battle\'s end');
+frame('hidden');
+assert.equal(root.style.display, 'none');
+assert.equal(allyPicker.hidden, true, 'a hidden frame ends the battle: the picker of allies leaves with it');
+assert.ok(!openSurfaceIds().includes('spectate-ally'), 'and its surface-stack entry');
+bus.emit('spectate:end', {});
+
+// --- (Q10, round 2: the ruling's receipt) the end report's body classes freeze every HUD relayout
+// (battleHudLayout.ts: cot-si-report, cot-es-armed) only until the battle's end: every exit runs endBattle ->
+// shotInfo.hideStats -> endScreen.hide, and a new battle's phase edge hides the screen too (endScreen.ts) ---
+for (const leave of ['setMode', 'phase']) {
+  hud.setMode('hidden');
+  hud.setMode('battle');
+  frame();
+  bus.emit('battle:ended', { result: 'defeat', reason: 'elimination', timeS: 300, map: 'steppe', mapId: 'steppe', score: null,
+    gameMode: 'standard', roster: [] });
+  assert.equal(body.classes.has('cot-es-armed'), true, 'the verdict arms the end screen');
+  await until(() => body.classes.has('cot-si-report'), 'the report renders and owns the frame');
+  if (leave === 'setMode') hud.setMode('hidden'); // the Garage return
+  else bus.emit('phase:change', { phase: 'battle' }); // a network match's next round: no hidden between
+  assert.equal(body.classes.has('cot-si-report'), false, `${leave}: the report's freeze ends with the battle`);
+  assert.equal(body.classes.has('cot-es-armed'), false, `${leave}: and so does the armed suppressor`);
+}
+
+console.log('hudLifecycle.selftest: the frame-mode entry resets, the hidden cleanup (revive count, aerial class, parked aim notice, picker of allies, ready pulse), the revive count on the battle clock, the scope attribute through a killcam, one display owner, the spectating reasons, the re-sided spawn flags, a hidden frame through the lifecycle and the end report\'s freeze bounded by the battle pass');

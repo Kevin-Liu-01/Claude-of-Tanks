@@ -8915,6 +8915,15 @@ export function initHud(bus: EventBus): HudRuntime {
     else if (wasHidden) beginBattle();
   }
 
+  /** battle <-> sniper inside a battle (a frame's scope flip): the mode and its projection, none of the lifecycle (nor the
+   *  net readout reset, which is a forced screenshot frame's, after setMode). The only other writer of `mode`. */
+  function scopeFlip(m: 'battle' | 'sniper'): void {
+    if (mode === 'hidden' || mode === m) return;
+    mode = m;
+    applyMode();
+    mmDirty = true;
+  }
+
   /** Everything the HUD raised for the battle leaves with it. */
   function endBattle(): void {
     vehicleStatus.clear();
@@ -9042,13 +9051,10 @@ export function initHud(bus: EventBus): HudRuntime {
     syncConsumableTray(frame.player?.consumables);
     updateConsumableCooldowns(lastTimeS);
     if (frame.mode && frame.mode !== mode) {
-      // out of hidden this is a battle's start, through the lifecycle; in battle it is the scope flip
-      if (mode === 'hidden') transitionMode(frame.mode);
-      else {
-        mode = frame.mode;
-        applyMode();
-        mmDirty = true;
-      }
+      // out of hidden this is a battle's start and into hidden its end, both through the lifecycle; in battle it is the
+      // scope flip (U23, round 2: a frame never writes the mode itself, so a 'hidden' frame cannot skip endBattle)
+      if (mode === 'hidden' || frame.mode === 'hidden') transitionMode(frame.mode);
+      else scopeFlip(frame.mode);
     }
     playerRef = frame.player || playerRef;
     // flying the watch drone, the frame's tank is only its anchor: no kill reads "You", no hit is the HUD's own
