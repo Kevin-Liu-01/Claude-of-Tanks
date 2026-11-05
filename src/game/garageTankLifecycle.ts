@@ -70,6 +70,9 @@ interface BattleExitState<Visual extends LifecycleVisual = LifecycleVisual> {
   /** The battle's Jev commander (game/jevCommander.ts), when the battle had one. */
   jev?: { dispose(): void } | null;
   _jevView?: RuntimeValue | null;
+  /** The battle's crush press ledger (sim/crushPress.ts) and ram pair cooldowns (state.ts), keyed by its world records and hulls. */
+  _crushPress?: RuntimeValue | null;
+  _ramPairT?: Map<string, number>;
 }
 
 export function resetBattleTankForGarage({
@@ -189,4 +192,8 @@ export function clearBattleAfterExit<Visual extends LifecycleVisual>({
   game.jev?.dispose();
   game.jev = null;
   game._jevView = null;
+  // the battle's own ledgers leave with it (round 2 U13): the press held the last battle's obstacle records and hulls
+  // through the Garage until the next battle's reset
+  game._crushPress = null;
+  game._ramPairT?.clear();
 }
