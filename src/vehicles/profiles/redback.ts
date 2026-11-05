@@ -21,6 +21,7 @@ import { antennaPart } from './antennaPart.ts';
 import { beamBetween } from './measuredPrimitives.ts';
 import { sectionSolid, type SectionPoint, type SolidSection } from './sectionSolid.ts';
 import { markSmokeTube } from '../vehicleAuxiliaryGeometry.ts';
+import { weaponAssembly } from './weaponStock.ts';
 import { steppedBuilder, type TankProfileBuild } from '../tankBuildCooperation.ts';
 import type { TankBuilderPort, TrackShoeBuildParameters } from '../tankFactoryCore.ts';
 import { REDBACK as R } from '../redbackDatums.ts';
@@ -291,8 +292,9 @@ function* buildRedbackSteps(P: TankBuilderPort): TankProfileBuild {
     P.add('turretDark', box(0.28, 0.02, 0.10), sx, yR + 0.39, sz + 0.11);
   }
   // the Spike LR2 twin launcher on the left wall aft of the prow: its box stood off the wall, the two canister mouths in
-  // its face, a dark panel along its side (front34_L_russell2021, front34_od_turret)
-  {
+  // its face, a dark panel along its side (front34_L_russell2021, front34_od_turret); damageable weapon stock, its two
+  // mouths the drawn terminals the launches leave from
+  weaponAssembly(P, () => {
     const lx = T.leftX + 0.11, lz0 = -1.16, lz1 = -0.12;
     P.addModuleVisual('missileRack', 'turretDetail', box(0.24, 0.46, lz1 - lz0), lx, 0.44, (lz0 + lz1) / 2);
     for (const y of [0.33, 0.55]) {
@@ -301,7 +303,7 @@ function* buildRedbackSteps(P: TankBuilderPort): TankProfileBuild {
     }
     P.add('turretDark', box(0.012, 0.30, lz1 - lz0 - 0.20), lx + 0.122, 0.44, (lz0 + lz1) / 2);
     P.add('turretDark', box(0.04, 0.06, 0.10), lx - 0.05, 0.70, lz0 + 0.10);
-  }
+  });
   // Iron Fist at each rear corner: a pedestal stood off the wall, the twin-tube launcher on its turntable aimed forward,
   // out and up; four dischargers on the pedestal's face (front34_L_russell2021, side34_R_2020, front34_od_turret)
   for (const s of [-1, 1] as const) {

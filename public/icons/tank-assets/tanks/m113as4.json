@@ -57,6 +57,170 @@
   },
   "armor": {
     "schemaVersion": 3,
+    "externalWeapons": [
+      {
+        "module": "missileRack",
+        "turretLocal": true,
+        "gunFollow": false,
+        "min": [-0.75,0.06,-0.965],
+        "max": [-0.71,0.58,-0.105],
+        "physicalMm": 10,
+        "surfaceFingerprint": "b481864d"
+      },
+      {
+        "module": "missileRack",
+        "turretLocal": true,
+        "gunFollow": false,
+        "min": [-0.735,0.26,-0.905],
+        "max": [-0.515,0.38,-0.765],
+        "physicalMm": 10,
+        "surfaceFingerprint": "34435749"
+      },
+      {
+        "module": "missileRack",
+        "turretLocal": true,
+        "gunFollow": false,
+        "min": [-0.735,0.26,-0.305],
+        "max": [-0.515,0.38,-0.165],
+        "physicalMm": 10,
+        "surfaceFingerprint": "696a2183"
+      },
+      {
+        "module": "missileRack",
+        "turretLocal": true,
+        "gunFollow": false,
+        "min": [-0.97,0.09,-1.12],
+        "max": [-0.75,0.31,0.05],
+        "physicalMm": 10,
+        "surfaceFingerprint": "443dbb31"
+      },
+      {
+        "module": "missileRack",
+        "turretLocal": true,
+        "gunFollow": false,
+        "min": [-0.97,0.33,-1.12],
+        "max": [-0.75,0.55,0.05],
+        "physicalMm": 10,
+        "surfaceFingerprint": "6846a85b"
+      },
+      {
+        "module": "missileRack",
+        "turretLocal": true,
+        "gunFollow": false,
+        "min": [-0.984,0.076,-1.11],
+        "max": [-0.736,0.324,-1.05],
+        "physicalMm": 10,
+        "surfaceFingerprint": "94f7663d"
+      },
+      {
+        "module": "missileRack",
+        "turretLocal": true,
+        "gunFollow": false,
+        "min": [-0.984,0.076,-0.565],
+        "max": [-0.736,0.324,-0.505],
+        "physicalMm": 10,
+        "surfaceFingerprint": "74f0a5cb"
+      },
+      {
+        "module": "missileRack",
+        "turretLocal": true,
+        "gunFollow": false,
+        "min": [-0.984,0.076,0.035],
+        "max": [-0.736,0.324,0.095],
+        "physicalMm": 10,
+        "surfaceFingerprint": "73d34e81"
+      },
+      {
+        "module": "missileRack",
+        "turretLocal": true,
+        "gunFollow": false,
+        "min": [-0.76,0.185,-1.003],
+        "max": [-0.74,0.215,-0.067],
+        "physicalMm": 10,
+        "surfaceFingerprint": "b590243d"
+      },
+      {
+        "module": "missileRack",
+        "turretLocal": true,
+        "gunFollow": false,
+        "min": [-0.984,0.316,-1.11],
+        "max": [-0.736,0.564,-1.05],
+        "physicalMm": 10,
+        "surfaceFingerprint": "b267a749"
+      },
+      {
+        "module": "missileRack",
+        "turretLocal": true,
+        "gunFollow": false,
+        "min": [-0.984,0.316,-0.565],
+        "max": [-0.736,0.564,-0.505],
+        "physicalMm": 10,
+        "surfaceFingerprint": "90d9a233"
+      },
+      {
+        "module": "missileRack",
+        "turretLocal": true,
+        "gunFollow": false,
+        "min": [-0.984,0.316,0.035],
+        "max": [-0.736,0.564,0.095],
+        "physicalMm": 10,
+        "surfaceFingerprint": "89501d71"
+      },
+      {
+        "module": "missileRack",
+        "turretLocal": true,
+        "gunFollow": false,
+        "min": [-0.76,0.425,-1.003],
+        "max": [-0.74,0.455,-0.067],
+        "physicalMm": 10,
+        "surfaceFingerprint": "c50a102d"
+      },
+      {
+        "module": "missileRack",
+        "turretLocal": true,
+        "gunFollow": false,
+        "min": [-0.95,0.11,0.09],
+        "max": [-0.77,0.29,0.102],
+        "physicalMm": 10,
+        "surfaceFingerprint": "8a3eee07"
+      },
+      {
+        "module": "missileRack",
+        "turretLocal": true,
+        "gunFollow": false,
+        "min": [-0.95,0.35,0.09],
+        "max": [-0.77,0.53,0.102],
+        "physicalMm": 10,
+        "surfaceFingerprint": "2951998f"
+      },
+      {
+        "module": "missileRack",
+        "turretLocal": true,
+        "gunFollow": false,
+        "min": [-0.99,0.055,-0.855],
+        "max": [-0.72,0.585,-0.815],
+        "physicalMm": 10,
+        "surfaceFingerprint": "e1c00129"
+      },
+      {
+        "module": "missileRack",
+        "turretLocal": true,
+        "gunFollow": false,
+        "min": [-0.99,0.055,-0.255],
+        "max": [-0.72,0.585,-0.215],
+        "physicalMm": 10,
+        "surfaceFingerprint": "7cd16401"
+      },
+      {
+        "module": "missileRack",
+        "turretLocal": true,
+        "gunFollow": false,
+        "min": [-0.778,0.102,-1.135],
+        "max": [-0.742,0.138,-0.735],
+        "physicalMm": 10,
+        "surfaceFingerprint": "6940ff23"
+      }
+    ],
     "turretPivot": [0,1.86,0.2145],
     "plates": [
       {
@@ -574,8 +738,8 @@
       }
     ]
   },
-  "geometryHash": "816e8f6e",
-  "metadataHash": "92391f4b",
+  "geometryHash": "c0cfcd96",
+  "metadataHash": "9afb7583",
   "presentationAnchor": {
     "xM": -0.0001,
     "zM": -0.0197
@@ -621,7 +785,7 @@
     "designation": 1,
     "verifiedInsignia": 1,
     "verifiedDesignation": 1,
-    "minimumVisibilityRatio": 0.6666667,
+    "minimumVisibilityRatio": 1,
     "codes": ["AU:au-army-kangaroo:22A"]
   },
   "assets": {
@@ -630,15 +794,15 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 28156,
-      "sha256": "57d5cbc620f5cd23dee8d43fadac18b6404e5226f15b84a5dd92f8a7db03d943",
+      "bytes": 28162,
+      "sha256": "a084aa55a1b8ab2617be8437c3ddb5114153be09682664d8348f0456d4d36129",
       "thumbnail": {
         "file": "thumbs/m113as4_angle.webp",
         "width": 256,
         "height": 256,
         "mime": "image/webp",
-        "bytes": 11912,
-        "sha256": "eda89677ce2f39213588ccee2938bf8177e0a33209d68e4a49e5923db2f5cf53"
+        "bytes": 11906,
+        "sha256": "297ae2c85ab7a863423e35a19ffed432bfefe62ea48283fe2c3d669b58497433"
       }
     },
     "top": {
@@ -646,16 +810,16 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 14946,
-      "sha256": "455af47f26a5e43cd5eee0c182a5dbfe7a6493a4a3f2152f4ec485a3800993d5"
+      "bytes": 14930,
+      "sha256": "5b3a5ddd57679da0678cefaa7b482b2e5a6329a35eccbd0fe8859d4efb6887b1"
     },
     "side": {
       "file": "m113as4_side.webp",
       "width": 512,
       "height": 256,
       "mime": "image/webp",
-      "bytes": 13612,
-      "sha256": "cb3077ed14f4c97bac9930b9e2b29d983572e95b2a3adb70bc9bd4df48bf0f71"
+      "bytes": 13740,
+      "sha256": "190cefeae517d4d3a996d55a4b85737eb485e777c3cbcf43edcf30b8383dd8ce"
     },
     "topSilhouette": {
       "file": "m113as4_top_silhouette.png",
@@ -670,32 +834,32 @@
       "width": 256,
       "height": 128,
       "mime": "image/png",
-      "bytes": 4461,
-      "sha256": "d74b4f76d3e5aba882ccd5ea703342e3bd3bba6431f4b3bbb11e7c8942f6c1a6"
+      "bytes": 4438,
+      "sha256": "a91a9fdd25e6de8687b23ab69499bae184e38b93edeb1723a93d65c5095fdb78"
     },
     "armorSide": {
       "file": "m113as4_armor_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 30100,
-      "sha256": "3d538e30f9e7c1eebde088d869f1d6c5d80a56eeab43c5429c7a39a0d6672006"
+      "bytes": 29610,
+      "sha256": "0857314e6f02cb5b79b60df3d62f2f81be546b3f367badcc506c1d95e8689313"
     },
     "modulesSide": {
       "file": "m113as4_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 31372,
-      "sha256": "51d6c89e02fb5e0fba338132a08c3ac8c70ec607499dde9ce3f575874736a078"
+      "bytes": 31324,
+      "sha256": "95e31dd33aa5e0c36074dccf8de0ecfe6eb545670ec99af41a55d5aefcd34241"
     },
     "crewSide": {
       "file": "m113as4_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 28744,
-      "sha256": "af36b96046817d984921079a577851708e3d80b6743492063d5f3fb50823566d"
+      "bytes": 28816,
+      "sha256": "e24f26dd26a5bef77fad55d8d72cb3c2259daece5e3df2c5478d12b638321884"
     },
     "markings": {
       "file": "m113as4_markings.png",
@@ -708,8 +872,8 @@
     "technicalLabels": {
       "file": "m113as4_technical.json",
       "mime": "application/json",
-      "bytes": 4315,
-      "sha256": "759f99a3cd9b1b9c725851b6d3cfa27be3cb8ac29719fa58f85df7c115e6e28f"
+      "bytes": 5537,
+      "sha256": "52ad3c8464a4bf0040bea9f843032b947c8274e98bd341db85f5441f760d36b9"
     }
   }
 }

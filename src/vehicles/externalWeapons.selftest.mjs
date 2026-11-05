@@ -8,8 +8,9 @@ import { createCombatState, resolveShellHit, startMagazineReload, startReload } 
 import { createShell } from '../sim/ballistics.ts';
 
 const ids=PRODUCTION_TANK_IDS.filter(id=>getSpec(id).gun.shells.some(w=>w.launcherTubes>0));
-// Includes the independent M6's four-cell Stinger installation.
-assert.equal(ids.length,29,'external-launcher fleet census must be reviewed when the roster changes');
+// Includes the independent M6's four-cell Stinger installation; 33 with 267's BMPT Terminator (Ataka tube pairs) and
+// 268's Tunguska-M, Pantsir-S1 and PGZ-95 (their own SAM tubes); 37 with 269's Redback and twin-TOW M113A1 FSV, MRV, AS4.
+assert.equal(ids.length,37,'external-launcher fleet census must be reviewed when the roster changes');
 for(const id of PRODUCTION_TANK_IDS.filter(id=>!ids.includes(id))) {
   assert.equal(getSpec(id).armor.externalWeapons,undefined,
     `${id}: conventional vehicles do not gain launcher metadata or inherited donor hitboxes`);
