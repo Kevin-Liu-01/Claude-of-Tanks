@@ -57,8 +57,11 @@ function finallyBlocks(text) {
   });
   return blocks;
 }
-const RELEASE = /\b(?:lock|capture|fifo|locks|captureLock|holdLock)\??\.release\(\)/;
-const CLOSE = /\bbrowser\??\.close\(\)/;
+// (round 2 U38) any spelling of a capture release: releaseCaptureLock(), and release() with or without a reason on a lock,
+// lease or hold object (lock.release('reason'), lease.release(), hold.release()); and any browser's close, whatever it is
+// called (chrome.close(), ctx.browser.close(), this.browser?.close(), guardedBrowser.close())
+const RELEASE = /(?:\breleaseCaptureLock\(|\b(?:\w*[lL]ock|locks|capture|fifo|lease|hold)\??\.release\([^)]*\))/;
+const CLOSE = /\b(?:\w*[bB]rowser|chrome)\??\.close\(/;
 // a release as a statement (not an argument, as in a receipt's `assert.equal(lock.release(), false)`)
 const RELEASE_STATEMENT = new RegExp(`(?:^|[;{}]|\\)|=>|&&|\\|\\||\\breturn|\\bvoid|\\bawait)[ \\t]*${RELEASE.source}`, 'gm');
 const STICKY_CLOSE = new RegExp(CLOSE.source, 'y');
@@ -95,6 +98,13 @@ assert.deepEqual(releaseBeforeClose('process.once(signal, async () => { lock.rel
 assert.deepEqual(releaseBeforeClose('const close = async () => {\n  await browser?.close();\n  lock.release();\n  await server.close();\n};'), [], 'the browser, then the release');
 assert.deepEqual(releaseBeforeClose('assert.equal(lock.release(), false, \'nothing left\');\nawait browser.close();'), [], 'a checked release is not a release statement');
 assert.deepEqual(releaseBeforeClose('const lease = () => {\n  lock.release();\n};\n}\nconst stop = async () => { await browser.close(); };'), [], 'a close two blocks out');
+// (round 2 U38) the spellings the first census missed
+assert.deepEqual(releaseBeforeClose('try { go(); } finally {\n  releaseCaptureLock();\n  await browser.close();\n}'), [1, 2], 'the shared lock\'s releaseCaptureLock()');
+assert.deepEqual(releaseBeforeClose('try { go(); } finally {\n  lock.release(\'done\');\n  await browser.close();\n}'), [1, 2], 'a release with a reason');
+assert.deepEqual(releaseBeforeClose('try { go(); } finally {\n  lease.release();\n  await chrome.close();\n}'), [1, 2], 'a lease and a browser named chrome');
+assert.deepEqual(releaseBeforeClose('const stop = async () => {\n  await hold.release();\n  await ctx.browser?.close();\n};'), [2], 'a hold handle and a browser on an object');
+assert.deepEqual(releaseBeforeClose('try { go(); } finally {\n  await guardedBrowser.close();\n  releaseCaptureLock();\n}'), [], 'any browser closed first');
+assert.deepEqual(releaseBeforeClose('try { go(); } finally {\n  pool.release();\n  await browser.close();\n}'), [], 'another release (a worker pool) is no capture release');
 
 // a source that imports a capture lock (built from parts so this file is not its own finding) and calls acquire() itself
 const LOCK_IMPORT = new RegExp(['capture-lock', '\\.mjs|visual-census-lock', '\\.mjs'].join(''));
