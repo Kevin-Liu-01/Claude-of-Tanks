@@ -168,7 +168,7 @@
   "object695": {"turretRaisedCm2":0,"turretBaseCm2":0,"hullCm2":0,"pockets":0,"geometry":{"hull":"aaa4b9badde189f1","turret":"254ed784121a66c7","gun":"2a91b32ea38edb1a"}},
   "olifant_mk1": {"turretRaisedCm2":0,"turretBaseCm2":0,"hullCm2":0,"pockets":0,"geometry":{"hull":"8e41e7ca7d612bec","turret":"2153e69778c0cf47","gun":"6cb513123aa0e407"}},
   "olifant_mk1a": {"turretRaisedCm2":0,"turretBaseCm2":0,"hullCm2":0,"pockets":0,"geometry":{"hull":"74585ad8db39984e","turret":"1bc54a611d3bba3f","gun":"48ea718b0b29fb9d"}},
-  "olifant_mk1b": {"turretRaisedCm2":0,"turretBaseCm2":0,"hullCm2":0,"pockets":0,"geometry":{"hull":"536d643679c85ba0","turret":"df115459f328fd8a","gun":"53d2d1a12d77d6fa"}},
+  "olifant_mk1b": {"turretRaisedCm2":0,"turretBaseCm2":0,"hullCm2":0,"pockets":0,"geometry":{"hull":"536d643679c85ba0","turret":"e500c539ec3f48a2","gun":"d4447cdc14a7c2a4"}},
   "olifant_mk2": {"turretRaisedCm2":0,"turretBaseCm2":0,"hullCm2":0,"pockets":0,"geometry":{"hull":"5a9bc1b453306247","turret":"e420a8e0afa781fd","gun":"5e407245d22f7502"}},
   "osorio_p1": {"turretRaisedCm2":1908,"turretBaseCm2":0,"hullCm2":0,"pockets":2,"geometry":{"hull":"b0e633c40d29a3bf","turret":"55eeabb26110dae1","gun":"a9862671716e2921"}},
   "osorio_p2": {"turretRaisedCm2":1820,"turretBaseCm2":0,"hullCm2":0,"pockets":2,"geometry":{"hull":"75039bd654379985","turret":"e2486f253ac37472","gun":"6d048ba8046f7932"}},
