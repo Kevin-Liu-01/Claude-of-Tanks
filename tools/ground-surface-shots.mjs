@@ -203,7 +203,15 @@ function pageSpotPose({ hull, range }) {
       const t = i / 80, x = cx + (hull.x - cx) * t, z = cz + (hull.z - cz) * t, y = cy + (ty - cy) * t;
       if (h(x, z) > y - 0.2) clear = false;
     }
-    if (clear) return { cam: [cx, cy, cz], at: [hull.x, ty, hull.z], offDeg: off, range };
+    if (clear) {
+      // (abfull, Suzhou Creek: a ruined wall hid the hull at 200 m) the props too: a world ray from the eye toward the
+      // hull's middle reaches within 6 m of it
+      const D = window.__DEBUG, V = D.camera.position.constructor;
+      const dir = new V(hull.x - cx, ty - cy, hull.z - cz), len = dir.length();
+      const hit = D.world.raycast?.(new V(cx, cy, cz), dir.normalize(), len);
+      if (hit && hit.dist < len - 6) continue;
+      return { cam: [cx, cy, cz], at: [hull.x, ty, hull.z], offDeg: off, range };
+    }
   }
   return null;
 }
