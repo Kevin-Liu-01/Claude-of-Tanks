@@ -1379,6 +1379,9 @@ export interface TankVisual {
   /** (2026-11-02 audit F10) The wreck turret's frame pose [x, y, z, qx, qy, qz, qw] as its authority last had it placed,
    *  into `out`; false when no authority holds the turret (the killcam re-wrecks a restaged victim there). */
   wreckTurretHeldPose(out: Float64Array): boolean;
+  /** (round 2 U32) Whether an authority poses this wreck's turret (awaited, placed, or carried on from its last pose):
+   *  a fresh kill's awaited host pose counts before any placement (the killcam's receipt declares it again). */
+  wreckTurretAuthority(): boolean;
   isDestroyed(): boolean;
   prewarmBurn(): THREE.Object3D[];
   /**
@@ -11785,6 +11788,11 @@ export function* createTankRuntimeSteps(
     },
 
     wreckTurretHeldPose(out) { return destroyed && !!turretDriver && turretDriver.heldPose(out); },
+
+    wreckTurretAuthority() {
+      const mode = destroyed && turretDriver ? turretDriver.mode : 'inactive';
+      return mode === 'awaiting' || mode === 'external' || mode === 'continuation';
+    },
 
     /** @returns {boolean} the wreck look is currently applied */
     isDestroyed() { return destroyed; },

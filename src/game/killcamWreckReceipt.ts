@@ -13,6 +13,8 @@ export interface KillcamWreckVisual {
   /** the visual's declared wreck state (vehicles/wreckLifecycle.ts TankWreckState) */
   wreckState?(): string;
   wreckTurretHeldPose?(out: Float64Array): boolean;
+  /** (round 2 U32) an authority poses the wreck's turret, placed or still awaited (TankVisual's) */
+  wreckTurretAuthority?(): boolean;
   awaitWreckTurretPose?(): void;
   setWreckTurretPose?(pose: ArrayLike<number> | null): void;
 }
@@ -20,9 +22,16 @@ export interface KillcamWreckVisual {
 export interface KillcamWreckReceipt {
   /** a cook-off (its thrown turret, its char), else a plain wreck */
   pop: boolean;
-  /** where the wreck's authority had its turret (world turret frame), or null when none held it */
+  /** where the wreck's authority had its turret (world turret frame), or null when none had placed it yet */
   turretPose: Float64Array | null;
+  /** (round 2 U32) an authority posed the turret: a fresh kill's (the replay's own tick, its host's pose still awaited)
+   *  has none placed yet, and its re-wreck still awaits the host instead of throwing a local body */
+  authority: boolean;
 }
+
+/** The entity's combat record at the killcam's teardown (the live one: a network battle applies frames during the
+ *  replay, so a respawn shows here). */
+export interface KillcamWreckCombat { destroyed?: boolean }
 
 /** The age a restored wreck takes: long settled, its fire and smoke past their first beats. */
 export const KILLCAM_REWRECK_AGE_S = 12;
@@ -34,21 +43,27 @@ export const KILLCAM_REWRECK_AGE_S = 12;
 export function recordKillcamWreck(visual: KillcamWreckVisual, popHint = false): KillcamWreckReceipt | null {
   if (!visual.isDestroyed?.()) return null;
   const turretPose = new Float64Array(7);
+  const held = !!visual.wreckTurretHeldPose?.(turretPose);
   return {
     pop: popHint || visual.wreckState?.() === 'cookoff',
-    turretPose: visual.wreckTurretHeldPose?.(turretPose) ? turretPose : null,
+    turretPose: held ? turretPose : null,
+    authority: held || !!visual.wreckTurretAuthority?.(),
   };
 }
 
 /**
- * Wreck a restaged visual again, late, as its receipt had it. A visual the replay lifted declares its authority's held
- * pose first; one the replay never lifted keeps its own turret.
+ * Wreck a restaged visual again, late, as its receipt had it, while its entity is still dead (`combat`: the live record;
+ * (round 2 U32) one that respawned during the replay is alive, and a re-wreck drew a living tank as the old death's
+ * wreck that nothing reset). A visual the replay lifted declares its authority first, and its held pose when it had
+ * one; one the replay never lifted keeps its own turret. Returns whether it re-wrecked.
  */
 export function restoreKillcamWreck(visual: KillcamWreckVisual, receipt: KillcamWreckReceipt,
-  ageS = KILLCAM_REWRECK_AGE_S): void {
-  if (receipt.turretPose && !visual.isDestroyed?.() && visual.awaitWreckTurretPose && visual.setWreckTurretPose) {
+  combat: KillcamWreckCombat | null = null, ageS = KILLCAM_REWRECK_AGE_S): boolean {
+  if (combat?.destroyed === false) return false;
+  if (receipt.authority && !visual.isDestroyed?.() && visual.awaitWreckTurretPose) {
     visual.awaitWreckTurretPose();
-    visual.setWreckTurretPose(receipt.turretPose);
+    if (receipt.turretPose) visual.setWreckTurretPose?.(receipt.turretPose);
   }
   visual.setDestroyed({ pop: receipt.pop, ageS });
+  return true;
 }

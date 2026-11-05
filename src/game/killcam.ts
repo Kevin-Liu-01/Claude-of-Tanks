@@ -188,6 +188,7 @@ interface KillcamVisual {
   awaitWreckTurretPose?(): void;
   /** (2026-11-02 audit F10) where the wreck's authority (a host, the solo step) last had its turret, when one holds it */
   wreckTurretHeldPose?(out: Float64Array): boolean;
+  wreckTurretAuthority?(): boolean;
   /** (2026-11-02 audit F10) the visual's declared wreck state (cook-off or plain), for its killcam receipt */
   wreckState?(): string;
   isDestroyed?(): boolean;
@@ -6024,8 +6025,9 @@ export function createKillCam(deps: KillcamDeps) {
     if (!rewreck || !visual) return;
     // (2026-11-02 audit F10) a restaged victim whose turret its authority held is declared held again before the
     // re-wreck, at the pose it had: no local body is thrown and settled where the authority's collision turret is not
-    // (a wreck the replay never lifted keeps its own turret)
-    restoreKillcamWreck(visual, rewreck);
+    // (a wreck the replay never lifted keeps its own turret); (round 2 U32) never once it respawned during the replay
+    // (a network battle keeps applying frames): its tracks and plates are the new life's too
+    if (!restoreKillcamWreck(visual, rewreck, replay.snap.targetEnt?.combat)) return;
     if (visual.setTrackState) {
       for (const module of rewreck.brokenTracks) visual.setTrackState(module, true);
     }
@@ -6042,7 +6044,8 @@ export function createKillCam(deps: KillcamDeps) {
     // (2026-11-02 audit F10) re-wrecked from its receipt, as the victim is: its cook-off look and its authority's turret
     // pose (it was always a plain wreck whose turret a local body threw and settled by its seat)
     const wreck = replay.attackerRestore?.wreck;
-    if (wreck) restoreKillcamWreck(visual, wreck);
+    // (round 2 U32) an attacker that respawned during the replay stays alive (its presentation reset it then)
+    if (wreck) restoreKillcamWreck(visual, wreck, attacker.combat);
     if (replay.attackerRestore && !replay.attackerRestore.wasVisible && visual.setVisible) {
       visual.setVisible(false);
     }
