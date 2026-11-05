@@ -275,7 +275,7 @@ assert.equal(stats([]).med, null);
   let attempts = 0;
   const held = await acquireProbeLocks({ sessionMutex: '/m', lock, mutexWaitMs: 5, pause: async () => {},
     tryMutex: () => (++attempts > 3 ? (events.push('mutex'), true) : false), releaseMutex: () => events.push('mutex-release') });
-  held.release();
+  await held.release();
   assert.equal(events[0], 'fifo');
   assert.ok(events.indexOf('mutex') > events.indexOf('fifo'), 'the mutex is only ever taken while the FIFO is ours');
   assert.deepEqual(events.slice(-2), ['mutex-release', 'fifo-release']);
@@ -295,6 +295,7 @@ assert.equal(stats([]).med, null);
   assert.equal(held.round, 2);
   assert.deepEqual(calls, ['new', 'release', 'T1'], 'given back without waiting, then the original ticket');
   assert.match(logs[0], /queued behind us/);
+  await held.release();
 }
 {
   // (2026-11-02 audit S4) COT_LANE_HOLD=1 skipped both locks with nothing checking that a hold backed it: the probe no
@@ -307,7 +308,7 @@ assert.equal(stats([]).med, null);
     const lock = { acquire: async () => events.push('fifo'), release: () => events.push('fifo-release'), refresh: () => {} };
     const held = await acquireProbeLocks({ sessionMutex: '/m', lock, mutexNested: () => false,
       tryMutex: () => (events.push('mutex'), true), releaseMutex: () => events.push('mutex-release') });
-    held.release();
+    await held.release();
     assert.deepEqual(events, ['fifo', 'mutex', 'mutex-release', 'fifo-release'], 'a leftover COT_LANE_HOLD=1 takes the FIFO and the mutex');
   } finally {
     if (saved === undefined) delete process.env.COT_LANE_HOLD; else process.env.COT_LANE_HOLD = saved;
@@ -316,7 +317,7 @@ assert.equal(stats([]).med, null);
   const lock = { acquire: async () => events.push('fifo'), release: () => events.push('fifo-release'), refresh: () => {} };
   const held = await acquireProbeLocks({ sessionMutex: '/m', lock, mutexNested: (dir) => dir === '/m',
     tryMutex: () => (events.push('mutex'), true), releaseMutex: () => events.push('mutex-release') });
-  held.release();
+  await held.release();
   assert.deepEqual(events, ['fifo', 'fifo-release'], 'an ancestor\'s mutex is nested in, never taken or released');
 }
 {
@@ -343,6 +344,27 @@ assert.equal(stats([]).med, null);
     pause: () => new Promise((done) => setTimeout(done, 5)), tryMutex: () => ++tries > 4, releaseMutex: () => {}, mutexBusy: () => true,
     holderQueued: () => false, mutexNested: () => false }));
   assert.equal(typeof freed?.release, 'function', `a mutex that frees during the wait is taken (${freed})`);
+  await freed.release();
+}
+{
+  // (round 2 U38 review) the pair's FIFO holds through the one wrapper (capture-hold openCaptureHold). Its five callers (this
+  // probe, time-to-battle-probe, battle-spike-census, battle-memory-probe, shadow-cache-truth) held the lock with their own
+  // refresh timers and no cap: past the 20-min cap each kept it however many waited. Now past the cap with a waiter the
+  // handle's signal aborts and the hold's teardown runs (by default the guarded browsers stop); the release lets the mutex
+  // go, then the FIFO.
+  const events = [];
+  let fifoHeld = false;
+  const lock = { nested: false, acquire: async () => { fifoHeld = true; events.push('fifo'); },
+    release: () => { if (fifoHeld) events.push('fifo-release'); fifoHeld = false; return true; }, refresh: () => fifoHeld,
+    waiting: () => 1, get heldCapMs() { return fifoHeld ? 30 : null; } };
+  const pair = await acquireProbeLocks({ sessionMutex: '/m', lock, mutexNested: () => false, holderQueued: () => false,
+    tryMutex: () => (events.push('mutex'), true), releaseMutex: () => events.push('mutex-release'),
+    hold: { capCheckMs: 10, graceSeconds: 0.05, log: () => {}, teardown: async () => { events.push('teardown'); } } });
+  for (let i = 0; i < 200 && !events.includes('teardown'); i++) await new Promise((done) => setTimeout(done, 10));
+  assert.equal(pair.signal?.aborted, true, `past the cap with a waiter, the pair's hold is stopped (${events.join(' ')})`);
+  assert.ok(events.includes('teardown'), 'and its teardown ran');
+  await pair.release();
+  assert.deepEqual(events, ['fifo', 'mutex', 'teardown', 'mutex-release', 'fifo-release'], 'the mutex goes, then the FIFO');
 }
 {
   const slot = (label, order, gpu) => ({ mapId: 'verdant', label, key: `verdant-s${order}-${label}`, samples: [{ viewport: '1600x900', view: 'chase',

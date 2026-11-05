@@ -49,6 +49,7 @@
 // camera), and every sample records the geometries streamed while it ran (streamedDuring: 0 when the settle held).
 
 import { launchGuardedBrowser } from './browser-launch.mjs';
+import { openCaptureHold } from './capture-hold.mjs';
 import path from 'node:path';
 import os from 'node:os';
 import { execSync } from 'node:child_process';
@@ -745,19 +746,33 @@ export function foreignGpuCpu() {
  * on COT_LANE_HOLD=1 (a lane-hold helper's probe) only when the FIFO's live owner is an ancestor of it: acquire() checks
  * both against the live owner record and otherwise queues. It nests in the session mutex only while the mutex's live owner
  * is an ancestor (`mutexNested`), where it used to wait behind its own parent.
+ * (round 2 U38 review) The FIFO half holds through the one wrapper (tools/capture-hold.mjs openCaptureHold). Its five
+ * callers (this probe, time-to-battle-probe, battle-spike-census, battle-memory-probe, shadow-cache-truth) held the lock with
+ * their own refresh timers and no cap, so past the 20-min cap each kept it however many waited: time-to-battle-probe's
+ * budget is 60 min, battle-spike-census has none by default, battle-memory-probe and shadow-cache-truth none at all. Now
+ * past the cap with anyone waiting the hold's `signal` aborts, its guarded browsers are stopped after the grace and its
+ * launches refused, and a work still running then loses the FIFO; a signal lets the caller's finally run. The turn given
+ * back is the hold's release, and the mutex is still taken only while the FIFO is held. `hold` is the wrapper's options (the
+ * label is the script's name; `signals: []` for a caller with its own SIGINT/SIGTERM handler). Resolves { round, signal, refresh, release }:
+ * release() lets the mutex go, then the FIFO, and resolves once the hold is out.
  */
 export async function acquireProbeLocks({ sessionMutex = null, log = () => {}, fifoTimeoutMs = 3 * 60 * 60 * 1000,
   mutexWaitMs = 60_000, mutexIdleWaitMs = 45 * 60_000, lock = createCaptureLock(), tryMutex = defaultTryMutex,
   releaseMutex = defaultReleaseMutex, pause = sleep, mutexBusy = defaultMutexBusy, holderQueued = defaultHolderQueued,
-  mutexNested = defaultMutexNested } = {}) {
+  mutexNested = defaultMutexNested, hold: holdOptions = {} } = {}) {
   let ticket = null; // the first ticket: our place in the FIFO, kept across a turn given back
   for (let round = 1; ; round++) {
-    await lock.acquire(fifoTimeoutMs, ticket ? { ticket } : {});
+    const hold = await openCaptureHold({ label: path.basename(process.argv[1] ?? 'probe-locks').replace(/\.m?js$/, ''), ...holdOptions, lock,
+      timeoutMs: fifoTimeoutMs, ...(ticket ? { ticket } : {}) });
     ticket ??= lock.lastTicket ?? null;
-    if (!sessionMutex) return { round, release: () => lock.release(), refresh: () => lock.refresh() };
+    const handle = (mutexHeld) => ({ round, signal: hold.signal, refresh: () => lock.refresh(),
+      release: () => { if (mutexHeld) releaseMutex(sessionMutex); return hold.release(); } });
+    // nothing of the hold outlives a refusal or its stop (a signal while the mutex is waited for)
+    const giveUp = async (error) => { await hold.release(); return error; };
+    if (!sessionMutex) return handle(false);
     if (mutexNested(sessionMutex)) {
       log(`session mutex held by an ancestor of this process: nested in it (round ${round})`);
-      return { round, release: () => lock.release(), refresh: () => lock.refresh() };
+      return handle(false);
     }
     // a holder queued behind us cannot release while we hold the head: give the turn back at once; any other holder
     // (between its own captures) gets mutexWaitMs
@@ -766,9 +781,10 @@ export async function acquireProbeLocks({ sessionMutex = null, log = () => {}, f
     for (;;) {
       if (tryMutex(sessionMutex)) {
         log(`capture FIFO and session mutex held (round ${round})`);
-        return { round, refresh: () => lock.refresh(), release: () => { releaseMutex(sessionMutex); lock.release(); } };
+        return handle(true);
       }
       if (queued || Date.now() - started >= mutexWaitMs) break;
+      if (hold.signal.aborted) throw await giveUp(hold.signal.reason);
       lock.refresh();
       await pause(500);
     }
@@ -777,22 +793,23 @@ export async function acquireProbeLocks({ sessionMutex = null, log = () => {}, f
       // back frees nothing, since the ancestor keeps the FIFO, so this looped for good in 45-minute rounds. A mutex holder
       // queued behind that hold can never free it: refused at once. Any other holder gets one bounded wait.
       if (queued) {
-        throw new Error(`session mutex ${sessionMutex}: its holder is queued behind the FIFO hold this probe is nested in (an ancestor's), so `
-          + 'it can never free; run the probe without --session-mutex, or under the mutex\'s holder');
+        throw await giveUp(new Error(`session mutex ${sessionMutex}: its holder is queued behind the FIFO hold this probe is nested in (an ancestor's), so `
+          + 'it can never free; run the probe without --session-mutex, or under the mutex\'s holder'));
       }
       const waitFrom = Date.now();
       while (Date.now() - waitFrom < mutexIdleWaitMs) {
         await pause(5_000);
+        if (hold.signal.aborted) throw await giveUp(hold.signal.reason);
         lock.refresh();
         if (tryMutex(sessionMutex)) {
           log(`session mutex held, nested in an ancestor's FIFO hold (round ${round})`);
-          return { round, refresh: () => lock.refresh(), release: () => { releaseMutex(sessionMutex); lock.release(); } };
+          return handle(true);
         }
       }
-      throw new Error(`session mutex ${sessionMutex} still busy after ${Math.round(mutexIdleWaitMs / 60_000)} min, nested in an ancestor's FIFO hold `
-        + '(giving the turn back would free nothing)');
+      throw await giveUp(new Error(`session mutex ${sessionMutex} still busy after ${Math.round(mutexIdleWaitMs / 60_000)} min, nested in an ancestor's FIFO hold `
+        + '(giving the turn back would free nothing)'));
     }
-    lock.release();
+    await hold.release();
     log(`session mutex busy at the FIFO head (its holder ${queued ? 'is queued behind us' : `kept it ${Math.round(mutexWaitMs / 1000)} s`}): `
       + `turn given back; re-entering at our place once it is free (round ${round})`);
     // no ticket while the holder works, then our original ticket: the next head is not the same standoff, and the
@@ -1195,7 +1212,8 @@ async function run(options) {
     for (let qi = 0; qi < queue.length; qi++) {
       const slot = queue[qi];
       try {
-        if (options.budgetMin && (Date.now() - started) / 60000 > options.budgetMin) { remaining++; continue; }
+        // its own budget, or the hold's stop (the lock's cap with a waiter, a signal): the slots left are the next hold's
+        if ((options.budgetMin && (Date.now() - started) / 60000 > options.budgetMin) || locks.signal.aborted) { remaining++; continue; }
         if (serving !== slot.root) {
           if (server) await server.close();
           server = await openPreview(slot.root, options.port);
@@ -1250,7 +1268,7 @@ async function run(options) {
     clearInterval(refresh);
     if (browser) await browser.close().catch(() => {});
     if (server) await server.close().catch(() => {});
-    locks.release();
+    await locks.release();
   }
   machine.loadEnd = loadAverage();
   // the slots the agreement set aside and the budget left unmeasured are the next hold's (their records say failed)
