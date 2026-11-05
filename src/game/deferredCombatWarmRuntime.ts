@@ -90,7 +90,8 @@ interface DeferredCombatWarmRuntimeOptions<
   warmBattleTerrainTiles(yieldForBudget: WorkYielder): Promise<RuntimeValue>;
   getWorld(): World | null;
   getGeneration(): number;
-  setPending(pending: boolean): void;
+  /** The countdown's warm hold: `setPending(false, generation)` releases that generation's hold, and only it. */
+  setPending(pending: boolean, generation?: number): void;
   prepareNextOpeningRoute(): boolean;
   devTrace?: TraceSink | null;
   now?: () => number;
@@ -226,10 +227,15 @@ export function createDeferredCombatWarmRuntime<
   };
 
   const schedule = (generation: number): Promise<void> => {
-    if (!Number.isFinite(generation) || generation !== getGeneration()) {
+    // a call with no generation to scope never holds the count (the release falls to the current battle's)
+    if (!Number.isFinite(generation)) {
       setPending(false);
       return Promise.resolve();
     }
+    // (round 2 U20) a stale generation holds nothing (its successor's arm or an invalidation superseded its hold), so it
+    // releases nothing: its setPending(false) here lifted the successor's hold through main's adapter, which released the
+    // current generation whatever the caller's
+    if (generation !== getGeneration()) return Promise.resolve();
     if (pendingPromise) {
       if (pendingGeneration === generation) return pendingPromise;
       // (audit F2) a successor scheduled before anyone cancelled the stale warm: the slot is the successor's now. The
@@ -253,7 +259,7 @@ export function createDeferredCombatWarmRuntime<
     const releaseHold = (): void => {
       if (released || generation !== getGeneration()) return;
       released = true;
-      setPending(false);
+      setPending(false, generation);
     };
     let pending!: Promise<void>;
     pending = (async () => {

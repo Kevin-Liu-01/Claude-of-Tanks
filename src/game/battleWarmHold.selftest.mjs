@@ -64,4 +64,43 @@ import { createBattleWarmHold } from './battleWarmHold.ts';
   assert.equal(owner.schedule(successor), owner.schedule(successor), 'one generation still owns one warm promise');
 }
 
+// (round 2 U20) main's own warm-hold adapter (the ports' setPending): it released the current generation whatever
+// the caller's, so a stale battle's schedule, which the deferred warm answers with setPending(false), lifted the
+// successor's hold (the count left PREPARING with the successor's enemies still unbuilt). The case above schedules the
+// stale warm before the successor arms, so it never reached that branch.
+{
+  const { readFileSync } = await import('node:fs');
+  const { stripTypeScriptTypes } = await import('node:module');
+  const main = readFileSync(new URL('../main.ts', import.meta.url), 'utf8');
+  const line = main.match(/\nconst (release\w*WarmHold) = ([^\n]+);\n/);
+  assert.ok(line, "main.ts declares its warm-hold release adapter");
+  const hold = createBattleWarmHold();
+  const adapter = new Function('battleWarmHold', `return (${stripTypeScriptTypes(line[2])});`)(hold);
+  const game = { phase: 'battle', preBattleS: 4 };
+  const frameResolvers = [];
+  const owner = createDeferredCombatWarmRuntime({
+    game,
+    renderer: { info: { programs: [] }, getContext: () => ({ getExtension: () => null }) },
+    camera: { position: {} },
+    getBattleVisuals: () => ({ async stream() {} }),
+    combatWarm: { cancelRare() {}, async warmOpeningChunked() {}, async warmRareChunked() {} },
+    async warmBattleTerrainTiles() {},
+    getWorld: () => null,
+    getGeneration: () => hold.generation,
+    setPending: adapter,
+    prepareNextOpeningRoute: () => false,
+    now: () => 0,
+    yieldFrame: () => new Promise((resolve) => frameResolvers.push(resolve)),
+    createYielder: () => async () => {},
+  });
+  const stale = hold.arm();
+  const successor = hold.arm();
+  const successorWarm = owner.schedule(successor);
+  await owner.schedule(stale);
+  assert.equal(hold.pending, true, "a stale battle's schedule never lifts the successor's hold");
+  frameResolvers[0]();
+  await successorWarm;
+  assert.equal(hold.pending, false, "the successor's own warm releases it");
+}
+
 console.log('battleWarmHold.selftest: generation-scoped hold, and a successor never inherits a stale warm passed');

@@ -785,8 +785,13 @@ let camoSweepP = Promise.resolve();
 // (2026-11-02 audit F2) the countdown's warm hold: armed by a deployment for its generation, lifted only by that
 // generation's release, superseded at once by an invalidation (src/game/battleWarmHold.ts)
 const battleWarmHold = createBattleWarmHold();
-/** The warm ports' setPending(false): lift the current generation's hold (their callers check the generation first). */
-const releaseCurrentWarmHold = (pending: boolean): void => { if (!pending) battleWarmHold.release(battleWarmHold.generation); };
+/**
+ * The warm ports' setPending(false, generation): lift that generation's hold, and only it (round 2 U20: the adapter
+ * dropped the caller's generation and released the current one, so a stale caller lifted its successor's hold). A
+ * caller with no generation (the combat warm's load failure, checked current first; a renderer reset) means the
+ * current one.
+ */
+const releaseWarmHold = (pending: boolean, generation: number = battleWarmHold.generation): void => { if (!pending) battleWarmHold.release(generation); };
 let sceneWatchdogEntryGeneration = 0;
 let coveredBattleWatchdog: (() => Promise<SceneWatchdogResult | void>) | null = null;
 
@@ -2065,7 +2070,7 @@ const combatWarmComposition = createCombatWarmComposition({
     return battleVisuals;
   },
   getGeneration: () => battleWarmHold.generation,
-  setPending: releaseCurrentWarmHold,
+  setPending: releaseWarmHold,
   prepareNextOpeningRoute: () => Boolean(prepareNextOpeningRoute(game)),
   ensureStagedVisuals: (count: number) => ensureStagedVisuals(game, count),
   prepareModeVisuals: () => battlePresentation.prepareModeVisuals(),
@@ -2490,7 +2495,7 @@ const soloBattleDeployment = createSoloBattleDeploymentAccess({
     getGeneration: () => battleWarmHold.generation,
     // the deployment's arm is its hold (its setPending(true) has nothing left to do)
     advanceGeneration: () => battleWarmHold.arm(),
-    setPending: releaseCurrentWarmHold,
+    setPending: releaseWarmHold,
     setDestructionWarmed: combatWarmComposition.setDestructionWarmed,
     devTrace,
   }),
@@ -3416,7 +3421,7 @@ const garageReturn = createGarageReturnAccess<BattleVisual>({
   warm: {
     invalidate: () => { battleWarmHold.invalidate(); sceneWatchdogEntryGeneration++; coveredBattleWatchdog = null; },
     cancel: cancelDeferredCombatWarm,
-    setPending: releaseCurrentWarmHold,
+    setPending: releaseWarmHold,
   },
   work: {
     noteActivity: () => garageDressingScheduler.noteActivity(),
