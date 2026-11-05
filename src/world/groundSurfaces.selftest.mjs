@@ -165,7 +165,11 @@ assert.ok(GROUND_SURFACE_GLSL.includes('gGsTilt = uGsNear.x > 0.0'), 'the chunk 
 assert.ok(GROUND_SURFACE_GLSL.includes('gGsGain = gGsTilt * mix(3.0, 1.0, smoothstep(15.0, 45.0, camDist));'), 'the chunk sets the gain');
 assert.ok(raw.includes('float gsB = gsGL * (gsD < 0.0 ? gGsTilt : gGsGain);'), 'the normal pass bounds a facet\'s loss and its gain');
 assert.ok(GROUND_SURFACE_GLSL.includes('* smoothstep(0.15, 0.55, saturate(dot(normalize(cameraPosition - wp), wn)));'),
-  'the mosaic fades as the view grazes, by the mid dapple\'s law (diag2: combed strokes at a grazing view)');
+  'the mosaic fades as the view grazes, by the mid dapple\'s law (diag2: its patches foreshortened to slivers)');
+// (diag2: the splat's warp folds over ~23 % of the ground and smears metre fields into strands) no field of the table's
+// reads the warped coordinate
+assert.ok(![GROUND_SURFACE_GLSL, GROUND_SURFACE_WORKS_GLSL].some(t => t.split('\n').some(l => !l.trim().startsWith('//') && /\buvW\b/.test(l))),
+  'the table\'s fields read uv, never the warped uvW');
 // (ab9, Ironworks: "black" lots) the works floor never under a tenth of the light; (Cinder Junction: "pale blotches …
 // repeating") its ash the 4–8 m drifts alone
 assert.ok(GROUND_SURFACE_WORKS_GLSL.includes('max(1.0, 0.10 / max(reduxLuma(a.rgb), 0.01))')

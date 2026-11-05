@@ -1,7 +1,7 @@
 // src/world/groundSurfaceShader.ts — the ground-surface table's laws in the terrain splat (item ground-269, 2026-11-04;
 // DECISIONS "Ground detail and textures on every map"). terrain.ts interpolates the chunk once, in place inside
 // splatCompute() of SPLAT_COMMON_FRAG, after the cover's own patchwork and before the borders, so it reads the
-// composed albedo and the coverage weights there (a, n, fD, fR, fMs, meadowG, projW, roadCore, mk, keepM, uv, uvW, n1, n1h,
+// composed albedo and the coverage weights there (a, n, fD, fR, fMs, meadowG, projW, roadCore, mk, keepM, uv, n1, n1h,
 // gCropW, gSoilW, woods, camDist, gFootM …). The CPU side (classes, map rows, codes, uniforms) is groundSurfaces.ts.
 //
 // Three laws, each by class code, never by map:
@@ -15,6 +15,10 @@
 //   weeds and damp hollows, or a shelled city's dust over broken brick and masonry, not the woods' leaf litter;
 // - the works floor (uGsTown.x 6 slag; GROUND_SURFACE_WORKS_GLSL, after the roads): a works' lots, roads and hardstands,
 //   or a rail yard's cinder off its streets, carry ash drifts, rust-stained and oil-damp ground and clinker lumps.
+// Every field here reads the plain world coordinate uv, never the splat's warped uvW: that warp (±24 m from 4.3 m texels)
+// folds over ~23 % of the ground and stretches it past 8:1 over a fifth (measured on the noise's own bake, diag2), which
+// is harmless to the 80 m macro thresholds it was made for and smears any metre-scale field into long parallel strands —
+// Blackglass's "combed strokes" (c6), through the mosaic's patches.
 // Cost: six noise reads for the mosaic and the swaths, seven for the town, two for the works floor, and one hash cell per stone layer
 // (no loop, no neighbour search, no texture fetch of a layer). uLandTier sets the phones' share: 0 (Low and the phones' lower tiers) the
 // mosaic and the town's tones only, 1 adds the stones, 2 the full block.
@@ -37,7 +41,7 @@ export const GROUND_SURFACE_GLSL = /* glsl */`  // ground-269 (groundSurfaceShad
       * (1.0 - woods) * gsOff * (1.0 - smoothstep(400.0, 700.0, camDist)) : 0.0;
     float gsGrowW = uGsOpen.x > 0.5 ? gCropW * (1.0 - fR) * gsOff * (1.0 - smoothstep(400.0, 700.0, camDist)) : 0.0;
     if (gsSwathW + gsGrowW > 0.003) {
-      vec2 gsS = mix(vec2(0.5), nzq(uvW, 0.018, vec2(0.47, 0.11)), tileVis(14.0));
+      vec2 gsS = mix(vec2(0.5), nzq(uv, 0.018, vec2(0.47, 0.11)), tileVis(14.0));
       float lushS = smoothstep(0.50, 0.62, gsS.x);
       float curedS = smoothstep(0.53, 0.65, gsS.y) * (1.0 - lushS);
       vec3 gsW = mix(a.rgb, a.rgb * vec3(0.84, 0.93, 0.86), lushS * 0.75);
@@ -47,9 +51,8 @@ export const GROUND_SURFACE_GLSL = /* glsl */`  // ground-269 (groundSurfaceShad
     }
     // the open ground's 1–10 m mosaic (sward, tussock)
     float gsThin = 0.0;
-    // (c6 and diag2, Blackglass's 200 m and long views: "combed strokes", "curved striations" — with uGsOpen.y at 0 they
-    // went, with the crops' switch they stayed; resolved patches 15–20 px deep, a 2–4 m mosaic seen eight to one) the
-    // mosaic's patches lie in plan, and seen low over the sward they foreshorten into long strokes across the face, where
+    // (c6 and diag2, Blackglass's 200 m view: its 2–4 m patches, 15–20 px deep but fifty across, seen eight to one) the
+    // mosaic's patches lie in plan, and seen low over the sward they foreshorten into long slivers across the face, where
     // its blades would stand between the eye and its floor: it fades as the view grazes, by the mid dapple's law
     float gsSwardW = uGsOpen.y * meadowG * (1.0 - fR) * (1.0 - max(gCropW, gSoilW)) * (1.0 - woods) * gsOff
       * (1.0 - smoothstep(120.0, 240.0, camDist)) * tileVis(2.5)
@@ -58,7 +61,7 @@ export const GROUND_SURFACE_GLSL = /* glsl */`  // ground-269 (groundSurfaceShad
       // (ab3: at a grazing view the fine field's metre features stretched into thin arcs across the turf) each field eases to
       // its median once its features stop resolving — the patches' ~4 m and the fine field's ~1 m held while they span
       // ten pixels along the footprint's long axis — so the mosaic leaves the far ground as its mean, never as streaks
-      vec2 gsM = mix(vec2(0.5), nzq(uvW, 0.071, vec2(0.61, 0.17)), tileVis(4.0));
+      vec2 gsM = mix(vec2(0.5), nzq(uv, 0.071, vec2(0.61, 0.17)), tileVis(4.0));
       float gsF = mix(0.5, nzq(uv, 0.23, vec2(0.13, 0.77)).x, tileVis(1.2));
       float tus = step(1.5, uGsOpen.x);
       // (thresholds on the noise's measured spread: nzq p25 0.43, p50 0.51, p75 0.59, p90 0.66)
@@ -101,9 +104,9 @@ export const GROUND_SURFACE_GLSL = /* glsl */`  // ground-269 (groundSurfaceShad
       // (c6, Blackglass's long view: "a grey dirt apron laid around the tower base" — at that range the floor's 9 m and 3 m
       // fields had eased to their median, and tongues over a fifth of it left one grey-brown sheet from the road to the
       // walls) the turf holds near half of a shelled city's open ground, its tongues' edges soft
-      if (uGsTown.x > 4.5) gsTownW *= 1.0 - 0.85 * smoothstep(0.44, 0.60, nzq(uvW, 0.012, vec2(0.29, 0.71)).x);
+      if (uGsTown.x > 4.5) gsTownW *= 1.0 - 0.85 * smoothstep(0.44, 0.60, nzq(uv, 0.012, vec2(0.29, 0.71)).x);
       if (gsTownW > 0.003) {
-        vec2 tq = mix(vec2(0.5), nzq(uvW, 0.11, vec2(0.37, 0.83)), tileVis(3.0)); // (eased to the median past resolution)
+        vec2 tq = mix(vec2(0.5), nzq(uv, 0.11, vec2(0.37, 0.83)), tileVis(3.0)); // (eased to the median past resolution)
         float tf = mix(0.5, nzq(uv, 0.31, vec2(0.71, 0.29)).y, tileVis(0.9));
         // the floor's own tone: the map's soil greyed toward a gravel, its light three tenths of the way from the drawn
         // ground's own to a pale gravel's 0.20 (the critics' rounds on Suzhou Creek: a paler floor laid a flat sandy apron
