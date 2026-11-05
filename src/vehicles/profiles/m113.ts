@@ -212,26 +212,45 @@ export function* buildM113HullSteps(P: TankBuilderPort, mark: M113HullMark,
       P.add('hullDark', cylY(0.05, 0.05, 0.03, 10), s * 1.095, 1.815, D.sternZ - 0.30);
     }
   };
-  // the M113A2's armoured fuel tanks either side of the ramp, their tops falling steeply to a short rear face, two ribs
-  // down each slope, a filler cap between them, a tail light low in each rear face and two struts under each to the rear
-  // plate (Commons photo 07 of the M163's rear: 0.43 m deep, the 17 in the A2's tanks add to its length in TM 9-2350-277;
-  // the twin-aa lane's r5 read of 07, builder V: they ride on the track's ends, so the idlers and the track's rear wraps
-  // show under them, their bottoms 0.76 m up at the top of the idlers' rims, their tops 1.22 m at the plate falling to
-  // 0.98 m over a rear face 0.22 m tall)
+  // the M113A2's armoured fuel tanks either side of the ramp (Commons photo 07 of the M163's rear: 0.43 m deep, the 17 in
+  // the A2's tanks add to its length in TM 9-2350-277). The twin-aa lane's r7 read of 07 (builder V and the coordinator):
+  // they sit low on the plate just over the track's ends, their bottoms 0.76 m up at the top of the idlers' rims so the
+  // idlers and the track's rear wraps show under them; 0.50 m tall, a vertical rear face for the lower half carrying a
+  // tail light, then a face sloping 45 degrees forward over the upper half to a short flat top at the plate; on the right
+  // tank a flat hinged lid on the slope carrying the filler cap, on the left a recessed channel down the slope between two
+  // ridges and the cap above it; two struts under each to the rear plate
   const addA2FuelTanks = (): void => {
-    const z0 = D.sternZ, z1 = D.sternZ - 0.43, yLo = 0.76, yFront = 1.22, yRear = 0.98;
-    const slope = Math.atan2(yFront - yRear, z0 - z1), run = Math.hypot(yFront - yRear, z0 - z1);
+    const z0 = D.sternZ, z1 = D.sternZ - 0.43, yLo = 0.76, yTop = 1.26, yFace = yLo + 0.5 * (yTop - yLo), run = yTop - yFace;
+    const slope = Math.atan2(yTop - yFace, run), slopeLen = Math.hypot(yTop - yFace, run);
+    const onSlope = (u: number, out: number): [number, number] => [yFace + u * (yTop - yFace) + out * Math.cos(slope),
+      z1 + u * run - out * Math.sin(slope)];
     const strutY = 0.50, strutZ = z1 + 0.07, strutLen = Math.hypot(yLo - strutY, z0 - strutZ);
+    // the tank's side profile [z, y], extruded across x (sectionSolid's stations along +z, turned a quarter about y)
+    const profile = [[z0, yLo], [z1, yLo], [z1, yFace], [z1 + run, yTop], [z0, yTop]] as const;
+    const ring = profile.map(([z, y]) => [-z, y] as SectionPoint);
+    let area = 0;
+    for (let i = 0; i < ring.length; i++) area += ring[i][0] * ring[(i + 1) % ring.length][1] - ring[(i + 1) % ring.length][0] * ring[i][1];
+    const wound = area > 0 ? ring : [...ring].reverse();
     for (const s of [-1, 1] as const) {
-      const lo = s < 0 ? -1.31 : 0.86, hi = s < 0 ? -0.86 : 1.31, x = s * 1.085;
-      P.addEquipment('hull', slab([lo, yLo, z0], [hi, yLo, z0], [hi, yLo, z1], [lo, yLo, z1],
-        [lo, yFront, z0], [hi, yFront, z0], [hi, yRear, z1], [lo, yRear, z1]));
-      for (const dx of [-0.12, 0.12]) {
-        P.add('hullDetail', box(0.035, 0.03, run - 0.06), x + dx, (yFront + yRear) / 2 + 0.012, (z0 + z1) / 2, -slope, 0, 0);
+      const lo = s < 0 ? -1.31 : 0.86, hi = s < 0 ? -0.86 : 1.31, x = s * 1.085, w = hi - lo;
+      P.addEquipment('hull', xform(sectionSolid([{ z: lo, ring: wound }, { z: hi, ring: wound }]), 0, 0, 0, 0, Math.PI / 2, 0));
+      if (s < 0) {
+        // the right tank's flat hinged lid on the slope, its hinge along the slope's top edge, the filler cap on it
+        const [ly, lz] = onSlope(0.5, 0.006);
+        P.add('hullDetail', box(w - 0.06, 0.012, slopeLen - 0.06), x, ly, lz, -slope, 0, 0);
+        const [hy, hz] = onSlope(0.97, 0.012);
+        P.add('hullDark', cylX(0.015, w - 0.10, 8), x, hy, hz);
+        const [cy, cz] = onSlope(0.55, 0.024);
+        P.add('hullDark', cylY(0.05, 0.05, 0.025, 10), x, cy, cz, -slope, 0, 0);
+      } else {
+        // the left tank's recessed channel down the slope between two ridges, the filler cap on the flat top
+        const [ry, rz] = onSlope(0.5, 0.012), [gy, gz] = onSlope(0.5, 0.001);
+        for (const dx of [-0.055, 0.055]) P.add('hullDetail', box(0.03, 0.03, slopeLen - 0.04), x + dx, ry, rz, -slope, 0, 0);
+        P.add('hullDark', box(0.08, 0.004, slopeLen - 0.06), x, gy, gz, -slope, 0, 0);
+        P.add('hullDark', cylY(0.05, 0.05, 0.03, 10), x, yTop + 0.012, (z1 + run + z0) / 2);
       }
-      P.add('hullDark', cylY(0.05, 0.05, 0.03, 10), x, (yFront + yRear) / 2 + 0.015, (z0 + z1) / 2, -slope, 0, 0);
-      P.add('hullDark', box(0.18, 0.09, 0.012), x, yLo + 0.08, z1 - 0.004);
-      P.add('hullGlass', box(0.12, 0.04, 0.012), x, yLo + 0.08, z1 - 0.010);
+      P.add('hullDark', box(0.18, 0.09, 0.012), x, yLo + 0.10, z1 - 0.004);
+      P.add('hullGlass', box(0.12, 0.04, 0.012), x, yLo + 0.10, z1 - 0.010);
       for (const dx of [-0.15, 0.15]) {
         P.add('hullDark', box(0.04, 0.025, strutLen), x + dx, (yLo + strutY) / 2, (z0 + strutZ) / 2,
           Math.atan2(yLo - strutY, z0 - strutZ), 0, 0);

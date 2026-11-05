@@ -25,9 +25,12 @@ export const M163_TURRET = Object.freeze({
   /** the column: its centre, outer radius, wall and rim (0.90 m across, 0.49 m over the deck) */
   column: Object.freeze({ x: -0.16, z: -0.44, r: 0.45, wall: 0.03, topY: 0.74 }),
   /** the box shield (turret-local, square to the hull): its flat inner face 3 cm into the column's left wall, its foot and
-   * top, and at each its outer face's x and its front and rear ends' z (the outer face and both ends leaning out) */
+   * top, and at each its outer face's x, its front and rear ends' z and the radius its front outboard corner is rounded
+   * to (r7: photo 04 shows that corner rounded into the front face; 07 and 08 show the rear corners and the inner side
+   * square; the outer face and both ends leaning out) */
   boxShield: Object.freeze({ innerX: 0.255, footY: 0.32, topY: 0.78,
-    foot: Object.freeze({ outX: 0.72, z0: -0.36, z1: -1.12 }), top: Object.freeze({ outX: 0.80, z0: -0.27, z1: -1.25 }) }),
+    foot: Object.freeze({ outX: 0.72, z0: -0.36, z1: -1.12, cornerR: 0.10 }),
+    top: Object.freeze({ outX: 0.80, z0: -0.27, z1: -1.25, cornerR: 0.13 }) }),
   /** the upright slab at the ring's right front that carries the radar's boom (r4: the r2/r3 "tall plate" at the column's
    * right was this part, drawn 0.15 m long and too far aft): its outer face's x, its thickness, its rear and front ends'
    * z, its top, and the cut off its rear top corner (back along the top, down the rear edge) */
@@ -72,17 +75,25 @@ export const M163_GUN = Object.freeze({
   cradle: Object.freeze({ x: 0.165, t: 0.025, floorY: -0.1875, floorZ0: -0.13,
     outline: Object.freeze([[0.25, -0.20], [0.25, 0.10], [0.12, 0.13], [-0.19, 0.13], [-0.24, 0.07], [-0.24, -0.05],
       [-0.13, -0.20]] as const) }),
-  /** the tube under the barrels pointing forward, parallel to them (r5: photos 00, 03, 04, 10): 0.09 m across (0.64 of the
-   * cluster's 0.14 m), from under the housing's rear third to 0.54 m ahead of its mouth (a third of the barrels' 1.52 m;
-   * 04: ~0.45 m beyond the cradle), its nose ring and cap */
-  underR: 0.045, underY: -0.15, underZ: [-0.03, 0.78] as const,
+  /** the tube under the barrels pointing forward, parallel to them, capped (r6/r7: photo 00/03 measured on the mid and
+   * muzzle clamps puts its cap 0.48 m behind the tips, z 1.18, two thirds of the barrels' 1.52 m; 10 ~0.65 of the visible
+   * barrels; 04 reads shorter, its cap behind the mid clamp): 0.10 m across (0.7 of the cluster's 0.14 m), from under the
+   * housing's rear third to 1.15 m, 0.91 m past the housing's mouth */
+  underR: 0.05, underY: -0.15, underZ: [-0.03, 1.15] as const,
   /** the round lamp on the mount's top (r2: photo 06), 0.15 m across */
   lampR: 0.075, lampX: 0.09, lampY: 0.235, lampZ: 0.15,
-  /** the segmented linkless chute from the inboard trunnion's feed joint rising aft of the housing and arching 0.38 m over
-   * the axis forward into the feeder on the housing's top (r3: photos 08, 10, a thick segmented chute 0.7 of the
-   * cluster's 0.14 m, its arch 0.42 m fore and aft, its rear kept inside 0.38 m of the axis, clear of the column's front
-   * as the gun elevates): 0.12 m across, a segment's rib every 4.5 cm standing 1.2 cm proud */
-  chuteR: 0.06, chuteRibR: 0.072, chuteRibStep: 0.045,
+  /** the linked belt chute (r7: photos 08, 10, a broad flat chute of linked segments, deep transverse ribs, arcing from
+   * the receiver's top rear up and back into the turret's tub): 0.12 m wide and 0.045 m thick, a rib every 3.5 cm
+   * standing 1.2 cm proud of each face. In two halves meeting on the elevation axis at the inboard trunnion, the joint the
+   * feed passes through, so neither moves against the other as the gun elevates (one rigid chute from the receiver into
+   * the tub would sweep through the column's front and the deck): on the gun, from the receiver's top rear up and back
+   * and down behind the housing into the cradle (inside 0.40 m of the axis), a round joint along the axis into the
+   * trunnion; on the turret, from the inboard arm's joint up and back over the column's front rim into the tub. */
+  belt: Object.freeze({ w: 0.12, t: 0.045, rib: 0.012, ribStep: 0.035, jointR: 0.045,
+    gun: Object.freeze([[-0.06, 0.19, -0.06], [-0.06, 0.30, -0.11], [-0.06, 0.36, -0.15], [-0.08, 0.27, -0.24],
+      [-0.10, 0.15, -0.22], [-0.10, 0.05, -0.12], [-0.10, 0.0, -0.04]] as const),
+    turret: Object.freeze([[0.05, 0.58, 0.30], [0.02, 0.66, 0.24], [-0.04, 0.78, 0.14], [-0.10, 0.83, 0.03],
+      [-0.12, 0.80, -0.06], [-0.12, 0.66, -0.14]] as const) }),
 });
 /** The fire axis's mouth: the face of the clamps' spindle on the cluster's centre line, 5 mm behind the barrels' tips
  * (the fleet carves the axis's mouth there, tankFactoryCore.ts: a 12 mm opening through the spindle). */
@@ -92,18 +103,24 @@ export const M163_MUZZLE_MOUTH = Object.freeze({ outerRadiusM: 0.013, innerRadiu
 
 /** The gunner's seat in his column, his sight head on its post on the column's front rim, above the gun's breech and
  * inboard of its sweep (r2: photos 00/01, 06: a box 0.20 x 0.20 x 0.30 m, its top 1.1 m over the roof), and the guard
- * frame over the breech to it. The linkless drum lives in the hull under the turret (m163Specs.ts). */
+ * frame's two rails either side of the gun to it. The linkless drum lives in the hull under the turret (m163Specs.ts). */
 export const M163_GUNNER = Object.freeze({
   seat: Object.freeze({ x: -0.16, y: 0.50, z: -0.40 }),
   sight: Object.freeze({ x: 0.02, y: 1.00, z: -0.02, w: 0.20, h: 0.20, d: 0.30 }),
-  /** the guard frame (r5: photos 00, 02, 04, 08): one 6 cm pipe rising from the deck at the ring's front inboard of the
-   * gun, arching back to the sight head's top front at the gunner's chest, running outboard over the gun's breech and
-   * down outboard of the gun to the deck beside its trunnion arm. Over the breech it stays 0.55 m or more from the
-   * elevation axis and 20 degrees or more behind the vertical, outside everything the gun sweeps from -5 to +80 degrees
-   * (the barrels reach 89 degrees at full elevation, the chute's arch 0.45 m from the axis). [x, y, z] points. */
-  guard: Object.freeze({ r: 0.03, path: Object.freeze([[0.0, 0.24, 0.62], [0.0, 0.70, 0.62], [0.0, 0.98, 0.50],
-    [0.02, 1.10, 0.30], [0.08, 1.11, 0.12], [0.30, 1.11, 0.09], [0.55, 1.09, 0.10], [0.62, 0.95, 0.16], [0.62, 0.60, 0.26],
-    [0.62, 0.24, 0.30]] as const) }),
+  /** the guard frame (r7: photos 00, 02, 04, 08): two tubular rails fixed to the turret straddling the receiver, one each
+   * side of the gun (02 from above), their tops level while the gun elevates (04 at 17 degrees, 08 at 5) 0.33 m over the
+   * elevation axis at the gunner's chest; each front curving up in a rounded handrail bend from its trunnion arm's front at
+   * trunnion height, ahead of the receiver (04, 08); the inboard rail running aft into the sight head's front, the outboard
+   * one aft beside the gun and round inboard behind the breech into the sight head's outboard face (the one cross tie, 0.55
+   * m from the axis and 140 degrees round from the bore). Inboard of the gun's inboard reach (0.14 m, the chute's ribs) and
+   * outboard of its outboard one (0.50 m, the cradle), so the barrels pass between them from -5 to +80 degrees; no leg to
+   * the floor, nothing across the cradle, nothing into the box shield. 5 cm pipe; [x, y, z] points. */
+  guard: Object.freeze({ r: 0.025,
+    inboard: Object.freeze([[0.075, 0.58, 0.40], [0.075, 0.64, 0.50], [0.075, 0.79, 0.53], [0.075, 0.89, 0.45],
+      [0.075, 0.915, 0.33], [0.075, 0.915, 0.20], [0.075, 0.915, 0.12]] as const),
+    outboard: Object.freeze([[0.575, 0.58, 0.40], [0.59, 0.64, 0.50], [0.59, 0.79, 0.53], [0.59, 0.89, 0.45],
+      [0.59, 0.915, 0.33], [0.59, 0.915, 0.0], [0.57, 0.92, -0.10], [0.45, 0.925, -0.125], [0.30, 0.93, -0.125],
+      [0.13, 0.93, -0.10]] as const) }),
 });
 
 /**
