@@ -12,7 +12,7 @@ import * as THREE from 'three';
 import { KIT } from './kit.ts';
 import { sectionSolid, type SectionPoint } from './sectionSolid.ts';
 import { equipment } from './easternSourceKit.ts';
-import { K21_HATCHES, k21TurretRoofAt } from './k21Turret.ts';
+import { K21_HATCHES, K21_TURRET, k21TurretRoofAt } from './k21Turret.ts';
 import type { TankBuilderPort } from '../tankFactoryCore.ts';
 
 const { box, cylX, cylY, cylZ } = KIT;
@@ -190,11 +190,11 @@ function addK21RearStowage(P: TankBuilderPort): void {
  *  edge, two periscopes ahead of the left hatch, and the source's rear-roof fittings: a mount ring on the right, a twin
  *  sensor head at the centre and two vent caps on the left. Turret builder frame (world metres before the 0.90 size). */
 function addK21TurretRoofKit(P: TankBuilderPort): void {
-  // 2026-11-04: the new turret's roof (k21Turret.ts): flat at 2.606, its rear bevel falling to the rear wall's 2.49
+  // 2026-11-04: the new turret's roof (k21Turret.ts): flat to z -1.33, its rear bevel falling to the rear wall's top
   const roofAt = k21TurretRoofAt;
   for (const [x, z, s] of K21_HATCHES) {
-    const top = 2.656, rear = z - 0.31;
-    // spring housing behind the two hinge barrels (x ±0.12 at y 2.645), on the roof behind the cover
+    const top = K21_TURRET.roofY + 0.05, rear = z - 0.31;
+    // spring housing behind the two hinge barrels (x ±0.12, 39 mm over the roof), on the roof behind the cover
     equipment(P, 'turret', 'Dark', cylX(0.024, 0.24, 10), x, roofAt(rear - 0.05) + 0.022, rear - 0.05);
     for (const d of [-0.12, 0.12]) equipment(P, 'turret', 'Detail', box(0.03, 0.05, 0.06), x + d, roofAt(rear - 0.05) + 0.018, rear - 0.045);
     grabHandle(P, 'turret', x - s * 0.08, top - 0.003, z + 0.06, 0.15, 0.03);

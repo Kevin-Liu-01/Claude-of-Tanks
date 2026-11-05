@@ -32,6 +32,9 @@ const near=(a,b,label,tolerance=.00002)=>assert.ok(Math.abs(a-b)<tolerance,`${la
 // z -1.717 and whose raked central panel reaches z 0.799, and its gun mount is the long cradle housing lying in the
 // roof channel with the coaxial box and jacket ahead: k21's turret and gunMount boxes are re-measured as the current
 // build / factor. The roof (0.646 over the ring) and the seated underside are unchanged, so the turret's height is too.
+// Round 2 (blind A/B k21turretr269): the photographs' turret wall is 1.15-1.30 road-wheel diameters tall, so the roof
+// rises 0.13 m (0.646 -> 0.776 over the ring) on the same plan, and the mantlet's jacket, collar and coaxial box are
+// re-stacked as photo 7 shows them: k21's turret and gunMount boxes are re-measured as the current build / factor.
 for(const [id,b] of Object.entries(before)){
  if(id==='upior')continue; // rebuilt turret/course covered by escortModernization.selftest
  const factor=VEHICLE_SIZE_FACTORS[id];

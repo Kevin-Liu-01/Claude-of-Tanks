@@ -8,7 +8,7 @@ import { buildFleetTrackShoe } from './abramsSourceXTrackShoe.ts';
 import { sectionSolid } from './sectionSolid.ts';
 import { EASTERN_SOURCE_STUDIES } from '../easternSourceStudyData.ts';
 import { barrel, equipment, panel, openGunTube, hullStation, optic } from './easternSourceKit.ts';
-import { addK21Mantlet, addK21Turret, K21_HATCHES } from './k21Turret.ts';
+import { addK21Mantlet, addK21Turret, K21_HATCHES, K21_TURRET, k21TurretRoofAt } from './k21Turret.ts';
 import { addK21GlacisPlates, addK21HullDeckKit, addK21TurretDeckKit } from './k21DeckKit.ts';
 import type { TankBuilderPort } from '../tankFactoryCore.ts';
 import { launchCellParts } from './missileCanisterStock.ts';
@@ -441,39 +441,46 @@ function buildK21Turret(P: TankBuilderPort): void {
     P.add('turret', cylY(.93, 1.00, .15, P.q ? 36 : 20), 0, .045, 0);
     addK21Turret(P);
     // The two crew hatches as the source and photo 4 show them: round covers on a low ring, hinged at the rear.
+    const roof = K21_TURRET.roofY;
     for (const [x, z] of K21_HATCHES) {
-        equipment(P, 'turret', 'Detail', cylY(.335, .345, .020, P.q ? 32 : 18), x, 2.615, z);
-        equipment(P, 'turret', 'Detail', cylY(.300, .310, .035, P.q ? 32 : 18), x, 2.6385, z);
+        equipment(P, 'turret', 'Detail', cylY(.335, .345, .020, P.q ? 32 : 18), x, roof + .009, z);
+        equipment(P, 'turret', 'Detail', cylY(.300, .310, .035, P.q ? 32 : 18), x, roof + .0325, z);
         for (const d of [-.12, .12])
-            equipment(P, 'turret', 'Detail', cylX(.023, .11, 12), x + d, 2.645, z - .27);
+            equipment(P, 'turret', 'Detail', cylX(.023, .11, 12), x + d, roof + .039, z - .27);
     }
     // Source sight envelopes are asymmetric, with a sloped left hood and a
     // rounded right optical head. Both sit on their own finite roof mounts.
+    // 2026-11-04 round 2: both sights are 12-15 % larger, as photos 4 and 6 measure them (the gunner's box 0.57-0.62 m
+    // wide and 0.36-0.39 m tall, the commander's drum 0.44-0.48 m across), and ride the raised roof.
+    const hx = -.642, gw = 1.15, gh = 1.12;
     equipment(P, 'turret', 'Detail', sectionSolid([
-        { z: -.22, ring: [[-.254, 0], [.254, 0], [.20, .3115], [-.20, .3115]] },
-        { z: .13, ring: [[-.254, 0], [.254, 0], [.16, .28], [-.16, .28]] },
-        { z: .22, ring: [[-.254, 0], [.254, 0], [.16, .23], [-.16, .23]] },
-    ]), -.642, 2.607, -.34);
-    optic(P, 'turret', -.642, 2.760, -.123, .32, .115, .058);
+        { z: -.22, ring: [[-.254 * gw, 0], [.254 * gw, 0], [.20 * gw, .3115 * gh], [-.20 * gw, .3115 * gh]] },
+        { z: .13, ring: [[-.254 * gw, 0], [.254 * gw, 0], [.16 * gw, .28 * gh], [-.16 * gw, .28 * gh]] },
+        { z: .22, ring: [[-.254 * gw, 0], [.254 * gw, 0], [.16 * gw, .23 * gh], [-.16 * gw, .23 * gh]] },
+    ]), hx, roof + .001, -.34);
+    optic(P, 'turret', hx, roof + .154 * gh, -.123, .32 * gw, .115 * gh, .058);
     // Measured cap/neck/collar profile, with the receiving roof lowered to
     // Object_22's actual 2.606 m datum so the narrow neck is visible.
+    const cr = 1.12, ch = 1.08, cx = .711, cz = -.166, base = roof - .0083;
     const sightProfile = [[0, 0], [.153, 0], [.150, .035], [.132, .075],
         [.159, .115], [.186, .175], [.201, .275], [.197, .375], [.165, .420], [0, .428]];
     // 2026-10-19 (owner float sweep): the sight and its head stood 12 mm above the roof; now seated on it.
-    equipment(P, 'turret', 'Detail', new THREE.LatheGeometry(sightProfile.map(([r, y]) => new THREE.Vector2(r, y)), P.q ? 28 : 16), .711, 2.5977, -.166);
-    optic(P, 'turret', .711, 2.8925, -.009, .18, .125, .075);
+    equipment(P, 'turret', 'Detail', new THREE.LatheGeometry(sightProfile.map(([r, y]) => new THREE.Vector2(r * cr, y * ch)), P.q ? 28 : 16), cx, base, cz);
+    optic(P, 'turret', cx, base + .2948 * ch, cz + .157 * cr, .18 * cr, .125 * ch, .075);
     for (const x of [-.797, -.667, -.537]) {
-        equipment(P, 'turret', 'Detail', box(.120, .066, .060), x, 2.666, -.126);
-        equipment(P, 'turret', 'Glass', box(.095, .034, .010), x, 2.671, -.092);
+        equipment(P, 'turret', 'Detail', box(.120 * gw, .066 * gh, .060), hx + (x - hx) * gw, roof + .06 * gh, -.126);
+        equipment(P, 'turret', 'Glass', box(.095 * gw, .034 * gh, .010), hx + (x - hx) * gw, roof + .065 * gh, -.092);
     }
-    // Object_14 collars start in the rear roof shoulder at 2.50638 m;
-    // Object_21 whips begin at their narrow 2.673 m terminal, not above a gap.
+    // Object_14 collars start in the rear roof shoulder (the source's 2.50638 m, now on the raised bevel, 5 mm in);
+    // Object_21 whips begin at their narrow terminal on the collar, not above a gap.
+    const collar = k21TurretRoofAt(-1.61571) - .005, lift = collar - 2.50638;
     for (const [x, tip] of [[-.883495, 4.17597], [.884605, 4.17628]]) {
         equipment(P, 'turret', 'Detail', new THREE.LatheGeometry([
             [0, 0], [.059, 0], [.0681, .0384], [.0681, .0627], [.0337, .066],
             [.02955, .1436], [.01465, .1704], [0, .1704],
-        ].map(([r, y]) => new THREE.Vector2(r, y)), P.q ? 16 : 10), x, 2.50638, -1.61571);
-        const bottom = 2.6728;
+        ].map(([r, y]) => new THREE.Vector2(r, y)), P.q ? 16 : 10), x, collar, -1.61571);
+        // the tips keep the source's 4.176 m (the published silhouette height): the whips are shorter by the lift
+        const bottom = 2.6728 + lift;
         equipment(P, 'turret', 'Dark', antennaPart(cylY(.0058, .0126, tip - bottom, P.q ? 8 : 6)), x, (bottom + tip) / 2, -1.61599);
     }
     addBasket(P);
