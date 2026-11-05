@@ -57,7 +57,10 @@ export const WIRE_VERSION = 11;
 // the verdict resumed as a running match); the extras' combat counters (`MigrationEntityExtras` moduleHp, fire, reloads,
 // magazines, consumables, auxiliary) and the resume state's keyframeTick, timeS, revivedEntityIds and respawnTicks (M1);
 // and the room's adminLocked (M2).
-// 12 (round 2 of the 2026-11-02 audit, 2026-11-05): wire 11, the destroyed list's falls (U27) and the unseen rounds (U31).
+// 12 (round 2 of the 2026-11-02 audit, 2026-11-05): wire 11, the destroyed list's falls (U27) and the unseen rounds (U31);
+// and the host handover a migration seals, which an older build would misread (round 2 U2, mp-resume): the extras'
+// reload channels at rest as null and the consumables' and auxiliary kit's at-rest fields absent (`MigrationEntityExtras`,
+// hostProtocol.ts: only what differs from a fresh host's state), and the resume state's keyframeBattleTimeMs.
 export const PROTOCOL_VERSION = 12; // wire 11, destroyed falls and unseen rounds
 
 export const TICK_HZ = 60;
