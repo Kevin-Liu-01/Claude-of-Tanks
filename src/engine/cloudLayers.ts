@@ -55,8 +55,8 @@ export interface CloudLane {
   /** a deck's lumps: the cells' channel at a third of their period thickening and thinning the column (0..1) */
   lumps: number;
   /**
-   * clouds-269: a convective lane's dome — the exponent of the crown a column rises to over its excess above the base
-   * footprint (cloudShaders.ts cl2Shell; low, more of the footprint stands tall). 0 = the shell law alone (a deck).
+   * clouds-269: a convective lane's crown — the exponent of the height a column's top rounds off at over its excess above
+   * the base footprint (cloudShaders.ts cl2Shell; low, more of the footprint stands tall). 0 = the shell law alone (a deck).
    */
   dome: number;
   /** the density profile over the height fraction: a·e^(b·η) + c·η + d */
@@ -101,9 +101,9 @@ export const CLOUD_DECK_TUNE: Readonly<Record<string, number>> = Object.freeze({
 });
 /**
  * clouds-269 (the owner, 2026-11-04: "less prism-y"): a cumulus column's crown is its excess over the base footprint to
- * this power (cloudShaders.ts cl2Shell; CPU model, Verdant: the footprint halves at 0.63 of the slab and is a fifth at
- * 0.73, where round 6's shell law held 0.84 of it to 0.55 and halved it only at 0.73 — the extrusion of its outline
- * under a flat lid).
+ * this power (cloudShaders.ts cl2Shell), the density fading over the crown's top quarter, so a core rounds off at its
+ * own height instead of under round 6's lid at the slab's ceiling, and a small cloud's base rim lifts off the plate
+ * (CPU model, Verdant: the footprint a fifth of its widest at 0.83 of the slab, round 6 at 0.88; its base half as wide).
  */
 export const CLOUD_DOME_CROWN = 0.4;
 /** The local weather's world period (m; cloudShaders.ts CLOUD2_PERIODS.local) and its cell channel's cell (m) on it. */

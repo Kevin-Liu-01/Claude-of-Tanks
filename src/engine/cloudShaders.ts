@@ -207,23 +207,20 @@ vec4 cl2Shell( float h, vec4 weather, vec2 cell, out vec4 hf ) {
 	vec4 admitted = uLayerCover * heightScale;
 	vec4 ramp = max( admitted * uLayerFilter, vec4( 0.02 ) );
 	vec4 d = clamp( ( weather - ( 1.0 - admitted ) ) / ramp, 0.0, 1.0 );
-	// clouds-269 (the owner: "make clouds more natural and also less prism-y"): a convective lane's dome. Under the law
-	// above the core of a footprint kept one density up the whole slab (its ramp shrank with the footprint), so every
-	// cumulus stood as the extrusion of its outline under a flat lid. Here a column's excess over the base footprint (0 at
-	// its edge, 1 at the weather's peak) sets the crown it reaches, e^dome of the slab, and its density falls from 55 % of
-	// that height to nothing at the crown, so the shape volume carves its billows into a rounded top and sloping shoulders;
-	// the base lifts toward the edge (the underside's rim curls up instead of a knife-edged plate). The base footprint,
-	// and so a map's coverage at the clouds' widest, is the law's above.
+	// clouds-269 (the owner: "make clouds more natural and also less prism-y"): a convective lane's crown and rim. Under
+	// the law above a footprint's core kept its density up to the slab's ceiling, so the cores of every mass stood to one
+	// height under a flat lid, and every cloud stood on a knife-edged plate. A column's excess over the base footprint (0
+	// at its edge, 1 at the weather's peak) sets its crown, e^dome of the slab, over whose top quarter the density fades
+	// (to nothing at the ceiling), so the shape volume rounds every core's top into billows at its own height; the base
+	// lifts toward the edge, so a small cloud's underside rounds up instead of sitting on the plate. The body below is
+	// the law's above (the first GPU pass, a dome fading from 55 % of the crown, thinned every cumulus' upper half: the
+	// blind critics' "flattened", "sheet-like" clouds); a cumulonimbus' anvil keeps its band.
 	if ( dot( uLayerDome, uLayerDome ) > 0.0 ) {
 		vec4 e = clamp( ( weather - ( 1.0 - uLayerCover ) ) / max( uLayerCover, vec4( 0.02 ) ), 0.0, 1.0 );
 		vec4 crown = pow( max( e, vec4( 1e-4 ) ), max( uLayerDome, vec4( 0.05 ) ) );
-		vec4 rim = 0.14 * ( 1.0 - e ) * ( 1.0 - e );
-		vec4 dome = smoothstep( rim, rim + 0.1, hf ) * ( 1.0 - smoothstep( crown * 0.55, crown, hf ) );
-		vec4 dd = clamp( ( weather - ( 1.0 - uLayerCover ) ) / max( uLayerCover * uLayerFilter, vec4( 0.02 ) ), 0.0, 1.0 ) * dome;
-		// a cumulonimbus' anvil spreads over the dome's top as before
-		vec4 aAdm = uLayerCover * uLayerAnvil * smoothstep( 0.74, 0.9, hf ) * ( 1.0 - smoothstep( 0.97, 1.0, hf ) );
-		dd = max( dd, clamp( ( weather - ( 1.0 - aAdm ) ) / max( aAdm * uLayerFilter, vec4( 0.02 ) ), 0.0, 1.0 ) * step( vec4( 1e-4 ), aAdm ) );
-		d = mix( d, dd, step( vec4( 1e-4 ), uLayerDome ) );
+		vec4 rim = 0.1 * ( 1.0 - e ) * ( 1.0 - e );
+		vec4 roundTop = max( 1.0 - smoothstep( crown * 0.75, crown, hf ), step( 0.74, hf ) * step( vec4( 1e-4 ), uLayerAnvil ) );
+		d *= mix( vec4( 1.0 ), smoothstep( rim, rim + 0.08, hf ) * roundTop, step( vec4( 1e-4 ), uLayerDome ) );
 	}
 	// a broken deck's cells stand apart: clear lanes where the cells thin out (closing as the deck closes — none from a
 	// cover of one; the first GPU pair drew Frosthollow's broken deck as one white sheet)
