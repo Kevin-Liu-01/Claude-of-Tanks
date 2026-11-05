@@ -48,7 +48,7 @@ export type { PlayMode } from '../mp/session/playMode.ts';
 import { automaticPlayerName, normalizePlayerName } from '../mp/session/playerNames.ts';
 import { normalizeRoomCode } from '../mp/room/protocol.ts';
 import { createRoomInviteUrl } from '../mp/session/roomInvite.ts';
-import { nextPlayMenuSeat, roomRulesLocked, shouldAutoHandoff, type PlayMenuSeat } from './playMenuSeat.ts';
+import { nextPlayMenuSeat, roomRulesLocked, seatRendersLobby, shouldAutoHandoff, type PlayMenuSeat } from './playMenuSeat.ts';
 import { ensureFonts } from './fonts.ts';
 import { iconUrl } from './icons.ts';
 import { tierNumeral } from '../techTree/tiers.ts';
@@ -1505,18 +1505,25 @@ export function createPlayMenu({
   }
   showSelectedGameMode();
 
-  function adoptRoomConnection(connection: RoomConnection): void {
+  /**
+   * The menu takes its own room. Only a seat with no room, one connecting, or one already holding this lobby (a re-sent
+   * match_start while handed off) takes it: an attached seat's room is the battle owner's (round 2 U8: the adoption set
+   * `session` there anyway, beside the attached room, and its handoff ran). False when the seat refuses.
+   */
+  function adoptRoomConnection(connection: RoomConnection): boolean {
+    if ((seat === 'none' || seat === 'connecting') && !moveSeat('lobby', 'room adopted')) return false;
+    if (seat !== 'lobby' && seat !== 'handed_off') return false;
     session = connection.session;
     role = connection.role;
-    if (seat === 'none' || seat === 'connecting') moveSeat('lobby', 'room adopted');
     clearFailure();
+    return true;
   }
 
   /** The room's match_start reached a seat the menu holds, or one it released to the battle owner (`owner`). */
   function hostStarted(lobbyState: SerializedLobby, connection: RoomConnection, owner: 'menu' | 'released'): void {
     // A round on the seat the menu released to the battle owner hands off through the attached room; the menu never
     // takes it back as its own (audit F6, 2026-11-02). The seat's own role goes with it (it was 'host' for every seat).
-    if (owner === 'menu') adoptRoomConnection(connection);
+    if (owner === 'menu' && !adoptRoomConnection(connection)) return;
     beginNetworkHandoff(lobbyState, connection.role);
   }
 
@@ -1704,12 +1711,15 @@ export function createPlayMenu({
     } catch (error) { refused(error); }
   }
 
-  function setConnecting(next: boolean): void {
-    if (next) moveSeat('connecting', 'room request');
-    else if (seat === 'connecting') moveSeat(session ? 'lobby' : 'none', 'request settled');
+  /** The seat's connecting view and its controls; false when the table refuses the move (round 2 U8: callers carried on). */
+  function setConnecting(next: boolean): boolean {
+    let moved = true;
+    if (next) moved = moveSeat('connecting', 'room request');
+    else if (seat === 'connecting') moved = moveSeat(session ? 'lobby' : 'none', 'request settled');
     room.setAttribute('aria-busy', String(connecting));
     createBtn.disabled = connecting;
     joinBtn.disabled = connecting || codeInput.value.length !== 6;
+    return moved;
   }
 
   function closeCurrentSession(
@@ -1766,7 +1776,8 @@ export function createPlayMenu({
     // The battle owner already owns an attached room's session: the handoff guards the menu's own only.
     const own = activeSession === session;
     if (own) {
-      moveSeat('handed_off', 'battle handoff');
+      // a seat that cannot hand off (the table refuses) starts nothing: the battle owner's round entry never runs for it
+      if (!moveSeat('handed_off', 'battle handoff')) return false;
       // the hidden lobby renders nothing while the battle owner holds the round (audit F6, 2026-11-02): it went on
       // rebuilding the roster, the URL, the page metadata and the stored mode, and named a live lobby to the Garage
       if (unsubscribeState) unsubscribeState();
@@ -1809,7 +1820,15 @@ export function createPlayMenu({
    */
   function returnToLobby(handed: RoomSession): void {
     if (seat !== 'handed_off' || session !== handed || !moveSeat('lobby', 'handoff refused')) return;
-    if (!unsubscribeState && roomConnection.current?.session === handed) unsubscribeState = roomConnection.observe(renderLobby);
+    if (!unsubscribeState && roomConnection.current?.session === handed) unsubscribeState = roomConnection.observe(renderOwnLobby);
+  }
+
+  /**
+   * The menu's own room's updates render its lobby only while the seat holds that lobby (seatRendersLobby; round 2 U8,
+   * Q4: the rule was asserted but nothing read it, and the handoff's unsubscribe alone kept a hidden lobby still).
+   */
+  function renderOwnLobby(next: SerializedLobby): void {
+    if (seatRendersLobby(seat)) renderLobby(next);
   }
 
   function rememberLiveRoom(next: SerializedLobby): void {
@@ -2043,11 +2062,12 @@ export function createPlayMenu({
         false,
       );
     }
-    unsubscribeState = roomConnection.observe(renderLobby);
+    unsubscribeState = roomConnection.observe(renderOwnLobby);
   }
 
   async function connectRoom(kind: 'create' | 'join', generation: number): Promise<boolean> {
-    if (connecting || session || roomConnection.connecting || roomConnection.current) return false;
+    // the menu connects only from a seat with no room: never while the battle owner holds one (round 2 U8)
+    if (connecting || session || activeRoom || roomConnection.connecting || roomConnection.current) return false;
     const selection = { ...getSelection(), gameMode: selectedGameMode,
       arrangement: kind === 'create' ? currentArrangement(selectedGameMode) : null };
     const name = normalizePlayerName(nameInput.value) || automaticPlayerName(ownPlayerId);
@@ -2062,7 +2082,7 @@ export function createPlayMenu({
       throw Object.assign(new Error('Enter a six-character room code'), { code: 'invalid_room_code' });
     }
     const player = { id: ownPlayerId, name };
-    setConnecting(true);
+    if (!setConnecting(true)) return false;
     try {
       const teamSize = Number(createSizeSelect.value);
       if (kind === 'create') {
@@ -2078,7 +2098,11 @@ export function createPlayMenu({
         teamSize,
       });
       if (!connection || generation !== requestGeneration) return false;
-      adoptRoomConnection(connection);
+      if (!adoptRoomConnection(connection)) {
+        // a room the seat cannot take is left at once: the adapter would otherwise hold a room the menu never shows
+        roomConnection.close('room_connection_closed');
+        return false;
+      }
       if (handedOff) return true;
       observeConnectedRoom(connection, kind);
       return true;

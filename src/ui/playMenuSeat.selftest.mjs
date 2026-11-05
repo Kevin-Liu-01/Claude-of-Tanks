@@ -9,6 +9,11 @@
 // (E) (2026-11-03, the round-1 review) a seat the menu released to the battle owner had no handoff latch: every
 //     match_start the room re-sent (one per admission, so per room-socket blip) ran the composition's round entry
 //     again, and its busy answer revealed the lobby over the loading battle.
+// (F) (round 2 U8) the callers that start a connect, an adoption or a handoff carried on when moveSeat refused the move:
+//     from 'attached' a connect went out and its room was adopted (`session` set while the seat stayed 'attached'), and
+//     an own handoff from a seat that cannot hand off ran the battle owner's round entry.
+// (G) (round 2 U8, Q4) seatRendersLobby was asserted here but read by nothing in the menu: the menu's own room observer
+//     now renders through it, so only the lobby the menu holds renders from the room's updates.
 // Plus the pure table (src/ui/playMenuSeat.ts) and the one locked rule every rules control reads.
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
@@ -19,7 +24,8 @@ import { PLAY_MENU_SEAT_MOVES, nextPlayMenuSeat, roomRulesLocked, seatRendersLob
 const source = await readFile(new URL('./playMenu.ts', import.meta.url), 'utf8');
 /** One of the menu's inner functions (two-space indent, closed by the first `  }` line after it), types stripped. */
 const cut = (name) => {
-  const start = source.indexOf(`\n  function ${name}(`);
+  const plain = source.indexOf(`\n  function ${name}(`);
+  const start = plain >= 0 ? plain : source.indexOf(`\n  async function ${name}(`);
   assert.ok(start >= 0, `playMenu.ts has function ${name}`);
   const end = source.indexOf('\n  }\n', start);
   return stripTypeScriptTypes(source.slice(start, end + 4), { mode: 'strip' });
@@ -70,7 +76,7 @@ function handoffRig({ start }) {
     seat: 'lobby', session: own, activeRoom: null, state: lobby, role: 'client', handedOff: false, connecting: false,
     handedOffMatchId: null,
     unsubscribeState: () => { calls.unobserve++; },
-    nextPlayMenuSeat, shouldAutoHandoff,
+    nextPlayMenuSeat, shouldAutoHandoff, seatRendersLobby,
     roomConnection: { current: { session: own }, observe(listener) { calls.observe++; listener(lobby); return () => { calls.unobserve++; }; } },
     onNetworkStart: () => { calls.starts++; return start(); },
     notifyLobbyChange: () => {}, hide: () => {}, setStatus: (text, error) => calls.statuses.push([text, error]), errorMessage: (error) => String(error?.message ?? error),
@@ -79,7 +85,7 @@ function handoffRig({ start }) {
     renderLobby: (next) => { if (context.shouldBeginClientHandoff(next)) context.beginNetworkHandoff(next, 'client'); },
     show: () => { calls.shows++; context.renderLobby(context.state); },
   };
-  runInNewContext(['moveSeat', 'hasMatchStart', 'matchIdOf', 'shouldBeginClientHandoff', 'beginNetworkHandoff', 'returnToLobby'].map(cut).join('\n'), context);
+  runInNewContext(['moveSeat', 'hasMatchStart', 'matchIdOf', 'shouldBeginClientHandoff', 'beginNetworkHandoff', 'returnToLobby', 'renderOwnLobby'].map(cut).join('\n'), context);
   return { context, calls, lobby, own };
 }
 {
@@ -211,4 +217,79 @@ function modeRig({ commandResult }) {
   await settle();
   assert.deepEqual(accepted.stored, [['cot.mode', 'mars']], 'an accepted choice is the host\'s own preference');
 }
-console.log('playMenuSeat.selftest: one seat writer and table; the handoff stops the lobby\'s observation; a refused handoff is not begun again; the room\'s mode is never stored; a refused mode rolls back; a re-sent match_start never re-enters a round already handed off');
+// ---- (F) a refused seat move stops the connect, the adoption and the handoff that asked for it
+function refusalRig({ seat, session = null, activeRoom = null }) {
+  const calls = { connects: 0, starts: 0, observes: 0, closes: 0 };
+  const connection = { session: { lastMatchStart: { matchId: 'm4-0000e0e0' }, roomInfo: { peerId: 'me', roomCode: 'ROOM01' } }, role: 'client', roomInfo: { roomCode: 'ROOM01' } };
+  const element = () => ({ setAttribute() {}, disabled: false, value: '', classList: { add() {}, remove() {} } });
+  const context = {
+    console, Promise, Number, Object, Error,
+    seat, session, activeRoom, state: null, role: null, handedOff: seat === 'handed_off', connecting: seat === 'connecting',
+    handedOffMatchId: null, unsubscribeState: null, requestGeneration: 1, mode: 'private', ownPlayerId: 'me',
+    nextPlayMenuSeat, shouldAutoHandoff, seatRendersLobby,
+    room: element(), createBtn: element(), joinBtn: element(), codeInput: { value: 'ROOM01' }, nameInput: { value: 'Me' }, createSizeSelect: { value: '2' },
+    getSelection: () => ({ specId: 'm1a1_abrams_hc', mapId: 'verdant', equipment: [], camo: 'factory' }), currentArrangement: () => null, selectedGameMode: 'standard',
+    normalizePlayerName: (name) => name, automaticPlayerName: () => 'Me', remember: () => {}, menuRoomsUrl: () => 'ws://rooms.test',
+    normalizeRoomCode: (code) => String(code), PLAYER_NAME_KEY: 'name', ROOM_SIZE_KEY: 'size',
+    roomConnection: {
+      connecting: false, current: null,
+      async connect() { calls.connects++; context.roomConnection.current = connection; return connection; },
+      observe() { calls.observes++; return () => {}; },
+      close() { calls.closes++; context.roomConnection.current = null; },
+    },
+    onNetworkStart: () => { calls.starts++; return new Promise(() => {}); },
+    closeCurrentSession: () => {}, observeConnectedRoom: () => { calls.observes++; }, clearFailure: () => {},
+    notifyLobbyChange: () => {}, hide: () => {}, setStatus: () => {}, errorMessage: (error) => String(error?.message ?? error), t: (key) => key, show: () => {},
+    renderLobby: () => {},
+  };
+  runInNewContext(['moveSeat', 'setConnecting', 'hasMatchStart', 'matchIdOf', 'beginNetworkHandoff', 'returnToLobby', 'adoptRoomConnection', 'hostStarted', 'connectRoom'].map(cut).join('\n'), context);
+  return { context, calls, connection };
+}
+{
+  // the battle owner holds the room (attached): a create or join from the menu sends nothing and adopts nothing
+  const attached = { session: { lastMatchStart: null }, playerId: 'me' };
+  const { context, calls } = refusalRig({ seat: 'attached', activeRoom: attached });
+  assert.equal(await context.connectRoom('join', 1), false, '(F) a connect from the attached seat is refused');
+  assert.equal(calls.connects, 0, `(F) no room request goes out while the battle owner holds the room (${calls.connects})`);
+  assert.equal(context.session, null, '(F) and no room is adopted beside the attached one');
+  assert.equal(context.seat, 'attached');
+}
+{
+  // a match_start of the menu's own connection reaching a seat that cannot hold it adopts nothing and hands nothing off
+  const { context, calls, connection } = refusalRig({ seat: 'attached', activeRoom: { session: {}, playerId: 'me' } });
+  context.hostStarted({ phase: 'starting', hostId: 'admin', players: [] }, connection, 'menu');
+  assert.equal(context.session, null, '(F) the attached seat adopts no room of its own');
+  assert.equal(calls.starts, 0, `(F) and starts no handoff (${calls.starts})`);
+}
+{
+  // an own handoff whose move the table refuses (the drift: the menu's room adopted while attached) starts nothing
+  const own = { lastMatchStart: { matchId: 'm5-0000f0f0' }, roomInfo: { peerId: 'me' } };
+  const { context, calls } = refusalRig({ seat: 'attached', session: own });
+  assert.equal(context.beginNetworkHandoff({ phase: 'starting', hostId: 'admin', players: [] }, 'client'), false, '(F) a handoff the seat cannot make is refused');
+  assert.equal(calls.starts, 0, `(F) and the battle owner's round entry never runs (${calls.starts})`);
+  assert.equal(context.handedOffMatchId, null, '(F) nor is the match marked handed off');
+}
+{
+  // the ordinary connect still runs: none -> connecting -> lobby, observed once
+  const { context, calls } = refusalRig({ seat: 'none' });
+  assert.equal(await context.connectRoom('join', 1), true);
+  assert.equal(calls.connects, 1);
+  assert.equal(context.seat, 'lobby', '(F) the connect the table allows adopts its room');
+  assert.equal(calls.observes, 1);
+}
+
+// ---- (G) the menu's own room observer renders through seatRendersLobby
+{
+  const renders = [];
+  const context = { seat: 'lobby', seatRendersLobby, renderLobby: (next) => renders.push([context.seat, next.phase]) };
+  runInNewContext(cut('renderOwnLobby'), context);
+  for (const seat of ['none', 'connecting', 'lobby', 'handed_off', 'attached']) {
+    context.seat = seat;
+    context.renderOwnLobby({ phase: 'waiting' });
+  }
+  assert.deepEqual(renders, [['lobby', 'waiting']], '(G) only the lobby the menu holds renders from its room\'s updates');
+  const observers = [...source.matchAll(/roomConnection\.observe\(([^)]*)\)/g)].map((match) => match[1]);
+  assert.ok(observers.length >= 2, 'setup: the menu observes its own room');
+  assert.deepEqual([...new Set(observers)], ['renderOwnLobby'], `(G) every observer of the menu's own room goes through the seat (${observers.join(', ')})`);
+}
+console.log('playMenuSeat.selftest: one seat writer and table; the handoff stops the lobby\'s observation; a refused handoff is not begun again; the room\'s mode is never stored; a refused mode rolls back; a re-sent match_start never re-enters a round already handed off; a refused move stops its connect, adoption or handoff; only the held lobby renders from the room');
