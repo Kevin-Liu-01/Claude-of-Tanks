@@ -110,6 +110,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/mp/host/migrationExtrasSize.selftest.mjs', // 2026-11-02 audit U2 (round 2): keyframe extras carry only what differs from a fresh host's state; the restore is unchanged
     'src/mp/host/resumeSmoke.selftest.mjs', // 2026-11-02 audit U2 (round 2): a migrated host keeps standing smoke screens; a resumed host's frames carry them on the battle clock
     'src/mp/host/modeEventKeyframe.selftest.mjs', // 2026-11-02 audit U2 (round 2): a migration keyframe follows a mode event within a housekeeping beat, not the 2 s cadence
+    'src/mp/host/modeFrameReconcile.selftest.mjs', // 2026-11-02 audit U2 (round 2): a migrated host resumes the score, zones, flags and ball as the seat's newest frame shows them
     'src/mp/host/resumePhase.selftest.mjs', // 2026-11-02 audit M1: a migrated countdown counts on, an ended match stays ended, an unreadable keyframe never restarts a battle
     'src/vehicles/tacticalRoles.selftest.mjs',
     'src/world/maps/earthriseCrossing.selftest.mjs',

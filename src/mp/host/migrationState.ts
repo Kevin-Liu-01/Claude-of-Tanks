@@ -1,6 +1,7 @@
 import type { DestructionLogEntry } from '../../sim/destructionEvents.ts';
 import { mergeDestructionLogs } from '../wire/destructionLog.ts';
 import type { NewModeCheckpoint } from '../../sim/authoritativeMatch.ts';
+import type { ModeCheckpoint } from '../../sim/matchModes.ts';
 /**
  * Host migration state (P2 client lane, 2026-09-28; docs/MULTIPLAYER-V2.md §13.2 "Keyframes"): the browser host
  * broadcasts, every ROOM_MATCH_KEYFRAME_INTERVAL_MS, a keyframe of EVERY entity — sealed with AES-GCM under a key
@@ -291,6 +292,80 @@ function checkpointAfterRevives(checkpoint: NewModeCheckpoint, revived: Readonly
       ...(waves ? { waves: { ...waves, inactive: waves.inactive.filter((id) => !revived.has(id)), restedAt: waves.restedAt.filter(([id]) => !revived.has(id)) } } : {}),
     },
   };
+}
+
+type CheckpointZone = NonNullable<ModeCheckpoint['objectives']>['zones'][number];
+type CheckpointFlag = NonNullable<ModeCheckpoint['objectives']>['flags'][number];
+const finiteNumber = (value: unknown): value is number => typeof value === 'number' && Number.isFinite(value);
+const isTeam = (value: unknown): value is CheckpointFlag['team'] => value === 'alpha' || value === 'bravo';
+const FLAG_STATUSES: ReadonlySet<unknown> = new Set(['home', 'carried', 'dropped']);
+const recordOf = (value: unknown): Record<string, unknown> | null => (value && typeof value === 'object' ? value as Record<string, unknown> : null);
+
+/**
+ * A score the newest frame shows (published rounded: matchModes.ts serialize), against the keyframe's exact one: kept
+ * when it rounds to what the frame shows; else the frame's, which is exact for a mode that scores whole points, and for
+ * Zone Control's running score the least value that rounds to it, never above the old host's.
+ */
+function scoreAtFrame(held: number, shown: unknown): number {
+  if (!finiteNumber(shown) || Math.round(held) === shown) return held;
+  return Number.isInteger(held) ? shown : Math.max(held, shown - 0.5);
+}
+
+/** A zone's control, owner and contest as the newest frame shows it (by id), else the keyframe's. */
+function zoneAtFrame(zone: CheckpointZone, shown: ReadonlyMap<string, Record<string, unknown>>): CheckpointZone {
+  const view = shown.get(zone.id);
+  if (!view || !finiteNumber(view.control) || !(view.owner === null || isTeam(view.owner)) || typeof view.contested !== 'boolean') return zone;
+  return { id: zone.id, control: view.control, owner: view.owner, contested: view.contested };
+}
+
+/**
+ * The mode checkpoint carried forward to the newest frame this seat holds (round 2 U2, review round 1). The checkpoint is
+ * dated at the keyframe, the hulls at the newest frame (resumeStateFromRetained), and everything the mode did between
+ * the two came back undone: a goal or a capture, the zone's meter, the ball's flight, a flag taken, a survivor infected.
+ * The newest frame's mode state (matchModes.ts serialize, on every frame of a mode with one) holds those: the score,
+ * every flag, zone and the ball, and the infection's factions. They are written over the checkpoint's; what the frame
+ * does not show stays the keyframe's, and the mode-event keyframe (matchHostCore.ts housekeep) follows every event that
+ * changes it: the horde's queue and pool, the assault line's sector and its pool, pickups and their sequence, weapon
+ * kills, respawn timers. The line's zones are taken only while the frame shows the keyframe's sector. The goals stand
+ * where the map put them. A ball touched, scored or reset in the gap starts its idle clock at the resume (the frame
+ * carries no touch time; the new host's mode clock starts at the keyframe's).
+ */
+export function checkpointAtNewestFrame(checkpoint: NewModeCheckpoint, modeStateJson: string | null): NewModeCheckpoint {
+  const mode = checkpoint.mode;
+  if (!mode || !modeStateJson) return checkpoint;
+  let view: Record<string, unknown> | null;
+  try { view = recordOf(JSON.parse(modeStateJson)); } catch { return checkpoint; }
+  if (!view) return checkpoint;
+  const shownScore = recordOf(view.score);
+  const score = shownScore ? { alpha: scoreAtFrame(mode.score.alpha, shownScore.alpha), bravo: scoreAtFrame(mode.score.bravo, shownScore.bravo) } : mode.score;
+  const factions = Array.isArray(view.factions) ? new Map(view.factions.map(recordOf).filter((entry): entry is Record<string, unknown> => !!entry && typeof entry.id === 'string' && isTeam(entry.team))
+    .map((entry) => [entry.id as string, entry.team as CheckpointFlag['team']])) : null;
+  const teams = factions ? mode.teams.map(([id, team]): [string, typeof team] => [id, factions.get(id) ?? team]) : mode.teams;
+  const zones = new Map((Array.isArray(view.zones) ? view.zones : []).map(recordOf).filter((zone): zone is Record<string, unknown> => !!zone && typeof zone.id === 'string')
+    .map((zone) => [zone.id as string, zone]));
+  const next: ModeCheckpoint = { ...mode, score, teams };
+  const objectives = mode.objectives;
+  if (objectives) {
+    const flags = new Map((Array.isArray(view.flags) ? view.flags : []).map(recordOf).filter((flag): flag is Record<string, unknown> => !!flag && isTeam(flag.team))
+      .map((flag) => [flag.team as string, flag]));
+    const flagAtFrame = (flag: CheckpointFlag): CheckpointFlag => {
+      const shown = flags.get(flag.team);
+      if (!shown || !finiteNumber(shown.x) || !finiteNumber(shown.y) || !finiteNumber(shown.z) || !FLAG_STATUSES.has(shown.status)
+        || !(shown.carrierId === null || typeof shown.carrierId === 'string') || !(shown.returnAtS === null || finiteNumber(shown.returnAtS))) return flag;
+      return { team: flag.team, x: shown.x, y: shown.y, z: shown.z, status: shown.status as CheckpointFlag['status'], carrierId: shown.carrierId, returnAtS: shown.returnAtS };
+    };
+    let { ball, ballActiveAtS } = objectives;
+    const shownBall = recordOf(view.ball);
+    if (ball && shownBall && ['x', 'y', 'z', 'vx', 'vy', 'vz'].every((key) => finiteNumber(shownBall[key])) && (shownBall.lastTouchId === null || typeof shownBall.lastTouchId === 'string')) {
+      const changedHands = shownBall.lastTouchId !== ball.lastTouchId || score.alpha !== mode.score.alpha || score.bravo !== mode.score.bravo;
+      ball = { x: shownBall.x as number, y: shownBall.y as number, z: shownBall.z as number, vx: shownBall.vx as number, vy: shownBall.vy as number, vz: shownBall.vz as number, lastTouchId: shownBall.lastTouchId as string | null };
+      if (changedHands) ballActiveAtS = Math.max(ballActiveAtS, mode.elapsedS);
+    }
+    next.objectives = { ...objectives, flags: objectives.flags.map(flagAtFrame), zones: objectives.zones.map((zone) => zoneAtFrame(zone, zones)), ball, ballActiveAtS };
+  }
+  const line = mode.waves?.line, shownLine = recordOf(view.line);
+  if (line && shownLine && shownLine.index === line.index) next.waves = { ...mode.waves!, line: { ...line, zones: line.zones.map((zone) => zoneAtFrame(zone, zones)) } };
+  return { ...checkpoint, mode: next };
 }
 
 /** What a revive leaves of an entity's extras (reviveForMode: a fresh combat state and kit): its tallies alone. */
@@ -634,7 +709,11 @@ export function applyResumeState(actor: MatchActor, state: HostResumeState): { r
   const extrasTick = Number.isInteger(state.keyframeTick) ? state.keyframeTick! : state.tick;
   const frameGapS = resumeFrameGapS(state, extrasTick);
   const revived = revivedSinceKeyframe(actor, state, extrasTick);
-  if (state.modeCheckpoint) actor.authority.restoreModeCheckpoint(checkpointAfterRevives(state.modeCheckpoint, revived));
+  if (state.modeCheckpoint) {
+    // the mode as the newest frame shows it, when that frame is newer than the keyframe (review round 1)
+    const checkpoint = checkpointAfterRevives(state.modeCheckpoint, revived);
+    actor.authority.restoreModeCheckpoint(state.frame.tick > extrasTick ? checkpointAtNewestFrame(checkpoint, state.frame.modeStateJson) : checkpoint);
+  }
   let restored = 0;
   let skipped = 0;
   const extrasById = new Map(state.entities.map((entry) => [entry.entityId, entry]));
