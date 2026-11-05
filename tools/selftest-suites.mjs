@@ -1888,7 +1888,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/sim/hullLifeParity.selftest.mjs', // 2026-11-02 audit M6: a revive's crash memory and the rollover gate, alike on both drivers
     // 2026-11-02 audit M8: one owner for the hull body mode; no overturned or righting latch outside the rigid phase
     'src/sim/hullBodyMode.selftest.mjs',
-    // 2026-11-02 audit (sim-movement lane): ground contact's two copies have one writer, a checkpoint restore included
+    // 2026-11-02 audit M8: ground contact's two copies have one writer, a checkpoint restore included
     'src/sim/groundContactCopies.selftest.mjs',
     'src/sim/tankBodyContacts.selftest.mjs',
     'src/sim/tankBodyRest.selftest.mjs',
