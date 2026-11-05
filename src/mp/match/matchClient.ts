@@ -836,8 +836,11 @@ export class MatchClient {
    * clock (one way, low by the link's delay) and a fresh ping burst corrects it, as after a first WELCOME.
    */
   private followTimeline(tick: number, serverTimeMs: number, nowMs: number): void {
-    if (Math.abs(serverTimeMs - this.serverClock.serverNow(nowMs)) <= this.serverClock.hardResyncMs) return;
+    const offTimelineMs = serverTimeMs - this.serverClock.serverNow(nowMs);
+    if (Math.abs(offTimelineMs) <= this.serverClock.hardResyncMs) return;
     this.timelineRestarts++;
+    // behind: the battle restarted, and the keyframe retained from the old timeline is of a battle no longer played
+    if (offTimelineMs < 0) this.migration.forgetKeyframe();
     this.serverClock.reset();
     this.serverClock.seed(serverTimeMs, nowMs);
     this.tickClock.reset();

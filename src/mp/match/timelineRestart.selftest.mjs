@@ -10,11 +10,15 @@
 //   (a) a migration that continues the timeline (its WELCOME stamped at the resume tick, before the loop skipped the boot's
 //       ticks): no re-anchor, the seat's inputs are admitted at once;
 //   (b) a host that restarts the battle 1500 ticks behind on the same epoch (tick-locked, as matchActor.ts stamps frames):
-//       the clocks re-anchor once, and the seat's inputs are admitted within a few frames and from then on.
+//       the clocks re-anchor once, and the seat's inputs are admitted within a few frames and from then on. The keyframe
+//       the seat retained from the old timeline goes (at the same generation its higher tick outranked every keyframe of
+//       the restarted battle, so a later election resumed the abandoned one); the restarted host's next keyframe is kept.
 import assert from 'node:assert/strict';
 import { MigratingTransport, createLoopbackPair } from '../transport/index.ts';
 import { MESSAGE_TYPE, TEAM, TICK_HZ, decodeMessage, encodeMessage } from '../wire/index.ts';
 import { MatchClient } from './index.ts';
+import { MIGRATION_EVENT_KIND } from './migrationStore.ts';
+import { bytesToBase64Url } from './base64url.ts';
 import { ScriptedMatchServer } from './scriptedServer.test-support.ts';
 import { MAX_LEAD_TICKS } from '../../../server/match/inputBuffer.ts';
 
@@ -72,6 +76,10 @@ function run({ newHostTick, welcomeShiftTicks = 0 }) {
   for (let index = 0; index < 180; index++) frame();
   assert.equal(client.isSeated, true, 'seated on the first host');
   const oldTick = first.currentTick;
+  // the keyframe the seat retained from the first host (a one-chunk blob at the first host's tick)
+  const keyframeAt = (id, tick) => client.migration.receive({ kind: MIGRATION_EVENT_KIND.KEYFRAME, payload: { id, tick, part: 0, parts: 1, data: bytesToBase64Url(new Uint8Array([id, 1, 2, 3])) } }, nowMs);
+  keyframeAt(1, oldTick - 30);
+  assert.equal(client.migration.keyframe?.tick, oldTick - 30, 'setup: a keyframe retained from the first host');
   // the first host goes; the next runs the same epoch from `newHostTick`, its time locked to its ticks as matchActor.ts
   // stamps them (the fixture's own clock runs `behindMs` late, so its stall skip never moves the epoch)
   servers.length = 0;
@@ -94,8 +102,12 @@ function run({ newHostTick, welcomeShiftTicks = 0 }) {
   for (frameIndex = 0; frameIndex < 120; frameIndex++) frame();
   const admitted = (input) => input.clientTick <= input.serverTick + MAX_LEAD_TICKS && input.clientTick > input.serverTick;
   const stats = client.stats();
+  const retainedAfterSwitch = client.migration.keyframe?.tick ?? null;
+  // the new host seals its own keyframe at its own tick
+  keyframeAt(2, next.currentTick);
+  const retainedAfterSeal = client.migration.keyframe?.tick ?? null;
   client.dispose();
-  return { oldTick, newTick: next.currentTick, inputs, admitted, timelineRestarts: stats.timelineRestarts ?? 0 };
+  return { oldTick, newTick: next.currentTick, inputs, admitted, timelineRestarts: stats.timelineRestarts ?? 0, retainedAfterSwitch, retainedAfterSeal };
 }
 
 // (a) a migration on the timeline: the WELCOME is stamped 420 ticks behind (a 7 s boot and hold), the loop is not
@@ -105,6 +117,7 @@ function run({ newHostTick, welcomeShiftTicks = 0 }) {
   assert.ok(result.inputs.length > 50, `(a) the seat sends its inputs (${result.inputs.length})`);
   const refused = result.inputs.filter((input) => !result.admitted(input));
   assert.equal(refused.length, 0, `(a) every input lands inside the new host's lead window: ${JSON.stringify(refused.slice(0, 3))}`);
+  assert.equal(result.retainedAfterSwitch, result.oldTick - 30, '(a) the retained keyframe stays: the battle goes on');
 }
 
 // (b) a kept host restarts the battle 1500 ticks behind on the same epoch
@@ -116,6 +129,8 @@ function run({ newHostTick, welcomeShiftTicks = 0 }) {
   const refused = late.filter((input) => !result.admitted(input));
   assert.equal(refused.length, 0, `(b) the new host admits them (lead ${MAX_LEAD_TICKS}): ${JSON.stringify(refused.slice(0, 3))}`);
   assert.equal(result.timelineRestarts, 1, '(b) the clocks re-anchored once, at the first snapshot');
+  assert.equal(result.retainedAfterSwitch, null, '(b) the keyframe of the abandoned timeline goes');
+  assert.equal(result.retainedAfterSeal, result.newTick, `(b) the restarted host's keyframe is retained (held: ${result.retainedAfterSeal}, the old one was at ${result.oldTick - 30})`);
 }
 
 console.log('timelineRestart.selftest: a client follows a host that restarts the battle behind its clocks (re-anchored at the first snapshot, inputs admitted), and keeps its clocks on a host that continues the timeline');

@@ -104,6 +104,17 @@ export class MigrationStore {
     return { chunksReceived: this.chunksReceived, blobsCompleted: this.blobsCompleted, rejected: this.rejected, keyframeTick: this.keyframe?.tick ?? -1, configTick: this.config?.tick ?? -1 };
   }
 
+  /**
+   * The host restarted the battle behind the timeline the retained keyframe was sealed on (matchClient.ts followTimeline:
+   * a kept host's last resort, round 2 U1 review round 1). At the same generation the old keyframe's higher tick outranked
+   * every keyframe of the restarted battle until its timeline caught up, so a later election resumed the battle that had
+   * been abandoned. The keyframe goes (the restarted host seals its own); the sealed configuration is the match's still.
+   */
+  forgetKeyframe(): void {
+    this.complete.delete(MIGRATION_EVENT_KIND.KEYFRAME);
+    this.pending.delete(MIGRATION_EVENT_KIND.KEYFRAME);
+  }
+
   /** A new match: nothing retained applies. */
   clear(): void {
     this.generation = 0;
