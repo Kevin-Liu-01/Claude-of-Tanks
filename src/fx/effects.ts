@@ -2353,13 +2353,26 @@ function* createFxSteps(
   const burstAt = new Map<ShellId, number>();
   /** rounds whose shell:expired has landed (fx time), kept as long */
   const roundEndedAt = new Map<ShellId, number>();
+  // (round 2 U33) a rebase moves the records and every waiting hull event's time: a forward pin inside a wait drew its
+  // burst already aged, and let the round's other event draw a second one
+  timeShifts.on('heDedupe', (delta) => {
+    for (const [id, t] of burstAt) burstAt.set(id, t + delta);
+    for (const [id, t] of roundEndedAt) roundEndedAt.set(id, t + delta);
+    for (let i = 0; i < PENDING_HE_MAX; i++) pendingHe[i].at += delta;
+  });
   function recent(map: Map<ShellId, number>, id: ShellId): boolean {
     const t = map.get(id);
     return t !== undefined && particles.getTime() - t <= HE_BURST_KEEP_S;
   }
   const burstRecent = (id: ShellId): boolean => recent(burstAt, id);
+  /** The records the maps keep at most: far above a battle's charged rounds in HE_BURST_KEEP_S (the frame prunes the
+   *  older ones); a frozen clock that ages nothing drops the oldest records first, never the whole map. */
+  const HE_RECORDS_MAX = 1024;
   function note(map: Map<ShellId, number>, id: ShellId): void {
-    if (map.size > 256) map.clear(); // leak guard (a frozen clock never ages them out)
+    // (round 2 U31) the newest last: an overflow drops the oldest record (clearing the map dropped a round's record
+    // between its hull event and its expiry, and that round burst twice)
+    map.delete(id);
+    if (map.size >= HE_RECORDS_MAX) map.delete(map.keys().next().value as ShellId);
     map.set(id, particles.getTime());
   }
   const noteBurst = (id: ShellId): void => note(burstAt, id);
@@ -2420,17 +2433,20 @@ function* createFxSteps(
   /**
    * A shell ending on the ground or the water, by its munition class: explosives burst (flash, fireball, ejecta, the
    * dust cloud, surge, residue), kinetic rounds and bullets strike (a spurt of the ground along the shot, chunks).
-   * Returns false when the media layer is off (the phone tier keeps the pooled plume).
+   * Returns false when the media layer is off (the phone tier keeps the pooled plume). `noBurst` (round 2 U31): the round's
+   * burst was drawn already (at a hull, its wait over before this expiry): the ground keeps its own marks, the crater mark
+   * of a burst that dug none, the cover it clears and the water's ring, and draws no second burst.
    */
   function mediaGroundHit(pos: THREE.Vector3, info: ShellMunition, water: boolean, dir: THREE.Vector3 | null,
-    birthOffset = 0): boolean {
+    birthOffset = 0, noBurst = false): boolean {
     if (!blast) return false;
     const surface = water ? 'water' : classifyTerrain(heightField, pos.x, pos.z);
     if (isExplosive(info.munition) && info.chargeKg > 0) {
       const y = water
         ? (heightField?.getWaterSurfaceHeightAt?.(pos.x, pos.z) ?? groundY(pos.x, pos.z))
         : pos.y;
-      if (water) waterBurst(blast, { x: pos.x, y, z: pos.z, munition: info.munition, chargeKg: info.chargeKg, surface, birthOffset });
+      if (noBurst) { /* the hull's burst stands for it */ }
+      else if (water) waterBurst(blast, { x: pos.x, y, z: pos.z, munition: info.munition, chargeKg: info.chargeKg, surface, birthOffset });
       else groundBurst(blast, { x: pos.x, y, z: pos.z, munition: info.munition, chargeKg: info.chargeKg, surface, birthOffset,
         ...(dir ? { dx: dir.x, dy: dir.y, dz: dir.z } : {}) });
       // a burst that dug a crater (munition:blast named it, raised just before this event) gets its mark from the
@@ -2450,7 +2466,7 @@ function* createFxSteps(
         }
       }
     } else {
-      kineticStrike(blast, { x: pos.x, y: pos.y, z: pos.z, dx: dir ? dir.x : 0, dy: dir ? dir.y : -1, dz: dir ? dir.z : 0,
+      if (!noBurst) kineticStrike(blast, { x: pos.x, y: pos.y, z: pos.z, dx: dir ? dir.x : 0, dy: dir ? dir.y : -1, dz: dir ? dir.z : 0,
         caliberMm: info.caliberMm, munition: info.munition, surface, birthOffset });
       // a rod or an AP shot leaves a gouge, a bullet nothing worth a mark
       if (!water && craters && info.munition !== 'small_arms' && info.caliberMm >= 20) {
@@ -6956,8 +6972,13 @@ function* createFxSteps(
         // (2026-11-02 audit F10) the round has ended (its waiting hull events resolve now); a hull event that drew its
         // burst already (its wait ran out first) leaves the expiry no burst of its own: one explosion a round. The wall
         // still takes its hole and its own dust (stages.strike, a non-explosive wallStrike)
+        const m = info ?? munitionOfExpiry(e);
+        const charged = isExplosive(m.munition) && m.chargeKg > 0;
+        // (round 2 U31) only a charged round has hull events to match (he_pen, he_splash): the records are its alone, so
+        // a battle's kinetic and small-arms expiries never crowd an HE round's out
+        const recorded = charged && e.shellId != null;
         let burstDrawn = false;
-        if (e.shellId != null) {
+        if (recorded) {
           note(roundEndedAt, e.shellId);
           burstDrawn = burstRecent(e.shellId);
         }
@@ -6966,8 +6987,6 @@ function* createFxSteps(
           else _v4.copy(_UP);
           if (blast) {
             // destruction-fx lane: the round bursts on (or chips) the wall in the wall's own material
-            const m = info ?? munitionOfExpiry(e);
-            const charged = isExplosive(m.munition) && m.chargeKg > 0;
             const explosive = charged && !burstDrawn;
             // the building the event names (any round), else the one the blast named (munition:blast, raised just before
             // this event), else the struck kind
@@ -7000,20 +7019,21 @@ function* createFxSteps(
               const dx = arrival ? arrival.x : -_v4.x, dz = arrival ? arrival.z : -_v4.z;
               stages.strike(struckId, seamOf(struckId), _v3.x, _v3.y, _v3.z, dx, dz, m.munition, m.chargeKg, m.caliberMm);
             }
-            if (e.shellId != null) noteBurst(e.shellId);
+            if (recorded) noteBurst(e.shellId);
             return;
           }
           fx.impact('structure', _v3, _v4, e.caliberMm || 90);
           return;
         }
-        // (2026-11-02 audit F10) a hull's burst stood for this round's: the ground draws none of its own
-        if (burstDrawn) return;
         if (e.hitTerrain) {
           const water = !!e.hitWater || shellPointOnWater(_v3);
-          if (mediaGroundHit(_v3, info ?? munitionOfExpiry(e), water, arrival)) {
-            if (e.shellId != null) noteBurst(e.shellId);
+          // (2026-11-02 audit F10) a hull's burst stood for this round's: the ground draws none of its own; (round 2 U31)
+          // but keeps the ground's own marks (its crater mark, the cover it clears, the water's ring)
+          if (mediaGroundHit(_v3, m, water, arrival, 0, burstDrawn)) {
+            if (recorded) noteBurst(e.shellId);
             return;
           }
+          if (burstDrawn) return;
           if (water) waterSplash(_v3, e.caliberMm || 76, false);
           else dirtPlume(_v3, e.caliberMm || 76, false);
         }
