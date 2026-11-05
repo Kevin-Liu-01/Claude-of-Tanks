@@ -276,6 +276,10 @@ async function run(output, constructorOnly = false) {
   console.log(`[wreck-build-profile] pid=${process.pid} stage=capture_lock output=${output}`);
   try {
     hold = await openCaptureHold({ label: 'wreck-build-profile', timeoutMs: 45 * 60 * 1000, signals: [] /* its own SIGINT/SIGTERM handler stops the run and writes the report */ });
+    // the hold's own stop (past the cap with a waiter) stops the worker as a signal does (round 2 U38)
+    hold.signal.addEventListener('abort', () => {
+      report.errors.push(`Capture hold stopped: ${hold.signal.reason?.message ?? hold.signal.reason}`); cancellation.interrupt();
+    }, { once: true });
     report.captureAcquiredAt = new Date().toISOString(); write();
     assert.equal(cancellation.isInterrupted(), false, 'Interrupted while queued (lock admission itself is not abortable)');
     assert.deepEqual(identity(), pinned, 'Pinned source changed while queued');

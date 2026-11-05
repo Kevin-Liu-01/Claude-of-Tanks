@@ -235,6 +235,7 @@ const result = { test: 'road-border-corridor-pilot', source,
   status: 'running', errors: [], records: [] };
 try {
   for (const mapId of ['verdant', 'fjord', 'alpine', 'reservoir']) for (const seed of [1337, 2025]) {
+    await hold.between(); // (round 2 U38) the hold's refresh, cap and signals run between the synchronous map pairs
     const config = getMapConfig(mapId), originalConfig = beforeMaps.getMapConfig(mapId);
     if (matchedAuthoredLayout) assertAuthoredExitConfig(originalConfig, config);
     const original = beforeTerrain.createHeightField(seed, originalConfig);

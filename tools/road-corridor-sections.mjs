@@ -62,6 +62,7 @@ try {
   const failures = receipt.records.filter(r => r.grades.wideShoulder > 2);
   assert.equal(failures.length, 4);
   for (const record of failures) {
+    await hold.between(); // (round 2 U38) the hold's refresh, cap and signals run between the synchronous sections
     const config = getMapConfig(record.mapId), field = createHeightField(record.seed, config);
     const point = record.grades.worstWide, owner = sectionOwner(config, field._layout.roads, point);
     const left = field.getHeightAt(point.x - owner.uz, point.z + owner.ux);

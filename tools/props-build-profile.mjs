@@ -268,7 +268,8 @@ export function registerProfileCancellation(getChild, emitter = process) {
   let interrupted = false;
   const interrupt = () => { interrupted = true; getChild()?.kill('SIGTERM'); };
   emitter.on('SIGINT', interrupt); emitter.on('SIGTERM', interrupt);
-  return { isInterrupted: () => interrupted,
+  // interrupt(): the same stop for the capture hold's own (past the cap with a waiter; round 2 U38)
+  return { isInterrupted: () => interrupted, interrupt: () => interrupt(),
     dispose() { emitter.off('SIGINT', interrupt); emitter.off('SIGTERM', interrupt); } };
 }
 
@@ -290,6 +291,10 @@ async function run(output) {
   console.log(`[props-build-profile] pid=${process.pid} stage=capture_lock output=${output}`);
   try {
     hold = await openCaptureHold({ label: 'props-build-profile', timeoutMs: report.captureQueueTimeoutMs, signals: [] /* its own SIGINT/SIGTERM handler stops the run and writes the report */ });
+    // the hold's own stop (past the cap with a waiter) stops the worker as a signal does (round 2 U38)
+    hold.signal.addEventListener('abort', () => {
+      report.errors.push(`Capture hold stopped: ${hold.signal.reason?.message ?? hold.signal.reason}`); cancellation.interrupt();
+    }, { once: true });
     report.captureAcquiredAt = new Date().toISOString();
     assert.equal(cancellation.isInterrupted(), false, 'Interrupted before CPU acquisition');
     assert.deepEqual(sourceIdentity(), report.identity, 'Pinned source changed while queued');
