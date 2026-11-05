@@ -1532,6 +1532,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/leafyBush.selftest.mjs',
     'src/vehicles/vehicleNightLighting.selftest.mjs',
     'src/engine/battleAtmosphereAccess.selftest.mjs',
+    // 2026-11-02 audit R6 (round 2 U35): a failed light model or cloudscape chunk is asked again by the next battle
+    'src/engine/battleAtmosphereChunkReask.selftest.mjs',
     'tools/daynight-atmosphere-probe.selftest.mjs',
     'tools/night-window-census.selftest.mjs',
     'tools/night-fixture-census.selftest.mjs',

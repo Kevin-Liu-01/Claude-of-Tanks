@@ -23,7 +23,10 @@ export function createBattleAtmosphereAccess(
     get current(): BattleAtmosphereRuntime | null { return owner.current; },
     async prepare(seed: number | undefined, mapId: string, times: readonly BattleTimeOfDay[] | boolean = BATTLE_TIMES): Promise<void> {
       const requested = ++generation;
-      const runtime = await owner.preload();
+      // (round 2 U35) the grounded model and the cloudscapes never reject: a failed chunk leaves the authored rig and the
+      // deck derivation. They rode only the runtime's first acquisition, so once the runtime had loaded nothing asked them
+      // again and one failed transfer stood for the document; every prepare asks them (a loaded one answers at once)
+      const [runtime] = await Promise.all([owner.preload(), loadGroundedLightModel(), loadCloudscapeLayers()]);
       if (requested !== generation) return;
       runtime.prepare(seed, mapId, times);
     },
