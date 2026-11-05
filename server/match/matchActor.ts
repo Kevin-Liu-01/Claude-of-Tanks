@@ -20,6 +20,8 @@ import type {
 import { endingHoldExpired, matchRulesetFor, terrainVariantFor, type MatchRuleset } from '../../src/sim/matchRuleset.ts';
 import { normalizeGameMode, type GameModeId } from '../../src/sim/matchModes.ts';
 import { SIM_DT } from '../../src/sim/movement.ts';
+import { setHullGrounded } from '../../src/sim/hullBodyMode.ts';
+import { reseatAuthorityBody } from '../../src/mp/match/prediction.ts';
 import { createDedicatedWorldCollision } from '../dedicatedWorldCollision.ts';
 import type { WorldKernelModule } from '../../src/world/wasmWorldKernels.ts';
 import {
@@ -611,6 +613,9 @@ export function createMatchActor(options: MatchActorOptions): MatchActor {
   // later hint is stale (a withheld hint sent mid-fight would teleport the hull; security audit 2026-10-22)
   const driven = new Uint8Array(MAX_ENTITIES + 1);
   const RESUME_HINT_WINDOW_TICKS = TICK_HZ * 10;
+  // a hinted hull this far above the ground under it is in the air (RESUME_HINT carries no body bits); nearer, it is on
+  // the ground: a hull at rest stands about 0.02 m over the field's height on the flat, a little more across a crest
+  const RESUME_HINT_AIRBORNE_M = 0.5;
   // the tick the resumed loop started from (past resume.tick by the ticks the world stood still, MatchActorResume.dueAtMs)
   let resumedFromTick = resume ? resume.tick : 0;
   const resumeHints: ResumeHintStats = { applied: 0, rejected: 0, reasons: { noResume: 0, notRestored: 0, repeated: 0, older: 0, future: 0, tooFar: 0, noSeat: 0, late: 0 } };
@@ -781,6 +786,13 @@ export function createMatchActor(options: MatchActorOptions): MatchActor {
     tank.gunPitch = dequantizeAngle(hint.gunPitch);
     tank.visualPitch = dequantizeAngle(hint.pitch);
     tank.visualRoll = dequantizeAngle(hint.roll);
+    // The restore (migrationState.ts applyResumeState through applyAuthorityRow) seated the contact, spring and ride on the
+    // restored row; the hint's pose is newer, so they are seated again on it, as a row's are (round 2 U2, review round 1:
+    // a hull airborne in the keyframe whose hint had it landed flew back up to the keyframe's height). The hint has no body
+    // bits: its height over the ground is the contact, and the restored row's body mode stands (an overturned hull stays
+    // overturned; a tumble settles on its own).
+    setHullGrounded(tank, !(tank.pos.y > authority.heightField.getHeightAt(x, z) + RESUME_HINT_AIRBORNE_M));
+    reseatAuthorityBody(tank);
     hinted[entityId] = 1;
     resumeHints.applied++;
     actorLog.info('resume hint applied', { player: client.playerId, tick: hint.tick, restoredTick, movedM: Math.round(movedM * 100) / 100 });

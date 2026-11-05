@@ -8,11 +8,19 @@
 // The restore is the client's own (prediction.ts applyAuthorityRow: pose, body flags, spring, ride), so the two copies of
 // a hull take a row the same way. Built as combatMigration's handoff: the old host's keyframe through the codec, onto a
 // second actor on the same roster, both stepped one tick.
+// Review round 1: the viewer's own resume hint (matchActor.ts receiveResumeHint, P3b) writes a newer pose over the
+// restored one, and wrote the pose alone, so the contact, spring and ride the restore had seated on the older row stayed:
+// a hull airborne in the keyframe whose newer hint has it landed flew back up to the keyframe's height on the next tick.
+// The hint now seats the body on its own pose as a row does (prediction.ts reseatAuthorityBody), its contact read from
+// its height over the ground (RESUME_HINT carries no body bits).
 import assert from 'node:assert/strict';
 import { Vector3 } from 'three';
 import { createMatchActor } from '../../../server/match/matchActor.ts';
+import { createLoopbackLink } from '../../../server/match/link.ts';
+import { encodeMessage } from '../wire/codec.ts';
+import { quantizeAngle, quantizePosition, quantizeVelocity } from '../wire/quantize.ts';
 import { captureEntityRow, captureMeta, createEraIndexer } from '../../../server/match/entityRows.ts';
-import { ENTITY_FLAGS } from '../wire/constants.ts';
+import { ENTITY_FLAGS, MESSAGE_TYPE, PROTOCOL_VERSION } from '../wire/constants.ts';
 import { hullBodyMode, restoreHullBodyMode, setHullGrounded } from '../../sim/hullBodyMode.ts';
 import { applyResumeState, captureEntityExtras, decodeMigrationKeyframe, encodeMigrationKeyframe } from './migrationState.ts';
 import { ensureAuthorityFleet } from '../../vehicles/authorityFleet.ts';
@@ -59,5 +67,32 @@ if (wrong.length) {
   console.error(`resumeHullBody: ${wrong.length} body readings lost across the handoff:\n  ${wrong.join('\n  ')}`);
   assert.fail('a migrated host must restore each hull\'s ground contact, body mode, spring and ride from its row');
 }
+
+// ---- the viewer's own newer row (its resume hint): landed, at rest, a second after the airborne keyframe row
+{
+  const hinted = make({ tick: tick + 60, battleTimeMs: battleTimeMs + 1000 });
+  applyResumeState(hinted, sealed);
+  const hull = hinted.authority.entityById.get('flying').state;
+  assert.equal(hull.grounded, false, 'setup: restored airborne from the keyframe row');
+  const link = createLoopbackLink('flying');
+  const hello = { type: MESSAGE_TYPE.HELLO, protocolVersion: PROTOCOL_VERSION, capabilities: 1, token: 'x', clientBuild: 'resume' };
+  assert.ok(hinted.attach(link.server, hello, { v: 1, roomId: hinted.roomId, seat: 0, playerId: 'flying', name: 'Flying', team: 'alpha', specId: 'leclerc_s2', iat: 0, exp: 1 }), 'setup: the viewer attaches');
+  const x = hull.pos.x + 1, z = hull.pos.z;
+  link.client.send(encodeMessage({ type: MESSAGE_TYPE.RESUME_HINT, tick: tick + 30, x: quantizePosition(x), y: quantizePosition(0.017), z: quantizePosition(z), speed: quantizeVelocity(0),
+    verticalSpeed: quantizeVelocity(0), yaw: quantizeAngle(hull.yaw), pitch: 0, roll: 0, turretYaw: 0, gunPitch: 0 }));
+  await new Promise((resolve) => setImmediate(resolve));
+  assert.equal(hinted.stats().resumeHints.applied, 1, `setup: the hint is applied (${JSON.stringify(hinted.stats().resumeHints)})`);
+  hinted.authority.onMatchReady();
+  hinted.authority.step({ dt: 1 / 60, inputs });
+  const wrongHint = [];
+  if (hull.grounded !== true) wrongHint.push(`grounded ${hull.grounded} after the landed hint`);
+  if (!(hull.pos.y < 0.1)) wrongHint.push(`at y ${hull.pos.y.toFixed(3)} after a tick (the hint: 0.017 m, the keyframe row: 4 m)`);
+  if (!(Math.abs(hull._ride.y - hull.pos.y) < 1e-6 && Math.abs(hull.verticalSpeed) < 0.5)) wrongHint.push(`ride at y ${hull._ride.y.toFixed(3)}, v ${hull.verticalSpeed.toFixed(3)}`);
+  if (wrongHint.length) {
+    console.error(`resumeHullBody: the resume hint left the restored row's body under its pose:\n  ${wrongHint.join('\n  ')}`);
+    assert.fail('a resume hint must seat the hull\'s body on its own pose');
+  }
+  hinted.stop();
+}
 old.stop(); fresh.stop();
-console.log('resumeHullBody: a migrated host restores each hull\'s ground contact, body mode, spring and ride from its row, as the client\'s predictor does: an airborne hull flies on, a tumbling one stays tumbling');
+console.log('resumeHullBody: a migrated host restores each hull\'s ground contact, body mode, spring and ride from its row, as the client\'s predictor does: an airborne hull flies on, a tumbling one stays tumbling, and a viewer\'s newer hint seats the body on its own pose');

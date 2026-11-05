@@ -246,6 +246,15 @@ export function applyAuthorityRow(state: TankState, row: EntityRow): void {
   // ground contact and the body mode, the rigid phase itself included (wire 10, hullBodyRow.ts); the viewer checkpoint
   // restores them again right after (restoreCheckpoint)
   applyHullBodyRowFlags(state, row.flags);
+  reseatAuthorityBody(state);
+}
+
+/**
+ * The integrator's own copies seated on the pose and speeds just written (applyAuthorityRow; a migrated host's resume
+ * hint, matchActor.ts receiveResumeHint, round 2 U2 review round 1: the hint wrote a newer pose over the restored row and
+ * left this row's spring and ride under it, so a hull the hint had landed flew back up to the row's height).
+ */
+export function reseatAuthorityBody(state: TankState): void {
   state._prevSpeed = state.speed;
   // the row's attitude is the spring's plus the posture held over the tracks (movement.ts state._hold, _holdSeat), which
   // the checkpoint restores with the spring; without one, the posture the replay holds now stands in for the authority's
