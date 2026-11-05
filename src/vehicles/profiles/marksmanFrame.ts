@@ -32,7 +32,7 @@ export const MARKSMAN_BODY_VERTS = Object.freeze({
   R5: [0.76, 1.30, -1.56],
   // the front: the flank chamfer's front end on the floor, the side face's front foot, the floor's front corner, the
   // crease's end, the upper chamfer's front foot, the roof's front corner
-  M1: [0.8238, 0.14, 0.839408], S: [0.92, 0.30, 0.90], F1: [0.36, 0.14, 1.20], C: [0.92, 0.95, 1.45],
+  M1: [0.8238, 0.14, 0.8394082417582418], S: [0.92, 0.30, 0.90], F1: [0.36, 0.14, 1.20], C: [0.92, 0.95, 1.45],
   F5: [0.92, 1.14, 1.26], F6: [0.76, 1.30, 1.10],
 } as const satisfies Record<string, P3>);
 
@@ -105,22 +105,24 @@ export const MARKSMAN_DRUM = Object.freeze({ r: 0.40, innerX: 0.65, outerX: 0.97
 
 /**
  * The two 35 mm Oerlikon KDA bores, gun-local (x either side, y over the elevation axis; index 0 the right, -x). Photos
- * 01 and 02 put the bore line 0.37-0.40 m over the drum's centre; photos 03 and 10 the barrels 2.1-2.5 m apart (round 4:
- * 2.48 m, outboard of the wider body).
+ * 03 and 10 put the barrels 2.1-2.5 m apart (round 4: 2.48 m, outboard of the wider body); round 5 (the blind A/B judge,
+ * photos 02, 08): each barrel enters its housing 15-20 % under the housing's top, 0.50 m over the drum's centre.
  */
-export const MARKSMAN_BORE = Object.freeze({ x: 1.24, y: 0.38 });
+export const MARKSMAN_BORE = Object.freeze({ x: 1.24, y: 0.50 });
 
 /**
  * Each gun's armoured pod, gun-local: a long faceted box round the gun's receiver, a flat inner face beside the drum, a
  * broad chamfer along its top outer edge, smaller ones elsewhere (photos 02, 05, 09), the tail cut back top and bottom
  * (photo 02), and the nose a pointed faceted pyramid to a small face round the bore (photos 02, 07, 09, 10). Round 4 (the
  * blind A/B judge): r2's tail and position, the nose 0.38 m further forward so with the guns level it stands 0.3-0.6 m
- * proud of the body's receding lower front; 0.50 x 0.84 m in section, the bore in its upper quarter with most of the
- * housing below it (photo 10); short enough behind the axis that the tail clears the deck at +85 degrees.
+ * proud of the body's receding lower front. Round 5 (the blind A/B judge, photos 02 and 08: the drum about 1.25 times the
+ * housing's depth, its centre at the housing's bottom edge, half the disc showing): 0.50 x 0.62 m in section, its
+ * underside on the axis (62 % of the way down the body), the bore 0.12 m under its top; short enough behind the axis that
+ * the tail clears the deck at +85 degrees.
  */
 export const MARKSMAN_POD = Object.freeze({
-  innerX: 1.00, outerX: 1.50, bottomY: -0.24, topY: 0.60, topChamfer: 0.11, bottomChamfer: 0.08,
-  tailZ: -0.42, tailTopY: 0.44, tailBottomY: 0.10, tailCutZ: -0.24, shoulderZ: 0.84, noseZ: 1.36,
+  innerX: 1.00, outerX: 1.50, bottomY: 0.0, topY: 0.62, topChamfer: 0.11, bottomChamfer: 0.08,
+  tailZ: -0.42, tailTopY: 0.46, tailBottomY: 0.12, tailCutZ: -0.24, shoulderZ: 0.84, noseZ: 1.36,
   /** The nose's front face round the bore. */
   faceHalfW: 0.12, faceHalfH: 0.12,
 });
@@ -143,7 +145,8 @@ export const MARKSMAN_MUZZLE_Z = MARKSMAN_BARREL.cageZ[1];
 
 /**
  * The Marconi 400-series search and tracking radar on the rear roof (photos 02, 03, 04, 07, 10): a base drum under a wide
- * pleated black rubber skirt, a drum housing on the skirt (round 4, photo 04), the column, the head with its electronics
+ * pleated black rubber skirt (round 5: 0.46 m across, 0.9 of the dish, photos 02, 04, 10), a drum housing on the skirt
+ * (round 4, photo 04), the column, the head with its electronics
  * box on the right, the dish facing forward on an
  * elevation axle, and from the axle's left end a straight boom, one dish across, angled up and outward to the
  * electro-optical tracker's box. Photo 02 puts its column 0.78 m ahead of the turret's rear face; photos 03 and 10 on the
@@ -152,15 +155,22 @@ export const MARKSMAN_MUZZLE_Z = MARKSMAN_BARREL.cageZ[1];
  * round-4 judge: the dish's top and the arm about 0.8 of the turret's height over the roof in photos 02, 04 and 10).
  */
 export const MARKSMAN_RADAR = Object.freeze({
-  x: 0, z: -0.86, baseR: 0.26, baseTopY: 1.37, skirtR: 0.36, skirtTopY: 1.47, housingR: 0.21, housingTopY: 1.56,
-  columnR: 0.12, columnTopY: 1.65,
+  x: 0, z: -0.86, baseR: 0.18, baseTopY: 1.37, skirtR: 0.23, skirtTopY: 1.47, housingR: 0.16, housingTopY: 1.56,
+  columnR: 0.10, columnTopY: 1.65,
   headY: 1.775, headH: 0.26, axleY: 1.80, dishR: 0.25, dishDepth: 0.07, dishTiltDeg: 15, dishZ: 0.16,
   boomFootX: 0.20, boomDir: [0.55, 0.80, 0.22], boomL: 0.50, topY: 2.29,
 });
 
-/** The commander's (right, -x) and gunner's (left, +x) sight heads mid-roof (photos 02, 03), their hatches ahead; the
- * heads two thirds of r2's size (photo 02, fix round 1), back at r2's stations on the r2-length body (round 4). */
-export const MARKSMAN_SIGHTS = Object.freeze({ x: 0.30, z: -0.02, hatchX: 0.38, hatchZ: 0.56, hatchR: 0.22 });
+/** The commander's (right, -x) and gunner's (left, +x) sight heads mid-roof (photos 02, 03), their hatches ahead, at r2's
+ * stations on the r2-length body (round 4); round 5 (photos 02, 07): 0.31 m tall over the roof, two thirds of the radar
+ * boot's width. */
+export const MARKSMAN_SIGHTS = Object.freeze({ x: 0.30, z: -0.02, hatchX: 0.38, hatchZ: 0.56, hatchR: 0.22, headH: 0.26 });
+
+/** The brow block jutting at the top front of the body over the upper plate (round 5, photo 07): along the roof's front
+ * edge, its top 2 cm over the roof, its vertical front face 0.20 m ahead of the roof's edge, its underside raked back
+ * into the plate. */
+export const MARKSMAN_BROW = Object.freeze({ halfW: 0.72, topY: 1.32, backZ: 0.96, frontZ: 1.30, frontBottomY: 1.20,
+  rootY: 1.10, rootZ: 1.20 });
 
 /** Each side's four 76 mm Wegmann dischargers (en.wikipedia: eight) at the rear roof corner, and the side grille. */
 export const MARKSMAN_SMOKE = Object.freeze({ z: -1.38, y: 1.02, tubeR: 0.048, tubeL: 0.22 });

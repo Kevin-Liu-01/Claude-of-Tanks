@@ -620,37 +620,28 @@ interface T54FamilyHullOptions {
 }
 
 /**
- * The flexible skirts (Finland's ItPsv 90, photo 01): six pale canvas-rubber panels a side hung from the fender shelf's
- * turned-down lip to 0.60 m over the ground (the wheels' top third: their tops 0.855 m), each flaring a little outboard
- * and overlapping the next; and a drape over each front mudguard's outer edge, hanging to the same line where the scoop
- * falls to the nose. Outboard of the track's outer edge (1.623 m) everywhere.
+ * The flexible skirts (Finland's ItPsv 90, photo 01): seven thin pale flaps a side hung edge to edge, a 2 cm seam between
+ * them, from a hem strip along the fender shelf's turned-down lip to 0.50-0.54 m over the ground, so about 60 % of each
+ * road wheel shows under them (the wheels' tops 0.855 m); each flares 3-5 cm outboard at its foot. Outboard of the track's
+ * outer edge (1.623 m) everywhere; the front mudguards stay bare sheet metal (photo 01).
  */
 function addFlexibleSkirts(P: TankBuilderPort): void {
-  const shelfZ0 = -2.94, shelfZ1 = 2.58, panels = 6, footY = 0.60, topY = FENDER_Y + 0.005;
-  const scoop: [number, number][] = [[shelfZ1 - 0.02, FENDER_Y + 0.015], [2.74, FENDER_Y + 0.005], [2.87, FENDER_Y - 0.035],
-    [2.97, FENDER_Y - 0.10], [3.035, FENDER_Y - 0.19], [3.05, FENDER_Y - 0.27]];
-  /** A hanging slab between two stations: its top edge at (z, yTop) inboard of its foot, `inX`/`outX` its faces. */
-  const hang = (side: number, za: number, zb: number, topA: number, topB: number, footA: number, footB: number,
-    inX: number, outX: number, flare: number): THREE.BufferGeometry => {
-    const xs = (x: number): number => side * x;
-    const lo = (x0: number, x1: number): [number, number] => (side > 0 ? [xs(x0), xs(x1)] : [xs(x1), xs(x0)]);
-    const [tl, tr] = lo(inX, outX), [bl, br] = lo(inX + flare, outX + flare);
-    return KIT.slab([bl, footB, zb], [br, footB, zb], [br, footA, za], [bl, footA, za],
-      [tl, topB, zb], [tr, topB, zb], [tr, topA, za], [tl, topA, za]);
-  };
+  const { box } = KIT;
+  const shelfZ0 = -2.94, shelfZ1 = 2.58, flaps = 7, seam = 0.02, topY = FENDER_Y + 0.005, t = 0.006;
   for (const side of [-1, 1]) {
-    const step = (shelfZ1 - shelfZ0) / panels;
-    for (let k = 0; k < panels; k++) {
-      const z0 = shelfZ0 + k * step - (k ? 0.012 : 0), z1 = shelfZ0 + (k + 1) * step + (k < panels - 1 ? 0.012 : 0);
-      const inX = FENDER_OUT - 0.002 + (k % 2) * 0.004, flare = 0.010 + (k % 3) * 0.005, foot = footY + (k % 2) * 0.015;
-      P.addEquipment('hullCanvasPale', hang(side, z0, z1, topY, topY, foot, foot, inX, inX + 0.012, flare));
-    }
-    // the drape over the front mudguard's outer edge
-    for (let i = 0; i < scoop.length - 1; i++) {
-      const [za, ya] = scoop[i], [zb, yb] = scoop[i + 1];
-      const footA = Math.min(ya - 0.12, footY + 0.02 + i * 0.03), footB = Math.min(yb - 0.12, footY + 0.02 + (i + 1) * 0.03);
-      P.addEquipment('hullCanvasPale', hang(side, za, zb, ya + 0.01, yb + 0.01, footA, footB, FENDER_OUT + 0.010,
-        FENDER_OUT + 0.022, 0.006));
+    // the hem strip the flaps hang from, on the lip's outer face
+    P.addEquipment('hullCanvasPale', box(0.014, 0.035, shelfZ1 - shelfZ0), side * (FENDER_OUT + 0.005), FENDER_Y - 0.01,
+      (shelfZ0 + shelfZ1) / 2);
+    const step = (shelfZ1 - shelfZ0 + seam) / flaps;
+    for (let k = 0; k < flaps; k++) {
+      const z0 = shelfZ0 + k * step, z1 = z0 + step - seam;
+      const foot = 0.50 + (k % 3) * 0.02, flare = 0.03 + (k % 2) * 0.02, inX = FENDER_OUT + 0.010;
+      // top edge seated 2 mm into the hem strip; corner order (-x,+z), (+x,+z), (+x,-z), (-x,-z) by actual x
+      const xs = (x: number): number => side * x;
+      const pair = (x0: number, x1: number): [number, number] => (side > 0 ? [xs(x0), xs(x1)] : [xs(x1), xs(x0)]);
+      const [tl, tr] = pair(inX, inX + t), [bl, br] = pair(inX + flare, inX + flare + t);
+      P.addEquipment('hullCanvasPale', KIT.slab([bl, foot, z1], [br, foot, z1], [br, foot, z0], [bl, foot, z0],
+        [tl, topY, z1], [tr, topY, z1], [tr, topY, z0], [tl, topY, z0]));
     }
   }
 }
