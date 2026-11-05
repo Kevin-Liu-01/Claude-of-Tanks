@@ -294,8 +294,8 @@
    ],
    "scene": "tools/media-r5/versus/scenes/vs03-reservoir-k2-ztz99-r6.json",
    "path": "/media/versus-r1/vs03-reservoir-k2-ztz99-r6.webp",
-   "bytes": 284390,
-   "sha256": "3b8e2dbee01106660d85cb3257544f455b78549c036b184786fde54de353e235",
+   "bytes": 284276,
+   "sha256": "b84be397430af5076563c56e040f5a4ded7ef8e2c9b1c3882ef76c6e9f0ab772",
    "width": 1920,
    "height": 1080,
    "source": "vs03-reservoir-k2-ztz99-r6-1920.webp",
@@ -303,7 +303,7 @@
     {
      "width": 640,
      "path": "/media/versus-r1/vs03-reservoir-k2-ztz99-r6-640.webp",
-     "bytes": 27666
+     "bytes": 27626
     },
     {
      "width": 1280,
@@ -313,12 +313,12 @@
     {
      "width": 1920,
      "path": "/media/versus-r1/vs03-reservoir-k2-ztz99-r6.webp",
-     "bytes": 284390
+     "bytes": 284276
     },
     {
      "width": 3840,
      "path": "/media/versus-r1/vs03-reservoir-k2-ztz99-r6-3840.webp",
-     "bytes": 442344
+     "bytes": 442566
     }
    ]
   },
@@ -408,8 +408,8 @@
    ],
    "scene": "tools/media-r5/versus/scenes/vs05-oasis-merkava-t72b3-r6.json",
    "path": "/media/versus-r1/vs05-oasis-merkava-t72b3-r6.webp",
-   "bytes": 259394,
-   "sha256": "fe93d62f912c6fd3460ab025c9860714cf434a37c2444ffa35a5ef8d1a3a89fd",
+   "bytes": 257658,
+   "sha256": "55775a36ee8e48c236fd7fcd71e1e54791993778b904ec6f2abe77d278d6be38",
    "width": 1920,
    "height": 1080,
    "source": "vs05-oasis-merkava-t72b3-r6-1920.webp",
@@ -417,22 +417,22 @@
     {
      "width": 640,
      "path": "/media/versus-r1/vs05-oasis-merkava-t72b3-r6-640.webp",
-     "bytes": 22790
+     "bytes": 22598
     },
     {
      "width": 1280,
      "path": "/media/versus-r1/vs05-oasis-merkava-t72b3-r6-1280.webp",
-     "bytes": 69884
+     "bytes": 69508
     },
     {
      "width": 1920,
      "path": "/media/versus-r1/vs05-oasis-merkava-t72b3-r6.webp",
-     "bytes": 259394
+     "bytes": 257658
     },
     {
      "width": 3840,
      "path": "/media/versus-r1/vs05-oasis-merkava-t72b3-r6-3840.webp",
-     "bytes": 392582
+     "bytes": 389210
     }
    ]
   },
@@ -516,8 +516,8 @@
    ],
    "scene": "tools/media-r5/versus/scenes/vs07-autumn-ariete-t62-r6.json",
    "path": "/media/versus-r1/vs07-autumn-ariete-t62-r6.webp",
-   "bytes": 468742,
-   "sha256": "0627538489e5b8758a7fcc09ca03581d7817b06e67e451cf99a9bb4847fcde97",
+   "bytes": 469152,
+   "sha256": "3330e9bbb6dd6e838cbc794c195a8653dfcb07a015532073a92128ba89eba099",
    "width": 1920,
    "height": 1080,
    "source": "vs07-autumn-ariete-t62-r6-1920.webp",
@@ -525,22 +525,22 @@
     {
      "width": 640,
      "path": "/media/versus-r1/vs07-autumn-ariete-t62-r6-640.webp",
-     "bytes": 28000
+     "bytes": 28226
     },
     {
      "width": 1280,
      "path": "/media/versus-r1/vs07-autumn-ariete-t62-r6-1280.webp",
-     "bytes": 99180
+     "bytes": 99456
     },
     {
      "width": 1920,
      "path": "/media/versus-r1/vs07-autumn-ariete-t62-r6.webp",
-     "bytes": 468742
+     "bytes": 469152
     },
     {
      "width": 3840,
      "path": "/media/versus-r1/vs07-autumn-ariete-t62-r6-3840.webp",
-     "bytes": 718430
+     "bytes": 718964
     }
    ]
   },
@@ -678,8 +678,8 @@
    ],
    "scene": "tools/media-r5/versus/scenes/vs10-steppe-chieftain-t64-r6.json",
    "path": "/media/versus-r1/vs10-steppe-chieftain-t64-r6.webp",
-   "bytes": 303558,
-   "sha256": "7cd62f26cd11359f7cf48923b34f7d8ef1a60d833d1aea1aafc4b012c4349ef2",
+   "bytes": 303588,
+   "sha256": "b2e978106f9cba21fdc966632612a0390134812d43ac7cabc48815701b345832",
    "width": 1920,
    "height": 1080,
    "source": "vs10-steppe-chieftain-t64-r6-1920.webp",
@@ -687,22 +687,22 @@
     {
      "width": 640,
      "path": "/media/versus-r1/vs10-steppe-chieftain-t64-r6-640.webp",
-     "bytes": 18498
+     "bytes": 18488
     },
     {
      "width": 1280,
      "path": "/media/versus-r1/vs10-steppe-chieftain-t64-r6-1280.webp",
-     "bytes": 61150
+     "bytes": 61174
     },
     {
      "width": 1920,
      "path": "/media/versus-r1/vs10-steppe-chieftain-t64-r6.webp",
-     "bytes": 303558
+     "bytes": 303588
     },
     {
      "width": 3840,
      "path": "/media/versus-r1/vs10-steppe-chieftain-t64-r6-3840.webp",
-     "bytes": 441894
+     "bytes": 441658
     }
    ]
   },
@@ -900,8 +900,8 @@
    ],
    "scene": "tools/media-r5/versus/scenes/vs07-autumn-ariete-t62-r7.json",
    "path": "/media/versus-r1/vs07-autumn-ariete-t62-r7.webp",
-   "bytes": 284026,
-   "sha256": "c19d5af1c6374099f67bd87c696caa7870e889b4fe9a9f761e2d0d714a857d3b",
+   "bytes": 274020,
+   "sha256": "47a45a09e977a03299730baf43de76a8a6c73d1a45c8abd2f76b2839272bdffe",
    "width": 1920,
    "height": 1080,
    "source": "vs07-autumn-ariete-t62-r7-1920.webp",
@@ -909,22 +909,22 @@
     {
      "width": 640,
      "path": "/media/versus-r1/vs07-autumn-ariete-t62-r7-640.webp",
-     "bytes": 26276
+     "bytes": 26702
     },
     {
      "width": 1280,
      "path": "/media/versus-r1/vs07-autumn-ariete-t62-r7-1280.webp",
-     "bytes": 77394
+     "bytes": 77420
     },
     {
      "width": 1920,
      "path": "/media/versus-r1/vs07-autumn-ariete-t62-r7.webp",
-     "bytes": 284026
+     "bytes": 274020
     },
     {
      "width": 3840,
      "path": "/media/versus-r1/vs07-autumn-ariete-t62-r7-3840.webp",
-     "bytes": 395038
+     "bytes": 396646
     }
    ]
   },
@@ -954,8 +954,8 @@
    ],
    "scene": "tools/media-r5/versus/scenes/vs08-winter-cv90-bmp3-r7.json",
    "path": "/media/versus-r1/vs08-winter-cv90-bmp3-r7.webp",
-   "bytes": 207750,
-   "sha256": "4e22ff71f2d6660bb6a52dcaa944ab89a632b2511cf69d2c5a1c539dc604a2e3",
+   "bytes": 207656,
+   "sha256": "ef38bfcd93f327141ed7da3338442314fd9a5995a43977092a40045a4f699092",
    "width": 1920,
    "height": 1080,
    "source": "vs08-winter-cv90-bmp3-r7-1920.webp",
@@ -963,22 +963,22 @@
     {
      "width": 640,
      "path": "/media/versus-r1/vs08-winter-cv90-bmp3-r7-640.webp",
-     "bytes": 20060
+     "bytes": 19976
     },
     {
      "width": 1280,
      "path": "/media/versus-r1/vs08-winter-cv90-bmp3-r7-1280.webp",
-     "bytes": 55042
+     "bytes": 55102
     },
     {
      "width": 1920,
      "path": "/media/versus-r1/vs08-winter-cv90-bmp3-r7.webp",
-     "bytes": 207750
+     "bytes": 207656
     },
     {
      "width": 3840,
      "path": "/media/versus-r1/vs08-winter-cv90-bmp3-r7-3840.webp",
-     "bytes": 285926
+     "bytes": 285844
     }
    ]
   },
@@ -1062,8 +1062,8 @@
    ],
    "scene": "tools/media-r5/versus/scenes/vs10-steppe-chieftain-t64-r7.json",
    "path": "/media/versus-r1/vs10-steppe-chieftain-t64-r7.webp",
-   "bytes": 413502,
-   "sha256": "a0c001e3d393dd4c0b4f20eab848cae7efdd47c2bac4c750129a69e8f91d251f",
+   "bytes": 404192,
+   "sha256": "995e5c530c1d8e047a647b775c588006255431e9a7ef7e2f199f630745def349",
    "width": 1920,
    "height": 1080,
    "source": "vs10-steppe-chieftain-t64-r7-1920.webp",
@@ -1071,22 +1071,22 @@
     {
      "width": 640,
      "path": "/media/versus-r1/vs10-steppe-chieftain-t64-r7-640.webp",
-     "bytes": 39394
+     "bytes": 39208
     },
     {
      "width": 1280,
      "path": "/media/versus-r1/vs10-steppe-chieftain-t64-r7-1280.webp",
-     "bytes": 114822
+     "bytes": 114140
     },
     {
      "width": 1920,
      "path": "/media/versus-r1/vs10-steppe-chieftain-t64-r7.webp",
-     "bytes": 413502
+     "bytes": 404192
     },
     {
      "width": 3840,
      "path": "/media/versus-r1/vs10-steppe-chieftain-t64-r7-3840.webp",
-     "bytes": 599000
+     "bytes": 595552
     }
    ]
   },
@@ -1170,8 +1170,8 @@
    ],
    "scene": "tools/media-r5/versus/scenes/vs10-steppe-chieftain-t64-r7-top.json",
    "path": "/media/versus-r1/vs10-steppe-chieftain-t64-r7-top.webp",
-   "bytes": 537448,
-   "sha256": "be2dff562d7822fd39856731c69ae7c7c8cf0528de60c59fa33f5a13bba04fa6",
+   "bytes": 536044,
+   "sha256": "56e41380db4099d95ce087d34fc7082eefc00bad693cb9ccc78d3bd563d52cd7",
    "width": 1920,
    "height": 1080,
    "source": "vs10-steppe-chieftain-t64-r7-top-1920.webp",
@@ -1179,22 +1179,22 @@
     {
      "width": 640,
      "path": "/media/versus-r1/vs10-steppe-chieftain-t64-r7-top-640.webp",
-     "bytes": 33428
+     "bytes": 33396
     },
     {
      "width": 1280,
      "path": "/media/versus-r1/vs10-steppe-chieftain-t64-r7-top-1280.webp",
-     "bytes": 123654
+     "bytes": 119846
     },
     {
      "width": 1920,
      "path": "/media/versus-r1/vs10-steppe-chieftain-t64-r7-top.webp",
-     "bytes": 537448
+     "bytes": 536044
     },
     {
      "width": 3840,
      "path": "/media/versus-r1/vs10-steppe-chieftain-t64-r7-top-3840.webp",
-     "bytes": 934890
+     "bytes": 912608
     }
    ]
   },
@@ -1278,8 +1278,8 @@
    ],
    "scene": "tools/media-r5/versus/scenes/vs07-autumn-ariete-t62-r7-top.json",
    "path": "/media/versus-r1/vs07-autumn-ariete-t62-r7-top.webp",
-   "bytes": 463526,
-   "sha256": "9bd93265c4aad5878cae1f7cad36c51b589e7386f60bc1343de6d3ac67be5d7b",
+   "bytes": 465302,
+   "sha256": "6660b8d904e078bb0def3057d4056507d2c15669c0e6f5f6343ee73727f3ed27",
    "width": 1920,
    "height": 1080,
    "source": "vs07-autumn-ariete-t62-r7-top-1920.webp",
@@ -1287,22 +1287,22 @@
     {
      "width": 640,
      "path": "/media/versus-r1/vs07-autumn-ariete-t62-r7-top-640.webp",
-     "bytes": 34230
+     "bytes": 34278
     },
     {
      "width": 1280,
      "path": "/media/versus-r1/vs07-autumn-ariete-t62-r7-top-1280.webp",
-     "bytes": 111006
+     "bytes": 111388
     },
     {
      "width": 1920,
      "path": "/media/versus-r1/vs07-autumn-ariete-t62-r7-top.webp",
-     "bytes": 463526
+     "bytes": 465302
     },
     {
      "width": 3840,
      "path": "/media/versus-r1/vs07-autumn-ariete-t62-r7-top-3840.webp",
-     "bytes": 670470
+     "bytes": 672360
     }
    ]
   },
@@ -1332,8 +1332,8 @@
    ],
    "scene": "tools/media-r5/versus/scenes/vs08-winter-cv90-bmp3-r7-top.json",
    "path": "/media/versus-r1/vs08-winter-cv90-bmp3-r7-top.webp",
-   "bytes": 233984,
-   "sha256": "b010271fae96b309ce54f2c7731fa4d38a7036132c943fe786f34542ceab8a8a",
+   "bytes": 233110,
+   "sha256": "29ef52922f19d689eb72858f51f6b20d0635d25d8731ac5fe5629d913bc5bbe0",
    "width": 1920,
    "height": 1080,
    "source": "vs08-winter-cv90-bmp3-r7-top-1920.webp",
@@ -1341,22 +1341,22 @@
     {
      "width": 640,
      "path": "/media/versus-r1/vs08-winter-cv90-bmp3-r7-top-640.webp",
-     "bytes": 21342
+     "bytes": 21334
     },
     {
      "width": 1280,
      "path": "/media/versus-r1/vs08-winter-cv90-bmp3-r7-top-1280.webp",
-     "bytes": 59972
+     "bytes": 59884
     },
     {
      "width": 1920,
      "path": "/media/versus-r1/vs08-winter-cv90-bmp3-r7-top.webp",
-     "bytes": 233984
+     "bytes": 233110
     },
     {
      "width": 3840,
      "path": "/media/versus-r1/vs08-winter-cv90-bmp3-r7-top-3840.webp",
-     "bytes": 307516
+     "bytes": 307794
     }
    ]
   },
@@ -1440,8 +1440,8 @@
    ],
    "scene": "tools/media-r5/versus/scenes/vs03-reservoir-k2-vt4a1-r8.json",
    "path": "/media/versus-r1/vs03-reservoir-k2-vt4a1-r8.webp",
-   "bytes": 322602,
-   "sha256": "fc4dc569f2ab68699cd72785623ee2093f59a8feb4435af625a0c40a99237a8a",
+   "bytes": 322240,
+   "sha256": "c5d4259dad76e7245e883a5b52ad3f690e60b49ea0d2418df229f66b143503e8",
    "width": 1920,
    "height": 1080,
    "source": "vs03-reservoir-k2-vt4a1-r8-1920.webp",
@@ -1449,22 +1449,22 @@
     {
      "width": 640,
      "path": "/media/versus-r1/vs03-reservoir-k2-vt4a1-r8-640.webp",
-     "bytes": 25666
+     "bytes": 25670
     },
     {
      "width": 1280,
      "path": "/media/versus-r1/vs03-reservoir-k2-vt4a1-r8-1280.webp",
-     "bytes": 80876
+     "bytes": 81088
     },
     {
      "width": 1920,
      "path": "/media/versus-r1/vs03-reservoir-k2-vt4a1-r8.webp",
-     "bytes": 322602
+     "bytes": 322240
     },
     {
      "width": 3840,
      "path": "/media/versus-r1/vs03-reservoir-k2-vt4a1-r8-3840.webp",
-     "bytes": 460786
+     "bytes": 472188
     }
    ]
   },
