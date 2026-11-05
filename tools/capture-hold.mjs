@@ -350,13 +350,14 @@ function unregisterHold(hold) {
  * release (default: teardown), `afterRelease(prepared)` after it; `onYield()`/`onResume()` run around a checkpoint yield.
  * `holdMinutes`, `graceSeconds`: see the phases; the release waits up to `teardownWaitMs` for a teardown the grace began,
  * and a signal waits up to `signalWaitMs` for this hold's teardown (more than a teardown's own SIGKILL fallback). The
- * acquire options (`place`, `ticket`, `lockClass`, `command`, `holdCapMinutes`, `holdCapReason`, `priority`) go to the
- * lock. `signals: []` leaves signals to the caller (a chain that stops its own children first); otherwise the shared owner
- * handles SIGTERM, SIGINT and SIGHUP. `atCap: 'keep'` declares a work that cannot yield or stop part-way (see the phases).
+ * acquire options (`place`, `ticket`, `lockClass`, `command`, `holdCapMinutes`, `holdCapReason`, `priority`,
+ * `ancestorHeld`: the caller says an ancestor holds the lock, checked as COT_LANE_HOLD is) go to the lock. `signals: []`
+ * leaves signals to the caller (a chain that stops its own children first); otherwise the shared owner handles SIGTERM,
+ * SIGINT and SIGHUP. `atCap: 'keep'` declares a work that cannot yield or stop part-way (see the phases).
  */
 export async function withCaptureHold(work, { label = 'capture', lock = createCaptureLock(), timeoutMs = 45 * 60_000, place = null,
-  ticket = null, lockClass = null, command = null, holdCapMinutes = null, holdCapReason = null, priority = null, prepare = null,
-  holdMinutes = null, graceSeconds = 60, refreshMs = 30_000, capCheckMs = 30_000, atCap = 'stop', teardown = null, beforeRelease = null,
+  ticket = null, lockClass = null, command = null, holdCapMinutes = null, holdCapReason = null, priority = null, ancestorHeld = false,
+  prepare = null, holdMinutes = null, graceSeconds = 60, refreshMs = 30_000, capCheckMs = 30_000, atCap = 'stop', teardown = null, beforeRelease = null,
   afterRelease = null, onYield = null, onResume = null, signals = SIGNALS, teardownWaitMs = 120_000, signalWaitMs = 30_000,
   log = console.log } = {}) {
   if (typeof work !== 'function') throw new TypeError('withCaptureHold needs work()');
@@ -383,6 +384,7 @@ export async function withCaptureHold(work, { label = 'capture', lock = createCa
   const queuedAt = Date.now();
   try {
     prepared = await lock.acquire(timeoutMs, { place, ticket, lockClass, command, holdCapMinutes, holdCapReason, priority,
+      ...(ancestorHeld ? { ancestorHeld: true } : {}),
       ...(typeof prepare === 'function' ? { prepare: async () => (prepared = await prepare()) } : {}) });
   } catch (error) {
     if (signalStop) return NEVER;
@@ -432,7 +434,7 @@ export async function withCaptureHold(work, { label = 'capture', lock = createCa
 
 /**
  * The open form of withCaptureHold (round 2 U38), for a tool whose run is a script rather than one function: it resolves
- * once the lock is held with { prepared, signal, checkpoint, heldAt, say, release }. The hold is withCaptureHold's, the one
+ * once the lock is held with { prepared, signal, checkpoint, heldAt, say, refresh, release }. The hold is withCaptureHold's, the one
  * owner of a hold (refresh, the cap and its yield, signals, the release at exit), so a tool that acquired the lock itself
  * moves onto it by two lines:
  *   const hold = await openCaptureHold({ label: 'my-probe', timeoutMs: 45 * 60_000 });
@@ -443,11 +445,12 @@ export async function withCaptureHold(work, { label = 'capture', lock = createCa
  * draws), so the cap holds for a tool that never checkpoints. `atCap: 'keep'` declares a hold that cannot be stopped.
  * The hold's lines go to stderr unless `log` says otherwise (a tool's stdout may be its report).
  */
-export async function openCaptureHold({ teardown = () => { stopGuardedBrowsers(); }, log = (line) => console.error(line), ...options } = {}) {
+export async function openCaptureHold({ teardown = () => { stopGuardedBrowsers(); }, log = (line) => console.error(line), lock = createCaptureLock(),
+  ...options } = {}) {
   let held, finish;
   const heldNow = new Promise((resolve) => { held = resolve; });
   const done = new Promise((resolve) => { finish = resolve; });
-  const whole = withCaptureHold(async (context) => { held(context); await done; }, { ...options, teardown, log,
+  const whole = withCaptureHold(async (context) => { held(context); await done; }, { ...options, lock, teardown, log,
     // the normal way out is the caller's: it closed what it opened before release()
     beforeRelease: options.beforeRelease ?? (() => {}) });
   const ended = whole.then(() => ({ endedUnheld: true }));
@@ -455,7 +458,8 @@ export async function openCaptureHold({ teardown = () => { stopGuardedBrowsers()
   const context = await Promise.race([heldNow, ended]);
   if (context?.endedUnheld) throw new Error('openCaptureHold: the hold ended before it was held');
   let releasing = null;
-  return { ...context, release: () => (releasing ??= (finish(), whole)) };
+  // refresh(): a tool's long synchronous step renews the hold itself (the 30 s refresh cannot run while the loop is blocked)
+  return { ...context, refresh: () => lock.refresh(), release: () => (releasing ??= (finish(), whole)) };
 }
 
 /**

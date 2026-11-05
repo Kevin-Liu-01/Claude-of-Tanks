@@ -12,7 +12,7 @@ import { transform, transformConstructor } from './wreck-build-profile.mjs';
 const toolSource = readFileSync(new URL('./wreck-build-profile.mjs', import.meta.url), 'utf8');
 assert.match(toolSource, /const cancellation = registerProfileCancellation\(\(\) => child\)/);
 assert.doesNotMatch(toolSource, /process\.once\(['"]SIG(?:INT|TERM)['"]/);
-assert.ok(toolSource.indexOf('lock.release();') < toolSource.indexOf('cancellation.dispose();'),
+assert.ok(toolSource.indexOf('await hold?.release();') < toolSource.indexOf('cancellation.dispose();'),
   'signal handlers remain installed through lease release after awaited worker completion');
 const emitter = new EventEmitter(), kills = [];
 let child = null;

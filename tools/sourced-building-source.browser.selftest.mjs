@@ -10,7 +10,7 @@ import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import puppeteer from 'puppeteer';
 import { createServer } from 'vite';
-import { createCaptureLock } from './capture-lock.mjs';
+import { openCaptureHold } from './capture-hold.mjs';
 import { nativeBrowserLaunchOptions, verifyNativeBrowserLaunch } from './native-browser-launch.mjs';
 
 const root = fileURLToPath(new URL('../', import.meta.url));
@@ -252,11 +252,11 @@ async function nativeFixture() {
   return report;
 }
 
-const lock = createCaptureLock();
+let hold;
 const report = { protocol: 'sourced-building-source-native-v1', ok: false, sourceHash: sourceHash(),
   errors: [], fixture: null, interruptedSignal: null,
   browserClosed: false, serverClosed: false, cacheRemoved: false, lockReleased: false };
-let server, browser, page, cacheDir, refresh;
+let server, browser, page, cacheDir;
 function terminateOwnedBrowser() {
   try {
     const child = browser?.process();
@@ -274,10 +274,9 @@ function checkInterrupted() {
 }
 const onSigint = () => interrupt('SIGINT'), onSigterm = () => interrupt('SIGTERM');
 try {
-  await lock.acquire(45 * 60_000);
+  hold = await openCaptureHold({ label: 'sourced-building-source.browser.selftest', timeoutMs: 45 * 60_000, signals: [] /* its own signal handler stops the run */ });
   // Before admission, retain ordinary OS termination and the shared FIFO policy.
   process.on('SIGINT', onSigint); process.on('SIGTERM', onSigterm);
-  refresh = setInterval(() => lock.refresh(), 30_000); refresh.unref();
   cacheDir = mkdtempSync(join(tmpdir(), 'cot-building-source-vite-'));
   server = await createServer({ root, cacheDir, logLevel: 'error', optimizeDeps: { noDiscovery: true },
     server: { host: '127.0.0.1', port: 0, hmr: false, watch: null },
@@ -334,7 +333,7 @@ finally {
   catch (error) { report.errors.push(String(error)); }
   if (cacheDir) try { rmSync(cacheDir, { recursive: true, force: true }); report.cacheRemoved = true; }
   catch (error) { report.errors.push(String(error)); }
-  clearInterval(refresh); lock.release(); report.lockReleased = true;
+  await hold?.release(); report.lockReleased = true;
   process.removeListener('SIGINT', onSigint); process.removeListener('SIGTERM', onSigterm);
 }
 report.ok = report.interruptedSignal === null && report.errors.length === 0 && report.fixture?.disposed === true

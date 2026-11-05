@@ -303,8 +303,17 @@ only:
 - **`tools/capture-hold.mjs` `runWarmHold({ warm, shoot })`.** `warm` starts the servers and the browser and loads
   every page to ready while the ticket waits. Its pages are then frozen (Chrome's page lifecycle: no timers and no
   frames, so nothing draws during other holds). At the hold they are thawed, `shoot` runs, and they are frozen again
-  before the release. `holdMinutes` (default 18) aborts `shoot`'s signal; past `graceSeconds` the browser is closed
-  before the release. A signal releases the lock, closes the browser and exits.
+  before the release. The lock's 20-minute cap applies (`holdMinutes`, when given, is a budget of its own): past it with
+  anyone waiting a `checkpoint()` yields, a shoot that never checkpoints has its signal aborted, and past `graceSeconds`
+  the browser is closed before the release. A signal releases the lock, closes the browser and exits.
+- **One hold wrapper (2026-11-02 audit S4, round 2 U38).** `withCaptureHold(work, options)` owns every hold: refresh, the
+  cap and its yield, signals, the release at exit, and the teardown before the release. A script tool holds through its
+  open form: `const hold = await openCaptureHold({ label, timeoutMs, ... })`, then `await hold.release()` once it has
+  closed its browser; a stop past the cap's grace or a signal stops every guarded browser of the process
+  (`browser-launch.mjs` `stopGuardedBrowsers`). A shell holds one normal ticket across several steps with
+  `node tools/with-capture-lock.mjs [--lock-class=render|timing] [--place=<key>] -- <command>`: every tool under it that
+  takes the lock nests in that hold (its token), and a wait that runs out exits 77. `tools/capture-hold-census.selftest.mjs`
+  lists the few tools that still acquire the lock themselves, each with its reason, and refuses a new one.
 - **Helpers in the same module.** `startViteChild` runs Vite in a child process that exits with its parent: `preview`
   serves a built `dist` with no transforms, and `dev` serves the sources. `warmPage` waits, within bounds, for a ready
   expression, eager images and fonts. Studio, Garage and the public pages all serve from a dist (`vite build --outDir

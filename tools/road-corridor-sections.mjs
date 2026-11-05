@@ -6,7 +6,7 @@ import { createHash } from 'node:crypto';
 import { createHeightField } from '../src/world/terrain.ts';
 import { getMapConfig } from '../src/world/maps/index.ts';
 import { ROAD_ENDPOINT_INTENTS } from '../src/world/maps/roadEndpoints.ts';
-import { createCaptureLock } from './capture-lock.mjs';
+import { openCaptureHold } from './capture-hold.mjs';
 
 const receiptPath = process.argv.find(a => a.startsWith('--receipt='))?.slice(10);
 const output = process.argv.find(a => a.startsWith('--out='))?.slice(6);
@@ -53,9 +53,9 @@ function crossSection(field, point, owner) {
   }
   return samples;
 }
-const lock = createCaptureLock();
-await lock.acquire(45 * 60 * 1000);
-const heartbeat = setInterval(() => lock.refresh(), 30000);
+let hold;
+hold = await openCaptureHold({ label: 'road-corridor-sections', timeoutMs: 45 * 60 * 1000 });
+
 const result = { scope: 'four actual failed bank cross-sections; coordinates outside510 omitted; not a new gate or timing/native evidence',
   receiptPath, receiptSha256: hash(receiptPath), source: frozen, records: [] };
 try {
@@ -73,7 +73,7 @@ try {
   }
   assert.deepEqual(source(), frozen);
 } finally {
-  clearInterval(heartbeat); lock.release();
+  await hold?.release();
   writeFileSync(output, JSON.stringify(result, null, 2) + '\n', { flag: 'wx' });
   console.log(JSON.stringify({ records: result.records.length, output }));
 }

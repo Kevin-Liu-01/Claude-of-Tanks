@@ -9,7 +9,7 @@ import { createHash } from 'node:crypto';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import puppeteer from 'puppeteer';
-import { createCaptureLock } from './capture-lock.mjs';
+import { openCaptureHold } from './capture-hold.mjs';
 import { nativeBrowserLaunchOptions, verifyNativeBrowserLaunch } from './native-browser-launch.mjs';
 import { readinessExpression } from './game-readiness.mjs';
 
@@ -223,11 +223,10 @@ async function main() {
     url: url.href, viewport: { width: 1280, height: 720, deviceScaleFactor: 1 },
     toolHash: createHash('sha256').update(await readFile(new URL(import.meta.url))).digest('hex'),
     errors: [], pairs: [], failedRequests: [], failedResponses: [] };
-  const lock = createCaptureLock();
-  let browser, refresher;
+  let hold;
+  let browser;
   try {
-    await lock.acquire();
-    refresher = setInterval(() => lock.refresh(), 30_000); refresher.unref();
+    hold = await openCaptureHold({ label: 'garage-draw-range-probe', timeoutMs: 10 * 60 * 1000 });
     browser = await launchGuardedBrowser(puppeteer, nativeBrowserLaunchOptions({ headless: 'new', protocolTimeout: 120_000,
       args: ['--use-gl=angle', '--enable-webgl', '--no-sandbox', '--disable-dev-shm-usage'] }));
     report.nativeLaunch = verifyNativeBrowserLaunch(browser);
@@ -265,8 +264,7 @@ async function main() {
   } catch (error) { report.errors.push(String(error)); }
   finally {
     try { await browser?.close(); } catch (error) { report.errors.push(`browser cleanup: ${error}`); }
-    clearInterval(refresher);
-    lock.release();
+    await hold?.release();
     report.failures = checkGarageDrawRangeReport(report); report.passed = report.failures.length === 0;
     await writeFile(resolve(out, 'report.json'), `${JSON.stringify(report, null, 2)}\n`, { flag: 'wx' });
   }

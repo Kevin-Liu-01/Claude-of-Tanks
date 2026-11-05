@@ -16,7 +16,8 @@ import { mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { preview } from 'vite';
 import puppeteer from 'puppeteer';
-import { createCaptureLock, ticketAt } from './capture-lock.mjs';
+import { openCaptureHold } from './capture-hold.mjs';
+import { ticketAt } from './capture-lock.mjs';
 import { readinessExpression, waitForBootLoaded } from './game-readiness.mjs';
 
 const arg = (name, fallback) => process.argv.find((a) => a.startsWith(`--${name}=`))?.slice(name.length + 3) ?? fallback;
@@ -163,12 +164,10 @@ async function filmBuild(run, manifest) {
   }
 }
 
-const lock = soft ? null : createCaptureLock();
-let heartbeat;
+let hold = null; // the capture hold (tools/capture-hold.mjs openCaptureHold); none for a --soft run
 try {
-  if (lock) {
-    await lock.acquire(4 * 60 * 60 * 1000, stamp > 0 ? { ticket: ticketAt(stamp) } : {});
-    heartbeat = setInterval(() => lock.refresh(), 30000);
+  if (!soft) {
+    hold = await openCaptureHold({ label: 'gunship-lens-strip', timeoutMs: 4 * 60 * 60 * 1000, ...(stamp > 0 ? { ticket: ticketAt(stamp) } : {}) });
     log('acquired GPU slot', new Date().toISOString());
   }
   heldAt = Date.now();
@@ -179,4 +178,4 @@ try {
     writeFileSync(resolve(out, `${run.tag}-manifest.json`), JSON.stringify(manifest, null, 2));
     log(`${run.tag}: ${manifest.frames.length} frames in ${out}`);
   }
-} finally { clearInterval(heartbeat); lock?.release(); log('released', new Date().toISOString()); }
+} finally { await hold?.release(); log('released', new Date().toISOString()); }

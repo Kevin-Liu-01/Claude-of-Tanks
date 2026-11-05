@@ -4,6 +4,7 @@ import { readFileSync } from 'node:fs';
 import { stripTypeScriptTypes } from 'node:module';
 import { pathToFileURL } from 'node:url';
 import { createCaptureLock } from './capture-lock.mjs';
+import { withCaptureHold } from './capture-hold.mjs';
 
 const terrainSource = readFileSync(new URL('../src/world/terrain.ts', import.meta.url), 'utf8');
 // Immutable pre-change cache from ff68c3d6c; never regenerate from the live source.
@@ -192,11 +193,11 @@ async function benchmarkWinterCache({ rounds = 7, hotRepeats = 100 } = {}) {
 
 export async function runWinterCacheBenchmark({ lock = createCaptureLock(), measure = benchmarkWinterCache } = {}) {
   console.error('terrain fast cache benchmark: waiting for shared FIFO');
-  try {
-    await lock.acquire(30 * 60 * 1000);
+  // the one hold wrapper (round 2 U38): refresh, the cap, signals and the release after the measurement
+  return withCaptureHold(async () => {
     console.error('terrain fast cache benchmark: FIFO acquired; Node-only measurement');
-    return await measure();
-  } finally { lock.release(); }
+    return measure();
+  }, { label: 'terrain-fast-cache-benchmark', lock, timeoutMs: 30 * 60 * 1000, log: (line) => console.error(line) });
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {

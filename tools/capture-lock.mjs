@@ -1175,15 +1175,18 @@ export function createCaptureLock({
   }
 
   async function acquireOnce(timeoutMs, { ticket = null, prepare = null, place = null, lockClass = null, command = null,
-    holdCapMinutes = null, holdCapReason = null, priority = null,
+    holdCapMinutes = null, holdCapReason = null, priority = null, ancestorHeld = false,
     warmAhead = Number(process.env.COT_SHOTS_WARM_AHEAD) >= 0 && process.env.COT_SHOTS_WARM_AHEAD !== '' ? Number(process.env.COT_SHOTS_WARM_AHEAD) : 2 } = {}) {
     // a child of a holder nests in its parent's hold (see nested holds above): read by name, the variables they are
     let parent = nestedParent(process.env.COT_SHOTS_HELD, lockDir, lockStaleMs), via = NESTED_HOLD_ENV;
-    if (!parent && process.env.COT_LANE_HOLD) {
+    // `ancestorHeld` (round 2 U38) is the same claim made by a tool's own flag (garage-wheel-band --lock-held,
+    // media-motion-savedata's COT_CAPTURE_LOCK_HELD=1), which skipped the lock unchecked: checked the same way
+    if (!parent && (process.env.COT_LANE_HOLD || ancestorHeld)) {
+      const claim = process.env.COT_LANE_HOLD ? 'COT_LANE_HOLD' : 'the caller says an ancestor holds it';
       parent = ancestorHold(lockDir, lockStaleMs);
-      via = 'COT_LANE_HOLD, an ancestor\'s live hold';
+      via = `${claim}, an ancestor's live hold`;
       if (!parent) {
-        noteOnce(`cot-lane-hold:${lockDir}`, `[capture-lock] COT_LANE_HOLD is set, but no ancestor of this process holds ${lockDir} (a leftover `
+        noteOnce(`cot-lane-hold:${lockDir}`, `[capture-lock] ${claim}, but no ancestor of this process holds ${lockDir} (a leftover `
           + 'export, someone else\'s hold, or a free lock): queueing as usual', log);
       }
     }

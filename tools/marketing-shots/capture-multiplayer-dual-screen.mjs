@@ -656,21 +656,18 @@ function authorityPose(actor, playerId) {
 }
 
 async function capture({ options, plan, seedInfo }) {
-  const { acquireCaptureLock, refreshCaptureLock, releaseCaptureLock } = await import('../capture-lock.mjs');
+  // round 2 U38: the hold is capture-hold.mjs openCaptureHold's (refresh, the cap, signals, the release at exit)
+  const { openCaptureHold } = await import('../capture-hold.mjs');
   log(`waiting for the capture lock (up to ${options.lockTimeoutMin} min; other lanes queue on it too)`);
   const waitStarted = Date.now();
-  await acquireCaptureLock(options.lockTimeoutMin * 60_000);
+  const hold = await openCaptureHold({ label: 'capture-multiplayer-dual-screen', timeoutMs: options.lockTimeoutMin * 60_000 });
   const lock = { waitedMs: Date.now() - waitStarted, heldMs: null };
   const heldFrom = Date.now();
-  process.on('exit', releaseCaptureLock);
-  const refresher = setInterval(() => refreshCaptureLock(), 60_000);
-  refresher.unref();
   let released = false;
-  const releaseLock = () => {
+  const releaseLock = async () => {
     if (released) return;
     released = true;
-    clearInterval(refresher);
-    releaseCaptureLock();
+    await hold.release();
     lock.heldMs = Date.now() - heldFrom;
     log(`capture lock released after ${(lock.heldMs / 1000).toFixed(1)} s`);
   };
@@ -868,7 +865,7 @@ async function capture({ options, plan, seedInfo }) {
       try { await rooms?.close(); } catch { /* already gone */ }
     };
     await Promise.race([teardown(), sleep(30_000)]);
-    releaseLock();
+    await releaseLock();
   }
 }
 

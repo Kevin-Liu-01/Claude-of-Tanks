@@ -13,6 +13,7 @@ import { dirname, isAbsolute, join, relative, resolve, sep } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { parseArgs } from 'node:util';
 import { createCaptureLock } from './capture-lock.mjs';
+import { withCaptureHold } from './capture-hold.mjs';
 
 const PROTOCOL = 'cold-native-horizon-construction-v1';
 const SELF = fileURLToPath(import.meta.url);
@@ -297,10 +298,8 @@ function summarizeTrials(runs) {
 }
 
 export async function withLease(run, lock = createCaptureLock()) {
-  await lock.acquire(45 * 60 * 1000);
-  const refresh = setInterval(() => lock.refresh(), 30000); refresh.unref();
-  try { return await run(); }
-  finally { clearInterval(refresh); lock.release(); }
+  // the one hold wrapper (round 2 U38): refresh, the cap, signals and the release after the run
+  return withCaptureHold(() => run(), { label: 'horizon-construction-bench', lock, timeoutMs: 45 * 60 * 1000, log: (line) => console.error(line) });
 }
 
 export async function writeFreshReport(out, run) {

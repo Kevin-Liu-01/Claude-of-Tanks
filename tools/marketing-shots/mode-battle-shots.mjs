@@ -38,7 +38,8 @@ import {
 import { homedir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
-import { createCaptureLock, ticketAt } from '../capture-lock.mjs';
+import { openCaptureHold } from '../capture-hold.mjs';
+import { ticketAt } from '../capture-lock.mjs';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const ROOT = resolve(HERE, '../..');
@@ -222,7 +223,8 @@ async function machineGate(label, gb) {
 }
 
 // ------------------------------------------------------------------------------------------------ lock and browser
-const lock = createCaptureLock();
+// one capture hold at a time (tools/capture-hold.mjs openCaptureHold: refresh, the cap, signals, the release at exit)
+let captureHold = null;
 // --ticket-stamp=<ms>: the first acquisition rejoins the queue at that place (capture-lock ticketAt), for a run that
 // replaces one of this lane's own queued runs (its stamp, from the waiting ticket's name). Normal band only: the
 // priority bands (the cinema's 1791397979999, perf's 1791397983200x) are refused.
@@ -232,7 +234,6 @@ if (firstTicketStamp != null && !(Number.isSafeInteger(firstTicketStamp) && firs
   process.exit(2);
 }
 let heldSince = 0;
-let lockRefresh = null;
 let browser = null;
 const holds = [];
 const holdLog = join(OUT, 'lock-holds.jsonl');
@@ -262,9 +263,9 @@ async function takeLock(label) {
     const asked = Date.now();
     // the stamped place is kept until a hold actually starts: a turn given back (quiet window) rejoins at it
     const place = firstTicketStamp ? { ticket: ticketAt(firstTicketStamp) } : {};
-    await lock.acquire(Number(opt('lock-timeout-min', '600')) * 60 * 1000, place);
+    captureHold = await openCaptureHold({ label: 'mode-battle-shots', timeoutMs: Number(opt('lock-timeout-min', '600')) * 60 * 1000, ...place,
+      teardown: async () => { await closeBrowser(); await stopServer(); } });
     heldSince = Date.now();
-    lockRefresh = setInterval(() => lock.refresh(), 30000);
     log(`lock held after ${Math.round((heldSince - asked) / 1000)} s in the queue`);
     // a quiet window that began while we queued gives the turn back and waits
     if (quietLive()) { await dropLock(`quiet window at acquisition (${quietLabel()})`); continue; }
@@ -276,8 +277,9 @@ async function dropLock(reason) {
   if (!heldSince) return;
   await closeBrowser();
   await stopServer();
-  clearInterval(lockRefresh);
-  lock.release();
+  const released = captureHold;
+  captureHold = null;
+  await released?.release();
   const ms = Date.now() - heldSince;
   const hold = { startedAt: new Date(heldSince).toISOString(), ms, reason };
   holds.push(hold);
@@ -286,8 +288,6 @@ async function dropLock(reason) {
   log(`lock released after ${(ms / 60000).toFixed(1)} min (${reason}); this run ${(holds.reduce((a, h) => a + h.ms, 0) / 60000).toFixed(1)} min`);
   heldSince = 0;
 }
-process.on('exit', () => { if (heldSince) lock.release(); });
-for (const signal of ['SIGINT', 'SIGTERM']) process.on(signal, () => { if (heldSince) lock.release(); process.exit(130); });
 
 // ------------------------------------------------------------------------------------------------ the run
 const queueFile = opt('queue') ? resolve(ROOT, opt('queue')) : null;

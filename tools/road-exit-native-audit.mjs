@@ -4,7 +4,7 @@ import { launchGuardedBrowser } from './browser-launch.mjs';
 import {mkdir,writeFile} from 'node:fs/promises';
 import {resolve} from 'node:path';
 import puppeteer from 'puppeteer';
-import {createCaptureLock} from './capture-lock.mjs';
+import { openCaptureHold } from './capture-hold.mjs';
 import {nativeBrowserLaunchOptions,verifyNativeBrowserLaunch} from './native-browser-launch.mjs';
 import {AUTHORED_EXIT_FIXTURE} from './road-authored-exit-fixture.mjs';
 import {settleMapTextures} from './map-environment-acquisition.mjs';
@@ -15,9 +15,9 @@ const option=name=>process.argv.find(a=>a.startsWith(`--${name}=`))?.slice(name.
 const base=option('url'),out=option('out');
 if(!base||!out)throw Error('Required --url and --out=fresh-directory');
 const dir=resolve(out);await mkdir(dir,{recursive:false});
-const lock=createCaptureLock(),report={rows:[],errors:[]};let browser,refresh;
+let hold;const report={rows:[],errors:[]};let browser;
 try{
- await lock.acquire(45*60*1000);refresh=setInterval(()=>lock.refresh(),30000);refresh.unref();
+ hold = await openCaptureHold({ label: 'road-exit-native-audit', timeoutMs: 45*60*1000 });
  browser=await launchGuardedBrowser(puppeteer, nativeBrowserLaunchOptions({headless:'new',protocolTimeout:240000,
   args:['--use-gl=angle','--enable-webgl','--no-sandbox','--disable-dev-shm-usage']}));
  report.nativeLaunch=verifyNativeBrowserLaunch(browser);
@@ -55,5 +55,5 @@ try{
   }
  }
 }catch(error){report.errors.push(String(error));process.exitCode=1;}
-finally{if(browser)await browser.close();if(refresh)clearInterval(refresh);lock.release();await writeFile(resolve(dir,'report.json'),JSON.stringify(report,null,2));}
+finally{if(browser)await browser.close();await hold?.release();await writeFile(resolve(dir,'report.json'),JSON.stringify(report,null,2));}
 if(report.errors.length)throw Error(report.errors.join('\n'));

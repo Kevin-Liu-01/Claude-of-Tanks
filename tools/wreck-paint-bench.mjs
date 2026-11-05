@@ -8,7 +8,7 @@ import { createRequire } from 'node:module';
 import { arch, cpus, platform } from 'node:os';
 import { dirname, isAbsolute, join, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
-import { createCaptureLock } from './capture-lock.mjs';
+import { openCaptureHold } from './capture-hold.mjs';
 
 const TOOL = fileURLToPath(import.meta.url);
 export const RECIPES = Object.freeze([
@@ -284,13 +284,12 @@ async function run(options) {
       'Medians/min/max are observations with no timing threshold, statistical significance or performance pass claim'],
   };
   const write = () => writeFileSync(join(options.out, 'report.json'), JSON.stringify(report, null, 2) + '\n');
-  const lock = createCaptureLock(); let owner = null, refresh;
+  let hold; let owner = null;
   const cancellation = registerCancellation(() => owner);
   try {
     write(); console.log(`[wreck-paint-bench] stage=capture_lock pid=${process.pid} output=${options.out}`);
-    await lock.acquire(45 * 60 * 1000);
+    hold = await openCaptureHold({ label: 'wreck-paint-bench', timeoutMs: 45 * 60 * 1000 });
     report.captureAcquiredAt = new Date().toISOString();
-    refresh = setInterval(() => lock.refresh(), 30000); refresh.unref();
     assert.equal(cancellation.isInterrupted(), false, 'Interrupted while queued; no worker admitted');
     assert.deepEqual(identities(), report.sourceIdentities, 'Source changed while queued');
     assert.deepEqual(acquisition(), report.acquisition, 'Acquisition tool changed while queued');
@@ -310,7 +309,7 @@ async function run(options) {
     // sampleWorker awaits close on every result, including spawn failure,
     // timeout and repeated cancellation, before this lease can be released.
     if (owner) { owner.stop('Parent cleanup'); await owner.done; owner = null; }
-    clearInterval(refresh); lock.release(); report.captureLeaseReleased = true;
+    await hold?.release(); report.captureLeaseReleased = true;
     report.interrupted = cancellation.isInterrupted(); cancellation.dispose();
     report.finishedAt = new Date().toISOString(); report.ok = !report.interrupted && !report.errors.length && report.exactOutputParity === true;
     write();

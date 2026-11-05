@@ -1,16 +1,16 @@
 import assert from 'node:assert/strict';
 import {mkdirSync,writeFileSync} from 'node:fs';
 import {resolve} from 'node:path';
-import {createCaptureLock} from './capture-lock.mjs';
+import { openCaptureHold } from './capture-hold.mjs';
 import {withMapProbeSession,openGamePage,beginSoloBattle,applyGroundPose} from './map-probe-runtime.mjs';
 import {TREE_SPECIES} from '../src/world/treeSpecies.ts';
 const arg=name=>process.argv.find(a=>a.startsWith(`--${name}=`))?.split('=')[1];
 const speciesList=arg('species')?.split(',')??TREE_SPECIES;
 assert.ok(speciesList.every(s=>TREE_SPECIES.includes(s)));
 const out=resolve(arg('out')??'.qa-dev/tree-crowns');mkdirSync(out,{recursive:true});
-const lock=createCaptureLock();let refresh;const rows=[];
+let hold;const rows=[];
 try{
- await lock.acquire(45*60*1000);refresh=setInterval(()=>lock.refresh(),30000);
+ hold = await openCaptureHold({ label: 'tree-crown-audit', timeoutMs: 45*60*1000 });
  await withMapProbeSession({root:process.cwd(),cacheDir:resolve('.qa-dev/tree-vite-cache')},async({browser,port})=>{
   const page=await browser.newPage();await page.setViewport({width:1000,height:900});const errors=[];page.on('pageerror',e=>errors.push(String(e)));
   await page.goto(`http://127.0.0.1:${port}/tools/tree-crown-audit.html`);await page.waitForFunction(()=>window.audit);
@@ -49,4 +49,4 @@ try{
   assert.deepEqual(game.errors,[]);await game.page.close();
   writeFileSync(resolve(out,'report.json'),JSON.stringify({rows,pose,errors},null,2));
  });
-}finally{clearInterval(refresh);lock.release();}
+}finally{await hold?.release();}

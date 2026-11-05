@@ -17,7 +17,8 @@ import { createHash } from 'node:crypto';
 import { execFileSync } from 'node:child_process';
 import { createServer, preview } from 'vite';
 import puppeteer from 'puppeteer';
-import { acquireCaptureLock, refreshCaptureLock, releaseCaptureLock } from './capture-lock.mjs';
+import { openCaptureHold } from './capture-hold.mjs';
+let hold; // the capture hold (tools/capture-hold.mjs openCaptureHold: refresh, cap, signals, release at exit)
 import { sampleRenderedFrames } from './render-frame-sampler.mjs';
 import { evaluateWorldResidency, RESIDENCY_SCHEMA } from './world-residency-policy.mjs';
 import { RESIDENCY_TERRAIN_PROTOCOL, settleResidencyTerrain } from './world-residency-acquisition.mjs';
@@ -184,11 +185,9 @@ async function verifiedCameraState(page, expectedCamera, before = null) {
   return state;
 }
 
-let server, browser, lockRefresher, allocationSampler;
+let server, browser, allocationSampler;
 try {
-  await acquireCaptureLock(30 * 60 * 1000);
-  lockRefresher = setInterval(refreshCaptureLock, 60_000);
-  lockRefresher.unref();
+  hold = await openCaptureHold({ label: 'world-residency-probe', timeoutMs: 30 * 60 * 1000 });
   // Vite's project warmup resolves relative to cwd even with an explicit root.
   process.chdir(root);
   server = production
@@ -281,8 +280,7 @@ try {
   if (browser) await browser.close();
   if (server?.close) await server.close();
   else if (server) await new Promise(resolve => server.httpServer.close(resolve));
-  clearInterval(lockRefresher);
-  releaseCaptureLock();
+  await hold?.release();
 }
 report.evaluation = evaluateWorldResidency(report, baseline);
 report.ok = report.evaluation.pass;

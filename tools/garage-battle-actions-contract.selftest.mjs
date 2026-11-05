@@ -282,7 +282,9 @@ console.log('garage-battle-actions-contract.selftest: real-click, cover, route a
       setInterval: () => ({ unref() {} }), clearInterval() {},
       mkdir: async () => {}, readFile: async url => String(url).endsWith('.json') ? '{"boot.retry":"Retry"}' : 'source',
       writeFile: async (file, text) => writes.push({ file, value: JSON.parse(text) }),
-      createCaptureLock: () => ({ async acquire() {
+      // (round 2 U38) the probe holds through the one wrapper's open form; this stand-in hold keeps the lease accounting
+      openCaptureHold: async (options) => {
+        equal(options.signals, [], 'the probe keeps its own signal handlers (the hold adds none)');
         if (phase === 'queued' || phase === 'rejected-queue') {
           process.emit('SIGTERM');
           equal(calls.released, 0, 'queued signal does not release a foreign lease');
@@ -290,7 +292,8 @@ console.log('garage-battle-actions-contract.selftest: real-click, cover, route a
         }
         if (phase === 'rejected-queue') throw new Error('Queue rejected');
         calls.acquired++;
-      }, refresh() {}, release() { calls.released++; } }),
+        return { refresh() {}, async release() { calls.released++; } };
+      },
       puppeteer: { async launch(options) {
         calls.launched++;
         equal([options.handleSIGINT, options.handleSIGTERM], [false, false],

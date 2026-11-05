@@ -9,7 +9,7 @@ import { createHeightField } from '../src/world/terrain.ts';
 import { MAP_IDS, getMapConfig } from '../src/world/maps/index.ts';
 import { ROAD_ENDPOINT_INTENTS, roadNetworkComponentCount } from '../src/world/maps/roadEndpoints.ts';
 import { shorelineDistance } from '../src/world/shoreline.ts';
-import { createCaptureLock } from './capture-lock.mjs';
+import { openCaptureHold } from './capture-hold.mjs';
 import { AUTHORED_EXIT_FIXTURE, assertAuthoredExitConfig, authoredApproachEntries,
   withAuthoredExits } from './road-authored-exit-fixture.mjs';
 
@@ -223,9 +223,9 @@ function worstBankSection(before, after, worst) {
   }
   return rows;
 }
-const lock = createCaptureLock();
-await lock.acquire(45 * 60 * 1000);
-const heartbeat = setInterval(() => lock.refresh(), 30000);
+let hold;
+hold = await openCaptureHold({ label: 'road-border-corridor-pilot', timeoutMs: 45 * 60 * 1000 });
+
 const result = { test: 'road-border-corridor-pilot', source,
   comparisonMode: matchedAuthoredLayout ? 'matched-authored-layout-old-grading' : 'original-layout-grading-only',
   authoredExitFixture: matchedAuthoredLayout ? AUTHORED_EXIT_FIXTURE : null,
@@ -283,7 +283,7 @@ try {
   if (result.errors.length) process.exitCode = 1;
 } catch (error) { result.status = 'failed'; result.errors.push(String(error)); process.exitCode = 1; }
 finally {
-  clearInterval(heartbeat); lock.release();
+  await hold?.release();
   writeFileSync(output, JSON.stringify(result, null, 2) + '\n', { flag: 'wx' });
   console.log(JSON.stringify(result));
 }
