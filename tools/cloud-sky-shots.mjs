@@ -17,10 +17,10 @@
 //             horizon, where a lattice or a row reads first (the owner's second shot);
 //   high    — the same eye turned 35° off the heading, 35° up: the field overhead, its plan.
 // The volumetric layer is put at scene time 0 and settled (settleForCapture) and frozen for each frame, so every build
-// draws the same drift; the phone tier draws its baked decks. Frames land in <out>/<job>/frames/<unit>-<pose>.png and
+// draws the same drift; the phone tier draws its baked decks. Frames land in <out>/<job>/frames/<unit>-<pose>.webp (q92) and
 // every unit's receipt in <out>/<job>/manifest-<tag>.json (a run resumes).
 import { launchGuardedBrowser, setBrowserGuardContext } from './browser-launch.mjs';
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, statfsSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import puppeteer from 'puppeteer';
 import { freezePage, startViteChild, thawPage } from './capture-hold.mjs';
@@ -67,6 +67,13 @@ function parse(argv) {
 }
 
 function stamp() { return new Date().toISOString().slice(11, 19); }
+
+/** Free space on the data volume (GB): no unit is staged under the lanes' 30 GB floor. */
+const DISK_FLOOR_GB = 30;
+function freeGb(dir) {
+  const s = statfsSync(dir);
+  return (s.bavail * s.bsize) / 1e9;
+}
 
 /** The staged hull (page side). */
 function pageStage() {
@@ -189,7 +196,8 @@ async function stageUnit(entry, unit) {
 async function frame(page, file) {
   const clouds = await page.evaluate(pageSettleClouds);
   await sleep(600);
-  await page.screenshot({ path: file, type: 'png' });
+  // (Main, 2026-11-04, the disk: WebP at q92, the same encoding on every build so a pair stays matched)
+  await page.screenshot({ path: file, type: 'webp', quality: 92 });
   await page.evaluate(pageThawClouds);
   return clouds;
 }
@@ -200,7 +208,7 @@ async function shootUnit(entry, options, frames) {
   await sleep(1500);
   const receipt = { stage, poses: {} };
   if (unit.kind === 'garage') {
-    const file = path.join(frames, `garage-${unit.id}-yard.png`);
+    const file = path.join(frames, `garage-${unit.id}-yard.webp`);
     receipt.poses.yard = { clouds: await frame(page, file), file: path.basename(file) };
   } else {
     for (const name of options.poses) {
@@ -209,7 +217,7 @@ async function shootUnit(entry, options, frames) {
           ? { player: stage.player, eye: 6, yawOff: 0, elev: 0.122, fov: 70 }
           : { player: stage.player, eye: 6, yawOff: 0.35, elev: 0.61, fov: 70, antiSun: true });
       await sleep(900);
-      const file = path.join(frames, `${unit.id}-${name}.png`);
+      const file = path.join(frames, `${unit.id}-${name}.webp`);
       receipt.poses[name] = { resolved, clouds: await frame(page, file), file: path.basename(file) };
     }
   }
@@ -267,6 +275,12 @@ async function main(argv) {
     held = true;
     for (let i = 0; i < units.length; i++) {
       const { job, unit } = units[i];
+      const free = freeGb(options.out);
+      if (free < DISK_FLOOR_GB) {
+        console.log(`[${label}] ${stamp()} ${free.toFixed(1)} GB free, under the ${DISK_FLOOR_GB} GB floor: stopping before ${job.name} ${unit.key}`);
+        failed++;
+        break;
+      }
       const started = Date.now();
       let outcome = 'failed';
       try {
