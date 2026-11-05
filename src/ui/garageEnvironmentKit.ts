@@ -1478,8 +1478,9 @@ const preparedStructures = new Map<string, PreparedGarageStructures>();
 // (2026-11-02 audit R5) the holds on each variant's prepared structures, refcounted like the kit and skyline pins: the
 // first release used to dispose structures a concurrent prepare for the same variant had just built for its own bake
 const preparedStructurePins = new Map<string, number>();
-// one preparation per variant at a time: a second concurrent prepare waits for the first instead of building again
-const preparingStructures = new Map<string, Promise<void>>();
+// one preparation per variant at a time: a second concurrent prepare waits for the first instead of building again. It
+// runs while any of its callers still wants it (round 2: a cancelled prewarm stops between structures)
+const preparingStructures = new Map<string, { readonly task: Promise<boolean>; readonly wanted: Set<() => boolean> }>();
 
 /** Diagnostics: whether a variant's prepared structures wait for its bake (garageArchitectureRecords.selftest.mjs). */
 export function hasPreparedGarageStructures(variantId: string): boolean {
@@ -1490,8 +1491,12 @@ function disposePreparedStructures(id: string): void {
   const prepared = preparedStructures.get(id);
   if (!prepared) return;
   preparedStructures.delete(id);
-  prepared.backdrop?.dispose();
-  for (const record of prepared.records) {
+  disposeStructureGeometry(prepared.records, prepared.backdrop);
+}
+
+function disposeStructureGeometry(records: readonly GarageStructureRecord[], backdrop: THREE.BufferGeometry | null): void {
+  backdrop?.dispose();
+  for (const record of records) {
     for (const value of Object.values(record.local)) {
       if (Array.isArray(value)) for (const geometry of value as THREE.BufferGeometry[]) geometry.dispose();
     }
@@ -3013,50 +3018,70 @@ export function pinGarageEnvironmentCaches(variant: GarageVariant): () => void {
  * synchronous static pack bake. Card hover and selection share the same
  * architecture promise, so even a cold destination never builds two detailed
  * species inside one rendered frame.
+ *
+ * (2026-11-02 audit R5, round 2) `stillWanted` is asked between the slices: a hover prewarm a newer one cancelled (or a
+ * disposed controller) stops at its next slice instead of running every slice of the prepare first. Resolves true once
+ * everything is prepared, false when it stopped; what it prepared stays in the session caches, so a revived prewarm's
+ * next prepare starts where this one stopped.
  */
 export async function prepareGarageEnvironmentAssets(
   assets: GarageEnvironmentAssetLibrary,
   variant: GarageVariant,
-): Promise<void> {
+  stillWanted: () => boolean = () => true,
+): Promise<boolean> {
   const recipe = GARAGE_ENVIRONMENT_RECIPES[variant.architecture];
   if (!recipe) throw new Error(`Unknown Garage architecture: ${variant.architecture}`);
+  if (!stillWanted()) return false;
   await assets.prepareTreeGroves(recipe.treeSpecies as readonly TreeSpecies[]);
   // the map's skyline bakes here, in its own slice before the synchronous pack bake (4-45 ms on a first visit: garage
   // r9 g1 r4, the switch's long task); the build then takes a copy of the cached bake
   if (garageSkylineEnabled(variant.mapId)) {
     await new Promise<void>((resolve) => { setTimeout(resolve, 0); });
+    if (!stillWanted()) return false;
     prepareGarageSkyline(variant.mapId);
   }
   // its kit's pieces into the session cache, in slices, so the pack's bake only places them (garage r9)
   const kitPlacement = GARAGE_KIT_PLACEMENTS[variant.architecture];
-  if (kitPlacement) await prepareGarageKitPieces(variant, kitPlacement);
+  if (kitPlacement && !(await prepareGarageKitPieces(variant, kitPlacement, undefined, stillWanted))) return false;
   // the shared atmosphere strips paint once, in their own slice, rather than inside the first bake that shows them
   await nextSlice();
+  if (!stillWanted()) return false;
   prepareGarageAtmosphere();
-  await prepareGarageStructures(variant, recipe);
+  return prepareGarageStructures(variant, recipe, stillWanted);
 }
 
 const nextSlice = (): Promise<void> => new Promise<void>((resolve) => { setTimeout(resolve, 0); });
 
 /** Its biome backdrop and each structure in a slice of their own, before the bake (garage-architecture budget, 248). */
-async function prepareGarageStructures(variant: GarageVariant, recipe: GarageEnvironmentRecipe): Promise<void> {
-  if (preparedStructures.has(variant.id)) return;
+async function prepareGarageStructures(
+  variant: GarageVariant,
+  recipe: GarageEnvironmentRecipe,
+  stillWanted: () => boolean,
+): Promise<boolean> {
+  if (preparedStructures.has(variant.id)) return true;
   const inFlight = preparingStructures.get(variant.id);
-  if (inFlight) return inFlight;
-  const task = buildPreparedStructures(variant, recipe);
-  preparingStructures.set(variant.id, task);
-  const clear = (): void => { if (preparingStructures.get(variant.id) === task) preparingStructures.delete(variant.id); };
+  if (inFlight) { inFlight.wanted.add(stillWanted); return inFlight.task; }
+  const wanted = new Set<() => boolean>([stillWanted]);
+  // it stops only once no caller that joined it wants it any more
+  const task = buildPreparedStructures(variant, recipe, () => [...wanted].some((wants) => wants()));
+  preparingStructures.set(variant.id, { task, wanted });
+  const clear = (): void => { if (preparingStructures.get(variant.id)?.task === task) preparingStructures.delete(variant.id); };
   task.then(clear, clear);
   return task;
 }
 
-async function buildPreparedStructures(variant: GarageVariant, recipe: GarageEnvironmentRecipe): Promise<void> {
+async function buildPreparedStructures(
+  variant: GarageVariant,
+  recipe: GarageEnvironmentRecipe,
+  wanted: () => boolean,
+): Promise<boolean> {
   const patch = getGarageTerrainPatch(variant.mapId);
   const heights = garageEnvironmentHeights(recipe, patch);
   const seed = hashVariant(variant.id);
   let backdrop: THREE.BufferGeometry | null = null;
   if (!garageSkylineEnabled(variant.mapId)) {
     await nextSlice();
+    if (!wanted()) return false;
     backdrop = createBackdropGeometry(patch, heights, seed, atmospherePalette(variant.weather), recipe,
       GARAGE_KIT_SKYLINES[variant.architecture] ?? null, variant.architecture);
   }
@@ -3067,8 +3092,11 @@ async function buildPreparedStructures(variant: GarageVariant, recipe: GarageEnv
   const records: GarageStructureRecord[] = [];
   for (let index = 0; index < recipe.structures.length; index += 1) {
     await nextSlice();
+    // a stopped preparation keeps nothing half made: the next one builds the structures from the pack's seed again
+    if (!wanted()) { disposeStructureGeometry(records, backdrop); return false; }
     records.push(buildStructureRecord(recipe.structures[index], index, rng, patch, heights));
   }
   disposePreparedStructures(variant.id);
   preparedStructures.set(variant.id, { records, rngDraws, backdrop });
+  return true;
 }

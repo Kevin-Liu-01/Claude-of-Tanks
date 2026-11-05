@@ -601,7 +601,12 @@ export function createGarageArchitectureController(
       // its prepared pieces and skyline stay cached until its bake, however many Garages prepare at once
       const release = kit.pinGarageEnvironmentCaches(variant);
       try {
-        await kit.prepareGarageEnvironmentAssets(library, variant);
+        // (round 2) the prepare asks stillWanted between its slices: a cancelled prewarm (or a disposed controller) stops
+        // at its next slice. One that stopped and was revived since (its card selected) prepares the rest: the caches
+        // keep what the stopped pass made
+        while ((await kit.prepareGarageEnvironmentAssets(library, variant, stillWanted)) === false) {
+          if (!stillWanted()) return null;
+        }
         // a cancelled prewarm (or a disposed controller) skips the synchronous bake, the switch's long task
         if (!stillWanted()) return null;
         const startedAt = performance.now();

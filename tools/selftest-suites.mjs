@@ -1144,6 +1144,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/ui/garageArchitecture.selftest.mjs',
     // 2026-11-02 audit R5: one record per Garage scene pack (cancellable prewarms, a true upload latch, context-loss renewal)
     'src/ui/garageArchitectureRecords.selftest.mjs',
+    // 2026-11-02 audit U25 (round 2): a cancelled hover prewarm stops at its next prepare slice; a revived one prepares the rest
+    'src/ui/garagePrewarmCancel.selftest.mjs',
     // 2026-11-02 audit 06-ui-3 #7: the stage reveals a variant whole (tints with its scene), supersedes, stops on dispose
     'src/ui/garageVariantReveal.selftest.mjs',
     'src/ui/garageYardWear.selftest.mjs',
