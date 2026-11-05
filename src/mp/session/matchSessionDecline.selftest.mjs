@@ -11,6 +11,8 @@
 // record it saw while willing in the lobby, so a decline sent straight through the room client (tools/mp-p2p-decline's
 // "p2 and p3 have declined", the headless peer tool's declineHost hook) was undone as soon as the room echoed it, and the
 // e2e passed only when it caught the echo inside the room's coalescing window.
+// (5) (round 2 U7) A decline the room refuses stays the seat's and goes through its one owner: it is said again when
+// the room's record moves or on an admission, never on every snapshot or every slow frame.
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { RoomActor } from '../room/roomActor.ts';
@@ -185,5 +187,52 @@ async function seat(p2p = {}, { declined = false } = {}) {
   assert.deepEqual(declinesOf(transport), [{ type: 'host_decline', declined: false }], '(4) admitted willing over an earlier page\'s decline: withdrawn');
   session.dispose(); client.dispose();
 }
+// ---- (5) (round 2 U7) a decline the room refuses (an older room, a timeout) stays the seat's own: said again when the
+// room's record moves or on the next admission, never on every snapshot. The unable and headroom says' failure callbacks
+// wrote `this.decline = null` past the owner, so every later room_state said `unable` again and emitted another
+// 'declined' event, and every later slow frame said `headroom` again.
+{
+  const { client, session, transport } = await seat({ tier: 'mobile' });
+  const events = [];
+  session.onP2p((event) => events.push(event.kind));
+  const refuse = () => {
+    const say = transport.outbound.findLast((envelope) => envelope.payload?.command?.type === 'host_decline');
+    transport.deliver({ type: 'error', requestId: say.requestId, payload: { code: 'invalid_command', message: 'an older room' } });
+  };
+  assert.deepEqual(declinesOf(transport), [{ type: 'host_decline', declined: true, unable: true }], 'setup: the mobile seat declined as unable on join');
+  refuse();
+  await sleep(0);
+  for (let index = 0; index < 4; index++) transport.deliver({ type: 'room_state', payload: { room: snapshot({ declined: false }) } });
+  await sleep(0);
+  assert.equal(declinesOf(transport).length, 1, `(5) a refused unable decline is not said again on every room_state (${declinesOf(transport).length} says)`);
+  assert.deepEqual(events.filter((kind) => kind === 'declined'), [], '(5) nor announced again');
+  // the room's record moves (it read some decline, then reset): the seat's own decline is said again, once
+  transport.deliver({ type: 'room_state', payload: { room: snapshot({ declined: true }) } });
+  transport.deliver({ type: 'room_state', payload: { room: snapshot({ declined: false }) } });
+  transport.deliver({ type: 'room_state', payload: { room: snapshot({ declined: false }) } });
+  await sleep(0);
+  assert.deepEqual(declinesOf(transport).slice(1), [{ type: 'host_decline', declined: true, unable: true }], '(5) a reset of the room\'s record says the unable decline again, once');
+  session.dispose(); client.dispose();
+}
+{
+  const { client, session, transport } = await seat();
+  for (let frame = 0; frame < 600; frame++) session.observeFrame(50);
+  await sleep(0);
+  assert.deepEqual(declinesOf(transport), [{ type: 'host_decline', declined: true }], 'setup: a slow tab declined for headroom');
+  const say = transport.outbound.findLast((envelope) => envelope.payload?.command?.type === 'host_decline');
+  transport.deliver({ type: 'error', requestId: say.requestId, payload: { code: 'invalid_command', message: 'an older room' } });
+  await sleep(0);
+  for (let frame = 0; frame < 120; frame++) session.observeFrame(50);
+  await sleep(0);
+  assert.equal(declinesOf(transport).length, 1, `(5) a refused headroom decline is not said again on every slow frame (${declinesOf(transport).length} says)`);
+  assert.equal(session.hostHeadroom?.declined, true, '(5) the seat still declines for headroom');
+  session.dispose(); client.dispose();
+}
+{
+  // the decline's one writer: no failure callback (or anything else) writes the field past setDecline
+  const source = (await import('node:fs')).readFileSync(new URL('./matchSession.ts', import.meta.url), 'utf8');
+  const writes = source.match(/this\.decline\s*=(?!=)/g) ?? [];
+  assert.equal(writes.length, 1, `(5) setDecline is the decline's only writer (${writes.length} writes)`);
+}
 for (const core of cores) core.dispose();
-console.log('matchSessionDecline.selftest: a decline lasts its match (the room resets it, the session forgets it); a seat that cannot host says so again; the session withdraws only its own late decline or one an admission finds');
+console.log('matchSessionDecline.selftest: a decline lasts its match (the room resets it, the session forgets it); a seat that cannot host says so again; the session withdraws only its own late decline or one an admission finds; a refused decline stays the seat\'s and is not said on every snapshot or frame');

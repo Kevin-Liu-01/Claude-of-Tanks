@@ -477,9 +477,12 @@ export class MatchSession {
 
   /**
    * The one writer of `decline`. `say` tells the room (true: declined, false: willing again; `unable` with it when the
-   * seat cannot run the match at all); omitted, only this seat's own record moves (the room already knows).
+   * seat cannot run the match at all); omitted, only this seat's own record moves (the room already knows). A say the
+   * room refuses or never answers (an older room, a timeout) leaves the seat's decline as it is: syncDecline says it
+   * again on the next admission or move of the room's record (round 2 U7: the unable and headroom says cleared it on a
+   * failure, past this owner, so every later room_state said `unable` again and every slow frame `headroom`).
    */
-  private setDecline(next: HostDecline, say?: { declined: boolean; unable?: boolean; onFail?: () => void }): void {
+  private setDecline(next: HostDecline, say?: { declined: boolean; unable?: boolean }): void {
     this.decline = next;
     if (next === null) this.declineUnable = false;
     else {
@@ -489,7 +492,7 @@ export class MatchSession {
     if (!say) return;
     if (say.declined) this.declinesInFlight++;
     const settled = (): void => { if (say.declined) this.declinesInFlight--; };
-    void this.room.declineHost(say.declined, say.unable ? { unable: true } : {}).then(settled, () => { settled(); say.onFail?.(); /* the room may predate the command */ });
+    void this.room.declineHost(say.declined, say.unable ? { unable: true } : {}).then(settled, settled); // the room may predate the command
   }
 
   /**
@@ -511,7 +514,7 @@ export class MatchSession {
     if (!this.canHost && this.decline !== 'unable') {
       // `unable` (2026-09-30): this seat cannot host at all — elected as the last resort, its decline ends the match at once
       this.p2pListeners.emit({ kind: 'declined' });
-      this.setDecline('unable', { declined: true, unable: true, onFail: () => { if (this.decline === 'unable') this.decline = null; } });
+      this.setDecline('unable', { declined: true, unable: true });
       return;
     }
     if (record === null || !room) return;
@@ -782,7 +785,7 @@ export class MatchSession {
     if (weak && this.decline === null) {
       this.log('info', 'frames too slow to host well: declining to host', { p50FrameMs: this.headroom.p50FrameMs });
       this.p2pListeners.emit({ kind: 'declined' });
-      this.setDecline('headroom', { declined: true, onFail: () => { if (this.decline === 'headroom') this.decline = null; } });
+      this.setDecline('headroom', { declined: true });
     } else if (!weak && this.decline === 'headroom') {
       this.log('info', 'frames recovered: willing to host again', { p50FrameMs: this.headroom.p50FrameMs });
       this.setDecline(null, { declined: false });
