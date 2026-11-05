@@ -18,7 +18,8 @@ type SettingsModule = typeof import('./settings.ts');
 interface SettingsAccessEnvironment {
   createGear(): HTMLButtonElement;
   modalOpen(): boolean;
-  now(): number;
+  /** A receipt's clock for the input owner's done grace (the owner's own performance.now otherwise). */
+  now?(): number;
   /** The battle entry's opaque loading cover is up (.cot-bl.on). */
   loadCovered?(): boolean;
 }
@@ -56,7 +57,6 @@ function createDefaultGear(): HTMLButtonElement {
 const DEFAULT_ENVIRONMENT: SettingsAccessEnvironment = {
   createGear: createDefaultGear,
   modalOpen: isAnyModalOpen,
-  now: () => performance.now(),
   loadCovered: () => !!document.querySelector('.cot-bl.on'),
 };
 
@@ -81,9 +81,11 @@ export function createSettingsAccess(
   // (2026-11-02 audit F4) the one battle input owner: a kill-cam replay AND a battle-ending camera beat own the screen
   // (the beat's skip listener does not stop the key, so the Esc that skips it reached this menu action), and the panel
   // reads the same owner for its own openings, veil and pointer-unlock path
+  // (round 2) a clock only when the environment names one: the bus's owner refuses a second clock rather than ignore it
+  const clock = environment.now ? { now: environment.now } : {};
   const inputOwner = options.bus
-    ? battleInputOwnerFor(options.bus, { now: environment.now })
-    : createBattleInputOwner({ now: environment.now });
+    ? battleInputOwnerFor(options.bus, clock)
+    : createBattleInputOwner(clock);
 
   const updateTrigger = () => {
     if (current) return;

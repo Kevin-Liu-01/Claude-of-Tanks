@@ -42,7 +42,13 @@ function fakeTimers() {
 
 function harness() {
   const t = fakeTimers();
-  const owner = createBattleInputOwner({ now: () => 0, graceMs: 0 });
+  // the kill-cam controller's own flag (killcamScreen.ts, IR15): the owner reads it, the edges only notify
+  let replayLive = false;
+  const owner = createBattleInputOwner({ now: () => 0, graceMs: 0, killcamLive: () => replayLive });
+  const replay = {
+    begin() { replayLive = true; owner.beginPresentation('killcam'); },
+    done() { replayLive = false; owner.endPresentation('killcam'); },
+  };
   const rendered = [];
   const gate = createBattleReportGate({
     blocked: () => owner.state === 'presentation' || owner.state === 'menu',
@@ -50,7 +56,7 @@ function harness() {
     timers: t.port,
   });
   owner.onChange(gate.ownerChanged);
-  return { t, owner, gate, rendered };
+  return { t, owner, gate, rendered, replay };
 }
 
 // no presentation: the report renders after one frame and a macrotask (the frame that arms the verdict's close)
@@ -75,16 +81,16 @@ function harness() {
 
 // the verdict's replay begins in the deciding frame: held until the result presentation hands the report over
 {
-  const { t, owner, gate, rendered } = harness();
+  const { t, gate, rendered, replay } = harness();
   gate.ended('defeat');
-  owner.beginPresentation('killcam'); // armEnding inside the next frame
+  replay.begin(); // armEnding inside the next frame
   assert.equal(gate.state, 'held');
   t.frame();
   t.advance(5000);
   assert.deepEqual(rendered, [], 'the replay owns the screen');
   gate.presented(); // the replay's onDone presented the result (before killcam:done)
   assert.deepEqual(rendered, ['defeat']);
-  owner.endPresentation('killcam');
+  replay.done();
   t.frame();
   assert.deepEqual(rendered, ['defeat'], 'rendered exactly once');
 }
@@ -92,11 +98,11 @@ function harness() {
 // a mid-battle death replay is running when the verdict lands: its done re-opens the decision, so the verdict's own
 // close (armed only once the replay is over) still takes the screen before the report
 {
-  const { t, owner, gate, rendered } = harness();
-  owner.beginPresentation('killcam');
+  const { t, owner, gate, rendered, replay } = harness();
+  replay.begin();
   gate.ended('defeat');
   assert.equal(gate.state, 'held');
-  owner.endPresentation('killcam'); // the mid-battle replay ends; its onDone presents nothing
+  replay.done(); // the mid-battle replay ends; its onDone presents nothing
   assert.equal(gate.state, 'deciding', 'the done decides again instead of rendering at once');
   assert.deepEqual(rendered, []);
   owner.beginPresentation('ending'); // the next frame arms the verdict's camera beat
@@ -123,13 +129,13 @@ function harness() {
 
 // a stale decision from battle N never decides battle N+1
 {
-  const { t, owner, gate, rendered } = harness();
+  const { t, gate, rendered, replay } = harness();
   gate.ended('defeat');
   gate.clear(); // the Garage return before the decision ran
   assert.equal(gate.state, 'idle');
   assert.equal(t.pendingCount, 0, 'a clear cancels the frame, the fallback and the watchdog');
   gate.ended('victory'); // the next battle's verdict
-  owner.beginPresentation('killcam');
+  replay.begin();
   t.frame();
   t.advance(REPORT_DECIDE_FALLBACK_MS);
   assert.deepEqual(rendered, [], 'battle N+1\'s report waits for its replay');
@@ -137,19 +143,19 @@ function harness() {
 
 // the watchdog: a presentation that never ends cannot eat the report; it counts from the latest hold
 {
-  const { t, owner, gate, rendered } = harness();
+  const { t, owner, gate, rendered, replay } = harness();
   gate.ended('defeat');
-  owner.beginPresentation('killcam');
+  replay.begin();
   t.advance(REPORT_MAX_WAIT_MS - 1);
   assert.deepEqual(rendered, []);
   t.advance(1);
   assert.deepEqual(rendered, ['defeat']);
   // a second battle: a mid-battle replay, then the verdict's beat; the watchdog counts from the latest hold
-  owner.endPresentation('killcam');
-  owner.beginPresentation('killcam');
+  replay.done();
+  replay.begin();
   gate.ended('victory');
   t.advance(10_000);
-  owner.endPresentation('killcam');
+  replay.done();
   owner.beginPresentation('ending');
   t.advance(REPORT_MAX_WAIT_MS - 1);
   assert.deepEqual(rendered, ['defeat'], 'the beat keeps its full wait');

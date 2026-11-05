@@ -4,6 +4,7 @@ import { selectResultReplay, type DestroyedRecord, type ReplayResult } from './k
 import { hullPointsRemoved } from './hullPointsRemoved.ts';
 import { replayInCurrentTankIds } from './tankIdBoundaries.ts';
 import { killcamCameraFloor } from './killcamGround.ts';
+import { publishKillcamScreen } from './killcamScreen.ts';
 import { recordKillcamWreck, restoreKillcamWreck, type KillcamWreckReceipt } from './killcamWreckReceipt.ts';
 import {
   captureEntityFrame, copyEntityFrame, copyModules, tracePoints, type EntityFrame,
@@ -1782,6 +1783,9 @@ export function createKillCam(deps: KillcamDeps) {
      */
     bindBus(bus: EventBus) {
       busRef = bus;
+      // (IR15) `active` is the one "a replay owns the screen" fact: the input owner, the audio overlay and the phase
+      // policy read it (killcamScreen.ts), so a lost or repeated begin/done edge cannot make them disagree
+      publishKillcamScreen(bus, () => active);
       bus.on('shell:fired', (payload) => {
         const p = payload as ShellFiredPayload;
         if (traj.size >= TRAJ_KEEP) {

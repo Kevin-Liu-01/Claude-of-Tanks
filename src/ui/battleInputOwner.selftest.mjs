@@ -5,9 +5,14 @@ import assert from 'node:assert/strict';
 import {
   battleInputOwnerFor, createBattleInputOwner, PRESENTATION_DONE_GRACE_MS,
 } from './battleInputOwner.ts';
+import { publishKillcamScreen } from '../game/killcamScreen.ts';
 
 let now = 1000;
-const owner = createBattleInputOwner({ now: () => now });
+// the kill-cam controller's own flag (killcamScreen.ts, IR15): the owner reads it; its begin/done edges only notify
+let replayLive = false;
+const owner = createBattleInputOwner({ now: () => now, killcamLive: () => replayLive });
+const replayBegins = () => { replayLive = true; owner.beginPresentation('killcam'); };
+const replayDone = () => { replayLive = false; owner.endPresentation('killcam'); };
 let changes = 0;
 owner.onChange(() => { changes++; });
 
@@ -48,14 +53,14 @@ now += PRESENTATION_DONE_GRACE_MS;
 assert.equal(owner.presentationOwns(), false);
 assert.equal(owner.openMenu(), true, 'past the grace the menu opens');
 // the menu open when a presentation begins: the presentation outranks it (the panel closes itself on the edge)
-owner.beginPresentation('killcam');
+replayBegins();
 assert.equal(owner.state, 'presentation');
 owner.closeMenu();
 assert.equal(owner.state, 'presentation');
 
 // overlapping sources: the first done does not release the screen while the other still owns it
 owner.beginPresentation('ending');
-owner.endPresentation('killcam');
+replayDone();
 now += 10 * PRESENTATION_DONE_GRACE_MS;
 assert.equal(owner.state, 'presentation', 'an ending beat outlives the replay\'s done');
 assert.equal(owner.canOpenMenu(), false);
@@ -64,11 +69,11 @@ assert.equal(owner.presentationOwns(), true);
 now += PRESENTATION_DONE_GRACE_MS;
 assert.equal(owner.canOpenMenu(), true);
 // a repeated edge is idempotent; an unknown done is ignored
-owner.beginPresentation('killcam');
+replayBegins();
 owner.beginPresentation('killcam');
 owner.endPresentation('ending');
 assert.equal(owner.state, 'presentation');
-owner.endPresentation('killcam');
+replayDone();
 assert.equal(owner.state, 'play');
 
 // the reset of last resort: a lost done, then a phase flip, releases the screen with no grace
@@ -87,11 +92,15 @@ const handlers = new Map();
 const bus = { on(event, handler) { handlers.set(event, [...(handlers.get(event) ?? []), handler]); } };
 const emit = (event) => { for (const handler of handlers.get(event) ?? []) handler({}); };
 let busNow = 0;
+let busReplay = false;
+publishKillcamScreen(bus, () => busReplay);
 const shared = battleInputOwnerFor(bus, { now: () => busNow });
 assert.equal(battleInputOwnerFor(bus), shared, 'every consumer of a bus reads the same owner');
 assert.deepEqual([...handlers.keys()].sort(), ['ending:begin', 'ending:done', 'killcam:begin', 'killcam:done', 'phase:change']);
+busReplay = true;
 emit('killcam:begin');
-assert.equal(shared.state, 'presentation');
+assert.equal(shared.state, 'presentation', 'the bus\'s owner reads the replay flag published on that bus');
+busReplay = false;
 emit('killcam:done');
 assert.equal(shared.presentationOwns(), true);
 busNow += PRESENTATION_DONE_GRACE_MS;
