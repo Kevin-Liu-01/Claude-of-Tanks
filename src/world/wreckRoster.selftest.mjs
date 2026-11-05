@@ -1,7 +1,6 @@
 import assert from 'node:assert/strict';
 import { PRODUCTION_TANK_IDS, SAVED_TANK_IDS } from '../vehicles/specs.ts';
 import { FLEET_GROUP_BY_ID } from '../vehicles/fleetManifest.ts';
-import { vehicleEraForId } from '../vehicles/taxonomy.ts';
 import { MAP_IDS } from './maps/mapIds.ts';
 import { WRECK_CASTS } from './maps/wreckCasts.ts';
 import { isPublicWreckDonor, resolveWreckRoster, WRECK_DONOR_IDS, wreckDonorsFor } from './wreckRoster.ts';
@@ -29,7 +28,6 @@ for (const [mapId, cast] of Object.entries(WRECK_CASTS)) {
   for (const id of cast.ids) {
     assert.ok(PRODUCTION_TANK_IDS.includes(id), `${mapId}/${id}: actual public catalog membership`);
     assert.ok(FLEET_GROUP_BY_ID[id], `${mapId}/${id}: explicit demand-loaded builder owner`);
-    if (cast.era === 'ww2') assert.equal(vehicleEraForId(id), 'ww2', `${mapId}/${id}: a tank of the war`);
     allDonors.add(id);
   }
   assert.deepEqual(wreckDonorsFor(mapId), [...cast.ids], `${mapId}: no authored donor silently filtered`);

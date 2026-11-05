@@ -7,8 +7,9 @@ import { buildWreckDebris } from './wreckDebris.ts';
 
 // (wrecks-270) each map's cast (maps/wreckCasts.ts): its place's and year's armour, from the public fleet
 assert.ok(WRECK_DONOR_IDS.length >= 60, 'the casts span the first-party fleet');
-assert.deepEqual(wreckDonorsFor('verdant'), ['kv2'], 'Kursk keeps its KV-2, never a retired donor');
-assert.deepEqual(wreckDonorsFor('winter'), [], 'the other Second World War fronts carry none');
+assert.equal(wreckDonorsFor('verdant')[0], 'kv2', 'Kursk keeps its KV-2, never a retired donor');
+assert.ok(wreckDonorsFor('winter').includes('pt91a_twardy'), 'a Second World War front takes today\'s armour of its nations');
+assert.deepEqual(wreckDonorsFor('moon'), [], 'the Moon carries none');
 assert.ok(wreckDonorsFor('skybridge').includes('m60a1'), 'Cold War maps use period vehicles');
 assert.ok(wreckDonorsFor('mars').includes('kf51_evo'), 'the next-generation map retains its prototypes');
 

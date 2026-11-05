@@ -620,10 +620,16 @@ function wreckBakeResult(
   // the ground contact: the plan of the vertices within 12 cm of the base (the track runs), for the seat (seatHulk)
   const pos = merged.attributes.position.array;
   let cx0 = Infinity, cx1 = -Infinity, cz0 = Infinity, cz1 = -Infinity;
-  for (let i = 0; i < pos.length; i += 3) {
-    if (pos[i + 1] > 0.12) continue;
-    if (pos[i] < cx0) cx0 = pos[i]; if (pos[i] > cx1) cx1 = pos[i];
-    if (pos[i + 2] < cz0) cz0 = pos[i + 2]; if (pos[i + 2] > cz1) cz1 = pos[i + 2];
+  // (wrecks-270) a hulk on its side rests on its fender's and turret's edges: when the 12 cm band holds no plan, it is
+  // read 40 cm deep
+  for (const band of [0.12, 0.4]) {
+    cx0 = Infinity; cx1 = -Infinity; cz0 = Infinity; cz1 = -Infinity;
+    for (let i = 0; i < pos.length; i += 3) {
+      if (pos[i + 1] > band) continue;
+      if (pos[i] < cx0) cx0 = pos[i]; if (pos[i] > cx1) cx1 = pos[i];
+      if (pos[i + 2] < cz0) cz0 = pos[i + 2]; if (pos[i + 2] > cz1) cz1 = pos[i + 2];
+    }
+    if (cx1 - cx0 > 0.5 && cz1 - cz0 > 0.5) break;
   }
   const contact: [number, number, number, number] | null = cx1 - cx0 > 0.5 && cz1 - cz0 > 0.5 ? [cx0, cx1, cz0, cz1] : null;
   return {
@@ -689,7 +695,7 @@ export function* bakeTankWreckSteps(
 
 // (wrecks-270) The parts a state takes off, by the factory's part names.
 const WRECK_TRACK_PART = /^gearTrack/;
-const WRECK_WHEEL_PART = /^gear(?:RoadWheel|ReturnRoller|EndWheel)/;
+const WRECK_WHEEL_PART = /^(?:gear(?:RoadWheel|ReturnRoller|EndWheel|Suspension)|hullRunningGear)/;
 const WRECK_FITTING_GROUP = /^fitting_|KitRackLoad|M2HB|MachineGun|machineGun/;
 const WRECK_FITTING_MESH = /(?:Glass|Cloth|CanvasPale|CanvasSkin|Rubber)$/;
 
@@ -759,19 +765,28 @@ function poseWreckState(root: THREE.Object3D, state: WreckStateRow, seed: number
   }
   const pitch = pick(state.pitch, rng), rollSide = dropSide || (rng() < 0.5 ? -1 : 1), roll = pick(state.roll, rng);
   const sink = pick(state.sink, rng) * (hullBox.max.y - hullBox.min.y);
-  if (!pitch && !roll && !sink) return { ground: null, thrownSide: dropSide };
-  // the pivot: a ditched nose turns about the tail's lower edge; a hulk on its side about its track's outer edge; the
-  // rest about the hull's middle on the ground
-  const pivot = pitch > 0.1 ? new THREE.Vector3(0, ground0, hullBox.min.z)
-    : roll > 0.5 ? new THREE.Vector3(rollSide * halfW, ground0, 0)
-      : new THREE.Vector3((hullBox.min.x + hullBox.max.x) / 2, ground0, (hullBox.min.z + hullBox.max.z) / 2);
-  const turn = new THREE.Matrix4().makeTranslation(pivot.x, pivot.y, pivot.z)
-    .multiply(new THREE.Matrix4().makeRotationFromEuler(new THREE.Euler(pitch, 0, -rollSide * Math.abs(roll), 'XYZ')))
-    .multiply(new THREE.Matrix4().makeTranslation(-pivot.x, -pivot.y, -pivot.z));
-  for (const child of [...root.children]) child.applyMatrix4(turn);
+  const onSide = Math.abs(roll) > 0.5;
+  if (pitch || roll || sink) {
+    // the pivot: a ditched nose turns about the tail's lower edge; a hulk on its side about its middle (then laid on its
+    // flank); the rest about the hull's middle on the ground
+    const pivot = pitch > 0.1 ? new THREE.Vector3(0, ground0, hullBox.min.z)
+      : new THREE.Vector3((hullBox.min.x + hullBox.max.x) / 2, onSide ? (hullBox.min.y + hullBox.max.y) / 2 : ground0,
+        (hullBox.min.z + hullBox.max.z) / 2);
+    const turn = new THREE.Matrix4().makeTranslation(pivot.x, pivot.y, pivot.z)
+      .multiply(new THREE.Matrix4().makeRotationFromEuler(new THREE.Euler(pitch, 0, -rollSide * Math.abs(roll), 'XYZ')))
+      .multiply(new THREE.Matrix4().makeTranslation(-pivot.x, -pivot.y, -pivot.z));
+    for (const child of [...root.children]) child.applyMatrix4(turn);
+  }
+  // a hulk on its side or cut up keeps its plan centred on its origin (the seat tests its footprint about it)
+  if (onSide || state.turretSetDown) {
+    const all = rootFrameBox(root, rootInv);
+    const shift = new THREE.Matrix4().makeTranslation(-(all.min.x + all.max.x) / 2, 0, -(all.min.z + all.max.z) / 2);
+    for (const child of [...root.children]) child.applyMatrix4(shift);
+  }
   // a ditched nose and a sunk hulk keep the ground where it was (the tail's edge, the drift's top); one on its side
-  // rests on its lowest point
-  return { ground: pitch > 0.1 ? ground0 : sink > 0 ? ground0 + sink : null, thrownSide: dropSide };
+  // rests on its hull's flank (the gun digs in); the rest on their lowest point
+  const ground = pitch > 0.1 ? ground0 : sink > 0 ? ground0 + sink : onSide ? rootFrameBox(hull, rootInv).min.y : null;
+  return { ground, thrownSide: dropSide };
 }
 
 function* buildTankWreckSteps(

@@ -75,7 +75,7 @@ export const WRECK_STATE_TABLE: Readonly<Record<WreckState, WreckStateRow>> = Ob
   }),
   half_buried: Object.freeze({
     pop: false, removes: NONE, pitch: Object.freeze([-0.05, 0.07] as const), roll: Object.freeze([-0.07, 0.07] as const),
-    sink: Object.freeze([0.3, 0.42] as const), turretSetDown: false, age: 0.9,
+    sink: Object.freeze([0.45, 0.58] as const), turretSetDown: false, age: 0.9,
     sites: Object.freeze(['field_edge', 'trench_line'] as const),
   }),
   stripped: Object.freeze({
@@ -98,6 +98,8 @@ export const WRECK_STATE_TABLE: Readonly<Record<WreckState, WreckStateRow>> = Ob
 /** Two hulks a player sees in one view: within this many metres of each other (the battle camera's working range). No
  *  two hulks of one bake stand closer (props.ts chooseWreckBake). */
 export const WRECK_VIEW_M = 250;
+/** No hulk's centre nearer a spawn than this (the nearest before wrecks-270 stood 36 m off; Main's ruling 2026-11-05). */
+export const WRECK_SPAWN_CLEAR_M = 35;
 /** A hulk this close to a trench line's centre stands on the trench line. */
 export const WRECK_TRENCH_REACH_M = 18;
 

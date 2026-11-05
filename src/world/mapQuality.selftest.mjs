@@ -57,8 +57,9 @@ const battlefieldWrecks = new Set();
 // war shows through the burnt period trucks and carts); the Moon carries none. A period cast smaller than the map's
 // placement budget cycles through its slots, and the budget never rises.
 // (wrecks-270, 2026-11-05; the owner: "add a lot more tank wreckages and varieties") the casts are one table
-// (maps/wreckCasts.ts): a map with hulks seats 8 to 12 of them, each a donor in a damage state (wreckStates.ts); Kursk,
-// with the war's one donor, keeps five, each in a state of its own.
+// (maps/wreckCasts.ts): every map but the Moon seats 8 to 12 hulks, each a donor in a damage state (wreckStates.ts); the
+// Second World War fronts take today's armour of their nations (the owner, 2026-11-05: "for the 10world war 2 maps, just
+// use modern tanks"), Kursk its KV-2 beside it.
 const curatedWreckDonors = new Set(WRECK_DONOR_IDS);
 
 function auditUtilityPoleStations(hf, mapId) {
@@ -160,19 +161,18 @@ for (const mapId of MAP_IDS) {
     `${mapId}: complete biome configuration`);
   const cast = config.props.tankWrecks;
   const fleetYear = Number(/(\d{4})s?$/.exec(fleetForMap(mapId).id)?.[1] ?? NaN);
-  const warYears = fleetYear <= 1945, noHulks = mapId === 'moon' || (warYears && mapId !== 'verdant');
-  assert.ok(noHulks ? cast.count === 0 : mapId === 'verdant' ? cast.count === 5 : cast.count >= 8 && cast.count <= 12,
-    `${mapId}: 8-12 period hulks (Kursk five; none on a war front the fleet has no tank of)`);
+  const warYears = fleetYear <= 1945, noHulks = mapId === 'moon';
+  assert.ok(noHulks ? cast.count === 0 : cast.count >= 8 && cast.count <= 12, `${mapId}: 8-12 hulks (none on the Moon)`);
   assert.ok(cast.setting && Array.isArray(cast.nations), `${mapId}: the cast names its place, year and armies`);
   for (const state of cast.states ?? []) assert.ok(WRECK_STATES.includes(state), `${mapId}/${state}: a damage state of the table`);
   assert.ok(noHulks ? cast.ids.length === 0 : cast.ids.length >= 1 && cast.ids.length <= cast.count,
     `${mapId}: an authored period cast within the slots`);
-  if (warYears) assert.equal(cast.era, 'ww2', `${mapId}: a war-years map's cast is of the war`);
+  if (warYears) assert.equal(cast.era, 'modern', `${mapId}: a war-years map takes today's armour of its nations`);
   assert.equal(new Set(cast.ids).size, cast.ids.length, `${mapId}: no repeated donor in a map cast`);
   for (const id of cast.ids) {
     assert.ok(isPublicWreckDonor(id), `${mapId}/${id}: wreck donor is actually publicly playable`);
     assert.ok(curatedWreckDonors.has(id), `${mapId}/${id}: a curated donor the wreck fleet receipt bakes`);
-    if (warYears) assert.equal(vehicleEraForId(id), 'ww2', `${mapId}/${id}: a tank of the war`);
+    if (warYears) assert.ok(['ww2', 'modern'].includes(vehicleEraForId(id)), `${mapId}/${id}: the war's KV-2 or today's armour`);
     battlefieldWrecks.add(id);
   }
   const treelineLayers = resolveHorizonTreelineLayers(config.horizon);
@@ -237,7 +237,8 @@ assert.deepEqual(getMapConfig('frontier').props.tankWrecks.ids, ['m60a3', 'm1a1'
 assert.deepEqual(getMapConfig('ruinspires').props.tankWrecks.ids, ['t72m1_jaguar', 't55a', 'bmp2', 'bwp1', 'm47_patton'], 'Sarajevo, 1992-96');
 assert.deepEqual(getMapConfig('airfield').props.tankWrecks.ids, ['t72b3', 't80bv', 'bmp2', 't64bv_donbas', 't90a', 'bmp3', 't72b_1987'],
   'Hostomel, 2022');
-assert.deepEqual(getMapConfig('verdant').props.tankWrecks.ids, ['kv2'], 'Kursk, 1943: the KV-2');
+assert.deepEqual(getMapConfig('verdant').props.tankWrecks.ids, ['kv2', 't90m', 't72b3m_2022', 't64bm1m', 'ua_m2a3_bradley', 'ua_cv9040c'],
+  'Kursk: the KV-2 of 1943 and the armour of 2024');
 assert.ok(battlefieldWrecks.size >= 60, `the period casts bring a broad variety of hulks (${battlefieldWrecks.size} types)`);
 
 const cityMaterialMaps = ['urban', 'foundry', 'ruinspires', 'blackglass', 'skybridge', 'caldera'];
@@ -330,10 +331,8 @@ for (const mapId of [...EXPANSION, ...EXTREME]) {
   // roadside plan
   const landmarks = [...config.props.plan, ...(config.props.plannedSites ?? []).map((site) => site.structure)];
   assert.ok(landmarks.length >= 14, `${mapId}: authored landmark plan is dense`);
-  // the period ruling (2026-10-06): the cast is the map's period's (above), and a war front the fleet has no tank of
-  // carries none
-  assert.ok(config.props.tankWrecks.count >= 5 || config.props.tankWrecks.count === 0 && config.props.tankWrecks.era === 'ww2',
-    `${mapId}: multiple wreck story beats, or none on a war front`);
+  // (wrecks-270) the cast's 8-12 hulks (above)
+  assert.ok(config.props.tankWrecks.count >= 8, `${mapId}: multiple wreck story beats`);
   assert.equal(config.props.tankWrecks.debris, true, `${mapId}: detached debris enabled`);
   // an authored mix counts its pieces: a period map keeps the budget in the families of its year (Nordhavn 1940 and
   // Glacier Pass 1945 have cable reels and direction signs, no traffic cones, Jersey barriers or pad transformers)

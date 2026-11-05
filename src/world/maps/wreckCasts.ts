@@ -3,9 +3,10 @@
 //
 // A row names the place and year (the map file's Reference line), the armies that fought there, and the fleet donors
 // that fit both: one id a family, never two near-duplicates of one hull, every one a public, in-service vehicle of the
-// period (the integrator's period ruling, 2026-10-06, still holds: Kursk keeps its KV-2, the other Second World War
-// fronts and the Moon carry none, since the fleet has no other tank of that war). The props build (props.ts) seats
-// `count` hulks, each a donor in a damage state (wreckStates.ts) its site shows, no two of one bake within a view.
+// period. The Second World War fronts (the owner, 2026-11-05: "for the 10world war 2 maps, just use modern tanks") take
+// today's armour of the front's nations, since the fleet holds no tank of that war but the KV-2, which Kursk keeps beside
+// them, in all eight states; the Moon carries none. The props build (props.ts) seats `count` hulks, each a donor in a
+// damage state (wreckStates.ts) its site shows, no two of one bake within a view.
 //
 // Each map file's props.tankWrecks is its row here; every reader (the builders' preload, the receipts, the tools) keeps
 // reading props.tankWrecks.
@@ -28,11 +29,6 @@ export interface WreckCast {
   readonly states?: readonly WreckState[];
 }
 
-const NO_TANKS_OF_THE_WAR = 'the fleet holds no other tank of this war (the period ruling, 2026-10-06)';
-
-function none(setting: string, nations: readonly string[]): WreckCast {
-  return Object.freeze({ setting: `${setting}; ${NO_TANKS_OF_THE_WAR}`, era: 'ww2', nations: Object.freeze(nations), count: 0, debris: true, ids: Object.freeze([]) });
-}
 function cast(setting: string, era: WreckCast['era'], nations: readonly string[], count: number, ids: readonly string[],
   states?: readonly WreckState[]): WreckCast {
   return Object.freeze({
@@ -51,12 +47,15 @@ const FRESH: readonly WreckState[] = ['burnt_out', 'turret_blown_off', 'track_th
 export const WRECK_CASTS = {
   airfield: cast('Hostomel airport, north-west of Kyiv, February-March 2022', 'modern', ['Russia', 'Ukraine'], 10,
     ['t72b3', 't80bv', 'bmp2', 't64bv_donbas', 't90a', 'bmp3', 't72b_1987'], FRESH),
-  alpine: none('the Col du Mont-Cenis, April 1945', ['France', 'Germany']),
-  autumn: none('the Moselle valley of Lorraine, autumn 1944', ['USA', 'Germany']),
+  alpine: cast('the Col du Mont-Cenis (April 1945): today\'s armour of the front\'s nations, the owner\'s ruling', 'modern',
+    ['France', 'Germany', 'Italy'], 9, ['leclerc_s2', 'leo2a6', 'spz_puma', 'c1_ariete', 'dardo']),
+  autumn: cast('the Moselle valley of Lorraine (autumn 1944): today\'s US and German armour', 'modern', ['USA', 'Germany'], 10,
+    ['m1a2_abrams_sepv3', 'm3a3_bradley', 'leo2a4', 'spz_puma', 'kf41_lynx']),
   badlands: cast('Wadi Rum, southern Jordan: the Syrian incursion of September 1970 and the Jordanian armour after it',
     'cold-war', ['Jordan', 'Syria'], 12,
     ['challenger1_mk2', 'm60a3', 'chieftain3', 'centurion5_2', 't55a', 'm48a5_patton', 't62_1975', 'm60a1'], DESERT),
-  blackglass: none('Shanghai, Suzhou Creek, autumn 1937', ['China', 'Japan']),
+  blackglass: cast('Shanghai, Suzhou Creek (autumn 1937): today\'s Chinese and Japanese armour', 'modern', ['China', 'Japan'], 10,
+    ['ztz99a', 'type96b', 'aft10', 'type10', 'type90', 'type89']),
   caldera: cast('the Aso caldera, Kyushu: a JGSDF range and its hulks', 'modern', ['Japan'], 10,
     ['type10_tk_x', 'type90', 'type74', 'type89', 'hayate_ifv', 'm41_jgsdf']),
   cliffbridge: cast('Ronda, Málaga: the Spanish Army\'s Cold War armour (AMX-30E, M47E, M48A5E, M41)', 'cold-war',
@@ -69,25 +68,31 @@ export const WRECK_CASTS = {
     ['type59', 't55a', 'vickers_mk1', 'm48a3_patton', 'centurion5_2', 'm41a3']),
   desert: cast('the Dahar edge, southern Tunisia: the Tunisian and Libyan armour of the 1980s', 'cold-war',
     ['Tunisia', 'Libya'], 11, ['m60a3', 'm48a5_patton', 'm41a3', 't55a', 't62_1975', 'type59'], DESERT),
-  fjord: none('the Ofotfjord and Bjerkvik, Nordland, May 1940', ['Norway', 'France', 'Poland', 'UK', 'Germany']),
-  foundry: none('the Völklingen ironworks on the Saar, March 1945', ['USA', 'Germany']),
+  fjord: cast('the Ofotfjord and Bjerkvik, Nordland (May 1940): today\'s armour of the Narvik campaign\'s nations', 'modern',
+    ['Norway', 'France', 'Poland', 'UK', 'Germany'], 10, ['leo2a7v', 'cv90', 'leclerc_s2', 'pt91a_twardy', 'challenger2', 'warrior_tes_h']),
+  foundry: cast('the Völklingen ironworks on the Saar (March 1945): today\'s US and German armour', 'modern', ['USA', 'Germany'], 10,
+    ['m1a2_abrams_tusk', 'm6_linebacker', 'leo2a5', 'puma_s1', 'kf41_lynx']),
   frontier: cast('the Fulda Gap\'s Hünfeld basin, the 1980s', 'cold-war', ['USA', 'West Germany', 'USSR'], 12,
     ['m60a3', 'm1a1', 'leo1a5', 'marder1a3', 't80b', 'bmp2', 'leo2a2', 'm2a2_bradley', 't64bv1', 'm48a2ga2']),
-  longleaf: none('Longleaf, Louisiana, the Louisiana Maneuvers of September 1941', ['USA']),
+  longleaf: cast('Longleaf, Louisiana (the Louisiana Maneuvers, September 1941): today\'s US armour', 'modern', ['USA'], 8,
+    ['m1a2_abrams_sepv2', 'm3a3_bradley', 'm551a1_tts']),
   mangrove: cast('Ca Mau, the Mekong Delta, the Vietnam War', 'cold-war', ['USA', 'South Vietnam', 'North Vietnam'], 10,
     ['m48a3_patton', 'm41a3', 'm551_sheridan', 'type59', 't55a']),
   mars: cast('Olympus Basin, Mars: the next generation\'s prototypes', 'next-generation', ['USA', 'Russia', 'Germany', 'Poland'],
     8, ['abramsx', 'object148_proto', 'pl01', 'm1a3', 'kf51_evo']),
-  monsoon: none('Kohima, the Naga Hills, April-June 1944', ['UK', 'India', 'Japan']),
+  monsoon: cast('Kohima, the Naga Hills (April-June 1944): today\'s British and Japanese armour', 'modern', ['UK', 'India', 'Japan'], 10,
+    ['challenger2', 'warrior_tes_h', 'chieftain_mk10', 'type10', 'type90', 'type89']),
   moon: cast('the Taurus-Littrow valley, December 1972: no war was fought here', 'cold-war', [], 0, []),
   oasis: cast('Siwa, Egypt\'s Western Desert: the Libyan-Egyptian war of July 1977 and the Egyptian armour after it',
     'cold-war', ['Egypt', 'Libya'], 10, ['t55a', 't62_1975', 'm60a3', 'm1a1', 'type59'], DESERT),
   orchard: cast('the Chouf, Mount Lebanon, June 1982', 'cold-war', ['Israel', 'Syria'], 12,
     ['merkava1b', 'magach3', 'magach6b', 'shot_kal', 't55a', 't62_1975', 't72m1_jaguar']),
-  polders: none('the Scheldt polders, autumn 1944', ['Canada', 'UK', 'Germany']),
+  polders: cast('the Scheldt polders (autumn 1944): today\'s Canadian, British and German armour', 'modern', ['Canada', 'UK', 'Germany'],
+    10, ['leo2a4m_can', 'challenger2', 'ajax', 'warrior_tes_h', 'spz_puma', 'kf41_lynx']),
   railyard: cast('a junction on the coalfield (the Ruhr, Upper Silesia), the Cold War', 'cold-war',
     ['West Germany', 'UK', 'Poland', 'USSR'], 10, ['m48a2ga2', 'leo1a2a1', 'm47_patton', 'centurion5_2', 't55a', 'bwp1'], STREETS),
-  reservoir: none('the Roer dams in the Eifel, winter 1944-45', ['USA', 'Germany']),
+  reservoir: cast('the Roer dams in the Eifel (winter 1944-45): today\'s US and German armour', 'modern', ['USA', 'Germany'], 10,
+    ['m1a1_abrams_aim', 'm6_linebacker', 'leo2a6', 'spz_wotan', 'm551a1_tts']),
   ruinspires: cast('Sarajevo under siege, 1992-96', 'cold-war', ['Yugoslav People\'s Army', 'Bosnia'], 12,
     ['t72m1_jaguar', 't55a', 'bmp2', 'bwp1', 'm47_patton'], STREETS),
   saltwind: cast('the Dalmatian coast, the Croatian War of Independence, 1991-95', 'cold-war',
@@ -101,8 +106,11 @@ export const WRECK_CASTS = {
   urban: cast('the walled hill towns of Franconia and Saxony, the 1980s inner-German border', 'cold-war',
     ['West Germany', 'USA', 'East Germany', 'USSR'], 10,
     ['leo2a2', 't72m1_jaguar', 'marder1a3', 'bmp2', 'leo1a5', 'm1a1', 't80b', 'm2a2_bradley'], STREETS),
-  verdant: cast('the Kursk salient around Prokhorovka, July 1943', 'ww2', ['USSR', 'Germany'], 5, ['kv2']),
+  verdant: cast('the Kursk salient around Prokhorovka (July 1943): the KV-2 of the battle, and the Russian and Ukrainian '
+    + 'armour of the 2024 fighting in Kursk oblast', 'modern', ['USSR', 'Russia', 'Ukraine'], 10,
+    ['kv2', 't90m', 't72b3m_2022', 't64bm1m', 'ua_m2a3_bradley', 'ua_cv9040c']),
   whiteout: cast('DYE-M on Cape Dyer, Baffin Island, the 1980s', 'cold-war', ['Canada', 'USA', 'Sweden', 'USSR'], 10,
     ['leo1a5', 'leo1a2a1', 'm48a5_patton', 'strv103b', 't80b', 'bmp2']),
-  winter: none('the Podhale under the Tatra, January 1945', ['USSR', 'Germany']),
+  winter: cast('the Podhale under the Tatra (January 1945): today\'s Russian, Polish and German armour', 'modern',
+    ['Russia', 'Poland', 'Germany'], 10, ['t90m', 'pt91a_twardy', 'borsuk', 'k2_black_panther', 'leo2a5', 'bmpt_terminator2']),
 } satisfies Record<MapId, WreckCast>;

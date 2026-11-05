@@ -242,7 +242,7 @@ import {
 import { createWreckBakeClient } from './wreckBakeClient.ts';
 import type { WreckBakePrefetch } from './wreckBakePrefetch.ts';
 import { resolveWreckRoster } from './wreckRoster.ts';
-import { WRECK_STATES, WRECK_TRENCH_REACH_M, WRECK_VIEW_M, statesForSite, type WreckSite, type WreckState } from './wreckStates.ts';
+import { WRECK_SPAWN_CLEAR_M, WRECK_STATES, WRECK_TRENCH_REACH_M, WRECK_VIEW_M, statesForSite, type WreckSite, type WreckState } from './wreckStates.ts';
 import { mergeWreckGeometries } from './exactWreckGeometry.ts';
 import { fitWallSpan, wallIslandEdges, type WallSpan } from './wallSpanPlacement.ts';
 import { ensureTankBuilder } from '../vehicles/fleetFactory.ts';
@@ -9352,7 +9352,11 @@ ${snowCap ? `
         // destructible keeps (addDestructible's veto: DEPLOYMENT_CLEAR_M and its radius); Delta's Type 59 stood 2.75 m in one
         ...deploymentSlots.map((slot) => [slot.x, slot.z, DEPLOYMENT_CLEAR_M] as const),
       ];
+      // (wrecks-270, Main's ruling 2026-11-05) and never nearer a spawn than the hulks before the lane stood (36 m), on any
+      // pass: the spawn probe's protected ground is the floor
+      const spawnPoints = [L.spawns.player, ...L.spawns.enemies];
       function hulkOnObjective(x: number, z: number, r: number): boolean {
+        if (spawnPoints.some((spawn) => Math.hypot(x - spawn.x, z - spawn.z) < WRECK_SPAWN_CLEAR_M)) return true;
         return objectiveDiscs.some(([cx, cz, radius]) => Math.hypot(x - cx, z - cz) < radius + r);
       }
       function hulkMeetsTallSolid(x: number, z: number, hx: number, hz: number, yaw: number): boolean {

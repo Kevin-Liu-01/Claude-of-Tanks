@@ -2472,6 +2472,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/landmarks/landmarkDamage.selftest.mjs', // 2026-10-14 props lane A (E12): set pieces' named pieces, ruptures, open frames, light set pieces' fall
     'src/world/wreckCollision.selftest.mjs',
     'src/world/wreckRoster.selftest.mjs',
+    // wrecks-270 (2026-11-05): one donor baked in each of the eight damage states
+    'src/world/wreckStates.selftest.mjs',
     'src/world/wreckFleet.selftest.mjs',
     // 2026-10-09 (destruction core lane): crumpled wrecks — the baked hulks, the burnt map vehicles, the live kill.
     'src/world/wreckCrumple.selftest.mjs',

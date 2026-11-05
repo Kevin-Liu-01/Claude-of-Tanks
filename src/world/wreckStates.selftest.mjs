@@ -47,8 +47,8 @@ assert.ok(bakes.turret_blown_off.tris > 0 && bakes.turret_blown_off.solids.lengt
 assert.ok(Math.abs(bakes.track_thrown.thrownSide) === 1, 'a thrown track names its side');
 assert.ok(bakes.track_thrown.tris < base.tris, `a thrown track's run is gone (${bakes.track_thrown.tris} < ${base.tris})`);
 assert.ok(bakes.nose_down.buried > 0.5, `a ditched nose is under the ground line (${bakes.nose_down.buried?.toFixed(2)} m)`);
-assert.ok(bakes.half_buried.buried > 0.6 && bakes.half_buried.h - bakes.half_buried.buried < base.h * 0.8,
-  `a half-buried hull stands low (${bakes.half_buried.buried?.toFixed(2)} m under)`);
+assert.ok(bakes.half_buried.buried > 0.8 && bakes.half_buried.h - bakes.half_buried.buried < base.h * 0.8,
+  `a half-buried hull stands low (${bakes.half_buried.buried?.toFixed(2)} m under, ${(bakes.half_buried.h - bakes.half_buried.buried).toFixed(2)} of ${base.h.toFixed(2)} m showing)`);
 assert.ok(bakes.stripped.tris < base.tris * 0.95, `a stripped hull lost its running gear (${bakes.stripped.tris} < ${base.tris})`);
 assert.ok(bakes.stripped.h < base.h, `and stands lower, down on its belly (${bakes.stripped.h.toFixed(2)} < ${base.h.toFixed(2)})`);
 assert.ok(Math.abs(bakes.overturned.hx - base.hx) > 0.3, `on its side, its plan changes (${bakes.overturned.hx.toFixed(2)} vs ${base.hx.toFixed(2)})`);
