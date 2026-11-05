@@ -697,23 +697,42 @@ export function createAudio({
     if (want.from < 0) want.from = ctx.currentTime;
     const elapsed = ctx.currentTime - want.from;
     const { delayS = 0, maxDurS } = want.options;
-    // a loop with a length (the heartbeat) whose moment has passed while it decoded is not started at all
-    if (maxDurS != null && maxDurS - elapsed < 0.5) { want.state = 'off'; return; }
-    const decoded = library.has(want.id);
-    const voice = pool.play(want.id, elapsed > 0.001
-      ? { ...want.options, loop: true, delayS: Math.max(0, delayS - elapsed), ...(maxDurS != null ? { maxDurS: maxDurS - elapsed } : {}) }
-      : { ...want.options, loop: true });
-    if (voice) { want.voice = voice; want.state = 'playing'; }
-    else if (decoded) want.state = 'off';
+    // a loop with a length (the heartbeat) whose moment has passed while it decoded is not started at all (and leaves
+    // the waiting list below: U34, round 2)
+    if (maxDurS != null && maxDurS - elapsed < 0.5) want.state = 'off';
     else {
-      // still decoding (the ask above queued it in the front lane): start it when it lands
-      if (!waitingLoops.includes(want)) waitingLoops.push(want);
-      const lib = library;
-      void lib.load([want.id]).then(() => { if (want.state === 'waiting' && lib.has(want.id)) startLoop(want); });
+      const decoded = library.has(want.id);
+      const voice = pool.play(want.id, elapsed > 0.001
+        ? { ...want.options, loop: true, delayS: Math.max(0, delayS - elapsed), ...(maxDurS != null ? { maxDurS: maxDurS - elapsed } : {}) }
+        : { ...want.options, loop: true });
+      if (voice) { want.voice = voice; want.state = 'playing'; }
+      else if (decoded) want.state = 'off';
+      else {
+        // still decoding (the ask above queued it in the front lane): start it when it lands. A decode that fails, or an
+        // ask inside the library's retry backoff, is asked again by sweepWaitingLoops once that backoff has run out.
+        if (!waitingLoops.includes(want)) waitingLoops.push(want);
+        const lib = library;
+        void lib.load([want.id]).then(() => { if (want.state === 'waiting' && lib.has(want.id)) startLoop(want); });
+      }
     }
     if (want.state !== 'waiting') {
       const at = waitingLoops.indexOf(want);
       if (at >= 0) waitingLoops.splice(at, 1);
+    }
+  }
+
+  /**
+   * A wanted loop whose recording failed (a transient fetch error), or that was asked for inside the library's retry
+   * backoff, waits with no load in flight: about once a second (on the audio clock) each one whose retry is due asks
+   * again (U34, round 2). In place, no allocation; startLoop may take the want off the list, so it walks backwards.
+   */
+  let loopSweepAt = 0;
+  function sweepWaitingLoops(now: number): void {
+    if (!library || waitingLoops.length === 0 || now < loopSweepAt) return;
+    loopSweepAt = now + 1;
+    for (let i = waitingLoops.length - 1; i >= 0; i--) {
+      const want = waitingLoops[i];
+      if (want && library.retryDue(want.id)) startLoop(want);
     }
   }
 
@@ -2915,6 +2934,7 @@ export function createAudio({
     const now = ctx.currentTime;
     pool.prune(now);
     if (pendingCaptions.length) flushCaptions(now);
+    sweepWaitingLoops(now);
     mixer.update(dt);
     radio?.update();
     updateThink(now);
