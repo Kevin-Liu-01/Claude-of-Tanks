@@ -2,6 +2,7 @@ import { createSmokeCanister, smokeCloudBanks, smokeCanisterPosition, type Smoke
 import { smokeClip, smokeClipReach, smokeScreenSummary } from './smokeScreen.ts';
 import { Euler, Matrix4, Vector3, Quaternion } from 'three';
 import { auxiliaryCapabilities, type AuxiliaryInventory } from '../vehicles/auxiliaryInventory.ts';
+import { roofGunSwitch, roofGunTogglable } from './roofGunSwitch.ts';
 import { auxiliaryWeaponProfile, type AuxiliaryWeaponProfile } from '../vehicles/auxiliaryWeapons.ts';
 import { createShell, penAtDistanceMm, shellGravityMps2, stepShell } from './ballistics.ts';
 export { auxiliaryCapabilities } from '../vehicles/auxiliaryInventory.ts';
@@ -438,7 +439,7 @@ export function requestAuxiliary(
   // the roof-gun switch is the crew's in every state: a red module refuses switching it on, never off (round 2 U9: the
   // switch was locked while red, so the crew could not silence a gun that would start firing again at the repair)
   if (action === 'roofGun' && kit.guns.length) {
-    if (!state.gunOn && entity.combat.modules?.roofGun?.state === 'red') return false;
+    if (!roofGunTogglable(state.gunOn, entity.combat.modules?.roofGun?.state)) return false;
     state.gunOn = !state.gunOn; return true;
   }
   if (action !== 'smoke' || !kit.smoke.length || !state.smokeCharges || now < state.smokeReadyAt) return false;
@@ -662,7 +663,7 @@ export function stepRoofGun(entity: AuxiliaryEntity, now: number, dt: number, co
   const damage = entity.combat.modules?.roofGun?.state;
   // a red module silences the station, as it does stations 1+; the switch stays the crew's (audit M4, 2026-11-02: this
   // switched it off, and the gun stayed off after the auto-repair until the crew pressed the toggle again)
-  if (damage === 'red') return false;
+  if (roofGunSwitch(state.gunOn, damage) === 'silenced') return false;
   const fired = stepStation(entity, gun, state, damage, now, dt, context);
   entity.state.roofGunYaw = state.gunYaw; entity.state.roofGunPitch = state.gunPitch;
   return fired;
@@ -676,7 +677,7 @@ export function stepRoofStation(entity: AuxiliaryEntity, index: number, now: num
   const guns = auxiliaryCapabilities(entity.spec)?.guns, gun = guns?.[index], state = entity.combat.auxiliary;
   if (!gun || !state?.gunOn || entity.combat.destroyed || entity.modeActive === false) return false;
   const damage = entity.combat.modules?.roofGun?.state;
-  if (damage === 'red') return false;
+  if (roofGunSwitch(state.gunOn, damage) === 'silenced') return false;
   const station = (state.stations ??= guns.slice(1).map(stationState))[index - 1];
   return !!station && stepStation(entity, gun, station, damage, now, dt, context);
 }

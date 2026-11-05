@@ -219,10 +219,11 @@ body[data-cot-battle-layout][data-systems-fill='slots']:not(.cot-touch-layout) .
    alone beside the slot's full frame, one coloured edge) */
 .cot-vehicle-controls>button.active{--hud-tile-on-edge:var(--accent);--hud-tile-on-mark:var(--ring-accent);color:var(--accent-hi);border-color:var(--hud-tile-on-edge);background:var(--accent-wash);box-shadow:var(--hud-tile-on-mark);}
 .cot-vehicle-controls>button:disabled{opacity:.64;}
-/* Owner 2026-10-17 (out of ammo): a spent launcher or magazine control is struck through in the danger ink, no text. */
+/* Owner 2026-10-17 (out of ammo): a spent launcher or magazine control is struck through in the danger ink, no text.
+   A roof gun switched on but silenced by its red module (round 2 U9) keeps its lit tile and strikes its icon the same way. */
 .cot-vehicle-controls>button.empty{color:var(--hud-muted);border-bottom-color:var(--hud-danger);background:none;box-shadow:none;}
-.cot-vehicle-controls>button.empty .si{position:relative;color:var(--hud-danger);opacity:1;filter:none;}
-.cot-vehicle-controls>button.empty .si::after{content:'';position:absolute;left:-2px;right:-2px;top:calc(50% - .75px);height:1.5px;border-radius:1px;background:var(--hud-danger);box-shadow:var(--battle-control-slash-ring);transform:rotate(-45deg);}
+.cot-vehicle-controls>button.empty .si,.cot-vehicle-controls>button.silenced .si{position:relative;color:var(--hud-danger);opacity:1;filter:none;}
+.cot-vehicle-controls>button.empty .si::after,.cot-vehicle-controls>button.silenced .si::after{content:'';position:absolute;left:-2px;right:-2px;top:calc(50% - .75px);height:1.5px;border-radius:1px;background:var(--hud-danger);box-shadow:var(--battle-control-slash-ring);transform:rotate(-45deg);}
 .cot-vehicle-controls>button:hover:not(:disabled){border-color:var(--accent);}
 .cot-vehicle-controls>button:focus-visible{outline:2px solid var(--ink-1);outline-offset:-2px;}
 .cot-vehicle-controls>button .si{grid-column:1;grid-row:1;display:flex;align-items:center;justify-content:center;filter:none;}

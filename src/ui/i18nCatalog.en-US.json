@@ -4199,6 +4199,7 @@
   "systems.lights.help": "Switch the fitted tank lights on or off.",
   "systems.roofGun": "Auto gun",
   "systems.roofGun.help": "Enable the roof weapon to track and fire bursts at spotted enemies within its effective range.",
+  "systems.roofGun.silenced": "Silenced: the roof gun is knocked out. It fires again once repaired.",
   "systems.available": "Available in battle",
   "systems.auto": "Auto",
   "systems.on": "ON",

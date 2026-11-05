@@ -2770,6 +2770,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/ui/hudAmmunitionPresentation.selftest.mjs',
     'src/ui/hudConsumablePresentation.selftest.mjs',
     'src/ui/hudConsumableTray.selftest.mjs', // 2026-11-02 audit M4: a revive refills the tray (the state, or the own respawn)
+    'src/ui/roofGunTile.selftest.mjs', // 2026-11-05 round 2 U9: the roof-gun tile marks a switched-on red gun silenced, takes the switch off, refuses only on
     'src/ui/hudLifecycle.selftest.mjs', // 2026-11-02 audit F8: one HUD lifecycle; hidden cleanup; one display owner
     // brand-ui 242 (the direction's battle HUD): the team strip under the score and the kill ribbon
     'src/ui/hudTeamPips.selftest.mjs',
