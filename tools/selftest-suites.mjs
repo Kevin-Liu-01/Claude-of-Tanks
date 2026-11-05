@@ -1187,6 +1187,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/presentation/optionalProduction.selftest.mjs',
     'src/presentation/publicNav.selftest.mjs',
     'src/presentation/notFound.selftest.mjs',
+    // 2026-11-02 audit R6 (round 2 U35): the 404 search asks once, never offline; a failure marks the field, its press reloads
+    'src/presentation/notFoundSearchLoad.selftest.mjs',
     'src/presentation/seoMetadata.selftest.mjs',
     'tools/marketing-shots/og-images.selftest.mjs',
     // og-r2: a tank link shares its tank (the table, the cards, the rewrite)
