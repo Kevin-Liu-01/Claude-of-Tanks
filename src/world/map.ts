@@ -1198,6 +1198,11 @@ function* assembleWorldSteps(
       trackMarks.reset(); // item 45: every battle starts on unmarked ground
       // (2026-11-02 audit R2) and on still water and an unpressed sward: the last battle's ripples and the hulls' flattened
       // grass (the press fields) went on into the next battle on a cached world
+      // (round 2 U27, decided) The Studio's reset of its battlefield runs this too (studioCrush.ts: a scene's start, a new
+      // plan, a backward seek past a crush it applied, its exit), as it ran the track marks and the cover holes above before
+      // the audit. Kept on purpose: ripples and the press are transient traces (the sward springs back within seconds), so
+      // a backward seek that kept them would draw the take's later trail where its hulls have not been yet; a cleared field
+      // presses again as the take plays on (the props' presses are replayed, studio.ts pressBetween; the grass's need not be)
       terrain.userData.resetWater?.(); setWater([]);
       tallGrass.pressure?.clear(); tallGrass.pressureFine?.clear();
     },
