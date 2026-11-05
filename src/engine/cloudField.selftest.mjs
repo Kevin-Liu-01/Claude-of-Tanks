@@ -6,8 +6,8 @@
 //      across the wind past a cloud's size shows no peak. A negative control (round 71's seven ruled rolls) fails both.
 //   2. The shape volume's lattice and its repeats: the medium reads it off the world's axes, through a smooth warp, and
 //      each region's billows from another height of the volume (cloudShaders.ts cl2Media).
-//   3. The prism: a convective lane's crown and rim (cloudShaders.ts cl2Shell, twinned here) take round 6's flat lid off
-//      every core and its knife-edged plate off every small cloud, the body below kept; every deck keeps that law.
+//   3. The prism: a convective lane's crown (cloudShaders.ts cl2Shell, twinned here) takes round 6's flat lid off every
+//      core, the body below and the flat base kept; every deck keeps that law.
 //   4. The phones' baked deck (sky.ts CLOUD_FRAG): a second copy chosen region by region, so a tile and its neighbour a
 //      period away mostly come from different copies.
 // The pictures the lane's blind critics judged come from tools/cloud-sky-shots.mjs (every map's sky at the battle camera,
@@ -86,9 +86,8 @@ const shellSrc = shaders.slice(shaders.indexOf('vec4 cl2Shell('), shaders.indexO
 for (const line of [
   'vec4 e = clamp( ( weather - ( 1.0 - uLayerCover ) ) / max( uLayerCover, vec4( 0.02 ) ), 0.0, 1.0 );',
   'vec4 crown = pow( max( e, vec4( 1e-4 ) ), max( uLayerDome, vec4( 0.05 ) ) );',
-  'vec4 rim = 0.1 * ( 1.0 - e ) * ( 1.0 - e );',
   'vec4 roundTop = max( 1.0 - smoothstep( crown * 0.75, crown, hf ), step( 0.74, hf ) * step( vec4( 1e-4 ), uLayerAnvil ) );',
-  'd *= mix( vec4( 1.0 ), smoothstep( rim, rim + 0.08, hf ) * roundTop, step( vec4( 1e-4 ), uLayerDome ) );',
+  'd *= mix( vec4( 1.0 ), roundTop, step( vec4( 1e-4 ), uLayerDome ) );',
 ]) assert.ok(shellSrc.includes(line), `the crown twin mirrors: ${line}`);
 /** The shell's density (one lane) at a height fraction over weather w: round 6's law, crowned when `dome` > 0. */
 function shellTwin(lane, hf, w) {
@@ -97,9 +96,8 @@ function shellTwin(lane, hf, w) {
   let d = clamp((w - (1 - admitted)) / Math.max(admitted * lane.filter, 0.02), 0, 1);
   if (lane.dome > 0) {
     const e = clamp((w - (1 - lane.cover)) / Math.max(lane.cover, 0.02), 0, 1);
-    const crown = Math.pow(Math.max(e, 1e-4), lane.dome), rim = 0.1 * (1 - e) * (1 - e);
-    const roundTop = Math.max(1 - smooth(crown * 0.75, crown, hf), hf >= 0.74 && lane.anvil > 1e-4 ? 1 : 0);
-    d *= smooth(rim, rim + 0.08, hf) * roundTop;
+    const crown = Math.pow(Math.max(e, 1e-4), lane.dome);
+    d *= Math.max(1 - smooth(crown * 0.75, crown, hf), hf >= 0.74 && lane.anvil > 1e-4 ? 1 : 0);
   }
   return d * lane.core;
 }
@@ -123,11 +121,12 @@ const profileOf = (lane) => {
 const dome = profileOf(cumulus);
 const old = profileOf({ ...cumulus, dome: 0 });
 // (2026-11-04, Verdant: round 6's mass at 0.5 / 0.75 / 0.95 of the slab and its base 0.81 / 0.50 / 0.12 and 0.50 — a body
-// carried to a flat lid at the ceiling over a plate. The first GPU pass faded the upper half too, and the blind critics
-// read every cumulus as flattened: the body is kept now, the lid and the plate taken off.)
-assert.ok(old.top > 0.08 && old.base > 0.4, `round 6's law: a flat lid at the slab's ceiling (${old.top.toFixed(2)}) over a plate (${old.base.toFixed(2)})`);
+// carried to a flat lid at the ceiling. The first GPU pass faded the upper half too, and the blind critics read every
+// cumulus as flattened: the body is kept, the lid taken off. A rim that lifted each cloud's base toward its edge read as
+// ledges inside a mass, and went (2026-11-05): the base is the condensation level's flat line, as round 6's.)
+assert.ok(old.top > 0.08, `round 6's law: a flat lid at the slab's ceiling (${old.top.toFixed(2)})`);
 assert.ok(dome.top < 0.02, `the crown takes the lid off: nothing at the ceiling (${dome.top.toFixed(3)})`);
-assert.ok(dome.base < 0.6 * old.base, `the rim softens the base (${dome.base.toFixed(2)} against ${old.base.toFixed(2)})`);
+assert.ok(Math.abs(dome.base - old.base) < 0.02, `one flat base line, round 6's (${dome.base.toFixed(2)} against ${old.base.toFixed(2)})`);
 assert.ok(dome.half > 0.9 * old.half, `and the body below is round 6's (${dome.half.toFixed(2)} at half the slab against ${old.half.toFixed(2)})`);
 
 // the share of the wind frame's lobes: a full fair-weather sky keeps its clouds apart on them, a sparse one and a tower's

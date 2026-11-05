@@ -102,8 +102,8 @@ export const CLOUD_DECK_TUNE: Readonly<Record<string, number>> = Object.freeze({
 /**
  * clouds-269 (the owner, 2026-11-04: "less prism-y"): a cumulus column's crown is its excess over the base footprint to
  * this power (cloudShaders.ts cl2Shell), the density fading over the crown's top quarter, so a core rounds off at its
- * own height instead of under round 6's lid at the slab's ceiling, and a small cloud's base rim lifts off the plate
- * (CPU model, Verdant: the footprint a fifth of its widest at 0.83 of the slab, round 6 at 0.88; its base half as wide).
+ * own height instead of under round 6's lid at the slab's ceiling (CPU model, Verdant: the footprint a fifth of its
+ * widest at 0.83 of the slab, round 6 at 0.88; the mass at 0.95 of the slab 0.007 of its widest, round 6 0.117).
  */
 export const CLOUD_DOME_CROWN = 0.4;
 /**
