@@ -315,7 +315,11 @@ only:
   that launches no browser gives the cap a stop of its own: it reads `hold.signal` into its cancellation, or awaits
   `hold.between()` between synchronous steps. On a signal the open form lets the tool's way out run: its signal aborts,
   its browsers stop, its finally reaches `release()`, which resolves, and the process exits 128 + n once that is done
-  (30 s at most). A tool with its own SIGINT/SIGTERM handler passes `signals: []`: one owner of a signal per process.
+  (30 s at most). A tool waiting in a cap yield's re-queue leaves the queue: its `checkpoint()` (or `between()`) rejects
+  with the signal's error. A tool with its own SIGINT/SIGTERM handler passes `signals: []`: one owner of a signal per process.
+  `frame-budget-probe.mjs` `acquireProbeLocks` (the capture FIFO with the session mutex, for that probe,
+  time-to-battle-probe, battle-spike-census, battle-memory-probe and shadow-cache-truth) holds its FIFO through the
+  open form too, and hands its callers the hold's `signal`.
   A shell holds one normal ticket across several steps with
   `node tools/with-capture-lock.mjs [--lock-class=render|timing] [--place=<key>] -- <command>`: every tool under it that
   takes the lock nests in that hold (its token), and a wait that runs out exits 77. `tools/capture-hold-census.selftest.mjs`
