@@ -120,6 +120,9 @@ export function buildK2(P: Modern3BuilderPort,
   const k2bBow = options.k2bBow === true;
   const guardFootY = k2bBow ? 0.86 : 0.90, guardFootZ = k2bBow ? 3.45 : 3.73;
   const wedgeFootZ = k2bBow ? 3.52 : 3.715;
+  // r269s3 (tools/fleet-surface-overlap-audit.mjs on the K2B): faces of two parts that met in one plane, a coplanar
+  // flicker, stand a few millimetres apart on the K2B's hull (`k2bBow`) and turret (`addOnFront`); the XK2 is unchanged
+  const k2bSeat = k2bBow ? 0.002 : 0, k2bSeam = addOnFront ? 0.0005 : 0;
   const { box, cylX, cylY, cylZ, xform, buildGun, buildRunningGear,
     liftEye, periscope, smokeCluster, stowage, ammoCan,
     openRackGrid, torus } = KIT;
@@ -205,9 +208,10 @@ export function buildK2(P: Modern3BuilderPort,
   P.add('hull', slab(                                                          // rising lower bow; no deep vertical center block
     [-0.98, 0.40, 2.85], [0.98, 0.40, 2.85], [0.98, 0.78, 3.38], [-0.98, 0.78, 3.38],
     [-0.98, 1.02, 2.85], [0.98, 1.02, 2.85], [0.98, 1.08, 3.38], [-0.98, 1.08, 3.38]));
+  const shoulderX = 1.05 - k2bSeat;                                            // K2B: 2 mm inside the belly's side
   P.add('hull', slab(                                                          // central lower shoulder stays between the live shoe lanes
-    [-1.05, 0.46, 2.76], [1.05, 0.46, 2.76], [1.05, 0.68, 3.38], [-1.05, 0.68, 3.38],
-    [-1.05, 1.08, 2.76], [1.05, 1.08, 2.76], [1.05, 1.04, 3.38], [-1.05, 1.04, 3.38]));
+    [-shoulderX, 0.46, 2.76], [shoulderX, 0.46, 2.76], [shoulderX, 0.68, 3.38], [-shoulderX, 0.68, 3.38],
+    [-shoulderX, 1.08, 2.76], [shoulderX, 1.08, 2.76], [shoulderX, 1.04, 3.38], [-shoulderX, 1.04, 3.38]));
   // Full-width shoulder caps visible in the direct-front oracle.  The real
   // plates are thin armor OVER the approach ramps, not a deep solid through
   // the tracks: keep their undersides above the measured shoe envelope and
@@ -243,7 +247,7 @@ export function buildK2(P: Modern3BuilderPort,
   // The former 0.50 m full-width solid occupied the native sprocket/shoe
   // corridor; this closed cap construction preserves every exterior upper
   // edge and the full side-skirt envelope without hollowing the hull.
-  P.add('hull', box(2.10, 0.50, 2.50), 0, 1.41, -2.25);                        // connected center body, z -3.50..-1.00
+  P.add('hull', box(2.10, 0.50 - k2bSeat, 2.50), 0, 1.41 - k2bSeat / 2, -2.25); // connected center body, z -3.50..-1.00 (K2B: top 2 mm under the sponson roof's)
   P.add('hull', box(3.32, 0.10, 2.50), 0, 1.61, -2.25);                        // full-width sponson roof above the native return
   P.add('hull', box(3.32, 0.40, 2.30), 0, 1.36, 0.15);                         // lower mid deck, z -1.00..1.30 (267: kept at 1.56, the turret ring well the guns depress over at the sides)
   P.add('hull', slab(                                                          // raked stern face: lower edge rises into the rear plate
@@ -328,8 +332,8 @@ export function buildK2(P: Modern3BuilderPort,
       P.add('hullDetail', convoyStripe, -1.25 + k * 0.010, 1.42 + k * 0.050, -3.742);
     }
   }
-  P.add('hullDetail', box(0.30, 0.18, 0.04), 0, 1.43, -3.728);                 // convoy plate
-  P.add('hullDark', box(1.42, 0.30, 0.026), 0, 0.96, -3.455);                  // broad recessed lower service panel on the boat-tail face
+  P.add('hullDetail', box(0.30, 0.18, 0.04), 0, 1.43 + k2bSeat, -3.728);       // convoy plate (K2B: its foot 2 mm over the datum bracket's)
+  P.add('hullDark', box(1.42, 0.30, 0.026), 0, 0.96, -3.455);                 // broad recessed lower service panel on the boat-tail face
   P.add('hullDetail', box(1.48, 0.025, 0.030), 0, 1.09, -3.468);               // panel upper break
   for (const x of [-0.71, 0, 0.71]) P.add('hullDetail', box(0.025, 0.28, 0.030), x, 0.96, -3.468);
   P.add('hull', box(0.32, 0.15, 0.045), 0, 0.96, -3.475);                      // central access/convoy plate
@@ -337,7 +341,7 @@ export function buildK2(P: Modern3BuilderPort,
   for (const s of [-1, 1]) {
     P.add('hull', box(0.18, 0.20, 0.08), s * 0.62, 0.80, -3.43);               // tow-clevis boss tied into stern plate
     for (const dx of [-0.055, 0.055]) P.add('hullDetail', box(0.040, 0.18, 0.10), s * 0.62 + dx, 0.73, -3.47);
-    P.add('hullDark', cylX(0.026, 0.15, 10), s * 0.62, 0.68, -3.49);           // clevis pin replaces the schematic circular eye
+    P.add('hullDark', cylX(0.026, 0.15 + 2 * k2bSeat, 10), s * 0.62, 0.68, -3.49); // clevis pin replaces the schematic circular eye (K2B: its heads 2 mm proud of the cheeks)
     P.add('hullDetail', box(0.08, 0.14, 0.05), s * 1.30, 1.08, -3.49);         // basket/support hardpoint
     P.add('hullDark', box(0.28, 0.16, 0.025), s * 1.16, 0.94, -3.50);          // recessed service box
   }
@@ -765,8 +769,11 @@ export function buildK2(P: Modern3BuilderPort,
   P.addEquipment('turret', box(0.63, 0.10, 0.44), 0.865, 0.69, 1.138);         // KGPS housing right-front
   P.add('turret', box(0.07, 0.10, 0.40), 0.56, 0.69, 1.138);                   // left cheek wall
   P.add('turret', box(0.07, 0.10, 0.40), 1.17, 0.69, 1.138);                   // right cheek wall
-  P.add('turretDetail', box(0.65, 0.019, 0.40), 0.865, 0.7305, 1.13);          // brow lid
-  P.add('turretDetail', box(0.64, 0.028, 0.14), 0.865, 0.726, 1.34);           // visor overhang
+  // (K2B, r269s3: the lid 3 mm and the visor 2 mm over the housing's and cheek walls' 0.74 top, the lid over the visor;
+  // all four tops met in one plane, the "ghost patch" left of the gun)
+  const browLift = addOnFront ? 0.003 : 0, visorLift = addOnFront ? 0.002 : 0;
+  P.add('turretDetail', box(0.65, 0.019, 0.40), 0.865, 0.7305 + browLift, 1.13); // brow lid
+  P.add('turretDetail', box(0.64, 0.028, 0.14), 0.865, 0.726 + visorLift, 1.34); // visor overhang
   P.add('turretDark', box(0.48, 0.095, 0.045), 0.865, 0.6875, 1.36);           // cavity back panel
   P.add('turretGlass', box(0.34, 0.065, 0.014), 0.865, 0.687, 1.385, -0.22, 0, 0); // recessed angled glass
   // KAPS/MWR roof equipment, read as mounted assemblies rather than painted
@@ -809,7 +816,7 @@ export function buildK2(P: Modern3BuilderPort,
       for (const dz of [-d / 2 + 0.015, d / 2 - 0.015]) {
         const endSeam = new THREE.PlaneGeometry(0.48, 0.018);
         endSeam.rotateX(-Math.PI / 2);
-        P.add('turretDark', endSeam, s * 1.2655, 0.692, z + dz);
+        P.add('turretDark', endSeam, s * 1.2655, 0.692 + k2bSeam, z + dz);     // (K2B: over the side seams it crosses)
       }
     }
   }
@@ -853,10 +860,10 @@ export function buildK2(P: Modern3BuilderPort,
   // outlined blow-off panels and one transverse equipment frame, not a bare
   // lozenge. Hairline physical bars preserve that hierarchy at every yaw.
   for (const x of [-0.98, 0.98]) P.add('turretDark', box(0.026, 0.018, 1.58), x, 0.745, -0.844);
-  for (const z of [-1.634, -0.054]) P.add('turretDark', box(1.96, 0.018, 0.026), 0, 0.745, z);
+  for (const z of [-1.634, -0.054]) P.add('turretDark', box(1.96, 0.018, 0.026), 0, 0.745 + k2bSeam, z);
   P.add('turretDark', box(0.026, 0.018, 1.50), 0, 0.747, -0.83);               // magazine divider
   for (const z of [-0.845, -0.355]) P.add('turretDetail', box(1.65, 0.020, 0.04), 0, 0.745, z);
-  for (const x of [-0.825, 0.825]) P.add('turretDetail', box(0.04, 0.020, 0.49), x, 0.745, -0.60);
+  for (const x of [-0.825, 0.825]) P.add('turretDetail', box(0.04, 0.020, 0.49), x, 0.745 + k2bSeam, -0.60);
   P.addEquipment('turret', box(0.32, 0.07, 0.10), 0.08, 0.70, -0.60, 0, 0.10, 0);       // low transverse control/weapon receiver
   P.add('turretDark', box(0.24, 0.040, 0.012), 0.08, 0.705, -0.546, 0, 0.10, 0);
   P.add('turretDetail', box(0.24, 0.025, 0.07), commanderX, 0.745, commanderZ, 0, 0, 0.25); // commander-hatch handle
@@ -870,7 +877,7 @@ export function buildK2(P: Modern3BuilderPort,
   for (const x of [-0.530, 0.530]) {
     P.add('turret', box(0.632, 0.018, 1.115), x, 0.713, -0.8825);
     for (const dx of [-0.306, 0.306]) P.add('turretDark', box(0.020, 0.010, 1.075), x + dx, 0.727, -0.8825);
-    for (const dz of [-0.5375, 0.5375]) P.add('turretDark', box(0.612, 0.010, 0.020), x, 0.727, -0.8825 + dz);
+    for (const dz of [-0.5375, 0.5375]) P.add('turretDark', box(0.612, 0.010, 0.020), x, 0.727 + k2bSeam, -0.8825 + dz);
     for (const [dx, dz, yaw] of [[-0.18, -0.30, -0.18], [0.17, 0.22, 0.16]]) {
       P.add('turretDetail', box(0.095, 0.018, 0.030), x + dx, 0.738, -0.8825 + dz, 0, yaw, 0); // unequal lid latches
     }
@@ -979,7 +986,7 @@ export function buildK2(P: Modern3BuilderPort,
       const topSpoke = new THREE.PlaneGeometry(0.62, 0.025);
       topSpoke.rotateX(-Math.PI / 2);
       topSpoke.rotateY(a);
-      P.add('turretDark', topSpoke, -1.098, 0.738, -2.218);
+      P.add('turretDark', topSpoke, -1.098, 0.738 + (a > 0 ? 2 : 1) * k2bSeam, -2.218); // (K2B: over the straps' 0.738 tops, apart)
     }
     P.add('turret', box(1.90, 0.04, 0.24), 0, 0.620, -2.05);                  // low armored core roof, clear of the stand-off cage
   };
@@ -1053,7 +1060,7 @@ export function buildK2(P: Modern3BuilderPort,
         const cornerRail = new THREE.PlaneGeometry(0.44, 0.030);
         cornerRail.rotateY(Math.PI);
         cornerRail.rotateZ(s * a);
-        P.add('turretDetail', cornerRail, x, 0.41, z - 0.004);
+        P.add('turretDetail', cornerRail, x, 0.41, z - 0.004 - (a > 0 ? k2bSeam : 0));
       }
       const reelOuter = s < 0 ? 0.130 : 0.066;
       const reelInner = s < 0 ? 0.090 : 0.044;
@@ -1095,7 +1102,8 @@ export function buildK2(P: Modern3BuilderPort,
     for (const s of [-1, 1]) P.add('turretDark', box(0.52, 0.035, 0.045), s * 1.03, 0.41, -2.61, 0, 0, -s * 0.55); // canted corner brace
     for (const s of [-1, 1]) {
       const rackX = s > 0 ? 1.43 : 1.54;                                      // right rack stays inside the short cheek module
-      const rackLen = s > 0 ? 0.50 : 0.88; const rackZ = s > 0 ? -1.70 : -1.90;
+      // (K2B, r269s3: the left rails run 3 mm past their end posts, whose faces they shared)
+      const rackLen = s > 0 ? 0.50 : 0.88 + (addOnFront ? 0.006 : 0); const rackZ = s > 0 ? -1.70 : -1.90;
       for (const y of [0.20, 0.54]) P.add('turretDetail', box(0.045, 0.045, rackLen), s * rackX, y, rackZ);
       for (const z of (s > 0 ? [-1.48, -1.70, -1.92] : [-1.48, -1.76, -2.04, -2.32])) P.add('turretDetail', box(0.04, 0.34, 0.04), s * rackX, 0.37, z);
       stowage(P, 'turretCloth', rng, [[s * (rackX - 0.09), 0.35, -1.92, 0.10, 0.15, 0.38]]);

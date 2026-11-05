@@ -56,8 +56,10 @@ const K2B_SKIRT = Object.freeze({
   /** Hem: level. r269s2 (Opus critic): 11.5 cm lower than round 1's 0.565, over the road wheels' top third (wheels r
    *  0.3225 on 0.35 axles; research/k2b photos 2, 9, 13); the rubber fringe below it. */
   hemY: 0.45, fringeY: 0.395, fringeIn: 1.842, fringeOut: 1.858,
-  /** The tail: from the plate's tail start the hem rises 0.74 per metre to the rear plate line (z -3.74, hem 1.27). */
-  tailZ: -2.62, tailRise: 0.74, rearZ: -3.74,
+  /** The tail: from the plate's tail start the hem rises 0.74 per metre to the rear plate line (hem 1.27). The run ends
+   *  just short of the stern's rear plate (z -3.74) and its parts' end faces are staggered (the course 3 mm short, the
+   *  rail 5, the armour groups and the stern closure 6), so no two end faces share a plane (r269s3). */
+  tailZ: -2.62, tailRise: 0.74, rearZ: -3.734, railRearZ: -3.735,
   /** The tail group's inner face stays on the plate's line, outside the belt's lane (the strict clip run); behind the
    *  belt's reach (it rounds the sprocket by z -3.49) a closure block joins it to the stern's side (x 1.66). */
   closeZ: -3.53, closeIn: 1.655,
@@ -74,7 +76,7 @@ const K2B_SKIRT = Object.freeze({
   /** The end bolts' inset from a group's front joint (past its wide bevel) and its rear joint (past the narrow one). */
   frontInset: 0.075, rearInset: 0.04,
   /** The upper course's joints (front to rear), split at the top line's break. */
-  course: Object.freeze([2.975, TOP_BREAK_Z, 0.72, -0.40, -1.52, -2.64, -3.74]),
+  course: Object.freeze([2.975, TOP_BREAK_Z, 0.72, -0.40, -1.52, -2.64, -3.737]),
   /** Lifting eyes on the groups' top caps (z). */
   eyes: Object.freeze([1.55, 0.53, -0.99, -2.32]),
 });
@@ -217,7 +219,7 @@ function armourGroup(P: K2BPort, side: number, front: number, rear: number, bow:
       seamLine(P, side, S.lowerOut, lo + 0.01, hi - 0.01, z, z);
     } else {
       if (S.rowY - lo > 0.06) seamLine(P, side, S.lowerOut, lo + 0.01, S.rowY - 0.004, z, z);
-      seamLine(P, side, S.upperOut, Math.max(S.rowY, lo) + 0.012, hi - 0.01, z, z);
+      seamLine(P, side, S.upperOut, Math.max(S.rowY, lo) + 0.018, hi - 0.01, z, z);   // over the shadow band
     }
   }
   const rows = (z: number): [number, number, number][] => [        // [y, the up quadrant's y, the down quadrant's y]
@@ -225,6 +227,14 @@ function armourGroup(P: K2BPort, side: number, front: number, rear: number, bow:
     [S.rowY, S.rowY + S.cluster, S.rowY - S.cluster],
     [groupTop(z), NaN, groupTop(z) - S.edgeInset],
   ];
+  // a bolt is skipped where one already stands within a head's width (the tail's and the bow chin's short faces), so no
+  // two heads share their face plane
+  const placed: [number, number][] = [];
+  const bolt = (y: number, z: number): void => {
+    if (!onFace(y, z) || placed.some(([py, pz]) => Math.hypot(py - y, pz - z) < 2 * S.boltR + 0.005)) return;
+    placed.push([y, z]);
+    sideBolt(P, side, faceAt(y), y, z);
+  };
   const nodes: [number, number, number][] = [                       // [z, the rear quadrant's z, the front quadrant's z]
     [rear, NaN, rear + S.rearInset],
     ...columns.map((z): [number, number, number] => [z, z - S.cluster, z + S.cluster]),
@@ -233,7 +243,7 @@ function armourGroup(P: K2BPort, side: number, front: number, rear: number, bow:
     for (const bz of [zr, zf]) {
       if (Number.isNaN(bz)) continue;
       for (const [, yu, yd] of rows(bz)) {
-        for (const by of [yu, yd]) if (!Number.isNaN(by) && onFace(by, bz)) sideBolt(P, side, faceAt(by), by, bz);
+        for (const by of [yu, yd]) if (!Number.isNaN(by)) bolt(by, bz);
       }
     }
   }
@@ -241,8 +251,7 @@ function armourGroup(P: K2BPort, side: number, front: number, rear: number, bow:
   for (const [, yu, yd] of rows(front)) {
     for (const by of [yu, yd]) {
       if (Number.isNaN(by)) continue;
-      const bz = frontAtY(by) - S.frontInset;
-      if (onFace(by, bz)) sideBolt(P, side, faceAt(by), by, bz);
+      bolt(by, frontAtY(by) - S.frontInset);
     }
   }
 }
@@ -289,7 +298,7 @@ export function addK2BSkirtRun(P: K2BPort): void {
         (y0 + y1) / 2 + S.railH / 2 - 0.004, (z0 + z1) / 2, Math.atan2(y1 - y0, z0 - z1), 0, 0);
     };
     rail(S.rakeZ + 0.005, TOP_BREAK_Z);                                        // 5 mm into the corner box's back
-    rail(TOP_BREAK_Z, S.rearZ);
+    rail(TOP_BREAK_Z, S.railRearZ);
     // lifting eyes on the groups' top caps, their rings turned to the side
     for (const z of S.eyes) KIT.liftEye(P, 'hullDetail', side * 1.855, groupTop(z) - 0.005 + S.capH + 0.015, z, Math.PI / 2);
     // the rubber hem: level under the groups from the bow module's chin, then up the tail to the plate's end
@@ -297,7 +306,8 @@ export function addK2BSkirtRun(P: K2BPort): void {
     const levelFront = bowFrontZ(S.hemY) - 0.03;
     P.add('hullRubber', KIT.box(fw, fh, levelFront - S.tailZ), fx, S.fringeY + fh / 2, (levelFront + S.tailZ) / 2);
     const tailEnd = -3.30, tailLen = Math.hypot(S.tailZ - tailEnd, skirtHem(tailEnd) - S.hemY);
-    P.add('hullRubber', KIT.box(fw, fh, tailLen), fx, (S.hemY + skirtHem(tailEnd)) / 2 + 0.005 - fh / 2,
+    // (0.5 mm inside the level run's faces, which it overlaps at the tail's start: r269s3)
+    P.add('hullRubber', KIT.box(fw - 0.001, fh, tailLen), fx, (S.hemY + skirtHem(tailEnd)) / 2 + 0.005 - fh / 2,
       (S.tailZ + tailEnd) / 2, Math.atan(S.tailRise), 0, 0);
   }
 }
@@ -315,23 +325,29 @@ export function addK2BFuelCans(P: K2BPort): void {
   const { box, cylY } = KIT;
   const C = K2B_CANS, paint = 'turretFittingPaint';
   const footTop = C.roofY - 0.005 + C.footH, trayTop = footTop - 0.005 + C.trayH;
-  // two transverse feet bolted to the core roof (5 mm into it), the floor tray on them
+  // two transverse feet bolted to the core roof (5 mm into it), the floor tray on them; the rear foot stands 5 mm inside
+  // the roof's rear face (r269s3: their faces shared that plane)
+  const footZ = C.halfD - 0.005;
   for (const sz of [-1, 1]) {
-    P.add(paint, box(2 * C.halfW + 0.03, C.footH, 0.04), C.x, C.roofY - 0.005 + C.footH / 2, C.z + sz * C.halfD);
-    for (const sx of [-1, 1]) P.add('turretDark', cylY(0.012, 0.012, 0.012, 6), C.x + sx * (C.halfW - 0.05), footTop + 0.004, C.z + sz * C.halfD);
+    P.add(paint, box(2 * C.halfW + 0.03, C.footH, 0.04), C.x, C.roofY - 0.005 + C.footH / 2, C.z + sz * footZ);
+    for (const sx of [-1, 1]) P.add('turretDark', cylY(0.012, 0.012, 0.012, 6), C.x + sx * (C.halfW - 0.05), footTop + 0.004, C.z + sz * footZ);
   }
-  P.add(paint, box(2 * C.halfW - 0.02, C.trayH, 2 * C.halfD + 0.03), C.x, trayTop - C.trayH / 2, C.z);
-  // corner posts up from the feet, joined fore-aft at mid-height and at the top
+  P.add(paint, box(2 * C.halfW - 0.02, C.trayH, 2 * C.halfD + 0.036), C.x, trayTop - C.trayH / 2, C.z); // 3 mm past the feet
+  // corner posts up from the feet, joined fore-aft at mid-height and at the top (the top bars 3 mm proud of the posts all
+  // round, the posts ending inside them: r269s3, they shared faces)
+  const postTop = C.topY - 0.006;
   for (const sx of [-1, 1]) {
     const x = C.x + sx * C.halfW;
-    for (const sz of [-1, 1]) P.add(paint, box(0.028, C.topY - footTop + 0.005, 0.028), x, (footTop - 0.005 + C.topY) / 2, C.z + sz * C.halfD);
-    P.add(paint, box(0.028, 0.028, 2 * C.halfD + 0.028), x, C.topY - 0.014, C.z);
+    for (const sz of [-1, 1]) P.add(paint, box(0.028, postTop - footTop + 0.005, 0.028), x, (footTop - 0.005 + postTop) / 2, C.z + sz * C.halfD);
+    P.add(paint, box(0.034, 0.028, 2 * C.halfD + 0.034), x, C.topY - 0.014, C.z);
     P.add(paint, box(0.026, 0.024, 2 * C.halfD), x, 0.92, C.z);
   }
   // the cans, upright on the tray (3 mm into it), stamped faces fore and aft, spouts outboard
   const full = P.q !== false;
   for (const s of [-1, 1]) {
     const can = jerrycanParts(1, [-1, 1], full);
+    // each face's second stamped rib 0.5 mm proud of the first, so the X's crossing is not one shared plane (r269s3)
+    if (can.stamps.length === 4) { can.stamps[1].translate(-0.0005, 0, 0); can.stamps[3].translate(0.0005, 0, 0); }
     const parts = [can.body, ...can.stamps, can.spine, ...can.grips];
     for (const part of parts) {
       part.userData.designFamily = 'cot-field-jerry-can-v3';
@@ -344,7 +360,7 @@ export function addK2BFuelCans(P: K2BPort): void {
   // the latch bar across the handles between the frame's top bars
   const strapY = trayTop + 0.30, runZ = 0.0935 + 0.003, runW = 2 * (C.canDx + 0.1795);
   for (const sz of [-1, 1]) P.add('turretDark', box(runW, 0.035, 0.006), C.x, strapY, C.z + sz * runZ);
-  for (const sx of [-1, 1]) P.add('turretDark', box(0.006, 0.035, 2 * runZ), C.x + sx * (runW / 2 - 0.003), strapY, C.z);
+  for (const sx of [-1, 1]) P.add('turretDark', box(0.006, 0.031, 2 * runZ), C.x + sx * (runW / 2 - 0.003), strapY, C.z);
   P.add(paint, box(0.05, 0.045, 0.012), C.x, strapY, C.z + runZ + 0.006);
   P.add(paint, box(2 * C.halfW, 0.024, 0.04), C.x, C.topY - 0.017, C.z);
 }
