@@ -214,14 +214,15 @@ export function* buildM113HullSteps(P: TankBuilderPort, mark: M113HullMark,
   };
   // the M113A2's armoured fuel tanks, low either side of the ramp from the hull's foot, their tops falling to the rear,
   // a filler cap on each and a tail light low in each rear face (Commons photo 07 of the M163's rear, scaled on the 1.86 m
-  // roof: 0.45 to 1.03 m, the ramp's edge to the hull's side; 0.36 m deep): lower and shorter than the AS4's pair
+  // roof: 0.45 to 1.03 m at the plate, the rear face 0.39 m tall, the ramp's edge to the hull's side; 0.43 m deep, the
+  // 17 in the A2's tanks add to its length in TM 9-2350-277): lower and shorter than the AS4's pair
   const addA2FuelTanks = (): void => {
-    const z0 = D.sternZ, z1 = D.sternZ - 0.36, slope = Math.atan2(0.10, 0.36);
+    const z0 = D.sternZ, z1 = D.sternZ - 0.43, slope = Math.atan2(0.19, 0.43);
     for (const s of [-1, 1] as const) {
       const lo = s < 0 ? -1.31 : 0.86, hi = s < 0 ? -0.86 : 1.31, x = s * 1.085;
       P.addEquipment('hull', slab([lo, 0.45, z0], [hi, 0.45, z0], [hi, 0.45, z1], [lo, 0.45, z1],
-        [lo, 1.03, z0], [hi, 1.03, z0], [hi, 0.93, z1], [lo, 0.93, z1]));
-      P.add('hullDark', cylY(0.05, 0.05, 0.03, 10), x, 0.987, D.sternZ - 0.20, -slope, 0, 0);
+        [lo, 1.03, z0], [hi, 1.03, z0], [hi, 0.84, z1], [lo, 0.84, z1]));
+      P.add('hullDark', cylY(0.05, 0.05, 0.03, 10), x, 0.955, D.sternZ - 0.20, -slope, 0, 0);
       P.add('hullDark', box(0.18, 0.09, 0.012), x, 0.54, z1 - 0.004);
       P.add('hullGlass', box(0.12, 0.04, 0.012), x, 0.54, z1 - 0.010);
     }
