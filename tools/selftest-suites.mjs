@@ -1660,6 +1660,8 @@ export const SELFTEST_SUITES = Object.freeze({
     // 2026-11-02 audit F11: the engine's battle mode is one state with one transition function (next round, duplicate deaths
     // and presentations, facts before the graph, the lazy carry)
     'src/audio/battleMode.selftest.mjs',
+    // 2026-11-02 audit Q16 (round 2): sfx-smoke's synthetic deaths, read from the tool, revive first and are heard once a life
+    'src/audio/sfxSmokeDeaths.selftest.mjs',
     // 2026-11-02 audit F11: under the battle loader only its bed (the director's scene goes with the teardown's loops; the
     // battle's ambience intent is per battle)
     'src/audio/ambienceTeardown.selftest.mjs',
