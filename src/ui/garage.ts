@@ -5089,6 +5089,8 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
       vehicleLocked = ready;
       root.classList.toggle('vehicle-locked', vehicleLocked);
       closeEqPicker();
+      // (2026-11-02 audit 05-ui-2 #6, round 2) and the consumables picker: a choice in it would save over the held tank
+      garageConsumables?.close({ restoreFocus: false });
     },
 
     isVehicleLocked() { return vehicleLocked; },
