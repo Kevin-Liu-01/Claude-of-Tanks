@@ -3114,9 +3114,10 @@ export function initHud(bus: EventBus): HudRuntime {
       const cooldown=Math.max(0,Math.ceil((state?.smokeReadyAt||0)-lastTimeS));
       // the roof gun by the sim's own switch law (sim/roofGunSwitch.ts, round 2 U9): the tile shows the switch (active,
       // aria-pressed); a red module silences a switched-on gun, so the tile strikes its icon and says so, and refuses only
-      // the switch on (the crew may still turn a red gun off)
+      // the switch on (the crew may still turn a red gun off). `active` keeps the head action==='roofGun': it is the
+      // interaction census's mark for these toggles (INTERACTION_EXEMPT in interactionRegistry.ts)
       const roofModule=player?.combat?.modules?.roofGun?.state, roof=action==='roofGun'?roofGunSwitch(state?.gunOn,roofModule):null;
-      const active=roof?roof!=='off':action==='lights'?(state?.lights===1 || (state?.lights!==0 && defaultLightsOn)):false;
+      const active=action==='roofGun'?roof!=='off':action==='lights'?(state?.lights===1 || (state?.lights!==0 && defaultLightsOn)):false;
       button.classList.toggle('active',active);
       if(action!=='smoke')setAttr(button,'aria-pressed',String(active));
       if(roof){button.classList.toggle('silenced',roof==='silenced');const tip=roof==='silenced'?silencedHelp:help;setData(button,'tip',tip);setAttr(button,'aria-label',tip);}
