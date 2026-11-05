@@ -6,7 +6,8 @@
 //
 // jobs.json: [{ "name": "before-desktop", "dist": "<built dist>", "device": "desktop" | "phone",
 //               "maps": ["verdant", ...], "garage": ["verdant_motor_pool", ...], "poses": ["battle", "horizon", "high"],
-//               "query": "fx=off" }]   (query: optional, appended to the boot URL — a diagnostic job's switches)
+//               "query": "fx=off", "tune": { "CLOUD_BSM_OFF": 1 } }]   (both optional, for a diagnostic job: query is
+//               appended to the boot URL; tune is set as window.__LIGHT_TUNE before boot, lightModelCore.ts lightTune)
 //
 // The harness is tools/ground-surface-shots.mjs's (item ground-269): one render-class ticket, the first unit staged while
 // it waits, checkpoint() between units; units run job by job, each on a fresh page, the whole unit (its staging too)
@@ -139,19 +140,20 @@ function pageBattlePose({ yaw }) {
   return { cam: D.camera.position.toArray(), dir: D.camera.getWorldDirection(new V()).toArray(), fov: D.camera.fov };
 }
 
-async function bootPage(browser, baseUrl, device, garageVariant = null, query = '') {
+async function bootPage(browser, baseUrl, device, garageVariant = null, query = '', tune = null) {
   const page = await browser.newPage();
   const errors = [];
   const d = DEVICES[device];
   await page.setViewport({ width: d.width, height: d.height, deviceScaleFactor: d.deviceScaleFactor, isMobile: d.isMobile, hasTouch: d.hasTouch });
-  await page.evaluateOnNewDocument((spec, preset, variant) => {
+  await page.evaluateOnNewDocument((spec, preset, variant, lightTune) => {
     try {
+      if (lightTune) globalThis.__LIGHT_TUNE = lightTune;
       localStorage.setItem(spec.storageKey, spec.playerSpecId);
       if (preset) localStorage.setItem('cot.gfxPreset', preset);
       localStorage.setItem('cot.battle.times.v2', JSON.stringify(['day']));
       if (variant) localStorage.setItem('cot.garage.variant', variant);
     } catch { /* the boot checks below fail loudly */ }
-  }, PINNED_SCENE, d.preset, garageVariant);
+  }, PINNED_SCENE, d.preset, garageVariant, tune);
   page.on('pageerror', (error) => errors.push(String(error?.message ?? error).slice(0, 300)));
   page.on('console', (message) => {
     const text = message.text();
@@ -256,7 +258,7 @@ async function main(argv) {
   const openUnit = async ({ job, unit }) => {
     browser ??= await launch();
     pagesSinceLaunch++;
-    entry = await bootPage(browser, servers.get(job.dist).url, job.device, unit.kind === 'garage' ? unit.id : null, job.query ?? '');
+    entry = await bootPage(browser, servers.get(job.dist).url, job.device, unit.kind === 'garage' ? unit.id : null, job.query ?? '', job.tune ?? null);
     await stageUnit(entry, unit);
   };
   const close = async () => {
