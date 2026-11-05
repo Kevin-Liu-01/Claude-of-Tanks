@@ -5,8 +5,11 @@
  * used to force `castShadow = true` back on every caster it had snapshotted; an articulated shadow batch switches its
  * source meshes off for its whole life and switched them back on in its dispose, whoever else held them off. A value
  * compare cannot tell the two apart (both write false). Here each owner holds the caster off by name; the caster is
- * off while any hold stands, and when the last hold goes the flag returns to its value from before the first hold, only
- * if it still holds the false the holds wrote (a write by anyone else in between stands).
+ * off while any hold stands, and when the last hold goes the flag returns to its value from before the first hold if it
+ * still reads false. That last check is by value: a write of true by anyone else in between stands, but a write of false
+ * by anyone else reads as the holds' own and is undone. So the rule: an owner that keeps a caster off for longer than one
+ * synchronous call takes a hold here (the warm and the articulated batch do); nobody else switches a held caster off.
+ * (Round 2 U30: this header said any write in between stood, which only a write of true does.)
  *
  * A synchronous toggle needs no hold: one that reads the flag when it starts and restores that value before the call
  * returns (the static cache's mutes, the near vehicle detail's cascade flips, each of shadowPrime's warm batches, which
