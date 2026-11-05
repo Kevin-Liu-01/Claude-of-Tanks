@@ -255,7 +255,7 @@
   "t90a_vladimir": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"7c8f0dd85a099f5d","gun":"1406cdf892729d9a"}},
   "t90am": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"d48e70b7784cf9fb","gun":"0532d00bb614b8a5"}},
   "t90m": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"571e331c3b247b05","gun":"c72b62c4c995fa4f"}},
-  "t90m_proryv": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"72f03837ce4f3aac","gun":"cda2e00bb8d86764"}},
+  "t90m_proryv": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"4a73fcefac0312fb","gun":"cda2e00bb8d86764"}},
   "t90ms_2011": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"ee38eaeec3f8c4b0","gun":"daedb9651ceca295"}},
   "t90ms_tagil": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"ff22e41666adab0c","gun":"a929a2e6b83e3d2b"}},
   "t90sm": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"5ea30ebda3b88cc5","gun":"1d86ebe34a53f2bb"}},

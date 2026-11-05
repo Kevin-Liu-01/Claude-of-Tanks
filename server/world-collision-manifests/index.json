@@ -215,8 +215,8 @@
       "concealers": 7034
     },
     "mars": {
-      "bytes": 971816,
-      "sha256": "0f29c5ceb69d2c5bd33e0c669af97540aafb90bdf47a5c294d6a13e41c51300e",
+      "bytes": 971804,
+      "sha256": "3ae44eb74f2d6748cc59656fa390c5533cf59e150be347be1fdd719b30f104b5",
       "obstacles": 963,
       "colliders": 973,
       "concealers": 0
@@ -449,8 +449,8 @@
         "concealers": 7102
       },
       "mars": {
-        "bytes": 1247986,
-        "sha256": "584904a6f6f75d651bd3c564de7a1591021843557ec898c3b3995ecf235f6488",
+        "bytes": 1247894,
+        "sha256": "b11cee9780755fd48eaf043819452f66640d3efa39d09582227d5b7330ded74d",
         "obstacles": 1083,
         "colliders": 1011,
         "concealers": 0

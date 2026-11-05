@@ -1,5 +1,5 @@
 {
- "generatedAt": "2026-11-04T13:58:04.656Z",
+ "generatedAt": "2026-11-05T05:34:02.441Z",
  "gate": "every component >= its registered floor (90 fleet / 92 exemplar / 99 historical preservation); min is the headline; preservation is not source fidelity",
  "passed": 44,
  "total": 154,
@@ -125,8 +125,8 @@
    "gatePassed": false,
    "components": {
     "hullCurves": 0,
-    "stations": 88.3,
-    "turretCurves": 5.6,
+    "stations": 89.3,
+    "turretCurves": 6.1,
     "wholeCurves": 0,
     "dims": 97.7,
     "floaters": 100
@@ -796,6 +796,22 @@
    "comparisonPurpose": "source-fidelity"
   },
   {
+   "id": "m2a2_bradley",
+   "geoMin": 34.1,
+   "requiredMinimum": 90,
+   "qualityBar": "fleet",
+   "gatePassed": false,
+   "components": {
+    "hullCurves": 45.3,
+    "stations": 49.1,
+    "turretCurves": 64.2,
+    "wholeCurves": 34.1,
+    "dims": 44.9,
+    "floaters": 100
+   },
+   "comparisonPurpose": "source-fidelity"
+  },
+  {
    "id": "t80u_kursk",
    "geoMin": 35.4,
    "requiredMinimum": 90,
@@ -973,22 +989,6 @@
     "floaters": 100
    },
    "repinError": "photo supplement changed; fresh review required"
-  },
-  {
-   "id": "m2a2_bradley",
-   "geoMin": 34.1,
-   "requiredMinimum": 90,
-   "qualityBar": "fleet",
-   "gatePassed": false,
-   "components": {
-    "hullCurves": 45.3,
-    "stations": 49.1,
-    "turretCurves": 64.2,
-    "wholeCurves": 34.1,
-    "dims": 44.9,
-    "floaters": 100
-   },
-   "comparisonPurpose": "source-fidelity"
   },
   {
    "id": "m1a1ha",
@@ -2028,6 +2028,19 @@
    "comparisonPurpose": "source-fidelity"
   },
   {
+   "id": "cv90_mk4",
+   "geoMin": 93.9,
+   "requiredMinimum": 92,
+   "qualityBar": "exemplar",
+   "gatePassed": true,
+   "components": {
+    "wholeCurves": 93.9,
+    "dims": 98.8,
+    "floaters": 100
+   },
+   "comparisonPurpose": "source-fidelity"
+  },
+  {
    "id": "t14_armata",
    "geoMin": 94.2,
    "requiredMinimum": 92,
@@ -2133,19 +2146,6 @@
    "comparisonPurpose": "source-fidelity"
   },
   {
-   "id": "cv90_mk4",
-   "geoMin": 94.7,
-   "requiredMinimum": 92,
-   "qualityBar": "exemplar",
-   "gatePassed": true,
-   "components": {
-    "wholeCurves": 94.7,
-    "dims": 98.8,
-    "floaters": 100
-   },
-   "comparisonPurpose": "source-fidelity"
-  },
-  {
    "id": "merkava4b",
    "geoMin": 94.8,
    "requiredMinimum": 92,
@@ -2185,20 +2185,20 @@
    "comparisonPurpose": "source-fidelity"
   },
   {
-   "id": "namer_ifv",
-   "geoMin": 95.3,
+   "id": "cv90105_tml",
+   "geoMin": 95.2,
    "requiredMinimum": 92,
    "qualityBar": "exemplar",
    "gatePassed": true,
    "components": {
-    "wholeCurves": 95.3,
-    "dims": 100,
+    "wholeCurves": 95.2,
+    "dims": 97.6,
     "floaters": 100
    },
    "comparisonPurpose": "source-fidelity"
   },
   {
-   "id": "cv90105_tml",
+   "id": "namer_ifv",
    "geoMin": 95.3,
    "requiredMinimum": 92,
    "qualityBar": "exemplar",
