@@ -931,7 +931,10 @@ export const LORRAIN_STYLE: ArchitectureStyle = Object.freeze<ArchitectureStyle>
   surfaces: {
     roof: { kind: 'canal', tint: [0.6, 0.38, 0.28] },
     stone: { kind: 'limestone', tint: [0.8, 0.69, 0.5] },
-    sourced: { plaster: true, wood: true },
+    // (buildings-270, the sourced-plaster class: under the photo set none of the map's render tones showed) the walls the
+    // procedural limeRender canvas, the primary family's tone measured on it against the reference photos (the crépi's grey-beige: the map's tone, #ccba98 against #c9b48a)
+    sourced: { plaster: false, wood: true },
+    render: { kind: 'limeRender', seed: 0x3e55 },
     tones: {
       // the crépi: ochre (the map's own tone wins), a rose-beige and a grey lime
       plaster2: (_h, s, l) => [0.06, Math.min(1, s * 0.9 + 0.08), Math.min(1, l * 1.08 + 0.06)],

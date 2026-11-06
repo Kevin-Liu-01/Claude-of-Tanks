@@ -30,6 +30,9 @@ export interface FacadeContext {
   groundCraft?: boolean;
   /** (round 10) the map's kit gated back to the craft's older layers (maps/regional/index.ts KIT_LEGACY_MAPS) */
   legacy?: boolean;
+  /** (buildings-270) how dirty the place's walls weather (its row's surface.grime; 1 the craft's own): the foot's grime,
+   *  the eaves' rain shadow and the runs off the sills */
+  grime?: number;
 }
 let facadeContext: FacadeContext | null = null;
 
@@ -38,6 +41,11 @@ export function withFacade<T>(context: FacadeContext | null, build: () => T): T 
   const prior = facadeContext;
   facadeContext = context;
   try { return build(); } finally { facadeContext = prior; }
+}
+
+/** The place's grime (FacadeContext.grime), 1 outside a kit build. */
+export function facadeGrime(): number {
+  return facadeContext?.grime ?? 1;
 }
 
 /** The craft's switch: on in the game; the receipts turn it off to hold a desktop build to the kits' own (facade.selftest). */
@@ -389,9 +397,11 @@ export function sillStreaks(sink: PartSink, bucket: RegionalBucket, face: Face, 
     if (len < 0.3) continue;
     // (wave 116: readable at 30 m — a hand wide under the sill's end, a third darker, washing out down the wall)
     const half = 0.06 + k * 0.04, top = y - 0.1, bottom = top - len;
+    // (buildings-270) as dark as the place's walls weather (its row's grime; 1: a third darker under the sill)
+    const dark = Math.min(0.6, 0.36 * facadeGrime());
     const at = (p: Vec3) => {
       const t = Math.min(1, Math.max(0, (top - p[1]) / len));
-      return 0.64 + 0.36 * t;
+      return 1 - dark + dark * t;
     };
     sink.polygon(bucket, [facePoint(face, cu - half, bottom, 0.012), facePoint(face, cu + half, bottom, 0.012),
       facePoint(face, cu + half * 0.6, top, 0.012), facePoint(face, cu - half * 0.6, top, 0.012)], { ...DECOR, fine: 'near', shadeAt: at });

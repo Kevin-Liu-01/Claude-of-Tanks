@@ -1043,7 +1043,11 @@ export const HESSIAN_STYLE: ArchitectureStyle = Object.freeze<ArchitectureStyle>
     // surround that read as toy blocks against plain render") the Buntsandstein a third less saturated, at the same
     // light: the weathered red-brown of an old church's dressings, not a fresh-cut red
     stone: { kind: 'sandstone', tint: [0.52, 0.39, 0.34] },
-    sourced: { plaster: true, wood: true },
+    // (buildings-270, the sourced-plaster class: under the photo set none of the map's render tones showed) the walls the
+    // procedural limewash canvas, the primary family's tone measured on it against the reference photos (the white lime infill, #e1e0dd against #eeede6)
+    sourced: { plaster: false, wood: true },
+    render: { kind: 'limewash', seed: 0x3e51 },
+    tones: { plaster: (_h, s, l) => [0.11, Math.min(1, s * 0.15 + 0.05), Math.min(1, l * 0.55 + 0.6)] },
   },
   builders: HESSIAN_BUILDERS,
   // the churchyard on the church's freest side but its front, walled in stone, its graves in place of the yards' beds

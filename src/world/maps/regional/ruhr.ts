@@ -465,7 +465,10 @@ export const RUHR_STYLE: ArchitectureStyle = Object.freeze<ArchitectureStyle>({
   surfaces: {
     roof: { kind: 'slate', tint: [0.25, 0.26, 0.28] },
     stone: { kind: 'brick', tint: [0.50, 0.26, 0.20] },
-    sourced: { plaster: true, wood: true },
+    // (buildings-270, the sourced-plaster class: under the photo set none of the map's render tones showed) the walls the
+    // procedural limeRender canvas, the primary family's tone measured on it against the reference photos (the sooty render: the map's tone, #877e75)
+    sourced: { plaster: false, wood: true },
+    render: { kind: 'limeRender', seed: 0x3e56 },
     tones: { plaster2: (_h, s, l) => [0.11, Math.min(1, s * 0.6 + 0.2), Math.min(1, l * 1.1 + 0.08)] },
   },
   builders: RUHR_BUILDERS,

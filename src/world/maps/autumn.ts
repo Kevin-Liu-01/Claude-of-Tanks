@@ -455,7 +455,7 @@ export default {
         structure: 'commandtent', redoubt: true, outcrop: { count: 5, radius: 9 }, wreck: true, wreckOffsetZ: -16 },
     ],
     tones: {
-      plaster: (h: number, s: number, l: number) => [0.085, clamp01(s * 0.75 + 0.05), clamp01(l * 1.02 + 0.02)],
+      plaster: (h: number, s: number, l: number) => [0.11, clamp01(s * 0.4 + 0.3), clamp01(l + 0.24)], // the crépi's grey-beige on the kit's lime render (buildings-270)
       roof: (h: number, s: number, l: number) => [0.045, clamp01(s * 0.85), clamp01(l * 0.92)], // weathered red-brown tile
       stone: (h: number, s: number, l: number) => [0.09, clamp01(s * 0.6), clamp01(l * 0.98)],
       wood: (h: number, s: number, l: number) => [0.075, clamp01(s * 0.85), clamp01(l * 0.92)],
