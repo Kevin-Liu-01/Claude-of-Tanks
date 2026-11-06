@@ -254,7 +254,8 @@ export const SNAPSHOT_FLAGS = Object.freeze({
 } as const);
 /**
  * How long a round that left a viewer's view in flight stays named in its snapshots (wire 11, round 2 U31): ten snapshots
- * at 20 Hz, so a lost one does not lose the mark. Fixed, whatever becomes of the round, so the mark never tells its end.
+ * at 20 Hz, so a lost one does not lose the mark. Fixed, whatever becomes of the round, so the mark never tells its end;
+ * only a burst past MAX_SHELLS departures ends the oldest marks sooner (server/match/unseenShellMarks.ts, round 3 A13).
  */
 export const UNSEEN_SHELL_MARK_TICKS = TICK_HZ / 2;
 

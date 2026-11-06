@@ -318,7 +318,10 @@ export interface SnapshotFrame {
    * The rounds (ShellRow ids, ascending) this viewer was shown that left its view still in flight (wire 11, round 2 U31):
    * the authority hides a round with its shooter, so a round absent from `shells` is either ended or unseen, and only the
    * authority can tell which. Each is named for UNSEEN_SHELL_MARK_TICKS after it left, whatever happens to it then (its
-   * end stays the authority's), so a lost snapshot does not lose the mark. Absent: none.
+   * end stays the authority's), so a lost snapshot does not lose the mark; at most MAX_SHELLS are named, and a burst of
+   * departures past that ends the oldest marks sooner (round 3 A13). Absent: none. Read-only: on the authority the list
+   * is server/match/unseenShellMarks.ts's, never written once a frame holds it, and frames with the same names share it
+   * (round 4 E11: a frame kept as a delta baseline keeps its own names).
    */
   unseenShells?: number[];
   viewer: ViewerState | null;

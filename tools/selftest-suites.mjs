@@ -1893,7 +1893,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'server/match/inputBuffer.selftest.mjs',
     'server/match/seatToken.selftest.mjs',
     'server/match/matchActor.selftest.mjs',
-    'server/match/unseenShellMarks.selftest.mjs', // 2026-11-02 audit A13 (round 3): a viewer's unseen rounds stay within the wire's 256, ascending, every departure named in its frame, one array reused
+    'server/match/unseenShellMarks.selftest.mjs', // 2026-11-02 audit A13 (round 3): a viewer's unseen rounds stay within the wire's 256, ascending, every departure named in its frame; F4/E11 (round 4): no storage made again per frame (new-space bytes under --expose-gc), a kept frame keeps its own names
     'server/match/skipStarvation.selftest.mjs', // 2026-11-02 audit S1: a viewer withheld snapshots past the starvation limit is closed; a transient skip is not
     'server/match/forcedKeyframes.selftest.mjs', // 243 security: forced keyframes from a bucket of 8, refilling at 2/s
     'server/match/interestTiers.selftest.mjs',
