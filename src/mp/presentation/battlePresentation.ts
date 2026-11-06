@@ -1146,10 +1146,13 @@ export function createBattlePresentation({
 
   function applyFrame(frame: MatchFrame): void {
     if (disposed) return;
-    // a battle restart first: this frame's list and log, and its events after it, are the restarted battle's
+    // a battle restart first: this frame's list and log, and its events after it, are the restarted battle's. The count is
+    // taken before the bus hears it (review r2): the bus does not catch a listener's throw, and a throw that left this
+    // frame restarted the battle again on the next one, so the world, the effects and every listener reset twice
     const restarts = frame.battleRestarts ?? 0;
-    if (presentedBattleRestarts !== null && restarts !== presentedBattleRestarts) resetSettledWorld(restarts);
+    const restarted = presentedBattleRestarts !== null && restarts !== presentedBattleRestarts;
     presentedBattleRestarts = restarts;
+    if (restarted) resetSettledWorld(restarts);
     lastFrameAtMs = clock();
     if (mounted) recordKillcamStep(frame.renderTimeMs);
     snapshotPhase = frame.meta.phase;

@@ -21,6 +21,8 @@
 //      and dead in game.rosterTanks, the own prediction collided with their old wrecks, battle:ended's roster reported
 //      them dead, and the crew, whose network side counts read that roster (main.ts getTeamRoster), called "last enemy"
 //      at the restart with five enemies alive and hidden (restartLives had re-armed the call). It fails on 20a8d0d793.
+//   1 (review r2): the killcam's restart listener is called from the frame pump, and a replay release that throws in
+//      cancel() (rethrown by design, round 3 A9) left it, dropping the frame; now it is reported and the chase still ends.
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { stripTypeScriptTypes } from 'node:module';
@@ -55,7 +57,7 @@ const wrong = [];
 
 // ---- 1. the killcam: the dead seat's chase ends at the restart; an observer's camera stays
 {
-  const run = (observer) => {
+  const run = (observer, releaseFails = false) => {
     const me = { id: 'me', isPlayer: true, team: 'player', state: {}, visual: {}, combat: { destroyed: false } };
     const ally = { id: 'ally', team: 'player', state: {}, visual: {}, combat: { destroyed: false } };
     const game = { phase: 'battle', result: null, ruleset: { respawnS: null }, preBattleS: 0, tanks: [me, ally], tankById: new Map([['me', me], ['ally', ally]]) };
@@ -73,10 +75,16 @@ const wrong = [];
       me.combat.destroyed = true;
       assert.equal(killcam.spectate.maybeStart(), true, 'setup: a dead seat chases its ally');
     }
+    // (review r2) a replay whose release throws: cancel() rethrows its first error after every step ran (round 3 A9)
+    if (releaseFails) killcam.cancel = () => { throw new Error('a replay release failed'); };
     // the restart: every hull at its spawn again; the presentation tells the bus
     me.combat.destroyed = false;
-    bus.emit('battle:restarted', RESTART);
-    const after = { active: killcam.spectate.active, target: killcam.spectate.targetId, ends };
+    const reported = [];
+    const consoleError = console.error;
+    console.error = (...args) => { reported.push(args.map(String).join(' ')); };
+    let thrown = null;
+    try { bus.emit('battle:restarted', RESTART); } catch (error) { thrown = error; } finally { console.error = consoleError; }
+    const after = { active: killcam.spectate.active, target: killcam.spectate.targetId, ends, thrown, reported };
     killcam.spectate.stop();
     return after;
   };
@@ -85,6 +93,11 @@ const wrong = [];
   if (seat.ends !== 1) wrong.push(`killcam: the HUD was told the chase ended ${seat.ends} times (once, as at the own revive)`);
   const observer = run(true);
   if (!observer.active) wrong.push('killcam: the restart took an observer seat\'s camera (its chase is its view)');
+  // (review r2) the restart is told from the frame pump: a replay release that throws stays inside the listener
+  const failing = run(false, true);
+  if (failing.thrown) wrong.push(`killcam: a replay release that threw at the restart left the listener (${failing.thrown.message}), so the frame pump dropped the frame`);
+  if (failing.active || failing.ends !== 1) wrong.push(`killcam: after a failed replay release the chase did not end (active ${failing.active}, ${failing.ends} ends)`);
+  if (!failing.reported.some((line) => line.includes('a replay release failed'))) wrong.push('killcam: the failed replay release at the restart was not reported');
 }
 
 // ---- 2. the audio engine: a hidden hull's next death is heard; the old life's alarm and wrecks go

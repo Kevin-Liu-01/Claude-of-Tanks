@@ -1866,9 +1866,17 @@ export function createKillCam(deps: KillcamDeps) {
       // 'ui:battleStart'), so no end replay shows a shell of a battle no longer played. An observer seat's chase is its
       // camera (activation's startObserver) and stays. Before, a seat dead at the restart kept chasing an ally while its
       // own hull sat alive at its spawn, until the battle ended.
+      // (review r2) The listener contains its own failure: the restart is told from the frame pump (applyFrame), and
+      // cancel() rethrows the first release error of a replay after every step ran (round 3 A9). Rethrown here, it left
+      // the frame unapplied, its events dropped and the listeners after this one deaf to the restart. It is reported,
+      // and the chase still ends.
       bus.on('battle:restarted', () => {
         resetCaptureMemory();
-        api.cancel();
+        try {
+          api.cancel();
+        } catch (error) {
+          console.error('[killcam] releasing the replay at a battle restart threw; the restart goes on', error);
+        }
         if (!spectate.observing) spectate.stop(true);
       });
       // Pointer/touch controls in the HUD use the same controller as A/D and

@@ -21,6 +21,9 @@
 // Round 3 merge review r1: the restart is a battle start, so it takes the world as every battle start does
 // (world/battleWorldReset.ts resetWorldForBattle): the frame drives the falls and the crush sweeps run, then the world
 // stands (case 2 reads the order off the world's seams; case 4 declares nothing).
+// Round 3 merge review r2: the bus does not catch a listener's throw, and the count was taken after the bus heard the
+// restart, so a throw there restarted the battle again on the next frame:
+//   6. a listener throws once at the restart: the world resets and the bus hears it once over both frames.
 import assert from 'node:assert/strict';
 import { createRequire } from 'node:module';
 import * as THREE from 'three';
@@ -218,6 +221,26 @@ const frame = ({ restarts, destroyed = [], destruction = [], revision = destroye
   }
   five.presentation.dispose();
   fx.resetAll();
+}
+
+// ---- 6. a listener that throws at the restart (review r2): the bus does not catch it, so it leaves the frame; the next
+// frame of the restarted battle is not a second restart (the count is taken before the bus hears it)
+{
+  const six = await seat();
+  six.presentation.applyFrame(frame({ restarts: 0, destroyed: [0] }));
+  let throws = 1;
+  six.bus.on('battle:restarted', () => { if (throws-- > 0) throw new Error('a listener failed at the restart'); });
+  assert.throws(() => six.presentation.applyFrame(frame({ restarts: 1 })), /a listener failed at the restart/, 'setup: the throw leaves the frame');
+  six.presentation.applyFrame(frame({ restarts: 1, destroyed: [2] }));
+  const wrong = [];
+  if (six.resets() !== 1) wrong.push(`the world's destructibles reset ${six.resets()} times (once; the next frame restarted the battle again)`);
+  if (six.told() !== 1) wrong.push(`the bus heard the restart ${six.told()} times (once)`);
+  if (!six.field.obstacles[2].crushed || six.field.obstacles[0].crushed) wrong.push('the restarted battle\'s next frame did not lay its own list over the stood world');
+  if (wrong.length) {
+    console.error(`battleRestartReset: a listener's throw at the restart restarted the battle twice:\n  ${wrong.join('\n  ')}`);
+    assert.fail('a battle restart is told once, whatever a listener throws');
+  }
+  six.presentation.dispose();
 }
 
 console.log('battleRestartReset: a battle restart stands the old battle\'s fences and house again on this seat (the world\'s reset, the mirror\'s stages and ground, the effects\' stages on the bus), and the restarted battle lays and draws its own falls and collapse');
