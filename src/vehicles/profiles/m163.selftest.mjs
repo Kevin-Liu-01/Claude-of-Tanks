@@ -42,6 +42,7 @@ import { minimumMechanicalGunPitch } from '../../sim/gunPitchLimits.ts';
 import { GUN_ROTOR_KEY } from '../gunRotorSpin.ts';
 import { M741_COMMANDER_HATCH, M741_RING } from '../m741Datums.ts';
 import { m113Datums } from '../m113Datums.ts';
+import { shapeSurfaceSamples } from '../../../tools/crew-seat-fit.mjs';
 import { M163_BEACON, M163_GUN, M163_GUNNER, M163_MUZZLE_Z, M163_RADAR, M163_TRUNNION, M163_TURRET as T } from './m163Frame.ts';
 
 const DEG = Math.PI / 180;
@@ -384,7 +385,7 @@ for (const p of spec.armor.turretPlates) for (const v of p.verts) plates.expandB
 const inMount = (min, max) => [0, 1, 2].every((k) => min[k] >= plates.min.getComponent(k) - 0.15 && max[k] <= plates.max.getComponent(k) + 0.15);
 const boxOf = (record) => [record.min, record.max];
 const turretCrew = spec.armor.crew.filter((c) => c.turretLocal);
-const turretModules = spec.armor.modules.filter((m) => m.turretLocal && m.module !== 'feedSystem');
+const turretModules = spec.armor.modules.filter((m) => m.turretLocal && m.module !== 'feedSystem' && m.module !== 'optics');
 assert.deepEqual(turretCrew.map((c) => c.crew), ['gunner'], 'the gunner alone in the mount');
 assert.deepEqual(spec.armor.crew.filter((c) => !c.turretLocal).map((c) => c.crew).sort(), ['commander', 'driver', 'loader'],
   'the driver, the commander and the loader in the hull');
@@ -392,8 +393,15 @@ for (const record of turretModules) {
   const [min, max] = boxOf(record);
   assert.ok(min && max && inMount(min, max), `${record.module}: inside the mount (${min}..${max})`);
 }
-// the gunner rides in his open column (armor.openStations, the crew seats): his legs down through the ring to his
-// footrest, his eyes at the sight head, his helmet under the radar's case tops
+// the optics are the sight head's glass on its post over the column's front rim, above the mount's measured plates
+{
+  const V = M163_GUNNER.sight, optics = spec.armor.modules.find((m) => m.module === 'optics' && m.turretLocal);
+  const lo = [V.x - V.w / 2, V.y - V.h / 2, V.z - V.d / 2], hi = [V.x + V.w / 2, V.y + V.h / 2, V.z + V.d / 2];
+  assert.ok(optics && [0, 1, 2].every((k) => optics.min[k] >= lo[k] - 0.03 && optics.max[k] <= hi[k] + 0.03),
+    `optics: in the sight head (${optics?.min}..${optics?.max})`);
+}
+// the gunner rides in his open column (armor.openStations, the crew seats): on his seat, his head and shoulders over
+// its rim (07, 08), never down in the hull under the ring
 const [open] = spec.armor.openStations;
 assert.equal(open?.crew, 'gunner', 'the gunner\'s open column');
 for (const record of turretCrew) {
@@ -402,14 +410,21 @@ for (const record of turretCrew) {
   assert.ok(min[0] >= open.center[0] - reach && max[0] <= open.center[0] + reach && min[2] >= open.center[1] - reach
     && max[2] <= open.center[1] + reach && min[1] >= open.floorY - 0.01 && max[1] <= open.topY,
   `${record.crew}: in his open column (${min}..${max})`);
-  assert.ok(Math.abs(record.head[1] - M163_GUNNER.sight.y) <= 0.1, `${record.crew}: eyes at the sight head (head ${record.head})`);
-  assert.ok(max[1] < M163_RADAR.caseTopY, `${record.crew}: under the radar's case tops (${max[1]})`);
+  assert.ok(record.head[1] >= T.column.topY + 0.3, `${record.crew}: head and shoulders over the rim (head ${record.head})`);
+  const seat = M163_GUNNER.seat;
+  assert.ok(Math.abs(record.head[0] - seat.x) <= 0.1 && Math.abs(record.head[2] - seat.z) <= 0.2,
+    `${record.crew}: over his seat (head ${record.head})`);
 }
+// the crew's bodies (their seats' hit shapes; the station boxes are grown past them) keep out of every module, as the
+// placement places the modules (tools/crew-seat-fit.mjs, 266)
 const overlap = (a, b) => [0, 1, 2].every((k) => a[0][k] < b[1][k] - 0.02 && b[0][k] < a[1][k] - 0.02);
+const inBox = (p, box) => [0, 1, 2].every((k) => p[k] > box.min[k] + 0.02 && p[k] < box.max[k] - 0.02);
 for (const c of spec.armor.crew) for (const m of spec.armor.modules) {
   if (c.turretLocal !== m.turretLocal || ['trackL', 'trackR', 'turretRing', 'gun'].includes(m.module)) continue;
   if (c.crew === 'gunner' && m.module === 'optics') continue;
-  assert.ok(!overlap(boxOf(c), boxOf(m)), `${c.crew}: clear of the ${m.module} module`);
+  const boxes = m.parts?.length ? m.parts : [m];
+  assert.ok(c.shapes?.length && !c.shapes.some((shape) => shapeSurfaceSamples(shape).some((p) => boxes.some((box) => inBox(p, box)))),
+    `${c.crew}: clear of the ${m.module} module`);
 }
 const sameFrame = spec.armor.modules.filter((m) => !['trackL', 'trackR', 'turretRing'].includes(m.module));
 // (finalizeCombatAnatomy derives the feed inside the gun's own box from the internal layout)

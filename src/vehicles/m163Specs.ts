@@ -141,9 +141,9 @@ spec.armor.crew = [
   ...HULL_CREW,
   crewBox('gunner', [S.x - 0.22, T.deckY + 0.03, S.z - 0.22], [S.x + 0.22, 0.92, S.z + 0.26], true),
 ];
-// The gunner rides in his open column, his head and shoulders over its rim and his eyes at the sight head (07, 08): the
-// column's inside to well over his head is his station (tools/crew-seat-fit.mjs armor.openStations). The column is 0.49
-// m deep, so his legs reach down through the ring to a footrest 0.25 m under the race, not to the hull's floor.
+// The gunner rides on his seat in his open column, his head and shoulders over its rim (07, 08): the column's inside to
+// well over his head is his station (tools/crew-seat-fit.mjs armor.openStations), his boots just under the race through
+// the ring (the column is 0.49 m deep; seated so, his pelvis lands on the seat's 0.50 m), never the hull's floor.
 spec.armor.openStations = [{ crew: 'gunner', center: [C.x, C.z], radius: C.r - C.wall, floorY: -0.25, topY: C.topY + 0.9 }];
 // The M168 (the M61A1 on the M157 mount). The game cannot fire faster than its 0.05 s floor, so the cycle is the real
 // gun's 1,000 rounds a minute (its ground rate; the 3,000 of its air bursts is below the floor), and the gunner's
