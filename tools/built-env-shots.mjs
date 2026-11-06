@@ -32,7 +32,7 @@ import { launchGuardedBrowser, setBrowserGuardContext } from './browser-launch.m
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import puppeteer from 'puppeteer';
-import { freezePage, startViteChild, thawPage } from './capture-hold.mjs';
+import { startViteChild } from './capture-hold.mjs';
 import { createCaptureLock } from './capture-lock.mjs';
 import { isMainModule, mapProbeLaunchOptions, resolveGroundPose, sleep } from './map-probe-runtime.mjs';
 import { settleMapTextures } from './map-environment-acquisition.mjs';
@@ -410,7 +410,7 @@ async function main(argv) {
   for (const dist of new Set(options.jobs.map((job) => job.dist))) {
     servers.set(dist, await startViteChild({ root: options.root, mode: 'preview', outDir: dist, port: 5600 + ((process.pid + servers.size * 7) % 300) }));
   }
-  let browser = null, held = false, entry = null, session = null, pagesSinceLaunch = 0;
+  let browser = null, held = false, entry = null, pagesSinceLaunch = 0;
   const launch = () => launchGuardedBrowser(puppeteer, { ...mapProbeLaunchOptions({ width: 1920, height: 1080, protocolTimeout: 2700000 }), timeout: 180000 });
   const openPair = async ({ job, mapId }) => {
     browser ??= await launch();
@@ -432,8 +432,9 @@ async function main(argv) {
   let shot = 0, failed = 0;
   try {
     await lock.acquire(options.waitHours * 3600 * 1000, {
+      // (ab6: a page warmed and frozen while queued never settled its grass after the thaw — the hold's first pair timed
+      // out three runs running) no warm page: the first pair boots inside the hold
       lockClass: 'render', place: `${TOOL}-${path.basename(options.out)}`,
-      prepare: async () => { await openPair(pairs[0]); session = await freezePage(entry.page); },
     });
     held = true;
     for (let i = 0; i < pairs.length; i++) {
@@ -441,7 +442,7 @@ async function main(argv) {
       const started = Date.now();
       let outcome = 'failed';
       try {
-        if (session) { await thawPage(entry.page, session); session = null; } else if (!entry) await openPair(pairs[i]);
+        if (!entry) await openPair(pairs[i]);
         const shooting = (async () => {
           const live = await entry.page.evaluate(() => window.__DEBUG?.world?.mapId ?? null).catch(() => null);
           if (live !== mapId) await stageMap(entry, mapId);
@@ -471,8 +472,10 @@ async function main(argv) {
       if (!entry && pagesSinceLaunch >= 8 && browser) { await browser.close().catch(() => {}); browser = null; pagesSinceLaunch = 0; }
       if (i < pairs.length - 1) {
         const cp = await lock.checkpoint({ timeoutMs: options.waitHours * 3600 * 1000,
-          // (a page kept for the next map is frozen while others hold: it draws nothing in their holds)
-          beforeYield: async () => { if (entry) session = await freezePage(entry.page); held = false; }, afterResume: async () => { held = true; } });
+          // (a page kept for the next map is closed while others hold: it draws nothing in their holds, and a frozen page
+          // did not come back settled)
+          beforeYield: async () => { if (entry) { await entry.page.close().catch(() => {}); entry = null; } held = false; },
+          afterResume: async () => { held = true; } });
         if (cp.yielded) console.log(`[${label}] ${stamp()} yielded at the cap, held again after ${(cp.waitedMs / 60000).toFixed(1)} min at the back`);
       }
     }
