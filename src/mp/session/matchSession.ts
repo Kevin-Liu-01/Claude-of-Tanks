@@ -1291,9 +1291,10 @@ export class MatchSession {
       const fallback = migrationFallback({ latestFrame: retained.latestFrame, latestFrameAtMs: retained.latestFrameAtMs, nowMs: this.clock(), resumeTick: change.resumeTick, countdownMs: (this.p2pOptions?.countdownS ?? 5) * 1000,
         roomMatchStatus: roomMatch && roomMatch.id === round.matchStart.matchId ? roomMatch.status : null, kept });
       if (fallback.kind === 'decline') {
-        // A newer election (or the round's end) landed during the key awaits above: this boot is superseded, as in the
-        // host.start catch below (audit M2). Reporting a failure here cleared the newer migration's flag and host and
-        // told the room a capable seat is unable to host (integration review r1).
+        // Something that ends this boot landed during the key awaits above (bootSuperseded names which: the seat left
+        // the match, a newer election, the room's step-down or the finished match's release, or the match link closed):
+        // this boot is superseded, as in the host.start catch below (audit M2). Reporting a failure here cleared a newer
+        // migration's flag and host and told the room a capable seat is unable to host (integration review r1).
         const superseded = this.bootSuperseded(host, client, migrating, change.generation);
         if (superseded) {
           if (this.host === host) { this.host = null; this.moveRole(this.peerTransport ? 'peer' : 'none', 'boot superseded'); }
@@ -1333,8 +1334,10 @@ export class MatchSession {
     try {
       await host.start(config);
     } catch (error) {
-      // A newer election stopped this boot (the replaced path, audit M2 2026-11-02): its own migration runs on. Reporting
-      // a failure here cleared the newer migration's flag and told the room a capable seat is unable to host.
+      // The boot's host was taken from this seat while it started (the replaced path, audit M2 2026-11-02): a newer
+      // election, whose own migration runs on, or the room's step-down or the finished match's release (bootSuperseded
+      // names which). Reporting a failure here cleared a newer migration's flag and told the room a capable seat is
+      // unable to host.
       if (this.host !== host) {
         this.log('info', 'elected host boot superseded', { cause: this.bootSuperseded(host, client, migrating, change.generation), generation: change.generation, running: this.runningGeneration });
         return;

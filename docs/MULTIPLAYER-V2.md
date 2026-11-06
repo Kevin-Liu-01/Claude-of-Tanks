@@ -407,7 +407,7 @@ after the shooter looked is missed live and hit rewound.
 | Full entity row (keyframe, typical tank) | 43 B mean (wire 11); worst distinct gun channel + 3 ERA cassettes 52 B |
 | Typical moving delta row (pos rel, velocity, yaw, tilt rel, turret) | 16 B |
 | 28-entity keyframe incl. viewer section | 1458 B; delta snapshot 491 B; snapshot header 43 B |
-| Input frame (3 controls) | 57 B (1.7 KB/s at 30 frames/s, 3.4 KB/s at 60) |
+| Input frame (3 controls) | 60 B (1.8 KB/s at 30 frames/s, 3.6 KB/s at 60) |
 | Tick p95, 28 bots, dedicated shards, headless | winter 1.53 · mars 1.82 · alpine 3.99 · badlands 2.03 · delta 3.11 · steppe 2.79 · monsoon 2.68 ms |
 | Tick p95, 28 bots + 28 acknowledging viewers | 3.79 · 2.48 · 3.76 · 3.79 · 3.70 · 2.27 · 4.17 ms (budget 6) |
 | Egress per spectator viewer (all 28 rows, deltas) | 26–29 KB/s |
