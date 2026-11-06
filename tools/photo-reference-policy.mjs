@@ -37,6 +37,13 @@ const PHOTO_REFERENCE_PACKETS=Object.freeze({
   // and Project Loggim's TTD, each proved by its photographs and published dimensions with no 3D model to follow
   'docs/references/photos/olifant-centurions-20261102.json':Object.freeze(['semel','olifant_mk1','olifant_mk1a','olifant_mk1b']),
   'docs/references/photos/olifant-ttd-20261102.json':Object.freeze(['ttd']),
+  // 269 (Main 2026-11-02, the Australia line): the M113A1 FSV and MRV and the M113AS4 on the lane's M113 builder, the
+  // Leopard AS1 on the Danish welded 1A3, both Abrams on the fleet's M1A1 and SEPv3 study and the AS21 Redback, each proved
+  // by its photographs and published dimensions with no 3D model to follow
+  'docs/references/photos/aus-m113-20261102.json':Object.freeze(['m113a1_fsv','m113a1_mrv','m113as4']),
+  'docs/references/photos/aus-leopard-as1-20261102.json':Object.freeze(['leopard_as1']),
+  'docs/references/photos/aus-abrams-20261102.json':Object.freeze(['m1a1_aim_sa_aus','m1a2_sepv3_aus']),
+  'docs/references/photos/aus-redback-20261102.json':Object.freeze(['redback']),
 });
 export const PHOTO_REFERENCE_IDS=Object.freeze(Object.values(PHOTO_REFERENCE_PACKETS).flat());
 /** The packet holding an id's photographic target; null for an id with none. */

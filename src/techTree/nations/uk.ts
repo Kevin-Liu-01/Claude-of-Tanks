@@ -10,9 +10,9 @@ const node = (row: TreeNode): TreeNode => Object.freeze({
 
 export const UK_TREE: NationTree = Object.freeze({
   id: 'uk',
-  // release 262: the Australian Mk 5/1 is drawn with the Centurions it came from (269: the Olifant Mk 2 moved to the South
-  // Africa tree)
-  nations: Object.freeze(['UK', 'Australia']),
+  // release 262: the Australian Mk 5/1 and the South African Olifant Mk 2 were drawn with the Centurions they came from
+  // (269: the Olifant Mk 2 moved to the South Africa tree, the Mk 5/1 to the Australia tree)
+  nations: Object.freeze(['UK']),
   flagNation: 'UK',
   name: 'United Kingdom',
   lines: Object.freeze([
@@ -73,7 +73,5 @@ export const UK_TREE: NationTree = Object.freeze({
     // release 262: the Royal Engineers' Mk 5 AVRE on the rebuilt Centurion family, at the tier its same-tier duels hold (0.28
     // at II, 0.07 at III; the Olifant Mk 2 beside it moved to the South Africa tree in 269)
     node({ id: 'centurion5_avre', tier: 2, line: 'special', lane: 1, parents: [], slot: 'special' }),
-    // the Australian Mk 5/1 (2026-10-28)
-    node({ id: 'centurion5_1_aus', tier: 2, line: 'special', lane: 2, parents: [], slot: 'special' }),
   ]),
 });

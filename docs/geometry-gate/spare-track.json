@@ -1614,8 +1614,32 @@
    "uncovered": [],
    "hostSweep": []
   },
+  "leopard_as1": {
+   "inputHash": "6d6cbefb233b5da9",
+   "runs": [],
+   "uncovered": [],
+   "hostSweep": []
+  },
   "lrmv_lynx": {
    "inputHash": "6314fdfc8492d783",
+   "runs": [],
+   "uncovered": [],
+   "hostSweep": []
+  },
+  "m113a1_fsv": {
+   "inputHash": "ae6ec2b8c2155eea",
+   "runs": [],
+   "uncovered": [],
+   "hostSweep": []
+  },
+  "m113a1_mrv": {
+   "inputHash": "ff2ef73b939c7aa4",
+   "runs": [],
+   "uncovered": [],
+   "hostSweep": []
+  },
+  "m113as4": {
+   "inputHash": "2e32d3c9f2138245",
    "runs": [],
    "uncovered": [],
    "hostSweep": []
@@ -1673,6 +1697,12 @@
    "uncovered": [],
    "hostSweep": []
   },
+  "m1a1_aim_sa_aus": {
+   "inputHash": "d0e6c99500a95d84",
+   "runs": [],
+   "uncovered": [],
+   "hostSweep": []
+  },
   "m1a1ha": {
    "inputHash": "7e620894bc2637b6",
    "runs": [
@@ -1724,6 +1754,12 @@
   },
   "m1a2_abrams_tusk": {
    "inputHash": "7653bca455a40f45",
+   "runs": [],
+   "uncovered": [],
+   "hostSweep": []
+  },
+  "m1a2_sepv3_aus": {
+   "inputHash": "97d2c87388535f2f",
    "runs": [],
    "uncovered": [],
    "hostSweep": []
@@ -2421,6 +2457,12 @@
   },
   "raiju_ifv": {
    "inputHash": "e3ab8ddd3a72e134",
+   "runs": [],
+   "uncovered": [],
+   "hostSweep": []
+  },
+  "redback": {
+   "inputHash": "38260d475a795641",
    "runs": [],
    "uncovered": [],
    "hostSweep": []

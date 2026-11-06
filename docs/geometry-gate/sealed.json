@@ -5383,6 +5383,111 @@
     5.5
    ]
   },
+  "m113a1_fsv": {
+   "sealed": true,
+   "openPx": 0,
+   "openViews": 0,
+   "insideOutPx": 562,
+   "seeThroughPx": 0,
+   "netSeeThroughPx": 0,
+   "tris": 57456,
+   "frame": [
+    0,
+    2.05,
+    0.15,
+    3.8
+   ]
+  },
+  "m113a1_mrv": {
+   "sealed": true,
+   "openPx": 0,
+   "openViews": 0,
+   "insideOutPx": 642,
+   "seeThroughPx": 0,
+   "netSeeThroughPx": 0,
+   "tris": 58128,
+   "frame": [
+    0,
+    2.05,
+    0.05,
+    3.7
+   ]
+  },
+  "m113as4": {
+   "sealed": true,
+   "openPx": 0,
+   "openViews": 0,
+   "insideOutPx": 498,
+   "seeThroughPx": 0,
+   "netSeeThroughPx": 0,
+   "tris": 63580,
+   "frame": [
+    0,
+    2.05,
+    -0.25,
+    4.1
+   ]
+  },
+  "leopard_as1": {
+   "sealed": true,
+   "openPx": 0,
+   "openViews": 0,
+   "insideOutPx": 142,
+   "seeThroughPx": 0,
+   "netSeeThroughPx": 0,
+   "tris": 110438,
+   "frame": [
+    0,
+    2.25,
+    1.25,
+    5.8
+   ]
+  },
+  "m1a1_aim_sa_aus": {
+   "sealed": true,
+   "openPx": 0,
+   "openViews": 0,
+   "insideOutPx": 40,
+   "seeThroughPx": 0,
+   "netSeeThroughPx": 7669,
+   "tris": 122352,
+   "frame": [
+    0,
+    1.4,
+    0.9,
+    5.6
+   ]
+  },
+  "m1a2_sepv3_aus": {
+   "sealed": true,
+   "openPx": 0,
+   "openViews": 0,
+   "insideOutPx": 157,
+   "seeThroughPx": 0,
+   "netSeeThroughPx": 5816,
+   "tris": 149667,
+   "frame": [
+    0,
+    2.1,
+    0.9,
+    5.8
+   ]
+  },
+  "redback": {
+   "sealed": true,
+   "openPx": 0,
+   "openViews": 0,
+   "insideOutPx": 344,
+   "seeThroughPx": 0,
+   "netSeeThroughPx": 0,
+   "tris": 63648,
+   "frame": [
+    0,
+    2.25,
+    -0.1,
+    5.2
+   ]
+  },
   "semel": {
    "sealed": true,
    "openPx": 0,

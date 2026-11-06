@@ -16,6 +16,7 @@ export const INTERIOR_FILL_GROUP_LOADERS: Readonly<Record<string, () => Promise<
   "amx40X": () => import('./interiorFillGroups/amx40X.generated.ts'),
   "aresApcX": () => import('./interiorFillGroups/aresApcX.generated.ts'),
   "arieteX": () => import('./interiorFillGroups/arieteX.generated.ts'),
+  "australia": () => import('./interiorFillGroups/australia.generated.ts'),
   "bmp3mDragun125X": () => import('./interiorFillGroups/bmp3mDragun125X.generated.ts'),
   "borsuk": () => import('./interiorFillGroups/borsuk.generated.ts'),
   "brazil": () => import('./interiorFillGroups/brazil.generated.ts'),

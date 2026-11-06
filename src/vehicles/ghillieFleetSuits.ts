@@ -64,6 +64,14 @@ function face(panel: FacePanel): FacePanel { return panel; }
 /** Group B (the owner: "a ton more netting and camo leaves all over"): denser garnish, more of it cut boughs. */
 const DENSE = { density: 1.8, leafScale: 0.94, boughShare: 0.42 } as const;
 /**
+ * Release 269 (the owner, 2026-11-02: "both the australian variatns nneed a lot of ghillie on them and on their
+ * barrels"): the Australian Abrams' field nets, heavier than Group B, in the dry bush's olive and straw (the Talisman
+ * Sabre and Southern Jackaroo photographs: garnish thick over the turret and the whole gun to the muzzle).
+ */
+const AUS_HEAVY = { density: 2.3, leafScale: 0.96, boughShare: 0.48 } as const;
+const AUS_BUSH = { light: 0x7b7650, dark: 0x3b3e2a, netColor: 'rgba(54,52,37,0.84)', netTextureSeed: 1101 } as const;
+
+/**
  * A gun's net (the gun owner, in the gun's own frame: z along the bore from the trunnions; the owner, 2026-11-02: "in
  * this case even drape ghillie acrross the top of mantlet and cheeks"): one net over the mantlet's top, and one over the
  * tube from the mantlet to short of the muzzle, laid on its top and hanging free past its sides (no armour holds it
@@ -940,6 +948,56 @@ export const FLEET_GHILLIE_SUITS: Readonly<Record<string, GhillieConfig>> = Obje
       ],
       side: skirts(-3.30, 3.10, 1.54, 0.55, 2.05, 41),
     },
+  },
+  // ---- Release 269: the Australian Abrams (the owner, 2026-11-02: "a lot of ghillie on them and on their barrels") --
+  // M1A2 SEPv3 (Australia): the TUSK's frame without its ARAT: the turret roof and bustle under one net round the CROWS-LP
+  // and the sights, drapes down both flanks over the empty Trophy brackets, a rear drape over the rack; both decks
+  // netted round the driver's hatch, four drapes a side over the stock skirts; and the gun netted from the mantlet to
+  // 0.35 m short of the muzzle.
+  m1a2_sepv3_aus: {
+    id: 'm1a2_sepv3_aus', seed: 2691, style: 'leafy', ...AUS_HEAVY, ...AUS_BUSH,
+    fieldClearanceM: 0.03, maxHalfWidth: 2.0, hemFloorM: 0.7,
+    clothClearsGunStops: true,
+    turret: {
+      // over the cheeks to their tips (the owner: "even drape ghillie acrross the top of mantlet and cheeks")
+      top: [laid({ x0: -1.82, x1: 1.70, z0: -3.15, z1: 2.70, nx: 44, nz: 74, y: 0.92, garnishRiseM: 0.18, garnishDensity: 1.4,
+        seed: 11 })],
+      // open over the empty Trophy cradles (the Australian tell Main asked for; the 269 blind critic saw none under the net)
+      side: flanks(-2.45, 0.60, 0.90, 0.50, 1.70, 17, {}, () => [cut(-2.06, -1.02, 0.25, 0.95)]),
+      face: [face({ z: -3.20, x0: -1.20, x1: 1.20, y0: 0.55, y1: 0.98, nx: 24, ny: 6, seed: 23 })],
+    },
+    hull: {
+      top: [
+        laid({ x0: -1.62, x1: 1.62, z0: -3.62, z1: 0.39, nx: 32, nz: 40, y: 1.72, garnishRiseM: 0.14, garnishDensity: 1.3, seed: 31 }),
+        laid({ x0: -1.62, x1: 1.62, z0: 0.39, z1: 3.62, nx: 32, nz: 32, y: 1.50, holes: [rect(-0.38, 0.38, 2.25, 3.00)],
+          garnishRiseM: 0.12, seed: 37 }),
+      ],
+      side: skirts(-3.30, 3.10, 1.54, 0.55, 1.95, 41),
+    },
+    gun: gunNet({ x0: -0.40, x1: 0.60, z0: 0.30, z1: 1.45, y: 0.36 }, { z0: 1.48, z1: 4.06, y: 0.11 }, 61),
+  },
+  // M1A1 AIM SA (Australia): the M1A1's turret roof netted to the bustle's rear wall round the CWS and the sights, the
+  // lengthened rack, its TMAPU and call-sign plate left bare; drapes down both flanks ahead of the bustle stowage; both
+  // decks and four drapes a side; the gun netted from the mantlet to 0.35 m short of the muzzle.
+  m1a1_aim_sa_aus: {
+    id: 'm1a1_aim_sa_aus', seed: 2692, style: 'leafy', ...AUS_HEAVY, ...AUS_BUSH,
+    fieldClearanceM: 0.03, maxHalfWidth: 2.0, hemFloorM: 0.7,
+    clothClearsGunStops: true,
+    turret: {
+      // over the cheeks to their tips (the owner: "even drape ghillie acrross the top of mantlet and cheeks")
+      top: [laid({ x0: -1.62, x1: 1.52, z0: -3.10, z1: 2.30, nx: 40, nz: 68, y: 0.82, garnishRiseM: 0.18, garnishDensity: 1.4,
+        seed: 11 })],
+      side: flanks(-2.00, 0.80, 0.72, 0.48, 1.74, 17),
+    },
+    hull: {
+      top: [
+        laid({ x0: -1.62, x1: 1.62, z0: -3.62, z1: 0.39, nx: 32, nz: 40, y: 1.62, garnishRiseM: 0.14, garnishDensity: 1.3, seed: 31 }),
+        laid({ x0: -1.62, x1: 1.62, z0: 0.39, z1: 3.62, nx: 32, nz: 32, y: 1.45, holes: [rect(-0.38, 0.38, 2.25, 3.00)],
+          garnishRiseM: 0.12, seed: 37 }),
+      ],
+      side: skirts(-3.30, 3.10, 1.45, 0.55, 1.95, 41),
+    },
+    gun: gunNet({ x0: -0.36, x1: 0.46, z0: 0.05, z1: 0.64, y: 0.43 }, { z0: 0.70, z1: 3.54, y: 0.11 }, 61),
   },
   // M1E3 (the m1a3): no net since 2026-11-02 (the owner: "remove the ghillie on the m1e3"); its field cage, cages,
   // APS, whips and stowage stay (profiles/m1a3Concept.ts)

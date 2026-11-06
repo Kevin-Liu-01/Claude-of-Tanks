@@ -156,9 +156,12 @@ const AUTHORED_PAINT_IDS_AFTER_266 = Object.freeze(['paint_leo2a7dk', 'paint_cen
 const AUTHORED_PAINT_IDS_PLAIN_269 = Object.freeze(['paint_magach3', 'paint_magach6b', 'paint_magach7c', 'paint_x1_pioneiro'] as const);
 /** Release 269: the South Africa line's coats (southAfricaSpecs.ts): the SADF's nutria brown under the bush units' field
  * disruption, a coat of its own on each of the Semel, the Olifant Mk 1 and the Mk 1A (owner 2026-11-03: no plain coats),
- * and the 1990s SANDF three-tone of the Mk 1B and the TTD. Appended after 267's saved catalog indices. */
+ * and the 1990s SANDF three-tone of the Mk 1B and the TTD; then the Australia line's disruptive three-tone (australiaSpecs.ts):
+ * tan under olive and black, on the Leopard AS1, the M113AS4, both Abrams and the Redback; then the M113A1s' RAAC olive
+ * drab under field disruption, a coat of its own on each. One block for both lines (both heads named it AFTER_268), the
+ * South African ids first in merge order. Appended after 267's saved catalog indices. */
 const AUTHORED_PAINT_IDS_AFTER_268 = Object.freeze(['paint_semel', 'paint_olifant_mk1b', 'paint_olifant_mk1',
-  'paint_olifant_mk1a'] as const);
+  'paint_olifant_mk1a', 'paint_leopard_as1', 'paint_m113a1_fsv', 'paint_m113a1_mrv'] as const);
 type AuthoredPaintIdAfterGt = typeof AUTHORED_PAINT_IDS_AFTER_GT[number] | typeof AUTHORED_PAINT_IDS_AFTER_233[number]
   | typeof AUTHORED_PAINT_IDS_AFTER_262[number] | typeof AUTHORED_PAINT_IDS_AFTER_264[number]
   | typeof AUTHORED_PAINT_IDS_AFTER_265[number] | typeof AUTHORED_PAINT_IDS_AFTER_266[number]
@@ -971,6 +974,15 @@ const DEFAULT_CAMO_PATTERN_BY_TANK_ID: Readonly<Record<string, CamoPatternId>> =
   olifant_mk1a: 'paint_olifant_mk1a',
   olifant_mk1b: 'paint_olifant_mk1b',
   ttd: 'paint_olifant_mk1b',
+  // release 269: the Australia line: the RAAC's olive drab under field disruption on the M113A1 FSV (bands) and MRV
+  // (three-tone), the disruptive three-tone from the Leopard AS1 on
+  m113a1_fsv: 'paint_m113a1_fsv',
+  m113a1_mrv: 'paint_m113a1_mrv',
+  leopard_as1: 'paint_leopard_as1',
+  m113as4: 'paint_leopard_as1',
+  m1a1_aim_sa_aus: 'paint_leopard_as1',
+  m1a2_sepv3_aus: 'paint_leopard_as1',
+  redback: 'paint_leopard_as1',
 });
 
 /** The stock appearance, independent of the player's saved selection. */

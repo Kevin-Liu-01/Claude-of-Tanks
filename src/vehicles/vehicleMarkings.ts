@@ -320,6 +320,18 @@ export const VEHICLE_MARKING_ANCHORS: Readonly<Record<string, VehicleMarkingAnch
   leo1a2a1: anchor('turret', 'left', 0.43, 0.47, 0.24, 1),
   // 265: the Danish flag on the welded turret's flank, ahead of the tactical number
   leo1a3dk: anchor('turret', 'left', 0.50, 0.40, 0.20, 1),
+  // release 269: the AS1's kangaroo on the right (its left cheek carries the SABCA laser's drum)
+  leopard_as1: anchor('turret', 'right', 0.50, 0.40, 0.20, -1),
+  redback: anchor('hull', 'right', 0.62, 0.55, 0.30, -1),
+  // the M113s (2026-11-03: the release check found no seat on their small turrets): the FSV's on the bare left hull side
+  // above the track; the MRV's buoyancy pods and the AS4's appliqué hold their hull sides, so theirs go on the turret's
+  // left flank (the TOW launcher is on the right)
+  m113a1_fsv: anchor('hull', 'left', 0.40, 0.70, 0.30, 1),
+  m113a1_mrv: anchor('turret', 'left', 0.35, 0.45, 0.22, 1),
+  m113as4: anchor('turret', 'left', 0.30, 0.50, 0.20, 1),
+  // the kangaroo on the turret's forward flank, as on the 2024-26 photographs
+  m1a1_aim_sa_aus: anchor('turret', 'right', 0.40, 0.44, 0.27, -1),
+  m1a2_sepv3_aus: anchor('turret', 'right', .25, .70, .24, -1),
   m41dk1: anchor('turret', 'left', 0.62, 0.40, 0.18, 1),
   t49: anchor('turret', 'right', 0.62, 0.46, 0.24, 1),
   m41a3: anchor('turret', 'left', 0.62, 0.40, 0.24, 1),
@@ -1013,6 +1025,23 @@ function drawAustraliaKangaroo({ ctx, cx, cy, radius }: InsigniaPainterArgs): vo
   ctx.fill();
 }
 
+// Release 269: the Australian Army's own mark, a black kangaroo in mid-hop on the forward turret side and no roundel (the
+// 2017 Talisman Sabre and 2024-26 photographs of the M1A1 and M1A2; the red kangaroo in the ring is the RAAF's roundel)
+function drawAustralianArmyKangaroo({ ctx, cx, cy, radius }: InsigniaPainterArgs): void {
+  // facing forward along the left of the field: ears up, the forearms tucked, the hind foot and the long tail level
+  const pts: readonly (readonly [number, number])[] = [
+    [-0.92, -0.22], [-0.80, -0.30], [-0.79, -0.46], [-0.72, -0.31], [-0.68, -0.44], [-0.63, -0.29], [-0.52, -0.25],
+    [-0.30, -0.27], [-0.06, -0.21], [0.14, -0.09], [0.24, 0.03], [0.50, 0.07], [0.96, 0.09], [0.98, 0.14], [0.52, 0.18],
+    [0.24, 0.21], [0.14, 0.30], [-0.04, 0.46], [-0.36, 0.52], [-0.38, 0.47], [-0.10, 0.36], [-0.04, 0.22], [-0.24, 0.12],
+    [-0.44, 0.06], [-0.56, 0.16], [-0.60, 0.13], [-0.50, 0.00], [-0.62, -0.10], [-0.84, -0.14],
+  ];
+  ctx.fillStyle = '#212428';
+  ctx.beginPath();
+  pts.forEach(([x, y], k) => (k === 0 ? ctx.moveTo(cx + x * radius, cy + y * radius) : ctx.lineTo(cx + x * radius, cy + y * radius)));
+  ctx.closePath();
+  ctx.fill();
+}
+
 function drawFallbackShield({ ctx, cx, cy, radius }: InsigniaPainterArgs): void {
   ctx.fillStyle = '#d6a74f';
   ctx.beginPath();
@@ -1050,6 +1079,7 @@ const NATIONAL_INSIGNIA_PAINTERS: Readonly<Record<string, InsigniaPainter>> = Ob
   'th-flag': drawThaiFlag,
   'za-castle': drawSouthAfricaCastle,
   'au-kangaroo': drawAustraliaKangaroo,
+  'au-army-kangaroo': drawAustralianArmyKangaroo,
   'br-eb-arms': drawBrazilArmyArms,
   'br-cruzeiro': drawBrazilSouthernCross,
   'br-ring': drawBrazilTurretRing,

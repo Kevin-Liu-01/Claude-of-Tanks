@@ -70,6 +70,8 @@ import './olifantMk2Specs.ts';
 import './southAfricaSpecs.ts';
 import './centurionAvreSpecs.ts';
 import './centurionAusSpecs.ts';
+// release 269: the Australian line (the M113s, the Redback, the Leopard AS1 and the Abrams pair)
+import './australiaSpecs.ts';
 import './leopard2a3B4Specs.ts';
 import { applyLeopard2A4FamilyEnvelopes } from './leopard2A4FamilySpecs.ts';
 import './denmarkSpecs.ts';

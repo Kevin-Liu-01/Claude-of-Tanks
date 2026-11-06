@@ -12,6 +12,7 @@ import { VEHICLE_MARKING_SEATS as SEATS_AMX30X } from './vehicleMarkingSeatGroup
 import { VEHICLE_MARKING_SEATS as SEATS_AMX40X } from './vehicleMarkingSeatGroups/amx40X.generated.ts';
 import { VEHICLE_MARKING_SEATS as SEATS_ARESAPCX } from './vehicleMarkingSeatGroups/aresApcX.generated.ts';
 import { VEHICLE_MARKING_SEATS as SEATS_ARIETEX } from './vehicleMarkingSeatGroups/arieteX.generated.ts';
+import { VEHICLE_MARKING_SEATS as SEATS_AUSTRALIA } from './vehicleMarkingSeatGroups/australia.generated.ts';
 import { VEHICLE_MARKING_SEATS as SEATS_BMP3MDRAGUN125X } from './vehicleMarkingSeatGroups/bmp3mDragun125X.generated.ts';
 import { VEHICLE_MARKING_SEATS as SEATS_BORSUK } from './vehicleMarkingSeatGroups/borsuk.generated.ts';
 import { VEHICLE_MARKING_SEATS as SEATS_BRAZIL } from './vehicleMarkingSeatGroups/brazil.generated.ts';
@@ -108,6 +109,7 @@ export const VEHICLE_MARKING_SEATS: Readonly<Record<string, VehicleMarkingSeatRe
   SEATS_AMX40X,
   SEATS_ARESAPCX,
   SEATS_ARIETEX,
+  SEATS_AUSTRALIA,
   SEATS_BMP3MDRAGUN125X,
   SEATS_BORSUK,
   SEATS_BRAZIL,

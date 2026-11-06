@@ -179,6 +179,11 @@ export const INTERNAL_LAYOUT_SOURCES = Object.freeze({
     url: 'https://www.army.mod.uk/learn-and-explore/equipment/combat-vehicles/warrior/',
     kind: 'operator',
   }),
+  australianM113As4: Object.freeze({
+    title: 'Australian Army — M113AS4 armoured personnel carrier',
+    url: 'https://army.gov.au/equipment/vehicles-and-surveillance/m113as4-armoured-personnel-carrier',
+    kind: 'operator',
+  }),
   britishAjax: Object.freeze({
     title: 'General Dynamics UK — AJAX variants',
     url: 'https://generaldynamics.uk.com/wp-content/uploads/2021/09/Ajax-Variants-Super-Diary.pdf',
@@ -495,6 +500,10 @@ const LAYOUTS = Object.freeze({
     feedSystem: { placement: 'turret', form: 'dualBeltFeed' },
     missileRack: null,
   }) },
+  // 269: the M113AS4's crew of two, its crew commander in the one-man Tenix turret over the M113's front engine
+  m113OneManTurret: { confidence: 'documented', sources: ['australianM113As4'], crew: crew(
+    ['driver', 'hull', 'frontLeft'], ['commander', 'turret', 'frontCenter'],
+  ), systems: systems({ engine: { placement: 'front', form: 'frontDieselPowerpack' }, transmission: { placement: 'front', form: 'integratedFinalDrive' }, ammoRack: { placement: 'turret', form: 'remoteWeaponAmmoBox' }, feedSystem: { placement: 'turret', form: 'beltFeed' } }) },
   aresRemoteApc: { confidence: 'documented', sources: ['britishAjax'], crew: crew(
     ['driver', 'hull', 'frontRight'], ['commander', 'hull', 'midLeft'],
   ), systems: systems({ engine: { placement: 'front', form: 'frontDieselPowerpack' }, transmission: { placement: 'front', form: 'integratedFinalDrive' }, ammoRack: { placement: 'turret', form: 'remoteWeaponAmmoBox' }, feedSystem: { placement: 'turret', form: 'beltFeed' } }) },
@@ -589,7 +598,7 @@ const IDS_BY_LAYOUT = Object.freeze({
   heavyWw2Six: ['kv2'],
   casemateFour: ['jpz_e100'],
   pershingFive: ['m46_patton', 'm47_patton'],
-  westernManualHullAmmo: ['olifant_mk1', 'olifant_mk1a', 'olifant_mk1b', 'sabra_mk2', 'magach6b', 'magach7c', 'chieftain5', 'amx40', 'chieftain_mk10', 'k1a1', 'amx30b', 'semel', 'strv81', 'chieftain3', 'chieftain_mk9', 'k1e1', 'type74', 'amx40_proto', 'type59', 'm60a1', 'amx30', 'amx30b2', 'm48a5_patton', 'm48a3_patton', 'magach3', 'm48a2ga2', 'm48_super', 'vickers_mk1', 'centurion3', 'centurion5_2', 'centurion5_2dk', 'shot_kal', 'centurion13', 'strv105', 'olifant_mk2', 'centurion5_avre', 'centurion5_1_aus', 'm60a3', 'm41a3', 'm41_bw', 'm41_jgsdf', 'm41dk1', 't49'],
+  westernManualHullAmmo: ['olifant_mk1', 'olifant_mk1a', 'olifant_mk1b', 'sabra_mk2', 'magach6b', 'magach7c', 'chieftain5', 'amx40', 'chieftain_mk10', 'k1a1', 'amx30b', 'semel', 'strv81', 'chieftain3', 'chieftain_mk9', 'k1e1', 'type74', 'amx40_proto', 'type59', 'm60a1', 'amx30', 'amx30b2', 'm48a5_patton', 'm48a3_patton', 'magach3', 'm48a2ga2', 'm48_super', 'vickers_mk1', 'centurion3', 'centurion5_2', 'centurion5_2dk', 'shot_kal', 'centurion13', 'strv105', 'olifant_mk2', 'centurion5_avre', 'centurion5_1_aus', 'm60a3', 'm41a3', 'm41_bw', 'm41_jgsdf', 'm41dk1', 't49', 'm113a1_fsv', 'm113a1_mrv'],
   starship: ['m60a2'],
   osorio: ['osorio_p1', 'osorio_p2', 'ee_t3_osorio', 'ee_t4_osorio'],
   bernardini: ['tamoyo1', 'tamoyo3'],
@@ -597,9 +606,9 @@ const IDS_BY_LAYOUT = Object.freeze({
   bernardiniX1A2: ['x1a2_carcara'],
   arieteManual: ['c2_ariete', 'c1_ariete', 'c1_ariete_preserie', 'c1_ariete_proto_serie1', 'c2_ariete_proto'],
   westernTwoPart: ['challenger1_mk1', 'challenger1_mk3', 'challenger1_mk2', 'challenger_x', 'challenger_x_sleek', 'fv4034', 'challenger2', 'challenger2e', 'ua_challenger2', 'challenger3_proto', 'challenger3', 'challenger3_td', 'challenger3_td_rws'],
-  leopard: ['strv122', 'leo2a6', 'leo1a5', 'leo1a3dk', 'leo1a5dk', 'leo1a5dk1', 'leo1a2a1', 'leopard2_proto', 'leo2a2', 'leo2a3', 'leo2a3_b4', 'leo2a4m_can', 'leo2a4_v', 'leo2a4m', 'leo2a4', 'leo2a4_otco', 'leo2_revolution_proto', 'leo2_revolution', 'leo2_improved', 'strv121', 'leo2a6_ua', 'leo2a7v', 'leo2a6m', 'leo2a5m', 'leo2a5', 'leo2a5dk', 'leo2a7dk', 'ttd'],
+  leopard: ['strv122', 'leo2a6', 'leo1a5', 'leo1a3dk', 'leo1a5dk', 'leo1a5dk1', 'leo1a2a1', 'leopard2_proto', 'leo2a2', 'leo2a3', 'leo2a3_b4', 'leo2a4m_can', 'leo2a4_v', 'leo2a4m', 'leo2a4', 'leo2a4_otco', 'leo2_revolution_proto', 'leo2_revolution', 'leo2_improved', 'strv121', 'leo2a6_ua', 'leo2a7v', 'leo2a6m', 'leo2a5m', 'leo2a5', 'leo2a5dk', 'leo2a7dk', 'ttd', 'leopard_as1'],
   abrams: ['m1a1', 'm1a1_abrams_hc', 'm1a1_abrams_sa', 'm1a1ha', 'm1a1_abrams_aim', 'm1a1_abrams_fep', 'ua_m1a1',
-    'm1a2_abrams', 'm1a2_abrams_tusk', 'm1a2_abrams_sepv2', 'm1a2_abrams_sepv3', 'ua_m1a2_abrams'],
+    'm1a2_abrams', 'm1a2_abrams_tusk', 'm1a2_abrams_sepv2', 'm1a2_abrams_sepv3', 'ua_m1a2_abrams', 'm1a1_aim_sa_aus', 'm1a2_sepv3_aus'],
   merkava: [
     'merkava1b', 'merkava2b', 'merkava2d', 'merkava3c', 'merkava3_baz', 'merkava4b',
     'merkava4', 'merkava3d', 'merkava4_trophy', 'merkava4_barak',
@@ -628,8 +637,10 @@ const IDS_BY_LAYOUT = Object.freeze({
   linebacker: ['m6_linebacker'],
   amx10p: ['amx10p'],
   amx10pDragar: ['amx10p_25'],
-  ifvFrontTwoMan: ['marder2', 'dardo', 'lrmv_lynx', 'cv9040c', 'ua_cv9040c', 'type89', 'ajax', 'kf41_lynx', 'bmp2', 'hayate_ifv', 'fv510', 'fv510_milan', 'marder1a3', 'cv90'],
+  // (269: the Redback's two-man T2000 turret, beside its LAND 400 rival the KF41)
+  ifvFrontTwoMan: ['marder2', 'dardo', 'lrmv_lynx', 'cv9040c', 'ua_cv9040c', 'type89', 'ajax', 'kf41_lynx', 'bmp2', 'hayate_ifv', 'fv510', 'fv510_milan', 'marder1a3', 'cv90', 'redback'],
   namerIfv: ['namer_ifv'],
+  m113OneManTurret: ['m113as4'],
   aresRemoteApc: ['ares_apc'],
   bmp1: ['bwp1'],
   puma: ['borsuk', 'puma_s1', 'spz_puma', 'spz_wotan', 'raiju_ifv', 'cv90_mk4_concept'],

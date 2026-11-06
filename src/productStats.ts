@@ -19,12 +19,12 @@ interface ProductStats {
 }
 
 export const PRODUCT_STATS: Readonly<ProductStats> = Object.freeze({
-  productionVehicles: 291,
-  developmentVehicles: 291,
-  savedVehicleRecords: 291,
+  productionVehicles: 298,
+  developmentVehicles: 298,
+  savedVehicleRecords: 298,
   developmentOnlyVehicles: 0,
   referenceVehicleRecords: 0,
-  battlePlayableVehicles: 291,
+  battlePlayableVehicles: 298,
   battlefields: 33,
   battleModes: 13,
 });

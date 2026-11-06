@@ -50,6 +50,13 @@ export const FLEET_BALANCE_REVISION = Object.freeze({
   ttd: '269: the TTD: 58.3 t on 1,234 hp, the GT3 105 mm with the Mk 2\'s rounds, spaced armour at the IV footing over a 750 mm glacis',
   centurion5_1_aus: '262: the new Australian Mk 5/1: the Strv 81\'s Mk 5 hull, armour, 20-pdr Type B and Meteor as they stand',
   centurion5_avre: '262: the new Mk 5 AVRE: the Mk 5/2 hull and Meteor with the 165 mm demolition gun, measured in its own cohort',
+  m113a1_fsv: '269: the M113A1 FSV: the aluminium M113A1 under the Saladin turret, its 76 mm L5A1 firing HESH and HE, 11.9 t on 212 hp',
+  m113a1_mrv: '269: the M113A1 MRV: the M113A1 under the Scorpion turret, its 76 mm L23A1 firing HESH and HE, 12.5 t on 212 hp',
+  m113as4: '269: the M113AS4: the stretched M113 under ceramic appliqué and the Tenix turret\'s 12.7 mm M2, 18 t on 350 hp',
+  leopard_as1: '269: the Leopard AS1: the Leopard 1A3 DK\'s welded turret, hull and L7A3 with the SABCA laser fire control, 42.4 t on 830 hp',
+  m1a1_aim_sa_aus: '269: the M1A1 AIM SA: the M1A1 with export armour, a quicker fire control and the tungsten KEW-A2, 61.3 t on 1,500 hp',
+  m1a2_sepv3_aus: '269: the Australian M1A2 SEPv3: the SEPv3 without ARAT or Trophy, its KEW-A2 tungsten round, 66 t on 1,500 hp',
+  redback: '269: the AS21 Redback: the Puma S1\'s footing (30 mm, Spike LR2, Iron Fist hard-kill) on 42 t and 1,000 hp',
   // 2026-10-26 (258): matchmaking reads the shown tier; these sat just under a shown-tier peer floor (applyShownTierFloors)
   bmpt_terminator2: 'lift the 30 mm round over the shown-tier IFV penetration floor',
   marder1a3: 'lift the 20 mm round over the shown-tier IFV penetration floor',
