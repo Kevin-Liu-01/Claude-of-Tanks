@@ -63,10 +63,17 @@ it happens; a NaN the kernel answered (its ground's) passes.
     world's own obstacle grid, its ground mirrored from the battle's overlay. Each battle chooses once, at its setup
     (2026-11-02 audit S2): set up once the module is ready, it rides the kernels for its hulls' support and its obstacle
     query alike; set up before, it stays on the TypeScript to its end, and the next battle on that world rides them.
-    The battle entry waits for the module (round 3 X10): the solo authority (`game/soloBattleAccess.ts`, whose chunk
-    the covered entry loads beside the world) is ready once its chunk's kernels are installed or failed, or after
-    `SOLO_KERNELS_ENTRY_WAIT_MS` (3 s, `game/soloBattleRuntime.ts`), so a first battle no longer loses them to a race
-    with its own chunk. Past the bound the load goes on.
+    The battle entry waits for the module (round 3 X10): the covered entry's ask for the solo authority
+    (`preloadSoloAuthority`, the preload of `game/soloBattleAccess.ts`, beside the world in its barrier) resolves once
+    the kernels are installed or failed, or `SOLO_KERNELS_ENTRY_WAIT_MS` (3 s, `game/soloBattleRuntime.ts`) after that
+    ask has the chunk: after its transfer, when that is still in flight, since the chunk's body starts the load. The
+    bound is each ask's own (round 4 F3), so a garage dwell after the Battle intent, whose ask first loads the chunk,
+    does not spend the entry's. A battle rides the kernels when they land within its entry's bound or before the rest
+    of its barrier ends; otherwise it is set up on the TypeScript and the load goes on. While it is pending, each later
+    entry, a Battle Again included, waits up to 3 s of its own again, and the first battle set up after the load lands
+    rides them. A load that never settles (the fetch has no timeout) costs every solo entry up to 3 s past the rest of
+    its barrier. The wait never rejects: an installer or a failure report that throws leaves the TypeScript, and the
+    entry goes on.
   - `?simKernels=wasm-check` runs both in a solo battle: the TypeScript drives, every answer of the kernels is compared,
     and `window.__SIM_KERNELS.check` counts the comparisons and mismatches.
 
@@ -90,7 +97,7 @@ cause: `csp` (a Content Security Policy without `'wasm-unsafe-eval'`), `http_<st
 | Command | Proves |
 |---|---|
 | `cargo test -p cot-sim` | Every port against the TypeScript's golden vectors (`tools/port-golden-vectors.mjs`) |
-| `cargo test -p cot-sim-wasm --lib` | The cross-call protocols on an instance's own state (a native test links `terrain_height`) |
+| `cargo test -p cot-sim-wasm --lib` | The cross-call protocols, each on an instance's own state or, through the exports, on the instance's statics under `tests::exports()`: one such test at a time, and one that calls an export without it fails the run (round 4 E15; a native test links `terrain_height`) |
 | `node src/world/wasmKernelProtocols.selftest.mjs` | The protocols on the committed package: its raw exports and the production seam |
 | `node src/world/wasmKernelRefusals.selftest.mjs` | Each refusal named by the call it refused, asserted at the seam (a refused sample's NaN, a walk's missing entry, a replayed crater); a heap's start is the one it was given |
 | `node tools/build-cot-sim-wasm.mjs --check` | The committed binary is the clean rebuild |

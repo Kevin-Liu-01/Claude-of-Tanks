@@ -15,7 +15,7 @@
   "crates/cot-sim/src/rng.rs": "cca250925c54a2bf6a17e48d4a793da926f90808e5f1bf798078283c66eb1883",
   "crates/cot-sim/src/structure_support.rs": "3aaca0c7d93467b64495179fe9a3f2d095f4ba156df3b92a94eaa7c6906eea75",
   "crates/cot-sim/src/support_sampling.rs": "4abc6ed0df11cc476b78353d8e76e46a7000d874e915381c58837506bf02f844",
-  "crates/cot-sim-wasm/src/lib.rs": "c03c9d9fdad06ae44043b686c0ab6f9fb0843306e915d6e64c580dec23fddcdb",
+  "crates/cot-sim-wasm/src/lib.rs": "da59821e9a8d0b4b8825110b1bb27c05b0a8f044be7306a871302bed01108bc4",
   "Cargo.toml": "2d70bde60f12bfebafef285321ebc7c01ba103c65b10777b74e6736fcad5dabd",
   "Cargo.lock": "f6407ddc32a653a5cc48c6df87c374e49ad1a518abc954b836165a23d545d0fc",
   "rust-toolchain.toml": "6e30b4c77263719b30fd273ae18f798328033a9d2fb7154506db6f2a07066fdb",

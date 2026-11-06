@@ -486,8 +486,8 @@ impl State {
 }
 
 static mut STATE: Option<State> = None;
-
 fn state() -> &'static mut State {
+    #[cfg(test)] tests::exports_held(); // (round 4 E15) a native test thread holds the tests' one lock on the statics
     // SAFETY: a WebAssembly instance runs on one thread and no export re-enters another while it holds this borrow.
     unsafe { (*core::ptr::addr_of_mut!(STATE)).get_or_insert_with(State::new) }
 }
@@ -984,8 +984,8 @@ struct Sampling {
 
 // (apart from STATE: the samplers borrow the world while the frame and its output are read and written)
 static mut SAMPLING: Option<Sampling> = None;
-
 fn sampling() -> &'static mut Sampling {
+    #[cfg(test)] tests::exports_held(); // (round 4 E15) as state()
     // SAFETY: one thread; no export re-enters while this borrow is live, and the samplers touch STATE alone.
     unsafe { (*core::ptr::addr_of_mut!(SAMPLING)).get_or_insert_with(|| Sampling { input: vec![0.0; FRAME_LEN], out: SamplingOut::default(), output: vec![0.0; OUT_LEN] }) }
 }
@@ -1057,8 +1057,54 @@ pub extern "C" fn support_sample_hull() -> u32 {
 mod tests {
     //! The cross-call protocols (2026-11-02 audit S2), each on an instance's own state: a call out of order or naming a
     //! stale walk, hull or handle is refused with its code, and the state it would have read stays whole.
+    //!
+    //! Rule (round 4 E15): a test holds a `State` of its own, or it calls the exports the host calls. Those reach the
+    //! instance's statics (`STATE`, `SAMPLING`: one `static mut` each, sound on a WebAssembly instance's one thread), and
+    //! cargo runs tests on parallel threads, so a test that calls an export holds `exports()` for its whole body: one
+    //! such test at a time, each on a fresh instance. `state()` and `sampling()` check it under test, so a test that
+    //! calls an export without it fails at once, every run, instead of racing another now and then.
     use super::*;
     use cot_sim::records::Part;
+    use std::cell::Cell;
+    use std::sync::{Mutex, MutexGuard, PoisonError};
+
+    /// The one lock on the instance's statics, and whether this test thread holds it.
+    static EXPORTS: Mutex<()> = Mutex::new(());
+    thread_local! {
+        static HOLDS_EXPORTS: Cell<bool> = const { Cell::new(false) };
+    }
+
+    /// Held for the body of a test that calls an export.
+    struct Exports {
+        _lock: MutexGuard<'static, ()>,
+    }
+
+    impl Drop for Exports {
+        fn drop(&mut self) {
+            HOLDS_EXPORTS.with(|held| held.set(false));
+        }
+    }
+
+    /// Takes the lock (a test that failed holding it does not fail the next) and empties the statics, so the test
+    /// starts on a fresh instance whatever an earlier one left.
+    fn exports() -> Exports {
+        let lock = EXPORTS.lock().unwrap_or_else(PoisonError::into_inner);
+        // SAFETY: the lock is held, and only a thread that holds it reaches the statics (exports_held).
+        unsafe {
+            *core::ptr::addr_of_mut!(STATE) = None;
+            *core::ptr::addr_of_mut!(SAMPLING) = None;
+        }
+        HOLDS_EXPORTS.with(|held| held.set(true));
+        Exports { _lock: lock }
+    }
+
+    /// `state()` and `sampling()` under test: the calling thread holds `exports()`.
+    pub(super) fn exports_held() {
+        assert!(
+            HOLDS_EXPORTS.with(Cell::get),
+            "a test that calls an export holds tests::exports() for its body: STATE and SAMPLING are one static mut each, shared by cargo's parallel test threads"
+        );
+    }
 
     /// The map's height function a native test links in place of the host's import.
     #[unsafe(no_mangle)]
@@ -1214,7 +1260,8 @@ mod tests {
     fn a_missing_answer_buffer_names_its_refusal() {
         // (round 3 B15) through the exports the host calls, which the crate had before round 2 U37 (grid_new, grid_out_ptr,
         // lattice_set_vertex, protocol_refusal), so this test runs against that lib.rs and fails on its assertion there.
-        // The instance's own STATE: the only test that touches it (the others hold a State of their own).
+        // The instance's own STATE, under the tests' one lock on it (round 4 E15: the module's rule).
+        let _exports = exports();
         let boxes = [0.0, 0.0, 1.0, 1.0];
         let grid = grid_new(boxes.as_ptr(), 1, 24.0);
         assert!(!grid_out_ptr(grid).is_null());
@@ -1225,6 +1272,43 @@ mod tests {
         assert_eq!(protocol_refusal(), REFUSED_BAD_HANDLE, "and the null names its refusal (it left the code untouched)");
         assert!(!grid_out_ptr(grid).is_null());
         assert_eq!(protocol_refusal(), ACCEPTED, "and a taken call after it reads 0");
+    }
+
+    #[test]
+    fn an_export_outside_the_lock_fails_the_run() {
+        // (round 4 E15) a test that calls an export without holding exports() would race any other such test on the
+        // statics, so it fails at once, every run. An export cannot unwind (extern "C"): the check aborts the test
+        // binary, so each case runs in a child of this one.
+        let exe = std::env::current_exe().expect("the test binary");
+        for (case, statics) in [("state", "STATE"), ("sampling", "SAMPLING")] {
+            let child = std::process::Command::new(&exe)
+                .args(["tests::outside_the_lock", "--exact", "--ignored", "--nocapture", "--test-threads=1"])
+                .env(OUTSIDE_THE_LOCK, case)
+                .output()
+                .expect("the child run");
+            let stderr = String::from_utf8_lossy(&child.stderr);
+            assert!(
+                !child.status.success() && stderr.contains("holds tests::exports()"),
+                "an export that reaches {statics} without exports() ran to its end (it would race another such test): {stderr}"
+            );
+        }
+    }
+
+    /// The child's case (only under an_export_outside_the_lock_fails_the_run, which names it in this variable).
+    const OUTSIDE_THE_LOCK: &str = "COT_SIM_WASM_OUTSIDE_THE_LOCK";
+
+    #[test]
+    #[ignore = "a child of an_export_outside_the_lock_fails_the_run"]
+    fn outside_the_lock() {
+        match std::env::var(OUTSIDE_THE_LOCK).as_deref() {
+            Ok("state") => {
+                protocol_refusal();
+            }
+            Ok("sampling") => {
+                sampling_frame_ptr();
+            }
+            _ => {}
+        }
     }
 
     #[test]
