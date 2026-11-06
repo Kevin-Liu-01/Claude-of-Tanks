@@ -103,7 +103,7 @@ fractions alone:
   module-cached across tanks; materials are always per-visual (burn-hook
   ownership).
 
-## Kit inventory (29 builders, 61 catalog variants)
+## Kit inventory (29 builders, 61 catalog variants; release 269 adds 3 builders, 8 variants)
 
 | kit | variants | eras | notes |
 |---|---|---|---|
@@ -136,6 +136,9 @@ fractions alone:
 | rations | 2-box stack | all | |
 | bucket | steel pail | ww2, cw | rear-plate hang |
 | chain | 5–6 links | all | bow shackle dangle |
+| crewkit | ammo-can stack / MRE pair / water case / foam mat roll / sleeping bag / assault pack; any fleet cargo name | cw, mod | release 269 (below): issue sizes, the crew's load at measured stations |
+| cargonet | w × len | cw, mod | release 269: 12 cm webbing mesh laid tight over the load under it |
+| coil | r, turns | cw, mod | release 269: a tow cable coiled on two J-hooks, hung on a rear plate |
 
 Deliberately NOT included: tactical numbers/insignia (already the painter
 system's decal layer) and barrel-mounted cosmetics (kill rings, travel-lock
@@ -239,6 +242,70 @@ per-id fidelity A/B first. The garage floor gained the pedestal wear apron
 (`garage_pedestal_wear_apron` in `garageDressing.ts`): scuffed grit ring hugging the
 platform base, two faded tread lanes along the hero heading, drips by the ramp; the deck
 and its painted rim stay masked clean.
+
+### Release 269 — lived-in loads on the M1A1s and the Bradleys (lane abrams-bradley-269, builder K)
+
+The owner, 2026-11-05: "add a bunch of extra decorations annd tank props and boxes and bags and other soldier
+reuqipment onn all of these bradleys and m1a1s". `LIVED_IN_ROWS` (decorations.ts) appends each listed vehicle's crew load
+after all of its own rows (`decorManifestFor` = `baseDecorManifest` + the rows; the M3A2 keeps the M2A2's rows and seed
+through `DECOR_TWIN` and has lived-in rows of its own, its turret being the source-measured one). The rows are always
+carried, draw nothing from the manifest's stream and seat under their own near budget, so everything the vehicle carried
+before keeps its seat (the whole fleet's manifests before and after differ only on these ids, each by its appended rows).
+
+**The budget exception.** These eleven ids (m1a1, m1a1ha, m1a1_abrams_hc, m1a1_abrams_sa, m1a1_abrams_aim,
+m1a1_abrams_fep, m2a2_bradley, m3a2_bradley, m3a3_bradley, ua_m2a3_bradley, m6_linebacker; `ua_m1a1` carries none) are
+the one exception to the fleet's 6,000-triangle near decor budget: their lived-in rows seat under `LIVED_IN_TRIS`,
+16,000 triangles (11,000 for phase 1, accepted by the lane's coordinator on 2026-11-05 because the owner asked for "a
+bunch"; raised for phase 2's fuller racks, turrets and noses). Every row before them still seats under 6,000. The
+heaviest decor is the M1A1 AIM's, about 12,000 near triangles in four draws. Any other vehicle that wants more asks the
+owner first (src/vehicles/SKILL.md).
+
+The pieces (accessoryKits.ts, issue sizes): `crewkit` builds `ammo-can-stack` (two M2A1 .50 cans, 305 x 155 x 188 mm, an
+M19A1 7.62 mm can, 280 x 95 x 178, laid across them), `mre-stack` (two 410 x 250 x 255 mm MRE cases, banded and
+stencilled), `water-case` (24 half-litre bottles under film, 390 x 260 x 200), `mat-roll` (a closed-cell foam mat 580 mm
+wide rolled to 170 mm under two bungees), `sleep-system` (a sleeping bag in its compression sack, 400 x 280) and
+`assault-pack` (460 x 300 x 170); any other name builds that fleet cargo variant (`long-duffel`, `large-rucksack`,
+`folded-tarp-pack`, `camo-net-bag` ...) with the same lashings. `cargonet` is a 12 cm webbing mesh, `coil` a tow cable
+coiled on two J-hooks; the nose's net is the fleet's `camonet` roll.
+
+The slots: every row lists its stations in order of preference and seats at the first one every guard passes. `stowAt`
+seats a load at measured frame stations (`at`; a rigid load on its highest support points, a soft one sagging; `stack`
+lets it rest on the decor seated before it, `floor` on a rack's open mesh floor); `netOver` lays a net over a footprint,
+every node over the highest of the tank, the decor and the rack floor, its long sides hooked to the rails (`edge`) and its
+ends lying on the load, pulled tight (no inner node more than 2.5 cm under its neighbours' mean) and every span lifted
+clear of what it crosses; `gutterRoll` settles a roll in a hull side gutter (its section against the floor read at three
+stations along it, never outboard of the upper side plate's inner face); `plateHang` hangs a piece flat on the rear
+plate; `railHang` hangs a soft pack on the outside of a turret side rack's rails by its two shoulder straps; `troughRoll`
+lays a roll in the trough between a turret wall and its side rack's rails (against the rail's inner face, on the wall
+read at two heights); `slopeLoad` lays a roll on a plate along its plane (both ends within 2 cm of it). A roll in a
+gutter or trough and a hung pack have no flat foot, so they carry no contact pad. Every commit keeps the fleet guards
+(width, gun, sweep, dock, launchers, spare-track runs, keep-outs, suits).
+
+What each carries (frames: turret or hull; x is the vehicle's left, z forward):
+
+| id | where | what |
+|---|---|---|
+| m1a1 | bustle rack (turret z -2.6..-2.94); side racks | water case (x 0.62), .50/7.62 can stack (-0.2) with a folded tarp pack on it, rucksack (-0.76) with a foam mat on it, an MRE pair in the left bay (1.14), the net over x -1.0..0.78 (its drone dock's airframe over x 0.10..0.81 keeps the cases low there); on each side rack a sleeping bag in the trough of the first and third bays (z -0.56, -1.84) and an assault pack on the rails of the second and fourth (-1.24, -2.55) |
+| m1a1ha | as the M1A1 | water case beside the cans (x 0.19), cans, rucksack with a foam mat, the net to x 0.36 (its dock's airframe is over x 0.43..1.14, nothing stands under it); the side racks as the M1A1 |
+| m1a1_abrams_sa | as the M1A1 | water case, cans with a tarp pack on them, the MRE pair, the net; its rack's right bay is held clear by a keep-out (no rucksack or mat) and the bustle roof's loads overhang the rest; the side racks as the M1A1 |
+| m1a1_abrams_aim | as the M1A1 | water case with a sleeping bag on it, two can stacks (-0.2, 0.2), rucksack with a foam mat, the MRE pair, the net to x 1.3; the side racks as the M1A1 |
+| m1a1_abrams_hc | its tejas rack (x +-1.07) | a sleeping bag on the profile's rack duffel, a foam mat behind the dock's reach (z -2.88); the rack is full to 0.92 (its cans to 1.19) and its dock's airframe reaches over x -0.87..-0.15, so no net |
+| m1a1_abrams_fep | its tejas rack | a can stack on the rack's free flat top (x 0.05) with a water case on it, a long duffel on the profile's bags (-0.6), a cargo net over the rack (its roof and left deck are under its field net) |
+| m2a2_bradley | gutters, nose, ramp, turret | left gutter: long duffel (z -2.5), foam mat (-1.3), folded tarp pack (1.65); right gutter: foam mats (-2.58, -1.2, 1.7) (its classic turret's overhang and bustle sweep the gutters beside it, and its gun at full depression reaches tall bags at the rear corners and the right front); on the nose shelf a rolled camouflage net (x 0.12) and a long duffel (-0.7); the tow cable coiled on the ramp; turret: a duffel on the right flank's rear quarter, a sleeping bag and a can stack in the bustle rack under a net |
+| m3a2_bradley | gutters, nose, ramp, turret | left gutter: long duffel, foam mats (-1.95, -1.3), sleeping bag (-0.7), camouflage net bag (0.45), foam mat (1.15), sleeping bag (1.65); right gutter: long duffel, sleeping bags (-1.95, -0.55), foam mats (-1.2, 1.7); the nose's net and duffel; the coiled cable; turret: a foam mat across its rack under a net (its flanks carry the source's own crew bags) |
+| m3a3_bradley | gutters, ramp, turret | the M3A2's gutter load and coiled cable; on the 269 turret's open rack (on its bustle box's lid, x -0.66..0.52, floor 0.55) a sleeping bag and a can stack under a net, standing under 0.91 so the rear camera pods (0.905) and the commander's viewer (window 1.00) see over them; nothing on its flanks (both launchers and their BRAT tiles) or its nose (its drone dock) |
+| ua_m2a3_bradley | gutters, nose, turret | left gutter: long duffel, foam mats (-1.95, -1.3, 1.15), camouflage net bag (0.55); right gutter: sleeping bag (-2.75), foam mats (-0.5, 1.7) (its unditching log fills z -1..-2); a can stack at the nose shelf's right end (its spare links take the rest); turret: a sleeping bag and a can stack in its railed rack under a net; no room on the ramp for the coil beside the fleet's racks |
+| m6_linebacker | gutters, nose, ramp, turret | sleeping bags at the rear of both gutters (z -2.8), foam mats (-1.4, -1.3, 0.45), a folded tarp pack (-0.75), sleeping bags forward (1.15, 1.7); the nose's net and duffel; the coiled cable; a foam mat and a sleeping bag on its turret's bags (no net, nothing on its flanks: the Stinger pod and its bins) |
+
+Not dressed: the M1A1 rear decks (behind the turret they are the gun's own path, held 0-3 degrees up from yaw 142 to 180
+by `gunPitchByYawDeg` with its barrel 6 cm over the deck, and the bustle rack's sweep), the netted roofs (`m1a1_abrams_fep`'s
+turret and left deck, `ua_m1a1`'s cage roof and its whole rear deck and skirts: decor under a field net raises it into a
+hoop) and so `ua_m1a1` carries nothing new, the Bradleys' flat roof behind the turret (the 25 mm gun at full depression
+crosses it), their trim vane's face (the gun at full depression passes 5 cm over its spare links, and the driver's
+periscopes look out over its left half: the nose shelf 1.7 m ahead of them stays under their line to the ground), and
+their hull sides above the skirts (outboard of the side plates every bag stands past the width guard, W/2 + 4.8 cm).
+Jerrycans: the fleet's can racks are 0.39 m deep, wider than the M1A1 bustle rack (0.34), and stand over the docks' 0.76 m
+limit, so none rides there.
 
 ### Asks for the fleet/profile agents (profiles are yours — no edits made)
 
