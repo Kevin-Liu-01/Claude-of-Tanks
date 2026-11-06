@@ -239,6 +239,14 @@ export interface GarageReturnRuntime {
   /** Ordinary Garage frames stay suppressed (the Garage is not handed over restored). */
   readonly framesSuppressed: boolean;
   /**
+   * (round 3 B2) The return still owes the player the Garage once nothing is in flight: a failed return (its notice is
+   * the screen, frames suppressed, and its Retry, the return again, tears down whatever loaded under it), or one a
+   * context change cut short over the Garage's scene (the context recovery retries it there). A battle, solo or network,
+   * takes the scene from no such return (main.ts battleSceneRefusal); a skipped restore is Battle Again's own next
+   * battle, and a Garage prepared behind the report is the report's.
+   */
+  readonly owesGarage: boolean;
+  /**
    * Resolves when no return is in flight: a Leave until its entry settles (its veil's fade-in, before the entry begins,
    * included; its dwell and fade-out not, so a waiting start covers under the still-opaque veil) and any return entry
    * (swap, preparation, handoff, skipped restore); null: none is. Battle Again's lease is not waited for: its own
@@ -896,6 +904,7 @@ export function createGarageReturnRuntime<Visual = object>(
     get operation() { return transitionLease?.operation ?? null; },
     get state() { return state; },
     get framesSuppressed() { return state !== 'idle'; },
+    get owesGarage() { return state === 'failed' || (state === 'superseded' && game.phase === 'garage'); },
     whenSettled,
     get lastTrace() { return lastTrace; },
     get awaitingHandoff() {

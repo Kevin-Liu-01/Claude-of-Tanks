@@ -3,7 +3,8 @@
 // silently became the other operation; Battle Again polled the entry latch every 150 ms and 16 ms for 15 s.
 import assert from 'node:assert/strict';
 import * as garageReturnModule from './garageReturnRuntime.ts';
-import { assertGarageScreenSettled, createAppLifecycle, GarageScreenUnsettledError, isGarageScreenSettled, transitionAppPhase } from './appLifecycle.ts';
+import * as appLifecycleModule from './appLifecycle.ts';
+import { assertGarageScreenSettled, canTransitionAppPhase, createAppLifecycle, GarageScreenUnsettledError, isGarageScreenSettled, transitionAppPhase } from './appLifecycle.ts';
 import { createBattleEntryLifecycle } from './battleEntryLifecycle.ts';
 import { createSoloBattleEntryRuntime } from './soloBattleEntryRuntime.ts';
 import { createBattleAgainAction } from './battleAgainAction.ts';
@@ -95,6 +96,7 @@ function createFixture({ restore = null, clearBattle = () => {}, phase = 'battle
   assert.equal(f.runtime.state, 'prepared');
   assert.equal(f.runtime.framesSuppressed, true, 'a prepared Garage stays suppressed behind the report');
   assert.equal(f.runtime.awaitingHandoff, true);
+  assert.equal(f.runtime.owesGarage, false, '(round 3 B2) a battle may still start from it: the report\'s');
   assert.deepEqual(f.states, ['preparing', 'preparing']);
   await f.runtime.leave();
   assert.equal(f.runtime.state, 'idle', 'the handoff hands over a restored Garage');
@@ -103,6 +105,7 @@ function createFixture({ restore = null, clearBattle = () => {}, phase = 'battle
   await f.runtime.battleAgain();
   assert.equal(f.runtime.state, 'restoreSkipped', "Battle Again leaves the Garage's restore unpaid");
   assert.equal(f.runtime.framesSuppressed, true);
+  assert.equal(f.runtime.owesGarage, false, "(round 3 B2) Battle Again's own next battle takes the scene");
 }
 
 // A failed return is 'failed' (frames stay suppressed); the next return retries from there.
@@ -112,10 +115,12 @@ function createFixture({ restore = null, clearBattle = () => {}, phase = 'battle
   await assert.rejects(f.runtime.leave(), /lost device/);
   assert.equal(f.runtime.state, 'failed');
   assert.equal(f.runtime.framesSuppressed, true, 'a failed return never cold-renders its partial Garage');
+  assert.equal(f.runtime.owesGarage, true, '(round 3 B2) and owes the Garage: no battle takes the scene from it');
   assert.equal(f.lifecycle.screenPhase, 'garage');
   fail = false;
   await f.runtime.enter();
   assert.equal(f.runtime.state, 'idle', 'a retry from failed hands over the restored Garage');
+  assert.equal(f.runtime.owesGarage, false);
 }
 
 // (round 2 U21) A start accepted while a Leave's veil still fades in (the Leave holds the return, its entry has not
@@ -228,6 +233,54 @@ function createFixture({ restore = null, clearBattle = () => {}, phase = 'battle
   assert.deepEqual(loads, ['garage'], 'the start loaded its battle from the Garage, never over a Studio');
 }
 
+// (round 3 B2) A start queued behind a Leave whose return then fails is refused when the wait ends. main bound the start's
+// scene check to the edge table alone, and garage -> battle (or battle -> battle, a return that failed before its scene
+// write) is an edge: the start announced, covered and loaded its battle under the failed return's notice (Garage frames
+// suppressed), whose Retry, the return again, then tore that battle down. main's own entry composition and its one
+// hand-over rule (battleSceneRefusal) over the real return, the real entry latch and the real solo entry.
+{
+  const f = createFixture({ restore: () => { throw new Error('the Garage presentation did not restore'); } });
+  const fadeIn = deferred();
+  f.holdTransition(fadeIn.promise);
+  const battleEntryLifecycle = createBattleEntryLifecycle({ nextFrame: async () => {}, now: () => 0 });
+  const covers = [];
+  const loads = [];
+  const announced = [];
+  const scope = {
+    game: f.game, garageReturn: f.runtime, onlineMatch: { current: null }, battleEntryLifecycle, createSoloBattleEntryRuntime,
+    canTransitionAppPhase, AppPhaseTransitionError: appLifecycleModule.AppPhaseTransitionError, GarageScreenUnsettledError,
+    soloBattleLoading: { begin: async () => { loads.push(f.game.phase); } },
+    battleLoad: { showPending: () => covers.push(f.game.phase), hide: async () => {} },
+    audio: { loadingOn() {} }, enterGarage: async () => {}, nextPaintFrame: async () => {},
+    bus: { emit: (type) => announced.push(type) },
+    battleEntryIntent: { begin() {} }, terrainVariantFor: () => null,
+    VISIBLE_TANK_IDS: ['m1a1_abrams_hc'], garage: { getSelected: () => 'm1a1_abrams_hc', getSelectedMap: () => 'verdant' },
+    loadFailure: async () => ({ showSoloEntryFailure() {} }), presentGarageReturnFailure: () => {},
+    console: { error() {}, warn() {}, info() {} },
+  };
+  const rule = mainSource.includes('\nfunction battleSceneRefusal(') ? [(() => {
+    const start = mainSource.indexOf('\nfunction battleSceneRefusal(');
+    return mainSource.slice(start + 1, mainSource.indexOf('\n}\n', start + 1) + 2);
+  })()] : [];
+  const { soloBattleEntry } = runMainStatements([
+    mainStatement('const soloBattleEntry = createSoloBattleEntryRuntime({').replace("import('./ui/garageReturnFailure.ts')", 'loadFailure()'),
+    ...rule,
+  ], scope, '{ soloBattleEntry }');
+  const leaving = f.runtime.leave().then(() => null, (error) => error);
+  const start = soloBattleEntry.beginSelected({ specId: 'm1a1_abrams_hc', mapId: 'verdant' }); // a menu start under the veil
+  await flush();
+  assert.deepEqual(covers, [], 'the start waits for the Leave');
+  fadeIn.resolve();
+  assert.ok((await leaving) instanceof Error, '(the Leave\'s return failed)');
+  await start;
+  await flush();
+  assert.equal(f.runtime.state, 'failed', '(its notice is the screen, Garage frames suppressed)');
+  assert.deepEqual([covers, loads, announced], [[], [], []],
+    'the queued start is refused once the wait ends: no announcement, cover or load under the failed return (before: all three)');
+  assert.equal(f.runtime.owesGarage, true, 'the failed return owes the Garage');
+  assert.equal(battleEntryLifecycle.pending, false, 'and the latch is free for the Retry\'s Garage');
+}
+
 // The edge table is closed: every target is a declared state, and the in-flight states only settle.
 {
   const states = Object.keys(GARAGE_RETURN_EDGES);
@@ -336,6 +389,7 @@ const isSuperseded = (by) => (error) => error?.name === 'GarageReturnSupersededE
   assert.equal(f.runtime.state, 'superseded', 'superseded, not failed');
   assert.equal(f.runtime.framesSuppressed, true, 'the Garage was never handed over restored');
   assert.equal(f.game.phase, 'battle', 'the round owns the scene');
+  assert.equal(f.runtime.owesGarage, false, '(round 3 B2) and the battle that took it owes nothing to it (its next round may start)');
   assert.equal(main.notices.length, 0, 'no return notice over the battle that took the scene');
   // the Leave's catch and the solo recovery reach the same notice: it opens nothing for a superseded return
   await main.presentGarageReturnFailure(Object.assign(new Error('cut short'), { code: 'garage_return_superseded' }), () => {});
@@ -360,6 +414,7 @@ const isSuperseded = (by) => (error) => error?.name === 'GarageReturnSupersededE
   await assert.rejects(main.enterGarageWithExit(), isSuperseded('context'));
   await flush();
   assert.equal(f.runtime.state, 'superseded');
+  assert.equal(f.runtime.owesGarage, true, '(round 3 B2) over the Garage\'s scene the recovery owes it: no battle takes the scene');
   assert.equal(main.notices.length, 0, 'no return notice while the context recovery owes the return');
   contextCurrent = true; // the device is restored
   assert.equal(await f.runtime.recoverAfterContextRestore(() => true), true, 'the recovery retries the interrupted return');

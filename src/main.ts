@@ -254,7 +254,7 @@ import {
   planBattleCamoOverrides, type BattleVisual,
 } from './game/rosterState.ts';
 import { clearMatchSession, createBus, createGameState, watchRevealsAll } from './game/stateCore.ts';
-import { assertAppPhaseTransition, canTransitionAppPhase, createAppLifecycle, GarageScreenUnsettledError } from './game/appLifecycle.ts';
+import { AppPhaseTransitionError, canTransitionAppPhase, createAppLifecycle, GarageScreenUnsettledError } from './game/appLifecycle.ts';
 import { bootReadiness } from './app/bootReadiness.ts';
 import { createBattleEntryIntent, type BattleTerrainVariant } from './game/battleEntryIntent.ts';
 import { createBattleWarmHold } from './game/battleWarmHold.ts';
@@ -2840,16 +2840,33 @@ function beginMultiplayerV2Battle(request: BrowserLaunchRequest): Promise<boolea
  * Studio that could not leave refuses the round here: its Garage return failed before the Garage took the scene (the
  * edge), or after (review 2: the return's state; no Garage to hand over, its notice the screen). Null when the scene
  * can hand over now: nothing waits, so a launch's cover still lands in its own task.
+ * (round 3 B2) From every other phase too: a Garage return in flight (a Leave's veil fading in, its entry) settles first,
+ * as a solo start waits for it, so the round's cover lands under the still-opaque veil; then battleSceneRefusal decides.
+ * A round in phase 'garage' covered, loaded and revealed under a failed return's notice, whose Retry then disposed it.
+ * A refusal is a rejection, so the composition fails the round at its 'scene' stage.
  */
 function takeSceneForRound(): Promise<void> | null {
-  if (game.phase !== 'studio') {
-    assertAppPhaseTransition(game, 'battle', 'network-round');
-    return null;
-  }
-  return loadStudioRuntime().then((runtime) => runtime.exit?.()).then(() => {
-    assertAppPhaseTransition(game, 'battle', 'network-round');
-    if (garageReturn.state !== 'idle') throw new GarageScreenUnsettledError('returning', 'network-round: the Studio\'s Garage return did not land');
-  });
+  const settle = (): Promise<void> | null => {
+    const returning = garageReturn.whenSettled();
+    if (returning) return returning.then(() => settle() ?? undefined);
+    const refusal = battleSceneRefusal('network-round');
+    return refusal ? Promise.reject(refusal) : null;
+  };
+  if (game.phase !== 'studio') return settle();
+  return loadStudioRuntime().then((runtime) => runtime.exit?.()).then(() => settle() ?? undefined);
+}
+
+/**
+ * (round 3 B2) The one rule a battle takes the scene by, solo or network, once no Garage return is in flight: the app
+ * lifecycle's edge table, then the return (garageReturn.owesGarage: a failed return, whose notice is the screen and
+ * whose Retry tears down a battle loaded under it, or one a context change cut short over the Garage's scene, which the
+ * context recovery retries). Null when the scene may hand over; otherwise the refusal, unthrown (the solo start refuses
+ * as busy, a network round fails at 'scene').
+ */
+function battleSceneRefusal(reason: string): Error | null {
+  if (!canTransitionAppPhase(game, 'battle')) return new AppPhaseTransitionError(game.phase, 'battle', reason);
+  if (garageReturn.owesGarage) return new GarageScreenUnsettledError('returning', `${reason}: a Garage return still owes the screen`);
+  return null;
 }
 
 /** The composition's modules (one list: a returning tab's boot loads the same chunks ahead of its entry, lever 3c). */
@@ -3652,7 +3669,8 @@ const soloBattleEntry = createSoloBattleEntryRuntime({
   isNetworkRoundEntering: () => onlineMatch.current?.entering === true,
   // (round 2, app-flow review 2) the edge table decides a start before its announcement and cover, at the press and after
   // a return wait: over the Studio (the __DEBUG.beginSoloBattle hook) it covered and loaded, refused only after the load
-  canTakeScene: () => canTransitionAppPhase(game, 'battle'),
+  // (round 3 B2) and a return that still owes the Garage: a start queued behind a failed Leave loaded under its notice
+  canTakeScene: () => battleSceneRefusal('solo-start') === null,
   // (audit F2 review) every accepted entry records its whole intent, a failure notice's retry included (its recovery
   // return's 'garage' announcement cleared the record). batch 19 (2026-09-14): the Garage BATTLE button is a free
   // sortie in the chosen rules, so a Frontline Assault pick carves the trenches like a ladder launch does.
