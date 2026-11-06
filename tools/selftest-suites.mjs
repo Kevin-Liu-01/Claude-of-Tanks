@@ -2751,6 +2751,9 @@ export const SELFTEST_SUITES = Object.freeze({
     'tools/pane-stack-layer.browser.selftest.mjs',
     // fx-first-use-261: a battle's first broken building (a scripted strike after the reveal) links no FX program
     'tools/destruction-first-use.browser.selftest.mjs',
+    // 269 (the 268 drive smoke's second battle at 97%): a second solo battle in one page, started while the Leave's Garage
+    // restore runs under a loaded GPU, reveals on its first frame
+    'tools/second-solo-battle.browser.selftest.mjs',
     // the drawn-geometry shape's control and garages (the maps ride on collisionManifestDrift, the tanks on fleetPassHigh)
     'src/world/maps/drawnGeometryShape.selftest.mjs',
     'tools/props-build-profile.selftest.mjs',
