@@ -1,5 +1,5 @@
 import { launchGuardedBrowser } from '../browser-launch.mjs';
-import { acquireCaptureLock as acquireLock, refreshCaptureLock, releaseCaptureLock as releaseLock } from '../capture-lock.mjs';
+import { openCaptureHold } from '../capture-hold.mjs';
 // Render the presentation's canonical in-engine Studio action loop, including
 // the live Scene Studio controls and cinematic timeline.
 //
@@ -64,10 +64,7 @@ if (!scene.storyboard?.shots?.length || !scene.storyboard.actorTracks?.length) {
 }
 const durationMs = scene.storyboard.durationMs;
 
-await acquireLock(45 * 60 * 1000);
-process.on('exit', releaseLock);
-const lockRefresher = setInterval(() => { refreshCaptureLock(); }, 60 * 1000);
-lockRefresher.unref();
+const hold = await openCaptureHold({ label: 'record-studio-action-loop', timeoutMs: 45 * 60 * 1000 });
 
 const port = 7800 + Math.floor(Math.random() * 400);
 let server = null;
@@ -241,5 +238,5 @@ try {
 } finally {
   if (browser) await browser.close();
   if (server) await server.close();
-  releaseLock();
+  await hold.release();
 }

@@ -1,5 +1,5 @@
 import { launchGuardedBrowser } from '../browser-launch.mjs';
-import { acquireCaptureLock as acquireLock, refreshCaptureLock, releaseCaptureLock as releaseLock } from '../capture-lock.mjs';
+import { openCaptureHold } from '../capture-hold.mjs';
 // tools/marketing-shots/shoot.mjs — marketing screenshot batch driver.
 //
 // Drives window.__STUDIO (docs/STUDIO.md) over every scene JSON in
@@ -67,10 +67,7 @@ scenes.sort((a, b) => {
 });
 console.log(`[marketing-shots] ${scenes.length} scene(s), width ${WIDTH} -> ${outDir}`);
 
-await acquireLock(30 * 60 * 1000);
-process.on('exit', releaseLock);
-const lockRefresher = setInterval(() => { refreshCaptureLock(); }, 60 * 1000);
-lockRefresher.unref();
+const hold = await openCaptureHold({ label: 'shoot', timeoutMs: 30 * 60 * 1000 });
 
 // --- vite (own 7xxx port — NEVER 5001/5002) -----------------------------------
 const port = 7300 + Math.floor(Math.random() * 500);
@@ -172,6 +169,7 @@ try {
   }
   await browser.close();
   await server.close();
+  await hold.release();
 }
 console.log(`[marketing-shots] done: ${shot.length}/${scenes.length} captured`);
 process.exit(failed ? 1 : 0);

@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 import { launchGuardedBrowser } from './browser-launch.mjs';
-import { acquireCaptureLock as acquireLock, refreshCaptureLock, releaseCaptureLock as releaseLock } from './capture-lock.mjs';
+import { openCaptureHold } from './capture-hold.mjs';
 // voice-smoke.mjs — play-path smoke for the national crew radio
 // (src/audio/crewRadio.ts, packs in public/audio/voice/<lang>/).
 //
@@ -63,10 +63,7 @@ function analyze(i16, sampleRate) {
   return { rms, rmsDb: rms > 0 ? 20 * Math.log10(rms) : -Infinity, highShare, lowShare };
 }
 
-await acquireLock(20 * 60 * 1000);
-process.on('exit', releaseLock);
-const lockRefresher = setInterval(() => { refreshCaptureLock(); }, 60 * 1000);
-lockRefresher.unref();
+const hold = await openCaptureHold({ label: 'voice-smoke', timeoutMs: 20 * 60 * 1000 });
 
 const port = 7600 + Math.floor(Math.random() * 300);
 // A private dep cache: node_modules (and its .vite) can be shared between checkouts.
@@ -328,8 +325,7 @@ try {
   writeFileSync(join(outDir, 'report.json'), JSON.stringify({ ...report, errors }, null, 2));
   try { await browser.close(); } catch (_) { /* fine */ }
   try { await server.close(); } catch (_) { /* fine */ }
-  clearInterval(lockRefresher);
-  releaseLock();
+  await hold.release();
 }
 
 if (errors.length) {

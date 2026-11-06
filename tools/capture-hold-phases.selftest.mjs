@@ -655,7 +655,7 @@ for (const waiters of [1, 0]) {
       const note = (line) => appendFileSync(${JSON.stringify(events)}, line + '\\n');
       const sleep = (ms) => new Promise((done) => setTimeout(done, ms));
       const lock = createCaptureLock({ lockDir: ${JSON.stringify(lockDir)}, queueDir: ${JSON.stringify(queueDir)}, log: (line) => note('lock: ' + line), holdCapMs: 200 });
-      const hold = await openCaptureHold({ lock, label: 'requeue-probe', timeoutMs: 1500, capCheckMs: 50, signals: [], teardown: async () => note('teardown') });
+      const hold = await openCaptureHold({ lock, label: 'requeue-probe', timeoutMs: 1500, capCheckMs: 50, teardown: async () => note('teardown') });
       note('up');
       let failure = null;
       for (let row = 0; row < 2_000 && !failure; row++) { await sleep(25); try { await hold.checkpoint(); } catch (error) { failure = error; } }

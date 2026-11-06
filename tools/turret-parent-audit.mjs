@@ -1,6 +1,6 @@
 import { launchGuardedBrowser } from './browser-launch.mjs';
 import { eachBrowserChunk } from './browser-id-chunks.mjs';
-import { acquireCaptureLock as acquireLock, refreshCaptureLock, releaseCaptureLock as releaseLock } from './capture-lock.mjs';
+import { openCaptureHold } from './capture-hold.mjs';
 import { uniqueIds } from './id-list.mjs';
 // Turret-furniture parenting audit driver (owner law 2026-08-04,
 // BUILD-STANDARD §B5): fleet driver for tools/turret-parent-audit.html.
@@ -16,10 +16,7 @@ import { mkdirSync, writeFileSync } from 'node:fs';
 
 // A repeated --ids entry fails before the capture hold (2026-10-16, test-speed R4c)
 uniqueIds(process.argv.find((a) => a.startsWith('--ids='))?.slice(6).split(','), 'turret-parent-audit --ids');
-await acquireLock(45 * 60 * 1000);
-process.on('exit', releaseLock);
-const refresher = setInterval(() => { refreshCaptureLock(); }, 60 * 1000);
-refresher.unref();
+const hold = await openCaptureHold({ label: 'turret-parent-audit', timeoutMs: 45 * 60 * 1000 });
 
 const idArg = process.argv.find((a) => a.startsWith('--ids='));
 const server = await createServer({
@@ -84,5 +81,5 @@ try {
   console.log(`[turret-parent] offenders: ${offenders.length}/${results.length} -> shots/turret-parent.json`);
 } finally {
   await server.close();
-  releaseLock();
+  await hold.release();
 }

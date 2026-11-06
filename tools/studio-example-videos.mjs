@@ -1,5 +1,5 @@
 import { launchGuardedBrowser } from './browser-launch.mjs';
-import { acquireCaptureLock as acquireLock, refreshCaptureLock, releaseCaptureLock as releaseLock } from './capture-lock.mjs';
+import { openCaptureHold } from './capture-hold.mjs';
 // Render the current 30-map Studio duel collection.
 // Usage:
 //   npm run studio:examples -- --out shots/studio-modern-examples
@@ -188,10 +188,7 @@ mkdirSync(outDir, { recursive: true });
 
 // FIFO GPU lock shared by the repository's browser rendering tools.
 
-await acquireLock(45 * 60 * 1000);
-process.on('exit', releaseLock);
-const lockRefresher = setInterval(() => { refreshCaptureLock(); }, 60 * 1000);
-lockRefresher.unref();
+const hold = await openCaptureHold({ label: 'studio-example-videos', timeoutMs: 45 * 60 * 1000 });
 
 const port = 7800 + Math.floor(Math.random() * 400);
 let server = null;
@@ -518,5 +515,5 @@ try {
 } finally {
   if (browser) await browser.close();
   if (server) await server.close();
-  releaseLock();
+  await hold.release();
 }

@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 import { launchGuardedBrowser } from './browser-launch.mjs';
-import { acquireCaptureLock as acquireLock, refreshCaptureLock, releaseCaptureLock as releaseLock } from './capture-lock.mjs';
+import { openCaptureHold } from './capture-hold.mjs';
 // audio-mix-balance.mjs — browser gate for the mix itself (src/audio/audioEngine.ts):
 // what a player actually hears, measured on the master output through the
 // __COT_AUDIO PCM tap with every settings channel at its default.
@@ -129,10 +129,7 @@ function shotAnatomy(i16, sampleRate, masterLevel) {
   return { riseMs: a.riseMs, decayDb: +decayDb.toFixed(1), e10: +a.e10.toFixed(3), lowBody: +a.lowBody.toFixed(3), crestDb: +a.crestDb.toFixed(1), atKnee };
 }
 
-await acquireLock(30 * 60 * 1000);
-process.on('exit', releaseLock);
-const lockRefresher = setInterval(() => refreshCaptureLock(), 60 * 1000);
-lockRefresher.unref();
+const hold = await openCaptureHold({ label: 'audio-mix-balance', timeoutMs: 30 * 60 * 1000 });
 
 const viteCacheDir = resolve('/tmp', `cot-audio-mix-vite-${process.pid}`);
 process.on('exit', () => rmSync(viteCacheDir, { recursive: true, force: true }));
@@ -353,8 +350,7 @@ try {
   writeFileSync(join(outDir, 'report.json'), JSON.stringify(report, null, 2));
   await browser.close().catch(() => {});
   await server.close().catch(() => {});
-  clearInterval(lockRefresher);
-  releaseLock();
+  await hold.release();
 }
 console.log(report.errors.length ? '[mix] FAIL' : '[mix] GREEN');
 process.exit(report.errors.length ? 1 : 0);

@@ -15,7 +15,9 @@
 //   receipts among them): a new one fails here, and so does a row with no reason or one that no longer acquires. A
 //   direct acquirer is a source that imports a capture lock and calls acquire(), or one that calls acquire() on a lock it
 //   was handed (`lock.acquire(`, `capture.lock.acquire(`; round 2: withIsolatedCaptureBrowser and hud-ammo-capture's
-//   runCapture held that way, parallel wrappers the import test never saw; both hold through withCaptureHold now).
+//   runCapture held that way, parallel wrappers the import test never saw; both hold through withCaptureHold now), or one
+//   that calls the shared lock's acquire under a name of its own (round 3: 15 tools imported `acquireCaptureLock as
+//   acquireLock` and none of these rules saw them; they hold through openCaptureHold now).
 //   (review 2) A direct acquirer's importers are listed too, each with what it takes: frame-budget-probe's
 //   acquireProbeLocks handed its FIFO to four other tools that never called acquire() themselves, so none was listed and
 //   none had the cap. It holds through openCaptureHold now, and acquireProbeLocks counts as a wrapper call.
@@ -43,8 +45,94 @@ import { fileURLToPath } from 'node:url';
 
 const ROOT = fileURLToPath(new URL('..', import.meta.url));
 const SELF = 'tools/capture-hold-census.selftest.mjs';
-// (block comments blanked line for line, so a finding's line number is the source's)
-const code = (text) => text.replace(/\/\*[\s\S]*?\*\//g, (comment) => comment.replace(/[^\n]/g, ' ')).replace(/(^|[^:\\'"`])\/\/.*$/gm, '$1');
+// A source's code: its comments blanked line for line (so a finding's line number is the source's), its strings, template
+// literals and regular expression literals kept whole. (round 3 A5) One pass that knows where a string or a regular
+// expression begins: the two regular expressions before it read a '/*' inside a string or a line comment ('**/*',
+// `// scenes/*.json`) as a block comment and blanked the code after it up to the next '*/', so an acquire in
+// tools/marketing-shots/shoot.mjs (and lines of audio-probe and sfx-smoke) was invisible to every rule here.
+const REGEX_AFTER = new Set([...'(,=:[!&|?{};+-*%<>~^']);
+const REGEX_KEYWORDS = new Set(['return', 'typeof', 'instanceof', 'in', 'of', 'new', 'delete', 'void', 'throw', 'case', 'do', 'else', 'yield', 'await']);
+const SPECIAL = /[/'"`{}]/g;
+const codeOf = new Map(); // one scan per source text: the census reads ~5,900 sources several times
+function code(text) {
+  const known = codeOf.get(text);
+  if (known !== undefined) return known;
+  const n = text.length, out = [];
+  let i = 0;
+  const blank = (from, to) => out.push(text.slice(from, to).replace(/[^\n]/g, ' '));
+  // code up to the end, or (`nested`, inside a template's ${...}) up to the '}' that closes it
+  const scanCode = (nested) => {
+    let depth = 0, prev = '', word = '';
+    while (i < n) {
+      SPECIAL.lastIndex = i;
+      const at = SPECIAL.exec(text)?.index ?? n;
+      if (at > i) {
+        const run = text.slice(i, at), trimmed = run.trimEnd();
+        out.push(run);
+        if (trimmed) { prev = trimmed[trimmed.length - 1]; word = /[\w$]+$/.exec(trimmed)?.[0] ?? ''; }
+        i = at;
+        if (i >= n) return;
+      }
+      const ch = text[i], next = text[i + 1];
+      if (ch === '/' && next === '/') { const end = text.indexOf('\n', i); const stop = end < 0 ? n : end; blank(i, stop); i = stop; continue; }
+      if (ch === '/' && next === '*') { const end = text.indexOf('*/', i + 2); const stop = end < 0 ? n : end + 2; blank(i, stop); i = stop; continue; }
+      if (ch === '\'' || ch === '"') {
+        const from = i++;
+        while (i < n && text[i] !== ch && text[i] !== '\n') i += text[i] === '\\' ? 2 : 1;
+        if (text[i] === ch) i++;
+        out.push(text.slice(from, i)); prev = ch; word = '';
+        continue;
+      }
+      if (ch === '`') { out.push(ch); i++; scanTemplate(); prev = ch; word = ''; continue; }
+      if (ch === '/' && (prev === '' || REGEX_AFTER.has(prev) || REGEX_KEYWORDS.has(word))) {
+        // a regular expression literal (to its closing '/' outside a class, on its line), then its flags
+        const from = i++;
+        let inClass = false;
+        while (i < n && text[i] !== '\n') {
+          const c = text[i];
+          if (c === '\\') { i += 2; continue; }
+          if (inClass) { if (c === ']') inClass = false; } else if (c === '[') inClass = true; else if (c === '/') break;
+          i++;
+        }
+        if (text[i] === '/') { i++; while (i < n && /[a-z]/i.test(text[i])) i++; }
+        out.push(text.slice(from, i)); prev = ')'; word = '';
+        continue;
+      }
+      if (ch === '}' && nested && depth === 0) return;
+      if (ch === '{') depth++; else if (ch === '}') depth--;
+      out.push(ch); i++; prev = ch; word = '';
+    }
+  };
+  // a template literal, after its opening backquote, through its closing one
+  const scanTemplate = () => {
+    let from = i;
+    while (i < n) {
+      const c = text[i];
+      if (c === '\\') { i += 2; continue; }
+      if (c === '`') { i++; out.push(text.slice(from, i)); return; }
+      if (c === '$' && text[i + 1] === '{') { i += 2; out.push(text.slice(from, i)); scanCode(true); from = i; continue; }
+      i++;
+    }
+    out.push(text.slice(from, n));
+  };
+  scanCode(false);
+  const body = out.join('');
+  codeOf.set(text, body);
+  return body;
+}
+{
+  // (round 3 A5) a '/*' in a string or a line comment opens no comment; a regular expression and a template keep theirs
+  const lock = `import { createCaptureLock } from './${'capture-lock'}.mjs';\nconst lock = createCaptureLock();\n`;
+  const kept = (source, needle) => code(source).includes(needle);
+  assert.ok(kept(`${lock}// scenes/*.json\nawait lock.${'acq'}uire(1);\nconst watch = { ignored: ['**/*'] };`, `lock.${'acq'}uire(1)`), 'a /* in a line comment (shoot.mjs)');
+  assert.ok(kept(`${lock}const watch = { ignored: ['**/*'] };\nawait lock.${'acq'}uire(1);\n/* a comment */`, `lock.${'acq'}uire(1)`), 'a /* in a string');
+  assert.ok(kept(`${lock}const re = /\\/\\*.*$/gm;\nawait lock.${'acq'}uire(1);\nconst s = '*/';`, `lock.${'acq'}uire(1)`), 'a /* in a regular expression');
+  assert.ok(kept(`${lock}const t = \`a \${b ? '/*' : \`c\${d}\`} e\`;\nawait lock.${'acq'}uire(1); // done`, `lock.${'acq'}uire(1);`), 'a /* in a template\'s expression');
+  assert.ok(!kept(`${lock}/* await lock.${'acq'}uire(1); */\nconst x = a / b / c; // lock.${'acq'}uire(2)`, `${'acq'}uire(`), 'comments are still blanked (and a division is no regular expression)');
+  const source = `const a = 1; /* one\ntwo */ const b = '//';\n// three\nconst c = \`\n\${a}\`;`;
+  assert.equal(code(source).split('\n').length, source.split('\n').length, 'line for line');
+  assert.match(code(source), /const b = '\/\/';/, 'a // in a string is kept');
+}
 // built from parts so this file is not its own finding
 const MEMGUARD = new RegExp(['[\'"`/]mem', 'guard\\b'].join(''));
 
@@ -131,8 +219,23 @@ const HANDED_ACQUIRE = new RegExp(['\\b\\w*[lL]ock\\??\\.acq', 'uire\\('].join('
 /** Whether `index` of `line` is inside a one-line string literal (an odd count of one quote kind before it). */
 const inString = (line, index) => ['\'', '"', '`'].some((quote) => (line.slice(0, index).match(new RegExp(`(?<!\\\\)${quote}`, 'g')) ?? []).length % 2 === 1);
 const handedAcquire = (text) => code(text).split('\n').some((line) => [...line.matchAll(HANDED_ACQUIRE)].some((match) => !inString(line, match.index)));
+// (round 3 A5) the shared lock's acquire under a name of the source's own: `import { acquireCaptureLock as acquireLock }`,
+// a destructured `{ acquireCaptureLock: take }`, or `const take = acquireCaptureLock`, then a call of that name. 15 tools
+// held the lock as `acquireLock(` and no rule here saw them: the import line has no '(' and the call names no
+// acquireCaptureLock (built from parts so this file is not its own finding).
+const ACQUIRE_BINDING = new RegExp(['\\bacquireCapture', 'Lock\\s+as\\s+([A-Za-z_$][\\w$]*)|\\bacquireCapture', 'Lock\\s*:\\s*([A-Za-z_$][\\w$]*)',
+  '|\\b(?:const|let|var)\\s+([A-Za-z_$][\\w$]*)\\s*=\\s*(?:[\\w$]+\\.)?acquireCapture', 'Lock\\b(?!\\s*\\()'].join(''), 'g');
+const aliasedAcquire = (text) => {
+  const body = code(text);
+  if (!body.includes(['acquireCapture', 'Lock'].join(''))) return false;
+  const names = new Set([...body.matchAll(ACQUIRE_BINDING)].map((match) => match[1] ?? match[2] ?? match[3]));
+  return [...names].some((name) => {
+    const call = new RegExp(`(?<![\\w$.])${name.replace(/\$/g, '\\$')}\\s*\\(`, 'g');
+    return body.split('\n').some((line) => [...line.matchAll(call)].some((match) => !inString(line, match.index)));
+  });
+};
 const acquiresDirectly = (file, text) => !HOLD_OWNERS.has(file)
-  && ((LOCK_IMPORT.test(code(text)) && ACQUIRE.test(code(text))) || handedAcquire(text));
+  && ((LOCK_IMPORT.test(code(text)) && ACQUIRE.test(code(text))) || handedAcquire(text) || aliasedAcquire(text));
 {
   const via = (what) => `import { createCaptureLock } from './${'capture-lock'}.mjs';\n${what}`;
   assert.equal(acquiresDirectly('tools/a.mjs', via(`const lock = createCaptureLock(); await lock.${'acq'}uire(60_000);`)), true, 'a direct acquire');
@@ -145,6 +248,18 @@ const acquiresDirectly = (file, text) => !HOLD_OWNERS.has(file)
   assert.equal(acquiresDirectly('tools/a.mjs', `await captureLock?.${'acq'}uire(1);`), true, 'an optional call');
   assert.equal(acquiresDirectly('tools/a.selftest.mjs', `assert.ok(source.indexOf('await lock.${'acq'}uire(') > 0);`), false, 'a string a receipt reads');
   assert.equal(acquiresDirectly('tools/a.mjs', `const handle = assets.${'acq'}uire(key);`), false, 'another acquire() on no lock');
+  // (round 3 A5) the shared lock's acquire under a name of the source's own (15 tools: screenshot.mjs and its kin)
+  const shared = ['acquireCapture', 'Lock'].join('');
+  const aliased = `import { ${shared} as acquireLock, releaseCaptureLock as releaseLock } from './${'capture-lock'}.mjs';\n`;
+  assert.equal(acquiresDirectly('tools/a.mjs', `${aliased}await acquireLock(20 * 60 * 1000);\nprocess.on('exit', releaseLock);`), true, 'an aliased import');
+  assert.equal(acquiresDirectly('tools/a.mjs', `const { ${shared}: take } = await import('./${'capture-lock'}.mjs');\nawait take();`), true, 'a destructured one');
+  assert.equal(acquiresDirectly('tools/a.mjs', `import * as locks from './${'capture-lock'}.mjs';\nconst take = locks.${shared};\ntake(1);`), true, 'an assigned one');
+  assert.equal(acquiresDirectly('tools/a.mjs', `${aliased}// await acquireLock(1);\nconst note = 'acquireLock(1)';`), false, 'a comment and a string');
+  assert.equal(acquiresDirectly('tools/a.mjs', `import { ${shared} } from './${'capture-lock'}.mjs';\nawait runCapture({ lock: { ${'acq'}uire: ${shared} } });`), false,
+    'handed to a wrapper as a value (hud-ammo-states): no call here');
+  // the alias in a source whose '**/*' string the old comment stripper read as a comment (marketing-shots/shoot.mjs)
+  assert.equal(acquiresDirectly('tools/a.mjs', `${aliased}// scenes/*.json\nawait acquireLock(30 * 60 * 1000);\nconst watch = { ignored: ['**/*'] };`), true,
+    'an aliased acquire after a /* in a line comment');
 }
 /** The tools that still hold the GPU through a capture lock's acquire() themselves, each with the reason it differs from
  *  the one wrapper (round 2 U38: the other 68 of the 75 listed on 2026-11-02 hold through withCaptureHold or its open form,

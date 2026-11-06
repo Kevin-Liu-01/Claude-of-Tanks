@@ -1,5 +1,5 @@
 import { launchGuardedBrowser } from '../browser-launch.mjs';
-import { acquireCaptureLock as acquireLock, refreshCaptureLock, releaseCaptureLock as releaseLock } from '../capture-lock.mjs';
+import { openCaptureHold } from '../capture-hold.mjs';
 // Capture the public Gallery, Scene Studio, and responsive mobile command deck
 // that sit beside tools/screenshot.mjs's deterministic game-state views in the
 // presentation-r1 archive.
@@ -30,10 +30,7 @@ const outDir = resolve(opt('out', collection === 'feature-evidence'
   : 'shots/presentation-r1/ui-raw'));
 mkdirSync(outDir, { recursive: true });
 
-await acquireLock(20 * 60 * 1000);
-process.on('exit', releaseLock);
-const lockRefresher = setInterval(() => { refreshCaptureLock(); }, 60 * 1000);
-lockRefresher.unref();
+const hold = await openCaptureHold({ label: 'capture-presentation-ui', timeoutMs: 20 * 60 * 1000 });
 
 const port = 7800 + Math.floor(Math.random() * 400);
 const server = await createServer({
@@ -200,6 +197,5 @@ try {
 } finally {
   if (browser) await browser.close();
   await server.close();
-  clearInterval(lockRefresher);
-  releaseLock();
+  await hold.release();
 }

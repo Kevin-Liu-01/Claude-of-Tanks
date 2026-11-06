@@ -1,5 +1,5 @@
 import { launchGuardedBrowser } from './browser-launch.mjs';
-import { acquireCaptureLock as acquireLock, refreshCaptureLock, releaseCaptureLock as releaseLock } from './capture-lock.mjs';
+import { openCaptureHold } from './capture-hold.mjs';
 // Headless screenshot harness for critic agents.
 // Usage: node tools/screenshot.mjs [--out shots] [--views name1,name2]
 //   [--width 1920] [--height 1080] [--dpr 1] [--dyn-scale 0.8]
@@ -30,15 +30,9 @@ import { waitForBootLoaded } from './game-readiness.mjs';
 // ticket-aware tools, while old-protocol tools remain mutually excluded by
 // the same atomic directory.
 
-await acquireLock(20 * 60 * 1000);
-process.on('exit', releaseLock);
-// performance_budget r4: a full 13-view capture under machine load can exceed
-// the 5-minute staleness horizon — without a refresher a sibling reclaims the
-// LIVE lock mid-capture and two Chromium instances share the GPU (this is one
-// of the ways review-window perf evidence kept getting contended). Same
-// refresher tools/perfprobe.mjs has carried since r2.
-const lockRefresher = setInterval(() => { refreshCaptureLock(); }, 60 * 1000);
-lockRefresher.unref();
+// (2026-11-02 audit U38, round 3) the one hold wrapper refreshes the lock (performance_budget r4: a 13-view capture
+// under load outlives the 5-minute staleness horizon), owns its cap and signals, and releases it at exit
+const hold = await openCaptureHold({ label: 'screenshot', timeoutMs: 20 * 60 * 1000 });
 
 const args = process.argv.slice(2);
 function opt(name, fallback) {
@@ -268,5 +262,6 @@ try {
   }
   await browser.close();
   await server.close();
+  await hold.release();
 }
 process.exit(failed || consoleErrors.length ? 1 : 0);

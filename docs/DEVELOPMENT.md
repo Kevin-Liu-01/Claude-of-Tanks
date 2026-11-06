@@ -325,7 +325,8 @@ only:
   A shell holds one normal ticket across several steps with
   `node tools/with-capture-lock.mjs [--lock-class=render|timing] [--place=<key>] -- <command>`: every tool under it that
   takes the lock nests in that hold (its token), and a wait that runs out exits 77. `tools/capture-hold-census.selftest.mjs`
-  lists the few tools that still acquire the lock themselves, each with its reason, and refuses a new one.
+  lists the few tools that still acquire the lock themselves (under whatever name they import its acquire), each with its
+  reason, and refuses a new one.
 - **Helpers in the same module.** `startViteChild` runs Vite in a child process that exits with its parent: `preview`
   serves a built `dist` with no transforms, and `dev` serves the sources. `warmPage` waits, within bounds, for a ready
   expression, eager images and fonts. Studio, Garage and the public pages all serve from a dist (`vite build --outDir

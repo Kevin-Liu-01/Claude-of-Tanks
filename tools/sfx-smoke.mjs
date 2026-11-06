@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 import { launchGuardedBrowser } from './browser-launch.mjs';
-import { acquireCaptureLock as acquireLock, refreshCaptureLock, releaseCaptureLock as releaseLock } from './capture-lock.mjs';
+import { openCaptureHold } from './capture-hold.mjs';
 // sfx-smoke.mjs — end-to-end gate for the generated SFX banks
 // (src/audio/audioEngine.ts, assets in public/audio/sfx/).
 //
@@ -71,10 +71,7 @@ function analyze(i16, sampleRate) {
   };
 }
 
-await acquireLock(15 * 60 * 1000);
-process.on('exit', releaseLock);
-const lockRefresher = setInterval(() => { refreshCaptureLock(); }, 60 * 1000);
-lockRefresher.unref();
+const hold = await openCaptureHold({ label: 'sfx-smoke', timeoutMs: 15 * 60 * 1000 });
 
 const port = 7600 + Math.floor(Math.random() * 300);
 // A private dep cache: node_modules (and its .vite) can be shared between checkouts.
@@ -391,8 +388,7 @@ try {
 } finally {
   try { await browser.close(); } catch (_) { /* fine */ }
   try { await server.close(); } catch (_) { /* fine */ }
-  clearInterval(lockRefresher);
-  releaseLock();
+  await hold.release();
 }
 
 writeFileSync(join(outDir, 'report.json'), JSON.stringify(report, null, 2));
