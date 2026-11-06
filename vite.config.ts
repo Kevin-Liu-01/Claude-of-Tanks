@@ -469,7 +469,11 @@ export default defineConfig({
             // 2026-10-27 (integrator 261): the program receipt (engine/programReceipt.ts, 0.8 KB, the room-stalls lane's
             // revealPrograms and lateLinks receipts) is a leaf main imports at boot and the lazy network composition imports
             // too; on its own it was one more game and cn boot request. It rides with the program warm owner it measures.
-            { name: 'programWarm', test: /[\\/]src[\\/]engine[\\/](?:programWarm|gpuCatchUp|programReceipt)\.ts$/, includeDependenciesRecursively: false },
+            // 2026-11-06 (the 2026-11-02 audit's state-machine fixes, round-four merge, E3): the named holds (engine/namedHolds.ts,
+            // 0.5 KB, audit R3/R4: the governor's suspension and the temporal-AA override as holds) are a leaf the boot's post
+            // imports and the lazy black-world guard imports too; on its own it was one more game and cn boot request. It
+            // rides with the program warm owner, another boot engine owner.
+            { name: 'programWarm', test: /[\\/]src[\\/]engine[\\/](?:programWarm|gpuCatchUp|programReceipt|namedHolds)\.ts$/, includeDependenciesRecursively: false },
             // 2026-10-25 (nav-perf): the spotting stats ride with the vehicle actions, where 252 had them; the Garage's lazy
             // equipment preview is their second importer, and on their own they were one more game boot request
             // 2026-10-25 (integrator 253): the DOM-free equipment rules (equipment-rules-253) ride with them too: the game and cn
@@ -561,7 +565,12 @@ export default defineConfig({
             // loaded with Deploy's picker) read the landscape tags. As their third importer, with main and the Rooms host's
             // playMenu, the tags split off the chunk they shared with the random-map mosaic and the play-mode normaliser: one more
             // game and cn boot request for 1 KB. The three ride together again, exactly these modules.
-            { name: 'playMode', test: /[\\/]src[\\/](?:mp[\\/]session[\\/]playMode|ui[\\/](?:randomPreviews|regionTags))\.ts$/, includeDependenciesRecursively: false },
+            // 2026-11-06 (the 2026-11-02 audit's state-machine fixes, round-four merge, E3): five DOM-free owners main imports
+            // at boot and lazy chunks import too ride here, exactly these modules: the app lifecycle and the countdown it reads
+            // (game/appLifecycle.ts, game/preBattleCountdown.ts), the battle input owner and the kill cam's screen claim it
+            // reads (ui/battleInputOwner.ts, game/killcamScreen.ts), and the audio's battle mode (audio/battleMode.ts). On
+            // their own they were five more game and cn boot requests (0.2-2.7 KB each); none runs anything at evaluation.
+            { name: 'playMode', test: /[\\/]src[\\/](?:mp[\\/]session[\\/]playMode|ui[\\/](?:randomPreviews|regionTags|battleInputOwner)|game[\\/](?:appLifecycle|preBattleCountdown|killcamScreen)|audio[\\/]battleMode)\.ts$/, includeDependenciesRecursively: false },
             // 2026-10-18 (brand-ui BUI-F9): the accessibility reader and the token selection it writes ride with the shared DOM
             // primitives, a leaf chunk only the game loads at boot. The main entry, the input layer's chunk and the lazy HUD,
             // FX and kill cam all import the reader, so on its own it became one more game boot request. The group takes
