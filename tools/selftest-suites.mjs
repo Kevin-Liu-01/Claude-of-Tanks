@@ -182,6 +182,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/vehicles/profiles/loara.selftest.mjs',
     // 269: the M163 VADS on the M113 builder's M741: its frame, the Vulcan's rotor and its spin, the sweeps
     'src/vehicles/profiles/m163.selftest.mjs',
+    // 2026-11-06: the owner's air-defence firepower (airDefenseFirepower.ts): the floor cycle, the output, the rounds, the racks
+    'src/vehicles/airDefenseFirepower.selftest.mjs',
     'src/vehicles/profiles/arieteC2X.selftest.mjs',
     'src/vehicles/profiles/xk2.selftest.mjs',
     'src/sim/rocketBattery.selftest.mjs',

@@ -11,6 +11,7 @@
 import './usaM113Specs.ts';
 import { ALL_TANK_IDS, MODEL_SOURCE, TANK_SPECS } from './specs.ts';
 import { bindFleetRegistries, cloneFleetVariant, registerFleetSpecs, stripSilhouetteDimensions } from './fleetSpecRegistry.ts';
+import { applyAirDefenseFirepower } from './airDefenseFirepower.ts';
 import { crewBox, moduleBox, plate, shell, type ArmorPlate } from './specHelpers.ts';
 import type { FleetTankSpec } from './specContracts.ts';
 import { m113Mobility } from './m113Combat.ts';
@@ -180,6 +181,9 @@ function reach(record: FleetTankSpec): number {
 }
 spec.armor.boundingRadiusM = Math.max(spec.armor.boundingRadiusM, reach(spec));
 
+// The owner's air-defence firepower (2026-11-06, airDefenseFirepower.ts): the floor cycle, twice the output, six times the
+// rounds; the Vulcan keeps its burst limiter: 300-round bursts, a 2 s reset.
+applyAirDefenseFirepower(spec);
 registerFleetSpecs(registries, ['m163_vads'], { m163_vads: spec });
 
 let synchronized = false;

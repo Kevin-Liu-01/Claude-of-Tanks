@@ -160,9 +160,13 @@ for (const id of TWIN_PLANT) {
 
   // the belt stroke follows the calibre (tankFactoryCore RAPID_AMP): 5.5 cm for the 25 mm, 6.6 cm for the 30 mm, 7.7 cm for the 35 mm
   const stroke = Math.min(0.085, Math.max(0.055, getSpec(id).gun.caliberMm * 0.0022));
+  // 2026-11-06 (tankFactoryCore RAPID_CYCLE_S): a twin whose tubes alternate faster than the 0.28 s stroke takes it in
+  // tubes x cycle (the air-defence twins' 0.05 s: 0.1 s); the kick is read inside the stroke's hold
+  const cycle = getSpec(id).gun.shells[0].reloadS;
+  const kickS = Math.min(0.06, 0.095 * Math.min(1, cycle * barrelGs.length / 0.28));
   // asymmetric kick: yaw/roll flip sides with the firing barrel
   visual.recoilKick(0, 0.36, 0); // left barrel
-  visual.syncFromState(state, 0.06);
+  visual.syncFromState(state, kickS);
   const yawL = turretG.rotation.y - state.turretYaw;
   const rollL = recoilG.rotation.z;
   assert.ok(yawL < -0.010, `${id}: left barrel yaws the station left (got ${yawL})`);
@@ -172,7 +176,7 @@ for (const id of TWIN_PLANT) {
   near(barrelGs[1].position.z, 0, 1e-12, `${id}: right idle tube stays in battery`);
   visual.syncFromState(state, 0.5); // settle
   visual.recoilKick(0, 0.36, 1); // right barrel
-  visual.syncFromState(state, 0.06);
+  visual.syncFromState(state, kickS);
   const yawR = turretG.rotation.y - state.turretYaw;
   const rollR = recoilG.rotation.z;
   assert.ok(yawR > 0.010, `${id}: right barrel yaws the station right (got ${yawR})`);
@@ -186,9 +190,8 @@ for (const id of TWIN_PLANT) {
   // rapid stroke spans exactly 0.28 s, matching the fastest twin cycle.
   // 268: the PGZ-95's 0.25 s cycle is shorter than the stroke. The belt alternates (shot N -> muzzles[N % len]), so
   // its next shot finds the other tube in battery and the fired tube has until its own refire two cycles on.
-  const cycle = getSpec(id).gun.shells[0].reloadS;
   const STROKE_S = 0.28; // tankFactoryCore RAPID_BACK + RAPID_HOLD + RAPID_RETURN
-  visual.syncFromState(state, cycle - 0.06);
+  visual.syncFromState(state, cycle - kickS);
   near(barrelGs[0].position.z, 0, 1e-9, `${id}: the next tube in battery for the ${cycle}s belt refire`);
   if (cycle < STROKE_S) visual.syncFromState(state, cycle);
   const refireS = cycle < STROKE_S ? 2 * cycle : cycle;

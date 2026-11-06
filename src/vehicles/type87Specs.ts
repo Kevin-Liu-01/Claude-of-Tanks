@@ -9,6 +9,7 @@
 import './japan.ts';
 import { ALL_TANK_IDS, MODEL_SOURCE, TANK_SPECS } from './specs.ts';
 import { bindFleetRegistries, cloneFleetVariant, registerFleetSpecs, stripSilhouetteDimensions } from './fleetSpecRegistry.ts';
+import { applyAirDefenseFirepower } from './airDefenseFirepower.ts';
 import { crewBox, moduleBox, plate, shell, type ArmorPlate, type Vec3Tuple } from './specHelpers.ts';
 import type { FleetTankSpec } from './specContracts.ts';
 import {
@@ -128,6 +129,9 @@ function reach(record: FleetTankSpec): number {
 }
 spec.armor.boundingRadiusM = Math.max(spec.armor.boundingRadiusM, reach(spec));
 
+// The owner's air-defence firepower (2026-11-06, airDefenseFirepower.ts): the floor cycle, twice the output, six times the
+// rounds.
+applyAirDefenseFirepower(spec);
 registerFleetSpecs(registries, ['type87_aw'], { type87_aw: spec });
 
 /** The enlarged hull's stern at height y (profiles/type74Family.ts overhungSternZ, TYPE74_HULL_STATIONS): the vertical

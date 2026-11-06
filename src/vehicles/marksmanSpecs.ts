@@ -13,6 +13,7 @@ import './supplementalFleetSpecs.ts';
 import './modern1Specs.generated.ts';
 import { ALL_TANK_IDS, MODEL_SOURCE, TANK_SPECS } from './specs.ts';
 import { bindFleetRegistries, cloneFleetVariant, registerFleetSpecs, stripSilhouetteDimensions } from './fleetSpecRegistry.ts';
+import { applyAirDefenseFirepower } from './airDefenseFirepower.ts';
 import { crewBox, moduleBox, plate, shell, type ArmorPlate } from './specHelpers.ts';
 import type { FleetTankSpec } from './specContracts.ts';
 import {
@@ -175,6 +176,10 @@ itpsvLeopard2.gunPitchByYawDeg = [[0, -10], [153, -10], [154, -9.7], [164, -9.6]
 itpsvLeopard2.visual.number = 'ItPsv';
 itpsvLeopard2.armor.boundingRadiusM = Math.max(itpsvLeopard2.armor.boundingRadiusM, reach(itpsvLeopard2));
 
+// The owner's air-defence firepower (2026-11-06, airDefenseFirepower.ts): the floor cycle, twice the output, six times the
+// rounds.
+applyAirDefenseFirepower(marksmanT55);
+applyAirDefenseFirepower(itpsvLeopard2);
 registerFleetSpecs(registries, ['marksman_t55', 'itpsv_leopard2'], { marksman_t55: marksmanT55, itpsv_leopard2: itpsvLeopard2 });
 
 const BASES = Object.freeze({ marksman_t55: 't55a', itpsv_leopard2: 'leo2a4' });
