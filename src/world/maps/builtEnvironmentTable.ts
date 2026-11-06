@@ -132,7 +132,7 @@ export const BUILT_ENVIRONMENT = Object.freeze({
   caldera: row({ paved: { tone: 0.80, patches: 0.3, cracks: 0.3, covers: 0.5, markings: 1 }, paths: ['asphalt', 'asphalt', 'asphalt', 'concrete', 'concrete'], work: 'climate' }, null),
   // Völklingen, 1945: the works town's streets in setts, the roads beyond it cinder and earth, the sooty basalt's 0.62
   // (ground lane, 2026-10-15: the setts read with darker grit joints, wider, held further out)
-  foundry: row({ paved: { street: 'cobble', square: 'cobble', townOnly: true, tone: 0.62 }, paths: null, work: 'climate' }, 'saar'),
+  foundry: row({ paved: { street: 'cobble', square: 'cobble', townOnly: true, tone: 0.62 }, paths: null, work: 'climate' }, null),
   // Sarajevo, 1992–96: the shelled city's asphalt, patched and cracked; its styled paths keep their own classes (R2: the
   // squares in setts — the patched asphalt squares read as empty car parks; the round fills ragged and fewer)
   ruinspires: row({
@@ -156,9 +156,7 @@ export const BUILT_ENVIRONMENT = Object.freeze({
     banked({ kind: 'rock', widthM: 6, hex: 0xc98a5e })),
   // the Scheldt polders, 1944: the dyke roads in clinker (the mill lane, the west and east dyke roads, the causeway and the
   // north dyke road); the farm lanes earth
-  // (built-env-270, the photos: the dykes faced with basalt blocks under their grass slopes)
-  polders: row({ paved: null, paths: ['clinker', 'clinker', 'clinker', 'clinker', 'clinker'], work: 'climate' }, 'polder',
-    banked({ kind: 'pitched', widthM: 3.5, hex: 0x3d3d3c, stoneM: 0.4 })),
+  polders: row({ paved: null, paths: ['clinker', 'clinker', 'clinker', 'clinker', 'clinker'], work: 'climate' }, 'polder'),
   // Queenstown, Tasmania, 1976 (built-env-270, the photos: the town's main street a wide grey asphalt behind a concrete
   // kerb-and-channel; the side streets and the mine roads crushed pale rock)
   copper_mesa: row({ paved: { tone: 0.88, patches: 0.6, cracks: 0.6, covers: 0.4 }, paths: ['asphalt', null, null, null, null], work: 'climate' }, 'queenstown'),

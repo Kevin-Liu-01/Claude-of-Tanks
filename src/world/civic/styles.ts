@@ -231,27 +231,6 @@ export const CIVIC_STYLES = Object.freeze({
     grate: { iron: 0x3a3a38, frame: 0xc8bca4 },
     steps: 0xd0c4aa,
   }),
-  // (built-env-270) the Saar works town (Völklingen, 1945; the photos): soot-stained granite kerbs, small setts and slabs on the
-  // pavements, a three-row sett gutter, cinder paths behind the terraces
-  saar: Object.freeze<RegionalCivicStyle>({
-    id: 'saar',
-    kerb: { width: 0.18, face: 0.13, unit: [0.8, 1.2], hex: 0x6c6a66 },
-    pavement: { course: 0.3, length: [0.3, 0.3], step: 1.5, maxCourses: 4, hex: 0x67635d, tone: 0.09, joint: 0x3e3b37 },
-    gutter: { rows: 3, width: 0.42, dish: 0.02, hex: 0x4e4c48 },
-    bands: { granite: 0x6c6a66, basalt: 0x3e3d3b, sett: 0x5f5d5a, bay: 0x6a6864 },
-    edging: {
-      kerb: { width: 0.18, face: 0.13, hex: 0x6c6a66 },
-      wall: { width: 0.3, height: 0.4, hex: 0x5f5a54, coping: 0.03 },
-      pier: { size: 0.4, height: 0.8, hex: 0x5f5a54 },
-      railing: null,
-    },
-    path: { hex: 0x3a3734, edgeHex: 0x5f5d5a, worn: 0x4a4440 },
-    lawn: { bare: 0x5d5444, greens: [0x4a5a30, 0x52603a, 0x5a6638, 0x4e5c34] },
-    flowers: [0xb84a3a, 0xe0d8c8, 0xc8a040, 0x9a3a32],
-    hedge: 0x2e3e26,
-    grate: { iron: 0x262624, frame: 0x6c6a66 },
-    steps: 0x6c6a66,
-  }),
   // (built-env-270) a Hessian village on the Fulda Gap (1984; the photos): low precast concrete kerbs, narrow pavements of
   // grey concrete slabs, a three-row basalt sett gutter
   hessian: Object.freeze<RegionalCivicStyle>({
