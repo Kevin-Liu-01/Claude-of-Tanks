@@ -17,9 +17,18 @@
 // runtime's particles.getTime(), fxClockNow(), and the clock its parts are handed, `now()`) run at least once, or the
 // receipt fails naming each read it never ran. A part that starts reading the clock on a path the scenario does not
 // drive fails here until the scenario drives it, and then the census checks what it stamps. The scenario drives the
-// drones (in flight, struck, and flying home), the gunship's rounds and missile, the auxiliary systems, a wire-guided
-// missile, a building's stages and sections (a default-kit house), a crater event, the screenshot composer and the
-// battle warm.
+// gunship's rounds and missile, the auxiliary systems, a wire-guided missile, a building's stages and sections (a
+// default-kit house), a crater event, the screenshot composer and the battle warm.
+// (round 3 B5, review round 1) What the reach check measures, exactly: the reads of the fx clock in src/fx (the
+// runtime's particles.getTime(), fxClockNow(), a part's injected `now()`, and a call of any local bound to one of them,
+// such as volumeMedia's `const o_now = o.now`), and the stores of a clock a part is handed as a `now` parameter
+// (missileTrails.head, missileWires.tail, trailCadence.step: `x = now`). The reads it never runs are a named list (file,
+// read, line text), so a newly unreached read fails even when another is driven at the same time. A part handed the clock
+// under another name is not seen by it: the drones (dronePresentation.begin(timeS)) are proven live instead. The carrier's
+// dock is the production mount (missionAttachmentVisual, synced every frame as the battle's presentation does), and the
+// receipt asserts that at the rebase one drone is in flight, one is flying home (past its grace), one flight home ended
+// handed over to the dock, and one drone struck the ground and never flew home, so a stamp a drone's track or its
+// flight home kept would be walked by the census.
 import assert from 'node:assert/strict';
 import { Session } from 'node:inspector';
 import { createRequire } from 'node:module';
@@ -48,6 +57,9 @@ const { describeDefault } = await import('../world/destructionDefaultKit.ts');
 const { createStructureDamageSeam } = await import('../world/structureDamageSeam.ts');
 const { stampMapCraters, unpackMapCraterStamps } = await import('../world/mapCraters.ts');
 const { createTerrainDeformation } = await import('../sim/terrainDeformation.ts');
+const { syncMissionAttachment } = await import('../game/missionAttachmentVisual.ts');
+const { missionAttachmentTurretPivot } = await import('../sim/missionAttachment.ts');
+const { getSpec } = await import('../vehicles/specs.ts');
 
 const require = createRequire(import.meta.url);
 const { createCanvas } = require('@napi-rs/canvas');
@@ -114,13 +126,27 @@ const ground = createTerrainDeformation();
 stampMapCraters(ground, unpackMapCraterStamps([[12, 30, 3.4, 0.8, 0.45, 1], [40, 30, 2, 0.5, 0.3, 0]]));
 const world = { mapId: 'verdant', structureDamage: (structureId) => ({ 7: houseSeam, 8: cascadeSeam })[structureId] ?? null, clearCoverAt() {},
   groundOverlay: () => ground };
-// (round 3 B5) the hulls the runtime resolves: a drone's carrier and the AC-130, and the hulls the auxiliary systems draw
-const dock = new THREE.Group();
+// (round 3 B5) the hulls the runtime resolves: a drone's carrier, the AC-130 and a hull that dies, and the hulls the
+// auxiliary systems draw. (review r1) The carrier's dock is the production mount (missionAttachmentVisual), synced every
+// frame before the effects as the battle's presentation does: a flight home resolves its dock frame, flies to it,
+// descends its column and is handed over (a bare group there had no dock, so every flight home ended at once).
+const carrierSpec = getSpec('m1a1_abrams_hc');
+const carrierRoot = new THREE.Group();
+{
+  const turret = new THREE.Group();
+  turret.name = 'rig_turret'; turret.position.set(...missionAttachmentTurretPivot(carrierSpec)); carrierRoot.add(turret);
+  carrierRoot.position.set(10, 0, 0); carrierRoot.updateMatrixWorld(true);
+}
+const carrierView = { kind: 'drone', active: false, cooldownS: 25 };
+const syncCarrier = (dt) => syncMissionAttachment(carrierRoot, carrierSpec, carrierView, false, dt);
+syncCarrier(0);
 const entities = new Map([
-  ['carrier', { id: 'carrier', team: 'player', spec: { nation: 'USA' }, visual: { root: new THREE.Group().add(dock) },
+  ['carrier', { id: 'carrier', team: 'player', spec: { nation: 'USA' }, visual: { root: carrierRoot },
     state: { pos: new THREE.Vector3(10, 0, 0), yaw: 0 }, combat: { destroyed: false }, aerial: { active: false } }],
   ['gunship', { id: 'gunship', team: 'player', spec: { nation: 'USA' }, visual: { root: new THREE.Group() },
     state: { pos: new THREE.Vector3(0, 240, -200), yaw: 0.3 }, combat: { destroyed: false }, aerial: { active: true, kind: 'gunship', yaw: 0.3 } }],
+  ['victim', { id: 'victim', team: 'enemy', spec: { nation: 'RUS' }, visual: { root: new THREE.Group() },
+    state: { pos: new THREE.Vector3(-10, 0, 0), yaw: 0 }, combat: { destroyed: true }, aerial: { active: false } }],
 ]);
 const fx = createFx({ scene, camera, renderer: null, anisotropy: 1, setupShadowMaterial: () => {}, releaseShadowMaterial: () => {} },
   heightField, { seed: 5, world: () => world, resolveEntity: (shooterId) => entities.get(shooterId) ?? null,
@@ -131,7 +157,17 @@ const handlers = new Map();
 fx.bindBus({ on(n, f) { (handlers.get(n) ?? handlers.set(n, []).get(n)).push(f); return () => {}; } });
 const emit = (n, p) => { for (const f of handlers.get(n) ?? []) f(p); };
 let matchClockS = 300;
-const frames = (n, shells = []) => { for (let i = 0; i < n; i++) { matchClockS += 1 / 60; fx.update(1 / 60, shells, camera, () => null); } };
+// (review r1) the drones in the air: every frame writes them (a drone missing from a frame reads as a flight that ended)
+const airborne = new Set();
+const frames = (n, shells = []) => {
+  for (let i = 0; i < n; i++) {
+    matchClockS += 1 / 60;
+    syncCarrier(1 / 60);
+    fx.update(1 / 60, airborne.size ? [...shells, ...airborne] : shells, camera, () => null);
+    // the late pass asks every frame whether its soft media draw (the volume media's clock read)
+    fx.group.userData.softParticles.isActive();
+  }
+};
 const he = { shellType: 'HE', caliberMm: 125, munition: 'he', chargeKg: 3.4 };
 let id = 9000;
 const fired = (shellId) => emit('shell:fired', { shellId, shooterId: 'g', pos: [0, 30, -60], muzzlePos: [0, 30, -60], dir: [0, -0.4, 0.9],
@@ -140,13 +176,19 @@ const groundBurst = (x) => { const s = id++; fired(s); emit('shell:expired', { s
 const shells = [
   { id: 71, pos: new THREE.Vector3(0, 2, 10), vel: new THREE.Vector3(0, 0, 1500), spec: { tracer: 'TANK' }, shooterId: 'g', ageS: 0.05, distM: 60 },
   { id: 72, pos: new THREE.Vector3(4, 3, 20), vel: new THREE.Vector3(0, 0, 250), spec: { guided: true, tracer: 'ATGM' }, shooterId: 'g', ageS: 1, distM: 250 },
-  // (round 3 B5) a drone in free flight from its carrier, and a machine gun's round that will strike the ground
-  { id: 73, pos: new THREE.Vector3(14, 12, 20), vel: new THREE.Vector3(0, 0, 18), spec: { tracer: 'DRONE' }, shooterId: 'carrier', ageS: 4, distM: 30 },
+  // (round 3 B5) a machine gun's round that will strike the ground
   { id: 74, pos: new THREE.Vector3(-6, 1, 14), vel: new THREE.Vector3(0, 0, 850), spec: { tracer: 'MG' }, shooterId: 'g', ageS: 0.02, distM: 16 },
 ];
+// (round 3 B5, review r1) the carrier's drones, all flying free (past the launch): one recalled beside the carrier (its
+// flight home lands on the dock before the rebase), one that strikes the ground (no flight home), one still in flight at
+// the rebase, and one recalled far out (still flying home at the rebase)
+const drone = (droneId, x, y, z) => ({ id: droneId, pos: new THREE.Vector3(x, y, z), vel: new THREE.Vector3(0, 0, 18), spec: { tracer: 'DRONE' },
+  shooterId: 'carrier', ageS: 6, distM: 60 });
+const droneHome = drone(73, 13, 9, 6), droneStruck = drone(80, -4, 6, 24), droneFlying = drone(78, 30, 20, 60), droneAway = drone(79, -60, 25, 120);
 
 fx.resetAll();
 fx.resetClock(T0);
+airborne.add(droneHome);
 frames(3);
 // an engine running 2.5 s (past the cold start), then a throttle-up: its billow burst
 const stack = new THREE.Vector3(5, 2, 0), vel = new THREE.Vector3(0, 0, 6), fwd = new THREE.Vector3(0, 0, 1);
@@ -156,6 +198,10 @@ for (let f = 0; f < 170; f++) {
   stack.set(5, 2, z); track.set(6, 0, z);
   fx.exhaust(stack, f < 150 ? 0.2 : 1, false, vel, fwd);
   fx.dust(track, dir, 1);
+  // (review r1) the drone beside the carrier is recalled (it leaves the world unstruck: its flight home begins); a second
+  // drone takes off for its strike
+  if (f === 30) airborne.delete(droneHome);
+  if (f === 121) airborne.add(droneStruck);
   frames(1, f > 120 ? shells : []);
 }
 // a salvo's bursts on the ground, and rounds striking a building's wall
@@ -167,11 +213,15 @@ for (let k = 0; k < 2; k++) {
 }
 // (round 3 B5) the paths the census had not driven
 {
-  // the round in flight strikes the ground (its tracer's strike spray), the drone flies on, then leaves the world
-  // unstruck (its flight home), a wire-guided missile pays out its wire, and the AC-130 fires its howitzer and missile
+  // the round in flight strikes the ground (its tracer's strike spray), the striking drone hits the ground (it never
+  // flies home), two more drones take off, a wire-guided missile pays out its wire, and the AC-130 fires its howitzer and
+  // missile
   emit('shell:expired', { shellId: 74, pos: [-6, 0, 18], hitTerrain: true, shellType: 'AP', caliberMm: 7.62 });
   emit('shell:expired', { shellId: 71, pos: [0, 0, 26], hitTerrain: true, shellType: 'APFSDS', caliberMm: 120 });
-  frames(4, [shells[1], shells[2]]);
+  airborne.delete(droneStruck);
+  emit('shell:expired', { shellId: 80, pos: [-4, 0, 24], hitTerrain: true, shellType: 'HEAT', caliberMm: 90 });
+  airborne.add(droneFlying); airborne.add(droneAway);
+  frames(4, [shells[1]]);
   emit('shell:fired', { shellId: 75, shooterId: 'g', muzzlePos: [3, 2, -10], pos: [3, 2, -10], dir: [0, 0, 1], shellType: 'HEAT',
     caliberMm: 120, shellName: '9M113 Konkurs', weaponSound: 'konkurs-launch', guided: true });
   frames(3, [shells[1]]);
@@ -180,12 +230,15 @@ for (let k = 0; k < 2; k++) {
       shellType: 'HE', caliberMm: 105, shellName: weaponSound, weaponSound, guided: weaponSound === 'gunship-missile' });
   }
   frames(3, [shells[1]]);
-  emit('shell:expired', { shellId: 76, pos: [-20, 0, 40], hitTerrain: true, shellType: 'HE', caliberMm: 105 });
+  // (review r1) the howitzer's heavy charge on the ground: its starburst lights its column with embers (volumeMedia)
+  emit('shell:expired', { shellId: 76, pos: [-20, 0, 40], hitTerrain: true, shellType: 'HE', caliberMm: 105, munition: 'howitzer',
+    chargeKg: 8.8 });
   emit('shell:expired', { shellId: 75, pos: [3, 1, 30], hitTerrain: true, shellType: 'HEAT', caliberMm: 120 });
-  // a hull's death (its wreck column and light, burning past the blast's own light), a crater the core dug
-  emit('tank:destroyed', { id: 'carrier', pos: [10, 0, 0], cause: 'ammorack', specId: 't72b3' });
+  // a hull's death (its wreck column), a crater the core dug; (review r1) the burn after them is 60 frames, not 260: the
+  // reach is the same (the wreck light's flicker stays unreached either way) and the receipt costs less
+  emit('tank:destroyed', { id: 'victim', pos: [-10, 0, 0], cause: 'ammorack', specId: 't72b3' });
   emit(DESTRUCTION_BUS_EVENTS.crater, { craterId: 3, x: -8, y: 0, z: 26, radiusM: 2.2, depthM: 0.7, seed: 41, settled: false });
-  frames(260, [shells[1]]);
+  frames(60, [shells[1]]);
   // a ground burst and its late hull event (the burst on record answers it)
   { const s = id++; fired(s); emit('shell:expired', { shellId: s, pos: [-3, 0, 2], hitTerrain: true, ...he }); frames(2);
     emit('shell:hit', { shellId: s, attackerId: 'g', targetId: 't', kind: 'he_splash', damage: 20, pos: [-2, 0.8, 2], normal: [0, 1, 0],
@@ -207,6 +260,8 @@ for (let k = 0; k < 2; k++) {
   frames(2);
   for (const n of ['front', 'right', 'back']) emit(DESTRUCTION_BUS_EVENTS.breach, sectionFall(1, n));
   emit(DESTRUCTION_BUS_EVENTS.breach, sectionFall(1, 'left', { storeyDown: true }));
+  // (review r1) the far drone is recalled: its flight home is still under way at the rebase
+  airborne.delete(droneAway);
   frames(40);
   emit(DESTRUCTION_BUS_EVENTS.stage, { ...stage, structureId: 8, stage: 'breached', previous: 'damaged', sections: true, x: 1, y: 1.2,
     z: 4, dirX: 0, dirZ: 1 });
@@ -237,14 +292,63 @@ groundBurst(20);
 const scenarioEnd = fxClockNow();
 assert.ok(scenarioEnd - T0 < SPAN / 2, `the scenario stays inside the census span (${(scenarioEnd - T0).toFixed(2)} s)`);
 
-// ---- the scenario's reach: every fx-clock read in src/fx ran ----
+// ---- (review r1) the drones the census walks: live at the rebase, every way a drone's flight can end driven ----
+const droneLog = () => (fx.group.userData.droneFlightsHomeLog ?? []).map((e) => `${e.id} ${e.event} ${e.reason}`);
+const airframesDrawn = () => {
+  let n = 0;
+  fx.group.traverse((o) => { if (o.isInstancedMesh && o.visible && /airframes/.test(o.name)) n += o.count; });
+  return n;
+};
+function dronesLive(when) {
+  const home = fx.group.userData.droneFlightsHome();
+  const away = home.get(droneAway.id);
+  assert.ok(away && away.phase !== 'grace',
+    `${when}: the far drone is flying home past its grace (${away ? away.phase : 'none'}; log: ${droneLog().join(' | ')})`);
+  assert.ok(airframesDrawn() >= 2, `${when}: a drone in flight and one flying home are drawn (${airframesDrawn()})`);
+}
+{
+  const log = droneLog();
+  if (process.env.FX_CENSUS_REACH) console.log(`drone flights home:\n  ${log.join('\n  ')}`);
+  assert.ok(log.some((line) => line.startsWith(`${droneHome.id} end handed over`)),
+    `the drone recalled beside its carrier flew home, descended and was handed over to the dock (log: ${log.join(' | ')})`);
+  assert.ok(log.includes(`${droneStruck.id} skip impact`), `the drone that struck the ground never flew home (log: ${log.join(' | ')})`);
+  dronesLive('at the rebase');
+}
+
+// ---- the scenario's reach: every fx-clock read and handed-clock store in src/fx ran, but a named few ----
+// (review r1) The reads no scenario here reaches yet, by file, read and line text (a multiset; `FX_CENSUS_REACH=1` prints
+// the unreached keys in this form). A read or store added on a path the scenario does not drive fails (drive it, so the
+// census checks what it stamps); a listed one the scenario now runs fails too (drop it). Every stamp these reads make is
+// shifted in its part's shiftTime (checked by hand 2026-11-06).
+const KNOWN_UNREACHED = [
+  // the wreck fire light's flicker (unreached with a 260-frame burn too)
+  'src/fx/effects.ts | particles.getTime() | const time = particles.getTime();',
+  // a tracer's strike spark (sparks.t0, shifted)
+  'src/fx/projectileTracers.ts | o.now() | s.t0 = o.now(); s.life = life; s.k = k; s.w = w; s.day = dayRgb; s.core = coreRgb; s.halo = halo',
+  // no caller in the tree: the interface's refreshShading (a uniform written every frame by update)
+  'src/fx/volumeMedia.ts | o_now() | refreshShading: () => { uTime.value = o_now(); refreshLight(); },',
+  // a set piece's piece falls (pieceFalls[].t0, shifted)
+  'src/fx/structureStages.ts | o.now() | const f = { seam, meshes, axis, angle, pivot, t, t0: o.now(), T, crumble, piece: fall.piece, hol',
+  'src/fx/structureStages.ts | o.now() | const now = o.now();',
+  // a stage's hides held back behind a delay (heldHides[].at, shifted)
+  'src/fx/structureStages.ts | o.now() | if (held) heldHides.push({ seam, hides: held, at: o.now() + delayS });',
+  'src/fx/structureStages.ts | o.now() | if (heldHides.length) { let k = 0; for (const h of heldHides) if (o.now() >= h.at) apply(h.seam,',
+  // a run shown later (structureDebris showFrom)
+  'src/fx/structureDebris.ts | o.now() | if (!(atS > o.now())) return;',
+  // two of structureFracture's collapse branches (lives[].watchedAt and touchedAt, shifted)
+  'src/fx/structureFracture.ts | o.now() | live.watchedAt = o.now();',
+  'src/fx/structureFracture.ts | o.now() | live.touchedAt = o.now();',
+];
 {
   const coverage = call('Profiler.takePreciseCoverage').result;
   call('Profiler.stopPreciseCoverage');
-  // the clock reads: the runtime's own, and the clock a part was handed (a wall clock, performance or Date, is no fx stamp)
+  // the clock reads: the runtime's own, a part's injected clock, a local bound to a clock, and a store of a clock handed
+  // in as `now` (a wall clock, performance or Date, is no fx stamp; a `const x = now - y` is an age, not a store)
   const READ = /particles\.getTime\(\)|(?<![\w$.])fxClockNow\(\)|(?<![\w$.])(?!performance\.|Date\.)[\w$]+\.now\(\)(?!\s*\{)|(?<![\w$.])now\(\)(?!\s*\{)/g;
+  const BOUND = /(?:const|let|var)\s+([\w$]+)\s*=\s*(?:[\w$]+\.)*(?:now|getTime)\s*[;,\n]/g;
+  const STORE = /(?<![=!<>])=(?![=>])\s*now\b(?=\s*(?:[;,)}\]]|[+-]))/g;
   const unrun = [];
-  let reads = 0;
+  let reads = 0, aliased = 0, stores = 0;
   for (const script of coverage) {
     const url = script.url;
     if (!url.includes('/src/fx/') || /\.selftest\.|test-support/.test(url)) continue;
@@ -261,21 +365,42 @@ assert.ok(scenarioEnd - T0 < SPAN / 2, `the scenario stays inside the census spa
       return best ? best.count : 0;
     };
     const file = url.slice(url.lastIndexOf('/src/') + 1);
+    const sites = new Map();
     for (const m of source.matchAll(READ)) {
-      if (inComment(m.index) || /function\s+$/.test(source.slice(Math.max(0, m.index - 12), m.index))) continue;
+      if (!/function\s+$/.test(source.slice(Math.max(0, m.index - 12), m.index))) sites.set(m.index, m[0]);
+    }
+    for (const b of source.matchAll(BOUND)) {
+      if (inComment(b.index)) continue;
+      for (const m of source.matchAll(new RegExp(`(?<![\\w$.])${b[1].replace(/\$/g, '\\$')}\\(\\)`, 'g'))) {
+        if (!sites.has(m.index)) { sites.set(m.index, m[0]); aliased++; }
+      }
+    }
+    for (const m of source.matchAll(STORE)) {
+      const statement = source.slice(Math.max(0, source.lastIndexOf('\n', m.index), source.lastIndexOf(';', m.index - 1) + 1), m.index);
+      if (/(?:const|let|var)\s+[\w$]+\s*$/.test(statement)) continue;
+      if (!sites.has(m.index)) { sites.set(m.index, m[0].replace(/\s+/g, ' ')); stores++; }
+    }
+    for (const [at, text] of sites) {
+      if (inComment(at)) continue;
       reads++;
-      if (countAt(m.index) === 0) unrun.push(`  ${file}:${source.slice(0, m.index).split('\n').length} ${m[0]}`);
+      if (countAt(at) === 0) {
+        const line = source.slice(source.lastIndexOf('\n', at) + 1, source.indexOf('\n', at) < 0 ? undefined : source.indexOf('\n', at)).trim();
+        unrun.push({ key: `${file} | ${text} | ${line.replace(/\s+/g, ' ').slice(0, 96)}`, where: `${file}:${source.slice(0, at).split('\n').length}` });
+      }
     }
   }
-  assert.ok(reads > 60, `the reach check sees the fx-clock reads (${reads})`);
-  // A ratchet, not a list: the reads no scenario here reaches yet (2026-11-05: a set piece's falls and a stage's held
-  // hides in structureStages, a show held back in structureDebris, two of structureFracture's collapse branches, a tracer
-  // strike's spark, the wreck fire light's flicker). A read added on a path the scenario does not drive raises the count
-  // and fails; drive a path and lower the ceiling with it.
-  const UNREACHED_CEILING = 9;
-  assert.ok(unrun.length <= UNREACHED_CEILING,
-    `fx-clock reads the census scenario never ran: ${unrun.length}, more than the ${UNREACHED_CEILING} known (drive each new one, so the census checks what it stamps):\n${unrun.join('\n')}`);
-  if (process.env.FX_CENSUS_REACH) console.log(`unreached fx-clock reads (${unrun.length} of ${reads}):\n${unrun.join('\n')}`);
+  assert.ok(reads > 60 && aliased >= 4 && stores >= 8,
+    `the reach check sees the fx-clock reads (${reads}: ${aliased} through a bound local, ${stores} stores of a handed clock)`);
+  const tally = (keys) => keys.reduce((m, k) => m.set(k, (m.get(k) ?? 0) + 1), new Map());
+  const known = tally(KNOWN_UNREACHED), found = tally(unrun.map((u) => u.key));
+  const fresh = unrun.filter((u, i, all) => (found.get(u.key) ?? 0) > (known.get(u.key) ?? 0)
+    && all.findIndex((v) => v.key === u.key) === i);
+  const nowReached = [...known].filter(([k, n]) => (found.get(k) ?? 0) < n).map(([k]) => k);
+  if (process.env.FX_CENSUS_REACH) {
+    console.log(`unreached fx-clock reads (${unrun.length} of ${reads}; ${aliased} through a bound local, ${stores} stores):\n${unrun.map((u) => `  ${u.where}\n  ${JSON.stringify(u.key)},`).join('\n')}`);
+  }
+  assert.equal(fresh.length, 0, `fx-clock reads the census scenario never ran, not in its known list (drive each, so the census checks what it stamps):\n${fresh.map((u) => `  ${u.where}  ${u.key}`).join('\n')}`);
+  assert.equal(nowReached.length, 0, `known unreached fx-clock reads the scenario now runs (drop them from KNOWN_UNREACHED):\n  ${nowReached.join('\n  ')}`);
 }
 
 // ---- the census ----
@@ -358,6 +483,7 @@ assert.ok(before.hits.size >= 12 && files.size >= 5,
 // the rebase: the Studio's reset to 0, then a frame (per-frame mirrors of the clock take the new one)
 fx.resetClock(0);
 frames(2);
+dronesLive('after the rebase');
 const after = census(fx);
 assert.ok(after.values > 1000, `the walk reached the runtime (${after.values} values)`);
 const left = [...after.hits].map(([at, x]) => `  ${at} = ${x}`);
