@@ -130,11 +130,16 @@ function pagePlan({ buildings, rooms, eye: EYE }) {
         if (n >= 6) street.push({ x, z, n, score: n });
       }
       if (d0 >= 5 && d0 <= 8 && near(x, z, 40) === 0) road.push({ x, z, n: 0, score: -near(x, z, 150) - Math.hypot(x, z) * 0.002 });
-      let w = 0;
-      for (const [ox, oz] of [[10, 0], [-10, 0], [0, 10], [0, -10], [7, 7], [-7, 7], [7, -7], [-7, -7]]) w = Math.max(w, wet(x + ox, z + oz));
-      if (w > 0.5 && wet(x, z) < 0.01 && clearOf(x, z, 3)) {
-        const n = near(x, z, 90);
-        shore.push({ x, z, n, score: n - Math.hypot(x, z) * 0.002 });
+      // (ab2, Saltmere: the mask is flat 0 a metre round a dry point, so its gradient gave no heading) the water's side from
+      // the eight 10 m probes, weighted by their wetness
+      let w = 0, wx = 0, wz = 0;
+      for (const [ox, oz] of [[10, 0], [-10, 0], [0, 10], [0, -10], [7, 7], [-7, 7], [7, -7], [-7, -7]]) {
+        const m = wet(x + ox, z + oz);
+        w = Math.max(w, m); wx += ox * m; wz += oz * m;
+      }
+      if (w > 0.5 && wet(x, z) < 0.01 && clearOf(x, z, 3) && Math.hypot(wx, wz) > 1e-6) {
+        const n = near(x, z, 90), l = Math.hypot(wx, wz);
+        shore.push({ x, z, n, gx: wx / l, gz: wz / l, score: n - Math.hypot(x, z) * 0.002 });
       }
     }
   }
@@ -142,10 +147,15 @@ function pagePlan({ buildings, rooms, eye: EYE }) {
   out.street = pick(street, (p) => along(rd, p, ahead(p)));
   out.road = pick(road, (p) => along(rd, p, null));
   out.shore = pick(shore, (p) => {
-    // along the waterline, turned 25° toward the water
-    const a = along(wet, p, ahead(p)), t = (25 * Math.PI) / 180, s = Math.sign(a.dx * a.gz - a.dz * a.gx) || 1;
-    const c = Math.cos(t * s), sn = Math.sin(t * s);
-    return { dx: a.dx * c - a.dz * sn, dz: a.dx * sn + a.dz * c, gx: a.gx, gz: a.gz };
+    // along the waterline (across the water's side), toward more buildings, turned 25° toward the water
+    let dx = -p.gz, dz = p.gx;
+    const toward = ahead(p);
+    if (toward(-dx, -dz) > toward(dx, dz)) { dx = -dx; dz = -dz; }
+    const t = (25 * Math.PI) / 180, c = Math.cos(t), sn = Math.sin(t);
+    // the turn's sense: the one that brings the heading nearer the water's side
+    const r1 = { dx: dx * c - dz * sn, dz: dx * sn + dz * c }, r2 = { dx: dx * c + dz * sn, dz: -dx * sn + dz * c };
+    const r = r1.dx * p.gx + r1.dz * p.gz >= r2.dx * p.gx + r2.dz * p.gz ? r1 : r2;
+    return { dx: r.dx, dz: r.dz, gx: p.gx, gz: p.gz };
   });
   // (ab1, Saltmere: a target over the water reads the sea bed's height and the eye looked straight down) the shore's eye
   // looks at the waterline's height from its own ground, not the bed's
