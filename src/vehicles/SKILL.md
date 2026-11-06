@@ -91,8 +91,8 @@ and hardware, and a new family on a frame needs a reason.
 The one exception to the 6,000-triangle budget (release 269, accepted by the coordinator on 2026-11-05): the lived-in
 loads `LIVED_IN_ROWS` appends to m1a1, m1a1ha, m1a1_abrams_hc, m1a1_abrams_sa, m1a1_abrams_aim, m1a1_abrams_fep,
 m2a2_bradley, m3a2_bradley, m3a3_bradley, ua_m2a3_bradley and m6_linebacker (ua_m1a1 carries none) seat under their
-own near budget, `LIVED_IN_TRIS` (16,000 triangles: 11,000 for phase 1, raised for phase 2's fuller racks, turrets and
-noses), because the owner asked for "a bunch of extra decorations annd tank props and boxes and bags and other soldier
+own near budget, `LIVED_IN_TRIS` (16,000 triangles: 11,000 for phase 1, raised for phase 2's fuller racks and
+turrets), because the owner asked for "a bunch of extra decorations annd tank props and boxes and bags and other soldier
 reuqipment onn all of these bradleys and m1a1s" (2026-11-05). Every row before them still seats under 6,000, so nothing
 those vehicles carried before moves; any other vehicle that wants more load asks the owner first (docs/DECORATIONS.md,
 "Release 269").

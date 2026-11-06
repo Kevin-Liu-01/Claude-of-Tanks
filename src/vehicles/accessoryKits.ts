@@ -1049,38 +1049,6 @@ export function buildCargoNet(P: AccessoryPainter, grid: CargoNetGrid, nodeY: Ar
   P.strap(withBoxUV(geometry), 0.5);
 }
 
-/**
- * A coiled tow cable hung on a plate (release 269; the Bradley carries its tow cable coiled on the rear ramp): wire rope
- * wound in `turns` loose turns lying on the plate (local +Z out of it, the plate at z = 0), from radius `R` inward, its
- * two spliced eyes hanging at the bottom, held by two J-hooks welded to foot plates over the coil's top.
- */
-export function buildCableCoil(P: AccessoryPainter, R: number, turns: number, rope = 0.021): void {
-  const along = near(P) ? 12 : 8, radial = near(P) ? 5 : 4;
-  const pts: number[][] = [];
-  const steps = Math.round(turns * along);
-  for (let k = 0; k <= steps; k++) {
-    const u = k / steps, a = Math.PI / 2 + u * turns * Math.PI * 2;
-    // each turn a rope's width inward, and lying over the last a little off the plate where they cross
-    const rr = R - u * turns * rope * 2.1;
-    pts.push([Math.cos(a) * rr, Math.sin(a) * rr * 0.92, rope + 0.004 + 0.012 * Math.max(0, Math.sin(a * 1.5 + u * 3))]);
-  }
-  P.steel(sweptTube(pts, rope, radial, steps), 0.52);
-  // the two eyes hanging under the coil
-  for (const sx of [-1, 1]) {
-    const x0 = sx * 0.08, y0 = -R * 0.92 + rope * 2;
-    P.steel(sweptTube([[x0, y0, rope + 0.006], [x0 + sx * 0.02, y0 - 0.09, rope + 0.008], [x0 + sx * 0.06, y0 - 0.15, rope + 0.006],
-      [x0 + sx * 0.1, y0 - 0.09, rope + 0.006], [x0 + sx * 0.07, y0 - 0.02, rope + 0.006]], rope * 0.9, radial, near(P) ? 8 : 4), 0.55);
-    if (near(P)) P.steel(place(latheY([[rope * 1.5, 0], [rope * 1.6, 0.03], [rope * 1.5, 0.06]], 6), x0, y0 - 0.03, rope + 0.006), 0.6);
-  }
-  // two J-hooks on welded foot plates over the coil's top, the rope lying in their throats
-  for (const sx of [-1, 1]) {
-    const x = sx * R * 0.42, yTop = Math.sqrt(Math.max(0, R * R - x * x)) * 0.92;
-    P.kit(place(block(0.07, 0.07, 0.012), x, yTop + rope + 0.04, 0.006), 0.85);
-    P.steel(sweptTube([[x, yTop + rope + 0.04, 0.012], [x, yTop + rope + 0.04, rope * 2 + 0.03], [x, yTop - rope - 0.004, rope * 2 + 0.03],
-      [x, yTop - rope - 0.01, rope + 0.004]], 0.009, 5, near(P) ? 6 : 3), 0.5);
-  }
-}
-
 // ---------------------------------------------------------------------------------------------------------------
 // Other shared stowage kits
 // ---------------------------------------------------------------------------------------------------------------

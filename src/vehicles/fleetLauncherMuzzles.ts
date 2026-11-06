@@ -45,8 +45,8 @@ const mounts: Readonly<Record<string, readonly LauncherMuzzle[]>> = {
   bmpt_terminator2: [-1, 1].flatMap(s => [.335, .575].map(y => turret(s * (.93 + .011 * detMath.sin(.035)), y, .668 + .011 * detMath.cos(.035), 0, s * .035))),
   bwp1: [turret(.28, 1.11, .76)],
   // 268: the classic TOW pod on the turret's LEFT, turret-fixed, its two collar mouths one over the other
-  // (profiles/bradleyClassicTurret.ts; 7cc204ab32's gun-frame mouths, mirrored, plus the mirrored gun pivot); the M2A2's
-  // since 269
+  // (profiles/bradleyClassicTurret.ts); the M2A2's since 269, whose ODS rebuild (T2) stows the launcher flush on the left
+  // wall behind the front corner plate (bradleyClassicTurretLayout.ts CLASSIC_TOW_CELLS)
   m2a2_bradley: CLASSIC_TOW_MOUTHS.map(m => turret(m.x, m.y, m.z)),
   marder1a3: [turret(.55, .92, .445)],
   // 269: the A3 turret carries the family's stowed launcher (profiles/bradleyA3Turret.ts on modern3.ts's shell) and, the
