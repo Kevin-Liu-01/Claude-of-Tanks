@@ -274,6 +274,13 @@ export default {
   },
 
   props: {
+    // (landmarks-271, 2026-11-06; the owner: "new special buildings like the way our airport map has hangars and our
+    // seaside map has a harbor area with a lighthouse ... integrated with the whole identity of the map") Podhale's
+    // signature (src/world/landmarks/podhale.ts): a wooden church of the Dębno type east of the village street, its
+    // shingled tower and churchyard gate on the road.
+    landmarks: [
+      { kind: 'woodenChurch', x: -35, z: 115, yawDeg: -90, name: 'the wooden church' },
+    ],
     // map revival lane 2 (2026-10-05): the goral kit (maps/regional/goral.ts)
     architecture: 'goral',
     // round 48: the timber-valley catalog — log cabins, steep-roof alpine

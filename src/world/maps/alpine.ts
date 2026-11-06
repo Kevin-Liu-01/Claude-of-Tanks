@@ -130,6 +130,15 @@ export default {
     bushCount: 0, bushSpecies: 'spruce',
   },
   props: {
+    // (landmarks-271, 2026-11-06; the owner: "new special buildings like the way our airport map has hangars and our
+    // seaside map has a harbor area with a lighthouse ... integrated with the whole identity of the map") the pass's
+    // Sardinian forts on the rock spurs (src/world/landmarks/forts.ts casemateFort, style 'alpine'): a casemated battery of
+    // squared rubble under its earth cover with the gun terrace on its crest, one on each western spur over the pass road,
+    // each about as far from its own deployment.
+    landmarks: [
+      { kind: 'casemateFort', x: -172, z: 205, yawDeg: 90, params: { style: 'alpine', length: 44, depth: 20, height: 4.5 }, name: 'the north spur battery' },
+      { kind: 'casemateFort', x: -360, z: -180, yawDeg: 90, params: { style: 'alpine', length: 44, depth: 20, height: 4.5 }, name: 'the south spur battery' },
+    ],
     // map revival lane 2 (2026-10-05): the Savoyard kit (maps/regional/savoyard.ts)
     architecture: 'savoyard',
     plan: [],

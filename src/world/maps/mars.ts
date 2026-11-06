@@ -143,6 +143,14 @@ export default {
   },
 
   props: {
+    // (landmarks-271, 2026-11-06; the owner: "new special buildings like the way our airport map has hangars and our
+    // seaside map has a harbor area with a lighthouse ... integrated with the whole identity of the map") the station's
+    // gate to orbit (src/world/landmarks/damWorks.ts landingPad): the sintered pad on the basin floor's one level ground
+    // south-east of the settlement, its blast berm toward the station, the cargo gantry, the service module and a lander
+    // standing on its legs.
+    landmarks: [
+      { kind: 'landingPad', x: 70, z: -50, yawDeg: 0, params: { radius: 16 }, name: 'the landing pad' },
+    ],
     orbitalSettlement: OLYMPUS_SETTLEMENT,
     yardClutter: false,
     // sourced building tints (sourcedTextures BUILDING plan): the badlands dust set for the station's huts

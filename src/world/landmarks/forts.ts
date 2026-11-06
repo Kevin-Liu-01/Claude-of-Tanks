@@ -10,7 +10,7 @@
 // render (no draw call of its own). The walls, rooms and tower are structure; the merlons are structure too (a shell
 // meets them); the doors, flag and fittings are dressing.
 import { PartSink, rgb, shade, type RegionalBucket, type Vec3 } from '../maps/regional/geometry.ts';
-import { archedFace, bar, type ArchHole } from './kit.ts';
+import { archedFace, bar, revolve, type ArchHole } from './kit.ts';
 import type { LandmarkBuilder, LandmarkBuildContext } from './types.ts';
 
 const DOOR = rgb(0x5a4a38), IRON = rgb(0x2c2b2a);
@@ -143,5 +143,126 @@ export const desertFort: LandmarkBuilder = (ctx) => {
   const wx = gw / 2 + 3.6, wz = h2 + 2.2;
   for (const [dx, dz] of [[-0.9, -0.9], [0.9, -0.9], [0.9, 0.9], [-0.9, 0.9]] as const) bar(sink, 'structureMetal', [wx + dx, foot, wz + dz], [wx + dx * 0.8, 3.2, wz + dz * 0.8], 0.12, { colour: IRON });
   sink.cylinder('structureMetal', [wx, 3.2, wz], 'y', 1.6, 1.1, 12, { colour: rgb(0x8a8578) });
+  return { parts: sink.finish() };
+};
+
+const TURF = rgb(0x6f7d45), TURF_DRY = rgb(0x8a8456), ARMOUR = rgb(0x3e423f), WIRE = rgb(0x3a3430);
+
+/**
+ * casemateFort: a fortress front of the 1880s-1910s as a set piece, in two styles.
+ * - 'lorraine': a Metz fort's barracks group (the census for Autumn: "Fort Driant type: turf-covered concrete barracks,
+ *   armoured turret cupolas, a dry ditch and wire" on the crest above the valley). The casemate block's concrete front
+ *   with its doors and shuttered windows, the earth cover rising from its cornice over the vaults and running back to the
+ *   ground, the steel cupolas of the turret battery and an observation cloche in the turf, the ditch's counterscarp wall
+ *   and its wire before the front.
+ * - 'alpine': a Sardinian battery of the Mont-Cenis (the census for Alpine: "low casemated battery, earth-covered vaults,
+ *   ditch, gun terrace"). The squared rubble front with its arched casemates and embrasures, the earth over the vaults,
+ *   the gun terrace on the roof behind its parapet, the battered counterscarp.
+ * `length` the front (x), `depth` the block and its cover (z), the front (+z) on the ditch.
+ */
+export const casemateFort: LandmarkBuilder = (ctx) => {
+  const sink = new PartSink(uvOffset(ctx.rng));
+  const v = ctx.variant, mobile = ctx.tier === 'mobile';
+  const alpine = ctx.params.style === 'alpine';
+  const Lf = num(ctx, 'length', 24, 90), D = num(ctx, 'depth', 10, 30), H = num(ctx, 'height', 3.5, 8);
+  const cup = Math.round(num(ctx, 'cupolas', 0, 4)), foot = -0.6 - ctx.groundFall;
+  const wall: RegionalBucket = alpine ? 'stone' : 'plaster3', z1 = D / 2 - 6, z0 = -D / 2;
+  // (it drapes: the front stands on the highest ground along it, its foot down to the lowest; the cover's back and ends
+  // run down to the ground as it lies, so a fort cut into a côte or a spur sits in its slope)
+  const g = (x: number, z: number): number => ctx.ground?.(x, z) ?? 0;
+  let yb = 0;
+  for (let i = 0; i <= 8; i++) yb = Math.max(yb, g(-Lf / 2 + Lf * i / 8, z1));
+  const blockFoot = foot - yb;
+  sink.placed(0, 0, yb, 0, () => {
+  // the front: a wall face with its openings (doors, windows or casemates' embrasures), the block's ends
+  const front = { origin: [0, 0, z1] as Vec3, u: [1, 0, 0] as Vec3, out: [0, 0, 1] as Vec3, width: Lf };
+  const holes: ArchHole[] = [];
+  const bays = Math.max(3, Math.round(Lf / (alpine ? 5.5 : 4.5)));
+  for (let k = 0; k < bays; k++) {
+    const u = -Lf / 2 + (k + 0.5) * Lf / bays, door = k % 3 === 1;
+    holes.push(alpine
+      ? { u, w: door ? 1.8 : 1.1, y0: door ? 0 : 1.2, spring: door ? 2.4 : 2.2, form: 'round' }
+      : { u, w: door ? 1.6 : 1.2, y0: door ? 0 : 1.0, spring: door ? 2.4 : 2.2, form: 'segmental', rise: 0.25 });
+  }
+  archedFace(sink, wall, front, { u0: -Lf / 2, u1: Lf / 2, y0: blockFoot, y1: H }, holes, 0.9, {});
+  for (const h of holes) {
+    const P = (u: number, y: number, o: number): Vec3 => [front.origin[0] + u, y, front.origin[2] + o];
+    if (h.y0 === 0) sink.span('structureMetal', h.u - h.w / 2 + 0.05, 0, z1 - 0.88, h.u + h.w / 2 - 0.05, h.spring + 0.2, z1 - 0.84, { colour: alpine ? rgb(0x4a3a2a) : ARMOUR, decor: true });
+    else if (!alpine) {
+      // the steel shutters folded back either side of the window
+      for (const s of [-1, 1]) sink.quad('structureMetal', P(h.u + s * h.w / 2, h.y0, 0.02), P(h.u + s * (h.w / 2 + 0.6), h.y0, 0.25), P(h.u + s * (h.w / 2 + 0.6), h.spring, 0.25), P(h.u + s * h.w / 2, h.spring, 0.02),
+        { colour: ARMOUR, decor: true, fine: mobile ? undefined : 'near' });
+    }
+  }
+  // the cornice over the front, and (alpine) the dressed quoins and the string course
+  sink.span(wall, -Lf / 2 - 0.3, H - 0.1, z1 - 0.2, Lf / 2 + 0.3, H + 0.4, z1 + 0.5, { decor: true, shade: 0.9 });
+  if (alpine) for (const s of [-1, 1]) for (let y = 0.3; y < H - 0.3; y += 0.9) sink.span('stone', s * Lf / 2 - (s > 0 ? 0.9 : -0.0) - (s > 0 ? 0 : 0), y, z1 - 0.1, s * Lf / 2 + (s > 0 ? 0 : 0.9) * (s < 0 ? 1 : 0), y + 0.45, z1 + 0.12, { decor: true, shade: 1.08 });
+  // the earth cover: from the cornice up over the vaults to its crest, then the long back slope to the ground; the ends
+  // fall to the ground too (a mound, its turf seamed)
+  const crest = H + (alpine ? 1.2 : 2.6), cz = z1 - 3.5, ex = 4;
+  // the vaults' mass behind the front, under the crest (the back slope's earth covers the rest)
+  sink.span(wall, -Lf / 2, blockFoot, cz - 1.0, Lf / 2, H, z1 - 0.88, {});
+  const ridge: Vec3[] = [[-Lf / 2, crest, cz], [Lf / 2, crest, cz]];
+  const eave: Vec3[] = [[-Lf / 2 - 0.3, H + 0.4, z1 + 0.5], [Lf / 2 + 0.3, H + 0.4, z1 + 0.5]];
+  // (the back's foot, in the block's frame: the ground there less the block's seat)
+  const back: Vec3[] = [[-Lf / 2 - ex, g(-Lf / 2 - ex, z0) - yb, z0], [Lf / 2 + ex, g(Lf / 2 + ex, z0) - yb, z0]];
+  const turf = (k: number) => (k % 2 ? TURF : TURF_DRY);
+  const segs = mobile ? 4 : 10;
+  for (let i = 0; i < segs; i++) {
+    const a = i / segs, b = (i + 1) / segs, lerp = (p: Vec3, q: Vec3, t: number): Vec3 => [p[0] + (q[0] - p[0]) * t, p[1] + (q[1] - p[1]) * t, p[2] + (q[2] - p[2]) * t];
+    const c = shade(turf(i), 0.92 + v() * 0.16);
+    // front slope (eave to ridge), back slope (ridge to the back's foot), each a strip along x
+    sink.quad('structureWood', lerp(eave[0], eave[1], a), lerp(eave[0], eave[1], b), lerp(ridge[0], ridge[1], b), lerp(ridge[0], ridge[1], a), { colour: c });
+    sink.quad('structureWood', lerp(ridge[0], ridge[1], a), lerp(ridge[0], ridge[1], b), lerp(back[0], back[1], b), lerp(back[0], back[1], a), { colour: shade(c, 0.95) });
+  }
+  // the mound's ends: from the ridge's ends down to the ground at either side
+  for (const s of [-1, 1]) {
+    const r: Vec3 = [s * Lf / 2, crest, cz], e: Vec3 = [s * (Lf / 2 + 0.3), H + 0.4, z1 + 0.5], b: Vec3 = back[s > 0 ? 1 : 0];
+    const gr: Vec3 = [s * (Lf / 2 + ex * 0.6), Math.min(g(s * (Lf / 2 + ex * 0.6), z1 + 0.5) - yb, 0) - 0.6, z1 + 0.5];
+    sink.polygon('structureWood', s > 0 ? [e, gr, b, r] : [r, b, gr, e], { colour: TURF });
+  }
+  if (alpine) {
+    // the gun terrace on the cover's crest: its parapet of squared stone with the embrasures, the traverses between them
+    const py = crest, tz = cz - 2;
+    sink.span('stone', -Lf / 2 + 2, py - 0.3, tz - 3, Lf / 2 - 2, py + 0.05, tz + 1.5, { shade: 0.85 });
+    for (let k = 0; k < Math.round(Lf / 7); k++) {
+      const x0 = -Lf / 2 + 2 + k * 7;
+      sink.span('stone', x0, py, tz + 1.5, x0 + 4.4, py + 1.3, tz + 2.6, {});
+      sink.span('stone', x0 + 5.6, py, tz - 3, x0 + 7, py + 1.6, tz + 2.6, {});
+    }
+  } else {
+    // the turret battery's cupolas: steel domes in their armour collars, the gun's slit in each, and an observation cloche
+    for (let k = 0; k < cup; k++) {
+      const x = -Lf / 2 + (k + 0.5) * Lf / cup + (v() - 0.5) * 2, z = cz - 2.5, y = crest - 0.3;
+      revolve(sink, 'stone', x, z, [[3.6, y - 0.4], [3.4, y + 0.3], [2.5, y + 0.45], [2.45, y + 0.4]], mobile ? 14 : 24, { shade: 0.86 });
+      const dome: Array<[number, number]> = [];
+      for (let i = 0; i <= 6; i++) { const a = (Math.PI / 2) * i / 6; dome.push([Math.max(0.001, Math.cos(a) * 2.2), y + 0.4 + Math.sin(a) * 1.1]); }
+      revolve(sink, 'structureMetal', x, z, dome, mobile ? 14 : 24, { colour: ARMOUR });
+      // its guns' muzzles through the slit, turned (look stream) to the valley
+      const yaw = (v() - 0.5) * 1.2;
+      sink.placed(yaw, x, y + 0.9, z, () => {
+        sink.span('dark', -0.9, -0.15, 1.9, 0.9, 0.15, 2.0, { decor: true });
+        for (const s of [-0.4, 0.4]) bar(sink, 'structureMetal', [s, 0, 1.6], [s, 0, 3.1], 0.22, { colour: shade(ARMOUR, 0.8), decor: true });
+      });
+    }
+    const ox = Lf / 2 - 4, oz = cz - 1;
+    revolve(sink, 'structureMetal', ox, oz, [[1.0, crest - 0.4], [0.95, crest + 0.9], [0.6, crest + 1.4], [0.001, crest + 1.5]], 12, { colour: ARMOUR });
+    sink.span('dark', ox - 0.45, crest + 0.6, oz + 0.85, ox + 0.45, crest + 0.75, oz + 1.0, { decor: true });
+  }
+  });
+  // the ditch's counterscarp before the front: its wall (the ditch's far side) breaking the ground in runs that follow it,
+  // the wire on its pickets along it
+  const dz = z1 + 5.2, runs = Math.max(2, Math.round((Lf + 4) / 6));
+  for (let k = 0; k < runs; k++) {
+    const x0 = -Lf / 2 - 2 + (Lf + 4) * k / runs, x1 = -Lf / 2 - 2 + (Lf + 4) * (k + 1) / runs, gy = g((x0 + x1) / 2, dz + 0.4);
+    sink.span(alpine ? 'stone' : 'plaster3', x0, foot - 0.8, dz, x1, gy + 0.45, dz + 0.8, { shade: 0.88 });
+  }
+  if (!alpine) {
+    for (let x = -Lf / 2 - 1.5; x <= Lf / 2 + 1.5; x += 2.5) {
+      const zz = dz + 2.0 + (v() - 0.5) * 0.3, y0 = g(x, zz), y1 = g(x + 2.5, zz);
+      bar(sink, 'structureMetal', [x, y0, zz], [x + (v() - 0.5) * 0.15, y0 + 1.4, zz], 0.05, { colour: WIRE, decor: true, fine: mobile ? undefined : true });
+      for (const y of [0.5, 0.95, 1.3]) bar(sink, 'structureMetal', [x, y0 + y, zz], [x + 2.5, y1 + y + (v() - 0.5) * 0.1, zz], 0.015, { colour: WIRE, decor: true, fine: true });
+    }
+  }
   return { parts: sink.finish() };
 };

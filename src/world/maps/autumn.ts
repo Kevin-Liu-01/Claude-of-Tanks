@@ -419,6 +419,16 @@ export default {
   },
 
   props: {
+    // (landmarks-271, 2026-11-06; the owner: "new special buildings like the way our airport map has hangars and our
+    // seaside map has a harbor area with a lighthouse ... integrated with the whole identity of the map") the Metz
+    // forts the Third Army fought for in 1944 (src/world/landmarks/forts.ts casemateFort, style 'lorraine'): a casemate
+    // group of the Fort Driant type cut into the côtes on each side of the valley, its concrete barracks front under the
+    // turf with the turret battery's steel cupolas, the counterscarp and wire before it; one in each team's half, each as
+    // far from its deployment (off the town's street arms, agreed with buildings-271).
+    landmarks: [
+      { kind: 'casemateFort', x: 350, z: -200, yawDeg: -90, params: { length: 55, cupolas: 3 }, name: 'the Metz fort on the east côte' },
+      { kind: 'casemateFort', x: -360, z: 250, yawDeg: 90, params: { length: 55, cupolas: 3 }, name: 'the Metz fort on the west côte' },
+    ],
     // (2026-10-17, the maps lane; the fleet dressing rules 227, the coordinator's ruling) a fence run's module or gate that
     // meets a building's plot is left out (props.ts dressingRules.fencesClearBuildings; no stub rule)
     dressingRules: { fencesClearBuildings: true },

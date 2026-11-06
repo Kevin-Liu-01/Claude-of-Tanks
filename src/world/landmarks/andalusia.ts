@@ -9,9 +9,14 @@
 //   pediment and balcony; inside, the arena's sand, the red barrera and its burladeros, the stone tiers rising to the
 //   gallery's Tuscan columns under the roof.
 //
-// Drawn in its own frame (x across, y up, z out of the front) into the regional part sink, in the map kit's render, stone
-// and roofing (no draw call of its own). The outer wall, tiers and the portal are structure; the columns, barrera,
-// railings and the window joinery are dressing.
+// - alcazaba: the old town's Moorish citadel across the gorge (the census: "a keep tower and curtain wall stubs" on the
+//   rock above the village): the square keep (torre del homenaje) of rammed earth on a stone plinth, its battlemented
+//   top broken, the curtain walls running out from it round a ward with their square towers, breached and fallen to
+//   stubs in places, the horseshoe-arched gate in a bent entrance.
+//
+// Drawn in their own frames (x across, y up, z out of the front) into the regional part sink, in the map kit's render,
+// stone and roofing (no draw call of their own). The outer walls, tiers, the keep and the curtain are structure; the
+// columns, barrera, railings, the merlons' rubble and the window joinery are dressing.
 import { PartSink, rgb, shade, type Vec3 } from '../maps/regional/geometry.ts';
 import { bar, revolve, columnProfile } from './kit.ts';
 import type { LandmarkBuilder, LandmarkBuildContext } from './types.ts';
@@ -145,4 +150,100 @@ export const bullring: LandmarkBuilder = (ctx) => {
   }
   void v;
   return { parts: sink.finish(), tints: { plaster3: [1.04, 1.03, 1.0] } };
+};
+
+/** A battlemented wall's crenels along its head from a to b at y (merlons 0.9 wide with 0.6 gaps), `t` thick; `broken`
+ *  leaves out a share of them (the look stream). */
+function merlons(sink: PartSink, a: readonly [number, number], b: readonly [number, number], y: number, t: number, v: () => number, broken: number): void {
+  const L = Math.hypot(b[0] - a[0], b[1] - a[1]), ux = (b[0] - a[0]) / L, uz = (b[1] - a[1]) / L;
+  const n = Math.max(1, Math.floor(L / 1.5));
+  for (let k = 0; k < n; k++) {
+    if (v() < broken) continue;
+    const s0 = k * L / n + 0.3, s1 = s0 + 0.9;
+    const cx = a[0] + ux * (s0 + s1) / 2, cz = a[1] + uz * (s0 + s1) / 2;
+    sink.placed(Math.atan2(ux, uz), cx, y, cz, () => sink.span('plaster2', -t / 2, 0, -0.45, t / 2, 1.0 + v() * 0.15, 0.45, {}));
+  }
+}
+
+/**
+ * The alcazaba: the keep (`keep` square, `height` tall) at the ward's back-left, the curtain walls (`wall` high) round a
+ * `ward` x `depth` court with square towers at its corners, the gate in the front (+z) wall, breaches where the look
+ * stream throws them (`ruin`: the share of the walls' length fallen).
+ */
+export const alcazaba: LandmarkBuilder = (ctx) => {
+  const sink = new PartSink(uvOffset(ctx.rng));
+  const v = ctx.variant, mobile = ctx.tier === 'mobile';
+  const K = num(ctx, 'keep', 8, 16), KH = num(ctx, 'height', 12, 26), WH = num(ctx, 'wall', 5, 12), W = num(ctx, 'ward', 24, 60), D = num(ctx, 'depth', 18, 50);
+  const ruin = num(ctx, 'ruin', 0, 0.6), foot = -0.6 - ctx.groundFall, t = 2.0, earth = 'plaster2' as const;
+  // the walls: the four sides of the ward between the corner towers, each in runs with breaches; the front's gate gap
+  const corners: Array<[number, number]> = [[-W / 2, D / 2], [W / 2, D / 2], [W / 2, -D / 2], [-W / 2, -D / 2]];
+  for (let k = 0; k < 4; k++) {
+    const a = corners[k], b = corners[(k + 1) % 4], L = Math.hypot(b[0] - a[0], b[1] - a[1]);
+    const ux = (b[0] - a[0]) / L, uz = (b[1] - a[1]) / L, yaw = Math.atan2(ux, uz);
+    // runs of 6 m: each stands to the wall's height, falls to a stub (a breach) or is left out for the gate
+    const runs = Math.max(2, Math.round(L / 6));
+    for (let r = 0; r < runs; r++) {
+      const s0 = L * r / runs, s1 = L * (r + 1) / runs, mid = (s0 + s1) / 2;
+      const cx = a[0] + ux * mid, cz = a[1] + uz * mid;
+      const gate = k === 0 && r === Math.floor(runs / 2);
+      if (gate) continue;
+      const fallen = r > 0 && r < runs - 1 && v() < ruin;
+      const h = fallen ? 1.2 + v() * 1.8 : WH - v() * 0.8;
+      sink.placed(yaw, cx, 0, cz, () => {
+        // (the wall's run along its local z, t thick across x)
+        sink.span(earth, -t / 2, foot, -(s1 - s0) / 2 - 0.01, t / 2, h, (s1 - s0) / 2 + 0.01, {});
+        // the stone plinth's batter at its foot
+        sink.span('stone', -t / 2 - 0.35, foot, -(s1 - s0) / 2, t / 2 + 0.35, 1.1, (s1 - s0) / 2, { shade: 0.9 });
+        if (fallen) {
+          // the breach's rubble spilling out of it
+          for (let i = 0; i < 4; i++) sink.span('stone', -t * 1.6 + v() * t * 1.4, -0.2, -(s1 - s0) / 2 + v() * (s1 - s0) * 0.8, -t * 0.8 + v() * t * 1.6, 0.4 + v() * 0.8, -(s1 - s0) / 2 + v() * (s1 - s0) * 0.8 + 1.2, { shade: 0.85, decor: true });
+        }
+      });
+      if (!fallen) merlons(sink, [a[0] + ux * s0, a[1] + uz * s0], [a[0] + ux * s1, a[1] + uz * s1], WH - 0.6, t * 0.4, v, 0.35);
+    }
+  }
+  // the gate: two flanking towers either side of the front gap, the horseshoe arch over it between them
+  const gr = Math.max(2, Math.round(W / 6)), gs0 = W * Math.floor(gr / 2) / gr - W / 2, gs1 = gs0 + W / gr;
+  for (const gx of [gs0 - 1.8, gs1 + 1.8]) sink.span(earth, gx - 1.8, foot, D / 2 - 2.0, gx + 1.8, WH + 2.2, D / 2 + 1.6, {});
+  for (const gx of [gs0 - 1.8, gs1 + 1.8]) merlons(sink, [gx - 1.8, D / 2 + 1.6], [gx + 1.8, D / 2 + 1.6], WH + 2.2, 0.5, v, 0.2);
+  const ga = (gs1 - gs0) / 2, gc = (gs0 + gs1) / 2, spring = 3.6, n = mobile ? 6 : 10;
+  sink.span(earth, gs0, spring + ga * 1.1, D / 2 - 1.0, gs1, WH + 0.6, D / 2 + 1.0, {});
+  for (let i = 0; i < n; i++) {
+    // the horseshoe: the arc runs past the half circle (to 200 degrees) back in toward the jambs
+    const a0 = -0.17 * Math.PI + 1.34 * Math.PI * i / n, a1 = -0.17 * Math.PI + 1.34 * Math.PI * (i + 1) / n;
+    const p = (a: number, z: number): Vec3 => [gc + Math.cos(a) * ga, spring + Math.sin(a) * ga * 1.1, z];
+    sink.quad(earth, p(a1, D / 2 + 1.0), p(a0, D / 2 + 1.0), [gc + Math.cos(a0) * ga * 1.12, spring + ga * 1.1 + 0.02, D / 2 + 1.0], [gc + Math.cos(a1) * ga * 1.12, spring + ga * 1.1 + 0.02, D / 2 + 1.0], { shade: 0.95 });
+    bar(sink, 'stone', p(a0, D / 2 + 1.05), p(a1, D / 2 + 1.05), 0.35, { decor: true });
+  }
+  // the corner towers: square, proud of both walls, their tops broken
+  for (const [cx, cz] of corners) {
+    const h = WH + 2.5 - (v() < ruin ? 3 + v() * 3 : 0);
+    sink.span(earth, cx - 3, foot, cz - 3, cx + 3, h, cz + 3, {});
+    sink.span('stone', cx - 3.35, foot, cz - 3.35, cx + 3.35, 1.3, cz + 3.35, { shade: 0.9 });
+    for (const [a, b] of [[[cx - 2.8, cz + 2.8], [cx + 2.8, cz + 2.8]], [[cx + 2.8, cz + 2.8], [cx + 2.8, cz - 2.8]], [[cx + 2.8, cz - 2.8], [cx - 2.8, cz - 2.8]], [[cx - 2.8, cz - 2.8], [cx - 2.8, cz + 2.8]]] as const) merlons(sink, a, b, h, 0.5, v, 0.4);
+  }
+  // the keep at the ward's back-left, inside the corner tower's line: its tapia courses, the arrow slits, the broken top
+  const kx = -W / 2 + K / 2 + 3.5, kz = -D / 2 + K / 2 + 3.5;
+  sink.span('stone', kx - K / 2 - 0.4, foot, kz - K / 2 - 0.4, kx + K / 2 + 0.4, 1.6, kz + K / 2 + 0.4, { shade: 0.9 });
+  sink.span(earth, kx - K / 2, 1.6, kz - K / 2, kx + K / 2, KH, kz + K / 2, {});
+  // the formwork's course lines (tapia) and the putlog holes in rows, the slits, on the keep's faces
+  for (let y = 2.4; y < KH - 0.5; y += 0.85) for (const [ox, oz] of [[0, 1], [1, 0], [0, -1], [-1, 0]] as const) {
+    const ax = ox === 0 ? 1 : 0, az = ox === 0 ? 0 : 1, px = kx + ox * (K / 2 + 0.005), pz = kz + oz * (K / 2 + 0.005);
+    sink.span('dark', Math.min(px - ax * K / 2, px + ax * K / 2), y, Math.min(pz - az * K / 2, pz + az * K / 2), Math.max(px - ax * K / 2, px + ax * K / 2) + (ax ? 0 : 0.01), y + 0.03, Math.max(pz - az * K / 2, pz + az * K / 2) + (az ? 0 : 0.01), { decor: true, fine: true });
+  }
+  for (const [ox, oz] of [[0, 1], [1, 0], [0, -1], [-1, 0]] as const) for (const y of [KH * 0.45, KH * 0.75]) {
+    sink.span('dark', kx + ox * (K / 2 + 0.01) - (oz ? 0.12 : 0.02), y, kz + oz * (K / 2 + 0.01) - (ox ? 0.12 : 0.02), kx + ox * (K / 2 + 0.01) + (oz ? 0.12 : 0.02), y + 1.3, kz + oz * (K / 2 + 0.01) + (ox ? 0.12 : 0.02), { decor: true });
+  }
+  // its top: a broken battlement, one corner fallen lower
+  for (const [a, b] of [[[kx - K / 2 + 0.4, kz + K / 2 - 0.4], [kx + K / 2 - 0.4, kz + K / 2 - 0.4]], [[kx + K / 2 - 0.4, kz + K / 2 - 0.4], [kx + K / 2 - 0.4, kz - K / 2 + 0.4]],
+    [[kx + K / 2 - 0.4, kz - K / 2 + 0.4], [kx - K / 2 + 0.4, kz - K / 2 + 0.4]], [[kx - K / 2 + 0.4, kz - K / 2 + 0.4], [kx - K / 2 + 0.4, kz + K / 2 - 0.4]]] as const) merlons(sink, a, b, KH, 0.7, v, 0.3);
+  sink.span(earth, kx + K / 2 - 3.5, KH - 0.01, kz + K / 2 - 3.5, kx + K / 2, KH + 1.4, kz + K / 2, {});
+  // the ward's ground: rubble heaps of fallen buildings, a cistern's well head
+  for (let i = 0; i < 5; i++) {
+    const x = -W / 2 + 6 + v() * (W - 12), z = -D / 2 + 6 + v() * (D - 12);
+    if (Math.abs(x - kx) < K && Math.abs(z - kz) < K) continue;
+    sink.span('stone', x - 1.4, -0.3, z - 1.0, x + 1.4, 0.5 + v() * 0.5, z + 1.0, { shade: 0.85, decor: true });
+  }
+  revolve(sink, 'stone', W / 4, 0, [[1.1, -0.3], [1.1, 0.8], [0.8, 0.8], [0.8, 0.5], [0.79, 0.5]], 10, { shade: 0.9 });
+  return { parts: sink.finish() };
 };

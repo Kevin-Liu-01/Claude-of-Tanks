@@ -164,6 +164,16 @@ export default {
     palettes: { oak: desert.vegetation.palettes.oak },
   },
   props: {
+    // (landmarks-271, 2026-11-06; the owner: "new special buildings like the way our airport map has hangars and our
+    // seaside map has a harbor area with a lighthouse ... integrated with the whole identity of the map") Monument
+    // Valley's own buildings (src/world/landmarks/navajo.ts): Goulding's trading post under the west mesa's cliff on the
+    // line between the deployments, its porch and pumps to the valley; a Diné hogan with its sheep corral east of the
+    // centre in each half.
+    landmarks: [
+      { kind: 'tradingPost', x: -300, z: -22, yawDeg: 90, name: "Goulding's trading post" },
+      { kind: 'hogan', x: 250, z: 140, yawDeg: 180, name: 'the hogan north of the wash' },
+      { kind: 'hogan', x: 280, z: -130, yawDeg: 0, name: 'the hogan south of the wash' },
+    ],
     // the map-revival lane (2026-10-05): the Navajo Nation's Monument Valley kit (maps/regional/navajo.ts)
     architecture: 'navajo',
     plan: [

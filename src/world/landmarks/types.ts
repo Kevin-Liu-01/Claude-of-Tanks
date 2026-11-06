@@ -54,13 +54,19 @@ export type LandmarkKind =
   // the Dahar's ksar and saint's tomb (ksar.ts, landmarks-271)
   | 'ghorfaKsar' | 'marabout'
   // forts (forts.ts, landmarks-271)
-  | 'desertFort'
+  | 'desertFort' | 'casemateFort'
   // Siwa's mosque and spring (siwa.ts, landmarks-271)
   | 'shaliMosque' | 'springPool'
   // the Serranía's bullring (andalusia.ts, landmarks-271)
-  | 'bullring'
+  | 'bullring' | 'alcazaba'
   // a canal hamlet's market and charcoal works (canalWorks.ts, landmarks-271)
-  | 'canalMarket' | 'charcoalKilns';
+  | 'canalMarket' | 'charcoalKilns'
+  // Podhale's wooden church (podhale.ts, landmarks-271)
+  | 'woodenChurch'
+  // Monument Valley's trading post and hogans (navajo.ts, landmarks-271)
+  | 'tradingPost' | 'hogan'
+  // works and stations (damWorks.ts, landmarks-271): Glen Canyon's cableway head tower, an Olympus station's landing pad
+  | 'cablewayTower' | 'landingPad';
 
 /** A kind's parameters: numbers (metres, counts), choices (strings) and switches. */
 export type LandmarkParams = Readonly<Record<string, number | string | boolean>>;

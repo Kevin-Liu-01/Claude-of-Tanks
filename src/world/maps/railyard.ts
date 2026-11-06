@@ -112,8 +112,9 @@ const PLAN: string[] = [];
 /** (landmarks-271) the engine shed's plan (railWorks.ts roundhouse): seven stalls of 9°, the doors 22 m from the
  * table's centre, the stalls 18 m deep, the lead 4 m; three doors open, two engines standing at them. */
 const ROUNDHOUSE = { stalls: 7, stallDeg: 9, front: 22, depth: 18, lead: 4, open: 3, engines: 2 } as const;
-/** The frontage lots the west engine shed takes (and, by the twins, the east one's). */
-const ENGINE_SHED_LOTS: ReadonlySet<string> = new Set(['shed -226.86', 'containerRow -175.79']);
+/** The frontage lots the west engine shed takes (and, by the twins, the east one's), by their eastings: the shed and the
+ * yard's approach building beside it, whatever structure the buildings lane gives them. */
+const ENGINE_SHED_LOTS: ReadonlySet<number> = new Set([-226.86, -175.79]);
 const FROZEN_FRONTAGE_SOUTH_ALL: readonly { structure: string; x: number; z: number; yawDeg: number }[] = [
   { structure: 'shed', x: -248.31, z: -68.03, yawDeg: 1.13 },
   { structure: 'shed', x: -226.86, z: -63.53, yawDeg: 80.52 },
@@ -132,7 +133,7 @@ const FROZEN_FRONTAGE_SOUTH_ALL: readonly { structure: string; x: number; z: num
   { structure: 'warehouse', x: 250.71, z: -23.94, yawDeg: 177.73 },
   { structure: 'shed', x: 251.23, z: -57.3, yawDeg: 84 },
 ];
-const FROZEN_FRONTAGE_SOUTH = FROZEN_FRONTAGE_SOUTH_ALL.filter((site) => !ENGINE_SHED_LOTS.has(`${site.structure} ${site.x}`));
+const FROZEN_FRONTAGE_SOUTH = FROZEN_FRONTAGE_SOUTH_ALL.filter((site) => !ENGINE_SHED_LOTS.has(site.x));
 
 // 2026-10-11 (the map-revival lane, Cinder Junction round 2; gauntlet wave 362, village-mid: "a thin scatter of clean
 // orange brick boxes on protruding slab plinths standing in wide empty dirt lots beside a uniformly tiled cobbled street

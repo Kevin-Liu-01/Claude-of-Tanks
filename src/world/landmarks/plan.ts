@@ -406,11 +406,18 @@ export const LANDMARK_KINDS: Readonly<Record<LandmarkKind, LandmarkKindSpec>> = 
   // batter, the water tank 3.3 m out of the front
   desertFort: { family: 'civic', defaults: { size: 30, height: 5, rooms: 4.2, tower: 9.5 },
     footprint: (p) => [num(p, 'size') / 2 + 1.2, num(p, 'size') / 2 + 3.5] },
+  // the casemate fort: its front, the cover's ends 4 m past it, the counterscarp and the wire to 7.2 m out of the front
+  // (it drapes: forts.ts seats its front on its ground and runs the cover down to the ground behind)
+  casemateFort: { family: 'civic', drapes: true, defaults: { style: 'lorraine', length: 54, depth: 22, height: 5, cupolas: 3 },
+    footprint: (p) => [num(p, 'length') / 2 + 4.2, num(p, 'depth') / 2 + 1.6] },
   // (siwa.ts, landmarks-271) the mosque: its hall's slumped walls and the ablution court 5.8 m out of the front; the
   // spring: its ring, the channels up to 13.2 m out to -x, the café's shade to +x
   shaliMosque: { family: 'civic', defaults: { width: 13, depth: 12, height: 4.2, minaret: 13 },
     footprint: (p) => [num(p, 'width') / 2 + 0.9, num(p, 'depth') / 2 + 6.0] },
   // (andalusia.ts, landmarks-271) the bullring: its ring to the roof's eaves 0.7 m out, the portal's columns 1.4 m proud
+  // the alcazaba: its ward, the corner towers 3.35 m out at their plinths, the gate towers 1.6 m out of the front wall
+  alcazaba: { family: 'monument', defaults: { keep: 11, height: 18, wall: 7.5, ward: 46, depth: 34, ruin: 0.3 },
+    footprint: (p) => [num(p, 'ward') / 2 + 3.6, num(p, 'depth') / 2 + 3.6] },
   bullring: { family: 'civic', defaults: { radius: 30, height: 11, arena: 21, sides: 32 },
     footprint: (p) => [num(p, 'radius') + 0.9, num(p, 'radius') + 1.8] },
   // (canalWorks.ts, landmarks-271) at the canal's edge (inWater: the bank and the water under them): the market's hall
@@ -419,6 +426,26 @@ export const LANDMARK_KINDS: Readonly<Record<LandmarkKind, LandmarkKindSpec>> = 
     footprint: (p) => [num(p, 'length') / 2 + 1.6, Math.max(num(p, 'depth') + 2.2, 16.6)] },
   charcoalKilns: { family: 'works', inWater: true, defaults: { kilns: 4, radius: 2.7 },
     footprint: (p) => [num(p, 'kilns') * (2 * num(p, 'radius') + 1.4) / 2 + 1.9, num(p, 'radius') + 2.5 + 7.4] },
+  // (podhale.ts, landmarks-271) the wooden church inside its churchyard fence (`yard` wide), the gate 10.5 m past the
+  // nave's front, the back fence 4 m behind the chancel's end
+  woodenChurch: { family: 'civic', defaults: { width: 8, length: 11, tower: 16, yard: 22 },
+    footprint: (p) => [Math.max(num(p, 'width') + 8, num(p, 'yard')) / 2 + 0.3, Math.max(num(p, 'length') / 2 + 10.5, 1.05 * num(p, 'length') + 2) + 0.3] },
+  // (navajo.ts, landmarks-271) the trading post: its stair 4.8 m off the block's -x end, the wareroom to +x, the porch and
+  // pumps 7.3 m out of the front; the hogan: its corral 12.5 m out at +x
+  tradingPost: { family: 'civic', defaults: { width: 16, depth: 11 },
+    // (seated on its block and wareroom alone: the porch, pumps and stair stand on the ground they meet)
+    seat: (p) => [num(p, 'width') / 2 + 3, num(p, 'depth') / 2],
+    footprint: (p) => [num(p, 'width') / 2 + 4.9, num(p, 'depth') / 2 + 7.4] },
+  hogan: { family: 'civic', defaults: { radius: 4, corral: true },
+    seat: (p) => [num(p, 'radius') + 1.4, num(p, 'radius') + 1.4],
+    footprint: (p) => [num(p, 'radius') + (p.corral === false ? 0.6 : 13), Math.max(num(p, 'radius') + 1.4, p.corral === false ? 0 : 5.4)] },
+  // (damWorks.ts, landmarks-271) the cableway's head tower: its footings, the boom 9.9 m out over the span, the backstay
+  // anchors `backstay` behind (the cable across the span is dressing past the footprint); the landing pad: the service
+  // module to -x, the crane to +x, the berm round -z
+  cablewayTower: { family: 'works', defaults: { height: 40, backstay: 20, cable: false, span: 130, farRise: 0 },
+    footprint: (p) => [5.8, Math.max(num(p, 'backstay') + 1.5, 10)] },
+  landingPad: { family: 'works', defaults: { radius: 24, lander: true },
+    footprint: (p) => [num(p, 'radius') + 15, num(p, 'radius') + 6.7] },
   springPool: { family: 'park', defaults: { radius: 7.5, channels: 2 },
     footprint: (p) => [num(p, 'radius') + (num(p, 'channels') > 0 ? 13.4 : 7.6), num(p, 'radius') + 1.6] },
 });
