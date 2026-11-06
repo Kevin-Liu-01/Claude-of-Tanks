@@ -15,15 +15,15 @@ Run times: `tools/selftest-durations.json`, else this machine's latest observati
 
 | Decision | Receipts | CPU-min |
 |---|---:|---:|
-| KEEP | 1516 | 165.1 |
+| KEEP | 1517 | 165.1 |
 | MERGE | 0 | 0.0 |
 | MANUAL | 655 | 1157.1 |
 | RETIRE | 2 | 0.7 |
 
 | Suite run | Receipts | CPU-min | Simulated wall (min) |
 |---|---:|---:|---:|
-| Before: every receipt (npm test without the tiers) | 2172 | 1322.5 | 233.3 |
-| After: the default tier | 1516 | 165.1 | 37.1 |
+| Before: every receipt (npm test without the tiers) | 2173 | 1322.6 | 233.3 |
+| After: the default tier | 1517 | 165.1 | 37.1 |
 
 Default tier: 12.5 % of the whole registry's CPU; 18.0 % of the 916 CPU-min the snapshot gave for the 1,863 receipts it timed. Its wall: 0.2 min exclusive receipts, 18.3 min pool, 18.6 min browser receipts.
 
@@ -802,7 +802,7 @@ None. Folding receipts saves only process starts (about a second each) and would
 | `tools/media-r5/fleet-coverage.selftest.mjs` | n/a | MANUAL (media) | media: the media lane's fleet backlog, n/a s: 267: the fleet's media backlog (every vehicle leads a take, the survey bars): the manual media suite | test:heavy -- media; test:recommend flags it when its inputs change |
 | `tools/mp-rooms-entry.browser.selftest.mjs` | n/a | MANUAL (ui) | ui: heavy interface paint and layout sweeps, n/a s: 268 (the 267 production smoke): the multiplayer end-to-end opens the rooms panel the way the Garage's layout o | test:heavy -- ui; test:recommend flags it when its inputs change |
 
-## KEEP (1516)
+## KEEP (1517)
 
 | Receipt | Run (s) | Decision | Reason | Coverage now |
 |---|---:|---|---|---|
@@ -1259,6 +1259,7 @@ None. Folding receipts saves only process starts (about a second each) and would
 | `tools/image-fit-lint.selftest.mjs` | 2.2 | KEEP | tool contract, 2.2 s: 2026-10-26 (owner, the battle load: "there are still black bars above and below the images here!!! fix that!!! | default tier (npm test, the release gate; lane mode by its closure) |
 | `src/engine/coverageMipQuantile.selftest.mjs` | 2.1 | KEEP | renderer contract, 2.1 s: coverageMipQuantile.selftest.mjs — the coverage-preserving mip correction finds its alpha quantile with a hist | default tier (npm test, the release gate; lane mode by its closure) |
 | `src/ui/uiCanvas.selftest.mjs` | 2.1 | KEEP | interface contract, 2.1 s: (UI-LOCKDOWN A) the one canvas primitive's rule (sizing, hidden release, no compounding, a DPR flip) and the c | default tier (npm test, the release gate; lane mode by its closure) |
+| `src/world/groundSurfaces.selftest.mjs` | 2.1 | KEEP | world rule, 2.1 s: ground-269 (2026-11-04): the ground-surface table — a row per class and map, the plan's sets, the sim column's | default tier (npm test, the release gate; lane mode by its closure) |
 | `server/collisionManifestRoutes.selftest.mjs` | 2.0 | KEEP | server service, 2.0 s: 2026-10-16 physics: v2 serves 226's manifests (256 parts); /mp-collision holds production 224's byte for byte | default tier (npm test, the release gate; lane mode by its closure) |
 | `src/app/combatWarmComposition.selftest.mjs` | 2.0 | KEEP | site, manual or app contract, 2.0 s | default tier (npm test, the release gate; lane mode by its closure) |
 | `src/audio/interfacePress.selftest.mjs` | 2.0 | KEEP | audio contract, 2.0 s: interfacePress.selftest.mjs — the first press anywhere is never late (AU.07, the coordinator 2026-10-13: "a UI | default tier (npm test, the release gate; lane mode by its closure) |

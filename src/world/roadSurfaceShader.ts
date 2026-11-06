@@ -169,6 +169,9 @@ export const ROAD_PAVING_GLSL = /* glsl */`      // roads lane R1c (2026-10-09; 
         // sky ambient read as a frozen canal; darker worn stone keeps the
         // street below the facade value range
         pav.rgb *= 0.72 + smoothstep(0.35, 0.75, pvar) * 0.22;
+        // (ground-269, ab9, Ruinspires on the phone: "large untextured paving slabs" — the print's slabs one tone each from
+        // a few metres out) the stone's own grain, 0.3–0.7 m, one read, eased to its mean past resolution
+        if (uGsNear.z > 0.0) pav.rgb *= mix(0.90, 1.10, smoothstep(0.30, 0.70, mix(0.5, nz(uv, 0.37, vec2(0.47, 0.19)).r, tileVis(2.7))));
         if (uPaveSlab.x > 0.0) {
           // maps lane B (2026-10-03, the gauntlet: Kestrel Airfield's apron "reads as a cobbled plaza"): airfield
           // concrete in place of the map's sett print — square slabs with sealed expansion joints, a tone per slab (pours
@@ -214,7 +217,9 @@ export const ROAD_PAVING_GLSL = /* glsl */`      // roads lane R1c (2026-10-09; 
             float settVis = tileVis(0.35);
             float jointS = (1.0 - smoothstep(0.010, 0.018 + 0.5 * gFootM, edgeD)) * settVis;
             vec3 sett = vec3(0.128, 0.125, 0.119) * (0.78 + 0.44 * sh.x) * vec3(1.0 + 0.08 * (sh.y - 0.5), 1.0, 1.0 - 0.06 * (sh.y - 0.5));
-            pav = vec4(mix(mix(vec3(0.112, 0.109, 0.104), sett, settVis), vec3(0.040, 0.036, 0.031), jointS), 0.88);
+            // (ground-269: the Low tier's joints a shade under the stone too, not near black, where the table runs)
+            vec3 settJ = uGsNear.z > 0.0 ? sett * uGsNear.z : vec3(0.040, 0.036, 0.031);
+            pav = vec4(mix(mix(vec3(0.112, 0.109, 0.104), sett, settVis), settJ, jointS), 0.88);
             // a sett's worn, rounded top
             vec2 st2 = vec2(sf.x / 0.16 - 0.5, sf.y / sw - 0.5);
             pnn = vec4(vec2(0.5) + (st2.x * gRoadDir + st2.y * vec2(-gRoadDir.y, gRoadDir.x)) * 0.45 * settVis * (1.0 - jointS), 0.5, 1.0);
@@ -225,13 +230,18 @@ export const ROAD_PAVING_GLSL = /* glsl */`      // roads lane R1c (2026-10-09; 
             float wheelP = (laneP - 0.95) / 0.35;
             asph *= 1.0 + 0.10 * exp(-wheelP * wheelP) * tileVis(1.0);
             asph *= 1.0 - 0.18 * (1.0 - smoothstep(0.0, 0.45, laneP)) * smoothstep(0.55, 0.80, nz(uv, 0.21, vec2(0.13, 0.71)).g);
+            // (ground-269, c5, Ruinspires on the phone: "large plain alternating slabs … a checker of flat tones" — the aggregate
+            // gone past a metre, the repairs a tone apart) by the table, the binder's 1–2 m mottle, which the phone resolves,
+            // and the repairs a shade off the old surface (one noise read)
+            float gsPv = step(0.001, uGsNear.z);
+            if (gsPv > 0.5) asph *= mix(0.88, 1.12, smoothstep(0.30, 0.70, mix(0.5, nz(uv, 0.11, vec2(0.23, 0.61)).g, tileVis(9.0))));
             if (gRoadClass > 2.5) {
               vec2 pc = vec2(rq.x / 4.2, rq.y / 2.4), pcI = floor(pc), pcF = fract(pc);
               vec2 ph = cellHash2(pcI + vec2(53.0, 7.0));
               float inPatch = step(ph.x, 0.38);
               vec2 pe = min(pcF, 1.0 - pcF) * vec2(4.2, 2.4);
               float seam = (1.0 - smoothstep(0.03, 0.06 + gFootM, min(pe.x, pe.y))) * inPatch * tileVis(0.6);
-              asph = mix(asph, ph.y > 0.5 ? asph * 0.78 : mix(asph, vec3(0.13, 0.128, 0.122), 0.55), inPatch);
+              asph = mix(asph, ph.y > 0.5 ? asph * mix(0.78, 0.88, gsPv) : mix(asph, vec3(0.13, 0.128, 0.122), mix(0.55, 0.30, gsPv)), inPatch);
               asph *= 1.0 - 0.45 * seam;
               float crack = (1.0 - smoothstep(0.0, 0.02 + gFootM, abs(nz(uv, 0.9, vec2(0.71, 0.29)).r - 0.5) * 0.12))
                 * (1.0 - inPatch) * tileVis(0.5) * 0.5;
@@ -293,10 +303,14 @@ export const ROAD_PAVING_GLSL = /* glsl */`      // roads lane R1c (2026-10-09; 
             vec3 jointC = mix(mix(stone * 0.30, uMeanD.rgb * 0.40, 0.35), uMeanG.rgb * 0.50, mossy * 0.5);
             // (228 r2) a civic square's joints sanded paler (uPaveSquare.y), so its field reads as stone, not a black grid
             if (!fr) jointC = mix(jointC, stone * 0.66, uPaveSquare.y);
+            // (ground-269, groundSurfaces.ts setts: the owner's "black spaces") sand-and-grit joints a shade under their stone,
+            // never a black grid, and a lost sett shows its sand bed, not a black hole (uGsNear.z: the joints' floor as a share
+            // of the stone; 0 = the old law)
+            if (uGsNear.z > 0.0) jointC = max(jointC, stone * uGsNear.z);
             float lost = step(0.992, sh.y) * svs;
             vec3 settMean = mix(vec3(0.150, 0.146, 0.139), jointC, 0.26) * (1.0 - 0.10 * wheelW);
             col = mix(mix(settMean, stone, sv), jointC, jointS);
-            col = mix(col, jointC * 0.6, lost);
+            col = mix(col, uGsNear.z > 0.0 ? mix(jointC, uMeanD.rgb * uSoilTint * 0.8, 0.5) : jointC * 0.6, lost);
             vec2 st2 = vec2(sf.x / 0.17 - 0.5, sf.y / swd - 0.5);
             vec2 tilt = (cellHash2(vec2(si, ci) + 3.7) - 0.5) * 0.18;
             pN = ((st2.x * 0.80 + tilt.x) * al + (st2.y * 0.80 + tilt.y) * pr) * (1.0 - jointS) * (1.0 - lost) * svs;
@@ -304,6 +318,7 @@ export const ROAD_PAVING_GLSL = /* glsl */`      // roads lane R1c (2026-10-09; 
             // (roads lane R1 cost, 2026-10-10: past both sets of joints' resolution — a wide paved view's far half, where the
             // v3 series measured the paving's cost — the stones' limit at once: no per-sett hash, the same mean tone)
             vec3 jointM = mix(mix(vec3(0.150, 0.146, 0.139) * 0.30, uMeanD.rgb * 0.40, 0.35), uMeanG.rgb * 0.50, mossy * 0.5);
+            if (uGsNear.z > 0.0) jointM = max(jointM, vec3(0.150, 0.146, 0.139) * uGsNear.z); // ground-269
             col = mix(vec3(0.150, 0.146, 0.139), jointM, 0.26) * (1.0 - 0.10 * wheelW);
           }
           col *= 0.94 + 0.12 * nzq(uv, 0.35, vec2(0.23, 0.41)).x;
@@ -408,6 +423,9 @@ export const ROAD_PAVING_GLSL = /* glsl */`      // roads lane R1c (2026-10-09; 
           float aggGV = tileVis(0.03);
           if (aggGV > 0.01) asph *= 1.0 + (nz(uv, 13.0, vec2(0.53, 0.29)).r - 0.5) * 0.22 * aggGV;
           asph *= 1.0 - 0.13 * smoothstep(0.56, 0.84, nzq(uv, 0.09, vec2(0.71, 0.37)).x);
+          // (ground-269, ab9, Ruinspires' street from the town camera: "asphalt reads untextured" between the aggregate,
+          // gone past a few metres, and the binder's blotches of several) the surface's mid mottle, 0.3–0.7 m, to ~40 m
+          if (uGsNear.z > 0.0) asph *= mix(0.90, 1.10, smoothstep(0.42, 0.60, mix(0.51, nzq(uv, 0.37, vec2(0.23, 0.61)).y, tileVis(2.7))));
           if (fr) {
             float ravel = smoothstep(roadHalf - 1.0, roadHalf - 0.15, dRoad) * (1.0 - paveTownW)
               * smoothstep(0.40, 0.70, nz(uv, 1.1, vec2(0.37, 0.61)).r);

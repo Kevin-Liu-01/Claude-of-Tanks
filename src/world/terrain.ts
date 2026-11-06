@@ -78,6 +78,9 @@ import { buildOutlandWaterGeometrySteps, resolveSeaOpenings, seaOpeningUniforms,
 // Round 73 (2026-09-25): the ground redux profile — transitions, folds, snow, glint and the shoreline clock (no sampler)
 import { cinderYardWeedsAt, groundReduxUniformValues, resolveGroundReduxProfile } from './groundRedux.ts';
 import { ROAD_CARRIAGEWAY_GLSL, ROAD_PAVING_GLSL } from './roadSurfaceShader.ts';
+// ground-269 (2026-11-04): the ground-surface table (groundSurfaces.ts) and its laws in the splat (groundSurfaceShader.ts)
+import { GROUND_SURFACE_GLSL, GROUND_SURFACE_WORKS_GLSL } from './groundSurfaceShader.ts';
+import { groundSurfaceUniformValues } from './groundSurfaces.ts';
 import { LAND_BAKE_LAYERS, LAND_USE_GLSL, bakeLandUseSteps, landUseAt, landUseTierOf, landUseUniformValues, resolveLandUseProfile, withLevelPaddies, type LandFieldSample, type LandUseProfile } from './landUse.ts';
 import { drawIceCracks } from './iceCracks.ts';
 import { civicLawns, civicPavedRooms } from './civic/plans/index.ts';
@@ -4580,6 +4583,15 @@ uniform vec4 uTownPave;   // map revival lane 2 (2026-10-05): the paved town rec
 uniform float uYardCinder;
 // ground lane (2026-10-08, wave 274): the thatch and soil under a thick sward near the camera (groundRedux.ts thatch); 0 = off
 uniform float uThatch;
+// ground-269: the ground-surface table's classes as codes (groundSurfaces.ts groundSurfaceUniformValues): the open ground's
+// (macro, strength, close, strength), the worn ground's, and the town floor's (macro, close, strength, on)
+uniform vec4 uGsOpen, uGsWorn, uGsTown;
+// ground-269: the share of the smooth ground's direct light a detail facet may lose, on the open ground's class and on
+// the rest (x, y; 0 = no cap; z the setts' joints' floor), and the share the splat's normal pass applies here (set in
+// splatCompute)
+uniform vec4 uGsNear;
+float gGsTilt = 0.0;
+float gGsGain = 0.0;      // ground-269: the share a detail facet may gain (the cap's other side; set in splatCompute)
 uniform vec4 uSaltCrust;  // maps lane B (2026-10-03): a sor's salt crust (on, polygon cell m, damp margin, unused)
 uniform vec4 uRipple; // xy = wind dir, z = ripple amplitude, w = shore-only
 uniform float uSandMacro; // r3: desert macro variation (gravel basins / scour sheets)
@@ -4663,6 +4675,7 @@ float gPaddyWater = 0.0;     // (Caldera round 4) a flooded paddy's alone: its p
 float gCropW = 0.0;          // ground lane: a sown field's weight (not pasture or hay): the sward's own relief stands down there
 float gCropReliefW = 0.0;    // ground lane (wave 274): gCropW for the sward's relief — none on a young green crop (a short sward)
 float gSoilW = 0.0;          // ground lane: a bare field's weight (plough, terra rossa, a vineyard's earth, slag, ballast, gravel)
+float gParcelW = 0.0;        // ground-269: an urban land use's parcel weight, any crop (the town floor lies over it at the old wear's share)
 float gJebelMatte = 0.0;     // the Redrock lane, round 11b: a jebel face's weight (its sheen cut in the aomap stage)
 float gLaneSheen = 0.0;      // ground lane (wave 86): a field track's pressed lane floor (its faint satin in the roughness stage)
 float gYardOil = 0.0;        // ground lane (2026-10-08): a cinder yard's oil stains (a satin in the roughness stage)
@@ -6229,6 +6242,14 @@ void splatCompute() {
       // share while the ground under it was the yard's paler worn soil: the growing rice there lit up as a lime glow. The
       // sward's luminance is held to 1.2 times the calibrated one (0.075), as a crop's own albedo never runs above it
       float baseL = min(reduxLuma(aF), 0.09);
+      // (ground-269, the owner's "flat … black spaces" on Steinburg's and Verdant's fields: the clamp cut the sward's grain
+      // to a flat ceiling at 0.09 and left only its dark pockets, a lawn with near-black blotches) where the table runs
+      // (uGsNear.w) a crop takes its level from the sward's tile mean, capped as before, and carries the local grain both
+      // ways round it (±28 %), so the field keeps its texture and loses the holes
+      if (uGsNear.w > 0.0) {
+        float gsML = max(reduxLuma(uMeanG.rgb), 1e-3);
+        baseL = min(gsML, 0.09) * clamp(reduxLuma(aF) / gsML, 0.72, 1.28);
+      }
       float sw = baseL / 0.075; // the local sward against the calibrated one: a crop's albedo keeps the photo's grain
       float bright = 0.90 + 0.20 * jit;
       // pasture: a grazed field paler and yellower, a shut-up one lusher, by the field
@@ -6604,17 +6625,23 @@ void splatCompute() {
           hard *= 1.0 - 0.45 * (1.0 - smoothstep(0.02, 0.05 + gFootM, min(sd.x, sd.y))) * tileVis(4.0);
           float slabV = hFast ? tileVis(4.0) : 1.0;
           float slabH = slabV > 0.004 ? cellHash2(floor(hq / 4.0) + vec2(jit * 97.0, 3.0)).x : 0.5;
-          hard *= 0.92 + 0.16 * mix(0.5, slabH, slabV);
+          hard *= 0.92 + (uGsNear.w > 0.0 ? 0.10 : 0.16) * mix(0.5, slabH, slabV);
         }
-        vec2 hp = hq / vec2(5.2, 3.1), hpI = floor(hp), hpF = fract(hp);
+        // (ground-269: the phone's Ruinspires read the repairs on their aligned 5.2 x 3.1 m grid as a light-and-dark
+        // checkerboard) where the table runs (uGsNear.w) the repair courses are staggered row by row and their tones nearer
+        // the pour's own, so a repaired surface reads as patched asphalt, not a board
+        vec2 hp = hq / vec2(5.2, 3.1);
+        if (uGsNear.w > 0.0) hp.x += 0.5 * mod(floor(hp.y), 2.0) + 0.23 * fract(floor(hp.y) * 0.618);
+        vec2 hpI = floor(hp), hpF = fract(hp);
         // (past its cells' visibility a repaired surface is its mean: three tenths repaired, half of them darker, half paler)
         float repV = hFast ? tileVis(3.1) : 1.0;
         vec2 hh = repV > 0.004 ? cellHash2(hpI + vec2(91.0 + jit * 53.0, 13.0)) : vec2(1.0, 0.0);
         float repair = step(hh.x, 0.30);
         vec2 he = min(hpF, 1.0 - hpF) * vec2(5.2, 3.1);
         float seamH = (1.0 - smoothstep(0.03, 0.06 + gFootM, min(he.x, he.y))) * repair * tileVis(0.6);
-        vec3 hardMean = hard * (0.70 + 0.30 * 0.5 * (0.78 + 0.5)) + 0.30 * 0.5 * 0.5 * vec3(0.13, 0.128, 0.122);
-        hard = mix(hardMean, mix(hard, hh.y > 0.5 ? hard * 0.78 : mix(hard, vec3(0.13, 0.128, 0.122), 0.5), repair), repV);
+        float repD = uGsNear.w > 0.0 ? 0.88 : 0.78, repP = uGsNear.w > 0.0 ? 0.30 : 0.5; // (ground-269: the repairs' tones)
+        vec3 hardMean = hard * (0.70 + 0.15 * repD + 0.15 * (1.0 - repP)) + 0.15 * repP * vec3(0.13, 0.128, 0.122);
+        hard = mix(hardMean, mix(hard, hh.y > 0.5 ? hard * repD : mix(hard, vec3(0.13, 0.128, 0.122), repP), repair), repV);
         hard *= 1.0 - 0.45 * seamH;
         float crackV = tileVis(0.5);
         float crackH = uLandTier > 1.5 && (!hFast || crackV > 0.004) ? (1.0 - smoothstep(0.0, 0.02 + gFootM, abs(nz(uv, 0.9, vec2(0.71, 0.29)).r - 0.5) * 0.12))
@@ -6658,6 +6685,7 @@ void splatCompute() {
       // (2026-10-07, Ironworks round 4: a works' wear is its cinder — toward the map's pale dirt it lifted every lot)
       if (uLandE.w > 0.5) a.rgb = mix(a.rgb, uLandE.w > 1.5 ? worksSlag(n1h, n2, 0.5) * 1.12 : uMeanD.rgb * vec3(1.02, 0.98, 0.92),
         clamp(mk.a * uTownWear * (0.35 + 0.65 * n1), 0.0, 1.0) * 0.40 * inField * landW);
+      gParcelW = inField * landW * step(0.5, uLandE.w);
       // (wave 21, the Verdant boundary at tank eye: "a dead-straight, unblended seam between the green grass field and the
       // golden wheat field") a worked field's edge is a feature: inside its grass margin lies the headland, 3–5.5 m where
       // the drill turned — the crop pressed flat and thinner with the soil showing in it, and the turning wheels' two arcs
@@ -6869,6 +6897,7 @@ void splatCompute() {
       a.rgb *= 1.0 + hp.y * 0.12 * patchW;
     }
   }
+${GROUND_SURFACE_GLSL}
   // Round 73b (2026-09-26): the borders themselves. Round 73 broke the transition's LINE (a height-and-noise mix) but
   // left both sides their own tone, so at 40–120 m — where the normals have mipped flat — a dirt patch met its turf
   // with nothing to see. A worn patch's edge is where the sod is torn and the soil lies open, darker and damper than
@@ -7744,6 +7773,7 @@ ${ROAD_PAVING_GLSL}
       a.rgb *= 1.0 - gutter * 0.18 * gRoadTex;
     }
   }
+${GROUND_SURFACE_WORKS_GLSL}
   // r4: 0.09 -> 0.16 + a dusty desaturation pull — road shoulders must read
   // as worn verge (tracked dirt spilling off the carriageway), not clean lawn
   // running flush to the wheel ruts (critique: "no decals along road edges")
@@ -8247,6 +8277,23 @@ const SPLAT_NORMAL_FRAG = /* glsl */`
   }
   vec3 wN = normalize(vec3(gN.x + pN.x, max(gN.y, 0.02) + pN.y, gN.z + pN.z));
   normal = normalize((viewMatrix * vec4(wN, 0.0)).xyz);
+  // ground-269 (groundSurfaces.ts relief): no detail facet loses more than its ground class's share of the direct light the
+  // smooth ground there receives from the key light. The stacked octaves (the soil's clods on turf, the blades, the mid
+  // tussocks, the dapple, x2 by the range gain) turned facets from a low sun until they lost most of it, and the turf
+  // drew soft near-black blotches a metre or two across — the owner's "black spaces". A facet past the share is eased
+  // back toward the smooth normal just far enough; every facet that keeps its light keeps its relief (0 = no cap)
+  // (ab9, Blackglass's long view: with the dark facets held, the lit ones alone drew the relief, and at range the blades'
+  // sun sides laid pale combed arcs across the hill — "directional stroke texture", "banding") nor gains more than
+  // gGsGain of it
+  #if NUM_DIR_LIGHTS > 0
+  if (gGsTilt > 0.0) {
+    vec3 gsL = directionalLights[0].direction;
+    vec3 gsG = normalize((viewMatrix * vec4(gN, 0.0)).xyz);
+    float gsGL = dot(gsG, gsL), gsD = dot(normal, gsL) - gsGL;
+    float gsB = gsGL * (gsD < 0.0 ? gGsTilt : gGsGain);
+    if (gsGL > 0.02 && abs(gsD) > gsB) normal = normalize(mix(gsG, normal, clamp(gsB / max(abs(gsD), 1e-4), 0.0, 1.0)));
+  }
+  #endif
 }
 `;
 
@@ -8422,6 +8469,8 @@ function* createSplatMaterialSteps(
   let yardCinder = Math.min(1, Math.max(0, groundProfile.cinderYard ?? 0));
   // ground lane (2026-10-08, wave 274): the thatch under a thick sward (groundRedux.ts thatch)
   let thatchV = Math.min(1, Math.max(0, groundProfile.thatch ?? 0));
+  // ground-269: the map's grounds as the table's codes (groundSurfaces.ts)
+  const groundSurface = groundSurfaceUniformValues(mapId);
   // `?ground=legacy`: every redux term at zero on the same build — the round's before / after captures A/B against it
   if (typeof location !== 'undefined' && /[?&]ground=legacy(&|$)/.test(location.search ?? '')) {
     thatchV = 0;
@@ -8429,6 +8478,7 @@ function* createSplatMaterialSteps(
     redux.reduxB.fill(0); redux.reduxC.fill(0); // round 73b
     redux.reduxD.fill(0); // terrain v2
     landUse.landA[0] = 0; // ground lane: no fields
+    groundSurface.open.fill(0); groundSurface.worn.fill(0); groundSurface.town.fill(0); groundSurface.near.fill(0); // ground-269
     yardCinder = 0;
   }
   // ground lane (2026-10-03, the GPU fix): the land use baked once from its CPU twin at the interior mask's texel scale
@@ -8541,6 +8591,10 @@ function* createSplatMaterialSteps(
     shader.uniforms.uTownWear = { value: S.townWear ?? 1 };
     shader.uniforms.uYardCinder = { value: yardCinder };
     shader.uniforms.uThatch = { value: thatchV };
+    shader.uniforms.uGsOpen = { value: new THREE.Vector4(...groundSurface.open) };
+    shader.uniforms.uGsWorn = { value: new THREE.Vector4(...groundSurface.worn) };
+    shader.uniforms.uGsTown = { value: new THREE.Vector4(...groundSurface.town) };
+    shader.uniforms.uGsNear = { value: new THREE.Vector4(...groundSurface.near) };
     shader.uniforms.uWornDirtStrength = { value: clamp(S.wornDirtStrength ?? 0.84, 0, 1) };
     shader.uniforms.uShoulderDirt = { value: clamp(S.shoulderDirt ?? 1, 0, 1) };
     shader.uniforms.uLaneK = { value: roadLaneSharpness(mask.image.width) }; // road pass 2026-09-12
