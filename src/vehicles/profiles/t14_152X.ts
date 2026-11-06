@@ -22,42 +22,81 @@ const localY = (worldY: number) => worldY - T14X_RING.y;
 const localZ = (worldZ: number) => worldZ - T14X_RING.z;
 
 
-/** A gun-house station: [world z, half-width, bottom, top]. */
+/** A gun-house station: [world z, half-width at the foot, bottom, top]. The walls stand vertical to a shoulder 0.17 m
+ * under the roof, then rake in 60 mm to a chamfered roof edge (the house's tumblehome). */
 function houseSection(z: number, half: number, low: number, top: number): SolidSection {
-  return { z: localZ(z), ring: [[-half, localY(low)], [half, localY(low)], [half, localY(top - .05)],
-    [half - .06, localY(top)], [-half + .06, localY(top)], [-half, localY(top - .05)]] };
+  const upper = half - .06, shoulder = top - .17;
+  return { z: localZ(z), ring: [[-half, localY(low)], [half, localY(low)], [half, localY(shoulder)],
+    [upper, localY(top - .03)], [upper - .05, localY(top)], [-upper + .05, localY(top)], [-upper, localY(top - .03)],
+    [-half, localY(shoulder)]] };
 }
 
-/** The raised armoured house over the 2A83's breech: from behind the ring's centre to a sloped brow over the mantlet,
- * its foot buried in the turret core's roof. */
+/**
+ * The raised armoured casemate over the 2A83's breech (looks round 2, the critics: "the raised housing over the gun is a
+ * flat visor-like hood ... from the side the turret silhouette barely changes"): a tall house 0.49 m over the roof, from
+ * ahead of the panoramic sight to a steep front plate over the lintel, its foot buried in the turret core and the front
+ * shroud's tops. Its walls carry bolted add-on plates, its roof a bolted access plate with lifting eyes, its rear wall a
+ * service hatch, its front plate a lip over the mantlet. The front plate stands 9 cm behind the mantlet's boot at full
+ * elevation (20 degrees).
+ */
 function addGunHouse(P: TankBuilderPort): void {
-  // (round 1's critics: the house read as a thin hood; it stands as a box over the roof with near-vertical walls)
   P.add('turret', sectionSolid([
-    houseSection(-.86, .42, 2.38, 2.76),
-    houseSection(-.40, .46, 2.36, 2.82),
-    houseSection(.60, .46, 2.40, 2.82),
-    houseSection(1.04, .45, 2.40, 2.74),
-    houseSection(1.26, .42, 2.40, 2.56),
+    houseSection(-.86, .46, 2.40, 2.90),
+    houseSection(-.74, .50, 2.38, 3.02),
+    houseSection(.50, .50, 2.40, 3.04),
+    houseSection(.84, .48, 2.40, 3.00),
+    houseSection(1.10, .46, 2.40, 2.64),
   ]));
-  // the brow's lip over the mantlet, the house's bolted roof plate and its side seams
-  P.addEquipment('turretDetail', box(.82, .03, .06), 0, localY(2.405), localZ(1.24));
-  P.addEquipment('turretDetail', box(.72, .016, 1.20), 0, localY(2.828), localZ(.10));
-  for (const x of [-.30, .30]) for (const z of [-.40, .10, .60]) {
-    P.addEquipment('turretDark', KIT.cylY(.012, .012, .012, 6), x, localY(2.838), localZ(z));
+  const { cylY } = KIT;
+  // the front plate's lip over the mantlet and the roof's bolted access plate with its bolts and four lifting eyes
+  P.addEquipment('turretDetail', box(.84, .035, .06), 0, localY(2.418), localZ(1.085));
+  P.addEquipment('turretDetail', box(.70, .018, 1.30), 0, localY(3.046), localZ(.05));
+  for (const x of [-.31, .31]) for (const z of [-.52, .05, .62]) P.addEquipment('turretDark', cylY(.013, .013, .012, 6), x, localY(3.058), localZ(z));
+  for (const x of [-.36, .36]) for (const z of [-.66, .76]) P.addEquipment('turretDark', KIT.torus(.032, .009, 10, 5), x, localY(3.05), localZ(z));
+  for (const s of [-1, 1]) {
+    // bolted add-on plates on the lower walls, a seam between them, a row of bolts along each plate's head
+    for (const [z0, z1] of [[-.70, -.05], [.03, .80]]) {
+      P.addEquipment('turretDetail', box(.03, .30, z1 - z0), s * (.50 + .012), localY(2.69), localZ((z0 + z1) / 2));
+      for (let k = 0; k < 4; k++) P.addEquipment('turretDark', box(.016, .024, .024), s * .53, localY(2.81), localZ(z0 + .08 + k * (z1 - z0 - .16) / 3));
+    }
   }
-  for (const s of [-1, 1]) P.addEquipment('turretDark', box(.012, .30, .02), s * .465, localY(2.62), localZ(.20));
+  // the rear wall's service hatch and its hinge bar
+  P.addEquipment('turretDetail', box(.46, .26, .025), 0, localY(2.66), localZ(-.868));
+  P.addEquipment('turretDark', box(.40, .022, .03), 0, localY(2.80), localZ(-.88));
 }
 
-/** The 2A83's mantlet: the T-14's octagonal shield at the 152 mm gun's size, and the cradle's collar. */
+/** A mantlet station's octagon: half-width `w`, from `lo` to `hi` about the bore, corners chamfered by `c`. */
+function octagon(w: number, lo: number, hi: number, c: number): [number, number][] {
+  return [[-w + c, lo], [w - c, lo], [w, lo + c], [w, hi - c], [w - c, hi], [-w + c, hi], [-w, hi - c], [-w, lo + c]];
+}
+
+/**
+ * The 2A83's mantlet: the T-14's octagonal shield at the 152 mm gun's size inside the gun opening, and ahead of the
+ * turret face the big armoured boot round the gun's root (looks round 2: the 152 mm installation reads at a glance): it
+ * steps out past the opening's cheeks to 0.88 m across and runs 0.34 m ahead of them to a chamfered, bolted front with
+ * the coaxial gun's port, the barrel leaving it through a dark ring and a root collar. Its top stays under the gun house's
+ * front plate through the 20 degree elevation, and at the -8 degree stop its foot clears the crew hatches.
+ */
 function addMantlet(P: TankBuilderPort): void {
   const ring: [number, number][] = [[-.19, -.30], [.19, -.30],
     [.36, -.17], [.36, .17], [.24, .26], [-.24, .26],
     [-.36, .17], [-.36, -.17]];
   P.addGunExtra(sectionSolid([{ z: -.55, ring }, { z: .045, ring }]));
-  // the larger gun's cradle collar, short under the turret nose (round 2's critics: larger than the 2A82's, not a
-  // bolted-on drum)
-  P.addGunExtra(cylZ(.26, .16, 28, .21), 0, 0, .13);
-  P.addEquipment('gunMount', box(.24, .05, .34), .062, .232, .24);
+  P.addGunExtra(sectionSolid([
+    { z: .03, ring: octagon(.36, -.26, .22, .08) },
+    { z: .29, ring: octagon(.38, -.26, .22, .08) },
+    { z: .30, ring: octagon(.44, -.27, .27, .09) },
+    { z: .56, ring: octagon(.43, -.27, .27, .09) },
+    { z: .63, ring: octagon(.36, -.22, .22, .08) },
+  ]));
+  P.addGunExtraDark(cylZ(.235, .02, 28), 0, 0, .635);
+  // the root collar stays inside 0.225 m of the bore: at the -8 degree stop ahead of the turret the gun passes 25 mm over
+  // the crew's periscopes (the gun-hull receipt)
+  P.addGunExtra(cylZ(.215, .10, 28, .225), 0, 0, .68);
+  P.addGunExtraDark(KIT.box(.07, .06, .02), .27, -.10, .634);
+  for (const [x, y, z] of [[-.30, .19, .632], [.30, .19, .632], [-.30, -.19, .632], [.30, -.19, .632], [-.385, 0, .60], [.385, 0, .60]]) {
+    P.addGunExtraDark(KIT.box(.024, .024, .02), x, y, z);
+  }
 }
 
 export function buildT14_152X(P: TankBuilderPort): void {

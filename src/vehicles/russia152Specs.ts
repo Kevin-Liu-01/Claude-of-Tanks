@@ -101,14 +101,14 @@ molot.gun = {
   shells: rounds('2A73', [[920, 850, 780], 720, 20], [820, 660, 10], [880, 10]),
 };
 molot.armor = modernArmor({
-  hl: (MOLOT_FRAME.hullFrontZ - MOLOT_FRAME.hullRearZ) / 2, hw: 1.76, inW: 1.08, floor: 0.46, trkTop: 1.05,
+  hl: (MOLOT_FRAME.hullFrontZ - MOLOT_FRAME.hullRearZ) / 2, hw: 1.76, inW: 1.08, floor: 0.46, trkTop: 0.95,
   roofY: MOLOT_FRAME.roofY, turretPivot: [0, MOLOT_FRAME.ringY, MOLOT_FRAME.ringZ],
   gunPivot: [0, MOLOT_FRAME.trunnionY - MOLOT_FRAME.ringY, MOLOT_FRAME.trunnionZ - MOLOT_FRAME.ringZ],
   barrelLenM: MOLOT_FRAME.muzzleZ - MOLOT_FRAME.trunnionZ, barrelRadM: 0.135,
   // the modular nose "more than a metre deep along the shot line" with its built-in ERA, the multi-barrier flanks
   glacis: [520, 760, 1100], lower: [180, 260, 340], side: [80, 90, 140], skirt: [30, 30, 160], rear: 40, roof: 45,
-  // the turret's ready-rounds bustle to its tail (looks round 2026-11-05)
-  tw: 1.20, tFrontZ: 1.30, tRearZ: -1.92, tH: 0.48,
+  // the walled turret from its wedge nose to its ready-rounds bustle's tail, its roof (looks round 2026-11-05)
+  tw: 1.20, tFrontZ: 1.55, tRearZ: -1.92, tH: 0.52,
   cheek: [560, 700, 950], tSide: [160, 180, 260], tRear: 50, tRoof: 50, mantlet: [400, 420, 520],
 });
 // the 2A73's measured depression (tools/gun-depression-sweep.mjs at 26 mm): shallower over the rear quarters, where the
@@ -146,8 +146,9 @@ object195.armor = modernArmor({
   barrelLenM: OBJECT195_FRAME.muzzleZ - OBJECT195_FRAME.trunnionZ, barrelRadM: 0.135,
   // the crew capsule behind the nose's combined armour and its built-in ERA; the module is thinner, as the T-14's
   glacis: [900, 950, 1250], lower: [300, 320, 380], side: [200, 200, 220], skirt: [40, 40, 180], rear: 60, roof: 55,
-  // the module on its turntable (looks round 2026-11-05): the faceted cheeks' noses to the wedge bustle's tail, its roof
-  tw: 0.96, tFrontZ: 1.36, tRearZ: -2.05, tH: 1.12,
+  // the module on its turntable (looks round 2026-11-05): the faceted cheeks' noses to the ammunition bustle's tail, its
+  // flanks' add-on panels, its roof
+  tw: 1.06, tFrontZ: 1.40, tRearZ: -2.40, tH: 1.38,
   cheek: [320, 330, 340], tSide: [280, 280, 300], tRear: 60, tRoof: 50, mantlet: [320, 320, 340],
 });
 // the crew capsule: three side by side under the hatches behind the glacis, nobody in the module (the T-14's order)

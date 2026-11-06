@@ -2,11 +2,11 @@
 // variation of the normal t14 armata, should have a bunch of fuel canisters, new era, new machine gun tower, full net and
 // ghillie etc", and "make the hulls much beter"): the 152 mm Armata as a heavily kitted field variant over the T-14's
 // shared hull, running gear and turret shell (profiles/t14X.ts, unchanged). New explosive-reactive armour re-drawn on the
-// T-14's own ERA plates (glacis_era_L/R, skirt_era_L/R): a staggered field of wedge cassettes over the glacis tiles and a
-// two-by-three cassette facing on every skirt panel, each facing inside its panel's own outline (owner 2026-11-05: "also
-// properly match sideskirts to hull side profiles"); a taller remote weapon tower with a 12.7 mm Kord in place of the
-// T-14's low 7.62 mm station; two 200 L drums on a cradle hung from the bustle's rear face, jerry-can pairs in the
-// bustle's roof rails and on a shelf in the stern's recess. The camouflage net is profiles/t14_152Suit.ts.
+// T-14's own ERA plates (glacis_era_L/R, skirt_era_L/R): a framed field of wedge and gabled cassettes of several sizes
+// over the glacis tiles and a framed, three-course facing on every skirt panel, each inside its panel's own outline
+// (owner 2026-11-05: "also properly match sideskirts to hull side profiles"); a taller remote weapon tower with a 12.7 mm
+// Kord in place of the T-14's low 7.62 mm station; four 200 L drums on brackets along the bustle's flanks, jerry-can pairs
+// in the bustle's roof rails and on a shelf in the stern's recess. The camouflage net is profiles/t14_152Suit.ts.
 // First-party procedural geometry: Kevin B. Liu (NOTICE.md).
 import * as THREE from 'three';
 import { KIT, FITTINGS, orientedSlab } from './kit.ts';
@@ -43,44 +43,85 @@ function insetQuad(q: readonly P3[], inset: number): P3[] {
   });
 }
 
-/** A cassette with its bolted lid: the wedge (hit faces outward), the lid 6 mm proud of its outer face, two lid bolts. */
-function addCassette(P: TankBuilderPort, base: readonly P3[], n: P3, t0: number, t1: number, outward: P3): void {
+const add3 = (p: P3, q: P3, k = 1): P3 => [p[0] + q[0] * k, p[1] + q[1] * k, p[2] + q[2] * k];
+const mid3 = (p: P3, q: P3): P3 => [(p[0] + q[0]) / 2, (p[1] + q[1]) / 2, (p[2] + q[2]) / 2];
+
+/** A wedge cassette (hit faces outward): `t0` thick at its base quad's first edge, `t1` at its far edge. */
+function wedge(P: TankBuilderPort, base: readonly P3[], n: P3, t0: number, t1: number, outward: P3): void {
   P.add('hull', markEraHitFaces(cassette(base, n, t0, t1), outward));
-  const top: P3[] = base.map((p, i) => {
-    const t = i < 2 ? t0 : t1;
-    return [p[0] + n[0] * t, p[1] + n[1] * t, p[2] + n[2] * t] as P3;
-  });
-  const lid = insetQuad(top, .028);
-  P.addEquipment('hullDetail', markEraFurniture(cassette(lid.map((p) => [p[0] - n[0] * .002, p[1] - n[1] * .002, p[2] - n[2] * .002] as P3), n, .008, .008)));
-  for (const [a, b] of [[0, 3], [1, 2]] as const) {
-    const p = lid[a]!, q = lid[b]!, f = .2;
-    const at: P3 = [p[0] + (q[0] - p[0]) * f + n[0] * .009, p[1] + (q[1] - p[1]) * f + n[1] * .009, p[2] + (q[2] - p[2]) * f + n[2] * .009];
-    P.addEquipment('hullDark', markEraFurniture(box(.024, .024, .024)), at[0], at[1], at[2]);
-  }
+}
+
+/** A cassette's lid on its outer face, 6 mm proud, 28 mm in from the cassette's edges. */
+function lid(P: TankBuilderPort, base: readonly P3[], n: P3, t0: number, t1: number): void {
+  const top = base.map((p, i) => add3(p, n, i < 2 ? t0 : t1));
+  P.addEquipment('hullDetail', markEraFurniture(cassette(insetQuad(top, .028).map((p) => add3(p, n, -.002)), n, .008, .008)));
+}
+
+/** A gabled cassette: two wedges meeting at a ridge across its middle, `edge` thick at its foot and head, `ridge` at the
+ * ridge (base corners 0-1 its foot, 2-3 its head). */
+function gable(P: TankBuilderPort, base: readonly P3[], n: P3, edge: number, ridge: number, outward: P3): void {
+  const m0 = mid3(base[0]!, base[3]!), m1 = mid3(base[1]!, base[2]!);
+  wedge(P, [base[0]!, base[1]!, m1, m0], n, edge, ridge, outward);
+  wedge(P, [m0, m1, base[2]!, base[3]!], n, ridge, edge, outward);
+}
+
+/** A flat bar `w` wide and `h` proud of a plane (normal n) from a to b: a facing's bolted frame (`era`: furniture of the
+ * cassettes it frames, removed with them; otherwise welded to the hull). */
+function bar(P: TankBuilderPort, a: P3, b: P3, n: P3, w: number, h: number, era = true): void {
+  const d: P3 = [b[0] - a[0], b[1] - a[1], b[2] - a[2]];
+  const c: P3 = [n[1] * d[2] - n[2] * d[1], n[2] * d[0] - n[0] * d[2], n[0] * d[1] - n[1] * d[0]];
+  const k = w / 2 / Math.hypot(c[0], c[1], c[2]);
+  const g = cassette([add3(a, c, -k), add3(b, c, -k), add3(b, c, k), add3(a, c, k)].map((p) => add3(p, n, -.003)), n, h, h);
+  P.addEquipment('hullDetail', era ? markEraFurniture(g) : g);
+}
+
+/** A bolt head standing on a plane at p. */
+function bolt(P: TankBuilderPort, p: P3, n: P3, h: number, era = true): void {
+  const at = add3(p, n, h);
+  P.addEquipment('hullDark', era ? markEraFurniture(box(.024, .024, .024)) : box(.024, .024, .024), at[0], at[1], at[2]);
 }
 
 /**
- * The skirts' new ERA: each of the T-14's five skirt panels (t14X.ts addHullSides: 0.18 m boxes, outer face x 1.852,
- * from y 0.49 to the panel's own top, 1.66 m, the leading panel 1.505 m) carries a facing of six cassettes, two along by
- * three up, wedged 55 mm at the foot to 85 mm at the head so each course shades the one under it. The facing keeps the
- * panel's outline: 8 mm under its top, 10 mm over its foot and 5 mm in from both ends, seated 3 mm into its face, so the
- * skirt's top line along the hull side is the stock line, the facings' joints fall on the panels' own and no cassette
- * stands proud of the outline, short of it or off it.
+ * The skirts' new ERA (looks round 2, the critics: "a grid of identical boxes ... plain Lego-style cladding"): each of
+ * the T-14's five skirt panels (t14X.ts addHullSides: 0.18 m boxes, outer face x 1.852, from y 0.49 to the panel's own
+ * top, 1.66 m, the leading panel 1.505 m) carries a bolted frame and three courses of cassettes of three sizes: a foot
+ * course of small flat bricks, a middle course of large gabled bricks (their faces ridged across the middle) and a head
+ * course of wedges leaning out to 95 mm under bolted lids. The panels alternate two and three cassettes in their middle
+ * and head courses, so the run along the flank does not repeat panel by panel. The frame keeps the panel's outline: 8 mm
+ * under its top, 10 mm over its foot and 5 mm in from both ends, seated 3 mm into its face, so the skirt's top line along
+ * the hull side is the stock line, the facings' joints fall on the panels' own and nothing stands proud of the outline,
+ * short of it or off it.
  */
 function addSkirtEra(P: TankBuilderPort): void {
   for (const side of [-1, 1]) {
+    const face = 1.852 - .003, n: P3 = [side, 0, 0];
+    const on = (z: number, y: number): P3 => [side * face, y, z];
+    // counter-clockwise seen from outside, foot edge first
+    const quad = (za: number, zb: number, ya: number, yb: number): P3[] => side > 0
+      ? [on(zb, ya), on(za, ya), on(za, yb), on(zb, yb)] : [on(za, ya), on(zb, ya), on(zb, yb), on(za, yb)];
     P.destructibleCluster(`skirt_era_${side < 0 ? 'L' : 'R'}`, () => {
       for (let i = 0; i < 5; i++) {
         const z0 = -1.22 + i * .93, top = z0 > 2 ? 1.66 - (z0 - 2) * .31 : 1.66;
-        const face = 1.852 - .003, gap = .014, zA = z0 + .0075, zB = z0 + .9125, yA = .50, yB = top - .008;
-        const w = (zB - zA - gap) / 2, h = (yB - yA - 2 * gap) / 3;
-        for (let col = 0; col < 2; col++) for (let row = 0; row < 3; row++) {
-          const za = zA + col * (w + gap), zb = za + w, ya = yA + row * (h + gap), yb = ya + h;
-          // base quad on the panel's face, counter-clockwise seen from outside, foot edge first
-          const quad: P3[] = side > 0
-            ? [[face, ya, zb], [face, ya, za], [face, yb, za], [face, yb, zb]]
-            : [[-face, ya, za], [-face, ya, zb], [-face, yb, zb], [-face, yb, za]];
-          addCassette(P, quad, [side, 0, 0], .055, .085, [side, 0, 0]);
+        const zA = z0 + .0075, zB = z0 + .9125, yA = .50, yB = top - .008, fw = .028, gap = .012;
+        // the frame: head, foot and both ends, bolted at its corners and along its head and foot
+        bar(P, on(zA, yB - fw / 2), on(zB, yB - fw / 2), n, fw, .02);
+        bar(P, on(zA, yA + fw / 2), on(zB, yA + fw / 2), n, fw, .02);
+        for (const z of [zA + fw / 2, zB - fw / 2]) bar(P, on(z, yA + fw), on(z, yB - fw), n, fw, .02);
+        for (const z of [zA + fw / 2, (zA + zB) / 2, zB - fw / 2]) for (const y of [yA + fw / 2, yB - fw / 2]) bolt(P, on(z, y), n, .024);
+        const zi0 = zA + fw + gap, zi1 = zB - fw - gap, yi0 = yA + fw + gap, yi1 = yB - fw - gap;
+        const span = yi1 - yi0 - 2 * gap, hFoot = span * .27, hMid = span * .40;
+        const yMid = yi0 + hFoot + gap, yHead = yMid + hMid + gap;
+        const cells = (n0: number): [number, number][] => Array.from({ length: n0 }, (_, k) => {
+          const w = (zi1 - zi0 - (n0 - 1) * gap) / n0, a = zi0 + k * (w + gap);
+          return [a, a + w];
+        });
+        const [nMid, nHead] = i % 2 ? [3, 2] : [2, 3];
+        for (const [za, zb] of cells(4)) wedge(P, quad(za, zb, yi0, yi0 + hFoot), n, .045, .045, n);
+        for (const [za, zb] of cells(nMid)) gable(P, quad(za, zb, yMid, yMid + hMid), n, .05, .092, n);
+        for (const [za, zb] of cells(nHead)) {
+          const q = quad(za, zb, yHead, yi1);
+          wedge(P, q, n, .055, .095, n);
+          lid(P, q, n, .055, .095);
         }
       }
     });
@@ -92,36 +133,56 @@ const longTop = (z: number) => 1.419614 - (z - 3.42) * .497925;
 const shortTop = (z: number) => 1.471735 + (z - 3.13987) * (1.43102 - 1.471735) / (3.38505 - 3.13987);
 
 /**
- * The glacis's new ERA: a staggered field of wedge cassettes laid over the T-14's seven long tiles and its short course
- * (t14X.ts addGlacisPanels, which stays under it), four courses up the plate, the second and fourth shifted half a
- * cassette with half cassettes closing their ends, so the field keeps the tiles' outline (x +-0.856, z 3.14 to 4.19)
- * and reads as bricks, not the stock's long strips. Each leans out 60 mm at its foot to 85 mm at its head; the gun's
- * -8 degree stop over the plate keeps more than 0.12 m over the tallest.
+ * The glacis's new ERA (looks round 2: varied sizes, wedge faces, bolted frames): a field laid over the T-14's seven long
+ * tiles and its short course (t14X.ts addGlacisPanels, which stays under it), framed by bolted flat bars along its sides
+ * and head, in four courses up the plate: a foot course of seven lidded wedges, a course of gabled doubles closed by
+ * half bricks, another of lidded wedges, and on the short course four gabled bricks, wide at the corners and narrower
+ * at the centre. The field keeps the tiles' outline (x +-0.856, z 3.14 to 4.19); the 2A83's -8 degree stop over the
+ * plate keeps more than 0.12 m over the tallest.
  */
 function addGlacisEra(P: TankBuilderPort): void {
-  const pitch = .2452, half = 3 * pitch + .12019, gap = .012;
-  // courses: [z0 (foot, toward the bow), z1 (head), top(z), staggered]
-  const courses: readonly (readonly [number, number, (z: number) => number, boolean])[] = [
-    [4.190, 3.935, longTop, false], [3.925, 3.670, longTop, true], [3.660, 3.408, longTop, false],
-    [3.383, 3.142, shortTop, true],
+  const pitch = .2452, half = 3 * pitch + .12019, fw = .028, gap = .012, inner = half - fw - gap;
+  const planeN = (topAt: (z: number) => number, za: number, zb: number): P3 => {
+    const slope = (topAt(zb) - topAt(za)) / (zb - za), len = Math.hypot(1, slope);
+    return [0, 1 / len, -slope / len];
+  };
+  // courses: [foot z (toward the bow), head z, top(z), brick widths in pitches (summing to the field's 7), gabled]
+  const courses: readonly (readonly [number, number, (z: number) => number, readonly number[], boolean])[] = [
+    [4.190 - fw - gap, 3.935, longTop, [1, 1, 1, 1, 1, 1, 1], false],
+    [3.925, 3.670, longTop, [.5, 2, 2, 2, .5], true],
+    [3.660, 3.408, longTop, [1, 1, 1, 1, 1, 1, 1], false],
+    [3.383, 3.142 + fw + gap, shortTop, [2, 1.5, 1.5, 2], true],
   ];
-  for (const [zf, zh, topAt, stagger] of courses) {
-    const slope = (topAt(zh) - topAt(zf)) / (zh - zf);
-    const len = Math.hypot(1, slope), n: P3 = [0, 1 / len, -slope / len];
-    const cells: [number, number][] = [];
-    if (!stagger) for (let c = -3; c <= 3; c++) cells.push([c * pitch - pitch / 2 + gap / 2, c * pitch + pitch / 2 - gap / 2]);
-    else {
-      cells.push([-half, -3 * pitch - gap / 2]);
-      for (let c = -3; c <= 2; c++) cells.push([(c + .5) * pitch - pitch / 2 + gap / 2, (c + .5) * pitch + pitch / 2 - gap / 2]);
-      cells.push([3 * pitch + gap / 2, half]);
+  for (const [zf, zh, topAt, widths, gabled] of courses) {
+    const n = planeN(topAt, zf, zh), y = (z: number) => topAt(z) - .003, scale = 2 * inner / 7;
+    let x0 = -inner;
+    for (const w of widths) {
+      const xa = x0 + gap / 2, xb = x0 + w * scale - gap / 2;
+      x0 += w * scale;
+      const quad: P3[] = [[xb, y(zf), zf], [xa, y(zf), zf], [xa, y(zh), zh], [xb, y(zh), zh]];
+      P.destructibleCluster(`glacis_era_${(xa + xb) / 2 < -1e-6 ? 'L' : 'R'}`, () => {
+        if (gabled) gable(P, quad, n, .055, .095, n);
+        else { wedge(P, quad, n, .06, .085, n); lid(P, quad, n, .06, .085); }
+      });
     }
-    cells[0]![0] = Math.max(cells[0]![0], -half);
-    cells[cells.length - 1]![1] = Math.min(cells[cells.length - 1]![1], half);
-    for (const [x0, x1] of cells) {
-      const y = (z: number) => topAt(z) - .003;
-      // foot edge first (toward +z), counter-clockwise seen from above-front
-      const quad: P3[] = [[x1, y(zf), zf], [x0, y(zf), zf], [x0, y(zh), zh], [x1, y(zh), zh]];
-      P.destructibleCluster(`glacis_era_${(x0 + x1) / 2 < -1e-6 ? 'L' : 'R'}`, () => addCassette(P, quad, n, .06, .085, n));
+  }
+  // the bolted frame, welded to the plate: both sides on each plane, the head across the short course's top and the foot
+  // across the bow
+  {
+    const nLong = planeN(longTop, 4.19, 3.408), nShort = planeN(shortTop, 3.383, 3.142);
+    const pt = (x: number, z: number, topAt: (z: number) => number): P3 => [x, topAt(z) - .003, z];
+    for (const s of [-1, 1]) {
+      const x = s * (half - fw / 2);
+      bar(P, pt(x, 4.19, longTop), pt(x, 3.408, longTop), nLong, fw, .022, false);
+      bar(P, pt(x, 3.383, shortTop), pt(x, 3.142, shortTop), nShort, fw, .022, false);
+      for (const z of [4.15, 3.80, 3.45]) bolt(P, pt(x, z, longTop), nLong, .026, false);
+      bolt(P, pt(x, 3.26, shortTop), nShort, .026, false);
+    }
+    bar(P, pt(-inner, 3.142 + fw / 2, shortTop), pt(inner, 3.142 + fw / 2, shortTop), nShort, fw, .022, false);
+    bar(P, pt(-inner, 4.19 - fw / 2, longTop), pt(inner, 4.19 - fw / 2, longTop), nLong, fw, .022, false);
+    for (const x of [-.6, -.2, .2, .6]) {
+      bolt(P, pt(x, 3.142 + fw / 2, shortTop), nShort, .026, false);
+      bolt(P, pt(x, 4.19 - fw / 2, longTop), nLong, .026, false);
     }
   }
 }
@@ -157,52 +218,48 @@ function addSternCans(P: TankBuilderPort): void {
   }
 }
 
-// ------------------------------------------------------------------------------------------------- the turret's rear --
+// ------------------------------------------------------------------------------------------------ the turret's flanks --
 
 const DRUM_R = .295, DRUM_LEN = .88;
 
-/** A closed band round the x axis (a strap), `width` wide and `depth` deep at radius r. */
-function band(r: number, width: number, depth: number, segments = 24): THREE.BufferGeometry {
-  const inner = r - depth, h = width / 2;
-  return new THREE.LatheGeometry([[inner, -h], [r, -h], [r, h], [inner, h], [inner, -h]]
-    .map(([a, b]) => new THREE.Vector2(a, b)), segments).rotateZ(Math.PI / 2);
-}
-
-/** One 200 L drum lying across the turret at (x, y, z), turret frame: shell, rolled end rims, two rolling hoops, the
- * bung on its outer end and the dark straps over its cradle's rails at `straps` (x). */
-function addTurretDrum(P: TankBuilderPort, x: number, y: number, z: number, outer: number, straps: readonly number[]): void {
-  P.addEquipment('turretDetail', stowagePart(cylX(DRUM_R, DRUM_LEN, 28)), x, y, z);
-  for (const end of [-1, 1]) P.addEquipment('turretDetail', stowagePart(fuelDrumHoop(DRUM_R + .007, .024, .02, 24)), x + end * (DRUM_LEN / 2 - .012), y, z);
-  for (const dx of [-.15, .15]) P.addEquipment('turretDetail', stowagePart(fuelDrumHoop(DRUM_R + .01, .022, .02, 24)), x + dx, y, z);
-  for (const sx of straps) P.addEquipment('turretDark', stowagePart(band(DRUM_R + .006, .04, .012)), sx, y, z);
-  P.addEquipment('turretDark', stowagePart(KIT.cylX(.03, .014, 12)), x + outer * (DRUM_LEN / 2 + .007), y + .17, z);
+/**
+ * One 200 L drum lying along the turret's flank at (x, y, z), turret frame (axis along z): its shell, the rolled chimes at
+ * both ends, two rolling hoops, the dark straps over its brackets at `straps` (z), and on its outer end (`end`: +1 its
+ * front, -1 its back) the filler bung and the vent.
+ */
+function addFlankDrum(P: TankBuilderPort, x: number, y: number, z: number, side: number, end: number, straps: readonly number[]): void {
+  const along = Math.PI / 2;
+  P.addEquipment('turretDetail', stowagePart(KIT.cylZ(DRUM_R, DRUM_LEN, 24)), x, y, z);
+  for (const e of [-1, 1]) P.addEquipment('turretDetail', stowagePart(fuelDrumHoop(DRUM_R + .016, .03, .03, 20)), x, y, z + e * (DRUM_LEN / 2 - .015), 0, along);
+  for (const dz of [-.17, .17]) P.addEquipment('turretDetail', stowagePart(fuelDrumHoop(DRUM_R + .022, .03, .03, 20)), x, y, z + dz, 0, along);
+  for (const sz of straps) P.addEquipment('turretDark', stowagePart(fuelDrumHoop(DRUM_R + .006, .04, .012, 20)), x, y, sz, 0, along);
+  const face = z + end * (DRUM_LEN / 2 + .006);
+  P.addEquipment('turretDark', stowagePart(KIT.cylZ(.034, .014, 12)), x - side * .13, y + .15, face);
+  P.addEquipment('turretDark', stowagePart(KIT.cylZ(.02, .014, 10)), x + side * .15, y + .13, face);
 }
 
 /**
- * Two 200 L drums across the bustle's rear face (z -2.78 world) on a welded cradle: three hanger brackets (one between
- * the drums on the rear face, one outboard of each on the bustle's rear chamfer) carry two cross rails the drums ride on,
- * a rear stop rail and a strap over each drum at each rail. The drums ride with the turret, behind the bustle, their
- * bottoms 0.29 m over the engine deck and its lattice through the whole traverse, clear of the 2A83 (which points the
- * other way). Turret frame.
+ * Four 200 L drums (looks round 2, the critics: "the external fuel drums are almost invisible ... none can be seen in the
+ * front three-quarter view"): two lying end to end along each of the bustle's flanks, outboard of its side bins, each on
+ * two welded L brackets (an upright plate bolted to the bin's face and hanging under it, an arm under the drum and a
+ * keeper at the arm's end) with a strap over each bracket. Their ends face the bow and the stern, their sides fill the
+ * turret's flank from the shroud back to the bustle's end, 0.6 m out past the bins: drums from the side, the front three
+ * quarters and the rear. They ride with the turret 0.24 m over everything on the hull through its whole traverse and
+ * stand clear of the 2A83, the roof's launcher caps and the forward launchers' line of fire. Turret frame.
  */
-function addBustleDrums(P: TankBuilderPort): void {
-  const yc = localY(2.36), zc = localZ(-3.10), railY = yc - Math.sqrt(DRUM_R ** 2 - .17 ** 2) - .025;
-  for (const [x, faceZ, faceTop] of [[0, -2.775, 2.48], [-.935, -2.64, 2.40], [.935, -2.64, 2.40]] as const) {
-    const t = x === 0 ? .008 : .007;
-    const pts = (s: number): P3[] => [
-      [x + s * t, localY(faceTop), localZ(faceZ + .01)], [x + s * t, localY(2.02), localZ(faceZ + .01)],
-      [x + s * t, localY(2.02), localZ(-3.44)], [x + s * t, localY(2.10), localZ(-3.44)],
-    ];
-    const a = pts(-1), b = pts(1);
-    P.addEquipment('turretDetail', stowagePart(slab([a[0]!, a[1]!, a[2]!, a[3]!, b[0]!, b[1]!, b[2]!, b[3]!])));
-    // the rear stop post at the bracket's tail
-    P.addEquipment('turretDetail', stowagePart(box(.04, .30, .04)), x, localY(2.20), localZ(-3.42));
-  }
-  for (const rz of [-2.93, -3.27]) P.addEquipment('turretDetail', stowagePart(box(1.90, .05, .05)), 0, railY, localZ(rz));
-  P.addEquipment('turretDetail', stowagePart(box(1.90, .04, .04)), 0, localY(2.33), localZ(-3.42));
+function addFlankDrums(P: TankBuilderPort): void {
+  const y = localY(2.34), out = 1.215, drumX = out + .03 + DRUM_R;
   for (const side of [-1, 1]) {
-    const x = side * .46;
-    addTurretDrum(P, x, yc, zc, side, [x - .21, x + .21]);
+    for (const [cz, end] of [[localZ(-1.24), 1], [localZ(-2.25), -1]] as const) {
+      const brackets = [cz - .30, cz + .30];
+      for (const bz of brackets) {
+        P.addEquipment('turretDetail', stowagePart(box(.02, .30, .07)), side * (out + .008), localY(2.15), bz);
+        P.addEquipment('turretDetail', stowagePart(box(.64, .035, .07)), side * (out + .32), y - DRUM_R - .0175, bz);
+        P.addEquipment('turretDetail', stowagePart(box(.03, .17, .07)), side * (out + .655), localY(2.105), bz);
+        for (const by of [2.18, 2.26]) P.addEquipment('turretDark', stowagePart(KIT.cylX(.012, .014, 6)), side * (out + .02), localY(by), bz);
+      }
+      addFlankDrum(P, side * drumX, y, cz, side, end, brackets);
+    }
   }
 }
 
@@ -223,15 +280,17 @@ const T14_152_TOWER = Object.freeze({ x: .40, z: localZ(-1.72), roof: localY(2.5
 
 /**
  * The T-14's roof stations (t14X.ts addRoofEquipment with gun152) without its low 7.62 mm remote station and that
- * station's support box: the side columns of roof panels, the commander's panoramic sight, the two whips, the sensor
- * post and the bustle's stowage rails, at the T-14's own positions.
+ * station's support box: the outer strips of the side columns of roof panels (the gun house covers their inner halves),
+ * the commander's panoramic sight, the two whips, the sensor post and the bustle's stowage rails, at the T-14's own
+ * positions.
  */
 function addRoofStations(P: TankBuilderPort): void {
+  // (looks round 2: the wider gun house takes the panels' inner halves; each column keeps its outer strip)
   for (let row = 0; row < 3; row++) for (const col of [0, 2]) {
-    const x = (col - 1) * .48, z = .12 - row * .49;
+    const x = (col - 1) * .635, z = .12 - row * .49;
     P.snapGroup('t14-roof-panel', () => {
-      P.addEquipment('turretDetail', box(.46, .017, .465), x, localY(2.563), localZ(z));
-      for (const dx of [-.18, .18]) for (const dz of [-.17, .17]) {
+      P.addEquipment('turretDetail', box(.17, .017, .465), x, localY(2.563), localZ(z));
+      for (const dx of [-.055, .055]) for (const dz of [-.17, .17]) {
         P.addEquipment('turretDark', cylY(.011, .011, .012, 6), x + dx, localY(2.574), localZ(z + dz));
       }
     }, { reachM: .06, mode: 'down' });
@@ -310,7 +369,7 @@ export function addT14_152FieldKit(P: TankBuilderPort): void {
   addSternCans(P);
   addRoofStations(P);
   addWeaponTower(P);
-  addBustleDrums(P);
+  addFlankDrums(P);
   addBustleCans(P);
 }
 
