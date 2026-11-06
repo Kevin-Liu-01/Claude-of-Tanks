@@ -85,6 +85,7 @@ export const COMBAT_ANATOMY_GROUP_LOADERS: Readonly<Record<string, () => Promise
   "t90X": () => import('./combatAnatomyGroups/t90X.generated.ts'),
   "t90_1992": () => import('./combatAnatomyGroups/t90_1992.generated.ts'),
   "t90msX": () => import('./combatAnatomyGroups/t90msX.generated.ts'),
+  "t95": () => import('./combatAnatomyGroups/t95.generated.ts'),
   "tos1aTagil": () => import('./combatAnatomyGroups/tos1aTagil.generated.ts'),
   "type10X": () => import('./combatAnatomyGroups/type10X.generated.ts'),
   "type89SourceX": () => import('./combatAnatomyGroups/type89SourceX.generated.ts'),

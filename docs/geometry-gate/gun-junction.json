@@ -254,6 +254,7 @@
   "t90ms_tagil": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"ff22e41666adab0c","gun":"a929a2e6b83e3d2b"}},
   "t90sm": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"5ea30ebda3b88cc5","gun":"1d86ebe34a53f2bb"}},
   "t90sm_2013": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"11019217aae9862c","gun":"1a89b28043259f0c"}},
+  "t95": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"e3b0c44298fc1c14","gun":"bf6bc72e71fbcc40"}},
   "tamoyo1": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"dc300c851d8758cb","gun":"58c8d4304593afda"}},
   "tamoyo3": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"e1e3f77dca523ca8","gun":"fd8eb43d88c00874"}},
   "tos1a_tagil": {"status":"launcher","kind":"none","mouths":0,"geometry":{"turret":"913720cffbcf6771","gun":"b5839e5601ba36f4"}},
