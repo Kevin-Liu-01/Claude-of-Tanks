@@ -19,12 +19,18 @@ policy into a second owner. Dependencies arrive through explicit typed ports.
 `combatWarmComposition.ts` owns renderer-lifetime warm caches and cancellation.
 `lazyRuntimeOwner.ts` and `checkedIntegrationPort.ts` guard lazy integration;
 a new lazy chunk takes `lazyChunk.ts`'s failure policy (`lazyRuntimeOwner.ts` is
-one of its chunks per facade). The older memos that differ (a stylesheet kept
-for the document, a memo asked once per lifecycle edge or open, the docs pages
-that do not boot the policy, an initialization or a join over a chunk the
-policy holds, a data fetch) are named with their reasons in `lazyChunkSites.selftest.mjs` KNOWN, which fails a new
-hand-made memo, facade or latch in the spellings it reads, so a new lazy load
-starts from `createLazyChunk`.
+one of its chunks per facade). The older memos that differ are named with their
+reasons in `lazyChunkSites.selftest.mjs` KNOWN: stylesheets kept for the
+document, memos asked once per lifecycle edge or open, the docs pages that do
+not boot the policy and the icon sprite every page's boot holds, the unused HDRI
+experiment, initializations and joins over chunks the policy holds (the Studio's
+module memo over its opener chunk among them), data fetches (the painter
+worker's font among them) and a warm task. KNOWN fails a new hand-made memo,
+facade or latch in the spellings it reads, so a new lazy load starts from
+`createLazyChunk`.
+A caller that asks once per lifecycle edge (a battle's covered entry) may ask
+past the backoff with `load({ backoff: false })`; `failures` tells a first ask
+from a re-ask.
 `watchRuntime.ts` composes Watch mode (the drone/ride camera, the controller and
 its bar) the first time a watched battle loads; main.ts keeps only the lazy owner.
 
