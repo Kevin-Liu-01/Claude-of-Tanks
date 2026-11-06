@@ -299,10 +299,8 @@ export function* buildM113HullSteps(P: TankBuilderPort, mark: M113HullMark,
   if (a3) {
     // the A2's tanks, which the A3 kept (TM 9-2350-277: 191 in with internal fuel, 208.5 in on the A3)
     addA2FuelTanks();
-    // the cargo hatch's outline on the roof's rear and a rolled tarp strapped across the roof ahead of the rear plate
+    // the cargo hatch's outline on the roof's rear (the tarp across the roof's rear is the decor's: M113_MANIFESTS)
     P.add('hullDark', box(1.30, 0.012, 1.10), 0, B.roofY + 0.006, D.sternZ + 1.05);
-    P.addEquipment('hull', cylX(0.11, 1.40, P.q ? 16 : 10), 0, B.roofY + 0.11, D.sternZ + 0.32);
-    for (const x of [-0.45, 0.45]) P.add('hullDark', box(0.04, 0.025, 0.24), x, B.roofY + 0.215, D.sternZ + 0.32);
   }
   if (m741) {
     // the M163's turret race over the roof cut where the cargo hatch was; the commander's round hatch behind it, shut, its
