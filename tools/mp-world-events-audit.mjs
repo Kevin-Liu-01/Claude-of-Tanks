@@ -759,7 +759,11 @@ export async function runWorldEventsAudit({ playMs = 30_000, afterMs = 12_000, h
       // there (it ended, its host stopped, a reset cleared its queue by design — persistent state covers the world, never a
       // replayed effect) could not present it. Not judged either: the seat's own shell_fired when its presentation has no
       // actors (the single-process harness cannot build the fleet twice; own shots are receipted in battlePresentation.selftest).
-      const reached = (e) => (linkOf(e)?.presentedTick ?? -1) >= e.tick + DEADLINE_TICKS;
+      // (wrecks-270, 11-06) e.tick is the actor's tick when the batch went out, one before the tick the batch carries: the
+      // loop calls onTick(tick + 1) and only then advances its own (server/match/loop.ts), and the client's queue holds a
+      // beat until its batch's tick plus the deadline. A view whose last frame presented e.tick + DEADLINE_TICKS (p3 leaving
+      // for the Garage on the very frame that released the third of four breaches of one batch) could not yet show the fourth.
+      const reached = (e) => (linkOf(e)?.presentedTick ?? -1) >= e.tick + 1 + DEADLINE_TICKS;
       const exempt = (e) => e.type === 'shell_fired' && e.shooterId === peer.id && round.actors === 0;
       const sentAll = hostLog.filter((e) => e.viewerId === peer.id && e.wallMs >= round.welcomeAtMs - 50 && e.wallMs < roundEnd);
       const sent = sentAll.filter((e) => reached(e) && !exempt(e));
