@@ -1755,7 +1755,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/mp/presentation/battlePresentation.selftest.mjs',
     'src/mp/presentation/wreckCause.selftest.mjs', // 2026-11-02 audit F10: a late cook-off cause reaches the wreck; a respawn forgets the last life's cause
     'src/mp/presentation/settledFalls.selftest.mjs', // 2026-11-02 audit U27: a late joiner's settled props lie as they fell (wire 11 falls, withheld as their events are), a withheld one along its own heading, never a ram toward +Z
-    'src/mp/presentation/unseenRounds.selftest.mjs', // 2026-11-02 audit U31: a round that left the view in flight is named unseen (wire 11) and held by the effects, not ended
+    'src/mp/presentation/unseenRounds.selftest.mjs', // 2026-11-02 audit U31: a round that left the view in flight is named unseen (wire 11) and held by the effects, not ended; A13 (round 3): a 512-round burst still encodes, a drone whose hold ends unseen never flies home
     // 2026-10-07 (destruction core lane): the authority's stages on a peer's world, the log on the wire and through a migration.
     'src/mp/presentation/destructionMirror.selftest.mjs',
     // 2026-10-08 (destruction core lane, crater-render-spec §F): craters across the network — stamped once on a live view
@@ -1861,6 +1861,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'server/match/inputBuffer.selftest.mjs',
     'server/match/seatToken.selftest.mjs',
     'server/match/matchActor.selftest.mjs',
+    'server/match/unseenShellMarks.selftest.mjs', // 2026-11-02 audit A13 (round 3): a viewer's unseen rounds stay within the wire's 256, ascending, every departure named in its frame, one array reused
     'server/match/skipStarvation.selftest.mjs', // 2026-11-02 audit S1: a viewer withheld snapshots past the starvation limit is closed; a transient skip is not
     'server/match/forcedKeyframes.selftest.mjs', // 243 security: forced keyframes from a bucket of 8, refilling at 2/s
     'server/match/interestTiers.selftest.mjs',

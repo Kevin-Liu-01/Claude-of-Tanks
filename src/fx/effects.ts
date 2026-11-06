@@ -1206,7 +1206,8 @@ function* createFxSteps(
   // (round 2 of the 2026-11-02 audit, U31) rounds a network view reports out of view while they fly ('shell:unseen'): the
   // hold left (s of the fx clock, so no stamp to rebase) through which their records are held undrawn instead of ended
   // by the absence grace: a tracer keeps its belt place, a missile its trail and wire, a drone its airframe and no flight
-  // home. A round seen again leaves the hold; one never seen again ends as an absent round does once the hold runs out.
+  // home. A round seen again leaves the hold; one never seen again ends as an absent round does once the hold runs out,
+  // but a drone, whose end went unseen, is dropped with no flight home (round 3, A13: dronePresentation.ts `held`).
   const unseenRounds = new Map<ShellId, number>();
   const roundHeld = (id: ShellId): boolean => unseenRounds.has(id);
   const drones = createDronePresentation(group, {

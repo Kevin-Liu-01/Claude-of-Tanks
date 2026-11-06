@@ -26,7 +26,7 @@ import { createDedicatedWorldCollision } from '../dedicatedWorldCollision.ts';
 import type { WorldKernelModule } from '../../src/world/wasmWorldKernels.ts';
 import {
   CLOSE_REASON, HELLO_CAPABILITY, INPUT_MARGIN_UNKNOWN, MAX_CLIENT_MESSAGE_BYTES, MAX_ENTITIES, MAX_SEATS, MESSAGE_TYPE,
-  NO_ENTITY, NO_SEAT, NO_TICK, PROTOCOL_VERSION, SHELL_FLAGS, SNAPSHOT_HZ, TEAM, TICK_HZ, UNSEEN_SHELL_MARK_TICKS,
+  NO_ENTITY, NO_SEAT, NO_TICK, PROTOCOL_VERSION, SHELL_FLAGS, SNAPSHOT_HZ, TEAM, TICK_HZ,
 } from '../../src/mp/wire/constants.ts';
 import type { CloseReasonId, TeamId } from '../../src/mp/wire/constants.ts';
 import { decodeMessage, encodeMessage, shellTypeIndex } from '../../src/mp/wire/codec.ts';
@@ -49,6 +49,7 @@ import { createLagCompensation, createLatencyTracker, type LagCompensation, type
 import { createFixedStepLoop, type FixedStepLoop } from './loop.ts';
 import { createViewerPublisher, keyframeSlotFor, type ViewerPublisher } from './publisher.ts';
 import { createChatLimiter, normalizeChatText, type ChatLimiter } from './chat.ts';
+import { createUnseenShellMarks, type UnseenShellMarks } from './unseenShellMarks.ts';
 import type { ClientLink } from './link.ts';
 import { silentLogger, type Logger } from './log.ts';
 import type { SeatClaims } from './seatToken.ts';
@@ -383,10 +384,8 @@ interface ActorClient {
   /** The message-rate token bucket: `tokens` refill at MAX_MESSAGES_PER_SECOND up to MESSAGE_BURST. */
   rate: { tokens: number; lastMs: number };
   closing: boolean;
-  /** The rounds this client's last frame showed, by wire id, as the authority holds them (read for `dead`; round 2 U31). */
-  shownShells: Map<number, SnapshotShellSource>;
-  /** Rounds that left this client's view in flight, by wire id: the tick they left (unseenShellsFor). */
-  unseenShells: Map<number, number>;
+  /** The rounds this client's frames showed that left its view in flight (round 2 U31; bounded, round 3 A13). */
+  unseenMarks: UnseenShellMarks;
 }
 
 /**
@@ -451,7 +450,10 @@ const MAX_MESSAGES_PER_SECOND = 150;
  * closed in about a second).
  */
 const MESSAGE_BURST = 900;
-/** A viewer frame's shells at most (the world snapshot's own bound). */
+/**
+ * A viewer frame's shells at most (the world snapshot's own bound). At most MAX_UNSEEN_SHELLS, so every round that leaves
+ * a view in flight is named in the frame it left (unseenShellMarks.ts, round 3 A13).
+ */
 const MAX_VIEW_SHELLS = 256;
 const MAX_MALFORMED = 20;
 const TICK_MS = SIM_DT * 1000;
@@ -587,7 +589,6 @@ export function createMatchActor(options: MatchActorOptions): MatchActor {
   const viewQuantizedShells: QuantizedShellSnapshot[] = [];
   /** The authority's round behind each viewQuantizedShells entry (the observe view only). */
   const viewShellSources: SnapshotShellSource[] = [];
-  const shownShellScratch = new Map<number, SnapshotShellSource>();
   let frameMeta: SnapshotMeta | null = null;
   let frameMetaTick = -1;
   // the snapshot budget's scratch (buildFrame): the due mid and far rows of one viewer's frame, reused for every frame
@@ -1073,7 +1074,7 @@ export function createMatchActor(options: MatchActorOptions): MatchActor {
       });
     }
     // the rounds that left this view in flight (the observe view: the bench's snapshot view holds no rounds to ask)
-    const unseenShells = frameView === 'snapshot' ? undefined : unseenShellsFor(client, tick);
+    const unseenShells = frameView === 'snapshot' ? undefined : client.unseenMarks.frame(tick, viewQuantizedShells, viewShellSources);
     viewQuantizedShells.length = 0;
     viewShellSources.length = 0;
     // the frame meta is every viewer's the same in a tick (phase, clocks, verdict, smoke, revision): captured once
@@ -1096,32 +1097,6 @@ export function createMatchActor(options: MatchActorOptions): MatchActor {
       viewer: client.entity ? captureViewerState(client.entityId, meta?.localPrediction, snapshotIndex % checkpointEverySnapshots === 0) : null,
       modeStateJson: meta?.modeState ? JSON.stringify(meta.modeState) : null,
     };
-  }
-
-  /**
-   * The rounds (wire ids, ascending) this client's frames showed that are gone from this one while the authority still
-   * flies them (round 2 of the 2026-11-02 audit, U31; wire 11): the authority hides a round with its shooter (spotting)
-   * and a view keeps MAX_VIEW_SHELLS, so a round's absence alone cannot tell the client an end from a spotting loss. A
-   * round that ended (`dead`) is not named: its absence is its end. Each is named for UNSEEN_SHELL_MARK_TICKS from the
-   * frame it left, whatever becomes of it after, so a lost snapshot loses no mark and the mark never tells its end (a
-   * hidden round's end stays the authority's). Undefined when there is none.
-   */
-  function unseenShellsFor(client: ActorClient, tick: number): number[] | undefined {
-    const current = shownShellScratch;
-    current.clear();
-    for (let index = 0; index < viewShellSources.length; index++) {
-      current.set(Number(viewQuantizedShells[index]!.id) & 0xffff, viewShellSources[index]!);
-    }
-    for (const [id, source] of client.shownShells) if (!current.has(id) && source.dead !== true) client.unseenShells.set(id, tick);
-    client.shownShells.clear();
-    for (const [id, source] of current) client.shownShells.set(id, source);
-    if (!client.unseenShells.size) return undefined;
-    const ids: number[] = [];
-    for (const [id, since] of client.unseenShells) {
-      if (current.has(id) || tick - since >= UNSEEN_SHELL_MARK_TICKS) client.unseenShells.delete(id);
-      else ids.push(id);
-    }
-    return ids.length ? ids.sort((a, b) => a - b) : undefined;
   }
 
   /** Backpressure withheld this client's snapshot: true when that closed it (starved past its limit). */
@@ -1332,7 +1307,7 @@ export function createMatchActor(options: MatchActorOptions): MatchActor {
       interest: createViewerInterest(), latency: createLatencyTracker(), chat: createChatLimiter(),
       bytesOut: 0, bytesIn: 0, events: 0, droppedSnapshots: 0, malformed: 0, pressureSinceMs: null, starvedSinceMs: null, welcomedAtMs: now(),
       rate: { tokens: MESSAGE_BURST, lastMs: now() }, closing: false,
-      shownShells: new Map(), unseenShells: new Map(),
+      unseenMarks: createUnseenShellMarks(),
     };
     clients.set(client, true);
     clientBySeat.set(client.seat, client);
