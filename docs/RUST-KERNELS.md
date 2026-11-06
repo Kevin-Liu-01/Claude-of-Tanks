@@ -97,7 +97,7 @@ cause: `csp` (a Content Security Policy without `'wasm-unsafe-eval'`), `http_<st
 | Command | Proves |
 |---|---|
 | `cargo test -p cot-sim` | Every port against the TypeScript's golden vectors (`tools/port-golden-vectors.mjs`) |
-| `cargo test -p cot-sim-wasm --lib` | The cross-call protocols on an instance's own state (a native test links `terrain_height`) |
+| `cargo test -p cot-sim-wasm --lib` | The cross-call protocols, each on an instance's own state or, through the exports, on the instance's statics under `tests::exports()`: one such test at a time, and one that calls an export without it fails the run (round 4 E15; a native test links `terrain_height`) |
 | `node src/world/wasmKernelProtocols.selftest.mjs` | The protocols on the committed package: its raw exports and the production seam |
 | `node src/world/wasmKernelRefusals.selftest.mjs` | Each refusal named by the call it refused, asserted at the seam (a refused sample's NaN, a walk's missing entry, a replayed crater); a heap's start is the one it was given |
 | `node tools/build-cot-sim-wasm.mjs --check` | The committed binary is the clean rebuild |
