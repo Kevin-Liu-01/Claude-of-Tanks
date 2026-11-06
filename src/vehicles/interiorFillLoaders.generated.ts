@@ -58,6 +58,7 @@ export const INTERIOR_FILL_GROUP_LOADERS: Readonly<Record<string, () => Promise<
   "loara": () => import('./interiorFillGroups/loara.generated.ts'),
   "lrmvLynx": () => import('./interiorFillGroups/lrmvLynx.generated.ts'),
   "lvkv9040": () => import('./interiorFillGroups/lvkv9040.generated.ts'),
+  "m163": () => import('./interiorFillGroups/m163.generated.ts'),
   "m41": () => import('./interiorFillGroups/m41.generated.ts'),
   "m6Linebacker": () => import('./interiorFillGroups/m6Linebacker.generated.ts'),
   "marder2": () => import('./interiorFillGroups/marder2.generated.ts'),

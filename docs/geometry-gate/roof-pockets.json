@@ -128,6 +128,7 @@
   "m113a1_mrv": {"turretRaisedCm2":0,"turretBaseCm2":0,"hullCm2":0,"pockets":0,"geometry":{"hull":"6a2fb14c294d40d6","turret":"ce1dd442e231d214","gun":"1698a879599e2807"}},
   "m113a3": {"turretRaisedCm2":0,"turretBaseCm2":0,"hullCm2":0,"pockets":0,"geometry":{"hull":"b81915e915b270e6","turret":"19b9b3a9e9b9cb52","gun":"eb149b6eca6ecd70"}},
   "m113as4": {"turretRaisedCm2":0,"turretBaseCm2":0,"hullCm2":0,"pockets":0,"geometry":{"hull":"6976bfce591aa097","turret":"e28a6dd1ded70939","gun":"82dcd99aca786125"}},
+  "m163_vads": {"turretRaisedCm2":0,"turretBaseCm2":0,"hullCm2":0,"pockets":0,"geometry":{"hull":"9c8a3e5104a87028","turret":"b372c19ced9c5267","gun":"065a98b184ebae4e"}},
   "m1a1": {"turretRaisedCm2":392,"turretBaseCm2":4000,"hullCm2":0,"pockets":2,"geometry":{"hull":"17f2e8f16b0724f2","turret":"3353e8eebf7e9670","gun":"b6b70118aaa96050"}},
   "m1a1_abrams_aim": {"turretRaisedCm2":5200,"turretBaseCm2":308,"hullCm2":0,"pockets":6,"geometry":{"hull":"10e73acf2d1dd49e","turret":"5e12509e25ee3723","gun":"61f80e58684a6b5c"}},
   "m1a1_abrams_fep": {"turretRaisedCm2":5788,"turretBaseCm2":0,"hullCm2":312,"pockets":5,"geometry":{"hull":"dc31a9227b7f29a1","turret":"706030ad1c25184e","gun":"f04d49e8052503a5"}},
