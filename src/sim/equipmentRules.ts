@@ -39,6 +39,7 @@
 // and scouting. An item may need a turret, an autoloader or a hand-loaded gun.
 
 import { isPostwarVehicleEra } from './vehicleEras.ts';
+import { reseatEquipmentLayer, type MultiplierLayers } from './consumableRules.ts';
 
 type EquipmentEra = 'all' | 'modern';
 export type EquipmentCategoryId = 'all' | 'fire' | 'mobility' | 'protection' | 'survival' | 'recon';
@@ -103,6 +104,8 @@ export interface EquipmentCombatState {
   /** Replaced atomically by applyEquipmentToCombat; callers may carry a
    * narrower simulation-facing multiplier view before this boundary. */
   equipMults?: object;
+  /** The named multiplier layers a live state carries (consumableRules.ts); a re-equip hands its new object to them. */
+  multiplierLayers?: MultiplierLayers;
   modules?: Partial<Record<EquipmentModuleId, {
     maxHp: number;
     hp: number;
@@ -421,6 +424,9 @@ export function applyEquipmentToCombat(
   const mults = computeEquipMults(clean);
   combat.equip = clean;
   combat.equipMults = mults;
+  // a live state's multiplier layers (consumableRules.ts, audit M5) compose the new kit with the mode's stamps and the
+  // active items now, not at the next item or stamp (round 3 B7); a fresh state has none and is left as written
+  reseatEquipmentLayer(combat);
   for (const mod of Object.keys(mults.moduleHp) as EquipmentModuleId[]) {
     const factor = mults.moduleHp[mod];
     if (factor === undefined) continue;

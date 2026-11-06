@@ -133,4 +133,38 @@ const expire = (entity, timeS) => tickConsumables(entity.consumables, entity.com
   near(refit.combat.equipMults.reload, kit * 0.5, 'the new equipment and the stamp both hold');
 }
 
+// ---- round 3 B7: a live re-equip composes at once. The layers noticed a replaced equipMults only at the next
+// composition, so between the re-equip and the next item or stamp equipMults held the bare equipment: the Juggernaut
+// boss reloaded at 1x, not x0.5, and an active rations' factor was gone. applyEquipmentToCombat now hands the new object
+// to the layers' owner (consumableRules.ts reseatEquipmentLayer), which composes every layered key on the spot.
+{
+  const near = (actual, expected, message) => assert.ok(Math.abs(actual - expected) < 1e-12, `${message}: ${actual} vs ${expected}`);
+  const jugg = matchRulesetFor('juggernaut');
+  const scale = jugg.juggernaut.reloadScale;
+  const kit = computeEquipMults(['rammer']), bare = computeEquipMults([]);
+  const boss = tank('boss', 'alpha', false, 0, -100), hunter = tank('hunter', 'bravo', true, 0, 100);
+  arm(boss); arm(hunter);
+  createMatchModeController({ mode: 'juggernaut', entities: [boss, hunter], ruleset: jugg, revive() {} }); // the real stamp
+  assert.equal(boss.combat.equipMults.reload, scale, 'the boss is stamped');
+  use(boss, 0, 1); // rations active through the re-equip
+  applyEquipmentToCombat(boss.combat, ['rammer']); // the live re-equip: a new equipMults object, no item use or stamp after it
+  near(boss.combat.equipMults.reload, kit.reload * scale * RATIONS_RELOAD_MULT,
+    'the re-equipped boss keeps its x0.5 and its rations at once (not the bare kit until the next item)');
+  near(boss.combat.equipMults.aimTime, kit.aimTime * consumableRules.RATIONS_AIM_MULT, 'the rations\' aim factor too');
+  assert.equal(boss.combat.equipMults.power, 1, 'a key the new kit leaves alone composes to its layers');
+  expire(boss, 1 + 41);
+  near(boss.combat.equipMults.reload, kit.reload * scale, 'after the rations end: the new kit and the stamp');
+  // a second re-equip back to no kit: the stamp holds again at once
+  applyEquipmentToCombat(boss.combat, []);
+  near(boss.combat.equipMults.reload, bare.reload * scale, 'a second re-equip keeps the stamp');
+  // a hunter (no stamp) re-equips to its own kit's values, exactly
+  applyEquipmentToCombat(hunter.combat, ['rammer']);
+  near(hunter.combat.equipMults.reload, kit.reload, 'an unstamped re-equip is the kit itself');
+  // a combat state no layer touched yet: the re-equip writes the kit and nothing else
+  const fresh = combat();
+  applyEquipmentToCombat(fresh, ['rammer']);
+  assert.equal(fresh.multiplierLayers, undefined, 'no layers are made for a state that has none');
+  assert.equal(fresh.equipMults.reload, kit.reload);
+}
+
 console.log('modeMultiplierLayers: the boss keeps x0.5 through an item\'s use and end; hostile and infection stamps both land; layers compose once');
