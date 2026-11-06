@@ -23,6 +23,13 @@
 //      fresh link; welcomed at 8 + 4 + 3 s. Before, a peer's boot notice was the core's: the runtime only posted her frames
 //      to the Worker, so she heard nothing until its core ran, and asked for a fresh link 5 s into the boot. A real
 //      browser Worker's evaluation is not reproduced here.
+//   5. (round 4 F0, review r1) case 1 with the runtime asked to boot 2 s after alice's HELLO reached it: matchSession.ts
+//      becomeHost makes the runtime, whose acceptor answers at once, then awaits the migration key and blob before
+//      host.start, so a peer's HELLO can reach a runtime still idle. Alice is told at her HELLO, by the idle runtime, the
+//      boot's whole bound and the hold (it has no config yet), and once more by the core in the hold; no fresh link;
+//      welcomed at 2 + 4 + 3 s. A guard on the runtime's gate (holdsForBoot: idle or booting), not a proof that fails on
+//      0edd0e1ab5, whose core told a peer at her HELLO before its boot: a gate narrowed to 'booting' tells her nothing
+//      and she asks for a fresh link at 5 s.
 // Review r1 (round 3): the core's boot after its world resolves and its HELLO verification (WebCrypto) run in real time,
 // while virtual time moved 50 ms every four turns of the loop, so under load the hold notice landed steps late and case 2
 // went silent on a clock threshold before it. Virtual time moves only once that work has settled (drainUntil: the boot
@@ -54,6 +61,9 @@ const aliceToken = signSeatToken(hostSecret, { v: 1, roomId: 'HOLDNT', seat: 0, 
 const BOOT_MS = 4_000;
 // (round 4 F0) a host Worker's evaluation past the stall clock: its core runs this long after the runtime made its port
 const WORKER_EVAL_MS = 8_000;
+// (round 4 F0, review r1) how long after alice's HELLO the runtime's owner asks it to boot: past the stall clock with the
+// boot (2 + 4 s), so a seat the idle runtime does not tell stalls before the core's hold notice
+const START_DELAY_MS = 2_000;
 const STEP_MS = 50;
 const STALL_MS = 5_000;
 const { RESUME_HOLD_MS } = recovery;
@@ -72,12 +82,6 @@ async function drainUntil(settled, what, each = () => {}) {
   }
 }
 
-/**
- * Alice, a peer of bob's host, on her link to it as a browser has it: her WebRTC channel answered by the host runtime's
- * acceptor and bridged to its core's port (matchHost.ts). The core comes up `evalMs` after the runtime made its port (0: at
- * once, the in-process port's way); what the runtime posted to it before then waits, in order, as a Worker's message queue
- * holds what was posted before its script ran.
- */
 /** `count` turns of the event loop (setImmediate), with `each` after every one. */
 async function turns(count, each) {
   for (let turn = 0; turn < count; turn++) {
@@ -86,7 +90,14 @@ async function turns(count, each) {
   }
 }
 
-async function bridgedSeat({ newHost, silentAfterHold = false, evalMs = 0, untilMs = 45_000 }) {
+/**
+ * Alice, a peer of bob's host, on her link to it as a browser has it: her WebRTC channel answered by the host runtime's
+ * acceptor and bridged to its core's port (matchHost.ts). The core comes up `evalMs` after the runtime made its port (0: at
+ * once, the in-process port's way); what the runtime posted to it before then waits, in order, as a Worker's message queue
+ * holds what was posted before its script ran. The runtime's owner asks it to boot (start) `startDelayMs` after it made
+ * the runtime and alice's link opened (0: at once).
+ */
+async function bridgedSeat({ newHost, silentAfterHold = false, evalMs = 0, startDelayMs = 0, untilMs = 45_000 }) {
   let nowMs = 100_000;
   let serial = 0;
   const timers = new Map();
@@ -172,9 +183,14 @@ async function bridgedSeat({ newHost, silentAfterHold = false, evalMs = 0, until
     meta: { phase: PHASE.PLAYING, countdownMs: 0, battleTimeMs: 15_000, verdict: VERDICT.NONE, verdictReason: '', destructibleRevision: 0 },
     destroyed: [], destruction: [], entities: [], shells: [], viewer: null, modeStateJson: null };
   const restart = migrationFallback({ latestFrame: playing, latestFrameAtMs: nowMs, nowMs, resumeTick: 900, countdownMs: 5000, kept: true, battleId: 9 });
-  const starting = runtime.start({ roomId: 'HOLDNT', matchId: 'm1-00h01d00', generation, mapId: 'verdant', mode: 'standard', seed: 3, seats, bots: [],
-    countdownS: 0, battleLimitS: 600, hostSecret, manifestBase: null, resume: { ...restart.state, resumeTick: restart.resumeTick, holdForSeats: ['alice', 'bob'] } });
-  starting.catch(() => {});
+  const boot = () => {
+    const starting = runtime.start({ roomId: 'HOLDNT', matchId: 'm1-00h01d00', generation, mapId: 'verdant', mode: 'standard', seed: 3, seats, bots: [],
+      countdownS: 0, battleLimitS: 600, hostSecret, manifestBase: null, resume: { ...restart.state, resumeTick: restart.resumeTick, holdForSeats: ['alice', 'bob'] } });
+    starting.catch(() => {});
+  };
+  // (case 5) the runtime's acceptor answers alice while its owner has not asked it to boot yet (the runtime idle)
+  if (startDelayMs > 0) time.setTimer(boot, startDelayMs);
+  else boot();
   openedAtMs = nowMs;
   migrating.replace(aliceRtc, newHost ? 'host changed' : 'host kept');
   // her offer, the runtime's answer, her channel's open and her HELLO all land at this instant (the relay and the WebRTC
@@ -281,8 +297,11 @@ async function hostSeat() {
   return { stalledAtMs, welcomeAtMs, notices };
 }
 
-/** A peer's notices on a kept host's link: one at her HELLO, one when her HELLO joined the hold (`holdAtMs`). */
-function keptNoticesWrong(label, result, holdAtMs) {
+/**
+ * A peer's notices on a kept host's link: one at her HELLO, one when her HELLO joined the hold (`holdAtMs`). `bootLeftMs`:
+ * what is left of the boot's 30 s bound at a notice `atMs` into her link (a boot that began as her link opened, by default).
+ */
+function keptNoticesWrong(label, result, holdAtMs, bootLeftMs = (atMs) => 30_000 - atMs) {
   const wrong = [];
   if (result.stalledAtMs !== null && (result.welcomeAtMs === null || result.stalledAtMs < result.welcomeAtMs)) {
     wrong.push(`${label}: alice asked for a fresh link ${result.stalledAtMs} ms after her link opened, before her WELCOME (her HELLO held ${holdAtMs} ms for the boot, then the hold up to ${RESUME_HOLD_MS} ms)`);
@@ -293,7 +312,7 @@ function keptNoticesWrong(label, result, holdAtMs) {
   // the first at her HELLO: what is left of the boot's 30 s bound and the hold; the second as her HELLO joins the hold, as
   // the boot ends: the whole hold. Two, no more: one teller each (the runtime for the boot, the core for the hold).
   const [first, second] = result.notices;
-  if (!(result.notices.length === 2 && first.atMs <= STEP_MS && first.holdMs === 30_000 + RESUME_HOLD_MS - first.atMs
+  if (!(result.notices.length === 2 && first.atMs <= STEP_MS && first.holdMs === bootLeftMs(first.atMs) + RESUME_HOLD_MS
     && second.atMs === holdAtMs && second.holdMs === RESUME_HOLD_MS)) {
     wrong.push(`${label}: the host's notices to alice ${JSON.stringify(result.notices)} (one at her HELLO with the boot's bound and the hold, one when her HELLO joined the hold at ${holdAtMs} ms with what was left)`);
   }
@@ -320,9 +339,12 @@ if (own.notices !== 2) wrong.push(`the host's own seat took ${own.notices} notic
 const slow = await bridgedSeat({ newHost: false, evalMs: WORKER_EVAL_MS });
 if (slow.stalledAtMs === null && slow.cores !== 1) wrong.push(`setup: the slow Worker's core ran ${slow.cores} times`);
 wrong.push(...keptNoticesWrong(`kept host, its Worker evaluating ${WORKER_EVAL_MS} ms`, slow, WORKER_EVAL_MS + BOOT_MS));
+// ---- 5. (round 4 F0, review r1) a kept host whose runtime is asked to boot 2 s after alice's HELLO reached it
+const idle = await bridgedSeat({ newHost: false, startDelayMs: START_DELAY_MS });
+wrong.push(...keptNoticesWrong(`kept host asked to boot ${START_DELAY_MS} ms after alice's HELLO`, idle, START_DELAY_MS + BOOT_MS, () => 30_000));
 if (wrong.length) {
   console.error(`holdNotice: a held seat's stall clock did not follow its host's announced hold:\n  ${wrong.join('\n  ')}`);
   assert.fail('a host that holds a seat\'s HELLO tells it how long, on any link, and the seat waits that long and no longer');
 }
 assert.equal(kept.holdNotices, 2, 'the client counts both notices');
-console.log(`holdNotice: a kept host's held seat waits through its ${BOOT_MS} ms boot and its hold (welcomed at ${kept.welcomeAtMs} ms, notices ${kept.notices.map((notice) => `${notice.holdMs} ms at ${notice.atMs}`).join(', ')}); a silent host's seat stalls at ${silent.stalledAtMs} ms (the fixed bound: ${STALL_MS + 33_000} ms); the host's own seat welcomed at ${own.welcomeAtMs} ms; behind a Worker evaluating ${WORKER_EVAL_MS} ms, welcomed at ${slow.welcomeAtMs} ms (notices ${slow.notices.map((notice) => `${notice.holdMs} ms at ${notice.atMs}`).join(', ')})`);
+console.log(`holdNotice: a kept host's held seat waits through its ${BOOT_MS} ms boot and its hold (welcomed at ${kept.welcomeAtMs} ms, notices ${kept.notices.map((notice) => `${notice.holdMs} ms at ${notice.atMs}`).join(', ')}); a silent host's seat stalls at ${silent.stalledAtMs} ms (the fixed bound: ${STALL_MS + 33_000} ms); the host's own seat welcomed at ${own.welcomeAtMs} ms; behind a Worker evaluating ${WORKER_EVAL_MS} ms, welcomed at ${slow.welcomeAtMs} ms (notices ${slow.notices.map((notice) => `${notice.holdMs} ms at ${notice.atMs}`).join(', ')}); asked to boot ${START_DELAY_MS} ms after the HELLO, welcomed at ${idle.welcomeAtMs} ms (notices ${idle.notices.map((notice) => `${notice.holdMs} ms at ${notice.atMs}`).join(', ')})`);
