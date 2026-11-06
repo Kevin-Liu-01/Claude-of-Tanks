@@ -14,11 +14,17 @@
 //      cadence while the entity stays in the view, and a wreck was in every view), so the frame that releases the
 //      revive can still carry the old life's wreck row. A row that reached the hull this frame is the authority's word
 //      for its pose and life: the revive leaves them to the rows (no wreck undone and laid again, no flicker), mends what
-//      no row carries (its modules and crew), and the hull's next fresh row revives it. The held-then-hidden case cannot
-//      leave a wreck: an ally is always in view, and an enemy spotted at its spawn stays spotted SPOT_LINGER_S (5 s,
-//      sim/spotting.ts; its record was retired at its death), far past the held window (at most twice a far tier's
-//      3-snapshot cadence). Its wreck and revive half passes on 0edd0e1ab5 (no revive there), its module half fails there;
-//      with the revive applied whatever the row says, the wreck flickers (plain, revive, plain, revive) and it fails.
+//      no row carries (its modules and crew), and the hull's next fresh row revives it. Its wreck and revive half passes
+//      on 0edd0e1ab5 (no revive there), its module half fails there; with the revive applied whatever the row says, the
+//      wreck flickers (plain, revive, plain, revive) and it fails.
+//   3. (review r1) The held-then-hidden case: the round's first ruling said such a hull could not leave the view before
+//      its fresh row (an enemy spotted at its spawn lingering SPOT_LINGER_S), but the linger keeps only the team's spotted
+//      flag; per-viewer visibility does not linger (sim/spotting.ts isSpotted with a receiver: an enemy seen through an
+//      ally's radio share drops out when this seat leaves the share's reach or its radio is hit). Such a hull stayed a
+//      wreck with 0 hull points until spotted again. Its revive is now owed under the held row and settled once no row
+//      reaches it (battlePresentation.ts settleOwedRevive). Fails on 956e2ed079 and on 0edd0e1ab5.
+//   4. (review r1) The owed revive is the life before's: a hull that dies again before its fresh row is not revived
+//      when its rows stop.
 import assert from 'node:assert/strict';
 import { Vector3 } from 'three';
 import { createLoopbackPair } from '../transport/index.ts';
@@ -130,15 +136,15 @@ const newGame = () => ({ tanks: [], tankById: new Map(), player: null, shells: [
   server.dispose();
 }
 
-// ---- 2. a revive released while a held row still shows the wreck
-{
+/** One seat and one peer on the real presentation, fed frames by hand: the rows each frame carries, then its events. */
+async function heldRowSeat(peer, team) {
   const game = newGame();
   const bus = createBus();
   const visual = [];
   const presentation = presentationFor(game, bus, visual);
   await presentation.applyRoster([
     { entityId: 1, seat: 0, team: TEAM.ALPHA, bot: false, connected: true, playerId: 'me', name: 'Me', specId: SPEC_ID },
-    { entityId: 2, seat: 1, team: TEAM.ALPHA, bot: true, connected: true, playerId: 'ally', name: 'Ally', specId: SPEC_ID },
+    { entityId: 2, seat: 1, team, bot: true, connected: true, playerId: peer, name: peer, specId: SPEC_ID },
   ], { ownEntityId: 1, ownPlayerId: 'me', roomId: 'r', mapId: 'winter', mode: 'standard', rulesetJson: '{}' });
   const ownState = createTankState(getSpec(SPEC_ID), new Vector3(0, 0, 0), 0);
   let tick = 100;
@@ -162,16 +168,22 @@ const newGame = () => ({ tanks: [], tankById: new Map(), player: null, shells: [
     });
     for (const event of events) presentation.applyEvent(event, { own: false, feedbackPredicted: false });
   };
-    present([row(false, 30, 1500)]);
-  const engine = Object.keys(game.tankById.get('ally').combat.modules)[0];
+  present([row(false, 30, 1500)]);
+  const actor = game.tankById.get(peer);
+  const engine = Object.keys(actor.combat.modules)[0];
   present([row(true, 30, 0)], [
-    { kind: 'tank_destroyed', payload: { id: 'ally', killerId: 'foe', cause: 'shot', x: 30, y: 0, z: 30 } },
-    { kind: 'module_state', payload: { id: 'ally', module: engine, state: 'red', source: 'shot' } },
+    { kind: 'tank_destroyed', payload: { id: peer, killerId: 'other', cause: 'shot', x: 30, y: 0, z: 30 } },
+    { kind: 'module_state', payload: { id: peer, module: engine, state: 'red', source: 'shot' } },
   ]);
-  assert.deepEqual(visual, ['plain'], 'setup: the ally is a wreck');
+  assert.deepEqual(visual, ['plain'], `setup: the ${peer} is a wreck`);
+  return { game, presentation, visual, row, present, actor, engine };
+}
+
+// ---- 2. a revive released while a held row still shows the wreck, and the hull stays in view
+{
+  const { presentation, visual, row, present, actor: held, engine } = await heldRowSeat('ally', TEAM.ALPHA);
   // the revive's frame and the next carry the held wreck row (the ally stayed in view): the rows keep its life
   present([row(true, 30, 0)], [{ kind: 'mode_respawn', payload: { id: 'ally', team: 'alpha' } }]);
-  const held = game.tankById.get('ally');
   if (!held.combat.destroyed) wrong.push('held row: the revive undid the wreck a row of this frame still shows');
   if (held.combat.modules[engine].state !== 'ok') wrong.push(`held row: the revive left the last life's broken ${engine} (no row carries a remote hull's modules)`);
   present([row(true, 30, 0)]);
@@ -179,6 +191,42 @@ const newGame = () => ({ tanks: [], tankById: new Map(), player: null, shells: [
   present([row(false, 200, 2000)]);
   if (held.combat.destroyed || held.combat.hp !== 2000) wrong.push('held row: the fresh row did not revive the ally');
   if (visual.join() !== 'plain,revive') wrong.push(`held row: the wreck flickered across the revive (${visual.join(' -> ')}; once laid, once undone)`);
+  // and out of view afterwards it stays as the fresh row left it (the debt was paid: nothing revives it twice)
+  present([]);
+  if (held.combat.destroyed || visual.join() !== 'plain,revive') wrong.push(`held row: the ally was revived again once out of view (${visual.join(' -> ')})`);
+  presentation.dispose();
+}
+
+// ---- 3. (review r1) a revive released under a held wreck row, then the hull leaves this seat's view before its fresh
+// row: an enemy seen through an ally's radio share drops out of this seat's snapshot when the seat leaves the share's
+// reach or its radio is hit (sim/spotting.ts isSpotted with a receiver; per-viewer visibility does not linger), and no
+// row comes to revive it. Fails on 956e2ed079 (the reviewer's probe: destroyed, 0 hp, in game.tanks) and on 0edd0e1ab5.
+{
+  const { game, presentation, visual, row, present, actor: foe } = await heldRowSeat('foe', TEAM.BRAVO);
+  present([row(true, 30, 0)], [{ kind: 'mode_respawn', payload: { id: 'foe', team: 'bravo' } }]);
+  if (!foe.combat.destroyed) wrong.push('held then hidden: the revive undid the wreck a row of this frame still shows');
+  present([]);
+  if (foe.combat.destroyed) wrong.push('held then hidden: the foe out of view after its revive still reads destroyed');
+  if (foe.combat.hp !== foe.combat.maxHp) wrong.push(`held then hidden: the revived foe has its last life's hull points (${foe.combat.hp}/${foe.combat.maxHp})`);
+  if (game.tanks.includes(foe)) wrong.push('held then hidden: game.tanks still holds the revived foe as a wreck');
+  if ((game.rosterTanks ?? []).some((actor) => actor === foe && actor.combat.destroyed)) wrong.push('held then hidden: game.rosterTanks counts the revived foe dead');
+  if (presentation.predictionWorld()?.collide(new Vector3(30, 0, 30), 0, new Vector3())) wrong.push('held then hidden: the own prediction still collides with the revived foe\'s old wreck');
+  if (visual.join() !== 'plain,revive') wrong.push(`held then hidden: the wreck look went ${visual.join(' -> ')} (laid once, undone once)`);
+  // seen again at its spawn: the rows write it as any row does
+  present([row(false, 200, 2000)]);
+  if (foe.combat.destroyed || visual.join() !== 'plain,revive') wrong.push(`held then hidden: its fresh row found it in a wrong life (${visual.join(' -> ')})`);
+  presentation.dispose();
+}
+
+// ---- 4. (review r1) the owed revive is the life before's: a hull that dies again in its new life before its fresh row
+// reaches this seat (its tank_destroyed after the revive) is not revived when its rows stop (a wreck a mode set inactive
+// is sent to no seat: authoritativeMatch.ts canObserveEntity, modeActive)
+{
+  const { presentation, row, present, actor: foe } = await heldRowSeat('foe', TEAM.BRAVO);
+  present([row(true, 30, 0)], [{ kind: 'mode_respawn', payload: { id: 'foe', team: 'bravo' } }]);
+  present([row(true, 30, 0)], [{ kind: 'tank_destroyed', payload: { id: 'foe', killerId: 'other', cause: 'shot', x: 30, y: 0, z: 30 } }]);
+  present([]);
+  if (!foe.combat.destroyed) wrong.push('died again: the revive before its new life\'s death revived the foe once its rows stopped');
   presentation.dispose();
 }
 
@@ -186,4 +234,4 @@ if (wrong.length) {
   console.error(`respawnRevive: a mode's revive left this seat's actor in its last life:\n  ${wrong.join('\n  ')}`);
   assert.fail('a revived hull is alive and whole on every seat, seen or not');
 }
-console.log('respawnRevive: a hull revived out of view is alive and whole on the seat (roster, side counts, prediction, hull points, modules); a revive released under a held wreck row leaves the life to the rows, mends the modules, and the fresh row revives it without a flicker PASS');
+console.log('respawnRevive: a hull revived out of view is alive and whole on the seat (roster, side counts, prediction, hull points, modules); a revive released under a held wreck row leaves the life to the rows, mends the modules, and the fresh row revives it without a flicker, or the revive is settled once no row reaches the hull (not after a new death) PASS');
