@@ -1039,8 +1039,9 @@ export const HESSIAN_STYLE: ArchitectureStyle = Object.freeze<ArchitectureStyle>
   region: 'Osthessen (Fulda Gap, Hünfeld basin): Fachwerk villages on Buntsandstein',
   surfaces: {
     // (buildings-270, the census: every roof the same bright new orange at the battle camera; Osthessen's photos' tile is a
-    // dark red-brown, #742b26 to #8a3a2c, which the lit roof reads at about 1.6 times its texture: #632e22 here, was #713927)
-    roof: { kind: 'beavertail', tint: [0.44, 0.2, 0.15] },
+    // dark red-brown, #742b26 to #8a3a2c, which the lit roof reads at about 1.6 times its texture: #5a2920 here, was #713927;
+    // the round-2 frames still read #632e22 as bright orange)
+    roof: { kind: 'beavertail', tint: [0.4, 0.18, 0.14] },
     // (the facades lane, round 10; wave 301 on the Frontier church: "oversized, saturated red-brick quoins and door
     // surround that read as toy blocks against plain render") the Buntsandstein a third less saturated, at the same
     // light: the weathered red-brown of an old church's dressings, not a fresh-cut red
