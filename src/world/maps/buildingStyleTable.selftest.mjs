@@ -4,7 +4,7 @@
 //   3. a row's measure is its kit's: the kit's reading (tools/building-style-reading.mjs, pinned in
 //      src/world/buildingStyleReading.baseline.json) has its median storey count, storey height, pitch and window bay
 //      inside the row's ranges and its commonest roof form among the row's forms;
-//   4. every row carries photographs (a Commons file page or another sourced page with author and license), at least two
+//   4. every row's record (buildingStyleRecords.ts) carries photographs (a Commons file page or another sourced page with author and license), at least two
 //      for a terrestrial place;
 //   5. the weathering and wear the row sets are shares (0–1), its colours are hex, its variation offers choices and its
 //      surface's scales and depths are in range; the kit's houses keep the row's reveal and eave.
@@ -14,6 +14,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 
 const { BUILDING_STYLES, buildingStyleOf } = await import('./buildingStyleTable.ts');
+const { BUILDING_STYLE_RECORDS } = await import('./buildingStyleRecords.ts');
 const { MAP_IDS } = await import('./mapIds.ts');
 const { getMapConfig } = await import('./index.ts');
 const { ARCHITECTURE_STYLE_IDS } = await import('./regional/index.ts');
@@ -24,15 +25,16 @@ const within = (v, [lo, hi], slack = 0) => v >= lo - slack && v <= hi + slack;
 
 // 1
 assert.deepEqual(Object.keys(BUILDING_STYLES).sort(), [...MAP_IDS].sort(), 'one row per battlefield');
+assert.deepEqual(Object.keys(BUILDING_STYLE_RECORDS).sort(), [...MAP_IDS].sort(), 'one record per battlefield');
 assert.equal(buildingStyleOf('atlantis'), null);
 for (const id of MAP_IDS) {
-  const row = BUILDING_STYLES[id];
+  const row = BUILDING_STYLES[id], rec = BUILDING_STYLE_RECORDS[id];
   assert.ok(ARCHITECTURE_STYLE_IDS.includes(row.kit), `${id}: kit ${row.kit} is a kit`);
   // 2
   assert.equal(getMapConfig(id).props.architecture, row.kit, `${id}: props.architecture reads its row`);
   // 5
-  for (const v of [row.weathering.damp, row.weathering.moss, row.damage.wear]) assert.ok(v >= 0 && v <= 1, `${id}: shares in 0–1`);
-  for (const c of [...row.roof.colours, ...row.facade.colours]) assert.match(c, /^#[0-9a-f]{6}$/, `${id}: hex colour ${c}`);
+  for (const v of [row.weathering.damp, row.weathering.moss, row.wear]) assert.ok(v >= 0 && v <= 1, `${id}: shares in 0–1`);
+  for (const c of [...rec.roof.colours, ...rec.facade.colours]) assert.match(c, /^#[0-9a-f]{6}$/, `${id}: hex colour ${c}`);
   assert.ok(row.storeys[0] <= row.storeys[1] && row.storeyM[0] <= row.storeyM[1], `${id}: ranges ordered`);
   // the variation: each axis offers a choice, a paint is a hex colour, the roofs' age spread lies in 0–1
   for (const [axis, options] of Object.entries(row.variation.axes)) {
@@ -56,12 +58,12 @@ for (const id of MAP_IDS) {
     // the kit's houses keep the place's depth: their openings' reveals and their eaves at least the row's
     if (r.mid.reveal !== null) assert.ok(r.mid.reveal >= row.surface.reveal - 0.02, `${id}: the kit's reveal ${r.mid.reveal} m keeps the row's ${row.surface.reveal}`);
     if (r.mid.eave !== null) assert.ok(r.mid.eave >= row.surface.eave - 0.02, `${id}: the kit's eave ${r.mid.eave} m keeps the row's ${row.surface.eave}`);
-    if (r.mid.bayM !== null && row.windows.bayM) assert.ok(within(r.mid.bayM, row.windows.bayM, 0.4), `${id}: the kit's window bay ${r.window.bayM} m sits in the row's ${row.windows.bayM}`);
+    if (r.mid.bayM !== null && row.bayM) assert.ok(within(r.mid.bayM, row.bayM, 0.4), `${id}: the kit's window bay ${r.window.bayM} m sits in the row's ${row.bayM}`);
   }
   // 4
   const floor = OFF_WORLD.has(id) ? 0 : 2;
-  assert.ok(row.references.length >= floor, `${id}: ${row.references.length} photographs (at least ${floor})`);
-  for (const ref of row.references) {
+  assert.ok(rec.references.length >= floor, `${id}: ${rec.references.length} photographs (at least ${floor})`);
+  for (const ref of rec.references) {
     assert.match(ref.url, /^https:\/\//, `${id}: a reference is a page`);
     assert.ok(ref.author && ref.license && ref.shows, `${id}: ${ref.url} names its author, license and what it shows`);
   }
