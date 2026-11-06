@@ -12,9 +12,18 @@
 //      again (records, collider, ground), nothing is laid;
 //   3. the restarted battle fells fence 1 and collapses house 2 again: both lie down again, settled;
 //   4. a presentation whose first frame already counts a restart resets nothing (its world is fresh).
+// Review r1 (the effects' half): the presentation stood the collision and props, and told the effects nothing. They kept
+// the abandoned battle's structure stages (the house drawn as rubble over the wall that stood again) and their stage
+// ledger, which refused the restarted battle's own collapse of the same house. Now the restart is told on the bus
+// ('battle:restarted') and the effects reset what the battle laid as a battle's start does (fx/effects.ts resetAll):
+//   5. the real effects runtime on the presentation's bus: house 2's collapse is drawn (its structure mask), the restart
+//      stands it in the effects too, and the restarted battle's collapse of it is drawn again.
 import assert from 'node:assert/strict';
-import { Vector3 } from 'three';
+import { createRequire } from 'node:module';
+import * as THREE from 'three';
 import { createBattlePresentation } from './index.ts';
+import { createFx } from '../../fx/effects.ts';
+import { STRUCT_STRIDE } from '../../fx/structureMask.ts';
 import { setCompoundShape, setObbShape } from '../../world/collision.ts';
 import { createDestructionMatch } from '../../sim/destructionMatch.ts';
 import { matchRulesetFor } from '../../sim/matchRuleset.ts';
@@ -51,11 +60,27 @@ async function seat() {
   const crushes = [];
   const stages = [];
   let worldResets = 0;
+  let restartsTold = 0;
   let ground = null;
+  // the page's bus: what the presentation tells, and the listeners bound to it (the effects, case 5)
+  const listeners = new Map();
+  const bus = {
+    on(type, listener) {
+      const list = listeners.get(type) ?? [];
+      listeners.set(type, list);
+      list.push(listener);
+      return () => { const at = list.indexOf(listener); if (at >= 0) list.splice(at, 1); };
+    },
+    emit(type, payload) {
+      if (type === 'structure:stage') stages.push({ id: payload.structureId, stage: payload.stage, settled: payload.settled === true });
+      if (type === 'battle:restarted') restartsTold++;
+      for (const listener of [...(listeners.get(type) ?? [])]) listener(payload);
+    },
+  };
   const presentation = createBattlePresentation({
     engineCtx: { scene: { add() {} }, anisotropy: 1 },
     game: { tanks: [], tankById: new Map(), player: null, shells: [], spotting: null, allTanks: [], timeS: 0, preBattleS: 0, result: null, resultReason: null, mapId: 'winter' },
-    bus: { emit(type, payload) { if (type === 'structure:stage') stages.push({ id: payload.structureId, stage: payload.stage, settled: payload.settled === true }); } },
+    bus,
     worldCollision: {
       heightField: flat, getObstacles: () => field.obstacles, getColliders: () => field.colliders,
       // the world's crush of a prop, and its own reset of every destructible (map.ts: props, trees, poles stand again)
@@ -70,12 +95,12 @@ async function seat() {
         for (const obstacle of field.obstacles) if (obstacle.kind === 'fence') obstacle.crushed = false;
       },
     },
-    createTankVisual: () => ({ root: { position: new Vector3(), userData: {} }, setVisible() {}, syncFromState() {}, dispose() {} }),
+    createTankVisual: () => ({ root: { position: new THREE.Vector3(), userData: {} }, setVisible() {}, syncFromState() {}, dispose() {} }),
     prepareVisualTextures: async () => {}, clock: () => 0,
   });
   await presentation.applyRoster([{ entityId: 1, seat: 0, team: 0, bot: false, connected: true, playerId: 'me', name: 'Me', specId: 'm1a1_abrams_hc' }],
     { ownEntityId: 1, ownPlayerId: 'me', roomId: 'r', mapId: 'winter', mode: 'standard', rulesetJson: '{}' });
-  return { presentation, field, crushes, stages, resets: () => worldResets, heapAt: (x, z) => ground?.offsetAt(x, z) ?? NaN };
+  return { presentation, bus, field, crushes, stages, resets: () => worldResets, told: () => restartsTold, heapAt: (x, z) => ground?.offsetAt(x, z) ?? NaN };
 }
 
 const frame = ({ restarts, destroyed = [], destruction = [], revision = destroyed.length }) => ({
@@ -100,6 +125,7 @@ const frame = ({ restarts, destroyed = [], destruction = [], revision = destroye
   one.presentation.applyFrame(frame({ restarts: 1 }));
   const wrong = [];
   if (one.resets() !== 1) wrong.push(`the world's destructibles reset ${one.resets()} times (once at the restart)`);
+  if (one.told() !== 1) wrong.push(`the bus heard the restart ${one.told()} times (once, for the effects)`);
   if (one.field.obstacles[0].crushed || one.field.obstacles[1].crushed) wrong.push('the old battle\'s fences still lie on this seat');
   if (houseRecord.crushed || houseCollider.dead) wrong.push(`the old battle's collapse of house 2 still stands in this seat's collision (crushed ${houseRecord.crushed}, dead ${houseCollider.dead})`);
   if (!(one.heapAt(40, 0) === 0)) wrong.push(`the old battle's heap is still on this seat's ground (${one.heapAt(40, 0)} m)`);
@@ -110,7 +136,7 @@ const frame = ({ restarts, destroyed = [], destruction = [], revision = destroye
   if (!(relaid.length === 1 && relaid[0].index === 1 && relaid[0].settled)) wrong.push(`the restarted battle's fall of fence 1 laid ${JSON.stringify(relaid)}`);
   if (!one.stages.slice(before.stages).some((stage) => stage.id === 2 && stage.stage === 'collapsed' && stage.settled)) wrong.push('the restarted battle\'s collapse of house 2 laid nothing');
   if (!(houseRecord.crushed && houseCollider.dead)) wrong.push('house 2 is not down again');
-  if (one.resets() !== 1) wrong.push(`no further reset within the restarted battle (${one.resets()})`);
+  if (one.resets() !== 1 || one.told() !== 1) wrong.push(`no further reset within the restarted battle (${one.resets()} world resets, ${one.told()} told)`);
   if (wrong.length) {
     console.error(`battleRestartReset: the abandoned battle's settled world outlived its restart:\n  ${wrong.join('\n  ')}`);
     assert.fail('a battle restart stands the settled world, and the restarted battle lays its own');
@@ -123,8 +149,65 @@ const frame = ({ restarts, destroyed = [], destruction = [], revision = destroye
   const late = await seat();
   late.presentation.applyFrame(frame({ restarts: 2, destroyed: [3] }));
   assert.equal(late.resets(), 0, 'no reset on the first frame');
+  assert.equal(late.told(), 0, 'and none told on the bus');
   assert.deepEqual(late.crushes.map((crush) => crush.index), [3], 'its list lays down as ever');
   late.presentation.dispose();
 }
 
-console.log('battleRestartReset: a battle restart stands the old battle\'s fences and house again on this seat (the world\'s reset, the mirror\'s stages and ground), and the restarted battle lays its own falls and collapse');
+// ---- 5. the effects on the presentation's bus follow the restart (review r1)
+{
+  const five = await seat();
+  // the effects' canvases (after the presentation, whose paint scheduler would take this stub for a page)
+  const require = createRequire(import.meta.url);
+  const { createCanvas } = require('@napi-rs/canvas');
+  globalThis.document ??= { createElement: () => createCanvas(1, 1) };
+  const scene = new THREE.Scene();
+  const camera = new THREE.PerspectiveCamera(55, 16 / 9, 0.5, 5000);
+  camera.position.set(40, 20, -60); camera.lookAt(40, 0, 0); camera.updateMatrixWorld(true);
+  // the world's structure materials take the effects' collapse patch; the patched program's mask is what the GPU draws
+  // each building by (a collapsed one's start time in its first texel), read here off the patch's own uniform
+  let mask = null;
+  const world = {
+    mapId: 'winter',
+    patchStructureMaterials(patch) {
+      const material = new THREE.MeshBasicMaterial();
+      patch(material, { role: 'depth' });
+      const shader = { uniforms: {}, vertexShader: '#include <common>\nvoid main() {\n#include <begin_vertex>\n}', fragmentShader: '#include <common>\nvoid main() {\n#include <dithering_fragment>\n}' };
+      material.onBeforeCompile(shader, null);
+      mask = shader.uniforms.uStructMask.value.image.data;
+      return 1;
+    },
+  };
+  const fx = createFx({ scene, camera, renderer: null, anisotropy: 1, setupShadowMaterial: () => {}, releaseShadowMaterial: () => {} },
+    { getHeightAt: () => 0, getNormalAt: () => new THREE.Vector3(0, 1, 0) }, { seed: 5, world: () => world });
+  scene.add(fx.group);
+  fx.bindBus(five.bus);
+  const frames = (n) => { for (let i = 0; i < n; i++) fx.update(1 / 60, [], camera, () => null); };
+  frames(1);
+  assert.ok(mask, 'setup: the effects patched the world\'s structure material');
+  // well into a battle's clock, so each collapse laid is stamped with its own time (a settled one: the clock less the fall)
+  fx.resetClock(100);
+  frames(1);
+  const laidAt = (structureId) => mask[structureId * STRUCT_STRIDE * 4];
+  const drawnDown = (structureId) => laidAt(structureId) > 0;
+  five.presentation.applyFrame(frame({ restarts: 0, destroyed: [0, 1], destruction: collapseLog }));
+  frames(2);
+  assert.ok(drawnDown(2), 'setup: the effects draw house 2 collapsed');
+  assert.ok(!drawnDown(1), 'setup: and house 1 standing');
+  const oldCollapseAt = laidAt(2);
+  const wrong = [];
+  five.presentation.applyFrame(frame({ restarts: 1 }));
+  frames(2);
+  if (drawnDown(2)) wrong.push('the effects still draw the abandoned battle\'s collapse of house 2 over its standing collision');
+  five.presentation.applyFrame(frame({ restarts: 1, destroyed: [1], destruction: collapseLog }));
+  frames(2);
+  if (!(drawnDown(2) && laidAt(2) !== oldCollapseAt)) wrong.push(`the effects drew nothing of the restarted battle's collapse of house 2 (stamped ${laidAt(2)}, the abandoned battle's ${oldCollapseAt}: their stage ledger refused it)`);
+  if (wrong.length) {
+    console.error(`battleRestartReset: the effects kept the abandoned battle's structures over the restart:\n  ${wrong.join('\n  ')}`);
+    assert.fail('a battle restart resets what the effects laid of the abandoned battle, and the restarted battle\'s collapse is drawn');
+  }
+  five.presentation.dispose();
+  fx.resetAll();
+}
+
+console.log('battleRestartReset: a battle restart stands the old battle\'s fences and house again on this seat (the world\'s reset, the mirror\'s stages and ground, the effects\' stages on the bus), and the restarted battle lays and draws its own falls and collapse');

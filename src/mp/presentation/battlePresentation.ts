@@ -1047,12 +1047,18 @@ export function createBattlePresentation({
    * marks: the world's own reset, as a battle's start runs it), the destruction mirror forgets its stages, heaps and
    * craters, and the applied list is forgotten, so the restarted battle's list and log lay down from nothing. Before, the
    * client's collision kept the abandoned battle's crushes and its prediction drove through props the host blocks.
+   * The bus hears it too ('battle:restarted', review r1): the effects (fx/effects.ts) reset what the abandoned battle laid
+   * as a battle's start does (structure stages and their ledger, rubble, craters, decals), so a collapsed building stops
+   * being drawn over the collision that stands again and the restarted battle's own collapse of it plays (the stage
+   * ledger refused it); its smoke screens go with that reset, so this frame tells the restarted battle's again.
    */
-  function resetSettledWorld(): void {
+  function resetSettledWorld(restarts: number): void {
     (worldCollision as { resetDestructibles?(): void } | null)?.resetDestructibles?.();
     destruction.reset();
     appliedDestructibleRevision = -1;
     appliedDestroyedLength = -1;
+    lastSmokeJson = null;
+    bus.emit('battle:restarted', { battleRestarts: restarts });
   }
 
   function resultRoster(): Array<Record<string, RuntimeValue>> {
@@ -1124,7 +1130,7 @@ export function createBattlePresentation({
     if (disposed) return;
     // a battle restart first: this frame's list and log, and its events after it, are the restarted battle's
     const restarts = frame.battleRestarts ?? 0;
-    if (presentedBattleRestarts !== null && restarts !== presentedBattleRestarts) resetSettledWorld();
+    if (presentedBattleRestarts !== null && restarts !== presentedBattleRestarts) resetSettledWorld(restarts);
     presentedBattleRestarts = restarts;
     lastFrameAtMs = clock();
     if (mounted) recordKillcamStep(frame.renderTimeMs);
