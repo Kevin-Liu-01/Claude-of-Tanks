@@ -160,9 +160,10 @@ interface AiController {
    * Take the hull back after a stretch in which something else drove it (Watch mode's taken seat) or after a revive:
    * what the controller measures between its own ticks restarts from the hull as it stands now (audit M7), after a
    * park the clocks of its own record (its last round, its last penetration) move on by the park's length, its own route
-   * legs (a search leg, a level route) end with no verdict unless the hull still stands where it was parked, and its view
-   * of its target (stillness, silence) starts again unless the park could hide nothing from it. `timeS` is the match
-   * clock at the hand-back; `firstShellId` the battle's next shell id then (an earlier round's result is not this bot's).
+   * legs (a search leg, a level route) end with no verdict unless the hull still lies on its way (the route on from
+   * where it was parked; a taken hull coasts), and its view of its target (stillness, silence) starts again unless the
+   * park could hide nothing from it. `timeS` is the match clock at the hand-back; `firstShellId` the battle's next shell
+   * id then (an earlier round's result is not this bot's).
    */
   resume(timeS?: number, firstShellId?: number): void;
   debugInfo(): AiControllerDebugInfo;
@@ -694,6 +695,9 @@ const DEAD_LEG_AWAY_S = 20;        // how long the travel a dead leg tried is ke
 const DEAD_LEG_AWAY_COS = 0.5;     // …within 60 degrees of its bearing (no back-up at all for that long)
 const EYE_FRAC          = 0.85;   // eye/turret-top height as fraction of heightM
 const ARRIVE_DIST_M     = 6.0;
+// how far off its way a hull handed back (Watch mode's Leave) may lie and still be on it: the radius the route's own
+// end test gives the last waypoint (routeUsedUp; round 3 A2)
+const RESUME_ON_WAY_M   = ARRIVE_DIST_M * 2;
 const MAX_FIRE_RANGE_M  = 620;
 const UNDER_FIRE_WINDOW_S = 15;       // chase/engage window after a team hit
 const UNDER_FIRE_RANGE_BONUS_M = 180; // engage-envelope extension toward the shooter
@@ -921,6 +925,13 @@ const _hullQuat = new Quaternion();
 // ---------------------------------------------------------------------------
 
 function clamp(x: number, lo: number, hi: number): number { return x < lo ? lo : x > hi ? hi : x; }
+
+/** The ground distance from (px,pz) to the segment from (ax,az) to (bx,bz). */
+function segmentDistanceXZ(px: number, pz: number, ax: number, az: number, bx: number, bz: number): number {
+  const dx = bx - ax, dz = bz - az, lengthSq = dx * dx + dz * dz;
+  const along = lengthSq > 1e-9 ? clamp(((px - ax) * dx + (pz - az) * dz) / lengthSq, 0, 1) : 0;
+  return detMath.hypot(px - (ax + dx * along), pz - (az + dz * along));
+}
 
 function wrapAngle(a: number): number {
   a = (a + Math.PI) % TAU;
@@ -6882,7 +6893,7 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
   // the target as the bot last saw it when the park began (resume checks it against the target at the hand-back)
   let parkTargetId: string | null = null;
   let parkTargetX = 0, parkTargetZ = 0, parkTargetYaw = 0, parkTargetReloadT = 0;
-  // where the hull stood when the park began (resume checks the bot's own route legs against it)
+  // where the hull stood when the park began: the start of its way at the hand-back (resume's hullOnItsWay)
   let parkHullX = 0, parkHullZ = 0;
   /**
    * The park entry point (round 2, U18): something else drives the hull from `timeS` (the match clock) until resume().
@@ -6916,11 +6927,11 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
    * clock to `timeS`), so the watcher's stretch is no silence of the bot's gun (a stalemate push, a search leg, a passive
    * press) and a short Take and Leave changes nothing. With no park (a revive) they stay as they are. The bot's own
    * route legs (a search leg, a level route) were planned from where the hull stood: they hold, their clocks moved on by
-   * the park, only while the hull still stands there, and otherwise end with no verdict on them (resumeOwnLegs). The
-   * bot's view of its target (how long it has held still, how long its gun has been silent) is no record of the bot's
-   * but what it saw, and it saw nothing while parked: it carries on only through a park that could hide nothing from it
-   * (targetViewHeldThroughPark); after any other park, and after a revive, the target is looked at afresh, as on a new
-   * target (lookAtTargetAgain). `firstShellId`, the battle's next shell id at the
+   * the park, while the hull still lies on its way (a taken hull coasts on), and otherwise end with no verdict on them
+   * (resumeOwnLegs). The bot's view of its target (how long it has held still, how long its gun has been silent) is no
+   * record of the bot's but what it saw, and it saw nothing while parked: it carries on only through a park that could
+   * hide nothing from it (targetViewHeldThroughPark); after any other park, and after a revive, the target is looked at
+   * afresh, as on a new target (lookAtTargetAgain). `firstShellId`, the battle's next shell id at the
    * hand-back, marks the rounds that are this bot's again: the result of one fired before it (the watcher's, landing
    * after Leave) is not reported to the bot (notifyShellResult). `timeS`, the match clock at the hand-back, is also the
    * clock news handed over before the next tick reads. A brain never stepped (the battle opening's hand-off) has no
@@ -6985,19 +6996,25 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     missLastShotS += parkS;      // the miss streak's settle (missedOut)
   }
   /**
-   * The bot's own route legs at the hand-back (review round 2, U18). A search leg's list and a level route were planned
-   * from where the hull stood, and their clocks (the search leg's budget and a displaced leg's wait, the level route's
-   * deadline) time the bot's driving on them. Through a park that left the hull where it stood (within ARRIVE_DIST_M, the
-   * waypoint follower's own arrival radius) they hold, and those clocks move on by the park. After any other park, and
-   * after a revive (no park: the hull is a new one at its spawn), they end with no verdict: the level route's list is
-   * released and the elevation lock re-arms from the hull as it stands (ELEVATION_LOCK_S later), so no target is given up
-   * as unbearable on a deadline spent while the watcher drove or the hull lay dead; the search leg's own list is
-   * released, which displaces the leg (claimWaypoints), and its next leg is planned from here at the first tick back,
-   * counting no failed leg; a leg already displaced waits for the route in place from the hand-back.
+   * The bot's own route legs at the hand-back (review round 2, U18; round 3, A2). A search leg's list and a level route
+   * were planned from where the hull stood, and their clocks (the search leg's budget and a displaced leg's wait, the
+   * level route's deadline) time the bot's driving on them. The taken hull is not frozen: the watcher's zeroed input
+   * (takeWatchSeat) leaves it coasting on from speed, 6.5 m in half a second at 14 m/s, so the spot it was taken on is no
+   * test of where its leg went. Through a park that left the hull on its way (hullOnItsWay: the route from where it stood
+   * through the waypoints still ahead) the legs hold, the cursor past the waypoints it went by, and those clocks move on
+   * by the park. After any other park (the watcher drove it off its way), and after a revive (no park: the hull is a new
+   * one at its spawn), they end with no verdict: the level route's list is released and the elevation lock re-arms from
+   * the hull as it stands (ELEVATION_LOCK_S later), so no target is given up as unbearable on a deadline spent while the
+   * watcher drove or the hull lay dead; the search leg's own list is released, which displaces the leg (claimWaypoints),
+   * and its next leg is planned from here at the first tick back, counting no failed leg; a leg already displaced waits
+   * for the route in place from the hand-back. The elevation lock's dwell (how long the bot has seen its target on a level
+   * the gun cannot reach; 0 while a level route runs) counts the bot's own ticks like its record clocks: a park leaves it
+   * as it was, a revive starts it again (it was the last life's).
    */
   function resumeOwnLegs(parked: boolean, parkS: number): void {
-    const st = entity.state;
-    if (parked && detMath.hypot(st.pos.x - parkHullX, st.pos.z - parkHullZ) <= ARRIVE_DIST_M) {
+    if (!parked) elevationLockT = 0;
+    if (!levelRouting && !searching) return;
+    if (parked && hullOnItsWay()) {
       if (searching) {
         searchLegStartS += parkS;
         if (searchDisplacedAtS >= 0) searchDisplacedAtS += parkS;
@@ -7005,13 +7022,36 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
       if (levelRouting) levelRouteUntilS += parkS;
       return;
     }
-    elevationLockT = 0;
     if (levelRouting) endLevelRoute();
     if (searching) {
       if (searchDisplacedAtS < 0) claimWaypoints('none', loopWaypoints);
       searchDisplacedAtS = nowS;
       searchNextCheckS = nowS;
     }
+  }
+  /**
+   * The hull lies on its way at the hand-back (round 3, A2): within RESUME_ON_WAY_M of the route the park left it on, from
+   * where it stood (park()) through the waypoints still ahead of the cursor, or of that spot when none is. The cursor
+   * moves to the waypoint ahead of the hull: the earliest stretch the hull lies by, then on while the next lies no farther
+   * (so a route that doubles back past the hull is not skipped ahead). A hull the watcher drove off it is not on it.
+   * Allocation-free.
+   */
+  function hullOnItsWay(): boolean {
+    const x = entity.state.pos.x, z = entity.state.pos.z;
+    let fromX = parkHullX, fromZ = parkHullZ;
+    if (wpIndex >= waypoints.length) return detMath.hypot(x - fromX, z - fromZ) <= RESUME_ON_WAY_M;
+    let on = -1, nearest = Infinity;
+    for (let i = wpIndex; i < waypoints.length; i++) {
+      const to = waypoints[i];
+      const distance = segmentDistanceXZ(x, z, fromX, fromZ, to.x, to.z);
+      if (on < 0 ? distance <= RESUME_ON_WAY_M : distance <= nearest) { on = i; nearest = distance; }
+      else if (on >= 0) break;
+      fromX = to.x;
+      fromZ = to.z;
+    }
+    if (on < 0) return false;
+    wpIndex = on;
+    return true;
   }
   /**
    * The park could hide nothing from the bot's looks at its target (updateTargetActivity), so what it saw holds: the same

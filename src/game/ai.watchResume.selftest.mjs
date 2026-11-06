@@ -23,7 +23,15 @@
 // Review round 2: the bot's own route legs, planned from where the hull stood, outlived the hand-back on their own
 // clocks: a level route's deadline spent in the park gave its live target up as unbearable on the first tick back, and a
 // revive's dead stretch booked a failed search leg. [7] a level route and [8] a search leg hold, their clocks moved by the
-// park, only while the hull stands where it was parked; otherwise they end with no verdict and are planned from here.
+// park, while the hull lies on its way; otherwise they end with no verdict and are planned from here.
+// Round 3 (A2): the hold was keyed on the spot the hull was taken on (6 m), and the proofs never stepped the hull through
+// the park. The fixed step keeps stepping a taken hull, and the input Take leaves it (nobody at the keys) lets it coast on
+// from speed, past 6 m in half a second at route speed, so every Take and Leave of a moving bot ended its level route
+// and planned its search leg again (reproduced on 92f415e879: 0.5 s and 2 s toggles). The hold now reads the route from
+// that spot through the waypoints still ahead, and [7]-[9] take and give the hull back through Watch mode's own Take and
+// Leave with the hull stepped in between: 0.5 s and 2 s coasting toggles and a coasting in-place park keep the legs, the
+// watcher's drives off and a revive still end them, and [9] a displaced leg's wait moves with the park (a mutant without
+// that shift planned the search over a commander's point on the first tick back).
 import { Vector3 } from 'three';
 import '../vehicles/fleetFactory.ts';
 import { getSpec } from '../vehicles/specs.ts';
@@ -71,6 +79,29 @@ function battle() {
     }
   };
   return { game, seat, bot, enemy, step, brain: bot.aiCtl };
+}
+
+/**
+ * Watch mode's own Take and Leave of `entity` (driven by `ctl`) around a park in which `between(seconds)` steps the taken
+ * hull, as the fixed step keeps stepping a player's hull with the input Take left it (nobody at the keys: it coasts);
+ * `away` then moves it as a watcher's drive would. The session is the smallest watched battle: a human seat and this bot.
+ */
+function takeAndLeave(entity, ctl, clock, between, seconds, away) {
+  const seat = { id: 'watcher', team: entity.team, isPlayer: true, aiCtl: { park() {}, resume() {} },
+    input: { throttle: 0, steer: 0, brake: false, fire: false, actionBits: 0 }, combat: { destroyed: false } };
+  const game = { player: seat, tanks: [seat, entity], ruleset: { watch: { takeControl: true } }, watch: null, timeS: clock(), nextShellId: 1 };
+  prepareWatchSeat(game, seat);
+  openWatchSeats(game);
+  entity.aiCtl = ctl;
+  game.timeS = clock();
+  const speedAtTake = entity.state.speed, x0 = entity.state.pos.x, z0 = entity.state.pos.z;
+  if (!takeWatchSeat(game, entity)) throw new Error('setup: the watcher takes the bot');
+  between(seconds);
+  const coastM = Math.hypot(entity.state.pos.x - x0, entity.state.pos.z - z0);
+  away?.();
+  game.timeS = clock();
+  if (leaveWatchSeat(game) !== entity || entity.aiCtl !== ctl) throw new Error('setup: Leave hands the bot back');
+  return { speedAtTake, coastM };
 }
 
 console.log('[1] Leave hands the brain back: the stretch the watcher drove is no tick of the bot\'s');
@@ -366,25 +397,33 @@ async function deckScene() {
     return false;
   };
   const moveTo = (x, z) => { floor.state.pos.x = x; floor.state.pos.z = z; floor.state.pos.y = getHeightAt(x, z); floor.state.speed = 0; };
-  return { ctl, run, moveTo, clock: () => t, skip: (seconds) => { t += seconds; } };
+  // the taken hull: stepped on the input it has (the controller is parked and writes nothing)
+  const hull = (seconds) => {
+    for (let i = 0; i < Math.round(seconds / SIM_DT); i++) {
+      t += SIM_DT;
+      updateTank(floor, deckField, SIM_DT, null);
+    }
+  };
+  return { ctl, floor, run, moveTo, hull, clock: () => t, skip: (seconds) => { t += seconds; } };
 }
 
-console.log('[7] a level route ends with no verdict at a hand-back that finds the hull off the spot it was planned from');
+console.log('[7] a level route ends with no verdict at a hand-back that finds the hull off its way, and holds while it is on it');
 // Reproduced on dbdbfc2ad5 and 50197fdf43 (the review's probe): the route's deadline (its length at 5 m/s plus 25 s, on
 // match time) was neither moved by the park nor ended by resume(), so a park or a dead stretch past it gave the live
 // deck target up as unbearable for 75 s on the first tick back, and a hull handed back 270 m off drove the last route
-// on from there. The route now holds through a park that left the hull where it stood, its deadline moved by the park,
-// and otherwise ends with no verdict; the elevation lock re-arms from the hull as it stands, ELEVATION_LOCK_S later.
+// on from there. The route now holds through a park that left the hull on its way, its deadline moved by the park, and
+// otherwise ends with no verdict; the elevation lock re-arms from the hull as it stands, ELEVATION_LOCK_S later.
+// Round 3 (A2): the taken hull coasts on from route speed (14 m/s here); on 92f415e879 a 0.5 s toggle (6.5 m) and a 2 s
+// one (20 m) ended the route, and the next one came 6 s after Leave.
 {
   const handBack = async ({ parkS, far = false, revive = false }) => {
-    const { ctl, run, moveTo, clock, skip } = await deckScene();
+    const { ctl, floor, run, moveTo, hull, clock, skip } = await deckScene();
     const routing = run(30, (info) => info.levelRouting);
-    run(2);
+    run(4); // up to route speed
     const before = ctl.debugInfo();
-    if (!revive) ctl.park?.(clock()); // a revive's resume comes with no park (both drivers' revive hooks)
-    skip(parkS);
-    if (far) moveTo(-200, -150);
-    ctl.resume(clock());
+    let took = { speedAtTake: floor.state.speed, coastM: 0 };
+    if (revive) { skip(parkS); ctl.resume(clock()); } // a revive's resume comes with no park (both drivers' revive hooks)
+    else took = takeAndLeave(floor, ctl, clock, hull, parkS, far ? () => moveTo(-200, -150) : null);
     const back = ctl.debugInfo();
     const handBackS = clock();
     let oldRouteTicks = 0, nextRouteAfterS = null;
@@ -393,13 +432,14 @@ console.log('[7] a level route ends with no verdict at a hand-back that finds th
       if (info.levelRoutes > before.levelRoutes && nextRouteAfterS === null) nextRouteAfterS = clock() - handBackS;
       return false;
     });
-    return { routing, before, back, oldRouteTicks, nextRouteAfterS, after: ctl.debugInfo() };
+    return { routing, before, back, oldRouteTicks, nextRouteAfterS, after: ctl.debugInfo(), ...took };
   };
-  const label = (r) => `verdicts ${r.before.unbearableVerdicts} -> ${r.after.unbearableVerdicts}, levelRouting ${r.before.levelRouting} -> ${r.back.levelRouting}, owner ${r.back.routeOwner}`;
+  const label = (r) => `verdicts ${r.before.unbearableVerdicts} -> ${r.after.unbearableVerdicts}, levelRouting ${r.before.levelRouting} -> ${r.back.levelRouting}, owner ${r.back.routeOwner}, routes ${r.before.levelRoutes} -> ${r.after.levelRoutes}`;
+  const coasted = (r) => `taken at ${r.speedAtTake.toFixed(1)} m/s, coasted ${r.coastM.toFixed(1)} m`;
   const held = await handBack({ parkS: 200 });
   ok(held.routing && held.before.routeOwner === 'level', `the floor bot drives a level route to the deck (owner ${held.before.routeOwner})`);
   ok(held.after.unbearableVerdicts === held.before.unbearableVerdicts && held.back.levelRouting && held.oldRouteTicks > 400,
-    `a 200 s park with the hull where it stood: the route runs on, its deadline moved by the park (${label(held)}; ${(held.oldRouteTicks * SIM_DT).toFixed(1)} s driven after)`);
+    `a 200 s park with nobody at the keys: the route runs on, its deadline moved by the park (${coasted(held)}; ${label(held)}; ${(held.oldRouteTicks * SIM_DT).toFixed(1)} s driven after)`);
   for (const parkS of [200, 30]) {
     const far = await handBack({ parkS, far: true });
     ok(far.after.unbearableVerdicts === far.before.unbearableVerdicts && !far.back.levelRouting && far.back.routeOwner !== 'level'
@@ -412,40 +452,54 @@ console.log('[7] a level route ends with no verdict at a hand-back that finds th
     `a resume with no park (a revive) 200 s on: the last life's route ends with no verdict (${label(revived)})`);
   ok(revived.nextRouteAfterS !== null && revived.nextRouteAfterS >= 6 - 0.05,
     `and the lock re-arms from the hull as it stands: a new route ${revived.nextRouteAfterS === null ? 'never' : `${revived.nextRouteAfterS.toFixed(2)} s`} after the hand-back (ELEVATION_LOCK_S 6 s)`);
-  const toggled = await handBack({ parkS: 0.1 });
-  ok(toggled.after.unbearableVerdicts === toggled.before.unbearableVerdicts && toggled.back.levelRouting && toggled.oldRouteTicks > 400,
-    `a 0.1 s toggle: the route runs on (${label(toggled)})`);
+  for (const parkS of [0.1, 0.5, 2]) {
+    const toggled = await handBack({ parkS });
+    ok(toggled.after.unbearableVerdicts === toggled.before.unbearableVerdicts && toggled.back.levelRouting
+      && toggled.back.routeOwner === 'level' && toggled.after.levelRoutes === toggled.before.levelRoutes && toggled.oldRouteTicks > 400,
+      `a ${parkS} s Take and Leave of the bot on its route: the hull coasts on along it and the route runs on (${coasted(toggled)}; ${label(toggled)})`);
+  }
 }
 
-console.log('[8] a search leg planned where the hull stood is planned again from here at such a hand-back, counting no failure');
+console.log('[8] a search leg planned where the hull stood is planned again from here at a hand-back off its way, counting no failure');
 // Measured on dbdbfc2ad5: a revive 200 s after the leg began counted the dead stretch against the leg's budget, and the
 // first tick back booked a failed leg (searchFailures 0 -> 1); a hull handed back 200 m off drove the old leg's next
-// waypoint on from there (17.8 s). A park that left the hull where it stood keeps the leg, its budget moved by the park.
+// waypoint on from there (17.8 s). A park that left the hull on its way keeps the leg, its budget moved by the park.
+// Round 3 (A2): the taken hull coasts on at 18.6 m/s; on 92f415e879 a 0.5 s toggle (8.8 m), a 2 s one (30 m) and a 30 s
+// park with nobody at the keys each displaced the leg and planned another.
+function searchScene(hidden = true) {
+  const bot = tank('bot', 'alpha', 0, -450, 0, 'm1a1_abrams_hc');
+  const enemy = tank('enemy', 'bravo', 5, 150, 0, 'm1a1_abrams_hc'); // hidden, far: the 25 s search heads for its sector
+  const ctl = createAI(bot, { difficulty: 'normal', rng: mulberry32(9), doctrine: () => CLASSIC_BOT_DOCTRINE, deps: {
+    heightField: field, raycast: () => null, getEnemies: () => [enemy], getAllies: () => [], getObstacles: () => [],
+    spotting: { isSpotted: () => !hidden }, getObjective: () => null,
+  } });
+  let t = 1;
+  const run = (seconds, until) => {
+    for (let i = 0; i < Math.round(seconds / SIM_DT); i++) {
+      t += SIM_DT;
+      ctl.update(SIM_DT, t);
+      updateTank(bot, field, SIM_DT, null);
+      if (until && until(ctl.debugInfo())) return true;
+    }
+    return false;
+  };
+  const hull = (seconds) => {
+    for (let i = 0; i < Math.round(seconds / SIM_DT); i++) {
+      t += SIM_DT;
+      updateTank(bot, field, SIM_DT, null);
+    }
+  };
+  return { bot, ctl, run, hull, clock: () => t, skip: (seconds) => { t += seconds; } };
+}
 {
   const searchHandBack = ({ parkS, far = false, revive = false }) => {
-    const bot = tank('bot', 'alpha', 0, -450, 0, 'm1a1_abrams_hc');
-    const enemy = tank('enemy', 'bravo', 5, 150, 0, 'm1a1_abrams_hc'); // hidden, far: the 25 s search heads for its sector
-    const ctl = createAI(bot, { difficulty: 'normal', rng: mulberry32(9), doctrine: () => CLASSIC_BOT_DOCTRINE, deps: {
-      heightField: field, raycast: () => null, getEnemies: () => [enemy], getAllies: () => [], getObstacles: () => [],
-      spotting: { isSpotted: () => false }, getObjective: () => null,
-    } });
-    let t = 1;
-    const run = (seconds, until) => {
-      for (let i = 0; i < Math.round(seconds / SIM_DT); i++) {
-        t += SIM_DT;
-        ctl.update(SIM_DT, t);
-        updateTank(bot, field, SIM_DT, null);
-        if (until && until(ctl.debugInfo())) return true;
-      }
-      return false;
-    };
+    const { bot, ctl, run, hull, clock, skip } = searchScene();
     const searched = run(40, (info) => info.searching);
     run(10);
     const before = ctl.debugInfo();
-    if (!revive) ctl.park?.(t);
-    t += parkS;
-    if (far) { bot.state.pos.x += 200; bot.state.speed = 0; }
-    ctl.resume(t);
+    let took = { speedAtTake: bot.state.speed, coastM: 0 };
+    if (revive) { skip(parkS); ctl.resume(clock()); }
+    else took = takeAndLeave(bot, ctl, clock, hull, parkS, far ? () => { bot.state.pos.x += 200; bot.state.speed = 0; } : null);
     run(SIM_DT * 2);
     const first = ctl.debugInfo();
     let oldWaypointTicks = 0;
@@ -453,9 +507,10 @@ console.log('[8] a search leg planned where the hull stood is planned again from
       if (info.searchLegs === before.searchLegs && info.waypointX === before.waypointX && info.waypointZ === before.waypointZ) oldWaypointTicks++;
       return false;
     });
-    return { searched, before, first, oldWaypointTicks };
+    return { searched, before, first, oldWaypointTicks, ...took };
   };
-  const label = (r) => `failures ${r.before.searchFailures} -> ${r.first.searchFailures}, legs ${r.before.searchLegs} -> ${r.first.searchLegs}, leg age ${r.before.searchLegAgeS} -> ${r.first.searchLegAgeS} s`;
+  const label = (r) => `failures ${r.before.searchFailures} -> ${r.first.searchFailures}, legs ${r.before.searchLegs} -> ${r.first.searchLegs}, displaced ${r.before.searchLegsDisplaced} -> ${r.first.searchLegsDisplaced}, leg age ${r.before.searchLegAgeS} -> ${r.first.searchLegAgeS} s`;
+  const coasted = (r) => `taken at ${r.speedAtTake.toFixed(1)} m/s, coasted ${r.coastM.toFixed(1)} m`;
   const revived = searchHandBack({ parkS: 200, revive: true });
   ok(revived.searched && revived.before.routeOwner === 'search', `the bot searches (${revived.before.searchKind}, owner ${revived.before.routeOwner})`);
   ok(revived.first.searchFailures === revived.before.searchFailures && revived.first.searchLegs === revived.before.searchLegs + 1
@@ -465,9 +520,66 @@ console.log('[8] a search leg planned where the hull stood is planned again from
   ok(far.first.searchFailures === far.before.searchFailures && far.first.searchLegs === far.before.searchLegs + 1 && far.oldWaypointTicks === 0,
     `a 30 s park in which the watcher drove 200 m off: the old leg is not driven on from there (${label(far)}; ${(far.oldWaypointTicks * SIM_DT).toFixed(1)} s of it after)`);
   const held = searchHandBack({ parkS: 30 });
-  ok(held.first.searchLegs === held.before.searchLegs && Math.abs(held.first.searchLegAgeS - held.before.searchLegAgeS) < 0.1
-    && held.oldWaypointTicks > 300,
-    `a 30 s park with the hull where it stood: the leg runs on, its budget moved by the park (${label(held)})`);
+  ok(held.first.searchLegs === held.before.searchLegs && held.first.searchLegsDisplaced === held.before.searchLegsDisplaced
+    && Math.abs(held.first.searchLegAgeS - held.before.searchLegAgeS) < 0.1 && held.oldWaypointTicks > 300,
+    `a 30 s park with nobody at the keys: the leg runs on, its budget moved by the park (${coasted(held)}; ${label(held)})`);
+  for (const parkS of [0.5, 2]) {
+    const toggled = searchHandBack({ parkS });
+    ok(toggled.first.searchLegs === toggled.before.searchLegs && toggled.first.searchLegsDisplaced === toggled.before.searchLegsDisplaced
+      && toggled.first.searchFailures === toggled.before.searchFailures && toggled.oldWaypointTicks > 300,
+      `a ${parkS} s Take and Leave of the bot on its leg: the hull coasts on along it and the leg runs on (${coasted(toggled)}; ${label(toggled)})`);
+  }
+  // the cursor: taken just short of the leg's first waypoint, the hull coasts past it; handed back, it drives on to the
+  // next one, not back to the one behind it (a mutant that keeps the cursor turns round and drives back to 16 m of it)
+  {
+    const { bot, ctl, run, hull, clock } = searchScene();
+    run(40, (info) => info.searching);
+    const wp = () => ctl.debugInfo();
+    run(60, (info) => info.wpIndex === 0 && Math.hypot(info.waypointX - bot.state.pos.x, info.waypointZ - bot.state.pos.z) < 10);
+    const before = wp();
+    const passed = { x: before.waypointX, z: before.waypointZ };
+    const took = takeAndLeave(bot, ctl, clock, hull, 2, null);
+    const back = wp();
+    const behindAtLeave = Math.hypot(passed.x - bot.state.pos.x, passed.z - bot.state.pos.z);
+    let closest = behindAtLeave;
+    run(8, () => { closest = Math.min(closest, Math.hypot(passed.x - bot.state.pos.x, passed.z - bot.state.pos.z)); return false; });
+    ok(before.wpCount > 1 && back.searchLegs === before.searchLegs && back.wpIndex === before.wpIndex + 1 && closest >= behindAtLeave - 0.5,
+      `a 2 s Take and Leave over the leg's waypoint ${before.wpIndex} of ${before.wpCount}: the cursor moves past it and the hull drives on (${coasted(took)}; cursor ${before.wpIndex} -> ${back.wpIndex}, ${behindAtLeave.toFixed(1)} m past it at Leave, never nearer than ${closest.toFixed(1)} m after)`);
+  }
+}
+
+console.log('[9] a displaced search leg waits for the route that took it through a park: its wait moves with the park, or starts at Leave');
+// Review round 2's minor: the wait's shift through a park the hull stayed on its way (searchDisplacedAtS += parkS) had no
+// receipt. Without it, a park longer than what is left of SEARCH_DISPLACED_MAX_S (150 s) ends the wait on the first tick
+// back, and the next search leg writes over the commander's point (U16's own hazard; 137 m short on the review's mutant).
+// After a park off its way the wait starts again at Leave; either way the search plans again once the point is driven out.
+{
+  const displacedHandBack = ({ parkS, far = false }) => {
+    const { bot, ctl, run, hull, clock } = searchScene();
+    run(40, (info) => info.searching);
+    const leg = ctl.debugInfo();
+    const point = [bot.state.pos.x + 120, bot.state.pos.z + 90];
+    ctl.setWaypoints([point], { loop: false }); // a commander's point takes the leg's list
+    const taken = ctl.debugInfo();
+    run(5);
+    takeAndLeave(bot, ctl, clock, hull, parkS, far ? () => { bot.state.pos.x -= 200; bot.state.speed = 0; } : null);
+    run(SIM_DT * 2);
+    const first = ctl.debugInfo();
+    let replannedShortM = null;
+    run(120, (info) => {
+      if (info.searchLegs > leg.searchLegs) { replannedShortM = Math.hypot(bot.state.pos.x - point[0], bot.state.pos.z - point[1]); return true; }
+      return false;
+    });
+    return { leg, taken, first, replannedShortM, after: ctl.debugInfo() };
+  };
+  const label = (r) => `legs ${r.leg.searchLegs} -> ${r.after.searchLegs}, failures ${r.leg.searchFailures} -> ${r.after.searchFailures}, planned again ${r.replannedShortM === null ? 'never' : `${r.replannedShortM.toFixed(1)} m from the point`}`;
+  for (const [parkS, far] of [[200, false], [200, true]]) {
+    const r = displacedHandBack({ parkS, far });
+    ok(r.taken.routeOwner === 'destination' && r.taken.searchDisplaced, `setup: the commander's point displaces the ${r.leg.searchKind} leg (owner ${r.taken.routeOwner})`);
+    ok(r.first.searchLegs === r.leg.searchLegs && r.first.routeOwner === 'destination' && r.replannedShortM !== null && r.replannedShortM < 12
+      && r.after.searchFailures === r.leg.searchFailures,
+      `a ${parkS} s park ${far ? 'in which the watcher drove 200 m off' : 'with nobody at the keys'}: the search waits for the point and plans again only there, counting no failure (${label(r)})`);
+  }
 }
 
 if (failures) { console.error(`ai.watchResume.selftest: ${failures} failure(s)`); process.exit(1); }
