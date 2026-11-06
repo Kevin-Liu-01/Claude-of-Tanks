@@ -72,6 +72,8 @@ export const VEHICLE_ROLE_PROFILES: Readonly<Record<string, VehicleRoleProfile>>
   christian2: { doctrine: 'precision', viewM: 415, still: 0.250, moving: 0.150 },
   type10_dozer: { doctrine: 'assault', viewM: 410, still: 0.205, moving: 0.145 },
   m2a2_bradley: { doctrine: 'support', viewM: 435, still: 0.270, moving: 0.210 },
+  // 268: the M3A2, the M2A2's cavalry scout twin (the same turret sights and size): reconnaissance, like the M3A3
+  m3a2_bradley: { doctrine: 'recon', viewM: 435, still: 0.270, moving: 0.210 },
   bmp2: { doctrine: 'support', viewM: 420, still: 0.285, moving: 0.225 },
   spz_puma: { doctrine: 'support', viewM: 450, still: 0.269, moving: 0.209 },
   spz_wotan: { doctrine: 'support', viewM: 460, still: 0.257, moving: 0.197 },

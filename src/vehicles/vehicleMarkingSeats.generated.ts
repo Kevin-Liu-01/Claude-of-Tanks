@@ -55,6 +55,7 @@ import { VEHICLE_MARKING_SEATS as SEATS_LOARA } from './vehicleMarkingSeatGroups
 import { VEHICLE_MARKING_SEATS as SEATS_LRMVLYNX } from './vehicleMarkingSeatGroups/lrmvLynx.generated.ts';
 import { VEHICLE_MARKING_SEATS as SEATS_LVKV9040 } from './vehicleMarkingSeatGroups/lvkv9040.generated.ts';
 import { VEHICLE_MARKING_SEATS as SEATS_M163 } from './vehicleMarkingSeatGroups/m163.generated.ts';
+import { VEHICLE_MARKING_SEATS as SEATS_M3A2BRADLEY } from './vehicleMarkingSeatGroups/m3a2Bradley.generated.ts';
 import { VEHICLE_MARKING_SEATS as SEATS_M41 } from './vehicleMarkingSeatGroups/m41.generated.ts';
 import { VEHICLE_MARKING_SEATS as SEATS_M6LINEBACKER } from './vehicleMarkingSeatGroups/m6Linebacker.generated.ts';
 import { VEHICLE_MARKING_SEATS as SEATS_MARDER2 } from './vehicleMarkingSeatGroups/marder2.generated.ts';
@@ -156,6 +157,7 @@ export const VEHICLE_MARKING_SEATS: Readonly<Record<string, VehicleMarkingSeatRe
   SEATS_LRMVLYNX,
   SEATS_LVKV9040,
   SEATS_M163,
+  SEATS_M3A2BRADLEY,
   SEATS_M41,
   SEATS_M6LINEBACKER,
   SEATS_MARDER2,

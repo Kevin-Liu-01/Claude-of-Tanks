@@ -132,7 +132,7 @@ const FAMILY_RULES: ReadonlyArray<readonly [RegExp, TrackPatternId]> = Object.fr
   // 268: the GM-352 family (the Tunguska-M and the tracked Pantsir-S1) runs the eastern IFV track
   [/(?:bmp2|bmp3|bwp1|upior|bmpt|kurganets25|tunguska|pantsir)/, 'eastern-ifv'],
   // 269: the Lvkv 9040 runs its CV90 hull's track, the K30 Biho the K200 family's rubber-padded IFV track
-  [/(?:m6_linebacker|m2a2_bradley|m3a3_bradley|m2a3_bradley|spz_puma|marder1a3|cv90|lvkv9040|k30_biho)/, 'compact-ifv'],
+  [/(?:m6_linebacker|m2a2_bradley|m3a3_bradley|m3a2_bradley|m2a3_bradley|spz_puma|marder1a3|cv90|lvkv9040|k30_biho)/, 'compact-ifv'],
   [/(?:chieftain|challenger|centurion|vickers|fv510)/, 'british-rubber-pad'],
   [/(?:amx|leclerc|carro45t|ariete)/, 'franco-italian-modular'],
   // 262 (photographs, docs/references/tanks/type74.md and stb1.md "Hull"): the production Type 74 runs a double-pin track

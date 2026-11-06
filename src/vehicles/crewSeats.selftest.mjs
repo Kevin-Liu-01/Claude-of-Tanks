@@ -22,29 +22,35 @@ import { crewArmour, crewFallbackLadders, crewPostureLadders, crewShell, shapeSu
 // position grid); what remains is trimmed. Over 10 %: the gunners of five T-72/T-80-derived concept turrets
 // (type96_72_long, t72b3_qilin, type96_80_feng, t80u_yun, t72b3m_kunlun), whose race (0.84 m) is shared with the
 // carousel and breech: listed as data fixes (race or carousel sketch), not loosened here.
+// 2026-11-03 (268): the r15 KF51-U hull seats its driver untrimmed (was 1 mm).
+// 2026-11-05 (268 integration, MAIN-REDS item 5): the pin follows the regenerated fleet. It was taken in 9a5e1b8a0e
+// (266 crew-only regen) before the rebuilds integ/266 merged beside it (1bc0e2c1fc): the Merkava family 817c0f490c, M60
+// family afb54347a6, Longwei 0f4de03482, Centurion family e6892f8de2, Brazil line 55b96e2e8d, KF51 EVO front 29acc1ebba;
+// the 266 whole-fleet regen 7a86184b44 re-fitted every seat on them. So the Merkava 2B/2D/3 Baz/3C/4B commanders, the
+// M60A3 driver and the ZTZ-99 Longwei driver now fit untrimmed; the Olifant Mk 2 commander (6 mm) and the X1 Pioneiro
+// driver and radio operator (11, 9 mm) trim slightly. 268: the IFV head's KF51 rebuilds (kf51_evo 17 mm, kf51_u
+// untrimmed) and the Abrams/Bradley head's Ukrainian M2A3 (commander 61 mm, gunner 60 mm under the low Bradley turret;
+// pinned in 268 by Main's ruling, rechecked with the 269 Bradley follow-up). Read from the 268 regen f25c0e7960.
 const TRIMMED = Object.freeze({
   'm46_patton/driver': 0.016,
   'leclerc_xlr/driver': 0.013,
   't72b3m_hetman_ii/driver': 0.001,
   'leopard2_proto/driver': 0.002,
   'type96_72_long/gunner': 0.213,
-  'merkava2b/commander': 0.031,
   'type96_80_feng/gunner': 0.122,
-  'merkava2d/commander': 0.061,
-  'merkava4b/commander': 0.071,
-  'm60a3/driver': 0.005,
   'k2_black_panther/commander': 0.004,
   't80u_yun/gunner': 0.118,
   'type96_72m_lei/gunner': 0.06,
-  'kf51_evo/commander': 0.007,
+  'kf51_evo/commander': 0.017,
   'kf51_panther/commander': 0.035,
   't72b3m_kunlun/gunner': 0.109,
-  'kf51_u/commander': 0.062,
-  'merkava3c/commander': 0.05,
   'kf41_lynx/gunner': 0.047,
   't72b3_qilin/gunner': 0.206,
-  'ztz99_longwei/driver': 0.016,
-  'merkava3_baz/commander': 0.05,
+  'olifant_mk2/commander': 0.006,
+  'ua_m2a3_bradley/commander': 0.061,
+  'ua_m2a3_bradley/gunner': 0.06,
+  'x1_pioneiro/driver': 0.011,
+  'x1_pioneiro/radioOperator': 0.009,
 });
 
 assert.deepEqual(crewPostureLadders('leo2a6', 'leopard', 'driver', 'hull'), ['driverReclined']);

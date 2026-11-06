@@ -26,6 +26,13 @@ const PHOTO_REFERENCE_PACKETS=Object.freeze({
   'docs/references/photos/type90b-20261031.json':Object.freeze(['type90b']),
   'docs/references/photos/type10-tk-x-20261031.json':Object.freeze(['type10_tk_x']),
   'docs/references/photos/type10b-20261031.json':Object.freeze(['type10b']),
+  // 267 (Main 2026-10-28 and 2026-10-29, as the 2A4-era Leopards): the Eurosatory 2024 KF51 Panther EVO and KF51-U,
+  // rebuilt from photographs, their registered print (the 2022 demonstrator) unregistered
+  'docs/references/photos/kf51-evo-20261101.json':Object.freeze(['kf51_evo']),
+  'docs/references/photos/kf51-u-20261101.json':Object.freeze(['kf51_u']),
+  // 268 (owner 2026-11-02): the M3A2 Bradley, the shared Bradley hull under main's classic M2A2 turret (mirrored); the
+  // turret is kept as main built it, not measured to a model, so the id proves its packet
+  'docs/references/photos/m3a2-bradley-20261102.json':Object.freeze(['m3a2_bradley']),
   // 269 (Main 2026-11-02, the Australia line): the M113A1 FSV and MRV and the M113AS4 on the lane's M113 builder, the
   // Leopard AS1 on the Danish welded 1A3, both Abrams on the fleet's M1A1 and SEPv3 study and the AS21 Redback, each proved
   // by its photographs and published dimensions with no 3D model to follow

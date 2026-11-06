@@ -2,7 +2,7 @@
 
 > Generated from `TANK_SPECS` by `npm run tank:roster`. Do not maintain a second hand-written roster.
 
-Claude of Tanks currently retains **299 saved vehicle records**: **299 production-visible**, **0 local development models**, and **0 non-playable reference placeholders**. Production carousels, matchmaking, the Tank Gallery, and Scene Studio use the production projection.
+Claude of Tanks currently retains **301 saved vehicle records**: **301 production-visible**, **0 local development models**, and **0 non-playable reference placeholders**. Production carousels, matchmaking, the Tank Gallery, and Scene Studio use the production projection.
 
 To inspect every playable saved model locally, copy `.env.example` to `.env.local` and run the Vite development server. The `VITE_COT_DEV_FLEET_KEY` switch is accepted only when Vite reports `DEV=true`; it is ignored by production builds. Development-only entries display a blue `DEV` tag in vehicle pickers. `REF` records remain report-only because they are generic community placeholders, not first-party playable models.
 
@@ -284,29 +284,31 @@ To inspect every playable saved model locally, copy `.env.example` to `.env.loca
 | 274 | PROD | `amx10p_25` | AMX-10P 25 | France | IV | Cold War | Production |
 | 275 | PROD | `marder2` | Marder 2 | Germany | V | Modern | Production |
 | 276 | PROD | `m6_linebacker` | M6 Linebacker | USA | V | Modern | Production |
-| 277 | PROD | `t80u_zoria` | T-80U Zoria | Ukraine | VII | Modern | Production |
-| 278 | PROD | `t72b3m_hetman` | T-72B3M Hetman | Ukraine | VII | Modern | Production |
-| 279 | PROD | `t72b3m_hetman_ii` | T-72B3M Hetman II | Ukraine | VII | Modern | Production |
-| 280 | PROD | `t72b3_sich` | T-72B3 Sich | Ukraine | VII | Modern | Production |
-| 281 | PROD | `t80u_yun` | T-80U Yun | China | VII | Modern | Production |
-| 282 | PROD | `t72b3m_kunlun` | T-72B3M Kunlun | China | VII | Modern | Production |
-| 283 | PROD | `t72b3_qilin` | T-72B3 Qilin | China | VII | Modern | Production |
-| 284 | PROD | `t72b3m_xuanwu` | T-72B3M Xuanwu | China | VII | Modern | Production |
-| 285 | PROD | `t72b3_zhuque` | T-72B3 Zhuque | China | VII | Modern | Production |
-| 286 | PROD | `t80u_bars_m` | T-80U Bars-M | Russia | VIII | Modern | Production |
-| 287 | PROD | `t72b3m_bulat_m` | T-72B3M Bulat-M | Russia | VIII | Modern | Production |
-| 288 | PROD | `t72b3_bastion_m` | T-72B3 Bastion-M | Russia | VIII | Modern | Production |
-| 289 | PROD | `tunguska_m` | 2K22M Tunguska-M | Russia | V | Modern | Production |
-| 290 | PROD | `pantsir_s1` | Pantsir-S1 (tracked) | Russia | VI | Modern | Production |
-| 291 | PROD | `gepard_1a2` | Flakpanzer Gepard 1A2 | Germany | V | Modern | Production |
-| 292 | PROD | `pgz95` | PGZ-95 | China | V | Modern | Production |
-| 293 | PROD | `pgz09` | PGZ-09 | China | VI | Modern | Production |
-| 294 | PROD | `type87_aw` | Type 87 Self-Propelled Anti-Aircraft Gun | Japan | V | Cold War | Production |
-| 295 | PROD | `marksman_t55` | Marksman (T-55) | UK | V | Modern | Production |
-| 296 | PROD | `itpsv_leopard2` | ItPsv Leopard 2 (Leopard 2 Marksman) | UK | VI | Modern | Production |
-| 297 | PROD | `lvkv9040` | Lvkv 9040 | Sweden | V | Modern | Production |
-| 298 | PROD | `k30_biho` | K30 Biho | South Korea | V | Modern | Production |
-| 299 | PROD | `pza_loara` | PZA Loara | Poland | VI | Modern | Production |
+| 277 | PROD | `m3a2_bradley` | M3A2 Bradley | USA | II | Cold War | Production |
+| 278 | PROD | `t80u_zoria` | T-80U Zoria | Ukraine | VII | Modern | Production |
+| 279 | PROD | `t72b3m_hetman` | T-72B3M Hetman | Ukraine | VII | Modern | Production |
+| 280 | PROD | `t72b3m_hetman_ii` | T-72B3M Hetman II | Ukraine | VII | Modern | Production |
+| 281 | PROD | `t72b3_sich` | T-72B3 Sich | Ukraine | VII | Modern | Production |
+| 282 | PROD | `t80u_yun` | T-80U Yun | China | VII | Modern | Production |
+| 283 | PROD | `t72b3m_kunlun` | T-72B3M Kunlun | China | VII | Modern | Production |
+| 284 | PROD | `t72b3_qilin` | T-72B3 Qilin | China | VII | Modern | Production |
+| 285 | PROD | `t72b3m_xuanwu` | T-72B3M Xuanwu | China | VII | Modern | Production |
+| 286 | PROD | `t72b3_zhuque` | T-72B3 Zhuque | China | VII | Modern | Production |
+| 287 | PROD | `t80u_bars_m` | T-80U Bars-M | Russia | VIII | Modern | Production |
+| 288 | PROD | `t72b3m_bulat_m` | T-72B3M Bulat-M | Russia | VIII | Modern | Production |
+| 289 | PROD | `t72b3_bastion_m` | T-72B3 Bastion-M | Russia | VIII | Modern | Production |
+| 290 | PROD | `tunguska_m` | 2K22M Tunguska-M | Russia | V | Modern | Production |
+| 291 | PROD | `pantsir_s1` | Pantsir-S1 (tracked) | Russia | VI | Modern | Production |
+| 292 | PROD | `gepard_1a2` | Flakpanzer Gepard 1A2 | Germany | V | Modern | Production |
+| 293 | PROD | `pgz95` | PGZ-95 | China | V | Modern | Production |
+| 294 | PROD | `pgz09` | PGZ-09 | China | VI | Modern | Production |
+| 295 | PROD | `type87_aw` | Type 87 Self-Propelled Anti-Aircraft Gun | Japan | V | Cold War | Production |
+| 296 | PROD | `marksman_t55` | Marksman (T-55) | UK | V | Modern | Production |
+| 297 | PROD | `itpsv_leopard2` | ItPsv Leopard 2 (Leopard 2 Marksman) | UK | VI | Modern | Production |
+| 298 | PROD | `lvkv9040` | Lvkv 9040 | Sweden | V | Modern | Production |
+| 299 | PROD | `k30_biho` | K30 Biho | South Korea | V | Modern | Production |
+| 300 | PROD | `pza_loara` | PZA Loara | Poland | VI | Modern | Production |
+| 301 | PROD | `m163_vads` | M163 VADS | USA | IV | Cold War | Production |
 
 ## Policy ownership
 

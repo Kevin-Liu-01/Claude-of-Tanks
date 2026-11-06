@@ -1,3 +1,4 @@
+import type { CouchBattle } from './couchSeats.ts';
 import { teamNationsFlags } from '../sim/teamNations.ts';
 import { checkedIntegrationPort } from '../app/checkedIntegrationPort.ts';
 import type { MainFxRuntime } from '../app/mainContracts.ts';
@@ -129,6 +130,7 @@ export interface SoloBattleLoadingRuntimeOptions {
       gameMode?: string;
       campaignOperationId?: string | null;
       watch?: boolean;
+      couch?: CouchBattle;
     },
   ): void;
   prepareBattleWorldServices(world: WorldRuntime): void;
@@ -187,6 +189,8 @@ export interface SoloBattleLoadingStartOptions {
   campaignOperationId?: string | null;
   /** Watch mode (sim/matchRuleset.ts WATCH_RULES): every seat a bot's. */
   watch?: boolean;
+  /** Couch mode (sim/matchRuleset.ts COUCH_RULES): the phones' seats and sides. */
+  couch?: CouchBattle;
 }
 
 /** The load screen's mode chip: the mode alone, or the campaign operation's title (battleLoad.ts battleLoadModeLabel);
@@ -369,7 +373,7 @@ export function createSoloBattleLoadingRuntime(
   const host = globalThis as LoadingHost;
 
   return {
-    async begin(specId, mapId = null, { randomRoster = true, gameMode = 'standard', campaignOperationId = null, watch = false } = {}) {
+    async begin(specId, mapId = null, { randomRoster = true, gameMode = 'standard', campaignOperationId = null, watch = false, couch } = {}) {
       // Debug/API entry can bypass the Garage's ui:battleStart event.
       post.setAdaptiveSuspended(true);
       const shownAt = now();
@@ -526,6 +530,7 @@ export function createSoloBattleLoadingRuntime(
         ...(normalizedGameMode === 'standard' ? {} : { gameMode: normalizedGameMode }),
         ...(campaignOperationId ? { campaignOperationId } : {}),
         ...(watch ? { watch } : {}),
+        ...(couch ? { couch } : {}),
       });
       battleLoad.progress(0.565, 'Drawing tactical map');
       prepareBattleWorldServices(getWorld());

@@ -331,6 +331,10 @@ const LABEL_OVERRIDES: Readonly<Record<string, TankLabelOverride>> = Object.free
     displayName: 'M163 VADS', shortName: 'M163',
     searchAliases: ['M163', 'M163A1', 'VADS', 'Vulcan Air Defense System', 'M163 Vulcan', 'M741', 'M168 Vulcan', 'Vulcan SPAAG'],
   },
+  m3a2_bradley: {
+    displayName: 'M3A2 Bradley', shortName: 'M3A2 Bradley',
+    searchAliases: ['M3A2 ODS', 'M3A2 Cavalry Fighting Vehicle', 'Bradley CFV'],
+  },
   marder2: {displayName:'Marder 2',shortName:'Marder 2',searchAliases:['Marder 2 VT 001','TS503']},
   spz_wotan: {
     displayName: 'SPz Wotan', shortName: 'SPz Wotan',

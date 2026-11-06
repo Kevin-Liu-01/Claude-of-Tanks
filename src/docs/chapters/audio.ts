@@ -58,6 +58,7 @@ function delays(): string {
 /** The crew languages, each with its nation's flag and its name in the reader's locale. */
 const LANGUAGE_FLAGS: Readonly<Record<string, string>> = {
   'en-US': 'us', 'en-GB': 'gb', de: 'de', ru: 'ru', uk: 'ua', zh: 'cn', fr: 'fr', sv: 'se', ja: 'jp', ko: 'kr', it: 'it', pl: 'pl', he: 'il',
+  da: 'dk', 'pt-BR': 'br', 'en-AU': 'au', af: 'za',
 };
 function languages(): string {
   const names = new Intl.DisplayNames([getLocale()], { type: 'language' });

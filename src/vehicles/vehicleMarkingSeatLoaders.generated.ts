@@ -59,6 +59,7 @@ export const VEHICLE_MARKING_SEAT_GROUP_LOADERS: Readonly<Record<string, () => P
   "lrmvLynx": () => import('./vehicleMarkingSeatGroups/lrmvLynx.generated.ts'),
   "lvkv9040": () => import('./vehicleMarkingSeatGroups/lvkv9040.generated.ts'),
   "m163": () => import('./vehicleMarkingSeatGroups/m163.generated.ts'),
+  "m3a2Bradley": () => import('./vehicleMarkingSeatGroups/m3a2Bradley.generated.ts'),
   "m41": () => import('./vehicleMarkingSeatGroups/m41.generated.ts'),
   "m6Linebacker": () => import('./vehicleMarkingSeatGroups/m6Linebacker.generated.ts'),
   "marder2": () => import('./vehicleMarkingSeatGroups/marder2.generated.ts'),

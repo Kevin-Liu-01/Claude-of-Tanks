@@ -23,7 +23,8 @@ interface Ports {
   visible?(entity:AuxiliaryVisualEntity):boolean;
   time(): number;
   report(id:string,position:THREE.Vector3,caliber:number):void;
-  flash(position: THREE.Vector3, direction: THREE.Vector3, caliber: number): void;
+  /** `id`: the mounting vehicle, whose motion the flash's bright parts leave with (EFFECT_ATTACHMENT_POLICY.muzzleFlash) */
+  flash(position: THREE.Vector3, direction: THREE.Vector3, caliber: number, id?: string): void;
   /** `wind`: a screen's drift (m/s, world xz: its own, sim/smokeScreen.ts), or none for a launch's or a trail's puff */
   smoke(position: THREE.Vector3, scale: number, density?:number, life?:number, wind?:{ x: number; z: number } | null): void;
   ground(x:number,z:number): number;
@@ -373,7 +374,7 @@ export function createAuxiliaryPresentation(parent: THREE.Group, ports: Ports) {
       if(actor.weapon){position.sub(actor.restWeapon);actor.weapon.localToWorld(position);}
       else actor.gun.localToWorld(position);
       direction.set(0,0,1).applyQuaternion((actor.weapon??actor.gun).getWorldQuaternion(q));
-      ports.flash(position,direction,actor.caliberMm);ports.report(entity.id,position,actor.caliberMm);
+      ports.flash(position,direction,actor.caliberMm,entity.id);ports.report(entity.id,position,actor.caliberMm);
       position.addScaledVector(direction,-Math.max(.3,actor.muzzle.z-.2));eject(position,direction);actor.recoil=1;
     }
   }

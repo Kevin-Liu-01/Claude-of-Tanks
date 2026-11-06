@@ -227,6 +227,10 @@ const digest = createHash('sha256').update(JSON.stringify(TECH_TREES)).digest('h
 // line (the 2K22M Tunguska-M at V off the BMP-3, lane 14 under the BMPTs, the tracked Pantsir-S1 at VI after it); the
 // Flakpanzer Gepard 1A2 at V on Germany's Leopard 1 row after the MBT-70 (lane 5); China's PGZ-95 and PGZ-09 line (the
 // PGZ-95 at V off the AFT-10, lane 4, the PGZ-09 at VI after it).
+// 2026-11-02 re-pin (268, lane abrams-bradley-268, the owner's ask): the M3A2 Bradley at II beside the M2A2 on the
+// Bradley line (lane 10, off the M2A2); the T49 one lane down to 11 so that connector runs clear.
+// 268 integration (2026-11-04): both 268 trees together, the twin-cannon air defence's lanes and the M3A2 on the
+// Bradley line; neither moves the other's nodes (Russia/Germany/China vs USA).
 // 269 (the second air-defence round; tiers by capability on the coordinator's suggestion): the Type 87 SPAAG at V on
 // Japan's STB-1 to Type 10 line off the Type 74 (lane 1); the UK's new Marksman line off the Chieftain Mk 10 on lane 5,
 // the Marksman (T-55) at V and the ItPsv Leopard 2 at VI after it; the Lvkv 9040 at V straight on from Sweden's CV90
@@ -241,5 +245,6 @@ const digest = createHash('sha256').update(JSON.stringify(TECH_TREES)).digest('h
 // 269 re-pin (item/aa269-m163, the merge of m113-hull-269 e1a98b884c into the air-defence lane): both sides' trees together.
 // (Pinned dbd5beb9c49a31f9 at the merge.) 269 re-pin (the owner, 2026-11-04: "also add the m163 VADS"): the M163 VADS in
 // the US tree's special lane at IV, after the M113A3 on its lane 1.
-assert.equal(digest, 'fe18bdaefade0e19', `tree content changed: re-pin to ${digest} if deliberate`);
+// 269 merge of main 2fda70a158 (release 268) into the air-defence lane: both sides' trees together.
+assert.equal(digest, 'fb9ea6706c0a1fe6', `tree content changed: re-pin to ${digest} if deliberate`);
 console.log(`techTree: ${TECH_TREES.length} trees, ${drawn.length} vehicles, pin ${digest}`);

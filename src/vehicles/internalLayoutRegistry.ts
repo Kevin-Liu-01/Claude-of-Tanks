@@ -483,6 +483,11 @@ const LAYOUTS = Object.freeze({
     ['driver', 'hull', 'frontLeft'], ['gunner', 'hull', 'frontCenter'], ['commander', 'hull', 'frontRight'],
   ), systems: systems({ optics: { placement: 'turretPerimeter', form: 'distributedElectroOpticalSuite' }, ammoRack: { placement: 'hull', form: 'isolatedCarousel' }, autoloader: { placement: 'hull', form: 'unmannedTurretCarousel' } }) },
   kf51_evo: { confidence: 'documented', sources: ['rheinmetallKf51'], crew: THREE_MAN_AUTO, systems: systems({ ammoRack: { placement: 'turret', form: 'bustleMagazine' }, autoloader: { placement: 'turret', form: 'bustleConveyor' } }) },
+  // 268: the Eurosatory 2024 KF51-U carries its uncrewed turret over three crew side by side in the hull front, under the
+  // three hull hatches its model draws (leopard.ts kf51uCrewStationsReceipt), the AbramsX arrangement
+  kf51U: { confidence: 'published-demonstrator', sources: ['rheinmetallKf51'], crew: crew(
+    ['gunner', 'hull', 'frontLeft'], ['driver', 'hull', 'frontCenter'], ['commander', 'hull', 'frontRight'],
+  ), systems: systems({ ammoRack: { placement: 'turret', form: 'bustleMagazine' }, autoloader: { placement: 'turret', form: 'bustleConveyor' } }) },
   abramsX: { confidence: 'published-demonstrator', sources: ['gdAbramsX', 'armyNgmbt'], crew: crew(
     ['gunner', 'hull', 'frontLeft'], ['driver', 'hull', 'frontCenter'], ['commander', 'hull', 'frontRight'],
   ), systems: systems({ engine: { placement: 'rear', form: 'hybridDieselPowerpack' }, ammoRack: { placement: 'turret', form: 'blowOffBustleRack' }, autoloader: { placement: 'turret', form: 'bustleConveyor' } }) },
@@ -678,10 +683,11 @@ const IDS_BY_LAYOUT = Object.freeze({
   stb1ModelSides: ['stb1'],
   sheridan: ['m551_sheridan', 'm551a1_tts'],
   armata: ['object148_proto', 't14_armata'],
-  kf51_evo: ['kf51_evo', 'kf51_u', 'kf51_panther'],
+  kf51_evo: ['kf51_evo', 'kf51_panther'],
+  kf51U: ['kf51_u'],
   abramsX: ['abramsx'],
   m1a3: ['m1a3'],
-  bradley: ['m2a2_bradley', 'ua_m2a3_bradley', 'm3a3_bradley'],
+  bradley: ['m2a2_bradley', 'ua_m2a3_bradley', 'm3a3_bradley', 'm3a2_bradley'],
   linebacker: ['m6_linebacker'],
   amx10p: ['amx10p'],
   amx10pDragar: ['amx10p_25'],

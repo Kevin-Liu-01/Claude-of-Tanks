@@ -348,9 +348,13 @@ const AFV_FAMILY_SPECS: Record<string, FleetTankSpec> = {
       silhouetteHullLengthM: 6.71, silhouetteOverallLengthM: 6.70,
       silhouetteWidthM: 3.61, silhouetteHeightM: 3.05 },
     armor: ifvArmor({
-      hl: 3.27, hw: 1.64, inW: 0.95, floor: 0.45, trkTop: 0.95, roofY: 1.90,
-      turretPivot: [0.04, 1.895, -0.36], gunPivot: [-0.06, 0.392, 0.78],
-      barrelLenM: 2.30, barrelRadM: 0.038,
+      // 268: the shared hull measured from the owner's source (modern3.ts BRADLEY_HULL): hw 1.64 -> 1.70, trkTop 0.95 ->
+      // 1.16, roofY 1.90 -> 2.06; the A3 ring on the M2's datum (profiles/bradleyScoutTurretShell.ts
+      // BRADLEY_SCOUT_TURRET_PIVOT, was [0.04, 1.895, -0.36]); the M242 to the M2's muzzle at world z 2.37 (barrelLenM
+      // 2.30 -> 1.99, the drawn tube 2.42 -> 1.99).
+      hl: 3.27, hw: 1.70, inW: 0.95, floor: 0.45, trkTop: 1.16, roofY: 2.06,
+      turretPivot: [-0.14, 2.06, -0.40], gunPivot: [-0.06, 0.392, 0.78],
+      barrelLenM: 1.99, barrelRadM: 0.038,
       glacis: [45, 70, 80], lower: [45, 60, 60], side: [35, 40, 45],
       skirt: [25, 35, 70], rear: 25, roof: 20,
       tw: 0.85, tFrontZ: 1.00, tRearZ: -1.10, tH: 0.90,
