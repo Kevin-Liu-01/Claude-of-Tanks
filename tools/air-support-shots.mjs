@@ -147,7 +147,9 @@ async function measureMarks(page, tag) {
 let server = null;
 await runWarmHold({
   label: 'air-support-270',
-  place: 'air-support-270-shots',
+  place: `air-support-270-shots-${only ?? 'all'}`,
+  // a battle page frozen in the queue is checked (and re-warmed if it reloaded) only past this
+  maxFrozenMinutes: 90,
   warm: async () => {
     server = await createServer(mapProbeServerOptions(root, path.join(root, '.qa-dev/vite-air-support')));
     await server.listen();
@@ -185,5 +187,5 @@ await runWarmHold({
     }
   },
 });
-writeFileSync(path.join(out, 'air-support-shots.json'), `${JSON.stringify(receipt, null, 2)}\n`);
+writeFileSync(path.join(out, `air-support-shots${only ? `-${only}` : ''}.json`), `${JSON.stringify(receipt, null, 2)}\n`);
 console.log(JSON.stringify({ shots: receipt.shots.length, calls: receipt.calls, perf: receipt.perf, errors: Object.fromEntries(Object.entries(receipt.errors).map(([k, v]) => [k, v.length])) }));

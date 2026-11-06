@@ -13926,6 +13926,598 @@
         "Ons word oorrompel.",
         "Oorrompel. Trek terug."
       ]
+    },
+    {
+      "id": "start_air_support",
+      "role": "commander",
+      "delivery": "steady, firm, over engine noise",
+      "context": "Air Support: the battle begins; we take and hold the sectors, and our points call in recon, artillery and air strikes.",
+      "en-US": [
+        "Take the sectors. Air support standing by.",
+        "Seize the points. We have air on call."
+      ],
+      "en-GB": [
+        "Take the objectives. Air on call.",
+        "Seize the positions. Air support standing by."
+      ],
+      "de": [
+        "Räume nehmen. Luftunterstützung abrufbereit.",
+        "Angriffsziele nehmen. Luftnahunterstützung steht bereit."
+      ],
+      "ru": [
+        "Взять объекты. Авиация в готовности.",
+        "Захватить позиции. Поддержка с воздуха готова."
+      ],
+      "uk": [
+        "Взяти об'єкти. Авіація в готовності.",
+        "Захопити позиції. Підтримка з повітря готова."
+      ],
+      "zh": [
+        "夺取要点，空中支援待命。",
+        "占领要点，空援随时可以呼叫。"
+      ],
+      "fr": [
+        "Prenez les objectifs. Appui aérien disponible.",
+        "Emparez-vous des points. Appui aérien en alerte."
+      ],
+      "sv": [
+        "Ta objekten. Flygunderstöd i beredskap.",
+        "Inta punkterna. Flyg finns att begära."
+      ],
+      "ja": [
+        "目標を奪取。航空支援、待機中。",
+        "拠点を押さえろ。航空支援、要請可能。"
+      ],
+      "ko": [
+        "목표 탈취. 항공 지원 대기 중.",
+        "거점 확보. 항공 지원 요청 가능."
+      ],
+      "it": [
+        "Prendete gli obiettivi. Supporto aereo disponibile.",
+        "Conquistate i punti. Supporto aereo in attesa."
+      ],
+      "pl": [
+        "Zająć obiekty. Wsparcie lotnicze w gotowości.",
+        "Opanować punkty. Lotnictwo na wezwanie."
+      ],
+      "he": [
+        "לכבוש את היעדים. סיוע אווירי בכוננות.",
+        "לתפוס את הנקודות. סיוע אווירי זמין."
+      ],
+      "da": [
+        "Tag objektiverne. Luftstøtte er klar.",
+        "Indtag punkterne. Luftstøtte på kald."
+      ],
+      "pt-BR": [
+        "Tomem os objetivos. Apoio aéreo à disposição.",
+        "Conquistem os pontos. Apoio aéreo em alerta."
+      ],
+      "en-AU": [
+        "Take the objectives. Air support standing by.",
+        "Seize the points. Air on call."
+      ],
+      "af": [
+        "Neem die doelwitte. Lugsteun staan gereed.",
+        "Beset die posisies. Lugsteun is beskikbaar."
+      ]
+    },
+    {
+      "id": "air_call_recon",
+      "role": "commander",
+      "delivery": "calm, clipped, radio procedure",
+      "context": "Air Support: our crew calls a recon jet's photo pass over the area it marked; every enemy along the pass is revealed.",
+      "en-US": [
+        "Requesting recon pass. Area marked.",
+        "Recon pass, on my mark."
+      ],
+      "en-GB": [
+        "Request recce pass, area marked.",
+        "Recce pass on my mark."
+      ],
+      "de": [
+        "Aufklärungsüberflug angefordert.",
+        "Aufklärer auf meine Markierung."
+      ],
+      "ru": [
+        "Запрашиваю разведку с воздуха.",
+        "Разведчик, по моей метке."
+      ],
+      "uk": [
+        "Запитую повітряну розвідку.",
+        "Розвідник, по моїй мітці."
+      ],
+      "zh": [
+        "请求侦察飞越，区域已标定。",
+        "侦察机，按我的标记。"
+      ],
+      "fr": [
+        "Demande passage de reconnaissance.",
+        "Reconnaissance aérienne sur mon marquage."
+      ],
+      "sv": [
+        "Begär spaningsöverflygning.",
+        "Spaning, på min markering."
+      ],
+      "ja": [
+        "偵察飛行を要請。地域標示済み。",
+        "偵察機、標示地点へ。"
+      ],
+      "ko": [
+        "정찰 비행 요청. 지역 표시 완료.",
+        "정찰기, 표시 지점으로."
+      ],
+      "it": [
+        "Richiedo passaggio di ricognizione.",
+        "Ricognizione sul mio segnale."
+      ],
+      "pl": [
+        "Żądam przelotu rozpoznawczego.",
+        "Rozpoznanie, na mój znacznik."
+      ],
+      "he": [
+        "מבקש גיחת סיור. האזור מסומן.",
+        "סיור אווירי על הסימון שלי."
+      ],
+      "da": [
+        "Anmoder om rekognoscering fra luften.",
+        "Rekognoscering, på min markering."
+      ],
+      "pt-BR": [
+        "Solicito passagem de reconhecimento.",
+        "Reconhecimento na minha marca."
+      ],
+      "en-AU": [
+        "Request recon pass, area marked.",
+        "Recon pass on my mark."
+      ],
+      "af": [
+        "Versoek verkenningsvlug.",
+        "Verkenning, op my merk."
+      ]
+    },
+    {
+      "id": "air_call_artillery",
+      "role": "commander",
+      "delivery": "calm, clipped, radio procedure",
+      "context": "Air Support: our crew calls a 155 mm artillery barrage, ten rounds, onto the area it marked.",
+      "en-US": [
+        "Fire mission. Ten rounds, on my mark.",
+        "Requesting artillery. Target marked."
+      ],
+      "en-GB": [
+        "Fire mission, ten rounds, marked.",
+        "Request artillery, target marked."
+      ],
+      "de": [
+        "Feuerauftrag. Zehn Schuss auf Markierung.",
+        "Artillerie angefordert, Ziel markiert."
+      ],
+      "ru": [
+        "Огневая задача. Десять снарядов по метке.",
+        "Запрашиваю огонь артиллерии, цель отмечена."
+      ],
+      "uk": [
+        "Вогнева задача. Десять снарядів по мітці.",
+        "Запитую вогонь артилерії, ціль позначено."
+      ],
+      "zh": [
+        "火力任务，十发，按标记。",
+        "请求炮火支援，目标已标定。"
+      ],
+      "fr": [
+        "Mission de tir, dix coups sur mon marquage.",
+        "Demande d'appui feu, objectif marqué."
+      ],
+      "sv": [
+        "Eldorder. Tio skott på markeringen.",
+        "Begär artillerield, målet markerat."
+      ],
+      "ja": [
+        "射撃任務。十発、標示地点へ。",
+        "砲兵射撃を要請。目標標示済み。"
+      ],
+      "ko": [
+        "사격 임무. 열 발, 표시 지점.",
+        "포병 사격 요청. 목표 표시 완료."
+      ],
+      "it": [
+        "Missione di fuoco, dieci colpi sul segnale.",
+        "Richiedo artiglieria, obiettivo marcato."
+      ],
+      "pl": [
+        "Zadanie ogniowe. Dziesięć pocisków w znacznik.",
+        "Żądam ognia artylerii, cel oznaczony."
+      ],
+      "he": [
+        "משימת אש. עשרה פגזים על הסימון.",
+        "מבקש ארטילריה, המטרה מסומנת."
+      ],
+      "da": [
+        "Ildordre. Ti skud på markeringen.",
+        "Anmoder om artilleri, målet er markeret."
+      ],
+      "pt-BR": [
+        "Missão de tiro, dez disparos na marca.",
+        "Solicito artilharia, alvo marcado."
+      ],
+      "en-AU": [
+        "Fire mission, ten rounds, marked.",
+        "Request artillery, target marked."
+      ],
+      "af": [
+        "Vuuropdrag. Tien rondtes op die merk.",
+        "Versoek artillerie, teiken gemerk."
+      ]
+    },
+    {
+      "id": "air_call_strafe",
+      "role": "commander",
+      "delivery": "calm, clipped, radio procedure",
+      "context": "Air Support: our crew calls an A-10 attack jet's 30 mm gun run down a lane onto the mark.",
+      "en-US": [
+        "Requesting gun run, on my mark.",
+        "Gun run, target marked."
+      ],
+      "en-GB": [
+        "Request gun run, marked.",
+        "Gun run on my mark."
+      ],
+      "de": [
+        "Bordkanonenangriff angefordert.",
+        "Tiefangriff auf meine Markierung."
+      ],
+      "ru": [
+        "Запрашиваю штурмовку по метке.",
+        "Штурмовик, огонь из пушки по метке."
+      ],
+      "uk": [
+        "Запитую штурмовку по мітці.",
+        "Штурмовик, вогонь з гармати по мітці."
+      ],
+      "zh": [
+        "请求机炮扫射，按标记。",
+        "机炮扫射，目标已标定。"
+      ],
+      "fr": [
+        "Demande un mitraillage sur mon marquage.",
+        "Passe canon, objectif marqué."
+      ],
+      "sv": [
+        "Begär kanonanfall, på min markering.",
+        "Attackflyg, kanonanfall på markeringen."
+      ],
+      "ja": [
+        "機銃掃射を要請、標示地点へ。",
+        "機銃掃射、目標標示済み。"
+      ],
+      "ko": [
+        "기총 소사 요청, 표시 지점.",
+        "기총 소사, 목표 표시 완료."
+      ],
+      "it": [
+        "Richiedo mitragliamento sul segnale.",
+        "Passaggio col cannone, obiettivo marcato."
+      ],
+      "pl": [
+        "Żądam ostrzału z działka na znacznik.",
+        "Szturmowiec, ogień z działka w znacznik."
+      ],
+      "he": [
+        "מבקש גיחת תותח על הסימון.",
+        "ירי תותח מהאוויר, המטרה מסומנת."
+      ],
+      "da": [
+        "Anmoder om kanonangreb, på min markering.",
+        "Kanonangreb fra luften, målet er markeret."
+      ],
+      "pt-BR": [
+        "Solicito metralhamento na marca.",
+        "Passagem de canhão, alvo marcado."
+      ],
+      "en-AU": [
+        "Request gun run, marked.",
+        "Gun run on my mark."
+      ],
+      "af": [
+        "Versoek kanonaanval op my merk.",
+        "Kanonaanval uit die lug, teiken gemerk."
+      ]
+    },
+    {
+      "id": "air_call_bomb",
+      "role": "commander",
+      "delivery": "calm, clipped, radio procedure",
+      "context": "Air Support: our crew lases the mark and calls a laser-guided 500 lb bomb onto it.",
+      "en-US": [
+        "Lasing. Requesting bomb on target.",
+        "Target marked. Send the bomb."
+      ],
+      "en-GB": [
+        "Laser on. Request bomb on target.",
+        "Target marked, bomb requested."
+      ],
+      "de": [
+        "Laser an. Bombe auf Ziel angefordert.",
+        "Ziel markiert, Bombe angefordert."
+      ],
+      "ru": [
+        "Подсвечиваю. Запрашиваю бомбу по цели.",
+        "Цель отмечена. Бомбу по метке."
+      ],
+      "uk": [
+        "Підсвічую. Запитую бомбу по цілі.",
+        "Ціль позначено. Бомбу по мітці."
+      ],
+      "zh": [
+        "激光照射中，请求投弹。",
+        "目标已标定，请求炸弹。"
+      ],
+      "fr": [
+        "Désignation laser. Demande bombe sur l'objectif.",
+        "Objectif marqué, demande de largage."
+      ],
+      "sv": [
+        "Laser på. Begär bomb på målet.",
+        "Målet markerat. Begär bomb."
+      ],
+      "ja": [
+        "レーザー照射中。爆撃を要請。",
+        "目標標示。爆弾を要請。"
+      ],
+      "ko": [
+        "레이저 조사 중. 폭격 요청.",
+        "목표 표시 완료. 폭탄 투하 요청."
+      ],
+      "it": [
+        "Laser acceso. Richiedo bomba sull'obiettivo.",
+        "Obiettivo marcato, richiedo sgancio."
+      ],
+      "pl": [
+        "Podświetlam. Żądam bomby na cel.",
+        "Cel oznaczony. Żądam zrzutu bomby."
+      ],
+      "he": [
+        "לייזר על המטרה. מבקש פצצה.",
+        "המטרה מסומנת. מבקש הטלה."
+      ],
+      "da": [
+        "Laser på. Anmoder om bombe på målet.",
+        "Målet er markeret. Anmoder om bombe."
+      ],
+      "pt-BR": [
+        "Iluminando. Solicito bomba no alvo.",
+        "Alvo marcado. Solicito lançamento."
+      ],
+      "en-AU": [
+        "Laser on. Request bomb on target.",
+        "Target marked, bomb requested."
+      ],
+      "af": [
+        "Laser aan. Versoek bom op die teiken.",
+        "Teiken gemerk. Versoek bom."
+      ]
+    },
+    {
+      "id": "air_incoming",
+      "role": "commander",
+      "delivery": "urgent, controlled, loud",
+      "context": "Air Support: an enemy air strike (a gun run, a bomb or a gunship's orbit) is called onto our tank's position; we must get clear before it lands.",
+      "en-US": [
+        "Air strike on us! Move, move!",
+        "Enemy aircraft inbound, get clear!"
+      ],
+      "en-GB": [
+        "Air strike on us, move now!",
+        "Enemy air inbound, get clear!"
+      ],
+      "de": [
+        "Luftangriff auf uns! Weg hier!",
+        "Feindflugzeug im Anflug, raus da!"
+      ],
+      "ru": [
+        "Авиаудар по нам! Уходим!",
+        "Вражеская авиация на нас, уходим!"
+      ],
+      "uk": [
+        "Авіаудар по нас! Відходимо!",
+        "Ворожа авіація на нас, відходимо!"
+      ],
+      "zh": [
+        "空袭来了！快撤！",
+        "敌机来袭，快离开！"
+      ],
+      "fr": [
+        "Frappe aérienne sur nous ! Dégagez !",
+        "Avion ennemi en approche, dégagez !"
+      ],
+      "sv": [
+        "Flyganfall mot oss! Iväg!",
+        "Fientligt flyg inkommande, kör!"
+      ],
+      "ja": [
+        "空爆が来る！退避！",
+        "敵機接近、離脱しろ！"
+      ],
+      "ko": [
+        "공습이다! 이동, 이동!",
+        "적기 접근, 벗어나!"
+      ],
+      "it": [
+        "Attacco aereo su di noi! Via, via!",
+        "Aereo nemico in arrivo, sgomberare!"
+      ],
+      "pl": [
+        "Nalot na nas! Uciekamy!",
+        "Wrogie lotnictwo nadlatuje, zjeżdżamy!"
+      ],
+      "he": [
+        "תקיפה אווירית עלינו! לזוז!",
+        "מטוס אויב נכנס, להתפנות!"
+      ],
+      "da": [
+        "Luftangreb mod os! Kør, kør!",
+        "Fjendtligt fly på vej, kom væk!"
+      ],
+      "pt-BR": [
+        "Ataque aéreo em cima de nós! Sai, sai!",
+        "Aeronave inimiga chegando, saiam daqui!"
+      ],
+      "en-AU": [
+        "Air strike on us, move now!",
+        "Enemy air inbound, get clear!"
+      ],
+      "af": [
+        "Lugaanval op ons! Ry, ry!",
+        "Vyandelike vliegtuig op pad, kom weg!"
+      ]
+    },
+    {
+      "id": "artillery_incoming",
+      "role": "commander",
+      "delivery": "urgent, controlled, loud",
+      "context": "Air Support: an enemy artillery barrage is called onto our tank's position; we must get clear before the rounds land.",
+      "en-US": [
+        "Incoming artillery! Move!",
+        "Shells inbound on us, get clear!"
+      ],
+      "en-GB": [
+        "Incoming! Artillery on us, move!",
+        "Shells inbound, get clear!"
+      ],
+      "de": [
+        "Artillerie im Anflug! Weg hier!",
+        "Granaten auf uns, raus da!"
+      ],
+      "ru": [
+        "Артналёт по нам! Уходим!",
+        "Снаряды на нас, уходим!"
+      ],
+      "uk": [
+        "Артобстріл по нас! Відходимо!",
+        "Снаряди на нас, відходимо!"
+      ],
+      "zh": [
+        "炮击来袭！快撤！",
+        "炮弹落向我们，快离开！"
+      ],
+      "fr": [
+        "Tir d'artillerie sur nous ! Dégagez !",
+        "Obus en approche, dégagez !"
+      ],
+      "sv": [
+        "Inkommande artilleri! Iväg!",
+        "Granater mot oss, kör!"
+      ],
+      "ja": [
+        "砲撃が来る！退避！",
+        "砲弾飛来、離脱しろ！"
+      ],
+      "ko": [
+        "포격이다! 이동!",
+        "포탄 날아온다, 벗어나!"
+      ],
+      "it": [
+        "Artiglieria in arrivo! Via!",
+        "Colpi su di noi, sgomberare!"
+      ],
+      "pl": [
+        "Ostrzał artyleryjski! Uciekamy!",
+        "Pociski na nas, zjeżdżamy!"
+      ],
+      "he": [
+        "ארטילריה נכנסת! לזוז!",
+        "פגזים עלינו, להתפנות!"
+      ],
+      "da": [
+        "Indkommende artilleri! Kør!",
+        "Granater mod os, kom væk!"
+      ],
+      "pt-BR": [
+        "Artilharia chegando! Sai!",
+        "Granadas vindo em nós, saiam daqui!"
+      ],
+      "en-AU": [
+        "Incoming! Artillery on us, move!",
+        "Shells inbound, get clear!"
+      ],
+      "af": [
+        "Artillerie inkomend! Ry!",
+        "Granate op pad na ons, kom weg!"
+      ]
+    },
+    {
+      "id": "aircraft_downed",
+      "role": "gunner",
+      "delivery": "calm, clipped",
+      "context": "Air Support: our guns brought down an enemy support aircraft (a strike jet or the gunship).",
+      "en-US": [
+        "Aircraft down.",
+        "Got the jet. It's going down."
+      ],
+      "en-GB": [
+        "Enemy aircraft down.",
+        "That's the jet down."
+      ],
+      "de": [
+        "Feindflugzeug abgeschossen.",
+        "Jet erwischt, er stürzt ab."
+      ],
+      "ru": [
+        "Самолёт противника сбит.",
+        "Сбил самолёт, падает."
+      ],
+      "uk": [
+        "Ворожий літак збито.",
+        "Збив літак, падає."
+      ],
+      "zh": [
+        "敌机击落。",
+        "打中飞机了，正在坠落。"
+      ],
+      "fr": [
+        "Avion ennemi abattu.",
+        "J'ai eu l'avion, il tombe."
+      ],
+      "sv": [
+        "Fientligt flyg nere.",
+        "Träff på planet, det störtar."
+      ],
+      "ja": [
+        "敵機、撃墜。",
+        "機体に命中、墜落する。"
+      ],
+      "ko": [
+        "적기 격추.",
+        "항공기 명중, 추락한다."
+      ],
+      "it": [
+        "Aereo nemico abbattuto.",
+        "Preso l'aereo, sta precipitando."
+      ],
+      "pl": [
+        "Samolot przeciwnika zestrzelony.",
+        "Trafiłem samolot, spada."
+      ],
+      "he": [
+        "מטוס אויב הופל.",
+        "פגענו במטוס, הוא נופל."
+      ],
+      "da": [
+        "Fjendtligt fly nede.",
+        "Ramte flyet, det styrter."
+      ],
+      "pt-BR": [
+        "Aeronave inimiga abatida.",
+        "Peguei o avião, está caindo."
+      ],
+      "en-AU": [
+        "Enemy aircraft down.",
+        "Got the jet, it's going down."
+      ],
+      "af": [
+        "Vyandelike vliegtuig is afgeskiet.",
+        "Ek het die vliegtuig raakgeskiet, dit stort neer."
+      ]
     }
   ]
 }
