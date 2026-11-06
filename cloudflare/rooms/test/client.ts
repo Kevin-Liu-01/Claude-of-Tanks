@@ -43,11 +43,12 @@ export class Client {
   }
   /**
    * The close the room owes this socket (a rate limit), within a receipt's wait: one that never comes fails here, by
-   * name, not as the case's timeout. Round 4 F9 (2026-11-06): the keepalive case's 20 s timeouts were its envelope flood
-   * handled across the room's rate window (roomActor.ts handleMessage restarts the count when the window turns), so the
-   * socket was never closed and the case sat on `closed` until the runner gave up. The floods hold Date still for that
-   * (round 3 B14); reproduced on 92f415e879's case at any load by handling half the flood, letting the window turn, then
-   * the rest.
+   * name, not as the case's timeout. Round 4 F9 (2026-11-06): an envelope flood handled across the room's rate window
+   * (roomActor.ts handleMessage restarts the count when the window turns) never closes the socket, and the keepalive case
+   * sat on `closed` until the runner gave up at 20 s: reproduced on 92f415e879's case at any load by handling half the
+   * flood, letting the window turn, then the rest. The floods hold Date still for that (round 3 B14). Whether this hang
+   * or the case's own time on a starved runtime made round two's timeouts at load 250-420 is not known
+   * (vitest.config.ts).
    */
   closedWithin(what: string, timeoutMs = RECEIPT_WAIT_MS): Promise<CloseEvent> {
     return new Promise((resolve, reject) => {

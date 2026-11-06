@@ -313,7 +313,8 @@ describe('cot-rooms Worker with the peer-to-peer match host (the deployed shape)
     expect((await guest.next((message) => message.type === 'error')).payload.code).toBe('invalid_payload');
     // the same frame from an older client's envelope path still works, and the rate window counts those (only Date stands
     // still through the flood, so a slow runtime cannot turn the window under it: round 3 B14; a flood handled across the
-    // window left the socket open, and this case sat on its close until the 20 s timeout: round 4 F9)
+    // window leaves the socket open, reproduced on 92f415e879 as this case sitting on its close past its 20 s timeout:
+    // round 4 F9)
     vi.useFakeTimers({ toFake: ['Date'] });
     for (let index = 0; index < ROOM_RATE_MAX_MESSAGES + 10; index++) admin.send('room_ping');
     const closed = await admin.closedWithin('the envelope flood\'s rate limit', 2 * RECEIPT_WAIT_MS);
