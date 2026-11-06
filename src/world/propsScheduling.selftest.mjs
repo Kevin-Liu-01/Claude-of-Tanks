@@ -587,6 +587,21 @@ const seededRandom = new Function(stripTypeScriptTypes(source.slice(rngStart, rn
   assert.deepEqual(f.state.bakes, expected, 'donors in turn and their states retain seeded RNG order');
   assert.equal(f.state.randomCalls, 8, 'each placement consumes one state draw');
 }
+{
+  // (wrecks-270, the repeat critic) hulks in one view take states not already standing there while the site has one:
+  // the donors still go in turn, only the state moves on; once every roadside state stands in view, one is shared
+  const f = placementFixture({ authored: false, random: () => 0 }), roadside = statesForSite('roadside');
+  for (let i = 0; i < roadside.length + 1; i++) {
+    assert.deepEqual(attemptWreck(f, 12 + i * 10, 24), { placed: true, selected: wreckCast[i % wreckCast.length] });
+  }
+  assert.deepEqual(f.state.bakes.slice(0, roadside.length).map((b) => b.state), roadside,
+    'each hulk in one view takes the next state the site shows');
+  assert.ok(roadside.includes(f.state.bakes[roadside.length].state), 'a state is shared only once every state stands');
+  const control = placementFixture({ authored: false, random: () => 0,
+    code: placementSource.replace("if (!inView.some((b) => b.state === state)) return { specId, state };", 'return { specId, state };') });
+  for (let i = 0; i < 3; i++) attemptWreck(control, 12 + i * 10, 24);
+  assert.equal(new Set(control.state.bakes.map((b) => b.state)).size, 1, 'control: without the rule one state repeats in view');
+}
 
 // Execute the entire unchanged decal owner, including conformed geometry,
 // seeded scars and churn alpha processing. Canvas commands use deterministic

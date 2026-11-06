@@ -79,7 +79,8 @@ export const WRECK_CASTS = {
   mangrove: cast('Ca Mau, the Mekong Delta, the Vietnam War', 'cold-war', ['USA', 'South Vietnam', 'North Vietnam'], 10,
     ['m48a3_patton', 'm41a3', 'm551_sheridan', 'type59', 't55a']),
   mars: cast('Olympus Basin, Mars: the next generation\'s prototypes', 'next-generation', ['USA', 'Russia', 'Germany', 'Poland'],
-    8, ['abramsx', 'object148_proto', 'pl01', 'm1a3', 'kf51_evo']),
+    // (the repeat critic, 11-06: the AbramsX and the M1A3 are one hull, read as one hulk twice; the M1E3 stays)
+    8, ['object148_proto', 'pl01', 'm1a3', 'kf51_evo']),
   monsoon: cast('Kohima, the Naga Hills (April-June 1944): today\'s British and Japanese armour', 'modern', ['UK', 'India', 'Japan'], 10,
     ['challenger2', 'warrior_tes_h', 'chieftain_mk10', 'type10', 'type90', 'type89']),
   moon: cast('the Taurus-Littrow valley, December 1972: no war was fought here', 'cold-war', [], 0, []),

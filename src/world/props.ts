@@ -9098,7 +9098,7 @@ ${snowCap ? `
       // (wrecks-270) the states this ground shows (maps/wreckCasts.ts), and the bakes placed so far: no two hulks of one
       // bake (a donor in one state: one mesh, turned) within a view of each other
       const castStates: readonly WreckState[] = wCfg?.states?.length ? wCfg.states : WRECK_STATES;
-      const placedBakes: Array<{ key: string; specId: string; x: number; z: number }> = [];
+      const placedBakes: Array<{ key: string; specId: string; state: WreckState; x: number; z: number }> = [];
       const bakeCache = new Map<string, WreckBake | null>(); // specId|state -> bake result
       // maps lane B (2026-10-03, the physics lane's road-crossing sweep): a hulk keeps 10 m off a road's sharp bends
       // (turns over 40 degrees), the ground a hull that misses the turn runs straight on to. Copper Mesa's haul road
@@ -9142,29 +9142,32 @@ ${snowCap ? `
       }
       /**
        * (wrecks-270) The donor and state for a hulk at (x, z) on `site`: the cast's donors in turn from the pick serial,
-       * each with a state its site shows drawn from the stream; never a bake already standing within WRECK_VIEW_M, and a
-       * donor already in view only when every other is too. `reach`: how far the hulk's twin stands (0 for none), whose
-       * same bake must also be out of view. Null when every bake the site shows is in view.
+       * each with a state its site shows drawn from the stream; never a bake already standing within WRECK_VIEW_M, a
+       * state already standing in view only when the site shows no other (the repeat critic: an overturned T-55 and an
+       * overturned BMP-2 in one Ruinspires street read as one hulk twice, the map's paint and the state's rust shared),
+       * and a donor already in view only when every other is too. Null when every bake the site shows is in view.
        */
       function chooseWreckBake(site: WreckSite, x: number, z: number, tries: number):
         { specId: string; state: WreckState } | null {
         const states = statesForSite(site, castStates);
         if (!states.length) return null;
         const start = (wrng() * states.length) | 0;
+        const inView = placedBakes.filter((b) => Math.hypot(b.x - x, b.z - z) < WRECK_VIEW_M);
+        let sharedState: { specId: string; state: WreckState } | null = null;
         let fallback: { specId: string; state: WreckState } | null = null;
         for (let d = 0; d < pool.length; d++) {
           const specId = pool[(wreckPickSerial + tries + d) % pool.length];
-          const donorInView = placedBakes.some((b) => b.specId === specId && Math.hypot(b.x - x, b.z - z) < WRECK_VIEW_M);
+          const donorInView = inView.some((b) => b.specId === specId);
           for (let k = 0; k < states.length; k++) {
             const state = states[(start + k) % states.length];
             const key = `${specId}|${state}`;
-            if (placedBakes.some((b) => b.key === key && Math.hypot(b.x - x, b.z - z) < WRECK_VIEW_M)) continue;
-            if (!donorInView) return { specId, state };
-            fallback ??= { specId, state };
-            break;
+            if (inView.some((b) => b.key === key)) continue;
+            if (donorInView) { fallback ??= { specId, state }; break; }
+            if (!inView.some((b) => b.state === state)) return { specId, state };
+            sharedState ??= { specId, state };
           }
         }
-        return fallback;
+        return sharedState ?? fallback;
       }
       function* placeWreck(
         x: number,
@@ -9243,7 +9246,7 @@ ${snowCap ? `
       function* commitWreck(specId: string, state: WreckState, baked: WreckBake,
         { x, z, yaw, support }: { x: number; z: number; yaw: number; support: WreckSupport }): Generator<PropsBuildSlice, void, void> {
         bakedTris += baked.budgetTris ?? baked.tris; // budget counts PLACED tris (clones render too; wrecks.ts budgetTris)
-        placedBakes.push({ key: `${specId}|${state}`, specId, x, z });
+        placedBakes.push({ key: `${specId}|${state}`, specId, state, x, z });
         const y = support.y;
         const quat = new THREE.Quaternion().setFromUnitVectors(_upAxis,
           _posv.set(support.normalX, support.normalY, support.normalZ));
