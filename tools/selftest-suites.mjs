@@ -1399,7 +1399,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/game/studioEntry.selftest.mjs',
     'src/game/studioEntrySuperseded.selftest.mjs', // 2026-11-02 audit R1: an entry its exit abandons mid-build settles silently
     'src/game/studioEntryHandBack.selftest.mjs', // 2026-11-02 audit IR1 (round 2): a failed entry's Garage is announced once, by its return
-    // 2026-11-02 audit A10 (round 3, U36): a scene link whose entry an exit took back loads and says nothing in the Studio entered again
+    // 2026-11-02 audit A10 (round 3, U36): a scene link whose entry an exit took back, or whose build failed after its session
+    // ended, loads and says nothing in the Studio entered again
     'src/game/studioLinkSession.selftest.mjs',
     // 2026-11-02 audit F9: one Studio session (phase, tokens, cancels, held work); an exit during a map switch, a load, a
     // light change or a film export lands nothing after the teardown

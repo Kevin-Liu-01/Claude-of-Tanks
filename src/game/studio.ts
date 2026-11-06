@@ -6651,7 +6651,9 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
         map: getMapConfig(mapId).name || mapId, tanks: actors.length, seconds: (storyboard.durationMs / 1000).toFixed(1),
       }));
     } catch (error) {
-      if (isStudioSessionEnded(error)) return; // the Studio closed while the scene built
+      // the Studio closed while the scene built; (round 3 A10 r1) or its session ended and the build then failed another
+      // way (a battlefield build a later entry superseded, a chunk): no error card in a Studio entered since
+      if (isStudioSessionEnded(error) || !owner.current()) return;
       console.error('[studio] scene link failed to stage', error);
       panel.notice(t('studio.sceneLink.loadFailed'), 'error');
     }
@@ -6693,7 +6695,9 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
         try {
           await load(json, { owner });
         } catch (error) {
-          if (!isStudioSessionEnded(error)) throw error; // the Studio closed while the scene built: no boot failure
+          // the Studio closed while the scene built, or (round 3 A10 r1) its session ended before the build failed another
+          // way (a superseded battlefield build): no boot failure
+          if (!isStudioSessionEnded(error) && owner.current()) throw error;
         }
       }),
     };
