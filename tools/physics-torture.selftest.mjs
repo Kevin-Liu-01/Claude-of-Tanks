@@ -180,8 +180,13 @@ check('drive-trench', 'low', 'earth', [
 // (2300, physics 268, tankContactShape.ts: the power pack's share with its final drives and the hull's armour put the
 // Bradley's centre of mass 0.10 m ahead of its tracks' middle, where it read 0.00; its tail leaves the near lip with less
 // weight on it and the lip's chatter under its short tail, the open item above, is back at p99 2272)
+// (1600, physics 268, the open item: the perch's attack, movement.ts PERCH_ATTACK_S. The chatter was the perch boost taken
+// in one step while the fit's target stepped as the near lip, then the far crest, left the contacts: the spring's
+// stiffness doubled and its damping went critical at once, and its rate kicked by up to 1.3 rad/s in that step. Over three
+// steps: p99 1451, max 8276 -> 5097; the M1A2 over the same trench 1033 -> 797, max 10045 -> 7935, and no longer 7.6 cm
+// into the ground)
 check('drive-assault-trench', 'tall', 'earth', [
-  g('rendered jerk p99 (rad/s³)', (m) => m.jerkP99, 2300, 'before: 1856'),
+  g('rendered jerk p99 (rad/s³)', (m) => m.jerkP99, 1600, 'before: 1856'),
 ]);
 
 // Firing in flight (Mars gravity field audit): the shot turns an airborne hull by its rigid-body share, not the

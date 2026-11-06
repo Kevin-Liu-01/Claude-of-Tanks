@@ -2387,6 +2387,13 @@ function addAmericanRwsVariantArmor(context: AmericanRwsBuildContext): void {
       plate(body, 0.035 * s, headH + 0.27 * s, headD + 0.08 * s,
         side * (headW / 2 + 0.06 * s), headY + 0.08 * s, 0.04 * s,
         0, 0, side * 0.06);
+      // (release 268 builder E, the floating-kit class: the side shield stood 4 cm off the head on nothing; two stand-off
+      // blocks from the head's side carry it, fore and aft, ending 1 mm short of its back so neither cuts the other)
+      const standOff = 0.0425 * s - 0.001;
+      for (const dz of [-0.11, 0.11]) {
+        plate('dark', standOff, 0.035 * s, 0.05 * s,
+          side * (headW / 2 + standOff / 2), headY + 0.08 * s, (0.04 + dz) * s);
+      }
     }
   } else if (hunter) {
     // (release 230: the sensor box keeps its place against the head's top, and its mast stands outboard of the service
@@ -2690,6 +2697,14 @@ function ridingYawPlate(parts: FittingParts, moving: RidingStationMoving | undef
   const pieces = ([[-ha, -hb, pa0, hb], [pa1, -hb, ha, hb], [pa0, -hb, pa1, pb0], [pa0, pb1, pa1, hb]] as const)
     .filter(([a0, b0, a1, b1]) => a1 - a0 >= 0.012 && b1 - b0 >= 0.012);
   if (pieces.reduce((area, [a0, b0, a1, b1]) => area + (a1 - a0) * (b1 - b0), 0) < 0.25 * 4 * ha * hb) return;
+  // (release 268 builder E: a port that leaves the whole face uncut, a sweep that only grazes an edge, draws the plate as
+  // authored, its own geometry; the HC brow's bearing stations were lost to a plain box, and the contact receipt read it
+  // as crossing the head's cover)
+  const [whole] = pieces, uncut = 1e-6;
+  if (pieces.length === 1 && whole[0] <= -ha + uncut && whole[1] <= -hb + uncut && whole[2] >= ha - uncut && whole[3] >= hb - uncut) {
+    parts.add(slot, geometry(), x, y, z, rx, ry, rz);
+    return;
+  }
   for (const [a0, b0, a1, b1] of pieces) {
     const size = [...dims], at = [0, 0, 0];
     size[fa] = a1 - a0; size[fb] = b1 - b0; at[fa] = (a0 + a1) / 2; at[fb] = (b0 + b1) / 2;

@@ -339,16 +339,22 @@ const MODERN3_SPECS = {
       // AFV r1 rebuild (42manako oracle envelope, docs/references/vertex/
       // m2a2_bradley.json): hull roof 1.90 with the tall two-man turret
       // cluster to 2.98; ring plane 1.895 at the print's own z -0.45 seat.
-      hl: 3.27, hw: 1.635, inW: 0.95, floor: 0.45, trkTop: 0.95, roofY: 1.90,
+      // 268: the owner's supplied model registered at the 6.55 m hull (docs/references/tanks/m2a2_bradley.md): deck
+      // 2.06 (was 1.90), track top 1.16 (0.95), hull half-width over the skirts 1.70 (1.635), the ring 0.14 m right of
+      // centre at z -0.40 on the deck (was [0, 1.895, -0.45]), the gun line at 2.525, 6 cm right of the turret centre
+      // (gunPivot [-0.075, 0.375, 0.60] -> [-0.06, 0.465, 0.60]), the M242 to the source's muzzle at world z 2.37
+      // (barrelLenM 2.30 -> 2.17).
+      hl: 3.27, hw: 1.70, inW: 0.95, floor: 0.45, trkTop: 1.16, roofY: 2.06,
       // gun x -0.075: the print's fused M242 plan band reads x -0.15..0.0
       // (r3c gate-frame re-measure; the r2 "-0.11 tube center" put my tube
       // 0.04 left of its band and lit an extra plan-turret column).
-      turretPivot: [0, 1.895, -0.45], gunPivot: [-0.075, 0.375, 0.60],
-      barrelLenM: 2.30, barrelRadM: 0.038,
+      turretPivot: [-0.14, 2.06, -0.40], gunPivot: [-0.06, 0.465, 0.60],
+      barrelLenM: 2.17, barrelRadM: 0.038,
       // aluminum + spaced appliqué: everything overmatched by tank guns (§6.2)
       glacis: [40, 60, 60], lower: [40, 50, 50], side: [30, 30, 30],
       skirt: [25, 30, 60], rear: 25, roof: 20,
-      tw: 0.82, tFrontZ: 0.98, tRearZ: -1.05, tH: 0.87,
+      // (268: the source turret's roof plate at 0.77 over the ring, its hatch rings to 0.93, the sight head to 1.13)
+      tw: 0.98, tFrontZ: 1.15, tRearZ: -1.20, tH: 0.77,
       cheek: [35, 60, 60], tSide: [30, 30, 30], tRear: 25, tRoof: 20,
       mantlet: [40, 60, 60], loader: false,
     }),

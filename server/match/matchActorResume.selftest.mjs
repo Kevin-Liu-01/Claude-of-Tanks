@@ -10,6 +10,7 @@ import { quantizeAngle, quantizePosition, quantizeVelocity } from '../../src/mp/
 import { createDedicatedWorldCollision } from '../dedicatedWorldCollision.ts';
 import { createLoopbackLink } from './link.ts';
 import { createMatchActor } from './matchActor.ts';
+import { planFromRoster } from '../../src/mp/host/hostPlan.ts';
 import { ensureAuthorityFleet } from '../../src/vehicles/authorityFleet.ts';
 
 // The actor reads finalized combat anatomy; production hosts load their roster's groups first (Node: all).
@@ -252,5 +253,30 @@ for (const resume of [{ tick: -1, battleTimeMs: 0 }, { tick: 1.5, battleTimeMs: 
   assert.equal(fresh.stats().resumeHints.reasons.noResume, 1, 'an actor that did not resume a migration refuses every hint');
   fresh.stop();
   console.log('matchActorResume.selftest: the migration seed — older / future / too far / unrestored / spectator / repeated refused, one bounded hint applied, none on a fresh actor');
+}
+// ---- (268, item 6) host migration keeps every bot's paint: the old authority's roll rides each seat's WELCOME roster into the
+// elected host's plan (host/hostPlan.ts planFromRoster), and the resumed actor restores it instead of rolling again
+{
+  const painters = Array.from({ length: 6 }, (_, index) => ({ playerId: `bot-${index}`, name: `Bot ${index}`, team: index % 2 ? 'bravo' : 'alpha', specId: 'leo2_improved' }));
+  const old = createMatchActor({ roomId: 'paint-old', mapId: 'verdant', seed: 41, seats, bots: painters, world: 'terrain', countdownS: 1, now, schedule });
+  const viewer = attachViewer(old, 0, 'p1');
+  await flush();
+  const paintOf = (actor) => painters.map((bot) => actor.authority.entityById.get(bot.playerId).camo);
+  const before = paintOf(old);
+  assert.deepEqual(viewer.welcome.roster.filter((row) => row.bot).map((row) => row.camo), before, 'the WELCOME carries the old authority\'s paint');
+  assert.ok(before.includes('auto') && before.includes('factory'), `the roll paints both ways (${before.join(' ')})`);
+  const plan = planFromRoster(viewer.welcome.roster, null);
+  assert.deepEqual(plan.bots.map((bot) => bot.camo), before, 'the elected host\'s plan keeps each bot\'s paint');
+  const resumed = createMatchActor({ roomId: 'paint-new', mapId: 'verdant', seed: 42, seats: plan.seats, bots: plan.bots, world: 'terrain', now, schedule,
+    autoStart: false, resume: { tick: 1200, battleTimeMs: 20_000 } });
+  assert.deepEqual(paintOf(resumed), before, 'the resumed actor restores every bot\'s paint');
+  assert.deepEqual(painters.map((bot) => resumed.authority.entityById.get(bot.playerId).camoBonus), painters.map((bot) => old.authority.entityById.get(bot.playerId).camoBonus),
+    'and the bonus each earns');
+  // control: the same plan without the roster's paint rolls again on the elected host's seed and paints them otherwise
+  const rerolled = createMatchActor({ roomId: 'paint-reroll', mapId: 'verdant', seed: 42, seats: plan.seats, bots: plan.bots.map(({ camo, ...bot }) => bot),
+    world: 'terrain', now, schedule, autoStart: false, resume: { tick: 1200, battleTimeMs: 20_000 } });
+  assert.notDeepEqual(paintOf(rerolled), before, 'without the roster\'s paint the bots would be repainted');
+  for (const actor of [old, resumed, rerolled]) actor.stop();
+  console.log(`matchActorResume.selftest: a migrated host restores every bot's paint from the WELCOME roster (${before.join(' ')}); a re-roll would repaint them`);
 }
 console.log('matchActorResume.selftest: world object, resume tick/clock/countdown/limit, wire id lookups verified');

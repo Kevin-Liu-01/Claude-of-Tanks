@@ -113,25 +113,37 @@ export const COUNTER_DRONE_SETS = Object.freeze({
  * anchors fly on seeds 1-8 and each 30 mm + 7.62 roof flies on its own seed, as `outcome:rounds@ticks from launch`
  * (d downed, s strike, o other; rounds per station joined by /), approach-major (front, side, rear) then seed, and each
  * roof's bow hover about 33 m out ([rounds per station], ticks from the first round to the fall). The lone anchors' 48
- * runs down 9 (m1a1 5, t90a_2004 4): the owner's band is 4-11 of 48 (hitsToDown 1 downs 14).
+ * runs down 9 (m1a1 6, t90a_2004 3): the owner's band is 4-11 of 48 (hitsToDown 1 downs 14).
  * src/sim/counterDroneRuns.selftest.mjs flies them in npm test; tools/counter-drone-engage.mjs --check compares them too
  * (tank:release:check runs it for a release that names one of these ids).
  * Measured on integ/229 93cfe22c21; re-pin only after re-ruling a change with the owner. Re-pinned 2026-10-24 (249) on
  * the turret-seat rollout's seated hulls and hitboxes (m1a1, t90a_2004, leo2a7v, leo2_revolution, leclerc_xlr runs, the
  * leo2a5 hover): every run's outcome as before, a tick or a round apart; the lone band still 9 of 48, so no lethality moved.
+ * Re-pinned 2026-11-03 (268) on main 226e9086b5, from the carrier's dock as it now sits (`carrierDock`, the dock every
+ * flight leaves from): the 249 pins flew from the KV-2's computed fallback seat (its table signature was stale), then
+ * ace7b858a2 refreshed the signature (the generated seat: 9 cm up, 24 cm aft) and the KV-2 critic round 77fe2bb378
+ * raised its roof (9.5 cm up, 14 cm forward). Flown from the old dock on main, m1a1 and the four roofs keep every pinned
+ * run exactly, so none of their lethality moved; t90a_2004 still moves 14 of 24 on its own T-90 family rebuilds (266,
+ * 267). Outcomes that flipped: m1a1 front:1 strike to downed; t90a_2004 front:4 and side:2 to downed, side:7, rear:6
+ * and rear:7 to strikes. The lone band is 9 of 48 as before (m1a1 6, t90a_2004 3).
+ * Re-pinned 2026-11-04 (268) on the M1A1 shell measured from the owner's m1a1-abrams-usa model (the loader's M240
+ * station seated on the new roof): m1a1 moves 11 of its 24 pinned runs a tick or a round apart, every outcome as before;
+ * the lone band still 9 of 48 (m1a1 6, t90a_2004 3), so no lethality moved.
  */
 export const COUNTER_DRONE_PINS = Object.freeze({
+  // every pinned flight launches from it: tools/counter-drone-engage.mjs and the receipt check it first
+  carrierDock: 'kv2 turret 0.3,1.615,-1.4066',
   runs: Object.freeze({
-    m1a1: Object.freeze({ seed0: 1, runs: 8, rows: 's:8@715 s:15@701 d:12@569 s:13@657 s:8@677 s:11@591 s:6@608 s:11@671 d:10@643 d:15@657 d:15@640 s:7@659 s:7@669 s:12@606 s:15@634 s:11@706 s:8@657 d:9@683 s:6@693 s:10@726 s:8@696 s:11@657 s:11@633 s:8@690' }),
-    t90a_2004: Object.freeze({ seed0: 1, runs: 8, rows: 's:6@716 d:15@696 s:9@588 s:13@659 s:9@678 s:12@592 s:9@609 s:12@672 s:7@652 s:13@688 s:12@668 s:7@660 s:7@668 s:11@606 d:14@618 s:9@707 s:7@658 s:6@689 s:9@694 s:11@726 s:6@696 d:12@650 d:12@621 s:9@691' }),
+    m1a1: Object.freeze({ seed0: 1, runs: 8, rows: 'd:9@711 s:15@700 d:12@568 s:13@658 s:8@677 s:11@591 s:6@608 s:11@671 d:10@642 d:15@657 d:15@639 s:8@659 s:7@668 s:12@606 s:15@633 s:11@706 s:8@657 d:9@682 s:6@693 s:11@725 s:8@696 s:11@657 s:11@633 s:8@690' }),
+    t90a_2004: Object.freeze({ seed0: 1, runs: 8, rows: 's:7@715 d:15@690 s:8@587 d:13@641 s:9@677 s:12@591 s:9@607 s:12@671 s:7@652 d:15@677 s:10@668 s:7@659 s:7@669 s:11@606 s:13@634 s:9@706 s:7@658 s:8@689 s:9@694 s:11@726 s:6@696 s:10@657 s:10@634 s:9@691' }),
     leo2a7v: Object.freeze({ seed0: 1, runs: 1, rows: 'd:6/7@694 d:7/6@604 d:8/12@614' }),
     leo2a5: Object.freeze({ seed0: 2, runs: 1, rows: 'd:9/12@653 d:9/9@627 d:6/4@667' }),
-    leo2_revolution: Object.freeze({ seed0: 3, runs: 1, rows: 'd:8/5@555 d:8/7@652 d:9/14@656' }),
+    leo2_revolution: Object.freeze({ seed0: 3, runs: 1, rows: 'd:8/5@554 d:8/7@652 d:9/14@656' }),
     leclerc_xlr: Object.freeze({ seed0: 4, runs: 1, rows: 'd:8/5@609 d:7/12@617 d:7/6@677' }),
   }),
   hovers: Object.freeze({
-    leo2a7v: Object.freeze([[4, 0], 135]), leo2a5: Object.freeze([[2, 3], 21]),
-    leo2_revolution: Object.freeze([[2, 4], 19]), leclerc_xlr: Object.freeze([[2, 4], 18]),
+    leo2a7v: Object.freeze([[4, 0], 135]), leo2a5: Object.freeze([[2, 3], 20]),
+    leo2_revolution: Object.freeze([[2, 4], 19]), leclerc_xlr: Object.freeze([[2, 4], 19]),
   }),
   loneBand: Object.freeze({ ids: Object.freeze(['m1a1', 't90a_2004']), downed: Object.freeze([4, 11]), of: 48 }),
 });

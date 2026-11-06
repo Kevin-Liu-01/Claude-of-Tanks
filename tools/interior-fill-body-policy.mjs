@@ -22,6 +22,13 @@ const PRIMARY_BODY_BUCKETS = Object.freeze({
   // Linebacker's slat screens, strapped cargo and roof fittings surround exterior
   // air. Its closed Bradley hull and new turret shell bound the actual interior.
   m6_linebacker: Object.freeze(['hull', 'turret']),
+  // 268: the twin-cannon air defence: closed hull and turret shells; the side-mounted guns, launchers and radars stand
+  // in exterior air
+  tunguska_m: Object.freeze(['hull', 'turret']),
+  pantsir_s1: Object.freeze(['hull', 'turret']),
+  gepard_1a2: Object.freeze(['hull', 'turret']),
+  pgz95: Object.freeze(['hull', 'turret']),
+  pgz09: Object.freeze(['hull', 'turret']),
   // The rebuilt scout turret has closed cheeks/roof and an open elevation
   // bay. Its external ERA, sights and stowage do not bound interior volume.
   // The unchanged hull retains all its historical boundary buckets below.

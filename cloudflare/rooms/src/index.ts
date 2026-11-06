@@ -6,6 +6,7 @@
  *   GET /rooms/<CODE>        (ws)     the room socket → the Room Durable Object for that code
  *   GET /rooms/<CODE>/match  (ws)     503 match_host_unavailable: the match runs between the browsers, never here
  *   GET /pad/new             (ws)     the phone controller: a desktop takes a fresh code → PadPair for that code
+ *   GET /pad/lobby           (ws)     couch mode: a desktop opens a lobby code for up to eight phones (docs/COUCH-MODE.md)
  *   GET /pad/join/<CODE>     (ws)     a phone pairs with a waiting code (docs/PHONE-CONTROLLER.md)
  *   GET /pad/resume/<CODE>   (ws)     either side comes back with its resume token
  *
@@ -33,10 +34,12 @@ async function padFetch(request: Request, env: Env, url: URL): Promise<Response>
   const { success } = await env.PAD_CONNECT_LIMITER.limit({ key: request.headers.get('CF-Connecting-IP') || 'local' });
   if (!success) return json({ error: 'rate_limit' }, 429, { 'retry-after': '60' });
   try {
-    if (route.kind !== 'new') return await env.PADS.getByName(route.code).fetch(new Request(new URL(`/pad/${route.kind}/${route.code}`, url), request));
+    if (route.kind === 'join' || route.kind === 'resume') {
+      return await env.PADS.getByName(route.code).fetch(new Request(new URL(`/pad/${route.kind}/${route.code}`, url), request));
+    }
     for (let attempt = 0; attempt < 3; attempt++) {
       const code = drawPadCode(cryptoRandom);
-      const response = await env.PADS.getByName(code).fetch(new Request(new URL(`/pad/new/${code}`, url), request));
+      const response = await env.PADS.getByName(code).fetch(new Request(new URL(`/pad/${route.kind}/${code}`, url), request));
       if (response.status !== 409) return response;
     }
     return json({ error: 'pad_busy' }, 503);

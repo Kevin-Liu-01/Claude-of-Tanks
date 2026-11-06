@@ -1798,7 +1798,7 @@
    "openViews": 0,
    "insideOutPx": 0,
    "seeThroughPx": 0,
-   "netSeeThroughPx": 2661,
+   "netSeeThroughPx": 3053,
    "tris": 130668,
    "frame": [
     0,
@@ -1815,6 +1815,26 @@
      "from": {
       "seeThroughPx": 0,
       "netSeeThroughPx": 3128
+     }
+    },
+    {
+     "kind": "see-through",
+     "reason": "268 shell rebuilt to the owner m1a1-abrams-usa model, the FEP hull drapes hang flat on the skirt line and the ua_m1a1 cage net sits on the new turret and skirts, so less declared netting shows",
+     "by": "abrams-bradley-268",
+     "date": "2026-11-04",
+     "from": {
+      "seeThroughPx": 0,
+      "netSeeThroughPx": 2661
+     }
+    },
+    {
+     "kind": "see-through",
+     "reason": "268 final net, the FEP ULCANS cover lies on the turret, cheeks and gun and the ua_m1a1 cage net lies on its roof, measured from the owner model shell",
+     "by": "abrams-bradley-268",
+     "date": "2026-11-04",
+     "from": {
+      "seeThroughPx": 0,
+      "netSeeThroughPx": 1829
      }
     }
    ]
@@ -1930,7 +1950,7 @@
    "openViews": 0,
    "insideOutPx": 56,
    "seeThroughPx": 0,
-   "netSeeThroughPx": 4382,
+   "netSeeThroughPx": 0,
    "tris": 121819,
    "frame": [
     0,
@@ -1987,6 +2007,16 @@
      "from": {
       "seeThroughPx": 0,
       "netSeeThroughPx": 4256
+     }
+    },
+    {
+     "kind": "see-through",
+     "reason": "the owner removed the M1E3 field net on 2026-11-02 (remove the ghillie on the m1e3), so it declares no netting",
+     "by": "kevinliu",
+     "date": "2026-11-03",
+     "from": {
+      "seeThroughPx": 0,
+      "netSeeThroughPx": 4382
      }
     }
    ]
@@ -4152,13 +4182,35 @@
    "openViews": 0,
    "insideOutPx": 1,
    "seeThroughPx": 0,
-   "netSeeThroughPx": 36300,
+   "netSeeThroughPx": 22935,
    "tris": 138014,
    "frame": [
     -0.05,
     1.7,
     0.9,
     5.8
+   ],
+   "accepts": [
+    {
+     "kind": "see-through",
+     "reason": "268 shell rebuilt to the owner m1a1-abrams-usa model, the FEP hull drapes hang flat on the skirt line and the ua_m1a1 cage net sits on the new turret and skirts, so less declared netting shows",
+     "by": "abrams-bradley-268",
+     "date": "2026-11-04",
+     "from": {
+      "seeThroughPx": 0,
+      "netSeeThroughPx": 36300
+     }
+    },
+    {
+     "kind": "see-through",
+     "reason": "268 final net, the FEP ULCANS cover lies on the turret, cheeks and gun and the ua_m1a1 cage net lies on its roof, measured from the owner model shell",
+     "by": "abrams-bradley-268",
+     "date": "2026-11-04",
+     "from": {
+      "seeThroughPx": 0,
+      "netSeeThroughPx": 27470
+     }
+    }
    ]
   },
   "ua_m1a2_abrams": {
@@ -5329,6 +5381,111 @@
     1.6,
     1,
     5.5
+   ]
+  },
+  "m3a2_bradley": {
+   "sealed": true,
+   "openPx": 0,
+   "openViews": 0,
+   "insideOutPx": 298,
+   "seeThroughPx": 0,
+   "netSeeThroughPx": 0,
+   "tris": 82095,
+   "frame": [
+    0,
+    1.55,
+    -0.05,
+    4.2
+   ]
+  },
+  "tunguska_m": {
+   "sealed": true,
+   "openPx": 0,
+   "openViews": 0,
+   "insideOutPx": 174,
+   "seeThroughPx": 0,
+   "netSeeThroughPx": 0,
+   "tris": 90240,
+   "frame": [
+    0,
+    2.15,
+    -0.05,
+    5
+   ]
+  },
+  "pantsir_s1": {
+   "sealed": true,
+   "openPx": 0,
+   "openViews": 0,
+   "insideOutPx": 174,
+   "seeThroughPx": 0,
+   "netSeeThroughPx": 0,
+   "tris": 94124,
+   "frame": [
+    0,
+    2.15,
+    -0.05,
+    5
+   ]
+  },
+  "gepard_1a2": {
+   "sealed": true,
+   "openPx": 0,
+   "openViews": 0,
+   "insideOutPx": 376,
+   "seeThroughPx": 0,
+   "netSeeThroughPx": 0,
+   "tris": 103219,
+   "frame": [
+    0,
+    2.5,
+    0.3,
+    5.1
+   ]
+  },
+  "pgz95": {
+   "sealed": true,
+   "openPx": 5,
+   "openViews": 0,
+   "insideOutPx": 422,
+   "seeThroughPx": 0,
+   "netSeeThroughPx": 0,
+   "tris": 86997,
+   "frame": [
+    0,
+    1.95,
+    -0.05,
+    4.4
+   ]
+  },
+  "pgz09": {
+   "sealed": true,
+   "openPx": 0,
+   "openViews": 0,
+   "insideOutPx": 314,
+   "seeThroughPx": 0,
+   "netSeeThroughPx": 0,
+   "tris": 87068,
+   "frame": [
+    0,
+    1.7,
+    -0.05,
+    4.5
+   ]
+  },
+  "bmpt_terminator": {
+   "sealed": true,
+   "openPx": 0,
+   "openViews": 0,
+   "insideOutPx": 107,
+   "seeThroughPx": 0,
+   "netSeeThroughPx": 0,
+   "tris": 134854,
+   "frame": [
+    0,
+    1.95,
+    -0.05,
+    4.9
    ]
   }
  }
