@@ -83,8 +83,32 @@ const STEP_LABELS = Object.freeze({
   world: ['world', 'world-water', 'world-grass', 'world-ocean'], clouds: ['clouds'],
   shadow: ['shadow', 'shadow-c0', 'shadow-c1', 'shadow-c2', 'shadow-c3'], scene: ['scene'],
 });
+/** The bank facing's switch (page side): every terrain program's uBank kind set to 0, or back to the value it was built with. */
+function bankFacingToggle(on) {
+  return `(() => {
+    const D = window.__DEBUG, props = D.renderer.properties;
+    let n = 0;
+    D.scene.traverse((o) => {
+      const mats = Array.isArray(o.material) ? o.material : o.material ? [o.material] : [];
+      for (const m of mats) {
+        const u = props.get(m)?.uniforms?.uBank;
+        if (!u) continue;
+        u.__bankKind ??= u.value.x;
+        u.value.x = ${on ? 'u.__bankKind' : '0'};
+        n++;
+      }
+    });
+    if (!n) throw new Error('no terrain program carries uBank');
+    return n;
+  })()`;
+}
+
 /** Runtime A/B switches the probe can flip inside one page (off = the baseline). */
 const FRAME_PROBE_TOGGLES = Object.freeze({
+  // (built-env-270, DECISIONS 2026-11-05: "measure the bank-facing term's per-pixel cost against base on both quality
+  // tiers") the terrain material's bank facing (terrain.ts uBank): off sets its kind to 0, so the uniform-gated block is
+  // skipped on every terrain draw; on restores the map's row. The delta is the term's whole per-pixel cost.
+  'bank-facing': Object.freeze({ on: bankFacingToggle(true), off: bankFacingToggle(false) }),
   // the static shadow-caster cache (engine/shadowStaticCache.ts): off forces every caster every frame
   'shadow-cache': Object.freeze({ on: 'window.__SHADOW_DEBUG = Object.assign(window.__SHADOW_DEBUG || {}, { noStaticCache: false })',
     off: 'window.__SHADOW_DEBUG = Object.assign(window.__SHADOW_DEBUG || {}, { noStaticCache: true })' }),
