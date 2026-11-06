@@ -388,9 +388,22 @@ const turretModules = spec.armor.modules.filter((m) => m.turretLocal && m.module
 assert.deepEqual(turretCrew.map((c) => c.crew), ['gunner'], 'the gunner alone in the mount');
 assert.deepEqual(spec.armor.crew.filter((c) => !c.turretLocal).map((c) => c.crew).sort(), ['commander', 'driver', 'loader'],
   'the driver, the commander and the loader in the hull');
-for (const record of [...turretCrew, ...turretModules]) {
+for (const record of turretModules) {
   const [min, max] = boxOf(record);
-  assert.ok(min && max && inMount(min, max), `${record.crew ?? record.module}: inside the mount (${min}..${max})`);
+  assert.ok(min && max && inMount(min, max), `${record.module}: inside the mount (${min}..${max})`);
+}
+// the gunner rides in his open column (armor.openStations, the crew seats): his legs down through the ring to his
+// footrest, his eyes at the sight head, his helmet under the radar's case tops
+const [open] = spec.armor.openStations;
+assert.equal(open?.crew, 'gunner', 'the gunner\'s open column');
+for (const record of turretCrew) {
+  const [min, max] = boxOf(record);
+  const reach = open.radius + 0.15;
+  assert.ok(min[0] >= open.center[0] - reach && max[0] <= open.center[0] + reach && min[2] >= open.center[1] - reach
+    && max[2] <= open.center[1] + reach && min[1] >= open.floorY - 0.01 && max[1] <= open.topY,
+  `${record.crew}: in his open column (${min}..${max})`);
+  assert.ok(Math.abs(record.head[1] - M163_GUNNER.sight.y) <= 0.1, `${record.crew}: eyes at the sight head (head ${record.head})`);
+  assert.ok(max[1] < M163_RADAR.caseTopY, `${record.crew}: under the radar's case tops (${max[1]})`);
 }
 const overlap = (a, b) => [0, 1, 2].every((k) => a[0][k] < b[1][k] - 0.02 && b[0][k] < a[1][k] - 0.02);
 for (const c of spec.armor.crew) for (const m of spec.armor.modules) {
