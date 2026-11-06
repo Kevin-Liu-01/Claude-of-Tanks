@@ -6946,7 +6946,7 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
    * press) and a short Take and Leave changes nothing. With no park (a revive) they stay as they are. The bot's own
    * route legs (a search leg, a level route) were planned from where the hull stood: they hold, their clocks moved on by
    * the park, while the hull still lies on its way, on its level (a taken hull coasts on), and otherwise end with no
-   * verdict on them (resumeOwnLegs); the elevation lock's dwell holds only while the hull still stands where it was taken
+   * verdict on them, and the elevation lock's dwell holds only through a park that left the hull where it was taken
    * (resumeOwnLegs). The bot's view of its target (how long it has held still, how long its gun has been silent) is no
    * record of the bot's but what it saw, and it saw nothing while parked: it carries on only through a park that could
    * hide nothing from it (targetViewHeldThroughPark); after any other park, and after a revive, the target is looked at
@@ -7033,10 +7033,12 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
    * route is not on; the search leg's own list is released, which displaces the leg (claimWaypoints), and its next leg is
    * planned from here at the first tick back, counting no failed leg; a leg already displaced waits for the route in place
    * from the hand-back.
-   * The elevation lock's dwell (how long the bot has seen its target on a level the gun cannot reach, from where the hull
-   * stands; 0 while a level route runs) is a reading from one spot, like the dwell clocks resume() restarts: through a park
-   * that left the hull where it was taken (hullStoodPut) it holds, so a Take and Leave in place loses nothing; after a
-   * drive off, a long coast or a revive it starts again from the hull as it stands (round 4, E8).
+   * The elevation lock's dwell (0 while a level route runs) counts the bot's own ticks, wherever it drives itself, while
+   * its target stays on a level the gun cannot reach (updateElevationLock). The park's stretch is no tick of the bot's: the
+   * bot saw neither the ground the watcher drove nor the target from it. So the dwell holds through a park that left the
+   * hull where it was taken (hullStoodPut: within RESUME_ON_WAY_M of that spot, and able to drive back to it), and a Take
+   * and Leave in place loses nothing; after a park that moved the hull further, or onto another level, and after a revive,
+   * it starts again from the hull as it stands (round 4, E8).
    */
   function resumeOwnLegs(parked: boolean, parkS: number): void {
     if (!parked || !hullStoodPut()) elevationLockT = 0;
