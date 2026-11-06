@@ -82,7 +82,7 @@ function pageStage() {
 }
 
 /** Every pose's ground point on this stage (page side): { street, road, plaza, shore } each { x, z, dx, dz } or null. */
-function pagePlan({ buildings, rooms }) {
+function pagePlan({ buildings, rooms, eye: EYE }) {
   const D = window.__DEBUG, hf = D.world.heightField, V = D.camera.position.constructor;
   const rd = (x, z) => hf._roadDist(x, z), wet = (x, z) => hf.getWaterMaskAt?.(x, z) ?? 0, h = (x, z) => hf.getHeightAt(x, z);
   const B = buildings.map((b) => ({ x: b.x, z: b.z, r: Math.max(b.w, b.d) / 2 }));
@@ -269,7 +269,7 @@ async function shootMap(entry, options, frames) {
   await page.bringToFront();
   await page.evaluate(pageQuietGround);
   await sleep(1500);
-  const plan = await page.evaluate(pagePlan, { buildings: stage.buildings, rooms: civicPavedRooms(mapId) });
+  const plan = await page.evaluate(pagePlan, { buildings: stage.buildings, rooms: civicPavedRooms(mapId), eye: EYE });
   const receipt = { plan, poses: {}, missing: [] };
   const poses = posesFor(plan, options.poses);
   receipt.missing = options.poses.filter((p) => !poses.some((q) => q.name === p));

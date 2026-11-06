@@ -43,9 +43,10 @@ import {
 } from './railSpurs.ts';
 import { roadCoreMask, roadLaneSharpness } from './roadMaskProfile.ts';
 import {
-  MAP_PATH_SURFACES, MAP_PAVED_SURFACES, ROAD_SURFACE_CODE, pavedSurfaceUniforms, roadSurfaceUniforms,
+  ROAD_SURFACE_CODE, pavedSurfaceUniforms, roadSurfaceUniforms,
   type PavedSurfaceConfig, type RoadSurface, type RoadSurfaceWork,
 } from './roadSurfaces.ts';
+import { builtEnvironmentFor } from './maps/builtEnvironmentTable.ts';
 import { trackSurfaceAt, trackSurfacePolicy, type TrackSurface } from './trackSurface.ts';
 import { roadPaveSampler } from './roadPave.ts';
 import { completeRoadEndpoints, gradeRoadPortals, alignHardstandRoadPortals,
@@ -141,7 +142,7 @@ export interface RoadPathStyle {
   surface?: RoadSurface;
   /** The carriageway's full width (m), 4–18; absent: the map's ~7.7 m gauge. */
   widthM?: number;
-  /** Roads lane (2026-10-09): set on a style the period catalogue gave (roadSurfaces.ts MAP_PATH_SURFACES), never
+  /** Roads lane (2026-10-09): set on a style the period catalogue gave (the built-environment row's paths), never
    * authored — the road layer marks it so the Low tier draws the path as the map's own road. */
   catalogue?: boolean;
   /**
@@ -1196,10 +1197,10 @@ export function createLayout(cfg: TerrainMapConfig | null = null, completeRoads 
     const gridCount = roads.length;
     if (t.roads.paths) roads.push(...buildPathRoads(t.roads.paths));
     // (buildPathRoads keeps every path of two or more points, in order: a style follows its path)
-    // (roads lane, 2026-10-09: a path the catalogue surfaces — roadSurfaces.ts MAP_PATH_SURFACES, by the map's year — is
+    // (roads lane, 2026-10-09: a path the catalogue surfaces — the built-environment row's paths, by the map's year — is
     // styled with that surface where the map's own pathStyles leave it unstyled; 2026-10-11: and where the map's own style
     // sets only its width or its crown — Tidegate's dyke lanes — the catalogue's surface joins it)
-    const catalogue = (cfg?.id && MAP_PATH_SURFACES[cfg.id]) || null;
+    const catalogue = builtEnvironmentFor(cfg?.id)?.roads.paths ?? null;
     if (t.roads.paths && (t.roads.pathStyles?.some((st) => !!st) || catalogue?.some((sf) => !!sf))) {
       roadStyles = new Array<RoadPathStyle | null>(gridCount).fill(null);
       t.roads.paths.forEach((path, i) => {
@@ -8576,7 +8577,7 @@ function* createSplatMaterialSteps(
     shader.uniforms.uFormationLow = formationLowUniform; // the Redrock lane
     shader.uniforms.uFormationUp = formationUpUniform;
     // (roads lane R1c: a map's paved surfaces — its splat's, else the catalogue's — take its roads whole, or its town's)
-    const pavedCfg: PavedSurfaceConfig | undefined = S.pavedSurface ?? MAP_PAVED_SURFACES[mapId];
+    const pavedCfg: PavedSurfaceConfig | undefined = S.pavedSurface ?? builtEnvironmentFor(mapId)?.roads.paved ?? undefined;
     shader.uniforms.uRoadTex = { value: S.pavedRoads || (pavedCfg?.street && !pavedCfg.townOnly) ? 1 : clamp(S.roadTexMix ?? 0, 0, 1) };
     const town = layout.village; // map revival lane 2: the paved town rect (townPaving), off unless the map authors it
     shader.uniforms.uTownPave = { value: S.townPaving || pavedCfg?.townOnly ? new THREE.Vector4((town.x0 + town.x1) / 2, (town.z0 + town.z1) / 2,
@@ -8706,7 +8707,7 @@ function* createSplatMaterialSteps(
     shader.uniforms.uRoadRuts = { value: new THREE.Vector3(...(S.roadRuts ?? [1, 0, 0])) };
     // roads lane (2026-10-09): the worked carriageway (relief, stones, potholes, treads) and (washboard, tone floor, lanes'
     // albedo share, windrow) — the map's override, else its climate's row under its splat.roadSurface
-    const roadWork = roadSurfaceUniforms(mapId, groundProfile.climate, S.roadSurface);
+    const roadWork = roadSurfaceUniforms(builtEnvironmentFor(mapId)?.roads.work ?? 'climate', groundProfile.climate, S.roadSurface);
     shader.uniforms.uRoadSurf = { value: new THREE.Vector4(...roadWork.a) };
     shader.uniforms.uRoadSurfB = { value: new THREE.Vector4(...roadWork.b) };
     // round 42: the sun the vista ring shades with, and the sky-light weight for steep faces turned from it

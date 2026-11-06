@@ -13,7 +13,7 @@
 //
 // Pathways: the map never laid the legacy kerbs; the mill lane (road 0) takes a Zeeland stoep, a brick strip before each
 // front on a brick-on-edge kerb, as a lane; the crowned causeway (road 2) takes none.
-import type { CivicPlan, CivicRect } from '../types.ts';
+import type { CivicPlanSource, CivicRect } from '../types.ts';
 
 import * as detMath from '../../../sim/detMath.ts';
 const ROOM = { x0: -75, x1: -12, z0: -30, z1: 36 } as const;
@@ -32,9 +32,8 @@ const walk = (r: CivicRect): Array<{ rect: CivicRect; kind: 'setts' }> => [
   { rect: { x0: r.x1, x1: r.x1 + 1.2, z0: r.z0, z1: r.z1 }, kind: 'setts' },
 ];
 
-export const POLDERS_CIVIC_PLAN: CivicPlan = {
+export const POLDERS_CIVIC_PLAN: CivicPlanSource = {
   mapId: 'polders',
-  style: 'polder',
   overlay: {},
   pathways: {
     classes: { 0: 'gasse' },

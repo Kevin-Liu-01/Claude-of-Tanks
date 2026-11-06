@@ -1,7 +1,8 @@
 // src/world/roadSurfaces.ts — the roads lane's catalogue (2026-10-09; owner: "make sure roads and stuff are really good",
 // then: the roads "need to look a lot better, especially paved ones"): what each road surface is, what each map's roads
-// are made of by its year, and the gains of the worked unpaved carriageway. A leaf module (no imports): the terrain
-// material (terrain.ts) reads it for its uniforms and the layout reads its per-path surfaces into the road layer.
+// are made of, and the gains of the worked unpaved carriageway. A leaf module (no imports): the terrain material
+// (terrain.ts) reads it for its uniforms. Each map's paved surfaces, its paths' surfaces and its carriageway's work are its
+// row in the built-environment table (maps/builtEnvironmentTable.ts, built-env-270), which the layout and the material read.
 //
 // Period rulings (map revival lane, 2026-10-09): Verdant unchanged (the owner's light-touch rule); Steinburg 1984 patched
 // asphalt streets with a sett square; Suzhou Creek 1937 tar macadam and setts (its own pathStyles); Ruinspires 1992
@@ -54,54 +55,6 @@ export interface PavedSurfaceConfig {
   squareArc?: readonly [number, number];
 }
 
-/** Each paved map's surfaces (the period rulings above). Absent: the map's own splat (its R print, or none). */
-export const MAP_PAVED_SURFACES: Readonly<Record<string, PavedSurfaceConfig>> = Object.freeze({
-  // Steinburg, 1984: the town's streets an old asphalt patched over its trenches, sett gutters at the kerbs; the market
-  // square in setts laid in arcs
-  // (R2, the first frames: the old town's smooth asphalt lost to main's sett print) the old town's streets in setts, the
-  // roads past it a patched asphalt with its worn centre line
-  urban: Object.freeze({ street: 'patched', townStreet: 'cobble', square: 'cobble', setts: 'fan', kerbs: true, gutterM: 0.36,
-    patches: 1, cracks: 1, covers: 1, puddles: 0.6, markings: 1, tone: 0.92,
-    // (the maps lane, 228; the owner: the square "a huge EMPTY grey asphalt expanse") the Friedensplatz's setts the pale
-    // grey granite of a Franconian square, not the streets' dark stone
-    squareTone: 1.4,
-    // (228 r2, the blind critics: the square's fan "a stamped, moire-like repeat at eye level", its joints a black grid)
-    squareJoint: 0.55, squareArc: [3.6, 2.4] as const }),
-  // Ruinspires (Sarajevo, 1992–96): the shelled city's asphalt, patched and cracked; its styled paths keep their own classes
-  // (R2: the squares in setts — the patched asphalt squares read as empty car parks; the round fills ragged and fewer)
-  ruinspires: Object.freeze({ street: 'patched', square: 'cobble', kerbs: true, gutterM: 0.24, patches: 1.3, cracks: 1.3, covers: 1,
-    puddles: 0.15, markings: 1, holeFills: 1 }),
-  // Suzhou Creek, 1937 (map revival's ruling: the International Settlement's main streets asphalt or tar macadam; Zhabei's
-  // side streets and the lanes granite setts): tar macadam streets, the squares in setts; path 3, the Zhabei road north of
-  // the creek, setts (MAP_PATH_SURFACES). (R2: no tram line — distance-field rails bent round every junction)
-  blackglass: Object.freeze({ street: 'asphalt', square: 'cobble', kerbs: true, gutterM: 0.24, patches: 0.6, cracks: 0.8, covers: 0.6,
-    puddles: 0.5, tone: 0.85 }),
-  // Ironworks (Völklingen, 1945): the works town's streets in setts, the roads beyond it cinder and earth. (Ground lane,
-  // 2026-10-15: the "missing setts" of the first R1c pairs were inside the town rect — its procedural setts reading as a
-  // plain brown band beside main's print under R1c's uniforms; main itself paves none of Ironworks. The setts now read
-  // (roadSurfaceShader.ts: darker grit joints, wider, held further out, the domes' relief), and the stone is the sooty
-  // basalt's 0.62)
-  foundry: Object.freeze({ street: 'cobble', square: 'cobble', townOnly: true, tone: 0.62 }),
-  // Monsoon Ridge (Kohima, 1944): no paved street of its own — the tone and wear of its metalled road (MAP_PATH_SURFACES)
-  // only: a dark tar macadam, few cracks, no covers (R2, the first frames: a pale modern grey band)
-  monsoon: Object.freeze({ tone: 0.70, patches: 0.6, cracks: 0.3, covers: 0 }),
-  // Aegis Crossing (Ronda, 1972): the old towns' streets and squares in setts
-  cliffbridge: Object.freeze({ street: 'cobble', square: 'cobble', townOnly: true, tone: 1.1 }),
-});
-
-/** Each map's roads by path index where a path's surface differs from the map's own (a map's own pathStyles win). */
-export const MAP_PATH_SURFACES: Readonly<Record<string, readonly (RoadSurface | null)[]>> = Object.freeze({
-  // Tidegate Polders, 1944: the dyke roads in clinker (the mill lane, the west and east dyke roads, the causeway and the
-  // north dyke road); the farm lanes earth
-  polders: Object.freeze<(RoadSurface | null)[]>(['clinker', 'clinker', 'clinker', 'clinker', 'clinker']),
-  // Jade River Delta, 2010: the village roads brick soling (the embankment roads past the villages stay earth)
-  delta: Object.freeze<(RoadSurface | null)[]>(['brick', 'brick', null, null, 'brick']),
-  // Suzhou Creek, 1937: the Zhabei road north of the creek (path 3) in granite setts
-  blackglass: Object.freeze<(RoadSurface | null)[]>([null, null, null, 'cobble', null, null]),
-  // Monsoon Ridge (Kohima, 1944): the metalled Dimapur–Imphal road (path 1, south to north over the ridge); the jeep tracks earth
-  monsoon: Object.freeze<(RoadSurface | null)[]>([null, 'asphalt', null, null, null]),
-});
-
 /**
  * The worked carriageway of an unpaved road — each a gain, 0 off. relief: the wheel ruts as grooves with lips, the crown
  * and camber; stones: strewn on the crown and the edges, swept out of the wheel paths; potholes: oval bowls, puddled on a
@@ -122,21 +75,11 @@ export const ROAD_SURFACE_BY_CLIMATE: Readonly<Record<'vegetated' | 'arid' | 'sn
   arid: Object.freeze({ relief: 1, stones: 0.9, potholes: 0.35, treads: 1, washboard: 0.8, toneFloor: 0.92, laneTone: 0.50, windrow: 1 }),
   snow: Object.freeze({ relief: 0.8, stones: 0, potholes: 0, treads: 1, washboard: 0, toneFloor: 0, laneTone: 0.7, windrow: 0 }),
 });
-/** The owner's protected maps keep the old road law whatever their climate, until a pair shows the worked carriageway does
- * them no harm (2026-10-09: Verdant's light-touch rule; Frontier "incredible", Frosthollow, Saltwind, Reservoir, Cinder
- * Junction, Saltmere, Sirocco, Nordhavn); the Moon's regolith has no potholes or puddles. */
-export const ROAD_SURFACE_MAP_OVERRIDES: Readonly<Record<string, Partial<RoadSurfaceWork>>> = Object.freeze({
-  ...Object.fromEntries(['verdant', 'frontier', 'winter', 'saltwind', 'reservoir', 'railyard', 'coastal', 'desert', 'fjord']
-    .map((id) => [id, ROAD_SURFACE_OFF])),
-  moon: Object.freeze({ potholes: 0, washboard: 0 }),
-  mars: Object.freeze({ potholes: 0 }),
-});
-
-/** The worked carriageway's two shader vectors for a map: its climate's row under its splat's own fields, under the map's
- * override. */
-export function roadSurfaceUniforms(mapId: string, climate: 'vegetated' | 'arid' | 'snow',
+/** The worked carriageway's two shader vectors for a map: its climate's row under its splat's own fields, under its
+ * built-environment row's work ('off': the old road law, every gain 0; maps/builtEnvironmentTable.ts). */
+export function roadSurfaceUniforms(work: 'climate' | 'off' | Partial<RoadSurfaceWork>, climate: 'vegetated' | 'arid' | 'snow',
   own: Partial<RoadSurfaceWork> | undefined): { a: [number, number, number, number]; b: [number, number, number, number] } {
-  const w = { ...ROAD_SURFACE_BY_CLIMATE[climate], ...(own ?? {}), ...(ROAD_SURFACE_MAP_OVERRIDES[mapId] ?? {}) };
+  const w = { ...ROAD_SURFACE_BY_CLIMATE[climate], ...(own ?? {}), ...(work === 'off' ? ROAD_SURFACE_OFF : work === 'climate' ? {} : work) };
   return { a: [w.relief, w.stones, w.potholes, w.treads], b: [w.washboard, w.toneFloor, w.laneTone, w.windrow] };
 }
 

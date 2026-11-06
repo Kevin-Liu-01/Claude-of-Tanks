@@ -48,8 +48,8 @@ export interface RegionalCivicStyle {
   readonly steps: number;
 }
 
-/** Each place's civic style, by its map's architecture key. */
-export const CIVIC_STYLES: Readonly<Record<string, RegionalCivicStyle>> = Object.freeze({
+/** Each place's civic style (a map names its row in the built-environment table, maps/builtEnvironmentTable.ts). */
+export const CIVIC_STYLES = Object.freeze({
   franconian: Object.freeze<RegionalCivicStyle>({
     id: 'franconian',
     kerb: { width: 0.25, face: 0.12, unit: [1.0, 1.4], hex: 0xa7a59e },
@@ -231,11 +231,12 @@ export const CIVIC_STYLES: Readonly<Record<string, RegionalCivicStyle>> = Object
     grate: { iron: 0x3a3a38, frame: 0xc8bca4 },
     steps: 0xd0c4aa,
   }),
-});
+} satisfies Record<string, RegionalCivicStyle>);
 
-/** A plan's style row (throws on an unknown key: a plan must name a row that exists). */
-export function civicStyle(id: string): RegionalCivicStyle {
-  const style = CIVIC_STYLES[id];
-  if (!style) throw new Error(`civic: no regional style '${id}'`);
-  return style;
+/** A civic style's key. */
+export type CivicStyleId = keyof typeof CIVIC_STYLES;
+
+/** A plan's style row. */
+export function civicStyle(id: CivicStyleId): RegionalCivicStyle {
+  return CIVIC_STYLES[id];
 }

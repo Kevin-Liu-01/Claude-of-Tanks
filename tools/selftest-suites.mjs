@@ -2380,6 +2380,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/maps/shoreJetty.selftest.mjs',
     // #16 r2 (Lane C, 2026-10-14): the waterside family in its members (jetty forms, gangway, driftwood, buoys, fords, reeds)
     'src/world/maps/waterside.selftest.mjs',
+    // built-env-270 (2026-11-05): the built-environment table, a row per battlefield (roads, civic style, waterside)
+    'src/world/maps/builtEnvironmentTable.selftest.mjs',
     'src/world/maps/mooredHullMotion.selftest.mjs',
     'src/world/maps/railWashout.selftest.mjs',
     'src/world/maps/railCoalStockpiles.selftest.mjs',

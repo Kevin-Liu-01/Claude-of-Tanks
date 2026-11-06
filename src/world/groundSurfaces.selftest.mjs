@@ -14,7 +14,7 @@ import { MAP_IDS } from './maps/mapIds.ts';
 import { getMapConfig } from './maps/index.ts';
 import { resolveSourcedTerrainPalette, sourcedTerrainLayerSet } from './sourcedTextures.ts';
 import { trackSurfacePolicy } from './trackSurface.ts';
-import { MAP_PATH_SURFACES, MAP_PAVED_SURFACES } from './roadSurfaces.ts';
+import { BUILT_ENVIRONMENT } from './maps/builtEnvironmentTable.ts';
 import { resolveGroundReduxProfile } from './groundRedux.ts';
 
 const SIM = new Set(['earth', 'hard', 'sand', 'snow', 'mud', 'water']);
@@ -74,8 +74,8 @@ for (const mapId of MAP_IDS) {
   }
   const steep = GROUND_CLASSES[g.steep].sim;
   if (steep !== open && steep !== 'hard') residuals.push(`${mapId}: steep ${g.steep} (${steep}) on ${open}`);
-  const paved = MAP_PAVED_SURFACES[mapId];
-  for (const surface of [paved?.street, paved?.townStreet, paved?.square === 'print' ? null : paved?.square, ...(MAP_PATH_SURFACES[mapId] ?? [])]) {
+  const paved = BUILT_ENVIRONMENT[mapId].roads.paved;
+  for (const surface of [paved?.street, paved?.townStreet, paved?.square === 'print' ? null : paved?.square, ...(BUILT_ENVIRONMENT[mapId].roads.paths ?? [])]) {
     if (!surface) continue;
     assert.equal(GROUND_CLASSES[ROAD_CLASS[surface]].sim, surface === 'dirt' ? 'earth' : 'hard', `${mapId}: ${surface} roads`);
   }

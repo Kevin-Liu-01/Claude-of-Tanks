@@ -1,8 +1,10 @@
 // src/world/civic/plans/index.ts — the civic plans by map (the maps lane, 228). A map adopts the civic-area and pathway
 // kit by a plan here; every other map builds exactly what it built before. Leaf module: no three.js (the terrain's lawn
 // mask and the receipts read the plans in Node).
-import type { CivicAreaPlan, CivicPlan, CivicRect } from '../types.ts';
+import type { CivicAreaPlan, CivicPlan, CivicPlanSource, CivicRect } from '../types.ts';
 import { CIVIC_STYLES } from '../styles.ts';
+import { BUILT_ENVIRONMENT } from '../../maps/builtEnvironmentTable.ts';
+import type { MapId } from '../../maps/mapIds.ts';
 import { URBAN_CIVIC_PLAN } from './urban.ts';
 import { RUINSPIRES_CIVIC_PLAN } from './ruinspires.ts';
 import { CLIFFBRIDGE_CIVIC_PLAN } from './cliffbridge.ts';
@@ -13,7 +15,7 @@ import { DELTA_CIVIC_PLAN } from './delta.ts';
 import { BADLANDS_CIVIC_PLAN } from './badlands.ts';
 
 import * as detMath from '../../../sim/detMath.ts';
-const PLANS: Readonly<Record<string, CivicPlan>> = Object.freeze({
+const SOURCES: Readonly<Partial<Record<MapId, CivicPlanSource>>> = Object.freeze({
   urban: URBAN_CIVIC_PLAN,
   ruinspires: RUINSPIRES_CIVIC_PLAN,
   cliffbridge: CLIFFBRIDGE_CIVIC_PLAN,
@@ -23,6 +25,12 @@ const PLANS: Readonly<Record<string, CivicPlan>> = Object.freeze({
   delta: DELTA_CIVIC_PLAN,
   badlands: BADLANDS_CIVIC_PLAN,
 });
+/** Each plan in its map's civic style (the built-environment row names it; a plan on a map whose row names none throws). */
+const PLANS: Readonly<Record<string, CivicPlan>> = Object.freeze(Object.fromEntries(Object.entries(SOURCES).map(([mapId, plan]) => {
+  const style = BUILT_ENVIRONMENT[mapId as MapId].civic;
+  if (!style) throw new Error(`civic: ${mapId} has a plan but its built-environment row names no civic style`);
+  return [mapId, Object.freeze({ ...plan!, style })];
+})));
 
 /** The maps with a civic plan (the receipts iterate them). */
 export const CIVIC_PLAN_MAPS: readonly string[] = Object.freeze(Object.keys(PLANS));
@@ -117,7 +125,7 @@ export function civicPavementTest(mapId: string | null | undefined, roads: Reado
   const key = `${mapId}:${roads.length}:${roads.map((r) => `${r.length}@${r[0]?.[0] ?? ''},${r[0]?.[1] ?? ''}`).join(';')}`;
   const hit = paveCache.get(key);
   if (hit !== undefined) return hit;
-  const kw = CIVIC_STYLES[plan.style]?.kerb.width ?? 0.25;
+  const kw = CIVIC_STYLES[plan.style].kerb.width;
   const bands = Object.entries(pw.classes).filter(([, c]) => c === 'main' || c === 'gasse').map(([i, c]) => ({
     road: roads[Number(i)] ?? [], lo: pw.kerbM - 0.35, hi: pw.kerbM + kw + (c === 'main' ? pw.maxWalkM : pw.lane.maxWalkM) + 0.3,
   }));
