@@ -1,6 +1,7 @@
 import { launchGuardedBrowser } from './browser-launch.mjs';
 import { eachBrowserChunk } from './browser-id-chunks.mjs';
 import { openCaptureHold } from './capture-hold.mjs';
+import { heldRunExitCode, heldStopWhy, runHeldItem } from './held-items.mjs';
 import { uniqueIds } from './id-list.mjs';
 // Turret-furniture parenting audit driver (owner law 2026-08-04,
 // BUILD-STANDARD §B5): fleet driver for tools/turret-parent-audit.html.
@@ -63,7 +64,9 @@ export async function runTurretParentAudit(argv = process.argv.slice(2), { creat
     // (round 3 A5 review) a whole-fleet run is far past the lock's 20-min cap, which the hold enforces: between ids it yields
     // while anyone waits (the page idles on its last id: turret-parent-audit.html runs no frame loop, so nothing draws
     // unheld). A hold that was stopped (a signal, a yield that could not hold again) ends the run there: the ids it audited
-    // are written and the ones left named for the next run (exit 3), never an ERROR row each.
+    // are written and the ones left named for the next run, never an ERROR row each. (round 4 E10) Each id's end is
+    // tools/held-items.mjs runHeldItem's ('done', 'failed': an ERROR row, 'left'), and the exit code heldRunExitCode's:
+    // 3 with ids left, a signal's 128 + n kept.
     const audited = new Set();
     let stopped = null;
     // A fresh browser per chunk of ids (tools/browser-id-chunks.mjs), inside the run's one capture hold.
@@ -73,33 +76,34 @@ export async function runTurretParentAudit(argv = process.argv.slice(2), { creat
         const page = await browser.newPage();
         page.setDefaultTimeout(180000);
         for (const id of chunk) {
-          await hold.checkpoint();
-          hold.signal.throwIfAborted();
-          try {
+          const item = await runHeldItem(hold, async () => {
             await page.goto(`http://localhost:${port}/tools/turret-parent-audit.html?id=${id}`, { waitUntil: 'domcontentloaded' });
             await page.waitForFunction('window.__TP_READY === true', { polling: 50 });
-            const r = await page.evaluate('window.__TP_RESULT');
-            results.push(r);
-            audited.add(id);
-            const s = r.stranded?.length ?? '?';
-            const a = r.abutting?.length ?? '?';
-            const d = r.dangling?.length ?? '?';
-            const worst = (r.stranded || []).slice(0, 3)
-              .map((h) => `${h.mesh}(${Math.round(h.overlap * 100)}%)`).join(' ');
-            console.log(`[turret-parent] ${id.padEnd(18)} stranded ${String(s).padStart(3)} abutting ${String(a).padStart(3)} dangling ${String(d).padStart(3)}  ${r.anomaly || ''}${worst}`);
-          } catch (e) {
-            if (hold.signal.aborted) throw e; // the stop cut this id (its browser stopped under it): left, not an ERROR
-            results.push({ id, error: e.message.slice(0, 120) });
-            audited.add(id);
-            console.log(`[turret-parent] ${id.padEnd(18)} ERROR ${e.message.slice(0, 80)}`);
+            return page.evaluate('window.__TP_RESULT');
+          });
+          // the stop came before this id or cut it (its browser stopped under it): left with the rest, not an ERROR
+          if (item.outcome === 'left') hold.signal.throwIfAborted();
+          audited.add(id);
+          if (item.outcome === 'failed') {
+            results.push({ id, error: item.error.message.slice(0, 120) });
+            console.log(`[turret-parent] ${id.padEnd(18)} ERROR ${item.error.message.slice(0, 80)}`);
+            continue;
           }
+          const r = item.value;
+          results.push(r);
+          const s = r.stranded?.length ?? '?';
+          const a = r.abutting?.length ?? '?';
+          const d = r.dangling?.length ?? '?';
+          const worst = (r.stranded || []).slice(0, 3)
+            .map((h) => `${h.mesh}(${Math.round(h.overlap * 100)}%)`).join(' ');
+          console.log(`[turret-parent] ${id.padEnd(18)} stranded ${String(s).padStart(3)} abutting ${String(a).padStart(3)} dangling ${String(d).padStart(3)}  ${r.anomaly || ''}${worst}`);
         }
       } finally {
         await browser.close();
       }
     }).catch((error) => {
       if (!hold.signal.aborted) throw error;
-      stopped = String(hold.signal.reason?.message ?? hold.signal.reason ?? error?.message ?? error).split('\n')[0];
+      stopped = heldStopWhy(hold.signal);
     });
     mkdirSync(dirname(outFile), { recursive: true });
     writeFileSync(outFile, JSON.stringify(results, null, 1));
@@ -109,8 +113,8 @@ export async function runTurretParentAudit(argv = process.argv.slice(2), { creat
       const left = ids.filter((id) => !audited.has(id));
       console.error(`[turret-parent] the capture hold was stopped (${stopped}): ${left.length} id(s) left for the next run; finish with `
         + `--ids=${left.join(',')} (it rewrites ${outFile}: keep this one first)`);
-      process.exitCode = 3;
     }
+    heldRunExitCode({ left: stopped !== null });
   } finally {
     await server.close();
     await hold.release();

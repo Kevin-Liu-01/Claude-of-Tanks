@@ -319,10 +319,12 @@ only:
   `launchGuardedBrowser` hands it `handleSIGINT: false` unless the caller sets it, and answers SIGINT itself (exit 130,
   the browser killed) only where nothing else in the process does. A tool waiting in a cap yield's re-queue leaves the
   queue: its `checkpoint()` (or `between()`) rejects with the signal's error. A tool with its own SIGINT/SIGTERM handler
-  passes `signals: []`: one owner of a signal per process. A tool whose run can outlast the cap calls
-  `hold.checkpoint()` between its items, with nothing drawing through the yield (an idle page, or one that `onYield`
-  freezes and `onResume` thaws) and a `graceSeconds` that lets an item in flight finish; a stop ends its run with the
-  items left named (turret-parent-audit, marketing-shots/shoot, studio-example-videos). One that cannot yield without
+  passes `signals: []`: one owner of a signal per process. A tool whose run can outlast the cap runs each item through
+  `tools/held-items.mjs` `runHeldItem` (the hold's `checkpoint()` first; the item is done, failed or left), with nothing
+  drawing through the yield (an idle page, or one that `onYield` freezes and `onResume` thaws) and a `graceSeconds`
+  that lets an item in flight finish; a stop ends its run with the items left named, and `heldRunExitCode` exits 3
+  (1 if an item failed; a signal's 128 + n stands): turret-parent-audit, marketing-shots/shoot, studio-example-videos
+  (tools/long-hold-users.selftest.mjs runs each on a stand-in lock and browser). One that cannot yield without
   losing its take (a frame-stepped film) declares `atCap: 'keep'`. `frame-budget-probe.mjs` `acquireProbeLocks` (the
   capture FIFO with the session mutex, for that probe, time-to-battle-probe, battle-spike-census, battle-memory-probe
   and shadow-cache-truth) holds its FIFO through the open form too, and hands its callers the hold's `signal`. A unit

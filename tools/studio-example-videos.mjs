@@ -1,5 +1,6 @@
 import { launchGuardedBrowser } from './browser-launch.mjs';
 import { freezePage, openCaptureHold, thawPage } from './capture-hold.mjs';
+import { heldRunExitCode, heldStopWhy, runHeldItem } from './held-items.mjs';
 // Render the current 30-map Studio duel collection.
 // Usage:
 //   npm run studio:examples -- --out shots/studio-modern-examples
@@ -190,25 +191,9 @@ export async function renderStudioExamples(args = process.argv.slice(2), { creat
     Math.min(60_000_000, Number.parseInt(opt('bitrate', '16000000'), 10) || 16_000_000),
   );
   mkdirSync(outDir, { recursive: true });
-  createServer ??= (await import('vite')).createServer;
-  puppeteer ??= (await import('puppeteer')).default;
-
-  // FIFO GPU lock shared by the repository's browser rendering tools.
-
-  // (round 3 A5 review) a collection (up to 30 takes, each a map's world build, a real-time recording of up to 20 s, its
-  // transfer and remux) runs far past the lock's 20-min cap, which the hold enforces: between takes it yields while anyone
-  // waits, the Studio page frozen through the yield (it draws every frame) and thawed once the lock is held again. The grace
-  // (300 s, not the default 60) lets a take in flight when the cap comes finish before its yield. A hold that was stopped (a
-  // signal, a yield that could not hold again) ends the run and names the --only run that finishes it.
-  let page = null, frozen = null, takesLeft = [];
-  const hold = await openCaptureHold({ label: 'studio-example-videos', timeoutMs: 45 * 60 * 1000, graceSeconds: 300,
-    onYield: async () => { frozen = await freezePage(page); },
-    onResume: async () => { await thawPage(page, frozen); frozen = null; }, ...holdOptions });
-
-  const port = 7800 + Math.floor(Math.random() * 400);
-  let server = null;
-  let browser = null;
-  const consoleErrors = [];
+  const jobs = only.size
+    ? scenarioPool.filter((scenario) => only.has(scenario.index))
+    : scenarioPool.slice(0, count);
   const manifestPath=join(outDir,'manifest.json');
   let existingVideos=[];
   if(only.size && !stills.length && existsSync(manifestPath)) {
@@ -231,6 +216,27 @@ export async function renderStudioExamples(args = process.argv.slice(2), { creat
     manifest.videos.sort((a,b)=>a.index-b.index);
     writeFileSync(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`);
   }
+  createServer ??= (await import('vite')).createServer;
+  puppeteer ??= (await import('puppeteer')).default;
+
+  // FIFO GPU lock shared by the repository's browser rendering tools.
+
+  // (round 3 A5 review) a collection (up to 30 takes, each a map's world build, a real-time recording of up to 20 s,
+  // its transfer and remux) runs far past the lock's 20-min cap, which the hold enforces: between takes it yields while
+  // anyone waits, the Studio page frozen through the yield (it draws every frame) and thawed once the lock is held
+  // again. The grace (300 s, not the default 60) lets a take in flight when the cap comes finish before its yield. A hold
+  // that was stopped (a signal, a yield that could not hold again) ends the run and names the --only run that finishes
+  // it. (round 4 E10) Each take's end is tools/held-items.mjs runHeldItem's and the exit code heldRunExitCode's: a
+  // failed take still fails the run (exit 1), takes left exit 3 (the stop was rethrown: 1), a signal's 128 + n stands.
+  let page = null, frozen = null, takesLeft = [], nextTake = 0;
+  const hold = await openCaptureHold({ label: 'studio-example-videos', timeoutMs: 45 * 60 * 1000, graceSeconds: 300,
+    onYield: async () => { frozen = await freezePage(page); },
+    onResume: async () => { await thawPage(page, frozen); frozen = null; }, ...holdOptions });
+
+  const port = 7800 + Math.floor(Math.random() * 400);
+  let server = null;
+  let browser = null;
+  const consoleErrors = [];
 
   try {
     server = await createServer({
@@ -274,14 +280,8 @@ export async function renderStudioExamples(args = process.argv.slice(2), { creat
       { timeout: 180_000 },
     );
 
-      const jobs = only.size
-      ? scenarioPool.filter((scenario) => only.has(scenario.index))
-      : scenarioPool.slice(0, count);
-    for (let jobIndex = 0; jobIndex < jobs.length; jobIndex++) {
-      takesLeft = jobs.slice(jobIndex).map((job) => job.index);
-      await hold.checkpoint();
-      hold.signal.throwIfAborted();
-      const scenario = jobs[jobIndex];
+    // one take: staged, then its stills or its recording; what it wrote is listed before it returns
+    async function renderTake(scenario, jobIndex) {
       const number = String(scenario.index).padStart(2, '0');
       console.log(
         `[studio-examples] ${String(jobIndex + 1).padStart(2, '0')}/` +
@@ -444,7 +444,7 @@ export async function renderStudioExamples(args = process.argv.slice(2), { creat
           ...stillsManifest, shotTimes: staged.shotTimes,
         }, null, 2)}\n`);
         console.log(`[studio-examples] ${baseName}: ${stills.length} stills (shots at ${staged.shotTimes.join(', ')} ms)`);
-        continue;
+        return;
       }
 
       const result = await page.evaluate(async (job) => {
@@ -523,27 +523,36 @@ export async function renderStudioExamples(args = process.argv.slice(2), { creat
       writeManifest();
       console.log(`[studio-examples] wrote ${file} (${result.size} bytes)`);
     }
-
-    takesLeft = [];
+    for (let jobIndex = 0; jobIndex < jobs.length; jobIndex++) {
+      nextTake = jobIndex;
+      const item = await runHeldItem(hold, () => renderTake(jobs[jobIndex], jobIndex));
+      // the stop came before this take or cut it (its browser stopped under it): left with the rest
+      if (item.outcome === 'left') { takesLeft = jobs.slice(jobIndex).map((job) => job.index); break; }
+      if (item.outcome === 'failed') throw item.error;
+    }
+  } catch (error) {
+    if (!hold.signal.aborted) throw error;
+    // a stop before the takes (the Studio's boot cut by a signal) leaves every take not yet rendered
+    takesLeft = jobs.slice(nextTake).map((job) => job.index);
+  } finally {
+    if (browser) await browser.close();
+    if (server) await server.close();
+    await hold.release();
+  }
+  if (takesLeft.length) {
+    // a stopped hold ended the run (between takes, or the take in flight once its browser is stopped): the manifest
+    // holds the finished takes, and the run that finishes the rest is named
+    console.error(`[studio-examples] the capture hold was stopped (${heldStopWhy(hold.signal)}): `
+      + `${takesLeft.length} take(s) left; finish with the same options and --only ${takesLeft.join(',')}`);
+  } else {
     if (consoleErrors.length) {
       throw new Error(`page emitted ${consoleErrors.length} console error(s): ${consoleErrors.slice(0, 5).join(' | ')}`);
     }
     console.log(stills.length
       ? `[studio-examples] complete: ${stillsManifest.stills.length} stills in ${outDir}`
       : `[studio-examples] complete: ${manifest.videos.length} videos in ${outDir}`);
-  } catch (error) {
-    // a stopped hold ends the run (between takes, or the take in flight once its browser is stopped): the manifest holds
-    // the finished takes, and the run that finishes the rest is named
-    if (hold.signal.aborted && takesLeft.length) {
-      console.error(`[studio-examples] the capture hold was stopped (${String(hold.signal.reason?.message ?? hold.signal.reason).split('\n')[0]}): `
-        + `${takesLeft.length} take(s) left; finish with the same options and --only ${takesLeft.join(',')}`);
-    }
-    throw error;
-  } finally {
-    if (browser) await browser.close();
-    if (server) await server.close();
-    await hold.release();
   }
+  heldRunExitCode({ left: takesLeft.length > 0 });
 }
 
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) await renderStudioExamples();

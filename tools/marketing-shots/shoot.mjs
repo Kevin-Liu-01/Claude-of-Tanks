@@ -1,5 +1,6 @@
 import { launchGuardedBrowser } from '../browser-launch.mjs';
 import { freezePage, openCaptureHold, thawPage } from '../capture-hold.mjs';
+import { heldRunExitCode, heldStopWhy, runHeldItem } from '../held-items.mjs';
 // tools/marketing-shots/shoot.mjs — marketing screenshot batch driver.
 //
 // Drives window.__STUDIO (docs/STUDIO.md) over every scene JSON in
@@ -82,7 +83,9 @@ export async function shootMarketing(args = process.argv.slice(2), { createServe
   // the hold enforces: between scenes it yields while anyone waits, the Studio page frozen through the yield (it draws every
   // frame) and thawed once the lock is held again. The grace (180 s, not the default 60) lets a scene in flight when the cap
   // comes (a map change builds a world) finish before its yield. A hold that was stopped (a signal, a yield that could not
-  // hold again) ends the pass and names the --match run that finishes it.
+  // hold again) ends the pass and names the --match run that finishes it. (round 4 E10) Each scene's end is
+  // tools/held-items.mjs runHeldItem's and the exit code heldRunExitCode's: 1 for a FAILED scene, 3 for scenes left
+  // only (it was 1 for both), a signal's 128 + n stands (it was 1).
   let page = null, frozen = null;
   const hold = await openCaptureHold({ label: 'shoot', timeoutMs: 30 * 60 * 1000, graceSeconds: 180,
     onYield: async () => { frozen = await freezePage(page); },
@@ -124,7 +127,7 @@ export async function shootMarketing(args = process.argv.slice(2), { createServe
   });
   page.on('pageerror', (err) => consoleErrors.push(String(err)));
 
-  let failed = false, leftFrom = null;
+  let failed = false, leftFrom = null, next = 0;
   const shot = [];
   try {
     const firstMap = scenes[0].json.map || 'verdant';
@@ -137,11 +140,9 @@ export async function shootMarketing(args = process.argv.slice(2), { createServe
     console.log(`[marketing-shots] studio entered on ${firstMap}`);
 
     for (const [index, sc] of scenes.entries()) {
-      // a yield that could not hold again rejects, and has stopped the hold: the pass ends below, as for any stop
-      await hold.checkpoint().catch((error) => { if (!hold.signal.aborted) throw error; });
-      if (hold.signal.aborted) { leftFrom = index; break; }
+      next = index;
       const t0 = Date.now();
-      try {
+      const item = await runHeldItem(hold, async () => {
         await page.evaluate(
           (scene) => window.__STUDIO.load(scene),
           sc.json,
@@ -170,23 +171,23 @@ export async function shootMarketing(args = process.argv.slice(2), { createServe
           writeFileSync(join(outDir, take.file), buf);
           console.log(`[marketing-shots] ${take.file} (${dims.width}x${dims.height}, ${((Date.now() - t0) / 1000).toFixed(1)}s)`);
         }
-        shot.push(sc.name);
-      } catch (err) {
+      });
+      // the stop came before this scene or cut it (its browser stopped under it): left with the rest, not FAILED
+      if (item.outcome === 'left') { leftFrom = index; break; }
+      if (item.outcome === 'failed') {
         failed = true;
-        // the stop cut this scene (its browser stopped under it): left with the rest, not a FAILED scene
-        if (hold.signal.aborted) { leftFrom = index; break; }
-        console.error(`[marketing-shots] FAILED ${sc.name}: ${err.message}`);
+        console.error(`[marketing-shots] FAILED ${sc.name}: ${item.error.message}`);
+        continue;
       }
-    }
-    if (leftFrom !== null) {
-      failed = true;
-      const left = scenes.slice(leftFrom).map((scene) => scene.name);
-      console.error(`[marketing-shots] the capture hold was stopped (${String(hold.signal.reason?.message ?? hold.signal.reason).split('\n')[0]}): `
-        + `${left.length} scene(s) left; finish with the same options and --match ${left.join(',')}`);
+      shot.push(sc.name);
     }
   } catch (err) {
-    failed = true;
-    console.error(`[marketing-shots] FATAL: ${err.message}`);
+    // a stop before the scenes (the Studio's boot cut by a signal) leaves every scene not yet shot
+    if (hold.signal.aborted) leftFrom ??= next;
+    else {
+      failed = true;
+      console.error(`[marketing-shots] FATAL: ${err.message}`);
+    }
   } finally {
     if (consoleErrors.length) {
       console.error(`[marketing-shots] page console errors (${consoleErrors.length}):`);
@@ -196,8 +197,13 @@ export async function shootMarketing(args = process.argv.slice(2), { createServe
     await server.close();
     await hold.release();
   }
+  if (leftFrom !== null) {
+    const left = scenes.slice(leftFrom).map((scene) => scene.name);
+    console.error(`[marketing-shots] the capture hold was stopped (${heldStopWhy(hold.signal)}): `
+      + `${left.length} scene(s) left; finish with the same options and --match ${left.join(',')}`);
+  }
   console.log(`[marketing-shots] done: ${shot.length}/${scenes.length} captured`);
-  process.exitCode = failed ? 1 : 0;
+  heldRunExitCode({ failed, left: leftFrom !== null });
 }
 
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {

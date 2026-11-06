@@ -257,6 +257,9 @@ export const SELFTEST_SCANS = Object.freeze({
     'and the patterns of this table, under the root its caller gives'),
   'tools/shared-main-preflight.mjs': caller('git diff --name-only between the two commits its caller names'),
   'tools/media-r5/atomic-output.mjs': caller('sweepPartials(dir): the output folder its caller passes'),
+  // round 4 F12: the marketing pass as a function, run by its receipt on a fixture scene folder
+  'tools/marketing-shots/shoot.mjs': caller('shootMarketing(args): the scene folder its --scenes names ' +
+    '(tools/marketing-shots/scenes by default)'),
 
   // ---- only outside this checkout's sources
   'tools/capture-lock.mjs': outside('the capture queue directory (tmpdir, or the queueDir its caller passes)'),
@@ -292,6 +295,9 @@ export const SELFTEST_SCANS = Object.freeze({
   'tools/capture-hold-phases.selftest.mjs': outside('its queued case\'s private queue directory under tmpdir'),
   // round 3 A5: the probe callers' fixture output folders under tmpdir
   'tools/probe-unit-stop.selftest.mjs': outside('the fixture output folders it runs each probe into, under tmpdir'),
+  // round 4 F12: the fixture scene folder it hands marketing-shots/shoot.mjs
+  'tools/long-hold-users.selftest.mjs': outside('the fixture scene folder it passes marketing-shots/shoot.mjs (--scenes), ' +
+    'under tmpdir'),
   'tools/media-r5/priority-yield.mjs': outside('the capture queue directory (CAPTURE_QUEUE_DIR, or the queueDir its caller passes)'),
   'tools/media-r5/site-loops.mjs': outside('the renders and deliver folders its CLI names (shots/site50 by default, media output), ' +
     'or the receipt\'s tmpdir fixture'),
