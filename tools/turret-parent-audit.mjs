@@ -32,33 +32,44 @@ export async function runTurretParentAudit(argv = process.argv.slice(2), { creat
   const hold = await openCaptureHold({ label: 'turret-parent-audit', timeoutMs: 45 * 60 * 1000, graceSeconds: 180, ...holdOptions });
 
   const idArg = argv.find((a) => a.startsWith('--ids='));
-  const server = await createServer({
-    root: process.cwd(), logLevel: 'error',
-    server: { port: 7461 + Math.floor(Math.random() * 30), strictPort: false, hmr: false, watch: { ignored: ['**/*'] } },
-  });
-  await server.listen();
-  const port = server.config.server.port;
   const launchOptions = {
     headless: 'new',
     args: ['--use-gl=angle', '--enable-webgl', '--no-sandbox', '--disable-dev-shm-usage'],
   };
   const results = [];
+  let server = null;
   try {
+    server = await createServer({
+      root: process.cwd(), logLevel: 'error',
+      server: { port: 7461 + Math.floor(Math.random() * 30), strictPort: false, hmr: false, watch: { ignored: ['**/*'] } },
+    });
+    await server.listen();
+    const port = server.config.server.port;
     let ids;
     if (idArg) {
       ids = idArg.slice(6).split(',');
     } else {
-      // the procedural roster from a short-lived list page, so the audit below can chunk it
-      const browser = await launchGuardedBrowser(puppeteer, launchOptions);
-      try {
-        const page = await browser.newPage();
-        page.setDefaultTimeout(180000);
-        await page.goto(`http://localhost:${port}/tools/turret-parent-audit.html?mode=list`, { waitUntil: 'domcontentloaded' });
-        await page.waitForFunction('window.__TP_READY === true', { polling: 50 });
-        ids = (await page.evaluate('window.__TP_RESULT')).ids;
-      } finally {
-        await browser.close();
+      // the procedural roster from a short-lived list page, so the audit below can chunk it. (round 4 E10) A stop while it
+      // loads (a signal) ends the run with nothing audited, its exit code kept (128 + n); it threw past that code (exit 1).
+      const roster = await runHeldItem(hold, async () => {
+        const browser = await launchGuardedBrowser(puppeteer, launchOptions);
+        try {
+          const page = await browser.newPage();
+          page.setDefaultTimeout(180000);
+          await page.goto(`http://localhost:${port}/tools/turret-parent-audit.html?mode=list`, { waitUntil: 'domcontentloaded' });
+          await page.waitForFunction('window.__TP_READY === true', { polling: 50 });
+          return (await page.evaluate('window.__TP_RESULT')).ids;
+        } finally {
+          await browser.close();
+        }
+      });
+      if (roster.outcome === 'failed') throw roster.error;
+      if (roster.outcome === 'left') {
+        console.error(`[turret-parent] the capture hold was stopped (${roster.why}) before the roster was read: nothing audited; run it again`);
+        heldRunExitCode({ left: true });
+        return;
       }
+      ids = roster.value;
     }
     console.log(`[turret-parent] auditing ${ids.length} procedural ids`);
     // (round 3 A5 review) a whole-fleet run is far past the lock's 20-min cap, which the hold enforces: between ids it yields
@@ -116,7 +127,7 @@ export async function runTurretParentAudit(argv = process.argv.slice(2), { creat
     }
     heldRunExitCode({ left: stopped !== null });
   } finally {
-    await server.close();
+    if (server) await server.close();
     await hold.release();
   }
 }

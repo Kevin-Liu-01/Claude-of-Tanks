@@ -91,45 +91,47 @@ export async function shootMarketing(args = process.argv.slice(2), { createServe
     onYield: async () => { frozen = await freezePage(page); },
     onResume: async () => { await thawPage(page, frozen); frozen = null; }, ...holdOptions });
 
-  // --- vite (own 7xxx port — NEVER 5001/5002) -----------------------------------
-  const port = 7300 + Math.floor(Math.random() * 500);
-  const server = await createServer({
-    root: process.cwd(),
-    logLevel: 'error',
-    server: { port, strictPort: false, hmr: false, watch: { ignored: ['**/*'] } },
-    optimizeDeps: {
-      entries: ['index.html'],
-      include: [
-        'three',
-        'three/examples/jsm/loaders/GLTFLoader.js',
-        'three/examples/jsm/utils/SkeletonUtils.js',
-        'three/examples/jsm/utils/BufferGeometryUtils.js',
-        'three/examples/jsm/geometries/RoundedBoxGeometry.js',
-      ],
-    },
-  });
-  await server.listen();
-  const url = `http://localhost:${server.config.server.port}/`;
-  console.log(`[marketing-shots] vite up at ${url}`);
-
-  const browser = await launchGuardedBrowser(puppeteer, {
-    headless: 'new',
-    protocolTimeout: 300000,
-    args: ['--use-gl=angle', '--enable-webgl', '--no-sandbox', '--disable-dev-shm-usage'],
-  });
-  page = await browser.newPage();
-  // 16:9 stage — capture inherits the live aspect, so 3840 -> 3840x2160
-  await page.setViewport({ width: 1280, height: 720, deviceScaleFactor: 1 });
-
-  const consoleErrors = [];
-  page.on('console', (msg) => {
-    if (msg.type() === 'error' && !msg.text().includes('favicon')) consoleErrors.push(msg.text());
-  });
-  page.on('pageerror', (err) => consoleErrors.push(String(err)));
-
-  let failed = false, leftFrom = null, next = 0;
+  let failed = false, leftFrom = null, next = 0, server = null, browser = null;
   const shot = [];
+  const consoleErrors = [];
   try {
+    // --- vite (own 7xxx port — NEVER 5001/5002) ---------------------------------
+    // (round 4 E10) inside the try with the Studio's boot: a stop during either (a signal refuses the launch) leaves every
+    // scene, its exit code kept; it threw past that code (exit 1)
+    const port = 7300 + Math.floor(Math.random() * 500);
+    server = await createServer({
+      root: process.cwd(),
+      logLevel: 'error',
+      server: { port, strictPort: false, hmr: false, watch: { ignored: ['**/*'] } },
+      optimizeDeps: {
+        entries: ['index.html'],
+        include: [
+          'three',
+          'three/examples/jsm/loaders/GLTFLoader.js',
+          'three/examples/jsm/utils/SkeletonUtils.js',
+          'three/examples/jsm/utils/BufferGeometryUtils.js',
+          'three/examples/jsm/geometries/RoundedBoxGeometry.js',
+        ],
+      },
+    });
+    await server.listen();
+    const url = `http://localhost:${server.config.server.port}/`;
+    console.log(`[marketing-shots] vite up at ${url}`);
+
+    browser = await launchGuardedBrowser(puppeteer, {
+      headless: 'new',
+      protocolTimeout: 300000,
+      args: ['--use-gl=angle', '--enable-webgl', '--no-sandbox', '--disable-dev-shm-usage'],
+    });
+    page = await browser.newPage();
+    // 16:9 stage — capture inherits the live aspect, so 3840 -> 3840x2160
+    await page.setViewport({ width: 1280, height: 720, deviceScaleFactor: 1 });
+
+    page.on('console', (msg) => {
+      if (msg.type() === 'error' && !msg.text().includes('favicon')) consoleErrors.push(msg.text());
+    });
+    page.on('pageerror', (err) => consoleErrors.push(String(err)));
+
     const firstMap = scenes[0].json.map || 'verdant';
     await page.goto(`${url}?studio=1&map=${firstMap}`, { waitUntil: 'domcontentloaded', timeout: 180000 });
     await waitForBootLoaded(page, { timeout: 180000 });
@@ -182,7 +184,7 @@ export async function shootMarketing(args = process.argv.slice(2), { createServe
       shot.push(sc.name);
     }
   } catch (err) {
-    // a stop before the scenes (the Studio's boot cut by a signal) leaves every scene not yet shot
+    // a stop before the scenes (Vite, the launch or the Studio's boot cut by a signal) leaves every scene not yet shot
     if (hold.signal.aborted) leftFrom ??= next;
     else {
       failed = true;
@@ -193,8 +195,8 @@ export async function shootMarketing(args = process.argv.slice(2), { createServe
       console.error(`[marketing-shots] page console errors (${consoleErrors.length}):`);
       for (const e of consoleErrors.slice(0, 20)) console.error(`  ${e}`);
     }
-    await browser.close();
-    await server.close();
+    if (browser) await browser.close();
+    if (server) await server.close();
     await hold.release();
   }
   if (leftFrom !== null) {

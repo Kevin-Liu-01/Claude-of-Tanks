@@ -17,7 +17,9 @@
 //   stop     an item past the grace is stopped (its signal aborts), finishes before the teardown and is kept; the rest are
 //            left and the finishing command is named; the run exits 3 (E10: shoot and studio-example-videos exited 1);
 //   signal   (E10, a child process per tool) SIGTERM during an item: the tool's way out runs and the process exits 143
-//            (turret-parent-audit set 3 over it, shoot exited 1, studio-example-videos rethrew: 1);
+//            (turret-parent-audit set 3 over it, shoot exited 1, studio-example-videos rethrew: 1); and during a boot
+//            step outside the items (turret-parent-audit's roster page, shoot's Vite start: its launch is then refused),
+//            which threw past the signal's code (exit 1);
 //   stills   (E10) a --stills run with --only keeps the takes stills.json already lists (it listed only its own).
 // No real browser, server or lock starts; the real Chrome runs stay the owner's (manualRecommended).
 import assert from 'node:assert/strict';
@@ -236,13 +238,14 @@ async function studioRun({ takeMs, graceSeconds, args = ['--count', '4', '--stil
   return { ...run, events, holdLog: holdLog.join('\n'), stills: listed(dir) };
 }
 
-// ---- (E10) the signal child: one tool, SIGTERM while its first item runs --------------------------------------------------
+// ---- (E10) the signal child: one tool, SIGTERM while its first item runs, or while it boots --------------------------------
 if (process.argv[2] === '--signal-child') {
   const [tool, dir] = process.argv.slice(3);
   const events = [];
   const lock = standInLock({ waiters: 0, events });
   let signalled = false;
-  // the first item's long call (the id's page, the scene's world, the take's world) never answers; SIGTERM comes during it
+  // the first item's long call (the id's page, the roster's page, the scene's world, the take's world) never answers;
+  // SIGTERM comes during it (shoot-boot: while Vite starts, so the browser's launch comes after it and is refused)
   const signalOnce = () => {
     if (signalled) return;
     signalled = true;
@@ -251,15 +254,26 @@ if (process.argv[2] === '--signal-child') {
   const long = { ms: Infinity };
   const scripts = {
     turret: ({ method }) => (method === 'waitForFunction' ? (signalOnce(), long) : {}),
+    'turret-list': ({ method }) => (method === 'waitForFunction' ? (signalOnce(), long) : {}),
     shoot: ({ method, arg }) => (method === 'evaluate' && arg?.name ? (signalOnce(), long) : {}),
+    'shoot-boot': () => ({}),
     studio: ({ method, arg }) => (method === 'evaluate' && Number.isInteger(arg?.index) ? (signalOnce(), long) : {}),
   };
   const chrome = standInChrome({ events, script: scripts[tool] });
-  const deps = { createServer: standInVite, puppeteer: chrome.launcher, hold: { lock, log: () => {}, teardown: chrome.teardown } };
+  // Vite comes up once the hold's signal owner has taken the SIGTERM (it sets the exit code first), however late it runs
+  const slowVite = async (config) => {
+    signalOnce();
+    for (let wait = 0; process.exitCode !== 143 && wait < 3000; wait++) await new Promise((done) => setTimeout(done, 10));
+    return standInVite(config);
+  };
+  const deps = { createServer: tool === 'shoot-boot' ? slowVite : standInVite, puppeteer: chrome.launcher,
+    hold: { lock, log: () => {}, teardown: chrome.teardown } };
   // each tool's own command-line entry, its stand-ins aside
   if (tool === 'turret') {
     await runTurretParentAudit(['--ids=tpa_one,tpa_two'], { ...deps, outFile: join(dir, 'turret-parent.json') });
-  } else if (tool === 'shoot') {
+  } else if (tool === 'turret-list') {
+    await runTurretParentAudit([], { ...deps, outFile: join(dir, 'turret-parent.json') });
+  } else if (tool === 'shoot' || tool === 'shoot-boot') {
     const scenesDir = join(dir, 'scenes');
     mkdirSync(scenesDir);
     for (const name of ['01_a', '02_b']) writeFileSync(join(scenesDir, `${name}.json`), JSON.stringify({ map: 'verdant', name }));
@@ -284,7 +298,7 @@ if (process.argv[2] === '--signal-child') {
   });
   try {
     // the signal children start first (each imports its tool); the mock-clock cases run meanwhile
-    const children = Object.fromEntries(['turret', 'shoot', 'studio'].map((tool) => [tool, signalChild(tool)]));
+    const children = Object.fromEntries(['turret', 'turret-list', 'shoot', 'shoot-boot', 'studio'].map((tool) => [tool, signalChild(tool)]));
 
     // ---- turret-parent-audit -------------------------------------------------------------------------------------------
     await check('turret-parent-audit yield', async () => {
@@ -387,7 +401,8 @@ if (process.argv[2] === '--signal-child') {
     });
 
     // ---- (E10) a signal during an item: the way out runs and the process exits 128 + n ------------------------------------
-    const expected = { turret: /--ids=tpa_one,tpa_two/, shoot: /--match 01_a,02_b/, studio: /--only 1,2/ };
+    const expected = { turret: /--ids=tpa_one,tpa_two/, 'turret-list': /before the roster was read/, shoot: /--match 01_a,02_b/,
+      'shoot-boot': /--match 01_a,02_b/, studio: /--only 1,2/ };
     for (const [tool, child] of Object.entries(children)) {
       await check(`${tool} SIGTERM`, async () => {
         const { code, signal, output } = await child;
