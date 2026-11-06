@@ -182,7 +182,7 @@ await runWarmHold({
   label: 'air-support-270',
   place: `air-support-270-shots-${only ?? 'all'}`,
   // a battle page frozen in the queue is checked (and re-warmed if it reloaded) only past this
-  maxFrozenMinutes: 90,
+  maxFrozenMinutes: 30,
   warm: async () => {
     server = await createServer(mapProbeServerOptions(root, path.join(root, '.qa-dev/vite-air-support')));
     await server.listen();
