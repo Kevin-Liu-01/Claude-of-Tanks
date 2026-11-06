@@ -232,6 +232,42 @@ try {
       assert.equal(exit, code, `${signal}: the process exits 128 + n after the unwind (${tail})`);
     });
   }
+  // (round 4 review) the same with --gate and a scenario whose limits failed before the signal: the failure writer set 1
+  // over the signal's 128 + n (`process.exitCode = 1`, after markUnitsLeft kept it), so the process exited 1
+  await check('battle-memory-probe SIGTERM after a failed limit', async () => {
+    const dir = scratch(), script = join(dir, 'memory-probe-failed-signal.mjs');
+    const href = (name) => JSON.stringify(new URL(name, import.meta.url).href);
+    writeFileSync(script, [
+      `import { acquireProbeLocks } from ${href('./frame-budget-probe.mjs')};`,
+      `import { parseMemoryArgs, runMemoryProbe } from ${href('./battle-memory-probe.mjs')};`,
+      'let held = false, die;',
+      'const lock = { nested: false, acquire: async () => { held = true; }, release: () => { held = false; return true; }, refresh: () => held,',
+      '  waiting: () => 0, get held() { return held; }, get heldCapMs() { return null; } };',
+      'const killed = new Promise((_, reject) => { die = reject; });',
+      'killed.catch(() => {});',
+      'const acquireLocks = (options = {}) => acquireProbeLocks({ ...options, lock, hold: { ...options.hold, log: () => {},',
+      '  teardown: async () => { die(new Error(\'Protocol error: Target closed\')); } } });',
+      `await runMemoryProbe(parseMemoryArgs(['--scenarios=urban:zone_control,verdant:zone_control', '--gate', ${JSON.stringify(`--out=${dir}`)}]), { acquireLocks,`,
+      '  openServer: async () => ({ close: async () => { console.log(\'server closed\'); } }),',
+      // the first scenario measures nothing, so every limit fails ('not measured'); the second is cut by the signal
+      '  probe: async (_options, scenario) => { if (scenario.startsWith(\'urban\')) return { growth: {}, peakRss: {} };',
+      '    const alive = setInterval(() => {}, 1000); console.log(\'probing\'); return killed.finally(() => clearInterval(alive)); } });',
+    ].join('\n'));
+    const child = spawn(process.execPath, [script], { stdio: ['ignore', 'pipe', 'pipe'] });
+    let stdout = '', stderr = '', sent = false;
+    child.stdout.on('data', (chunk) => {
+      stdout += chunk;
+      if (!sent && stdout.includes('probing')) { sent = true; child.kill('SIGTERM'); }
+    });
+    child.stderr.on('data', (chunk) => { stderr += chunk; });
+    const wall = setTimeout(() => child.kill('SIGKILL'), 120_000);
+    const [exit] = await once(child, 'exit');
+    clearTimeout(wall);
+    const said = `${stdout}${stderr}`, tail = said.split('\n').slice(-6).join(' | ');
+    assert.ok(sent && /limit\(s\) FAILED/.test(said), `the first scenario's limits failed, then the second was signalled (${tail})`);
+    assert.match(said, /verdant:zone_control left for the next run/, `the scenario cut is left (${tail})`);
+    assert.equal(exit, 143, `a signal's 128 + n stands over the failed gate's 1 (${tail})`);
+  });
 
   // ---- shadow-cache-truth: a map the stop cut is left; result.json is written; exit 3 ---------------------------------------
   await check('shadow-cache-truth', async () => {
@@ -295,4 +331,4 @@ try {
 }
 assert.deepEqual(failed, [], `a cap stop mid-unit leaves the unit for the next run:\n  ${failed.join('\n  ')}`);
 
-console.log('probe-unit-stop.selftest: a cap stop mid-unit leaves the unit for the next run in frame-budget-probe, battle-memory-probe, battle-spike-census (and its gate, which still fails a failed battle), shadow-cache-truth and time-to-battle-probe --warm=relaunch (a cut cold run or a refused relaunch): exit 3, never FAILED or a crash, the finishing run named; a signal unwinds battle-memory-probe\'s hold PASS');
+console.log('probe-unit-stop.selftest: a cap stop mid-unit leaves the unit for the next run in frame-budget-probe, battle-memory-probe, battle-spike-census (and its gate, which still fails a failed battle), shadow-cache-truth and time-to-battle-probe --warm=relaunch (a cut cold run or a refused relaunch): exit 3, never FAILED or a crash, the finishing run named; a signal unwinds battle-memory-probe\'s hold, and its 128 + n stands over a failed gate PASS');

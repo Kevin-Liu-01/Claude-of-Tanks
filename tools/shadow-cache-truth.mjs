@@ -31,6 +31,7 @@ import {
   acquireProbeLocks, awaitTextures, freezeBattle, grassSettled, installObservers, markUnitsLeft, openPreview, pinnedOpponents, poseView, runProbeUnit,
 } from './frame-budget-probe.mjs';
 import { waitForBootLoaded } from './game-readiness.mjs';
+import { heldRunExitCode } from './held-items.mjs';
 
 export function parseArgs(argv) {
   const o = { root: null, maps: ['verdant'], out: path.resolve('.qa-dev', 'reports', 'shadow-cache-truth'), port: 5395,
@@ -470,7 +471,8 @@ export async function runShadowTruth(options, { acquireLocks = acquireProbeLocks
   report.pass = report.failures.length === 0 && !report.left.length;
   writeFileSync(path.join(options.out, 'result.json'), JSON.stringify(report, null, 1));
   log(report.failures.length ? `DIFFERENCES: ${report.failures.join('; ')}` : report.left.length ? `INCOMPLETE: ${report.left.join(', ')} left for the next run` : 'PASS');
-  if (options.gate && report.failures.length) process.exitCode = 1;
+  // (round 4 review) a difference exits 1, never over a signal's 128 + n (heldRunExitCode; `= 1` set it over the signal)
+  if (options.gate && report.failures.length) heldRunExitCode({ failed: true });
   else if (report.left.length) markUnitsLeft();
   return report;
 }
