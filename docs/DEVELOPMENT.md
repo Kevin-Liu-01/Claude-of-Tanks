@@ -313,17 +313,25 @@ only:
   (`browser-launch.mjs` `stopGuardedBrowsers`). A stop is enforced: a stopped hold refuses the process's browser
   launches until it is released, and a work still running two minutes after its teardown began loses the lock. A tool
   that launches no browser gives the cap a stop of its own: it reads `hold.signal` into its cancellation, or awaits
-  `hold.between()` between synchronous steps. On a signal the open form lets the tool's way out run: its signal aborts,
-  its browsers stop, its finally reaches `release()`, which resolves, and the process exits 128 + n once that is done
-  (30 s at most). A tool waiting in a cap yield's re-queue leaves the queue: its `checkpoint()` (or `between()`) rejects
-  with the signal's error. A tool with its own SIGINT/SIGTERM handler passes `signals: []`: one owner of a signal per process.
-  `frame-budget-probe.mjs` `acquireProbeLocks` (the capture FIFO with the session mutex, for that probe,
-  time-to-battle-probe, battle-spike-census, battle-memory-probe and shadow-cache-truth) holds its FIFO through the
-  open form too, and hands its callers the hold's `signal`.
-  A shell holds one normal ticket across several steps with
-  `node tools/with-capture-lock.mjs [--lock-class=render|timing] [--place=<key>] -- <command>`: every tool under it that
-  takes the lock nests in that hold (its token), and a wait that runs out exits 77. `tools/capture-hold-census.selftest.mjs`
-  lists the few tools that still acquire the lock themselves, each with its reason, and refuses a new one.
+  `hold.between()` between synchronous steps. On a signal (SIGTERM, SIGINT or SIGHUP) the open form lets the tool's way
+  out run: its signal aborts, its browsers stop, its finally reaches `release()`, which resolves, and the process exits
+  128 + n once that is done (30 s at most). Puppeteer's own SIGINT handler exits the process inside itself, so
+  `launchGuardedBrowser` hands it `handleSIGINT: false` unless the caller sets it, and answers SIGINT itself (exit 130,
+  the browser killed) only where nothing else in the process does. A tool waiting in a cap yield's re-queue leaves the
+  queue: its `checkpoint()` (or `between()`) rejects with the signal's error. A tool with its own SIGINT/SIGTERM handler
+  passes `signals: []`: one owner of a signal per process. A tool whose run can outlast the cap calls
+  `hold.checkpoint()` between its items, with nothing drawing through the yield (an idle page, or one that `onYield`
+  freezes and `onResume` thaws) and a `graceSeconds` that lets an item in flight finish; a stop ends its run with the
+  items left named (turret-parent-audit, marketing-shots/shoot, studio-example-videos). One that cannot yield without
+  losing its take (a frame-stepped film) declares `atCap: 'keep'`. `frame-budget-probe.mjs` `acquireProbeLocks` (the
+  capture FIFO with the session mutex, for that probe, time-to-battle-probe, battle-spike-census, battle-memory-probe
+  and shadow-cache-truth) holds its FIFO through the open form too, and hands its callers the hold's `signal`. A unit
+  the hold's stop comes before or cuts (a slot, a scenario, a battle, a map, a build) is left for the next run, never a
+  failure (`runProbeUnit`): the run exits 3 and says how to finish. A shell holds one normal ticket across several steps
+  with `node tools/with-capture-lock.mjs [--lock-class=render|timing] [--place=<key>] -- <command>`: every tool under it
+  that takes the lock nests in that hold (its token), and a wait that runs out exits 77.
+  `tools/capture-hold-census.selftest.mjs` lists the few tools that still acquire the lock themselves (under whatever
+  name they import its acquire), each with its reason, and refuses a new one.
 - **Helpers in the same module.** `startViteChild` runs Vite in a child process that exits with its parent: `preview`
   serves a built `dist` with no transforms, and `dev` serves the sources. `warmPage` waits, within bounds, for a ready
   expression, eager images and fonts. Studio, Garage and the public pages all serve from a dist (`vite build --outDir

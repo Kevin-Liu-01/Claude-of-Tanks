@@ -290,6 +290,8 @@ export const SELFTEST_SCANS = Object.freeze({
   'tools/isolated-capture-browser.selftest.mjs': outside('its signal case\'s private root under tmpdir'),
   // round 2 U38 review: the queued-at-a-signal case's private queue directory under tmpdir
   'tools/capture-hold-phases.selftest.mjs': outside('its queued case\'s private queue directory under tmpdir'),
+  // round 3 A5: the probe callers' fixture output folders under tmpdir
+  'tools/probe-unit-stop.selftest.mjs': outside('the fixture output folders it runs each probe into, under tmpdir'),
   'tools/media-r5/priority-yield.mjs': outside('the capture queue directory (CAPTURE_QUEUE_DIR, or the queueDir its caller passes)'),
   'tools/media-r5/site-loops.mjs': outside('the renders and deliver folders its CLI names (shots/site50 by default, media output), ' +
     'or the receipt\'s tmpdir fixture'),

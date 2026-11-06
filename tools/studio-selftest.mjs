@@ -1,5 +1,5 @@
 import { launchGuardedBrowser } from './browser-launch.mjs';
-import { acquireCaptureLock as acquireLock, refreshCaptureLock, releaseCaptureLock as releaseLock } from './capture-lock.mjs';
+import { openCaptureHold } from './capture-hold.mjs';
 // SCENE STUDIO self-test (docs/STUDIO.md §Self-test).
 // Usage: node tools/studio-selftest.mjs [--out shots/studio-selftest] [--keep]
 //
@@ -29,10 +29,7 @@ import { readinessExpression, waitForBootLoaded } from './game-readiness.mjs';
 
 // --- exclusive harness lock (FIFO ticket protocol, see screenshot.mjs) ------
 
-await acquireLock(20 * 60 * 1000);
-process.on('exit', releaseLock);
-const lockRefresher = setInterval(() => { refreshCaptureLock(); }, 60 * 1000);
-lockRefresher.unref();
+const hold = await openCaptureHold({ label: 'studio-selftest', timeoutMs: 20 * 60 * 1000 });
 
 // --- options -----------------------------------------------------------------
 const args = process.argv.slice(2);
@@ -609,5 +606,6 @@ try {
   }
   await browser.close();
   await server.close();
+  await hold.release();
 }
 process.exit(failed || consoleErrors.length ? 1 : 0);

@@ -1,5 +1,5 @@
 import { launchGuardedBrowser } from './browser-launch.mjs';
-import { acquireCaptureLock as acquireLock, releaseCaptureLock as releaseLock } from './capture-lock.mjs';
+import { openCaptureHold } from './capture-hold.mjs';
 // Automated player hull-hit-rate gate (controls_gunnery r6).
 // FAILS (exit 1) unless >=80% of fully-settled aim-assisted shots at <=350 m
 // (moving targets included) register a tank impact, across 8 random-roster
@@ -12,8 +12,7 @@ import { createServer } from 'vite';
 import puppeteer from 'puppeteer';
 import { waitForBootLoaded } from './game-readiness.mjs';
 
-await acquireLock();
-process.on('exit', releaseLock);
+const hold = await openCaptureHold({ label: 'gunnery_gate', timeoutMs: 10 * 60 * 1000 });
 
 const args = process.argv.slice(2);
 const opt = (n, f) => { const i = args.indexOf(`--${n}`); return i >= 0 ? args[i + 1] : f; };
@@ -341,6 +340,6 @@ try {
 } finally {
   await browser.close();
   await server.close();
-  releaseLock();
+  await hold.release();
 }
 process.exit(failed ? 1 : 0);

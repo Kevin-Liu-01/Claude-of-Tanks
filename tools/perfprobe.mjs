@@ -1,5 +1,5 @@
 import { launchGuardedBrowser } from './browser-launch.mjs';
-import { acquireCaptureLock as acquireLock, refreshCaptureLock, releaseCaptureLock as releaseLock } from './capture-lock.mjs';
+import { openCaptureHold } from './capture-hold.mjs';
 // Performance probe harness (perf engineer tooling).
 // Usage: node tools/perfprobe.mjs [--seconds 60] [--width 1920] [--height 1080]
 //        [--dsf 1|2] [--out file] [--preset low|medium|high|ultra] [--dump file]
@@ -264,12 +264,9 @@ async function closePerfServer(server) {
 // owners are reaped via kill(pid, 0) liveness, crashed holders via lock
 // mtime staleness, exactly as before.
 
-await acquireLock(15 * 60 * 1000);
-process.on('exit', releaseLock);
-// keep the lock's mtime fresh so a long 60 s certification is never reclaimed
-// as stale by a sibling harness mid-run
-const lockRefresher = setInterval(() => { refreshCaptureLock(); }, 60 * 1000);
-lockRefresher.unref();
+// (2026-11-02 audit U38, round 3) the one hold wrapper keeps the lock fresh through a long certification, owns its
+// cap and signals, and releases it at exit
+const hold = await openCaptureHold({ label: 'perfprobe', timeoutMs: 15 * 60 * 1000 });
 
 const args = process.argv.slice(2);
 function opt(name, fallback) {
@@ -1491,7 +1488,6 @@ await page.evaluateOnNewDocument((tier, desktopPreset, phonePreset) => {
   }
   clearInterval(loadSampler);
   clearInterval(foreignSampler);
-  clearInterval(lockRefresher);
   // A preview owns an HTTP server, not the dev server's close API. Always
   // attempt both releases, including partial acquisition/cleanup failures.
   for (const close of [() => browser?.close(), () => server && closePerfServer(server)]) {
@@ -1501,7 +1497,7 @@ await page.evaluateOnNewDocument((tier, desktopPreset, phonePreset) => {
   // Browser closure wakes any in-flight CDP dispatch; join the owned input job
   // before releasing the shared capture lease, including sampler failures.
   if (cameraJob) await cameraJob;
-  releaseLock();
+  await hold.release();
 }
 
 if (report) {

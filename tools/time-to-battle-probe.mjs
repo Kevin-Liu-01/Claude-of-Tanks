@@ -25,7 +25,7 @@ import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync, existsSync
 import { preview } from 'vite';
 import puppeteer from 'puppeteer';
 import { MAP_PROBE_BROWSER_ARGS, isMainModule, sleep } from './map-probe-runtime.mjs';
-import { acquireProbeLocks, installObservers, pinnedOpponents, profileSelfByChunk } from './frame-budget-probe.mjs';
+import { acquireProbeLocks, installObservers, markUnitsLeft, pinnedOpponents, profileSelfByChunk, runProbeUnit } from './frame-budget-probe.mjs';
 import { BOOT_LOADED_EXPRESSION } from './game-readiness.mjs';
 
 const TOOL = 'time-to-battle';
@@ -308,7 +308,11 @@ async function pageRun(browser, { port, mapId, specId, opponents, allies, enemie
     load1: +os.loadavg()[0].toFixed(1) };
 }
 
-async function main(opt) {
+/** The probe's units (a build on a map: its cold and warm runs on one fresh profile) under the pair's hold. `deps` (round 3
+ *  A5) are its outside world, for a receipt that drives it without a browser: the locks, the preview servers, the catalog,
+ *  the browser launch and one page run. */
+export async function runTimeToBattle(opt, { acquireLocks = acquireProbeLocks, startPreview = preview, catalog = catalogOf,
+  launchBrowser = (launchOptions) => launchGuardedBrowser(puppeteer, launchOptions), runPage = pageRun } = {}) {
   const roots = opt.roots.split(',').map((r) => path.resolve(r));
   const labels = (opt.labels ?? 'base,branch').split(',');
   const maps = (opt.maps ?? 'verdant,titan_gorge,monsoon').split(',');
@@ -326,13 +330,13 @@ async function main(opt) {
   // program disk cache off); the receipt records them
   const extraBrowserArgs = typeof opt['browser-args'] === 'string' ? opt['browser-args'].split('|').filter(Boolean) : [];
   let left = 0;
-  const locks = await acquireProbeLocks({ sessionMutex: opt['session-mutex'] ?? null, log });
+  const locks = await acquireLocks({ sessionMutex: opt['session-mutex'] ?? null, log });
   const refresh = locks ? setInterval(() => locks.refresh(), 30000) : null;
   const servers = [];
   try {
     for (let i = 0; i < roots.length; i++) {
       if (!existsSync(path.join(roots[i], 'dist', 'index.html'))) throw new Error(`${roots[i]} has no dist`);
-      servers.push(await preview({ root: roots[i], configFile: false, logLevel: 'error', preview: { host: '127.0.0.1', port: port0 + i, strictPort: true } }));
+      servers.push(await startPreview({ root: roots[i], configFile: false, logLevel: 'error', preview: { host: '127.0.0.1', port: port0 + i, strictPort: true } }));
     }
     // the opponents both catalogs share (a throwaway profile per build: the measured profiles stay cold)
     // (a resumed run keeps the roster it pinned)
@@ -343,7 +347,7 @@ async function main(opt) {
       log(`opponents from ${rosterFile}: ${opponents.join(',')}`);
     } else {
       const catalogs = [];
-      for (let i = 0; i < roots.length; i++) catalogs.push(new Set(await catalogOf(port0 + i)));
+      for (let i = 0; i < roots.length; i++) catalogs.push(new Set(await catalog(port0 + i)));
       const shared = [...catalogs[0]].filter((id) => catalogs.every((c) => c.has(id)));
       opponents = pinnedOpponents(shared, specId, allies + enemies);
       log(`${shared.length} shared catalog ids; opponents ${opponents.join(',')}`);
@@ -361,42 +365,49 @@ async function main(opt) {
             log(`${locks.signal.aborted ? 'the capture hold was stopped' : 'budget'}: ${mapId} ${labels[i]} left for the next run`); left++; continue;
           }
           const dir = mkdtempSync(path.join(os.tmpdir(), 'ttb-profile-'));
-          const launch = () => launchGuardedBrowser(puppeteer, { headless: 'new', userDataDir: dir, protocolTimeout: 600000,
+          const launch = () => launchBrowser({ headless: 'new', userDataDir: dir, protocolTimeout: 600000,
             args: [...MAP_PROBE_BROWSER_ARGS, '--enable-precise-memory-info', '--window-size=1920,1080', ...extraBrowserArgs] });
-          let browser = await launch();
-          try {
-            for (const run of runs) {
-              // --warm=relaunch: a returning player — the browser closed after the cold run and opened again on the same
-              // profile (its HTTP and GPU disk caches kept, nothing in memory); the default warm run is a second page of the
-              // same browser
-              if (run !== runs[0] && opt.warm === 'relaunch') { await browser.close().catch(() => {}); browser = await launch(); }
-              let rec;
-              try {
-                rec = await pageRun(browser, { port: port0 + i, mapId, specId, opponents, allies, enemies, profile: !!opt.profile, label: labels[i], run });
-              } catch (error) {
-                log(`${mapId} ${labels[i]} ${run} FAILED: ${String(error?.message || error).slice(0, 300)}`);
-                writeFileSync(path.join(out, `${mapId}-${labels[i]}-${run}-r${rep}-failed.json`), JSON.stringify({ error: String(error?.stack || error).slice(0, 2000) }, null, 1));
-                continue;
+          // (round 3 A5) the unit whole, its relaunch included, under the one owner of a unit's end: a run the hold's stop cut
+          // (its browser stopped under it, or the stopped hold refusing the --warm=relaunch launch) leaves the unit for the
+          // next run; the refused relaunch used to throw out of the tool
+          const unit = await runProbeUnit(locks, async () => {
+            let browser = await launch();
+            try {
+              for (const run of runs) {
+                // --warm=relaunch: a returning player — the browser closed after the cold run and opened again on the same
+                // profile (its HTTP and GPU disk caches kept, nothing in memory); the default warm run is a second page of the
+                // same browser
+                if (run !== runs[0] && opt.warm === 'relaunch') { await browser.close().catch(() => {}); browser = await launch(); }
+                let rec;
+                try {
+                  rec = await runPage(browser, { port: port0 + i, mapId, specId, opponents, allies, enemies, profile: !!opt.profile, label: labels[i], run });
+                } catch (error) {
+                  if (locks.signal.aborted) throw error; // the hold's stop cut it: the unit is left, not a failed run
+                  log(`${mapId} ${labels[i]} ${run} FAILED: ${String(error?.message || error).slice(0, 300)}`);
+                  writeFileSync(path.join(out, `${mapId}-${labels[i]}-${run}-r${rep}-failed.json`), JSON.stringify({ error: String(error?.stack || error).slice(0, 2000) }, null, 1));
+                  continue;
+                }
+                rec.rep = rep;
+                if (extraBrowserArgs.length) rec.browserArgs = extraBrowserArgs;
+                if (opt.warm === 'relaunch') rec.warmMode = 'relaunch';
+                const file = fileOf(run);
+                // the whole CPU profile beside the record (call trees: who calls what during the entry), not inside it
+                if (rec.cpu?.raw) { writeFileSync(file.replace(/\.json$/, '.cpuprofile'), JSON.stringify(rec.cpu.raw)); delete rec.cpu.raw; }
+                writeFileSync(file, JSON.stringify(rec, null, 1));
+                const st = rec.trace?.stages ?? {};
+                log(`${mapId} ${labels[i]} ${run}: open ${rec.openMs} ms (trace ${rec.trace?.totalMs}) · ${Object.entries(st).map(([k, v]) => `${k} ${v}`).join(' · ')} · programs ${rec.programsBefore}→${rec.programsAtOpen}→${rec.programsSettled} · link ${rec.glAtOpen?.linkProgram?.n}/${rec.glAtOpen?.linkProgram?.ms} ms · net ${rec.network.requests} req ${(rec.network.bytes / 1e6).toFixed(1)} MB · load ${rec.load1}`);
               }
-              rec.rep = rep;
-              if (extraBrowserArgs.length) rec.browserArgs = extraBrowserArgs;
-              if (opt.warm === 'relaunch') rec.warmMode = 'relaunch';
-              const file = fileOf(run);
-              // the whole CPU profile beside the record (call trees: who calls what during the entry), not inside it
-              if (rec.cpu?.raw) { writeFileSync(file.replace(/\.json$/, '.cpuprofile'), JSON.stringify(rec.cpu.raw)); delete rec.cpu.raw; }
-              writeFileSync(file, JSON.stringify(rec, null, 1));
-              const st = rec.trace?.stages ?? {};
-              log(`${mapId} ${labels[i]} ${run}: open ${rec.openMs} ms (trace ${rec.trace?.totalMs}) · ${Object.entries(st).map(([k, v]) => `${k} ${v}`).join(' · ')} · programs ${rec.programsBefore}→${rec.programsAtOpen}→${rec.programsSettled} · link ${rec.glAtOpen?.linkProgram?.n}/${rec.glAtOpen?.linkProgram?.ms} ms · net ${rec.network.requests} req ${(rec.network.bytes / 1e6).toFixed(1)} MB · load ${rec.load1}`);
+            } finally {
+              await browser.close().catch(() => {});
             }
-          } finally {
-            await browser.close().catch(() => {});
-            rmSync(dir, { recursive: true, force: true });
-          }
+          }).finally(() => rmSync(dir, { recursive: true, force: true }));
+          if (unit.outcome === 'left') { log(`the capture hold was stopped (${unit.why}): ${mapId} ${labels[i]} left for the next run`); left++; continue; }
+          if (unit.outcome === 'failed') throw unit.error;
         }
       }
     }
     log(left ? `${left} unit(s) left for the next run` : 'every unit measured');
-    if (left) process.exitCode = 3;
+    if (left) markUnitsLeft();
   } finally {
     if (refresh) clearInterval(refresh);
     await locks?.release();
@@ -412,5 +423,5 @@ if (isMainModule(import.meta.url)) {
     opt[m[1]] = m[2] ?? true;
   }
   if (!opt.roots || !opt.out) { console.error('--roots and --out are required'); process.exit(1); }
-  try { await main(opt); process.exit(process.exitCode ?? 0); } catch (error) { console.error(error); process.exit(1); }
+  try { await runTimeToBattle(opt); process.exit(process.exitCode ?? 0); } catch (error) { console.error(error); process.exit(1); }
 }

@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 import { launchGuardedBrowser } from './browser-launch.mjs';
-import { acquireCaptureLock as acquireLock, refreshCaptureLock, releaseCaptureLock as releaseLock } from './capture-lock.mjs';
+import { openCaptureHold } from './capture-hold.mjs';
 // audio-probe.mjs — auditable verification for the sound engine
 // (src/audio/audioEngine.ts and its __COT_AUDIO debug surface).
 //
@@ -69,10 +69,7 @@ function analyze(i16) {
   };
 }
 
-await acquireLock(20 * 60 * 1000);
-process.on('exit', releaseLock);
-const lockRefresher = setInterval(() => { refreshCaptureLock(); }, 60 * 1000);
-lockRefresher.unref();
+const hold = await openCaptureHold({ label: 'audio-probe', timeoutMs: 20 * 60 * 1000 });
 
 // --- server (own 7xxx port per the SOUND agent mandate) ----------------------
 const port = 7100 + Math.floor(Math.random() * 500);
@@ -503,8 +500,7 @@ try {
   writeFileSync(join(outDir, 'report.json'), JSON.stringify(report, null, 2));
   try { await browser.close(); } catch (_) { /* fine */ }
   try { await server.close(); } catch (_) { /* fine */ }
-  clearInterval(lockRefresher);
-  releaseLock();
+  await hold.release();
 }
 
 if (report.errors.length) {

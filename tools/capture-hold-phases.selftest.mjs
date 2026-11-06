@@ -401,6 +401,82 @@ for (const waiters of [1, 0]) {
     rmSync(root, { recursive: true, force: true });
   }
 }
+// ---- (round 3 B16) the unwind on SIGINT as on SIGTERM, with puppeteer's own signal handling --------------------------------
+// The browser above is a stand-in with a hand-written listener. Real puppeteer (puppeteer-core's launcher hands its
+// handleSIGINT/SIGTERM/SIGHUP, true unless the caller says otherwise, to @puppeteer/browsers' launch) answers SIGINT with
+// kill() and process.exit(130) inside its own listener, so on Ctrl-C the process ended before the hold's unwind ran: the
+// caller's finally never ran, its preview child was orphaned and its report never written. launchGuardedBrowser now
+// hands handleSIGINT: false unless the caller sets it. Driven here through @puppeteer/browsers' own launch (a node child
+// stands in for Chrome), with puppeteer-core's defaults, for SIGINT and SIGTERM.
+{
+  const browsersUrl = import.meta.resolve('@puppeteer/browsers');
+  for (const [signal, exitCode] of [['SIGINT', 130], ['SIGTERM', 143]]) {
+    const root = mkdtempSync(join(tmpdir(), 'cot-hold-unwind-real-'));
+    const strays = [];
+    let passed = false;
+    try {
+      const lockDir = join(root, 'lock'), events = join(root, 'events'), report = join(root, 'report.json');
+      writeFileSync(events, '');
+      const script = `import { spawn } from 'node:child_process';
+        import { appendFileSync, writeFileSync } from 'node:fs';
+        import { launch } from ${JSON.stringify(browsersUrl)};
+        import { createCaptureLock } from ${JSON.stringify(new URL('./capture-lock.mjs', import.meta.url).href)};
+        import { openCaptureHold } from ${JSON.stringify(new URL('./capture-hold.mjs', import.meta.url).href)};
+        import { launchGuardedBrowser } from ${JSON.stringify(new URL('./browser-launch.mjs', import.meta.url).href)};
+        const note = (line) => appendFileSync(${JSON.stringify(events)}, line + '\\n');
+        // puppeteer-core's BrowserLauncher.launch: handleSIGINT/SIGTERM/SIGHUP default true, handed to @puppeteer/browsers
+        const puppeteerLike = { launch: async ({ args = [], handleSIGINT = true, handleSIGTERM = true, handleSIGHUP = true }) => {
+          const proc = launch({ executablePath: process.execPath, args: ['-e', 'setInterval(() => {}, 1000)', '--', ...args],
+            handleSIGINT, handleSIGTERM, handleSIGHUP });
+          return { process: () => proc.nodeProcess, close: () => proc.close() };
+        } };
+        const lock = createCaptureLock({ lockDir: ${JSON.stringify(lockDir)}, queueDir: ${JSON.stringify(join(root, 'queue'))}, log: () => {} });
+        const server = spawn(process.execPath, ['-e', 'setInterval(() => {}, 1000)'], { stdio: 'ignore' });
+        const hold = await openCaptureHold({ lock, label: 'unwind-real-probe', timeoutMs: 5000 });
+        const browser = await launchGuardedBrowser(puppeteerLike, {}, { label: 'stand-in', intervalMs: 60_000 });
+        const child = browser.process();
+        note('up server=' + server.pid + ' browser=' + child.pid);
+        try {
+          await new Promise((_, reject) => child.once('exit', () => reject(new Error('Target closed'))));
+        } catch (error) { note('run failed: ' + error.message + ' (signal aborted: ' + hold.signal.aborted + ')'); }
+        finally {
+          await browser.close();
+          await hold.release();
+          note('released');
+          server.kill('SIGTERM');
+          await new Promise((done) => server.once('exit', done));
+          note('server stopped');
+          writeFileSync(${JSON.stringify(report)}, JSON.stringify({ interrupted: true }));
+          note('report written');
+        }`;
+      const child = spawn(process.execPath, ['--input-type=module', '-e', script], { stdio: ['ignore', 'ignore', 'pipe'] });
+      let err = '';
+      child.stderr.setEncoding('utf8').on('data', (chunk) => { err += chunk; });
+      const read = () => readFileSync(events, 'utf8').trim().split('\n').filter(Boolean);
+      for (let i = 0; i < 800 && !read().some((line) => line.startsWith('up ')); i++) await sleep(25);
+      const up = read().find((line) => line.startsWith('up ')) ?? '';
+      const serverPid = Number(/server=(\d+)/.exec(up)?.[1]), browserPid = Number(/browser=(\d+)/.exec(up)?.[1]);
+      strays.push(serverPid, browserPid);
+      assert.ok(serverPid > 0 && browserPid > 0 && existsSync(lockDir), `${signal}: the child holds, with a server and a browser up: ${err.slice(-400)}`);
+      child.kill(signal);
+      const code = await new Promise((done) => child.once('close', (status, killedBy) => done(status ?? killedBy)));
+      const lines = read();
+      assert.equal(code, exitCode, `${signal}: it exits 128 + n (${lines.join(', ')}; ${err.slice(-300)})`);
+      const order = ['run failed: Target closed (signal aborted: true)', 'released', 'server stopped', 'report written'];
+      assert.deepEqual(lines.filter((line) => order.includes(line)), order,
+        `${signal}: the browser stopped, the finally ran to its release, then what follows (${lines.join(', ')})`);
+      assert.deepEqual(JSON.parse(readFileSync(report, 'utf8')), { interrupted: true }, `${signal}: the report is written`);
+      assert.throws(() => process.kill(serverPid, 0), /ESRCH/, `${signal}: the server child is stopped, not orphaned`);
+      for (let i = 0; i < 100; i++) { try { process.kill(browserPid, 0); await sleep(20); } catch { break; } }
+      assert.throws(() => process.kill(browserPid, 0), /ESRCH/, `${signal}: the browser is gone`);
+      assert.equal(existsSync(lockDir), false, `${signal}: and the hold was released`);
+      passed = true;
+    } finally {
+      if (!passed) for (const pid of strays) { try { if (pid > 0) process.kill(pid, 'SIGKILL'); } catch { /* gone */ } }
+      rmSync(root, { recursive: true, force: true });
+    }
+  }
+}
 // ---- (round 2 U38 review) a hold queued at a signal leaves the queue, and its caller's way out runs ---------------------
 {
   const root = mkdtempSync(join(tmpdir(), 'cot-hold-queued-'));
@@ -500,6 +576,118 @@ for (const waiters of [1, 0]) {
     passed = true;
   } finally {
     if (!passed) for (const pid of strays) { try { if (pid > 0) process.kill(pid, 'SIGKILL'); } catch { /* gone */ } }
+    waiter.release();
+    rmSync(root, { recursive: true, force: true });
+  }
+}
+// ---- (round 3 A5) a cap yield that fails without a signal stops the work as any stop does ------------------------------
+// The yield's re-queue can fail for a reason that is no signal: its wait runs out (45 min by default, 240 min for
+// loading-census) behind a holder that keeps the lock, or the yield's own freeze (onYield) or thaw (onResume) throws. The
+// phases moved to 'stopping' with none of a stop's effects: the hold's signal never aborted, launches stayed allowed, and
+// later checkpoints and between() returned { stopped: true } quietly, so loading-census (which records the rejection as a
+// page error) carried on through every remaining condition and layout, launching browsers, without the lock.
+{
+  const { openCaptureHold } = captureHold;
+  const { launchGuardedBrowser } = await import('./browser-launch.mjs');
+  const launcher = { launch: async () => ({ double: true }) };
+  const launches = () => launchGuardedBrowser(launcher, {}, { label: 'next-row' }).then(() => 'launched', (error) => `refused: ${error.message}`);
+  // a lock whose checkpoint yields (beforeYield, then the release) and whose re-queue then fails: the wait ran out
+  const yieldingLock = (events) => {
+    let held = false;
+    const lock = {
+      async acquire() { held = true; events.push('hold'); },
+      refresh() { return held; },
+      release() { if (held) events.push('release'); held = false; return true; },
+      waiting() { return 1; },
+      get held() { return held; },
+      get heldCapMs() { return held ? 1 : null; },
+      get nested() { return false; },
+      async checkpoint({ beforeYield } = {}) {
+        await beforeYield?.();
+        lock.release();
+        events.push('yield');
+        throw new Error('cot-shots lock timeout');
+      },
+    };
+    return lock;
+  };
+  // the re-queue's wait ran out: nothing is held, so the teardown runs at once (not after the grace) and the work is stopped
+  const events = [];
+  const hold = await openCaptureHold({ label: 'requeue-timeout', lock: yieldingLock(events), log: () => {}, capCheckMs: 5_000, graceSeconds: 5,
+    teardown: async () => { events.push('teardown'); } });
+  watchAbort(hold.signal, events);
+  const step = await hold.checkpoint().then(() => 'returned', (error) => error.message);
+  assert.equal(step, 'cot-shots lock timeout', 'the checkpoint rejects with the re-queue\'s failure');
+  assert.equal(hold.signal.aborted, true, `a failed re-queue stops the work: the hold's signal aborts (${events.join(' ')})`);
+  await assert.rejects(hold.between(), /lock timeout/, 'and between() throws the failure, never { stopped: true } quietly');
+  assert.match(await launches(), /refused: .*requeue-timeout capture hold was stopped/, 'no browser launches while it holds nothing');
+  for (let i = 0; i < 100 && !events.includes('teardown'); i++) await sleep(10);
+  assert.ok(events.includes('teardown'), `nothing is held, so the teardown runs at once, not after the 5 s grace (${events.join(' ')})`);
+  assert.deepEqual(await hold.checkpoint(), { yielded: false, stopped: true }, 'a later checkpoint never yields');
+  await hold.release();
+  assert.equal(await launches(), 'launched', 'launches again once the hold is released');
+  assert.deepEqual(events, ['hold', 'release', 'yield', 'abort', 'teardown'], `one stop, one teardown (${events.join(' ')})`);
+  // the yield's own freeze (onYield) throws with the lock still held: stopped as at the cap, its teardown after the grace
+  const held = [];
+  const frozen = await openCaptureHold({ label: 'freeze-failed', lock: yieldingLock(held), log: () => {}, capCheckMs: 5_000, graceSeconds: 0.05,
+    onYield: async () => { throw new Error('freeze failed: Target closed'); }, teardown: async () => { held.push('teardown'); } });
+  watchAbort(frozen.signal, held);
+  assert.equal(await frozen.checkpoint().then(() => 'returned', (error) => error.message), 'freeze failed: Target closed');
+  assert.equal(frozen.signal.aborted, true, `a failed yield with the lock still held stops the work (${held.join(' ')})`);
+  assert.match(await launches(), /refused: .*freeze-failed capture hold was stopped/, 'and refuses launches');
+  for (let i = 0; i < 100 && !held.includes('teardown'); i++) await sleep(10);
+  await frozen.release();
+  assert.deepEqual(held, ['hold', 'abort', 'teardown', 'release'], `the teardown after the grace, then the release (${held.join(' ')})`);
+  assert.equal(await launches(), 'launched');
+}
+// ---- (round 3 A5) on a real private lock: a re-queue that times out behind a holder that keeps the lock ----------------
+{
+  const root = mkdtempSync(join(tmpdir(), 'cot-hold-requeue-'));
+  const { createCaptureLock } = await import('./capture-lock.mjs');
+  const lockDir = join(root, 'lock'), queueDir = join(root, 'queue'), events = join(root, 'events');
+  writeFileSync(events, '');
+  const waiter = createCaptureLock({ lockDir, queueDir, log: () => {} });
+  try {
+    const script = `import { appendFileSync } from 'node:fs';
+      import { createCaptureLock } from ${JSON.stringify(new URL('./capture-lock.mjs', import.meta.url).href)};
+      import { openCaptureHold } from ${JSON.stringify(new URL('./capture-hold.mjs', import.meta.url).href)};
+      import { launchGuardedBrowser } from ${JSON.stringify(new URL('./browser-launch.mjs', import.meta.url).href)};
+      const note = (line) => appendFileSync(${JSON.stringify(events)}, line + '\\n');
+      const sleep = (ms) => new Promise((done) => setTimeout(done, ms));
+      const lock = createCaptureLock({ lockDir: ${JSON.stringify(lockDir)}, queueDir: ${JSON.stringify(queueDir)}, log: (line) => note('lock: ' + line), holdCapMs: 200 });
+      const hold = await openCaptureHold({ lock, label: 'requeue-probe', timeoutMs: 1500, capCheckMs: 50, teardown: async () => note('teardown') });
+      note('up');
+      let failure = null;
+      for (let row = 0; row < 2_000 && !failure; row++) { await sleep(25); try { await hold.checkpoint(); } catch (error) { failure = error; } }
+      note('checkpoint failed: ' + String(failure?.message ?? failure).split('\\n')[0]);
+      note('signal aborted: ' + hold.signal.aborted);
+      note('between: ' + await hold.between().then(() => 'returned', () => 'threw'));
+      const launcher = { launch: async () => ({ double: true }) };
+      note('launch: ' + await launchGuardedBrowser(launcher, {}, { label: 'next-row' }).then(() => 'launched', () => 'refused'));
+      await hold.release();
+      note('launch after release: ' + await launchGuardedBrowser(launcher).then(() => 'launched', () => 'refused'));`;
+    const child = spawn(process.execPath, ['--input-type=module', '-e', script], { stdio: ['ignore', 'ignore', 'pipe'] });
+    let err = '';
+    child.stderr.setEncoding('utf8').on('data', (chunk) => { err += chunk; });
+    const closed = new Promise((done) => child.once('close', (status, signal) => done(status ?? signal)));
+    const read = () => readFileSync(events, 'utf8').trim().split('\n').filter((line) => line && !line.startsWith('lock: '));
+    for (let i = 0; i < 800 && !read().includes('up'); i++) await sleep(25);
+    assert.ok(read().includes('up'), `the child holds its private lock: ${err.slice(-400)}`);
+    // the parent queues and keeps the lock it is yielded: the child's re-queue runs out after its 1.5 s wait
+    await waiter.acquire(20_000);
+    // (round 3 A5 review) the wall is cleared once the child closes: an open 60 s timer kept this receipt alive a minute
+    // past its last assertion
+    let wall = null;
+    const code = await Promise.race([closed, new Promise((done) => { wall = setTimeout(() => done('still running'), 60_000); })]);
+    clearTimeout(wall);
+    if (code === 'still running') child.kill('SIGKILL');
+    const lines = read();
+    assert.equal(code, 0, `the child ends on its own (${lines.join(', ')}; ${err.slice(-300)})`);
+    assert.deepEqual(lines.filter((line) => !line.startsWith('teardown')), ['up', 'checkpoint failed: cot-shots lock timeout', 'signal aborted: true',
+      'between: threw', 'launch: refused', 'launch after release: launched'], `a timed-out re-queue stops the work (${lines.join(', ')})`);
+    assert.ok(lines.indexOf('teardown') > 0 && lines.indexOf('teardown') < lines.indexOf('launch after release: launched'), 'its teardown ran before the release');
+    assert.ok(waiter.held && waiter.refresh(), 'the holder keeps its lock');
+  } finally {
     waiter.release();
     rmSync(root, { recursive: true, force: true });
   }

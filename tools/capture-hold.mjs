@@ -224,10 +224,14 @@ async function closeWarm(warmed, say) {
 // - The abort is final: a checkpoint after it never yields ({ yielded: false, stopped: true }), so the grace can never fire
 //   mid-yield. A yield stops every timer; the resume starts the segment again.
 // - (round 2 U38 review) A yield's re-queue takes the hold's `signal`, which a signal stop aborts: the ticket leaves the
-//   queue and the checkpoint rejects with the stop's reason (yielding → stopping, nothing held). A re-queue that fails
-//   otherwise (its wait ran out) ends the same way. Before this, a SIGTERM during the re-queue left the caller blocked in
-//   checkpoint() until the process exited around it. A signal while holding halts the phases (`halt()`: every timer
-//   stops and no checkpoint yields), since the signal owner runs that hold's teardown itself.
+//   queue and the checkpoint rejects with the stop's reason (yielding → stopping, nothing held). Before this, a SIGTERM
+//   during the re-queue left the caller blocked in checkpoint() until the process exited around it. A signal while holding
+//   halts the phases (`halt()`: every timer stops and no checkpoint yields), since the signal owner runs that hold's
+//   teardown itself.
+// - (round 3 A5) A yield that fails otherwise (its re-queue's wait ran out, its onYield or onResume threw) is a stop with
+//   all of a stop's effects (stopWith): the signal aborts, launches are refused until the release, and the teardown runs
+//   after the grace, or at once when the re-queue left nothing held. The checkpoint still rejects with the failure, and
+//   between() throws it.
 // - A nested hold (capture-lock nestedEnv: a child inside its parent's hold) runs no cap: the parent's is the one.
 // - `atCap: 'keep'` is a work that can neither checkpoint nor stop without losing its whole run (a wrapped command such as
 //   a release-gate step or a film render): past the cap it is logged, not stopped, as the lock alone did. It is declared
@@ -238,28 +242,37 @@ function createHoldPhases({ lock, holdMinutes = null, graceSeconds = 60, capChec
   let phase = 'holding', cooperative = false, segmentAt = Date.now(), keptNoted = false, teardownDone = null, ended = false, forfeited = false;
   let budgetTimer = null, capTimer = null, graceTimer = null, dueTimer = null, forfeitTimer = null;
   const clear = () => { clearTimeout(budgetTimer); clearInterval(capTimer); clearTimeout(dueTimer); budgetTimer = capTimer = dueTimer = null; };
-  const stop = (why) => {
-    if (phase !== 'holding' && phase !== 'yield-due') return;
+  const tearDown = () => {
+    phase = 'torn-down';
+    // kept, not dropped: the release waits for it (a shoot ends as soon as its browser starts closing, and the lock
+    // went while Chrome still closed; 2026-11-02 audit S4, round 2)
+    teardownDone = Promise.resolve().then(onTeardown);
+    // the work still runs `teardownWaitMs` after its teardown began: the lock goes without it (the cap is the lock's)
+    if (onForfeit) {
+      forfeitTimer = setTimeout(() => {
+        if (ended) return;
+        forfeited = true;
+        onForfeit();
+      }, teardownWaitMs);
+    }
+  };
+  // the one way into 'stopping' with a stop's effects: the work's signal aborts (and the process's launches are refused,
+  // onAbort), then its teardown after the grace, or at once when the hold holds nothing (`now`)
+  const stopWith = (error, { now = false } = {}) => {
     clear();
     phase = 'stopping';
-    say(`${why}; asking the work to stop`);
-    onAbort(new Error(why));
+    onAbort(error);
+    if (now) { say('nothing is held: tearing down at once'); tearDown(); return; }
     graceTimer = setTimeout(() => {
       if (phase !== 'stopping') return;
-      phase = 'torn-down';
       say(`still running ${graceSeconds} s past the stop: tearing down before the release`);
-      // kept, not dropped: the release waits for it (a shoot ends as soon as its browser starts closing, and the lock
-      // went while Chrome still closed; 2026-11-02 audit S4, round 2)
-      teardownDone = Promise.resolve().then(onTeardown);
-      // the work still runs `teardownWaitMs` after its teardown began: the lock goes without it (the cap is the lock's)
-      if (onForfeit) {
-        forfeitTimer = setTimeout(() => {
-          if (ended) return;
-          forfeited = true;
-          onForfeit();
-        }, teardownWaitMs);
-      }
+      tearDown();
     }, graceSeconds * 1000);
+  };
+  const stop = (why) => {
+    if (phase !== 'holding' && phase !== 'yield-due') return;
+    say(`${why}; asking the work to stop`);
+    stopWith(new Error(why));
   };
   const capCheck = () => {
     if (phase !== 'holding') return;
@@ -317,8 +330,18 @@ function createHoldPhases({ lock, holdMinutes = null, graceSeconds = 60, capChec
           },
         });
       } catch (error) {
-        // the yield gave the lock up and its re-queue never held again: the work is out of the lock, and stops
-        if (phase === 'yielding') phase = 'stopping';
+        // (round 3 A5) the yield did not come back to holding. A signal withdrew its re-queue: the signal owner runs this
+        // hold's stop. Otherwise (the re-queue's wait ran out, the yield's freeze or thaw threw) the work is stopped here as
+        // a cap stop is: its signal aborts, launches are refused until the release, and its teardown runs, at once when the
+        // re-queue left nothing held. It used to move to 'stopping' with none of that, so a tool that caught the rejection
+        // (loading-census records it as a page error) went on drawing and launching browsers without the lock.
+        if (phase === 'yielding') {
+          if (signal?.aborted) phase = 'stopping';
+          else {
+            say(`the cap yield did not hold again (${error?.message ?? error}); stopping the work`);
+            stopWith(error instanceof Error ? error : new Error(String(error)), { now: lock.held === false });
+          }
+        }
         throw error;
       }
       if (!result?.yielded && phase === 'yield-due') { clearTimeout(dueTimer); dueTimer = null; phase = 'holding'; } // nobody waits now
@@ -368,7 +391,8 @@ const turn = () => new Promise((next) => setImmediate(next));
 //   the process ends when its work is done, or `signalWaitMs` after the last release at most. A caller that has not
 //   released within `signalWaitMs` of its teardown is released for it, and the process exits then. On base (a direct
 //   acquire) puppeteer's own SIGTERM listener kept such a tool alive, so its finally cleaned up; the first open form
-//   exited within microseconds of the signal, and those finallies never ran.
+//   exited within microseconds of the signal, and those finallies never ran. (round 3 B16) SIGINT too: puppeteer's SIGINT
+//   listener exits the process inside itself, so tools/browser-launch.mjs launchGuardedBrowser hands it handleSIGINT: false.
 const liveHolds = new Set();
 let signalStop = null, stopSignal = null;
 const NEVER = new Promise(() => {});

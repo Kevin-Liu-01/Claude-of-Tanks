@@ -522,7 +522,7 @@ assert.equal(stats([]).med, null);
   assert.equal(streamedDuring({ terrainStreamed: null }, { terrainStreamed: 44 }), null, 'a build without the stream count reads null, not 0');
   assert.equal(streamedDuring(null, { terrainStreamed: 1 }), null);
   const tool = readFileSync(new URL('./frame-budget-probe.mjs', import.meta.url), 'utf8');
-  const body = tool.slice(tool.indexOf('async function measureOnPage'), tool.indexOf('async function run('));
+  const body = tool.slice(tool.indexOf('async function measureOnPage'), tool.indexOf('export async function runFrameProbe('));
   const settles = [...body.matchAll(/await settleTerrainStream\(page\)/g)].map((m) => m.index);
   const samples = [...body.matchAll(/__FRAME_PASS_TIMER\.sample\(cfg\)|await sampleView\(page/g)].map((m) => m.index);
   assert.equal(settles.length, 2, 'the gate\'s staging pose and every measured pose settle the stream');

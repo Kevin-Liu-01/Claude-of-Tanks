@@ -195,8 +195,9 @@ function withGlobals(values, fn) {
   assert.equal((codeText(main, 'main.ts').match(/harnessPath\(\)/g) ?? []).length, 3, 'the battle watchdog (arm and consume) and the Garage watchdog');
   assert.match(read('src/ui/bootScreen.ts'), /if \(\/\[\?&\]\(nosplash\|nogate\)\\b\/\.test\(q\)\) return true;\n[^\n]*\n  return harnessPath\(\);/);
   assert.match(read('src/ui/transition.ts'), /if \(\/\[\?&\]notrans\\b\/\.test\(q\)\) return true;\n[^\n]*\n  return harnessPath\(\);/);
-  // the launcher makes the harness request for every browser it starts
-  assert.match(read('tools/browser-launch.mjs'), /\n {2}await prepareToolBrowser\(target\);\n {2}let rootPid = null;/);
+  // the launcher makes the harness request for every browser it starts (round 3 B16: the launch body sits in the SIGINT
+  // try/finally, one level deeper; the two lines stay adjacent)
+  assert.match(read('tools/browser-launch.mjs'), /\n {2,}await prepareToolBrowser\(target\);\n {2,}let rootPid = null;/);
 }
 
 /** The tools that define navigator.webdriver in a page, each with its reason (docs/AUTOMATION-PATHS.md names them). */
