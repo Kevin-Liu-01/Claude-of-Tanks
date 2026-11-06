@@ -77,7 +77,7 @@ try {
   await drag(20);
   assert.equal(counts(), '2 light model, 2 cloudscape asks', `no ask while the browser is offline (${counts()})`);
 
-  // 3. online again: the next battle asks them again past the backoff and installs them
+  // 3. online again: the next battle's entry asks them again at once, whatever the backoff, and installs them
   onLine = true;
   networkUp = true;
   await access.prepare(2, 'delta', undefined, ENTRY);
