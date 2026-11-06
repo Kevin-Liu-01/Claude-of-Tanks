@@ -1,0 +1,179 @@
+// (round 3 A5) A cap stop that lands mid-unit, in each caller of frame-budget-probe's acquireProbeLocks. Round two moved the
+// pair's FIFO onto the one hold wrapper, so past the 20-min cap with anyone waiting the hold's signal aborts (a 30 s cap
+// check) and its guarded browsers are stopped one grace (60 s) later. A unit runs for minutes (a frame-budget slot, a
+// three-battle memory scenario, a spike battle, a shadow map, a time-to-battle build), and each caller read the signal only
+// before a unit: the unit in flight was killed and counted as a failure, or crashed the tool.
+//   frame-budget-probe recorded the cut slot as failed and exited 1 ('FAILED'); battle-memory-probe crashed uncaught;
+//   battle-spike-census counted the battle as a failure, skipped census.json and exited 1 (and perf:spikes:check judged
+//   its missing records 'FAIL (no record)'); shadow-cache-truth crashed before result.json; time-to-battle-probe
+//   --warm=relaunch threw the refused relaunch out of the tool.
+// Each run is driven here through its real loop and the real acquireProbeLocks (openCaptureHold, its phases and its
+// launch refusal) on a fake FIFO lock with a 30 ms cap and a waiter; the hold's teardown stops a stand-in browser, so the
+// unit in flight fails as a killed page call does. No browser or server starts.
+import assert from 'node:assert/strict';
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { launchGuardedBrowser } from './browser-launch.mjs';
+import { acquireProbeLocks, parseFrameProbeArgs, runFrameProbe, runProbeUnit } from './frame-budget-probe.mjs';
+import { parseMemoryArgs, runMemoryProbe } from './battle-memory-probe.mjs';
+import { parseCensusArgs, runCensus } from './battle-spike-census.mjs';
+import { runBudget } from './battle-spike-budget.mjs';
+import { parseArgs as parseShadowArgs, runShadowTruth } from './shadow-cache-truth.mjs';
+import { runTimeToBattle } from './time-to-battle-probe.mjs';
+
+const roots = [];
+const scratch = () => { const dir = mkdtempSync(join(tmpdir(), 'cot-probe-unit-')); roots.push(dir); return dir; };
+/** A tree with a built dist, as the callers check before they start. */
+const builtTree = () => { const dir = scratch(); mkdirSync(join(dir, 'dist')); writeFileSync(join(dir, 'dist', 'index.html'), ''); return dir; };
+const quietly = async (run) => {
+  const saved = process.exitCode, log = console.log;
+  console.log = () => {};
+  process.exitCode = undefined;
+  // a live browser or server keeps a real run's event loop alive; the hold's own timers do not
+  const alive = setInterval(() => {}, 1000);
+  try {
+    const value = await run().then((result) => ({ result }), (error) => ({ error }));
+    return { ...value, exitCode: process.exitCode };
+  } finally {
+    clearInterval(alive);
+    console.log = log;
+    process.exitCode = saved;
+  }
+};
+/** The pair's FIFO on a fake lock (a 30 ms cap, one waiter): its hold is stopped at once, and its teardown (one 50 ms grace
+ *  later) stops the stand-in browser, so a unit still in flight then fails as a killed page call does. */
+function stoppedPair() {
+  let held = false, die;
+  const lock = { nested: false, acquire: async () => { held = true; }, release: () => { held = false; return true; }, refresh: () => held,
+    waiting: () => 1, get held() { return held; }, get heldCapMs() { return held ? 30 : null; } };
+  const killed = new Promise((_, reject) => { die = reject; });
+  killed.catch(() => {});
+  const acquireLocks = (options = {}) => acquireProbeLocks({ ...options, lock,
+    hold: { ...options.hold, capCheckMs: 10, graceSeconds: 0.05, log: () => {}, teardown: async () => { die(new Error('Protocol error: Target closed')); } } });
+  return { acquireLocks, inFlight: () => killed };
+}
+const standIn = { close: async () => {} };
+// each caller is its own case: one that fails does not hide the others
+const failed = [];
+const check = async (name, run) => { try { await run(); } catch (error) { failed.push(`${name}: ${String(error?.message ?? error).split('\n')[0]}`); } };
+
+try {
+  // ---- the owner: a unit's end under the pair's hold ------------------------------------------------------------------------
+  await check('runProbeUnit', async () => {
+    const controller = new AbortController(), locks = { signal: controller.signal };
+    assert.deepEqual(await runProbeUnit(locks, async () => 'measured'), { outcome: 'done', value: 'measured' }, 'a unit that returns is done');
+    const held = await runProbeUnit(locks, async () => { throw new Error('page error'); });
+    assert.deepEqual([held.outcome, held.error.message], ['failed', 'page error'], 'a unit that throws while the hold holds failed');
+    const cut = await runProbeUnit(locks, async () => { controller.abort(new Error('hold cap 20.0 min with 1 waiting')); throw new Error('Target closed'); });
+    assert.deepEqual([cut.outcome, cut.why, cut.error.message], ['left', 'hold cap 20.0 min with 1 waiting', 'Target closed'], 'one the stop cut is left');
+    let ran = false;
+    const after = await runProbeUnit(locks, async () => { ran = true; });
+    assert.deepEqual([after.outcome, ran], ['left', false], 'one the stop came before is left without running');
+    const finished = await runProbeUnit({ signal: new AbortController().signal }, async (signal) => signal.aborted);
+    assert.deepEqual(finished, { outcome: 'done', value: false }, 'the unit gets the hold\'s signal');
+  });
+
+  // ---- frame-budget-probe: the cut slot is left for the next hold (a 'failed' record it measures again), not FAILED --------
+  await check('frame-budget-probe', async () => {
+    const out = scratch(), root = builtTree();
+    const options = parseFrameProbeArgs([`--roots=${root}`, '--labels=a', '--maps=verdant', '--pattern=AA', `--out=${out}`, '--scene-check=off', '--tag=t']);
+    const { acquireLocks, inFlight } = stoppedPair();
+    const measured = [];
+    const { result, error, exitCode } = await quietly(() => runFrameProbe(options, { acquireLocks, launchBrowser: async () => standIn,
+      openServer: async () => standIn, measure: async (_browser, _options, slot) => { measured.push(slot.key); return inFlight(); } }));
+    assert.equal(error, undefined, `frame-budget-probe: no throw (${error?.message})`);
+    assert.deepEqual(measured, ['verdant-s0-a'], 'the second slot never starts once the hold is stopped');
+    assert.deepEqual(result, { ok: true, remaining: 2 }, 'the slot the stop cut is left, as the slot after it, and the run is not FAILED');
+    assert.equal(exitCode, 3, 'exit 3: slots left for the next hold');
+    const record = JSON.parse(readFileSync(join(out, 't-verdant-s0-a.json'), 'utf8'));
+    assert.equal(record.left, true, 'the cut slot\'s record says it was left');
+    assert.match(record.failed, /^left for the next hold/, 'and still reads as not measured, so the next run measures it');
+  });
+
+  // ---- battle-memory-probe: a scenario the stop cut is left (exit 3), not an uncaught crash ---------------------------------
+  await check('battle-memory-probe', async () => {
+    const out = scratch();
+    const options = parseMemoryArgs(['--scenarios=urban:zone_control,steppe:standard', `--out=${out}`]);
+    const { acquireLocks, inFlight } = stoppedPair();
+    const probed = [];
+    const { error, exitCode } = await quietly(() => runMemoryProbe(options, { acquireLocks, openServer: async () => standIn,
+      probe: async (_options, scenario) => { probed.push(scenario); return inFlight(); } }));
+    assert.equal(error, undefined, `battle-memory-probe: a scenario cut by the hold's stop is no crash (${error?.message})`);
+    assert.deepEqual(probed, ['urban:zone_control'], 'the next scenario waits for the next run');
+    assert.equal(exitCode, 3, 'exit 3: scenarios left');
+    assert.deepEqual(readdirSync(out), [], 'no record for the cut scenario');
+  });
+
+  // ---- battle-spike-census and perf:spikes:check: the cut battle is left, census.json is written, the gate says LEFT --------
+  await check('battle-spike-census', async () => {
+    const out = scratch(), root = builtTree();
+    const options = parseCensusArgs(['--scenarios=urban:zone_control', '--sizes=7,14', `--out=${out}`, `--root=${root}`]);
+    const { acquireLocks, inFlight } = stoppedPair();
+    let battles = 0;
+    const { result, error } = await quietly(() => runCensus(options, { acquireLocks, openServer: async () => standIn,
+      runOne: async () => { battles++; return inFlight(); } }));
+    assert.equal(error, undefined, `battle-spike-census: ${error?.message}`);
+    assert.equal(battles, 1, 'the next battle never starts once the hold is stopped');
+    assert.deepEqual(result.failures, [], 'the battle the stop cut is no failure');
+    assert.equal(result.stopped, true);
+    assert.equal(result.left, 2, 'the cut battle and the one after it are left');
+    assert.ok(existsSync(join(out, 'census.json')), 'census.json is written for what was measured');
+    const { censusExitCode } = await import('./battle-spike-census.mjs');
+    assert.equal(censusExitCode(result), 3, 'the census exits 3: battles left');
+  });
+  // the gate (perf:spikes:check) runs the census itself: a stopped census is incomplete (exit 3, the resume command named),
+  // never a FAIL of its missing records
+  await check('battle-spike-budget', async () => {
+    const gateOut = scratch(), gateRoot = builtTree();
+    const budget = { scenarios: ['urban:zone_control'], sizes: [7], passes: ['cold', 'warm'], seconds: 10, driver: 'watch',
+      limits: { cold: { links: 0 }, warm: { links: 0 } } };
+    const pair = stoppedPair();
+    const lines = [];
+    const gate = await quietly(() => runBudget(['--gate', `--out=${gateOut}`, `--root=${gateRoot}`], { budget, log: (line) => lines.push(line),
+      census: (censusOptions) => runCensus(censusOptions, { acquireLocks: pair.acquireLocks, openServer: async () => standIn, runOne: () => pair.inFlight() }) }));
+    assert.equal(gate.error, undefined, `perf:spikes:check: ${gate.error?.message}`);
+    assert.equal(gate.exitCode, 3, `a stopped census is incomplete, not failed (${lines.join(' | ')})`);
+    assert.ok(lines.some((line) => /urban-zone_control-7v7-cold: LEFT/.test(line)) && !lines.some((line) => /FAIL \(no record\)/.test(line)),
+      `the missing battles read LEFT, not FAIL (${lines.join(' | ')})`);
+    assert.ok(lines.some((line) => line.includes(`--out=${gateOut}`) && line.includes('--resume')), 'and the resume command is named');
+  });
+
+  // ---- shadow-cache-truth: a map the stop cut is left; result.json is written; exit 3 ---------------------------------------
+  await check('shadow-cache-truth', async () => {
+    const out = scratch(), root = builtTree();
+    const options = parseShadowArgs([`--root=${root}`, '--maps=verdant,steppe', `--out=${out}`, '--gate']);
+    const { acquireLocks, inFlight } = stoppedPair();
+    const maps = [];
+    const { result, error, exitCode } = await quietly(() => runShadowTruth(options, { acquireLocks, openServer: async () => standIn,
+      launchBrowser: async () => standIn, probe: async (_browser, _options, mapId) => { maps.push(mapId); return inFlight(); } }));
+    assert.equal(error, undefined, `shadow-cache-truth: a map cut by the hold's stop is no crash (${error?.message})`);
+    assert.deepEqual(maps, ['verdant'], 'the next map waits for the next run');
+    assert.deepEqual(result.left, ['verdant', 'steppe'], 'both maps are left');
+    assert.equal(result.pass, false, 'a run with maps left is no pass');
+    assert.deepEqual(JSON.parse(readFileSync(join(out, 'result.json'), 'utf8')).left, ['verdant', 'steppe'], 'result.json is written');
+    assert.equal(exitCode, 3, 'exit 3, even with --gate: maps left, nothing failed');
+  });
+
+  // ---- time-to-battle-probe --warm=relaunch: the refused relaunch is the cut unit's, left for the next run ------------------
+  await check('time-to-battle-probe', async () => {
+    const out = scratch(), root = builtTree(), roster = join(scratch(), 'roster.json');
+    writeFileSync(roster, JSON.stringify({ specId: 't90m', opponents: ['t72b3'] }));
+    const { acquireLocks, inFlight } = stoppedPair();
+    const runs = [];
+    // the launch goes through the guarded launcher (a test double): a stopped hold refuses it, as it refuses Chrome
+    const double = { launch: async () => ({ close: async () => {} }) };
+    const { error, exitCode } = await quietly(() => runTimeToBattle({ roots: root, labels: 'a', maps: 'verdant', runs: 'cold,warm', warm: 'relaunch',
+      out, roster }, { acquireLocks, startPreview: async () => standIn, catalog: async () => [], launchBrowser: (launchOptions) => launchGuardedBrowser(double, launchOptions),
+      runPage: async (_browser, { run }) => { runs.push(run); return inFlight(); } }));
+    assert.equal(error, undefined, `time-to-battle-probe: the refused relaunch stays inside the cut unit (${error?.message})`);
+    assert.deepEqual(runs, ['cold'], 'the warm run never starts on a stopped hold');
+    assert.equal(exitCode, 3, 'exit 3: the unit is left');
+    assert.deepEqual(readdirSync(out).filter((name) => name.endsWith('.json') && name !== 'roster.json'), [], 'no failed record for the cut unit');
+  });
+} finally {
+  for (const dir of roots) rmSync(dir, { recursive: true, force: true });
+}
+assert.deepEqual(failed, [], `a cap stop mid-unit leaves the unit for the next run:\n  ${failed.join('\n  ')}`);
+
+console.log('probe-unit-stop.selftest: a cap stop mid-unit leaves the unit for the next run in frame-budget-probe, battle-memory-probe, battle-spike-census (and its gate), shadow-cache-truth and time-to-battle-probe --warm=relaunch: exit 3, never FAILED or a crash');

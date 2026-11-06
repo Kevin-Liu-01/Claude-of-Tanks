@@ -58,15 +58,17 @@ export function judgeRecord(record, budget, cores = os.cpus().length) {
   });
 }
 
-/** Judge every record of a census folder; the battles the budget names that are missing fail. */
-export function judgeCensus(dir, budget, cores = os.cpus().length) {
+/** Judge every record of a census folder; the battles the budget names that are missing fail, or (`stopped`: the census
+ *  was stopped before it played them, round 3 A5) are LEFT for the next run, which is no failure. */
+export function judgeCensus(dir, budget, cores = os.cpus().length, { stopped = false } = {}) {
   const lines = [];
-  let failed = 0;
+  let failed = 0, left = 0;
   for (const scenario of budget.scenarios) {
     for (const size of budget.sizes) {
       for (const pass of budget.passes ?? ['cold', 'warm']) {
         const key = `${scenario.replace(':', '-')}-${size}v${size}-${pass}`;
         const file = path.join(dir, `${key}.json`);
+        if (!existsSync(file) && stopped) { lines.push(`${key}: LEFT (not played yet: the census was stopped)`); left++; continue; }
         if (!existsSync(file)) { lines.push(`${key}: FAIL (no record)`); failed++; continue; }
         const verdicts = judgeRecord(JSON.parse(readFileSync(file, 'utf8')), budget, cores);
         const bad = verdicts.filter((v) => v.verdict === 'FAIL');
@@ -75,36 +77,45 @@ export function judgeCensus(dir, budget, cores = os.cpus().length) {
       }
     }
   }
-  return { lines, failed };
+  return { lines, failed, left };
 }
 
 export function readBudget(file = BUDGET_FILE) {
   return JSON.parse(readFileSync(file, 'utf8'));
 }
 
-if (isMainModule(import.meta.url)) {
-  const args = process.argv.slice(2);
+/** The receipt's run: the census (unless --report names a finished one), then the judge. `deps` (round 3 A5) are its
+ *  outside world, for a receipt that drives it without a browser: the census and the budget. */
+export async function runBudget(args, { census = runCensus, budget = readBudget(), log = (line) => console.log(line) } = {}) {
   const gate = args.includes('--gate');
   const report = args.find((a) => a.startsWith('--report='))?.slice(9) ?? null;
-  const budget = readBudget();
-  const run = async () => {
-    let dir = report ? path.resolve(report) : null;
-    if (!dir) {
-      const passthrough = args.filter((a) => /^--(root|out|port)=/.test(a));
-      const options = parseCensusArgs([
-        `--scenarios=${budget.scenarios.join(',')}`, `--sizes=${budget.sizes.join(',')}`, `--seconds=${budget.seconds}`,
-        `--passes=${(budget.passes ?? ['cold', 'warm']).join(',')}`, `--driver=${budget.driver ?? 'watch'}`, `--trace=1`,
-        `--port=${budget.port ?? 5397}`, ...passthrough,
-      ]);
-      dir = options.out;
-      console.log(`[${TOOL}] ${budget.scenarios.length} battles × ${budget.sizes.join('/')} → ${dir}`);
-      await runCensus(options);
-    }
-    if (!readdirSync(dir).length) throw new Error(`${dir} is empty`);
-    const { lines, failed } = judgeCensus(dir, budget);
-    for (const line of lines) console.log(`[${TOOL}] ${line}`);
-    console.log(`[${TOOL}] ${failed ? `${failed} limit(s) FAILED` : 'PASS'}`);
-    if (failed && gate) process.exitCode = 1;
-  };
-  run().catch((error) => { console.error(error); process.exitCode = 1; });
+  let dir = report ? path.resolve(report) : null, censusResult = null;
+  if (!dir) {
+    // (round 3 A5) --resume passes through: a census the capture hold stopped is finished by its next run in the same --out
+    const passthrough = args.filter((a) => /^--(?:(?:root|out|port)=|resume(?:=|$))/.test(a));
+    const options = parseCensusArgs([
+      `--scenarios=${budget.scenarios.join(',')}`, `--sizes=${budget.sizes.join(',')}`, `--seconds=${budget.seconds}`,
+      `--passes=${(budget.passes ?? ['cold', 'warm']).join(',')}`, `--driver=${budget.driver ?? 'watch'}`, `--trace=1`,
+      `--port=${budget.port ?? 5397}`, ...passthrough,
+    ]);
+    dir = options.out;
+    log(`[${TOOL}] ${budget.scenarios.length} battles × ${budget.sizes.join('/')} → ${dir}`);
+    censusResult = await census(options);
+  }
+  if (!readdirSync(dir).length) throw new Error(`${dir} is empty`);
+  // a census its budget or the capture hold stopped (its result, or the census.json a --report folder carries) is
+  // incomplete: its unplayed battles are LEFT and the receipt exits 3, never a FAIL of records it never played
+  let stopped = Boolean(censusResult?.stopped);
+  if (!censusResult) { try { stopped = Boolean(JSON.parse(readFileSync(path.join(dir, 'census.json'), 'utf8')).stopped); } catch { /* no summary */ } }
+  const { lines, failed, left } = judgeCensus(dir, budget, undefined, { stopped });
+  for (const line of lines) log(`[${TOOL}] ${line}`);
+  if (left) log(`[${TOOL}] INCOMPLETE: ${left} battle(s) left; run again with --out=${dir} --resume to finish the census`);
+  log(`[${TOOL}] ${failed ? `${failed} limit(s) FAILED` : left ? 'no limit failed so far' : 'PASS'}`);
+  if (failed && gate) process.exitCode = 1;
+  else if (left) process.exitCode ||= 3;
+  return { dir, lines, failed, left };
+}
+
+if (isMainModule(import.meta.url)) {
+  runBudget(process.argv.slice(2)).catch((error) => { console.error(error); process.exitCode = 1; });
 }

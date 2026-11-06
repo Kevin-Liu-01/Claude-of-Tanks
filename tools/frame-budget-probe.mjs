@@ -819,6 +819,30 @@ export async function acquireProbeLocks({ sessionMutex = null, log = () => {}, f
     await pause(2_000);
   }
 }
+/**
+ * (round 3 A5) One owner of a probe unit's end under the pair's hold (acquireProbeLocks): 'done', 'failed' or 'left'.
+ * The hold's cap stop lands mid-unit as a rule: its signal aborts at a cap check and its guarded browsers are stopped one
+ * grace later, while a unit (a frame-budget slot, a memory scenario, a spike battle, a shadow map, a time-to-battle build)
+ * runs for minutes. Each caller read the signal only before a unit, so the unit the stop cut was counted as failed, or
+ * crashed the tool (tools/probe-unit-stop.selftest.mjs). A unit the hold's stop came before, or that throws once it came
+ * (its browser stopped under it), is 'left' for the next run; one that throws while the hold holds is 'failed'; one that
+ * returns is 'done' (what finished after the stop is whole). `unit(signal)` runs the unit; { outcome, value, error, why }.
+ */
+export async function runProbeUnit(locks, unit) {
+  const signal = locks.signal;
+  const left = (error) => ({ outcome: 'left', why: probeStopWhy(signal), ...(error ? { error } : {}) });
+  if (signal?.aborted) return left();
+  try {
+    return { outcome: 'done', value: await unit(signal) };
+  } catch (error) {
+    return signal?.aborted ? left(error) : { outcome: 'failed', error };
+  }
+}
+/** Why the pair's hold was stopped, in one line (the lock's cap with a waiter, a budget, a signal). */
+export const probeStopWhy = (signal) => String(signal?.reason?.message ?? signal?.reason ?? 'the capture hold was stopped').split('\n')[0];
+/** A run with units left for the next one exits 3, unless a signal (128 + n) or a failure already set its code. */
+export function markUnitsLeft() { process.exitCode ||= 3; }
+
 function mutexOwner(dir) {
   try { return Number(readFileSync(path.join(dir, 'pid'), 'utf8').trim()) || null; } catch { return null; }
 }
@@ -1149,7 +1173,10 @@ async function measureOnPage(page, options, slot, { w0, h0, allies, enemies }, g
     pageErrors: errors };
 }
 
-async function run(options) {
+/** One probe run over the slots still to measure. `deps` (round 3 A5) are the run's outside world, for a receipt that
+ *  drives it without a browser: the locks, the browser launch, the preview server and the slot's measurement. */
+export async function runFrameProbe(options, { acquireLocks = acquireProbeLocks, launchBrowser = (launchOptions) => launchGuardedBrowser(puppeteer, launchOptions),
+  openServer = openPreview, measure = measureSlot } = {}) {
   mkdirSync(options.out, { recursive: true });
   const log = (line) => console.log(`[${TOOL} ${new Date().toISOString().slice(11, 19)}] ${line}`);
   const slotFile = (key) => path.join(options.out, `${options.tag}-${key}.json`);
@@ -1161,7 +1188,7 @@ async function run(options) {
     try { return !!JSON.parse(readFileSync(slotFile(s.key), 'utf8')).failed; } catch { return true; }
   });
   if (!todo.length) { log('every slot is already measured'); return { ok: true, remaining: 0 }; }
-  const locks = await acquireProbeLocks({ sessionMutex: options.sessionMutex, log });
+  const locks = await acquireLocks({ sessionMutex: options.sessionMutex, log });
   const refresh = setInterval(() => locks.refresh(), 30000);
   refresh.unref();
   const machine = { cores: os.cpus().length, loadStart: loadAverage(), samples: [] };
@@ -1205,7 +1232,7 @@ async function run(options) {
     return { action: 'measure', accepted: j.accepted };
   };
   try {
-    browser = await launchGuardedBrowser(puppeteer, { headless: 'new', protocolTimeout: 900000,
+    browser = await launchBrowser({ headless: 'new', protocolTimeout: 900000,
       args: [...MAP_PROBE_BROWSER_ARGS, '--enable-precise-memory-info', '--window-size=1920,1080'] });
     const queue = [...todo];
     let revisited = false;
@@ -1216,13 +1243,23 @@ async function run(options) {
         if ((options.budgetMin && (Date.now() - started) / 60000 > options.budgetMin) || locks.signal.aborted) { remaining++; continue; }
         if (serving !== slot.root) {
           if (server) await server.close();
-          server = await openPreview(slot.root, options.port);
+          server = await openServer(slot.root, options.port);
           serving = slot.root;
         }
         const loadBefore = +os.loadavg()[0].toFixed(2), foreignBefore = foreignGpuCpu(), slotStarted = Date.now();
         let record;
+        // (round 3 A5) a slot the hold's stop cut (its browser stopped under it) is the next hold's, never a FAILED run
+        const unit = await runProbeUnit(locks, () => measure(browser, options, slot, options.sceneCheck ? gateFor(slot, queue, qi) : null));
+        if (unit.outcome === 'left') {
+          remaining++;
+          log(`${slot.key} left for the next hold: ${unit.why}`);
+          writeFileSync(slotFile(slot.key), JSON.stringify({ failed: `left for the next hold: ${unit.why}`, left: true, key: slot.key, label: slot.label,
+            mapId: slot.mapId }, null, 1));
+          continue;
+        }
         try {
-          record = await measureSlot(browser, options, slot, options.sceneCheck ? gateFor(slot, queue, qi) : null);
+          if (unit.outcome === 'failed') throw unit.error;
+          record = unit.value;
           record.label = slot.label; record.key = slot.key; record.root = slot.root; record.query = slot.query;
           record.load1 = { before: loadBefore, after: +os.loadavg()[0].toFixed(2) };
           record.foreignGpu = { before: foreignBefore, after: foreignGpuCpu() };
@@ -1277,7 +1314,7 @@ async function run(options) {
     writtenAt: new Date().toISOString(), options, machine, remaining, voided,
     scenes: Object.fromEntries([...staging].map(([k, v]) => [k, v.history])), node: process.version }, null, 1));
   log(`${ok ? 'done' : 'FAILED'}${remaining ? ` (${remaining} slot(s) left for the next hold)` : ''}${voided ? ` — ${voided} slot(s) VOID` : ''}`);
-  if (ok && remaining) process.exitCode = 3;
+  if (ok && remaining) markUnitsLeft();
   return { ok, remaining };
 }
 
@@ -1490,7 +1527,7 @@ if (isMainModule(import.meta.url)) {
     writeFileSync(path.join(outDir, 'frame-report.md'), md);
     console.log(md);
   } else {
-    const result = await run(options);
+    const result = await runFrameProbe(options);
     if (!result.ok) process.exitCode = 1;
   }
 }

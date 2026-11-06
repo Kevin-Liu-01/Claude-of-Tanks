@@ -321,7 +321,8 @@ only:
   with the signal's error. A tool with its own SIGINT/SIGTERM handler passes `signals: []`: one owner of a signal per process.
   `frame-budget-probe.mjs` `acquireProbeLocks` (the capture FIFO with the session mutex, for that probe,
   time-to-battle-probe, battle-spike-census, battle-memory-probe and shadow-cache-truth) holds its FIFO through the
-  open form too, and hands its callers the hold's `signal`.
+  open form too, and hands its callers the hold's `signal`. A unit the hold's stop comes before or cuts (a slot, a
+  scenario, a battle, a map, a build) is left for the next run, never a failure (`runProbeUnit`): the run exits 3.
   A shell holds one normal ticket across several steps with
   `node tools/with-capture-lock.mjs [--lock-class=render|timing] [--place=<key>] -- <command>`: every tool under it that
   takes the lock nests in that hold (its token), and a wait that runs out exits 77. `tools/capture-hold-census.selftest.mjs`

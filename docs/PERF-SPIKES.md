@@ -42,7 +42,10 @@ House rules the tool keeps:
 
 - one browser at a time, its JS heap capped at 3 GB;
 - a battle aborts past 6 GB of browser RSS;
-- the capture FIFO (`tools/capture-lock.mjs`) is held for the whole run;
+- the capture FIFO (`tools/capture-lock.mjs`) is held for the whole run, through the one hold wrapper: past its 20-min
+  cap with anyone waiting the hold is stopped, and the battle it cuts and the ones after it are left for the next run
+  (census.json is still written, the run exits 3 and names `--out=<dir> --resume` to finish it; `perf:spikes:check`
+  reports such a census as LEFT, not FAIL);
 - the machine's load is recorded before and after each battle.
 
 Each battle writes `<map>-<mode>-<n>v<n>-<pass>.json` (the analysis), plus two companions so the analysis can be

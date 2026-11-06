@@ -27,7 +27,7 @@ import { gzipSync } from 'node:zlib';
 import { fileURLToPath } from 'node:url';
 import puppeteer from 'puppeteer';
 import { MAP_PROBE_BROWSER_ARGS, isMainModule, sleep } from './map-probe-runtime.mjs';
-import { acquireProbeLocks, openPreview, pinnedOpponents } from './frame-budget-probe.mjs';
+import { acquireProbeLocks, markUnitsLeft, openPreview, pinnedOpponents, runProbeUnit } from './frame-budget-probe.mjs';
 import { driveBattle, installCensusObservers, sourceResolver, summarizeHeapProfile } from './battle-spike-census.mjs';
 import { snapshotRetainerPaths } from './heap-retainers.mjs';
 import { readinessExpression, waitForBootLoaded } from './game-readiness.mjs';
@@ -426,21 +426,28 @@ export function judgeMemory(record, budget) {
   });
 }
 
-if (isMainModule(import.meta.url)) {
-  const options = parseMemoryArgs(process.argv.slice(2));
-  mkdirSync(options.out, { recursive: true });
-  if (!existsSync(path.join(options.root, 'dist', 'index.html'))) throw new Error(`${options.root} has no dist`);
-  const locks = await acquireProbeLocks({ log });
+/** The probe's scenarios under the pair's hold. `deps` (round 3 A5) are its outside world, for a receipt that drives it
+ *  without a browser: the locks, the preview server and one scenario's run. */
+export async function runMemoryProbe(options, { acquireLocks = acquireProbeLocks, openServer = openPreview, probe = probeScenario } = {}) {
+  const locks = await acquireLocks({ log });
   const refresh = setInterval(() => locks.refresh(), 30000);
   refresh.unref();
-  const server = await openPreview(options.root, options.port);
+  const server = await openServer(options.root, options.port);
   let failed = 0;
   try {
     const budget = options.gate ? JSON.parse(readFileSync(BUDGET_FILE, 'utf8')) : null;
     for (const scenario of options.scenarios) {
       // the hold's stop (the lock's cap with a waiter, a signal): the scenarios left wait for the next run, never a gate's pass
-      if (locks.signal.aborted) { log('the capture hold was stopped: the scenarios left wait for the next run'); process.exitCode ||= 3; break; }
-      const record = await probeScenario(options, scenario);
+      if (locks.signal.aborted) { log('the capture hold was stopped: the scenarios left wait for the next run'); markUnitsLeft(); break; }
+      // (round 3 A5) a scenario the stop cut (its browser stopped under it) waits for the next run too: no uncaught crash
+      const unit = await runProbeUnit(locks, () => probe(options, scenario));
+      if (unit.outcome === 'left') {
+        log(`${keyOf(scenario, options.size)}: the capture hold was stopped mid-scenario (${unit.why}): it and the scenarios after it wait for the next run`);
+        markUnitsLeft();
+        break;
+      }
+      if (unit.outcome === 'failed') throw unit.error;
+      const record = unit.value;
       writeFileSync(path.join(options.out, `${keyOf(scenario, options.size)}.json`), JSON.stringify(record, null, 1));
       log(`${keyOf(scenario, options.size)}: growth ${JSON.stringify(record.growth)}; peak ${JSON.stringify(record.peakRss)}`);
       if (record.retained) for (const site of record.retained.sites.slice(0, 12)) log(`  retained ${site.mb} MB ${site.chunk} ${site.fn} ${site.source ?? site.at}`);
@@ -456,4 +463,11 @@ if (isMainModule(import.meta.url)) {
     await locks.release();
   }
   if (options.gate && failed) { log(`${failed} limit(s) FAILED`); process.exitCode = 1; }
+}
+
+if (isMainModule(import.meta.url)) {
+  const options = parseMemoryArgs(process.argv.slice(2));
+  mkdirSync(options.out, { recursive: true });
+  if (!existsSync(path.join(options.root, 'dist', 'index.html'))) throw new Error(`${options.root} has no dist`);
+  await runMemoryProbe(options);
 }

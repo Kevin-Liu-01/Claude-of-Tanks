@@ -47,7 +47,7 @@ import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from 
 import { gunzipSync, gzipSync } from 'node:zlib';
 import puppeteer from 'puppeteer';
 import { MAP_PROBE_BROWSER_ARGS, isMainModule, sleep } from './map-probe-runtime.mjs';
-import { acquireProbeLocks, chunkOfUrl, foreignGpuCpu, openPreview, pinnedOpponents } from './frame-budget-probe.mjs';
+import { acquireProbeLocks, chunkOfUrl, foreignGpuCpu, openPreview, pinnedOpponents, runProbeUnit } from './frame-budget-probe.mjs';
 import { BOOT_LOADED_EXPRESSION, readinessExpression } from './game-readiness.mjs';
 import { StringDecoder } from 'node:string_decoder';
 import { analyzeBattle, rendererMainThread, traceEventOfInterest } from './battle-spike-analysis.mjs';
@@ -887,14 +887,16 @@ function reanalyze(dir) {
   writeFileSync(path.join(dir, 'census.json'), JSON.stringify(summarizeCensus(dir), null, 1));
 }
 
-export async function runCensus(options) {
+/** The census's battles under the pair's hold. `deps` (round 3 A5) are its outside world, for a receipt that drives it
+ *  without a browser: the locks, the preview servers and one battle's run. */
+export async function runCensus(options, { acquireLocks = acquireProbeLocks, openServer = openPreview, runOne = runScenario } = {}) {
   mkdirSync(options.out, { recursive: true });
   const done = new Set(options.resume ? readdirSync(options.out).filter((n) => /-(cold|warm)\.json$/.test(n)).map((n) => n.replace(/\.json$/, '')) : []);
   for (const side of options.roots) {
     if (!existsSync(path.join(side.root, 'dist', 'index.html'))) throw new Error(`${side.root} has no dist (npm run build)`);
   }
   // its own SIGTERM/SIGINT handler closes the browser and exits (one owner of a signal): the hold leaves signals to it
-  let locks = await acquireProbeLocks({ log, hold: { signals: [] } });
+  let locks = await acquireLocks({ log, hold: { signals: [] } });
   const refresh = setInterval(() => locks.refresh(), 30000);
   refresh.unref();
   // a chunk with a budget stops hard 30 minutes past it, whatever is pending: the FIFO is the other lanes' too
@@ -905,19 +907,29 @@ export async function runCensus(options) {
     }, (options.budgetMin + 30) * 60000).unref();
   }
   const servers = [];
-  for (const side of options.roots) servers.push(await openPreview(side.root, side.port));
+  for (const side of options.roots) servers.push(await openServer(side.root, side.port));
   const started = Date.now();
   const failures = [];
-  let turn = 0;
+  let turn = 0, stopped = false, finished = 0;
+  const total = options.scenarios.length * options.sizes.length * options.roots.length;
   try {
-    for (const scenario of options.scenarios) {
+    battles: for (const scenario of options.scenarios) {
       for (const size of options.sizes) {
         // the sides alternate who plays first, battle pair to battle pair
         const order = turn++ % 2 ? [...options.roots].reverse() : options.roots;
         for (const side of order) {
-          if (options.budgetMin && (Date.now() - started) / 60000 > options.budgetMin) { log('time budget spent: stopping'); return { failures, stopped: true }; }
-          if (locks.signal.aborted) { log('the capture hold was stopped (the lock\'s cap with a waiter): stopping'); return { failures, stopped: true }; }
-          try { await runScenario(options, side, scenario, size, done); } catch (error) {
+          if (options.budgetMin && (Date.now() - started) / 60000 > options.budgetMin) { log('time budget spent: stopping'); stopped = true; break battles; }
+          // (round 3 A5) the hold's stop (the lock's cap with a waiter) before or during a battle: the battle and the ones
+          // after it are left for the next run, never failures (a contended perf:spikes used to end FAILED, census.json unwritten)
+          const unit = await runProbeUnit(locks, () => runOne(options, side, scenario, size, done));
+          if (unit.outcome === 'left') {
+            log(`${side.label ? `${side.label} ` : ''}${scenario} ${size}v${size} left for the next run: the capture hold was stopped (${unit.why})`);
+            stopped = true;
+            break battles;
+          }
+          finished++;
+          if (unit.outcome === 'failed') {
+            const { error } = unit;
             failures.push({ scenario, size, label: side.label, error: String(error?.message ?? error).slice(0, 2600) });
             log(`${side.label ? `${side.label} ` : ''}${scenario} ${size}v${size} FAILED: ${String(error?.message ?? error).slice(0, 1500)}`);
           }
@@ -925,7 +937,7 @@ export async function runCensus(options) {
             guardReleasedLocks = false;
             log('the browser guard released the capture FIFO: queueing again');
             await locks.release(); // the trip released its lock already: the hold ends before the next one queues
-            locks = await acquireProbeLocks({ log, hold: { signals: [] } });
+            locks = await acquireLocks({ log, hold: { signals: [] } });
           }
         }
       }
@@ -935,9 +947,17 @@ export async function runCensus(options) {
     clearInterval(refresh);
     await locks.release();
   }
-  writeFileSync(path.join(options.out, 'census.json'), JSON.stringify(summarizeCensus(options.out), null, 1));
+  // what was measured is summarized either way; a stopped census says how many battles are left and how to finish it
+  const left = total - finished;
+  writeFileSync(path.join(options.out, 'census.json'), JSON.stringify({ ...summarizeCensus(options.out), ...(stopped ? { stopped: { left } } : {}) }, null, 1));
   if (options.roots.length > 1) writeFileSync(path.join(options.out, 'census-ab.json'), JSON.stringify(compareCensus(options.out), null, 1));
-  return { failures };
+  if (stopped) log(`${left} battle(s) left for the next run: run again with --out=${options.out} --resume to finish this census`);
+  return stopped ? { failures, stopped: true, left } : { failures };
+}
+
+/** The census's exit: 1 for a failed battle, 3 for battles left (a stopped census: its budget or the hold's stop), else 0. */
+export function censusExitCode({ failures = [], stopped = false } = {}) {
+  return failures.length ? 1 : stopped ? 3 : 0;
 }
 
 /** An A/B census's pairs: each battle on each side, the hitches, the causes, the GPU stalls and the first-use links. */
@@ -988,8 +1008,10 @@ if (isMainModule(import.meta.url)) {
   const options = parseCensusArgs(process.argv.slice(2));
   if (options.reanalyze) { reanalyze(options.reanalyze); process.exit(0); }
   log(`${options.scenarios.length} scenarios × sizes ${options.sizes.join('/')} × ${options.passes.join('+')}, ${options.seconds} s of combat each → ${options.out}`);
-  runCensus(options).then(({ failures }) => {
-    if (failures.length) { log(`${failures.length} battle(s) failed`); process.exitCode = 1; }
+  runCensus(options).then((result) => {
+    if (result.failures.length) log(`${result.failures.length} battle(s) failed`);
+    const code = censusExitCode(result);
+    if (code) process.exitCode = code;
     log('done');
   }, (error) => { console.error(error); process.exitCode = 1; });
 }

@@ -28,11 +28,11 @@ import { mkdirSync, writeFileSync } from 'node:fs';
 import puppeteer from 'puppeteer';
 import { MAP_PROBE_BROWSER_ARGS, beginSoloBattle, isMainModule, sleep } from './map-probe-runtime.mjs';
 import {
-  acquireProbeLocks, awaitTextures, freezeBattle, grassSettled, installObservers, openPreview, pinnedOpponents, poseView,
+  acquireProbeLocks, awaitTextures, freezeBattle, grassSettled, installObservers, markUnitsLeft, openPreview, pinnedOpponents, poseView, runProbeUnit,
 } from './frame-budget-probe.mjs';
 import { waitForBootLoaded } from './game-readiness.mjs';
 
-function parseArgs(argv) {
+export function parseArgs(argv) {
   const o = { root: null, maps: ['verdant'], out: path.resolve('.qa-dev', 'reports', 'shadow-cache-truth'), port: 5395,
     sessionMutex: null, query: '', gate: false, tolerance: 0, viewport: [1600, 900], spec: 't90m', sides: [6, 7],
     temporal: false, flickerFrames: 90, flicker: true };
@@ -382,76 +382,98 @@ async function flickerPhase(page, options) {
 
 // ---------------------------------------------------------------------------------------------- host side
 
-async function run(options) {
+/** One map's truth pass in a page of its own: { record, failures } (round 3 A5: a unit of the run, for runProbeUnit). */
+async function probeMap(browser, options, mapId, log) {
+  const failures = [];
+  const page = await browser.newPage();
+  const errors = [];
+  page.on('pageerror', (e) => errors.push(String(e?.message ?? e).slice(0, 300)));
+  try {
+    await page.setViewport({ width: options.viewport[0], height: options.viewport[1], deviceScaleFactor: 1 });
+    await page.evaluateOnNewDocument(installObservers, { preset: 'high', allies: options.sides[0], enemies: options.sides[1] });
+    await page.goto(`http://127.0.0.1:${options.port}/?nosplash=1&tier=desktop${options.query ? `&${options.query}` : ''}`, { waitUntil: 'domcontentloaded', timeout: 180000 });
+    await waitForBootLoaded(page, { timeout: 300000 });
+    const catalog = await page.evaluate(() => window.__DEBUG.game.allTanks.map((e) => e.specId));
+    const opponents = pinnedOpponents(catalog, options.spec, options.sides[0] + options.sides[1]);
+    await page.evaluate((ids) => { const f = window.__DEBUG.flags; f.forceRoster = ids; f.rosterExact = true; }, opponents);
+    await beginSoloBattle(page, { specId: options.spec, mapId, timeoutMs: 420000 });
+    await page.evaluate(awaitTextures, 90000);
+    await page.evaluate(freezeBattle, 'pinned');
+    await page.waitForFunction(grassSettled, { timeout: 30000, polling: 250 }).catch(() => {});
+    await poseView(page, 'chase');
+    await sleep(2500);
+    // freeze the wind and the water clocks so a capture pair differs only by the cache
+    await page.evaluate(() => { window.__DEBUG.world.setWindTime?.(12.5); });
+    const setup = await page.evaluate(installTruthHelpers, options.temporal);
+    const results = [];
+    const tag = mapId;
+    await scenario(page, 'floor', S_FLOOR, options.out, results, tag);
+    await scenario(page, 'still', S_STILL, options.out, results, tag);
+    await scenario(page, 'tank', S_TANK, options.out, results, tag);
+    await scenario(page, 'camera', S_CAMERA, options.out, results, tag);
+    await scenario(page, 'sun', S_SUN, options.out, results, tag);
+    await scenario(page, 'tree', S_FALL('tree'), options.out, results, tag);
+    await scenario(page, 'prop', S_FALL('prop'), options.out, results, tag);
+    await page.evaluate(() => { window.__DEBUG.world.setWindTime?.(12.5); });
+    await poseView(page, 'chase');
+    await scenario(page, 'drive', S_SEQUENCE('drive'), options.out, results, tag);
+    await scenario(page, 'dolly', S_SEQUENCE('dolly'), options.out, results, tag);
+    const floor = results.find((r) => r.scenario === 'floor')?.px ?? 0;
+    const over = results.filter((r) => r.scenario !== 'floor' && r.px > floor + options.tolerance);
+    for (const r of over) failures.push(`${mapId} ${r.scenario}${r.step ? `/${r.step}` : ''}: ${r.px} px (floor ${floor})`);
+    log(`${mapId}: floor ${floor} px; ${results.filter((r) => r.scenario !== 'floor').map((r) => `${r.scenario}${r.step ? `/${r.step}` : ''} ${r.px}`).join(', ')}`);
+    const flicker = options.flicker ? await flickerPhase(page, options) : null;
+    if (flicker) log(`${mapId} flicker (blips/frame, cache on vs off): ${Object.entries(flicker.summary).map(([k, v]) => `${k} on ${v.cached.join('/')} off ${v.uncached.join('/')} delta ${v.delta} spread ${v.spread}`).join('; ')}`);
+    return { record: { setup, floor, results, flicker, pageErrors: errors }, failures };
+  } finally {
+    await page.close().catch(() => {});
+  }
+}
+
+/** The run over its maps under the pair's hold. `deps` (round 3 A5) are its outside world, for a receipt that drives it
+ *  without a browser: the locks, the preview server, the browser launch and one map's pass. */
+export async function runShadowTruth(options, { acquireLocks = acquireProbeLocks, openServer = openPreview,
+  launchBrowser = (launchOptions) => launchGuardedBrowser(puppeteer, launchOptions), probe = probeMap } = {}) {
   mkdirSync(options.out, { recursive: true });
   const log = (line) => console.log(`[shadow-cache-truth ${new Date().toISOString().slice(11, 19)}] ${line}`);
-  const locks = await acquireProbeLocks({ sessionMutex: options.sessionMutex, log });
+  const locks = await acquireLocks({ sessionMutex: options.sessionMutex, log });
   const refresh = setInterval(() => locks.refresh(), 30000); refresh.unref();
-  const server = await openPreview(options.root, options.port);
-  const browser = await launchGuardedBrowser(puppeteer, { headless: 'new', protocolTimeout: 900000,
+  const server = await openServer(options.root, options.port);
+  const browser = await launchBrowser({ headless: 'new', protocolTimeout: 900000,
     args: [...MAP_PROBE_BROWSER_ARGS, `--window-size=${options.viewport[0]},${options.viewport[1]}`] });
-  const report = { root: options.root, query: options.query, maps: {}, failures: [] };
+  const report = { root: options.root, query: options.query, maps: {}, failures: [], left: [] };
   try {
-    for (const mapId of options.maps) {
-      const page = await browser.newPage();
-      const errors = [];
-      page.on('pageerror', (e) => errors.push(String(e?.message ?? e).slice(0, 300)));
-      try {
-        await page.setViewport({ width: options.viewport[0], height: options.viewport[1], deviceScaleFactor: 1 });
-        await page.evaluateOnNewDocument(installObservers, { preset: 'high', allies: options.sides[0], enemies: options.sides[1] });
-        await page.goto(`http://127.0.0.1:${options.port}/?nosplash=1&tier=desktop${options.query ? `&${options.query}` : ''}`, { waitUntil: 'domcontentloaded', timeout: 180000 });
-        await waitForBootLoaded(page, { timeout: 300000 });
-        const catalog = await page.evaluate(() => window.__DEBUG.game.allTanks.map((e) => e.specId));
-        const opponents = pinnedOpponents(catalog, options.spec, options.sides[0] + options.sides[1]);
-        await page.evaluate((ids) => { const f = window.__DEBUG.flags; f.forceRoster = ids; f.rosterExact = true; }, opponents);
-        await beginSoloBattle(page, { specId: options.spec, mapId, timeoutMs: 420000 });
-        await page.evaluate(awaitTextures, 90000);
-        await page.evaluate(freezeBattle, 'pinned');
-        await page.waitForFunction(grassSettled, { timeout: 30000, polling: 250 }).catch(() => {});
-        await poseView(page, 'chase');
-        await sleep(2500);
-        // freeze the wind and the water clocks so a capture pair differs only by the cache
-        await page.evaluate(() => { window.__DEBUG.world.setWindTime?.(12.5); });
-        const setup = await page.evaluate(installTruthHelpers, options.temporal);
-        const results = [];
-        const tag = mapId;
-        await scenario(page, 'floor', S_FLOOR, options.out, results, tag);
-        await scenario(page, 'still', S_STILL, options.out, results, tag);
-        await scenario(page, 'tank', S_TANK, options.out, results, tag);
-        await scenario(page, 'camera', S_CAMERA, options.out, results, tag);
-        await scenario(page, 'sun', S_SUN, options.out, results, tag);
-        await scenario(page, 'tree', S_FALL('tree'), options.out, results, tag);
-        await scenario(page, 'prop', S_FALL('prop'), options.out, results, tag);
-        await page.evaluate(() => { window.__DEBUG.world.setWindTime?.(12.5); });
-        await poseView(page, 'chase');
-        await scenario(page, 'drive', S_SEQUENCE('drive'), options.out, results, tag);
-        await scenario(page, 'dolly', S_SEQUENCE('dolly'), options.out, results, tag);
-        const floor = results.find((r) => r.scenario === 'floor')?.px ?? 0;
-        const over = results.filter((r) => r.scenario !== 'floor' && r.px > floor + options.tolerance);
-        for (const r of over) report.failures.push(`${mapId} ${r.scenario}${r.step ? `/${r.step}` : ''}: ${r.px} px (floor ${floor})`);
-        log(`${mapId}: floor ${floor} px; ${results.filter((r) => r.scenario !== 'floor').map((r) => `${r.scenario}${r.step ? `/${r.step}` : ''} ${r.px}`).join(', ')}`);
-        const flicker = options.flicker ? await flickerPhase(page, options) : null;
-        if (flicker) log(`${mapId} flicker (blips/frame, cache on vs off): ${Object.entries(flicker.summary).map(([k, v]) => `${k} on ${v.cached.join('/')} off ${v.uncached.join('/')} delta ${v.delta} spread ${v.spread}`).join('; ')}`);
-        report.maps[mapId] = { setup, floor, results, flicker, pageErrors: errors };
-      } finally {
-        await page.close().catch(() => {});
+    for (const [index, mapId] of options.maps.entries()) {
+      // (round 3 A5) a map the hold's stop came before or cut (its browser stopped under it) is left for the next run: the
+      // run used to crash there, and result.json was never written
+      const unit = await runProbeUnit(locks, () => probe(browser, options, mapId, log));
+      if (unit.outcome === 'left') {
+        report.left = options.maps.slice(index);
+        report.stopped = unit.why;
+        log(`the capture hold was stopped (${unit.why}): ${report.left.join(', ')} left for the next run`);
+        break;
       }
+      if (unit.outcome === 'failed') throw unit.error;
+      report.failures.push(...unit.value.failures);
+      report.maps[mapId] = unit.value.record;
     }
   } finally {
     clearInterval(refresh);
     await browser.close().catch(() => {});
     await server.close().catch(() => {});
-    locks.release();
+    await locks.release();
   }
-  report.pass = report.failures.length === 0;
+  // a run with maps left is no pass: their differences are not known yet (exit 3, not a gate failure)
+  report.pass = report.failures.length === 0 && !report.left.length;
   writeFileSync(path.join(options.out, 'result.json'), JSON.stringify(report, null, 1));
-  log(report.pass ? 'PASS' : `DIFFERENCES: ${report.failures.join('; ')}`);
-  if (options.gate && !report.pass) process.exitCode = 1;
+  log(report.failures.length ? `DIFFERENCES: ${report.failures.join('; ')}` : report.left.length ? `INCOMPLETE: ${report.left.join(', ')} left for the next run` : 'PASS');
+  if (options.gate && report.failures.length) process.exitCode = 1;
+  else if (report.left.length) markUnitsLeft();
   return report;
 }
 
 if (isMainModule(import.meta.url)) {
   let options;
   try { options = parseArgs(process.argv.slice(2)); } catch (e) { console.error(e.message); process.exit(1); }
-  await run(options);
+  await runShadowTruth(options);
 }
