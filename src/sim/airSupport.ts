@@ -111,6 +111,8 @@ export interface AirSupport {
   counterAirHit(strike: AirStrike, chance: number, by: string, timeS: number): void;
   aircraftPoseOf(strike: AirStrike, timeS: number, out: Point3 & { yaw: number; bank: number }): Point3 & { yaw: number; bank: number };
   aircraftWithin(team: ObjectiveTeam, x: number, y: number, z: number, rangeM: number, timeS: number): AirStrike | null;
+  /** A bot's seeded preferred call-in (it calls nothing cheaper, recon aside). */
+  botPreference(id: string): 'artillery' | 'strafe' | 'bomb' | 'gunship';
   /** Whether a recon pass has `id` revealed to `side` now (the spotting system's reveal hook). */
   revealed(id: string, side: ObjectiveTeam): boolean;
   evadeTarget(entity: AirSupportEntity, timeS: number): { x: number; z: number; mission: 'evade' } | null;
@@ -433,6 +435,19 @@ export function createAirSupport<Entity extends AirSupportEntity>(options: AirSu
     return count;
   }
 
+  /** A bot's preferred call-in, seeded by the match and its id (a quarter each of artillery, strafe, bomb, gunship). */
+  const preferences = new Map<string, 'artillery' | 'strafe' | 'bomb' | 'gunship'>();
+  function botPreference(id: string): 'artillery' | 'strafe' | 'bomb' | 'gunship' {
+    let preferred = preferences.get(id);
+    if (!preferred) {
+      let hash = 2166136261;
+      for (let i = 0; i < id.length; i++) hash = Math.imul(hash ^ id.charCodeAt(i), 16777619);
+      preferred = (['artillery', 'strafe', 'bomb', 'gunship'] as const)[Math.floor(strikeRandom(seed, hash >>> 0, 7) * 4)]!;
+      preferences.set(id, preferred);
+    }
+    return preferred;
+  }
+
   /**
    * A bot weighs a call: the dearest strike it can afford that has its minimum of targets, on the best-covered spotted
    * enemy; with nobody spotted in reach, a recon pass toward its scout point.
@@ -442,7 +457,10 @@ export function createAirSupport<Entity extends AirSupportEntity>(options: AirSu
     // the side's last air slots stay free for its crews' own calls
     if (teamAir(team, timeS) >= rules.teamAirCap - rules.bots.leaveSlots) return;
     let anySpotted = false;
+    // the bot's seeded preference: it calls nothing cheaper than it (recon aside), so some crews save for the AC-130
+    const preferred = botPreference(entity.id);
     for (const kind of ['gunship', 'bomb', 'strafe', 'artillery'] as const) {
+      if (rules[kind].cost < rules[preferred].cost) continue;
       if (refusal(entity, kind, entity.state.pos.x, entity.state.pos.z, timeS)) continue;
       let bestCount = 0, bestX = 0, bestZ = 0;
       for (const target of entities) {
@@ -456,6 +474,8 @@ export function createAirSupport<Entity extends AirSupportEntity>(options: AirSu
       }
       if (bestCount >= rules.bots.minTargets[kind]) { requestStrike(entity.id, kind, bestX, bestZ, timeS); return; }
     }
+    // a crew saving for a dear call-in spends nothing on recon
+    if (rules[preferred].cost > rules.strafe.cost) return;
     if (anySpotted || refusal(entity, 'recon', entity.state.pos.x, entity.state.pos.z, timeS)) return;
     // one bot recon pass a side, then a gap (a sky full of photo jets is no one's battle)
     if (timeS - (botReconAt[team] ?? -Infinity) < rules.bots.reconGapS) return;
@@ -548,7 +568,7 @@ export function createAirSupport<Entity extends AirSupportEntity>(options: AirSu
     seed,
     requestStrike, recordDamage, recordKill, recordCapture, recordSpot, tryHitAircraft, damageAircraft, counterAirHit, aircraftWithin,
     aircraftPoseOf: (strike: AirStrike, timeS: number, out: Point3 & { yaw: number; bank: number }) => aircraftPose(rules, strike, timeS, out),
-    evadeTarget, step, view,
+    evadeTarget, step, view, botPreference,
     revealed: (id: string, side: ObjectiveTeam): boolean => (revealedUntil.get(`${side}:${id}`) ?? -Infinity) >= nowS,
     pointsOf: (id: string): number => points.get(id) ?? 0,
     capture(): AirSupportCheckpoint {

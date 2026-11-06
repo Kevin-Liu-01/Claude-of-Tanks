@@ -171,7 +171,7 @@ await runWarmHold({
       const errors = receipt.errors[tag] = [];
       const page = await warmPage(browser, `http://127.0.0.1:${port}/?nosplash=1&tier=${TIERS[tag]}&gfxreset=1`, {
         ready: 'window.__GAME_READY === true', viewport: VIEWPORTS[tag],
-        after: (page) => beginSoloBattle(page, { specId: 'm1a1_abrams_hc', mapId, gameMode: 'air_support', settleMs: 2500 }),
+        after: (page) => beginSoloBattle(page, { specId: 'm1a1_abrams_hc', mapId, gameMode: 'air_support', settleMs: 2500, timeoutMs: 900_000 }),
       });
       page.on('pageerror', (error) => errors.push(String(error?.message ?? error)));
       page.on('console', (message) => { if (message.type() === 'error') errors.push(message.text().slice(0, 400)); });

@@ -168,8 +168,12 @@ run({ migrateAt: 'bomb' });
     ruleset: matchRulesetFor('air_support'), world: world(), countdownS: 0, autoStart: false, now: () => 0, schedule: () => () => {}, resume: null });
   const sim = make.authority; sim.onMatchReady();
   const air = sim.modeController.airSupport;
-  const saved = air.capture(); saved.points = saved.points.map(([id]) => [id, id === 'b1' ? 500 : 0]); air.restore(saved);
-  sim.entityById.get('caller').state.pos.set(0, 0, 0); sim.entityById.get('b1').state.pos.set(0, 0, 200);
+  // the bot that calls: one whose seeded preference a lone spotted enemy can answer (the gunship's needs two)
+  const caller = ['b1', 'b2'].find((id) => air.botPreference(id) !== 'gunship');
+  assert.ok(caller, 'a bot of the two prefers a call-in short of the gunship');
+  const other = caller === 'b1' ? 'b2' : 'b1';
+  const saved = air.capture(); saved.points = saved.points.map(([id]) => [id, id === caller ? R.points.cap : 0]); air.restore(saved);
+  sim.entityById.get('caller').state.pos.set(0, 0, 0); sim.entityById.get(caller).state.pos.set(0, 0, 200);
   const calls = [];
   for (let n = 0; n < 60 * 6 && !calls.length; n++) {
     sim.step({ dt: 1 / 60, inputs: new Map([['caller', { throttle: 0, steer: 0, fire: false, brake: true, aimYaw: 0, aimPitch: 0, aimDistance: 100, shellSlot: 0, actionBits: 0 }]]) });
@@ -177,9 +181,9 @@ run({ migrateAt: 'bomb' });
     sim.afterEventBroadcast();
     sim.entityById.get('caller').state.pos.set(0, 0, 0);
   }
-  assert.ok(calls.length && calls[0].callerId === 'b1', 'a bot with points calls a strike on the enemy it spots');
+  assert.ok(calls.length && calls[0].callerId === caller, 'a bot with points calls a strike on the enemy it spots');
   const strike = air.strikes[0];
-  const b2 = sim.entityById.get('b2');
+  const b2 = sim.entityById.get(other);
   b2.state.pos.set(strike.x + 3, 0, strike.z + 2);
   const target = sim.modeController.botObjective(b2);
   if (strike.kind !== 'gunship' && strike.kind !== 'recon') {
