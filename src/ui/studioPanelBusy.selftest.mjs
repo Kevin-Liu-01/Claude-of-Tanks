@@ -27,7 +27,16 @@ const found = new Map();
 let clearHandler = null;
 // (round 2 Q18) the header's Restore, Undo and Redo: restoreBtn/undoBtn/redoBtn.addEventListener('click', handler)
 const headerHandlers = new Map();
+// (round 3 B10) the queue's own render (runJob; cases 1-6 run a stub), Load JSON's file handler and a slot's handler
+let runJobSource = null, loadJsonHandler = null, slotHandler = null;
 (function visit(node) {
+  if (ts.isFunctionDeclaration(node) && node.name?.text === 'runJob' && !runJobSource) runJobSource = node.getText(source);
+  if (ts.isCallExpression(node) && node.expression.getText(source) === 'fileIn.addEventListener'
+    && node.arguments[0]?.getText(source) === "'change'") loadJsonHandler = node.arguments[1].getText(source);
+  if (ts.isCallExpression(node) && node.expression.getText(source) === 'b.addEventListener'
+    && node.arguments[0]?.getText(source) === "'click'" && node.arguments[1].getText(source).includes('cot.studio.slot')) {
+    slotHandler = node.arguments[1].getText(source);
+  }
   if (ts.isFunctionDeclaration(node) && node.name && [...CORE, ...HELPERS].includes(node.name.text) && !found.has(node.name.text)) {
     found.set(node.name.text, node.getText(source));
   }
@@ -48,6 +57,7 @@ const headerHandlers = new Map();
 for (const name of CORE) assert.ok(found.has(name), `studioPanel.ts declares ${name}`);
 assert.ok(clearHandler, 'the queue has a Clear handler');
 for (const button of ['restoreBtn', 'undoBtn', 'redoBtn']) assert.ok(headerHandlers.has(button), `the header has its ${button} handler`);
+assert.ok(runJobSource && loadJsonHandler && slotHandler, 'the panel declares runJob, Load JSON\'s handler and the slots\' handler');
 
 // Load JSON reads its file under the session it was chosen in: a read that lands after an exit is refused by load()
 // (StudioSessionEnded) instead of entering the Studio again over the Garage
@@ -60,7 +70,8 @@ assert.match(text, /if \(panelBusy\(\)\) return; \/\/ \(audit F9\) a take record
 assert.match(text, /busy: hostBusy, \/\/ \(audit F9\)/, 'the Director reads the panel\'s holders with its own');
 assert.doesNotMatch(text, /function outputBusy\(/, 'one reading: the output side has no second predicate');
 
-function makePanel({ display = 'block', soundPreview = async () => null, restoreAutosave = async () => true, hang = [] } = {}) {
+function makePanel({ display = 'block', soundPreview = async () => null, restoreAutosave = async () => true, hang = [],
+  realRunJob = false } = {}) {
   const calls = [];
   const timers = [];
   const jobs = [];
@@ -68,8 +79,12 @@ function makePanel({ display = 'block', soundPreview = async () => null, restore
   // the Studio's session (studioSession.ts), open; exit() and enter() end it and begin the next
   const session = createStudioSession();
   session.open(session.beginEntry());
+  // (round 3 B10) the frames runJob's still loop waits on, landed by the case; S.active is the Studio's frame flag, true
+  // from the entry's shell to the exit's teardown (an exit's bounded wait leaves it true)
+  const frames = [];
+  const studio = { active: true };
   // a hung change (`hang`): its preparation or build still going, settled by the case
-  const hung = { time: [], map: [], light: [], restore: [] };
+  const hung = { time: [], map: [], light: [], restore: [], load: [], stage: [] };
   const settleLater = (kind, value) => (hang.includes(kind)
     ? new Promise((resolve, reject) => { hung[kind].push({ resolve, reject }); }) : Promise.resolve(value));
   const controls = { mapBtn: { disabled: false }, restoreBtn: { disabled: false }, exportBtn: { disabled: false },
@@ -84,10 +99,19 @@ function makePanel({ display = 'block', soundPreview = async () => null, restore
       setMap: (id) => { calls.push(['map', id]); return settleLater('map', id); },
       setTimeOfDay: (time) => { calls.push(['time', time]); return settleLater('time', time); },
       setLight: (patch) => { calls.push(['light', patch]); return settleLater('light', patch); },
-      directProduction: (options) => { calls.push(['stage', options.presetId]); return Promise.resolve({}); },
+      directProduction: (options) => { calls.push(['stage', options.presetId]); return settleLater('stage', {}); },
       undo: () => { calls.push(['undo']); return Promise.resolve(true); },
       redo: () => { calls.push(['redo']); return Promise.resolve(true); },
       restoreAutosave: () => { calls.push(['restore']); return hang.includes('restore') ? settleLater('restore', true) : restoreAutosave(); },
+      // (round 3 B10) Load JSON's and a slot's scene, and a still at every shot's parts
+      load: (json) => { calls.push(['load', json.map]); return settleLater('load', {}); },
+      state: () => ({}),
+      get active() { return studio.active; },
+      getStoryboard: () => ({ shots: [{ id: 's1', label: 'one' }, { id: 's2', label: 'two' }, { id: 's3', label: 'three' }] }),
+      durationMs: 12000, fxTimeMs: 4000, selectedShotId: 's1',
+      selectCameraShot: (id) => calls.push(['shot', id]),
+      capture: (options) => calls.push(['capture', options.name]),
+      seek: (ms) => calls.push(['seek', ms]),
     },
     mapBtn: controls.mapBtn, restoreBtn: controls.restoreBtn, exportBtn: controls.exportBtn, queueStart: controls.queueStart,
     recordBtn: controls.recordBtn, mapPick: { setAttribute: () => {} },
@@ -103,6 +127,13 @@ function makePanel({ display = 'block', soundPreview = async () => null, restore
     filmShake: { seg: { value: '1' } }, flashBusy: (text) => calls.push(['flash', text]),
     root: { style: { display } }, setTimeout: (callback, ms) => { timers.push({ callback, ms }); return timers.length; },
     SOUND_BUCKETS: 400, soundPath: { setAttribute: () => {} }, soundWave: { classList: { remove: () => {} } },
+    // (round 3 B10) runJob's helpers, Load JSON's file input and the first slot (its loop's `i`)
+    formatRatio: () => '16:9', stillSize: () => ({ width: 1920, height: 1080 }),
+    queueFileName: (map, label, _ratio, ext) => `${map}-${label}.${ext}`, shotLabel: (label) => label,
+    shotRuns: (shots) => shots.map((shot) => ({ first: shot })),
+    nextFrame: () => new Promise((resolve) => { frames.push(resolve); }),
+    fileIn: { files: null, value: '' }, i: 1,
+    localStorage: { getItem: () => JSON.stringify({ map: 'desert' }), setItem: () => {} },
   };
   const code = stripTypeScriptTypes(`
     function makeQueueHarness(ports) {
@@ -114,12 +145,16 @@ function makePanel({ display = 'block', soundPreview = async () => null, restore
     // each job's render until the case ends it (pending: the latest)
     let pending = null;
     const renders = new Map();
-    const runJob = (job) => new Promise((resolve, reject) => { pending = { job, resolve, reject }; renders.set(job.label, pending); });
+    ${realRunJob ? runJobSource
+      : 'const runJob = (job) => new Promise((resolve, reject) => { pending = { job, resolve, reject }; renders.set(job.label, pending); });'}
     ${[...found.values()].join('\n')}
     const clear = ${clearHandler};
     const header = { restore: ${headerHandlers.get('restoreBtn')}, undo: ${headerHandlers.get('undoBtn')}, redo: ${headerHandlers.get('redoBtn')} };
+    const loadJson = ${loadJsonHandler};
+    const slot = ${slotHandler};
     return {
       runQueue, startFilmExport, drawSound, clear, queueJobs, chooseMap, chooseTime, stagePreset, queueLight, refreshLocks, panelBusy, header,
+      loadJson, slot,
       finish: () => { const current = pending; pending = null; renders.delete(current.job.label); current.resolve(1); },
       finishJob: (label) => { const render = renders.get(label); renders.delete(label); if (pending === render) pending = null; render.resolve(1); },
       get running() { return pending?.job ?? null; },
@@ -129,7 +164,12 @@ function makePanel({ display = 'block', soundPreview = async () => null, restore
   const panel = new Function('ports', `${code}\nreturn makeQueueHarness(ports);`)({ ...ports, jobs });
   const exit = () => { assert.ok(session.beginExit() && session.close(), 'the Studio exits'); };
   const enter = () => { assert.ok(session.open(session.beginEntry()), 'and is entered again'); };
-  return { panel, calls, timers, held, hung, controls, exit, enter };
+  // (round 3 B10) the exit's start alone: the session ended, the teardown (S.active false) still to come
+  const beginExit = () => { assert.ok(session.beginExit(), 'the Studio\'s exit begins'); };
+  const frame = () => { const land = frames.shift(); assert.ok(land, 'a frame is awaited'); land(); };
+  // a file chosen for Load JSON (the input's change event)
+  const chooseFile = (text) => { ports.fileIn.files = [{ text: () => Promise.resolve(text) }]; panel.loadJson(); };
+  return { panel, calls, timers, held, hung, controls, exit, enter, beginExit, frame, chooseFile, studio };
 }
 const settle = async () => { for (let i = 0; i < 6; i++) await new Promise((resolve) => setImmediate(resolve)); };
 const still = (label) => ({ label, state: 'waiting', progress: 0, preset: { kind: 'still' } });
@@ -323,6 +363,78 @@ const endLight = async (h) => { h.hung.light.shift().resolve(); await settle(); 
     assert.equal(h.panel.panelBusy(), false, `the live ${change.name}'s end frees the panel`);
     assert.equal(h.controls.mapBtn.disabled || h.controls.restoreBtn.disabled, false, 'and its buttons');
     if (change.name === 'queue run') assert.deepEqual(h.panel.queueJobs.map((job) => [job.label, job.state]), [['A', 'done'], ['B', 'done'], ['C', 'done']]);
+  }
+}
+
+// 7. (round 3 B10) The session guards of a closed session's panel run, each run for real.
+// The queue's still at every shot (runJob, the panel's own): the Studio's frame flag (S.active) stays true from the entry's
+// shell to the exit's teardown, so through the exit's bounded wait only its session's check stopped the loop: it went on
+// selecting shots and downloading a PNG of each over a closing Studio.
+{
+  const h = makePanel({ realRunJob: true });
+  const shots = () => h.calls.filter((call) => Array.isArray(call) && call[0] === 'shot').map((call) => call[1]);
+  const captures = () => h.calls.filter((call) => Array.isArray(call) && call[0] === 'capture').map((call) => call[1]);
+  h.panel.queueJobs.push({ label: 'every shot', state: 'waiting', progress: 0, preset: { kind: 'still', id: 'still-shots' } });
+  const run = h.panel.runQueue();
+  await settle();
+  assert.deepEqual(shots(), ['s1'], 'the run selects the first shot and waits a frame for it');
+  h.frame();
+  await settle();
+  assert.deepEqual(captures(), ['verdant-shot-01-one.png'], 'the first shot is taken');
+  assert.deepEqual(shots(), ['s1', 's2'], 'the second is selected');
+  h.beginExit(); // the exit begins: its session ended, the Studio's frame flag still true (the teardown is still to come)
+  assert.equal(h.studio.active, true);
+  h.frame();
+  await settle();
+  assert.deepEqual(captures(), ['verdant-shot-01-one.png'], 'nothing is taken once the run\'s session ended');
+  assert.deepEqual(shots(), ['s1', 's2'], 'and no further shot is selected');
+  await run;
+  assert.equal(h.panel.queueJobs[0].state, 'cancelled', 'the job ends as a cancel');
+  assert.ok(!h.calls.some((call) => Array.isArray(call) && call[0] === 'notice'), 'and no "done" notice');
+}
+// (and its own session) the same run, its session kept, takes every shot and puts the shot and the playhead back
+{
+  const h = makePanel({ realRunJob: true });
+  h.panel.queueJobs.push({ label: 'every shot', state: 'waiting', progress: 0, preset: { kind: 'still', id: 'still-shots' } });
+  const run = h.panel.runQueue();
+  for (let shot = 0; shot < 3; shot++) { await settle(); h.frame(); }
+  await run;
+  assert.equal(h.calls.filter((call) => Array.isArray(call) && call[0] === 'capture').length, 3, 'a kept run takes every shot');
+  assert.deepEqual(h.calls.filter((call) => Array.isArray(call) && ['shot', 'seek'].includes(call[0])).slice(-2), [['shot', 's1'], ['seek', 4000]],
+    'and puts the shot and the playhead back');
+  assert.equal(h.panel.queueJobs[0].state, 'done');
+}
+// Load JSON, a slot and the palette's sequence: each one's scene build hangs (a cold battlefield), the user exits and enters
+// again, then the build fails with a superseded build (WorldActivationSuperseded, which is no AbortError): nothing of it is
+// said in the Studio entered again. In its own live session the same failure is said.
+{
+  const superseded = () => Object.assign(new Error('Battlefield activation for desert was superseded by a later request'),
+    { name: 'WorldActivationSuperseded' });
+  const said = (calls, since = 0) => calls.slice(since).filter((call) => Array.isArray(call) && ['flash', 'notice'].includes(call[0]));
+  for (const run of [
+    { name: 'Load JSON', hang: 'load', start: (h) => h.chooseFile(JSON.stringify({ map: 'desert' })), started: ['load', 'desert'],
+      says: ['flash', 'studio.loadFailed'] },
+    { name: 'slot', hang: 'load', start: (h) => h.panel.slot({ shiftKey: false }), started: ['load', 'desert'],
+      says: ['flash', 'studio.loadFailed'] },
+    { name: 'palette sequence', hang: 'stage', start: (h) => h.panel.stagePreset('desert-crossfire'), started: ['stage', 'desert-crossfire'],
+      says: ['notice', 'WorldActivationSuperseded: Battlefield activation for desert was superseded by a later request'] },
+  ]) {
+    const dead = makePanel({ hang: [run.hang] });
+    run.start(dead);
+    await settle();
+    assert.deepEqual(dead.calls.find((call) => Array.isArray(call) && call[0] === run.started[0]), run.started, `the ${run.name} builds its scene`);
+    dead.exit();
+    dead.enter();
+    const since = dead.calls.length;
+    dead.hung[run.hang][0].reject(superseded());
+    await settle();
+    assert.deepEqual(said(dead.calls, since), [], `a closed session's ${run.name} says nothing of its failure in the Studio entered again`);
+    const live = makePanel({ hang: [run.hang] });
+    run.start(live);
+    await settle();
+    live.hung[run.hang][0].reject(superseded());
+    await settle();
+    assert.deepEqual(said(live.calls).map((call) => call.slice(0, 2)), [run.says], `a ${run.name} that fails in its live session says so`);
   }
 }
 
