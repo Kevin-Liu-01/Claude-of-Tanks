@@ -832,12 +832,17 @@ export const FLEET_GHILLIE_SUITS: Readonly<Record<string, GhillieConfig>> = Obje
     turret: {
       // the fore-roof over the moving gun housing stays open air (kf51bTurretCenter.selftest: x +-0.40, z 0.92-1.85);
       // 268 r11: and the drone dock's plate at the turret's back, where the RWS stood before it moved beside the tower
-      top: [laid({ x0: -1.58, x1: 1.56, z0: -3.09, z1: 1.73, nx: 39, nz: 60, y: 0.64, garnishRiseM: 0.16, seed: 11,
-        holes: [rect(-0.48, 0.48, 0.86, 1.90), rect(0.08, 0.52, -2.34, -1.86)] })],
+      // 2026-11-03 (268 r16): and round the new roof kit (the coaxial MG's shroud and the auxiliary sight on the left
+      // cheek, the four corner sensor heads; r16b took the radome, the acoustic detector and the third antenna off). The
+      // turret's walls rise 7 cm (profiles/leopard.ts kf51uWallRiseM), so the roof net's level, the flank drapes' tops
+      // and the rear drape's top rise with them
+      top: [laid({ x0: -1.58, x1: 1.56, z0: -3.09, z1: 1.73, nx: 39, nz: 60, y: 0.71, garnishRiseM: 0.16, seed: 11,
+        holes: [rect(-0.48, 0.48, 0.86, 1.90), rect(0.08, 0.52, -2.34, -1.86), rect(0.48, 0.76, 0.90, 1.73),
+          rect(0.76, 1.10, 0.76, 1.10), ...pair(1.12, 1.36, 0.68, 0.92), ...pair(0.74, 0.98, -2.72, -2.48)] })],
       // the front drapes cut round the cheek sensors (turret z 0.88, both flanks)
-      side: [...flanks(-0.38, 1.45, 0.68, 0.44, 1.55, 17, {}, () => [cut(0.66, 1.10, 0.50, 0.90)]),
-        ...flanks(-2.94, -1.13, 0.68, 0.44, 1.55, 19)],
-      face: [face({ z: -3.10, x0: -1.25, x1: 1.25, y0: 0.24, y1: 0.62, nx: 25, ny: 6, seed: 23 })],
+      side: [...flanks(-0.38, 1.45, 0.75, 0.51, 1.55, 17, {}, () => [cut(0.66, 1.10, 0.50, 0.90)]),
+        ...flanks(-2.94, -1.13, 0.75, 0.51, 1.55, 19)],
+      face: [face({ z: -3.10, x0: -1.25, x1: 1.25, y0: 0.24, y1: 0.69, nx: 25, ny: 6, seed: 23 })],
     },
     hull: {
       top: [
