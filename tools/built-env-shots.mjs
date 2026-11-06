@@ -6,7 +6,7 @@
 //        [--pair-minutes=10]
 //
 // jobs.json: [{ "name": "before-desktop", "dist": "<built dist>", "device": "desktop" | "phone",
-//               "maps": ["urban", ...], "poses": ["street", ...] }, ...]
+//               "maps": ["urban", ...], "poses": ["street", ...], "posesByMap": { "urban": ["shore"] } }, ...]
 //
 // The harness is tools/ground-surface-shots.mjs's (item ground-269): one render-class ticket, the first (job, map) pair
 // staged while it waits, every pair on its own page inside the hold, checkpoint() between pairs. Its poses, all at the
@@ -65,6 +65,8 @@ function parse(argv) {
   for (const job of out.jobs) {
     job.dist = path.resolve(job.dist);
     job.poses ??= [...POSES];
+    // (built-env-270 ab3) a map may take its own poses (a re-shoot of the poses a fix changed)
+    for (const list of Object.values(job.posesByMap ?? {})) for (const p of list) if (!POSES.includes(p)) throw new Error(`${job.name}: unknown pose ${p}`);
     if (!DEVICES[job.device]) throw new Error(`${job.name}: unknown device ${job.device}`);
     for (const id of job.maps) if (!MAP_IDS.includes(id)) throw new Error(`${job.name}: unknown map ${id}`);
     for (const p of job.poses) if (!POSES.includes(p)) throw new Error(`${job.name}: unknown pose ${p}`);
@@ -357,7 +359,7 @@ async function main(argv) {
         const shooting = (async () => {
           const live = await entry.page.evaluate(() => window.__DEBUG?.world?.mapId ?? null).catch(() => null);
           if (live !== mapId) await stageMap(entry, mapId);
-          const receipt = await shootMap({ ...entry, mapId }, { poses: job.poses }, job.frames);
+          const receipt = await shootMap({ ...entry, mapId }, { poses: job.posesByMap?.[mapId] ?? job.poses }, job.frames);
           receipt.ms = Date.now() - started;
           job.manifest.maps[mapId] = receipt;
           writeFileSync(job.manifestFile, `${JSON.stringify(job.manifest, null, 2)}\n`);
