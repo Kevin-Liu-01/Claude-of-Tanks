@@ -471,10 +471,10 @@ export const POLDER_STYLE: ArchitectureStyle = Object.freeze<ArchitectureStyle>(
     roof: { kind: 'pantile', tint: [0.64, 0.32, 0.20] },
     stone: { kind: 'brick', tint: [0.56, 0.30, 0.23] },
     // (buildings-270, the sourced-plaster class: under the photo set none of the map's render tones showed) the walls the
-    // procedural limewash canvas, the primary family's tone measured on it against the reference photos (the lime-washed brick, #e1e0dd against #efece4)
+    // procedural limewash canvas, the primary family's tone measured on it against the reference photos (the lime-washed brick, #e5e0d4 (warmed: a neutral white read violet under the sky in round 2) against #efece4)
     sourced: { plaster: false, wood: true },
     render: { kind: 'limewash', seed: 0x3e54 },
-    tones: { plaster: (_h, s, l) => [0.11, Math.min(1, s * 0.15 + 0.05), Math.min(1, l * 0.55 + 0.6)] },
+    tones: { plaster: (_h, s, l) => [0.115, Math.min(1, s * 0.15 + 0.24), Math.min(1, l * 0.55 + 0.59)] },
   },
   builders: POLDER_BUILDERS,
   // the yards: a plank fence round the kitchen garden and the shed, a gate (yards.ts)

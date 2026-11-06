@@ -986,7 +986,7 @@ export const TSELINA_STYLE: ArchitectureStyle = Object.freeze<ArchitectureStyle>
     roof: { kind: 'asbestos', tint: [0.63, 0.63, 0.6] },
     stone: { kind: 'brick', tint: [0.76, 0.73, 0.66] },
     // (buildings-270, the sourced-plaster class: under the photo set none of the map's render tones showed) the walls the
-    // procedural limewash canvas, the primary family's tone measured on it against the reference photos (the whitewash: the map's tone, #d7d6d3 against #e6e4dc)
+    // procedural limewash canvas, the primary family's tone measured on it against the reference photos (the whitewash: the map's tone, #e0dbcf against #e6e4dc)
     sourced: { plaster: false, wood: true },
     render: { kind: 'limewash', seed: 0x3e57 },
     tones: {

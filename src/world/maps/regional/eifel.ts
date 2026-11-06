@@ -169,10 +169,10 @@ export const EIFEL_STYLE: ArchitectureStyle = Object.freeze<ArchitectureStyle>({
     roof: { kind: 'slate', tint: [0.27, 0.29, 0.32] },
     stone: { kind: 'greywacke', tint: [0.47, 0.45, 0.42] },
     // (buildings-270, the sourced-plaster class: under the photo set none of the map's render tones showed) the walls the
-    // procedural limewash canvas, the primary family's tone measured on it against the reference photos (the white lime infill, #e1e0dd against #efece4)
+    // procedural limewash canvas, the primary family's tone measured on it against the reference photos (the white lime infill, #e5e0d4 (warmed: a neutral white read violet under the sky in round 2) against #efece4)
     sourced: { plaster: false, wood: true },
     render: { kind: 'limewash', seed: 0x3e52 },
-    tones: { plaster: (_h, s, l) => [0.11, Math.min(1, s * 0.15 + 0.05), Math.min(1, l * 0.55 + 0.6)] },
+    tones: { plaster: (_h, s, l) => [0.115, Math.min(1, s * 0.15 + 0.24), Math.min(1, l * 0.55 + 0.59)] },
   },
   builders: EIFEL_BUILDERS,
   // the yards: a plank fence round the kitchen garden and the woodshed, a gate (yards.ts)
