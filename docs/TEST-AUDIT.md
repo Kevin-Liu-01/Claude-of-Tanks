@@ -15,15 +15,15 @@ Run times: `tools/selftest-durations.json`, else this machine's latest observati
 
 | Decision | Receipts | CPU-min |
 |---|---:|---:|
-| KEEP | 1712 | 166.8 |
+| KEEP | 1713 | 166.8 |
 | MERGE | 0 | 0.0 |
 | MANUAL | 655 | 1157.1 |
 | RETIRE | 2 | 0.7 |
 
 | Suite run | Receipts | CPU-min | Simulated wall (min) |
 |---|---:|---:|---:|
-| Before: every receipt (npm test without the tiers) | 2368 | 1324.2 | 233.5 |
-| After: the default tier | 1712 | 166.8 | 37.3 |
+| Before: every receipt (npm test without the tiers) | 2369 | 1324.2 | 233.5 |
+| After: the default tier | 1713 | 166.8 | 37.3 |
 
 Default tier: 12.6 % of the whole registry's CPU; 18.2 % of the 916 CPU-min the snapshot gave for the 1,863 receipts it timed. Its wall: 0.2 min exclusive receipts, 18.5 min pool, 18.6 min browser receipts.
 
@@ -802,7 +802,7 @@ None. Folding receipts saves only process starts (about a second each) and would
 | `tools/media-r5/fleet-coverage.selftest.mjs` | n/a | MANUAL (media) | media: the media lane's fleet backlog, n/a s: 267: the fleet's media backlog (every vehicle leads a take, the survey bars): the manual media suite | test:heavy -- media; test:recommend flags it when its inputs change |
 | `tools/mp-rooms-entry.browser.selftest.mjs` | n/a | MANUAL (ui) | ui: heavy interface paint and layout sweeps, n/a s: 268 (the 267 production smoke): the multiplayer end-to-end opens the rooms panel the way the Garage's layout o | test:heavy -- ui; test:recommend flags it when its inputs change |
 
-## KEEP (1712)
+## KEEP (1713)
 
 | Receipt | Run (s) | Decision | Reason | Coverage now |
 |---|---:|---|---|---|
@@ -2416,6 +2416,7 @@ None. Folding receipts saves only process starts (about a second each) and would
 | `src/mp/host/reviveMigration.selftest.mjs` | n/a | KEEP | multiplayer wire, session or host, n/a s: 2026-11-02 audit M1 (review round 2): a hull revived between the keyframe and the newest frame keeps its fresh | default tier (npm test, the release gate; lane mode by its closure) |
 | `src/mp/match/hullBodyRow.selftest.mjs` | n/a | KEEP | multiplayer wire, session or host, n/a s: 2026-11-02 audit M8: wire 10's TUMBLING and STACKED flags; the clients' hull copies split tank contacts as the | default tier (npm test, the release gate; lane mode by its closure) |
 | `src/mp/match/timelineRestart.selftest.mjs` | n/a | KEEP | multiplayer wire, session or host, n/a s: 2026-11-02 audit U1 (round 2; round 3 A3): a client follows a host that restarts the battle (clocks re-anchore | default tier (npm test, the release gate; lane mode by its closure) |
+| `src/mp/presentation/battleRestartLives.selftest.mjs` | n/a | KEEP | multiplayer wire, session or host, n/a s: 2026-11-02 audit round 3 merge review r1: a battle restart is a new life for every hull in every per-life list | default tier (npm test, the release gate; lane mode by its closure) |
 | `src/mp/presentation/battleRestartReset.selftest.mjs` | n/a | KEEP | multiplayer wire, session or host, n/a s: 2026-11-02 audit round 3 X5: a battle restart stands the old battle's settled props, structures and heaps on t | default tier (npm test, the release gate; lane mode by its closure) |
 | `src/mp/presentation/settledFalls.selftest.mjs` | n/a | KEEP | multiplayer wire, session or host, n/a s: 2026-11-02 audit U27: a late joiner's settled props lie as they fell (wire 11 falls, withheld as their events | default tier (npm test, the release gate; lane mode by its closure) |
 | `src/mp/presentation/unseenRounds.selftest.mjs` | n/a | KEEP | multiplayer wire, session or host, n/a s: 2026-11-02 audit U31: a round that left the view in flight is named unseen (wire 11) and held by the effects, | default tier (npm test, the release gate; lane mode by its closure) |

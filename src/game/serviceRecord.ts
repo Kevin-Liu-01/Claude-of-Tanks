@@ -715,6 +715,15 @@ export function installServiceRecord(bus: ServiceEventBus | null | undefined, ct
     battle.damaged.delete(id);
     battle.killShots.delete(id);
   });
+  // (round 3 merge review r1) A network battle restarted under this seat (battlePresentation.ts 'battle:restarted'):
+  // every hull stands at its spawn again, a new life for each (the revive above, for the whole field): this seat is
+  // alive, no hull carries the abandoned battle's damage, and no earlier round is any hull's killing shot.
+  bus.on('battle:restarted', () => {
+    if (!battle) return;
+    battle.alive = true;
+    battle.damaged.clear();
+    battle.killShots.clear();
+  });
 
   bus.on('battle:ended', (payload) => {
     const event = recordOf(payload) ?? {};

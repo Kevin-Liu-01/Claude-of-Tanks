@@ -12,6 +12,8 @@ export class BattleKillLedger {
   }
   count(id: string): number { return this.counts.get(id) ?? 0; }
   respawn(id: string): void { this.dead.delete(id); }
+  /** Every hull back on the field at once (a network battle restarted from its spawns): no death latched, kills kept. */
+  reviveAll(): void { this.dead.clear(); }
   clear(): void { this.counts.clear(); this.dead.clear(); }
 }
 

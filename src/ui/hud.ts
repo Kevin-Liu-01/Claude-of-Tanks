@@ -8639,6 +8639,17 @@ export function initHud(bus: EventBus): HudRuntime {
     resetConsumableTray();
     showAlert(t('hud.alert.respawned'), { icon: 'rematch', tone: 'info' });
   });
+  // (round 3 merge review r1) a network battle restarted under this seat (battlePresentation.ts 'battle:restarted'):
+  // every hull stands at its spawn again, a revive of each with no alert (the edge above, for the whole field). No hull
+  // is dead in the kill ledger (one that died in the abandoned battle and dies again is fed and counted), no contact's
+  // memory is the abandoned battle's, and this seat's revive count and consumable tray are its fresh hull's.
+  on('battle:restarted', () => {
+    killLedger.reviveAll();
+    spotById.clear();
+    if (playerId == null) return;
+    reviveCountdown.revived();
+    resetConsumableTray();
+  });
   on('mode:flag_taken', ({ team }) => {
     // the payload names the flag's owner: our flag taken means the enemy carries it
     const ours = team === objectiveTeam;

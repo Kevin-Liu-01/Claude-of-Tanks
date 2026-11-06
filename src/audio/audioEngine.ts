@@ -2423,6 +2423,30 @@ export function createAudio({
     pendingCaptions.length = 0;
   }
 
+  /**
+   * (round 3 merge review r1) A network battle restarted under this seat (battlePresentation.ts resetSettledWorld tells
+   * 'battle:restarted' on MatchFrame.battleRestarts): every hull stands at its spawn again, a revive of each with no cue
+   * (the 'respawn' mode event's re-arming, for the whole field). Every death latch re-arms, so a hull that died in the
+   * abandoned battle and is hidden now is heard when it dies again (update() re-arms only the hulls it is given, the
+   * visible ones); every known hull is alive for the side counts, whose one-shot calls the restarted battle may make
+   * again; the player's per-life calls re-arm and its fire alarm, heartbeat and radio damage go with its old hull; and
+   * the abandoned battle's wrecks stop burning where no wreck stands now.
+   */
+  function restartLives(): void {
+    deathLatch.clear();
+    for (const info of tanks.values()) info.alive = true;
+    lastStanding = { mine: false, theirs: false, outnumbered: false };
+    lowHpCalled = false;
+    ammoLowCalled = false;
+    heartbeatBelow = 0;
+    heartbeatRig?.stop(); heartbeatRig = null;
+    fireAlarm?.stop(); fireAlarm = null;
+    playerBurning = false;
+    radio?.setRadioDamage(0);
+    for (const wreck of wrecks) for (const loop of wreck.loops) loop.stop(0.4);
+    wrecks.length = 0;
+  }
+
   /** A battle's world torn down: on leaving it, or as the next one opens over it. */
   function teardownBattle(reason: string): void {
     stopWorld(reason);
@@ -2647,6 +2671,9 @@ export function createAudio({
       onTankDestroyed(e);
       updateTeamCounts();
     });
+    // a network battle restarted under this seat: a new life for every hull (state, taken whether or not the graph
+    // exists: restartLives)
+    listen('battle:restarted', () => restartLives());
     on<TankImpactEvent>('tank:impact', onTankImpact);
     on<TankRamEvent>('tank:ram', (e) => onTankRam(e));
     on<PropEvent>('prop:crushed', (e) => onProp(e, false));

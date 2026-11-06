@@ -1859,6 +1859,18 @@ export function createKillCam(deps: KillcamDeps) {
         // in for a burn-out.
         pendingDeath = lastHitOnPlayer = null;
       });
+      // (round 3 merge review r1) The battle restarted under this seat (battlePresentation.ts resetSettledWorld tells
+      // 'battle:restarted' on MatchFrame.battleRestarts): every hull stands at its spawn again, this seat's own too. For a
+      // seat with a hull that is its revive and a battle's entry at once: a pending death view ends, the ally chase ends and
+      // the HUD leaves its spectating state (the own revive above), and the abandoned battle's capture memory goes (as at
+      // 'ui:battleStart'), so no end replay shows a shell of a battle no longer played. An observer seat's chase is its
+      // camera (activation's startObserver) and stays. Before, a seat dead at the restart kept chasing an ally while its
+      // own hull sat alive at its spawn, until the battle ended.
+      bus.on('battle:restarted', () => {
+        resetCaptureMemory();
+        api.cancel();
+        if (!spectate.observing) spectate.stop(true);
+      });
       // Pointer/touch controls in the HUD use the same controller as A/D and
       // arrow keys, so the on-screen keycaps are real controls instead of
       // decorative hints. cycle() is a no-op outside spectator mode.
@@ -6361,6 +6373,8 @@ export function createKillCam(deps: KillcamDeps) {
       cycle,
       select,
       get active() { return on; },
+      /** The lobby observer's chase (startObserver): the seat's camera, never a dead seat's ally chase. */
+      get observing() { return on && observerAllTeams; },
       get targetId() { return on ? curId : null; },
     };
   })();
