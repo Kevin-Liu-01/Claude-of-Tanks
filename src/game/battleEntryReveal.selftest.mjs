@@ -213,4 +213,79 @@ for (const [label, hideBeforeFreeze] of [['a hidden frame, then a 20 s gap', tru
   assert.ok(stalled.tickCount > 0, 'the control case did tick');
 }
 
+// (round 3 A16, the Q9 gap) b59b78c5cc's suspension resume through main's own reveal ports: main's battleEntryLifecycle
+// statement (isPresentable: !graphicsContextLost && frameLoop.presenting, the lifecycle's default clock) over the real
+// frame-loop scheduler. A suspension (an app switch freezes page JS, a laptop sleeps) is one long gap between samples,
+// and the first sample after the resume runs before the scheduler's first tick: crediting that gap failed a healthy entry
+// one frame before its battle frame. The page's clock jumps 20 s here (performance.now, which the lifecycle reads); the
+// 40 ms budget puts the abandon ceiling at 400 ms of presentable time.
+{
+  const realNow = performance.now.bind(performance);
+  let suspendedMs = 0;
+  performance.now = () => realNow() + suspendedMs;
+  try {
+    const resume = async ({ blurBeforeFreeze }) => {
+      let focused = true;
+      const listeners = new Map();
+      const target = {
+        addEventListener: (type, listener) => listeners.set(type, [...(listeners.get(type) ?? []), listener]),
+        removeEventListener: (type, listener) => listeners.set(type, (listeners.get(type) ?? []).filter((entry) => entry !== listener)),
+        dispatch: (type) => { for (const listener of listeners.get(type) ?? []) listener({ type }); },
+      };
+      const documentState = { get hidden() { return false; }, hasFocus: () => focused, ...target };
+      const waits = [];
+      const scope = {
+        game: { phase: 'battle', tanks: [] },
+        graphicsContextLost: false,
+        document: documentState,
+        revealTimeoutForField: () => 40,
+        // the reveal's own frame waits, released by hand: each is one sample of the ceiling
+        nextFrame: () => new Promise((resolve) => { waits.push(resolve); }),
+        createBattleEntryLifecycle,
+        sceneWatchdogEntryGeneration: 0,
+        coveredBattleWatchdog: null,
+      };
+      const lifecycle = runMainStatements(mainStatement('const battleEntryLifecycle = createBattleEntryLifecycle({'),
+        scope, 'battleEntryLifecycle');
+      scope.frameLoop = createFrameLoopScheduler({
+        tick: () => lifecycle.noteBattleFrame(), isBootComplete: () => true,
+        requestFrame: () => 1, cancelFrame: () => {}, now: () => performance.now(),
+        setRecurring: () => 0, clearRecurring: () => {}, setDelayed: () => 0, clearDelayed: () => {},
+        documentState, inputTarget: target,
+      });
+      scope.frameLoop.restart();
+      let outcome = null;
+      const entry = lifecycle.run(() => lifecycle.primeReveal(), 'busy')
+        .then((receipt) => { outcome = receipt; }, (error) => { outcome = error; });
+      const flushTurns = async () => { for (let turn = 0; turn < 8; turn++) await Promise.resolve(); };
+      /** Release the reveal's pending frame wait: it takes its next sample (and settles, if that sample ends it). */
+      const sample = async () => { waits.shift()?.(); await flushTurns(); };
+      await flushTurns(); // the first sample: presentable
+      if (blurBeforeFreeze) {
+        focused = false;
+        target.dispatch('blur'); // the page is backgrounded: the next sample cannot present
+        await sample();
+      }
+      suspendedMs += 20_000; // the page's JS is frozen for 20 s
+      focused = true;
+      target.dispatch('focus');
+      await sample(); // the first sample after the resume, before the scheduler's first tick
+      const afterResume = outcome;
+      lifecycle.noteBattleFrame(); // the scheduler's first tick presents the battle frame
+      await sample();
+      await entry;
+      scope.frameLoop.dispose();
+      return { afterResume, outcome, presenting: scope.frameLoop.presenting };
+    };
+    for (const blurBeforeFreeze of [true, false]) {
+      const label = blurBeforeFreeze ? 'a backgrounded frame, then a 20 s gap' : 'a 20 s freeze between two presentable samples';
+      const { afterResume, outcome } = await resume({ blurBeforeFreeze });
+      assert.equal(afterResume, null, `${label}: the sample after the resume does not abandon the reveal (${afterResume?.message ?? ''})`);
+      assert.equal(outcome?.primed, true, `${label}: the battle frame after it completes the reveal`);
+    }
+  } finally {
+    performance.now = realNow;
+  }
+}
+
 console.log('battleEntryReveal.selftest: reveal exits (left, stalled, hidden, suspended and blurred pause), entry edges and serial passed');
