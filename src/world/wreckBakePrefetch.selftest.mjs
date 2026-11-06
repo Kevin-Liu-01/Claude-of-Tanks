@@ -79,7 +79,7 @@ const tick = () => new Promise((r) => setImmediate(r));
   p.dispose();
   f.gates[0].ok();
   await tick(); await tick();
-  assert.deepEqual(f.log.filter((l) => l.startsWith('bake')), ['bake a 1 0'], 'nothing starts after disposal');
+  assert.deepEqual(f.log.filter((l) => l.startsWith('bake')), ['bake a 1 burnt_out'], 'nothing starts after disposal');
 }
 {
   // the plan by tier and terrain (2026-10-08): a variant's own rows where the plan keeps them, else its fallback — the
@@ -110,6 +110,7 @@ const tick = () => new Promise((r) => setImmediate(r));
     assert.ok(MAP_IDS.includes(mapId) && ['mobile', 'assault', 'assault-mobile'].includes(variant), `${key} names a map and a variant`);
   }
 }
-assert.equal(wreckBakeKey('m1a1_abrams_hc', 2002, true), wreckBakeKey('m1a1_abrams_hc', 2002, 1));
-assert.notEqual(wreckBakeKey('m1a1_abrams_hc', 2002, true), wreckBakeKey('m1a1_abrams_hc', 2002, false));
+// (wrecks-270) one bake per donor, seed and damage state: two states of one donor and seed are two bakes
+assert.equal(wreckBakeKey('m1a1_abrams_hc', 2002, 'overturned'), 'm1a1_abrams_hc|2002|overturned');
+assert.notEqual(wreckBakeKey('m1a1_abrams_hc', 2002, 'turret_blown_off'), wreckBakeKey('m1a1_abrams_hc', 2002, 'burnt_out'));
 console.log('wreckBakePrefetch: planned bakes at once in plan order, one at a time, taken once, misses on demand, failures where taken and stopping the rest, disposal releases; the plan by tier and terrain resolves every recorded key PASS');
