@@ -208,11 +208,17 @@ function pinClouds(release = false) {
       vc.beforeSceneRender = (renderer, camera, dt, ...rest) => {
         const pin = vc.__pin;
         if (!pin.held) return live(renderer, camera, dt, ...rest);
+        // (ground-269's 5e5dae8462: the near blades swayed between two base frames) the grass's wind held with the sky
+        window.__DEBUG.world?._tallGrass?.setWindTime?.(0);
         live(renderer, camera, 0, ...rest);
         if (pin.left > 0 && --pin.left === 0) vc.frozen = true;
       };
     }
     vc.frozen = false;
+    // (ground-269's e8d1e00cd7: the grass's pressure field springs back from the staging drive for a minute) cleared at
+    // each pin, so the standing hulls stamp the same field in every arm
+    const grass = window.__DEBUG.world?._tallGrass;
+    if (!${release}) { grass?.pressure?.clear(); grass?.pressureFine?.clear(); }
     if (${release}) { vc.__pin.held = false; return true; }
     vc.setCaptureTime(${CLOUD_TIME_S}, true);
     Object.assign(vc.__pin, { held: true, left: ${CLOUD_FRAMES} });
@@ -242,6 +248,12 @@ function pinWorldTime(t) {
     }
   });
   return n;
+}
+
+/** The grass and the ground litter with no cell left to build near the camera (page side; ground-269's groundSettled). */
+function groundSettled() {
+  const W = window.__DEBUG.world, g = W?._tallGrass?.getState?.(), l = W?._litter?.getState?.();
+  return (!g || !g.enabled || (!g.near.pending && !g.far.pending)) && (!l || !l.pending);
 }
 
 /** The pinned layer held (its frames traced), or no layer. */
@@ -349,7 +361,8 @@ async function shootMap(entry, options, frames) {
     // (ab6, Saltmere's A/A: a pair's first page, thawed from the queue, framed its near grass still streaming in — 14 % of
     // the frame differed from the settled twin) the grass settled or the pose fails, to be shot again
     const settled = await page.waitForFunction(grassSettled, { timeout: 60_000, polling: 250 }).then(() => true, () => false);
-    if (!settled) throw new Error(`${mapId} ${pose.name}: the grass did not settle within 60 s`);
+    const streamed = settled && await page.waitForFunction(groundSettled, { timeout: 60_000, polling: 250 }).then(() => true, () => false);
+    if (!streamed) throw new Error(`${mapId} ${pose.name}: the grass or the ground litter did not settle within 60 s`);
     const timesPinned = await page.evaluate(pinWorldTime, WORLD_TIME_S);
     await page.evaluate(pinClouds());
     // (48 frames: the long view of a big town under a loaded machine draws a few a second)
