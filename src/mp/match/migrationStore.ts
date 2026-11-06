@@ -51,7 +51,7 @@ export class MigrationStore {
   private readonly completeLink = new Map<string, number>();
   /** Every obstacle a `world_prop_destroyed` named this round, with the link of its newest naming. */
   private readonly fallenOn = new Map<number, number>();
-  /** Every stage, breach or fall a destruction event named this round, in arrival order. */
+  /** Every stage or breach (a hole, or a section's fall) a destruction event named this round, in arrival order. */
   private readonly destructionOn: Array<{ entry: DestructionLogEntry; link: number }> = [];
   /** The tick of each entity's newest `mode_respawn` this round, by authoritative id. */
   private readonly respawnOn = new Map<string, { tick: number; link: number }>();
@@ -131,7 +131,7 @@ export class MigrationStore {
   /** A `world_prop_destroyed` this client received, presented or still queued (RetainedMigrationState.fallen). */
   retainFallen(obstacleIndex: number): void { this.fallenOn.set(obstacleIndex, this.link); }
 
-  /** A stage, breach or fall a destruction event named (RetainedMigrationState.destruction). */
+  /** A stage or breach (a hole, or a section's fall) a destruction event named (RetainedMigrationState.destruction). */
   retainDestruction(entry: DestructionLogEntry): void { this.destructionOn.push({ entry, link: this.link }); }
 
   /** An entity's `mode_respawn` at `tick` (RetainedMigrationState.respawns): the newest per id. */
