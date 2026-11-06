@@ -91,8 +91,9 @@ interface SoloBattleEntryRuntimeOptions {
   canTakeScene?(): boolean;
   /**
    * (round 3 B2, review r1) A start canTakeScene refused, at the press or after a return wait, shows the player the way
-   * out instead of doing nothing (main: a Garage return that still owes the screen reopens its notice with its Retry, or
-   * runs the return again; offerOwedGarageReturn). A failed return's notice closes by its X, Escape or a press beside it,
+   * out instead of doing nothing (main's offerOwedGarageReturn: a failed return that still owes the screen reopens its
+   * notice with its Retry; a return a context change cut short is the context recovery's, whose notice is the screen
+   * while the graphics are lost, round 4 E13). A failed return's notice closes by its X, Escape or a press beside it,
    * which runs nothing, so a refusal that only returned left the BATTLE button dead until a reload. Not run for a start a
    * network round's entry refused (its loader is the screen). Its own failure is reported, never thrown.
    */
@@ -209,9 +210,9 @@ export function createSoloBattleEntryRuntime({
         if (sceneRefused()) return;
       }
       // (round 2 U19) announced once the return is done: its 'garage' announcement (the battle before leaving) comes
-      // first, so every ui:battleStart listener sees this battle begin after it (profile.ts keys its tally the same
-      // way). (round 4 F1) The Garage press's own announcement too: only an accepted start is announced, so a refusal
-      // (above, or at the press) leaves no effect of one standing
+      // first, so every ui:battleStart listener sees this battle begin after it (profile.ts and serviceRecord.ts drop a
+      // battle's tally at every Garage). (round 4 F1) The Garage press's own announcement too: only an accepted start is
+      // announced, so a refusal (above, or at the press) leaves no effect of one standing
       try {
         announcement();
       } catch (error) {

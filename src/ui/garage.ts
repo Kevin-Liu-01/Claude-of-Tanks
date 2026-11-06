@@ -3759,11 +3759,12 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
       watch?: boolean;
     } = {},
   ): void {
-    // Battle entry must be unstoppable: the pre-battle emits fan out to five+
-    // subscribers (audio click, pointer-lock grab, killcam/shot-log resets…)
-    // and any one of them throwing in an exotic environment would silently
-    // block onBattle — a BATTLE button that does nothing is the worst failure
-    // mode. Contain their failures; the phase flip always runs.
+    // Battle entry must be unstoppable: a listener throwing in an exotic environment must never block onBattle — a
+    // BATTLE button that does nothing is the worst failure mode. The press's one emit before onBattle is its click
+    // (ui:click), contained here. (round 4 F1) Its ui:battleStart, whose listeners fan out (the pointer-lock grab,
+    // settings' battle state, the play surface, killcam and shot-log resets…), is the `announce` handed to the entry:
+    // it contains its own listeners' failures, and the entry runs it once it accepts the start
+    // (soloBattleEntryRuntime.ts run(), which contains a throw the same way).
     // (a battle that could not start because part of the game did not arrive cannot start in this document: the press
     // reloads the page once online, noteBattleLoadFailed)
     if (pressFailed(battleBtn)) return;

@@ -1568,10 +1568,11 @@ const playSurface = createPlaySurfaceRuntime({
   ]),
 });
 
-// Battle entry owns the play modal's visibility. Every player-facing entry path emits this event (the Garage BATTLE
-// button its press, the network roster its round, and the solo entry owner every other start: the Play menu, the
-// campaign ladder, a failure notice's retry; 2026-11-02 audit F2), so first matches, retained-room rematches,
-// and solo all dismiss the operation picker before the next painted frame. (The debug entry still skips it.)
+// Battle entry owns the play modal's visibility. Every player-facing entry path emits this event (the network roster
+// its round, and the solo entry owner every solo start it accepts: the Garage BATTLE button's press, whose announcement
+// the press hands it (round 4 F1), the Play menu, the campaign ladder, a failure notice's retry; 2026-11-02 audit F2),
+// so first matches, retained-room rematches and solo all dismiss the operation picker before the next painted frame.
+// (The debug entry still skips it.)
 // transitions-249: the hero's dormant Garage skin is parked (off its meshes, kept with its programs for the return's
 // adoption) before the mode preview's clear, which leaves a parked skin alone
 // (audit F2) The scene watchdog's per-entry reset moved to the entry lifecycle's acceptance (onEntry below), which
