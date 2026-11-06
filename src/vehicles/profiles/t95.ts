@@ -224,7 +224,6 @@ function* buildT95Steps(P: TankBuilderPort): TankProfileBuild {
         { z: H.sternZ - 0.02, ring: sk(H.skirtLow + 0.03, H.skirtTop - 0.02) },
         { z: 1.40, ring: sk(H.skirtLow, H.skirtTop) },
         { z: 1.66, ring: sk(0.62, H.skirtTop - 0.02) },
-        { z: 1.76, ring: sk(0.86, 1.03) },
         { z: H.noseZ, ring: sk(H.noseY - 0.02, H.noseY + 0.02) },
       ]));
     }
@@ -238,7 +237,7 @@ function* buildT95Steps(P: TankBuilderPort): TankProfileBuild {
   const buildT95RunningGear = (): void => {
     for (const xc of [TRACK.inner, TRACK.outer]) {
       buildRunningGear(P, {
-        style: 'dished', wheelR: WHEEL.r, wheelW: 0.21, wheelY: WHEEL.y, xc, wheelZs: [...ROAD_WHEEL_ZS],
+        style: 'dished', wheelR: WHEEL.r, wheelW: 0.30, wheelY: WHEEL.y, xc, wheelZs: [...ROAD_WHEEL_ZS],
         sprocket: { ...SPROCKET }, idler: { ...IDLER },
         rollers: ROLLER_ZS.map((z) => ({ z, y: TRACK.topY - 0.13, r: 0.08 })),
         trackW: TRACK.w, topY: TRACK.topY, botY: 0.02, contactZF: ROAD_WHEEL_ZS[0], contactZR: ROAD_WHEEL_ZS.at(-1),
@@ -248,7 +247,7 @@ function* buildT95Steps(P: TankBuilderPort): TankProfileBuild {
     // the domed hub caps on the outer units' road wheels, the print's and the 1946 photograph's
     for (const z of ROAD_WHEEL_ZS) for (const s of [-1, 1] as const) {
       P.add(s < 0 ? 'hullTrackDetailL' : 'hullTrackDetailR', xform(sph(0.075, P.q ? 14 : 8, Math.PI / 2), 0, 0, 0, 0, 0, -s * Math.PI / 2),
-        s * (TRACK.outer + 0.105), WHEEL.y, z);
+        s * (TRACK.outer + 0.15), WHEEL.y, z);
     }
     // the HVSS bogie brackets between each pair of axles on the inner face of each unit
     for (const xc of [TRACK.inner, TRACK.outer]) for (const s of [-1, 1] as const) {
@@ -340,15 +339,13 @@ function* buildT95Steps(P: TankBuilderPort): TankProfileBuild {
       // the outer unit's removal A-frame folded forward on the cover: two arms from hinges by the casemate cheek to a
       // hook block over the cover's front, a cross bar between them (the print and the museum photograph)
       const ax = s * 1.62, hz = 0.62, tz = 1.24, ty = H.coverY + 0.58;
-      for (const dx of [-0.20, 0.20]) {
+      for (const dx of [-0.30, 0.30]) {
         P.add('hullDetail', box(0.08, 0.20, 0.26), ax + dx * 1.15, H.coverY + 0.10, hz);
         bar('hullDark', [ax + dx, H.coverY + 0.14, hz], [ax, ty, tz], 0.045);
       }
       bar('hullDark', [ax - 0.11, H.coverY + 0.24, 0.96], [ax + 0.11, H.coverY + 0.24, 0.96], 0.024);
       P.add('hullDark', box(0.12, 0.10, 0.12), ax, ty, tz);
       P.add('hullDark', torus(0.05, 0.016, 10, 6), ax, ty - 0.08, tz + 0.04, 0, 0, Math.PI / 2);
-      // the lifting bracket on the casemate's front corner
-      P.add('hullDetail', box(0.05, 0.16, 0.20), s * 0.90, sideAt(0.90, 0.05) + 0.05, 0.05);
     }
     // the stern: the tow cable looped across the rear plate on its hooks
     towCable(P, [[-0.95, 1.30, H.sternZ - 0.05], [-0.55, 1.02, H.sternZ - 0.07], [0.0, 0.98, H.sternZ - 0.08],
