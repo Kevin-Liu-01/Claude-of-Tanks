@@ -946,7 +946,12 @@ tRearZ −1.05 → −1.20, tH 0.87 → 0.77. `m3a3_bradley` (`afvFamily.ts`): h
 −1.62 → 1.62. `combatGunRigs.generated.ts` m2a2/ua rows re-measured by the census to the new frame (lengthM 2.1705).
 `fleetLauncherMuzzles.ts`: bradley [1.05/1.35, 1.055, 0.60] → stowed [1.105, 0.68/0.38, 0.60]; m3a3 x −0.91 → 0.91.
 
-Shared seam (for the new `m3a2_bradley`'s classic turret): `buildBradleyHullSteps(P)` / `buildBradleyHull(P)` build the
+269 (owner 2026-11-05: "the m3a2 bradley USA should be m2a2 bradley, and our current m2a2 bradley usa should be the m3a2
+bradley"): the M2A2 now carries the classic turret (`modern3.ts` `buildM2A2Bradley`, profiles/bradleyClassicTurret.ts; its
+datums set in `m3a2BradleySpecs.ts`) and the M3A2 the source-measured turret this packet describes
+(`buildBradleySourceTurretIfv`). The M2A2 row in `modern3Specs.ts` keeps the source datums as the family base its clones read.
+
+Shared seam (for the classic turret, the M3A2's in 268 and the M2A2's since 269): `buildBradleyHullSteps(P)` / `buildBradleyHull(P)` build the
 hull core, deck furniture, running gear and glacis links with no turret group; `BRADLEY_TURRET_RING` exports the ring
 datum (x −0.14, z −0.40, deckY 2.06); `bradleyFlankDressing(P, { turretSeat: false })` adds the side armour, bow kit,
 stern and markings without the A2 turret's seat pan and collar. `marder1a3` keeps its pre-268 donor build verbatim

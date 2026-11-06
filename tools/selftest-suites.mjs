@@ -558,7 +558,6 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/vehicles/profiles/m6Linebacker.selftest.mjs',
     // 268: the M3A2 under the classic turret (its photo packet fixture)
     'src/vehicles/profiles/m3a2Bradley.selftest.mjs',
-    'src/vehicles/profiles/m3BradleyGunMount.selftest.mjs',
     'src/vehicles/profiles/type89LightTiger.selftest.mjs',
     'src/vehicles/profiles/cv90.selftest.mjs',
     'src/vehicles/profiles/ifvMantletAndBow.selftest.mjs',
@@ -792,6 +791,8 @@ export const SELFTEST_SUITES = Object.freeze({
     // the 45-second FIFO drain. The default-build pass hosts combatAnatomy, mudguardFenderSeating,
     // vehicleMarkings and tankAssets (2026-10-02).
     'src/vehicles/fleetPassDefault.selftest.mjs',
+    // release 268 (Main): a suit-painted marking is backed by its suit within the armour's 5 cm, and by nothing farther
+    'src/vehicles/vehicleMarkingSuitBacking.selftest.mjs',
     'src/vehicles/fleetFloorClearance.selftest.mjs',
     // 267 (Main): every internal module sketch mostly inside its armour, with a KNOWN ratchet (fleet suite)
     'tools/module-outside-share.selftest.mjs',
@@ -1193,6 +1194,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/vehicles/catalogCamoPainter.selftest.mjs',
     'src/vehicles/vehicleMarkingsCanvas.selftest.mjs',
   'src/vehicles/decorationsEquipment.selftest.mjs',
+    // 269 (lane abrams-bradley-269): the lived-in loads of the M1A1s and the Bradleys (crew kit, cargo net, coiled cable)
+    'src/vehicles/decorLivedIn.selftest.mjs',
     'src/vehicles/decorationsStaging.selftest.mjs',
     'src/vehicles/decorDockKeepOut.selftest.mjs',
     // 2026-10-30 (the owner: "for tanks like griffin, dont allow decorations to be on the missile pods"): every launcher id

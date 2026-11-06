@@ -14,7 +14,9 @@ const IDS = [
   'm6_linebacker',
   'marder1a3',
 ];
-const A2_TURRET_IDS = new Set(['m2a2_bradley', 'ua_m2a3_bradley']);
+// 2026-11-05 (269, the owner's "redesign the m3a3 bradley turret"): the M3A3's A3 turret stands on the same measured
+// shell (profiles/bradleyA3Turret.ts), so it carries the shell's receipt too.
+const A2_TURRET_IDS = new Set(['m2a2_bradley', 'ua_m2a3_bradley', 'm3a3_bradley']);
 
 const near = (a, b, tolerance = 1e-4) => Math.abs(a - b) <= tolerance;
 

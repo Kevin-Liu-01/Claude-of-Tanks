@@ -1,4 +1,5 @@
-// Kevin B. Liu — the classic M2A2 Bradley turret, kept as its own part for the M3A2 (release 268).
+// Kevin B. Liu — the classic M2A2 Bradley turret, kept as its own part: the M3A2's in release 268, the M2A2's since 269
+// (owner 2026-11-05: "the m3a2 bradley USA should be m2a2 bradley"; modern3.ts buildM2A2Bradley).
 // Owner, 2026-11-02: "also make a new variant of the bradley based on the old turret we had before doing this. i liked the
 // shape and all the stuff arounnd it". This is the m2a2_bradley turret and everything mounted on and around it as main
 // carried it at 7cc204ab32 (src/vehicles/modern3.ts buildBradleySteps: the ring collar and core 2529-2539, the roof
