@@ -32,9 +32,11 @@
 // Leave with the hull stepped in between: 0.5 s and 2 s coasting toggles and a coasting in-place park keep the legs, the
 // watcher's drives off and a revive still end them, and [9] a displaced leg's wait moves with the park (a mutant without
 // that shift planned the search over a commander's point on the first tick back).
-// Round 4 (F5): the hold read the way on the ground plan alone, so [11] a drive off a causeway's crest onto the floor
+// Round 4 (F5, E8): the hold read the way on the ground plan alone, so [11] a drive off a causeway's crest onto the floor
 // beside it left the level route held from below until its strikes gave the target up as unbearable; a stretch the hull
-// stands a level above or below is no longer its way. Both checks failed on 0edd0e1ab5.
+// stands a level above or below is no longer its way. [10] on a tie the earlier stretch keeps the cursor (a leg that
+// doubles back over its own line is driven to its apex), and [12] the elevation lock's dwell holds through a park that
+// left the hull where it was taken and restarts after a drive off. All four checks failed on 0edd0e1ab5.
 import { Vector3 } from 'three';
 import '../vehicles/fleetFactory.ts';
 import { getSpec } from '../vehicles/specs.ts';
@@ -469,12 +471,12 @@ console.log('[8] a search leg planned where the hull stood is planned again from
 // waypoint on from there (17.8 s). A park that left the hull on its way keeps the leg, its budget moved by the park.
 // Round 3 (A2): the taken hull coasts on at 18.6 m/s; on 92f415e879 a 0.5 s toggle (8.8 m), a 2 s one (30 m) and a 30 s
 // park with nobody at the keys each displaced the leg and planned another.
-function searchScene(hidden = true) {
+function searchScene(hidden = true, planRoute = undefined) {
   const bot = tank('bot', 'alpha', 0, -450, 0, 'm1a1_abrams_hc');
   const enemy = tank('enemy', 'bravo', 5, 150, 0, 'm1a1_abrams_hc'); // hidden, far: the 25 s search heads for its sector
   const ctl = createAI(bot, { difficulty: 'normal', rng: mulberry32(9), doctrine: () => CLASSIC_BOT_DOCTRINE, deps: {
     heightField: field, raycast: () => null, getEnemies: () => [enemy], getAllies: () => [], getObstacles: () => [],
-    spotting: { isSpotted: () => !hidden }, getObjective: () => null,
+    spotting: { isSpotted: () => !hidden }, getObjective: () => null, ...(planRoute ? { planRoute } : {}),
   } });
   let t = 1;
   const run = (seconds, until) => {
@@ -585,6 +587,30 @@ console.log('[9] a displaced search leg waits for the route that took it through
   }
 }
 
+console.log('[10] a leg that doubles back over its own line keeps its apex: on a tie the earlier stretch holds the cursor');
+// Round 4 (E8): hullOnItsWay moved the cursor on while the next stretch lay no farther (`<=`), so a hull handed back on
+// a stretch that doubles back over the one before it (equally near both) went to the later one and turned back short of
+// the apex, against the rule its doc states (a route that doubles back past the hull is not skipped ahead). The cursor
+// now moves on only to a stretch that lies nearer. On 0edd0e1ab5 the hull turns back to the waypoint after the apex.
+{
+  const APEX = [0, -340];
+  // the planner fixture lays a leg up to an apex and back down the same line before it turns for the goal's sector
+  const doublingBack = () => [[0, -380], APEX, [0, -400], [40, 150]];
+  const { bot, ctl, run, hull, clock } = searchScene(true, doublingBack);
+  run(40, (info) => info.searching && info.routeOwner === 'search');
+  const before = ctl.debugInfo();
+  // the watcher drives the hull onto the leg's road halfway up to the apex, 0.5 m beside its line, and stops there
+  const away = () => { bot.state.pos.x = 0.5; bot.state.pos.z = -360; bot.state.yaw = 0; bot.state.speed = 0; };
+  takeAndLeave(bot, ctl, clock, hull, 0.5, away);
+  const back = ctl.debugInfo();
+  let closest = Infinity;
+  run(8, () => { closest = Math.min(closest, Math.hypot(APEX[0] - bot.state.pos.x, APEX[1] - bot.state.pos.z)); return false; });
+  ok(before.wpCount === 4 && before.wpIndex === 0 && back.searchLegs === before.searchLegs && back.routeOwner === 'search',
+    `setup: the search leg runs up to the apex and back (${before.wpCount} waypoints, owner ${back.routeOwner}, legs ${before.searchLegs} -> ${back.searchLegs})`);
+  ok(back.wpIndex === 1 && closest < 6.5,
+    `handed back 0.5 m beside both the stretch up to the apex and the one back down it: the cursor goes to the apex, and the hull drives up to it (cursor ${before.wpIndex} -> ${back.wpIndex}, nearest ${closest.toFixed(1)} m of the apex after)`);
+}
+
 /**
  * A causeway (round 4, F5): a 16 m crest with 2 m sides runs up from the floor at z 0 to a 25 m plateau north of z 100,
  * where the enemy stands; the floor bot below the plateau's cliff takes the road up the crest to it. The planner is a
@@ -681,6 +707,37 @@ console.log('[11] a level route ends with no verdict when the watcher drives its
   ok(stayed.back.levelRouting && stayed.back.routeOwner === 'level' && stayed.after.unbearableVerdicts === stayed.before.unbearableVerdicts
     && stayed.after.levelRoutes === stayed.before.levelRoutes,
     `a 0.5 s Take and Leave on the crest: the hull coasts on up the road on its level, and the route runs on (coasted ${stayed.coastM.toFixed(1)} m; ${label(stayed)})`);
+}
+
+console.log('[12] the elevation lock\'s dwell is a reading from where the hull stood: it holds through a park that left the hull there and restarts after a drive off');
+// Round 4 (E8): round 3 kept the dwell through every park, a watcher's drive off included, with no receipt either way;
+// resume() restarts its other dwell clocks (the gun's limit, the arc, the blocked line of sight) from the hull as it
+// stands. The dwell is the same kind of reading ("from here"), so it holds only while the hull still stands where it was
+// taken (within RESUME_ON_WAY_M, on its level). On 0edd0e1ab5 a drive 30 m along the cliff's foot kept 3 s of dwell from
+// the old spot, and the route came 3 s after Leave instead of ELEVATION_LOCK_S.
+{
+  const dwellHandBack = async (away) => {
+    const { ctl, floor, run, moveTo, hull, clock } = await deckScene();
+    run(3); // the floor bot sees the deck target its gun cannot reach: 3 s into the 6 s dwell, no route yet
+    const before = ctl.debugInfo();
+    const took = takeAndLeave(floor, ctl, clock, hull, 0.5, away ? () => moveTo(...away) : null);
+    const back = ctl.debugInfo();
+    const handBackS = clock();
+    let decidedAfterS = null;
+    run(10, (info) => {
+      if (info.levelRoutes > before.levelRoutes || info.unbearableVerdicts > before.unbearableVerdicts) { decidedAfterS = clock() - handBackS; return true; }
+      return false;
+    });
+    return { before, back, decidedAfterS, ...took };
+  };
+  const label = (r) => `dwell ${r.before.elevationLockT} -> ${r.back.elevationLockT} s, the lock decided ${r.decidedAfterS === null ? 'never' : `${r.decidedAfterS.toFixed(2)} s`} after Leave`;
+  const held = await dwellHandBack(null);
+  ok(held.before.elevationLockT >= 2.5 && held.before.levelRoutes === 0 && held.back.elevationLockT >= 2.5
+    && held.decidedAfterS !== null && held.decidedAfterS < 4,
+    `a 0.5 s Take and Leave in place: the dwell holds, and the route comes when the rest of it is up (coasted ${held.coastM.toFixed(1)} m; ${label(held)})`);
+  const driven = await dwellHandBack([30, 30]);
+  ok(driven.back.elevationLockT === 0 && driven.decidedAfterS !== null && driven.decidedAfterS >= 6 - 0.05,
+    `a 0.5 s park in which the watcher drove 30 m along the cliff's foot (the deck still out of the gun's reach): the dwell restarts there (${label(driven)}; ELEVATION_LOCK_S 6 s)`);
 }
 
 if (failures) { console.error(`ai.watchResume.selftest: ${failures} failure(s)`); process.exit(1); }

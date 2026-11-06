@@ -6940,7 +6940,8 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
    * press) and a short Take and Leave changes nothing. With no park (a revive) they stay as they are. The bot's own
    * route legs (a search leg, a level route) were planned from where the hull stood: they hold, their clocks moved on by
    * the park, while the hull still lies on its way, on its level (a taken hull coasts on), and otherwise end with no
-   * verdict on them (resumeOwnLegs). The bot's view of its target (how long it has held still, how long its gun has been silent) is no
+   * verdict on them (resumeOwnLegs); the elevation lock's dwell holds only while the hull still stands where it was taken
+   * (resumeOwnLegs). The bot's view of its target (how long it has held still, how long its gun has been silent) is no
    * record of the bot's but what it saw, and it saw nothing while parked: it carries on only through a park that could
    * hide nothing from it (targetViewHeldThroughPark); after any other park, and after a revive, the target is looked at
    * afresh, as on a new target (lookAtTargetAgain). `firstShellId`, the battle's next shell id at the
@@ -7014,19 +7015,24 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
    * (takeWatchSeat) leaves it coasting on from speed, 6.5 m in half a second at 14 m/s, so the spot it was taken on is no
    * test of where its leg went. Through a park that left the hull on its way (hullOnItsWay: the route from where it stood
    * through the waypoints still ahead, on that route's level) the legs hold, the cursor past the waypoints it went by,
-   * and those clocks move on by the park. After any other park (the watcher drove it off its way, or onto another level
-   * beside it: RESUME_ON_LEVEL_M above or below the route's ground, off a crest, a ramp or a bridge onto the floor below),
-   * and after a revive (no park: the hull is a new one at its spawn), they end with no verdict: the level route's list is
-   * released and the elevation lock re-arms from the hull as it stands (ELEVATION_LOCK_S later), so no target is given up
-   * as unbearable on a deadline spent while the watcher drove or the hull lay dead, or on strikes against a level the
-   * route is not on; the search leg's own list is released, which displaces the leg (claimWaypoints), and its next leg is
-   * planned from here at the first tick back, counting no failed leg; a leg already displaced waits for the route in
-   * place from the hand-back. The elevation lock's dwell (how long the bot has seen its target on a level the gun cannot
-   * reach; 0 while a level route runs) counts the bot's own ticks like its record clocks: a park leaves it as it was, a
-   * revive starts it again (it was the last life's).
+   * and those clocks move on by the park. After any other park, and after a revive (no park: the hull is a new one at its
+   * spawn), they end with no verdict. A park leaves the hull off its way when the watcher drove it more than
+   * RESUME_ON_WAY_M off the route ahead, or onto another level beside it (RESUME_ON_LEVEL_M above or below the route's
+   * ground: off a crest, a ramp or a bridge onto the floor below), and also when the coast alone carried it off: more than
+   * RESUME_ON_WAY_M past the leg's last waypoint (the end of the way; a coast short of that is the leg used up, as
+   * routeUsedUp reads it), or across a leg planned just before the Take while the hull still headed elsewhere (round 3's
+   * completeness review: 3 of 31 Takes of a 2 s coast on a sweep). Either way the level route's list is released and the
+   * elevation lock re-arms from the hull as it stands (ELEVATION_LOCK_S later), so no target is given up as unbearable on a
+   * deadline spent while the watcher drove or the hull lay dead, or on strikes against a level the route is not on; the
+   * search leg's own list is released, which displaces the leg (claimWaypoints), and its next leg is planned from here at
+   * the first tick back, counting no failed leg; a leg already displaced waits for the route in place from the hand-back.
+   * The elevation lock's dwell (how long the bot has seen its target on a level the gun cannot reach, from where the hull
+   * stands; 0 while a level route runs) is a reading from one spot, like the dwell clocks resume() restarts: through a park
+   * that left the hull where it was taken (hullStoodPut) it holds, so a Take and Leave in place loses nothing; after a
+   * drive off, a long coast or a revive it starts again from the hull as it stands (round 4, E8).
    */
   function resumeOwnLegs(parked: boolean, parkS: number): void {
-    if (!parked) elevationLockT = 0;
+    if (!parked || !hullStoodPut()) elevationLockT = 0;
     if (!levelRouting && !searching) return;
     if (parked && hullOnItsWay()) {
       if (searching) {
@@ -7044,12 +7050,13 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     }
   }
   /**
-   * The hull lies on its way at the hand-back (round 3, A2; round 4, F5): within RESUME_ON_WAY_M on the ground plan of
-   * the route the park left it on, from where it stood (park()) through the waypoints still ahead of the cursor, and on
-   * that route's level there (wayOffset); with no waypoint ahead, where it stood (hullStoodPut). The cursor moves to the
-   * waypoint ahead of the hull: the earliest stretch the hull lies by, then on while the next lies no farther (so a route
-   * that doubles back past the hull is not skipped ahead). A hull the watcher drove off it, or onto another level beside
-   * it, is not on it. Allocation-free.
+   * The hull lies on its way at the hand-back (round 3, A2; round 4, F5 and E8): within RESUME_ON_WAY_M on the ground plan
+   * of the route the park left it on, from where it stood (park()) through the waypoints still ahead of the cursor, and
+   * on that route's level there (wayOffset); with no waypoint ahead, where it stood (hullStoodPut). The cursor moves to
+   * the waypoint ahead of the hull: the earliest stretch the hull lies by, then on only while the next lies nearer. On a
+   * tie the earlier stretch keeps it, so a route that doubles back over its own line is driven to its apex, not skipped
+   * at it, and one that doubles back past the hull is not skipped ahead. A hull driven off it, onto another level beside
+   * it, or carried off it by its coast is not on it (resumeOwnLegs). Allocation-free.
    */
   function hullOnItsWay(): boolean {
     if (wpIndex >= waypoints.length) return hullStoodPut();
@@ -7059,7 +7066,7 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     for (let i = wpIndex; i < waypoints.length; i++) {
       const to = waypoints[i];
       const distance = wayOffset(x, z, fromX, fromZ, to.x, to.z);
-      if (on < 0 ? distance <= RESUME_ON_WAY_M : distance <= nearest) { on = i; nearest = distance; }
+      if (on < 0 ? distance <= RESUME_ON_WAY_M : distance < nearest) { on = i; nearest = distance; }
       else if (on >= 0) break;
       fromX = to.x;
       fromZ = to.z;
