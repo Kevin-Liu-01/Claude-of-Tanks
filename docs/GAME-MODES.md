@@ -268,6 +268,10 @@ Every number below is `AIR_SUPPORT_RULES` in `src/sim/matchRuleset.ts`.
   supply-drop bits, which only the AC-130's escort reads (`airSupport.selftest` pins that no mode reads both). The
   ledger and the strikes ride the per-viewer mode state and the host-migration checkpoint; strike rounds and their
   impacts are shown to every viewer (they leave the aircraft, not the caller's hull).
+- **Checks by hand**: `node tools/air-support-shots.mjs --out=DIR [--only=desktop|phone]` films the strip, the strike
+  view for each call-in and each strike's warning, flight and impact under the capture lock, and measures the marks'
+  frame cost on and off; `node tools/mode-balance-probe.mjs --mode=air_support --map=verdant --seeds=1-24 --jobs=5
+  --out=DIR --tag=as` runs the seeded bot battles (seeds take commas: `--seeds=9,11,12`).
 
 ## Asymmetric teams and progression
 

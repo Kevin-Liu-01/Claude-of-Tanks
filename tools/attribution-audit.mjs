@@ -19,7 +19,7 @@ const read = (path) => readFileSync(join(root, path), 'utf8');
 const trackedFiles = execFileSync(
   'git',
   ['ls-files', '--cached', '--others', '--exclude-standard', '-z'],
-  { cwd: root },
+  { cwd: root, maxBuffer: 1 << 28 },
 )
   .toString('utf8')
   .split('\0')
