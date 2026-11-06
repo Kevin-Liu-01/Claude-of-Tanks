@@ -2,9 +2,11 @@
  * Connection recovery policy (v1 "Client smoothness" watchdog rules kept):
  * the match is `live` while accepted authority keeps arriving; 5 s without
  * it is `stalled` (the transport is asked for a fresh socket once; before
- * a WELCOME, 5 s past the hold the seat's host announced: holdAllowanceMs);
- * the transport's own reconnects show as `reconnecting`; 60 s after the first
- * loss without recovery the match is `failed`; an explicit leave is `left`.
+ * a WELCOME, 5 s past holdAllowanceMs: from the host's notice, the hold it
+ * announced plus a 3 s release margin, those two at most 33 s, or 33 s on a
+ * newly elected host's link before any notice); the transport's own
+ * reconnects show as `reconnecting`; 60 s after the first loss without
+ * recovery the match is `failed`; an explicit leave is `left`.
  * A pure state machine: the client owns the side effects.
  */
 import type { TransportState } from '../transport/transport.ts';
