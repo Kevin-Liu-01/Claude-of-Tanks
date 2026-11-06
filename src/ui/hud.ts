@@ -8640,12 +8640,13 @@ export function initHud(bus: EventBus): HudRuntime {
     showAlert(t('hud.alert.respawned'), { icon: 'rematch', tone: 'info' });
   });
   // (round 3 merge review r1) a network battle restarted under this seat (battlePresentation.ts 'battle:restarted'):
-  // every hull stands at its spawn again, a revive of each with no alert (the edge above, for the whole field). No hull
-  // is dead in the kill ledger (one that died in the abandoned battle and dies again is fed and counted), no contact's
-  // memory is the abandoned battle's, and this seat's revive count and consumable tray are its fresh hull's.
+  // every hull stands at its spawn again, a revive of each with no alert (the edge above, for the whole field), and this
+  // seat's revive count and consumable tray are its fresh hull's. (round 4 E6b) A restart opens a new battle (the
+  // session's decision; Kevin may overrule): the battle's record starts over as at a battle's start (resetBattleRecord:
+  // the kill counts, the kill feed and ribbon, the contact memory, the sixth sense on the restarted clock). Before, the
+  // kill ledger only re-armed its dead, so the ear rows counted the abandoned battle's kills into the restarted one's.
   on('battle:restarted', () => {
-    killLedger.reviveAll();
-    spotById.clear();
+    resetBattleRecord();
     if (playerId == null) return;
     reviveCountdown.revived();
     resetConsumableTray();
@@ -8971,21 +8972,33 @@ export function initHud(bus: EventBus): HudRuntime {
     shotInfo.hideStats();
   }
 
-  /** A fresh battle: the last battle's memory goes (its sim clock restarted at 0). */
-  function beginBattle(): void {
-    shotInfo.reset();
+  /**
+   * The battle's record starts over (round 4 E6b): the kill counts (the ear rows', the feed's), the kill feed and the
+   * ribbon's streak and damage (resetCombatPresentation), the contact memory, and the sixth-sense lamp, whose times are
+   * the battle's clock (it restarts at 0). A battle's start runs it, and so does a network battle's restart, which opens
+   * a new battle on the same roster (its callsigns, rosters and spawn flags stay); the battle report (shotInfo.ts) starts
+   * over on the same two edges.
+   */
+  function resetBattleRecord(): void {
     resetCombatPresentation();
-    killLedger.clear(); aircraftById.clear();
-    // fresh battle: drop spotting memory, nicknames and team rosters
+    killLedger.clear();
     spotById.clear();
-    nickById.clear();
-    spawnFlags = null; // re-capture from the new battle's spawn frame
-    spawnFlagsSide = null;
     // SPOTTING SECTION: disarm the sixth-sense lamp (sim clock restarts)
     sixthPendingS = -1;
     sixthUntilS = -1;
     sixthOn = false;
     sixthEl.classList.remove('on');
+  }
+
+  /** A fresh battle: the last battle's memory goes (its sim clock restarted at 0). */
+  function beginBattle(): void {
+    shotInfo.reset();
+    resetBattleRecord();
+    aircraftById.clear();
+    // fresh battle: drop nicknames and team rosters
+    nickById.clear();
+    spawnFlags = null; // re-capture from the new battle's spawn frame
+    spawnFlagsSide = null;
     for (const row of earRows.values()) row.root.remove();
     earRows.clear();
     rosterIds.length = 0;

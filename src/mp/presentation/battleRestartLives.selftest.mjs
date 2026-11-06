@@ -12,8 +12,10 @@
 //   3. serviceRecord.ts: the seat stayed dead for the record, an enemy damaged in the abandoned battle was no longer
 //      fresh for One Shot, and an abandoned round stayed a hull's killing shot;
 //   4. hud.ts and shotInfo.ts: their kill ledgers kept the abandoned battle's dead, so a hull that died there and dies
-//      again in the restarted battle was never fed nor counted.
-// Cases 1-4 fail on the merged head before that fix (b598626c30) and pass now.
+//      again in the restarted battle was never fed nor counted (round 4 E6b: moved to battleRestartTallies, on the real
+//      HUD, where a restart opens a new battle and the counts start over; its contact memory, revive count and consumable
+//      tray checks went with it, review r1).
+// Cases 1-3 fail on the merged head before that fix (b598626c30) and pass now; case 4 is battleRestartTallies case 1.
 // Review r2: the presentation's own actors kept the abandoned battle's deaths. A row writes a hull's life, a wreck is
 // sent to every seat and a live hull this seat does not spot is not, so a hull that died in the abandoned battle and is
 // hidden in the restarted one read destroyed after the restart:
@@ -23,11 +25,19 @@
 //      at the restart with five enemies alive and hidden (restartLives had re-armed the call). It fails on 20a8d0d793.
 //   1 (review r2): the killcam's restart listener is called from the frame pump, and a replay release that throws in
 //      cancel() (rethrown by design, round 3 A9) left it, dropping the frame; now it is reported and the chase still ends.
+// Round 4 (E4): the revived actors kept the abandoned battle's hull points and modules: a hidden revived wreck read alive
+// with 0 hull points (the HUD's ear row drew an empty bar on a living enemy until it was spotted), and a hidden hull
+// damaged there kept its damage and its broken module (told by module_state). Case 5 asserts both and fails on 0edd0e1ab5.
+// Round 4 review r2: what the bus's module states laid outside the presentation's combat state started over too. Case 5:
+// a hull alive at the restart (e5, hidden; the own hull) kept its thrown track band and its damaged gun on its visual
+// (main.ts's 'module:state' listener draws them; only a wreck's visual was reset), and the audio kept the abandoned
+// battle's module states, so the own hull's track thrown again in the restarted battle was no change and unheard. Case 2:
+// the audio's battle play started over (audioEngine.ts resetBattlePlay): a smoke screen launched 5 s into the restarted
+// battle was silent behind the abandoned battle's launch at 250 s (a watermark on the sim clock), and the player's first
+// kill in the restarted battle was a double kill with the abandoned battle's last. All four fail on 0edd0e1ab5 and on
+// 2c18dae0db.
 import assert from 'node:assert/strict';
-import { readFile } from 'node:fs/promises';
-import { stripTypeScriptTypes } from 'node:module';
 import { Scene, PerspectiveCamera, Vector3 } from 'three';
-import { BattleKillLedger } from '../../game/battleEventStats.ts';
 import {
   installFetch, namedContext, terrain, tank, listener, sounding, probeOf, mark, since, count,
 } from '../../audio/engineHarness.test-support.mjs';
@@ -124,6 +134,14 @@ const wrong = [];
   for (let i = 0; i < 20; i++) frame([me]);
   assert.ok(sounding(ctx).includes('cookoff_loop'), 'setup: the foe\'s wreck burns');
   assert.ok(sounding(ctx).includes('alarm_fire_loop'), 'setup: the player\'s fire alarm sounds');
+  // (round 4 E6b review r2) the abandoned battle's play: the foe's death above is the player's kill, and a smoke screen is
+  // launched 250 s into it (the battle's sim clock, sim/auxiliarySystems.ts born)
+  const smoke = (born) => bus.emit('auxiliary:smokeScreens', { screens: [{ born, x: 40, y: 1, z: 40, source: ['t72b3m_2022', 40, 0, 40, 0, 0, 0, 0, 0, 1.5, 0] }] });
+  const abandonedSmoke = mark(probe);
+  smoke(250);
+  for (let i = 0; i < 10; i++) frame([me]);
+  assert.equal(count(since(abandonedSmoke, probe), 'smoke_launcher'), 1, 'setup: the abandoned battle\'s smoke launch is heard');
+  assert.ok(probe.sayLog.some((entry) => entry.id === 'target_destroyed'), 'setup: the player\'s kill in the abandoned battle is called');
   // the restart: the foe stands at its spawn, hidden from this seat (update() is never given it)
   bus.emit('battle:restarted', RESTART);
   for (let i = 0; i < 20; i++) frame([me]);
@@ -135,6 +153,19 @@ const wrong = [];
   bus.emit('tank:destroyed', { id: 'foe', killerId: 'ally', pos: [-40, 0, 120], cause: 'shot' });
   const heard = count(since(seq, probe), 'tank_explode');
   if (heard !== 1) wrong.push(`audio: the restarted battle's death of a hull hidden since the restart sounded ${heard} times (once)`);
+  // (round 4 E6b review r2) the restarted battle's play is its own (audioEngine.ts resetBattlePlay at the restart): its sim
+  // clock starts at 0 again, so a smoke screen 5 s in is heard, and the player's first kill in it, a few seconds after the
+  // abandoned battle's last, is a kill, not a double kill
+  const restartedSmoke = mark(probe);
+  smoke(5);
+  for (let i = 0; i < 10; i++) frame([me]);
+  const launches = count(since(restartedSmoke, probe), 'smoke_launcher');
+  if (launches !== 1) wrong.push(`audio: a smoke screen launched 5 s into the restarted battle sounded ${launches} times (the abandoned battle's launch at 250 s silenced it)`);
+  const lastSay = probe.sayLog.at(-1);
+  bus.emit('tank:destroyed', { id: 'foe2', killerId: 'me', pos: [40, 0, 160], cause: 'shot' });
+  const killCall = probe.sayLog.slice(probe.sayLog.indexOf(lastSay) + 1).map((entry) => entry.id)
+    .find((id) => id === 'double_kill' || id === 'target_destroyed');
+  if (killCall !== 'target_destroyed') wrong.push(`audio: the player's first kill in the restarted battle was called '${killCall}' (the abandoned battle's last kill counted toward a double kill)`);
 }
 
 // ---- 3. the service record: a new life for the seat and every hull
@@ -172,51 +203,10 @@ const wrong = [];
   if (row?.survived !== true) wrong.push('serviceRecord: the seat destroyed in the abandoned battle is recorded dead at the restarted battle\'s end');
 }
 
-// ---- 4. the HUD's and the battle report's kill ledgers: a hull that died in the abandoned battle is fed and counted again
-{
-  const hud = await readFile(new URL('../../ui/hud.ts', import.meta.url), 'utf8');
-  const handler = (source, opener) => {
-    const start = source.indexOf(opener);
-    return start < 0 ? null : stripTypeScriptTypes(source.slice(start, source.indexOf('\n  });', start) + 6));
-  };
-  const listeners = {};
-  const hudLedger = new BattleKillLedger();
-  const fed = [];
-  const spotById = new Map([['foe', { vis: false, ever: true, lastX: 10, lastZ: 20 }]]);
-  const calls = [];
-  const destroyed = handler(hud, "  on('tank:destroyed',");
-  const restarted = handler(hud, "  on('battle:restarted',");
-  if (!restarted) wrong.push('hud: no listener hears the restart');
-  else {
-    for (const source of [destroyed, restarted]) {
-      new Function('on', 'killLedger', 'teamById', 'spotById', 'pushKill', 'reviveCountdown', 'playerId', 'resetConsumableTray', source)(
-        (name, fn) => { listeners[name] = fn; }, hudLedger, new Map([['foe', 'enemy'], ['me', 'player']]), spotById,
-        (p) => fed.push(p.id), { onDestroyed() {}, revived() { calls.push('revived'); } }, 'me', () => calls.push('tray'));
-    }
-    listeners['tank:destroyed']({ id: 'foe', killerId: 'me' });
-    listeners['battle:restarted'](RESTART);
-    listeners['tank:destroyed']({ id: 'foe', killerId: 'me' });
-    if (fed.length !== 2) wrong.push(`hud: the kill feed showed the foe's deaths ${fed.length} times over both battles (twice)`);
-    if (hudLedger.count('me') !== 2) wrong.push(`hud: the seat's kills count ${hudLedger.count('me')} (both battles' deaths: 2)`);
-    if (spotById.size) wrong.push('hud: the abandoned battle\'s contact memory outlived the restart');
-    if (calls.join() !== 'revived,tray') wrong.push(`hud: the seat's revive count and consumable tray were not its fresh hull's (${calls.join() || 'nothing'})`);
-  }
-  const shotInfo = await readFile(new URL('../../ui/shotInfo.ts', import.meta.url), 'utf8');
-  const reportRestart = handler(shotInfo, "  bus.on('battle:restarted',");
-  if (!reportRestart) wrong.push('shotInfo: the battle report hears no restart');
-  else {
-    const reportLedger = new BattleKillLedger();
-    reportLedger.record('foe', 'me', 'enemy', 'player');
-    const rows = new Map([['foe', { dead: true, deaths: 1 }], ['me', { dead: false, deaths: 0 }]]);
-    let onRestart = null;
-    new Function('bus', 'killLedger', 'combatants', 'recordCombatantRevived', reportRestart)(
-      { on: (name, fn) => { if (name === 'battle:restarted') onRestart = fn; } }, reportLedger, rows, (row) => { row.dead = false; });
-    onRestart(RESTART);
-    if (rows.get('foe').dead) wrong.push('shotInfo: the foe destroyed in the abandoned battle is still dead in the report');
-    if (rows.get('foe').deaths !== 1) wrong.push('shotInfo: the restart rewrote a death count');
-    if (!reportLedger.record('foe', 'me', 'enemy', 'player')) wrong.push('shotInfo: the restarted battle\'s death of the foe is refused by the report\'s ledger');
-  }
-}
+// ---- 4. moved (round 4 E6b) to battleRestartTallies.selftest.mjs, which drives the real HUD and its report over the
+// recording DOM instead of the handlers' source: a restart now opens a new battle, so the kill counts start over (round 3
+// kept them), a hull that died in the abandoned battle and dies again is fed once and counted, and the seat's revive count,
+// contact memory and consumable tray are its fresh hull's (review r1: all four of the case's checks, on the real HUD).
 
 // ---- 5. the presentation's own actors, and the network side counts that read them (review r2)
 {
@@ -234,10 +224,26 @@ const wrong = [];
   const presentation = createBattlePresentation({
     engineCtx: { scene: { add() {} }, anisotropy: 1 }, game, bus,
     worldCollision: { heightField: flat, getObstacles: () => [], getColliders: () => [], crushObstacle() {}, resetDestructibles() {} },
-    createTankVisual: () => ({ root: { position: new Vector3(), userData: {} }, setVisible() {}, syncFromState() {}, recoilKick() { return null; },
-      gunMuzzleWorld(out) { return out.set(0, 2, 0); }, gunDirWorld(out) { return out.set(0, 0, 1); }, stripEra() {}, resetEra() {},
-      setDestroyed() {}, resetDestroyed() {}, dispose() {} }),
+    // (round 4 E4 review r2) the visual's module look as the real one keeps it (vehicles/tankFactoryCore.ts: setTrackState
+    // throws or re-seats a band, setWeaponModuleState keeps a weapon's damage, resetDestroyed re-seats both bands and clears
+    // the weapon damage, on a wreck or a living hull alike)
+    createTankVisual: () => {
+      const visual = { root: { position: new Vector3(), userData: {} }, setVisible() {}, syncFromState() {}, recoilKick() { return null; },
+        gunMuzzleWorld(out) { return out.set(0, 2, 0); }, gunDirWorld(out) { return out.set(0, 0, 1); }, stripEra() {}, resetEra() {},
+        setDestroyed() {}, dispose() {},
+        thrown: new Set(), weaponDamage: new Map(),
+        setTrackState(module, broken) { if (broken) visual.thrown.add(module); else visual.thrown.delete(module); },
+        setWeaponModuleState(module, state) { if (state === 'ok') visual.weaponDamage.delete(module); else visual.weaponDamage.set(module, state); },
+        resetDestroyed() { visual.thrown.clear(); visual.weaponDamage.clear(); } };
+      return visual;
+    },
     prepareVisualTextures: async () => {}, clearVehicleDecals: () => {}, camoFor: () => 'summer', clock: () => 1000,
+  });
+  // main.ts's 'module:state' listener (main.ts:971): the thrown track bands and the weapons' damage follow the bus
+  bus.on('module:state', (payload) => {
+    const visual = game.tankById.get(payload.id)?.visual;
+    if (payload.module === 'trackL' || payload.module === 'trackR') visual?.setTrackState?.(payload.module, payload.state === 'red');
+    else visual?.setWeaponModuleState?.(payload.module, payload.state);
   });
   // the seat and three allies (alpha), five enemies (bravo) in a Standard battle, where a death is final
   const seats = [['me', TEAM.ALPHA], ['a1', TEAM.ALPHA], ['a2', TEAM.ALPHA], ['a3', TEAM.ALPHA],
@@ -297,6 +303,28 @@ const wrong = [];
   assert.deepEqual(sideCalls(), ['last_enemy'], 'setup: the abandoned battle\'s fourth death calls the last enemy');
   const e1 = game.tankById.get('e1');
   assert.ok(e1.combat.destroyed && game.tanks.includes(e1), 'setup: e1 is a wreck on this seat');
+  // (round 4 E4) a module the abandoned battle broke, told on the presentation's own event path (module_state), on a
+  // wreck (e1) and on e5, seen alive at 1500 of 2000 hull points before it went out of sight
+  const enemies = ['e1', 'e2', 'e3', 'e4', 'e5'];
+  const broken = Object.keys(e1.combat.modules).includes('engine') ? 'engine' : Object.keys(e1.combat.modules)[0];
+  for (const id of ['e1', 'e5']) {
+    presentation.applyEvent({ kind: 'module_state', payload: { id, module: broken, state: 'red', source: 'shot' } }, { own: false, feedbackPredicted: false });
+  }
+  const e5 = game.tankById.get('e5');
+  assert.ok(e1.combat.modules[broken].state === 'red' && e5.combat.modules[broken].state === 'red', `setup: the abandoned battle broke e1's and e5's ${broken}`);
+  // (round 4 E4 review r2) and what the bus's module states laid on the living hulls' visuals and in the audio: e5's left
+  // track thrown and its gun damaged, the own hull's right track thrown (its break heard)
+  const told = (id, module, state) => presentation.applyEvent({ kind: 'module_state', payload: { id, module, state, source: 'shot' } }, { own: false, feedbackPredicted: false });
+  told('e5', 'trackL', 'red');
+  told('e5', 'gun', 'yellow');
+  const ownBreak = mark(probe);
+  told('me', 'trackR', 'red');
+  hear(3);
+  const own = game.tankById.get('me');
+  assert.ok(e5.visual.thrown.has('trackL') && e5.visual.weaponDamage.get('gun') === 'yellow' && own.visual.thrown.has('trackR'),
+    'setup: the abandoned battle threw e5\'s left track, damaged its gun and threw the own hull\'s right track');
+  assert.equal(count(since(ownBreak, probe), 'track_break'), 1, 'setup: the own hull\'s thrown track is heard');
+  assert.ok(e1.combat.hp === 0 && e5.combat.hp === 1500 && e5.combat.maxHp === 2000, 'setup: e1 died, e5 was seen damaged (1500 of 2000)');
   // the restart: every hull alive at its spawn; this seat spots its allies and no enemy
   present(1, allies);
   present(1, allies);
@@ -313,6 +341,27 @@ const wrong = [];
   const at = spot('e1');
   if (world?.collide(new Vector3(at.x, 0, at.z), 0, new Vector3())) wrong.push('presentation: the own prediction still collides with e1\'s old wreck');
   if (e1._wreckTurretPose || e1._networkDestroyed) wrong.push('presentation: e1 keeps its old wreck\'s look or turret pose');
+  // (round 4 E4) the host restarted every hull whole: a hidden hull's hull points and modules are its new life's. Before, a
+  // revived wreck read alive with 0 hull points (the HUD's ear row drew an empty health bar on a living enemy until it
+  // was spotted) and a hull damaged in the abandoned battle kept its damage and its broken module
+  const worn = enemies.map((id) => [id, game.tankById.get(id).combat]).filter(([, combat]) => combat.hp !== combat.maxHp)
+    .map(([id, combat]) => `${id} ${combat.hp}/${combat.maxHp}`);
+  if (worn.length) wrong.push(`presentation: the hidden hulls kept the abandoned battle's hull points after the restart (${worn.join(', ')})`);
+  const unmended = enemies.filter((id) => Object.values(game.tankById.get(id).combat.modules).some((module) => module.state !== 'ok'));
+  if (unmended.length) wrong.push(`presentation: the hidden hulls ${unmended.join(', ')} kept the abandoned battle's broken ${broken} after the restart`);
+  // (round 4 E4 review r2) the living hulls' visuals begin the new life too (beginActorLife -> resetDestroyed): no thrown
+  // band, no damaged weapon. Before, e5 (alive and hidden at the restart) and the own hull kept the abandoned battle's
+  // thrown tracks and e5 its damaged gun while their modules read whole (only a wreck's visual was reset)
+  const looks = [['e5', e5], ['me', own]].filter(([, actor]) => actor.visual.thrown.size || actor.visual.weaponDamage.size)
+    .map(([id, actor]) => `${id}: ${[...actor.visual.thrown].map((band) => `${band} thrown`).concat([...actor.visual.weaponDamage].map(([module, state]) => `${module} ${state}`)).join(', ')}`);
+  if (looks.length) wrong.push(`presentation: the living hulls' visuals kept the abandoned battle's module damage after the restart (${looks.join('; ')})`);
+  // and the audio's module states are the restarted battle's (audioEngine.ts resetBattlePlay at the restart): the own hull's
+  // right track thrown again is a new break. Before, the abandoned battle's 'red' stood, so it was no change: unheard
+  const ownBreakAgain = mark(probe);
+  told('me', 'trackR', 'red');
+  hear(3);
+  const breaks = count(since(ownBreakAgain, probe), 'track_break');
+  if (breaks !== 1) wrong.push(`audio: the own hull's track thrown in the restarted battle sounded ${breaks} times (its abandoned battle's break was still the audio's state)`);
   presentation.applyEvent({ kind: 'match_ended', payload: { result: 'alpha', reason: 'time' } }, { own: false, feedbackPredicted: false });
   const endRow = ended[0]?.roster?.find((entry) => entry.id === 'e1');
   if (endRow?.alive !== true) wrong.push(`presentation: battle:ended's roster reports e1 ${endRow ? 'dead' : 'missing'} after the restart (the report marks it dead again)`);
@@ -323,4 +372,4 @@ if (wrong.length) {
   console.error(`battleRestartLives: a battle restart left per-life state of the abandoned battle:\n  ${wrong.join('\n  ')}`);
   assert.fail('a battle restart is a new life for every hull in every per-life listener');
 }
-console.log('battleRestartLives: a battle restart gives every hull a new life in the killcam (the dead seat\'s chase ends, an observer\'s stays), the audio engine (a hidden hull\'s next death heard, the old alarm and wrecks gone), the service record, the HUD\'s and report\'s kill ledgers, and the presentation\'s own actors (a hidden hull alive again for the roster, the side counts, the prediction and the end roster) PASS');
+console.log('battleRestartLives: a battle restart gives every hull a new life in the killcam (the dead seat\'s chase ends, an observer\'s stays), the audio engine (a hidden hull\'s next death heard, the old alarm and wrecks gone), the service record, and the presentation\'s own actors (a hidden hull alive again for the roster, the side counts, the prediction and the end roster) PASS');

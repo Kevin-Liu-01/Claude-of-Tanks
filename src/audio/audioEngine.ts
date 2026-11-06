@@ -2375,25 +2375,46 @@ export function createAudio({
   /**
    * Every per-battle field back to a new battle's (2026-11-02 audit F11): the one place they are reset, at every battle
    * edge (from the garage, or from the last battle: a network match's next round). A field that lives for one battle
-   * is reset here, beside its siblings, never by hand in an event branch.
+   * is reset here or in resetBattlePlay, beside its siblings, never by hand in an event branch. Here: the field, the seat
+   * and the battle's opening, which a network battle's restart keeps (the same roster on the same map, this seat's
+   * engine running, its captions on screen); resetBattlePlay holds the rest.
    */
   function resetBattleFields(): void {
     tanks.clear();
-    deathLatch.clear();
-    moduleStates.clear();
     structureSounds.clear();
-    ownRounds.clear();
     playerId = null;
     playerTeam = null;
     latestPlayer = null;
     lastPlayerYaw = null;
     bossId = null;
     bossChecked = false;
+    spottedField = false;
+    startEngineSoon = true;
+    startEngineUntil = -1;
+    captions.reset();
+    pendingCaptions.length = 0;
+    resetBattlePlay();
+  }
+
+  /**
+   * What the battle's play has laid down (round 4 E6b review r2): its one-shot calls and their clocks, its watermarks on
+   * the battle's sim clock, the module states and rounds it told, and the own hull's last look. A network battle's restart
+   * opens a new battle (the session's decision, battlePresentation.ts resetSettledWorld), so restartLives runs this too, and
+   * a field added here is reset at a restart as at a battle's start. Before, the restart kept them: a smoke screen launched
+   * in the restarted battle before the abandoned battle's last launch time was silent (lastSmokeBorn is on the sim clock,
+   * which restarts at 0), a module state the abandoned battle told stood (moduleStates: the restarted battle's same break
+   * was no change, so no thrown-track sound, no crew call and no radio damage), a kill in the restarted battle within 12 s
+   * of the abandoned battle's last was a double kill, and the once-a-battle think line and first-shot cue stayed spent.
+   */
+  function resetBattlePlay(): void {
+    deathLatch.clear();
+    moduleStates.clear();
+    ownRounds.clear();
+    droneWarned.clear();
     movedOnce = false;
     lowHpCalled = false;
     ammoLowCalled = false;
     lastStanding = { mine: false, theirs: false, outnumbered: false };
-    spottedField = false;
     lastKillAt = -99;
     thinkStage = 'idle';
     thinkUntil = 0;
@@ -2416,11 +2437,7 @@ export function createAudio({
     lastSmokeBorn = -1;
     auxGunOn = null;
     auxLights = null;
-    startEngineSoon = true;
-    startEngineUntil = -1;
     resetQuietRadio();
-    captions.reset();
-    pendingCaptions.length = 0;
   }
 
   /**
@@ -2433,15 +2450,12 @@ export function createAudio({
    * (getTeamRoster: main.ts game.rosterTanks), never this map, and the presentation revives every actor of that roster
    * before it tells the restart (review r2), so the re-armed calls count the restarted field. The player's per-life
    * calls re-arm and its fire alarm, heartbeat and radio damage go with its old hull; and the abandoned battle's wrecks
-   * stop burning where no wreck stands now.
+   * stop burning where no wreck stands now. (round 4 E6b review r2) The restart opens a new battle, so the battle's play
+   * starts over as at a battle's start (resetBattlePlay: the death latches and the one-shot calls above among them).
    */
   function restartLives(): void {
-    deathLatch.clear();
+    resetBattlePlay();
     for (const info of tanks.values()) info.alive = true;
-    lastStanding = { mine: false, theirs: false, outnumbered: false };
-    lowHpCalled = false;
-    ammoLowCalled = false;
-    heartbeatBelow = 0;
     heartbeatRig?.stop(); heartbeatRig = null;
     fireAlarm?.stop(); fireAlarm = null;
     playerBurning = false;

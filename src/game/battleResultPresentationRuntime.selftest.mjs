@@ -36,6 +36,7 @@ function createHarness({ ending = false } = {}) {
   } : null;
   const runtime = createBattleResultPresentationRuntime({
     game,
+    bus: { on() {} },
     killcam,
     rig: {
       release: () => calls.push(['release']),
@@ -349,7 +350,7 @@ assert.throws(
 );
 assert.throws(
   () => createHarness({ ending: true }).runtime && createBattleResultPresentationRuntime({
-    game: {}, killcam: { playForResult() { return false; } }, rig: { release() {} }, veilHud() {}, showEndOverlay() {},
+    game: {}, bus: { on() {} }, killcam: { playForResult() { return false; } }, rig: { release() {} }, veilHud() {}, showEndOverlay() {},
     emitPresented() {}, exitPointerLock() {}, recordFlow() {}, ending: { camera: {} },
   }),
   /battle ending presentation requires/,

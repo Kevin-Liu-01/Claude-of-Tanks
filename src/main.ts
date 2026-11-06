@@ -2215,6 +2215,7 @@ const battleEndingCamera = createBattleEndingCamera({
 });
 const battleResultPresentation = createBattleResultPresentationRuntime({
   game,
+  bus,
   killcam,
   rig,
   veilHud,

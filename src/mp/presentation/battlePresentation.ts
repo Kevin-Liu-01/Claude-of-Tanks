@@ -126,6 +126,11 @@ export interface MatchActor {
   _lastZ: number;
   /** Physics lane (wire 5): the wreck's turret body pose its host sent, interpolated; null while it has none. */
   _wreckTurretPose?: Float64Array | null;
+  /**
+   * A mode revived this hull while a held row still showed its wreck (round 4 E6a review r1: reviveAtRespawn): its new
+   * life is owed until a row shows it alive, no row reaches it (settleOwedRevive), or that new life ends.
+   */
+  _reviveOwed: boolean;
 }
 
 export interface MatchShell {
@@ -637,7 +642,7 @@ export function createBattlePresentation({
       contactGeom: null, rigidGear: false, networkVisible: false, modeSpeedMultiplier: 1, modeGravityScale: 1,
       eraNames: eraPlateNames(spec.armor),
       _networkPoseReady: false, _authoritySlot: -1, _networkDestroyed: false, _networkDestroyPop: false, _networkEraSpent: new Set(),
-      _lastX: 0, _lastZ: 0,
+      _lastX: 0, _lastZ: 0, _reviveOwed: false,
     };
     if (gunship) actor.aerial = { kind:'gunship',active:true,launching:false,x:0,y:AERIAL_RULES.gunship.altitudeM,z:AERIAL_RULES.gunship.radiusM,yaw:0,pitch:-1,batteryS:0,cooldownS:0 };
     if (game.gameMode === 'drone') actor.aerial={kind:'drone',active:false,launching:false,x:0,y:0,z:0,yaw:0,pitch:0,batteryS:0,cooldownS:0};
@@ -1059,8 +1064,20 @@ export function createBattlePresentation({
    * seat does not spot is not, so a hull that died in the abandoned battle and is hidden in the restarted one read
    * destroyed until it was spotted: the HUD and the network side counts (main.ts getTeamRoster) counted it dead, so the
    * crew called "last enemy" at the restart with the enemies alive and hidden; battle:ended's roster reported it dead; and
-   * the own prediction collided with its old wreck. Its burning, its wreck look, its wreck turret pose and the death
-   * causes go with that life. The restarted frame's rows, applied right after, still write the hulls this seat sees.
+   * the own prediction collided with its old wreck. The new life is whole (beginActorLife, round 4 E4): its hull points,
+   * modules, crew, fire, wreck look, wreck turret pose, ERA and death cause are the restarted battle's. The restarted
+   * frame's rows, applied right after, still write the hulls this seat sees.
+   * A restart opens a new battle for every per-battle owner on the bus too (round 4 E6b: the HUD, the report, the service
+   * and career records, the result flow, the medal toasts; review r2: the audio engine's battle play, audioEngine.ts
+   * resetBattlePlay), each through the reset its battle start runs, unconditionally.
+   * The edge's policy (round 4 E6b review r1): a restart cannot follow this seat's verdict, so no owner guards against
+   * one. A battle restarts under this seat only on a new link (matchClient.ts restartBattle: another battle id at the
+   * WELCOME, or a first snapshot that shows the followed battle not begun), which a migration brings. The session settles
+   * the verdict in the same frame dispatch that can set game.result here (matchSession.ts: its frame listener calls
+   * settleVerdict on frame.meta.verdict; the frame meta is the newer snapshot's, so the frame that releases match_ended
+   * names the verdict, and the meta's own verdict waits out verdictGraceMs here) and moves to 'ended', which ends the
+   * migration (matchSession.ts setPhase: "a round that ends ... ends its migration too"); a lost link ends it the same
+   * way ('lost').
    */
   function resetSettledWorld(restarts: number): void {
     resetWorldForBattle(worldCollision as BattleResetWorld | null);
@@ -1068,15 +1085,96 @@ export function createBattlePresentation({
     appliedDestructibleRevision = -1;
     appliedDestroyedLength = -1;
     lastSmokeJson = null;
-    for (const actor of actors.values()) {
-      actor.combat.destroyed = false;
-      actor.combat.fire.burning = false;
-      updateDestruction(actor, false);
-      actor._wreckTurretPose = null;
-    }
+    for (const actor of actors.values()) beginActorLife(actor);
     destructionCause.clear();
     publishRoster();
     bus.emit('battle:restarted', { battleRestarts: restarts });
+  }
+
+  /**
+   * One hull's new life where no row carries it (round 4 E4, E6): alive and whole, as the host begins one. The host builds
+   * a fresh combat state at a revive (sim/authoritativeMatch.ts reviveForMode: createCombatState, so its hull points at
+   * their maximum, every module whole, every crew member up, no fire) and at a restart (migrationFallback builds every
+   * actor anew); a row writes only what it carries (hull points, fire, the wreck and its turret pose, ERA), and only where
+   * it reaches this seat, and a remote hull's modules come only by module_state events. Before, a hidden hull revived by
+   * the restart read alive with the abandoned battle's hull points (0 for a wreck: the HUD's ear row drew an empty health
+   * bar on a living enemy until it was spotted) and its broken modules.
+   * Its visual begins the new life too (review r2): what the old life's module states and hits laid on it (main.ts's
+   * 'module:state' listener throws a track band and scorches a weapon, the hits knock equipment off and bend the gun) is
+   * the visual's own state, which no row and no mended module tells it. Its one reset is resetDestroyed
+   * (vehicles/tankFactoryCore.ts: "Safe on a never-destroyed tank"; it re-seats both track bands, clears the weapon and
+   * equipment damage and the live crumple), which the wreck's undoing (updateDestruction) runs and a living hull now gets
+   * here. Before, a hull alive at the restart, this seat's own included, kept the abandoned battle's thrown track, its
+   * scorched rack or roof gun and its knocked-off equipment while its modules read whole. (The audio's module states are
+   * the audio's per-battle record: its restart listener resets them, audioEngine.ts restartLives.)
+   */
+  function beginActorLife(actor: MatchActor): void {
+    const { combat } = actor;
+    combat.destroyed = false;
+    combat.hp = combat.maxHp;
+    combat.fire.burning = false;
+    combat.fire.tickTimer = 0;
+    combat.fire.ticksLeft = 0;
+    mendModulesAndCrew(combat);
+    if (actor._networkDestroyed) updateDestruction(actor, false);
+    else actor.visual.resetDestroyed?.();
+    destructionCause.delete(actor.id);
+    actor._wreckTurretPose = null;
+    actor._reviveOwed = false;
+    updateEra(actor, NO_IDS);
+  }
+
+  /**
+   * A mode revived this hull (round 4 E6a; sim/matchModes.ts reviveAtSpawn emits `mode_respawn`, which every viewer
+   * receives): a new life where no row carries it. A hull no row reached this frame (out of this seat's view: a live hull
+   * this seat does not spot is not sent) begins it here (beginActorLife), as every hull does at a restart; before, it
+   * stayed the wreck it was until a row reached it (in game.tanks, dead in the roster's side counts and battle:ended's
+   * roster, a prediction collider, with 0 hull points and its broken modules). A row that reached it this frame is the
+   * authority's word for its life and pose and stands: its fresh row is the new life's, and a row the host still holds
+   * from before the revive (server/match/interestTiers.ts needsFreshRow: a row in the view is refreshed on its tier's
+   * cadence, and a wreck is in every view) shows the wreck until the next fresh one, which revives it as any row does;
+   * undone here, the wreck would be laid again by that held row (a flicker). That held row's hull may leave this seat's
+   * view before its fresh row comes (review r1: per-viewer visibility does not linger; an enemy seen through an ally's
+   * radio share drops out when this seat leaves the share's reach, or its radio is hit, sim/spotting.ts isSpotted with a
+   * receiver), and then no row revives it: its revive is owed (_reviveOwed) and settled after the next frame's rows
+   * (settleOwedRevive). Either way the modules and the crew, which no row carries for a remote hull, are the new life's.
+   * The own hull's viewer row and state carry all of it every frame.
+   */
+  function reviveAtRespawn(actor: MatchActor): void {
+    if (actor.networkVisible) {
+      mendModulesAndCrew(actor.combat);
+      actor._reviveOwed = actor.combat.destroyed;
+      return;
+    }
+    beginActorLife(actor);
+    publishRoster();
+  }
+
+  /**
+   * A revive owed under a held wreck row (reviveAtRespawn), settled once the frame's rows are in (applyFrame, before the
+   * roster is published): a row that shows the hull alive paid it; a row that still shows the wreck holds it on (no
+   * flicker: the wreck is undone only once no row shows it); and a hull no row reached is not a wreck on the host (a wreck
+   * is in every view: authoritativeMatch.ts canObserveEntity), so it begins its new life here. Its new life's death
+   * (tank_destroyed) drops the debt, so a hull that died again is never revived by the revive before.
+   */
+  function settleOwedRevive(actor: MatchActor): void {
+    if (actor.networkVisible) {
+      if (!actor.combat.destroyed) actor._reviveOwed = false;
+      return;
+    }
+    actor._reviveOwed = false;
+    if (actor.combat.destroyed) beginActorLife(actor);
+  }
+
+  /** What no row carries for a remote hull: its modules whole and its crew up (a new life's). */
+  function mendModulesAndCrew(combat: CombatState): void {
+    for (const module of Object.values(combat.modules)) {
+      if (!module) continue;
+      module.hp = module.maxHp;
+      module.state = 'ok';
+      module.repairT = 0;
+    }
+    for (const member of Object.keys(combat.crew)) combat.crew[member] = true;
   }
 
   function resultRoster(): Array<Record<string, RuntimeValue>> {
@@ -1195,6 +1293,7 @@ export function createBattlePresentation({
     if (own) updateOwn(own, frame);
     for (const actor of actors.values()) {
       classify(actor);
+      if (actor._reviveOwed) settleOwedRevive(actor);
       if (!actor.networkVisible) actor.visual.setVisible(false);
     }
     if (!mounted) mount();
@@ -1388,6 +1487,8 @@ export function createBattlePresentation({
         const id = String(payload.id ?? '');
         if (typeof payload.cause === 'string') destructionCause.set(id, payload.cause);
         const actor = actors.get(id);
+        // (round 4 E6a review r1) a new life's death: the wreck its rows show is this one's, owed no revive
+        if (actor) actor._reviveOwed = false;
         // The authority's death position (ghost-crunch lane, 2026-10-02): the explosion, the wreck's smoke column
         // (effects.ts lastKnownPos) and the killcam sit where the hull died, not where this frame's interpolated or
         // predicted pose happens to be — up to one snapshot interval of a fall or a slide away. An older host's event
@@ -1501,6 +1602,13 @@ export function createBattlePresentation({
         const result = payload.result;
         const verdict = result === 'alpha' ? VERDICT.ALPHA : result === 'bravo' ? VERDICT.BRAVO : result === 'draw' ? VERDICT.DRAW : VERDICT.NONE;
         applyVerdict(verdict, String(payload.reason ?? 'elimination'));
+        return;
+      }
+      case 'mode_respawn': {
+        // the hull's new life first, so the bus's listeners hear a hull that is alive (round 4 E6a)
+        const actor = actors.get(String(payload.id ?? ''));
+        if (actor && actor !== own) reviveAtRespawn(actor);
+        bus.emit('mode:respawn', { type: kind, ...payload });
         return;
       }
       default:
