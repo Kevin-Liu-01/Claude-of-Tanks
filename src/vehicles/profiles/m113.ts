@@ -29,6 +29,7 @@
 // front left, the engine at the front right.
 // First-party procedural geometry: Kevin B. Liu (NOTICE.md).
 import { KIT, FITTINGS, muzzleBore, orientedSlab } from './kit.ts';
+import { addM113Fittings } from './m113Fittings.ts';
 import { antennaPart } from './antennaPart.ts';
 import { sectionSolid, type SectionPoint, type SolidSection } from './sectionSolid.ts';
 import { markSmokeTube } from '../vehicleAuxiliaryGeometry.ts';
@@ -325,7 +326,7 @@ export function* buildM113HullSteps(P: TankBuilderPort, mark: M113HullMark,
 
 function* buildM113Steps(P: TankBuilderPort, mark: M113Mark): TankProfileBuild {
   yield* buildM113HullSteps(P, mark);
-  const { box, cylX, cylY, cylZ, xform, buildGun, liftEye, periscope } = KIT;
+  const { box, cylX, cylY, cylZ, torus, xform, buildGun, liftEye, periscope } = KIT;
   const D = m113Datums(mark), B = BASE;
   const as4 = mark === 'as4', a3 = mark === 'a3';
   // ---------------------------------------------------------------- turret --
@@ -418,6 +419,11 @@ function* buildM113Steps(P: TankBuilderPort, mark: M113Mark): TankProfileBuild {
     }
     P.add('turretDark', cylX(0.025, 0.30, 8), 0, 0.25, -0.36);
     P.addEquipment('turret', xform(cylY(0.30, 0.30, 0.035, P.q ? 20 : 14), 0, 0, 0, Math.PI / 2 - 0.22, 0, 0), 0, 0.53, -0.42);
+    // (the second blind critic read the bare lid as a dish on a post) its raised rim and latch handle on the face toward
+    // the cupola, and the two hinge arms from the ring's hinge up to the lid
+    P.add('turretDark', torus(0.27, 0.014, P.q ? 24 : 14, 6), 0, 0.534, -0.402, -0.22, 0, 0);
+    P.add('turretDark', box(0.16, 0.035, 0.03), 0, 0.60, -0.388, -0.22, 0, 0);
+    for (const x of [-0.10, 0.10]) P.add('turretDark', box(0.035, 0.30, 0.03), x, 0.36, -0.40, -0.22, 0, 0);
     // the ACAV-style gun shield: a front plate either side of the gun's window, bridged under and over it, and a wing on
     // each flank on a stay from the ring
     for (const s of [-1, 1] as const) {
@@ -468,6 +474,8 @@ function* buildM113Steps(P: TankBuilderPort, mark: M113Mark): TankProfileBuild {
   }
   // the launcher is damageable weapon stock: its mouths are the drawn terminals the launches leave from
   if (mark !== 'a3') weaponAssembly(P, () => addTowLauncher(P, mark));
+  // the hull hardware the A3's critics found missing (m113Fittings.ts; the crew's kit is the decor layer's)
+  addM113Fittings(P, mark);
   P.turretG.userData.m113TurretReceipt = Object.freeze({
     mark, roadWheels: D.wheelZs.length, length: D.length,
     turret: mark === 'fsv' ? 'saladin' : mark === 'mrv' ? 'scorpion' : a3 ? 'acav-cupola' : 'tenix', buoyancyPods: mark === 'mrv',
