@@ -2699,11 +2699,13 @@ export function createKillCam(deps: KillcamDeps) {
     active = true;
     staged = false;
     lastBeginWallMs = performance.now();
-    if (busRef) busRef.emit('killcam:begin', { kind });
     // (round 3 A9) begin() is the one setter of `active` and teardown() its one clearer: a replay that throws while it
     // is built (a disposed visual, a camera rig gone) leaves the screen at once. teardown restores what was staged,
     // clears the flag, pairs the begin edge with its done and runs no onDone (playForResult takes its no-replay path).
     try {
+      // (round 3 A9, review r1) the begin edge is part of the build: a listener that throws (an input owner's
+      // subscriber, the kill-cam mix) leaves the screen as any failed build does, never with `active` stuck true
+      if (busRef) busRef.emit('killcam:begin', { kind });
       pb = createPlaybackBundle(snap, kind, onDone);
       const playerKill = configureReplayActors(snap, kind, xrayOnly);
       const wreckHold = prepareReplayVictim(freshKill);
@@ -6103,16 +6105,16 @@ export function createKillCam(deps: KillcamDeps) {
   ): void {
     // (round 3 A9) the done edge is emitted whatever the callbacks do: the input owner tells its listeners (the report
     // gate) only on an edge, and a throw in onDone or the spectate handover dropped it, so the gate waited for its 16 s
-    // watchdog. It still comes after them, so the integration end-overlay exists when the report renders.
-    try {
-      if (runCallback && done) done();
-    } finally {
-      try {
-        if (runCallback && wasDeathView) spectate.maybeStart();
-      } finally {
-        if (busRef) busRef.emit('killcam:done', {});
-      }
-    }
+    // watchdog. It still comes after them, so the integration end-overlay exists when the report renders. Every step
+    // runs and the first error is rethrown after the edge (review r1: nested finallys kept the last one instead).
+    let failure: unknown = null;
+    const step = (run: () => void): void => {
+      try { run(); } catch (error) { failure ??= error; }
+    };
+    step(() => { if (runCallback && done) done(); });
+    step(() => { if (runCallback && wasDeathView) spectate.maybeStart(); });
+    step(() => { if (busRef) busRef.emit('killcam:done', {}); });
+    if (failure !== null) throw failure;
   }
 
   function teardown(runCallback: boolean): void {
@@ -6158,7 +6160,7 @@ export function createKillCam(deps: KillcamDeps) {
     active = false;
     staged = false;
     // a replay staged with the Garage's lights up (shot tooling) gives its lights back to the Garage's set
-    showLightPool(deps.battleLightsActive?.() ?? true);
+    step(() => showLightPool(deps.battleLightsActive?.() ?? true));
     // ALLY SPECTATE (killcam_endscreen r1): after the DEATH replay hands the
     // screen back — battle still live, allies still standing — land in the
     // spectate chase instead of the static wreck orbit the integration

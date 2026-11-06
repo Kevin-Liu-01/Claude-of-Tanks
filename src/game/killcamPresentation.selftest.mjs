@@ -109,7 +109,9 @@ assert.match(source, /setBattleLights\(shown(?:: boolean)?\) \{\s*if \(!active\)
   'the Garage light switch never pulls the lights from a running replay');
 assert.match(source, /function begin\([\s\S]*?\{[\s\S]*?showLightPool\(true\);[\s\S]*?active = true;/,
   'a replay always has its lights');
-assert.match(source, /active = false;\s*staged = false;\s*\/\/[^\n]*\n\s*showLightPool\(deps\.battleLightsActive\?\.\(\) \?\? true\);/,
+// (round 3 A9, review r1) the read runs as one of teardown's release steps, so a host callback that throws cannot drop the
+// replay's done edge
+assert.match(source, /active = false;\s*staged = false;\s*\/\/[^\n]*\n\s*step\(\(\) => showLightPool\(deps\.battleLightsActive\?\.\(\) \?\? true\)\);/,
   'a finished replay gives its lights back to the current light set');
 assert.match(main, /const setGarageSpots = [\s\S]*?garagePhasePresentation\.setActive\(active\);\s*garageLightsUp = active;\s*killcamAccess\.current\?\.setBattleLights\(!active\);/,
   'the Garage light switch drives the kill-cam light pool');

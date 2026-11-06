@@ -13,6 +13,15 @@
 //    its listeners at once (base: the edge was dropped and the report gate waited for its 16 s watchdog), and still
 //    lifts the exit's black fade (base: the fade stayed over the battle);
 //  - a restore step that throws at teardown (a disposed wreck visual) still clears `active`, runs onDone and emits done.
+// (round 3 A9, review round 1) also:
+//  - a 'killcam:begin' listener that throws (an input owner's subscriber, the kill-cam mix) is a failed build: the flag
+//    clears and the begin edge gets its done (before, the edge was emitted outside begin's try: `active` stayed true);
+//  - a throwing spectate handover (spectate.maybeStart after a death replay) still emits the done edge, and with a
+//    throwing onDone too the first error (onDone's) is the one that surfaces;
+//  - a throwing light-set read at teardown (deps.battleLightsActive) still emits the done edge.
+// A failure anywhere in this receipt fails it: an unexpected throw is reported with the soft checks, and a late throw on
+// an exit timer sets the exit code at once (before, the uncaughtException listener that records late throws swallowed a
+// hard assertion's throw too, and the receipt exited 0 with no output).
 // The browser half (a real WebGL frame, the DOM overlay's paint) is not reproduced here.
 import assert from 'node:assert/strict';
 import { Scene, PerspectiveCamera, Group, Vector3 } from 'three';
@@ -102,13 +111,19 @@ const { killcamOwnsScreen } = await import('./killcamScreen.ts');
 const spec = getSpec('m1a1_abrams_hc');
 const failures = [];
 const check = (ok, message) => { if (!ok) failures.push(message); };
-// the exit's wall-clock handover runs later on a timer: a replay left active throws there again (base)
+// the exit's wall-clock handover runs later on a timer: a replay left active throws there again (base). Only a timer's
+// throw reaches this listener (the cases below run inside a try whose catch reports), and it fails the run at once.
 const lateThrows = [];
-const onLateThrow = (error) => { lateThrows.push(error.message); };
+const onLateThrow = (error) => {
+  lateThrows.push(error?.message ?? String(error));
+  process.exitCode = 1;
+  console.error(`FAIL a late throw after its replay left the screen: ${error?.stack ?? error}`);
+};
 process.on('uncaughtException', onLateThrow);
 
-/** One battle: a fresh controller on its own bus, the real input owner on that bus, a dead player hit by a shell. */
-function battle({ visual = {}, rig = {}, maybeStartThrows = false } = {}) {
+/** One battle: a fresh controller on its own bus, the real input owner on that bus, a dead player hit by a shell.
+ *  `breakGame()` makes the battle state throw when the spectate handover reads it; `breakLights()` the light-set read. */
+function battle({ visual = {}, rig = {} } = {}) {
   const scene = new Scene();
   const edges = [];
   const handlers = new Map();
@@ -136,12 +151,18 @@ function battle({ visual = {}, rig = {}, maybeStartThrows = false } = {}) {
       ...visual,
     },
   };
-  const game = { phase: 'battle', timeS: 10, tanks: [player], tankById: new Map([['p', player]]) };
+  let gameBroken = false, lightsBroken = false;
+  const game = {
+    phase: 'battle', timeS: 10, tanks: [player], tankById: new Map([['p', player]]),
+    // read only by the spectate handover (spectate.maybeStart) in the controller
+    get result() { if (gameBroken) throw new Error('the battle state is gone'); return null; },
+  };
   const rigCalls = new Proxy({}, { get: (_target, key) => (key === 'then' ? undefined : rig[key] || (() => {})) });
   const killcam = createKillCam({
     scene, camera: new PerspectiveCamera(), heightField: { getHeightAt: () => 0 },
-    getPlayer: () => player, getGame: () => (maybeStartThrows ? null : game), isBattleEntryCovered: () => false,
+    getPlayer: () => player, getGame: () => game, isBattleEntryCovered: () => false,
     getFx: () => ({ setReplaySuppressed: (on) => fxCalls.push(on) }),
+    battleLightsActive: () => { if (lightsBroken) throw new Error('the light set is gone'); return true; },
     rig: rigCalls,
   });
   killcam.bindBus(bus);
@@ -149,7 +170,8 @@ function battle({ visual = {}, rig = {}, maybeStartThrows = false } = {}) {
     shellId: null, targetId: 'p', attackerId: 'e', destroyed: true, timeS: 10, pos: [0, 1, 0], normal: [0, 0, 1],
     localPos: [0, 1, 0], localDir: [0, 0, -1], modulesHit: [], crewHit: [], shellType: 'APFSDS', zone: 'hull',
   }, player);
-  return { scene, bus, edges, owner, killcam, fxCalls, player, notifiedCount: () => notified };
+  return { scene, bus, edges, owner, killcam, fxCalls, player, notifiedCount: () => notified,
+    breakGame: () => { gameBroken = true; }, breakLights: () => { lightsBroken = true; } };
 }
 
 const replayGroup = (scene) => scene.children.some((child) => child.name === 'killcam');
@@ -222,7 +244,9 @@ try {
     check(next.thrown === null && next.played === true, 'the next replay starts after a failed one');
     check(world.killcam.isActive() === true && world.owner.state === 'presentation', 'and owns the screen');
     pressEscape();
-    runExit(world.killcam);
+    let surfaced = null;
+    try { runExit(world.killcam); } catch (error) { surfaced = error; }
+    check(surfaced === null, `a replay that ran to its exit hands back without a throw [${surfaced?.message}]`);
     check(doneRan === 1, 'and hands the screen back through its onDone');
     released(world, 'a replay that ran to its exit');
   }
@@ -232,11 +256,11 @@ try {
     const world = battle();
     const onDoneError = new Error('the end overlay failed');
     const { played } = play(world, () => { throw onDoneError; });
-    assert.equal(played, true, 'the replay starts');
+    check(played === true, 'a replay with a throwing onDone starts');
     const earlierFades = new Set(fades());
     pressEscape();
     const fade = fades().find((element) => !earlierFades.has(element));
-    assert.ok(fade, 'the exit lays its black fade');
+    check(!!fade, 'the exit lays its black fade');
     const before = world.notifiedCount();
     let surfaced = null;
     try { runExit(world.killcam); } catch (error) { surfaced = error; }
@@ -244,7 +268,7 @@ try {
     released(world, 'a throwing onDone');
     check(world.notifiedCount() > before, "the input owner told its listeners at once (the report gate's edge)");
     await new Promise((resolve) => setTimeout(resolve, 80));
-    check(fade.classList.contains('lift'), 'the exit lifts its black fade');
+    check(!!fade?.classList.contains('lift'), 'the exit lifts its black fade');
     await new Promise((resolve) => setTimeout(resolve, 480));
   }
 
@@ -260,7 +284,7 @@ try {
     });
     let doneRan = 0;
     const { played } = play(world, () => { doneRan++; });
-    assert.equal(played, true, 'the replay starts');
+    check(played === true, 'a replay whose restore will throw starts');
     pressEscape();
     let surfaced = null;
     try { runExit(world.killcam); } catch (error) { surfaced = error; }
@@ -269,6 +293,72 @@ try {
     released(world, 'a throwing restore');
     await new Promise((resolve) => setTimeout(resolve, 600));
   }
+
+  // 6. (review round 1) a 'killcam:begin' listener that throws: the begin edge is part of the build, so the replay leaves
+  //    the screen with its done edge and the battle flow takes its no-replay path
+  {
+    const world = battle();
+    world.bus.on('killcam:begin', () => { throw new Error('a begin listener threw'); });
+    let doneRan = 0;
+    const before = reported.length;
+    const { played, thrown } = play(world, () => { doneRan++; });
+    check(thrown === null && played === false, `a replay whose begin listener throws answers false [${played}, ${thrown?.message}]`);
+    check(doneRan === 0, 'and runs no onDone');
+    released(world, 'a throwing begin listener');
+    check(reported.slice(before).some((line) => line.startsWith('[killcam] the replay failed to start')),
+      'the throwing begin listener is reported as a failed start');
+  }
+
+  // 7. (review round 1) the spectate handover after a death replay throws: the done edge is still emitted and the error
+  //    surfaces (publishReplayCompletion's second step)
+  {
+    const world = battle();
+    let doneRan = 0;
+    const { played } = play(world, () => { doneRan++; });
+    check(played === true, 'a death replay whose spectate handover will throw starts');
+    pressEscape();
+    world.breakGame();
+    let surfaced = null;
+    try { runExit(world.killcam); } catch (error) { surfaced = error; }
+    check(surfaced?.message === 'the battle state is gone', `the spectate handover's error surfaces [${surfaced?.message}]`);
+    check(doneRan === 1, 'the integration onDone ran before the handover');
+    released(world, 'a throwing spectate handover');
+    await new Promise((resolve) => setTimeout(resolve, 600));
+  }
+
+  // 8. (review round 1) onDone and the spectate handover both throw: the first error (onDone's) is the one that surfaces
+  {
+    const world = battle();
+    const onDoneError = new Error('the end overlay failed first');
+    const { played } = play(world, () => { throw onDoneError; });
+    check(played === true, 'a replay whose onDone and handover will throw starts');
+    pressEscape();
+    world.breakGame();
+    let surfaced = null;
+    try { runExit(world.killcam); } catch (error) { surfaced = error; }
+    check(surfaced === onDoneError, `with two throwing completion steps the first error surfaces [${surfaced?.message}]`);
+    released(world, 'two throwing completion steps');
+    await new Promise((resolve) => setTimeout(resolve, 600));
+  }
+
+  // 9. (review round 1) the host's light-set read throws at teardown: the done edge is still emitted
+  {
+    const world = battle();
+    let doneRan = 0;
+    const { played } = play(world, () => { doneRan++; });
+    check(played === true, 'a replay whose light-set read will throw starts');
+    pressEscape();
+    world.breakLights();
+    let surfaced = null;
+    try { runExit(world.killcam); } catch (error) { surfaced = error; }
+    check(surfaced?.message === 'the light set is gone', `the light-set read's error surfaces [${surfaced?.message}]`);
+    check(doneRan === 1, 'the integration onDone still runs');
+    released(world, 'a throwing light-set read');
+    await new Promise((resolve) => setTimeout(resolve, 600));
+  }
+} catch (error) {
+  // an unexpected throw is a failure reported with the soft checks (never left to the late-throw listener)
+  failures.push(`an unexpected throw in the cases: ${error?.stack ?? error}`);
 } finally {
   globalThis.window = saved.window;
   globalThis.document = saved.document;
