@@ -220,7 +220,8 @@ interface SharedGarageTreeGrove {
 export interface GarageEnvironmentAssetLibrary {
   acquire(key: GarageSurfaceKey, requestRender: () => void): TextureHandle;
   treeGrove(species: TreeSpecies): SharedGarageTreeGrove;
-  prepareTreeGroves(species: readonly TreeSpecies[]): Promise<void>;
+  /** Each species' grove in a slice of its own; (round 3 B12) none started once `stillWanted` says no. */
+  prepareTreeGroves(species: readonly TreeSpecies[], stillWanted?: () => boolean): Promise<void>;
   warmAll(requestRender: () => void): void;
   retainedTextures(): Iterable<THREE.Texture>;
   /** Asks again for every failed set a pack still holds (a selection runs it: switching between cached packs bakes none). */
@@ -532,9 +533,11 @@ export function createGarageEnvironmentAssetLibrary(
       }
       return grove;
     },
-    async prepareTreeGroves(species) {
+    async prepareTreeGroves(species, stillWanted = () => true) {
       for (const treeSpecies of species) {
         if (treeGroves.has(treeSpecies)) continue;
+        // (round 3 B12) a cancelled prewarm starts no further grove (one in flight is shared: it builds for its joiners)
+        if (!stillWanted()) return;
         let pending = treeGrovePending.get(treeSpecies);
         if (!pending) {
           pending = (async () => {
@@ -3032,7 +3035,10 @@ export async function prepareGarageEnvironmentAssets(
   const recipe = GARAGE_ENVIRONMENT_RECIPES[variant.architecture];
   if (!recipe) throw new Error(`Unknown Garage architecture: ${variant.architecture}`);
   if (!stillWanted()) return false;
-  await assets.prepareTreeGroves(recipe.treeSpecies as readonly TreeSpecies[]);
+  await assets.prepareTreeGroves(recipe.treeSpecies as readonly TreeSpecies[], stillWanted);
+  // (round 3 B12) a cancel during the trees stops here on every map: only the skyline's slice below asked before, so a
+  // map with no skyline went on into the kit's first pieces
+  if (!stillWanted()) return false;
   // the map's skyline bakes here, in its own slice before the synchronous pack bake (4-45 ms on a first visit: garage
   // r9 g1 r4, the switch's long task); the build then takes a copy of the cached bake
   if (garageSkylineEnabled(variant.mapId)) {
