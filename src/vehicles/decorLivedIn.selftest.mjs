@@ -6,9 +6,8 @@
 //    tow cable: every piece authored on its foot, its near level inside the 700-triangle piece budget, its coarse level
 //    no heavier, in the same envelope and from the same random draws (the placement seats both with one matrix).
 // 2. The lived-in rows come after every other row of their tank, always carried, drawing nothing from the manifest's
-//    stream (the rows before them keep their draws and seats); the M3A3's turret carries none yet (its turret is still
-//    being built); the M3A2 keeps the M2A2's seed and hull load (DECOR_TWIN) with rows for its own turret; every other
-//    vehicle's manifest has none.
+//    stream (the rows before them keep their draws and seats); every Bradley's turret carries a load; the M3A2 keeps the
+//    M2A2's seed (DECOR_TWIN) with rows for its own turret and gutters; every other vehicle's manifest has none.
 // 3. Built with its decor, an M1A1 seats the bustle rack's load under its cargo net, the packs on its side rack's rails and
 //    the rolls in its trough, and an M2A2 the gutter rolls, the trim vane's net, the ramp's coiled cable and its turret
 //    rack's load, inside the lived-in budget (LIVED_IN_TRIS).
@@ -83,8 +82,8 @@ for (const [kit, args, label] of [
 // 2. the manifests
 // the rows each carries at least: the owner's-model racks a full load and four rail packs, the tejas racks what their
 // profile's own load leaves room for, the Bradley hulls their gutter rolls and the coil
-const LIVED_IN_ROWS_MIN = Object.freeze({ m1a1: 22, m1a1ha: 20, m1a1_abrams_sa: 23, m1a1_abrams_aim: 23, m1a1_abrams_hc: 2,
-  m1a1_abrams_fep: 5, m2a2_bradley: 18, m3a2_bradley: 17, m3a3_bradley: 14, ua_m2a3_bradley: 16, m6_linebacker: 13 });
+const LIVED_IN_ROWS_MIN = Object.freeze({ m1a1: 15, m1a1ha: 13, m1a1_abrams_sa: 13, m1a1_abrams_aim: 16, m1a1_abrams_hc: 2,
+  m1a1_abrams_fep: 4, m2a2_bradley: 13, m3a2_bradley: 17, m3a3_bradley: 16, ua_m2a3_bradley: 13, m6_linebacker: 13 });
 const LIVED_IN_IDS = Object.keys(LIVED_IN_ROWS_MIN);
 const BRADLEYS = new Set(['m2a2_bradley', 'm3a2_bradley', 'm3a3_bradley', 'ua_m2a3_bradley', 'm6_linebacker']);
 const counting = () => { let n = 0; const rng = () => { n++; return ((n * 0.618034) % 1); }; rng.count = () => n; return rng; };
@@ -98,20 +97,19 @@ for (const id of LIVED_IN_IDS) {
   ok(manifest.slice(0, first).every((row) => !row.livedIn), `${id}: no lived-in row before the tank's own rows`);
   ok(manifest.filter((row) => row.livedIn).length >= LIVED_IN_ROWS_MIN[id],
     `${id}: its load (${manifest.filter((row) => row.livedIn).length} rows, at least ${LIVED_IN_ROWS_MIN[id]})`);
-  if (id === 'm3a3_bradley') {
-    ok(manifest.filter((row) => row.livedIn).every((row) => !row.slot[1].turret && !row.slot[0].startsWith('turret')),
-      `${id}: nothing on its turret until its turret is finished`);
+  if (BRADLEYS.has(id)) {
+    ok(manifest.some((row) => row.livedIn && (row.slot[1].turret || row.slot[0].startsWith('turret'))), `${id}: its turret carries a load`);
   }
 }
-// the lived-in rows draw nothing: the M3A2 (DECOR_TWIN) and the M2A2 draw the same stream; the M3A2 carries the M2A2's
-// hull load and its own turret's
+// the lived-in rows draw nothing: the M3A2 (DECOR_TWIN) and the M2A2 draw the same stream and carry the same rows before
+// the lived-in ones; the M3A2's lived-in rows are its own (its source-measured turret sweeps its gutters less)
 {
   const a = counting(), b = counting();
   const m2 = decorManifestFor(getSpec('m2a2_bradley'), a), m3 = decorManifestFor(getSpec('m3a2_bradley'), b);
   ok(a.count() === b.count(), 'the M3A2 consumes the M2A2 manifest stream');
-  const hull = (rows) => JSON.stringify(rows.filter((row) => row.livedIn && !row.slot[1].turret && !row.slot[0].startsWith('turret')));
-  ok(hull(m2) === hull(m3), 'the M3A2 carries the M2A2 hull load');
-  ok(JSON.stringify(m2.filter((row) => row.livedIn)) !== JSON.stringify(m3.filter((row) => row.livedIn)), 'and its own turret load');
+  const base = (rows) => JSON.stringify(rows.filter((row) => !row.livedIn));
+  ok(base(m2) === base(m3), 'the M3A2 carries the M2A2 rows before its lived-in load');
+  ok(JSON.stringify(m2.filter((row) => row.livedIn)) !== JSON.stringify(m3.filter((row) => row.livedIn)), 'and its own lived-in load');
 }
 for (const id of ['leo2a4', 'challenger2', 't90am', 'ua_m1a1', 'abramsx']) {
   ok(!decorManifestFor(getSpec(id), counting()).some((row) => row.livedIn), `${id}: no lived-in rows`);
@@ -121,7 +119,7 @@ for (const id of ['leo2a4', 'challenger2', 't90am', 'ua_m1a1', 'abramsx']) {
 const MINE = /^(crewkit|cargonet|coil)/;
 const rows = [];
 try {
-  for (const [id, want] of [['m1a1', { crewkit: 16, cargonet: 1, turret: 17 }], ['m2a2_bradley', { crewkit: 10, coil: 1, turret: 2 }]]) {
+  for (const [id, want] of [['m1a1', { crewkit: 12, cargonet: 1, turret: 13 }], ['m2a2_bradley', { crewkit: 7, coil: 1, turret: 3 }]]) {
     const tank = createTank(id, null, { camoSeed: 4242, quality: 'high', decor: true, staticPreview: true });
     try {
       const summary = tank.root.userData.__decorSummary;
