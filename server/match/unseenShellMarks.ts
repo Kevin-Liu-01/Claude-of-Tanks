@@ -3,7 +3,8 @@
 // (spotting) and a view keeps at most MAX_VIEW_SHELLS, so a round's absence alone cannot tell the client an end from a
 // spotting loss. A round that ended (`dead`) is not named: its absence is its end. Each is named for
 // UNSEEN_SHELL_MARK_TICKS from the frame it left, whatever becomes of it after, so a lost snapshot loses no mark and the
-// mark never tells its end (a hidden round's end stays the authority's).
+// mark never tells its end (a hidden round's end stays the authority's); a mark ends sooner only when its round is in
+// view again, or (below) when a burst takes its place.
 //
 // Round 3 (A13): the list is bounded. Past MAX_SHELLS ids the encoder refuses the frame (codec.ts writeUnseenShells:
 // too_many), so more than 256 rounds leaving one view inside half a second used to make every frame for that viewer fail
@@ -35,9 +36,10 @@ export interface UnseenShellMarks {
    * behind them (parallel; `rounds.length` of each). Returns the frame's unseen list, ascending, at most
    * MAX_UNSEEN_SHELLS long, or undefined when none. The list is never written again, by this or any later call: a frame
    * keeps its own names however long the publisher keeps it, and consecutive frames with the same names share one list.
-   * Read it, never write it.
+   * Read-only, and typed so (SnapshotFrame.unseenShells and SnapshotPacket.unseenShells too): a TypeScript writer fails
+   * the typecheck.
    */
-  frame(tick: number, rows: readonly UnseenShellRow[], rounds: readonly UnseenShellRound[]): number[] | undefined;
+  frame(tick: number, rows: readonly UnseenShellRow[], rounds: readonly UnseenShellRound[]): readonly number[] | undefined;
 }
 
 // Which wire ids the frame being marked shows: the frame's stamp at each id. One table for every viewer of every actor in
@@ -56,7 +58,7 @@ export function createUnseenShellMarks(): UnseenShellMarks {
   const leftAt = new Float64Array(MAX_UNSEEN_SHELLS);
   let markCount = 0;
   // the list the last frame returned (never written again), and whether the names changed since it was made
-  let list: number[] | undefined;
+  let list: readonly number[] | undefined;
   let changed = false;
 
   function mark(id: number, tick: number): void {
@@ -113,8 +115,9 @@ export function createUnseenShellMarks(): UnseenShellMarks {
         changed = false;
         list = undefined;
         if (markCount) {
-          list = new Array<number>(markCount);
-          for (let index = 0; index < markCount; index++) list[index] = ids[index]!;
+          const names = new Array<number>(markCount);
+          for (let index = 0; index < markCount; index++) names[index] = ids[index]!;
+          list = names;
         }
       }
       return list;
