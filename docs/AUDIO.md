@@ -1523,16 +1523,16 @@ Headless selftests (all in `npm test`):
 | `src/audio/interfaceSounds.selftest.mjs` | the control classifier (tabs, tank cards, options, toggles, back, primary, sliders, opt-outs, menus) and the delegated listeners |
 
 Browser probes use the machine-wide GPU capture lock; set
-`COT_SHOTS_LOCK_TIMEOUT_MS=10800000` on a busy machine. The lightweight
-`crew-voice.browser.mjs` fixture expects its caller to hold the capture lease
-and supply a running Vite server, like `custom-select.browser.mjs`.
+`COT_SHOTS_LOCK_TIMEOUT_MS=10800000` on a busy machine.
+`crew-voice-picker.browser.selftest.mjs` takes the capture lease and starts its
+own Vite server.
 
 | Probe | Checks |
 |---|---|
 | `node tools/audio-mix-balance.mjs` | garage audibility; gunfire at 15/150/400 m and our own gun over the idle battle bed on their loudest 100 ms (14/10/4 and 16 dB), and a near crack's peak (22 dB); each shot's anatomy from its arrival (a near cannon must crack: rise ≤ 15 ms, ≤ 50 % low body) and soft-clip hits; the radio at least 12 dB over the bed and at most 4 dB over a near cannon; sound starts and radio lines per second in live combat; the drone in flight (the listener rides it, its motors lead, the feed brightens); an AC-130 battle (the opener, the cabin, the howitzer and its case) |
 | `node tools/sfx-smoke.mjs` | every scene's assets, the calibre ladder, the distance crossfade and propagation delay, routing, jitter, volley headroom (battle held frozen) |
 | `node tools/voice-smoke.mjs` | the national crew, live language switching through the bus and the Sound tab, every pack through the radio chain |
-| `node tools/crew-voice.browser.mjs --url=http://127.0.0.1:5173` | real Settings and persistence in English/Chinese on desktop, phone and landscape; flags, keyboard focus, dismissal, reset, reload, and every pack decoded and played through Web Audio |
+| `node tools/crew-voice-picker.browser.selftest.mjs` | the crew voice picker on the real Settings, on a touch phone and a desktop: National crews first, every pack a language row with no flag, the phone sheet inside the viewport, and a real touch drag (the wheel on desktop) reaching, choosing and storing the last row and an RTL row |
 | `node tools/audio-probe.mjs` | the full event, voice and bus matrix with recordings |
 | `node tools/audio-spatial-killcam-probe.mjs` | arcade/sniper perspective, cannon and engine distance falloff, rams, the kill-cam replay |
 | `node tools/pause-probe.mjs` | the pause duck and resume |
