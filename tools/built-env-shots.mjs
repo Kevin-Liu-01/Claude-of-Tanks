@@ -219,6 +219,30 @@ function pinClouds(release = false) {
   })()`;
 }
 
+/** The world's clocks held for the frame (DECISIONS 2026-11-06, the A/A amendment: the base shot twice agrees inside the
+ *  lane's mask; the near grass's sway, the strand's swash and the water's waves run on their own time uniforms, which the
+ *  cloud pin leaves running — coastal's first A/A differed in 14 % of the frame, all of it the near grass): every material
+ *  uniform whose name ends in "Time" and holds a number reads WORLD_TIME_S, whatever the frame loop writes (page side). */
+const WORLD_TIME_S = 12.5;
+function pinWorldTime(t) {
+  const D = window.__DEBUG, props = D.renderer.properties;
+  let n = 0;
+  D.scene.traverse((o) => {
+    const mats = Array.isArray(o.material) ? o.material : o.material ? [o.material] : [];
+    for (const m of mats) {
+      const uniforms = props.get(m)?.uniforms ?? m.uniforms;
+      if (!uniforms) continue;
+      for (const [name, u] of Object.entries(uniforms)) {
+        if (!/Time$/.test(name) || !u || u.__timePinned || typeof u.value !== 'number') continue;
+        Object.defineProperty(u, 'value', { get: () => t, set: () => {}, configurable: true });
+        u.__timePinned = true;
+        n++;
+      }
+    }
+  });
+  return n;
+}
+
 /** The pinned layer held (its frames traced), or no layer. */
 function cloudsHeld() {
   const vc = window.__DEBUG.scene.userData.volumetricClouds;
@@ -322,6 +346,7 @@ async function shootMap(entry, options, frames) {
     const resolved = await page.evaluate(externalPoseScript(pose.pose));
     await sleep(900);
     const settled = await page.waitForFunction(grassSettled, { timeout: 8000, polling: 250 }).then(() => true, () => false);
+    const timesPinned = await page.evaluate(pinWorldTime, WORLD_TIME_S);
     await page.evaluate(pinClouds());
     // (48 frames: the long view of a big town under a loaded machine draws a few a second)
     const cloudsPinned = await page.waitForFunction(cloudsHeld, { timeout: 180_000, polling: 250 }).then(() => true, () => false);
@@ -332,6 +357,7 @@ async function shootMap(entry, options, frames) {
     const file = path.join(frames, `${mapId}-${pose.name}.png`);
     await page.screenshot({ path: file, type: 'png' });
     receipt.poses[pose.name] = { resolved, at: pose.at, grassSettled: settled, clouds: { timeS: CLOUD_TIME_S, frames: CLOUD_FRAMES },
+      worldTime: { timeS: WORLD_TIME_S, uniformsPinned: timesPinned },
       file: path.basename(file) };
   }
   receipt.errors = entry.errors.splice(0);
