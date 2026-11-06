@@ -21,7 +21,7 @@ import { registerHouseDamageKits } from './damage.ts';
 import { registerLatticeFrameKit } from './latticeFall.ts';
 import { setKitPlanReader } from '../../destructionKit.ts';
 import { preloadEveryKit } from '../../kitRegistryNode.ts';
-import { climateOf, variationOf, wearOf } from '../buildingStyleTable.ts';
+import { climateOf, surfaceOf, variationOf, wearOf } from '../buildingStyleTable.ts';
 import { pickLook, withPaint, type AppearanceLedger } from './appearance.ts';
 import type { ArchitectureStyle, BaseBounds, RegionalBuildContext, RegionalBuilder, RegionalGround } from './types.ts';
 
@@ -234,9 +234,10 @@ function* buildRegionalPartsSteps(
   // (and the facade craft's slot, house.ts withWear: window heads, thatch courses, gutter brackets ... on desktop builds, its
   // choices from a stream of its own forked from the same seed — the build, look, wear and weather streams draw as before)
   const legacy = kitLegacy(ctx.mapId);
-  const wear = { amount: wearOf(ctx.mapId, style.id), rng: streamFrom(wearSeed), spall: streamFrom((wearSeed ^ 0x9e3779b9) >>> 0),
+  const surface = surfaceOf(ctx.mapId, style.id);
+  const wear = { amount: wearOf(ctx.mapId, style.id), patches: surface.patches, rng: streamFrom(wearSeed), spall: streamFrom((wearSeed ^ 0x9e3779b9) >>> 0),
     facade: { tier: ctx.tier, rng: streamFrom((wearSeed ^ 0x6a09e667) >>> 0), stone: style.surfaces.stone, ground: ctx.ground,
-      groundCraft: style.groundCraft !== false && !legacy, legacy } };
+      groundCraft: style.groundCraft !== false && !legacy, legacy, grime: surface.grime } };
   // (buildings-270) the building's look from its map's variation: tints, roof age and dress, none a neighbour shares in full
   const look = pickLook(palette, variationOf(ctx.mapId, style.id), weatherRng,
     ledger && ctx.x !== undefined && ctx.z !== undefined ? { ledger, x: ctx.x, z: ctx.z } : undefined);

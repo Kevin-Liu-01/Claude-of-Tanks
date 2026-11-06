@@ -451,7 +451,7 @@ export default {
     sideSkip: 0.08, spacingPad: 6,
     buildingLat: [12, 5], maxSpread: 2.4,
     tones: {
-      plaster: (h: number, s: number, l: number) => [0.09, clamp01(s * 0.30), clamp01(l * 0.88)], // sooty render
+      plaster: (h: number, s: number, l: number) => [0.08, clamp01(s * 0.3 + 0.04), clamp01(l * 0.95 + 0.06)], // sooty render (the kit's lime render: #877e75; buildings-270)
       plaster2: (h: number, s: number, l: number) => [0.075, clamp01(s * 0.35 + 0.06), clamp01(l * 0.80)],
       plaster3: (h: number, s: number, l: number) => [0.55, clamp01(s * 0.15 + 0.03), clamp01(l * 0.78)],
       roof: (h: number, s: number, l: number) => [0.58, clamp01(s * 0.18), clamp01(l * 0.80 + 0.04)], // weathered sheet grey (r2: lifted — read near-black under the deck)

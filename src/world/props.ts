@@ -298,7 +298,7 @@ import { MATCH_OBJECTIVE_LAYOUTS } from '../sim/matchObjectiveLayouts.ts';
 import { geologyBoulderSite, restsOnTalus, TALUS_DEG } from './landformGeology.ts';
 import { createPropCrushPresentation } from './propCrushPresentation.ts';
 import { installPaneStackDepth } from './paneStack.ts';
-import { climateOf } from './maps/buildingStyleTable.ts';
+import { climateOf, surfaceOf } from './maps/buildingStyleTable.ts';
 import { AppearanceLedger } from './maps/regional/appearance.ts';
 
 /** A seated hulk's ground support: its track runs' plane (wrecks.ts seatHulk) or the footprint's grounded pose. */
@@ -4310,6 +4310,9 @@ function* propsBuildSteps(
       'straw', 'hay', 'structureWood', 'structureCanvas', 'burlap', 'structureMetal', 'steel', 'regionalPlaster', 'regionalPlaster2', 'regionalPlaster3', 'regionalStone', 'regionalRoof', 'bridgeStone']) {
       if (mats[key]) mats[key].aoMapIntensity = 0.82;
     }
+    // (buildings-270) the roof covering's relief as the place's photos show it (its row's surface.tileRelief): the same
+    // texture, its normal map's scale
+    if (mats.regionalRoof && regionalArchitecture) mats.regionalRoof.normalScale.multiplyScalar(surfaceOf(mapId, regionalArchitecture.id).tileRelief);
     // the scenery lane (wave 52, Verdant's village wall: its face in shade "a flat extruded slab with a near-black blocky
     // texture"): the field print's occlusion takes half the skylight in a joint, not four fifths, so a wall's shaded face
     // keeps its stones (the sunlit face, lit directly, hardly changes)

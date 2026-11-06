@@ -58,7 +58,7 @@ export async function readKits({ kits = null } = {}) {
   for (const style of ARCHITECTURE_STYLES) {
     if (kits && !kits.includes(style.id)) continue;
     const mapId = mapOf[style.id] ?? 'selftest';
-    const r = { map: mapId, houses: 0, storeys: [], storeyM: [], roofs: {}, pitchDeg: [], windowW: [], windowH: [], bayM: [], doors: {} };
+    const r = { map: mapId, houses: 0, storeys: [], storeyM: [], roofs: {}, pitchDeg: [], windowW: [], windowH: [], bayM: [], doors: {}, reveal: [], eave: [] };
     // the kit's dwellings (the census's dwelling class and the kit's own, ArchitectureStyle.dwellings): the houses a row
     // describes; a kit without any (a works, a station) is read whole
     const all = Object.keys(style.builders);
@@ -81,6 +81,9 @@ export async function readKits({ kits = null } = {}) {
           r.storeys.push(s.storeys.length);
           for (const st of s.storeys) r.storeyM.push(st.h);
           r.roofs[s.roof.kind] = (r.roofs[s.roof.kind] ?? 0) + 1;
+          // the openings' reveal depth (house.ts HouseSpec.reveal, its default 0.16) and the eaves' overhang of a pitched roof
+          if (s.openings.length) r.reveal.push(s.reveal ?? 0.16);
+          if (s.roof.kind !== 'flat' && !s.ownRoof) r.eave.push(s.roof.eave);
           if (s.roof.kind !== 'flat') r.pitchDeg.push(s.roof.pitchDeg);
           for (const o of s.openings) {
             if (o.kind === 'window') { r.windowW.push(o.w); r.windowH.push(o.h); } else r.doors[o.kind] = (r.doors[o.kind] ?? 0) + 1;
@@ -93,7 +96,8 @@ export async function readKits({ kits = null } = {}) {
       map: r.map, houses: r.houses,
       // the middles the table is held to (buildingStyleTable.selftest.mjs), then the spreads round them
       mid: r.houses ? { storeys: median(r.storeys), storeyM: round(median(r.storeyM)), pitchDeg: r.pitchDeg.length ? Math.round(median(r.pitchDeg)) : null,
-        bayM: r.bayM.length ? round(median(r.bayM), 0.1) : null } : null,
+        bayM: r.bayM.length ? round(median(r.bayM), 0.1) : null,
+        reveal: r.reveal.length ? round(median(r.reveal), 0.01) : null, eave: r.eave.length ? round(median(r.eave), 0.01) : null } : null,
       storeys: spread(r.storeys, 1),
       storeyM: spread(r.storeyM, 0.05),
       roofs: r.roofs,

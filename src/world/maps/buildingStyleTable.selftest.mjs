@@ -6,7 +6,8 @@
 //      inside the row's ranges and its commonest roof form among the row's forms;
 //   4. every row carries photographs (a Commons file page or another sourced page with author and license), at least two
 //      for a terrestrial place;
-//   5. the weathering and wear the row sets are shares (0–1), its colours are hex, and its variation offers choices.
+//   5. the weathering and wear the row sets are shares (0–1), its colours are hex, its variation offers choices and its
+//      surface's scales and depths are in range; the kit's houses keep the row's reveal and eave.
 // `node tools/building-style-reading.mjs --json=src/world/buildingStyleReading.baseline.json` refreshes the reading after
 // a kit's houses change.
 import assert from 'node:assert/strict';
@@ -38,6 +39,10 @@ for (const id of MAP_IDS) {
     assert.ok(options.length >= 2 && new Set(options).size === options.length, `${id}: the ${axis} axis offers distinct options`);
     if (axis === 'paint') for (const c of options) assert.match(c, /^#[0-9a-f]{6}$/, `${id}: paint ${c} is hex`);
   }
+  // the surface: grime and tile relief scales near the craft's own, patches a share, the depths metres
+  const sf = row.surface;
+  assert.ok(sf.grime >= 0 && sf.grime <= 2 && sf.tileRelief >= 0.5 && sf.tileRelief <= 2 && sf.patches >= 0 && sf.patches <= 1
+    && sf.reveal >= 0 && sf.reveal <= 0.6 && sf.eave >= 0 && sf.eave <= 1.5, `${id}: surface in range`);
   assert.ok(row.variation.roofAge[0] >= 0 && row.variation.roofAge[0] < row.variation.roofAge[1] && row.variation.roofAge[1] <= 1, `${id}: roof age spread`);
   // 3
   const r = reading[row.kit];
@@ -48,6 +53,9 @@ for (const id of MAP_IDS) {
     assert.ok(within(r.mid.storeys, row.storeys), `${id}: the kit's storeys ${r.storeys} sit in the row's ${row.storeys}`);
     assert.ok(within(r.mid.storeyM, row.storeyM, 0.25), `${id}: the kit's storey height ${r.storeyM} m sits in the row's ${row.storeyM}`);
     if (r.mid.pitchDeg !== null && row.roof.pitchDeg) assert.ok(within(r.mid.pitchDeg, row.roof.pitchDeg, 5), `${id}: the kit's pitch ${r.pitchDeg}° sits in the row's ${row.roof.pitchDeg}`);
+    // the kit's houses keep the place's depth: their openings' reveals and their eaves at least the row's
+    if (r.mid.reveal !== null) assert.ok(r.mid.reveal >= row.surface.reveal - 0.02, `${id}: the kit's reveal ${r.mid.reveal} m keeps the row's ${row.surface.reveal}`);
+    if (r.mid.eave !== null) assert.ok(r.mid.eave >= row.surface.eave - 0.02, `${id}: the kit's eave ${r.mid.eave} m keeps the row's ${row.surface.eave}`);
     if (r.mid.bayM !== null && row.windows.bayM) assert.ok(within(r.mid.bayM, row.windows.bayM, 0.4), `${id}: the kit's window bay ${r.window.bayM} m sits in the row's ${row.windows.bayM}`);
   }
   // 4
