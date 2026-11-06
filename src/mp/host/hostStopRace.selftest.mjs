@@ -85,4 +85,4 @@ function hostWithSlowWorld(loadMs) {
   pair.main.close();
 }
 assert.ok(process.memoryUsage().rss < 1e9, 'bounded');
-console.log('hostStopRace.selftest: a core stopped during its world load starts no actor and sends nothing to the queued loopback seat; an unstopped core still welcomes it');
+console.log('hostStopRace.selftest: a core stopped during its world load starts no actor and sends the queued loopback seat only its HOLD notice; an unstopped core still welcomes it');
