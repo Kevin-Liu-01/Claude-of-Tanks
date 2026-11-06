@@ -4919,9 +4919,10 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
       refreshServiceRecord();
       closeGarageVariantMenu();
       setGaragePanel('');
-      // (2026-11-02 audit F5, round 2) a surface the battle left open under its hidden HUD (the touch ammo rack, the
-      // ally picker) kept its place on the stack and took the Garage's first Escape; the return sweeps it here, while
-      // the Garage is still display:none (the stack is empty on every other show, and an empty sweep reads no layout)
+      // (2026-11-02 audit F5, round 2) a surface left open under a hidden screen keeps its place on the stack and takes
+      // the Garage's first Escape; the return sweeps it here, while the Garage is still display:none (the stack is empty
+      // on every other show, and an empty sweep reads no layout). A guard: (round 3 B11) the battle's own two, the touch
+      // ammo rack and the ally picker, close on the HUD's hidden edge (hud.ts endBattle), which the return runs first
       sweepHiddenSurfaces();
       root.style.display = 'block';
       const firstPresentation = garageScreen.phase === 'unpresented';
