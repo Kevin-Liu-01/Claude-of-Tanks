@@ -15,7 +15,7 @@ import { aircraftPose, strikeDangerS, strikeFootprint } from '../sim/airSupport.
 import type { AirSupportView } from '../sim/airSupport.ts';
 import { buildStrikeJetAirframe, type BuiltStrikeJet } from './strikeJetAirframe.ts';
 import { hideGunshipVisual, syncGunshipVisual } from './gunshipVisual.ts';
-import { clearStrikeMarks, setStrikeMarks, type StrikeMark, type StrikeMarkShape } from '../engine/strikeMarks.ts';
+import { STRIKE_MARK_MAX, clearStrikeMarks, setStrikeMarks, type StrikeMark, type StrikeMarkShape } from '../engine/strikeMarks.ts';
 import { sideColor } from '../ui/objectiveGlyphs.ts';
 import { strikeView } from './strikeViewState.ts';
 
@@ -34,7 +34,17 @@ const G = 9.81;
 export function createAirSupportWorld(root: THREE.Object3D, options: AirSupportWorldOptions) {
   const crafts = new Map<number, Craft>();
   const hooks = { setup: (m: THREE.Material) => options.setupMaterial?.(m), release: (m: THREE.Material) => options.releaseMaterial?.(m) };
-  const marks: StrikeMark[] = [];
+  // the frame's marks, from a fixed pool (no allocation a frame): `markCount` of them are live
+  const marks: StrikeMark[] = Array.from({ length: STRIKE_MARK_MAX }, () => ({ x: 0, y: 0, z: 0, shape: 'circle' as StrikeMarkShape,
+    sizeA: 0, sizeB: 0, heading: 0, r: 0, g: 0, b: 0, urgency: 0 }));
+  let markCount = 0;
+  function pushMark(x: number, y: number, z: number, shape: StrikeMarkShape, heading: number, sizeA: number, sizeB: number,
+    colour: THREE.Color, urgency: number): void {
+    if (markCount >= marks.length) return;
+    const m = marks[markCount++]!;
+    m.x = x; m.y = y; m.z = z; m.shape = shape; m.heading = heading; m.sizeA = sizeA; m.sizeB = sizeB;
+    m.r = colour.r; m.g = colour.g; m.b = colour.b; m.urgency = urgency;
+  }
   const pose = { x: 0, y: 0, z: 0, yaw: 0, bank: 0 };
   const own = new THREE.Color(), enemy = new THREE.Color(), aimColour = new THREE.Color();
   // the presentation's clock: the record's mode time, advanced between snapshots by the frame's own time
@@ -86,10 +96,9 @@ export function createAirSupportWorld(root: THREE.Object3D, options: AirSupportW
     const locked = lastTimeS < strikeView.lockedUntilS;
     // the reticle's colour: the side's own when it can be called, the contested amber when it cannot
     aimColour.set(sideColor(strikeView.ready || locked ? 'own' : 'contested'));
-    marks.push({ x: strikeView.x, y: strikeView.y, z: strikeView.z, shape, heading: strikeView.heading,
-      sizeA: footprint.shape === 'circle' ? footprint.radiusM : footprint.halfLengthM,
-      sizeB: footprint.shape === 'lane' ? footprint.halfWidthM : 0,
-      r: aimColour.r, g: aimColour.g, b: aimColour.b, urgency: locked ? 1 : 0.2 });
+    pushMark(strikeView.x, strikeView.y, strikeView.z, shape, strikeView.heading,
+      footprint.shape === 'circle' ? footprint.radiusM : footprint.halfLengthM, footprint.shape === 'lane' ? footprint.halfWidthM : 0,
+      aimColour, locked ? 1 : 0.2);
   }
 
   function update(air: AirSupportView | null | undefined, perspective: 'alpha' | 'bravo', timeS: number): void {
@@ -103,7 +112,7 @@ export function createAirSupportWorld(root: THREE.Object3D, options: AirSupportW
     lastTimeS = timeS;
     const t = baseS + sinceS;
     own.set(sideColor('own')); enemy.set(sideColor('enemy'));
-    marks.length = 0;
+    markCount = 0;
     for (const craft of crafts.values()) craft.seen = false;
     for (const strike of air.strikes) {
       const mine = strike.team === perspective;
@@ -113,10 +122,9 @@ export function createAirSupportWorld(root: THREE.Object3D, options: AirSupportW
         const colour = mine ? own : enemy;
         const shape: StrikeMarkShape = footprint.shape === 'lane' ? 'lane' : strike.kind === 'gunship' ? 'orbit' : 'circle';
         const warning = R[strike.kind].warningS;
-        marks.push({ x: strike.x, y: strike.y, z: strike.z, shape, heading: strike.heading,
-          sizeA: footprint.shape === 'circle' ? footprint.radiusM : footprint.halfLengthM,
-          sizeB: footprint.shape === 'lane' ? footprint.halfWidthM : 0,
-          r: colour.r, g: colour.g, b: colour.b, urgency: Math.max(0, Math.min(1, 1 - (strike.landsS - t) / warning)) });
+        pushMark(strike.x, strike.y, strike.z, shape, strike.heading,
+          footprint.shape === 'circle' ? footprint.radiusM : footprint.halfLengthM, footprint.shape === 'lane' ? footprint.halfWidthM : 0,
+          colour, Math.max(0, Math.min(1, 1 - (strike.landsS - t) / warning)));
       }
       if (!airStrikeFlies(strike.kind) || t < strike.calledS) continue;
       const flying = strike.downedS == null ? t < strike.endS : fallPose(strike, t);
@@ -139,7 +147,7 @@ export function createAirSupportWorld(root: THREE.Object3D, options: AirSupportW
     }
     for (const [id, craft] of crafts) if (!craft.seen) release(id, craft);
     aimMark();
-    if (marks.length) setStrikeMarks(marks, t); else clearStrikeMarks();
+    if (markCount) setStrikeMarks(marks, t, markCount); else clearStrikeMarks();
   }
 
   return {

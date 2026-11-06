@@ -1153,6 +1153,7 @@ export function createAuthoritativeMatch({
           freshestContact: () => modeController.freshestSighting(entity),
           enemyDeployment: () => modeController.enemyDeployment(entity),
           airThreatM: () => modeController.airThreatM(entity),
+          airShot: (roundMps, maxPitchRad) => modeController.airShot(entity, roundMps, maxPitchRad),
         },
         ...(navigation ? {
           planRoute: (start: { x: number; z: number }, goal: { x: number; z: number; y?: number },

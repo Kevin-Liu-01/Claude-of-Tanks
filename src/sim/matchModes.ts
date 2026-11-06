@@ -415,6 +415,9 @@ export interface MatchModeController<
   enemyDeployment(entity: Entity): { x: number; z: number } | null;
   /** Air Support: the distance from `entity` to the nearest enemy aircraft in the air (Infinity outside the mode). */
   airThreatM(entity: Entity): number;
+  /** Air Support: where a round at `roundMps` from `entity` meets the nearest enemy aircraft within AIR_SHOT_RANGE_M that
+   *  the gun can elevate to (`maxPitchRad`), led twice along the aircraft's public flight; null when none. */
+  airShot(entity: Entity, roundMps: number, maxPitchRad: number): { x: number; y: number; z: number } | null;
   serialize(viewerId?: string | null): MatchModePresentationState;
   /** Every vehicle back on its spawn at full health at once (the proving ground's quick reset). */
   reviveAll(): void;
@@ -2435,6 +2438,8 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
   const sightingOut = { x: 0, z: 0 }, deploymentOut = { x: 0, z: 0 };
   // Air Support: the reach a bot looks for enemy aircraft in (its roof gun's counter-air reach and a margin)
   const AIR_THREAT_SCAN_M = 600, airThreatPose = { x: 0, y: 0, z: 0, yaw: 0, bank: 0 };
+  // and the reach a gun with no ground target takes an aircraft at (a tank gun's practical anti-aircraft range)
+  const AIR_SHOT_RANGE_M = 900, airShotPose = { x: 0, y: 0, z: 0, yaw: 0, bank: 0 }, airShotOut = { x: 0, y: 0, z: 0 };
   /** A migrated host takes the wave modes up where the old one left them (the counters, the line, who rests). */
   function restoreWaves(saved: WaveCheckpoint): void {
     wave = saved.wave;
@@ -2570,6 +2575,21 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
       if (!strike) return Infinity;
       air.aircraftPoseOf(strike, placementTimeS, airThreatPose);
       return detMath.hypot(airThreatPose.x - pos.x, airThreatPose.y - pos.y, airThreatPose.z - pos.z);
+    },
+    airShot(entity, roundMps, maxPitchRad) {
+      if (!air) return null;
+      const pos = entity.state.pos;
+      const strike = air.aircraftWithin(teamOf(entity), pos.x, pos.y, pos.z, AIR_SHOT_RANGE_M, placementTimeS);
+      if (!strike) return null;
+      let leadS = 0;
+      for (let i = 0; i < 2; i++) {
+        air.aircraftPoseOf(strike, placementTimeS + leadS, airShotPose);
+        leadS = detMath.hypot(airShotPose.x - pos.x, airShotPose.y - pos.y, airShotPose.z - pos.z) / Math.max(1, roundMps);
+      }
+      const rise = airShotPose.y - pos.y - 2.5, run = detMath.hypot(airShotPose.x - pos.x, airShotPose.z - pos.z);
+      if (detMath.atan2(rise, Math.max(1, run)) > maxPitchRad - 0.02) return null;
+      airShotOut.x = airShotPose.x; airShotOut.y = airShotPose.y; airShotOut.z = airShotPose.z;
+      return airShotOut;
     },
     enemyDeployment(entity) {
       const at = centers[otherTeam(teamOf(entity))];

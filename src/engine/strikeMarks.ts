@@ -48,9 +48,10 @@ const UNIFORMS = {
 };
 export function createStrikeMarkUniforms(): typeof UNIFORMS { return UNIFORMS; }
 
-/** Publish this frame's marks (at most STRIKE_MARK_MAX; the rest wait) and the marks' clock (s, for the dashes). */
-export function setStrikeMarks(marks: readonly StrikeMark[], timeS: number): void {
-  const n = Math.min(STRIKE_MARK_MAX, marks.length);
+/** Publish this frame's first `count` marks (at most STRIKE_MARK_MAX; the rest wait) and the marks' clock (s, for the
+ *  dashes). The caller keeps its marks in a pool of its own (no allocation a frame). */
+export function setStrikeMarks(marks: readonly StrikeMark[], timeS: number, count = marks.length): void {
+  const n = Math.min(STRIKE_MARK_MAX, count, marks.length);
   UNIFORMS.uStrikeN.value = n;
   UNIFORMS.uStrikeT.value = timeS % 600;
   for (let i = 0; i < n; i++) {

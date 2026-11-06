@@ -140,7 +140,16 @@ function strikeEndS(rules: AirSupportRules, kind: AirStrikeKind, landsS: number)
 export type StrikeFootprint =
   | { readonly shape: 'circle'; readonly radiusM: number }
   | { readonly shape: 'lane'; readonly halfLengthM: number; readonly halfWidthM: number };
+const footprints = new WeakMap<AirSupportRules, Map<AirStrikeKind, StrikeFootprint>>();
+/** (made once per rules and kind: the presentation reads it every frame) */
 export function strikeFootprint(rules: AirSupportRules, kind: AirStrikeKind): StrikeFootprint {
+  let byKind = footprints.get(rules);
+  if (!byKind) { byKind = new Map(); footprints.set(rules, byKind); }
+  let footprint = byKind.get(kind);
+  if (!footprint) { footprint = Object.freeze(makeFootprint(rules, kind)); byKind.set(kind, footprint); }
+  return footprint;
+}
+function makeFootprint(rules: AirSupportRules, kind: AirStrikeKind): StrikeFootprint {
   if (kind === 'recon') return { shape: 'lane', halfLengthM: rules.recon.trackM * 0.5, halfWidthM: rules.recon.revealM };
   if (kind === 'strafe') return { shape: 'lane', halfLengthM: rules.strafe.lengthM * 0.5, halfWidthM: rules.strafe.halfWidthM };
   return { shape: 'circle', radiusM: kind === 'gunship' ? rules.gunship.engageM : rules[kind].radiusM };

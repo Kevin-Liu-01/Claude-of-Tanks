@@ -1177,6 +1177,7 @@ function createBattleBot(
         freshestContact: () => context.game.matchModeController?.freshestSighting(entity) ?? null,
         enemyDeployment: () => context.game.matchModeController?.enemyDeployment(entity) ?? null,
         airThreatM: () => context.game.matchModeController?.airThreatM(entity) ?? Infinity,
+        airShot: (roundMps, maxPitchRad) => context.game.matchModeController?.airShot(entity, roundMps, maxPitchRad) ?? null,
       },
     },
   }) as SoloAiController;

@@ -228,6 +228,47 @@ destruction (`sim/aerialCombat.ts` `killSourceOf`); a drone's kill reads as the 
 
 Four allied ground vehicles accompany the gunship by default. They have 90% of their normal hull strength, slower reloads and reduced speed, and use normal navigation to reach the green **E** extraction area. Enemies pursue the convoy. Save at least half; killing enemies alone does not complete the mission. The objective shows allies still on the field, the number extracted, the rescue requirement and route progress. Casualties do not respawn. An eight-minute timeout or losing too many escorts fails the operation. Multiplayer pilots all provide air support, with separate friendly bots reserved for the escort. Extraction and casualty state survive host migration.
 
+## Air Support (air-support-270, 2026-11-05)
+
+The owner: "a new game mode where you can call in airstrikes and jet strikes and so on and we already have that model of
+the ac 130", then "if you ativatee the thing it goes in with a transition to an airstrike view where you can enter a
+special binocular view and theres a giant aiming reticle on the ground respecting ground geometry and u cann call in 3
+differennt kinnds of airstrikes with their own special effects annd sounnt", then "keep and add artillery annd recon with
+the 3 airstrikes". `air_support` plays Zone Control's three sectors with 8 s respawns and a twelve-minute clock, first to
+2000 (`RULESET_SCORE_TARGETS`; at 750 the first seeded runs ended inside three minutes, before anyone had earned a call).
+Every number below is `AIR_SUPPORT_RULES` in `src/sim/matchRuleset.ts`.
+
+- **Points** (per crew, capped at 1000, kept across respawns): 1 per 10 hp of damage the crew's own guns deal to an
+  enemy, 60 a kill (30 for a call-in's), 50 to each crew inside a sector its side takes, 10 for the first sight of an
+  enemy (once per enemy per 30 s), 80 for an aircraft brought down, and 1 every 4 s.
+- **Call-ins** (cost, the caller's cooldown, the warning): recon pass 120 / 40 s / 3 s (a jet along a 600 m track
+  through the mark spots every enemy within 160 m for 12 s, through `spotting.isSpotted`); artillery 300 / 60 s / 6 s
+  (ten M795 155 mm rounds over 5 s inside 35 m, 18 m blast); strafing run 400 / 75 s / 5 s (an A-10-class jet walks
+  28 GAU-8 30 mm API rounds down a 140 m lane along the line from the caller's hull to the mark); precision bomb
+  450 / 90 s / 7 s (a GBU-12 within 2 m of the laser spot, 22 m blast); AC-130 orbit 800 / 150 s / 8 s (the gunship's
+  own airframe, 30 mm and 152 mm, AI-flown for 30 s on a 120 m ring 180 m up, engaging only enemies its side has spotted
+  within 140 m). A side has at most two call-ins under way and one gunship; bots never take the last slot.
+- **The warning.** A call's record is public the moment it is made: both sides see its footprint on the ground and the
+  minimap with its countdown, a crew inside it gets the INCOMING plate (and the sound), and no round of it arrives before
+  the warning has run (`sim/airSupport.selftest.mjs` checks every arrival; the balance probe counts any early one).
+- **Aircraft** are not entities: each flies a path derived from its record alone (`aircraftPose`), the one the
+  presentation draws and the authority tests rounds against. A round of the other side through its sphere (jet 8 m,
+  gunship 16 m) costs it the round's damage (jets 600 hp, recon 400, gunship 1400); roof stations engage aircraft with
+  their counter-drone shares x4 at 1.5x their reach, laid early on an inbound aircraft and led by their rounds' flight;
+  a bot's main gun with no ground target takes an aircraft it can elevate to within 900 m. Brought down, the strike ends.
+- **Bots** call the dearest call-in they can afford that covers its minimum of spotted enemies (artillery and strafe 2,
+  bomb 1, gunship 3) with no friendly within 45 m of the footprint, and a recon pass toward the nearest sector they do not
+  hold when nobody is spotted (one a side every 30 s). A bot inside a footprint takes the `evade` mission out of it; the
+  gunship's ring is answered with guns.
+- **The strike view**: X (or the binoculars on a phone) raises binoculars over the scope's camera; 1-5 pick the call-in,
+  the trigger calls it, X / Esc / the right button lower them. The reticle and every footprint are painted on whatever
+  surface is there by a term of the aerial post pass (`engine/strikeMarks.ts`: at most eight marks, a fixed uniform block,
+  nothing when none is up).
+- **Wire**: no layout change. Strafe, bomb and gunship use the u16's three spare action bits; artillery and recon reuse the
+  supply-drop bits, which only the AC-130's escort reads (`airSupport.selftest` pins that no mode reads both). The
+  ledger and the strikes ride the per-viewer mode state and the host-migration checkpoint; strike rounds and their
+  impacts are shown to every viewer (they leave the aircraft, not the caller's hull).
+
 ## Asymmetric teams and progression
 
 **Juggernaut** offers a role setting. As boss, you face the hunting team; as a

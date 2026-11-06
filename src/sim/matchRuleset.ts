@@ -1620,7 +1620,10 @@ export function rulesetObjectiveAxisM(ruleset: Pick<MatchRuleset, 'flagPitch' | 
 
 /** Score targets the modes play to (kept here so rule cards and controller agree). */
 export const RULESET_SCORE_TARGETS: Readonly<Record<string, number>> = Object.freeze({
-  capture_the_flag: 3, zone_control: 750, turbo_ball: 5, mars: 750, drone: 20, air_support: 750,
+  capture_the_flag: 3, zone_control: 750, turbo_ball: 5, mars: 750, drone: 20,
+  // Air Support plays to 2000 (air-support-270's first seeded run: at 750 the side that took the sectors first won in under
+  // three minutes, before a crew had earned a call-in); about six to eight minutes at the usual two-to-one sector split
+  air_support: 2000,
 });
 /** A flag carrier drives at this share of the mode speed (Capture the Flag). */
 export const FLAG_CARRIER_SPEED_SCALE = 0.85;
