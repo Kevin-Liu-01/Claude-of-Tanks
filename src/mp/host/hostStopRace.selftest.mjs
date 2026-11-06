@@ -6,8 +6,9 @@
 // harness, any in-process host) the actor never stopped, and a receipt that hit the race grew to 46 GB before it was
 // killed. This receipt drives the core through its port exactly as the browser host does: boot, the loopback link and its
 // HELLO while the world loads, stop, the load finishing — and asserts no actor, no frames, and a bounded process.
-// (Round 3 B1/X6, 2026-11-05: a HELLO that waits for the boot is told so at once, wire HOLD; that notice, sent before the
-// stop, is the one frame the seat may receive. The counts below read the frames by type.)
+// (Round 3 B1/X6, 2026-11-05: a HELLO that waits for the boot is told so at once, wire HOLD. Round 4 F0, 2026-11-06: the
+// host runtime tells it, on the main thread, matchHost.ts bootHoldNotice; this core sends a queued seat nothing. The counts
+// below read the frames by type.)
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { createHostPortPair, HOST_LOOPBACK_PEER } from './hostProtocol.ts';
@@ -61,7 +62,7 @@ function hostWithSlowWorld(loadMs) {
   // assert.ok, not assert.equal(core.actor, null): a failure must not carry the actor (a whole match) into the printed error
   assert.ok(core.actor === null, 'no actor after the stop (before: one built, the loopback seat welcomed, the loop running)');
   assert.equal(core.booted, false);
-  assert.deepEqual(sent, [MESSAGE_TYPE.HOLD], 'no frame for the queued loopback seat but its HOLD notice at the HELLO, before the stop');
+  assert.deepEqual(sent, [], 'no frame for the queued loopback seat (its boot\'s HOLD notice is the host runtime\'s)');
   assert.equal(posted.includes('ready'), false, 'the core never reports ready');
   assert.equal(posted.includes('report'), false, 'nor a match report');
   core.dispose();
@@ -85,4 +86,4 @@ function hostWithSlowWorld(loadMs) {
   pair.main.close();
 }
 assert.ok(process.memoryUsage().rss < 1e9, 'bounded');
-console.log('hostStopRace.selftest: a core stopped during its world load starts no actor and sends the queued loopback seat only its HOLD notice; an unstopped core still welcomes it');
+console.log('hostStopRace.selftest: a core stopped during its world load starts no actor and sends the queued loopback seat nothing; an unstopped core still welcomes it');

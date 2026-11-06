@@ -32,10 +32,11 @@ export const ELECTED_HOST_BOOT_MS = 30_000;
  * the host answers no HELLO until its boot is done and its hold is over. A fixed RESUME_HOLD_MS held only while the boot
  * fit in the stall clock (5 s + 3 s against a 3.4-4.3 s unprepared boot plus up to 3 s of hold): a slower device's boot
  * pushed every held seat into a fresh link during the hold. Round 3 (B1/X6): a host that holds a HELLO says so at once
- * (wire HOLD: matchHostCore.ts noticeHeld, through the boot and again in the hold, with what is left), and the seat's
- * allowance runs to what it announced (MatchClient receiveHold), on any link (a kept host's, at the same generation, too);
- * this bound only covers the time before that word, and caps it. A host that died meanwhile is the room's to replace (its
- * socket lease, its reports, the boot timeout's decline): the seat follows the next election on a fresh link and clock.
+ * (wire HOLD: its runtime through the boot, matchHost.ts bootHoldNotice, and its core again in the hold, matchHostCore.ts
+ * noticeHeld, with what is left), and the seat's allowance runs to what it announced (MatchClient receiveHold), on any
+ * link (a kept host's, at the same generation, too); this bound only covers the time before that word, and caps it. A
+ * host that died meanwhile is the room's to replace (its socket lease, its reports, the boot timeout's decline): the seat
+ * follows the next election on a fresh link and clock.
  */
 export const MIGRATION_WELCOME_ALLOWANCE_MS = ELECTED_HOST_BOOT_MS + RESUME_HOLD_MS;
 

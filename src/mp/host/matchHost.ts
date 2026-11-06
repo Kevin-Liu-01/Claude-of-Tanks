@@ -95,7 +95,8 @@ export interface MatchHost {
   readonly acceptor: RtcHostAcceptor | null;
   /**
    * Boot the actor with `config`; resolves once it runs (rejects when the boot failed or timed out). The port and the
-   * acceptor exist from construction, so peers offering before the boot is done are answered and their frames wait.
+   * acceptor exist from construction, so peers offering before the boot is done are answered, told their HELLOs wait for
+   * the boot (wire HOLD), and their frames wait.
    */
   start(config: HostBootConfig): Promise<void>;
   /** One display frame: deliver the loopback frames, sample the uplink, report pressure. */
@@ -142,7 +143,8 @@ export function createMatchHost({
   let coreStats: HostCoreStats | null = null;
   let reports = 0;
   let peerSeq = HOST_LOOPBACK_PEER;
-  const bridges = new Map<number, { link: RtcClientLink; playerId: string; lastPressure: number }>();
+  // heard: the link's first frame came (the boot's HOLD notice answers that one, bootHoldNotice)
+  const bridges = new Map<number, { link: RtcClientLink; playerId: string; lastPressure: number; heard: boolean }>();
   const queuedLoopback: Uint8Array<ArrayBuffer>[] = [];
   let bootTimer: unknown = null;
   /** When start() began the boot (clock()); null before it. */
@@ -164,6 +166,24 @@ export function createMatchHost({
 
   const post = (message: HostToWorkerMessage, transfer?: ArrayBuffer[]): void => { port?.post(message, transfer); };
 
+  /**
+   * The boot's HOLD notice (wire HOLD; round 3 B1/X6, round 4 F0): what a seat hears when its first frame, its HELLO,
+   * reaches this host before the actor runs (`ready`): its HELLO waits at most what is left of the boot's bound, then a
+   * resume's hold (bootHoldNoticeMs; a boot not yet asked for may hold). This runtime is its one teller, to every link
+   * alike, its own loopback seat and each bridged peer: it owns the bound (its timer fails the boot) and it runs on the
+   * main thread, whatever the Worker is doing. The core tells only its resume hold, once its actor runs (matchHostCore.ts
+   * noticeHeld). Before, a peer's boot notice was the core's: this thread only posted the peer's frames to the Worker, so
+   * a Worker still evaluating its chunk (a slow device, a cold cache) told the seat nothing, and on a kept host's link,
+   * which allows nothing past the stall clock before a word (MatchClient: the room's same generation), the seat asked for
+   * a fresh link 5 s into the boot.
+   */
+  const bootHoldNotice = (): Uint8Array => {
+    const bootLeftMs = bootStartedAtMs === null ? bootTimeoutMs : bootTimeoutMs - (clock() - bootStartedAtMs);
+    return encodeMessage({ type: MESSAGE_TYPE.HOLD, holdMs: bootHoldNoticeMs(bootLeftMs, RESUME_HOLD_MS, config) });
+  };
+  /** A seat's first frame now waits for the boot: the host is not live yet, nor gone (its links are dropped then). */
+  const holdsForBoot = (): boolean => !ready && (state === 'idle' || state === 'booting');
+
   // ------------------------------------------------------------ the host's own seat over the loopback pair
 
   const loopback = createLoopbackPair({ clock, connectDelayMs: 0 });
@@ -171,13 +191,9 @@ export function createMatchHost({
   loopback.server.open();
   loopback.server.onFrame((bytes) => {
     if (!ready) {
-      // (round 3 B1/X6) the host's own seat waits for the boot as a peer's does (matchHostCore.ts noticeHeld): its first
-      // word hears how long at most, the boot's bound left and a resume's hold after it (bootHoldNoticeMs, the core's
-      // formula and bound); the core tells the hold's own
-      if (!queuedLoopback.length) {
-        const bootLeftMs = bootStartedAtMs === null ? bootTimeoutMs : bootTimeoutMs - (clock() - bootStartedAtMs);
-        loopback.server.send(encodeMessage({ type: MESSAGE_TYPE.HOLD, holdMs: bootHoldNoticeMs(bootLeftMs, RESUME_HOLD_MS, config) }));
-      }
+      // the host's own seat waits here for the boot, its frames queued until the core runs the actor; its first word hears
+      // how long at most (bootHoldNotice), as a peer's does
+      if (!queuedLoopback.length && holdsForBoot()) loopback.server.send(bootHoldNotice());
       queuedLoopback.push(bytes.slice());
       return;
     }
@@ -196,9 +212,18 @@ export function createMatchHost({
 
   const bridge = (link: RtcClientLink, peerId: string): void => {
     const peer = ++peerSeq;
-    bridges.set(peer, { link, playerId: peerId, lastPressure: 0 });
+    const entry = { link, playerId: peerId, lastPressure: 0, heard: false };
+    bridges.set(peer, entry);
     post({ type: 'link_open', peer, label: link.label, playerId: peerId });
     link.onMessage((bytes) => {
+      // a peer's first word before the actor runs: told here, at once, that the boot holds it (bootHoldNotice), then passed
+      // on to the core, which keeps it until its actor runs
+      if (!entry.heard) {
+        entry.heard = true;
+        if (holdsForBoot()) {
+          try { link.send(bootHoldNotice()); } catch { /* the channel closed under the send; its close follows */ }
+        }
+      }
       const copy = bytes.slice();
       post({ type: 'link_frame', peer, bytes: copy.buffer }, [copy.buffer]);
     });
@@ -301,7 +326,8 @@ export function createMatchHost({
   };
 
   // The thread and the acceptor come up at once: a peer that offers before the boot is done (the room's election reaches
-  // every seat together) is answered now, its link bridged, its frames held by the core until the actor runs.
+  // every seat together) is answered now, its link bridged, its HELLO told the boot holds it (bootHoldNotice, from this
+  // thread, whatever the Worker is doing), its frames held by the core until the actor runs.
   let spawnError: Error | null = null;
   try {
     port = createPort();
@@ -329,11 +355,10 @@ export function createMatchHost({
         if (current === 'live') { off(); resolve(); }
         else if (current === 'failed' || current === 'stopped') { off(); reject(new Error(detail || current)); }
       });
+      // the bound the seats are told their HELLOs wait for (bootHoldNotice): past it the boot fails, the links are dropped
+      // (teardown) and the room elects another seat
       bootTimer = setTimer(() => { bootTimer = null; if (!ready) fail('host boot timed out'); }, bootTimeoutMs);
-      // the core tells the seats its boot holds this bound (bootHoldNoticeMs), counted from its own start of the boot: the
-      // message's transit later than this timer's, so a peer is told at most that much more than the runtime allows (its
-      // link is dropped when the timer fails the boot, teardown)
-      post({ type: 'boot', config: next, bootTimeoutMs });
+      post({ type: 'boot', config: next });
     });
     return startPromise;
   }

@@ -28,13 +28,13 @@ import {
   applyResumeState, captureEntityExtras, chunkMigrationBlob, deriveMigrationKey, encodeBootConfig, encodeMigrationKeyframe, resumePhaseOf, sealMigrationBlob,
 } from './migrationState.ts';
 import type { MigrationKeyframe } from './migrationState.ts';
-import { MIGRATION_EVENT_KIND, bootHoldNoticeMs } from './hostProtocol.ts';
+import { MIGRATION_EVENT_KIND } from './hostProtocol.ts';
 import type { HostBootConfig, HostCoreStats, HostMatchReport, HostPort, HostPrepareConfig, HostToWorkerMessage, WorkerToHostMessage } from './hostProtocol.ts';
 import { loadCollisionWorld, loadWorldKernels } from './worldCollision.ts';
 import { simKernelsFailureReason, type SimKernelsStatus } from '../../world/simKernelsStatus.ts';
 import { terrainVariantFor } from '../../sim/matchRuleset.ts';
 import { prepareAuthorityGround } from '../../sim/authoritativeMatch.ts';
-import { ELECTED_HOST_BOOT_MS, RESUME_HOLD_MS } from '../match/recovery.ts';
+import { RESUME_HOLD_MS } from '../match/recovery.ts';
 
 type TimerHandle = unknown;
 
@@ -174,17 +174,13 @@ export function createMatchHostCore({
   let stopped = false;
   let disposed = false;
   let bootGeneration = 0;
-  /** When the boot began (now()); null before it. */
-  let bootStartedMs: number | null = null;
-  /** The host runtime's boot bound (the boot message's bootTimeoutMs; ELECTED_HOST_BOOT_MS, its default, before one). */
-  let bootBoundMs = ELECTED_HOST_BOOT_MS;
   const links = new Map<number, PortLink>();
   // playerId: the room-authenticated peer that opened the link; a HELLO may only claim that peer's own seat
   const gates = new Map<number, { state: 'hello' | 'verifying' | 'attached'; queue: Uint8Array[]; timer: TimerHandle | null; playerId: string }>();
   // Links opened before the actor exists (peers offer the moment the room elects a host, before its boot is done):
-  // their opens and frames wait here and replay once the actor runs.
-  // `noticed`: the seat was told its HELLO waits for the boot (noticeHeld)
-  const pendingOpens: Array<{ peer: number; label: string; playerId: string; frames: Uint8Array[]; noticed: boolean }> = [];
+  // their opens and frames wait here and replay once the actor runs. The host runtime told each seat its HELLO waits for
+  // the boot (matchHost.ts bootHoldNotice, on the main thread, round 4 F0).
+  const pendingOpens: Array<{ peer: number; label: string; playerId: string; frames: Uint8Array[] }> = [];
   // seats the room removed before the actor ran: revoked as soon as it boots
   const pendingRevokes = new Set<string>();
   let housekeeping: TimerHandle | null = null;
@@ -260,7 +256,7 @@ export function createMatchHostCore({
   function openLink(peer: number, label: string, playerId: string): void {
     // a stopped core (its match over, or stopped by its owner) admits no link: the main thread closes the channel
     if (stopped || disposed) { post({ type: 'link_close', peer, reason: CLOSE_REASON.MATCH_ENDED, detail: 'host stopped' }); return; }
-    if (!actor || !config) { pendingOpens.push({ peer, label, playerId, frames: [], noticed: false }); return; }
+    if (!actor || !config) { pendingOpens.push({ peer, label, playerId, frames: [] }); return; }
     const previous = links.get(peer);
     if (previous) previous.closedByMain();
     const link = createPortLink(peer, label);
@@ -278,8 +274,6 @@ export function createMatchHostCore({
     if (!actor) {
       const pending = pendingOpens.find((entry) => entry.peer === peer);
       if (pending && pending.frames.length < MAX_GATED_FRAMES) pending.frames.push(bytes);
-      // the seat's HELLO waits for the boot: it hears so at once, with the boot's bound and a resume's hold after it
-      if (pending && !pending.noticed) { pending.noticed = true; noticeHeld(peer, bootHoldLeftMs()); }
       return;
     }
     const link = links.get(peer);
@@ -335,25 +329,17 @@ export function createMatchHostCore({
   }
 
   /**
-   * Tell a seat its HELLO is held, and for how long at most (round 3 B1/X6; wire HOLD, before its WELCOME): through the
-   * boot (no actor yet: bootHoldLeftMs) or the resume hold (what is left of RESUME_HOLD_MS). The seat's stall clock waits
-   * that long (MatchClient receiveHold). Before, nothing reached a held seat until its WELCOME: its clock allowed a fixed
-   * bound (the boot's whole bound and the hold) on a link to a newly elected host alone, and nothing at all on a kept
-   * host's (matchSession.ts bootKeptHost, at the room's same generation), which holds its seats the same way.
+   * Tell a seat its HELLO is held, and for how long at most (round 3 B1/X6; wire HOLD, before its WELCOME): the resume
+   * hold, what is left of RESUME_HOLD_MS. The seat's stall clock waits that long (MatchClient receiveHold). Before, nothing
+   * reached a held seat until its WELCOME: its clock allowed a fixed bound (the boot's whole bound and the hold) on a link
+   * to a newly elected host alone, and nothing at all on a kept host's (matchSession.ts bootKeptHost, at the room's same
+   * generation), which holds its seats the same way. Through the boot, before this core's actor runs, the host runtime
+   * tells it, on the main thread (matchHost.ts bootHoldNotice; round 4 F0: this core told it once it ran, which a Worker
+   * still evaluating its chunk put off past the seat's stall clock).
    */
   function noticeHeld(peer: number, holdMs: number): void {
     const copy = encodeMessage({ type: MESSAGE_TYPE.HOLD, holdMs: Math.max(0, Math.min(0xffffffff, Math.ceil(holdMs))) }).slice();
     post({ type: 'link_send', peer, bytes: copy.buffer }, [copy.buffer]);
-  }
-
-  /**
-   * The most a HELLO that arrives before the actor exists may wait: what is left of the boot's bound (the host runtime's
-   * boot timeout, which the boot message carries: past it the runtime fails itself and the room elects another), then the
-   * resume hold of a boot that awaits seats (a boot not yet asked for may be one): bootHoldNoticeMs, the runtime's own
-   * formula for its loopback seat (review r1: two formulas, two bounds and two holds before).
-   */
-  function bootHoldLeftMs(): number {
-    return bootHoldNoticeMs(bootStartedMs === null ? bootBoundMs : bootBoundMs - (now() - bootStartedMs), RESUME_HOLD_MS, config);
   }
 
   /** The awaited seats back in the hold: a held link per seat, still open (a closed link leaves `held`). */
@@ -528,7 +514,6 @@ export function createMatchHostCore({
     const generation = ++bootGeneration;
     config = next;
     const bootStarted = now();
-    bootStartedMs = bootStarted;
     // the standby's world when it is this battlefield's (it may still be loading: the boot waits for it rather than
     // starting over); a preparation that failed, or one for another battlefield, leaves the boot to build its own
     const ready = prepared && prepared.key === worldKey(next) ? prepared.world : null;
@@ -639,7 +624,6 @@ export function createMatchHostCore({
     if (disposed) return;
     switch (message.type) {
       case 'boot':
-        if (typeof message.bootTimeoutMs === 'number' && message.bootTimeoutMs >= 0 && Number.isFinite(message.bootTimeoutMs)) bootBoundMs = message.bootTimeoutMs;
         void boot(message.config).catch((error: unknown) => {
           post({ type: 'boot_failed', error: error instanceof Error ? error.message : String(error) });
         });
