@@ -937,8 +937,10 @@ export const LORRAIN_STYLE: ArchitectureStyle = Object.freeze<ArchitectureStyle>
     render: { kind: 'limeRender', seed: 0x3e55 },
     tones: {
       // the crépi: ochre (the map's own tone wins), a rose-beige and a grey lime
-      plaster2: (_h, s, l) => [0.06, Math.min(1, s * 0.9 + 0.08), Math.min(1, l * 1.08 + 0.06)],
-      plaster3: (_h, s, l) => [0.1, Math.min(1, s * 0.3), Math.min(1, l * 1.1 + 0.05)],
+      // (buildings-270, on the lime render: the grey lime read lilac under the sky and the rose went muddy) a weathered
+      // ochre-rose (#b79375 against #a8794e-#b09a72) and a warm grey lime (#c1b8ab against #d8cfc0)
+      plaster2: (_h, s, l) => [0.075, Math.min(1, s * 0.5 + 0.26), Math.min(1, l + 0.13)],
+      plaster3: (_h, s, l) => [0.1, Math.min(1, s * 0.3 + 0.12), Math.min(1, l * 0.9 + 0.3)],
     },
   },
   builders: LORRAIN_BUILDERS,
