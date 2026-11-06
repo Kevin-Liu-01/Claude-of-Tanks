@@ -3,9 +3,12 @@
 // not see both hulls) had never seen a ram: the soak's own battles produced none on any map run in rounds 2 and 3
 // (verdant, steppe twice, urban, skybridge, railyard, titan_gorge, cliffbridge, foundry, ruinspires). Here the same
 // predicate (soakRams.test-support.mjs, which the soak now calls) judges a staged battle on the authority's own step:
-// one seat drives into a parked enemy, another into a parked teammate, and a third party far off sees neither. The gate
-// counts the teammate's ram (so the soak's gate can fail), the viewer check judges the rams a near viewer reads, and the
-// far viewer reads none. A hand-fed leak shows the check catches one.
+// one seat drives into a parked enemy, another into a parked teammate, a bravo watcher sits near both, and a bravo seat
+// far off sees its own teammates (the rammed enemy among them) but neither alpha driver. The gate counts the teammate's
+// ram (so the soak's gate can fail), the viewer check judges the rams a near viewer reads, and the far seat reads none:
+// for rammer>enemy it is the sees-one-hull boundary of canObserveRam (it sees the rammed hull, not the rammer), for
+// pusher>mate it sees neither. The receipt pins that geometry at the ram tick (review r1). A hand-fed leak shows the check
+// catches one.
 import assert from 'node:assert/strict';
 import { ensureAuthorityFleet } from '../src/vehicles/authorityFleet.ts';
 import { createAuthoritativeMatch } from '../src/sim/authoritativeMatch.ts';
@@ -28,10 +31,21 @@ const drive = { ...parked, throttle: 1, brake: false };
 const inputs = new Map([['rammer', drive], ['pusher', drive], ['enemy', parked], ['mate', parked], ['watcher', parked], ['far', parked]]);
 const tally = createRamTally();
 const farRams = [];
+const pair = (event, a, b) => (event.aId === a && event.bId === b) || (event.aId === b && event.bId === a);
+/** What the far seat observes at the first broadcast carrying each staged ram. */
+const farAtRam = {};
 for (let tick = 0; tick < 8 * 60 && !match.result; tick++) {
   match.step({ dt: 1 / 60, inputs });
   if ((tick + 1) % 60 !== 0) continue;
   const snapshot = match.snapshot({ tick, serverTimeMs: tick * 1000 / 60 });
+  for (const event of snapshot.events) {
+    if (event.type !== 'tank_ram') continue;
+    const name = pair(event, 'rammer', 'enemy') ? 'enemyRam' : pair(event, 'pusher', 'mate') ? 'allyRam' : null;
+    if (!name || farAtRam[name]) continue;
+    const seen = [];
+    match.observeForViewer('far', seen, []);
+    farAtRam[name] = new Set(seen.map((entity) => entity.id));
+  }
   judgeRams(match, teamById, snapshot, tick, tally);
   // the far seat's own reads, beside the predicate's
   farRams.push(...match.snapshot({ tick, serverTimeMs: tick * 1000 / 60, viewerId: 'far' }).events.filter((event) => event.type === 'tank_ram'));
@@ -42,7 +56,13 @@ assert.ok(tally.alliedContacts >= 1, `the ally gate counts the teammate's ram ($
 assert.ok(tally.alliedContacts < tally.rams, 'and only the teammate\'s');
 assert.ok(tally.viewerChecks >= 1, `the viewer check judged rams a third party read (${tally.viewerChecks})`);
 assert.equal(tally.viewerFaults, 0, 'no ram reached a viewer that does not see both hulls');
-assert.deepEqual(farRams, [], 'the far seat, which sees neither ram, reads none');
+assert.deepEqual(farRams, [], 'the far seat, which sees neither ram whole, reads none');
+// the far seat's geometry at the ram ticks: one hull of rammer>enemy (its teammate), neither of pusher>mate
+assert.ok(farAtRam.enemyRam && farAtRam.allyRam, 'both staged rams were broadcast');
+assert.ok(farAtRam.enemyRam.has('enemy') && !farAtRam.enemyRam.has('rammer'),
+  `at the enemy ram the far seat sees the rammed hull and not the rammer (${[...farAtRam.enemyRam].join('+')})`);
+assert.ok(!farAtRam.allyRam.has('pusher') && !farAtRam.allyRam.has('mate'),
+  `at the teammate ram it sees neither hull (${[...farAtRam.allyRam].join('+')})`);
 
 // the check's teeth: a viewer handed a ram it does not see is a fault (a hand-fed leak, not the authority's filter)
 {
@@ -59,4 +79,5 @@ assert.deepEqual(farRams, [], 'the far seat, which sees neither ram, reads none'
 }
 
 console.log(`soakRams: the soak's predicate over a staged battle: rams=${tally.rams} allyContacts=${tally.alliedContacts} `
-  + `viewerChecks=${tally.viewerChecks} viewerFaults=0; the far seat read none; a leak is caught`);
+  + `viewerChecks=${tally.viewerChecks} viewerFaults=0; the far seat (sees one hull of one ram, neither of the other) read `
+  + 'none; a leak is caught');
