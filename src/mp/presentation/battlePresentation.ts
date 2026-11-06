@@ -1031,7 +1031,8 @@ export function createBattlePresentation({
     appliedDestructibleRevision = revision;
     appliedDestroyedLength = indices.length;
     if (!worldCollision || typeof worldCollision.getObstacles !== 'function') return;
-    // the list carries indices only: a world laid out otherwise reads it through the authority's identities, or not at all
+    // the list names props by index alone (wire 11 adds each one's fall, not its identity): a world laid out otherwise
+    // reads it through the authority's identities, or not at all
     if (!authorityObstacles.listReadable) return;
     const aligned = falls.length === indices.length;
     for (let at = 0; at < indices.length; at++) {

@@ -181,7 +181,7 @@ describe('cot-rooms Worker: the room lifecycle (the deployed shape)', () => {
     // ROOM_RATE_WINDOW_MS turned the window and left the socket open (round 3 B14: roomActor.ts handleMessage)
     vi.useFakeTimers({ toFake: ['Date'] });
     for (let index = 0; index < 130; index++) guest.send('room_ping');
-    const closed = await guest.closed;
+    const closed = await guest.closedWithin('the ping flood\'s rate limit', 2 * RECEIPT_WAIT_MS);
     vi.useRealTimers();
     expect(closed.reason).toBe('rate_limit');
   });

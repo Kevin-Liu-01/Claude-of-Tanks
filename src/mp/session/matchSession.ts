@@ -1336,10 +1336,10 @@ export class MatchSession {
     try {
       await host.start(config);
     } catch (error) {
-      // The boot's host was taken from this seat while it started (the replaced path, audit M2 2026-11-02): a newer
-      // election, whose own migration runs on, or the room's step-down or the finished match's release (bootSuperseded
-      // names which). Reporting a failure here cleared a newer migration's flag and told the room a capable seat is
-      // unable to host.
+      // The boot's host was taken from this seat while it started (the replaced path, audit M2 2026-11-02): the seat left
+      // the match (leaveMatch), a newer election, whose own migration runs on, or the room's step-down or the finished
+      // match's release (bootSuperseded names which). Reporting a failure here cleared a newer migration's flag and told
+      // the room a capable seat is unable to host.
       if (this.host !== host) {
         this.log('info', 'elected host boot superseded', { cause: this.bootSuperseded(host, client, migrating, change.generation), generation: change.generation, running: this.runningGeneration });
         return;

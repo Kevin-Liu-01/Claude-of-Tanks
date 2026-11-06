@@ -124,7 +124,7 @@ export interface BackpressurePolicy {
 }
 
 export const DEFAULT_BACKPRESSURE: Readonly<BackpressurePolicy> = Object.freeze({
-  // A client sends ≈ 3.4 KB/s of input and a few KB of chat; 64 KB unsent means
+  // A client sends ≈ 3.6 KB/s of input (a 60 B frame, 60 a second) and a few KB of chat; 64 KB unsent means
   // the link has been dead for many seconds, not that a burst is in flight.
   maxBufferedBytes: 64 * 1024,
   sustainedMs: 5_000,

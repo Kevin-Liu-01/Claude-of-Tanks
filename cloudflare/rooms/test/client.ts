@@ -41,6 +41,23 @@ export class Client {
     this.closed = new Promise((resolve) => socket.addEventListener('close', resolve, { once: true }));
     clients.push(this);
   }
+  /**
+   * The close the room owes this socket (a rate limit), within a receipt's wait: one that never comes fails here, by
+   * name, not as the case's timeout. Round 4 F9 (2026-11-06): an envelope flood handled across the room's rate window
+   * (roomActor.ts handleMessage restarts the count when the window turns) never closes the socket, and the keepalive case
+   * sat on `closed` until the runner gave up at 20 s: reproduced on 92f415e879's case at any load by handling half the
+   * flood, letting the window turn, then the rest. The floods hold Date still for that (round 3 B14). Whether this hang
+   * or the case's own time on a starved runtime made round two's timeouts at load 250-420 is not known
+   * (vitest.config.ts).
+   */
+  closedWithin(what: string, timeoutMs = RECEIPT_WAIT_MS): Promise<CloseEvent> {
+    return new Promise((resolve, reject) => {
+      const timer = setTimeout(() => {
+        reject(new Error(`${what}: the socket is still open after ${timeoutMs} ms (${this.messages.length} envelopes and ${this.raw.length} raw frames received)`));
+      }, timeoutMs);
+      void this.closed.then((event) => { clearTimeout(timer); resolve(event); });
+    });
+  }
   /** Wait until at least `count` raw text frames arrived. */
   rawCount(count: number, timeoutMs = RECEIPT_WAIT_MS): Promise<number> {
     if (this.raw.length >= count) return Promise.resolve(this.raw.length);
