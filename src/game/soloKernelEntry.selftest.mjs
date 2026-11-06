@@ -2,10 +2,12 @@
 //
 // state.ts setupBattle chooses a battle's kernels once, at its setup (2026-11-02 audit S2): a battle set up before they
 // landed runs its whole life on the TypeScript. The kernels load in the solo authority's own chunk
-// (game/soloBattleRuntime.ts), and that chunk resolved as soon as its body ran, so the covered entry's barrier
-// (preloadSoloAuthority, game/soloBattleLoadingRuntime.ts) could finish, and the first battle be set up, before its own
-// chunk's kernels did. The chunk now resolves once they are installed or failed, or past SOLO_KERNELS_ENTRY_WAIT_MS.
-// Held through the page's own access owner (soloBattleAccess.ts) and the chunk's real body; the authority (state.ts) and
+// (game/soloBattleRuntime.ts), and the authority was ready as soon as that chunk's body ran, so the covered entry's
+// barrier (preloadSoloAuthority, game/soloBattleLoadingRuntime.ts) could finish, and the first battle be set up, before
+// its own chunk's kernels did. The access owner (soloBattleAccess.ts) is now ready once the chunk's soloKernelsSettled()
+// has: the kernels installed or failed, or SOLO_KERNELS_ENTRY_WAIT_MS passed (no top-level await in the chunk: the
+// kernels' own chunk may import modules the bundler placed in it).
+// Held through the page's own access owner and the chunk's real body; the authority (state.ts) and
 // the browser's fetch of the module (world/soloWorldKernels.ts) are stand-ins, so each case loads in milliseconds:
 // - kernels that land after the chunk's body ran: the entry's preload resolves only after they are installed;
 // - a failed load: the entry goes on at once on the TypeScript, the failure reported;
