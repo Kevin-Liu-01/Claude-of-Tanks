@@ -174,8 +174,9 @@ export function createLocalRoomService({
 
   const serviceHost = matchTransport === 'service' ? createInProcessMatchHost({
     matchService, matchUrl, world, countdownS, battleLimitS,
-    // The verdict callback lands on the actor's tick: poll the room right away instead of waiting 10 s, as one more of the
-    // room's events (review round 2: the poll is a room tick, and it ran in the middle of whatever event the queue awaited)
+    // The verdict callback lands on the actor's tick: poll the room right away instead of waiting for its next match poll
+    // (ROOM_MATCH_POLL_MS, 30 s), as one more of the room's events (review round 2: the poll is a room tick, and it ran in
+    // the middle of whatever event the queue awaited)
     onVerdict: (roomId) => {
       const room = rooms.get(roomId);
       if (room) void serialize(room, async () => { await room.observeMatchNow(); forgetIfEmpty(roomId, room); });

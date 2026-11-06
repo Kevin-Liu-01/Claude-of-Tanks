@@ -179,7 +179,8 @@ export async function runRoomsE2E({
     await until(() => second.room.room?.adminId === 'p2', 'admin migrated to the most senior seat', 10_000);
     report.admin.push({ at: 'creator left', adminId: second.room.room.adminId, phase: second.room.room.phase });
     log(`creator left at ${((performance.now() - startedAt) / 1000).toFixed(1)} s; admin now ${second.room.room.adminId}; room phase ${second.room.room.phase}`);
-    // `starting` until the room's first 10 s poll sees the actor playing; only `waiting` would mean the match ended
+    // `starting` until the room's first match poll (ROOM_MATCH_POLL_MS, 30 s) sees the actor playing; only `waiting` would
+    // mean the match ended
     if (second.room.room.phase === ROOM_PHASE.waiting) failures.push(`the match ended with the creator's departure (${second.room.room.phase})`);
     // the recorder is a bounded ring, so compare the newest presented tick, not the count
     const tickBefore = second.presentation.frames.at(-1)?.tick ?? -1;
