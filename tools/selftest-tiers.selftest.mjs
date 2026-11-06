@@ -333,7 +333,7 @@ const lane = (changed, naming = new Map()) => selectLane({ defaults: ['r/default
   assert.deepEqual(warranted(recommend({ readers, balance: [], wallMs: {} })), ['balance', 'pacing', 'fleet'], 'control: not compared, every read stands');
   const inert = recommend({ readers, balance: [], builders: { paths: [builder], moved: [] }, wallMs: {} });
   assert.deepEqual(warranted(inert), ['pacing', 'fleet'], 'balance drops; pacing keeps its other read; fleet is no hits suite');
-  assert.equal(inert.find((row) => row.suite === 'pacing').line, 'pacing: 1 of its 13 checks read the change (src/sim/deployment.ts)');
+  assert.equal(inert.find((row) => row.suite === 'pacing').line, 'pacing: 1 of its 14 checks read the change (src/sim/deployment.ts)');
   const moved = recommend({ readers, balance: [], builders: { paths: [builder], moved: [{ id: 'm1a1', classes: ['armor', 'geometry'] }] }, wallMs: {} });
   assert.deepEqual([moved.find((row) => row.suite === 'balance').line, moved.find((row) => row.suite === 'balance').run],
     ['balance: 1 tank is built differently (armor, geometry: m1a1); 1 of its 4 checks read the change (src/vehicles/profiles/abrams.ts)', 'npm run test:heavy -- balance']);

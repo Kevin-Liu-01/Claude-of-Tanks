@@ -11,7 +11,7 @@ import { rulesetSeatHullScale,
   hordeWaveTotal, hordeMaxAlive, hordeWaveSpecial, TEAM_NATIONS_IDS, DEFAULT_TEAM_NATIONS, TEAM_NATIONS_MODE_SCOPE,
   assaultWaveHealthScale, BATTLE_FIELD_LIMIT, SIDES_PRESETS, STANDARD_SIDES, isWaveMode, rulesetSides, sidesPresetOf,
   MARS_CACHE_IDS, MARS_DEFAULT_RULES, MARS_GRAVITY_IDS, ENDING_HOLD_LIMIT_S, endingHoldExpired, STANDARD_PHYSICS, rulesetPhysicsAt,
-  AERIAL_RULES,
+  AERIAL_RULES, COUCH_RULES, battleKeepsRecords, couchRulesetFor, couchSeatSides, isCouchMode,
 } from './matchRuleset.ts';
 import { auxiliaryWeaponProfile } from '../vehicles/auxiliaryWeapons.ts';
 
@@ -204,7 +204,7 @@ assert.equal(assault.enemies, 12, 'twelve defenders in the formation pool'); ass
 assert.deepEqual({ ...assault.assault, lineBandM: [...assault.assault.lineBandM], counterAttack: { ...assault.assault.counterAttack },
   lineGuard: { ...assault.assault.lineGuard } }, {
   initialActive: 3, extraDefenders: 0, hpPerLine: 0.16, finalLineHp: 1.15, difficultyHp: 0, holdS: 20, captureS: 8,
-  defendersStartOnLine: true, lineBandM: [70, 110], lineGuard: { minAttackM: 200, outOfSight: true, stepBackM: 20, tries: 4 },
+  defendersStartOnLine: true, lineBandM: [70, 110], lineGuard: { minAttackM: 200, outOfSight: true, stepBackM: 20, backSteps: 12, acrossSteps: 8 },
   counterAttack: { squad: 2, afterCaptureS: 8, forS: 40 },
   reinforceTrickleS: 45, reinforceExtra: 0, reinforceRearM: 140, contestReachM: 60, lineSpacingM: 16, lineJitterM: 8, allyReviveBackM: 40,
   holdSpreadM: 14, regroupMaxS: 25, regroupRadiusM: 80, regroupHumanM: 250, allyReviveS: 20, hostileDifficultyStep: 1, hostileReloadScale: 1,
@@ -357,4 +357,23 @@ assert.equal(rulesetAllyCap(standard, 6), 6); assert.equal(rulesetAllyCap(horde,
   }
 }
 
-console.log('matchRuleset: per-mode values, determinism, campaign difficulty fold, team arrangement clamps, horde wave law, rule-card lines, spawn stamps, ammo/reload helpers, the post-verdict hold and the counter-drone airframe threshold (hitsToDown 1.1, clear of every capped burst sum) verified');
+// couch mode (docs/COUCH-MODE.md): its modes, no record, and how seats take their sides
+{
+  assert.equal(COUCH_RULES.maxSeats, 8, 'a couch battle seats up to eight phones');
+  for (const mode of COUCH_RULES.modes) assert.ok(GAME_MODE_IDS.includes(mode), `${mode} is a real mode`);
+  for (const mode of COUCH_RULES.togetherOnly) assert.ok(isCouchMode(mode), `${mode} together-only is a couch mode`);
+  const couch = couchRulesetFor(matchRulesetFor('standard'));
+  assert.equal(couch.couch, COUCH_RULES);
+  assert.equal(couch.records, false, 'a couch battle keeps no record');
+  assert.equal(couch.timeLimitS, matchRulesetFor('standard').timeLimitS, 'the mode keeps its own rules');
+  assert.equal(couchRulesetFor(matchRulesetFor('drone')).couch, undefined, 'a mode outside couch play is unchanged');
+  assert.equal(battleKeepsRecords({ gameMode: 'standard', couch: true }), false);
+  assert.equal(battleKeepsRecords({ gameMode: 'standard' }), true);
+  assert.deepEqual(couchSeatSides('standard', 'teams', 5), [true, false, true, false, true], 'teams alternate, Alpha first');
+  assert.deepEqual(couchSeatSides('standard', 'together', 3), [true, true, true]);
+  assert.deepEqual(couchSeatSides('endless_horde', 'teams', 4), [true, true, true, true], 'the Horde has no Bravo seat');
+  assert.equal(couchSeatSides('standard', 'teams', 12).length, 8, 'never more than eight seats');
+  assert.deepEqual(couchSeatSides('standard', 'teams', 0), []);
+}
+
+console.log('matchRuleset: per-mode values, determinism, campaign difficulty fold, team arrangement clamps, horde wave law, rule-card lines, spawn stamps, ammo/reload helpers, the post-verdict hold, the counter-drone airframe threshold (hitsToDown 1.1, clear of every capped burst sum) and the couch rules verified');

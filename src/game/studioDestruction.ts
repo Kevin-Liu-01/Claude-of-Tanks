@@ -115,8 +115,9 @@ export function createStudioDestruction(world: StudioWorld, bus: StudioBus, opti
         const obstacle = felled[i];
         const dx = (obstacle.min[0] + obstacle.max[0]) * 0.5 - x, dz = (obstacle.min[2] + obstacle.max[2]) * 0.5 - z;
         const length = Math.hypot(dx, dz) || 1;
+        // (268) the world first, as the battle's and the authority's fell: a prop the world refuses stands
+        if (world.crushObstacle(obstacle, dx / length, dz / length, 6, 'shell') === false) continue;
         obstacle.crushed = true;
-        world.crushObstacle(obstacle, dx / length, dz / length, 6, 'shell');
       }
     }
     blasts.length = 0;

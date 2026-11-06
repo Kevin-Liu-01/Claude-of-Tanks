@@ -187,7 +187,7 @@ function slots() {
   PICKS.docs.archiveLoops.forEach((id, i) => add(`docs.archiveLoops[${i}]`, id, 'loop'));
   for (const [k, id] of Object.entries(PICKS.topics)) add(`topics.${k}`, id, 'loop');
   for (const [k, v] of Object.entries(PICKS.topicMedia)) if (v.id) add(`topicMedia.${k}`, v.id, v.still);
-  PICKS.featured.forEach((f, i) => add(`featured[${i}]`, f.id, f.still ?? 'moment'));
+  PICKS.featured.forEach((f, i) => { if (!f.versus) add(`featured[${i}]`, f.id, f.still ?? 'moment'); });
   for (const k of ['notFound', 'hudEditor', 'og']) add(k, PICKS[k].id, PICKS[k].still);
   for (const [k, v] of Object.entries(PICKS.ogCards ?? {})) add(`ogCards.${k}`, v.id, v.still);
   PICKS.home.reel.takes.forEach((id, i) => add(`home.reel[${i}]`, id, 'moment'));
@@ -207,6 +207,8 @@ function slots() {
 function versusSlots() {
   const out = [];
   PICKS.home.hero.forEach((h, i) => { if (h.versus) out.push({ slot: `home.hero[${i}]`, id: h.versus }); });
+  // (2026-11-03, the owner's boot pick) a featured still may be a versus still, its boot opener another (bootVersus)
+  PICKS.featured.forEach((f, i) => { for (const id of f.versus ? [f.versus, f.bootVersus ?? f.versus] : []) out.push({ slot: `featured[${i}]`, id }); });
   (PICKS.home.versus ?? []).forEach((id, i) => out.push({ slot: `home.versus[${i}]`, id }));
   return out;
 }

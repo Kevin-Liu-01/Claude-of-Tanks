@@ -483,7 +483,7 @@
       }
     ]
   },
-  "geometryHash": "e6985257",
+  "geometryHash": "541c40ed",
   "metadataHash": "c923e614",
   "presentationAnchor": {
     "xM": 0.0006,
@@ -545,15 +545,15 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 22880,
-      "sha256": "6f468432cfa45b3b102498215e4390e6f3bc2fb1b00d192d3e16c1a98e572514",
+      "bytes": 22890,
+      "sha256": "02ea02134e798043e7145386f1fe93f8c5cf3a45324e4d6da02203447aff4a4f",
       "thumbnail": {
         "file": "thumbs/amx40_proto_angle.webp",
         "width": 256,
         "height": 256,
         "mime": "image/webp",
-        "bytes": 9444,
-        "sha256": "27cfcecda2072b128c34089fd15eb697ddf961d5833bc45a1a15b167ea8b295f"
+        "bytes": 9434,
+        "sha256": "44b83ef88f9a28aa6675fa12a30a53fb227d4e9f207ea971636b6a382a48017b"
       }
     },
     "top": {
@@ -561,16 +561,16 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 7644,
-      "sha256": "1bbf28f0f9d8281314e761e84478bb1a158e62078f90b15eee58f95df708ba33"
+      "bytes": 7654,
+      "sha256": "b142347dbea6ad31eca05399b0220782206bd93e5b29fb6ecea55da239a92c66"
     },
     "side": {
       "file": "amx40_proto_side.webp",
       "width": 512,
       "height": 256,
       "mime": "image/webp",
-      "bytes": 8646,
-      "sha256": "000e54cfc060945da051b3b4cd862d4dad5ba12c9c3fb1e7762d742435ea27f0"
+      "bytes": 8552,
+      "sha256": "dd8b9b5fc3066b8f43770159592a42772200e3db155a2f29245b920f4e5c1b00"
     },
     "topSilhouette": {
       "file": "amx40_proto_top_silhouette.png",
@@ -585,32 +585,32 @@
       "width": 256,
       "height": 128,
       "mime": "image/png",
-      "bytes": 3801,
-      "sha256": "5dd9d42555beb949d6d53cb6d2a8f3c9cce2efb12abf09e297c103c8e8b848c9"
+      "bytes": 3761,
+      "sha256": "5871dffb1c429a01bb7672ad18e97c1d2eca2b8116f3d76d5a4e89afb5a3240b"
     },
     "armorSide": {
       "file": "amx40_proto_armor_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 20904,
-      "sha256": "0cda22ea547ba35fb1b1bd5c9f69a2c589d2c34121754d1ebfc18571992d924c"
+      "bytes": 20774,
+      "sha256": "94cc872e07ad3c6df84a97ce42f5ad9b3faf5dc34c513cce9a7337e36f1a9f6c"
     },
     "modulesSide": {
       "file": "amx40_proto_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 20632,
-      "sha256": "08882d872dd3464b3b7a14892c8c44751612db4089eb5c7a445e62b766fed8b5"
+      "bytes": 20528,
+      "sha256": "af1ebf500127f40b47368c5df1c81df0cc3c2859156ded8903419e91fe681091"
     },
     "crewSide": {
       "file": "amx40_proto_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 18620,
-      "sha256": "2ffb3641e0bdeada4f09ad18af21d3918cc04257576bc3e8397814e3a068558f"
+      "bytes": 18594,
+      "sha256": "2f5bdc9812f724aa2da4c679e7a7a7bda623be423ea32621ce26f3c724d1169c"
     },
     "markings": {
       "file": "amx40_proto_markings.png",

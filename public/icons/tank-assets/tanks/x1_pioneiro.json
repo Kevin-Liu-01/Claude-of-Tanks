@@ -761,15 +761,15 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 27042,
-      "sha256": "1a9bee01d20c1d322cd9ae2fef10178bfe7597939e195123685dd980213440a7",
+      "bytes": 26280,
+      "sha256": "36e2c6aeb1c5ea77cc152a2ff7121eb726c9a70f306f93b9af839e8af6cda1a3",
       "thumbnail": {
         "file": "thumbs/x1_pioneiro_angle.webp",
         "width": 256,
         "height": 256,
         "mime": "image/webp",
-        "bytes": 11302,
-        "sha256": "465e2c0d1fc08cefb5a6d78deb75ca94933df1b9d8883d78656319b65a52a3c0"
+        "bytes": 11254,
+        "sha256": "67fe5ac844b3563e0806c1c6d47a44d0ae4be11dc0d063b4d7329ddd98c3c1a0"
       }
     },
     "top": {
