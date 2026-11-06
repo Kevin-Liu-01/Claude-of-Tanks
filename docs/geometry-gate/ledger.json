@@ -1,5 +1,5 @@
 {
- "generatedAt": "2026-11-06T04:26:11.741Z",
+ "generatedAt": "2026-11-06T06:09:12.357Z",
  "gate": "every component >= its registered floor (90 fleet / 92 exemplar / 99 historical preservation); min is the headline; preservation is not source fidelity",
  "passed": 45,
  "total": 155,
@@ -1759,19 +1759,6 @@
    "comparisonPurpose": "source-fidelity"
   },
   {
-   "id": "t95",
-   "geoMin": 92.3,
-   "requiredMinimum": 92,
-   "qualityBar": "exemplar",
-   "gatePassed": true,
-   "components": {
-    "wholeCurves": 92.3,
-    "dims": 95.6,
-    "floaters": 100
-   },
-   "comparisonPurpose": "source-fidelity"
-  },
-  {
    "id": "m48a5_patton",
    "geoMin": 92.4,
    "requiredMinimum": 92,
@@ -1851,6 +1838,19 @@
    "components": {
     "wholeCurves": 92.7,
     "dims": 100,
+    "floaters": 100
+   },
+   "comparisonPurpose": "source-fidelity"
+  },
+  {
+   "id": "t95",
+   "geoMin": 92.8,
+   "requiredMinimum": 92,
+   "qualityBar": "exemplar",
+   "gatePassed": true,
+   "components": {
+    "wholeCurves": 92.8,
+    "dims": 95.6,
     "floaters": 100
    },
    "comparisonPurpose": "source-fidelity"
