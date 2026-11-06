@@ -79,8 +79,9 @@ export function nextConsumablesPicker(
       return { state: { phase: 'pending', slot: event.slot }, show: null };
     case 'tableSettled':
       if (state.phase !== 'pending') return { state, show: null };
-      // a table that did not arrive opens nothing and waits for no one: a later press past the lazy-chunk policy's backoff
-      // asks again (a removed chunk never: the watchdog's reload action shows)
+      // a table that did not arrive opens nothing and waits for no one: a later press asks again under the lazy-chunk
+      // policy, at once after one failure, then past its backoff, never offline (a removed chunk never: the watchdog's
+      // reload action shows)
       return event.loaded ? { state: { phase: 'open', slot: state.slot }, show: state.slot }
         : { state: CONSUMABLES_PICKER_CLOSED, show: null };
     case 'dismiss':

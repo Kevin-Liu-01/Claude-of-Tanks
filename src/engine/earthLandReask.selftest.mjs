@@ -69,7 +69,7 @@ try {
     }
   };
 
-  // the world build's ask failed (the Moon built with the placeholder): the first apply asks again, at once
+  // the first apply makes the first ask, and it fails (the Moon keeps the placeholder); the next asks again, at once
   await apply();
   assert.equal(asks, 1);
   await apply();

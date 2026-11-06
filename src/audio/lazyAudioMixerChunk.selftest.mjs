@@ -1,14 +1,15 @@
 // lazyAudioMixerChunk.selftest.mjs — the audio mixer's chunk follows the one lazy-chunk policy (2026-11-02 audit R6,
 // round 3 X8). Copyright © 2026 Kevin B. Liu.
 //
-// The boot-light facade (lazyAudio.ts) loads the full mixer (audioEngine.ts) at the first sound intent: a gesture anywhere
-// (the unlock calls resume), the loading bed, the Garage sting, a battle's warm, the boot idle's preload. Its memo
-// (modulePromise) was cleared on a failure, and the creation's memo over it (realPromise) with it, so after one failed
-// transfer every later intent asked the chunk again at once: a request per press, offline too, and a removed
-// deployment's 404 never terminal. Now the chunk is an app/lazyChunk.ts chunk: asked again at once after one failure, then
-// past the backoff (2, 4, 8 ... s), never offline; and the mixer is made once it arrives. This drives the facade's own
-// default loader (`import('./audioEngine.ts')`); a chunk "fails" the way a browser's import does when the network drops:
-// its resolve throws, and the module that does arrive is a stand-in mixer.
+// The boot-light facade (lazyAudio.ts) loads the full mixer (audioEngine.ts) at the first sound intent: the first gesture
+// (the unlock calls resume, then disarms), a press on the battle canvas (pointerLockFeedbackRuntime.ts audioResume, the
+// per-press asker this drives through resume()), the loading bed, the Garage sting, a battle's warm, the boot idle's
+// preload. Its memo (modulePromise) was cleared on a failure, and the creation's memo over it (realPromise) with it, so
+// after one failed transfer every later intent asked the chunk again at once: a request per press, offline too, and a
+// removed deployment's 404 never terminal. Now the chunk is an app/lazyChunk.ts chunk: asked again at once after one
+// failure, then past the backoff (2, 4, 8 ... s), never offline; and the mixer is made once it arrives. This drives the
+// facade's own default loader (`import('./audioEngine.ts')`); a chunk "fails" the way a browser's import does when the
+// network drops: its resolve throws, and the module that does arrive is a stand-in mixer.
 import assert from 'node:assert/strict';
 import { registerHooks } from 'node:module';
 

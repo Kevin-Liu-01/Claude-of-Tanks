@@ -70,6 +70,53 @@ assert.equal(isStylesheetFailure(null), false);
   assert.equal(chunk.error, null);
 }
 
+// ---- (round 4 F2) a lifecycle edge's ask (`{ backoff: false }`, a battle's covered entry) asks a failure again now,
+// whatever the backoff other callers' asks raised; never offline, never a terminal failure. `failures` tells a first ask
+// (0) from a re-ask (above 0), and a load resets it
+{
+  let clock = 0;
+  let onLine = true;
+  let calls = 0;
+  let broken = true;
+  const chunk = createLazyChunk(async () => { calls++; if (broken) throw moduleFailure(); return 'edge'; },
+    { now: () => clock, online: () => onLine });
+  assert.equal(chunk.failures, 0);
+  const first = chunk.load();
+  assert.equal(chunk.failures, 0, 'a first ask in flight');
+  await assert.rejects(first);
+  assert.equal(chunk.failures, 1);
+  // a drag through the outage: the backoff grows to the minute's cap
+  for (let i = 0; i < 1800; i++) { clock += 100; await chunk.load().catch(() => {}); }
+  const dragged = calls;
+  assert.ok(dragged >= 7 && dragged <= 9, `the drag asked at the backoff points (${dragged})`);
+  assert.equal(chunk.failures, dragged);
+  clock += 1_000;
+  await assert.rejects(chunk.load());
+  assert.equal(calls, dragged, 'a plain ask inside the minute gets the kept failure');
+  onLine = false;
+  await assert.rejects(chunk.load({ backoff: false }));
+  assert.equal(calls, dragged, 'offline, an edge asks nothing');
+  onLine = true;
+  broken = false;
+  const edge = chunk.load({ backoff: false });
+  assert.equal(calls, dragged + 1, 'an edge asks now, inside the backoff');
+  assert.equal(chunk.failures, dragged, 'a re-ask in flight: failures above 0');
+  assert.equal(chunk.load({ backoff: false }), edge, 'one request at a time');
+  assert.equal(await edge, 'edge');
+  assert.equal(chunk.failures, 0, 'a load resets the count');
+  assert.equal(chunk.load({ backoff: false }), chunk.load(), 'ready: the same settled promise');
+  assert.equal(calls, dragged + 1);
+  // terminal stays terminal: a stylesheet, an opener
+  let sheetCalls = 0;
+  const sheet = createLazyChunk(async () => { sheetCalls++; throw cssFailure(); });
+  await assert.rejects(sheet.load());
+  await assert.rejects(sheet.load({ backoff: false }));
+  const opener = createLazyChunk(async () => { sheetCalls++; throw moduleFailure(); }, { opener: true });
+  await assert.rejects(opener.load());
+  await assert.rejects(opener.load({ backoff: false }));
+  assert.equal(sheetCalls, 2, 'an edge never asks a terminal failure again');
+}
+
 // ---- a stylesheet failure is terminal: the chunk asked again would run unstyled
 {
   let clock = 0;
@@ -239,4 +286,4 @@ assert.equal(isStylesheetFailure(null), false);
 
 await settle();
 assert.deepEqual(unhandled, []);
-console.log('lazyChunk.selftest: idle/loading/ready/failed; a failed stylesheet (any part), a removed chunk or an opener\'s chunk is terminal; a module failure is asked again at once, then past the backoff capped at a minute, never offline, with no budget');
+console.log('lazyChunk.selftest: idle/loading/ready/failed; a failed stylesheet (any part), a removed chunk or an opener\'s chunk is terminal; a module failure is asked again at once, then past the backoff capped at a minute, never offline, with no budget; a lifecycle edge asks past the backoff');

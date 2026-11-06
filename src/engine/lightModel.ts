@@ -39,7 +39,9 @@
  *
  * 2026-10-02 (the boot weight): the types, the authored rig and the dispatcher live in lightModelCore.ts, in the boot
  * chunk; this module loads behind the battle entry (lightModelCore.ts importGroundedLightModel, held by
- * battleAtmosphereAccess.ts loadGroundedLightModel: the battle atmosphere's acquisition and the capture staging await it). It imports nothing at runtime — the core hands it the atmosphere it
+ * battleAtmosphereAccess.ts groundedLightChunk). The battle atmosphere's prepare asks that chunk: an entry awaits it, a
+ * Studio apply awaits its first ask but never a re-ask (the Studio lights again once the re-ask lands); the capture
+ * staging awaits it through loadGroundedLightModel. It imports nothing at runtime — the core hands it the atmosphere it
  * integrates (groundedLightModel) — so its chunk shares no module with the boot closure.
  */
 import type { AtmosphereParams } from './atmosphere.ts';
