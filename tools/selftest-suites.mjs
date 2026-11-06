@@ -280,6 +280,9 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/vehicles/interiorFillSurface.selftest.mjs',
     // 2026-10-16 (tank-opt HIDDEN): a wreck draws the closed boxes again (setDestroyed), the rematch the surface
     'src/vehicles/interiorFillWreck.selftest.mjs',
+    // 2026-11-05 (owner: "when destroyed you can still see the double barrles"): every public tank's battle wreck kinks
+    // each drawn gun piece along the crease (cutAtKink), plain and cook-off; no straight chord beside the bent barrel
+    'src/vehicles/wreckGunBend.selftest.mjs',
     'tools/barak-rear-bay-fill-policy.selftest.mjs',
     'src/vehicles/profiles/kurganetsRearDoorStock.selftest.mjs',
     'src/vehicles/profiles/kurganetsBowStock.selftest.mjs',
