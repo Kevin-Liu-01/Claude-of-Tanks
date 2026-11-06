@@ -34,9 +34,12 @@
 // that shift planned the search over a commander's point on the first tick back).
 // Round 4 (F5, E8): the hold read the way on the ground plan alone, so [11] a drive off a causeway's crest onto the floor
 // beside it left the level route held from below until its strikes gave the target up as unbearable; a stretch the hull
-// stands a level above or below is no longer its way. [10] on a tie the earlier stretch keeps the cursor (a leg that
-// doubles back over its own line is driven to its apex), and [12] the elevation lock's dwell holds through a park that
-// left the hull where it was taken and restarts after a drive off. All four checks failed on 0edd0e1ab5.
+// cannot drive to (a face too steep for it between them) is no longer its way. [10] on a tie the earlier stretch keeps
+// the cursor (a leg that doubles back over its own line is driven to its apex), and [12] the elevation lock's dwell holds
+// through a park that left the hull where it was taken and restarts after a drive off. Fix-up r1 (the round's two
+// reviews): the tie rule now holds on a diagonal leg, where rounding breaks the tie ([10] at -48.3 degrees); the level
+// test is whether the hull can drive there, not the gun's 8 m band, which held the route from 5.5 m below ([11] taken
+// past z 14); and the stood-put test's level half has a case ([12], left on the deck above where it was taken).
 import { Vector3 } from 'three';
 import '../vehicles/fleetFactory.ts';
 import { getSpec } from '../vehicles/specs.ts';
@@ -694,13 +697,17 @@ console.log('[11] a level route ends with no verdict when the watcher drives its
 // Round 4 (F5): hullOnItsWay measured the hull's way on the ground plan alone, 12 m either side of the route ahead. A
 // watcher who drove the hull off the causeway's crest onto the floor beside it, 11 m from the road and 13 m below it,
 // left the level route held from the wrong level: on 0edd0e1ab5 the follower drove at the crest's side, and its stuck
-// strikes ended the route with the 75 s unbearable verdict (the class round 2 removed). A stretch the hull stands
-// RESUME_ON_LEVEL_M (ELEVATION_LEVEL_M, 8 m) or more above or below, at its nearest point, is not on its way.
+// strikes ended the route with the 75 s unbearable verdict (the class round 2 removed). Fix-up r1 (both reviews): the
+// first fix read another level as ELEVATION_LEVEL_M (8 m) above or below, the gun's band, so a drop under it still held
+// the route from below: taken on the crest past z 14 and left on the floor 5.5 m under the road, the verdict came 21.4 s
+// after Leave on ab8a817159 (44.8 s on 0edd0e1ab5). A stretch is the hull's way only where the hull can drive to it: no
+// step of the ground from the hull to the stretch's nearest point (every RESUME_STEP_M, 1.5 m) is steeper than its hull
+// can climb or hold (terrainTravelCostFactor, the slope law the planner and the local router read).
 {
-  const crestHandBack = async ({ parkS, offTheSide }) => {
+  const crestHandBack = async ({ parkS, offTheSide, takeZ = 45 }) => {
     const { ctl, floor, run, moveTo, hull, clock, getHeightAt } = causewayScene();
     const routing = run(30, (info) => info.levelRouting);
-    const onCrest = run(60, () => Math.abs(floor.state.pos.x) < 3 && floor.state.pos.z > 45);
+    const onCrest = run(60, () => Math.abs(floor.state.pos.x) < 3 && floor.state.pos.z > takeZ);
     const before = ctl.debugInfo();
     const took = takeAndLeave(floor, ctl, clock, hull, parkS, offTheSide ? () => moveTo(11, floor.state.pos.z + 3) : null);
     const back = ctl.debugInfo();
@@ -714,31 +721,39 @@ console.log('[11] a level route ends with no verdict when the watcher drives its
     return { routing, onCrest, before, back, after: ctl.debugInfo(), nextRouteAfterS, dropM, ...took };
   };
   const label = (r) => `verdicts ${r.before.unbearableVerdicts} -> ${r.after.unbearableVerdicts}, levelRouting ${r.before.levelRouting} -> ${r.back.levelRouting}, owner ${r.back.routeOwner}, routes ${r.before.levelRoutes} -> ${r.after.levelRoutes}`;
-  const dropped = await crestHandBack({ parkS: 0.5, offTheSide: true });
-  ok(dropped.routing && dropped.onCrest && dropped.before.routeOwner === 'level',
-    `setup: the floor bot drives its level route up the causeway's crest (owner ${dropped.before.routeOwner})`);
-  ok(dropped.dropM > 8 && !dropped.back.levelRouting && dropped.back.routeOwner !== 'level'
-    && dropped.after.unbearableVerdicts === dropped.before.unbearableVerdicts,
-    `a 0.5 s Take and Leave in which the watcher drove off the crest onto the floor 11 m beside the road, ${dropped.dropM.toFixed(1)} m below it: the route ends at the hand-back with no verdict, then or in the 60 s after (${label(dropped)})`);
-  ok(dropped.nextRouteAfterS !== null && dropped.nextRouteAfterS >= 6 - 0.05,
-    `and the lock plans the road again from the floor (${dropped.nextRouteAfterS === null ? 'never' : `${dropped.nextRouteAfterS.toFixed(2)} s`} after the hand-back; ELEVATION_LOCK_S 6 s)`);
+  // taken high on the crest (a drop over the gun's 8 m band) and low on it (under the band: the review's case)
+  for (const [takeZ, low, high] of [[45, 8, Infinity], [14, 4, 8]]) {
+    const dropped = await crestHandBack({ parkS: 0.5, offTheSide: true, takeZ });
+    ok(dropped.routing && dropped.onCrest && dropped.before.routeOwner === 'level' && dropped.dropM > low && dropped.dropM < high,
+      `setup: the floor bot drives its level route up the causeway's crest past z ${takeZ} (owner ${dropped.before.routeOwner}); the watcher leaves it ${dropped.dropM.toFixed(1)} m below the road`);
+    ok(!dropped.back.levelRouting && dropped.back.routeOwner !== 'level'
+      && dropped.after.unbearableVerdicts === dropped.before.unbearableVerdicts,
+      `a 0.5 s Take and Leave in which the watcher drove off the crest onto the floor 11 m beside the road, ${dropped.dropM.toFixed(1)} m below it: the route ends at the hand-back with no verdict, then or in the 60 s after (${label(dropped)})`);
+    ok(dropped.nextRouteAfterS !== null && dropped.nextRouteAfterS >= 6 - 0.05,
+      `and the lock plans the road again from the floor (${dropped.nextRouteAfterS === null ? 'never' : `${dropped.nextRouteAfterS.toFixed(2)} s`} after the hand-back; ELEVATION_LOCK_S 6 s)`);
+  }
   const stayed = await crestHandBack({ parkS: 0.5, offTheSide: false });
   ok(stayed.back.levelRouting && stayed.back.routeOwner === 'level' && stayed.after.unbearableVerdicts === stayed.before.unbearableVerdicts
     && stayed.after.levelRoutes === stayed.before.levelRoutes,
     `a 0.5 s Take and Leave on the crest: the hull coasts on up the road on its level, and the route runs on (coasted ${stayed.coastM.toFixed(1)} m; ${label(stayed)})`);
 }
 
-console.log('[12] the elevation lock\'s dwell is a reading from where the hull stood: it holds through a park that left the hull there and restarts after a drive off');
-// Round 4 (E8): round 3 kept the dwell through every park, a watcher's drive off included, with no receipt either way;
-// resume() restarts its other dwell clocks (the gun's limit, the arc, the blocked line of sight) from the hull as it
-// stands. The dwell is the same kind of reading ("from here"), so it holds only while the hull still stands where it was
-// taken (within RESUME_ON_WAY_M, on its level). On 0edd0e1ab5 a drive 30 m along the cliff's foot kept 3 s of dwell from
-// the old spot, and the route came 3 s after Leave instead of ELEVATION_LOCK_S.
+console.log('[12] the elevation lock\'s dwell counts the bot\'s own ticks: it holds through a park that left the hull where it was taken and restarts after a drive off');
+// Round 4 (E8): round 3 kept the dwell through every park, a watcher's drive off included, with no receipt either way.
+// The dwell counts the bot's own ticks, wherever it drives itself, while its target stays on a level the gun cannot reach
+// (updateElevationLock); the watcher's drive is no tick of the bot's, and the bot saw neither that ground nor the target
+// from it. So it holds through a park that left the hull where it was taken (within RESUME_ON_WAY_M of that spot, and
+// able to drive back to it: hullStoodPut) and restarts otherwise. On 0edd0e1ab5 a drive 30 m along the cliff's foot kept
+// 3 s of dwell from the old spot, and the route came 3 s after Leave instead of ELEVATION_LOCK_S. Fix-up r1 (the
+// completeness review): the stood-put test's level half had no case; a hull taken at the cliff's foot and left on the
+// deck 9 m away on the plan (25 m up the face) is not where it was taken.
 {
-  const dwellHandBack = async (away) => {
+  const dwellHandBack = async (away, from = null) => {
     const { ctl, floor, run, moveTo, hull, clock } = await deckScene();
+    if (from) moveTo(...from);
     run(3); // the floor bot sees the deck target its gun cannot reach: 3 s into the 6 s dwell, no route yet
     const before = ctl.debugInfo();
+    const parkedAt = [floor.state.pos.x, floor.state.pos.y, floor.state.pos.z];
     const took = takeAndLeave(floor, ctl, clock, hull, 0.5, away ? () => moveTo(...away) : null);
     const back = ctl.debugInfo();
     const handBackS = clock();
@@ -747,7 +762,7 @@ console.log('[12] the elevation lock\'s dwell is a reading from where the hull s
       if (info.levelRoutes > before.levelRoutes || info.unbearableVerdicts > before.unbearableVerdicts) { decidedAfterS = clock() - handBackS; return true; }
       return false;
     });
-    return { before, back, decidedAfterS, ...took };
+    return { before, back, decidedAfterS, parkedAt, ...took };
   };
   const label = (r) => `dwell ${r.before.elevationLockT} -> ${r.back.elevationLockT} s, the lock decided ${r.decidedAfterS === null ? 'never' : `${r.decidedAfterS.toFixed(2)} s`} after Leave`;
   const held = await dwellHandBack(null);
@@ -757,6 +772,13 @@ console.log('[12] the elevation lock\'s dwell is a reading from where the hull s
   const driven = await dwellHandBack([30, 30]);
   ok(driven.back.elevationLockT === 0 && driven.decidedAfterS !== null && driven.decidedAfterS >= 6 - 0.05,
     `a 0.5 s park in which the watcher drove 30 m along the cliff's foot (the deck still out of the gun's reach): the dwell restarts there (${label(driven)}; ELEVATION_LOCK_S 6 s)`);
+  // taken 2 m short of the cliff's foot, left on the deck past its edge: near on the plan, on another level
+  const climbed = await dwellHandBack([-4, 44], [0, 36]);
+  const planM = Math.hypot(-4 - climbed.parkedAt[0], 44 - climbed.parkedAt[2]);
+  ok(climbed.before.elevationLockT >= 2.5 && climbed.before.levelRoutes === 0 && planM < 12 && planM > 6,
+    `setup: taken at (${climbed.parkedAt.map((v) => v.toFixed(1)).join(', ')}) 3 s into the dwell; handed back on the deck ${planM.toFixed(1)} m away on the plan, 25 m up the cliff`);
+  ok(climbed.back.elevationLockT === 0,
+    `a 0.5 s park in which the watcher left the hull on the deck above the spot it was taken on: the dwell restarts (${label(climbed)})`);
 }
 
 if (failures) { console.error(`ai.watchResume.selftest: ${failures} failure(s)`); process.exit(1); }

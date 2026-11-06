@@ -696,7 +696,7 @@ const DEAD_LEG_AWAY_COS = 0.5;     // …within 60 degrees of its bearing (no ba
 const EYE_FRAC          = 0.85;   // eye/turret-top height as fraction of heightM
 const ARRIVE_DIST_M     = 6.0;
 // how far off its way a hull handed back (Watch mode's Leave) may lie and still be on it: the radius the route's own
-// end test gives the last waypoint (routeUsedUp; round 3 A2), on the ground plan; RESUME_ON_LEVEL_M is the height band
+// end test gives the last waypoint (routeUsedUp; round 3 A2), on the ground plan; hullReaches is the height test
 const RESUME_ON_WAY_M   = ARRIVE_DIST_M * 2;
 const MAX_FIRE_RANGE_M  = 620;
 const UNDER_FIRE_WINDOW_S = 15;       // chase/engage window after a team hit
@@ -888,11 +888,13 @@ const LEVEL_ROUTE_SLACK_S = 25;
 const LEVEL_ROUTE_STRIKES = 4;
 const UNBEARABLE_S = 75;
 const LEVEL_ROUTE_OPTIONS = Object.freeze({ requireGoalLevel: true });
-// A hull handed back (Watch mode's Leave) that stands this far or more above or below the ground of its way, at the
-// way's nearest point, is on another level and not on its way, whatever the ground plan says (round 4, F5: a watcher
-// who drove a level route's hull off a causeway's crest onto the floor 11 m beside it left the route held from below,
-// and its stuck strikes ended it with the UNBEARABLE_S verdict). Another level is ELEVATION_LEVEL_M away, as for a gun.
-const RESUME_ON_LEVEL_M = ELEVATION_LEVEL_M;
+// A hull handed back (Watch mode's Leave) is on its way, or where it was taken, only where it can drive there, whatever
+// the ground plan says (hullReaches): the ground from the hull to that point, read at most this far apart (as
+// corridorSafe and the movement's cliff probe, CLIFF_PROBE_M, read it), rises or falls at no step more steeply than the
+// hull can climb or hold. Round 4, F5: a watcher who drove a level route's hull off a causeway's crest onto the floor
+// 11 m beside it left the route held from below, and its stuck strikes ended it with the UNBEARABLE_S verdict; the first
+// fix's band (ELEVATION_LEVEL_M, 8 m: the gun's level, not the drive's) still held it from 5.5 m below (fix-up r1).
+const RESUME_STEP_M = 1.5;
 // Two stretches of a way whose distances from a hull handed back differ by no more than this are a tie, and the earlier
 // keeps the resume's cursor (hullOnItsWay). Each stretch's nearest point is its own projection, so a leg that retraces
 // its own line on a diagonal reads ~1e-15 m nearer one way or the other by rounding alone (round 4, E8, fix-up r1).
@@ -7018,18 +7020,19 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
    * level route's deadline) time the bot's driving on them. The taken hull is not frozen: the watcher's zeroed input
    * (takeWatchSeat) leaves it coasting on from speed, 6.5 m in half a second at 14 m/s, so the spot it was taken on is no
    * test of where its leg went. Through a park that left the hull on its way (hullOnItsWay: the route from where it stood
-   * through the waypoints still ahead, on that route's level) the legs hold, the cursor past the waypoints it went by,
-   * and those clocks move on by the park. After any other park, and after a revive (no park: the hull is a new one at its
-   * spawn), they end with no verdict. A park leaves the hull off its way when the watcher drove it more than
-   * RESUME_ON_WAY_M off the route ahead, or onto another level beside it (RESUME_ON_LEVEL_M above or below the route's
-   * ground: off a crest, a ramp or a bridge onto the floor below), and also when the coast alone carried it off: more than
-   * RESUME_ON_WAY_M past the leg's last waypoint (the end of the way; a coast short of that is the leg used up, as
-   * routeUsedUp reads it), or across a leg planned just before the Take while the hull still headed elsewhere (round 3's
-   * completeness review: 3 of 31 Takes of a 2 s coast on a sweep). Either way the level route's list is released and the
-   * elevation lock re-arms from the hull as it stands (ELEVATION_LOCK_S later), so no target is given up as unbearable on a
-   * deadline spent while the watcher drove or the hull lay dead, or on strikes against a level the route is not on; the
-   * search leg's own list is released, which displaces the leg (claimWaypoints), and its next leg is planned from here at
-   * the first tick back, counting no failed leg; a leg already displaced waits for the route in place from the hand-back.
+   * through the waypoints still ahead, where the hull can drive onto it) the legs hold, the cursor past the waypoints it
+   * went by, and those clocks move on by the park. After any other park, and after a revive (no park: the hull is a new one
+   * at its spawn), they end with no verdict. A park leaves the hull off its way when the watcher drove it more than
+   * RESUME_ON_WAY_M off the route ahead, or onto another level beside it (ground it cannot drive back up or down from:
+   * off a crest, a ramp or a bridge onto the floor below, whatever the drop; hullReaches), and also when the coast alone
+   * carried it off: more than RESUME_ON_WAY_M past the leg's last waypoint (the end of the way; a coast short of that is
+   * the leg used up, as routeUsedUp reads it), or across a leg planned just before the Take while the hull still headed
+   * elsewhere (round 3's completeness review: 3 of 31 Takes of a 2 s coast on a sweep). Either way the level route's list
+   * is released and the elevation lock re-arms from the hull as it stands (ELEVATION_LOCK_S later), so no target is given
+   * up as unbearable on a deadline spent while the watcher drove or the hull lay dead, or on strikes against a level the
+   * route is not on; the search leg's own list is released, which displaces the leg (claimWaypoints), and its next leg is
+   * planned from here at the first tick back, counting no failed leg; a leg already displaced waits for the route in place
+   * from the hand-back.
    * The elevation lock's dwell (how long the bot has seen its target on a level the gun cannot reach, from where the hull
    * stands; 0 while a level route runs) is a reading from one spot, like the dwell clocks resume() restarts: through a park
    * that left the hull where it was taken (hullStoodPut) it holds, so a Take and Leave in place loses nothing; after a
@@ -7055,13 +7058,13 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
   }
   /**
    * The hull lies on its way at the hand-back (round 3, A2; round 4, F5 and E8): within RESUME_ON_WAY_M on the ground plan
-   * of the route the park left it on, from where it stood (park()) through the waypoints still ahead of the cursor, and
-   * on that route's level there (wayOffset); with no waypoint ahead, where it stood (hullStoodPut). The cursor moves to
-   * the waypoint ahead of the hull: the earliest stretch the hull lies by, then on only while the next lies nearer by more
-   * than WAY_TIE_M. Within that the stretches tie and the earlier keeps it, so a route that doubles back over its own line
-   * is driven to its apex, not skipped at it, on any heading, and one that doubles back past the hull is not skipped
-   * ahead. A hull driven off it, onto another level beside it, or carried off it by its coast is not on it
-   * (resumeOwnLegs). Allocation-free.
+   * of the route the park left it on, from where it stood (park()) through the waypoints still ahead of the cursor, where
+   * it can drive onto that route (wayOffset); with no waypoint ahead (an emptied list), where it stood (hullStoodPut). The
+   * cursor moves to the waypoint ahead of the hull: the earliest stretch the hull lies by, then on only while the next
+   * lies nearer by more than WAY_TIE_M. Within that the stretches tie and the earlier keeps it, so a route that doubles
+   * back over its own line is driven to its apex, not skipped at it, on any heading, and one that doubles back past the
+   * hull is not skipped ahead. A hull driven off it, onto another level beside it, or carried off it by its coast is not
+   * on it (resumeOwnLegs). Allocation-free.
    */
   function hullOnItsWay(): boolean {
     if (wpIndex >= waypoints.length) return hullStoodPut();
@@ -7082,21 +7085,48 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
   }
   /**
    * How far off one stretch of its way the hull lies at the hand-back: the ground-plan distance to the stretch from (ax,az)
-   * to (bx,bz), or Infinity when it lies within RESUME_ON_WAY_M of it on the plan but stands RESUME_ON_LEVEL_M or more
-   * above or below the stretch's ground at the nearest point (the drivable surface the route was planned on: the terrain,
-   * or a bridge deck over it). Allocation-free.
+   * to (bx,bz), or Infinity when it lies within RESUME_ON_WAY_M of it on the plan but cannot drive to the stretch's nearest
+   * point (hullReaches; the ground there is the drivable surface the route was planned on: the terrain, or a bridge deck
+   * over it). Allocation-free.
    */
   function wayOffset(x: number, z: number, ax: number, az: number, bx: number, bz: number): number {
     const distance = segmentNearestXZ(x, z, ax, az, bx, bz, wayScratch);
     if (distance > RESUME_ON_WAY_M) return distance;
     const ground = terrainSafety.surfaceY(wayScratch.x, wayScratch.z);
-    return Math.abs(entity.state.pos.y - ground) < RESUME_ON_LEVEL_M ? distance : Infinity;
+    return hullReaches(wayScratch.x, wayScratch.z, ground) ? distance : Infinity;
   }
-  /** The hull stands where the park took it (park()): within RESUME_ON_WAY_M of that spot, on its level. */
+  /** The hull stands where the park took it (park()): within RESUME_ON_WAY_M of that spot, and able to drive back to it. */
   function hullStoodPut(): boolean {
     const position = entity.state.pos;
     return detMath.hypot(position.x - parkHullX, position.z - parkHullZ) <= RESUME_ON_WAY_M
-      && Math.abs(position.y - parkHullY) < RESUME_ON_LEVEL_M;
+      && hullReaches(parkHullX, parkHullZ, parkHullY);
+  }
+  /**
+   * The hull can drive from where it stands to (tx,tz), where the ground (or the hull taken there) stands at ty (round 4,
+   * F5): from the hull's own height to ty, through the ground on the line between (terrainSafety.surfaceY: the terrain, or
+   * a bridge deck over it) read at most RESUME_STEP_M apart, no step rises or falls more steeply than this hull can climb
+   * or hold (terrainTravelCostFactor, with its damage, as terrainLineCost reads a line; CLIFF_GRADE is a wall for every
+   * hull). Each step's rise is read over RESUME_STEP_M, as the movement's cliff probe reads one, so the hull's own height
+   * at a short reach is one probe's step. A hull at the foot of a face, on the floor beside a crest or a deck, under a deck
+   * or up on a structure the ground does not carry cannot. Allocation-free.
+   */
+  function hullReaches(tx: number, tz: number, ty: number): boolean {
+    const position = entity.state.pos;
+    const dx = tx - position.x, dz = tz - position.z;
+    const steps = Math.max(1, Math.ceil(detMath.hypot(dx, dz) / RESUME_STEP_M));
+    const debuff = entity.state._debuff;
+    const powerMult = debuff?.powerMult ?? 1;
+    const accelMult = debuff?.accelMult ?? 1;
+    let previousY = position.y;
+    for (let step = 1; step <= steps; step++) {
+      const x = position.x + dx * step / steps, z = position.z + dz * step / steps;
+      const y = step === steps ? ty : terrainSafety.surfaceY(x, z);
+      const grade = (y - previousY) / RESUME_STEP_M;
+      const cost = terrainTravelCostFactor(spec, driveGroundTypeAt(hf, x, z), grade, powerMult, accelMult);
+      if (!Number.isFinite(cost)) return false;
+      previousY = y;
+    }
+    return true;
   }
   /**
    * The park could hide nothing from the bot's looks at its target (updateTargetActivity), so what it saw holds: the same
