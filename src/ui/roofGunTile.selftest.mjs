@@ -44,9 +44,11 @@ const frame = () => {
 const button = created.find((element) => element.dataset.keyCap === 'roofGun')?.parentNode;
 assert.ok(button?.classes.has('cot-auxiliary'), 'the roof-gun tile exists');
 const help = english['systems.roofGun.help'], silenced = english['systems.roofGun.silenced'];
-assert.ok(silenced && silenced !== help, 'the catalog says what a silenced gun is');
 const read = () => ({ hidden: button.hidden, active: button.classes.has('active'), silenced: button.classes.has('silenced'),
   pressed: button.getAttribute('aria-pressed'), disabled: button.disabled, label: button.getAttribute('aria-label'), tip: button.dataset.tip });
+// the tile's state apart from its words: judged first, so a tile that shows a red gun as firing fails here, not at a
+// missing catalog key (round 3 B6: on 50197fdf43 this file stopped at the key before it reached the tile)
+const tileState = () => { const { label, tip, ...state } = read(); return state; };
 
 // switched on, module whole: lit and pressed, takes a press
 aux.gunOn = true; Object.assign(roofModule, { state: 'ok' });
@@ -57,8 +59,12 @@ assert.deepEqual(read(), { hidden: false, active: true, silenced: false, pressed
 // switched on, module red: still the switch's position, marked silenced, and the crew can switch it off
 Object.assign(roofModule, { hp: 0, state: 'red', repairT: 0 });
 frame();
-assert.deepEqual(read(), { hidden: false, active: true, silenced: true, pressed: 'true', disabled: false, label: silenced, tip: silenced },
+assert.deepEqual(tileState(), { hidden: false, active: true, silenced: true, pressed: 'true', disabled: false },
   'a switched-on red gun reads as silenced, not as firing, and takes a press to switch it off');
+// and its tip and label say so, in the catalog's own words
+assert.ok(silenced && silenced !== help, 'the catalog says what a silenced gun is');
+assert.deepEqual(read(), { hidden: false, active: true, silenced: true, pressed: 'true', disabled: false, label: silenced, tip: silenced },
+  'the silenced tile says so in its tip and label');
 
 // switched off while red: plain, and the switch on is refused (as requestAuxiliary refuses it)
 aux.gunOn = false;
