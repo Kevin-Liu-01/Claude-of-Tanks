@@ -297,35 +297,6 @@ function sunburst(sink: PartSink, face: Face, y: number, r: number, fine: boolea
   }
 }
 
-/**
- * (buildings-270) a gable's dress, as the house's map names it (the building-style table's `gable` axis; Podhale's photos):
- * the carved sunburst ('sunburst'); a carved star of crossed boards in a ring, the cross over it ('star'); or the boards
- * alone under a carved ridge spike ('spike'). Decor only.
- */
-function gableDress(sink: PartSink, face: Face, y: number, r: number, fine: boolean, dress: string): void {
-  if (dress === 'sunburst') { sunburst(sink, face, y, r, fine); return; }
-  const c = { colour: PALE, decor: true, ...(fine ? { fine: true } : {}) } as const;
-  if (dress === 'star') {
-    const cy = y + r * 0.62, rr = r * 0.42;
-    for (let k = 0; k < 4; k++) {
-      const a = Math.PI * k / 4;
-      sink.member('structureWood', facePoint(face, -Math.cos(a) * rr, cy - Math.sin(a) * rr, 0), facePoint(face, Math.cos(a) * rr, cy + Math.sin(a) * rr, 0),
-        0.07, 0.03, face.out, c, 0.005);
-    }
-    for (let k = 0; k < 12; k++) {
-      const a0 = Math.PI * 2 * k / 12, a1 = Math.PI * 2 * (k + 1) / 12;
-      sink.member('structureWood', facePoint(face, Math.cos(a0) * rr, cy + Math.sin(a0) * rr, 0), facePoint(face, Math.cos(a1) * rr, cy + Math.sin(a1) * rr, 0),
-        0.05, 0.03, face.out, c, 0.005);
-    }
-    return;
-  }
-  // 'spike': a carved spike (pazdur) up the gable's peak line over a short king board
-  sink.member('structureWood', facePoint(face, 0, y + r * 0.15, 0), facePoint(face, 0, y + r * 1.15, 0), 0.1, 0.035, face.out, c, 0.005);
-  for (const s of [-1, 1]) {
-    sink.member('structureWood', facePoint(face, 0, y + r * 0.85, 0), facePoint(face, s * r * 0.28, y + r * 0.6, 0), 0.06, 0.03, face.out, c, 0.005);
-  }
-}
-
 /** The vertical boards of a gable: battens over the planks' joints, every 25 cm. */
 function gableBoards(sink: PartSink, face: Face, frame: HouseFrame, skip: ReadonlyArray<readonly [number, number]> = []): void {
   const g = frame.roof.gable;
@@ -383,7 +354,7 @@ function chalupa(ctx: RegionalBuildContext, opts: { big?: boolean } = {}): Retur
     logWork(sink, frame, big ? [0, 1] : [0], look, st.window, st.mobile);
     const f = frame.faces.front;
     if (!st.mobile) gableBoards(sink, f, frame);
-    gableDress(sink, f, frame.eaveY + 0.12, Math.min(1.5, W * 0.22), st.mobile, dressOf(ctx, 'gable', 'sunburst'));
+    sunburst(sink, f, frame.eaveY + 0.12, Math.min(1.5, W * 0.22), st.mobile);
     if (big) {
       // the gallery across the gable at the attic floor
       const y = frame.floors[1], w = W - 0.6, depth = 0.8, c = { colour: shade(LOG, 1.1), decor: true } as const;
@@ -446,7 +417,7 @@ const willa: RegionalBuilder = (ctx) => {
     const f = frame.faces.front;
     const attic: Array<[number, number]> = [[-1.25, -0.55], [0.55, 1.25]];
     if (!st.mobile) { gableBoards(sink, f, frame, attic); gableBoards(sink, frame.faces.back, frame, attic); }
-    for (const g of [f, frame.faces.back]) gableDress(sink, g, frame.eaveY + 2.2, 1.6, st.mobile, dressOf(ctx, 'gable', 'sunburst'));
+    for (const g of [f, frame.faces.back]) sunburst(sink, g, frame.eaveY + 2.2, 1.6, st.mobile);
     // the attic's small gable windows in their cut openings, white-framed
     if (Math.max(...(frame.roof.gable ?? [[0, 0]]).map(([, y]) => y)) - frame.eaveY > 1.6) {
       sink.recess = frame.gableReveal;
@@ -495,7 +466,7 @@ const szkola: RegionalBuilder = (ctx) => {
     logWork(sink, frame, [0, 1], look, st.window, st.mobile);
     const f = frame.faces.front;
     if (!st.mobile) gableBoards(sink, f, frame);
-    gableDress(sink, f, frame.eaveY + 0.15, 1.8, st.mobile, dressOf(ctx, 'gable', 'sunburst'));
+    sunburst(sink, f, frame.eaveY + 0.15, 1.8, st.mobile);
     // the porch: two posts, a little gable of shingle over the door
     const pz = D / 2 + 1.3;
     for (const s of [-1, 1]) sink.span('structureWood', s * 1.0 - 0.1, 0.8, pz - 0.2, s * 1.0 + 0.1, 3.0, pz, { colour: LOG });
