@@ -122,7 +122,7 @@
   "lrmv_lynx": {"turretRaisedCm2":0,"turretBaseCm2":0,"hullCm2":0,"pockets":0,"geometry":{"hull":"4400d3bff6982dd8","turret":"78adce3b44d3ca1e","gun":"b50fcfb4e9e573ac"}},
   "m1a1": {"turretRaisedCm2":0,"turretBaseCm2":3524,"hullCm2":0,"pockets":1,"geometry":{"hull":"e97ebd42c4a6aed7","turret":"442824e3bb27f5a5","gun":"c44e9e9dc13b55b6"}},
   "m1a1_abrams_aim": {"turretRaisedCm2":4640,"turretBaseCm2":0,"hullCm2":0,"pockets":2,"geometry":{"hull":"69e7fae328472a91","turret":"bf3f7e1ebc3f34a3","gun":"bedd699c8942dc94"}},
-  "m1a1_abrams_fep": {"turretRaisedCm2":0,"turretBaseCm2":3520,"hullCm2":0,"pockets":1,"geometry":{"hull":"90b10039c5f203b3","turret":"2ba7b7565daeab49","gun":"597112a81b3347f8"}},
+  "m1a1_abrams_fep": {"turretRaisedCm2":0,"turretBaseCm2":3520,"hullCm2":0,"pockets":1,"geometry":{"hull":"90b10039c5f203b3","turret":"b7496dc46055f632","gun":"597112a81b3347f8"}},
   "m1a1_abrams_hc": {"turretRaisedCm2":0,"turretBaseCm2":3920,"hullCm2":936,"pockets":2,"geometry":{"hull":"105e3803dc7fcc05","turret":"72df9432b8dff07f","gun":"5c6e44384228ae91"}},
   "m1a1_abrams_sa": {"turretRaisedCm2":172,"turretBaseCm2":3536,"hullCm2":0,"pockets":2,"geometry":{"hull":"cc140112c70d74cd","turret":"02d7887c25b69f72","gun":"8a19ec34c44e0582"}},
   "m1a1ha": {"turretRaisedCm2":3488,"turretBaseCm2":0,"hullCm2":2564,"pockets":4,"geometry":{"hull":"4ff2b563f4149784","turret":"cd48c14d8e8c56e4","gun":"481dda6641265239"}},

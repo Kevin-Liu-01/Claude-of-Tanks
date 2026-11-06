@@ -444,8 +444,12 @@ async function runModeBattle(ticks, perturb = null) {
     const log = game._destruction.log;
     if (!divergence && JSON.stringify(match.snapshotMeta(own.id).destructionLog) !== JSON.stringify(log)) divergence = { tick, field: 'destruction' };
     if (!divergence && match.wreckTurretDigest() !== game._wreckTurrets.digest()) divergence = { tick, field: 'wreck turrets' };
-    authorityShells.length = 0;
-    match.observeForViewer(own.id, [], authorityShells);
+    // the authority's whole shell state, not a viewer's: spotting has its own receipts (Main's 268 ruling; the M1A1 HC on
+    // the owner model loses sight of the M41 with its round in flight). No viewer passes every shooter but a hull parked
+    // by the mode, so the parked hulls are lifted for this read alone (observeForViewer only collects references).
+    const parked = match.entities.filter((entity) => entity.modeActive === false);
+    for (const entity of parked) entity.modeActive = true;
+    try { match.observeForViewer('', [], authorityShells); } finally { for (const entity of parked) entity.modeActive = false; }
     if (!divergence && shellKey(game.shells) !== shellKey(authorityShells)) divergence = { tick, field: 'shells' };
     const mode = JSON.parse(pageMode);
     for (const pickup of mode.pickups ?? []) if (!seenCaches.has(pickup.id)) { seenCaches.add(pickup.id); exercised.cachesDropped++; }
