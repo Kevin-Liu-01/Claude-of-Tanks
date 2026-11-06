@@ -490,11 +490,12 @@ export const KSAR_STYLE: ArchitectureStyle = Object.freeze<ArchitectureStyle>({
     stone: { kind: 'rubble', tint: [0.68, 0.62, 0.53] },
     // (buildings-270, the census and the batch-1 A/B: under the sourced plaster photo no tone the map gave the walls showed,
     // and the houses stayed the sand's own colour) the walls the procedural mud plaster under lime wash
-    // (regionalSurfaces.ts paintLimewash), each family's tone measured on that canvas against the Dahar photos: the ochre
+    // (regionalSurfaces.ts paintLimeRender since the round-3 pairs: the soft wash read flat beside the photos' weathered mud),
+    // each family's tone measured on that canvas against the Dahar photos: the ochre
     // mud-lime render (the map's plaster, #d0a671 against #c79a5a-#d8b47a), the warm lime wash of the houses and cell bands
     // (#d4cec4), the older, deeper ochre (#ce955a)
     sourced: { plaster: false, wood: true },
-    render: { kind: 'limewash', seed: 0x4b3d },
+    render: { kind: 'limeRender', seed: 0x4b3d },
     tones: {
       plaster: (_h, s, l) => [0.095, Math.min(1, s * 0.4 + 0.36), Math.min(1, l + 0.2)],
       // (the round-2 critics: the cool lime wash read grey and washed out) a warm lime wash (#d4cec4) and the older, deeper
