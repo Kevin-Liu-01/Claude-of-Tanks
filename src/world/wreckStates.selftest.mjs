@@ -6,8 +6,8 @@
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { ensureTankBuilder } from '../vehicles/fleetFactory.ts';
-import { bakeTankWreck } from './wrecks.ts';
-import { WRECK_STATES } from './wreckStates.ts';
+import { bakeTankWreck, wreckRemnantPaint } from './wrecks.ts';
+import { WRECK_STATE_TABLE, WRECK_STATES } from './wreckStates.ts';
 
 const DONOR = 'm60a3', SEED = 2264;
 await ensureTankBuilder(DONOR);
@@ -54,4 +54,27 @@ assert.ok(bakes.stripped.h < base.h, `and stands lower, down on its belly (${bak
 assert.ok(Math.abs(bakes.overturned.hx - base.hx) > 0.3, `on its side, its plan changes (${bakes.overturned.hx.toFixed(2)} vs ${base.hx.toFixed(2)})`);
 assert.ok(bakes.scrap_cut.hx > base.hx + 0.8, `a cut-up hulk's turret is set down beside it (${bakes.scrap_cut.hx.toFixed(2)} vs ${base.hx.toFixed(2)})`);
 for (const b of Object.values(bakes)) { b.geo.dispose(); b.shadowGeo?.dispose(); }
+
+// the finish (11-06: the repeat critics read a stripped hull beside a thrown track in one rust as one hulk twice): with a
+// map's paint, a charred hulk is soot with rust blooms, a rusted one oxide nearly all over, and an abandoned one keeps
+// the paint (Longleaf's olive: green over red); every look a roadside shows that stands upright has two finishes
+const finishOf = (state) => WRECK_STATE_TABLE[state].finish;
+assert.deepEqual([...new Set(WRECK_STATES.map(finishOf))].sort(), ['abandoned', 'charred', 'rusted']);
+assert.notEqual(finishOf('stripped'), finishOf('track_thrown'));
+assert.notEqual(finishOf('burnt_out'), finishOf('track_thrown'));
+const paint = wreckRemnantPaint('longleaf');
+const tone = (state) => {
+  const b = bakeTankWreck(null, DONOR, { seed: SEED, state, remnant: paint });
+  const c = b.geo.attributes.color.array, n = c.length / 3;
+  let r = 0, g = 0, orange = 0;
+  for (let i = 0; i < c.length; i += 3) { r += c[i]; g += c[i + 1]; if (c[i] > c[i + 1] * 1.6) orange++; }
+  b.geo.dispose(); b.shadowGeo?.dispose();
+  return { r: r / n, g: g / n, orange: orange / n };
+};
+const charred = tone('burnt_out'), rusted = tone('stripped'), abandoned = tone('track_thrown');
+assert.ok(rusted.orange > 0.55 && rusted.orange > charred.orange * 2,
+  `a rusted hulk is oxide nearly all over (${rusted.orange.toFixed(2)} vs charred ${charred.orange.toFixed(2)})`);
+assert.ok(abandoned.orange < 0.12 && abandoned.g > abandoned.r,
+  `an abandoned hulk keeps its olive (${abandoned.orange.toFixed(2)} rust, g ${abandoned.g.toFixed(3)} > r ${abandoned.r.toFixed(3)})`);
+assert.ok(charred.r > charred.g, 'a charred hulk stays soot and rust');
 console.log(`wreckStates: ${DONOR} baked in ${WRECK_STATES.length} states; ${WRECK_STATES.map((s) => `${s} ${bakes[s].tris}t`).join(', ')}`);

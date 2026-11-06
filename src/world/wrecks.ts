@@ -34,7 +34,7 @@ import {
   type WreckGeometryBuildSlice,
 } from './exactWreckGeometry.ts';
 import { createTank } from '../vehicles/fleetFactory.ts';
-import { WRECK_STATE_TABLE, type WreckState, type WreckStateRow } from './wreckStates.ts';
+import { WRECK_STATE_TABLE, type WreckFinish, type WreckState, type WreckStateRow } from './wreckStates.ts';
 import { collectWreckShellSolids, collectWreckSolids } from './wreckCollision.ts';
 import { crumpleWreckGeometry, planWreckCrumple, refineForCrumple, type WreckCrumplePlan } from './wreckCrumple.ts';
 import { buildWreckDebris, seatWreckDebris } from './wreckDebris.ts';
@@ -498,6 +498,8 @@ function mergeRequired(
 // and deck, soot streaked up the sides, and patches of the paint the tank wore surviving low on its flanks.
 const WRECK_OXIDE: readonly [number, number, number] = [0.105, 0.052, 0.028];
 const WRECK_ASH: readonly [number, number, number] = [0.098, 0.094, 0.088];
+// the dust settled on an abandoned hulk's roof and deck (11-06)
+const WRECK_DUST: readonly [number, number, number] = [0.118, 0.108, 0.092];
 
 /** A coarse cell value (blotches a cell's size, blended across each triangle by the vertex colours). */
 function wreckCell(px: number, py: number, pz: number, scale: number, salt: number): number {
@@ -513,6 +515,7 @@ function wreckVertexColor(
   remnant: readonly [number, number, number] | null,
   color: [number, number, number],
   age = 0,
+  finish: WreckFinish = 'charred',
 ): readonly [number, number, number] {
   const panel = hash3(
     Math.round(px * 2.4) * 0.5,
@@ -521,8 +524,10 @@ function wreckVertexColor(
   );
   const grain = hash3(px * 9.1, py * 9.1, pz * 9.1);
   const rust = hash3(px * 1.7 + rustPhase, py * 1.9, pz * 1.7 - rustPhase);
-  // (wrecks-270) an old hulk: the rust spreads over the soot and the oxide over the flanks, year on year
-  if (rust > 0.80 - age * 0.24 && up < 0.85 + age * 0.15) {
+  // (wrecks-270) an old hulk: the rust spreads over the soot and the oxide over the flanks, year on year; (11-06) a
+  // rusted finish is oxide nearly all over, and an abandoned hull, never burnt, rusts only where the rain runs
+  const rustFrom = finish === 'rusted' ? 0.42 - age * 0.24 : finish === 'abandoned' ? 0.93 : 0.80 - age * 0.24;
+  if (rust > rustFrom && up < 0.85 + age * 0.15) {
     const level = 0.085 + grain * 0.075;
     color[0] = level * 1.75;
     color[1] = level * 0.9;
@@ -534,20 +539,28 @@ function wreckVertexColor(
   const mix = (target: readonly [number, number, number], t: number) => {
     r += (target[0] - r) * t; g += (target[1] - g) * t; b += (target[2] - b) * t;
   };
-  // heat oxide in broad blotches down the flanks (less on the faces the sky sees)
-  const oxide = wreckCell(px, py, pz, 1.25, rustPhase);
-  const oxideFrom = 0.52 - age * 0.22;
-  if (oxide > oxideFrom) mix(WRECK_OXIDE, Math.min(1, ((oxide - oxideFrom) / (1 - oxideFrom)) * (0.85 + age * 0.15)) * (1 - up * 0.6 * (1 - age)));
-  // the paint it wore, surviving in patches low on the flanks where the fire ran thinnest
-  if (remnant && up < 0.55 && py < 1.35) {
-    const keep = wreckCell(px, py, pz, 1.7, rustPhase * 0.37 + 5.1);
-    const low = py < 0.9 ? 1 : (1.35 - py) / 0.45;
-    if (keep > 0.5) mix(remnant, Math.min(1, ((keep - 0.5) / 0.3)) * 0.9 * low);
-  }
-  // burnt-off paint gone to grey ash on the roof and deck
-  if (up > 0.7 && py > 1.2) {
-    const ash = wreckCell(px, py, pz, 2.1, rustPhase * 0.53 + 9.7);
-    if (ash > 0.55) mix(WRECK_ASH, ((ash - 0.55) / 0.45) * 0.55 * (up - 0.7) / 0.3);
+  if (finish === 'abandoned' && remnant) {
+    // (11-06) the crew bailed out and nothing burnt: the paint it wore over the whole hull, a little lighter than the
+    // patches a fire leaves and drifting panel to panel, with dust settled on the faces the sky sees
+    const k = 1.22 + panel * 0.22 + grain * 0.1;
+    r = remnant[0] * k; g = remnant[1] * k; b = remnant[2] * k;
+    if (up > 0.7) mix(WRECK_DUST, 0.4 * (up - 0.7) / 0.3);
+  } else {
+    // heat oxide in broad blotches down the flanks (less on the faces the sky sees)
+    const oxide = wreckCell(px, py, pz, 1.25, rustPhase);
+    const oxideFrom = 0.52 - age * 0.22;
+    if (oxide > oxideFrom) mix(WRECK_OXIDE, Math.min(1, ((oxide - oxideFrom) / (1 - oxideFrom)) * (0.85 + age * 0.15)) * (1 - up * 0.6 * (1 - age)));
+    // the paint it wore, surviving in patches low on the flanks where the fire ran thinnest
+    if (remnant && up < 0.55 && py < 1.35) {
+      const keep = wreckCell(px, py, pz, 1.7, rustPhase * 0.37 + 5.1);
+      const low = py < 0.9 ? 1 : (1.35 - py) / 0.45;
+      if (keep > 0.5) mix(remnant, Math.min(1, ((keep - 0.5) / 0.3)) * 0.9 * low);
+    }
+    // burnt-off paint gone to grey ash on the roof and deck
+    if (up > 0.7 && py > 1.2) {
+      const ash = wreckCell(px, py, pz, 2.1, rustPhase * 0.53 + 9.7);
+      if (ash > 0.55) mix(WRECK_ASH, ((ash - 0.55) / 0.45) * 0.55 * (up - 0.7) / 0.3);
+    }
   }
   // soot streaked up the sides from the hatches and the engine deck
   if (up < 0.3) {
@@ -579,6 +592,7 @@ function* paintWreckGeometrySteps(
   rustPhase: number,
   remnant: readonly [number, number, number] | null = null,
   age = 0,
+  finish: WreckFinish = 'charred',
 ): Generator<WreckGeometryBuildSlice, void, void> {
   const position = merged.attributes.position;
   const normal = merged.attributes.normal;
@@ -596,6 +610,7 @@ function* paintWreckGeometrySteps(
       remnant,
       scratchColor,
       age,
+      finish,
     );
     colors[i * 3] = color[0];
     colors[i * 3 + 1] = color[1];
@@ -892,7 +907,7 @@ function* buildTankWreckSteps(
     // RGB is determined by these exact position/normal words. Paint only the
     // first-occurrence representatives, retaining the original corner index.
     const preparedForPaint = yield* compactWreckGeometryForPaintSteps(merged);
-    yield* paintWreckGeometrySteps(merged, rustPhase, remnantLinear(opts.remnant), state.age);
+    yield* paintWreckGeometrySteps(merged, rustPhase, remnantLinear(opts.remnant), state.age, state.finish);
     if (!preparedForPaint) yield* compactWreckGeometrySteps(merged);
     const shadowGeo = yield* mergeShadowGeometrySteps(proxyGeos, owner);
     const result = wreckBakeResult(merged, shadowGeo, solids, shellSolids, burntAway, budgetTriDelta, ground);

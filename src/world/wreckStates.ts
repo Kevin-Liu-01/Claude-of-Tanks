@@ -34,6 +34,10 @@ export type WreckSite = typeof WRECK_SITES[number];
  *  nose-down hulk at 40-100 m, the map's paint shared, read as one hulk twice): turret on and hull up; turret gone;
  *  sunk to the deck; down on its belly with the running gear gone; on its side. */
 export type WreckLook = 'upright' | 'turretless' | 'sunk' | 'bare' | 'tipped';
+/** What the fire, or its absence, left of a hulk's paint (the repeat critics, 11-06: two hulks of different models and
+ *  states in one rust read as one hulk twice): soot over everything, decades of oxide, or the camouflage a crew bailed
+ *  out of. */
+export type WreckFinish = 'charred' | 'rusted' | 'abandoned';
 
 export interface WreckStateRow {
   /** The factory's settled wreck under the state: the ammo-rack pop (turret thrown, ring open) or the unseated turret. */
@@ -55,6 +59,8 @@ export interface WreckStateRow {
   readonly sites: readonly WreckSite[];
   /** What it reads as from across a field; the placement shows a new look in a view before a new state. */
   readonly look: WreckLook;
+  /** Its paint (wrecks.ts wreckVertexColor). */
+  readonly finish: WreckFinish;
 }
 
 const NONE = Object.freeze({ track: 'none', wheels: false, fittings: false, gun: false } as const);
@@ -64,42 +70,42 @@ const LEVEL: readonly [number, number] = Object.freeze([0, 0]);
 export const WRECK_STATE_TABLE: Readonly<Record<WreckState, WreckStateRow>> = Object.freeze({
   burnt_out: Object.freeze({
     pop: false, removes: NONE, pitch: LEVEL, roll: LEVEL, sink: LEVEL, turretSetDown: false, age: 0,
-    sites: Object.freeze(['roadside', 'field_edge', 'town_square'] as const), look: 'upright',
+    sites: Object.freeze(['roadside', 'field_edge', 'town_square'] as const), look: 'upright', finish: 'charred',
   }),
   turret_blown_off: Object.freeze({
     pop: true, removes: NONE, pitch: LEVEL, roll: LEVEL, sink: LEVEL, turretSetDown: false, age: 0,
-    sites: Object.freeze(['roadside', 'town_square', 'trench_line'] as const), look: 'turretless',
+    sites: Object.freeze(['roadside', 'town_square', 'trench_line'] as const), look: 'turretless', finish: 'charred',
   }),
   track_thrown: Object.freeze({
     pop: false, removes: Object.freeze({ track: 'one', wheels: false, fittings: false, gun: false } as const),
     pitch: LEVEL, roll: Object.freeze([0.02, 0.05] as const), sink: LEVEL, turretSetDown: false, age: 0.25,
-    sites: Object.freeze(['roadside', 'trench_line', 'field_edge'] as const), look: 'upright',
+    sites: Object.freeze(['roadside', 'trench_line', 'field_edge'] as const), look: 'upright', finish: 'abandoned',
   }),
   nose_down: Object.freeze({
     pop: false, removes: NONE, pitch: Object.freeze([0.16, 0.26] as const), roll: Object.freeze([-0.06, 0.06] as const),
     sink: LEVEL, turretSetDown: false, age: 0.3,
-    sites: Object.freeze(['roadside', 'trench_line'] as const), look: 'upright',
+    sites: Object.freeze(['roadside', 'trench_line'] as const), look: 'upright', finish: 'abandoned',
   }),
   half_buried: Object.freeze({
     pop: false, removes: NONE, pitch: Object.freeze([-0.05, 0.07] as const), roll: Object.freeze([-0.07, 0.07] as const),
     sink: Object.freeze([0.45, 0.58] as const), turretSetDown: false, age: 0.9,
-    sites: Object.freeze(['field_edge', 'trench_line'] as const), look: 'sunk',
+    sites: Object.freeze(['field_edge', 'trench_line'] as const), look: 'sunk', finish: 'rusted',
   }),
   stripped: Object.freeze({
     pop: false, removes: Object.freeze({ track: 'both', wheels: true, fittings: true, gun: false } as const),
     pitch: LEVEL, roll: LEVEL, sink: LEVEL, turretSetDown: false, age: 0.75,
     // (11-06) and the road verge: a roadside line then has four looks, not three
-    sites: Object.freeze(['roadside', 'field_edge', 'town_square'] as const), look: 'bare',
+    sites: Object.freeze(['roadside', 'field_edge', 'town_square'] as const), look: 'bare', finish: 'rusted',
   }),
   overturned: Object.freeze({
     pop: false, removes: NONE, pitch: Object.freeze([-0.06, 0.06] as const), roll: Object.freeze([1.5, 1.72] as const),
     sink: LEVEL, turretSetDown: false, age: 0.4,
-    sites: Object.freeze(['field_edge', 'roadside'] as const), look: 'tipped',
+    sites: Object.freeze(['field_edge', 'roadside'] as const), look: 'tipped', finish: 'charred',
   }),
   scrap_cut: Object.freeze({
     pop: true, removes: Object.freeze({ track: 'both', wheels: false, fittings: true, gun: true } as const),
     pitch: LEVEL, roll: LEVEL, sink: LEVEL, turretSetDown: true, age: 0.85,
-    sites: Object.freeze(['town_square', 'field_edge'] as const), look: 'turretless',
+    sites: Object.freeze(['town_square', 'field_edge'] as const), look: 'turretless', finish: 'rusted',
   }),
 });
 
