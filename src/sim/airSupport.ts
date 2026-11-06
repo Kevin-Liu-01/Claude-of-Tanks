@@ -202,8 +202,8 @@ export function aircraftPose(rules: AirSupportRules, strike: PublicStrike, timeS
   }
   if (strike.kind === 'bomb') {
     const b = rules.bomb;
-    // the release point: fallS of the bomb's own flight short of the mark; the jet passes it at landsS - fallS
-    const along = b.speedMps * (timeS - (strike.landsS - b.fallS)) - b.speedMps * b.fallS;
+    // the release point: releaseBackM short of the mark; the jet passes it at landsS - fallS
+    const along = b.speedMps * (timeS - (strike.landsS - b.fallS)) - b.releaseBackM;
     out.x = strike.x + sinH * along;
     out.z = strike.z + cosH * along;
     out.y = strike.y + b.altitudeM;

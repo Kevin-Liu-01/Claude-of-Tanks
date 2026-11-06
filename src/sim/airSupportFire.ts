@@ -94,7 +94,7 @@ export function stepAirSupportFire<Target extends FireTarget>(support: AirSuppor
       const back = a.altitudeM * 0.364;
       const sx = ax - detMath.sin(strike.heading) * back, sz = az - detMath.cos(strike.heading) * back;
       const landS = strike.landsS + k * every;
-      fire(ctx, strike, AIR_STRIKE_WEAPONS.artillery, sx, ay + a.altitudeM, sz, ax, ay, az, landS + 0.05 - timeS);
+      fire(ctx, strike, AIR_STRIKE_WEAPONS.artillery, sx, ay + a.altitudeM, sz, ax, ay, az, landS + rules.fallMarginS - timeS);
       continue;
     }
     if (strike.kind === 'strafe') {
@@ -118,7 +118,7 @@ export function stepAirSupportFire<Target extends FireTarget>(support: AirSuppor
       const ax = strike.x + detMath.sin(bearing) * miss, az = strike.z + detMath.cos(bearing) * miss;
       const ay = ctx.terrainHeight(ax, az);
       // the bomb falls on a ballistic arc that meets the spot a little after the warning has run (never before it)
-      fire(ctx, strike, AIR_STRIKE_WEAPONS.bomb, pose.x, pose.y, pose.z, ax, ay, az, b.fallS + 0.05 - (timeS - releaseS));
+      fire(ctx, strike, AIR_STRIKE_WEAPONS.bomb, pose.x, pose.y, pose.z, ax, ay, az, b.fallS + rules.fallMarginS - (timeS - releaseS));
     } else {
       const g = rules.gunship;
       const cannon = tickIn(strike.landsS, g.cannonEveryS, Math.floor(g.orbitS / g.cannonEveryS), prevS, timeS);

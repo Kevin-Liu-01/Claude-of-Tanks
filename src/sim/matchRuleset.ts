@@ -140,6 +140,10 @@ export interface AirSupportRules {
   readonly teamGunshipCap: number;
   /** The furthest a crew may mark from its own hull (the strike view's reach). */
   readonly callRangeM: number;
+  /** A falling round (the barrage's, the bomb) is laid to reach the mark's ground this long after the warning has run,
+   *  so a crown or a roof on its last, steep stretch still meets it after the warning (the seeded runs: at 0.05 s a
+   *  round struck before it, once in 31 strikes). */
+  readonly fallMarginS: number;
   /** Counter-air: roof stations engage enemy aircraft within their counter-drone range × `rangeScale`; each round lands
    *  the drone share × `hitScale` (an aircraft is a far larger target) of `damagePerHit`. A roof station's round itself
    *  never strikes an aircraft's sphere (its share is its hit); a main gun's does, for its damage. */
@@ -152,8 +156,9 @@ export interface AirSupportRules {
   /** The strafing run: the lane it walks along the heading from the caller to the mark, its rounds and their spread. */
   readonly strafe: AirStrikeRules & { readonly lengthM: number; readonly halfWidthM: number; readonly rounds: number; readonly fireS: number;
     readonly spreadM: number; readonly pullUpM: number };
-  /** The precision bomb: released `fallS` before it lands; it lands within `missM` of the mark. */
-  readonly bomb: AirStrikeRules & { readonly radiusM: number; readonly fallS: number; readonly missM: number };
+  /** The precision bomb: released `fallS` before it lands, `releaseBackM` short of the mark (nearly overhead: a steep fall
+   *  a ridge or a crown on the way cannot meet before the warning has run); it lands within `missM` of the mark. */
+  readonly bomb: AirStrikeRules & { readonly radiusM: number; readonly fallS: number; readonly releaseBackM: number; readonly missM: number };
   /** The AC-130 orbit: its ring, its time on station, the reach it engages spotted enemies in and its guns' cadence. */
   readonly gunship: AirStrikeRules & { readonly radiusM: number; readonly orbitS: number; readonly engageM: number;
     readonly cannonEveryS: number; readonly howitzerEveryS: number; readonly cannonSpreadM: number; readonly howitzerSpreadM: number };
@@ -170,6 +175,7 @@ export const AIR_SUPPORT_RULES: AirSupportRules = Object.freeze({
   teamAirCap: 2,
   teamGunshipCap: 1,
   callRangeM: 700,
+  fallMarginS: 0.4,
   counterAir: Object.freeze({ rangeScale: 1.5, hitScale: 4, damagePerHit: 150 }),
   // the photo pass: 3 s of warning, then a jet at 250 m along a 600 m track through the mark; 12 s of spotting within 160 m
   recon: Object.freeze({ cost: 120, cooldownS: 40, warningS: 3, hp: 400, hitRadiusM: 8, altitudeM: 250, speedMps: 200,
@@ -181,9 +187,10 @@ export const AIR_SUPPORT_RULES: AirSupportRules = Object.freeze({
   // in 1.6 s at 150 m/s (a 30 m dive), and the pull-up; the rounds spread 5 m either side of the lane's line
   strafe: Object.freeze({ cost: 400, cooldownS: 75, warningS: 5, hp: 600, hitRadiusM: 8, altitudeM: 90, speedMps: 150,
     lengthM: 140, halfWidthM: 12, rounds: 28, fireS: 1.6, spreadM: 5, pullUpM: 140 }),
-  // the GBU-12: a 7 s laser warning; the jet runs in at 350 m and releases 4 s out; it lands within 2 m of the spot
+  // the GBU-12: a 7 s laser warning; the jet runs in at 350 m and releases 60 m short of the spot, 4 s before it lands
+  // (from 720 m out, a shallow glide that a ridge on the way could meet early); it lands within 2 m of the spot
   bomb: Object.freeze({ cost: 450, cooldownS: 90, warningS: 7, hp: 600, hitRadiusM: 8, altitudeM: 350, speedMps: 180,
-    radiusM: 22, fallS: 4, missM: 2 }),
+    radiusM: 22, fallS: 4, releaseBackM: 60, missM: 2 }),
   // the AC-130: 8 s inbound, then 30 s on a 120 m pylon turn 180 m over the mark at 42 m/s, engaging only the enemies its
   // side has spotted within 140 m with the gunship's own 30 mm and 152 mm
   gunship: Object.freeze({ cost: 800, cooldownS: 150, warningS: 8, hp: 1400, hitRadiusM: 16, altitudeM: 180, speedMps: 42,
