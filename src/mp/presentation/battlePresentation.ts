@@ -1068,7 +1068,8 @@ export function createBattlePresentation({
    * modules, crew, fire, wreck look, wreck turret pose, ERA and death cause are the restarted battle's. The restarted
    * frame's rows, applied right after, still write the hulls this seat sees.
    * A restart opens a new battle for every per-battle owner on the bus too (round 4 E6b: the HUD, the report, the service
-   * and career records, the result flow, the medal toasts), each through the reset its battle start runs, unconditionally.
+   * and career records, the result flow, the medal toasts; review r2: the audio engine's battle play, audioEngine.ts
+   * resetBattlePlay), each through the reset its battle start runs, unconditionally.
    * The edge's policy (round 4 E6b review r1): a restart cannot follow this seat's verdict, so no owner guards against
    * one. A battle restarts under this seat only on a new link (matchClient.ts restartBattle: another battle id at the
    * WELCOME, or a first snapshot that shows the followed battle not begun), which a migration brings. The session settles
@@ -1098,6 +1099,14 @@ export function createBattlePresentation({
    * it reaches this seat, and a remote hull's modules come only by module_state events. Before, a hidden hull revived by
    * the restart read alive with the abandoned battle's hull points (0 for a wreck: the HUD's ear row drew an empty health
    * bar on a living enemy until it was spotted) and its broken modules.
+   * Its visual begins the new life too (review r2): what the old life's module states and hits laid on it (main.ts's
+   * 'module:state' listener throws a track band and scorches a weapon, the hits knock equipment off and bend the gun) is
+   * the visual's own state, which no row and no mended module tells it. Its one reset is resetDestroyed
+   * (vehicles/tankFactoryCore.ts: "Safe on a never-destroyed tank"; it re-seats both track bands, clears the weapon and
+   * equipment damage and the live crumple), which the wreck's undoing (updateDestruction) runs and a living hull now gets
+   * here. Before, a hull alive at the restart, this seat's own included, kept the abandoned battle's thrown track, its
+   * scorched rack or roof gun and its knocked-off equipment while its modules read whole. (The audio's module states are
+   * the audio's per-battle record: its restart listener resets them, audioEngine.ts restartLives.)
    */
   function beginActorLife(actor: MatchActor): void {
     const { combat } = actor;
@@ -1107,7 +1116,8 @@ export function createBattlePresentation({
     combat.fire.tickTimer = 0;
     combat.fire.ticksLeft = 0;
     mendModulesAndCrew(combat);
-    updateDestruction(actor, false);
+    if (actor._networkDestroyed) updateDestruction(actor, false);
+    else actor.visual.resetDestroyed?.();
     destructionCause.delete(actor.id);
     actor._wreckTurretPose = null;
     actor._reviveOwed = false;
