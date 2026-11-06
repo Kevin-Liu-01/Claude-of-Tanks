@@ -772,7 +772,8 @@ console.log('[12] the elevation lock\'s dwell counts the bot\'s own ticks: it ho
   const driven = await dwellHandBack([30, 30]);
   ok(driven.back.elevationLockT === 0 && driven.decidedAfterS !== null && driven.decidedAfterS >= 6 - 0.05,
     `a 0.5 s park in which the watcher drove 30 m along the cliff's foot (the deck still out of the gun's reach): the dwell restarts there (${label(driven)}; ELEVATION_LOCK_S 6 s)`);
-  // taken 2 m short of the cliff's foot, left on the deck past its edge: near on the plan, on another level
+  // placed 2 m short of the cliff's foot (it backs off a little before the Take), left on the deck past the cliff's
+  // edge: near on the plan, on another level
   const climbed = await dwellHandBack([-4, 44], [0, 36]);
   const planM = Math.hypot(-4 - climbed.parkedAt[0], 44 - climbed.parkedAt[2]);
   ok(climbed.before.elevationLockT >= 2.5 && climbed.before.levelRoutes === 0 && planM < 12 && planM > 6,
