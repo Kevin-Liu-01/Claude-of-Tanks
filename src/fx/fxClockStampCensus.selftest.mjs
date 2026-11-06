@@ -19,20 +19,23 @@
 // does not reach yet, are below). A part that starts reading the clock on a path the scenario does not drive fails here
 // until the scenario drives it, and then the census checks what it stamps. The scenario drives the gunship's rounds and
 // missile, the auxiliary systems, a wire-guided missile, a building's stages and sections (a default-kit house), a
-// crater event, the screenshot composer and the battle warm; (round 4 F6 review) a round drawn in flight past its
-// record's bound.
+// crater event, the screenshot composer and the battle warm; (round 4 review r1) the Studio's cinematic layer on this
+// runtime's port (its rings, scorches and companion pools), and a round drawn in flight past its record's bound.
 // (round 3 B5, review round 1) What the reach check measures, exactly: the reads of the fx clock in src/fx (the
 // runtime's particles.getTime(), fxClockNow(), a part's injected `now()`, and a call of any local bound to one of them,
-// such as volumeMedia's `const o_now = o.now`), and the stores of a clock a part is handed as a `now` parameter
-// (missileTrails.head, missileWires.tail, trailCadence.step: `x = now`). The reads it never runs are a named list, so a
-// newly unreached read fails even when another is driven at the same time. (round 4 F7) It follows the clock handed under
-// any other name (dronePresentation.begin(timeS), structureMask.collapse(startS), craterMarks.stamp(birth): measureReach),
-// a list key names one site (its functions, and its place among sites of the same text), and a src/fx module with a
-// clock read that the scenario never loads fails it. The drones are proven live as well. The carrier's dock is the
-// production mount (missionAttachmentVisual, synced every frame as the battle's presentation does), and the
-// receipt asserts that at the rebase one drone is in flight, one is flying home (past its grace), one flight home ended
-// handed over to the dock, and one drone struck the ground and never flew home, so a stamp a drone's track or its
-// flight home kept would be walked by the census.
+// such as volumeMedia's `const o_now = o.now`; (round 4 review r1) and a read of the shared clock uniform's value, which
+// particles.ts births its cards by and the Studio's cinematic layer takes as `port.sharing.uTime`), and the stores of a
+// clock a part is handed as a `now` parameter (missileTrails.head, missileWires.tail, trailCadence.step: `x = now`; a
+// local `now` bound to another clock, the auxiliary systems' match time or the cinematic layer's Studio timeline, is
+// none). The reads it never runs are a named list, so a newly unreached read fails even when another is driven at the
+// same time. (round 4 F7) It follows the clock handed under any other name (dronePresentation.begin(timeS),
+// structureMask.collapse(startS), craterMarks.stamp(birth): measureReach), a list key names one site (its functions, and
+// its place among sites of the same text), and a src/fx module with a clock read (a read of the shared uniform's value
+// included) that the scenario never loads fails it: cinematicFx.ts, which no battle loads, is loaded and driven here.
+// The drones are proven live as well. The carrier's dock is the production mount (missionAttachmentVisual, synced every
+// frame as the battle's presentation does), and the receipt asserts that at the rebase one drone is in flight, one is
+// flying home (past its grace), one flight home ended handed over to the dock, and one drone struck the ground and never
+// flew home, so a stamp a drone's track or its flight home kept would be walked by the census.
 import assert from 'node:assert/strict';
 import { readdirSync, readFileSync } from 'node:fs';
 import { Session } from 'node:inspector';
@@ -65,6 +68,8 @@ const { createTerrainDeformation } = await import('../sim/terrainDeformation.ts'
 const { syncMissionAttachment } = await import('../game/missionAttachmentVisual.ts');
 const { missionAttachmentTurretPivot } = await import('../sim/missionAttachment.ts');
 const { getSpec } = await import('../vehicles/specs.ts');
+// (round 4 F7 review) the Studio's cinematic layer, which reads the shared clock uniform (particles.sharing.uTime)
+const { createStudioCinematics } = await import('./cinematicFx.ts');
 
 const require = createRequire(import.meta.url);
 const { createCanvas } = require('@napi-rs/canvas');
@@ -295,6 +300,16 @@ for (let k = 0; k < 2; k++) {
   fx.warmProjectilePresentation(new THREE.Vector3(30, 0, 60), new THREE.Vector3(0, 0, 1));
   frames(3, [shells[1]]);
 }
+// (round 4 F7 review) the Studio's cinematic layer on this runtime's port (studio.ts ensureCinematics): its rings' and
+// scorches' births and its companion pools' ride the shared clock uniform, so a rebase must move them too. A ground hit
+// lays a scorch and its pressure ring, a shockwave a ring; its update ages the rings; its stats count the live cards.
+let studioS = 0;
+const cinematics = createStudioCinematics({ port: fx.cinematicPort(), scene, light: null, palette: () => 'verdant', seed: () => 5000 });
+cinematics.beginEffect(studioS);
+cinematics.groundHit('census-hit', new THREE.Vector3(18, 0, 34), 125, 'HE');
+cinematics.shockwave('census-ring', new THREE.Vector3(-18, 0, 34), 12, 1);
+for (let f = 0; f < 3; f++) { frames(1); studioS += 1 / 60; cinematics.update(1 / 60, studioS, [], []); }
+assert.ok(cinematics.stats()['alive.dust'] > 0, 'the cinematic layer\'s cards are alive at the rebase');
 // the moment of the rebase: both houses coming down (the bodies thrown, the mask's crumble front, the falling list), a
 // burst just drawn (its records live) and a hull event waiting for its round's expiry
 {
@@ -393,8 +408,12 @@ const KNOWN_UNREACHED = [
 /**
  * The reach of the scenario over src/fx's fx-clock sites, from V8's block coverage. A site is
  *  - a read: the runtime's particles.getTime(), fxClockNow(), a part's injected `now()` (performance and Date are wall
- *    clocks, no fx stamp), or a call of a local bound to one of them (volumeMedia's `const o_now = o.now`);
- *  - a store of a clock handed in as `now` (`x = now`, `x = now + d`; a declaration `const x = now - y` is an age);
+ *    clocks, no fx stamp), or a call of a local bound to one of them (volumeMedia's `const o_now = o.now`); (round 4 F7
+ *    review) or the shared clock uniform's value (particles.ts `uTime.value`, cinematicFx's `port.sharing.uTime.value`)
+ *    where it is not being written;
+ *  - a store of a clock handed in as `now` (`x = now`, `x = now + d`; a declaration `const x = now - y` is an age; (round
+ *    4 F7 review) a local `now` bound to no clock read, auxiliaryPresentation's match time `const now = ports.time()` or
+ *    cinematicFx's Studio timeline `const now = env.nowS`, is no clock);
  *  - (round 4 F7) a store of the clock under any other name: a call that hands a read, or a name holding one, as an
  *    argument (`drones.begin(particles.getTime())`, `mask.collapse(id, o.now(), ...)`) makes the callee's parameter a clock
  *    name in its body (dronePresentation's `timeS`, structureMask's `startS`), and so does an assignment of a clock name
@@ -406,7 +425,9 @@ const KNOWN_UNREACHED = [
  * scenario never loaded.
  */
 function measureReach(coverage) {
-  const READ_SRC = String.raw`particles\.getTime\(\)|(?<![\w$.])fxClockNow\(\)|(?<![\w$.])(?!performance\.|Date\.)[\w$]+\.now\(\)(?!\s*\{)|(?<![\w$.])now\(\)(?!\s*\{)`;
+  // (round 4 F7 review) and the shared clock uniform's value read (particles.ts `uTime.value`, the cinematic layer's
+  // `port.sharing.uTime.value`), never one being written (a part's own mirror of the clock, `uTime.value = now`)
+  const READ_SRC = String.raw`particles\.getTime\(\)|(?<![\w$.])fxClockNow\(\)|(?<![\w$.])(?!performance\.|Date\.)[\w$]+\.now\(\)(?!\s*\{)|(?<![\w$.])now\(\)(?!\s*\{)|(?<![\w$.])(?:[\w$]+\.)*uTime\.value(?![\w$])(?!\s*(?:[-+*/%&|^]|\*\*|<<|>>>?|&&|\|\||\?\?)?=(?!=))`;
   const READ = new RegExp(READ_SRC, 'g');
   const BOUND = /(?:const|let|var)\s+([\w$]+)\s*=\s*(?:[\w$]+\.)*(?:now|getTime)\s*[;,\n]/g;
   const STORE = /(?<![=!<>])=(?![=>])\s*now\b(?=\s*(?:[;,)}\]]|[+-]))/g;
@@ -427,6 +448,24 @@ function measureReach(coverage) {
   }
   const byFile = new Map(scripts.map((s) => [s.file, s]));
   let reads = 0, aliased = 0, stores = 0, handedStores = 0;
+  const enclosing = (s, at) => {
+    let best = { a: 0, b: s.blank.length };
+    for (const r of s.fnRanges) if (r.a <= at && at < r.b && r.b - r.a < best.b - best.a) best = r;
+    return best;
+  };
+  /** (round 4 F7 review) whether the `now` stored at `at` is a local bound to no clock read (cinematicFx's `const now =
+   *  env.nowS`, the Studio's timeline): no handed clock (a local bound to a clock name is followed below, as a name) */
+  const nowBoundElsewhere = (s, at) => {
+    let best = null;
+    for (const d of s.blank.matchAll(/\b(?:const|let|var)\s+now\s*=(?![=>])([^;\n]*)/g)) {
+      if (d.index > at) break;
+      const scope = enclosing(s, d.index);
+      if (scope.a <= at && at < scope.b && (!best || scope.b - scope.a < best.b - best.a)) best = { a: scope.a, b: scope.b, from: d.index + d[0].length - d[1].length, to: d.index + d[0].length };
+    }
+    if (!best) return false;
+    for (const k of s.sites.keys()) if (k >= best.from && k < best.to) return false;
+    return true;
+  };
   // the reads, the bound locals' calls and the stores of a handed `now`
   for (const s of scripts) {
     for (const m of s.blank.matchAll(READ)) {
@@ -439,16 +478,11 @@ function measureReach(coverage) {
     }
     for (const m of s.blank.matchAll(STORE)) {
       const statement = s.blank.slice(Math.max(0, s.blank.lastIndexOf('\n', m.index), s.blank.lastIndexOf(';', m.index - 1) + 1), m.index);
-      if (/(?:const|let|var)\s+[\w$]+\s*$/.test(statement)) continue;
+      if (/(?:const|let|var)\s+[\w$]+\s*$/.test(statement) || nowBoundElsewhere(s, m.index)) continue;
       if (!s.sites.has(m.index)) { s.sites.set(m.index, { text: m[0].replace(/\s+/g, ' ') }); stores++; }
     }
   }
   // (round 4 F7) the clock under other names: a worklist of clock names, each { s, name, a, b } (its scope)
-  const enclosing = (s, at) => {
-    let best = { a: 0, b: s.blank.length };
-    for (const r of s.fnRanges) if (r.a <= at && at < r.b && r.b - r.a < best.b - best.a) best = r;
-    return best;
-  };
   const identsOf = (s) => {
     if (s.idents) return s.idents;
     s.idents = new Map();
@@ -727,7 +761,8 @@ function census(root) {
     while (queue.length) {
       const [x, at] = queue.pop();
       if (ArrayBuffer.isView(x)) {
-        if (x instanceof DataView) continue;
+        // (round 4 F7 review) a 64-bit integer array holds no fx-clock time, and its BigInt elements cannot meet a number
+        if (x instanceof DataView || x instanceof BigInt64Array || x instanceof BigUint64Array) continue;
         // the first element in each window names the array
         let inLeft = false, inMoved = false, inTwice = false;
         for (let i = 0; i < x.length; i++) {
@@ -780,6 +815,8 @@ dronesLive('after the rebase');
 const after = census(fx);
 assert.ok(after.values > 1000, `the walk reached the runtime (${after.values} values)`);
 const movedFiles = new Set([...after.moved.keys()].map((at) => at.split(':')[0]));
+// (round 4 F7 review) the walk reaches the Studio cinematic layer's stamps (its group under the runtime's)
+assert.ok([...after.moved.keys()].some((at) => at.includes('<fx-cinematic>')), 'the census sees the cinematic layer\'s stamps moved');
 assert.ok(after.moved.size >= 12 && movedFiles.size >= 5,
   `the control: the census sees the runtime's stamps the rebase moved (${after.moved.size} in ${movedFiles.size} files: ${[...movedFiles].join(', ')})`);
 const left = [...after.left].map(([at, x]) => `  ${at} = ${x}`);

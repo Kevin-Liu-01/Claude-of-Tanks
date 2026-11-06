@@ -555,6 +555,11 @@ export interface FxCinematicPort {
    */
   setMuzzleExposure(light: number, cards: number): void;
   stampTrackPrint(pos: THREE.Vector3, dir: THREE.Vector3, water: boolean, surface: TrackSurface): void;
+  /**
+   * (round 4 F7 review) The layer's own fx-clock stamps (its rings' and scorches' births, its companion pools'): the
+   * runtime's clock rebase moves them with its own (timeShift.ts, 'cinematic'). Null when the layer goes.
+   */
+  setClockShift(shift: ((delta: number) => void) | null): void;
 }
 
 export interface FxRuntime {
@@ -6620,6 +6625,10 @@ function* createFxSteps(
   }) : null;
 
   let cinematicPortState: FxCinematicPort | null = null;
+  /** (round 4 F7 review) the Studio cinematic layer's shift (FxCinematicPort.setClockShift): its stamps ride the shared
+   *  clock (particles.sharing.uTime), and a rebase of it moves them with the runtime's own */
+  let cinematicClockShift: ((delta: number) => void) | null = null;
+  timeShifts.on('cinematic', (delta) => { cinematicClockShift?.(delta); });
   /**
    * (2026-11-02 audit F10; round 2 U31) Under the killcam's suppression the runtime hides its visuals by the veil they are
    * all made under (`group`), the one switch only the suppression writes. The subsystems keep writing their own
@@ -8102,6 +8111,7 @@ function* createFxSteps(
           applyFlashCardIntensity();
         },
         stampTrackPrint,
+        setClockShift: (shift) => { cinematicClockShift = shift; },
       };
       return cinematicPortState;
     },
