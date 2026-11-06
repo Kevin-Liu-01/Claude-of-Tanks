@@ -7,6 +7,7 @@ import { compactWreckGeometryForPaintSteps, compactWreckGeometrySteps } from './
 import { collectWreckShellSolids, collectWreckSolids } from './wreckCollision.ts';
 import { crumpleWreckGeometry, planWreckCrumple, refineForCrumple } from './wreckCrumple.ts';
 import { buildTurretRingWellGeometry, cutTurretRingAperture, emptyTurretRingRim, planTurretRingHulk } from '../vehicles/turretRingWell.ts';
+import { WRECK_STATE_TABLE } from './wreckStates.ts';
 
 // Execute the actual world-owned pipeline with a small deterministic Three
 // hierarchy. Only the synchronous vehicle constructor is replaced here;
@@ -124,13 +125,13 @@ function* compactObserved(geometry) {
 const api = new Function('THREE', 'mergeGeometries', 'compactWreckGeometryForPaintSteps',
   'compactWreckGeometrySteps', 'createTank', 'console', 'observePaint', 'collectWreckSolids', 'collectWreckShellSolids',
   'planWreckCrumple', 'refineForCrumple', 'crumpleWreckGeometry',
-  'buildTurretRingWellGeometry', 'cutTurretRingAperture', 'emptyTurretRingRim', 'planTurretRingHulk',
+  'buildTurretRingWellGeometry', 'cutTurretRingAperture', 'emptyTurretRingRim', 'planTurretRingHulk', 'WRECK_STATE_TABLE',
   stripTypeScriptTypes(body).replace(/^export /gm, '') + '\nreturn { bakeTankWreck, bakeTankWreckSteps };')(
   THREE, mergeObserved, compactObserved, compactWreckGeometrySteps, makeVisual,
   { warn(...args) { active.warnings.push(args); } },
   () => { active.painted++; }, collectWreckSolids, collectWreckShellSolids,
   planWreckCrumple, refineForCrumple, crumpleWreckGeometry,
-  buildTurretRingWellGeometry, cutTurretRingAperture, emptyTurretRingRim, planTurretRingHulk);
+  buildTurretRingWellGeometry, cutTurretRingAperture, emptyTurretRingRim, planTurretRingHulk, WRECK_STATE_TABLE);
 
 function start(f) { return api.bakeTankWreckSteps(f, 'fixture', { seed: f.seed, state: f.state }); }
 function advance(f, steps) { return inFixture(f, () => steps.next()); }

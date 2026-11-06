@@ -420,6 +420,36 @@ function* collectWreckGeometrySteps(
   return target;
 }
 
+/**
+ * A donor's sliver triangles can carry zero normals out of computeVertexNormals (the t90am's turretDetail had 51),
+ * which bake to unlit specks. A corner whose normal has no usable length takes its triangle's face normal, or up
+ * when the triangle has no area; every other corner is renormalised. Non-indexed, bake-owned geometry only.
+ */
+function repairWreckNormals(geometry: THREE.BufferGeometry): void {
+  const position = geometry.attributes.position as THREE.BufferAttribute;
+  const normal = geometry.attributes.normal as THREE.BufferAttribute | undefined;
+  if (!normal?.isBufferAttribute || !position?.isBufferAttribute || normal.itemSize !== 3) return;
+  const p = position.array, n = normal.array;
+  for (let t = 0; t + 2 < normal.count; t += 3) {
+    let face = false, fx = 0, fy = 1, fz = 0;
+    for (let k = t; k < t + 3; k++) {
+      const o = k * 3, l = Math.hypot(n[o], n[o + 1], n[o + 2]);
+      if (l > 0.99 && l < 1.01) continue;
+      if (l > 0.5 && Number.isFinite(l)) { n[o] /= l; n[o + 1] /= l; n[o + 2] /= l; continue; }
+      if (!face) {
+        face = true;
+        const a = t * 3, b = a + 3, c = a + 6;
+        const ux = p[b] - p[a], uy = p[b + 1] - p[a + 1], uz = p[b + 2] - p[a + 2];
+        const vx = p[c] - p[a], vy = p[c + 1] - p[a + 1], vz = p[c + 2] - p[a + 2];
+        const cx = uy * vz - uz * vy, cy = uz * vx - ux * vz, cz = ux * vy - uy * vx, cl = Math.hypot(cx, cy, cz);
+        if (cl > 1e-12 && Number.isFinite(cl)) { fx = cx / cl; fy = cy / cl; fz = cz / cl; }
+      }
+      n[o] = fx; n[o + 1] = fy; n[o + 2] = fz;
+    }
+  }
+  normal.needsUpdate = true;
+}
+
 function normalizeGeometry(
   geometry: THREE.BufferGeometry,
   keepNormal: boolean,
@@ -430,6 +460,7 @@ function normalizeGeometry(
   // staged tank bakes always register before any later operation can throw.
   owner?.geometries.add(normalized);
   if (keepNormal && !normalized.attributes.normal) normalized.computeVertexNormals();
+  if (keepNormal) repairWreckNormals(normalized);
   for (const key of Object.keys(normalized.attributes)) {
     if (key !== 'position' && (!keepNormal || key !== 'normal')) normalized.deleteAttribute(key);
   }

@@ -9,6 +9,7 @@ import { compactWreckGeometryForPaintSteps, compactWreckGeometrySteps } from './
 import { collectWreckShellSolids, collectWreckSolids } from './wreckCollision.ts';
 import { crumpleWreckGeometry, planWreckCrumple, refineForCrumple } from './wreckCrumple.ts';
 import { buildTurretRingWellGeometry, cutTurretRingAperture, emptyTurretRingRim, planTurretRingHulk } from '../vehicles/turretRingWell.ts';
+import { WRECK_STATE_TABLE } from './wreckStates.ts';
 
 // Explicit 5a13dadb0 pipeline control: paint every expanded corner, then run
 // the unchanged generic all-attribute compactor. The original source was
@@ -38,11 +39,11 @@ function pipeline(control, counts) {
   return new Function('THREE', 'mergeGeometries', 'compactWreckGeometryForPaintSteps',
     'compactWreckGeometrySteps', 'createTank', 'observePaint', 'collectWreckSolids', 'collectWreckShellSolids',
     'planWreckCrumple', 'crumpleWreckGeometry', 'refineForCrumple',
-    'buildTurretRingWellGeometry', 'cutTurretRingAperture', 'emptyTurretRingRim', 'planTurretRingHulk',
+    'buildTurretRingWellGeometry', 'cutTurretRingAperture', 'emptyTurretRingRim', 'planTurretRingHulk', 'WRECK_STATE_TABLE',
     stripTypeScriptTypes(body).replace(/^export /gm, '') + '\nreturn { bakeTankWreck, bakeTankWreckSteps };')(
     THREE, mergeGeometries, compactWreckGeometryForPaintSteps, compactWreckGeometrySteps,
     createTank, () => { counts.painted++; }, collectWreckSolids, collectWreckShellSolids, planWreckCrumple, crumpleWreckGeometry, refineForCrumple,
-    buildTurretRingWellGeometry, cutTurretRingAperture, emptyTurretRingRim, planTurretRingHulk);
+    buildTurretRingWellGeometry, cutTurretRingAperture, emptyTurretRingRim, planTurretRingHulk, WRECK_STATE_TABLE);
 }
 
 function arrayIdentity(array) {
