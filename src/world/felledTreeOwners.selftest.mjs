@@ -10,9 +10,14 @@
 //      and the page world's crushObstacle writes no trunk flag of its own after the felled-tree owner (map.ts).
 //   4. The Studio declares the falls' driver as it takes and gives back a world (studioCrush.ts): from the first frame the
 //      world's own update moves no fall the timeline drives, a paused timeline holds them, and the update drives them again
-//      once the Studio leaves. It was a per-call latch: the first frame advanced a fall twice, a paused Studio's update
-//      went on finishing falls. Given back, a later battle's fall on that world moves with its update again (round 2
-//      review: a world left on the timeline would down a trunk and its canopy and never fell the tree).
+//      once the Studio leaves. (The per-call latch of old advanced a fall twice in the first frame and let a paused
+//      Studio's update finish it, as this case drives it, with a nonzero frame dt; the Studio's own frames update its world
+//      with dt 0, so neither showed in the product: round 3 B13.) Given back, a later battle's fall on that world moves
+//      with its update again (round 2 review: a world left on the timeline would down a trunk and its canopy and never fell
+//      the tree). A world the Studio never gave back (its teardown threw) is the battle edges' to take: their selftests
+//      run world/studioLeftWorld.test-support.mjs (round 3 A7/M4).
+// (round 3 B17) No fleet import: case 2's match seats two core specs (vehicles/specs.ts), and tankFactory's import was
+// most of this receipt's minute.
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { stripTypeScriptTypes } from 'node:module';
@@ -26,7 +31,6 @@ import { PROP_FELL_PER_BLAST, PROP_FELL_PER_TICK, propFellRadiusM } from '../sim
 import { createAuthoritativeMatch } from '../sim/authoritativeMatch.ts';
 import { createStudioCrushes } from '../game/studioCrush.ts';
 import { packCollisionRecord } from '../../tools/headlessWorldCollision.mjs';
-import '../vehicles/tankFactory.ts';
 
 const flat = { getHeightAt: () => 0, getHeightAtFast: () => 0, getNormalAt: () => new THREE.Vector3(0, 1, 0), maxY: 0, minY: 0 };
 
@@ -99,7 +103,7 @@ const hull = { id: 'p', specId: 't90am', isPlayer: true, state: { speed: 9, yaw:
   const world = headlessWorld();
   const match = createAuthoritativeMatch({ mapId: 'verdant', countdownS: 0, worldCollision: world, players: [
     { id: 'a', specId: 't90am', team: 'alpha', spawn: { x: 0, z: -380, yaw: 0 } },
-    { id: 'b', specId: 'bmp2', team: 'bravo', spawn: { x: 0, z: 380, yaw: Math.PI } }] });
+    { id: 'b', specId: 'm1a1_abrams_hc', team: 'bravo', spawn: { x: 0, z: 380, yaw: Math.PI } }] });
   match.onMatchReady();
   assert.equal(match.restoreDestroyedObstacles([0], 1).restored, 1);
   assert.deepEqual(world.getConcealment().map((d) => !!d.dead), [true, false], 'the restored tree conceals nothing, as on the host it fell on');
