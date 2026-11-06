@@ -84,8 +84,8 @@ for (const id of ALL_TANK_IDS) {
     }
     for (let axis = 0; axis < 3; axis++) assert.ok(seat.min[axis] < seat.max[axis], `${id}/${seat.crew}: ordered box`);
     const turretFrame = seat.frame === 'turret';
-    const shell = crewShell(armor, seat.frame);
-    const armour = crewArmour(armor, seat.frame);
+    const shell = crewShell(armor, seat.frame, seat.crew);
+    const armour = crewArmour(armor, seat.frame, seat.crew);
     const head = seat.shapes[0];
     assert.equal(head.kind, 'ellipsoid', `${id}/${seat.crew}: head shape first`);
     assert.deepEqual(head.center, seat.head, `${id}/${seat.crew}: head on its head shape`);
