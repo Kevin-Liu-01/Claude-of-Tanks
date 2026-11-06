@@ -414,47 +414,6 @@ function discOnSightline(c: ConcealerDisc, sx: number, sz: number, tx: number, t
 const TEAMS: readonly string[] = ['player', 'enemy'];
 
 /**
- * The stagger stream's seed is the battle's seed plus this (2026-11-02 audit M6: the authority's offset; the solo step drew
- * a constant 9100 of its own, so the two drivers' checks fell on different ticks from the same battle).
- */
-export const SPOTTING_SEED_OFFSET = 31000;
-
-/** What a battle's spotting is built from (both drivers' battles: game/state.ts createBattleSpotting and the authority). */
-export interface MatchSpottingOptions extends Omit<SpottingDependencies, 'rng' | 'teams' | 'getCamoBonus'> {
-  /** The battle's seed (the authority's `seed`, the solo step's SOLO_BATTLE_SEED): the check stagger draws from it. */
-  readonly seed: number;
-  /** The two observing teams in the driver's own names, the allied side first (solo player/enemy, online alpha/bravo). */
-  readonly teams: readonly [string, string];
-  /**
-   * A hull's camo-paint bonus, a seat input (CAMO_PAINT_BONUS for a biome-matched paint, else 0): the solo step reads
-   * the Garage's paint, the authority the seat record's `camoPaint` (a room sends none yet, so online hulls read 0).
-   */
-  readonly getCamoBonus: (tank: SpottingTank) => number;
-}
-
-/** The check stagger's own stream (mulberry32, as the drivers' combat streams are). */
-function spottingStream(seed: number): () => number {
-  let state = seed | 0;
-  return () => {
-    state |= 0;
-    state = (state + 0x6D2B79F5) | 0;
-    let value = Math.imul(state ^ (state >>> 15), 1 | state);
-    value = (value + Math.imul(value ^ (value >>> 7), 61 | value)) ^ value;
-    return ((value ^ (value >>> 14)) >>> 0) / 4294967296;
-  };
-}
-
-/**
- * A battle's spotting, built the same way by both drivers (2026-11-02 audit M6, driver parity: sim/driverStepParity
- * compares the two sides' spotted state every tick): the stagger stream from the battle's seed, the driver's two teams,
- * the seat's camo paint. Each driver steps it once a tick after the world settled (destruction), before the mode reads it.
- */
-export function createMatchSpotting(options: MatchSpottingOptions): SpottingSystem {
-  const { seed, teams, ...deps } = options;
-  return createSpottingSystem({ ...deps, teams, rng: spottingStream(seed + SPOTTING_SEED_OFFSET) });
-}
-
-/**
  * Create the battle spotting system.
  *
  * @param {object} deps
