@@ -441,6 +441,7 @@ export interface MatchModeController<
    */
   matchEnded(winner: ObjectiveTeam | 'draw', reason: string): void;
   requestSupply(entityId:string,kind:'ammo'|'heal',timeS:number):boolean;
+  /** A shell's sweep against the Turbo Ball: true when it played the ball (the shell is spent). Never after a verdict. */
   tryHitBall(shell: { dead?: boolean; prevPos: Vec3Like; pos: Vec3Like; vel: Vec3Like;
     shooterId?: string }): boolean;
   botTarget(entity: Entity): { x: number; z: number } | null;
@@ -2634,7 +2635,9 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
     },
     requestSupply,
     tryHitBall(shell) {
-      if (!ball || shell.dead || pointSegmentDistanceSq(ball, shell.prevPos, shell.pos)
+      // the verdict latch, as recordDestruction, step and reviveAll read it (round 3 A1): in the ending hold a round
+      // still in flight flies through the ball (tanks drive through it too); it launches nothing and announces no hit
+      if (result || !ball || shell.dead || pointSegmentDistanceSq(ball, shell.prevPos, shell.pos)
           > (BALL_RADIUS_M + 0.35) ** 2) return false;
       const magnitude = detMath.hypot(shell.vel.x, shell.vel.y, shell.vel.z) || 1;
       ball.vx = shell.vel.x / magnitude * 34;

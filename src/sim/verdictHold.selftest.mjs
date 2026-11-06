@@ -63,6 +63,14 @@ const DT = 1 / 60;
   assert.ok(lowest < 0.5, `the ball comes down through the 8 s hold (${(atVerdict - floor).toFixed(1)} m up at the verdict, lowest ${lowest.toFixed(2)} m)`);
   assert.deepEqual(events.slice(before), [], 'nothing is touched, scored or reset after the verdict');
   assert.deepEqual(mode.state.score, score);
+  // a round still in flight crosses the ball in the hold: it plays nothing (round 3 A1; the authority's own step is
+  // verdictBallShot.selftest's)
+  const rest = { x: ball.x, y: ball.y, z: ball.z, vx: ball.vx, vy: ball.vy, vz: ball.vz, lastTouchId: ball.lastTouchId };
+  const late = { prevPos: { x: ball.x, y: ball.y, z: ball.z - 1 }, pos: { x: ball.x, y: ball.y, z: ball.z }, vel: { x: 0, y: 30, z: 4 }, shooterId: 'b' };
+  assert.equal(mode.tryHitBall(late), false, 'a late round does not play the ball');
+  assert.equal(late.dead, undefined, 'and flies on');
+  assert.deepEqual({ x: ball.x, y: ball.y, z: ball.z, vx: ball.vx, vy: ball.vy, vz: ball.vz, lastTouchId: ball.lastTouchId }, rest);
+  assert.deepEqual(events.slice(before), [], 'no mode_ball_hit after the verdict');
 }
 
 // ---- Capture the Flag: a carried flag rides its carrier through the hold; it is not captured, returned or dropped

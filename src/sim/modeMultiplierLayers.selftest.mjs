@@ -133,4 +133,87 @@ const expire = (entity, timeS) => tickConsumables(entity.consumables, entity.com
   near(refit.combat.equipMults.reload, kit * 0.5, 'the new equipment and the stamp both hold');
 }
 
-console.log('modeMultiplierLayers: the boss keeps x0.5 through an item\'s use and end; hostile and infection stamps both land; layers compose once');
+// ---- round 3 B7: a live re-equip composes at once. The layers noticed a replaced equipMults only at the next
+// composition, so between the re-equip and the next item or stamp equipMults held the bare equipment: the Juggernaut
+// boss reloaded at 1x, not x0.5, and an active rations' factor was gone. applyEquipmentToCombat now hands the new object
+// to the layers' owner (consumableRules.ts reseatEquipmentLayer), which composes every layered key on the spot.
+{
+  const near = (actual, expected, message) => assert.ok(Math.abs(actual - expected) < 1e-12, `${message}: ${actual} vs ${expected}`);
+  const jugg = matchRulesetFor('juggernaut');
+  const scale = jugg.juggernaut.reloadScale;
+  const kit = computeEquipMults(['rammer']), bare = computeEquipMults([]);
+  const boss = tank('boss', 'alpha', false, 0, -100), hunter = tank('hunter', 'bravo', true, 0, 100);
+  arm(boss); arm(hunter);
+  createMatchModeController({ mode: 'juggernaut', entities: [boss, hunter], ruleset: jugg, revive() {} }); // the real stamp
+  assert.equal(boss.combat.equipMults.reload, scale, 'the boss is stamped');
+  use(boss, 0, 1); // rations active through the re-equip
+  applyEquipmentToCombat(boss.combat, ['rammer']); // the live re-equip: a new equipMults object, no item use or stamp after it
+  near(boss.combat.equipMults.reload, kit.reload * scale * RATIONS_RELOAD_MULT,
+    'the re-equipped boss keeps its x0.5 and its rations at once (not the bare kit until the next item)');
+  near(boss.combat.equipMults.aimTime, kit.aimTime * consumableRules.RATIONS_AIM_MULT, 'the rations\' aim factor too');
+  assert.equal(boss.combat.equipMults.power, 1, 'a key the new kit leaves alone composes to its layers');
+  expire(boss, 1 + 41);
+  near(boss.combat.equipMults.reload, kit.reload * scale, 'after the rations end: the new kit and the stamp');
+  // a second re-equip back to no kit: the stamp holds again at once
+  applyEquipmentToCombat(boss.combat, []);
+  near(boss.combat.equipMults.reload, bare.reload * scale, 'a second re-equip keeps the stamp');
+  // a hunter (no stamp) re-equips to its own kit's values, exactly
+  applyEquipmentToCombat(hunter.combat, ['rammer']);
+  near(hunter.combat.equipMults.reload, kit.reload, 'an unstamped re-equip is the kit itself');
+  // a combat state no layer touched yet: the re-equip writes the kit and nothing else
+  const fresh = combat();
+  applyEquipmentToCombat(fresh, ['rammer']);
+  assert.equal(fresh.multiplierLayers, undefined, 'no layers are made for a state that has none');
+  assert.equal(fresh.equipMults.reload, kit.reload);
+}
+
+// ---- round 3 B7 review: the ruleset's reload fold survives a live re-equip. The equipment layer is the kit with the
+// ruleset's fold (applyRulesetToCombat), and a re-equip replaced equipMults with the bare kit, so a Mars tank (reloadScale
+// 0.9; equipment and consumables allowed) re-equipped live lost its x0.9 for the rest of its life: at once, under an item
+// and after it. applyRulesetToCombat now records the fold (combat.rulesetReload) and applyEquipmentToCombat folds the
+// record into the kit it writes; a fresh state has no record yet, so the spawn still folds once.
+{
+  const near = (actual, expected, message) => assert.ok(Math.abs(actual - expected) < 1e-12, `${message}: ${actual} vs ${expected}`);
+  const mars = matchRulesetFor('mars');
+  const fold = mars.reloadScale;
+  assert.ok(fold !== 1 && mars.equipmentSlots > 0 && mars.consumables !== false, 'Mars folds the reload and allows kit and items');
+  const kit = computeEquipMults(['rammer']).reload;
+  /** A spawn as both drivers make it: equipment, then the ruleset, then the life's consumables (the layers). */
+  const spawn = (loadout) => {
+    const entity = { id: 'mars', combat: combat() };
+    applyEquipmentToCombat(entity.combat, loadout);
+    applyRulesetToCombat(entity.combat, [], mars);
+    arm(entity);
+    return entity;
+  };
+  near(spawn(['rammer']).combat.equipMults.reload, kit * fold, 'a spawn folds the ruleset once over its kit');
+  const rover = spawn(['optics']);
+  near(rover.combat.equipMults.reload, fold, 'optics leave the reload: the fold alone');
+  assert.ok(rover.combat.multiplierLayers, 'the layers exist');
+  applyEquipmentToCombat(rover.combat, ['rammer']); // the live re-equip
+  near(rover.combat.equipMults.reload, kit * fold, 'the re-equipped tank keeps the ruleset\'s x0.9 at once');
+  use(rover, 0, 1);
+  near(rover.combat.equipMults.reload, kit * fold * RATIONS_RELOAD_MULT, 'rations bend the new kit with the fold');
+  expire(rover, 1 + 41);
+  near(rover.combat.equipMults.reload, kit * fold, 'and the fold outlives them');
+  applyEquipmentToCombat(rover.combat, []); // a second re-equip, while no item is active
+  near(rover.combat.equipMults.reload, fold, 'a second re-equip keeps the fold, once');
+  // a stamp and the fold together: the boss's x0.5 on a Mars hull through a re-equip
+  consumableRules.setModeMultiplier(rover.combat, 'juggernaut', 'reload', 0.5);
+  applyEquipmentToCombat(rover.combat, ['rammer']);
+  near(rover.combat.equipMults.reload, kit * fold * 0.5, 'kit, fold and stamp compose');
+  // the record makes the order moot: the ruleset first, then the equipment, still folds once
+  const reversed = combat();
+  applyRulesetToCombat(reversed, [], mars);
+  applyEquipmentToCombat(reversed, ['rammer']);
+  near(reversed.equipMults.reload, kit * fold, 'the ruleset before the equipment folds once too');
+  // a ruleset with no fold records none
+  const plain = combat();
+  applyEquipmentToCombat(plain, ['rammer']);
+  applyRulesetToCombat(plain, [], matchRulesetFor('standard'));
+  assert.equal(plain.rulesetReload, undefined, 'no fold, no record');
+  applyEquipmentToCombat(plain, ['rammer']);
+  assert.equal(plain.equipMults.reload, kit, 'and a re-equip there is the kit itself');
+}
+
+console.log('modeMultiplierLayers: the boss keeps x0.5 through an item\'s use and end; hostile and infection stamps both land; layers compose once; a live re-equip keeps the ruleset fold');

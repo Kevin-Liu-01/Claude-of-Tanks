@@ -204,7 +204,9 @@ const MULT_KEYS: readonly ConsumableMultKey[] = Object.freeze(['reload', 'aimTim
  * The named layers a combat state's equipMults key is the product of (audit M5, 2026-11-02). A key any layer writes is
  * written by composeMultiplier alone, from:
  *   equipment    the life's own value: what applyEquipmentToCombat and the ruleset's reload fold (applyRulesetToCombat)
- *                left in equipMults, read when a layer first touches the key, and again whenever another hand changed it
+ *                left in equipMults, read when a layer first touches the key, and again whenever another hand changed it.
+ *                The fold is recorded on the state (rulesetReload) and a re-equip folds it into its new object, so this
+ *                layer is the kit times the fold whichever ran last (round 3 B7 review)
  *   mode         the mode's stamps, one factor per source and key (the Juggernaut boss's reload, the wave hostiles',
  *                the infected's, the AC-130 convoy's): setting a source again replaces its factor, so a stamp needs no
  *                "already applied" latch
@@ -219,7 +221,8 @@ const MULT_KEYS: readonly ConsumableMultKey[] = Object.freeze(['reload', 'aimTim
  * at the next item's use or end. Now the layers remember the equipMults object they read (`source`) and the value they
  * last composed for each key (`composed`). A replaced object (applyEquipmentToCombat on a live state: a re-equip) is a
  * new equipment layer, read afresh; a key whose value changed since the last composition (the ruleset's reload fold)
- * folds that change into the equipment layer. The mode and item layers are kept on both.
+ * folds that change into the equipment layer. The mode and item layers are kept on both. The re-equip hands its new
+ * object over at once (reseatEquipmentLayer, round 3 B7), so no composed key waits for the next item or stamp.
  */
 export interface MultiplierLayers {
   readonly equipment: Record<string, number>;
@@ -280,6 +283,27 @@ export function composeMultiplier(combat: LayeredCombat, key: string): number {
   return value;
 }
 
+/**
+ * A re-equip's hand-over to the layers (round 3 B7, 2026-11-06): applyEquipmentToCombat calls this right after it
+ * replaced equipMults on a combat state. The new object is the equipment layer (equipmentFactor reads it afresh) and
+ * every key a layer bends is composed again at once, the mode's stamps and the active items on the new equipment.
+ * Before, the replaced object was noticed only at the next composition, so until the next item's use or end or the
+ * next stamp equipMults held the bare equipment (a Juggernaut boss re-equipped live reloaded at 1x, not x0.5). A state
+ * no layer has touched, or one whose equipMults is still the object the layers read, has nothing to recompose. The
+ * ruleset's reload fold reaches the new object before this runs: applyRulesetToCombat records it (rulesetReload) and
+ * applyEquipmentToCombat folds the record into the kit it writes, so the equipment layer read here is the kit times the
+ * fold (before, a Mars tank re-equipped live kept its new kit but lost the ruleset's x0.9 for the rest of its life). A
+ * fold applied after the layers exist multiplies the composed value in place, and equipmentFactor folds that change in.
+ */
+export function reseatEquipmentLayer(combat: { equipMults?: object; multiplierLayers?: MultiplierLayers }): void {
+  const layers = combat.multiplierLayers;
+  if (!layers || !combat.equipMults || layers.source === combat.equipMults) return;
+  const keys = Object.keys(layers.composed);
+  for (const source in layers.mode) for (const key in layers.mode[source]) if (!keys.includes(key)) keys.push(key);
+  for (const key in layers.consumables) if (!keys.includes(key)) keys.push(key);
+  for (const key of keys) composeMultiplier(combat as LayeredCombat, key);
+}
+
 /** A mode's stamp: `source`'s factor on `key` (replacing that source's last one), composed into equipMults. */
 export function setModeMultiplier(combat: LayeredCombat, source: string, key: string, factor: number): void {
   (multiplierLayers(combat).mode[source] ??= {})[key] = factor;
@@ -295,10 +319,14 @@ export interface ConsumableState {
   readonly charges: (number | null)[];
   /** Sim second each timed item ends (0 = inactive), by item. */
   readonly until: Record<ConsumableId, number>;
-  /** The equipment layer's multipliers (MultiplierLayers: before any mode stamp or item bent them). */
+  /** The equipment layer's multipliers as these consumables were made (MultiplierLayers: before any mode stamp or item
+   *  bent them). A record of that moment, read by no rule: a later re-equip changes the layer, not this. */
   readonly base: Record<ConsumableMultKey, number>;
   /** The spotting equipment ids with Fresh Foliage's, kept so a spotting pass allocates nothing. */
   readonly spotIds: string[];
+  /** The equipment array spotIds was built from: consumableSpottingIds rebuilds spotIds in place when it is handed
+   *  another one (a live re-equip; round 3 B7 review), so Fresh Foliage never reports a kit the crew no longer has. */
+  spotSource: readonly string[] | null;
 }
 
 /** The parts of a combat state the effects read and write (damage.ts CombatState is structurally one). */
@@ -345,6 +373,7 @@ export function createConsumableState(
     until,
     base,
     spotIds: [...(combat.equip ?? []), CONSUMABLE_FOLIAGE_EQUIPMENT],
+    spotSource: combat.equip ?? null,
   };
   applyConsumableMultipliers(state, combat, 0);
   return state;
@@ -366,13 +395,27 @@ export function applyConsumableMultipliers(state: ConsumableState, combat: Consu
   for (const key of MULT_KEYS) composeMultiplier(combat, key);
 }
 
-/** The ids the spotting system reads for a crew: its equipment, with Fresh Foliage's while it is active. */
+/**
+ * The ids the spotting system reads for a crew: its equipment, with Fresh Foliage's while it is active. The foliage list
+ * is the `equip` handed in plus Foliage's id, rebuilt in place when that array is not the one it was built from (a live
+ * re-equip replaces combat.equip; round 3 B7 review): before, it kept the kit the consumables were made with for the
+ * rest of the life. Reusing the array keeps a spotting pass free of allocation.
+ */
 export function consumableSpottingIds(
   state: ConsumableState | null | undefined,
   equip: readonly string[] | null | undefined,
   timeS: number,
 ): readonly string[] | null {
-  return state && consumableActive(state, 'foliage', timeS) ? state.spotIds : equip ?? null;
+  if (!state || !consumableActive(state, 'foliage', timeS)) return equip ?? null;
+  const source = equip ?? null;
+  if (state.spotSource !== source) {
+    const ids = state.spotIds;
+    ids.length = 0;
+    if (source) for (const id of source) ids.push(id);
+    ids.push(CONSUMABLE_FOLIAGE_EQUIPMENT);
+    state.spotSource = source;
+  }
+  return state.spotIds;
 }
 
 type ConsumableUse =
