@@ -391,7 +391,8 @@ const turn = () => new Promise((next) => setImmediate(next));
 //   the process ends when its work is done, or `signalWaitMs` after the last release at most. A caller that has not
 //   released within `signalWaitMs` of its teardown is released for it, and the process exits then. On base (a direct
 //   acquire) puppeteer's own SIGTERM listener kept such a tool alive, so its finally cleaned up; the first open form
-//   exited within microseconds of the signal, and those finallies never ran.
+//   exited within microseconds of the signal, and those finallies never ran. (round 3 B16) SIGINT too: puppeteer's SIGINT
+//   listener exits the process inside itself, so tools/browser-launch.mjs launchGuardedBrowser hands it handleSIGINT: false.
 const liveHolds = new Set();
 let signalStop = null, stopSignal = null;
 const NEVER = new Promise(() => {});

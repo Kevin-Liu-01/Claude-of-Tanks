@@ -925,6 +925,9 @@ export const SELFTEST_SUITES = Object.freeze({
     'tools/browser-launch.selftest.mjs',
     // 2026-11-02 audit S4: a trip that keeps the process running releases only the holds its caller names
     'tools/browser-guard-holds.selftest.mjs',
+    // 2026-11-02 audit B16 (round 3): a guarded launch hands puppeteer handleSIGINT false, so a hold's unwind and a tool's own
+    // SIGINT handler run on Ctrl-C as on SIGTERM; with no other owner SIGINT still exits 130 and kills the browser
+    'tools/browser-launch-sigint.selftest.mjs',
     'tools/browser-launch-census.selftest.mjs',
     // 2026-11-02 audit S4: the capture-hold census (no retired memory-guard gate; the hold wrapper and its direct acquirers)
     'tools/capture-hold-census.selftest.mjs',

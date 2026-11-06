@@ -313,9 +313,11 @@ only:
   (`browser-launch.mjs` `stopGuardedBrowsers`). A stop is enforced: a stopped hold refuses the process's browser
   launches until it is released, and a work still running two minutes after its teardown began loses the lock. A tool
   that launches no browser gives the cap a stop of its own: it reads `hold.signal` into its cancellation, or awaits
-  `hold.between()` between synchronous steps. On a signal the open form lets the tool's way out run: its signal aborts,
-  its browsers stop, its finally reaches `release()`, which resolves, and the process exits 128 + n once that is done
-  (30 s at most). A tool waiting in a cap yield's re-queue leaves the queue: its `checkpoint()` (or `between()`) rejects
+  `hold.between()` between synchronous steps. On a signal (SIGTERM, SIGINT or SIGHUP) the open form lets the tool's way
+  out run: its signal aborts, its browsers stop, its finally reaches `release()`, which resolves, and the process exits
+  128 + n once that is done (30 s at most). Puppeteer's own SIGINT handler exits the process inside itself, so
+  `launchGuardedBrowser` hands it `handleSIGINT: false` unless the caller sets it, and answers SIGINT itself (exit 130,
+  the browser killed) only where nothing else in the process does. A tool waiting in a cap yield's re-queue leaves the queue: its `checkpoint()` (or `between()`) rejects
   with the signal's error. A tool with its own SIGINT/SIGTERM handler passes `signals: []`: one owner of a signal per process.
   `frame-budget-probe.mjs` `acquireProbeLocks` (the capture FIFO with the session mutex, for that probe,
   time-to-battle-probe, battle-spike-census, battle-memory-probe and shadow-cache-truth) holds its FIFO through the

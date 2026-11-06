@@ -401,6 +401,82 @@ for (const waiters of [1, 0]) {
     rmSync(root, { recursive: true, force: true });
   }
 }
+// ---- (round 3 B16) the unwind on SIGINT as on SIGTERM, with puppeteer's own signal handling --------------------------------
+// The browser above is a stand-in with a hand-written listener. Real puppeteer (puppeteer-core's launcher hands its
+// handleSIGINT/SIGTERM/SIGHUP, true unless the caller says otherwise, to @puppeteer/browsers' launch) answers SIGINT with
+// kill() and process.exit(130) inside its own listener, so on Ctrl-C the process ended before the hold's unwind ran: the
+// caller's finally never ran, its preview child was orphaned and its report never written. launchGuardedBrowser now
+// hands handleSIGINT: false unless the caller sets it. Driven here through @puppeteer/browsers' own launch (a node child
+// stands in for Chrome), with puppeteer-core's defaults, for SIGINT and SIGTERM.
+{
+  const browsersUrl = import.meta.resolve('@puppeteer/browsers');
+  for (const [signal, exitCode] of [['SIGINT', 130], ['SIGTERM', 143]]) {
+    const root = mkdtempSync(join(tmpdir(), 'cot-hold-unwind-real-'));
+    const strays = [];
+    let passed = false;
+    try {
+      const lockDir = join(root, 'lock'), events = join(root, 'events'), report = join(root, 'report.json');
+      writeFileSync(events, '');
+      const script = `import { spawn } from 'node:child_process';
+        import { appendFileSync, writeFileSync } from 'node:fs';
+        import { launch } from ${JSON.stringify(browsersUrl)};
+        import { createCaptureLock } from ${JSON.stringify(new URL('./capture-lock.mjs', import.meta.url).href)};
+        import { openCaptureHold } from ${JSON.stringify(new URL('./capture-hold.mjs', import.meta.url).href)};
+        import { launchGuardedBrowser } from ${JSON.stringify(new URL('./browser-launch.mjs', import.meta.url).href)};
+        const note = (line) => appendFileSync(${JSON.stringify(events)}, line + '\\n');
+        // puppeteer-core's BrowserLauncher.launch: handleSIGINT/SIGTERM/SIGHUP default true, handed to @puppeteer/browsers
+        const puppeteerLike = { launch: async ({ args = [], handleSIGINT = true, handleSIGTERM = true, handleSIGHUP = true }) => {
+          const proc = launch({ executablePath: process.execPath, args: ['-e', 'setInterval(() => {}, 1000)', '--', ...args],
+            handleSIGINT, handleSIGTERM, handleSIGHUP });
+          return { process: () => proc.nodeProcess, close: () => proc.close() };
+        } };
+        const lock = createCaptureLock({ lockDir: ${JSON.stringify(lockDir)}, queueDir: ${JSON.stringify(join(root, 'queue'))}, log: () => {} });
+        const server = spawn(process.execPath, ['-e', 'setInterval(() => {}, 1000)'], { stdio: 'ignore' });
+        const hold = await openCaptureHold({ lock, label: 'unwind-real-probe', timeoutMs: 5000 });
+        const browser = await launchGuardedBrowser(puppeteerLike, {}, { label: 'stand-in', intervalMs: 60_000 });
+        const child = browser.process();
+        note('up server=' + server.pid + ' browser=' + child.pid);
+        try {
+          await new Promise((_, reject) => child.once('exit', () => reject(new Error('Target closed'))));
+        } catch (error) { note('run failed: ' + error.message + ' (signal aborted: ' + hold.signal.aborted + ')'); }
+        finally {
+          await browser.close();
+          await hold.release();
+          note('released');
+          server.kill('SIGTERM');
+          await new Promise((done) => server.once('exit', done));
+          note('server stopped');
+          writeFileSync(${JSON.stringify(report)}, JSON.stringify({ interrupted: true }));
+          note('report written');
+        }`;
+      const child = spawn(process.execPath, ['--input-type=module', '-e', script], { stdio: ['ignore', 'ignore', 'pipe'] });
+      let err = '';
+      child.stderr.setEncoding('utf8').on('data', (chunk) => { err += chunk; });
+      const read = () => readFileSync(events, 'utf8').trim().split('\n').filter(Boolean);
+      for (let i = 0; i < 800 && !read().some((line) => line.startsWith('up ')); i++) await sleep(25);
+      const up = read().find((line) => line.startsWith('up ')) ?? '';
+      const serverPid = Number(/server=(\d+)/.exec(up)?.[1]), browserPid = Number(/browser=(\d+)/.exec(up)?.[1]);
+      strays.push(serverPid, browserPid);
+      assert.ok(serverPid > 0 && browserPid > 0 && existsSync(lockDir), `${signal}: the child holds, with a server and a browser up: ${err.slice(-400)}`);
+      child.kill(signal);
+      const code = await new Promise((done) => child.once('close', (status, killedBy) => done(status ?? killedBy)));
+      const lines = read();
+      assert.equal(code, exitCode, `${signal}: it exits 128 + n (${lines.join(', ')}; ${err.slice(-300)})`);
+      const order = ['run failed: Target closed (signal aborted: true)', 'released', 'server stopped', 'report written'];
+      assert.deepEqual(lines.filter((line) => order.includes(line)), order,
+        `${signal}: the browser stopped, the finally ran to its release, then what follows (${lines.join(', ')})`);
+      assert.deepEqual(JSON.parse(readFileSync(report, 'utf8')), { interrupted: true }, `${signal}: the report is written`);
+      assert.throws(() => process.kill(serverPid, 0), /ESRCH/, `${signal}: the server child is stopped, not orphaned`);
+      for (let i = 0; i < 100; i++) { try { process.kill(browserPid, 0); await sleep(20); } catch { break; } }
+      assert.throws(() => process.kill(browserPid, 0), /ESRCH/, `${signal}: the browser is gone`);
+      assert.equal(existsSync(lockDir), false, `${signal}: and the hold was released`);
+      passed = true;
+    } finally {
+      if (!passed) for (const pid of strays) { try { if (pid > 0) process.kill(pid, 'SIGKILL'); } catch { /* gone */ } }
+      rmSync(root, { recursive: true, force: true });
+    }
+  }
+}
 // ---- (round 2 U38 review) a hold queued at a signal leaves the queue, and its caller's way out runs ---------------------
 {
   const root = mkdtempSync(join(tmpdir(), 'cot-hold-queued-'));

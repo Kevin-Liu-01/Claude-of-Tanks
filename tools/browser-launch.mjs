@@ -381,6 +381,8 @@ function watchBrowserTree(target, rootPid, guardOptions = {}) {
       if (timer) clearTimeout(timer);
       timer = null;
       live.delete(guard);
+      // (round 3 B16) the SIGINT this launch took from puppeteer goes with its watch
+      if (guardOptions.sigintKey) giveSigint(guardOptions.sigintKey);
     },
     /** Stop watching and kill whatever of the tree is still alive (close, disconnect). */
     finish() {
@@ -472,6 +474,29 @@ export function stopGuardedBrowsers() {
   return killed;
 }
 
+// (round 3 B16) SIGINT: puppeteer-core hands its handleSIGINT (true unless the caller says otherwise) to @puppeteer/browsers,
+// whose SIGINT listener kills the browser and calls process.exit(130) inside itself. On Ctrl-C that cut off whatever else
+// answered SIGINT before it ran: a capture hold's unwind (tools/capture-hold.mjs owns SIGTERM, SIGINT and SIGHUP; a tool's
+// finally never reached its release, its preview child was orphaned, its report never written) and a tool's own
+// cooperative handler. SIGTERM was never cut off: puppeteer closes the browser there and exits nothing. So a guarded launch
+// hands handleSIGINT: false unless its caller sets it, and the guard answers SIGINT in puppeteer's place only when nothing
+// else in the process does: it exits 130, and the exit hooks (this module's and puppeteer's own) kill the browser. Its
+// listener lives while a launch it took SIGINT for runs or that browser's guard is live.
+const sigintTaken = new Set();
+function onGuardSigint() {
+  // another owner (a hold's signal owner, a tool's own handler) runs its way out and ends the process itself
+  if (process.listeners('SIGINT').some((listener) => listener !== onGuardSigint)) return;
+  process.exit(130);
+}
+function takeSigint(key) {
+  // first in line, so it sees every other listener as the signal came (a `once` handler removes itself when it runs)
+  if (!sigintTaken.size) process.prependListener('SIGINT', onGuardSigint);
+  sigintTaken.add(key);
+}
+function giveSigint(key) {
+  if (sigintTaken.delete(key) && !sigintTaken.size) process.removeListener('SIGINT', onGuardSigint);
+}
+
 // (round 2 U38) a stopped hold launches nothing new: teardown runs once per hold, so a tool whose per-row loop caught the
 // kill and launched its next browser drew on past the stop (and, once the hold went, unlocked). A hold that is stopped
 // (past the cap's grace, its budget, a signal) refuses this process's launches until it is released; a signal's refusal
@@ -509,38 +534,54 @@ export async function launchGuardedBrowser(launcher, options = {}, guard = {}) {
   const token = randomBytes(8).toString('hex');
   // (267) no wall limit on the launch: the caller's timeout is a budget of the launching browser's CPU (watchLaunch)
   const cpuBudgetMs = positive(options?.timeout, LAUNCH_CPU_BUDGET_MS);
-  const launchOptions = { ...(options ?? {}), timeout: 0, args: guardedLaunchArgs(options?.args ?? [], { ...config, token }) };
-  const watch = watchLaunch(token, { cpuBudgetMs, hangMs: positive(guard.launchHangMs, LAUNCH_HANG_MS) });
-  let target;
+  // (round 3 B16) SIGINT is the guard's unless the caller decides it (puppeteer's own exits the process inside itself)
+  const takesSigint = options?.handleSIGINT === undefined;
+  const launchOptions = { ...(options ?? {}), timeout: 0, ...(takesSigint ? { handleSIGINT: false } : {}),
+    args: guardedLaunchArgs(options?.args ?? [], { ...config, token }) };
+  if (takesSigint) takeSigint(token);
+  let watched = false;
   try {
-    target = method === 'launchPersistentContext'
-      ? await launcher.launchPersistentContext(guard.userDataDir ?? '', launchOptions)
-      : await launcher[method](launchOptions);
-  } catch (error) {
-    if (watch.reason) throw new Error(`browser launch${guard.label ? ` (${guard.label})` : ''}: ${watch.reason}`, { cause: error });
-    throw error;
-  } finally {
-    watch.stop();
-  }
-  // (2026-11-02 audit S3) every page this browser hands out asks for the harness path before its first navigation,
-  // unless its tool asks for another (tools/game-readiness.mjs prepareToolBrowser, src/app/automationPath.ts)
-  await prepareToolBrowser(target);
-  let rootPid = null;
-  try { rootPid = target?.process?.()?.pid ?? null; } catch { rootPid = null; }
-  if (rootPid) {
-    // a pid this process did not start is a test double's (a fixture's fake child): nothing to watch, never to kill
-    if (!startedHere(await processRow(rootPid), token)) return target;
-  } else {
-    // playwright: its Browser (or persistent context) has no process(); anything else without one is a test double
-    const playwright = typeof target?.browserType === 'function' || (typeof target?.browser === 'function' && typeof target?.newPage === 'function');
-    if (!playwright) return target;
-    rootPid = await findRootPid(token);
-    if (!rootPid) {
-      try { await target.close(); } catch { /* best effort */ }
-      throw new Error('browser guard: the launched browser process was not found; refusing to run it unguarded');
+    const watch = watchLaunch(token, { cpuBudgetMs, hangMs: positive(guard.launchHangMs, LAUNCH_HANG_MS) });
+    let target;
+    try {
+      target = method === 'launchPersistentContext'
+        ? await launcher.launchPersistentContext(guard.userDataDir ?? '', launchOptions)
+        : await launcher[method](launchOptions);
+    } catch (error) {
+      if (watch.reason) throw new Error(`browser launch${guard.label ? ` (${guard.label})` : ''}: ${watch.reason}`, { cause: error });
+      throw error;
+    } finally {
+      watch.stop();
     }
+    // (2026-11-02 audit S3) every page this browser hands out asks for the harness path before its first navigation,
+    // unless its tool asks for another (tools/game-readiness.mjs prepareToolBrowser, src/app/automationPath.ts)
+    await prepareToolBrowser(target);
+    let rootPid = null;
+    try { rootPid = target?.process?.()?.pid ?? null; } catch { rootPid = null; }
+    if (rootPid) {
+      // a pid this process did not start is a test double's (a fixture's fake child): nothing to watch, never to kill
+      if (!startedHere(await processRow(rootPid), token)) return target;
+    } else {
+      // playwright: its Browser (or persistent context) has no process(); anything else without one is a test double
+      const playwright = typeof target?.browserType === 'function' || (typeof target?.browser === 'function' && typeof target?.newPage === 'function');
+      if (!playwright) return target;
+      rootPid = await findRootPid(token);
+      if (!rootPid) {
+        try { await target.close(); } catch { /* best effort */ }
+        throw new Error('browser guard: the launched browser process was not found; refusing to run it unguarded');
+      }
+    }
+    const record = watchBrowserTree(target, rootPid, { ...guard, resolved: config, sigintKey: takesSigint ? token : null });
+    watched = true;
+    return guardBrowser(target, record, method);
+  } finally {
+    // a launch that failed or handed back an unwatched double gives SIGINT back; a watched one does when its guard stops
+    if (!watched) giveSigint(token);
   }
-  const record = watchBrowserTree(target, rootPid, { ...guard, resolved: config });
+}
+
+/** Wire a watched browser's close (and a playwright server's kill) and its disconnect to its guard; returns it. */
+function guardBrowser(target, record, method) {
   guards.set(target, record);
   // close (and a playwright server's kill) end the watch and leave no helper behind
   for (const name of ['close', 'kill']) {
