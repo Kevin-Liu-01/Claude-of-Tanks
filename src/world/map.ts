@@ -255,7 +255,7 @@ export interface WorldRuntime {
   /**
    * (round 2 U28) Who advances the felled trees' falls: the world's own update ('frame', a battle's) or the Studio's
    * timeline ('timeline': advanceDestruction and advanceToppledVegetation), declared by the Studio as it takes the world
-   * and gives it back (studioCrush.ts).
+   * and gives it back (studioCrush.ts), and as 'frame' by every battle start (round 3 A7/M4: world/battleWorldReset.ts).
    */
   setFallDriver(driver: 'frame' | 'timeline'): void;
   /**

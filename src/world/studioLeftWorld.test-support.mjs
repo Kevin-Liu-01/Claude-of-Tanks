@@ -2,7 +2,8 @@
 // its teardown threw before releaseCrushes (studio.ts tearDownStudio), so studioCrush.restore never ran. The page
 // world's seams over real felled trees (felledTrees.ts) and the real Studio crush applier (studioCrush.ts); the seams
 // are map.ts's and vegetation.ts's, pinned in felledTreeOwners.selftest.mjs case 4 (the frame's update advances the
-// falls as 'frame', the Studio's steps as 'timeline', setFallDriver reaches felledTrees.setDriver).
+// falls as 'frame', the Studio's steps as 'timeline', setFallDriver reaches felledTrees.setDriver). The sweeps are a flag
+// here; the same case pins the real seam (map.ts -> props.ts -> propCrushPresentation.ts setSweeps, its one flag).
 // For the battle edges' selftests: a battle that starts on this world must see its own felled trees fall.
 import * as THREE from 'three';
 import { createFelledTrees } from './felledTrees.ts';

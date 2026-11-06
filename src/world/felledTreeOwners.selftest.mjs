@@ -15,7 +15,8 @@
 //      with dt 0, so neither showed in the product: round 3 B13.) Given back, a later battle's fall on that world moves
 //      with its update again (round 2 review: a world left on the timeline would down a trunk and its canopy and never fell
 //      the tree). A world the Studio never gave back (its teardown threw) is the battle edges' to take: their selftests
-//      run world/studioLeftWorld.test-support.mjs (round 3 A7/M4).
+//      run world/studioLeftWorld.test-support.mjs (round 3 A7/M4), whose sweeps stand-in this case's seam pins back
+//      (map.ts -> props.ts -> propCrushPresentation.ts setSweeps; round 3 review r1).
 // (round 3 B17) No fleet import: case 2's match seats two core specs (vehicles/specs.ts), and tankFactory's import was
 // most of this receipt's minute.
 import assert from 'node:assert/strict';
@@ -182,6 +183,18 @@ const hull = { id: 'p', specId: 't90am', isPlayer: true, state: { speed: 9, yaw:
   const update = vegetation.slice(updateAt, vegetation.indexOf('\n  }\n', updateAt));
   assert.equal(update.match(/felledTrees\.advance\(dt, 'frame'\)/g)?.length, 1, 'vegetation.ts: its update, the frame\'s');
   assert.equal(vegetation.match(/felledTrees\.advance\(/g)?.length, 2, 'and no third caller');
+  // (round 3 review r1) and the sweeps' seam, which the Studio turns off and every battle start turns on
+  // (world/battleWorldReset.ts), and which the battle edges' stand-in (studioLeftWorld.test-support.mjs) records as a
+  // flag: map.ts hands it to props.ts, props.ts to its crush presentation, whose one flag decides whether a crush event
+  // this side never pressed sweeps a hull across the prop
+  const props = readFileSync(new URL('./props.ts', import.meta.url), 'utf8');
+  const crushPresentation = readFileSync(new URL('./propCrushPresentation.ts', import.meta.url), 'utf8');
+  assert.match(map, /setCrushSweeps: \(on: boolean\) => \{ props\.setCrushSweeps\?\.\(on\); \},/, 'map.ts: the sweeps');
+  assert.match(props, /const crushPress = createPropCrushPresentation\(/, 'props.ts: its crush presentation');
+  assert.match(props, /setCrushSweeps: \(on: boolean\) => crushPress\.setSweeps\(on\),/, 'props.ts: the sweeps');
+  assert.match(crushPresentation, /\n {4}setSweeps\(on\) \{ sweeps = on; \},/, 'propCrushPresentation.ts: the flag');
+  assert.deepEqual(crushPresentation.match(/\bsweeps = [^;]+;/g), ['sweeps = true;', 'sweeps = on;'], 'and no other writer');
+  assert.equal(crushPresentation.match(/\bif \(sweeps\)/g)?.length, 1, 'which decides the sweep');
 }
 
 console.log('felledTreeOwners.selftest: the world\'s crush owns a felled tree\'s records and canopy in the solo step, the restore and the page world, and the Studio declares the falls\' driver PASS');
