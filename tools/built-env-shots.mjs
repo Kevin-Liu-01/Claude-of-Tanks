@@ -24,6 +24,10 @@
 // <out>/<job>/frames/<map>-<pose>.png and every map's receipt in <out>/<job>/manifest-<tag>.json (a run resumes). The
 // poses depend only on the terrain, the roads, the water and the minimap's buildings, so a before/after pair frames the
 // same place unless one of those moved.
+// The clouds (Main 11-06, buildings-270's pin 02d7f7856f / 7c8ed1a62f: both arms of a pair at one cloud time): every
+// pose's frame is taken with the cloud layer at CLOUD_TIME_S of scene time (volumetricClouds.setCaptureTime, a fresh trace
+// sequence and history), its drift held there (each frame's dt 0) for CLOUD_FRAMES frames, then the trace and resolve
+// held, so two builds draw one sky; each pose's receipt records the pin.
 import { launchGuardedBrowser, setBrowserGuardContext } from './browser-launch.mjs';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
@@ -186,17 +190,39 @@ function pagePlan({ buildings, rooms, eye: EYE }) {
   return out;
 }
 
-function stillClouds() {
+/** The scene time the clouds are drawn at, and the frames traced there before the layer is held. */
+const CLOUD_TIME_S = 0, CLOUD_FRAMES = 48;
+
+/**
+ * The cloud layer pinned (page side): at CLOUD_TIME_S, a fresh trace sequence, its drift held (the frame's dt 0) while
+ * CLOUD_FRAMES frames trace and resolve, then held; `release` lets it run (the settle between poses).
+ */
+function pinClouds(release = false) {
   return `(() => {
-    const D = window.__DEBUG, vc = D.scene.userData.volumetricClouds;
-    if (vc) {
-      for (const key of ['weatherShift', 'noiseShift', 'cirrusShift']) {
-        const v = vc[key];
-        if (v && typeof v.set === 'function') { if (v.isVector3) v.set(0, 0, 0); else v.set(0, 0); }
-      }
-      if (typeof vc.resetHistory === 'function') vc.resetHistory();
+    const vc = window.__DEBUG.scene.userData.volumetricClouds;
+    if (!vc) return true;
+    if (!vc.__pin) {
+      const live = vc.beforeSceneRender.bind(vc);
+      vc.__pin = { held: false, left: 0 };
+      vc.beforeSceneRender = (renderer, camera, dt, ...rest) => {
+        const pin = vc.__pin;
+        if (!pin.held) return live(renderer, camera, dt, ...rest);
+        live(renderer, camera, 0, ...rest);
+        if (pin.left > 0 && --pin.left === 0) vc.frozen = true;
+      };
     }
+    vc.frozen = false;
+    if (${release}) { vc.__pin.held = false; return true; }
+    vc.setCaptureTime(${CLOUD_TIME_S}, true);
+    Object.assign(vc.__pin, { held: true, left: ${CLOUD_FRAMES} });
+    return false;
   })()`;
+}
+
+/** The pinned layer held (its frames traced), or no layer. */
+function cloudsHeld() {
+  const vc = window.__DEBUG.scene.userData.volumetricClouds;
+  return !vc || vc.frozen === true;
 }
 
 /** A pose whose y values are heights over the ground (`resolved`: absolute). */
@@ -207,7 +233,7 @@ function externalPoseScript(pose) {
     const resolved = ${pose.resolved ? JSON.stringify({ cam: pose.cam, at: pose.at, fov: pose.fov })
     : `resolveGroundPose(${JSON.stringify({ cam: pose.cam, at: pose.at })}, (x, z) => hf.getHeightAt(x, z), 511, ${pose.fov})`};
     D.rig.setExternalPose(new V(...resolved.cam), new V(...resolved.at), resolved.fov);
-    ${stillClouds()};
+    ${pinClouds(true)};
     D.world.update(0, D.camera.position, D.camera.getWorldDirection(new V()), null);
     D.lighting.updateFrustums();
     D.lighting.update(true);
@@ -296,11 +322,17 @@ async function shootMap(entry, options, frames) {
     const resolved = await page.evaluate(externalPoseScript(pose.pose));
     await sleep(900);
     const settled = await page.waitForFunction(grassSettled, { timeout: 8000, polling: 250 }).then(() => true, () => false);
-    await page.evaluate(stillClouds());
-    await sleep(400);
+    await page.evaluate(pinClouds());
+    // (48 frames: the long view of a big town under a loaded machine draws a few a second)
+    const cloudsPinned = await page.waitForFunction(cloudsHeld, { timeout: 180_000, polling: 250 }).then(() => true, () => false);
+    if (!cloudsPinned) {
+      const left = await page.evaluate(() => window.__DEBUG.scene.userData.volumetricClouds?.__pin?.left ?? null);
+      throw new Error(`${mapId} ${pose.name}: the cloud layer did not hold within 180 s (${left} of ${CLOUD_FRAMES} frames left)`);
+    }
     const file = path.join(frames, `${mapId}-${pose.name}.png`);
     await page.screenshot({ path: file, type: 'png' });
-    receipt.poses[pose.name] = { resolved, at: pose.at, grassSettled: settled, file: path.basename(file) };
+    receipt.poses[pose.name] = { resolved, at: pose.at, grassSettled: settled, clouds: { timeS: CLOUD_TIME_S, frames: CLOUD_FRAMES },
+      file: path.basename(file) };
   }
   receipt.errors = entry.errors.splice(0);
   return receipt;
