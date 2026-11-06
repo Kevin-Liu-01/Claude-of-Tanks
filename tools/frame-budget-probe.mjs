@@ -50,6 +50,7 @@
 
 import { launchGuardedBrowser } from './browser-launch.mjs';
 import { openCaptureHold } from './capture-hold.mjs';
+import { heldItemOutcome, heldRunExitCode, heldStopWhy } from './held-items.mjs';
 import path from 'node:path';
 import os from 'node:os';
 import { execSync } from 'node:child_process';
@@ -827,21 +828,15 @@ export async function acquireProbeLocks({ sessionMutex = null, log = () => {}, f
  * crashed the tool (tools/probe-unit-stop.selftest.mjs). A unit the hold's stop came before, or that throws once it came
  * (its browser stopped under it), is 'left' for the next run; one that throws while the hold holds is 'failed'; one that
  * returns is 'done' (what finished after the stop is whole). `unit(signal)` runs the unit; { outcome, value, error, why }.
+ * (round 4 review) The rule is tools/held-items.mjs heldItemOutcome's, the long hold users' runHeldItem without its
+ * checkpoint (this pair's hold has none between units): one owner, where this was a copy.
  */
-export async function runProbeUnit(locks, unit) {
-  const signal = locks.signal;
-  const left = (error) => ({ outcome: 'left', why: probeStopWhy(signal), ...(error ? { error } : {}) });
-  if (signal?.aborted) return left();
-  try {
-    return { outcome: 'done', value: await unit(signal) };
-  } catch (error) {
-    return signal?.aborted ? left(error) : { outcome: 'failed', error };
-  }
-}
-/** Why the pair's hold was stopped, in one line (the lock's cap with a waiter, a budget, a signal). */
-export const probeStopWhy = (signal) => String(signal?.reason?.message ?? signal?.reason ?? 'the capture hold was stopped').split('\n')[0];
-/** A run with units left for the next one exits 3, unless a signal (128 + n) or a failure already set its code. */
-export function markUnitsLeft() { process.exitCode ||= 3; }
+export function runProbeUnit(locks, unit) { return heldItemOutcome(locks.signal, unit); }
+/** Why the pair's hold was stopped, in one line (the lock's cap with a waiter, a budget, a signal): held-items' heldStopWhy. */
+export const probeStopWhy = heldStopWhy;
+/** A run with units left for the next one exits 3, unless a signal (128 + n) or a failure already set its code
+ *  (held-items' heldRunExitCode, whose failure, `heldRunExitCode({ failed: true })`, outranks this 3 and never a signal's). */
+export function markUnitsLeft() { heldRunExitCode({ left: true }); }
 
 function mutexOwner(dir) {
   try { return Number(readFileSync(path.join(dir, 'pid'), 'utf8').trim()) || null; } catch { return null; }
@@ -1528,6 +1523,7 @@ if (isMainModule(import.meta.url)) {
     console.log(md);
   } else {
     const result = await runFrameProbe(options);
-    if (!result.ok) process.exitCode = 1;
+    // (round 4 review) a failure exits 1, never over a signal's 128 + n (heldRunExitCode; `= 1` set it over the signal)
+    if (!result.ok) heldRunExitCode({ failed: true });
   }
 }

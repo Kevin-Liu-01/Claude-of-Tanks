@@ -315,19 +315,28 @@ only:
   that launches no browser gives the cap a stop of its own: it reads `hold.signal` into its cancellation, or awaits
   `hold.between()` between synchronous steps. On a signal (SIGTERM, SIGINT or SIGHUP) the open form lets the tool's way
   out run: its signal aborts, its browsers stop, its finally reaches `release()`, which resolves, and the process exits
-  128 + n once that is done (30 s at most). Puppeteer's own SIGINT handler exits the process inside itself, so
+  128 + n once that is done (30 s at most). That code stands however the tool then ends (its own
+  `process.exit(failed ? 1 : 0)` after the release, or an uncaught rejection such as a queued open's): the signal owner's
+  exit listener keeps it. Puppeteer's own SIGINT handler exits the process inside itself, so
   `launchGuardedBrowser` hands it `handleSIGINT: false` unless the caller sets it, and answers SIGINT itself (exit 130,
   the browser killed) only where nothing else in the process does. A tool waiting in a cap yield's re-queue leaves the
   queue: its `checkpoint()` (or `between()`) rejects with the signal's error. A tool with its own SIGINT/SIGTERM handler
-  passes `signals: []`: one owner of a signal per process. A tool whose run can outlast the cap calls
-  `hold.checkpoint()` between its items, with nothing drawing through the yield (an idle page, or one that `onYield`
-  freezes and `onResume` thaws) and a `graceSeconds` that lets an item in flight finish; a stop ends its run with the
-  items left named (turret-parent-audit, marketing-shots/shoot, studio-example-videos). One that cannot yield without
+  passes `signals: []`: one owner of a signal per process. A tool whose run can outlast the cap runs each item through
+  `tools/held-items.mjs` `runHeldItem` (the hold's `checkpoint()` first; the item is done, failed or left), with nothing
+  drawing through the yield (an idle page, or one that `onYield` freezes and `onResume` thaws) and a `graceSeconds`
+  that lets an item in flight finish; a stop ends its run with the items left named, and `heldRunExitCode` exits 3:
+  turret-parent-audit, marketing-shots/shoot, studio-example-videos (tools/long-hold-users.selftest.mjs runs each on a
+  stand-in lock and browser). A failed item is each tool's own: shoot exits 1 for a FAILED scene, studio-example-videos
+  rethrows a failed take (exit 1), and turret-parent-audit's ERROR rows do not fail the run (0, or 3 with ids left). Each
+  opens its hold through `openHeldRun`: a signal while it waits in the queue ends the run with nothing done, and says so.
+  A signal's 128 + n stands over all of these. One that cannot yield without
   losing its take (a frame-stepped film) declares `atCap: 'keep'`. `frame-budget-probe.mjs` `acquireProbeLocks` (the
   capture FIFO with the session mutex, for that probe, time-to-battle-probe, battle-spike-census, battle-memory-probe
   and shadow-cache-truth) holds its FIFO through the open form too, and hands its callers the hold's `signal`. A unit
   the hold's stop comes before or cuts (a slot, a scenario, a battle, a map, a build) is left for the next run, never a
-  failure (`runProbeUnit`): the run exits 3 and says how to finish. A shell holds one normal ticket across several steps
+  failure (`runProbeUnit`): the run exits 3 and says how to finish. These are held-items' rules too (`heldItemOutcome`,
+  `heldRunExitCode`): a failure exits 1 over the 3 of units left, and never over a signal's 128 + n. A shell holds one
+  normal ticket across several steps
   with `node tools/with-capture-lock.mjs [--lock-class=render|timing] [--place=<key>] -- <command>`: every tool under it
   that takes the lock nests in that hold (its token), and a wait that runs out exits 77.
   `tools/capture-hold-census.selftest.mjs` lists the few tools that still acquire the lock themselves (under whatever

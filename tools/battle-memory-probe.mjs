@@ -28,6 +28,7 @@ import { fileURLToPath } from 'node:url';
 import puppeteer from 'puppeteer';
 import { MAP_PROBE_BROWSER_ARGS, isMainModule, sleep } from './map-probe-runtime.mjs';
 import { acquireProbeLocks, markUnitsLeft, openPreview, pinnedOpponents, runProbeUnit } from './frame-budget-probe.mjs';
+import { heldRunExitCode } from './held-items.mjs';
 import { driveBattle, installCensusObservers, sourceResolver, summarizeHeapProfile } from './battle-spike-census.mjs';
 import { snapshotRetainerPaths } from './heap-retainers.mjs';
 import { readinessExpression, waitForBootLoaded } from './game-readiness.mjs';
@@ -463,7 +464,8 @@ export async function runMemoryProbe(options, { acquireLocks = acquireProbeLocks
     clearInterval(refresh);
     await locks.release();
   }
-  if (options.gate && failed) { log(`${failed} limit(s) FAILED`); process.exitCode = 1; }
+  // (round 4 review) a failed limit exits 1 over the 3 of scenarios left, never over a signal's 128 + n (heldRunExitCode)
+  if (options.gate && failed) { log(`${failed} limit(s) FAILED`); heldRunExitCode({ failed: true }); }
 }
 
 if (isMainModule(import.meta.url)) {

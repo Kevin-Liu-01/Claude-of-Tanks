@@ -947,6 +947,10 @@ export const SELFTEST_SUITES = Object.freeze({
     // 2026-11-02 audit A5 (round 3): a cap stop mid-unit leaves the unit for the next run (exit 3) in each acquireProbeLocks
     // caller (frame-budget-probe, battle-memory-probe, battle-spike-census and its gate, shadow-cache-truth, time-to-battle)
     'tools/probe-unit-stop.selftest.mjs',
+    // 2026-11-02 audit F12/E10 (round 4): turret-parent-audit, marketing-shots/shoot and studio-example-videos, on a stand-in
+    // lock and browser (mock clock), yield at the cap inside their graces, keep what finished past a stop (exit 3) and exit
+    // 128 + n on a signal
+    'tools/long-hold-users.selftest.mjs',
     'tools/battle-spike-analysis.selftest.mjs', // battle-spikes-253: the spike census's attribution on a synthetic battle of known causes
     'tools/battle-spike-census.selftest.mjs', // battle-spikes-253: the streamed trace's splitter, the census's arguments
     'tools/battle-spike-budget.selftest.mjs', // battle-spikes-253: the spike-budget receipt's judge and the shipped budget

@@ -212,7 +212,8 @@ assert.deepEqual(releaseBeforeClose('try { go(); } finally {\n  pool.release();\
 // a source that imports a capture lock (built from parts so this file is not its own finding) and calls acquire() itself
 const LOCK_IMPORT = new RegExp(['capture-lock', '\\.mjs|visual-census-lock', '\\.mjs'].join(''));
 const ACQUIRE = new RegExp(['\\.acq', 'uire\\(|acquireCapture', 'Lock\\('].join(''));
-const HOLD_OWNERS = new Set(['tools/capture-lock.mjs', 'tools/capture-hold.mjs', 'tools/visual-census-lock.mjs', SELF]);
+// (round 4 E10 review) tools/held-items.mjs opens a held run's hold (openHeldRun) for the long hold users
+const HOLD_OWNERS = new Set(['tools/capture-lock.mjs', 'tools/capture-hold.mjs', 'tools/held-items.mjs', 'tools/visual-census-lock.mjs', SELF]);
 // acquire() on a lock the source was handed, whatever it imports: `lock.acquire(`, `captureLock.acquire(`,
 // `capture.lock.acquire(`, `lock?.acquire(` (built from parts so this file is not its own finding)
 const HANDED_ACQUIRE = new RegExp(['\\b\\w*[lL]ock\\??\\.acq', 'uire\\('].join(''), 'g');
@@ -340,8 +341,9 @@ const outside = (text, pattern) => {
   if (!pattern.test(text)) return false;
   return linesOf(text).some((line) => [...line.matchAll(global)].some((match) => !inString(line, match.index)));
 };
-// (review 2) acquireProbeLocks (frame-budget-probe) holds its FIFO through openCaptureHold: its callers are the wrapper's
-const WRAPPER_CALL = /\b(?:withCaptureHold|openCaptureHold|runWarmHold|acquireProbeLocks)\(/;
+// (review 2) acquireProbeLocks (frame-budget-probe) holds its FIFO through openCaptureHold: its callers are the wrapper's.
+// (round 4 E10 review) So are openHeldRun's (tools/held-items.mjs: openCaptureHold, a signal while queued kept as 128 + n).
+const WRAPPER_CALL = /\b(?:withCaptureHold|openCaptureHold|runWarmHold|acquireProbeLocks|openHeldRun)\(/;
 const OWN_SIGNAL = [
   /\.(?:on|once|addListener|prependListener)\(\s*['"`]SIG(?:INT|TERM|HUP)['"`]/, // process.once('SIGTERM', …), emitter.on('SIGINT', …)
   /\bregister\w*Cancellation\(/, // a helper that installs one (wreck-build-profile's comes from props-build-profile)
@@ -472,7 +474,7 @@ assert.deepEqual(importers.filter((file) => !Object.hasOwn(DIRECT_ACQUIRER_IMPOR
   `a tool that imports a direct acquirer may hold through its export, outside every rule here: hold through the wrapper, or list it with what it takes\n  `
   + importers.filter((file) => !Object.hasOwn(DIRECT_ACQUIRER_IMPORTERS, file)).join('\n  '));
 assert.deepEqual(Object.keys(DIRECT_ACQUIRER_IMPORTERS).filter((file) => !importers.includes(file)), [], 'an importer row that no longer applies: drop it');
-const wrapped = [...sources].filter(([file, text]) => file !== 'tools/capture-hold.mjs' && /\b(?:withCaptureHold|runWarmHold|openCaptureHold)\(/.test(code(text))).length;
+const wrapped = [...sources].filter(([file, text]) => !HOLD_OWNERS.has(file) && /\b(?:withCaptureHold|runWarmHold|openCaptureHold|openHeldRun)\(/.test(code(text))).length;
 assert.ok(wrapped >= 70, `the wrapper has its users (${wrapped})`);
 
 console.log(`capture-hold-census.selftest: ${sources.size} sources; no retired memory-guard gate; no COT_LANE_HOLD bypass; every browser closes before its lock goes; `
