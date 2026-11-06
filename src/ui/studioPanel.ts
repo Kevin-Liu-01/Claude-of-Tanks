@@ -1911,11 +1911,12 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
   secScene2.append(svRow, slotRow, fileIn);
   outputGroup.body.append(secCap, secLive, secScene2);
 
+  // (round 3 X9) once its sheet did not arrive in this document, a press reloads the page once online (offline a reload is
+  // the browser's error page, so the press says so again and waits). (review r1) Never over the Studio's running work (a
+  // recording, a film or its export, a queue run, a load, a light change): the reload would end it, so the press asks for
+  // it to finish first. The last edit reaches the autosave on the reload's pagehide (studio.ts commitHistory). This comment
+  // sits above the function: loadFailure.selftest's OPENERS row looks for pressFailed within 300 characters of its head.
   function openArchive(): void {
-    // (round 3 X9) its sheet did not arrive in this document: the press reloads the page once online (offline a reload is
-    // the browser's error page, so the press says so again and waits). (review r1) Never over the Studio's running work (a
-    // recording, a film or its export, a queue run, a load, a light change): the reload would end it, so the press asks
-    // for it to finish first. The last edit reaches the autosave on the reload's pagehide (studio.ts commitHistory).
     if (loadFailed(archiveBtn) && panelBusy()) {
       flashBusy(t('studio.error.busy'));
       return;
