@@ -1,210 +1,210 @@
-import { markVehicleNightLens } from '../vehicleNightLighting.ts';
-import { markSmokeTube } from '../vehicleAuxiliaryGeometry.ts';
-// Swedish CV9040C photo reconstruction, separate from the upgraded CV90 slot.
-// The C's appliqué cheek packets, 40 mm mount and troop-cell roof are authored
-// independently of the later Mk IV X. See the dated reference packet.
+import { addVehicleGhillieSuit } from '../ghillieSuit.ts';
+// The Swedish Stridsfordon 9040C: the Strf 9040 brought to the C standard for international missions (Liberia from
+// 2005, then Afghanistan), and the same vehicle as Sweden gave it to Ukraine (from 2023, `ukrainian`).
+//
+// Round 269 (the owner 2026-11-05: "ALSO UPDATE THE CV 9040CS TO LOOK A LOT BETTER TOO"; the owner's 2026-11-02 rule: a
+// vehicle that is a fleet tank is built ON that tank's builder): the C is the measured Strf 9040 of profiles/cv90.ts (the
+// hull loft, the two bolted side-armour courses, the stern, seven road wheels and the front sprocket, the two-man
+// turret, the Bofors 40 mm), composed through its exports at real size (no 90 % concept scale: this spec's frame was
+// always metres), carrying the C kit: the bolted tile applique over the glacis and the thick nose block between the lamp
+// boxes, the turret's side applique, six Galix launchers on the smoke banks' seat, the air-conditioning housing across
+// the turret rear, the coaxial Ksp 58C, and no roof weapon station. Reference packets (real photographs, published
+// dimensions, the kit and where it sits): ~/cot-lanes/cv9040c-269-ev/research/cv9040c/ and research/ua_cv9040c/.
+// Authoring frame: metres, +Z forward, +X the vehicle's left, ground y 0.
 import * as THREE from 'three';
 import { sectionSolid } from './sectionSolid.ts';
-import { KIT, convexSlab } from './kit.ts';
-import { chassisLoft, armorLoft, sideWall, openTube, optic, antenna, deckGrille, turretEquipment } from './europeSourcePrimitives.ts';
-import { buildFleetTrackShoe } from './abramsSourceXTrackShoe.ts';
+import { KIT, FITTINGS, convexSlab } from './kit.ts';
+import { mountRotated as mount } from './fittingMount.ts';
 import type { TankBuilderPort } from '../tankFactoryCore.ts';
-import { addVehicleGhillieSuit } from '../ghillieSuit.ts';
-const {box,cylX,cylY,cylZ}=KIT;
+import { buildFleetTrackShoe } from './abramsSourceXTrackShoe.ts';
+import {
+  CV90_HULL, cv90RoofY, chamferedBox, buildCv90Hull, buildCv90RunningGear, cv90TurretShell, buildCv90Gun,
+  cv90TurretRoof, type CvBuilderPort,
+} from './cv90.ts';
 
-// Release 240 (the owner: "make sure all tank turrets are clear of hulls"; closed hulls at real dimensions): the troop
-// cell's raised roof (1.94) starts at -2.49, 1.73 m off the ring's axis, past the sweep of the turret's underside
-// (1.78-1.94, out to 1.48 m) and of the rocking mask at full elevation (1.95, out to 1.65 m). It started at -1.48, 0.72 m
-// behind the axis, and the turret stood 11-15 cm in it at rest and at every bearing. Its walls step with it.
-function hull(P: TankBuilderPort): void {
-  P.add('hull',chassisLoft([
-    [-3.32,.78,1.51,1.40,.65,1.22,1.93],
-    [-2.96,.93,1.52,1.43,.37,1.22,1.94],
-    [-2.49,0.9332,1.52,1.43,0.37,1.2009,1.94],
-    [-2.43,0.9336,1.52,1.43,0.37,1.1985,1.76],
-    [-1.48,.94,1.52,1.43,.37,1.16,1.76],
-    [-.95,.94,1.52,1.43,.37,1.16,1.76],
-    [1.22,.94,1.52,1.43,.37,1.16,1.76],
-    [2.62,.94,1.51,1.40,.58,1.25,1.40],
-    [3.36,.97,1.43,1.38,.85,1.18,1.21],
-  ],1.06));
-  for(const side of [-1,1]) {
-    // External C-standard protection follows the low front / high rear cell.
-    sideWall(P,side,1.50,1.64,[[-3.28,1.15,1.90],[-2.50,1.15,1.90],[-2.44,1.15,1.73],[1.16,1.15,1.73],[2.60,1.25,1.36],[3.21,1.18,1.23]]);
-    for(let i=0;i<6;i++) {
-      const z=-2.65+i*.98;
-      sideWall(P,side,1.61,1.685,[[z-.474,.56,1.19],[z+.474,.56,1.19]]);
-      for(const dz of [-.33,.33])P.addEquipment('hullDetail',box(.045,.074,.10),side*1.69,1.19,z+dz);
-    }
-    P.addMudguard(`cv9040c-front-${side}`,'hullRubber',box(.54,.30,.025),side*1.32,.99,3.31,-.65);
-    // Owner 2026-10-19 (flaps sweep): 10 mm wider inboard, so the rear flap's inner edge meets the hull side (it stood 5 mm off)
-    P.hangMudguard(`cv9040c-rear-${side}`,'hullRubber',box(.52,.33,.025),side*1.315,.73,-3.17,.13);
-    P.addEquipment('hullDetail',box(.37,.16,.26),side*1.19,1.31,3.12);
-    for(const dx of [-.10,.10])P.addEquipment('hullGlass',markVehicleNightLens(cylZ(.045,.018,12), 'headlight'),side*1.19+dx,1.32,3.26);
-    // 2026-10-19 (owner float sweep): rear roof hatches stood 8 mm above the deck; seated.
-    // (release 240: the aft pair 14 cm aft, on the cell past the sweep of the turret's front; the forward pair on the
-    // lowered roof ahead of the cell)
-    P.addHatch('hull',box(.99,.033,.50),side*.77,1.9555,-2.76);
-    P.addHatch('hull',box(.99,.033,.50),side*.77,1.752,-2.02);
-    for(const z of [-3.12,.75,2.62])KIT.liftEye(P,'hullDetail',side*1.25,z>2?1.43:z>0?1.78:1.96,z);
+const d = CV90_HULL;
+const roof = (z: number): number => cv90RoofY(d, z);
+/** The upper glacis' fall (rad): the tiles, their bolts and the cable lie in its plane. */
+const GLACIS_TILT = Math.atan2(d.roofY - d.noseTopY, d.noseZ - 0.04 - d.glacisBreakZ);
+/** The applique tiles stand this far proud of the glacis (seated 12 mm into it). */
+const TILE_PROUD_M = 0.055;
+const tileTop = (z: number): number => roof(z) + TILE_PROUD_M;
+
+/** One bolted applique tile over the upper glacis between x0..x1 and z0..z1, with a fixing bolt near each corner. */
+function glacisTile(P: TankBuilderPort, x0: number, x1: number, z0: number, z1: number): void {
+  const half = (x1 - x0) / 2, xc = (x0 + x1) / 2;
+  P.addExternalArmor('hull', chamferedBox([z0, z1].map((z) => [z, half, roof(z) - 0.012, tileTop(z), 0.012] as const)),
+    xc, 0, 0);
+  const bolt = KIT.box(0.036, 0.014, 0.036);
+  for (const x of [x0 + 0.08, x1 - 0.08]) for (const z of [z0 + 0.08, z1 - 0.08]) {
+    P.add('hullDetail', bolt.clone(), x, tileTop(z) + 0.003, z, GLACIS_TILT, 0, 0);
   }
-  // Driver at the left front, engine and cooling package to the right.
-  P.addHatch('hull',box(.62,.052,.71),-.79,1.78,1.11);
-  for(const x of [-.99,-.79,-.59])KIT.periscope(P,'hullDetail',x,1.835,1.41);
-  P.addHatch('hull',box(1.20,.03,1.58),.66,1.588,1.94,.23);
-  deckGrille(P,1.10,1.754,.80,.55,.90);
-  for(let i=0;i<8;i++)P.addEquipment('hullDark',box(.014,.18,.61),1.65,1.46,-.10+i*.075);
-  P.addEquipment('hullDark',box(1.30,1.20,.03),.06,1.27,-3.33);
-  P.addHatch('hull',box(1.21,1.12,.065),.06,1.27,-3.367);
-  for(const x of [-.49,.61])P.addEquipment('hullDetail',cylX(.047,.16,12),x,.72,-3.41);
-  P.addEquipment('hullDetail',box(.16,.028,.038),.44,1.37,-3.415);
-  for(const side of [-1,1]) {
-    P.addEquipment('hullDetail',box(.38,.32,.20),side*1.20,1.55,-3.33);
-    P.addEquipment('hullGlass',box(.22,.08,.018),side*1.20,1.65,-3.44);
-  }
-  KIT.towCable(P,[[-.80,1.22,3.33],[-.37,1.01,3.39],[.39,1.01,3.39],[.81,1.22,3.33]]);
+  bolt.dispose();
 }
 
-function gear(P: TankBuilderPort): void {
-  P.gear=KIT.buildRunningGear(P,{
-    trackShoeBuilder:buildFleetTrackShoe,style:'rubber',trackPattern:'compact-ifv',
-    wheelR:.325,wheelW:.35,wheelY:.403,wheelZs:[-2.24,-1.41,-.58,.25,1.08,1.91],
-    xc:1.32,trackW:.50,trackTh:.025,
-    sprocket:{z:2.74,y:.81,r:.29,trackR:.31,toothTipRadiusM:.332},
-    idler:{z:-2.83,y:.77,r:.272,trackR:.283},
-    rollers:[{z:-1.86,y:.96,r:.09},{z:-.14,y:.96,r:.09},{z:1.60,y:.96,r:.09}],
-    topY:1.105,botY:.044,coveredTop:true,paintedEnds:true,arms:true,fitLoadedRun:true,dedupeLoopPoints:true,
-  });
-}
-
-function turret(P: TankBuilderPort): void {
-  const [,py,pz]=P.spec.armor.turretPivot;
-  P.add('turret',cylY(.83,.87,.065,P.q?40:20),0,.015,0);
-  // Two-man Bofors turret: tall flat crew roof, clipped bustle and nearly
-  // vertical upper flanks. The lower front returns remain steeply raked.
-  P.add('turret',armorLoft([
-    [-2.03,.75,.84,.77,1.94,2.42,2.55],
-    [-1.57,.93,1.05,.96,1.78,2.39,2.56],
-    [-.02,.95,1.10,.97,1.78,2.40,2.56],
-    [.32,.75,.91,.73,1.83,2.34,2.54],
-  ],py,pz));
-  // Fixed trunnion ears bridge the crew shell to the rocking shield's axis.
-  // Keep the throat between them open so the shield can elevate freely.
-  for(const side of [-1,1]) {
-    P.add('turret',box(.09,.42,.66),side*.285,.405,1.30);
-    P.add('turret',cylX(.09,.105,16),side*.285,.405,1.56);
-  }
-  for(const side of [-1,1]) {
-    // Broad separate appliqué packets frame an actual open gun throat.
-    P.addExternalArmor('turret',convexSlab(
-      [side*.29,.02,1.26],[side*1.18,.02,.56],[side*1.11,.73,.25],[side*.29,.73,.85],
-      [side*.29,.03,.93],[side*1.02,.03,.34],[side*.99,.73,.12],[side*.29,.73,.64],
-    ));
-    turretEquipment(P,'turretDetail',box(.17,.51,1.21),side*1.10,2.18,-.87);
-    // 2026-10-19 (owner float sweep): the front lug sat 75 mm past the stowage box's nose; moved onto the box.
-    for(const z of [-1.30,-.72,-.30])turretEquipment(P,'turretDetail',box(.019,.035,.08),side*1.195,2.37,z);
-    // Three Galix tubes per side, canted outwards; never offensive launchers.
-    for(let i=0;i<3;i++) {
-      turretEquipment(P,'turretDetail',markSmokeTube(cylZ(.050,.20,12)),side*(.81+i*.11),2.56,-.25-i*.12,-.63,side*.40);
-      turretEquipment(P,'turretDark',cylZ(.039,.012,12),side*(.85+i*.11),2.62,-.17-i*.12,-.63,side*.40);
+/** The C's hull kit on the Strf 9040 hull: the glacis tiles, the nose block, the lamp boxes and the stowed tow cable. */
+function cHullKit(P: TankBuilderPort): void {
+  // Tile applique over the upper glacis (photos 5-7): three tiles across ahead of the driver's vision blocks (they look
+  // forward over them), a fourth over the engine deck on the right; the grille and the driver's hatch stay bare.
+  for (const [x0, x1] of [[-1.47, -0.51], [-0.49, 0.49], [0.51, 1.47]] as const) glacisTile(P, x0, x1, 2.34, 3.04);
+  glacisTile(P, -1.47, -0.27, 1.64, 2.32);
+  // The nose block (photos 1, 6): a thick bolted block across the nose between the lamp boxes, its top 2 cm proud of the
+  // tiles, its chamfered lip overhanging an undercut lower face; inboard of the tracks' inner edge (x 1.05).
+  const NOSE: readonly (readonly [number, number, number, number, number])[] = [
+    [3.00, 1.04, 1.36, roof(3.00) + 0.075, 0.015],
+    [3.24, 1.04, 1.00, roof(3.24) + 0.075, 0.02],
+    [3.37, 1.04, 0.99, 1.405, 0.035],
+    [3.44, 1.00, 1.10, 1.385, 0.03],
+  ];
+  P.addExternalArmor('hull', chamferedBox(NOSE));
+  const noseTop = (z: number): number => {
+    const i = NOSE.findIndex(([zs]) => zs >= z), [z0, , , t0] = NOSE[i - 1], [z1, , , t1] = NOSE[i];
+    return THREE.MathUtils.lerp(t0, t1, (z - z0) / (z1 - z0));
+  };
+  for (const side of [-1, 1]) {
+    // lamp boxes at the nose corners: a visor over each headlamp pair and an outer cheek, both seated in the nose
+    P.addExternalArmor('hull', KIT.box(0.40, 0.035, 0.20), side * 1.27, 1.349, 3.30);
+    P.addExternalArmor('hull', KIT.box(0.03, 0.30, 0.20), side * 1.455, 1.20, 3.31);
+    // the block's fixing bolts along its top
+    for (const x of [0.30, 0.90]) for (const z of [3.08, 3.30]) {
+      P.add('hullDetail', KIT.box(0.036, 0.012, 0.036), side * x, noseTop(z) + 0.002, z);
     }
   }
-  P.addCupola('turret',cylY(.29,.32,.09,20),.45,.81,-.18);
-  P.addHatch('turret',cylY(.255,.27,.033,20),.45,.865,-.18);
-  for(let i=0;i<6;i++){const a=i*Math.PI/3;KIT.periscope(P,'turretDetail',.45+Math.cos(a)*.29,.875,-.18+Math.sin(a)*.29,a);}
-  P.addHatch('turret',box(.59,.033,.62),-.45,.80,-.32);
-  optic(P,-.46,2.77,.02,.39,.35,.34);
-  optic(P,.46,2.668,-.36,.31,.22,.24); // 2026-10-19 (owner float sweep): stood 80 mm above the roof; seated
-  turretEquipment(P,'turretDetail',box(1.45,.42,.31),0,2.26,-2.00);
-  for(const x of [-.59,.59])antenna(P,x,2.55,4.17,-1.74);
-  for(const x of [-.75,.75])KIT.liftEye(P,'turretDetail',x,.82,-.84);
+  // the tow cable, stowed in a loop on the right-front tile (the C's tiles cover the base vehicle's cable run)
+  KIT.towCable(P, [[-1.36, 2.46], [-0.92, 2.58], [-0.66, 2.52], [-0.64, 2.86], [-1.10, 2.95], [-1.38, 2.84]]
+    .map(([x, z]) => [x, tileTop(z) + 0.018, z]));
 }
 
-function gun(P: TankBuilderPort): void {
-  // A clipped rocking armor mask fills the throat between the fixed ears.
-  // The inclined upper/lower returns and narrow side bevels form real stock,
-  // with a transverse bearing at the rotation axis rather than a bare cube.
-  const mask = sectionSolid([
-    {z:-.30,ring:[[-.195,-.245],[.195,-.245],[.265,-.175],[.265,.175],[.195,.245],[-.195,.245],[-.265,.175],[-.265,-.175]]},
-    {z:.405,ring:[[-.17,-.205],[.17,-.205],[.225,-.15],[.225,.15],[.17,.205],[-.17,.205],[-.225,.15],[-.225,-.15]]},
-  ]);
-  mask.userData.cv9040GunRole = 'beveled-rocking-mantlet';
-  P.addGunExtra(mask);
-  P.addGunExtra(cylX(.14,.65,P.q?24:16),0,0,0);
-  P.addGunExtra(cylZ(.12,.29,20),0,0,.52);
-  for (const side of [-1,1]) for (const y of [-.125,.125])
-    P.addGunExtraDark(cylZ(.014,.012,8),side*.177,y,.412);
-  P.add('gun',cylZ(.070,1.22,P.q?24:12),0,0,1.23);
-  P.add('gun',cylZ(.052,.64,P.q?24:12),0,0,2.15);
-  openTube(P,.067,2.43,2.75,.020);
-  P.addGunExtraDark(cylZ(.022,.62,12),-.325,-.06,.39);
-  P.addGunExtraDark(new THREE.CircleGeometry(.010,12),-.325,-.06,.701); // 2026-10-19 (owner float sweep): 8 mm off the tube end
+/** Six Galix 13 launchers (80 mm), three a bank, on the base turret's smoke-bank seat (photo 4: high on the rear sides). */
+const GALIX_BANKS = Object.freeze({ count: 3, r: 0.045, len: 0.24, spacing: 0.10, seed: 9040 });
+
+/** The C's turret kit: the trunnion housings in the gun channel, the side applique, the AC housing and the whips. */
+function cTurretKit(P: TankBuilderPort): void {
+  const { box, cylY } = KIT;
+  for (const side of [-1, 1]) {
+    // trunnion housings between the rocking mask and the cheeks: the fixed seats of the gun's pitch axis
+    P.add('turret', box(0.095, 0.24, 0.30), side * 0.3025, 0.39, 1.12);
+    // bolted applique on the upper side panel ahead of the Galix bank, laid on its 24 degree inward rake (photo 4/5)
+    const n = [0.913, 0.409], h40 = (z: number): number => 1.05 + 0.02 * (z + 0.96) / 1.18;
+    const panelX = (y: number, z: number): number => h40(z) - 0.17 * (y - 0.40) / 0.38;
+    const corner = (y: number, z: number, out: number): number[] =>
+      [side * (panelX(y, z) + n[0] * out), y + n[1] * out, z];
+    const pts: number[][] = [];
+    for (const z of [-0.42, 0.20]) for (const y of [0.43, 0.74]) for (const out of [-0.01, 0.07]) pts.push(corner(y, z, out));
+    P.addExternalArmor('turret', convexSlab(...pts));
+    const bolt = box(0.014, 0.036, 0.036);
+    for (const z of [-0.35, 0.13]) for (const y of [0.49, 0.68]) {
+      const [x, yy, zz] = corner(y, z, 0.073);
+      P.add('turretDetail', bolt.clone(), x, yy, zz, 0, 0, side * 0.42);
+    }
+    bolt.dispose();
+  }
+  // The air-conditioning housing across the turret rear (the C's mission AC), its louvred rear face and two fans on top.
+  P.addEquipment('turret', chamferedBox([[-1.40, 0.76, 0.13, 0.66, 0.04], [-1.02, 0.76, 0.13, 0.66, 0.04]]));
+  P.add('turretDark', box(1.24, 0.34, 0.02), 0, 0.40, -1.405);
+  for (let i = 0; i < 5; i++) P.add('turretDetail', box(1.20, 0.025, 0.035), 0, 0.28 + i * 0.06, -1.418, 0.5, 0, 0);
+  for (const x of [-0.32, 0.32]) {
+    P.add('turret', cylY(0.16, 0.16, 0.04, P.q ? 20 : 12), x, 0.675, -1.21);
+    P.add('turretDark', cylY(0.13, 0.13, 0.012, P.q ? 20 : 12), x, 0.697, -1.21);
+  }
+  for (const [x, height, seed] of [[-0.78, 0.95, 9055], [0.80, 0.80, 9056]] as const) {
+    P.add('turretDark', cylY(0.040, 0.050, 0.08, 10), x, 0.76, -0.92);
+    mount(P, 'turret', FITTINGS.antennaWhip({ mats: P.mats, h: height, r: 0.010, seed }), x, 0.80, -0.92);
+  }
 }
 
 /** The Ukrainian CV9040C's service kit (release 265, the owner's photograph of a 21st Mechanized Brigade CV90, 2024): the
  *  white tactical triangle on each flank under the turret's rear, and a dusty maroon tarpaulin draped over the load on the
- *  troop roof, from its rear edge over the step down to the turret, its edges hanging over the sides and the rear,
- *  strapped down; the net over its turret is its ghillie suit.
+ *  troop roof, from its rear edge to the turret's sweep, its edges hanging over the side armour and the rear, strapped
+ *  down; the net over its turret is its ghillie suit.
  *  (ua2, the ua1 critics, both, on the photograph: the tarp read as an orange crate with posts through it, short of the
- *  turret; the triangle sat forward, small and hairline.) */
+ *  turret; the triangle sat forward, small and hairline.) 269: reseated on the Strf 9040 hull (a flat troop roof at
+ *  1.76 m, the side courses' tops 15 mm over it) and turret (the net's heap on the AC housing). */
 function addUkrainianKit(P: TankBuilderPort): void {
-  // (ua4, the ua3 critics: its apex met the roof edge; the upper side panel, 1.20 to 1.70, holds it whole with the
-  // mitred apex 3 cm under the edge, its base on the panel above the skirt's step)
-  for(const side of [-1,1])P.decal('hull','flag','ua-triangle',.64,[side*1.648,1.385,-.70],side*Math.PI/2);
-  // the troop roof is raised to 1.94 from its rear edge (z -3.32) to -2.45, then steps down to the turret deck at 1.76
+  // (ua4, the ua3 critics: its apex met the roof edge) the triangle whole on the upper course's panel under the turret's
+  // rear (z -1.13 to -0.11, y 1.04 to 1.775), clear of its fixing bolts
+  for(const side of [-1,1])P.decal('hull','flag','ua-triangle',.64,[side*1.665,1.40,-.62],side*Math.PI/2);
+  // the troop roof is flat at 1.76 from its rear edge (z -3.25) to the turret's sweep (the AC housing's corners reach
+  // z -2.06): the load runs from -3.32 to -2.17
   // (ua3, the ua2 critics, both: a stiff faceted cushion; lumps, its edges down over the rear plate and the rear corners,
   // crossing cords, a duller grey-brown; its front tucked in, where a corner stood out as a beak. ua4, the ua3 critics:
   // its ridge a row of pyramids, the sheet stopping at the roof's edges: one soft load, its lumps swelling and settling
-  // along it, hanging over the side edges onto the packets' tops (1.90, 1.73 forward of the step) and over the rear)
+  // along it, hanging over the side edges (269: over the side courses' tops, 1.775 to 1.66 out) and over the rear)
   const RING: readonly [number, number, number][] = [ // x, height over the base, the lump's weight
-    [1.60, -.03, 0], [1.55, 0, 0], [1.46, .08, .02], [1.30, .17, .03], [1.02, .25, -.03], [.62, .30, .04], [.20, .33, -.02],
-    [-.25, .32, .04], [-.68, .31, -.03], [-1.06, .25, .04], [-1.32, .16, -.02], [-1.47, .07, .02], [-1.55, 0, 0],
-    [-1.60, -.03, 0], [-1.44, -.02, 0], [0, -.03, 0], [1.44, -.02, 0],
+    [1.70, -.10, 0], [1.685, .02, 0], [1.60, .07, .01], [1.46, .12, .02], [1.30, .19, .03], [1.02, .26, -.03],
+    [.62, .30, .04], [.20, .33, -.02], [-.25, .32, .04], [-.68, .31, -.03], [-1.06, .25, .04], [-1.32, .17, -.02],
+    [-1.46, .12, .02], [-1.60, .07, .01], [-1.685, .02, 0], [-1.70, -.10, 0],
+    [-1.64, -.08, 0], [-1.44, -.02, 0], [0, -.03, 0], [1.44, -.02, 0], [1.64, -.08, 0],
   ];
-  const drape=(z: number, base: number, k: number, s=1, w=1): {z: number; ring: [number, number][]}=>({z,
-    ring:RING.map(([x,h,wt])=>[x*w,base+(h>0?(h+wt*k)*s:h)] as [number, number])});
-  const stations=[drape(-3.36,1.94,0,.62),drape(-3.24,1.94,.5),drape(-3.09,1.94,.9),drape(-2.93,1.94,.6),
-    drape(-2.77,1.94,0),drape(-2.62,1.94,.5),drape(-2.47,1.94,.9),drape(-2.30,1.77,.5,1.05,.94),drape(-2.12,1.77,0,.54,.88)];
+  const base = d.roofY;
+  const drape=(z: number, k: number, s=1, w=1): {z: number; ring: [number, number][]}=>({z,
+    ring:RING.map(([x,h,wt])=>[Math.abs(x)>1.6?x:x*w,base+(h>0?(h+wt*k)*s:h)] as [number, number])});
+  const stations=[drape(-3.32,0,.62),drape(-3.20,.5),drape(-3.05,.9),drape(-2.89,.6),drape(-2.73,0),drape(-2.57,.5),
+    drape(-2.42,.9),drape(-2.28,.5,1.0,.98),drape(-2.17,0,.55,.96)];
   // the sheet's upper courses one surface (its hems and underside keep their edges)
-  P.addEquipment('hullCanvasPale',sectionSolid(stations,{smoothSideEdges:[0,1,2,3,4,5,6,7,8,9,10,11,12]}));
-  // its rear edge hanging over the roof's in three folds, clear of the rear door (its face at z -3.40, top 1.83)
-  for(const [x,w,len,tilt] of [[-.99,1.02,.20,.62],[0,1.0,.23,.60],[.99,1.02,.18,.66]] as const)
-    P.addEquipment('hullCanvasPale',box(w,len,.02),x,1.945-len/2*Math.cos(tilt),-3.335-len/2*Math.sin(tilt),tilt,0,0);
+  P.addEquipment('hullCanvasPale',sectionSolid(stations,{smoothSideEdges:[0,1,2,3,4,5,6,7,8,9,10,11,12,13,14]}));
+  // its rear edge hanging over the roof's in three folds: the middle one steep and short, over the door but clear of its
+  // swing (the door's top at 1.60, reserved to 1.65), the outer two laid back over the corner bins' lids (1.68)
+  for (const [x,w,len,tilt] of [[0,1.0,.11,.45],[-1.30,.62,.20,1.2],[1.30,.62,.20,1.2]] as const)
+    P.addEquipment('hullCanvasPale',box2(w,len),x,base+.008-len/2*Math.cos(tilt),d.rearZ-.005-len/2*Math.sin(tilt),tilt,0,0);
   // crossing cords, laid over it station to station
-  const RIDGE=[2,4,5,6,7,8,9,11];
+  const RIDGE=[3,5,6,7,8,9,10,12];
   for(const dir of [1,-1]) for(let i=1;i+1<stations.length-1;i++) {
     const j=dir>0?RIDGE[i-1]:RIDGE[RIDGE.length-i];
     const k=dir>0?RIDGE[i]:RIDGE[RIDGE.length-i-1];
     if(j===undefined||k===undefined)continue;
     const [x0,y0]=stations[i].ring[j],[x1,y1]=stations[i+1].ring[k],z0=stations[i].z,z1=stations[i+1].z;
     const len=Math.hypot(x1-x0,y1-y0,z1-z0);
-    const cord=box(.02,.012,len);
+    const cord=KIT.box(.02,.012,len);
     cord.lookAt(new THREE.Vector3(x1-x0,y1-y0,z1-z0));
     P.addEquipment('hullCloth',cord,(x0+x1)/2,(y0+y1)/2+.014,(z0+z1)/2);
   }
   // (ua4, a shade lighter toward the photograph's faded rust)
   P.mats.canvasPale.color.setHex(0x5a4842);
-  // ua4 (the ua3 critics, both: the turret's net "a hollow hoop", daylight under it, drawn up over the fleet loads stowed
-  // on the roof; the photograph's a closed heap): the net bundled on the rear roof behind the hatches, a filled heap the
-  // suit lies on (ghillieFleetSuits.ts) over the antenna feet, rolled down to the walls (the roof 0.78 to |x| 0.80-0.95,
-  // 0.61-0.68 at the walls) and over the rear edge onto the rack (0.69 to z -1.395); the roof carries no other load
-  // under the net (decorations.ts)
+  // ua4 (the ua3 critics, both: the turret's net "a hollow hoop", daylight under it; the photograph's a closed heap): the
+  // net bundled on the turret's rear, a filled heap the suit lies on (ghillieFleetSuits.ts). 269: on the AC housing's top
+  // (0.66, |x| 0.76, z -1.40 to -1.02) and the roof's rear lip, behind the whip feet and the Lyran block (z -0.95), its
+  // edges rolled down the housing's sides and the turret's walls; the roof carries no other load under it (decorations.ts)
   const HEAP: readonly [number, number][] = [ // across the half-width, height over the roof as a share of the crown
     [1, NaN], [.95, .14], [.84, .46], [.64, .75], [.38, .93], [.10, 1], [-.20, .93], [-.48, 1], [-.74, .71], [-.90, .39],
     [-.97, .11], [-1, NaN], [-.5, NaN], [.5, NaN],
   ];
   const heap=(z: number, w: number, crown: number, edge: number): {z: number; ring: [number, number][]}=>({z,
-    ring:HEAP.map(([x,h],i)=>[x*w,Number.isNaN(h)?edge-(i>11?.01:0):.78+h*crown] as [number, number])});
-  P.addEquipment('turretCloth',sectionSolid([heap(-1.34,.58,.03,.67),heap(-1.30,.66,.10,.67),heap(-1.24,.84,.20,.68),
-    heap(-1.14,.88,.25,.68),heap(-1.02,.95,.26,.64),heap(-.90,1.0,.23,.62),heap(-.80,1.02,.15,.60),heap(-.72,.98,.05,.66)],
+    ring:HEAP.map(([x,h],i)=>[x*w,Number.isNaN(h)?edge-(i>11?.01:0):.74+h*crown] as [number, number])});
+  P.addEquipment('turretCloth',sectionSolid([heap(-1.43,.60,.03,.62),heap(-1.38,.72,.10,.63),heap(-1.30,.80,.17,.64),
+    heap(-1.20,.82,.22,.64),heap(-1.10,.84,.24,.65),heap(-1.03,.86,.20,.66),heap(-.99,.84,.10,.68)],
   {smoothSideEdges:[0,1,2,3,4,5,6,7,8,9,10]}));
 }
 
+/** A thin cloth panel (the tarp's hanging folds). */
+function box2(w: number, len: number): THREE.BufferGeometry {
+  return KIT.box(w, len, .02);
+}
+
 /** The CV9040C (release 265: `ukrainian` builds the Ukrainian one, ukraineCv90Specs.ts). */
-export function buildCv9040CX(P: TankBuilderPort, kit: { readonly ukrainian?: boolean } = {}): void {
-  hull(P);gear(P);turret(P);gun(P);P.topY=1.03;
-  if(kit.ukrainian)addUkrainianKit(P);
-  P.additionalShadowSources={hull:['hullExternalArmor','hullHatch'],turret:['turretExternalArmor','turretHatch']};
+export function buildCv9040CX(P: TankBuilderPort & CvBuilderPort, kit: { readonly ukrainian?: boolean } = {}): void {
+  buildCv90Hull(P, { glacisTowCable: false });
+  cHullKit(P);
+  // the Strf 9040's run, laid with the fleet's shared shoe (the C's own before 269: its quality-aware LOW tread)
+  buildCv90RunningGear(P, { trackShoe: buildFleetTrackShoe });
+  cv90TurretShell(P, { smoke: GALIX_BANKS });
+  buildCv90Gun(P);
+  // the coaxial Ksp 58C beside the cannon, out of the cradle cover's right front
+  P.addGunExtraDark(KIT.cylZ(0.020, 0.36, 10), -0.15, 0.07, 1.02);
+  cv90TurretRoof(P);
+  cTurretKit(P);
+  P.topY = 1.03;
+  if (kit.ukrainian) addUkrainianKit(P);
+  P.additionalShadowSources = { hull: ['hullExternalArmor', 'hullHatch'], turret: ['turretExternalArmor', 'turretHatch'] };
+  if (P.geometryReceipt) {
+    P.hullG.userData.cv9040cConstructionReceipt = Object.freeze({
+      id: P.spec.id, firstPartyProceduralOnly: true, externalGeometryLoaded: false,
+      baseVehicleBuilder: 'cv90', baseVehicleFrame: 'strf9040-measured-real-size',
+      cKit: Object.freeze(['glacis-tiles-4', 'nose-block', 'lamp-boxes', 'turret-side-applique', 'galix-6',
+        'ac-housing', 'coax-ksp58c']),
+      roofWeaponStation: false, roadWheelsPerSide: 7, frontDrive: true, ukrainianKit: !!kit.ukrainian,
+    });
+  }
   // 2026-10-09 (owner): the field net and garnish (ghillieFleetSuits.ts)
   addVehicleGhillieSuit(P);
 }

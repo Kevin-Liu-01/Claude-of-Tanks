@@ -28,13 +28,15 @@ function applyReplicaFrame(spec: FleetTankSpec): void {
   spec.armor=modernArmor({
     hl:puma?3.8:3.40,hw:puma?1.90:swedish?1.69:1.60,inW:1.05,
     floor:puma?.36:swedish?.37:.48,trkTop:puma?1.33:1.14,roofY:puma?2.12:swedish?1.94:1.82,
-    turretPivot:puma?[.434794,1.947494,-1.319322]:swedish?[0,1.78,-.76]:[.08,1.80,-.82],
-    gunPivot:puma?[-.415291,.565616,.527876]:swedish?[0,.405,1.56]:[0,.295,1.20],
-    barrelLenM:puma?3.258:swedish?2.75:2.774,barrelRadM:puma?.046:swedish?.070:.037,
+    turretPivot:puma?[.434794,1.947494,-1.319322]:swedish?[0,1.69,-.48]:[.08,1.80,-.82],
+    gunPivot:puma?[-.415291,.565616,.527876]:swedish?[0,.39,1.15]:[0,.295,1.20],
+    barrelLenM:puma?3.258:swedish?3.12:2.774,barrelRadM:puma?.046:swedish?.070:.037,
     glacis:[75,285,390],lower:[58,210,275],side:[50,145,205],skirt:[10,25,60],rear:40,roof:48,
     tw:puma?.95:1.06,tFrontZ:puma?1.45:1.26,tRearZ:puma?-1.33:-1.27,tH:puma?.87:.78,
     cheek:[100,265,350],tSide:[70,165,245],tRear:50,tRoof:44,mantlet:[120,285,370],loader:false,
   });
+  // 269 (the CV9040C built on the measured Strf 9040 of profiles/cv90.ts): its turret ring, trunnion and Bofors are the
+  // cv90 builder's authoring stations at real size (cv90's own spec publishes the same values at 90 %).
   // Armor ratings are game abstractions. The receipts measure the real exterior
   // and the layout registry supplies the manned/unmanned crew arrangement.
 }
