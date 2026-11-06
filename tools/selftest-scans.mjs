@@ -74,6 +74,8 @@ export const SELFTEST_SCANS = Object.freeze({
   'src/audio/voiceTriggers.selftest.mjs': lists('src/audio/*.ts'),
   'src/docs/filming.selftest.mjs': lists('public/media/filming-r1/*'),
   'src/engine/shadowCascadeFade.selftest.mjs': lists('src/**/*.ts'),
+  // (round 4 F7) the fx-clock census: every src/fx module with a clock read must be one its scenario loads
+  'src/fx/fxClockStampCensus.selftest.mjs': lists('src/fx/*.ts'),
   'src/fx/retiredTracers.selftest.mjs': lists('src/**/*.{ts,mjs,js,md,json,html,css}', 'tools/**/*.{ts,mjs,js,md,json,html,css}',
     'docs/**/*.{ts,mjs,js,md,json,html,css}'),
   // (264, premiere-battle) every source module, for a function key acted on with no row or a synthetic KeyboardEvent

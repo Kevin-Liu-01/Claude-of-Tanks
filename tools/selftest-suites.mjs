@@ -1089,7 +1089,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/fx/clockRebase.selftest.mjs', // 2026-11-02 audit R7: one registry of fx-clock shifts; embers, fracture holds and pieces keep their time
     // 2026-11-02 audit U33/Q15 (round 2): a rebase leaves no fx-clock stamp the runtime holds (by census, no list); (round
     // 3 B5) its scenario drives the drones, the gunship, the auxiliary systems, wires, a house's stages and the composer,
-    // and a clock read it does not reach fails it past a ratchet
+    // and V8's block coverage measures its reach: an fx-clock read it never runs that is not in its named KNOWN_UNREACHED
+    // list fails it, and so does a listed read it now runs
     'src/fx/fxClockStampCensus.selftest.mjs',
     // 2026-10-10 (physics lane, for the destruction core's natural collapses): the presentation pool of falling pieces.
     'src/fx/debrisPhysics.selftest.mjs',
