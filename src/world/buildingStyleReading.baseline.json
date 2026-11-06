@@ -1088,7 +1088,7 @@
     "houses": 21,
     "mid": {
       "storeys": 2,
-      "storeyM": 2.7,
+      "storeyM": 2.8,
       "pitchDeg": 25,
       "bayM": 2.5
     },
@@ -1097,7 +1097,7 @@
       3
     ],
     "storeyM": [
-      2.5,
+      2.6,
       3
     ],
     "roofs": {
@@ -1117,9 +1117,9 @@
       ]
     },
     "doors": {
-      "door": 42,
-      "gate": 3,
-      "loft": 6,
+      "door": 41,
+      "gate": 4,
+      "loft": 7,
       "shopfront": 15
     }
   },

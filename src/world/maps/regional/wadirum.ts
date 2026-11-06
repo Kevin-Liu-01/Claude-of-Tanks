@@ -732,15 +732,21 @@ export const WADIRUM_STYLE: ArchitectureStyle = Object.freeze<ArchitectureStyle>
     // (the Redrock lane, 2026-10-07: the fort and the bare walls in the valley's own sandstone, laid in courses, where a
     // grey concrete block stood; the render finer and shallower than the shared tile — the fort's "cork" print)
     stone: { kind: 'sandstone', tint: [0.80, 0.62, 0.48] },
-    sourced: { plaster: true, wood: true },
+    // (buildings-270, the census: the sourced plaster photo's dark stains read as blotches across every rendered wall)
+    // the walls the procedural cement render (regionalSurfaces.ts paintLimeRender), as Kohima's took
+    sourced: { plaster: false, wood: true },
+    render: { kind: 'limeRender', seed: 0x7a2d },
     relief: { plasterUv: 1.8, normal: 0.22, ao: 0.32 },
     // (MAPS 227, Redrock's blind critics on v2: "flat olive and beige house boxes", "an untextured flat olive box") the
     // second and third render families were the shared canvas's generic shifts — a khaki that reads olive in the shade,
     // and a dull brown-grey. Rum's houses are rendered sand (the first family, the sourced render under the map's tint),
     // bare cement-grey block render, or a pale cream wash: the kit's own two paints
+    // (buildings-270) the three as Rum's photos show them, each tone measured on the render canvas against the photos'
+    // colours: sand render (#cbad8b against #d9b38c), bare grey block (#938f88), terracotta-pink (#ca927c against #cf9478)
     tones: {
-      plaster2: (_h, s, l) => [0.1, Math.min(1, s * 0.3), Math.min(1, l * 1.2)],
-      plaster3: (_h, s, l) => [0.105, Math.min(1, s * 0.4 + 0.16), Math.min(1, l * 1.25 + 0.07)],
+      plaster: (_h, s, l) => [0.088, Math.min(1, s * 0.4 + 0.34), Math.min(1, l * 1.05 + 0.19)],
+      plaster2: (_h, s, l) => [0.1, Math.min(1, s * 0.25 + 0.02), Math.min(1, l * 1.1 + 0.05)],
+      plaster3: (_h, s, l) => [0.047, Math.min(1, s * 0.4 + 0.38), Math.min(1, l + 0.18)],
     },
   },
   builders: WADIRUM_BUILDERS,
