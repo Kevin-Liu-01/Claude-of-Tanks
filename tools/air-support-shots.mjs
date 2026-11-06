@@ -47,7 +47,14 @@ const stage = () => {
   return { x, z, yaw, px: p.x, pz: p.z };
 };
 
+/** The pause panel a thawed page can come back under (its visibility changed): resumed before every shot. */
+const resume = (page) => page.evaluate(() => {
+  const button = [...document.querySelectorAll('button')].find((b) => /^\s*resume\s*$/i.test(b.textContent ?? '') && b.offsetParent);
+  button?.click();
+  return !!button;
+});
 const shot = async (page, name) => {
+  if (await resume(page)) await sleep(300);
   const file = path.join(out, `${name}.png`);
   await page.screenshot({ path: file });
   receipt.shots.push(name);
@@ -119,38 +126,54 @@ async function shootDesktop(page, signal, tag) {
   }
 }
 
-/** Paired GPU frame time: eight marks up against none, alternated (the post chain's timer; null without the extension). */
+/**
+ * Paired GPU frame time: eight marks up against none, alternated. Every animation-frame callback's GL work is timed with
+ * its own TIME_ELAPSED query (EXT_disjoint_timer_query_webgl2; the post chain's governor timer pauses once it pins), so
+ * a pair compares the whole frame's GPU time with and without the marks' term. Null without the extension.
+ */
 async function measureMarks(page, tag) {
   return page.evaluate(async () => {
     const marks = await import('/src/engine/strikeMarks.ts');
-    const D = window.__DEBUG, p = D.game.player.state.pos, yaw = D.game.player.state.yaw;
+    const D = window.__DEBUG, gl = D.renderer.getContext();
+    const ext = gl.getExtension('EXT_disjoint_timer_query_webgl2');
+    if (!ext) return { timer: false };
+    const p = D.game.player.state.pos, yaw = D.game.player.state.yaw;
     const list = Array.from({ length: marks.STRIKE_MARK_MAX }, (_, i) => ({
-      x: p.x + Math.sin(yaw) * (80 + i * 30), y: p.y, z: p.z + Math.cos(yaw) * (80 + i * 30),
+      x: p.x + Math.sin(yaw) * (60 + i * 25), y: p.y, z: p.z + Math.cos(yaw) * (60 + i * 25),
       shape: ['circle', 'lane', 'orbit', 'aim-circle'][i % 4], sizeA: i % 4 === 1 ? 70 : i % 4 === 2 ? 140 : 30, sizeB: 12,
       heading: yaw, r: 0.2, g: 0.5, b: 1, urgency: 0.5,
     }));
-    const read = () => D.post?.gpuFrameMs ?? null;
-    const sample = async (on) => {
-      const values = [];
-      const until = performance.now() + 2500;
-      while (performance.now() < until) {
-        if (on) marks.setStrikeMarks(list, performance.now() / 1000); else marks.clearStrikeMarks();
-        await new Promise((r) => requestAnimationFrame(r));
-        const ms = read();
-        if (ms != null) values.push(ms);
+    const pending = [], done = [];
+    let label = 'off';
+    const raf = window.requestAnimationFrame.bind(window);
+    window.requestAnimationFrame = (cb) => raf((t) => {
+      if (label === 'on') marks.setStrikeMarks(list, t / 1000); else marks.clearStrikeMarks();
+      const q = gl.createQuery(); gl.beginQuery(ext.TIME_ELAPSED_EXT, q);
+      try { cb(t); } finally { gl.endQuery(ext.TIME_ELAPSED_EXT); pending.push([q, label]); }
+    });
+    const poll = () => {
+      while (pending.length && gl.getQueryParameter(pending[0][0], gl.QUERY_RESULT_AVAILABLE)) {
+        const [q, l] = pending.shift();
+        if (!gl.getParameter(ext.GPU_DISJOINT_EXT)) done.push([l, Number(gl.getQueryParameter(q, gl.QUERY_RESULT)) / 1e6]);
+        gl.deleteQuery(q);
       }
-      values.sort((a, b) => a - b);
-      return values.length ? values[Math.floor(values.length / 2)] : null;
     };
+    const median = (xs) => { const s = [...xs].sort((a, b) => a - b); return s.length ? s[Math.floor(s.length / 2)] : null; };
     const pairs = [];
     for (let i = 0; i < 6; i++) {
-      const off = await sample(false), on = await sample(true);
-      pairs.push({ off, on });
+      for (const which of ['off', 'on']) {
+        label = which; done.length = 0;
+        const until = performance.now() + 2000;
+        while (performance.now() < until) { await new Promise((r) => setTimeout(r, 50)); poll(); }
+        pairs.push({ which, ms: median(done.filter(([l]) => l === which).map(([, ms]) => ms)), n: done.length });
+      }
     }
+    window.requestAnimationFrame = raf;
     marks.clearStrikeMarks();
-    const deltas = pairs.filter((pair) => pair.on != null && pair.off != null).map((pair) => pair.on - pair.off).sort((a, b) => a - b);
-    return { pairs, medianDeltaMs: deltas.length ? deltas[Math.floor(deltas.length / 2)] : null,
-      timer: read() != null, canvas: [D.renderer.domElement.width, D.renderer.domElement.height] };
+    const deltas = [];
+    for (let i = 0; i + 1 < pairs.length; i += 2) if (pairs[i].ms != null && pairs[i + 1].ms != null) deltas.push(pairs[i + 1].ms - pairs[i].ms);
+    return { timer: true, pairs, medianDeltaMs: median(deltas), medianOffMs: median(pairs.filter((x) => x.which === 'off').map((x) => x.ms)),
+      canvas: [D.renderer.domElement.width, D.renderer.domElement.height], preset: D.quality?.resolvePresetName?.() ?? null };
   }).then((result) => { receipt.perf[tag] = result; return result; });
 }
 

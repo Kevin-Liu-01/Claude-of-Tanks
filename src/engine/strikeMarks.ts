@@ -74,7 +74,8 @@ export function setStrikeMarks(marks: readonly StrikeMark[], timeS: number, coun
     const m = marks[i]!;
     UNIFORMS.uStrikeA.value[i]!.set(m.x, m.z, m.sizeA, m.sizeB);
     UNIFORMS.uStrikeB.value[i]!.set(m.heading, SHAPE_CODE[m.shape], Math.max(0, Math.min(1, m.urgency)), m.y);
-    UNIFORMS.uStrikeC.value[i]!.set(m.r, m.g, m.b, m.shape.startsWith('aim') ? 2.6 : 1.8);
+    // (the first capture: the aim's 2.6 bloomed every line white in the binoculars) a mark's lines a little over the scene
+    UNIFORMS.uStrikeC.value[i]!.set(m.r, m.g, m.b, m.shape.startsWith('aim') ? 1.5 : 1.3);
   }
 }
 export function clearStrikeMarks(): void { UNIFORMS.uStrikeN.value = 0; }
@@ -104,8 +105,10 @@ export const STRIKE_MARKS_GLSL = /* glsl */ `
       vec2 d = g - A.xy;
       float reach = max( A.z, A.w ) + 12.0;
       if ( abs( d.x ) > reach || abs( d.y ) > reach ) continue;
-      // paint the ground, the roofs and the walls near it; never the sky above the mark's own ground
-      if ( wp.y > B.w + 45.0 ) continue;
+      // the ground, the low roofs and the walls' feet near the mark's own ground; a crown or a roof far above it fades out
+      // (the first capture: the pattern drawn across tree crowns and grass tops read as blobs, not a reticle)
+      float hFade = 1.0 - smoothstep( 5.0, 14.0, wp.y - B.w );
+      if ( hFade <= 0.0 ) continue;
       float shape = B.y, urg = B.z, T = uStrikeT;
       bool aim = shape > 2.5;
       float s = aim ? shape - 3.0 : shape;
@@ -132,7 +135,8 @@ export const STRIKE_MARKS_GLSL = /* glsl */ `
                              cotStrikeLine( d.y, w * 0.7, px ) * step( a2.x, min( R * 0.18, 6.0 ) ) );
           line = max( line, cross );
         }
-        fill = ( 1.0 - smoothstep( R - px, R + px, r ) ) * ( s > 1.5 ? 0.05 : 0.11 );
+        // a footprint's faint fill (the AC-130's ring hardly any: 140 m of red flooded an overhead view); the aim none
+        fill = aim ? 0.0 : ( 1.0 - smoothstep( R - px, R + px, r ) ) * ( s > 1.5 ? 0.02 : 0.07 );
       } else {
         // lane (1): along the heading (x of local = across, y = along)
         float sh = sin( B.x ), ch = cos( B.x );
@@ -147,12 +151,12 @@ export const STRIKE_MARKS_GLSL = /* glsl */ `
         float v = fract( ( along - T * ( 6.0 + urg * 30.0 ) ) / period ) * period - period * 0.5;
         float chev = cotStrikeLine( v + abs( across ) * 0.55, w * 1.1, px ) * step( abs( across ), hw * 0.62 );
         line = max( line, chev * inside * 0.85 );
-        fill = inside * 0.09;
+        fill = aim ? 0.0 : inside * 0.06;
       }
       float pulse = 0.75 + 0.25 * sin( T * ( 3.0 + urg * 9.0 ) );
       vec3 col = C.rgb * C.w;
-      rgb = mix( rgb, rgb * 0.55 + col * 0.45, fill * ( 0.6 + 0.4 * urg ) );
-      rgb = mix( rgb, col * pulse, clamp( line, 0.0, 1.0 ) * 0.9 );
+      rgb = mix( rgb, rgb * 0.55 + col * 0.45, fill * ( 0.6 + 0.4 * urg ) * hFade );
+      rgb = mix( rgb, col * pulse, clamp( line, 0.0, 1.0 ) * 0.85 * hFade );
     }
     return rgb;
   }
