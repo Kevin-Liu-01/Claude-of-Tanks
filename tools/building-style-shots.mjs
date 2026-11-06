@@ -227,8 +227,12 @@ async function shootMap(entry, options, frames) {
     await sleep(900);
     const settled = await page.waitForFunction(grassSettled, { timeout: 8000, polling: 250 }).then(() => true, () => false);
     await page.evaluate(pinClouds());
-    const cloudsPinned = await page.waitForFunction(cloudsHeld, { timeout: 20000, polling: 100 }).then(() => true, () => false);
-    if (!cloudsPinned) throw new Error(`${mapId} ${name}: the cloud layer did not hold within 20 s`);
+    // (48 frames: the long view of a big town under a loaded machine draws a few a second)
+    const cloudsPinned = await page.waitForFunction(cloudsHeld, { timeout: 180_000, polling: 250 }).then(() => true, () => false);
+    if (!cloudsPinned) {
+      const left = await page.evaluate(() => window.__DEBUG.scene.userData.volumetricClouds?.__pin?.left ?? null);
+      throw new Error(`${mapId} ${name}: the cloud layer did not hold within 180 s (${left} of ${CLOUD_FRAMES} frames left)`);
+    }
     const file = path.join(frames, `${mapId}-${name}.png`);
     await page.screenshot({ path: file, type: 'png' });
     receipt.poses[name] = { ...p, resolved, grassSettled: settled, clouds: { timeS: CLOUD_TIME_S, frames: CLOUD_FRAMES }, file: path.basename(file) };
