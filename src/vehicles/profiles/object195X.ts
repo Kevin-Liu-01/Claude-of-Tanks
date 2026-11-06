@@ -30,22 +30,23 @@ const GLACIS_RAKE = Math.atan2(F.roofY - NOSE_Y, F.hullFrontZ - GLACIS_Z0);
 function addHull(P: TankBuilderPort): void {
   const R = F.roofY;
   // [z, roof, bottom, outer, inner, sponson floor]: the glacis falls 0.58 m over 2.35 m to the nose; the bow narrows inside
-  // the idlers; the stern deck steps down over the sprockets
+  // the idlers; the stern deck steps down over the sprockets. The sponson floors clear the track's top run and its shoes
+  // (1.27 m at most on the run, 1.21 m over the idler: .qa-dev/r152/track-top.mjs; the release gate's track-clip stage)
   addHullTub(P, [
     [-3.95, R - .18, .86, 1.20, 1.04, 1.28],
-    [-3.80, R - .08, .66, 1.66, 1.08, 1.22],
-    [-3.45, R - .04, .50, 1.70, 1.10, 1.20],
-    [-2.90, R, .45, 1.70, 1.10, 1.20],
-    [GLACIS_Z0, R, .45, 1.70, 1.10, 1.20],
-    [3.05, glacisY(3.05), .47, 1.70, 1.10, 1.18],
-    [3.42, glacisY(3.42), .52, 1.66, 1.10, 1.10],
-    [3.62, glacisY(3.62), .56, 1.14, 1.06, 1.06],
+    [-3.80, R - .08, .66, 1.66, 1.08, 1.28],
+    [-3.45, R - .04, .50, 1.70, 1.10, 1.285],
+    [-2.90, R, .45, 1.70, 1.10, 1.285],
+    [GLACIS_Z0, R, .45, 1.70, 1.10, 1.285],
+    [3.05, glacisY(3.05), .47, 1.70, 1.10, 1.235],
+    [3.42, glacisY(3.42), .52, 1.66, 1.10, 1.219],
+    [3.62, glacisY(3.62), .56, 1.14, 1.06, 1.18],
     [F.hullFrontZ, NOSE_Y, .70, 1.10, 1.02, .96],
   ]);
   // the heavy lower nose plate across the full width ahead of the tracks (round 6's critics, the owner's renders: a blunt,
   // tall front with a heavy lower plate), its chamfered top and its tow eyes
   P.add('hull', sectionSolid([
-    { z: 3.70, ring: [[-1.70, .66], [1.70, .66], [1.70, 1.04], [-1.70, 1.04]] },
+    { z: 3.72, ring: [[-1.70, .66], [1.70, .66], [1.70, 1.04], [-1.70, 1.04]] },
     { z: 3.96, ring: [[-1.66, .70], [1.66, .70], [1.66, .98], [-1.66, .98]] },
   ]));
   for (const s of [-1, 1]) P.addEquipment('hullDetail', torus(.07, .02, 12, 6), s * .78, .76, 4.00, Math.PI / 2, 0, 0);
@@ -61,11 +62,9 @@ function addHull(P: TankBuilderPort): void {
       P.addEquipment('hullGlass', box(.10, .035, .01), x + dx, glacisY(2.38) + .045, 2.43, GLACIS_RAKE, 0, 0);
     }
   }
-  // headlights and the fender tips over the idlers
+  // the fender tips over the idlers (the headlights are in their armoured housings on the glacis, addHullKit)
   for (const s of [-1, 1]) {
-    P.addEquipment('hullDark', box(.16, .10, .08), s * 1.30, glacisY(3.44) - .02, 3.44);
-    P.addEquipment('hullGlass', markVehicleNightLens(box(.12, .06, .01), 'headlight'), s * 1.30, glacisY(3.44) - .02, 3.485);
-    P.addMudguard('object195-front-guard', 'hull', box(.56, .04, .55), s * 1.42, 1.13, 3.75, -.10, 0, 0);
+    P.addMudguard('object195-front-guard', 'hull', box(.56, .04, .55), s * 1.42, 1.19, 3.75, .20, 0, 0);
     P.addMudguard('object195-front-flap', 'hullRubber', box(.50, .26, .03), s * 1.42, .98, 4.02);
     P.addMudguard('object195-rear-flap', 'hullRubber', box(.50, .30, .03), s * 1.42, 1.04, -3.93);
   }
@@ -99,6 +98,7 @@ function addHullKit(P: TankBuilderPort): void {
     const x = s * 1.32, z = 3.38, y = glacisY(z) + .10;
     P.addEquipment('hullDetail', box(.30, .18, .26), x, y, z);
     P.addEquipment('hullDark', cylZ(.075, .03, 16), x, y + .01, z + .135);
+    P.addEquipment('hullGlass', markVehicleNightLens(cylZ(.062, .008, 16), 'headlight'), x, y + .01, z + .154);
     for (const dx of [-.10, .10]) P.addEquipment('hullDetail', box(.018, .18, .018), x + dx, y + .02, z + .19);
     P.addEquipment('hullDetail', box(.24, .018, .018), x, y + .11, z + .19);
   }

@@ -12,12 +12,12 @@ const { box, cylX, cylY, cylZ } = KIT;
 /**
  * One hull station: [z, roof, bottom, outer half-width, inner half-width, sponson floor]. The tub between the tracks runs
  * from the belly to the sponson floor, the sponsons over the tracks from there to the roof (the inner wall stands
- * vertical, clear of the return run).
+ * vertical, clear of the return run). The sponson's top stays at least 4 cm thick under a falling glacis.
  */
 export type HullStation = readonly [number, number, number, number, number, number];
 
 function tubSection([z, roof, bottom, outer, inner, step]: HullStation): SolidSection {
-  const s = Math.min(step, roof - .06);
+  const s = Math.min(step, roof - .04);
   return { z, ring: [[-inner, bottom], [inner, bottom], [inner, s], [outer, s], [outer, roof - .035], [outer - .08, roof],
     [-outer + .08, roof], [-outer, roof - .035], [-outer, s], [-inner, s]] };
 }

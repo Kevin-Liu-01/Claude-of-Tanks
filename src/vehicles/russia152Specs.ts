@@ -90,8 +90,11 @@ object292.visual = { scheme: 'solid', base: '#44553a', weather: '#4f6144', patch
 // armoured casing on the roof of a low turret, 8 ready rounds on a belt in the turret's rear and 32 in two hull
 // conveyors, and a 30 mm cannon to the gun's right. btvt's 10,650 mm over the gun and 2,434 mm to the turret's roof.
 const molot = variant('object477_molot', 't84', 'Object 477 Molot', 'USSR', 'next-generation');
+// Main 2026-11-06 (game levers before armour): HP 2,550 -> 2,800, the smallest step holding two thirds of its pairs fair
+// at 12 and 24 seeds on the rebuilt turret's measured anatomy: 31/40, 0.354 and 27/40, 0.332 (2,550: 23/40, 0.263 at 12;
+// 2,700: 29/40 at 12 but 21/40 at 24; reload to 7.0 s: 29/40, 0.414 at 12)
 Object.assign(molot, {
-  hp: 2550, weightTons: 55, enginePowerHp: 1200, topSpeedKmh: 63, reverseSpeedKmh: 18,
+  hp: 2800, weightTons: 55, enginePowerHp: 1200, topSpeedKmh: 63, reverseSpeedKmh: 18,
   turretTraverseDegS: 38, gunElevationDeg: 14, gunDepressionDeg: 6,
 });
 Object.assign(molot.dims, { hullLengthM: MOLOT_FRAME.hullFrontZ - MOLOT_FRAME.hullRearZ,
@@ -134,10 +137,12 @@ Object.assign(object195.dims, { hullLengthM: OBJECT195_FRAME.hullFrontZ - OBJECT
   overallLengthM: OBJECT195_FRAME.muzzleZ - OBJECT195_FRAME.hullRearZ, widthM: 3.56, heightM: 2.62 });
 object195.gun = {
   ...object195.gun, caliberMm: 152, reloadS: 8.5, baseAccuracy: 0.29, aimTimeS: 1.75, soundProfile: '2a83',
-  // Main 2026-11-04: tier X with the smallest trim that brings its mean to 0.65 or under with two thirds of its pairs
-  // fair. The T-14 152's rounds at 0.946 (740 -> 700): on the 259 range's 24 seeds 20/29 fair, mean 0.561 (720: 18/29,
-  // 0.574; untrimmed: 17/29, 0.586); on its 6 seeds 16/29, 0.639, the least spread of ten HP, damage and reload trims
-  shells: rounds('2A83', [[1000, 920, 840], 700, 18], [860, 643, 8], [851, 10]),
+  // Main 2026-11-04: tier X with the smallest change that brings its mean to 0.65 or under with two thirds of its pairs
+  // fair. On the rebuilt module's measured anatomy (2026-11-06) the range's level rounds strike the module's mantlet,
+  // which every peer pierced (16/29, 0.261 untrimmed; 14/29, 0.208 at the earlier 700 trim). Main 2026-11-06: game
+  // levers before armour. Its rounds at 1.108 the T-14 152's (740 -> 820), the smallest step holding the terms at 12 and
+  // 24 seeds: 20/29, 0.387 and 20/29, 0.356 (810: 18/29 at 12; HP to 4,000 and reload to 6.5 s top out at 19/29)
+  shells: rounds('2A83', [[1000, 920, 840], 820, 18], [860, 754, 8], [997, 10]),
 };
 object195.armor = modernArmor({
   hl: OBJECT195_FRAME.hullFrontZ, hw: 1.78, inW: 1.12, floor: 0.45, trkTop: 1.10, roofY: OBJECT195_FRAME.roofY,
