@@ -1405,7 +1405,11 @@ tick and position through `MatchActor.noteRestoredRow`), no hint was taken for i
 restored one and older than the resume tick, and it lies within the distance the hull could have driven since the
 restored row — (ticks between) × top speed × 1.25 + 3 m, the fleet's fastest hull as the floor — pose fields and the
 row's body bits only (protocol 12, round 3 A14: the hint seats its ground contact and body mode as a row does,
-`authorityRow.ts applyAuthorityRow`, never from its height over the terrain), never combat state. A client never places itself: a claim outside those bounds is refused and counted
+`authorityRow.ts applyAuthorityRow`, never from its height over the terrain), never combat state. The bits widen no trust
+the pose did not carry: a hint's pitch and roll already decided the rigid phase on the actor's next step (`movement.ts`
+settles a grounded tumbling hull whose fit is upright; a forged upright hint over a restored overturned row was supported
+after one step before protocol 12), so the bits seat at the hint what the step would have, and both stay bounded by the
+tick, distance and once-only checks above. A client never places itself: a claim outside those bounds is refused and counted
 (`ResumeHintStats.reasons`). Bots, disconnected seats and hulls nobody re-offers still resume from the sealed keyframe
 (≤ 2 s old); the seed covers every hull whose own seat comes back, which is what the certification's own-hull gate
 measures. Receipts: `matchActorResume.selftest` (older / future / too far / unrestored / spectator / repeated refused, one

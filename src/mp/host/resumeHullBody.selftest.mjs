@@ -118,7 +118,11 @@ if (wrong.length) {
     return { actor, hull };
   };
   const wrongBits = [];
-  // a hull resting on a roof 4 m over the terrain field (its row: on the ground, upright)
+  // a hull resting on a roof 4 m over the terrain field (its row: on the ground, upright). The seating is what this
+  // proves: the state the actor's next step starts from (grounded and supported, not airborne). The drop itself is not
+  // reproduced here (review r1): this field has no deck (a map's structure manifest brings the authority's standing
+  // decks), and over one the airborne hull lands on it within the same step, so a step tells the two apart only by that
+  // tick's airborne state, which the reading below already shows
   {
     const { actor, hull } = hintCase(0, 4);
     await new Promise((resolve) => setImmediate(resolve));
