@@ -1,5 +1,6 @@
 // src/world/maps/regional/appearance.selftest.mjs — the look picker's laws (item buildings-270, appearance.ts):
-//   1. with a ledger, no two buildings within LOOK_RADIUS_M share every feature (while the variation has room);
+//   1. with a ledger, no two buildings within LOOK_RADIUS_M wear the same dress while the row has one to spare, and none
+//      shares every feature (while the variation has room);
 //   2. the pick is deterministic: the same streams and places give the same looks;
 //   3. the stream reads the same whatever the ledger does (every draw comes first), so nothing after it moves;
 //   4. every dress option and tint comes from the row's variation and the kit's palette; the roof age stays in its spread;
@@ -34,6 +35,9 @@ for (const sameSeed of [true, false]) {
     if (Math.hypot(a.x - b.x, a.z - b.z) < LOOK_RADIUS_M) assert.notEqual(a.look.key, b.look.key, `houses ${i} and ${j} share every feature`);
   }
 }
+// the dress first: four houses in a row (all neighbours) drawn from one seed wear four dresses (the row offers six)
+const row4 = street(4, new AppearanceLedger(), true);
+assert.equal(new Set(row4.map((l) => `${l.look.dress.gable}/${l.look.dress.paint}`)).size, 4, 'four neighbours, four dresses');
 // without a ledger, identical seeds give identical looks (the class the rule fixes)
 const bare = street(4, null, true);
 assert.equal(new Set(bare.map((l) => l.look.key)).size, 1);

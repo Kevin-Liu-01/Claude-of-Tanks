@@ -8,7 +8,7 @@ import {
   type Face, type RegionalBucket, type Rgb, type Vec3, type EmitOptions,
 } from './geometry.ts';
 import {
-  carvedVerge, facadeGrime, facadeGround, facadeGroundCraft, facadeLegacy, facadeOn, sillStreaks, styleGroundCraft, thatchCourses, withFacade,
+  carvedVerge, eaveStreaks, facadeGrime, facadeGround, facadeGroundCraft, facadeLegacy, facadeOn, sillStreaks, styleGroundCraft, thatchCourses, withFacade,
   type FacadeContext,
 } from './facade.ts';
 import { withSillShadow } from './openings.ts';
@@ -1269,6 +1269,11 @@ export function buildHouse(sink: PartSink, spec: HouseSpec, dialect: HouseDialec
           }
           sillStreaks(sink, storey.wall, face, o.u, sill, o.w, floor);
         }
+      }
+      // (buildings-270; Main: "streaks under sills and eaves") the rain's runs down a rendered top storey from under its eave,
+      // between the openings, as many as the place's walls weather (its row's grime)
+      if (facadeOn() && !storey.framed && RENDERS.has(storey.wall) && i === bodies.length - 1 && rainShadow[name] < 1) {
+        eaveStreaks(sink, storey.wall, face, bodies[i].y1, bodies[i].y0, own.map((o) => [o.u - o.w / 2, o.u + o.w / 2] as const));
       }
     }
     // jetty dressing on the faces this storey oversails

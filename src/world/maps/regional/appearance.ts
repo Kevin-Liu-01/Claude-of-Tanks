@@ -7,10 +7,11 @@
 // kit's builder reads (dressOf) for decor-only choices. The look is drawn from the building's weather stream, never the
 // build stream, so no shape and no collision moves with it.
 //
-// The rule: no building within LOOK_RADIUS_M of another shares every feature with it. The props build keeps one ledger
-// per map (a new one each build, so nothing carries between maps or builds) and offers it here with the building's world
-// position; a pick that a neighbour already has is stepped to the next free one, dress axes first, then the roof, the
-// render, the roof's age and the stone. Without a ledger (a receipt's bare build, a set piece) the first pick stands.
+// The rule: no building within LOOK_RADIUS_M of another wears the same dress while the row's axes have one to spare, and
+// none shares every feature with it. The props build keeps one ledger per map (a new one each build, so nothing carries
+// between maps or builds) and offers it here with the building's world position; a dress a neighbour wears is stepped to
+// the next free one, then a whole look a neighbour has is stepped over the roof, the render, the roof's age and the stone
+// (the dress kept free). Without a ledger (a receipt's bare build, a set piece) the first pick stands.
 import { rgb, type Rgb } from './geometry.ts';
 import type { WeatherPalette, WeatherTints } from './weather.ts';
 
@@ -37,13 +38,19 @@ const AGE_STEPS = 3;
 
 /** One map's placed looks (props.ts makes one per build). */
 export class AppearanceLedger {
-  private readonly placed: Array<{ x: number; z: number; key: string }> = [];
+  private readonly placed: Array<{ x: number; z: number; key: string; dress: string }> = [];
+  /** a neighbour (within LOOK_RADIUS_M) already has this whole look */
   clashes(x: number, z: number, key: string): boolean {
     for (const p of this.placed) if (p.key === key && Math.hypot(p.x - x, p.z - z) < LOOK_RADIUS_M) return true;
     return false;
   }
-  place(x: number, z: number, key: string): void {
-    this.placed.push({ x, z, key });
+  /** a neighbour already wears this dress */
+  dressed(x: number, z: number, dress: string): boolean {
+    for (const p of this.placed) if (p.dress === dress && Math.hypot(p.x - x, p.z - z) < LOOK_RADIUS_M) return true;
+    return false;
+  }
+  place(x: number, z: number, key: string, dress = ''): void {
+    this.placed.push({ x, z, key, dress });
   }
 }
 
@@ -63,18 +70,24 @@ export function pickLook(palette: WeatherPalette, variation: BuildingVariation |
   const jitter = [rng(), rng(), rng()];
   const ageFrac = rng();
   const tuple = [...base];
-  if (at) {
-    const total = radices.reduce((a, b) => a * b, 1);
-    for (let step = 0; step < total && at.ledger.clashes(at.x, at.z, tuple.join('.')); step++) {
-      // the next tuple in mixed radix, the first axis turning fastest
-      for (let i = 0; i < tuple.length; i++) {
-        tuple[i] = (tuple[i] + 1) % radices[i];
-        if (tuple[i] !== 0) break;
-      }
-    }
-    at.ledger.place(at.x, at.z, tuple.join('.'));
-  }
   const n = axes.length;
+  /** the next tuple in mixed radix over digits [from, to), the first turning fastest */
+  const step = (from: number, to: number) => {
+    for (let i = from; i < to; i++) {
+      tuple[i] = (tuple[i] + 1) % radices[i];
+      if (tuple[i] !== 0) break;
+    }
+  };
+  const count = (from: number, to: number) => radices.slice(from, to).reduce((a, b) => a * b, 1);
+  if (at) {
+    // the dress first (what a passer-by sees): no neighbour wears the same, while the row's axes have a dress to spare;
+    // then the whole look: no neighbour shares every feature
+    if (n) for (let k = 0, c = count(0, n); k < c && at.ledger.dressed(at.x, at.z, tuple.slice(0, n).join('.')); k++) step(0, n);
+    const dressFree = !n || !at.ledger.dressed(at.x, at.z, tuple.slice(0, n).join('.'));
+    const from = dressFree ? n : 0;
+    for (let k = 0, c = count(from, tuple.length); k < c && at.ledger.clashes(at.x, at.z, tuple.join('.')); k++) step(from, tuple.length);
+    at.ledger.place(at.x, at.z, tuple.join('.'), tuple.slice(0, n).join('.'));
+  }
   const dress: Record<string, string> = {};
   axes.forEach((a, i) => { dress[a] = v.axes[a][tuple[i]]; });
   const shift = (c: Rgb, j: number, k: number): Rgb => {
