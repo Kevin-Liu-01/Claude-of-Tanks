@@ -5,6 +5,10 @@
 import assert from 'node:assert/strict';
 import { createPlayerBattleActions } from './playerBattleActions.ts';
 import { createBus } from './stateCore.ts';
+import { selectShell } from '../sim/damage.ts';
+import { activateSpecialAction, guidedMissileSlot, specialActionKind } from '../sim/specialActions.ts';
+import { createSpecialActionState } from '../sim/specialActionPolicy.ts';
+import { hasAmmunition } from '../sim/ammunition.ts';
 
 const handlers = new Map();
 const input = {
@@ -100,23 +104,45 @@ row(0);
 input.press('atgm');
 assert.equal(player.input.shellSlot, 1, 'Q returns to the round the digit picked, not the lagging row\'s cannon round');
 
-// (U23, round 2) the pad's LB enters the missile through the sim's guided-missile action (activateGuidedMissile selects it
-// itself and remembers the round it left as previousShellSlot; no ui:shellSelect): Q then returns to that round, never to
-// the last round a digit picked. And a new tank forgets the last one's return slot.
+// (U23, round 2; round 3 B9: driven, not mirrored) the pad's LB enters the missile through the sim's guided-missile action:
+// the pad's press (a 'Pad' key code) raises ui:specialAction {pad:true}, whose handler asks the production rules
+// (sim/specialActions.ts activateSpecialAction -> activateGuidedMissile, which selects the missile itself and remembers
+// the round it left as previousShellSlot; no ui:shellSelect). Q then returns to that round, never to the last round a
+// digit left. Every rule here is the one main.ts wires (game/battleClientRuntime.ts), on the sim's own action state.
 {
-  const lb = { kind: 'guided_missile', missileSlot: 2, previousShellSlot: -1 };
-  player.specialAction = lb;
-  player.input.shellSlot = 0;
-  player.combat.shellSlot = 0;
-  input.press('shell1');
-  input.press('shell2'); // HEAT (the digit leaves Sabot: the return slot the toggle kept read Sabot from here)
-  assert.equal(player.combat.shellSlot, 1);
-  // LB: the sim's activateGuidedMissile records HEAT and selects the missile itself, then the HUD hears the change
-  lb.previousShellSlot = 1; player.combat.shellSlot = 2; player.input.shellSlot = 2;
-  bus.emit('ui:shellSelectionChanged', { slot: 2 });
-  input.press('atgm');
-  assert.equal(player.combat.shellSlot, 1, 'Q after LB returns to the HEAT round the missile left (the sim\'s memory)');
-  player.specialAction = null;
+  const padInput = {
+    handlers: new Map(),
+    onAction(action, listener) {
+      if (!this.handlers.has(action)) this.handlers.set(action, new Set());
+      this.handlers.get(action).add(listener);
+      return () => this.handlers.get(action).delete(listener);
+    },
+    press(action, code) { for (const listener of this.handlers.get(action) || []) listener(code); },
+  };
+  const padBus = createBus();
+  const padSpec = { gun: { shells: spec.gun.shells.map((shell) => ({ ...shell })) } };
+  const tank = {
+    id: 'pad', spec: padSpec, state: { overturned: false, grounded: true, _body: { tumbling: false, autoRighting: false } },
+    combat: { ...player.combat, destroyed: false, shellSlot: 0, ammo: [20, 10, 4], ammoCapacity: [20, 10, 4] },
+    input: { shellSlot: 0 }, specialAction: createSpecialActionState(padSpec),
+  };
+  assert.equal(tank.specialAction.kind, 'guided_missile', 'a launcher with a cannon round: its pad system is the missile');
+  createPlayerBattleActions({
+    game: { phase: 'battle', timeS: 10, player: tank }, bus: padBus, input: padInput, isSettingsOpen: () => false,
+    network: { isActive: () => false, queueConsumable() {}, queueAction() {} },
+    rules: { ...rules, selectShell, activateSpecialAction, guidedMissileSlot, specialActionKind, hasAmmunition },
+  });
+  padInput.press('shell1', 'Digit1');
+  padInput.press('shell2', 'Digit2'); // HEAT (the digit leaves Sabot: the toggle's own return slot reads Sabot from here)
+  assert.equal(tank.combat.shellSlot, 1);
+  padInput.press('specialAction', 'PadLB');
+  assert.deepEqual([tank.combat.shellSlot, tank.input.shellSlot], [2, 2], 'the pad\'s LB selects the missile in the sim');
+  assert.equal(tank.specialAction.previousShellSlot, 1, 'and the sim remembers the HEAT round it left');
+  padInput.press('atgm', 'KeyQ');
+  assert.equal(tank.combat.shellSlot, 1, 'Q after LB returns to the HEAT round the missile left (the sim\'s memory)');
+  // and a keyboard press of the same action (E, a hull whose E is not its suspension's) is not the pad's: nothing moves
+  padInput.press('specialAction', 'KeyE');
+  assert.equal(tank.combat.shellSlot, 1, 'E on a missile hull leaves the round alone (the pad\'s LB only)');
 }
 {
   const other = createBus();

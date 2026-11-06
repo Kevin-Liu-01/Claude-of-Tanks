@@ -1696,6 +1696,7 @@ export const SELFTEST_SUITES = Object.freeze({
     // and presentations, facts before the graph, the lazy carry)
     'src/audio/battleMode.selftest.mjs',
     // 2026-11-02 audit Q16 (round 2): sfx-smoke's synthetic deaths, read from the tool, revive first and are heard once a life
+    // (round 3 B9: the tool's own scene loop and volley run on the real engine, cut from its source)
     'src/audio/sfxSmokeDeaths.selftest.mjs',
     // 2026-11-02 audit F11: under the battle loader only its bed (the director's scene goes with the teardown's loops; the
     // battle's ambience intent is per battle)
@@ -2121,7 +2122,9 @@ export const SELFTEST_SUITES = Object.freeze({
     // 2026-10-23 (aim-focus 243): refused Settings relocks never latch cursor aim; a menu click is never an aim point
     'src/game/inputPointerLockFocus.selftest.mjs',
     'src/game/playerBattleActions.selftest.mjs',
-    'src/game/atgmToggle.selftest.mjs', // 2026-11-02 audit F8: Q's ATGM toggle is the game's, not the HUD tile's
+    // 2026-11-02 audit F8: Q's ATGM toggle is the game's, not the HUD tile's (round 3 B9: the pad's LB through the sim's own
+    // activateGuidedMissile)
+    'src/game/atgmToggle.selftest.mjs',
     'src/game/battleKeyActions.selftest.mjs',
     // 2026-10-25 (owner): one vehicle-action table, each action on its own key and in one order on every vehicle
     'src/game/vehicleActions.selftest.mjs',
