@@ -361,7 +361,7 @@ export const cloudscapeChunk = createLazyChunk((): Promise<void> => import('./cl
 /**
  * 2026-10-02 (the boot weight): a map's cloudscape (its regime, its knobs, the time of day, the weather beyond the
  * slab) lights only a battlefield, so it loads behind the battle entry (cloudscapeLayer.ts: the battle atmosphere's
- * acquisition and the capture staging await it); the Garage's open destinations read the deck derivation alone. Never
+ * prepare and the capture staging await it); the Garage's open destinations read the deck derivation alone. Never
  * rejects: a failed chunk keeps the deck derivation, and a later call asks again as the lazy-chunk policy allows (at once
  * after one failure, then past its backoff, never offline).
  */
