@@ -22,7 +22,7 @@ import { ensureAuthorityFleet } from '../../vehicles/authorityFleet.ts';
 import { createMatchActor } from '../../../server/match/matchActor.ts';
 import { createLoopbackLink } from '../../../server/match/link.ts';
 import {
-  MESSAGE_TYPE, PHASE, PROTOCOL_VERSION, SNAPSHOT_FLAGS, UNSEEN_SHELL_MARK_TICKS, VERDICT, applySnapshotPacket,
+  MESSAGE_TYPE, NO_TICK, PHASE, PROTOCOL_VERSION, SNAPSHOT_FLAGS, UNSEEN_SHELL_MARK_TICKS, VERDICT, applySnapshotPacket,
   buildSnapshotPacket, decodeMessage, encodeMessage, zeroEntityRow,
 } from '../wire/index.ts';
 import { encodeSnapshotFrame } from '../wire/codec.ts';
@@ -33,7 +33,8 @@ import { TRACER_ABSENCE_GRACE_S, createProjectileTracers } from '../../fx/projec
 import { createDronePresentation } from '../../fx/dronePresentation.ts';
 import { createFx } from '../../fx/effects.ts';
 
-await ensureAuthorityFleet();
+// the two specs the seats drive (round 3 B17: the whole fleet's anatomy was most of this receipt's cost)
+await ensureAuthorityFleet(['m1a1_abrams_hc', 't90am']);
 
 // ---- 1. the match actor names the rounds that left a view in flight ------------------------------------------------
 {
@@ -412,8 +413,10 @@ await ensureAuthorityFleet();
   assert.deepEqual([...frame.destroyedFalls], [0, SHELL | 1, 0, 0],
     'the MatchFrame\'s falls line up with its list: the delta\'s addition with its own fall, the indices it held none yet');
   const truth = [SHELL | 33, SHELL | 1, RAM | 60, RAM | 10];
-  // (a keyframe every KEYFRAME_INTERVAL_TICKS, six seconds: server/match/publisher.ts)
-  for (let guard = 0; guard < 8 * 60 && frame.destroyedFalls.join() !== truth.join(); guard++) frame = await step();
+  // the keyframe asked for as a client that lost its baseline asks (an ack of NO_TICK: MatchClient.requestKeyframe), not
+  // waited for (one every KEYFRAME_INTERVAL_TICKS, six seconds: round 3 B17, the receipt's cost)
+  assert.ok(pair.client.send(encodeMessage({ type: MESSAGE_TYPE.PING, clientTimeMs: 1, snapshotAckTick: NO_TICK })));
+  for (let guard = 0; guard < 60 && frame.destroyedFalls.join() !== truth.join(); guard++) frame = await step();
   assert.deepEqual([...frame.destroyedFalls], truth, 'the next keyframe brings every fall, each with its index');
   assert.ok(client.stats().keyframes > keyframesBefore, 'through a keyframe');
   client.dispose();

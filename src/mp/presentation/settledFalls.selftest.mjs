@@ -31,7 +31,8 @@ import {
 import { encodeSnapshotFrame } from '../wire/codec.ts';
 import { createBattlePresentation } from './index.ts';
 
-await ensureAuthorityFleet();
+// the two specs the seats drive (round 3 B17: the whole fleet's anatomy was most of this receipt's cost)
+await ensureAuthorityFleet(['m1a1_abrams_hc', 't90am']);
 const fall = { cause: 'ram', dx: 0, dz: 0 };
 const near = (a, b, tolerance = 1e-9) => Math.abs(a - b) <= tolerance;
 // A prop's lay as the world's hinge makes it (world/topple.ts, what felledTrees.fell and props.ts animateBrokenRecord run):
