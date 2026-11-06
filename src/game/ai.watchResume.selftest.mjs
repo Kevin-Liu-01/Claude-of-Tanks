@@ -32,6 +32,9 @@
 // Leave with the hull stepped in between: 0.5 s and 2 s coasting toggles and a coasting in-place park keep the legs, the
 // watcher's drives off and a revive still end them, and [9] a displaced leg's wait moves with the park (a mutant without
 // that shift planned the search over a commander's point on the first tick back).
+// Round 4 (F5): the hold read the way on the ground plan alone, so [11] a drive off a causeway's crest onto the floor
+// beside it left the level route held from below until its strikes gave the target up as unbearable; a stretch the hull
+// stands a level above or below is no longer its way. Both checks failed on 0edd0e1ab5.
 import { Vector3 } from 'three';
 import '../vehicles/fleetFactory.ts';
 import { getSpec } from '../vehicles/specs.ts';
@@ -580,6 +583,104 @@ console.log('[9] a displaced search leg waits for the route that took it through
       && r.after.searchFailures === r.leg.searchFailures,
       `a ${parkS} s park ${far ? 'in which the watcher drove 200 m off' : 'with nobody at the keys'}: the search waits for the point and plans again only there, counting no failure (${label(r)})`);
   }
+}
+
+/**
+ * A causeway (round 4, F5): a 16 m crest with 2 m sides runs up from the floor at z 0 to a 25 m plateau north of z 100,
+ * where the enemy stands; the floor bot below the plateau's cliff takes the road up the crest to it. The planner is a
+ * fixture that lays that road: the navigation grid's 25 m cells cannot see a crest narrower than a cell, and over this
+ * one the real planner sends the floor bot straight up its 2 m side.
+ */
+function causewayScene() {
+  const TOP = 25, HALF = 8, SIDE = 2;
+  const plateau = (z) => Math.max(0, Math.min(TOP, (z - 98) / 4 * TOP));
+  const crest = (x, z) => {
+    if (z < 0 || z > 104) return 0;
+    const top = Math.min(TOP, z / 100 * TOP), ax = Math.abs(x);
+    return ax <= HALF ? top : ax >= HALF + SIDE ? 0 : top * (HALF + SIDE - ax) / SIDE;
+  };
+  const getHeightAt = (x, z) => Math.max(plateau(z), crest(x, z));
+  const getNormalAt = (x, z) => {
+    const e = 0.5, dx = getHeightAt(x + e, z) - getHeightAt(x - e, z), dz = getHeightAt(x, z + e) - getHeightAt(x, z - e);
+    const nx = -dx / (2 * e), nz = -dz / (2 * e), length = Math.hypot(nx, 1, nz);
+    return { x: nx / length, y: 1 / length, z: nz / length };
+  };
+  const causeway = { getHeightAt, getNormalAt, getGroundType: () => 'firm' };
+  const raycast = (origin, dir, maxDist) => {
+    for (let d = 1; d < maxDist; d += 1) {
+      if (origin.y + dir.y * d < getHeightAt(origin.x + dir.x * d, origin.z + dir.z * d)) return { dist: d };
+    }
+    return null;
+  };
+  const place = (id, team, x, z, yaw) => {
+    const t = tank(id, team, x, z, yaw, 'm1a1_abrams_hc');
+    t.state.pos.y = getHeightAt(x, z);
+    return t;
+  };
+  const ROAD = Object.freeze([[25, 0], [0, -10], [0, 25], [0, 50], [0, 75], [0, 100], [30, 112]]);
+  const floor = place('floor', 'alpha', 40, 70, Math.PI);
+  const plateauEnemy = place('plateau', 'bravo', 30, 112, Math.PI);
+  const ctl = createAI(floor, { difficulty: 'normal', rng: mulberry32(73), deps: {
+    heightField: causeway, raycast, getEnemies: () => [plateauEnemy], getAllies: () => [], getObstacles: () => [],
+    spotting: { isSpotted: () => true },
+    planRoute: (_start, _goal, options) => (options?.requireGoalLevel ? ROAD : []),
+  } });
+  let t = 300;
+  const run = (seconds, until) => {
+    for (let i = 0; i < Math.round(seconds / SIM_DT); i++) {
+      t += SIM_DT;
+      ctl.update(SIM_DT, t);
+      updateTank(floor, causeway, SIM_DT, null);
+      if (until && until(ctl.debugInfo())) return true;
+    }
+    return false;
+  };
+  const moveTo = (x, z) => { floor.state.pos.x = x; floor.state.pos.z = z; floor.state.pos.y = getHeightAt(x, z); floor.state.speed = 0; };
+  const hull = (seconds) => {
+    for (let i = 0; i < Math.round(seconds / SIM_DT); i++) {
+      t += SIM_DT;
+      updateTank(floor, causeway, SIM_DT, null);
+    }
+  };
+  return { ctl, floor, run, moveTo, hull, clock: () => t, getHeightAt };
+}
+
+console.log('[11] a level route ends with no verdict when the watcher drives its hull off the road onto the level below, within reach of it');
+// Round 4 (F5): hullOnItsWay measured the hull's way on the ground plan alone, 12 m either side of the route ahead. A
+// watcher who drove the hull off the causeway's crest onto the floor beside it, 11 m from the road and 13 m below it,
+// left the level route held from the wrong level: on 0edd0e1ab5 the follower drove at the crest's side, and its stuck
+// strikes ended the route with the 75 s unbearable verdict (the class round 2 removed). A stretch the hull stands
+// RESUME_ON_LEVEL_M (ELEVATION_LEVEL_M, 8 m) or more above or below, at its nearest point, is not on its way.
+{
+  const crestHandBack = async ({ parkS, offTheSide }) => {
+    const { ctl, floor, run, moveTo, hull, clock, getHeightAt } = causewayScene();
+    const routing = run(30, (info) => info.levelRouting);
+    const onCrest = run(60, () => Math.abs(floor.state.pos.x) < 3 && floor.state.pos.z > 45);
+    const before = ctl.debugInfo();
+    const took = takeAndLeave(floor, ctl, clock, hull, parkS, offTheSide ? () => moveTo(11, floor.state.pos.z + 3) : null);
+    const back = ctl.debugInfo();
+    const dropM = getHeightAt(0, floor.state.pos.z) - floor.state.pos.y;
+    const handBackS = clock();
+    let nextRouteAfterS = null;
+    run(60, (info) => {
+      if (info.levelRoutes > before.levelRoutes && nextRouteAfterS === null) nextRouteAfterS = clock() - handBackS;
+      return false;
+    });
+    return { routing, onCrest, before, back, after: ctl.debugInfo(), nextRouteAfterS, dropM, ...took };
+  };
+  const label = (r) => `verdicts ${r.before.unbearableVerdicts} -> ${r.after.unbearableVerdicts}, levelRouting ${r.before.levelRouting} -> ${r.back.levelRouting}, owner ${r.back.routeOwner}, routes ${r.before.levelRoutes} -> ${r.after.levelRoutes}`;
+  const dropped = await crestHandBack({ parkS: 0.5, offTheSide: true });
+  ok(dropped.routing && dropped.onCrest && dropped.before.routeOwner === 'level',
+    `setup: the floor bot drives its level route up the causeway's crest (owner ${dropped.before.routeOwner})`);
+  ok(dropped.dropM > 8 && !dropped.back.levelRouting && dropped.back.routeOwner !== 'level'
+    && dropped.after.unbearableVerdicts === dropped.before.unbearableVerdicts,
+    `a 0.5 s Take and Leave in which the watcher drove off the crest onto the floor 11 m beside the road, ${dropped.dropM.toFixed(1)} m below it: the route ends at the hand-back with no verdict, then or in the 60 s after (${label(dropped)})`);
+  ok(dropped.nextRouteAfterS !== null && dropped.nextRouteAfterS >= 6 - 0.05,
+    `and the lock plans the road again from the floor (${dropped.nextRouteAfterS === null ? 'never' : `${dropped.nextRouteAfterS.toFixed(2)} s`} after the hand-back; ELEVATION_LOCK_S 6 s)`);
+  const stayed = await crestHandBack({ parkS: 0.5, offTheSide: false });
+  ok(stayed.back.levelRouting && stayed.back.routeOwner === 'level' && stayed.after.unbearableVerdicts === stayed.before.unbearableVerdicts
+    && stayed.after.levelRoutes === stayed.before.levelRoutes,
+    `a 0.5 s Take and Leave on the crest: the hull coasts on up the road on its level, and the route runs on (coasted ${stayed.coastM.toFixed(1)} m; ${label(stayed)})`);
 }
 
 if (failures) { console.error(`ai.watchResume.selftest: ${failures} failure(s)`); process.exit(1); }
