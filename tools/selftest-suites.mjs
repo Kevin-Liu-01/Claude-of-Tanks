@@ -1419,6 +1419,9 @@ export const SELFTEST_SUITES = Object.freeze({
     // 2026-11-02 audit S2: a solo battle's kernel choice is made once at its setup (kernels landing before its first step
     // carry the next battle, never half of this one)
     'src/game/soloKernelChoice.selftest.mjs',
+    // 2026-11-02 audit X10 (round 3): the solo battle entry waits for its chunk's world kernels (bounded), so a first
+    // battle is not set up on the TypeScript by a race with its own load
+    'src/game/soloKernelEntry.selftest.mjs',
     'src/game/soloBattleRuntime.selftest.mjs',
     'tools/boot-static-closure.selftest.mjs',
     // 265: the core imports no driver code; a local battle never reaches src/mp or the room host (seeded violations caught)
