@@ -58,9 +58,9 @@ interface SoloBattleEntryRuntimeOptions {
   onFailure?(error: RuntimeValue): void;
   /**
    * (2026-11-02 audit F2) "A battle entry began" (`ui:battleStart`) for an entry its caller did not announce: the Play
-   * menu, the campaign ladder and `beginSelected` callers. The Garage BATTLE button announces its own press before it
-   * calls `begin`. Runs once the entry is accepted and no Garage return is in flight (round 2 U19), before its cover:
-   * inside the press's task unless it waited for a return.
+   * menu, the campaign ladder and `beginSelected` callers. The Garage BATTLE button hands its own announcement to
+   * `begin`, which runs it at the same point (round 4 F1). Runs once the entry is accepted and no Garage return is in
+   * flight (round 2 U19), before its cover: inside the press's task unless it waited for a return.
    */
   announce?(payload: { specId: string; mapId: string | null; gameMode: string; campaignOperationId: string | null }): void;
   /**
@@ -91,8 +91,9 @@ interface SoloBattleEntryRuntimeOptions {
   canTakeScene?(): boolean;
   /**
    * (round 3 B2, review r1) A start canTakeScene refused, at the press or after a return wait, shows the player the way
-   * out instead of doing nothing (main: a Garage return that still owes the screen reopens its notice with its Retry, or
-   * runs the return again; offerOwedGarageReturn). A failed return's notice closes by its X, Escape or a press beside it,
+   * out instead of doing nothing (main's offerOwedGarageReturn: a failed return that still owes the screen reopens its
+   * notice with its Retry; a return a context change cut short is the context recovery's, whose notice is the screen
+   * while the graphics are lost, round 4 E13). A failed return's notice closes by its X, Escape or a press beside it,
    * which runs nothing, so a refusal that only returned left the BATTLE button dead until a reload. Not run for a start a
    * network round's entry refused (its loader is the screen). Its own failure is reported, never thrown.
    */
@@ -100,16 +101,27 @@ interface SoloBattleEntryRuntimeOptions {
 }
 
 interface SoloBattleEntryRuntime {
+  /**
+   * The Garage BATTLE button's entry. (round 4 F1) The press hands over its own announcement (`ui:battleStart`), which
+   * runs only once this entry accepts the start: inside the press's task when no Garage return is in flight (the
+   * pointer lock's request keeps its gesture), after the wait and the scene check when one is, and never for a start
+   * refused (busy, a network round entering, a scene no battle may take). On 0edd0e1ab5 the press announced itself
+   * before calling this, so a start refused after a return wait left that announcement's effects standing over the
+   * failed return's notice: the pointer lock, settings' battle state, the hidden play surface and post's 'loading'
+   * hold. Without one (the debug hook) the entry announces nothing.
+   */
   begin(
     specId: string,
     mapId?: string | null,
     options?: SoloBattleLoadingStartOptions,
+    announcePress?: () => void,
   ): Promise<void>;
   beginSelected(request?: SoloBattleEntryRequest): Promise<void>;
   /**
-   * (round 3 B2, review r1) The press's own question, asked before the Garage button announces it (garage.ts
+   * (round 3 B2, review r1) The press's own question, asked before the Garage button does anything (garage.ts
    * refusesBattle): true when a start now would be refused at the press (a network round entering, or a scene no battle
-   * may take, whose way out it then shows). A start it does not refuse is decided again by begin().
+   * may take, whose way out it then shows). A start it does not refuse is decided again by begin(), which runs the
+   * press's announcement only once it accepts the start (round 4 F1).
    */
   refuses(): boolean;
 }
@@ -173,11 +185,19 @@ export function createSoloBattleEntryRuntime({
     throw new TypeError('solo battle entry runtime requires every recovery port');
   }
 
+  /** The entry's own announcement (the `announce` port) of an entry its caller did not announce. */
+  const announcedByEntry = (
+    specId: string,
+    mapId: string | null,
+    options: SoloBattleLoadingStartOptions | undefined,
+  ) => () => announce({ specId, mapId, gameMode: options?.gameMode ?? 'standard',
+    campaignOperationId: options?.campaignOperationId ?? null });
+  /** `announcement`: the one announcement of this entry, run once it is accepted (round 4 F1). */
   const run = (
     specId: string,
     mapId: string | null,
     options: SoloBattleLoadingStartOptions | undefined,
-    announced: boolean,
+    announcement: () => void,
   ): Promise<void> => (sceneRefused() ? Promise.resolve() : lifecycle.run(async () => {
     try {
       // A Garage return still in flight (its veil, its restore) finishes first: the entry latch holds this request.
@@ -190,15 +210,14 @@ export function createSoloBattleEntryRuntime({
         if (sceneRefused()) return;
       }
       // (round 2 U19) announced once the return is done: its 'garage' announcement (the battle before leaving) comes
-      // first, so every ui:battleStart listener sees this battle begin after it (profile.ts keys its tally the same way)
-      if (!announced) {
-        try {
-          announce({ specId, mapId, gameMode: options?.gameMode ?? 'standard',
-            campaignOperationId: options?.campaignOperationId ?? null });
-        } catch (error) {
-          // the press's listeners never block the entry (garage.ts launchBattle contains them the same way)
-          reportError('[battle] battle-start listener failed', error);
-        }
+      // first, so every ui:battleStart listener sees this battle begin after it (profile.ts and serviceRecord.ts drop a
+      // battle's tally at every Garage). (round 4 F1) The Garage press's own announcement too: only an accepted start is
+      // announced, so a refusal (above, or at the press) leaves no effect of one standing
+      try {
+        announcement();
+      } catch (error) {
+        // the press's listeners never block the entry (garage.ts launchBattle contains them the same way)
+        reportError('[battle] battle-start listener failed', error);
       }
       // the entry's whole intent, after the return's 'garage' announcement (which clears it), before the cover
       recordIntent(options);
@@ -213,6 +232,8 @@ export function createSoloBattleEntryRuntime({
       await loading.begin(specId, mapId, options);
     } catch (error) {
       reportError('[battle] entry failed', error);
+      // the notice's retry: the same entry again, announced by the entry (its recovery return's 'garage' came between)
+      const retry = () => run(specId, mapId, options, announcedByEntry(specId, mapId, options));
       try { onFailure(error); } catch (_) { /* a beacon never changes recovery */ }
       audio.loadingOn(false);
       // (2026-11-02 audit F3 review) the recovery's return can fail as well: the cover still comes down (it stayed up
@@ -235,7 +256,7 @@ export function createSoloBattleEntryRuntime({
       // Garage with nothing but a console line. The notice comes last so it
       // opens over a painted Garage, and its own failure is only reported.
       try {
-        if (returned) await presentFailure(error, () => { void run(specId, mapId, options, false); });
+        if (returned) await presentFailure(error, () => { void retry(); });
         else await presentReturnFailure(returnError, retryReturn);
       } catch (noticeError) {
         reportError('[battle] entry failure notice unavailable', noticeError);
@@ -252,10 +273,9 @@ export function createSoloBattleEntryRuntime({
   };
 
   return Object.freeze({
-    /** The Garage BATTLE button's entry: the button announced its press (`ui:battleStart`) itself. */
-    begin: (specId: string, mapId: string | null = null, options: SoloBattleLoadingStartOptions | undefined = undefined) => (
-      run(specId, mapId, options, true)
-    ),
+    /** The Garage BATTLE button's entry: the press's own announcement runs once the entry accepts it (round 4 F1). */
+    begin: (specId: string, mapId: string | null = null, options: SoloBattleLoadingStartOptions | undefined = undefined,
+      announcePress: () => void = () => {}) => run(specId, mapId, options, announcePress),
     beginSelected({
       specId,
       mapId,
@@ -264,11 +284,11 @@ export function createSoloBattleEntryRuntime({
       campaignOperationId = null,
     }: SoloBattleEntryRequest = {}) {
       const selected = specId && isVisibleSpecId(specId) ? specId : getSelectedSpecId();
-      return run(selected, mapId || getSelectedMapId(), {
-        randomRoster, gameMode, ...(campaignOperationId ? { campaignOperationId } : {}),
-      }, false);
+      const selectedMapId = mapId || getSelectedMapId();
+      const options = { randomRoster, gameMode, ...(campaignOperationId ? { campaignOperationId } : {}) };
+      return run(selected, selectedMapId, options, announcedByEntry(selected, selectedMapId, options));
     },
-    /** (round 3 B2, review r1) The press's refusal, before its announcement: the same check begin() makes first. */
+    /** (round 3 B2, review r1) The press's refusal, before it does anything: the same check begin() makes first. */
     refuses: () => sceneRefused(),
   });
 }

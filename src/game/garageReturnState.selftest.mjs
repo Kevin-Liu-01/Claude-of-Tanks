@@ -9,7 +9,7 @@ import { assertGarageScreenSettled, canTransitionAppPhase, createAppLifecycle, G
 import { createBattleEntryLifecycle } from './battleEntryLifecycle.ts';
 import { createSoloBattleEntryRuntime } from './soloBattleEntryRuntime.ts';
 import { createBattleAgainAction } from './battleAgainAction.ts';
-import { createGameState } from './stateCore.ts';
+import { createBus, createGameState } from './stateCore.ts';
 import { mainSource, mainStatement, runMainStatements } from '../app/mainComposition.test-support.mjs';
 
 const { createGarageReturnRuntime, GARAGE_RETURN_EDGES = {} } = garageReturnModule;
@@ -22,11 +22,15 @@ function deferred() {
 const flush = async (turns = 12) => { for (let i = 0; i < turns; i += 1) await Promise.resolve(); };
 
 function createFixture({ restore = null, clearBattle = () => {}, phase = 'battle', placement = null, entryScheduler = null,
-  showGarage = () => {}, transitionRun = null } = {}) {
+  showGarage = () => {}, transitionRun = null, bus = null } = {}) {
   const game = createGameState();
   game.phase = phase;
   const announcements = [];
-  const lifecycle = createAppLifecycle({ game, announce: (announcement) => announcements.push(announcement) });
+  // (bus: main's, where the lifecycle announces phase:change)
+  const lifecycle = createAppLifecycle({ game, announce: (announcement) => {
+    announcements.push(announcement);
+    bus?.emit('phase:change', announcement);
+  } });
   const sleeps = [];
   let now = 0;
   let entryPending = false;
@@ -605,13 +609,20 @@ function mainLeave(runtime) {
 // room launch a silent no-op, after the press had announced its battle (ui:battleStart: the pointer lock grabbed, the play
 // surface hidden, the loading hold set); on 92f415e879 the press loaded a battle under the frozen return instead. A press
 // now asks before it announces (garage.ts launchBattle's refusesBattle, bound by main), and every refusal brings back the
-// way out: the failed return's notice with its Retry, or, for a return a context change cut short over the Garage with the
-// graphics live again, the return itself. main's own exits, Leave, solo entry, hand-over rule and room launch, and
+// way out: the failed return's notice with its Retry (a return a context change cut short over the Garage is the
+// context recovery's: round 4 E13). main's own exits, Leave, solo entry, hand-over rule and room launch, and
 // garage.ts's own press, over the real return, the real entry latch and the real solo entry.
+// (round 4 F1) A press that waits for a return in flight announces nothing until its entry is accepted after the wait:
+// garage.ts hands its announcement to the entry (onBattle's fourth argument), so a start refused after the wait leaves
+// no ui:battleStart effect standing (the pointer lock over the return's notice, settings' battle state, the hidden play
+// surface, post's 'loading' hold), over the Leave's Retry and the bare one (retryGarageReturn) alike.
 const garageSource = readFileSync(new URL('../ui/garage.ts', import.meta.url), 'utf8');
-function owedGarageMain(runtime, game, { contextLost = () => false } = {}) {
+function owedGarageMain(runtime, game, { contextRecovery = false, bus = null, loadFails = false } = {}) {
   const events = [];
   const notices = [];
+  // (review r2: `bus`, a real one the records listen on, takes main's and garage.ts's emits too; `loadFails`, the
+  // entry's load throws, as a failed cold import or world build does)
+  const emit = (type, payload) => { events.push(`emit:${type}`); bus?.emit(type, payload); };
   const slice = (source, head, close) => {
     const start = source.indexOf(`\n${head}`);
     assert.ok(start >= 0, head);
@@ -620,7 +631,8 @@ function owedGarageMain(runtime, game, { contextLost = () => false } = {}) {
   const mainFn = (head) => slice(mainSource, head, '\n}\n');
   const garageAt = mainSource.indexOf('\nconst garage: MainGarageRuntime = ');
   const garageOptions = mainSource.slice(garageAt, mainSource.indexOf('\n}));', garageAt));
-  const onBattle = garageOptions.match(/\n {2}onBattle: (\(specId, mapId, options\) => \(\s+beginLocalBattleEntry\(specId, mapId, options\)\s+\)),/)?.[1];
+  // (round 4 F1: the binding passes the press's announcement on; 0edd0e1ab5's took three arguments)
+  const onBattle = garageOptions.match(/\n {2}onBattle: (\([^)]*\) => \(\s+beginLocalBattleEntry\([^)]*\)\s+\)),/)?.[1];
   assert.ok(onBattle, "main binds the Garage press to the solo entry");
   const refusesBattle = garageOptions.match(/\n {2}refusesBattle: ([^\n]+),\n/)?.[1] ?? 'undefined'; // (absent on 92f415e879)
   const scope = {
@@ -628,16 +640,21 @@ function owedGarageMain(runtime, game, { contextLost = () => false } = {}) {
     onlineMatch: { current: { beginRoom: async () => { events.push(`room@${game.phase}`); return true; } } },
     createSoloBattleEntryRuntime, canTransitionAppPhase, AppPhaseTransitionError: appLifecycleModule.AppPhaseTransitionError,
     GarageScreenUnsettledError,
-    soloBattleLoading: { begin: async () => { events.push(`load@${game.phase}`); } },
+    soloBattleLoading: { begin: async () => {
+      events.push(`load@${game.phase}`);
+      if (loadFails) throw new Error('the battle did not load');
+    } },
     battleLoad: { showPending: () => events.push(`cover@${game.phase}`), hide: async () => {} },
-    audio: { loadingOn() {} }, nextPaintFrame: async () => {},
-    bus: { emit: (type) => events.push(`emit:${type}`) },
+    audio: { loadingOn() {} }, nextPaintFrame: async () => {}, isChunkFailure: () => false,
+    bus: { emit },
     battleEntryIntent: { begin() {} }, terrainVariantFor: () => null,
     VISIBLE_TANK_IDS: ['m1a1_abrams_hc'], garage: { getSelected: () => 'm1a1_abrams_hc', getSelectedMap: () => 'verdant' },
     loadFailure: async () => ({ showSoloEntryFailure() {}, showGarageReturnFailure: (error, retry) => notices.push({ error, retry }) }),
-    get graphicsContextLost() { return contextLost(); },
+    // main's `let`, written by its own context recovery (onLost, onRestored) when the case runs it
+    graphicsContextLost: false,
+    renderer: { info: {}, getContext: () => ({ isContextLost: () => false }), userData: {} },
     // garage.ts launchBattle's own names: its failed-load gate, its emit (the bus), the selected mode
-    pressFailed: () => false, battleBtn: {}, emit: (type) => events.push(`emit:${type}`), battleGameMode: 'standard',
+    pressFailed: () => false, battleBtn: {}, emit, battleGameMode: 'standard',
     console: { error() {}, warn() {}, info() {} },
   };
   const main = runMainStatements([
@@ -647,8 +664,11 @@ function owedGarageMain(runtime, game, { contextLost = () => false } = {}) {
     mainFn('function takeSceneForRound('), mainFn('function beginMultiplayerV2Battle('), mainFn('function beginLocalBattleEntry('),
     `const onBattle = ${onBattle};`, `const opts = { refusesBattle: ${refusesBattle} };`,
     slice(garageSource, '  function launchBattle(', '\n  }\n'),
+    // (round 4 E13) main's own context recovery: onLost, and onRestored, which retries the return before it clears
+    // graphicsContextLost
+    ...(contextRecovery ? [slice(mainSource, 'renderer.userData.contextRecovery = {', '\n};\n')] : []),
   ], scope, '{ leave: leaveBattleToGarage, launchBattle, beginMultiplayerV2Battle, retryGarageReturn }');
-  return { ...main, events, notices };
+  return { ...main, events, notices, scope, contextRecovery: scope.renderer.userData.contextRecovery ?? null };
 }
 const press = (main) => main.launchBattle('m1a1_abrams_hc', 'verdant'); // the Garage BATTLE button
 const started = ['emit:ui:click', 'emit:ui:battleStart', 'cover@garage', 'load@garage'];
@@ -679,40 +699,54 @@ const started = ['emit:ui:click', 'emit:ui:battleStart', 'cover@garage', 'load@g
   for (let index = 0; index < 8 && f.runtime.state !== 'idle'; index += 1) await flush();
   assert.equal(f.runtime.state, 'idle', 'the Retry restores the Garage');
   press(main);
+  // (round 4 F1) with no return in flight the entry accepts the press at once: its announcement and its cover land
+  // inside the press's task, as before (the pointer lock's request keeps its gesture)
+  assert.deepEqual(main.events.slice(0, 3), started.slice(0, 3), "the press's announcement and cover, inside its task");
   await flush();
   assert.deepEqual(main.events, started, 'and the next press starts its battle');
 }
-// a return a context change cut short over the Garage: the recovery's while the graphics are lost; with them live again
-// and no recovery coming, a press runs the return again
+// a return a context change cut short over the Garage: the context recovery's. While the graphics are lost a press is
+// refused with no return notice (the context recovery's notice is the screen). (round 4 E13) Then main's own
+// onRestored: it retries the return (garageReturn.recoverAfterContextRestore) before it clears graphicsContextLost, and
+// only a return writes the 'garage' phase, so the graphics are never live over a return the recovery still owes; the
+// press after it starts its battle. (Round three drove a state the product does not reach: the graphics live again with
+// nothing retried.)
 {
   let contextCurrent = true;
   let losses = 1;
-  let lost = false;
+  let main = null;
+  const lostDuringRetry = [];
   const f = createFixture({
     entryScheduler: { isCurrent: () => contextCurrent, yieldControl: async () => {} },
-    placement: () => { if (losses-- > 0) { contextCurrent = false; lost = true; } },
+    placement: () => {
+      // lost while the Garage placement builds: main's onLost
+      if (losses-- > 0) { contextCurrent = false; main.contextRecovery.onLost(); }
+      else lostDuringRetry.push(main.scope.graphicsContextLost);
+    },
   });
-  const main = owedGarageMain(f.runtime, f.game, { contextLost: () => lost });
+  main = owedGarageMain(f.runtime, f.game, { contextRecovery: true });
+  assert.equal(typeof main.contextRecovery?.onRestored, 'function', "main's context recovery");
   await main.leave();
   await flush();
   assert.equal(f.runtime.state, 'superseded');
   assert.equal(f.game.phase, 'garage');
+  assert.equal(main.scope.graphicsContextLost, true, "(main's onLost)");
   main.events.length = 0;
   press(main);
   await flush();
   assert.deepEqual(main.events, [], 'with the graphics lost the press is refused (92f415e879: cover and load in the Garage)');
   assert.equal(f.runtime.state, 'superseded', 'and the context recovery keeps the return: no second return beside it');
   assert.equal(main.notices.length, 0);
-  contextCurrent = true;
-  lost = false; // the device is back, and nothing retried the return
-  press(main);
-  for (let index = 0; index < 8 && f.runtime.state !== 'idle'; index += 1) await flush();
-  assert.equal(f.runtime.state, 'idle', 'the press runs the return again (6ab835cbb4: nothing happened)');
-  assert.deepEqual(main.events, [], 'and announces no battle');
+  contextCurrent = true; // the device is back
+  assert.equal(await main.contextRecovery.onRestored(new AbortController().signal), true,
+    "main's onRestored completes");
+  assert.equal(f.runtime.state, 'idle', 'its recovery retried the interrupted return');
+  assert.deepEqual(lostDuringRetry, [true], 'while graphicsContextLost still held: the graphics were not live over it');
+  assert.equal(main.scope.graphicsContextLost, false, 'then the graphics are live, over the restored Garage');
   assert.equal(main.notices.length, 0);
   press(main);
   await flush();
-  assert.deepEqual(main.events, started);
+  assert.deepEqual(main.events, started, 'and the press starts its battle');
 }
 // a press during the Retry's return waits for it: owesGarage is false while a return is in flight (that return decides),
 // the window a Leave's veil fades in over the failed return included, where the state is still 'failed'
@@ -735,14 +769,17 @@ const started = ['emit:ui:click', 'emit:ui:battleStart', 'cover@garage', 'load@g
   main.events.length = 0;
   press(main);
   await flush();
-  assert.deepEqual(main.events, ['emit:ui:click', 'emit:ui:battleStart'], 'the press waits for the return (6ab835cbb4: refused at the press)');
+  // (round 4 F1) and announces nothing while it waits: the return decides whether its battle begins at all
+  assert.deepEqual(main.events, ['emit:ui:click'],
+    'the press waits for the return, unannounced (6ab835cbb4: refused at the press; 0edd0e1ab5: ui:battleStart at the press)');
   fadeIn.resolve();
   for (let index = 0; index < 8 && f.runtime.state !== 'idle'; index += 1) await flush();
   await flush();
   assert.equal(f.runtime.state, 'idle');
-  assert.deepEqual(main.events, started, 'and starts its battle once the return lands');
+  assert.deepEqual(main.events, started, 'and announces and starts its battle once the return lands');
 }
-// a press during a Retry that fails again: the waiting start is refused and the notice comes back
+// a press during a Retry that fails again: the waiting start is refused, the notice comes back, and (round 4 F1) no
+// effect of the press's announcement stands under it: none was made
 {
   let hold = null;
   const f = createFixture({
@@ -759,13 +796,155 @@ const started = ['emit:ui:click', 'emit:ui:battleStart', 'cover@garage', 'load@g
   main.events.length = 0;
   press(main);
   await flush();
-  assert.deepEqual(main.events, ['emit:ui:click', 'emit:ui:battleStart'], '(the press waits for the Retry)');
+  assert.deepEqual(main.events, ['emit:ui:click'], '(the press waits for the Retry, unannounced)');
   hold.resolve();
   for (let index = 0; index < 8 && main.notices.length < 3; index += 1) await flush();
   assert.equal(f.runtime.state, 'failed');
-  assert.deepEqual(main.events, ['emit:ui:click', 'emit:ui:battleStart'], 'no cover and no load under the return that failed again');
+  assert.deepEqual(main.events, ['emit:ui:click'],
+    'no announcement, cover or load under the return that failed again (0edd0e1ab5: ui:battleStart at the press, then refused)');
   assert.equal(main.notices.length, 3, "the Retry's own notice and the refused start's (one presenter, one modal)");
   assert.ok(main.notices.slice(1).some((notice) => notice.retry === main.retryGarageReturn), "the refused start's offers the return again");
+}
+// (round 4 F1) the bare Retry: the refused press's notice offers the return again with no veil (retryGarageReturn, a
+// bare enterGarage: the Garage UI is up while it restores, the press most likely to land here). A press while it runs
+// waits unannounced; if it fails again the start is refused with nothing announced and the notice comes back; if it
+// lands the press announces and starts its battle. (0edd0e1ab5: ui:battleStart at the press, standing after the
+// refusal.)
+{
+  let failRestore = true;
+  let hold = null;
+  const f = createFixture({
+    restore: async () => { if (failRestore) throw new Error('the Garage presentation did not restore'); return { totalMs: 1 }; },
+    placement: () => hold?.promise,
+  });
+  const main = owedGarageMain(f.runtime, f.game);
+  await main.leave();
+  await flush();
+  assert.equal(f.runtime.state, 'failed');
+  main.events.length = 0;
+  press(main); // the closed notice: the press brings it back, with the bare Retry
+  await flush();
+  assert.deepEqual(main.events, []);
+  assert.equal(main.notices.at(-1).retry, main.retryGarageReturn, '(the refused press offers the bare Retry)');
+  for (const lands of [false, true]) {
+    const label = lands ? 'a bare Retry that lands' : 'a bare Retry that fails again';
+    failRestore = !lands;
+    hold = deferred();
+    const shown = main.notices.length;
+    main.notices.at(-1).retry();
+    await flush();
+    assert.equal(f.runtime.state, 'entering', `${label}: (its return runs, no veil)`);
+    main.events.length = 0;
+    press(main);
+    await flush();
+    assert.deepEqual(main.events, ['emit:ui:click'], `${label}: the press waits for it, unannounced`);
+    hold.resolve();
+    const settled = () => (lands ? main.events.length >= started.length : main.notices.length >= shown + 2);
+    for (let index = 0; index < 12 && !settled(); index += 1) await flush();
+    if (lands) {
+      assert.equal(f.runtime.state, 'idle', label);
+      assert.deepEqual(main.events, started, `${label}: the press announces and starts its battle once it lands`);
+    } else {
+      assert.equal(f.runtime.state, 'failed', label);
+      assert.deepEqual(main.events, ['emit:ui:click'],
+        `${label}: the start is refused and nothing it announced stands`);
+      assert.equal(main.notices.length, shown + 2, `${label}: its notice and the refused start's`);
+      assert.equal(main.notices.at(-1).retry, main.retryGarageReturn, `${label}: the bare Retry again`);
+    }
+  }
+}
+
+// (round 4 F1, review r1) The records drop a battle's tally at every Garage again (profile.ts, serviceRecord.ts). Round 2
+// U19 kept a tally that had not reached its battle through a 'garage' announced from a battle's screen, for one producer:
+// the Garage press announced under a return's veil, before that return handed the screen over. Round 4 F1 announces that
+// press after the return, as every other announcer already waited (the solo entry; a network round, main's
+// takeSceneForRound), so the battle before's 'garage' always comes first. What still reached the exception was an entry
+// that never reached its battle: a kept room's rematch announced over the report (browserComposition's
+// roster.emitBattleStart, main's bus emit), which then failed, and whose covered restore (failRound: room.enterGarage,
+// main's enterGarageWithExit) announced the Garage from the battle's screen. Its tally survived, and the next battle its
+// entry did not announce (the debug hook) was recorded under the rematch's vehicle. The real return, the real app
+// lifecycle, the real profile and service record.
+/** The records' own listeners (profile.ts, serviceRecord.ts) on a bus of their own, which the return's lifecycle
+ * announces its phases on. */
+async function recordsBus() {
+  globalThis.localStorage ??= (() => {
+    const storage = new Map();
+    return {
+      getItem: (key) => storage.get(key) ?? null,
+      setItem: (key, value) => storage.set(key, String(value)),
+      removeItem: (key) => storage.delete(key),
+    };
+  })();
+  const { installBattleRecords, getPlayerRecord } = await import('./profile.ts');
+  const { installServiceRecord, getServiceRecord } = await import('./serviceRecord.ts');
+  const bus = createBus();
+  installBattleRecords(bus);
+  installServiceRecord(bus, {
+    playerId: () => 'me', playerTeam: () => 'player', teamOf: () => null, gameMode: () => 'standard', clockS: () => 0,
+    playerHpFraction: () => 1, playerMaxHp: () => 2000, playerNation: () => 'Germany', playerAerialKind: () => null,
+    respawns: () => false, playerObjectiveTeam: () => null,
+  });
+  return { bus, getPlayerRecord, getServiceRecord };
+}
+{
+  const { bus, getPlayerRecord, getServiceRecord } = await recordsBus();
+  const f = createFixture({ phase: 'garage', bus });
+  // the room's round: announced, fought and ended; its report is the screen
+  bus.emit('ui:battleStart', { playerId: 'me', specId: 'm1a1_abrams_hc', mapId: 'verdant' });
+  transitionAppPhase(f.game, 'battle', { reason: 'network-activation' });
+  bus.emit('battle:ended', { result: 'victory', durationS: 61, mapId: 'verdant', gameMode: 'standard', roster: [] });
+  const matches = getPlayerRecord().matches;
+  const rows = getServiceRecord().history.length;
+  // the kept room's rematch is announced over the report, and fails before its battle: its covered restore
+  bus.emit('ui:battleStart', { playerId: 'me', specId: 'leo2_improved', mapId: 'urban' });
+  await f.runtime.enter();
+  assert.equal(f.runtime.state, 'idle');
+  assert.deepEqual(f.announcements.at(-1), { phase: 'garage', from: 'battle', reason: 'garage-return:screen' },
+    "(the restore announces the Garage from the battle's screen)");
+  // a battle no entry announced (the debug hooks __DEBUG.beginBattleEntry and __DEBUG.startBattle, QA's
+  // debugStartBattle) is fought and ends
+  transitionAppPhase(f.game, 'battle', { reason: 'solo-start' });
+  bus.emit('battle:ended', { result: 'defeat', durationS: 12, mapId: 'desert', gameMode: 'standard', roster: [] });
+  assert.equal(getPlayerRecord().matches, matches,
+    "the failed rematch's tally records no later battle (0edd0e1ab5: the debug battle, under leo2_improved)");
+  assert.equal(getServiceRecord().history.length, rows + 1, '(the service record tracks the debug battle afresh)');
+  assert.notEqual(getServiceRecord().history[0]?.vehicleId, 'leo2_improved',
+    "and its row is not the failed rematch's (0edd0e1ab5: the rematch's tracker, kept through its restore)");
+}
+// (round 4 F1, review r2) The service record drops a battle's tracker at every Garage too, as profile.ts drops its tally.
+// It dropped one only when a battle was left, so an entry that failed before its battle kept its tracker through its
+// recovery return, which announces the Garage from the Garage, and the next battle no entry announced (the debug hook)
+// was recorded under the failed entry's vehicle; the profile dropped its tally there. The Garage BATTLE press over
+// main's solo entry, whose load fails: the real recovery return, app lifecycle, profile and service record.
+{
+  const { bus, getPlayerRecord, getServiceRecord } = await recordsBus();
+  const f = createFixture({ phase: 'garage', bus });
+  const main = owedGarageMain(f.runtime, f.game, { bus, loadFails: true });
+  const matches = getPlayerRecord().matches;
+  const rows = getServiceRecord().history.length;
+  // (the entry reports its failure through the console's error, which the case keeps)
+  const reported = [];
+  const consoleError = console.error;
+  console.error = (...args) => reported.push(args);
+  try {
+    press(main); // accepted at once: announced, covered and loaded, and the load fails
+    for (let index = 0; index < 12 && !f.announcements.length; index += 1) await flush();
+    await flush();
+  } finally {
+    console.error = consoleError;
+  }
+  assert.deepEqual(main.events, started, '(the press is announced, covers and loads)');
+  assert.ok(reported.some(([message]) => message === '[battle] entry failed'), '(and its load fails)');
+  assert.equal(f.runtime.state, 'idle');
+  assert.deepEqual(f.announcements, [{ phase: 'garage', from: 'garage', reason: 'garage-return:screen' }],
+    "(the entry's recovery return announces the Garage from the Garage)");
+  // a battle no entry announced (__DEBUG.beginBattleEntry) is fought and ends
+  transitionAppPhase(f.game, 'battle', { reason: 'solo-start' });
+  bus.emit('battle:ended', { result: 'defeat', durationS: 12, mapId: 'desert', gameMode: 'standard', roster: [] });
+  assert.equal(getPlayerRecord().matches, matches, "the failed entry's tally records no later battle (as on 0edd0e1ab5)");
+  assert.equal(getServiceRecord().history.length, rows + 1, '(the service record tracks the debug battle afresh)');
+  assert.notEqual(getServiceRecord().history[0]?.vehicleId, 'm1a1_abrams_hc',
+    "and its row is not the failed entry's (0edd0e1ab5, 38dde77787: its tracker, kept through the recovery's Garage)");
 }
 
 console.log('garageReturnState.selftest: explicit return state, named busy refusals, event-driven Battle Again, a failed return\'s exit for every caller, superseded returns open nothing passed');

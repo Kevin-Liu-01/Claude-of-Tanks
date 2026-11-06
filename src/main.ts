@@ -1568,10 +1568,11 @@ const playSurface = createPlaySurfaceRuntime({
   ]),
 });
 
-// Battle entry owns the play modal's visibility. Every player-facing entry path emits this event (the Garage BATTLE
-// button its press, the network roster its round, and the solo entry owner every other start: the Play menu, the
-// campaign ladder, a failure notice's retry; 2026-11-02 audit F2), so first matches, retained-room rematches,
-// and solo all dismiss the operation picker before the next painted frame. (The debug entry still skips it.)
+// Battle entry owns the play modal's visibility. Every player-facing entry path emits this event (the network roster
+// its round, and the solo entry owner every solo start it accepts: the Garage BATTLE button's press, whose announcement
+// the press hands it (round 4 F1), the Play menu, the campaign ladder, a failure notice's retry; 2026-11-02 audit F2),
+// so first matches, retained-room rematches and solo all dismiss the operation picker before the next painted frame.
+// (The debug entry still skips it.)
 // transitions-249: the hero's dormant Garage skin is parked (off its meshes, kept with its programs for the return's
 // adoption) before the mode preview's clear, which leaves a parked skin alone
 // (audit F2) The scene watchdog's per-entry reset moved to the entry lifecycle's acceptance (onEntry below), which
@@ -1624,13 +1625,13 @@ const garage: MainGarageRuntime = await bootStage('ui', () => createGarage({
       .then(() => invalidateGaragePresentation());
     multiplayerLobby?.syncSelection();
   },
-  onBattle: (specId, mapId, options) => (
-    beginLocalBattleEntry(specId, mapId, options)
-  ), // loading screen owns entry
+  onBattle: (specId, mapId, options, announce) => (
+    beginLocalBattleEntry(specId, mapId, options, announce)
+  ), // loading screen owns entry (round 4 F1: and runs the press's announcement once it accepts the start)
   // (round 3 B2, review r1) the press asks the entry before it announces: a refused one shows the way out, never a
   // battle start that does not follow (the pointer lock grabbed over a failed return's notice)
   refusesBattle: () => soloBattleEntry.refuses(),
-  onPlayRequest:(request) => playSurface.open(request).catch((error) => {
+  onPlayRequest: (request) => playSurface.open(request).catch((error) => {
     console.error('[play-menu] failed to open', error);
   }),
   onPlayModeIntent: playSurface.preload,
@@ -3391,9 +3392,11 @@ function beginLocalBattleEntry(
   specId: string,
   mapId: string | null = null,
   options: SoloBattleLoadingStartOptions | undefined = undefined,
+  announcePress?: () => void,
 ) {
-  // (the entry records its own intent once accepted: soloBattleEntry's recordIntent below)
-  return soloBattleEntry.begin(specId, mapId, options);
+  // (the entry records its own intent once accepted: soloBattleEntry's recordIntent below; and runs the Garage press's
+  // announcement then, round 4 F1. The debug hook passes none: its battles announce nothing, as before)
+  return soloBattleEntry.begin(specId, mapId, options, announcePress);
 }
 
 /** A local battle in the selected vehicle: the Play menu's solo start and the campaign ladder's operations. */
@@ -3605,16 +3608,16 @@ const retryGarageReturn = (): void => { void enterGarageWithExit().catch(() => {
  * silent no-op: the refusal brings back the return's way out. A failed return's notice closes by its X, Escape or a press
  * beside it, which runs nothing, and the return stays 'failed' until a return lands, so every refused start reopens the
  * notice with its Retry (the return again). A return a context change cut short over the Garage's scene is the context
- * recovery's while the graphics are lost (its own notice is the screen); with them live no recovery is coming, so the
- * start runs the return again, whose exit opens the notice if it fails too. The Garage press asks before it announces
- * (garage.ts refusesBattle), so a press refused there fires no `ui:battleStart` (its pointer lock, play-surface hide, hero
- * skin park and loading governor hold); a start refused only after a return wait was announced by its press under the
- * veil (round 2 U19), and the return that lands releases that hold (garageReturnRuntime: setAdaptiveSuspended(false)).
+ * recovery's: only a return writes the 'garage' phase, and onRestored above retries it before it clears
+ * graphicsContextLost, so while it owes the Garage the graphics are lost and the recovery's notice is the screen
+ * (round 4 E13: the start no longer runs the return beside it for graphics live over such a return, a state the
+ * product never holds). No refused start announced anything: the Garage press asks before it does anything (garage.ts
+ * refusesBattle), and a start refused after a return wait runs no announcement, its press's included (round 4 F1).
  */
 const offerOwedGarageReturn = (): void => {
-  if (!garageReturn.owesGarage) return;
-  if (garageReturn.state === 'failed') void presentGarageReturnFailure(garageReturn.failure, retryGarageReturn);
-  else if (!graphicsContextLost) retryGarageReturn();
+  if (garageReturn.owesGarage && garageReturn.state === 'failed') {
+    void presentGarageReturnFailure(garageReturn.failure, retryGarageReturn);
+  }
 };
 /**
  * (round 2 U20) The room's own returns (its room closed or left, or the seat dropped, during a revealed battle): the

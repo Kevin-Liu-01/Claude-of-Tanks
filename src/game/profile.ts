@@ -65,8 +65,6 @@ interface BattleTally {
   kills: number;
   damage: number;
   startedAt: number;
-  /** (round 2 U19) Its battle took the scene (phase:change 'battle' after the announcement). */
-  reached: boolean;
 }
 
 const installedBuses = new WeakSet<ProfileEventBus>();
@@ -235,33 +233,32 @@ export function installBattleRecords(bus: ProfileEventBus | null | undefined): v
 
   let tally: BattleTally | null = null;
   /** A battle's tally from nothing: its start, and a network battle's restart (round 4 E6b). */
-  const openTally = (playerId: string, vehicleId: string, mapId: string, reached: boolean): BattleTally =>
-    ({ playerId, vehicleId, mapId, kills: 0, damage: 0, startedAt: Date.now(), reached });
+  const openTally = (playerId: string, vehicleId: string, mapId: string): BattleTally =>
+    ({ playerId, vehicleId, mapId, kills: 0, damage: 0, startedAt: Date.now() });
   bus.on('ui:battleStart', (payload) => {
     const event = recordOf(payload) ?? {};
     tally = openTally(firstString(event.playerId, event.entityId, event.specId), firstString(event.specId, event.vehicleId),
-      firstString(event.mapId), false);
+      firstString(event.mapId));
   });
   // (2026-11-02 audit F2) a battle left without its result (a quit) keeps no tally: the Garage's phase drops it, so
   // a later battle can never be recorded under the earlier one's vehicle, map or start time. Every entry path now
   // announces itself (ui:battleStart: the Garage button, the network roster, the solo entry owner for the Play menu
   // and the campaign ladder), so its result has a tally of its own.
-  // (round 2 U19) The drop is the tally's own battle's: a start queued under a Garage return (the Garage button's press
-  // under its veil) is announced before that return hands the screen over, and its 'garage' (from the battle before's
-  // screen) is the battle before leaving, not this one. An entry that never reached its battle (a failed entry's
-  // recovery: the Garage again, from the Garage) is dropped as before.
+  // (round 4 F1, review r1) Every 'garage' drops it: every announcer waits for a Garage return in flight (the solo entry
+  // runs the Garage press's announcement too, and a network round waits in main's takeSceneForRound), so the battle
+  // before's 'garage' comes first. Round 2 U19 kept a tally that had not reached its battle through a 'garage' from a
+  // battle's screen, for that press announced under a return's veil; with the press waiting, only an entry that never
+  // reached its battle met it (a kept room's rematch announced over the report, failed, its restore announcing the
+  // Garage from the battle's screen), and its tally then recorded the next battle no entry announced (garageReturnState).
   bus.on('phase:change', (payload) => {
-    const event = recordOf(payload);
-    if (!tally) return;
-    if (event?.phase === 'battle') tally.reached = true;
-    else if (event?.phase === 'garage' && (tally.reached || event.from !== 'battle')) tally = null;
+    if (recordOf(payload)?.phase === 'garage') tally = null;
   });
   // (round 4 E6b) A network battle restarted under this seat (battlePresentation.ts 'battle:restarted') opens a new
   // battle (the session's decision; Kevin may overrule): the record takes only the battle that ends, so its kills and
   // damage start over, as at a battle's start, for the same player, vehicle and map in the battle it already reached.
   // Before, the career totals and the battle's row added the abandoned battle's kills and damage to its own.
   bus.on('battle:restarted', () => {
-    if (tally) tally = openTally(tally.playerId, tally.vehicleId, tally.mapId, tally.reached);
+    if (tally) tally = openTally(tally.playerId, tally.vehicleId, tally.mapId);
   });
   bus.on('shell:hit', (payload) => {
     const event = recordOf(payload) ?? {};

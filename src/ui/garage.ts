@@ -205,10 +205,16 @@ interface GarageOptions {
   readonly onSelect?: (specId: string) => void;
   readonly onGameModeSelect?: (mode: GameModeId) => void;
   readonly onGameModeIntent?: () => void;
+  /**
+   * The BATTLE press's start. `announce` is the press's own `ui:battleStart`, handed to the entry, which runs it once
+   * it accepts the start (round 4 F1; main.ts: the solo entry's begin): a press that waits for a Garage return in
+   * flight and is then refused announces nothing.
+   */
   readonly onBattle?: (
     specId: string,
     mapId: string,
     options: { readonly gameMode: GameModeId; readonly campaignOperationId?: string; readonly watch?: boolean },
+    announce: () => void,
   ) => void;
   readonly onPlayRequest?: (request: PlayRequest) => void;
   readonly onPlayModeIntent?: (mode: BattleMode) => void;
@@ -232,10 +238,10 @@ interface GarageOptions {
   /** The player's own key for a vehicle action's binding (main.ts: the input layer's label), for the actions row. */
   readonly actionKeyFor?: (binding: VehicleActionBinding) => string | null | undefined;
   /**
-   * (round 3 B2, review r1) Asked before a battle press announces anything: true when no battle may take the scene now
-   * (main.ts: the solo entry's own refusal, which brings back the way out, a failed Garage return's notice and Retry). A
-   * press it refused announced a battle that never began: `ui:battleStart` grabbed the pointer lock over that notice, hid
-   * the play surface, parked the hero's Garage skin and set the loading governor hold.
+   * (round 3 B2, review r1) Asked before a battle press does anything: true when no battle may take the scene now
+   * (main.ts: the solo entry's own refusal, which brings back the way out, a failed Garage return's notice and Retry).
+   * A refused press clicks nothing and starts nothing. (A press refused later, after a Garage return it waited for, is
+   * the entry's: it announced nothing yet, round 4 F1.)
    */
   readonly refusesBattle?: () => boolean;
 }
@@ -3753,26 +3759,37 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
       watch?: boolean;
     } = {},
   ): void {
-    // Battle entry must be unstoppable: the pre-battle emits fan out to five+
-    // subscribers (audio click, pointer-lock grab, killcam/shot-log resets…)
-    // and any one of them throwing in an exotic environment would silently
-    // block onBattle — a BATTLE button that does nothing is the worst failure
-    // mode. Contain their failures; the phase flip always runs.
+    // Battle entry must be unstoppable: a listener throwing in an exotic environment must never block onBattle — a
+    // BATTLE button that does nothing is the worst failure mode. The press's one emit before onBattle is its click
+    // (ui:click), contained here. (round 4 F1) Its ui:battleStart, whose listeners fan out (the pointer-lock grab,
+    // settings' battle state, the play surface, killcam and shot-log resets…), is the `announce` handed to the entry:
+    // it contains its own listeners' failures, and the entry runs it once it accepts the start
+    // (soloBattleEntryRuntime.ts run(), which contains a throw the same way).
     // (a battle that could not start because part of the game did not arrive cannot start in this document: the press
     // reloads the page once online, noteBattleLoadFailed)
     if (pressFailed(battleBtn)) return;
-    // (round 3 B2, review r1) a press no battle may follow announces nothing: its owner shows the way out instead (a
-    // check that throws refuses nothing, and the entry decides again)
+    // (round 3 B2, review r1) a press no battle may follow does nothing: its owner shows the way out instead (a check
+    // that throws refuses nothing, and the entry decides again)
     let refused = false;
     try { refused = opts.refusesBattle?.() === true; } catch (err) { console.error('[garage] battle refusal check failed:', err); }
     if (refused) return;
     try {
       if (emitClick) emit('ui:click', {});
-      emit('ui:battleStart', { specId, mapId });
     } catch (err) {
-      console.error('[garage] battle-start listener failed:', err);
+      console.error('[garage] click listener failed:', err);
     }
-    if (onBattle) onBattle(specId, mapId, campaignOperationId ? { gameMode, campaignOperationId } : watch ? { gameMode, watch } : { gameMode }); // MAP-CONFIG WIRING
+    // (round 4 F1) the press's battle announcement is its entry's to run, once the entry accepts the start (inside this
+    // task unless a Garage return is in flight): announced here, a start refused after that return's wait left the
+    // pointer lock, the battle settings, the hidden play surface and the loading hold over the return's notice
+    const announce = (): void => {
+      try {
+        emit('ui:battleStart', { specId, mapId });
+      } catch (err) {
+        console.error('[garage] battle-start listener failed:', err);
+      }
+    };
+    const options = campaignOperationId ? { gameMode, campaignOperationId } : watch ? { gameMode, watch } : { gameMode };
+    if (onBattle) onBattle(specId, mapId, options, announce); // MAP-CONFIG WIRING
   }
 
   /** The proving ground with this vehicle (the dossier's button, the Gallery's link): never inside a room's lobby. */
