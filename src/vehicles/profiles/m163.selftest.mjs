@@ -113,7 +113,7 @@ try {
   root.traverse((o) => { if (o.userData[GUN_ROTOR_KEY]) rotors.push(o); });
   assert.equal(rotors.length, 1, 'one rotor');
   const [rotor] = rotors;
-  assert.equal(rotor.parent, recoil, 'the rotor rides the recoil group');
+  assert.ok(rotor.parent === recoil, 'the rotor rides the recoil group');
   assert.deepEqual({ ...rotor.userData[GUN_ROTOR_KEY] }, { barrels: 6, cycleS: spec.gun.autoloader.intraClipS }, 'its tag');
   assert.deepEqual(rotor.position.toArray(), [0, 0, 0], 'the rotor turns about the bore');
   assert.deepEqual(rotor.children.filter((c) => c.isMesh).map((c) => c.name).sort(), ['gun', 'gunDark'], 'barrels and clamps');

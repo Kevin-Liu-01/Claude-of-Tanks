@@ -24,7 +24,7 @@ const step = (spin, seconds, dt = DT, onStep = null) => {
   assert.equal(findGunRotor(recoil), null, 'an untagged rig has no rotor');
   rotor.userData[GUN_ROTOR_KEY] = { barrels: 6, cycleS: 0.06 };
   other.add(rotor);
-  assert.equal(findGunRotor(recoil), rotor, 'the tagged group is found under the rig');
+  assert.ok(findGunRotor(recoil) === rotor, 'the tagged group is found under the rig');
   for (const bad of [{ barrels: 1, cycleS: 0.06 }, { barrels: 6.5, cycleS: 0.06 }, { barrels: 6, cycleS: 0 }, null]) {
     const g = new THREE.Group();
     g.userData[GUN_ROTOR_KEY] = bad;
