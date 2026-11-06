@@ -4,11 +4,14 @@
 // composed albedo and the coverage weights there (a, n, fD, fR, fMs, meadowG, projW, roadCore, mk, keepM, uv, n1, n1h,
 // gCropW, gSoilW, woods, camDist, gFootM …). The CPU side (classes, map rows, codes, uniforms) is groundSurfaces.ts.
 //
-// Three laws, each by class code, never by map:
+// The laws, each by class code, never by map:
 // - the open ground's mosaic (uGsOpen.x 1 sward, 2 tussock): at 1–10 m a sward is lush in clumps, cured in others, and
 //   thin over its soil between them — the scale between the photo tile's 4 m and the macro tints' 80 m, where the ground
 //   read as one lawn tone ("looks flat"). Every state is a multiple of the ground's own colour or its soil's (no state
 //   below 0.8 of the turf's light: the old near-black blotches are what the owner called the black spaces);
+// - the worn ground's mosaic (uGsWorn.x 3 soil): the bare earth the wear lays — worn patches, a track's shoulders, a
+//   square's or yard's hardstand, the village's dirt where the map has no town floor — damp and darker in hollows, a
+//   dry crust paler between, each a multiple of the drawn dirt, so its photo grain stays;
 // - the close stones (uGsOpen.z / uGsWorn.z 1 stones, 2 grit, 3 debris): one stone per hash cell, each its own shade,
 //   domed, with its contact shadow down-sun; on the worn soil, the sward's thin patches and the town floor;
 // - the town floor (uGsTown.x 4 yard, 5 rubble): the village's worn ground is a yard of trodden earth and gravel with
@@ -19,7 +22,7 @@
 // folds over ~23 % of the ground and stretches it past 8:1 over a fifth (measured on the noise's own bake, diag2), which
 // is harmless to the 80 m macro thresholds it was made for and smears any metre-scale field into long parallel strands —
 // Blackglass's "combed strokes" (c6), through the mosaic's patches.
-// Cost: six noise reads for the mosaic and the swaths, seven for the town, two for the works floor, and one hash cell per stone layer
+// Cost: six noise reads for the mosaic and the swaths, two for the worn ground, seven for the town, two for the works floor, and one hash cell per stone layer
 // (no loop, no neighbour search, no texture fetch of a layer). uLandTier sets the phones' share: 0 (Low and the phones' lower tiers) the
 // mosaic and the town's tones only, 1 adds the stones, 2 the full block.
 export const GROUND_SURFACE_GLSL = /* glsl */`  // ground-269 (groundSurfaceShader.ts): the ground-surface table's laws — the open ground's mosaic, the close stones and
@@ -153,6 +156,23 @@ export const GROUND_SURFACE_GLSL = /* glsl */`  // ground-269 (groundSurfaceShad
           a.rgb *= 1.0 + gdisc * gritW * ((gh.x - 0.5) * 0.55 + 0.18 * dot(normalize(gd + 1e-4), gsSun));
         }
       }
+    }
+    // the worn ground's mosaic (soil): (c7, Amberford's square — a hardstand the road mask's shoulder lays as worn dirt —
+    // "smooth, uniform tan dirt with few pebbles", in both: the table named the soil's damp and dry clods and the material
+    // drew none of them) damp hollows a fifth darker and a breath cooler, a dry crust paler and greyer between, 2–5 m on
+    // a 14 m field, no state under 0.8 of the dirt's own light; on the town floor that floor's own law instead; and on the
+    // open ground of a class whose mosaic is the soil's (Copper Mesa's gravel)
+    float gsWornM = (uGsWorn.x > 2.5 && uGsWorn.x < 3.5 ? uGsWorn.y * fD * (1.0 - gsTownW) * keepM : 0.0)
+      + (uGsOpen.x > 2.5 && uGsOpen.x < 3.5 ? uGsOpen.y * meadowG * (1.0 - max(gCropW, gSoilW)) * (1.0 - woods) : 0.0);
+    gsWornM *= gsOff * (1.0 - fR) * (1.0 - smoothstep(150.0, 300.0, camDist));
+    if (gsWornM > 0.003) {
+      vec2 wq = mix(vec2(0.5), nzq(uv, 0.07, vec2(0.23, 0.41)), tileVis(4.0));
+      float damp = smoothstep(0.50, 0.66, wq.x);
+      float crust = smoothstep(0.52, 0.68, wq.y) * (1.0 - damp);
+      vec3 wD = mix(a.rgb, a.rgb * vec3(0.80, 0.79, 0.77), damp * 0.85);
+      wD = mix(wD, mix(wD, vec3(reduxLuma(wD)), 0.25) * 1.18, crust * 0.75);
+      a.rgb = mix(a.rgb, wD, min(1.0, gsWornM));
+      a.a = mix(a.a, a.a * 0.86, damp * min(1.0, gsWornM));
     }
     // the close stones: one per hash cell, on the worn soil, the sward's thin patches and the town floor
     if (uLandTier > 0.5) {

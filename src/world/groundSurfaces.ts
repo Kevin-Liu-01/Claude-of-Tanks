@@ -199,7 +199,8 @@ export const MAP_GROUND: Readonly<Record<MapId, MapGroundRow>> = Object.freeze({
   skybridge: ground('hardpan', 'hardpan', 'sandstone', 'mud', 'hardpan'),
   polders: ground('meadow', 'soil', 'rock', 'mud', 'yard'),
   copper_mesa: ground('gravel', 'gravel', 'rock', 'mud', null),
-  airfield: ground('verge', 'cinder', 'setts', 'mud', 'yard'),
+  // (c7, the macro coverage assert: no cinder yard here — its worn ground is the dirt set's, the soil's)
+  airfield: ground('verge', 'soil', 'setts', 'mud', 'yard'),
   oasis: ground('sand', 'sand', 'sandstone', 'mud', 'packedSand'),
   whiteout: ground('snow', 'trampledSnow', 'rock', 'ice', null),
   orchard: ground('meadow', 'soil', 'rock', 'mud', 'yard'),

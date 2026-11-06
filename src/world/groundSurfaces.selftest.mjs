@@ -166,6 +166,25 @@ assert.ok(GROUND_SURFACE_GLSL.includes('gGsGain = gGsTilt * mix(3.0, 1.0, smooth
 assert.ok(raw.includes('float gsB = gsGL * (gsD < 0.0 ? gGsTilt : gGsGain);'), 'the normal pass bounds a facet\'s loss and its gain');
 assert.ok(GROUND_SURFACE_GLSL.includes('* smoothstep(0.15, 0.55, saturate(dot(normalize(cameraPosition - wp), wn)));'),
   'the mosaic fades as the view grazes, by the mid dapple\'s law (diag2: its patches foreshortened to slivers)');
+// (c7, Amberford's square: the table named the soil's mosaic and the material drew none of it) every macro code a map
+// packs has its law in the chunks: the open ground's sward, tussock and soil, the worn ground's soil, the town's yard,
+// rubble and slag (a worn ground of cinder is the rail yard's, drawn by the works floor over its yard: its map's town
+// floor is slag too)
+const MACRO_LAW = {
+  open: { 1: 'uGsOpen.x > 0.5 && uGsOpen.x < 2.5', 2: 'step(1.5, uGsOpen.x)', 3: 'uGsOpen.x > 2.5 && uGsOpen.x < 3.5' },
+  worn: { 3: 'uGsWorn.x > 2.5 && uGsWorn.x < 3.5', 6: 'uGsTown.x > 5.5' },
+  town: { 4: 'if (uGsTown.x < 4.5)', 5: 'if (uGsTown.x > 4.5)', 6: 'uGsTown.x > 5.5' },
+};
+const lawText = GROUND_SURFACE_GLSL + GROUND_SURFACE_WORKS_GLSL;
+for (const mapId of MAP_IDS) {
+  const u = groundSurfaceUniformValues(mapId);
+  for (const [side, code] of [['open', u.open[0]], ['worn', u.worn[0]], ['town', u.town[0]]]) {
+    if (!code) continue;
+    const gate = MACRO_LAW[side][code];
+    assert.ok(gate && lawText.includes(gate), `${mapId}: the ${side} ground's macro code ${code} has its law in the chunks`);
+    if (side === 'worn' && code === 6) assert.equal(u.town[0], 6, `${mapId}: a cinder worn ground stands under a slag town floor`);
+  }
+}
 // (diag2: the splat's warp folds over ~23 % of the ground and smears metre fields into strands) no field of the table's
 // reads the warped coordinate
 assert.ok(![GROUND_SURFACE_GLSL, GROUND_SURFACE_WORKS_GLSL].some(t => t.split('\n').some(l => !l.trim().startsWith('//') && /\buvW\b/.test(l))),
