@@ -381,8 +381,9 @@ assert.match(main, /getLightReadability: \(\) => \(scene\.userData\.lightModel a
   'the battle atmosphere reads the light\'s readability share');
 
 // ---- the boot weight (2026-10-02): the grounded model loads behind the battle entry. The boot chunk's importers take
-// the core (types, the authored rig, the dispatcher); the battle atmosphere's acquisition and the capture staging load
-// the grounded model before they light an open sky; until then every resolve is the authored rig
+// the core (types, the authored rig, the dispatcher); the battle atmosphere's prepare (round 4 F2: a battle entry asks
+// at once) and the capture staging load the grounded model before they light an open sky; until then every resolve is
+// the authored rig
 const read = (rel) => readFileSync(new URL(rel, import.meta.url), 'utf8');
 const core = read('./lightModelCore.ts');
 assert.doesNotMatch(core, /from '\.\/lightModel\.ts'/, 'the core never imports the grounded model statically');
@@ -395,7 +396,7 @@ for (const [file, src] of [['lighting.ts', lighting], ['sky.ts', sky], ['post.ts
 const grounded = read('./lightModel.ts');
 assert.doesNotMatch(grounded.replace(/^import type [^;]+;$/gm, ''), /^import /m, 'the grounded model has no runtime import');
 assert.match(core, /import\('\.\/lightModel\.ts'\)/, 'the core loads it on demand');
-assert.match(read('./battleAtmosphereAccess.ts'), /Promise\.all\(\[loadRuntime\(\), loadGroundedLightModel\(\), loadCloudscapeLayers\(\)\]\)/, 'with the battle atmosphere\'s covered acquisition');
+assert.match(read('./battleAtmosphereAccess.ts'), /askPart\(groundedLightChunk, entry\), askPart\(cloudscapeChunk, entry\)/, 'with the battle atmosphere\'s prepare');
 assert.match(read('../main.ts'), /await Promise\.all\(\[import\('\.\/dev\/shotRuntime\.ts'\), loadGroundedLightModel\(\), loadCloudscapeLayers\(\)\]\)/,
   'and the capture staging (the census and the map probes stage maps without the battle atmosphere)');
 assert.equal(EXPOSURE_REFERENCE_ILLUMINANCE, 3.0);
