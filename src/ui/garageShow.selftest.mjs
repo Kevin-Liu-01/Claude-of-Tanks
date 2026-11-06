@@ -5,9 +5,12 @@
 //   it 620 ms later, so a first show inside the fade (a Studio boot left in that window, a staging call) armed a
 //   reveal that had already happened: the Garage stayed invisible for the session. show()'s own block runs here on a
 //   stand-in document, across the splash's three moments.
-// - The return sweep. A surface the battle left open under its hidden HUD (the touch ammo rack, the ally picker) kept its
-//   place on the surface stack and took the Garage's first Escape or outside press: only a resize swept it. show() now
-//   sweeps before the Garage is laid out. The stack's sweep runs here on stand-ins; show()'s call is pinned in its source.
+// - The return sweep, a generic guard. A surface left open under a hidden screen keeps its place on the surface stack
+//   and takes the next screen's first Escape or outside press until a resize sweeps it, so show() sweeps before the Garage
+//   is laid out. (round 3 B11) The battle's own two (the touch ammo rack, the ally picker) no longer reach it: the HUD
+//   closes both on its hidden edge (hud.ts endBattle, 22d24ad181), which the return runs first (hideHud). The stack's
+//   sweep runs here on stand-ins and show()'s call is pinned in its source: a guard and a call-order pin, not a
+//   reproduced hazard.
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { stripTypeScriptTypes } from 'node:module';
@@ -83,7 +86,8 @@ check('a later show never waits for the splash', () => {
   assert.equal(root.classList.contains('awaiting-boot'), false);
 });
 
-// the return sweep: a battle surface under the hidden HUD leaves the stack when the Garage comes back
+// the return sweep: a surface under a hidden screen leaves the stack when the Garage comes back (the rack stands in for
+// any: the HUD itself closes the real one on its hidden edge)
 check('the return sweeps the battle\'s hidden surfaces', () => {
   const closed = [];
   const surface = (id, shows) => {

@@ -7,6 +7,12 @@
 //   controller disposed, and a prewarm revived by a selection of its card prepares the rest before its bake.
 // - The kit (real garageEnvironmentKit.ts): a prepare whose caller stops wanting it runs no further slice, keeps no
 //   prepared structures, and says so (false); one nobody cancels prepares everything (true).
+// - (round 3 B12) The cancel's reach. A cancel during the trees stops before the kit on a map with no skyline (only the
+//   skyline's slice asked after the trees: the kit's first four pieces were built), and the trees start no further grove.
+//   The revive is ensure()'s loop (garageArchitecture.ts): a prepare that stopped is run again for a pack its card's
+//   selection revived meanwhile. (Case 2 failed on the round-two base only through case 1's stillWanted assert; it now
+//   drives the loop itself, and a loop-less ensure() fails it. Its old scenario, a selection after the stopped prewarm
+//   retired, starts the pack over: case 2b, review r1.)
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import { GARAGE_VARIANTS } from '../game/garageVariants.ts';
@@ -28,10 +34,11 @@ globalThis.document = {};
 globalThis.requestAnimationFrame = (callback) => { queueMicrotask(() => callback(0)); return 1; };
 
 /** A kit whose prepare records the stillWanted it was handed and waits on `gates` (false: it stopped at a slice). */
-function fakeKit(gates) {
+function fakeKit(gates, { onStopped = () => {} } = {}) {
   const wanted = new Map();
   const prepared = [];
   const built = [];
+  const calls = new Map();
   const kit = {
     createGarageEnvironmentAssetLibrary: () => ({
       retainedTextures: () => [], diagnostics: () => ({ residentSets: 0, referencedSets: 0 }), warmAll() {}, dispose() {},
@@ -40,10 +47,12 @@ function fakeKit(gates) {
     pinGarageEnvironmentCaches: () => () => {},
     prepareGarageEnvironmentAssets: async (_assets, variant, stillWanted) => {
       wanted.set(variant.architecture, stillWanted);
+      calls.set(variant.architecture, (calls.get(variant.architecture) ?? 0) + 1);
       await gates.get(variant.architecture)?.promise;
       // a prepare stops at its next slice once its caller no longer wants it
       const finished = typeof stillWanted !== 'function' || stillWanted();
       if (finished) prepared.push(variant.architecture);
+      else onStopped(variant.architecture); // (what happens in that slice: a selection may revive the pack)
       return finished;
     },
     buildGarageEnvironment: (_ctx, _assets, variant) => {
@@ -53,7 +62,7 @@ function fakeKit(gates) {
       return { root, stats: root.userData, texturesReady: Promise.resolve(), dispose() { root.removeFromParent(); } };
     },
   };
-  return { kit, wanted, prepared, built };
+  return { kit, wanted, prepared, built, calls };
 }
 
 try {
@@ -81,28 +90,59 @@ try {
     assert.equal(wanted.get(b.architecture)(), false, 'a disposed controller wants no prepare');
   });
 
-  // 2. A prewarm stopped at a slice and then revived (its card selected) prepares the rest before its bake.
+  // 2. A prewarm stopped at a slice and revived in that slice (its card selected) prepares the rest before its bake:
+  //    ensure()'s loop runs the stopped prepare again for the same pack, rather than retiring it.
   await check('a revived prewarm prepares the rest', async () => {
     const [a, b] = outdoor;
-    const gates = new Map([[a.architecture, deferred()]]);
-    const { kit, wanted, prepared, built } = fakeKit(gates);
+    const gates = new Map([[a.architecture, deferred()], [b.architecture, deferred()]]);
+    let controller = null;
+    const { kit, prepared, built, calls } = fakeKit(gates, {
+      onStopped: (architecture) => { if (architecture === a.architecture) controller.setVariant(a); },
+    });
+    controller = createGarageArchitectureController({ renderer: { initTexture() {} } }, new THREE.Group(), () => {},
+      async () => kit);
+    controller.setVariant(verdant);
+    await controller.whenReady();
+    void controller.prepareVariant(a);
+    await flush();
+    void controller.prepareVariant(b); // cancels a's prepare at its next slice
+    gates.get(a.architecture).resolve(); // a's prepare stops there, and a's selection revives the pack in that slice
+    gates.get(b.architecture).resolve();
+    const stats = await controller.whenReady();
+    assert.equal(stats.key, a.architecture);
+    assert.equal(calls.get(a.architecture), 2, 'the revived pack\'s stopped prepare runs again (ensure()\'s loop), once');
+    assert.ok(prepared.includes(a.architecture), 'the selected pack\'s prepare ran to its end before the bake');
+    assert.deepEqual(built.filter((architecture) => architecture === a.architecture), [a.architecture], 'and its pack bakes once');
+    controller.dispose();
+  });
+
+  // 2b. (round 3 B12, review r1) The base scenario of case 2, kept: a prewarm that stopped at a slice with nobody reviving
+  //     it retires its record (ensure() returns null), and a later selection of its card starts the pack over: it
+  //     prepares the rest and bakes once.
+  await check('a selection after a retired prewarm starts the pack over', async () => {
+    const [a, b] = outdoor;
+    const gates = new Map([[a.architecture, deferred()], [b.architecture, deferred()]]);
+    const { kit, wanted, prepared, built, calls } = fakeKit(gates);
     const controller = createGarageArchitectureController({ renderer: { initTexture() {} } }, new THREE.Group(), () => {},
       async () => kit);
     controller.setVariant(verdant);
     await controller.whenReady();
     void controller.prepareVariant(a);
     await flush();
-    gates.set(b.architecture, deferred());
     void controller.prepareVariant(b); // cancels a's prepare
     assert.equal(wanted.get(a.architecture)?.(), false);
     gates.get(a.architecture).resolve(); // a's prepare stops at its slice
     await flush();
-    controller.setVariant(a); // ... and a selection of a revives it (if its record still stands, or starts it over)
+    assert.equal(calls.get(a.architecture), 1, '(nobody revived it: no second prepare)');
+    assert.equal(controller.packPhases().some(({ key, phase }) => key === a.architecture && phase !== 'retired'), false,
+      "(its record retired: ensure() returned null)");
+    controller.setVariant(a); // a later selection of a's card
     gates.get(b.architecture).resolve();
     const stats = await controller.whenReady();
     assert.equal(stats.key, a.architecture);
-    assert.ok(prepared.includes(a.architecture), 'the selected pack\'s prepare ran to its end before the bake');
-    assert.ok(built.includes(a.architecture));
+    assert.equal(calls.get(a.architecture), 2, 'the selection starts the pack over');
+    assert.ok(prepared.includes(a.architecture), 'and its prepare runs to its end before the bake');
+    assert.deepEqual(built.filter((architecture) => architecture === a.architecture), [a.architecture], 'and its pack bakes once');
     controller.dispose();
   });
 
@@ -134,6 +174,43 @@ try {
     assert.equal(kit.hasPreparedGarageStructures(variant.id), true);
     release();
     assert.equal(kit.hasPreparedGarageStructures(variant.id), false);
+  });
+
+  // 4. (round 3 B12) A cancel during the trees on a map with no skyline builds no kit piece: only the skyline's slice
+  //    asked after the trees, so the kit's first slice (four pieces) was built for a prewarm nobody wanted.
+  await check('a cancel during the trees stops before the kit on a map with no skyline', async () => {
+    const kit = await import('./garageEnvironmentKit.ts');
+    const { garageKitCacheStats } = await import('./garageKitPlacement.ts');
+    const { garageSkylineEnabled } = await import('./garageSkyline.ts');
+    const { GARAGE_KIT_PLACEMENTS } = await import('./garageKitPlacements.ts');
+    const variant = [...outdoor].reverse().find((entry) => !garageSkylineEnabled(entry.mapId) && GARAGE_KIT_PLACEMENTS[entry.architecture]);
+    assert.ok(variant, '(a Garage with a kit and no skyline)');
+    const release = kit.pinGarageEnvironmentCaches(variant);
+    let wanted = true;
+    // the pointer leaves the card while the trees prepare
+    const cancelInTrees = { prepareTreeGroves: async () => { wanted = false; } };
+    const pieces = () => { const stats = garageKitCacheStats(); return stats.hits + stats.misses; };
+    const before = pieces();
+    try {
+      const result = await kit.prepareGarageEnvironmentAssets(cancelInTrees, variant, () => wanted);
+      assert.equal(pieces() - before, 0, `the prepare built ${pieces() - before} kit pieces after its caller stopped wanting it`);
+      assert.equal(result, false, 'and says it stopped');
+      assert.equal(kit.hasPreparedGarageStructures(variant.id), false);
+    } finally {
+      release();
+    }
+  });
+
+  // 5. (round 3 B12) The trees stop between groves: a cancel in one grove's slice starts no further grove.
+  await check('the trees start no grove after a cancel', async () => {
+    const kit = await import('./garageEnvironmentKit.ts');
+    const library = kit.createGarageEnvironmentAssetLibrary({}, { loader: null });
+    const groves = [];
+    let wanted = true;
+    library.treeGrove = (species) => { groves.push(species); wanted = false; return null; }; // the cancel lands in the first
+    await library.prepareTreeGroves(['pine', 'birch'], () => wanted);
+    assert.deepEqual(groves, ['pine'], 'one grove, the one in flight (before: every species of the recipe)');
+    library.dispose();
   });
 } finally {
   if (originalDocument === undefined) delete globalThis.document;

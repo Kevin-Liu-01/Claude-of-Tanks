@@ -89,6 +89,14 @@ interface SoloBattleEntryRuntimeOptions {
    * resumed with no check at all.
    */
   canTakeScene?(): boolean;
+  /**
+   * (round 3 B2, review r1) A start canTakeScene refused, at the press or after a return wait, shows the player the way
+   * out instead of doing nothing (main: a Garage return that still owes the screen reopens its notice with its Retry, or
+   * runs the return again; offerOwedGarageReturn). A failed return's notice closes by its X, Escape or a press beside it,
+   * which runs nothing, so a refusal that only returned left the BATTLE button dead until a reload. Not run for a start a
+   * network round's entry refused (its loader is the screen). Its own failure is reported, never thrown.
+   */
+  presentSceneRefusal?(): void;
 }
 
 interface SoloBattleEntryRuntime {
@@ -98,6 +106,12 @@ interface SoloBattleEntryRuntime {
     options?: SoloBattleLoadingStartOptions,
   ): Promise<void>;
   beginSelected(request?: SoloBattleEntryRequest): Promise<void>;
+  /**
+   * (round 3 B2, review r1) The press's own question, asked before the Garage button announces it (garage.ts
+   * refusesBattle): true when a start now would be refused at the press (a network round entering, or a scene no battle
+   * may take, whose way out it then shows). A start it does not refuse is decided again by begin().
+   */
+  refuses(): boolean;
 }
 
 /**
@@ -139,13 +153,22 @@ export function createSoloBattleEntryRuntime({
   recordIntent = () => {},
   isNetworkRoundEntering = () => false,
   canTakeScene = () => true,
+  presentSceneRefusal = () => {},
 }: SoloBattleEntryRuntimeOptions): SoloBattleEntryRuntime {
   const required = [battleLoad?.showPending, lifecycle?.run, lifecycle?.coverRendering,
     lifecycle?.uncoverRendering, loading?.begin, audio?.loadingOn, enterGarage,
     nextFrame, isVisibleSpecId, getSelectedSpecId, getSelectedMapId, reportError, presentFailure, presentReturnFailure,
-    onFailure, announce, whenGarageSettled, recordIntent, isNetworkRoundEntering, canTakeScene];
-  /** Another owner has the screen (a network round entering), or the scene may not hand over to a battle: busy. */
-  const sceneRefused = (): boolean => isNetworkRoundEntering() || !canTakeScene();
+    onFailure, announce, whenGarageSettled, recordIntent, isNetworkRoundEntering, canTakeScene, presentSceneRefusal];
+  /**
+   * Another owner has the screen (a network round entering), or the scene may not hand over to a battle: busy. A scene
+   * refusal brings back its way out (presentSceneRefusal; round 3 B2 review r1).
+   */
+  const sceneRefused = (): boolean => {
+    if (isNetworkRoundEntering()) return true;
+    if (canTakeScene()) return false;
+    try { presentSceneRefusal(); } catch (error) { reportError('[battle] scene refusal notice unavailable', error); }
+    return true;
+  };
   if (!battleLoad || required.some((entry) => typeof entry !== 'function')) {
     throw new TypeError('solo battle entry runtime requires every recovery port');
   }
@@ -245,5 +268,7 @@ export function createSoloBattleEntryRuntime({
         randomRoster, gameMode, ...(campaignOperationId ? { campaignOperationId } : {}),
       }, false);
     },
+    /** (round 3 B2, review r1) The press's refusal, before its announcement: the same check begin() makes first. */
+    refuses: () => sceneRefused(),
   });
 }

@@ -1,10 +1,11 @@
 import assert from 'node:assert/strict';
 import { createActivationRuntime } from './activationRuntime.ts';
 import { createAppLifecycle } from '../../game/appLifecycle.ts';
+import { createStudioLeftWorld } from '../../world/studioLeftWorld.test-support.mjs';
 
-function createHarness({ spectator = false, observerReady = true, cameraReady = true, gunship = false, phase = 'garage', calls = [] } = {}) {
+function createHarness({ spectator = false, observerReady = true, cameraReady = true, gunship = false, phase = 'garage', calls = [], world: givenWorld = null } = {}) {
   let constructing = true;
-  const world = { resetDestructibles: () => calls.push(['resetWorld']) };
+  const world = givenWorld ?? { resetDestructibles: () => calls.push(['resetWorld']) };
   const game = {
     mapId: null,
     phase,
@@ -122,7 +123,16 @@ assert.throws(
 );
 assert.throws(() => createHarness({ spectator: true, cameraReady: false }), /observer camera could not be prepared/);
 
-console.log('activationRuntime.selftest: player, spectator, and activation order pass');
+// (round 3 A7/M4) A network round on a battlefield the Studio planned crushes on and never gave back (its teardown threw
+// before releaseCrushes): the activation takes its falls and sweeps for the battle.
+{
+  const left = createStudioLeftWorld();
+  createHarness({ world: left.world });
+  assert.equal(left.fallsWithUpdate(), true, 'a tree the round fells falls with its frames (before: the Studio\'s timeline held it)');
+  assert.equal(left.world.sweeps, true, 'the round\'s crush sweeps run');
+}
+
+console.log('activationRuntime.selftest: player, spectator, activation order and a Studio-left world pass');
 
 const pilot=createHarness({gunship:true});
 assert.equal(pilot.game.phase,'battle');

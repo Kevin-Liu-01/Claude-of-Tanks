@@ -255,7 +255,7 @@ export interface WorldRuntime {
   /**
    * (round 2 U28) Who advances the felled trees' falls: the world's own update ('frame', a battle's) or the Studio's
    * timeline ('timeline': advanceDestruction and advanceToppledVegetation), declared by the Studio as it takes the world
-   * and gives it back (studioCrush.ts).
+   * and gives it back (studioCrush.ts), and as 'frame' by every battle start (round 3 A7/M4: world/battleWorldReset.ts).
    */
   setFallDriver(driver: 'frame' | 'timeline'): void;
   /**
@@ -1160,8 +1160,9 @@ function* assembleWorldSteps(
     utilityPolePlacements: props.utilityPolePlacements || [],
     decorationGroundingReceipts: props.decorationGroundingReceipts || [],
     // gameplay_feel r6: crushable OBSTACLE records. state.ts's collider
-    // queues the hull overrun, marks the record `crushed`, then calls this
-    // for the world-side fall/break. Tree trunks (treeIdx, vegetation.ts)
+    // queues the hull overrun and calls this for the world-side fall/break on
+    // a record still standing, then marks it `crushed` (round 2 U28: the
+    // world's crush first, as the authority's; round 3 B13). Tree trunks (treeIdx, vegetation.ts)
     // hinge-topple; world-dressing r1 destructible props (propIdx, props.ts
     // — fences, carts, stalls, bales, lamps...) topple or swap to debris via
     // the same seam.

@@ -12678,7 +12678,9 @@ ${snowCap ? `
     if (rec.loopRef) rec.loopRef.toppled = true; // stop the main.ts loop
     const l = Math.hypot(dx, dz) || 1;
     if (rec.clutter) rec.clutter.setCrushed(true); // (its pose; its records' flags are crushRecordsOf's above)
-    else if (!pool?.imI) { /* (round 2 U28) undrawn: its collision opened above, nothing to pose */ }
+    // (round 2 U28) undrawn: its collision opened above and it has no pose; its burst and its sound below still run
+    // (round 3 B13: the round-two ruling called this path presentation-free, which it is not; a guard today, see `drawn`)
+    else if (!pool?.imI) { /* nothing to pose */ }
     else if (crushPress.takes(idx, cause, dx, dz, settled)) { /* drawn by the press: its paint and its crumple */ }
     else animateBrokenRecord(rec, pool, dx, dz, speed, l, settled);
     // Late joiners restore persistent destruction without replaying its blast.

@@ -27,19 +27,21 @@ function mainFunction(head) {
   return mainSource.slice(start + 1, end + 2);
 }
 function soloEntry({ whenSettled = () => null, begin = async () => {}, enterGarage = async () => {}, onEntryNotice = () => {},
-  onlineMatch = { current: null }, game = { phase: 'garage' } } = {}) {
+  onlineMatch = { current: null }, game = { phase: 'garage' }, garageReturn = { whenSettled, owesGarage: false } } = {}) {
   const events = [];
   const scope = {
     onlineMatch,
     game,
     canTransitionAppPhase,
+    AppPhaseTransitionError: appLifecycleModule.AppPhaseTransitionError,
+    GarageScreenUnsettledError: appLifecycleModule.GarageScreenUnsettledError,
     createSoloBattleEntryRuntime,
     battleEntryIntent: createBattleEntryIntent(),
     terrainVariantFor,
     campaignOperationById: (id) => (id ? { id, mapId: 'op-map' } : null),
     battleEntryLifecycle: createBattleEntryLifecycle({ nextFrame: async () => {}, now: () => 0 }),
     bus: { emit: (type, payload) => events.push([type, payload]) },
-    garageReturn: { whenSettled },
+    garageReturn,
     soloBattleLoading: { begin: async (...args) => { events.push(['load', args[0], args[1]]); return begin(); } },
     battleLoad: { showPending: () => events.push(['cover']), hide: async () => events.push(['hide']) },
     audio: { loadingOn() {} },
@@ -56,6 +58,8 @@ function soloEntry({ whenSettled = () => null, begin = async () => {}, enterGara
   const { soloBattleEntry: entry, beginLocalBattleEntry, beginLocalBattle } = runMainStatements([
     entryStatement.replace("import('./ui/garageReturnFailure.ts')", 'loadFailure()'),
     mainFunction('function beginLocalBattleEntry('), mainFunction('function beginLocalBattle('),
+    // (round 3 B2) the one hand-over rule main binds canTakeScene to (absent on a main.ts without it: the entry fails)
+    ...(mainSource.includes('\nfunction battleSceneRefusal(') ? [mainFunction('function battleSceneRefusal(')] : []),
   ], scope, '{ soloBattleEntry, beginLocalBattleEntry, beginLocalBattle }');
   return { entry, events, lifecycle: scope.battleEntryLifecycle, intent: scope.battleEntryIntent, beginLocalBattleEntry, beginLocalBattle };
 }
@@ -309,15 +313,17 @@ function phaseListener(game, battleEntryIntent) {
   const events = [];
   const game = { phase: 'studio' };
   let exitLeaves = true;
-  const garageReturn = { state: 'idle' };
+  // (the return's state, and its owesGarage as garageReturnRuntime derives it in the Garage's scene)
+  const garageReturn = { state: 'idle', whenSettled: () => null, get owesGarage() { return garageReturn.state === 'failed'; } };
   const scope = {
-    game, assertAppPhaseTransition, GarageScreenUnsettledError, garageReturn,
+    game, assertAppPhaseTransition, GarageScreenUnsettledError, garageReturn, canTransitionAppPhase, AppPhaseTransitionError,
     loadStudioRuntime: async () => ({ exit: async () => { events.push('studio.exit'); if (exitLeaves) game.phase = 'garage'; } }),
     onlineMatch: { current: { beginRoom: async () => { events.push(`beginRoom:${game.phase}`); return true; } } },
     networkBattleIntentCover: { show: () => events.push('intentCover') },
   };
   const { takeSceneForRound, beginMultiplayerV2Battle } = runMainStatements(
-    [mainFunction('function takeSceneForRound('), mainFunction('function beginMultiplayerV2Battle(')], scope,
+    [mainFunction('function takeSceneForRound('), mainFunction('function beginMultiplayerV2Battle('),
+      ...(mainSource.includes('\nfunction battleSceneRefusal(') ? [mainFunction('function battleSceneRefusal(')] : [])], scope,
     '{ takeSceneForRound, beginMultiplayerV2Battle }');
   assert.equal(await beginMultiplayerV2Battle({}), true);
   assert.deepEqual(events, ['studio.exit', 'beginRoom:garage'], "the room's launch leaves the Studio before the round begins");
@@ -339,6 +345,23 @@ function phaseListener(game, battleEntryIntent) {
   await assert.rejects(takeSceneForRound(), (error) => error instanceof GarageScreenUnsettledError,
     'a Studio whose return failed refuses the round before its cover');
   assert.equal(game.phase, 'garage');
+  // (round 3 B2) every other phase takes the same rule: a round over the Garage of a failed return is refused (it covered,
+  // loaded and revealed under the return's notice, whose Retry then disposed it), and a return in flight settles first
+  // (rounds never waited: a Leave's veil fading in, its entry under the veil)
+  events.length = 0;
+  await assert.rejects(Promise.resolve(takeSceneForRound()), (error) => error instanceof GarageScreenUnsettledError && error.state === 'returning',
+    "a failed return's Garage refuses the round before its cover");
+  await assert.rejects(beginMultiplayerV2Battle({}), (error) => error instanceof GarageScreenUnsettledError, 'and the launch');
+  assert.deepEqual(events, [], 'no intent cover, no room begun');
+  let land;
+  garageReturn.state = 'entering';
+  garageReturn.whenSettled = () => (garageReturn.state === 'idle' ? null : new Promise((resolve) => { land = () => { garageReturn.state = 'idle'; resolve(); }; }));
+  const waiting = beginMultiplayerV2Battle({});
+  await flush();
+  assert.deepEqual(events, [], 'the launch waits for the return in flight');
+  land();
+  assert.equal(await waiting, true);
+  assert.deepEqual(events, ['beginRoom:garage'], 'and begins once it landed');
   assert.match(mainSource, /\n\s+takeSceneForRound,\n/, "main binds the room's takeSceneForRound to the same owner");
 }
 

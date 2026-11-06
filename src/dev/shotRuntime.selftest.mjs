@@ -4,6 +4,7 @@ import { BoxGeometry, Group, Mesh, MeshBasicMaterial, PerspectiveCamera, Scene, 
 import { createGaragePhasePresentationRuntime } from '../game/garagePhasePresentationRuntime.ts';
 import { SHOT_VIEWS } from './shotContract.ts';
 import { setShotView } from './shotRuntime.ts';
+import { createStudioLeftWorld } from '../world/studioLeftWorld.test-support.mjs';
 
 const beforeRecipe = new Error('fixture reached the recipe boundary');
 const mainSource = await readFile(new URL('../main.ts', import.meta.url), 'utf8');
@@ -204,6 +205,24 @@ assert.equal(complete.phase.diagnostics().gpu.suspended, false);
   }
   assert.deepEqual(order, ['reset-destructibles', 'setup-battle', 'reset-destructibles', 'setup-battle'],
     'the last battle\'s felled trees and broken props stand again before each shot\'s battle (before: setupBattle only)');
+}
+
+// (round 3 A7/M4) a still on a battlefield the Studio planned crushes on and never gave back (its teardown threw before
+// releaseCrushes): the shot's battle takes the falls and the sweeps, as a battle start does
+{
+  const fresh = createFixture();
+  const left = createStudioLeftWorld();
+  const switchMap = fresh.context.switchMap;
+  fresh.context.switchMap = async (mapId) => {
+    await switchMap(mapId);
+    const { setFallDriver, setCrushSweeps, resetDestructibles } = left.world;
+    Object.assign(fresh.world, { setFallDriver, setCrushSweeps, resetDestructibles });
+  };
+  fresh.context.setupBattle = () => {};
+  fresh.setTarget('battlefield');
+  await setShotView('battlefield', fresh.context);
+  assert.equal(left.fallsWithUpdate(), true, 'a tree felled in the still\'s battle falls with its frames');
+  assert.equal(left.world.sweeps, true, 'the still\'s crush sweeps run');
 }
 
 // Use the real phase GPU owner and real geometry disposal events. Captures on

@@ -3,18 +3,19 @@ import * as THREE from 'three';
 import { applyBurnHook, makeBurnUniforms } from '../vehicles/materials.ts';
 import { createSoloBattleStartRuntime } from './soloBattleStartRuntime.ts';
 import { createAppLifecycle } from './appLifecycle.ts';
+import { createStudioLeftWorld } from '../world/studioLeftWorld.test-support.mjs';
 
 /** (ac130-fx-228) the harness roster adds a bot on the player's own spec (a valid duplicate pick) */
 let dupEscort = false;
 
-function createHarness({ playerCreated = true, visual = { id: 'visual' }, onMaskStart = () => {} } = {}) {
+function createHarness({ playerCreated = true, visual = { id: 'visual' }, onMaskStart = () => {}, world: givenWorld = null } = {}) {
   const events = [];
   let clock = 0;
   let trace = null;
   let setupOptions = null;
   let camoSweep = null;
   let snap = null;
-  const world = {
+  const world = givenWorld ?? {
     mapId: 'winter',
     resetDestructibles: () => events.push('world:reset'),
   };
@@ -231,7 +232,19 @@ assert.throws(
   /requires every activation port/,
 );
 
-console.log('soloBattleStartRuntime.selftest: activation order, covered start, and failure pass');
+// (round 3 A7/M4) A battlefield the Studio planned crushes on and never gave back (its teardown threw before
+// releaseCrushes): the solo start takes its falls and sweeps for the battle. The world stayed on the Studio's timeline, so
+// every felled tree of the battle opened its collision and never fell, and its sweeps stayed off.
+{
+  const left = createStudioLeftWorld({ mapId: 'winter' });
+  const harness = createHarness({ world: left.world });
+  harness.runtime.start('m1a1_abrams_hc', 'winter', { deferVisuals: true, preBattleHold: true });
+  assert.equal(harness.game.phase, 'battle');
+  assert.equal(left.fallsWithUpdate(), true, 'a tree the battle fells falls with its frames (before: the Studio\'s timeline held it)');
+  assert.equal(left.world.sweeps, true, 'the battle\'s crush sweeps run');
+}
+
+console.log('soloBattleStartRuntime.selftest: activation order, covered start, failure and a Studio-left world pass');
 
 {
  const h = createHarness();h.runtime.start('m1a1_abrams_hc','winter',{gameMode:'ac130',deferVisuals:true});

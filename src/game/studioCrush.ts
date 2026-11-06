@@ -69,7 +69,11 @@ interface StudioCrushWorld {
   advanceDestruction(dt: number): void;
   /** Whether a crush event this side never pressed sweeps a hull across the prop (the battle: yes; the Studio: no). */
   setCrushSweeps?(on: boolean): void;
-  /** (round 2 U28) Who advances the felled trees' falls: the world's own update, or this timeline (map.ts). */
+  /**
+   * (round 2 U28) Who advances the felled trees' falls: the world's own update, or this timeline (map.ts). The Studio
+   * declares 'timeline' at setPlan and 'frame' at restore; every battle start declares 'frame' too, with the sweeps on
+   * (round 3 A7/M4: world/battleWorldReset.ts), so a Studio that never gave the world back holds no battle's falls.
+   */
   setFallDriver?(driver: 'frame' | 'timeline'): void;
 }
 
