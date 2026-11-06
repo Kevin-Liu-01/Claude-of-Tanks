@@ -3,21 +3,23 @@
 // Owner 2026-11-04 ("use our proper tank generation procedure and dont use the old t80 hull only use modern new hulls like
 // the nnew t80 x hulll"): it is built on the T-80U X hull and casting (profiles/t80uX.ts), by recipe reuse at that build's
 // own datums, with no legacy T-80 builder. Owner 2026-11-05 ("the object 292 turret needs to be based off off the t80U
-// turret as weell with its bigger gun", "make the hulls much beter"): the T-80U X casting is the turret and reads as one
-// (Kubinka's tank keeps the T-80's round cast turret plain at the front): the two square steel weight-imitator blocks
-// stand on its cheeks either side of the gun, each a chain of welded slabs following the casting's flank; the roof sights,
-// the commander's cupola and the gunner's hatch stand on the casting; a separate flat-sided welded box narrower than the
-// casting sits on its rear half and overhangs the engine deck, its underside rising to the stern; the LP-83 leaves the
-// embrasure in a fat cradle drum. The hull is the T-80U X base without its Kontakt-5, with Kubinka's own fit: the
-// Kontakt-1 stud field with no bricks, the headlights in their guards, the tow hooks and cables, rubber side skirts
-// following the apron and fender (owner 2026-11-05: "properly match sideskirts to hull side profiles"), rubber flaps draped
-// over the fender noses and hung at the stern, and the stern grille. First-party procedural geometry: Kevin B. Liu
-// (NOTICE.md); photographs and sources in docs/references/photos/russia-152-20261104.json, the run packet in
+// turret as weell with its bigger gun", "make the hulls much beter", "add a machine gun tto the object 292"): the T-80U X
+// casting is the turret (owner 2026-11-05, "i liked the full turret wrapping/box kit more"): the square steel
+// weight-imitator blocks wrap its cheeks and flanks either side of the gun, each a chain of welded slabs; the commander's
+// cupola where the T-80U X carries it, with the T-80U X's own sight head and NSVT station, the gunner's hatch and sight
+// stand on the casting; a separate flat-sided welded box narrower than the casting sits on its rear half and overhangs the
+// engine deck, its underside rising to the stern; the LP-83 leaves the embrasure in a fat cradle drum. The hull is the T-80U X base without its Kontakt-5,
+// with Kubinka's own fit: the Kontakt-1 stud field with no bricks over the whole glacis, the headlights in their guards,
+// the tow hooks and cables, the front fenders' stripped mounting plates and studs, rubber side skirts hanging from a band
+// clamped along the apron and fender (owner 2026-11-05: "properly match sideskirts to hull side profiles"), broad flared
+// rubber flaps over the fender noses, mud flaps at the stern, and the stern grille. First-party procedural geometry:
+// Kevin B. Liu (NOTICE.md); photographs and sources in docs/references/photos/russia-152-20261104.json, the run packet in
 // docs/references/tanks/object292.md.
 import * as THREE from 'three';
+import { reserveDecorVolume } from './fieldChest.ts';
 import { KIT, FITTINGS } from './kit.ts';
 import { sectionSolid } from './sectionSolid.ts';
-import { buildT80UXCasting, buildT80UXHullBase, T80U_X_TRUNNION, T80U_X_YAW } from './t80uX.ts';
+import { buildT80UXCasting, buildT80UXHullBase, commanderSightHead, machineGun, T80U_X_TRUNNION, T80U_X_YAW } from './t80uX.ts';
 import { GUN_LP83, build152Gun } from './gun152.ts';
 import { markVehicleNightLens } from '../vehicleNightLighting.ts';
 import { machinedRing } from '../machineGunGeometry.ts';
@@ -98,23 +100,24 @@ function cablePath(s: number): [number, number, number][] {
     .map(([x, z]) => [s * x, glacisAt(z).y + .024, z]);
 }
 
-/** The glacis' fit, the T-80BV pattern Kubinka keeps: the Kontakt-1 mounting studs with no bricks in staggered rows across
- * the plate (standing along its normal, clear of the headlights, the hooks and the cables), the headlights in their hoop
- * guards, the splash board under the turret, the tow hooks at the plate's foot and the two tow cables run from them up
- * past the headlights to the fenders' corners. Hull frame. */
+/** The glacis' fit, the T-80BV pattern Kubinka keeps: the Kontakt-1 mounting studs with no bricks, small bolt heads in an
+ * even staggered grid over the whole plate (standing along its normal, clear of the headlights, the hooks and the cables),
+ * the headlights in their hoop guards, the splash board under the turret, the tow hooks at the plate's foot and the two
+ * tow cables run from them up past the headlights to the fenders' corners. Hull frame. */
+const STUD = cylY(.018, .021, .028, 6);
 function addGlacis(P: TankBuilderPort): void {
-  const stud = cylY(.026, .030, .052, 6), clear = (x: number, z: number) => {
+  const clear = (x: number, z: number) => {
     const ax = Math.abs(x);
-    if (Math.hypot(ax - .8475, z - 2.62) < .19 || Math.hypot(ax - TOW_HOOK_X, z - TOW_HOOK_Z) < .14) return false;
-    if (z < 2.06 && ax < .46) return false;                                       // the splash board
-    return cablePath(1).every(([cx, , cz]) => Math.hypot(ax - cx, z - cz) > .075);
+    if (Math.hypot(ax - .8475, z - 2.62) < .17 || Math.hypot(ax - TOW_HOOK_X, z - TOW_HOOK_Z) < .13) return false;
+    if (z < 2.07 && ax < .47) return false;                                       // the splash board
+    return cablePath(1).every(([cx, , cz]) => Math.hypot(ax - cx, z - cz) > .055);
   };
-  for (let row = 0; row < 7; row++) {
-    const z = 1.97 + row * .148, { y, tilt } = glacisAt(z);
-    for (let c = 0; c < 14; c++) {
-      const x = -.91 + c * .14 + (row % 2 ? .07 : 0);
-      if (Math.abs(x) > .93 || !clear(x, z)) continue;
-      P.add('hullDetail', stud.clone(), x, y + .022, z, tilt, 0, 0);
+  for (let row = 0; row < 9; row++) {
+    const z = 1.93 + row * .125, { y, tilt } = glacisAt(z);
+    for (let c = 0; c < 16; c++) {
+      const x = -.975 + c * .13 + (row % 2 ? .065 : 0);
+      if (Math.abs(x) > .99 || !clear(x, z)) continue;
+      P.add('hullDetail', STUD.clone(), x, y + .012, z, tilt, 0, 0);
     }
   }
   for (const s of [-1, 1]) {
@@ -153,52 +156,82 @@ const FENDER_TOP: readonly (readonly [number, number])[] = [[-3.36, 1.180], [-2.
 const APRON: readonly (readonly [number, number, number])[] = [[-2.882, 1.414, .886], [-2.45, 1.458, .815], [-1.22, 1.504, .782],
   [1.75, 1.449, .762], [2.886, 1.418, .782]];
 const fenderTop = (z: number) => lerpRows(FENDER_TOP, z, 1), apronFoot = (z: number) => lerpRows(APRON, z, 2);
-/** The rubber skirt's run (hull frame z) and its section: its top edge clamped under the fender's outer lip, down the
- * apron's outer face 4 mm proud of it to the apron's foot, then hanging plumb. Its lower edge rises at the nose and the
- * stern after the track. */
+/** The rubber skirt's run (hull frame z): a band clamped along its top edge under the fender's outer lip and down the
+ * apron's outer face 4 mm proud of it to the apron's foot, and below it the loose rubber sheets hanging plumb in two
+ * overlapping layers, their lower edges uneven and their corners cut, rising at the nose and the stern after the track. */
 const SKIRT_Z0 = -3.10, SKIRT_Z1 = 3.352, SKIRT_TH = .010, SKIRT_TOP_X = 1.700, SKIRT_KNEE_X = 1.804;
 function skirtBottom(z: number): number {
   return z > 2.50 ? .50 + (z - 2.50) / (SKIRT_Z1 - 2.50) * .14 : z < -2.55 ? .50 + (-2.55 - z) / (-2.55 - SKIRT_Z0) * .14 : .50;
 }
-function skirtSection(z: number, s: number): V2[] {
-  const top = fenderTop(z) - .022, knee = Math.min(apronFoot(z), top - .06), bottom = skirtBottom(z);
-  const ring: V2[] = [[SKIRT_KNEE_X, bottom], [SKIRT_KNEE_X + SKIRT_TH, bottom], [SKIRT_KNEE_X + SKIRT_TH, knee],
-    [SKIRT_TOP_X + SKIRT_TH, top], [SKIRT_TOP_X, top], [SKIRT_KNEE_X, knee]];
+function skirtLine(z: number): { top: number; knee: number } {
+  const top = fenderTop(z) - .022;
+  return { top, knee: Math.min(apronFoot(z), top - .06) };
+}
+/** The band's section at z: from its clamped top down the apron's slope to just past the apron's foot. */
+function bandSection(z: number, s: number): V2[] {
+  const { top, knee } = skirtLine(z), slope = (SKIRT_KNEE_X - SKIRT_TOP_X) / (top - knee), ext = Math.min(.02, .004 / slope);
+  const x0 = SKIRT_KNEE_X + ext * slope;
+  const ring: V2[] = [[x0, knee - ext], [x0 + SKIRT_TH, knee - ext], [SKIRT_TOP_X + SKIRT_TH, top], [SKIRT_TOP_X, top]];
   return ccw(ring.map(([x, y]) => [s * x, y] as const));
 }
+/** Each hanging sheet's lower edge against the run's (m), from the stern. */
+const SHEET_DROP = [0, .022, -.012, .015, -.02, .01, .018, -.008, .012];
 
-/** Kubinka's rubber skirts over the T-80U X apron: eight bolted rubber panels a side from the stern's fender drop to the
- * fender's nose, each clamped under the fender's lip along the whole run and following the apron's face, a row of clamp
- * bolts along their tops; the broad rubber flaps draped over the fenders' noses and down in front of the tracks, closed
- * at the corner into the skirt; the stern's rubber mud flaps hung from the fenders' tails. Hull frame. */
+/** Kubinka's rubber skirts over the T-80U X apron, from the stern's fender drop to the fender's nose: eight bolted band
+ * segments a side clamped under the fender's lip along the whole run, following the apron's face, and nine loose sheets
+ * hanging from them, the odd ones outside and overlapping their neighbours; the broad rubber flaps draped over the fenders'
+ * noses and flaring forward and out in front of the tracks; the stern's rubber mud flaps hung from the fenders' tails.
+ * Hull frame. */
 function addRubberSkirts(P: TankBuilderPort): void {
-  const n = 8, gap = .008, len = (SKIRT_Z1 - SKIRT_Z0) / n;
-  const breaks = [...FENDER_TOP.map((r) => r[0]), ...APRON.map((r) => r[0]), 2.50, -2.55];
+  const run = SKIRT_Z1 - SKIRT_Z0, breaks = [...new Set([...FENDER_TOP.map((r) => r[0]), ...APRON.map((r) => r[0]), 2.50, -2.55])].sort((p, q) => p - q);
+  const stations = (z0: number, z1: number, edge: number) =>
+    [z0, ...(edge ? [z0 + edge] : []), ...breaks.filter((z) => z > z0 + edge + .01 && z < z1 - edge - .01), ...(edge ? [z1 - edge] : []), z1];
   const bolt = cylX(.013, .014, 6);
   for (const s of [-1, 1]) {
-    for (let i = 0; i < n; i++) {
-      const z0 = SKIRT_Z0 + i * len + (i ? gap / 2 : 0), z1 = SKIRT_Z0 + (i + 1) * len - (i < n - 1 ? gap / 2 : 0);
-      const zs = [z0, ...breaks.filter((z) => z > z0 + .02 && z < z1 - .02), z1].sort((a, b) => a - b);
-      P.addMudguard('object292-rubber-skirt', 'hullRubber', sectionSolid(zs.map((z) => ({ z, ring: skirtSection(z, s) })), { sideQuadDiagonal: 'convex' }));
-      // the clamp bolts along the panel's top, on the apron's slope
+    for (let i = 0, n = 8, len = run / n; i < n; i++) {
+      const z0 = SKIRT_Z0 + i * len + (i ? .004 : 0), z1 = SKIRT_Z0 + (i + 1) * len - (i < n - 1 ? .004 : 0);
+      P.addMudguard('object292-rubber-skirt', 'hullRubber', sectionSolid(stations(z0, z1, 0).map((z) => ({ z, ring: bandSection(z, s) })),
+        { sideQuadDiagonal: 'convex' }));
+      // the clamp bolts along the band, on the apron's slope
       for (let k = 0; k < 4; k++) {
-        const z = z0 + (k + .5) * (z1 - z0) / 4, top = fenderTop(z) - .022, knee = Math.min(apronFoot(z), top - .06), y = top - .07;
+        const z = z0 + (k + .5) * (z1 - z0) / 4, { top, knee } = skirtLine(z), y = top - .07;
         if (y < knee + .02) continue;
         const x = SKIRT_TOP_X + SKIRT_TH + (SKIRT_KNEE_X - SKIRT_TOP_X) * (top - y) / (top - knee);
         P.addEquipment('hullDetail', bolt.clone(), s * (x + .004), y, z);
       }
     }
-    // the front flap over the fender's nose: on the fender's top 1 cm proud, round the nose and down in front of the track
+    for (let k = 0, n = SHEET_DROP.length, len = run / n; k < n; k++) {
+      const out = k % 2 === 1, lap = out ? .035 : -.003;
+      const za = Math.max(SKIRT_Z0, SKIRT_Z0 + k * len - lap), zb = Math.min(SKIRT_Z1, SKIRT_Z0 + (k + 1) * len + lap);
+      const [x0, x1] = out ? [1.8125, 1.8195] : [SKIRT_KNEE_X, SKIRT_KNEE_X + .008];
+      const ring = (z: number): V2[] => {
+        const bottom = skirtBottom(z) - SHEET_DROP[k] + .035 * Math.max(0, 1 - (z - za) / .06) + .035 * Math.max(0, 1 - (zb - z) / .06);
+        const r: V2[] = [[x0, bottom], [x1, bottom], [x1, skirtLine(z).knee], [x0, skirtLine(z).knee]];
+        return ccw(r.map(([x, y]) => [s * x, y] as const));
+      };
+      P.addMudguard('object292-rubber-sheet', 'hullRubber', sectionSolid(stations(za, zb, .06).map((z) => ({ z, ring: ring(z) }))));
+    }
+    // the front flap over the fender's nose: on the fender's top 1 cm proud, round the nose, then flaring forward in front
+    // of the track; as wide as the fender and over its outer corner
     const nose: V2[] = [[2.84, fenderTop(2.84) + .008], [2.90, fenderTop(2.90) + .008], [3.07, fenderTop(3.07) + .008],
-      [3.20, fenderTop(3.20) + .008], [3.30, fenderTop(3.30) + .006], [3.3625, .930], [3.3625, .60]];
+      [3.20, fenderTop(3.20) + .008], [3.30, fenderTop(3.30) + .006], [3.3625, .930], [3.392, .80], [3.44, .63]];
     const flap = stripContour(nose, .011);
-    P.addMudguard('object292-front-flap', 'hullRubber', loftX(s > 0 ? [{ x: 1.02, ring: flap }, { x: 1.736, ring: flap }]
-      : [{ x: -1.736, ring: flap }, { x: -1.02, ring: flap }]));
-    P.addMudguard('object292-front-flap', 'hullRubber', box(.072, .30, .011), s * 1.772, .762, 3.3625);   // the corner
-    P.addEquipment('hullDetail', box(.70, .018, .028), s * 1.378, fenderTop(2.86) + .02, 2.86);            // its clamp bar
+    P.addMudguard('object292-front-flap', 'hullRubber', loftX(s > 0 ? [{ x: .99, ring: flap }, { x: 1.795, ring: flap }]
+      : [{ x: -1.795, ring: flap }, { x: -.99, ring: flap }]));
+    P.addEquipment('hullDetail', box(.80, .018, .028), s * 1.39, fenderTop(2.86) + .02, 2.86);            // its clamp bar
     // the stern's mud flap from the fender's tail, raked back a little
     P.addMudguard('object292-stern-flap', 'hullRubber', box(.66, .38, .012), s * 1.40, .985, -3.335, .12, 0, 0);
     P.addEquipment('hullDetail', box(.68, .03, .03), s * 1.40, 1.165, -3.322);
+  }
+}
+
+/** The front fenders behind the flaps as Kubinka has them, stripped of the BV's fender Kontakt-1: the stepped mounting
+ * plates left standing and their studs. Hull frame. */
+function addFrontFenders(P: TankBuilderPort): void {
+  for (const s of [-1, 1]) for (const [z, h] of [[2.12, .02], [2.43, .034], [2.71, .02]] as const) {
+    const y = fenderTop(z);
+    P.addEquipment('hullDetail', box(.56, h, .26), s * 1.38, y + h / 2, z);
+    for (const dx of [-.20, -.07, .07, .20]) for (const dz of [-.07, .07]) P.addEquipment('hullDetail', STUD.clone(), s * (1.38 + dx), y + h + .012, z + dz);
   }
 }
 
@@ -229,7 +262,11 @@ const BLOCK_PLAN: Record<'L' | 'R', readonly V2[]> = {
   L: [[.46, 1.25], [1.10, 1.03], [1.37, .42], [1.42, -.32], [1.16, -.72]],
   R: [[-.46, 1.25], [-1.16, 1.01], [-1.44, .42], [-1.45, -.32], [-1.16, -.72]],
 };
-const BLOCK_DEPTH = [.50, .62, .62, .55], BLOCK_Y0 = .08, BLOCK_Y1 = .60;
+/** Each slab's depth in from its outer face. The right chain's flank slabs stop short of the commander's cupola (the T-80U X's,
+ * its race 2 cm clear) and of the NSVT's riser (profiles/t80uX.ts machineGun, at -.955, .179), so both stand on the
+ * casting's roof beside them. */
+const BLOCK_DEPTH: Record<'L' | 'R', readonly number[]> = { L: [.50, .62, .62, .55], R: [.50, .45, .40, .28] };
+const BLOCK_Y0 = .08, BLOCK_Y1 = .60;
 
 /** The steel weight-imitator blocks on the casting's cheeks: each a chain of four welded slabs from the gun's side round
  * the cheek and back along the flank (the front one square, its inner face along the gun; the others standing over the
@@ -238,7 +275,7 @@ function addCheekBlocks(P: TankBuilderPort): void {
   for (const side of ['L', 'R'] as const) {
     const V = BLOCK_PLAN[side], s = side === 'L' ? 1 : -1;
     for (let i = 0; i < 4; i++) {
-      const [a, b] = [V[i], V[i + 1]], n = outward(a, b), d = BLOCK_DEPTH[i];
+      const [a, b] = [V[i], V[i + 1]], n = outward(a, b), d = BLOCK_DEPTH[side][i];
       const bi: V2 = [b[0] - n[0] * d, b[1] - n[1] * d], ai: V2 = i === 0 ? [a[0], a[1] - d] : [a[0] - n[0] * d, a[1] - n[1] * d];
       P.add('turret', blockSlab([a, b, bi, ai], BLOCK_Y0, BLOCK_Y1, .08, .07));
       const len = Math.hypot(b[0] - a[0], b[1] - a[1]), yaw = Math.atan2(b[0] - a[0], b[1] - a[1]);
@@ -290,28 +327,31 @@ function addBox(P: TankBuilderPort): void {
   P.turretG.add(antenna);
 }
 
-/** The roof on the casting, as the T-80U's: the commander's cupola (right) with his sight and searchlight on its front and
- * periscopes round it, the gunner's hatch (left) and his sight's armoured housing ahead of it with its window to the front,
- * and the ventilator's dome between them. Turret frame. */
+/** The roof on the casting, as the T-80U's: the commander's cupola (right) where the T-80U X carries it, its race bedded
+ * into the sloping roof to the T-80U X's ring height, periscopes round it and its lid, with the T-80U X's own sight head
+ * on its front and its commander's NSVT station ahead of it (profiles/t80uX.ts, one shared part); the gunner's hatch
+ * (left) and his sight's armoured housing ahead of it with its window to the front; the ventilator's dome between them.
+ * Turret frame. */
 function addRoof(P: TankBuilderPort): void {
   const seg = P.q ? 28 : 16;
-  // commander's cupola: the race bedded into the sloping roof, the rotating ring, the domed lid and its hinge
-  const [cx, cz] = [-.52, -.22];
-  P.addCupola('turret', cylY(.355, .37, .11, seg), cx, .565, cz);
-  P.addCupola('turret', cylY(.315, .33, .09, seg), cx, .665, cz);
-  P.add('turretDark', KIT.torus(.33, .014, seg, 5), cx, .622, cz);
-  P.addHatch('turret', cylY(.285, .29, .025, seg), cx, .7225, cz);
-  P.addHatch('turret', KIT.sph(.27, seg, Math.PI / 2).scale(1, .15, 1), cx, .735, cz);
-  P.addEquipment('turretDetail', cylX(.035, .20, 10), cx, .73, cz - .30);
-  for (const a of [-1.15, 1.15, 2.2, -2.2]) KIT.periscope(P, 'turretDetail', cx + .29 * Math.sin(a), .735, cz + .29 * Math.cos(a), a);
-  // his sight's head on the cupola's front: the housing, the window, the brow; the searchlight on its right
-  P.addModuleVisual('optics', 'turretDetail', box(.22, .17, .20), cx, .79, cz + .25);
-  P.addModuleVisual('optics', 'turretDark', box(.16, .075, .014), cx, .80, cz + .355);
-  P.addModuleVisual('optics', 'turretGlass', box(.13, .05, .008), cx, .80, cz + .363);
-  P.addEquipment('turretDetail', box(.24, .022, .10), cx, .883, cz + .31, .18, 0, 0);
-  P.addEquipment('turretDetail', cylZ(.085, .13, 16), cx - .24, .80, cz + .20);
-  P.addEquipment('turretDark', cylZ(.068, .012, 16), cx - .24, .80, cz + .27);
-  P.addEquipment('turretDetail', box(.05, .09, .05), cx - .24, .73, cz + .20);
+  const [cx, cz] = [T80U_X_CUPOLA[0], T80U_X_CUPOLA[1]];
+  P.addCupola('turret', cylY(.3455, .36, .17, seg), cx, .595, cz);
+  P.addEquipment('turretDetail', cylY(.328, .328, .028, seg), cx, .6834, cz);
+  P.addHatch('turret', cylY(.235, .24, .025, seg), cx, .71, cz - .06);
+  P.addHatch('turret', KIT.sph(.225, seg, Math.PI / 2).scale(1, .16, 1), cx, .7225, cz - .06);
+  P.addEquipment('turretDetail', cylX(.03, .18, 10), cx, .705, cz - .31);
+  for (const a of [1.7, -1.7, 2.5, -2.5]) KIT.periscope(P, 'turretDetail', cx + .29 * Math.sin(a), .735, cz + .29 * Math.cos(a), a);
+  commanderSightHead(P);
+  machineGun(P);
+  // the decor's loads keep out of the NSVT's sweep over the casting and the box's front (fieldChest.ts reserveDecorVolume;
+  // turret frame): against the stock its barrel turns a full circle (tools/roof-station-arcs.mjs), and the decor's cans on
+  // the box roof stopped it from 151 to 172 degrees
+  reserveDecorVolume(P.turretG, [-2.20, .70, -1.08], [.30, 1.40, 1.43]);
+  // over the casting's left flank (70-92 degrees) the barrel depresses 0.177 rad, not the NSVT's full 0.18
+  // (.qa-dev/r152/station-table-full.mjs; each degree the smallest of it and its neighbours)
+  const nsvt = P.turretG.getObjectByName('fitting_browningDerived_nsvt');
+  if (!nsvt) throw new Error('object292: the T-80U X commander\'s NSVT is missing');
+  nsvt.userData.depressionByYaw = [[1.2043, .18], [1.2217, .177], [1.6057, .177], [1.6232, .18]];
   // gunner's hatch and its periscope
   const [gx, gz] = [.38, -.36];
   P.addCupola('turret', cylY(.30, .31, .08, seg), gx, .57, gz);
@@ -331,6 +371,9 @@ function addRoof(P: TankBuilderPort): void {
   P.add('turret', cylY(.12, .13, .05, 16), -.10, .605, .30);
   P.addEquipment('turretDetail', KIT.sph(.11, 14, Math.PI / 2).scale(1, .55, 1), -.10, .63, .30);
 }
+/** The T-80U X commander's cupola centre (turret frame; profiles/t80uX.ts roofEquipment's -.6265, -.225 at its yaw
+ * datum), where its sight head and NSVT station are authored. */
+const T80U_X_CUPOLA = [-.6265, -.225 - T80U_X_YAW[2]] as const;
 
 /** The LP-83 on its cradle: the T-80U X's trunnion block across the embrasure, the cradle's fat root drum out of the
  * casting with its lipped front, a step and a cone down to the tube's thermal sleeve, then the sleeved tube. The drum and
@@ -359,6 +402,7 @@ function buildObject292X(P: TankBuilderPort): void {
   buildT80UXHullBase(P);
   addGlacis(P);
   addRubberSkirts(P);
+  addFrontFenders(P);
   addStern(P);
   buildT80UXCasting(P);
   addCheekBlocks(P);
@@ -367,7 +411,7 @@ function buildObject292X(P: TankBuilderPort): void {
   for (const s of [-1, 1]) P.decal('turret', 'number', P.spec.visual.number || '', .26, [s * (BOX_W + .006), .45, -1.55], s * Math.PI / 2);
   addGun(P);
   P.muzzleZ = F.muzzleZ - F.trunnionZ;
-  P.topY = .89;   // the commander's sight's brow
+  P.topY = .85;   // the commander's sight head (profiles/t80uX.ts commanderSightHead: 2.3999 at the yaw datum)
 }
 
 export const OBJECT292_X_PROFILES = { object292: { build: buildObject292X } } as const;
