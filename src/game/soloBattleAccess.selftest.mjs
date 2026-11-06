@@ -7,6 +7,7 @@ const runtime = {
   simStep: (...args) => calls.push(['simStep', ...args]),
   createCollider: (...args) => calls.push(['createCollider', ...args]),
   prepareNextOpeningRoute: (...args) => calls.push(['prepareNextOpeningRoute', ...args]),
+  soloKernelsSettled: async () => {},
 };
 let loads = 0;
 const access = createSoloBattleRuntimeAccess(async () => {

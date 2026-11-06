@@ -63,6 +63,10 @@ it happens; a NaN the kernel answered (its ground's) passes.
     world's own obstacle grid, its ground mirrored from the battle's overlay. Each battle chooses once, at its setup
     (2026-11-02 audit S2): set up once the module is ready, it rides the kernels for its hulls' support and its obstacle
     query alike; set up before, it stays on the TypeScript to its end, and the next battle on that world rides them.
+    The battle entry waits for the module (round 3 X10): the solo authority (`game/soloBattleAccess.ts`, whose chunk
+    the covered entry loads beside the world) is ready once its chunk's kernels are installed or failed, or after
+    `SOLO_KERNELS_ENTRY_WAIT_MS` (3 s, `game/soloBattleRuntime.ts`), so a first battle no longer loses them to a race
+    with its own chunk. Past the bound the load goes on.
   - `?simKernels=wasm-check` runs both in a solo battle: the TypeScript drives, every answer of the kernels is compared,
     and `window.__SIM_KERNELS.check` counts the comparisons and mismatches.
 

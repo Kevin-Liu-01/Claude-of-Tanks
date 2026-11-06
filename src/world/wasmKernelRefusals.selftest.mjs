@@ -8,7 +8,9 @@
 // - `protocol_refusal` kept the last refusal for ever, so the host could not tell a refused NaN from an answered one: a
 //   hull's sample between its query and its begin went into the sim as NaN unasserted, and a walk's entry read before
 //   its lane handed out a record was reported as a nested scan. The code is now the last checked call's (0 when taken);
-// - the bind's replay ignored a crater the kernel refused (the revision check began after the replay, so it absorbed it).
+// - the bind's replay ignored a crater the kernel refused (the revision check began after the replay, so it absorbed it);
+// - (round 3 B15) the clocks: the host asserts the kernel's overlay clock equals the overlay's at the bind, each step and
+//   each reset; held here with overlays whose clock parts from the kernel's at each of the three.
 // Held on the committed package through its raw exports and through the production seam (instantiateWorldKernels).
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
@@ -128,6 +130,46 @@ const box = (cx, cz) => ({ kind: 'building', min: [cx - 1.5, 0, cz - 1.5], max: 
   kernels.mirrorOverlay(null);
 }
 
+// ---- the mirrored ground's clock is asserted in step with the overlay's at the bind, each step and each reset (round 3
+// B15: no receipt put the two clocks apart, so the assert could have been a no-op and every receipt would pass)
+{
+  const clockApart = (what) => new RegExp(`mirrored ground's clock reads .* where the overlay's reads .* \\(${what}\\)`);
+  // the overlay itself, bound, stepped and reset: the clocks never part
+  const kernels = instantiateWorldKernels(module, flat);
+  const overlay = createTerrainDeformation();
+  overlay.setTime(1.5);
+  kernels.mirrorOverlay(overlay);
+  overlay.setTime(2.25);
+  overlay.setTime(Infinity);
+  overlay.reset();
+  overlay.setTime(0.5);
+  kernels.mirrorOverlay(null);
+  // the bind: an overlay whose clock reads a time the kernel unsets (Infinity, where the overlay's own setTime unsets it)
+  const unsetBy = createTerrainDeformation();
+  const infinite = { clockS: Infinity, stamps: [], get revision() { return unsetBy.revision; }, mirror: (m) => unsetBy.mirror(m) };
+  assert.throws(() => instantiateWorldKernels(module, flat).mirrorOverlay(infinite), clockApart('the bind'),
+    'a clock the kernel cannot hold throws at the bind');
+  // a step: an overlay that tells its mirrors another time than its clock reads
+  const told = createTerrainDeformation();
+  const skewed = Object.create(told, {
+    mirror: { value: (m) => told.mirror({ crater: m.crater, rubble: m.rubble, course: m.course, reset: m.reset, time: (t) => m.time(t + 0.25) }) },
+  });
+  instantiateWorldKernels(module, flat).mirrorOverlay(skewed);
+  assert.throws(() => told.setTime(3), clockApart('a step'), 'a step whose told time parts from the clock throws where it happens');
+  // a reset: an overlay whose reset keeps its clock (the overlay before the 2026-11-02 audit S2: the next battle's first
+  // heap started on the last battle's time)
+  const kept = createTerrainDeformation();
+  let lastS = NaN;
+  const keeping = Object.create(kept, {
+    clockS: { get: () => (Number.isNaN(kept.clockS) ? lastS : kept.clockS) },
+    setTime: { value: (t) => { kept.setTime(t); lastS = kept.clockS; } },
+  });
+  instantiateWorldKernels(module, flat).mirrorOverlay(keeping);
+  keeping.setTime(4);
+  assert.throws(() => keeping.reset(), clockApart('a reset'), 'a reset that keeps the overlay\'s clock throws (the kernel\'s is unset)');
+}
+
 console.log('wasmKernelRefusals selftest passed: a heap rises from the start it was given whatever the kernel\'s clock; every '
   + 'refusal names its code and the code is the last checked call\'s; a refused sample throws at the seam while an answered '
-  + 'NaN passes; a walk\'s missing entry says why; a replayed crater the kernel refuses throws at the bind');
+  + 'NaN passes; a walk\'s missing entry says why; a replayed crater the kernel refuses throws at the bind; the two clocks '
+  + 'parted at the bind, a step or a reset throw there');

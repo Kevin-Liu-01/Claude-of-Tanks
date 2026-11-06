@@ -9,8 +9,11 @@
 //   on its TypeScript support field (no kernel field made, no world mirrored), and its obstacle query is the world's;
 // - the next battle on the same world rides the kernels from its setup: its support field is the kernels' (its hulls
 //   stand on it, none on the TypeScript's) and its obstacle query the kernel grid;
-// - a third battle on that world reuses the world's kernels (one instance, one field), and every stamp its ground holds
-//   reaches them once: the kernels' ground reads the TypeScript deformed field's, bit for bit, at each crater.
+// - a third battle on that world reuses the world's kernels (one instance, one field), its own steps stand its hulls on
+//   it (counted from its setup, not since battle 2: round 3 B15), and every stamp its ground holds reaches them once: the
+//   kernels' ground reads the TypeScript deformed field's, bit for bit, over each stamp whatever its kind (the map's
+//   craters, a crater, a heap and a course laid in the battle), before its clock runs and after (round 3 B15: the loop
+//   visited craters only).
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { createBus, createCollider, createGameState, setSoloWorldKernels, setupBattle, simStep } from './state.ts';
@@ -19,7 +22,7 @@ import { ensureAuthorityFleet } from '../vehicles/authorityFleet.ts';
 import { TANK_IDS } from '../vehicles/specs.ts';
 import { compileWorldKernels } from '../world/wasmWorldKernels.ts';
 import { createSoloWorldKernels } from '../world/soloWorldKernelProvider.ts';
-import { createDeformedHeightField } from '../sim/terrainDeformation.ts';
+import { createDeformedHeightField, stampBounds } from '../sim/terrainDeformation.ts';
 import { createDedicatedWorldCollision } from '../../server/dedicatedWorldCollision.ts';
 
 const MAP = 'verdant';
@@ -108,22 +111,41 @@ try {
   assert.equal(game._supportField, kernels.field, 'the battle reads it');
   assert.equal(report.worlds, 1, 'a world mirrors its ground onto one instance for its life');
   assert.equal(game._obstacleQuery, kernelQuery, 'the same kernel grid');
+  // (round 3 B15) one stamp of each kind laid on the battle's ground, through the overlay's own writers: a crater, a heap
+  // rising from 0.02 s (so the clock's steps move it) and a course
   const [px, , pz] = world.spawnPoints.player.pos;
   assert.ok(ground.addCrater(px + 18, pz + 14, 3, 1, 0.4, 77), 'a crater laid on the battle\'s ground');
-  const typescriptGround = createDeformedHeightField(world.heightField, ground);
+  ground.addRubble(px - 22, pz + 16, 5, 3.5, 0.6, 1.4, 0.02);
+  const courseYaw = 0.35;
+  ground.addCourse(Object.freeze({ kind: 'course', cx: px + 4, cz: pz - 26, yaw: courseYaw, c: Math.cos(courseYaw), s: Math.sin(courseYaw),
+    hw: 3, skirtM: 1.5, profile: new Float64Array([-6, 0, -2, 0.8, 2, 0.8, 6, 0]) }));
   const bits = (value) => Buffer.from(new Float64Array([value]).buffer).toString('hex');
-  const craters = ground.stamps.filter((stamp) => stamp.kind === 'crater');
-  for (const crater of craters) {
-    for (let i = -3; i <= 3; i++) {
-      for (let k = -3; k <= 3; k++) {
-        const x = crater.x + i * 0.61 * crater.radiusM, z = crater.z + k * 0.53 * crater.radiusM;
-        const want = typescriptGround.getContactHeightAt(x, z), got = kernels.field.getTerrainContactHeightAt(x, z);
-        assert.equal(bits(got), bits(want), `battle 3, the crater at (${crater.x}, ${crater.z}): the kernels' ground at (${x}, ${z}) reads ${got} where the TypeScript's reads ${want} (a stamp told twice, or lost)`);
+  const box = [0, 0, 0, 0];
+  /** Every stamp the ground holds, whatever its kind: a 7 x 7 grid over its bounds read on both grounds, bit for bit. */
+  const everyStampReadsOnce = (when) => {
+    const typescriptGround = createDeformedHeightField(world.heightField, ground);
+    const kinds = new Set();
+    for (const stamp of ground.stamps) {
+      kinds.add(stamp.kind);
+      stampBounds(stamp, box);
+      for (let i = 0; i <= 6; i++) {
+        for (let k = 0; k <= 6; k++) {
+          const x = box[0] + (box[2] - box[0]) * (i + 0.37) / 7, z = box[1] + (box[3] - box[1]) * (k + 0.61) / 7;
+          const want = typescriptGround.getContactHeightAt(x, z), got = kernels.field.getTerrainContactHeightAt(x, z);
+          assert.equal(bits(got), bits(want), `battle 3 ${when}, the ${stamp.kind} at (${stamp.x ?? stamp.cx}, ${stamp.z ?? stamp.cz}): the kernels' ground at (${x}, ${z}) reads ${got} where the TypeScript's reads ${want} (a stamp told twice, or lost)`);
+        }
       }
     }
-  }
+    assert.deepEqual([...kinds].sort(), ['course', 'crater', 'rubble'], `battle 3 ${when}: every kind of stamp was read (${[...kinds]})`);
+  };
+  everyStampReadsOnce('before its first step (the clock unset)');
+  // (round 3 B15) the hulls this battle's own steps begin: counted from here, not since battle 2 made the field
+  const kernelsBefore3 = kernels.hulls(), typescriptBefore3 = typescriptHulls();
   step3();
-  assert.ok(kernels.hulls() > 0);
+  assert.ok(kernels.hulls() > kernelsBefore3, `battle 3's own steps stood its hulls on the kernels' field (${kernels.hulls() - kernelsBefore3} begun)`);
+  assert.equal(typescriptHulls(), typescriptBefore3, 'and none on the TypeScript\'s');
+  assert.ok(ground.clockS > 0.02 && ground.clockS < 2.02, `the heap is rising at the battle's clock (${ground.clockS} s)`);
+  everyStampReadsOnce('after its steps (the heap rising)');
 } finally {
   setSoloWorldKernels(null);
   world.release?.();
@@ -131,5 +153,5 @@ try {
 
 console.log('soloKernelChoice selftest passed: kernels landing between a battle\'s setup and its first step leave its hulls on the '
   + 'TypeScript field; the next battle on the world stands its hulls on the kernels\' field from its setup, and a third reuses '
-  + 'that one instance, its ground\'s every crater reading once on it');
+  + 'that one instance, its own steps standing its hulls there and its ground\'s every stamp (crater, heap, course) reading once on it');
 process.exit(0);

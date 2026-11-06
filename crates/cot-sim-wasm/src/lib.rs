@@ -962,7 +962,7 @@ pub extern "C" fn clearance_lane_next(walk: u32, sx: f64, sz: f64, dx: f64, dz: 
     state().clearance_lane_next(walk, sx, sz, dx, dz, reach, margin, skip)
 }
 
-/// The entry of the record walk `walk`'s `clearance_lane_next` returned last (NaN for a superseded walk).
+/// The entry of walk `walk`'s last lane record: NaN when superseded (refused) or before its first record (taken, code 0).
 #[unsafe(no_mangle)]
 pub extern "C" fn clearance_entry(walk: u32) -> f64 {
     state().clearance_entry(walk)
@@ -1212,11 +1212,19 @@ mod tests {
 
     #[test]
     fn a_missing_answer_buffer_names_its_refusal() {
-        let (mut s, grid) = loaded();
-        assert!(!s.grid_out(grid).is_null());
-        assert_eq!(s.refusal, ACCEPTED);
-        assert!(s.grid_out(77).is_null(), "a handle never made has no answer buffer");
-        assert_eq!(s.refusal, REFUSED_BAD_HANDLE, "and the null names its refusal (it left the code untouched)");
+        // (round 3 B15) through the exports the host calls, which the crate had before round 2 U37 (grid_new, grid_out_ptr,
+        // lattice_set_vertex, protocol_refusal), so this test runs against that lib.rs and fails on its assertion there.
+        // The instance's own STATE: the only test that touches it (the others hold a State of their own).
+        let boxes = [0.0, 0.0, 1.0, 1.0];
+        let grid = grid_new(boxes.as_ptr(), 1, 24.0);
+        assert!(!grid_out_ptr(grid).is_null());
+        assert_eq!(protocol_refusal(), ACCEPTED);
+        // an older refusal of another kind, so the null below must name its own
+        assert_eq!(lattice_set_vertex(u32::MAX, 0, 1.0), REFUSED_OUT_OF_RANGE);
+        assert!(grid_out_ptr(77).is_null(), "a handle never made has no answer buffer");
+        assert_eq!(protocol_refusal(), REFUSED_BAD_HANDLE, "and the null names its refusal (it left the code untouched)");
+        assert!(!grid_out_ptr(grid).is_null());
+        assert_eq!(protocol_refusal(), ACCEPTED, "and a taken call after it reads 0");
     }
 
     #[test]

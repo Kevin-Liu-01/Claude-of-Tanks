@@ -39,9 +39,6 @@ const NOT_LOADED = 1, OUT_OF_ORDER = 2, MISMATCH = 3, CONFLICT = 4, OUT_OF_RANGE
 
 // ---- the lattice is written once, and the bench's fixture fill rides the checked writers
 {
-  // (round 2 Q19: imported here, so this receipt copied alone onto a tree without the bench's checked fill fails at the
-  // contact block's hazard above, not when the module links)
-  const { fillWasmLattice } = await import('../../tools/rust-kernel-bench-core.mjs');
   const w = instance();
   assert.equal(typeof w.lattice_heights_ptr, 'undefined', 'no raw write pointer into the lattice');
   assert.equal(typeof w.lattice_ready_ptr, 'undefined');
@@ -66,6 +63,9 @@ const NOT_LOADED = 1, OUT_OF_ORDER = 2, MISMATCH = 3, CONFLICT = 4, OUT_OF_RANGE
   }
   const fx = { lattice, folds: Float64Array.from(folds) };
   const bench = instance(() => { throw new Error('a filled lattice never asks the height function'); });
+  // (round 2 Q19, round 3: imported only here, after this block's own write-once asserts, so this receipt copied alone onto
+  // a tree without the bench's checked fill fails at those hazards, not when the module links)
+  const { fillWasmLattice } = await import('../../tools/rust-kernel-bench-core.mjs');
   fillWasmLattice(bench, fx);
   const sampler = createTerrainContactSampler(steep);
   let seed = 0x1234567;
