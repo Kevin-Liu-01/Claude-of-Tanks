@@ -1138,7 +1138,9 @@ export function createAuthoritativeMatch({
     concealers: worldConcealers,
     getEquipment: (entity) => {
       const tank = entityById.get(entity.id);
-      return tank ? consumableSpottingIds(tank.consumables, tank.equip, timeS) : null;
+      // the kit applyEquipmentToCombat wrote (combat.equip, gated by the hull), as the solo step's spotting reads it
+      // (round 4 F8); tank.equip is the same array, assigned beside each call
+      return tank ? consumableSpottingIds(tank.consumables, tank.combat.equip, timeS) : null;
     },
     getCamoBonus: (entity) => (entityById.get(entity.id)?.camoPaint ? CAMO_PAINT_BONUS : 0),
   });

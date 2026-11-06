@@ -1,9 +1,9 @@
-// Round 4 F8 (2026-11-06; the 2026-11-02 audit's spotting parity, M6): the solo step's spotting reads the kit
-// applyEquipmentToCombat wrote (combat.equip, the hull-gated list), as the authority's does (its tank.equip is that very
-// array). It read entity.equip, the loadout the battle seat handed in. That list holds the same ids (state.ts
-// loadEquipment gates a saved loadout with the hull's spec, a bot's defaultLoadoutFor with its own), but it is another
-// array, and Fresh Foliage's list switches on the array it is handed (consumableRules.ts consumableSpottingIds): each
-// solo life's first spotting read under Foliage rebuilt the list from the loadout, not from the kit the authority reads.
+// Round 4 F8 (2026-11-06; the 2026-11-02 audit's spotting parity, M6): both drivers' spotting reads the kit
+// applyEquipmentToCombat wrote (combat.equip, the hull-gated list). The authority read tank.equip, that very array; the solo
+// step read entity.equip, the loadout the battle seat handed in. That list holds the same ids (state.ts loadEquipment
+// gates a saved loadout with the hull's spec, a bot's defaultLoadoutFor with its own), but it is another array, and
+// Fresh Foliage's list switches on the array it is handed (consumableRules.ts consumableSpottingIds): each solo life's
+// first spotting read under Foliage rebuilt the list from the loadout, not from the kit the authority reads.
 // Here a KV-2 (WWII) whose saved loadout still holds thermal_sight, a modern sight it cannot mount, uses Fresh Foliage
 // with a foe 300 m off (inside the range where the spotting reads equipment), on each driver.
 import assert from 'node:assert/strict';
@@ -37,7 +37,7 @@ let authorityIds;
   match.onMatchReady();
   const tank = match.entityById.get('kv');
   assert.deepEqual(tank.combat.equip, ['optics'], 'the authority gates thermal_sight off the KV-2');
-  assert.equal(tank.equip, tank.combat.equip, 'the authority\'s spotting reads the kit applyEquipmentToCombat wrote');
+  assert.equal(tank.equip, tank.combat.equip, 'the authority\'s seat keeps the kit applyEquipmentToCombat wrote');
   const idle = { throttle: 0, steer: 0, brake: false, fire: false, aimYaw: 0, aimPitch: 0, shellSlot: 0 };
   match.step({ dt: 1 / 60, inputs: new Map([['kv', { ...idle, actionBits: 1 << ITEMS.indexOf('foliage') }]]) });
   assert.ok(tank.consumables.until.foliage > 0, 'the authority: Fresh Foliage is on');
