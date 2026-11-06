@@ -1016,8 +1016,8 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 28318,
-      "sha256": "a47d716f24caec61daf84ac4afbdbb6b7f854fdd0bfe69c49a58d877b34c9a0d"
+      "bytes": 28136,
+      "sha256": "7791751871ba9e6bffcb0556299430f84269dfbe61f9260784f6078c96a6398f"
     },
     "markings": {
       "file": "m163_vads_markings.png",
@@ -1030,8 +1030,8 @@
     "technicalLabels": {
       "file": "m163_vads_technical.json",
       "mime": "application/json",
-      "bytes": 4317,
-      "sha256": "677c7745c50b5a154c5f137be526aefbdfea4d27df423272af4784e669501e0a"
+      "bytes": 4318,
+      "sha256": "5743a19241e011aa703c2d0aeb0359f41a4f7367cb653e470d5cf7628f5ae1a7"
     }
   }
 }
