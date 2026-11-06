@@ -18,7 +18,7 @@ import type { RtcClientLink, RtcHostAcceptor, RtcHostAcceptorStats } from '../ma
 import { CLOSE_REASON, MESSAGE_TYPE } from '../wire/constants.ts';
 import { encodeMessage } from '../wire/codec.ts';
 import type { CloseReasonId } from '../wire/constants.ts';
-import { HOST_LOOPBACK_PEER } from './hostProtocol.ts';
+import { HOST_LOOPBACK_PEER, bootHoldNoticeMs } from './hostProtocol.ts';
 import { ELECTED_HOST_BOOT_MS, RESUME_HOLD_MS } from '../match/recovery.ts';
 import { reportSimKernels } from '../../world/simKernelsReport.ts';
 import type { HostBootConfig, HostCoreStats, HostMatchReport, HostPort, HostToWorkerMessage, WorkerToHostMessage } from './hostProtocol.ts';
@@ -172,11 +172,11 @@ export function createMatchHost({
   loopback.server.onFrame((bytes) => {
     if (!ready) {
       // (round 3 B1/X6) the host's own seat waits for the boot as a peer's does (matchHostCore.ts noticeHeld): its first
-      // word hears how long at most, the boot's bound left and a resume's hold after it; the core tells the hold's own
+      // word hears how long at most, the boot's bound left and a resume's hold after it (bootHoldNoticeMs, the core's
+      // formula and bound); the core tells the hold's own
       if (!queuedLoopback.length) {
-        const bootLeftMs = bootStartedAtMs === null ? bootTimeoutMs : Math.max(0, bootTimeoutMs - (clock() - bootStartedAtMs));
-        const holds = config === null || (config.resume?.holdForSeats?.length ?? 0) > 0;
-        loopback.server.send(encodeMessage({ type: MESSAGE_TYPE.HOLD, holdMs: Math.min(0xffffffff, Math.ceil(bootLeftMs + (holds ? RESUME_HOLD_MS : 0))) }));
+        const bootLeftMs = bootStartedAtMs === null ? bootTimeoutMs : bootTimeoutMs - (clock() - bootStartedAtMs);
+        loopback.server.send(encodeMessage({ type: MESSAGE_TYPE.HOLD, holdMs: bootHoldNoticeMs(bootLeftMs, RESUME_HOLD_MS, config) }));
       }
       queuedLoopback.push(bytes.slice());
       return;
@@ -330,7 +330,10 @@ export function createMatchHost({
         else if (current === 'failed' || current === 'stopped') { off(); reject(new Error(detail || current)); }
       });
       bootTimer = setTimer(() => { bootTimer = null; if (!ready) fail('host boot timed out'); }, bootTimeoutMs);
-      post({ type: 'boot', config: next });
+      // the core tells the seats its boot holds this bound (bootHoldNoticeMs), counted from its own start of the boot: the
+      // message's transit later than this timer's, so a peer is told at most that much more than the runtime allows (its
+      // link is dropped when the timer fails the boot, teardown)
+      post({ type: 'boot', config: next, bootTimeoutMs });
     });
     return startPromise;
   }

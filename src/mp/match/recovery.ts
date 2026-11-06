@@ -38,6 +38,16 @@ export const ELECTED_HOST_BOOT_MS = 30_000;
  */
 export const MIGRATION_WELCOME_ALLOWANCE_MS = ELECTED_HOST_BOOT_MS + RESUME_HOLD_MS;
 
+/**
+ * What a seat allows past the end of the hold its host announced (wire HOLD, MatchClient receiveHold), before its stall
+ * clock runs (round 3 B1, review r1). The WELCOME that ends a hold leaves the host's Worker through the host's main thread
+ * (matchHost.ts link_send to the peer's channel), and a long task there holds it back: a kept host loading its battle world
+ * on a slow device, the case the 33 s bound was raised for (round 2 Q1). The stall clock alone left 5 s for it; this adds
+ * a resume hold's length, within the MIGRATION_WELCOME_ALLOWANCE_MS cap. A host that overruns it is left 8 s after the end
+ * it announced, not 33 s after the link opened.
+ */
+export const HOLD_RELEASE_MARGIN_MS = RESUME_HOLD_MS;
+
 export type ConnectionPhase =
   | 'idle' | 'connecting' | 'handshaking' | 'live' | 'stalled' | 'reconnecting' | 'failed' | 'left' | 'closed';
 
@@ -59,7 +69,8 @@ export interface RecoveryInput {
   welcomedAtMs?: number | null;
   /**
    * How much longer than `stallMs` the current socket may wait for its WELCOME, from its open: what its host announced it
-   * holds the seat's HELLO for (wire HOLD, round 3 B1/X6: the time to the notice plus its holdMs), else
+   * holds the seat's HELLO for (wire HOLD, round 3 B1/X6: the time to the notice plus its holdMs and HOLD_RELEASE_MARGIN_MS),
+   * else
    * MIGRATION_WELCOME_ALLOWANCE_MS on a link to a host the room just elected (its boot and its resume hold may keep this
    * seat's HELLO unanswered that long), 0 otherwise.
    */

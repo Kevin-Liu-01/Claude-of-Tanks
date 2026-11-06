@@ -10,18 +10,25 @@
 // real MatchClient, in virtual time, a 4 s boot and a 3 s hold that alice's partner bob never ends:
 //   1. a kept host (same generation): alice is told twice (boot, hold), asks for no fresh link, and is welcomed when the
 //      hold ends (before: stalled at 5 s, inside the hold);
-//   2. a newly elected host that goes silent after it announced its hold: alice asks for a fresh link at the announced
-//      hold's end plus her stall clock, about 12 s after her link opened (before: 38 s, the fixed bound's);
+//   2. a newly elected host that goes silent once it has announced its hold: alice asks for a fresh link at the announced
+//      hold's end plus its release margin and her stall clock, 15 s after her link opened (before: 38 s, the fixed
+//      bound's);
 //   3. the kept host's own seat, over its host runtime's loopback (matchHost.ts): told during the boot and again in the
 //      hold, welcomed when the hold ends without a fresh link (before: stalled at 5 s).
+// Review r1: the core's boot after its world resolves and its HELLO verification (WebCrypto) run in real time, while
+// virtual time moved 50 ms every four turns of the loop, so under load the hold notice landed steps late and case 2 went
+// silent on a clock threshold before it (one run failed at 38 s). Now virtual time moves only once that work has settled
+// (drainUntil: the boot posted ready, and the held HELLO was answered), and case 2 goes silent after the hold's notice by
+// message, so every time read here is the host's own and the windows below are exact.
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { signSeatToken } from '../../../server/match/seatToken.ts';
 import { MatchClient } from '../match/matchClient.ts';
+import { HOLD_RELEASE_MARGIN_MS, RESUME_HOLD_MS } from '../match/recovery.ts';
 import { MigratingTransport, createLoopbackPair } from '../transport/index.ts';
 import { decodeMessage } from '../wire/codec.ts';
 import { MESSAGE_TYPE, PHASE, TICK_MS, VERDICT } from '../wire/constants.ts';
-import { createHostPortPair } from './hostProtocol.ts';
+import { HOST_LOOPBACK_PEER, createHostPortPair } from './hostProtocol.ts';
 import { createMatchHostCore } from './matchHostCore.ts';
 import { createMatchHost } from './matchHost.ts';
 import { FakeSignalRelay, RtcWorld } from '../transport/rtcDouble.test-support.ts';
@@ -37,8 +44,21 @@ const hostSecret = createHash('sha256').update('hold-notice').digest('hex');
 const aliceToken = signSeatToken(hostSecret, { v: 1, roomId: 'HOLDNT', seat: 0, playerId: 'alice', name: 'Alice', team: 'alpha', specId: 'm1a1_abrams_hc', iat: Date.now() - 1000, exp: Date.now() + 3_600_000 });
 const BOOT_MS = 4_000;
 const STEP_MS = 50;
+const STALL_MS = 5_000;
 
-async function heldSeat({ newHost, silentAfterMs = Infinity, untilMs = 45_000 }) {
+/**
+ * Turn the event loop until `settled()` (the real async work of this virtual instant is done), with `each` after every
+ * turn: setImmediate turns first, then 5 ms sleeps (WebCrypto and module loads run on other threads), capped by count.
+ */
+async function drainUntil(settled, what, each = () => {}) {
+  for (let round = 0; !settled(); round++) {
+    if (round > 24_200) throw new Error(`holdNotice: ${what} never settled (${round} turns)`);
+    await new Promise((resolve) => (round < 200 ? setImmediate(resolve) : setTimeout(resolve, 5)));
+    each();
+  }
+}
+
+async function heldSeat({ newHost, silentAfterHold = false, untilMs = 45_000 }) {
   let nowMs = 100_000;
   let serial = 0;
   const timers = new Map();
@@ -56,17 +76,18 @@ async function heldSeat({ newHost, silentAfterMs = Infinity, untilMs = 45_000 })
       }
     },
   };
-  const settle = async (rounds = 4) => { for (let n = 0; n < rounds; n++) await new Promise((resolve) => setImmediate(resolve)); };
   // the host core, its boot's world a 4 s load
   const port = createHostPortPair();
+  const host = { worldLoaded: false, ready: false, failed: null };
   const core = createMatchHostCore({ port: port.worker, now: time.clock, schedule: time.schedule, setTimer: time.setTimer, clearTimer: time.clearTimer,
-    buildWorld: () => new Promise((resolve) => time.setTimer(() => resolve('terrain'), BOOT_MS)), keyframeIntervalMs: 60_000, configIntervalMs: 60_000, reportIntervalMs: 60_000 });
+    buildWorld: () => new Promise((resolve) => time.setTimer(() => { host.worldLoaded = true; resolve('terrain'); }, BOOT_MS)),
+    keyframeIntervalMs: 60_000, configIntervalMs: 60_000, reportIntervalMs: 60_000 });
   // alice's client: welcomed by the old host's timeline once, then its link moves to this host as its boot begins
   const old = createLoopbackPair({ clock: time.clock });
   old.server.open();
   const migrating = new MigratingTransport(old.client);
   const client = new MatchClient({ transport: migrating, token: aliceToken, clock: time.clock });
-  const seen = { notices: [], welcomeAtMs: null, stalledAtMs: null };
+  const seen = { notices: [], welcomeAtMs: null, stalledAtMs: null, closed: false };
   client.onPhase((phase) => { if (phase === 'stalled' && seen.stalledAtMs === null) seen.stalledAtMs = nowMs; });
   client.connect();
   old.pump(nowMs);
@@ -77,10 +98,10 @@ async function heldSeat({ newHost, silentAfterMs = Infinity, untilMs = 45_000 })
   let silent = false;
   link.server.onFrame((bytes) => port.main.post({ type: 'link_frame', peer: 1, bytes: bytes.slice().buffer }));
   port.main.onMessage((message) => {
-    if (message.type !== 'link_send' || message.peer !== 1) return;
-    // the host goes quiet once its boot is done and its hold announced (its hold's own notice is sent as the boot ends)
-    if (nowMs - openedAtMs > silentAfterMs) silent = true;
-    if (silent) return;
+    if (message.type === 'ready') host.ready = true;
+    if (message.type === 'boot_failed') host.failed = message.error;
+    if (message.type === 'link_close' && message.peer === 1) seen.closed = true;
+    if (message.type !== 'link_send' || message.peer !== 1 || silent) return;
     const bytes = new Uint8Array(message.bytes);
     const decoded = decodeMessage(bytes);
     if (decoded.ok && decoded.message.type === MESSAGE_TYPE.HOLD) {
@@ -88,7 +109,12 @@ async function heldSeat({ newHost, silentAfterMs = Infinity, untilMs = 45_000 })
     }
     if (decoded.ok && decoded.message.type === MESSAGE_TYPE.WELCOME && seen.welcomeAtMs === null) seen.welcomeAtMs = nowMs - openedAtMs;
     link.server.send(bytes);
+    // the host goes quiet once it has announced its hold (the second notice, as alice's HELLO joins the hold)
+    if (silentAfterHold && seen.notices.length >= 2) silent = true;
   });
+  // this instant's real async work is done: a loaded world's boot posted ready, and a booted host answered the HELLO it held
+  const settled = () => host.failed !== null || ((!host.worldLoaded || host.ready)
+    && (!host.ready || seen.notices.length >= 2 || seen.welcomeAtMs !== null || seen.closed));
   // a fallback restart's state (the kept host's last resort) or any resume: alice and bob awaited, bob never back
   const playing = { tick: 900, serverTimeMs: Math.round(900 * TICK_MS), ackedInputTick: 0, ackedFireSeq: 0, ackedActionSeq: 0, inputMarginTicks: 0,
     meta: { phase: PHASE.PLAYING, countdownMs: 0, battleTimeMs: 15_000, verdict: VERDICT.NONE, verdictReason: '', destructibleRevision: 0 },
@@ -99,15 +125,19 @@ async function heldSeat({ newHost, silentAfterMs = Infinity, untilMs = 45_000 })
   port.main.post({ type: 'link_open', peer: 1, label: 'alice', playerId: 'alice' });
   const openedAtMs = nowMs;
   migrating.replace(link.client, newHost ? 'host changed' : 'host kept');
-  await settle();
+  // the core takes the boot and the link at this instant (its world due BOOT_MS from now)
+  await new Promise((resolve) => setImmediate(resolve));
+  await drainUntil(settled, 'the link\'s open');
   while (nowMs - openedAtMs < untilMs && seen.stalledAtMs === null && (seen.welcomeAtMs === null || nowMs - openedAtMs < seen.welcomeAtMs + 500)) {
     nowMs += STEP_MS;
     time.fireDue();
     link.pump(nowMs);
-    await settle();
+    await new Promise((resolve) => setImmediate(resolve));
+    await drainUntil(settled, `the host at ${nowMs - openedAtMs} ms`);
     link.pump(nowMs);
     client.update(nowMs, STEP_MS / 1000);
   }
+  assert.equal(host.failed, null, 'setup: the core booted');
   const stats = client.stats();
   client.dispose();
   core.dispose();
@@ -137,12 +167,23 @@ async function hostSeat() {
   const world = new RtcWorld();
   const relay = new FakeSignalRelay('alice', 1);
   const cores = [];
+  // what the core tells its runtime: ready, and its own notice to the loopback seat when the HELLO joins the hold
+  const core = { worldLoaded: false, ready: false, failed: null, noticed: false, welcomed: false };
   const host = createMatchHost({
     playerId: 'alice', generation: () => 1, createPeerConnection: world.createPeerConnection,
     createPort: () => {
       const pair = createHostPortPair();
       cores.push(createMatchHostCore({ port: pair.worker, now: time.clock, schedule: time.schedule, setTimer: time.setTimer, clearTimer: time.clearTimer,
-        buildWorld: () => new Promise((resolve) => time.setTimer(() => resolve('terrain'), BOOT_MS)), keyframeIntervalMs: 60_000, configIntervalMs: 60_000, reportIntervalMs: 60_000 }));
+        buildWorld: () => new Promise((resolve) => time.setTimer(() => { core.worldLoaded = true; resolve('terrain'); }, BOOT_MS)),
+        keyframeIntervalMs: 60_000, configIntervalMs: 60_000, reportIntervalMs: 60_000 }));
+      pair.main.onMessage((message) => {
+        if (message.type === 'ready') core.ready = true;
+        if (message.type === 'boot_failed') core.failed = message.error;
+        if (message.type !== 'link_send' || message.peer !== HOST_LOOPBACK_PEER) return;
+        const decoded = decodeMessage(new Uint8Array(message.bytes));
+        if (decoded.ok && decoded.message.type === MESSAGE_TYPE.HOLD) core.noticed = true;
+        if (decoded.ok && decoded.message.type === MESSAGE_TYPE.WELCOME) core.welcomed = true;
+      });
       return pair.main;
     },
     room: { signaler: relay.signalerFor('alice'), reportMatch: async () => {} }, clock: time.clock, setTimer: time.setTimer, clearTimer: time.clearTimer,
@@ -156,15 +197,23 @@ async function hostSeat() {
   let stalledAtMs = null;
   client.onPhase((phase) => { if (phase === 'stalled' && stalledAtMs === null) stalledAtMs = nowMs - startedAtMs; });
   client.connect();
-  const settle = async (rounds = 4) => { for (let n = 0; n < rounds; n++) { await new Promise((resolve) => setImmediate(resolve)); relay.flush(); world.flush(); host.pump(nowMs); } };
+  const flush = () => { relay.flush(); world.flush(); host.pump(nowMs); };
+  const settle = async (rounds = 4) => { for (let n = 0; n < rounds; n++) { await new Promise((resolve) => setImmediate(resolve)); flush(); } };
+  // this instant's real async work is done: a loaded world's boot posted ready, and the core answered the queued HELLO
+  const settled = () => core.failed !== null || ((!core.worldLoaded || core.ready) && (!core.ready || core.noticed || core.welcomed));
   let welcomeAtMs = null;
+  // the core takes the boot at this instant (its world due BOOT_MS from now)
+  await settle(1);
   while (nowMs - startedAtMs < 20_000 && stalledAtMs === null && welcomeAtMs === null) {
     nowMs += STEP_MS;
     time.fireDue();
-    await settle();
+    await settle(1);
+    await drainUntil(settled, `the host runtime at ${nowMs - startedAtMs} ms`, flush);
+    flush();
     client.update(nowMs, STEP_MS / 1000);
     if (client.welcome && welcomeAtMs === null) welcomeAtMs = nowMs - startedAtMs;
   }
+  assert.equal(core.failed, null, 'setup: the host runtime\'s core booted');
   const notices = client.stats().holdNotices ?? 0;
   client.dispose();
   host.stop();
@@ -176,27 +225,30 @@ const wrong = [];
 // ---- 1. a kept host: the same generation, a 4 s boot and a 3 s hold
 const kept = await heldSeat({ newHost: false });
 if (kept.stalledAtMs !== null && (kept.welcomeAtMs === null || kept.stalledAtMs < kept.welcomeAtMs)) {
-  wrong.push(`kept host: alice asked for a fresh link ${kept.stalledAtMs} ms after her link opened, before her WELCOME (the boot ${BOOT_MS} ms, the hold up to 3000 ms)`);
+  wrong.push(`kept host: alice asked for a fresh link ${kept.stalledAtMs} ms after her link opened, before her WELCOME (the boot ${BOOT_MS} ms, the hold up to ${RESUME_HOLD_MS} ms)`);
 }
-if (!(kept.welcomeAtMs !== null && kept.welcomeAtMs >= BOOT_MS + 2_900 && kept.welcomeAtMs <= BOOT_MS + 3_400)) wrong.push(`kept host: alice was welcomed at ${kept.welcomeAtMs} ms (the hold's end, about ${BOOT_MS + 3000} ms)`);
-if (!(kept.notices.length === 2 && kept.notices[0].atMs < 500 && kept.notices[0].holdMs >= 32_000 && kept.notices[1].atMs >= BOOT_MS
-  && kept.notices[1].holdMs > 2_500 && kept.notices[1].holdMs <= 3_000)) {
+if (!(kept.welcomeAtMs !== null && kept.welcomeAtMs >= BOOT_MS + RESUME_HOLD_MS && kept.welcomeAtMs <= BOOT_MS + RESUME_HOLD_MS + STEP_MS)) wrong.push(`kept host: alice was welcomed at ${kept.welcomeAtMs} ms (the hold's end, ${BOOT_MS + RESUME_HOLD_MS} ms)`);
+// the first at her HELLO: what is left of the boot's 30 s bound and the hold; the second as her HELLO joins the hold, as the
+// boot ends: the whole hold
+if (!(kept.notices.length === 2 && kept.notices[0].atMs <= STEP_MS && kept.notices[0].holdMs === 30_000 + RESUME_HOLD_MS - kept.notices[0].atMs
+  && kept.notices[1].atMs === BOOT_MS && kept.notices[1].holdMs === RESUME_HOLD_MS)) {
   wrong.push(`kept host: the host's notices to alice ${JSON.stringify(kept.notices)} (one at her HELLO with the boot's bound and the hold, one when her HELLO joined the hold with what was left)`);
 }
 // ---- 2. a newly elected host that announced its hold and went silent
-const silent = await heldSeat({ newHost: true, silentAfterMs: BOOT_MS + 100 });
-const expectedStall = BOOT_MS + 3_000 + 5_000;
-if (!(silent.stalledAtMs !== null && Math.abs(silent.stalledAtMs - expectedStall) <= 600)) {
-  wrong.push(`elected host gone silent once its hold began: alice asked for a fresh link at ${silent.stalledAtMs} ms (its announced hold's end plus her stall clock: about ${expectedStall} ms; notices ${JSON.stringify(silent.notices)})`);
+const silent = await heldSeat({ newHost: true, silentAfterHold: true });
+const lastNotice = silent.notices.at(-1);
+const expectedStall = lastNotice ? lastNotice.atMs + lastNotice.holdMs + HOLD_RELEASE_MARGIN_MS + STALL_MS : NaN;
+if (!(silent.notices.length === 2 && lastNotice.atMs === BOOT_MS && silent.stalledAtMs !== null && silent.stalledAtMs >= expectedStall && silent.stalledAtMs <= expectedStall + STEP_MS)) {
+  wrong.push(`elected host gone silent once its hold began: alice asked for a fresh link at ${silent.stalledAtMs} ms (its announced hold's end, the release margin and her stall clock: ${expectedStall} ms; notices ${JSON.stringify(silent.notices)})`);
 }
 // ---- 3. the kept host's own seat over its loopback
 const own = await hostSeat();
 if (own.stalledAtMs !== null) wrong.push(`the host's own seat asked for a fresh link ${own.stalledAtMs} ms into the boot, before its WELCOME`);
-if (!(own.welcomeAtMs !== null && own.welcomeAtMs >= BOOT_MS + 2_900 && own.welcomeAtMs <= BOOT_MS + 3_400)) wrong.push(`the host's own seat was welcomed at ${own.welcomeAtMs} ms (the hold's end, about ${BOOT_MS + 3000} ms)`);
+if (!(own.welcomeAtMs !== null && own.welcomeAtMs >= BOOT_MS + RESUME_HOLD_MS && own.welcomeAtMs <= BOOT_MS + RESUME_HOLD_MS + STEP_MS)) wrong.push(`the host's own seat was welcomed at ${own.welcomeAtMs} ms (the hold's end, ${BOOT_MS + RESUME_HOLD_MS} ms)`);
 if (own.notices !== 2) wrong.push(`the host's own seat took ${own.notices} notices (one from its runtime in the boot, one from the core in the hold)`);
 if (wrong.length) {
   console.error(`holdNotice: a held seat's stall clock did not follow its host's announced hold:\n  ${wrong.join('\n  ')}`);
   assert.fail('a host that holds a seat\'s HELLO tells it how long, on any link, and the seat waits that long and no longer');
 }
 assert.equal(kept.holdNotices, 2, 'the client counts both notices');
-console.log(`holdNotice: a kept host's held seat waits through its ${BOOT_MS} ms boot and its hold (welcomed at ${kept.welcomeAtMs} ms, notices ${kept.notices.map((notice) => `${notice.holdMs} ms at ${notice.atMs}`).join(', ')}); a silent host's seat stalls at ${silent.stalledAtMs} ms (the fixed bound: ${5_000 + 33_000} ms); the host's own seat welcomed at ${own.welcomeAtMs} ms`);
+console.log(`holdNotice: a kept host's held seat waits through its ${BOOT_MS} ms boot and its hold (welcomed at ${kept.welcomeAtMs} ms, notices ${kept.notices.map((notice) => `${notice.holdMs} ms at ${notice.atMs}`).join(', ')}); a silent host's seat stalls at ${silent.stalledAtMs} ms (the fixed bound: ${STALL_MS + 33_000} ms); the host's own seat welcomed at ${own.welcomeAtMs} ms`);

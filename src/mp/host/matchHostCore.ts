@@ -28,7 +28,7 @@ import {
   applyResumeState, captureEntityExtras, chunkMigrationBlob, deriveMigrationKey, encodeBootConfig, encodeMigrationKeyframe, resumePhaseOf, sealMigrationBlob,
 } from './migrationState.ts';
 import type { MigrationKeyframe } from './migrationState.ts';
-import { MIGRATION_EVENT_KIND } from './hostProtocol.ts';
+import { MIGRATION_EVENT_KIND, bootHoldNoticeMs } from './hostProtocol.ts';
 import type { HostBootConfig, HostCoreStats, HostMatchReport, HostPort, HostPrepareConfig, HostToWorkerMessage, WorkerToHostMessage } from './hostProtocol.ts';
 import { loadCollisionWorld, loadWorldKernels } from './worldCollision.ts';
 import { simKernelsFailureReason, type SimKernelsStatus } from '../../world/simKernelsStatus.ts';
@@ -55,8 +55,6 @@ export interface MatchHostCoreOptions {
   helloTimeoutMs?: number;
   /** Ticks the actor keeps publishing after the verdict (the actor's default otherwise). */
   endedLingerTicks?: number;
-  /** The longest a migrated host holds its world still for the awaited seats (RESUME_HOLD_MS; 0 = never hold). */
-  resumeHoldMs?: number;
   /** This host's build line for the same-wire check (the actor's default, MATCH_BUILD, otherwise). */
   build?: string;
 }
@@ -164,7 +162,6 @@ export function createMatchHostCore({
   reportIntervalMs = ROOM_MATCH_POLL_MS,
   helloTimeoutMs = HELLO_TIMEOUT_MS,
   endedLingerTicks,
-  resumeHoldMs = RESUME_HOLD_MS,
   build,
 }: MatchHostCoreOptions): MatchHostCore {
   let actor: MatchActor | null = null;
@@ -179,6 +176,8 @@ export function createMatchHostCore({
   let bootGeneration = 0;
   /** When the boot began (now()); null before it. */
   let bootStartedMs: number | null = null;
+  /** The host runtime's boot bound (the boot message's bootTimeoutMs; ELECTED_HOST_BOOT_MS, its default, before one). */
+  let bootBoundMs = ELECTED_HOST_BOOT_MS;
   const links = new Map<number, PortLink>();
   // playerId: the room-authenticated peer that opened the link; a HELLO may only claim that peer's own seat
   const gates = new Map<number, { state: 'hello' | 'verifying' | 'attached'; queue: Uint8Array[]; timer: TimerHandle | null; playerId: string }>();
@@ -325,7 +324,7 @@ export function createMatchHostCore({
       // it hears how long the hold may still last (round 3 B1/X6)
       if (hold) {
         hold.held.set(peer, { playerId: verified.claims.playerId, attach: attachNow });
-        noticeHeld(peer, resumeHoldMs - (now() - hold.startedMs));
+        noticeHeld(peer, RESUME_HOLD_MS - (now() - hold.startedMs));
         if (arrivedSeats(hold) === hold.awaited.size) releaseHold('seats');
         return;
       }
@@ -348,14 +347,13 @@ export function createMatchHostCore({
   }
 
   /**
-   * The most a HELLO that arrives before the actor exists may wait: what is left of the boot's bound (ELECTED_HOST_BOOT_MS,
-   * matchHost.ts's boot timeout: past it the host fails itself and the room elects another), then the resume hold of a boot
-   * that awaits seats (a boot not yet asked for may be one).
+   * The most a HELLO that arrives before the actor exists may wait: what is left of the boot's bound (the host runtime's
+   * boot timeout, which the boot message carries: past it the runtime fails itself and the room elects another), then the
+   * resume hold of a boot that awaits seats (a boot not yet asked for may be one): bootHoldNoticeMs, the runtime's own
+   * formula for its loopback seat (review r1: two formulas, two bounds and two holds before).
    */
   function bootHoldLeftMs(): number {
-    const bootLeftMs = bootStartedMs === null ? ELECTED_HOST_BOOT_MS : Math.max(0, ELECTED_HOST_BOOT_MS - (now() - bootStartedMs));
-    const holds = resumeHoldMs > 0 && (config === null || (config.resume?.holdForSeats?.length ?? 0) > 0);
-    return bootLeftMs + (holds ? resumeHoldMs : 0);
+    return bootHoldNoticeMs(bootStartedMs === null ? bootBoundMs : bootBoundMs - (now() - bootStartedMs), RESUME_HOLD_MS, config);
   }
 
   /** The awaited seats back in the hold: a held link per seat, still open (a closed link leaves `held`). */
@@ -582,18 +580,18 @@ export function createMatchHostCore({
     // A migration with other seats in it holds the world still until they are back (RESUME_HOLD_MS); anything else runs now.
     const seatIds = new Set(next.seats.filter((seat) => seat.team !== 'spectator').map((seat) => seat.playerId));
     const awaited = resume ? [...new Set(resume.holdForSeats ?? [])].filter((playerId) => seatIds.has(playerId)) : [];
-    if (awaited.length && resumeHoldMs > 0) {
+    if (awaited.length) {
       const current = { awaited: new Set(awaited), held: new Map<number, { playerId: string; attach: () => void }>(), startedMs: now(), timer: null as TimerHandle | null };
       hold = current;
       holdStats = { heldMs: 0, released: null, awaited: awaited.length, arrived: 0 };
-      current.timer = setTimer(() => { current.timer = null; if (hold === current) releaseHold('timeout'); }, resumeHoldMs);
+      current.timer = setTimer(() => { current.timer = null; if (hold === current) releaseHold('timeout'); }, RESUME_HOLD_MS);
     } else {
       created.start();
     }
     const bootMs = Math.round(now() - bootStarted);
     post({ type: 'ready', tick: created.tick, entities: created.authority.entities.length, resumed: !!resume, kernels: kernelsStatusOf(world, next),
       timings: { worldMs, fleetMs, actorMs: Math.round(now() - actorStarted), bootMs, prepared: bootedPrepared === true } });
-    log('info', 'host actor booted', { tick: created.tick, entities: created.authority.entities.length, restored, destroyedRestored, resumed: !!resume, holdFor: awaited.length && resumeHoldMs > 0 ? awaited.length : 0,
+    log('info', 'host actor booted', { tick: created.tick, entities: created.authority.entities.length, restored, destroyedRestored, resumed: !!resume, holdFor: awaited.length,
       bootMs: Math.round(now() - bootStarted), prepared: bootedPrepared });
     for (const playerId of pendingRevokes) created.revokeSeat(playerId);
     pendingRevokes.clear();
@@ -641,6 +639,7 @@ export function createMatchHostCore({
     if (disposed) return;
     switch (message.type) {
       case 'boot':
+        if (typeof message.bootTimeoutMs === 'number' && message.bootTimeoutMs >= 0 && Number.isFinite(message.bootTimeoutMs)) bootBoundMs = message.bootTimeoutMs;
         void boot(message.config).catch((error: unknown) => {
           post({ type: 'boot_failed', error: error instanceof Error ? error.message : String(error) });
         });

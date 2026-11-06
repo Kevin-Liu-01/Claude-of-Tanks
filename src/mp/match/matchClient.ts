@@ -31,7 +31,7 @@ import { RemoteInterpolator } from './interpolation.ts';
 import type { EntitySample, FrameMetaSample, InterpolatorOptions, ShellSample } from './interpolation.ts';
 import { LocalPredictor } from './prediction.ts';
 import type { CorrectionPolicy, PredictionStats, PredictionWorld } from './prediction.ts';
-import { ConnectionRecovery, MIGRATION_WELCOME_ALLOWANCE_MS } from './recovery.ts';
+import { ConnectionRecovery, HOLD_RELEASE_MARGIN_MS, MIGRATION_WELCOME_ALLOWANCE_MS } from './recovery.ts';
 import type { ConnectionPhase, RecoveryOptions } from './recovery.ts';
 import { MigrationStore } from './migrationStore.ts';
 import { HULL_BODY_ROW_FLAGS } from './hullBodyRow.ts';
@@ -948,12 +948,13 @@ export class MatchClient {
    * counts from there. The host's own word replaces whatever the link opened with: a newly elected host's whole boot and
    * hold bound (MIGRATION_WELCOME_ALLOWANCE_MS, all a seat could allow before), and a kept host's nothing (matchSession.ts
    * bootKeptHost holds its seats at the room's same generation, which the opening allowance never read). So a seat waits
-   * through a slow boot or a long hold on any link, and asks for a fresh one once its host overruns what it announced,
-   * not 33 s after the link opened. Capped at that bound; after the WELCOME it means nothing.
+   * through a slow boot or a long hold on any link, and asks for a fresh one once its host overruns what it announced (by
+   * more than HOLD_RELEASE_MARGIN_MS, the WELCOME's way out through the host's main thread), not 33 s after the link
+   * opened. Capped at that bound; after the WELCOME it means nothing.
    */
   private receiveHold(holdMs: number, nowMs: number): void {
     if (this.welcomeMessage || this.openedAtMs === null) return;
-    this.holdAllowanceMs = Math.max(0, nowMs - this.openedAtMs) + Math.min(Math.max(0, holdMs), MIGRATION_WELCOME_ALLOWANCE_MS);
+    this.holdAllowanceMs = Math.max(0, nowMs - this.openedAtMs) + Math.min(Math.max(0, holdMs) + HOLD_RELEASE_MARGIN_MS, MIGRATION_WELCOME_ALLOWANCE_MS);
     this.holdNotices++;
   }
 
