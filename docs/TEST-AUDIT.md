@@ -15,17 +15,17 @@ Run times: `tools/selftest-durations.json`, else this machine's latest observati
 
 | Decision | Receipts | CPU-min |
 |---|---:|---:|
-| KEEP | 1508 | 163.4 |
+| KEEP | 1510 | 165.4 |
 | MERGE | 0 | 0.0 |
 | MANUAL | 655 | 1156.8 |
 | RETIRE | 2 | 0.7 |
 
 | Suite run | Receipts | CPU-min | Simulated wall (min) |
 |---|---:|---:|---:|
-| Before: every receipt (npm test without the tiers) | 2164 | 1320.6 | 233.1 |
-| After: the default tier | 1508 | 163.4 | 36.9 |
+| Before: every receipt (npm test without the tiers) | 2166 | 1322.5 | 233.3 |
+| After: the default tier | 1510 | 165.4 | 37.2 |
 
-Default tier: 12.4 % of the whole registry's CPU; 17.8 % of the 916 CPU-min the snapshot gave for the 1,863 receipts it timed. Its wall: 0.2 min exclusive receipts, 18.1 min pool, 18.6 min browser receipts.
+Default tier: 12.5 % of the whole registry's CPU; 18.1 % of the 916 CPU-min the snapshot gave for the 1,863 receipts it timed. Its wall: 0.2 min exclusive receipts, 18.3 min pool, 18.6 min browser receipts.
 
 ## Manual suites
 
@@ -802,7 +802,7 @@ None. Folding receipts saves only process starts (about a second each) and would
 | `tools/media-r5/fleet-coverage.selftest.mjs` | n/a | MANUAL (media) | media: the media lane's fleet backlog, n/a s: 267: the fleet's media backlog (every vehicle leads a take, the survey bars): the manual media suite | test:heavy -- media; test:recommend flags it when its inputs change |
 | `tools/mp-rooms-entry.browser.selftest.mjs` | n/a | MANUAL (ui) | ui: heavy interface paint and layout sweeps, n/a s: 268 (the 267 production smoke): the multiplayer end-to-end opens the rooms panel the way the Garage's layout o | test:heavy -- ui; test:recommend flags it when its inputs change |
 
-## KEEP (1508)
+## KEEP (1510)
 
 | Receipt | Run (s) | Decision | Reason | Coverage now |
 |---|---:|---|---|---|
@@ -816,6 +816,7 @@ None. Folding receipts saves only process starts (about a second each) and would
 | `src/vehicles/profiles/leopard2A4Family.selftest.mjs` | 127 | KEEP | vehicle rule, 127 s: release 264: the 2A4-era Leopards on the same hull (the photo packets' native fixture): the owner's square/wed | default tier (npm test, the release gate; lane mode by its closure) |
 | `src/vehicles/profiles/merkavaFamily.selftest.mjs` | 103 | KEEP | vehicle rule, 103 s: 262 (the Merkava family builder): the six marks' structure, guns and packages, and their guns over their hulls | default tier (npm test, the release gate; lane mode by its closure) |
 | `src/vehicles/tankFactoryStaging.selftest.mjs` | 103 | KEEP | staged construction publishes exactly the synchronous build (vehicle core: build-path parity) | default tier (npm test, the release gate; lane mode by its closure) |
+| `src/vehicles/profiles/australia.selftest.mjs` | 83 | KEEP | vehicle rule, 83 s: release 269 (owner: "flesh out south african and australian tank trees"): the Australian line's M113s, Leopard | default tier (npm test, the release gate; lane mode by its closure) |
 | `server/collisionManifestCodec.selftest.mjs` | 82 | KEEP | the committed collision shards decode bit for bit (generated-output guard, ~82 s) | default tier (npm test, the release gate; lane mode by its closure) |
 | `tools/selftest-scans.selftest.mjs` | 82 | KEEP | listing receipts select and key on what they list (must-keep: changed-only guard) | default tier (npm test, the release gate; lane mode by its closure) |
 | `tools/spare-track-key.selftest.mjs` | 74 | KEEP | spare-track ledger keys gate a line-shifted tree green (generated-output guard) | default tier (npm test, the release gate; lane mode by its closure) |
@@ -853,6 +854,7 @@ None. Folding receipts saves only process starts (about a second each) and would
 | `src/vehicles/farLod.selftest.mjs` | 33 | KEEP | the far LOD swap (vehicle core) | default tier (npm test, the release gate; lane mode by its closure) |
 | `src/vehicles/suppliedSourceArmorRegistration.selftest.mjs` | 33 | KEEP | supplied-source armour registration (must-keep: armour sample) | default tier (npm test, the release gate; lane mode by its closure) |
 | `tools/sim-determinism-audit.selftest.mjs` | 33 | KEEP | fixed-step determinism of the shared authority (must-keep) | default tier (npm test, the release gate; lane mode by its closure) |
+| `src/vehicles/decorLivedIn.selftest.mjs` | 32 | KEEP | vehicle rule, 32 s: 269 (lane abrams-bradley-269): the lived-in loads of the M1A1s and the Bradleys (crew kit, cargo net, coiled c | default tier (npm test, the release gate; lane mode by its closure) |
 | `server/match/frameView.selftest.mjs` | 32 | KEEP | a viewer frame from the authority's view: spotting filters before serialization (must-keep) | default tier (npm test, the release gate; lane mode by its closure) |
 | `src/sim/sixModesAuthority.selftest.mjs` | 30 | KEEP | every mode on the authority (must-keep) | default tier (npm test, the release gate; lane mode by its closure) |
 | `src/vehicles/profiles/centurionFamily.selftest.mjs` | 30 | KEEP | vehicle rule, 30 s: Release 262 (the owner: the Centurions and the Strv 81 "based on proper historical references so they will no | default tier (npm test, the release gate; lane mode by its closure) |
