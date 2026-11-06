@@ -10,13 +10,17 @@
 //      every round that leaves is named in the frame it left (a view shows at most 256);
 //   3. a stable list: with no departures the names stay as they are, frame to frame, until their window ends, in one
 //      list (nothing made while they stay);
-//   4. (round 4 F4) no storage made again per frame: a steady view, and marks that stay named, allocate nothing a frame
-//      (new-space bytes, a full GC before each window). Round 3 emptied its arrays with `length = 0` and pushed again, so
-//      V8 made new backing stores on every frame that showed a round (about 1 KB a frame for a 40-round view), and its
-//      check (the same array each frame) could not see that;
+//   4. (round 4 F4) no storage made again per frame: a steady view, and marks that stay named, allocate under a byte a
+//      frame over 10,000 frames (new-space bytes, a full GC before each window, a scavenge inside one counted through).
+//      Round 3 emptied its arrays with `length = 0` and pushed again, so V8 made new backing stores on every frame that
+//      showed a round (about 1 KB a frame for a 40-round view), and its check (the same array each frame) could not see
+//      that. The meter fails closed: no new space to read throws, and two controls of known garbage (one inside new
+//      space, one past it) must weigh what they make;
 //   5. (round 4 E11) a frame keeps its own names: the publisher keeps up to 64 frames as delta baselines (publisher.ts),
-//      and round 3 returned its one live array, rewritten by the next frame, so a kept frame held, and encoded, another
-//      frame's names. A list once returned is never written again; churn makes a new one per change.
+//      and round 3 returned its one live array, rewritten by the next frame, so a kept frame held another frame's names.
+//      No reader encoded a kept frame's list (publisher.ts encodes the current frame; codec.ts buildSnapshotPacket reads
+//      the frame's list, never its baseline's), so the alias was latent; the encode below stands in for one that would.
+//      A list once returned is never written again; churn makes a new one per change.
 // Run with: node server/match/unseenShellMarks.selftest.mjs (it runs itself again under --expose-gc for section 4)
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
@@ -111,8 +115,23 @@ const view = () => {
 
 // ---- 4. no storage made again per frame (round 4 F4) -----------------------------------------------------------------
 {
-  const newSpaceUsed = () => { for (const space of v8.getHeapSpaceStatistics()) if (space.space_name === 'new_space') return space.space_used_size; return 0; };
-  /** The most new-space bytes `run()` allocated in five windows, a full GC before each, beyond the measurement's own. */
+  /** New-space bytes in use. A heap that names no new space throws: the meter would weigh every window at 0 B. */
+  const newSpaceUsed = () => {
+    for (const space of v8.getHeapSpaceStatistics()) if (space.space_name === 'new_space') return space.space_used_size;
+    throw new Error(`unseenShellMarks.selftest: no new_space among ${v8.getHeapSpaceStatistics().map((space) => space.space_name).join(', ')}: section 4 cannot weigh a frame`);
+  };
+  /** The same from a v8.GCProfiler record's heap statistics, before or after one collection. */
+  const newSpaceIn = (statistics) => {
+    const space = statistics.heapSpaceStatistics.find((entry) => entry.spaceName === 'new_space');
+    if (!space) throw new Error('unseenShellMarks.selftest: a collection\'s record names no new_space: section 4 cannot weigh a frame');
+    return space.spaceUsedSize;
+  };
+  const profiler = new v8.GCProfiler();
+  /**
+   * The most new-space bytes `run()` allocated in five windows, a full GC before each, beyond the measurement's own. A
+   * scavenge inside a window (new space is 1 MB here; round 3's 10,000 steady frames made about 10 MB) empties it, so the
+   * bytes in use before and after each collection (v8.GCProfiler) carry the count through it.
+   */
   const allocated = (run) => {
     let most = -Infinity;
     for (let window = 0; window < 5; window++) {
@@ -120,12 +139,28 @@ const view = () => {
       const empty = newSpaceUsed();
       const overhead = newSpaceUsed() - empty;
       globalThis.gc();
+      profiler.start();
       const before = newSpaceUsed();
       run();
-      most = Math.max(most, newSpaceUsed() - before - overhead);
+      const after = newSpaceUsed();
+      let bytes = -overhead;
+      let from = before;
+      for (const collection of profiler.stop().statistics) {
+        bytes += newSpaceIn(collection.beforeGC) - from;
+        from = newSpaceIn(collection.afterGC);
+      }
+      most = Math.max(most, bytes + after - from);
     }
     return most;
   };
+  // the meter sees garbage of a known size: sixteen arrays of 256 numbers (at least 1 KB each), and 4,096 of them (past
+  // new space: the scavenges are counted through)
+  const sink = new Array(16);
+  const smallBytes = allocated(() => { for (let n = 0; n < 16; n++) sink[n] = new Array(256).fill(n); });
+  const largeBytes = allocated(() => { for (let n = 0; n < 4096; n++) sink[n & 15] = new Array(256).fill(n); });
+  assert.ok(smallBytes >= 16 * 1024, `the meter weighs sixteen 256-number arrays at 16 KB or more (${smallBytes} B)`);
+  assert.ok(largeBytes >= 4096 * 1024, `the meter weighs 4,096 of them, past new space, at 4 MB or more (${largeBytes} B)`);
+  const FRAMES = 10_000;
   const shown = Array.from({ length: 40 }, (_, n) => ({ id: 100 + n }));
   const behind = shown.map(() => ({ dead: false }));
   const fewer = shown.slice(0, 37), fewerBehind = behind.slice(0, 37);
@@ -134,12 +169,13 @@ const view = () => {
   let tick = 0;
   let named = 0; // asserted outside the weighed loops (an assert call makes its own garbage)
   const steadyFrames = (frames) => { for (let n = 0; n < frames; n++) if (steady.frame(tick++, shown, behind) !== undefined) named++; };
-  steadyFrames(5000); // every path compiled before it is weighed
-  const steadyBytes = allocated(() => steadyFrames(500));
+  steadyFrames(FRAMES); // every path compiled before it is weighed
+  const steadyBytes = allocated(() => steadyFrames(FRAMES));
   assert.equal(named, 0, 'none left the view');
-  assert.ok(steadyBytes < 512, `a steady 40-round view makes nothing a frame (${steadyBytes} B over 500 frames; round 3 made about 1 KB a frame)`);
+  assert.ok(steadyBytes < FRAMES, `a steady 40-round view makes under a byte a frame (${steadyBytes} B over ${FRAMES} frames; round 3 made about 1 KB a frame)`);
   // marks that stay named: three rounds left, the view holds on without them inside their window
   const held = createUnseenShellMarks();
+  const STAY = UNSEEN_SHELL_MARK_TICKS - 2;
   let heldTick = 0;
   let heldList = null;
   const cycle = (stay) => {
@@ -147,16 +183,19 @@ const view = () => {
     heldList = held.frame(heldTick++, fewer, fewerBehind); // three leave: named
     for (let n = 0; n < stay; n++) assert.equal(held.frame(heldTick++, fewer, fewerBehind), heldList);
   };
-  for (let n = 0; n < 400; n++) cycle(UNSEEN_SHELL_MARK_TICKS - 2);
+  for (let n = 0; n < 400; n++) cycle(STAY);
   cycle(0);
   assert.deepEqual([...heldList], [137, 138, 139]);
   let other = 0;
+  const HELD_REPEATS = Math.ceil(FRAMES / STAY);
   const heldBytes = allocated(() => {
-    for (let n = 0; n < UNSEEN_SHELL_MARK_TICKS - 2; n++) if (held.frame(heldTick++, fewer, fewerBehind) !== heldList) other++;
-    heldTick -= UNSEEN_SHELL_MARK_TICKS - 2; // the next window repeats the same frames, inside the marks' window
+    for (let repeat = 0; repeat < HELD_REPEATS; repeat++) {
+      for (let n = 0; n < STAY; n++) if (held.frame(heldTick++, fewer, fewerBehind) !== heldList) other++;
+      heldTick -= STAY; // the same frames again, inside the marks' window
+    }
   });
   assert.equal(other, 0, 'the same three named, in the same list, all through');
-  assert.ok(heldBytes < 512, `marks that stay named make nothing a frame (${heldBytes} B over ${UNSEEN_SHELL_MARK_TICKS - 2} frames)`);
+  assert.ok(heldBytes < HELD_REPEATS * STAY, `marks that stay named make under a byte a frame (${heldBytes} B over ${HELD_REPEATS * STAY} frames)`);
 }
 
 // ---- 5. a frame keeps its own names (round 4 E11) ----------------------------------------------------------------------
