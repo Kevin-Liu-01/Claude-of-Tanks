@@ -814,8 +814,11 @@ function createBattleSpotting(game: SoloGameState, world: SoloWorld): SpottingSy
       return hasCamoPaint(entity.specId) ? CAMO_PAINT_BONUS : 0;
     },
     getEquipment: (tank) => {
-      const entity = tank as SpottingTank & { equip?: string[]; consumables?: ConsumableState };
-      return consumableSpottingIds(entity.consumables, entity.equip, game.timeS);
+      // the kit applyEquipmentToCombat wrote (combat.equip, gated by the hull), the array the authority's spotting reads
+      // (its tank.equip is that array). entity.equip is the seat's loadout, another array, so Fresh Foliage's list was
+      // rebuilt from it at each life's first read (round 4 F8)
+      const entity = tank as SpottingTank & { combat?: { equip?: readonly string[] }; consumables?: ConsumableState };
+      return consumableSpottingIds(entity.consumables, entity.combat?.equip, game.timeS);
     },
   });
 }
