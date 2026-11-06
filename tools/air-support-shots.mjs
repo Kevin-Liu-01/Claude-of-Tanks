@@ -61,24 +61,33 @@ async function shootDesktop(page, signal, tag) {
     if (signal.aborted) return;
     await page.evaluate((kind) => window.__DEBUG.bus.emit('ui:strikePick', { kind }), kind);
     await sleep(kind === 'bomb' ? 1200 : 700);
+    // the binoculars laid on the parked enemy 260 m out (the scope opens on the gun's line, often into the near grass)
+    await page.evaluate((spot) => {
+      const D = window.__DEBUG, p = D.game.player.state.pos, hf = D.world.heightField;
+      const pitch = Math.atan2(hf.getHeightAt(spot.x, spot.z) - (p.y + 2.6), 260);
+      D.rig.snapSniper(4, Math.atan2(spot.x - p.x, spot.z - p.z), pitch);
+    }, spot);
+    await sleep(500);
     await shot(page, `${tag}-view-${kind}`);
   }
   // each call-in on the mark ahead, filmed from a camera over the mark; the next waits for the side's air
   for (const kind of ['recon', 'artillery', 'strafe', 'bomb', 'gunship']) {
     if (signal.aborted) return;
-    const accepted = await page.evaluate(async (kind) => {
-      const D = window.__DEBUG, air = D.game.matchModeController.airSupport;
+    // the strike is called straight on the parked enemy (the strike view's own call is the receipts' and the view shots'):
+    // the film's subject is the strike, framed on its mark
+    const accepted = await page.evaluate((kind) => {
+      const D = window.__DEBUG, game = D.game, air = game.matchModeController.airSupport;
       const saved = air.capture();
-      saved.points = saved.points.map(([id, value]) => [id, id === D.game.player.id ? air.rules.points.cap : value]);
+      saved.points = saved.points.map(([id, value]) => [id, id === game.player.id ? air.rules.points.cap : value]);
       air.restore(saved);
-      D.bus.emit('ui:strikePick', { kind });
-      await new Promise((r) => setTimeout(r, 500));
-      const before = air.strikes.length;
-      D.bus.emit('ui:strikeCall', {});
-      await new Promise((r) => setTimeout(r, 400));
-      return air.strikes.length > before ? air.strikes[air.strikes.length - 1] : null;
+      const p = game.player.state.pos, yaw = game.player.state.yaw;
+      const x = p.x + Math.sin(yaw) * 260, z = p.z + Math.cos(yaw) * 260;
+      const before = air.capture().strikes.length;
+      const ok = air.requestStrike(game.player.id, kind, x, z, game.timeS);
+      const mine = air.capture().strikes.filter((s) => s.callerId === game.player.id);
+      return ok ? { ...mine[mine.length - 1], before, player: [p.x, p.z] } : null;
     }, kind);
-    receipt.calls.push({ kind, accepted: !!accepted });
+    receipt.calls.push({ kind, accepted: !!accepted, mark: accepted ? [accepted.x, accepted.z] : null, player: accepted?.player ?? null });
     if (!accepted) continue;
     await page.evaluate(() => window.__DEBUG.bus.emit('ui:strikeViewClose', {}));
     const film = async (name, atS, cam) => {
@@ -98,7 +107,9 @@ async function shootDesktop(page, signal, tag) {
     } else if (kind === 'recon') {
       await film('pass', accepted.landsS - 0.2, back);
     } else {
-      await film('warning', accepted.calledS + 1, back);
+      // the footprint from overhead while its warning runs (the targeted side's view of the danger)
+      await film('footprint', accepted.calledS + 1.2, [0.01, 170, 0.01, 0, 60]);
+      await film('warning', accepted.calledS + 1.6, back);
       await film('inbound', accepted.landsS - (kind === 'bomb' ? 1.2 : 0.6), back);
       await film('impact', accepted.landsS + (kind === 'artillery' ? 2 : 0.35), back);
     }
@@ -106,7 +117,6 @@ async function shootDesktop(page, signal, tag) {
     await page.waitForFunction((end) => window.__DEBUG.game.timeS >= end, { timeout: 90_000, polling: 250 },
       Math.min(accepted.endS, accepted.landsS + 6));
   }
-  void spot;
 }
 
 /** Paired GPU frame time: eight marks up against none, alternated (the post chain's timer; null without the extension). */

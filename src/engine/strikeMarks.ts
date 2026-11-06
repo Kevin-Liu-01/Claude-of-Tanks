@@ -46,7 +46,23 @@ const UNIFORMS = {
   uStrikeB: { value: Array.from({ length: STRIKE_MARK_MAX }, () => new THREE.Vector4()) },
   uStrikeC: { value: Array.from({ length: STRIKE_MARK_MAX }, () => new THREE.Vector4()) },
 };
+/** The block's shape for a material (a ShaderPass clones its uniforms: syncStrikeMarkUniforms copies the live marks in). */
 export function createStrikeMarkUniforms(): typeof UNIFORMS { return UNIFORMS; }
+
+type StrikeMarkUniformTarget = Record<'uStrikeN' | 'uStrikeT', { value: number }> &
+  Record<'uStrikeA' | 'uStrikeB' | 'uStrikeC', { value: THREE.Vector4[] }>;
+/** Copy the live marks into a material's own (cloned) block, once a frame before its draw: only the live ones. */
+export function syncStrikeMarkUniforms(target: StrikeMarkUniformTarget): void {
+  const n = UNIFORMS.uStrikeN.value;
+  target.uStrikeN.value = n;
+  if (!n) return;
+  target.uStrikeT.value = UNIFORMS.uStrikeT.value;
+  for (let i = 0; i < n; i++) {
+    target.uStrikeA.value[i]!.copy(UNIFORMS.uStrikeA.value[i]!);
+    target.uStrikeB.value[i]!.copy(UNIFORMS.uStrikeB.value[i]!);
+    target.uStrikeC.value[i]!.copy(UNIFORMS.uStrikeC.value[i]!);
+  }
+}
 
 /** Publish this frame's first `count` marks (at most STRIKE_MARK_MAX; the rest wait) and the marks' clock (s, for the
  *  dashes). The caller keeps its marks in a pool of its own (no allocation a frame). */

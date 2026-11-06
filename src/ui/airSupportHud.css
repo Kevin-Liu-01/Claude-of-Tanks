@@ -2,8 +2,9 @@
 /* Air Support (air-support-270): the call-in strip, the strike view's binoculars and the INCOMING plate (airSupportHud.ts). */
 @layer surfaces{
 .cot-strike-strip[hidden],.cot-binoculars[hidden],.cot-strike-warning[hidden]{display:none!important}
-/* the strip: the kit's plate, low in the middle above the rounds' rack */
-.cot-strike-strip{position:absolute;left:50%;bottom:calc(max(16px,env(safe-area-inset-bottom)) + 104px);transform:translateX(-50%);display:flex;align-items:stretch;gap:4px;padding:5px;background:var(--hud-plate-strong);border:1px solid var(--ink-4);box-shadow:0 4px 18px oklch(from var(--surface-scene) l c h / .55);pointer-events:auto;color:var(--ink-1);z-index:3}
+/* the strip: the kit's plate, low on the left above the hull's health plate (the middle's rack, the vehicle's action
+   row and the controls hint keep their seats) */
+.cot-strike-strip{position:absolute;left:max(16px,env(safe-area-inset-left));bottom:calc(max(16px,env(safe-area-inset-bottom)) + 216px);display:flex;align-items:stretch;gap:4px;padding:5px;background:var(--hud-plate-strong);border:1px solid var(--ink-4);box-shadow:0 4px 18px oklch(from var(--surface-scene) l c h / .55);pointer-events:auto;color:var(--ink-1);z-index:3}
 .strike-points{display:flex;flex-direction:column;align-items:center;justify-content:center;min-width:52px;padding:0 var(--s2);border-right:1px solid var(--line-2)}
 .strike-points b{font:600 var(--battle-fs-fig-14,15px)/1 var(--font-data);color:var(--mode-air-support)}
 .strike-points-unit{font-size:var(--battle-fs-11);letter-spacing:.08em;color:var(--ink-3);text-transform:uppercase}
@@ -36,7 +37,7 @@
 .binocular-scale{position:absolute;left:50%;top:50%;width:min(46vw,520px);height:1px;transform:translate(-50%,-50%);background:repeating-linear-gradient(90deg,oklch(from var(--ink-1) l c h / .7) 0 1px,transparent 1px 10%);opacity:.75}
 .binocular-scale::before,.binocular-scale::after{content:'';position:absolute;left:50%;width:1px;height:28px;background:oklch(from var(--ink-1) l c h / .7)}
 .binocular-scale::before{top:-38px}.binocular-scale::after{top:10px}
-.binocular-readout{position:absolute;right:max(10%,24px);bottom:22%;display:flex;flex-direction:column;align-items:flex-end;gap:4px;padding:8px 12px;background:var(--hud-plate);border:1px solid var(--line-2)}
+.binocular-readout{position:absolute;left:50%;top:104px;transform:translateX(-50%);display:flex;align-items:baseline;gap:14px;padding:7px 14px;background:var(--hud-plate);border:1px solid var(--line-2);white-space:nowrap}
 .binocular-kind{font-size:var(--battle-fs-13,13px);letter-spacing:.1em;text-transform:uppercase;color:var(--mode-air-support)}
 .binocular-facts,.binocular-range{font:500 var(--battle-fs-fig-11,11px)/1.2 var(--font-data);color:var(--ink-2)}
 .binocular-state{font-size:var(--battle-fs-11);font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--accent)}
@@ -59,14 +60,15 @@
 
 /* a phone: the strip sits above the fire button's row; the tiles drop their names; CALL and close are buttons */
 @media(pointer:coarse){
- .cot-strike-strip{bottom:calc(max(10px,env(safe-area-inset-bottom)) + 150px);gap:3px;padding:4px}
+ .cot-strike-strip{left:50%;transform:translateX(-50%);bottom:calc(max(10px,env(safe-area-inset-bottom)) + 150px);gap:3px;padding:4px}
  .strike-tile-copy .strike-tile-name,.strike-key{display:none}
  .strike-tile,.strike-view-button{min-width:44px;min-height:44px;padding:4px 6px}
  .binocular-hint{display:none}
  .binocular-call{display:block;position:absolute;right:max(18px,env(safe-area-inset-right));bottom:calc(max(10px,env(safe-area-inset-bottom)) + 214px);min-width:96px;min-height:52px;padding:0 18px;border:0;background:var(--btn-primary-fill);color:var(--btn-primary-ink);font-weight:800;letter-spacing:.14em}
  .binocular-call:disabled{opacity:.45}
  .binocular-close{display:flex;align-items:center;justify-content:center;position:absolute;left:max(18px,env(safe-area-inset-left));top:max(18px,env(safe-area-inset-top));width:44px;height:44px;border:1px solid var(--ink-4);background:var(--hud-plate);color:var(--ink-1);font-size:22px}
- .binocular-readout{right:12px;bottom:auto;top:max(18px,env(safe-area-inset-top))}
+ .binocular-readout{top:max(64px,env(safe-area-inset-top));gap:8px;padding:5px 10px}
+ .binocular-facts{display:none}
 }
 @media(pointer:coarse) and (orientation:portrait){.cot-strike-strip{width:calc(100% - 24px);justify-content:space-between}.strike-points{min-width:40px}}
 }

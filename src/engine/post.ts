@@ -35,7 +35,7 @@
  *     flat sky/fog. It lands at native canvas resolution; HUD/DOM never
  *     passes through the composer, so UI text keeps full sharpness.
  */
-import { STRIKE_MARKS_GLSL, createStrikeMarkUniforms } from './strikeMarks.ts';
+import { STRIKE_MARKS_GLSL, createStrikeMarkUniforms, syncStrikeMarkUniforms } from './strikeMarks.ts';
 import * as THREE from 'three';
 import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js';
 import { FullScreenQuad, Pass } from 'three/examples/jsm/postprocessing/Pass.js';
@@ -3149,6 +3149,8 @@ export function createPost(
     aerial.uniforms.uCamUp.value.set(elements[4], elements[5], elements[6]);
     aerial.uniforms.uCamFwd.value.set(-elements[8], -elements[9], -elements[10]);
     aerial.uniforms.uCamPos.value.set(elements[12], elements[13], elements[14]);
+    // air-support-270: the live strike marks into the pass's own (cloned) uniforms (strikeMarks.ts)
+    syncStrikeMarkUniforms(aerial.uniforms as unknown as Parameters<typeof syncStrikeMarkUniforms>[0]);
     // 2026-10-01: the haze layer's base under the camera (the battlefield's ground; 0 before a world supplies it)
     const ground = groundHeightAt ? groundHeightAt(elements[12], elements[14]) : 0;
     const datum = Number.isFinite(ground) ? ground : 0;
