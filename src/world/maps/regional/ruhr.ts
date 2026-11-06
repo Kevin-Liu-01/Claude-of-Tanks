@@ -464,7 +464,9 @@ export const RUHR_STYLE: ArchitectureStyle = Object.freeze<ArchitectureStyle>({
   region: 'Ruhr and Upper Silesian coalfield junctions: soot-dark brick with yellow-brick bands under slate',
   surfaces: {
     roof: { kind: 'slate', tint: [0.25, 0.26, 0.28] },
-    stone: { kind: 'brick', tint: [0.50, 0.26, 0.20] },
+    // (buildings-270, the census and round 2: the brick lit fresh orange-red; the junctions' photos show it soot-darkened to
+    // purple-brown, #5a3b33-#6e4a3e) the brick #58403b (was #76483b) and soiled as a coal town's is, soot down every course
+    stone: { kind: 'brick', tint: [0.34, 0.22, 0.2], weathered: true },
     // (buildings-270, the sourced-plaster class: under the photo set none of the map's render tones showed) the walls the
     // procedural limeRender canvas, the primary family's tone measured on it against the reference photos (the sooty render: the map's tone, #877e75)
     sourced: { plaster: false, wood: true },

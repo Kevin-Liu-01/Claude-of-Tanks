@@ -455,7 +455,7 @@ export default {
       plaster2: (h: number, s: number, l: number) => [0.075, clamp01(s * 0.35 + 0.06), clamp01(l * 0.80)],
       plaster3: (h: number, s: number, l: number) => [0.55, clamp01(s * 0.15 + 0.03), clamp01(l * 0.78)],
       roof: (h: number, s: number, l: number) => [0.58, clamp01(s * 0.18), clamp01(l * 0.80 + 0.04)], // weathered sheet grey (r2: lifted — read near-black under the deck)
-      // (buildings-270, the census: the brick read fresh orange-red; the junction photos' brick is soot-darkened purple-brown)
+      // (buildings-270) the props' plain stone (the yard's walls) soot-darkened as the kit's brick is (regional/ruhr.ts)
       stone: (h: number, s: number, l: number) => [0.035, clamp01(s * 0.42 + 0.05), clamp01(l * 0.74 + 0.02)], // smoke-stained brick
       wood: (h: number, s: number, l: number) => [0.08, clamp01(s * 0.55), clamp01(l * 0.85)], // creosoted timber
       straw: null,
