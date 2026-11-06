@@ -22,8 +22,9 @@ import { dressOf, type ArchitectureStyle, type RegionalBuildContext, type Region
 
 const LOG = rgb(0x5a4330), LOG_DARK = rgb(0x3b2c20), PALE = rgb(0xc9ad7f), WHITE = rgb(0xe4e2dc), IRON = rgb(0x26282a);
 const CHAR = rgb(0x2a2420), BELL = rgb(0x6a5a3a);
+/** The carved window surrounds, as the Podhale photos show them (buildings-270): pale pine or the brown of the logs' carving. */
+const SURROUNDS: Readonly<Record<string, Rgb>> = { pale: PALE, brown: rgb(0x633c24) };
 /** Window frames: white, the odd blue or green painted ones. */
-const SURROUNDS: Readonly<Record<string, Rgb>> = { pale: PALE, white: WHITE, blue: rgb(0x7f97ad) };
 const FRAMES: readonly Rgb[] = [WHITE, WHITE, rgb(0x4a6a8a), rgb(0x55704a)];
 
 const clamp = (v: number, lo: number, hi: number): number => Math.max(lo, Math.min(hi, v));

@@ -71,8 +71,10 @@ export const BUILDING_STYLES = {
     roof: { forms: ['gable', 'halfhip'], pitchDeg: [45, 60] },
     core: 'masonry', storeys: [1, 2], storeyM: [2.4, 3], bayM: [1.4, 3.2],
     weathering: { damp: 0.7, moss: 0.55 }, wear: 0.3,
-    // (round-3 blind pairs, 0–6: every gable keeps the Zakopane sunburst; the houses vary by their window surrounds)
-    variation: { axes: { surround: ['pale', 'white', 'blue'] }, roofAge: [0.15, 1] },
+    // (round-3 blind pairs, 0–6: every gable keeps the Zakopane sunburst, as on every house in the record's photos) the
+    // houses vary by their window surrounds, as the photos show them: the pale pine of the sashes (winter_3) or the brown of
+    // the carved surrounds (winter_2 and winter_0, #633c24 and #6a3a1a; no white, no blue in any photo)
+    variation: { axes: { surround: ['pale', 'brown'] }, roofAge: [0.15, 1] },
     surface: { grime: 0.8, patches: 0.7, tileRelief: 1.15, reveal: 0.2, eave: 0.5 },
   },
   urban: {
@@ -120,8 +122,10 @@ export const BUILDING_STYLES = {
     roof: { forms: ['gable', 'halfhip'], pitchDeg: [42, 55] },
     core: 'masonry', storeys: [1, 3], storeyM: [2.4, 3.2], bayM: [1.2, 2.8],
     weathering: { damp: 0.85, moss: 0.55 }, wear: 0.22,
-    // (round-3 blind pairs: the green shutters won, the brown lost)
-    variation: { axes: { paint: ['#4e6a52', '#2f4a36', '#4a5e6e'] }, roofAge: [0.1, 1] },
+    // (round-3 blind pairs 1–3; the paints traced from the record's photos, none of which shows a shutter) the ox-blood of
+    // Hünfeld's timbers and door posts (frontier_3, sunlit, #6b2724), Burghaun's teal-grey door (frontier_1, shade
+    // corrected by the render beside it ×2.09/2.0/1.78, #293641 → #566c74) and its church's brown door (#645450)
+    variation: { axes: { paint: ['#6b2724', '#566c74', '#645450'] }, roofAge: [0.1, 1] },
     surface: { grime: 1, patches: 0.55, tileRelief: 1.35, reveal: 0.15, eave: 0.35 },
   },
   fjord: {
@@ -153,8 +157,9 @@ export const BUILDING_STYLES = {
     roof: { forms: ['gable', 'hip'], pitchDeg: [25, 55] },
     core: 'masonry', storeys: [1, 2], storeyM: [2.6, 3.4], bayM: [1.6, 4.6],
     weathering: { damp: 0.8, moss: 0.5 }, wear: 0.2,
-    // (round-3 blind pairs: the pale louvres lost to green)
-    variation: { axes: { paint: ['#4e6a48', '#3a5640', '#7b2e2a'] }, roofAge: [0, 1] },
+    // (round-3 blind pairs 0–2 on the pale louvres; the paints traced from the record's photos) Kohima's painted green and
+    // maroon (monsoon_3, sunlit walls, #64814b and #652f34) and Khonoma's blue-grey painted planks (monsoon_1, #768aa2)
+    variation: { axes: { paint: ['#64814b', '#652f34', '#768aa2'] }, roofAge: [0, 1] },
     surface: { grime: 1.3, patches: 0.6, tileRelief: 1.15, reveal: 0.15, eave: 0.9 },
   },
   alpine: {
@@ -218,8 +223,11 @@ export const BUILDING_STYLES = {
     roof: { forms: ['gable', 'hip', 'halfhip'], pitchDeg: [40, 55] },
     core: 'masonry', storeys: [1, 2], storeyM: [2.5, 3.2], bayM: [1.4, 4.2],
     weathering: { damp: 0.8, moss: 0.5 }, wear: 0.2,
-    // (round-3 blind pairs, 0–4: Zeeland's shutters and doors are green or oxblood, never white or black)
-    variation: { axes: { paint: ['#2e5a3a', '#244a30', '#6e2a24'] }, roofAge: [0, 1] },
+    // (round-3 blind pairs lost 0–4 on the white and black paints; the paints traced from the record's photos, overcast
+    // shade corrected per channel by the white render beside them, ×1.83/1.81/1.84) the aubergine doors and window frames
+    // (polders_3, #241d2b → #42354f), the near-black navy door (polders_3, #141b2d → #253153), the brick house's grey
+    // shutters (polders_1, sunlit, #646564)
+    variation: { axes: { paint: ['#42354f', '#253153', '#646564'] }, roofAge: [0, 1] },
     surface: { grime: 1.1, patches: 0.5, tileRelief: 1.35, reveal: 0.15, eave: 0.3 },
   },
   copper_mesa: {
