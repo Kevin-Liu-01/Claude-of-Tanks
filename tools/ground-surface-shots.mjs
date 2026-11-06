@@ -233,6 +233,10 @@ const CLOUD_TIME_S = 0, CLOUD_FRAMES = 48;
  */
 function pinClouds(release = false) {
   return `(() => {
+    // (ab20 A/A, urban chase: 2.5 % of the frame, the near blades round the hull) the grass's pressure field springs
+    // back from the staging drive for a minute; cleared at each pin, the standing hulls stamp the same field in every arm
+    const grass = window.__DEBUG.world?._tallGrass;
+    if (!${release}) { grass?.pressure?.clear(); grass?.pressureFine?.clear(); }
     const vc = window.__DEBUG.scene.userData.volumetricClouds;
     if (!vc) return true;
     if (!vc.__pin) {
