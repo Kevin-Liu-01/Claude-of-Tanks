@@ -126,7 +126,8 @@ assert.match(garage, /const openStudio = \(\) => \{\s+emit\('ui:click', \{\}\);\
 // tray names), the reload C, the suspension E. Every default key is pressed on each hull, its effects recorded.
 const { createPlayerBattleActions } = await import('./playerBattleActions.ts');
 const { createBus } = await import('./stateCore.ts');
-const { rulesetUnlimitedFor } = await import('../sim/matchRuleset.ts');
+const { AIR_STRIKE_KINDS, rulesetUnlimitedFor } = await import('../sim/matchRuleset.ts');
+const { AIR_STRIKE_BITS } = await import('../sim/playerActions.ts');
 const HULLS = { launcher: 'guided_missile', autoloader: 'magazine_reload', suspension: 'hydropneumatic_aim', plain: 'none' };
 const SYSTEM_OF = { guided_missile: 'atgm', magazine_reload: 'reload', hydropneumatic_aim: 'suspension', none: null };
 let pressed = 0;
@@ -156,7 +157,8 @@ for (const [hull, kind] of Object.entries(HULLS)) {
   // (any other rule a key reaches answers nothing: only the three systems are recorded)
   const rules = new Proxy(base, { get: (target, key) => (key in target ? target[key] : () => undefined) });
   createPlayerBattleActions({ game: { phase: 'battle', timeS: 10, player }, bus, input, rules,
-    network: { isActive: () => false, queueConsumable() {}, queueAction() {} }, isSettingsOpen: () => false });
+    network: { isActive: () => false, queueConsumable() {}, queueAction() {} }, isSettingsOpen: () => false,
+    strikes: { kinds: AIR_STRIKE_KINDS, bit: (kind) => AIR_STRIKE_BITS[kind] } });
   for (const [action, code] of [...Object.entries(DEFAULT_BINDINGS), ...Object.entries(DEFAULT_BINDINGS2)]) {
     effects.length = 0;
     player.combat.shellSlot = 0;

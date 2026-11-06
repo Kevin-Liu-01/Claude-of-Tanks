@@ -15,17 +15,17 @@ Run times: `tools/selftest-durations.json`, else this machine's latest observati
 
 | Decision | Receipts | CPU-min |
 |---|---:|---:|
-| KEEP | 1516 | 165.1 |
+| KEEP | 1518 | 167.0 |
 | MERGE | 0 | 0.0 |
 | MANUAL | 655 | 1157.1 |
 | RETIRE | 2 | 0.7 |
 
 | Suite run | Receipts | CPU-min | Simulated wall (min) |
 |---|---:|---:|---:|
-| Before: every receipt (npm test without the tiers) | 2172 | 1322.5 | 233.3 |
-| After: the default tier | 1516 | 165.1 | 37.1 |
+| Before: every receipt (npm test without the tiers) | 2174 | 1324.5 | 233.6 |
+| After: the default tier | 1518 | 167.0 | 37.4 |
 
-Default tier: 12.5 % of the whole registry's CPU; 18.0 % of the 916 CPU-min the snapshot gave for the 1,863 receipts it timed. Its wall: 0.2 min exclusive receipts, 18.3 min pool, 18.6 min browser receipts.
+Default tier: 12.6 % of the whole registry's CPU; 18.2 % of the 916 CPU-min the snapshot gave for the 1,863 receipts it timed. Its wall: 0.2 min exclusive receipts, 18.5 min pool, 18.6 min browser receipts.
 
 ## Manual suites
 
@@ -802,7 +802,7 @@ None. Folding receipts saves only process starts (about a second each) and would
 | `tools/media-r5/fleet-coverage.selftest.mjs` | n/a | MANUAL (media) | media: the media lane's fleet backlog, n/a s: 267: the fleet's media backlog (every vehicle leads a take, the survey bars): the manual media suite | test:heavy -- media; test:recommend flags it when its inputs change |
 | `tools/mp-rooms-entry.browser.selftest.mjs` | n/a | MANUAL (ui) | ui: heavy interface paint and layout sweeps, n/a s: 268 (the 267 production smoke): the multiplayer end-to-end opens the rooms panel the way the Garage's layout o | test:heavy -- ui; test:recommend flags it when its inputs change |
 
-## KEEP (1516)
+## KEEP (1518)
 
 | Receipt | Run (s) | Decision | Reason | Coverage now |
 |---|---:|---|---|---|
@@ -821,10 +821,12 @@ None. Folding receipts saves only process starts (about a second each) and would
 | `tools/spare-track-key.selftest.mjs` | 74 | KEEP | spare-track ledger keys gate a line-shifted tree green (generated-output guard) | default tier (npm test, the release gate; lane mode by its closure) |
 | `tools/existing-document-route.selftest.mjs` | 71 | KEEP | the public routes serve only real documents (must-keep: site routing) | default tier (npm test, the release gate; lane mode by its closure) |
 | `src/vehicles/japaneseGunHull.selftest.mjs` | 66 | KEEP | vehicle rule, 66 s: 262 (owner: "we should upgrade the hulls and everything about the tanks too"): the STB-1's and the Type 74's g | default tier (npm test, the release gate; lane mode by its closure) |
+| `src/sim/airSupport.selftest.mjs` | 64 | KEEP | simulation rule, 64 s: Air Support (air-support-270): the ledger and the five call-ins through the network authority as a room hosts | default tier (npm test, the release gate; lane mode by its closure) |
 | `src/vehicles/staticDrawMerge.selftest.mjs` | 64 | KEEP | battle and Garage static draw merges (vehicle core) | default tier (npm test, the release gate; lane mode by its closure) |
 | `src/mp/host/migrationState.selftest.mjs` | 62 | KEEP | host migration seal (AES-GCM) and keyframe codec (must-keep: security) | default tier (npm test, the release gate; lane mode by its closure) |
 | `src/sim/ammunitionFlow.selftest.mjs` | 58 | KEEP | the rounds census rows of every tank (generated-output guard; ammunition) | default tier (npm test, the release gate; lane mode by its closure) |
 | `src/sim/plateMaterial.selftest.mjs` | 57 | KEEP | simulation rule, 57 s: 2026-11-03 (impact-materials-269): what a round struck, every fleet plate's material, stamped by the damage la | default tier (npm test, the release gate; lane mode by its closure) |
+| `src/sim/airSupportSolo.selftest.mjs` | 52 | KEEP | simulation rule, 52 s: Air Support in the solo battle (air-support-270): the solo step (game/state.ts simStep) takes a crew's call fr | default tier (npm test, the release gate; lane mode by its closure) |
 | `src/vehicles/tier.selftest.mjs` | 51 | KEEP | the owner's tier rulings over the fleet (tier table) | default tier (npm test, the release gate; lane mode by its closure) |
 | `tools/mp-rooms-e2e.selftest.mjs` | 51 | KEEP | rooms end to end on real sockets (must-keep: authority) | default tier (npm test, the release gate; lane mode by its closure) |
 | `src/sim/driverStepParity.selftest.mjs` | 50 | KEEP | every driver steps the simulation bit for bit alike (sim determinism) | default tier (npm test, the release gate; lane mode by its closure) |

@@ -461,8 +461,14 @@ export function drawStrikeFootprint(ctx: Ctx, x: number, y: number,
   ctx.beginPath();
   if ('radiusPx' in shape) ctx.arc(0, 0, Math.max(2, shape.radiusPx), 0, Math.PI * 2);
   else {
-    ctx.rotate(shape.angle);
-    ctx.rect(-Math.max(1.5, shape.halfWidthPx), -Math.max(2, shape.halfLengthPx), Math.max(3, shape.halfWidthPx * 2), Math.max(4, shape.halfLengthPx * 2));
+    // the lane's four corners turned to its heading (the glyphs never rotate the context: they stay upright)
+    const w = Math.max(1.5, shape.halfWidthPx), l = Math.max(2, shape.halfLengthPx);
+    const c = Math.cos(shape.angle), s = Math.sin(shape.angle);
+    ctx.moveTo(-w * c + l * s, -w * s - l * c);
+    ctx.lineTo(w * c + l * s, w * s - l * c);
+    ctx.lineTo(w * c - l * s, w * s + l * c);
+    ctx.lineTo(-w * c - l * s, -w * s + l * c);
+    ctx.closePath();
   }
   if (filled) { ctx.fillStyle = sideFill(side); ctx.fill(); }
   const width = 1.1 + urgency * 1.1;

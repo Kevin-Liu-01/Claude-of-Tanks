@@ -20,6 +20,7 @@ import { strikeCovers, strikeDangerS, type AirSupportView } from '../sim/airSupp
 import { strikeView, STRIKE_VIEW_TRANSITION_S } from '../game/strikeViewState.ts';
 import { drawStrikeGlyph } from './objectiveGlyphs.ts';
 import { t } from './i18n.ts';
+import { createUiCanvas } from './uiCanvas.ts';
 import { setAttr, setData, setDisabled, setHidden, setStyle, setText } from './domWrite.ts';
 import { prefersReducedMotion } from './accessibilityPreferences.ts';
 
@@ -56,10 +57,8 @@ export function createAirSupportHud(parent: HTMLElement, bus: EventBus) {
     const button = node('button', 'strike-tile', strip);
     button.type = 'button';
     button.dataset.kind = kind;
-    const glyph = node('canvas', 'strike-tile-glyph', button);
-    glyph.width = glyph.height = 56;
-    const context = glyph.getContext('2d');
-    if (context) drawStrikeGlyph(context, 28, 28, 25, kind, 'own');
+    // the call-in's badge on the shared canvas surface (a retained drawing in a 56-unit square, sharp at any ratio)
+    createUiCanvas(button, 'strike-tile-glyph', { units: [56, 56], draw: (context) => drawStrikeGlyph(context, 28, 28, 25, kind, 'own') });
     const copy = node('span', 'strike-tile-copy', button);
     node('strong', 'strike-tile-name', copy).textContent = t(`airSupport.kind.${kind}`);
     const cost = node('small', 'strike-tile-cost num', copy);
@@ -77,7 +76,8 @@ export function createAirSupportHud(parent: HTMLElement, bus: EventBus) {
   // ---- the binoculars ----
   const binoculars = node('div', 'cot-binoculars', parent);
   binoculars.hidden = true;
-  binoculars.setAttribute('role', 'dialog');
+  // a labelled group over the HUD, not a dialog: it takes no focus and traps no key (the crew keeps driving)
+  binoculars.setAttribute('role', 'group');
   binoculars.setAttribute('aria-label', t('airSupport.view'));
   node('div', 'binocular-lens', binoculars).setAttribute('aria-hidden', 'true');
   const scale = node('div', 'binocular-scale', binoculars);

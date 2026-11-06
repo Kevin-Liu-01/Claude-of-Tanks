@@ -255,7 +255,8 @@ import { clearMatchSession, createBus, createGameState, watchRevealsAll } from '
 import { campaignOperationById } from './game/campaignOperations.ts';
 // Pure roster planning: the solo battle authority stays behind soloBattleAccess (boot-static-closure receipt).
 import { soloRosterPlan } from './game/soloRosterPlan.ts';
-import { deathsAreFinal, matchRulesetFor, terrainVariantFor } from './sim/matchRuleset.ts';
+import { AIR_STRIKE_KINDS, deathsAreFinal, matchRulesetFor, terrainVariantFor } from './sim/matchRuleset.ts';
+import { AIR_STRIKE_BITS } from './sim/playerActions.ts';
 import { normalizeGameMode } from './sim/gameModeCatalog.ts';
 import { teamNationsFlags } from './sim/teamNations.ts';
 import { SHOT_VIEWS, type ShotViewName } from './dev/shotContract.ts';
@@ -2376,6 +2377,7 @@ playerBattleActions = createPlayerBattleActions({
     queueConsumable: (slot) => { onlineMatch.current?.queueConsumable(slot); },
     queueAction: (action) => { onlineMatch.current?.queueAction(action); },
   },
+  strikes: { kinds: AIR_STRIKE_KINDS, bit: (kind) => AIR_STRIKE_BITS[kind] },
   rules: {
     selectShell: battleClientAccess.selectShell,
     repairAllModules: battleClientAccess.repairAllModules,

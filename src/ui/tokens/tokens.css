@@ -112,7 +112,13 @@
   --battle-text-halo:0 1px 2px oklch(from var(--surface-scene) l c h / .9),0 0 3px oklch(from var(--surface-scene) l c h / .65);
   --battle-mark-ring:0 0 0 2px oklch(from var(--surface-scene) l c h / .55);--battle-control-on:inset 0 -2px #efb84e;
   --battle-control-slash-ring:0 0 0 1px #05080bd9;--battle-control-label-halo:0 1px 3px #000,0 0 5px #000;
-  --battle-track-control:.015em;--battle-track-status:.06em;--battle-track-callsign:.025em;--battle-chip-danger:inset 3px 0 0 var(--danger),inset 0 0 0 1px oklch(from var(--danger) l c h / .35),var(--battle-plate-shadow);
+  --battle-track-control:.015em;--battle-strike-plate-shadow:0 4px 18px oklch(from var(--surface-scene) l c h / .55);
+  --battle-strike-tile:oklch(from var(--surface-hover) .31 c h);--battle-strike-tile-edge:oklch(from var(--ink-4) .58 c h);
+  --battle-strike-pick:oklch(from var(--mode-air-support) .36 .06 h);--battle-strike-pick-ring:inset 0 0 0 1px var(--mode-air-support);
+  --battle-strike-lens:rgba(5,6,8,.97);--battle-strike-lens-clear:#0000;--battle-strike-lens-solid:#000;
+  --battle-strike-scale:rgba(246,243,236,.7);--battle-strike-halo:0 1px 3px var(--surface-scene);--battle-strike-incoming:oklch(from var(--danger) .32 .11 h / .92);
+  --battle-strike-incoming-own:oklch(from var(--accent) .34 .09 h / .92);--battle-track-status:.06em;--battle-track-callsign:.025em;
+  --battle-chip-danger:inset 3px 0 0 var(--danger),inset 0 0 0 1px oklch(from var(--danger) l c h / .35),var(--battle-plate-shadow);
   --battle-chip-warn:inset 3px 0 0 var(--warn),inset 0 0 0 1px oklch(from var(--warn) l c h / .3),var(--battle-plate-shadow);
   --battle-chip-ok:inset 3px 0 0 var(--ok),inset 0 0 0 1px oklch(from var(--ok) l c h / .3),var(--battle-plate-shadow);
   --battle-fs-11:11px;--battle-fs-12:12px;--battle-fs-fig-11:11px;--battle-fs-fig-12:12px;--fs-floor-11:var(--battle-fs-11);

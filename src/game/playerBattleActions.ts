@@ -1,6 +1,4 @@
-import { strikeView } from './strikeViewState.ts';
-import { AIR_STRIKE_BITS } from '../sim/playerActions.ts';
-import { AIR_STRIKE_KINDS, type AirStrikeKind } from '../sim/matchRuleset.ts';
+import { strikeView, type AirStrikeKind } from './strikeViewState.ts';
 import type { RuntimeValue } from '../runtimeTypes.ts';
 import type { EventBus } from './stateCore.ts';
 import type { BattleClientAccess } from './battleClientAccess.ts';
@@ -94,6 +92,9 @@ interface PlayerBattleActionsOptions<TEntity extends BattleActionEntity> {
   input: ActionInput;
   rules: ActionRules;
   network: NetworkActionPort;
+  /** Air Support's call-ins in the strip's order (sim/matchRuleset.ts AIR_STRIKE_KINDS) and each one's action bit
+   *  (sim/playerActions.ts AIR_STRIKE_BITS): ports, so the policy stays free of the sim. */
+  strikes: { readonly kinds: readonly AirStrikeKind[]; bit(kind: AirStrikeKind): number };
   isSettingsOpen(): boolean;
 }
 
@@ -133,11 +134,12 @@ export function createPlayerBattleActions<TEntity extends BattleActionEntity>({
   input,
   rules,
   network,
+  strikes,
   isSettingsOpen,
 }: PlayerBattleActionsOptions<TEntity>): PlayerBattleActions {
-  if (!game || !bus || !input || !rules || !network
+  if (!game || !bus || !input || !rules || !network || !strikes
       || typeof isSettingsOpen !== 'function') {
-    throw new TypeError('player battle actions require game, bus, input, rules, and network ports');
+    throw new TypeError('player battle actions require game, bus, input, rules, network and strikes ports');
   }
 
   const shellCards: ShellCard[] = [];
@@ -194,7 +196,7 @@ export function createPlayerBattleActions<TEntity extends BattleActionEntity>({
   });
   listen('ui:strikePick', (payload) => {
     const kind = (payload as { kind?: RuntimeValue } | null)?.kind;
-    if (!strikeMode() || !AIR_STRIKE_KINDS.includes(kind as AirStrikeKind)) return;
+    if (!strikeMode() || !strikes.kinds.includes(kind as AirStrikeKind)) return;
     strikeView.kind = kind as AirStrikeKind;
     if (!strikeView.open && battleInputAllowed() && livePlayer()) setStrikeView(true);
     bus.emit('ui:click', {});
@@ -205,7 +207,7 @@ export function createPlayerBattleActions<TEntity extends BattleActionEntity>({
     if (!strikeView.ready) { bus.emit('ui:strikeDenied', { kind: strikeView.kind }); return; }
     const kind = strikeView.kind;
     if (network.isActive()) network.queueAction(STRIKE_ACTION_NAMES[kind]);
-    else player.input.auxiliaryBits = (player.input.auxiliaryBits || 0) | AIR_STRIKE_BITS[kind];
+    else player.input.auxiliaryBits = (player.input.auxiliaryBits || 0) | strikes.bit(kind);
     strikeView.lockedUntilS = game.timeS + STRIKE_LOCK_S;
     bus.emit('ui:strikeCalled', { kind });
   });
@@ -219,7 +221,7 @@ export function createPlayerBattleActions<TEntity extends BattleActionEntity>({
     onAction(SHELL_ACTIONS[slot], () => {
       if (!battleInputAllowed()) return;
       // in the strike view the number keys pick the call-in, never a round
-      if (strikeView.open) { bus.emit('ui:strikePick', { kind: AIR_STRIKE_KINDS[slot] }); return; }
+      if (strikeView.open) { bus.emit('ui:strikePick', { kind: strikes.kinds[slot] }); return; }
       bus.emit('ui:shellSelect', { slot });
       bus.emit('ui:click', {});
     });
@@ -272,7 +274,7 @@ export function createPlayerBattleActions<TEntity extends BattleActionEntity>({
   for (let slot = 0; slot < 3; slot++) {
     onAction(CONSUMABLE_ACTIONS[slot], () => {
       if (!battleInputAllowed()) return;
-      if (strikeView.open) { if (AIR_STRIKE_KINDS[3 + slot]) bus.emit('ui:strikePick', { kind: AIR_STRIKE_KINDS[3 + slot] }); return; }
+      if (strikeView.open) { if (strikes.kinds[3 + slot]) bus.emit('ui:strikePick', { kind: strikes.kinds[3 + slot] }); return; }
       bus.emit('ui:consumable', { slot });
     });
   }

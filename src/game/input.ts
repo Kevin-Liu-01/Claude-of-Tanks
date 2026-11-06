@@ -80,6 +80,8 @@ export const ACTION_DEFS = [
   // round 30 (owner 2026-09-20): auto-aim and the armour overlay get desktop keys
   { id: 'autoAim', label: 'action.autoAim', group: 'settings.group.combat' },
   { id: 'hitboxOverlay', label: 'action.hitboxOverlay', group: 'settings.group.combat' },
+  // Air Support (air-support-270): the binoculars of the strike view, where a call-in is picked, aimed and called
+  { id: 'strikeView', label: 'airSupport.view', group: 'settings.group.combat' },
   // The vehicle's actions, in the vehicle-action table's order with its names (src/game/vehicleActions.ts; owner
   // 2026-10-25: "consistent which keys do what and their order with each other"); the table's jump is selfRight's.
   { id: 'specialAction', label: 'vehicleActions.suspension', group: 'settings.group.vehicle' },
@@ -93,8 +95,6 @@ export const ACTION_DEFS = [
   { id: 'aerialVision', label: 'flight.view.action', group: 'settings.group.flight' },
   { id: 'supplyAmmo', label: 'flight.supply.ammo', group: 'settings.group.flight' },
   { id: 'supplyHeal', label: 'flight.supply.heal', group: 'settings.group.flight' },
-  // Air Support (air-support-270): the binoculars of the strike view, where a call-in is picked, aimed and called
-  { id: 'strikeView', label: 'airSupport.view', group: 'settings.group.flight' },
   { id: 'consumable1', label: 'action.consumable1', group: 'settings.group.consumables' },
   { id: 'consumable2', label: 'action.consumable2', group: 'settings.group.consumables' },
   { id: 'consumable3', label: 'action.consumable3', group: 'settings.group.consumables' },
