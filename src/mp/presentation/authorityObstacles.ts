@@ -10,8 +10,9 @@
  *
  * A fall finds the viewer's own record of the prop by the identity the event carries (box centre on the ground plane
  * and kind): the record at the index when it is that prop, else the one found around the centre, else none — never
- * another prop. The persistent destroyed list carries indices only: it is read by index where the world shares them,
- * through the authority's identities (`setIdentities`, the manifest) where it does not, or not at all. An event whose
+ * another prop. The persistent destroyed list names props by index alone (wire 11 adds each one's fall, not its
+ * identity): it is read by index where the world shares them, through the authority's identities (`setIdentities`, the
+ * manifest) where it does not, or not at all. An event whose
  * record at its index is another prop proves the world does not share the indices, whatever its layout claimed.
  */
 import type { PredictionObstacle, WorldCollisionLike } from './predictionWorld.ts';

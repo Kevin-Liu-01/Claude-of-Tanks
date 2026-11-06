@@ -10,8 +10,10 @@
 //     runtime in destructibleAuthority.selftest); here, no runtime path draws from that stream any more;
 //   - the reset left the water's ripples and the sward's press fields (the hulls' flattened grass) as the last battle left
 //     them (round 2: proven on the real fields through map.ts's and terrain.ts's own reset code; the Studio's seek decided).
-// Not covered here (reported, not changed in this lane): a late joiner's settled props replay as a ram toward +Z
-// (mp/presentation/battlePresentation.ts applyDestroyed; the snapshot's destroyed list carries indices only).
+// Not covered here: a late joiner's settled props (mp/presentation/battlePresentation.ts applyDestroyed). They replayed
+// as a ram toward +Z while the snapshot's destroyed list carried indices only; round 2 (U27) gave each index its fall
+// (wire 11, sim/obstacleFall.ts), so they lie as they fell, a withheld fall along the prop's own heading
+// (mp/presentation/settledFalls.selftest).
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { createStudioCrushes } from '../game/studioCrush.ts';
