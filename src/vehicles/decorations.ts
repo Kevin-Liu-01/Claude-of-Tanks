@@ -3414,6 +3414,18 @@ const LIVED_IN_ROWS: Readonly<Record<string, () => DecorManifestRow[]>> = Object
     [['folded-tarp-pack', -0.2]], [-1.0, 1.3]), ...m1a1SideRackPacks()],
   m1a1_abrams_aim: () => [...m1a1RackLoad([['water-case', 0.62], ['ammo-can-stack', -0.2], ['large-rucksack', -0.76], ['mre-stack', 1.14],
     ['ammo-can-stack', 0.2]], [['sleep-system', 0.64], ['mat-roll', -0.98]], [-1.0, 1.3]), ...m1a1SideRackPacks()],
+  // 269 (the owner via the 268 lane: "redesign its australian m1a1"; Main: its kit through the decor layer): the Australian
+  // M1A1 AIM SA's rack loaded as the AIM's, and its lengthened rack's extension (profiles/abramsAus.ts: z -2.95 to -3.45,
+  // floor 0.26, rails 0.28 and 0.62) packed in its right half, the TMAPU holding its left (rear_adfa2015,
+  // rear34_adfa2015: packs, a duffel and cans behind the power unit), under its own net
+  m1a1_aim_sa_aus: () => [...m1a1RackLoad([['water-case', 0.62], ['ammo-can-stack', -0.2], ['large-rucksack', -0.76],
+    ['mre-stack', 1.14]], [['sleep-system', 0.64], ['mat-roll', -0.98]], [-1.0, 1.3]),
+    ...([['large-rucksack', -0.62], ['long-duffel', -1.22], ['water-case', -0.16]] as const).map(([v, x]) =>
+      crew(v, 'stowAt', { turret: true, floor: 0.26, at: [[x, -3.18], [x + 0.04, -3.18], [x - 0.04, -3.18], [x, -3.22]] })),
+    crew('mat-roll', 'stowAt', { turret: true, floor: 0.26, stack: true, at: [[-0.62, -3.22], [-0.58, -3.22], [-0.66, -3.22]] }),
+    lived('cargonet', { w: 1.50, len: 0.44 }, ['netOver', { turret: true, floor: 0.26, x0: -1.55, x1: -0.05, z0: -3.42,
+      z1: -2.98, edge: 0.62 }]),
+    ...m1a1SideRackPacks()],
   // its rack is full to 0.92 (and its cans to 1.19) and its drone dock's airframe reaches back over x -0.87..-0.15 as far
   // as z -2.78: a sleeping bag on the profile's duffel, a foam mat behind the dock's reach, no net over the cans
   m1a1_abrams_hc: () => [...tejasRackLoad(null, [['sleep-system', 0.15]]),
