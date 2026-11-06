@@ -8,7 +8,8 @@
 //      for a terrestrial place;
 //   5. the weathering and wear the row sets are shares (0–1), its colours are hex, its variation offers choices and its
 //      surface's scales and depths are in range; the kit's houses keep the row's reveal and eave.
-//   6. no two maps share a paint (each row's traced from its own photos).
+//   6. every paint is traced from the map's own photos (src/world/buildingStylePaints.trace.json), so two maps share a
+//      paint only where both places' photos show it.
 // `node tools/building-style-reading.mjs --json=src/world/buildingStyleReading.baseline.json` refreshes the reading after
 // a kit's houses change.
 import assert from 'node:assert/strict';
@@ -20,6 +21,7 @@ const { MAP_IDS } = await import('./mapIds.ts');
 const { getMapConfig } = await import('./index.ts');
 const { ARCHITECTURE_STYLE_IDS } = await import('./regional/index.ts');
 const reading = JSON.parse(readFileSync(new URL('../buildingStyleReading.baseline.json', import.meta.url), 'utf8'));
+const traces = JSON.parse(readFileSync(new URL('../buildingStylePaints.trace.json', import.meta.url), 'utf8'));
 
 const OFF_WORLD = new Set(['mars', 'moon']);
 const within = (v, [lo, hi], slack = 0) => v >= lo - slack && v <= hi + slack;
@@ -70,12 +72,19 @@ for (const id of MAP_IDS) {
   }
 }
 
-// 6. (Main 11-06) a row's paints are traced from its own photos, so no two maps paint alike: a hex in two rows means one
-//    was picked, not traced (if two places' photos ever show one paint, trace it in each and name the pair here)
-const painted = new Map();
-for (const id of MAP_IDS) for (const c of BUILDING_STYLES[id].variation.axes.paint ?? []) {
-  assert.ok(!painted.has(c), `${id}: paint ${c} is ${painted.get(c)}'s too`);
-  painted.set(c, id);
+// 6. (Main 11-06) a row's paints are traced from its own photos (src/world/buildingStylePaints.trace.json: each paint a
+//    sample's measured hex, its photo one of the record's): a hex in two rows only where both maps' photos show it
+for (const id of MAP_IDS) {
+  const paints = BUILDING_STYLES[id].variation.axes.paint ?? [];
+  const trace = traces[id];
+  if (!paints.length) { assert.equal(trace, undefined, `${id}: a trace for a row without paints`); continue; }
+  assert.ok(trace, `${id}: its paints are traced (buildingStylePaints.trace.json)`);
+  assert.deepEqual([...paints], trace.paint, `${id}: the row's paints are its trace's`);
+  for (const c of paints) {
+    const s = trace.samples.find((x) => (x.corrected ?? x.raw) === c);
+    assert.ok(s, `${id}: paint ${c} is a measured sample`);
+    assert.match(s.photo, new RegExp(`^${id}_\\d+\\.jpg$`), `${id}: ${c} is measured on the map's own photo (${s.photo})`);
+  }
 }
 
-console.log(`buildingStyleTable selftest: ${MAP_IDS.length} rows, each its map's kit, measured against its kit, with its photographs, no paint in two`);
+console.log(`buildingStyleTable selftest: ${MAP_IDS.length} rows, each its map's kit, measured against its kit, with its photographs, its paints traced`);

@@ -1,0 +1,1460 @@
+{
+ "airfield": {
+  "paint": [
+   "#e9e5df",
+   "#3da041"
+  ],
+  "samples": [
+   {
+    "photo": "airfield_3.jpg",
+    "box": [
+     425,
+     322,
+     447,
+     334
+    ],
+    "what": "white PVC pharmacy door panel, overcast (used as the white reference)",
+    "raw": "#afb9c3",
+    "corrected": null,
+    "white": "#afb9c3"
+   },
+   {
+    "photo": "airfield_3.jpg",
+    "box": [
+     285,
+     330,
+     330,
+     338
+    ],
+    "what": "white PVC shopfront panel of the left kiosk, overcast; corrected against the pharmacy door",
+    "raw": "#b0b8c2",
+    "corrected": "#e9e5df",
+    "white": "#afb9c3"
+   },
+   {
+    "photo": "airfield_3.jpg",
+    "box": [
+     455,
+     300,
+     470,
+     318
+    ],
+    "what": "green painted pharmacy shopfront around the door, overcast; corrected against the white PVC door beside it",
+    "raw": "#2e8139",
+    "corrected": "#3da041",
+    "white": "#afb9c3"
+   }
+  ],
+  "note": "Only airfield_3 (Hostomel street shops) shows joinery: white PVC doors and frames and a green painted pharmacy front; the hangar, aircraft, rocket and aerial photos show none, and a dark anthracite door frame at the right shop is too small and glass-mixed to measure."
+ },
+ "alpine": {
+  "paint": [
+   "#b7885e",
+   "#865e45",
+   "#5c4b4c"
+  ],
+  "samples": [
+   {
+    "photo": "alpine_1.jpg",
+    "box": [
+     954,
+     190,
+     958,
+     250
+    ],
+    "what": "honey larch window frame/shutter at the right edge, sunlit (natural wood)",
+    "raw": "#b7885e",
+    "corrected": null,
+    "white": null
+   },
+   {
+    "photo": "alpine_1.jpg",
+    "box": [
+     890,
+     457,
+     911,
+     467
+    ],
+    "what": "larch balcony boards, sunlit (natural wood, same timber as the frames)",
+    "raw": "#a98363",
+    "corrected": null,
+    "white": null
+   },
+   {
+    "photo": "alpine_1.jpg",
+    "box": [
+     462,
+     484,
+     469,
+     491
+    ],
+    "what": "red-brown stained shutter, sunlit",
+    "raw": "#865845",
+    "corrected": null,
+    "white": null
+   },
+   {
+    "photo": "alpine_2.jpg",
+    "box": [
+     797,
+     453,
+     804,
+     472
+    ],
+    "what": "red-brown stained plank door, diffuse light (no white surface beside it, taken raw)",
+    "raw": "#865e45",
+    "corrected": null,
+    "white": null
+   },
+   {
+    "photo": "alpine_1.jpg",
+    "box": [
+     556,
+     540,
+     570,
+     570
+    ],
+    "what": "weathered grey-brown plank door of snowbound stone byre",
+    "raw": "#5c4b4c",
+    "corrected": null,
+    "white": null
+   },
+   {
+    "photo": "alpine_2.jpg",
+    "box": [
+     857,
+     459,
+     864,
+     469
+    ],
+    "what": "weathered dark plank door/shutter, diffuse light",
+    "raw": "#51413a",
+    "corrected": null,
+    "white": null
+   },
+   {
+    "photo": "alpine_4.jpg",
+    "box": [
+     176,
+     473,
+     192,
+     486
+    ],
+    "what": "honey wood door in porch of the large house (tiny, mostly recess shadow; not used)",
+    "raw": "#593519",
+    "corrected": null,
+    "white": null
+   }
+  ],
+  "note": "Bonneval joinery is all unpainted or stained larch (fresh honey-orange, red-brown stained, weathered grey-brown); no painted colour shows, alpine_0 is black-and-white (skipped) and alpine_3 shows only lauze slabs."
+ },
+ "autumn": {
+  "paint": [
+   "#791e28",
+   "#6c8599",
+   "#265f94"
+  ],
+  "samples": [
+   {
+    "photo": "autumn_2.jpg",
+    "box": [
+     620,
+     425,
+     652,
+     535
+    ],
+    "what": "red shutter, maison lorraine, sunlit",
+    "raw": "#791e28",
+    "corrected": null,
+    "white": null
+   },
+   {
+    "photo": "autumn_2.jpg",
+    "box": [
+     480,
+     262,
+     508,
+     352
+    ],
+    "what": "red shutter, upper floor, sunlit",
+    "raw": "#792734",
+    "corrected": null,
+    "white": null
+   },
+   {
+    "photo": "autumn_2.jpg",
+    "box": [
+     70,
+     450,
+     120,
+     560
+    ],
+    "what": "red barn door (porte charretière), sunlit",
+    "raw": "#6b1519",
+    "corrected": null,
+    "white": null
+   },
+   {
+    "photo": "autumn_1.jpg",
+    "box": [
+     58,
+     335,
+     59,
+     410
+    ],
+    "what": "grey-blue louvred shutter stile, left house, sunlit",
+    "raw": "#6c8599",
+    "corrected": null,
+    "white": null
+   },
+   {
+    "photo": "autumn_4.jpg",
+    "box": [
+     35,
+     1100,
+     95,
+     1340
+    ],
+    "what": "blue painted shopfront door panel, overcast",
+    "raw": "#1c4670",
+    "corrected": "#265f94",
+    "white": "#a9a9a9"
+   }
+  ],
+  "note": "autumn_2 gives sunlit red shutters and doors, autumn_1 grey-blue shutters (plus white louvred shutters in shade, which correct to plain white and are left out) and autumn_4 a blue shopfront; autumn_0 is black-and-white and autumn_3 is landscape only."
+ },
+ "coastal": {
+  "paint": [
+   "#5d1825",
+   "#4082a0",
+   "#6c9077"
+  ],
+  "samples": [
+   {
+    "photo": "coastal_2.jpg",
+    "box": [
+     160,
+     330,
+     182,
+     480
+    ],
+    "what": "crimson/maroon shutter, whitewashed house, overcast",
+    "raw": "#511520",
+    "corrected": "#5d1825",
+    "white": "#cac9c4"
+   },
+   {
+    "photo": "coastal_2.jpg",
+    "box": [
+     245,
+     330,
+     262,
+     460
+    ],
+    "what": "crimson shutter, overcast",
+    "raw": "#561721",
+    "corrected": "#5f1925",
+    "white": "#d2d2ca"
+   },
+   {
+    "photo": "coastal_2.jpg",
+    "box": [
+     734,
+     333,
+     739,
+     375
+    ],
+    "what": "blue shutter, granite house down the street, overcast",
+    "raw": "#306272",
+    "corrected": "#4082a0",
+    "white": "#adada0"
+   },
+   {
+    "photo": "coastal_2.jpg",
+    "box": [
+     701,
+     338,
+     706,
+     375
+    ],
+    "what": "blue shutter, same house, overcast",
+    "raw": "#326576",
+    "corrected": "#4386a5",
+    "white": "#adada0"
+   },
+   {
+    "photo": "coastal_3.jpg",
+    "box": [
+     345,
+     400,
+     356,
+     555
+    ],
+    "what": "sage-green shutter, half-timbered house, facade in shade",
+    "raw": "#465e52",
+    "corrected": "#6c9077",
+    "white": "#97969a"
+   },
+   {
+    "photo": "coastal_3.jpg",
+    "box": [
+     472,
+     405,
+     486,
+     550
+    ],
+    "what": "sage-green shutter, shade",
+    "raw": "#475e54",
+    "corrected": "#6d907a",
+    "white": "#97969a"
+   },
+   {
+    "photo": "coastal_3.jpg",
+    "box": [
+     375,
+     930,
+     440,
+     1030
+    ],
+    "what": "varnished natural-wood glazed door (not paint, not used)",
+    "raw": "#4c3315",
+    "corrected": null,
+    "white": null
+   }
+  ],
+  "note": "Kérity (coastal_2) shows crimson shutters and doors plus blue shutters, and coastal_3 shows sage-green shutters and white louvred shutters beside a varnished wood door; the 1929 autochromes (coastal_0, coastal_1) show no readable joinery colour."
+ },
+ "copper_mesa": {
+  "paint": [
+   "#8fb8b4",
+   "#b4bfb6",
+   "#5a272e"
+  ],
+  "samples": [
+   {
+    "photo": "copper_mesa_0.jpg",
+    "box": [
+     91,
+     325,
+     100,
+     405
+    ],
+    "what": "duck-egg/aqua painted plank door of weatherboard house, overcast 1970s slide (blue cast); corrected against the white weatherboard beside it",
+    "raw": "#6389a4",
+    "corrected": "#8fb8b4",
+    "white": "#a1abcc"
+   },
+   {
+    "photo": "copper_mesa_0.jpg",
+    "box": [
+     20,
+     412,
+     45,
+     418
+    ],
+    "what": "aqua painted skirting board of the neighbouring house (same paint family)",
+    "raw": "#587589",
+    "corrected": "#7f9d96",
+    "white": "#a1abcc"
+   },
+   {
+    "photo": "copper_mesa_3.jpg",
+    "box": [
+     750,
+     304,
+     765,
+     318
+    ],
+    "what": "pale sage-green painted bay-window panelling of the Hunters Hotel, diffuse light, no white surface beside it (raw)",
+    "raw": "#b4bfb6",
+    "corrected": null,
+    "white": null
+   },
+   {
+    "photo": "copper_mesa_3.jpg",
+    "box": [
+     831,
+     335,
+     833,
+     395
+    ],
+    "what": "oxblood painted timber verandah post at the hotel, under the verandah, no white beside it (raw)",
+    "raw": "#5a272e",
+    "corrected": null,
+    "white": null
+   }
+  ],
+  "note": "Queenstown shows white-painted window frames throughout, one aqua door and the Hunters Hotel's sage-green bay joinery with oxblood verandah timber; copper_mesa_4 is a sepia print (skipped) and copper_mesa_2 shows only mine sheds."
+ },
+ "delta": {
+  "paint": [
+   "#a98969",
+   "#887755"
+  ],
+  "samples": [
+   {
+    "photo": "delta_0.jpg",
+    "box": [
+     450,
+     360,
+     520,
+     410
+    ],
+    "what": "bamboo/jute matting wall of the hut beside the doorway, low sun (natural, unpainted)",
+    "raw": "#a98969",
+    "corrected": null,
+    "white": null
+   },
+   {
+    "photo": "delta_0.jpg",
+    "box": [
+     693,
+     400,
+     698,
+     470
+    ],
+    "what": "bamboo door post, sunlit (natural)",
+    "raw": "#be9e77",
+    "corrected": null,
+    "white": null
+   },
+   {
+    "photo": "delta_0.jpg",
+    "box": [
+     620,
+     470,
+     665,
+     492
+    ],
+    "what": "weathered plank crate/box in front of the doorway, sunlit (natural)",
+    "raw": "#887755",
+    "corrected": null,
+    "white": null
+   }
+  ],
+  "note": "No painted door, shutter or window joinery in any delta photo (flooded jute-stick/bamboo hut, distant riverbank huts, market stalls, a CI roof, trees); these are natural bamboo/matting and weathered plank colours, and delta_0 carries a strong teal/orange colour grade."
+ },
+ "desert": {
+  "paint": [
+   "#1d688f",
+   "#576d8c"
+  ],
+  "samples": [
+   {
+    "photo": "desert_3.jpg",
+    "box": [
+     209,
+     408,
+     215,
+     420
+    ],
+    "what": "blue shutter, white house left of the flag, facade in evening shade",
+    "raw": "#144872",
+    "corrected": "#1d688f",
+    "white": "#9ea0b3"
+   },
+   {
+    "photo": "desert_3.jpg",
+    "box": [
+     238,
+     413,
+     243,
+     424
+    ],
+    "what": "blue shutter, same house, shade",
+    "raw": "#0c426d",
+    "corrected": "#125f88",
+    "white": "#9ea0b3"
+   },
+   {
+    "photo": "desert_3.jpg",
+    "box": [
+     314,
+     423,
+     320,
+     434
+    ],
+    "what": "blue shutter right of the entrance, shade",
+    "raw": "#134b75",
+    "corrected": "#1e6f92",
+    "white": "#949cb4"
+   },
+   {
+    "photo": "desert_3.jpg",
+    "box": [
+     597,
+     452,
+     602,
+     470
+    ],
+    "what": "navy blue door with white iron grille, courtyard house, deep shade",
+    "raw": "#2d3d57",
+    "corrected": "#576d8c",
+    "white": "#78818b"
+   },
+   {
+    "photo": "desert_0.jpg",
+    "box": [
+     825,
+     480,
+     860,
+     640
+    ],
+    "what": "unpainted plank door in a ghorfa doorway, recess shade (natural wood, not used)",
+    "raw": "#4a220e",
+    "corrected": null,
+    "white": null
+   },
+   {
+    "photo": "desert_1.jpg",
+    "box": [
+     225,
+     580,
+     262,
+     672
+    ],
+    "what": "unpainted weathered plank door in a lime-outlined arch (natural wood, not used)",
+    "raw": "#684c38",
+    "corrected": null,
+    "white": null
+   }
+  ],
+  "note": "Only desert_3 (modern Ksar Hadada) shows painted joinery: Tunisian-blue shutters and a darker navy door, both in evening shade and corrected against the white render; the ghorfa doors in desert_0 and desert_1 are bare brown planks and desert_2 is too distant."
+ },
+ "fjord": {
+  "paint": [
+   "#963a2a",
+   "#6f302c",
+   "#dfc9c2"
+  ],
+  "samples": [
+   {
+    "photo": "fjord_2.jpg",
+    "box": [
+     615,
+     255,
+     621,
+     310
+    ],
+    "what": "falu-red plank door on the naust side wall, sunlit",
+    "raw": "#963a2a",
+    "corrected": null,
+    "white": null
+   },
+   {
+    "photo": "fjord_2.jpg",
+    "box": [
+     571,
+     258,
+     572,
+     282
+    ],
+    "what": "white window frame stile, naust side wall, sunlit",
+    "raw": "#dfc9c2",
+    "corrected": null,
+    "white": null
+   },
+   {
+    "photo": "fjord_1.jpg",
+    "box": [
+     784,
+     425,
+     807,
+     427
+    ],
+    "what": "dark red window frame transom, white-walled bank building under the eaves, overcast",
+    "raw": "#49201e",
+    "corrected": "#6f302c",
+    "white": "#99999a"
+   }
+  ],
+  "note": "fjord_2 shows a sunlit falu-red door and a white window frame, and fjord_1 shows dark red window frames on a white wall (overcast, low resolution); fjord_0 and fjord_4 are black-and-white and fjord_3's white houses are too distant to show joinery."
+ },
+ "frontier": {
+  "paint": [
+   "#6b2724",
+   "#566c74",
+   "#645450"
+  ],
+  "samples": [
+   {
+    "photo": "frontier_3.jpg",
+    "box": [
+     508,
+     520,
+     522,
+     940
+    ],
+    "what": "ox-blood door post, Alt Hünfeld, sunlit",
+    "raw": "#6b2724",
+    "corrected": null,
+    "white": null
+   },
+   {
+    "photo": "frontier_3.jpg",
+    "box": [
+     820,
+     712,
+     950,
+     740
+    ],
+    "what": "ox-blood window sill timber, sunlit",
+    "raw": "#6e2a27",
+    "corrected": null,
+    "white": null
+   },
+   {
+    "photo": "frontier_1.jpg",
+    "box": [
+     749,
+     418,
+     756,
+     450
+    ],
+    "what": "teal-grey door, Burghaun rendered house, shade",
+    "raw": "#293641",
+    "corrected": "#566c74",
+    "white": "#71747d"
+   },
+   {
+    "photo": "frontier_1.jpg",
+    "box": [
+     432,
+     392,
+     450,
+     426
+    ],
+    "what": "brown church door, Burghaun",
+    "raw": "#645450",
+    "corrected": null,
+    "white": null
+   }
+  ],
+  "note": "No shutter in any photo: ox-blood timbers and door posts, white sashes, a teal-grey door and a brown church door."
+ },
+ "longleaf": {
+  "paint": [
+   "#dfd5cf",
+   "#8d6d73",
+   "#281828"
+  ],
+  "samples": [
+   {
+    "photo": "longleaf_3.jpg",
+    "box": [
+     481,
+     200,
+     485,
+     290
+    ],
+    "what": "off-white window casing, shotgun house, shade",
+    "raw": "#b4aab6",
+    "corrected": "#dfd5cf",
+    "white": "#bbb8c5"
+   },
+   {
+    "photo": "longleaf_3.jpg",
+    "box": [
+     488,
+     200,
+     491,
+     290
+    ],
+    "what": "dull red-brown window sash, shade",
+    "raw": "#725765",
+    "corrected": "#8d6d73",
+    "white": "#bbb8c5"
+   },
+   {
+    "photo": "longleaf_2.jpg",
+    "box": [
+     265,
+     345,
+     269,
+     470
+    ],
+    "what": "white screen-door frame, store, overcast colour film",
+    "raw": "#b8b496",
+    "corrected": "#ede2df",
+    "white": "#b4b797"
+   },
+   {
+    "photo": "longleaf_2.jpg",
+    "box": [
+     567,
+     340,
+     572,
+     480
+    ],
+    "what": "dark brown store door under the porch, shade",
+    "raw": "#1f131b",
+    "corrected": "#281828",
+    "white": "#b4b797"
+   },
+   {
+    "photo": "longleaf_1.jpg",
+    "box": [
+     410,
+     370,
+     416,
+     440
+    ],
+    "what": "weathered unpainted porch post, sunlit (doors and shutters are this wood, in deep porch shade)",
+    "raw": "#92886f",
+    "corrected": null,
+    "white": null
+   }
+  ],
+  "note": "Colour photos show white casings and screen-door frames, a dull red-brown sash and a near-black store door; the dogtrot's doors and shutters are unpainted weathered wood; longleaf_0 and longleaf_4 are black-and-white and skipped; the 1940 film casts magenta, so the dark door reads purple-black."
+ },
+ "mangrove": {
+  "paint": [
+   "#94bed7",
+   "#2f4654",
+   "#e3e8da"
+  ],
+  "samples": [
+   {
+    "photo": "mangrove_3.jpg",
+    "box": [
+     220,
+     350,
+     265,
+     400
+    ],
+    "what": "pale blue painted plank panel/shutter, stilt house verandah, overcast",
+    "raw": "#617a88",
+    "corrected": "#94bed7",
+    "white": "#98948e"
+   },
+   {
+    "photo": "mangrove_3.jpg",
+    "box": [
+     270,
+     350,
+     273,
+     440
+    ],
+    "what": "blue painted verandah post",
+    "raw": "#51748a",
+    "corrected": "#7cb4da",
+    "white": "#98948e"
+   },
+   {
+    "photo": "mangrove_3.jpg",
+    "box": [
+     380,
+     360,
+     390,
+     370
+    ],
+    "what": "mid-blue folding doors with red-brown studs, under verandah",
+    "raw": "#1f2d35",
+    "corrected": "#2f4654",
+    "white": "#98948e"
+   },
+   {
+    "photo": "mangrove_3.jpg",
+    "box": [
+     584,
+     330,
+     588,
+     410
+    ],
+    "what": "cream-white painted post/door-frame paint, neighbouring house (also the white reference with box 810,330,814,410)",
+    "raw": "#95958a",
+    "corrected": "#e3e8da",
+    "white": "#98948e"
+   },
+   {
+    "photo": "mangrove_3.jpg",
+    "box": [
+     842,
+     152,
+     844,
+     192
+    ],
+    "what": "grey-blue louvred shutter frame, rear building, deeper shade than the white reference",
+    "raw": "#667079",
+    "corrected": "#9caec0",
+    "white": "#98948e"
+   },
+   {
+    "photo": "mangrove_4.jpg",
+    "box": [
+     23,
+     350,
+     37,
+     400
+    ],
+    "what": "royal-blue painted metal gate, deep shade, no white surface beside it",
+    "raw": "#0c2352",
+    "corrected": null,
+    "white": null
+   }
+  ],
+  "note": "Overcast dusk on mangrove_3 (corrected with its white posts) shows pale blue panels, mid-blue doors and cream frames; mangrove_4 adds a royal-blue gate in shade that can't be corrected; mangrove_0 shows no buildings, mangrove_1 is too distant, and mangrove_2 is black-and-white."
+ },
+ "monsoon": {
+  "paint": [
+   "#64814b",
+   "#652f34",
+   "#768aa2"
+  ],
+  "samples": [
+   {
+    "photo": "monsoon_3.jpg",
+    "box": [
+     915,
+     340,
+     955,
+     470
+    ],
+    "what": "painted green wall, Kohima, sunlit",
+    "raw": "#64814b",
+    "corrected": null,
+    "white": null
+   },
+   {
+    "photo": "monsoon_3.jpg",
+    "box": [
+     775,
+     425,
+     815,
+     465
+    ],
+    "what": "painted maroon wall, Kohima, sunlit",
+    "raw": "#652f34",
+    "corrected": null,
+    "white": null
+   },
+   {
+    "photo": "monsoon_1.jpg",
+    "box": [
+     380,
+     200,
+     470,
+     380
+    ],
+    "what": "blue-grey painted plank house, Khonoma",
+    "raw": "#768aa2",
+    "corrected": null,
+    "white": null
+   }
+  ],
+  "note": "Dark-stained plank houses with Kohima's painted green, maroon and blue; no 1944 colour photograph."
+ },
+ "orchard": {
+  "paint": [
+   "#eecc98",
+   "#dbd0aa",
+   "#50422f"
+  ],
+  "samples": [
+   {
+    "photo": "orchard_3.jpg",
+    "box": [
+     457,
+     395,
+     481,
+     405
+    ],
+    "what": "tan wooden shutter panels under the arched fanlights, main house, sunlit",
+    "raw": "#eecc98",
+    "corrected": null,
+    "white": null
+   },
+   {
+    "photo": "orchard_3.jpg",
+    "box": [
+     437,
+     448,
+     462,
+     470
+    ],
+    "what": "tan plank ground-floor arched door, sunlit",
+    "raw": "#dcbc8d",
+    "corrected": null,
+    "white": null
+   },
+   {
+    "photo": "orchard_3.jpg",
+    "box": [
+     468,
+     381,
+     471,
+     388
+    ],
+    "what": "cream-white painted fanlight muntin, sunlit",
+    "raw": "#dbd0aa",
+    "corrected": null,
+    "white": null
+   },
+   {
+    "photo": "orchard_3.jpg",
+    "box": [
+     481,
+     381,
+     483,
+     391
+    ],
+    "what": "dark brown arched fanlight frame, sunlit (2 px wide, edge-mixed)",
+    "raw": "#50422f",
+    "corrected": null,
+    "white": null
+   },
+   {
+    "photo": "orchard_3.jpg",
+    "box": [
+     657,
+     335,
+     659,
+     352
+    ],
+    "what": "dark slate window bars on the upper-left house, mixed with blue glass",
+    "raw": "#627f85",
+    "corrected": null,
+    "white": null
+   },
+   {
+    "photo": "orchard_1.jpg",
+    "box": [
+     479,
+     399,
+     492,
+     426
+    ],
+    "what": "dark brown wooden window beside the mosque door, mostly dark glazing",
+    "raw": "#1c0f13",
+    "corrected": null,
+    "white": null
+   }
+  ],
+  "note": "Sunlit but low-resolution photos: the 'blue fanlights' are sky-blue glass behind cream muntins and dark brown arch frames, the shutters and doors are pale tan wood; no coloured paint is visible (cream and tan are close, and the dark frame is only 2 px wide); orchard_0/2/4/5 show nothing measurable."
+ },
+ "polders": {
+  "paint": [
+   "#42354f",
+   "#253153",
+   "#646564"
+  ],
+  "samples": [
+   {
+    "photo": "polders_3.jpg",
+    "box": [
+     732,
+     352,
+     742,
+     392
+    ],
+    "what": "aubergine door, white-rendered farmhouse, overcast",
+    "raw": "#241d2b",
+    "corrected": "#42354f",
+    "white": "#7f7f7a"
+   },
+   {
+    "photo": "polders_3.jpg",
+    "box": [
+     447,
+     360,
+     458,
+     398
+    ],
+    "what": "navy door, same farmhouse, overcast",
+    "raw": "#141b2d",
+    "corrected": "#253153",
+    "white": "#7f7f7a"
+   },
+   {
+    "photo": "polders_1.jpg",
+    "box": [
+     172,
+     448,
+     183,
+     470
+    ],
+    "what": "grey shutter, brick house, sunlit",
+    "raw": "#646564",
+    "corrected": null,
+    "white": null
+   }
+  ],
+  "note": "Three photos are black-and-white; the colour ones show aubergine frames and door, a navy door, grey shutters and tarred black barn boards."
+ },
+ "reservoir": {
+  "paint": [
+   "#347f5a",
+   "#de4841",
+   "#904744"
+  ],
+  "samples": [
+   {
+    "photo": "reservoir_2.jpg",
+    "box": [
+     660,
+     405,
+     690,
+     450
+    ],
+    "what": "green plank barn door, Rollesbroich, sunlit",
+    "raw": "#347f5a",
+    "corrected": null,
+    "white": null
+   },
+   {
+    "photo": "reservoir_2.jpg",
+    "box": [
+     281,
+     430,
+     286,
+     480
+    ],
+    "what": "red painted door frame, sunlit",
+    "raw": "#de4841",
+    "corrected": null,
+    "white": null
+   },
+   {
+    "photo": "reservoir_1.jpg",
+    "box": [
+     770,
+     433,
+     850,
+     452
+    ],
+    "what": "green plank barn gate, Witzerath, partly sunlit",
+    "raw": "#4e6762",
+    "corrected": null,
+    "white": null
+   },
+   {
+    "photo": "reservoir_3.jpg",
+    "box": [
+     735,
+     720,
+     743,
+     840
+    ],
+    "what": "oxblood-red window frame, Monschau slate-hung house, overcast",
+    "raw": "#783c3b",
+    "corrected": "#904744",
+    "white": "#c2c2c1"
+   },
+   {
+    "photo": "reservoir_3.jpg",
+    "box": [
+     78,
+     780,
+     87,
+     905
+    ],
+    "what": "oxblood-red window frame, left, overcast",
+    "raw": "#63312e",
+    "corrected": "#763a35",
+    "white": "#c2c2c1"
+   },
+   {
+    "photo": "reservoir_3.jpg",
+    "box": [
+     288,
+     10,
+     296,
+     110
+    ],
+    "what": "dark green window frame, upper house, overcast",
+    "raw": "#325344",
+    "corrected": "#3c624f",
+    "white": "#c2c2c1"
+   }
+  ],
+  "note": "Green plank barn doors and bright red frames in the sunlit Eifel farm photos, and oxblood-red (plus one dark green) window frames on overcast reservoir_3 (corrected using the white siding); reservoir_0's frames are too distant to sample."
+ },
+ "saltwind": {
+  "paint": [
+   "#868b96",
+   "#8d5e4c",
+   "#4c3c34"
+  ],
+  "samples": [
+   {
+    "photo": "saltwind_4.jpg",
+    "box": [
+     435,
+     334,
+     446,
+     376
+    ],
+    "what": "light grey-blue louvred shutter, Škrip, sunlit",
+    "raw": "#868b96",
+    "corrected": null,
+    "white": null
+   },
+   {
+    "photo": "saltwind_4.jpg",
+    "box": [
+     520,
+     350,
+     552,
+     430
+    ],
+    "what": "grey-blue plank loft door, sunlit",
+    "raw": "#8a8e99",
+    "corrected": null,
+    "white": null
+   },
+   {
+    "photo": "saltwind_1.jpg",
+    "box": [
+     210,
+     245,
+     216,
+     365
+    ],
+    "what": "weathered grey louvred dormer shutter stile, Pučišća, sunlit",
+    "raw": "#8e8c89",
+    "corrected": null,
+    "white": null
+   },
+   {
+    "photo": "saltwind_0.jpg",
+    "box": [
+     471,
+     352,
+     476,
+     395
+    ],
+    "what": "red-brown painted plank door, Lišnjak, sunlit",
+    "raw": "#8d5e4c",
+    "corrected": null,
+    "white": null
+   },
+   {
+    "photo": "saltwind_0.jpg",
+    "box": [
+     481,
+     200,
+     483,
+     255
+    ],
+    "what": "faded red-brown louvred shutter, meeting stile, sunlit",
+    "raw": "#a5928c",
+    "corrected": null,
+    "white": null
+   },
+   {
+    "photo": "saltwind_0.jpg",
+    "box": [
+     470,
+     525,
+     620,
+     545
+    ],
+    "what": "dark weathered plank gate, sunlit",
+    "raw": "#4c3c34",
+    "corrected": null,
+    "white": null
+   }
+  ],
+  "note": "Sunlit photos show grey-blue shutters and doors (saltwind_4), weathered grey shutters (saltwind_1, too close to the grey-blue to count separately) and red-brown shutters and a door (saltwind_0); the third value is the dark unpainted plank gate; saltwind_2 is too distant and saltwind_3 is nearly colourless."
+ },
+ "skybridge": {
+  "paint": [
+   "#896758",
+   "#523129"
+  ],
+  "samples": [
+   {
+    "photo": "skybridge_3.jpg",
+    "box": [
+     740,
+     645,
+     754,
+     659
+    ],
+    "what": "louvred steel panel in the powerhouse wall, 1970s slide with red cast; corrected against the concrete wall beside it",
+    "raw": "#763e2c",
+    "corrected": "#896758",
+    "white": "#c88b70"
+   },
+   {
+    "photo": "skybridge_3.jpg",
+    "box": [
+     804,
+     640,
+     824,
+     655
+    ],
+    "what": "second louvred panel, same wall",
+    "raw": "#6f3725",
+    "corrected": "#805c4c",
+    "white": "#c98a6d"
+   },
+   {
+    "photo": "skybridge_3.jpg",
+    "box": [
+     225,
+     688,
+     255,
+     702
+    ],
+    "what": "dark access hatch/doorway on the dam-toe walkway; corrected against sunlit dam concrete",
+    "raw": "#522b23",
+    "corrected": "#523129",
+    "white": "#e8c8be"
+   }
+  ],
+  "note": "No door, shutter or window joinery is resolvable in any skybridge photo (two aerials, a desert slope, distant Page houses at a few pixels); the only openings are steel louvre panels and a hatch at the dam, corrected against concrete rather than true white, so they are approximate."
+ },
+ "steppe": {
+  "paint": [
+   "#293966",
+   "#9ac6da",
+   "#325d54"
+  ],
+  "samples": [
+   {
+    "photo": "steppe_2.jpg",
+    "box": [
+     438,
+     356,
+     455,
+     369
+    ],
+    "what": "royal-blue porch panel and casings, log forestry office, overcast",
+    "raw": "#283866",
+    "corrected": "#293966",
+    "white": "#e3e1df"
+   },
+   {
+    "photo": "steppe_2.jpg",
+    "box": [
+     476,
+     337,
+     477,
+     369
+    ],
+    "what": "teal-green door stile (door has blue panels), overcast",
+    "raw": "#315b54",
+    "corrected": "#325d54",
+    "white": "#e3e1df"
+   },
+   {
+    "photo": "steppe_5.jpg",
+    "box": [
+     608,
+     842,
+     614,
+     948
+    ],
+    "what": "weathered pale-blue window casing (nalichnik), log house under eaves and tree shade",
+    "raw": "#557586",
+    "corrected": "#9ac6da",
+    "white": "#80888a"
+   },
+   {
+    "photo": "steppe_5.jpg",
+    "box": [
+     497,
+     842,
+     503,
+     942
+    ],
+    "what": "pale-blue window casing, shade",
+    "raw": "#597785",
+    "corrected": "#a1c9d8",
+    "white": "#80888a"
+   }
+  ],
+  "note": "Painted joinery appears only on the log houses in steppe_2 (royal-blue casings and porch, teal-green door) and steppe_5 (weathered pale-blue casings round white sashes), all overcast and corrected against the white sign or white sash; steppe_0, 1, 3 and 4 show no joinery colour at readable size."
+ },
+ "titan_gorge": {
+  "paint": [
+   "#8a532f",
+   "#caa692",
+   "#3e2117"
+  ],
+  "samples": [
+   {
+    "photo": "titan_gorge_1.jpg",
+    "box": [
+     300,
+     440,
+     340,
+     470
+    ],
+    "what": "hogan plank door, lower boards, sunlit (natural weathered wood, HDR-processed photo)",
+    "raw": "#8a532f",
+    "corrected": null,
+    "white": null
+   },
+   {
+    "photo": "titan_gorge_1.jpg",
+    "box": [
+     300,
+     345,
+     340,
+     365
+    ],
+    "what": "hogan plank door, upper boards",
+    "raw": "#80502f",
+    "corrected": null,
+    "white": null
+   },
+   {
+    "photo": "titan_gorge_1.jpg",
+    "box": [
+     368,
+     360,
+     378,
+     440
+    ],
+    "what": "log door-frame post, sunlit",
+    "raw": "#a36033",
+    "corrected": null,
+    "white": null
+   },
+   {
+    "photo": "titan_gorge_3.jpg",
+    "box": [
+     305,
+     540,
+     310,
+     650
+    ],
+    "what": "white/aluminium sliding-window mullion, sunlit (photo has a warm-pink cast)",
+    "raw": "#caa692",
+    "corrected": null,
+    "white": null
+   },
+   {
+    "photo": "titan_gorge_3.jpg",
+    "box": [
+     223,
+     540,
+     226,
+     650
+    ],
+    "what": "same window, left frame",
+    "raw": "#c09077",
+    "corrected": null,
+    "white": null
+   },
+   {
+    "photo": "titan_gorge_0.jpg",
+    "box": [
+     455,
+     375,
+     475,
+     395
+    ],
+    "what": "weathered dark plank wall/door of Oljato outbuilding, overcast, no white beside it (raw)",
+    "raw": "#3e2117",
+    "corrected": null,
+    "white": null
+   }
+  ],
+  "note": "No painted colour joinery: the hogan and Oljato show bare weathered plank doors, the block house a white/aluminium window frame (warm cast left uncorrected because the frame itself is the only white), and titan_gorge_2 is a trading-post interior (skipped)."
+ },
+ "urban": {
+  "paint": [
+   "#89ab92",
+   "#7b403b",
+   "#054b30",
+   "#32201e"
+  ],
+  "samples": [
+   {
+    "photo": "urban_3.jpg",
+    "box": [
+     152,
+     262,
+     182,
+     265
+    ],
+    "what": "mint-green window frame transom, white house, overcast",
+    "raw": "#89b2a0",
+    "corrected": "#89ab92",
+    "white": "#e8eff6"
+   },
+   {
+    "photo": "urban_3.jpg",
+    "box": [
+     165,
+     250,
+     167,
+     295
+    ],
+    "what": "mint-green window frame mullion, overcast",
+    "raw": "#769e8b",
+    "corrected": "#76987f",
+    "white": "#e8eff6"
+   },
+   {
+    "photo": "urban_3.jpg",
+    "box": [
+     612,
+     175,
+     626,
+     232
+    ],
+    "what": "ox-blood painted window surround/reveal, white house, overcast",
+    "raw": "#723c39",
+    "corrected": "#7b403b",
+    "white": "#d7d9da"
+   },
+   {
+    "photo": "urban_3.jpg",
+    "box": [
+     527,
+     190,
+     536,
+     262
+    ],
+    "what": "ox-blood window surround, overcast",
+    "raw": "#6f3c38",
+    "corrected": "#78403a",
+    "white": "#d7d9da"
+   },
+   {
+    "photo": "urban_2.jpg",
+    "box": [
+     848,
+     615,
+     868,
+     715
+    ],
+    "what": "bottle-green round-arched door, shaded recess (corrected against the grey sandstone pilaster beside it, not a true white)",
+    "raw": "#022416",
+    "corrected": "#054b30",
+    "white": "#666e66"
+   },
+   {
+    "photo": "urban_3.jpg",
+    "box": [
+     638,
+     392,
+     641,
+     545
+    ],
+    "what": "dark green shopfront shutter, overcast recess",
+    "raw": "#1a2120",
+    "corrected": "#262f2d",
+    "white": "#9fa19e"
+   },
+   {
+    "photo": "urban_3.jpg",
+    "box": [
+     903,
+     350,
+     908,
+     580
+    ],
+    "what": "dark maroon-brown glazed shop door frame, overcast",
+    "raw": "#2a1b1b",
+    "corrected": "#32201e",
+    "white": "#c4c5c9"
+   }
+  ],
+  "note": "Meissen photos (urban_2, urban_3) give mint-green window frames, ox-blood surrounds, bottle-green doors and shutters and a maroon-brown shop door, all overcast and white-corrected; urban_0 (old slide) and urban_1 (Kronach, white frames and red Fachwerk timbers) add no further paints."
+ }
+}
