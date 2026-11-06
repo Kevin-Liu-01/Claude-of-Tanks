@@ -1943,6 +1943,8 @@ export const SELFTEST_SUITES = Object.freeze({
     // 265 (the owner, 2026-10-29: one core, two drivers): the local step and the authority's leave the same world, byte for byte
     // (2026-11-02 audit M6: and what each team sees, tick for tick — spotting through one factory)
     'src/sim/driverStepParity.selftest.mjs',
+    // 2026-11-06 round 4 F8 (audit M6 spotting parity): the solo spotting reads the gated kit (combat.equip), as the authority's
+    'src/sim/spottingKitParity.selftest.mjs',
     'src/sim/crushPress.selftest.mjs', // 2026-11-02 audit M6: the crush press is the battle's, per hull and record, on both drivers
     'src/game/battleExitLedgers.selftest.mjs', // 2026-11-04 round 2 U13: the crush press and ram cooldowns leave with their battle at the Garage return
     'src/sim/structureSupport.selftest.mjs',

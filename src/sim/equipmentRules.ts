@@ -102,7 +102,9 @@ interface EquipmentMultipliers {
 export interface EquipmentCombatState {
   equip?: string[];
   /** Replaced atomically by applyEquipmentToCombat; callers may carry a
-   * narrower simulation-facing multiplier view before this boundary. */
+   * narrower simulation-facing multiplier view before this boundary. Its
+   * moduleHp is the factor each module's HP carries from the kit, which a
+   * re-equip takes off again (rescaleModuleHp). */
   equipMults?: object;
   /** The named multiplier layers a live state carries (consumableRules.ts); a re-equip hands its new object to them. */
   multiplierLayers?: MultiplierLayers;
@@ -408,10 +410,44 @@ export function computeEquipMults(
   return m;
 }
 
+/** The factor a module carries from a kit: a missing or unusable one is no factor. */
+function moduleHpFactor(factor: number | undefined): number {
+  return typeof factor === 'number' && Number.isFinite(factor) && factor > 0 ? factor : 1;
+}
+
 /**
- * Attach a loadout to a freshly created CombatState: stores the sanitized id
- * list + multiplier record and scales module max HP (wet rack / suspension /
- * safety fuel). Call ONCE per battle, right after createCombatState.
+ * Module HP under a kit: each module's maxHp is its own (createCombatState's) times the kit's factor, and its hp keeps
+ * its share of maxHp. `carried` is the factor set the modules carry now: equipMults.moduleHp as the last
+ * applyEquipmentToCombat wrote it (that call is the only writer of module maxHp and of that record, and the only one
+ * that replaces equipMults), absent on a fresh state, so a spawn multiplies exactly as it always has. A live re-equip
+ * takes the carried factor off before it puts the new one on (round 4 E7: it multiplied on top, so the same kit again
+ * took a x1.5 ammo rack to x2.25 and dropping the kit kept it). A module's `state` stays as it is: its hp keeps its
+ * share, so the state damage.ts reads from that share (refreshModuleState) is unchanged.
+ */
+function rescaleModuleHp(
+  modules: EquipmentCombatState['modules'],
+  carried: Partial<Record<EquipmentModuleId, number>> | undefined,
+  next: Partial<Record<EquipmentModuleId, number>>,
+): void {
+  if (!modules) return;
+  const rescale = (mod: EquipmentModuleId): void => {
+    const rec = modules[mod];
+    const from = moduleHpFactor(carried?.[mod]), to = moduleHpFactor(next[mod]);
+    if (!rec || from === to) return;
+    rec.maxHp = (from === 1 ? rec.maxHp : rec.maxHp / from) * to;
+    rec.hp = (from === 1 ? rec.hp : rec.hp / from) * to;
+  };
+  if (carried) for (const mod of Object.keys(carried) as EquipmentModuleId[]) if (!(mod in next)) rescale(mod);
+  for (const mod of Object.keys(next) as EquipmentModuleId[]) rescale(mod);
+}
+
+/**
+ * Attach a loadout to a combat state: stores the sanitized id list + multiplier record and scales module max HP (wet
+ * rack, suspension, safety fuel and the other moduleHp items). Both drivers call it for each life, at the spawn and at
+ * a mode's revive, right after createCombatState and before applyRulesetToCombat. A second call on the same state (a
+ * live re-equip; no product caller makes one yet) swaps the kit whole: the multipliers and their layers, the ruleset's
+ * reload fold and module HP follow the new kit at once (round 3 B7, round 4 E7), and Fresh Foliage's spotting ids at
+ * the spotting's next read, since both drivers' spotting reads combat.equip (round 4 F8; spottingKitParity.selftest).
  * @param {object} combat CombatState (mutated)
  * @param {?Array<string>} ids equipped item ids
  * @param {?object} [spec] spec for era validation
@@ -424,6 +460,8 @@ export function applyEquipmentToCombat(
 ): string[] {
   const clean = sanitizeLoadout(ids, spec);
   const mults = computeEquipMults(clean);
+  // the module-HP factors the modules carry now: the last kit's (a live re-equip), none on a fresh state
+  const carried = (combat.equipMults as Partial<EquipmentMultipliers> | undefined)?.moduleHp;
   // the equipment layer is the kit with the ruleset's reload fold (consumableRules.ts MultiplierLayers): a state the
   // ruleset already stamped (a live re-equip) keeps its fold on the new object; a fresh state has none yet, so the
   // spawn's applyRulesetToCombat, which runs after this, folds it once (round 3 B7 review, 2026-11-06)
@@ -434,14 +472,7 @@ export function applyEquipmentToCombat(
   // a live state's multiplier layers (consumableRules.ts, audit M5) compose the new kit with the mode's stamps and the
   // active items now, not at the next item or stamp (round 3 B7); a fresh state has none and is left as written
   reseatEquipmentLayer(combat);
-  for (const mod of Object.keys(mults.moduleHp) as EquipmentModuleId[]) {
-    const factor = mults.moduleHp[mod];
-    if (factor === undefined) continue;
-    const rec = combat.modules && combat.modules[mod];
-    if (!rec) continue;
-    rec.maxHp *= factor;
-    rec.hp *= factor;
-  }
+  rescaleModuleHp(combat.modules, carried, mults.moduleHp);
   return clean;
 }
 
