@@ -230,6 +230,14 @@ interface StudioTransitionRuntime {
   progress?(fraction: number, label: string): void;
 }
 
+/** How the Studio asks its light (main.ts prepareStudioAtmosphere; round 4 F2 review). */
+interface StudioAtmosphereAsk {
+  /** This apply is the light again, after something it was applied without landed: the runtimes apply it again. */
+  readonly relight?: boolean;
+  /** Called once something this apply lit without has landed: the Studio lights again (prepareAtmosphere). */
+  readonly landed?: () => void;
+}
+
 interface StudioContext {
   renderer: THREE.WebGLRenderer;
   scene: THREE.Scene;
@@ -260,8 +268,12 @@ interface StudioContext {
    * itself, after its own awaits: `owner` is the Studio session asking (audit F9), and once it is no longer current the
    * preparation applies no light and no ambience override (the exit restored the battlefield's own). Resolves with the
    * light it applied, or null when its session ended first (whatever it applied came before that session's restore).
+   * `how` (round 4 F2 review): `landed` is called once something this light was applied without (a re-ask after a
+   * failure, which no Studio apply waits on) has landed, and `relight` marks the apply that follows it.
    */
-  prepareStudioAtmosphere?(time: StudioTimeOfDay, light?: StudioLight | null, owner?: { current(): boolean }): Promise<unknown>;
+  prepareStudioAtmosphere?(
+    time: StudioTimeOfDay, light?: StudioLight | null, owner?: { current(): boolean }, how?: StudioAtmosphereAsk,
+  ): Promise<unknown>;
   /** Restore the world's baked horizon light and the readability before the battlefield leaves the Studio. */
   restoreStudioAtmosphere?(): void;
   /** The renderer's forward program warm (main.ts): the first view's programs are prepared with it (prepareFirstViewPrograms). */
@@ -5619,24 +5631,36 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
    * afterEnd). The restore is the battlefield's last light however slow the preparation (a cold chunk, a far-panorama
    * rebake on a loaded phone).
    */
-  function prepareAtmosphere(time: StudioTimeOfDay, light: StudioLight | null): Promise<unknown> {
+  function prepareAtmosphere(time: StudioTimeOfDay, light: StudioLight | null, relight = false): Promise<unknown> {
     const owner = session.token();
     let lit = false;
-    const work = Promise.resolve(ctx.prepareStudioAtmosphere?.(time, light, owner)).then((applied) => {
+    // (round 4 F2 review) what this light was applied without (the battle atmosphere's runtime, the light model, the
+    // cloudscapes or the map's air, asked again after a failure: no Studio apply waits on a re-ask, whose transfer may
+    // hang) lights it again once it lands, as an uncovered change of this same light in this session, never inside a
+    // take (a recording, a film, an export), so the light it lands with is the one the take keeps
+    const landed = (): void => {
+      if (owner.current() && !transportHeld(busy())) void applyStudioLight(time, light, false, true).catch(() => undefined);
+    };
+    const work = Promise.resolve(ctx.prepareStudioAtmosphere?.(time, light, owner, { relight, landed })).then((applied) => {
       lit = applied != null;
       return applied;
     });
     return session.hold(work, () => { if (lit) ctx.restoreStudioAtmosphere?.(); });
   }
 
-  /** Re-light the active world (a covered transition for time changes; slider-rate sun moves stay uncovered). */
-  async function applyStudioLight(time: StudioTimeOfDay, light: StudioLight | null, covered: boolean): Promise<void> {
+  /**
+   * Re-light the active world (a covered transition for time changes; slider-rate sun moves stay uncovered). `relight`
+   * (round 4 F2 review): the same light again, once something it was applied without has landed (prepareAtmosphere).
+   */
+  async function applyStudioLight(
+    time: StudioTimeOfDay, light: StudioLight | null, covered: boolean, relight = false,
+  ): Promise<void> {
     // (audit F9) a change the exit overtook (its cover superseded, or its light landing under the exit's) applies nothing
     const owner = session.token();
     owner.check();
     const work = async (): Promise<void> => {
       owner.check();
-      await prepareAtmosphere(time, light);
+      await prepareAtmosphere(time, light, relight);
       owner.check();
       timeOfDay = time;
       studioLight = light;

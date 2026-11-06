@@ -351,7 +351,7 @@ let cloudscape: CloudscapeResolver | null = null;
 // failure and asked again at once by the next call, and the battle atmosphere's prepare asks it on every call, which the
 // Studio makes once per sun-dial or slider move: after one failed transfer every move asked again, offline too.
 // (round 4 F2) Exported for the battle atmosphere's prepare (battleAtmosphereAccess.ts), whose entry asks it at once
-// whatever the backoff and whose Studio applies never await its re-ask
+// whatever the backoff and whose Studio applies never await its re-ask (the Studio lights again once it lands)
 export const cloudscapeChunk = createLazyChunk((): Promise<void> => import('./cloudscapeLayer.ts').then((module) => {
   cloudscape = module.cloudscapeLayer({
     rules: CLOUD_LAYER_RULES, weather: CLOUD_WEATHER_RULES, regimes: CLOUDSCAPE_REGIMES, contrailMax: CLOUD_CONTRAIL_MAX,

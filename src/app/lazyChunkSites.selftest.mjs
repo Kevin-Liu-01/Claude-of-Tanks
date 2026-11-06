@@ -126,12 +126,26 @@ const SITES = [
   // the light model's and the cloudscapes' memos rode only the battle atmosphere runtime's first acquisition, a lazy
   // runtime owner that never loads again once ready: every prepare asks them again. (round 4 F2) A battle entry asks the
   // runtime and both at once whatever the backoff a Studio drag raised (main.ts's entries declare it); a Studio apply
-  // keeps the backoff and never awaits a part's re-ask (battleAtmosphereEntryAsk.selftest.mjs)
-  ['src/engine/battleAtmosphereAccess.ts', ['owner.preload(entry ? AT_ONCE : undefined), askPart(groundedLightChunk, entry), askPart(cloudscapeChunk, entry),',
-    'return entry || part.failures === 0 ? request : undefined;'], [/owner\.preload\(\)/]],
+  // keeps the backoff and waits on a first ask only (battleAtmosphereEntryAsk.selftest.mjs). (round 4 F2 review) The
+  // runtime's re-ask too; an entry whose sky draws the Earth asks the Moon's land mask at once
+  // (earthLandEntryAsk.selftest.mjs); the map's air follows the same rule (mapAmbienceEntryAsk.selftest.mjs); and what a
+  // Studio apply did not wait for lights the Studio again once it lands (game/studioLightLanding.selftest.mjs)
+  ['src/engine/battleAtmosphereAccess.ts', ['const runtimeAsk = ask(runtimeChunk, entry);',
+    'const parts = [ask(groundedLightChunk, entry), ask(cloudscapeChunk, entry)];',
+    'return { chunk, request, wait: entry || chunk.failures === 0 ? request : undefined };',
+    'const mask = entry && skyDrawsEarth(optionsOnce().getAuthoredPreset?.()) ? loadEarthLand(AT_ONCE) : undefined;'],
+    [/owner\.preload\(\)/]],
+  ['src/world/mapAmbienceAccess.ts', ['const request = owner.preload(entry ? AT_ONCE : undefined);', 'if (!entry && owner.failures > 0) {'],
+    [/owner\.preload\(\)/]],
   ['src/main.ts', ["provingTime ? [provingTime] : battlePreferences.times, { entry: true });", 'await battleAtmosphere.prepare(seed, mapId, undefined, { entry: true });',
-    "await battleAtmosphere.prepare(0, currentWorld()?.mapId ?? game.mapId, ['day']);"],
-    [/battleAtmosphere\.prepare\(0, currentWorld\(\)\?\.mapId \?\? game\.mapId, \['day'\],/]],
+    "await battleAtmosphere.prepare(0, currentWorld()?.mapId ?? game.mapId, [time], { entry: true });",
+    'await mapAmbience.prepare(game.battleCount, game.mapId, battleAmbienceTime(), undefined, { entry: true });',
+    'await mapAmbience.prepare(seed, mapId, battleAmbienceTime(), undefined, { entry: true });',
+    'await mapAmbience.prepare(0, currentWorld()?.mapId ?? game.mapId, battleAmbienceTime(), undefined, { entry: true });',
+    "await battleAtmosphere.prepare(0, currentWorld()?.mapId ?? game.mapId, ['day'], how?.relight ? { relight: true } : undefined);",
+    'const air = await mapAmbience.prepare(0, currentWorld()?.mapId ?? game.mapId, time, owner);'], []],
+  ['src/game/studio.ts', ['if (owner.current() && !transportHeld(busy())) void applyStudioLight(time, light, false, true).catch(() => undefined);',
+    'ctx.prepareStudioAtmosphere?.(time, light, owner, { relight, landed })'], []],
   // (round 3 A4) and every prepare includes the Studio's, one per sun-dial or slider move, and a Studio sky applied for the
   // Moon asks its land mask per move: the three memos, cleared on failure, were asked again by every move, offline too.
   // Each is a chunk now; the light model's import rejects and keeps no memo (lightModelCore.ts rides two worker graphs
@@ -145,7 +159,7 @@ const SITES = [
   ['src/main.ts', ["import { createBattleAtmosphereAccess, loadGroundedLightModel } from './engine/battleAtmosphereAccess.ts';"],
     [/import \{[^}]*\bloadGroundedLightModel\b[^}]*\} from '\.\/engine\/lightModelCore\.ts'/]],
   ['src/engine/earthLandAccess.ts', ["createLazyChunk((): Promise<EarthLandModule> => import('./earthLandMask.ts'))",
-    'return earthLandChunk.load();'], [/\bearthLandLoad\b/]],
+    'return earthLandChunk.load(asking);'], [/\bearthLandLoad\b/]],
   // (round 3 X8) the audio mixer's chunk, asked by every gesture, phase edge, sting and battle warm: its memo
   // (modulePromise) and the creation's memo over it (realPromise) were cleared on failure and asked again by every intent
   ['src/audio/lazyAudio.ts', ['const mixerChunk = createLazyChunk(async (): Promise<AudioMixerModule | null> => {',
@@ -278,6 +292,23 @@ const SOLE_LOADERS = [{
 const loaderUses = new Map(SOLE_LOADERS.map(({ name }) => [name, new Map()]));
 const blankStrings = (source) => source.replace(/'(?:\\[\s\S]|[^'\\])*'?|"(?:\\[\s\S]|[^"\\])*"?|`(?:\\[\s\S]|[^`\\])*`?/g,
   (part) => part.replace(/[^\n]/g, ' '));
+// ---- (round 4 F2 review) the lifecycle-edge asks, held to their callers. `load({ backoff: false })` asks a failure again
+// whatever the backoff, a prepare's `{ entry: true }` asks the battle atmosphere's chunks and the map's air that way, and
+// a relight (`{ relight: true }`, studio.ts's applyStudioLight(..., true)) applies the battle light and the Studio's plan
+// again: each is for a caller that asks once per lifecycle edge (a battle's covered entry, a landing). A per-frame or
+// per-move caller that passed one would bring back round 3 A4's per-move ask storm (offline excepted), or a full relight
+// per move. So each spelling appears only in the files listed, as often as listed (code only: strings and comments
+// blanked), and the SITES rows above pin each call; a new edge caller is listed here with its reason
+const EDGE_ASKS = [
+  // the access's AT_ONCE, asked by an entry (battleAtmosphereAccess.ts: the runtime, both parts, the Moon's land mask)
+  { spelling: /\bbackoff\s*:\s*false\b/g, allowed: new Map([['src/engine/battleAtmosphereAccess.ts', 1], ['src/world/mapAmbienceAccess.ts', 1]]) },
+  // main.ts's three entries (the solo entry, the network warm, the capture's battle time), each for the atmosphere and the air
+  { spelling: /\bentry\s*:\s*true\b/g, allowed: new Map([['src/main.ts', 6]]) },
+  // the Studio's relight, once per landing
+  { spelling: /\brelight\s*:\s*true\b/g, allowed: new Map([['src/main.ts', 1]]) },
+  { spelling: /\bapplyStudioLight\(\s*[^,()]+,\s*[^,()]+,\s*[^,()]+,\s*true\s*\)/g, allowed: new Map([['src/game/studio.ts', 1]]) },
+];
+const edgeUses = EDGE_ASKS.map(() => new Map());
 const walk = (dir) => {
   for (const entry of readdirSync(dir, { withFileTypes: true })) {
     const path = join(dir, entry.name);
@@ -289,6 +320,13 @@ const walk = (dir) => {
         if (!source.includes(name)) continue;
         const uses = blankStrings(source).match(new RegExp(`\\b${name}\\b`, 'g'))?.length ?? 0;
         if (uses) loaderUses.get(name).set(file, uses);
+      }
+      if (/\b(?:backoff|entry|relight)\b|applyStudioLight/.test(source)) {
+        const code = blankStrings(source);
+        EDGE_ASKS.forEach(({ spelling }, index) => {
+          const uses = code.match(spelling)?.length ?? 0;
+          if (uses) edgeUses[index].set(file, uses);
+        });
       }
       const edges = [], sheets = [];
       for (const match of source.matchAll(/(?:import|export)\s+(?!type\b)(?:[^'";]*?\sfrom\s*)?['"](\.{1,2}\/[^'"]+)['"]/g)) {
@@ -383,9 +421,23 @@ for (const { name, chunk, definer, holder, held } of SOLE_LOADERS) {
   for (const [file, module] of graph) {
     if (file !== definer && module.edges.includes(chunk)) loaderOffenders.push(`${file} imports ${chunk} (only ${definer}'s ${name} does)`);
   }
+  // (round 4 E9 review) and the definer imports the chunk once, inside the loader: a second raw loader written in the
+  // definer (another function importing the chunk, called from any module) would ask it with no memo and no backoff
+  const definerImports = graph.get(definer)?.edges.filter((edge) => edge === chunk).length ?? 0;
+  if (definerImports !== 1) loaderOffenders.push(`${definer} imports ${chunk} ${definerImports} times (once, in ${name})`);
+  const specifier = `./${relative(dirname(join(ROOT, definer)), join(ROOT, chunk)).split('\\').join('/')}`;
+  const own = new RegExp(`(?<![\\w.$])import\\(\\s*['"]${specifier.replace(/[.*+?^${}()|[\]\\/]/g, '\\$&')}['"]`);
+  if (!own.test(bodyOf(read(definer), name))) loaderOffenders.push(`${definer}'s import of ${chunk} is not inside ${name}`);
   if (!read(holder).includes(held)) loaderOffenders.push(`${holder} lacks ${held}`);
 }
-assert.deepEqual(loaderOffenders, [], `a raw lazy loader used outside its one chunk (hold it there; app/lazyChunk.ts):\n  ${loaderOffenders.join('\n  ')}`);
+EDGE_ASKS.forEach(({ spelling, allowed }, index) => {
+  const uses = edgeUses[index];
+  for (const [file, count] of uses) {
+    if (count !== (allowed.get(file) ?? 0)) loaderOffenders.push(`${file} spells ${spelling.source} ${count} times (${allowed.get(file) ?? 0} allowed)`);
+  }
+  for (const [file, count] of allowed) if (!uses.has(file)) loaderOffenders.push(`${file} spells ${spelling.source} 0 times (${count} expected)`);
+});
+assert.deepEqual(loaderOffenders, [], `a raw lazy loader used outside its one chunk (hold it there; app/lazyChunk.ts), or a lifecycle-edge ask outside its listed callers (EDGE_ASKS):\n  ${loaderOffenders.join('\n  ')}`);
 
 assert.deepEqual(multipart, [], `a lazy chunk of several parts settles them with importAll (app/lazyChunk.ts), so a module's failure never hides its stylesheet's:\n  ${multipart.join('\n  ')}`);
 const fresh = [...found].filter((site) => !KNOWN.has(site));

@@ -396,7 +396,7 @@ for (const [file, src] of [['lighting.ts', lighting], ['sky.ts', sky], ['post.ts
 const grounded = read('./lightModel.ts');
 assert.doesNotMatch(grounded.replace(/^import type [^;]+;$/gm, ''), /^import /m, 'the grounded model has no runtime import');
 assert.match(core, /import\('\.\/lightModel\.ts'\)/, 'the core loads it on demand');
-assert.match(read('./battleAtmosphereAccess.ts'), /askPart\(groundedLightChunk, entry\), askPart\(cloudscapeChunk, entry\)/, 'with the battle atmosphere\'s prepare');
+assert.match(read('./battleAtmosphereAccess.ts'), /ask\(groundedLightChunk, entry\), ask\(cloudscapeChunk, entry\)/, 'with the battle atmosphere\'s prepare');
 assert.match(read('../main.ts'), /await Promise\.all\(\[import\('\.\/dev\/shotRuntime\.ts'\), loadGroundedLightModel\(\), loadCloudscapeLayers\(\)\]\)/,
   'and the capture staging (the census and the map probes stage maps without the battle atmosphere)');
 assert.equal(EXPOSURE_REFERENCE_ILLUMINANCE, 3.0);

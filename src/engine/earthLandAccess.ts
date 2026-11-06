@@ -6,7 +6,7 @@
 // every sky that draws the Earth afterwards (the battle, the Studio, the horizon sample and the reflection bake, all of
 // them on a built world) builds the raster where it did before: synchronously, on the same first call, the same bytes.
 import type { DataTexture } from 'three';
-import { createLazyChunk } from '../app/lazyChunk.ts';
+import { createLazyChunk, type LazyChunkLoadOptions } from '../app/lazyChunk.ts';
 
 type EarthLandModule = typeof import('./earthLandMask.ts');
 
@@ -25,9 +25,12 @@ export function skyDrawsEarth(sky: { readonly earth?: number | null } | null | u
 /**
  * Load the land mask's module (one request at a time; a failure is asked again under the lazy-chunk policy, and the
  * returned promise rejects with it, which every caller catches); resolved, sky.ts builds the raster synchronously.
+ * (round 4 F2 review) `asking`: a battle's covered entry asks at once whatever the backoff (battleAtmosphereAccess.ts
+ * prepare, `{ backoff: false }`): a Moon Studio drag through an outage raised it to the minute's cap, and the battle
+ * entered inside it got the kept failure and drew the Earth as a sea for the whole battle (no battle sky applies again).
  */
-export function loadEarthLand(): Promise<EarthLandModule> {
-  return earthLandChunk.load();
+export function loadEarthLand(asking?: LazyChunkLoadOptions): Promise<EarthLandModule> {
+  return earthLandChunk.load(asking);
 }
 
 /** The land mask's raster (built on its first call, then kept) once its module has loaded; null before. */

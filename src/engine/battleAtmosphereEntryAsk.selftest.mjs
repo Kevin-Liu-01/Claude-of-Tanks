@@ -12,7 +12,9 @@
 // to ask at once; and an apply that made the policy's re-ask awaited that transfer, so a stalled import held the Studio's
 // light (and its busy 'light' hold) until the browser failed it. Now a battle entry (prepare's `{ entry: true }`, main.ts's
 // solo and network entries) asks every part at once whatever the backoff (never offline), and a Studio apply asks as the
-// policy allows and awaits a part's first ask only, never a re-ask: the part lights the next apply once it lands.
+// policy allows and awaits a part's first ask only, never a re-ask (round 4 F2 review: the runtime's re-ask too, case 5).
+// What an apply did not wait for is its prepare's `landing`, and the Studio lights again once it lands
+// (game/studioLightLanding.selftest.mjs drives that through studio.ts and main.ts).
 //
 // A chunk "fails" the way a browser's import does when the network drops (its resolve throws) and "stalls" the way a
 // hung transfer does (its module never finishes arriving: top-level await on a gate this test holds).
@@ -60,6 +62,12 @@ const hook = registerHooks({
 
 const ENTRY = Object.freeze({ entry: true });
 const turns = async (n = 20) => { for (let i = 0; i < n; i++) await new Promise((resolve) => setImmediate(resolve)); };
+/** Whether a promise settled: read at once (no unhandled rejection), 'pending' while it waits. */
+const track = (promise) => {
+  const step = { settled: false, value: undefined };
+  promise.then((value) => { step.settled = true; step.value = value; }, () => { step.settled = true; });
+  return step;
+};
 const counts = () => `${asked.get(LIGHT)} light model, ${asked.get(CLOUDS)} cloudscape asks`;
 const lit = () => `${globalThis.__cotGrounded ?? 0} light model, ${globalThis.__cotCloudscape ?? 0} cloudscape installs`;
 const problems = [];
@@ -77,26 +85,43 @@ try {
     return apply;
   };
 
-  // the first battle, in an outage: its entry asks both parts once; they fail and the sky keeps its fallbacks
-  await access.prepare(1, 'fjord', undefined, ENTRY);
-  assert.equal(counts(), '1 light model, 1 cloudscape asks');
-  assert.equal(prepared.length, 1, 'the battle is prepared without them');
-
-  // ---- 1. a Studio apply never awaits a stalled re-ask. The network is back but both transfers hang: the first move
-  // after the failure asks again at once (the policy), and that move, and every move while the re-ask is in flight, lights
-  // the Studio now with the fallbacks
+  // ---- 0. (round 4 F2 review) a cold Studio waits on a part's first ask, so its first light is lit as a battle's is: the
+  // parts' first transfers hang, and the Studio's first apply waits for them (it prepares nothing until they settle)
   holdGate();
   network.set(LIGHT, 'stall');
   network.set(CLOUDS, 'stall');
+  const cold = studioApply();
+  await turns();
+  assert.equal(counts(), '1 light model, 1 cloudscape asks', 'the cold Studio\'s apply asks both parts');
+  if (cold.settled) problems.push('a cold Studio apply did not wait for the parts\' first ask (its first light is the authored rig with deck-only clouds, and nothing lights it again)');
+  // they fail (an outage): the apply lights with the fallbacks
+  network.set(LIGHT, 'down');
+  network.set(CLOUDS, 'down');
+  failStall(new TypeError('Failed to fetch dynamically imported module: (the cold transfer)'));
+  await turns();
+  assert.ok(cold.settled && prepared.length === 1, 'the cold apply is prepared once its first asks fail');
+
+  // the first battle, in the outage: its entry asks both parts again at once; they fail and the sky keeps its fallbacks
+  await access.prepare(1, 'fjord', undefined, ENTRY);
+  assert.equal(counts(), '2 light model, 2 cloudscape asks');
+  assert.equal(prepared.length, 2, 'the battle is prepared without them');
+
+  // ---- 1. a Studio apply never awaits a stalled re-ask. The network is back but both transfers hang: the first move
+  // past the backoff asks again (the policy), and that move, and every move while the re-ask is in flight, lights the
+  // Studio now with the fallbacks
+  holdGate();
+  network.set(LIGHT, 'stall');
+  network.set(CLOUDS, 'stall');
+  clock += 2000; // two failures in a row: the policy's first backoff (2 s)
   const first = studioApply();
   await turns();
-  assert.equal(counts(), '2 light model, 2 cloudscape asks', 'the first Studio move after one failure asks again at once');
+  assert.equal(counts(), '3 light model, 3 cloudscape asks', 'the first Studio move past the backoff asks again');
   if (!first.settled) problems.push('a Studio light apply awaited the stalled light model and cloudscape re-asks (its light and the Studio\'s busy hold wait until the browser fails the transfer)');
   const moves = Array.from({ length: 10 }, studioApply);
   await turns();
   const waiting = moves.filter((apply) => !apply.settled).length;
   if (waiting) problems.push(`${waiting} of 10 Studio moves made while the re-ask was in flight awaited it`);
-  assert.equal(counts(), '2 light model, 2 cloudscape asks', 'one request at a time: moves in flight ask nothing more');
+  assert.equal(counts(), '3 light model, 3 cloudscape asks', 'one request at a time: moves in flight ask nothing more');
   // the hung transfers fail (the browser gives up), and the network drops again
   network.set(LIGHT, 'down');
   network.set(CLOUDS, 'down');
@@ -158,8 +183,62 @@ try {
   } catch (error) {
     problems.push(`a battle entered inside the runtime chunk's backoff failed its atmosphere (${runtimeAsks - asksBefore} asks: ${error?.message})`);
   }
+
+  // ---- 5. (round 4 F2 review) the runtime's re-ask, too: after a failed entry, a Studio apply whose runtime re-ask hangs
+  // settles at once and applies nothing (the Studio light runtime's own sky stands; base and the first round-4 head
+  // awaited it, holding the Studio's light and its busy 'light' hold until the browser failed the transfer). What it did
+  // not wait for is its landing: true once the runtime lands while that prepare is still the latest (the Studio then
+  // lights again with `{ relight: true }`, which applies the runtime's light even where it keeps an applied one), false
+  // for a prepare a later one replaced
+  let runtimeMode = 'down', releaseRuntime = () => {};
+  let runtimeGate = null;
+  const made = [];
+  const access3 = createBattleAtmosphereAccess(() => ({}), async () => {
+    if (runtimeMode === 'down') throw new TypeError('Failed to fetch dynamically imported module: ./battleAtmosphereRuntime.ts');
+    await runtimeGate;
+    return { createBattleAtmosphereRuntime: () => ({
+      prepare(seed, _mapId, times) { made.push(['prepare', seed, times]); }, reset() { made.push(['reset']); },
+    }) };
+  });
+  await assert.rejects(access3.prepare(1, 'fjord', undefined, ENTRY), /dynamically imported module/);
+  runtimeMode = 'stall';
+  runtimeGate = new Promise((resolve) => { releaseRuntime = resolve; });
+  const hung = track(access3.prepare(0, 'fjord', ['day']));
+  await turns();
+  if (!hung.settled) {
+    problems.push('a Studio light apply awaited the stalled atmosphere runtime\'s re-ask (its light and the Studio\'s busy hold wait until the browser fails the transfer)');
+  } else {
+    assert.deepEqual(made, [], 'it applies nothing while the runtime is in flight');
+    const landing = hung.value?.landing;
+    assert.ok(landing instanceof Promise, 'what it did not wait for is its landing');
+    const newer = track(access3.prepare(0, 'fjord', ['day'])); // a later move while the re-ask is in flight
+    await turns();
+    assert.ok(newer.settled && newer.value?.landing instanceof Promise);
+    releaseRuntime();
+    assert.equal(await landing, false, 'a later prepare makes an earlier landing false (that apply never lights again)');
+    assert.equal(await newer.value.landing, true, 'the latest landing is true once the runtime lands');
+    assert.deepEqual(made, [], 'a landing applies nothing by itself');
+    const relit = await access3.prepare(0, 'fjord', ['day'], { relight: true });
+    assert.deepEqual(made, [['reset'], ['prepare', 0, ['day']]], 'the relight applies the runtime\'s light');
+    assert.equal(relit.landing, null, 'nothing is left in flight');
+    // a reset (the Garage's return) makes a landing in flight false too
+    runtimeMode = 'down';
+    let releaseLater = () => {};
+    const later = new Promise((resolve) => { releaseLater = resolve; });
+    const access4 = createBattleAtmosphereAccess(() => ({}), async () => {
+      if (runtimeMode === 'down') throw new TypeError('Failed to fetch dynamically imported module: ./battleAtmosphereRuntime.ts');
+      await later;
+      return { createBattleAtmosphereRuntime: () => ({ prepare() {}, reset() {} }) };
+    });
+    await assert.rejects(access4.prepare(1, 'fjord', undefined, ENTRY), /dynamically imported module/);
+    runtimeMode = 'up';
+    const beforeReset = await access4.prepare(0, 'fjord', ['day']);
+    access4.reset();
+    releaseLater();
+    assert.equal(await beforeReset.landing, false, 'a reset makes a landing in flight false');
+  }
 } finally {
   hook.deregister();
 }
 assert.deepEqual(problems, [], `the battle atmosphere's entry and Studio asks:\n  ${problems.join('\n  ')}`);
-console.log('battleAtmosphereEntryAsk.selftest: OK (a battle entry asks the light model, the cloudscapes and the runtime at once whatever the backoff; a Studio apply keeps the backoff and never awaits a stalled re-ask)');
+console.log('battleAtmosphereEntryAsk.selftest: OK (a battle entry asks the light model, the cloudscapes and the runtime at once whatever the backoff; a Studio apply keeps the backoff, waits on a first ask and never on a re-ask, and returns what it did not wait for as its landing)');

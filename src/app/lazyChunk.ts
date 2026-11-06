@@ -68,7 +68,8 @@ export interface LazyChunkOptions {
 export interface LazyChunkLoadOptions {
   /**
    * false: a failure the policy asks again is asked again now, whatever its backoff (never a terminal one, never while
-   * offline). Only for a caller that asks once per lifecycle edge (a battle's covered entry), never per frame or move.
+   * offline). Only for a caller that asks once per lifecycle edge (a battle's covered entry), never per frame or move:
+   * app/lazyChunkSites.selftest.mjs EDGE_ASKS fails the spelling outside the files it lists (round 4 F2 review).
    */
   readonly backoff?: boolean;
 }

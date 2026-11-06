@@ -2485,11 +2485,11 @@ const soloBattleDeployment = createSoloBattleDeploymentAccess({
     },
     prepareAtmosphere: async () => {
       // the proving ground keeps its own light (sim/matchRuleset.ts PROVING_GROUND_RULES.timeOfDay); (round 4 F2) the
-      // entry asks the atmosphere's chunks at once whatever the backoff a Studio drag raised
+      // entry asks the atmosphere's chunks and the map's air at once whatever the backoff a Studio drag raised
       const provingTime = game.ruleset?.provingGround?.timeOfDay;
       await battleAtmosphere.prepare(game.battleCount, game.mapId, provingTime ? [provingTime] : battlePreferences.times, { entry: true });
       await frontline.prepare(game.battleCount, game.mapId);
-      await mapAmbience.prepare(game.battleCount, game.mapId, battleAmbienceTime());
+      await mapAmbience.prepare(game.battleCount, game.mapId, battleAmbienceTime(), undefined, { entry: true });
     },
     prepareNightLighting: () => nightLighting.prepare(),
     runSceneWatchdog: async (assertCurrent: () => void) => {
@@ -3086,7 +3086,7 @@ function multiplayerAppPorts(): MultiplayerAppPorts {
             const mapId = currentWorld()?.mapId ?? game.mapId;
             await battleAtmosphere.prepare(seed, mapId, undefined, { entry: true }); // (round 4 F2) an entry asks at once
             await frontline.prepare(seed, mapId);
-            await mapAmbience.prepare(seed, mapId, battleAmbienceTime());
+            await mapAmbience.prepare(seed, mapId, battleAmbienceTime(), undefined, { entry: true });
           },
           terrain: () => {
             const world = currentWorld();
@@ -4218,7 +4218,7 @@ window.__SHOTS = {
    *  that hour applies it, so captures can judge the effects and the light together ('day' restores the day). */
   async battleTime(time: 'day' | 'sunset' | 'night') {
     await battleAtmosphere.prepare(0, currentWorld()?.mapId ?? game.mapId, [time], { entry: true });
-    await mapAmbience.prepare(0, currentWorld()?.mapId ?? game.mapId, battleAmbienceTime());
+    await mapAmbience.prepare(0, currentWorld()?.mapId ?? game.mapId, battleAmbienceTime(), undefined, { entry: true });
     return battleAtmosphere.current?.weather?.timeOfDay ?? null;
   },
 };
@@ -4360,8 +4360,12 @@ const studioAccess = createStudioAccess({
       time: import('./game/studioLight.ts').StudioTimeOfDay,
       light: import('./game/studioLight.ts').StudioLight | null = null,
       owner?: { current(): boolean },
+      how?: { readonly relight?: boolean; readonly landed?: () => void },
     ) => {
-      await battleAtmosphere.prepare(0, currentWorld()?.mapId ?? game.mapId, ['day']);
+      // (round 4 F2 review) a Studio apply never waits on a re-ask (the runtime's, the light model's, the cloudscapes',
+      // the air's): what it lit without is its landing, and the Studio lights again once that lands (`how.landed`, its
+      // own guarded change); that relight applies the battle light and the Studio's plan again (`how.relight`)
+      const atmosphere = await battleAtmosphere.prepare(0, currentWorld()?.mapId ?? game.mapId, ['day'], how?.relight ? { relight: true } : undefined);
       studioLightRuntime ??= createLazyChunk(() => import('./game/studioLightRuntime.ts').then(({ createStudioLightRuntime }) => {
         const runtime = createStudioLightRuntime({
           scene,
@@ -4386,11 +4390,15 @@ const studioAccess = createStudioAccess({
       const runtime = await studioLightRuntime.load();
       // (audit F9) a Studio session that ended while this prepared lights nothing: its exit restored the battlefield
       if (owner && !owner.current()) return null;
+      if (how?.relight) runtime.restore(); // (its plan applies again over the battle light the relight applied)
       const applied = runtime.apply(time, light);
       // (the map's air) the Studio films the full count at its own hour, on its pinned fx clock; (round 3 A10) an air whose
       // import lands after the session ended applies nothing: that exit's restore stays the last word
       mapAmbience.setDensityOverride(1);
-      await mapAmbience.prepare(0, currentWorld()?.mapId ?? game.mapId, time, owner);
+      const air = await mapAmbience.prepare(0, currentWorld()?.mapId ?? game.mapId, time, owner);
+      for (const landing of [atmosphere?.landing, air?.landing]) {
+        if (landing && how?.landed) void landing.then((landed) => { if (landed) how.landed?.(); });
+      }
       return owner && !owner.current() ? null : applied; // (its light came before that session's restore)
     },
     setAmbienceEnabled: (on: boolean) => mapAmbience.setEnabled(on),

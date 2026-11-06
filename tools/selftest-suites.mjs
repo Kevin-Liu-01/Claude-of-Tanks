@@ -1419,6 +1419,9 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/game/studioSessionExit.selftest.mjs',
     // 2026-11-02 audit F9: the take owns the playhead (one busy reading); pointercancel releases the history hold
     'src/game/studioTransport.selftest.mjs',
+    // 2026-11-02 audit R6 (round 4 F2 review): a Studio light never waits on a re-ask and is lit again once what it was
+    // applied without lands (light model, cloudscapes, atmosphere runtime, map air); never after its session or in a take
+    'src/game/studioLightLanding.selftest.mjs',
     // 2026-10-08 (fix/studio-world-step): an export step advances the props' clock and syncs the drawn ground
     'src/game/studioWorldStep.selftest.mjs',
     // 2026-10-08 (destruction core lane): an effect naming an actor the scene does not stage never hangs a film
@@ -1582,6 +1585,9 @@ export const SELFTEST_SUITES = Object.freeze({
     // 2026-11-02 audit R6 (round 4 F2): a battle entry asks the light model, the cloudscapes and the atmosphere runtime at
     // once whatever the backoff a Studio drag raised; a Studio light apply keeps the backoff and never awaits a stalled re-ask
     'src/engine/battleAtmosphereEntryAsk.selftest.mjs',
+    // 2026-11-02 audit R6 (round 4 F2 review): a Moon battle entered inside the backoff a Studio drag raised binds the
+    // Earth's land mask (its entry asks it at once), not the all-sea placeholder
+    'src/engine/earthLandEntryAsk.selftest.mjs',
     'tools/daynight-atmosphere-probe.selftest.mjs',
     'tools/night-window-census.selftest.mjs',
     'tools/night-fixture-census.selftest.mjs',
@@ -2425,6 +2431,9 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/frontlineAtmosphere.selftest.mjs',
     // 2026-10-22: the map's air — the per-map table, tier and time gates, seeded cards, the pinned frame
     'src/world/mapAmbience.selftest.mjs',
+    // 2026-11-02 audit R6 (round 4 F2 review): a battle entry asks the map's air at once whatever the backoff a Studio
+    // drag raised; a Studio light apply waits on its first ask only, never on or for a re-ask
+    'src/world/mapAmbienceEntryAsk.selftest.mjs',
     'src/world/flyoverAircraft.selftest.mjs',
     'src/world/groundLitter.selftest.mjs',
     // round 73 (2026-09-25): the ground redux — the profile table and material contract, the pressure field, the tall-grass tier

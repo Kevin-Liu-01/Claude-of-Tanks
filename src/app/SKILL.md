@@ -30,7 +30,9 @@ facade or latch in the spellings it reads, so a new lazy load starts from
 `createLazyChunk`.
 A caller that asks once per lifecycle edge (a battle's covered entry) may ask
 past the backoff with `load({ backoff: false })`; `failures` tells a first ask
-from a re-ask.
+from a re-ask. `lazyChunkSites.selftest.mjs` EDGE_ASKS lists the files that may
+spell `backoff: false`, a prepare's `{ entry: true }` or a Studio relight, and
+how often: a new edge caller is added there with its reason.
 `watchRuntime.ts` composes Watch mode (the drone/ride camera, the controller and
 its bar) the first time a watched battle loads; main.ts keeps only the lazy owner.
 
