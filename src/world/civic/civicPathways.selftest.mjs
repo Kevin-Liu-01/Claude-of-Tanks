@@ -99,8 +99,9 @@ for (const mapId of plans.CIVIC_PLAN_MAPS.filter((m) => !ONLY || ONLY.has(m))) {
   if (runLen < 3) shortRuns++;
   assert.equal(shortRuns, 0, `${mapId}: every run at least 3 m long`);
   assert.equal(runs, census.runs, `${mapId}: ${runs} continuous ribbons, one a run (${census.runs})`);
-  // (a map of one kerbed lane has no junction to return round)
-  if (mains.length + lanes.length >= 2) assert.ok((census.returns ?? 0) >= 1, `${mapId}: the lanes' corners return (${census.returns ?? 0})`);
+  // (a map of one kerbed lane has no junction to return round; built-env-270: nor a village whose main streets only are
+  // kerbed, before its fronts — its corners are open lots, never paved on both sides)
+  if (lanes.length && mains.length + lanes.length >= 2) assert.ok((census.returns ?? 0) >= 1, `${mapId}: the lanes' corners return (${census.returns ?? 0})`);
   if (lanes.length) assert.ok((census.kerbLaneM ?? 0) > 0, `${mapId}: the lanes kerbed (${census.kerbLaneM ?? 0} m)`);
   // (228 r1b) every return meets its run: the corner's tangent point is a run's kerb end (no bare setts between a run's
   // dressed end and the corner's kerb)
