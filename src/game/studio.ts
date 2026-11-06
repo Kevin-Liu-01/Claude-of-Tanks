@@ -6172,10 +6172,15 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
 
   /** The whole teardown of an exit: the Studio's half, then the Garage hand-back. */
   async function tearDownToGarage(): Promise<void> {
-    tearDownStudio();
-    await enterGarage(); // restores camo overrides, sun trim, spots, showroom
-    syncRoute(false);
-    docBrand('garage');
+    // (round 3 X9) the hand-back runs even when the Studio's half throws: no return ran, and the scene stayed the
+    // Studio's with no Garage, no notice and no Retry. The Studio half's error still reaches the caller after it.
+    try {
+      tearDownStudio();
+    } finally {
+      await enterGarage(); // restores camo overrides, sun trim, spots, showroom
+      syncRoute(false);
+      docBrand('garage');
+    }
   }
 
   // --- per-frame (owns the whole frame while active; called from main tick) ---
