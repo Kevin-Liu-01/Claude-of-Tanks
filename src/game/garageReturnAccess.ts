@@ -43,6 +43,7 @@ export function createGarageReturnAccess<Visual = RuntimeValue>({
     get state() { return owner.current?.state ?? 'idle'; },
     get framesSuppressed() { return owner.current?.framesSuppressed ?? false; },
     get owesGarage() { return owner.current?.owesGarage ?? false; },
+    get failure() { return owner.current?.failure ?? null; },
     whenSettled() { return owner.current?.whenSettled() ?? null; },
     get lastTrace(): GarageReturnTrace | null { return owner.current?.lastTrace ?? null; },
     get awaitingHandoff() { return owner.current?.awaitingHandoff ?? false; },

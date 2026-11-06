@@ -1627,7 +1627,10 @@ const garage: MainGarageRuntime = await bootStage('ui', () => createGarage({
   onBattle: (specId, mapId, options) => (
     beginLocalBattleEntry(specId, mapId, options)
   ), // loading screen owns entry
-  onPlayRequest: (request) => playSurface.open(request).catch((error) => {
+  // (round 3 B2, review r1) the press asks the entry before it announces: a refused one shows the way out, never a
+  // battle start that does not follow (the pointer lock grabbed over a failed return's notice)
+  refusesBattle: () => soloBattleEntry.refuses(),
+  onPlayRequest:(request) => playSurface.open(request).catch((error) => {
     console.error('[play-menu] failed to open', error);
   }),
   onPlayModeIntent: playSurface.preload,
@@ -2817,8 +2820,16 @@ function resolveFxSubject(id: string) {
 function beginMultiplayerV2Battle(request: BrowserLaunchRequest): Promise<boolean> {
   // (round 2, app-flow) the room's launch takes the scene first: a Studio open in this tab leaves, then the launch runs
   // as from the Garage (its cover in that task)
+  // (round 3 B2, review r1) a launch the owed Garage refused shows the way out as a solo start does (the menu's status
+  // line alone named an unsettled Garage, and Rejoin was refused the same way); a round the room's session entered fails
+  // at 'scene' instead, whose covered restore runs the return again (room.enterGarage: enterGarageWithExit)
   const handOver = takeSceneForRound();
-  if (handOver) return handOver.then(() => beginMultiplayerV2Battle(request));
+  if (handOver) {
+    return handOver.then(() => beginMultiplayerV2Battle(request), (error: RuntimeValue) => {
+      offerOwedGarageReturn();
+      throw error;
+    });
+  }
   const current = onlineMatch.current;
   if (current) return current.beginRoom(request);
   networkBattleIntentCover.show(request);
@@ -3589,6 +3600,22 @@ const enterGarageWithExit = (): Promise<void> => enterGarage().catch((error: Run
 });
 const retryGarageReturn = (): void => { void enterGarageWithExit().catch(() => { /* its notice is the exit */ }); };
 /**
+ * (round 3 B2, review r1) A battle the owed Garage refused (battleSceneRefusal: garageReturn.owesGarage) is never a
+ * silent no-op: the refusal brings back the return's way out. A failed return's notice closes by its X, Escape or a press
+ * beside it, which runs nothing, and the return stays 'failed' until a return lands, so every refused start reopens the
+ * notice with its Retry (the return again). A return a context change cut short over the Garage's scene is the context
+ * recovery's while the graphics are lost (its own notice is the screen); with them live no recovery is coming, so the
+ * start runs the return again, whose exit opens the notice if it fails too. The Garage press asks before it announces
+ * (garage.ts refusesBattle), so a press refused there fires no `ui:battleStart` (its pointer lock, play-surface hide, hero
+ * skin park and loading governor hold); a start refused only after a return wait was announced by its press under the
+ * veil (round 2 U19), and the return that lands releases that hold (garageReturnRuntime: setAdaptiveSuspended(false)).
+ */
+const offerOwedGarageReturn = (): void => {
+  if (!garageReturn.owesGarage) return;
+  if (garageReturn.state === 'failed') void presentGarageReturnFailure(garageReturn.failure, retryGarageReturn);
+  else if (!graphicsContextLost) retryGarageReturn();
+};
+/**
  * (round 2 U20) The room's own returns (its room closed or left, or the seat dropped, during a revealed battle): the
  * Leave, with the same exit, whose retry is that Leave again. The room still sees the rejection (it reports it, and
  * opens its own failure notice only after a return that landed).
@@ -3671,6 +3698,8 @@ const soloBattleEntry = createSoloBattleEntryRuntime({
   // a return wait: over the Studio (the __DEBUG.beginSoloBattle hook) it covered and loaded, refused only after the load
   // (round 3 B2) and a return that still owes the Garage: a start queued behind a failed Leave loaded under its notice
   canTakeScene: () => battleSceneRefusal('solo-start') === null,
+  // (round 3 B2, review r1) and a refused start shows the way out: a closed notice left the BATTLE button doing nothing
+  presentSceneRefusal: () => offerOwedGarageReturn(),
   // (audit F2 review) every accepted entry records its whole intent, a failure notice's retry included (its recovery
   // return's 'garage' announcement cleared the record). batch 19 (2026-09-14): the Garage BATTLE button is a free
   // sortie in the chosen rules, so a Frontline Assault pick carves the trenches like a ladder launch does.

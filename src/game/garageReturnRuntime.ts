@@ -243,9 +243,16 @@ export interface GarageReturnRuntime {
    * the screen, frames suppressed, and its Retry, the return again, tears down whatever loaded under it), or one a
    * context change cut short over the Garage's scene (the context recovery retries it there). A battle, solo or network,
    * takes the scene from no such return (main.ts battleSceneRefusal); a skipped restore is Battle Again's own next
-   * battle, and a Garage prepared behind the report is the report's.
+   * battle, and a Garage prepared behind the report is the report's. (review r1) False while a return is in flight (a
+   * Leave's veil fading in over a failed return, a retry): that return decides, so a start waits for it (whenSettled).
    */
   readonly owesGarage: boolean;
+  /**
+   * (round 3 B2, review r1) The error that left the return 'failed'; null in every other state. A battle the failed
+   * return refused reopens its notice with it (main.ts offerOwedGarageReturn): the notice closes by its X, Escape or a
+   * press beside it, which runs nothing, and the return stays 'failed' until a return lands.
+   */
+  readonly failure: unknown;
   /**
    * Resolves when no return is in flight: a Leave until its entry settles (its veil's fade-in, before the entry begins,
    * included; its dwell and fade-out not, so a waiting start covers under the still-opaque veil) and any return entry
@@ -396,6 +403,8 @@ export function createGarageReturnRuntime<Visual = object>(
   let lastTrace: GarageReturnTrace | null = null;
   let lastEntryOptions: GarageReturnOptions = {};
   let state: GarageReturnState = 'idle';
+  // (round 3 B2, review r1) what left the return 'failed' (read only in that state)
+  let failure: unknown = null;
   // perf-246: Battle Again abandons a preparation behind the report by advancing the generation its isCurrent reads.
   let preparationGeneration = 0;
 
@@ -413,7 +422,10 @@ export function createGarageReturnRuntime<Visual = object>(
    */
   const fail = (trace: GarageReturnTrace, error: unknown): void => {
     const next: GarageReturnState = isGarageReturnSuperseded(error) ? 'superseded' : 'failed';
-    if (trace === lastTrace && GARAGE_RETURN_EDGES[state].includes(next)) state = next;
+    if (trace === lastTrace && GARAGE_RETURN_EDGES[state].includes(next)) {
+      state = next;
+      failure = next === 'failed' ? error : null;
+    }
   };
 
   const performEntry = async (options: GarageReturnOptions, isCallerCurrent: () => boolean): Promise<void> => {
@@ -904,7 +916,10 @@ export function createGarageReturnRuntime<Visual = object>(
     get operation() { return transitionLease?.operation ?? null; },
     get state() { return state; },
     get framesSuppressed() { return state !== 'idle'; },
-    get owesGarage() { return state === 'failed' || (state === 'superseded' && game.phase === 'garage'); },
+    get owesGarage() {
+      return !leaveEntry && !entryLease && (state === 'failed' || (state === 'superseded' && game.phase === 'garage'));
+    },
+    get failure() { return state === 'failed' ? failure : null; },
     whenSettled,
     get lastTrace() { return lastTrace; },
     get awaitingHandoff() {

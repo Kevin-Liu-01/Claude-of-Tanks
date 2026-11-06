@@ -459,7 +459,7 @@ function createMainStudioHandOver(harness, { restoreFails = false, restoreGate =
     restoreGaragePresentation: async () => {
       // (round 3 B2) a case may hold the return in flight here, its last step (after the Garage's scene and screen)
       if (restoreGate) await restoreGate();
-      if (restoreFails) throw new Error('the Garage presentation did not restore');
+      if (typeof restoreFails === 'function' ? restoreFails() : restoreFails) throw new Error('the Garage presentation did not restore');
       calls.push('return:restored');
       return { totalMs: 1 };
     },
@@ -876,9 +876,12 @@ assert.ok(harness.menu.updates >= 1, 'later room states update the attached lobb
 // battleSceneRefusal over a real Garage return bound to this composition (its network port is main's binding).
 {
   // a battle's Garage return that failed after it wrote the Garage's scene: the room's next round is refused by name
+  // (review r1) and is no dead end: the round's covered restore (main binds room.enterGarage to enterGarageWithExit over
+  // garageReturn.enter) runs the return again, here once the cause has passed
   let failedHandOver = null;
-  const failed = createHarness({ takeScene: () => failedHandOver.takeSceneForRound() });
-  failedHandOver = createMainStudioHandOver(failed, { restoreFails: true });
+  let failRestore = true;
+  const failed = createHarness({ takeScene: () => failedHandOver.takeSceneForRound(), enterGarage: () => failedHandOver.garageReturn.enter() });
+  failedHandOver = createMainStudioHandOver(failed, { restoreFails: () => failRestore });
   const first = await enterRound(failed);
   await settle(12);
   assert.equal(await first.entry, true);
@@ -898,6 +901,15 @@ assert.ok(harness.menu.updates >= 1, 'later room states update the attached lobb
   assert.equal(failed.ports.failure.stage, 'scene', 'the failure names the hand-over');
   await settle();
   assert.ok(failed.menu.attached, 'the room is offered again');
+  assert.equal(failedHandOver.garageReturn.state, 'failed', '(the covered restore ran the return again, which failed again)');
+  failRestore = false; // the cause passes: the room's next round refused there runs the return again, which lands
+  const again = await first.owner.enter({ matchStart: matchStart(3, 'desert'), room: snapshot({ phase: 'starting', round: 3 }), spectator: false, playerId: 'me' })
+    .then(() => 'entered', (error) => error);
+  assert.ok(again instanceof GarageScreenUnsettledError, '(refused at the hand-over again)');
+  await settle(12);
+  assert.equal(failedHandOver.garageReturn.state, 'idle', "the refused round's covered restore lands the Garage return: the Garage is the player's again");
+  assert.equal(failed.game.phase, 'garage');
+  assert.ok(failed.menu.attached, 'with the room offered');
   failed.composition.dispose();
 
   // a battle's Garage return still in flight (its restore, the last step): the next round waits for it, then covers

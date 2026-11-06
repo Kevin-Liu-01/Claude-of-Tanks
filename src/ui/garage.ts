@@ -231,6 +231,13 @@ interface GarageOptions {
   readonly onOverlayChange?: () => void;
   /** The player's own key for a vehicle action's binding (main.ts: the input layer's label), for the actions row. */
   readonly actionKeyFor?: (binding: VehicleActionBinding) => string | null | undefined;
+  /**
+   * (round 3 B2, review r1) Asked before a battle press announces anything: true when no battle may take the scene now
+   * (main.ts: the solo entry's own refusal, which brings back the way out, a failed Garage return's notice and Retry). A
+   * press it refused announced a battle that never began: `ui:battleStart` grabbed the pointer lock over that notice, hid
+   * the play surface, parked the hero's Garage skin and set the loading governor hold.
+   */
+  readonly refusesBattle?: () => boolean;
 }
 
 export interface GarageRuntime {
@@ -3754,6 +3761,11 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     // (a battle that could not start because part of the game did not arrive cannot start in this document: the press
     // reloads the page once online, noteBattleLoadFailed)
     if (pressFailed(battleBtn)) return;
+    // (round 3 B2, review r1) a press no battle may follow announces nothing: its owner shows the way out instead (a
+    // check that throws refuses nothing, and the entry decides again)
+    let refused = false;
+    try { refused = opts.refusesBattle?.() === true; } catch (err) { console.error('[garage] battle refusal check failed:', err); }
+    if (refused) return;
     try {
       if (emitClick) emit('ui:click', {});
       emit('ui:battleStart', { specId, mapId });
