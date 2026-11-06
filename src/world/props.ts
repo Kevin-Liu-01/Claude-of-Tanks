@@ -242,7 +242,7 @@ import {
 import { createWreckBakeClient } from './wreckBakeClient.ts';
 import type { WreckBakePrefetch } from './wreckBakePrefetch.ts';
 import { resolveWreckRoster } from './wreckRoster.ts';
-import { WRECK_SPAWN_CLEAR_M, WRECK_STATES, WRECK_TRENCH_REACH_M, WRECK_VIEW_M, statesForSite, type WreckSite, type WreckState } from './wreckStates.ts';
+import { WRECK_SPAWN_CLEAR_M, WRECK_STATES, WRECK_TRENCH_REACH_M, WRECK_VIEW_M, statesForSite, wreckLook, type WreckSite, type WreckState } from './wreckStates.ts';
 import { mergeWreckGeometries } from './exactWreckGeometry.ts';
 import { fitWallSpan, wallIslandEdges, type WallSpan } from './wallSpanPlacement.ts';
 import { ensureTankBuilder } from '../vehicles/fleetFactory.ts';
@@ -9145,7 +9145,9 @@ ${snowCap ? `
        * each with a state its site shows drawn from the stream; never a bake already standing within WRECK_VIEW_M, a
        * state already standing in view only when the site shows no other (the repeat critic: an overturned T-55 and an
        * overturned BMP-2 in one Ruinspires street read as one hulk twice, the map's paint and the state's rust shared),
-       * and a donor already in view only when every other is too. Null when every bake the site shows is in view.
+       * of the states not in view one with a look not in view first (11-06: a burnt-out and a track-thrown hulk, turrets
+       * on and hulls level, read alike at 40-100 m), and a donor already in view only when every other is too. Null
+       * when every bake the site shows is in view.
        */
       function chooseWreckBake(site: WreckSite, x: number, z: number, tries: number):
         { specId: string; state: WreckState } | null {
@@ -9153,21 +9155,23 @@ ${snowCap ? `
         if (!states.length) return null;
         const start = (wrng() * states.length) | 0;
         const inView = placedBakes.filter((b) => Math.hypot(b.x - x, b.z - z) < WRECK_VIEW_M);
-        let sharedState: { specId: string; state: WreckState } | null = null;
-        let fallback: { specId: string; state: WreckState } | null = null;
+        const looksInView = new Set(inView.map((b) => wreckLook(b.state)));
+        // rank: 0 a new donor in a new look; +1 its look in view, +2 its state in view; +3 its donor in view
+        let best: { specId: string; state: WreckState } | null = null;
+        let bestRank = Infinity;
         for (let d = 0; d < pool.length; d++) {
           const specId = pool[(wreckPickSerial + tries + d) % pool.length];
-          const donorInView = inView.some((b) => b.specId === specId);
+          const donorRank = inView.some((b) => b.specId === specId) ? 3 : 0;
           for (let k = 0; k < states.length; k++) {
             const state = states[(start + k) % states.length];
             const key = `${specId}|${state}`;
             if (inView.some((b) => b.key === key)) continue;
-            if (donorInView) { fallback ??= { specId, state }; break; }
-            if (!inView.some((b) => b.state === state)) return { specId, state };
-            sharedState ??= { specId, state };
+            const rank = donorRank + (inView.some((b) => b.state === state) ? 2 : looksInView.has(wreckLook(state)) ? 1 : 0);
+            if (rank === 0) return { specId, state };
+            if (rank < bestRank) { best = { specId, state }; bestRank = rank; }
           }
         }
-        return sharedState ?? fallback;
+        return best;
       }
       function* placeWreck(
         x: number,

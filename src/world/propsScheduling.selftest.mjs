@@ -10,7 +10,7 @@ import { boxClearOfPoints, boxClearOfRoadCore, shiftClearOfRoadCore } from './ro
 import { terrainNearMeshHeightAt } from './terrain.ts';
 import { placeWreckCollision, placeWreckShellCollision } from './wreckCollision.ts';
 import { polygonGap, shapePolygons } from './parkedVehicleSeparation.ts';
-import { WRECK_STATES, WRECK_VIEW_M, statesForSite } from './wreckStates.ts';
+import { WRECK_STATES, WRECK_VIEW_M, statesForSite, wreckLook } from './wreckStates.ts';
 
 // Execute the actual public scheduling wrapper with an owned generator fixture.
 // Geometry/output equivalence is separately checked by the whole-world profile;
@@ -459,7 +459,7 @@ function placementFixture({ authored = true, random = () => 0.25, code = placeme
     wCfg: { debris: false, ...(authored ? { ids: wreckCast } : {}) },
     wrng() { state.randomCalls++; return random(); },
     // (wrecks-270) a hulk's bake is its donor and damage state; the picker keeps the bakes already standing in view
-    castStates: WRECK_STATES, statesForSite, WRECK_VIEW_M, placedBakes: [],
+    castStates: WRECK_STATES, statesForSite, wreckLook, WRECK_VIEW_M, placedBakes: [],
     *bakeFor(specId, wreckState) {
       state.bakes.push({ specId, state: wreckState });
       try { yield { fine: true, stage: 'fixture-bake' }; return state.nullBake ? null : baked; }
@@ -588,17 +588,27 @@ const seededRandom = new Function(stripTypeScriptTypes(source.slice(rngStart, rn
   assert.equal(f.state.randomCalls, 8, 'each placement consumes one state draw');
 }
 {
-  // (wrecks-270, the repeat critic) hulks in one view take states not already standing there while the site has one:
-  // the donors still go in turn, only the state moves on; once every roadside state stands in view, one is shared
+  // (wrecks-270, the repeat critic) hulks in one view take a look not already standing there while the site has one,
+  // then a state not already standing there; the donors still go in turn, only the state moves on; once every roadside
+  // state stands in view, one is shared
   const f = placementFixture({ authored: false, random: () => 0 }), roadside = statesForSite('roadside');
+  const looks = new Set(roadside.map(wreckLook));
   for (let i = 0; i < roadside.length + 1; i++) {
     assert.deepEqual(attemptWreck(f, 12 + i * 10, 24), { placed: true, selected: wreckCast[i % wreckCast.length] });
   }
-  assert.deepEqual(f.state.bakes.slice(0, roadside.length).map((b) => b.state), roadside,
-    'each hulk in one view takes the next state the site shows');
-  assert.ok(roadside.includes(f.state.bakes[roadside.length].state), 'a state is shared only once every state stands');
+  const states = f.state.bakes.map((b) => b.state);
+  assert.equal(new Set(states.slice(0, looks.size).map(wreckLook)).size, looks.size,
+    'each hulk in one view takes a look not yet standing there while the site has one');
+  assert.equal(new Set(states.slice(0, roadside.length)).size, roadside.length,
+    'then a state not yet standing there');
+  assert.ok(roadside.includes(states[roadside.length]), 'a state is shared only once every state stands');
+  const noLook = placementFixture({ authored: false, random: () => 0,
+    code: placementSource.replace(': looksInView.has(wreckLook(state)) ? 1 : 0', ': 0') });
+  for (let i = 0; i < looks.size; i++) attemptWreck(noLook, 12 + i * 10, 24);
+  assert.ok(new Set(noLook.state.bakes.map((b) => wreckLook(b.state))).size < looks.size,
+    'control: without the look rule two hulks in view share a look');
   const control = placementFixture({ authored: false, random: () => 0,
-    code: placementSource.replace("if (!inView.some((b) => b.state === state)) return { specId, state };", 'return { specId, state };') });
+    code: placementSource.replace('const rank = donorRank + (', 'const rank = 0 * (') });
   for (let i = 0; i < 3; i++) attemptWreck(control, 12 + i * 10, 24);
   assert.equal(new Set(control.state.bakes.map((b) => b.state)).size, 1, 'control: without the rule one state repeats in view');
 }
