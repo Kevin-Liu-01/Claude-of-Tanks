@@ -6121,11 +6121,19 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
     closing ??= (async () => {
       try {
         await session.settled();
-        if (filmRenderer.active) endFilm(); // a scripted film (beginFilm) left open: the live viewport comes back
+        // a scripted film (beginFilm) left open: the live viewport comes back; (round 3 A7) one that will not close stops
+        // none of the teardown below (the crushes' release, the Garage's return)
+        try {
+          if (filmRenderer.active) endFilm();
+        } catch (error) { console.error('[studio] closing the open film failed', error); }
         if (returnToGarage) await tearDownToGarage();
         else {
-          tearDownStudio();
-          ctx.restoreGarageWorld?.(); // main.ts: the battlefield asleep under the Garage's sky and trim (unless a battle holds the screen)
+          // (round 3 A7) the Garage gets its presentation back even when the Studio's half failed (all of it ran)
+          try {
+            tearDownStudio();
+          } finally {
+            ctx.restoreGarageWorld?.(); // main.ts: the battlefield asleep under the Garage's sky and trim (unless a battle holds the screen)
+          }
         }
       } finally {
         session.close();

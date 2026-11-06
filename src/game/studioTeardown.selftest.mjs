@@ -13,10 +13,13 @@ import * as THREE from 'three';
 import { createObstacleGrid, setCircleShape } from '../world/collision.ts';
 import { createFelledTrees } from '../world/felledTrees.ts';
 import { createStudioCrushes, planStudioCrushes } from './studioCrush.ts';
+import { createStudioSession } from './studioSession.ts';
 
 const studioSource = readFileSync(new URL('./studio.ts', import.meta.url), 'utf8');
 const source = ts.createSourceFile('studio.ts', studioSource, ts.ScriptTarget.Latest, true);
-const names = new Set(['crushPlanCurrent', 'syncCrushPlan', 'advanceCrushes', 'releaseCrushes', 'tearDownStudio']);
+// (and the exit's whole teardown around it: leaveForGarage, tearDownToGarage)
+const names = new Set(['crushPlanCurrent', 'syncCrushPlan', 'advanceCrushes', 'releaseCrushes', 'tearDownStudio', 'leaveForGarage',
+  'tearDownToGarage']);
 const nodes = [];
 (function visit(node) {
   if (ts.isFunctionDeclaration(node) && names.has(node.name?.text)) nodes.push(node);
@@ -25,7 +28,8 @@ const nodes = [];
 assert.equal(nodes.length, names.size, 'studio.ts declares its crush plan and its teardown');
 // the state the functions keep and write, declared beside them as in studio.ts; every other name they read is a port below
 const STATE = ['crushes', 'crushStoryboard', 'crushWorld', 'crushSpecs', 'pressHulls', 'entering', 'buildPlateUp', 'active',
-  'recording', 'placeArmed', 'dragActor', 'dragging', 'timeScale', 'storyboard', 'selectedShotId', 'shotUidSeq', 'actorKeyUidSeq'];
+  'recording', 'placeArmed', 'dragActor', 'dragging', 'timeScale', 'storyboard', 'selectedShotId', 'shotUidSeq', 'actorKeyUidSeq',
+  'closing'];
 const free = new Set(), called = new Set(), declared = new Set();
 const visitNames = (node) => {
   if (ts.isTypeNode(node)) return;
@@ -71,6 +75,8 @@ function makeStudio(breaks) {
   const calls = [];
   let current = null;
   const noop = () => {};
+  const session = createStudioSession();
+  session.open(session.beginEntry());
   const ports = {
     // one hull on a track up the lane at 9 m/s: its nose meets the tree at about 690 ms
     DEG: Math.PI / 180, actors: [{ spec: { dims: { hullLengthM: 7 } } }],
@@ -91,7 +97,11 @@ function makeStudio(breaks) {
     resetStudioGround: () => calls.push('ground-reset'), releaseStudioFx: () => calls.push('studio-fx-released'),
     camera: { rotation: { z: 0.2 } }, cam: { roll: 0.2 }, normalizeStoryboard: () => ({ durationMs: 12000, shots: [] }),
     rail: { rebuild: noop, updateVisibility: noop }, disposePicture: () => calls.push('picture-disposed'), unsweepPool: noop,
-    ctx: { restoreStudioAtmosphere: () => calls.push('atmosphere-restored') },
+    ctx: { restoreStudioAtmosphere: () => calls.push('atmosphere-restored'), restoreGarageWorld: () => calls.push('garage-world') },
+    // the exit's parts around the Studio's half: its session (open), a film left open, the Garage's return
+    session, filmRenderer: { active: breaks === 'endFilm' },
+    endFilm: () => { if (breaks === 'endFilm') throw failure('endFilm'); calls.push('film-closed'); },
+    enterGarage: async () => calls.push('enter-garage'), syncRoute: noop, docBrand: noop,
   };
   for (const name of free) if (!(name in ports)) ports[name] = called.has(name) ? noop : undefined;
   const code = stripTypeScriptTypes(`
@@ -102,13 +112,13 @@ function makeStudio(breaks) {
       const crushSpecs = [], pressHulls = [];
       let entering = null, buildPlateUp = true, active = true, recording = { stopping: false }, placeArmed = 'leo2a4';
       let dragActor = null, dragging = false, timeScale = 0, storyboard = { durationMs: 3000 }, selectedShotId = 'shot-1';
-      let shotUidSeq = 4, actorKeyUidSeq = 9;
+      let shotUidSeq = 4, actorKeyUidSeq = 9, closing = null;
       ${nodes.map((node) => node.getText(source)).join('\n')}
-      return { advanceCrushes, tearDownStudio, get active() { return active; }, get timeScale() { return timeScale; } };
+      return { advanceCrushes, tearDownStudio, leaveForGarage, get active() { return active; }, get timeScale() { return timeScale; } };
     }
   `);
   const studio = new Function('ports', 'createStudioCrushes', `${code}\nreturn make(ports, createStudioCrushes);`)(ports, createStudioCrushes);
-  return { studio, calls, ports, setWorld: (world) => { current = world; } };
+  return { studio, calls, ports, session, setWorld: (world) => { current = world; } };
 }
 
 // A throw in any step before the crushes' release (and one after it): the battlefield's felled trees are the frame's
@@ -150,4 +160,35 @@ for (const breaks of ['setStage', 'stopRecording', 'flareToWallClock', 'hide', '
     'studio-fx-released', 'picture-disposed', 'atmosphere-restored'], 'every step, in its order');
 }
 
-console.log('studioTeardown.selftest: a teardown step that throws (the plate, a recording, the flare, the panel, the actors) skips none of the rest: the battlefield\'s felled trees fall with the frame again, the Studio lets the frame go, and the failure still surfaces');
+// The exit's whole teardown (leaveForGarage): a film left open that will not close (endFilm before the Studio's half) stops
+// none of it; and for a failed entry whose scene the Garage already took back (returnToGarage false), the Garage's
+// presentation of the battlefield comes back even when the Studio's half failed. Each ran after the step that threw only
+// when nothing threw.
+{
+  const h = makeStudio('endFilm');
+  const world = battlefield();
+  h.setWorld(world);
+  h.studio.advanceCrushes(0, 1000);
+  h.session.beginExit();
+  const left = await h.studio.leaveForGarage().then(() => 'resolved', (error) => error?.step ?? 'rejected');
+  assert.equal(left, 'resolved', '(endFilm) the exit goes on past a film that will not close');
+  assert.equal(world.felled.driver, 'frame', '(endFilm) the battlefield\'s falls are its frame\'s again');
+  assert.equal(h.studio.active, false, '(endFilm) the Studio lets the frame go');
+  assert.ok(h.calls.includes('enter-garage'), '(endFilm) the Garage returns');
+  assert.equal(h.session.phase, 'closed', '(endFilm) the session closes');
+}
+for (const breaks of ['setStage', 'hide', 'clearActors']) {
+  const h = makeStudio(breaks);
+  const world = battlefield();
+  h.setWorld(world);
+  h.studio.advanceCrushes(0, 1000);
+  h.session.beginExit();
+  const left = await h.studio.leaveForGarage(false).then(() => 'resolved', (error) => error?.step ?? 'rejected');
+  assert.equal(left, breaks, `(${breaks}, handed back) the failure still surfaces`);
+  assert.equal(world.felled.driver, 'frame', `(${breaks}, handed back) the battlefield's falls are its frame's again`);
+  assert.ok(h.calls.includes('garage-world'), `(${breaks}, handed back) the Garage's presentation comes back`);
+  assert.ok(h.calls.indexOf('garage-world') > h.calls.indexOf('atmosphere-restored'), `(${breaks}, handed back) after the battlefield's own light`);
+  assert.equal(h.session.phase, 'closed', `(${breaks}, handed back) the session closes`);
+}
+
+console.log('studioTeardown.selftest: a teardown step that throws (the plate, a recording, the flare, the panel, the actors, a film left open) skips none of the rest: the battlefield\'s felled trees fall with the frame again, the Studio lets the frame go, a handed-back Garage gets its presentation, and the failure still surfaces');
