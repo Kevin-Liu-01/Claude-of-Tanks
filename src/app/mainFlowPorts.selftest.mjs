@@ -81,7 +81,7 @@ function phaseListener(game, battleEntryIntent) {
   assert.deepEqual(events[0], ['ui:battleStart', { specId: 'leopard2a4', mapId: 'winter', gameMode: 'standard', campaignOperationId: 'op-1' }],
     "main binds the entry's announce to ui:battleStart (profile history for menu and campaign battles)");
   assert.deepEqual(events.slice(1).map(([type]) => type), ['cover', 'load']);
-  // The Garage button announced its own press: begin() does not announce twice.
+  // begin() runs only the announcement its press hands it (round 4 F1): with none (the debug hook), none.
   const button = soloEntry();
   await button.entry.begin('m1a1_abrams_hc', 'desert');
   assert.equal(button.events.some(([type]) => type === 'ui:battleStart'), false);

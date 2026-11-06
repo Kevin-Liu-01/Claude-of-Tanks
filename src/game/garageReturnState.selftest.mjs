@@ -608,6 +608,10 @@ function mainLeave(runtime) {
 // way out: the failed return's notice with its Retry (a return a context change cut short over the Garage is the
 // context recovery's: round 4 E13). main's own exits, Leave, solo entry, hand-over rule and room launch, and
 // garage.ts's own press, over the real return, the real entry latch and the real solo entry.
+// (round 4 F1) A press that waits for a return in flight announces nothing until its entry is accepted after the wait:
+// garage.ts hands its announcement to the entry (onBattle's fourth argument), so a start refused after the wait leaves
+// no ui:battleStart effect standing (the pointer lock over the return's notice, settings' battle state, the hidden play
+// surface, post's 'loading' hold), over the Leave's Retry and the bare one (retryGarageReturn) alike.
 const garageSource = readFileSync(new URL('../ui/garage.ts', import.meta.url), 'utf8');
 function owedGarageMain(runtime, game, { contextRecovery = false } = {}) {
   const events = [];
@@ -620,7 +624,8 @@ function owedGarageMain(runtime, game, { contextRecovery = false } = {}) {
   const mainFn = (head) => slice(mainSource, head, '\n}\n');
   const garageAt = mainSource.indexOf('\nconst garage: MainGarageRuntime = ');
   const garageOptions = mainSource.slice(garageAt, mainSource.indexOf('\n}));', garageAt));
-  const onBattle = garageOptions.match(/\n {2}onBattle: (\(specId, mapId, options\) => \(\s+beginLocalBattleEntry\(specId, mapId, options\)\s+\)),/)?.[1];
+  // (round 4 F1: the binding passes the press's announcement on; 0edd0e1ab5's took three arguments)
+  const onBattle = garageOptions.match(/\n {2}onBattle: (\([^)]*\) => \(\s+beginLocalBattleEntry\([^)]*\)\s+\)),/)?.[1];
   assert.ok(onBattle, "main binds the Garage press to the solo entry");
   const refusesBattle = garageOptions.match(/\n {2}refusesBattle: ([^\n]+),\n/)?.[1] ?? 'undefined'; // (absent on 92f415e879)
   const scope = {
@@ -684,6 +689,9 @@ const started = ['emit:ui:click', 'emit:ui:battleStart', 'cover@garage', 'load@g
   for (let index = 0; index < 8 && f.runtime.state !== 'idle'; index += 1) await flush();
   assert.equal(f.runtime.state, 'idle', 'the Retry restores the Garage');
   press(main);
+  // (round 4 F1) with no return in flight the entry accepts the press at once: its announcement and its cover land
+  // inside the press's task, as before (the pointer lock's request keeps its gesture)
+  assert.deepEqual(main.events.slice(0, 3), started.slice(0, 3), "the press's announcement and cover, inside its task");
   await flush();
   assert.deepEqual(main.events, started, 'and the next press starts its battle');
 }
@@ -751,14 +759,17 @@ const started = ['emit:ui:click', 'emit:ui:battleStart', 'cover@garage', 'load@g
   main.events.length = 0;
   press(main);
   await flush();
-  assert.deepEqual(main.events, ['emit:ui:click', 'emit:ui:battleStart'], 'the press waits for the return (6ab835cbb4: refused at the press)');
+  // (round 4 F1) and announces nothing while it waits: the return decides whether its battle begins at all
+  assert.deepEqual(main.events, ['emit:ui:click'],
+    'the press waits for the return, unannounced (6ab835cbb4: refused at the press; 0edd0e1ab5: ui:battleStart at the press)');
   fadeIn.resolve();
   for (let index = 0; index < 8 && f.runtime.state !== 'idle'; index += 1) await flush();
   await flush();
   assert.equal(f.runtime.state, 'idle');
-  assert.deepEqual(main.events, started, 'and starts its battle once the return lands');
+  assert.deepEqual(main.events, started, 'and announces and starts its battle once the return lands');
 }
-// a press during a Retry that fails again: the waiting start is refused and the notice comes back
+// a press during a Retry that fails again: the waiting start is refused, the notice comes back, and (round 4 F1) no
+// effect of the press's announcement stands under it: none was made
 {
   let hold = null;
   const f = createFixture({
@@ -775,13 +786,62 @@ const started = ['emit:ui:click', 'emit:ui:battleStart', 'cover@garage', 'load@g
   main.events.length = 0;
   press(main);
   await flush();
-  assert.deepEqual(main.events, ['emit:ui:click', 'emit:ui:battleStart'], '(the press waits for the Retry)');
+  assert.deepEqual(main.events, ['emit:ui:click'], '(the press waits for the Retry, unannounced)');
   hold.resolve();
   for (let index = 0; index < 8 && main.notices.length < 3; index += 1) await flush();
   assert.equal(f.runtime.state, 'failed');
-  assert.deepEqual(main.events, ['emit:ui:click', 'emit:ui:battleStart'], 'no cover and no load under the return that failed again');
+  assert.deepEqual(main.events, ['emit:ui:click'],
+    'no announcement, cover or load under the return that failed again (0edd0e1ab5: ui:battleStart at the press, then refused)');
   assert.equal(main.notices.length, 3, "the Retry's own notice and the refused start's (one presenter, one modal)");
   assert.ok(main.notices.slice(1).some((notice) => notice.retry === main.retryGarageReturn), "the refused start's offers the return again");
+}
+// (round 4 F1) the bare Retry: the refused press's notice offers the return again with no veil (retryGarageReturn, a
+// bare enterGarage: the Garage UI is up while it restores, the press most likely to land here). A press while it runs
+// waits unannounced; if it fails again the start is refused with nothing announced and the notice comes back; if it
+// lands the press announces and starts its battle. (0edd0e1ab5: ui:battleStart at the press, standing after the
+// refusal.)
+{
+  let failRestore = true;
+  let hold = null;
+  const f = createFixture({
+    restore: async () => { if (failRestore) throw new Error('the Garage presentation did not restore'); return { totalMs: 1 }; },
+    placement: () => hold?.promise,
+  });
+  const main = owedGarageMain(f.runtime, f.game);
+  await main.leave();
+  await flush();
+  assert.equal(f.runtime.state, 'failed');
+  main.events.length = 0;
+  press(main); // the closed notice: the press brings it back, with the bare Retry
+  await flush();
+  assert.deepEqual(main.events, []);
+  assert.equal(main.notices.at(-1).retry, main.retryGarageReturn, '(the refused press offers the bare Retry)');
+  for (const lands of [false, true]) {
+    const label = lands ? 'a bare Retry that lands' : 'a bare Retry that fails again';
+    failRestore = !lands;
+    hold = deferred();
+    const shown = main.notices.length;
+    main.notices.at(-1).retry();
+    await flush();
+    assert.equal(f.runtime.state, 'entering', `${label}: (its return runs, no veil)`);
+    main.events.length = 0;
+    press(main);
+    await flush();
+    assert.deepEqual(main.events, ['emit:ui:click'], `${label}: the press waits for it, unannounced`);
+    hold.resolve();
+    const settled = () => (lands ? main.events.length >= started.length : main.notices.length >= shown + 2);
+    for (let index = 0; index < 12 && !settled(); index += 1) await flush();
+    if (lands) {
+      assert.equal(f.runtime.state, 'idle', label);
+      assert.deepEqual(main.events, started, `${label}: the press announces and starts its battle once it lands`);
+    } else {
+      assert.equal(f.runtime.state, 'failed', label);
+      assert.deepEqual(main.events, ['emit:ui:click'],
+        `${label}: the start is refused and nothing it announced stands`);
+      assert.equal(main.notices.length, shown + 2, `${label}: its notice and the refused start's`);
+      assert.equal(main.notices.at(-1).retry, main.retryGarageReturn, `${label}: the bare Retry again`);
+    }
+  }
 }
 
 console.log('garageReturnState.selftest: explicit return state, named busy refusals, event-driven Battle Again, a failed return\'s exit for every caller, superseded returns open nothing passed');

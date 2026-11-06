@@ -14,7 +14,7 @@ globalThis.localStorage ??= {
 };
 const { getPlayerRecord, installBattleRecords } = await import('./profile.ts');
 
-function createEntry({ whenGarageSettled } = {}) {
+function createEntry({ whenGarageSettled, canTakeScene } = {}) {
   const bus = createBus();
   const order = [];
   const announced = [];
@@ -34,6 +34,7 @@ function createEntry({ whenGarageSettled } = {}) {
     reportError: () => order.push('error'),
     announce: (payload) => bus.emit('ui:battleStart', payload),
     ...(whenGarageSettled ? { whenGarageSettled } : {}),
+    ...(canTakeScene ? { canTakeScene } : {}),
   });
   return { bus, order, announced, lifecycle, runtime, finish: () => finishLoad?.() };
 }
@@ -52,13 +53,51 @@ function createEntry({ whenGarageSettled } = {}) {
   await started;
 }
 
-// The Garage BATTLE button announces its own press; its entry does not announce it a second time.
+// (round 4 F1) The Garage BATTLE button hands its press's announcement to its entry (begin's fourth argument), which
+// runs it once it accepts the start: inside the press's task when no Garage return is in flight (the pointer lock's
+// gesture), after the wait when one is, and never for a start it refuses (busy, or the scene after the wait). On
+// 0edd0e1ab5 the button announced before begin(), so a start refused after the wait left ui:battleStart's effects
+// standing: the pointer lock over the failed return's notice, settings' battle state, the hidden play surface and
+// post's 'loading' hold.
 {
+  const pressAnnouncement = (entry, specId) => () => entry.bus.emit('ui:battleStart', { specId, mapId: 'desert' });
   const entry = createEntry();
-  const started = entry.runtime.begin('m1a1_abrams_hc', 'desert', { gameMode: 'standard' });
-  assert.deepEqual(entry.announced, []);
+  const started = entry.runtime.begin('m1a1_abrams_hc', 'desert', { gameMode: 'standard' },
+    pressAnnouncement(entry, 'm1a1_abrams_hc'));
+  assert.deepEqual(entry.order.slice(0, 2), ['announce', 'cover'],
+    "no return in flight: the press's announcement, inside its task");
+  assert.deepEqual(entry.announced, [{ specId: 'm1a1_abrams_hc', mapId: 'desert' }], 'its own payload, once');
+  await entry.runtime.begin('t90a', 'desert', undefined, pressAnnouncement(entry, 't90a'));
+  assert.equal(entry.announced.length, 1, 'a press refused as busy announces nothing');
   entry.finish();
   await started;
+  // without a press's announcement (the debug hook, __DEBUG.beginBattleEntry) the entry announces nothing, as before
+  const hook = createEntry();
+  const hooked = hook.runtime.begin('m1a1_abrams_hc', 'desert', { gameMode: 'standard' });
+  assert.deepEqual(hook.announced, []);
+  hook.finish();
+  await hooked;
+  // a Garage return in flight: the press waits unannounced; refused after the wait, it never announces
+  for (const lands of [true, false]) {
+    let settle;
+    let inFlight = true;
+    let refused = false;
+    const returning = new Promise((resolve) => { settle = resolve; });
+    const waiting = createEntry({ whenGarageSettled: () => (inFlight ? returning : null), canTakeScene: () => !refused });
+    const start = waiting.runtime.begin('m1a1_abrams_hc', 'desert', undefined,
+      pressAnnouncement(waiting, 'm1a1_abrams_hc'));
+    await Promise.resolve();
+    assert.deepEqual(waiting.order, [], 'the press announces nothing while it waits for the return');
+    refused = !lands; // the return failed: the scene owes the Garage
+    inFlight = false;
+    settle();
+    for (let i = 0; i < 4; i += 1) await Promise.resolve();
+    if (lands) {
+      assert.deepEqual(waiting.order, ['announce', 'cover', 'load'], 'the return landed: announced, then covered');
+      waiting.finish();
+    } else assert.deepEqual(waiting.order, [], 'refused after the wait: nothing was announced, so nothing stands');
+    await start;
+  }
 }
 
 // The profile records a Play-menu battle (it began its tally only on ui:battleStart).
@@ -106,10 +145,11 @@ function createEntry({ whenGarageSettled } = {}) {
 }
 
 // (round 2 U19) A start queued under a Garage return is the battle the profile and the service record keep. The
-// Garage button announces its own press (a tool's click or a key press under the return's veil reaches it), and a
-// Play-menu start announced before it waited; the return's own 'garage' announcement (the battle before leaving, from
-// its screen) then dropped the queued battle's tally and tracker: no match in the history, and the service record's
-// row lost its vehicle and map (mobilelap's map cycle did this).
+// Garage button announced its own press then (a tool's click or a key press under the return's veil reaches it; round
+// 4 F1 hands it to the entry, after the wait), and a Play-menu start announced before it waited; the return's own
+// 'garage' announcement (the battle before leaving, from its screen) then dropped the queued battle's tally and
+// tracker: no match in the history, and the service record's row lost its vehicle and map (mobilelap's map cycle did
+// this).
 {
   const { installServiceRecord, getServiceRecord } = await import('./serviceRecord.ts');
   const serviceContext = {
@@ -129,8 +169,9 @@ function createEntry({ whenGarageSettled } = {}) {
     const before = getPlayerRecord().matches;
     let started;
     if (press === 'button') {
-      entry.bus.emit('ui:battleStart', { specId: 'leo2_improved', mapId: 'urban' }); // garage.ts launchBattle
-      started = entry.runtime.begin('leo2_improved', 'urban');
+      // garage.ts launchBattle hands its announcement to the entry (round 4 F1; on 0edd0e1ab5 it emitted first)
+      started = entry.runtime.begin('leo2_improved', 'urban', undefined,
+        () => entry.bus.emit('ui:battleStart', { specId: 'leo2_improved', mapId: 'urban' }));
     } else started = entry.runtime.beginSelected({ specId: 'leo2_improved', mapId: 'urban' });
     await Promise.resolve();
     // the return hands the screen to the Garage, then settles; the queued entry goes on

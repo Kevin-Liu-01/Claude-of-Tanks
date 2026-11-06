@@ -251,8 +251,9 @@ export function installBattleRecords(bus: ProfileEventBus | null | undefined): v
   // announces itself (ui:battleStart: the Garage button, the network roster, the solo entry owner for the Play menu
   // and the campaign ladder), so its result has a tally of its own.
   // (round 2 U19) The drop is the tally's own battle's: a start queued under a Garage return (the Garage button's press
-  // under its veil) is announced before that return hands the screen over, and its 'garage' (from the battle before's
-  // screen) is the battle before leaving, not this one. An entry that never reached its battle (a failed entry's
+  // under its veil) was announced before that return handed the screen over, and its 'garage' (from the battle before's
+  // screen) is the battle before leaving, not this one. (round 4 F1: that press now announces once its entry accepts
+  // it, after the return, as the Play menu's start does.) An entry that never reached its battle (a failed entry's
   // recovery: the Garage again, from the Garage) is dropped as before.
   bus.on('phase:change', (payload) => {
     const event = recordOf(payload);
