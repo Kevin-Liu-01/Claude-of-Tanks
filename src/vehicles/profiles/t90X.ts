@@ -1428,7 +1428,8 @@ function smSideBody(P:TankBuilderPort,side:number,rows:readonly SmSideBodyStatio
       [outer,outerHigh],[knee,kneeHigh],[inner,high]];
     return side<0?smLeftCarrierSection(z,r):{z,ring:r};
   });
-  onTurret(P,S,'turretDetail',sectionSolid(sections),0,0,0);
+  // (269) the end caps keep their collinear edge stations in real faces, never in zero-area ones (18 zero normals)
+  onTurret(P,S,'turretDetail',sectionSolid(sections,{preserveCapBoundary:true}),0,0,0);
 }
 
 function smLeftCarrierSection(z:number,original:SolidSection['ring']):SolidSection {

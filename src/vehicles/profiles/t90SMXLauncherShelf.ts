@@ -79,5 +79,7 @@ function shelfSection(z:number):SolidSection {
 export function addT90SMLeftLauncherShelf(P:TankBuilderPort):void {
   const stations=[-1.513,-1.50,-1.40,-1.20,-.90,-.60,-.48,-.465,-.44,-.42,-.40,-.38,-.366,
     -.35,-.20,0,.10,.15,.20,.209];
-  P.addEquipment('turretDetail',sectionSolid(stations.map(shelfSection)),-.008,-1.532,-.359);
+  // (269) the end caps keep their collinear edge stations in real faces, never in zero-area ones (those left the merged
+  // turret detail 9 zero normals)
+  P.addEquipment('turretDetail',sectionSolid(stations.map(shelfSection),{preserveCapBoundary:true}),-.008,-1.532,-.359);
 }
