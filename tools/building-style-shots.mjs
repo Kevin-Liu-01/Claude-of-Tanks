@@ -270,8 +270,11 @@ async function main(argv) {
       : { tool: TOOL, device: job.device, dist: job.dist, maps: {} };
   }
   const order = [...new Set(options.jobs.flatMap((job) => job.maps))];
-  const pairs = order.flatMap((mapId) => options.jobs.filter((job) => job.maps.includes(mapId) && !job.manifest.maps[mapId])
-    .map((job) => ({ job, mapId })));
+  // (Main 11-06, ground-269's grass-order finding) the jobs run in turn on every other map, so no arm is always shot first
+  const pairs = order.flatMap((mapId, i) => {
+    const jobs = options.jobs.filter((job) => job.maps.includes(mapId) && !job.manifest.maps[mapId]);
+    return (i % 2 ? jobs.reverse() : jobs).map((job) => ({ job, mapId }));
+  });
   if (!pairs.length) { console.log(`[${TOOL}] every pair is shot`); return 0; }
   const label = `${TOOL} ${path.basename(options.out)}`;
   setBrowserGuardContext({ hold: label });
