@@ -147,6 +147,7 @@ export function createAirSupportHud(parent: HTMLElement, bus: EventBus) {
     setText(pointsValue, String(air.points ?? 0));
     setText(viewKey, keyX);
     setData(view, 'open', strikeView.open ? 'true' : 'false');
+    setData(strip, 'open', strikeView.open ? 'true' : 'false');
     for (const tile of tiles) {
       const tileWhy = blocker(air, tile.kind, tile.kind === strikeView.kind ? rangeM : 0);
       setData(tile.button, 'state', tileWhy ?? 'ready');

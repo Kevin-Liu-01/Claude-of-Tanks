@@ -60,7 +60,12 @@
 
 /* a phone: the strip sits above the fire button's row; the tiles drop their names; CALL and close are buttons */
 @media(pointer:coarse){
- .cot-strike-strip{left:50%;transform:translateX(-50%);bottom:calc(max(10px,env(safe-area-inset-bottom)) + 150px);gap:3px;padding:4px}
+ /* (the phone capture: the full strip crossed the middle of the screen) shut, only the points and the binoculars, beside the
+    vehicle's action row; with the binoculars up, the call-ins in a row just above that row */
+ .cot-strike-strip{left:calc(50% - 76px);transform:translateX(-100%);bottom:calc(max(10px,env(safe-area-inset-bottom)) + 47px);gap:3px;padding:3px}
+ .cot-strike-strip:not([data-open=true]) .strike-tile{display:none}
+ .cot-strike-strip[data-open=true]{left:50%;transform:translateX(-50%);bottom:calc(max(10px,env(safe-area-inset-bottom)) + 104px)}
+ .strike-points{min-width:40px;padding:0 6px}
  .strike-tile-copy .strike-tile-name,.strike-key{display:none}
  .strike-tile,.strike-view-button{min-width:44px;min-height:44px;padding:4px 6px}
  .binocular-hint{display:none}
@@ -70,5 +75,5 @@
  .binocular-readout{top:max(64px,env(safe-area-inset-top));gap:8px;padding:5px 10px}
  .binocular-facts{display:none}
 }
-@media(pointer:coarse) and (orientation:portrait){.cot-strike-strip{width:calc(100% - 24px);justify-content:space-between}.strike-points{min-width:40px}}
+@media(pointer:coarse) and (orientation:portrait){.cot-strike-strip[data-open=true]{width:calc(100% - 24px);justify-content:space-between}.strike-points{min-width:40px}}
 }

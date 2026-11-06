@@ -98,7 +98,14 @@ export const STRIKE_MARKS_GLSL = /* glsl */ `
   float cotStrikeLine( float d, float w, float px ) { return 1.0 - smoothstep( w, w + px * 1.25, abs( d ) ); }
   vec3 cotStrikeMarks( vec3 wp, vec3 rgb, float px ) {
     vec2 g = wp.xz;
-    px = max( px, 0.02 );
+    // the surface's facing from the rebuilt world point (its screen derivatives): marks lie on what faces up — the ground,
+    // a roof, a hull's deck — never down a wall, a trunk or a bush's side, where a ground-plane line becomes a sheet (the
+    // phone capture's binoculars)
+    vec3 dpx = dFdx( wp ), dpy = dFdy( wp );
+    vec3 nrm = cross( dpx, dpy );
+    float up = smoothstep( 0.55, 0.8, abs( nrm.y ) / max( length( nrm ), 1e-6 ) );
+    if ( up <= 0.0 ) return rgb;
+    px = max( max( px, length( vec2( length( dpx.xz ), length( dpy.xz ) ) ) * 0.7 ), 0.02 );
     for ( int i = 0; i < COT_STRIKE_MAX; i++ ) {
       if ( i >= uStrikeN ) break;
       vec4 A = uStrikeA[ i ], B = uStrikeB[ i ], C = uStrikeC[ i ];
@@ -107,7 +114,7 @@ export const STRIKE_MARKS_GLSL = /* glsl */ `
       if ( abs( d.x ) > reach || abs( d.y ) > reach ) continue;
       // the ground, the low roofs and the walls' feet near the mark's own ground; a crown or a roof far above it fades out
       // (the first capture: the pattern drawn across tree crowns and grass tops read as blobs, not a reticle)
-      float hFade = 1.0 - smoothstep( 5.0, 14.0, wp.y - B.w );
+      float hFade = ( 1.0 - smoothstep( 5.0, 14.0, wp.y - B.w ) ) * up;
       if ( hFade <= 0.0 ) continue;
       float shape = B.y, urg = B.z, T = uStrikeT;
       bool aim = shape > 2.5;
