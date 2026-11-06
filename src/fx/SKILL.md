@@ -30,6 +30,10 @@ building's stages into the world's own geometry through the core's seam
 meets the ground (`ballisticLanding.ts`), and a stage's larger pieces are rigid
 bodies of the one engine (`rubbleBodies.ts` over `debrisPhysics.ts`;
 docs/DESTRUCTION.md §17); `tools/destruction-check.mjs` judges the result.
+What a round throws off a tank depends on the part it struck: `strikeLooks.ts` has one look per plate material
+(`event.material`, sim/plateMaterial.ts). Sparks and a hot flash come only off steel, rubber and canvas tear cold,
+and the running gear throws the ground it carries. `strikeLooks.selftest.mjs` holds its sparks to the audio's steel.
+A graze (sim/shellSurface.ts `grazes`) sprays its ground forward and low instead of standing a spurt up.
 
 ## Patterns to follow / invariants
 <!-- agent-docs:fill:patterns -->

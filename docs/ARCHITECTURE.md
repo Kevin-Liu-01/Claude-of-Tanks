@@ -1787,16 +1787,21 @@ one-shots. The occupied hull adds turret-drive and elevation servo loops,
 interior hum and rattle; remote rigs use LOD (own / near ≤140–165 m / far
 ≤900–1000 m, desktop 5 near + 8 far, mobile 3 + 4).
 
-**Weapons.** Eighteen report classes (rifle and heavy MG; 20–50 mm
-autocannon; 90–152 mm cannon; ATGM; heavy rocket; the AC-130's autocannon,
-howitzer and missiles) with close and distant banks crossfaded by range,
-per-map gun tails (open, forest, urban, mountain; once per beat for a
-machine-gun burst), the interior report when scoped, twin-weapon stagger,
-autocannon feed, supersonic flyby and near-miss crack, missile warning. The
-close reports are cracks chosen by transient anatomy and mastered on their
-true peak. Reloads play the loader's choreography (manual, carousel, bustle,
-autocannon, missile, the gunship's hand-loaded howitzer, magazine,
-intra-clip) timed to `player:reload` progress.
+**Weapons.** One table (`weaponAudio.ts` `WEAPON_ROWS`) keyed by bore class
+and ammunition construction, 27 rows from the rifle MG to the 17 cm gun, the
+guided rounds, the TOS-1A's rockets and the AC-130's guns; a weapon's key comes
+from its vehicle's own spec, and the generated census
+(`weaponCensus.generated.ts`, `tools/audio/weapon-census.mjs`) makes a weapon
+without a row fail typecheck. Each row has close, own-hatch, closed-turret and
+distant reports crossfaded by range, its muzzle brake's directivity, per-map
+gun tails (open, forest, urban, mountain; once per beat for a machine-gun
+burst), twin-weapon stagger, autocannon feed, supersonic flyby and near-miss
+crack, missile warning. The close reports are cracks chosen by transient
+anatomy and mastered on their true peak. Reloads play what the breech gives up
+(by construction) and the next round going in (by loader make: manual, AZ
+carousel, MZ basket, bustle, the Strv 103's ram loader, the 2A70's, a roof
+launcher, the TOS-1A's crane, the gunship's hand-loaded howitzer; magazine and
+intra-clip cycles) anchored in seconds to `player:reload`'s cycle.
 
 **Event table.** shell:fired / weapon:predicted / auxiliary:fired →
 reports; shell:hit → impact by kind and calibre (pen, ricochet, nonpen,

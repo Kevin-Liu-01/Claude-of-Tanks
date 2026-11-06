@@ -232,7 +232,7 @@ export function createVoicePool({ mixer, library, random, budget, reverb }: Voic
       const sendGain = ctx.createGain();
       sendGain.gain.value = send;
       output.connect(sendGain);
-      sendGain.connect(mixer.reverbInput);
+      sendGain.connect(mixer.reverbSend(bus));
     }
     const when = now + 0.004 + delay;
     let offset = clamp(Number.isFinite(options.offsetS) ? options.offsetS as number : 0, 0, Math.max(0, buffer.duration - 0.01));

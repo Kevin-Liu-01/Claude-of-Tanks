@@ -95,13 +95,14 @@ export function createAerialRig(deps: AerialDeps, kind: AerialKind, perspective:
   output.connect(lowpass);
   if (panner) lowpass.connect(panner);
   const tail: AudioNode = panner ?? lowpass;
-  tail.connect(mixer.input(own ? 'own' : 'vehicles'));
+  const busId = own ? 'own' : 'vehicles';
+  tail.connect(mixer.input(busId));
   let send: GainNode | null = null;
   if (deps.reverb && !own) {
     send = ctx.createGain();
     send.gain.value = 0.1;
     tail.connect(send);
-    send.connect(mixer.reverbInput);
+    send.connect(mixer.reverbSend(busId));
   }
 
   function makeLoop(asset: string, highpassHz = 0): Loop {

@@ -1777,7 +1777,9 @@ const audio = await bootStage('audio', () => {
     return deathsAreFinal(game.ruleset?.mode === mode ? game.ruleset : matchRulesetFor(mode)) ? game.rosterTanks : null;
   },
   // Each warmed hull's powertrain from its whole spec, as its rig will resolve it (an IFV's diesel turns on its role).
-  getVehicleSpec: getSpec });
+  getVehicleSpec: getSpec,
+  // The battle's time of day (the ambience's night life: owls and crickets, no songbirds after dark).
+  getTimeOfDay: () => battleAtmosphere.current?.weather?.timeOfDay ?? null });
   a.bindBus(bus);
   return a;
 });

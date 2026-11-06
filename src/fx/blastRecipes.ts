@@ -27,8 +27,9 @@ import type { MunitionClass } from '../sim/destructionEvents.ts';
 import type { VolumePuff } from './volumeMedia.ts';
 import type { ChunkPiece, ChunkShape } from './debrisChunks.ts';
 import {
-  BLAST_RESIDUE, PROPELLANT, SMOKE_AGED, SOOT, UNDER_SNOW_SOIL, type SurfaceKind,
+  BLAST_RESIDUE, linearHex, PROPELLANT, SMOKE_AGED, SOOT, UNDER_SNOW_SOIL, type SurfaceKind,
 } from './surfaceLooks.ts';
+import type { StrikeLook } from './strikeLooks.ts';
 // (EF.12) the earth looks in the map's own ground colour
 import { surfaceLook } from './mapPalette.ts';
 
@@ -830,6 +831,8 @@ interface StrikeInput {
   caliberMm: number;
   munition: MunitionClass;
   surface: SurfaceKind;
+  /** (impact-materials-269) the round met the ground at a glancing angle (sim/shellSurface.ts grazes) and skipped on */
+  graze?: boolean;
   birthOffset?: number;
 }
 
@@ -849,6 +852,7 @@ export function kineticStrike(C: BlastContext, I: StrikeInput): void {
   let fx = I.dx, fz = I.dz;
   const fl = Math.hypot(fx, fz);
   if (fl > 1e-3) { fx /= fl; fz /= fl; } else { fx = 0; fz = 0; }
+  if (I.graze && fl > 1e-3) { grazeSpray(C, I, fx, fz, by, s, small, dk, bo); return; }
   if (I.surface === 'water') { splash(C, I.x, by, I.z, s, bo); return; }
   // a spray of soil standing up along the ricochet line (tall, narrow, overlapping: round 3's round spurts read as a
   // row of small balls)
@@ -884,6 +888,92 @@ export function kineticStrike(C: BlastContext, I: StrikeInput): void {
   }
   if (L.sparks > 0) sparkSpray(C, I.x, by + 0.1, I.z, fx * 0.5, 0.85, fz * 0.5, Math.round((small ? 3 : 8) * L.sparks),
     small ? 9 : 16, 0.8, 0.35, small ? 0.016 : 0.026, bo);
+}
+
+/**
+ * A skip, not a plunge (impact-materials-269): a round that grazes the ground at a few degrees flies on, and the ground
+ * it touched sprays forward and low along its path for a furrow's length, a fan of that ground's own spray (earth, sand,
+ * snow, mud, water) wider than tall; no fountain stands up. Clods and stone sparks skim forward with it.
+ */
+function grazeSpray(C: BlastContext, I: StrikeInput, fx: number, fz: number, by: number, s: number, small: boolean,
+  dk: number, bo: number): void {
+  const L = surfaceLook(I.surface);
+  const R = C.rand;
+  const m = C.m;
+  const n = small ? 2 : Math.round(3 + s * 2);
+  for (let i = 0; i < n; i++) {
+    const v = (small ? 6 : 12 + R() * 6) * Math.sqrt(s) * L.heightK;
+    const side = (R() - 0.5) * 0.5;
+    place(m, I.x + fx * 0.5 * i, by + 0.05, I.z + fz * 0.5 * i, bo + i * 0.012);
+    move(m, (fx + fz * side) * v * (0.8 + R() * 0.4), v * (0.16 + R() * 0.12), (fz - fx * side) * v * (0.8 + R() * 0.4),
+      2.4, 0.1, 0.6, -5);
+    shape(m, (small ? 0.8 : 1.4) + R() * 0.6, 0.3 * s * dk, (1.4 + R() * 0.6) * s * dk * Math.sqrt(L.dustK), 2.2, R);
+    look(m, i === 0 ? L.ejecta : mix3(L.ejecta, L.dust, 0.5), L.dust, 0.85, 0.0, 0.4);
+    book(m, 'burst', R, 2.0, 3);
+    card(m, 1.7 + R() * 0.5, R, 0.06);
+    heat(m, 0, 1);
+    C.media(m);
+  }
+  // a low haze along the furrow
+  place(m, I.x + fx * 0.8 * n * 0.5, by + 0.2 * s, I.z + fz * 0.8 * n * 0.5, bo + 0.05);
+  move(m, fx * 2.0, 0.4, fz * 2.0, 1.4, 0.2, 0.9, 0);
+  shape(m, (small ? 1.4 : 2.8) + R(), 0.5 * s * dk, (small ? 1.1 : 2.4) * s * dk * Math.sqrt(L.dustK), 2.4, R);
+  look(m, mix3(L.ejecta, L.dust, 0.6), L.dust, 0.5, 0.05, 0.35);
+  book(m, 'burst', R, 3.0, 4);
+  card(m, 2.2, R, 0.04);
+  heat(m, 0, 1);
+  C.media(m);
+  if (L.chunkK > 0 && !small) {
+    const shapeId: ChunkShape = I.surface === 'rock' || I.surface === 'concrete' ? 'stone' : 'clod';
+    const k = Math.round((2 + 3 * s) * L.chunkK);
+    for (let i = 0; i < k; i++) {
+      const v = (6 + R() * 8) * Math.sqrt(s);
+      chunk(C, shapeId, I.x, by + 0.1, I.z, (fx + (R() - 0.5) * 0.5) * v, (0.25 + R() * 0.3) * v, (fz + (R() - 0.5) * 0.5) * v,
+        (0.04 + R() * 0.07) * s * L.chunkScale + 0.02, L.chunk, 10 + R() * 6, 0, bo);
+    }
+  }
+  if (L.sparks > 0) sparkSpray(C, I.x, by + 0.08, I.z, fx * 0.9, 0.3, fz * 0.9, Math.round((small ? 3 : 8) * L.sparks),
+    small ? 10 : 18, 0.45, 0.3, small ? 0.016 : 0.026, bo);
+}
+
+/**
+ * The ground a tank's running gear carries, struck off it (impact-materials-269): a hit on a track, a road wheel or the
+ * rubber skirt over them throws the earth, sand, snow or mud caked on it (a splash where it wades), out along the part's
+ * face and falling: a puff of that ground's dust and a few clods, by `k` (1 a track's caked load, strikeLooks.ts).
+ */
+export function partSpray(C: BlastContext, I: {
+  x: number; y: number; z: number; nx: number; ny: number; nz: number; caliberMm: number; surface: SurfaceKind; k: number;
+  birthOffset?: number;
+}): void {
+  const L = surfaceLook(I.surface);
+  const R = C.rand;
+  const m = C.m;
+  const bo = I.birthOffset ?? 0;
+  const s = Math.max(0.3, Math.min(1.4, I.caliberMm / 120));
+  const sq = Math.sqrt(s);
+  const dk = C.distBoost(I.x, I.y, I.z);
+  const nl = Math.hypot(I.nx, I.ny, I.nz) || 1;
+  const nx = I.nx / nl, ny = I.ny / nl, nz = I.nz / nl;
+  const puffs = Math.max(1, Math.round((1 + 2 * s) * I.k));
+  for (let i = 0; i < puffs; i++) {
+    const v = (3 + R() * 3) * sq;
+    place(m, I.x + nx * 0.2, I.y + ny * 0.2, I.z + nz * 0.2, bo + R() * 0.02);
+    move(m, nx * v + (R() - 0.5) * 1.2, ny * v + 0.4, nz * v + (R() - 0.5) * 1.2, 3, 0.1, 0.8, -3);
+    const life = 1.0 + R() * 0.6;
+    shape(m, life, 0.2 * s * dk, (0.8 + R() * 0.4) * s * dk * Math.sqrt(L.dustK), 2.2, R);
+    look(m, mix3(L.ejecta, L.dust, 0.35), L.dust, 0.75, 0.0, 0.4);
+    book(m, 'burst', R, life, 2);
+    heat(m, 0, 1);
+    C.media(m);
+  }
+  if (L.chunkK > 0) {
+    const n = Math.round((2 + 4 * s) * I.k * L.chunkK);
+    for (let i = 0; i < n; i++) {
+      const v = (4 + R() * 5) * sq;
+      chunk(C, 'clod', I.x + nx * 0.05, I.y + ny * 0.05, I.z + nz * 0.05, nx * v + (R() - 0.5) * 2, ny * v + 1.5,
+        nz * v + (R() - 0.5) * 2, (0.03 + R() * 0.04) * sq * L.chunkScale + 0.015, L.chunk, 8 + R() * 4, 0, bo);
+    }
+  }
 }
 
 function splash(C: BlastContext, x: number, y: number, z: number, s: number, bo: number): void {
@@ -1064,6 +1154,8 @@ interface ArmorHitInput {
   nx: number; ny: number; nz: number;
   caliberMm: number;
   kind: ArmorHitKind;
+  /** (impact-materials-269) what was struck (strikeLooks.ts): its chips and face puff; absent, the kind's steel */
+  look?: StrikeLook;
   birthOffset?: number;
 }
 
@@ -1116,13 +1208,24 @@ export function armorHit(C: BlastContext, I: ArmorHitInput): void {
       C.media(m);
     }
   };
+  // the struck material's chips and face (strikeLooks.ts): torn rubber, canvas and kit, a wreck's scale; nothing hot
+  // where no steel was struck
+  const struck = I.look ?? null;
+  const steelStruck = !struck || struck.sparks > 0;
+  const chipK = struck ? struck.chipK : 1;
+  const face0 = struck?.puff ? linearHex(struck.puff[0]) : null, face1 = struck?.puff ? linearHex(struck.puff[1]) : null;
   const chips = (n: number, cone: number, v0: number, v1: number, size: number, col: Rgb, hot: number,
     shapeA: ChunkShape, shapeB: ChunkShape): void => {
-    for (let i = 0; i < n; i++) {
+    const own = struck?.chips ?? null;
+    const count = chipK === 1 ? n : Math.round(n * chipK);
+    const warm = steelStruck ? hot : 0;
+    for (let i = 0; i < count; i++) {
       coneDir(cone);
       const v = v0 + (v1 - v0) * R();
-      chunk(C, i % 2 === 0 ? shapeA : shapeB, I.x + nx * 0.05, I.y + ny * 0.05, I.z + nz * 0.05, dx * v, dy * v + 2, dz * v,
-        size * (0.6 + 0.8 * R()) * sq * dk, col, 8 + R() * 5, i < hot ? 0.9 : 0.25 * R(), bo + R() * 0.02);
+      const piece = own ? own[i % 2] : null;
+      chunk(C, piece ? piece.shape : i % 2 === 0 ? shapeA : shapeB, I.x + nx * 0.05, I.y + ny * 0.05, I.z + nz * 0.05,
+        dx * v, dy * v + 2, dz * v, size * (0.6 + 0.8 * R()) * sq * dk, piece ? piece.col : col, 8 + R() * 5,
+        i < warm ? 0.9 : steelStruck ? 0.25 * R() : 0, bo + R() * 0.02);
     }
   };
   const darkSpall: Rgb = [SOOT[0] * 1.1, SOOT[1] * 1.1, SOOT[2] * 1.1];
@@ -1150,14 +1253,16 @@ export function armorHit(C: BlastContext, I: ArmorHitInput): void {
     }
     case 'nonpen':
       // paint, scale and dust knocked off the face
-      puffs(2, 0.5, 3, 5, 1.1, 1.5, 0.8, mix3(SMOKE_AGED, BLAST_RESIDUE, 0.3), SMOKE_AGED, 0.5, 0);
+      puffs(2, 0.5, 3, 5, 1.1, 1.5, 0.8, face0 ?? mix3(SMOKE_AGED, BLAST_RESIDUE, 0.3), face1 ?? SMOKE_AGED, 0.5, 0);
       chips(2, 0.7, 5, 10, 0.04, STEEL, 0, 'shard', 'shard');
       break;
     case 'ricochet':
-      puffs(1, 0.6, 2, 3, 0.8, 1.1, 0.6, SMOKE_AGED, SMOKE_AGED, 0.35, 0);
+      puffs(1, 0.6, 2, 3, 0.8, 1.1, 0.6, face0 ?? SMOKE_AGED, face1 ?? SMOKE_AGED, 0.35, 0);
+      // a glance off rubber, canvas or a burnt hull tears a little of it away
+      if (struck?.chips) chips(2, 0.7, 4, 9, 0.05, STEEL, 0, 'shard', 'shard');
       break;
     case 'spaced':
-      puffs(2, 0.4, 4, 7, 1.3, 1.8, 0.9, BLAST_RESIDUE, mix3(BLAST_RESIDUE, SMOKE_AGED, 0.5), 0.55, 1);
+      puffs(2, 0.4, 4, 7, 1.3, 1.8, 0.9, face0 ?? BLAST_RESIDUE, face1 ?? mix3(BLAST_RESIDUE, SMOKE_AGED, 0.5), 0.55, steelStruck ? 1 : 0);
       chips(3, 0.6, 6, 12, 0.08, STEEL, 1, 'sheet', 'sheet');
       break;
     case 'era':
