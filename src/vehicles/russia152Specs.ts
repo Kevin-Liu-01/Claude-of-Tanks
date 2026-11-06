@@ -151,9 +151,9 @@ object195.armor = modernArmor({
   barrelLenM: OBJECT195_FRAME.muzzleZ - OBJECT195_FRAME.trunnionZ, barrelRadM: 0.135,
   // the crew capsule behind the nose's combined armour and its built-in ERA; the module is thinner, as the T-14's
   glacis: [900, 950, 1250], lower: [300, 320, 380], side: [200, 200, 220], skirt: [40, 40, 180], rear: 60, roof: 55,
-  // the module on its turntable (looks rounds 2026-11-05 and 11-06): the faceted cheeks' noses to the solid bustle's raked
-  // tail (the open rack behind it is no armour), its flanks' wedge armour, its roof
-  tw: 1.14, tFrontZ: 1.40, tRearZ: -2.12, tH: 1.38,
+  // the module on its turntable (looks rounds 2026-11-05 and 11-06): the cheeks' noses to the boxy bustle's raked tail
+  // (the open cage beside it is no armour), its flanks' slab tier, its roof
+  tw: 1.16, tFrontZ: 1.40, tRearZ: -2.44, tH: 1.38,
   cheek: [320, 330, 340], tSide: [280, 280, 300], tRear: 60, tRoof: 50, mantlet: [320, 320, 340],
 });
 // the crew capsule: three side by side under the hatches behind the glacis, nobody in the module (the T-14's order)
