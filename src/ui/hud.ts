@@ -7777,7 +7777,8 @@ export function initHud(bus: EventBus): HudRuntime {
           const urgency = marker.countdownS != null && marker.countdownS > 0 ? Math.max(0, 1 - marker.countdownS / 8) : 1;
           drawStrikeFootprint(mmCtx, point[0], point[1], marker.radiusM != null ? { radiusPx: marker.radiusM * pxPerM }
             : { halfLengthPx: (marker.halfLengthM ?? 0) * pxPerM, halfWidthPx: (marker.halfWidthM ?? 0) * pxPerM, angle: Math.atan2(-ux, uy) },
-            marker.side, march, urgency);
+            // a recon pass's swath is outlined, never filled (filled, it tinted the whole minimap)
+            marker.side, march, urgency, marker.status !== 'recon');
           if (marker.pulse) halo(7, 0.6);
           drawStrikeGlyph(mmCtx, x, y, 5.5, (marker.status ?? 'bomb') as StrikeGlyphKind, marker.side);
           break;

@@ -10,17 +10,19 @@
  * No geometry, no draw call, no per-frame allocation.
  *
  * Shapes (the call-ins' footprints, sim/airSupport.ts strikeFootprint): a circle (the artillery's dispersion, the
- * bomb's blast with its laser cross), a lane (the strafing run's lane with chevrons marching along its heading, the
- * recon pass's swath), the AC-130's orbit ring; and the aiming reticle of the crew's own strike view, brighter, with
+ * bomb's blast with its laser cross), a lane (the strafing run's lane with chevrons marching along its heading), a track
+ * (the recon pass: its flight line and the dashed edges of the swath it reveals, unfilled), the AC-130's orbit ring; and
+ * the aiming reticle of the crew's own strike view, brighter, with
  * its range ticks. Lines are emissive in the linear HDR buffer (they read through the haze and touch the bloom).
  * Copyright (c) 2026 Kevin B. Liu (NOTICE.md).
  */
 import * as THREE from 'three';
 
 export const STRIKE_MARK_MAX = 8;
-export type StrikeMarkShape = 'circle' | 'lane' | 'orbit' | 'aim-circle' | 'aim-lane' | 'aim-orbit';
+export type StrikeMarkShape = 'circle' | 'lane' | 'orbit' | 'track' | 'aim-circle' | 'aim-lane' | 'aim-orbit' | 'aim-track';
+// the four shapes, and the aim's the same four plus 4
 const SHAPE_CODE: Readonly<Record<StrikeMarkShape, number>> = Object.freeze({
-  circle: 0, lane: 1, orbit: 2, 'aim-circle': 3, 'aim-lane': 4, 'aim-orbit': 5,
+  circle: 0, lane: 1, orbit: 2, track: 3, 'aim-circle': 4, 'aim-lane': 5, 'aim-orbit': 6, 'aim-track': 7,
 });
 
 /** One mark: where, its size, its heading, its colour (linear) and how near it is to landing (0..1). */
@@ -122,11 +124,11 @@ export const STRIKE_MARKS_GLSL = /* glsl */ `
       float hFade = ( 1.0 - smoothstep( 5.0, 14.0, wp.y - B.w ) ) * up;
       if ( hFade <= 0.0 ) continue;
       float shape = B.y, urg = B.z, T = uStrikeT;
-      bool aim = shape > 2.5;
-      float s = aim ? shape - 3.0 : shape;
+      bool aim = shape > 3.5;
+      float s = aim ? shape - 4.0 : shape;
       float w = max( 0.22, px * ( aim ? 1.4 : 1.0 ) ) * ( 1.0 + urg * 0.8 );
       float line = 0.0, fill = 0.0;
-      if ( s < 0.5 || s > 1.5 ) {
+      if ( s < 0.5 || ( s > 1.5 && s < 2.5 ) ) {
         // circle (0) and orbit ring (2)
         float r = length( d ), R = A.z;
         float ang = atan( d.y, d.x );
@@ -149,6 +151,19 @@ export const STRIKE_MARKS_GLSL = /* glsl */ `
         }
         // a footprint's faint fill (the AC-130's ring hardly any: 140 m of red flooded an overhead view); the aim none
         fill = aim ? 0.0 : ( 1.0 - smoothstep( R - px, R + px, r ) ) * ( s > 1.5 ? 0.02 : 0.07 );
+      } else if ( s > 2.5 ) {
+        // track (3), the recon pass: its flight line with chevrons marching along it, the swath's edges dashed, no fill
+        // (the desktop capture: drawn as a lane, the 320 m swath's chevrons merged into one blue sheet over the field)
+        float sh = sin( B.x ), ch = cos( B.x );
+        float along = d.x * sh + d.y * ch, across = d.x * ch - d.y * sh;
+        float hl = A.z, hw = A.w;
+        float within = step( abs( along ), hl );
+        float dashes = step( 0.5, fract( along / 24.0 - T * ( 0.3 + urg * 1.2 ) ) );
+        line = cotStrikeLine( abs( across ) - hw, w, px ) * within * dashes * 0.7;
+        line = max( line, cotStrikeLine( across, w, px ) * within );
+        float period = 30.0;
+        float v = fract( ( along - T * ( 12.0 + urg * 40.0 ) ) / period ) * period - period * 0.5;
+        line = max( line, cotStrikeLine( v + abs( across ) * 0.8, w, px ) * step( abs( across ), 8.0 ) * within );
       } else {
         // lane (1): along the heading (x of local = across, y = along)
         float sh = sin( B.x ), ch = cos( B.x );

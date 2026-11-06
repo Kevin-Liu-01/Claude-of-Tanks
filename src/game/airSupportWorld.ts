@@ -92,7 +92,8 @@ export function createAirSupportWorld(root: THREE.Object3D, options: AirSupportW
   function aimMark(): void {
     if (!strikeView.open || strikeView.blend < 0.05) return;
     const footprint = strikeFootprint(R, strikeView.kind);
-    const shape: StrikeMarkShape = footprint.shape === 'lane' ? 'aim-lane' : strikeView.kind === 'gunship' ? 'aim-orbit' : 'aim-circle';
+    const shape: StrikeMarkShape = strikeView.kind === 'recon' ? 'aim-track' : footprint.shape === 'lane' ? 'aim-lane'
+      : strikeView.kind === 'gunship' ? 'aim-orbit' : 'aim-circle';
     const locked = lastTimeS < strikeView.lockedUntilS;
     // the reticle's colour: the side's own when it can be called, the contested amber when it cannot
     aimColour.set(sideColor(strikeView.ready || locked ? 'own' : 'contested'));
@@ -120,7 +121,7 @@ export function createAirSupportWorld(root: THREE.Object3D, options: AirSupportW
       if (strike.downedS == null && t < strike.landsS + Math.max(1, strikeDangerS(R, strike.kind))) {
         const footprint = strikeFootprint(R, strike.kind);
         const colour = mine ? own : enemy;
-        const shape: StrikeMarkShape = footprint.shape === 'lane' ? 'lane' : strike.kind === 'gunship' ? 'orbit' : 'circle';
+        const shape: StrikeMarkShape = strike.kind === 'recon' ? 'track' : footprint.shape === 'lane' ? 'lane' : strike.kind === 'gunship' ? 'orbit' : 'circle';
         const warning = R[strike.kind].warningS;
         pushMark(strike.x, strike.y, strike.z, shape, strike.heading,
           footprint.shape === 'circle' ? footprint.radiusM : footprint.halfLengthM, footprint.shape === 'lane' ? footprint.halfWidthM : 0,

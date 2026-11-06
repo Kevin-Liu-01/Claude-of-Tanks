@@ -455,7 +455,7 @@ export type StrikeGlyphKind = 'recon' | 'artillery' | 'strafe' | 'bomb' | 'gunsh
  */
 export function drawStrikeFootprint(ctx: Ctx, x: number, y: number,
   shape: { radiusPx: number } | { halfLengthPx: number; halfWidthPx: number; angle: number },
-  side: ObjectiveSide, march: number, urgency: number): void {
+  side: ObjectiveSide, march: number, urgency: number, filled = true): void {
   ctx.save();
   ctx.translate(x, y);
   ctx.beginPath();
@@ -464,8 +464,7 @@ export function drawStrikeFootprint(ctx: Ctx, x: number, y: number,
     ctx.rotate(shape.angle);
     ctx.rect(-Math.max(1.5, shape.halfWidthPx), -Math.max(2, shape.halfLengthPx), Math.max(3, shape.halfWidthPx * 2), Math.max(4, shape.halfLengthPx * 2));
   }
-  ctx.fillStyle = sideFill(side);
-  ctx.fill();
+  if (filled) { ctx.fillStyle = sideFill(side); ctx.fill(); }
   const width = 1.1 + urgency * 1.1;
   ctx.lineWidth = width + 1.4;
   ctx.strokeStyle = OBJECTIVE_PALETTE.keyline;
