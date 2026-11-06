@@ -3,13 +3,15 @@
 // stamp nobody registered passed it: the HE round records (burstAt, roundEndedAt, the waiting hull events' time), the
 // struck buildings' dust load, the salvo crowd ring, the track skirts, the trail cadence and the exhaust bursts all kept
 // their pre-rebase times. This receipt names none of them. It drives a live runtime (fx/effects.ts) with its clock at a
-// time no other number in the runtime has (T0), rebases the clock to 0 (the Studio's reset at every load and seek), and
-// then walks everything the runtime can reach: its objects, arrays, maps, typed arrays, and the variables every closure of
-// a src/ module holds (through node:inspector, the same view a debugger has). Any number still within the scenario's span
-// of T0 is a stamp the rebase did not move, and the receipt fails naming where it lives (file, closure, variable). A new
-// stamp a part keeps without registering its shift fails it the first time this scenario reaches it.
+// time no other number in the runtime has (T0), rebases the clock (the Studio's reset at every load and seek, a capture's
+// pin), and then walks everything the runtime can reach: its objects, arrays, maps, typed arrays, and the variables every
+// closure of a src/ module holds (through node:inspector, the same view a debugger has). Any number still within the
+// scenario's span of T0 is a stamp the rebase did not move, and the receipt fails naming where it lives (file, closure,
+// variable). A new stamp a part keeps without registering its shift fails it the first time this scenario reaches it.
 //
-// The control: the same walk before the rebase finds the runtime's live stamps (it sees into closures at all).
+// The control: the walk finds the runtime's stamps the rebase moved (it sees into closures at all). (round 4 F7) The
+// rebase pins the clock at T1, a second time no other number holds, so one walk after it finds both (round three walked
+// before and after a rebase to 0); a stamp moved twice (near 2 T1 - T0) fails it too.
 //
 // (round 3 B5) The census covered only the paths its scenario drove (drones and the gunship were not driven), so an
 // unregistered stamp on any other path passed it. Now the scenario's reach is measured too, with V8's block coverage
@@ -21,14 +23,17 @@
 // (round 3 B5, review round 1) What the reach check measures, exactly: the reads of the fx clock in src/fx (the
 // runtime's particles.getTime(), fxClockNow(), a part's injected `now()`, and a call of any local bound to one of them,
 // such as volumeMedia's `const o_now = o.now`), and the stores of a clock a part is handed as a `now` parameter
-// (missileTrails.head, missileWires.tail, trailCadence.step: `x = now`). The reads it never runs are a named list (file,
-// read, line text), so a newly unreached read fails even when another is driven at the same time. A part handed the clock
-// under another name is not seen by it: the drones (dronePresentation.begin(timeS)) are proven live instead. The carrier's
-// dock is the production mount (missionAttachmentVisual, synced every frame as the battle's presentation does), and the
+// (missileTrails.head, missileWires.tail, trailCadence.step: `x = now`). The reads it never runs are a named list, so a
+// newly unreached read fails even when another is driven at the same time. (round 4 F7) It follows the clock handed under
+// any other name (dronePresentation.begin(timeS), structureMask.collapse(startS), craterMarks.stamp(birth): measureReach),
+// a list key names one site (its functions, and its place among sites of the same text), and a src/fx module with a
+// clock read that the scenario never loads fails it. The drones are proven live as well. The carrier's dock is the
+// production mount (missionAttachmentVisual, synced every frame as the battle's presentation does), and the
 // receipt asserts that at the rebase one drone is in flight, one is flying home (past its grace), one flight home ended
 // handed over to the dock, and one drone struck the ground and never flew home, so a stamp a drone's track or its
 // flight home kept would be walked by the census.
 import assert from 'node:assert/strict';
+import { readdirSync, readFileSync } from 'node:fs';
 import { Session } from 'node:inspector';
 import { createRequire } from 'node:module';
 import * as THREE from 'three';
@@ -266,9 +271,10 @@ for (let k = 0; k < 2; k++) {
   frames(2);
   for (const n of ['front', 'right', 'back']) emit(DESTRUCTION_BUS_EVENTS.breach, sectionFall(1, n));
   emit(DESTRUCTION_BUS_EVENTS.breach, sectionFall(1, 'left', { storeyDown: true }));
-  // (review r1) the far drone is recalled: its flight home is still under way at the rebase
+  // (review r1) the far drone is recalled: its flight home is still under way at the rebase; (round 4 F7) 10 frames take
+  // it past its grace (DRONE_RETURN.graceS, 0.12 s) with the same reach as 40 took, for less of the houses' bodies' cost
   airborne.delete(droneAway);
-  frames(40);
+  frames(10);
   emit(DESTRUCTION_BUS_EVENTS.stage, { ...stage, structureId: 8, stage: 'breached', previous: 'damaged', sections: true, x: 1, y: 1.2,
     z: 4, dirX: 0, dirZ: 1 });
   frames(2);
@@ -322,107 +328,365 @@ function dronesLive(when) {
 }
 
 // ---- the scenario's reach: every fx-clock read and handed-clock store in src/fx ran, but a named few ----
-// (review r1) The reads no scenario here reaches yet, by file, read and line text (a multiset; `FX_CENSUS_REACH=1` prints
-// the unreached keys in this form). A read or store added on a path the scenario does not drive fails (drive it, so the
-// census checks what it stamps); a listed one the scenario now runs fails too (drop it). Every stamp these reads make is
-// shifted in its part's shiftTime (checked by hand 2026-11-06).
+// (review r1) The reads no scenario here reaches yet (`FX_CENSUS_REACH=1` prints the unreached keys in this form). A read
+// or store added on a path the scenario does not drive fails (drive it, so the census checks what it stamps); a listed
+// one the scenario now runs fails too (drop it). Every stamp these reads make is shifted in its part's shiftTime (checked
+// by hand 2026-11-06). (round 4 F7) A key names its site: file | the named functions round it, innermost first (V8's
+// own function names) | the read or store | its line's text, and ` #k/n` when n sites share all of that (k by place), so
+// a site driven while another of the same text goes unreached elsewhere fails (a new function, or n moves).
 const KNOWN_UNREACHED = [
   // the wreck fire light's flicker (unreached with a 260-frame burn too)
-  'src/fx/effects.ts | particles.getTime() | const time = particles.getTime();',
+  'src/fx/effects.ts | updateWreckLight<createFxSteps | particles.getTime() | const time = particles.getTime();',
   // no caller in the tree: the interface's refreshShading (a uniform written every frame by update)
-  'src/fx/volumeMedia.ts | o_now() | refreshShading: () => { uTime.value = o_now(); refreshLight(); },',
+  'src/fx/volumeMedia.ts | refreshShading<createVolumeMedia | o_now() | refreshShading: () => { uTime.value = o_now(); refreshLight(); },',
   // a set piece's piece falls (pieceFalls[].t0, shifted)
-  'src/fx/structureStages.ts | o.now() | const f = { seam, meshes, axis, angle, pivot, t, t0: o.now(), T, crumble, piece: fall.piece, hol',
-  'src/fx/structureStages.ts | o.now() | const now = o.now();',
+  'src/fx/structureStages.ts | startPieceFalls<createStructureStages | o.now() | const f = { seam, meshes, axis, angle, pivot, t, t0: o.now(), T, crumble, piece: fall.piece, hol',
+  'src/fx/structureStages.ts | stepPieceFalls<createStructureStages | o.now() | const now = o.now();',
   // a stage's hides held back behind a delay (heldHides[].at, shifted)
-  'src/fx/structureStages.ts | o.now() | if (held) heldHides.push({ seam, hides: held, at: o.now() + delayS });',
-  'src/fx/structureStages.ts | o.now() | if (heldHides.length) { let k = 0; for (const h of heldHides) if (o.now() >= h.at) apply(h.seam,',
-  // a run shown later (structureDebris showFrom)
-  'src/fx/structureDebris.ts | o.now() | if (!(atS > o.now())) return;',
-  // two of structureFracture's collapse branches (lives[].watchedAt and touchedAt, shifted)
-  'src/fx/structureFracture.ts | o.now() | live.watchedAt = o.now();',
-  'src/fx/structureFracture.ts | o.now() | live.touchedAt = o.now();',
+  'src/fx/structureStages.ts | run<createStructureStages | o.now() | if (held) heldHides.push({ seam, hides: held, at: o.now() + delayS });',
+  'src/fx/structureStages.ts | update<createStructureStages | o.now() | if (heldHides.length) { let k = 0; for (const h of heldHides) if (o.now() >= h.at) apply(h.seam,',
+  // a run shown later (structureDebris commit's showAt[].at and showFrom, shifted)
+  'src/fx/structureDebris.ts | commit<createStructureDebris | at: stageBirth | if (stageDelay > 0) showAt.push({ mesh, at: stageBirth });',
+  'src/fx/structureDebris.ts | showFrom<createStructureDebris | o.now() | if (!(atS > o.now())) return;',
+  // three of structureFracture's collapse branches (lives[].watchedAt, touchedAt and mergedAt, shifted)
+  'src/fx/structureFracture.ts | judgeWatched<createStructureFracture | o.now() | live.watchedAt = o.now();',
+  'src/fx/structureFracture.ts | dropPieces<createStructureFracture | o.now() | live.touchedAt = o.now();',
+  'src/fx/structureFracture.ts | update<createStructureFracture | = t | if (live.bakedPending.length && (live.bakedPending.length >= 6 || t - live.mergedAt > 1)) { merg',
 ];
 {
   const coverage = call('Profiler.takePreciseCoverage').result;
   call('Profiler.stopPreciseCoverage');
-  // the clock reads: the runtime's own, a part's injected clock, a local bound to a clock, and a store of a clock handed
-  // in as `now` (a wall clock, performance or Date, is no fx stamp; a `const x = now - y` is an age, not a store)
-  const READ = /particles\.getTime\(\)|(?<![\w$.])fxClockNow\(\)|(?<![\w$.])(?!performance\.|Date\.)[\w$]+\.now\(\)(?!\s*\{)|(?<![\w$.])now\(\)(?!\s*\{)/g;
-  const BOUND = /(?:const|let|var)\s+([\w$]+)\s*=\s*(?:[\w$]+\.)*(?:now|getTime)\s*[;,\n]/g;
-  const STORE = /(?<![=!<>])=(?![=>])\s*now\b(?=\s*(?:[;,)}\]]|[+-]))/g;
-  const unrun = [];
-  let reads = 0, aliased = 0, stores = 0;
-  for (const script of coverage) {
-    const url = script.url;
-    if (!url.includes('/src/fx/') || /\.selftest\.|test-support/.test(url)) continue;
-    const source = call('Debugger.getScriptSource', { scriptId: script.scriptId }).scriptSource;
-    // comments are no reads (a // line's or a /* */ block's text)
-    const comments = [];
-    for (const m of source.matchAll(/\/\*[\s\S]*?\*\/|\/\/[^\n]*/g)) comments.push([m.index, m.index + m[0].length]);
-    const inComment = (at) => comments.some(([a, b]) => a <= at && at < b);
-    const countAt = (at) => {
-      let best = null;
-      for (const fn of script.functions) for (const r of fn.ranges) {
-        if (r.startOffset <= at && at < r.endOffset && (!best || r.endOffset - r.startOffset < best.endOffset - best.startOffset)) best = r;
-      }
-      return best ? best.count : 0;
-    };
-    const file = url.slice(url.lastIndexOf('/src/') + 1);
-    const sites = new Map();
-    for (const m of source.matchAll(READ)) {
-      if (!/function\s+$/.test(source.slice(Math.max(0, m.index - 12), m.index))) sites.set(m.index, m[0]);
-    }
-    for (const b of source.matchAll(BOUND)) {
-      if (inComment(b.index)) continue;
-      for (const m of source.matchAll(new RegExp(`(?<![\\w$.])${b[1].replace(/\$/g, '\\$')}\\(\\)`, 'g'))) {
-        if (!sites.has(m.index)) { sites.set(m.index, m[0]); aliased++; }
-      }
-    }
-    for (const m of source.matchAll(STORE)) {
-      const statement = source.slice(Math.max(0, source.lastIndexOf('\n', m.index), source.lastIndexOf(';', m.index - 1) + 1), m.index);
-      if (/(?:const|let|var)\s+[\w$]+\s*$/.test(statement)) continue;
-      if (!sites.has(m.index)) { sites.set(m.index, m[0].replace(/\s+/g, ' ')); stores++; }
-    }
-    for (const [at, text] of sites) {
-      if (inComment(at)) continue;
-      reads++;
-      if (countAt(at) === 0) {
-        const line = source.slice(source.lastIndexOf('\n', at) + 1, source.indexOf('\n', at) < 0 ? undefined : source.indexOf('\n', at)).trim();
-        unrun.push({ key: `${file} | ${text} | ${line.replace(/\s+/g, ' ').slice(0, 96)}`, where: `${file}:${source.slice(0, at).split('\n').length}` });
-      }
-    }
-  }
+  const reach = measureReach(coverage);
+  const { unrun, reads, aliased, stores, handedStores, handed, unloaded } = reach;
+  // (round 4 F7) every src/fx module with a clock read was loaded (a module the scenario never imports is never measured)
+  assert.equal(unloaded.length, 0, `src/fx modules that read the fx clock but the scenario never loaded (import and drive each):\n  ${unloaded.join('\n  ')}`);
   assert.ok(reads > 60 && aliased >= 4 && stores >= 8,
     `the reach check sees the fx-clock reads (${reads}: ${aliased} through a bound local, ${stores} stores of a handed clock)`);
+  // (round 4 F7) the clock handed under other names is seen: these parts take it as a parameter of their own name
+  for (const want of ['src/fx/dronePresentation.ts begin(timeS)', 'src/fx/structureMask.ts collapse(startS)', 'src/fx/craterMarks.ts stamp(birth)',
+    'src/fx/projectileTracers.ts compose(bornAtS)', 'src/fx/missileWires.ts tail(now)']) {
+    assert.ok(handed.includes(want), `the reach check follows the clock into ${want} (handed: ${handed.join(', ')})`);
+  }
+  assert.ok(handedStores >= 10, `the reach check sees the stores of a clock handed under another name (${handedStores})`);
   const tally = (keys) => keys.reduce((m, k) => m.set(k, (m.get(k) ?? 0) + 1), new Map());
   const known = tally(KNOWN_UNREACHED), found = tally(unrun.map((u) => u.key));
-  const fresh = unrun.filter((u, i, all) => (found.get(u.key) ?? 0) > (known.get(u.key) ?? 0)
-    && all.findIndex((v) => v.key === u.key) === i);
-  const nowReached = [...known].filter(([k, n]) => (found.get(k) ?? 0) < n).map(([k]) => k);
+  for (const [k, n] of known) assert.equal(n, 1, `a KNOWN_UNREACHED key names one site: ${k}`);
+  const fresh = unrun.filter((u) => !known.has(u.key));
+  const nowReached = [...known.keys()].filter((k) => !found.has(k));
   if (process.env.FX_CENSUS_REACH) {
-    console.log(`unreached fx-clock reads (${unrun.length} of ${reads}; ${aliased} through a bound local, ${stores} stores):\n${unrun.map((u) => `  ${u.where}\n  ${JSON.stringify(u.key)},`).join('\n')}`);
+    console.log(`the clock handed as a parameter: ${handed.join(', ')}`);
+    console.log(`unreached fx-clock reads (${unrun.length} of ${reads}; ${aliased} through a bound local, ${stores} stores, ${handedStores} of a clock handed under another name):\n${unrun.map((u) => `  ${u.where}\n  ${JSON.stringify(u.key)},`).join('\n')}`);
   }
   assert.equal(fresh.length, 0, `fx-clock reads the census scenario never ran, not in its known list (drive each, so the census checks what it stamps):\n${fresh.map((u) => `  ${u.where}  ${u.key}`).join('\n')}`);
   assert.equal(nowReached.length, 0, `known unreached fx-clock reads the scenario now runs (drop them from KNOWN_UNREACHED):\n  ${nowReached.join('\n  ')}`);
 }
 
-// ---- the census ----
+/**
+ * The reach of the scenario over src/fx's fx-clock sites, from V8's block coverage. A site is
+ *  - a read: the runtime's particles.getTime(), fxClockNow(), a part's injected `now()` (performance and Date are wall
+ *    clocks, no fx stamp), or a call of a local bound to one of them (volumeMedia's `const o_now = o.now`);
+ *  - a store of a clock handed in as `now` (`x = now`, `x = now + d`; a declaration `const x = now - y` is an age);
+ *  - (round 4 F7) a store of the clock under any other name: a call that hands a read, or a name holding one, as an
+ *    argument (`drones.begin(particles.getTime())`, `mask.collapse(id, o.now(), ...)`) makes the callee's parameter a clock
+ *    name in its body (dronePresentation's `timeS`, structureMask's `startS`), and so does an assignment of a clock name
+ *    to another (`time = timeS`); each clock name's stores (`x = name`, `{ key: name }`) are sites, its arguments are
+ *    followed into their callees. A callee is the definition of that name in the module whose factory made the receiver
+ *    (`const drones = createDronePresentation(...)`), else the calling module's own, else every src/fx definition of that
+ *    name taking as many arguments. A clock name's scope is the function its declaration (or its parameter list) sits in.
+ * Comments, strings and regular expressions are no sites. It also names every src/fx module with a clock read that the
+ * scenario never loaded.
+ */
+function measureReach(coverage) {
+  const READ_SRC = String.raw`particles\.getTime\(\)|(?<![\w$.])fxClockNow\(\)|(?<![\w$.])(?!performance\.|Date\.)[\w$]+\.now\(\)(?!\s*\{)|(?<![\w$.])now\(\)(?!\s*\{)`;
+  const READ = new RegExp(READ_SRC, 'g');
+  const BOUND = /(?:const|let|var)\s+([\w$]+)\s*=\s*(?:[\w$]+\.)*(?:now|getTime)\s*[;,\n]/g;
+  const STORE = /(?<![=!<>])=(?![=>])\s*now\b(?=\s*(?:[;,)}\]]|[+-]))/g;
+  const IDENT = /[A-Za-z_$][\w$]*/g;
+  const KEYWORDS = new Set(['if', 'for', 'while', 'switch', 'catch', 'return', 'typeof', 'function', 'await', 'void', 'delete', 'in', 'of',
+    'do', 'else', 'case', 'throw', 'yield', 'new', 'super', 'import',
+    // the language's own collections and maths: no part's parameter
+    'set', 'get', 'has', 'add', 'push', 'unshift', 'max', 'min', 'abs', 'floor', 'ceil', 'round', 'sqrt', 'hypot', 'pow', 'exp', 'sin',
+    'cos', 'atan2', 'fill', 'isFinite', 'Number', 'String', 'Boolean']);
+  const scripts = [];
+  for (const script of coverage) {
+    const url = script.url;
+    if (!url.includes('/src/fx/') || /\.selftest\.|test-support/.test(url)) continue;
+    const source = call('Debugger.getScriptSource', { scriptId: script.scriptId }).scriptSource;
+    const fnRanges = script.functions.map((fn) => ({ name: fn.functionName, a: fn.ranges[0].startOffset, b: fn.ranges[0].endOffset }));
+    scripts.push({ file: url.slice(url.lastIndexOf('/src/') + 1), url, source, blank: blanked(source), functions: script.functions, fnRanges,
+      sites: new Map(), idents: null });
+  }
+  const byFile = new Map(scripts.map((s) => [s.file, s]));
+  let reads = 0, aliased = 0, stores = 0, handedStores = 0;
+  // the reads, the bound locals' calls and the stores of a handed `now`
+  for (const s of scripts) {
+    for (const m of s.blank.matchAll(READ)) {
+      if (!/function\s+$/.test(s.blank.slice(Math.max(0, m.index - 12), m.index))) s.sites.set(m.index, { text: m[0], read: true });
+    }
+    for (const b of s.blank.matchAll(BOUND)) {
+      for (const m of s.blank.matchAll(new RegExp(`(?<![\\w$.])${escapeRe(b[1])}\\(\\)`, 'g'))) {
+        if (!s.sites.has(m.index)) { s.sites.set(m.index, { text: m[0], read: true }); aliased++; }
+      }
+    }
+    for (const m of s.blank.matchAll(STORE)) {
+      const statement = s.blank.slice(Math.max(0, s.blank.lastIndexOf('\n', m.index), s.blank.lastIndexOf(';', m.index - 1) + 1), m.index);
+      if (/(?:const|let|var)\s+[\w$]+\s*$/.test(statement)) continue;
+      if (!s.sites.has(m.index)) { s.sites.set(m.index, { text: m[0].replace(/\s+/g, ' ') }); stores++; }
+    }
+  }
+  // (round 4 F7) the clock under other names: a worklist of clock names, each { s, name, a, b } (its scope)
+  const enclosing = (s, at) => {
+    let best = { a: 0, b: s.blank.length };
+    for (const r of s.fnRanges) if (r.a <= at && at < r.b && r.b - r.a < best.b - best.a) best = r;
+    return best;
+  };
+  const identsOf = (s) => {
+    if (s.idents) return s.idents;
+    s.idents = new Map();
+    for (const m of s.blank.matchAll(IDENT)) {
+      if (s.blank[m.index - 1] === '.') continue; // a property, not a name
+      (s.idents.get(m[0]) ?? s.idents.set(m[0], []).get(m[0])).push(m.index);
+    }
+    return s.idents;
+  };
+  const work = [], named = new Set(), handed = [];
+  const addName = (s, name, scope, via) => {
+    const key = `${s.file}:${scope.a}:${name}`;
+    if (named.has(key) || KEYWORDS.has(name)) return;
+    named.add(key);
+    work.push({ s, name, a: scope.a, b: scope.b });
+    if (via) handed.push(`${s.file} ${via}(${name})`);
+  };
+  /** the call whose argument list holds `at`, when the clock is that argument's leading term */
+  const callAround = (s, at, len) => {
+    const t = s.blank;
+    if (!/^\s*(?:[,)+-]|$)/.test(t.slice(at + len, at + len + 8))) return null;
+    let depth = 0, argStart = -1;
+    for (let i = at - 1; i >= 0 && at - i < 4000; i--) {
+      const c = t.charCodeAt(i);
+      if (c === 41 || c === 93 || c === 125) depth++;
+      else if (c === 40 || c === 91 || c === 123) {
+        if (depth > 0) { depth--; continue; }
+        if (c !== 40) return null; // an array or an object literal (an object's field is a store, not an argument)
+        if (argStart < 0) argStart = i + 1;
+        if (t.slice(argStart, at).trim() !== '') return null;
+        const head = /(?:([A-Za-z_$][\w$]*)\s*(?:\?\.|\.)\s*)?([A-Za-z_$][\w$]*)\s*(?:\?\.)?\s*$/.exec(t.slice(Math.max(0, i - 96), i));
+        if (!head || KEYWORDS.has(head[2])) return null;
+        let index = 0, count = 1, d = 0;
+        const close = matchClose(t, i);
+        for (let j = i + 1; j < close; j++) {
+          const e = t.charCodeAt(j);
+          if (e === 40 || e === 91 || e === 123) d++;
+          else if (e === 41 || e === 93 || e === 125) d--;
+          else if (e === 44 && d === 0) { count++; if (j < argStart) index++; }
+        }
+        return { name: head[2], receiver: head[1] ?? null, index, count };
+      } else if (c === 44 && depth === 0 && argStart < 0) argStart = i + 1;
+      else if (c === 59 && depth === 0) return null;
+    }
+    return null;
+  };
+  const factoryFiles = new Map();
+  /** the module whose factory made `receiver` in s (`const wires = createMissileWires(...)`), or null */
+  const factoryFile = (s, receiver) => {
+    const key = `${s.file}:${receiver}`;
+    if (factoryFiles.has(key)) return factoryFiles.get(key);
+    let file = null;
+    const made = new RegExp(`(?<![\\w$.])${escapeRe(receiver)}\\s*=(?![=>])[^;]*?\\b(create[A-Z][\\w$]*)\\s*\\(`).exec(s.blank);
+    if (made) {
+      for (const m of s.source.matchAll(/import\s*\{([^}]*)\}\s*from\s*'(\.{1,2}\/[^']+)'/g)) {
+        if (new RegExp(`\\b${made[1]}\\b`).test(m[1])) { const u = new URL(m[2], s.url).href; file = u.slice(u.lastIndexOf('/src/') + 1); break; }
+      }
+    }
+    factoryFiles.set(key, file);
+    return file;
+  };
+  /** the definitions of `name` in s: its parameters and its body's range */
+  const defsCache = new Map();
+  const defsOf = (s, name) => {
+    const cacheKey = `${s.file}:${name}`;
+    if (defsCache.has(cacheKey)) return defsCache.get(cacheKey);
+    const out = [];
+    defsCache.set(cacheKey, out);
+    const n = escapeRe(name);
+    const re = new RegExp(String.raw`\bfunction\s+${n}\s*\(|(?<![\w$.])${n}\s*(?::|=(?![=>]))\s*(?:async\s+)?(?:function\b[^(]*)?\(|(?<![\w$.])${n}\s*\(`, 'g');
+    const opens = new Set();
+    for (const m of s.blank.matchAll(re)) {
+      const open = m.index + m[0].length - 1;
+      if (opens.has(open)) continue;
+      opens.add(open);
+      const close = matchClose(s.blank, open);
+      if (close < 0) continue;
+      const rest = /^\s*(\{|=>)/.exec(s.blank.slice(close + 1, close + 64));
+      if (!rest) continue; // a call, not a definition
+      const bodyAt = close + 1 + rest[0].length - rest[1].length;
+      const end = rest[1] === '{' ? matchClose(s.blank, bodyAt) : expressionEnd(s.blank, bodyAt + 2);
+      out.push({ params: splitParams(s.blank.slice(open + 1, close)), a: open, b: end < 0 ? s.blank.length : end, bodyAt });
+    }
+    return out;
+  };
+  const followCall = (s, at, len) => {
+    const c = callAround(s, at, len);
+    if (!c) return;
+    // the receiver's factory's module; else this module's own definition of the name; else any module's that takes as
+    // many arguments
+    const target = c.receiver ? factoryFile(s, c.receiver) : null;
+    const own = target ? [] : defsOf(s, c.name);
+    const candidates = target ? [byFile.get(target)].filter(Boolean) : own.length ? [s] : scripts;
+    for (const t of candidates) {
+      for (const def of defsOf(t, c.name)) {
+        if (!target && !own.length && def.params.length < c.count) continue;
+        const param = def.params[c.index];
+        if (param) addName(t, param, { a: def.bodyAt, b: def.b }, c.name);
+      }
+    }
+  };
+  // seeds: reads handed as arguments, and locals bound to a read's value
+  for (const s of scripts) {
+    for (const [at, site] of s.sites) if (site.read) followCall(s, at, site.text.length);
+    for (const m of s.blank.matchAll(new RegExp(String.raw`(?:\b(?:const|let|var)\s+|(?<![\w$.]))([A-Za-z_$][\w$]*)\s*=(?![=>])\s*(?=(?:${READ_SRC})\s*(?:[;,)\n+-]))`, 'g'))) {
+      addName(s, m[1], declaredScope(s, m[1], m.index, enclosing), null);
+    }
+  }
+  // a clock name's uses: stores (sites), assignments to another name (followed), arguments (followed into their callees)
+  while (work.length) {
+    const { s, name, a, b } = work.pop();
+    for (const at of identsOf(s).get(name) ?? []) {
+      if (at < a || at >= b) continue;
+      const before = s.blank.slice(Math.max(0, at - 160), at), after = s.blank.slice(at + name.length, at + name.length + 24);
+      if (/^\s*:/.test(after) && /[{,]\s*$/.test(before)) continue; // an object's key
+      if (/\b(?:const|let|var)\s+$/.test(before)) continue; // its own declaration
+      if (!/^\s*(?:[;,)}\]\n:]|$|[+-](?![+-=]))/.test(after) && !/^\s*\?\?/.test(after)) continue; // read, not handed on
+      const assigned = /(?:\b(?:const|let|var)\s+)?(?<![\w$.\])])([A-Za-z_$][\w$]*)?\s*(?<![=!<>+\-*/%&|^?])=\s*$/.exec(before);
+      if (assigned) {
+        const declaration = /\b(?:const|let|var)\s+[A-Za-z_$][\w$]*\s*=\s*$/.test(before);
+        if (!declaration && !s.sites.has(at)) { s.sites.set(at, { text: `= ${name}` }); handedStores++; }
+        if (assigned[1] && !/^\s*-/.test(after)) addName(s, assigned[1], declaredScope(s, assigned[1], at, enclosing), null);
+        continue;
+      }
+      const field = /[{,]\s*([A-Za-z_$][\w$]*)\s*:\s*$/.exec(before);
+      if (field) { if (!s.sites.has(at)) { s.sites.set(at, { text: `${field[1]}: ${name}` }); handedStores++; } continue; }
+      followCall(s, at, name.length);
+    }
+  }
+  // the count each site's block ran
+  const unrun = [];
+  for (const s of scripts) {
+    const chainAt = (at) => s.fnRanges.filter((r) => r.name && r.a <= at && at < r.b).sort((x, y) => (x.b - x.a) - (y.b - y.a)).map((r) => r.name).join('<');
+    const countAt = (at) => {
+      let best = null;
+      for (const fn of s.functions) for (const r of fn.ranges) {
+        if (r.startOffset <= at && at < r.endOffset && (!best || r.endOffset - r.startOffset < best.endOffset - best.startOffset)) best = r;
+      }
+      return best ? best.count : 0;
+    };
+    const groups = new Map();
+    for (const [at, site] of [...s.sites].sort((x, y) => x[0] - y[0])) {
+      reads++;
+      const eol = s.source.indexOf('\n', at);
+      const line = s.source.slice(s.source.lastIndexOf('\n', at) + 1, eol < 0 ? undefined : eol).trim().replace(/\s+/g, ' ').slice(0, 96);
+      const key = `${s.file} | ${chainAt(at)} | ${site.text} | ${line}`;
+      (groups.get(key) ?? groups.set(key, []).get(key)).push({ at, ran: countAt(at) > 0 });
+    }
+    for (const [key, list] of groups) {
+      list.forEach((u, k) => {
+        if (u.ran) return;
+        unrun.push({ key: list.length > 1 ? `${key} #${k + 1}/${list.length}` : key, where: `${s.file}:${s.source.slice(0, u.at).split('\n').length}` });
+      });
+    }
+  }
+  // (round 4 F7) the src/fx modules the scenario never loaded: none may read the clock
+  const unloaded = [];
+  const dir = new URL('.', import.meta.url);
+  for (const name of readdirSync(dir)) {
+    if (!name.endsWith('.ts') || /\.selftest\.|test-support/.test(name) || byFile.has(`src/fx/${name}`)) continue;
+    if (new RegExp(READ_SRC).test(blanked(readFileSync(new URL(name, dir), 'utf8')))) unloaded.push(`src/fx/${name}`);
+  }
+  return { unrun, reads, aliased, stores, handedStores, handed: [...new Set(handed)].sort(), unloaded };
+}
+function escapeRe(text) { return text.replace(/[$]/g, '\\$'); }
+/** `source` with its comments, strings and regular expressions blanked (same length, same lines; a string or an
+ *  expression keeps its delimiters). A `/` after an operator, a bracket, `return` or a line's start opens an expression. */
+function blanked(source) {
+  return source.replace(/\/\*[\s\S]*?\*\/|\/\/[^\n]*|'(?:[^'\\\n]|\\.)*'|"(?:[^"\\\n]|\\.)*"|`(?:[^`\\]|\\[\s\S])*`|(?<=(?:^|[(,=:[!&|?{};+\-*%<>~^]|\breturn)\s*)\/(?![*/])(?:\\.|\[(?:\\.|[^\]\\\n])*\]|[^/\\\n[])+\//g, (m) => {
+    const c = m.charCodeAt(0), d = m.charCodeAt(1);
+    if (c === 47 && (d === 47 || d === 42)) return d === 47 ? ' '.repeat(m.length) : m.replace(/[^\n]/g, ' ');
+    return m[0] + (c === 96 ? m.slice(1, -1).replace(/[^\n]/g, ' ') : ' '.repeat(m.length - 2)) + m[m.length - 1];
+  });
+}
+function matchClose(text, open) {
+  let depth = 0;
+  for (let i = open; i < text.length; i++) {
+    const c = text.charCodeAt(i);
+    if (c === 40 || c === 91 || c === 123) depth++;
+    else if ((c === 41 || c === 93 || c === 125) && --depth === 0) return i;
+  }
+  return -1;
+}
+function expressionEnd(text, from) {
+  let depth = 0;
+  for (let i = from; i < text.length; i++) {
+    const c = text.charCodeAt(i);
+    if (c === 40 || c === 91 || c === 123) depth++;
+    else if (c === 41 || c === 93 || c === 125) { if (depth === 0) return i; depth--; }
+    else if ((c === 44 || c === 59) && depth === 0) return i;
+  }
+  return text.length;
+}
+function splitParams(text) {
+  const out = [];
+  let depth = 0, start = 0;
+  for (let i = 0; i <= text.length; i++) {
+    const c = i < text.length ? text.charCodeAt(i) : 44;
+    if (c === 40 || c === 91 || c === 123) depth++;
+    else if (c === 41 || c === 93 || c === 125) depth--;
+    else if (c === 44 && depth === 0) {
+      const m = /^\s*(?:\.\.\.)?([A-Za-z_$][\w$]*)/.exec(text.slice(start, i));
+      out.push(m ? m[1] : null);
+      start = i + 1;
+    }
+  }
+  return out;
+}
+/** the scope of `name` as it is used at `at` in s: the function its declaration sits in (a parameter's, a local's, a
+ *  closure's variable), else the module */
+function declaredScope(s, name, at, enclosing) {
+  const re = new RegExp(String.raw`\b(?:const|let|var)\s+${escapeRe(name)}\b`, 'g');
+  let best = null;
+  for (const m of s.blank.matchAll(re)) {
+    const scope = enclosing(s, m.index);
+    if (scope.a <= at && at < scope.b && (!best || scope.b - scope.a < best.b - best.a)) best = scope;
+  }
+  return best ?? enclosing(s, at);
+}
+
+// ---- the census: one walk after a rebase to T1 ----
+// (round 4 F7) The rebase moves the clock from T0 to T1, a second time no other number the runtime holds lies within SPAN
+// of (a capture's pin and the Studio's reset to 0 are the same registry walk with another delta: effects.ts
+// rebaseFxClock), so one walk after it tells both: a stamp near T1 was moved (the control: the walk sees the live stamps,
+// inside closures and out), a stamp near T0 was left, and one near 2 T1 - T0 was moved twice. (Round three walked before
+// and after a rebase to 0: twice the inspector's work.)
+const T1 = 3_333_333;
 let sink = null;
 globalThis.__fxStampCensusSink = (x) => { sink = x; };
 
-/** every number reachable from `root` within SPAN of T0, by where it lives */
+/** every number reachable from `root` near T0 (left), T1 (moved) or 2 T1 - T0 (moved twice), by where it lives */
 function census(root) {
-  const hits = new Map();
+  const left = new Map(), moved = new Map(), twice = new Map();
+  const T2 = 2 * T1 - T0;
   const seen = new Set([globalThis, process, console, session]);
-  const queue = [];
+  const queue = [], fns = [];
   const push = (x, at) => {
-    if (x !== null && (typeof x === 'object' || typeof x === 'function') && !seen.has(x)) { seen.add(x); queue.push([x, at]); }
+    if (x !== null && (typeof x === 'object' || typeof x === 'function') && !seen.has(x)) { seen.add(x); (typeof x === 'function' ? fns : queue).push([x, at]); }
   };
-  const stamp = (x, at) => { if (typeof x === 'number' && Math.abs(x - T0) < SPAN && !hits.has(at)) hits.set(at, x); };
-  function closures(fn, at) {
-    globalThis.__fxStampCensusFn = fn;
-    const fid = call('Runtime.evaluate', { expression: 'globalThis.__fxStampCensusFn', objectGroup: 'census' }).result.objectId;
+  // (every window lies past a million either way: T0, T1 and 2 T1 - T0)
+  const stamp = (x, at) => {
+    if (typeof x !== 'number' || (x < 1e6 && x > -1e6)) return;
+    const map = Math.abs(x - T0) < SPAN ? left : Math.abs(x - T1) < SPAN ? moved : Math.abs(x - T2) < SPAN ? twice : null;
+    if (map && !map.has(at)) map.set(at, x);
+  };
+  /** a function's closures (its objectId from the batch), for the game's own modules */
+  function closures(fid, at) {
     const internal = call('Runtime.getProperties', { objectId: fid, ownProperties: true, objectGroup: 'census' }).internalProperties ?? [];
     const loc = internal.find((p) => p.name === '[[FunctionLocation]]')?.value?.value;
     const url = loc ? urls.get(loc.scriptId) ?? '' : '';
@@ -450,49 +714,70 @@ function census(root) {
     }
   }
   push(root, 'fx');
-  while (queue.length) {
-    const [x, at] = queue.pop();
-    if (typeof x === 'function') { closures(x, at); continue; }
-    if (ArrayBuffer.isView(x)) {
-      if (x instanceof DataView) continue;
-      for (let i = 0; i < x.length; i++) {
-        const v = x[i];
-        if (typeof v === 'number' && Math.abs(v - T0) < SPAN) { stamp(v, `${at}[${i}]`); break; }
+  while (queue.length || fns.length) {
+    while (queue.length) {
+      const [x, at] = queue.pop();
+      if (ArrayBuffer.isView(x)) {
+        if (x instanceof DataView) continue;
+        // the first element in each window names the array
+        let inLeft = false, inMoved = false, inTwice = false;
+        for (let i = 0; i < x.length; i++) {
+          const v = x[i];
+          if (v < 1e6 && v > -1e6) continue;
+          if (!inLeft && Math.abs(v - T0) < SPAN) { left.set(`${at}[${i}]`, v); inLeft = true; }
+          else if (!inMoved && Math.abs(v - T1) < SPAN) { moved.set(`${at}[${i}]`, v); inMoved = true; }
+          else if (!inTwice && Math.abs(v - T2) < SPAN) { twice.set(`${at}[${i}]`, v); inTwice = true; }
+        }
+        continue;
       }
-      continue;
+      if (x instanceof Map) { for (const [k, y] of x) { stamp(y, `${at}.get(${String(k)})`); push(k, `${at}.key`); push(y, `${at}.get(${String(k)})`); } continue; }
+      if (x instanceof Set) { for (const y of x) { stamp(y, `${at}.has`); push(y, `${at}.has`); } continue; }
+      if (x instanceof WeakMap || x instanceof WeakSet || x instanceof Promise || x instanceof WeakRef) continue;
+      // (round 4 F7) an import's namespace is its module's (as an imported function is), and three's rotation and
+      // quaternion keep each other in step through a callback over the pair: no runtime state behind either
+      if (Object.getOwnPropertyDescriptor(x, Symbol.toStringTag)?.value === 'Module') continue;
+      const mathValue = x instanceof THREE.Quaternion || x instanceof THREE.Euler;
+      for (const key of Reflect.ownKeys(x)) {
+        const desc = Object.getOwnPropertyDescriptor(x, key);
+        if (!desc || !('value' in desc)) continue; // never run an accessor
+        if (mathValue && typeof desc.value === 'function') continue;
+        // (a three object is named by its name too: `children.4<fx-structure-debris>`)
+        const named = desc.value && typeof desc.value === 'object' && typeof desc.value.name === 'string' && desc.value.name;
+        const at2 = `${at}.${String(key)}${named ? `<${desc.value.name}>` : ''}`;
+        stamp(desc.value, at2);
+        push(desc.value, at2);
+      }
     }
-    if (x instanceof Map) { for (const [k, y] of x) { stamp(y, `${at}.get(${String(k)})`); push(k, `${at}.key`); push(y, `${at}.get(${String(k)})`); } continue; }
-    if (x instanceof Set) { for (const y of x) { stamp(y, `${at}.has`); push(y, `${at}.has`); } continue; }
-    if (x instanceof WeakMap || x instanceof WeakSet || x instanceof Promise || x instanceof WeakRef) continue;
-    for (const key of Reflect.ownKeys(x)) {
-      const desc = Object.getOwnPropertyDescriptor(x, key);
-      if (!desc || !('value' in desc)) continue; // never run an accessor
-      // (a three object is named by its name too: `children.4<fx-structure-debris>`)
-      const named = desc.value && typeof desc.value === 'object' && typeof desc.value.name === 'string' && desc.value.name;
-      const at2 = `${at}.${String(key)}${named ? `<${desc.value.name}>` : ''}`;
-      stamp(desc.value, at2);
-      push(desc.value, at2);
+    // the functions met so far, a batch at a time: their handles in one call, then each one's closures
+    if (fns.length) {
+      const batch = fns.splice(0);
+      globalThis.__fxStampCensusFns = batch.map(([fn]) => fn);
+      const list = call('Runtime.evaluate', { expression: 'globalThis.__fxStampCensusFns', objectGroup: 'census' }).result.objectId;
+      for (const p of call('Runtime.getProperties', { objectId: list, ownProperties: true, objectGroup: 'census' }).result) {
+        const k = Number(p.name);
+        if (Number.isInteger(k) && p.value?.objectId) closures(p.value.objectId, batch[k][1]);
+      }
     }
   }
+  delete globalThis.__fxStampCensusFns;
   call('Runtime.releaseObjectGroup', { objectGroup: 'census' });
-  return { hits, values: seen.size };
+  return { left, moved, twice, values: seen.size };
 }
 
-// the control: before the rebase the walk finds the live stamps, inside closures and out
-const before = census(fx);
-const files = new Set([...before.hits.keys()].map((at) => at.split(':')[0]));
-assert.ok(before.hits.size >= 12 && files.size >= 5,
-  `the census sees the runtime's live stamps (${before.hits.size} in ${files.size} files: ${[...files].join(', ')})`);
-
-// the rebase: the Studio's reset to 0, then a frame (per-frame mirrors of the clock take the new one)
-fx.resetClock(0);
+// the rebase: the clock pinned at T1, then a frame (per-frame mirrors of the clock take the new one)
+fx.resetClock(T1);
 frames(2);
 dronesLive('after the rebase');
 const after = census(fx);
 assert.ok(after.values > 1000, `the walk reached the runtime (${after.values} values)`);
-const left = [...after.hits].map(([at, x]) => `  ${at} = ${x}`);
+const movedFiles = new Set([...after.moved.keys()].map((at) => at.split(':')[0]));
+assert.ok(after.moved.size >= 12 && movedFiles.size >= 5,
+  `the control: the census sees the runtime's stamps the rebase moved (${after.moved.size} in ${movedFiles.size} files: ${[...movedFiles].join(', ')})`);
+const left = [...after.left].map(([at, x]) => `  ${at} = ${x}`);
 assert.equal(left.length, 0, `stamps the rebase left at their pre-rebase time (register each part's shift where it is made, timeShift.ts):\n${left.join('\n')}`);
+const twice = [...after.twice].map(([at, x]) => `  ${at} = ${x}`);
+assert.equal(twice.length, 0, `stamps the rebase moved twice (a part registered twice, or a sub-part its owner shifts too):\n${twice.join('\n')}`);
 
 session.disconnect();
 fx.resetAll();
-console.log(`fxClockStampCensus.selftest: a rebase moves every fx-clock stamp the runtime holds (${before.hits.size} live before it, none left after; ${after.values} values walked)`);
+console.log(`fxClockStampCensus.selftest: a rebase moves every fx-clock stamp the runtime holds (${after.moved.size} moved, none left or moved twice; ${after.values} values walked)`);
