@@ -488,12 +488,17 @@ export const KSAR_STYLE: ArchitectureStyle = Object.freeze<ArchitectureStyle>({
   surfaces: {
     roof: { kind: 'canal', tint: [0.70, 0.52, 0.38] },
     stone: { kind: 'rubble', tint: [0.68, 0.62, 0.53] },
-    sourced: { plaster: true, wood: true },
+    // (buildings-270, the census and the batch-1 A/B: under the sourced plaster photo no tone the map gave the walls showed,
+    // and the houses stayed the sand's own colour) the walls the procedural mud plaster under lime wash
+    // (regionalSurfaces.ts paintLimewash), each family's tone measured on that canvas against the Dahar photos: the buff
+    // mud-lime render (the map's plaster, #d1b794), the lime-washed houses and cell bands (#dcd9d6 against #efe9dd), the
+    // older ochre render (#cda270 against #c79a5a)
+    sourced: { plaster: false, wood: true },
+    render: { kind: 'limewash', seed: 0x4b3d },
     tones: {
-      plaster: (_h, s, l) => [0.11, Math.min(1, s * 0.2), Math.min(1, l * 1.3 + 0.12)],
-      // (buildings-270) the second family the village's lime wash, as the Dahar photos' white houses and cell bands
-      plaster2: (_h, s, l) => [0.1, Math.min(1, s * 0.2 + 0.05), Math.min(1, l * 1.3 + 0.17)],
-      plaster3: (_h, s, l) => [0.085, Math.min(1, s * 0.7 + 0.22), Math.min(1, l * 1.02 + 0.03)],
+      plaster: (_h, s, l) => [0.095, Math.min(1, s * 0.4 + 0.36), Math.min(1, l + 0.2)],
+      plaster2: (_h, s, l) => [0.1, Math.min(1, s * 0.2 + 0.06), Math.min(1, l * 0.6 + 0.55)],
+      plaster3: (_h, s, l) => [0.09, Math.min(1, s * 0.4 + 0.44), Math.min(1, l + 0.12)],
     },
   },
   builders: KSAR_BUILDERS,
