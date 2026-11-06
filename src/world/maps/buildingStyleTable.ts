@@ -138,11 +138,10 @@ export const BUILDING_STYLES = {
     roof: { forms: ['gable', 'halfhip'], pitchDeg: [42, 55] },
     core: 'masonry', storeys: [1, 3], storeyM: [2.4, 3.2], bayM: [1.2, 2.8],
     weathering: { damp: 0.85, moss: 0.55 }, wear: 0.22,
-    // (round-3 blind pairs 1–3; the paints traced from the record's photos, none of which shows a shutter) the ox-blood of
-    // Hünfeld's timbers and door posts (frontier_3, sunlit, #6b2724), Burghaun's teal-grey door (frontier_1, shade
-    // corrected by the render beside it ×2.09/2.0/1.78, #293641 → #566c74) and its church's brown door (#645450)
-    variation: { axes: { paint: ['#6b2724', '#566c74', '#645450'] }, roofAge: [0.1, 1] },
-    surface: { grime: 1, patches: 0.55, tileRelief: 1.35, reveal: 0.15, eave: 0.35 },
+    // (Main 11-06: round 5 and the confirmatory pairs together 3–15 against it, p < 0.10, so the whole map reverts
+    // to its base look: the kit's own tints, roofs, surfaces and paints; its weathering and wear were the kit's already)
+    variation: null,
+    surface: null,
   },
   fjord: {
     kit: 'nordland',
@@ -181,10 +180,10 @@ export const BUILDING_STYLES = {
     roof: { forms: ['gable', 'hip'], pitchDeg: [25, 55] },
     core: 'masonry', storeys: [1, 2], storeyM: [2.6, 3.4], bayM: [1.6, 4.6],
     weathering: { damp: 0.8, moss: 0.5 }, wear: 0.2,
-    // (round-3 blind pairs 0–2 on the pale louvres; the paints traced from the record's photos) Kohima's painted green and
-    // maroon (monsoon_3, sunlit walls, #64814b and #652f34) and Khonoma's blue-grey painted planks (monsoon_1, #768aa2)
-    variation: { axes: { paint: ['#64814b', '#652f34', '#768aa2'] }, roofAge: [0, 1] },
-    surface: { grime: 1.3, patches: 0.6, tileRelief: 1.15, reveal: 0.15, eave: 0.9 },
+    // (Main 11-06: round 5 and the confirmatory pairs together 3–11 against it, p < 0.10, so the whole map reverts
+    // to its base look: the kit's own tints, roofs, surfaces and paints; its weathering and wear were the kit's already)
+    variation: null,
+    surface: null,
   },
   alpine: {
     kit: 'savoyard',
