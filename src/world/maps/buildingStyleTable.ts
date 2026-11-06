@@ -63,7 +63,9 @@ export const BUILDING_STYLES = {
     roof: { forms: ['vault', 'flat', 'dome'], pitchDeg: null },
     core: 'adobe', storeys: [1, 4], storeyM: [2, 3.2], bayM: null,
     weathering: { damp: 0.25, moss: 0.05 }, wear: 0.15,
-    variation: { axes: { paint: ['#2e5f9e', '#3a7ab0', '#24508a'] }, roofAge: [0, 1] },
+    // (Main 11-06: the paints traced from the record's photos) blue shutter (desert_3, shade-corrected, #1d688f); navy
+    // blue door with white iron grille (desert_3, shade-corrected, #576d8c)
+    variation: { axes: { paint: ['#1d688f', '#576d8c'] }, roofAge: [0, 1] },
     surface: { grime: 0.6, patches: 0.6, tileRelief: 1, reveal: 0.3, eave: 0 },
   },
   winter: {
@@ -82,7 +84,11 @@ export const BUILDING_STYLES = {
     roof: { forms: ['gable', 'hip', 'halfhip'], pitchDeg: [45, 60] },
     core: 'masonry', storeys: [2, 5], storeyM: [2.8, 3.6], bayM: [1.6, 2.8],
     weathering: { damp: 0.5, moss: 0.4 }, wear: 0.25,
-    variation: { axes: { paint: ['#7c8a74', '#e8e4da', '#5a3a2a'] }, roofAge: [0, 1] },
+    // (Main 11-06: the paints traced from the record's photos) mint-green window frame transom (urban_3,
+    // shade-corrected, #89ab92); ox-blood painted window surround/reveal (urban_3, shade-corrected, #7b403b);
+    // bottle-green round-arched door (urban_2, corrected by the sandstone beside it, #054b30); dark maroon-brown glazed shop door frame
+    // (urban_3, shade-corrected, #32201e)
+    variation: { axes: { paint: ['#89ab92', '#7b403b', '#054b30', '#32201e'] }, roofAge: [0, 1] },
     surface: { grime: 1.1, patches: 0.6, tileRelief: 1.35, reveal: 0.15, eave: 0.35 },
   },
   coastal: {
@@ -90,7 +96,10 @@ export const BUILDING_STYLES = {
     roof: { forms: ['gable'], pitchDeg: [40, 55] },
     core: 'masonry', storeys: [1, 2], storeyM: [2.4, 3], bayM: [1.6, 4.8],
     weathering: { damp: 0.95, moss: 0.8 }, wear: 0.25,
-    variation: { axes: { paint: ['#2e5a8a', '#3f6a4a', '#8c2a3a', '#e8e6e0'] }, roofAge: [0, 1] },
+    // (Main 11-06: the paints traced from the record's photos) crimson/maroon shutter (coastal_2, shade-corrected,
+    // #5d1825); blue shutter (coastal_2, shade-corrected, #4082a0); sage-green shutter (coastal_3, shade-corrected,
+    // #6c9077)
+    variation: { axes: { paint: ['#5d1825', '#4082a0', '#6c9077'] }, roofAge: [0, 1] },
     surface: { grime: 1.2, patches: 0.7, tileRelief: 1.2, reveal: 0.3, eave: 0.1 },
   },
   autumn: {
@@ -98,7 +107,9 @@ export const BUILDING_STYLES = {
     roof: { forms: ['gable'], pitchDeg: [18, 30] },
     core: 'masonry', storeys: [1, 2], storeyM: [2.6, 3.2], bayM: [1.4, 2.8],
     weathering: { damp: 0.75, moss: 0.45 }, wear: 0.3,
-    variation: { axes: { paint: ['#7a8a8a', '#4e6a52', '#6a4a32'] }, roofAge: [0, 1] },
+    // (Main 11-06: the paints traced from the record's photos) red shutter (autumn_2, #791e28); grey-blue louvred
+    // shutter stile (autumn_1, #6c8599); blue painted shopfront door panel (autumn_4, shade-corrected, #265f94)
+    variation: { axes: { paint: ['#791e28', '#6c8599', '#265f94'] }, roofAge: [0, 1] },
     surface: { grime: 1, patches: 0.7, tileRelief: 1.35, reveal: 0.25, eave: 0.3 },
   },
   steppe: {
@@ -106,7 +117,10 @@ export const BUILDING_STYLES = {
     roof: { forms: ['gable', 'hip', 'flat', 'shed'], pitchDeg: [18, 32] },
     core: 'adobe', storeys: [1, 3], storeyM: [2.6, 3.2], bayM: [1.8, 3.4],
     weathering: { damp: 0.4, moss: 0.15 }, wear: 0.25,
-    variation: { axes: { paint: ['#3f6fa8', '#4e7a5a', '#a8b8c8'] }, roofAge: [0, 1] },
+    // (Main 11-06: the paints traced from the record's photos) royal-blue porch panel and casings (steppe_2,
+    // shade-corrected, #293966); weathered pale-blue window casing nalichnik (steppe_5, shade-corrected, #9ac6da);
+    // teal-green door stile (steppe_2, shade-corrected, #325d54)
+    variation: { axes: { paint: ['#293966', '#9ac6da', '#325d54'] }, roofAge: [0, 1] },
     surface: { grime: 0.9, patches: 0.6, tileRelief: 1.15, reveal: 0.15, eave: 0.4 },
   },
   railyard: {
@@ -133,7 +147,10 @@ export const BUILDING_STYLES = {
     roof: { forms: ['gable'], pitchDeg: [30, 45] },
     core: 'masonry', storeys: [1, 2], storeyM: [2.4, 3], bayM: [1.4, 3],
     weathering: { damp: 0.7, moss: 0.45 }, wear: 0.3,
-    variation: { axes: { paint: ['#2e4a3a', '#7a2a22', '#e8e4da'] }, roofAge: [0, 1] },
+    // (Main 11-06: the paints traced from the record's photos) falu-red plank door on the naust side wall (fjord_2,
+    // #963a2a); dark red window frame transom (fjord_1, shade-corrected, #6f302c); white window frame stile (fjord_2,
+    // #dfc9c2)
+    variation: { axes: { paint: ['#963a2a', '#6f302c', '#dfc9c2'] }, roofAge: [0, 1] },
     surface: { grime: 1, patches: 0.5, tileRelief: 1.2, reveal: 0.1, eave: 0.5 },
   },
   delta: {
@@ -141,7 +158,10 @@ export const BUILDING_STYLES = {
     roof: { forms: ['gable', 'hip', 'curved', 'flat'], pitchDeg: [20, 35] },
     core: 'masonry', storeys: [1, 2], storeyM: [2.4, 3.2], bayM: [1.6, 3.6],
     weathering: { damp: 0.8, moss: 0.5 }, wear: 0.2,
-    variation: { axes: { paint: ['#3c6a3e', '#3a6a9a', '#8a5a3a'] }, roofAge: [0, 1] },
+    // (Main 11-06: the paints traced from the record's photos; no painted joinery shows, so the doors' own wood)
+    // bamboo/jute matting wall of the hut beside the doorway (delta_0, #a98969); weathered plank crate/box in front of
+    // the doorway (delta_0, #887755)
+    variation: { axes: { paint: ['#a98969', '#887755'] }, roofAge: [0, 1] },
     surface: { grime: 1.1, patches: 0.5, tileRelief: 1.15, reveal: 0.1, eave: 0.7 },
   },
   badlands: {
@@ -167,7 +187,10 @@ export const BUILDING_STYLES = {
     roof: { forms: ['gable'], pitchDeg: [25, 40] },
     core: 'masonry', storeys: [1, 3], storeyM: [2.3, 3], bayM: [1.4, 3.4],
     weathering: { damp: 0.95, moss: 0.5 }, wear: 0.3,
-    variation: { axes: { paint: ['#5a3e2a', '#3f5a4a', '#6a5a4a'] }, roofAge: [0, 1] },
+    // (Main 11-06: the paints traced from the record's photos; no painted joinery shows, so the doors' own wood) honey
+    // larch window frame/shutter at the right edge (alpine_1, #b7885e); red-brown stained plank door (alpine_2,
+    // #865e45); weathered grey-brown plank door of snowbound stone byre (alpine_1, #5c4b4c)
+    variation: { axes: { paint: ['#b7885e', '#865e45', '#5c4b4c'] }, roofAge: [0, 1] },
     surface: { grime: 0.9, patches: 0.7, tileRelief: 1.2, reveal: 0.4, eave: 0.55 },
   },
   caldera: {
@@ -207,7 +230,10 @@ export const BUILDING_STYLES = {
     roof: { forms: ['flat', 'dome', 'gable'], pitchDeg: [15, 30] },
     core: 'adobe', storeys: [1, 2], storeyM: [2.4, 3.2], bayM: [1.8, 4],
     weathering: { damp: 0.4, moss: 0.03 }, wear: 0.15,
-    variation: { axes: { paint: ['#3a6a9a', '#8a5a3a', '#5a7a5a'] }, roofAge: [0, 1] },
+    // (Main 11-06: the paints traced from the record's photos; no painted joinery shows, so the doors' own wood) hogan
+    // plank door (titan_gorge_1, #8a532f); white/aluminium sliding-window mullion (titan_gorge_3, #caa692); weathered
+    // dark plank wall/door of Oljato outbuilding (titan_gorge_0, #3e2117)
+    variation: { axes: { paint: ['#8a532f', '#caa692', '#3e2117'] }, roofAge: [0, 1] },
     surface: { grime: 0.6, patches: 0.4, tileRelief: 1, reveal: 0.3, eave: 0.35 },
   },
   skybridge: {
@@ -215,7 +241,10 @@ export const BUILDING_STYLES = {
     roof: { forms: ['flat', 'gable', 'hip'], pitchDeg: [15, 25] },
     core: 'concrete', storeys: [1, 3], storeyM: [2.5, 4.5], bayM: [1.6, 7],
     weathering: { damp: 0.2, moss: 0.02 }, wear: 0.18,
-    variation: { axes: { paint: ['#e8e4da', '#8a3a2a', '#3a5a6a'] }, roofAge: [0, 1] },
+    // (Main 11-06: the paints traced from the record's photos; no painted joinery shows, so the doors' own wood)
+    // louvred steel panel in the powerhouse wall (skybridge_3, shade-corrected, #896758); dark access hatch/doorway on
+    // the dam-toe walkway; corrected against sunlit dam concrete (skybridge_3, shade-corrected, #523129)
+    variation: { axes: { paint: ['#896758', '#523129'] }, roofAge: [0, 1] },
     surface: { grime: 0.5, patches: 0.35, tileRelief: 1, reveal: 0.1, eave: 0.55 },
   },
   polders: {
@@ -235,7 +264,10 @@ export const BUILDING_STYLES = {
     roof: { forms: ['gable', 'hip', 'shed'], pitchDeg: [20, 35] },
     core: 'masonry', storeys: [1, 2], storeyM: [2.6, 4], bayM: [1.6, 3.4],
     weathering: { damp: 0.6, moss: 0.3 }, wear: 0.25,
-    variation: { axes: { paint: ['#8a2a22', '#2e4a3a', '#e8e4da'] }, roofAge: [0, 1] },
+    // (Main 11-06: the paints traced from the record's photos) duck-egg/aqua painted plank door of weatherboard house
+    // (copper_mesa_0, shade-corrected, #8fb8b4); pale sage-green painted bay-window panelling of the Hunters Hotel
+    // (copper_mesa_3, #b4bfb6); oxblood painted timber verandah post at the hotel (copper_mesa_3, #5a272e)
+    variation: { axes: { paint: ['#8fb8b4', '#b4bfb6', '#5a272e'] }, roofAge: [0, 1] },
     surface: { grime: 1.2, patches: 0.5, tileRelief: 1.15, reveal: 0.1, eave: 0.4 },
   },
   airfield: {
@@ -243,7 +275,10 @@ export const BUILDING_STYLES = {
     roof: { forms: ['flat', 'vault', 'gable', 'hip'], pitchDeg: [5, 40] },
     core: 'masonry', storeys: [1, 5], storeyM: [2.3, 3.3], bayM: [0.8, 3],
     weathering: { damp: 0.55, moss: 0.25 }, wear: 0.45,
-    variation: { axes: { paint: ['#3f6fa8', '#4e7a5a', '#8a3a2a'] }, roofAge: [0, 1] },
+    // (Main 11-06: the paints traced from the record's photos) white PVC shopfront panel of the left kiosk
+    // (airfield_3, shade-corrected, #e9e5df); green painted pharmacy shopfront around the door (airfield_3,
+    // shade-corrected, #3da041)
+    variation: { axes: { paint: ['#e9e5df', '#3da041'] }, roofAge: [0, 1] },
     surface: { grime: 1, patches: 0.75, tileRelief: 1.15, reveal: 0.1, eave: 0.35 },
   },
   oasis: {
@@ -267,7 +302,10 @@ export const BUILDING_STYLES = {
     roof: { forms: ['hip', 'flat'], pitchDeg: [20, 30] },
     core: 'masonry', storeys: [1, 3], storeyM: [3, 4], bayM: [1.2, 4],
     weathering: { damp: 0.45, moss: 0.25 }, wear: 0.3,
-    variation: { axes: { paint: ['#3f6a4a', '#4c5a6a', '#6a4a32'] }, roofAge: [0, 1] },
+    // (Main 11-06: the paints traced from the record's photos) tan wooden shutter panels under the arched fanlights
+    // (orchard_3, #eecc98); cream-white painted fanlight muntin (orchard_3, #dbd0aa); dark brown arched fanlight frame
+    // (orchard_3, #50422f)
+    variation: { axes: { paint: ['#eecc98', '#dbd0aa', '#50422f'] }, roofAge: [0, 1] },
     surface: { grime: 0.9, patches: 0.6, tileRelief: 1.35, reveal: 0.3, eave: 0.5 },
   },
   longleaf: {
@@ -275,7 +313,10 @@ export const BUILDING_STYLES = {
     roof: { forms: ['gable', 'hip'], pitchDeg: [25, 45] },
     core: 'masonry', storeys: [1, 2], storeyM: [2.8, 3.6], bayM: [1.6, 5.4],
     weathering: { damp: 0.65, moss: 0.35 }, wear: 0.3,
-    variation: { axes: { paint: ['#e8e4da', '#3a4a3a', '#6a4a32'] }, roofAge: [0, 1] },
+    // (Main 11-06: the paints traced from the record's photos) off-white window casing (longleaf_3, shade-corrected,
+    // #dfd5cf); dull red-brown window sash (longleaf_3, shade-corrected, #8d6d73); dark brown store door under the
+    // porch (longleaf_2, shade-corrected, #281828)
+    variation: { axes: { paint: ['#dfd5cf', '#8d6d73', '#281828'] }, roofAge: [0, 1] },
     surface: { grime: 1.1, patches: 0.5, tileRelief: 1.15, reveal: 0.05, eave: 0.45 },
   },
   mangrove: {
@@ -283,7 +324,10 @@ export const BUILDING_STYLES = {
     roof: { forms: ['gable', 'hip'], pitchDeg: [25, 40] },
     core: 'masonry', storeys: [1, 1], storeyM: [2.4, 3], bayM: [1.6, 4],
     weathering: { damp: 0.8, moss: 0.5 }, wear: 0.2,
-    variation: { axes: { paint: ['#3a6a9a', '#8a2a22', '#3c6a3e'] }, roofAge: [0, 1] },
+    // (Main 11-06: the paints traced from the record's photos) pale blue painted plank panel/shutter (mangrove_3,
+    // shade-corrected, #94bed7); mid-blue folding doors with red-brown studs (mangrove_3, shade-corrected, #2f4654);
+    // cream-white painted post/door-frame paint (mangrove_3, shade-corrected, #e3e8da)
+    variation: { axes: { paint: ['#94bed7', '#2f4654', '#e3e8da'] }, roofAge: [0, 1] },
     surface: { grime: 1.2, patches: 0.4, tileRelief: 1, reveal: 0.15, eave: 0.5 },
   },
   saltwind: {
@@ -291,7 +335,9 @@ export const BUILDING_STYLES = {
     roof: { forms: ['gable'], pitchDeg: [18, 30] },
     core: 'masonry', storeys: [1, 3], storeyM: [2.6, 3.2], bayM: [1.4, 3],
     weathering: { damp: 0.45, moss: 0.25 }, wear: 0.3,
-    variation: { axes: { paint: ['#3f6a4a', '#5a7a6a', '#7a5a3a'] }, roofAge: [0, 1] },
+    // (Main 11-06: the paints traced from the record's photos) light grey-blue louvred shutter (saltwind_4, #868b96);
+    // red-brown painted plank door (saltwind_0, #8d5e4c); dark weathered plank gate (saltwind_0, #4c3c34)
+    variation: { axes: { paint: ['#868b96', '#8d5e4c', '#4c3c34'] }, roofAge: [0, 1] },
     surface: { grime: 0.9, patches: 0.75, tileRelief: 1.35, reveal: 0.3, eave: 0.2 },
   },
   reservoir: {
@@ -299,7 +345,9 @@ export const BUILDING_STYLES = {
     roof: { forms: ['gable', 'hip', 'halfhip'], pitchDeg: [40, 55] },
     core: 'masonry', storeys: [1, 3], storeyM: [2.4, 3.2], bayM: [1.2, 2.8],
     weathering: { damp: 0.8, moss: 0.5 }, wear: 0.2,
-    variation: { axes: { paint: ['#3a5a40', '#6a2a22', '#8a8a86'] }, roofAge: [0, 1] },
+    // (Main 11-06: the paints traced from the record's photos) green plank barn door (reservoir_2, #347f5a); red
+    // painted door frame (reservoir_2, #de4841); oxblood-red window frame (reservoir_3, shade-corrected, #904744)
+    variation: { axes: { paint: ['#347f5a', '#de4841', '#904744'] }, roofAge: [0, 1] },
     surface: { grime: 1.2, patches: 0.55, tileRelief: 1.2, reveal: 0.15, eave: 0.35 },
   },
   mars: {
