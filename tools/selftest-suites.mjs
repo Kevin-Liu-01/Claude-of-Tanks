@@ -2092,7 +2092,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/game/ai.watchResume.selftest.mjs',
     // 2026-11-02 audit M7: both drivers apply the bots' news at the end of the fire-and-shells phase; teammates read it
     'src/game/ai.newsFlush.selftest.mjs',
-    // 2026-11-02 audit M7 (round 2 U18): the authority's revive hands the bot's brain back (no progress spike on the new life)
+    // 2026-11-02 audit M7 (round 2 U18): the authority's revive hands the bot's brain back (no progress spike on the new
+    // life); round 3 M3: so does a migrated host's restore (no progress spike or burst on its first tick)
     'src/game/ai.reviveResume.selftest.mjs',
     // 2026-11-02 audit M7 (round 2 U18, split off in round 3 B17): the solo battle's revive hands the bot's brain back
     'src/game/ai.reviveResumeSolo.selftest.mjs',

@@ -781,6 +781,10 @@ export function applyResumeState(actor: MatchActor, state: HostResumeState): { r
     if (gapS > 0 || !extras) restoreRowCounts(combat, row, entity.spec);
     // every channel the rest of the way to the resume frame (a cycle that ends readies, a magazine load that ends refills)
     if (tailS > 0) tickReload(combat, tailS);
+    // a bot's brain takes the hull as restored (round 3 M3): the fresh actor built it at the spawn, so what it measures
+    // between its own ticks (the ground covered, the hp it last saw) would read the move to this row and the hp lost
+    // before the keyframe as one tick of its own; resume() restarts them from the hull, as a revive's hand-back does
+    entity.aiCtl?.resume?.(actor.authority.timeS);
     restored++;
   }
   const destroyed = actor.authority.restoreDestroyedObstacles(state.frame.destroyed, state.frame.meta.destructibleRevision);
