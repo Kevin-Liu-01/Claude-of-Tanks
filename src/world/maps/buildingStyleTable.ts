@@ -170,9 +170,11 @@ export const BUILDING_STYLES = {
     kit: 'wadirum',
     roof: { forms: ['flat'], pitchDeg: null },
     core: 'adobe', storeys: [1, 2], storeyM: [2.8, 3.2], bayM: [1.8, 4],
-    weathering: { damp: 0.25, moss: 0 }, wear: 0.2,
-    variation: { axes: { door: ['blue', 'green', 'grey'], tank: ['black', 'white'] }, roofAge: [0, 0.6] },
-    surface: { grime: 0.6, patches: 0.45, tileRelief: 1, reveal: 0.3, eave: 0 },
+    // (Main 11-06: lost its one fresh judge 1–9 under the pair rule, so the whole map reverts to its base look: the kit's
+    // own renders and weather, the craft's default damp and moss)
+    weathering: { damp: 0.8, moss: 0.5 }, wear: 0.2,
+    variation: null,
+    surface: null,
   },
   monsoon: {
     kit: 'kohima',
