@@ -21,7 +21,9 @@ const landmarkSource = readFileSync(here('./landmarks/index.ts'), 'utf8');
 const tableOf = (source, start) => {
   const from = source.indexOf(start);
   assert.ok(from > 0, `the table ${start}`);
-  return source.slice(from, source.indexOf('\n});', from));
+  // (a table may close `} satisfies …);`, buildings-270's STYLE_TABLE does)
+  const end = source.slice(from).search(/\n\}(?: satisfies [^\n]*)?\);/);
+  return source.slice(from, from + end);
 };
 const rowsOf = (source, start) => {
   const body = tableOf(source, start);
