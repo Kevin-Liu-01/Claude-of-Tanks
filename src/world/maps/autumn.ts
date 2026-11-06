@@ -125,6 +125,15 @@ const SQUARE_SEATS = [
   { structure: 'church', x: -98.4, z: 131.9, yawDeg: -160, r: 17 },
   { structure: 'tavern', x: -137.2, z: 112.7, yawDeg: 115, r: 12 },
 ] as const;
+/**
+ * (buildings-271, the 3D census: "detached boxes around an open square", the plan's shops and cottages seated free along
+ * the streets between the rows) the square's frontage: on each arm, each side, the first plot from the square is the
+ * village's shop or its mairie-école, in line with the row, its plot the row's (arm, side -> structure, plot w x d).
+ */
+const SQUARE_FRONT: Readonly<Record<string, { structure: string; w: number; d: number }>> = {
+  '0:-1': { structure: 'cornershop', w: 9.4, d: 10.2 }, '0:1': { structure: 'schoolhouse', w: 13.2, d: 10.4 },
+  '1:-1': { structure: 'cornershop', w: 9.0, d: 10.0 }, '2:1': { structure: 'cornershop', w: 8.6, d: 9.8 },
+};
 function villageHash(a: number, b: number): number {
   let k = Math.imul(Math.round(a * 10) | 0, 0x27d4eb2d) ^ Math.imul(Math.round(b * 10) | 0, 0x165667b1) ^ 0x6a17;
   k = Math.imul(k ^ (k >>> 15), 0x85ebca6b); k = Math.imul(k ^ (k >>> 13), 0xc2b2ae35);
@@ -146,13 +155,13 @@ function streetVillage(): Array<{ structure: string; x: number; z: number; yawDe
     };
     for (const side of [-1, 1] as const) {
       let d = SQUARE.r + 4, nextLane = d + LANE_EVERY_M[0] + villageHash(ai, side) * (LANE_EVERY_M[1] - LANE_EVERY_M[0]);
-      let k = 0;
+      let k = 0, squareSite: { structure: string; w: number; d: number } | undefined = SQUARE_FRONT[`${ai}:${side}`];
       while (d < cum[cum.length - 1]) {
         const u = villageHash(ai * 31 + side, k++);
-        // a long farmhouse two plots in five, a terraced house otherwise
-        const farm = u < 0.4;
-        const w = farm ? 13.5 + villageHash(k, ai) * 3.5 : 6.8 + villageHash(k, ai) * 2.4;
-        const depth = farm ? 9.0 + villageHash(ai, k) * 1.6 : 8.4 + villageHash(ai, k) * 2.8;
+        // a long farmhouse two plots in five, a terraced house otherwise; the square's shop or mairie first
+        const farm = !squareSite && u < 0.4;
+        const w = squareSite ? squareSite.w : farm ? 13.5 + villageHash(k, ai) * 3.5 : 6.8 + villageHash(k, ai) * 2.4;
+        const depth = squareSite ? squareSite.d : farm ? 9.0 + villageHash(ai, k) * 1.6 : 8.4 + villageHash(ai, k) * 2.8;
         if (d + w > nextLane) { d = nextLane + LANE_M; nextLane = d + LANE_EVERY_M[0] + u * (LANE_EVERY_M[1] - LANE_EVERY_M[0]); continue; }
         const [rx, rz, tx, tz] = at(d + w / 2);
         const nx = tz * side, nz = -tx * side; // this side's normal, away from the road
@@ -163,8 +172,9 @@ function streetVillage(): Array<{ structure: string; x: number; z: number; yawDe
           || SQUARE_SEATS.some((seat) => detMath.hypot(x - seat.x, z - seat.z) < seat.r + reach)) { d += w; continue; }
         // the front (local +z) faces the road: yaw turns +z onto (-nx, -nz)
         const yawDeg = detMath.atan2(-nx, -nz) * 180 / Math.PI;
-        sites.push({ structure: farm ? 'farmhouse' : 'rowhouse', x: +x.toFixed(2), z: +z.toFixed(2), yawDeg: +yawDeg.toFixed(1),
-          plot: { w: +w.toFixed(2), d: +depth.toFixed(2) }, terrace: true });
+        sites.push({ structure: squareSite ? squareSite.structure : farm ? 'farmhouse' : 'rowhouse', x: +x.toFixed(2), z: +z.toFixed(2),
+          yawDeg: +yawDeg.toFixed(1), plot: { w: +w.toFixed(2), d: +depth.toFixed(2) }, terrace: true });
+        squareSite = undefined;
         d += w + 0.25;
       }
     }
@@ -431,10 +441,10 @@ export default {
     // cottages; consumed along the town's three streets, the remainder fills
     // the blocks between them
     // (the map-revival lane, round 5: the church and the inn stand pinned on the square, SQUARE_SEATS)
-    plan: ['cottage', 'cornershop', 'market', 'marketRow', 'cottage', 'tower',
-      'granary', 'cottage', 'schoolhouse', 'farmhouse', 'cottage', 'chapel', 'barn', 'cottage',
-      'cornershop', 'cottage', 'ruin', 'cottage', 'granary', 'cottage', 'farmhouse', 'woodshed',
-      'cottage', 'barn'],
+    // (buildings-271: the shops and the mairie-école now stand in the rows, SQUARE_FRONT; the cottages and farmhouses were
+    // the rows' own) the plan keeps the town's free buildings and its back lots: the market hall and its row, the keep,
+    // the chapel, and the barns, granaries, woodshed and ruin behind the rows
+    plan: ['market', 'marketRow', 'tower', 'granary', 'chapel', 'barn', 'ruin', 'granary', 'woodshed', 'barn'],
     blockFill: true,
     // the map-revival lane (round 5): the street village's frontage (streetVillage above) stands first; the plan's other
     // buildings then take the blocks behind it
