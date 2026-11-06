@@ -37,16 +37,18 @@ export interface BuildingStyleRow {
   readonly weathering: { readonly damp: number; readonly moss: number };
   /** the share of houses showing war damage (burnt and boarded windows, stripped roof patches) */
   readonly wear: number;
-  /** what the map's buildings vary in: the named dress axes its kit reads and the roofs' age spread */
-  readonly variation: BuildingVariation;
+  /** what the map's buildings vary in: the named dress axes its kit reads and the roofs' age spread (null: a map reverted
+   *  to its base look, its buildings' tints the kit's own pick, no neighbour rule) */
+  readonly variation: BuildingVariation | null;
   /**
    * the walls' surface and depth as the photos show them: `grime` how dark the foot, the eaves' rain shadow and the runs
    * off the sills and eaves weather (1: the facade craft's own); `patches` the share of houses whose render shows its
    * losses and repairs (the stone under it); `tileRelief` the roof covering's relief (its normal map's scale); `reveal`
    * and `eave` the least reveal depth of the openings and eaves overhang of the place's houses (metres), which their
-   * kit's houses keep. Decor and material only: no fetch is added and no collision moves.
+   * kit's houses keep. Decor and material only: no fetch is added and no collision moves. Null: a map reverted to its
+   * base look (the facade craft's own grime, rain shadow and wear, no eave streaks, the covering's own relief).
    */
-  readonly surface: { readonly grime: number; readonly patches: number; readonly tileRelief: number; readonly reveal: number; readonly eave: number };
+  readonly surface: { readonly grime: number; readonly patches: number; readonly tileRelief: number; readonly reveal: number; readonly eave: number } | null;
 }
 
 export const BUILDING_STYLES = {
@@ -252,10 +254,10 @@ export const BUILDING_STYLES = {
     roof: { forms: ['gable', 'hip', 'halfhip'], pitchDeg: [40, 55] },
     core: 'masonry', storeys: [1, 2], storeyM: [2.5, 3.2], bayM: [1.4, 4.2],
     weathering: { damp: 0.8, moss: 0.5 }, wear: 0.2,
-    // (Main's 11-06 pair rule: the photo-traced paints, aubergine #42354f, navy #253153 and grey #646564, lost their one
-    // fresh judge 0–7, every critic naming them, so the doors and shutters revert to the kit's own colours)
-    variation: { axes: {}, roofAge: [0, 1] },
-    surface: { grime: 1.1, patches: 0.5, tileRelief: 1.35, reveal: 0.15, eave: 0.3 },
+    // (Main 11-06: lost its one fresh judge 0–7 under the pair rule, so the whole map reverts to its base look: the
+    // kit's own tints, surfaces and paints; its weathering and wear were the kit's already)
+    variation: null,
+    surface: null,
   },
   copper_mesa: {
     kit: 'queenstown',
@@ -333,10 +335,10 @@ export const BUILDING_STYLES = {
     roof: { forms: ['gable'], pitchDeg: [18, 30] },
     core: 'masonry', storeys: [1, 3], storeyM: [2.6, 3.2], bayM: [1.4, 3],
     weathering: { damp: 0.45, moss: 0.25 }, wear: 0.3,
-    // (Main's 11-06 pair rule: the photo-traced paints, grey-blue #868b96, red-brown #8d5e4c and plank #4c3c34, lost
-    // their one fresh judge 1–6, every critic naming them, so the doors and shutters revert to the kit's own colours)
-    variation: { axes: {}, roofAge: [0, 1] },
-    surface: { grime: 0.9, patches: 0.75, tileRelief: 1.35, reveal: 0.3, eave: 0.2 },
+    // (Main 11-06: lost its one fresh judge 1–6 under the pair rule, so the whole map reverts to its base look: the
+    // kit's own tints, surfaces and paints; its weathering and wear were the kit's already)
+    variation: null,
+    surface: null,
   },
   reservoir: {
     kit: 'eifel',
@@ -404,7 +406,7 @@ export function surfaceOf(mapId: string, kit: string): BuildingStyleRow['surface
 }
 
 /** What a kit's buildings vary in on a map. */
-export function variationOf(mapId: string, kit: string): BuildingVariation {
+export function variationOf(mapId: string, kit: string): BuildingVariation | null {
   return rowFor(mapId, kit).variation;
 }
 

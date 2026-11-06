@@ -13,7 +13,7 @@
 import type * as THREE from 'three';
 import { getDeviceTier } from '../../../engine/quality.ts';
 import { dropSliverTriangles, hashSeed, streamFrom, REGIONAL_BUCKETS, type RegionalParts } from './geometry.ts';
-import { DEFAULT_WEATHER, paintRatio, weatherRegionalParts, type WeatherTints } from './weather.ts';
+import { DEFAULT_WEATHER, paintRatio, pickWeatherTints, weatherRegionalParts, type WeatherTints } from './weather.ts';
 import { withHousePlans, withWear, type HousePlan } from './house.ts';
 import { withRuinWalls, type WallPieceReading } from './shell.ts';
 import { withLattices, type LatticeReading } from './lattice.ts';
@@ -235,20 +235,22 @@ function* buildRegionalPartsSteps(
   // choices from a stream of its own forked from the same seed — the build, look, wear and weather streams draw as before)
   const legacy = kitLegacy(ctx.mapId);
   const surface = surfaceOf(ctx.mapId, style.id);
-  const wear = { amount: wearOf(ctx.mapId, style.id), patches: surface.patches, rng: streamFrom(wearSeed), spall: streamFrom((wearSeed ^ 0x9e3779b9) >>> 0),
+  const wear = { amount: wearOf(ctx.mapId, style.id), patches: surface?.patches, rng: streamFrom(wearSeed), spall: streamFrom((wearSeed ^ 0x9e3779b9) >>> 0),
     facade: { tier: ctx.tier, rng: streamFrom((wearSeed ^ 0x6a09e667) >>> 0), stone: style.surfaces.stone, ground: ctx.ground,
-      groundCraft: style.groundCraft !== false && !legacy, legacy, grime: surface.grime } };
+      groundCraft: style.groundCraft !== false && !legacy, legacy, grime: surface?.grime } };
   // (buildings-270) the building's look from its map's variation: tints, roof age and dress, none a neighbour shares in full
-  const look = pickLook(palette, variationOf(ctx.mapId, style.id), weatherRng,
+  // (a map reverted to its base look has no variation: the kit's own pick, no ledger)
+  const variation = variationOf(ctx.mapId, style.id);
+  const look = variation && pickLook(palette, variation, weatherRng,
     ledger && ctx.x !== undefined && ctx.z !== undefined ? { ledger, x: ctx.x, z: ctx.z } : undefined);
-  const tints = look.tints;
+  const tints = look ? look.tints : pickWeatherTints(palette, weatherRng);
   // (the facades lane, round 6) the sun's horizontal direction in the building's frame: the slopes turned from it
   // weather greener (a world direction turned back through the building's yaw, as props.ts places it)
   const sun = ctx.sunAzimuthDeg !== undefined ? (() => {
     const a = ctx.sunAzimuthDeg * Math.PI / 180, wx = Math.sin(a), wz = Math.cos(a), yaw = ctx.yaw ?? 0, c = Math.cos(yaw), s = Math.sin(yaw);
     return [wx * c - wz * s, wx * s + wz * c] as const;
   })() : null;
-  const [[[built, houses], ruinWalls], lattices] = withLattices(() => withRuinWalls(() => withHousePlans(() => withWear(wear, () => withPaint(look.dress.paint, () => builder({ ...ctx, dress: look.dress }))))));
+  const [[[built, houses], ruinWalls], lattices] = withLattices(() => withRuinWalls(() => withHousePlans(() => withWear(wear, () => withPaint(look?.dress.paint, () => builder(look ? { ...ctx, dress: look.dress } : ctx))))));
   yield REGIONAL_SLICE;
   // (the map-revival lane, 2026-10-07: a kit that folds its third plaster paint into its second's bucket,
   // ArchitectureStyle.foldThirdPlaster, by the colour of its own two paints)

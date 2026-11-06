@@ -525,11 +525,8 @@ export const DALMATIAN_STYLE: ArchitectureStyle = Object.freeze<ArchitectureStyl
     roof: { kind: 'canal', tint: [0.70, 0.42, 0.29] },
     // Brac stone: near-white dressed limestone (2026-10-03 w2 review; was [0.8, 0.75, 0.64])
     stone: { kind: 'limestone', tint: [0.83, 0.79, 0.70] },
-    // (buildings-270, the sourced-plaster class: under the photo set none of the map's render tones showed) the walls the
-    // procedural limeRender canvas, the primary family's tone measured on it against the reference photos (the warm grey lime render, #c7bbaa against #c6bbb0; round 2's #c5bdb6 read lilac under the sky)
-    sourced: { plaster: false, wood: true },
-    render: { kind: 'limeRender', seed: 0x3e53 },
-    tones: { plaster: (_h, s, l) => [0.1, Math.min(1, s * 0.3 + 0.17), Math.min(1, l * 0.9 + 0.31)] },
+    // (buildings-270: Saltwind reverted to its base look, Main 11-06, the round-4 pairs 1–6)
+    sourced: { plaster: true, wood: true },
   },
   builders: DALMATIAN_BUILDERS,
   // sun-bleached limestone and render, canal tiles from fresh to grey-brown, a dry coast (1991–95 war damage)

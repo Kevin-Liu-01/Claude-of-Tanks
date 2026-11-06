@@ -40,15 +40,17 @@ for (const id of MAP_IDS) {
   for (const c of [...rec.roof.colours, ...rec.facade.colours]) assert.match(c, /^#[0-9a-f]{6}$/, `${id}: hex colour ${c}`);
   assert.ok(row.storeys[0] <= row.storeys[1] && row.storeyM[0] <= row.storeyM[1], `${id}: ranges ordered`);
   // the variation: each axis offers a choice, a paint is a hex colour, the roofs' age spread lies in 0–1
-  for (const [axis, options] of Object.entries(row.variation.axes)) {
+  // (a map reverted to its base look, Main 11-06: no variation and no surface; both null together)
+  assert.equal(row.variation === null, row.surface === null, `${id}: a reverted row drops its variation and its surface together`);
+  for (const [axis, options] of Object.entries(row.variation?.axes ?? {})) {
     assert.ok(options.length >= 2 && new Set(options).size === options.length, `${id}: the ${axis} axis offers distinct options`);
     if (axis === 'paint') for (const c of options) assert.match(c, /^#[0-9a-f]{6}$/, `${id}: paint ${c} is hex`);
   }
   // the surface: grime and tile relief scales near the craft's own, patches a share, the depths metres
-  const sf = row.surface;
+  const sf = row.surface ?? { grime: 1, patches: 0, tileRelief: 1, reveal: 0, eave: 0 };
   assert.ok(sf.grime >= 0 && sf.grime <= 2 && sf.tileRelief >= 0.5 && sf.tileRelief <= 2 && sf.patches >= 0 && sf.patches <= 1
     && sf.reveal >= 0 && sf.reveal <= 0.6 && sf.eave >= 0 && sf.eave <= 1.5, `${id}: surface in range`);
-  assert.ok(row.variation.roofAge[0] >= 0 && row.variation.roofAge[0] < row.variation.roofAge[1] && row.variation.roofAge[1] <= 1, `${id}: roof age spread`);
+  if (row.variation) assert.ok(row.variation.roofAge[0] >= 0 && row.variation.roofAge[0] < row.variation.roofAge[1] && row.variation.roofAge[1] <= 1, `${id}: roof age spread`);
   // 3
   const r = reading[row.kit];
   assert.ok(r, `${id}: ${row.kit} has a reading`);
@@ -59,8 +61,8 @@ for (const id of MAP_IDS) {
     assert.ok(within(r.mid.storeyM, row.storeyM, 0.25), `${id}: the kit's storey height ${r.storeyM} m sits in the row's ${row.storeyM}`);
     if (r.mid.pitchDeg !== null && row.roof.pitchDeg) assert.ok(within(r.mid.pitchDeg, row.roof.pitchDeg, 5), `${id}: the kit's pitch ${r.pitchDeg}° sits in the row's ${row.roof.pitchDeg}`);
     // the kit's houses keep the place's depth: their openings' reveals and their eaves at least the row's
-    if (r.mid.reveal !== null) assert.ok(r.mid.reveal >= row.surface.reveal - 0.02, `${id}: the kit's reveal ${r.mid.reveal} m keeps the row's ${row.surface.reveal}`);
-    if (r.mid.eave !== null) assert.ok(r.mid.eave >= row.surface.eave - 0.02, `${id}: the kit's eave ${r.mid.eave} m keeps the row's ${row.surface.eave}`);
+    if (r.mid.reveal !== null && row.surface) assert.ok(r.mid.reveal >= row.surface.reveal - 0.02, `${id}: the kit's reveal ${r.mid.reveal} m keeps the row's ${row.surface.reveal}`);
+    if (r.mid.eave !== null && row.surface) assert.ok(r.mid.eave >= row.surface.eave - 0.02, `${id}: the kit's eave ${r.mid.eave} m keeps the row's ${row.surface.eave}`);
     if (r.mid.bayM !== null && row.bayM) assert.ok(within(r.mid.bayM, row.bayM, 0.4), `${id}: the kit's window bay ${r.window.bayM} m sits in the row's ${row.bayM}`);
   }
   // 4
@@ -75,7 +77,7 @@ for (const id of MAP_IDS) {
 // 6. (Main 11-06) a row's paints are traced from its own photos (src/world/buildingStylePaints.trace.json: each paint a
 //    sample's measured hex, its photo one of the record's): a hex in two rows only where both maps' photos show it
 for (const id of MAP_IDS) {
-  const paints = BUILDING_STYLES[id].variation.axes.paint ?? [];
+  const paints = BUILDING_STYLES[id].variation?.axes.paint ?? [];
   const trace = traces[id];
   if (!paints.length) { assert.equal(trace, undefined, `${id}: a trace for a row without paints`); continue; }
   assert.ok(trace, `${id}: its paints are traced (buildingStylePaints.trace.json)`);
