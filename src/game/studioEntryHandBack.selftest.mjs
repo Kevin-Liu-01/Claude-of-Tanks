@@ -23,7 +23,8 @@ const source = ts.createSourceFile('studio.ts',
   readFileSync(new URL('./studio.ts', import.meta.url), 'utf8'), ts.ScriptTarget.Latest, true);
 // (2026-11-02 audit F9) the session's teardown, shared by an exit and a failed entry, and its atmosphere preparation
 // (2026-11-03) and the session's trailed battlefield build
-const names = new Set(['enter', 'doEnter', 'doExit', 'withStage', 'leaveForGarage', 'tearDownToGarage', 'tearDownStudio',
+// (round 3 X9) and the exit press itself, whose catch runs the teardown again for a Studio still active
+const names = new Set(['enter', 'exit', 'doEnter', 'doExit', 'withStage', 'leaveForGarage', 'tearDownToGarage', 'tearDownStudio',
   'prepareAtmosphere', 'ensureSessionWorld']);
 // (UI-LOCKDOWN E) the first view's program preparation is a port here; its place in the entry is pinned below
 const functions = [];
@@ -223,6 +224,7 @@ const noop = () => {};
     disposePicture: noop, applyPictureRuntime: noop, studioStages: new Map(), resetStudioGround: noop, flareToWallClock: noop,
     prepareFirstViewPrograms: async () => {}, nextFrame: async () => {},
     transitionAppPhase, assertAppPhaseTransition, assertGarageScreenSettled,
+    camoTryOn: { preview: noop }, commitHistory: noop,
     // main's enterGarageWithExit over a return that lands: the scene, then the screen's announcement
     enterGarage: async () => {
       calls.push('enter-garage');
@@ -238,7 +240,7 @@ const noop = () => {};
     let placeArmed = null, dragActor = null, dragging = false, storyboard = {};
     let selectedShotId = null, shotUidSeq = 1, actorKeyUidSeq = 1;
     ${functions.join('\n')}
-    return { enter, doExit, active: () => active };
+    return { enter, exit, doExit, active: () => active };
     }
   `);
   const studio = new Function('ports', code + '\nreturn makeStudioEntry(ports);')(ports);
@@ -247,10 +249,16 @@ const noop = () => {};
   assert.equal(studio.active(), true);
   teardownThrows = true;
   const exitAt = calls.length;
-  await assert.rejects(studio.doExit(), /the Studio half failed/, "the Studio half's error still reaches the exit");
+  const logged = [];
+  const quiet = console.error;
+  console.error = (...args) => logged.push(args.map(String).join(' '));
+  try { await studio.exit(); } finally { console.error = quiet; } // the Studio's exit press (its chain ends in a catch)
+  assert.deepEqual(logged, ['[studio] exit failed Error: the Studio half failed'], "the Studio half's error still reaches the exit, once");
   assert.ok(calls.includes('enter-garage'), 'the Garage hand-back ran although the Studio half threw (before: no return ran)');
   assert.equal(game.phase, 'garage', 'the scene is the Garage\'s');
+  assert.equal(studio.active(), false, 'and the frame: the Studio no longer ticks over the Garage it handed back');
   assert.deepEqual(announcements, ['garage>studio:studio:enter', 'studio>garage:garage-return:screen'], 'announced once, by the return');
+  assert.equal(calls.filter((call) => call === 'enter-garage').length, 1, 'one hand-back');
   assert.deepEqual(calls.slice(exitAt).filter((call) => /^(route|brand):/.test(call)), ['route:false', 'brand:garage']);
   assert.equal(ports.session.phase, 'closed');
   // the same throw came before releaseCrushes: the battlefield is still on the Studio's timeline, its sweeps off
