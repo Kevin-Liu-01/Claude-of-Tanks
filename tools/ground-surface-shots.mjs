@@ -23,7 +23,14 @@
 //              measured from the pair (tools/ground-surface-metrics.py).
 // Variants `u:<uniform>[.x|y|z|w]=<number>[,…]` set terrain-program uniforms through the renderer's own uniforms (the A/B for
 // one term on one build), as in the banding tool. Frames land in <out>/<job>/frames/<map>-<pose>-<variant>.png and every
-// map's receipt in <out>/<job>/manifest-<tag>.json (a run resumes).
+// map's receipt in <out>/<job>/manifest-<tag>.json (a run resumes). The variant `aa` is the base drawn again (the A/A
+// control: Main 11-06, it must diff to 0 in the sky and on the ground before any pair counts).
+// The clouds (Main 11-06, buildings-270 02d7f7856f + 7c8ed1a62f): every variant's frame is taken with the cloud layer at
+// CLOUD_TIME_S of scene time (volumetricClouds.setCaptureTime, a fresh trace sequence), its drift held (each frame's dt 0)
+// for CLOUD_FRAMES frames, then the trace and resolve held, so every arm draws one sky; the pin is in each receipt.
+// The streaming (ab18: the first arm of a pose missed the litter its second had, Desert's chase 15 grey pixels against 48)
+// each pose waits for the grass and the ground litter to have no cell left to build, and the arms alternate which is shot
+// first from pose to pose, so no arm is always the first.
 import { launchGuardedBrowser, setBrowserGuardContext } from './browser-launch.mjs';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
@@ -35,7 +42,6 @@ import { settleMapTextures } from './map-environment-acquisition.mjs';
 import { PINNED_SCENE, configurePinnedScene } from './pinned-scene-acquisition.mjs';
 import { decodePng } from './hud-ammo-frame-ink.mjs';
 import { censusShotView } from './visual-census.mjs';
-import { grassSettled } from './frame-budget-probe.mjs';
 import { MAP_IDS } from '../src/world/maps/mapIds.ts';
 
 const TOOL = 'ground-surface-shots';
@@ -85,7 +91,7 @@ function uniformVariant(variant) {
  * their userData.terrainDecalKind: 'ground-contact', 'apron', 'crater', …); null when a part does not parse. */
 function parseVariant(variant) {
   const out = { sets: [], hide: [] };
-  if (variant === 'base') return out;
+  if (variant === 'base' || variant === 'aa') return out;
   for (const part of variant.split(';')) {
     if (part.startsWith('hide:')) {
       const kinds = part.slice(5).split('+').filter(Boolean);
@@ -218,17 +224,45 @@ function pageSpotPose({ hull, range, after = -1 }) {
   return null;
 }
 
-function stillClouds() {
+/** The scene time the clouds are drawn at, and the frames traced there before the layer is held. */
+const CLOUD_TIME_S = 0, CLOUD_FRAMES = 48;
+
+/**
+ * The cloud layer pinned (page side): at CLOUD_TIME_S, a fresh trace sequence, its drift held (the frame's dt 0) while
+ * CLOUD_FRAMES frames trace and resolve, then held; `release` lets it run (the settle between poses).
+ */
+function pinClouds(release = false) {
   return `(() => {
-    const D = window.__DEBUG, vc = D.scene.userData.volumetricClouds;
-    if (vc) {
-      for (const key of ['weatherShift', 'noiseShift', 'cirrusShift']) {
-        const v = vc[key];
-        if (v && typeof v.set === 'function') { if (v.isVector3) v.set(0, 0, 0); else v.set(0, 0); }
-      }
-      if (typeof vc.resetHistory === 'function') vc.resetHistory();
+    const vc = window.__DEBUG.scene.userData.volumetricClouds;
+    if (!vc) return true;
+    if (!vc.__pin) {
+      const live = vc.beforeSceneRender.bind(vc);
+      vc.__pin = { held: false, left: 0 };
+      vc.beforeSceneRender = (renderer, camera, dt, ...rest) => {
+        const pin = vc.__pin;
+        if (!pin.held) return live(renderer, camera, dt, ...rest);
+        live(renderer, camera, 0, ...rest);
+        if (pin.left > 0 && --pin.left === 0) vc.frozen = true;
+      };
     }
+    vc.frozen = false;
+    if (${release}) { vc.__pin.held = false; return true; }
+    vc.setCaptureTime(${CLOUD_TIME_S}, true);
+    Object.assign(vc.__pin, { held: true, left: ${CLOUD_FRAMES} });
+    return false;
   })()`;
+}
+
+/** The pinned layer held (its frames traced), or no layer. */
+function cloudsHeld() {
+  const vc = window.__DEBUG.scene.userData.volumetricClouds;
+  return !vc || vc.frozen === true;
+}
+
+/** The grass and the ground litter with no cell left to build near the camera (page side). */
+function groundSettled() {
+  const W = window.__DEBUG.world, g = W?._tallGrass?.getState?.(), l = W?._litter?.getState?.();
+  return (!g || !g.enabled || (!g.near.pending && !g.far.pending)) && (!l || !l.pending);
 }
 
 /** An absolute pose (`resolved: true` keeps the y values as given; otherwise they are heights over the ground). */
@@ -239,7 +273,7 @@ function externalPoseScript(pose) {
     const resolved = ${pose.resolved ? JSON.stringify({ cam: pose.cam, at: pose.at, fov: pose.fov })
     : `resolveGroundPose(${JSON.stringify({ cam: pose.cam, at: pose.at })}, (x, z) => hf.getHeightAt(x, z), 511, ${pose.fov})`};
     D.rig.setExternalPose(new V(...resolved.cam), new V(...resolved.at), resolved.fov);
-    ${stillClouds()};
+    ${pinClouds(true)};
     D.world.update(0, D.camera.position, D.camera.getWorldDirection(new V()), null);
     D.lighting.updateFrustums();
     D.lighting.update(true);
@@ -251,7 +285,7 @@ function chasePoseScript(yaw) {
   return `(() => {
     const D = window.__DEBUG, V = D.camera.position.constructor;
     D.rig.snapArcade(2, ${yaw}, -0.10);
-    ${stillClouds()};
+    ${pinClouds(true)};
     D.world.update(0, D.camera.position, D.camera.getWorldDirection(new V()), null);
     D.lighting.updateFrustums();
     D.lighting.update(true);
@@ -474,7 +508,14 @@ async function shootMap(entry, options, frames) {
   const poses = await planPoses(page, stage, options.poses);
   const receipt = { player: stage.player, allies: stage.allies.length, poses: {}, preset: null };
   receipt.preset = await page.evaluate(() => window.__DEBUG.quality?.preset ?? window.__DEBUG.preset ?? null).catch(() => null);
-  for (const pose of poses) {
+  /** The pinned sky traced and held, or the pose fails (48 frames: a loaded machine draws a few a second). */
+  const holdClouds = async (what) => {
+    await page.evaluate(pinClouds());
+    if (await page.waitForFunction(cloudsHeld, { timeout: 180_000, polling: 250 }).then(() => true, () => false)) return;
+    const left = await page.evaluate(() => window.__DEBUG.scene.userData.volumetricClouds?.__pin?.left ?? null);
+    throw new Error(`${mapId} ${what}: the cloud layer did not hold within 180 s (${left} of ${CLOUD_FRAMES} frames left)`);
+  };
+  for (const [poseIndex, pose] of poses.entries()) {
     if (pose.kind === 'spot' && !(await visibleSpotPose(page, pose))) {
       receipt.poses[pose.name] = { hidden: true, hull: pose.hull, tried: pose.tried };
       continue;
@@ -484,27 +525,27 @@ async function shootMap(entry, options, frames) {
       ? await page.evaluate(chasePoseScript(stage.player.yaw))
       : await page.evaluate(externalPoseScript(pose.pose));
     await sleep(900);
-    const settled = await page.waitForFunction(grassSettled, { timeout: 8000, polling: 250 }).then(() => true, () => false);
+    const settled = await page.waitForFunction(groundSettled, { timeout: 30000, polling: 250 }).then(() => true, () => false);
     await sleep(400);
-    const shots = { grassSettled: settled };
-    for (const variant of options.variants) {
+    const order = poseIndex % 2 ? [...options.variants].reverse() : options.variants;
+    const shots = { groundSettled: settled, order, clouds: { timeS: CLOUD_TIME_S, frames: CLOUD_FRAMES } };
+    for (const variant of order) {
       const pv = parseVariant(variant);
       const n = await page.evaluate(pageSetUniforms, pv.sets);
       const hidden = await page.evaluate(pageHideDecals, pv.hide);
       // (ab3, Steinburg: the clouds and their shadows moved between a pose's variants, a global difference the ground
       // change did not make) the clouds pinned again before every variant's frame
-      await page.evaluate(stillClouds());
-      await sleep(400);
       const tag = variant.replace(/[^A-Za-z0-9.=-]+/g, '_');
       if (pose.kind === 'spot') {
         for (const [suffix, show] of [['hull', true], ['bare', false]]) {
           await page.evaluate(pageVehicles, { keepId: pose.hull.id, show });
-          await sleep(500);
+          await holdClouds(`${pose.name} ${variant} ${suffix}`);
           const file = path.join(frames, `${mapId}-${pose.name}-${suffix}-${tag}.png`);
           await page.screenshot({ path: file, type: 'png' });
           shots[`${variant}:${suffix}`] = { file: path.basename(file), materials: n, decalsHidden: hidden };
         }
       } else {
+        await holdClouds(`${pose.name} ${variant}`);
         const file = path.join(frames, `${mapId}-${pose.name}-${tag}.png`);
         await page.screenshot({ path: file, type: 'png' });
         shots[variant] = { file: path.basename(file), materials: n, decalsHidden: hidden };

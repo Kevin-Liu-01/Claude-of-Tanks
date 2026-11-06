@@ -176,7 +176,8 @@ assert.ok(GROUND_SURFACE_GLSL.includes('* smoothstep(0.04, 0.22, saturate(dot(no
 // rubble and slag (a worn ground of cinder is the rail yard's, drawn by the works floor over its yard: its map's town
 // floor is slag too)
 const MACRO_LAW = {
-  open: { 1: 'uGsOpen.x > 0.5 && uGsOpen.x < 2.5', 2: 'step(1.5, uGsOpen.x)', 3: 'uGsOpen.x > 2.5 && uGsOpen.x < 3.5' },
+  // (c11: a class with no mosaic of the table's, code 0, has the bare grounds' lag and crust)
+  open: { 0: 'if (uGsOpen.x < 0.5 && uGsNear.w > 0.0) {', 1: 'uGsOpen.x > 0.5 && uGsOpen.x < 2.5', 2: 'step(1.5, uGsOpen.x)', 3: 'uGsOpen.x > 2.5 && uGsOpen.x < 3.5' },
   worn: { 3: 'uGsWorn.x > 2.5 && uGsWorn.x < 3.5', 6: 'uGsTown.x > 5.5' },
   town: { 4: 'if (uGsTown.x < 4.5)', 5: 'if (uGsTown.x > 4.5)', 6: 'uGsTown.x > 5.5' },
 };
@@ -184,7 +185,7 @@ const lawText = GROUND_SURFACE_GLSL + GROUND_SURFACE_WORKS_GLSL;
 for (const mapId of MAP_IDS) {
   const u = groundSurfaceUniformValues(mapId);
   for (const [side, code] of [['open', u.open[0]], ['worn', u.worn[0]], ['town', u.town[0]]]) {
-    if (!code) continue;
+    if (!code && side !== 'open') continue;
     const gate = MACRO_LAW[side][code];
     assert.ok(gate && lawText.includes(gate), `${mapId}: the ${side} ground's macro code ${code} has its law in the chunks`);
     if (side === 'worn' && code === 6) assert.equal(u.town[0], 6, `${mapId}: a cinder worn ground stands under a slag town floor`);
