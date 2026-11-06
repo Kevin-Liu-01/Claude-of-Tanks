@@ -334,6 +334,9 @@ the material invariant behind the band. `tank:release:check` runs it on the rele
 qualities) takes about 25 minutes in one process, so split it across processes for a fleet sweep.
 
 Standalone probes run by hand (each is its owning lane's reusable rig; none is in `npm test`):
+- `node tools/building-style-shots.mjs --out=<dir> --jobs=<jobs.json> [--tag=v1]` — every map's buildings at the battle
+  camera (chase, chase2, long; desktop or phone), staged identically per build with the clouds pinned (one capture time,
+  drift held), through the capture lock and resumable: the buildings lane's blind A/B pairs (buildings-270).
 - `node tools/civic-census.mjs [--out=<file.jsonl>] [mapId…]` — read-only, from each map's collision shard and config:
   its town pads, the legacy kerb pass replayed, and whether the map needs the civic-area or pathway kit (maps lane).
 - `node tools/click-timeline.mjs --base=<label>=<url> --out=<dir> [--paths=all|<id>,…] [--profile=desktop|phone]`, then
