@@ -2457,7 +2457,12 @@ export function createStructureFracture(o: StructureFractureOptions): StructureF
     liveBodies() { return bodies.size; },
     shiftTime(delta) {
       for (const r of releasing) r.at += delta;
-      for (const live of lives.values()) { live.touchedAt += delta; live.watchedAt += delta; live.mergedAt += delta; }
+      for (const live of lives.values()) {
+        live.touchedAt += delta; live.watchedAt += delta; live.mergedAt += delta;
+        // (round 3 B5, the census's find) the last strike's time, which debounces the next one near it: left behind, a
+        // Studio seek back to 0 refused every strike within half a metre of the last until the clock caught up
+        if (live.lastAt > -1e8) live.lastAt += delta;
+      }
       lastUpdateS += delta;
       if (lastSoundS >= 0) lastSoundS += delta;
     },

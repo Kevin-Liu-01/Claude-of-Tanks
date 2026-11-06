@@ -622,8 +622,12 @@ export function createMissileTrails(light: SceneLightUniforms, depth: SceneDepth
     shiftTime(delta) {
       for (let i = 0; i < N; i++) {
         const o = i * STRIDE;
-        if (data[o + 3] < -1e8) continue;
-        data[o + 3] += delta; data[o + 7] += delta; data[o + 19] += delta; data[o + 23] += delta;
+        // (round 3 B5) each of a segment's four times by itself: a cleared segment (A's time the -1e9 mark) kept B's and
+        // its neighbours' at their pre-rebase values
+        if (data[o + 3] > -1e8) data[o + 3] += delta;
+        if (data[o + 7] > -1e8) data[o + 7] += delta;
+        if (data[o + 19] > -1e8) data[o + 19] += delta;
+        if (data[o + 23] > -1e8) data[o + 23] += delta;
       }
       for (let i = 0; i < TRAIL_SLOTS; i++) { last[i * 6 + 3] += delta; newest[i] += delta; }
       buf.addUpdateRange(0, N * STRIDE);

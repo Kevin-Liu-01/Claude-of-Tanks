@@ -1076,7 +1076,10 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/fx/flipbookOrientation.selftest.mjs',
     'src/fx/clock.selftest.mjs',
     'src/fx/clockRebase.selftest.mjs', // 2026-11-02 audit R7: one registry of fx-clock shifts; embers, fracture holds and pieces keep their time
-    'src/fx/fxClockStampCensus.selftest.mjs', // 2026-11-02 audit U33/Q15 (round 2): a rebase leaves no fx-clock stamp the runtime holds (by census, no list)
+    // 2026-11-02 audit U33/Q15 (round 2): a rebase leaves no fx-clock stamp the runtime holds (by census, no list); (round
+    // 3 B5) its scenario drives the drones, the gunship, the auxiliary systems, wires, a house's stages and the composer,
+    // and a clock read it does not reach fails it past a ratchet
+    'src/fx/fxClockStampCensus.selftest.mjs',
     // 2026-10-10 (physics lane, for the destruction core's natural collapses): the presentation pool of falling pieces.
     'src/fx/debrisPhysics.selftest.mjs',
     'src/gallery/chunkRecovery.selftest.mjs',
@@ -1699,6 +1702,7 @@ export const SELFTEST_SUITES = Object.freeze({
     // and presentations, facts before the graph, the lazy carry)
     'src/audio/battleMode.selftest.mjs',
     // 2026-11-02 audit Q16 (round 2): sfx-smoke's synthetic deaths, read from the tool, revive first and are heard once a life
+    // (round 3 B9: the tool's own scene loop and volley run on the real engine, cut from its source)
     'src/audio/sfxSmokeDeaths.selftest.mjs',
     // 2026-11-02 audit F11: under the battle loader only its bed (the director's scene goes with the teardown's loops; the
     // battle's ambience intent is per battle)
@@ -2135,7 +2139,9 @@ export const SELFTEST_SUITES = Object.freeze({
     // 2026-10-23 (aim-focus 243): refused Settings relocks never latch cursor aim; a menu click is never an aim point
     'src/game/inputPointerLockFocus.selftest.mjs',
     'src/game/playerBattleActions.selftest.mjs',
-    'src/game/atgmToggle.selftest.mjs', // 2026-11-02 audit F8: Q's ATGM toggle is the game's, not the HUD tile's
+    // 2026-11-02 audit F8: Q's ATGM toggle is the game's, not the HUD tile's (round 3 B9: the pad's LB through the sim's own
+    // activateGuidedMissile)
+    'src/game/atgmToggle.selftest.mjs',
     'src/game/battleKeyActions.selftest.mjs',
     // 2026-10-25 (owner): one vehicle-action table, each action on its own key and in one order on every vehicle
     'src/game/vehicleActions.selftest.mjs',
@@ -2824,6 +2830,9 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/ui/battleInputOwner.selftest.mjs', // 2026-11-02 audit F4: one battle input owner (presentation > menu > veil > play)
     // 2026-11-02 audit IR15 (round 2): the kill-cam replay's own flag is the one screen fact the input owner reads
     'src/game/killcamScreen.selftest.mjs',
+    // 2026-11-02 audit A9 (round 3): a replay that throws while built, in onDone or in a restore still clears its flag,
+    // emits killcam:done (the input owner's edge) and lifts its fade; the real controller and the real input owner
+    'src/game/killcamReplayLifecycle.selftest.mjs',
     'src/ui/battleReportGate.selftest.mjs', // 2026-11-02 audit F4: the report gate holds for every presentation, decides again
     'src/ui/battleReportGateHud.selftest.mjs', // 2026-11-02 audit F4: shotInfo's report gate through the real HUD (replay, stale decision)
     'src/ui/hudMagazine.selftest.mjs',

@@ -2223,16 +2223,46 @@ function* createFxSteps(
 
   // destruction-fx lane: shellId -> the round's munition class and charge (fed by shell:fired, read by its impact)
   interface ShellMunition { munition: MunitionClass; chargeKg: number; caliberMm: number }
+  /** The records of rounds in flight: a round's record leaves here at its first hull event or at its expiry. */
   const shellMunitions = new Map<ShellId, ShellMunition>();
+  /**
+   * (round 3 B4) The records of rounds that met a hull. A hull hit usually ends its round with no expiry (a kinetic one
+   * always), but a kinetic round may carry through, an HE round's expiry may land after its hull event, and its pending
+   * hull events read the class at the next update: kept here, apart, they never crowd a round still in flight. (They had
+   * waited in shellMunitions for drop-oldest at 256: a sustained fight held it at its cap, and a long-flight round, a
+   * smoke round, a howitzer's, a rocket, lost its class to 256 later hull hits, its expiry bursting as HE by its type.)
+   */
+  const hullMetMunitions = new Map<ShellId, ShellMunition>();
   const _munShell = { type: '', caliberMm: 0, name: '', guided: false as boolean | undefined, tracer: undefined as string | undefined,
     blastRadiusM: undefined as number | undefined, launcherTubes: 0 };
-  /** The fired records kept at most (a hull's kinetic hit ends its round with no expiry and leaves its record): an
-   *  overflow drops the oldest. (Round 2 U31 review: the map was cleared past 96, so a heavy fight's machine-gun rounds
-   *  dropped the class of every round in flight, and a WP smoke round's expiry read as an HE burst by its type.) */
+  /** The records each map keeps at most: an overflow drops the oldest. (Round 2 U31 review: the map was cleared past 96,
+   *  so a heavy fight's machine-gun rounds dropped the class of every round in flight, and a WP smoke round's expiry read
+   *  as an HE burst by its type.) */
   const SHELL_RECORDS_MAX = 256;
+  function keepNewest(map: Map<ShellId, ShellMunition>, id: ShellId, record: ShellMunition): void {
+    map.delete(id);
+    if (map.size >= SHELL_RECORDS_MAX) map.delete(map.keys().next().value as ShellId);
+    map.set(id, record);
+  }
+  /** A round's record wherever it is (in flight, or since its first hull event). */
+  function munitionOf(id: ShellId): ShellMunition | null {
+    return shellMunitions.get(id) ?? hullMetMunitions.get(id) ?? null;
+  }
+  /** The round's last event: its record goes. */
+  function forgetMunition(id: ShellId): void {
+    shellMunitions.delete(id);
+    hullMetMunitions.delete(id);
+  }
+  /** (round 3 B4) A round met a hull (any hull event but a ricochet, which flies on): its record leaves the rounds in
+   *  flight for the hull-met records, where its later events still read it. */
+  function munitionMetHull(id: ShellId): void {
+    const record = shellMunitions.get(id);
+    if (!record) return;
+    shellMunitions.delete(id);
+    keepNewest(hullMetMunitions, id, record);
+  }
   function rememberMunition(e: ShellFiredEvent): void {
-    shellMunitions.delete(e.shellId);
-    if (shellMunitions.size >= SHELL_RECORDS_MAX) shellMunitions.delete(shellMunitions.keys().next().value as ShellId);
+    hullMetMunitions.delete(e.shellId);
     let munition = e.munition;
     let chargeKg = e.chargeKg;
     if (!munition || !Number.isFinite(chargeKg)) {
@@ -2242,7 +2272,7 @@ function* createFxSteps(
       munition = munition ?? munitionClassForShell(_munShell);
       chargeKg = munitionChargeKg(_munShell, munition);
     }
-    shellMunitions.set(e.shellId, { munition, chargeKg: chargeKg as number, caliberMm: e.caliberMm });
+    keepNewest(shellMunitions, e.shellId, { munition, chargeKg: chargeKg as number, caliberMm: e.caliberMm });
   }
   /**
    * The class of a shell ending with no fired record: its own type and calibre when the event carries them (the solo
@@ -2448,7 +2478,7 @@ function* createFxSteps(
       // (round 2 U31 review) a round its fired record names uncharged (WP smoke: HE class in the sim, so its hull events
       // come) bursts nowhere (sim/destructionEvents.ts: a screen, never a blast): each hull it reaches takes fragments
       // at once, with no expiry to wait for and no burst to note (its expiry strikes the ground as its own)
-      const known = id != null ? shellMunitions.get(id) : undefined;
+      const known = id != null ? munitionOf(id) : null;
       if (known && !(isExplosive(known.munition) && known.chargeKg > 0)) {
         fragmentStrike(blast, r.x, r.y, r.z, r.nx, r.ny, r.nz, Math.min(0, r.at - now));
         continue;
@@ -2469,7 +2499,7 @@ function* createFxSteps(
       const info = known ?? heByCaliber(r.caliberMm);
       // (round 2 U31 review) a round with its expiry still to come keeps its record for it: the late expiry's mark (the
       // ground's, kept since U31) is its own class's, not a guess from its type (an L31 HESH, typed HE, left an HE crater)
-      if (id != null && !r.expiryDue) shellMunitions.delete(id);
+      if (id != null && !r.expiryDue) forgetMunition(id);
       const gy = groundY(r.x, r.z);
       // (ac130-fx-228 r3) a heavy charge (the gunship's howitzer shell, a missile's warhead) on a roof still throws the
       // ground's earth: it reaches the ground from a turret's top, a light charge from a hull's side only
@@ -6969,15 +6999,18 @@ function* createFxSteps(
         }
         // A terminal ERA absorb already received its exact activation above.
         // Legacy payloads still fall through to their ordinary `era` impact.
+        // (round 3 B4) a round that met a hull leaves the records of rounds in flight (a kinetic hit has no expiry to take
+        // its record; it waited for drop-oldest, and a sustained fight crowded a long-flight round's class out)
+        if (e.shellId != null && e.kind !== 'ricochet') munitionMetHull(e.shellId);
         // destruction-fx lane: an HE round's hull events resolve to one burst at the next update (queueHeHit)
         if ((e.kind === 'he_pen' || e.kind === 'he_splash') && queueHeHit(e, directHull)) return;
         if (e.kind !== 'era' || !eraActivations.length) {
           fx.impact(e.kind, _v3, _v4, e.caliberMm);
         }
         // a shaped charge (HEAT, an ATGM, a drone's warhead) detonates on the plate whatever its jet then does
-        const info = e.shellId != null ? shellMunitions.get(e.shellId) : null;
+        const info = e.shellId != null ? munitionOf(e.shellId) : null;
         if (blast && info && (info.munition === 'heat' || info.munition === 'atgm' || info.munition === 'drone_fpv')) {
-          shellMunitions.delete(e.shellId as ShellId);
+          forgetMunition(e.shellId as ShellId);
           plateBurst(blast, { x: e.pos[0], y: e.pos[1], z: e.pos[2], nx: e.normal[0], ny: e.normal[1], nz: e.normal[2],
             munition: info.munition, chargeKg: Math.max(0.3, info.chargeKg * 0.5), ground: null });
         }
@@ -6990,7 +7023,7 @@ function* createFxSteps(
         _v4.set(e.nx ?? 0, e.ny ?? 1, e.nz ?? 0);
         if (_v4.lengthSq() < 1e-6) _v4.copy(_UP);
         else _v4.normalize();
-        const info = e.shellId != null ? shellMunitions.get(e.shellId) : null;
+        const info = e.shellId != null ? munitionOf(e.shellId) : null;
         apsIntercept(_v3, _v4, !!info && isExplosive(info.munition) && info.chargeKg > 0);
       });
       onFxEvent(bus, 'shell:expired', (e) => {
@@ -7007,8 +7040,8 @@ function* createFxSteps(
         // report hitTerrain=false but still carry pos.
         // destruction-fx lane: the round's class and charge (the event's own, else its fired record, else HE by
         // calibre for the Studio's stand-in blasts), and the direction it arrived from (its last swept point)
-        let info = shellMunitions.get(e.shellId) ?? null;
-        shellMunitions.delete(e.shellId);
+        let info = munitionOf(e.shellId);
+        forgetMunition(e.shellId);
         if (e.munition && Number.isFinite(e.chargeKg)) {
           info = { munition: e.munition, chargeKg: e.chargeKg as number, caliberMm: e.caliberMm || info?.caliberMm || 76 };
         }
@@ -7942,6 +7975,7 @@ function* createFxSteps(
       hullBlast.armed = false;
       wreckLit = null; // (2026-11-02 audit F10) never a column of the last battle
       shellMunitions.clear();
+      hullMetMunitions.clear();
       lastTickS = particles.getTime();
       // fresh battle — arm the flyby exhaust start-up burst (atmospherics r2, wave 311: not for a Studio scene, whose hulls
       // are already running: its cough read as the smoke launch "bursting into dark brown-black smoke")

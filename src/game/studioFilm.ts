@@ -261,37 +261,58 @@ export function createStudioFilm(ports: StudioFilmPorts) {
       post.composer.insertPass(pass, at + 1);
       lastFov = camera.fov;
     } catch (error) {
-      leave();
+      leaveAfterFailure();
       throw error;
     }
   }
 
+  /** (round 3 B3) leave after a failed step: the step's own error is the one reported, and leave() has given every hold
+   *  back even when it threw too. */
+  function leaveAfterFailure(): void {
+    try { leave(); } catch (leaveError) { console.error('[studio film] leaving after a failure also threw', leaveError); }
+  }
+
   function leave(): void {
-    if (pass) {
-      post.composer.removePass(pass);
-      pass.dispose();
-      pass = null;
+    // (round 3 B3) every step runs even when an earlier one throws (a lost context's resize, a pass that will not
+    // dispose): the film's governor and temporal-AA holds and the film mode are always given back, never kept for the
+    // page. The first error is rethrown after the last step.
+    let failure: unknown = null;
+    const step = (run: () => void): void => {
+      try { run(); } catch (error) { failure ??= error; }
+    };
+    const filmPass = pass;
+    pass = null;
+    if (filmPass) {
+      step(() => { post.composer.removePass(filmPass); });
+      step(() => { filmPass.dispose(); });
     }
-    depthProbe?.dispose();
+    const probe = depthProbe;
     depthProbe = null;
+    step(() => { probe?.dispose(); });
     const state = saved;
     saved = null;
     plan = null;
     info = null;
     tailEnabled.length = 0;
-    if (!state) { ports.setFilmMode(false); return; }
-    post.lensFlare.fixedDt = state.flareDt;
-    state.temporalHold.release();
-    renderer.setPixelRatio(state.pixelRatio);
-    renderer.setSize(state.width, state.height, false);
-    camera.aspect = state.aspect;
-    camera.updateProjectionMatrix();
-    post.setSize(state.width, state.height);
-    post.pinDynScale(null);
-    state.adaptiveHold.release();
-    lighting.updateFrustums();
-    lighting.update(true);
-    ports.setFilmMode(false);
+    if (state) {
+      post.lensFlare.fixedDt = state.flareDt;
+      step(() => { state.temporalHold.release(); });
+      step(() => {
+        renderer.setPixelRatio(state.pixelRatio);
+        renderer.setSize(state.width, state.height, false);
+        camera.aspect = state.aspect;
+        camera.updateProjectionMatrix();
+        post.setSize(state.width, state.height);
+      });
+      step(() => { post.pinDynScale(null); });
+      step(() => { state.adaptiveHold.release(); });
+      step(() => {
+        lighting.updateFrustums();
+        lighting.update(true);
+      });
+    }
+    step(() => { ports.setFilmMode(false); });
+    if (failure !== null) throw failure;
   }
 
   /** Passes after the accumulation point stay off while samples accumulate. */
@@ -443,7 +464,7 @@ export function createStudioFilm(ports: StudioFilmPorts) {
         };
         return info;
       } catch (error) {
-        leave();
+        leaveAfterFailure();
         throw error;
       }
     },
@@ -518,6 +539,7 @@ export function createStudioFilm(ports: StudioFilmPorts) {
       const centerMs = ports.clockMs();
       let count = samples;
       enter(width, height);
+      let still: FilmStill;
       try {
         if (moving) {
           // Film mode is on, so the probe sees the same cue attack and shake scale as the render.
@@ -556,12 +578,25 @@ export function createStudioFilm(ports: StudioFilmPorts) {
         context.imageSmoothingEnabled = true;
         context.imageSmoothingQuality = 'high';
         context.drawImage(renderer.domElement, 0, 0, output.width, output.height);
-        return { canvas: output, width: output.width, height: output.height, samples: count, exposureMs: moving ? exposureMs : 0 };
-      } finally {
-        leave();
-        // An exposure moved the timeline across its shutter: put the playhead back.
-        if (moving) ports.seek(centerMs);
+        still = { canvas: output, width: output.width, height: output.height, samples: count, exposureMs: moving ? exposureMs : 0 };
+      } catch (error) {
+        // (round 3 B3, review r1) the still's own error is the one that surfaces: leave() gives every hold back even when
+        // it throws too (logged), and the playhead still goes back
+        leaveAfterFailure();
+        if (moving) {
+          try { ports.seek(centerMs); } catch (seekError) { console.error('[studio film] putting the playhead back also threw', seekError); }
+        }
+        throw error;
       }
+      // An exposure moved the timeline across its shutter: put the playhead back, after a leave() that threw too (the
+      // first error is the one rethrown).
+      let failure: unknown = null;
+      try { leave(); } catch (error) { failure = error; }
+      if (moving) {
+        try { ports.seek(centerMs); } catch (error) { failure ??= error; }
+      }
+      if (failure !== null) throw failure;
+      return still;
     },
   };
 }

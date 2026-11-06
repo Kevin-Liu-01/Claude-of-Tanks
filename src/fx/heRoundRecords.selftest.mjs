@@ -175,6 +175,49 @@ const run = (script) => { fx.resetAll(); frames(2); const shellId = id++; fired(
   };
   const quietSmoke = smokeEnd(0), crowdedSmoke = smokeEnd(120);
   assert.ok(near(crowdedSmoke, quietSmoke), `a smoke round's class outlasts 120 rounds fired in its flight (${crowdedSmoke} bodies at its point vs ${quietSmoke}; an HE burst by its type draws ~60)`);
+  // (round 3 B4) a hull's kinetic hit ends its round with no expiry: its fired record leaves the records of rounds in
+  // flight (it waited for drop-oldest at 256, so a sustained fight held the map at its cap and a long-flight round
+  // fired before 256 such hits lost its class, its expiry bursting as HE by its type)
+  const hullFight = (hits) => {
+    fx.resetAll(); frames(2);
+    const s = id++;
+    fireAt(s, smoke);
+    for (let k = 0; k < hits; k++) {
+      const round = 800000 + id * 1000 + k;
+      emit('shell:fired', { shellId: round, shooterId: 'ac', pos: [40, 2, 40], muzzlePos: [40, 2, 40], dir: [1, 0, 0],
+        shellType: 'APFSDS', caliberMm: 30, shellName: '30 mm APFSDS-T' });
+      emit('shell:hit', { shellId: round, attackerId: 'ac', targetId: 't2', kind: k % 3 ? 'nonpen' : 'pen', damage: 4,
+        pos: [44, 1, 40], normal: [-1, 0, 0], caliberMm: 30, shellType: 'APFSDS', destroyed: false });
+    }
+    frames(1);
+    groundEnd(s, smoke); frames(6);
+    return bodiesHere();
+  };
+  const foughtSmoke = hullFight(300);
+  assert.ok(near(foughtSmoke, quietSmoke),
+    `a smoke round's class outlasts 300 kinetic hull hits in its flight (${foughtSmoke} bodies at its point vs ${quietSmoke})`);
+  // a kinetic round that carries through a hull (sim/damage.ts resolveCarryThrough) and ends on the ground still reads its
+  // own class there: a 30 mm HEI typed AP is an autocannon HE round by its name, an AP strike by its type alone
+  const heiEnd = (throughHull) => {
+    fx.resetAll(); frames(2);
+    const s = id++;
+    emit('shell:fired', { shellId: s, shooterId: 'ac', pos: [0, 2, -40], muzzlePos: [0, 2, -40], dir: [0, 0, 1],
+      shellType: 'AP', caliberMm: 30, shellName: '30 mm HEI-T' });
+    frames(1);
+    const before = fires();
+    if (throughHull) {
+      emit('shell:hit', { shellId: s, attackerId: 'ac', targetId: 't3', kind: 'pen', damage: 6, pos: [0, 1, -10],
+        normal: [0, 0, -1], caliberMm: 30, shellType: 'AP', destroyed: false });
+    }
+    frames(1);
+    const atHull = fires() - before;
+    emit('shell:expired', { shellId: s, pos: [0, 0, 0], hitTerrain: true, hitKind: 'terrain', shellType: 'AP', caliberMm: 30 });
+    frames(6);
+    return fires() - before - atHull;
+  };
+  const heiGround = heiEnd(false);
+  assert.ok(heiGround > 0, `control: a 30 mm HEI's ground strike draws its burst (${heiGround} fire puffs)`);
+  assert.equal(heiEnd(true), heiGround, 'a 30 mm HEI that carried through a hull bursts on the ground by its own class');
   // a late expiry's mark is its round's class: an L31 HESH's scorch, as on time, not an HE crater guessed from its type
   const kindsOf = (late) => {
     fx.resetAll(); frames(2);

@@ -2012,22 +2012,28 @@ export function createKillCam(deps: KillcamDeps) {
       const snap = selection ? selection.snap : null;
       const kind: PlaybackKind = selection ? selection.kind : 'death';
       const xrayOnly = !!selection && selection.xrayOnly;
-      if (!snap || !snap.targetEnt || !snap.targetEnt.visual) {
-        // NO-REPLAY DEATH (killcam_endscreen r1): the player died without a
-        // captured lethal chain (no hit ever recorded — pure ram/edge cases).
-        // The caller falls back to its death cam immediately; the spectate
-        // handover still applies when the battle continues. Deferred a tick
-        // so the caller's fallback (rig.startDeathCam) runs first — the
-        // controller's rig.startSpectate then supersedes it exactly like the
-        // replay exit path. maybeStart() self-gates on result/phase/allies.
-        if (result === 'defeat') {
-          cancelSpectateHandoff();
-          spectateHandoffTimer = setTimeout(() => { spectateHandoffTimer = null; spectate.maybeStart(); }, 80);
+      if (snap && snap.targetEnt && snap.targetEnt.visual) {
+        try {
+          begin(snap, kind, onDone, xrayOnly, !!(opts && opts.freshKill));
+          return true;
+        } catch (error) {
+          // (round 3 A9) a replay that failed to build has already left the screen (begin's teardown); the battle
+          // flow takes the no-replay path below, never the throw
+          console.error('[killcam] the replay failed to start; the no-replay path runs', error);
         }
-        return false;
       }
-      begin(snap, kind, onDone, xrayOnly, !!(opts && opts.freshKill));
-      return true;
+      // NO-REPLAY DEATH (killcam_endscreen r1): the player died without a
+      // captured lethal chain (no hit ever recorded — pure ram/edge cases).
+      // The caller falls back to its death cam immediately; the spectate
+      // handover still applies when the battle continues. Deferred a tick
+      // so the caller's fallback (rig.startDeathCam) runs first — the
+      // controller's rig.startSpectate then supersedes it exactly like the
+      // replay exit path. maybeStart() self-gates on result/phase/allies.
+      if (result === 'defeat') {
+        cancelSpectateHandoff();
+        spectateHandoffTimer = setTimeout(() => { spectateHandoffTimer = null; spectate.maybeStart(); }, 80);
+      }
+      return false;
     },
 
     /**
@@ -2693,16 +2699,30 @@ export function createKillCam(deps: KillcamDeps) {
     active = true;
     staged = false;
     lastBeginWallMs = performance.now();
-    if (busRef) busRef.emit('killcam:begin', { kind });
-    pb = createPlaybackBundle(snap, kind, onDone);
-    const playerKill = configureReplayActors(snap, kind, xrayOnly);
-    const wreckHold = prepareReplayVictim(freshKill);
-    populateReplayDom(d, playerKill);
-    openReplayOverlay(d);
-    pb.xcam = computeXrayCam(snap);
-    configureReplayFillLight();
-    announceAttacker(snap);
-    startReplayPhase(xrayOnly, wreckHold);
+    // (round 3 A9) begin() is the one setter of `active` and teardown() its one clearer: a replay that throws while it
+    // is built (a disposed visual, a camera rig gone) leaves the screen at once. teardown restores what was staged,
+    // clears the flag, pairs the begin edge with its done and runs no onDone (playForResult takes its no-replay path).
+    try {
+      // (round 3 A9, review r1) the begin edge is part of the build: a listener that throws (an input owner's
+      // subscriber, the kill-cam mix) leaves the screen as any failed build does, never with `active` stuck true
+      if (busRef) busRef.emit('killcam:begin', { kind });
+      pb = createPlaybackBundle(snap, kind, onDone);
+      const playerKill = configureReplayActors(snap, kind, xrayOnly);
+      const wreckHold = prepareReplayVictim(freshKill);
+      populateReplayDom(d, playerKill);
+      openReplayOverlay(d);
+      pb.xcam = computeXrayCam(snap);
+      configureReplayFillLight();
+      announceAttacker(snap);
+      startReplayPhase(xrayOnly, wreckHold);
+    } catch (error) {
+      try {
+        teardown(false);
+      } catch (teardownError) {
+        console.error('[killcam] releasing a replay that failed to build also threw', teardownError);
+      }
+      throw error;
+    }
   }
 
   /** (perf-245) the replay's far end: the attacker's muzzle (or hull), looking at the victim. */
@@ -5992,7 +6012,16 @@ export function createKillCam(deps: KillcamDeps) {
 
   function completeExit() {
     if (!active || !pb || pb.phase !== 'exit') return;
-    teardown(true); // scene restored + onDone + killcam:done, behind black
+    // (round 3 A9) the fade lifts however the hand-back went: a throw in a restore or in onDone never strands the black
+    // frame over the battle (with the replay already inactive, update()'s second driver no longer reaches here)
+    try {
+      teardown(true); // scene restored + onDone + killcam:done, behind black
+    } finally {
+      liftExitFade();
+    }
+  }
+
+  function liftExitFade(): void {
     const f2 = fadeEl;
     if (!f2) return;
     exitTimers.push(setTimeout(() => {
@@ -6074,9 +6103,18 @@ export function createKillCam(deps: KillcamDeps) {
     done: (() => void) | null,
     wasDeathView: boolean,
   ): void {
-    if (runCallback && done) done();
-    if (runCallback && wasDeathView) spectate.maybeStart();
-    if (busRef) busRef.emit('killcam:done', {});
+    // (round 3 A9) the done edge is emitted whatever the callbacks do: the input owner tells its listeners (the report
+    // gate) only on an edge, and a throw in onDone or the spectate handover dropped it, so the gate waited for its 16 s
+    // watchdog. It still comes after them, so the integration end-overlay exists when the report renders. Every step
+    // runs and the first error is rethrown after the edge (review r1: nested finallys kept the last one instead).
+    let failure: unknown = null;
+    const step = (run: () => void): void => {
+      try { run(); } catch (error) { failure ??= error; }
+    };
+    step(() => { if (runCallback && done) done(); });
+    step(() => { if (runCallback && wasDeathView) spectate.maybeStart(); });
+    step(() => { if (busRef) busRef.emit('killcam:done', {}); });
+    if (failure !== null) throw failure;
   }
 
   function teardown(runCallback: boolean): void {
@@ -6084,37 +6122,45 @@ export function createKillCam(deps: KillcamDeps) {
     window.removeEventListener('keydown', onReplayKey, true);
     window.removeEventListener('pointerdown', onReplayPointer, true);
     const replay = pb;
+    // (round 3 A9) every release step runs even when an earlier one throws (a disposed visual), and the transition below
+    // always happens: `active` clears and killcam:done is emitted. The first error is rethrown after it.
+    let failure: unknown = null;
+    const step = (run: () => void): void => {
+      try { run(); } catch (error) { failure ??= error; }
+    };
     if (replay) {
-      restoreReplayFx();
-      restoreGhostPresentation(replay);
-      // PRE-WRECK RESTAGE release: re-apply the wreck look the replay
-      // temporarily lifted (must run AFTER the ghost-material restore above —
-      // setDestroyed lazily captures current materials for the rematch
-      // restore, and it must capture the LIVE ones, never the ghost).
-      // Settled pose + cooled embers: by replay end the destruction is old.
-      // killcam r3: after an own-death FINALE the visual is ALREADY destroyed
-      // (the beat just wrecked it from t=0), so setDestroyed no-ops and the
-      // wreck hands back mid-arc with hot embers — which is the honest look
-      // for a tank the player watched detonate one second ago; the resumed
-      // live sync loop settles and cools it from there. The track/ERA
-      // re-application below runs on both paths.
-      restoreWreckPresentation(replay);
+      step(restoreReplayFx);
+      step(() => {
+        restoreGhostPresentation(replay);
+        // PRE-WRECK RESTAGE release: re-apply the wreck look the replay
+        // temporarily lifted (must run AFTER the ghost-material restore above —
+        // setDestroyed lazily captures current materials for the rematch
+        // restore, and it must capture the LIVE ones, never the ghost).
+        // Settled pose + cooled embers: by replay end the destruction is old.
+        // killcam r3: after an own-death FINALE the visual is ALREADY destroyed
+        // (the beat just wrecked it from t=0), so setDestroyed no-ops and the
+        // wreck hands back mid-arc with hot embers — which is the honest look
+        // for a tank the player watched detonate one second ago; the resumed
+        // live sync loop settles and cools it from there. The track/ERA
+        // re-application below runs on both paths.
+        restoreWreckPresentation(replay);
+      });
       // Release the temporary shot-time killer pose back to its authoritative
       // live state. Mid-battle death replays may hand control to spectate, so
       // leaving the shooter restaged would otherwise create a visual desync.
-      restoreAttackerPresentation(replay);
-      releaseReplayScene(replay);
+      step(() => restoreAttackerPresentation(replay));
+      step(() => releaseReplayScene(replay));
     }
     // Every transition class and the CSS HUD veil are stripped even if a
     // later cancel sees an already-inactive controller.
-    resetDomPresentation();
+    step(resetDomPresentation);
     const done = replay?.onDone ?? null;
     const wasDeathView = replay?.isDeathView ?? false;
     pb = null!;
     active = false;
     staged = false;
     // a replay staged with the Garage's lights up (shot tooling) gives its lights back to the Garage's set
-    showLightPool(deps.battleLightsActive?.() ?? true);
+    step(() => showLightPool(deps.battleLightsActive?.() ?? true));
     // ALLY SPECTATE (killcam_endscreen r1): after the DEATH replay hands the
     // screen back — battle still live, allies still standing — land in the
     // spectate chase instead of the static wreck orbit the integration
@@ -6124,7 +6170,12 @@ export function createKillCam(deps: KillcamDeps) {
     // so a buffered battle report can never be lost with the replay. Emitted
     // AFTER onDone so the integration end-overlay (.cot-end) already exists
     // when shotInfo's report renders and pins its footer to it.
-    publishReplayCompletion(runCallback, done, wasDeathView);
+    try {
+      publishReplayCompletion(runCallback, done, wasDeathView);
+    } catch (error) {
+      failure ??= error;
+    }
+    if (failure !== null) throw failure;
   }
 
   // ===========================================================================
