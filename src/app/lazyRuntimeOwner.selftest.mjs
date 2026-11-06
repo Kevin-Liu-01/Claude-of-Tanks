@@ -59,6 +59,26 @@ assert.throws(
   assert.equal(asks, 3);
   assert.equal(owner.state, 'ready');
 
+  // (round 4 F2) a lifecycle edge (a battle's covered entry) asks a failed runtime again now, whatever the backoff;
+  // `failures` tells a re-ask from a first ask
+  down = true;
+  let edgeAsks = 0;
+  const edge = createLazyRuntimeOwner(
+    async () => { edgeAsks += 1; if (down) throw new TypeError('Failed to fetch dynamically imported module: ./battleAtmosphereRuntime.ts'); return { lit: true }; },
+    (module) => module,
+    { now: () => clock },
+  );
+  await assert.rejects(edge.preload(), /dynamically imported module/);
+  await assert.rejects(edge.preload(), /dynamically imported module/);
+  assert.equal(edge.failures, 2);
+  clock += 500;
+  await assert.rejects(edge.preload());
+  assert.equal(edgeAsks, 2, 'a plain preload inside the backoff asks nothing');
+  down = false;
+  assert.deepEqual(await edge.preload({ backoff: false }), { lit: true }, 'an edge asks inside the backoff and loads');
+  assert.equal(edgeAsks, 3);
+  assert.equal(edge.failures, 0);
+
   // a factory that returns no runtime fails the load like its chunk
   const empty = createLazyRuntimeOwner(async () => ({}), () => null, { now: () => clock });
   await assert.rejects(empty.preload(), /returned no runtime/);

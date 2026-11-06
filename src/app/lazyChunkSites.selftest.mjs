@@ -124,8 +124,14 @@ const SITES = [
   ['src/ui/garageConsumables.ts', ["createLazyChunk(() => import('../vehicles/auxiliaryInventory.ts')", 'smokeChunk.load().then(undefined, () => undefined)'],
     [/\bsmokeLoad\s*\?\?=/]],
   // the light model's and the cloudscapes' memos rode only the battle atmosphere runtime's first acquisition, a lazy
-  // runtime owner that never loads again once ready: every prepare asks them again
-  ['src/engine/battleAtmosphereAccess.ts', ['await Promise.all([owner.preload(), loadGroundedLightModel(), loadCloudscapeLayers()])'], []],
+  // runtime owner that never loads again once ready: every prepare asks them again. (round 4 F2) A battle entry asks the
+  // runtime and both at once whatever the backoff a Studio drag raised (main.ts's entries declare it); a Studio apply
+  // keeps the backoff and never awaits a part's re-ask (battleAtmosphereEntryAsk.selftest.mjs)
+  ['src/engine/battleAtmosphereAccess.ts', ['owner.preload(entry ? AT_ONCE : undefined), askPart(groundedLightChunk, entry), askPart(cloudscapeChunk, entry),',
+    'return entry || part.failures === 0 ? request : undefined;'], [/owner\.preload\(\)/]],
+  ['src/main.ts', ["provingTime ? [provingTime] : battlePreferences.times, { entry: true });", 'await battleAtmosphere.prepare(seed, mapId, undefined, { entry: true });',
+    "await battleAtmosphere.prepare(0, currentWorld()?.mapId ?? game.mapId, ['day']);"],
+    [/battleAtmosphere\.prepare\(0, currentWorld\(\)\?\.mapId \?\? game\.mapId, \['day'\],/]],
   // (round 3 A4) and every prepare includes the Studio's, one per sun-dial or slider move, and a Studio sky applied for the
   // Moon asks its land mask per move: the three memos, cleared on failure, were asked again by every move, offline too.
   // Each is a chunk now; the light model's import rejects and keeps no memo (lightModelCore.ts rides two worker graphs

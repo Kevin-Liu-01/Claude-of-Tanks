@@ -242,8 +242,10 @@ await prepareNetwork({ meta: { weatherSeed: 0 } });
 currentMap = 'monsoon';
 await prepareNetwork({ meta: { weatherSeed: 1337 } });
 await prepareNetwork({ meta: {} });
-assert.deepEqual(calls, [[0, 'winter'], [1337, 'monsoon'], [undefined, 'monsoon']],
-  'actual network warm uses current acquired map, preserves seed0, and does not randomize a legacy snapshot');
+// (round 4 F2) a battle entry asks the atmosphere's chunks at once whatever the lazy-chunk backoff (`{ entry: true }`)
+const ENTRY = { entry: true };
+assert.deepEqual(calls, [[0, 'winter', undefined, ENTRY], [1337, 'monsoon', undefined, ENTRY], [undefined, 'monsoon', undefined, ENTRY]],
+  'actual network warm uses current acquired map, preserves seed0, and does not randomize a legacy snapshot; it is an entry');
 assert.deepEqual(frontlinePrepares, [[0, 'winter'], [1337, 'monsoon'], [undefined, 'monsoon']],
   'the frontline owner is prepared with the same seed and acquired map, after the weather owner');
 
@@ -258,8 +260,8 @@ const prepareSolo = mainCallback('prepareAtmosphere', {
 await prepareSolo();
 preferences.times = ['day', 'sunset', 'night'];
 await prepareSolo();
-assert.deepEqual(calls, [[3, 'winter', ['sunset']], [3, 'winter', ['day', 'sunset', 'night']]],
-  'actual solo launch reads the current preference for each battle; network keeps its shared seed');
+assert.deepEqual(calls, [[3, 'winter', ['sunset'], ENTRY], [3, 'winter', ['day', 'sunset', 'night'], ENTRY]],
+  'actual solo launch reads the current preference for each battle; network keeps its shared seed; both are entries');
 assert.deepEqual(frontlinePrepares, [[3, 'winter'], [3, 'winter']]);
 
 // Actual Garage activation precedes its setGarageSpots call on return. A late

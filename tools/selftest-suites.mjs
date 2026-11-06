@@ -1579,6 +1579,9 @@ export const SELFTEST_SUITES = Object.freeze({
     // 2026-11-02 audit R6 (round 2 U35): a failed light model or cloudscape chunk is asked again by the next battle;
     // (round 3 A4) under the lazy-chunk policy, never per Studio sun-dial move
     'src/engine/battleAtmosphereChunkReask.selftest.mjs',
+    // 2026-11-02 audit R6 (round 4 F2): a battle entry asks the light model, the cloudscapes and the atmosphere runtime at
+    // once whatever the backoff a Studio drag raised; a Studio light apply keeps the backoff and never awaits a stalled re-ask
+    'src/engine/battleAtmosphereEntryAsk.selftest.mjs',
     'tools/daynight-atmosphere-probe.selftest.mjs',
     'tools/night-window-census.selftest.mjs',
     'tools/night-fixture-census.selftest.mjs',

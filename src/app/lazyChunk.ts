@@ -17,7 +17,11 @@
  *   has passed (2, 4, 8 ... s, capped at the policy's maximum, one minute), never while the browser is offline, and at
  *   once when it is back online after a failure it saw offline. It never becomes terminal: a builder, a warm or a notice
  *   mends when the network does, as the fleet's loaders always did. Chrome 151 fails it again at once, Chrome 156 and
- *   Node load it, and a caller that asks every frame asks once a minute at most.
+ *   Node load it, and a caller that asks every frame asks once a minute at most. (round 4 F2) A caller that asks once
+ *   per lifecycle edge, never per frame, pointer move or slider step (a battle's covered entry), may ask past the backoff
+ *   (`load({ backoff: false })`): the backoff another caller's asks raised (a Studio drag through an outage raises it to
+ *   the minute's cap) then never decides what that edge gets. Offline and terminal still hold. `failures` tells a first
+ *   ask from a re-ask, so a caller that must not wait on a hung transfer can start a re-ask without awaiting it.
  *
  * The stylesheet rule holds per owner, not per page: Vite's preload keeps one `seen` map for the document, so a sheet that
  * failed under one owner is skipped, without a failure, by any other load that names it, and that load's chunk runs
@@ -60,8 +64,19 @@ export interface LazyChunkOptions {
   readonly onMissing?: (error: unknown) => void;
 }
 
+/** One ask's options (round 4 F2). */
+export interface LazyChunkLoadOptions {
+  /**
+   * false: a failure the policy asks again is asked again now, whatever its backoff (never a terminal one, never while
+   * offline). Only for a caller that asks once per lifecycle edge (a battle's covered entry), never per frame or move.
+   */
+  readonly backoff?: boolean;
+}
+
 export interface LazyChunk<T> {
   readonly state: LazyChunkState;
+  /** Failures in a row since the chunk last loaded: 0 until it first fails, so a request in flight above 0 is a re-ask. */
+  readonly failures: number;
   /** The loaded value once ready, else null. */
   readonly value: T | null;
   /** The kept failure while failed, else null. */
@@ -71,9 +86,9 @@ export interface LazyChunk<T> {
   /**
    * The chunk: the settled request once ready, the request in flight while loading, and after a failure either a new
    * ask (see the module comment) or the kept failure. The same promise until the state moves, and a handled one, so a
-   * caller may drop it or ask every frame.
+   * caller may drop it or ask every frame. `{ backoff: false }` asks a failure again now whatever the backoff.
    */
-  load(): Promise<T>;
+  load(options?: LazyChunkLoadOptions): Promise<T>;
 }
 
 /** Vite's preload could not add the chunk's stylesheet: asked again, the chunk would run unstyled. */
@@ -163,13 +178,16 @@ export function createLazyChunk<T>(load: () => PromiseLike<T> | T, options: Lazy
 
   return {
     get state() { return state; },
+    get failures() { return failures; },
     get value() { return value; },
     get error() { return error; },
     get terminal() { return terminal; },
-    load(): Promise<T> {
+    load(options?: LazyChunkLoadOptions): Promise<T> {
       if (state === 'idle') return ask();
       // ready, in flight, or a failure that stands: the same promise (a caller that asks every frame allocates nothing)
       if (state !== 'failed' || terminal || !online()) return request!;
+      // (round 4 F2) a lifecycle edge's ask: now, whatever the backoff other callers' asks raised
+      if (options?.backoff === false) return ask();
       // back online after a failure seen offline, or after one failure: at once; after n > 1 in a row, the backoff of
       // n - 1 (2, 4, 8 ... s), capped at the policy's maximum and never spent
       const wait = failedOffline || failures === 1 ? 0 : Math.min(policy.maxMs, policy.baseMs * 2 ** (failures - 2));

@@ -88,7 +88,10 @@ Moon's land mask (`earthLandMask.ts`) goes through `earthLandAccess.ts`, which
 `world/map.ts` awaits before the world exists. It, the grounded light model
 (`battleAtmosphereAccess.ts` `loadGroundedLightModel`) and the cloudscapes
 (`cloudPresets.ts`) are `app/lazyChunk.ts` chunks: the Studio asks them on every
-sun-dial move, and a failure is asked again only under the policy's backoff.
+sun-dial move, and a failure is asked again only under the policy's backoff. A
+battle's entry asks the light model, the cloudscapes and the atmosphere runtime
+at once whatever that backoff (`prepare(..., { entry: true })`); a Studio apply
+never awaits a part's re-ask.
 Keep each rate-capped far-cascade projection paired with the depth map rendered
 from that pose. Do not move its light fit on an unscheduled frame. Shadow visual
 changes must pass both the raw CSM motion comparison and composed temporal-AO

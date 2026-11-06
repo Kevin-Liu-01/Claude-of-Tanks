@@ -2484,9 +2484,10 @@ const soloBattleDeployment = createSoloBattleDeploymentAccess({
       await prepareEntryPanelMasks(panel, player.spec, player.visual, deferredPanelMasks);
     },
     prepareAtmosphere: async () => {
-      // the proving ground keeps its own light (sim/matchRuleset.ts PROVING_GROUND_RULES.timeOfDay)
+      // the proving ground keeps its own light (sim/matchRuleset.ts PROVING_GROUND_RULES.timeOfDay); (round 4 F2) the
+      // entry asks the atmosphere's chunks at once whatever the backoff a Studio drag raised
       const provingTime = game.ruleset?.provingGround?.timeOfDay;
-      await battleAtmosphere.prepare(game.battleCount, game.mapId, provingTime ? [provingTime] : battlePreferences.times);
+      await battleAtmosphere.prepare(game.battleCount, game.mapId, provingTime ? [provingTime] : battlePreferences.times, { entry: true });
       await frontline.prepare(game.battleCount, game.mapId);
       await mapAmbience.prepare(game.battleCount, game.mapId, battleAmbienceTime());
     },
@@ -3083,7 +3084,7 @@ function multiplayerAppPorts(): MultiplayerAppPorts {
           atmosphere: async (initial) => {
             const seed = typeof initial.meta?.weatherSeed === 'number' ? initial.meta.weatherSeed : undefined;
             const mapId = currentWorld()?.mapId ?? game.mapId;
-            await battleAtmosphere.prepare(seed, mapId);
+            await battleAtmosphere.prepare(seed, mapId, undefined, { entry: true }); // (round 4 F2) an entry asks at once
             await frontline.prepare(seed, mapId);
             await mapAmbience.prepare(seed, mapId, battleAmbienceTime());
           },
@@ -4216,7 +4217,7 @@ window.__SHOTS = {
   /** (2026-10-12, effects by time of day) a battle's own sunset or night preset over the staged view, as a battle at
    *  that hour applies it, so captures can judge the effects and the light together ('day' restores the day). */
   async battleTime(time: 'day' | 'sunset' | 'night') {
-    await battleAtmosphere.prepare(0, currentWorld()?.mapId ?? game.mapId, [time]);
+    await battleAtmosphere.prepare(0, currentWorld()?.mapId ?? game.mapId, [time], { entry: true });
     await mapAmbience.prepare(0, currentWorld()?.mapId ?? game.mapId, battleAmbienceTime());
     return battleAtmosphere.current?.weather?.timeOfDay ?? null;
   },

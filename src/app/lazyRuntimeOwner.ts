@@ -1,7 +1,10 @@
-import { createLazyChunk, type LazyChunkOptions, type LazyChunkState } from './lazyChunk.ts';
+import { createLazyChunk, type LazyChunkLoadOptions, type LazyChunkOptions, type LazyChunkState } from './lazyChunk.ts';
 
 interface LazyRuntimeOwner<Runtime> {
-  preload(): Promise<Runtime>;
+  /** The runtime (app/lazyChunk.ts load: `{ backoff: false }` for a lifecycle edge's ask, round 4 F2). */
+  preload(options?: LazyChunkLoadOptions): Promise<Runtime>;
+  /** Failures in a row since the runtime last loaded (app/lazyChunk.ts): a load in flight above 0 is a re-ask. */
+  readonly failures: number;
   readonly current: Runtime | null;
   /** The load's declared state (app/lazyChunk.ts): idle, loading, ready or failed. */
   readonly state: LazyChunkState;
@@ -37,7 +40,8 @@ export function createLazyRuntimeOwner<Module, Runtime>(
     }), options);
 
   return Object.freeze({
-    preload: () => chunk.load(),
+    preload: (options?: LazyChunkLoadOptions) => chunk.load(options),
+    get failures() { return chunk.failures; },
     get current() { return chunk.value; },
     get state() { return chunk.state; },
   });

@@ -349,8 +349,10 @@ type CloudscapeResolver = (legacy: CloudLayerPreset, sky: CloudLayerSkyInput, sc
 let cloudscape: CloudscapeResolver | null = null;
 // (round 3 A4) the cloudscape's chunk under the one lazy-chunk policy (app/lazyChunk.ts). Its memo was cleared on a
 // failure and asked again at once by the next call, and the battle atmosphere's prepare asks it on every call, which the
-// Studio makes once per sun-dial or slider move: after one failed transfer every move asked again, offline too
-const cloudscapeChunk = createLazyChunk((): Promise<void> => import('./cloudscapeLayer.ts').then((module) => {
+// Studio makes once per sun-dial or slider move: after one failed transfer every move asked again, offline too.
+// (round 4 F2) Exported for the battle atmosphere's prepare (battleAtmosphereAccess.ts), whose entry asks it at once
+// whatever the backoff and whose Studio applies never await its re-ask
+export const cloudscapeChunk = createLazyChunk((): Promise<void> => import('./cloudscapeLayer.ts').then((module) => {
   cloudscape = module.cloudscapeLayer({
     rules: CLOUD_LAYER_RULES, weather: CLOUD_WEATHER_RULES, regimes: CLOUDSCAPE_REGIMES, contrailMax: CLOUD_CONTRAIL_MAX,
     clamp, tintOf, hexToLinear, neutralWeather, cloudNightAmount, cloudTimeOfDay,
