@@ -242,6 +242,8 @@ function pinClouds(release = false) {
         const pin = vc.__pin;
         if (!pin.held) return live(renderer, camera, dt, ...rest);
         live(renderer, camera, 0, ...rest);
+        // (ab19 A/A, urban: the near blades swayed between two base frames) the grass's wind held with the sky
+        window.__DEBUG.world?._tallGrass?.setWindTime?.(0);
         if (pin.left > 0 && --pin.left === 0) vc.frozen = true;
       };
     }
