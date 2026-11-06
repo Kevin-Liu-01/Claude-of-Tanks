@@ -2034,15 +2034,15 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 27640,
-      "sha256": "6ed414a2d00d8cea9cf3628e7b051441a636c78b5eec4974c6dab357a431cbb9",
+      "bytes": 29046,
+      "sha256": "aa085b369207ab943d7cc3cfb4aab1d0aa2345c4ae0cfe9d49a4308d99a9d210",
       "thumbnail": {
         "file": "thumbs/t72b3_angle.webp",
         "width": 256,
         "height": 256,
         "mime": "image/webp",
-        "bytes": 11026,
-        "sha256": "20fbe6352f8abcedf12f379d2e4803e7aed4557bcfa1e112a4202971131612fb"
+        "bytes": 11766,
+        "sha256": "229667576dfb9143fbb0982be49ca1c7df1971bcc839cac6b146df073d8fb7c5"
       }
     },
     "top": {

@@ -121,11 +121,12 @@ function fitSourceWedges(spec: FleetTankSpec, id: string, wedgeDonor: FleetTankS
 
 function fitSourceArmor(spec: FleetTankSpec, donorDimensions: FleetDimensions): void {
   // (266) a plate measured on the donor's drawn build (`drawn`, the KF51 EVO's gun slot) does not fit this independent
-  // build: the variant takes back the template plate it replaced
+  // build: the variant takes back the template plate it replaced (267: so does a donor plate refitted to its own build,
+  // which carries its `template`, the KF51 EVO's vertical turret front)
   for (const plates of [spec.armor.hullPlates, spec.armor.turretPlates]) {
     for (let index = plates.length - 1; index >= 0; index--) {
       const plate = plates[index];
-      if (!plate.drawn) continue;
+      if (!plate.drawn && !plate.template) continue;
       if (plate.template) plates[index] = structuredClone(plate.template);
       else plates.splice(index, 1);
     }

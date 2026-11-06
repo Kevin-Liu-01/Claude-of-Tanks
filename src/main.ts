@@ -748,7 +748,7 @@ installServiceRecord(bus, {
   playerTeam: () => game.player?.team ?? null,
   teamOf: (id) => game.tankById.get(id)?.team ?? null,
   gameMode: () => game.gameMode,
-  watched: () => !!game.ruleset?.watch,
+  watched: () => !!game.ruleset?.watch || !!game.ruleset?.couch,
   clockS: () => game.timeS,
   playerHpFraction: () => {
     const combat = game.player?.combat;
@@ -1631,6 +1631,11 @@ const garage: MainGarageRuntime = await bootStage('ui', () => createGarage({
   // (round 3 B2, review r1) the press asks the entry before it announces: a refused one shows the way out, never a
   // battle start that does not follow (the pointer lock grabbed over a failed return's notice)
   refusesBattle: () => soloBattleEntry.refuses(),
+  onCouch: (request) => {
+    void Promise.all([couchOwner.preload(), import('./ui/couchLobby.ts')])
+      .then(([runtime, lobby]) => lobby.openCouchLobby(runtime, request))
+      .catch((error) => console.error('[couch] the lobby failed to open', error));
+  },
   onPlayRequest: (request) => playSurface.open(request).catch((error) => {
     console.error('[play-menu] failed to open', error);
   }),
@@ -2336,7 +2341,8 @@ const settings = createSettingsAccess({
   isGamePaused: battlePhase.isPauseEligible,
   // a paired phone's readout (docs/PHONE-CONTROLLER.md): the raw facts; the lazy receiver maps them
   phoneSource: () => ({ battle: battlePhase.isBattle(), paused: settings.isOpen(), sniper: rig.mode === 'SNIPER', player: game.player,
-    shellCode: shellTypeCode }),
+    shellCode: shellTypeCode, lockable: true }),
+  phoneEvents: (type, listener) => bus.on(type, listener),
 });
 garage.attachSettingsControl(settings.gear);
 // the Deploy screen's bot tier is the settings' own (the next battle's), so both pickers read one value
@@ -3870,6 +3876,21 @@ const watchOwner = createLazyRuntimeOwner(
       || (target instanceof Element && !!target.closest('.cot-touch-aim')),
   }),
 );
+// Couch mode (docs/COUCH-MODE.md): the lobby that seats the phones, each seat's controls, the per-tick input stage and
+// the shared camera. Its chunk loads when the host opens Couch on the Deploy screen; nothing of it is on the boot graph.
+const couchOwner = createLazyRuntimeOwner(
+  () => import('./app/couchRuntime.ts'),
+  (module) => module.createCouchRuntime<MainEntity>({
+    game,
+    camera,
+    paused: () => settings.isOpen(),
+    shellCode: shellTypeCode,
+    togglePause: () => { if (battlePhase.isBattle()) settings.toggle(); },
+    emit: (type, payload) => bus.emit(type, payload),
+    on: (type, listener) => bus.on(type, listener),
+    setSpectating: (on) => { document.body.classList.toggle('cot-spectating', on); currentHud()?.setCouchView(on); },
+  }),
+);
 // the HUD's shells and the damage panel name the tank a watcher rides or drives (read-only while riding)
 let watchPanelEntity: MainEntity | null = null;
 bus.on('watch:change', (payload) => {
@@ -3989,9 +4010,11 @@ const battleFrame = createBattleFrameRuntime({
     updateResult: battleResultPresentation.update,
   },
   getRigMode: () => rig.mode,
-  stepSimulation: () => simStep(
-    game, bus, currentWorld(), rig, worldRuntime.collider,
-  ),
+  stepSimulation: () => {
+    // a couch battle's seats: each phone's controls onto its tank, once per fixed step (docs/COUCH-MODE.md)
+    couchOwner.current?.beforeStep();
+    return simStep(game, bus, currentWorld(), rig, worldRuntime.collider);
+  },
   emitPause: (paused: boolean) => bus.emit('ui:pause', { on: paused }),
   simulationDt: SIM_DT,
 });
@@ -4055,7 +4078,8 @@ const mainFrame = createMainFrameRuntime({
   cameraInput: camInput,
   getMobileAutoAim: mobileBattleInput.getAutoAim,
   rig,
-  watchFrame: (dt) => watchOwner.current?.frame(dt) ?? false,
+  // Watch's cameras, else a couch battle's shared camera, own the frame (the chase rig then stands down)
+  watchFrame: (dt) => (watchOwner.current?.frame(dt) ?? false) || (couchOwner.current?.frame(dt) ?? false),
   killcam,
   veilHud,
   worldFramePresentation,

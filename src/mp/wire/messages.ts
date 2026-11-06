@@ -114,6 +114,9 @@ export interface RosterEntry {
   playerId: string;
   name: string;
   specId: string;
+  /** A bot's paint (268, item 6: the authority's roll, sim/camoPaint.ts botCamoRoll): flags bit 2 when AUTO, else its
+   * stock scheme; absent on a seat, whose paint the room carries. */
+  camo?: 'auto' | 'factory';
 }
 
 export interface WelcomeMessage {

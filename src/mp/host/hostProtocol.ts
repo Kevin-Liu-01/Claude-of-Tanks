@@ -20,6 +20,8 @@ export interface HostBootSeat {
   equipment?: readonly string[] | null;
   /** The consumable in each slot (sim/consumableRules.ts); absent carries the default trio. */
   consumables?: readonly string[] | null;
+  /** The seat's chosen camouflage (the room's camo); the actor turns it into the seat's spotting bonus on the map. */
+  camo?: string | null;
 }
 
 export interface HostBootBot {
@@ -28,6 +30,9 @@ export interface HostBootBot {
   team: 'alpha' | 'bravo';
   specId: string;
   difficulty?: 'easy' | 'normal' | 'hard';
+  /** The bot's paint as the authority's roster carried it (an elected host's planFromRoster); absent, the authority
+   * rolls it (sim/camoPaint.ts botCamoRoll). */
+  camo?: 'auto' | 'factory';
 }
 
 /** A reload channel as the old host left it: [remaining s, total s, kind]. */

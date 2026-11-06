@@ -1,0 +1,34 @@
+{
+  "schemaVersion": 1,
+  "tankIdSchema": 3,
+  "comparisonPurpose": "photographic-reference",
+  "numerical3DComparison": "unverified",
+  "dimensionToleranceFraction": 0.03,
+  "targets": {
+    "kf51_evo": {
+      "name": "KF51 Panther EVO (Eurosatory 2024)",
+      "authority": "Proposed by the release-267 IFV lane (item/ifv-kf51-modern-267) under Main's rulings of 2026-10-28 (\"where a rebuild's registered oracle shows a different (later) variant, unregister it\") and 2026-10-29 (the unregistered rebuilds qualify the geometry stage by a per-id photographic packet plus a shaded blind photo-critic PASS); Main accepts or vetoes it at the lane's READY. kf51_evo is rebuilt from the Eurosatory 2024 photographs as the Panther EVO upgrade, the EVO turret on a Leopard 2A4 hull with the Rh-130 shown on the stand (profiles/kf51Evo.ts); its old oracle kf51_grip420.glb shows the 2022 KF51 Panther demonstrator (fleet id kf51_panther) and is unregistered. Its blind A/B against these photographs (Opus and Sonnet critics) chose the rebuild. Numerical 3D comparison remains unverified: no model of the EVO exists.",
+      "sources": [
+        "https://commons.wikimedia.org/wiki/File:PANTHER_EVO_UPGRADE_01.jpg",
+        "https://commons.wikimedia.org/wiki/File:PANTHER_EVO_UPGRADE_02.jpg",
+        "https://commons.wikimedia.org/wiki/File:PANTHER_EVO_UPGRADE_05.jpg",
+        "https://commons.wikimedia.org/wiki/File:PANTHER_EVO_UPGRADE_06.jpg",
+        "https://commons.wikimedia.org/wiki/File:PANTHER_EVO_UPGRADE_07.jpg",
+        "https://www.armyrecognition.com/archives/archives-land-defense/land-defense-2024/eurosatory-2024-sees-launch-of-rheinmetalls-new-panther-evo-upgrade-hybrid-tank",
+        "https://www.edrmagazine.eu/rheinmetall-looking-beyond-the-panther-kf51",
+        "https://www.rheinmetall.com/en/media/news-watch/news/2023/12/2023-12-15-panther-developement-contract-hungary",
+        "https://en.wikipedia.org/wiki/Panther_KF51"
+      ],
+      "widthM": 3.614,
+      "overallLengthM": 10.873,
+      "tallestM": 4.25,
+      "envelopeBasis": "As built (Box3 at both qualities, the photo check's rule). Width over the Leopard 2A4 flank's reactive panels (x +-1.807; the published Leopard 2A4 is 3.70-3.75 m over its skirts). Length from the hull's stern (z -3.868) to the Rh-130's muzzle with the gun forward (z 7.005). Tallest is the tip of the left bustle whip antenna, as built rather than published; the turret's sights stand 3.34 m tall.",
+      "caliberMm": 130,
+      "launcherTubes": 0,
+      "roofMachineGuns": 1,
+      "crew": 3,
+      "unmannedTurret": false,
+      "test": "src/vehicles/profiles/kf51FrontFinish.selftest.mjs"
+    }
+  }
+}

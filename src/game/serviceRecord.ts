@@ -214,7 +214,8 @@ interface ServiceContext {
   playerTeam(): string | null;
   teamOf(id: string): string | null;
   gameMode(): string;
-  /** Watch mode (sim/matchRuleset.ts WATCH_RULES): a watched battle keeps no record, a taken seat's drive included. */
+  /** Watch mode (sim/matchRuleset.ts WATCH_RULES): a watched battle keeps no record, a taken seat's drive included; nor
+   *  does a couch battle (COUCH_RULES: guests have no profile). */
   watched?(): boolean;
   /** The battle clock in seconds (it restarts at zero every battle). */
   clockS(): number;
@@ -743,7 +744,7 @@ export function installServiceRecord(bus: ServiceEventBus | null | undefined, ct
     const tracker = battle;
     if (!tracker) return;
     if (event.reason === 'network_disconnect') { battle = null; return; }
-    if (event.watch === true || !rulesetKeepsRecords(text(event.gameMode) || ctx.gameMode())) { battle = null; return; }
+    if (event.watch === true || event.couch === true || !rulesetKeepsRecords(text(event.gameMode) || ctx.gameMode())) { battle = null; return; }
     settleShots(ctx.clockS(), true);
     const result = resultOf(event.result);
     const player = me();

@@ -55,6 +55,9 @@ import {
   type CollisionShape,
   type ObstacleQuery,
 } from '../world/collision.ts';
+import { PLAYABLE_HALF_EXTENT_M } from '../world/battlefieldBounds.ts';
+import { NAV_HULL_HALF_WIDTH_M } from '../sim/botRoutePlanner.ts';
+import { tankContactRect } from '../sim/tankContactShape.ts';
 import type { ArmorModel } from '../sim/armor.ts';
 import type { DamageShellSpec, CombatState, HitEvent } from '../sim/damage.ts';
 import type {
@@ -134,7 +137,7 @@ interface FriendlyFireRisk {
 
 interface AiController {
   update(dt: number, timeS: number): void;
-  setWaypoints(points: Array<[number, number]>, options?: { loop?: boolean }): void;
+  setWaypoints(points: Array<[number, number]>, options?: { loop?: boolean; planned?: boolean }): void;
   notifyShellResult(hitEvent: Pick<HitEvent, 'targetId' | 'kind'> & Partial<Pick<HitEvent, 'shellName'>>): void;
   notifyUnderFire(shooter: AiEntity, info?: HitReactionInfo): void;
   notifyEnemyFired(shooter: AiEntity): void;
@@ -652,6 +655,16 @@ const TARGET_MEMORY_S   = 5.0;    // chase last-seen position this long after LO
 const FLANK_TIMEOUT_S   = 20.0;
 const FLANK_ASPECT_RAD  = Math.PI / 3;  // 60° off target nose = flank achieved
 const STUCK_TIME_S      = 2.0;
+// (268, item 10; Main) A hull driving into a static solid it touches, with no way, releases at once rather than after
+// STUCK_TIME_S: this long pressed, a solid within STATIC_CONTACT_M of one of CONTACT_PROBES (fractions of the half-length
+// along, the half-width across: the front half and the sides). Horde seed 12: a T-64BV wedged 4 s between two boulders
+// 1.5 m apart on a slope, at 0.95 throttle with no way, until the low-speed watchdog reversed it.
+const WEDGE_CONTACT_S = 0.25;
+const ROUTE_TOUCH_M = 0.25;      // a corner lane from inside a box's margin keeps this far off the box (routeSegmentHitsBox)
+const STATIC_CONTACT_M = 0.35;
+const CONTACT_PROBES: ReadonlyArray<readonly [number, number]> = Object.freeze([
+  [1, -1], [1, 0], [1, 1], [0.5, -1], [0.5, 1], [0, -1], [0, 1],
+] as const);
 const UNSTICK_TIME_S    = 1.4;
 const SLOPE_BLOCK_RECOVERY_S = 0.35;
 // A collider stop (physics lane, 2026-10-04; Tidegate Polders pacing seed 41002 on the merged tree): a UA M1A1 turning a
@@ -698,6 +711,9 @@ const ARRIVE_DIST_M     = 6.0;
 // how far off its way a hull handed back (Watch mode's Leave) may lie and still be on it: the radius the route's own
 // end test gives the last waypoint (routeUsedUp; round 3 A2), on the ground plan; hullReaches is the height test
 const RESUME_ON_WAY_M   = ARRIVE_DIST_M * 2;
+/** The planner's clearance beyond a hull's half-width on every leg it plans (sim/botRoutePlanner.ts NAV_LEG_CLEARANCE_M,
+ *  NAV_HULL_HALF_WIDTH_M + 0.5 for the widest hull; src/game/ai.plannedLeg.selftest.mjs pins the two together). */
+const PLANNED_LEG_CLEARANCE_M = 0.5;
 const MAX_FIRE_RANGE_M  = 620;
 const UNDER_FIRE_WINDOW_S = 15;       // chase/engage window after a team hit
 const UNDER_FIRE_RANGE_BONUS_M = 180; // engage-envelope extension toward the shooter
@@ -1119,6 +1135,13 @@ function ensureAiInput(entity: AiEntity): void {
   entity.input.actionBits = 0;
 }
 
+/** The half-extent of the square the hull's root can stand in: the playable square less the reach of the contact rect
+ * both drivers hold inside it (pushHullInsidePlayableBounds), whatever the hull's heading. */
+function standHalfExtentM(spec: AiSpec): number {
+  const rect = tankContactRect(spec);
+  return PLAYABLE_HALF_EXTENT_M - detMath.hypot(rect.halfLength, rect.halfWidth) - Math.abs(rect.centerX) - Math.abs(rect.centerZ);
+}
+
 function isCasemate(spec: AiSpec): boolean {
   // movement.ts gives a turretless hull a fixed arc even when the spec authors none (gunArcRadFor)
   return !!spec.armor?.turretless || (spec.gunArcDeg != null && spec.gunArcDeg <= 30);
@@ -1341,6 +1364,7 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
 
   const waypoints: Position2[] = [];          // [{x,z}] patrol route
   let wpIndex = 0;
+  let waypointsPlanned = false;               // the waypoints are the planner's: each leg cleared (followPlannedLeg)
   let autoPatrolBuilt = false;
   let loopWaypoints = true;
   // Who wrote the waypoints (2026-11-02 audit M7): ownership is this tag, written with the list, never inferred from
@@ -1355,12 +1379,15 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
    * the level route's own list); a search leg whose list another owner takes is displaced here (displaceSearchLeg): its
    * own evidence (budget, strikes, the enemy's move off its sector) no longer judges or ends anything, and
    * updateSearchLeg plans the next leg only once the route in place is used up (or SEARCH_DISPLACED_MAX_S after the
-   * displacement), counting no failed leg. A claim is never refused: the last writer has the list, as before.
+   * displacement), counting no failed leg. A claim is never refused: the last writer has the list, as before. A claim
+   * is not the planner's (268, item 10: waypointsPlanned): a planned writer (setWaypoints, setSearchWaypoints) says so
+   * after it.
    */
   function claimWaypoints(owner: RouteOwner, loop: boolean): void {
     if (levelRouting && owner !== 'level') supersedeLevelRoute();
     if (searching && owner !== 'search' && owner !== 'sector' && searchDisplacedAtS < 0) displaceSearchLeg();
     waypoints.length = 0;
+    waypointsPlanned = false;
     wpIndex = 0;
     autoPatrolBuilt = true;
     loopWaypoints = loop;
@@ -2653,11 +2680,22 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     if (!best) return false;
     allyAvoidingId = best.id;
     allyClosestM = allyRisk.distance;
-    const following = allyRisk.headingDot > 0.55 && allyRisk.along > 0;
     const headOn = allyRisk.headingDot < -0.25;
     // Human drivers cannot participate in our deterministic bot ID handshake.
     const hasPriority = !best.isPlayer && String(entity.id) < String(best.id);
-    const mustYield = following || !hasPriority;
+    // Exactly one hull of a pair yields (268, item 10b): in a pair going the same way the one behind, whatever the ids; a
+    // crossing or head-on meeting goes by the ids. `following || !hasPriority` let both yield (a follower with the
+    // priority yielded as a follower, the hull ahead on the ids), and the pair stood: Infected, Badlands seed 2, a T-55A
+    // and a BMP-2 each yielding to the other about 13 s. Both hulls judge the pair in one frame (item 10, the director's
+    // gate: Steppe seed 7 and Coastal seed 8, a hull pivoting in place and the one beside it each yielded to the other,
+    // each reading the other ahead along its OWN heading): the same way is the two motion headings within 57 degrees, and
+    // behind is behind along their sum, so of the two exactly one is behind (ai.allyYield.selftest builds both cases).
+    const st = entity.state, other = best.state;
+    const ownSign = (st.speed || 0) < -0.2 ? -1 : 1, otherSign = (other.speed || 0) < -0.2 ? -1 : 1;
+    const ox = detMath.sin(st.yaw) * ownSign, oz = detMath.cos(st.yaw) * ownSign;
+    const ax = detMath.sin(other.yaw) * otherSign, az = detMath.cos(other.yaw) * otherSign;
+    const ahead = (other.pos.x - st.pos.x) * (ox + ax) + (other.pos.z - st.pos.z) * (oz + az);
+    const mustYield = ox * ax + oz * az > 0.55 ? ahead > 0 || (ahead === 0 && !hasPriority) : !hasPriority;
     allyYielding = mustYield;
     // The committed passing path already steers round this ally. An evasive nudge on top of it cancelled the
     // detour's pivot (Cinder Junction 7v7 seed 72839: the detour's -1 plus the head-on +1 left the hull at 0 for
@@ -2862,6 +2900,9 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     if (allyHoldT > 0 && (timeS - allyHoldLastS > ALLY_HOLD_FORGET_S ||
         detMath.hypot(st.pos.x - allyHoldAnchor.x, st.pos.z - allyHoldAnchor.z) > ALLY_HOLD_CLEAR_M)) allyHoldT = 0;
     const holding = held && driveIntent;
+    // a rusher's hold is one unbroken stand behind a stopped ally (RUSH_DRIVE.allyHoldS): any tick it is not held ends it
+    const rush = doctrineOf().rush;
+    if (rush && !holding) allyHoldT = 0;
     if (holding) {
       if (allyHoldT === 0) {
         allyHoldAnchor.x = st.pos.x;
@@ -2872,7 +2913,7 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
       return;
     }
     allyHoldT += dt;
-    if (allyHoldT < ALLY_HOLD_LIMIT_S || !holding) return;
+    if (allyHoldT < (rush ? RUSH_DRIVE.allyHoldS : ALLY_HOLD_LIMIT_S) || !holding) return;
     allyHoldT = 0;
     allyHoldGiveWays++;
     allyYieldT = 0;
@@ -2936,6 +2977,8 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
   // hulls drive through those. Plans are cached ROUTE_RECHECK_S so the cost
   // is a few hundred slab tests per bot every ~0.6 s, not per tick.
   const ROUTE_RECHECK_S = 0.6;
+  const ROUTE_CORNER_REACH_M = 4.5;      // a corner this near is reached: the router plans the next hop
+  const PLANNED_LEG_REJOIN_STEPS = 8;    // points along a planned leg the rejoin tries, its end first
   const ROUTE_LOOK_M = 85;
   const routeCorner = { x: 0, z: 0 };
   const routeCandidates: Position2[] = [
@@ -3159,6 +3202,21 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
   }
 
   /** A solid (not crushed, crushable or a bridge deck) within `margin` of (x, z). */
+  /** The side (+1 right, -1 left) of a static solid the hull touches (CONTACT_PROBES within STATIC_CONTACT_M), else 0. */
+  let contactReleases = 0;
+  function staticSolidContactSide(): number {
+    const st = entity.state, hl = ownHalfLengthM(), hw = (spec.dims.widthM || 3) * 0.5;
+    const fx = detMath.sin(st.yaw), fz = detMath.cos(st.yaw);
+    let touched = false, side = 0;
+    for (let i = 0; i < CONTACT_PROBES.length; i++) {
+      const [along, across] = CONTACT_PROBES[i]!;
+      if (!solidWithin(st.pos.x + fx * along * hl + fz * across * hw, st.pos.z + fz * along * hl - fx * across * hw, STATIC_CONTACT_M)) continue;
+      touched = true;
+      side += across;
+    }
+    return touched ? Math.sign(side) || orbitSide : 0;
+  }
+
   function solidWithin(x: number, z: number, margin: number): boolean {
     if (clearanceScan) {
       const walk = clearanceScan.begin(x - margin, z - margin, x + margin, z + margin);
@@ -3250,6 +3308,12 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
       let ddx = endX - sourceX, ddz = endZ - sourceZ;
       const len = detMath.hypot(ddx, ddz) || 1e-9;
       ddx /= len; ddz /= len;
+      // a hull already inside the box's margin only has to keep its lane off the box itself, as the planner's legs do
+      // (sim/botRoutePlanner.ts NAV_LEG_TOUCH_M; 268, item 10 (A)): judged at the full margin every corner's lane began
+      // inside it and "hit", no corner opened, and the hull drove its straight line into the solid (Desert seed 12: a
+      // T-64BV into the 1.5 m gap between two boulders)
+      const clearance = collisionClearanceContainsPoint(box as CollisionRecord, sourceX, sourceZ, margin * 0.85)
+        ? ROUTE_TOUCH_M : margin * 0.85;
       return rayCollisionClearanceEntry2(
         box as CollisionRecord,
         sourceX,
@@ -3257,7 +3321,7 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
         ddx,
         ddz,
         len,
-        margin * 0.85,
+        clearance,
       ) != null;
   }
 
@@ -3348,11 +3412,24 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     directionZ /= distance;
     const limit = Math.min(distance, ROUTE_LOOK_M);
     const margin = spec.dims.widthM * 0.5 + 1.4;
-    const box = findBlockingObstacle(
+    let box = findBlockingObstacle(
       sourceX, sourceZ, directionX, directionZ, limit, margin,
     );
+    // A planned leg (268, item 10): the planner cleared it for the widest hull at its own clearance (half-width +
+    // PLANNED_LEG_CLEARANCE_M), the router judges lines at half-width + 1.4. Two rules for one corridor: on desert seed
+    // 20 a TOS-1A's planned leg passed 2.6 m from a building, the router called even the leg itself blocked, replaced
+    // it with a corner 14 m into a walled courtyard, and the hull pivoted and wedged there 15 s before a release lined it
+    // up and it drove the straight line out. While the hull's body overlaps the leg's cleared corridor, the line on to
+    // the leg's end is judged by the planner's rule; further off, the hull rejoins the leg before trying corners.
+    const legOff = box ? plannedLegOffset(gx, gz) : Infinity;
+    if (box && legOff <= NAV_HULL_HALF_WIDTH_M + PLANNED_LEG_CLEARANCE_M + spec.dims.widthM * 0.5
+      && !findBlockingObstacle(sourceX, sourceZ, directionX, directionZ, limit, spec.dims.widthM * 0.5 + PLANNED_LEG_CLEARANCE_M)) {
+      box = null;
+      plannedLegRuns++;
+    }
     routeOutcome = box ? 'blocked' : 'clear';
     if (box) {
+      if (legOff < Infinity && rejoinPlannedLeg(sourceX, sourceZ, margin)) return;
       const heldOpen = wasActive && cornerOpen(box, sourceX, sourceZ, heldX, heldZ, margin);
       if (heldOpen && nowS < routeCornerSettledUntilS) {
         routeCorner.x = heldX;
@@ -3383,6 +3460,46 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     if (liquidSafe || nowS < terrainRouteUntilS) {
       planTerrainRoute(sourceX, sourceZ, directionX, directionZ, gx, gz);
     }
+  }
+  /**
+   * The hull's distance off the planned leg whose end is the goal (the waypoint before the current one to it), or
+   * Infinity when the goal is no planned waypoint with one before it; the leg is left in plannedLeg for the rejoin.
+   */
+  let plannedLegRuns = 0, plannedLegRejoins = 0;
+  const plannedLeg = { ax: 0, az: 0, ex: 0, ez: 0, t: 0 };
+  function plannedLegOffset(gx: number, gz: number): number {
+    if (!waypointsPlanned || wpIndex < 1 || wpIndex >= waypoints.length) return Infinity;
+    const a = waypoints[wpIndex - 1]!, b = waypoints[wpIndex]!, stand = standHalfExtentM(spec);
+    // the goal is this leg's end (as driveToXZ clamps it)
+    if (Math.abs(clamp(b.x, -stand, stand) - gx) > 0.01 || Math.abs(clamp(b.z, -stand, stand) - gz) > 0.01) return Infinity;
+    const st = entity.state, ex = gx - a.x, ez = gz - a.z, length2 = ex * ex + ez * ez;
+    if (!(length2 > 1)) return Infinity;
+    const t = clamp(((st.pos.x - a.x) * ex + (st.pos.z - a.z) * ez) / length2, 0, 1);
+    plannedLeg.ax = a.x; plannedLeg.az = a.z; plannedLeg.ex = ex; plannedLeg.ez = ez; plannedLeg.t = t;
+    return detMath.hypot(a.x + ex * t - st.pos.x, a.z + ez * t - st.pos.z);
+  }
+  /** Back onto the planned leg at the furthest point of it a line clear at the router's margin reaches (a corner of it). */
+  function rejoinPlannedLeg(sourceX: number, sourceZ: number, margin: number): boolean {
+    const { ax, az, ex, ez, t } = plannedLeg;
+    for (let k = PLANNED_LEG_REJOIN_STEPS; k >= 0; k--) {
+      const f = t + (1 - t) * k / PLANNED_LEG_REJOIN_STEPS;
+      let dx = ax + ex * f - sourceX, dz = az + ez * f - sourceZ, distance = detMath.hypot(dx, dz);
+      // nearer than the corner's reach a point is no corner to steer for: the leg's nearest point is steered for across
+      // the leg, at the corner's reach, so the hull still heads onto the leg
+      if (distance < ROUTE_CORNER_REACH_M + 0.5) {
+        if (k !== 0 || distance < 0.5) continue;
+        const reach = ROUTE_CORNER_REACH_M + 0.5;
+        dx *= reach / distance; dz *= reach / distance; distance = reach;
+      }
+      if (findBlockingObstacle(sourceX, sourceZ, dx, dz, distance, margin)) continue;
+      routeCorner.x = sourceX + dx;
+      routeCorner.z = sourceZ + dz;
+      routeActive = true;
+      routeOutcome = 'rejoin';
+      plannedLegRejoins++;
+      return true;
+    }
+    return false;
   }
   // r7: corner preference bias — repeated strikes flip detourSide, and the
   // replan then prefers corners on the OTHER flank of the advance line, so
@@ -3511,6 +3628,13 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
 
   function driveToXZ(input: AiInput, x: number, z: number, speedScale: number): boolean {
     const st = entity.state;
+    // A goal the hull cannot stand on is driven to the nearest point it can (268, item 10): the route grid reaches
+    // 500 m and the auto patrol clamps to it, but the playable square stops the hull 30 m short, so a route along the
+    // grid's outer ring (Autumn seed 6: a Marder 2 zombie bound for z -475) pressed the nose into the bound short of
+    // its waypoint, arrival never came, and the hull cycled wedge releases there until the Horde recycled it.
+    const stand = standHalfExtentM(spec);
+    x = clamp(x, -stand, stand);
+    z = clamp(z, -stand, stand);
     // Combat chase/flank destinations need the same bridge ingress as mission
     // routes. Local steering alone tried to cross gorge walls at target bearing.
     // When nothing plans from where the hull stands, the local router drives on toward the destination (bots lane,
@@ -3554,7 +3678,7 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     if (routeActive) {
       const cdx = routeCorner.x - st.pos.x;
       const cdz = routeCorner.z - st.pos.z;
-      if (detMath.hypot(cdx, cdz) < 4.5) {
+      if (detMath.hypot(cdx, cdz) < ROUTE_CORNER_REACH_M) {
         // corner reached — veto it briefly and replan (next hop or straight)
         lastCorner.x = routeCorner.x;
         lastCorner.z = routeCorner.z;
@@ -5148,6 +5272,28 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
   ): void {
     claimWaypoints(owner, false);
     for (let i = 0; i < route.length; i++) waypoints.push({ x: route[i][0], z: route[i][1] });
+    // the search and level legs are the planner's routes (268, item 10): a straight start skips their ingress
+    waypointsPlanned = true;
+    skipReachedIngress();
+  }
+
+  /**
+   * A route round liquid (sim/botRoutePlanner.ts planDryRoute) keeps its snapped ingress, the grid cell nearest the
+   * hull, as its first waypoint wherever that cell lies; the other grid's routes drop the cell when the hull reaches
+   * the next waypoint straight (clearRoute). The controller takes every one-way route the same way (268, item 10): a
+   * hull that reaches the second waypoint on a dry, solid-free straight leg starts there. On Autumn, the one rotation
+   * map that routes round liquid, a moving objective replans a hunter's route as often as once a second, and each route
+   * began at a cell up to 18 m off, often behind the hull: it circled back to it at speed, and the Horde's zombies spent
+   * the wave weaving (advance 0.63-0.81 on Autumn, 0.86-0.97 on every other map).
+   */
+  function skipReachedIngress(): void {
+    if (!liquidSafe || wpIndex !== 0 || waypoints.length < 2) return;
+    const position = entity.state.pos, next = waypoints[1];
+    const dx = next.x - position.x, dz = next.z - position.z, distance = detMath.hypot(dx, dz);
+    if (!(distance > 0.5)) return;
+    if (!liquidSafe(position.x, position.z, detMath.atan2(dx, dz), distance)) return;
+    if (findBlockingObstacle(position.x, position.z, dx, dz, distance, spec.dims.widthM * 0.5 + 1.4)) return;
+    wpIndex = 1;
   }
 
   function startSearchLeg(kind: string, goalX: number, goalZ: number, routeLengthM: number, timeS: number): void {
@@ -6662,9 +6808,14 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
       && (Math.abs(entity.state.speed) < 0.3 || progressRate < 0.45);
     if (movingTooSlowly) {
       lowSpeedT += dt;
-      if (lowSpeedT <= STUCK_TIME_S) return;
+      // pressed into a static solid with no way (never a hull, never a crushable: a ram stays a ram): release now, the
+      // reverse swinging the bow away from the contact (movement.ts flips the steer under way backwards)
+      const contact = lowSpeedT >= WEDGE_CONTACT_S && input.throttle > 0.5 && Math.abs(entity.state.speed) < 0.3
+        ? staticSolidContactSide() : 0;
+      if (lowSpeedT <= STUCK_TIME_S && !contact) return;
       unstickUntilS = timeS + UNSTICK_TIME_S;
-      unstickSteer = rng() < 0.5 ? -1 : 1;
+      unstickSteer = contact || (rng() < 0.5 ? -1 : 1);
+      if (contact) contactReleases++;
       lowSpeedT = 0;
       escalateStuckRecovery(timeS, true);
       return;
@@ -6703,7 +6854,7 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
    * met hulls at 2-3 m/s, and stood the zombies still).
    */
   let ramHoldOffs = 0;
-  let ramGap = Infinity, ramCross = 0;
+  let ramGap = Infinity, ramCross = 0, ramHull: AiEntity | null = null;
   function laneGap(other: AiEntity, fx: number, fz: number, buffer: number, stopM: number): void {
     const st = entity.state, od = other.spec?.dims;
     const otherHalf = detMath.hypot((od?.hullLengthM || od?.lengthM || 6) * 0.5, (od?.widthM || 3) * 0.5);
@@ -6717,12 +6868,21 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
       if (along <= 0 || Math.abs(cross) > halfLane) continue;
       const gap = along - ownHalfLengthM() - otherHalf;
       if (gap > buffer + stopM || gap >= ramGap) continue;
-      ramGap = gap; ramCross = cross;
+      ramGap = gap; ramCross = cross; ramHull = other;
     }
   }
+  let rushBackOffUntilS = -Infinity, rushBackOffTurn = 0;
   function holdOffEnemyHulls(input: AiInput): void {
     const doctrine = doctrineOf();
     if (!(doctrine.rush || doctrine.noRamLane) || !entity.state.grounded) return;
+    // a rusher that backs off a hull holds the back-off and its turn (RUSH_DRIVE.backOffHoldS); movement.ts flips the steer
+    // of a hull under way backwards, so the turn is kept by flipping it back
+    if (doctrine.rush && nowS < rushBackOffUntilS) {
+      input.throttle = -RUSH_DRIVE.backOffThrottle;
+      input.brake = false;
+      input.steer = entity.state.speed < 0 ? -rushBackOffTurn : rushBackOffTurn;
+      return;
+    }
     // the Turbo Ball is played for: a hull contesting it is no ram to avoid
     const ball = doctrine.noRamLane ? getObjective?.()?.ball ?? null : null;
     const st = entity.state, speed = st.speed;
@@ -6731,7 +6891,7 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     const sign = speed < -0.5 || (speed <= 0.5 && input.throttle < 0) ? -1 : 1;
     const fx = detMath.sin(st.yaw) * sign, fz = detMath.cos(st.yaw) * sign;
     const stopM = Math.abs(speed) ** 2 / (2 * SOLID_STOP_MPS2);
-    ramGap = Infinity; ramCross = 0;
+    ramGap = Infinity; ramCross = 0; ramHull = null;
     const list = deps.getEnemies();
     for (let i = 0; i < list.length; i++) {
       const other = list[i];
@@ -6744,12 +6904,28 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     }
     if (!Number.isFinite(ramGap)) return;
     ramHoldOffs++;
-    input.steer = (Math.sign(-ramCross) || orbitSide) * sign;
+    // a rusher held off the hull its orbit circles turns off the line the way its drive already turns (the orbit's
+    // side), never against it (268, item 10): the hold-off's own side (away from the hull's offset) fought the orbit's turn
+    // tick by tick, the two cancelled, and the hunter stood 9-15 m off its target, its yaw frozen, under 0.5 m/s (Horde
+    // seeds 1 and 13: every engaged still). Off any other hull (a neighbour of its quarry on the ring) it turns away.
+    const driveSide = doctrine.rush && ramHull === target && Math.abs(input.steer) > 0.2 ? Math.sign(input.steer) : 0;
+    input.steer = (driveSide || Math.sign(-ramCross) || orbitSide) * sign;
+    // and it rolls on round the hull at swerveThrottle while it can still stop short of the back-off gap: stopping
+    // stood it pivoting on the spot until the orbit drove it back onto the line
+    if (doctrine.rush && sign > 0 && ramGap <= stopM + RUSH_DRIVE.brakeGapM && ramGap > stopM + RUSH_DRIVE.backOffGapM) {
+      input.throttle = RUSH_DRIVE.swerveThrottle;
+      input.brake = false;
+      return;
+    }
     if (ramGap <= stopM + RUSH_DRIVE.brakeGapM) {
       // all but touching and standing: back off the hull (turning off its line)
       if (ramGap <= (doctrine.rush ? RUSH_DRIVE.backOffGapM : RUSH_DRIVE.laneBackOffGapM) && Math.abs(speed) <= 1) {
         input.throttle = -sign * RUSH_DRIVE.backOffThrottle;
         input.brake = false;
+        if (doctrine.rush && sign > 0) {
+          rushBackOffUntilS = nowS + RUSH_DRIVE.backOffHoldS;
+          rushBackOffTurn = Math.sign(input.steer) || orbitSide;
+        }
       } else {
         input.throttle = 0;
         input.brake = Math.abs(speed) > 0.5;
@@ -7287,7 +7463,7 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
 
   function setWaypoints(
     points: readonly (readonly [number, number])[],
-    { loop = true }: { loop?: boolean } = {},
+    { loop = true, planned = false }: { loop?: boolean; planned?: boolean } = {},
   ): void {
     // Live modes and Jev supply destinations, not terrain-safe paths. Resolve
     // those through the same navigation grid as opening/search routes. Keep an
@@ -7300,8 +7476,8 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
       // the grid has no way the widest hull fits from here (a passage two wrecks narrow, a zone centre against a
       // wall): the destination itself stays the waypoint, for the local router to approach, never no route at all
       if (deps.planRoute) {
-        const planned = deps.planRoute(entity.state.pos, { x, z });
-        if (planned.length) points = planned;
+        const route = deps.planRoute(entity.state.pos, { x, z });
+        if (route.length) { points = route; planned = true; }
       }
       missionRouteHasEnd = points.length > 0;
     } else {
@@ -7313,6 +7489,10 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     for (let i = 0; i < points.length; i++) {
       waypoints.push({ x: points[i][0], z: points[i][1] });
     }
+    // the planner's route (a destination planned through the grid, or a planned route handed in) is followed leg by leg
+    // (followPlannedLeg); a one-way route starts past an ingress the hull reaches straight (268, item 10)
+    waypointsPlanned = planned && !loop;
+    if (!loop) skipReachedIngress();
   }
 
   // ---- between-tick inputs (2026-11-02 audit M7) ---------------------------
@@ -7676,7 +7856,7 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
       objectiveShifts, objectiveShifting, zoneHoldMoves,
       routeCornerX: routeActive ? +routeCorner.x.toFixed(2) : null,
       routeCornerZ: routeActive ? +routeCorner.z.toFixed(2) : null, routeCornerFlips,
-      driveGoalX, driveGoalZ, driveGoalAgeS: nowS - driveGoalAtS, steerGoalX, steerGoalZ, cornersCrowded, pivotCreeps, pivotRollCuts, solidBrakes, wedgeReleases, wedgeReleased: !carefulDriving(), routeOutcome,
+      driveGoalX, driveGoalZ, driveGoalAgeS: nowS - driveGoalAtS, steerGoalX, steerGoalZ, cornersCrowded, plannedLegRuns, plannedLegRejoins, contactReleases, pivotCreeps, pivotRollCuts, solidBrakes, wedgeReleases, wedgeReleased: !carefulDriving(), routeOutcome,
       objectiveShiftX: objectiveShifting ? +objectiveShiftPoint.x.toFixed(1) : null,
       objectiveShiftZ: objectiveShifting ? +objectiveShiftPoint.z.toFixed(1) : null,
       zoneHoldX: Number.isFinite(zoneHoldForX) ? +zoneHold.x.toFixed(1) : null,

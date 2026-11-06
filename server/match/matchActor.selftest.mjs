@@ -1,3 +1,6 @@
+import { CAMO_PAINT_BONUS } from '../../src/sim/spotting.ts';
+import { botCamoRoll, camoSelectionBonus } from '../../src/sim/camoPaint.ts';
+import { stockCamoPatternIdFor } from '../../src/vehicles/camoPolicy.ts';
 import assert from 'node:assert/strict';
 import { MOVEMENT_CHECKPOINT_VERSION } from '../../src/mp/match/movementCheckpoint.ts';
 import {
@@ -92,10 +95,10 @@ const actor = createMatchActor({
   roomId: 'room-actor-test', mapId: 'verdant', seed: 4242, countdownS: 0.5, world: 'terrain', now, schedule, snapshotHz: 30,
   entryBackpressureGraceMs: 0,
   seats: [
-    { seat: 0, playerId: 'p1', name: 'One', team: 'alpha', specId: 'm1a1_abrams_hc' },
+    { seat: 0, playerId: 'p1', name: 'One', team: 'alpha', specId: 'm1a1_abrams_hc', camo: 'auto' },
     { seat: 1, playerId: 'p2', name: 'Two', team: 'alpha', specId: 'm1a1_abrams_hc' },
-    { seat: 2, playerId: 'p3', name: 'Three', team: 'bravo', specId: 't90am' },
-    { seat: 3, playerId: 'p4', name: 'Four', team: 'bravo', specId: 't90am' },
+    { seat: 2, playerId: 'p3', name: 'Three', team: 'bravo', specId: 't90am', camo: 'summer' },
+    { seat: 3, playerId: 'p4', name: 'Four', team: 'bravo', specId: 't90am', camo: 'winter' },
     { seat: 9, playerId: 's1', name: 'Watcher', team: 'spectator', specId: '' },
   ],
   bots: [
@@ -127,7 +130,23 @@ assert.equal(s1.welcome.entityId, NO_ENTITY);
 assert.equal(s1.welcome.team, TEAM.SPECTATOR);
 assert.deepEqual(p1.welcome.roster.filter((row) => row.bot).map((row) => row.playerId), ['bot-a', 'bot-b']);
 assert.ok(p2.events.some((event) => event.kind === 'roster' && event.payload.playerId === 'p3' && event.payload.connected === true), 'roster events announce joins');
-console.log('matchActor.selftest: five clients welcomed with the full roster, seats, teams and ruleset');
+// (268) each seat's chosen camouflage is its spotting bonus on the map, the rule the solo battle stamps (sim/camoPaint.ts):
+// AUTO always, a verdant scheme on Verdant, a winter scheme never, factory by the vehicle's stock scheme
+{
+  const bonus = (id) => actor.authority.entityById.get(id).camoBonus;
+  assert.deepEqual([bonus('p1'), bonus('p3'), bonus('p4')], [CAMO_PAINT_BONUS, CAMO_PAINT_BONUS, 0], 'auto, summer and winter on Verdant');
+  assert.equal(bonus('p2'), camoSelectionBonus('factory', stockCamoPatternIdFor('m1a1_abrams_hc'), 'verdant'), 'no camo is factory paint');
+  // (268, item 6) a bot's paint is the authority's roll at its roster index (the four seated hulls first: 4 and 5), its
+  // bonus follows it, and every client's roster names it; a seat's roster row carries none (the room carries its camo)
+  const rolled = [botCamoRoll(4242, 4, 'verdant'), botCamoRoll(4242, 5, 'verdant')];
+  assert.deepEqual(['bot-a', 'bot-b'].map((id) => actor.authority.entityById.get(id).camo), rolled, 'the authority rolled each bot at its index');
+  assert.deepEqual(['bot-a', 'bot-b'].map(bonus), rolled.map((camo) => camoSelectionBonus(camo, stockCamoPatternIdFor('leo2_improved'), 'verdant')),
+    'each bot\'s bonus follows its paint');
+  for (const client of [p1, p2, p3, p4, s1]) {
+    assert.deepEqual(client.welcome.roster.map((row) => row.camo ?? null), [null, null, null, null, ...rolled], `${client.playerId}'s roster names each bot's paint, no seat's`);
+  }
+}
+console.log('matchActor.selftest: five clients welcomed with the full roster, seats, teams and ruleset; each seat\'s camo its spotting bonus; each bot\'s rolled paint in every roster');
 
 // ---------------------------------------------------------------- inputs, cadence, deltas, interest
 let fireSeq = 0;

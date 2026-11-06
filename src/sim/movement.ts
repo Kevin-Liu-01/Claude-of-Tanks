@@ -692,11 +692,19 @@ const SETTLE_CLAMP_RAD = 0.09;
 // ×(1+PERCH_W_BOOST)) and goes critically damped (ζ→1, ground reaction is
 // dissipative — tip onto the second contact and STOP, no underdamped
 // bounce-back float) while the perch persists. state._perch is the smoothed
-// 0..1 factor: raw settle excess over the clamp, instant attack, ~0.3 s
+// 0..1 factor: raw settle excess over the clamp, a PERCH_ATTACK_S attack, ~0.3 s
 // release. Exactly zero on ordinary ground (raw settle inside the clamp), so
 // smooth-map feel is untouched.
 const PERCH_W_BOOST = 1.0;       // pitch spring ω multiplier at full perch (×2)
 const PERCH_RELEASE_S = 0.3;     // s for the perch factor to decay after touchdown
+// s for the perch factor to rise to a new request (physics 268, the trench lip's chatter): taken at once, the boost
+// doubled the spring's rate and critically damped it in one step while the fit's target stepped as a lip or crest left
+// the contacts, and the spring's rate kicked by 1.3 rad/s in that step (the M3 Bradley over an assault trench's far crest:
+// rendered jerk 8276 rad/s³). Over three steps the stiffening is reached within 50 ms, its rate change spread across them.
+// Only a hull travelling (faster than TIP_TRAVEL_MPS) steps its fit by its travel; one at rest takes a perch at once, as it
+// always has: a hull seating where it spawned settles on the same steps (matchHost.selftest's idle T-90AM on Verdant's slope
+// kept settling a wire step past the migration keyframe under the attack).
+const PERCH_ATTACK_S = 0.05;
 // The dominant float term during a perch is NOT the main spring but the susp
 // ROCK MIRROR: its terrain-delta target pins at the ±SUSP_P_CLAMP and the
 // render amplification can still add several degrees of COSMETIC nose-dive
@@ -4641,6 +4649,7 @@ function updateTerrainFitAndPerch(
   samples: SupportSamples,
   halfWidth: number,
   groundedAtStart: boolean,
+  dt: number,
 ): void {
   const { spec, state } = entity;
   const terr = state._terr;
@@ -4702,7 +4711,9 @@ function updateTerrainFitAndPerch(
   // receipts) was the average — half — with the chatter on top; the perch still reads the raw request.
   terr.pitch += 0.5 * clamp(tip, -SETTLE_CLAMP_RAD, SETTLE_CLAMP_RAD);
   const requestedPerch = clamp(Math.abs(tip) / SETTLE_CLAMP_RAD - 1, 0, 1);
-  if (groundedAtStart && requestedPerch > state._perch) state._perch = requestedPerch;
+  if (groundedAtStart && requestedPerch > state._perch) {
+    state._perch = Math.abs(state.speed) > TIP_TRAVEL_MPS ? Math.min(requestedPerch, state._perch + dt / PERCH_ATTACK_S) : requestedPerch;
+  }
 }
 
 function updateFanYield(
@@ -4838,6 +4849,7 @@ function writeSupportCache(
     samples,
     contact ? contact.halfWidM : HALF_WID_FRAC * spec.dims.widthM,
     groundedAtStart,
+    dt,
   );
 
   const perchCut = rigidGear ? 0 : 0.7 * state._perch;

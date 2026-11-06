@@ -18,6 +18,9 @@ Run times: `tools/selftest-durations.json`, else this machine's latest observati
 | KEEP | 1713 | 166.8 |
 | MERGE | 0 | 0.0 |
 | MANUAL | 655 | 1157.1 |
+| KEEP | 1517 | 166.0 |
+| MERGE | 0 | 0.0 |
+| MANUAL | 661 | 1167.4 |
 | RETIRE | 2 | 0.7 |
 
 | Suite run | Receipts | CPU-min | Simulated wall (min) |
@@ -26,18 +29,23 @@ Run times: `tools/selftest-durations.json`, else this machine's latest observati
 | After: the default tier | 1713 | 166.8 | 37.3 |
 
 Default tier: 12.6 % of the whole registry's CPU; 18.2 % of the 916 CPU-min the snapshot gave for the 1,863 receipts it timed. Its wall: 0.2 min exclusive receipts, 18.5 min pool, 18.6 min browser receipts.
+| Before: every receipt (npm test without the tiers) | 2179 | 1333.8 | 234.7 |
+| After: the default tier | 1517 | 166.0 | 37.2 |
+
+Default tier: 12.4 % of the whole registry's CPU; 18.1 % of the 916 CPU-min the snapshot gave for the 1,863 receipts it timed. Its wall: 0.2 min exclusive receipts, 18.4 min pool, 18.6 min browser receipts.
 
 ## Manual suites
 
 | Suite | Receipts | CPU-min | What it covers |
 |---|---:|---:|---|
 | `balance` | 3 | 1.1 | fleet round-robin duels on the authoritative battle path and the balance tables they hold; then `node tools/balance-matchups.mjs --check` |
-| `pacing` | 13 | 93.9 | whole-match pacing (the 132 default lobbies in eight shards and their judge), placement and deployment on every map |
+| `pacing` | 14 | 93.9 | whole-match pacing (the 132 default lobbies in eight shards and their judge), placement and deployment on every map |
 | `bots` | 8 | 40.4 | bot behaviour played out on the authority (every mode, objectives, levels, approaches) |
 | `sims` | 7 | 5.0 | drone, missile, escort and counter-drone scenario runs |
 | `perf` | 4 | 2.5 | host-time budgets (tick cost, soaks, heap plateaus, restore timing): they measure the machine as much as the code |
 | `fleet` | 62 | 282.3 | fleet-wide vehicle sweeps: every playable tank built (the HIGH, LOW and default fleet passes, the lazy facade, floor clearance, vertex colours, national and fleet-wide fitting sweeps) and the whole-fleet anatomy check (tank:anatomy:check); then `node tools/gen-combat-anatomy.mjs --check --jobs=4`, `node tools/gen-vehicle-marking-seats.mjs --check`, `node tools/module-hit-probe.mjs`, `node tools/tank-assets-check.mjs --views armorSide,modulesSide,crewSide --skip-bore`, `node tools/spare-track-placement-check.mjs --ids=all --ledger=docs/geometry-gate/spare-track.json --check --quiet`, `node tools/interior-fill-exposure.mjs --all --check --jobs=4` |
 | `tanks` | 408 | 291.9 | per-tank and per-family pins (id-scoped: lane mode and tank:release:check run the ones naming or reading the lane's ids) |
+| `tanks` | 413 | 302.2 | per-tank and per-family pins (id-scoped: lane mode and tank:release:check run the ones naming or reading the lane's ids) |
 | `world` | 138 | 406.8 | world-wide map builds: scenery, structure collision, buildings, the wreck bake, the collision shards, civic areas, horizons and map content |
 | `ui` | 7 | 8.6 | heavy interface paint and layout sweeps |
 | `browser` | 4 | 24.7 | strenuous real-battle browser receipts (a GPU and the capture lock each) |
@@ -142,7 +150,7 @@ Sim determinism and driver boundaries, the authority rules, armour/ballistics/da
 
 None. Folding receipts saves only process starts (about a second each) and would need a per-assertion coverage review; the CPU is in the receipts that build tanks and maps, which moved to manual suites instead.
 
-## MANUAL (655)
+## MANUAL (661)
 
 | Receipt | Run (s) | Decision | Reason | Coverage now |
 |---|---:|---|---|---|
@@ -195,6 +203,7 @@ None. Folding receipts saves only process starts (about a second each) and would
 | `src/ui/hudAmmoOutPaint.selftest.mjs` | 312 | MANUAL (ui) | ui: heavy interface paint and layout sweeps, 312 s: ...and the live HUD paints those states (reticle, rack, tray, struck controls) over a recording canvas | test:heavy -- ui; test:recommend flags it when its inputs change |
 | `src/vehicles/challengerXGunPort.selftest.mjs` | 284 | MANUAL (tanks) | per-tank pin (challenger_x, challenger_x_sleek), 284 s: 262 (owner on the Challenger 1 rebuild: "based on proper historical referrences so they will no longer look so | test:heavy -- tanks; lane mode and tank:release:check run it for its ids |
 | `tools/battle-geometry-sharing.browser.selftest.mjs` | 281 | MANUAL (browser) | browser: strenuous real-battle browser receipts (a GPU and the capture lock each), 281 s | test:heavy -- browser; test:recommend flags it when its inputs change |
+| `src/vehicles/profiles/chineseAirDefense.selftest.mjs` | 279 | MANUAL (tanks) | per-tank pin (pgz95, pgz09), 279 s: 268: the PLA air-defence pair (PGZ-95, PGZ-09): datums, every bore, the QW-2 exits, the clearance scans | test:heavy -- tanks; lane mode and tank:release:check run it for its ids |
 | `tools/worldBuildIndependence.selftest.mjs` | 270 | MANUAL (world) | world: world-wide map builds, 270 s: (the 225 gate, 2026-10-15) a world build never depends on the maps built before it in the process | test:heavy -- world; test:recommend flags it when its inputs change |
 | `src/world/phoneLayoutIdentity.selftest.mjs` | 252 | MANUAL (world) | world: world-wide map builds, 252 s: 2026-10-08 (destruction core lane, layout identity): a phone places the desktop's records, index for index | test:heavy -- world; test:recommend flags it when its inputs change |
 | `tools/mode-aggression-harness.selftest.mjs` | 246 | MANUAL (bots) | bots: bot behaviour played out on the authority (every mode, objectives, levels, approaches), 246 s: The mode aggression harness (gameplay-modes-228) as a receipt: its compare gate reads targets the way the buil | test:heavy -- bots; test:recommend flags it when its inputs change |
@@ -204,6 +213,7 @@ None. Folding receipts saves only process starts (about a second each) and would
 | `src/world/maps/regional/facade.selftest.mjs` | 230 | MANUAL (world) | world: world-wide map builds, 230 s: 2026-10-05: the facade craft adds dressing only, on desktop, from its own streams | test:heavy -- world; test:recommend flags it when its inputs change |
 | `src/vehicles/ghillieSuit.selftest.mjs` | 227 | MANUAL (fleet) | fleet: fleet-wide vehicle sweeps, 227 s | test:heavy -- fleet; test:recommend flags it when its inputs change |
 | `src/vehicles/nationalGunMantlet.selftest.mjs` | 219 | MANUAL (tanks) | per-tank pin (t72b3m_hetman, t72b3m_hetman_ii, t72b3_zubr, t72b3_zubr_ii, ...), 219 s: 2026-10-21 (release 230, UA/PL round 11): the three ids' main gun over their own hulls with the shallower mant | test:heavy -- tanks; lane mode and tank:release:check run it for its ids |
+| `src/vehicles/profiles/gm352AirDefense.selftest.mjs` | 205 | MANUAL (tanks) | per-family pin, 205 s: 268: the GM-352 air-defence pair (Tunguska-M, Pantsir-S1): datums, fire axes, launch exits, the shared chassis | test:heavy -- tanks; lane mode and tank:release:check run it for its ids |
 | `src/world/tidalMangrove.selftest.mjs` | 205 | MANUAL (world) | world: world-wide map builds, 205 s | test:heavy -- world; test:recommend flags it when its inputs change |
 | `src/world/reservoirWaterworks.selftest.mjs` | 203 | MANUAL (world) | world: world-wide map builds, 203 s | test:heavy -- world; test:recommend flags it when its inputs change |
 | `server/battlePacingShard4.selftest.mjs` | 199 | MANUAL (pacing) | pacing: whole-match pacing (the 132 default lobbies in eight shards and their judge), placement and deployment on every map, 199 s: Shard 4 of 8 of the battlePacing core run (test-speed R9a, 2026-10-16): plays the core matches on the maps who | test:heavy -- pacing; test:recommend flags it when its inputs change |
@@ -254,6 +264,7 @@ None. Folding receipts saves only process starts (about a second each) and would
 | `src/world/verdantTownPlan.selftest.mjs` | 92 | MANUAL (world) | world: world-wide map builds, 92 s: 2026-10-03: Verdant's classic town plan (every planned building on main's plot, the village walls) | test:heavy -- world; test:recommend flags it when its inputs change |
 | `tools/technical-framing.selftest.mjs` | 92 | MANUAL (fleet) | fleet: fleet-wide vehicle sweeps, 92 s | test:heavy -- fleet; test:recommend flags it when its inputs change |
 | `src/vehicles/profiles/abramsReturnCourses.selftest.mjs` | 91 | MANUAL (tanks) | per-tank pin (m1a1, m1a1ha, ua_m1a1, m1a1_abrams_hc, ...), 91 s | test:heavy -- tanks; lane mode and tank:release:check run it for its ids |
+| `src/vehicles/profiles/gepard.selftest.mjs` | 91 | MANUAL (tanks) | per-tank pin (gepard_1a2), 91 s: 268: the Flakpanzer Gepard 1A2 on the shared Leopard 1 hull: frame, bores, crew, height, gun and hull clearanc | test:heavy -- tanks; lane mode and tank:release:check run it for its ids |
 | `src/vehicles/profiles/leclercClassicX.selftest.mjs` | 85 | MANUAL (tanks) | per-tank pin (amx56, amx10p_25), 85 s | test:heavy -- tanks; lane mode and tank:release:check run it for its ids |
 | `src/world/smallPropsDestructible.selftest.mjs` | 84 | MANUAL (world) | world: world-wide map builds, 84 s: 2026-10-13: the village well, the square's monument and the rail yard's coal break under a hull and a round | test:heavy -- world; test:recommend flags it when its inputs change |
 | `src/vehicles/profiles/weldedShellSurfaces.selftest.mjs` | 79 | MANUAL (tanks) | per-tank pin (k1a1, stb1, type10b, kf41_lynx, ...), 79 s | test:heavy -- tanks; lane mode and tank:release:check run it for its ids |
@@ -324,6 +335,7 @@ None. Folding receipts saves only process starts (about a second each) and would
 | `src/vehicles/remoteGunFleet.selftest.mjs` | 48 | MANUAL (fleet) | fleet: fleet-wide vehicle sweeps, 48 s | test:heavy -- fleet; test:recommend flags it when its inputs change |
 | `src/vehicles/cnGunMantlet.selftest.mjs` | 47 | MANUAL (tanks) | per-tank pin (type59, t55a, ztz99_longwei, ztz85_iii), 47 s: 2026-10-28 (release 262 CN, the Type 59 / T-55A and Longwei rebuilds): each gun stays inside its mantlet at ev | test:heavy -- tanks; lane mode and tank:release:check run it for its ids |
 | `src/vehicles/abramsSourceXShoulderClosure.selftest.mjs` | 46 | MANUAL (fleet) | fleet: fleet-wide vehicle sweeps, 46 s | test:heavy -- fleet; test:recommend flags it when its inputs change |
+| `src/vehicles/profiles/bmptTerminator.selftest.mjs` | 46 | MANUAL (tanks) | per-tank pin (bmpt_terminator), 46 s: 267 (lane bmpt-family-267): the Ob'yekt 199 "Ramka" BMPT Terminator's native fixture (frame, tubes, crew, heig | test:heavy -- tanks; lane mode and tank:release:check run it for its ids |
 | `src/vehicles/profiles/fleetEraFinish.selftest.mjs` | 46 | MANUAL (fleet) | fleet: fleet-wide vehicle sweeps, 46 s | test:heavy -- fleet; test:recommend flags it when its inputs change |
 | `src/world/maps/regional/skyline.selftest.mjs` | 46 | MANUAL (world) | world: world-wide map builds, 46 s: 2026-10-05: the tall- and big-building kit, every builder and damage state sound | test:heavy -- world; test:recommend flags it when its inputs change |
 | `src/vehicles/profiles/pl01GunHousing.selftest.mjs` | 45 | MANUAL (tanks) | per-tank pin (pl01, pl01_105), 45 s: release 261: both PL-01 gun fits stay in their turret-face housings and clear their hulls at every pitch | test:heavy -- tanks; lane mode and tank:release:check run it for its ids |
@@ -540,7 +552,7 @@ None. Folding receipts saves only process starts (about a second each) and would
 | `src/world/wreckCollision.selftest.mjs` | 21 | MANUAL (world) | world: world-wide map builds, 21 s | test:heavy -- world; test:recommend flags it when its inputs change |
 | `tools/track-geometry.selftest.mjs` | 21 | MANUAL (tanks) | per-tank pin (m1a1_abrams_hc), 21 s | test:heavy -- tanks; lane mode and tank:release:check run it for its ids |
 | `src/vehicles/fixedSourceSkirtPaint.selftest.mjs` | 20 | MANUAL (fleet) | fleet: fleet-wide vehicle sweeps, 20 s | test:heavy -- fleet; test:recommend flags it when its inputs change |
-| `src/vehicles/fleetRenewal.selftest.mjs` | 20 | MANUAL (tanks) | per-tank pin (t80u, t72b3m_2016, t72b3, t72b3m_2022, ...), 20 s | test:heavy -- tanks; lane mode and tank:release:check run it for its ids |
+| `src/vehicles/fleetRenewal.selftest.mjs` | 20 | MANUAL (tanks) | per-tank pin (t72b3m_2016, t72b3, t80u, t72b3m_2022, ...), 20 s | test:heavy -- tanks; lane mode and tank:release:check run it for its ids |
 | `src/vehicles/missileConceptMarkings.selftest.mjs` | 20 | MANUAL (fleet) | fleet: fleet-wide vehicle sweeps, 20 s | test:heavy -- fleet; test:recommend flags it when its inputs change |
 | `src/vehicles/profiles/k21RearHullStock.selftest.mjs` | 20 | MANUAL (tanks) | per-tank pin (k21), 20 s: Measure historical source witnesses in their original metre frame. Installed 0.90 size and unit-scale rigs are | test:heavy -- tanks; lane mode and tank:release:check run it for its ids |
 | `src/vehicles/profiles/leopardX.selftest.mjs` | 20 | MANUAL (tanks) | per-tank pin (leo2a5m, leo2a7v, leo2a6m, leo2a5), 20 s | test:heavy -- tanks; lane mode and tank:release:check run it for its ids |
@@ -609,7 +621,7 @@ None. Folding receipts saves only process starts (about a second each) and would
 | `src/vehicles/profiles/strv122XSuppliedBow.selftest.mjs` | 17 | MANUAL (tanks) | per-tank pin (strv122), 17 s | test:heavy -- tanks; lane mode and tank:release:check run it for its ids |
 | `src/vehicles/profiles/strv122XSuppliedCupola.selftest.mjs` | 17 | MANUAL (tanks) | per-tank pin (strv122), 17 s: Frozen pre-cupola digests (non-target meshes of a historical wheel replay, 173 equipment emissions) are retire | test:heavy -- tanks; lane mode and tank:release:check run it for its ids |
 | `src/vehicles/profiles/strv122XSuppliedFrontClearance.selftest.mjs` | 17 | MANUAL (tanks) | per-tank pin (strv122), 17 s | test:heavy -- tanks; lane mode and tank:release:check run it for its ids |
-| `src/vehicles/profiles/t72TurretCleanup.selftest.mjs` | 17 | MANUAL (tanks) | per-tank pin (t72b3m_2016, t72bu, t80u, bmpt_terminator2), 17 s | test:heavy -- tanks; lane mode and tank:release:check run it for its ids |
+| `src/vehicles/profiles/t72TurretCleanup.selftest.mjs` | 17 | MANUAL (tanks) | per-tank pin (t72b3m_2016, t72bu, bmpt_terminator2), 17 s | test:heavy -- tanks; lane mode and tank:release:check run it for its ids |
 | `src/vehicles/profiles/t90msXHullEnds.selftest.mjs` | 17 | MANUAL (tanks) | per-tank pin (t90ms_tagil), 17 s | test:heavy -- tanks; lane mode and tank:release:check run it for its ids |
 | `src/vehicles/profiles/type99AAngularTurret.selftest.mjs` | 17 | MANUAL (tanks) | per-tank pin (ztz99_longwei, ztz99a, ztz99a2, vt4a1), 17 s | test:heavy -- tanks; lane mode and tank:release:check run it for its ids |
 | `src/vehicles/trackEndRamp.selftest.mjs` | 17 | MANUAL (tanks) | per-tank pin (m2a2_bradley, t90am, spz_wotan, kv2, ...), 17 s | test:heavy -- tanks; lane mode and tank:release:check run it for its ids |
@@ -647,10 +659,10 @@ None. Folding receipts saves only process starts (about a second each) and would
 | `src/vehicles/profiles/amx40XFrontFittings.selftest.mjs` | 15 | MANUAL (tanks) | per-tank pin (amx40), 15 s | test:heavy -- tanks; lane mode and tank:release:check run it for its ids |
 | `src/vehicles/profiles/amx40XHullSkirts.selftest.mjs` | 15 | MANUAL (tanks) | per-tank pin (amx40), 15 s | test:heavy -- tanks; lane mode and tank:release:check run it for its ids |
 | `src/vehicles/profiles/challenger3TdSuspension.selftest.mjs` | 15 | MANUAL (tanks) | per-tank pin (challenger3_td, challenger3_td_rws), 15 s: 264: the Challenger 3 TD's Hydrogas units on the oracle's casting, the arms in the track lane's shadow | test:heavy -- tanks; lane mode and tank:release:check run it for its ids |
-| `src/vehicles/profiles/cv90.selftest.mjs` | 15 | MANUAL (tanks) | per-tank pin (cv90_mk4_concept, cv90), 15 s | test:heavy -- tanks; lane mode and tank:release:check run it for its ids |
+| `src/vehicles/profiles/cv90.selftest.mjs` | 15 | MANUAL (tanks) | per-tank pin (cv90, cv90_mk4_concept), 15 s | test:heavy -- tanks; lane mode and tank:release:check run it for its ids |
 | `src/vehicles/profiles/donorStockSeating.selftest.mjs` | 15 | MANUAL (tanks) | per-tank pin (type96b, ztz99a2, ztz99a, vt4a1), 15 s: release 227 (CN critic round 5): the fleet Type 96B's and ZTZ-99A2's donor parts each seated on real stock | test:heavy -- tanks; lane mode and tank:release:check run it for its ids |
 | `src/vehicles/profiles/k2RunningGearSeat.selftest.mjs` | 15 | MANUAL (tanks) | per-tank pin (xk2_black_panther, k2b, k2_black_panther), 15 s | test:heavy -- tanks; lane mode and tank:release:check run it for its ids |
-| `src/vehicles/profiles/kf51FrontFinish.selftest.mjs` | 15 | MANUAL (tanks) | per-tank pin (kf51_evo), 15 s | test:heavy -- tanks; lane mode and tank:release:check run it for its ids |
+| `src/vehicles/profiles/kf51FrontFinish.selftest.mjs` | 15 | MANUAL (tanks) | per-tank pin (kf51_evo), 15 s: kf51FrontFinish.selftest.mjs — the KF51 EVO's 267 build (profiles/kf51Evo.ts) as the real Panther KF51 EVO: th | test:heavy -- tanks; lane mode and tank:release:check run it for its ids |
 | `src/vehicles/profiles/leclercTrackCourse.selftest.mjs` | 15 | MANUAL (tanks) | per-tank pin (leclerc_s2, leclerc_sxxi, leclerc_s1), 15 s | test:heavy -- tanks; lane mode and tank:release:check run it for its ids |
 | `src/vehicles/profiles/leopard2A6UA.selftest.mjs` | 15 | MANUAL (tanks) | per-tank pin (leo2a6_ua, leo2a4_otco, leo2a6), 15 s: Leopard 2A6 UA (264; the owner, 2026-10-28: rebuilt "off of our new current actual leopard 2a6"): the source-m | test:heavy -- tanks; lane mode and tank:release:check run it for its ids |
 | `src/vehicles/profiles/leopardRevolutionGeometry.selftest.mjs` | 15 | MANUAL (tanks) | per-tank pin (leo2_revolution), 15 s | test:heavy -- tanks; lane mode and tank:release:check run it for its ids |
@@ -662,7 +674,7 @@ None. Folding receipts saves only process starts (about a second each) and would
 | `src/vehicles/coplanarDepthLayers.selftest.mjs` | 14 | MANUAL (tanks) | per-tank pin (type10b), 14 s | test:heavy -- tanks; lane mode and tank:release:check run it for its ids |
 | `src/vehicles/profiles/abramsCwsRoofSeating.selftest.mjs` | 14 | MANUAL (tanks) | per-tank pin (m1a1, m1a1ha, ua_m1a1), 14 s | test:heavy -- tanks; lane mode and tank:release:check run it for its ids |
 | `src/vehicles/profiles/abramsWheelBayPanels.selftest.mjs` | 14 | MANUAL (tanks) | per-tank pin (m1a1_abrams_hc, m1a1, m1a1ha, m1a1_abrams_sa, ...), 14 s | test:heavy -- tanks; lane mode and tank:release:check run it for its ids |
-| `src/vehicles/profiles/bradleyHullClosure.selftest.mjs` | 14 | MANUAL (tanks) | per-tank pin (m2a2_bradley, ua_m2a3_bradley, m3a3_bradley, marder1a3), 14 s | test:heavy -- tanks; lane mode and tank:release:check run it for its ids |
+| `src/vehicles/profiles/bradleyHullClosure.selftest.mjs` | 14 | MANUAL (tanks) | per-tank pin (m2a2_bradley, ua_m2a3_bradley, m3a3_bradley, m6_linebacker, ...), 14 s | test:heavy -- tanks; lane mode and tank:release:check run it for its ids |
 | `src/vehicles/profiles/challenger2Geometry.selftest.mjs` | 14 | MANUAL (tanks) | per-tank pin (challenger2), 14 s | test:heavy -- tanks; lane mode and tank:release:check run it for its ids |
 | `src/vehicles/profiles/kurganetsRoofFittings.selftest.mjs` | 14 | MANUAL (tanks) | per-tank pin (kurganets25), 14 s | test:heavy -- tanks; lane mode and tank:release:check run it for its ids |
 | `src/vehicles/profiles/leclercGunHousingRig.selftest.mjs` | 14 | MANUAL (tanks) | per-tank pin (leclerc_s2, leclerc_sxxi, leclerc_s1), 14 s | test:heavy -- tanks; lane mode and tank:release:check run it for its ids |
@@ -673,7 +685,7 @@ None. Folding receipts saves only process starts (about a second each) and would
 | `src/vehicles/profiles/merkava3dXFrontReturn.selftest.mjs` | 14 | MANUAL (tanks) | per-tank pin (merkava3d), 14 s | test:heavy -- tanks; lane mode and tank:release:check run it for its ids |
 | `src/vehicles/profiles/t72b3mXGeometry.selftest.mjs` | 14 | MANUAL (tanks) | per-tank pin (t72b3m_2016), 14 s | test:heavy -- tanks; lane mode and tank:release:check run it for its ids |
 | `src/vehicles/profiles/t72b3XEquipment.selftest.mjs` | 14 | MANUAL (tanks) | per-tank pin (t72b3, t64bv1), 14 s | test:heavy -- tanks; lane mode and tank:release:check run it for its ids |
-| `src/vehicles/profiles/t72TrackFinish.selftest.mjs` | 14 | MANUAL (tanks) | per-tank pin (t80u, t72b3m_2016, t72bu, t72b3), 14 s | test:heavy -- tanks; lane mode and tank:release:check run it for its ids |
+| `src/vehicles/profiles/t72TrackFinish.selftest.mjs` | 14 | MANUAL (tanks) | per-tank pin (t72b3m_2016, t72bu, t72b3), 14 s | test:heavy -- tanks; lane mode and tank:release:check run it for its ids |
 | `src/vehicles/profiles/t80MachineGunSeat.selftest.mjs` | 14 | MANUAL (tanks) | per-tank pin (t80, t80b, t80bv), 14 s | test:heavy -- tanks; lane mode and tank:release:check run it for its ids |
 | `src/vehicles/profiles/t90AwXCastUnderside.selftest.mjs` | 14 | MANUAL (tanks) | per-tank pin (t90), 14 s | test:heavy -- tanks; lane mode and tank:release:check run it for its ids |
 | `src/vehicles/profiles/t90BurlakRearScale.selftest.mjs` | 14 | MANUAL (tanks) | per-tank pin (t90_1992, t90a_burlak_proto), 14 s | test:heavy -- tanks; lane mode and tank:release:check run it for its ids |
@@ -796,6 +808,8 @@ None. Folding receipts saves only process starts (about a second each) and would
 | `src/vehicles/hullRubber.selftest.mjs` | 5.0 | MANUAL (tanks) | per-tank pin (t72b3, m2a2_bradley), 5.0 s: 262: the hull's rubber (skirts, flaps, mats) its own material, painted by place; the tyres bare | test:heavy -- tanks; lane mode and tank:release:check run it for its ids |
 | `src/vehicles/internalLayoutRegistry.selftest.mjs` | 5.0 | MANUAL (tanks) | per-tank pin (griffin50mm, kurganets25, aft10, bmp3m_dragun125, ...), 5.0 s | test:heavy -- tanks; lane mode and tank:release:check run it for its ids |
 | `src/vehicles/trackContactDerivationAudit.selftest.mjs` | 5.0 | MANUAL (tanks) | per-tank pin (m1a1_abrams_hc), 5.0 s: 2026-10-05: the contact audit's rules, the run within 5 mm and the belly pan 5 mm below to 1 cm above (the K2 | test:heavy -- tanks; lane mode and tank:release:check run it for its ids |
+| `src/sim/frontlineLineGuard.selftest.mjs` | n/a | MANUAL (pacing) | pacing: whole-match pacing (the 132 default lobbies in eight shards and their judge), placement and deployment on every map, n/a s: 268 (Main item 9): Frontline's opening line out of the attack's reach and sight on 64 seeds (manual: pacing). | test:heavy -- pacing; test:recommend flags it when its inputs change |
+| `src/vehicles/vehicleMarkingSuitBacking.selftest.mjs` | n/a | MANUAL (tanks) | per-tank pin (m1a1_abrams_fep), n/a s: release 268 (Main): a suit-painted marking is backed by its suit within the armour's 5 cm, and by nothing fart | test:heavy -- tanks; lane mode and tank:release:check run it for its ids |
 | `tools/changed-only/balance-keys.selftest.mjs` | n/a | MANUAL (fleet) | fleet: fleet-wide vehicle sweeps, n/a s: 266 (Main): the balance pass keyed per id through the spec rows: a one-id lever on the real fleet marks that i | test:heavy -- fleet; test:recommend flags it when its inputs change |
 | `tools/garage-roster-settle.browser.selftest.mjs` | n/a | MANUAL (ui) | ui: heavy interface paint and layout sweeps, n/a s: 2026-10-30 (garage-roster-thrash-265): every nation's roster strip settles at the desktop windows and stepped | test:heavy -- ui; test:recommend flags it when its inputs change |
 | `tools/hud-self-measure.browser.selftest.mjs` | n/a | MANUAL (ui) | ui: heavy interface paint and layout sweeps, n/a s: 2026-10-30 (hud-self-measure-266): the battle HUD's touch status strip, hull bars and an idle page measure not | test:heavy -- ui; test:recommend flags it when its inputs change |
@@ -803,6 +817,7 @@ None. Folding receipts saves only process starts (about a second each) and would
 | `tools/mp-rooms-entry.browser.selftest.mjs` | n/a | MANUAL (ui) | ui: heavy interface paint and layout sweeps, n/a s: 268 (the 267 production smoke): the multiplayer end-to-end opens the rooms panel the way the Garage's layout o | test:heavy -- ui; test:recommend flags it when its inputs change |
 
 ## KEEP (1713)
+## KEEP (1517)
 
 | Receipt | Run (s) | Decision | Reason | Coverage now |
 |---|---:|---|---|---|
@@ -818,6 +833,7 @@ None. Folding receipts saves only process starts (about a second each) and would
 | `src/vehicles/profiles/merkavaFamily.selftest.mjs` | 103 | KEEP | vehicle rule, 103 s: 262 (the Merkava family builder): the six marks' structure, guns and packages, and their guns over their hulls | default tier (npm test, the release gate; lane mode by its closure) |
 | `src/vehicles/tankFactoryStaging.selftest.mjs` | 103 | KEEP | staged construction publishes exactly the synchronous build (vehicle core: build-path parity) | default tier (npm test, the release gate; lane mode by its closure) |
 | `src/mp/session/matchSessionRematchHost.selftest.mjs` | 100 | KEEP | multiplayer wire, session or host, 100 s: 2026-11-02 audit M2: a host's in-place rematch never declines its own next round | default tier (npm test, the release gate; lane mode by its closure) |
+| `src/vehicles/profiles/m3a2Bradley.selftest.mjs` | 84 | KEEP | vehicle rule, 84 s: 268: the M3A2 under the classic turret (its photo packet fixture) | default tier (npm test, the release gate; lane mode by its closure) |
 | `server/collisionManifestCodec.selftest.mjs` | 82 | KEEP | the committed collision shards decode bit for bit (generated-output guard, ~82 s) | default tier (npm test, the release gate; lane mode by its closure) |
 | `tools/selftest-scans.selftest.mjs` | 82 | KEEP | listing receipts select and key on what they list (must-keep: changed-only guard) | default tier (npm test, the release gate; lane mode by its closure) |
 | `tools/spare-track-key.selftest.mjs` | 74 | KEEP | spare-track ledger keys gate a line-shifted tree green (generated-output guard) | default tier (npm test, the release gate; lane mode by its closure) |
@@ -842,6 +858,7 @@ None. Folding receipts saves only process starts (about a second each) and would
 | `tools/public-repo-hygiene.selftest.mjs` | 42 | KEEP | public repository hygiene (must-keep: security) | default tier (npm test, the release gate; lane mode by its closure) |
 | `server/dedicatedWorldCollision.selftest.mjs` | 41 | KEEP | the collision shard census: records per map and storage (generated-output guard, ~41 s) | default tier (npm test, the release gate; lane mode by its closure) |
 | `tools/mp-p2p-peer.selftest.mjs` | 41 | KEEP | the peer harness is a dev surface only (must-keep: security) | default tier (npm test, the release gate; lane mode by its closure) |
+| `src/game/ai.rockWedge.selftest.mjs` | 40 | KEEP | game flow, 40 s: 268 (Main item 10 (A)): a hull pressed into a static solid with no way releases at once (Desert seed 12's boul | default tier (npm test, the release gate; lane mode by its closure) |
 | `tools/driver-boundaries.selftest.mjs` | 40 | KEEP | the simulation drivers keep to their boundaries (sim determinism) | default tier (npm test, the release gate; lane mode by its closure) |
 | `src/vehicles/vehicleSize.selftest.mjs` | 37 | KEEP | the owner-directed size factors and dims over the fleet (size policy) | default tier (npm test, the release gate; lane mode by its closure) |
 | `server/convexOutlines.selftest.mjs` | 36 | KEEP | convex armour parts hold their outline in the shell clip (must-keep: armour sample) | default tier (npm test, the release gate; lane mode by its closure) |
@@ -942,6 +959,8 @@ None. Folding receipts saves only process starts (about a second each) and would
 | `tools/object3d-assert-lint.selftest.mjs` | 16 | KEEP | no equality asserts on three.js objects (must-keep: lint) | default tier (npm test, the release gate; lane mode by its closure) |
 | `tools/studio-example-scenarios.selftest.mjs` | 16 | KEEP | tool contract, 16 s | default tier (npm test, the release gate; lane mode by its closure) |
 | `src/game/jevCommander.selftest.mjs` | 15 | KEEP | game flow, 15 s: (2026-11-02 audit M6: and the orders as recorded input a replay applies again, the sim-second deadline, the co | default tier (npm test, the release gate; lane mode by its closure) |
+| `src/game/ai.allyYield.selftest.mjs` | 15 | KEEP | game flow, 15 s: 268 (Main item 10b): exactly one hull of an ally pair yields; the follower in a following pair, whatever the i | default tier (npm test, the release gate; lane mode by its closure) |
+| `src/game/jevCommander.selftest.mjs` | 15 | KEEP | game flow, 15 s | default tier (npm test, the release gate; lane mode by its closure) |
 | `src/game/soloKernelMemoryGrowth.selftest.mjs` | 15 | KEEP | game flow, 15 s: fix-detached-buffer-265: the kernels' views across a memory growth (Desert's first step threw on live 264c) | default tier (npm test, the release gate; lane mode by its closure) |
 | `src/game/studioSceneShare.selftest.mjs` | 15 | KEEP | game flow, 15 s: Shared scene links (studioSceneShare.ts, ui/studioSceneLinkUi.ts): the scene rides in the URL fragment, capped | default tier (npm test, the release gate; lane mode by its closure) |
 | `src/mp/presentation/craterSync.selftest.mjs` | 15 | KEEP | craters across the network (must-keep: world events) | default tier (npm test, the release gate; lane mode by its closure) |
@@ -954,6 +973,7 @@ None. Folding receipts saves only process starts (about a second each) and would
 | `tools/visual-census.selftest.mjs` | 15 | KEEP | tool contract, 15 s: 2026-10-01: the redesign baseline census (camera set, site selection, metrics, reports) | default tier (npm test, the release gate; lane mode by its closure) |
 | `server/match/snapshotBudget.selftest.mjs` | 14 | KEEP | match authority, 14 s: mp-scale-251: the per-viewer snapshot budget, keyframe slots, the row weigher | default tier (npm test, the release gate; lane mode by its closure) |
 | `src/game/ai.patrolNoRoute.selftest.mjs` | 14 | KEEP | game flow, 14 s: 2026-10-03 (bots lane): a patrol leg the grid cannot route still drives (the bridge gate's no-route hold). | default tier (npm test, the release gate; lane mode by its closure) |
+| `src/game/ai.plannedLeg.selftest.mjs` | 14 | KEEP | game flow, 14 s: 268 (Main item 10): a planned leg is judged by the planner's clearance; a hull off it rejoins it before corner | default tier (npm test, the release gate; lane mode by its closure) |
 | `src/mp/host/hostFleet.selftest.mjs` | 14 | KEEP | multiplayer wire, session or host, 14 s: 2026-10-01: the host Worker carries specs, not vehicles; the roster's anatomy loads at boot. | default tier (npm test, the release gate; lane mode by its closure) |
 | `src/mp/session/matchSessionEntryReports.selftest.mjs` | 14 | KEEP | multiplayer wire, session or host, 14 s: 2026-10-13 MP plan step 8: the loading host reports until its actor does | default tier (npm test, the release gate; lane mode by its closure) |
 | `src/ui/aerialHitMark.selftest.mjs` | 14 | KEEP | interface contract, 14 s: aerialHitMark.selftest.mjs — (lane ac130-fx-228 r3, the critic's "tan wash while the 30 mm fires", on the base | default tier (npm test, the release gate; lane mode by its closure) |
@@ -1245,6 +1265,7 @@ None. Folding receipts saves only process starts (about a second each) and would
 | `tools/run-selftests.selftest.mjs` | 3.0 | KEEP | test, gate or release tooling, 3.0 s | default tier (npm test, the release gate; lane mode by its closure) |
 | `tools/viteSharedWorkers.selftest.mjs` | 3.0 | KEEP | tool contract, 3.0 s | default tier (npm test, the release gate; lane mode by its closure) |
 | `tools/wreck-build-profile.selftest.mjs` | 3.0 | KEEP | tool contract, 3.0 s | default tier (npm test, the release gate; lane mode by its closure) |
+| `src/pad/padLobby.selftest.mjs` | 2.7 | KEEP | contract, 2.7 s: 2026-11-01 (couch-mode-268, docs/COUCH-MODE.md): one lobby, a receiver per seat | default tier (npm test, the release gate; lane mode by its closure) |
 | `tools/style-literal-census.selftest.mjs` | 2.6 | KEEP | tool contract, 2.6 s: style-literal-census.selftest.mjs — the style-literal ratchet receipt (brand-ui SPEC §4.1, §5.4, §17.1). Copyr | default tier (npm test, the release gate; lane mode by its closure) |
 | `src/game/ai.huntRunIn.selftest.mjs` | 2.5 | KEEP | game flow, 2.5 s: round 3 (the critic's M2/M3): the hunt's run-in beside its quarry and the orbit rings spread by the pack | default tier (npm test, the release gate; lane mode by its closure) |
 | `src/game/ai.missionOwnership.selftest.mjs` | 2.5 | KEEP | game flow, 2.5 s: A labelled mission owns its waypoints (gameplay-modes-228, study-bots 2.5). On integ/228 the 25 s no-contact s | default tier (npm test, the release gate; lane mode by its closure) |
@@ -1348,6 +1369,7 @@ None. Folding receipts saves only process starts (about a second each) and would
 | `src/ui/topMaskEntryKick.selftest.mjs` | 1.8 | KEEP | interface contract, 1.8 s: battle-spikes-253: the panel's mask programs link from the covered warm's start | default tier (npm test, the release gate; lane mode by its closure) |
 | `src/world/civic/civicFurniture.selftest.mjs` | 1.8 | KEEP | world rule, 1.8 s: civicFurniture.selftest.mjs — the civic kit's furniture and its memorial column at the props r2 bar (the maps | default tier (npm test, the release gate; lane mode by its closure) |
 | `src/engine/shadowDebugGlobal.selftest.mjs` | 1.7 | KEEP | renderer contract, 1.7 s: (local-fps-266) __SHADOW_DEBUG held as the window's own property: the per-caster shadow hooks' reads skip the | default tier (npm test, the release gate; lane mode by its closure) |
+| `src/sim/playerInputStage.selftest.mjs` | 1.7 | KEEP | simulation rule, 1.7 s: 268 (couch mode): one seat's input stage, the authority's and the local seats' alike | default tier (npm test, the release gate; lane mode by its closure) |
 | `src/ui/surfaceRegistry.selftest.mjs` | 1.7 | KEEP | interface contract, 1.7 s: 2026-10-25 (UI-LOCKDOWN B and C, owner: "prevent things like that silly double ping indicator from happening a | default tier (npm test, the release gate; lane mode by its closure) |
 | `src/ui/transientSurfaceRegistry.selftest.mjs` | 1.7 | KEEP | interface contract, 1.7 s: The transient-surface census (static): every surface the source puts on the page's stack (components/surfaceSt | default tier (npm test, the release gate; lane mode by its closure) |
 | `src/world/duneForms.selftest.mjs` | 1.7 | KEEP | world rule, 1.7 s: the map-revival lane (Sirocco Wadi round 1, wave 235): the erg's seif draa and star dunes; the gour's caprock | default tier (npm test, the release gate; lane mode by its closure) |
@@ -1368,6 +1390,7 @@ None. Folding receipts saves only process starts (about a second each) and would
 | `src/pad/padInput.selftest.mjs` | 1.2 | KEEP | contract, 1.2 s: The phone controller's input model (docs/PHONE-CONTROLLER.md "Controls"): the wheel angle from deviceorientati | default tier (npm test, the release gate; lane mode by its closure) |
 | `src/ui/tokens/settingsColours.selftest.mjs` | 1.2 | KEEP | interface contract, 1.2 s: item 259 (owner: "color code settings so its easier"): one CVD-checked colour per Settings category, glyphs an | default tier (npm test, the release gate; lane mode by its closure) |
 | `tools/starvation-meter.selftest.mjs` | 1.2 | KEEP | tool contract, 1.2 s: 267: the soak's starvation meter on driven clocks | default tier (npm test, the release gate; lane mode by its closure) |
+| `src/game/couchCamera.selftest.mjs` | 1.1 | KEEP | game flow, 1.1 s: couch-mode-268: the shared camera frames every seat | default tier (npm test, the release gate; lane mode by its closure) |
 | `src/game/keybindingCensus.selftest.mjs` | 1.1 | KEEP | game flow, 1.1 s: owner 2026-10-28: every default key by the phases its owner is live in, no synthetic key events (the diagnosti | default tier (npm test, the release gate; lane mode by its closure) |
 | `src/pad/qr.selftest.mjs` | 1.1 | KEEP | contract, 1.1 s: The pairing link's QR encoder (src/pad/qr.ts). Known answers: each matrix below was decoded back to its text b | default tier (npm test, the release gate; lane mode by its closure) |
 | `src/ui/i18nFormat.selftest.mjs` | 1.1 | KEEP | interface contract, 1.1 s: 2026-10-18 BUI-F8: ICU/Intl formatting, the pseudo-locale and the catalog-shape check; the glossary as the sin | default tier (npm test, the release gate; lane mode by its closure) |
@@ -1715,6 +1738,7 @@ None. Folding receipts saves only process starts (about a second each) and would
 | `src/mp/wire/viewerMask.selftest.mjs` | 1.0 | KEEP | multiplayer wire, session or host, 1.0 s: 2026-10-15 MP stream: wire 7, a delta's movement checkpoint as a changed-value mask | default tier (npm test, the release gate; lane mode by its closure) |
 | `src/mp/wire/wireFuzz.selftest.mjs` | 1.0 | KEEP | multiplayer wire, session or host, 1.0 s | default tier (npm test, the release gate; lane mode by its closure) |
 | `src/mp/wire/wreckBody.selftest.mjs` | 1.0 | KEEP | multiplayer wire, session or host, 1.0 s: 2026-10-10 (physics lane): wire 5's WRECK_BODY group — a wreck's turret body on the rows. | default tier (npm test, the release gate; lane mode by its closure) |
+| `src/pad/padCues.selftest.mjs` | 1.0 | KEEP | contract, 1.0 s: phone-feel-269: what a paired phone feels, the wire, the buzzes | default tier (npm test, the release gate; lane mode by its closure) |
 | `src/presentation/analytics.selftest.mjs` | 1.0 | KEEP | site, manual or app contract, 1.0 s | default tier (npm test, the release gate; lane mode by its closure) |
 | `src/presentation/notFound.selftest.mjs` | 1.0 | KEEP | site, manual or app contract, 1.0 s | default tier (npm test, the release gate; lane mode by its closure) |
 | `src/presentation/optionalProduction.selftest.mjs` | 1.0 | KEEP | site, manual or app contract, 1.0 s | default tier (npm test, the release gate; lane mode by its closure) |
@@ -2230,6 +2254,7 @@ None. Folding receipts saves only process starts (about a second each) and would
 | `src/engine/postWarmFirstFrame.selftest.mjs` | 0.4 | KEEP | renderer contract, 0.4 s: postWarmFirstFrame.selftest.mjs — the post chain's first-frame warm (engine/postLazyPasses.ts, 2026-10-19, bla | default tier (npm test, the release gate; lane mode by its closure) |
 | `src/engine/programReceipt.selftest.mjs` | 0.4 | KEEP | renderer contract, 0.4 s: 2026-10-27 (the room-stalls lane): programs linked past a warm, as a receipt | default tier (npm test, the release gate; lane mode by its closure) |
 | `src/engine/watchCamera.selftest.mjs` | 0.4 | KEEP | renderer contract, 0.4 s: watch-mode-243: the drone's world clamp and flight, the ride-along's chase, sight, wreck hold and handovers | default tier (npm test, the release gate; lane mode by its closure) |
+| `src/game/couchSeats.selftest.mjs` | 0.4 | KEEP | game flow, 0.4 s: couch-mode-268: which roster tank each phone drives, and a seat's controls | default tier (npm test, the release gate; lane mode by its closure) |
 | `src/game/worldMaterialsBeforeCompile.selftest.mjs` | 0.4 | KEEP | game flow, 0.4 s: battle-spikes-253: both entries patch the world before compiling it | default tier (npm test, the release gate; lane mode by its closure) |
 | `src/sim/armorZonePlates.selftest.mjs` | 0.4 | KEEP | simulation rule, 0.4 s: 262 phase 2 (off by default): zone plates — the paint's zone at a shell's entry, the slices' seams sealed | default tier (npm test, the release gate; lane mode by its closure) |
 | `src/ui/canvasText.selftest.mjs` | 0.4 | KEEP | interface contract, 0.4 s: a canvas's words and figures as DOM runs over it (the sight's readouts, the glyphs' letters) | default tier (npm test, the release gate; lane mode by its closure) |
@@ -2519,3 +2544,4 @@ None. Folding receipts saves only process starts (about a second each) and would
 | `tools/release-record.selftest.mjs` | n/a | KEEP | test, gate or release tooling, n/a s: 2026-11-02 audit S5: a live deploy recorded before verify, an owned cache lock, each Worker's commit on record | default tier (npm test, the release gate; lane mode by its closure) |
 | `tools/session-mutex.selftest.mjs` | n/a | KEEP | tool contract, n/a s: 2026-11-02 audit S4: the probe mutex has an owner (a dead holder's reaped, a live or shell holder's never) | default tier (npm test, the release gate; lane mode by its closure) |
 | `tools/with-capture-lock.selftest.mjs` | n/a | KEEP | tool contract, n/a s: 2026-11-02 audit U38 (round 2): the hold CLI, one normal-ticket hold per command whose tools nest in it; exit | default tier (npm test, the release gate; lane mode by its closure) |
+| `src/pad/padPhoneHalf.selftest.mjs` | n/a | KEEP | contract, n/a s: phone-feel-269: no desktop-only export rides to the phone's page | default tier (npm test, the release gate; lane mode by its closure) |

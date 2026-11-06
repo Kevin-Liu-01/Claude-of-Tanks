@@ -198,7 +198,8 @@ export function createBattleFrameRuntime({
     return appliedDtSeconds;
   };
 
-  // hot-path: every battle frame
+  // hot-path: every battle frame; a couch battle's tanks are its phones' (docs/COUCH-MODE.md): the keyboard drives none,
+  // and the camera aims none
   const pollFrameInput = (
     appliedDtSeconds: number,
     inBattle: boolean,
@@ -212,7 +213,7 @@ export function createBattleFrameRuntime({
     inputSample.killcamActive = killcamActive;
     inputSample.cameraLocked = cameraLocked;
     inputSample.rigMode = getRigMode();
-    inputSample.player = game.player as PlayerFrameSample['player'];
+    inputSample.player = (game.couch ? null : game.player) as PlayerFrameSample['player'];
     input.poll(inputSample);
   };
 

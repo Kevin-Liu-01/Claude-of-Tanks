@@ -19,8 +19,8 @@ import { M1A1_GUN_PITCH_BY_YAW } from '../src/vehicles/m1a1GunLimits.ts';
 // not by mesh name; (2) on a synthetic turret a pocket under a gun mount's lip (the M1A1 slot's shape) is reported as
 // moving-clearance air and conserved against the plain measurement, while a holed turret wall still leaks and a roof
 // hole under the gun still leaks the turret interior around its own column; (3) a declared record exempts exactly its
-// cells on a matching lattice and nothing on a moved one; (4) the shipped M1A2 slot (3.56 L) and the M1A1 HA's
-// declared clearance read as moving-clearance air with 0 L of leak, and both still leak without the policy; every
+// cells on a matching lattice and nothing on a moved one; (4) the shipped M1A1 HC and M1A1 HA leak 0 L (since release
+// 268's measured shell, with no pocket under the gun mount, both with and without the policy); every
 // legacy M1A1 mount carries a current declared record.
 const read = (path) => readFileSync(path, 'utf8');
 
@@ -114,8 +114,11 @@ for (const id of ['m1a1_abrams_hc', 'm1a1ha']) {
     const bare = measureWatertight(body, meshes, lanes, { boreAir });
     assert.ok(!policy.clearanceStale, `${id}: the declared record matches the shipped lattice`);
     assert.equal(policy.leakL, 0, `${id}: no leak beyond its moving-clearance air`);
-    assert.ok(bare.leakL > 3, `${id}: without the policy the same air leaks (${bare.leakL} L)`);
-    assert.ok(Math.abs(policy.movingClearanceL - bare.leakL) <= .02, `${id}: moving-clearance air + leak is conserved`);
+    // 2026-11-04 (release 268, the M1A1 marks' turret, mantlet and M256 from the owner's model, 41cf7c51ec): the
+    // model's recessed mantlet fills its slot, so no pocket opens under the gun mount; both marks declare 0 voxels of
+    // clearance and leak 0 L with or without the policy (the synthetic slot above still holds the rule)
+    assert.equal(bare.leakL, 0, `${id}: no pocket under the gun mount, with or without the policy (${bare.leakL} L)`);
+    assert.equal(policy.movingClearanceL, 0, `${id}: no moving-clearance air declared`);
     report[id] = `${policy.movingClearanceL} L`;
   } finally { tank.dispose(); }
 }

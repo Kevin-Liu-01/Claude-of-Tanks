@@ -100,6 +100,22 @@ export function requestTankSelfRight(state: RolloverState | null | undefined, gr
   return true;
 }
 
+/**
+ * Every bot's rollover this step (268: one rule for both drivers): a hull its controller drives (aiCtl) rights itself on
+ * the lifecycle's timer, and `righted` hears each start of the assisted recovery; a human (the player, a seat) presses
+ * SELF_RIGHT instead (sim/hullActions.ts). An inactive hull and a wreck are left alone.
+ */
+export function stepBotRollovers<Hull extends { aiCtl?: unknown; modeActive?: boolean; combat: { destroyed?: boolean }; state: RolloverState }>(
+  hulls: readonly Hull[],
+  dt: number,
+  righted: (entity: Hull) => void,
+): void {
+  for (const entity of hulls) {
+    if (entity.modeActive === false || entity.combat.destroyed || !entity.aiCtl) continue;
+    if (stepRolloverLifecycle(entity.state, dt)) righted(entity);
+  }
+}
+
 /** Returns true exactly once when a settled rollover starts assisted recovery. */
 export function stepRolloverLifecycle(state: RolloverState, dt: number): boolean {
   const rollover = state._rollover ||

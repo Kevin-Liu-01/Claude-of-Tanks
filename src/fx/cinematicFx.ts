@@ -256,7 +256,9 @@ export interface StudioCinematics {
   /** `focus` (the camera) ranks sustained fires for the two scene lights. */
   update(dtS: number, nowS: number, shells: readonly CineShell[], tracks: readonly CineTrackActor[],
     focus?: { x: number; y: number; z: number } | null): void;
-  muzzleBlast(id: string, pos: THREE.Vector3, dir: THREE.Vector3, caliberMm: number, ageS?: number): void;
+  /** `vel`: the firing muzzle's world velocity (m/s, subjectPointVelocity), which the blast's bright parts leave with */
+  muzzleBlast(id: string, pos: THREE.Vector3, dir: THREE.Vector3, caliberMm: number, ageS?: number,
+    vel?: Readonly<[number, number, number]>): void;
   /** Frozen destruction still: the cinematic fireball backdated by ageS. */
   explosionMoment(id: string, pos: THREE.Vector3, ageS: number): void;
   groundHit(id: string, pos: THREE.Vector3, caliberMm: number, shellType: string): void;
@@ -876,8 +878,8 @@ export function createStudioCinematics(opts: StudioCinematicsOptions): StudioCin
       particles.update(0);
       group.visible = true;
     },
-    muzzleBlast(id, pos, dir, caliberMm, ageS = 0) {
-      muzzleBlast(ctxFor(id, 1, -ageS), pos.x, pos.y, pos.z, dir.x, dir.y, dir.z, caliberMm);
+    muzzleBlast(id, pos, dir, caliberMm, ageS = 0, vel) {
+      muzzleBlast(ctxFor(id, 1, -ageS), pos.x, pos.y, pos.z, dir.x, dir.y, dir.z, caliberMm, vel);
     },
     explosionMoment(id, pos, ageS) {
       const ctx = ctxFor(id, 16, -ageS);

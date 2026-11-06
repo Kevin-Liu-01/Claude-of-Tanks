@@ -39,7 +39,7 @@ import { createParticleSystem, mulberry32, makeFbm } from './particles.ts';
 import { LATE_FX_LAYER } from './layers.ts';
 import { registerFxClock, noteFxClockShift, registerPopTrail, onTurretLanding } from './clock.ts';
 import { createImpactDecalsSteps } from './impactDecals.ts';
-import { syncSubjectEmitterAnchor } from './effectAttachments.ts';
+import { shooterVelocityGain, subjectPointVelocity, syncSubjectEmitterAnchor } from './effectAttachments.ts';
 import { isEraActivation } from '../game/eraActivation.ts';
 import { resetEquipmentDamage, type EquipmentDamageEvent } from '../vehicles/equipmentDamage.ts';
 import type { EventBus } from '../game/stateCore.ts';
@@ -210,6 +210,8 @@ interface JetScratch {
   col: MutableVec3;
   alpha: number;
   birthOffset: number;
+  /** the emitter's own world velocity at birth (m/s): a moving muzzle's jets leave with it */
+  carry?: MutableVec3;
 }
 
 interface FxVisual {
@@ -235,6 +237,10 @@ interface FxEntity {
   state: {
     pos?: THREE.Vector3;
     yaw?: number;
+    /** the hull's motion (sim, network and Studio actors publish all three): a muzzle flash leaves with it */
+    speed?: number;
+    yawRate?: number;
+    verticalSpeed?: number;
   };
   /** Solo/authority entities carry the combat record; a revived one reads destroyed:false. */
   combat?: { destroyed?: boolean; fire?: { burning?: boolean } } | null;
@@ -277,6 +283,9 @@ interface LightState {
   range?: number;
   /** (the combat review 10-13) the pulse's hot hue, cooling toward LIGHT_COOL_HEX as it fades */
   hotHex?: number;
+  /** where the pulse was lit and the world velocity it rides (a moving muzzle's light; zero for every other pulse) */
+  origin: THREE.Vector3;
+  carry: THREE.Vector3;
 }
 
 interface ShockRingState {
@@ -294,6 +303,8 @@ interface MuzzleRingState {
   att: number;
   dir: THREE.Vector3;
   origin: THREE.Vector3;
+  /** the firing muzzle's world velocity the ring rides (m/s) */
+  carry: THREE.Vector3;
 }
 
 function isRingVisible(ring: ShockRingState | MuzzleRingState): boolean {
@@ -416,13 +427,13 @@ interface PredictedWeaponEvent {
   /** the round's launch sound profile ('*-launch' for every guided round) and name, when the shot carries them */
   weaponSound?: string | null;
   shellName?: string;
+  /** the firing vehicle and the tube or muzzle the round left (the launcher a wire-guided round's wire stays fixed to) */
+  shooterId?: ShellId | null;
 }
 
 interface ShellFiredEvent extends PredictedWeaponEvent {
   shellType: string;
   shellId: ShellId;
-  /** the firing vehicle and the tube or muzzle the round left (the launcher a wire-guided round's wire stays fixed to) */
-  shooterId?: ShellId | null;
   muzzleIndex?: number | null;
   feedbackPredicted?: boolean;
   shellName?: string;
@@ -590,7 +601,7 @@ export interface FxRuntime {
     resolveSubject?: ((id: string) => FxEntity | null) | null,
   ): void;
   bindBus(bus: FxEventBus): void;
-  muzzleFlash(pos: THREE.Vector3, dir: THREE.Vector3, caliberMm: number, rocket?: boolean): void;
+  muzzleFlash(pos: THREE.Vector3, dir: THREE.Vector3, caliberMm: number, rocket?: boolean, shooterId?: ShellId | null): void;
   vehicleCollision(
     pos: THREE.Vector3,
     normal: THREE.Vector3,
@@ -916,6 +927,14 @@ const _v6 = new THREE.Vector3();
 const _camV = new THREE.Vector3(); // camera-relative scratch (never aliased by callers)
 const _mfPos = new THREE.Vector3(); // spawnMuzzleFlash-private origin copy
 const _mfDir = new THREE.Vector3(); // spawnMuzzleFlash-private direction copy
+const _mfVel: MutableVec3 = [0, 0, 0]; // spawnMuzzleFlash-private copy of the firing muzzle's world velocity
+const _mfCarry: MutableVec3 = [0, 0, 0]; // what its bright parts carry: _mfVel x the policy's muzzleFlash gain
+const _shotVel: MutableVec3 = [0, 0, 0]; // muzzleFlash(): the shooter's muzzle velocity, resolved per shot
+const ZERO_VEL: Readonly<MutableVec3> = [0, 0, 0];
+// (fleet review 2026-11-03) EFFECT_ATTACHMENT_POLICY is the one statement of which muzzle parts ride the bore
+const MUZZLE_FLASH_CARRY = shooterVelocityGain('muzzleFlash');
+const MUZZLE_RING_CARRY = shooterVelocityGain('muzzleRing');
+const MUZZLE_LIGHT_CARRY = shooterVelocityGain('muzzleLight');
 const _gpPos = new THREE.Vector3(); // gunshipMuzzleFx's gun port
 const _gpSide = new THREE.Vector3(); // gunshipMuzzleFx's level heading toward the guns' target
 const _sv = new THREE.Vector3();     // recipe-internal scratch (never an argument carrier)
@@ -1060,6 +1079,8 @@ const _puffO: PuffScratch = { pos: [0, 0, 0], vel: [0, 0, 0], life: 1, size0: 1,
 const _strkO: StreakScratch = { pos: [0, 0, 0], vel: [0, 0, 0], life: 1, width: 0.03, stretch: 0.02, grav: -21.6, col: [0, 0, 0], alpha: 1, seed: 0, birthOffset: 0 };
 const _debO: DebrisScratch = { pos: [0, 0, 0], vel: [0, 0, 0], life: 4, axis: [0, 1, 0], spin: 5, scale: 0.2, groundY: 0, hot: false, seed: 0, birthOffset: 0 };
 const _jetO: JetScratch = { pos: [0, 0, 0], axis: [0, 0, 1], life: 0.1, width: 0.4, len0: 0.4, len1: 2.5, seed: 0, col: [0, 0, 0], alpha: 1, birthOffset: 0 };
+// the cannon flash's own jets: their carry is the flash's, so no other jet ever inherits a shooter's motion
+const _mJetO: JetScratch = { pos: [0, 0, 0], axis: [0, 0, 1], life: 0.1, width: 0.4, len0: 0.4, len1: 2.5, seed: 0, col: [0, 0, 0], alpha: 1, birthOffset: 0, carry: _mfCarry };
 
 // ---------------------------------------------------------------------------
 // Factory
@@ -1438,6 +1459,7 @@ function* createFxSteps(
   // Muzzle: warm white-amber (was deep orange — the "saturated ground decal"
   // read); tighter range so it kisses the hull rather than floods the field.
   const muzzleLight = new THREE.PointLight(MUZZLE_LIGHT_HEX, 0, MUZZLE_LIGHT_RANGE, 2); // r5: less saturated kiss
+  muzzleLight.name = 'fx:muzzleLight';
   const _muzzleNight = new THREE.Color(MUZZLE_NIGHT_HEX);
   // lighting_post r5: range 34 -> 24 — the wide range warmed the ENTIRE
   // visible field to mustard from the 22 m camera; wreck/debris keep their
@@ -1460,11 +1482,12 @@ function* createFxSteps(
   // every destroy_* frame past 0 s still carried the FULL 430-peak orange
   // blast light parked over the wreck (THE "uniform terracotta deck").
   const lightStates: LightState[] = [
-    { light: muzzleLight, bornAt: -1e9, dur: MUZZLE_LIGHT_S, peak: MUZZLE_LIGHT_PEAK, pow: 2, baseDur: MUZZLE_LIGHT_S, basePow: 2 },
+    { light: muzzleLight, bornAt: -1e9, dur: MUZZLE_LIGHT_S, peak: MUZZLE_LIGHT_PEAK, pow: 2, baseDur: MUZZLE_LIGHT_S, basePow: 2,
+      origin: new THREE.Vector3(), carry: new THREE.Vector3() },
     // pow 2.6 (was 1.15): front-loaded blast punch that visibly collapses —
     // the r5 near-linear decay was the "static painted stain" (r6 major)
     { light: explosionLight, bornAt: -1e9, dur: EXPLOSION_LIGHT_S, peak: EXPLOSION_LIGHT_PEAK, pow: 2.6, baseDur: EXPLOSION_LIGHT_S,
-      basePow: 2.6 },
+      basePow: 2.6, origin: new THREE.Vector3(), carry: new THREE.Vector3() },
   ];
   timeShifts.on('lights', (delta) => { for (const state of lightStates) state.bornAt += delta; });
 
@@ -1495,6 +1518,11 @@ function* createFxSteps(
     }
     const age = lightAge(state);
     const k = Math.max(0, 1 - age / state.dur);
+    // a moving muzzle's light rides the bore with the flash (policy: muzzleLight); every other pulse keeps its place
+    const c = state.carry;
+    if (c.x !== 0 || c.y !== 0 || c.z !== 0) {
+      state.light.position.copy(state.origin).addScaledVector(c, Math.min(Math.max(0, age), state.dur));
+    }
     // the Accessibility flash intensity (A11Y.flash, 0-1) scales every pulse of the muzzle and blast lights
     let v = state.peak * Math.pow(k, state.pow || 2) * A11Y.flash;
     // r7 fire-moment exposure wash (critic: "at ignition the flash glow +
@@ -1519,6 +1547,11 @@ function* createFxSteps(
     state.light.intensity = Number.isFinite(v) ? v : 0;
   }
 
+  /** The pulse just lit rides a moving muzzle (m/s, the policy's muzzleLight gain applied). */
+  function carryLight(state: LightState, vel: Readonly<MutableVec3>): void {
+    state.carry.set(vel[0] * MUZZLE_LIGHT_CARRY, vel[1] * MUZZLE_LIGHT_CARRY, vel[2] * MUZZLE_LIGHT_CARRY);
+  }
+
   function flashLight(
     state: LightState,
     pos: THREE.Vector3,
@@ -1532,6 +1565,8 @@ function* createFxSteps(
     // (black-screen-228 RC6) a pulse with a non-finite place never moves a light there
     if (!(Number.isFinite(pos.x) && Number.isFinite(pos.y) && Number.isFinite(pos.z))) return;
     state.light.position.copy(pos);
+    state.origin.copy(pos);
+    state.carry.set(0, 0, 0);
     // (233) the muzzle light's reach: its gun's (muzzleLightPulse), the 12 m default for every other muzzle-light pulse
     if (state.light === muzzleLight) state.light.distance = range && range > 0 ? range : MUZZLE_LIGHT_RANGE;
     // (fx 9: 8t) the pulse's own reach (the pooled explosion light: 13 m unless the pulse asks less)
@@ -1820,12 +1855,14 @@ function* createFxSteps(
       side: THREE.DoubleSide,
     });
     const m = new THREE.Mesh(muzzleRingGeo, mat);
+    m.name = 'fx:muzzleRing';
     m.visible = false;
     m.frustumCulled = false; // (ac130-fx-228 r3) as the pressure rings: its covered warm draw reaches the late pass
     m.renderOrder = 23;
     m.layers.set(LATE_FX_LAYER);
     group.add(m);
-    muzzleRings.push({ mesh: m, mat, bornAt: -1e9, att: 1, dir: new THREE.Vector3(0, 0, 1), origin: new THREE.Vector3() });
+    muzzleRings.push({ mesh: m, mat, bornAt: -1e9, att: 1, dir: new THREE.Vector3(0, 0, 1), origin: new THREE.Vector3(),
+      carry: new THREE.Vector3() });
   }
   let muzzleRingCursor = 0;
   // SceneAAPass discovers this state on the top-level fx group. The copied
@@ -1873,10 +1910,11 @@ function* createFxSteps(
       r.mat.opacity = 0;
       return;
     }
-    const t = (particles.getTime() - r.bornAt) / MUZZLE_RING_DUR;
+    const age = particles.getTime() - r.bornAt;
+    const t = age / MUZZLE_RING_DUR;
     if (t >= 1 || t < 0) { r.mesh.visible = false; r.mat.opacity = 0; return; }
     const k = 1 - Math.pow(1 - t, 2.2);
-    r.mesh.position.copy(r.origin).addScaledVector(r.dir, 0.25 + 1.7 * k);
+    r.mesh.position.copy(r.origin).addScaledVector(r.carry, age).addScaledVector(r.dir, 0.25 + 1.7 * k);
     r.mesh.scale.setScalar(0.35 + 1.5 * k);
     // view-angle fade: full strength looking down the bore, HARD-GATED off
     // below ~55° alignment — the pow(align, 1.6) residual left a bright
@@ -1910,10 +1948,12 @@ function* createFxSteps(
     s: number,
     ageS = 0,
     att = 1,
+    vel: Readonly<MutableVec3> = ZERO_VEL,
   ): void {
     const r = muzzleRings[muzzleRingCursor];
     muzzleRingCursor = (muzzleRingCursor + 1) % muzzleRings.length;
     r.origin.copy(pos);
+    r.carry.set(vel[0] * MUZZLE_RING_CARRY, vel[1] * MUZZLE_RING_CARRY, vel[2] * MUZZLE_RING_CARRY);
     r.dir.copy(dir);
     r.att = att;
     r.mesh.quaternion.setFromUnitVectors(_Z, dir);
@@ -2653,11 +2693,16 @@ function* createFxSteps(
     axSizeC: number;
     axAtt: number;
     lightK: number;
+    /** the firing muzzle's world velocity (m/s), and what the bright parts carry of it (policy: muzzleFlash) */
+    vel: MutableVec3;
+    carry: MutableVec3;
   }
 
   const muzzleFlashState: MuzzleFlashState = {
     pos: _mfPos,
     dir: _mfDir,
+    vel: _mfVel,
+    carry: _mfCarry,
     caliberMm: 0,
     birthOffset: 0,
     reach: 1,
@@ -2672,9 +2717,9 @@ function* createFxSteps(
   };
 
   function emitMuzzleCoreAndPetals(state: MuzzleFlashState): void {
-    const { pos, dir, s, caliberMm, birthOffset, axSize, axSizeC, axAtt } = state;
+    const { pos, dir, s, caliberMm, birthOffset, axSize, axSizeC, axAtt, carry: c } = state;
     _puffO.pos[0] = pos.x + dir.x * 0.12; _puffO.pos[1] = pos.y + dir.y * 0.12; _puffO.pos[2] = pos.z + dir.z * 0.12;
-    _puffO.vel[0] = dir.x * 1.5; _puffO.vel[1] = dir.y * 1.5; _puffO.vel[2] = dir.z * 1.5;
+    _puffO.vel[0] = dir.x * 1.5 + c[0]; _puffO.vel[1] = dir.y * 1.5 + c[1]; _puffO.vel[2] = dir.z * 1.5 + c[2];
     _puffO.life = Math.max(0.105, -birthOffset * 2.6);
     const coreK = 0.8 + (caliberMm / 120) * 0.5;
     _puffO.size0 = 0.66 * s * axSizeC * coreK; _puffO.size1 = 1.62 * s * axSizeC * coreK;
@@ -2696,24 +2741,24 @@ function* createFxSteps(
         dir.y * ct2 + (_v1.y * Math.cos(a) + _v2.y * Math.sin(a)) * st2,
         dir.z * ct2 + (_v1.z * Math.cos(a) + _v2.z * Math.sin(a)) * st2,
       ).normalize();
-      _jetO.pos[0] = pos.x + dir.x * 0.14; _jetO.pos[1] = pos.y + dir.y * 0.14; _jetO.pos[2] = pos.z + dir.z * 0.14;
-      _jetO.axis[0] = _sv.x; _jetO.axis[1] = _sv.y; _jetO.axis[2] = _sv.z;
-      _jetO.life = Math.max(0.07 + rng() * 0.03, -birthOffset * 1.5);
-      _jetO.width = 0.20 * s * axSize;
-      _jetO.len0 = 0.42 * s; _jetO.len1 = (1.0 + rng() * 0.4) * s;
-      _jetO.seed = rng();
-      col3(0xfff0c4, _jetO.col);
-      _jetO.alpha = 0.92 * axAtt; _jetO.birthOffset = birthOffset;
-      particles.emit('jet', _jetO);
+      _mJetO.pos[0] = pos.x + dir.x * 0.14; _mJetO.pos[1] = pos.y + dir.y * 0.14; _mJetO.pos[2] = pos.z + dir.z * 0.14;
+      _mJetO.axis[0] = _sv.x; _mJetO.axis[1] = _sv.y; _mJetO.axis[2] = _sv.z;
+      _mJetO.life = Math.max(0.07 + rng() * 0.03, -birthOffset * 1.5);
+      _mJetO.width = 0.20 * s * axSize;
+      _mJetO.len0 = 0.42 * s; _mJetO.len1 = (1.0 + rng() * 0.4) * s;
+      _mJetO.seed = rng();
+      col3(0xfff0c4, _mJetO.col);
+      _mJetO.alpha = 0.92 * axAtt; _mJetO.birthOffset = birthOffset;
+      particles.emit('jet', _mJetO);
     }
     if (birthOffset >= 0) {
       spawnMuzzleRing(_sv.set(pos.x + dir.x * 0.3, pos.y + dir.y * 0.3, pos.z + dir.z * 0.3),
-        dir, s * axSize, 0, axAtt);
+        dir, s * axSize, 0, axAtt, state.vel);
     }
   }
 
   function emitMuzzleAxialAndBrakeJets(state: MuzzleFlashState): void {
-    const { pos, dir, s, birthOffset, reach, dkF, axSize, axAtt } = state;
+    const { pos, dir, s, birthOffset, reach, dkF, axSize, axAtt, carry: c } = state;
     for (let i = 0; i < 3; i++) {
       const off = i === 0 ? 0 : 0.10 + rng() * 0.08;
       const a = rng() * Math.PI * 2;
@@ -2722,17 +2767,17 @@ function* createFxSteps(
         dir.y + (_v1.y * Math.cos(a) + _v2.y * Math.sin(a)) * off,
         dir.z + (_v1.z * Math.cos(a) + _v2.z * Math.sin(a)) * off,
       ).normalize();
-      _jetO.pos[0] = pos.x + dir.x * 0.1; _jetO.pos[1] = pos.y + dir.y * 0.1; _jetO.pos[2] = pos.z + dir.z * 0.1;
-      _jetO.axis[0] = _sv.x; _jetO.axis[1] = _sv.y; _jetO.axis[2] = _sv.z;
-      _jetO.life = Math.max(i === 0 ? 0.135 : 0.105, -birthOffset * 2.2);
-      _jetO.width = (i === 0 ? 0.38 : 0.28) * s * axSize;
-      _jetO.len0 = 0.40 * s;
-      _jetO.len1 = (i === 0 ? 1.6 + rng() * 0.4 : 1.1 + rng() * 0.35) * s * reach *
+      _mJetO.pos[0] = pos.x + dir.x * 0.1; _mJetO.pos[1] = pos.y + dir.y * 0.1; _mJetO.pos[2] = pos.z + dir.z * 0.1;
+      _mJetO.axis[0] = _sv.x; _mJetO.axis[1] = _sv.y; _mJetO.axis[2] = _sv.z;
+      _mJetO.life = Math.max(i === 0 ? 0.135 : 0.105, -birthOffset * 2.2);
+      _mJetO.width = (i === 0 ? 0.38 : 0.28) * s * axSize;
+      _mJetO.len0 = 0.40 * s;
+      _mJetO.len1 = (i === 0 ? 1.6 + rng() * 0.4 : 1.1 + rng() * 0.35) * s * reach *
         (0.7 + 0.3 * dkF);
-      _jetO.seed = rng();
-      col3(i === 0 ? 0xffe6b0 : 0xffcf7e, _jetO.col);
-      _jetO.alpha = (i === 0 ? 0.7 : 0.45) * axAtt; _jetO.birthOffset = birthOffset;
-      particles.emit('jet', _jetO);
+      _mJetO.seed = rng();
+      col3(i === 0 ? 0xffe6b0 : 0xffcf7e, _mJetO.col);
+      _mJetO.alpha = (i === 0 ? 0.7 : 0.45) * axAtt; _mJetO.birthOffset = birthOffset;
+      particles.emit('jet', _mJetO);
     }
     for (let i = 0; i < 2; i++) {
       const a = rng() * Math.PI * 2;
@@ -2741,18 +2786,18 @@ function* createFxSteps(
         -dir.y * 0.6 + (_v1.y * Math.cos(a) + _v2.y * Math.sin(a)),
         -dir.z * 0.6 + (_v1.z * Math.cos(a) + _v2.z * Math.sin(a)),
       ).normalize();
-      _jetO.pos[0] = pos.x + dir.x * 0.06; _jetO.pos[1] = pos.y + dir.y * 0.06; _jetO.pos[2] = pos.z + dir.z * 0.06;
-      _jetO.axis[0] = _sv.x; _jetO.axis[1] = _sv.y; _jetO.axis[2] = _sv.z;
-      _jetO.life = 0.07 + rng() * 0.02;
-      _jetO.width = 0.20 * s * axSize;
-      _jetO.len0 = 0.2 * s; _jetO.len1 = (0.55 + rng() * 0.2) * s;
-      _jetO.seed = rng();
-      col3(0xffd88a, _jetO.col);
-      _jetO.alpha = 0.5 * axAtt; _jetO.birthOffset = birthOffset;
-      particles.emit('jet', _jetO);
+      _mJetO.pos[0] = pos.x + dir.x * 0.06; _mJetO.pos[1] = pos.y + dir.y * 0.06; _mJetO.pos[2] = pos.z + dir.z * 0.06;
+      _mJetO.axis[0] = _sv.x; _mJetO.axis[1] = _sv.y; _mJetO.axis[2] = _sv.z;
+      _mJetO.life = 0.07 + rng() * 0.02;
+      _mJetO.width = 0.20 * s * axSize;
+      _mJetO.len0 = 0.2 * s; _mJetO.len1 = (0.55 + rng() * 0.2) * s;
+      _mJetO.seed = rng();
+      col3(0xffd88a, _mJetO.col);
+      _mJetO.alpha = 0.5 * axAtt; _mJetO.birthOffset = birthOffset;
+      particles.emit('jet', _mJetO);
     }
     _puffO.pos[0] = pos.x - dir.x * 0.22; _puffO.pos[1] = pos.y - dir.y * 0.22; _puffO.pos[2] = pos.z - dir.z * 0.22;
-    _puffO.vel[0] = -dir.x * 1.2; _puffO.vel[1] = -dir.y * 1.2 + 0.3; _puffO.vel[2] = -dir.z * 1.2;
+    _puffO.vel[0] = -dir.x * 1.2 + c[0]; _puffO.vel[1] = -dir.y * 1.2 + 0.3 + c[1]; _puffO.vel[2] = -dir.z * 1.2 + c[2];
     _puffO.life = 0.07;
     _puffO.size0 = 0.5 * s * axSize; _puffO.size1 = 0.72 * s * axSize;
     _puffO.rot = rng() * Math.PI * 2; _puffO.rotVel = 0;
@@ -2766,20 +2811,20 @@ function* createFxSteps(
         (_v1.y * Math.cos(a) + _v2.y * Math.sin(a)) * 0.55 + dir.y * 0.65,
         (_v1.z * Math.cos(a) + _v2.z * Math.sin(a)) * 0.55 + dir.z * 0.65,
       ).normalize();
-      _jetO.pos[0] = pos.x + dir.x * 0.22; _jetO.pos[1] = pos.y + dir.y * 0.22; _jetO.pos[2] = pos.z + dir.z * 0.22;
-      _jetO.axis[0] = _sv.x; _jetO.axis[1] = _sv.y; _jetO.axis[2] = _sv.z;
-      _jetO.life = 0.06 + rng() * 0.02;
-      _jetO.width = 0.17 * s * axSize;
-      _jetO.len0 = 0.22 * s; _jetO.len1 = (0.45 + rng() * 0.20) * s * Math.max(reach, 0.7);
-      _jetO.seed = rng();
-      col3(0xffc86e, _jetO.col);
-      _jetO.alpha = 0.40 * axAtt; _jetO.birthOffset = birthOffset;
-      particles.emit('jet', _jetO);
+      _mJetO.pos[0] = pos.x + dir.x * 0.22; _mJetO.pos[1] = pos.y + dir.y * 0.22; _mJetO.pos[2] = pos.z + dir.z * 0.22;
+      _mJetO.axis[0] = _sv.x; _mJetO.axis[1] = _sv.y; _mJetO.axis[2] = _sv.z;
+      _mJetO.life = 0.06 + rng() * 0.02;
+      _mJetO.width = 0.17 * s * axSize;
+      _mJetO.len0 = 0.22 * s; _mJetO.len1 = (0.45 + rng() * 0.20) * s * Math.max(reach, 0.7);
+      _mJetO.seed = rng();
+      col3(0xffc86e, _mJetO.col);
+      _mJetO.alpha = 0.40 * axAtt; _mJetO.birthOffset = birthOffset;
+      particles.emit('jet', _mJetO);
     }
   }
 
   function emitMuzzleCombustionAndAfterflash(state: MuzzleFlashState): void {
-    const { pos, dir, s, birthOffset, axSize, axAtt } = state;
+    const { pos, dir, s, birthOffset, axSize, axAtt, carry: c } = state;
     for (let i = 0; i < 4; i++) {
       const a = (i / 4) * Math.PI * 2 + rng() * 1.1;
       const tilt = 0.22 + rng() * 0.15;
@@ -2789,15 +2834,15 @@ function* createFxSteps(
         dir.y * ct + (_v1.y * Math.cos(a) + _v2.y * Math.sin(a)) * st,
         dir.z * ct + (_v1.z * Math.cos(a) + _v2.z * Math.sin(a)) * st,
       ).normalize();
-      _jetO.pos[0] = pos.x + dir.x * 0.16; _jetO.pos[1] = pos.y + dir.y * 0.16; _jetO.pos[2] = pos.z + dir.z * 0.16;
-      _jetO.axis[0] = _sv.x; _jetO.axis[1] = _sv.y; _jetO.axis[2] = _sv.z;
-      _jetO.life = 0.07 + rng() * 0.04;
-      _jetO.width = (0.19 + rng() * 0.05) * s * axSize;
-      _jetO.len0 = 0.16 * s; _jetO.len1 = (0.55 + rng() * 0.35) * s;
-      _jetO.seed = rng();
-      col3(0xffdf9a, _jetO.col);
-      _jetO.alpha = 0.32 * axAtt; _jetO.birthOffset = birthOffset;
-      particles.emit('jet', _jetO);
+      _mJetO.pos[0] = pos.x + dir.x * 0.16; _mJetO.pos[1] = pos.y + dir.y * 0.16; _mJetO.pos[2] = pos.z + dir.z * 0.16;
+      _mJetO.axis[0] = _sv.x; _mJetO.axis[1] = _sv.y; _mJetO.axis[2] = _sv.z;
+      _mJetO.life = 0.07 + rng() * 0.04;
+      _mJetO.width = (0.19 + rng() * 0.05) * s * axSize;
+      _mJetO.len0 = 0.16 * s; _mJetO.len1 = (0.55 + rng() * 0.35) * s;
+      _mJetO.seed = rng();
+      col3(0xffdf9a, _mJetO.col);
+      _mJetO.alpha = 0.32 * axAtt; _mJetO.birthOffset = birthOffset;
+      particles.emit('jet', _mJetO);
     }
     for (let i = 0; i < 2; i++) {
       const j = i < 1 ? 0 : 0.22;
@@ -2806,7 +2851,7 @@ function* createFxSteps(
       const jz = (_v1.z * (rng() - 0.5) + _v2.z * (rng() - 0.5)) * j;
       const v = ((i < 1 ? 14 : 11) + rng() * 4) * state.reach;
       _strkO.pos[0] = pos.x + dir.x * 0.2; _strkO.pos[1] = pos.y + dir.y * 0.2; _strkO.pos[2] = pos.z + dir.z * 0.2;
-      _strkO.vel[0] = dir.x * v + jx; _strkO.vel[1] = dir.y * v + jy; _strkO.vel[2] = dir.z * v + jz;
+      _strkO.vel[0] = dir.x * v + jx + c[0]; _strkO.vel[1] = dir.y * v + jy + c[1]; _strkO.vel[2] = dir.z * v + jz + c[2];
       _strkO.life = 0.06 + rng() * 0.04;
       _strkO.width = (0.06 + rng() * 0.05) * s; _strkO.stretch = 0.05; _strkO.grav = 0;
       col3(0xffc25e, _strkO.col); _strkO.alpha = 0.7 * axAtt; _strkO.seed = rng(); _strkO.birthOffset = birthOffset;
@@ -2818,7 +2863,7 @@ function* createFxSteps(
       _puffO.pos[1] = pos.y + dir.y * along + (_v1.y * (rng() - 0.5) + _v2.y * (rng() - 0.5)) * 0.16 * s;
       _puffO.pos[2] = pos.z + dir.z * along + (_v1.z * (rng() - 0.5) + _v2.z * (rng() - 0.5)) * 0.16 * s;
       const v = 4 + rng() * 4;
-      _puffO.vel[0] = dir.x * v; _puffO.vel[1] = dir.y * v; _puffO.vel[2] = dir.z * v;
+      _puffO.vel[0] = dir.x * v + c[0]; _puffO.vel[1] = dir.y * v + c[1]; _puffO.vel[2] = dir.z * v + c[2];
       _puffO.life = 0.05 + rng() * 0.05;
       _puffO.size0 = 0.26 * s; _puffO.size1 = 0.62 * s;
       _puffO.rot = rng() * Math.PI * 2; _puffO.rotVel = (rng() - 0.5) * 8;
@@ -2832,9 +2877,9 @@ function* createFxSteps(
       _puffO.pos[1] = pos.y + dir.y * along + (_v1.y * (rng() - 0.5) + _v2.y * (rng() - 0.5)) * 0.14 * s;
       _puffO.pos[2] = pos.z + dir.z * along + (_v1.z * (rng() - 0.5) + _v2.z * (rng() - 0.5)) * 0.14 * s;
       const v = 2.2 + rng() * 2.8;
-      _puffO.vel[0] = dir.x * v + (rng() - 0.5) * 0.6;
-      _puffO.vel[1] = dir.y * v + 0.35 + rng() * 0.4;
-      _puffO.vel[2] = dir.z * v + (rng() - 0.5) * 0.6;
+      _puffO.vel[0] = dir.x * v + (rng() - 0.5) * 0.6 + c[0];
+      _puffO.vel[1] = dir.y * v + 0.35 + rng() * 0.4 + c[1];
+      _puffO.vel[2] = dir.z * v + (rng() - 0.5) * 0.6 + c[2];
       _puffO.life = 0.08 + rng() * 0.08;
       _puffO.size0 = 0.34 * s; _puffO.size1 = (0.85 + rng() * 0.55) * s;
       _puffO.rot = rng() * Math.PI * 2; _puffO.rotVel = (rng() - 0.5) * 6;
@@ -2935,7 +2980,7 @@ function* createFxSteps(
   }
 
   function emitLingeringMuzzleFx(state: MuzzleFlashState, wisps = true): void {
-    const { pos, dir, s, birthOffset, reach, axAtt } = state;
+    const { pos, dir, s, birthOffset, reach, axAtt, carry } = state;
     const smokeBirth = birthOffset - 0.2;
     for (let i = 0; i < (wisps ? 8 : 0); i++) {
       const along = 0.15 + rng() * 0.45;
@@ -2952,7 +2997,8 @@ function* createFxSteps(
       particles.emit('psmoke', _puffO);
     }
     _sv.set(pos.x + dir.x * 0.6, pos.y + dir.y * 0.6, pos.z + dir.z * 0.6);
-    sparkFan(_sv, dir, Math.round(9 * (0.4 + 0.6 * axAtt)), 14 * s * reach, 0.22, 0xffd58a, 0.11, 0.018, 0.03, birthOffset);
+    sparkFan(_sv, dir, Math.round(9 * (0.4 + 0.6 * axAtt)), 14 * s * reach, 0.22, 0xffd58a, 0.11, 0.018, 0.03, birthOffset, 0,
+      carry);
   }
 
   function emitMuzzleGroundBlast(state: MuzzleFlashState, dust = true): void {
@@ -3041,16 +3087,25 @@ function* createFxSteps(
   }
 
   /** Short pooled ignition/exhaust: no cannon brake jets, sabot, or ground shock ring. */
-  function spawnRocketIgnition(pos: THREE.Vector3, dir: THREE.Vector3, caliberMm: number, birthOffset = 0): void {
+  function spawnRocketIgnition(
+    pos: THREE.Vector3,
+    dir: THREE.Vector3,
+    caliberMm: number,
+    birthOffset = 0,
+    vel: Readonly<MutableVec3> = ZERO_VEL,
+  ): void {
     const scale = calScale(caliberMm) * (scopedOwnGun(pos) ? 0.4 : 1);
     const puff = _puffO;
+    const k = MUZZLE_FLASH_CARRY;
     puff.pos[0] = pos.x; puff.pos[1] = pos.y; puff.pos[2] = pos.z;
-    puff.vel[0] = dir.x * 2; puff.vel[1] = dir.y * 2; puff.vel[2] = dir.z * 2;
+    puff.vel[0] = dir.x * 2 + vel[0] * k; puff.vel[1] = dir.y * 2 + vel[1] * k; puff.vel[2] = dir.z * 2 + vel[2] * k;
     puff.life = 0.12; puff.size0 = 0.22 * scale; puff.size1 = 0.6 * scale;
     puff.rot = rng() * Math.PI * 2; puff.rotVel = 0;
     col3(0xffefa0, puff.col0); col3(0xff8b30, puff.col1);
     puff.alpha = 0.65; puff.grav = 0; puff.birthOffset = birthOffset;
     particles.emit('flash', puff);
+    // its smoke stays where it was thrown (policy: muzzleSmoke)
+    puff.vel[0] = dir.x * 2; puff.vel[1] = dir.y * 2; puff.vel[2] = dir.z * 2;
     puff.life = 0.65; puff.size0 = 0.25 * scale; puff.size1 = 1.05 * scale;
     col3(0xb0aca0, puff.col0); col3(0x7b7b73, puff.col1);
     puff.alpha = 0.3;
@@ -3060,6 +3115,7 @@ function* createFxSteps(
     const pulse = muzzleLightPulse(caliberMm, pos.x, pos.z);
     flashLight(lightStates[0], pos, MUZZLE_LIGHT_PEAK * 0.3 * pulse.peakK, -birthOffset, undefined, undefined, undefined,
       pulse.range);
+    carryLight(lightStates[0], vel);
   }
 
   /**
@@ -3067,6 +3123,8 @@ function* createFxSteps(
    *   (tongues/spears). 1 for live fire; the screenshot composer passes <1 so
    *   the frozen cone stays inside the combat_firing frame instead of
    *   clipping the screen edge as a blown-out sheet.
+   * @param {number[]} vel the firing muzzle's world velocity (m/s; subjectPointVelocity): the bright parts leave
+   *   with it while the smoke trails (EFFECT_ATTACHMENT_POLICY); zero for a still muzzle and the frozen composers
    * @returns {number} muzzle-light peak factor (bore-axis view attenuation)
    */
   function spawnMuzzleFlash(
@@ -3075,6 +3133,7 @@ function* createFxSteps(
     caliberMm: number,
     birthOffset = 0,
     reach = 1,
+    vel: Readonly<MutableVec3> = ZERO_VEL,
   ): number {
     // Defensive copy (r5): callers may hand in shared scratch vectors; every
     // internal helper below must be free to reuse module scratch without any
@@ -3143,6 +3202,10 @@ function* createFxSteps(
     state.axSizeC = axSizeC;
     state.axAtt = axAtt;
     state.lightK = lightK;
+    for (let i = 0; i < 3; i++) {
+      state.vel[i] = vel[i];
+      state.carry[i] = vel[i] * MUZZLE_FLASH_CARRY;
+    }
     basisFrom(dir, _v1, _v2);
     if (!scoped) {
       emitMuzzleCoreAndPetals(state);
@@ -3210,6 +3273,7 @@ function* createFxSteps(
     stretch: number,
     birthOffset = 0,
     jitterS = 0,
+    carry: Readonly<MutableVec3> = ZERO_VEL,
   ): void {
     basisFrom(normal, _v1, _v2);
     col3(colHex, _strkO.col);
@@ -3220,9 +3284,9 @@ function* createFxSteps(
       const cx = Math.cos(a) * st, sx = Math.sin(a) * st, n = Math.cos(tilt);
       const v = speed * (0.4 + rng() * 0.9);
       _strkO.pos[0] = pos.x + normal.x * 0.05; _strkO.pos[1] = pos.y + normal.y * 0.05; _strkO.pos[2] = pos.z + normal.z * 0.05;
-      _strkO.vel[0] = (normal.x * n + _v1.x * cx + _v2.x * sx) * v;
-      _strkO.vel[1] = (normal.y * n + _v1.y * cx + _v2.y * sx) * v;
-      _strkO.vel[2] = (normal.z * n + _v1.z * cx + _v2.z * sx) * v;
+      _strkO.vel[0] = (normal.x * n + _v1.x * cx + _v2.x * sx) * v + carry[0];
+      _strkO.vel[1] = (normal.y * n + _v1.y * cx + _v2.y * sx) * v + carry[1];
+      _strkO.vel[2] = (normal.z * n + _v1.z * cx + _v2.z * sx) * v + carry[2];
       _strkO.life = life * (0.5 + rng() * 0.8);
       // per-spark width/brightness variation so the shower never reads as
       // uniform confetti — a few fat bright leaders among dim thin trails
@@ -5335,8 +5399,8 @@ function* createFxSteps(
     const look = missileLookFor(e.shellName, e.weaponSound, e.rocket === true);
     _v3.set(e.muzzlePos[0], e.muzzlePos[1], e.muzzlePos[2]);
     _v4.set(e.dir[0], e.dir[1], e.dir[2]);
-    if (look.launch === 'gun') fx.muzzleFlash(_v3, _v4, e.caliberMm, false);
-    else if (e.rocket) fx.muzzleFlash(_v3, _v4, e.caliberMm, true);
+    if (look.launch === 'gun') fx.muzzleFlash(_v3, _v4, e.caliberMm, false, e.shooterId);
+    else if (e.rocket) fx.muzzleFlash(_v3, _v4, e.caliberMm, true, e.shooterId);
     else flashLight(lightStates[0], _v3, MUZZLE_LIGHT_PEAK * 0.35 * look.launchK, 0);
     if (blast) {
       missileLaunch(blast, puffRandom(seed), look, _v3.x, _v3.y, _v3.z, _v4.x, _v4.y, _v4.z, groundY(_v3.x, _v3.z), 0);
@@ -6604,11 +6668,15 @@ function* createFxSteps(
     report: (id,p,caliber) => auxiliaryReport?.(id,p,caliber),
     // (240) a roof gun's flash lights its mount as any gun of its bore does (muzzleLightPulse: a 12.7 mm round a ~30 cd
     // kiss over 4 m of the turret roof; it lit nothing before), and never cuts short a bigger gun's pulse still burning
-    flash: (p,d,caliber) => {
-      const lightK = spawnMuzzleFlash(p,d,caliber,0);
+    flash: (p,d,caliber,id) => {
+      subjectPointVelocity(id != null ? subjectFor(id) : null, p.x, p.z, _shotVel);
+      const lightK = spawnMuzzleFlash(p,d,caliber,0,1,_shotVel);
       const pulse = muzzleLightPulse(caliber, p.x, p.z);
       const peak = MUZZLE_LIGHT_PEAK * pulse.peakK * lightK * muzzleLightScale;
-      if (!(muzzleLight.intensity > peak)) flashLight(lightStates[0], p, peak, 0, undefined, undefined, undefined, pulse.range);
+      if (!(muzzleLight.intensity > peak)) {
+        flashLight(lightStates[0], p, peak, 0, undefined, undefined, undefined, pulse.range);
+        carryLight(lightStates[0], _shotVel);
+      }
     },
     smoke: (p,scale,density=1,life=2.4,wind=null) => {
       for(let i=0;i<3;i++){
@@ -6997,7 +7065,7 @@ function* createFxSteps(
           // (FX lane 10-14) a wire-guided round pays out its wire from the launcher's tube
           const wired = missileLookFor(e.shellName, e.weaponSound, e.rocket === true);
           if (wired.wires > 0) beginWire(e, wired);
-        } else if (!e.feedbackPredicted) fx.muzzleFlash(_v3, _v4, e.caliberMm, e.rocket);
+        } else if (!e.feedbackPredicted) fx.muzzleFlash(_v3, _v4, e.caliberMm, e.rocket, e.shooterId);
         if (e.shellType === 'APFSDS') spawnSabotPetals(_v3, _v4);
         // world-dressing r1: remember the shell's type so its world impact
         // can size the destructible-prop blast (HE clears a radius), and
@@ -7017,7 +7085,7 @@ function* createFxSteps(
         const gun = gunshipShotOf(e.weaponSound, false);
         if (gun) gunshipMuzzleFx(e, gun, idSeed(`${e.muzzlePos.join(',')}`));
         else if (firedIsMissile(e.weaponSound, e.rocket)) missileLaunchFx(e, idSeed(`${e.muzzlePos.join(',')}`));
-        else fx.muzzleFlash(_v3, _v4, e.caliberMm, e.rocket);
+        else fx.muzzleFlash(_v3, _v4, e.caliberMm, e.rocket, e.shooterId);
       });
       onFxEvent(bus, 'shell:hit', (e) => {
         // (2026-11-02 audit F10) taken by every hull event, so a hull blast names only the one raised right after it
@@ -7281,9 +7349,12 @@ function* createFxSteps(
      * @param {THREE.Vector3} dir unit fire direction
      * @param {number} caliberMm gun caliber (scales the effect)
      */
-    muzzleFlash(pos: THREE.Vector3, dir: THREE.Vector3, caliberMm: number, rocket = false): void {
-      if (rocket) { spawnRocketIgnition(pos, dir, caliberMm); return; }
-      const lightK = spawnMuzzleFlash(pos, dir, caliberMm, 0);
+    muzzleFlash(pos: THREE.Vector3, dir: THREE.Vector3, caliberMm: number, rocket = false,
+      shooterId: ShellId | null = null): void {
+      // (fleet review 2026-11-03) a tank firing at speed: its flash leaves the muzzle with the muzzle's own motion
+      subjectPointVelocity(shooterId != null ? subjectFor(shooterId) : null, pos.x, pos.z, _shotVel);
+      if (rocket) { spawnRocketIgnition(pos, dir, caliberMm, 0, _shotVel); return; }
+      const lightK = spawnMuzzleFlash(pos, dir, caliberMm, 0, 1, _shotVel);
       // r2 ON THE BORE AXIS: the r1 light floated 0.45 m ABOVE the tube and
       // its local pool rendered as a glowing lozenge sitting ON TOP of the
       // barrel at mid-length (critic: "as if the barrel exploded midway").
@@ -7296,6 +7367,7 @@ function* createFxSteps(
       const pulse = muzzleLightPulse(caliberMm, _sv.x, _sv.z);
       flashLight(lightStates[0], _sv, MUZZLE_LIGHT_PEAK * pulse.peakK * lightK * muzzleLightScale, 0,
         undefined, undefined, undefined, pulse.range);
+      carryLight(lightStates[0], _shotVel);
     },
 
     /** Tank-on-tank metal contact: lateral sparks, track debris and a low

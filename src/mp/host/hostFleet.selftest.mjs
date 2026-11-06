@@ -86,7 +86,15 @@ const sourceBytes = closure.reduce((sum, file) => sum + statSync(resolve(root, f
 // roof-gun switch and mode rules, obstacleFall.ts and roofGunSwitch.ts new, authoritativeMatch.ts and matchModes.ts +8 KB;
 // the shared row restore, authorityRow.ts new, after the client predictor it had pulled in left the Worker, above; no
 // builder, kit or calibration literal entered: the assertion above holds): the same rule, plus 2 % (8.32 MB).
-assert.ok(sourceBytes < 8.32e6, `the host Worker's static source stays spec-sized (${(sourceBytes / 1e6).toFixed(2)} MB)`);
+// 8.18 MB (8,175,479 B) at integ/268 a2e4bf429e for release 268 (the fleet at 286: the BMPT Terminator, the Tunguska-M,
+// the Pantsir-S1, the Gepard 1A2, the PGZ-95, the PGZ-09 and the M3A2 Bradley; core-parity's shared sim stages (player
+// input, hull actions, tank pair contact, ram module damage, mode route push, camo paint) and the bots' construction;
+// no builder, kit or calibration literal entered: the assertion above holds): the same rule, plus 2 % (8.34 MB).
+// 8.43 MB (8,430,276 B, 468 files) on item/sm-fix-integration with release 268 merged in at round four (origin/main
+// baff0f6924: 268's 8,175,479 B above plus the 2026-11-02 audit's rounds one to four, the migration handover, the bots'
+// resume legs and news queue, wire 11/12, the actor's unseen rounds, the shared crush press, ram rule and bot events; no
+// builder, kit or calibration literal entered: the assertion above holds): the same rule, plus 2 % (8.60 MB).
+assert.ok(sourceBytes < 8.60e6, `the host Worker's static source stays spec-sized (${(sourceBytes / 1e6).toFixed(2)} MB)`);
 
 // Behaviour, in this fresh process: nothing loaded until the roster asks.
 const { createMatchActor } = await import('../../../server/match/matchActor.ts');

@@ -378,7 +378,8 @@ export interface RosterPrebuildSeat extends RosterPrewarmSeat {
 export interface RosterPrebuild {
   /** The seat's vehicle if it was built as these options name it (once); null otherwise, and a mismatch is disposed. */
   take(playerId: string, specId: string, options: TankVisualOptions): TankVisual | null;
-  has(playerId: string): boolean;
+  /** Whether it holds the seat's vehicle (in `camo`'s paint, where named: a guess the roster's paint overrules is not held). */
+  has(playerId: string, camo?: string): boolean;
   /** Settles when every build has finished or stopped. */
   readonly settled: Promise<void>;
   dispose(): void;
@@ -494,7 +495,10 @@ export function prebuildRosterVisuals(
       entry.visual.dispose();
       return null;
     },
-    has: (playerId) => built.has(playerId),
+    has: (playerId, camo) => {
+      const entry = built.get(playerId);
+      return !!entry && (camo === undefined || entry.options.camoPattern === camo);
+    },
     settled,
     dispose,
   };
@@ -669,14 +673,16 @@ export function createBattlePresentation({
     const yieldWork = async (force = false) => { await schedule(force); assertActive(); };
     const textureTick = async () => { await schedule(); };
     if (active.some((entry) => !actors.has(entry.playerId))) await yieldWork(true);
-    // the vehicles built beside the world (prebuildRosterVisuals) first: a seat it holds is neither grouped nor built here
+    // the vehicles built beside the world (prebuildRosterVisuals) first: a seat it holds in the roster's paint is neither
+    // grouped nor built here (268, item 6: a bot's guessed paint the roster overrules is built here as if never guessed)
     if (prebuilt) { await prebuilt.settled; assertActive(); }
     // the seats still to paint that share a vehicle and a paint (prepareSharedVisuals)
     const shared = new Map<string, RosterEntry[]>();
     for (const entry of active) {
       if (actors.has(entry.playerId) || (game.gameMode === 'ac130' && entry.team === TEAM.ALPHA && !entry.bot)) continue;
-      if (prebuilt?.has(entry.playerId)) continue;
-      const vehicle = seatBuildKey(entry.specId, camoFor(entry), !spectator && entry.entityId === rosterContext.ownEntityId);
+      const camo = camoFor(entry);
+      if (prebuilt?.has(entry.playerId, camo)) continue;
+      const vehicle = seatBuildKey(entry.specId, camo, !spectator && entry.entityId === rosterContext.ownEntityId);
       let group = shared.get(vehicle);
       if (!group) shared.set(vehicle, group = []);
       group.push(entry);
@@ -697,7 +703,7 @@ export function createBattlePresentation({
         shared.delete(vehicle);
         await prepareSharedVisuals(group, rosterContext, textureTick, assertActive);
       }
-      if (!gunship && !warmed.has(key) && !preparedVisuals.has(entry.playerId) && !prebuilt?.has(entry.playerId)) {
+      if (!gunship && !warmed.has(key) && !preparedVisuals.has(entry.playerId) && !prebuilt?.has(entry.playerId, camo)) {
         warmed.add(key);
         try { await prepareVisualTextures(getSpec(entry.specId), engineCtx.anisotropy ?? 4, quality, textureTick, camo); }
         catch { /* createTank keeps its synchronous compatibility path */ }

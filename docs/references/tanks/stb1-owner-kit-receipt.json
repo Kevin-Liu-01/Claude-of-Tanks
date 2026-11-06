@@ -1,15 +1,16 @@
 {
-  "schemaVersion": 1,
+  "schemaVersion": 2,
+  "digestScope": "shape",
   "tankId": "stb1",
   "quality": "high",
   "decision": "Main 266 (2026-10-31): exempt the owner's stern drums from the source comparison; tools/owner-kit-targets.mjs",
   "reviewer": "the owner's own requests (265 and 266, the drums and their height) and Main's ruling on the exemption",
-  "reviewScope": "Owner-directed kit the owner's model does not carry, set aside from the numeric source comparison only; boards and the raw-source sidecar keep the whole vehicle. Digest from procedural-fidelity.html (high, camoSeed 4242), its fail-closed pass on the drums at 23.5 cm saddles.",
+  "reviewScope": "Owner-directed kit the owner's model does not carry, set aside from the numeric source comparison only; boards and the raw-source sidecar keep the whole vehicle. Digest from procedural-fidelity.html (high, camoSeed 4242), its fail-closed pass on the drums at 23.5 cm saddles. 268: keyed on the kit's shape (reference-supplement.mjs 'shape': positions, index, poses, visibility; its paint is the coat's), taken from the same accepted state, whose full digests (stb1KitSternDrums 4f1e7293) passed on this tree.",
   "parts": {
     "stb1KitSternDrums": {
       "arrangementAccepted": true,
       "reference": "owner-kit:stb1:stb1KitSternDrums",
-      "geometryPoseSha256": "4f1e729305b02d9d9432d4ee0fe55bf7fd4d23d9cfd2371011463301aad56a6a"
+      "geometryPoseSha256": "5b57888233af752a7aa246414e487b26d50fa487e08f89d099450f12df74ebe5"
     }
   }
 }

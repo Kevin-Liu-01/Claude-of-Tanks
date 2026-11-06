@@ -32,9 +32,14 @@ const TEST_LINES = {
   it: ['Carro nemico, davanti. Fuoco.', 'Caricato. Pronto.'],
   pl: ['Czołg wroga, na wprost. Ognia.', 'Załadowane. Gotowy.'],
   he: ['טנק אויב, מקדימה. אש.', 'טעון. מוכן.'],
+  da: ['Fjendtlig kampvogn, front. Ild.', 'Ladt. Klar.'],
+  'pt-BR': ['Carro inimigo, à frente. Fogo.', 'Carregado. Pronto.'],
+  'en-AU': ['Contact front. Enemy tank. Fire.', 'Loaded. Ready.'],
+  af: ['Vyandelike tenk, reg voor. Vuur.', 'Gelaai. Gereed.'],
+  'en-ZA': ['Contact front. Enemy tank. Fire.', 'Loaded. Ready.'],
 };
 
-const LANGUAGE_CODE = { 'en-US': 'en', 'en-GB': 'en', de: 'de', ru: 'ru', uk: 'uk', zh: 'zh', fr: 'fr', sv: 'sv', ja: 'ja', ko: 'ko', it: 'it', pl: 'pl', he: 'he' };
+const LANGUAGE_CODE = { 'en-US': 'en', 'en-GB': 'en', de: 'de', ru: 'ru', uk: 'uk', zh: 'zh', fr: 'fr', sv: 'sv', ja: 'ja', ko: 'ko', it: 'it', pl: 'pl', he: 'he', da: 'da', 'pt-BR': 'pt', 'en-AU': 'en', af: 'af', 'en-ZA': 'en' };
 
 // Candidates per language: [voice_id, name, role-intent].
 export const CANDIDATES = {

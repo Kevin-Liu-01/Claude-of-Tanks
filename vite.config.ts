@@ -484,7 +484,10 @@ export default defineConfig({
             // HUD) are DOM-free leaves the game and cn load at boot; on its own the framing was one more boot request on both,
             // and the sight datum rode in a chunk the game and cn share with the Gallery's preload maps. The lens reader
             // (engine/cameraLens.ts: post at boot, the lazy clouds and vegetation) likewise: on its own one more request.
-            { name: 'vehicleActions', test: /[\\/]src[\\/](?:game[\\/](?:vehicleActions|consumableLoadout)|sim[\\/](?:spottingStats|equipmentRules|consumableRules)|ui[\\/](?:minimapAssetUrl|battleSight)|engine[\\/](?:chaseFraming|cameraLens))\.ts$/, includeDependenciesRecursively: false },
+            // 2026-11-05 (integrator 268): the camouflage paint's spotting bonus (sim/camoPaint.ts, core-parity-268's one paint
+            // rule for both drivers), a DOM-free table the roster state reads at boot on the game and cn and the lazy battle
+            // and match host read; on its own it was one more boot request on both.
+            { name: 'vehicleActions', test: /[\\/]src[\\/](?:game[\\/](?:vehicleActions|consumableLoadout)|sim[\\/](?:spottingStats|equipmentRules|consumableRules|camoPaint)|ui[\\/](?:minimapAssetUrl|battleSight)|engine[\\/](?:chaseFraming|cameraLens))\.ts$/, includeDependenciesRecursively: false },
             // 2026-10-05 (media Studio): three's Pass base and the light-model family (atmosphere, cloudscapes, light
             // model core, haze law, ground bounce) stay the one chunk the game, map, terrain and urban kit share. The
             // Studio's cinema passes and horizon relight import members of it; without the group those split into a
@@ -514,7 +517,11 @@ export default defineConfig({
             // 2026-10-31 (integrator 266): the Leopard 2 wedge fit (leopardXWedges.ts, leo2-front-265 D), a table the boot
             // specs (sourceXFleetSpecs, germany.ts) and the lazy builders (leopardX, leopardA6X) read; alone it was one more
             // game, cn and Gallery boot request.
-            { name: 'fleetLayouts', test: /[\\/]src[\\/]vehicles[\\/](?:leopardXWedges|leopard2A4Kontakt1|leopard2a3B4Armor|leopard2A4FamilyArmor|leopard2CheekFrontDatums|t62mv1XArmor|christian2Armor|leopard2HullDatums|leopardA6UaLayout|marder2Frame|abramsUpgradeDatums|amx10pSkirtLayout|griffinViperLayout|m6LinebackerLayout|abramsSourceXDatums|aresApcXFrame|tos1aTagilLayout|escortFieldKitLayout|national(?:DonorTurrets|UkraineDesign|PolandDesign|ChinaDesign|RussiaDesign|ModernizationDesign)|profiles[\\/](?:xk2Frame|strv122XSuppliedFrame|leopardRevolutionPrototypeFrame|leopardImprovedHull|challenger1XSuppliedFrame))\.ts$/, includeDependenciesRecursively: false },
+            // 2026-11-05 (integrator 268): the twin-cannon air defence's measured frames (profiles/gepardFrame.ts,
+            // profiles/gm352Layout.ts, profiles/chineseAirDefenseLayout.ts), dependency-free tables the boot specs
+            // (gepardSpecs, gm352AirDefenseSpecs, chineseAirDefenseSpecs) and the lazy builders both read; alone they were
+            // three more game, cn and Gallery boot requests.
+            { name: 'fleetLayouts', test: /[\\/]src[\\/]vehicles[\\/](?:leopardXWedges|leopard2A4Kontakt1|leopard2a3B4Armor|leopard2A4FamilyArmor|leopard2CheekFrontDatums|t62mv1XArmor|christian2Armor|leopard2HullDatums|leopardA6UaLayout|marder2Frame|abramsUpgradeDatums|amx10pSkirtLayout|griffinViperLayout|m6LinebackerLayout|abramsSourceXDatums|aresApcXFrame|tos1aTagilLayout|escortFieldKitLayout|national(?:DonorTurrets|UkraineDesign|PolandDesign|ChinaDesign|RussiaDesign|ModernizationDesign)|profiles[\\/](?:xk2Frame|strv122XSuppliedFrame|leopardRevolutionPrototypeFrame|leopardImprovedHull|challenger1XSuppliedFrame|gepardFrame|gm352Layout|chineseAirDefenseLayout))\.ts$/, includeDependenciesRecursively: false },
             // 2026-10-19 (ac130-fx-228 r2; the game's entry is over its budget): a kill's source identity (the AC-130's and
             // the drone's label and icon, ui/killSourceIdentity.ts) is read by the loading roster at boot and by the HUD,
             // killcam, battle report, final blow and debrief; on its own it became one more boot request and one more

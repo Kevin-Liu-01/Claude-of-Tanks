@@ -853,4 +853,37 @@ console.log('mp battle presentation: roster → hidden visuals, frames → game 
     createTankVisualSteps: function* (specId, _engineCtx, opts) { const visual = fakeVisual(specId, null, opts); made.push(visual); abort.abort(); yield; return visual; } });
   await stopping.settled;
   assert.equal(stopping.has('a') || stopping.has('b'), false, 'an aborted prebuild holds nothing');
+
+  // (268, Main item 6) a wrong guess never draws: the client's prebuild warms each bot's vehicle in the paint the
+  // authority's roll will name (session/browserComposition.ts), but the WELCOME roster's paint decides. A bot prebuilt in
+  // 'factory' whose roster row names 'auto' is warmed and built by the roster in 'auto'; the guessed vehicle is disposed
+  // without ever joining the scene; the first battle frame shows the bot in the roster's paint, and no frame the guess
+  {
+    const guesses = [];
+    const guessing = prebuildRosterVisuals([{ playerId: 'bot-3', specId: spec, camo: 'factory', isViewer: false }], { ...deps,
+      createTankVisualSteps: function* (specId, _engineCtx, opts) { yield; const visual = fakeVisual(specId, null, opts); visual.paint = opts.camoPattern; guesses.push(visual); return visual; } });
+    await guessing.settled;
+    assert.equal(guesses.length, 1, 'the guess was built');
+    assert.deepEqual([guessing.has('bot-3'), guessing.has('bot-3', 'factory'), guessing.has('bot-3', 'auto')], [true, true, false],
+      'the prebuild holds the bot in the guessed paint only');
+    const added = [];
+    const field = { tanks: [], tankById: new Map(), player: null, shells: [], spotting: null, allTanks: [], timeS: 0, preBattleS: 0, result: null, resultReason: null, mapId: 'verdant' };
+    const rosterPaints = [], warmedPaints = [];
+    const q = createBattlePresentation({ engineCtx: { scene: { add(object) { added.push(object); } }, anisotropy: 1 }, game: field, bus: { emit() {} }, prebuilt: guessing,
+      createTankVisual: (id, engineCtx, opts) => { rosterPaints.push(opts.camoPattern); const visual = fakeVisual(id, engineCtx, opts); visual.paint = opts.camoPattern; return visual; },
+      // the client's rule (browserComposition camoFor): a bot wears the roster's paint, a seat its room camo
+      camoFor: (entry) => (entry.bot ? entry.camo : 'summer') ?? 'factory',
+      prepareVisualTextures: async (warmSpec, _aniso, quality, _tick, camo) => { warmedPaints.push(`${camo}:${quality}`); }, clock: () => nowMs });
+    await q.applyRoster([roster[0], { ...roster[2], camo: 'auto' }], context);
+    q.applyFrame(frame({ entities: [sample(3, 10, 10)] }));
+    const bot = q.actors.get('bot-3');
+    assert.equal(bot.camo, 'auto', 'the bot wears the roster\'s paint');
+    assert.equal(bot.visual.paint, 'auto', 'its vehicle is the roster\'s build in that paint');
+    assert.deepEqual(rosterPaints.sort(), ['auto', 'summer'], 'the roster built the seat in its camo and the bot in the roster\'s paint, nothing in the guess');
+    assert.ok(warmedPaints.includes('auto:ai') && !warmedPaints.some((paint) => paint.startsWith('factory')), `its textures warmed in the roster's paint, never the guess (${warmedPaints})`);
+    assert.equal(guesses[0].disposed, true, 'the guessed vehicle is disposed');
+    assert.ok(!added.includes(guesses[0].root), 'and never joined the scene: no frame draws the guess');
+    assert.ok(added.includes(bot.visual.root) && bot.visual.visible && bot.visual.syncs > 0, 'the first battle frame shows the bot in the roster\'s paint');
+    q.dispose();
+  }
 }

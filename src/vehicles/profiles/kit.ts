@@ -2387,6 +2387,13 @@ function addAmericanRwsVariantArmor(context: AmericanRwsBuildContext): void {
       plate(body, 0.035 * s, headH + 0.27 * s, headD + 0.08 * s,
         side * (headW / 2 + 0.06 * s), headY + 0.08 * s, 0.04 * s,
         0, 0, side * 0.06);
+      // (release 268 builder E, the floating-kit class: the side shield stood 4 cm off the head on nothing; two stand-off
+      // blocks from the head's side carry it, fore and aft, ending 1 mm short of its back so neither cuts the other)
+      const standOff = 0.0425 * s - 0.001;
+      for (const dz of [-0.11, 0.11]) {
+        plate('dark', standOff, 0.035 * s, 0.05 * s,
+          side * (headW / 2 + standOff / 2), headY + 0.08 * s, (0.04 + dz) * s);
+      }
     }
   } else if (hunter) {
     // (release 230: the sensor box keeps its place against the head's top, and its mast stands outboard of the service
@@ -2690,6 +2697,14 @@ function ridingYawPlate(parts: FittingParts, moving: RidingStationMoving | undef
   const pieces = ([[-ha, -hb, pa0, hb], [pa1, -hb, ha, hb], [pa0, -hb, pa1, pb0], [pa0, pb1, pa1, hb]] as const)
     .filter(([a0, b0, a1, b1]) => a1 - a0 >= 0.012 && b1 - b0 >= 0.012);
   if (pieces.reduce((area, [a0, b0, a1, b1]) => area + (a1 - a0) * (b1 - b0), 0) < 0.25 * 4 * ha * hb) return;
+  // (release 268 builder E: a port that leaves the whole face uncut, a sweep that only grazes an edge, draws the plate as
+  // authored, its own geometry; the HC brow's bearing stations were lost to a plain box, and the contact receipt read it
+  // as crossing the head's cover)
+  const [whole] = pieces, uncut = 1e-6;
+  if (pieces.length === 1 && whole[0] <= -ha + uncut && whole[1] <= -hb + uncut && whole[2] >= ha - uncut && whole[3] >= hb - uncut) {
+    parts.add(slot, geometry(), x, y, z, rx, ry, rz);
+    return;
+  }
   for (const [a0, b0, a1, b1] of pieces) {
     const size = [...dims], at = [0, 0, 0];
     size[fa] = a1 - a0; size[fb] = b1 - b0; at[fa] = (a0 + a1) / 2; at[fb] = (b0 + b1) / 2;
@@ -3183,7 +3198,7 @@ function addOpenYokeKoreanArmor(context: OpenYokeBuildContext): void {
 
 function addOpenYokePantherArmor(context: OpenYokeBuildContext): void {
   const {body,classicPanther,s,sensorX,sensorY,yokeCenterY}=context;
-  const {plate,underCoffin}=openYokeYaw(context);
+  const {plate,fitting,underCoffin}=openYokeYaw(context);
   // Panther signature: a low arrow brow and two outward-canted armor
   // cheeks echo the main turret's faceting without hiding the open
   // mechanism. The base KF51 carries the denser demonstrator package:
@@ -3191,7 +3206,9 @@ function addOpenYokePantherArmor(context: OpenYokeBuildContext): void {
   // optic hood and two side warning apertures.
   plate(body,0.62 * s,0.035 * s,0.30 * s,
     0,yokeCenterY + 0.175 * s,0.035 * s,0,0,0);
-  plate('detail',0.44 * s,0.022 * s,0.025 * s,
+  // 267 (accessory contact): the brow's lip is whole or not drawn (ridingYawFitting); cut round the sweep, its stub on the
+  // ammunition side stood over the notch the coffin's swing takes out of the brow, touching nothing
+  fitting('detail',() => KIT.box(0.44 * s,0.022 * s,0.025 * s),0.44 * s,0.022 * s,0.025 * s,
     0,yokeCenterY + 0.198 * s,0.188 * s);
   for (const side of [-1,1]) {
     if (underCoffin(side)) continue;
@@ -3208,18 +3225,26 @@ function addOpenYokePantherArmor(context: OpenYokeBuildContext): void {
   const drop=openYokeUnderSweep(context,0.50 * s,0.053 * s,0,0.2805 * s,yokeCenterY - 0.135 * s + 0.0525 * s);
   plate('dark',0.50 * s,0.105 * s,0.040 * s,
     0,yokeCenterY - 0.135 * s - drop,0.274 * s);
+  // 267 (accessory contact): the bar rides a shelf off the gearbox's front face (its back 1 cm into the gearbox, its top
+  // the bar's underside, under the bar's back half); dropped below the sweep, the bar had touched only its own lamps
+  plate('dark',0.50 * s,0.015 * s,0.149 * s,
+    0,yokeCenterY - 0.195 * s - drop,0.1995 * s);
   for (const x of [-0.155,0,0.155]) {
     plate('glass',0.105 * s,0.058 * s,0.014 * s,
       x * s,yokeCenterY - 0.135 * s - drop,0.300 * s);
   }
   plate(body,0.31 * s,0.075 * s,0.245 * s,
     sensorX,sensorY + 0.158 * s,0.048 * s);
+  // 267 (accessory contact): each warning aperture's housing backs onto the sensor head's and cheek's front (it stood
+  // 2 cm ahead of them); the ammunition side, whose cheek is not drawn, carries none (its housing was cut away by the
+  // coffin's swing, leaving its lens alone in the air)
   for (const side of [-1,1]) {
+    if (underCoffin(side)) continue;
     plate('dark',0.075 * s,0.085 * s,0.032 * s,
-      side * 0.365 * s,yokeCenterY + 0.025 * s,0.218 * s,
+      side * 0.365 * s,yokeCenterY + 0.025 * s,0.196 * s,
       0,-side * 0.09,0);
     plate('glass',0.047 * s,0.050 * s,0.014 * s,
-      side * 0.365 * s,yokeCenterY + 0.025 * s,0.239 * s,
+      side * 0.365 * s,yokeCenterY + 0.025 * s,0.217 * s,
       0,-side * 0.09,0);
   }
 }
@@ -3279,7 +3304,8 @@ function stampOpenYokeMetadata(
   fitting.userData.hasConnectedFeed = hasWeapon;
   fitting.userData.hasEngineeredCradle = true;
   fitting.userData.hasWorkLights = panther;
-  fitting.userData.lightCount = classicPanther ? 5 : (panther ? 2 : 0);
+  // 267: an armed base KF51 shows four (its ammunition side carries no warning aperture)
+  fitting.userData.lightCount = classicPanther ? (hasWeapon ? 4 : 5) : (panther ? 2 : 0);
   fitting.userData.machineGunFinish = 'gunmetal';
   fitting.userData.firingAxis = hasWeapon ? '+Z' : null;
   fitting.userData.barrelAxisLocal = hasWeapon ? [0, 0, 1] : null;

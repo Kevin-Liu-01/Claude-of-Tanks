@@ -27,11 +27,12 @@ import { openCaptureHold } from './capture-hold.mjs';
 import { createServer } from 'vite';
 import puppeteer from 'puppeteer';
 import { bandEnergy } from './audio/pcm.mjs';
+import { CREW_LANGUAGES } from '../src/audio/vehicleAudioProfiles.ts';
 import { mkdirSync, writeFileSync, rmSync } from 'node:fs';
 import { resolve, join } from 'node:path';
 import { waitForBootLoaded } from './game-readiness.mjs';
 
-const LANGUAGES = ['en-US', 'en-GB', 'de', 'ru', 'uk', 'zh', 'fr', 'sv', 'ja', 'ko', 'it', 'pl', 'he'];
+const LANGUAGES = CREW_LANGUAGES;
 const outDir = resolve('shots/voice-smoke');
 mkdirSync(outDir, { recursive: true });
 

@@ -115,8 +115,9 @@ export function createStudioDestruction(world: StudioWorld, bus: StudioBus, opti
         const obstacle = felled[i];
         const dx = (obstacle.min[0] + obstacle.max[0]) * 0.5 - x, dz = (obstacle.min[2] + obstacle.max[2]) * 0.5 - z;
         const length = Math.hypot(dx, dz) || 1;
-        // (round 2 U28) the world's crush on a standing record, then the mark (the solo step's order, state.ts)
-        world.crushObstacle(obstacle, dx / length, dz / length, 6, 'shell');
+        // (round 2 U28; 268) the world's crush first, then the mark (the solo step's order, state.ts, as the authority
+        // fells): a prop the world refuses stands
+        if (world.crushObstacle(obstacle, dx / length, dz / length, 6, 'shell') === false) continue;
         obstacle.crushed = true;
       }
     }

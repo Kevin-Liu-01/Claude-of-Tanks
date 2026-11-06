@@ -430,9 +430,16 @@ const TURRET_LATERAL_CUTS = Object.freeze({
 // points drops the sill's edge and runs one slope from the cheek's foot to the sight housing, so the cheek under the sill
 // and the notch over it would be one face and take one plate. The KF51 EVO's cut cells are not plate-fitted.
 const TURRET_PLATE_FIT_IDS = new Set(['leo2a2', 'leo2a3_b4', 'leo2a3']);
+// 267 (the KF51 EVO rebuild, kf51EvoGunFace.selftest.mjs): the rebuilt turret runs z -3.54 to 2.42, and nine even slices
+// put a boundary 4.4 mm behind the gun slot's face (z 1.10), so the slot band's last cell was a 4.4 mm sliver whose hull
+// tilted the face up to 2.05 degrees. A turret listed here moves its nearest slice boundary onto that plane (the slices
+// before it evenly divided, the last running on to the envelope's front); every other turret keeps even slices.
+const TURRET_SLICE_ANCHOR_Z = Object.freeze({
+  kf51_evo: 1.10,
+});
 
 function collisionCells(root, owner, bucket, envelope, targetSliceM, maxSlices, lateralCuts = null, plateFit = false,
-  seatedUnderside = false) {
+  seatedUnderside = false, sliceAnchorZ = null) {
   if (!envelope) return [];
   root.updateMatrixWorld(true);
   owner.updateMatrixWorld(true);
@@ -444,7 +451,11 @@ function collisionCells(root, owner, bucket, envelope, targetSliceM, maxSlices, 
   const z1 = envelope.max[2];
   const span = z1 - z0;
   const sliceCount = Math.max(MIN_SLICES, Math.min(maxSlices, Math.ceil(span / targetSliceM)));
-  const step = span / sliceCount;
+  let step = span / sliceCount;
+  if (Number.isFinite(sliceAnchorZ) && sliceAnchorZ > z0 && sliceAnchorZ < z1) {
+    const k = Math.round((sliceAnchorZ - z0) / step), anchored = (sliceAnchorZ - z0) / Math.max(1, k);
+    if (k >= 1 && k < sliceCount && z0 + (sliceCount - 1) * anchored < z1) step = anchored;
+  }
   const pointsBySlice = Array.from({ length: sliceCount }, () => []);
   const roofY = Number.isFinite(envelope.bodyRoofY) ? envelope.bodyRoofY + 0.012 : Infinity;
   const a = new THREE.Vector3();
@@ -772,7 +783,7 @@ function receiptFor(id) {
       turretCollision: stockCapture?.turretCollision ?? (turret ? collisionCells(
         tank.root, turretRig, 'turret', turret, TURRET_SLICE_TARGET_M, MAX_TURRET_SLICES, TURRET_LATERAL_CUTS[id] ?? null,
         PLATE_FIT_IDS.has(id) || TURRET_PLATE_FIT_IDS.has(id),
-        seatedTurret,
+        seatedTurret, TURRET_SLICE_ANCHOR_Z[id] ?? null,
       ) : []),
       hullStructures,
       turretStructures,

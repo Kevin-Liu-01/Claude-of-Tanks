@@ -56,6 +56,10 @@ const FLAG_CAPTURE_RADIUS_M = 12;
 const FLAG_RETURN_S = 18;
 const ZONE_RADIUS_M = 30;
 const ZONE_CAPTURE_S = 8;
+/** Frontline's line placements the guard could not clear, the latest kept (MatchModeController.lineGuardFallbacks). */
+const LINE_GUARD_FALLBACK_LOG = 16;
+/** The golden angle (rad): a hunter's successive search points round its ring (268, item 10) spread evenly. */
+const GOLDEN_ANGLE = Math.PI * (3 - Math.sqrt(5));
 /** An owned point's incursion alert repeats at most this often (a tank idling on the rim is one alert, not a stream). */
 const ZONE_CONTEST_REPEAT_S = 20;
 const ZONE_POINTS_PER_SECOND = 2;
@@ -143,10 +147,25 @@ export interface MatchModeEntity {
   modePhysics?: RulesetPhysics | null;
 }
 
+/**
+ * A Frontline line placement the guard could not clear (268, item 10): every candidate it tried, flat (x, z, its nearest
+ * living attacker in metres, 1 when an attacker's terrain sight reached it), and the one it stood the defender on, the
+ * clearest. The aggression receipt re-measures them to prove no candidate was clear.
+ */
+export interface LineGuardFallback {
+  id: string;
+  atS: number;
+  chosenX: number;
+  chosenZ: number;
+  candidates: readonly number[];
+}
+
 export interface MatchModeSpawn {
   x: number;
   z: number;
   yaw: number;
+  /** Already placed by its director (placement.respawn: Frontline's line slot); the revive stands the hull on it as it is. */
+  placed?: boolean;
 }
 
 interface MatchModeHooks<Entity extends MatchModeEntity> {
@@ -452,6 +471,8 @@ export interface MatchModeController<
   freshestSighting(entity: Entity): { x: number; z: number } | null;
   /** The enemy side's public deployment centre (the honest search's last resort). */
   enemyDeployment(entity: Entity): { x: number; z: number } | null;
+  /** Frontline's latest line placements the guard could not clear (at most LINE_GUARD_FALLBACK_LOG), oldest first. */
+  lineGuardFallbacks(): readonly LineGuardFallback[];
   serialize(viewerId?: string | null): MatchModePresentationState;
   /** Every vehicle back on its spawn at full health at once (the proving ground's quick reset). */
   reviveAll(): void;
@@ -783,7 +804,12 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
   // and the arrival's orders (round 3, the critic's M1/M3): a director-placed hunter drives on along the facing the
   // director gave it — at the ring's centre as it stood at the arrival, never updated — to a seeded point HUNT_RULES.lead
   // gives or takes round it (lx, lz; NaN for a hull that rose anywhere else)
-  const huntAnchor = new Map<string, { x: number; z: number; atS: number; lx: number; lz: number; swept: boolean }>();
+  /**
+   * A bravo bot's hunt anchor: where it rose (x, z, atS), its director lead (lx, lz) and whether it sweeps round the
+   * anchor; and its search (268, item 10; Main: a hunter never stands on a spent lead): the newest sighting it has reached
+   * (spentAtS) and how many search points it has reached since its last sighting (step).
+   */
+  const huntAnchor = new Map<string, { x: number; z: number; atS: number; lx: number; lz: number; swept: boolean; spentAtS: number; step: number }>();
   let arrivals = 0;
   // the live hulls a placement keeps clear of, each by its own seat radius (a Juggernaut's by its scale; a gunship in
   // its orbit stands on no ground); with `enemyClearM`, every live enemy by that distance (the ruleset's respawnSafeM)
@@ -824,7 +850,7 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
     if (!at && ballRespawnBackM != null) at = ballRespawnSpot(entity, ballRespawnBackM);
     const spawn = at ?? spawns.get(entity.id);
     if (!spawn) return false;
-    const safeSpawn = !placement ? spawn
+    const safeSpawn = !placement || spawn.placed ? spawn
       : (safeM ? placement.respawnNear(spawn, entity.id, occupiedBy(entity, safeM), safeM * 2.5) : null)
         ?? placement.respawn(spawn, entity.id, occupiedBy(entity));
     if (!safeSpawn) {
@@ -840,23 +866,21 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
     restedAt.delete(entity.id);
     if (entity.bot && teamOf(entity) === 'bravo') {
       let anchor = huntAnchor.get(entity.id);
-      if (!anchor) { anchor = { x: 0, z: 0, atS: 0, lx: NaN, lz: NaN, swept: false }; huntAnchor.set(entity.id, anchor); }
+      if (!anchor) { anchor = { x: 0, z: 0, atS: 0, lx: NaN, lz: NaN, swept: false, spentAtS: -Infinity, step: 0 }; huntAnchor.set(entity.id, anchor); }
       anchor.x = safeSpawn.x; anchor.z = safeSpawn.z; anchor.atS = placementTimeS; anchor.lx = NaN; anchor.lz = NaN; anchor.swept = false;
-      // a director arrival (the Horde's ring, the infected's ring) goes in along its facing, the ring's own distance on
-      if (at && (ruleset.horde || infectionArrival)) {
-        let cx = 0, cz = 0, n = 0;
-        for (const human of teams.alpha) {
-          if (human.modeActive === false || human.combat.destroyed) continue;
-          cx += human.state.pos.x; cz += human.state.pos.z; n++;
-        }
-        if (n) {
-          const lead = HUNT_RULES.lead, k = arrivals++;
-          const u1 = (Math.imul(k + 1, 2654435761) >>> 0) / 4294967296, u2 = (Math.imul(k + 7, 2246822519) >>> 0) / 4294967296;
-          const reach = detMath.hypot(cx / n - safeSpawn.x, cz / n - safeSpawn.z) * (lead.reachMin + (lead.reachMax - lead.reachMin) * u1);
-          const heading = at.yaw + (u2 - 0.5) * 2 * lead.spreadDeg * Math.PI / 180;
-          anchor.lx = Math.max(-WORLD_MARGIN_M, Math.min(WORLD_MARGIN_M, safeSpawn.x + detMath.sin(heading) * reach));
-          anchor.lz = Math.max(-WORLD_MARGIN_M, Math.min(WORLD_MARGIN_M, safeSpawn.z + detMath.cos(heading) * reach));
-        }
+      anchor.spentAtS = -Infinity; anchor.step = 0;
+      // a director arrival (the Horde's ring, the infected's ring) goes in along its facing, on toward what its side knows
+      // (268, item 10; Main: everything an arriving hostile acts on comes from its side's knowledge, the freshest sighting,
+      // else the humans' public deployment centre; it read the humans' live centroid, an unsighted position, and on the
+      // wave's first seconds led zombies onto a human still on its slot)
+      if (at && (ruleset.horde || infectionArrival) && teams.alpha.some((human) => human.modeActive !== false && !human.combat.destroyed)) {
+        const known = sideKnowledgeOf(teamOf(entity), safeSpawn.x, safeSpawn.z);
+        const lead = HUNT_RULES.lead, k = arrivals++;
+        const u1 = (Math.imul(k + 1, 2654435761) >>> 0) / 4294967296, u2 = (Math.imul(k + 7, 2246822519) >>> 0) / 4294967296;
+        const reach = detMath.hypot(known.x - safeSpawn.x, known.z - safeSpawn.z) * (lead.reachMin + (lead.reachMax - lead.reachMin) * u1);
+        const heading = at.yaw + (u2 - 0.5) * 2 * lead.spreadDeg * Math.PI / 180;
+        anchor.lx = Math.max(-WORLD_MARGIN_M, Math.min(WORLD_MARGIN_M, safeSpawn.x + detMath.sin(heading) * reach));
+        anchor.lz = Math.max(-WORLD_MARGIN_M, Math.min(WORLD_MARGIN_M, safeSpawn.z + detMath.cos(heading) * reach));
       }
     }
     stampInfection(entity);
@@ -929,7 +953,7 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
     // stable: identities that sat out the last wave lead; wrecks of this sector's fight arrive last
     pool.sort((a, b) => Number(lastWaveIds.has(a.id)) - Number(lastWaveIds.has(b.id)));
     const arrivals = pool.slice(0, Math.max(0, Math.min(pool.length, targetCount - living.length)));
-    arrivals.forEach((enemy, slot) => reviveAtSpawn(enemy, healthScale, lineSlot(slot, arrivals.length, false)));
+    arrivals.forEach((enemy, slot) => reviveAtSpawn(enemy, healthScale, lineSlot(enemy, slot, arrivals.length, false)));
     lastWaveIds = new Set([...living, ...arrivals].map((entity) => entity.id));
     freshDefenders = arrivals.map((entity) => entity.id);
   };
@@ -1029,7 +1053,9 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
         const radius = ringMin + spawnRng() * (ringMax - ringMin);
         const x = Math.max(-WORLD_MARGIN_M, Math.min(WORLD_MARGIN_M, cx + detMath.sin(angle) * radius));
         const z = Math.max(-WORLD_MARGIN_M, Math.min(WORLD_MARGIN_M, cz + detMath.cos(angle) * radius));
-        const yaw = detMath.atan2(cx - x, cz - z);
+        // (268, item 10; Main) the ring's centre keeps the arrival safe; what the arrival faces is what its side knows
+        const known = sideKnowledgeOf(teamOf(entity), x, z);
+        const yaw = detMath.atan2(known.x - x, known.z - z);
         const point = placement ? placement.respawnNear({ x, z, yaw }, entity.id, occupiedBy(entity), rules.spawnRingM[0] * 0.15) : { x, z, yaw };
         if (!point || !arrivalClear(point.x, point.z, rules, ignoreSight, cx, cz, leadScale)) continue;
         spawnSector = (sector + 1) % sectors;
@@ -1220,32 +1246,79 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
    * A defender's slot on the live line (defendersStartOnLine): lineBandM behind the sector's centre, spread across it,
    * facing the attack; `rear` puts it reinforceRearM back (the trickle). Null keeps the hostile's own spawn.
    */
-  function lineSlot(slot: number, count: number, rear: boolean): MatchModeSpawn | null {
+  // the line guard's candidates this search tried (x, z, nearest attacker, seen), and its logged fallbacks
+  const lineGuardTried: number[] = [];
+  const lineGuardFallbackLog: LineGuardFallback[] = [];
+  function lineSlot(entity: Entity, slot: number, count: number, rear: boolean): MatchModeSpawn | null {
     if (!ruleset.assault || !assaultRules.defendersStartOnLine) return null;
     const zone = liveLine();
     if (!zone) return null;
     const [near, far] = assaultRules.lineBandM;
-    let back = rear ? assaultRules.reinforceRearM : near + spawnRng() * (far - near);
+    const back = rear ? assaultRules.reinforceRearM : near + spawnRng() * (far - near);
     const across = (slot - (count - 1) / 2) * assaultRules.lineSpacingM + (spawnRng() - 0.5) * assaultRules.lineJitterM;
-    // the line's guard: out of the attack's reach and terrain sight, stepping back along the axis (round 2, E2)
+    const yaw = detMath.atan2(-axisX, -axisZ);
+    const at = (backM: number, acrossM: number): MatchModeSpawn => ({
+      x: Math.max(-WORLD_MARGIN_M, Math.min(WORLD_MARGIN_M, zone.x + axisX * backM + lateralX * acrossM)),
+      z: Math.max(-WORLD_MARGIN_M, Math.min(WORLD_MARGIN_M, zone.z + axisZ * backM + lateralZ * acrossM)),
+      yaw,
+    });
+    // the line's guard: out of the attack's reach and terrain sight (round 2, E2). (268, item 9) It searches the defender's
+    // ground rather than giving up after its steps back: each candidate judged where the placement stands the hull (its
+    // obstacles and the hulls already placed), the first the guard clears taken; with none, the clearest. The ground is
+    // this line's own: a step never takes a defender within the next sector's contest reach (it would hold that sector too)
     const guard = assaultRules.lineGuard;
-    for (let step = 0; ; step++) {
-      const x = Math.max(-WORLD_MARGIN_M, Math.min(WORLD_MARGIN_M, zone.x + axisX * back + lateralX * across));
-      const z = Math.max(-WORLD_MARGIN_M, Math.min(WORLD_MARGIN_M, zone.z + axisZ * back + lateralZ * across));
-      if (!guard || step >= guard.tries || lineClear(x, z, guard)) return { x, z, yaw: detMath.atan2(-axisX, -axisZ) };
-      back += guard.stepBackM;
+    if (!guard) return at(back, across);
+    const next = zones[Math.min(lineIndex, zones.length - 1) + 1];
+    const maxBack = next ? Math.max(back, (next.x - zone.x) * axisX + (next.z - zone.z) * axisZ - assaultRules.contestReachM) : Infinity;
+    let best: { input: MatchModeSpawn; placed: MatchModeSpawn; key: [number, number, number] } | null = null;
+    let last: MatchModeSpawn | null = null;
+    lineGuardTried.length = 0;
+    // the candidates nearest the drawn slot first: back along the axis by stepBackM, across by the line's spacing
+    const offsets = lineSearchOffsets(guard, assaultRules.lineSpacingM, maxBack - back);
+    for (const [backOffsetM, acrossOffsetM] of offsets) {
+      const input = at(back + backOffsetM, across + acrossOffsetM);
+      const placed = placement ? placement.respawn(input, entity.id, occupiedBy(entity)) : input;
+      if (!placed) continue;
+      last = placed;
+      const exposure = lineExposure(placed.x, placed.z, guard);
+      if (exposure.nearestM >= guard.minAttackM && !exposure.seen) return { ...placed, placed: true };
+      lineGuardTried.push(placed.x, placed.z, exposure.nearestM, exposure.seen ? 1 : 0);
+      // the clearest: outside the reach first, then out of sight, then the furthest from the attack
+      const key: [number, number, number] = [exposure.nearestM >= guard.minAttackM ? 1 : 0, exposure.seen ? 0 : 1, exposure.nearestM];
+      if (!best || key[0] > best.key[0] || (key[0] === best.key[0] && (key[1] > best.key[1] || (key[1] === best.key[1] && key[2] > best.key[2])))) {
+        best = { input, placed, key };
+      }
     }
+    if (!best) return null;
+    // the placement keeps one reservation per hull, the last it made: stand the chosen candidate's again
+    const chosen = last === best.placed ? best.placed : placement ? placement.respawn(best.input, entity.id, occupiedBy(entity)) ?? best.placed : best.placed;
+    if (lineGuardFallbackLog.length >= LINE_GUARD_FALLBACK_LOG) lineGuardFallbackLog.shift();
+    lineGuardFallbackLog.push({ id: entity.id, atS: placementTimeS, chosenX: chosen.x, chosenZ: chosen.z, candidates: lineGuardTried.slice() });
+    return { ...chosen, placed: true };
   }
-  /** No living attacker within the guard's minAttackM of (x, z), nor (outOfSight) seeing it over the terrain. */
-  function lineClear(x: number, z: number, guard: NonNullable<typeof assaultRules.lineGuard>): boolean {
-    const minSq = guard.minAttackM ** 2, sightSq = hordeRules.sightRangeM ** 2;
+  /** The guard's search pattern (back, across) in metres, nearest the drawn slot first; never past `maxBackM`. */
+  function lineSearchOffsets(guard: NonNullable<typeof assaultRules.lineGuard>, spacingM: number, maxBackM: number): [number, number][] {
+    const offsets: [number, number, number, number][] = [];
+    for (let step = 0; step <= guard.backSteps && step * guard.stepBackM <= maxBackM; step++) {
+      for (let lane = -guard.acrossSteps; lane <= guard.acrossSteps; lane++) {
+        const backM = step * guard.stepBackM, acrossM = lane * spacingM;
+        offsets.push([backM, acrossM, backM * backM + acrossM * acrossM, step * 1000 + lane + guard.acrossSteps]);
+      }
+    }
+    offsets.sort((a, b) => a[2] - b[2] || a[3] - b[3]);
+    return offsets.map(([backM, acrossM]) => [backM, acrossM]);
+  }
+  /** How exposed a slot is to the attack: the nearest living attacker's distance, and (outOfSight) whether one sees it. */
+  function lineExposure(x: number, z: number, guard: NonNullable<typeof assaultRules.lineGuard>): { nearestM: number; seen: boolean } {
+    const sightSq = hordeRules.sightRangeM ** 2;
+    let nearestSq = Infinity, seen = false;
     for (const attacker of teams.alpha) {
       if (attacker.modeActive === false || attacker.combat.destroyed) continue;
       const dSq = squaredDistance(attacker, x, z);
-      if (dSq < minSq) return false;
-      if (guard.outOfSight && dSq <= sightSq && terrainSees(attacker, x, z, hordeRules)) return false;
+      if (dSq < nearestSq) nearestSq = dSq;
+      if (!seen && guard.outOfSight && dSq <= sightSq && terrainSees(attacker, x, z, hordeRules)) seen = true;
     }
-    return true;
+    return { nearestM: Math.sqrt(nearestSq), seen };
   }
   /** A defender's revive scale: the sector's own, with the attack's hull (the ruleset's hpScale) divided back out. */
   const assaultHealth = (): number => assaultWaveHealthScale(assaultRules, lineIndex, zones.length) / (ruleset.hpScale > 0 ? ruleset.hpScale : 1);
@@ -1261,7 +1334,7 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
       const active = drawWave(activeCount);
       let slot = 0;
       for (const entity of hordeEnemies) {
-        if (active.has(entity)) reviveAtSpawn(entity, healthScale, lineSlot(slot++, active.size, false));
+        if (active.has(entity)) reviveAtSpawn(entity, healthScale, lineSlot(entity, slot++, active.size, false));
         else deactivate(entity);
       }
       freshDefenders = [...active].map((entity) => entity.id);
@@ -1340,7 +1413,7 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
       if (rested < pickRested || (rested === pickRested && pick && enemy.id < pick.id)) { pick = enemy; pickRested = rested; }
     }
     if (!pick) return;
-    reviveAtSpawn(pick, assaultHealth(), lineSlot(0, 1, true));
+    reviveAtSpawn(pick, assaultHealth(), lineSlot(pick, 0, 1, true));
     emit('mode_line_reinforced', { line: lineIndex, id: pick.id });
   };
 
@@ -2335,6 +2408,14 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
       }
     }
   }
+  /**
+   * What a side knows of its enemy, as a point (268, item 10; Main): its freshest sighting (freshestFor, ties nearest to
+   * the point), else the enemy's public deployment centre. An arriving hostile faces it and leads on toward it; live
+   * positions place the arrival's ring only to keep it off the humans, never to steer it.
+   */
+  function sideKnowledgeOf(side: ObjectiveTeam, x: number, z: number): { x: number; z: number } {
+    return freshestFor(side, x, z) ?? centers[otherTeam(side)];
+  }
   /** The side's freshest sighting within HUNT_RULES.lastSeenMaxS (ties: nearest to the point), or null. */
   function freshestFor(side: ObjectiveTeam, x: number, z: number): Sighting | null {
     let best: Sighting | null = null, bestD = Infinity;
@@ -2381,26 +2462,40 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
         tx = best.state.pos.x; tz = best.state.pos.z;
         lastContact.x = tx; lastContact.z = tz; lastContact.set = true; lastContact.atS = placementTimeS;
       } else {
+        // the search (268, item 10; Main): a hunter never stands on a spent lead. A sighting it has reached with nobody in
+        // sight is spent for it, and it hunts on past it: its sweep starts out round the spent point. A search point it
+        // reaches (within lead.arriveM) is spent too, and the next one is drawn at once, never at the next sweep epoch.
+        let anchor = huntAnchor.get(hunter.id);
+        if (!anchor) {
+          anchor = { x: hunter.state.pos.x, z: hunter.state.pos.z, atS: placementTimeS, lx: NaN, lz: NaN, swept: false, spentAtS: -Infinity, step: 0 };
+          huntAnchor.set(hunter.id, anchor);
+        }
+        const arrive2 = HUNT_RULES.lead.arriveM ** 2;
         const seen = freshestFor(side, hunter.state.pos.x, hunter.state.pos.z);
-        if (seen) { tx = seen.x; tz = seen.z; } else {
-          // the sweep: a seeded bearing per hunter and sweep epoch round the last contact (the opponents' deployment
-          // before any); a director arrival first drives on to its lead point (HUNT_RULES.lead) and then spirals out round
-          // it; once the side's contact is sweepStaleS old any other hunter spirals out round where it rose instead
+        if (seen && seen.atS > anchor.spentAtS && squaredDistance(hunter, seen.x, seen.z) <= arrive2) {
+          anchor.spentAtS = seen.atS;
+          anchor.x = seen.x; anchor.z = seen.z; anchor.atS = placementTimeS; anchor.lx = NaN; anchor.lz = NaN; anchor.swept = true;
+          anchor.step = 0;
+        }
+        if (seen && seen.atS > anchor.spentAtS) { tx = seen.x; tz = seen.z; anchor.step = 0; } else {
+          // the sweep: a seeded bearing per hunter, sweep epoch and search step round the last contact (the opponents'
+          // deployment before any); a director arrival first drives on to its lead point (HUNT_RULES.lead) and then spirals
+          // out round it; once the side's contact is sweepStaleS old any other hunter spirals out round where it rose instead
           // (localSweep: firstM, then stepM more each epoch, at most maxM) — its own position and orders, no one else's
+          if (Number.isNaN(anchor.lx) && squaredDistance(hunter, plan.x, plan.z) <= arrive2) anchor.step++;
           const epoch = Math.floor(placementTimeS / HUNT_RULES.sweepEpochS);
-          const angle = (Math.imul((rank + 1) * 2654435761, epoch + 7) >>> 0) / 4294967296 * Math.PI * 2;
-          const anchor = huntAnchor.get(hunter.id);
+          // each search point it reaches turns the next a golden angle on round the ring, so successive points never bunch
+          const angle = (Math.imul((rank + 1) * 2654435761, epoch + 7) >>> 0) / 4294967296 * Math.PI * 2 + anchor.step * GOLDEN_ANGLE;
           const stale = !lastContact.set || placementTimeS - lastContact.atS > HUNT_RULES.sweepStaleS;
           // the hunter's own lead outranks a side contact older than its arrival (or stale)
-          const own = !!anchor && (stale || anchor.atS > lastContact.atS);
-          if (own && anchor && Number.isFinite(anchor.lx)
-            && squaredDistance(hunter, anchor.lx, anchor.lz) <= HUNT_RULES.lead.arriveM ** 2) {
+          const own = stale || anchor.atS > lastContact.atS;
+          if (own && Number.isFinite(anchor.lx) && squaredDistance(hunter, anchor.lx, anchor.lz) <= arrive2) {
             // there: the sweep spirals out round the lead point from now on
             anchor.x = anchor.lx; anchor.z = anchor.lz; anchor.atS = placementTimeS; anchor.lx = NaN; anchor.lz = NaN; anchor.swept = true;
           }
-          if (own && anchor && Number.isFinite(anchor.lx)) {
+          if (own && Number.isFinite(anchor.lx)) {
             tx = anchor.lx; tz = anchor.lz;
-          } else if (anchor && ((own && anchor.swept) || (stale && lastContact.set))) {
+          } else if ((own && anchor.swept) || (stale && lastContact.set)) {
             const local = HUNT_RULES.localSweep;
             const ring = Math.min(local.maxM, local.firstM + local.stepM * Math.floor((placementTimeS - anchor.atS) / HUNT_RULES.sweepEpochS));
             tx = anchor.x + detMath.sin(angle) * ring; tz = anchor.z + detMath.cos(angle) * ring;
@@ -2666,6 +2761,9 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
       const at = centers[otherTeam(teamOf(entity))];
       deploymentOut.x = at.x; deploymentOut.z = at.z;
       return deploymentOut;
+    },
+    lineGuardFallbacks() {
+      return lineGuardFallbackLog;
     },
     captureCheckpoint(elapsedS) {
       // the wave rules the ruleset names (its horde, its assault), never a mode-id literal (round 3, the critic's E-R2-7)

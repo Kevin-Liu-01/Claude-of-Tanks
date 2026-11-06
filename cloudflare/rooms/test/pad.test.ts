@@ -2,7 +2,8 @@
  * The phone controller's pairing on the real Worker and PadPair object (docs/PHONE-CONTROLLER.md): /pad/new hands a
  * desktop a fresh code, /pad/join pairs it once, a wrong code is refused as unknown, signals relay between the two,
  * the keepalive is answered without waking the object, a code expires on its alarm (and its storage deallocates),
- * a phone resumes with its token across an eviction, and junk routes never reach an object. No relay secret here: an
+ * a phone resumes with its token across an eviction, a couch lobby seats several phones, and junk routes never reach
+ * an object. No relay secret here: an
  * ICE grant is STUN alone.
  */
 import { env, exports } from 'cloudflare:workers';
@@ -124,6 +125,30 @@ describe('phone controller pairing', () => {
     ]) expect(admits(refused)).toBe(false);
     expect(allowedOrigin(new Request('https://rooms.test/', { headers: { Origin: origin } }), origin)).toBe(true);
     expect(allowedOrigin(new Request('https://rooms.test/', { headers: { Origin: `${origin}.evil.test` } }), origin)).toBe(false);
+  });
+
+  it('seats several phones in a couch lobby, numbered, past the pairing socket cap (docs/COUCH-MODE.md)', async () => {
+    const desktop = await upgrade('/pad/lobby', 'pad-lobby');
+    const code = await desktop.next('code');
+    expect(code.code).toMatch(/^[ABCDEFGHJKMNPQRSTUVWXYZ2-9]{6}$/);
+    expect((await desktop.next('lobby')).open).toBe(true);
+    // four phones: past a pairing's three sockets, inside the lobby's cap
+    const phones: PadClient[] = [];
+    for (let seat = 1; seat <= 4; seat++) {
+      const phone = await upgrade(`/pad/join/${String(code.code)}`, `pad-lobby-${seat}`);
+      expect((await phone.next('joined')).seat).toBe(seat);
+      phones.push(phone);
+    }
+    const seats = desktop.messages.filter((message) => message.t === 'seat').map((message) => message.seat);
+    expect(seats).toEqual([1, 2, 3, 4]);
+    phones[3]!.send({ t: 'signal', kind: 'offer', sdp: 'o4' });
+    const offer = await desktop.next('signal');
+    expect(offer).toEqual({ t: 'signal', kind: 'offer', sdp: 'o4', seat: 4 });
+    desktop.send({ t: 'signal', kind: 'answer', sdp: 'a4', seat: 4 });
+    expect(await phones[3]!.next('signal')).toEqual({ t: 'signal', kind: 'answer', sdp: 'a4' });
+    expect(phones[0]!.messages.some((message) => message.t === 'signal')).toBe(false);
+    desktop.send({ t: 'kick', seat: 2 });
+    expect((await phones[1]!.next('end')).reason).toBe('removed');
   });
 
   it('answers junk without an object', async () => {

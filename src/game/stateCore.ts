@@ -2,6 +2,7 @@ import type { RuntimeValue } from '../runtimeTypes.ts';
 import { matchRulesetFor, type MatchRuleset } from '../sim/matchRuleset.ts';
 import type { AppPhase } from './appLifecycle.ts';
 import type { WatchSession } from './watchSeat.ts';
+import type { CouchSession } from './couchSeats.ts';
 /**
  * Lightweight integration state shared by the garage, Studio, and battle
  * runtime. This module deliberately has no Three.js, DOM, WebGL, vehicle, or
@@ -63,6 +64,8 @@ export interface GameState<Entity = RuntimeValue, Spotting = RuntimeValue, Match
   campaignOperationId: string | null;
   /** Watch mode (game/watchSeat.ts): a watched battle's seat ledger; null otherwise. */
   watch?: WatchSession | null;
+  /** Couch mode (game/couchSeats.ts): which tank each phone drives; null otherwise. */
+  couch?: CouchSession<Entity> | null;
 }
 
 /**
@@ -73,7 +76,11 @@ export function watchRevealsAll(game: {
   player: unknown;
   ruleset?: { readonly watch?: { readonly revealAll: boolean } | null } | null;
   watch?: { readonly opened: boolean } | null;
+  couch?: { readonly sides: string } | null;
 }): boolean {
+  // a couch battle with seats on both sides shares one screen, and each seat sees its own side: the screen shows every
+  // hull (docs/COUCH-MODE.md; one pane per seat draws only its side's spotting)
+  if (game.couch?.sides === 'teams') return true;
   return !!game.ruleset?.watch?.revealAll && !!game.watch?.opened && !game.player;
 }
 

@@ -77,6 +77,10 @@
    "name": "BMPT T-90",
    "card": "/brand/og-r2/tanks/bmpt_t90-card.jpg"
   },
+  "bmpt_terminator": {
+   "name": "BMPT Terminator",
+   "card": null
+  },
   "bmpt_terminator2": {
    "name": "BMPT Terminator 2",
    "card": "/brand/og-r2/tanks/bmpt_terminator2-card.jpg"
@@ -163,7 +167,7 @@
   },
   "challenger3_proto": {
    "name": "Challenger 3 Prototype",
-   "card": null
+   "card": "/brand/og-r2/tanks/challenger3_proto-card.jpg"
   },
   "challenger3_td": {
    "name": "Challenger 3 TD",
@@ -239,7 +243,7 @@
   },
   "fv4034": {
    "name": "FV4034",
-   "card": null
+   "card": "/brand/og-r2/tanks/fv4034-card.jpg"
   },
   "fv510": {
    "name": "FV510 Warrior",
@@ -247,6 +251,10 @@
   },
   "fv510_milan": {
    "name": "FV510 Warrior MILAN",
+   "card": null
+  },
+  "gepard_1a2": {
+   "name": "Flakpanzer Gepard 1A2",
    "card": null
   },
   "griffin50mm": {
@@ -375,11 +383,11 @@
   },
   "leo2a4_otco": {
    "name": "Leopard 2A4 OTCO",
-   "card": null
+   "card": "/brand/og-r2/tanks/leo2a4_otco-card.jpg"
   },
   "leo2a4_v": {
    "name": "Leopard 2A4 V",
-   "card": null
+   "card": "/brand/og-r2/tanks/leo2a4_v-card.jpg"
   },
   "leo2a4m": {
    "name": "Leopard 2A4M",
@@ -403,7 +411,7 @@
   },
   "leo2a6": {
    "name": "Leopard 2A6",
-   "card": null
+   "card": "/brand/og-r2/tanks/leo2a6-card.jpg"
   },
   "leo2a6_ua": {
    "name": "Leopard 2A6 UA",
@@ -443,7 +451,7 @@
   },
   "m1a1_abrams_hc": {
    "name": "M1A1 Abrams HC",
-   "card": null
+   "card": "/brand/og-r2/tanks/m1a1_abrams_hc-card.jpg"
   },
   "m1a1_abrams_sa": {
    "name": "M1A1 Abrams SA",
@@ -467,7 +475,7 @@
   },
   "m1a2_abrams_tusk": {
    "name": "M1A2 Abrams TUSK",
-   "card": null
+   "card": "/brand/og-r2/tanks/m1a2_abrams_tusk-card.jpg"
   },
   "m1a3": {
    "name": "M1E3 Abrams",
@@ -476,6 +484,10 @@
   "m2a2_bradley": {
    "name": "M2A2 Bradley",
    "card": "/brand/og-r2/tanks/m2a2_bradley-card.jpg"
+  },
+  "m3a2_bradley": {
+   "name": "M3A2 Bradley",
+   "card": null
   },
   "m3a3_bradley": {
    "name": "M3A3 Bradley CFV",
@@ -633,6 +645,18 @@
    "name": "EE-T1 Osório (120)",
    "card": null
   },
+  "pantsir_s1": {
+   "name": "Pantsir-S1 (tracked)",
+   "card": null
+  },
+  "pgz09": {
+   "name": "PGZ-09",
+   "card": null
+  },
+  "pgz95": {
+   "name": "PGZ-95",
+   "card": null
+  },
   "pl01": {
    "name": "PL-01",
    "card": "/brand/og-r2/tanks/pl01-card.jpg"
@@ -675,7 +699,7 @@
   },
   "sabra_mk2": {
    "name": "Sabra Mk 2",
-   "card": null
+   "card": "/brand/og-r2/tanks/sabra_mk2-card.jpg"
   },
   "shot_kal": {
    "name": "Sho't Kal",
@@ -807,7 +831,7 @@
   },
   "t72b3m_hetman_ii": {
    "name": "T-72B3M Hetman II",
-   "card": null
+   "card": "/brand/og-r2/tanks/t72b3m_hetman_ii-card.jpg"
   },
   "t72b3m_kunlun": {
    "name": "T-72B3M Kunlun",
@@ -957,9 +981,13 @@
    "name": "TOS-1A Tagil",
    "card": "/brand/og-r2/tanks/tos1a_tagil-card.jpg"
   },
+  "tunguska_m": {
+   "name": "2K22M Tunguska-M",
+   "card": null
+  },
   "type10": {
    "name": "Type 10",
-   "card": null
+   "card": "/brand/og-r2/tanks/type10-card.jpg"
   },
   "type100": {
    "name": "Type 100 IFV",
@@ -971,7 +999,7 @@
   },
   "type10_tk_x": {
    "name": "Type 10 (TK-X)",
-   "card": null
+   "card": "/brand/og-r2/tanks/type10_tk_x-card.jpg"
   },
   "type10b": {
    "name": "Type 10B",
@@ -987,7 +1015,7 @@
   },
   "type89": {
    "name": "Type 89",
-   "card": null
+   "card": "/brand/og-r2/tanks/type89-card.jpg"
   },
   "type90": {
    "name": "Type 90",
@@ -1047,7 +1075,7 @@
   },
   "udes03": {
    "name": "UDES 03",
-   "card": null
+   "card": "/brand/og-r2/tanks/udes03-card.jpg"
   },
   "upior": {
    "name": "Upiór IFV",
@@ -1103,7 +1131,7 @@
   },
   "ztz99_longwei": {
    "name": "ZTZ-99 Longwei",
-   "card": null
+   "card": "/brand/og-r2/tanks/ztz99_longwei-card.jpg"
   },
   "ztz99a": {
    "name": "ZTZ-99A",

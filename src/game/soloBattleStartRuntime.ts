@@ -1,3 +1,4 @@
+import type { CouchBattle } from './couchSeats.ts';
 import type { RuntimeValue } from '../runtimeTypes.ts';
 import type { DamagePanelController } from '../ui/damagePanel.ts';
 import { assertAppPhaseTransition, transitionAppPhase, type AppPhase } from './appLifecycle.ts';
@@ -18,6 +19,8 @@ export interface SoloBattleStartOptions {
   campaignOperationId?: string | null;
   /** Watch mode (sim/matchRuleset.ts WATCH_RULES): every seat a bot's. */
   watch?: boolean;
+  /** Couch mode (sim/matchRuleset.ts COUCH_RULES): the phones' seats and sides. */
+  couch?: CouchBattle;
 }
 
 interface SoloBattlePlayer {
@@ -90,6 +93,7 @@ export interface SoloBattleStartRuntimeOptions {
         gameMode?: string;
         campaignOperationId?: string | null;
         watch?: boolean;
+        couch?: CouchBattle;
       },
     ): void;
     combatWarm: { reset(): void; drain(): RuntimeValue };
@@ -171,6 +175,7 @@ export function createSoloBattleStartRuntime({
       gameMode = 'standard',
       campaignOperationId = null,
       watch = false,
+      couch,
     } = {}) {
       if (!specId) throw new TypeError('solo battle start requires a vehicle specification');
 
@@ -221,6 +226,7 @@ export function createSoloBattleStartRuntime({
         ...(gameMode === 'standard' ? {} : { gameMode }),
         ...(campaignOperationId ? { campaignOperationId } : {}),
         ...(watch ? { watch } : {}),
+        ...(couch ? { couch } : {}),
       });
       round.combatWarm.reset();
       mark('setupRoster');

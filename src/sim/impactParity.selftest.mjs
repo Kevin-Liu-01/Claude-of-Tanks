@@ -18,11 +18,13 @@ import { createBus, createGameState, simStep } from '../game/state.ts';
 const solo = readFileSync(new URL('../game/state.ts', import.meta.url), 'utf8');
 const authority = readFileSync(new URL('./authoritativeMatch.ts', import.meta.url), 'utf8');
 const modes = readFileSync(new URL('./matchModes.ts', import.meta.url), 'utf8');
+const pairContact = readFileSync(new URL('./tankPairContact.ts', import.meta.url), 'utf8');
 
 // ---- structural parity ------------------------------------------------------------------------------------------
 // (2026-11-02 audit M6: the ram's pricing — the split, the struck faces, the teammate gate, the lethal ram's modules — is
-// one sim/impact.ts function both drivers call, resolveRamPairDamage, no longer a copy in each)
-for (const name of ['exchangeRamMomentum', 'fallAttitudeFactor', 'hullVelocityAlong', 'resolveHullImpact', 'resolveRamPairDamage']) {
+// one sim/impact.ts function both drivers call, resolveRamPairDamage, no longer a copy in each; 268: the closing speed's
+// hullVelocityAlong is read in the one hull-pair contact, sim/tankPairContact.ts, below)
+for (const name of ['exchangeRamMomentum', 'fallAttitudeFactor', 'resolveHullImpact', 'resolveRamPairDamage']) {
   assert.match(solo, new RegExp(`import \\{[^}]*\\b${name}\\b[^}]*\\} from '../sim/impact.ts'`), `the solo step imports ${name} from sim/impact.ts`);
   assert.match(authority, new RegExp(`import \\{[^}]*\\b${name}\\b[^}]*\\} from './impact.ts'`), `the authority imports ${name} from sim/impact.ts`);
 }
@@ -39,9 +41,13 @@ for (const text of [solo, authority]) {
   assert.match(text, /resolveRamPairDamage\((game\.)?ruleset\.physics, contact\)/, 'a ram is priced by the one shared rule');
   assert.match(text, /if \(!contact\.vertical\) \{/, 'roof landings skip the horizontal exchange in both sims');
   assert.match(text, /vAn: -closing, vBn: 0, vertical: true/, 'a roof landing queues the upper hull as the aggressor in both sims');
-  assert.match(text, /const vAn = hullVelocityAlong\((self|entity)\.state, (normalX|nx), (normalZ|nz)\);\s*const vBn = hullVelocityAlong\(other\.state, (normalX|nx), (normalZ|nz)\);\s*const closing = vBn - vAn;/,
-    'the closing speed is the difference of the normal velocities in both sims');
 }
+// (268) the hull-pair contact and the ram each push records are one function for both sims (sim/tankPairContact.ts)
+assert.match(solo, /import \{ pushFromHulls \} from '\.\.\/sim\/tankPairContact\.ts'/, 'the solo step pushes hulls apart through sim/tankPairContact.ts');
+assert.match(authority, /import \{ pushFromHulls \} from '\.\/tankPairContact\.ts'/, 'the authority pushes hulls apart through sim/tankPairContact.ts');
+assert.match(pairContact, /import \{ hullVelocityAlong \} from '\.\/impact\.ts'/, 'the hull-pair contact reads hullVelocityAlong from sim/impact.ts');
+assert.match(pairContact, /const vAn = hullVelocityAlong\(entity\.state, nx, nz\);\s*const vBn = hullVelocityAlong\(other\.state, nx, nz\);\s*const closing = vBn - vAn;/,
+  'the closing speed is the difference of the normal velocities');
 assert.match(solo, /exchangeRamMomentum\(contact\.a\.state, contact\.b\.state, contact\.nx, contact\.nz,\s*contact\.a\.spec\.weightTons, contact\.b\.spec\.weightTons, contact\.vAn, contact\.vBn, game\.ruleset\.physics\.ramRestitution\)/,
   'the solo step exchanges momentum with the ruleset restitution');
 assert.match(authority, /exchangeRamMomentum\(contact\.a\.state, contact\.b\.state, contact\.nx, contact\.nz,\s*contact\.a\.spec\.weightTons, contact\.b\.spec\.weightTons, contact\.vAn, contact\.vBn, ruleset\.physics\.ramRestitution\)/,
