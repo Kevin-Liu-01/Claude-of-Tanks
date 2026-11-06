@@ -346,7 +346,10 @@ async function shootMap(entry, options, frames) {
   for (const pose of poses) {
     const resolved = await page.evaluate(externalPoseScript(pose.pose));
     await sleep(900);
-    const settled = await page.waitForFunction(grassSettled, { timeout: 8000, polling: 250 }).then(() => true, () => false);
+    // (ab6, Saltmere's A/A: a pair's first page, thawed from the queue, framed its near grass still streaming in — 14 % of
+    // the frame differed from the settled twin) the grass settled or the pose fails, to be shot again
+    const settled = await page.waitForFunction(grassSettled, { timeout: 60_000, polling: 250 }).then(() => true, () => false);
+    if (!settled) throw new Error(`${mapId} ${pose.name}: the grass did not settle within 60 s`);
     const timesPinned = await page.evaluate(pinWorldTime, WORLD_TIME_S);
     await page.evaluate(pinClouds());
     // (48 frames: the long view of a big town under a loaded machine draws a few a second)
