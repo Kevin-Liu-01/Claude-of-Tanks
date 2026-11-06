@@ -297,6 +297,27 @@ const outcome = async (step) => { await settle(); return step.state; };
   assert.ok(!h.calls.includes('film-open'), 'no film opens after the exit');
   assert.equal(exported, 'AbortError');
 }
+// 6 (and a Studio entered again). (round 3 B10) The export is the page's, not a session's (one encoder, studio.ts
+// filmExport): one an exit outlived (its module still loading; likewise its encoder's flush and its soundtrack mix, which
+// the cancel does not stop) holds 'export' in a Studio entered again until it ends, so no second export starts beside it.
+// Then that Studio is free. docs/STUDIO.md's busy() line says so.
+{
+  const h = makeStudio({ session: createStudioSession({ settleMs: 20 }) });
+  const film = track(h.studio.exportFilmFile({ download: false }));
+  await settle();
+  h.studio.exit();
+  await new Promise((resolve) => { setTimeout(resolve, 60); }); // past the exit's bound, the module still loading
+  await settle();
+  assert.equal(h.studio.active, false, 'the bound let the exit go on');
+  h.studio.reenter();
+  assert.equal(h.studio.busy(), 'export', 'the closed session\'s export still holds the page\'s export in the Studio entered again');
+  const second = track(h.studio.exportFilmFile({ download: false }));
+  assert.equal(await outcome(second), 'Error', 'a second export is refused while it runs');
+  h.releaseExportModule();
+  assert.equal(await outcome(film), 'AbortError', 'the dead export ends as a cancel once its module lands');
+  assert.ok(!h.calls.includes('film-open'), 'its film never opens');
+  assert.equal(h.studio.busy(), null, 'and the Studio entered again is free');
+}
 
 // 7. Exit while a covered time change lights the scene: the change applies nothing once its session ended, and the
 // teardown's restore follows its light.
@@ -535,6 +556,24 @@ for (const phaseAtLanding of ['garage', 'battle']) {
   assert.deepEqual(await Promise.race([restoring, settle().then(() => 'still restoring')]), { value: false },
     'a restore the exit took back resolves false');
   assert.ok(!h.calls.some((c) => Array.isArray(c) && c[0] === 'autosave'), 'and commits nothing');
+}
+// 16 (a failure in its live session). (round 3 B10) A saved scene that will not load in the live Studio (its battlefield's
+// build fails) is the caller's: restoreAutosave rejects with that failure, which the panel's Restore says with
+// studio.loadFailed, and commits no step. Only a restore its session's exit took back resolves false: one that swallowed
+// every failure left a broken saved scene doing nothing, the panel's catch dead.
+{
+  const failure = new Error('the saved scene\'s battlefield did not build');
+  const h = makeStudio({
+    readAutosave: () => ({ savedAt: 1, doc: { map: 'desert', actors: [{ id: 'm1a1' }] } }),
+    ensureWorld: (id) => { h.calls.push(['ensure-world', id]); return Promise.reject(failure); },
+  });
+  const restored = await h.studio.restoreAutosave().then((value) => ({ value }), (error) => ({ error }));
+  assert.deepEqual(h.calls.filter((c) => Array.isArray(c) && c[0] === 'ensure-world'), [['ensure-world', 'desert']],
+    'the restore built the saved scene\'s battlefield');
+  assert.equal(restored.error, failure, 'a restore that fails in its live session rejects with its failure, not false');
+  assert.ok(!h.calls.some((c) => Array.isArray(c) && c[0] === 'autosave'), 'and commits no step');
+  assert.equal(h.studio.active, true, 'the Studio stays open');
+  assert.equal(h.studio.busy(), null, 'and free: the failed load released its hold');
 }
 
 // 17. (round 2 U36) A battlefield change belongs to its session: one an exit outlived (a cold build still going) neither

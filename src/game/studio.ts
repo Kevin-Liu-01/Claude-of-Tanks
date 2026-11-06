@@ -5041,6 +5041,9 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
   }
 
   // --- in-browser offline export (studioFilmExport.ts, lazy) ----------------------
+  // (round 3 B10) the page's one export, deliberately not a session holder: an exit cancels it, but its module import, its
+  // encoder's flush and its soundtrack mix outlast the cancel, and a Studio entered meanwhile reads 'export' until it ends
+  // (no second encoder beside it; studioSessionExit case 6)
   let filmExport: { controller: AbortController; progress: FilmExportProgress | null } | null = null;
   function filmExportAborted(): Error { return new DOMException(t('studio.error.exportCancelled'), 'AbortError'); }
 

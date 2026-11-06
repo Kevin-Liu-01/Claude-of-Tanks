@@ -117,7 +117,8 @@ Additional methods used by the panel:
 ```js
 __STUDIO.enter({map}) / .exit() / .setMap(mapId)      // async
 __STUDIO.sessionToken()                                // stale once the session ends: load(json, {owner}) is then refused
-__STUDIO.busy()                                        // what holds the Studio ('recording', 'film', 'export', 'session', 'scene', 'map', 'history', 'light') or null; work an exit outlived holds nothing
+__STUDIO.busy()                                        // what holds the Studio ('recording', 'film', 'export', 'session', 'scene', 'map', 'history', 'light') or null; work an exit outlived holds nothing,
+                                                       // but the page's one film export holds 'export' until it ends (its module, encoder flush and soundtrack mix outlast the cancel)
 await __STUDIO.ready()                                 // entered, and every tank's builder in (247)
 __STUDIO.addActor(cfg) / .updateActor(ref, patch) / .removeActor(ref)   // addActor: after ready(); load() needs only its own tanks
 __STUDIO.setActorState(ref, state, ageS?) / .selectActor(ref) / .clearActors()
