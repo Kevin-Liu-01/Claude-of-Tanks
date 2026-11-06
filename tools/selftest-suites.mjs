@@ -2927,6 +2927,9 @@ export const SELFTEST_SUITES = Object.freeze({
   ]),
   post: Object.freeze([
     'src/audio/lazyAudio.selftest.mjs',
+    // 2026-11-02 audit X8 (round 3): the audio mixer's chunk is asked again under the lazy-chunk policy, never per press
+    // (thirty presses after a failed transfer ask nothing inside the backoff, none offline)
+    'src/audio/lazyAudioMixerChunk.selftest.mjs',
     // 2026-11-02 audit F11: the audio device's lifecycle (an interruption re-arms the gesture unlock, visibility retries,
     // 'interrupted' resumes like 'suspended')
     'src/audio/audioDevice.selftest.mjs',

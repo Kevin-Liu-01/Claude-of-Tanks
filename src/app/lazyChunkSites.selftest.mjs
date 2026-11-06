@@ -139,6 +139,10 @@ const SITES = [
     [/import \{[^}]*\bloadGroundedLightModel\b[^}]*\} from '\.\/engine\/lightModelCore\.ts'/]],
   ['src/engine/earthLandAccess.ts', ["createLazyChunk((): Promise<EarthLandModule> => import('./earthLandMask.ts'))",
     'return earthLandChunk.load();'], [/\bearthLandLoad\b/]],
+  // (round 3 X8) the audio mixer's chunk, asked by every gesture, phase edge, sting and battle warm: its memo
+  // (modulePromise) and the creation's memo over it (realPromise) were cleared on failure and asked again by every intent
+  ['src/audio/lazyAudio.ts', ['const mixerChunk = createLazyChunk(async (): Promise<AudioMixerModule | null> => {',
+    'mixerChunk.load().then(undefined, () => null)'], [/\bmodulePromise\b/, /\brealPromise\b/]],
 ];
 const offenders = [];
 for (const [file, present, absent] of SITES) {
@@ -191,10 +195,6 @@ const KNOWN = new Set([
   // the material painter worker's font, a fetch held for that worker's realm: a failed font answers false, the client ends
   // that worker, and the next bake starts a fresh realm that fetches it again (materialPainterWorkerClient.ts)
   'src/vehicles/materialPainterWorker.ts ready',
-  // the audio mixer's chunk (lazyAudio.ts modulePromise), cleared on failure and asked again by the next gesture or phase
-  // edge (resume, the loading bed, the Garage sting), never per frame or tick, with a warning each time; the mixer's runtime
-  // over it (realPromise) is an initialization. The audio owner moves it onto this policy (round 2 crossClusterNeeds)
-  'src/audio/lazyAudio.ts modulePromise', 'src/audio/lazyAudio.ts realPromise',
 ]);
 const found = new Set();
 const multipart = [];

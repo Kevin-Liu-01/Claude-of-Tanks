@@ -106,7 +106,7 @@ memos that differ are named, each with its reason, in `lazyChunkSites`' KNOWN
 list (a memo cleared on failure whose callers ask once per lifecycle edge or
 open, never per frame, tick, pointer move or focus move; an initialization or a
 join over loads the policy holds; the Studio's module memo over its opener
-chunk; a stylesheet alone; a data fetch; the audio mixer's chunk). The selftest
+chunk; a stylesheet alone; a data fetch). The selftest
 fails a new hand-made memo, facade or latch in the spellings it reads (its
 comments list them); another spelling goes unseen, so a new lazy load starts
 from `createLazyChunk`.
