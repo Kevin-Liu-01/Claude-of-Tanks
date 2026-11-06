@@ -2,7 +2,8 @@
 // (post.holdAdaptive) and temporal AA's (post.holdTemporalAA), inside the try whose catch leaves through leave(). They
 // were taken while its saved state was built, before ports.setFilmMode(true) and outside the try: a film mode that threw
 // kept the governor suspended and temporal AA off for the rest of the page, and the Studio refused every later still and
-// film ("finish the film render first"). Run in Node on the real film owner with stub ports.
+// film ("finish the film render first"). (round 3 B3) leave() releases both holds and the film mode even when one of
+// its restores throws. Run in Node on the real film owner with stub ports.
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import { createStudioFilm } from './studioFilm.ts';
@@ -33,4 +34,29 @@ post.holdAdaptive = () => { throw new Error('governor busy'); };
 assert.throws(() => film.renderStill({ width: 64, height: 64 }), /governor busy/);
 assert.deepEqual([taken, released], [['temporal-aa'], ['temporal-aa']], 'a second hold that throws releases the first');
 post.holdAdaptive = holdAdaptive;
-console.log('studioFilmHolds.selftest: a film entry that throws gives its governor and temporal-AA holds back');
+
+// (round 3 B3) a leave() whose restore throws (the chain's resize back to the page's size, after a lost context) still
+// releases both holds and leaves film mode: the leak had moved from enter() to leave(), which a failed enter() runs too
+{
+  taken.length = released.length = 0;
+  modes.length = 0;
+  const setSize = post.setSize;
+  post.setSize = (width) => { if (width === 800) throw new Error('context lost on the resize back'); };
+  const consoleError = console.error;
+  const reported = [];
+  console.error = (message) => { reported.push(String(message)); };
+  try {
+    assert.throws(() => film.renderStill({ width: 64, height: 64 }), 'the still fails (no composer here)');
+  } finally {
+    console.error = consoleError;
+  }
+  assert.deepEqual(taken, ['temporal-aa', 'governor'], 'both holds were taken');
+  assert.deepEqual(released.slice().sort(), ['governor', 'temporal-aa'],
+    "a restore that throws in leave() still releases the governor's 'studio-film' hold and temporal AA's");
+  assert.equal(modes.at(-1), false, 'and still leaves film mode');
+  post.setSize = setSize;
+  assert.throws(() => film.renderStill({ width: 64, height: 64 }), (error) => !/finish the film|filmActive/i.test(error.message),
+    'the next still is not refused as a film still running');
+  assert.equal(released.length, 4, 'and releases its own holds again');
+}
+console.log('studioFilmHolds.selftest: a film entry or leave that throws gives its governor and temporal-AA holds back');
