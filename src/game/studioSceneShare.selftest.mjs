@@ -542,8 +542,9 @@ for (const none of ['', '#', '#other=1', null, undefined, 7]) assert.equal(scene
     'the direct boot enters on the linked scene\'s battlefield');
   assert.match(main, /bootReadiness\.markReady\(\);\nstudioBoot\.scene\?\.open\(STUDIO_BOOT_MAP\)/, 'the direct boot opens the linked scene once ready');
   // (2026-11-02 audit F9) idle is the Studio's one busy reading (a load, a staging, a map change, a film, an export, an
-  // entry or an exit), no longer a list of its own
-  assert.match(studio, /if \(busy\(\)\) \{\n\s+restoreAddress\(\);/,
+  // entry or an exit), no longer a list of its own; (round 3 A10 r1) in the Studio the link was pasted into
+  // (studioLinkSession case 7)
+  assert.match(studio, /if \(!owner\.current\(\) \|\| busy\(\)\) \{\n\s+restoreAddress\(\);/,
     'a pasted link waits for an idle Studio and otherwise puts the address back');
   assert.match(studio, /const failure = sceneLinkOpenFailure\(result\);\n\s+panel\.notice\(failure\.message, 'error', failure\.detail\);/,
     'a refused link is explained on screen');

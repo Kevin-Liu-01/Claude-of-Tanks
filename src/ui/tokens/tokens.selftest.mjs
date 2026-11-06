@@ -726,10 +726,10 @@ const viteGroup = /\{ name: '([A-Za-z]+)', test: \/\[\\\\\/\]src\[\\\\\/\]ui\[\\
 assert.ok(viteGroup, 'vite.config.ts keeps tokens.css in a chunk group of its own');
 assert.equal(viteGroup[1].length, 'mediaArchive'.length, `the tokens chunk name (${viteGroup[1]}) keeps the entry's bytes`);
 // (integration: loaders-workers' audit R6 holds the sheet in one module-level lazy chunk, archiveSheet, asked on each
-// mount; the mount still waits for it)
+// mount; the mount still waits for it; round 3 X9: an opener's chunk, studioArchiveOpener.selftest)
 {
   const studioPanelSource = read('src/ui/studioPanel.ts');
-  assert.match(studioPanelSource, /const archiveSheet = createLazyChunk\(\(\) => import\('\.\.\/presentation\/mediaArchive\.css'\)\);/,
+  assert.match(studioPanelSource, /const archiveSheet = createLazyChunk\(\(\) => import\('\.\.\/presentation\/mediaArchive\.css'\), \{ opener: true \}\);/,
     'the Studio, the game\'s one archive host, holds the archive stylesheet in one lazy chunk');
   assert.match(studioPanelSource, /archiveSheet\.load\(\)\s*\.then\(\(\) => mountMediaArchive\(/,
     'the Studio loads the archive stylesheet before it mounts the archive');

@@ -10,6 +10,7 @@ import { createStudioSession, studioBusy, transportHeld, isStudioSessionEnded, S
 // (round 2) the history's reading, by namespace: a copy of this file on a tree without it still links
 import * as studioSessionModule from './studioSession.ts';
 import { createAppLifecycle } from './appLifecycle.ts';
+import { createMapAmbienceAccess } from '../world/mapAmbienceAccess.ts';
 
 const text = readFileSync(new URL('./studio.ts', import.meta.url), 'utf8');
 const source = ts.createSourceFile('studio.ts', text, ts.ScriptTarget.Latest, true);
@@ -296,6 +297,27 @@ const outcome = async (step) => { await settle(); return step.state; };
   assert.ok(!h.calls.includes('film-open'), 'no film opens after the exit');
   assert.equal(exported, 'AbortError');
 }
+// 6 (and a Studio entered again). (round 3 B10) The export is the page's, not a session's (one encoder, studio.ts
+// filmExport): one an exit outlived (its module still loading; likewise its encoder's flush and its soundtrack mix, which
+// the cancel does not stop) holds 'export' in a Studio entered again until it ends, so no second export starts beside it.
+// Then that Studio is free. docs/STUDIO.md's busy() line says so.
+{
+  const h = makeStudio({ session: createStudioSession({ settleMs: 20 }) });
+  const film = track(h.studio.exportFilmFile({ download: false }));
+  await settle();
+  h.studio.exit();
+  await new Promise((resolve) => { setTimeout(resolve, 60); }); // past the exit's bound, the module still loading
+  await settle();
+  assert.equal(h.studio.active, false, 'the bound let the exit go on');
+  h.studio.reenter();
+  assert.equal(h.studio.busy(), 'export', 'the closed session\'s export still holds the page\'s export in the Studio entered again');
+  const second = track(h.studio.exportFilmFile({ download: false }));
+  assert.equal(await outcome(second), 'Error', 'a second export is refused while it runs');
+  h.releaseExportModule();
+  assert.equal(await outcome(film), 'AbortError', 'the dead export ends as a cancel once its module lands');
+  assert.ok(!h.calls.includes('film-open'), 'its film never opens');
+  assert.equal(h.studio.busy(), null, 'and the Studio entered again is free');
+}
 
 // 7. Exit while a covered time change lights the scene: the change applies nothing once its session ended, and the
 // teardown's restore follows its light.
@@ -534,6 +556,24 @@ for (const phaseAtLanding of ['garage', 'battle']) {
   assert.deepEqual(await Promise.race([restoring, settle().then(() => 'still restoring')]), { value: false },
     'a restore the exit took back resolves false');
   assert.ok(!h.calls.some((c) => Array.isArray(c) && c[0] === 'autosave'), 'and commits nothing');
+}
+// 16 (a failure in its live session). (round 3 B10) A saved scene that will not load in the live Studio (its battlefield's
+// build fails) is the caller's: restoreAutosave rejects with that failure, which the panel's Restore says with
+// studio.loadFailed, and commits no step. Only a restore its session's exit took back resolves false: one that swallowed
+// every failure left a broken saved scene doing nothing, the panel's catch dead.
+{
+  const failure = new Error('the saved scene\'s battlefield did not build');
+  const h = makeStudio({
+    readAutosave: () => ({ savedAt: 1, doc: { map: 'desert', actors: [{ id: 'm1a1' }] } }),
+    ensureWorld: (id) => { h.calls.push(['ensure-world', id]); return Promise.reject(failure); },
+  });
+  const restored = await h.studio.restoreAutosave().then((value) => ({ value }), (error) => ({ error }));
+  assert.deepEqual(h.calls.filter((c) => Array.isArray(c) && c[0] === 'ensure-world'), [['ensure-world', 'desert']],
+    'the restore built the saved scene\'s battlefield');
+  assert.equal(restored.error, failure, 'a restore that fails in its live session rejects with its failure, not false');
+  assert.ok(!h.calls.some((c) => Array.isArray(c) && c[0] === 'autosave'), 'and commits no step');
+  assert.equal(h.studio.active, true, 'the Studio stays open');
+  assert.equal(h.studio.busy(), null, 'and free: the failed load released its hold');
 }
 
 // 17. (round 2 U36) A battlefield change belongs to its session: one an exit outlived (a cold build still going) neither
@@ -803,4 +843,132 @@ for (const [name, start, ended] of [
   ]) assert.deepEqual(restoreGarageWorldIn(state), [], `no Garage presentation over ${name}`);
 }
 
-console.log('studioSessionExit.selftest: an exit during a map switch, its lighting (bounded or not), a scene load, a film export, the export\'s module gap and a time change lands nothing after the teardown; a build that outlives the exit leaves the Garage its presentation; a closed session\'s load never re-enters; a recording, a battlefield change, a staging or a light change refuses the export\'s film; a staging refuses a film, an export or a light change; queued switches run in order; a superseded exit cover still leaves; an exit during a build commits the last edit; a restore the exit took back resolves false; a closed session\'s build, load, staging, undo or light change holds no later Studio; the late build\'s undo waits for a settled Garage');
+// 18. (round 3 A10) main.ts's preparation, run itself (its prepareStudioAtmosphere and restoreStudioAtmosphere over the real
+// map-air owner, world/mapAmbienceAccess.ts): the map's air the Studio asks for at its hour lands after the module's import.
+// An exit that outlived that import (the bound) restored the air (the density override and the toggle) and the import then
+// prepared the closed session's hour over the battlefield, the one write after the teardown's restore that the session's
+// token did not cover. Here a closed session's air applies nothing; a live session's, and a battle's (no owner), land.
+{
+  const main = readFileSync(new URL('../main.ts', import.meta.url), 'utf8');
+  const property = (from, to) => {
+    const start = main.indexOf(from);
+    assert.ok(start > 0, `main.ts declares ${from}`);
+    return main.slice(start, main.indexOf(to, start));
+  };
+  const preparation = property('prepareStudioAtmosphere: async (', 'setAmbienceEnabled:');
+  const restore = property('restoreStudioAtmosphere: () => {', 'getStudioLight:');
+  const makeContext = (ports) => new Function('ports', `${stripTypeScriptTypes(`
+    function makeMainContext(ports) {
+    const { battleAtmosphere, currentWorld, game, mapAmbience } = ports;
+    // main.ts's own (the light runtime's chunk is loaded: its import is the light's half, scenario 9 and main's pin above)
+    let studioLightRuntime = ports.studioLightRuntime, studioLightLive = ports.studioLightLive;
+    let battleWatchdogRadianceScale = 1, baseFogDensity = 0;
+    return { ${preparation} ${restore} };
+    }
+  `)}\nreturn makeMainContext(ports);`)(ports);
+  /** The map's air: the real access over a module whose import the case lands, and the runtime it makes. */
+  const air = () => {
+    const prepared = [];
+    let landModule = null;
+    const module = new Promise((resolve) => { landModule = resolve; });
+    const mapAmbience = createMapAmbienceAccess(() => ({}), () => module);
+    const runtime = {
+      prepare: (seed, mapId, time) => prepared.push([seed, mapId, time]),
+      setEnabled: () => {}, setDensityOverride: () => {}, refreshTier: () => {}, reset: () => {}, isActive: () => false,
+    };
+    return { mapAmbience, prepared, land: () => landModule({ createMapAmbience: () => runtime }) };
+  };
+  const contextFor = (mapAmbience) => {
+    const light = { apply: (time) => ({ time }), restore: () => {} };
+    return makeContext({
+      battleAtmosphere: { prepare: async () => {} }, currentWorld: () => ({ mapId: 'verdant' }), game: { mapId: 'verdant' },
+      mapAmbience, studioLightRuntime: { load: async () => light }, studioLightLive: light,
+    });
+  };
+  // the exit outlived the air's import: the teardown restored, then the import landed
+  {
+    const { mapAmbience, prepared, land } = air();
+    const context = contextFor(mapAmbience);
+    const session = createStudioSession();
+    const owner = session.beginEntry();
+    session.open(owner);
+    const work = context.prepareStudioAtmosphere('night', null, owner);
+    await settle();
+    session.beginExit();
+    context.restoreStudioAtmosphere(); // the teardown's restore (tearDownStudio), past the exit's bounded wait
+    session.close();
+    land();
+    assert.equal(await work, null, 'the closed session\'s preparation reports no light');
+    await settle();
+    assert.deepEqual(prepared, [], 'the map\'s air at the closed session\'s hour never lands after the teardown restored it');
+  }
+  // a live session's air lands at its hour; a battle's (no owner) lands as it did
+  {
+    const { mapAmbience, prepared, land } = air();
+    const context = contextFor(mapAmbience);
+    const session = createStudioSession();
+    const owner = session.beginEntry();
+    session.open(owner);
+    const work = context.prepareStudioAtmosphere('night', null, owner);
+    await settle();
+    land();
+    assert.deepEqual(await work, { time: 'night' }, 'the live session\'s preparation reports its light');
+    assert.deepEqual(prepared, [[0, 'verdant', 'night']], 'and its air lands at its hour');
+    await mapAmbience.prepare(3, 'verdant', 'day');
+    assert.deepEqual(prepared.at(-1), [3, 'verdant', 'day'], 'a battle\'s air (no owner) lands');
+  }
+}
+
+// 19. (round 3 A10, review r1 correctness) An undo across battlefields whose build an exit outlived (Exit never waits for a
+// build), then a new entry: the dead build fails another way than StudioSessionEnded (the world runtime's
+// WorldActivationSuperseded once the new Studio's own build asks; setMap passes it on unchanged). stepHistory read that as
+// its own failure: it logged '[studio] undo/redo could not restore the scene', took the new Studio's document as its
+// history head, wrote it to the autosave and said true, so the new Studio's pending edit then made no undo step (its text
+// already equalled the head). The undo decides by the session it began in: it ends as no step (false). In its live
+// session the same failure is still logged and the restored scene is the head.
+const supersededBuild = () => Object.assign(new Error('Battlefield activation for desert was superseded'), { name: 'WorldActivationSuperseded' });
+for (const exitFirst of [true, false]) {
+  const builds = [];
+  const logged = [];
+  let h = null;
+  h = makeStudio({
+    console: Object.assign(Object.create(console), { error: (...args) => logged.push(args.map(String).join(' ')) }),
+    ensureWorld: (id) => new Promise((resolve, reject) => {
+      h.calls.push(['ensure-world', id]);
+      builds.push({ id, fail: reject });
+    }),
+  });
+  h.ports.undoStack.push(JSON.stringify({ map: 'desert', actors: [{ id: 'm1a1' }] }));
+  const undoing = h.studio.undo().then((value) => ({ value }), (error) => ({ error: error.name }));
+  await settle();
+  assert.deepEqual(h.calls.filter((c) => Array.isArray(c) && c[0] === 'ensure-world').map((c) => c[1]), ['desert'],
+    'the undo builds its scene\'s battlefield');
+  if (exitFirst) {
+    h.studio.exit();
+    await settle();
+    assert.equal(h.studio.active, false, 'the exit tore the Studio down without waiting for the undo\'s build');
+    h.studio.reenter();
+    h.ports.edits.push('reentered-edit'); // an edit in the Studio entered again, still settling
+    h.studio.invalidate();
+  }
+  const since = h.calls.length;
+  builds[0].fail(supersededBuild());
+  const undone = await Promise.race([undoing, settle().then(() => 'still undoing')]);
+  if (exitFirst) {
+    assert.deepEqual(undone, { value: false }, 'an undo whose session ended before its build failed is no step');
+    assert.deepEqual(logged, [], 'and no failure of the Studio entered again');
+    assert.ok(!h.calls.slice(since).some((c) => Array.isArray(c) && c[0] === 'autosave'),
+      'it writes nothing to the autosave for the Studio entered since');
+    const undoSteps = h.ports.undoStack.length;
+    h.studio.flushHistory();
+    assert.ok(h.calls.slice(since).some((c) => Array.isArray(c) && c[0] === 'autosave' && c[1].includes('reentered-edit')),
+      'the edit in the Studio entered again reaches the autosave');
+    assert.equal(h.ports.undoStack.length, undoSteps + 1, 'as an undo step of its own');
+  } else {
+    assert.deepEqual(undone, { value: true }, 'in its live session the undo ends as a step');
+    assert.deepEqual(logged, ['[studio] undo/redo could not restore the scene WorldActivationSuperseded: Battlefield activation for desert was superseded'],
+      'its failure is logged');
+  }
+}
+
+console.log('studioSessionExit.selftest: an exit during a map switch, its lighting (bounded or not), a scene load, a film export, the export\'s module gap and a time change lands nothing after the teardown; a build that outlives the exit leaves the Garage its presentation; a closed session\'s load never re-enters; a recording, a battlefield change, a staging or a light change refuses the export\'s film; a staging refuses a film, an export or a light change; queued switches run in order; a superseded exit cover still leaves; an exit during a build commits the last edit; a restore the exit took back resolves false; a closed session\'s build, load, staging, undo or light change holds no later Studio; the late build\'s undo waits for a settled Garage; an undo whose session ended before its build failed is no step in the Studio entered again');

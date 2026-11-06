@@ -20,6 +20,7 @@ import { uiIconSVG } from './uiIcons.ts';
 import { markDatum } from './dom.ts';
 import { wireRovingKeys } from './components/components.ts';
 import { noticeRegion, notify } from './components/notice.ts';
+import { loadFailed, markLoadFailed, pressFailed } from './components/loadFailure.ts';
 import { flagIconUrl } from './flags.ts';
 import { brandMarkSVG } from './brandMark.ts';
 import { MAP_HEROES, MAP_THUMBS } from './mapThumbs.ts';
@@ -45,8 +46,10 @@ import { coverImage, createUiCanvas, drawImageFit } from './uiCanvas.ts';
 
 // (2026-11-02 audit R6, review round 2) the production archive's stylesheet under the one lazy-chunk policy
 // (app/lazyChunk.ts): asked on every press of the archive button, a sheet that failed once was skipped by Vite's preload
-// on the next press and the archive mounted unstyled; a failed sheet is now kept, and each press says so
-const archiveSheet = createLazyChunk(() => import('../presentation/mediaArchive.css'));
+// on the next press and the archive mounted unstyled; a failed sheet is now kept. (round 3 X9) It is an opener's chunk:
+// its failure closes the archive, says so once and marks the archive's button (components/loadFailure.ts), whose next
+// press reloads the page once online. Each press opened an empty archive and said Vite's raw error again.
+const archiveSheet = createLazyChunk(() => import('../presentation/mediaArchive.css'), { opener: true });
 
 /** The Studio's workspaces: the outliner's groups (the inspector shows one at a time). */
 type StudioGroupId = 'battlefield' | 'tanks' | 'effects' | 'cinematics' | 'output';
@@ -1908,7 +1911,20 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
   secScene2.append(svRow, slotRow, fileIn);
   outputGroup.body.append(secCap, secLive, secScene2);
 
+  // (round 3 X9) once its sheet did not arrive in this document, a press reloads the page once online (offline a reload is
+  // the browser's error page, so the press says so again and waits). (review r1) Never over the Studio's running work (a
+  // recording, a film or its export, a queue run, a load, a light change): the reload would end it, so the press asks for
+  // it to finish first. The last edit reaches the autosave on the reload's pagehide (studio.ts commitHistory). This comment
+  // sits above the function: loadFailure.selftest's OPENERS row looks for pressFailed within 300 characters of its head.
   function openArchive(): void {
+    if (loadFailed(archiveBtn) && panelBusy()) {
+      flashBusy(t('studio.error.busy'));
+      return;
+    }
+    if (pressFailed(archiveBtn)) {
+      if (navigator.onLine === false) flashBusy(t('loadFailed.generic'));
+      return;
+    }
     let dialog = document.querySelector<HTMLDialogElement>('.cot-studio-archive');
     if (!dialog) {
       dialog = document.createElement('dialog');
@@ -1933,8 +1949,16 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
     const archiveRoot = dialog.querySelector<HTMLElement>('[data-media-archive]');
     if (!archiveRoot) throw new Error('[studio] missing production archive root');
     // The archive's stylesheet loads at this boundary, its one host in the game (the game boot does not carry it).
+    const shown = dialog;
     archiveSheet.load()
-      .then(() => mountMediaArchive(archiveRoot, { mode: 'compact', limit: 61 }))
+      .then(() => mountMediaArchive(archiveRoot, { mode: 'compact', limit: 61 }), (error: RuntimeValue) => {
+        // (round 3 X9) the sheet did not arrive: no archive over it in this document (archiveSheet, an opener's chunk)
+        console.warn('[studio] the field frames archive\'s stylesheet did not load', error);
+        shown.close();
+        markLoadFailed([archiveBtn]);
+        flashBusy(t('loadFailed.generic'));
+      })
+      // the archive's own data (its manifest) is asked again by the next press (mediaArchive.ts unmarks a failed mount)
       .catch((error: RuntimeValue) => flashBusy(errorMessage(error)));
   }
 

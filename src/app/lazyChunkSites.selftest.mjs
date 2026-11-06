@@ -59,7 +59,8 @@ const SITES = [
     "createLazyChunk(() => Promise.all([import('./game/studio.ts'), import('./ui/studioPanel.css'),", 'loadModule: () => studioModule.load()'],
     [/\bstudioLightRuntime\s*\?\?=\s*import\(/]],
   ['src/ui/studioPanel.ts', ["createLazyChunk(() => importAll([import('./camoSwatchPainter.ts'), import('../vehicles/specs.ts')])",
-    "createLazyChunk(() => import('../presentation/mediaArchive.css'))", 'heroCardChunk.load()'], [/\bswatchPainter\s*\?\?=/, /(?<!typeof )import\('\.\/heroCard\.(?:ts|css)'\)/]],
+    // (round 3 X9) the archive's sheet is an opener's chunk: a failure marks the archive's button, whose next press reloads
+    "createLazyChunk(() => import('../presentation/mediaArchive.css'), { opener: true })", 'heroCardChunk.load()'], [/\bswatchPainter\s*\?\?=/, /(?<!typeof )import\('\.\/heroCard\.(?:ts|css)'\)/]],
   ['src/ui/battlefieldPicker.ts', ["createLazyChunk(() => import('./deployObjectives.ts'))"], [/\bdrawer\s*\?\?=/]],
   ['src/ui/deployScreen.ts', ["createLazyChunk(() => import('./deployObjectives.ts'))"], [/\bdrawer\s*\?\?=/]],
   ['src/engine/lighting.ts', ["createLazyChunk((): Promise<CasterProxyModule> => import('./shadowCasterProxies.ts'))"], [/\bcasterProxiesLoad\s*\?\?=/]],

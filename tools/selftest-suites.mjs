@@ -484,6 +484,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/sim/modeWeaponReload.selftest.mjs',
     'src/game/studioTimeline.selftest.mjs',
     'src/game/studioCrush.selftest.mjs',
+    // 2026-11-02 audit A7 (round 3, U28 x Studio teardown): a teardown step that throws skips none of the rest (the crushes' release)
+    'src/game/studioTeardown.selftest.mjs',
     'src/game/studioSceneLink.selftest.mjs',
     'src/game/studioSceneShare.selftest.mjs',
     'src/ui/studioPlanView.selftest.mjs',
@@ -501,6 +503,9 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/ui/studioQueue.selftest.mjs',
     // 2026-11-02 audit F9: Clear during a queue run skips no job, Export film waits for the queue, a hidden sound lane stops
     'src/ui/studioPanelBusy.selftest.mjs',
+    // 2026-11-02 audit X9 (round 3, R6/Q17): the field-frames archive's failed sheet closes it, says so once and marks its button;
+    // its next press reloads, never over the Studio's running work
+    'src/ui/studioArchiveOpener.selftest.mjs',
     'tools/media-production/campaign.selftest.mjs',
     'tools/media-production/campaignPublication.selftest.mjs',
     'tools/publish-gameplay-capture.selftest.mjs',
@@ -1398,9 +1403,13 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/game/studioEntry.selftest.mjs',
     'src/game/studioEntrySuperseded.selftest.mjs', // 2026-11-02 audit R1: an entry its exit abandons mid-build settles silently
     'src/game/studioEntryHandBack.selftest.mjs', // 2026-11-02 audit IR1 (round 2): a failed entry's Garage is announced once, by its return
+    // 2026-11-02 audit A10 (round 3, U36): a scene link whose entry an exit took back, whose build failed after its session
+    // ended, or that was pasted into a Studio an exit closed while it decoded, loads and says nothing in the Studio entered again
+    'src/game/studioLinkSession.selftest.mjs',
     // 2026-11-02 audit F9: one Studio session (phase, tokens, cancels, held work); an exit during a map switch, a load, a
     // light change or a film export lands nothing after the teardown
     'src/game/studioSession.selftest.mjs',
+    // 2026-11-02 audit A10 (round 3 review r1): an undo whose session ended before its build failed is no step in a later Studio
     'src/game/studioSessionExit.selftest.mjs',
     // 2026-11-02 audit F9: the take owns the playhead (one busy reading); pointercancel releases the history hold
     'src/game/studioTransport.selftest.mjs',

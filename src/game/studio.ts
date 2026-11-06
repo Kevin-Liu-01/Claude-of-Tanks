@@ -5041,6 +5041,9 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
   }
 
   // --- in-browser offline export (studioFilmExport.ts, lazy) ----------------------
+  // (round 3 B10) the page's one export, deliberately not a session holder: an exit cancels it, but its module import, its
+  // encoder's flush and its soundtrack mix outlast the cancel, and a Studio entered meanwhile reads 'export' until it ends
+  // (no second encoder beside it; studioSessionExit case 6)
   let filmExport: { controller: AbortController; progress: FilmExportProgress | null } | null = null;
   function filmExportAborted(): Error { return new DOMException(t('studio.error.exportCancelled'), 'AbortError'); }
 
@@ -5372,6 +5375,7 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
   async function redo(): Promise<boolean> { return stepHistory(redoStack, undoStack); }
   async function stepHistory(from: string[], to: string[]): Promise<boolean> {
     if (busy()) return false;
+    const owner = session.token();
     commitHistory(); // a pending edit becomes its own step first
     const target = from.pop();
     if (target == null || historyHead == null) return false;
@@ -5379,7 +5383,10 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
     try {
       await restoreDocument(JSON.parse(target) as StudioSceneInput);
     } catch (error) {
-      if (isStudioSessionEnded(error)) return false; // the Studio closed under the restore (audit F9)
+      // the Studio closed under the restore (audit F9); (round 3 A10 r1) or its session ended and the restore's build then
+      // failed another way (a battlefield build a later entry superseded): the head, autosave and history are a later
+      // Studio's, not this step's
+      if (isStudioSessionEnded(error) || !owner.current()) return false;
       console.error('[studio] undo/redo could not restore the scene', error);
     }
     historyHead = JSON.stringify(documentJson()); // the restored scene as this build writes it
@@ -6148,30 +6155,46 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
     return closing;
   }
 
-  /** The teardown's Studio half: everything the Studio laid over the frame and the battlefield, whose own light is last. */
+  /**
+   * The teardown's Studio half: everything the Studio laid over the frame and the battlefield, whose own light is last.
+   * (round 3 A7) Every step runs whatever an earlier one throws, and the first failure is rethrown once all have run (the
+   * exit's catch logs it): a recording that would not stop or a panel that would not hide skipped the rest, which left the
+   * Studio owning the frame and the cached battlefield's felled trees on the Studio's timeline (releaseCrushes gives them
+   * back to the frame, studioCrush.ts), so every later battle's felled trees opened their collision but never fell.
+   */
   function tearDownStudio(): void {
+    let failed = false;
+    let failure: unknown = null;
+    const step = (piece: () => void): void => {
+      try {
+        piece();
+      } catch (error) {
+        if (failed) console.error('[studio] a teardown step failed', error);
+        else { failed = true; failure = error; }
+      }
+    };
     entering = null;
     buildPlateUp = false;
-    panel.setStage(null);
-    if (recording) stopRecording();
-    flareToWallClock();
+    step(() => panel.setStage(null));
+    step(() => { if (recording) stopRecording(); });
+    step(flareToWallClock);
     active = false;
-    panel.hide();
+    step(() => panel.hide());
     marker.group.visible = false;
     placeArmed = null;
     dragActor = null;
     dragging = false;
     keys.clear();
-    releaseCrushes();
-    clearActors();
+    step(releaseCrushes);
+    step(clearActors);
     shells.length = 0;
     effectLog.length = 0;
     activeEffectIds.clear();
-    fx.resetAll();
+    step(() => fx.resetAll());
     studioStages.clear();
-    resetStudioGround(true);
-    fx.setFrozen(false);
-    releaseStudioFx();
+    step(() => resetStudioGround(true));
+    step(() => fx.setFrozen(false));
+    step(releaseStudioFx);
     timeScale = 1;
     camera.rotation.z = 0; // no roll may leak into game cameras
     cam.roll = 0;
@@ -6179,11 +6202,11 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
     selectedShotId = null;
     shotUidSeq = 1;
     actorKeyUidSeq = 1;
-    rail.rebuild();
-    rail.updateVisibility();
-    disposePicture();
-    unsweepPool();
-    ctx.restoreStudioAtmosphere?.(); // the cached battlefield gets its baked horizon light back before it can host a battle
+    step(() => { rail.rebuild(); rail.updateVisibility(); });
+    step(disposePicture);
+    step(unsweepPool);
+    step(() => ctx.restoreStudioAtmosphere?.()); // the cached battlefield gets its baked horizon light back before it can host a battle
+    if (failed) throw failure;
   }
 
   /** The whole teardown of an exit: the Studio's half, then the Garage hand-back. */
@@ -6637,25 +6660,32 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
    * stays in the console, since it may quote the scene).
    */
   async function openSharedScene(result: SceneLinkDecoded, fallbackMap: string): Promise<void> {
+    // (round 3 A10) the session the link opens into: the live one, or the one its own entry begins (session.claim()). An
+    // exit that took that entry back resolves enter() (doEnter's abandoned path), and a Studio entered again before it
+    // returned read `active`: the link's scene loaded, or its refusal was said, in that later Studio
+    const owner = session.claim();
     if (!result.ok) {
       console.warn(`[studio] scene link refused (${result.reason}): ${result.detail}`);
       await enter({ map: fallbackMap });
+      if (!owner.current()) return;
       const failure = sceneLinkOpenFailure(result);
       panel.notice(failure.message, 'error', failure.detail);
       return;
     }
     const json = result.scene as StudioSceneInput;
     await enter({ map: json.map || fallbackMap });
-    if (!active) return; // (audit F9) an exit took the entry back: load() would enter the Studio again
+    if (!owner.current()) return; // (audit F9) an exit took the entry back: load() would enter the Studio again
     try {
-      await load(json);
+      await load(json, { owner });
       // what opened: its battlefield, its tanks and its length
       const mapId = getWorld()?.mapId ?? json.map ?? 'verdant';
       panel.notice(t('studio.sceneLink.openedScene', {
         map: getMapConfig(mapId).name || mapId, tanks: actors.length, seconds: (storyboard.durationMs / 1000).toFixed(1),
       }));
     } catch (error) {
-      if (isStudioSessionEnded(error)) return; // the Studio closed while the scene built
+      // the Studio closed while the scene built; (round 3 A10 r1) or its session ended and the build then failed another
+      // way (a battlefield build a later entry superseded, a chunk): no error card in a Studio entered since
+      if (isStudioSessionEnded(error) || !owner.current()) return;
       console.error('[studio] scene link failed to stage', error);
       panel.notice(t('studio.sceneLink.loadFailed'), 'error');
     }
@@ -6691,8 +6721,16 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
     return {
       map: scene.then((json) => (typeof json?.map === 'string' ? json.map : null)),
       open: (fallbackMap) => whenGameReady().then(() => scene).then(async (json) => {
+        const owner = session.claim(); // (round 3 A10) the session this link opens into, as openSharedScene's
         await enter({ map: json?.map || fallbackMap });
-        if (json && active) await load(json); // (audit F9) never re-enters a Studio an exit closed
+        if (!json || !owner.current()) return; // (audit F9) never re-enters a Studio an exit closed, nor loads into a later one
+        try {
+          await load(json, { owner });
+        } catch (error) {
+          // the Studio closed while the scene built, or (round 3 A10 r1) its session ended before the build failed another
+          // way (a superseded battlefield build): no boot failure
+          if (!isStudioSessionEnded(error) && owner.current()) throw error;
+        }
       }),
     };
   }
@@ -6713,9 +6751,11 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
         window.history.replaceState(window.history.state, '', `${window.location.pathname}${window.location.search}${previousHash}`);
       } catch (_) { /* a sandboxed frame keeps its address */ }
     };
+    const owner = session.token(); // (round 3 A10 r1) the Studio the link was pasted into
     void decodeSceneLink(value).then((result) => {
-      // the Studio may have closed, or begun a load, an entry or a film while the link decoded
-      if (busy()) {
+      // the Studio may have closed (and another been entered: it reads idle), or begun a load, an entry or a film while the
+      // link decoded
+      if (!owner.current() || busy()) {
         restoreAddress();
         return undefined;
       }
