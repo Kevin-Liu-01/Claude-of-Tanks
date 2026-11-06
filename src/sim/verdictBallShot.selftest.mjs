@@ -9,9 +9,10 @@
 // The real path: the authority's own step, a human seat aiming at the ball and firing, the battle clock ending the match
 // one tick after the shot leaves and one tick before it reaches the ball.
 import assert from 'node:assert/strict';
-import '../vehicles/tankFactory.ts';
+import { ensureAuthorityFleet } from '../vehicles/authorityFleet.ts';
 import { createAuthoritativeMatch } from './authoritativeMatch.ts';
 
+await ensureAuthorityFleet(['m1a1_abrams_hc']); // the roster's calibration only, not the whole fleet's builders
 const DT = 1 / 60;
 const FIRE_TICK = 60;
 const HIT_TICK = 62; // M829A4 at 1670 m/s from 6 m ahead of the hull covers the 90 m to the ball in two ticks
