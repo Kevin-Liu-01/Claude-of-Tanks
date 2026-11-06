@@ -8,6 +8,7 @@
 //      for a terrestrial place;
 //   5. the weathering and wear the row sets are shares (0–1), its colours are hex, its variation offers choices and its
 //      surface's scales and depths are in range; the kit's houses keep the row's reveal and eave.
+//   6. no two maps share a paint (each row's traced from its own photos).
 // `node tools/building-style-reading.mjs --json=src/world/buildingStyleReading.baseline.json` refreshes the reading after
 // a kit's houses change.
 import assert from 'node:assert/strict';
@@ -69,4 +70,12 @@ for (const id of MAP_IDS) {
   }
 }
 
-console.log(`buildingStyleTable selftest: ${MAP_IDS.length} rows, each its map's kit, measured against its kit, with its photographs`);
+// 6. (Main 11-06) a row's paints are traced from its own photos, so no two maps paint alike: a hex in two rows means one
+//    was picked, not traced (if two places' photos ever show one paint, trace it in each and name the pair here)
+const painted = new Map();
+for (const id of MAP_IDS) for (const c of BUILDING_STYLES[id].variation.axes.paint ?? []) {
+  assert.ok(!painted.has(c), `${id}: paint ${c} is ${painted.get(c)}'s too`);
+  painted.set(c, id);
+}
+
+console.log(`buildingStyleTable selftest: ${MAP_IDS.length} rows, each its map's kit, measured against its kit, with its photographs, no paint in two`);
