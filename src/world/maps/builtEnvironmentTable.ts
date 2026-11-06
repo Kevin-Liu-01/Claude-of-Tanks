@@ -100,7 +100,7 @@ export const BUILT_ENVIRONMENT = Object.freeze({
   coastal: row({ paved: { street: 'asphalt', patches: 0.5, cracks: 0.5, covers: 0.3, puddles: 0.3, tone: 0.62, low: true }, paths: null, work: 'off' }, null),
   // Lorraine (the Moselle), 1944 (built-env-270, the photos: the Moselle's banks low grey-brown silt with reeds and willows;
   // r1's blind critics read the macadam through the village as wrong for its muddy 1944 rue, so the roads stay earth)
-  autumn: row(UNPAVED, 'lorrain', banked({ kind: 'mud', widthM: 4, hex: 0x6e624f })),
+  autumn: row(UNPAVED, 'lorrain', banked({ kind: 'mud', widthM: 4, hex: 0x5a5142 })),
   // the Virgin Lands, 1958
   steppe: row(UNPAVED, null),
   // the Ruhr, 1962
@@ -175,9 +175,10 @@ export const BUILT_ENVIRONMENT = Object.freeze({
   // the Louisiana Maneuvers, 1941
   longleaf: row(UNPAVED, null),
   // Cà Mau, 2012
-  // (built-env-270, the photos: the levee lanes concrete, 2-3 m; the creeks' banks grey tidal mud)
+  // (built-env-270, the photos: the levee lanes concrete, 2-3 m; the creeks' banks grey tidal mud — r3: the first mud
+  // rendered paler than the wet strand it replaced, read as beach sand; a shade under the photos' #5a5348)
   mangrove: row({ paved: { tone: 0.95, patches: 0.6, cracks: 0.8, covers: 0 }, paths: ['concrete', 'concrete', 'concrete', 'concrete', 'concrete'], work: 'climate' }, null,
-    { boats: 'xuong', jetty: 'stilts', reeds: 'nipa', drift: 'breton', ford: 'gauge', bank: { kind: 'mud', widthM: 6, hex: 0x6a6252 } }),
+    { boats: 'xuong', jetty: 'stilts', reeds: 'nipa', drift: 'breton', ford: 'gauge', bank: { kind: 'mud', widthM: 6, hex: 0x4a443a } }),
   // the Dalmatian bay, 1992
   // (built-env-270, the photos: the coast road and the village streets a patched asphalt — r1: every street, the cameras'
   // too; the beach pale limestone shingle and pebbles, not sand)
