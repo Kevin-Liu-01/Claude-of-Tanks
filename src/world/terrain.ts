@@ -4578,6 +4578,8 @@ uniform vec4 uRoadSurf, uRoadSurfB;
 // arcs, the gutter's width) by ROAD_SURFACE_CODE (0: the R layer's print), (patches, cracks, iron covers, —), and the
 // kerbed town rect (centre xz, half-size xz; z 0 = no kerbs)
 uniform vec4 uPaveClass, uPaveWear, uPaveTown;
+// built-env-270: 1 where the Low tier paves the streets in their own class (roadSurfaces.ts PavedSurfaceConfig.low)
+uniform float uPaveLow;
 // (R2) the procedural paving's (stone tone, a kerbed town's street class, centre lines, shell-hole fills)
 uniform vec4 uPaveExtra;
 // (the maps lane, 228) a square's setts' tone over the streets' (x; 1 on every map that names none)
@@ -8667,6 +8669,7 @@ function* createSplatMaterialSteps(
     shader.uniforms.uPaveTown = { value: new THREE.Vector4(...paved.town) };
     shader.uniforms.uPaveExtra = { value: new THREE.Vector4(...paved.extra) };
     shader.uniforms.uPaveSquare = { value: new THREE.Vector4(...paved.square) };
+    shader.uniforms.uPaveLow = { value: pavedCfg?.low ? 1 : 0 };
     shader.uniforms.uTownWear = { value: S.townWear ?? 1 };
     shader.uniforms.uYardCinder = { value: yardCinder };
     shader.uniforms.uThatch = { value: thatchV };

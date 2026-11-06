@@ -158,7 +158,10 @@ export const ROAD_PAVING_GLSL = /* glsl */`      // roads lane R1c (2026-10-09; 
       float onStreet = max(1.0 - smoothstep(roadHalf + 0.6, roadHalf + 2.4, dRoad), paveTownW * (1.0 - smoothstep(5.1, 5.4, dRoad)));
       float streetCls = paveTownW > 0.5 && uPaveExtra.y > 0.5 ? uPaveExtra.y : uPaveClass.x;
       float pCls = gRoadClass > 0.5 && abs(gRoadClass - 4.0) > 0.5 ? gRoadClass : (onStreet > 0.5 ? streetCls : uPaveClass.y);
-      if (uLandTier < 0.5) pCls = gRoadClass > 0.5 && gRoadClass < 3.5 ? gRoadClass : 0.0; // (Low: the old law)
+      // (Low: the old law; built-env-270: a map whose row asks for it paves its streets in their class there too — the R
+      // print read as oversized slabs or a striped grid on the phones' asphalt streets)
+      if (uLandTier < 0.5) pCls = gRoadClass > 0.5 && gRoadClass < 3.5 ? gRoadClass
+        : (uPaveLow > 0.5 && onStreet > 0.5 && streetCls > 0.5 && streetCls < 3.5 ? streetCls : 0.0);
       vec4 pav = vec4(0.0), pnn = NRM_MEAN;
       if (pCls < 0.5) {
         pav = splatSamp(uAlbR, uv * 0.31, df, mipB, uMeanR);

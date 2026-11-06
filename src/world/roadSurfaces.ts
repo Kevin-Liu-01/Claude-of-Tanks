@@ -53,6 +53,8 @@ export interface PavedSurfaceConfig {
   /** (228 r2) a square's joints sanded toward its stone's tone (0..1), and its own arcs (chord, radius, m); absent 0 */
   squareJoint?: number;
   squareArc?: readonly [number, number];
+  /** (built-env-270) the Low tier paves the streets in their class (asphalt, setts, patched) instead of the R layer's print */
+  low?: boolean;
 }
 
 /**

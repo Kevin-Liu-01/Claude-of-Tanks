@@ -165,7 +165,7 @@ function checkSourceContract(text) {
     // and the rim's climate tint with the drifts' lee edge — no sampler; the strand's metres ride a vertex byte
     'uReduxB', 'uReduxC',
     // built-env-270 (2026-11-05): the bank's facing (maps/builtEnvironmentTable.ts shore.bank) — a packed vector and its colour, no sampler
-    'uBank', 'uBankTint',
+    'uBank', 'uBankTint', 'uPaveLow',
     // terrain v2 (2026-10-01, the Opus 5.5 redesign): the four layers' measured tile means (the far variant's and the
     // octaves' deep-mip mean fetches) and the exposure / bedding vector — uniforms, no sampler
     'uMeanG', 'uMeanD', 'uMeanR', 'uMeanM', 'uReduxD',

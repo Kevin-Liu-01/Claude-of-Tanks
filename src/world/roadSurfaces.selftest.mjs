@@ -157,7 +157,8 @@ for (const line of [
 // grey pull holds and the lanes keep their whole darkening)
 assert.ok(source.includes('if (dW > 0.002 && wR > 0.002 && uRoadSurf.x + uRoadSurf.y + uRoadSurf.z + uRoadSurfB.x > 0.0 && uLandTier > 0.5) {'),
   'the worked carriageway runs only where a gain is set, and never on the Low tier (the phones keep the old law)');
-assert.ok(source.includes('if (uLandTier < 0.5) pCls = gRoadClass > 0.5 && gRoadClass < 3.5 ? gRoadClass : 0.0;'), 'Low paves by the old law');
+assert.ok(source.includes('if (uLandTier < 0.5) pCls = gRoadClass > 0.5 && gRoadClass < 3.5 ? gRoadClass : (uPaveLow > 0.5 && onStreet > 0.5 && streetCls > 0.5 && streetCls < 3.5 ? streetCls : 0.0);'.replace(/\s+/g, ' ')),
+  'Low paves by the old law, and a map whose row asks for it its streets in their class (built-env-270)');
 // the Low tier (the phones' default) keeps every old road term: the styled paths' old code verbatim, no kerbed pave-out, no
 // square wear, the old tone and lane swing (the phone pair checks the frames)
 {

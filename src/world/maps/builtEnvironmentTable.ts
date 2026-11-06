@@ -97,7 +97,7 @@ export const BUILT_ENVIRONMENT = Object.freeze({
   // the Léon, north Brittany, today (built-env-270, the photos: the lanes a dark bitumen chip-seal, no centre line, the
   // departmental roads with their white lines; the bourg's streets the same, granite kerbs only at the church)
   // (r1: the chip-seal a shade pale against the photos' #4d4c4a)
-  coastal: row({ paved: { street: 'asphalt', patches: 0.5, cracks: 0.5, covers: 0.3, puddles: 0.3, tone: 0.62 }, paths: null, work: 'off' }, null),
+  coastal: row({ paved: { street: 'asphalt', patches: 0.5, cracks: 0.5, covers: 0.3, puddles: 0.3, tone: 0.62, low: true }, paths: null, work: 'off' }, null),
   // Lorraine (the Moselle), 1944 (built-env-270, the photos: the Moselle's banks low grey-brown silt with reeds and willows;
   // r1's blind critics read the macadam through the village as wrong for its muddy 1944 rue, so the roads stay earth)
   autumn: row(UNPAVED, 'lorrain', banked({ kind: 'mud', widthM: 4, hex: 0x6e624f })),
@@ -152,7 +152,7 @@ export const BUILT_ENVIRONMENT = Object.freeze({
   titan_gorge: row(UNPAVED, null),
   // Page and the Glen Canyon Dam, 1965 (built-env-270, the photos: the Bureau town's streets and US 89 a fresh dark asphalt
   // with white lines under red dust; the filling lake meets bare Navajo sandstone, no bathtub ring yet)
-  skybridge: row({ paved: { street: 'asphalt', patches: 0.2, cracks: 0.3, covers: 0.4, markings: 1, tone: 0.86 }, paths: null, work: 'climate' }, null,
+  skybridge: row({ paved: { street: 'asphalt', patches: 0.2, cracks: 0.3, covers: 0.4, markings: 1, tone: 0.86, low: true }, paths: null, work: 'climate' }, null,
     banked({ kind: 'rock', widthM: 6, hex: 0xc98a5e })),
   // the Scheldt polders, 1944: the dyke roads in clinker (the mill lane, the west and east dyke roads, the causeway and the
   // north dyke road); the farm lanes earth
