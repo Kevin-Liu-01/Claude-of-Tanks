@@ -1595,6 +1595,13 @@ export function createAudio({
 
   // ---------------------------------------------------------- module state ---
 
+  /** Drops one hull's module states (the `${id}:${module}` keys) with no string built; module names hold no ':'. */
+  function forgetModuleStates(id: string): void {
+    for (const key of moduleStates.keys()) {
+      if (key.charCodeAt(id.length) === 58 && key.startsWith(id) && key.indexOf(':', id.length + 1) < 0) moduleStates.delete(key);
+    }
+  }
+
   function onModuleState(event: ModuleStateEvent): void {
     const key = `${event.id}:${event.module}`;
     const prev = moduleStates.get(key) || 'ok';
@@ -1758,8 +1765,13 @@ export function createAudio({
         if (team === ours) play('ui_score');
         break;
       case 'respawn':
-        // a respawn re-arms that hull's death (one this seat never saw alive again included)
-        if (typeof payload.id === 'string') deathLatch.delete(payload.id);
+        // a respawn re-arms that hull's death (one this seat never saw alive again included) and starts its new life
+        // with whole modules, as the presentation mends them at this edge (battlePresentation reviveAtRespawn): the new
+        // life's first break of a module the last life broke sounds its track_break, crew call and radio damage
+        if (typeof payload.id === 'string') {
+          deathLatch.delete(payload.id);
+          forgetModuleStates(payload.id);
+        }
         if (playerId != null && payload.id === playerId) {
           // A fresh hull: alive before the next frame reads it (the event lands inside the sim step), and a new life's
           // one-shot calls (low hull, low ammunition) armed again.

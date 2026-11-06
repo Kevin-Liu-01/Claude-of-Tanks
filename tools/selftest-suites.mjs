@@ -1754,7 +1754,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/audio/ambienceTeardown.selftest.mjs',
     // 2026-11-02 audit F11: wanted loops (loader, fire alarm, cook-off, heartbeat) start once decoded, never after their battle
     'src/audio/wantedLoops.selftest.mjs',
-    // 2026-11-02 audit F11: delayed captions on the audio clock and per battle, the gunship start-up disarmed
+    // 2026-11-02 audit F11: delayed captions on the audio clock and per battle, the gunship start-up disarmed; a mode
+    // respawn starts the hull's module states whole (round 4 merge review r1)
     'src/audio/audioLatches.selftest.mjs',
     'src/mp/wire/wire.selftest.mjs',
     'src/mp/wire/wireFuzz.selftest.mjs',

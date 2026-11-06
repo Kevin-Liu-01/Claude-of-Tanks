@@ -4,7 +4,7 @@
 // own, does not keep the engine start-up armed for the whole battle.
 import assert from 'node:assert/strict';
 import { createBus } from '../game/stateCore.ts';
-import { installFetch, namedContext, terrain, tank, listener, probeOf } from './engineHarness.test-support.mjs';
+import { installFetch, namedContext, terrain, tank, listener, probeOf, mark, since, count } from './engineHarness.test-support.mjs';
 
 globalThis.window = {};
 installFetch();
@@ -68,6 +68,35 @@ assert.equal(probe.battleState().startEngineArmed, false, 'and no engine start-u
 bus.emit('phase:change', { phase: 'battle' });
 frames(0.5);
 assert.equal(probe.battleState().startEngineArmed, false, 'a tank\'s own start-up fires with its rig\'s first frames');
+
+// 5. a mode respawn starts the hull's new life whole (round four merge review r1): the presentation mends its modules at
+// mode_respawn (battlePresentation reviveAtRespawn), so the new life's first break of a module the last life broke is a
+// change: its track_break sounds, for our hull its crew call too (and the radio's damage, set to 0 at the respawn,
+// follows a broken radio again). The 'respawn' mode case kept the hull's module states, so none of them came.
+bus.emit('phase:change', { phase: 'battle' });
+bus.emit('battle:rollout', {});
+const foe = tank('foe', { team: 'bravo' });
+const both = [me, foe];
+frames(0.3, both);
+const throwTrack = (id) => {
+  const sfxAt = mark(probe), sayAt = probe.sayLog.length;
+  bus.emit('module:state', { id, module: 'trackL', state: 'red', source: 'shot' });
+  frames(0.1, both);
+  return { trackBreak: count(since(sfxAt, probe), 'track_break'), crewCall: probe.sayLog.slice(sayAt).filter((e) => e.id === 'track_gone').length };
+};
+for (const id of ['me', 'foe']) {
+  const firstLife = throwTrack(id);
+  bus.emit('tank:destroyed', { id, killerId: 'x', cause: 'shot' });
+  frames(0.1, both);
+  const respawnAt = mark(probe);
+  bus.emit('mode:respawn', { type: 'mode_respawn', id, team: id === 'me' ? 'alpha' : 'bravo' });
+  frames(0.1, both);
+  if (id === 'me') assert.equal(count(since(respawnAt, probe), 'ui_respawn'), 1, 'our respawn is heard (the respawn case ran)');
+  const newLife = throwTrack(id);
+  assert.equal(firstLife.trackBreak, 1, `${id}: the first life's thrown track sounds`);
+  assert.equal(newLife.trackBreak, 1, `${id}: the new life's first thrown track sounds too (its module states start whole)`);
+  if (id === 'me') assert.deepEqual([firstLife.crewCall, newLife.crewCall], [1, 1], 'our crew calls the thrown track in each life');
+}
 bus.emit('phase:change', { phase: 'garage' });
 
-console.log('audioLatches.selftest: captions on the audio clock and per battle, the gunship start-up disarmed passed');
+console.log('audioLatches.selftest: captions on the audio clock and per battle, the gunship start-up disarmed, a respawned hull\'s module states whole passed');
