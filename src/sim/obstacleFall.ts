@@ -16,7 +16,9 @@
  * (0, 0): the world's hinge reads a zero direction as a fall toward +Z (world/topple.ts setToppleAxis, settledToppleAngle),
  * so until the round 2 review every withheld fall, settled or live, lay toward +Z.
  *
- * Pure: the encoder reads detMath (the authority's), the decoder plain Math (presentation). Node-runnable.
+ * Pure, and on detMath both ways: the decoder's lay is presentation only, but this module sits in the authority's import
+ * graph (sim/authoritativeMatch.ts encodes with it), where tools/det-math-lint.mjs allows no native transcendental.
+ * Node-runnable.
  */
 import * as detMath from './detMath.ts';
 
@@ -78,7 +80,7 @@ export function withheldObstacleFall(index: number, out: ObstacleFall): Obstacle
 function headingFall(cause: number, step: number, out: ObstacleFall): ObstacleFall {
   const heading = (step / HEADING_STEPS) * 2 * Math.PI;
   out.cause = cause === CAUSE_SHELL ? 'shell' : 'ram';
-  out.dx = Math.sin(heading);
-  out.dz = Math.cos(heading);
+  out.dx = detMath.sin(heading);
+  out.dz = detMath.cos(heading);
   return out;
 }
