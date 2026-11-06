@@ -361,8 +361,11 @@ console.log('[6] after a park that could have hidden a move or a round, the bot 
   ok(revived.after <= 1.1, `a resume with no park (a revive) looks at the target afresh (${revived.before} s before, ${revived.after} s after)`);
 }
 
-/** ai.levels' deck (as ai.routeOwner [3]-[4]): a 25 m cliff north of z 40, a ramp up it at x 100..130; a floor bot under a deck enemy. */
-async function deckScene() {
+/**
+ * ai.levels' deck (as ai.routeOwner [3]-[4]): a 25 m cliff north of z 40, a ramp up it at x 100..130; a floor bot under a
+ * deck enemy. With `records`, the hull is stepped through the structure support over them, as the match steps every hull.
+ */
+async function deckScene(records = null) {
   const DECK_Y = 25, CLIFF_Z = 40;
   const cliff = (z) => Math.max(0, Math.min(DECK_Y, (z - (CLIFF_Z - 2)) / 4 * DECK_Y));
   const getHeightAt = (x, z) => {
@@ -400,12 +403,19 @@ async function deckScene() {
     planRoute: (start, goal, options) => planBotRoute({ start, goal, navigation, rng: routeRng, role: 'brawler',
       spec: floor.spec, useRoleDetour: false, requireGoalLevel: options?.requireGoalLevel === true }),
   } });
+  const support = records ? createStructureSupportField(deckField, { getObstacles: () => records }) : null;
+  const pose = createHullSupportPose();
+  const stepHull = () => {
+    if (!support) { updateTank(floor, deckField, SIM_DT, null); return; }
+    support.beginHull(floor.state.pos.x, floor.state.pos.z, floor.state.pos.y, hullSupportPose(floor.spec, floor.state, pose));
+    updateTank(floor, support, SIM_DT, null);
+  };
   let t = 300;
   const run = (seconds, until) => {
     for (let i = 0; i < Math.round(seconds / SIM_DT); i++) {
       t += SIM_DT;
       ctl.update(SIM_DT, t);
-      updateTank(floor, deckField, SIM_DT, null);
+      stepHull();
       if (until && until(ctl.debugInfo())) return true;
     }
     return false;
@@ -415,7 +425,7 @@ async function deckScene() {
   const hull = (seconds) => {
     for (let i = 0; i < Math.round(seconds / SIM_DT); i++) {
       t += SIM_DT;
-      updateTank(floor, deckField, SIM_DT, null);
+      stepHull();
     }
   };
   return { ctl, floor, run, moveTo, hull, clock: () => t, skip: (seconds) => { t += seconds; } };
@@ -781,9 +791,10 @@ console.log('[12] the elevation lock\'s dwell counts the bot\'s own ticks: it ho
 // completeness review): the stood-put test's level half had no case; a hull taken at the cliff's foot and left on the
 // deck 9 m away on the plan (25 m up the face) is not where it was taken.
 {
-  const dwellHandBack = async (away, from = null) => {
-    const { ctl, floor, run, moveTo, hull, clock } = await deckScene();
+  const dwellHandBack = async (away, from = null, rock = null) => {
+    const { ctl, floor, run, moveTo, hull, clock } = await deckScene(rock ? [rock] : null);
     if (from) moveTo(...from);
+    if (rock) resetTankVerticalState(floor.state, rock.max[1]); // the floor bot stands on the rock's top
     run(3); // the floor bot sees the deck target its gun cannot reach: 3 s into the 6 s dwell, no route yet
     const before = ctl.debugInfo();
     const parkedAt = [floor.state.pos.x, floor.state.pos.y, floor.state.pos.z];
@@ -813,6 +824,15 @@ console.log('[12] the elevation lock\'s dwell counts the bot\'s own ticks: it ho
     `setup: taken at (${climbed.parkedAt.map((v) => v.toFixed(1)).join(', ')}) 3 s into the dwell; handed back on the deck ${planM.toFixed(1)} m away on the plan, 25 m up the cliff`);
   ok(climbed.back.elevationLockT === 0,
     `a 0.5 s park in which the watcher left the hull on the deck above the spot it was taken on: the dwell restarts (${label(climbed)})`);
+  // fix-up r2 ([14]'s rule at the other end of the walk): taken and handed back in place on a rock's top 1.5 m up, which
+  // the structure support carries the hull on; the spot it was taken on is read from the ground under it, as the hull's
+  // own spot is, so the hull stands where it was taken
+  const ROCK = Object.freeze({ min: [-10, 0, 18], max: [10, 1.5, 38] });
+  const onRock = await dwellHandBack(null, null, ROCK);
+  ok(onRock.parkedAt[1] > ROCK.max[1] - 0.3 && onRock.before.elevationLockT >= 2.5 && onRock.before.levelRoutes === 0,
+    `setup: the floor bot dwells on a rock's top (taken at ${onRock.parkedAt.map((v) => v.toFixed(1)).join(', ')}, 3 s into the dwell)`);
+  ok(onRock.back.elevationLockT >= 2.5 && onRock.decidedAfterS !== null && onRock.decidedAfterS < 4,
+    `a 0.5 s Take and Leave in place on the rock: the dwell holds (coasted ${onRock.coastM.toFixed(1)} m; ${label(onRock)})`);
 }
 
 /**
