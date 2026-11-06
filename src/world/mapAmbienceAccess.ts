@@ -19,11 +19,14 @@ export function createMapAmbienceAccess(
   let densityOverride: number | null = null;
   return {
     get current(): MapAmbience | null { return owner.current; },
-    /** `time`: a battle's time of day or one of the Studio's seven. */
-    async prepare(seed: number | undefined, mapId: string, time: string): Promise<void> {
+    /**
+     * `time`: a battle's time of day or one of the Studio's seven. `asker` (round 3 A10): the Studio session's token; a
+     * prepare whose session ended before the import landed applies nothing (that session's exit restored the air).
+     */
+    async prepare(seed: number | undefined, mapId: string, time: string, asker?: { current(): boolean }): Promise<void> {
       const requested = ++generation;
       const runtime = await owner.preload();
-      if (requested !== generation) return;
+      if (requested !== generation || (asker && !asker.current())) return;
       runtime.setEnabled(enabled);
       runtime.setDensityOverride(densityOverride);
       runtime.prepare(seed, mapId, time);

@@ -10,6 +10,7 @@ import { createStudioSession, studioBusy, transportHeld, isStudioSessionEnded, S
 // (round 2) the history's reading, by namespace: a copy of this file on a tree without it still links
 import * as studioSessionModule from './studioSession.ts';
 import { createAppLifecycle } from './appLifecycle.ts';
+import { createMapAmbienceAccess } from '../world/mapAmbienceAccess.ts';
 
 const text = readFileSync(new URL('./studio.ts', import.meta.url), 'utf8');
 const source = ts.createSourceFile('studio.ts', text, ts.ScriptTarget.Latest, true);
@@ -801,6 +802,82 @@ for (const [name, start, ended] of [
     ['a battle', { phase: 'battle' }],
     ['a Studio entered again', { phase: 'studio' }],
   ]) assert.deepEqual(restoreGarageWorldIn(state), [], `no Garage presentation over ${name}`);
+}
+
+// 18. (round 3 A10) main.ts's preparation, run itself (its prepareStudioAtmosphere and restoreStudioAtmosphere over the real
+// map-air owner, world/mapAmbienceAccess.ts): the map's air the Studio asks for at its hour lands after the module's import.
+// An exit that outlived that import (the bound) restored the air (the density override and the toggle) and the import then
+// prepared the closed session's hour over the battlefield, the one write after the teardown's restore that the session's
+// token did not cover. Here a closed session's air applies nothing; a live session's, and a battle's (no owner), land.
+{
+  const main = readFileSync(new URL('../main.ts', import.meta.url), 'utf8');
+  const property = (from, to) => {
+    const start = main.indexOf(from);
+    assert.ok(start > 0, `main.ts declares ${from}`);
+    return main.slice(start, main.indexOf(to, start));
+  };
+  const preparation = property('prepareStudioAtmosphere: async (', 'setAmbienceEnabled:');
+  const restore = property('restoreStudioAtmosphere: () => {', 'getStudioLight:');
+  const makeContext = (ports) => new Function('ports', `${stripTypeScriptTypes(`
+    function makeMainContext(ports) {
+    const { battleAtmosphere, currentWorld, game, mapAmbience } = ports;
+    // main.ts's own (the light runtime's chunk is loaded: its import is the light's half, scenario 9 and main's pin above)
+    let studioLightRuntime = ports.studioLightRuntime, studioLightLive = ports.studioLightLive;
+    let battleWatchdogRadianceScale = 1, baseFogDensity = 0;
+    return { ${preparation} ${restore} };
+    }
+  `)}\nreturn makeMainContext(ports);`)(ports);
+  /** The map's air: the real access over a module whose import the case lands, and the runtime it makes. */
+  const air = () => {
+    const prepared = [];
+    let landModule = null;
+    const module = new Promise((resolve) => { landModule = resolve; });
+    const mapAmbience = createMapAmbienceAccess(() => ({}), () => module);
+    const runtime = {
+      prepare: (seed, mapId, time) => prepared.push([seed, mapId, time]),
+      setEnabled: () => {}, setDensityOverride: () => {}, refreshTier: () => {}, reset: () => {}, isActive: () => false,
+    };
+    return { mapAmbience, prepared, land: () => landModule({ createMapAmbience: () => runtime }) };
+  };
+  const contextFor = (mapAmbience) => {
+    const light = { apply: (time) => ({ time }), restore: () => {} };
+    return makeContext({
+      battleAtmosphere: { prepare: async () => {} }, currentWorld: () => ({ mapId: 'verdant' }), game: { mapId: 'verdant' },
+      mapAmbience, studioLightRuntime: { load: async () => light }, studioLightLive: light,
+    });
+  };
+  // the exit outlived the air's import: the teardown restored, then the import landed
+  {
+    const { mapAmbience, prepared, land } = air();
+    const context = contextFor(mapAmbience);
+    const session = createStudioSession();
+    const owner = session.beginEntry();
+    session.open(owner);
+    const work = context.prepareStudioAtmosphere('night', null, owner);
+    await settle();
+    session.beginExit();
+    context.restoreStudioAtmosphere(); // the teardown's restore (tearDownStudio), past the exit's bounded wait
+    session.close();
+    land();
+    assert.equal(await work, null, 'the closed session\'s preparation reports no light');
+    await settle();
+    assert.deepEqual(prepared, [], 'the map\'s air at the closed session\'s hour never lands after the teardown restored it');
+  }
+  // a live session's air lands at its hour; a battle's (no owner) lands as it did
+  {
+    const { mapAmbience, prepared, land } = air();
+    const context = contextFor(mapAmbience);
+    const session = createStudioSession();
+    const owner = session.beginEntry();
+    session.open(owner);
+    const work = context.prepareStudioAtmosphere('night', null, owner);
+    await settle();
+    land();
+    assert.deepEqual(await work, { time: 'night' }, 'the live session\'s preparation reports its light');
+    assert.deepEqual(prepared, [[0, 'verdant', 'night']], 'and its air lands at its hour');
+    await mapAmbience.prepare(3, 'verdant', 'day');
+    assert.deepEqual(prepared.at(-1), [3, 'verdant', 'day'], 'a battle\'s air (no owner) lands');
+  }
 }
 
 console.log('studioSessionExit.selftest: an exit during a map switch, its lighting (bounded or not), a scene load, a film export, the export\'s module gap and a time change lands nothing after the teardown; a build that outlives the exit leaves the Garage its presentation; a closed session\'s load never re-enters; a recording, a battlefield change, a staging or a light change refuses the export\'s film; a staging refuses a film, an export or a light change; queued switches run in order; a superseded exit cover still leaves; an exit during a build commits the last edit; a restore the exit took back resolves false; a closed session\'s build, load, staging, undo or light change holds no later Studio; the late build\'s undo waits for a settled Garage');

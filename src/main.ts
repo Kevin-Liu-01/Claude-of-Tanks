@@ -4339,9 +4339,10 @@ const studioAccess = createStudioAccess({
       // (audit F9) a Studio session that ended while this prepared lights nothing: its exit restored the battlefield
       if (owner && !owner.current()) return null;
       const applied = runtime.apply(time, light);
-      // (the map's air) the Studio films the full count at its own hour, on its pinned fx clock
+      // (the map's air) the Studio films the full count at its own hour, on its pinned fx clock; (round 3 A10) an air whose
+      // import lands after the session ended applies nothing: that exit's restore stays the last word
       mapAmbience.setDensityOverride(1);
-      await mapAmbience.prepare(0, currentWorld()?.mapId ?? game.mapId, time);
+      await mapAmbience.prepare(0, currentWorld()?.mapId ?? game.mapId, time, owner);
       return owner && !owner.current() ? null : applied; // (its light came before that session's restore)
     },
     setAmbienceEnabled: (on: boolean) => mapAmbience.setEnabled(on),
