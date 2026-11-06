@@ -984,8 +984,10 @@ export const FLEET_GHILLIE_SUITS: Readonly<Record<string, GhillieConfig>> = Obje
     fieldClearanceM: 0.03, maxHalfWidth: 2.0, hemFloorM: 0.7,
     clothClearsGunStops: true,
     turret: {
-      // over the cheeks to their tips (the owner: "even drape ghillie acrross the top of mantlet and cheeks")
-      top: [laid({ x0: -1.62, x1: 1.52, z0: -3.10, z1: 2.30, nx: 40, nz: 68, y: 0.82, garnishRiseM: 0.18, garnishDensity: 1.4,
+      // over the cheeks to their tips (the owner: "even drape ghillie acrross the top of mantlet and cheeks"), back to the
+      // 268 shell's bustle face (z -2.56): the rack behind it carries the crew's load (decorations.ts LIVED_IN_ROWS), which
+      // seats under no roof net
+      top: [laid({ x0: -1.62, x1: 1.52, z0: -2.56, z1: 2.30, nx: 40, nz: 60, y: 0.82, garnishRiseM: 0.18, garnishDensity: 1.4,
         seed: 11 })],
       side: flanks(-2.00, 0.80, 0.72, 0.48, 1.74, 17),
     },
