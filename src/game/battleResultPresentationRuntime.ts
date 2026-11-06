@@ -181,8 +181,13 @@ export function createBattleResultPresentationRuntime({
   let deathCamShown = false;
   let pending: PendingReplay | null = null;
   let beat: RunningBeat | null = null;
-  /** The battle a death flow belongs to (round 4 E6b review r1): a reset or a restart starts the next. */
-  let battleSerial = 0;
+  /**
+   * The player's death replay is on screen (round 4 E6b review r2): from the killcam taking the death beat's replay until
+   * its end (afterDeath). Its end hands the HUD and the camera back; a replay the killcam cancels never ends that way
+   * (killcam.ts cancel -> finish(false) -> teardown(false): no onDone, and the rig keeps the replay's external pin), so a
+   * restart that cancels it hands them back here.
+   */
+  let deathReplayShown = false;
 
   const record = (played: boolean, result: BattleResult, plan: BattleEndingPlan, ran: BattleEndingBeat | 'replay'): void => {
     recordFlow({
@@ -312,20 +317,19 @@ export function createBattleResultPresentationRuntime({
       // Keep capture through the death beat and spectator handoff. Esc remains
       // the player's explicit release; a final result still releases above.
       rig.startDeathCam?.();
-      // (round 4 E6b review r1) the death's replay ends in its own battle's orbit only: a replay cancelled by a restart
-      // (killcam.ts hears 'battle:restarted' and runs this from its cancel, before or after this owner's restart) gives
-      // the HUD and the camera back, and the revived hull keeps its player's camera
-      const battle = battleSerial;
       const afterDeath = (): void => {
+        deathReplayShown = false;
         veilHud(false);
         rig.release();
-        if (battle === battleSerial) rig.startDeathCam?.();
+        rig.startDeathCam?.();
       };
       pending = {
         deadline: clock + deathBeatMs,
         fire: () => {
-          if (killcam.playForResult('defeat', game.timeS, afterDeath)) veilHud(true);
-          else afterDeath();
+          if (killcam.playForResult('defeat', game.timeS, afterDeath)) {
+            deathReplayShown = true;
+            veilHud(true);
+          } else afterDeath();
         },
       };
     }
@@ -349,7 +353,7 @@ export function createBattleResultPresentationRuntime({
     endShown = false;
     deathCamShown = false;
     pending = null;
-    battleSerial++;
+    deathReplayShown = false;
   };
 
   // (round 4 E6b) A network battle restarted under this seat opens a new battle (the session's decision; Kevin may
@@ -360,10 +364,21 @@ export function createBattleResultPresentationRuntime({
   // unconditionally: a restart cannot follow this seat's verdict (the edge's policy, battlePresentation.ts
   // resetSettledWorld; review r1). What a battle's start does not need: a seat whose death orbit ran gets its camera
   // back, its hull alive at its spawn (a start opens on its own flyby); before, the orbit circled the living hull until
-  // the battle ended. This owner hears the edge itself (review r1), so a receipt drives it as the page does.
+  // the battle ended. A seat whose death replay was on screen gets its HUD and its camera back here too (review r2): the
+  // killcam's own restart listener cancels the replay, and a cancelled replay runs no onDone (afterDeath) and leaves the
+  // rig on the replay's external pin (killcam.ts cancel -> finish(false) -> teardown(false); publishReplayCompletion
+  // runs onDone only on a finish or skip), so before, the restarted battle played under a frozen camera with no HUD
+  // until the seat died again or the battle ended. Neither listener touches what the other one does, so the order in
+  // which the killcam and this owner hear the edge does not matter. This owner hears the edge itself (review r1), so a
+  // receipt drives it as the page does.
   bus.on('battle:restarted', () => {
     const orbiting = deathCamShown;
+    const replaying = deathReplayShown;
     startOver();
+    if (replaying) {
+      veilHud(false);
+      rig.release();
+    }
     if (orbiting) rig.endDeathCam?.();
   });
 

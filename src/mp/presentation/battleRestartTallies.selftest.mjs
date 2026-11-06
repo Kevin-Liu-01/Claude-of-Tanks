@@ -21,15 +21,21 @@
 //      HUD and the records do, so the receipt drives the page's path): the ending's facts and the player's death flow.
 //      Before, a death beat pending at the restart played its replay over the restarted battle, a seat whose death cam
 //      had run got none when it died again, and a restarted battle that ended on time framed the abandoned battle's last
-//      wreck. On the real camera rig (review r1, the completeness lens): a seat whose death orbit ran gets its player's
-//      camera back at the restart, whether the restart lands in its death beat or in its replay, and whichever of the
-//      killcam (whose cancel ends the replay through the runtime's own hand-back) and the runtime hears the edge first;
-//      before, the orbit circled the living hull until the battle ended;
+//      wreck. On the real camera rig and the real killcam (review r1, the completeness lens; review r2): a seat whose death
+//      orbit ran gets its player's camera back at the restart, and a seat whose death replay was on screen its HUD and its
+//      camera, whichever of the killcam and the runtime hears the edge first. The killcam's restart listener cancels the
+//      replay, and a cancelled replay runs no onDone and keeps the rig's external pin (killcam.ts cancel -> finish(false)
+//      -> teardown(false)), so the hand-back is the runtime's own. Before, the orbit circled the living hull until the
+//      battle ended, and a cancelled replay left a frozen camera and a veiled HUD over the restarted battle (review r1's
+//      stand-in killcam ran the replay's end at its cancel, which the real one does not: review r2);
 //   6. medalToast.ts (review r1): a medal card the abandoned battle earned (the real service record's live award) is not
 //      on screen, nor waiting, in the restarted battle.
 // Cases 1-2 drive the real battle HUD (initHud) with its own report and end screen over the recording DOM; 3-4 the real
-// installers on the same bus; 5 the real runtime and camera rig; 6 the real medal toasts. 1-5 fail on 0edd0e1ab5 and pass
-// now (13 checks there; the revive count passed there); 6 and the camera of 5 are review r1's.
+// installers on the same bus; 5 the real runtime, camera rig and killcam; 6 the real medal toasts. Every case fails on
+// 0edd0e1ab5 and passes now: 24 checks fail there (13 in this file's first version, where the revive count passed;
+// 22 after review r1 added the medal and camera checks; 24 since review r2's real killcam, whose cancelled replay leaves
+// the HUD veiled too). On 2c18dae0db the two restart-in-the-replay flows fail 4 checks (the camera on the replay's pin,
+// the HUD veiled).
 import { created, resizeObserved, StubElement } from '../../ui/hudDomHarness.test-support.mjs';
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
@@ -44,6 +50,7 @@ import { installBattleRecords, getLastBattleRecord, getPlayerRecord } from '../.
 import { createBattleResultPresentationRuntime } from '../../game/battleResultPresentationRuntime.ts';
 import { createBattleEndingDirector } from '../../game/battleEnding.ts';
 import { createCameraRig } from '../../engine/cameraRig.ts';
+import { createKillCam } from '../../game/killcam.ts';
 import { installMedalToasts } from '../../ui/medalToast.ts';
 import { matchRulesetFor } from '../../sim/matchRuleset.ts';
 
@@ -196,13 +203,15 @@ if (last?.kills !== 1 || last?.damage !== 2000) wrong.push(`profile: the battle'
 if (getPlayerRecord().kills !== 1) wrong.push(`profile: the career kills took ${getPlayerRecord().kills} from a battle of 1`);
 
 // ---- 5. the result flow: the ending's facts, the player's death flow and its camera (the real runtime on its own bus,
-// as main.ts builds it, with the real camera rig)
+// as main.ts builds it, with the real camera rig and the real killcam on the same bus)
 const idle = { mouseDX: 0, mouseDY: 0, wheel: 0, rmb: false, shiftPressed: false };
 /**
- * One seat's result flow. `replay`: the death beat's replay is running at the restart (the killcam pins its pose; its
- * cancel at the restart releases the pin and runs the replay's end, as killcam.ts cancel -> finish does). `killcamFirst`:
- * the killcam hears the edge before the runtime (main.ts binds the lazy killcam's bus after the runtime is built, so the
- * page's order is the runtime first).
+ * One seat's result flow. The player dies to a shell, its death beat starts the death orbit, and the beat's replay is
+ * the real killcam's (createKillCam: it pins the camera through rig.setExternalPose). `replay`: the restart lands while
+ * that replay is on screen (else inside the death beat, before the replay). `killcamFirst`: the killcam hears the edge
+ * before the runtime (main.ts binds the lazy killcam's bus after the runtime is built, so the page's order is the
+ * runtime first). The killcam's restart listener cancels the replay, and a cancelled replay runs no onDone and leaves
+ * the rig's external pin (killcam.ts cancel -> finish(false) -> teardown(false)), so the hand-back is the runtime's.
  */
 function resultFlow({ replay, killcamFirst }) {
   const label = `result flow (${replay ? 'restart in the replay' : 'restart in the death beat'}, ${killcamFirst ? 'killcam first' : 'runtime first'})`;
@@ -212,57 +221,64 @@ function resultFlow({ replay, killcamFirst }) {
   let veiled = false;
   const root = new THREE.Object3D();
   const player = {
-    combat: { destroyed: false }, state: { pos: new THREE.Vector3(), yaw: 0.3, turretYaw: 0 }, input: { aimPoint: new THREE.Vector3() }, aerial: null,
-    visual: { root, turretTopWorld: (out) => out.set(0, 2, 0), gunPivotWorld: (out) => out.set(0, 1.7, 0.2) },
-  };
-  const game = { result: null, resultReason: null, gameMode: 'standard', timeS: 10, player, ruleset: { respawnS: null }, matchModeState: null };
-  const rig = createCameraRig(new THREE.PerspectiveCamera(60, 16 / 9, 0.1, 2000), {
-    heightField: { getHeightAt: () => 0 }, raycast: () => null, getPlayer: () => player,
-  });
-  rig.snapArcade(2, 0.3, -0.1);
-  let replayEnd = null;
-  const killcam = {
-    lastBeginWallMs: null,
-    playForResult(result, _timeS, onDone) {
-      calls.push(`replay:${result}:${player.combat.destroyed ? 'dead' : 'alive'}`);
-      if (!replay) return false;
-      rig.setExternalPose(new THREE.Vector3(20, 10, 20), new THREE.Vector3());
-      replayEnd = onDone;
-      return true;
+    id: 'me', isPlayer: true, team: 'player', spec, specId: SPEC,
+    combat: { destroyed: false, crew: {}, modules: {} },
+    state: { pos: new THREE.Vector3(), yaw: 0.3, turretYaw: 0, gunPitch: 0, visualPitch: 0, visualRoll: 0 },
+    input: { aimPoint: new THREE.Vector3() }, aerial: null,
+    visual: {
+      root, turretTopWorld: (out) => out.set(0, 2, 0), gunPivotWorld: (out) => out.set(0, 1.7, 0.2),
+      isDestroyed: () => player.combat.destroyed, wreckState: () => (player.combat.destroyed ? 'plain' : 'intact'),
+      setDestroyed() {}, resetDestroyed() {}, syncFromState() {}, setVisible() {},
     },
   };
-  const killcamHearsRestart = () => flowBus.on('battle:restarted', () => {
-    const done = replayEnd;
-    replayEnd = null;
-    if (!done) return;
-    rig.release();
-    done();
+  const game = {
+    result: null, resultReason: null, gameMode: 'standard', timeS: 10, player, ruleset: { respawnS: null }, matchModeState: null,
+    phase: 'battle', tanks: [player], tankById: new Map([['me', player]]),
+  };
+  const camera = new THREE.PerspectiveCamera(60, 16 / 9, 0.1, 2000);
+  const rig = createCameraRig(camera, { heightField: { getHeightAt: () => 0 }, raycast: () => null, getPlayer: () => player });
+  rig.snapArcade(2, 0.3, -0.1);
+  const killcam = createKillCam({
+    scene: new THREE.Scene(), camera, rig, heightField: { getHeightAt: () => 0 },
+    getPlayer: () => player, getGame: () => game, isBattleEntryCovered: () => false,
   });
-  if (killcamFirst) killcamHearsRestart();
+  if (killcamFirst) killcam.bindBus(flowBus);
   const director = createBattleEndingDirector();
-  // the page passes the rig itself; this port forwards to it and counts the death cams the runtime starts
+  // the page passes the killcam and the rig themselves; these ports forward to them and count what the runtime asks
+  const killcamPort = {
+    get lastBeginWallMs() { return killcam.lastBeginWallMs ?? null; },
+    playForResult(result, timeS, onDone, options) {
+      calls.push(`replay:${result}:${player.combat.destroyed ? 'dead' : 'alive'}`);
+      return killcam.playForResult(result, timeS, onDone, options);
+    },
+  };
   const rigPort = {
     release: () => rig.release(),
     startDeathCam: () => { calls.push('deathCam'); rig.startDeathCam(); },
     endDeathCam: () => rig.endDeathCam?.(),
   };
   const runtime = createBattleResultPresentationRuntime({
-    game, bus: flowBus, killcam, rig: rigPort,
+    game, bus: flowBus, killcam: killcamPort, rig: rigPort,
     veilHud: (on) => { veiled = on; }, showEndOverlay: () => {}, emitPresented: () => {}, exitPointerLock: () => {}, recordFlow: () => {},
     ending: { director, camera: { begin: () => true, frame() {}, end() {} }, modeState: () => null, emitBeat() {} },
     now: () => wallMs, deathBeatMs: 2600,
   });
-  if (!killcamFirst) killcamHearsRestart();
+  if (!killcamFirst) killcam.bindBus(flowBus);
   const step = (ms) => { wallMs += ms; runtime.update(); rig.update(ms / 1000, idle); };
-  // the abandoned battle: an enemy's wreck at (300, 0, 300), then the player dies; its death beat and orbit start
+  // the abandoned battle: an enemy's wreck at (300, 0, 300), then the player dies to a shell; its death beat and orbit start
   runtime.observe('tank:destroyed', { id: 'e9', pos: [300, 0, 300], cause: 'shot' });
   runtime.update();
   player.combat.destroyed = true;
+  killcam.onShellHit({
+    shellId: null, targetId: 'me', attackerId: 'e9', destroyed: true, timeS: 10, pos: [0, 1, 0], normal: [0, 0, 1],
+    localPos: [0, 1, 0], localDir: [0, 0, -1], modulesHit: [], crewHit: [], shellType: 'APFSDS', zone: 'hull',
+  }, player);
   step(16);
   assert.equal(rig.cameraOwner, 'death', `setup: ${label}: the player's death starts its death orbit`);
   if (replay) {
     for (let i = 0; i < 12; i++) step(250);
-    assert.ok(veiled && rig.cameraOwner === 'external', `setup: ${label}: the death replay runs (veiled ${veiled}, camera ${rig.cameraOwner})`);
+    assert.ok(veiled && killcam.isActive() && rig.cameraOwner === 'external',
+      `setup: ${label}: the killcam's death replay runs (veiled ${veiled}, replay ${killcam.isActive()}, camera ${rig.cameraOwner})`);
   } else step(1000);
   calls.length = 0;
   // the restart: the player alive at its spawn
@@ -271,8 +287,9 @@ function resultFlow({ replay, killcamFirst }) {
   for (let i = 0; i < 20; i++) step(250);
   const stale = calls.filter((call) => call.startsWith('replay'));
   if (stale.length) wrong.push(`${label}: the abandoned battle's death beat played its replay over the restarted battle (${stale.join(', ')})`);
+  if (killcam.isActive()) wrong.push(`${label}: the abandoned battle's replay is still on screen`);
   if (director.facts.lastDestroyed) wrong.push(`${label}: the restarted battle's ending reads the abandoned battle's last wreck (${director.facts.lastDestroyed.id})`);
-  if (rig.cameraOwner !== 'player') wrong.push(`${label}: the camera is the ${rig.cameraOwner} owner's over the living hull at its spawn (the abandoned battle's death orbit)`);
+  if (rig.cameraOwner !== 'player') wrong.push(`${label}: the camera is the ${rig.cameraOwner} owner's over the living hull at its spawn (the abandoned battle's ${replay ? 'replay pin' : 'death orbit'})`);
   if (veiled) wrong.push(`${label}: the HUD stays veiled after the abandoned battle's replay was cancelled`);
   // the restarted battle: the player dies again
   calls.length = 0;
