@@ -31,7 +31,7 @@ function foreWing(P:TankBuilderPort,left:boolean):void{
     const low=xs.map(x=>[x,Math.min(height(p,x,z)-.003,lowerWing(left,x,z))] as const);
     const upper=[...xs].reverse().map(x=>[x,height(p,x,z)] as const);
     return{z,ring:[...low,...upper]};
-  }));add(P,g);
+  }),{preserveCapBoundary:true});add(P,g); // (269) the caps' collinear stations in real faces (3 zero normals)
 }
 function add(P:TankBuilderPort,g:THREE.BufferGeometry):void{
   P.add('gunMount',g.translate(-GUN[0],-GUN[1],-GUN[2]));
