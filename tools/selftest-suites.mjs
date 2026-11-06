@@ -1869,6 +1869,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'server/match/matchActorResume.selftest.mjs',
     'server/match/matchPhase.selftest.mjs', // 2026-11-02 audit M3: one match phase through the ending hold to the stop; a clock verdict freezes the mode controller
     'src/sim/verdictHold.selftest.mjs', // 2026-11-04 round 2 U4: through the ending hold a falling crate lands, the ball comes down, a carried flag rides its carrier; nothing scores
+    'src/sim/verdictBallShot.selftest.mjs', // 2026-11-06 round 3 A1: a round in flight at the clock verdict flies through the Turbo Ball on the authority's step; no hit, touch or launch
     'server/match/actorEnds.selftest.mjs', // 2026-11-02 audit M3: a self-stopped actor leaves the service, a failed WELCOME detaches, a roster change follows its batch
     'server/match/stallTimeline.selftest.mjs', // 267: through a server stall the timeline keeps the wall's grid; no control past the input ring
     'server/match/service.selftest.mjs',
