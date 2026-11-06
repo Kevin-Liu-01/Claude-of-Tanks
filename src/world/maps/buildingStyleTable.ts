@@ -302,11 +302,10 @@ export const BUILDING_STYLES = {
     roof: { forms: ['hip', 'flat'], pitchDeg: [20, 30] },
     core: 'masonry', storeys: [1, 3], storeyM: [3, 4], bayM: [1.2, 4],
     weathering: { damp: 0.45, moss: 0.25 }, wear: 0.3,
-    // (Main 11-06: the paints traced from the record's photos) tan wooden shutter panels under the arched fanlights
-    // (orchard_3, #eecc98); cream-white painted fanlight muntin (orchard_3, #dbd0aa); dark brown arched fanlight frame
-    // (orchard_3, #50422f)
-    variation: { axes: { paint: ['#eecc98', '#dbd0aa', '#50422f'] }, roofAge: [0, 1] },
-    surface: { grime: 0.9, patches: 0.6, tileRelief: 1.35, reveal: 0.3, eave: 0.5 },
+    // (Main 11-06: lost its one fresh judge 0–8 under the pair rule, the traced tan and cream shutters against the kit's
+    // green and blue, so the whole map reverts to its base look; its weathering and wear were the kit's already)
+    variation: null,
+    surface: null,
   },
   longleaf: {
     kit: 'longleaf',
