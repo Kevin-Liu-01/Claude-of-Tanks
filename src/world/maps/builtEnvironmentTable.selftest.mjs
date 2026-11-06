@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { BUILT_ENVIRONMENT, builtEnvironmentFor, watersideFor } from './builtEnvironmentTable.ts';
+import { BANK_KIND_CODE, BUILT_ENVIRONMENT, builtEnvironmentFor, watersideFor } from './builtEnvironmentTable.ts';
 import { MAP_IDS } from './mapIds.ts';
 import { getMapConfig } from './index.ts';
 import { BOAT_FAMILIES } from './boatHulls.ts';
@@ -32,9 +32,17 @@ for (const id of CIVIC_PLAN_MAPS) {
 }
 
 // the owner's protected maps (2026-10-09) keep the old road law until a pair shows the worked carriageway does them no harm
+// (their paving, reopened by the owner's 2026-11-05 ask, is the per-map A/B's)
 for (const id of ['verdant', 'frontier', 'winter', 'saltwind', 'reservoir', 'railyard', 'coastal', 'desert', 'fjord']) {
   assert.equal(BUILT_ENVIRONMENT[id].roads.work, 'off', `${id}: the old road law`);
-  assert.equal(BUILT_ENVIRONMENT[id].roads.paved, null, `${id}: not paved by the catalogue`);
+}
+// a bank's facing only where the water is open (the material reads it off the shore distance of a seaLake map)
+for (const id of MAP_IDS) {
+  const bank = BUILT_ENVIRONMENT[id].shore.bank;
+  if (!bank) continue;
+  assert.ok(getMapConfig(id).splat?.seaLake, `${id}: a bank's facing on open water`);
+  assert.ok(bank.widthM > 0 && bank.widthM < 30, `${id}: the facing inside the shore distance's 32 m`);
+  assert.ok(BANK_KIND_CODE[bank.kind] > 0, `${id}: ${bank.kind} is a facing`);
 }
 
 // each coast's craft (#16 r2, Lane C, 2026-10-14: the forms keyed on the coast's boats, now the rows')

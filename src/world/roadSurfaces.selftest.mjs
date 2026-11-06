@@ -17,8 +17,9 @@ import { terrainSourceText } from './terrainSourceText.mjs';
 const PROTECTED = ['verdant', 'frontier', 'winter', 'saltwind', 'reservoir', 'railyard', 'coastal', 'desert', 'fjord'];
 const MAP_PAVED_SURFACES = Object.fromEntries(MAP_IDS.filter((id) => BUILT_ENVIRONMENT[id].roads.paved).map((id) => [id, BUILT_ENVIRONMENT[id].roads.paved]));
 const MAP_PATH_SURFACES = Object.fromEntries(MAP_IDS.filter((id) => BUILT_ENVIRONMENT[id].roads.paths).map((id) => [id, BUILT_ENVIRONMENT[id].roads.paths]));
+// (built-env-270, the owner 2026-11-05: "update roads ... have to be fully updated": the protected maps' paving is the
+// per-map A/B's to judge; their worked carriageway keeps the old law below)
 for (const [id, paved] of Object.entries(MAP_PAVED_SURFACES)) {
-  assert.ok(!PROTECTED.includes(id), `${id} is not one of the owner's protected maps`);
   for (const key of ['street', 'square']) {
     if (paved[key] === undefined) continue;
     if (key === 'square' && paved[key] === 'print') continue; // (the squares' own print or slabs)
@@ -26,7 +27,7 @@ for (const [id, paved] of Object.entries(MAP_PAVED_SURFACES)) {
   }
 }
 for (const [id, list] of Object.entries(MAP_PATH_SURFACES)) {
-  assert.ok(MAP_IDS.includes(id) && !PROTECTED.includes(id), `${id} is an unprotected map`);
+  assert.ok(MAP_IDS.includes(id), `${id} is a map`);
   const paths = getMapConfig(id).terrain.roads.paths;
   assert.ok(list.length <= paths.length, `${id}: no surface past its ${paths.length} paths`);
   for (const surface of list) assert.ok(surface === null || ROAD_SURFACE_CODE[surface] > 0, `${id}: ${surface} is a class`);

@@ -46,7 +46,7 @@ import {
   ROAD_SURFACE_CODE, pavedSurfaceUniforms, roadSurfaceUniforms,
   type PavedSurfaceConfig, type RoadSurface, type RoadSurfaceWork,
 } from './roadSurfaces.ts';
-import { builtEnvironmentFor } from './maps/builtEnvironmentTable.ts';
+import { BANK_KIND_CODE, builtEnvironmentFor } from './maps/builtEnvironmentTable.ts';
 import { trackSurfaceAt, trackSurfacePolicy, type TrackSurface } from './trackSurface.ts';
 import { roadPaveSampler } from './roadPave.ts';
 import { completeRoadEndpoints, gradeRoadPortals, alignHardstandRoadPortals,
@@ -3087,7 +3087,14 @@ function* heightFieldBuildSteps(
     if (compiledCanals !== null && canalWetness(compiledCanals, x, z) > 0.5) return T.softLakes ? 'soft' : 'hard';
     return 'medium';
   }
-  const roadPaveAt = roadPaveSampler(cfg?.splat, layout.village); // the FX lane's street dust (roadPave.ts)
+  // the FX lane's street dust (roadPave.ts), with the catalogue's paving as the material paints it (built-env-270): the
+  // splat's own paved surface or the row's, and each road line's own surface
+  const pavedCatalogue = cfg?.splat?.pavedSurface ?? builtEnvironmentFor(cfg?.id)?.roads.paved ?? null;
+  const roadPaveAt = roadPaveSampler(cfg?.splat, layout.village, {
+    streets: pavedCatalogue?.street ? (pavedCatalogue.townOnly ? 'town' : 'all') : null,
+    lines: layout.roadStyles?.map((style) => !!style?.surface && style.surface !== 'dirt') ?? null,
+    roads: layout.roads,
+  });
 
   function getDriveGroundType(x: number, z: number): GroundType {
     const ground = getGroundType(x, z);
@@ -4638,6 +4645,11 @@ float terraceZoneW(vec2 p) {
 uniform float uSea;       // maps r1: 1 = M layer is OPEN WATER (sea/river), 0 = legacy mud/ice
 uniform float uSeaFoam;   // maps r1: surf/whitecap strength (0 disables)
 uniform vec2 uSeaRamp;    // maps r1: fM band that ramps to open water (sea wide, river tight)
+// built-env-270 (2026-11-05): the bank's facing (maps/builtEnvironmentTable.ts shore.bank): (kind — 0 the old apron, 1 sand,
+// 2 shingle, 3 rock, 4 pitched stone, 5 mud, 6 turf to the water —, its width landward of the waterline (m), strength, the
+// stones' size (m)); uBankTint the facing's own colour (linear), its layer's grain kept over it
+uniform vec4 uBank;
+uniform vec3 uBankTint;
 uniform vec4 uSeaOpenings[4]; // round 40: sea openings past the square (direction angle, half-width, shoulder, 0)
 uniform vec4 uSeaBanks[4];
 uniform float uSeaOpeningCount;
@@ -5802,9 +5814,59 @@ void splatCompute() {
   if (gWorksFloor > 0.5 && fD < 0.998) {
     a.rgb = mix(a.rgb, worksSlag(n1h, n2, 0.5) * 1.15 * (0.86 + 0.28 * nz(uv, 0.31, vec2(0.71, 0.13)).r), 0.85 * (1.0 - fD));
   }
+  if (uBank.x > 5.5) seaSand = 0.0; // built-env-270: a turf bank keeps its meadow to the water
   if (seaSand > 0.003) { // maps r1: bare shoreline apron under the surf line
     a = mix(a, groundSamp(uAlbD, uMeanD, uv * 0.210, df, mipB), seaSand);
     if (nrmOn) n = mix(n, groundNrm(uNrmD, uv * 0.210, df, mipB), seaSand);
+  }
+  // built-env-270 (2026-11-05; the owner: "beach areas annd areas around water ... have to be fully updated"): the bank's
+  // facing in METRES from the waterline (the shore byte), each its place's own — a Dalmatian shingle beach, a Nordland
+  // rock shore, a Zeeland dyke's basalt pitching, a Shanghai creek's stone embankment, a drawn-down reservoir's mud. The
+  // facing takes its layer's grain over its own colour (uBankTint), so a sand set reads as limestone grit where the photos
+  // show it; the stones (shingle, pitching) are cells in world metres, faded to their mean past the pixel's footprint.
+  // (the courses' direction from the shore distance's world gradient, taken in uniform control flow: a pitched bank only)
+  vec2 bAlong = vec2(1.0, 0.0);
+  if (uBank.x > 3.5 && uBank.x < 4.5) {
+    vec2 dx = dFdx(wp.xz), dy = dFdy(wp.xz);
+    float sx = dFdx(vShore), sy = dFdy(vShore), det = dx.x * dy.y - dx.y * dy.x;
+    vec2 g = abs(det) > 1e-8 ? vec2(sx * dy.y - sy * dx.y, sy * dx.x - sx * dy.x) / det : vec2(1.0, 0.0);
+    bAlong = normalize(vec2(-g.y, g.x) + vec2(1e-5, 0.0));
+  }
+  if (uSea > 0.5 && uBank.x > 0.5 && uBank.x < 5.5 && vShore < 31.0) {
+    float bEdge = vShore + (n1h - 0.5) * 1.6 + (n1 - 0.5) * 0.9;
+    float bankW = (1.0 - fMs) * (1.0 - roadCore) * (1.0 - smoothstep(uBank.y - 0.9, uBank.y + 0.9, bEdge)) * uBank.z;
+    if (bankW > 0.003) {
+      const vec3 bL = vec3(0.34, 0.45, 0.21);
+      bool bRock = uBank.x > 2.5 && uBank.x < 3.5;
+      vec4 bs = bRock ? groundSamp(uAlbR, uMeanR, uv * 0.330, df, mipB) : groundSamp(uAlbD, uMeanD, uv * 0.210, df, mipB);
+      vec4 bm = bRock ? uMeanR : uMeanD;
+      float bGrain = clamp(dot(bs.rgb - bm.rgb, bL) / max(dot(bm.rgb, bL), 1e-3), -0.6, 0.6);
+      vec3 bCol = uBankTint * (1.0 + bGrain * 0.85);
+      if (uBank.x > 1.5 && uBank.x < 2.5 || uBank.x > 3.5 && uBank.x < 4.5) {
+        // the stones: shingle as rounded cells of their own tone; pitching as blocks in courses along the waterline
+        float sz = max(uBank.w, 0.05);
+        vec2 bq;
+        if (uBank.x > 3.5) {
+          // the courses follow the shore: across them the shore distance, along them the world axis across its gradient
+          float row = vShore / (sz * 0.62);
+          bq = vec2(dot(wp.xz, bAlong) / sz + 0.5 * mod(floor(row), 2.0), row);
+        } else {
+          bq = wp.xz / sz;
+        }
+        vec2 bc = floor(bq), bf = fract(bq) - 0.5;
+        float bh = fract(sin(dot(bc, vec2(127.1, 311.7))) * 43758.5453);
+        float bShape = uBank.x > 3.5
+          ? max(abs(bf.x), abs(bf.y))
+          : length(bf - (vec2(bh, fract(bh * 7.13)) - 0.5) * 0.28) * (0.9 + 0.3 * fract(bh * 3.7));
+        float bStone = 1.0 - smoothstep(0.36, 0.48, bShape);
+        float bVis = tileVis(sz);
+        float bTone = mix(1.0, (0.74 + 0.5 * bh) * mix(0.42, 1.0 + 0.10 * (0.4 - bShape), bStone), bVis);
+        bCol *= bTone;
+        if (nrmOn) n.xy = mix(n.xy, vec2(0.5) + bf * 0.55 * bStone, bankW * bVis * 0.8);
+      }
+      a.rgb = mix(a.rgb, max(bCol, 0.0), bankW);
+      if (bRock && nrmOn) n = mix(n, groundNrm(uNrmR, uv * 0.330, df, mipB), bankW);
+    }
   }
   if (fMs > 0.002 && keepR > 0.002) {
     a = mix(a, groundSamp(uAlbM, uMeanM, uv * 0.190, df, mipB), fMs);
@@ -8664,6 +8726,11 @@ function* createSplatMaterialSteps(
     shader.uniforms.uSeaOpeningCount = { value: Math.min(4, seaOpenings.length) };
     shader.uniforms.uSeaFoam = { value: S.seaLake ? (S.seaFoam ?? 0.8) : 0 };
     shader.uniforms.uSeaRamp = { value: new THREE.Vector2(...(S.seaRamp || [0.40, 0.78])) };
+    // built-env-270: the bank's facing (its built-environment row; none: the old apron)
+    const bank = builtEnvironmentFor(mapId)?.shore.bank ?? null;
+    shader.uniforms.uBank = { value: bank ? new THREE.Vector4(BANK_KIND_CODE[bank.kind], bank.widthM, bank.strength ?? 1, bank.stoneM ?? 0.12)
+      : new THREE.Vector4(0, 0, 0, 0) };
+    shader.uniforms.uBankTint = { value: new THREE.Color(bank?.hex ?? 0x808080) }; // (THREE.Color takes sRGB hex to linear)
     shader.uniforms.uMidRelief = { value: S.midRelief ?? 1 };
     shader.uniforms.uSlopeGrassHold = { value: S.slopeGrassHold ?? 0 }; // round 45
     shader.uniforms.uRingRock = { value: new THREE.Vector2(...(S.ringRockSlope ?? [0.22, 0.48])) }; // round 49
