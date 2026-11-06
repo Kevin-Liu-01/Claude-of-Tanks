@@ -484,6 +484,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/sim/modeWeaponReload.selftest.mjs',
     'src/game/studioTimeline.selftest.mjs',
     'src/game/studioCrush.selftest.mjs',
+    // 2026-11-02 audit A7 (round 3, U28 x Studio teardown): a teardown step that throws skips none of the rest (the crushes' release)
+    'src/game/studioTeardown.selftest.mjs',
     'src/game/studioSceneLink.selftest.mjs',
     'src/game/studioSceneShare.selftest.mjs',
     'src/ui/studioPlanView.selftest.mjs',

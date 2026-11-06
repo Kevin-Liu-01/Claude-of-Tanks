@@ -6135,30 +6135,46 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
     return closing;
   }
 
-  /** The teardown's Studio half: everything the Studio laid over the frame and the battlefield, whose own light is last. */
+  /**
+   * The teardown's Studio half: everything the Studio laid over the frame and the battlefield, whose own light is last.
+   * (round 3 A7) Every step runs whatever an earlier one throws, and the first failure is rethrown once all have run (the
+   * exit's catch logs it): a recording that would not stop or a panel that would not hide skipped the rest, which left the
+   * Studio owning the frame and the cached battlefield's felled trees on the Studio's timeline (releaseCrushes gives them
+   * back to the frame, studioCrush.ts), so every later battle's felled trees opened their collision but never fell.
+   */
   function tearDownStudio(): void {
+    let failed = false;
+    let failure: unknown = null;
+    const step = (run: () => void): void => {
+      try {
+        run();
+      } catch (error) {
+        if (failed) console.error('[studio] a teardown step failed', error);
+        else { failed = true; failure = error; }
+      }
+    };
     entering = null;
     buildPlateUp = false;
-    panel.setStage(null);
-    if (recording) stopRecording();
-    flareToWallClock();
+    step(() => panel.setStage(null));
+    step(() => { if (recording) stopRecording(); });
+    step(flareToWallClock);
     active = false;
-    panel.hide();
+    step(() => panel.hide());
     marker.group.visible = false;
     placeArmed = null;
     dragActor = null;
     dragging = false;
     keys.clear();
-    releaseCrushes();
-    clearActors();
+    step(releaseCrushes);
+    step(clearActors);
     shells.length = 0;
     effectLog.length = 0;
     activeEffectIds.clear();
-    fx.resetAll();
+    step(() => fx.resetAll());
     studioStages.clear();
-    resetStudioGround(true);
-    fx.setFrozen(false);
-    releaseStudioFx();
+    step(() => resetStudioGround(true));
+    step(() => fx.setFrozen(false));
+    step(releaseStudioFx);
     timeScale = 1;
     camera.rotation.z = 0; // no roll may leak into game cameras
     cam.roll = 0;
@@ -6166,11 +6182,11 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
     selectedShotId = null;
     shotUidSeq = 1;
     actorKeyUidSeq = 1;
-    rail.rebuild();
-    rail.updateVisibility();
-    disposePicture();
-    unsweepPool();
-    ctx.restoreStudioAtmosphere?.(); // the cached battlefield gets its baked horizon light back before it can host a battle
+    step(() => { rail.rebuild(); rail.updateVisibility(); });
+    step(disposePicture);
+    step(unsweepPool);
+    step(() => ctx.restoreStudioAtmosphere?.()); // the cached battlefield gets its baked horizon light back before it can host a battle
+    if (failed) throw failure;
   }
 
   /** The whole teardown of an exit: the Studio's half, then the Garage hand-back. */
