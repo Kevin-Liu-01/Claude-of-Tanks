@@ -18,13 +18,14 @@
 // Review r1: the core's boot after its world resolves and its HELLO verification (WebCrypto) run in real time, while
 // virtual time moved 50 ms every four turns of the loop, so under load the hold notice landed steps late and case 2 went
 // silent on a clock threshold before it (one run failed at 38 s). Now virtual time moves only once that work has settled
-// (drainUntil: the boot posted ready, and the held HELLO was answered), and case 2 goes silent after the hold's notice by
-// message, so every time read here is the host's own and the windows below are exact.
+// (drainUntil: the boot posted ready, and the held HELLO joined the hold), and case 2 goes silent once alice's HELLO is in
+// the hold (after its notice), a state of the host's, not a clock reading, so every time here is the host's own and the
+// windows below are exact.
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { signSeatToken } from '../../../server/match/seatToken.ts';
 import { MatchClient } from '../match/matchClient.ts';
-import { HOLD_RELEASE_MARGIN_MS, RESUME_HOLD_MS } from '../match/recovery.ts';
+import * as recovery from '../match/recovery.ts';
 import { MigratingTransport, createLoopbackPair } from '../transport/index.ts';
 import { decodeMessage } from '../wire/codec.ts';
 import { MESSAGE_TYPE, PHASE, TICK_MS, VERDICT } from '../wire/constants.ts';
@@ -45,6 +46,9 @@ const aliceToken = signSeatToken(hostSecret, { v: 1, roomId: 'HOLDNT', seat: 0, 
 const BOOT_MS = 4_000;
 const STEP_MS = 50;
 const STALL_MS = 5_000;
+const { RESUME_HOLD_MS } = recovery;
+// (read off the module so this file also runs, and fails on the hazard, on a base without the margin)
+const HOLD_RELEASE_MARGIN_MS = recovery.HOLD_RELEASE_MARGIN_MS ?? RESUME_HOLD_MS;
 
 /**
  * Turn the event loop until `settled()` (the real async work of this virtual instant is done), with `each` after every
@@ -109,12 +113,12 @@ async function heldSeat({ newHost, silentAfterHold = false, untilMs = 45_000 }) 
     }
     if (decoded.ok && decoded.message.type === MESSAGE_TYPE.WELCOME && seen.welcomeAtMs === null) seen.welcomeAtMs = nowMs - openedAtMs;
     link.server.send(bytes);
-    // the host goes quiet once it has announced its hold (the second notice, as alice's HELLO joins the hold)
-    if (silentAfterHold && seen.notices.length >= 2) silent = true;
   });
-  // this instant's real async work is done: a loaded world's boot posted ready, and a booted host answered the HELLO it held
+  // this instant's real async work is done: a loaded world's boot posted ready, and a booted host took the HELLO it held
+  // into its hold (its token checked), welcomed it or closed it
+  const joinedHold = () => (core.stats()?.resumeHold?.arrived ?? 0) >= 1;
   const settled = () => host.failed !== null || ((!host.worldLoaded || host.ready)
-    && (!host.ready || seen.notices.length >= 2 || seen.welcomeAtMs !== null || seen.closed));
+    && (!host.ready || joinedHold() || seen.welcomeAtMs !== null || seen.closed));
   // a fallback restart's state (the kept host's last resort) or any resume: alice and bob awaited, bob never back
   const playing = { tick: 900, serverTimeMs: Math.round(900 * TICK_MS), ackedInputTick: 0, ackedFireSeq: 0, ackedActionSeq: 0, inputMarginTicks: 0,
     meta: { phase: PHASE.PLAYING, countdownMs: 0, battleTimeMs: 15_000, verdict: VERDICT.NONE, verdictReason: '', destructibleRevision: 0 },
@@ -134,6 +138,9 @@ async function heldSeat({ newHost, silentAfterHold = false, untilMs = 45_000 }) 
     link.pump(nowMs);
     await new Promise((resolve) => setImmediate(resolve));
     await drainUntil(settled, `the host at ${nowMs - openedAtMs} ms`);
+    // the host goes quiet once alice's HELLO is in its hold (what it says as it takes her in has gone out by now): a state
+    // of the host's, not a time, so a base that announces nothing goes quiet at the same moment
+    if (silentAfterHold && joinedHold()) silent = true;
     link.pump(nowMs);
     client.update(nowMs, STEP_MS / 1000);
   }
@@ -167,8 +174,8 @@ async function hostSeat() {
   const world = new RtcWorld();
   const relay = new FakeSignalRelay('alice', 1);
   const cores = [];
-  // what the core tells its runtime: ready, and its own notice to the loopback seat when the HELLO joins the hold
-  const core = { worldLoaded: false, ready: false, failed: null, noticed: false, welcomed: false };
+  // what the core tells its runtime: ready, and its WELCOME to the loopback seat
+  const core = { worldLoaded: false, ready: false, failed: null, welcomed: false };
   const host = createMatchHost({
     playerId: 'alice', generation: () => 1, createPeerConnection: world.createPeerConnection,
     createPort: () => {
@@ -181,7 +188,6 @@ async function hostSeat() {
         if (message.type === 'boot_failed') core.failed = message.error;
         if (message.type !== 'link_send' || message.peer !== HOST_LOOPBACK_PEER) return;
         const decoded = decodeMessage(new Uint8Array(message.bytes));
-        if (decoded.ok && decoded.message.type === MESSAGE_TYPE.HOLD) core.noticed = true;
         if (decoded.ok && decoded.message.type === MESSAGE_TYPE.WELCOME) core.welcomed = true;
       });
       return pair.main;
@@ -199,8 +205,10 @@ async function hostSeat() {
   client.connect();
   const flush = () => { relay.flush(); world.flush(); host.pump(nowMs); };
   const settle = async (rounds = 4) => { for (let n = 0; n < rounds; n++) { await new Promise((resolve) => setImmediate(resolve)); flush(); } };
-  // this instant's real async work is done: a loaded world's boot posted ready, and the core answered the queued HELLO
-  const settled = () => core.failed !== null || ((!core.worldLoaded || core.ready) && (!core.ready || core.noticed || core.welcomed));
+  // this instant's real async work is done: a loaded world's boot posted ready, and the core took the queued HELLO into
+  // its hold (its token checked) or welcomed it
+  const settled = () => core.failed !== null || ((!core.worldLoaded || core.ready)
+    && (!core.ready || (cores[0]?.stats()?.resumeHold?.arrived ?? 0) >= 1 || core.welcomed));
   let welcomeAtMs = null;
   // the core takes the boot at this instant (its world due BOOT_MS from now)
   await settle(1);
