@@ -85,7 +85,10 @@ Studio picture passes must stay out of the battle composer: never import
 The entry chunk is budgeted (`tools/bundle-budget.mjs` entryRaw): one map's
 sky data loads with that map's world, never statically from `sky.ts`. The
 Moon's land mask (`earthLandMask.ts`) goes through `earthLandAccess.ts`, which
-`world/map.ts` awaits before the world exists.
+`world/map.ts` awaits before the world exists. It, the grounded light model
+(`battleAtmosphereAccess.ts` `loadGroundedLightModel`) and the cloudscapes
+(`cloudPresets.ts`) are `app/lazyChunk.ts` chunks: the Studio asks them on every
+sun-dial move, and a failure is asked again only under the policy's backoff.
 Keep each rate-capped far-cascade projection paired with the depth map rendered
 from that pose. Do not move its light fit on an unscheduled frame. Shadow visual
 changes must pass both the raw CSM motion comparison and composed temporal-AO

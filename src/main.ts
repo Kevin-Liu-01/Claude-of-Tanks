@@ -72,8 +72,8 @@ import {
 } from './engine/quality.ts';
 import { createSky, DEFAULT_SKY_PRESET } from './engine/sky.ts';
 import { deriveCloudLayerPreset } from './engine/cloudPresets.ts';
-import { createBattleAtmosphereAccess } from './engine/battleAtmosphereAccess.ts';
-import { EXPOSURE_REFERENCE_ILLUMINANCE, loadGroundedLightModel } from './engine/lightModelCore.ts';
+import { createBattleAtmosphereAccess, loadGroundedLightModel } from './engine/battleAtmosphereAccess.ts';
+import { EXPOSURE_REFERENCE_ILLUMINANCE } from './engine/lightModelCore.ts';
 import { loadCloudscapeLayers } from './engine/cloudPresets.ts';
 import { battlePreferences } from './game/battlePreferences.ts';
 import { createFrontlineAtmosphereAccess } from './world/frontlineAtmosphereAccess.ts';

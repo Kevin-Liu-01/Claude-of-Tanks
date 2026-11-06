@@ -21,6 +21,7 @@ import {
   type AudioBattleMode,
 } from './battleMode.ts';
 import { killcamOwnsScreen } from '../game/killcamScreen.ts';
+import { createLazyChunk } from '../app/lazyChunk.ts';
 
 interface AudioMixerModule {
   /** Optional cooperative preparation the mixer may want before adoption. */
@@ -112,8 +113,22 @@ export function createLazyAudio({
 }: LazyAudioOptions = {}): LazyAudio {
   let context: AudioContext | null = null;
   let real: AudioMixer | null = null;
-  let modulePromise: Promise<AudioMixerModule | null> | null = null;
-  let realPromise: Promise<AudioMixer | null> | null = null;
+  // (round 3 X8) the mixer's chunk under the one lazy-chunk policy (app/lazyChunk.ts). Its memo (modulePromise) was cleared
+  // on a failure and asked again at once by the next gesture, phase edge, sting or battle warm, offline too, with a 404
+  // never terminal; and the creation's memo over it (realPromise) asked the load again with it. Now the chunk is asked again
+  // at once after one failure, then past the backoff, never offline, and a removed chunk shows the reload action; the
+  // creation is joined, not memoized, and asks the chunk each time (a kept failure inside the backoff answers at once)
+  // (the loader runs in the ask, as before: a transfer starts in the gesture that asked for it)
+  const mixerChunk = createLazyChunk(async (): Promise<AudioMixerModule | null> => {
+    try {
+      return await loadMixer();
+    } catch (error) {
+      console.warn('[audio] deferred mixer load failed:', error);
+      throw error;
+    }
+  });
+  // the one creation in flight (after the chunk has answered): every caller joins it until it settles
+  let creating: Promise<AudioMixer> | null = null;
   let bus: EventBus | null = null;
   let stopPhaseTracking: (() => void) | null = null;
   let stopVolumeTracking: (() => void) | null = null;
@@ -222,35 +237,34 @@ export function createLazyAudio({
     return real;
   };
 
-  const preload = (): Promise<AudioMixerModule | null> => {
-    if (!modulePromise) {
-      modulePromise = loadMixer().catch((error) => {
-        modulePromise = null;
-        console.warn('[audio] deferred mixer load failed:', error);
-        return null;
-      });
-    }
-    return modulePromise;
+  // the mixer's module (null when its chunk failed: the caller goes on without sound, and a later one asks as the policy
+  // allows)
+  const preload = (): Promise<AudioMixerModule | null> => mixerChunk.load().then(undefined, () => null);
+
+  const create = (module: AudioMixerModule): Promise<AudioMixer> => {
+    if (real) return Promise.resolve(real);
+    if (creating) return creating;
+    const creation = (async (): Promise<AudioMixer> => {
+      // Keep the full graph, bus subscriptions and shared sound RNG private
+      // while its exact buffers are prepared; phase and intent are read
+      // again at handoff.
+      const preparedBuffers = context && module.prepareAudioBuffers
+        ? await module.prepareAudioBuffers(context) : null;
+      return settleReal(module.createAudio({
+        ...world, context, getContext: () => context, preparedBuffers, initialPhase: mode.phase, initialMode: copyAudioBattleMode(mode),
+      }));
+    })();
+    creating = creation;
+    // settled, it is no longer joined: a failed creation (its buffers, its graph) is made again by the next request, from
+    // the module the chunk holds (these handlers run before any caller's)
+    const settled = (): void => { if (creating === creation) creating = null; };
+    void creation.then(settled, settled);
+    return creation;
   };
 
   const ensureReal = (): Promise<AudioMixer | null> => {
     if (real) return Promise.resolve(real);
-    if (!realPromise) {
-      realPromise = preload().then(async (module) => {
-        if (!module) return null;
-        // Keep the full graph, bus subscriptions and shared sound RNG private
-        // while its exact buffers are prepared; phase and intent are read
-        // again at handoff.
-        const preparedBuffers = context && module.prepareAudioBuffers
-          ? await module.prepareAudioBuffers(context) : null;
-        return settleReal(module.createAudio({
-          ...world, context, getContext: () => context, preparedBuffers, initialPhase: mode.phase, initialMode: copyAudioBattleMode(mode),
-        }));
-      }).finally(() => {
-        if (!real) realPromise = null;
-      });
-    }
-    return realPromise;
+    return preload().then((module) => (module ? create(module) : null));
   };
 
   const requestReal = (): void => {

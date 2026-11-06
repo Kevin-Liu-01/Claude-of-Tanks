@@ -44,11 +44,11 @@ const cineNoon = lightTintForRig(rig(4.5, 0xfff2e0, 0.45, 0x9fc1e8), new THREE.C
 assert.ok(cineNoon.r > 0.97 && cineNoon.g > 0.97 && cineNoon.b > 0.97, 'the cinematic noon is white');
 // (2026-10-12) Under the grounded light model (every open sky on the desktop tiers) the published rig has no sky term by
 // day — the environment carries it — so the battle measures the light over a puff's whole sphere on the model itself.
-const { loadGroundedLightModel, resolveLightModel } = await import('../engine/lightModelCore.ts');
+const { importGroundedLightModel, resolveLightModel } = await import('../engine/lightModelCore.ts');
 const { skyPresetToAtmosphere } = await import('../engine/atmosphere.ts');
 const { DEFAULT_SKY_PRESET } = await import('../engine/sky.ts');
 const { getMapConfig } = await import('../world/maps/index.ts');
-await loadGroundedLightModel();
+await importGroundedLightModel();
 const IRR = [0.11, 0.125, 0.16]; // the clear dome's raw irradiance the light model's receipt pins for Verdant
 const hour = (id, time) => {
   const sky = { ...DEFAULT_SKY_PRESET, ...getMapConfig(id).sky };

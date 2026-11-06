@@ -17,7 +17,7 @@ import { HORIZON_RELIEF_CHARACTERS } from './horizonRelief.ts';
 import { inselbergSection } from './landformGeology.ts';
 import { CLOUD_FOGBANK_RANGE_M } from '../engine/cloudWeatherLayers.ts';
 import { hazeSigma } from '../engine/hazeLaw.ts';
-import { authoredSunOf, loadGroundedLightModel, resolveLightModel } from '../engine/lightModelCore.ts';
+import { authoredSunOf, importGroundedLightModel, resolveLightModel } from '../engine/lightModelCore.ts';
 import { skyPresetToAtmosphere, sunDirectionOf } from '../engine/atmosphere.ts';
 import { battleTimePreset } from '../engine/battleAtmosphereRuntime.ts';
 
@@ -519,7 +519,7 @@ const options = { seed: 1337, character: 'alpine', palette, sun: [0.5, 0.6, 0.6]
 // twice is a no-op; back to the day re-bakes the authored bake; without a renderer, a preset or the grounded light it
 // refuses (the battle atmosphere then keeps the night dim).
 {
-  await loadGroundedLightModel();
+  await importGroundedLightModel();
   const lightPreset = { sunElevationDeg: 32, sunAzimuthDeg: 115, sunIntensity: 4.5, skyIntensity: 1, turbidity: 4, rayleigh: 1.2,
     mieCoefficient: 0.006, mieDirectionalG: 0.82 };
   const daySun = sunDirectionOf(32, 115);

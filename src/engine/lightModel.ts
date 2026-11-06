@@ -38,8 +38,8 @@
  * daylight key, not a sky that lights the ground) and the Garage's enclosed bay (lighting.ts).
  *
  * 2026-10-02 (the boot weight): the types, the authored rig and the dispatcher live in lightModelCore.ts, in the boot
- * chunk; this module loads behind the battle entry (lightModelCore.ts loadGroundedLightModel: the battle atmosphere's
- * acquisition and the capture staging await it). It imports nothing at runtime — the core hands it the atmosphere it
+ * chunk; this module loads behind the battle entry (lightModelCore.ts importGroundedLightModel, held by
+ * battleAtmosphereAccess.ts loadGroundedLightModel: the battle atmosphere's acquisition and the capture staging await it). It imports nothing at runtime — the core hands it the atmosphere it
  * integrates (groundedLightModel) — so its chunk shares no module with the boot closure.
  */
 import type { AtmosphereParams } from './atmosphere.ts';
@@ -48,7 +48,7 @@ import type { GroundedLightEnv, GroundedLightResolver, LightModel, LightModelPre
 /** The atmosphere and defaults the core hands over on install (atmosphere.ts's medium, the shared ground and meter). */
 let env: GroundedLightEnv | null = null;
 const atmosphereOf = (): GroundedLightEnv => {
-  if (!env) throw new Error('lightModel.ts: install the grounded model first (lightModelCore.ts loadGroundedLightModel)');
+  if (!env) throw new Error('lightModel.ts: install the grounded model first (lightModelCore.ts importGroundedLightModel)');
   return env;
 };
 // the core's small helpers, local so this chunk imports nothing at runtime (lightModel.selftest pins them equal)

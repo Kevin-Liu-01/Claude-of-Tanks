@@ -14,7 +14,7 @@ import {
   OVERCAST_THICK_CUT, OVERCAST_THICK_FROM, OVERCAST_SATURATION_CUT,
 } from './lightModel.ts';
 import {
-  DEFAULT_GROUND_ALBEDO, EXPOSURE_REFERENCE_ILLUMINANCE, hexToLinear, isGalaxySky, lightTune, loadGroundedLightModel, luminance,
+  DEFAULT_GROUND_ALBEDO, EXPOSURE_REFERENCE_ILLUMINANCE, hexToLinear, isGalaxySky, lightTune, importGroundedLightModel, luminance,
   resolveLightModel, resolveOvercast, resolveDeckClosure, DECK_CLOSED_COVERAGE, OVERCAST_DIRECT_CUT_SHARED,
 } from './lightModelCore.ts';
 import { CLOUD_LAYER_RULES } from './cloudPresets.ts';
@@ -30,7 +30,7 @@ const near = (a, b, tol, what) => assert.ok(Math.abs(a - b) <= tol, `${what}: ${
   const preset = { ...DEFAULT_SKY_PRESET, ...getMapConfig('verdant').sky };
   const args = [preset, skyPresetToAtmosphere(preset), { irradianceRaw: [0.05, 0.08, 0.14] }];
   assert.equal(resolveLightModel(...args).mode, 'legacy', 'before the grounded model loads, an open sky keeps the authored rig');
-  await loadGroundedLightModel();
+  await importGroundedLightModel();
   assert.equal(resolveLightModel(...args).mode, 'physical', 'loaded, the grounded model lights it');
 }
 const verdantSky = { ...DEFAULT_SKY_PRESET, ...getMapConfig('verdant').sky };

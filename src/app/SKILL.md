@@ -18,10 +18,13 @@ policy into a second owner. Dependencies arrive through explicit typed ports.
 `combatAimComposition.ts` connects camera, reticle, physical aim, and spotting.
 `combatWarmComposition.ts` owns renderer-lifetime warm caches and cancellation.
 `lazyRuntimeOwner.ts` and `checkedIntegrationPort.ts` guard lazy integration;
-every lazy chunk's failure policy is `lazyChunk.ts` (`lazyRuntimeOwner.ts` is
-one of its chunks per facade; `lazyChunkSites.selftest.mjs` fails a new
+a new lazy chunk takes `lazyChunk.ts`'s failure policy (`lazyRuntimeOwner.ts` is
+one of its chunks per facade). The older memos that differ (a stylesheet kept
+for the document, a memo asked once per lifecycle edge or open, the docs pages
+that do not boot the policy, an initialization or a join over a chunk the
+policy holds, a data fetch) are named with their reasons in `lazyChunkSites.selftest.mjs` KNOWN, which fails a new
 hand-made memo, facade or latch in the spellings it reads, so a new lazy load
-starts from `createLazyChunk`).
+starts from `createLazyChunk`.
 `watchRuntime.ts` composes Watch mode (the drone/ride camera, the controller and
 its bar) the first time a watched battle loads; main.ts keeps only the lazy owner.
 

@@ -1576,7 +1576,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/leafyBush.selftest.mjs',
     'src/vehicles/vehicleNightLighting.selftest.mjs',
     'src/engine/battleAtmosphereAccess.selftest.mjs',
-    // 2026-11-02 audit R6 (round 2 U35): a failed light model or cloudscape chunk is asked again by the next battle
+    // 2026-11-02 audit R6 (round 2 U35): a failed light model or cloudscape chunk is asked again by the next battle;
+    // (round 3 A4) under the lazy-chunk policy, never per Studio sun-dial move
     'src/engine/battleAtmosphereChunkReask.selftest.mjs',
     'tools/daynight-atmosphere-probe.selftest.mjs',
     'tools/night-window-census.selftest.mjs',
@@ -1598,6 +1599,9 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/engine/skyEnvironmentCache.selftest.mjs',
     // 2026-10-18 (the 228 entry diet): the Moon's land mask loads with the world that draws it, not with the entry chunk
     'src/engine/earthLandAccess.selftest.mjs',
+    // 2026-11-02 audit A4 (round 3, U35): the Moon's land mask is asked again under the lazy-chunk policy, never per Studio
+    // sky apply (forty dial applies after a failure ask nothing inside the backoff, none offline)
+    'src/engine/earthLandReask.selftest.mjs',
     'src/engine/skyEnvironmentEnclosure.selftest.mjs',
     'src/engine/atmosphere.selftest.mjs',
     // 2026-10-01: the grounded light model (lighting lane): sun through the atmosphere, the sky's own light, the deck, the exposure law
@@ -2961,6 +2965,9 @@ export const SELFTEST_SUITES = Object.freeze({
   ]),
   post: Object.freeze([
     'src/audio/lazyAudio.selftest.mjs',
+    // 2026-11-02 audit X8 (round 3): the audio mixer's chunk is asked again under the lazy-chunk policy, never per press
+    // (thirty presses after a failed transfer ask nothing inside the backoff, none offline)
+    'src/audio/lazyAudioMixerChunk.selftest.mjs',
     // 2026-11-02 audit F11: the audio device's lifecycle (an interruption re-arms the gesture unlock, visibility retries,
     // 'interrupted' resumes like 'suspended')
     'src/audio/audioDevice.selftest.mjs',
