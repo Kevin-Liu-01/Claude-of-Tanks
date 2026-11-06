@@ -203,3 +203,107 @@ export function bendGeometry(geometry: THREE.BufferGeometry, bend: WreckBend, to
   position.needsUpdate = true;
   if (normal) normal.needsUpdate = true;
 }
+
+/**
+ * A copy of a geometry ready for `bendGeometry`: every triangle that crosses the kink's crease cut along it (the planes
+ * z = z0, the ramp's middle and its end, in the gun's frame). The bend moves corners, never edges, so a triangle with a
+ * corner either side of the crease drew a straight chord from the breech run to the turned muzzle run: a long tube
+ * authored with rings only at its ends (a thin inner barrel under a sleeved one) stayed straight beside the kinked tube
+ * around it, two barrels on the wreck (the owner, 2026-11-05: "when destroyed you can still see the double barrels").
+ * Cut, each piece lies in one run and turns with it. Every attribute is interpolated (normals renormalised), the winding
+ * and the material groups kept; non-indexed out when anything was cut, else a plain clone. `toGun` maps the stored corners
+ * into the gun's frame.
+ */
+export function cutAtKink(geometry: THREE.BufferGeometry, bend: WreckBend, toGun: THREE.Matrix4): THREE.BufferGeometry {
+  const position = geometry.attributes.position as THREE.BufferAttribute | undefined;
+  const names = Object.keys(geometry.attributes);
+  if (!position || names.some((name) => (geometry.attributes[name] as THREE.InterleavedBufferAttribute).isInterleavedBufferAttribute)
+    || Object.keys(geometry.morphAttributes).length) return geometry.clone();
+  const index = geometry.index;
+  const corners = index ? index.count : position.count;
+  const drawEnd = Math.min(corners, geometry.drawRange.start + geometry.drawRange.count);
+  if (geometry.drawRange.start !== 0 || drawEnd !== corners || corners % 3) return geometry.clone();
+  const planes = [bend.z0, bend.z0 + bend.ramp * 0.5, bend.z0 + bend.ramp];
+  const e = toGun.elements;
+  const zOf = (v: number): number => e[2] * position.getX(v) + e[6] * position.getY(v) + e[10] * position.getZ(v) + e[14];
+  const vertexAt = (corner: number): number => (index ? index.getX(corner) : corner);
+  const crosses = (z0: number, z1: number, z2: number): boolean => planes.some((plane) =>
+    Math.min(z0, z1, z2) < plane - 1e-9 && Math.max(z0, z1, z2) > plane + 1e-9);
+  let any = false;
+  for (let c = 0; c < corners && !any; c += 3) any = crosses(zOf(vertexAt(c)), zOf(vertexAt(c + 1)), zOf(vertexAt(c + 2)));
+  if (!any) return geometry.clone();
+  const attributes = names.map((name) => geometry.attributes[name] as THREE.BufferAttribute);
+  const sizes = attributes.map((attribute) => attribute.itemSize);
+  const stride = sizes.reduce((a, b) => a + b, 0);
+  /** A corner: its attributes, interleaved, and its run along the bore. */
+  type Corner = { a: Float64Array; z: number };
+  const read = (v: number): Corner => {
+    const a = new Float64Array(stride);
+    for (let k = 0, o = 0; k < attributes.length; o += sizes[k], k++) {
+      for (let c = 0; c < sizes[k]; c++) a[o + c] = attributes[k].array[v * sizes[k] + c] as number;
+    }
+    return { a, z: zOf(v) };
+  };
+  const between = (p: Corner, q: Corner, plane: number): Corner => {
+    const t = (plane - p.z) / (q.z - p.z), a = new Float64Array(stride);
+    for (let c = 0; c < stride; c++) a[c] = p.a[c] + (q.a[c] - p.a[c]) * t;
+    return { a, z: plane };
+  };
+  const out: Corner[] = [];
+  /** Where each source triangle's output begins (corners), for the groups. */
+  const starts = new Int32Array(corners / 3 + 1);
+  for (let c = 0; c < corners; c += 3) {
+    starts[c / 3] = out.length;
+    let polygons: Corner[][] = [[read(vertexAt(c)), read(vertexAt(c + 1)), read(vertexAt(c + 2))]];
+    for (const plane of planes) {
+      const next: Corner[][] = [];
+      for (const polygon of polygons) {
+        const d = polygon.map((corner) => corner.z - plane);
+        if (!d.some((x) => x < -1e-9) || !d.some((x) => x > 1e-9)) { next.push(polygon); continue; }
+        const below: Corner[] = [], above: Corner[] = [];
+        for (let i = 0; i < polygon.length; i++) {
+          const p = polygon[i], q = polygon[(i + 1) % polygon.length], dp = d[i], dq = d[(i + 1) % polygon.length];
+          if (dp <= 1e-9) below.push(p);
+          if (dp >= -1e-9) above.push(p);
+          if ((dp < -1e-9 && dq > 1e-9) || (dp > 1e-9 && dq < -1e-9)) { const m = between(p, q, plane); below.push(m); above.push(m); }
+        }
+        if (below.length >= 3) next.push(below);
+        if (above.length >= 3) next.push(above);
+      }
+      polygons = next;
+    }
+    // each piece is convex (a triangle cut by parallel planes): a fan keeps the winding
+    for (const polygon of polygons) {
+      for (let i = 1; i + 1 < polygon.length; i++) out.push(polygon[0], polygon[i], polygon[i + 1]);
+    }
+  }
+  starts[corners / 3] = out.length;
+  const cut = new THREE.BufferGeometry();
+  for (let k = 0, o = 0; k < attributes.length; o += sizes[k], k++) {
+    const attribute = attributes[k], size = sizes[k];
+    const source = attribute.array as THREE.TypedArray;
+    const integer = !(source instanceof Float32Array || source instanceof Float64Array);
+    const array = new (source.constructor as new (n: number) => THREE.TypedArray)(out.length * size);
+    for (let i = 0; i < out.length; i++) {
+      for (let c = 0; c < size; c++) { const x = out[i].a[o + c]; array[i * size + c] = integer ? Math.round(x) : x; }
+    }
+    const cutAttribute = new THREE.BufferAttribute(array, size, attribute.normalized);
+    cutAttribute.usage = attribute.usage;
+    cut.setAttribute(names[k], cutAttribute);
+  }
+  const normal = cut.attributes.normal as THREE.BufferAttribute | undefined;
+  if (normal && normal.itemSize === 3) {
+    for (let i = 0; i < normal.count; i++) {
+      _n.fromBufferAttribute(normal, i);
+      if (_n.lengthSq() > 0) { _n.normalize(); normal.setXYZ(i, _n.x, _n.y, _n.z); }
+    }
+  }
+  for (const group of geometry.groups) {
+    const first = starts[Math.floor(group.start / 3)];
+    const last = starts[Math.min(corners, group.start + group.count) / 3 | 0];
+    cut.addGroup(first, last - first, group.materialIndex);
+  }
+  cut.name = geometry.name;
+  cut.userData = { ...geometry.userData };
+  return cut;
+}
