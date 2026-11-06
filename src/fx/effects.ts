@@ -2251,7 +2251,11 @@ function* createFxSteps(
    * the battle is paused and slows in a replay, so the bound only ever runs long.
    */
   const SHELL_RECORD_BOUND_S = SHELL_MAX_LIFETIME_S + 4;
-  /** The earliest dueS any record holds (Infinity with none): the frame's one test before a sweep. */
+  /** A sweep's least spacing: in a sustained fight a record falls due every frame, and a record may outlive its bound by
+   *  this much rather than every frame walking both maps. */
+  const SHELL_RECORD_SWEEP_S = 1;
+  /** When the next sweep runs: the earliest dueS any record holds, no sooner than a spacing after the last sweep (Infinity
+   *  with none): the frame's one test. */
   let shellRecordsDueS = Infinity;
   timeShifts.on('shellRecords', (delta) => {
     for (const record of shellMunitions.values()) record.dueS += delta;
@@ -2268,7 +2272,8 @@ function* createFxSteps(
   /** (round 4 F6) Every frame: the records whose round has outlived its flight-time bound go. */
   function ageShellRecords(nowS: number): void {
     if (nowS < shellRecordsDueS) return;
-    shellRecordsDueS = sweepShellRecords(hullMetMunitions, nowS, sweepShellRecords(shellMunitions, nowS, Infinity));
+    const next = sweepShellRecords(hullMetMunitions, nowS, sweepShellRecords(shellMunitions, nowS, Infinity));
+    shellRecordsDueS = next === Infinity ? Infinity : Math.max(next, nowS + SHELL_RECORD_SWEEP_S);
   }
   const _munShell = { type: '', caliberMm: 0, name: '', guided: false as boolean | undefined, tracer: undefined as string | undefined,
     blastRadiusM: undefined as number | undefined, launcherTubes: 0 };
