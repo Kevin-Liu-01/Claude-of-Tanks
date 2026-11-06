@@ -6145,9 +6145,9 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
   function tearDownStudio(): void {
     let failed = false;
     let failure: unknown = null;
-    const step = (run: () => void): void => {
+    const step = (piece: () => void): void => {
       try {
-        run();
+        piece();
       } catch (error) {
         if (failed) console.error('[studio] a teardown step failed', error);
         else { failed = true; failure = error; }
