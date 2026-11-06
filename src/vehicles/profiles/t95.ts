@@ -69,8 +69,12 @@ const SHELL: readonly ShellStation[] = Object.freeze([
   { z: -3.60, roofY: 1.91, xr: 1.02, xs: 1.20, ys: 1.84, xo: 2.185, yo: 1.27 },
   { z: -2.80, roofY: 2.02, xr: 1.02, xs: 1.20, ys: 1.86, xo: 2.185, yo: 1.27 },
   { z: -1.40, roofY: 2.02, xr: 1.04, xs: 1.22, ys: 1.86, xo: 2.185, yo: 1.27 },
-  { z: -1.00, roofY: 2.03, xr: 1.10, xs: 1.35, ys: 1.84, xo: 2.185, yo: 1.25 },
-  { z: -0.40, roofY: 2.02, xr: 1.18, xs: 1.32, ys: 1.76, xo: 1.56, yo: 1.24 },
+  // (blind critics, round 7: the cheek crumpled) where the outer slope ends, its foot moves in along its own plane (the
+  // print's diagonal front edge in plan): the side stays one flat plate and drops to the unit cover at its cut end
+  { z: -1.00, roofY: 2.03, xr: 1.08, xs: 1.26, ys: 1.85, xo: 2.10, yo: 1.337 },
+  { z: -0.70, roofY: 2.03, xr: 1.12, xs: 1.28, ys: 1.83, xo: 1.90, yo: 1.451 },
+  { z: -0.40, roofY: 2.02, xr: 1.14, xs: 1.28, ys: 1.80, xo: 1.58, yo: 1.617 },
+  { z: -0.25, roofY: 2.01, xr: 1.02, xs: 1.18, ys: 1.82, xo: 1.44, yo: 1.42 },
   { z: -0.10, roofY: 2.00, xr: 0.85, xs: 1.05, ys: 1.82, xo: 1.28, yo: 1.22 },
   { z: 0.10, roofY: 1.97, xr: 0.55, xs: 0.85, ys: 1.66, xo: 1.15, yo: 1.22 },
   { z: 0.22, roofY: 1.90, xr: 0.36, xs: 0.70, ys: 1.60, xo: 1.05, yo: 1.21 },
@@ -181,12 +185,13 @@ function* buildT95Steps(P: TankBuilderPort): TankProfileBuild {
         { z: H.faceZ, ring: ring(H.coverInX, H.coverY - 0.07, H.coverY + 0.005) },
         { z: 1.66, ring: ring(H.coverInX, H.coverY - 0.07, H.coverY + 0.005) },
         { z: 1.76, ring: ring(H.coverInX + 0.04, 0.96, 1.03) },
-        { z: H.noseZ, ring: ring(1.00, H.noseY - 0.06, H.noseY) },
+        { z: H.noseZ, ring: ring(H.coverInX + 0.04, H.noseY - 0.06, H.noseY) },
       ]));
       // the cover's inner wall down to the tub forward of the bow face (the units' front carriers)
       P.add('hull', box(H.tubX - H.coverInX + 0.02, H.coverY - 0.60, H.coverFrontZ - H.faceZ), s * (H.tubX + H.coverInX) / 2, (H.coverY + 0.60) / 2 - 0.03, (H.faceZ + H.coverFrontZ) / 2);
       // the spacer wall between the two units of a side (the unit carrier the outer unit's four bolts pull to)
-      P.add('hull', box(0.06, H.coverY - 0.34, 6.0), s * H.spacerX, (H.coverY + 0.34) / 2, -1.90);
+      // (stopping short of the front, so the two track faces of a side read apart: blind critic, round 7)
+      P.add('hull', box(0.06, H.coverY - 0.34, 5.30), s * H.spacerX, (H.coverY + 0.34) / 2, -2.25);
       // the outer skirt, 4 in thick, from the stern to the nose slope, its foot rising ahead of the front bogie
       const so = s * H.skirtX, si = s * (H.skirtX - H.skirtT);
       const [x0, x1] = s > 0 ? [si, so] : [so, si];
@@ -323,11 +328,6 @@ function* buildT95Steps(P: TankBuilderPort): TankProfileBuild {
       bar('hullDark', [ax - 0.11, H.coverY + 0.24, 0.96], [ax + 0.11, H.coverY + 0.24, 0.96], 0.024);
       P.add('hullDark', box(0.12, 0.10, 0.12), ax, ty, tz);
       P.add('hullDark', torus(0.05, 0.016, 10, 6), ax, ty - 0.08, tz + 0.04, 0, 0, Math.PI / 2);
-      // spare track links hung on the casemate's cheek
-      for (let k = 0; k < 5; k++) {
-        const lz = -0.95 + k * 0.17, lx = 1.30, slope = Math.atan2(sideAt(lx + 0.12, lz) - sideAt(lx - 0.12, lz), 0.24);
-        P.addEquipment('hullDark', xform(box(0.50, 0.035, 0.15), 0, 0, 0, 0, 0, s * slope), s * lx, sideAt(lx, lz) + 0.03, lz);
-      }
       // the lifting bracket on the casemate's front corner
       P.add('hullDetail', box(0.05, 0.16, 0.20), s * 0.90, sideAt(0.90, 0.05) + 0.05, 0.05);
     }
@@ -401,14 +401,17 @@ function* buildT95Steps(P: TankBuilderPort): TankProfileBuild {
     const len = GUN.muzzleZ - BALL.z;
     const z0 = BALL.r + 0.10, zStep = z0 + (len - z0) * 0.34, zBrake = len - GUN.brakeL;
     // (blind critics, round 5: thin for its bore) the jacket over the chamber end, a third of the way out
-    P.add('gun', cylZ(GUN.rootR + 0.03, zStep - z0, seg, GUN.rootR + 0.045), 0, 0, (z0 + zStep) / 2);
-    P.add('gun', cylZ(GUN.rootR + 0.012, 0.05, seg, GUN.rootR + 0.03), 0, 0, zStep);
+    const zJ = z0 + (zStep - z0) * 0.62;
+    P.add('gun', cylZ(GUN.rootR + 0.028, zJ - z0, seg, GUN.rootR + 0.04), 0, 0, (z0 + zJ) / 2);
+    P.add('gun', cylZ(GUN.rootR - 0.004, zStep - zJ, seg, GUN.rootR + 0.028), 0, 0, (zJ + zStep) / 2);
+    P.add('gun', cylZ(GUN.rootR - 0.008, 0.04, seg), 0, 0, zStep);
     P.add('gun', cylZ(GUN.muzzleR, zBrake - zStep, seg, GUN.rootR - 0.018), 0, 0, (zStep + zBrake) / 2);
     // the muzzle collar: the 6"/47 fired without a brake, so the tube ends in a solid swell with a front lip (blind critics,
     // rounds 4-7: a box brake read as a placeholder; the photographs' muzzle is a solid cylindrical cap)
-    P.add('gun', cylZ(GUN.brakeR, GUN.brakeL - 0.10, seg, GUN.brakeR - 0.01), 0, 0, zBrake + 0.10 + (GUN.brakeL - 0.10) / 2);
+    P.add('gun', cylZ(GUN.brakeR, GUN.brakeL - 0.14, seg, GUN.brakeR - 0.01), 0, 0, zBrake + 0.10 + (GUN.brakeL - 0.14) / 2);
     P.add('gun', cylZ(GUN.brakeR - 0.01, 0.10, seg, GUN.muzzleR), 0, 0, zBrake + 0.05);
-    P.add('gun', cylZ(GUN.brakeR + 0.012, 0.035, seg), 0, 0, len - 0.03);
+    P.add('gun', torus(GUN.brakeR - 0.03, 0.03, seg, 8), 0, 0, len - 0.03, Math.PI / 2, 0, 0);
+    P.add('gun', torus(GUN.boreR + 0.022, 0.02, seg, 6), 0, 0, len - 0.045, Math.PI / 2, 0, 0);
     P.add('gun', cylZ(GUN.boreR * 1.45, 0.03, seg), 0, 0, len - 0.012);
     muzzleBore(P, { z: len + 0.004, r: GUN.boreR });
     P.muzzleZ = len;
