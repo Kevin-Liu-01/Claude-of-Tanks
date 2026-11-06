@@ -158,11 +158,15 @@ const emit = (n, p) => { for (const f of handlers.get(n) ?? []) f(p); };
 let matchClockS = 300;
 // (review r1) the drones in the air: every frame writes them (a drone missing from a frame reads as a flight that ended)
 const airborne = new Set();
+const live = [];
 const frames = (n, shells = []) => {
   for (let i = 0; i < n; i++) {
     matchClockS += 1 / 60;
     syncCarrier(1 / 60);
-    fx.update(1 / 60, airborne.size ? [...shells, ...airborne] : shells, camera, () => null);
+    live.length = 0;
+    for (const shell of shells) live.push(shell);
+    for (const shell of airborne) live.push(shell);
+    fx.update(1 / 60, live, camera, () => null);
     // the late pass asks every frame whether its soft media draw (the volume media's clock read)
     fx.group.userData.softParticles.isActive();
   }
@@ -175,8 +179,10 @@ const groundBurst = (x) => { const s = id++; fired(s); emit('shell:expired', { s
 const shells = [
   { id: 71, pos: new THREE.Vector3(0, 2, 10), vel: new THREE.Vector3(0, 0, 1500), spec: { tracer: 'TANK' }, shooterId: 'g', ageS: 0.05, distM: 60 },
   { id: 72, pos: new THREE.Vector3(4, 3, 20), vel: new THREE.Vector3(0, 0, 250), spec: { guided: true, tracer: 'ATGM' }, shooterId: 'g', ageS: 1, distM: 250 },
-  // (round 3 B5) a machine gun's round that will strike the ground
-  { id: 74, pos: new THREE.Vector3(-6, 1, 14), vel: new THREE.Vector3(0, 0, 850), spec: { tracer: 'MG' }, shooterId: 'g', ageS: 0.02, distM: 16 },
+  // (round 3 B5) a machine gun's round that will strike the ground; (round 4 F7) its calibre makes it a machine gun's,
+  // the first of its belt (traced), lit past its ignite distance
+  { id: 74, pos: new THREE.Vector3(-6, 1, 14), vel: new THREE.Vector3(0, 0, 850), spec: { tracer: 'MG', caliberMm: 7.62 }, shooterId: 'g',
+    ageS: 0.02, distM: 16 },
 ];
 // (round 3 B5, review r1) the carrier's drones, all flying free (past the launch): one recalled beside the carrier (its
 // flight home lands on the dock before the rebase), one that strikes the ground (no flight home), one still in flight at
@@ -203,6 +209,9 @@ for (let f = 0; f < 170; f++) {
   if (f === 121) airborne.add(droneStruck);
   frames(1, f > 120 ? shells : []);
 }
+// (round 4 F7) the machine gun's round strikes the ground the frame after its last (its record still live): its tracer's
+// strike spray (projectileTracers strike: the sparks' t0; a record missing past its grace draws no strike)
+emit('shell:expired', { shellId: 74, pos: [-6, 0, 18], hitTerrain: true, shellType: 'AP', caliberMm: 7.62 });
 // a salvo's bursts on the ground, and rounds striking a building's wall
 for (let k = 0; k < 3; k++) { groundBurst(k * 3); frames(2); }
 for (let k = 0; k < 2; k++) {
@@ -212,10 +221,8 @@ for (let k = 0; k < 2; k++) {
 }
 // (round 3 B5) the paths the census had not driven
 {
-  // the round in flight strikes the ground (its tracer's strike spray), the striking drone hits the ground (it never
-  // flies home), two more drones take off, a wire-guided missile pays out its wire, and the AC-130 fires its howitzer and
-  // missile
-  emit('shell:expired', { shellId: 74, pos: [-6, 0, 18], hitTerrain: true, shellType: 'AP', caliberMm: 7.62 });
+  // the tank round strikes the ground, the striking drone hits the ground (it never flies home), two more drones take
+  // off, a wire-guided missile pays out its wire, and the AC-130 fires its howitzer and missile
   emit('shell:expired', { shellId: 71, pos: [0, 0, 26], hitTerrain: true, shellType: 'APFSDS', caliberMm: 120 });
   airborne.delete(droneStruck);
   emit('shell:expired', { shellId: 80, pos: [-4, 0, 24], hitTerrain: true, shellType: 'HEAT', caliberMm: 90 });
@@ -322,8 +329,6 @@ function dronesLive(when) {
 const KNOWN_UNREACHED = [
   // the wreck fire light's flicker (unreached with a 260-frame burn too)
   'src/fx/effects.ts | particles.getTime() | const time = particles.getTime();',
-  // a tracer's strike spark (sparks.t0, shifted)
-  'src/fx/projectileTracers.ts | o.now() | s.t0 = o.now(); s.life = life; s.k = k; s.w = w; s.day = dayRgb; s.core = coreRgb; s.halo = halo',
   // no caller in the tree: the interface's refreshShading (a uniform written every frame by update)
   'src/fx/volumeMedia.ts | o_now() | refreshShading: () => { uTime.value = o_now(); refreshLight(); },',
   // a set piece's piece falls (pieceFalls[].t0, shifted)

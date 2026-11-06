@@ -846,7 +846,9 @@ export function createProjectileTracers(o: TracerOptions): ProjectileTracers {
     shiftTime(delta) {
       if (!Number.isFinite(delta) || delta === 0) return;
       for (const st of statics) if (st.live) st.born += delta;
-      for (const sp of sparks) if (sp.life > 0) sp.t0 += delta;
+      // (round 4 F7) every spark of the pool, a spent one too (its life zeroed by drawSparks, its t0 kept): the census
+      // walks the whole pool, and a spent spark left at its pre-rebase time was the stamp it named
+      for (const sp of sparks) sp.t0 += delta;
       lastEndS += delta;
     },
     ambient(hx, hy, hz, dx, dy, dz, speedMps, travelledM, k, east) {
