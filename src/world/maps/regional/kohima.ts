@@ -421,7 +421,9 @@ export const KOHIMA_STYLE: ArchitectureStyle = Object.freeze<ArchitectureStyle>(
   surfaces: {
     roof: { kind: 'sheet', tint: [0.56, 0.30, 0.24] },
     stone: { kind: 'rubble', tint: [0.55, 0.52, 0.47] },
-    sourced: { plaster: false, wood: true },
+    // (buildings-270, the sourced class: under the timber photo set the dark-stained tone below never showed, and the bazaar's
+    // planks read grey-black) the timber the procedural canvas under that tone
+    sourced: { plaster: false, wood: false },
     // (the facades lane, round 11; waves 319/320: the walls' procedural canvas read as "speckle", "sponge", "cork",
     // "camouflage noise": its 6 cm bumps shade as dots from the street, as Steinburg's did before round 8) the walls
     // painted as the region renders them (regionalSurfaces.ts paintLimewash), every family under the kit's and the map's

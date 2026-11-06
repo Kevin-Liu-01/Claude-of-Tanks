@@ -6,7 +6,9 @@
       "storeys": 2,
       "storeyM": 2.55,
       "pitchDeg": 49,
-      "bayM": 2
+      "bayM": 2,
+      "reveal": 0.16,
+      "eave": 0.36
     },
     "storeys": [
       2,
@@ -45,7 +47,9 @@
       "storeys": 2,
       "storeyM": 2.9,
       "pitchDeg": 26,
-      "bayM": 2.6
+      "bayM": 2.6,
+      "reveal": 0.42,
+      "eave": 0.55
     },
     "storeys": [
       2,
@@ -83,7 +87,9 @@
       "storeys": 2,
       "storeyM": 2.8,
       "pitchDeg": 23,
-      "bayM": 3.3
+      "bayM": 3.3,
+      "reveal": 0.3,
+      "eave": 0.22
     },
     "storeys": [
       1,
@@ -121,7 +127,9 @@
       "storeys": 2,
       "storeyM": 2.7,
       "pitchDeg": 47,
-      "bayM": 4.4
+      "bayM": 4.4,
+      "reveal": 0.34,
+      "eave": 0.1
     },
     "storeys": [
       1,
@@ -159,7 +167,9 @@
       "storeys": 1,
       "storeyM": 2.55,
       "pitchDeg": 40,
-      "bayM": 3.3
+      "bayM": 3.3,
+      "reveal": 0.16,
+      "eave": 0.5
     },
     "storeys": [
       1,
@@ -195,7 +205,9 @@
       "storeys": 1,
       "storeyM": 2.55,
       "pitchDeg": 51,
-      "bayM": 2.9
+      "bayM": 2.9,
+      "reveal": 0.22,
+      "eave": 0.5
     },
     "storeys": [
       1,
@@ -231,7 +243,9 @@
       "storeys": 1,
       "storeyM": 2.9,
       "pitchDeg": 51,
-      "bayM": 3.9
+      "bayM": 3.9,
+      "reveal": 0.16,
+      "eave": 0.3
     },
     "storeys": [
       1,
@@ -269,7 +283,9 @@
       "storeys": 2,
       "storeyM": 2.55,
       "pitchDeg": 48,
-      "bayM": 2
+      "bayM": 2,
+      "reveal": 0.16,
+      "eave": 0.36
     },
     "storeys": [
       2,
@@ -307,7 +323,9 @@
       "storeys": 1,
       "storeyM": 3,
       "pitchDeg": 26,
-      "bayM": 2.8
+      "bayM": 2.8,
+      "reveal": 0.16,
+      "eave": 0.5
     },
     "storeys": [
       1,
@@ -344,7 +362,9 @@
       "storeys": 2,
       "storeyM": 2.5,
       "pitchDeg": 38,
-      "bayM": 2.8
+      "bayM": 2.8,
+      "reveal": 0.12,
+      "eave": 0.5
     },
     "storeys": [
       2,
@@ -383,7 +403,9 @@
       "storeys": 1,
       "storeyM": 3,
       "pitchDeg": 29,
-      "bayM": 2.8
+      "bayM": 2.8,
+      "reveal": 0.1,
+      "eave": 0.7
     },
     "storeys": [
       1,
@@ -422,7 +444,9 @@
       "storeys": 2,
       "storeyM": 2.6,
       "pitchDeg": 52,
-      "bayM": 2
+      "bayM": 2,
+      "reveal": 0.16,
+      "eave": 0.36
     },
     "storeys": [
       2,
@@ -461,7 +485,9 @@
       "storeys": 1,
       "storeyM": 3.25,
       "pitchDeg": null,
-      "bayM": 4.4
+      "bayM": 4.4,
+      "reveal": 0.3,
+      "eave": null
     },
     "storeys": [
       1,
@@ -495,7 +521,9 @@
       "storeys": 1,
       "storeyM": 2.7,
       "pitchDeg": 8,
-      "bayM": 2.2
+      "bayM": 2.2,
+      "reveal": 0.12,
+      "eave": 0.16
     },
     "storeys": [
       1,
@@ -534,7 +562,9 @@
       "storeys": 2,
       "storeyM": 2.85,
       "pitchDeg": null,
-      "bayM": 2.1
+      "bayM": 2.1,
+      "reveal": 0.34,
+      "eave": null
     },
     "storeys": [
       1,
@@ -567,7 +597,9 @@
       "storeys": 1,
       "storeyM": 3.05,
       "pitchDeg": null,
-      "bayM": 2.3
+      "bayM": 2.3,
+      "reveal": 0.3,
+      "eave": null
     },
     "storeys": [
       1,
@@ -600,7 +632,9 @@
       "storeys": 2,
       "storeyM": 2.8,
       "pitchDeg": 45,
-      "bayM": 3.2
+      "bayM": 3.2,
+      "reveal": 0.16,
+      "eave": 0.35
     },
     "storeys": [
       2,
@@ -636,7 +670,9 @@
       "storeys": 1,
       "storeyM": 3.3,
       "pitchDeg": 52,
-      "bayM": 4.2
+      "bayM": 4.2,
+      "reveal": 0.16,
+      "eave": 0.9
     },
     "storeys": [
       1,
@@ -673,7 +709,9 @@
       "storeys": 1,
       "storeyM": 2.4,
       "pitchDeg": 43,
-      "bayM": 0.8
+      "bayM": 0.8,
+      "reveal": 0.1,
+      "eave": 0.35
     },
     "storeys": [
       1,
@@ -710,7 +748,9 @@
       "storeys": 1,
       "storeyM": 4,
       "pitchDeg": 27,
-      "bayM": 2.1
+      "bayM": 2.1,
+      "reveal": 0.15,
+      "eave": 0.55
     },
     "storeys": [
       1,
@@ -750,7 +790,9 @@
       "storeys": 1,
       "storeyM": 4,
       "pitchDeg": 24,
-      "bayM": 2.8
+      "bayM": 2.8,
+      "reveal": 0.1,
+      "eave": 0.4
     },
     "storeys": [
       1,
@@ -788,7 +830,9 @@
       "storeys": 1,
       "storeyM": 2.55,
       "pitchDeg": 17,
-      "bayM": 6.5
+      "bayM": 6.5,
+      "reveal": 0.14,
+      "eave": 0.55
     },
     "storeys": [
       1,
@@ -824,7 +868,9 @@
       "storeys": 1,
       "storeyM": 2.6,
       "pitchDeg": 19,
-      "bayM": 3.4
+      "bayM": 3.4,
+      "reveal": 0.3,
+      "eave": 0.38
     },
     "storeys": [
       1,
@@ -861,7 +907,9 @@
       "storeys": 2,
       "storeyM": 3,
       "pitchDeg": 45,
-      "bayM": 3.1
+      "bayM": 3.1,
+      "reveal": 0.2,
+      "eave": 0.45
     },
     "storeys": [
       2,
@@ -899,7 +947,9 @@
       "storeys": 3,
       "storeyM": 3.1,
       "pitchDeg": 26,
-      "bayM": 2
+      "bayM": 2,
+      "reveal": 0.2,
+      "eave": 0.6
     },
     "storeys": [
       2,
@@ -936,7 +986,9 @@
       "storeys": 1,
       "storeyM": 3,
       "pitchDeg": 30,
-      "bayM": 5
+      "bayM": 5,
+      "reveal": 0.08,
+      "eave": 0.45
     },
     "storeys": [
       1,
@@ -973,7 +1025,9 @@
       "storeys": 2,
       "storeyM": 2.8,
       "pitchDeg": 51,
-      "bayM": 2.2
+      "bayM": 2.2,
+      "reveal": 0.22,
+      "eave": 0.82
     },
     "storeys": [
       2,
@@ -1011,7 +1065,9 @@
       "storeys": 2,
       "storeyM": 2.9,
       "pitchDeg": 21,
-      "bayM": 3
+      "bayM": 3,
+      "reveal": 0.26,
+      "eave": 0.32
     },
     "storeys": [
       1,
@@ -1051,7 +1107,9 @@
       "storeys": 1,
       "storeyM": 3.45,
       "pitchDeg": 27,
-      "bayM": 3.5
+      "bayM": 3.5,
+      "reveal": 0.3,
+      "eave": 0.5
     },
     "storeys": [
       1,
@@ -1090,7 +1148,9 @@
       "storeys": 2,
       "storeyM": 2.8,
       "pitchDeg": 25,
-      "bayM": 2.5
+      "bayM": 2.5,
+      "reveal": 0.26,
+      "eave": 0.32
     },
     "storeys": [
       1,
@@ -1130,7 +1190,9 @@
       "storeys": 1,
       "storeyM": 2.7,
       "pitchDeg": 21,
-      "bayM": 2.4
+      "bayM": 2.4,
+      "reveal": 0.16,
+      "eave": 0.4
     },
     "storeys": [
       1,
