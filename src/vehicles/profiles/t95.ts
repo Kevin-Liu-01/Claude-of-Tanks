@@ -244,10 +244,13 @@ function* buildT95Steps(P: TankBuilderPort): TankProfileBuild {
         paintedEnds: true, coveredTop: false, arms: false, sprocketTeeth: true,
       });
     }
-    // the domed hub caps on the outer units' road wheels, the print's and the 1946 photograph's
-    for (const z of ROAD_WHEEL_ZS) for (const s of [-1, 1] as const) {
-      P.add(s < 0 ? 'hullTrackDetailL' : 'hullTrackDetailR', xform(sph(0.075, P.q ? 14 : 8, Math.PI / 2), 0, 0, 0, 0, 0, -s * Math.PI / 2),
-        s * (TRACK.outer + 0.15), WHEEL.y, z);
+    // the domed hub caps on the outer units' road wheels, the print's and the 1946 photograph's: a road-wheel layer
+    // of the outer unit (registered last), so each dome rides its wheel's suspension and turns with it
+    const outerGear = P.gear?.__units?.at(-1) ?? P.gear;
+    if (!outerGear) throw new Error('T95 running gear must exist before its hub caps');
+    for (const s of [-1, 1] as const) {
+      outerGear.addRoadWheelLayer(xform(sph(0.075, P.q ? 14 : 8, Math.PI / 2), 0, 0, 0, 0, 0, -s * Math.PI / 2),
+        P.mats.wheels ?? P.mats.hull, { side: s, outset: 0.15, name: 'gearRoadWheelHubCaps', appearanceRole: 'wheelDish' });
     }
     // the HVSS bogie brackets between each pair of axles on the inner face of each unit
     for (const xc of [TRACK.inner, TRACK.outer]) for (const s of [-1, 1] as const) {
