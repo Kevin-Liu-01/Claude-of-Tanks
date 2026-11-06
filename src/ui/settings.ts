@@ -57,8 +57,8 @@ import { shouldOpenSettingsFromPointerUnlock } from './keyboardOwnership.ts';
 import { createElement as el, datumAttr, markDatum } from './dom.ts';
 import { notice } from './components/notice.ts';
 import { ensureStyle } from './styleLayers.ts';
-import { CREW_LANGUAGE_NAMES, CREW_VOICE_NATIONS, isCrewVoiceSetting } from '../audio/crewVoice.ts';
-import { WORLD_CREW_LANGUAGES } from '../audio/vehicleAudioProfiles.ts';
+import { crewLanguageLabel, isCrewVoiceSetting } from '../audio/crewVoice.ts';
+import { CREW_LANGUAGES } from '../audio/vehicleAudioProfiles.ts';
 import {
   getLocale,
   getSupportedLocales,
@@ -557,6 +557,20 @@ const KC_DONE_GRACE_MS = 250;
 
 /** The first-battle controls strip (247): driving, the gun, the right button's role, the sight and the menu. The shell
  *  and consumable keys stay off it, since the HUD tray's tiles carry their own caps. */
+/**
+ * Settings › Sound › Crew voices: National crews first, then every pack as a language, never a flag, named in the
+ * interface's language with its own name beside it and sorted by that name. The stored value is the pack's tag.
+ */
+export function crewVoiceItems(): PickerItem[] {
+  const locale = getLocale();
+  const collator = new Intl.Collator(locale);
+  const languages = CREW_LANGUAGES.map((id): PickerItem => {
+    const { name, own } = crewLanguageLabel(id, locale);
+    return { id, name, glyph: 'radio', ...(own ? { facts: [own] } : {}) };
+  }).sort((a, b) => collator.compare(a.name, b.name));
+  return [{ id: 'national', name: t('settings.crew.national'), glyph: 'globe' }, ...languages];
+}
+
 export function battleControlHintGroups(rmbMode: RmbMode = 'hold'): Array<[string, ActionId[]]> {
   return [
     [t('settings.group.move'), ['forward', 'left', 'back', 'right']],
@@ -1352,23 +1366,14 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
         onChange: emitVolumes, blipOnCommit: true,
       });
     }
-    // One dropdown: national crews, or a fixed pack for every vehicle: a nation's crew (its flag) or a language with no
-    // country in the game (crew-languages-270). Every row names its language in its own words too.
+    // One dropdown: national crews, or one language's crew in every vehicle (crewVoiceItems).
     const crew = groupCard(body, t('settings.crew.title'));
     const crewRow = el('div', 'cot-set-row cot-set-crew-row', crew);
     settingLabel(crewRow, t('settings.crew.voice'), SETTINGS_OPTION_ICONS.crewVoice);
     const crewField = el('div', 'cot-set-crew-field', crewRow);
     crewField.dataset.setting = 'crewVoice';
-    const crewItems = (flag?: (nation: string) => string): PickerItem[] => [
-      { id: 'national', name: t('settings.crew.national'), glyph: 'globe' },
-      ...Object.entries(CREW_VOICE_NATIONS).map(([value, nation]) => ({ id: value, name: t(`nation.${nation}`),
-        facts: [CREW_LANGUAGE_NAMES[value as keyof typeof CREW_VOICE_NATIONS]], chip: flag?.(nation), tags: ['nation'] })),
-      ...WORLD_CREW_LANGUAGES.map(value => ({ id: value, name: t(`settings.crew.language.${value}`),
-        facts: [CREW_LANGUAGE_NAMES[value]], glyph: 'radio' as const, tags: ['language'] })),
-    ];
-    const crewMenu = createPickerMenu(crewField, { id: 'settings-crew-voice', label: t('settings.crew.voice'), items: crewItems(),
+    const crewMenu = createPickerMenu(crewField, { id: 'settings-crew-voice', label: t('settings.crew.voice'), items: crewVoiceItems(),
       value: input.getSettings().crewVoice, layout: 'list', text: pickerText(),
-      filters: [{ id: 'nation', label: t('settings.crew.nations'), icon: 'globe' }, { id: 'language', label: t('settings.crew.languages'), icon: 'radio' }],
       onChoose: (item) => {
         if (!isCrewVoiceSetting(item.id)) return;
         input.setSetting('crewVoice', item.id);
@@ -1382,9 +1387,6 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
       event.stopPropagation();
       containModalTab(event, root, requiredElement<HTMLButtonElement>(root, '.cot-set-close'));
     });
-    // Flag assets are browser-only; retain the settings policy's Node import.
-    void import('./flags.ts').then(({ flagIconUrl }) => { if (crewField.isConnected) crewMenu.setItems(crewItems(flagIconUrl)); })
-      .catch(() => { /* the crew menu keeps its items without their flags */ });
     const crewNote = el('div', 'cot-set-note', crew);
     crewNote.textContent = t('settings.crew.note');
     const alarms = groupCard(body, t('settings.alarms.title'));

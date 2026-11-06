@@ -2,7 +2,7 @@
 import type { RuntimeValue } from '../runtimeTypes.ts';
 import { CREW_LANGUAGES, crewLanguageForVehicle, type CrewLanguage, type NationalCrewLanguage } from './vehicleAudioProfiles.ts';
 
-/** One operating nation per national pack; reuse the UI's nation labels and flags. */
+/** One operating nation per national pack: the nation whose tanks speak it by default (crewLanguageForVehicle). */
 export const CREW_VOICE_NATIONS: Readonly<Record<NationalCrewLanguage, string>> = Object.freeze({
   'en-US': 'USA', 'en-GB': 'UK', de: 'Germany', ru: 'Russia', uk: 'Ukraine',
   zh: 'China', fr: 'France', sv: 'Sweden', ja: 'Japan', ko: 'South Korea',
@@ -10,19 +10,31 @@ export const CREW_VOICE_NATIONS: Readonly<Record<NationalCrewLanguage, string>> 
   da: 'Denmark', 'pt-BR': 'Brazil', 'en-AU': 'Australia', af: 'South Africa',
 });
 
+/** A pack's language as a player reads it: named in their interface's language, and in its own words when that differs. */
+export interface CrewLanguageLabel { readonly name: string; readonly own: string | null }
+
+const languageNames = new Map<string, Intl.DisplayNames>();
+
+/** One language's name in a locale, its first letter capitalised for a list ("norsk" -> "Norsk"). */
+function languageName(tag: string, locale: string): string {
+  let names = languageNames.get(locale);
+  if (!names) languageNames.set(locale, names = new Intl.DisplayNames([locale], { type: 'language', languageDisplay: 'standard' }));
+  const name = names.of(tag) ?? tag;
+  return name.charAt(0).toLocaleUpperCase(locale) + name.slice(1);
+}
+
 /**
- * Every pack's language in its own words, beside the name in the player's language: a player finds their own language
- * by the name they know it by.
+ * Every pack named as a language, never a country: "German · Deutsch", "English (Australia)". A pack keeps its region
+ * only where another pack shares its language (English, Spanish, Portuguese). The names come from Intl.DisplayNames,
+ * so a new pack needs no catalog string.
  */
-export const CREW_LANGUAGE_NAMES: Readonly<Record<CrewLanguage, string>> = Object.freeze({
-  'en-US': 'English', 'en-GB': 'English', de: 'Deutsch', ru: 'Русский', uk: 'Українська', zh: '中文', fr: 'Français',
-  sv: 'Svenska', ja: '日本語', ko: '한국어', it: 'Italiano', pl: 'Polski', he: 'עברית', da: 'Dansk',
-  'pt-BR': 'Português', 'en-AU': 'English', af: 'Afrikaans',
-  'es-ES': 'Español (España)', 'es-419': 'Español (Latinoamérica)', 'pt-PT': 'Português (Portugal)', nl: 'Nederlands',
-  no: 'Norsk', fi: 'Suomi', el: 'Ελληνικά', cs: 'Čeština', hu: 'Magyar', ro: 'Română', tr: 'Türkçe', ar: 'العربية',
-  fa: 'فارسی', hi: 'हिन्दी', ur: 'اردو', bn: 'বাংলা', 'id-ID': 'Bahasa Indonesia', ms: 'Bahasa Melayu',
-  vi: 'Tiếng Việt', th: 'ไทย', fil: 'Filipino',
-});
+export function crewLanguageLabel(language: CrewLanguage, interfaceLocale: string): CrewLanguageLabel {
+  const base = language.split('-')[0];
+  const tag = CREW_LANGUAGES.filter(other => other.split('-')[0] === base).length > 1 ? language : base;
+  const name = languageName(tag, interfaceLocale);
+  const own = languageName(tag, language);
+  return { name, own: own === name ? null : own };
+}
 
 export type CrewVoiceSetting = 'national' | CrewLanguage;
 

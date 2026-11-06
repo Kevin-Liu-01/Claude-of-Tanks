@@ -7,7 +7,7 @@
 import { CAPTION_SCRIPT } from '../../audio/captionScript.generated.ts';
 import { ATMOSPHERES, propagationDelayS } from '../../audio/audioMath.ts';
 import { CEASE, GUNSHIP } from '../../audio/crewProcedure.ts';
-import { CREW_LANGUAGE_NAMES } from '../../audio/crewVoice.ts';
+import { crewLanguageLabel } from '../../audio/crewVoice.ts';
 import { CREW_LANGUAGES, WORLD_CREW_LANGUAGES, type WorldCrewLanguage } from '../../audio/vehicleAudioProfiles.ts';
 import { WEAPON_CLASSES } from '../../audio/weaponAudio.ts';
 import { flagMarkup } from '../../presentation/publicShell.ts';
@@ -95,8 +95,10 @@ function languages(): string {
 
 /** The crews of languages with no country in the game: the Settings name, then the language in its own words and script. */
 function worldLanguages(): string {
-  const item = (language: WorldCrewLanguage): string => `<li><span>${esc(t(`settings.crew.language.${language}`))}</span>`
-    + `<span class="dm-endonym" lang="${language}" dir="auto">${esc(CREW_LANGUAGE_NAMES[language])}</span></li>`;
+  const item = (language: WorldCrewLanguage): string => {
+    const { name, own } = crewLanguageLabel(language, getLocale());
+    return `<li><span>${esc(name)}</span>${own ? `<span class="dm-endonym" lang="${language}" dir="auto">${esc(own)}</span>` : ''}</li>`;
+  };
   return `<ul class="dm-nations dm-languages">${WORLD_CREW_LANGUAGES.map(item).join('')}</ul>`;
 }
 

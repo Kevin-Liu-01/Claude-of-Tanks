@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { CREW_LANGUAGE_NAMES, CREW_VOICE_NATIONS, isCrewVoiceSetting, normalizeCrewVoiceSetting, resolveCrewLanguage } from './crewVoice.ts';
+import { CREW_VOICE_NATIONS, isCrewVoiceSetting, normalizeCrewVoiceSetting, resolveCrewLanguage } from './crewVoice.ts';
 import { CREW_LANGUAGES, WORLD_CREW_LANGUAGES } from './vehicleAudioProfiles.ts';
 import { VOICE_PACKS } from './voiceManifest.generated.ts';
 import { FLAG_ICON_CODE_BY_NATION } from '../ui/flagCodes.ts';
@@ -8,7 +8,6 @@ import { getLocale, setLocale, t } from '../ui/i18n.ts';
 const packs = [...Object.keys(CREW_VOICE_NATIONS), ...WORLD_CREW_LANGUAGES];
 assert.deepEqual([...packs].sort(), Object.keys(VOICE_PACKS).sort(), 'every selectable crew has a shipped pack, and every pack is selectable');
 assert.deepEqual([...packs].sort(), [...CREW_LANGUAGES].sort());
-for (const language of CREW_LANGUAGES) assert.ok(CREW_LANGUAGE_NAMES[language]?.trim(), `${language} is named in its own words`);
 // Languages with no country in the game (crew-languages-270): no nation speaks one by default, any player may choose one.
 for (const language of WORLD_CREW_LANGUAGES) {
   assert.ok(!(language in CREW_VOICE_NATIONS), `${language} has no country in the game`);
@@ -47,8 +46,7 @@ const originalLocale = getLocale();
 for (const locale of ['en-US', 'zh-CN']) {
   setLocale(locale);
   for (const nation of Object.values(CREW_VOICE_NATIONS)) assert.notEqual(t(`nation.${nation}`), `nation.${nation}`);
-  for (const key of ['settings.crew.voice', 'settings.crew.national', 'settings.crew.note', 'settings.crew.nations', 'settings.crew.languages',
-    ...WORLD_CREW_LANGUAGES.map((language) => `settings.crew.language.${language}`)]) assert.notEqual(t(key), key);
+  for (const key of ['settings.crew.voice', 'settings.crew.national', 'settings.crew.note']) assert.notEqual(t(key), key);
 }
 setLocale(originalLocale);
 console.log(`crewVoice.selftest: all ${packs.length} packs (${WORLD_CREW_LANGUAGES.length} with no country), national/fixed policy, the operator rule, flags, locale copy, legacy migration and invalid storage passed`);

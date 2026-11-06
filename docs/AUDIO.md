@@ -655,18 +655,22 @@ through one exhaustive `Record<CountryId, CrewLanguage>` in
 crew. The Leopard 2A4M CAN's spec names its German design, but its crew is
 Canada's (American English until Canada has a pack of its own); a hull with
 no country (dev, community) keeps American English. **Settings → Sound →
-Crew voices** offers **National crews**, one nation's pack for every tank, or
-one of 21 crews in languages with no country in the game (es-ES, es-419,
+Crew voices** offers **National crews** or one language's crew for every tank:
+the 17 national packs and 21 crews in languages with no country in the game (es-ES, es-419,
 pt-PT, nl, no, fi, el, cs, hu, ro, tr, ar, fa, hi, ur, bn, id-ID, ms, vi, th,
 fil: `WORLD_CREW_LANGUAGES`, crew-languages-270). No hull speaks one of those by
 default: `COUNTRY_CREW` maps only to `NationalCrewLanguage`, so adding a
 language can never change a nation's crew. Each speaks as one real army's
 armoured crews (Spain's Leopardo 2E crews, the Turkish Land Forces, the Indian
 Army's Armoured Corps, the Royal Thai Army's cavalry, …; the script's
-`$comment` and the round below name them). The dropdown lists the nations with
-their flags, then the languages, every row naming its language in its own words
-and script (`CREW_LANGUAGE_NAMES`: Türkçe, العربية, हिन्दी, ไทย), with search and
-Nations / Languages filter chips. Indonesian's id is `id-ID` because `id` is the
+`$comment` and the round below name them). The dropdown lists languages, never
+nations or flags (owner, 2026-11-06: "also that selection should be in
+languages"): National crews first, then every pack named in the interface's
+language with its own name beside it ("German · Deutsch", "English (Australia)",
+"Arabic · العربية"), sorted by that name, with search (`settings.ts`
+`crewVoiceItems`). `crewVoice.ts` `crewLanguageLabel` takes both names from
+`Intl.DisplayNames`, keeping a region only where two packs share a language, so a
+new pack needs no catalog string. Indonesian's id is `id-ID` because `id` is the
 crew script's line-id key. Choosing a crew applies immediately and persists in the `crewVoice`
 field of `cot.settings.v1` as `national` or a pack ID; resetting Sound restores
 `national`. `crewVoice.ts` owns validation, resolution and legacy migration:
