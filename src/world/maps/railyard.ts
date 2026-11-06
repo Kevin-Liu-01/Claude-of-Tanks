@@ -109,7 +109,12 @@ const RAIL_SPURS = [
 // for every authored lot now holds for every building. No generated plan.)
 const PLAN: string[] = [];
 // The southern half's frontage buildings as the r2 plan placed them (structure, pose); their twins are made below.
-const FROZEN_FRONTAGE_SOUTH: readonly { structure: string; x: number; z: number; yawDeg: number }[] = [
+/** (landmarks-271) the engine shed's plan (railWorks.ts roundhouse): seven stalls of 9°, the doors 22 m from the
+ * table's centre, the stalls 18 m deep, the lead 4 m; three doors open, two engines standing at them. */
+const ROUNDHOUSE = { stalls: 7, stallDeg: 9, front: 22, depth: 18, lead: 4, open: 3, engines: 2 } as const;
+/** The frontage lots the west engine shed takes (and, by the twins, the east one's). */
+const ENGINE_SHED_LOTS: ReadonlySet<string> = new Set(['shed -226.86', 'containerRow -175.79']);
+const FROZEN_FRONTAGE_SOUTH_ALL: readonly { structure: string; x: number; z: number; yawDeg: number }[] = [
   { structure: 'shed', x: -248.31, z: -68.03, yawDeg: 1.13 },
   { structure: 'shed', x: -226.86, z: -63.53, yawDeg: 80.52 },
   { structure: 'ruin', x: -223.1, z: -94.82, yawDeg: 81.58 },
@@ -127,6 +132,7 @@ const FROZEN_FRONTAGE_SOUTH: readonly { structure: string; x: number; z: number;
   { structure: 'warehouse', x: 250.71, z: -23.94, yawDeg: 177.73 },
   { structure: 'shed', x: 251.23, z: -57.3, yawDeg: 84 },
 ];
+const FROZEN_FRONTAGE_SOUTH = FROZEN_FRONTAGE_SOUTH_ALL.filter((site) => !ENGINE_SHED_LOTS.has(`${site.structure} ${site.x}`));
 
 // 2026-10-11 (the map-revival lane, Cinder Junction round 2; gauntlet wave 362, village-mid: "a thin scatter of clean
 // orange brick boxes on protruding slab plinths standing in wide empty dirt lots beside a uniformly tiled cobbled street
@@ -413,8 +419,7 @@ export default {
       // the water towers at the throats, and an engine shed across the line from each
       { structure: 'watertower', x: -196, z: 24, yawDeg: 0 },
       { structure: 'watertower', x: 196, z: -24, yawDeg: 180 },
-      { structure: 'warehouse', x: -200, z: -50, yawDeg: 86.2 },
-      { structure: 'warehouse', x: 200, z: 50, yawDeg: 266.2 },
+      // (landmarks-271, 2026-11-06) the engine sheds across the line from them are the set pieces below (props.landmarks)
       // the goods (the freight rows: the period's crates, sheeted loads, steel and timber — maps/periodFreight.ts) by the
       // station on the north side, and its twin; (round 3, 2026-10-11; gauntlet wave 396b: "the goods aren't at the
       // stubs") the other two rows of each side at the loading stub, past its goods shed on the coal stage's side, where
@@ -442,6 +447,18 @@ export default {
       // round 3: the yard's frontage buildings, the southern half's and their twins (each from its own stream and past the
       // spacing check, as the terraces: their poses are the plan's own, which kept them apart)
       ...[...FROZEN_FRONTAGE_SOUTH, ...FROZEN_FRONTAGE_SOUTH.map(twinSite)].map((site) => ({ ...site, terrace: true })),
+    ],
+    // (landmarks-271, 2026-11-06; the owner: "new special buildings like the way our airport map has hangars and our
+    // seaside map has a harbor area with a lighthouse"; src/world/landmarks/railWorks.ts) the junction's engine sheds: a
+    // Reichsbahn Ringlokschuppen of seven brick stalls round its 23 m turntable at the west throat, south of the line, on
+    // the old engine-shed lot and the two frontage lots beside it (a shed and a container row), the table's lead track
+    // out to the yard; its twin turned through 180° about the station square. A signal box over each throat on the
+    // line's far side, its operating floor's windows on the tracks.
+    landmarks: [
+      { kind: 'roundhouse', x: -194, z: -47.5, yawDeg: 90, params: ROUNDHOUSE, name: 'the engine shed at the west throat' },
+      { kind: 'roundhouse', x: 194, z: 47.5, yawDeg: 270, params: ROUNDHOUSE, name: 'the engine shed at the east throat' },
+      { kind: 'signalBox', x: -218, z: 4, yawDeg: 180, name: 'the west throat signal box' },
+      { kind: 'signalBox', x: 218, z: -4, yawDeg: 0, name: 'the east throat signal box' },
     ],
     // 2026-10-01: the hard-coded north-south siding fan (maps/mapKits.ts dressRailYard) gives way to the authored
     // main line and sidings above (terrain.railSpurs): no legacy rail kit.

@@ -44,7 +44,11 @@ export type LandmarkKind =
   // a fjord farm's works (fjordWorks.ts)
   | 'hayRack' | 'fishRack' | 'stabbur'
   // Taurus-Littrow Station's (lunar.ts): Challenger's site, the oxygen works and its front, the solar towers, the commons, the repeaters
-  | 'apolloSite' | 'isruWorks' | 'solarTower' | 'stationDome' | 'relayRepeater';
+  | 'apolloSite' | 'isruWorks' | 'solarTower' | 'stationDome' | 'relayRepeater'
+  // a junction's railway works (railWorks.ts, landmarks-271): the engine shed round its turntable, the signal box
+  | 'roundhouse' | 'signalBox'
+  // an ironworks' furnace (ironWorks.ts, landmarks-271)
+  | 'blastFurnace';
 
 /** A kind's parameters: numbers (metres, counts), choices (strings) and switches. */
 export type LandmarkParams = Readonly<Record<string, number | string | boolean>>;

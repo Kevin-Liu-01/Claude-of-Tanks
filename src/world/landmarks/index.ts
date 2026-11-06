@@ -98,6 +98,9 @@ const LANDMARK_TABLE: Readonly<Record<string, LandmarkRow>> = Object.freeze({
   solarTower: { load: () => import('./lunar.ts') },
   stationDome: { load: () => import('./lunar.ts') },
   stripShack: { load: () => import('./stations.ts') },
+  roundhouse: { load: () => import('./railWorks.ts') },
+  signalBox: { load: () => import('./railWorks.ts') },
+  blastFurnace: { load: () => import('./ironWorks.ts') },
 });
 /** The kinds compose.ts places itself whenever a map has set pieces (a building's worn approach paths). */
 const COMPOSED_KINDS: readonly string[] = ['path'];

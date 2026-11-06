@@ -3,6 +3,8 @@
 // (the trees grow before the props exist, so the clearance is read from the map config alone, as sceneryPlan.ts does).
 import type { LandmarkKind, LandmarkParams, LandmarkPlacement } from './types.ts';
 import type { StructureClearance } from '../vegetationClearance.ts';
+import { roundhouseLayout } from './railWorks.ts';
+import { blastFurnaceLayout } from './ironWorks.ts';
 
 type LandmarkFamily = 'bridge' | 'monument' | 'park' | 'gate' | 'tower' | 'civic' | 'wreck' | 'harbour' | 'works';
 
@@ -377,6 +379,17 @@ export const LANDMARK_KINDS: Readonly<Record<LandmarkKind, LandmarkKindSpec>> = 
   // the deployments' relay repeaters on the scarps' crests: the pad and the legs, the guys' anchors 6.5 m out
   relayRepeater: { family: 'works', drapes: true, defaults: { height: 16 },
     footprint: (): [number, number] => [7.0, 7.0] },
+  // ------------------------------------------------------------------------------- a junction's railway works (railWorks.ts)
+  // (landmarks-271) the engine shed: its stalls fanned round the turntable, centred on the plan (table, lead and stalls);
+  // the signal box: its brick storey, the stair 1.55 m off its -x end running back along it, the rods 3.4 m out of its front
+  roundhouse: { family: 'works', defaults: { stalls: 8, stallDeg: 9, table: 23, front: 28, depth: 22, lead: 8, open: 3, engines: 2 },
+    footprint: (p) => { const l = roundhouseLayout(p); return [l.across, l.along]; } },
+  signalBox: { family: 'works', defaults: { length: 9, depth: 4.6, base: 4.4 },
+    footprint: (p) => [num(p, 'length') / 2 + 1.7, num(p, 'depth') / 2 + Math.max(3.5, num(p, 'base') * 1.15) + 0.3] },
+  // (ironWorks.ts, landmarks-271) the furnace with its stoves behind, the dust catcher at -x and the skip bridge to +x,
+  // the cast house in front: centred on the whole plan (ironWorks.ts blastFurnaceLayout)
+  blastFurnace: { family: 'works', defaults: { height: 30, stoves: 3, skip: 34 },
+    footprint: (p) => { const l = blastFurnaceLayout(p); return [l.across, l.along]; } },
 });
 
 /** A placement's parameters over its kind's defaults. An unknown kind fails closed. */
