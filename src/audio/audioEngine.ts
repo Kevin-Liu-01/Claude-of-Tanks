@@ -2428,9 +2428,12 @@ export function createAudio({
    * 'battle:restarted' on MatchFrame.battleRestarts): every hull stands at its spawn again, a revive of each with no cue
    * (the 'respawn' mode event's re-arming, for the whole field). Every death latch re-arms, so a hull that died in the
    * abandoned battle and is hidden now is heard when it dies again (update() re-arms only the hulls it is given, the
-   * visible ones); every known hull is alive for the side counts, whose one-shot calls the restarted battle may make
-   * again; the player's per-life calls re-arm and its fire alarm, heartbeat and radio damage go with its old hull; and
-   * the abandoned battle's wrecks stop burning where no wreck stands now.
+   * visible ones); every known hull is alive in this engine's own map (the miss call's live enemies). The side counts'
+   * one-shot calls re-arm, as the restarted battle may make them again; a network seat counts its sides from the roster
+   * (getTeamRoster: main.ts game.rosterTanks), never this map, and the presentation revives every actor of that roster
+   * before it tells the restart (review r2), so the re-armed calls count the restarted field. The player's per-life
+   * calls re-arm and its fire alarm, heartbeat and radio damage go with its old hull; and the abandoned battle's wrecks
+   * stop burning where no wreck stands now.
    */
   function restartLives(): void {
     deathLatch.clear();

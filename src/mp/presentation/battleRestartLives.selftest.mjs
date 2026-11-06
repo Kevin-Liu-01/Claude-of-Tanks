@@ -13,11 +13,18 @@
 //      fresh for One Shot, and an abandoned round stayed a hull's killing shot;
 //   4. hud.ts and shotInfo.ts: their kill ledgers kept the abandoned battle's dead, so a hull that died there and dies
 //      again in the restarted battle was never fed nor counted.
-// Each case below fails on the merged head before this fix (b598626c30) and passes now.
+// Cases 1-4 fail on the merged head before that fix (b598626c30) and pass now.
+// Review r2: the presentation's own actors kept the abandoned battle's deaths. A row writes a hull's life, a wreck is
+// sent to every seat and a live hull this seat does not spot is not, so a hull that died in the abandoned battle and is
+// hidden in the restarted one read destroyed after the restart:
+//   5. on the real presentation and audio engine sharing one bus: the hidden hulls read destroyed, stayed in game.tanks
+//      and dead in game.rosterTanks, the own prediction collided with their old wrecks, battle:ended's roster reported
+//      them dead, and the crew, whose network side counts read that roster (main.ts getTeamRoster), called "last enemy"
+//      at the restart with five enemies alive and hidden (restartLives had re-armed the call). It fails on 20a8d0d793.
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { stripTypeScriptTypes } from 'node:module';
-import { Scene, PerspectiveCamera } from 'three';
+import { Scene, PerspectiveCamera, Vector3 } from 'three';
 import { BattleKillLedger } from '../../game/battleEventStats.ts';
 import {
   installFetch, namedContext, terrain, tank, listener, sounding, probeOf, mark, since, count,
@@ -198,8 +205,109 @@ const wrong = [];
   }
 }
 
+// ---- 5. the presentation's own actors, and the network side counts that read them (review r2)
+{
+  const { createBattlePresentation } = await import('./index.ts');
+  const { createTankState } = await import('../../sim/movement.ts');
+  const { getSpec } = await import('../../vehicles/specs.ts');
+  const { ENTITY_FLAGS, PHASE, TEAM, VERDICT, quantizePosition, zeroEntityRow } = await import('../wire/index.ts');
+  const { createEntitySample } = await import('../match/interpolation.ts');
+  const SPEC = 'm1a1_abrams_hc';
+  const flat = { getHeightAt: () => 0, getHeightAtFast: () => 0, getContactHeightAt: () => 0, getNormalAt: () => null, getGroundType: () => 'hard', maxY: 1 };
+  const bus = createBus();
+  const ended = [];
+  bus.on('battle:ended', (event) => ended.push(event));
+  const game = { tanks: [], tankById: new Map(), player: null, shells: [], spotting: null, allTanks: [], timeS: 0, preBattleS: 0, result: null, resultReason: null, mapId: 'winter' };
+  const presentation = createBattlePresentation({
+    engineCtx: { scene: { add() {} }, anisotropy: 1 }, game, bus,
+    worldCollision: { heightField: flat, getObstacles: () => [], getColliders: () => [], crushObstacle() {}, resetDestructibles() {} },
+    createTankVisual: () => ({ root: { position: new Vector3(), userData: {} }, setVisible() {}, syncFromState() {}, recoilKick() { return null; },
+      gunMuzzleWorld(out) { return out.set(0, 2, 0); }, gunDirWorld(out) { return out.set(0, 0, 1); }, stripEra() {}, resetEra() {},
+      setDestroyed() {}, resetDestroyed() {}, dispose() {} }),
+    prepareVisualTextures: async () => {}, clearVehicleDecals: () => {}, camoFor: () => 'summer', clock: () => 1000,
+  });
+  // the seat and three allies (alpha), five enemies (bravo) in a Standard battle, where a death is final
+  const seats = [['me', TEAM.ALPHA], ['a1', TEAM.ALPHA], ['a2', TEAM.ALPHA], ['a3', TEAM.ALPHA],
+    ['e1', TEAM.BRAVO], ['e2', TEAM.BRAVO], ['e3', TEAM.BRAVO], ['e4', TEAM.BRAVO], ['e5', TEAM.BRAVO]];
+  await presentation.applyRoster(seats.map(([playerId, team], seat) => ({
+    entityId: seat + 1, seat, team, bot: seat > 0, connected: true, playerId, name: playerId, specId: SPEC,
+  })), { ownEntityId: 1, ownPlayerId: 'me', roomId: 'r', mapId: 'winter', mode: 'standard', rulesetJson: '{}' });
+  const spot = (id) => ({ x: 30 + 20 * seats.findIndex(([playerId]) => playerId === id), z: id.startsWith('e') ? 300 : 0 });
+  const row = (id, destroyed) => {
+    const out = createEntitySample(seats.findIndex(([playerId]) => playerId === id) + 1);
+    Object.assign(out, { ...spot(id), y: 0, yaw: 0, pitch: 0, roll: 0, turretYaw: 0, gunPitch: 0, hp: destroyed ? 0 : 1500, maxHp: 2000,
+      reloadS: 0, reloadTotalS: 6, reloadKind: 'shell', gunReloadS: 0, gunReloadTotalS: 6, gunReloadKind: 'shell',
+      ammo0: 20, ammo1: 4, ammo2: 2, flags: destroyed ? ENTITY_FLAGS.DESTROYED : 0, snapped: false, eraSpent: [] });
+    return out;
+  };
+  const ownState = createTankState(getSpec(SPEC), new Vector3(0, 0, 0), 0);
+  let tick = 100;
+  const present = (restarts, rows) => {
+    tick += 2;
+    presentation.applyFrame({
+      tick, renderTimeMs: tick * 16, entities: rows, shells: [], unseenShells: [],
+      meta: { phase: PHASE.PLAYING, countdownMs: 0, battleTimeMs: 12_500, verdict: VERDICT.NONE, verdictReason: '', destructibleRevision: 0 },
+      modeStateJson: null, destroyed: [], destructibleRevision: 0,
+      viewer: { entityId: 1, playerId: 'me', state: ownState,
+        row: { ...zeroEntityRow(1), x: quantizePosition(0), y: 0, z: quantizePosition(0), hp: 1800, maxHp: 2000, reloadTotal: 3000 },
+        viewer: { entityId: 1, modules: new Array(15).fill(0), crewBits: 0, equipment: [1000, 1000, 1000, 1000], modeSpeedMultiplier: 1000,
+          modeGravityScale: 1000, movementVersion: 0, movementFlags: 0, movementValues: [] },
+        authorityTick: tick - 2, authorityReceivedAtMs: 1000, predictedShot: null },
+      events: [], ownShots: [], extrapolatedMs: 0, phase: 'live', battleRestarts: restarts,
+    });
+  };
+  const allies = ['a1', 'a2', 'a3'].map((id) => row(id, false));
+  // the crew counts sides from the presentation's roster, as main.ts wires a deaths-final network battle
+  const ctx = namedContext();
+  const audio = createAudio({ context: ctx, getMapId: () => 'verdant', getGameMode: () => 'standard', getTerrain: () => terrain, tier: 'desktop',
+    getTeamRoster: () => game.rosterTanks ?? null });
+  audio.bindBus(bus);
+  audio.resume();
+  const probe = probeOf();
+  const me = Object.assign(tank('me', { isPlayer: true }), { networkVisible: true });
+  const hear = (n) => { for (let i = 0; i < n; i++) { ctx.advance(1 / 30); audio.update(1 / 30, listener, [me]); } };
+  const sideCalls = () => probe.sayLog.map((entry) => entry.id).filter((id) => id === 'last_enemy' || id === 'last_tank' || id === 'outnumbered');
+  present(0, [...allies, ...['e1', 'e2', 'e3', 'e4', 'e5'].map((id) => row(id, false))]);
+  bus.emit('phase:change', { phase: 'battle' });
+  await audio.warmBattleEvents(['t72b3m_2022', SPEC]);
+  await probe.libraryIdle();
+  audio.ambientOn(true);
+  hear(10);
+  bus.emit('battle:rollout', {});
+  hear(30 * 2);
+  // the abandoned battle: four enemies fall; their wrecks reach every seat, the fifth is hidden
+  present(0, [...allies, ...['e1', 'e2', 'e3', 'e4'].map((id) => row(id, true))]);
+  for (const id of ['e1', 'e2', 'e3', 'e4']) {
+    presentation.applyEvent({ kind: 'tank_destroyed', payload: { id, killerId: 'a1', cause: 'shot', ...spot(id), y: 0 } }, { own: false, feedbackPredicted: false });
+  }
+  hear(30 * 3);
+  assert.deepEqual(sideCalls(), ['last_enemy'], 'setup: the abandoned battle\'s fourth death calls the last enemy');
+  const e1 = game.tankById.get('e1');
+  assert.ok(e1.combat.destroyed && game.tanks.includes(e1), 'setup: e1 is a wreck on this seat');
+  // the restart: every hull alive at its spawn; this seat spots its allies and no enemy
+  present(1, allies);
+  present(1, allies);
+  hear(30 * 3);
+  const restartCalls = sideCalls().slice(1);
+  if (restartCalls.length) wrong.push(`audio: the crew called ${JSON.stringify(restartCalls)} at the restart, with five enemies alive and hidden (the roster kept the abandoned battle's deaths)`);
+  const stale = ['e1', 'e2', 'e3', 'e4'].filter((id) => game.tankById.get(id).combat.destroyed);
+  if (stale.length) wrong.push(`presentation: the hidden hulls ${stale.join(', ')} still read destroyed after the restart`);
+  const listed = game.tanks.filter((actor) => actor.id.startsWith('e')).map((actor) => actor.id);
+  if (listed.length) wrong.push(`presentation: game.tanks still holds the hidden hulls ${listed.join(', ')} as wrecks`);
+  const rosterDead = (game.rosterTanks ?? []).filter((actor) => actor.combat.destroyed).map((actor) => actor.id);
+  if (rosterDead.length) wrong.push(`presentation: game.rosterTanks counts ${rosterDead.join(', ')} dead (the HUD's and the crew's side counts)`);
+  const world = presentation.predictionWorld();
+  const at = spot('e1');
+  if (world?.collide(new Vector3(at.x, 0, at.z), 0, new Vector3())) wrong.push('presentation: the own prediction still collides with e1\'s old wreck');
+  if (e1._wreckTurretPose || e1._networkDestroyed) wrong.push('presentation: e1 keeps its old wreck\'s look or turret pose');
+  presentation.applyEvent({ kind: 'match_ended', payload: { result: 'alpha', reason: 'time' } }, { own: false, feedbackPredicted: false });
+  const endRow = ended[0]?.roster?.find((entry) => entry.id === 'e1');
+  if (endRow?.alive !== true) wrong.push(`presentation: battle:ended's roster reports e1 ${endRow ? 'dead' : 'missing'} after the restart (the report marks it dead again)`);
+  presentation.dispose();
+}
+
 if (wrong.length) {
   console.error(`battleRestartLives: a battle restart left per-life state of the abandoned battle:\n  ${wrong.join('\n  ')}`);
   assert.fail('a battle restart is a new life for every hull in every per-life listener');
 }
-console.log('battleRestartLives: a battle restart gives every hull a new life in the killcam (the dead seat\'s chase ends, an observer\'s stays), the audio engine (a hidden hull\'s next death heard, the old alarm and wrecks gone), the service record and the HUD\'s and report\'s kill ledgers PASS');
+console.log('battleRestartLives: a battle restart gives every hull a new life in the killcam (the dead seat\'s chase ends, an observer\'s stays), the audio engine (a hidden hull\'s next death heard, the old alarm and wrecks gone), the service record, the HUD\'s and report\'s kill ledgers, and the presentation\'s own actors (a hidden hull alive again for the roster, the side counts, the prediction and the end roster) PASS');

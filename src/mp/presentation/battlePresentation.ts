@@ -1054,6 +1054,13 @@ export function createBattlePresentation({
    * as a battle's start does (structure stages and their ledger, rubble, craters, decals), so a collapsed building stops
    * being drawn over the collision that stands again and the restarted battle's own collapse of it plays (the stage
    * ledger refused it); its smoke screens go with that reset, so this frame tells the restarted battle's again.
+   * Every actor starts a new life too, before the bus hears it (review r2): the host restarted every hull alive at its
+   * spawn, and a row writes a hull's life only where it reaches this seat. A wreck is sent to every seat, a live hull this
+   * seat does not spot is not, so a hull that died in the abandoned battle and is hidden in the restarted one read
+   * destroyed until it was spotted: the HUD and the network side counts (main.ts getTeamRoster) counted it dead, so the
+   * crew called "last enemy" at the restart with the enemies alive and hidden; battle:ended's roster reported it dead; and
+   * the own prediction collided with its old wreck. Its burning, its wreck look, its wreck turret pose and the death
+   * causes go with that life. The restarted frame's rows, applied right after, still write the hulls this seat sees.
    */
   function resetSettledWorld(restarts: number): void {
     resetWorldForBattle(worldCollision as BattleResetWorld | null);
@@ -1061,6 +1068,14 @@ export function createBattlePresentation({
     appliedDestructibleRevision = -1;
     appliedDestroyedLength = -1;
     lastSmokeJson = null;
+    for (const actor of actors.values()) {
+      actor.combat.destroyed = false;
+      actor.combat.fire.burning = false;
+      updateDestruction(actor, false);
+      actor._wreckTurretPose = null;
+    }
+    destructionCause.clear();
+    publishRoster();
     bus.emit('battle:restarted', { battleRestarts: restarts });
   }
 
