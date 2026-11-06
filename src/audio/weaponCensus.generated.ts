@@ -435,6 +435,7 @@ export const STATION_KEYS: Readonly<Record<string, readonly FleetWeaponKey[]>> =
   t90ms_tagil: ['12.7/belt'],
   t90sm: ['12.7/belt'],
   t90sm_2013: ['12.7/belt'],
+  t95: ['12.7/belt'],
   tamoyo1: ['12.7/belt'],
   tamoyo3: ['12.7/belt'],
   type10: ['12.7/belt'],

@@ -264,6 +264,7 @@ export const NATION_INDEX: readonly (readonly [string, CountryId | null, string 
   ["m41_jgsdf","japan","cold-war",1],
   ["m41dk1","denmark","cold-war",2],
   ["t49","usa","cold-war",2],
+  ["t95","usa","ww2",2],
   ["griffin_viper","usa","modern",3],
   ["puma_s1","germany","modern",6],
   ["type89","japan","modern",6],

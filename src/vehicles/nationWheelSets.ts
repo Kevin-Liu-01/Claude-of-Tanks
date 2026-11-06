@@ -285,7 +285,6 @@ export const WHEEL_STANDARD_EXCEPTIONS: Readonly<Record<string, WheelStandardExc
   m41_jgsdf: { donor: 'm60a3', reason: '265: the JGSDF M41 keeps its US Patton-era wheel' },
   m41dk1: { donor: 'm60a3', reason: '265: the Danish M41 DK-1 keeps its US Patton-era wheel' },
   centurion5_2dk: { donor: 'challenger2e', reason: '267: the Danish Centurion keeps its Mk 5/2 donor\'s UK wheel' },
-  t95: { donor: 'm60a3', reason: '270: the T95\'s US cast road wheels on its HVSS bogies (the Patton-era spoke)' },
   t49: { donor: 'm60a3', reason: '265: the T49 rides the M41 hull\'s US Patton-era wheel' },
   // owner 2026-10-25 ("update the type 74 and stb 1 tanks completely fullly, making these tanks no longer look really
   // outdated"): their five 0.70-0.74 m wheels stand fully exposed (no skirts), where the Type 90 forging's dish 120 mm
@@ -303,7 +302,7 @@ export const WHEEL_STANDARD_EXCEPTIONS: Readonly<Record<string, WheelStandardExc
 
 /** Pre-1950 hulls that keep their period wheel constructions (owner exception list, 2026-09-22). */
 export const PERIOD_WHEEL_HULLS: readonly string[] = Object.freeze([
-  'jpz_e100', 'kv2',
+  'jpz_e100', 'kv2', 't95',
 ]);
 
 interface NationWheelSpec {

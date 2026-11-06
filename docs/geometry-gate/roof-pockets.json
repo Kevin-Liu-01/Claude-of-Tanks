@@ -247,6 +247,7 @@
   "t90ms_tagil": {"turretRaisedCm2":0,"turretBaseCm2":0,"hullCm2":0,"pockets":0,"geometry":{"hull":"389651cf9d172cb4","turret":"ff22e41666adab0c","gun":"a929a2e6b83e3d2b"}},
   "t90sm": {"turretRaisedCm2":0,"turretBaseCm2":752,"hullCm2":0,"pockets":2,"geometry":{"hull":"85bba0d19d066b1d","turret":"5ea30ebda3b88cc5","gun":"1d86ebe34a53f2bb"}},
   "t90sm_2013": {"turretRaisedCm2":0,"turretBaseCm2":644,"hullCm2":0,"pockets":2,"geometry":{"hull":"81c51905045eeee0","turret":"11019217aae9862c","gun":"1a89b28043259f0c"}},
+  "t95": {"turretRaisedCm2":0,"turretBaseCm2":0,"hullCm2":0,"pockets":0,"geometry":{"hull":"07e4839a658574e5","turret":"e3b0c44298fc1c14","gun":"ebcbf0607a0e63fb"}},
   "tamoyo1": {"turretRaisedCm2":0,"turretBaseCm2":0,"hullCm2":0,"pockets":0,"geometry":{"hull":"f5da052d7e4e877d","turret":"dc300c851d8758cb","gun":"58c8d4304593afda"}},
   "tamoyo3": {"turretRaisedCm2":0,"turretBaseCm2":0,"hullCm2":0,"pockets":0,"geometry":{"hull":"8c7717061f218145","turret":"e1e3f77dca523ca8","gun":"fd8eb43d88c00874"}},
   "tos1a_tagil": {"turretRaisedCm2":0,"turretBaseCm2":0,"hullCm2":0,"pockets":0,"geometry":{"hull":"43c6377fc85024b0","turret":"913720cffbcf6771","gun":"b5839e5601ba36f4"}},

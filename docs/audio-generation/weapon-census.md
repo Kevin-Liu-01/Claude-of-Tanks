@@ -12,14 +12,14 @@ simulation; roof, loader and remote stations are. Loader makes come from `src/ve
 | `100/unitary_brass` | 100 mm D-10T2S (T-55A) and the Type 59's 100 mm | rifled | long (L/53.5) | none | unitary_brass | manual | `gun_100_close` / `gun_100_own` / `gun_100_interior` / `gun_100_far` | 2 |
 | `100lp/unitary_brass` | 100 mm 2A70 low-pressure gun-launcher (BMP-3) | rifled | short, low pressure | none | unitary_brass | ifv_autoloader | `gun_100lp_close` / `gun_100lp_own` / `gun_100lp_interior` / `gun_100lp_far` | 2 |
 | `105/unitary_brass` | L7/M68 family, CN-105-F1, kan m/59 and the Strv 103's L/62, Type 74, the ZTZ-20/100 105 mm | rifled | long (L/51–L/62) | none | unitary_brass | manual | `gun_105_close` / `gun_105_own` / `gun_105_interior` / `gun_105_far` | 38 |
-| `12.7/belt` | M2HB, NSVT, Kord, DShK, QJC-88, WKM-B, K6 (roof and remote stations); the Ares APC's L111A1 | rifled | long | flash_hider | belt | autocannon | `mg_heavy_close` / `mg_heavy_own` / `mg_heavy_interior` / `mg_heavy_far` | 136 |
+| `12.7/belt` | M2HB, NSVT, Kord, DShK, QJC-88, WKM-B, K6 (roof and remote stations); the Ares APC's L111A1 | rifled | long | flash_hider | belt | autocannon | `mg_heavy_close` / `mg_heavy_own` / `mg_heavy_interior` / `mg_heavy_far` | 137 |
 | `120/combustible` | Rh-120 L/44 and L/55, M256, CN120-26, Type 90/10, K2 CN08, OTO 120/44, MG251/253, the Osório's 120 mm | smoothbore | long (L/44–L/55) | none | combustible | manual | `gun_120_close` / `gun_120_own` / `gun_120_interior` / `gun_120_far` | 84 |
 | `120/separate_bag` | L11 and L30 rifled (Chieftain, Challenger 1 and 2) | rifled | long (L/55) | none | separate_bag | manual | `gun_120r_close` / `gun_120r_own` / `gun_120r_interior` / `gun_120r_far` | 13 |
 | `125/two_piece` | 2A46M family and 2A82 (T-64, T-72, T-80, T-84, T-90, T-14, PT-91, Type 96/99, VT4) | smoothbore | long (L/48–L/56) | none | two_piece | manual | `gun_125_close` / `gun_125_own` / `gun_125_interior` / `gun_125_far` | 73 |
 | `130/combustible` | Rh-130 L/51 (KF51 Panther family), the EE-T4's 130 mm | smoothbore | long (L/51) | none | combustible | manual | `gun_130_close` / `gun_130_own` / `gun_130_interior` / `gun_130_far` | 4 |
 | `152/caseless` | 152 mm M81, M162 and XM150 gun-launchers (M551, M60A2, MBT-70, T49) | rifled | short (L/17.5–L/30) | none | caseless | manual | `gun_152gl_close` / `gun_152gl_own` / `gun_152gl_interior` / `gun_152gl_far` | 3 |
 | `152/separate_case` | 152 mm M-10T howitzer (KV-2), the Gun Game's 152 mm howitzer | rifled | short (L/24.6) | none | separate_case | manual | `gun_152h_close` / `gun_152h_own` / `gun_152h_interior` / `gun_152h_far` | 2 |
-| `152n/separate_case` | 152 mm on the 6"/47 Mark 16 (T95, fictional) | rifled | long (L/47) | double_baffle | separate_case | manual | `gun_152n_close` / `gun_152n_own` / `gun_152n_interior` / `gun_152n_far` | 1 |
+| `152n/separate_case` | 152 mm on the 6"/47 Mark 16 (T95, fictional) | rifled | long (L/47) | none | separate_case | manual | `gun_152n_close` / `gun_152n_own` / `gun_152n_interior` / `gun_152n_far` | 1 |
 | `165/separate_bag` | 165 mm L9A1 demolition gun (Centurion AVRE) | rifled | short | none | separate_bag | manual | `gun_165_close` / `gun_165_own` / `gun_165_interior` / `gun_165_far` | 1 |
 | `170/separate_case` | 17 cm gun (Jagdpanzer E-100) | rifled | long | double_baffle | separate_case | manual | `gun_170_close` / `gun_170_own` / `gun_170_interior` / `gun_170_far` | 1 |
 | `20/belt` | Rh 202 (Marder 1A3, AMX-10P, the MBT-70's station) | rifled | long | multi_baffle | belt | autocannon | `ac_20_close` / `ac_20_own` / `ac_20_interior` / `ac_20_far` | 3 |
@@ -278,7 +278,7 @@ simulation; roof, loader and remote stations are. Loader makes come from `src/ve
 | T-90MS Tagil (`t90ms_tagil`) | 125 mm | `125/two_piece`: 3BM42M Lekalo, 3BK29M HEAT, 3OF26 HE-Frag | carousel_az | no | 12.7 mm `12.7/belt` |
 | T-90SM (`t90sm`) | 125 mm | `125/two_piece`: 3BM60 Svinets-2, 3BK31 HEAT, 3OF82 HE-Frag | carousel_az | no | 12.7 mm `12.7/belt` |
 | T-90SM obr. 2013 (`t90sm_2013`) | 125 mm | `125/two_piece`: 3BM60 Svinets-2, 3BK31 HEAT, 3OF82 HE-Frag | carousel_az | no | 12.7 mm `12.7/belt` |
-| T95 (152 mm) (`t95`) | 152 mm | `152n/separate_case`: AP Mk 35 (6"/47), Common Mk 27 (6"/47), HC Mk 39 (6"/47) | manual | no | — |
+| T95 (152 mm) (`t95`) | 152 mm | `152n/separate_case`: AP Mk 35 (6"/47), Common Mk 27 (6"/47), HC Mk 39 (6"/47) | manual | no | 12.7 mm `12.7/belt` |
 | MB-3 Tamoyo 1 (`tamoyo1`) | 90 mm | `90/unitary_brass`: OFL 90 F1 APFSDS, OCC 90 HEAT, OE 90 HE | manual | yes | 12.7 mm `12.7/belt` |
 | MB-3 Tamoyo 3 (`tamoyo3`) | 105 mm | `105/unitary_brass`: M833 APFSDS, M456 HEAT, L35 HESH | manual | yes | 12.7 mm `12.7/belt` |
 | TOS-1A Tagil (`tos1a_tagil`) | 220 mm | `220/rocket`: 220 mm Salvo HE | manual | yes | — |
