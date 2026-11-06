@@ -186,6 +186,7 @@ const noop = () => {};
   const announcements = [];
   createAppLifecycle({ game, announce: ({ from, phase, reason }) => announcements.push(`${from}>${phase}:${reason}`) });
   let teardownThrows = false;
+  let filmThrows = false;
   const garageSky = { sunIntensity: 4.2, sunColorHex: 0xffffff };
   const presentation = createGaragePhasePresentationRuntime({
     scene: new THREE.Scene(), stageRoot: new THREE.Group(), dressingRoot: new THREE.Group(),
@@ -198,8 +199,10 @@ const noop = () => {};
   });
   const ports = {
     timeOfDay: 'day', studioLight: null,
-    ctx: { prepareStudioAtmosphere: async () => {}, restoreStudioAtmosphere: () => calls.push('atmosphere-restored'), restoreGarageWorld: noop },
-    session: createStudioSession(), t: (key) => key, filmRenderer: { active: false }, endFilm: noop,
+    ctx: { prepareStudioAtmosphere: async () => {}, restoreStudioAtmosphere: () => calls.push('atmosphere-restored'),
+      restoreGarageWorld: () => calls.push('garage-world') },
+    session: createStudioSession(), t: (key) => key, filmRenderer: { active: false },
+    endFilm: () => { calls.push('film-ended'); if (filmThrows) throw new Error('the film did not end'); },
     window: { requestIdleCallback: (callback) => callback() }, game, camera: new THREE.PerspectiveCamera(),
     isBootReady: () => true, whenBootReady: (callback) => { callback(); return noop; },
     warmFleet: () => Promise.resolve(), resolveMapId: (id) => id, urlParam: () => null, getMapConfig: (id) => ({ name: id }),
@@ -240,7 +243,7 @@ const noop = () => {};
     let placeArmed = null, dragActor = null, dragging = false, storyboard = {};
     let selectedShotId = null, shotUidSeq = 1, actorKeyUidSeq = 1;
     ${functions.join('\n')}
-    return { enter, exit, doExit, active: () => active };
+    return { enter, exit, doExit, leaveForGarage, active: () => active };
     }
   `);
   const studio = new Function('ports', code + '\nreturn makeStudioEntry(ports);')(ports);
@@ -269,6 +272,35 @@ const noop = () => {};
   resetWorldForBattle(left.world);
   assert.equal(left.fallsWithUpdate(), true, "the next battle's felled tree falls with its frames (before: its collision opened, the tree stood)");
   assert.equal(left.world.sweeps, true, "and the battle's crush sweeps run");
+
+  // the Studio's own steps before its half: a scripted film whose end throws still hands the scene back
+  teardownThrows = false;
+  await studio.enter({ map: 'whiteout' });
+  assert.equal(game.phase, 'studio');
+  ports.filmRenderer.active = true;
+  filmThrows = true;
+  const filmAt = calls.length;
+  logged.length = 0;
+  console.error = (...args) => logged.push(args.map(String).join(' '));
+  try { await studio.exit(); } finally { console.error = quiet; }
+  assert.deepEqual(logged, ['[studio] exit failed Error: the film did not end']);
+  assert.deepEqual(calls.slice(filmAt).filter((call) => call === 'film-ended' || call === 'enter-garage'), ['film-ended', 'enter-garage'],
+    'a film that would not end still hands the scene back (before: no return ran)');
+  assert.equal(game.phase, 'garage');
+  assert.equal(studio.active(), false);
+
+  // a failed entry whose scene the Garage already took back: its Studio half throws, and the Garage's presentation of
+  // the battlefield (asleep, its sky and trim) still comes back, with no second Garage return
+  ports.filmRenderer.active = false;
+  filmThrows = false;
+  await studio.enter({ map: 'whiteout' });
+  transitionAppPhase(game, 'garage', { reason: 'garage-return' }); // the Garage took the scene back while the entry ran
+  teardownThrows = true;
+  const keptAt = calls.length;
+  await assert.rejects(studio.leaveForGarage(false), /the Studio half failed/);
+  assert.ok(calls.slice(keptAt).includes('garage-world'), "the Garage's presentation comes back although the Studio half threw");
+  assert.equal(calls.slice(keptAt).includes('enter-garage'), false, 'and no Garage return over the one that has the scene');
+  assert.equal(studio.active(), false);
 }
 
 console.log('studioEntryHandBack.selftest: a failed entry over a failed Garage return announces the Garage once, when the return lands; an exit whose Studio half throws still hands back, and the next battle takes the battlefield passed');

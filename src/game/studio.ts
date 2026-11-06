@@ -6117,12 +6117,22 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
   function leaveForGarage(returnToGarage = true): Promise<void> {
     closing ??= (async () => {
       try {
-        await session.settled();
-        if (filmRenderer.active) endFilm(); // a scripted film (beginFilm) left open: the live viewport comes back
-        if (returnToGarage) await tearDownToGarage();
-        else {
-          tearDownStudio();
-          ctx.restoreGarageWorld?.(); // main.ts: the battlefield asleep under the Garage's sky and trim (unless a battle holds the screen)
+        // (round 3 X9) the hand-back runs whatever the Studio's own steps before it throw (the session's landing, a film's
+        // end): the Garage gets its scene back, and the error still reaches the caller after it
+        try {
+          await session.settled();
+          if (filmRenderer.active) endFilm(); // a scripted film (beginFilm) left open: the live viewport comes back
+        } finally {
+          if (returnToGarage) await tearDownToGarage();
+          else {
+            // (round 3 X9) and the Garage's presentation of the battlefield, whatever the Studio's half throws
+            try {
+              tearDownStudio();
+            } finally {
+              active = false;
+              ctx.restoreGarageWorld?.(); // main.ts: the battlefield asleep under the Garage's sky and trim (unless a battle holds the screen)
+            }
+          }
         }
       } finally {
         session.close();
