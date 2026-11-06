@@ -12,9 +12,6 @@ import * as THREE from 'three';
 import { createGaragePhasePresentationRuntime } from './garagePhasePresentationRuntime.ts';
 import { assertAppPhaseTransition, assertGarageScreenSettled, createAppLifecycle, transitionAppPhase } from './appLifecycle.ts';
 import { createStudioSession } from './studioSession.ts';
-import { createStudioCrushes } from './studioCrush.ts';
-import { resetWorldForBattle } from '../world/battleWorldReset.ts';
-import { createStudioLeftWorld } from '../world/studioLeftWorld.test-support.mjs';
 
 // Execute the actual Studio enter/doEnter/doExit callers without constructing
 // the renderer, panel DOM or full fleet. This catches caller ordering; a test
@@ -171,22 +168,22 @@ const noop = () => {};
   await studio.doExit();
 }
 
-// (round 3 X9, A7/M4) An exit whose Studio half throws still hands the scene back. tearDownToGarage ran the Studio's
-// half and then the Garage return in sequence, so a throw in the half (panel.setStage, stopRecording, flareToWallClock and
-// panel.hide all run before releaseCrushes) ran no return at all: the scene stayed the Studio's, with no Garage, no
-// notice and no Retry. The same throw skips releaseCrushes, so the battlefield the Studio planned crushes on is never
-// given back (its falls on the timeline, its sweeps off); the next battle's start takes them (world/battleWorldReset.ts).
+// (round 3 X9) An exit whose Studio half throws still hands the scene back. tearDownToGarage ran the Studio's half and
+// then the Garage return in sequence, so a throw in the half (panel.setStage, stopRecording, flareToWallClock, panel.hide)
+// ran no return at all: the scene stayed the Studio's, with no Garage, no notice and no Retry. Only the hand-back is
+// asserted here: what the Studio half itself still runs after a throwing step is the studio cluster's (round 3 A7,
+// studioTeardown.selftest), and a battlefield it left on the Studio's timeline is taken back by every battle start
+// (world/battleWorldReset.ts; the soloBattleStartRuntime, activationRuntime and shotRuntime selftests over
+// world/studioLeftWorld.test-support.mjs). (review r1: this case pinned releaseCrushes skipped, which that cluster fixes.)
 {
   const calls = [];
   const world = { mapId: 'whiteout', skyConfig: { sunIntensity: 2.8, sunColorHex: 0xd9e8ff }, spawnPoints: { player: { pos: [4, 2, 6], yaw: 0 } } };
-  const left = createStudioLeftWorld(); // the battlefield's crushes, as the Studio planned and played them
-  const crushes = createStudioCrushes();
-  crushes.setPlan(left.world, []);
   const game = { phase: 'garage', preBattleS: 0, result: null, resultTimeS: null, timeS: 0 };
   const announcements = [];
   createAppLifecycle({ game, announce: ({ from, phase, reason }) => announcements.push(`${from}>${phase}:${reason}`) });
   let teardownThrows = false;
   let filmThrows = false;
+  let returnThrows = false;
   const garageSky = { sunIntensity: 4.2, sunColorHex: 0xffffff };
   const presentation = createGaragePhasePresentationRuntime({
     scene: new THREE.Scene(), stageRoot: new THREE.Group(), dressingRoot: new THREE.Group(),
@@ -220,8 +217,7 @@ const noop = () => {};
     transition: { run: async (work) => work(noop) },
     syncRoute: (on) => calls.push(`route:${on}`), docBrand: (brand) => calls.push(`brand:${brand}`),
     marker: { group: { visible: true } }, keys: new Set(), clearActors: noop, shells: [], effectLog: [], activeEffectIds: new Set(),
-    // studio.ts releaseCrushes: the plan's world given back (studioCrush restore)
-    releaseCrushes: () => { calls.push('crushes-released'); crushes.restore(left.world); },
+    releaseCrushes: () => calls.push('crushes-released'),
     fx: { resetAll: noop, setFrozen: noop }, normalizeStoryboard: () => ({}), releaseStudioFx: noop,
     rail: { rebuild: noop, updateVisibility: noop }, unsweepPool: noop, stopRecording: noop,
     disposePicture: noop, applyPictureRuntime: noop, studioStages: new Map(), resetStudioGround: noop, flareToWallClock: noop,
@@ -229,8 +225,10 @@ const noop = () => {};
     transitionAppPhase, assertAppPhaseTransition, assertGarageScreenSettled,
     camoTryOn: { preview: noop }, commitHistory: noop,
     // main's enterGarageWithExit over a return that lands: the scene, then the screen's announcement
+    // (review r1) or one that fails before its scene write (main's exit then opens its notice)
     enterGarage: async () => {
       calls.push('enter-garage');
+      if (returnThrows) throw new Error('the Garage return failed');
       transitionAppPhase(game, 'garage', { reason: 'garage-return', announce: false });
       transitionAppPhase(game, 'garage', { reason: 'garage-return:screen' });
     },
@@ -264,14 +262,27 @@ const noop = () => {};
   assert.equal(calls.filter((call) => call === 'enter-garage').length, 1, 'one hand-back');
   assert.deepEqual(calls.slice(exitAt).filter((call) => /^(route|brand):/.test(call)), ['route:false', 'brand:garage']);
   assert.equal(ports.session.phase, 'closed');
-  // the same throw came before releaseCrushes: the battlefield is still on the Studio's timeline, its sweeps off
-  assert.equal(calls.includes('crushes-released'), false);
-  assert.equal(left.felled.driver, 'timeline');
-  assert.equal(left.world.sweeps, false);
-  // ...and the next battle's start takes it (the solo start, a network round's activation and a still run this owner)
-  resetWorldForBattle(left.world);
-  assert.equal(left.fallsWithUpdate(), true, "the next battle's felled tree falls with its frames (before: its collision opened, the tree stood)");
-  assert.equal(left.world.sweeps, true, "and the battle's crush sweeps run");
+
+  // (review r1) the Studio half throws and the hand-back's return fails too: the Studio half's error is the one the
+  // exit reports (a `finally` whose return rejected put the return's error in its place, so the Studio half's was never
+  // logged), the return's is logged beside it, and the Studio's route and brand still leave (they stayed /studio)
+  teardownThrows = false;
+  await studio.enter({ map: 'whiteout' });
+  assert.equal(game.phase, 'studio');
+  teardownThrows = true;
+  returnThrows = true;
+  const bothAt = calls.length;
+  logged.length = 0;
+  console.error = (...args) => logged.push(args.map(String).join(' '));
+  try { await studio.exit(); } finally { console.error = quiet; }
+  assert.deepEqual(logged, ['[studio] the Garage hand-back failed too Error: the Garage return failed',
+    '[studio] exit failed Error: the Studio half failed'], "the Studio half's error reaches the exit, and the return's is logged too");
+  assert.deepEqual(calls.slice(bothAt).filter((call) => call === 'enter-garage' || /^(route|brand):/.test(call)),
+    ['enter-garage', 'route:false', 'brand:garage'], 'one hand-back, and the route and brand leave the Studio although it failed');
+  assert.equal(studio.active(), false, 'the Studio no longer ticks');
+  assert.equal(game.phase, 'studio', "(the return failed before its scene write: its notice and Retry are main's exit)");
+  returnThrows = false;
+  transitionAppPhase(game, 'garage', { reason: 'garage-return' }); // (that Retry lands)
 
   // the Studio's own steps before its half: a scripted film whose end throws still hands the scene back
   teardownThrows = false;
@@ -288,6 +299,20 @@ const noop = () => {};
     'a film that would not end still hands the scene back (before: no return ran)');
   assert.equal(game.phase, 'garage');
   assert.equal(studio.active(), false);
+  // (review r1) a film that will not end and then a Studio half that throws: the film's error is the exit's, the later
+  // one is logged, and the scene still comes back
+  await studio.enter({ map: 'whiteout' });
+  teardownThrows = true;
+  const pairAt = calls.length;
+  logged.length = 0;
+  console.error = (...args) => logged.push(args.map(String).join(' '));
+  try { await studio.exit(); } finally { console.error = quiet; }
+  assert.deepEqual(logged, ['[studio] a later step of the exit failed too Error: the Studio half failed',
+    '[studio] exit failed Error: the film did not end'], "the first error is the exit's, the later one logged, never put in its place");
+  assert.equal(calls.slice(pairAt).filter((call) => call === 'enter-garage').length, 1, 'one hand-back');
+  assert.equal(game.phase, 'garage');
+  assert.equal(studio.active(), false);
+  teardownThrows = false;
 
   // a failed entry whose scene the Garage already took back: its Studio half throws, and the Garage's presentation of
   // the battlefield (asleep, its sky and trim) still comes back, with no second Garage return
@@ -303,4 +328,4 @@ const noop = () => {};
   assert.equal(studio.active(), false);
 }
 
-console.log('studioEntryHandBack.selftest: a failed entry over a failed Garage return announces the Garage once, when the return lands; an exit whose Studio half throws still hands back, and the next battle takes the battlefield passed');
+console.log('studioEntryHandBack.selftest: a failed entry over a failed Garage return announces the Garage once, when the return lands; an exit whose Studio half throws still hands back, its first error reported and a later one logged passed');

@@ -6116,28 +6116,34 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
    */
   function leaveForGarage(returnToGarage = true): Promise<void> {
     closing ??= (async () => {
+      // (round 3 X9) the hand-back runs whatever the Studio's own steps before it throw (a film's end; the session's
+      // landing never rejects): the Garage gets its scene back, and the first error still reaches the caller after it.
+      // (review r1) A later one is logged, never put in its place: a `finally` that throws replaces the error it unwinds.
+      const failures: unknown[] = [];
+      const failed = (error: unknown): void => {
+        if (failures.length) console.error('[studio] a later step of the exit failed too', error);
+        failures.push(error);
+      };
       try {
-        // (round 3 X9) the hand-back runs whatever the Studio's own steps before it throw (the session's landing, a film's
-        // end): the Garage gets its scene back, and the error still reaches the caller after it
         try {
           await session.settled();
           if (filmRenderer.active) endFilm(); // a scripted film (beginFilm) left open: the live viewport comes back
-        } finally {
-          if (returnToGarage) await tearDownToGarage();
-          else {
-            // (round 3 X9) and the Garage's presentation of the battlefield, whatever the Studio's half throws
-            try {
-              tearDownStudio();
-            } finally {
-              active = false;
-              ctx.restoreGarageWorld?.(); // main.ts: the battlefield asleep under the Garage's sky and trim (unless a battle holds the screen)
-            }
-          }
+        } catch (error) { failed(error); }
+        if (returnToGarage) {
+          try { await tearDownToGarage(); } catch (error) { failed(error); }
+        } else {
+          // (round 3 X9) and the Garage's presentation of the battlefield, whatever the Studio's half throws
+          try { tearDownStudio(); } catch (error) { failed(error); }
+          active = false;
+          try {
+            ctx.restoreGarageWorld?.(); // main.ts: the battlefield asleep under the Garage's sky and trim (unless a battle holds the screen)
+          } catch (error) { failed(error); }
         }
       } finally {
         session.close();
         closing = null;
       }
+      if (failures.length) throw failures[0];
     })();
     return closing;
   }
@@ -6186,14 +6192,26 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
     // Studio's with no Garage, no notice and no Retry. The Studio half's error still reaches the caller after it. The
     // Studio gives up the frame first (its half may have thrown before its own `active = false`): a Garage handed back
     // under a Studio that still ticked would draw the Studio's frame, and the exit's catch would run the teardown again.
+    // (review r1) The first error is the one the caller sees; a return that fails too is logged (in a `finally` its
+    // rejection replaced the Studio half's error, which was then never logged), and the Studio's route and brand leave
+    // either way (the Studio has: its route stayed /studio over a failed return).
+    let failure: { error: unknown } | null = null;
     try {
       tearDownStudio();
-    } finally {
-      active = false;
+    } catch (error) {
+      failure = { error };
+    }
+    active = false;
+    try {
       await enterGarage(); // restores camo overrides, sun trim, spots, showroom
+    } catch (error) {
+      if (failure) console.error('[studio] the Garage hand-back failed too', error);
+      else failure = { error };
+    } finally {
       syncRoute(false);
       docBrand('garage');
     }
+    if (failure) throw failure.error;
   }
 
   // --- per-frame (owns the whole frame while active; called from main tick) ---
