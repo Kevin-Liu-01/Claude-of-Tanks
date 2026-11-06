@@ -17,7 +17,6 @@ interface MaterialPainterClientPorts {
   createWorker(): MaterialPainterWorkerPort | null;
   schedule(callback: () => void, delayMs: number): () => void;
   clone(request: MaterialPainterRequest): MaterialPainterRequest;
-  fontUrl: string;
 }
 interface PendingPaint {
   requestId: number;
@@ -95,7 +94,7 @@ export function createMaterialPainterClient(
       const owned = acquire();
       if (!owned) { fail(); return; }
       active = queue.shift()!;
-      owned.postMessage({ requestId: active.requestId, request: active.request, fontUrl: ports.fontUrl });
+      owned.postMessage({ requestId: active.requestId, request: active.request });
     } catch { fail(); }
   }
   function paint(request: MaterialPainterRequest): Promise<MaterialPainterResult | null> {
@@ -121,7 +120,7 @@ let sharedClient: MaterialPainterClient | null = null;
 
 export function canPaintMaterialBaseInWorker(): boolean {
   return typeof Worker === 'function' && typeof OffscreenCanvas === 'function'
-    && typeof FontFace === 'function' && typeof Path2D === 'function' && typeof DOMMatrix === 'function'
+    && typeof Path2D === 'function' && typeof DOMMatrix === 'function'
     && typeof document !== 'undefined' && typeof structuredClone === 'function'
     && (!sharedClient || sharedClient.available());
 }
@@ -149,7 +148,6 @@ export function tryPaintMaterialBase(request: MaterialPainterRequest): Promise<M
         createWorker: browserWorker,
         clone: value => structuredClone(value),
         schedule: (callback, delay) => { const timer = setTimeout(callback, delay); return () => clearTimeout(timer); },
-        fontUrl: new URL(`${import.meta.env?.BASE_URL ?? '/'}fonts/chakra-petch/ChakraPetch-Bold-Latin.woff2`, document.baseURI).href,
       });
     }
     owner = sharedClient;
