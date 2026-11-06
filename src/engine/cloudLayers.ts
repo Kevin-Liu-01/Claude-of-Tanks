@@ -54,6 +54,11 @@ export interface CloudLane {
   core: number;
   /** a deck's lumps: the cells' channel at a third of their period thickening and thinning the column (0..1) */
   lumps: number;
+  /**
+   * clouds-269: a convective lane's crown — the share of its slab under the ceiling over which its shell eases out
+   * (cloudShaders.ts cl2Shell). 0 = the shell law alone (a deck).
+   */
+  dome: number;
   /** the density profile over the height fraction: a·e^(b·η) + c·η + d */
   profile: readonly [number, number, number, number];
   /** the share of the deep diffusion term (a deck's base lit through its column) */
@@ -94,6 +99,50 @@ export const CLOUD_DECK_TUNE: Readonly<Record<string, number>> = Object.freeze({
   // a deck is closed or it is cumulus — so the tune keeps the relief and leaves the cover)
   CLOUD_DECK_FILTER: 1.6, CLOUD_DECK_COVER: 1, CLOUD_DECK_SHAPE: 1.4, CLOUD_DECK_DETAIL: 1.4,
 });
+/**
+ * clouds-269 (the owner, 2026-11-04: "less prism-y"): the share of a convective lane's slab under its ceiling over which
+ * its shell eases out (cloudShaders.ts cl2Shell), so the shape's erosion takes a core's top billow by billow, each turret
+ * at its own height, instead of round 6's lid at the ceiling; a column that ends lower keeps round 6's height (cloudField's
+ * twin, Verdant: the mass at 0.95 of the slab under 0.01 of its widest, round 6 0.12; to three quarters of it round 6's).
+ */
+export const CLOUD_DOME_DEPTH = 0.25;
+/**
+ * clouds-269: the share of a lane's weather the wind frame's cumulus field takes for a regime's street knob — whole for a
+ * street sky (0.75 and over), 0.3 of it for the fair-weather and humilis skies (0.3-0.4), smooth between. The fair-weather
+ * maps' rows rode round 71's rolls at that knob's whole share; with the rolls gone, the blind critics still preferred the
+ * old fair-weather masses to the lobes' scatter of small puffs ("strings of small puffs", "stray specks").
+ */
+export function cloudStreetShare(streets: number): number {
+  const s = clamp(streets, 0, 1), t = clamp((s - 0.4) / 0.35, 0, 1);
+  return s * (0.3 + 0.7 * t * t * (3 - 2 * t));
+}
+/**
+ * clouds-269: a convective lane's share of the wind frame's cumulus by its cover as well as its knob. The local weather's
+ * masses are kilometres across and merge as the cover rises: at under a third of the knob Verdant's cover of 0.61 drew
+ * one mass over nine tenths of its cloud (CPU model: 13.8 km across at the median — the blind critics' "flattened deck",
+ * 0-3), so a fuller sky takes more of the lobes, which keep its clouds apart at round 71's sizes (0.55: 2.2 km at the
+ * median and the largest a fifth of the cloud; round 71 2.9 km and a fifth, in rows). A sparse sky takes at least
+ * CLOUD_LOBE_FLOOR: the local weather alone set its cover by where the map sat on it — Reservoir's view one flat mass at
+ * twice its coverage (CPU model 0.19 of the sky, 8.4 km across; round 71 0.09 and 1.3 km), the blind critics' "a flat,
+ * lit slab", 0-3 (2026-11-05) — and the floor brings every sparse sky back to its coverage, its clouds a little larger
+ * than round 71's. The share climbs only past half cover (0.47 to 0.6): a sky at half cover mixing in four tenths of the
+ * lobes cut its masses into kilometre puffs of one size (Blackglass: CPU model, the largest cloud 0.05 of the cloud and
+ * 1.7 km at the 90th percentile against round 71's 0.25 and 4.7 km — the blind critics' "small uniform cotton balls"
+ * against round 71's "large billowing cumulus with shaded undersides", Blackglass, Skybridge and Polders 0-3, 2026-11-05);
+ * at the floor its masses keep round 71's sizes (0.16 and 3.9 km). A tower's sky takes little, a deep convective one
+ * (towers 0.6 and over) none past its knob: the lobes cut its towers to stubs and sprinkled specks between them (Delta and
+ * Mangrove 1-2, "scattered thin broken fragments" against round 71's "rounded three-lobed cluster").
+ */
+export function cloudLaneStreetShare(streets: number, cover: number, towers: number): number {
+  const t = clamp((cover - 0.47) / 0.13, 0, 1), k = 1 - clamp(towers, 0, 1), u = clamp((towers - 0.3) / 0.3, 0, 1);
+  return Math.max(cloudStreetShare(streets), Math.max(CLOUD_LOBE_FLOOR, 0.75 * t * t * (3 - 2 * t)) * k * k * (1 - u * u * (3 - 2 * u)));
+}
+/**
+ * clouds-269: the least share of the wind frame's cumulus a convective lane takes (cloudLaneStreetShare; CPU model over the
+ * nine sparse skies: the cover within a fifth of round 71's, the median cloud 1.0-1.7 km against round 71's 0.7-1.3 km;
+ * none at round 11's 1.5-3.5 times the cover).
+ */
+export const CLOUD_LOBE_FLOOR = 0.35;
 /** The local weather's world period (m; cloudShaders.ts CLOUD2_PERIODS.local) and its cell channel's cell (m) on it. */
 const CLOUD_LOCAL_PERIOD_M = 48000;
 const CLOUD_LOCAL_CELL_M = 1200;
@@ -188,12 +237,13 @@ export function cloudStackOf(preset: CloudLayerPreset): CloudStack {
   // front's towers take a core of 0.74 — rays end in them sooner too: 0.4 ms of the GPU on Monsoon's sky-w)
   const core = isDeck ? mixK(DECK_BROKEN.core, DECK_CORE, closing) : 0.46 + 0.28 * clamp((preset.towers - 0.5) / 0.5, 0, 1);
   const thickness = preset.thicknessM * (1 + preset.towers * 0.6);
+  // towers stand apart (a tower's footprint is its own; a front's sky between them is open), and the envelope's clear
+  // half is paid back where it gathers the cells
+  const cover = Math.min(1.25, cloudShellCover(preset.coverage, isDeck) * (1 - 0.3 * clamp(preset.towers, 0, 1)) / (1 - 0.5 * envelope));
   lanes.push({
     baseM: preset.baseM,
     topM: preset.baseM + thickness,
-    // towers stand apart (a tower's footprint is its own; a front's sky between them is open), and the envelope's clear
-    // half is paid back where it gathers the cells
-    cover: Math.min(1.25, cloudShellCover(preset.coverage, isDeck) * (1 - 0.3 * clamp(preset.towers, 0, 1)) / (1 - 0.5 * envelope)),
+    cover,
     // a deck's extinction at a stratocumulus' (an optical depth of ten to twenty through it, not fifty: its thick cores
     // grey, not black, beside its thin lines), a closing deck's at least twenty-five (an overcast, no disc through it)
     density: isDeck
@@ -202,7 +252,9 @@ export function cloudStackOf(preset: CloudLayerPreset): CloudStack {
     // (2026-10-18, the 228 census) a thin deck draws a share of that extinction (Whiteout's pale polar stratus)
     mediumShare: isDeck ? clamp(preset.deckDensity ?? 1, 0.05, 1) : 1,
     channels,
-    streets: clamp(preset.streets, 0, 1) * (1 - deck),
+    // (clouds-269) a street sky reads the wind frame's cumulus at its knob; a fair-weather or humilis sky by its cover
+    // (cloudLaneStreetShare): the lobes keep a full sky's clouds apart, a sparse sky's few large clouds the local weather's
+    streets: cloudLaneStreetShare(preset.streets, cover, preset.towers) * (1 - deck),
     envelope,
     // (a tower's flanks at the full erosion streaked with the shape volume's grain over kilometres of height: towers take
     // a softer carving, their mass in the light)
@@ -223,6 +275,8 @@ export function cloudStackOf(preset: CloudLayerPreset): CloudStack {
     anvil: clamp(preset.anvil, 0, 1),
     core,
     lumps: cellsEff > 0 ? clamp(Math.max(preset.lumps ?? 0, 0.5), 0, 1) : 0,
+    // every convective lane's tops carved over the same share of its slab (a tower's slab is the deeper: taller turrets)
+    dome: isDeck ? 0 : CLOUD_DOME_DEPTH,
     // denser toward the top for convective cloud (the condensate accumulates aloft), even through a sheet
     profile: deck > 0.5 ? [0, 0, 0.2, 0.8] : [0, 0, 0.6, 0.4],
     // a deck's base is lit through its column; a cumulus' shaded flank and base only a little (the octaves and the sky
@@ -258,6 +312,7 @@ export function cloudStackOf(preset: CloudLayerPreset): CloudStack {
       anvil: 0,
       core: 0.55,
       lumps: 0,
+      dome: 0,
       profile: [0, 0, 0.5, 0.5],
       diffuse: 0,
       shadow: true,
@@ -352,6 +407,7 @@ export function packCloudStack(stack: CloudStack, u: Record<string, { value: unk
   v4('uLayerAnvil', (l) => l.anvil);
   v4('uLayerCore', (l) => l.core);
   v4('uLayerLumps', (l) => l.lumps);
+  if (u.uLayerDome) v4('uLayerDome', (l) => l.dome);
   v4('uProfA', (l) => l.profile[0]);
   v4('uProfB', (l) => l.profile[1]);
   v4('uProfC', (l) => l.profile[2]);

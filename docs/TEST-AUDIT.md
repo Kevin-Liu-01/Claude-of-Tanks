@@ -15,15 +15,15 @@ Run times: `tools/selftest-durations.json`, else this machine's latest observati
 
 | Decision | Receipts | CPU-min |
 |---|---:|---:|
-| KEEP | 1531 | 168.4 |
+| KEEP | 1533 | 168.8 |
 | MERGE | 0 | 0.0 |
 | MANUAL | 661 | 1167.4 |
 | RETIRE | 2 | 0.7 |
 
 | Suite run | Receipts | CPU-min | Simulated wall (min) |
 |---|---:|---:|---:|
-| Before: every receipt (npm test without the tiers) | 2193 | 1336.2 | 235.0 |
-| After: the default tier | 1531 | 168.4 | 37.5 |
+| Before: every receipt (npm test without the tiers) | 2195 | 1336.6 | 235.1 |
+| After: the default tier | 1533 | 168.8 | 37.6 |
 
 Default tier: 12.6 % of the whole registry's CPU; 18.4 % of the 916 CPU-min the snapshot gave for the 1,863 receipts it timed. Its wall: 0.2 min exclusive receipts, 18.7 min pool, 18.6 min browser receipts.
 
@@ -808,7 +808,7 @@ None. Folding receipts saves only process starts (about a second each) and would
 | `tools/media-r5/fleet-coverage.selftest.mjs` | n/a | MANUAL (media) | media: the media lane's fleet backlog, n/a s: 267: the fleet's media backlog (every vehicle leads a take, the survey bars): the manual media suite | test:heavy -- media; test:recommend flags it when its inputs change |
 | `tools/mp-rooms-entry.browser.selftest.mjs` | n/a | MANUAL (ui) | ui: heavy interface paint and layout sweeps, n/a s: 268 (the 267 production smoke): the multiplayer end-to-end opens the rooms panel the way the Garage's layout o | test:heavy -- ui; test:recommend flags it when its inputs change |
 
-## KEEP (1531)
+## KEEP (1533)
 
 | Receipt | Run (s) | Decision | Reason | Coverage now |
 |---|---:|---|---|---|
@@ -884,6 +884,7 @@ None. Folding receipts saves only process starts (about a second each) and would
 | `src/game/waveFormationSplit.selftest.mjs` | 23 | KEEP | game flow, 23 s | default tier (npm test, the release gate; lane mode by its closure) |
 | `src/ui/interactionRegistry.selftest.mjs` | 23 | KEEP | interface contract, 23 s: 2026-10-26 (INTERACTION-REDESIGN part D, owner: "i really mean update all legacy interaction surfaces and syst | default tier (npm test, the release gate; lane mode by its closure) |
 | `tools/mp-p2p-headless-crash.selftest.mjs` | 23 | KEEP | a crashed host tab (must-keep: authority) | default tier (npm test, the release gate; lane mode by its closure) |
+| `src/engine/cloudPlacement.selftest.mjs` | 23 | KEEP | renderer contract, 23 s: clouds-269: every map's cumulus as the medium places it, aperiodic (round 71's ruled rolls the negative contro | default tier (npm test, the release gate; lane mode by its closure) |
 | `src/mp/wire/matchBuild.selftest.mjs` | 22 | KEEP | same-wire build check (must-keep: wire) | default tier (npm test, the release gate; lane mode by its closure) |
 | `src/sim/moduleArticulation.selftest.mjs` | 22 | KEEP | module damage articulation (must-keep: damage sample) | default tier (npm test, the release gate; lane mode by its closure) |
 | `tools/articulated-shadow-batch.browser.selftest.mjs` | 22 | KEEP | GPU regression, 22 s | default tier (npm test, the release gate; lane mode by its closure) |
@@ -1372,6 +1373,7 @@ None. Folding receipts saves only process starts (about a second each) and would
 | `src/ui/transientSurfaceRegistry.selftest.mjs` | 1.7 | KEEP | interface contract, 1.7 s: The transient-surface census (static): every surface the source puts on the page's stack (components/surfaceSt | default tier (npm test, the release gate; lane mode by its closure) |
 | `src/world/duneForms.selftest.mjs` | 1.7 | KEEP | world rule, 1.7 s: the map-revival lane (Sirocco Wadi round 1, wave 235): the erg's seif draa and star dunes; the gour's caprock | default tier (npm test, the release gate; lane mode by its closure) |
 | `tools/media-r5/duels.selftest.mjs` | 1.7 | KEEP | tool contract, 1.7 s: 2026-10-26: the duel wall in motion, takes 234-245 (site50.mjs DUEL_TABLE): races, quiet fire, a knockout each | default tier (npm test, the release gate; lane mode by its closure) |
+| `src/engine/cloudField.selftest.mjs` | 1.7 | KEEP | renderer contract, 1.7 s: clouds-269 (2026-11-04): the cloud field without rows or a lattice, the cumulus domed, the phones' deck unrepe | default tier (npm test, the release gate; lane mode by its closure) |
 | `src/audio/reverbImpulse.selftest.mjs` | 1.6 | KEEP | audio contract, 1.6 s: reverbImpulse.selftest.mjs — the mixer's room impulses: built with stepped envelopes and once per room (2026-1 | default tier (npm test, the release gate; lane mode by its closure) |
 | `src/techTree/techTree.selftest.mjs` | 1.6 | KEEP | site, manual or app contract, 1.6 s: tech-tree view 252 (2026-10-25): the read-only national trees (shape, layout, the fleet once each, no progress | default tier (npm test, the release gate; lane mode by its closure) |
 | `src/ui/tokens/modeColours.selftest.mjs` | 1.6 | KEEP | interface contract, 1.6 s: modeColours.selftest.mjs — every game mode wears its own hue, from one token set (owner 2026-10-25: "use the u | default tier (npm test, the release gate; lane mode by its closure) |
