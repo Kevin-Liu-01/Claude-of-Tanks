@@ -13,7 +13,7 @@ import { resolve } from 'node:path';
 import puppeteer from 'puppeteer';
 import { createServer } from 'vite';
 import { launchGuardedBrowser } from './browser-launch.mjs';
-import { createCaptureLock } from './capture-lock.mjs';
+import { openCaptureHold } from './capture-hold.mjs';
 import { createLocalPadService } from '../server/rooms/localPadService.ts';
 
 const root = resolve(new URL('..', import.meta.url).pathname);
@@ -51,7 +51,7 @@ padServer.on('upgrade', (request, socket, head) => { if (!pads.handleUpgrade(req
 await new Promise((done) => padServer.listen(0, '127.0.0.1', done));
 const padService = `ws://127.0.0.1:${padServer.address().port}`;
 
-const lock = createCaptureLock();
+let captureHold = null; // the capture hold (tools/capture-hold.mjs openCaptureHold: refresh, cap, signals, release at exit)
 let vite = null;
 let browser = null;
 let phoneBrowser = null;
@@ -62,7 +62,7 @@ try {
   for (const path of ['/pad', '/']) {
     await fetch(`http://127.0.0.1:${port}${path}`, { headers: { accept: 'text/html' }, signal: AbortSignal.timeout(900_000) }).catch(() => {});
   }
-  await lock.acquire(4 * 60 * 60 * 1000, { lockClass: 'timing', command: 'tools/couch-e2e.browser.mjs' });
+  captureHold = await openCaptureHold({ label: 'couch-e2e', timeoutMs: 4 * 60 * 60 * 1000, lockClass: 'timing', command: 'tools/couch-e2e.browser.mjs' });
   startedAt = Date.now();
   report.loadAtGrant = (await import('node:os')).loadavg().map((v) => Math.round(v));
   const origin = `http://127.0.0.1:${port}`;
@@ -224,7 +224,7 @@ try {
   try { await vite?.close(); } catch { /* gone */ }
   await pads.close().catch(() => {});
   await new Promise((done) => padServer.close(done));
-  lock.release();
+  await captureHold?.release();
 }
 const failed = report.failure || Object.values(report.checks).some((entry) => !entry.ok);
 console.log(failed ? 'couch-e2e: FAIL' : 'couch-e2e: PASS');
