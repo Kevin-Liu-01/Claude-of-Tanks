@@ -167,7 +167,8 @@ for (let i = 1; i < physicalPoles.utilityPolePlacements.length; i++) {
 for (const stage of stages) {
   const before = fixture(originalLayout), after = fixture(completedLayout), naked = fixture(layout(extended));
   for (const item of [before, after, naked]) {
-    const result = item.methods[stage]();
+    // (wrecks-270) the road pass places up to the quota its caller gives it: here the fixture's whole wreckCount
+    const result = item.methods[stage](...(stage === 'placeRoadWrecks' ? [5] : []));
     if (result?.next) [...result];
   }
   for (const key of ['records', 'poles', 'utilityPolePlacements', 'wreckRecords', 'fenceRuns', 'fallenLamps', 'draws']) {

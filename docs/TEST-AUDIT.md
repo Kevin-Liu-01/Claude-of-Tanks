@@ -15,17 +15,17 @@ Run times: `tools/selftest-durations.json`, else this machine's latest observati
 
 | Decision | Receipts | CPU-min |
 |---|---:|---:|
-| KEEP | 1516 | 165.1 |
+| KEEP | 1518 | 194.2 |
 | MERGE | 0 | 0.0 |
 | MANUAL | 655 | 1157.1 |
 | RETIRE | 2 | 0.7 |
 
 | Suite run | Receipts | CPU-min | Simulated wall (min) |
 |---|---:|---:|---:|
-| Before: every receipt (npm test without the tiers) | 2172 | 1322.5 | 233.3 |
-| After: the default tier | 1516 | 165.1 | 37.1 |
+| Before: every receipt (npm test without the tiers) | 2174 | 1351.6 | 237.0 |
+| After: the default tier | 1518 | 194.2 | 47.5 |
 
-Default tier: 12.5 % of the whole registry's CPU; 18.0 % of the 916 CPU-min the snapshot gave for the 1,863 receipts it timed. Its wall: 0.2 min exclusive receipts, 18.3 min pool, 18.6 min browser receipts.
+Default tier: 14.4 % of the whole registry's CPU; 21.2 % of the 916 CPU-min the snapshot gave for the 1,863 receipts it timed. Its wall: 0.2 min exclusive receipts, 28.7 min pool, 18.6 min browser receipts.
 
 ## Manual suites
 
@@ -802,10 +802,11 @@ None. Folding receipts saves only process starts (about a second each) and would
 | `tools/media-r5/fleet-coverage.selftest.mjs` | n/a | MANUAL (media) | media: the media lane's fleet backlog, n/a s: 267: the fleet's media backlog (every vehicle leads a take, the survey bars): the manual media suite | test:heavy -- media; test:recommend flags it when its inputs change |
 | `tools/mp-rooms-entry.browser.selftest.mjs` | n/a | MANUAL (ui) | ui: heavy interface paint and layout sweeps, n/a s: 268 (the 267 production smoke): the multiplayer end-to-end opens the rooms panel the way the Garage's layout o | test:heavy -- ui; test:recommend flags it when its inputs change |
 
-## KEEP (1516)
+## KEEP (1518)
 
 | Receipt | Run (s) | Decision | Reason | Coverage now |
 |---|---:|---|---|---|
+| `src/vehicles/wreckGunBend.selftest.mjs` | 1721 | KEEP | vehicle rule, 1721 s: 2026-11-05 (owner: "when destroyed you can still see the double barrles"): every public tank's battle wreck ki | default tier (npm test, the release gate; lane mode by its closure) |
 | `tools/pane-stack-layer.browser.selftest.mjs` | 969 | KEEP | GPU regression, 969 s: local-fps-266: a regional window's stack (dark, pane, frame) draws the same at 20-700 m in any draw order | default tier (npm test, the release gate; lane mode by its closure) |
 | `src/vehicles/japaneseMantlet.selftest.mjs` | 444 | KEEP | vehicle rule, 444 s: 261 (owner: "the stb 1 and type 74 still need completgely new mantlets and turret geometrry around the mantlet | default tier (npm test, the release gate; lane mode by its closure) |
 | `src/vehicles/profiles/leopard2a3B4.selftest.mjs` | 333 | KEEP | vehicle rule, 333 s: release 262: the fourth batch's Leopard 2A3 on the same hull: the 2A3's combat data, the shared construction, | default tier (npm test, the release gate; lane mode by its closure) |
@@ -872,6 +873,7 @@ None. Folding receipts saves only process starts (about a second each) and would
 | `src/game/rosterPlanning.selftest.mjs` | 25 | KEEP | game flow, 25 s | default tier (npm test, the release gate; lane mode by its closure) |
 | `src/mp/host/droneRecallWire.selftest.mjs` | 25 | KEEP | the client only asks; the authority decides (must-keep) | default tier (npm test, the release gate; lane mode by its closure) |
 | `src/mp/wire/eventPayload.selftest.mjs` | 25 | KEEP | binary event payloads (must-keep: wire) | default tier (npm test, the release gate; lane mode by its closure) |
+| `src/world/wreckStates.selftest.mjs` | 24 | KEEP | world rule, 24 s: wrecks-270 (2026-11-05): one donor baked in each of the eight damage states | default tier (npm test, the release gate; lane mode by its closure) |
 | `server/rooms/localPadService.selftest.mjs` | 23 | KEEP | server service, 23 s: The LAN helper's phone-controller pairing over real sockets (docs/PHONE-CONTROLLER.md): /pad/new hands out a c | default tier (npm test, the release gate; lane mode by its closure) |
 | `src/game/waveFormationSplit.selftest.mjs` | 23 | KEEP | game flow, 23 s | default tier (npm test, the release gate; lane mode by its closure) |
 | `src/ui/interactionRegistry.selftest.mjs` | 23 | KEEP | interface contract, 23 s: 2026-10-26 (INTERACTION-REDESIGN part D, owner: "i really mean update all legacy interaction surfaces and syst | default tier (npm test, the release gate; lane mode by its closure) |
