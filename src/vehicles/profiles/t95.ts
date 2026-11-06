@@ -75,11 +75,27 @@ const SHELL: readonly ShellStation[] = Object.freeze([
   { z: -0.70, roofY: 2.03, xr: 1.12, xs: 1.28, ys: 1.83, xo: 1.90, yo: 1.451 },
   { z: -0.40, roofY: 2.02, xr: 1.14, xs: 1.28, ys: 1.80, xo: 1.58, yo: 1.617 },
   { z: -0.25, roofY: 2.01, xr: 1.02, xs: 1.18, ys: 1.82, xo: 1.44, yo: 1.42 },
-  { z: -0.10, roofY: 2.00, xr: 0.85, xs: 1.05, ys: 1.82, xo: 1.28, yo: 1.22 },
-  { z: 0.10, roofY: 1.97, xr: 0.55, xs: 0.85, ys: 1.66, xo: 1.15, yo: 1.22 },
-  { z: 0.22, roofY: 1.90, xr: 0.36, xs: 0.70, ys: 1.60, xo: 1.05, yo: 1.21 },
-  { z: H.faceZ, roofY: 1.76, xr: 0.25, xs: 0.60, ys: 1.46, xo: 0.98, yo: 1.21 },
 ]);
+
+/**
+ * The cast nose (blind critics, round 8: the shell's rings carried through the rounding nose read as cloth draped over
+ * the ball): its own closed casting from behind the cheeks to the face, each section a leaning wall rolling over a round
+ * shoulder onto a crowned roof. [z, half-width at the cover line, roof height]
+ */
+const NOSE: readonly (readonly [number, number, number])[] = Object.freeze([
+  [-0.60, 1.50, 2.02], [-0.25, 1.47, 2.01], [0.0, 1.17, 1.99], [0.12, 1.09, 1.95], [0.22, 1.01, 1.86], [H.faceZ, 0.95, 1.70],
+]);
+const NOSE_ARC = 5;
+function noseRing(hb: number, top: number): SectionPoint[] {
+  const lean = 0.20, rad = 0.30, xs = hb - lean, cx = xs - rad, cy = top - rad;
+  const right: [number, number][] = [];
+  for (let k = 0; k <= NOSE_ARC; k++) {
+    const a = (k / NOSE_ARC) * Math.PI / 2;
+    right.push([cx + rad * Math.cos(a), cy + rad * Math.sin(a)]);
+  }
+  const left = right.slice().reverse().map(([x, y]) => [-x, y] as [number, number]);
+  return [[-hb, H.coverY], [hb, H.coverY], ...right, [0, top + 0.02], ...left];
+}
 
 /** The authored stations resampled every 0.12 m (Catmull-Rom on each datum, z kept monotone): the cast nose rounds
  * through many sections instead of creasing between a few (blind critics, round 6: "faceted"). */
@@ -171,6 +187,9 @@ function* buildT95Steps(P: TankBuilderPort): TankProfileBuild {
     // the bow face below the shell between the inner units, to the lower plate (the 305 mm casting's lower half)
     P.add('hull', sectionSolid([0.05, H.faceZ].map((z) => ({ z, ring: [[-H.tubX, 0.78], [H.tubX, 0.78], [H.tubX, H.coverY + 0.02],
       [-H.tubX, H.coverY + 0.02]] as SectionPoint[] }))));
+    // the cast nose round the ball (NOSE), smooth over its shoulders and roof
+    P.add('hull', sectionSolid(NOSE.map(([z, hb, top]) => ({ z, ring: noseRing(hb, top) })),
+      { smoothSideEdges: Array.from({ length: 2 * NOSE_ARC + 2 }, (_, i) => 2 + i) }));
     // the cast collar the ball sits in (blind critics, round 4: the sphere read stuck onto a flat face)
     P.add('hull', xform(lathe([[0.50, -0.12], [0.60, -0.12], [0.63, -0.05], [0.62, 0.04], [0.56, 0.11], [0.50, 0.12],
       [0.50, -0.12]], P.q ? 32 : 18), 0, 0, 0, Math.PI / 2, 0, 0), 0, BALL.y, H.faceZ - 0.04);
