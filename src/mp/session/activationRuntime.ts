@@ -1,5 +1,6 @@
 import type { RuntimeValue } from '../../runtimeTypes.ts';
 import { assertAppPhaseTransition, transitionAppPhase, type AppPhase } from '../../game/appLifecycle.ts';
+import { resetWorldForBattle, type BattleResetWorld } from '../../world/battleWorldReset.ts';
 interface NetworkPlayerSelection {
   id: string;
   specId: string;
@@ -62,9 +63,7 @@ interface NetworkBridgePort {
   setPerspective(entityId: string | null | undefined): void;
 }
 
-interface WorldPort {
-  resetDestructibles?(): void;
-}
+type WorldPort = BattleResetWorld;
 
 interface ActivationPresentationPorts {
   setShotMode(active: boolean): void;
@@ -170,7 +169,8 @@ export function createActivationRuntime({
       }
       driveTest.resetAim();
       presentation.setWorldDormant(false);
-      presentation.getWorld()?.resetDestructibles?.();
+      // (round 3 A7/M4) the battle edge's reset: the falls and sweeps the battle's, the battlefield intact
+      resetWorldForBattle(presentation.getWorld());
       game.mapId = mapId;
       presentation.setCamoBiome(mapId);
       hud.shotInfo.setPlayer(viewerId);

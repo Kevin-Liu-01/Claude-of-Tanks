@@ -2,6 +2,7 @@ import type { RuntimeValue } from '../runtimeTypes.ts';
 import type { DamagePanelController } from '../ui/damagePanel.ts';
 import { assertAppPhaseTransition, transitionAppPhase, type AppPhase } from './appLifecycle.ts';
 import { transitionBattleCountdown } from './preBattleCountdown.ts';
+import { resetWorldForBattle, type BattleResetWorld } from '../world/battleWorldReset.ts';
 import type { HudRuntime } from '../ui/hud.ts';
 
 type MaybePromise<T> = T | PromiseLike<T>;
@@ -36,9 +37,8 @@ interface SoloBattleGame {
   tanks: Array<{ specId: string; isPlayer?: boolean }>;
 }
 
-interface SoloBattleWorld {
+interface SoloBattleWorld extends BattleResetWorld {
   mapId: string;
-  resetDestructibles?(): void;
 }
 
 interface SoloBattleFx {
@@ -204,7 +204,8 @@ export function createSoloBattleStartRuntime({
       world.switchMap(world.resolveMapId(mapId || state.getPendingMapId()));
       world.setDormant(false);
       const activeWorld = world.getActive();
-      activeWorld.resetDestructibles?.();
+      // (round 3 A7/M4) the battle takes the world: its frame drives the falls and its sweeps run whatever a Studio left
+      resetWorldForBattle(activeWorld);
       world.scheduleBlackWatchdog(preBattleHold);
       game.mapId = activeWorld.mapId;
       round.setCamoBiome(activeWorld.mapId);
