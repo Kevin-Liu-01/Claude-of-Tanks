@@ -4,9 +4,9 @@
 // landed runs its whole life on the TypeScript. The kernels load in the solo authority's own chunk
 // (game/soloBattleRuntime.ts), and the authority was ready as soon as that chunk's body ran, so the covered entry's
 // barrier (preloadSoloAuthority, game/soloBattleLoadingRuntime.ts) could finish, and the first battle be set up, before
-// its own chunk's kernels did. The access owner (soloBattleAccess.ts) is now ready once the chunk's soloKernelsSettled()
-// has: the kernels installed or failed, or SOLO_KERNELS_ENTRY_WAIT_MS passed (no top-level await in the chunk: the
-// kernels' own chunk may import modules the bundler placed in it).
+// its own chunk's kernels did. The access owner's preload (soloBattleAccess.ts) now resolves once its own wait,
+// soloKernelsSettled(), has: the kernels installed or failed, or SOLO_KERNELS_ENTRY_WAIT_MS passed since that wait began
+// (round 4 F3; no top-level await in the chunk: the kernels' own chunk may import modules the bundler placed in it).
 // Held through the page's own access owner and the chunk's real body; the authority (state.ts) and
 // the browser's fetch of the module (world/soloWorldKernels.ts) are stand-ins, so each case loads in milliseconds:
 // - kernels that land after the chunk's body ran: the entry's preload resolves only after they are installed;
@@ -18,7 +18,8 @@
 //   report that throws leaves the TypeScript unreported, and either way the entry goes on and the page's re-ask of the
 //   cached chunk resolves (a rejection there failed every solo entry for the document's life);
 // - (round 4 F3) the bound is the entry's own, started at its wait: a garage dwell that outlasts the Battle intent's
-//   preload (which evaluates the chunk) still leaves the covered entry its own bound for the kernels.
+//   preload (which evaluates the chunk) still leaves the covered entry its own bound for the kernels. So, while the load
+//   is pending, every later preload on the access (a Battle Again's entry included) waits up to a bound of its own again.
 // Not reproduced here: a browser's fetch racing a real covered entry (the timing half; MANUAL solo-kernels-probe).
 import assert from 'node:assert/strict';
 import { registerHooks } from 'node:module';
@@ -48,7 +49,7 @@ const hook = registerHooks({
   },
 });
 
-// the chunk's bound, captured (a timer of a second or more) and fired by hand; shorter timers run as ever
+// each wait's bound, captured (a timer of a second or more) and fired by hand; shorter timers run as ever
 const realSetTimeout = globalThis.setTimeout, realClearTimeout = globalThis.clearTimeout;
 const bounds = [];
 globalThis.setTimeout = (fn, ms, ...args) => {
@@ -100,7 +101,7 @@ try {
     assert.equal(typeof runtime.setupBattle, 'function');
     assert.equal(bounds.length, 1, 'one bound');
     assert.ok(bounds[0].ms === runtime.SOLO_KERNELS_ENTRY_WAIT_MS && bounds[0].ms >= 1000 && bounds[0].ms <= 10_000,
-      `the bound is the chunk's own, a few seconds (${bounds[0].ms} ms)`);
+      `the entry's bound, a few seconds (${bounds[0].ms} ms)`);
     assert.equal(bounds[0].cleared, true, 'a load that settles first leaves no timer behind');
   }
 
@@ -126,7 +127,7 @@ try {
     globalThis.__soloKernelEntry.load = () => landing.promise;
     const { preload } = entry();
     for (let i = 0; i < 50 && bounds.length === 0; i++) await turns(1);
-    assert.equal(bounds.length, 1, 'the chunk set its bound');
+    assert.equal(bounds.length, 1, 'the entry\'s wait set its bound');
     await turns();
     assert.deepEqual(events, [], 'the entry waits within the bound');
     bounds[0].fn();
