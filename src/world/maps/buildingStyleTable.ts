@@ -252,11 +252,9 @@ export const BUILDING_STYLES = {
     roof: { forms: ['gable', 'hip', 'halfhip'], pitchDeg: [40, 55] },
     core: 'masonry', storeys: [1, 2], storeyM: [2.5, 3.2], bayM: [1.4, 4.2],
     weathering: { damp: 0.8, moss: 0.5 }, wear: 0.2,
-    // (round-3 blind pairs lost 0–4 on the white and black paints; the paints traced from the record's photos, overcast
-    // shade corrected per channel by the white render beside them, ×1.83/1.81/1.84) the aubergine doors and window frames
-    // (polders_3, #241d2b → #42354f), the near-black navy door (polders_3, #141b2d → #253153), the brick house's grey
-    // shutters (polders_1, sunlit, #646564)
-    variation: { axes: { paint: ['#42354f', '#253153', '#646564'] }, roofAge: [0, 1] },
+    // (Main's 11-06 pair rule: the photo-traced paints, aubergine #42354f, navy #253153 and grey #646564, lost their one
+    // fresh judge 0–7, every critic naming them, so the doors and shutters revert to the kit's own colours)
+    variation: { axes: {}, roofAge: [0, 1] },
     surface: { grime: 1.1, patches: 0.5, tileRelief: 1.35, reveal: 0.15, eave: 0.3 },
   },
   copper_mesa: {
@@ -335,9 +333,9 @@ export const BUILDING_STYLES = {
     roof: { forms: ['gable'], pitchDeg: [18, 30] },
     core: 'masonry', storeys: [1, 3], storeyM: [2.6, 3.2], bayM: [1.4, 3],
     weathering: { damp: 0.45, moss: 0.25 }, wear: 0.3,
-    // (Main 11-06: the paints traced from the record's photos) light grey-blue louvred shutter (saltwind_4, #868b96);
-    // red-brown painted plank door (saltwind_0, #8d5e4c); dark weathered plank gate (saltwind_0, #4c3c34)
-    variation: { axes: { paint: ['#868b96', '#8d5e4c', '#4c3c34'] }, roofAge: [0, 1] },
+    // (Main's 11-06 pair rule: the photo-traced paints, grey-blue #868b96, red-brown #8d5e4c and plank #4c3c34, lost
+    // their one fresh judge 1–6, every critic naming them, so the doors and shutters revert to the kit's own colours)
+    variation: { axes: {}, roofAge: [0, 1] },
     surface: { grime: 0.9, patches: 0.75, tileRelief: 1.35, reveal: 0.3, eave: 0.2 },
   },
   reservoir: {
