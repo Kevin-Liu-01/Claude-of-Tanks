@@ -2810,6 +2810,9 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/ui/battleInputOwner.selftest.mjs', // 2026-11-02 audit F4: one battle input owner (presentation > menu > veil > play)
     // 2026-11-02 audit IR15 (round 2): the kill-cam replay's own flag is the one screen fact the input owner reads
     'src/game/killcamScreen.selftest.mjs',
+    // 2026-11-02 audit A9 (round 3): a replay that throws while built, in onDone or in a restore still clears its flag,
+    // emits killcam:done (the input owner's edge) and lifts its fade; the real controller and the real input owner
+    'src/game/killcamReplayLifecycle.selftest.mjs',
     'src/ui/battleReportGate.selftest.mjs', // 2026-11-02 audit F4: the report gate holds for every presentation, decides again
     'src/ui/battleReportGateHud.selftest.mjs', // 2026-11-02 audit F4: shotInfo's report gate through the real HUD (replay, stale decision)
     'src/ui/hudMagazine.selftest.mjs',
