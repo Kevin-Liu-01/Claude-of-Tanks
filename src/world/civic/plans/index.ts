@@ -13,6 +13,10 @@ import { POLDERS_CIVIC_PLAN } from './polders.ts';
 import { AUTUMN_CIVIC_PLAN } from './autumn.ts';
 import { DELTA_CIVIC_PLAN } from './delta.ts';
 import { BADLANDS_CIVIC_PLAN } from './badlands.ts';
+import { FOUNDRY_CIVIC_PLAN } from './foundry.ts';
+import { FRONTIER_CIVIC_PLAN } from './frontier.ts';
+import { COPPER_MESA_CIVIC_PLAN } from './copper_mesa.ts';
+import { SALTWIND_CIVIC_PLAN } from './saltwind.ts';
 
 import * as detMath from '../../../sim/detMath.ts';
 const SOURCES: Readonly<Partial<Record<MapId, CivicPlanSource>>> = Object.freeze({
@@ -24,6 +28,11 @@ const SOURCES: Readonly<Partial<Record<MapId, CivicPlanSource>>> = Object.freeze
   autumn: AUTUMN_CIVIC_PLAN,
   delta: DELTA_CIVIC_PLAN,
   badlands: BADLANDS_CIVIC_PLAN,
+  // built-env-270: the kerbs and pavements of the works town, the Hessian village, Queenstown and the Dalmatian town
+  foundry: FOUNDRY_CIVIC_PLAN,
+  frontier: FRONTIER_CIVIC_PLAN,
+  copper_mesa: COPPER_MESA_CIVIC_PLAN,
+  saltwind: SALTWIND_CIVIC_PLAN,
 });
 /** Each plan in its map's civic style (the built-environment row names it; a plan on a map whose row names none throws). */
 const PLANS: Readonly<Record<string, CivicPlan>> = Object.freeze(Object.fromEntries(Object.entries(SOURCES).map(([mapId, plan]) => {

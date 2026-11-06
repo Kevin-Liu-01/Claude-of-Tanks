@@ -109,7 +109,7 @@ export const BUILT_ENVIRONMENT = Object.freeze({
   // the Fulda Gap, 1984 (built-env-270, the photos: the Kreisstraßen and the village's through road a patched dark asphalt
   // with white edge lines, the farm roads (Wirtschaftswege) concrete slabs; the ponds' edges mud under rushes)
   frontier: row({ paved: { tone: 0.82, patches: 0.8, cracks: 0.6, covers: 0.4, markings: 1 }, paths: ['patched', 'patched', 'concrete', 'concrete', null, null], work: 'off' },
-    null, banked({ kind: 'mud', widthM: 2.5, hex: 0x5e5444 })),
+    'hessian', banked({ kind: 'mud', widthM: 2.5, hex: 0x5e5444 })),
   // Bjerkvik on the Herjangsfjord, May 1940 (built-env-270, the photos: the gravel roads stay; the shore shingle and cobbles
   // of grey granite and gneiss between smooth slabs, no sand beach)
   fjord: row(PROTECTED, null, { boats: 'faering', jetty: 'brygge', reeds: 'phragmites', drift: 'nordland', ford: 'gauge',
@@ -132,7 +132,7 @@ export const BUILT_ENVIRONMENT = Object.freeze({
   caldera: row({ paved: { tone: 0.80, patches: 0.3, cracks: 0.3, covers: 0.5, markings: 1 }, paths: ['asphalt', 'asphalt', 'asphalt', 'concrete', 'concrete'], work: 'climate' }, null),
   // Völklingen, 1945: the works town's streets in setts, the roads beyond it cinder and earth, the sooty basalt's 0.62
   // (ground lane, 2026-10-15: the setts read with darker grit joints, wider, held further out)
-  foundry: row({ paved: { street: 'cobble', square: 'cobble', townOnly: true, tone: 0.62 }, paths: null, work: 'climate' }, null),
+  foundry: row({ paved: { street: 'cobble', square: 'cobble', townOnly: true, tone: 0.62 }, paths: null, work: 'climate' }, 'saar'),
   // Sarajevo, 1992–96: the shelled city's asphalt, patched and cracked; its styled paths keep their own classes (R2: the
   // squares in setts — the patched asphalt squares read as empty car parks; the round fills ragged and fewer)
   ruinspires: row({
@@ -159,8 +159,9 @@ export const BUILT_ENVIRONMENT = Object.freeze({
   // (built-env-270, the photos: the dykes faced with basalt blocks under their grass slopes)
   polders: row({ paved: null, paths: ['clinker', 'clinker', 'clinker', 'clinker', 'clinker'], work: 'climate' }, 'polder',
     banked({ kind: 'pitched', widthM: 3.5, hex: 0x3d3d3c, stoneM: 0.4 })),
-  // Queenstown, Tasmania, 1976
-  copper_mesa: row(UNPAVED, null),
+  // Queenstown, Tasmania, 1976 (built-env-270, the photos: the town's main street a wide grey asphalt behind a concrete
+  // kerb-and-channel; the side streets and the mine roads crushed pale rock)
+  copper_mesa: row({ paved: { tone: 0.88, patches: 0.6, cracks: 0.6, covers: 0.4 }, paths: ['asphalt', null, null, null, null], work: 'climate' }, 'queenstown'),
   // Hostomel, 2022: its airfield slabs are the hardstands' own
   airfield: row(UNPAVED, null),
   // Siwa, 2010 (built-env-270, the photos: the main road a thin grey asphalt drifted over with sand; the lake's margins
@@ -181,7 +182,7 @@ export const BUILT_ENVIRONMENT = Object.freeze({
   // (built-env-270, the photos: the coast road and the village streets a patched asphalt; the beach pale limestone shingle
   // and pebbles, not sand)
   saltwind: row({ paved: { tone: 0.92, patches: 1, cracks: 0.8, covers: 0.3, markings: 0.6 }, paths: ['patched', 'patched', 'patched', null, null, null], work: 'off' },
-    null, { boats: 'gajeta', jetty: 'riva', reeds: 'phragmites', drift: 'breton', ford: 'gauge', bank: { kind: 'shingle', widthM: 14, hex: 0xd2cdc3, stoneM: 0.07 } }),
+    'dalmatian', { boats: 'gajeta', jetty: 'riva', reeds: 'phragmites', drift: 'breton', ford: 'gauge', bank: { kind: 'shingle', widthM: 14, hex: 0xd2cdc3, stoneM: 0.07 } }),
   // the Rur dams, 1944–45 (built-env-270, the photos: the lakes drawn down that winter, a wide bare band of grey-brown slate
   // and greywacke scree and silt below the dark root line)
   reservoir: row(PROTECTED, null, banked({ kind: 'shingle', widthM: 8, hex: 0x7d776c, stoneM: 0.09 })),
