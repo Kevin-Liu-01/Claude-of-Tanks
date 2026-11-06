@@ -111,8 +111,13 @@ const MACRO_DRAWN = new Set([0, 1, 2, 3, 4, 5, 6]), CLOSE_DRAWN = new Set([0, 1,
 for (const mapId of MAP_IDS) {
   const u = groundSurfaceUniformValues(mapId);
   for (const v of [...u.open, ...u.worn, ...u.town, ...u.near]) assert.ok(Number.isFinite(v), `${mapId}: finite`);
-  // (c4: sand's and snow's relief is their detail and their darkest facet no black — their caps 0.65)
-  assert.ok(u.near[0] > 0.2 && u.near[0] <= 0.7 && u.near[1] > 0.2 && u.near[1] <= 0.7, `${mapId}: relief caps ${u.near}`);
+  // (c4: sand's and snow's relief is their detail and their darkest facet no black — their caps 0.65; c8: 1, no shade
+  // side held; the turf's and the soils' still under 0.7)
+  assert.ok(u.near[0] > 0.2 && u.near[0] <= 1 && u.near[1] > 0.2 && u.near[1] <= 1, `${mapId}: relief caps ${u.near}`);
+  for (const [i, cls] of [[0, MAP_GROUND[mapId].open], [1, MAP_GROUND[mapId].worn]]) {
+    const m = GROUND_CLASSES[cls].macro.kind;
+    if (m !== 'sand' && m !== 'snow') assert.ok(u.near[i] <= 0.7, `${mapId}: ${cls}'s relief cap ${u.near[i]}`);
+  }
   assert.equal(u.near[2], 0.42, `${mapId}: the setts' joints' floor`);
   assert.equal(u.near[3], 1, `${mapId}: the fields' grain and the hardstanding's staggered repairs`);
   assert.ok(MACRO_DRAWN.has(u.open[0]) && CLOSE_DRAWN.has(u.open[2]) && CLOSE_DRAWN.has(u.worn[2]), `${mapId}: drawn codes`);
@@ -164,7 +169,7 @@ assert.ok(GROUND_SURFACE_GLSL.includes('gGsTilt = uGsNear.x > 0.0'), 'the chunk 
 // past ~45 m; the normal pass bounds both
 assert.ok(GROUND_SURFACE_GLSL.includes('gGsGain = gGsTilt * mix(3.0, 1.0, smoothstep(15.0, 45.0, camDist));'), 'the chunk sets the gain');
 assert.ok(raw.includes('float gsB = gsGL * (gsD < 0.0 ? gGsTilt : gGsGain);'), 'the normal pass bounds a facet\'s loss and its gain');
-assert.ok(GROUND_SURFACE_GLSL.includes('* smoothstep(0.15, 0.55, saturate(dot(normalize(cameraPosition - wp), wn)));'),
+assert.ok(GROUND_SURFACE_GLSL.includes('* smoothstep(0.04, 0.22, saturate(dot(normalize(cameraPosition - wp), wn)));'),
   'the mosaic fades as the view grazes, by the mid dapple\'s law (diag2: its patches foreshortened to slivers)');
 // (c7, Amberford's square: the table named the soil's mosaic and the material drew none of it) every macro code a map
 // packs has its law in the chunks: the open ground's sward, tussock and soil, the worn ground's soil, the town's yard,

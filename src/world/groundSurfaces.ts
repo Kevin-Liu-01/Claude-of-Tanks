@@ -85,9 +85,11 @@ const SETTS_JOINT_FLOOR = 0.42;
 /** The relief's cap by the class's macro law (the share of the direct light a facet may lose): turf soft, soils and yards
  * rougher, rock uncapped; (c4: the Sahel's ripples and Winterfront's drifts "stronger in B" at 0.4) sand and snow, whose relief
  * is their detail and whose darkest facet is no black, loosest; (c9, Autumn near: "visibly blurred" — the turf's 0.30 held
- * its litter's shade sides, a third of the lost contrast) the turf 0.38, still no facet near black. */
+ * its litter's shade sides, a third of the lost contrast) the turf 0.38, still no facet near black; (c8, the Sahel, the
+ * oasis, Glacier Pass and Whiteout at 0.65: "B's ripples have more contrast", "crisper relief") sand and snow lose no
+ * shade side to it (1), their brightening still held. */
 const RELIEF_TILT: Readonly<Record<GroundMacro, number>> = Object.freeze({
-  sward: 0.38, tussock: 0.4, soil: 0.45, yard: 0.4, rubble: 0.5, slag: 0.45, paved: 0.3, sand: 0.65, snow: 0.65, rock: 0, none: 0.4,
+  sward: 0.38, tussock: 0.4, soil: 0.45, yard: 0.4, rubble: 0.5, slag: 0.45, paved: 0.3, sand: 1, snow: 1, rock: 0, none: 0.4,
 });
 const painter = (name: string): GroundTextures => ({ painter: name });
 const row = (textures: GroundTextures, macro: GroundMacro, macroStrength: number, close: GroundClose, closeStrength: number,
@@ -129,7 +131,8 @@ export const GROUND_CLASSES: Readonly<Record<GroundClass, GroundClassRow>> = Obj
   // the bedded sandstone and mudstone walls (terrain.ts makeSandstoneLayer)
   sandstone: row(painter('terrain.ts makeSandstoneLayer'), 'rock', 0, 'none', 0, 'none', 'earth'),
   // wind-packed snow: crust and powder, sastrugi, the clods of broken crust
-  snow: row(photo('snow'), 'snow', 0, 'stones', 0.35, 'sedge', 'snow'),
+  // (c8, Whiteout: "faint scattered pale round dots") no stones on fresh snow
+  snow: row(photo('snow'), 'snow', 0, 'none', 0, 'sedge', 'snow'),
   // a snow map's worn ground: the snow trampled and compacted, slushy in its hollows, its clods kicked up, the dirt set
   // showing only where the wear is strong (terrain.ts's snow wear law over the D layer)
   trampledSnow: row(photo('dirt'), 'snow', 0, 'stones', 0.5, 'none', 'snow'),
