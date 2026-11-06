@@ -675,7 +675,11 @@ for (const waiters of [1, 0]) {
     assert.ok(read().includes('up'), `the child holds its private lock: ${err.slice(-400)}`);
     // the parent queues and keeps the lock it is yielded: the child's re-queue runs out after its 1.5 s wait
     await waiter.acquire(20_000);
-    const code = await Promise.race([closed, sleep(60_000).then(() => 'still running')]);
+    // (round 3 A5 review) the wall is cleared once the child closes: an open 60 s timer kept this receipt alive a minute
+    // past its last assertion
+    let wall = null;
+    const code = await Promise.race([closed, new Promise((done) => { wall = setTimeout(() => done('still running'), 60_000); })]);
+    clearTimeout(wall);
     if (code === 'still running') child.kill('SIGKILL');
     const lines = read();
     assert.equal(code, 0, `the child ends on its own (${lines.join(', ')}; ${err.slice(-300)})`);
