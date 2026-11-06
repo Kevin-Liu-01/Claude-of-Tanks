@@ -734,8 +734,8 @@ export function installServiceRecord(bus: ServiceEventBus | null | undefined, ct
   // damage, shots and medals added to its own.
   bus.on('battle:restarted', () => {
     if (!battle) return;
-    const { vehicleId, mapId, reached } = battle;
-    begin(vehicleId, mapId).reached = reached;
+    const { vehicleId, mapId } = battle;
+    begin(vehicleId, mapId);
   });
 
   bus.on('battle:ended', (payload) => {
