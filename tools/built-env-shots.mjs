@@ -147,6 +147,9 @@ function pagePlan({ buildings, rooms, eye: EYE }) {
     const c = Math.cos(t * s), sn = Math.sin(t * s);
     return { dx: a.dx * c - a.dz * sn, dz: a.dx * sn + a.dz * c, gx: a.gx, gz: a.gz };
   });
+  // (ab1, Saltmere: a target over the water reads the sea bed's height and the eye looked straight down) the shore's eye
+  // looks at the waterline's height from its own ground, not the bed's
+  if (out.shore) out.shore.y0 = h(out.shore.x, out.shore.z);
   // the plaza: the largest paved room's far corner looking across it, else open ground by the densest cluster's centre
   const room = rooms.slice().sort((a, b) => (b.x1 - b.x0) * (b.z1 - b.z0) - (a.x1 - a.x0) * (a.z1 - a.z0))[0];
   if (room) {
@@ -184,12 +187,13 @@ function stillClouds() {
   })()`;
 }
 
-/** A pose whose y values are heights over the ground. */
+/** A pose whose y values are heights over the ground (`resolved`: absolute). */
 function externalPoseScript(pose) {
   return `(() => {
     const resolveGroundPose = ${resolveGroundPose.toString()};
     const D = window.__DEBUG, hf = D.world.heightField, V = D.camera.position.constructor;
-    const resolved = resolveGroundPose(${JSON.stringify({ cam: pose.cam, at: pose.at })}, (x, z) => hf.getHeightAt(x, z), 511, ${pose.fov});
+    const resolved = ${pose.resolved ? JSON.stringify({ cam: pose.cam, at: pose.at, fov: pose.fov })
+    : `resolveGroundPose(${JSON.stringify({ cam: pose.cam, at: pose.at })}, (x, z) => hf.getHeightAt(x, z), 511, ${pose.fov})`};
     D.rig.setExternalPose(new V(...resolved.cam), new V(...resolved.at), resolved.fov);
     ${stillClouds()};
     D.world.update(0, D.camera.position, D.camera.getWorldDirection(new V()), null);
@@ -256,6 +260,9 @@ function posesFor(plan, wanted) {
       if (!p) continue;
       const bx = Math.max(-480, Math.min(480, p.x - p.dx * 200)), bz = Math.max(-480, Math.min(480, p.z - p.dz * 200));
       out.push({ name, at: p, pose: { cam: [bx, 22, bz], at: [p.x, 0, p.z], fov: 50 } });
+    } else if (name === 'shore' && plan.shore) {
+      const p = plan.shore;
+      out.push({ name, at: p, pose: { cam: [p.x, p.y0 + EYE, p.z], at: [p.x + p.dx * 30, p.y0 - 0.8, p.z + p.dz * 30], fov: 60, resolved: true } });
     } else if (plan[name]) {
       const run = name === 'road' ? 40 : name === 'plaza' ? 24 : 30;
       out.push({ name, at: plan[name], pose: eye(plan[name], run) });
