@@ -119,8 +119,13 @@ The *unseen shells* (wire 11, U31) are the rounds this viewer was shown that lef
 them: the authority hides a round with its shooter, and a view holds at most 256, so a round's absence alone cannot tell
 an end from a spotting loss. The actor names each one for `UNSEEN_SHELL_MARK_TICKS` (half a second) from the frame it left,
 whatever becomes of it, so a lost snapshot loses no mark and the mark never tells a hidden round's end; a round that ended
-is never named. The client's presentation reports a named exit to the effects as `shell:unseen`, which hold the round out
-of view (a tracer's belt place, a missile's trail and wire, a drone's airframe) instead of ending it.
+is never named. A frame names at most 256 (`MAX_SHELLS`, the list's bound; round 3 A13,
+`server/match/unseenShellMarks.ts`): a round that leaves while 256 are named takes the place of the mark made longest ago
+(ties: the lowest id), so a burst of departures can end a mark before its half second, but every round that leaves in
+flight is named at least in the frame it left. The client's presentation reports a named exit to the effects as
+`shell:unseen`, which hold the round out of view for three seconds (a tracer's belt place, a missile's trail and wire, a
+drone's airframe) instead of ending it. A drone whose hold runs out while it is still unseen is dropped where it was, with
+no flight home (round 3 A13, `src/fx/dronePresentation.ts` `held`): its end went unseen.
 
 **Entity row** = `u8 entityId`, `varint mask` (`ROW_GROUP` bits), then the
 present groups in bit order:
