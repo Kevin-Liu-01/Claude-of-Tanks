@@ -1403,8 +1403,9 @@ and the actor ignores it). The elected host's actor (`receiveResumeHint`) applie
 resumed a migration, the entity was restored from the migration state (`applyResumeState` names each restored row's
 tick and position through `MatchActor.noteRestoredRow`), no hint was taken for it yet, the row is newer than the
 restored one and older than the resume tick, and it lies within the distance the hull could have driven since the
-restored row — (ticks between) × top speed × 1.25 + 3 m, the fleet's fastest hull as the floor — pose fields only,
-never combat state. A client never places itself: a claim outside those bounds is refused and counted
+restored row — (ticks between) × top speed × 1.25 + 3 m, the fleet's fastest hull as the floor — pose fields and the
+row's body bits only (protocol 12, round 3 A14: the hint seats its ground contact and body mode as a row does,
+`authorityRow.ts applyAuthorityRow`, never from its height over the terrain), never combat state. A client never places itself: a claim outside those bounds is refused and counted
 (`ResumeHintStats.reasons`). Bots, disconnected seats and hulls nobody re-offers still resume from the sealed keyframe
 (≤ 2 s old); the seed covers every hull whose own seat comes back, which is what the certification's own-hull gate
 measures. Receipts: `matchActorResume.selftest` (older / future / too far / unrestored / spectator / repeated refused, one

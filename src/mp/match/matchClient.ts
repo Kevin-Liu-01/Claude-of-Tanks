@@ -34,6 +34,7 @@ import type { CorrectionPolicy, PredictionStats, PredictionWorld } from './predi
 import { ConnectionRecovery, MIGRATION_WELCOME_ALLOWANCE_MS } from './recovery.ts';
 import type { ConnectionPhase, RecoveryOptions } from './recovery.ts';
 import { MigrationStore } from './migrationStore.ts';
+import { HULL_BODY_ROW_FLAGS } from './hullBodyRow.ts';
 import type { RetainedBlob } from './migrationStore.ts';
 import { SnapshotStream } from './snapshotStream.ts';
 import type { TankState } from '../../sim/movement.ts';
@@ -721,11 +722,12 @@ export class MatchClient {
     return this.transport.send(bytes);
   }
 
-  /** The own row as of its capture tick `tick`. */
+  /** The own row as of its capture tick `tick`, its body bits with it (round 3 A14: the new host seats them as a row's). */
   private sendResumeHint(tick: number, row: EntityRow): void {
     const sent = this.send(encodeMessage({
       type: MESSAGE_TYPE.RESUME_HINT, tick, x: row.x, y: row.y, z: row.z, speed: row.speed, verticalSpeed: row.verticalSpeed,
       yaw: row.yaw, pitch: row.pitch, roll: row.roll, turretYaw: row.turretYaw, gunPitch: row.gunPitch,
+      flags: row.flags & HULL_BODY_ROW_FLAGS,
     }));
     if (sent) this.resumeHintsSent++;
   }
