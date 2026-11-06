@@ -84,9 +84,10 @@ const photo = (set: GroundPhotoSet): GroundTextures => ({ photo: set });
 const SETTS_JOINT_FLOOR = 0.42;
 /** The relief's cap by the class's macro law (the share of the direct light a facet may lose): turf soft, soils and yards
  * rougher, rock uncapped; (c4: the Sahel's ripples and Winterfront's drifts "stronger in B" at 0.4) sand and snow, whose relief
- * is their detail and whose darkest facet is no black, loosest. */
+ * is their detail and whose darkest facet is no black, loosest; (c9, Autumn near: "visibly blurred" — the turf's 0.30 held
+ * its litter's shade sides, a third of the lost contrast) the turf 0.38, still no facet near black. */
 const RELIEF_TILT: Readonly<Record<GroundMacro, number>> = Object.freeze({
-  sward: 0.3, tussock: 0.35, soil: 0.45, yard: 0.4, rubble: 0.5, slag: 0.45, paved: 0.3, sand: 0.65, snow: 0.65, rock: 0, none: 0.4,
+  sward: 0.38, tussock: 0.4, soil: 0.45, yard: 0.4, rubble: 0.5, slag: 0.45, paved: 0.3, sand: 0.65, snow: 0.65, rock: 0, none: 0.4,
 });
 const painter = (name: string): GroundTextures => ({ painter: name });
 const row = (textures: GroundTextures, macro: GroundMacro, macroStrength: number, close: GroundClose, closeStrength: number,

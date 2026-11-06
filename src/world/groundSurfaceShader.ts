@@ -80,10 +80,14 @@ export const GROUND_SURFACE_GLSL = /* glsl */`  // ground-269 (groundSurfaceShad
       // smudges) neither state darker than the turf it lies in: the straw a shade paler than the turf's mean, the soil a
       // shade under it; on a muted turf the levels above
       float turfL = reduxLuma(uMeanG.rgb * gMeadowTint);
+      // (c9, Autumn near and chase: "B gains soil patches but is visibly blurred", "A's leaf litter sharper" — the states'
+      // flat colours took 55–60 % of the drawn ground's grain, its 1–5 px contrast down 6–8 %) each state carries near half
+      // the drawn ground's grain, its luminance against the turf's mean
+      float gsGr = mix(1.0, clamp(reduxLuma(a.rgb) / max(turfL, 0.02), 0.6, 1.5), 0.45);
       vec3 strawC = vec3(0.15, 0.13, 0.08) * uTintA / max(reduxLuma(uTintA), 0.3) * max(1.0, turfL * 1.12 / 0.131)
-        * (0.88 + 0.24 * gsF);
+        * (0.88 + 0.24 * gsF) * gsGr;
       vec3 soilC = uMeanD.rgb * uSoilTint;
-      soilC *= (max(0.10, turfL * 0.92) / max(reduxLuma(soilC), 0.02)) * (0.84 + 0.32 * gsF);
+      soilC *= (max(0.10, turfL * 0.92) / max(reduxLuma(soilC), 0.02)) * (0.84 + 0.32 * gsF) * gsGr;
       vec3 gsA = a.rgb;
       gsA = mix(gsA, gsA * vec3(0.80, 0.92, 0.82), lush * 0.85);
       gsA = mix(gsA, strawC, cured * 0.55);
@@ -114,9 +118,10 @@ export const GROUND_SURFACE_GLSL = /* glsl */`  // ground-269 (groundSurfaceShad
         // the floor's own tone: the map's soil greyed toward a gravel, its light three tenths of the way from the drawn
         // ground's own to a pale gravel's 0.20 (the critics' rounds on Suzhou Creek: a paler floor laid a flat sandy apron
         // round the towers), carrying a third of the drawn ground's grain (the woods' litter of the dirt set: twigs, straw)
+        // (c9, Autumn's yards: "A's straw detail crisper", the floor's fine contrast down 8 %) — now over half of it
         float gL = reduxLuma(a.rgb), dL = max(reduxLuma(uMeanD.rgb), 0.02);
         vec3 grey = mix(vec3(dL), uMeanD.rgb, 0.35) * uSoilTint;
-        grey *= (mix(min(gL, 0.20), 0.20, 0.3) / max(reduxLuma(grey), 0.02)) * mix(1.0, gL / dL, 0.33);
+        grey *= (mix(min(gL, 0.20), 0.20, 0.3) / max(reduxLuma(grey), 0.02)) * mix(1.0, gL / dL, 0.55);
         vec3 floorC;
         if (uGsTown.x < 4.5) {
           // yard: pale trodden gravel and earth, its paths paler, its hollows damp, weeds where nothing treads
