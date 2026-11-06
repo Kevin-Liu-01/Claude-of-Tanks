@@ -1,5 +1,5 @@
 {
- "generatedAt": "2026-11-02T21:25:34.224Z",
+ "generatedAt": "2026-11-05T05:34:02.441Z",
  "gate": "every component >= its registered floor (90 fleet / 92 exemplar / 99 historical preservation); min is the headline; preservation is not source fidelity",
  "passed": 44,
  "total": 154,
@@ -64,7 +64,7 @@
     "stations": 0,
     "turretCurves": 0,
     "wholeCurves": 0,
-    "dims": 63.6,
+    "dims": 74.1,
     "floaters": 100
    },
    "comparisonPurpose": "source-fidelity"
@@ -125,8 +125,8 @@
    "gatePassed": false,
    "components": {
     "hullCurves": 0,
-    "stations": 88.3,
-    "turretCurves": 5.6,
+    "stations": 89.3,
+    "turretCurves": 6.1,
     "wholeCurves": 0,
     "dims": 97.7,
     "floaters": 100
@@ -568,14 +568,6 @@
    "comparisonPurpose": "source-fidelity"
   },
   {
-   "id": "bm_oplot_m",
-   "geoMin": 0,
-   "requiredMinimum": 90,
-   "qualityBar": "fleet",
-   "gatePassed": false,
-   "repinError": "owner kit parts without an accepted receipt or changed since it (geometryPoseSha256 now): oplotMKt762 03735f1a2db4559079dd484cdf53a482d63d9c08c56ab0006f56e2b9237f3cf0; oplotMKitSternDrums 2d2fa5a53829362e9b22602075fe19c679aae30ce0a9922a991e2ff2b59d8bef; oplotMKitLights 3fa492ce14fdeb766b03360e90669a17feb0c723524bbd14843aee2e9cbe502c"
-  },
-  {
    "id": "m551_sheridan",
    "geoMin": 0,
    "requiredMinimum": 90,
@@ -768,10 +760,10 @@
      {
       "reference": "owner-kit:stb1:stb1KitSternDrums",
       "group": "stb1KitSternDrums",
-      "geometryPoseSha256": "4f1e729305b02d9d9432d4ee0fe55bf7fd4d23d9cfd2371011463301aad56a6a",
+      "geometryPoseSha256": "5b57888233af752a7aa246414e487b26d50fa487e08f89d099450f12df74ebe5",
       "arrangementAccepted": true,
       "numericPhotoFidelity": null,
-      "scope": "Previously reviewed assembly geometry, pose and material invariance; not photo survey dimensions",
+      "scope": "Previously reviewed assembly shape and pose invariance (positions, index, poses, visibility); its paint is the coat's",
       "part": "the two 200 L stern drums on their welded shelf: the shelf, its gussets, the saddles, the drums and straps",
       "ownerWords": "raise the drums on the stb1"
      }
@@ -799,6 +791,22 @@
     "turretCurves": 80.8,
     "wholeCurves": 76.3,
     "dims": 32.8,
+    "floaters": 100
+   },
+   "comparisonPurpose": "source-fidelity"
+  },
+  {
+   "id": "m2a2_bradley",
+   "geoMin": 34.1,
+   "requiredMinimum": 90,
+   "qualityBar": "fleet",
+   "gatePassed": false,
+   "components": {
+    "hullCurves": 45.3,
+    "stations": 49.1,
+    "turretCurves": 64.2,
+    "wholeCurves": 34.1,
+    "dims": 44.9,
     "floaters": 100
    },
    "comparisonPurpose": "source-fidelity"
@@ -834,19 +842,78 @@
   },
   {
    "id": "bmp3",
-   "geoMin": 39.6,
+   "geoMin": 39.4,
    "requiredMinimum": 90,
    "qualityBar": "fleet",
    "gatePassed": false,
    "components": {
     "hullCurves": 57.8,
     "stations": 78.2,
-    "turretCurves": 39.6,
+    "turretCurves": 39.4,
     "wholeCurves": 52.6,
     "dims": 100,
     "floaters": 100
    },
    "comparisonPurpose": "source-fidelity"
+  },
+  {
+   "id": "bm_oplot_m",
+   "geoMin": 40,
+   "requiredMinimum": 92,
+   "qualityBar": "exemplar",
+   "gatePassed": false,
+   "components": {
+    "wholeCurves": 92.8,
+    "dims": 40,
+    "floaters": 100
+   },
+   "comparisonPurpose": "source-without-owner-kit",
+   "comparisonScope": {
+    "numericScope": "Registered print against the build without the owner-directed kit parts named in ownerKit",
+    "ownerDecision": "Owner: \"make thesee tannks a lot more visually distinct and specialized with extra side armor, fuel barrles inn back, lights, 2 gun towers instead of 1 (i know we have that caapabilty), etc\". Main (262): exempt the kit from the source comparison; do not trim it.",
+    "decisionDate": "2026-10-27",
+    "ownerKit": [
+     {
+      "reference": "owner-kit:bm_oplot_m:oplotMKt762",
+      "group": "oplotMKt762",
+      "geometryPoseSha256": "6d3a93daebefb5209d6b49bfdf6777581b8a89a108bdc161354a248557a36077",
+      "arrangementAccepted": true,
+      "numericPhotoFidelity": null,
+      "scope": "Previously reviewed assembly shape and pose invariance (positions, index, poses, visibility); its paint is the coat's",
+      "part": "the second roof station: the KT-7.62 mini-turret on its ring (the print carries the KT-12.7 only)",
+      "ownerWords": "2 gun towers instead of 1"
+     },
+     {
+      "reference": "owner-kit:bm_oplot_m:oplotMKitSternDrums",
+      "group": "oplotMKitSternDrums",
+      "geometryPoseSha256": "83958040940701f9fc1a8f9b6763aebd2546b518d75f9cc5c9708cb2888882b2",
+      "arrangementAccepted": true,
+      "numericPhotoFidelity": null,
+      "scope": "Previously reviewed assembly shape and pose invariance (positions, index, poses, visibility); its paint is the coat's",
+      "part": "the twin 200 L stern drums, their cradle and straps",
+      "ownerWords": "fuel barrles inn back"
+     },
+     {
+      "reference": "owner-kit:bm_oplot_m:oplotMKitLights",
+      "group": "oplotMKitLights",
+      "geometryPoseSha256": "ad65cb09b24df372d75bc4562f2dce60114031e2e2ac3c1ebf910667a744ca4a",
+      "arrangementAccepted": true,
+      "numericPhotoFidelity": null,
+      "scope": "Previously reviewed assembly shape and pose invariance (positions, index, poses, visibility); its paint is the coat's",
+      "part": "the LED light bars on the cheek stacks and the bustle work lamp",
+      "ownerWords": "lights"
+     }
+    ],
+    "retained": "the lower Duplet skirt course (\"extra side armor\"): skirt-sector ERA, compared as built",
+    "rawSourceComparison": "?comparison=raw-source",
+    "fullVehicleQualification": false
+   },
+   "rawSourceComparison": {
+    "file": "bm_oplot_m.raw-source.json",
+    "gatePassed": false,
+    "rawGeoMin": 0,
+    "scope": "Full vehicle with its owner-directed kit against the print; retained diagnostic, not the owner-selected target"
+   }
   },
   {
    "id": "k1e1",
@@ -865,22 +932,6 @@
    "comparisonPurpose": "source-fidelity"
   },
   {
-   "id": "c1_ariete_preserie",
-   "geoMin": 46.4,
-   "requiredMinimum": 90,
-   "qualityBar": "fleet",
-   "gatePassed": false,
-   "components": {
-    "hullCurves": 55,
-    "stations": 65.9,
-    "turretCurves": 58.2,
-    "wholeCurves": 46.4,
-    "dims": 97.9,
-    "floaters": 100
-   },
-   "comparisonPurpose": "source-fidelity"
-  },
-  {
    "id": "t90sm_2013",
    "geoMin": 46.5,
    "requiredMinimum": 90,
@@ -892,6 +943,22 @@
     "turretCurves": 67.1,
     "wholeCurves": 46.5,
     "dims": 100,
+    "floaters": 100
+   },
+   "comparisonPurpose": "source-fidelity"
+  },
+  {
+   "id": "c1_ariete_preserie",
+   "geoMin": 47.4,
+   "requiredMinimum": 90,
+   "qualityBar": "fleet",
+   "gatePassed": false,
+   "components": {
+    "hullCurves": 55.6,
+    "stations": 66,
+    "turretCurves": 59,
+    "wholeCurves": 47.4,
+    "dims": 97.9,
     "floaters": 100
    },
    "comparisonPurpose": "source-fidelity"
@@ -924,38 +991,6 @@
    "repinError": "photo supplement changed; fresh review required"
   },
   {
-   "id": "bmp2",
-   "geoMin": 50.3,
-   "requiredMinimum": 90,
-   "qualityBar": "fleet",
-   "gatePassed": false,
-   "components": {
-    "hullCurves": 63.9,
-    "stations": 50.3,
-    "turretCurves": 62,
-    "wholeCurves": 53.7,
-    "dims": 100,
-    "floaters": 100
-   },
-   "comparisonPurpose": "source-fidelity"
-  },
-  {
-   "id": "m2a2_bradley",
-   "geoMin": 52.7,
-   "requiredMinimum": 90,
-   "qualityBar": "fleet",
-   "gatePassed": false,
-   "components": {
-    "hullCurves": 64.9,
-    "stations": 52.7,
-    "turretCurves": 54.7,
-    "wholeCurves": 54.8,
-    "dims": 64.5,
-    "floaters": 100
-   },
-   "comparisonPurpose": "source-fidelity"
-  },
-  {
    "id": "m1a1ha",
    "geoMin": 53.2,
    "gatePassed": false,
@@ -986,14 +1021,14 @@
   },
   {
    "id": "amx40_proto",
-   "geoMin": 57,
+   "geoMin": 56.9,
    "requiredMinimum": 90,
    "qualityBar": "fleet",
    "gatePassed": false,
    "components": {
     "hullCurves": 86.2,
     "stations": 58.3,
-    "turretCurves": 57,
+    "turretCurves": 56.9,
     "wholeCurves": 62.6,
     "dims": 100,
     "floaters": 100
@@ -1027,6 +1062,22 @@
     "turretCurves": 61.2,
     "wholeCurves": 62.1,
     "dims": 59.9,
+    "floaters": 100
+   },
+   "comparisonPurpose": "source-fidelity"
+  },
+  {
+   "id": "bmp2",
+   "geoMin": 60.2,
+   "requiredMinimum": 90,
+   "qualityBar": "fleet",
+   "gatePassed": false,
+   "components": {
+    "hullCurves": 66.3,
+    "stations": 61.5,
+    "turretCurves": 70.6,
+    "wholeCurves": 60.2,
+    "dims": 97.3,
     "floaters": 100
    },
    "comparisonPurpose": "source-fidelity"
@@ -1083,10 +1134,10 @@
      {
       "reference": "owner-kit:m60a3:m60a3KitRackLoad",
       "group": "m60a3KitRackLoad",
-      "geometryPoseSha256": "23fed4598f3223be7747ac0440859e1d948cc607bd6f1e829df190e7f16e9689",
+      "geometryPoseSha256": "3c88b527ccd887aa276fbedaeaa6e48a8eb6d4e1da621990b4ea862e163dd428",
       "arrangementAccepted": true,
       "numericPhotoFidelity": null,
-      "scope": "Previously reviewed assembly geometry, pose and material invariance; not photo survey dimensions",
+      "scope": "Previously reviewed assembly shape and pose invariance (positions, index, poses, visibility); its paint is the coat's",
       "part": "the bustle rack's field load: two spare road wheels tipped up on its rear corners, three packs under a bedroll",
       "ownerWords": "wheels and bags"
      }
@@ -1977,6 +2028,19 @@
    "comparisonPurpose": "source-fidelity"
   },
   {
+   "id": "cv90_mk4",
+   "geoMin": 93.9,
+   "requiredMinimum": 92,
+   "qualityBar": "exemplar",
+   "gatePassed": true,
+   "components": {
+    "wholeCurves": 93.9,
+    "dims": 98.8,
+    "floaters": 100
+   },
+   "comparisonPurpose": "source-fidelity"
+  },
+  {
    "id": "t14_armata",
    "geoMin": 94.2,
    "requiredMinimum": 92,
@@ -2082,19 +2146,6 @@
    "comparisonPurpose": "source-fidelity"
   },
   {
-   "id": "cv90_mk4",
-   "geoMin": 94.7,
-   "requiredMinimum": 92,
-   "qualityBar": "exemplar",
-   "gatePassed": true,
-   "components": {
-    "wholeCurves": 94.7,
-    "dims": 98.8,
-    "floaters": 100
-   },
-   "comparisonPurpose": "source-fidelity"
-  },
-  {
    "id": "merkava4b",
    "geoMin": 94.8,
    "requiredMinimum": 92,
@@ -2134,20 +2185,20 @@
    "comparisonPurpose": "source-fidelity"
   },
   {
-   "id": "namer_ifv",
-   "geoMin": 95.3,
+   "id": "cv90105_tml",
+   "geoMin": 95.2,
    "requiredMinimum": 92,
    "qualityBar": "exemplar",
    "gatePassed": true,
    "components": {
-    "wholeCurves": 95.3,
-    "dims": 100,
+    "wholeCurves": 95.2,
+    "dims": 97.6,
     "floaters": 100
    },
    "comparisonPurpose": "source-fidelity"
   },
   {
-   "id": "cv90105_tml",
+   "id": "namer_ifv",
    "geoMin": 95.3,
    "requiredMinimum": 92,
    "qualityBar": "exemplar",

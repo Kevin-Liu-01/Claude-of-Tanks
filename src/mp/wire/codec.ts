@@ -102,7 +102,7 @@ function writeRoster(writer: ByteWriter, roster: RosterEntry[]): void {
     writer.u8(entry.entityId);
     writer.u8(entry.seat);
     writer.u8(entry.team);
-    writer.u8((entry.bot ? 1 : 0) | (entry.connected ? 2 : 0));
+    writer.u8((entry.bot ? 1 : 0) | (entry.connected ? 2 : 0) | (entry.bot && entry.camo === 'auto' ? 4 : 0));
     writer.string(entry.playerId, MAX_ID_BYTES);
     writer.string(entry.name, MAX_NAME_BYTES);
     writer.string(entry.specId, MAX_ID_BYTES);
@@ -378,10 +378,12 @@ function readRoster(reader: ByteReader): RosterEntry[] {
     if (seat !== NO_SEAT && seat >= MAX_SEATS) throw new WireError('range', 'roster seat out of range');
     const team = readTeam(reader.u8());
     const flags = reader.u8();
-    if (flags > 3) throw new WireError('range', 'roster flags out of range');
+    if (flags > 7 || ((flags & 4) !== 0 && (flags & 1) === 0)) throw new WireError('range', 'roster flags out of range');
+    const bot = (flags & 1) !== 0;
     roster.push({
-      entityId, seat, team, bot: (flags & 1) !== 0, connected: (flags & 2) !== 0,
+      entityId, seat, team, bot, connected: (flags & 2) !== 0,
       playerId: reader.string(MAX_ID_BYTES), name: reader.string(MAX_NAME_BYTES), specId: reader.string(MAX_ID_BYTES),
+      ...(bot ? { camo: (flags & 4) !== 0 ? 'auto' as const : 'factory' as const } : {}),
     });
   }
   return roster;

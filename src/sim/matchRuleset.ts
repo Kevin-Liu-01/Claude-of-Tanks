@@ -171,8 +171,8 @@ export interface BotDoctrine {
   /** The no-contact search and the scout's kite scan read live enemy positions, or only what the team has spotted. */
   readonly searchRouting: 'live' | 'spotted';
   /**
-   * The mode route push (both builders): seconds between pushes and the move that re-routes a bot; null keeps each
-   * builder's own legacy cadence (LEGACY_ROUTE_PUSH), so a mode without a table routes exactly as before in both.
+   * The mode route push (sim/modeRoutePush.ts, both drivers): seconds between pushes and the move that re-routes a bot;
+   * null keeps the legacy cadence (LEGACY_ROUTE_PUSH).
    */
   readonly routeRefreshS: number | null;
   readonly routeMoveM: number | null;
@@ -193,15 +193,13 @@ export const CLASSIC_BOT_DOCTRINE: BotDoctrine = Object.freeze({
   routeRefreshS: null, routeMoveM: null, claimRangeM: null, packFire: 0,
 });
 /**
- * The route push each builder ran before the doctrine (round 2, the critic's E9: one 3 s / 12 m figure for both changed
- * the solo battle's 4 s / 18 m): `fastModes` re-route every `fastRefreshS` on any move. A doctrine's own figures win.
+ * The route push before the doctrine, one for both drivers (268): the solo battle's 4 s / 18 m, `fastModes` re-routing every
+ * `fastRefreshS` on any move. The authority kept its own 3 s / 12 m (fast in the Horde and Mars too) until 268; one figure
+ * for both was the solo battle's when it last changed (round 2, the critic's E9 kept it). A doctrine's own figures win.
  */
 const LEGACY_ROUTE_PUSH = Object.freeze({
-  solo: Object.freeze({ refreshS: 4, moveM: 18, fastModes: Object.freeze(['turbo_ball']) }),
-  authority: Object.freeze({ refreshS: 3, moveM: 12, fastModes: Object.freeze(['turbo_ball', 'endless_horde', 'mars']) }),
-  fastRefreshS: 1.25,
+  refreshS: 4, moveM: 18, fastModes: Object.freeze(['turbo_ball']), fastRefreshS: 1.25,
 });
-type RouteBuilder = 'solo' | 'authority';
 interface RoutePush { readonly refreshS: number; readonly moveM: number }
 type BotDoctrineOverrides = { readonly alpha?: Partial<BotDoctrine>; readonly bravo?: Partial<BotDoctrine> };
 /** The Horde's zombies (and, with the hull turn, the infected): charge, fire on the move, never duck, never retreat. */
@@ -241,6 +239,19 @@ export const RUSH_DRIVE = Object.freeze({
    * the line.
    */
   brakeGapM: 3, backOffGapM: 1.5, backOffThrottle: 0.5, swerveThrottle: 0.45,
+  /**
+   * (268, item 10) A rusher that backs off a hull holds the back-off this long, its turn kept: backing off a tick at a time,
+   * the reverse never built way (the lane looks behind a hull under way backwards, and the drive took it forward again),
+   * and the hunter dithered at the gap under 0.5 m/s, face to face with its quarry or pressed on a neighbour of it.
+   */
+  backOffHoldS: 1.2,
+  /**
+   * (268, item 10; Main) A rusher held behind an ally stopped (under the controller's parked speed) for this long without
+   * a break gives way: the passing path round it (its legs cleared at the hull's half-width + 1 m, beyond the planner's
+   * + 0.5 m). The bounded yield's 8 s stood a hunter behind a standing ally in the fight (Infected, Steppe seed 7: an M60A2
+   * stopped 8 m behind a Centurion 3 for 4 s).
+   */
+  allyHoldS: 1.5,
   /**
    * A lane keeper that is no rusher (noRamLane: Frontline's sides, the survivors, the Horde's allies, Turbo Ball) backs off
    * from this gap when it stands (round 3b, the critic's M4: in a sector's point-blank fight the hulls stood nose to nose,
@@ -337,10 +348,12 @@ interface AssaultRules {
   /**
    * The line's guard (round 2, the critic's E2: on compact maps the 70-110 m line saw and shot the attack's spawn at
    * 0.2 s): a defender's slot is never within `minAttackM` of a living attacker nor (outOfSight) in an attacker's terrain
-   * sight; a slot that is steps back `stepBackM` along the axis, at most `tries` times, and takes the last step
-   * otherwise. The march reads the Horde arrival's sight constants (ArrivalRules).
+   * sight. (268, item 9) It searches the defender's ground, judged where the placement puts the hull: back along the axis
+   * `stepBackM` at a time, `backSteps` times, and across the line `acrossSteps` slot spacings either side; with no clear
+   * slot there, it takes the clearest (outside the reach first, then out of sight, then the furthest from the attack). The
+   * march reads the Horde arrival's sight constants (ArrivalRules).
    */
-  readonly lineGuard: { readonly minAttackM: number; readonly outOfSight: boolean; readonly stepBackM: number; readonly tries: number } | null;
+  readonly lineGuard: { readonly minAttackM: number; readonly outOfSight: boolean; readonly stepBackM: number; readonly backSteps: number; readonly acrossSteps: number } | null;
   /** `squad` fresh defenders drive at the sector just taken `afterCaptureS` after it falls, for `forS`, then fall back. */
   readonly counterAttack: { readonly squad: number; readonly afterCaptureS: number; readonly forS: number } | null;
   /** While a sector is contested and its line is short, one defender arrives from the rear this often, up to count + `reinforceExtra`. */
@@ -1141,6 +1154,8 @@ export interface MatchRuleset {
   readonly provingGround?: ProvingGroundRules;
   /** A watched battle (WATCH_RULES): no human seat, every seat a bot's, and the watcher's camera and seat rules. */
   readonly watch?: WatchRules;
+  /** A couch battle (COUCH_RULES): phones drive seats of the roster, shown under one shared camera. */
+  readonly couch?: CouchRules;
 }
 
 /**
@@ -1202,8 +1217,63 @@ export function watchRulesetFor(ruleset: MatchRuleset): MatchRuleset {
  * A finished battle the records read (the profile tally, the service record, the campaign ladder): its mode keeps
  * records and it was played, not watched (`battle:ended` carries `watch`).
  */
-export function battleKeepsRecords(event: { readonly gameMode?: unknown; readonly watch?: unknown } | null | undefined): boolean {
-  return event?.watch !== true && rulesetKeepsRecords(typeof event?.gameMode === 'string' ? event.gameMode : null);
+export function battleKeepsRecords(event: { readonly gameMode?: unknown; readonly watch?: unknown; readonly couch?: unknown } | null | undefined): boolean {
+  return event?.watch !== true && event?.couch !== true && rulesetKeepsRecords(typeof event?.gameMode === 'string' ? event.gameMode : null);
+}
+
+/**
+ * Couch mode (docs/COUCH-MODE.md; owner 2026-11-01: "people connecting via qr code from their phones to a host of a
+ * computer ... sort of like a console split screen, up to 8 people that you can share on a big screen"). A couch battle
+ * is a local battle on the host's page: up to `maxSeats` phones each drive one tank of the mode's own roster (a seat),
+ * and the rest of the roster are its bots, as ever. Phase 1 shows every seat under one shared camera. Together puts
+ * every seat on Alpha against the mode's opponents; Teams alternates the seats between Alpha and Bravo, bots filling
+ * both sides. Guests have no profile, so a couch battle keeps no record.
+ */
+export interface CouchRules {
+  /** The modes a couch battle plays. */
+  readonly modes: readonly GameModeId[];
+  /** The modes whose opponents are the mode's own (no Bravo seat): their seats are always together. */
+  readonly togetherOnly: readonly GameModeId[];
+  readonly maxSeats: number;
+  /** The shared camera frames every living seat's hull with this margin, looking down at this pitch, from no nearer and
+   *  no farther than these distances; past the farthest it frames the largest group of seats. */
+  readonly frameMarginM: number;
+  readonly cameraPitchDeg: number;
+  readonly cameraMinDistanceM: number;
+  readonly cameraMaxDistanceM: number;
+}
+export const COUCH_RULES: CouchRules = Object.freeze({
+  modes: Object.freeze(['standard', 'capture_the_flag', 'zone_control', 'endless_horde'] as const),
+  togetherOnly: Object.freeze(['endless_horde'] as const),
+  maxSeats: 8,
+  frameMarginM: 30,
+  cameraPitchDeg: -52,
+  cameraMinDistanceM: 70,
+  cameraMaxDistanceM: 320,
+});
+
+/** How a couch battle seats its phones: all on Alpha, or alternating between the sides. */
+export type CouchSides = 'together' | 'teams';
+
+/** A mode a couch battle can play. */
+export function isCouchMode(mode: GameModeId | string | null | undefined): boolean {
+  return (COUCH_RULES.modes as readonly string[]).includes(String(mode));
+}
+
+/** The ruleset a couch battle plays: its mode's own, with the couch rules and no record (another mode: unchanged). */
+export function couchRulesetFor(ruleset: MatchRuleset): MatchRuleset {
+  if (!isCouchMode(ruleset.mode)) return ruleset;
+  return Object.freeze({ ...ruleset, records: false, couch: COUCH_RULES });
+}
+
+/**
+ * Which side each couch seat plays, seat 1 first: true is seat 1's side (Alpha), false the other (Bravo). Together, or a
+ * mode with no Bravo seat, puts every seat on Alpha; Teams alternates, Alpha first. At most `maxSeats` seats.
+ */
+export function couchSeatSides(mode: GameModeId | string | null | undefined, sides: CouchSides, seats: number): boolean[] {
+  const count = Math.max(0, Math.min(COUCH_RULES.maxSeats, Math.floor(seats) || 0));
+  const together = sides === 'together' || (COUCH_RULES.togetherOnly as readonly string[]).includes(String(mode));
+  return Array.from({ length: count }, (_, index) => together || index % 2 === 0);
 }
 
 /** A battlefield variant a mode can play (the map built with that variant's config, its own collision manifest). */
@@ -1422,7 +1492,7 @@ const BASE_RULESETS: Readonly<Record<GameModeId, MatchRuleset>> = Object.freeze(
       // the line 70-110 m behind the centre: clear of the zone (30 m), so the attack can stand in it and fight for it
       // (30-70 put the near defenders on the zone's own edge: the round-1 A/B's shield seat never took sector 1 in 12:00)
       defendersStartOnLine: true, lineBandM: Object.freeze([70, 110] as const),
-      lineGuard: Object.freeze({ minAttackM: 200, outOfSight: true, stepBackM: 20, tries: 4 }),
+      lineGuard: Object.freeze({ minAttackM: 200, outOfSight: true, stepBackM: 20, backSteps: 12, acrossSteps: 8 }),
       counterAttack: Object.freeze({ squad: 2, afterCaptureS: 8, forS: 40 }),
       reinforceTrickleS: 45, reinforceExtra: 0, reinforceRearM: 140, contestReachM: 60, lineSpacingM: 16, lineJitterM: 8, allyReviveBackM: 40, holdSpreadM: 14,
       regroupMaxS: 25, regroupRadiusM: 80, regroupHumanM: 250, allyReviveS: 20, hostileDifficultyStep: 1, hostileReloadScale: 1,
@@ -1816,30 +1886,26 @@ const doctrineMemo = new WeakMap<object, { alpha: BotDoctrine; bravo: BotDoctrin
  * read one table and an Infected convert switches to the infected's on its first tick. Frozen and memoised per
  * ruleset: a tick allocates nothing.
  */
-const routeMemo = new WeakMap<object, Record<RouteBuilder, { alpha: RoutePush; bravo: RoutePush }>>();
+const routeMemo = new WeakMap<object, { alpha: RoutePush; bravo: RoutePush }>();
 /**
- * The mode route push a builder runs for a side: the side doctrine's routeRefreshS / routeMoveM, or (null) the builder's
- * legacy cadence (LEGACY_ROUTE_PUSH, fast in its fast modes). Frozen and memoised per ruleset like the doctrine.
+ * The mode route push for a side: the side doctrine's routeRefreshS / routeMoveM, or (null) the legacy cadence
+ * (LEGACY_ROUTE_PUSH, fast in its fast modes). Frozen and memoised per ruleset like the doctrine.
  */
-export function rulesetRoutePush(ruleset: Pick<MatchRuleset, 'bots' | 'mode'>, team: string, builder: RouteBuilder): RoutePush {
+export function rulesetRoutePush(ruleset: Pick<MatchRuleset, 'bots' | 'mode'>, team: string): RoutePush {
   let memo = routeMemo.get(ruleset);
   if (!memo) {
-    const of = (side: string, b: RouteBuilder): RoutePush => {
+    const fast = (LEGACY_ROUTE_PUSH.fastModes as readonly string[]).includes(ruleset.mode);
+    const of = (side: string): RoutePush => {
       const doctrine = rulesetBotDoctrine(ruleset, side);
-      const legacy = LEGACY_ROUTE_PUSH[b];
-      const fast = (legacy.fastModes as readonly string[]).includes(ruleset.mode);
       return Object.freeze({
-        refreshS: doctrine.routeRefreshS ?? (fast ? LEGACY_ROUTE_PUSH.fastRefreshS : legacy.refreshS),
-        moveM: doctrine.routeMoveM ?? (fast ? 0 : legacy.moveM),
+        refreshS: doctrine.routeRefreshS ?? (fast ? LEGACY_ROUTE_PUSH.fastRefreshS : LEGACY_ROUTE_PUSH.refreshS),
+        moveM: doctrine.routeMoveM ?? (fast ? 0 : LEGACY_ROUTE_PUSH.moveM),
       });
     };
-    memo = {
-      solo: { alpha: of('alpha', 'solo'), bravo: of('bravo', 'solo') },
-      authority: { alpha: of('alpha', 'authority'), bravo: of('bravo', 'authority') },
-    };
+    memo = { alpha: of('alpha'), bravo: of('bravo') };
     routeMemo.set(ruleset, memo);
   }
-  return team === 'bravo' || team === 'enemy' ? memo[builder].bravo : memo[builder].alpha;
+  return team === 'bravo' || team === 'enemy' ? memo.bravo : memo.alpha;
 }
 
 export function rulesetBotDoctrine(ruleset: Pick<MatchRuleset, 'bots'>, team: string): BotDoctrine {

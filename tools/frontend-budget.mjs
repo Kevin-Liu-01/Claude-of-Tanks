@@ -251,9 +251,22 @@ export const BUNDLE_BUDGETS = Object.freeze({
   //   plane fit), camoPolicy +190 (paint_leo2a7dk, paint_centurion5_2dk, paint_type90b, paint_type10), franceSpecs +146 (the
   //   AMX-40's depression curve), decorations +137, mapNames +124 (new) against mapPalette -1,276 (main's og-cards), the rest
   //   under 65 B each. Home +8 B, docs +58 B and 404 +120 B stay inside their slack.
-  game: { brotliBytes: 1165736, requests: 127, entryBrotliBytes: 249894 },
-  cn: { brotliBytes: 1210193, requests: 128, entryBrotliBytes: 249894 },
-  gallery: { brotliBytes: 735730, requests: 73 },
+  // 2026-11-06 (integrator 268, the single end re-pin at integ/268 ef6dc8f8bd's build; Node 24.22.1; Main's brief: one
+  //   bundle re-pin with attribution): game +10,487 B brotli over main 2cd74ad446 built here on the same node_modules
+  //   (1,165,629 B, within its pin), cn +10,736 B, Gallery +8,928 B; requests held at 127 / 128 / 73 (17ca8fa2b5 folds
+  //   twin-aa's frames into fleetLayouts and camoPaint into vehicleActions); the entry +657 B stays under its pin. By chunk
+  //   and lane: fleetFactory +5,698 (the seven new ids registered at boot: bmpt_terminator, tunguska_m, pantsir_s1,
+  //   gepard_1a2, pgz95, pgz09, m3a2_bradley; the M1A1s on the owner model, the T-80UK, the KF51 and IFV rebuilds),
+  //   fleetLayouts +1,642 (gepardFrame, gm352Layout, chineseAirDefenseLayout, challenger1XSuppliedFrame), main +657
+  //   (core-parity's shared sim stages and bots' construction, couch mode and phone feel's boot wiring), specs +530,
+  //   vehicleActions +522 (camoPaint, core-parity's hull actions), decorations +462, tankFactoryCore +313, the en-US
+  //   catalog +220 and zh-CN +249 (the new names, couch strings), presentation anchors +140 (portrait envelope),
+  //   matchRuleset +103, camoPolicy +93 (the Kaitaku coat, the AA paints), crewVoice +68 (da, pt-BR, en-AU, af),
+  //   roleProfiles +66; materials -185. Home +9 B, docs +11 B, 404 -5 B stay inside their slack; pad's 14th request
+  //   (padProtocol) is phone-feel-269's own pin in tools/bundle-budget.json.
+  game: { brotliBytes: 1176116, requests: 127, entryBrotliBytes: 249894 },
+  cn: { brotliBytes: 1220822, requests: 128, entryBrotliBytes: 249894 },
+  gallery: { brotliBytes: 744685, requests: 73 },
   home: { brotliBytes: 28617, requests: 8 },
   docs: { brotliBytes: 36911, requests: 12 },
   notFound: { brotliBytes: 18355, requests: 7 },

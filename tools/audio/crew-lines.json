@@ -13,7 +13,11 @@
     "ko",
     "it",
     "pl",
-    "he"
+    "he",
+    "da",
+    "pt-BR",
+    "en-AU",
+    "af"
   ],
   "lines": [
     {
@@ -85,6 +89,26 @@
         "כל התחנות, להתקדם.",
         "נהג, נוע.",
         "צוות, להיערך לקרב."
+      ],
+      "da": [
+        "Alle stationer, frem.",
+        "Kører, frem.",
+        "Besætning, klar til kamp."
+      ],
+      "pt-BR": [
+        "Todos os carros, avançar.",
+        "Motorista, em frente.",
+        "Guarnição, postos de combate."
+      ],
+      "en-AU": [
+        "All callsigns, move now.",
+        "Driver, advance.",
+        "Crew, stand to."
+      ],
+      "af": [
+        "Alle roepseine, vorentoe.",
+        "Drywer, trek weg.",
+        "Bemanning, gereed vir aksie."
       ]
     },
     {
@@ -143,6 +167,22 @@
       "he": [
         "נוסע.",
         "נהג, נע."
+      ],
+      "da": [
+        "Kører frem.",
+        "Vognen ruller."
+      ],
+      "pt-BR": [
+        "Em movimento.",
+        "Carro em movimento."
+      ],
+      "en-AU": [
+        "Moving.",
+        "Driver, moving now."
+      ],
+      "af": [
+        "Ons ry.",
+        "Voertuig beweeg."
       ]
     },
     {
@@ -201,6 +241,22 @@
       "he": [
         "הקרב הסתיים. השטח בשליטה.",
         "כוח האויב הושמד. כל הכבוד."
+      ],
+      "da": [
+        "Kampen er slut. Området er sikret.",
+        "Fjenden er nedkæmpet. Godt arbejde."
+      ],
+      "pt-BR": [
+        "Combate encerrado. Área segura.",
+        "Força inimiga destruída. Bom trabalho."
+      ],
+      "en-AU": [
+        "Engagement over. Area secure.",
+        "Enemy force destroyed. Good work."
+      ],
+      "af": [
+        "Geveg verby. Gebied beveilig.",
+        "Vyandmag vernietig. Goeie werk."
       ]
     },
     {
@@ -259,6 +315,22 @@
       "he": [
         "הקרב אבוד. לסגת.",
         "נגמר. להתנתק."
+      ],
+      "da": [
+        "Slaget er tabt. Træk tilbage.",
+        "Det er slut. Vi trækker os."
+      ],
+      "pt-BR": [
+        "Combate perdido. Retrair.",
+        "Acabou. Recuar."
+      ],
+      "en-AU": [
+        "Battle's lost. Withdraw.",
+        "We're done. Pull back."
+      ],
+      "af": [
+        "Die geveg is verlore. Onttrek.",
+        "Dis verby. Trek terug."
       ]
     },
     {
@@ -304,6 +376,18 @@
       ],
       "he": [
         "חדל אש. אף צד לא מחזיק בשטח."
+      ],
+      "da": [
+        "Ophør ild. Ingen side holder terrænet."
+      ],
+      "pt-BR": [
+        "Cessar fogo. Ninguém domina o terreno."
+      ],
+      "en-AU": [
+        "Cease fire. Nobody holds the ground."
+      ],
+      "af": [
+        "Staak vuur. Niemand hou die grond nie."
       ]
     },
     {
@@ -375,6 +459,26 @@
         "מגע. שריון אויב.",
         "זוהה טנק.",
         "רכב אויב, מגע."
+      ],
+      "da": [
+        "Kontakt. Fjendtlig kampvogn.",
+        "Kampvogn observeret.",
+        "Fjendtligt køretøj, kontakt."
+      ],
+      "pt-BR": [
+        "Contato. Blindado inimigo.",
+        "Carro avistado.",
+        "Viatura inimiga, contato."
+      ],
+      "en-AU": [
+        "Contact. Enemy armour.",
+        "Tank spotted.",
+        "Enemy vehicle. Contact, wait out."
+      ],
+      "af": [
+        "Kontak. Vyandelike pantser.",
+        "Tenk gesien.",
+        "Vyandelike voertuig. Kontak, wag."
       ]
     },
     {
@@ -433,6 +537,22 @@
       "he": [
         "מגע מלפנים.",
         "טנק, שעה שתים עשרה."
+      ],
+      "da": [
+        "Kontakt front.",
+        "Kampvogn, klokken tolv."
+      ],
+      "pt-BR": [
+        "Contato à frente.",
+        "Carro, doze horas."
+      ],
+      "en-AU": [
+        "Contact front.",
+        "Tank, twelve o'clock."
+      ],
+      "af": [
+        "Kontak voor.",
+        "Tenk, twaalfuur."
       ]
     },
     {
@@ -491,6 +611,22 @@
       "he": [
         "מגע משמאל.",
         "טנק, שעה תשע."
+      ],
+      "da": [
+        "Kontakt venstre.",
+        "Kampvogn, klokken ni."
+      ],
+      "pt-BR": [
+        "Contato à esquerda.",
+        "Carro, nove horas."
+      ],
+      "en-AU": [
+        "Contact left.",
+        "Tank, nine o'clock."
+      ],
+      "af": [
+        "Kontak links.",
+        "Tenk, nege-uur."
       ]
     },
     {
@@ -549,6 +685,22 @@
       "he": [
         "מגע מימין.",
         "טנק, שעה שלוש."
+      ],
+      "da": [
+        "Kontakt højre.",
+        "Kampvogn, klokken tre."
+      ],
+      "pt-BR": [
+        "Contato à direita.",
+        "Carro, três horas."
+      ],
+      "en-AU": [
+        "Contact right.",
+        "Tank, three o'clock."
+      ],
+      "af": [
+        "Kontak regs.",
+        "Tenk, drie-uur."
       ]
     },
     {
@@ -607,6 +759,22 @@
       "he": [
         "מגע מאחור!",
         "טנק מאחורינו!"
+      ],
+      "da": [
+        "Kontakt bagud!",
+        "Kampvogn, klokken seks!"
+      ],
+      "pt-BR": [
+        "Contato à retaguarda!",
+        "Carro, seis horas!"
+      ],
+      "en-AU": [
+        "Contact rear!",
+        "Tank, six o'clock!"
+      ],
+      "af": [
+        "Kontak agter!",
+        "Tenk, sesuur!"
       ]
     },
     {
@@ -665,6 +833,22 @@
       "he": [
         "זוהינו.",
         "הם רואים אותנו."
+      ],
+      "da": [
+        "Vi er opdaget.",
+        "De har øje på os."
+      ],
+      "pt-BR": [
+        "Fomos detectados.",
+        "Eles nos avistaram."
+      ],
+      "en-AU": [
+        "We're spotted.",
+        "They've got eyes on us."
+      ],
+      "af": [
+        "Ons is gesien.",
+        "Hulle het ons raakgesien."
       ]
     },
     {
@@ -736,6 +920,26 @@
         "יורה.",
         "אש.",
         "פגז יצא."
+      ],
+      "da": [
+        "Skud afgivet.",
+        "Skyder.",
+        "Skud."
+      ],
+      "pt-BR": [
+        "Atirando.",
+        "Disparando.",
+        "Tiro."
+      ],
+      "en-AU": [
+        "On the way.",
+        "Firing now.",
+        "Round away."
+      ],
+      "af": [
+        "Skoot is weg.",
+        "Skiet.",
+        "Skoot."
       ]
     },
     {
@@ -794,6 +998,22 @@
       "he": [
         "טיל שוגר.",
         "טיל באוויר, מנחה."
+      ],
+      "da": [
+        "Missil afsted.",
+        "Missil ude, styrer."
+      ],
+      "pt-BR": [
+        "Míssil disparado.",
+        "Míssil no ar, guiando."
+      ],
+      "en-AU": [
+        "Missile away.",
+        "Missile in flight, guiding."
+      ],
+      "af": [
+        "Missiel weg.",
+        "Missiel in die lug, ek stuur."
       ]
     },
     {
@@ -852,6 +1072,22 @@
       "he": [
         "חדירה.",
         "פגיעה. חדר את השריון."
+      ],
+      "da": [
+        "Gennemslag.",
+        "Træffer. Gennem panseret."
+      ],
+      "pt-BR": [
+        "Penetrou.",
+        "No alvo. Atravessou a blindagem."
+      ],
+      "en-AU": [
+        "Penetration.",
+        "Target. Straight through."
+      ],
+      "af": [
+        "Deurdringing.",
+        "Raak. Reg deur die pantser."
       ]
     },
     {
@@ -910,6 +1146,22 @@
       "he": [
         "לא חדר.",
         "לא עבר."
+      ],
+      "da": [
+        "Intet gennemslag.",
+        "Gik ikke igennem."
+      ],
+      "pt-BR": [
+        "Não penetrou.",
+        "Não atravessou."
+      ],
+      "en-AU": [
+        "No penetration.",
+        "Didn't go through."
+      ],
+      "af": [
+        "Geen deurdringing nie.",
+        "Het nie deurgegaan nie."
       ]
     },
     {
@@ -968,6 +1220,22 @@
       "he": [
         "ריקושט.",
         "ניתז."
+      ],
+      "da": [
+        "Rikochet.",
+        "Prellede af."
+      ],
+      "pt-BR": [
+        "Ricochete.",
+        "Resvalou."
+      ],
+      "en-AU": [
+        "Ricochet.",
+        "Glanced off."
+      ],
+      "af": [
+        "Skampskoot.",
+        "Het afgeskram."
       ]
     },
     {
@@ -1026,6 +1294,22 @@
       "he": [
         "פגיעה טובה. משהו אצלו נפגע.",
         "פגיעה קשה."
+      ],
+      "da": [
+        "God træffer. Virkning i målet.",
+        "Kritisk træffer."
+      ],
+      "pt-BR": [
+        "Bom tiro. Algo foi danificado.",
+        "Impacto crítico."
+      ],
+      "en-AU": [
+        "Good hit. Something's damaged.",
+        "Good effect on target."
+      ],
+      "af": [
+        "Goeie skoot. Iets is beskadig.",
+        "Kritieke treffer."
       ]
     },
     {
@@ -1071,6 +1355,18 @@
       ],
       "he": [
         "המטרה בוערת."
+      ],
+      "da": [
+        "Målet brænder."
+      ],
+      "pt-BR": [
+        "O alvo está em chamas."
+      ],
+      "en-AU": [
+        "Target's burning."
+      ],
+      "af": [
+        "Die teiken brand."
       ]
     },
     {
@@ -1116,6 +1412,18 @@
       ],
       "he": [
         "פגיעה בתחמושת שלו. הוא מתפוצץ."
+      ],
+      "da": [
+        "Hans ammunition er ramt. Han ryger i luften."
+      ],
+      "pt-BR": [
+        "Atingiu a munição dele. Vai explodir."
+      ],
+      "en-AU": [
+        "His ammo's hit. He's cooking off."
+      ],
+      "af": [
+        "Sy ammunisie is getref. Hy ontplof."
       ]
     },
     {
@@ -1187,6 +1495,26 @@
         "מטרה הושמדה.",
         "מטרה חוסלה.",
         "טנק הושבת."
+      ],
+      "da": [
+        "Mål ødelagt.",
+        "Mål nede.",
+        "Kampvogn slået ud."
+      ],
+      "pt-BR": [
+        "Alvo destruído.",
+        "Alvo abatido.",
+        "Carro neutralizado."
+      ],
+      "en-AU": [
+        "Target destroyed.",
+        "Target stop.",
+        "Tank knocked out."
+      ],
+      "af": [
+        "Teiken vernietig.",
+        "Teiken uit.",
+        "Tenk uitgeskiet."
       ]
     },
     {
@@ -1245,6 +1573,22 @@
       "he": [
         "החטאה.",
         "קצר. מתקן."
+      ],
+      "da": [
+        "Forbi.",
+        "Kort. Korrigerer."
+      ],
+      "pt-BR": [
+        "Errou.",
+        "Curto. Corrigindo."
+      ],
+      "en-AU": [
+        "Miss.",
+        "Short. Re-laying."
+      ],
+      "af": [
+        "Mis.",
+        "Te kort. Korrigeer."
       ]
     },
     {
@@ -1303,6 +1647,22 @@
       "he": [
         "טוען.",
         "טוען מחדש."
+      ],
+      "da": [
+        "Lader.",
+        "Lader om."
+      ],
+      "pt-BR": [
+        "Carregando.",
+        "Recarregando."
+      ],
+      "en-AU": [
+        "Loading.",
+        "Reloading."
+      ],
+      "af": [
+        "Laai nou.",
+        "Herlaai."
       ]
     },
     {
@@ -1374,6 +1734,26 @@
         "טעון.",
         "פגז בפנים.",
         "מוכן."
+      ],
+      "da": [
+        "Ladt.",
+        "Kanon ladt.",
+        "Klar."
+      ],
+      "pt-BR": [
+        "Carregado.",
+        "Canhão carregado.",
+        "Pronto."
+      ],
+      "en-AU": [
+        "Up.",
+        "Loaded.",
+        "Gun up."
+      ],
+      "af": [
+        "Gelaai.",
+        "Kanon gelaai.",
+        "Gereed."
       ]
     },
     {
@@ -1432,6 +1812,22 @@
       "he": [
         "חץ.",
         "טוען חץ."
+      ],
+      "da": [
+        "Pil.",
+        "Lader pil."
+      ],
+      "pt-BR": [
+        "Flecha.",
+        "Carregando flecha."
+      ],
+      "en-AU": [
+        "Sabot.",
+        "Loading sabot."
+      ],
+      "af": [
+        "Pantserbrekend.",
+        "Laai pantserbrekend."
       ]
     },
     {
@@ -1490,6 +1886,22 @@
       "he": [
         "חלול.",
         "טוען חלול."
+      ],
+      "da": [
+        "Hulladning.",
+        "Lader hulladning."
+      ],
+      "pt-BR": [
+        "Carga oca.",
+        "Carregando carga oca."
+      ],
+      "en-AU": [
+        "HEAT.",
+        "Loading HEAT."
+      ],
+      "af": [
+        "Holladings.",
+        "Laai holladings."
       ]
     },
     {
@@ -1548,6 +1960,22 @@
       "he": [
         "נפיץ.",
         "טוען נפיץ."
+      ],
+      "da": [
+        "Sprænggranat.",
+        "Lader sprænggranat."
+      ],
+      "pt-BR": [
+        "Alto explosivo.",
+        "Carregando alto explosivo."
+      ],
+      "en-AU": [
+        "H-E.",
+        "Loading H-E."
+      ],
+      "af": [
+        "Hoë plofstof.",
+        "Laai hoë plofstof."
       ]
     },
     {
@@ -1606,6 +2034,22 @@
       "he": [
         "טיל מוכן.",
         "משגר דרוך."
+      ],
+      "da": [
+        "Missil klar.",
+        "Affyringsenhed armeret."
+      ],
+      "pt-BR": [
+        "Míssil pronto.",
+        "Lançador armado."
+      ],
+      "en-AU": [
+        "Missile ready.",
+        "Launcher armed."
+      ],
+      "af": [
+        "Missiel gereed.",
+        "Lanseerder gewapen."
       ]
     },
     {
@@ -1664,6 +2108,22 @@
       "he": [
         "שלושים מילימטר.",
         "תותח שלושים, מוכן."
+      ],
+      "da": [
+        "Tredive millimeter.",
+        "Tredive millimeter, klar."
+      ],
+      "pt-BR": [
+        "Trinta milímetros.",
+        "Trinta milímetros, pronto."
+      ],
+      "en-AU": [
+        "Thirty mil.",
+        "Thirty mil, up."
+      ],
+      "af": [
+        "Dertig millimeter.",
+        "Dertig millimeter, gereed."
       ]
     },
     {
@@ -1722,6 +2182,22 @@
       "he": [
         "הוביצר.",
         "הוביצר, מוכן."
+      ],
+      "da": [
+        "Haubits.",
+        "En-fem-to, klar."
+      ],
+      "pt-BR": [
+        "Obuseiro.",
+        "Um-cinco-dois, pronto."
+      ],
+      "en-AU": [
+        "Howitzer.",
+        "One-five-two, up."
+      ],
+      "af": [
+        "Houwitser.",
+        "Een-vyf-twee, gereed."
       ]
     },
     {
@@ -1780,6 +2256,22 @@
       "he": [
         "טילים.",
         "טילים, מוכן."
+      ],
+      "da": [
+        "Missil valgt.",
+        "Missiler klar."
+      ],
+      "pt-BR": [
+        "Míssil selecionado.",
+        "Mísseis prontos."
+      ],
+      "en-AU": [
+        "Missile selected.",
+        "Missiles up."
+      ],
+      "af": [
+        "Missiel gekies.",
+        "Missiele gereed."
       ]
     },
     {
@@ -1838,6 +2330,22 @@
       "he": [
         "פגיעה. המטרה הושמדה.",
         "פגיעה. המטרה נוטרלה."
+      ],
+      "da": [
+        "God træffer. Mål ødelagt.",
+        "Nedslag. Mål nede."
+      ],
+      "pt-BR": [
+        "Bom tiro. Alvo destruído.",
+        "Impacto. Alvo abatido."
+      ],
+      "en-AU": [
+        "Good hit. Target destroyed.",
+        "Splash. Target down."
+      ],
+      "af": [
+        "Goeie skoot. Teiken vernietig.",
+        "Inslag. Teiken uit."
       ]
     },
     {
@@ -1896,6 +2404,22 @@
       "he": [
         "מטרה שנייה הושמדה.",
         "עוד אחד. אפקט טוב."
+      ],
+      "da": [
+        "Andet mål ødelagt.",
+        "En til nede. God virkning."
+      ],
+      "pt-BR": [
+        "Segundo alvo destruído.",
+        "Mais um abatido. Bom efeito."
+      ],
+      "en-AU": [
+        "Second target destroyed.",
+        "Another one down. Good effect."
+      ],
+      "af": [
+        "Tweede teiken vernietig.",
+        "Nog een uit. Goeie uitwerking."
       ]
     },
     {
@@ -1941,6 +2465,18 @@
       ],
       "he": [
         "התחמושת אוזלת."
+      ],
+      "da": [
+        "Ammunitionen er ved at slippe op."
+      ],
+      "pt-BR": [
+        "A munição está acabando."
+      ],
+      "en-AU": [
+        "Running low on ammo."
+      ],
+      "af": [
+        "Ammunisie raak min."
       ]
     },
     {
@@ -1999,6 +2535,22 @@
       "he": [
         "נגמרו הפגזים האלה.",
         "אין יותר מהסוג הזה."
+      ],
+      "da": [
+        "Den type er brugt op.",
+        "Ikke mere af den type."
+      ],
+      "pt-BR": [
+        "Essa munição acabou.",
+        "Sem esse tipo."
+      ],
+      "en-AU": [
+        "That nature's finished.",
+        "Out of that type."
+      ],
+      "af": [
+        "Daardie soort is op.",
+        "Niks meer van daardie soort nie."
       ]
     },
     {
@@ -2057,6 +2609,22 @@
       "he": [
         "נפגענו.",
         "סופגים פגיעות."
+      ],
+      "da": [
+        "Vi er ramt.",
+        "Vi bliver ramt."
+      ],
+      "pt-BR": [
+        "Fomos atingidos.",
+        "Estamos sendo atingidos."
+      ],
+      "en-AU": [
+        "We're hit.",
+        "We're taking hits."
+      ],
+      "af": [
+        "Ons is getref.",
+        "Ons word getref."
       ]
     },
     {
@@ -2115,6 +2683,22 @@
       "he": [
         "השריון החזיק.",
         "זה ניתז."
+      ],
+      "da": [
+        "Panseret holdt.",
+        "Den prellede af."
+      ],
+      "pt-BR": [
+        "A blindagem aguentou.",
+        "Ricocheteou."
+      ],
+      "en-AU": [
+        "Armour's held.",
+        "That's bounced off."
+      ],
+      "af": [
+        "Die pantser het gehou.",
+        "Dié een het afgeskram."
       ]
     },
     {
@@ -2160,6 +2744,18 @@
       ],
       "he": [
         "השריון קורס. לא נחזיק עוד הרבה."
+      ],
+      "da": [
+        "Panseret giver efter. Vi kan ikke tåle meget mere."
+      ],
+      "pt-BR": [
+        "A blindagem está cedendo. Não aguentamos muito mais."
+      ],
+      "en-AU": [
+        "Armour's going. Can't take much more."
+      ],
+      "af": [
+        "Die pantser gee in. Ons kan nie veel meer vat nie."
       ]
     },
     {
@@ -2218,6 +2814,22 @@
       "he": [
         "פגיעה בתחמושת!",
         "התחמושת נפגעה!"
+      ],
+      "da": [
+        "Ammunitionsmagasinet er ramt!",
+        "Ammunitionen er beskadiget!"
+      ],
+      "pt-BR": [
+        "Paiol atingido!",
+        "Munição danificada!"
+      ],
+      "en-AU": [
+        "Ammo bins hit!",
+        "Ammunition's damaged!"
+      ],
+      "af": [
+        "Ammunisierak getref!",
+        "Ammunisie beskadig!"
       ]
     },
     {
@@ -2276,6 +2888,22 @@
       "he": [
         "מיכל הדלק נפגע.",
         "דולף לנו דלק."
+      ],
+      "da": [
+        "Brændstoftanken er ramt.",
+        "Vi mister brændstof."
+      ],
+      "pt-BR": [
+        "Tanque de combustível atingido.",
+        "Estamos perdendo combustível."
+      ],
+      "en-AU": [
+        "Fuel tank's holed.",
+        "We're losing fuel."
+      ],
+      "af": [
+        "Brandstoftenk getref.",
+        "Ons verloor brandstof."
       ]
     },
     {
@@ -2334,6 +2962,22 @@
       "he": [
         "שריפה! תא המנוע!",
         "שריפה בתובה!"
+      ],
+      "da": [
+        "Brand! Motorrummet!",
+        "Brand i kamprummet!"
+      ],
+      "pt-BR": [
+        "Incêndio! Compartimento do motor!",
+        "Incêndio no compartimento de combate!"
+      ],
+      "en-AU": [
+        "Fire, fire! Engine bay!",
+        "Fire in the turret!"
+      ],
+      "af": [
+        "Brand! Enjinkompartement!",
+        "Brand in die toring!"
       ]
     },
     {
@@ -2392,6 +3036,22 @@
       "he": [
         "האש כבתה.",
         "השריפה כובתה."
+      ],
+      "da": [
+        "Branden er slukket.",
+        "Branden er under kontrol."
+      ],
+      "pt-BR": [
+        "Incêndio extinto.",
+        "Incêndio controlado."
+      ],
+      "en-AU": [
+        "Fire's out.",
+        "Fire extinguished."
+      ],
+      "af": [
+        "Die brand is dood.",
+        "Brand geblus."
       ]
     },
     {
@@ -2450,6 +3110,22 @@
       "he": [
         "המנוע נפגע.",
         "פגיעה במנוע. מאבדים כוח."
+      ],
+      "da": [
+        "Motoren er beskadiget.",
+        "Motor ramt. Vi mister kraft."
+      ],
+      "pt-BR": [
+        "Motor danificado.",
+        "Motor atingido. Perdendo potência."
+      ],
+      "en-AU": [
+        "Engine's taken a hit.",
+        "Engine hit. Losing power."
+      ],
+      "af": [
+        "Enjin is beskadig.",
+        "Enjin getref. Ons verloor krag."
       ]
     },
     {
@@ -2508,6 +3184,22 @@
       "he": [
         "המנוע מת.",
         "איבדנו מנוע."
+      ],
+      "da": [
+        "Motoren er død.",
+        "Vi har mistet motoren."
+      ],
+      "pt-BR": [
+        "O motor morreu.",
+        "Perdemos o motor."
+      ],
+      "en-AU": [
+        "Engine's dead.",
+        "We've lost the engine."
+      ],
+      "af": [
+        "Die enjin is dood.",
+        "Ons het die enjin verloor."
       ]
     },
     {
@@ -2553,6 +3245,18 @@
       ],
       "he": [
         "הממסרה נפגעה."
+      ],
+      "da": [
+        "Gearkassen er ramt."
+      ],
+      "pt-BR": [
+        "Transmissão atingida."
+      ],
+      "en-AU": [
+        "Gearbox is hit."
+      ],
+      "af": [
+        "Ratkas getref."
       ]
     },
     {
@@ -2611,6 +3315,22 @@
       "he": [
         "ירד זחל. אנחנו משותקים.",
         "איבדנו זחל."
+      ],
+      "da": [
+        "Bæltet er røget af. Vi kan ikke køre.",
+        "Vi har mistet et bælte."
+      ],
+      "pt-BR": [
+        "Lagarta rompida. Estamos imobilizados.",
+        "Perdemos uma lagarta."
+      ],
+      "en-AU": [
+        "Track's off. We're immobilised.",
+        "We've thrown a track."
+      ],
+      "af": [
+        "Rusperband is af. Ons kan nie beweeg nie.",
+        "Ons het 'n rusperband verloor."
       ]
     },
     {
@@ -2669,6 +3389,22 @@
       "he": [
         "התותח נפגע.",
         "פגיעה בתותח."
+      ],
+      "da": [
+        "Hovedkanonen er beskadiget.",
+        "Kanonen er ramt."
+      ],
+      "pt-BR": [
+        "Canhão principal danificado.",
+        "Canhão atingido."
+      ],
+      "en-AU": [
+        "Main gun's damaged.",
+        "Gun's hit."
+      ],
+      "af": [
+        "Hoofkanon beskadig.",
+        "Kanon getref."
       ]
     },
     {
@@ -2727,6 +3463,22 @@
       "he": [
         "טבעת הצריח תקועה.",
         "הצריח לא מסתובב."
+      ],
+      "da": [
+        "Tårnkransen sidder fast.",
+        "Tårnet vil ikke dreje."
+      ],
+      "pt-BR": [
+        "Anel da torre travado.",
+        "A torre não gira."
+      ],
+      "en-AU": [
+        "Turret ring's jammed.",
+        "Turret won't traverse."
+      ],
+      "af": [
+        "Die toringring is vas.",
+        "Die toring wil nie draai nie."
       ]
     },
     {
@@ -2772,6 +3524,18 @@
       ],
       "he": [
         "תושבת התותח נפגעה."
+      ],
+      "da": [
+        "Kanonvuggen er beskadiget."
+      ],
+      "pt-BR": [
+        "Berço do canhão danificado."
+      ],
+      "en-AU": [
+        "Gun cradle's damaged."
+      ],
+      "af": [
+        "Die kanonwieg is beskadig."
       ]
     },
     {
@@ -2817,6 +3581,18 @@
       ],
       "he": [
         "מערכת הטעינה האוטומטית נפגעה."
+      ],
+      "da": [
+        "Ladeautomaten er beskadiget."
+      ],
+      "pt-BR": [
+        "Carregador automático danificado."
+      ],
+      "en-AU": [
+        "Autoloader's damaged."
+      ],
+      "af": [
+        "Outolaaier beskadig."
       ]
     },
     {
@@ -2862,6 +3638,18 @@
       ],
       "he": [
         "ההזנה תקועה."
+      ],
+      "da": [
+        "Fremføringen sidder fast."
+      ],
+      "pt-BR": [
+        "Alimentação travada."
+      ],
+      "en-AU": [
+        "Feed stoppage."
+      ],
+      "af": [
+        "Toevoer is vas."
       ]
     },
     {
@@ -2907,6 +3695,18 @@
       ],
       "he": [
         "מקלע המפקד מושבת."
+      ],
+      "da": [
+        "Tårnmaskingeværet er ude af drift."
+      ],
+      "pt-BR": [
+        "Metralhadora do teto fora de ação."
+      ],
+      "en-AU": [
+        "Roof gun's out of action."
+      ],
+      "af": [
+        "Die dakmasjiengeweer is buite aksie."
       ]
     },
     {
@@ -2952,6 +3752,18 @@
       ],
       "he": [
         "משגר הטילים נפגע."
+      ],
+      "da": [
+        "Affyringsrampen er ramt."
+      ],
+      "pt-BR": [
+        "Lançador de mísseis atingido."
+      ],
+      "en-AU": [
+        "Missile launcher's hit."
+      ],
+      "af": [
+        "Missiellanseerder getref."
       ]
     },
     {
@@ -3010,6 +3822,22 @@
       "he": [
         "האופטיקה נפגעה.",
         "הכוונת נפגעה."
+      ],
+      "da": [
+        "Optikken er ramt.",
+        "Mit sigte er væk."
+      ],
+      "pt-BR": [
+        "Óptica atingida.",
+        "Perdi a mira."
+      ],
+      "en-AU": [
+        "Optics are hit.",
+        "My sight's gone."
+      ],
+      "af": [
+        "Optika getref.",
+        "My visier is weg."
       ]
     },
     {
@@ -3068,6 +3896,22 @@
       "he": [
         "מכשיר הקשר נפגע.",
         "אין קשר."
+      ],
+      "da": [
+        "Radioen er beskadiget.",
+        "Vi er ude af nettet."
+      ],
+      "pt-BR": [
+        "Rádio danificado.",
+        "Estamos fora da rede."
+      ],
+      "en-AU": [
+        "Radio's damaged.",
+        "We're off the net."
+      ],
+      "af": [
+        "Radio beskadig.",
+        "Ons is van die net af."
       ]
     },
     {
@@ -3126,6 +3970,22 @@
       "he": [
         "המפקד נפגע.",
         "המפקד פצוע. אני לוקח פיקוד."
+      ],
+      "da": [
+        "Vognkommandøren er ramt.",
+        "Vognkommandøren er ude. Jeg overtager."
+      ],
+      "pt-BR": [
+        "Comandante atingido.",
+        "Comandante fora de combate. Assumo o comando."
+      ],
+      "en-AU": [
+        "Commander's been hit.",
+        "Commander's a casualty. I have command."
+      ],
+      "af": [
+        "Bevelvoerder is getref.",
+        "Bevelvoerder is uit. Ek neem bevel oor."
       ]
     },
     {
@@ -3184,6 +4044,22 @@
       "he": [
         "התותחן פצוע.",
         "התותחן נפגע."
+      ],
+      "da": [
+        "Skytten er ude.",
+        "Skytten er ramt."
+      ],
+      "pt-BR": [
+        "Atirador fora de combate.",
+        "Atirador atingido."
+      ],
+      "en-AU": [
+        "Gunner's a casualty.",
+        "Gunner's been hit."
+      ],
+      "af": [
+        "Skutter is uit.",
+        "Skutter getref."
       ]
     },
     {
@@ -3242,6 +4118,22 @@
       "he": [
         "הנהג פצוע.",
         "הנהג נפגע."
+      ],
+      "da": [
+        "Køreren er ude.",
+        "Køreren er ramt."
+      ],
+      "pt-BR": [
+        "Motorista fora de combate.",
+        "Motorista atingido."
+      ],
+      "en-AU": [
+        "Driver's a casualty.",
+        "Driver's been hit."
+      ],
+      "af": [
+        "Drywer is uit.",
+        "Drywer getref."
       ]
     },
     {
@@ -3300,6 +4192,22 @@
       "he": [
         "הטען פצוע.",
         "הטען נפגע."
+      ],
+      "da": [
+        "Læsseren er ude.",
+        "Læsseren er ramt."
+      ],
+      "pt-BR": [
+        "Municiador fora de combate.",
+        "Municiador atingido."
+      ],
+      "en-AU": [
+        "Loader's a casualty.",
+        "Loader's been hit."
+      ],
+      "af": [
+        "Laaier is uit.",
+        "Laaier getref."
       ]
     },
     {
@@ -3358,6 +4266,22 @@
       "he": [
         "התיקון הושלם.",
         "המערכות חזרו."
+      ],
+      "da": [
+        "Reparation afsluttet.",
+        "Alle systemer virker igen."
+      ],
+      "pt-BR": [
+        "Reparos concluídos.",
+        "Sistemas restabelecidos."
+      ],
+      "en-AU": [
+        "Repairs complete.",
+        "All systems serviceable."
+      ],
+      "af": [
+        "Herstelwerk voltooi.",
+        "Alle stelsels werk weer."
       ]
     },
     {
@@ -3403,6 +4327,18 @@
       ],
       "he": [
         "הצוות חזר לעמדות."
+      ],
+      "da": [
+        "Besætningen er på plads igen."
+      ],
+      "pt-BR": [
+        "Guarnição de volta aos postos."
+      ],
+      "en-AU": [
+        "Crew's back in position."
+      ],
+      "af": [
+        "Bemanning is terug op hul poste."
       ]
     },
     {
@@ -3461,6 +4397,22 @@
       "he": [
         "הזחל תוקן. אפשר לנוע.",
         "הזחל עלה."
+      ],
+      "da": [
+        "Bæltet er repareret. Vi kan køre.",
+        "Bæltet er på igen."
+      ],
+      "pt-BR": [
+        "Lagarta reparada. Podemos andar.",
+        "Lagarta recolocada."
+      ],
+      "en-AU": [
+        "Track's fixed. We're mobile.",
+        "Track's back on."
+      ],
+      "af": [
+        "Rusperband herstel. Ons kan ry.",
+        "Rusperband is weer op."
       ]
     },
     {
@@ -3519,6 +4471,22 @@
       "he": [
         "התותח תקין.",
         "התותח חזר."
+      ],
+      "da": [
+        "Kanonen er klar igen.",
+        "Hovedkanonen er tilbage."
+      ],
+      "pt-BR": [
+        "Canhão operacional.",
+        "Canhão principal de volta."
+      ],
+      "en-AU": [
+        "Gun's serviceable.",
+        "Main gun's back."
+      ],
+      "af": [
+        "Kanon is weer operasioneel.",
+        "Hoofkanon is terug."
       ]
     },
     {
@@ -3577,6 +4545,22 @@
       "he": [
         "המנוע עובד.",
         "הכוח חזר."
+      ],
+      "da": [
+        "Motoren kører igen.",
+        "Vi har kraft igen."
+      ],
+      "pt-BR": [
+        "Motor funcionando.",
+        "Potência restabelecida."
+      ],
+      "en-AU": [
+        "Engine's running again.",
+        "Power's back."
+      ],
+      "af": [
+        "Die enjin loop weer.",
+        "Krag is terug."
       ]
     },
     {
@@ -3635,6 +4619,22 @@
       "he": [
         "מפעיל מטפים.",
         "מכבה."
+      ],
+      "da": [
+        "Slukningsanlæg.",
+        "Slukker."
+      ],
+      "pt-BR": [
+        "Extintor.",
+        "Apagando."
+      ],
+      "en-AU": [
+        "Firing extinguishers.",
+        "Putting it out."
+      ],
+      "af": [
+        "Blussers!",
+        "Ons blus dit."
       ]
     },
     {
@@ -3693,6 +4693,22 @@
       "he": [
         "עשן.",
         "יורה רימוני עשן."
+      ],
+      "da": [
+        "Røg ude.",
+        "Affyrer røg."
+      ],
+      "pt-BR": [
+        "Fumígenos lançados.",
+        "Lançando fumaça."
+      ],
+      "en-AU": [
+        "Smoke away.",
+        "Popping smoke."
+      ],
+      "af": [
+        "Rook weg.",
+        "Skiet rook."
       ]
     },
     {
@@ -3751,6 +4767,22 @@
       "he": [
         "מקלע גג פעיל.",
         "עמדת נשק מרחוק פעילה."
+      ],
+      "da": [
+        "Tagvåben aktivt.",
+        "Fjernstyret våben tændt."
+      ],
+      "pt-BR": [
+        "Metralhadora do teto ativa.",
+        "Estação de armas ligada."
+      ],
+      "en-AU": [
+        "Roof gun active.",
+        "Remote weapon on."
+      ],
+      "af": [
+        "Dakwapen aktief.",
+        "Afstandwapen aan."
       ]
     },
     {
@@ -3809,6 +4841,22 @@
       "he": [
         "מתלים מכוונים.",
         "הגוף הונמך."
+      ],
+      "da": [
+        "Affjedring indstillet.",
+        "Skrog sænket, klar."
+      ],
+      "pt-BR": [
+        "Suspensão ajustada.",
+        "Casco abaixado, pronto."
+      ],
+      "en-AU": [
+        "Suspension set.",
+        "Hull lowered, set."
+      ],
+      "af": [
+        "Vering gestel.",
+        "Romp verlaag, gereed."
       ]
     },
     {
@@ -3867,6 +4915,22 @@
       "he": [
         "איבדנו אחד.",
         "טנק שלנו הושמד."
+      ],
+      "da": [
+        "Vi har mistet en vogn.",
+        "Egen kampvogn slået ud."
+      ],
+      "pt-BR": [
+        "Perdemos um carro.",
+        "Carro amigo abatido."
+      ],
+      "en-AU": [
+        "We've lost a callsign.",
+        "Friendly tank knocked out."
+      ],
+      "af": [
+        "Ons het een verloor.",
+        "Eie tenk uitgeskiet."
       ]
     },
     {
@@ -3912,6 +4976,18 @@
       ],
       "he": [
         "אנחנו הטנק האחרון. כל פגז חייב לפגוע."
+      ],
+      "da": [
+        "Vi er den sidste vogn. Hvert skud skal sidde."
+      ],
+      "pt-BR": [
+        "Somos o último carro. Cada tiro conta."
+      ],
+      "en-AU": [
+        "Last callsign left. Make every round count."
+      ],
+      "af": [
+        "Ons is die laaste tenk. Elke skoot moet tel."
       ]
     },
     {
@@ -3970,6 +5046,22 @@
       "he": [
         "היעד נכבש.",
         "הנקודה בידינו."
+      ],
+      "da": [
+        "Objektivet er taget.",
+        "Stillingen er vores."
+      ],
+      "pt-BR": [
+        "Objetivo conquistado.",
+        "A posição é nossa."
+      ],
+      "en-AU": [
+        "Objective secure.",
+        "Position's ours."
+      ],
+      "af": [
+        "Doelwit beveilig.",
+        "Die posisie is ons s'n."
       ]
     },
     {
@@ -4015,6 +5107,18 @@
       ],
       "he": [
         "איבדנו את היעד."
+      ],
+      "da": [
+        "Vi har mistet objektivet."
+      ],
+      "pt-BR": [
+        "Perdemos o objetivo."
+      ],
+      "en-AU": [
+        "We've lost the objective."
+      ],
+      "af": [
+        "Ons het die doelwit verloor."
       ]
     },
     {
@@ -4060,6 +5164,18 @@
       ],
       "he": [
         "הדגל שלהם אצלנו."
+      ],
+      "da": [
+        "Vi har deres flag."
+      ],
+      "pt-BR": [
+        "Estamos com a bandeira deles."
+      ],
+      "en-AU": [
+        "We've got their flag."
+      ],
+      "af": [
+        "Ons het hulle vlag."
       ]
     },
     {
@@ -4105,6 +5221,18 @@
       ],
       "he": [
         "הדגל שלנו אצלם."
+      ],
+      "da": [
+        "De har vores flag."
+      ],
+      "pt-BR": [
+        "Eles pegaram nossa bandeira."
+      ],
+      "en-AU": [
+        "They've got our flag."
+      ],
+      "af": [
+        "Hulle het ons vlag."
       ]
     },
     {
@@ -4150,6 +5278,18 @@
       ],
       "he": [
         "הדגל נכבש."
+      ],
+      "da": [
+        "Flaget er erobret."
+      ],
+      "pt-BR": [
+        "Bandeira capturada."
+      ],
+      "en-AU": [
+        "Flag captured."
+      ],
+      "af": [
+        "Vlag gebuit."
       ]
     },
     {
@@ -4195,6 +5335,18 @@
       ],
       "he": [
         "הדגל שלנו חזר."
+      ],
+      "da": [
+        "Vores flag er tilbage."
+      ],
+      "pt-BR": [
+        "Nossa bandeira voltou."
+      ],
+      "en-AU": [
+        "Our flag's recovered."
+      ],
+      "af": [
+        "Ons vlag is terug."
       ]
     },
     {
@@ -4253,6 +5405,22 @@
       "he": [
         "הנה הם באים.",
         "גל אויב מתקרב."
+      ],
+      "da": [
+        "Der kommer de.",
+        "Fjendtlig bølge på vej."
+      ],
+      "pt-BR": [
+        "Lá vêm eles.",
+        "Nova onda inimiga se aproximando."
+      ],
+      "en-AU": [
+        "Stand to, here they come.",
+        "Enemy wave inbound."
+      ],
+      "af": [
+        "Hier kom hulle.",
+        "Vyandelike golf op pad."
       ]
     },
     {
@@ -4311,6 +5479,22 @@
       "he": [
         "הגל נהדף.",
         "אלה היו האחרונים. בינתיים."
+      ],
+      "da": [
+        "Angrebet er slået tilbage.",
+        "Det var de sidste. Indtil videre."
+      ],
+      "pt-BR": [
+        "Onda repelida.",
+        "Eram os últimos. Por enquanto."
+      ],
+      "en-AU": [
+        "Wave seen off.",
+        "That's the lot. For now."
+      ],
+      "af": [
+        "Aanval afgeslaan.",
+        "Dis die laastes. Vir eers."
       ]
     },
     {
@@ -4356,6 +5540,18 @@
       ],
       "he": [
         "הקו מתקדם."
+      ],
+      "da": [
+        "Fronten rykker frem."
+      ],
+      "pt-BR": [
+        "A linha está avançando."
+      ],
+      "en-AU": [
+        "The line's pushing forward."
+      ],
+      "af": [
+        "Die front skuif vorentoe."
       ]
     },
     {
@@ -4414,6 +5610,22 @@
       "he": [
         "גול נכבש.",
         "שער לטובתנו."
+      ],
+      "da": [
+        "Mål.",
+        "Det er mål."
+      ],
+      "pt-BR": [
+        "Gol.",
+        "É gol."
+      ],
+      "en-AU": [
+        "Goal.",
+        "That's a goal."
+      ],
+      "af": [
+        "Doel.",
+        "Dis 'n doel."
       ]
     },
     {
@@ -4459,6 +5671,18 @@
       ],
       "he": [
         "חוזרים לקרב."
+      ],
+      "da": [
+        "Tilbage i kampen."
+      ],
+      "pt-BR": [
+        "De volta ao combate."
+      ],
+      "en-AU": [
+        "Back in action."
+      ],
+      "af": [
+        "Terug in die geveg."
       ]
     },
     {
@@ -4504,6 +5728,18 @@
       ],
       "he": [
         "קיבלנו אספקה."
+      ],
+      "da": [
+        "Forsyninger om bord."
+      ],
+      "pt-BR": [
+        "Suprimento a bordo."
+      ],
+      "en-AU": [
+        "Resupply on board."
+      ],
+      "af": [
+        "Voorrade aan boord."
       ]
     },
     {
@@ -4562,6 +5798,22 @@
       "he": [
         "ארגז תחמושת הוצנח.",
         "מצניח תחמושת."
+      ],
+      "da": [
+        "Ammunitionskasse ude.",
+        "Ammunition nedkastet."
+      ],
+      "pt-BR": [
+        "Caixa de munição lançada.",
+        "Lançamento de munição efetuado."
+      ],
+      "en-AU": [
+        "Ammo crate away.",
+        "Ammunition drop released."
+      ],
+      "af": [
+        "Ammunisiekrat weg.",
+        "Ammunisie-afwerping gelos."
       ]
     },
     {
@@ -4620,6 +5872,22 @@
       "he": [
         "ארגז תיקונים הוצנח.",
         "מצניח ערכת תיקון."
+      ],
+      "da": [
+        "Reparationskasse ude.",
+        "Reparationssæt nedkastet."
+      ],
+      "pt-BR": [
+        "Caixa de reparo lançada.",
+        "Lançamento de reparo efetuado."
+      ],
+      "en-AU": [
+        "Repair crate away.",
+        "Repair drop released."
+      ],
+      "af": [
+        "Herstelkrat weg.",
+        "Herstel-afwerping gelos."
       ]
     },
     {
@@ -4678,6 +5946,22 @@
       "he": [
         "חדל אש! זה כוח שלנו!",
         "חדל אש, כוחותינו!"
+      ],
+      "da": [
+        "Stop ild! Det er egne!",
+        "Ophør ild, egne styrker!"
+      ],
+      "pt-BR": [
+        "Cessar fogo! É amigo!",
+        "Cessar fogo, tropa amiga!"
+      ],
+      "en-AU": [
+        "Check fire! That's a friendly!",
+        "Stop, blue on blue!"
+      ],
+      "af": [
+        "Staak vuur! Dis 'n eie tenk!",
+        "Staak vuur, eie magte!"
       ]
     },
     {
@@ -4723,6 +6007,18 @@
       ],
       "he": [
         "חדל אש! כאן כוחותינו!"
+      ],
+      "da": [
+        "Stop ild! Vi er egne!"
+      ],
+      "pt-BR": [
+        "Cessar fogo! Somos amigos!"
+      ],
+      "en-AU": [
+        "Check fire! Blue on blue!"
+      ],
+      "af": [
+        "Staak vuur! Ons is eie magte!"
       ]
     },
     {
@@ -4781,6 +6077,22 @@
       "he": [
         "זהירות. זה שלנו.",
         "לאט. כוחותינו."
+      ],
+      "da": [
+        "Pas på. Det er en af vores.",
+        "Rolig. Egen vogn."
+      ],
+      "pt-BR": [
+        "Cuidado. É amigo.",
+        "Calma. Carro amigo."
+      ],
+      "en-AU": [
+        "Watch it. Friendly callsign.",
+        "Steady. Friendly."
+      ],
+      "af": [
+        "Pasop. Dis 'n eie voertuig.",
+        "Stadig. Eie tenk."
       ]
     },
     {
@@ -4826,6 +6138,18 @@
       ],
       "he": [
         "נוגחים בנו!"
+      ],
+      "da": [
+        "Han vædrer os!"
+      ],
+      "pt-BR": [
+        "Estão nos abalroando!"
+      ],
+      "en-AU": [
+        "He's ramming us!"
+      ],
+      "af": [
+        "Hy ram ons!"
       ]
     },
     {
@@ -4884,6 +6208,22 @@
       "he": [
         "אחד ירד.",
         "טנק אויב הושמד."
+      ],
+      "da": [
+        "Én mindre.",
+        "Fjende slået ud."
+      ],
+      "pt-BR": [
+        "Menos um.",
+        "Inimigo abatido."
+      ],
+      "en-AU": [
+        "One down.",
+        "Enemy knocked out."
+      ],
+      "af": [
+        "Een minder.",
+        "Vyand uitgeskiet."
       ]
     },
     {
@@ -4942,6 +6282,22 @@
       "he": [
         "עוד אחד ירד.",
         "מטרה שנייה הושמדה."
+      ],
+      "da": [
+        "En til nede.",
+        "Andet mål ødelagt."
+      ],
+      "pt-BR": [
+        "Mais um abatido.",
+        "Segundo alvo destruído."
+      ],
+      "en-AU": [
+        "Another one down.",
+        "Second target destroyed."
+      ],
+      "af": [
+        "Nog een uit.",
+        "Tweede teiken vernietig."
       ]
     },
     {
@@ -4987,6 +6343,18 @@
       ],
       "he": [
         "נשאר אויב אחד. לגמור אותו."
+      ],
+      "da": [
+        "Én fjende tilbage. Gør det færdigt."
+      ],
+      "pt-BR": [
+        "Resta um inimigo. Acabem com ele."
+      ],
+      "en-AU": [
+        "One left. Finish him off."
+      ],
+      "af": [
+        "Een vyand oor. Maak hom klaar."
       ]
     },
     {
@@ -5032,6 +6400,18 @@
       ],
       "he": [
         "אנחנו בנחיתות מספרית."
+      ],
+      "da": [
+        "Vi er i undertal."
+      ],
+      "pt-BR": [
+        "Estamos em inferioridade numérica."
+      ],
+      "en-AU": [
+        "We're outnumbered."
+      ],
+      "af": [
+        "Ons is in die minderheid."
       ]
     },
     {
@@ -5090,6 +6470,22 @@
       "he": [
         "מגעים מרובים.",
         "כמה טנקי אויב."
+      ],
+      "da": [
+        "Flere kontakter.",
+        "Flere fjendtlige kampvogne."
+      ],
+      "pt-BR": [
+        "Múltiplos contatos.",
+        "Vários carros inimigos."
+      ],
+      "en-AU": [
+        "Multiple contacts.",
+        "Several enemy tanks."
+      ],
+      "af": [
+        "Verskeie kontakte.",
+        "Verskeie vyandelike tenks."
       ]
     },
     {
@@ -5148,6 +6544,22 @@
       "he": [
         "טיל נכנס!",
         "טיל עלינו, להיאחז!"
+      ],
+      "da": [
+        "Missil på vej!",
+        "Indkommende missil, hold fast!"
+      ],
+      "pt-BR": [
+        "Míssil chegando!",
+        "Míssil vindo, segurem-se!"
+      ],
+      "en-AU": [
+        "Missile incoming!",
+        "Missile inbound, brace!"
+      ],
+      "af": [
+        "Missiel inkomend!",
+        "Missiel op pad, hou vas!"
       ]
     },
     {
@@ -5206,6 +6618,22 @@
       "he": [
         "רחפן נכנס!",
         "רחפן מעלינו, להיאחז!"
+      ],
+      "da": [
+        "Drone på vej!",
+        "Drone over os, hold fast!"
+      ],
+      "pt-BR": [
+        "Drone chegando!",
+        "Drone em cima de nós, segurem-se!"
+      ],
+      "en-AU": [
+        "Drone inbound!",
+        "Drone overhead, brace!"
+      ],
+      "af": [
+        "Hommeltuig op pad!",
+        "Hommeltuig bo ons, hou vas!"
       ]
     },
     {
@@ -5264,6 +6692,22 @@
       "he": [
         "רחפן באוויר.",
         "משגר רחפן."
+      ],
+      "da": [
+        "Drone i luften.",
+        "Sender dronen op."
+      ],
+      "pt-BR": [
+        "Drone no ar.",
+        "Lançando o drone."
+      ],
+      "en-AU": [
+        "Drone up.",
+        "Launching the drone."
+      ],
+      "af": [
+        "Hommeltuig in die lug.",
+        "Lanseer die hommeltuig."
       ]
     },
     {
@@ -5322,6 +6766,22 @@
       "he": [
         "איבדנו את הרחפן.",
         "הרחפן נפל, אין תמונה."
+      ],
+      "da": [
+        "Dronen er tabt.",
+        "Dronen er nede, intet billede."
+      ],
+      "pt-BR": [
+        "Perdemos o drone.",
+        "Drone caiu, sem imagem."
+      ],
+      "en-AU": [
+        "Lost the drone.",
+        "Drone down, feed lost."
+      ],
+      "af": [
+        "Hommeltuig verloor.",
+        "Hommeltuig is af, geen beeld nie."
       ]
     },
     {
@@ -5380,6 +6840,22 @@
       "he": [
         "היה קרוב.",
         "כמעט פגע."
+      ],
+      "da": [
+        "Den var tæt på.",
+        "Tæt forbi."
+      ],
+      "pt-BR": [
+        "Essa foi perto.",
+        "Passou raspando."
+      ],
+      "en-AU": [
+        "That was close.",
+        "Near miss."
+      ],
+      "af": [
+        "Dit was naby.",
+        "Net-net mis."
       ]
     },
     {
@@ -5438,6 +6914,22 @@
       "he": [
         "אנחנו על הצד!",
         "התהפכנו!"
+      ],
+      "da": [
+        "Vi ligger på siden!",
+        "Vi er væltet!"
+      ],
+      "pt-BR": [
+        "Estamos de lado!",
+        "Capotamos!"
+      ],
+      "en-AU": [
+        "We're on our side!",
+        "We've rolled over!"
+      ],
+      "af": [
+        "Ons lê op ons sy!",
+        "Ons het omgeslaan!"
       ]
     },
     {
@@ -5483,6 +6975,18 @@
       ],
       "he": [
         "חזרנו על הזחלים."
+      ],
+      "da": [
+        "Tilbage på bælterne."
+      ],
+      "pt-BR": [
+        "De volta sobre as lagartas."
+      ],
+      "en-AU": [
+        "Back on our tracks."
+      ],
+      "af": [
+        "Terug op die rusperbande."
       ]
     },
     {
@@ -5528,6 +7032,18 @@
       ],
       "he": [
         "נכנסים לנו מים."
+      ],
+      "da": [
+        "Vi tager vand ind."
+      ],
+      "pt-BR": [
+        "Está entrando água."
+      ],
+      "en-AU": [
+        "We're taking on water."
+      ],
+      "af": [
+        "Ons maak water."
       ]
     },
     {
@@ -5586,6 +7102,22 @@
       "he": [
         "נתקענו.",
         "אין אחיזה."
+      ],
+      "da": [
+        "Vi sidder fast.",
+        "Intet greb."
+      ],
+      "pt-BR": [
+        "Estamos atolados.",
+        "Sem tração."
+      ],
+      "en-AU": [
+        "We're bogged.",
+        "No traction."
+      ],
+      "af": [
+        "Ons het vasgeval.",
+        "Geen trekkrag nie."
       ]
     },
     {
@@ -5644,6 +7176,22 @@
       "he": [
         "מטרה נעולה.",
         "נעול."
+      ],
+      "da": [
+        "Mål låst.",
+        "Låst."
+      ],
+      "pt-BR": [
+        "Alvo travado.",
+        "Travado."
+      ],
+      "en-AU": [
+        "Target locked.",
+        "On target."
+      ],
+      "af": [
+        "Teiken gesluit.",
+        "Op teiken."
       ]
     },
     {
@@ -5702,6 +7250,22 @@
       "he": [
         "איבדתי אותו.",
         "המטרה אבדה."
+      ],
+      "da": [
+        "Mistet ham.",
+        "Mål tabt."
+      ],
+      "pt-BR": [
+        "Perdi ele.",
+        "Alvo perdido."
+      ],
+      "en-AU": [
+        "Lost him.",
+        "Target lost."
+      ],
+      "af": [
+        "Ek het hom verloor.",
+        "Teiken verloor."
       ]
     },
     {
@@ -5747,6 +7311,18 @@
       ],
       "he": [
         "ירד לו זחל. הוא משותק."
+      ],
+      "da": [
+        "Hans bælte er røget af. Han er immobiliseret."
+      ],
+      "pt-BR": [
+        "A lagarta dele rompeu. Está imobilizado."
+      ],
+      "en-AU": [
+        "He's thrown a track. He's immobilised."
+      ],
+      "af": [
+        "Sy rusperband is af. Hy kan nie beweeg nie."
       ]
     },
     {
@@ -5792,6 +7368,18 @@
       ],
       "he": [
         "התותח שלו מושבת."
+      ],
+      "da": [
+        "Hans kanon er sat ud af spillet."
+      ],
+      "pt-BR": [
+        "O canhão dele foi neutralizado."
+      ],
+      "en-AU": [
+        "His main gun's out."
+      ],
+      "af": [
+        "Sy kanon is uitgeskakel."
       ]
     },
     {
@@ -5837,6 +7425,18 @@
       ],
       "he": [
         "הצוות שלו נפגע."
+      ],
+      "da": [
+        "Hans besætning er ramt."
+      ],
+      "pt-BR": [
+        "A guarnição dele foi atingida."
+      ],
+      "en-AU": [
+        "His crew's been hit."
+      ],
+      "af": [
+        "Sy bemanning is getref."
       ]
     },
     {
@@ -5882,6 +7482,18 @@
       ],
       "he": [
         "פגענו לו במנוע."
+      ],
+      "da": [
+        "Ramte hans motor."
+      ],
+      "pt-BR": [
+        "Acertei o motor dele."
+      ],
+      "en-AU": [
+        "Hit his engine deck."
+      ],
+      "af": [
+        "Sy enjin getref."
       ]
     },
     {
@@ -5927,6 +7539,18 @@
       ],
       "he": [
         "נגמרה לנו התחמושת."
+      ],
+      "da": [
+        "Vi er løbet tør for ammunition."
+      ],
+      "pt-BR": [
+        "Estamos sem munição."
+      ],
+      "en-AU": [
+        "That's us out of ammo."
+      ],
+      "af": [
+        "Ons ammunisie is op."
       ]
     },
     {
@@ -5972,6 +7596,18 @@
       ],
       "he": [
         "האויב נכנס לנקודה."
+      ],
+      "da": [
+        "Fjende på objektivet."
+      ],
+      "pt-BR": [
+        "Inimigo no objetivo."
+      ],
+      "en-AU": [
+        "Enemy on the objective."
+      ],
+      "af": [
+        "Vyand op die doelwit."
       ]
     },
     {
@@ -6017,6 +7653,18 @@
       ],
       "he": [
         "תנו לי לחשוב צעד אחר צעד."
+      ],
+      "da": [
+        "Lad mig tænke trin for trin."
+      ],
+      "pt-BR": [
+        "Deixe-me pensar passo a passo."
+      ],
+      "en-AU": [
+        "Let me think step by step."
+      ],
+      "af": [
+        "Laat my stap vir stap dink."
       ]
     },
     {
@@ -6062,6 +7710,18 @@
       ],
       "he": [
         "שלב אחד: לכוון. שלב שתיים: אש."
+      ],
+      "da": [
+        "Trin et: sigt. Trin to: skyd."
+      ],
+      "pt-BR": [
+        "Passo um: mirar. Passo dois: atirar."
+      ],
+      "en-AU": [
+        "Step one: aim. Step two: fire."
+      ],
+      "af": [
+        "Stap een: korrel. Stap twee: skiet."
       ]
     },
     {
@@ -6146,6 +7806,30 @@
         "עיניים על קו העצים.",
         "אין כלום בעין. להישאר ערניים.",
         "לבדוק גזרות."
+      ],
+      "da": [
+        "Overvåger sektoren.",
+        "Øjnene på skovbrynet.",
+        "Intet i sigte. Hold skarpt udkig.",
+        "Hold øje med jeres sektorer."
+      ],
+      "pt-BR": [
+        "Observando o setor.",
+        "Olho na orla da mata.",
+        "Nada à vista. Fiquem atentos.",
+        "Vigiem seus setores."
+      ],
+      "en-AU": [
+        "Scanning my arc.",
+        "Eyes on the treeline.",
+        "Nothing seen. Stay switched on.",
+        "Watch your arcs."
+      ],
+      "af": [
+        "Bekyk my sektor.",
+        "Oë op die boomlyn.",
+        "Niks in sig nie. Bly wakker.",
+        "Hou julle sektore dop."
       ]
     },
     {
@@ -6204,6 +7888,22 @@
       "he": [
         "מחזיקים כאן. עיניים קדימה.",
         "להחזיק עמדה. להמשיך לסרוק."
+      ],
+      "da": [
+        "Vi holder her. Hold øje fremad.",
+        "Hold stillingen. Fortsæt observation."
+      ],
+      "pt-BR": [
+        "Mantendo aqui. Observem a frente.",
+        "Manter posição. Continuem observando."
+      ],
+      "en-AU": [
+        "Holding here. Watch your front.",
+        "Hold this position. Keep observing."
+      ],
+      "af": [
+        "Ons hou hier. Hou die front dop.",
+        "Hou posisie. Bly waarneem."
       ]
     },
     {
@@ -6262,6 +7962,22 @@
       "he": [
         "בנחת, נהג. עיניים לאגפים.",
         "ממשיכים לנוע. עיניים פתוחות."
+      ],
+      "da": [
+        "Roligt, kører. Hold øje med flankerne.",
+        "Fortsæt. Hold øjnene åbne."
+      ],
+      "pt-BR": [
+        "Devagar, motorista. Atenção aos flancos.",
+        "Continue. Olhos abertos."
+      ],
+      "en-AU": [
+        "Steady, driver. Watch the flanks.",
+        "Keep moving. Eyes open."
+      ],
+      "af": [
+        "Stadig, drywer. Hou die flanke dop.",
+        "Ry aan. Oë oop."
       ]
     },
     {
@@ -6333,6 +8049,26 @@
         "תותח מוכן. אין מטרה.",
         "טעון. ממתין למטרה.",
         "הכוונת נקייה."
+      ],
+      "da": [
+        "Kanon klar. Intet mål.",
+        "Ladt. Venter på mål.",
+        "Sigtet er frit."
+      ],
+      "pt-BR": [
+        "Canhão pronto. Sem alvo.",
+        "Carregado. Aguardando alvo.",
+        "Mira livre."
+      ],
+      "en-AU": [
+        "Gun ready. No target.",
+        "Up. Waiting on a target.",
+        "Sights clear."
+      ],
+      "af": [
+        "Kanon gereed. Geen teiken nie.",
+        "Gelaai. Wag vir 'n teiken.",
+        "Visier is skoon."
       ]
     },
     {
@@ -6391,6 +8127,22 @@
       "he": [
         "הגוף מחזיק. ממשיכים להילחם.",
         "נזק קל. ממשיכים."
+      ],
+      "da": [
+        "Skroget holder. Vi kæmper videre.",
+        "Lette skader. Fortsæt."
+      ],
+      "pt-BR": [
+        "O casco aguenta. Seguimos combatendo.",
+        "Danos leves. Prosseguir."
+      ],
+      "en-AU": [
+        "Hull's holding. We fight on.",
+        "Damage is light. Carry on."
+      ],
+      "af": [
+        "Die romp hou. Ons veg voort.",
+        "Ligte skade. Gaan voort."
       ]
     },
     {
@@ -6449,6 +8201,22 @@
       "he": [
         "בניין קרס.",
         "הבית הזה קרס."
+      ],
+      "da": [
+        "Bygning styrtet sammen.",
+        "Det hus faldt lige sammen."
+      ],
+      "pt-BR": [
+        "Prédio desabou.",
+        "Aquela casa acabou de desabar."
+      ],
+      "en-AU": [
+        "Building down.",
+        "That house has come down."
+      ],
+      "af": [
+        "Gebou het ineengestort.",
+        "Daardie huis het net ingeval."
       ]
     },
     {
@@ -6507,6 +8275,22 @@
       "he": [
         "מטוסים מעלינו.",
         "מטוסים חולפים מעלינו."
+      ],
+      "da": [
+        "Fly over os.",
+        "Fly passerer."
+      ],
+      "pt-BR": [
+        "Aeronaves sobre nós.",
+        "Aviões passando."
+      ],
+      "en-AU": [
+        "Aircraft overhead.",
+        "Aircraft passing over."
+      ],
+      "af": [
+        "Vliegtuie bo ons.",
+        "Vliegtuie trek verby."
       ]
     },
     {
@@ -6565,6 +8349,22 @@
       "he": [
         "ארטילריה, רחוק.",
         "תותחים כבדים במרחק."
+      ],
+      "da": [
+        "Artilleri, langt væk.",
+        "Tungt skyts i det fjerne."
+      ],
+      "pt-BR": [
+        "Artilharia, ao longe.",
+        "Canhões pesados à distância."
+      ],
+      "en-AU": [
+        "Artillery, well off.",
+        "Heavy guns in the distance."
+      ],
+      "af": [
+        "Artillerie, ver weg.",
+        "Swaar geskut in die verte."
       ]
     },
     {
@@ -6623,6 +8423,22 @@
       "he": [
         "להתקדם ליעד.",
         "נעים אל היעד."
+      ],
+      "da": [
+        "Frem mod objektivet.",
+        "Ryk frem på objektivet."
+      ],
+      "pt-BR": [
+        "Avançar para o objetivo.",
+        "Progredir sobre o objetivo."
+      ],
+      "en-AU": [
+        "Push on to the objective.",
+        "Move on the objective."
+      ],
+      "af": [
+        "Druk deur na die doelwit.",
+        "Beweeg op die doelwit."
       ]
     },
     {
@@ -6681,6 +8497,22 @@
       "he": [
         "במחסה. מחזיקים כאן.",
         "גוף במחסה. מחזיקים."
+      ],
+      "da": [
+        "I dækning. Vi holder her.",
+        "I stilling. Holder."
+      ],
+      "pt-BR": [
+        "Abrigados. Mantendo aqui.",
+        "Posição desenfiada. Mantendo."
+      ],
+      "en-AU": [
+        "In cover. Hold here.",
+        "Hull down. Holding."
+      ],
+      "af": [
+        "In dekking. Hou hier.",
+        "In posisie. Ons hou."
       ]
     }
   ]

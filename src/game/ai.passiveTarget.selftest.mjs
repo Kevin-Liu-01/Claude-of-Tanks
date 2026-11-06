@@ -358,11 +358,14 @@ console.log('[7] a gun on its stop is a reposition the hull drives, over the pre
   // across the bank, the gun held 16 s (the press arms on the idle host meanwhile), then free to fire
   const { host, bot, ctl, collide } = pinnedOnBank('across');
   const start = bot.state.pos.clone();
-  let arcAt = null, pressAtArc = false, arcReverse = 0, leftAt = null, firstShotAt = null;
+  let arcAt = null, pressAtArc = false, arcReverse = 0, leftAt = null, firstShotAt = null, arcRan = false;
   const shots = drive(bot, ctl, bank, host, 40, { gun: 'miss', heldS: 16, collide, onTick: (t) => {
     const info = ctl.debugInfo();
     if (arcAt === null && info.arcScoot) { arcAt = t; pressAtArc = info.passivePress; }
-    if (info.arcScoot && bot.input.throttle < -0.1) arcReverse += SIM_DT;
+    // a tick the leg drove: it ran when the tick's drive was written (it begins in the aim step, after the drive, so the
+    // back-up it ends drove that tick; 268 item 10's router touch rule moved this fixture's leg onto such a tick)
+    if (arcRan && info.arcScoot && bot.input.throttle < -0.1) arcReverse += SIM_DT;
+    arcRan = info.arcScoot;
     if (leftAt === null && Math.hypot(bot.state.pos.x - start.x, bot.state.pos.z - start.z) > 10) leftAt = t;
     if (firstShotAt === null && bot.combat.reload.t > bot.spec.gun.reloadS - 2 * SIM_DT) firstShotAt = t;
   } });

@@ -10,7 +10,7 @@
  * so a re-offer or a resume needs no new code. Browser-only (WebSocket, RTCPeerConnection), injectable for tests.
  */
 import {
-  PAD_KEEPALIVE_REQUEST, PAD_RELAY_AXES, PAD_RELAY_CTL, PAD_RELAY_HZ, padAxesFromRelay, padAxesToRelay, readPadCtl,
+  PAD_KEEPALIVE_REQUEST, PAD_RELAY_AXES, PAD_RELAY_CTL, PAD_RELAY_DATA_MAX, PAD_RELAY_HZ, padAxesFromRelay, padAxesToRelay, readPadCtl,
   readPadHostMessage,
 } from './padProtocol.ts';
 import type { PadCtlMessage, PadEndReason, PadHostMessage, PadIceServer, PadRole } from './padProtocol.ts';
@@ -37,6 +37,8 @@ export interface PadLinkOptions {
   onCtl?(message: PadCtlMessage): void;
   /** The resume token for this pairing (the phone keeps it in sessionStorage). */
   onToken?(code: string, token: string): void;
+  /** The phone's seat in a couch lobby (docs/COUCH-MODE.md), told once when it joins. */
+  onSeat?(seat: number): void;
   createSocket?: (url: string) => WebSocket;
   createPeer?: (config: RTCConfiguration) => RTCPeerConnection;
   now?: () => number;
@@ -145,6 +147,7 @@ export function createPadLink(options: PadLinkOptions): PadLink {
       case 'joined':
         token = message.token; paired = true;
         options.onToken?.(code, token);
+        if (message.seat !== undefined) options.onSeat?.(message.seat);
         return;
       case 'resumed':
         paired = true;
@@ -360,7 +363,10 @@ export function createPadLink(options: PadLinkOptions): PadLink {
     sendCtl(message) {
       if (ctl?.readyState === 'open') { try { ctl.send(JSON.stringify(message)); return true; } catch { return false; } }
       if (!paired || !peerHere || relaySpent) return false;
-      send({ t: 'relay', data: PAD_RELAY_CTL + JSON.stringify(message) });
+      // a payload past the actor's limit would be invalid and drop this socket, ending the pairing: it is not sent
+      const data = PAD_RELAY_CTL + JSON.stringify(message);
+      if (data.length > PAD_RELAY_DATA_MAX) return false;
+      send({ t: 'relay', data });
       return true;
     },
     end() {

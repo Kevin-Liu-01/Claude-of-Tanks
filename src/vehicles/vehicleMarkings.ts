@@ -301,6 +301,7 @@ export const VEHICLE_MARKING_ANCHORS: Readonly<Record<string, VehicleMarkingAnch
   type10b: anchor('hull', 'left', 0.39, 0.61, 0.23, 1),
   type10_dozer: anchor('turret', 'right', .30, .44, .24, 1), // the modern Type 10's turret seat (type10)
   m2a2_bradley: anchor('hull', 'left', 0.43, 0.64, 0.25, 1),
+  m3a2_bradley: anchor('hull', 'left', 0.43, 0.64, 0.25, 1), // the M2A2's hull seat (268: the shared hull)
   bmp2: anchor('hull', 'right', 0.45, 0.65, 0.23, -1),
   spz_puma: anchor('hull', 'left', 0.40, 0.62, 0.25, 1),
   marder2: anchor('hull', 'left', .38, .60, .24, 1),
@@ -448,9 +449,20 @@ export const VEHICLE_MARKING_ANCHORS: Readonly<Record<string, VehicleMarkingAnch
   // §5.363 bmpt_t90: the station walls sit behind the quad Ataka columns —
   // the broad §5.350 skirt-ERA panel field carries the painted designation.
   bmpt_t90: anchor('hull', 'left', 0.44, 0.60, 0.22, 1),
+  // 267 bmpt_terminator: the Kazakh vehicles' place for it (photos 13-15), the side boxes' face over the skirt rows
+  bmpt_terminator: anchor('hull', 'right', 0.46, 0.82, 0.22, -1),
   bwp1: anchor('hull', 'right', 0.41, 0.64, 0.24, -1),
   marder1a3: anchor('hull', 'left', 0.46, 0.62, 0.23, 1),
   m6_linebacker: anchor('hull', 'left', 0.39, 0.45, 0.23, 1),
+  // 268: the twin-cannon air defence. The photographs carry the Russian pair's numbers and the PLA star on the hull side
+  // and the Bundeswehr cross on the Gepard's turret side (its number on the turret, "422", Munster); the guns, radars
+  // and launchers ride the turret sides of the others
+  tunguska_m: anchor('hull', 'left', 0.52, 0.58, 0.22, 1),
+  pantsir_s1: anchor('hull', 'left', 0.52, 0.58, 0.22, 1),
+  // the cross high on the upper body's flank ahead of the gun bay's cover (photos 08, 11, 12; builder G)
+  gepard_1a2: anchor('turret', 'left', 0.78, 0.75, 0.24, 1),
+  pgz95: anchor('hull', 'left', 0.52, 0.58, 0.22, 1),
+  pgz09: anchor('hull', 'left', 0.52, 0.58, 0.22, 1),
   m3a3_bradley: anchor('turret', 'left', 0.39, 0.45, 0.23, 1),
   // §5.248 ground-up wave: flat authored faces per build — bmp3 turret dome
   // flank, upiór skirt panel field (bmpt removed by §5.304 owner order).

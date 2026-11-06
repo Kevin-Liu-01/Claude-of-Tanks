@@ -3,16 +3,19 @@ import * as THREE from 'three';
 import { createTank } from '../tankFactory.ts';
 import { near } from '../../../tools/receipt-kit.test-support.mjs';
 
+// 2026-11-04 (release 268, the M1A1 shell from the owner's model, 41cf7c51ec): the FEP's and SA's commander towers stand
+// on the model's commander's station, 0.275 m inboard and 0.8815 m aft of the print shell's (profiles/abrams.ts cdx,
+// cdz), on its carrier over the 0.709 roof: mount (-0.425, 0.799 / 0.809, -0.625), carrier tops 0.809 / 0.819.
 const TARGETS = Object.freeze({
   m1a1_abrams_fep: Object.freeze({
-    variant: 'sepv3-armored', mount: [-0.70, 0.8003898305084746, 0.2565],
-    supportTop: 0.8103898305084746, replacesCommanderGun: true,
+    variant: 'sepv3-armored', mount: [-0.425, 0.799, -0.625],
+    supportTop: 0.809, replacesCommanderGun: true,
     loaderVariant: 'sepv3-low-loader',
     sizeStandard: 'm1a3-full-tower', scale: 1.28, minimumWidth: 0.84, minimumHeight: 0.82,
   }),
   m1a1_abrams_sa: Object.freeze({
-    variant: 'tusk-urban', mount: [-0.70, 0.8103898305084746, 0.2565],
-    supportTop: 0.8203898305084746, replacesCommanderGun: true,
+    variant: 'tusk-urban', mount: [-0.425, 0.809, -0.625],
+    supportTop: 0.819, replacesCommanderGun: true,
     loaderVariant: 'tusk-lags-loader',
     sizeStandard: 'm1a3-full-tower', scale: 1.28, minimumWidth: 0.84, minimumHeight: 0.82,
   }),
@@ -27,16 +30,19 @@ const TARGETS = Object.freeze({
     // tower is its only roof gun
     soleRoofWeapon: true,
   }),
+  // 268 r11: beside the sensor tower on the vehicle's right, as photographed; a compact 0.95 station so it clears the
+  // tower's plinth and stays on the roof
   kf51_u: Object.freeze({
-    variant: 'kf51b-panther', mount: [0.30, 0.55, -2.16],
-    sizeStandard: 'leopard-reduced-tower', scale: 1.12, towerRiseM: 0.14,
-    minimumWidth: 0.88, minimumHeight: 0.72, weaponRole: 'roof-primary',
+    variant: 'kf51b-panther', mount: [-0.83, 0.644, 0.35],
+    sizeStandard: 'leopard-reduced-tower', scale: 0.95, towerRiseM: 0.14,
+    minimumWidth: 0.80, minimumHeight: 0.66, weaponRole: 'roof-primary',
   }),
   kf51_evo: Object.freeze({
     variant: 'kf51-panther', mount: [0.42, 0.815, -1.72],
     sizeStandard: 'leopard-reduced-tower', scale: 1.12, towerRiseM: 0.14,
     minimumWidth: 0.88, minimumHeight: 0.72, weaponRole: 'roof-primary',
-    workLightCount: 5,
+    // 267: three lamps and the sensor side's warning aperture (the ammunition side's was cut away by the coffin's swing)
+    workLightCount: 4,
   }),
 });
 

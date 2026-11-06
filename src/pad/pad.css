@@ -33,7 +33,7 @@ html,body.pad-page{margin:0;height:100%;overflow:hidden;overscroll-behavior:none
 .pad-error{min-height:1.4em;margin:0;font-size:var(--fs-13);color:var(--text-danger);}
 
 /* the panel: the switch row across the top, then drive, instruments and the gun; left-handed mirrors the hands */
-.pad-ctl{height:100%;container:pad/inline-size;display:grid;grid-template-columns:minmax(88px,16%) minmax(0,1fr) minmax(188px,39%);
+.pad-ctl{position:relative;height:100%;container:pad/inline-size;display:grid;grid-template-columns:minmax(88px,16%) minmax(0,1fr) minmax(188px,39%);
   grid-template-rows:auto minmax(0,1fr);grid-template-areas:'top top top' 'drive mid gun';gap:var(--s2) var(--s4);}
 .pad-ctl[data-hand='left']{grid-template-columns:minmax(188px,39%) minmax(0,1fr) minmax(88px,16%);grid-template-areas:'top top top' 'gun mid drive';}
 
@@ -121,6 +121,7 @@ html,body.pad-page{margin:0;height:100%;overflow:hidden;overscroll-behavior:none
 .pad-hull.is-stick{opacity:.75;}
 .pad-ctl[data-state='down'] .pad-hull,.pad-ctl[data-state='idle'] .pad-hull{opacity:.35;}
 .pad-msg{grid-column:1/-1;min-height:1.3em;margin:0;font-size:var(--fs-13);color:var(--ink-3);text-align:center;}
+.pad-ctl[data-tour] .pad-msg{visibility:hidden;}
 
 /* the gun: the gunner's sight under the right thumb, the fire button in its collar, the reload ring filling around it */
 .pad-right{grid-area:gun;position:relative;min-width:0;min-height:0;}
@@ -149,10 +150,32 @@ html,body.pad-page{margin:0;height:100%;overflow:hidden;overscroll-behavior:none
   box-shadow:var(--pad-well-shadow);}
 .pad-zoom .pad-key{border-radius:24px;}
 .pad-look{position:absolute;left:var(--s2);bottom:var(--s2);}
+/* the sight's lock (the autoAim tap) over the trigger, lit while it holds a target */
+.pad-lock{position:absolute;right:calc(var(--s2) + 26px);bottom:calc(var(--s2) + 112px);width:52px;height:52px;padding:0;border-radius:50%;}
+.pad-lock::after{content:'';position:absolute;inset:-3px;border-radius:50%;box-shadow:var(--pad-lamp-glow);opacity:0;}
+.pad-lock[aria-pressed='true']{color:var(--accent-hi);}
+.pad-lock[aria-pressed='true']::after{opacity:1;}
+.pad-ctl[data-hand='left'] .pad-lock{right:auto;left:calc(var(--s2) + 26px);}
 .pad-ctl[data-hand='left'] .pad-trigger{right:auto;left:var(--s2);}
 .pad-ctl[data-hand='left'] .pad-scope{right:auto;left:calc(var(--s2) + 112px);}
 .pad-ctl[data-hand='left'] .pad-zoom{right:auto;left:var(--s2);}
 .pad-ctl[data-hand='left'] .pad-look{left:auto;right:var(--s2);}
+
+/* the controls' guide (padPage.ts showTour): a ring on each control and its name beside it over a dimmed panel that the
+   thumbs work through, Skip with its ten seconds running out under it; a ghost thumb shows the throttle's and the
+   sight's strokes. Marks and names are placed by transform in the frame's own layout */
+.pad-tour{position:absolute;inset:0;z-index:var(--z-lift);pointer-events:none;background:var(--battle-veil);}
+.pad-tour-mark,.pad-tour-tip,.pad-tour-skip{position:absolute;left:0;top:0;}
+.pad-tour-mark{box-sizing:border-box;border-radius:8px;outline:2px solid var(--accent-hi);box-shadow:var(--pad-lamp-glow);}
+.pad-tour-mark[data-ring='round']{border-radius:50%;}
+.pad-tour-mark[data-ring='none']{outline:0;box-shadow:none;}
+.pad-tour-tip{box-sizing:border-box;max-width:118px;padding:var(--s1) var(--s2);border-radius:var(--r2);background:var(--pad-key);box-shadow:var(--pad-key-shadow);
+  color:var(--ink-1);font-size:var(--fs-14);font-weight:var(--fw-semibold);line-height:1.2;text-align:center;text-wrap:balance;}
+.pad-tour-ghost{position:absolute;left:50%;top:50%;width:28px;height:28px;margin:-14px;border-radius:50%;
+  background:var(--line-3);outline:2px solid var(--line-control);}
+.pad-tour-skip{pointer-events:auto;overflow:hidden;min-width:96px;color:var(--ink-1);}
+.pad-tour-clock{position:absolute;left:var(--s2);right:var(--s2);bottom:5px;height:3px;border-radius:2px;background:var(--pad-lamp-on);
+  transform-origin:0 50%;}
 
 /* the options: a native modal in the top layer, outside the frame, so it turns with the frame's variables */
 /* two columns, so the options fit the short side whole: the page never scrolls (touch-action none) */
@@ -170,5 +193,7 @@ html,body.pad-page{margin:0;height:100%;overflow:hidden;overscroll-behavior:none
 
 /* a narrow panel keeps every control at 48 px: the ammunition keys drop their glyphs, the link its words */
 @container pad (max-width:720px){.pad-shell .cot-i{display:none;}}
-@container pad (max-width:600px){.pad-type{display:none;}.pad-ctl .pad-trigger{width:92px;height:92px;}.pad-ctl .pad-scope{right:calc(var(--s2) + 100px);}}
+@container pad (max-width:600px){.pad-type{display:none;}.pad-ctl .pad-trigger{width:92px;height:92px;}.pad-ctl .pad-scope{right:calc(var(--s2) + 100px);}
+  .pad-ctl .pad-lock{right:calc(var(--s2) + 20px);bottom:calc(var(--s2) + 100px);}
+  .pad-ctl[data-hand='left'] .pad-lock{right:auto;left:calc(var(--s2) + 20px);}}
 }

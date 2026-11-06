@@ -1,8 +1,9 @@
 import assert from 'node:assert/strict';
 import {
-  CREW_LANGUAGES, ENGINE_FAMILIES, ENGINE_FAMILY_IDS, crewLanguageForNation, massClass,
+  CREW_LANGUAGES, ENGINE_FAMILIES, ENGINE_FAMILY_IDS, crewLanguageForVehicle, massClass,
   resolveEngineFamily, resolveVehicleAudioIdentity,
 } from './vehicleAudioProfiles.ts';
+import { COUNTRIES } from '../sim/countries.ts';
 
 // Powertrains follow the real installations.
 const cases = [
@@ -17,6 +18,9 @@ const cases = [
   ['xk2_black_panther', 'mbt', 55, 'diesel_v12_modern'], ['namer_ifv', 'ifv', 63.5, 'diesel_v12_modern'], ['abramsx', 'mbt', 49, 'diesel_v12_modern'],
   ['m2a2_bradley', 'ifv', 30.4, 'diesel_ifv'], ['cv90', 'ifv', 37, 'diesel_ifv'], ['bmp2', 'ifv', 14.3, 'diesel_ifv'],
   ['centurion5_2', 'mbt', 52, 'gasoline_v12'], ['jpz_e100', 'td', 130, 'gasoline_v12'],
+  // 268: the twin-cannon air defence (the PLA pair's small diesels stay on the IFV family)
+  ['tunguska_m', 'ifv', 34, 'diesel_v12_soviet'], ['pantsir_s1', 'ifv', 35, 'diesel_v12_soviet'],
+  ['gepard_1a2', 'ifv', 47.5, 'diesel_v12_modern'], ['pgz95', 'ifv', 22.5, 'diesel_ifv'], ['pgz09', 'ifv', 35, 'diesel_ifv'],
 ];
 for (const [id, role, weightTons, family] of cases) {
   assert.equal(resolveEngineFamily({ id, role, weightTons, era: 'modern' }), family, `${id} → ${family}`);
@@ -32,15 +36,27 @@ for (const id of ENGINE_FAMILY_IDS) {
   assert.equal(f.gears === 0, f.turbine, `${id}: only turbines run gearless`);
 }
 
-// Crews speak the operating nation's language.
-assert.equal(crewLanguageForNation('USA'), 'en-US');
-assert.equal(crewLanguageForNation('UK'), 'en-GB');
-assert.equal(crewLanguageForNation('USSR/Russia'), 'ru');
-assert.equal(crewLanguageForNation('Ukraine'), 'uk');
-assert.equal(crewLanguageForNation('South Korea'), 'ko');
-assert.equal(crewLanguageForNation('Israel'), 'he');
-assert.equal(crewLanguageForNation('Atlantis'), 'en-US', 'unknown nations fall back to the US crew');
-assert.equal(CREW_LANGUAGES.length, 13);
+// Crews speak their operator's language: countries.ts countryOfVehicle, one crew per country.
+assert.equal(crewLanguageForVehicle('m1a1_abrams_hc', 'USA'), 'en-US');
+assert.equal(crewLanguageForVehicle('chieftain3', 'UK'), 'en-GB');
+assert.equal(crewLanguageForVehicle('t72b', 'USSR/Russia'), 'ru');
+assert.equal(crewLanguageForVehicle('t84', 'Ukraine'), 'uk');
+assert.equal(crewLanguageForVehicle('xk2_black_panther', 'South Korea'), 'ko');
+assert.equal(crewLanguageForVehicle('merkava4b', 'Israel'), 'he');
+assert.equal(crewLanguageForVehicle('leo2a7dk', 'Denmark'), 'da', 'Danish crews speak Danish');
+assert.equal(crewLanguageForVehicle('ee_t4_osorio', 'Brazil'), 'pt-BR', 'Brazilian crews speak Brazilian Portuguese');
+assert.equal(crewLanguageForVehicle('centurion5_1_aus', 'Australia'), 'en-AU', 'Australian crews speak Australian English');
+assert.equal(crewLanguageForVehicle('olifant_mk2', 'South Africa'), 'af', 'South African crews speak Afrikaans');
+assert.equal(crewLanguageForVehicle('leo2a4m_can', 'Germany'), 'en-US', 'the Leopard 2A4M CAN is crewed by its operator, Canada, not its German design');
+assert.equal(crewLanguageForVehicle('leo2a4', 'Germany'), 'de');
+assert.equal(crewLanguageForVehicle('dev_hull', 'Community'), 'en-US', 'a hull with no country keeps the US crew');
+assert.equal(crewLanguageForVehicle(null, 'Atlantis'), 'en-US');
+assert.equal(crewLanguageForVehicle(undefined, undefined), 'en-US');
+// Every country names a crew that ships (the Record is exhaustive at compile time; this checks the values).
+for (const { id, specNations } of COUNTRIES) {
+  assert.ok(CREW_LANGUAGES.includes(crewLanguageForVehicle(null, specNations[0])), `${id} speaks a shipped crew language`);
+}
+assert.equal(CREW_LANGUAGES.length, 17);
 
 // Identity details.
 const abrams = resolveVehicleAudioIdentity({ id: 'm1a1_abrams_hc', nation: 'USA', role: 'mbt', weightTons: 66.8, enginePowerHp: 1500, gun: { caliberMm: 120 } });

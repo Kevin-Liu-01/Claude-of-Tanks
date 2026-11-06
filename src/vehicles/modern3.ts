@@ -22,6 +22,8 @@ import { efficientReturnRoller } from './efficientReturnRoller.ts';
 import { buildBmp2Turret, buildBmpBoatHull } from './profiles/bmpBoatHull.ts';
 import './modern3Specs.ts';
 import { drainTankBuild, steppedBuilder, type TankProfileBuild } from './tankBuildCooperation.ts';
+import { sectionSolid } from './profiles/sectionSolid.ts';
+import { markVehicleNightLens } from './vehicleNightLighting.ts';
 
 type Vec3Tuple = [number, number, number];
 type GeometryScale = number | readonly [number, number, number];
@@ -1458,7 +1460,7 @@ const buildK1A1 = steppedBuilder(function* (P: Modern3BuilderPort): TankProfileB
 // ramp, RIGHT-offset two-man turret with 25 mm + elevating twin TOW box,
 // A2 appliqué side slabs with stand-off bolts, front drive sprocket.
 const bradleyGlacisAngleRad = Math.atan(0.5);
-export const BRADLEY_UPPER_GLACIS_SURFACE = Object.freeze({
+const BRADLEY_UPPER_GLACIS_SURFACE = Object.freeze({
   rear: Object.freeze({ y: 1.895, z: 1.66 }),
   front: Object.freeze({ y: 1.52, z: 2.41 }),
   referenceCenter: Object.freeze({ y: 1.715, z: 2.02 }),
@@ -1592,6 +1594,173 @@ function bradleyEngineRaiseDrop(id: string): number {
 }
 
 function* buildBradleySteps(P: Modern3BuilderPort): TankProfileBuild {
+  // 268: the Marder 1A3 keeps the pre-268 donor build verbatim (its own A/B and receipts hold it byte for byte); the
+  // four Bradleys take the family base measured from the owner's supplied model (BRADLEY_HULL, BRADLEY_GEAR).
+  if (P.spec.id === 'marder1a3') yield* buildMarderDonorSteps(P);
+  else yield* buildBradleyFamilySteps(P);
+}
+
+// ================= 268: the Bradley family base, measured from the owner's supplied model =================
+// Source: the owner's m2_bradley_ifv.glb (sha256 523dd567…; docs/references/tanks/m2a2_bradley.md), registered with one
+// uniform scale 2.673 (hull length 6.55 m), bow +Z, up +Y, the TOW and the driver on +X (the vehicle's left). Every datum
+// below is that registered source's: hull −3.285..3.265, deck crown 2.06 over ±0.85, the roof falling outboard at
+// 0.70 m per metre to a 1.60 gutter behind the upper side plates, whose tops stand at 1.93 (±1.51..1.57); the upper
+// side over a sponson floor 1.26 (5 cm over the 0.54 m track's 1.21 top run), the belly 0.54
+// between the tracks, the glacis from (z 1.70, 2.06) down to (2.70, 1.52), the nose block's 1.40 shelf to the 3.265 bow,
+// the stern undercut from (−2.80, 0.54) up to the ramp's 1.20 foot at −3.285.
+export const BRADLEY_HULL = Object.freeze({
+  bowZ: 3.265, sternZ: -3.285, belly: 0.54, tubHalfW: 0.93, sponsonY: 1.26, sideX: 1.57,
+  edgeX: 1.51, edgeY: 1.93, crownX: 0.85, crownY: 2.06, gutterDrop: 0.46, rightGutterDrop: 0.39, engineGutterDrop: 0.20,
+  glacisTopZ: 1.70, glacisToeZ: 2.70, glacisToeY: 1.52, noseY: 1.40, noseZ: 2.84,
+});
+const bradleyGlacisSlope = (BRADLEY_HULL.crownY - BRADLEY_HULL.glacisToeY) / (BRADLEY_HULL.glacisToeZ - BRADLEY_HULL.glacisTopZ);
+/** The family's upper glacis plane (fitted armour, the trim vane and the driver's hatch seat on it). */
+export const BRADLEY_GLACIS = Object.freeze({
+  top: Object.freeze({ y: BRADLEY_HULL.crownY, z: BRADLEY_HULL.glacisTopZ }),
+  toe: Object.freeze({ y: BRADLEY_HULL.glacisToeY, z: BRADLEY_HULL.glacisToeZ }),
+  angleRad: Math.atan(bradleyGlacisSlope),
+  yAt: (z: number) => BRADLEY_HULL.crownY - bradleyGlacisSlope * (z - BRADLEY_HULL.glacisTopZ),
+  normalOutward: Object.freeze({ y: Math.cos(Math.atan(bradleyGlacisSlope)), z: Math.sin(Math.atan(bradleyGlacisSlope)) }),
+});
+// The source's running gear: six road wheels r 0.335 at its own uneven pitch (the 3rd–4th gap the widest), the toothed
+// sprocket at the front, the raised idler at the rear, the 0.53 m track (the specs' visual.trackWidthM, which the track
+// contact reads; the source's shoes with their end connectors span 0.977..1.518) centred at ±1.2475.
+const BRADLEY_GEAR = Object.freeze({
+  style: 'rubber', wheelR: 0.335, wheelW: 0.26, xc: 1.2475, dishR: 0.85,
+  wheelZs: [1.90, 1.20, 0.40, -0.60, -1.30, -2.00],
+  sprocket: { z: 2.86, y: 0.86, r: 0.28 }, idler: { z: -2.80, y: 0.87, r: 0.30 },
+  rollers: [[1.50, 1.04], [0.0, 1.04], [-1.50, 1.04]].map(([z, y]) => ({ z, y, r: 0.08 })),
+  trackW: 0.53, topY: 1.16, paintedEnds: true, pinCapOuter: 0.262, contactZF: 2.05, contactZR: -2.20,
+});
+
+/** One station of the family's hull core: the tub between the tracks, the sponsons over them, the upper side plate
+ *  (its top edgeY, its inner face at edgeX), the gutter where the roof slope meets the plate's inside, and the roof
+ *  crown (counter-clockwise from the tub's left belly corner, viewed from +Z). */
+function bradleyHullRing(belly: number, gutterPlusY: number, gutterMinusY: number, edgeY: number,
+  crownY: number): Array<[number, number]> {
+  const H = BRADLEY_HULL;
+  const half = (gutterY: number): Array<[number, number]> => [[H.tubHalfW, belly], [H.tubHalfW, H.sponsonY],
+    [H.sideX, H.sponsonY], [H.sideX, edgeY], [H.edgeX, edgeY], [H.edgeX, gutterY], [H.crownX, crownY]];
+  const left = half(gutterMinusY).map(([x, y]) => [-x, y] as [number, number]).reverse();
+  return [[-H.tubHalfW, belly], ...half(gutterPlusY), ...left.slice(0, -1)];
+}
+
+function addBradleyHullCore(P: Modern3BuilderPort): void {
+  const H = BRADLEY_HULL, g = BRADLEY_GLACIS.yAt;
+  // The gutter sits gutterDrop under the crown on the body stations; over the engine (−X, z 0.25..1.70) the source's
+  // roof falls only 0.20 to the plate, and from the glacis forward the roof runs flat out to the plates (gutter 1 cm
+  // under the plate top). `minus` is the −X gutter's drop where it differs (the right roof stands a little fuller).
+  const station = (z: number, belly: number, top: number, edge = Math.min(H.edgeY, top - 0.005), minus: number = H.gutterDrop) => {
+    const gutter = (drop: number) => z > 2.0 ? edge - 0.01 : Math.max(1.30, Math.min(edge - 0.01, top - drop));
+    return { z, ring: bradleyHullRing(belly, gutter(H.gutterDrop), gutter(minus), edge, top) };
+  };
+  P.add('hull', sectionSolid([
+    // the stern: the ramp foot over the undercut; the roof edge over the track ends falls 1.935 -> 1.556 over the last
+    // 0.3 m (the source's corner slope), the crown holds 2.10 to the ramp
+    station(H.sternZ, 1.20, 2.10, 1.575),
+    station(-3.10, 1.02, 2.10, 1.815),
+    station(-3.00, 0.67, 2.08, H.edgeY, H.rightGutterDrop),
+    station(-2.80, H.belly, H.crownY, H.edgeY, H.rightGutterDrop),
+    station(0.15, H.belly, H.crownY, H.edgeY, H.rightGutterDrop),
+    station(0.25, H.belly, H.crownY, H.edgeY, H.engineGutterDrop),
+    station(H.glacisTopZ, H.belly, H.crownY, H.edgeY, H.engineGutterDrop),
+    station(1.95, H.belly, g(1.95), undefined, H.engineGutterDrop),
+    station(H.glacisToeZ, H.belly, g(H.glacisToeZ)),
+    station(2.75, 0.56, 1.45),
+    station(H.noseZ, 0.68, H.noseY),
+    station(3.18, 0.96, H.noseY),
+    station(H.bowZ, 0.98, 1.32),
+  ], { sideQuadDiagonal: 'convex' }));
+  P.hullG.userData.bradleyHullCoreReceipt = Object.freeze({
+    revision: 'source-measured-core-r2',
+    ...H,
+    glacisAngleRad: BRADLEY_GLACIS.angleRad,
+  });
+}
+
+// Deck furniture at the source's stations: the engine-deck raise and grille front-right (−X, the engine's side), the
+// troop compartment's raised roof aft (x −0.44..0.72, z −3.0..−2.2, top 2.19) with its cargo-hatch block (2.24), the driver's
+// periscope row front-left (+X), lift eyes, a bedroll at the rear deck's left edge.
+function addBradleyDeckKit(P: Modern3BuilderPort): void {
+  const H = BRADLEY_HULL;
+  const { box, liftEye, periscope, stowage } = KIT;
+  P.add('hull', box(1.24, 0.145, 0.92), -0.34, H.crownY - 0.0225, 1.05);                  // engine-deck raise, top 2.11
+  for (let k = 0; k < 4; k++) P.add('hullDetail', box(1.02, 0.026, 0.06), -0.34, H.crownY + 0.060, 1.38 - k * 0.22);
+  // the raised troop roof (source: 2.19 over x -0.44..0.72, z -3.0..-2.22) and its cargo-hatch block (source: 2.244
+  // over x -0.34..0.59, z -2.62..-2.13; here 1 cm lower, ending at z -2.55, the hatch seam inlaid flush: the A3's lower
+  // 25 mm keeps its pre-268 rear depression, -5.4..-5.8 deg, over it)
+  // (its rear end tapers in and falls to 2.12 at z -3.0, as the source's does)
+  const troopRing = (x0: number, x1: number, top: number): Array<[number, number]> =>
+    [[x0, H.crownY - 0.02], [x1, H.crownY - 0.02], [x1, top], [x0, top]];
+  P.add('hull', sectionSolid([
+    { z: -3.00, ring: troopRing(-0.22, 0.55, 2.12) },
+    { z: -2.90, ring: troopRing(-0.44, 0.68, 2.19) },
+    { z: -2.22, ring: troopRing(-0.44, 0.72, 2.19) },
+  ], { sideQuadDiagonal: 'convex' }));
+  P.add('hull', box(0.93, 0.19, 0.42), 0.125, H.crownY + 0.079, -2.34);
+  P.add('hullDark', box(0.70, 0.004, 0.34), 0.125, H.crownY + 0.1735, -2.34);
+  for (let k = 0; k < 3; k++) periscope(P, 'hullDetail', 0.25 + k * 0.18, H.crownY + 0.02, 1.34, -(1 - k) * 0.20);
+  for (const x of [-0.45, 0.45]) liftEye(P, 'hullDetail', x, H.crownY - 0.005, 0.30);
+  stowage(P, 'hullCloth', P.rng, [[1.24, 1.88, -1.98, 0.30, 0.30, 0.44]]);
+}
+
+/** The family's turret-ring datum on the shared hull, the registered source's: the ring centre 0.14 m right of the
+ *  centreline (−X) at z −0.40, seated on the deck crown (y 2.06). Every Bradley turret's rig_turret (its spec's
+ *  armor.turretPivot) stands here; another turret seats on it. */
+export const BRADLEY_TURRET_RING = Object.freeze({ x: -0.14, z: -0.40, deckY: BRADLEY_HULL.crownY });
+
+/** The Bradley family's hull with no turret group: the measured hull core, the deck furniture, the running gear and the
+ *  glacis spare links (the steps buildBradley runs before its turret). A turret builder seats on BRADLEY_TURRET_RING
+ *  and adds the hull-side armour, bow kit, stern and markings with bradleyFlankDressing(P, { turretSeat: false }). */
+export function* buildBradleyHullSteps(P: Modern3BuilderPort): TankProfileBuild {
+  const { buildRunningGear } = KIT;
+  addBradleyHullCore(P);
+  yield 'buildBradleyHullStage1';
+  addBradleyDeckKit(P);
+  yield 'buildBradleyHullStage3';
+  const buildBradleyRunningGearStage1 = (): void => {
+    // VEH-13 spare links on the right upper glacis (the driver's periscopes hold the left), on the family's plane
+    // (268: at the station the seat solver found on the M3A2, where the measured plate meets the family's plane and the
+    // trim vane carries the lower rail; at the old z 2.18 the plate falls 6.7 cm under that plane and the run hovered)
+    const links = FITTINGS.spareTrackLinks({
+      mats: P.mats, links: 4, width: 0.48, seed: 9, rotation: [BRADLEY_GLACIS.angleRad, 0, 0],
+    });
+    const lz = 2.444, lift = 0.03;
+    links.position.set(-0.62, BRADLEY_GLACIS.yAt(lz) + BRADLEY_GLACIS.normalOutward.y * lift, lz + BRADLEY_GLACIS.normalOutward.z * lift);
+    P.hullG.add(links);
+    buildRunningGear(P, { ...BRADLEY_GEAR, wheelZs: [...BRADLEY_GEAR.wheelZs],
+      rollers: BRADLEY_GEAR.rollers.map((r) => ({ ...r })) });
+  };
+  buildBradleyRunningGearStage1();
+  yield 'buildBradleyRunningGearStage1';
+}
+/** The family's hull with no turret group, drained (see buildBradleyHullSteps). */
+export function buildBradleyHull(P: Modern3BuilderPort): void {
+  drainTankBuild(buildBradleyHullSteps(P));
+}
+
+function* buildBradleyFamilySteps(P: Modern3BuilderPort): TankProfileBuild {
+  const { cylX, cylZ, buildGun } = KIT;
+  yield* buildBradleyHullSteps(P);
+  addBradleyTurretShell(P);
+  yield 'buildBradleyTurretStage1';
+  addBradleyTurretKit(P);
+  addBradleyTowLauncher(P);
+  // ---- 25 mm M242 on the source's gun line (2.525 m, right of the turret's centre) to its own muzzle (z 2.37) -----
+  // The trunnion drum turns on its own axis and fills the bay behind the block; the block's rear corners stay inside it.
+  P.addGunExtra(cylX(0.17, 0.30, P.q ? 24 : 14), 0, 0, 0);
+  P.addGunExtra(KIT.box(0.26, 0.22, 0.44), 0, -0.01, 0.34);
+  P.addGunExtra(cylZ(0.078, 0.30, P.q ? 20 : 12), 0, 0, 0.70);
+  buildGun(P, { len: 0.70, r: 0.038, baseR: 0.075 });
+  P.addGunExtra(cylZ(0.038, BRADLEY_MUZZLE_Z - 0.66 - 0.15, 28), 0, 0, (0.66 + BRADLEY_MUZZLE_Z - 0.15) / 2);
+  P.muzzleZ = BRADLEY_MUZZLE_Z;
+  yield 'buildBradleyTurretStage2';
+  P.add('gunDark', cylZ(0.046, 0.16, 12), 0, 0, BRADLEY_MUZZLE_Z - 0.08);           // flash suppressor
+  P.add('gunDark', cylZ(0.026, 0.012, 12), 0, 0, BRADLEY_MUZZLE_Z - 0.0055);        // dark bore disc on its face
+  P.topY = 1.05;
+}
+
+function* buildMarderDonorSteps(P: Modern3BuilderPort): TankProfileBuild {
   // AFV r1 REBUILD against the 42manako oracle (vertex report docs/
   // references/vertex/m2a2_bradley.json — all targets below are that
   // report's gate-world numbers; batch-38 normalized print, 0%/0%/0% with
@@ -2862,200 +3031,438 @@ export function buildBradley(...args: Parameters<typeof buildBradleySteps>): voi
   drainTankBuild(buildBradleySteps(...args));
 }
 
-// OWNER ORDER (2026-08-17): "the bradleys are still not filled internally
-// (see througable) and their side skirts/side armors are not attached to
-// the hulls properly or with attachments" — ONE shared closure + skirt-
-// mount grammar for the three Bradley playables (m2a2_bradley directly,
-// m3a3_bradley + ua_m2a3_bradley via their family wrappers). marder1a3
-// rides the same donor hull but is HARD-GATED (59cb105c) and does NOT take
-// this dressing — its own bow window stays a fenced future round.
-function addBradleySkirtPanels(
-  P: Modern3BuilderPort,
-  side: number,
-  cuts: readonly number[],
-) {
-  const { box } = KIT;
-  for (let panel = 0; panel + 1 < cuts.length; panel++) {
-    const lowered = panel >= 6;
-    P.add('hull', box(0.075, lowered ? 0.63 : 0.80, cuts[panel + 1] - cuts[panel]),
-      side * 1.6145, lowered ? 0.935 : 1.02, (cuts[panel] + cuts[panel + 1]) / 2);
+// ============================ 268: the Bradley turret (source-measured) ===================================
+// The registered source's turret (docs/references/tanks/m2a2_bradley.md): the ring 0.14 m right of the hull centre
+// (−X) at z −0.40 on the 2.06 deck; walls to the 2.94–2.97 roof; a forward beak at the gun line; the gun right of the
+// turret's centre on the 2.525 m line; the TOW launcher erect on the LEFT (+X) side, its box over x 0.75..1.37 m and
+// y 2.75..3.30; the stowage bin on the right (−X); the antenna mast at the right rear. Turret-local frame: ring plane y 0,
+// +z forward (turretPivot [−0.14, 2.06, −0.40]). Below 0.22 m the shell keeps inside the raised troop roof's 1.21 m
+// reach and above the engine-deck raise, so nothing low meets the deck as it turns.
+const BRADLEY_TURRET = Object.freeze({
+  rearZ: -1.20, faceZ: 0.70, beakZ: 1.15,
+  // the source's roof plate stands at 2.83 (0.77 over the ring) behind a 3 cm chamfer from the walls' 2.79 tops; its
+  // hatch rings rise to 2.93-2.99 and the sight head to 3.19
+  bottomY: 0.12, rearBottomY: 0.24, chineY: 0.32, edgeY: 0.73, roofY: 0.77,
+  bottomHalfW: 0.86, halfW: 0.98, edgeHalfW: 0.96, roofHalfW: 0.78,
+  beakBottomY: 0.43, beakTopY: 0.50, beakHalfW: 0.70,
+  // the source's shell is off its ring: the left (+X) wall stands 0.70 m off the hull's centre (0.84 from the pivot),
+  // the right (−X) wall 1.10 (0.98), so every +X half-width is the −X one less this inset
+  plusInset: 0.14,
+  // the M242 bay between the cheeks (gun axis x −0.06): the mantlet's −9..+30 sweep stays inside it
+  bayLeftX: -0.24, bayRightX: 0.12,
+});
+// The 25 mm muzzle (gun frame): the source's own muzzle at world z 2.37.
+const BRADLEY_MUZZLE_Z = 2.17;
+// The TOW launcher as the source carries it erected (turret frame): box and its two side-by-side tubes; built stowed
+// (addBradleyTowLauncher folds it about the box's inner lower edge x0, y0).
+const BRADLEY_TOW = Object.freeze({ x0: 0.89, x1: 1.51, y0: 0.84, y1: 1.27, z0: -0.70, z1: 0.60, tubeY: 1.055,
+  tubeXs: [1.05, 1.35] as const, plateZ: 0.56 });
+
+function bradleyTurretRing(bottomHalfW: number, halfW: number, edgeHalfW: number, roofHalfW: number,
+  bottomY: number, chineY: number, edgeY: number, roofY: number): Array<[number, number]> {
+  const i = BRADLEY_TURRET.plusInset;
+  return [[-bottomHalfW, bottomY], [bottomHalfW - i, bottomY], [halfW - i, chineY], [edgeHalfW - i, edgeY],
+    [roofHalfW - i, roofY], [-roofHalfW, roofY], [-edgeHalfW, edgeY], [-halfW, chineY]];
+}
+
+// One cheek of the beak: a welded wedge from the wall face forward to the beak edge; its inner face is the gun bay's.
+// Its floor stays level (bottomY) to the stowage bin's nose (z 0.80) before it rises to the beak: rising from 0.72, the
+// right cheek's underside roofed a 2-4 cm slot over the bin's nose (roof-pocket census, 268 round 4: 200 cm2).
+const BRADLEY_CHEEK_KNEE_Z = 0.80;
+function bradleyTurretCheek(side: number): THREE.BufferGeometry {
+  const T = BRADLEY_TURRET, knee = BRADLEY_CHEEK_KNEE_Z;
+  const inner = side > 0 ? T.bayRightX : -T.bayLeftX, inset = side > 0 ? T.plusInset : 0;
+  const lower = (z: number) => z <= knee ? T.bottomY : T.bottomY + (T.beakBottomY - T.bottomY) * (z - knee) / (T.beakZ - knee);
+  const upper = (z: number) => z <= T.faceZ ? T.roofY : T.roofY - (T.roofY - T.beakTopY) * (z - T.faceZ) / (T.beakZ - T.faceZ);
+  const outer = (z: number) => (z <= 0.66 ? T.halfW : T.halfW - (T.halfW - T.beakHalfW) * (z - 0.66) / (T.beakZ - 0.66)) - inset;
+  const station = (z: number) => {
+    const yb = lower(z), yt = upper(z), xo = outer(z), h = yt - yb;
+    const right: Array<[number, number]> = [[inner, yb], [xo - 0.12, yb], [xo, yb + 0.28 * h],
+      [xo - 0.02, yb + 0.91 * h], [xo - 0.08, yt], [inner, yt]];
+    return { z, ring: side > 0 ? right : right.map(([x, y]) => [-x, y] as [number, number]).reverse() };
+  };
+  return sectionSolid([0.62, 0.72, knee, 0.94, T.beakZ].map(station), { sideQuadDiagonal: 'convex' });
+}
+
+// ODS appliqué bolted on a cheek's upper front plate: 35 mm proud on the plate's own plane, two rows of three bolts.
+function bradleyTurretCheekPlate(side: number): { plate: THREE.BufferGeometry; bolts: THREE.BufferGeometry } {
+  const T = BRADLEY_TURRET;
+  const inner = (side > 0 ? T.bayRightX : -T.bayLeftX) + 0.03;
+  const slope = Math.atan((T.roofY - T.beakTopY) / (T.beakZ - T.faceZ));
+  const nY = Math.cos(slope), nZ = Math.sin(slope);
+  const topY = (z: number) => T.roofY - (T.roofY - T.beakTopY) * (z - T.faceZ) / (T.beakZ - T.faceZ);
+  const outerX = (z: number) => T.halfW - (T.halfW - T.beakHalfW) * (z - 0.66) / (T.beakZ - 0.66) - 0.12
+    - (side > 0 ? T.plusInset : 0);
+  const at = (x: number, z: number, lift: number): [number, number, number] => [side * x, topY(z) + nY * lift, z + nZ * lift];
+  const [z0, z1] = [0.74, 1.08], t = 0.035;
+  const plate = orientedSlab(
+    at(inner, z1, -0.005), at(outerX(z1), z1, -0.005), at(outerX(z0), z0, -0.005), at(inner, z0, -0.005),
+    at(inner, z1, t), at(outerX(z1), z1, t), at(outerX(z0), z0, t), at(inner, z0, t));
+  const bolts: THREE.BufferGeometry[] = [];
+  for (const z of [z0 + 0.06, z1 - 0.06]) {
+    for (let k = 0; k < 3; k++) {
+      const x = inner + 0.06 + (outerX(z) - inner - 0.12) * k / 2;
+      bolts.push(KIT.xform(KIT.cylY(0.018, 0.018, 0.018, 6), ...at(x, z, t + 0.004), slope, 0, 0));
+    }
   }
+  return { plate, bolts: KIT.mergeAll(bolts) };
 }
 
-function addBradleySkirtJoints(
-  P: Modern3BuilderPort,
-  side: number,
-  cuts: readonly number[],
-) {
+// The right-wall stowage bin (turret frame): inner face inside the wall, a floor chamfered up to the upright outer face,
+// a lid sloping up to the wall; the front quarter tapers into the cheek. Floor 0.14 (world 2.20): 5.5 cm over the engine-deck raise
+// (2.145) where its 0.99..1.64 m sweep crosses it; the troop roof (2.24) lies 1.70 m and more from the pivot.
+const BRADLEY_BIN = Object.freeze({ innerX: -0.94, outerX: -1.35, bottomY: 0.14, shoulderY: 0.38, lidY: 0.62,
+  lidInnerX: -1.08, z0: -0.55, z1: 0.58, noseZ: 0.80, noseX: -1.00 });
+function bradleyStowageBin(): THREE.BufferGeometry {
+  const B = BRADLEY_BIN;
+  const ring = (outer: number, lidInner: number): Array<[number, number]> => [[Math.max(outer, -1.10), B.bottomY],
+    [B.innerX, B.bottomY], [B.innerX, B.lidY], [lidInner, B.lidY], [outer, B.shoulderY], [outer, B.bottomY + 0.10]];
+  return sectionSolid([
+    { z: B.z0, ring: ring(B.outerX, B.lidInnerX) },
+    { z: B.z1, ring: ring(B.outerX, B.lidInnerX) },
+    { z: B.noseZ, ring: ring(B.noseX, -0.96) },
+  ], { sideQuadDiagonal: 'convex' });
+}
+
+function addBradleyTurretShell(P: Modern3BuilderPort): void {
+  const T = BRADLEY_TURRET;
   const { box } = KIT;
-  for (let joint = 1; joint + 1 < cuts.length; joint++) {
-    const lowered = joint >= 6;
-    P.add('hullDark', box(0.05, lowered ? 0.56 : 0.70, 0.024),
-      side * 1.655, lowered ? 0.92 : 1.00, cuts[joint]);
-    P.add('hullDetail', box(0.085, 0.10, 0.06),
-      side * 1.6125, lowered ? 1.30 : 1.46, cuts[joint]);
-  }
-}
-
-function addBradleySkirtApron(
-  P: Modern3BuilderPort,
-  segments: Array<{ side: number; rearZ: number; frontZ: number }>,
-  side: number,
-  rearZ: number,
-  frontZ: number,
-) {
-  P.add('hull', orientedSlab(
-    [side * 1.50, 1.565, frontZ], [side * 1.649, 1.40, frontZ],
-    [side * 1.649, 1.40, rearZ], [side * 1.50, 1.565, rearZ],
-    [side * 1.50, 1.605, frontZ], [side * 1.649, 1.44, frontZ],
-    [side * 1.649, 1.44, rearZ], [side * 1.50, 1.605, rearZ]));
-  segments.push({ side, rearZ, frontZ });
-}
-
-function addBradleySkirtApronCourse(
-  P: Modern3BuilderPort,
-  segments: Array<{ side: number; rearZ: number; frontZ: number }>,
-  side: number,
-) {
-  if (side > 0) {
-    addBradleySkirtApron(P, segments, side, -2.90, 0.93);
-    return;
-  }
-  addBradleySkirtApron(P, segments, side, -2.90, -2.55);
-  addBradleySkirtApron(P, segments, side, -1.95, 1.55);
-  // The left donor flank has no exhaust housing to bridge its forward
-  // skirt course. Continue the same raked mounting plane into the bow
-  // shoulder so the upper-glacis edge and its ERA backing cannot expose
-  // two open cells at z~1.95/2.73. The front 0.31 m deliberately nests
-  // behind the bow-corner closure; y>=1.40 remains clear of the track.
-  addBradleySkirtApron(P, segments, side, 1.55, 3.11);
-}
-
-function addBradleySkirtMountCourse(P: Modern3BuilderPort) {
-  const { box } = KIT;
-  const cuts = [-2.97, -2.21, -1.45, -0.69, 0.07, 0.83, 1.59, 2.35, 3.11];
-  const apronSegments: Array<{ side: number; rearZ: number; frontZ: number }> = [];
-
+  const ring = (bottomY: number) => bradleyTurretRing(T.bottomHalfW, T.halfW, T.edgeHalfW, T.roofHalfW, bottomY, T.chineY, T.edgeY, T.roofY);
+  P.add('turret', sectionSolid([
+    { z: T.rearZ, ring: bradleyTurretRing(0.66, 0.84, 0.86, 0.70, 0.26, 0.40, 0.69, 0.73) },
+    { z: T.rearZ + 0.08, ring: ring(T.rearBottomY) },
+    { z: -0.72, ring: ring(T.rearBottomY) },
+    { z: -0.40, ring: ring(T.bottomY) },
+    { z: T.faceZ, ring: ring(T.bottomY) },
+  ], { sideQuadDiagonal: 'convex' }));
   for (const side of [-1, 1]) {
-    addBradleySkirtPanels(P, side, cuts);
-    addBradleySkirtJoints(P, side, cuts);
-    addBradleySkirtApronCourse(P, apronSegments, side);
-    // Course end caps close the axial panel-to-hull mounting pockets into
-    // the bow fender and stern corner content.
-    P.add('hull', box(0.076, 0.63, 0.05), side * 1.576, 0.935, 3.085);
-    P.add('hull', box(0.076, 0.80, 0.05), side * 1.576, 1.02, -2.945);
+    P.add('turret', bradleyTurretCheek(side));
+    P.add('turret', bradleyTurretCheekPlate(side).plate);
   }
-
-  P.hullG.userData.bradleySkirtApronReceipt = Object.freeze({
-    revision: 'continuous-left-front-glacis-shoulder-r1',
-    segments: apronSegments.map((segment) => Object.freeze({ ...segment })),
-    leftFront: Object.freeze({
-      side: -1,
-      rearZ: 1.55,
-      frontZ: 3.11,
-      innerX: -1.50,
-      outerX: -1.649,
-      lowestY: 1.40,
-      bowClosureRearZ: 2.80,
-      bowOverlapM: 3.11 - 2.80,
-    }),
+  // gun-bay floor between the cheeks, outside the mantlet's swept envelope; the bay stays open above the mantlet, as the
+  // source's is (268 round 4: the 14 cm roof lip that stood over it here, which the source does not carry, roofed a 10 cm
+  // slot over the mantlet's sweep: roof-pocket census, 432 cm2)
+  const bayX = (T.bayLeftX + T.bayRightX) / 2, bayW = T.bayRightX - T.bayLeftX;
+  P.add('turret', box(bayW, 0.10, 0.30), bayX, T.bottomY + 0.05, 0.84);
+  P.add('turretDark', box(0.06, 0.05, 0.08), bayX - 0.20, 0.52, 1.03);                     // M240C coax port
+  // round 3: the floor under the right wall stays level (0.12) where the shell's floor rises aft to the rear's 0.24,
+  // closing the pocket over the collar's rim there (roof-pocket census); round 4: in to x -0.44, over the collar's rim
+  // (from -0.60 it left a 2 cm slot between its inner face and the collar: 68 cm2)
+  P.add('turret', box(0.50, 0.12, 0.32), -0.69, T.bottomY + 0.06, -0.56);
+  P.turretG.userData.bradleyA2TurretClosureReceipt = Object.freeze({
+    revision: 'source-turret-r3',
+    roofY: T.roofY,
+    shell: Object.freeze({ rearZ: T.rearZ, faceZ: T.faceZ, beakZ: T.beakZ, halfWidthM: T.halfW, plusInsetM: T.plusInset,
+      bottomY: T.bottomY, rearBottomY: T.rearBottomY }),
+    gunBay: Object.freeze({ leftX: T.bayLeftX, rightX: T.bayRightX }),
+    // the source's erected box and its pivot; built stowed (folded 90° out and down about the pivot)
+    towLauncher: Object.freeze({ ...BRADLEY_TOW, tubeXs: [...BRADLEY_TOW.tubeXs], pose: 'stowed',
+      pivot: Object.freeze([BRADLEY_TOW.x0, BRADLEY_TOW.y0]),
+      stowedMouths: Object.freeze(BRADLEY_TOW.tubeXs.map((x) => Object.freeze([...bradleyTowStowed(x, BRADLEY_TOW.tubeY),
+        BRADLEY_TOW.plateZ + 0.04]))) }),
+    stowageBin: Object.freeze({ innerX: BRADLEY_BIN.innerX, outerX: BRADLEY_BIN.outerX, bottomY: BRADLEY_BIN.bottomY }),
   });
 }
 
-export function bradleyFlankDressing(P: Modern3BuilderPort) {
+function addBradleyTurretKit(P: Modern3BuilderPort): void {
+  const T = BRADLEY_TURRET;
+  const { box, cylY, periscope, stowage } = KIT;
+  // the gunner's Integrated Sight Unit on the LEFT front of the roof (source: world x −0.05..0.70, z −0.40..0.15, top
+  // 3.19): the armoured box, its window, two door leaves
+  P.add('turret', box(0.60, 0.36, 0.46), 0.50, T.roofY + 0.17, 0.30);
+  P.add('turretDark', box(0.44, 0.15, 0.02), 0.50, T.roofY + 0.21, 0.532);
+  P.add('turretGlass', box(0.38, 0.10, 0.012), 0.50, T.roofY + 0.21, 0.542);
+  for (const dx of [-0.15, 0.15]) P.add('turretDetail', box(0.28, 0.025, 0.42), 0.50 + dx, T.roofY + 0.36, 0.28);
+  for (const side of [-1, 1]) P.add('turretDetail', bradleyTurretCheekPlate(side).bolts);
+  // the commander's station on the RIGHT: raised ring, hatch lid, four vision blocks round its front
+  // (source: its ring to 2.975 over world x −0.91..−0.30, z −1.15..−0.35)
+  P.add('turret', cylY(0.31, 0.33, 0.13, P.q ? 22 : 14), -0.42, T.roofY + 0.055, -0.40);
+  P.add('turretDetail', cylY(0.28, 0.29, 0.04, P.q ? 22 : 14), -0.42, T.roofY + 0.14, -0.40);
+  for (const a of [-0.9, -0.3, 0.3, 0.9]) {
+    periscope(P, 'turretDetail', -0.42 + 0.31 * Math.sin(a), T.roofY + 0.085, -0.40 + 0.31 * Math.cos(a), a);
+  }
+  // the gunner's hatch on the left rear (source: 2.92-2.93)
+  P.add('turret', cylY(0.25, 0.26, 0.10, P.q ? 20 : 12), 0.40, T.roofY + 0.04, -0.62);
+  P.add('turretDark', box(0.10, 0.03, 0.05), 0.40, T.roofY + 0.10, -0.87);
+  // the stowage bin low on the right wall (source: out to world x −1.50 over y 2.20..2.42, its lid sloping up to the
+  // wall at 2.68, z −0.95..0.30 tapering into the cheek), its lid seam and two latches
+  P.add('turret', bradleyStowageBin());
+  const B = BRADLEY_BIN;
+  P.add('turretDark', box(0.014, 0.016, B.z1 - B.z0 - 0.08), B.outerX - 0.008, B.shoulderY, (B.z0 + B.z1) / 2 - 0.08);
+  for (const z of [-0.20, 0.30]) P.add('turretDetail', box(0.03, 0.06, 0.07), B.outerX - 0.012, (B.bottomY + B.shoulderY) / 2, z);
+  // (round 3, blind A/B b2: the source's tall mast box at the right rear is gone, the M2A2 ODS carries none; the two
+  // whips stand on the roof's rear corners)
+  // 2x4 smoke dischargers on the cheek fronts (§6.5)
+  for (const s of [-1, 1]) {
+    const bank = FITTINGS.smokeBank({
+      mats: P.mats, count: 4, r: 0.038, len: 0.24, pitch: -0.28, splay: s * 1.05, spacing: 0.095, seed: 6 + s,
+    });
+    bank.position.set(s * 0.70 - (s > 0 ? T.plusInset : 0), 0.52, 0.93);
+    P.turretG.add(bank);
+  }
+  // bustle rack on the rear wall, open aft, with bags; the whips
+  // (source: the rack 1.0 m wide centred over the hull, 0.24..0.74 over the ring, to world z -1.85)
+  const rack = FITTINGS.stowageRack({
+    mats: P.mats, w: 1.00, d: 0.38, h: 0.42, rails: 3, fill: 0.55, seed: 11, rotation: [0, Math.PI, 0],
+  });
+  rack.position.set(0.14, 0.28, T.rearZ - 0.20);
+  P.turretG.add(rack);
+  stowage(P, 'turretCloth', P.rng, [[0.14, 0.50, T.rearZ - 0.20, 0.80, 0.30, 0.30]]);
+  for (const [x, y, z, seed] of [[-0.62, T.roofY, -1.02, 5], [0.50, T.roofY, -1.02, 8]] as const) {
+    const whip = FITTINGS.antennaWhip({ mats: P.mats, h: 0.62, rake: 0.04, seed });
+    whip.position.set(x, y, z);
+    P.turretG.add(whip);
+  }
+}
+
+// The TOW launcher on the turret's LEFT, STOWED (its travel and default state): the source carries it erected for firing,
+// its box (BRADLEY_TOW, the source's erected frame) over the roof's rear left; it folds 90° down and out about its
+// elevation pivot, the box's inner lower edge (x0, y0) on the wall top, so the box lies along the left wall with its top
+// flush with the roof and its two cells stacked one over the other. The pack: four walls, a back plate, a perforated
+// front plate 1 cm inside them, two cells whose rim collars stand 4 cm proud around dark liners and sealed terminals
+// 45 cm deep (170 mm bore; 2026-10-21 owner: launch tubes "like the object 695, and tagil"), a lid rib (outboard when
+// stowed), the hinge mount and drum on the wall top and two standoffs to the wall. fleetLauncherMuzzles.ts fires TOW
+// from the stowed mouths (bradleyTowStowed of the erected ones).
+const BRADLEY_TOW_FOLD = new THREE.Matrix4().makeTranslation(BRADLEY_TOW.x0, BRADLEY_TOW.y0, 0)
+  .multiply(new THREE.Matrix4().makeRotationZ(-Math.PI / 2))
+  .multiply(new THREE.Matrix4().makeTranslation(-BRADLEY_TOW.x0, -BRADLEY_TOW.y0, 0));
+/** A point of the erected launcher (turret frame) in its stowed pose. */
+function bradleyTowStowed(x: number, y: number): [number, number] {
+  return [BRADLEY_TOW.x0 + (y - BRADLEY_TOW.y0), BRADLEY_TOW.y0 - (x - BRADLEY_TOW.x0)];
+}
+
+function addBradleyTowLauncher(P: Modern3BuilderPort): void {
+  const W = BRADLEY_TOW;
+  const { box, cylZ, xform } = KIT;
+  const cx = (W.x0 + W.x1) / 2, cy = (W.y0 + W.y1) / 2, cz = (W.z0 + W.z1) / 2;
+  const w = W.x1 - W.x0, h = W.y1 - W.y0, d = W.z1 - W.z0;
+  const fold = (g: THREE.BufferGeometry) => g.applyMatrix4(BRADLEY_TOW_FOLD);
+  const add = (bucket: string, g: THREE.BufferGeometry, x = 0, y = 0, z = 0) => P.add(bucket, fold(xform(g, x, y, z)));
+  weaponAssembly(P, () => {
+    for (const x of [W.x0 + 0.015, W.x1 - 0.015]) add('turretDetail', box(0.03, h, d), x, cy, cz);
+    for (const y of [W.y0 + 0.015, W.y1 - 0.015]) add('turretDetail', box(w, 0.03, d - 0.002), cx, y, cz);
+    add('turretDetail', box(w - 0.03, h - 0.03, 0.03), cx, cy, W.z0 + 0.015);
+    add('turretDetail', perforatedPlate(w - 0.03, h - 0.03, 0.02,
+      W.tubeXs.map((x) => [x - cx, W.tubeY - cy] as const), 0.0965, P.q ? 24 : 12), cx, cy, W.plateZ);
+    for (const x of W.tubeXs) {
+      const tube = launchCellParts({ bore: 0.085, wall: 0.02, proud: 0.04, behind: 0.02, depth: 0.45,
+        segments: [24, 12] }, P.q, x, W.tubeY, W.plateZ);
+      add('turretDetail', tube.rim); add('turretDark', tube.bore);
+    }
+    add('turretDetail', box(w - 0.10, 0.04, d - 0.20), cx, W.y1 + 0.02, cz - 0.05);                // lid rib
+  });
+  // the hinge mount on the wall top inboard of the stowed box, the hinge drum on the pivot, and the cradle plate the
+  // box lies against, from the wall's lower slope up under the hinge (it closes the slot between wall and box)
+  P.add('turretDetail', box(0.12, 0.16, 0.66), W.x0 - 0.06, W.y0 - 0.06, 0.0);
+  P.add('turretDetail', cylZ(0.05, 0.74, P.q ? 16 : 10), W.x0, W.y0, 0.0);
+  P.add('turretDetail', box(0.11, 0.60, d - 0.04), W.x0 - 0.045, W.y0 - 0.34, cz);
+}
+
+// ============================ 268: the Bradley hull shell (source-measured) ===================================
+// The registered source's sides: the upper hull side at ±1.57 m carries the bolted appliqué; a skirt course at ±1.70
+// hangs from a ledge (1.16..1.27) to a 0.69 m hem, its middle panels lifted to 1.07 over the third to fifth wheels as
+// the source has them, its front panel rising into the 1.534 m fender box that falls to 1.27 at the bow; stowage
+// boxes stand proud on both sides aft of the turret; the stern's corner boxes reach 2.08 over the track ends.
+const BRADLEY_SIDE = Object.freeze({
+  faceX: BRADLEY_HULL.sideX, skirtIn: 1.665, skirtOut: 1.70, ledgeIn: 1.565, hem: 0.69, ledgeY: 1.16, ledgeTop: 1.27,
+  raisedHem: 1.07, raisedZ: [-0.30, 1.10] as const, rear: -3.05, fenderRear: 2.15, fenderTop: 1.534, bowTop: 1.27,
+  bowZ: 3.22, bandSeams: [1.70, 0.20, -1.20, -2.40],
+  skirtCuts: [-3.05, -2.20, -1.30, -0.30, 0.40, 1.10, 2.15, 3.22],
+});
+
+// An upright plate whose side profile is drawn in the (z, y) plane and which spans x0..x1 (x0 < x1): crisp edges, one
+// closed shell, the profile is the silhouette.
+function bradleySideProfileSolid(profile: ReadonlyArray<readonly [number, number]>, x0: number, x1: number): THREE.BufferGeometry {
+  const shape = new THREE.Shape(profile.map(([z, y]) => new THREE.Vector2(z, y)));
+  const geometry = new THREE.ExtrudeGeometry(shape, { depth: x1 - x0, bevelEnabled: false, steps: 1, curveSegments: 1 });
+  geometry.rotateY(-Math.PI / 2);                  // shape (u = z, v = y), extrusion w  ->  world (x1 - w, v, u)
+  geometry.translate(x1, 0, 0);
+  return geometry;
+}
+
+/** The roof edge's height along the hull (the upper side's top). */
+function bradleyEdgeY(z: number): number {
+  const H = BRADLEY_HULL;
+  return z <= H.glacisTopZ ? H.edgeY : Math.min(H.edgeY, BRADLEY_GLACIS.yAt(z)) - 0.005;
+}
+
+function addBradleySideArmor(P: Modern3BuilderPort, sideFittings = true): void {
+  const S = BRADLEY_SIDE;
+  const { box, cylX, mergeAll, xform } = KIT;
+  const skirtProfile: Array<[number, number]> = [
+    [S.rear, S.hem], [S.raisedZ[0], S.hem], [S.raisedZ[0] + 0.05, S.raisedHem], [S.raisedZ[1] - 0.05, S.raisedHem],
+    [S.raisedZ[1], S.hem], [2.85, S.hem], [S.bowZ, 1.13], [S.bowZ, S.bowTop], [2.75, S.fenderTop],
+    [S.fenderRear, S.fenderTop], [S.fenderRear, S.ledgeTop], [S.rear, S.ledgeTop],
+  ];
+  for (const side of [-1, 1]) {
+    const span = (a: number, b: number): [number, number] => side > 0 ? [a, b] : [-b, -a];
+    P.add('hull', bradleySideProfileSolid(skirtProfile, ...span(S.skirtIn, S.skirtOut)));
+    // the ledge the skirt hangs from, and the front fender box filling up to the bow
+    P.add('hull', box(S.skirtIn - S.ledgeIn + 0.005, S.ledgeTop - S.ledgeY, S.fenderRear - S.rear),
+      side * (S.ledgeIn + S.skirtIn + 0.005) / 2, (S.ledgeY + S.ledgeTop) / 2, (S.rear + S.fenderRear) / 2);
+    P.add('hull', bradleySideProfileSolid([[S.fenderRear, S.ledgeTop], [S.bowZ - 0.02, S.ledgeTop],
+      [2.75, S.fenderTop], [S.fenderRear, S.fenderTop]], ...span(1.30, S.skirtIn + 0.005)));
+    const faceX = side * (S.faceX + 0.002), skirtFace = side * (S.skirtOut + 0.002);
+    for (const z of S.bandSeams) {
+      const top = bradleyEdgeY(z) - 0.04;
+      P.add('hullDark', box(0.008, top - S.ledgeTop - 0.02, 0.022), faceX, (top + S.ledgeTop + 0.02) / 2, z);
+    }
+    for (const z of S.skirtCuts.slice(1, -1)) {
+      const hem = z > S.raisedZ[0] && z < S.raisedZ[1] ? S.raisedHem : S.hem;
+      const top = z > S.fenderRear ? S.fenderTop : S.ledgeTop;
+      P.add('hullDark', box(0.008, top - hem - 0.03, 0.022), skirtFace, (top + hem) / 2, z);
+    }
+    // bolt rows: two along the upper side's plates, two heads at the top of each skirt panel
+    const bolts: THREE.BufferGeometry[] = [];
+    const head = (x: number, y: number, z: number) => bolts.push(xform(cylX(0.020, 0.016, 6), x, y, z));
+    const plates = [S.rear + 0.04, ...[...S.bandSeams].reverse(), 2.10];
+    for (let i = 0; i + 1 < plates.length; i++) {
+      const z0 = plates[i] + 0.08, z1 = plates[i + 1] - 0.08, n = Math.max(2, Math.round((z1 - z0) / 0.30) + 1);
+      for (let k = 0; k < n; k++) {
+        const z = z0 + (z1 - z0) * k / (n - 1);
+        if (z > -2.05 && z < -1.15) continue;                                   // the side stowage box covers these
+        head(side * (S.faceX + 0.005), S.ledgeTop + 0.07, z);
+        head(side * (S.faceX + 0.005), bradleyEdgeY(z) - 0.07, z);
+      }
+    }
+    for (let i = 0; i + 1 < S.skirtCuts.length - 1; i++) {
+      for (const z of [S.skirtCuts[i] + 0.10, S.skirtCuts[i + 1] - 0.10]) head(side * (S.skirtOut + 0.005), S.ledgeY - 0.04, z);
+    }
+    P.add('hullDetail', mergeAll(bolts));
+    // a grab handle on every full-depth skirt panel (legs into the plate, bar 4.5 cm proud)
+    for (let i = 0; i + 1 < S.skirtCuts.length - 1; i++) {
+      const z = (S.skirtCuts[i] + S.skirtCuts[i + 1]) / 2;
+      const y = z > S.raisedZ[0] && z < S.raisedZ[1] ? 1.11 : 0.92;
+      P.add('hullDetail', box(0.012, 0.018, 0.24), side * (S.skirtOut + 0.045), y, z);
+      for (const dz of [-0.11, 0.11]) P.add('hullDetail', box(0.047, 0.018, 0.018), side * (S.skirtOut + 0.0215), y, z + dz);
+    }
+    // (sideFittings false: a full-length tile course covers the side, its boxes, vent and grille: the Ukrainian BRAT)
+    if (!sideFittings) continue;
+    // side stowage box aft of the turret (source: both sides, z -2.0..-1.2, out to 1.655)
+    P.add('hull', box(0.10, 0.655, 0.80), side * (S.faceX + 0.04), 1.5925, -1.60);           // down on to the ledge
+    P.add('hullDark', box(0.012, 0.50, 0.012), side * (S.faceX + 0.091), 1.61, -1.60);
+    if (side > 0) {
+      // left: the louvred vent and the dark detector-paper panel (research/m2a2_bradley 2-side)
+      P.add('hull', box(0.03, 0.42, 0.74), side * (S.faceX + 0.013), 1.60, 0.24);
+      for (let k = 0; k < 6; k++) P.add('hullDark', box(0.014, 0.028, 0.66), side * (S.faceX + 0.03), 1.43 + k * 0.07, 0.24);
+      P.add('hullDark', box(0.006, 0.36, 0.78), side * (S.faceX + 0.003), 1.62, 1.10);
+    } else {
+      // right: the engine exhaust grille at the front of the upper side (the engine front-right)
+      P.add('hull', box(0.03, 0.34, 0.66), side * (S.faceX + 0.013), 1.50, 1.30);
+      for (let k = 0; k < 4; k++) P.add('hullDark', box(0.014, 0.028, 0.58), side * (S.faceX + 0.03), 1.38 + k * 0.08, 1.30);
+    }
+  }
+}
+
+// Bow kit: the armoured lamp housings on the fender boxes, the rubber flaps under their noses, the folded trim vane on
+// the lower glacis, the driver's hatch on the LEFT (+X) deck behind his periscopes, two tow shackles on the nose.
+function addBradleyBowKit(P: Modern3BuilderPort): void {
+  const S = BRADLEY_SIDE, G = BRADLEY_GLACIS, H = BRADLEY_HULL;
+  const { box, cylY, cylZ, torus, xform } = KIT;
+  for (const side of [-1, 1]) {
+    const m = (x: number) => side * x;
+    // (source: the housings at x 1.1..1.5 up to 1.71 over z 2.7..2.9, on the fender box and the nose shoulder)
+    const hz = 2.78, hx = 1.30, hy = 1.59;
+    P.add('hull', box(0.24, 0.24, 0.24), m(hx), hy, hz);
+    P.add('hullDark', box(0.20, 0.19, 0.02), m(hx), hy, hz + 0.118);
+    P.add('hullGlass', markVehicleNightLens(cylZ(0.052, 0.03, P.q ? 16 : 10), 'headlight'), m(hx + 0.045), hy - 0.035, hz + 0.125);
+    P.add('hullGlass', markVehicleNightLens(cylZ(0.036, 0.03, P.q ? 12 : 8), 'marker', { tint: 'warm' }),
+      m(hx - 0.055), hy + 0.05, hz + 0.125);
+    P.add('hullDetail', box(0.26, 0.02, 0.07), m(hx), hy + 0.125, hz + 0.11);
+    P.add('hullRubber', box(0.42, 0.24, 0.03), m(1.25), 1.14, S.bowZ + 0.02);
+    P.add('hullDetail', box(0.12, 0.10, 0.06), m(0.42), 1.12, H.bowZ - 0.02);
+    P.add('hullDetail', xform(torus(0.065, 0.017, 12), 0, 0, 0, Math.PI / 2, 0, 0), m(0.42), 1.02, H.bowZ - 0.012);
+  }
+  const vaneZ = 2.48, vaneLen = 0.36 / Math.cos(G.angleRad), lift = 0.0225 + 0.008;
+  P.add('hull', box(2.24, 0.045, vaneLen), 0, G.yAt(vaneZ) + G.normalOutward.y * lift, vaneZ + G.normalOutward.z * lift, G.angleRad, 0, 0);
+  P.add('hullDark', box(2.10, 0.012, 0.03), 0, G.yAt(vaneZ - 0.12) + G.normalOutward.y * (lift + 0.024),
+    vaneZ - 0.12 + G.normalOutward.z * (lift + 0.024), G.angleRad, 0, 0);
+  // the driver's hatch on the deck behind the glacis break, left of the engine (source: x 0.18..0.68, z 0.78..1.28, top
+  // 2.135); low: the turret's floor (2.18) and the bin's (2.20) pass 4.5 cm and more over its lid as they turn
+  P.add('hull', cylY(0.25, 0.27, 0.04, P.q ? 20 : 12), 0.43, H.crownY + 0.01, 1.03);
+  P.add('hullDetail', cylY(0.23, 0.23, 0.025, P.q ? 20 : 12), 0.43, H.crownY + 0.04, 1.03);
+}
+
+// Stern: the troop ramp with its inset door on the LEFT, the hinge tube at its foot, the corner boxes over the track
+// ends with their tail lamps.
+function addBradleyStern(P: Modern3BuilderPort): void {
+  const H = BRADLEY_HULL;
+  const { box, cylX, cylZ } = KIT;
+  const z = H.sternZ - 0.012;
+  P.add('hull', box(1.70, 0.86, 0.03), 0, 1.65, z);                                     // ramp plate between the boxes
+  P.add('hullDark', box(0.68, 0.74, 0.008), 0.42, 1.62, z - 0.018);                     // door seam
+  P.add('hull', box(0.62, 0.68, 0.016), 0.42, 1.62, z - 0.022);                         // door leaf
+  P.add('hullGlass', box(0.12, 0.05, 0.01), 0.42, 1.86, z - 0.033);                     // door vision block
+  P.add('hullDetail', box(0.04, 0.14, 0.04), 0.16, 1.55, z - 0.026);                    // door handle
+  P.add('hullDetail', cylX(0.035, 1.70, P.q ? 14 : 8), 0, 1.24, z - 0.003);             // ramp hinge tube
+  for (const side of [-1, 1]) {
+    // the stowage boxes either side of the ramp (source: x 0.86..1.16, y 1.60..2.08, z −3.27..−3.00), their lid seams
+    P.add('hull', box(0.30, 0.48, 0.28), side * 1.01, 1.84, -3.14);
+    P.add('hullDark', box(0.30, 0.014, 0.008), side * 1.01, 1.98, -3.284);
+    // the tail-lamp guard at the corner under the falling roof edge (source: x 1.51..1.55, y 1.35..1.65)
+    P.add('hullDetail', box(0.18, 0.24, 0.05), side * 1.44, 1.47, -3.29);
+    P.add('hullGlass', markVehicleNightLens(cylZ(0.040, 0.02, P.q ? 14 : 8), 'marker', { tint: 'red' }),
+      side * 1.48, 1.50, -3.318, 0, Math.PI, 0);
+    P.add('hullGlass', markVehicleNightLens(cylZ(0.030, 0.02, P.q ? 12 : 8), 'marker'), side * 1.40, 1.50, -3.318, 0, Math.PI, 0);
+  }
+}
+
+function addBradleyHullMarkings(P: Modern3BuilderPort, sideMarkings = true): void {
+  if (!sideMarkings) return;
+  const S = BRADLEY_SIDE;
+  const label = P.spec.visual.number ?? 'C-21';
+  for (const side of [-1, 1]) {
+    P.decal('hull', 'number', label, 0.42, [side * (S.faceX + 0.004), 1.60, -0.60], side * Math.PI / 2);
+  }
+  P.decal('hull', 'soot', null, 0.6, [-(S.faceX + 0.003), 1.55, 0.86], -Math.PI / 2);      // aft of the right exhaust
+}
+
+// The turret's seat: the turret-owned seat pan and collar close the sight-line under its overhang (inside the
+// engine-deck raise's 0.99 m reach). Under the source's A2 turret their undersides stand clear of the deck by 5.5 cm
+// (turretSeatClosure), the seam the fleet's race (turretSeatRace.ts, from the regenerated ring receipt) stands in;
+// `flush` keeps the pre-268 seat sunk 7 cm into the deck under a turret that seats its own floor on it (the A3, the M6).
+function addBradleyTurretSeat(P: Modern3BuilderPort, flush = false): void {
   const { cylY, polyMultiLoft } = KIT;
-  // All three Bradley playables share the donor's compact bearing beneath
-  // much broader turret furniture. A faceted, turret-owned belly pan and
-  // collar close the low side sight-line while preserving traverse and the
-  // existing hull roof, glacis, skirts, suspension and smart-track course.
   const turretSeatPlan = [
-    [-0.68, 0.82], [0.68, 0.82], [0.90, 0.45], [0.92, -0.78],
-    [0.70, -1.08], [-0.70, -1.08], [-0.92, -0.78], [-0.90, 0.45],
+    [-0.55, 0.78], [0.55, 0.78], [0.78, 0.55], [0.78, -0.55],
+    [0.55, -0.78], [-0.55, -0.78], [-0.78, -0.55], [-0.78, 0.55],
   ];
   P.add('turret', polyMultiLoft(turretSeatPlan, [
-    { height: -0.07, inset: 0.90 },
-    { height: 0.07, inset: 1.00 },
+    { height: flush ? -0.07 : 0.055, inset: 0.90 },
+    { height: 0.13, inset: 1.00 },
   ]));
-  P.add('turret', cylY(0.82, 0.87, 0.16, P.q ? 22 : 14), 0, 0.005, -0.10);
+  if (flush) P.add('turret', cylY(0.82, 0.87, 0.16, P.q ? 22 : 14), 0, 0.005, -0.02);
+  else P.add('turret', cylY(0.82, 0.87, 0.105, P.q ? 22 : 14), 0, 0.1075, -0.02);           // up into the shell's floor
+}
 
-  // BRADLEY-ONLY BOW VOLUME: the donor tub ends at z=2.375 while the
-  // lower-bow/glacis stack begins around z=3.125. This buried tapered solid
-  // overlaps both marked faces, rises into the existing upper-glacis backer,
-  // and fans outward into the mirrored bow-corner caps below. Marder keeps
-  // the shared donor closure above but deliberately does not receive this
-  // Bradley-specific nose treatment.
-  const bowClosure = Object.freeze({
-    rearZ: 2.34,
-    frontZ: 3.13,
-    rearHalfWidthM: 0.93,
-    frontHalfWidthM: 0.96,
-    rearFloorY: 0.47,
-    frontFloorY: 0.56,
-    rearRoofY: 1.03,
-    frontRoofY: 1.20,
+/** The Bradley playables' shared dressing (m2a2_bradley directly; m3a3_bradley, ua_m2a3_bradley and m6_linebacker
+ *  through their wrappers; the Marder takes none of it): the turret seat (`turretSeat`: true under the A2 turret,
+ *  'flush' under a turret seating its own floor on the pre-268 sunk seat, false for a turret that brings its own), the
+ *  side armour, bow kit, stern and markings (`sideFittings` false: the side boxes, vent, grille and side markings stay off
+ *  for a vehicle whose tile course covers the upper side). */
+export function bradleyFlankDressing(P: Modern3BuilderPort,
+  { turretSeat = true, sideFittings = true }: { turretSeat?: boolean | 'flush'; sideFittings?: boolean } = {}): void {
+  if (turretSeat) addBradleyTurretSeat(P, turretSeat === 'flush');
+  addBradleySideArmor(P, sideFittings);
+  addBradleyBowKit(P);
+  addBradleyStern(P);
+  addBradleyHullMarkings(P, sideFittings);
+  const S = BRADLEY_SIDE;
+  P.hullG.userData.bradleySideArmorReceipt = Object.freeze({
+    revision: 'source-side-armor-r2',
+    upperSide: Object.freeze({ faceX: S.faceX, ledgeTop: S.ledgeTop, edgeY: BRADLEY_HULL.edgeY }),
+    skirt: Object.freeze({ innerX: S.skirtIn, outerX: S.skirtOut, hemY: S.hem, raisedHemY: S.raisedHem,
+      ledgeInnerX: S.ledgeIn, panels: S.skirtCuts.length - 1, rearZ: S.rear, bowZ: S.bowZ }),
+    fenderBox: Object.freeze({ rearZ: S.fenderRear, topY: S.fenderTop, innerX: 1.30 }),
   });
-  // FSP-05 (2026-09-25): the ring below is listed rear row first, the inward
-  // handedness for KIT.slab (the T-14 raked-bow lesson), so this buried bow
-  // volume shipped inside-out and the rear view read its front face through
-  // the under-sponson channel. orientedSlab re-orders it; corners unchanged.
-  P.add('hull', orientedSlab(
-    [-bowClosure.rearHalfWidthM, bowClosure.rearFloorY, bowClosure.rearZ],
-    [bowClosure.rearHalfWidthM, bowClosure.rearFloorY, bowClosure.rearZ],
-    [bowClosure.frontHalfWidthM, bowClosure.frontFloorY, bowClosure.frontZ],
-    [-bowClosure.frontHalfWidthM, bowClosure.frontFloorY, bowClosure.frontZ],
-    [-bowClosure.rearHalfWidthM, bowClosure.rearRoofY, bowClosure.rearZ],
-    [bowClosure.rearHalfWidthM, bowClosure.rearRoofY, bowClosure.rearZ],
-    [bowClosure.frontHalfWidthM, bowClosure.frontRoofY, bowClosure.frontZ],
-    [-bowClosure.frontHalfWidthM, bowClosure.frontRoofY, bowClosure.frontZ],
-  ));
-  P.hullG.userData.bradleyGlacisClosureReceipt = Object.freeze({
-    revision: 'tub-to-bow-overlap-r1',
-    ...bowClosure,
-    tubFrontZ: 2.375,
-    lowerGlacisRearZ: 3.125,
-    rearOverlapM: 2.375 - bowClosure.rearZ,
-    frontOverlapM: bowClosure.frontZ - 3.125,
-  });
-  for (const s of [-1, 1]) {
-    const m = (x: number) => s * x;
-    // §B2 DONOR BOW-CORNER CLOSURE (hayate_ifv §5.341 grammar): the bow
-    // fender/sprocket bay read clean through at [y 0.65, z 2.99] 0.20x0.14
-    // on all three ids (sweep receipts m2a2 205px / m3a3 199 / ua 203).
-    // Side plate on the 1.40..1.44 plane (outboard of the 1.395 shoe reach
-    // — §B4-clear by construction, the raised idler disc stays
-    // §B9-readable), top chord tucked under the 1.19 mudguard line, flat
-    // 0.55 bottom over the wrap taper; the transverse cap (z 3.10..3.16)
-    // seals the front edge into the bow corner slabs.
-    // FSP-05 (2026-09-25): the plan order above is the LEFT-hand ring, so the
-    // RIGHT copies (m = +x) were wound inside-out — the side plate's outer face
-    // culled and the camera read into the bow corner on m2a2/m3a3/ua_m2a3.
-    // orientedSlab re-orders the reversed copy; the left stays byte-identical.
-    P.add('hull', orientedSlab(
-      [m(1.40), 0.55, 2.80], [m(1.44), 0.55, 2.80], [m(1.44), 0.55, 3.14], [m(1.40), 0.55, 3.14],
-      [m(1.40), 1.17, 2.80], [m(1.44), 1.17, 2.80], [m(1.44), 1.02, 3.14], [m(1.40), 1.02, 3.14]));
-    P.add('hull', orientedSlab(
-      [m(1.06), 0.55, 3.10], [m(1.44), 0.55, 3.10], [m(1.44), 0.55, 3.16], [m(1.06), 0.55, 3.16],
-      [m(1.06), 1.00, 3.10], [m(1.44), 1.00, 3.10], [m(1.44), 1.00, 3.16], [m(1.06), 1.00, 3.16]));
-  }
-  // SKIRT-MOUNT COURSE (the m3a3 skirt-order treatment promoted to the
-  // shared grammar): 8 mirrored panels per side (uniform cuts, §C end
-  // caps), outer face +-1.652 (6.5mm proud of the donor ODS face — no
-  // coplanar fight), hem 0.62 = the donor's §B9 wheel line, tops 1.42
-  // stepping to 1.25 on the bow pair at the fender line; dark hinge-line
-  // seams and a VISIBLE hanger/bolt block at every joint (the ordered
-  // "with attachments" hardware); raked mounting apron per side closing
-  // the skirt-top-to-flare daylight (outer edge buried in the panel tops,
-  // inner edge landing on the flare slope / tucking under the left
-  // flare's 1.62 corner). Aprons split around the donor's own tall flank
-  // gear which closes its own band (right exhaust z 0.975..1.925; left
-  // stern bag box z -2.52..-1.98). All course content |x| >= 1.4425,
-  // clear of the 1.395 shoe reach (§B4).
-  addBradleySkirtMountCourse(P);
 }
 
 const buildM2A2Bradley = steppedBuilder(function* (P: Modern3BuilderPort): TankProfileBuild {
   yield* buildBradleySteps(P);
   bradleyFlankDressing(P);
+  // the M2A2's crew bags hung on the right side's rear, over the skirt ledge (source: x −1.86..−1.49, y 1.21..1.76,
+  // z −2.62..−2.02); the M3A3's side armour course, the Ukrainian tiles and the M6's kit hold that stretch
+  KIT.stowage(P, 'hullCloth', P.rng, [[-1.70, 1.49, -2.48, 0.30, 0.48, 0.30], [-1.69, 1.50, -2.17, 0.28, 0.46, 0.28]]);
 });
 
 // ==================================== BMP-2 =================================

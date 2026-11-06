@@ -38,6 +38,13 @@ const PHOTO_REFERENCE_PACKETS=Object.freeze({
   // castings without Stillbrew (the Mk 5 to the Mk 9 looked externally the same), proved by photographs of its base Mk 6
   // and of 1979-90 BAOR Chieftains, with no 3D model to follow
   'docs/references/photos/chieftain-mk9-20261102.json':Object.freeze(['chieftain_mk9']),
+  // 267 (Main 2026-10-28 and 2026-10-29, as the 2A4-era Leopards): the Eurosatory 2024 KF51 Panther EVO and KF51-U,
+  // rebuilt from photographs, their registered print (the 2022 demonstrator) unregistered
+  'docs/references/photos/kf51-evo-20261101.json':Object.freeze(['kf51_evo']),
+  'docs/references/photos/kf51-u-20261101.json':Object.freeze(['kf51_u']),
+  // 268 (owner 2026-11-02): the M3A2 Bradley, the shared Bradley hull under main's classic M2A2 turret (mirrored); the
+  // turret is kept as main built it, not measured to a model, so the id proves its packet
+  'docs/references/photos/m3a2-bradley-20261102.json':Object.freeze(['m3a2_bradley']),
 });
 export const PHOTO_REFERENCE_IDS=Object.freeze(Object.values(PHOTO_REFERENCE_PACKETS).flat());
 /** The packet holding an id's photographic target; null for an id with none. */

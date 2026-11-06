@@ -213,6 +213,8 @@ for (let iteration = 0; iteration < 600; iteration++) {
     roster.push({
       entityId, seat: bot ? NO_SEAT : int(0, 63), team: int(0, 2), bot, connected: rng() < 0.5,
       playerId: word(16), name: unicodeWord(), specId: word(24),
+      // (268, item 6) a bot's paint, the authority's roll: flags bit 2 when AUTO; a seat's paint is the room's
+      ...(bot ? { camo: pick(['auto', 'factory']) } : {}),
     });
   }
   const welcome = {
@@ -382,6 +384,20 @@ console.log(`wire.selftest: 600 rounds of every message type and ${frames} delta
   assert.equal(decodeMessage(badFlags).error.code, 'range');
   const badTeam = samples[2].slice(); badTeam[8] = 5; // welcome team byte (version, type, u16 protocol, tickHz, snapshotHz, seat, entityId, team)
   assert.equal(decodeMessage(badTeam).error.code, 'range');
+  // (268, item 6) a roster entry's flags: bit 2 (AUTO paint) only on a bot, nothing above it
+  {
+    const entry = { entityId: 41, seat: NO_SEAT, team: 1, bot: true, connected: true, playerId: 'b', name: 'n', specId: 's', camo: 'auto' };
+    const bytes = encodeMessage({ type: MESSAGE_TYPE.WELCOME, protocolVersion: 1, tickHz: 60, snapshotHz: 30, seat: NO_SEAT, entityId: NO_ENTITY, team: TEAM.BRAVO, serverTick: 1, serverTimeMs: 16, seed: 9, capabilities: 0, roomId: 'r', mapId: 'verdant', mode: 'standard', rulesetJson: '{}', roster: [entry] });
+    assert.deepEqual(decodeMessage(bytes).message.roster, [entry], 'a bot rolled AUTO decodes AUTO');
+    const at = bytes.findIndex((byte, i) => byte === 41 && bytes[i + 1] === NO_SEAT && bytes[i + 2] === 1 && bytes[i + 3] === 7);
+    assert.ok(at > 0, 'the entry is found by its bytes');
+    const seatAuto = bytes.slice(); seatAuto[at + 3] = 6; // connected, AUTO, not a bot
+    assert.equal(decodeMessage(seatAuto).error.code, 'range', 'AUTO paint on a seat is refused');
+    const highFlag = bytes.slice(); highFlag[at + 3] = 8 | 1;
+    assert.equal(decodeMessage(highFlag).error.code, 'range', 'a flag above bit 2 is refused');
+    const factory = bytes.slice(); factory[at + 3] = 3;
+    assert.equal(decodeMessage(factory).message.roster[0].camo, 'factory', 'a bot without the bit wears its stock scheme');
+  }
   const badUtf8 = encodeMessage({ type: MESSAGE_TYPE.CHAT, text: 'ab' }).slice(); badUtf8[badUtf8.length - 1] = 0xff;
   assert.equal(decodeMessage(badUtf8).error.code, 'bad_utf8');
   // wire 8: an event's payload is a tagged binary object (eventPayload.ts); a payload that is not an object is bad_json

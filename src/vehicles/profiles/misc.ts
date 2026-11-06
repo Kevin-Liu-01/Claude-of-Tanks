@@ -2305,6 +2305,13 @@ function buildLeclercXLR(P: MiscBuilderPort): void {
   // Full-width protected bustle termination and supported cage returns.
   P.add('turret', box(1.70, 0.34, 0.34), 0, 0.34, -2.18);
   P.add('turretDark', box(1.58, 0.025, 0.28), 0, 0.53, -2.18);
+  // 268 (the roof-pocket census: a 1828 cm2 slot under the bustle's right rear, 1992 cm2 on the left): the tails'
+  // undersides rise 0.24 m to the rear and this box hangs to y 0.17 behind them, so the bustle's lower edge dipped in a V
+  // that reads as a slot from the flank; the Saumur Leclerc's bustle edge runs straight back (img_2372). The bustle
+  // bottom is closed flat from the tails' front edge to the box, its sides on the tails' outer edges.
+  P.add('turret', slab(
+    [-1.24, 0.165, -1.72], [0.98, 0.165, -1.72], [0.91, 0.165, -2.03], [-1.155, 0.165, -2.03],
+    [-1.24, 0.185, -1.72], [0.98, 0.185, -1.72], [0.91, 0.39, -2.03], [-1.155, 0.39, -2.03]));
   // 266 (owner: "clean up the leclercs"): the five returns were 42 cm plates running aft off the box with both rails at
   // its face, a comb of fins from behind. The cage is a slat panel at the returns' tail (z -2.58) now, its rails and
   // eleven vertical slats on four stand-off brackets back to the box.

@@ -9,6 +9,8 @@ export const NO_ROOF_WEAPON: Readonly<Record<string, string>> = Object.freeze({
     + 'roof machine gun (the commander\'s and gunner\'s sights sit where an NSVT would).',
   bmpt_terminator2: 'BMPT-72 "Terminator 2": two 2A42 30 mm, four Ataka and a coaxial PKTM in the Epokha-type module; no '
     + 'roof machine gun.',
+  bmpt_terminator: 'BMPT "Terminator" (Ob. 199 "Ramka", 2009-2013): two 2A42 30 mm, four open Ataka tubes and a coaxial '
+    + 'PKTM in the module (the real vehicle\'s two bow AG-17D are left off the build); no roof machine gun.',
   bmp3: 'BMP-3: 100 mm 2A70, 30 mm 2A72, a coaxial PKT and two bow PKTs; no roof machine gun on the turret.',
   bmp3_rok: 'BMP-3 in Republic of Korea service: the standard BMP-3 armament (2A70, 2A72, coaxial and bow PKTs); no roof '
     + 'machine gun.',
@@ -17,6 +19,7 @@ export const NO_ROOF_WEAPON: Readonly<Record<string, string>> = Object.freeze({
   bmp2: 'BMP-2: 30 mm 2A42, a coaxial 7.62 mm PKT and the 9M113 Konkurs launcher on the turret roof; no roof machine gun.',
   m2a2_bradley: 'M2A2 Bradley: 25 mm M242, a coaxial M240C and the twin TOW launcher; no pintle or roof machine gun.',
   m3a3_bradley: 'M3A3 Bradley CFV: 25 mm M242, a coaxial M240C and the twin TOW launcher; no pintle or roof machine gun.',
+  m3a2_bradley: 'M3A2 Bradley CFV: 25 mm M242, a coaxial M240C and the twin TOW launcher; no pintle or roof machine gun.',
   ua_m2a3_bradley: 'M2A3 Bradley in Ukrainian service: 25 mm M242, a coaxial M240C and the twin TOW launcher; no pintle or '
     + 'roof machine gun.',
   ua_cv9040c: 'CV9040C in Ukrainian service: the Swedish CV9040C\'s 40 mm Bofors and coaxial 7.62 mm machine gun; no roof '
@@ -37,6 +40,12 @@ export const NO_ROOF_WEAPON: Readonly<Record<string, string>> = Object.freeze({
   hayate_ifv: 'Type 89 IFV: 35 mm KDE, a coaxial 7.62 mm Type 74 and two Type 79 Jyu-MAT launchers; no roof machine gun.',
   cv9035dk: 'CV9035 DK (the Danish Army\'s CV90): 35 mm Bushmaster III and a coaxial 7.62 mm machine gun in the two-man '
     + 'turret; no roof or pintle machine gun.',
+  // 268: the twin-cannon air defence carries no roof machine gun: its crews rely on personal arms
+  tunguska_m: '2K22M Tunguska-M: two 2A38M twin-barrel 30 mm and eight 9M311M; no machine gun.',
+  pantsir_s1: 'Pantsir-S1: two 2A38M twin-barrel 30 mm and twelve 57E6 in two banks; no machine gun.',
+  gepard_1a2: 'Flakpanzer Gepard 1A2: two 35 mm Oerlikon KDA and two quad smoke dischargers; no machine gun.',
+  pgz95: 'PGZ-95: four 25 mm and four QW-2; no machine gun.',
+  pgz09: 'PGZ-09: two 35 mm PG99 and the smoke dischargers; no machine gun.',
   tos1a_tagil: 'TOS-1A Solntsepyok: the 24-tube 220 mm launcher on a T-72 chassis; the crew relies on personal arms and '
     + 'the vehicle carries no machine gun.',
   kv2: 'KV-2: the 152 mm M-10 and three 7.62 mm DT machine guns in ball mounts (coaxial, turret rear and hull bow); no '

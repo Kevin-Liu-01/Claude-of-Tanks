@@ -1,14 +1,10 @@
 /**
  * The phone controller's input model (docs/PHONE-CONTROLLER.md "Controls"), pure and Node-runnable.
  *
- * Phone side: the wheel angle from `deviceorientation` (β, γ) and the screen's rotation, the steering curve (centre,
- * dead zone, power curve, full lock), and the lever and stick shapes. Desktop side: the mapper that turns axes frames
- * and ctl messages into calls on the game's input-action layer (src/game/input.ts's virtual controls, the touch HUD's
- * path), with the stale-frame fail-safe. The mapper is the only place a phone touches the game; the sim never sees it.
+ * The phone's side: the wheel angle from `deviceorientation` (β, γ) and the screen's rotation, the steering curve
+ * (centre, dead zone, power curve, full lock), the aim's speed curve, and the lever and stick shapes. The desktop's
+ * mapper that applies what the phone sends is padDesk.ts.
  */
-import { PAD_AIM_SCALE, PAD_HOLD_ACTIONS, padSeqNewer } from './padProtocol.ts';
-import type { PadAxes, PadCtlMessage, PadHoldAction, PadTapAction } from './padProtocol.ts';
-
 const DEG = Math.PI / 180;
 
 export interface SteeringCurve {
@@ -102,116 +98,31 @@ export function leverValue(offset: number, travel: number, deadzone = 0.06): num
   return Math.sign(v) * past;
 }
 
-// ---- the desktop's mapper -----------------------------------------------------------------------------------
+// ---- the sight's drag (phone side) -------------------------------------------------------------------------------
 
-/** The input layer's virtual controls (src/game/input.ts InputLayer), the touch HUD's path. */
-export interface PadInputPort {
-  setVirtualMove(x: number, y: number): void;
-  addVirtualAim(dx: number, dy: number): void;
-  pressVirtual(actionId: PadHoldAction | PadTapAction): void;
-  releaseVirtual(actionId: PadHoldAction | PadTapAction): void;
-  tapVirtual(actionId: PadTapAction): void;
+/** The sight's gain by the finger's speed (owner 2026-11-03: looking around "needs to be a lot more intuitive"): a
+ *  slow drag keeps the mouse's precision (1×), a swipe turns a few times as far and a flick swings the gun round, so a
+ *  turn to the rear is one or two flicks rather than six drags across the sight. Speeds in px per ms, smoothed. */
+export interface AimCurve {
+  /** Below this speed the drag is 1:1. */
+  slowPxPerMs: number;
+  /** The gain added per px/ms above it. */
+  perPxPerMs: number;
+  /** The most it multiplies, unscoped and in the scope (where a flick must not throw the sight off the target). */
+  max: number;
+  maxScoped: number;
 }
 
-export interface PadInputMapper {
-  /** Apply one decoded axes frame (aim totals in eighths). False when it is older than the newest applied. */
-  applyAxes(axes: PadAxes, nowMs: number): boolean;
-  applyCtl(message: PadCtlMessage): void;
-  /** Once a frame: no axes frame for `staleMs` centres the stick and releases every held control. */
-  tick(nowMs: number, staleMs: number): void;
-  /** Centre the stick and release everything (unpaired, paused, link lost). */
-  releaseAll(): void;
-  /** The newest frame's phone clock and when it was applied (latency readout). */
-  readonly lastPhoneT: number;
-  readonly lastAppliedAt: number;
+export const AIM_CURVE: AimCurve = Object.freeze({ slowPxPerMs: 0.1, perPxPerMs: 4, max: 5, maxScoped: 2 });
+
+export function aimGain(speedPxPerMs: number, scoped = false, curve: AimCurve = AIM_CURVE): number {
+  const speed = Math.max(0, Number(speedPxPerMs) || 0);
+  return Math.min(scoped ? curve.maxScoped : curve.max, 1 + curve.perPxPerMs * Math.max(0, speed - curve.slowPxPerMs));
 }
 
-/** How far behind the newest frame a frame may arrive and still count as late rather than a restarted stream. */
-const PAD_LATE_FRAMES = 64;
-/** The longest the stale fail-safe waits, however slowly a throttled phone's heartbeat comes. */
-const PAD_STALE_MAX_MS = 1500;
-
-/** The aim pad's drag in phone px, scaled to the mouse's units (the touch HUD's aim drag uses 1.18). */
-export const PAD_AIM_GAIN = 1.25;
-
-export function createPadInputMapper(input: PadInputPort, onPause?: () => void): PadInputMapper {
-  const pressed = new Set<PadHoldAction>();
-  /** The phone's axes seq at each hold's newest ctl event: a frame at or past it is the hold's truth. */
-  const ctlSeq = new Map<PadHoldAction, number>();
-  let haveFrame = false;
-  let seq = 0;
-  let aimX = 0;
-  let aimY = 0;
-  let lastAt = -Infinity;
-  let lastPhoneT = 0;
-  let moving = false;
-  /** The last eight gaps between frames: their median is the phone's usual gap, which a throttled phone (low power)
-   *  stretches; one long pause or one burst does not move it. */
-  const gaps = new Float64Array(8);
-  let gapCount = 0;
-  const sorted = new Float64Array(8);
-  const usualGap = (): number => {
-    const n = Math.min(gapCount, 8);
-    if (!n) return 0;
-    sorted.set(gaps);
-    sorted.subarray(0, n).sort();
-    return sorted[n >> 1]!;
-  };
-
-  const press = (action: PadHoldAction): void => { if (!pressed.has(action)) { pressed.add(action); input.pressVirtual(action); } };
-  const release = (action: PadHoldAction): void => { if (pressed.delete(action)) input.releaseVirtual(action); };
-
-  const mapper: PadInputMapper = {
-    get lastPhoneT() { return lastPhoneT; },
-    get lastAppliedAt() { return lastAt; },
-    applyAxes(axes, nowMs) {
-      if (haveFrame && !padSeqNewer(axes.seq, seq)) {
-        // a frame a few behind the newest arrived late (the channel is unordered); one far behind is a phone whose
-        // stream restarted (a reload resumed the pairing): a fresh baseline, never a dropped controller
-        if (((seq - axes.seq) & 0xffff) <= PAD_LATE_FRAMES) return false;
-        haveFrame = false;
-      }
-      if (haveFrame) {
-        // int32 totals wrap: the difference is the drag since the last frame applied, lost frames included
-        const dx = ((axes.aimX - aimX) | 0) / PAD_AIM_SCALE;
-        const dy = ((axes.aimY - aimY) | 0) / PAD_AIM_SCALE;
-        if (dx !== 0 || dy !== 0) input.addVirtualAim(dx * PAD_AIM_GAIN, dy * PAD_AIM_GAIN);
-      }
-      if (haveFrame) gaps[gapCount++ % 8] = Math.min(2000, nowMs - lastAt);
-      haveFrame = true;
-      seq = axes.seq; aimX = axes.aimX; aimY = axes.aimY;
-      lastAt = nowMs; lastPhoneT = axes.t;
-      moving = axes.steer !== 0 || axes.throttle !== 0;
-      input.setVirtualMove(axes.steer, axes.throttle);
-      for (let i = 0; i < PAD_HOLD_ACTIONS.length; i++) {
-        const action = PAD_HOLD_ACTIONS[i]!;
-        const at = ctlSeq.get(action);
-        // a frame older than the hold's last ctl event predates it (the two channels are not ordered together)
-        if (at !== undefined && padSeqNewer(at, axes.seq)) continue;
-        if (axes.held & (1 << i)) press(action); else release(action);
-      }
-      return true;
-    },
-    applyCtl(message) {
-      switch (message.k) {
-        case 'down': ctlSeq.set(message.a, message.s); press(message.a); return;
-        case 'up': ctlSeq.set(message.a, message.s); release(message.a); return;
-        case 'tap': input.tapVirtual(message.a); return;
-        case 'pause': onPause?.(); return;
-        default: return;
-      }
-    },
-    tick(nowMs, staleMs) {
-      // four of the phone's usual gaps, never less than the link's own window nor more than the cap
-      if (!haveFrame || nowMs - lastAt <= Math.min(PAD_STALE_MAX_MS, Math.max(staleMs, usualGap() * 4))) return;
-      if (moving || pressed.size) mapper.releaseAll();
-    },
-    releaseAll() {
-      for (const action of [...pressed]) release(action);
-      if (moving) { moving = false; input.setVirtualMove(0, 0); }
-      // the next frame is a fresh baseline: a phone that slept does not swing the gun by its drag since
-      haveFrame = false;
-    },
-  };
-  return mapper;
+/** The finger's speed from one move: its distance over the time since the last, smoothed with the speed before (a
+ *  move or two of jitter neither starts nor stops a flick). */
+export function aimSpeed(previousPxPerMs: number, distancePx: number, elapsedMs: number): number {
+  const instant = Math.max(0, distancePx) / Math.max(4, elapsedMs);
+  return previousPxPerMs * 0.5 + instant * 0.5;
 }
