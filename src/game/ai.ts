@@ -891,9 +891,11 @@ const LEVEL_ROUTE_OPTIONS = Object.freeze({ requireGoalLevel: true });
 // A hull handed back (Watch mode's Leave) is on its way, or where it was taken, only where it can drive there, whatever
 // the ground plan says (hullReaches): the ground from the hull to that point, read at most this far apart (as
 // corridorSafe and the movement's cliff probe, CLIFF_PROBE_M, read it), rises or falls at no step more steeply than the
-// hull can climb or hold. Round 4, F5: a watcher who drove a level route's hull off a causeway's crest onto the floor
-// 11 m beside it left the route held from below, and its stuck strikes ended it with the UNBEARABLE_S verdict; the first
-// fix's band (ELEVATION_LEVEL_M, 8 m: the gun's level, not the drive's) still held it from 5.5 m below (fix-up r1).
+// hull can climb or hold, and the line crosses no bridge deck's side. Round 4, F5: a watcher who drove a level route's
+// hull off a causeway's crest onto the floor 11 m beside it left the route held from below, and its stuck strikes ended
+// it with the UNBEARABLE_S verdict; the first fix's band (ELEVATION_LEVEL_M, 8 m: the gun's level, not the drive's) still
+// held it from 5.5 m below (fix-up r1), and the walk then read a deck 1.2-1.9 m over the bank beside it as its way
+// through the parapet (fix-up r2).
 const RESUME_STEP_M = 1.5;
 // The declared order of one hull's shell results (or hits) on a bot in one phase (round 2, U17; see pendingBefore).
 const PENDING_KIND_ORDER: readonly string[] = Object.freeze(['pen', 'he_pen', 'nonpen', 'ricochet', 'spaced_absorb', 'era']);
@@ -7019,8 +7021,9 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
    * through the waypoints still ahead, where the hull can drive onto it) the legs hold, the cursor past the waypoints it
    * went by, and those clocks move on by the park. After any other park, and after a revive (no park: the hull is a new one
    * at its spawn), they end with no verdict. A park leaves the hull off its way when the watcher drove it more than
-   * RESUME_ON_WAY_M off the route ahead, or onto another level beside it (ground it cannot drive back up or down from:
-   * off a crest, a ramp or a bridge onto the floor below, whatever the drop; hullReaches), and also when the coast alone
+   * RESUME_ON_WAY_M off the route ahead, or where it cannot drive back onto it (hullReaches): onto another level beside it,
+   * off a crest or a ramp onto the floor below by a step steeper than the hull's slope law, or beside or under a bridge
+   * deck the route runs along (its side is a parapet, whatever the step), and also when the coast alone
    * carried it off: more than RESUME_ON_WAY_M past the leg's last waypoint (the end of the way; a coast short of that is
    * the leg used up, as routeUsedUp reads it), or across a leg planned just before the Take while the hull still headed
    * elsewhere (round 3's completeness review: 3 of 31 Takes of a 2 s coast on a sweep). Either way the level route's list
@@ -7107,15 +7110,17 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
   }
   /**
    * The hull can drive from where it stands to (tx,tz), where the ground (or the hull taken there) stands at ty (round 4,
-   * F5): from the hull's own height to ty, through the ground on the line between (terrainSafety.surfaceY: the terrain, or
-   * a bridge deck over it) read at most RESUME_STEP_M apart, no step rises or falls more steeply than this hull can climb
-   * or hold (terrainTravelCostFactor, with its damage, as terrainLineCost reads a line; CLIFF_GRADE is a wall for every
-   * hull). Each step's rise is read over RESUME_STEP_M, as the movement's cliff probe reads one, so the hull's own height
-   * at a short reach is one probe's step. A hull at the foot of a face, on the floor beside a crest or a deck, under a deck
-   * or up on a structure the ground does not carry cannot. Allocation-free.
+   * F5): the line between crosses no bridge deck's side (crossesDeckSide), and from the hull's own height to ty, through
+   * the ground on it (terrainSafety.surfaceY: the terrain, or a bridge deck over it) read at most RESUME_STEP_M apart, no
+   * step rises or falls more steeply than this hull can climb or hold (terrainTravelCostFactor, with its damage, as
+   * terrainLineCost reads a line; CLIFF_GRADE is a wall for every hull). Each step's rise is read over RESUME_STEP_M, as the
+   * movement's cliff probe reads one, so the hull's own height at a short reach is one probe's step. A hull at the foot of
+   * a face, on the floor beside a crest, on the bank beside a deck, under a deck or up on a structure the ground does not
+   * carry cannot. Allocation-free.
    */
   function hullReaches(tx: number, tz: number, ty: number): boolean {
     const position = entity.state.pos;
+    if (crossesDeckSide(position.x, position.z, tx, tz)) return false;
     const dx = tx - position.x, dz = tz - position.z;
     const steps = Math.max(1, Math.ceil(detMath.hypot(dx, dz) / RESUME_STEP_M));
     const debuff = entity.state._debuff;
@@ -7131,6 +7136,28 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
       previousY = y;
     }
     return true;
+  }
+  /**
+   * The line from (ax,az) to (bx,bz) on the ground plan crosses a bridge deck's side between its ends (round 4, F5, fix-up
+   * r2): a parapet, which no hull drives through whatever the step, and which the planner never routes through
+   * (botRoutePlanner bridgeSideEdges: the same test). A deck is driven onto and off over its ends. Allocation-free.
+   */
+  function crossesDeckSide(ax: number, az: number, bx: number, bz: number): boolean {
+    const decks = hf.bridgeDecks;
+    if (!decks) return false;
+    for (let i = 0; i < decks.length; i++) {
+      const deck = decks[i];
+      const along = (ax - deck.x) * deck.ux + (az - deck.z) * deck.uz;
+      const side = (ax - deck.x) * deck.uz - (az - deck.z) * deck.ux;
+      const da = (bx - ax) * deck.ux + (bz - az) * deck.uz;
+      const ds = (bx - ax) * deck.uz - (bz - az) * deck.ux;
+      if (Math.abs(ds) < 1e-6) continue;
+      for (let sign = -1; sign <= 1; sign += 2) {
+        const t = (sign * deck.halfWidth - side) / ds;
+        if (t >= 0 && t <= 1 && Math.abs(along + t * da) < deck.halfLength - .01) return true;
+      }
+    }
+    return false;
   }
   /**
    * The park could hide nothing from the bot's looks at its target (updateTargetActivity), so what it saw holds: the same

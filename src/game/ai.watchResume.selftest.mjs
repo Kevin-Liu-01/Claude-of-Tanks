@@ -42,7 +42,7 @@
 // past z 14); and the stood-put test's level half has a case ([12], left on the deck above where it was taken). Fix-up r2
 // (the round's second reviews): [10] a hull taken on the way up, off the route's line, and handed back short of the apex
 // still skipped it (the first stretch runs from where it was taken), so the cursor now passes a waypoint only where the
-// hull has gone by it.
+// hull has gone by it; and [13] a bridge deck's side is a wall to the walk whatever the step, as it is to the planner.
 import { Vector3 } from 'three';
 import '../vehicles/fleetFactory.ts';
 import { getSpec } from '../vehicles/specs.ts';
@@ -811,6 +811,86 @@ console.log('[12] the elevation lock\'s dwell counts the bot\'s own ticks: it ho
     `setup: taken at (${climbed.parkedAt.map((v) => v.toFixed(1)).join(', ')}) 3 s into the dwell; handed back on the deck ${planM.toFixed(1)} m away on the plan, 25 m up the cliff`);
   ok(climbed.back.elevationLockT === 0,
     `a 0.5 s park in which the watcher left the hull on the deck above the spot it was taken on: the dwell restarts (${label(climbed)})`);
+}
+
+/**
+ * A bridge (round 4, F5, fix-up r2): a deck 60 m long and 12 m wide stands 1.2 m over a flat bank, with 10 m ramps up to
+ * its ends. The height field carries the deck's top, as the structure support carries a hull on the kit's deck record,
+ * and publishes the deck as the map's bridge deck (terrainSafety.surfaceY reads it). A searching bot's leg runs up the
+ * ramp and along the deck's axis (a planner fixture).
+ */
+function bridgeScene() {
+  const DECK = Object.freeze({ x: 0, z: -300, ux: 0, uz: 1, halfLength: 30, halfWidth: 6, deckY: 1.2, approachM: 10 });
+  const getHeightAt = (x, z) => {
+    const along = Math.abs(z - DECK.z);
+    if (Math.abs(x - DECK.x) > DECK.halfWidth) return 0;
+    return along <= DECK.halfLength ? DECK.deckY : DECK.deckY * Math.max(0, 1 - (along - DECK.halfLength) / DECK.approachM);
+  };
+  const getNormalAt = (x, z) => {
+    const e = 0.5, dx = getHeightAt(x + e, z) - getHeightAt(x - e, z), dz = getHeightAt(x, z + e) - getHeightAt(x, z - e);
+    const nx = -dx / (2 * e), nz = -dz / (2 * e), length = Math.hypot(nx, 1, nz);
+    return { x: nx / length, y: 1 / length, z: nz / length };
+  };
+  const bridged = { getHeightAt, getNormalAt, getGroundType: () => 'firm', bridgeDecks: Object.freeze([DECK]) };
+  const bot = tank('bot', 'alpha', 0, -360, 0, 'm1a1_abrams_hc');
+  const enemy = tank('enemy', 'bravo', 5, 150, 0, 'm1a1_abrams_hc'); // hidden, far: the search heads north
+  const LEG = Object.freeze([[0, -335], [0, -275], [0, -200], [40, 150]]);
+  const ctl = createAI(bot, { difficulty: 'normal', rng: mulberry32(9), doctrine: () => CLASSIC_BOT_DOCTRINE, deps: {
+    heightField: bridged, raycast: () => null, getEnemies: () => [enemy], getAllies: () => [], getObstacles: () => [],
+    spotting: { isSpotted: () => false }, getObjective: () => null, planRoute: () => LEG.map((point) => point.slice()),
+  } });
+  let t = 1;
+  const run = (seconds, until) => {
+    for (let i = 0; i < Math.round(seconds / SIM_DT); i++) {
+      t += SIM_DT;
+      ctl.update(SIM_DT, t);
+      updateTank(bot, bridged, SIM_DT, null);
+      if (until && until(ctl.debugInfo())) return true;
+    }
+    return false;
+  };
+  const hull = (seconds) => {
+    for (let i = 0; i < Math.round(seconds / SIM_DT); i++) {
+      t += SIM_DT;
+      updateTank(bot, bridged, SIM_DT, null);
+    }
+  };
+  const moveTo = (x, z) => { bot.state.pos.x = x; bot.state.pos.z = z; bot.state.pos.y = getHeightAt(x, z); bot.state.speed = 0; };
+  return { DECK, bot, ctl, run, hull, moveTo, clock: () => t };
+}
+
+console.log('[13] a hull handed back beside a bridge deck, outside its parapets, is off the way along the deck, whatever the step');
+// Round 4 fix-up r2 (the completeness review): hullReaches read a deck only as a height step (terrainSafety.surfaceY), so
+// a hull left on the bank beside a deck that stands within the hull's step limit over the bank (1.2 m here; blackglass's
+// decks at (-65, 100) and (70, 100) stand 1.19-1.90 m over the ground beside them) read the deck as its way, and its leg
+// held: the follower then drives at the parapet, which the planner never routes through (botRoutePlanner
+// bridgeSideEdges: "Bridge parapets are not entrances"). On 40405a3ec7 and 0edd0e1ab5 both hand-backs beside the deck
+// hold the leg. A deck's side between its ends is now a wall to the walk, as it is to the planner; the deck and its ends
+// stay open.
+{
+  const deckHandBack = (offX, aheadM) => {
+    const { DECK, bot, ctl, run, hull, moveTo, clock } = bridgeScene();
+    const searched = run(40, (info) => info.searching && info.routeOwner === 'search');
+    const onDeck = run(40, () => bot.state.pos.z > DECK.z - DECK.halfLength + 6 && bot.state.pos.y > DECK.deckY - 0.3);
+    const before = ctl.debugInfo();
+    const takenZ = bot.state.pos.z;
+    takeAndLeave(bot, ctl, clock, hull, 0.5, () => moveTo(offX, takenZ + aheadM));
+    const handedBack = [bot.state.pos.x, bot.state.pos.y, bot.state.pos.z];
+    run(SIM_DT * 2);
+    return { DECK, searched, onDeck, before, first: ctl.debugInfo(), takenZ, handedBack };
+  };
+  const label = (r) => `legs ${r.before.searchLegs} -> ${r.first.searchLegs}, failures ${r.before.searchFailures} -> ${r.first.searchFailures}, owner ${r.first.routeOwner}`;
+  for (const outsideM of [1.5, 3]) {
+    const r = deckHandBack(6 + outsideM, 10);
+    ok(r.searched && r.onDeck && r.before.routeOwner === 'search' && r.before.wpIndex === 1,
+      `setup: the bot drives its search leg along the deck (taken on it ${(r.takenZ - r.DECK.z).toFixed(1)} m from its middle, cursor ${r.before.wpIndex}); handed back on the bank at (${r.handedBack.map((v) => v.toFixed(1)).join(', ')}), ${outsideM} m outside the deck's side, ${(r.DECK.deckY - r.handedBack[1]).toFixed(1)} m under its top`);
+    ok(r.first.searchLegs === r.before.searchLegs + 1 && r.first.searchFailures === r.before.searchFailures,
+      `a 0.5 s Take and Leave in which the watcher left the hull ${outsideM} m outside the deck's side, within reach of its leg on the plan: the leg ends and is planned again from here, counting no failure (${label(r)})`);
+  }
+  const onIt = deckHandBack(1.5, 10);
+  ok(onIt.first.searchLegs === onIt.before.searchLegs && onIt.first.searchLegsDisplaced === onIt.before.searchLegsDisplaced
+    && onIt.first.routeOwner === 'search',
+    `a 0.5 s Take and Leave that left the hull on the deck, 1.5 m beside its axis: the leg runs on (${label(onIt)})`);
 }
 
 if (failures) { console.error(`ai.watchResume.selftest: ${failures} failure(s)`); process.exit(1); }
