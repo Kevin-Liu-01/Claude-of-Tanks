@@ -92,8 +92,10 @@ for (const { id, ring } of ROWS) {
   assert.equal(spec.gunElevationDeg, 85);
   assert.equal(spec.gunDepressionDeg, 10);
   // the plates are the body's faces, wound outward
-  assert.equal(spec.armor.turretPlates.length, Object.keys(MARKSMAN_BODY_FACES).length, `${id}: a plate a body face`);
-  for (const p of spec.armor.turretPlates) {
+  // (beside them, the hatch plates finalizeCombatAnatomy measures from the model: armorInterior.ts leaves them out the same way)
+  const bodyPlates = spec.armor.turretPlates.filter((p) => !/^(?:hull|turret)_(?:hatch|cupola)_\d+_/.test(p.name));
+  assert.equal(bodyPlates.length, Object.keys(MARKSMAN_BODY_FACES).length, `${id}: a plate a body face`);
+  for (const p of bodyPlates) {
     const [a, b, c] = p.verts.map((v) => new THREE.Vector3(...v));
     const n = new THREE.Vector3().subVectors(b, a).cross(new THREE.Vector3().subVectors(c, a));
     const mid = p.verts.reduce((acc, v) => acc.add(new THREE.Vector3(...v)), new THREE.Vector3()).divideScalar(p.verts.length);
