@@ -6,6 +6,11 @@
 // first tick of the new life reads no progress spike.
 // Round 3 (B17): split from ai.reviveResume (14 s of CPU with both drivers, most of it the whole fleet's combat anatomy
 // and this battle's import graph); the fleet is narrowed to the battle's participants (ensureAuthorityFleet).
+// Round 4 (F10), its tier: the battle is narrowed to three hulls (the player, the allied bot the mode revives, one
+// enemy), which cuts the setup, the fleet and every step: 3.8-4.8 s user against 4.6-6.5 s at load 30-40, and the rest is
+// state.ts's import graph (2-3.4 s of CPU alone), the floor of every solo-step receipt in the default tier (watchSeat
+// 15.8 s user, battleSides 12.2 s). It stays in the default tier: it is the only default-tier receipt of the solo
+// revive hook (state.ts setupBattle's revive: ent.aiCtl?.resume?.(game.timeS)), and npm test keeps it covered.
 import { SIM_DT } from '../sim/movement.ts';
 import { createBus, createCollider, createGameState, setupBattle, simStep } from './state.ts';
 import { spawnTanks } from './rosterState.ts';
@@ -39,7 +44,9 @@ console.log('[1] the solo battle\'s revive hands the brain back');
   spawnTanks(game, { scene: { remove() {} } });
   for (const entity of game.allTanks) entity.visual = visual(entity);
   const bus = createBus(() => {});
-  setupBattle(game, 'm1a1_abrams_hc', field, { gameMode: 'capture_the_flag', watch: false, random: true, arrangement: null, brain: null,
+  // three hulls (the player, one allied bot to revive, one enemy): the revive hook is per hull, and the default roster's
+  // eleven more cost CPU in the battle's setup, its fleet and every step (round 4 F10)
+  setupBattle(game, 'm1a1_abrams_hc', field, { gameMode: 'capture_the_flag', watch: false, random: true, arrangement: { allies: 1, enemies: 1 }, brain: null,
     deferVisuals: true, deferCamoRepaint: true, deferOpeningRoutes: false });
   // the battle's own vehicles' combat anatomy (shell hits read it), not the whole fleet's
   await ensureAuthorityFleet(game.tanks.map((entity) => entity.specId));
