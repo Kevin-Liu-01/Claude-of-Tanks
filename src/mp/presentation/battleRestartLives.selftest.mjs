@@ -23,6 +23,9 @@
 //      at the restart with five enemies alive and hidden (restartLives had re-armed the call). It fails on 20a8d0d793.
 //   1 (review r2): the killcam's restart listener is called from the frame pump, and a replay release that throws in
 //      cancel() (rethrown by design, round 3 A9) left it, dropping the frame; now it is reported and the chase still ends.
+// Round 4 (E4): the revived actors kept the abandoned battle's hull points and modules: a hidden revived wreck read alive
+// with 0 hull points (the HUD's ear row drew an empty bar on a living enemy until it was spotted), and a hidden hull
+// damaged there kept its damage and its broken module (told by module_state). Case 5 asserts both and fails on 0edd0e1ab5.
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { stripTypeScriptTypes } from 'node:module';
@@ -297,6 +300,16 @@ const wrong = [];
   assert.deepEqual(sideCalls(), ['last_enemy'], 'setup: the abandoned battle\'s fourth death calls the last enemy');
   const e1 = game.tankById.get('e1');
   assert.ok(e1.combat.destroyed && game.tanks.includes(e1), 'setup: e1 is a wreck on this seat');
+  // (round 4 E4) a module the abandoned battle broke, told on the presentation's own event path (module_state), on a
+  // wreck (e1) and on e5, seen alive at 1500 of 2000 hull points before it went out of sight
+  const enemies = ['e1', 'e2', 'e3', 'e4', 'e5'];
+  const broken = Object.keys(e1.combat.modules).includes('engine') ? 'engine' : Object.keys(e1.combat.modules)[0];
+  for (const id of ['e1', 'e5']) {
+    presentation.applyEvent({ kind: 'module_state', payload: { id, module: broken, state: 'red', source: 'shot' } }, { own: false, feedbackPredicted: false });
+  }
+  const e5 = game.tankById.get('e5');
+  assert.ok(e1.combat.modules[broken].state === 'red' && e5.combat.modules[broken].state === 'red', `setup: the abandoned battle broke e1's and e5's ${broken}`);
+  assert.ok(e1.combat.hp === 0 && e5.combat.hp === 1500 && e5.combat.maxHp === 2000, 'setup: e1 died, e5 was seen damaged (1500 of 2000)');
   // the restart: every hull alive at its spawn; this seat spots its allies and no enemy
   present(1, allies);
   present(1, allies);
@@ -313,6 +326,14 @@ const wrong = [];
   const at = spot('e1');
   if (world?.collide(new Vector3(at.x, 0, at.z), 0, new Vector3())) wrong.push('presentation: the own prediction still collides with e1\'s old wreck');
   if (e1._wreckTurretPose || e1._networkDestroyed) wrong.push('presentation: e1 keeps its old wreck\'s look or turret pose');
+  // (round 4 E4) the host restarted every hull whole: a hidden hull's hull points and modules are its new life's. Before, a
+  // revived wreck read alive with 0 hull points (the HUD's ear row drew an empty health bar on a living enemy until it
+  // was spotted) and a hull damaged in the abandoned battle kept its damage and its broken module
+  const worn = enemies.map((id) => [id, game.tankById.get(id).combat]).filter(([, combat]) => combat.hp !== combat.maxHp)
+    .map(([id, combat]) => `${id} ${combat.hp}/${combat.maxHp}`);
+  if (worn.length) wrong.push(`presentation: the hidden hulls kept the abandoned battle's hull points after the restart (${worn.join(', ')})`);
+  const unmended = enemies.filter((id) => Object.values(game.tankById.get(id).combat.modules).some((module) => module.state !== 'ok'));
+  if (unmended.length) wrong.push(`presentation: the hidden hulls ${unmended.join(', ')} kept the abandoned battle's broken ${broken} after the restart`);
   presentation.applyEvent({ kind: 'match_ended', payload: { result: 'alpha', reason: 'time' } }, { own: false, feedbackPredicted: false });
   const endRow = ended[0]?.roster?.find((entry) => entry.id === 'e1');
   if (endRow?.alive !== true) wrong.push(`presentation: battle:ended's roster reports e1 ${endRow ? 'dead' : 'missing'} after the restart (the report marks it dead again)`);

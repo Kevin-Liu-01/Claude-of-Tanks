@@ -1059,8 +1059,9 @@ export function createBattlePresentation({
    * seat does not spot is not, so a hull that died in the abandoned battle and is hidden in the restarted one read
    * destroyed until it was spotted: the HUD and the network side counts (main.ts getTeamRoster) counted it dead, so the
    * crew called "last enemy" at the restart with the enemies alive and hidden; battle:ended's roster reported it dead; and
-   * the own prediction collided with its old wreck. Its burning, its wreck look, its wreck turret pose and the death
-   * causes go with that life. The restarted frame's rows, applied right after, still write the hulls this seat sees.
+   * the own prediction collided with its old wreck. The new life is whole (beginActorLife, round 4 E4): its hull points,
+   * modules, crew, fire, wreck look, wreck turret pose, ERA and death cause are the restarted battle's. The restarted
+   * frame's rows, applied right after, still write the hulls this seat sees.
    */
   function resetSettledWorld(restarts: number): void {
     resetWorldForBattle(worldCollision as BattleResetWorld | null);
@@ -1068,15 +1069,44 @@ export function createBattlePresentation({
     appliedDestructibleRevision = -1;
     appliedDestroyedLength = -1;
     lastSmokeJson = null;
-    for (const actor of actors.values()) {
-      actor.combat.destroyed = false;
-      actor.combat.fire.burning = false;
-      updateDestruction(actor, false);
-      actor._wreckTurretPose = null;
-    }
+    for (const actor of actors.values()) beginActorLife(actor);
     destructionCause.clear();
     publishRoster();
     bus.emit('battle:restarted', { battleRestarts: restarts });
+  }
+
+  /**
+   * One hull's new life where no row carries it (round 4 E4, E6): alive and whole, as the host begins one. The host builds
+   * a fresh combat state at a revive (sim/authoritativeMatch.ts reviveForMode: createCombatState, so its hull points at
+   * their maximum, every module whole, every crew member up, no fire) and at a restart (migrationFallback builds every
+   * actor anew); a row writes only what it carries (hull points, fire, the wreck and its turret pose, ERA), and only where
+   * it reaches this seat, and a remote hull's modules come only by module_state events. Before, a hidden hull revived by
+   * the restart read alive with the abandoned battle's hull points (0 for a wreck: the HUD's ear row drew an empty health
+   * bar on a living enemy until it was spotted) and its broken modules.
+   */
+  function beginActorLife(actor: MatchActor): void {
+    const { combat } = actor;
+    combat.destroyed = false;
+    combat.hp = combat.maxHp;
+    combat.fire.burning = false;
+    combat.fire.tickTimer = 0;
+    combat.fire.ticksLeft = 0;
+    mendModulesAndCrew(combat);
+    updateDestruction(actor, false);
+    destructionCause.delete(actor.id);
+    actor._wreckTurretPose = null;
+    updateEra(actor, NO_IDS);
+  }
+
+  /** What no row carries for a remote hull: its modules whole and its crew up (a new life's). */
+  function mendModulesAndCrew(combat: CombatState): void {
+    for (const module of Object.values(combat.modules)) {
+      if (!module) continue;
+      module.hp = module.maxHp;
+      module.state = 'ok';
+      module.repairT = 0;
+    }
+    for (const member of Object.keys(combat.crew)) combat.crew[member] = true;
   }
 
   function resultRoster(): Array<Record<string, RuntimeValue>> {
