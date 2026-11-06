@@ -151,8 +151,10 @@ function* buildT95Steps(P: TankBuilderPort): TankProfileBuild {
       const so = s * H.skirtX, si = s * (H.skirtX - H.skirtT);
       const [x0, x1] = s > 0 ? [si, so] : [so, si];
       // (the foot bevelled up to the outer face, as the print's)
-      const sk = (b: number, t: number): SectionPoint[] => s > 0 ? [[x0, b], [x1, b + 0.16], [x1, t], [x0, t]]
-        : [[x0, b + 0.16], [x1, b], [x1, t], [x0, t]];
+      const sk = (b: number, t: number): SectionPoint[] => {
+        const bev = Math.min(0.16, (t - b) * 0.5);
+        return s > 0 ? [[x0, b], [x1, b + bev], [x1, t], [x0, t]] : [[x0, b + bev], [x1, b], [x1, t], [x0, t]];
+      };
       P.add('hull', sectionSolid([
         { z: H.sternZ - 0.02, ring: sk(H.skirtLow + 0.03, H.skirtTop - 0.02) },
         { z: 1.10, ring: sk(H.skirtLow, H.skirtTop) },
@@ -249,12 +251,7 @@ function* buildT95Steps(P: TankBuilderPort): TankProfileBuild {
     // the right side's stowage bins along the slope beside the commander (the print's raised run, z -2.7 to -1.2)
     for (const [z0, z1] of [[-2.70, -1.98], [-1.94, -1.20]] as const) {
       const ax = 1.78, slope = Math.atan2(sideAt(ax + 0.2, z0) - sideAt(ax - 0.2, z0), 0.4);
-      P.addEquipment('hullDetail', xform(box(0.42, 0.18, z1 - z0), 0, 0, 0, 0, 0, -slope), -ax, sideAt(ax, (z0 + z1) / 2) + 0.10, (z0 + z1) / 2);
-    }
-    // and the left side's bins forward, beside the driver (the print's run, z -1.4 to -0.5)
-    {
-      const ax = 1.80, z0 = -1.30, z1 = -0.62, slope = Math.atan2(sideAt(ax + 0.2, z0) - sideAt(ax - 0.2, z0), 0.4);
-      P.addEquipment('hullDetail', xform(box(0.40, 0.16, z1 - z0), 0, 0, 0, 0, 0, slope), ax, sideAt(ax, (z0 + z1) / 2) + 0.09, (z0 + z1) / 2);
+      P.addEquipment('hullDetail', xform(box(0.42, 0.28, z1 - z0), 0, 0, 0, 0, 0, -slope), -ax, sideAt(ax, (z0 + z1) / 2) + 0.15, (z0 + z1) / 2);
     }
   };
   buildT95Fittings();
@@ -271,11 +268,13 @@ function* buildT95Steps(P: TankBuilderPort): TankProfileBuild {
       P.add('hullGlass', xform(box(0.09, 0.05, 0.01), 0, 0, 0, 0, -a, 0), cx + Math.sin(a) * 0.405, cy + 0.12, cz + Math.cos(a) * 0.405);
     }
     const mg = FITTINGS.americanM2({
-      mats: P.mats, tone: 'dark', ammoSide: 1, barrelLength: 0.65, elev: 0.55, ring: { r: 0.56, stubs: 4 }, shield: false,
+      mats: P.mats, tone: 'dark', ammoSide: 1, barrelLength: 0.65, elev: 0.55, ring: false, shield: false,
       seed: 27095, working: true,
     });
-    mg.position.set(cx, cy + 0.40, cz);
-    // the ring's four posts from the cupola's base ring
+    // (the gun rides the ring's outboard side, as the print and the 1946 photographs carry it)
+    mg.position.set(cx - 0.55, cy + 0.46, cz + 0.10);
+    // the cut-down M49C ring over the cupola and its four posts from the cupola's base ring
+    P.add('hullDark', torus(0.56, 0.025, P.q ? 32 : 18, 6), cx, cy + 0.40, cz, Math.PI / 2, 0, 0);
     for (let k = 0; k < 4; k++) {
       const a = (k + 0.5) * Math.PI / 2;
       bar('hullDark', [cx + Math.sin(a) * 0.43, cy + 0.12, cz + Math.cos(a) * 0.43], [cx + Math.sin(a) * 0.54, cy + 0.38, cz + Math.cos(a) * 0.54], 0.022);
@@ -292,7 +291,7 @@ function* buildT95Steps(P: TankBuilderPort): TankProfileBuild {
     for (const [x, z, h] of [[0.08, -2.40, 1.05], [0.68, -2.00, 1.05], [-0.12, -1.20, 1.05]] as const) {
       const y = roofAt(z);
       P.add('hullDark', cylY(0.04, 0.05, 0.08, 10), x, y + 0.03, z);
-      const whip = FITTINGS.antennaWhip({ mats: P.mats, h, r: 0.009, rake: 0.04, seed: 27100 + Math.round(z * 10) });
+      const whip = FITTINGS.antennaWhip({ mats: P.mats, h, r: 0.009, rake: 0, seed: 27100 + Math.round(z * 10) });
       whip.position.set(x, y + 0.07, z);
       P.hullG.add(whip);
     }
