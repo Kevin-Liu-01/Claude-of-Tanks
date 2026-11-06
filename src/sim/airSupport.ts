@@ -427,8 +427,8 @@ export function createAirSupport<Entity extends AirSupportEntity>(options: AirSu
         continue;
       }
       if (isSpotted && !isSpotted(entity.id, team)) continue;
-      // the gunship's ring counts the enemies near its centre (where its fire stays inside the ring)
-      if (strikeCovers(rules, _probe, entity.state.pos.x, entity.state.pos.z, kind === 'gunship' ? -rules.gunship.engageM * 0.5 : 0)) count++;
+      // the gunship's ring counts the enemies well inside it (its 30 s of fire stays on them as they move)
+      if (strikeCovers(rules, _probe, entity.state.pos.x, entity.state.pos.z, kind === 'gunship' ? -rules.gunship.engageM * 0.3 : 0)) count++;
     }
     return count;
   }

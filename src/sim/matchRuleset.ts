@@ -189,7 +189,7 @@ export const AIR_SUPPORT_RULES: AirSupportRules = Object.freeze({
   gunship: Object.freeze({ cost: 800, cooldownS: 150, warningS: 8, hp: 1400, hitRadiusM: 16, altitudeM: 180, speedMps: 42,
     radiusM: 120, orbitS: 30, engageM: 140, cannonEveryS: 0.5, howitzerEveryS: 4, cannonSpreadM: 4, howitzerSpreadM: 3 }),
   bots: Object.freeze({ decideEveryS: 2, friendlyClearM: 45,
-    minTargets: Object.freeze({ recon: 0, artillery: 2, strafe: 2, bomb: 1, gunship: 3 }), evadeMarginM: 15, leaveSlots: 1,
+    minTargets: Object.freeze({ recon: 0, artillery: 2, strafe: 2, bomb: 1, gunship: 2 }), evadeMarginM: 15, leaveSlots: 1,
     reconGapS: 30 }),
 });
 
