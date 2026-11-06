@@ -15,15 +15,15 @@ Run times: `tools/selftest-durations.json`, else this machine's latest observati
 
 | Decision | Receipts | CPU-min |
 |---|---:|---:|
-| KEEP | 1517 | 165.1 |
+| KEEP | 1518 | 165.2 |
 | MERGE | 0 | 0.0 |
 | MANUAL | 655 | 1157.1 |
 | RETIRE | 2 | 0.7 |
 
 | Suite run | Receipts | CPU-min | Simulated wall (min) |
 |---|---:|---:|---:|
-| Before: every receipt (npm test without the tiers) | 2173 | 1322.6 | 233.3 |
-| After: the default tier | 1517 | 165.1 | 37.1 |
+| Before: every receipt (npm test without the tiers) | 2174 | 1322.6 | 233.3 |
+| After: the default tier | 1518 | 165.2 | 37.1 |
 
 Default tier: 12.5 % of the whole registry's CPU; 18.0 % of the 916 CPU-min the snapshot gave for the 1,863 receipts it timed. Its wall: 0.2 min exclusive receipts, 18.3 min pool, 18.6 min browser receipts.
 
@@ -802,7 +802,7 @@ None. Folding receipts saves only process starts (about a second each) and would
 | `tools/media-r5/fleet-coverage.selftest.mjs` | n/a | MANUAL (media) | media: the media lane's fleet backlog, n/a s: 267: the fleet's media backlog (every vehicle leads a take, the survey bars): the manual media suite | test:heavy -- media; test:recommend flags it when its inputs change |
 | `tools/mp-rooms-entry.browser.selftest.mjs` | n/a | MANUAL (ui) | ui: heavy interface paint and layout sweeps, n/a s: 268 (the 267 production smoke): the multiplayer end-to-end opens the rooms panel the way the Garage's layout o | test:heavy -- ui; test:recommend flags it when its inputs change |
 
-## KEEP (1517)
+## KEEP (1518)
 
 | Receipt | Run (s) | Decision | Reason | Coverage now |
 |---|---:|---|---|---|
@@ -1363,6 +1363,7 @@ None. Folding receipts saves only process starts (about a second each) and would
 | `src/ui/tokens/modeColours.selftest.mjs` | 1.6 | KEEP | interface contract, 1.6 s: modeColours.selftest.mjs — every game mode wears its own hue, from one token set (owner 2026-10-25: "use the u | default tier (npm test, the release gate; lane mode by its closure) |
 | `tools/browser-launch-census.selftest.mjs` | 1.6 | KEEP | tool contract, 1.6 s: Every browser goes through the guard (2026-10-26, item 244): no module of this checkout calls puppeteer's or p | default tier (npm test, the release gate; lane mode by its closure) |
 | `tools/hero-cards-check.mjs` | 1.6 | KEEP | tool contract, 1.6 s: 2026-10-18 tank hero cards: every fleet vehicle has its shipped card (its nation's flag, hull and gun left by | default tier (npm test, the release gate; lane mode by its closure) |
+| `src/world/maps/builtEnvironmentTable.selftest.mjs` | 1.5 | KEEP | world rule, 1.5 s: built-env-270 (2026-11-05): the built-environment table, a row per battlefield (roads, civic style, waterside) | default tier (npm test, the release gate; lane mode by its closure) |
 | `src/ui/uiCanvasCensus.selftest.mjs` | 1.5 | KEEP | interface contract, 1.5 s: uiCanvasCensus.selftest.mjs — (UI-LOCKDOWN A) every on-screen canvas is a uiCanvas (src/ui/uiCanvas.ts). Copyr | default tier (npm test, the release gate; lane mode by its closure) |
 | `tools/cpu-burners.selftest.mjs` | 1.5 | KEEP | tool contract, 1.5 s: CPU burners leave with their parent (tools/cpu-burners.test-support.mjs; 2026-10-30, Main: a runner's alarm en | default tier (npm test, the release gate; lane mode by its closure) |
 | `src/ui/styleLayers.selftest.mjs` | 1.4 | KEEP | interface contract, 1.4 s: 2026-10-18 (brand-ui BUI-F3): every stylesheet declares into the cascade layers, CSS-in-TS only through ensure | default tier (npm test, the release gate; lane mode by its closure) |
