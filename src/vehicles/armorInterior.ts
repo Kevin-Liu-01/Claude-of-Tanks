@@ -3,6 +3,8 @@
 // the turret yaws on (calibration turretRing: rimR, deckY in the hull frame), within the hull. One definition for the
 // checks that hold the anatomy inside its armour: src/vehicles/internalPlacement.selftest.mjs (ring crossings, volumes)
 // and tools/module-visual-align-probe.mjs (volume-out). tools/crew-seat-fit.mjs seats the crew on the same cylinder.
+// (269) An open mount's rider (armor.openStations: the M163 VADS's gunner over his column's rim) is inside when his
+// volume keeps within his station's cylinder, footrest and top, as crew-seat-fit seats him.
 
 type Point = readonly number[];
 interface Envelope { readonly min: Point; readonly max: Point }
@@ -15,12 +17,20 @@ interface Volume extends Envelope {
   readonly external?: boolean;
   readonly parts?: readonly Envelope[];
 }
+interface OpenStation {
+  readonly crew: string;
+  readonly center: Point;
+  readonly radius: number;
+  readonly floorY: number;
+  readonly topY: number;
+}
 interface Armor {
   readonly hullPlates?: readonly Plate[];
   readonly turretPlates?: readonly Plate[];
   readonly turretPivot: Point;
   readonly modules?: readonly Volume[];
   readonly crew?: readonly Volume[];
+  readonly openStations?: readonly OpenStation[];
 }
 
 /** Volumes measured from the model or outside the armour by construction. */
@@ -87,6 +97,17 @@ function turretBoxExcess(
   return excess;
 }
 
+/** How far a box leaves an open station (≤ 0 inside): a corner past its cylinder, or past its footrest or top. */
+function stationExcess(box: Envelope, station: OpenStation): number {
+  let excess = Math.max(station.floorY - box.min[1], box.max[1] - station.topY);
+  for (const x of [box.min[0], box.max[0]]) {
+    for (const z of [box.min[2], box.max[2]]) {
+      excess = Math.max(excess, Math.hypot(x - station.center[0], z - station.center[1]) - station.radius);
+    }
+  }
+  return excess;
+}
+
 /** How far each armour-interior volume part leaves its frame's interior, in metres (≤ 0 inside). */
 export function armorVolumeOverflows(
   armor: Armor, ring: BasketRing | null | undefined,
@@ -96,11 +117,13 @@ export function armorVolumeOverflows(
   const out = [];
   for (const volume of [...(armor.modules || []), ...(armor.crew || [])]) {
     if (volume.external === true || UNMEASURED.has(volume.module || '')) continue;
+    const open = volume.crew ? armor.openStations?.find((entry) => entry.crew === volume.crew) : undefined;
     const parts = Array.isArray(volume.parts) && volume.parts.length ? volume.parts : [volume];
     for (let part = 0; part < parts.length; part++) {
-      const overflow = volume.turretLocal
+      const inFrame = volume.turretLocal
         ? (turret || (ring && hull) ? turretBoxExcess(parts[part], turret, hull, armor.turretPivot, ring || null) : -Infinity)
         : (hull ? boxExcess(parts[part], hull) : -Infinity);
+      const overflow = open ? Math.min(inFrame, stationExcess(parts[part], open)) : inFrame;
       out.push({ name: volume.module || volume.crew || '?', turretLocal: !!volume.turretLocal, part, overflow });
     }
   }
