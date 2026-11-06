@@ -96,19 +96,19 @@ export const BUILT_ENVIRONMENT = Object.freeze({
   }, 'franconian'),
   // the Léon, north Brittany, today (built-env-270, the photos: the lanes a dark bitumen chip-seal, no centre line, the
   // departmental roads with their white lines; the bourg's streets the same, granite kerbs only at the church)
-  coastal: row({ paved: { street: 'asphalt', patches: 0.5, cracks: 0.5, covers: 0.3, puddles: 0.3, tone: 0.78 }, paths: null, work: 'off' }, null),
-  // Lorraine (the Moselle), 1944 (built-env-270, the photos: the departmental roads a tarred macadam over limestone,
-  // mud-plastered by the autumn's traffic and potholed; the farm tracks limestone gravel; the Moselle's banks low grey-brown
-  // silt with reeds and willows)
-  autumn: row({ paved: { tone: 0.82, patches: 1.2, cracks: 1, covers: 0, puddles: 0.8 }, paths: ['asphalt', 'asphalt', null, null, null], work: 'climate' },
-    'lorrain', banked({ kind: 'mud', widthM: 4, hex: 0x6e624f })),
+  // (r1: the chip-seal a shade pale against the photos' #4d4c4a)
+  coastal: row({ paved: { street: 'asphalt', patches: 0.5, cracks: 0.5, covers: 0.3, puddles: 0.3, tone: 0.62 }, paths: null, work: 'off' }, null),
+  // Lorraine (the Moselle), 1944 (built-env-270, the photos: the Moselle's banks low grey-brown silt with reeds and willows;
+  // r1's blind critics read the macadam through the village as wrong for its muddy 1944 rue, so the roads stay earth)
+  autumn: row(UNPAVED, 'lorrain', banked({ kind: 'mud', widthM: 4, hex: 0x6e624f })),
   // the Virgin Lands, 1958
   steppe: row(UNPAVED, null),
   // the Ruhr, 1962
   railyard: row(PROTECTED, null),
   // the Fulda Gap, 1984 (built-env-270, the photos: the Kreisstraßen and the village's through road a patched dark asphalt
-  // with white edge lines, the farm roads (Wirtschaftswege) concrete slabs; the ponds' edges mud under rushes)
-  frontier: row({ paved: { tone: 0.82, patches: 0.8, cracks: 0.6, covers: 0.4, markings: 1 }, paths: ['patched', 'patched', 'concrete', 'concrete', null, null], work: 'off' },
+  // with white edge lines, the farm roads asphalt too (r1: their concrete slabs at the map's gauge read as a pale runway with
+  // a sawtooth edge); the ridge lanes earth; the ponds' edges mud under rushes)
+  frontier: row({ paved: { tone: 0.82, patches: 0.8, cracks: 0.6, covers: 0.4, markings: 1 }, paths: ['patched', 'patched', 'patched', 'patched', null, null], work: 'off' },
     'hessian', banked({ kind: 'mud', widthM: 2.5, hex: 0x5e5444 })),
   // Bjerkvik on the Herjangsfjord, May 1940 (built-env-270, the photos: the gravel roads stay; the shore shingle and cobbles
   // of grey granite and gneiss between smooth slabs, no sand beach)
@@ -179,9 +179,9 @@ export const BUILT_ENVIRONMENT = Object.freeze({
   mangrove: row({ paved: { tone: 0.95, patches: 0.6, cracks: 0.8, covers: 0 }, paths: ['concrete', 'concrete', 'concrete', 'concrete', 'concrete'], work: 'climate' }, null,
     { boats: 'xuong', jetty: 'stilts', reeds: 'nipa', drift: 'breton', ford: 'gauge', bank: { kind: 'mud', widthM: 6, hex: 0x6a6252 } }),
   // the Dalmatian bay, 1992
-  // (built-env-270, the photos: the coast road and the village streets a patched asphalt; the beach pale limestone shingle
-  // and pebbles, not sand)
-  saltwind: row({ paved: { tone: 0.92, patches: 1, cracks: 0.8, covers: 0.3, markings: 0.6 }, paths: ['patched', 'patched', 'patched', null, null, null], work: 'off' },
+  // (built-env-270, the photos: the coast road and the village streets a patched asphalt — r1: every street, the cameras'
+  // too; the beach pale limestone shingle and pebbles, not sand)
+  saltwind: row({ paved: { tone: 0.92, patches: 1, cracks: 0.8, covers: 0.3, markings: 0.6 }, paths: ['patched', 'patched', 'patched', 'patched', 'patched', 'patched'], work: 'off' },
     'dalmatian', { boats: 'gajeta', jetty: 'riva', reeds: 'phragmites', drift: 'breton', ford: 'gauge', bank: { kind: 'shingle', widthM: 14, hex: 0xd2cdc3, stoneM: 0.07 } }),
   // the Rur dams, 1944–45 (built-env-270, the photos: the lakes drawn down that winter, a wide bare band of grey-brown slate
   // and greywacke scree and silt below the dark root line)
