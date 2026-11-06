@@ -9,7 +9,7 @@ import { assertGarageScreenSettled, canTransitionAppPhase, createAppLifecycle, G
 import { createBattleEntryLifecycle } from './battleEntryLifecycle.ts';
 import { createSoloBattleEntryRuntime } from './soloBattleEntryRuntime.ts';
 import { createBattleAgainAction } from './battleAgainAction.ts';
-import { createGameState } from './stateCore.ts';
+import { createBus, createGameState } from './stateCore.ts';
 import { mainSource, mainStatement, runMainStatements } from '../app/mainComposition.test-support.mjs';
 
 const { createGarageReturnRuntime, GARAGE_RETURN_EDGES = {} } = garageReturnModule;
@@ -22,11 +22,15 @@ function deferred() {
 const flush = async (turns = 12) => { for (let i = 0; i < turns; i += 1) await Promise.resolve(); };
 
 function createFixture({ restore = null, clearBattle = () => {}, phase = 'battle', placement = null, entryScheduler = null,
-  showGarage = () => {}, transitionRun = null } = {}) {
+  showGarage = () => {}, transitionRun = null, bus = null } = {}) {
   const game = createGameState();
   game.phase = phase;
   const announcements = [];
-  const lifecycle = createAppLifecycle({ game, announce: (announcement) => announcements.push(announcement) });
+  // (bus: main's, where the lifecycle announces phase:change)
+  const lifecycle = createAppLifecycle({ game, announce: (announcement) => {
+    announcements.push(announcement);
+    bus?.emit('phase:change', announcement);
+  } });
   const sleeps = [];
   let now = 0;
   let entryPending = false;
@@ -842,6 +846,55 @@ const started = ['emit:ui:click', 'emit:ui:battleStart', 'cover@garage', 'load@g
       assert.equal(main.notices.at(-1).retry, main.retryGarageReturn, `${label}: the bare Retry again`);
     }
   }
+}
+
+// (round 4 F1, review r1) The records drop a battle's tally at every Garage again (profile.ts, serviceRecord.ts). Round 2
+// U19 kept a tally that had not reached its battle through a 'garage' announced from a battle's screen, for one producer:
+// the Garage press announced under a return's veil, before that return handed the screen over. Round 4 F1 announces that
+// press after the return, as every other announcer already waited (the solo entry; a network round, main's
+// takeSceneForRound), so the battle before's 'garage' always comes first. What still reached the exception was an entry
+// that never reached its battle: a kept room's rematch announced over the report (browserComposition's
+// roster.emitBattleStart, main's bus emit), which then failed, and whose covered restore (failRound: room.enterGarage,
+// main's enterGarageWithExit) announced the Garage from the battle's screen. Its tally survived, and the next battle its
+// entry did not announce (the debug hook) was recorded under the rematch's vehicle. The real return, the real app
+// lifecycle, the real profile and service record.
+{
+  const storage = new Map();
+  globalThis.localStorage ??= {
+    getItem: (key) => storage.get(key) ?? null,
+    setItem: (key, value) => storage.set(key, String(value)),
+    removeItem: (key) => storage.delete(key),
+  };
+  const { installBattleRecords, getPlayerRecord } = await import('./profile.ts');
+  const { installServiceRecord, getServiceRecord } = await import('./serviceRecord.ts');
+  const bus = createBus();
+  const f = createFixture({ phase: 'garage', bus });
+  installBattleRecords(bus);
+  installServiceRecord(bus, {
+    playerId: () => 'me', playerTeam: () => 'player', teamOf: () => null, gameMode: () => 'standard', clockS: () => 0,
+    playerHpFraction: () => 1, playerMaxHp: () => 2000, playerNation: () => 'Germany', playerAerialKind: () => null,
+    respawns: () => false, playerObjectiveTeam: () => null,
+  });
+  // the room's round: announced, fought and ended; its report is the screen
+  bus.emit('ui:battleStart', { playerId: 'me', specId: 'm1a1_abrams_hc', mapId: 'verdant' });
+  transitionAppPhase(f.game, 'battle', { reason: 'network-activation' });
+  bus.emit('battle:ended', { result: 'victory', durationS: 61, mapId: 'verdant', gameMode: 'standard', roster: [] });
+  const matches = getPlayerRecord().matches;
+  const rows = getServiceRecord().history.length;
+  // the kept room's rematch is announced over the report, and fails before its battle: its covered restore
+  bus.emit('ui:battleStart', { playerId: 'me', specId: 'leo2_improved', mapId: 'urban' });
+  await f.runtime.enter();
+  assert.equal(f.runtime.state, 'idle');
+  assert.deepEqual(f.announcements.at(-1), { phase: 'garage', from: 'battle', reason: 'garage-return:screen' },
+    "(the restore announces the Garage from the battle's screen)");
+  // a battle its entry did not announce (__DEBUG.beginSoloBattle) is fought and ends
+  transitionAppPhase(f.game, 'battle', { reason: 'solo-start' });
+  bus.emit('battle:ended', { result: 'defeat', durationS: 12, mapId: 'desert', gameMode: 'standard', roster: [] });
+  assert.equal(getPlayerRecord().matches, matches,
+    "the failed rematch's tally records no later battle (0edd0e1ab5: the debug battle, under leo2_improved)");
+  assert.equal(getServiceRecord().history.length, rows + 1, '(the service record tracks the debug battle afresh)');
+  assert.notEqual(getServiceRecord().history[0]?.vehicleId, 'leo2_improved',
+    "and its row is not the failed rematch's (0edd0e1ab5: the rematch's tracker, kept through its restore)");
 }
 
 console.log('garageReturnState.selftest: explicit return state, named busy refusals, event-driven Battle Again, a failed return\'s exit for every caller, superseded returns open nothing passed');

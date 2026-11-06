@@ -149,7 +149,8 @@ function createEntry({ whenGarageSettled, canTakeScene } = {}) {
 // 4 F1 hands it to the entry, after the wait), and a Play-menu start announced before it waited; the return's own
 // 'garage' announcement (the battle before leaving, from its screen) then dropped the queued battle's tally and
 // tracker: no match in the history, and the service record's row lost its vehicle and map (mobilelap's map cycle did
-// this).
+// this). (round 4 F1, review r1) Both starts now announce after the return's 'garage', so the records drop a tally at
+// every Garage again (round 2 U19's exception is gone; garageReturnState's records case).
 {
   const { installServiceRecord, getServiceRecord } = await import('./serviceRecord.ts');
   const serviceContext = {

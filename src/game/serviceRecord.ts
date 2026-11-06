@@ -240,8 +240,6 @@ interface BattleTracker {
   vehicleId: string;
   mapId: string;
   startedAt: number;
-  /** (round 2 U19) Its battle took the scene (phase:change 'battle' since it began). */
-  reached: boolean;
   kills: number;
   damage: number;
   damageTaken: number;
@@ -520,7 +518,7 @@ export function markServiceRecordSeen(): void {
 
 function newTracker(vehicleId: string, mapId: string): BattleTracker {
   return {
-    vehicleId, mapId, startedAt: Date.now(), reached: false,
+    vehicleId, mapId, startedAt: Date.now(),
     kills: 0, damage: 0, damageTaken: 0, blocked: 0, shots: 0, aimedShots: 0, aimedHits: 0,
     pending: [], streak: 0, bestStreak: 0, chain: 0, bestChain: 0, lastKillT: -Infinity,
     longestKillM: 0, killShots: new Map(), damaged: new Set(), damageBy: new Map(), spotted: new Set(),
@@ -576,11 +574,13 @@ export function installServiceRecord(bus: ServiceEventBus | null | undefined, ct
     const next = text(recordOf(payload)?.phase);
     // Leaving a battle without its result (a quit) drops what it tracked; debug and API entry can skip the garage's
     // battle start, so arriving in one starts tracking if nothing is.
-    // (round 2 U19) only its own battle's leaving: a start queued under a Garage return began tracking before the
-    // battle before handed its screen to the Garage, and that hand-over is not this battle's quit
-    if (phase === 'battle' && next !== 'battle' && battle?.reached !== false) battle = null;
+    // (round 4 F1, review r1) Every leaving drops it, as profile.ts drops its tally at every 'garage': every announcer
+    // waits for a Garage return in flight, so the battle before hands its screen over before the next start begins
+    // tracking. Round 2 U19 kept a tracker that had not reached its battle through that hand-over, for the Garage press
+    // announced under a return's veil; with the press waiting, only an entry that never reached its battle met it (a kept
+    // room's rematch that failed over the report), whose tracker then took the next battle no entry announced.
+    if (phase === 'battle' && next !== 'battle') battle = null;
     if (next === 'battle' && !battle) start({});
-    if (next === 'battle' && battle) battle.reached = true;
     phase = next;
   });
 
