@@ -529,6 +529,23 @@ function searchScene(hidden = true) {
       && toggled.first.searchFailures === toggled.before.searchFailures && toggled.oldWaypointTicks > 300,
       `a ${parkS} s Take and Leave of the bot on its leg: the hull coasts on along it and the leg runs on (${coasted(toggled)}; ${label(toggled)})`);
   }
+  // the cursor: taken just short of the leg's first waypoint, the hull coasts past it; handed back, it drives on to the
+  // next one, not back to the one behind it (a mutant that keeps the cursor turns round and drives back to 16 m of it)
+  {
+    const { bot, ctl, run, hull, clock } = searchScene();
+    run(40, (info) => info.searching);
+    const wp = () => ctl.debugInfo();
+    run(60, (info) => info.wpIndex === 0 && Math.hypot(info.waypointX - bot.state.pos.x, info.waypointZ - bot.state.pos.z) < 10);
+    const before = wp();
+    const passed = { x: before.waypointX, z: before.waypointZ };
+    const took = takeAndLeave(bot, ctl, clock, hull, 2, null);
+    const back = wp();
+    const behindAtLeave = Math.hypot(passed.x - bot.state.pos.x, passed.z - bot.state.pos.z);
+    let closest = behindAtLeave;
+    run(8, () => { closest = Math.min(closest, Math.hypot(passed.x - bot.state.pos.x, passed.z - bot.state.pos.z)); return false; });
+    ok(before.wpCount > 1 && back.searchLegs === before.searchLegs && back.wpIndex === before.wpIndex + 1 && closest >= behindAtLeave - 0.5,
+      `a 2 s Take and Leave over the leg's waypoint ${before.wpIndex} of ${before.wpCount}: the cursor moves past it and the hull drives on (${coasted(took)}; cursor ${before.wpIndex} -> ${back.wpIndex}, ${behindAtLeave.toFixed(1)} m past it at Leave, never nearer than ${closest.toFixed(1)} m after)`);
+  }
 }
 
 console.log('[9] a displaced search leg waits for the route that took it through a park: its wait moves with the park, or starts at Leave');
