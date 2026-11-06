@@ -1,6 +1,6 @@
 import { launchGuardedBrowser } from './browser-launch.mjs';
-import { freezePage, openCaptureHold, thawPage } from './capture-hold.mjs';
-import { heldRunExitCode, heldStopWhy, runHeldItem } from './held-items.mjs';
+import { freezePage, thawPage } from './capture-hold.mjs';
+import { heldRunExitCode, heldStopWhy, openHeldRun, runHeldItem } from './held-items.mjs';
 // Render the current 30-map Studio duel collection.
 // Usage:
 //   npm run studio:examples -- --out shots/studio-modern-examples
@@ -159,8 +159,10 @@ const HERO_RAIL_SCENARIOS = HERO_RAIL_FILES.map(heroRailScenario);
  * stand-in lock, its log, its teardown).
  */
 export async function renderStudioExamples(args = process.argv.slice(2), { createServer = null, puppeteer = null, hold: holdOptions = {} } = {}) {
+  // (round 4 E10 review) the last occurrence: a finishing run named by a stop appends --only <left> to the same options,
+  // which may hold an --only already (a finishing run stopped again); the first one won, and every take ran again
   function opt(name, fallback) {
-    const index = args.indexOf(`--${name}`);
+    const index = args.lastIndexOf(`--${name}`);
     return index >= 0 ? args[index + 1] : fallback;
   }
 
@@ -239,11 +241,13 @@ export async function renderStudioExamples(args = process.argv.slice(2), { creat
   // again. The grace (300 s, not the default 60) lets a take in flight when the cap comes finish before its yield. A hold
   // that was stopped (a signal, a yield that could not hold again) ends the run and names the --only run that finishes
   // it. (round 4 E10) Each take's end is tools/held-items.mjs runHeldItem's and the exit code heldRunExitCode's: a
-  // failed take still fails the run (exit 1), takes left exit 3 (the stop was rethrown: 1), a signal's 128 + n stands.
+  // failed take still fails the run (exit 1), takes left exit 3 (the stop was rethrown: 1), a signal's 128 + n stands,
+  // also while queued (openHeldRun: nothing rendered).
   let page = null, frozen = null, takesLeft = [], nextTake = 0;
-  const hold = await openCaptureHold({ label: 'studio-example-videos', timeoutMs: 45 * 60 * 1000, graceSeconds: 300,
+  const hold = await openHeldRun({ label: 'studio-example-videos', timeoutMs: 45 * 60 * 1000, graceSeconds: 300,
     onYield: async () => { frozen = await freezePage(page); },
     onResume: async () => { await thawPage(page, frozen); frozen = null; }, ...holdOptions });
+  if (!hold) return;
 
   const port = 7800 + Math.floor(Math.random() * 400);
   let server = null;

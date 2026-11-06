@@ -1,6 +1,6 @@
 import { launchGuardedBrowser } from '../browser-launch.mjs';
-import { freezePage, openCaptureHold, thawPage } from '../capture-hold.mjs';
-import { heldRunExitCode, heldStopWhy, runHeldItem } from '../held-items.mjs';
+import { freezePage, thawPage } from '../capture-hold.mjs';
+import { heldRunExitCode, heldStopWhy, openHeldRun, runHeldItem } from '../held-items.mjs';
 // tools/marketing-shots/shoot.mjs — marketing screenshot batch driver.
 //
 // Drives window.__STUDIO (docs/STUDIO.md) over every scene JSON in
@@ -46,8 +46,10 @@ function pngSize(buf) {
  */
 export async function shootMarketing(args = process.argv.slice(2), { createServer = null, puppeteer = null, hold: holdOptions = {} } = {}) {
   // --- options -----------------------------------------------------------------
+  // (round 4 E10 review) the last occurrence: a finishing run named by a stop appends --match <left> to the same options,
+  // which may hold a --match already (a finishing run stopped again); the first one won, and every scene was shot again
   function opt(name, fallback) {
-    const i = args.indexOf(`--${name}`);
+    const i = args.lastIndexOf(`--${name}`);
     return i >= 0 ? args[i + 1] : fallback;
   }
   const WIDTH = parseInt(opt('width', '3840'), 10);
@@ -85,11 +87,12 @@ export async function shootMarketing(args = process.argv.slice(2), { createServe
   // comes (a map change builds a world) finish before its yield. A hold that was stopped (a signal, a yield that could not
   // hold again) ends the pass and names the --match run that finishes it. (round 4 E10) Each scene's end is
   // tools/held-items.mjs runHeldItem's and the exit code heldRunExitCode's: 1 for a FAILED scene, 3 for scenes left
-  // only (it was 1 for both), a signal's 128 + n stands (it was 1).
+  // only (it was 1 for both), a signal's 128 + n stands (it was 1), also while queued (openHeldRun: nothing shot).
   let page = null, frozen = null;
-  const hold = await openCaptureHold({ label: 'shoot', timeoutMs: 30 * 60 * 1000, graceSeconds: 180,
+  const hold = await openHeldRun({ label: 'shoot', timeoutMs: 30 * 60 * 1000, graceSeconds: 180,
     onYield: async () => { frozen = await freezePage(page); },
     onResume: async () => { await thawPage(page, frozen); frozen = null; }, ...holdOptions });
+  if (!hold) return;
 
   let failed = false, leftFrom = null, next = 0, server = null, browser = null;
   const shot = [];

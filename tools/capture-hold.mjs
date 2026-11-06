@@ -387,12 +387,17 @@ const turn = () => new Promise((next) => setImmediate(next));
 //   browsers stop drawing), then the caller's own finally (a server stopped, a temporary directory removed) reaches its
 //   release(), which resolves, so what follows it (a report written) runs too. A queued hold leaves the queue and its
 //   openCaptureHold rejects; a hold waiting in its cap yield's re-queue leaves it and its checkpoint() (or between())
-//   rejects; one started meanwhile rejects at once. The exit code is 128 + n unless the tool sets its own;
+//   rejects; one started meanwhile rejects at once. The exit code is 128 + n (kept: see below);
 //   the process ends when its work is done, or `signalWaitMs` after the last release at most. A caller that has not
 //   released within `signalWaitMs` of its teardown is released for it, and the process exits then. On base (a direct
 //   acquire) puppeteer's own SIGTERM listener kept such a tool alive, so its finally cleaned up; the first open form
 //   exited within microseconds of the signal, and those finallies never ran. (round 3 B16) SIGINT too: puppeteer's SIGINT
 //   listener exits the process inside itself, so tools/browser-launch.mjs launchGuardedBrowser hands it handleSIGINT: false.
+// Either way the process exits 128 + n. (round 4 E10 review) An 'exit' listener keeps that code however the process ends
+// from the signal on: a tool's last `process.exit(failed ? 1 : 0)` after its release (screenshot, gunnery_gate, perfprobe,
+// the audio smokes, studio-selftest, visual-evaluator and others exited 1, or 0 when the signal came after the last page
+// call), or an uncaught rejection (a queued openCaptureHold rejects with the signal's error: exit 1 and a stack). A tool
+// that passes `signals: []` owns its signals and its exit code.
 const liveHolds = new Set();
 let signalStop = null, stopSignal = null;
 const NEVER = new Promise(() => {});
@@ -402,6 +407,7 @@ function onHoldSignal(signal) {
   stopSignal = signal;
   const code = 128 + (constants.signals[signal] ?? 15);
   process.exitCode = code;
+  process.on('exit', () => { process.exitCode = code; }); // the process's code, whatever ends it (Node exits with it)
   refuseGuardedLaunches(`${signal}: the process is stopping`); // never lifted
   const holds = [...liveHolds];
   signalStop = Promise.allSettled(holds.map((hold) => hold.stopForSignal(signal))).then(() => {

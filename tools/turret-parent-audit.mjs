@@ -1,7 +1,6 @@
 import { launchGuardedBrowser } from './browser-launch.mjs';
 import { eachBrowserChunk } from './browser-id-chunks.mjs';
-import { openCaptureHold } from './capture-hold.mjs';
-import { heldRunExitCode, heldStopWhy, runHeldItem } from './held-items.mjs';
+import { heldRunExitCode, heldStopWhy, openHeldRun, runHeldItem } from './held-items.mjs';
 import { uniqueIds } from './id-list.mjs';
 // Turret-furniture parenting audit driver (owner law 2026-08-04,
 // BUILD-STANDARD §B5): fleet driver for tools/turret-parent-audit.html.
@@ -28,8 +27,10 @@ export async function runTurretParentAudit(argv = process.argv.slice(2), { creat
   createServer ??= (await import('vite')).createServer;
   puppeteer ??= (await import('puppeteer')).default;
   // (round 3 A5 review) the grace is the page's own step timeout (180 s, not the default 60): an id in flight when the lock's
-  // cap comes finishes before the hold yields (see the id loop)
-  const hold = await openCaptureHold({ label: 'turret-parent-audit', timeoutMs: 45 * 60 * 1000, graceSeconds: 180, ...holdOptions });
+  // cap comes finishes before the hold yields (see the id loop). (round 4 E10 review) A signal while queued (up to 45 min)
+  // ends the run with nothing audited, its 128 + n kept (openHeldRun); the open's rejection was uncaught (exit 1).
+  const hold = await openHeldRun({ label: 'turret-parent-audit', timeoutMs: 45 * 60 * 1000, graceSeconds: 180, ...holdOptions });
+  if (!hold) return;
 
   const idArg = argv.find((a) => a.startsWith('--ids='));
   const launchOptions = {

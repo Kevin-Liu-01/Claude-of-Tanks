@@ -21,6 +21,16 @@
 //            step outside the items (turret-parent-audit's roster page, shoot's Vite start: its launch is then refused),
 //            which threw past the signal's code (exit 1);
 //   stills   (E10) a --stills run with --only keeps the takes stills.json already lists (it listed only its own).
+// (round 4 review) And per tool:
+//   refused  a cap yield whose re-queue fails without a signal (its wait ran out) stops the run: the item it yielded
+//            before is left with the rest, named, exit 3 (runHeldItem's rejected checkpoint);
+//   finish   the finishing run a stop names (the same options and --only / --match <left>) runs only what was left: the
+//            options read the first --only / --match, so a run that had one rendered every take or scene again;
+//   signal   SIGTERM while queued for the lock (the open's rejection was uncaught: exit 1), while the run waits in a cap
+//            yield's re-queue, and during studio-example-videos' boot: each exits 143 and says what is left;
+//   owner    the signal owner keeps 128 + n for every open-form tool however it ends: its last `process.exit(failed ? 1 :
+//            0)` after the release (screenshot, gunnery_gate, perfprobe, the audio smokes, studio-selftest,
+//            visual-evaluator: exit 1) or an uncaught queued open (exit 1); and tools/held-items.mjs's rules directly.
 // No real browser, server or lock starts; the real Chrome runs stay the owner's (manualRecommended).
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
@@ -29,6 +39,8 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { mock } from 'node:test';
 import { fileURLToPath } from 'node:url';
+import { openCaptureHold } from './capture-hold.mjs';
+import { heldRunExitCode, heldStopWhy, runHeldItem } from './held-items.mjs';
 import { shootMarketing } from './marketing-shots/shoot.mjs';
 import { renderStudioExamples } from './studio-example-videos.mjs';
 import { runTurretParentAudit } from './turret-parent-audit.mjs';
@@ -55,14 +67,25 @@ const PNG = (() => {
 
 /** The capture lock as a hold sees it (capture-lock.mjs createCaptureLock): held once acquired, its cap while held, and
  *  checkpoint()'s rule: past the cap with anyone waiting, beforeYield (still held), the release, the re-queue (that
- *  `signal` withdraws), held again, afterResume. */
-function standInLock({ waiters, events }) {
+ *  `signal` withdraws), held again, afterResume. `capMs` 0: the first checkpoint finds the cap passed (and the hold's own
+ *  cap check none). `queued`: the acquire waits until its `signal` withdraws it, `onQueue` called as it starts. `requeue`:
+ *  'resume' (held again after REQUEUE_MS), 'refuse' (the re-queue's wait runs out: it rejects) or 'wait' (until its
+ *  `signal` withdraws it, `onQueue` called as it starts). A wait keeps the event loop alive, as the real lock's poll does. */
+function standInLock({ waiters, events, capMs = CAP_MS, queued = false, requeue = 'resume', onQueue = null }) {
   let held = false, since = 0;
+  const waitForWithdraw = (signal) => new Promise((_, withdraw) => {
+    const poll = setInterval(() => {}, SECOND);
+    onQueue?.();
+    signal?.addEventListener('abort', () => { clearInterval(poll); withdraw(signal.reason); }, { once: true });
+  });
   const lock = {
     get nested() { return false; },
     get held() { return held; },
-    get heldCapMs() { return held ? CAP_MS : null; },
-    async acquire() { held = true; since = Date.now(); events.push(`hold@${at()}`); },
+    get heldCapMs() { return held ? capMs : null; },
+    async acquire(_timeoutMs, { signal = null } = {}) {
+      if (queued) await waitForWithdraw(signal);
+      held = true; since = Date.now(); events.push(`hold@${at()}`);
+    },
     refresh() { return held; },
     waiting() { return waiters; },
     release() {
@@ -73,12 +96,13 @@ function standInLock({ waiters, events }) {
     },
     async checkpoint({ beforeYield = null, afterResume = null, signal = null } = {}) {
       if (!held) throw new Error('checkpoint(): this lock holds nothing');
-      if (Date.now() - since < CAP_MS || !waiters) return { yielded: false };
+      if (Date.now() - since < capMs || !waiters) return { yielded: false };
       if (beforeYield) await beforeYield();
       lock.release();
       events.push(`yield@${at()}`);
+      if (requeue === 'wait') await waitForWithdraw(signal);
       await new Promise((resume, withdraw) => {
-        const timer = setTimeout(resume, REQUEUE_MS);
+        const timer = setTimeout(() => (requeue === 'refuse' ? withdraw(new Error('stand-in: the re-queue\'s wait ran out')) : resume()), REQUEUE_MS);
         signal?.addEventListener('abort', () => { clearTimeout(timer); withdraw(signal.reason); }, { once: true });
       });
       held = true;
@@ -181,9 +205,9 @@ const indexOfEvent = (events, prefix) => events.findIndex((event) => event.start
 
 // ---- turret-parent-audit: ids, grace 180 s, an idle page through the yield ------------------------------------------------
 const IDS = ['tpa_one', 'tpa_two', 'tpa_three', 'tpa_four'];
-async function turretRun({ idMs, graceSeconds }) {
+async function turretRun({ idMs, graceSeconds, requeue = 'resume' }) {
   const dir = scratch(), events = [], holdLog = [];
-  const lock = standInLock({ waiters: 1, events });
+  const lock = standInLock({ waiters: 1, events, requeue });
   const chrome = standInChrome({ events, script: ({ method, url }) => {
     const id = /[?&]id=([^&]+)/.exec(url)?.[1];
     if (method === 'goto') return { ms: SECOND };
@@ -199,20 +223,22 @@ async function turretRun({ idMs, graceSeconds }) {
 
 // ---- marketing-shots/shoot: scenes, grace 180 s, the Studio page frozen through the yield -------------------------------
 const SCENES = ['01_a', '02_b', '03_c', '04_d'];
-async function shootRun({ sceneMs, graceSeconds }) {
-  const dir = scratch(), events = [], holdLog = [];
+async function shootRun({ sceneMs, graceSeconds, requeue = 'resume', extra = [], waiters = 1, dir = scratch() }) {
+  const events = [], holdLog = [], loaded = [];
   const scenesDir = join(dir, 'scenes'), out = join(dir, 'raw');
-  mkdirSync(scenesDir);
+  mkdirSync(scenesDir, { recursive: true });
   for (const name of SCENES) writeFileSync(join(scenesDir, `${name}.json`), JSON.stringify({ map: 'verdant', name }));
-  const lock = standInLock({ waiters: 1, events });
+  const lock = standInLock({ waiters, events, requeue });
   const chrome = standInChrome({ events, script: ({ method, arg }) => {
     if (method !== 'evaluate') return {};
     if (typeof arg === 'number') return { value: { dataURL: PNG } }; // __STUDIO.capture({ width })
+    loaded.push(arg.name);
     return { ms: sceneMs(arg.name) }; // __STUDIO.load(scene): the scene's world
   } });
-  const run = await onMockClock(() => shootMarketing(['--scenes', scenesDir, '--out', out, '--width', '64'], { createServer: standInVite,
+  const args = ['--scenes', scenesDir, '--out', out, '--width', '64', ...extra];
+  const run = await onMockClock(() => shootMarketing(args, { createServer: standInVite,
     puppeteer: chrome.launcher, hold: holdFor({ lock, chrome, holdLog, graceSeconds }) }));
-  return { ...run, events, holdLog: holdLog.join('\n'), shot: SCENES.filter((name) => existsSync(join(out, `${name}.png`))) };
+  return { ...run, args, events, holdLog: holdLog.join('\n'), loaded, shot: SCENES.filter((name) => existsSync(join(out, `${name}.png`))) };
 }
 
 // ---- studio-example-videos: takes, grace 300 s, the Studio page frozen through the yield ----------------------------------
@@ -229,35 +255,42 @@ const listed = (dir) => {
   const file = join(dir, 'stills.json');
   return existsSync(file) ? JSON.parse(readFileSync(file, 'utf8')).stills.map((still) => `${still.index}:${still.tMs}`) : [];
 };
-async function studioRun({ takeMs, graceSeconds, args = ['--count', '4', '--stills', '0'], waiters = 1, dir = scratch() }) {
-  const events = [], holdLog = [];
-  const lock = standInLock({ waiters, events });
-  const chrome = studioChrome({ takeMs, events });
+async function studioRun({ takeMs, graceSeconds, args = ['--count', '4', '--stills', '0'], waiters = 1, dir = scratch(), requeue = 'resume' }) {
+  const events = [], holdLog = [], staged = [];
+  const lock = standInLock({ waiters, events, requeue });
+  const chrome = studioChrome({ takeMs, events, onCall: ({ method, arg }) => { if (method === 'evaluate' && Number.isInteger(arg?.index)) staged.push(arg.index); } });
   const run = await onMockClock(() => renderStudioExamples([...args, '--out', dir], { createServer: standInVite,
     puppeteer: chrome.launcher, hold: holdFor({ lock, chrome, holdLog, graceSeconds }) }));
-  return { ...run, events, holdLog: holdLog.join('\n'), stills: listed(dir) };
+  return { ...run, events, holdLog: holdLog.join('\n'), stills: listed(dir), staged };
 }
 
 // ---- (E10) the signal child: one tool, SIGTERM while its first item runs, or while it boots --------------------------------
+// (round 4 review) or while it waits in the queue (<tool>-queued), or in a cap yield's re-queue (<tool>-requeue); and the
+// signal owner alone, under an open-form tool's way out (open-exit: its last process.exit(failed ? 1 : 0); open-uncaught:
+// a queued open nobody catches)
 if (process.argv[2] === '--signal-child') {
-  const [tool, dir] = process.argv.slice(3);
+  const [mode, dir] = process.argv.slice(3);
+  const [tool, phase = 'item'] = mode.split('-');
   const events = [];
-  const lock = standInLock({ waiters: 0, events });
   let signalled = false;
   // the first item's long call (the id's page, the roster's page, the scene's world, the take's world) never answers;
-  // SIGTERM comes during it (shoot-boot: while Vite starts, so the browser's launch comes after it and is refused)
+  // SIGTERM comes during it (boot: while Vite starts, so the browser's launch comes after it and is refused; queued: while
+  // the acquire waits; requeue: while the first checkpoint's yield waits to hold again)
   const signalOnce = () => {
     if (signalled) return;
     signalled = true;
     setTimeout(() => process.kill(process.pid, 'SIGTERM'), 20);
   };
+  const lock = phase === 'queued' || phase === 'uncaught' ? standInLock({ waiters: 0, events, queued: true, onQueue: signalOnce })
+    : phase === 'requeue' ? standInLock({ waiters: 1, events, capMs: 0, requeue: 'wait', onQueue: signalOnce })
+      : standInLock({ waiters: 0, events });
   const long = { ms: Infinity };
+  const onItem = phase === 'item' || phase === 'list' || phase === 'exit';
   const scripts = {
-    turret: ({ method }) => (method === 'waitForFunction' ? (signalOnce(), long) : {}),
-    'turret-list': ({ method }) => (method === 'waitForFunction' ? (signalOnce(), long) : {}),
-    shoot: ({ method, arg }) => (method === 'evaluate' && arg?.name ? (signalOnce(), long) : {}),
-    'shoot-boot': () => ({}),
-    studio: ({ method, arg }) => (method === 'evaluate' && Number.isInteger(arg?.index) ? (signalOnce(), long) : {}),
+    turret: ({ method }) => (onItem && method === 'waitForFunction' ? (signalOnce(), long) : {}),
+    shoot: ({ method, arg }) => (onItem && method === 'evaluate' && arg?.name ? (signalOnce(), long) : {}),
+    studio: ({ method, arg }) => (onItem && method === 'evaluate' && Number.isInteger(arg?.index) ? (signalOnce(), long) : {}),
+    open: ({ method }) => (onItem && method === 'goto' ? (signalOnce(), long) : {}),
   };
   const chrome = standInChrome({ events, script: scripts[tool] });
   // Vite comes up once the hold's signal owner has taken the SIGTERM (it sets the exit code first), however late it runs
@@ -266,21 +299,38 @@ if (process.argv[2] === '--signal-child') {
     for (let wait = 0; process.exitCode !== 143 && wait < 3000; wait++) await new Promise((done) => setTimeout(done, 10));
     return standInVite(config);
   };
-  const deps = { createServer: tool === 'shoot-boot' ? slowVite : standInVite, puppeteer: chrome.launcher,
-    hold: { lock, log: () => {}, teardown: chrome.teardown } };
+  const deps = { createServer: phase === 'boot' ? slowVite : standInVite, puppeteer: chrome.launcher,
+    hold: { lock, log: (line) => console.error(line), teardown: chrome.teardown } };
   // each tool's own command-line entry, its stand-ins aside
   if (tool === 'turret') {
-    await runTurretParentAudit(['--ids=tpa_one,tpa_two'], { ...deps, outFile: join(dir, 'turret-parent.json') });
-  } else if (tool === 'turret-list') {
-    await runTurretParentAudit([], { ...deps, outFile: join(dir, 'turret-parent.json') });
-  } else if (tool === 'shoot' || tool === 'shoot-boot') {
+    await runTurretParentAudit(phase === 'list' ? [] : ['--ids=tpa_one,tpa_two'], { ...deps, outFile: join(dir, 'turret-parent.json') });
+  } else if (tool === 'shoot') {
     const scenesDir = join(dir, 'scenes');
     mkdirSync(scenesDir);
     for (const name of ['01_a', '02_b']) writeFileSync(join(scenesDir, `${name}.json`), JSON.stringify({ map: 'verdant', name }));
     await shootMarketing(['--scenes', scenesDir, '--out', join(dir, 'raw'), '--width', '64'], deps);
     process.exit();
-  } else {
+  } else if (tool === 'studio') {
     await renderStudioExamples(['--count', '2', '--stills', '0', '--out', dir], deps);
+  } else if (phase === 'exit') {
+    // an open-form tool's shape (screenshot.mjs and the others): its hold, its page call cut by the hold's teardown, the
+    // finally's release, then its own exit
+    const hold = await openCaptureHold({ label: 'open-exit', ...deps.hold });
+    let failed = false;
+    const browser = await chrome.launcher.launch();
+    try {
+      await (await browser.newPage()).goto('http://localhost:7461/');
+    } catch (error) {
+      failed = true;
+      console.error(`[open-exit] FAILED: ${error.message}`);
+    } finally {
+      await browser.close();
+      await hold.release();
+    }
+    process.exit(failed ? 1 : 0);
+  } else {
+    // a queued open nobody catches: its rejection ends the process
+    await openCaptureHold({ label: 'open-uncaught', ...deps.hold });
   }
 } else {
   const failed = [];
@@ -298,7 +348,9 @@ if (process.argv[2] === '--signal-child') {
   });
   try {
     // the signal children start first (each imports its tool); the mock-clock cases run meanwhile
-    const children = Object.fromEntries(['turret', 'turret-list', 'shoot', 'shoot-boot', 'studio'].map((tool) => [tool, signalChild(tool)]));
+    const children = Object.fromEntries(['turret', 'turret-list', 'shoot', 'shoot-boot', 'studio', 'studio-boot',
+      'turret-queued', 'shoot-queued', 'studio-queued', 'turret-requeue', 'shoot-requeue', 'studio-requeue', 'open-exit', 'open-uncaught']
+      .map((tool) => [tool, signalChild(tool)]));
 
     // ---- turret-parent-audit -------------------------------------------------------------------------------------------
     await check('turret-parent-audit yield', async () => {
@@ -400,9 +452,91 @@ if (process.argv[2] === '--signal-child') {
       assert.deepEqual(again.stills, ['1:0', '2:0', '2:500', '3:0'], 'take 2\'s stills replaced, in index order');
     });
 
+    // ---- (round 4 review) a cap yield whose re-queue fails without a signal: the run is stopped, the rest left ---------------
+    // the stand-in's re-queue runs out 120 s after the yield (the real wait is the tool's acquire timeout); the hold stops the
+    // work at once (nothing is held) and runHeldItem's rejected checkpoint leaves the item it came before
+    await check('turret-parent-audit re-queue refused', async () => {
+      const run = await turretRun({ idMs: () => 450 * SECOND, requeue: 'refuse' });
+      assert.match(run.holdLog, /the cap yield did not hold again \(stand-in: the re-queue's wait ran out\); stopping the work/, run.holdLog);
+      assert.deepEqual(run.rows.map((row) => row.id), IDS.slice(0, 3), 'the ids before the yield are written, none an ERROR row');
+      assert.match(run.said, /1 id\(s\) left[^\n]*--ids=tpa_four\b/, `the id left is named (${run.said})`);
+      assert.equal(run.exitCode, 3, `ids left: exit 3 (${run.exitCode})`);
+    });
+    await check('shoot re-queue refused', async () => {
+      const run = await shootRun({ sceneMs: () => 450 * SECOND, requeue: 'refuse' });
+      assert.match(run.holdLog, /the cap yield did not hold again/, run.holdLog);
+      assert.deepEqual(run.shot, SCENES.slice(0, 3));
+      assert.match(run.said, /1 scene\(s\) left; finish with the same options and --match 04_d\b/, run.said);
+      assert.doesNotMatch(run.said, /FAILED|FATAL/, 'left, not failed');
+      assert.equal(run.exitCode, 3, `scenes left: exit 3 (${run.exitCode})`);
+    });
+    await check('studio-example-videos re-queue refused', async () => {
+      const run = await studioRun({ takeMs: () => 483 * SECOND, requeue: 'refuse' });
+      assert.match(run.holdLog, /the cap yield did not hold again/, run.holdLog);
+      assert.equal(run.error, undefined, `a stop is no failure (${run.error?.message})`);
+      assert.deepEqual(run.stills, ['1:0', '2:0', '3:0']);
+      assert.match(run.said, /1 take\(s\) left; finish with the same options and --only 4\b/, run.said);
+      assert.equal(run.exitCode, 3, `takes left: exit 3 (${run.exitCode})`);
+    });
+
+    // ---- (round 4 review) the finishing run a stop names runs only what was left, whatever selection the run had -----------
+    await check('shoot finishing run', async () => {
+      const dir = scratch();
+      // every scene name holds a 0: --match 0 selects all four; 03_c runs past the grace, 04_d is left
+      const stopped = await shootRun({ dir, extra: ['--match', '0'], sceneMs: (name) => (name === '03_c' ? 550 : 450) * SECOND });
+      const named = /finish with the same options and (--match \S+)/.exec(stopped.said)?.[1];
+      assert.equal(named, '--match 04_d', stopped.said);
+      const finishing = await shootRun({ dir, extra: ['--match', '0', ...named.split(' ')], waiters: 0, sceneMs: () => SECOND });
+      assert.deepEqual(finishing.loaded, ['04_d'], `the named run shoots only the scene left (${finishing.said})`);
+      assert.ok(!finishing.exitCode, `exit 0 (${finishing.exitCode})`);
+    });
+    await check('studio-example-videos finishing run', async () => {
+      const dir = scratch();
+      const args = ['--only', '1,2,3,4', '--stills', '0'];
+      const stopped = await studioRun({ dir, args, takeMs: (index) => (index === 3 ? 683 : 483) * SECOND });
+      const named = /finish with the same options and (--only \S+)/.exec(stopped.said)?.[1];
+      assert.equal(named, '--only 4', stopped.said);
+      const finishing = await studioRun({ dir, args: [...args, ...named.split(' ')], waiters: 0, takeMs: () => SECOND });
+      assert.deepEqual(finishing.staged, [4], `the named run renders only the take left (${finishing.said})`);
+      assert.deepEqual(finishing.stills, ['1:0', '2:0', '3:0', '4:0'], 'and stills.json lists all four');
+    });
+
+    // ---- (round 4 review) tools/held-items.mjs's rules on their own --------------------------------------------------------
+    await check('held-items rules', async () => {
+      const saved = process.exitCode;
+      try {
+        const codeAfter = (start, outcome) => { process.exitCode = start; return heldRunExitCode(outcome); };
+        assert.equal(codeAfter(undefined, {}), 0, 'nothing failed or left: 0');
+        assert.equal(codeAfter(undefined, { left: true }), 3, 'items left: 3');
+        assert.equal(codeAfter(undefined, { failed: true, left: true }), 1, 'a failure outranks items left');
+        assert.equal(codeAfter(3, { failed: true }), 1, 'a failure after markUnitsLeft\'s 3 (battle-memory-probe: a limit failed, scenarios left): 1');
+        assert.equal(codeAfter(143, { failed: true }), 143, 'a signal\'s 128 + n stands over a failure');
+        assert.equal(codeAfter(130, { left: true }), 130, 'and over items left');
+        assert.equal(codeAfter(1, { left: true }), 1, 'a failure stands over items left');
+      } finally {
+        process.exitCode = saved;
+      }
+      // runHeldItem's rejected checkpoint: a yield stopped (its re-queue withdrawn or refused) leaves the item; a checkpoint
+      // that rejects with the hold unstopped rejects
+      const stoppedHold = new AbortController();
+      const stoppedRun = await runHeldItem({ signal: stoppedHold.signal, checkpoint: async () => {
+        stoppedHold.abort(new Error('the cap yield did not hold again'));
+        throw new Error('re-queue refused');
+      } }, () => assert.fail('the item never runs'));
+      assert.deepEqual(stoppedRun, { outcome: 'left', why: 'the cap yield did not hold again' });
+      const liveHold = new AbortController();
+      await assert.rejects(runHeldItem({ signal: liveHold.signal, checkpoint: async () => { throw new Error('lock lost'); } }, () => 1), /lock lost/);
+      assert.equal(heldStopWhy(stoppedHold.signal), 'the cap yield did not hold again');
+    });
+
     // ---- (E10) a signal during an item: the way out runs and the process exits 128 + n ------------------------------------
+    const nothingRan = /SIGTERM: the process is stopping, so the capture hold ends before the lock was held: nothing ran; run it again/;
     const expected = { turret: /--ids=tpa_one,tpa_two/, 'turret-list': /before the roster was read/, shoot: /--match 01_a,02_b/,
-      'shoot-boot': /--match 01_a,02_b/, studio: /--only 1,2/ };
+      'shoot-boot': /--match 01_a,02_b/, studio: /--only 1,2/, 'studio-boot': /--only 1,2/,
+      'turret-queued': nothingRan, 'shoot-queued': nothingRan, 'studio-queued': nothingRan,
+      'turret-requeue': /2 id\(s\) left[^\n]*--ids=tpa_one,tpa_two/, 'shoot-requeue': /2 scene\(s\) left[^\n]*--match 01_a,02_b/,
+      'studio-requeue': /2 take\(s\) left[^\n]*--only 1,2/,
+      'open-exit': /\[open-exit\] FAILED: Protocol error/, 'open-uncaught': /SIGTERM: leaving the queue/ };
     for (const [tool, child] of Object.entries(children)) {
       await check(`${tool} SIGTERM`, async () => {
         const { code, signal, output } = await child;
@@ -413,8 +547,9 @@ if (process.argv[2] === '--signal-child') {
     }
     assert.deepEqual(failed, [], `long hold users:\n  ${failed.join('\n  ')}`);
     console.log('long-hold-users.selftest: turret-parent-audit, marketing-shots/shoot and studio-example-videos yield at the cap inside '
-      + 'their graces (180 s, 180 s, 300 s), are stopped past them, keep what finished, name what is left (exit 3), exit 128 + n on a '
-      + 'signal, and a --stills finishing run keeps the listing');
+      + 'their graces (180 s, 180 s, 300 s), are stopped past them or by a refused re-queue, keep what finished, name what is left '
+      + '(exit 3) in a finishing run that runs only that, exit 128 + n on a signal (queued, held, re-queued, booting), and a --stills '
+      + 'finishing run keeps the listing; the signal owner keeps 128 + n over an open-form tool\'s own exit');
   } finally {
     for (const dir of roots) rmSync(dir, { recursive: true, force: true });
   }
