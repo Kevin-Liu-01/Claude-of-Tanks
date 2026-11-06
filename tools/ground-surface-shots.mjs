@@ -538,7 +538,12 @@ async function shootMap(entry, options, frames) {
       : await page.evaluate(externalPoseScript(pose.pose));
     await sleep(900);
     await page.evaluate(() => { window.__gsSettle = null; });
-    const settled = await page.waitForFunction(groundSettled, { timeout: 90000, polling: 250 }).then(() => true, () => false);
+    let settled = await page.waitForFunction(groundSettled, { timeout: 90000, polling: 250 }).then(() => true, () => false);
+    // (ab22 A/A, the town poses: the arm shot first after the camera's jump still drew the far sward thinner than the two
+    // after it) one pinned frame thrown away, then the settle again, so the first arm draws what the others do
+    await holdClouds(`${pose.name} warm`);
+    await page.evaluate(() => { window.__gsSettle = null; });
+    settled = await page.waitForFunction(groundSettled, { timeout: 90000, polling: 250 }).then(() => settled, () => false);
     await sleep(400);
     const order = poseIndex % 2 ? [...options.variants].reverse() : options.variants;
     const shots = { groundSettled: settled, order, clouds: { timeS: CLOUD_TIME_S, frames: CLOUD_FRAMES } };
