@@ -1,5 +1,5 @@
 import { launchGuardedBrowser } from '../browser-launch.mjs';
-import { openCaptureHold } from '../capture-hold.mjs';
+import { freezePage, openCaptureHold, thawPage } from '../capture-hold.mjs';
 // tools/marketing-shots/shoot.mjs — marketing screenshot batch driver.
 //
 // Drives window.__STUDIO (docs/STUDIO.md) over every scene JSON in
@@ -67,7 +67,15 @@ scenes.sort((a, b) => {
 });
 console.log(`[marketing-shots] ${scenes.length} scene(s), width ${WIDTH} -> ${outDir}`);
 
-const hold = await openCaptureHold({ label: 'shoot', timeoutMs: 30 * 60 * 1000 });
+// (round 3 A5 review) a whole pass (30 scenes at 3840 px, a world build per map) can run past the lock's 20-min cap, which
+// the hold enforces: between scenes it yields while anyone waits, the Studio page frozen through the yield (it draws every
+// frame) and thawed once the lock is held again. The grace (180 s, not the default 60) lets a scene in flight when the cap
+// comes (a map change builds a world) finish before its yield. A hold that was stopped (a signal, a yield that could not
+// hold again) ends the pass and names the --match run that finishes it.
+let page = null, frozen = null;
+const hold = await openCaptureHold({ label: 'shoot', timeoutMs: 30 * 60 * 1000, graceSeconds: 180,
+  onYield: async () => { frozen = await freezePage(page); },
+  onResume: async () => { await thawPage(page, frozen); frozen = null; } });
 
 // --- vite (own 7xxx port — NEVER 5001/5002) -----------------------------------
 const port = 7300 + Math.floor(Math.random() * 500);
@@ -95,7 +103,7 @@ const browser = await launchGuardedBrowser(puppeteer, {
   protocolTimeout: 300000,
   args: ['--use-gl=angle', '--enable-webgl', '--no-sandbox', '--disable-dev-shm-usage'],
 });
-const page = await browser.newPage();
+page = await browser.newPage();
 // 16:9 stage — capture inherits the live aspect, so 3840 -> 3840x2160
 await page.setViewport({ width: 1280, height: 720, deviceScaleFactor: 1 });
 
@@ -110,7 +118,7 @@ function pngSize(buf) {
   return { width: buf.readUInt32BE(16), height: buf.readUInt32BE(20) };
 }
 
-let failed = false;
+let failed = false, leftFrom = null;
 const shot = [];
 try {
   const firstMap = scenes[0].json.map || 'verdant';
@@ -122,7 +130,10 @@ try {
   );
   console.log(`[marketing-shots] studio entered on ${firstMap}`);
 
-  for (const sc of scenes) {
+  for (const [index, sc] of scenes.entries()) {
+    // a yield that could not hold again rejects, and has stopped the hold: the pass ends below, as for any stop
+    await hold.checkpoint().catch((error) => { if (!hold.signal.aborted) throw error; });
+    if (hold.signal.aborted) { leftFrom = index; break; }
     const t0 = Date.now();
     try {
       await page.evaluate(
@@ -156,8 +167,16 @@ try {
       shot.push(sc.name);
     } catch (err) {
       failed = true;
+      // the stop cut this scene (its browser stopped under it): left with the rest, not a FAILED scene
+      if (hold.signal.aborted) { leftFrom = index; break; }
       console.error(`[marketing-shots] FAILED ${sc.name}: ${err.message}`);
     }
+  }
+  if (leftFrom !== null) {
+    failed = true;
+    const left = scenes.slice(leftFrom).map((scene) => scene.name);
+    console.error(`[marketing-shots] the capture hold was stopped (${String(hold.signal.reason?.message ?? hold.signal.reason).split('\n')[0]}): `
+      + `${left.length} scene(s) left; finish with the same options and --match ${left.join(',')}`);
   }
 } catch (err) {
   failed = true;

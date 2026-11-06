@@ -64,7 +64,9 @@ if (!scene.storyboard?.shots?.length || !scene.storyboard.actorTracks?.length) {
 }
 const durationMs = scene.storyboard.durationMs;
 
-const hold = await openCaptureHold({ label: 'record-studio-action-loop', timeoutMs: 45 * 60 * 1000 });
+// (round 3 A5 review) atCap 'keep': one frame-stepped film take and its encode; a stop part-way loses the whole take, so
+// past the lock's 20-min cap the hold is logged, not stopped (capture-hold.mjs phases: the film renders' class)
+const hold = await openCaptureHold({ label: 'record-studio-action-loop', timeoutMs: 45 * 60 * 1000, atCap: 'keep' });
 
 const port = 7800 + Math.floor(Math.random() * 400);
 let server = null;
