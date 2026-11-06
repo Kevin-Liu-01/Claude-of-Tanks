@@ -317,8 +317,9 @@ assert.deepEqual(CAMO_PATTERN_IDS.slice(gtIndex), ['gt', 'paint_m6_linebacker', 
   'paint_challenger1_mk1', 'paint_challenger1_x', 'paint_osorio_p2', 'paint_tamoyo1', 'paint_tamoyo3',
   'paint_x1a2_carcara', 'paint_osorio_p1', 'paint_ee_t3_osorio', 'paint_ee_t4_osorio', 'paint_m41dk1', 'paint_cv9035dk',
   'paint_m41_bw', 'paint_m41_jgsdf', 'paint_leo2a7dk', 'paint_centurion5_2dk', 'paint_type90b', 'paint_type10', 'paint_bmpt_terminator',
-  'paint_magach3', 'paint_magach6b', 'paint_magach7c', 'paint_x1_pioneiro'],
-  'GT, then later paints (266: the Danish coats, the Challenger 1 paints, the Brazilian coats, the M41 and CV9035 DK coats; 267: the 2A7 DK\'s, then the Type 90 (B), then the original BMPT Terminator\'s three-tone; 269: the plain-coat pass), append without shifting saved catalog indices');
+  'paint_magach3', 'paint_magach6b', 'paint_magach7c', 'paint_x1_pioneiro',
+  'paint_semel', 'paint_olifant_mk1b', 'paint_olifant_mk1', 'paint_olifant_mk1a'],
+  'GT, then later paints (266: the Danish coats, the Challenger 1 paints, the Brazilian coats, the M41 and CV9035 DK coats; 267: the 2A7 DK\'s, then the Type 90 (B), then the original BMPT Terminator\'s three-tone; 269: the plain-coat pass, then the South Africa line), append without shifting saved catalog indices');
 assert.deepEqual(addedPaints.slice(0, 3).map(id => CAMO_PATTERN_LABEL[id]), ['Mono', 'Carbon', 'Prism']);
 assert.deepEqual(['openai', 'xai', 'gemini'].map(id => CAMO_PATTERN_LABEL[id]), ['OpenAI', 'X', 'Gemini']);
 assert.equal(defaultCamoPatternId('sabra_mk2'), 'factory');

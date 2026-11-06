@@ -67,6 +67,7 @@ import { VEHICLE_MARKING_SEATS as SEATS_RUSSIA } from './vehicleMarkingSeatGroup
 import { VEHICLE_MARKING_SEATS as SEATS_SABRAMK2SOURCEX } from './vehicleMarkingSeatGroups/sabraMk2SourceX.generated.ts';
 import { VEHICLE_MARKING_SEATS as SEATS_SHERIDAN } from './vehicleMarkingSeatGroups/sheridan.generated.ts';
 import { VEHICLE_MARKING_SEATS as SEATS_SINOSOVIETCONCEPTS } from './vehicleMarkingSeatGroups/sinoSovietConcepts.generated.ts';
+import { VEHICLE_MARKING_SEATS as SEATS_SOUTHAFRICA } from './vehicleMarkingSeatGroups/southAfrica.generated.ts';
 import { VEHICLE_MARKING_SEATS as SEATS_SOVIETHEAVY } from './vehicleMarkingSeatGroups/sovietHeavy.generated.ts';
 import { VEHICLE_MARKING_SEATS as SEATS_STRV122X } from './vehicleMarkingSeatGroups/strv122X.generated.ts';
 import { VEHICLE_MARKING_SEATS as SEATS_SWEDEN } from './vehicleMarkingSeatGroups/sweden.generated.ts';
@@ -162,6 +163,7 @@ export const VEHICLE_MARKING_SEATS: Readonly<Record<string, VehicleMarkingSeatRe
   SEATS_SABRAMK2SOURCEX,
   SEATS_SHERIDAN,
   SEATS_SINOSOVIETCONCEPTS,
+  SEATS_SOUTHAFRICA,
   SEATS_SOVIETHEAVY,
   SEATS_STRV122X,
   SEATS_SWEDEN,

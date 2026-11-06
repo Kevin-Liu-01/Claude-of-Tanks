@@ -589,7 +589,7 @@ const IDS_BY_LAYOUT = Object.freeze({
   heavyWw2Six: ['kv2'],
   casemateFour: ['jpz_e100'],
   pershingFive: ['m46_patton', 'm47_patton'],
-  westernManualHullAmmo: ['sabra_mk2', 'magach6b', 'magach7c', 'chieftain5', 'amx40', 'chieftain_mk10', 'k1a1', 'amx30b', 'strv81', 'chieftain3', 'chieftain_mk9', 'k1e1', 'type74', 'amx40_proto', 'type59', 'm60a1', 'amx30', 'amx30b2', 'm48a5_patton', 'm48a3_patton', 'magach3', 'm48a2ga2', 'm48_super', 'vickers_mk1', 'centurion3', 'centurion5_2', 'centurion5_2dk', 'shot_kal', 'centurion13', 'strv105', 'olifant_mk2', 'centurion5_avre', 'centurion5_1_aus', 'm60a3', 'm41a3', 'm41_bw', 'm41_jgsdf', 'm41dk1', 't49'],
+  westernManualHullAmmo: ['olifant_mk1', 'olifant_mk1a', 'olifant_mk1b', 'sabra_mk2', 'magach6b', 'magach7c', 'chieftain5', 'amx40', 'chieftain_mk10', 'k1a1', 'amx30b', 'semel', 'strv81', 'chieftain3', 'chieftain_mk9', 'k1e1', 'type74', 'amx40_proto', 'type59', 'm60a1', 'amx30', 'amx30b2', 'm48a5_patton', 'm48a3_patton', 'magach3', 'm48a2ga2', 'm48_super', 'vickers_mk1', 'centurion3', 'centurion5_2', 'centurion5_2dk', 'shot_kal', 'centurion13', 'strv105', 'olifant_mk2', 'centurion5_avre', 'centurion5_1_aus', 'm60a3', 'm41a3', 'm41_bw', 'm41_jgsdf', 'm41dk1', 't49'],
   starship: ['m60a2'],
   osorio: ['osorio_p1', 'osorio_p2', 'ee_t3_osorio', 'ee_t4_osorio'],
   bernardini: ['tamoyo1', 'tamoyo3'],
@@ -597,7 +597,7 @@ const IDS_BY_LAYOUT = Object.freeze({
   bernardiniX1A2: ['x1a2_carcara'],
   arieteManual: ['c2_ariete', 'c1_ariete', 'c1_ariete_preserie', 'c1_ariete_proto_serie1', 'c2_ariete_proto'],
   westernTwoPart: ['challenger1_mk1', 'challenger1_mk3', 'challenger1_mk2', 'challenger_x', 'challenger_x_sleek', 'fv4034', 'challenger2', 'challenger2e', 'ua_challenger2', 'challenger3_proto', 'challenger3', 'challenger3_td', 'challenger3_td_rws'],
-  leopard: ['strv122', 'leo2a6', 'leo1a5', 'leo1a3dk', 'leo1a5dk', 'leo1a5dk1', 'leo1a2a1', 'leopard2_proto', 'leo2a2', 'leo2a3', 'leo2a3_b4', 'leo2a4m_can', 'leo2a4_v', 'leo2a4m', 'leo2a4', 'leo2a4_otco', 'leo2_revolution_proto', 'leo2_revolution', 'leo2_improved', 'strv121', 'leo2a6_ua', 'leo2a7v', 'leo2a6m', 'leo2a5m', 'leo2a5', 'leo2a5dk', 'leo2a7dk'],
+  leopard: ['strv122', 'leo2a6', 'leo1a5', 'leo1a3dk', 'leo1a5dk', 'leo1a5dk1', 'leo1a2a1', 'leopard2_proto', 'leo2a2', 'leo2a3', 'leo2a3_b4', 'leo2a4m_can', 'leo2a4_v', 'leo2a4m', 'leo2a4', 'leo2a4_otco', 'leo2_revolution_proto', 'leo2_revolution', 'leo2_improved', 'strv121', 'leo2a6_ua', 'leo2a7v', 'leo2a6m', 'leo2a5m', 'leo2a5', 'leo2a5dk', 'leo2a7dk', 'ttd'],
   abrams: ['m1a1', 'm1a1_abrams_hc', 'm1a1_abrams_sa', 'm1a1ha', 'm1a1_abrams_aim', 'm1a1_abrams_fep', 'ua_m1a1',
     'm1a2_abrams', 'm1a2_abrams_tusk', 'm1a2_abrams_sepv2', 'm1a2_abrams_sepv3', 'ua_m1a2_abrams'],
   merkava: [

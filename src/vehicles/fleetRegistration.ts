@@ -66,6 +66,8 @@ import './shotKalSpecs.ts';
 import './centurion13Specs.ts';
 import './strv105Specs.ts';
 import './olifantMk2Specs.ts';
+// release 269: the South African line's Centurions (the Semel, the Olifant Mk 1, Mk 1A and Mk 1B)
+import './southAfricaSpecs.ts';
 import './centurionAvreSpecs.ts';
 import './centurionAusSpecs.ts';
 import './leopard2a3B4Specs.ts';

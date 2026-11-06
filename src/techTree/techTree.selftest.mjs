@@ -15,7 +15,7 @@ import { TECH_TREES, childrenOf, nodeForVehicle, rootOf, validateTree, vehiclesO
 const tree = (id) => TECH_TREES.find((entry) => entry.id === id);
 
 // ------------------------------------------------------------------------------------------------ shape and layout
-assert.equal(TECH_TREES.length, 15, 'fifteen national trees'); // 266: Denmark, Brazil
+assert.equal(TECH_TREES.length, 16, 'sixteen national trees'); // 266: Denmark, Brazil; 269: South Africa
 for (const entry of TECH_TREES) {
   assert.deepEqual(validateTree(entry), [], `${entry.id} breaks a shape rule`);
   assert.deepEqual(layoutProblems(entry), [], `${entry.id} draws a connector badly`);
@@ -231,5 +231,9 @@ const digest = createHash('sha256').update(JSON.stringify(TECH_TREES)).digest('h
 // Bradley line (lane 10, off the M2A2); the T49 one lane down to 11 so that connector runs clear.
 // 268 integration (2026-11-04): both 268 trees together, the twin-cannon air defence's lanes and the M3A2 on the
 // Bradley line; neither moves the other's nodes (Russia/Germany/China vs USA).
-assert.equal(digest, 'd0148f5f6998fbdc', `tree content changed: re-pin to ${digest} if deliberate`);
+// 2026-11-02 re-pin (269, Main's ruling on the South Africa tree, head A): the South Africa tree, its root the Olifant Mk 1
+// (II) with the Semel as its twin, the Mk 1A and Mk 1B (III) and the Olifant Mk 2 (III) moved here from the UK tree's
+// special lane; the TTD the special (III by its same-tier duels; IV ruled). The UK tree's nations drop South Africa.
+// 269 integration (2026-11-06): 268's trees and the South Africa tree together.
+assert.equal(digest, '69fd09d1b0cef640', `tree content changed: re-pin to ${digest} if deliberate`);
 console.log(`techTree: ${TECH_TREES.length} trees, ${drawn.length} vehicles, pin ${digest}`);

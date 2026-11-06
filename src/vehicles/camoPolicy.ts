@@ -154,10 +154,15 @@ const AUTHORED_PAINT_IDS_AFTER_266 = Object.freeze(['paint_leo2a7dk', 'paint_cen
  * Pioneiro's olive drab under brown and black bands. The plain paints the Sho't Kal, the Challenger 1 Mk 3, the Leopard
  * 1A5 DK-1 and both M41s led keep their ids with patterned recipes. Appended after 267's saved catalog indices. */
 const AUTHORED_PAINT_IDS_PLAIN_269 = Object.freeze(['paint_magach3', 'paint_magach6b', 'paint_magach7c', 'paint_x1_pioneiro'] as const);
+/** Release 269: the South Africa line's coats (southAfricaSpecs.ts): the SADF's nutria brown under the bush units' field
+ * disruption, a coat of its own on each of the Semel, the Olifant Mk 1 and the Mk 1A (owner 2026-11-03: no plain coats),
+ * and the 1990s SANDF three-tone of the Mk 1B and the TTD. Appended after 267's saved catalog indices. */
+const AUTHORED_PAINT_IDS_AFTER_268 = Object.freeze(['paint_semel', 'paint_olifant_mk1b', 'paint_olifant_mk1',
+  'paint_olifant_mk1a'] as const);
 type AuthoredPaintIdAfterGt = typeof AUTHORED_PAINT_IDS_AFTER_GT[number] | typeof AUTHORED_PAINT_IDS_AFTER_233[number]
   | typeof AUTHORED_PAINT_IDS_AFTER_262[number] | typeof AUTHORED_PAINT_IDS_AFTER_264[number]
   | typeof AUTHORED_PAINT_IDS_AFTER_265[number] | typeof AUTHORED_PAINT_IDS_AFTER_266[number]
-  | typeof AUTHORED_PAINT_IDS_PLAIN_269[number];
+  | typeof AUTHORED_PAINT_IDS_PLAIN_269[number] | typeof AUTHORED_PAINT_IDS_AFTER_268[number];
 const isAuthoredPaintIdAfterGt = (id: string): id is AuthoredPaintIdAfterGt =>
   (AUTHORED_PAINT_IDS_AFTER_GT as readonly string[]).includes(id)
   || (AUTHORED_PAINT_IDS_AFTER_233 as readonly string[]).includes(id)
@@ -165,7 +170,8 @@ const isAuthoredPaintIdAfterGt = (id: string): id is AuthoredPaintIdAfterGt =>
   || (AUTHORED_PAINT_IDS_AFTER_264 as readonly string[]).includes(id)
   || (AUTHORED_PAINT_IDS_AFTER_265 as readonly string[]).includes(id)
   || (AUTHORED_PAINT_IDS_AFTER_266 as readonly string[]).includes(id)
-  || (AUTHORED_PAINT_IDS_PLAIN_269 as readonly string[]).includes(id);
+  || (AUTHORED_PAINT_IDS_PLAIN_269 as readonly string[]).includes(id)
+  || (AUTHORED_PAINT_IDS_AFTER_268 as readonly string[]).includes(id);
 /**
  * Release 233 (owner 2026-10-21: the M1A1 HA, AIM, FEP, HC and SA are "kinda samey", and the M60A1 and M60A3 likewise):
  * the marks with a patterned service paint wear it as their Signature. Appended after every earlier id, so no serialized
@@ -208,6 +214,7 @@ export const CAMO_PATTERN_IDS = Object.freeze([
   ...AUTHORED_PAINT_IDS_AFTER_265,
   ...AUTHORED_PAINT_IDS_AFTER_266,
   ...AUTHORED_PAINT_IDS_PLAIN_269,
+  ...AUTHORED_PAINT_IDS_AFTER_268,
 ] as const);
 
 export type CamoPatternId = typeof CAMO_PATTERN_IDS[number];
@@ -956,6 +963,14 @@ const DEFAULT_CAMO_PATTERN_BY_TANK_ID: Readonly<Record<string, CamoPatternId>> =
   magach6b: 'paint_magach6b',
   magach7c: 'paint_magach7c',
   x1_pioneiro: 'paint_x1_pioneiro',
+  // release 269: the South Africa line: the SADF's nutria brown under field disruption on the 20-pdr and 105 mm Centurions
+  // of 1974-85 (the Semel's bands, the Mk 1's bush three-tone, the Mk 1A's dry-season disruptive), the 1990s SANDF
+  // three-tone on the Mk 1B and the TTD
+  semel: 'paint_semel',
+  olifant_mk1: 'paint_olifant_mk1',
+  olifant_mk1a: 'paint_olifant_mk1a',
+  olifant_mk1b: 'paint_olifant_mk1b',
+  ttd: 'paint_olifant_mk1b',
 });
 
 /** The stock appearance, independent of the player's saved selection. */

@@ -33,6 +33,10 @@ const PHOTO_REFERENCE_PACKETS=Object.freeze({
   // 268 (owner 2026-11-02): the M3A2 Bradley, the shared Bradley hull under main's classic M2A2 turret (mirrored); the
   // turret is kept as main built it, not measured to a model, so the id proves its packet
   'docs/references/photos/m3a2-bradley-20261102.json':Object.freeze(['m3a2_bradley']),
+  // 269 (Main 2026-11-02, the South Africa line): the Semel and the Olifant Mk 1, Mk 1A and Mk 1B on the Centurion family,
+  // and Project Loggim's TTD, each proved by its photographs and published dimensions with no 3D model to follow
+  'docs/references/photos/olifant-centurions-20261102.json':Object.freeze(['semel','olifant_mk1','olifant_mk1a','olifant_mk1b']),
+  'docs/references/photos/olifant-ttd-20261102.json':Object.freeze(['ttd']),
 });
 export const PHOTO_REFERENCE_IDS=Object.freeze(Object.values(PHOTO_REFERENCE_PACKETS).flat());
 /** The packet holding an id's photographic target; null for an id with none. */

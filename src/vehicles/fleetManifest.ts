@@ -35,6 +35,8 @@ export const FLEET_GROUP_IDS = Object.freeze({
   denmark: Object.freeze(['leo1a3dk', 'leo1a5dk', 'leo1a5dk1', 'leo2a5dk', 'leo2a7dk', 'centurion5_2dk', 'cv9035dk']),
   brazil: Object.freeze(['x1_pioneiro', 'x1a2_carcara', 'tamoyo1', 'tamoyo3', 'osorio_p1', 'osorio_p2', 'ee_t3_osorio',
     'ee_t4_osorio']),
+  // 269: the South African line's own builds (its Centurions are in the uk group)
+  southAfrica: Object.freeze(['ttd']),
   m41: Object.freeze(['m41a3', 'm41_bw', 'm41_jgsdf', 'm41dk1', 't49']),
   amx40X: Object.freeze(['amx40']),
   arieteX: Object.freeze(['c1_ariete', 'c2_ariete']),
@@ -82,6 +84,7 @@ export const FLEET_GROUP_IDS = Object.freeze({
   ]),
   uk: Object.freeze([
     'chieftain3', 'chieftain_mk9', 'vickers_mk1', 'centurion3', 'centurion5_2', 'shot_kal', 'centurion13', 'olifant_mk2', 'centurion5_avre', 'centurion5_1_aus',
+    'semel', 'olifant_mk1', 'olifant_mk1a', 'olifant_mk1b',
     'fv510', 'fv510_milan',
   ]),
   challenger: Object.freeze([

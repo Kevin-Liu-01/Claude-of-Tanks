@@ -420,6 +420,12 @@ export const VEHICLE_MARKING_ANCHORS: Readonly<Record<string, VehicleMarkingAnch
   centurion13: anchor('turret', 'right', 0.42, 0.49, 0.25, -1),
   strv105: anchor('turret', 'right', 0.42, 0.49, 0.25, -1),
   olifant_mk2: anchor('turret', 'right', 0.42, 0.55, 0.25, -1),
+  // release 269: the South African Centurions (the skirtless Mk 1 and Mk 1A carry the castle on the turret's side bin)
+  semel: anchor('turret', 'right', 0.42, 0.49, 0.25, -1),
+  olifant_mk1: anchor('turret', 'right', 0.42, 0.49, 0.25, -1),
+  olifant_mk1a: anchor('turret', 'right', 0.42, 0.49, 0.25, -1),
+  olifant_mk1b: anchor('turret', 'right', 0.42, 0.55, 0.25, -1),
+  ttd: anchor('turret', 'right', 0.30, 0.62, 0.22, -1),
   centurion5_avre: anchor('hull', 'right', 0.62, 0.55, 0.30, -1),
   centurion5_1_aus: anchor('turret', 'left', 0.47, 0.49, 0.25, 1),
   m46_patton: anchor('turret', 'left', 0.43, 0.48, 0.25, 1),

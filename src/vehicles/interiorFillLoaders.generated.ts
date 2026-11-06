@@ -71,6 +71,7 @@ export const INTERIOR_FILL_GROUP_LOADERS: Readonly<Record<string, () => Promise<
   "sabraMk2SourceX": () => import('./interiorFillGroups/sabraMk2SourceX.generated.ts'),
   "sheridan": () => import('./interiorFillGroups/sheridan.generated.ts'),
   "sinoSovietConcepts": () => import('./interiorFillGroups/sinoSovietConcepts.generated.ts'),
+  "southAfrica": () => import('./interiorFillGroups/southAfrica.generated.ts'),
   "sovietHeavy": () => import('./interiorFillGroups/sovietHeavy.generated.ts'),
   "strv122X": () => import('./interiorFillGroups/strv122X.generated.ts'),
   "sweden": () => import('./interiorFillGroups/sweden.generated.ts'),

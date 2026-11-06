@@ -92,7 +92,8 @@ assert.deepEqual(now.ids.slice(baseline.ids.length), ['paint_m6_linebacker', ...
   'paint_challenger1_mk1', 'paint_challenger1_x', 'paint_osorio_p2', 'paint_tamoyo1', 'paint_tamoyo3',
   'paint_x1a2_carcara', 'paint_osorio_p1', 'paint_ee_t3_osorio', 'paint_ee_t4_osorio', 'paint_m41dk1', 'paint_cv9035dk',
   'paint_m41_bw', 'paint_m41_jgsdf', 'paint_leo2a7dk', 'paint_centurion5_2dk', 'paint_type90b', 'paint_type10', 'paint_bmpt_terminator',
-  'paint_magach3', 'paint_magach6b', 'paint_magach7c', 'paint_x1_pioneiro'],
+  'paint_magach3', 'paint_magach6b', 'paint_magach7c', 'paint_x1_pioneiro',
+  'paint_semel', 'paint_olifant_mk1b', 'paint_olifant_mk1', 'paint_olifant_mk1a'],
   'only the M6 Linebacker paint, the release-233 Signatures, the Type 10 Kaitaku paint, the Christian II paint, the 262 Oplot paints, both Challenger 3 TD paints, the T-84U 2000 three-tone and the three PT-84 paints (262), then the release-265 Signatures and the Centurion family\'s three paints (Sho\'t Kal, Olifant Mk 2, Mk 5/1), then the Danish coats, the Challenger 1 paints, the Brazilian coats and the Danish and Bundeswehr/JGSDF M41 and CV9035 DK coats (266), then the 267 coats and the original BMPT Terminator\'s three-tone, append, after GT');
 assert.deepEqual(now.catalog.slice(0, baseline.catalog.length), baseline.catalog, 'the garage picker lists production\'s schemes in order');
 assert.deepEqual(now.catalog.slice(baseline.catalog.length), ['paint_m6_linebacker', ...RELEASE_233_SIGNATURES, 'paint_type10_dozer', 'paint_christian2',
@@ -103,7 +104,8 @@ assert.deepEqual(now.catalog.slice(baseline.catalog.length), ['paint_m6_lineback
   'paint_challenger1_mk1', 'paint_challenger1_x', 'paint_osorio_p2', 'paint_tamoyo1', 'paint_tamoyo3',
   'paint_x1a2_carcara', 'paint_osorio_p1', 'paint_ee_t3_osorio', 'paint_ee_t4_osorio', 'paint_m41dk1', 'paint_cv9035dk',
   'paint_m41_bw', 'paint_m41_jgsdf', 'paint_leo2a7dk', 'paint_centurion5_2dk', 'paint_type90b', 'paint_type10', 'paint_bmpt_terminator',
-  'paint_magach3', 'paint_magach6b', 'paint_magach7c', 'paint_x1_pioneiro']);
+  'paint_magach3', 'paint_magach6b', 'paint_magach7c', 'paint_x1_pioneiro',
+  'paint_semel', 'paint_olifant_mk1b', 'paint_olifant_mk1', 'paint_olifant_mk1a']);
 
 // Every production id, as a saved selection, paints the same scheme (label, preset recipe and the resolved visual on
 // ten reference hulls: US, Russian, German, British, Chinese, Korean, IDF, X-series and brand).
@@ -144,7 +146,10 @@ const ADDED_SINCE_PRODUCTION = ['type10_dozer', 'christian2', 'bm_oplot_m', 'bm_
   'ee_t3_osorio', 'ee_t4_osorio', 'm41dk1', 'cv9035dk', 'm41_bw', 'm41_jgsdf', 'leo2a7dk', 'centurion5_2dk', 'type90b', 'bmpt_terminator',
   // release 269, the plain-coat pass (owner 2026-11-03: "any tank without a proper camo need a proper camoo"): the three
   // Magachs off the Merkava 2D's plain service grey and the X1 Pioneiro off its spec's plain coat, each in its own paint
-  'magach3', 'magach6b', 'magach7c', 'x1_pioneiro'];
+  'magach3', 'magach6b', 'magach7c', 'x1_pioneiro',
+  // release 269: the South Africa line in its four coats (the Semel's, the Mk 1's, the Mk 1A's and the Mk 1B's; the TTD
+  // wears the Mk 1B's below)
+  'semel', 'olifant_mk1', 'olifant_mk1a', 'olifant_mk1b'];
 // Release 267: the Danish Leopard 2A7 DK in its own coat under the Barracuda cover and the Centurion Mk 5/2 DK in its
 // 1980s three-tone, appended after 266's; then the Japan line's Type 90 (B) in its JGSDF two-tone;
 // then the original BMPT Terminator in its Engineering Technologies 2012 three-tone desert.
@@ -183,7 +188,9 @@ const ADDED_IN_EXISTING_COAT = { m48a3_patton: 'summer', m48a2ga2: 'service_leo2
   m48_super: 'service_leo2a6m', pt84_sokol: 'service_pl01', pt84_zbik: 'urbanblock',
   // release 268: the twin-cannon air defence: the Russian pair in Russia's plain service green, the PGZ-95 in the Type 59's
   // PLA green-and-sand Signature, the PGZ-09 in the ZTZ-100's PLA digital woodland (no new paint, no index moves)
-  tunguska_m: 'national_ru', pantsir_s1: 'national_ru', pgz95: 'sig_type59', pgz09: 'sig_ztz100_x' };
+  tunguska_m: 'national_ru', pantsir_s1: 'national_ru', pgz95: 'sig_type59', pgz09: 'sig_ztz100_x',
+  // release 269: the TTD in the Mk 1B's 1990s three-tone
+  ttd: 'paint_olifant_mk1b' };
 assert.equal(Object.keys(now.tanks).length, Object.keys(baseline.tanks).length + ADDED_SINCE_PRODUCTION.length
   + Object.keys(ADDED_IN_DONOR_COAT).length + ADDED_WITH_SIGNATURE.length + Object.keys(ADDED_IN_EXISTING_COAT).length
   + Object.keys(ADDED_WEARING_PRODUCTION_PAINT).length + ADDED_IN_SPEC_COAT.length + Object.keys(ADDED_IN_NATION_COAT).length,
