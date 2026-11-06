@@ -196,7 +196,9 @@ const ADDED_IN_EXISTING_COAT = { m48a3_patton: 'summer', m48a2ga2: 'service_leo2
   ttd: 'paint_olifant_mk1b',
   // release 269: the M113AS4, both Abrams and the Redback in the Leopard AS1's disruptive three-tone
   m113as4: 'paint_leopard_as1',
-  m1a1_aim_sa_aus: 'paint_leopard_as1', m1a2_sepv3_aus: 'paint_leopard_as1', redback: 'paint_leopard_as1' };
+  m1a1_aim_sa_aus: 'paint_leopard_as1', m1a2_sepv3_aus: 'paint_leopard_as1', redback: 'paint_leopard_as1',
+  // release 269: the US M113A3 in the MERDC woodland
+  m113a3: 'merdc' };
 assert.equal(Object.keys(now.tanks).length, Object.keys(baseline.tanks).length + ADDED_SINCE_PRODUCTION.length
   + Object.keys(ADDED_IN_DONOR_COAT).length + ADDED_WITH_SIGNATURE.length + Object.keys(ADDED_IN_EXISTING_COAT).length
   + Object.keys(ADDED_WEARING_PRODUCTION_PAINT).length + ADDED_IN_SPEC_COAT.length + Object.keys(ADDED_IN_NATION_COAT).length,

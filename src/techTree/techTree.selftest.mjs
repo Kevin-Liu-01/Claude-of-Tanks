@@ -240,5 +240,8 @@ const digest = createHash('sha256').update(JSON.stringify(TECH_TREES)).digest('h
 // drop Australia. 2026-11-03 re-pin (Main's ruling on the M113s' TOW): the M113AS4 from II to III.
 // 269 integration (2026-11-06): 268's trees, the South Africa tree and the Australia tree together; the UK tree's
 // nations drop both.
-assert.equal(digest, '632912571fa67739', `tree content changed: re-pin to ${digest} if deliberate`);
+// 2026-11-03 re-pin (the owner: "make a USA m113 variant, that plays similar to the ares apc"): the US M113A3 in the US
+// tree's special lane at II.
+// 269 integration (2026-11-06): + the US M113A3 at II in the US special lane.
+assert.equal(digest, 'adc19a052d506677', `tree content changed: re-pin to ${digest} if deliberate`);
 console.log(`techTree: ${TECH_TREES.length} trees, ${drawn.length} vehicles, pin ${digest}`);

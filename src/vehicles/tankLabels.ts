@@ -419,6 +419,7 @@ const LABEL_OVERRIDES: Readonly<Record<string, TankLabelOverride>> = Object.free
   m113a1_fsv: { displayName: 'M113A1 FSV', searchAliases: ['M113 FSV', 'Fire Support Vehicle', 'M113 Saladin', 'Saladin turret M113', 'RAAC'] },
   m113a1_mrv: { displayName: 'M113A1 MRV', searchAliases: ['M113 MRV', 'Medium Reconnaissance Vehicle', 'M113 Scorpion', 'Scorpion turret M113', 'RAAC'] },
   m113as4: { displayName: 'M113AS4', searchAliases: ['M113 AS4', 'M113AS4 APC', 'Australian M113', 'Tenix turret'] },
+  m113a3: { displayName: 'M113A3', searchAliases: ['M113 A3', 'M113A3 APC', 'US M113', 'ACAV shield'] },
   centurion5_1_aus: { displayName: 'Centurion Mk 5/1 (Aust)', searchAliases: ['Centurion Mk 5/1', 'Centurion Mk 5/1 RAAC', 'Australian Centurion', 'RAAC Centurion', 'Centurion Vietnam'] },
   centurion5_avre: { displayName: 'Centurion Mk 5 AVRE', searchAliases: ['Centurion AVRE', 'AVRE 165', 'FV4003', 'Centurion dozer'] },
   cv9035dk: { displayName: 'CV9035 DK', searchAliases: ['CV9035DK', 'CV90 Denmark', 'Danish CV90', 'CV90 MkIII DK'] },

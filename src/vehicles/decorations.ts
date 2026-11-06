@@ -3189,6 +3189,8 @@ export function decorManifestFor(spec: FleetTankSpec, rng: Rng): DecorManifestRo
   // discharger pair, a roof gun) and heaped cargo where the Abrams' field nets lie (the decor raises field nets), as on
   // the Danish Leopards it was cloned beside and the South African Centurions' blind critics (269).
   if (['m113a1_fsv', 'm113a1_mrv', 'm113as4', 'leopard_as1', 'm1a1_aim_sa_aus', 'm1a2_sepv3_aus', 'redback'].includes(spec.id)) return [];
+  // 269: the US M113A3 carries its own tarp roll and fuel tanks (profiles/m113.ts)
+  if (spec.id === 'm113a3') return [];
   // These source-study profiles already own their complete equipment and
   // open racks. Preserve their authored cargo without a random overlay.
   // Originals and unrelated X studies keep their existing loadouts.

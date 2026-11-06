@@ -53,6 +53,7 @@ export const FLEET_BALANCE_REVISION = Object.freeze({
   m113a1_fsv: '269: the M113A1 FSV: the aluminium M113A1 under the Saladin turret, its 76 mm L5A1 firing HESH and HE, 11.9 t on 212 hp',
   m113a1_mrv: '269: the M113A1 MRV: the M113A1 under the Scorpion turret, its 76 mm L23A1 firing HESH and HE, 12.5 t on 212 hp',
   m113as4: '269: the M113AS4: the stretched M113 under ceramic appliqué and the Tenix turret\'s 12.7 mm M2, 18 t on 350 hp',
+  m113a3: '269: the US M113A3: the Ares APC\'s .50 and fire control on the aluminium M113, 12.3 t on 275 hp',
   leopard_as1: '269: the Leopard AS1: the Leopard 1A3 DK\'s welded turret, hull and L7A3 with the SABCA laser fire control, 42.4 t on 830 hp',
   m1a1_aim_sa_aus: '269: the M1A1 AIM SA: the M1A1 with export armour, a quicker fire control and the tungsten KEW-A2, 61.3 t on 1,500 hp',
   m1a2_sepv3_aus: '269: the Australian M1A2 SEPv3: the SEPv3 without ARAT or Trophy, its KEW-A2 tungsten round, 66 t on 1,500 hp',

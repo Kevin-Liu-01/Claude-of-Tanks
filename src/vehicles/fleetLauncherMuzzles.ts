@@ -3,7 +3,7 @@ import type { LauncherMuzzle } from '../sim/launcherPolicy.ts';
 
 import * as detMath from '../sim/detMath.ts';
 import { CLASSIC_TOW_MOUTHS } from './bradleyClassicTurretLayout.ts';
-import { M113_TOW, type M113Mark } from './m113Datums.ts';
+import { M113_TOW, type M113TowMark } from './m113Datums.ts';
 // Terminal centers measured from the native builders, in final metre frames.
 // These are launch exits, never spare tubes, smoke dispensers or cannon bores.
 // Batteries with authored layouts keep their existing shared geometry datums.
@@ -16,7 +16,7 @@ function mouth(x: number, y: number, z: number): LauncherMuzzle { return { x, y,
 // pose: stowed along the left wall, folded 90 deg down and out about the source's pivot (modern3.ts BRADLEY_TOW x0/y0),
 // so its two mouths at the plate's 4 cm-proud collars stand one over the other (the source's erected 1.05/1.35 at 1.055).
 const bradley = [turret(1.105, .68, .60), turret(1.105, .38, .60)];
-const towMouths = (mark: M113Mark): LauncherMuzzle[] => {
+const towMouths = (mark: M113TowMark): LauncherMuzzle[] => {
   const T = M113_TOW[mark];
   return T.ys.map((y) => turret(T.x, y, T.mouthZ + 0.05));
 };

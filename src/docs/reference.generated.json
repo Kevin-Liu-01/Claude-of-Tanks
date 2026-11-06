@@ -5608,6 +5608,27 @@
       "suspension": false
     },
     {
+      "id": "m113a3",
+      "name": "M113A3",
+      "nation": "USA",
+      "role": "ifv",
+      "tier": 2,
+      "hp": 1500,
+      "speed": 66,
+      "reverse": 14,
+      "hull": 61.6,
+      "turret": 66,
+      "dispersion": 0.27,
+      "reload": 0.14,
+      "aim": 0.7,
+      "view": 450,
+      "smoke": 0,
+      "lights": true,
+      "roofGun": false,
+      "missile": false,
+      "suspension": false
+    },
+    {
       "id": "x1_pioneiro",
       "name": "CCL X1 Pioneiro",
       "nation": "Brazil",

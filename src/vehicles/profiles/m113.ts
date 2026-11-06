@@ -13,6 +13,10 @@
 //   launcher on the turret's right flank (an armoured two-tube box on the FSV and MRV, two bare TOW-2 canisters in a
 //   cradle on the AS4; the mouths are fleetLauncherMuzzles.ts's), two spare rounds on the FSV's and MRV's roofs, a .50 on
 //   their cupolas.
+// - a3: the US Army's M113A3 (from 1987; usaM113Specs.ts; the owner 2026-11-03: "make a USA m113 variant, that plays
+//   similar to the ares apc"): the A1's hull with the A3's armoured fuel tanks either side of the ramp, the commander's
+//   cupola as its one traversing station with the M2 .50 behind an ACAV-style gun shield, a tarp roll and the cargo hatch
+//   on the roof; no TOW.
 // Datums: the published M113A1 (4.863 m long, 2.686 m over the tracks, 0.43 m clearance, 0.381 m tracks, five 0.61 m road
 // wheels a side, the sprocket ahead and the idler astern, no return rollers) and the AS4's side profile (Commons,
 // scaled on its 5.53 m hull: the roof 1.96 m over its appliqué, the turret's top 2.60 m, the wheels 0.70 m apart, the ring
@@ -26,11 +30,11 @@ import { markSmokeTube } from '../vehicleAuxiliaryGeometry.ts';
 import { steppedBuilder, type TankProfileBuild } from '../tankBuildCooperation.ts';
 import type { TankBuilderPort } from '../tankFactoryCore.ts';
 
-import { M113_BASE as BASE, M113_TOW, m113Datums, type M113Mark } from '../m113Datums.ts';
+import { M113_BASE as BASE, M113_TOW, m113Datums, type M113Mark, type M113TowMark } from '../m113Datums.ts';
 
 /** The twin TOW launcher on the turret's right flank: on the FSV and MRV two tubes in an armoured box with its sight and
  * front collars, on the AS4 two bare canisters in a cradle; two arms from the turret wall carry either. */
-function addTowLauncher(P: TankBuilderPort, mark: M113Mark): void {
+function addTowLauncher(P: TankBuilderPort, mark: M113TowMark): void {
   const { box, cylZ } = KIT;
   const T = M113_TOW[mark], seg = P.q ? 20 : 14;
   const z0 = T.mouthZ - T.len, zMid = T.mouthZ - T.len / 2, yMid = (T.ys[0] + T.ys[1]) / 2;
@@ -91,7 +95,7 @@ function* buildM113Steps(P: TankBuilderPort, mark: M113Mark): TankProfileBuild {
   const { box, cylX, cylY, cylZ, torus, xform, buildRunningGear, buildGun, headlight, liftEye, periscope } = KIT;
   const slab = orientedSlab;
   const D = m113Datums(mark), B = BASE;
-  const as4 = mark === 'as4';
+  const as4 = mark === 'as4', a3 = mark === 'a3';
   // ---------------------------------------------------------------- hull --
   // the upper hull: the flat roof, the glacis falling to the nose; the vertical sides from the roof to their foot over
   // the tracks; the rear plate and ramp vertical
@@ -179,6 +183,18 @@ function* buildM113Steps(P: TankBuilderPort, mark: M113Mark): TankProfileBuild {
   yield 'buildM113HullFittings';
 
   // ---------------------------------------------------------------- the mark's hull kit --
+  // the armoured fuel tanks either side of the ramp, their bottoms sloping up to the rear (the AS4's rear and side
+  // photographs; the A3's the same pair)
+  const addFuelTanks = (): void => {
+    for (const s of [-1, 1] as const) {
+      const x0 = s * 0.92, x1 = s * 1.27, z0 = D.sternZ, z1 = D.sternZ - 0.52;
+      const lo = Math.min(x0, x1), hi = Math.max(x0, x1);
+      P.addEquipment('hull', slab([lo, 0.82, z0], [hi, 0.82, z0], [hi, 1.20, z1], [lo, 1.20, z1],
+        [lo, 1.80, z0], [hi, 1.80, z0], [hi, 1.80, z1], [lo, 1.80, z1]));
+      P.add('hullDark', box(hi - lo + 0.01, 0.012, 0.52), s * 1.095, 1.70, D.sternZ - 0.26);
+      P.add('hullDark', cylY(0.05, 0.05, 0.03, 10), s * 1.095, 1.815, D.sternZ - 0.30);
+    }
+  };
   if (mark === 'mrv') {
     // the buoyancy pods: two slab panels on each side, the full side from the glacis' top to the rear plate (the Perth and
     // Puckapunyal MRVs; the folded trim vane holds the glacis)
@@ -203,21 +219,19 @@ function* buildM113Steps(P: TankBuilderPort, mark: M113Mark): TankProfileBuild {
     }
     // (the appliqué over the glacis' lower half, under the vane's hinges)
     P.addExternalArmor('hull', xform(box(2.30, 0.05, 0.40), 0, 0, 0, glacis, 0, 0), 0, onGlacis(0.25, 0.025)[0], onGlacis(0.25, 0.025)[1]);
-    // the armoured fuel tanks either side of the ramp, their bottoms sloping up to the rear (the AS4's rear and side
-    // photographs)
-    for (const s of [-1, 1] as const) {
-      const x0 = s * 0.92, x1 = s * 1.27, z0 = D.sternZ, z1 = D.sternZ - 0.52;
-      const lo = Math.min(x0, x1), hi = Math.max(x0, x1);
-      P.addEquipment('hull', slab([lo, 0.82, z0], [hi, 0.82, z0], [hi, 1.20, z1], [lo, 1.20, z1],
-        [lo, 1.80, z0], [hi, 1.80, z0], [hi, 1.80, z1], [lo, 1.80, z1]));
-      P.add('hullDark', box(hi - lo + 0.01, 0.012, 0.52), s * 1.095, 1.70, D.sternZ - 0.26);
-      P.add('hullDark', cylY(0.05, 0.05, 0.03, 10), s * 1.095, 1.815, D.sternZ - 0.30);
-    }
+    addFuelTanks();
     // bins on the roof's rear corners
     for (const s of [-1, 1] as const) P.addEquipment('hull', box(0.52, 0.26, 0.70), s * 0.90, B.roofY + 0.13, D.sternZ + 0.50);
   }
-  // (the AS4's whips stand over its bins: its spares stay inside)
-  if (!as4) addSpareTows(P, 0.60, B.roofY, D.sternZ + 0.85);
+  if (a3) {
+    addFuelTanks();
+    // the cargo hatch's outline on the roof's rear and a rolled tarp strapped across the roof ahead of the rear plate
+    P.add('hullDark', box(1.30, 0.012, 1.10), 0, B.roofY + 0.006, D.sternZ + 1.05);
+    P.addEquipment('hull', cylX(0.11, 1.40, P.q ? 16 : 10), 0, B.roofY + 0.11, D.sternZ + 0.32);
+    for (const x of [-0.45, 0.45]) P.add('hullDark', box(0.04, 0.025, 0.24), x, B.roofY + 0.215, D.sternZ + 0.32);
+  }
+  // (the AS4's whips stand over its bins: its spares stay inside; the A3 carries no TOW)
+  if (!as4 && !a3) addSpareTows(P, 0.60, B.roofY, D.sternZ + 0.85);
   // the whips: two on the roof's rear corners
   for (const s of [-1, 1] as const) {
     P.add('hullDetail', cylY(0.04, 0.05, 0.07, 10), s * 0.95, B.roofY + 0.035, D.sternZ + (as4 ? 1.00 : 0.30));
@@ -304,6 +318,37 @@ function* buildM113Steps(P: TankBuilderPort, mark: M113Mark): TankProfileBuild {
     P.add('gun', cylZ(0.075, 0.12, P.q ? 18 : 12), 0, 0, 0.62);
     muzzleBore(P, { len: 1.42, r: 0.05 });
     P.muzzleZ = 1.42;
+  } else if (a3) {
+    // the commander's cupola on its ring, its vision blocks round it and its hatch lid thrown open astern on its hinge
+    P.add('turret', cylY(0.42, 0.44, 0.08, P.q ? 24 : 16), 0, 0.04, 0);
+    P.add('turret', cylY(0.34, 0.38, 0.16, P.q ? 24 : 16), 0, 0.16, 0);
+    for (let k = 0; k < 8; k++) {
+      const a = (k / 8) * Math.PI * 2;
+      if (Math.cos(a) > 0.6) continue;
+      P.add('turretGlass', box(0.07, 0.04, 0.02), Math.sin(a) * 0.365, 0.18, Math.cos(a) * 0.365, 0, a, 0);
+    }
+    P.add('turretDark', cylX(0.025, 0.30, 8), 0, 0.25, -0.36);
+    P.addEquipment('turret', xform(cylY(0.30, 0.30, 0.035, P.q ? 20 : 14), 0, 0, 0, Math.PI / 2 - 0.22, 0, 0), 0, 0.53, -0.42);
+    // the ACAV-style gun shield: a front plate either side of the gun's window, bridged under and over it, and a wing on
+    // each flank on a stay from the ring
+    for (const s of [-1, 1] as const) {
+      P.addEquipment('turret', box(0.33, 0.52, 0.025), s * 0.235, 0.50, 0.38);
+      P.addEquipment('turret', box(0.025, 0.46, 0.28), s * 0.40, 0.47, 0.24);
+      P.addEquipment('turret', box(0.06, 0.18, 0.06), s * 0.40, 0.16, 0.24);
+    }
+    P.addEquipment('turret', box(0.14, 0.14, 0.025), 0, 0.31, 0.38);
+    P.addEquipment('turret', box(0.14, 0.20, 0.025), 0, 0.66, 0.38);
+    // the M2 .50 on its cradle behind the shield: the receiver, the ammunition can on its left, the spade grips, the barrel
+    // through the window to its flash hider
+    P.gunG.position.set(0, 0.46, 0.34);
+    P.addGunExtra(box(0.13, 0.15, 0.40), 0, 0, -0.22);
+    P.addGunExtra(box(0.10, 0.18, 0.26), 0.12, -0.03, -0.20);
+    for (const s of [-1, 1] as const) P.add('gunDark', cylY(0.012, 0.012, 0.10, 8), s * 0.04, 0, -0.44);
+    P.add('gunDark', cylZ(0.04, 0.24, 10), 0, 0, 0.10);
+    buildGun(P, { len: 1.14, r: 0.022, evac: null, baseR: 0.04, collar: false });
+    P.add('gunDark', cylZ(0.032, 0.10, 10), 0, 0, 1.09);
+    muzzleBore(P, { len: 1.14, r: 0.022 });
+    P.muzzleZ = 1.14;
   } else {
     // the Tenix one-man turret: a low faceted box on its ring, the 12.7 mm M2 in its slot on the left front, the EOS sight
     // box over the front and the hatch on the right
@@ -332,11 +377,11 @@ function* buildM113Steps(P: TankBuilderPort, mark: M113Mark): TankProfileBuild {
     // face's top edge in air, which the sealed check read as see-through)
     P.decal('turret', 'flag', 'au-army-kangaroo', 0.17, [-0.12, 0.14, 0.704], 0);
   }
-  addTowLauncher(P, mark);
+  if (mark !== 'a3') addTowLauncher(P, mark);
   P.turretG.userData.m113TurretReceipt = Object.freeze({
     mark, roadWheels: D.wheelZs.length, length: D.length,
-    turret: mark === 'fsv' ? 'saladin' : mark === 'mrv' ? 'scorpion' : 'tenix', buoyancyPods: mark === 'mrv', applique: as4,
-    fuelTanks: as4, towTubes: 2,
+    turret: mark === 'fsv' ? 'saladin' : mark === 'mrv' ? 'scorpion' : a3 ? 'acav-cupola' : 'tenix', buoyancyPods: mark === 'mrv',
+    applique: as4, fuelTanks: as4 || a3, towTubes: a3 ? 0 : 2,
   });
   P.topY = B.roofY;
   yield 'buildM113Turret';
@@ -345,3 +390,4 @@ function* buildM113Steps(P: TankBuilderPort, mark: M113Mark): TankProfileBuild {
 export const buildM113A1Fsv = steppedBuilder((P: TankBuilderPort) => buildM113Steps(P, 'fsv'));
 export const buildM113A1Mrv = steppedBuilder((P: TankBuilderPort) => buildM113Steps(P, 'mrv'));
 export const buildM113AS4 = steppedBuilder((P: TankBuilderPort) => buildM113Steps(P, 'as4'));
+export const buildM113A3 = steppedBuilder((P: TankBuilderPort) => buildM113Steps(P, 'a3'));

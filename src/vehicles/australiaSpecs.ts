@@ -11,8 +11,8 @@ import './ifvReplicaSpecs.ts';
 import './abramsSourceXSpecs.ts';
 import { ALL_TANK_IDS, MODEL_SOURCE, TANK_SPECS } from './specs.ts';
 import { bindFleetRegistries, cloneFleetVariant, registerFleetSpecs, stripSilhouetteDimensions } from './fleetSpecRegistry.ts';
-import { crewBox, modernArmor } from './specHelpers.ts';
-import { m113Datums, type M113Mark } from './m113Datums.ts';
+import { modernArmor } from './specHelpers.ts';
+import { driverFrontLeft, m113Armor, m113Mobility } from './m113Combat.ts';
 import { ABRAMS_SOURCE_X_MEASUREMENTS } from './abramsSourceXDatums.ts';
 import { REDBACK } from './redbackDatums.ts';
 import { applyFleetLauncherMuzzles } from './fleetLauncherMuzzles.ts';
@@ -40,28 +40,7 @@ const raacThreeTone = (number: string) => ({ scheme: 'nato' as const, base: '#55
   patches: ['#4a3d2a', '#22231d'], marking: 'number' as const, number, camoScale: 0.5, patchK: 1.4, insignia: 'au-army-kangaroo' });
 
 // ---------------------------------------------------------------------------------------------------- M113s --
-// The aluminium M113A1 hull (4.863 x 2.686 m, 0.43 m clearance; 12-38 mm) on the build's datums (profiles/m113.ts)
-const m113Armor = (mark: M113Mark, turret: { tw: number; tFrontZ: number; tRearZ: number; tH: number }, barrelLenM: number, barrelRadM: number) => {
-  const D = m113Datums(mark);
-  const as4 = mark === 'as4';
-  return modernArmor({
-    hl: D.length / 2, hw: 1.27, inW: 0.93, floor: 0.43, trkTop: 0.74, roofY: 1.86,
-    turretPivot: [0, 1.86, D.ringZ], gunPivot: [mark === 'as4' ? 0.22 : 0, mark === 'fsv' ? 0.28 : 0.26, mark === 'as4' ? 0.56 : 0.72],
-    barrelLenM, barrelRadM,
-    glacis: as4 ? [70, 70, 110] : [38, 38, 38], lower: as4 ? [50, 50, 80] : [32, 32, 32], side: as4 ? [60, 60, 100] : [44, 44, 44],
-    skirt: null, rear: 32, roof: 25, ...turret,
-    cheek: mark === 'fsv' ? [32, 32, 32] : mark === 'mrv' ? [25, 25, 25] : [30, 30, 40], tSide: [16, 16, 16],
-    tRear: 12, tRoof: 10, mantlet: mark === 'fsv' ? [32, 32, 32] : [25, 25, 25],
-  });
-};
-/** The driver at the front left (+x, the hull's left) beside the front-right engine, as the M113AS4 and the Redback seat
- * him (internalLayoutRegistry.ts m113OneManTurret, ifvFrontTwoMan); modernArmor seats him front right. */
-const driverFrontLeft = <T extends { crew: readonly { crew: string; min: readonly number[]; max: readonly number[]; turretLocal: boolean }[] }>(armor: T): T => ({
-  ...armor, crew: armor.crew.map((c) => (c.crew === 'driver'
-    ? crewBox(c.crew, [-c.max[0], c.min[1], c.min[2]], [-c.min[0], c.max[1], c.max[2]], c.turretLocal) : c)),
-});
-const m113Mobility = (weightTons: number, hp: number, kmh: number) =>
-  ({ weightTons, enginePowerHp: hp, topSpeedKmh: kmh, reverseSpeedKmh: 14, hullTraverseDegS: 55 });
+// The aluminium M113A1 hull and each mark's turret on the build's datums: m113Combat.ts (shared with the US M113A3)
 // the 76 mm short guns' rounds: HESH and HE (no armour-piercing round: the Saladin's L5A1 and the Scorpion's L23A1)
 const lowVelocity76 = (hesh: string, he: string) => [
   { name: hesh, type: 'HE', caliberMm: 76, pen100Mm: 110, pen1000Mm: 110, pen2000Mm: 110, dmg: 320, velocityMps: 533, moduleDmg: 90, tracer: 'HE' },

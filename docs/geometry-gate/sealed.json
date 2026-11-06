@@ -5488,6 +5488,21 @@
     5.2
    ]
   },
+  "m113a3": {
+   "sealed": true,
+   "openPx": 0,
+   "openViews": 0,
+   "insideOutPx": 502,
+   "seeThroughPx": 0,
+   "netSeeThroughPx": 0,
+   "tris": 57895,
+   "frame": [
+    0,
+    2.05,
+    -0.25,
+    3.8
+   ]
+  },
   "semel": {
    "sealed": true,
    "openPx": 0,

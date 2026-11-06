@@ -74,6 +74,8 @@ const ERA_VEHICLE_IDS: Readonly<Record<VehicleEra, readonly string[]>> = Object.
     // release 269: the Australian M113AS4 (2007), the AS21 Redback (2027) and the Abrams (the M1A1 AIM SA 2007, the M1A2
     // SEPv3 2024)
     'm113as4', 'redback', 'm1a1_aim_sa_aus', 'm1a2_sepv3_aus',
+    // and the US Army's M113A3 (1987)
+    'm113a3',
     'type96_72_long', 'type96_80_feng', 'type96_72m_lei', 't72_rys',
     'tos1a_tagil', 'griffin_viper', 'ares_apc',
     'leo2a6', 'c1_ariete', 'c2_ariete', 'strv122', 't72b3m_2016',

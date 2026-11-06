@@ -270,10 +270,12 @@ const laterChannelCounts = {
   // 269: the South African line, three rounds each (the Semel, the Olifant Mk 1, 1A and 1B, the TTD)
   semel: 3, olifant_mk1: 3, olifant_mk1a: 3, olifant_mk1b: 3, ttd: 3,
   // 269: the Australian line (the M113A1 FSV's and MRV's two 76 mm rounds; three for the rest)
-  m113a1_fsv: 3, m113a1_mrv: 3, m113as4: 3, leopard_as1: 3, m1a1_aim_sa_aus: 3, m1a2_sepv3_aus: 3, redback: 3,
+  m113a1_fsv: 3, m113a1_mrv: 3, m113as4: 3, leopard_as1: 3,
+  // 269: the US M113A3's three .50 belts (the Ares APC's)
+  m113a3: 3, m1a1_aim_sa_aus: 3, m1a2_sepv3_aus: 3, redback: 3,
 };
 const southAfrica269Channels = ['semel', 'olifant_mk1', 'olifant_mk1a', 'olifant_mk1b', 'ttd'].reduce((n, id) => n + laterChannelCounts[id], 0);
-const australia269Channels = ['m113a1_fsv', 'm113a1_mrv', 'm113as4', 'leopard_as1', 'm1a1_aim_sa_aus', 'm1a2_sepv3_aus', 'redback']
+const australia269Channels = ['m113a1_fsv', 'm113a1_mrv', 'm113as4', 'leopard_as1', 'm1a1_aim_sa_aus', 'm1a2_sepv3_aus', 'redback', 'm113a3']
   .reduce((n, id) => n + laterChannelCounts[id], 0);
 const pattonM48Channels = ['m48a3_patton', 'magach3', 'm48a2ga2', 'm48_super'].reduce((n, id) => n + laterChannelCounts[id], 0);
 const release263Channels = ['christian2', 'bm_oplot_m', 'bm_oplot_t', 't64bm1m', 't64bv', 't64b1v_2022', 'pt64_tur',
