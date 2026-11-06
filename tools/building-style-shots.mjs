@@ -32,7 +32,6 @@ import { isMainModule, mapProbeLaunchOptions, sleep } from './map-probe-runtime.
 import { settleMapTextures } from './map-environment-acquisition.mjs';
 import { PINNED_SCENE, configurePinnedScene } from './pinned-scene-acquisition.mjs';
 import { censusShotView } from './visual-census.mjs';
-import { grassSettled } from './frame-budget-probe.mjs';
 import { MAP_IDS } from '../src/world/maps/mapIds.ts';
 
 const TOOL = 'building-style-shots';
@@ -136,16 +135,28 @@ function pinClouds(release = false) {
       vc.beforeSceneRender = (renderer, camera, dt, ...rest) => {
         const pin = vc.__pin;
         if (!pin.held) return live(renderer, camera, dt, ...rest);
+        // (ground-269's ab19 A/A: the near blades swayed between two base frames) the grass's wind held with the sky
+        window.__DEBUG.world?._tallGrass?.setWindTime?.(0);
         live(renderer, camera, 0, ...rest);
         if (pin.left > 0 && --pin.left === 0) vc.frozen = true;
       };
     }
     vc.frozen = false;
+    // (ground-269's ab20 A/A: 2.5 % of an urban chase frame, the near blades round the hull) the grass's pressure field
+    // springs back from the staging drive for a minute; cleared at each pin, the standing hulls stamp the same field
+    const grass = window.__DEBUG.world?._tallGrass;
+    if (!${release}) { grass?.pressure?.clear(); grass?.pressureFine?.clear(); }
     if (${release}) { vc.__pin.held = false; return true; }
     vc.setCaptureTime(${CLOUD_TIME_S}, true);
     Object.assign(vc.__pin, { held: true, left: ${CLOUD_FRAMES} });
     return false;
   })()`;
+}
+
+/** The near and far grass rings and the ground litter built (ground-269: the litter too, before a frame). */
+function groundSettled() {
+  const W = window.__DEBUG.world, g = W?._tallGrass?.getState?.(), l = W?._litter?.getState?.();
+  return (!g || !g.enabled || (!g.near.pending && !g.far.pending)) && (!l || !l.pending);
 }
 
 /** The pinned layer held (its frames traced), or no layer. */
@@ -225,7 +236,7 @@ async function shootMap(entry, options, frames) {
     if (!p) { receipt.poses[name] = { skipped: true }; continue; }
     const resolved = await page.evaluate(externalPoseScript({ ...p, fov: name === 'long' ? 50 : 60 }));
     await sleep(900);
-    const settled = await page.waitForFunction(grassSettled, { timeout: 8000, polling: 250 }).then(() => true, () => false);
+    const settled = await page.waitForFunction(groundSettled, { timeout: 8000, polling: 250 }).then(() => true, () => false);
     await page.evaluate(pinClouds());
     // (48 frames: the long view of a big town under a loaded machine draws a few a second)
     const cloudsPinned = await page.waitForFunction(cloudsHeld, { timeout: 180_000, polling: 250 }).then(() => true, () => false);
