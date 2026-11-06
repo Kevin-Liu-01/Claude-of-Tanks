@@ -11,7 +11,8 @@
 //   skyline's slice asked after the trees: the kit's first four pieces were built), and the trees start no further grove.
 //   The revive is ensure()'s loop (garageArchitecture.ts): a prepare that stopped is run again for a pack its card's
 //   selection revived meanwhile. (Case 2 failed on the round-two base only through case 1's stillWanted assert; it now
-//   drives the loop itself, and a loop-less ensure() fails it.)
+//   drives the loop itself, and a loop-less ensure() fails it. Its old scenario, a selection after the stopped prewarm
+//   retired, starts the pack over: case 2b, review r1.)
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import { GARAGE_VARIANTS } from '../game/garageVariants.ts';
@@ -111,6 +112,36 @@ try {
     assert.equal(stats.key, a.architecture);
     assert.equal(calls.get(a.architecture), 2, 'the revived pack\'s stopped prepare runs again (ensure()\'s loop), once');
     assert.ok(prepared.includes(a.architecture), 'the selected pack\'s prepare ran to its end before the bake');
+    assert.deepEqual(built.filter((architecture) => architecture === a.architecture), [a.architecture], 'and its pack bakes once');
+    controller.dispose();
+  });
+
+  // 2b. (round 3 B12, review r1) The base scenario of case 2, kept: a prewarm that stopped at a slice with nobody reviving
+  //     it retires its record (ensure() returns null), and a later selection of its card starts the pack over: it
+  //     prepares the rest and bakes once.
+  await check('a selection after a retired prewarm starts the pack over', async () => {
+    const [a, b] = outdoor;
+    const gates = new Map([[a.architecture, deferred()], [b.architecture, deferred()]]);
+    const { kit, wanted, prepared, built, calls } = fakeKit(gates);
+    const controller = createGarageArchitectureController({ renderer: { initTexture() {} } }, new THREE.Group(), () => {},
+      async () => kit);
+    controller.setVariant(verdant);
+    await controller.whenReady();
+    void controller.prepareVariant(a);
+    await flush();
+    void controller.prepareVariant(b); // cancels a's prepare
+    assert.equal(wanted.get(a.architecture)?.(), false);
+    gates.get(a.architecture).resolve(); // a's prepare stops at its slice
+    await flush();
+    assert.equal(calls.get(a.architecture), 1, '(nobody revived it: no second prepare)');
+    assert.equal(controller.packPhases().some(({ key, phase }) => key === a.architecture && phase !== 'retired'), false,
+      "(its record retired: ensure() returned null)");
+    controller.setVariant(a); // a later selection of a's card
+    gates.get(b.architecture).resolve();
+    const stats = await controller.whenReady();
+    assert.equal(stats.key, a.architecture);
+    assert.equal(calls.get(a.architecture), 2, 'the selection starts the pack over');
+    assert.ok(prepared.includes(a.architecture), 'and its prepare runs to its end before the bake');
     assert.deepEqual(built.filter((architecture) => architecture === a.architecture), [a.architecture], 'and its pack bakes once');
     controller.dispose();
   });
