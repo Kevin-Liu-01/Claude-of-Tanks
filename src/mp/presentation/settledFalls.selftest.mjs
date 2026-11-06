@@ -3,7 +3,8 @@
 // because the snapshot's list carried indices only. Wire 11 carries each listed index's fall (src/sim/obstacleFall.ts: the
 // cause and the heading in a byte), withheld as the live world_prop_destroyed event's cause and direction are. Here:
 //   1. the fall byte: causes and headings round-trip, `none` is the prop's withheld lay (a ram along its own heading, a
-//      hash of its index: never the +Z lay a zero direction is to the world's hinge), no other byte is a code;
+//      hash of its index: not the +Z lay a zero direction is to the world's hinge, which laid every withheld prop so; one
+//      prop in 64 hashes to heading 0, toward +Z), no other byte is a code;
 //   2. the authority records each fall as it felled the prop and gives it to the viewers that may read it: the source's
 //      own team and a spectator read a hidden rammer's fall, the other team reads none; a restored list has none;
 //   3. the match actor sorts the list and carries each viewer's falls with it, in the same order, onto the wire;
@@ -30,7 +31,8 @@ import {
 import { encodeSnapshotFrame } from '../wire/codec.ts';
 import { createBattlePresentation } from './index.ts';
 
-await ensureAuthorityFleet();
+// the two specs the seats drive (round 3 B17: the whole fleet's anatomy was most of this receipt's cost)
+await ensureAuthorityFleet(['m1a1_abrams_hc', 't90am']);
 const fall = { cause: 'ram', dx: 0, dz: 0 };
 const near = (a, b, tolerance = 1e-9) => Math.abs(a - b) <= tolerance;
 // A prop's lay as the world's hinge makes it (world/topple.ts, what felledTrees.fell and props.ts animateBrokenRecord run):
@@ -301,7 +303,8 @@ let farFalls = null;
   other.presentation.dispose();
 
   // a seat that watched the withheld fall (section 2's real event to the other team: no cause, direction or speed) and a
-  // seat of that team that joined after it (its none) lay the fence alike, along the fence's own heading, never toward +Z
+  // seat of that team that joined after it (its none) lay the fence alike, along the fence's own heading (index 0: step
+  // 39 of 64), not toward +Z
   assert.ok(farLive && farFalls, 'section 2 left the withheld event and its falls');
   const fence = () => [{ min: [-12, -100, -35.5], max: [12, 100, -34.5], kind: 'fence', crushed: false, crushable: true, crushMin: 0, shape2: null }];
   const watched = await seat(fence());

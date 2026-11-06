@@ -10,7 +10,7 @@ import { evictDurableObject, runDurableObjectAlarm, runInDurableObject } from 'c
 import { afterEach, describe, expect, it } from 'vitest';
 import { PAD_KEEPALIVE_REQUEST, PAD_KEEPALIVE_RESPONSE } from '../../../src/pad/padProtocol.ts';
 import { allowedOrigin } from '../src/util.ts';
-import { origin } from './client.ts';
+import { RECEIPT_WAIT_MS, origin } from './client.ts';
 
 interface PadMessage { t: string; [key: string]: unknown }
 
@@ -28,7 +28,7 @@ class PadClient {
     });
     this.closed = new Promise((resolve) => socket.addEventListener('close', resolve, { once: true }));
   }
-  next(t: string, timeoutMs = 3_000): Promise<PadMessage> {
+  next(t: string, timeoutMs = RECEIPT_WAIT_MS): Promise<PadMessage> {
     const found = () => this.messages.find((message) => message.t === t);
     if (found()) return Promise.resolve(found()!);
     return new Promise((resolve, reject) => {

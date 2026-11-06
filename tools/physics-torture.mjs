@@ -591,10 +591,11 @@ const wrap = (a) => {
   else if (a <= -Math.PI) a += 2 * Math.PI;
   return a;
 };
-/** The attitude the renderer composes (tankFactoryCore syncFromState): sim spring + amplified rock, sway, flinch. */
+/** The attitude the renderer composes (tankFactoryCore syncFromState): sim spring + amplified rock and sway. The hit
+ *  rock is the visual's own spring (audit M9), never sim state, so it has no term here (round 3 A12). */
 function renderedAttitude(state, out) {
-  out.pitch = state.visualPitch + (state._susp?.p ?? 0) * 2.2 - (state._flinch?.p ?? 0);
-  out.roll = state.visualRoll + (state._susp?.r ?? 0) * 1.9 + (state._swayEst ?? 0) * 2.4 + (state._flinch?.r ?? 0);
+  out.pitch = state.visualPitch + (state._susp?.p ?? 0) * 2.2;
+  out.roll = state.visualRoll + (state._susp?.r ?? 0) * 1.9 + (state._swayEst ?? 0) * 2.4;
   return out;
 }
 
@@ -1071,8 +1072,8 @@ function runCaseOn(hullId, worldId, caseDef, { replay = true, trace = null } = {
     // +0.30 m); perched is time grounded with two stations or fewer
     if (state.grounded && t >= 1) {
       const sp = state._spring, su = state._susp;
-      const tp = sp.pitch + (su.p - su.d) * 2.2 - (state._flinch?.p ?? 0);
-      const tr = sp.roll + su.r * 1.9 + (state._swayEst ?? 0) * 2.4 + (state._flinch?.r ?? 0);
+      const tp = sp.pitch + (su.p - su.d) * 2.2;
+      const tr = sp.roll + su.r * 1.9 + (state._swayEst ?? 0) * 2.4;
       const halfLen = 0.45 * subject.spec.dims.hullLengthM, halfW = 0.5 * subject.spec.dims.widthM;
       const tcp = Math.cos(-tp), tsp = Math.sin(-tp), tcr = Math.cos(tr), tsr = Math.sin(tr);
       let reach = 0;

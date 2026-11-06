@@ -131,10 +131,9 @@ const SWAY_VIS = 3.2;
 function contactStats(state, field) {
   const hw = 0.5 * SPEC.dims.widthM;
   const sl = 0.45 * SPEC.dims.hullLengthM;
-  const fl = state._flinch || { p: 0, r: 0 };
   const seat = state._holdSeat || { p: 0, r: 0 };
-  const pitch = state._spring.pitch + seat.p + (state._susp.p - (state._susp.d ?? 0)) * SUSP_VIS_P - fl.p;
-  const roll = state._spring.roll + seat.r + state._susp.r * SUSP_VIS_R + state._swayEst * SWAY_VIS + fl.r;
+  const pitch = state._spring.pitch + seat.p + (state._susp.p - (state._susp.d ?? 0)) * SUSP_VIS_P;
+  const roll = state._spring.roll + seat.r + state._susp.r * SUSP_VIS_R + state._swayEst * SWAY_VIS;
   const cb = Math.cos(state.yaw), sb = Math.sin(state.yaw);
   const ca = Math.cos(-pitch), sa = Math.sin(-pitch);
   const cr = Math.cos(roll), sr = Math.sin(roll);

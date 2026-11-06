@@ -43,7 +43,9 @@ interface DronePresentationOptions {
   /** Diagnostics: each flight home's start and end, with the reason it ended (or never began). */
   onReturnEvent?(id: string | number, event: 'start' | 'end' | 'skip', reason: string): void;
   /** (round 2 of the 2026-11-02 audit, U31) a drone the network view reports out of view, still in flight (effects.ts
-   *  unseenRounds): its airframe is held, undrawn, and no flight home begins, until it is seen again or the hold ends. */
+   *  unseenRounds): its airframe is held, undrawn, and no flight home begins, until it is seen again or the hold ends.
+   *  (round 3, A13) A hold that ends unseen drops the drone with no flight home: it may have ended out of view (struck,
+   *  shot down, landed), and a flight home from where it was last seen, the hold's length ago, would be a phantom. */
   held?(id: string | number): boolean;
 }
 type ReturnPhase = 'grace' | 'transit' | 'descent' | 'handoff';
@@ -102,6 +104,8 @@ export function createDronePresentation(parent: THREE.Group, options: DronePrese
   const upAxis=new THREE.Vector3(0,1,0),lift=new THREE.Vector3(),dockUp=new THREE.Vector3();
   const dockOrientation=new THREE.Quaternion(),flightOrientation=new THREE.Quaternion();
   const tracks=new Map<string|number,Track>(),returns=new Map<string|number,ReturnFlight>(),impacted=new Map<string|number,number>();
+  // (round 3, A13) the drones held out of view (options.held) and not seen since: one whose hold ends unseen is dropped
+  const heldUnseen=new Set<string|number>();
   const dockAt=new THREE.Vector3(),drawAt=new THREE.Vector3(),handoffAt=new THREE.Vector3(),toward=new THREE.Vector3(),desired=new THREE.Vector3();
   const handoffQuat=new THREE.Quaternion(),arrivalEuler=new THREE.Euler(0,0,0,'YXZ'),arrivalQuat=new THREE.Quaternion();
   const arrivalPose={pitch:0,yaw:0,roll:0},rayDir=new THREE.Vector3(),dockVel=new THREE.Vector3();
@@ -267,7 +271,7 @@ export function createDronePresentation(parent: THREE.Group, options: DronePrese
     write(position:THREE.Vector3,velocity:THREE.Vector3,id:string|number,heading?:number,ageS=1,nation?:string,launchFrame?:THREE.Object3D,ownerId?:string|number,hidden=false){
       let track=tracks.get(id);if(!track){track={pos:new THREE.Vector3(),vel:new THREE.Vector3(),nation:droneNation(nation??'USA'),ageS:0};tracks.set(id,track);}
       track.pos.copy(position);track.vel.copy(velocity);track.ownerId=ownerId;track.nation=droneNation(nation??'USA');track.ageS=ageS;
-      returns.delete(id);
+      returns.delete(id);heldUnseen.delete(id);
       if(hidden){let state=attitudes.get(id);if(!state){state=createDroneAttitude();attitudes.set(id,state);}state.seen=frame;return;}
       // (2026-11-02 audit F10) past the pool's capacity a drone is tracked, not drawn: never read as a flight that ended
       if(count>=CAPACITY){let state=attitudes.get(id);if(!state){state=createDroneAttitude();attitudes.set(id,state);}state.seen=frame;return;}
@@ -341,7 +345,11 @@ export function createDronePresentation(parent: THREE.Group, options: DronePrese
       // (2026-11-02 audit F10) its airframe kept through the return's grace: seen again inside it (a dropped frame, a
       // spotting blink) the flight goes on as it was (its attitude, its launch frame), not a fresh airframe
       for(const [id,state] of attitudes)if(state.seen!==frame){
-        if(!impacted.has(id)&&options.held?.(id)===true)continue;
+        if(!impacted.has(id)&&options.held?.(id)===true){heldUnseen.add(id);continue;}
+        // (round 3, A13) its hold ended and it was never seen again: its end went unseen, so it is dropped where it went
+        if(heldUnseen.delete(id)&&!impacted.has(id)){
+          options.onReturnEvent?.(id,'skip','unseen');attitudes.delete(id);launchFrames.delete(id);tracks.delete(id);continue;
+        }
         if(returns.get(id)?.phase==='grace')continue;
         const track=tracks.get(id);
         if(!track)options.onReturnEvent?.(id,'skip','no track');
@@ -361,7 +369,7 @@ export function createDronePresentation(parent: THREE.Group, options: DronePrese
         for(const mesh of pool.meshes){mesh.visible=mesh.count>0;mesh.instanceMatrix.needsUpdate=true;}
       }
     },
-    reset(){for(const v of variants.values())for(const pool of [v.full,v.lite])if(pool)for(const mesh of pool.meshes){mesh.count=0;mesh.visible=false;}attitudes.clear();launchFrames.clear();tracks.clear();returns.clear();impacted.clear();},
+    reset(){for(const v of variants.values())for(const pool of [v.full,v.lite])if(pool)for(const mesh of pool.meshes){mesh.count=0;mesh.visible=false;}attitudes.clear();launchFrames.clear();tracks.clear();returns.clear();impacted.clear();heldUnseen.clear();},
     /** Diagnostics and tests: the flights home in progress. */
     returning():ReadonlyMap<string|number,{readonly phase:ReturnPhase;readonly pos:THREE.Vector3;readonly t:number}>{return returns;},
     dispose(){
@@ -370,7 +378,7 @@ export function createDronePresentation(parent: THREE.Group, options: DronePrese
         for(const mesh of pool.meshes){mesh.removeFromParent();mesh.dispose();}
         pool.lease.release();
       }
-      variants.clear();attitudes.clear();launchFrames.clear();tracks.clear();returns.clear();impacted.clear();
+      variants.clear();attitudes.clear();launchFrames.clear();tracks.clear();returns.clear();impacted.clear();heldUnseen.clear();
     },
   };
 }

@@ -679,7 +679,7 @@ assert.equal(game.rosterTanks, undefined, 'dispose restores the solo roster fall
   assert.deepEqual(layOf(propCalls.at(-1)), ownLay(1), 'a fall this viewer may not read lies along the prop\'s own heading');
   assert.notDeepEqual(layOf(propCalls.at(-1)), PLUS_Z_LAY, 'not as the old ram toward +Z');
   // a frame without the owed-prop predicate or the falls (a recorder, an older frame) still settles its list, each prop
-  // along its own heading: never toward +Z
+  // along its own heading (not the +Z lay for these props: one prop in 64 hashes to heading 0, toward +Z)
   props.applyFrame(frame({ tick: 700, destroyed: [0, 1, 5], destructibleRevision: 4 }));
   assert.deepEqual([propCalls.at(-1)[0], propCalls.at(-1)[3], propCalls.at(-1)[4], propCalls.at(-1)[5]], [5, 0, 'ram', true]);
   assert.deepEqual(layOf(propCalls.at(-1)), ownLay(5));

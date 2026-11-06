@@ -22,7 +22,7 @@ import { ensureAuthorityFleet } from '../../vehicles/authorityFleet.ts';
 import { createMatchActor } from '../../../server/match/matchActor.ts';
 import { createLoopbackLink } from '../../../server/match/link.ts';
 import {
-  MESSAGE_TYPE, PHASE, PROTOCOL_VERSION, SNAPSHOT_FLAGS, UNSEEN_SHELL_MARK_TICKS, VERDICT, applySnapshotPacket,
+  MESSAGE_TYPE, NO_TICK, PHASE, PROTOCOL_VERSION, SNAPSHOT_FLAGS, UNSEEN_SHELL_MARK_TICKS, VERDICT, applySnapshotPacket,
   buildSnapshotPacket, decodeMessage, encodeMessage, zeroEntityRow,
 } from '../wire/index.ts';
 import { encodeSnapshotFrame } from '../wire/codec.ts';
@@ -33,7 +33,8 @@ import { TRACER_ABSENCE_GRACE_S, createProjectileTracers } from '../../fx/projec
 import { createDronePresentation } from '../../fx/dronePresentation.ts';
 import { createFx } from '../../fx/effects.ts';
 
-await ensureAuthorityFleet();
+// the two specs the seats drive (round 3 B17: the whole fleet's anatomy was most of this receipt's cost)
+await ensureAuthorityFleet(['m1a1_abrams_hc', 't90am']);
 
 // ---- 1. the match actor names the rounds that left a view in flight ------------------------------------------------
 {
@@ -106,6 +107,27 @@ await ensureAuthorityFleet();
   last = await advance(1);
   assert.deepEqual(last.shells.map((shell) => shell.id), [9, 10]);
   assert.equal(last.unseenShells, undefined, 'seen again, it is not unseen');
+  // (round 3 of the 2026-11-02 audit, A13) more rounds leave the view inside the mark window than the wire's list holds
+  // (MAX_SHELLS, 256; codec.ts writeUnseenShells refuses more): until then every frame for this viewer failed to encode
+  // while the marks lasted. Each frame still arrives, names at most 256 rounds, ascending, and names every round in the
+  // frame it left (a newer departure takes the place of the oldest mark)
+  const batch = (from) => Array.from({ length: 256 }, (_, n) => from + n);
+  for (const id of [...batch(1000), ...batch(2000)]) rounds.set(id, round(id));
+  const departures = [[9, 10], batch(1000), batch(2000)];
+  const views = [batch(1000), batch(2000), []];
+  for (let step = 0; step < views.length; step++) {
+    visibleToA = views[step];
+    last = await advance(1);
+    assert.deepEqual(last.shells.map((shell) => shell.id), views[step], `burst step ${step}: the view`);
+    const named = last.unseenShells ?? [];
+    assert.ok(named.length <= 256, `burst step ${step}: at most 256 named (${named.length})`);
+    assert.ok(named.every((id, n) => n === 0 || id > named[n - 1]), `burst step ${step}: ascending`);
+    const missing = departures[step].filter((id) => !named.includes(id));
+    assert.deepEqual(missing, [], `burst step ${step}: every round that left in this frame is named in it`);
+  }
+  assert.deepEqual(last.unseenShells, batch(2000), 'the newest departures hold the list');
+  for (let n = 0; n < UNSEEN_SHELL_MARK_TICKS; n++) last = await advance(1);
+  assert.equal(last.unseenShells, undefined, 'past the window none is named');
   actor.stop();
 }
 
@@ -226,6 +248,24 @@ await ensureAuthorityFleet();
   assert.equal(debug.records, 0, 'past the hold it ends as an absent round does, and its record goes');
   fx.resetAll();
 
+  // (round 3 of the 2026-11-02 audit, A13) a drone held out of view whose hold runs out unseen: it may have ended out of
+  // view (struck, shot down, landed), so its end was never seen. It is dropped, never flown home from where it was last
+  // seen three seconds before (the phantom flight home); the control, lost with no report, flies home as before
+  const flightsHome = () => fx.group.userData.droneFlightsHomeLog ?? [];
+  const drone = (id) => ({ id, pos: new THREE.Vector3(id - 950, 40, 0), prevPos: new THREE.Vector3(id - 950, 40, 0),
+    vel: new THREE.Vector3(0, 0, 12), spec: { tracer: 'DRONE', type: 'DRONE' }, shooterId: 'g', ageS: 30, distM: 300 });
+  const heldDrone = drone(950), lostDrone = drone(951);
+  for (let f = 0; f < 10; f++) step([heldDrone, lostDrone]);
+  bus.emit('shell:unseen', { shellId: 950, shooterId: 'g' });
+  for (let f = 0; f < 30; f++) step([]);
+  assert.ok(flightsHome().some((entry) => entry.id === 951 && entry.event === 'start'), `the drone lost with no report flies home (${JSON.stringify(flightsHome())})`);
+  assert.ok(!flightsHome().some((entry) => entry.id === 950), 'the held one is held');
+  for (let f = 0; f < 4 * 60; f++) step([]); // past the three-second hold, never seen again
+  const heldEnds = flightsHome().filter((entry) => entry.id === 950);
+  assert.deepEqual(heldEnds.map((entry) => `${entry.event}:${entry.reason}`), ['skip:unseen'],
+    'its hold run out unseen, the held drone is dropped where it went: no flight home from where it was last seen');
+  fx.resetAll();
+
   // a tracer held out of view keeps its record past the grace
   let now = 10;
   const heldIds = new Set();
@@ -258,6 +298,26 @@ await ensureAuthorityFleet();
   for (let f = 2; f < 40; f++) droneFrame(f / 60, []);
   assert.ok(returns.some((entry) => entry.startsWith('lost:')), `the drone lost with no report ends its flight (${returns})`);
   assert.ok(!returns.some((entry) => entry.startsWith('held:')), 'the held one starts no flight home');
+  // (round 3, A13) seen again, a drone leaves its hold: lost after that with no report, it flies home as any drone does
+  const holding = new Set(['back']);
+  const backReturns = [];
+  const backDrones = createDronePresentation(new THREE.Group(), {
+    onReturnEvent: (id, event, reason) => backReturns.push(`${id}:${event}:${reason}`),
+    resolveCarrier: () => ({ frame: new THREE.Object3D(), destroyed: false, flying: false }),
+    held: (id) => holding.has(id),
+  });
+  const backFrame = (t, seen) => {
+    backDrones.begin(t, new THREE.Vector3(0, 40, -50));
+    if (seen) backDrones.write(new THREE.Vector3(0, 40, 0), new THREE.Vector3(0, 0, 12), 'back', 0, 30, 'USA', undefined, 'p1');
+    backDrones.end();
+  };
+  backFrame(1 / 60, true);
+  for (let f = 2; f < 20; f++) backFrame(f / 60, false);
+  assert.deepEqual(backReturns, [], 'held out of view');
+  backFrame(20 / 60, true);
+  holding.clear();
+  for (let f = 21; f < 40; f++) backFrame(f / 60, false);
+  assert.ok(backReturns.some((entry) => entry.startsWith('back:start')), `seen again and then lost with no report, it flies home (${backReturns})`);
 }
 
 // ---- 5. the client half: a real MatchClient over the actor's link carries both wire-11 fields to its MatchFrame ------
@@ -353,8 +413,10 @@ await ensureAuthorityFleet();
   assert.deepEqual([...frame.destroyedFalls], [0, SHELL | 1, 0, 0],
     'the MatchFrame\'s falls line up with its list: the delta\'s addition with its own fall, the indices it held none yet');
   const truth = [SHELL | 33, SHELL | 1, RAM | 60, RAM | 10];
-  // (a keyframe every KEYFRAME_INTERVAL_TICKS, six seconds: server/match/publisher.ts)
-  for (let guard = 0; guard < 8 * 60 && frame.destroyedFalls.join() !== truth.join(); guard++) frame = await step();
+  // the keyframe asked for as a client that lost its baseline asks (an ack of NO_TICK: MatchClient.requestKeyframe), not
+  // waited for (one every KEYFRAME_INTERVAL_TICKS, six seconds: round 3 B17, the receipt's cost)
+  assert.ok(pair.client.send(encodeMessage({ type: MESSAGE_TYPE.PING, clientTimeMs: 1, snapshotAckTick: NO_TICK })));
+  for (let guard = 0; guard < 60 && frame.destroyedFalls.join() !== truth.join(); guard++) frame = await step();
   assert.deepEqual([...frame.destroyedFalls], truth, 'the next keyframe brings every fall, each with its index');
   assert.ok(client.stats().keyframes > keyframesBefore, 'through a keyframe');
   client.dispose();

@@ -20,7 +20,7 @@ import {
 } from '../../../src/mp/room/protocol.ts';
 import type { RoomHostChangedPayload, RoomMatchStartPayload, RoomSnapshot } from '../../../src/mp/room/protocol.ts';
 import { verifySeatToken } from '../../../server/match/seatToken.ts';
-import { Client, closeClients, connect, create, identity, origin, startedRoom, token } from './client.ts';
+import { Client, RECEIPT_WAIT_MS, closeClients, connect, create, identity, origin, startedRoom, token } from './client.ts';
 
 const derivedSecret = (matchId: string): string => createHash('sha256').update(`${env.MATCH_SEAT_SECRET}:${matchId}`).digest('hex');
 const room = (client: Client): RoomSnapshot => client.last('room_state')!.payload.room as RoomSnapshot;
@@ -280,6 +280,7 @@ describe('cot-rooms Worker with the peer-to-peer match host (the deployed shape)
       state.getWebSockets().map((ws) => state.getWebSocketAutoResponseTimestamp(ws)));
     expect(socketsBefore).toEqual([null, null]);
     // the exact text frame is answered with the exact text frame, in order, without any envelope
+    const sentAt = Date.now();
     guest.socket.send(ROOM_KEEPALIVE_REQUEST);
     expect(await guest.rawCount(1)).toBe(1);
     expect(guest.raw).toEqual([ROOM_KEEPALIVE_RESPONSE]);
@@ -288,7 +289,10 @@ describe('cot-rooms Worker with the peer-to-peer match host (the deployed shape)
     const stamps = await runInDurableObject(env.ROOMS.getByName('ROOM17'), (_instance, state) =>
       state.getWebSockets().map((ws) => state.getWebSocketAutoResponseTimestamp(ws)?.getTime() ?? null));
     expect(stamps.filter((stamp) => stamp !== null).length).toBe(1);
-    expect(stamps.some((stamp) => stamp !== null && Math.abs(stamp - Date.now()) < 5_000)).toBe(true);
+    // stamped at this keepalive: between its send and this read (a second of slack for the runtime's coarse clock), not
+    // within a fixed 5 s of the read, which a starved runtime can pass (round 3 B14)
+    const readAt = Date.now();
+    expect(stamps.some((stamp) => stamp !== null && stamp >= sentAt - 1_000 && stamp <= readAt + 1_000)).toBe(true);
     expect((await storedState('ROOM17')).room?.touchedAt).toBe(before.room?.touchedAt);
     expect(await runInDurableObject(env.ROOMS.getByName('ROOM17'), (_instance, state) => state.getWebSocketAutoResponse()?.request)).toBe(ROOM_KEEPALIVE_REQUEST);
     // the record lives with the socket in the runtime, not with the object: it survives an eviction (the 24 h expiry reads it after any number of restarts)
@@ -300,16 +304,19 @@ describe('cot-rooms Worker with the peer-to-peer match host (the deployed shape)
     // the frame is a keepalive, not a message: more of them than the rate window allows leave the socket open and every
     // one answered (the envelope ping, still accepted for older clients, closes the socket as rate_limit past the window)
     for (let index = 0; index < ROOM_RATE_MAX_MESSAGES + 10; index++) guest.socket.send(ROOM_KEEPALIVE_REQUEST);
-    expect(await guest.rawCount(ROOM_RATE_MAX_MESSAGES + 11, 10_000)).toBe(ROOM_RATE_MAX_MESSAGES + 11);
+    expect(await guest.rawCount(ROOM_RATE_MAX_MESSAGES + 11, 2 * RECEIPT_WAIT_MS)).toBe(ROOM_RATE_MAX_MESSAGES + 11);
     expect(guest.raw.every((frame) => frame === ROOM_KEEPALIVE_RESPONSE)).toBe(true);
     expect((await guest.request('room_ping')).type).toBe('room_pong');
     expect((await guest.command({ type: 'set_ready', ready: true })).type).toBe('room_ack');
     // a text frame that is not the keepalive is an envelope like any other (here: not JSON → invalid_payload)
     guest.socket.send('nope');
     expect((await guest.next((message) => message.type === 'error')).payload.code).toBe('invalid_payload');
-    // the same frame from an older client's envelope path still works, and the rate window counts those
+    // the same frame from an older client's envelope path still works, and the rate window counts those (only Date stands
+    // still through the flood, so a slow runtime cannot turn the window under it: round 3 B14)
+    vi.useFakeTimers({ toFake: ['Date'] });
     for (let index = 0; index < ROOM_RATE_MAX_MESSAGES + 10; index++) admin.send('room_ping');
     const closed = await admin.closed;
+    vi.useRealTimers();
     expect(closed.reason).toBe('rate_limit');
   });
 

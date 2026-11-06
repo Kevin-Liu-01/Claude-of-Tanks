@@ -1402,8 +1402,9 @@ export function createBattlePresentation({
         if (obstacle.crushed) return;
         // A fall withheld from this viewer (its source a hull it does not see: sim/authoritativeMatch.ts viewerWorldEvent
         // drops the cause, the direction and the speed) lies as the settled list's none lays it, along the prop's own
-        // heading (round 2 U27 review): a seat that watched it and a seat that joined after it lay the prop alike, and
-        // neither toward +Z, which direction 0, 0 is to the world's hinge (world/topple.ts setToppleAxis).
+        // heading (round 2 U27 review): a seat that watched it and a seat that joined after it lay the prop alike. Not
+        // direction 0, 0, which the world's hinge lays toward +Z (world/topple.ts setToppleAxis) and which laid every
+        // withheld prop so; a prop's own heading is toward +Z only where its index hashes to step 0, one prop in 64.
         const withheld = typeof payload.directionX !== 'number' || typeof payload.directionZ !== 'number'
           ? withheldObstacleFall(index, propFall) : null;
         const directionX = withheld ? withheld.dx : Number(payload.directionX) || 0;
