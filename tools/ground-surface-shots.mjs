@@ -267,8 +267,14 @@ function cloudsHeld() {
 
 /** The grass and the ground litter with no cell left to build near the camera (page side). */
 function groundSettled() {
+  // (ab21 A/A, urban chase: the base, shot first, drew fewer near blades than the arms after it) the mid ring too, and the
+  // rings' published counts unchanged for 1.5 s
   const W = window.__DEBUG.world, g = W?._tallGrass?.getState?.(), l = W?._litter?.getState?.();
-  return (!g || !g.enabled || (!g.near.pending && !g.far.pending)) && (!l || !l.pending);
+  const idle = (!g || !g.enabled || (!g.near.pending && !g.mid.pending && !g.far.pending)) && (!l || !l.pending);
+  const sig = g ? [g.near, g.mid, g.far].map((r) => `${r.count}/${r.publishes}`).join() : '';
+  const now = performance.now(), last = window.__gsSettle;
+  window.__gsSettle = { sig, since: last && last.sig === sig ? last.since : now };
+  return idle && now - window.__gsSettle.since > 1500;
 }
 
 /** An absolute pose (`resolved: true` keeps the y values as given; otherwise they are heights over the ground). */
@@ -531,7 +537,8 @@ async function shootMap(entry, options, frames) {
       ? await page.evaluate(chasePoseScript(stage.player.yaw))
       : await page.evaluate(externalPoseScript(pose.pose));
     await sleep(900);
-    const settled = await page.waitForFunction(groundSettled, { timeout: 30000, polling: 250 }).then(() => true, () => false);
+    await page.evaluate(() => { window.__gsSettle = null; });
+    const settled = await page.waitForFunction(groundSettled, { timeout: 90000, polling: 250 }).then(() => true, () => false);
     await sleep(400);
     const order = poseIndex % 2 ? [...options.variants].reverse() : options.variants;
     const shots = { groundSettled: settled, order, clouds: { timeS: CLOUD_TIME_S, frames: CLOUD_FRAMES } };
