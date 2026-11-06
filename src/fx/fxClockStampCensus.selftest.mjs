@@ -208,12 +208,9 @@ for (let k = 0; k < 2; k++) {
   for (const n of ['front', 'right', 'back']) emit(DESTRUCTION_BUS_EVENTS.breach, sectionFall(1, n));
   emit(DESTRUCTION_BUS_EVENTS.breach, sectionFall(1, 'left', { storeyDown: true }));
   frames(40);
-  emit(DESTRUCTION_BUS_EVENTS.stage, { ...stage, stage: 'collapsed', previous: 'breached', x: 0, y: 3, z: 8, dirX: 1, dirZ: 0 });
   emit(DESTRUCTION_BUS_EVENTS.stage, { ...stage, structureId: 8, stage: 'breached', previous: 'damaged', sections: true, x: 1, y: 1.2,
     z: 4, dirX: 0, dirZ: 1 });
-  emit(DESTRUCTION_BUS_EVENTS.stage, { ...stage, structureId: 8, stage: 'collapsed', previous: 'breached', sections: true, x: 0, y: 3,
-    z: 8, dirX: 1, dirZ: 0 });
-  frames(90);
+  frames(2);
   // the screenshot composer's firing and explosion moments, and the battle's covered warm
   fx.composeFiringMoment({ muzzlePos: new THREE.Vector3(2, 2.4, -6), dir: new THREE.Vector3(0, 0, 1), caliberMm: 120, tracerType: 'AP', ageS: 0.05 });
   globalThis.window ??= {}; // (the composer reads the shot harness's page flags)
@@ -222,7 +219,15 @@ for (let k = 0; k < 2; k++) {
   fx.warmProjectilePresentation(new THREE.Vector3(30, 0, 60), new THREE.Vector3(0, 0, 1));
   frames(3, [shells[1]]);
 }
-// the moment of the rebase: a burst just drawn (its records live) and a hull event waiting for its round's expiry
+// the moment of the rebase: both houses coming down (the bodies thrown, the mask's crumble front, the falling list), a
+// burst just drawn (its records live) and a hull event waiting for its round's expiry
+{
+  const stage = { massClass: 'house', cx: 0, cz: 8, hw: 5, hd: 4, yaw: 0, baseY: 0, topY: 8.4, cause: 'blast', munition: 'he',
+    points: 30, integrity: 0.5, previous: 'breached', stage: 'collapsed', x: 0, y: 3, z: 8, dirX: 1, dirZ: 0 };
+  emit(DESTRUCTION_BUS_EVENTS.stage, { ...stage, structureId: 7 });
+  emit(DESTRUCTION_BUS_EVENTS.stage, { ...stage, structureId: 8, sections: true });
+  frames(3);
+}
 groundBurst(20);
 {
   const s = id++; fired(s);
