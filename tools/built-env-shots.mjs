@@ -49,6 +49,7 @@ const DEVICES = Object.freeze({
 });
 const POSES = Object.freeze(['street', 'road', 'plaza', 'shore', 'long']);
 const EYE = 3.4;
+const MAPS_PER_PAGE = 4;
 
 function parse(argv) {
   const out = { root: process.cwd(), out: null, jobs: null, waitHours: 16, tag: 'v1', pairMinutes: 10 };
@@ -373,9 +374,11 @@ async function main(argv) {
     job.manifest = existsSync(job.manifestFile) ? JSON.parse(readFileSync(job.manifestFile, 'utf8'))
       : { tool: TOOL, device: job.device, dist: job.dist, maps: {} };
   }
+  // (Main 11-06: booting the game, not the shots, ate the holds) job by job, so one booted page stages its job's maps in
+  // turn (MAPS_PER_PAGE at most, then a fresh page); the pins hold both arms of a pair to one sky and one world time
   const order = [...new Set(options.jobs.flatMap((job) => job.maps))];
-  const pairs = order.flatMap((mapId) => options.jobs.filter((job) => job.maps.includes(mapId) && !job.manifest.maps[mapId])
-    .map((job) => ({ job, mapId })));
+  const pairs = options.jobs.flatMap((job) => order.filter((mapId) => job.maps.includes(mapId) && !job.manifest.maps[mapId])
+    .map((mapId) => ({ job, mapId })));
   if (!pairs.length) { console.log(`[${TOOL}] every pair is shot`); return 0; }
   const label = `${TOOL} ${path.basename(options.out)}`;
   setBrowserGuardContext({ hold: label });
@@ -390,6 +393,8 @@ async function main(argv) {
     browser ??= await launch();
     pagesSinceLaunch++;
     entry = await bootPage(browser, servers.get(job.dist).url, job.device);
+    entry.job = job;
+    entry.staged = 0;
     await stageMap(entry, mapId);
   };
   const close = async () => {
@@ -413,10 +418,11 @@ async function main(argv) {
       const started = Date.now();
       let outcome = 'failed';
       try {
-        if (session) { await thawPage(entry.page, session); session = null; } else await openPair(pairs[i]);
+        if (session) { await thawPage(entry.page, session); session = null; } else if (!entry) await openPair(pairs[i]);
         const shooting = (async () => {
           const live = await entry.page.evaluate(() => window.__DEBUG?.world?.mapId ?? null).catch(() => null);
           if (live !== mapId) await stageMap(entry, mapId);
+          entry.staged++;
           const receipt = await shootMap({ ...entry, mapId }, { poses: job.posesByMap?.[mapId] ?? job.poses }, job.frames);
           receipt.ms = Date.now() - started;
           job.manifest.maps[mapId] = receipt;
@@ -428,8 +434,9 @@ async function main(argv) {
       } catch (error) {
         console.log(`[${label}] ${stamp()} ${job.name} ${mapId} failed: ${String(error?.message ?? error).slice(0, 200)}`);
       } finally {
-        if (entry) await entry.page.close().catch(() => {});
-        entry = null;
+        // the page goes on to the job's next map unless this pair failed, the job changes or the page has staged its share
+        const keep = outcome === 'shot' && entry && pairs[i + 1]?.job === job && entry.staged < MAPS_PER_PAGE;
+        if (!keep && entry) { await entry.page.close().catch(() => {}); entry = null; }
       }
       if (outcome === 'shot') {
         shot++;
@@ -438,10 +445,11 @@ async function main(argv) {
         failed++;
         console.log(`[${label}] ${stamp()} ${job.name} ${mapId} ${outcome}`);
       }
-      if (pagesSinceLaunch >= 8 && browser) { await browser.close().catch(() => {}); browser = null; pagesSinceLaunch = 0; }
+      if (!entry && pagesSinceLaunch >= 8 && browser) { await browser.close().catch(() => {}); browser = null; pagesSinceLaunch = 0; }
       if (i < pairs.length - 1) {
         const cp = await lock.checkpoint({ timeoutMs: options.waitHours * 3600 * 1000,
-          beforeYield: async () => { held = false; }, afterResume: async () => { held = true; } });
+          // (a page kept for the next map is frozen while others hold: it draws nothing in their holds)
+          beforeYield: async () => { if (entry) session = await freezePage(entry.page); held = false; }, afterResume: async () => { held = true; } });
         if (cp.yielded) console.log(`[${label}] ${stamp()} yielded at the cap, held again after ${(cp.waitedMs / 60000).toFixed(1)} min at the back`);
       }
     }
