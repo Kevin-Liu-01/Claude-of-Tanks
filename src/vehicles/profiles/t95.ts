@@ -33,7 +33,7 @@ import type { VehicleProfileRecord } from '../profileBuilderAdapter.ts';
 // ------------------------------------------------------------------------------------------------- datums --
 const H = Object.freeze({
   sternZ: -5.26, faceZ: 0.30, bellyY: 0.45, tubX: 0.94, coverY: 1.20,
-  skirtX: 2.185, skirtT: 0.05, skirtTop: 1.24, skirtLow: 0.46, coverFrontZ: 1.45, noseZ: 1.90, noseY: 0.86,
+  skirtX: 2.185, skirtT: 0.05, skirtTop: 1.24, skirtLow: 0.42, coverFrontZ: 1.45, noseZ: 1.90, noseY: 0.86,
   coverInX: 0.78, spacerX: 1.52,
 });
 /** Track units: the inner and outer centres, the 19.5 in (0.495 m) T80 track cut down. */
@@ -47,7 +47,7 @@ const ROLLER_ZS = Object.freeze([-0.42, -1.86, -3.31]);
 /** The ball mount: its centre is the yaw and pitch pivot. */
 const BALL = Object.freeze({ y: 1.39, z: 0.42, r: 0.58 });
 /** The fictional 152 mm (6"/47 Mark 16 figures): its muzzle on the print's, the tube's outside from drawings (EST). */
-const GUN = Object.freeze({ muzzleZ: 5.46, rootR: 0.168, muzzleR: 0.142, brakeL: 0.52, brakeR: 0.205, boreR: 0.0762 });
+const GUN = Object.freeze({ muzzleZ: 5.46, rootR: 0.170, muzzleR: 0.145, brakeL: 0.40, brakeR: 0.19, boreR: 0.0762 });
 
 /**
  * One station of the cast upper hull (casemate and turtle back): the roof's half-width and height, the shoulder where the
@@ -161,7 +161,7 @@ function* buildT95Steps(P: TankBuilderPort): TankProfileBuild {
     P.add('hull', sectionSolid(TUB.map(([z, b]) => ({ z, ring: [[-H.tubX, b], [H.tubX, b], [H.tubX, H.coverY + 0.01],
       [-H.tubX, H.coverY + 0.01]] as SectionPoint[] }))));
     // the cast upper hull: the turtle back over all four units, the casemate roof, the bow rounding to its face
-    const shell = sectionSolid(denseShell().map((s) => ({ z: s.z, ring: shellRing(s) })), { centeredSideQuads: true, smoothSideEdges: SHELL_SMOOTH_EDGES });
+    const shell = sectionSolid(denseShell().map((s) => ({ z: s.z, ring: shellRing(s) })), { sideQuadDiagonal: 'convex', smoothSideEdges: SHELL_SMOOTH_EDGES });
     shell.userData.primaryStockRole = 't95-casting';
     P.add('hull', shell);
     // the bow face below the shell between the inner units, to the lower plate (the 305 mm casting's lower half)
@@ -192,7 +192,8 @@ function* buildT95Steps(P: TankBuilderPort): TankProfileBuild {
       const [x0, x1] = s > 0 ? [si, so] : [so, si];
       // (the foot bevelled up to the outer face, as the print's)
       const sk = (b: number, t: number): SectionPoint[] => {
-        const bev = Math.min(0.06, (t - b) * 0.5);
+        // (the print's foot: its outer face ends at 0.57 m, bevelled 15 cm in to the inner face's 0.42)
+        const bev = Math.min(0.15, (t - b) * 0.5);
         return s > 0 ? [[x0, b], [x1, b + bev], [x1, t], [x0, t]] : [[x0, b + bev], [x1, b], [x1, t], [x0, t]];
       };
       P.add('hull', sectionSolid([
@@ -314,14 +315,19 @@ function* buildT95Steps(P: TankBuilderPort): TankProfileBuild {
       for (const cz of [cz0, cz1]) P.add('hullDark', torus(0.06, 0.018, 10, 6), s * cx, sideAt(cx, cz) + 0.05, cz + (cz > -3 ? 0.06 : -0.06), Math.PI / 2, 0, 0);
       // the outer unit's removal A-frame folded forward on the cover: two arms from hinges by the casemate cheek to a
       // hook block over the cover's front, a cross bar between them (the print and the museum photograph)
-      const ax = s * 1.62, hz = 0.70, tz = 1.30, ty = H.coverY + 0.44;
+      const ax = s * 1.62, hz = 0.62, tz = 1.24, ty = H.coverY + 0.58;
       for (const dx of [-0.20, 0.20]) {
-        P.add('hullDark', box(0.10, 0.08, 0.10), ax + dx, H.coverY + 0.04, hz);
-        bar('hullDark', [ax + dx, H.coverY + 0.07, hz], [ax, ty, tz], 0.036);
+        P.add('hullDetail', box(0.08, 0.20, 0.26), ax + dx * 1.15, H.coverY + 0.10, hz);
+        bar('hullDark', [ax + dx, H.coverY + 0.14, hz], [ax, ty, tz], 0.045);
       }
       bar('hullDark', [ax - 0.11, H.coverY + 0.24, 0.96], [ax + 0.11, H.coverY + 0.24, 0.96], 0.024);
       P.add('hullDark', box(0.12, 0.10, 0.12), ax, ty, tz);
       P.add('hullDark', torus(0.05, 0.016, 10, 6), ax, ty - 0.08, tz + 0.04, 0, 0, Math.PI / 2);
+      // spare track links hung on the casemate's cheek
+      for (let k = 0; k < 5; k++) {
+        const lz = -0.95 + k * 0.17, lx = 1.30, slope = Math.atan2(sideAt(lx + 0.12, lz) - sideAt(lx - 0.12, lz), 0.24);
+        P.addEquipment('hullDark', xform(box(0.50, 0.035, 0.15), 0, 0, 0, 0, 0, s * slope), s * lx, sideAt(lx, lz) + 0.03, lz);
+      }
       // the lifting bracket on the casemate's front corner
       P.add('hullDetail', box(0.05, 0.16, 0.20), s * 0.90, sideAt(0.90, 0.05) + 0.05, 0.05);
     }
@@ -353,7 +359,9 @@ function* buildT95Steps(P: TankBuilderPort): TankProfileBuild {
       seed: 27095, working: true,
     });
     // (the gun rides the ring's outboard side, as the print and the 1946 photographs carry it)
-    mg.position.set(cx - 0.55, cy + 0.46, cz + 0.10);
+    // (blind critic, round 6: the gun floated over the ring) its mount foot seated on the ring's carriage
+    mg.position.set(cx - 0.55, cy + 0.425, cz + 0.10);
+    P.add('hullDark', box(0.14, 0.05, 0.20), cx - 0.55, cy + 0.41, cz + 0.10);
     // the cut-down M49C ring over the cupola and its four posts from the cupola's base ring
     P.add('hullDark', torus(0.56, 0.025, P.q ? 32 : 18, 6), cx, cy + 0.40, cz);
     for (let k = 0; k < 4; k++) {
@@ -396,23 +404,15 @@ function* buildT95Steps(P: TankBuilderPort): TankProfileBuild {
     P.add('gun', cylZ(GUN.rootR + 0.03, zStep - z0, seg, GUN.rootR + 0.045), 0, 0, (z0 + zStep) / 2);
     P.add('gun', cylZ(GUN.rootR + 0.012, 0.05, seg, GUN.rootR + 0.03), 0, 0, zStep);
     P.add('gun', cylZ(GUN.muzzleR, zBrake - zStep, seg, GUN.rootR - 0.018), 0, 0, (zStep + zBrake) / 2);
-    // the double-baffle brake (the T10 pattern, scaled to the bore): two chambers, their side ports
-    // (blind critics, round 4: a plain can) a wide, flattened body with two baffle chambers open at the sides, three
-    // baffle plates standing proud of it, the bore running through
-    const wide = (g: THREE.BufferGeometry): THREE.BufferGeometry => xform(g, 0, 0, 0, 0, 0, 0, [1.32, 1, 1]);
-    const bR = GUN.brakeR * 0.86;
-    P.add('gun', cylZ(GUN.muzzleR + 0.012, 0.08, seg, GUN.muzzleR * 1.25), 0, 0, zBrake - 0.03);
-    for (const fz of [0.04, 0.50, 0.95]) P.add('gun', wide(cylZ(bR + 0.015, GUN.brakeL * 0.10, seg)), 0, 0, zBrake + GUN.brakeL * fz);
-    for (const [fa, fb] of [[0.09, 0.45], [0.55, 0.90]] as const) {
-      const zc = zBrake + GUN.brakeL * (fa + fb) / 2, l = GUN.brakeL * (fb - fa);
-      P.add('gun', box(0.10, bR * 1.6, l), 0, 0, zc);
-      P.add('gun', box(bR * 2.64, 0.05, l), 0, bR * 0.86, zc);
-      P.add('gun', box(bR * 2.64, 0.05, l), 0, -bR * 0.86, zc);
-    }
+    // the muzzle collar: the 6"/47 fired without a brake, so the tube ends in a solid swell with a front lip (blind critics,
+    // rounds 4-7: a box brake read as a placeholder; the photographs' muzzle is a solid cylindrical cap)
+    P.add('gun', cylZ(GUN.brakeR, GUN.brakeL - 0.10, seg, GUN.brakeR - 0.01), 0, 0, zBrake + 0.10 + (GUN.brakeL - 0.10) / 2);
+    P.add('gun', cylZ(GUN.brakeR - 0.01, 0.10, seg, GUN.muzzleR), 0, 0, zBrake + 0.05);
+    P.add('gun', cylZ(GUN.brakeR + 0.012, 0.035, seg), 0, 0, len - 0.03);
     P.add('gun', cylZ(GUN.boreR * 1.45, 0.03, seg), 0, 0, len - 0.012);
     muzzleBore(P, { z: len + 0.004, r: GUN.boreR });
     P.muzzleZ = len;
-    P.gunG.userData.t95GunReceipt = { caliberMm: 152.4, muzzleZ: len, brake: 'double-baffle', source: '6"/47 Mark 16 (fictional fit)' };
+    P.gunG.userData.t95GunReceipt = { caliberMm: 152.4, muzzleZ: len, brake: 'none (muzzle collar)', source: '6"/47 Mark 16 (fictional fit)' };
   };
   buildT95Gun();
   yield 'buildT95Gun';

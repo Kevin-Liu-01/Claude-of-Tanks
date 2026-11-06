@@ -212,10 +212,10 @@ export const WEAPON_ROWS: { readonly [K in WeaponKey]: WeaponRow } = Object.free
     loudDb: 149, closeFadeM: [150, 420], farFadeM: [100, 480], tailRate: 0.82, tailGain: 0.95, actionDelayS: 0.22, spent: 'case_eject_brass_heavy',
   }),
   // 270: the T95's fictional 152 mm, the US Navy 6"/47 Mark 16 in a tank's ball mount (owner 2026-11-05): a long naval
-  // gun with a double-baffle brake and brass cases, a harder, heavier report than the KV-2's short howitzer above, under
+  // gun, no brake (a muzzle collar), brass cases, a harder, heavier report than the KV-2's short howitzer above, under
   // the 17 cm's
   '152n/separate_case': cannon('152n/separate_case', 152, 'separate_case', 'gun_152n', {
-    ordnance: '152 mm on the 6"/47 Mark 16 (T95, fictional)', rifling: 'rifled', barrel: 'long (L/47)', brake: 'double_baffle',
+    ordnance: '152 mm on the 6"/47 Mark 16 (T95, fictional)', rifling: 'rifled', barrel: 'long (L/47)', brake: 'none',
     weight: 'superheavy',
     loudDb: 151, closeFadeM: [158, 440], farFadeM: [115, 500], tailRate: 0.81, tailGain: 0.98, actionDelayS: 0.22,
     spent: 'case_eject_brass_heavy',
