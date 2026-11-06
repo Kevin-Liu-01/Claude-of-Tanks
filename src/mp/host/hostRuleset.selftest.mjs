@@ -81,7 +81,7 @@ const arrangement = { allies: null, enemies: null, waveSize: null, enemyNation: 
     const hostileSeats = [{ ...seats[0], equipment: hostile }, seats[1]];
     pair.main.post({ type: 'boot', config: { roomId, matchId: `m-${roomId}`, generation: 1, mapId: 'verdant', mode, seed: 7, seats: hostileSeats, bots: [], countdownS: 1, battleLimitS: null, hostSecret: 'host-secret-0123456789abcdef', manifestBase: null, resume: null, arrangement: null, campaignOperationId: null } });
     await ready;
-    const equip = core.actor?.authority.entities.find((entity) => entity.specId === 'm1a1_abrams_hc')?.equip;
+    const equip = core.actor?.authority.entities.find((entity) => entity.specId === 'm1a1_abrams_hc')?.combat.equip;
     core.dispose();
     pair.main.close();
     return equip;

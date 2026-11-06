@@ -243,7 +243,9 @@ export interface AuthoritativeEntity {
   state: TankState;
   combat: AuthoritativeCombatState;
   input: AuthoritativeInput;
-  equip: string[];
+  /** The seat's loadout after the ruleset's cut, handed to applyEquipmentToCombat at the spawn and at each revive. The
+   *  kit that took effect, gated by the hull, is combat.equip: its one copy, which a live re-equip replaces (round 4 F8
+   *  review: a second copy here was written beside each call and went stale on a re-equip). */
   loadout: string[];
   bot: boolean;
   isPlayer: boolean;
@@ -1066,7 +1068,7 @@ export function createAuthoritativeMatch({
     const bot = !!record.bot;
     const loadout = rulesetLoadout(ruleset, Array.isArray(record.equipment)
       ? record.equipment.slice() : defaultLoadoutFor(spec));
-    const equipment = applyEquipmentToCombat(
+    applyEquipmentToCombat(
       combat,
       loadout,
       spec,
@@ -1081,7 +1083,6 @@ export function createAuthoritativeMatch({
       team,
       state,
       combat,
-      equip: equipment,
       loadout,
       input,
       bot,
@@ -1138,8 +1139,8 @@ export function createAuthoritativeMatch({
     concealers: worldConcealers,
     getEquipment: (entity) => {
       const tank = entityById.get(entity.id);
-      // the kit applyEquipmentToCombat wrote (combat.equip, gated by the hull), as the solo step's spotting reads it
-      // (round 4 F8); tank.equip is the same array, assigned beside each call
+      // the kit applyEquipmentToCombat wrote (combat.equip, gated by the hull, its one copy), as the solo step's spotting
+      // reads it (round 4 F8), so a live re-equip reaches the spotting at once
       return tank ? consumableSpottingIds(tank.consumables, tank.combat.equip, timeS) : null;
     },
     getCamoBonus: (entity) => (entityById.get(entity.id)?.camoPaint ? CAMO_PAINT_BONUS : 0),
@@ -1282,7 +1283,7 @@ export function createAuthoritativeMatch({
     tank.input = makeInput();
     tank.input.aimPoint.copy(tank.state.aimPoint);
     tank.combat = createCombatState(tank.spec) as AuthoritativeCombatState;
-    tank.equip = applyEquipmentToCombat(
+    applyEquipmentToCombat(
       tank.combat, tank.loadout || rulesetLoadout(ruleset, defaultLoadoutFor(tank.spec)), tank.spec,
     );
     // the wave's health scale folds into the ruleset stamp (hull, damage-taken, reload, ammunition)
