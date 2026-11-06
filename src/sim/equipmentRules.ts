@@ -106,6 +106,8 @@ export interface EquipmentCombatState {
   equipMults?: object;
   /** The named multiplier layers a live state carries (consumableRules.ts); a re-equip hands its new object to them. */
   multiplierLayers?: MultiplierLayers;
+  /** The ruleset's reload fold on this life (matchRuleset.ts applyRulesetToCombat records it); a re-equip keeps it. */
+  rulesetReload?: number;
   modules?: Partial<Record<EquipmentModuleId, {
     maxHp: number;
     hp: number;
@@ -422,6 +424,11 @@ export function applyEquipmentToCombat(
 ): string[] {
   const clean = sanitizeLoadout(ids, spec);
   const mults = computeEquipMults(clean);
+  // the equipment layer is the kit with the ruleset's reload fold (consumableRules.ts MultiplierLayers): a state the
+  // ruleset already stamped (a live re-equip) keeps its fold on the new object; a fresh state has none yet, so the
+  // spawn's applyRulesetToCombat, which runs after this, folds it once (round 3 B7 review, 2026-11-06)
+  const fold = combat.rulesetReload;
+  if (typeof fold === 'number' && Number.isFinite(fold) && fold !== 1) mults.reload *= fold;
   combat.equip = clean;
   combat.equipMults = mults;
   // a live state's multiplier layers (consumableRules.ts, audit M5) compose the new kit with the mode's stamps and the
