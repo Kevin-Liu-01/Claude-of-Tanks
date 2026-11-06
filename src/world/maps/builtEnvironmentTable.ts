@@ -111,9 +111,9 @@ export const BUILT_ENVIRONMENT = Object.freeze({
   frontier: row({ paved: { tone: 0.82, patches: 0.8, cracks: 0.6, covers: 0.4, markings: 1 }, paths: ['patched', 'patched', 'patched', 'patched', null, null], work: 'off' },
     'hessian', banked({ kind: 'mud', widthM: 2.5, hex: 0x5e5444 })),
   // Bjerkvik on the Herjangsfjord, May 1940 (built-env-270, the photos: the gravel roads stay; the shore shingle and cobbles
-  // of grey granite and gneiss between smooth slabs, no sand beach)
+  // of grey granite and gneiss between smooth slabs, no sand beach; r4: 16 cm stones read as street cobbles — Dalmatia's 7 cm)
   fjord: row(PROTECTED, null, { boats: 'faering', jetty: 'brygge', reeds: 'phragmites', drift: 'nordland', ford: 'gauge',
-    bank: { kind: 'shingle', widthM: 7, hex: 0x8a8680, stoneM: 0.16 } }),
+    bank: { kind: 'shingle', widthM: 7, hex: 0x8a8680, stoneM: 0.07 } }),
   // the Jamuna's chars, 2010: the village roads brick soling (the embankment roads past the villages stay earth)
   // (built-env-270, the photos: the chars' banks pale grey silt and sand, not the fields' dark soil)
   delta: row({ paved: null, paths: ['brick', 'brick', null, null, 'brick'], work: 'climate' }, 'bengal',
@@ -122,9 +122,9 @@ export const BUILT_ENVIRONMENT = Object.freeze({
   badlands: row(UNPAVED, 'wadirum'),
   // Kohima, 1944: the metalled Dimapur–Imphal road (path 1, south to north over the ridge), a dark tar macadam with few
   // cracks and no covers (R2, the first frames: a pale modern grey band); the jeep tracks earth
-  // (built-env-270, the photos: the nullah a boulder-strewn bed of grey stones and coarse gravel)
-  monsoon: row({ paved: { tone: 0.70, patches: 0.6, cracks: 0.3, covers: 0 }, paths: [null, 'asphalt', null, null, null], work: 'climate' }, null,
-    banked({ kind: 'shingle', widthM: 5, hex: 0x807a70, stoneM: 0.22 })),
+  // (built-env-270 r4: the shingle bank read as dry cracked mud in the rains and lost the blind A/B 0 of 8 — the old wet
+  // silt stays)
+  monsoon: row({ paved: { tone: 0.70, patches: 0.6, cracks: 0.3, covers: 0 }, paths: [null, 'asphalt', null, null, null], work: 'climate' }, null),
   // the Col du Mont-Cenis, April 1945
   alpine: row(UNPAVED, null, { boats: 'lakeboat', jetty: 'stage', reeds: 'phragmites', drift: 'breton', ford: 'gauge', bank: null }),
   // the Aso caldera, 2015 (built-env-270, the photos: the prefectural and municipal roads a smooth dark asphalt with white
@@ -185,8 +185,8 @@ export const BUILT_ENVIRONMENT = Object.freeze({
   saltwind: row({ paved: { tone: 0.92, patches: 1, cracks: 0.8, covers: 0.3, markings: 0.6 }, paths: ['patched', 'patched', 'patched', 'patched', 'patched', 'patched'], work: 'off' },
     'dalmatian', { boats: 'gajeta', jetty: 'riva', reeds: 'phragmites', drift: 'breton', ford: 'gauge', bank: { kind: 'shingle', widthM: 14, hex: 0xd2cdc3, stoneM: 0.07 } }),
   // the Rur dams, 1944–45 (built-env-270, the photos: the lakes drawn down that winter, a wide bare band of grey-brown slate
-  // and greywacke scree and silt below the dark root line)
-  reservoir: row(PROTECTED, null, banked({ kind: 'shingle', widthM: 8, hex: 0x7d776c, stoneM: 0.09 })),
+  // and greywacke scree and silt below the dark root line; r4: the first band read as a pale dry strip — darker, wet)
+  reservoir: row(PROTECTED, null, banked({ kind: 'shingle', widthM: 8, hex: 0x58534b, stoneM: 0.07 })),
   // Olympus Basin, the future: no potholes in its regolith
   mars: row({ paved: null, paths: null, work: { potholes: 0 } }, null),
   // Taurus–Littrow, 1972: the regolith has no potholes or washboard
