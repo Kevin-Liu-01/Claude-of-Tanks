@@ -51,7 +51,7 @@ export class MigrationStore {
   private readonly completeLink = new Map<string, number>();
   /** Every obstacle a `world_prop_destroyed` named this round, with the link of its newest naming. */
   private readonly fallenOn = new Map<number, number>();
-  /** Every stage, breach or fall a destruction event named this round, in arrival order. */
+  /** Every stage or breach (a hole, or a section's fall) a destruction event named this round, in arrival order. */
   private readonly destructionOn: Array<{ entry: DestructionLogEntry; link: number }> = [];
   /** The tick of each entity's newest `mode_respawn` this round, by authoritative id. */
   private readonly respawnOn = new Map<string, { tick: number; link: number }>();
@@ -131,7 +131,7 @@ export class MigrationStore {
   /** A `world_prop_destroyed` this client received, presented or still queued (RetainedMigrationState.fallen). */
   retainFallen(obstacleIndex: number): void { this.fallenOn.set(obstacleIndex, this.link); }
 
-  /** A stage, breach or fall a destruction event named (RetainedMigrationState.destruction). */
+  /** A stage or breach (a hole, or a section's fall) a destruction event named (RetainedMigrationState.destruction). */
   retainDestruction(entry: DestructionLogEntry): void { this.destructionOn.push({ entry, link: this.link }); }
 
   /** An entity's `mode_respawn` at `tick` (RetainedMigrationState.respawns): the newest per id. */
@@ -142,14 +142,17 @@ export class MigrationStore {
   get respawns(): Array<[id: string, tick: number]> { return [...this.respawnOn].map(([id, retained]) => [id, retained.tick]); }
 
   /**
-   * The current link's host restarted the battle (matchClient.ts followTimeline: a kept host's last resort, round 2 U1):
-   * everything retained before this link is of a battle no longer played, and the next election would have resumed it.
-   * At the same generation the old keyframe's higher tick outranked every keyframe of the restarted battle until its
-   * timeline caught up; its falls, destruction and revives were merged into the next host's resume
-   * (migrationState.ts resumeStateFromRetained: the fallen props knocked down, old revives counted once the restarted
-   * timeline passed their ticks). It all goes in this one move, so a store added here cannot outlive the battle it is
-   * of. What this link's host sent stays (its events may come before the snapshot that tells the restart), and so does
-   * the sealed configuration: it is the match's, not the battle's.
+   * The current link's host plays another battle than the one retained (matchClient.ts restartBattle, round 2 U1 and
+   * round 3 A3: told at the WELCOME by its battle id, receiveWelcome, a kept host's fallback restart; or at the first
+   * snapshot by its phase, followTimeline, a resume rewound to its countdown): everything retained before this link is of a
+   * battle no longer played, and the next election would have resumed it. At the same generation the old keyframe's
+   * higher tick outranked every keyframe of the restarted battle until its timeline caught up; its falls, destruction and
+   * revives were merged into the next host's resume (migrationState.ts resumeStateFromRetained: the fallen props knocked
+   * down, old revives counted once the restarted timeline passed their ticks). It all goes in this one move, so a store
+   * added here cannot outlive the battle it is of. What this link's host sent stays: a restart told at the WELCOME comes
+   * before anything on its link, and one told by the phase test comes at the first snapshot, after any events the host
+   * sent behind its WELCOME (the link dating keeps them). The sealed configuration stays too: it is the match's, not the
+   * battle's.
    */
   abandonBattle(): void {
     const kind = MIGRATION_EVENT_KIND.KEYFRAME;

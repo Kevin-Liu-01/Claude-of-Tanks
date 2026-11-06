@@ -65,6 +65,13 @@ interface DestructionMirror {
   setSections(on: boolean): void;
   /** Whether this world's structure of `record` yields to a ram at `closingMps` as the authority's would (structureDamage wouldYield). */
   yieldsToRam(record: CollisionRecord, massTons: number, closingMps: number): boolean;
+  /**
+   * The battle restarted under this seat (round 3 X5; battlePresentation.ts on MatchFrame.battleRestarts): everything this
+   * mirror laid goes, as on a fresh mirror. The structures stand again (their records reset, a fresh damage state over
+   * them), the ground holds the map's own craters alone (the same overlay object: what reads it reads the reset), and what
+   * the old battle's events taught (ids, craters stamped, the log applied) is forgotten.
+   */
+  reset(): void;
 }
 
 const finite = (value: unknown, fallback = 0): number => (typeof value === 'number' && Number.isFinite(value) ? value : fallback);
@@ -80,7 +87,7 @@ export function createDestructionMirror(world: MirrorWorld | null, bus: MirrorBu
   // a cached world comes back from its last battle (solo or another round): its buildings stand again first
   resetStructureRecords(obstacles, colliders);
   const hasGroups = obstacles.some((record) => record.structureIdx !== undefined);
-  const structures = hasGroups
+  const buildStructures = (): StructureDamage | null => (hasGroups
     ? createStructureDamage(obstacles, colliders, {
       // (a heap rises on this world's clock from when its collapse lands here, setTime by the presentation; a settled one —
       // the log a late seat catches up on — stands risen)
@@ -91,7 +98,8 @@ export function createDestructionMirror(world: MirrorWorld | null, bus: MirrorBu
       // the map's house walls, as the authority builds its structures (sim/authoritativeMatch.ts): a ram is priced alike
       wallMaterial: wallMaterialForStyle(architectureStyleOf(world?.config ?? null)),
     })
-    : null;
+    : null);
+  let structures = buildStructures();
   const groundField = world?.heightField && typeof world.heightField.getHeightAt === 'function'
     ? createDeformedHeightField(world.heightField, ground) : null;
   /** Authority id → this world's structure, learned from events when the ids disagree. */
@@ -216,7 +224,17 @@ export function createDestructionMirror(world: MirrorWorld | null, bus: MirrorBu
   return {
     groundField,
     ground,
-    structures,
+    get structures() { return structures; },
+    reset() {
+      resetStructureRecords(obstacles, colliders);
+      structures = buildStructures();
+      ground.reset();
+      stampMapCraters(ground, mapCraterStampsOf(world as MapCraterWorld | null));
+      learned.clear();
+      cratered.clear();
+      idsShared = true;
+      settledUpTo = 0;
+    },
     applyStageEvent(payload) {
       const structure = resolveEvent(payload);
       if (!structure) return null;

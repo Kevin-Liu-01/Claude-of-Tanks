@@ -31,9 +31,10 @@ import { RemoteInterpolator } from './interpolation.ts';
 import type { EntitySample, FrameMetaSample, InterpolatorOptions, ShellSample } from './interpolation.ts';
 import { LocalPredictor } from './prediction.ts';
 import type { CorrectionPolicy, PredictionStats, PredictionWorld } from './prediction.ts';
-import { ConnectionRecovery, MIGRATION_WELCOME_ALLOWANCE_MS } from './recovery.ts';
+import { ConnectionRecovery, HOLD_RELEASE_MARGIN_MS, MIGRATION_WELCOME_ALLOWANCE_MS } from './recovery.ts';
 import type { ConnectionPhase, RecoveryOptions } from './recovery.ts';
 import { MigrationStore } from './migrationStore.ts';
+import { HULL_BODY_ROW_FLAGS } from './hullBodyRow.ts';
 import type { RetainedBlob } from './migrationStore.ts';
 import { SnapshotStream } from './snapshotStream.ts';
 import type { TankState } from '../../sim/movement.ts';
@@ -218,13 +219,19 @@ export interface MatchClientStats {
   closeReason: CloseReasonId | null;
   /** Own-row hints sent after a resumed link (P3b: the migration seed for a hull the new host could not see). */
   resumeHintsSent: number;
+  /** HOLD notices taken before a WELCOME (round 3 B1/X6: a host holding this seat's HELLO said how long; receiveHold). */
+  holdNotices: number;
   /** Fresh links asked for before the WELCOME after a "hello timeout" or a "peer offered again" CLOSE (MAX_HELLO_RETRIES). */
   helloRetries: number;
   /** Episodes where this tab's own tasks were starved past TASK_STARVED_MS (the stall clock rested; taskProbe). */
   taskStarvations: number;
   /** New links whose host ran on another timeline than this client's clocks (followTimeline): the clocks re-anchored. */
   timelineRestarts: number;
-  /** New links whose host had restarted the battle (followTimeline): what was retained of the battle before it went. */
+  /**
+   * Links whose host plays another battle than the one this client followed (a battle id of its own at the WELCOME,
+   * receiveWelcome; or a battle this client saw begin shown as not begun at the first snapshot, followTimeline): what was
+   * retained of the battle before it went.
+   */
   battleRestarts: number;
 }
 
@@ -345,8 +352,11 @@ export class MatchClient {
   private keyframeRequests = 0;
   private inputFramesSent = 0;
   private resumeHintsSent = 0;
+  private holdNotices = 0;
   private timelineRestarts = 0;
   private battleRestarts = 0;
+  /** The battle id of the newest WELCOME (WelcomeMessage.battleId; null before the first): the battle this client follows. */
+  private followedBattleId: number | null = null;
   /** The first snapshot after a WELCOME still has to be read against this client's clocks (followTimeline). */
   private timelineCheckPending = false;
   private helloRetries = 0;
@@ -633,6 +643,7 @@ export class MatchClient {
       outageMs: this.recovery.outageStartedAtMs === null ? 0 : Math.max(0, this.clock() - this.recovery.outageStartedAtMs),
       closeReason: this.closeReason,
       resumeHintsSent: this.resumeHintsSent,
+      holdNotices: this.holdNotices,
       helloRetries: this.helloRetries,
       taskStarvations: this.starvations,
       timelineRestarts: this.timelineRestarts,
@@ -648,7 +659,8 @@ export class MatchClient {
       this.openedAtMs = this.clock();
       // a link to the host the room just elected (the session followed its host_changed: migration.setGeneration): that
       // host's boot and resume hold may keep this seat's HELLO unanswered, so the stall clock allows both (audit M1,
-      // round 2 Q1: the hold alone ran out under a slow boot; recovery.ts MIGRATION_WELCOME_ALLOWANCE_MS)
+      // round 2 Q1: the hold alone ran out under a slow boot; recovery.ts MIGRATION_WELCOME_ALLOWANCE_MS) until the host
+      // says how long it holds it (round 3 B1/X6: receiveHold, which any host that holds a HELLO sends, a kept one too)
       this.holdAllowanceMs = change.resumed && this.migration.hostGeneration > this.welcomedGeneration ? MIGRATION_WELCOME_ALLOWANCE_MS : 0;
       // A resumed link may be a new host (a migration): the own newest authority row from the host we lost is the seed
       // for our hull if the new host could not see it (P3b); the actor bounds it and ignores it on a plain reconnect.
@@ -715,11 +727,12 @@ export class MatchClient {
     return this.transport.send(bytes);
   }
 
-  /** The own row as of its capture tick `tick`. */
+  /** The own row as of its capture tick `tick`, its body bits with it (round 3 A14: the new host seats them as a row's). */
   private sendResumeHint(tick: number, row: EntityRow): void {
     const sent = this.send(encodeMessage({
       type: MESSAGE_TYPE.RESUME_HINT, tick, x: row.x, y: row.y, z: row.z, speed: row.speed, verticalSpeed: row.verticalSpeed,
       yaw: row.yaw, pitch: row.pitch, roll: row.roll, turretYaw: row.turretYaw, gunPitch: row.gunPitch,
+      flags: row.flags & HULL_BODY_ROW_FLAGS,
     }));
     if (sent) this.resumeHintsSent++;
   }
@@ -742,6 +755,7 @@ export class MatchClient {
       case MESSAGE_TYPE.SNAPSHOT: this.receiveSnapshot(message, nowMs); break;
       case MESSAGE_TYPE.EVENT: this.receiveEvents(message); break;
       case MESSAGE_TYPE.PONG: this.receivePong(message, nowMs); break;
+      case MESSAGE_TYPE.HOLD: this.receiveHold(message.holdMs, nowMs); break;
       case MESSAGE_TYPE.ERROR:
         this.serverErrors++;
         this.errors.push(message);
@@ -830,6 +844,14 @@ export class MatchClient {
     this.timelineCheckPending = true;
     // what this link brings is dated by it: the snapshot that tells a restarted battle may come after some of its events
     this.migration.beginLink();
+    // A host that plays another battle than the one this client followed restarted it (round 3 A3): the battle's id is the
+    // host's own word, kept by every resume and new at every fallback restart (migrationState.ts migrationFallback), so
+    // neither the restart's tick nor its phase against this client's clocks decides it. Before, a plain reconnect whose
+    // first snapshot came more than 2 s late read as a restart (the off-clock test), and a restart on the clock seen
+    // after its countdown read as none.
+    const battleId = welcome.battleId ?? 0;
+    if (this.followedBattleId !== null && battleId !== this.followedBattleId) this.restartBattle();
+    this.followedBattleId = battleId;
     // HELLO -> WELCOME is a round trip with a server stamp: the first clock sample.
     if (this.helloSentAtMs !== null) this.serverClock.observePong(this.helloSentAtMs, nowMs, serverTimeMs);
     if (!this.serverClock.isSeeded) this.serverClock.seed(serverTimeMs, nowMs);
@@ -846,30 +868,41 @@ export class MatchClient {
   }
 
   /**
-   * The first snapshot on a link, against what this client followed before it (review rounds 1 and 2, U1). A kept host
-   * (matchSession.ts bootKeptHost: nobody else could host) restarts a battle that had begun: migrationFallback's last
-   * resort, a countdown from the spawns at battle time 0, on the newest tick the host knows.
-   * - The battle. A host behind the clocks, or one that shows a battle this client saw begin as not begun (a resumed
-   *   battle keeps its newest frame's phase, migrationState.ts resumePhaseOf; a reconnect's host moves only forward),
-   *   restarted it. Everything retained of the battle before this link goes (MigrationStore.abandonBattle): the keyframe,
-   *   whose higher tick outranked the restarted battle's, and the falls, destruction and revives the next host merges
-   *   into its resume. The presentation's settled world is told by MatchFrame.battleRestarts.
+   * The battle went: what was retained of it for the next election (MigrationStore.abandonBattle: the keyframe, whose
+   * higher tick outranked the restarted battle's, and the falls, destruction and revives the next host merges into its
+   * resume) and the phase this client saw it in (the first snapshot's phase test reads the restarted battle alone). The
+   * presentation's settled world is told by MatchFrame.battleRestarts.
+   */
+  private restartBattle(): void {
+    this.battleRestarts++;
+    this.migration.abandonBattle();
+    this.matchPhase = null;
+    this.verdict = null;
+  }
+
+  /**
+   * The first snapshot on a link, against what this client followed before it (review rounds 1 and 2, U1; round 3 A3).
+   * - The battle. A host that shows a battle this client saw begin (playing, ended or decided) as not begun went back to
+   *   its countdown: a resume from a seat whose newest frame was still in it (one host's phase only moves forward;
+   *   migrationState.ts resumePhaseOf). What this client retained of the battle since goes (restartBattle), as the
+   *   resumed host has none of it. A battle restart from the spawns is told at the WELCOME by its battle id
+   *   (receiveWelcome); its distance from the clock no longer decides it (round 3 A3): a plain reconnect whose first
+   *   snapshot came more than 2 s late read as one, and a restart on the clock after its countdown as none.
    * - The clocks. A host whose loop runs further from the clock than the clock's own hard resync bound, which no link
    *   delay explains, runs another timeline, and the clocks re-anchor on it at once. Kept, the old host's samples held the
    *   offset until the window turned over, and the input stream, started at the WELCOME on the old timeline, sent every
    *   INPUT far ahead of the new host (refused), then none at all until the new timeline caught up with it. A host on the
    *   same timeline (a reconnect, a migration that skipped its boot's ticks) is left as it is. The snapshot's stamp seeds
-   *   the clock (one way, low by the link's delay) and a fresh ping burst corrects it, as after a first WELCOME.
+   *   the clock (one way, low by the link's delay) and a fresh ping burst corrects it, as after a first WELCOME. A first
+   *   snapshot merely late re-anchors the clocks on its stamp, and the burst corrects them; it drops nothing.
    */
   private followTimeline(frame: SnapshotFrame, serverTimeMs: number, nowMs: number): void {
     const tick = frame.tick;
     const offTimelineMs = serverTimeMs - this.serverClock.serverNow(nowMs);
     const hardResyncMs = this.serverClock.hardResyncMs;
-    // this.matchPhase and this.verdict are still the newest frame's before this link (receiveSnapshot sets them after)
-    if (offTimelineMs < -hardResyncMs || (battleBegun(this.matchPhase, this.verdict) && !battleBegun(frame.meta.phase, frame.meta.verdict))) {
-      this.battleRestarts++;
-      this.migration.abandonBattle();
-    }
+    // this.matchPhase and this.verdict are still the newest frame's before this link (receiveSnapshot sets them after;
+    // restartBattle cleared them for a battle of another id)
+    if (battleBegun(this.matchPhase, this.verdict) && !battleBegun(frame.meta.phase, frame.meta.verdict)) this.restartBattle();
     if (Math.abs(offTimelineMs) <= hardResyncMs) return;
     this.timelineRestarts++;
     this.serverClock.reset();
@@ -907,6 +940,22 @@ export class MatchClient {
     this.pingsSent++;
     this.pendingPings.push({ key, sentAtMs: nowMs });
     if (this.pendingPings.length > MAX_PENDING_PINGS) this.pendingPings.shift();
+  }
+
+  /**
+   * The host holds this seat's HELLO for at most `holdMs` more (wire HOLD, round 3 B1/X6: through its boot, or a migrated
+   * host's resume hold, matchHostCore.ts noticeHeld): the stall clock's handshake allowance runs to then, and its stall
+   * counts from there. The host's own word replaces whatever the link opened with: a newly elected host's whole boot and
+   * hold bound (MIGRATION_WELCOME_ALLOWANCE_MS, all a seat could allow before), and a kept host's nothing (matchSession.ts
+   * bootKeptHost holds its seats at the room's same generation, which the opening allowance never read). So a seat waits
+   * through a slow boot or a long hold on any link, and asks for a fresh one once its host overruns what it announced (by
+   * more than HOLD_RELEASE_MARGIN_MS, the WELCOME's way out through the host's main thread), not 33 s after the link
+   * opened. Capped at that bound; after the WELCOME it means nothing.
+   */
+  private receiveHold(holdMs: number, nowMs: number): void {
+    if (this.welcomeMessage || this.openedAtMs === null) return;
+    this.holdAllowanceMs = Math.max(0, nowMs - this.openedAtMs) + Math.min(Math.max(0, holdMs) + HOLD_RELEASE_MARGIN_MS, MIGRATION_WELCOME_ALLOWANCE_MS);
+    this.holdNotices++;
   }
 
   private receivePong(pong: PongMessage, nowMs: number): void {

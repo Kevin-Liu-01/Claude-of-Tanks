@@ -1745,7 +1745,11 @@ export const SELFTEST_SUITES = Object.freeze({
     // 2026-10-10 (MP lane): a migrated host holds its world still until the seats that were playing are back
     'src/mp/host/resumeHold.selftest.mjs',
     'src/mp/host/resumeHoldClocks.selftest.mjs', // 2026-11-02 audit M1: a held seat's stall clock allows the resume hold; a seat whose link closed is not counted back
-    'src/mp/match/timelineRestart.selftest.mjs', // 2026-11-02 audit U1 (round 2): a client follows a host that restarts the battle behind its clocks (re-anchored, inputs admitted)
+    'src/mp/host/holdNotice.selftest.mjs', // 2026-11-02 audit round 3 B1/X6: a host that holds a HELLO says how long (HOLD); a kept host's and its own seat wait, a silent host's stalls at its announced end and release margin (virtual time moves only once the core's real async work has settled)
+    // 2026-11-02 audit U1 (round 2; round 3 A3): a client follows a host that restarts the battle (clocks re-anchored, inputs admitted, the abandoned battle's
+    // retained state dropped), told by the battle's id at the WELCOME: a plain reconnect's late first snapshot restarts nothing, a restart after its countdown is seen
+    'src/mp/match/timelineRestart.selftest.mjs',
+    'src/mp/host/battleIdentity.selftest.mjs', // 2026-11-02 audit round 3 A3: a match's first battle is 0, a fallback restart names its own, a resume keeps it to its WELCOMEs; a real client told by the restarted core's WELCOME drops the old battle's keyframe
     // 2026-10-11 (MP lane): a late HELLO is admitted; a seat closed with "hello timeout" says hello again
     'src/mp/host/helloGate.selftest.mjs',
     'src/mp/host/worldCollision.selftest.mjs',
@@ -1758,6 +1762,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/mp/presentation/battlePresentation.selftest.mjs',
     'src/mp/presentation/wreckCause.selftest.mjs', // 2026-11-02 audit F10: a late cook-off cause reaches the wreck; a respawn forgets the last life's cause
     'src/mp/presentation/settledFalls.selftest.mjs', // 2026-11-02 audit U27: a late joiner's settled props lie as they fell (wire 11 falls, withheld as their events are), a withheld one along its own heading, never a ram toward +Z
+    'src/mp/presentation/battleRestartReset.selftest.mjs', // 2026-11-02 audit round 3 X5: a battle restart stands the old battle's settled props, structures and heaps on the seat, and the effects' stages on the bus; the restarted battle lays and draws its own
     'src/mp/presentation/unseenRounds.selftest.mjs', // 2026-11-02 audit U31: a round that left the view in flight is named unseen (wire 11) and held by the effects, not ended
     // 2026-10-07 (destruction core lane): the authority's stages on a peer's world, the log on the wire and through a migration.
     'src/mp/presentation/destructionMirror.selftest.mjs',

@@ -88,6 +88,8 @@ export async function openMigrationBlob(key: unknown, blob: Uint8Array, crypto?:
 
 export interface MigrationKeyframe {
   modeCheckpoint?: NewModeCheckpoint | null;
+  /** The battle the keyframe belongs to (round 3 A3; MatchActor.battleId): a resume from it keeps it. Absent: 0. */
+  battleId?: number;
   tick: number;
   battleTimeMs: number;
   /** The authority clock (s) at `tick` (authority.timeS; battleTimeMs also counts a resumed host's offset). */
@@ -99,7 +101,8 @@ export interface MigrationKeyframe {
 
 export function encodeMigrationKeyframe(keyframe: MigrationKeyframe): Uint8Array {
   const packet = encodeMessage(buildSnapshotPacket(keyframe.frame, null));
-  const extras = encoder.encode(JSON.stringify({ tick: keyframe.tick, battleTimeMs: keyframe.battleTimeMs, timeS: keyframe.timeS, phase: keyframe.phase, entities: keyframe.entities, modeCheckpoint: keyframe.modeCheckpoint }));
+  const extras = encoder.encode(JSON.stringify({ tick: keyframe.tick, battleTimeMs: keyframe.battleTimeMs, timeS: keyframe.timeS, phase: keyframe.phase, entities: keyframe.entities, modeCheckpoint: keyframe.modeCheckpoint,
+    ...(keyframe.battleId ? { battleId: keyframe.battleId } : {}) }));
   const out = new Uint8Array(4 + packet.byteLength + extras.byteLength);
   new DataView(out.buffer).setUint32(0, packet.byteLength, true);
   out.set(packet, 4);
@@ -130,7 +133,23 @@ export function decodeMigrationKeyframe(bytes: Uint8Array): MigrationKeyframe {
     tick: extras.tick as number, battleTimeMs: extras.battleTimeMs, phase, frame, entities,
     ...(typeof extras.timeS === 'number' && Number.isFinite(extras.timeS) && extras.timeS >= 0 ? { timeS: extras.timeS } : {}),
     ...(extras.modeCheckpoint ? { modeCheckpoint: extras.modeCheckpoint as NewModeCheckpoint } : {}),
+    ...(isBattleId(extras.battleId) && extras.battleId !== 0 ? { battleId: extras.battleId } : {}),
   };
+}
+
+const isBattleId = (value: unknown): value is number => Number.isInteger(value) && (value as number) >= 0 && (value as number) <= 0xffffffff;
+
+/**
+ * A fresh battle id for a fallback restart (round 3 A3; WelcomeMessage.battleId): never 0 (a match's first battle), and
+ * random, so it differs from the battle it replaces whatever this seat knows of that one (a reloaded kept host knows
+ * nothing of it; 2^-32 is the chance two match).
+ */
+export function mintBattleId(crypto?: Pick<CryptoLike, 'getRandomValues'>): number {
+  const api = crypto ?? (globalThis as { crypto?: Pick<CryptoLike, 'getRandomValues'> }).crypto;
+  if (!api?.getRandomValues) throw new Error('Web Crypto is unavailable in this runtime');
+  const bytes = api.getRandomValues(new Uint8Array(4));
+  const id = (bytes[0]! | (bytes[1]! << 8) | (bytes[2]! << 16) | (bytes[3]! << 24)) >>> 0;
+  return id === 0 ? 1 : id;
 }
 
 // ------------------------------------------------------------ chunking over wire events
@@ -662,12 +681,14 @@ export function migrationPlayEvidence({ latestFrame, resumeTick, countdownMs, ro
  * A kept host (matchSession.ts bootKeptHost: its re-entry decline found nobody to hand the match on to) restarts
  * whatever the evidence, named as the last resort: a decline there ends the match for every seat.
  */
-export function migrationFallback({ latestFrame, latestFrameAtMs, nowMs, resumeTick, countdownMs, roomMatchStatus = null, kept = false }: {
+export function migrationFallback({ latestFrame, latestFrameAtMs, nowMs, resumeTick, countdownMs, roomMatchStatus = null, kept = false, battleId }: {
   latestFrame: SnapshotFrame | null; latestFrameAtMs: number | null; nowMs: number; resumeTick: number; countdownMs: number;
   /** The room's record of the elected match (the seat's room snapshot); null when it names another match or none. */
   roomMatchStatus?: RoomMatchStatus | null;
   /** The room kept this seat as the host with no one else to elect (no election: the session's own last resort). */
   kept?: boolean;
+  /** The restarted battle's id (round 3 A3); absent: a fresh one (mintBattleId). */
+  battleId?: number;
 }): MigrationFallback {
   const evidence = migrationPlayEvidence({ latestFrame, resumeTick, countdownMs, roomMatchStatus });
   if (evidence && !kept) return { kind: 'decline', reason: 'battle_in_progress', evidence };
@@ -679,7 +700,11 @@ export function migrationFallback({ latestFrame, latestFrameAtMs, nowMs, resumeT
     meta: { phase: PHASE.COUNTDOWN, countdownMs: Math.min(0xffff, remainingMs), battleTimeMs: 0, verdict: VERDICT.NONE, verdictReason: '', destructibleRevision: 0 },
     destroyed: [], destruction: [], entities: [], shells: [], viewer: null, modeStateJson: null,
   };
-  return { kind: 'restart', resumeTick: tick, state: { tick, battleTimeMs: 0, phase: 'countdown', frame, entities: [] }, ...(evidence ? { lastResort: evidence } : {}) };
+  // a battle of its own (round 3 A3): every client that followed the battle this replaces tells the restart by it at its
+  // WELCOME (MatchClient receiveWelcome), whatever the restart's tick or phase reads against its clocks
+  const restartedBattleId = battleId !== undefined && isBattleId(battleId) && battleId !== 0 ? battleId : mintBattleId();
+  return { kind: 'restart', resumeTick: tick, state: { tick, battleTimeMs: 0, phase: 'countdown', frame, entities: [], battleId: restartedBattleId },
+    ...(evidence ? { lastResort: evidence } : {}) };
 }
 
 /**

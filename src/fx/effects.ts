@@ -6815,6 +6815,12 @@ function* createFxSteps(
       busBinders.set(source, unbind);
       // (FX lane 2026-10-17) a network screen drifts on this map's wind, the one its authority stamped (no wire field)
       bus.on('auxiliary:smokeScreens', (payload) => { auxiliary?.setNetworkScreens((payload as {screens:SmokeScreen[]}).screens, smokeWindForMap(world?.()?.mapId)); });
+      // (2026-11-02 audit, round 3 X5 review r1) the battle restarted under this seat (battlePresentation.ts
+      // resetSettledWorld on MatchFrame.battleRestarts: its collision and props stand again): what the abandoned battle laid
+      // goes as at a battle's start, its structure stages and their ledger, rubble, craters and decals among it. Before, a
+      // collapsed building stayed drawn as rubble over the wall that stood again, and the ledger refused the restarted
+      // battle's own collapse of it. The hulls are running already (no start-up exhaust burst)
+      bus.on('battle:restarted', () => { fx.resetAll({ running: true }); });
       // destruction-fx lane: the core lane's structure stages and crater stamps (DESTRUCTION.md §11)
       bus.on(DESTRUCTION_BUS_EVENTS.stage, (payload) => {
         const e = payload as StructureStageEvent;

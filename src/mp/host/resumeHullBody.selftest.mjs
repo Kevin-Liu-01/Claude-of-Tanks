@@ -13,11 +13,21 @@
 // a hull airborne in the keyframe whose newer hint has it landed flew back up to the keyframe's height on the next tick.
 // The hint now seats the body on its own pose as a row does (authorityRow.ts reseatAuthorityBody), its contact read from
 // its height over the ground (RESUME_HINT carries no body bits).
+// Round 3 (A14, 2026-11-05): RESUME_HINT carries the row's body bits (ResumeHintMessage.flags) and the actor seats the hint
+// through the row's own owner (authorityRow.ts applyAuthorityRow). Read from height, a hull resting on a roof or a bridge
+// 4 m over the terrain field was airborne to the new host (it dropped onto its support in a tick), and the restored row's
+// body mode stood under the newer pose (a hull tumbling at the hint came back as the keyframe had it). The client sends
+// its own row's body bits (MatchClient sendResumeHint).
 import assert from 'node:assert/strict';
 import { Vector3 } from 'three';
 import { createMatchActor } from '../../../server/match/matchActor.ts';
 import { createLoopbackLink } from '../../../server/match/link.ts';
-import { encodeMessage } from '../wire/codec.ts';
+import { decodeMessage, encodeMessage } from '../wire/codec.ts';
+import { MatchClient } from '../match/matchClient.ts';
+import { HULL_BODY_ROW_FLAGS } from '../match/hullBodyRow.ts';
+import { ScriptedMatchServer } from '../match/scriptedServer.test-support.ts';
+import { MigratingTransport, createLoopbackPair } from '../transport/index.ts';
+import { TEAM } from '../wire/constants.ts';
 import { quantizeAngle, quantizePosition, quantizeVelocity } from '../wire/quantize.ts';
 import { captureEntityRow, captureMeta, createEraIndexer } from '../../../server/match/entityRows.ts';
 import { ENTITY_FLAGS, MESSAGE_TYPE, PROTOCOL_VERSION } from '../wire/constants.ts';
@@ -94,5 +104,81 @@ if (wrong.length) {
   }
   hinted.stop();
 }
+// ---- round 3 A14: the hint's body bits, not its height, seat the hull's contact and mode
+{
+  const hintCase = (flags, y) => {
+    const actor = make({ tick: tick + 60, battleTimeMs: battleTimeMs + 1000 });
+    applyResumeState(actor, sealed);
+    const hull = actor.authority.entityById.get('flying').state;
+    const link = createLoopbackLink('flying');
+    const hello = { type: MESSAGE_TYPE.HELLO, protocolVersion: PROTOCOL_VERSION, capabilities: 1, token: 'x', clientBuild: 'resume' };
+    assert.ok(actor.attach(link.server, hello, { v: 1, roomId: actor.roomId, seat: 0, playerId: 'flying', name: 'Flying', team: 'alpha', specId: 'leclerc_s2', iat: 0, exp: 1 }), 'setup: the viewer attaches');
+    link.client.send(encodeMessage({ type: MESSAGE_TYPE.RESUME_HINT, tick: tick + 30, x: quantizePosition(hull.pos.x + 1), y: quantizePosition(y), z: quantizePosition(hull.pos.z),
+      speed: 0, verticalSpeed: 0, yaw: quantizeAngle(hull.yaw), pitch: 0, roll: 0, turretYaw: 0, gunPitch: 0, flags }));
+    return { actor, hull };
+  };
+  const wrongBits = [];
+  // a hull resting on a roof 4 m over the terrain field (its row: on the ground, upright). The seating is what this
+  // proves: the state the actor's next step starts from (grounded and supported, not airborne). The drop itself is not
+  // reproduced here (review r1): this field has no deck (a map's structure manifest brings the authority's standing
+  // decks), and over one the airborne hull lands on it within the same step, so a step tells the two apart only by that
+  // tick's airborne state, which the reading below already shows
+  {
+    const { actor, hull } = hintCase(0, 4);
+    await new Promise((resolve) => setImmediate(resolve));
+    assert.equal(actor.stats().resumeHints.applied, 1, `setup: the roof hint is applied (${JSON.stringify(actor.stats().resumeHints)})`);
+    if (hull.grounded !== true) wrongBits.push(`a hull resting on a roof 4 m up is grounded ${hull.grounded} after its hint (its row says on its support)`);
+    if (hullBodyMode(hull) !== 'supported') wrongBits.push(`the roof hull's body mode is '${hullBodyMode(hull)}'`);
+    actor.stop();
+  }
+  // a hull tumbling 2 m up at the hint (the keyframe row: airborne and upright)
+  {
+    const { actor, hull } = hintCase(ENTITY_FLAGS.AIRBORNE | ENTITY_FLAGS.TUMBLING, 2);
+    await new Promise((resolve) => setImmediate(resolve));
+    assert.equal(actor.stats().resumeHints.applied, 1, 'setup: the tumbling hint is applied');
+    if (hull.grounded !== false) wrongBits.push(`the tumbling hull is grounded ${hull.grounded} after its airborne hint`);
+    if (hullBodyMode(hull) !== 'tumbling') wrongBits.push(`the tumbling hull's body mode is '${hullBodyMode(hull)}' after its hint (the hint says tumbling)`);
+    actor.stop();
+  }
+  // the client sends its own row's body bits
+  {
+    let nowMs = 10_000;
+    const clock = () => nowMs;
+    const SPEC = { enginePowerHp: 1500, weightTons: 60, topSpeedKmh: 65, reverseSpeedKmh: 30, hullTraverseDegS: 42, turretTraverseDegS: 40, gunPitchDegS: 25,
+      gunElevationDeg: 20, gunDepressionDeg: 10, pivotStyle: 'neutral', terrainResistance: { hard: 0.8, medium: 1, soft: 1.8 },
+      dims: { hullLengthM: 7.8, overallLengthM: 9.8, widthM: 3.7, heightM: 2.4 },
+      gun: { caliberMm: 120, baseAccuracy: 0.3, aimTimeS: 2, bloom: { move: 0.1, hullRot: 0.1, turret: 0.08, afterShot: 3 } },
+      armor: { boundingRadiusM: 4.8, turretPivot: [0, 1.5, 0], gunPivot: [0, 0.3, 0.2], gunBarrel: { lengthM: 5.3 } } };
+    const field = { getHeightAt: () => 0, getHeightAtFast: () => 0, getGroundType: () => 'hard' };
+    const server = new ScriptedMatchServer({ clock, heightField: field, specFor: () => SPEC, countdownTicks: 0,
+      seats: [{ entityId: 1, specId: 'm1', playerId: 'p1', name: 'One', team: TEAM.ALPHA, token: 'tok-1', x: 0, z: 0, yaw: 0 }] });
+    const first = createLoopbackPair({ clock });
+    server.attach(first.server);
+    const migrating = new MigratingTransport(first.client);
+    const client = new MatchClient({ transport: migrating, token: 'tok-1', clock });
+    const step = (pairs) => { nowMs += 1000 / 60; for (const pair of pairs) pair.pump(nowMs); server.advance(); for (const pair of pairs) pair.pump(nowMs); client.update(nowMs, 1 / 60); };
+    client.connect();
+    for (let n = 0; n < 60; n++) step([first]);
+    // the seat's hull thrown up: in the air for a while, its rows flagged airborne
+    const own = server.entities.find((entity) => entity.entityId === 1).state;
+    own.pos.y = 30; own.verticalSpeed = 0; setHullGrounded(own, false); own._ride.y = 30; own._ride.v = 0; own._ride.airTime = 0.2;
+    for (let n = 0; n < 12; n++) step([first]);
+    const ownRow = client.retainedMigration().latestFrame.entities.find((row) => row.entityId === 1);
+    assert.ok(ownRow.flags & ENTITY_FLAGS.AIRBORNE, 'setup: the seat\'s newest own row says airborne');
+    const next = createLoopbackPair({ clock });
+    next.server.open();
+    const hints = [];
+    next.server.onFrame((bytes) => { const decoded = decodeMessage(bytes, { maxBytes: 4096 }); if (decoded.ok && decoded.message.type === MESSAGE_TYPE.RESUME_HINT) hints.push(decoded.message); });
+    migrating.replace(next.client, 'host changed');
+    for (let n = 0; n < 4; n++) { nowMs += 1000 / 60; next.pump(nowMs); client.update(nowMs, 1 / 60); next.pump(nowMs); }
+    assert.equal(hints.length, 1, 'the seat sends its own row as a hint on the resumed link');
+    if (hints[0].flags !== (ownRow.flags & HULL_BODY_ROW_FLAGS)) wrongBits.push(`the client's hint carries body bits ${hints[0].flags} (its row: ${ownRow.flags & HULL_BODY_ROW_FLAGS})`);
+    client.dispose();
+  }
+  if (wrongBits.length) {
+    console.error(`resumeHullBody: the resume hint's contact and body mode came from its height, not its row:\n  ${wrongBits.join('\n  ')}`);
+    assert.fail('a resume hint carries its row\'s body bits and the new host seats them as a row\'s');
+  }
+}
 old.stop(); fresh.stop();
-console.log('resumeHullBody: a migrated host restores each hull\'s ground contact, body mode, spring and ride from its row, as the client\'s predictor does: an airborne hull flies on, a tumbling one stays tumbling, and a viewer\'s newer hint seats the body on its own pose');
+console.log('resumeHullBody: a migrated host restores each hull\'s ground contact, body mode, spring and ride from its row, as the client\'s predictor does: an airborne hull flies on, a tumbling one stays tumbling, and a viewer\'s newer hint seats the body on its own pose and its own body bits (a roof rest stays grounded, a tumble tumbles)');

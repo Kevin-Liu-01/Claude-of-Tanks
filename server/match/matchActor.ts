@@ -20,8 +20,7 @@ import type {
 import { endingHoldExpired, matchRulesetFor, terrainVariantFor, type MatchRuleset } from '../../src/sim/matchRuleset.ts';
 import { normalizeGameMode, type GameModeId } from '../../src/sim/matchModes.ts';
 import { SIM_DT } from '../../src/sim/movement.ts';
-import { setHullGrounded } from '../../src/sim/hullBodyMode.ts';
-import { reseatAuthorityBody } from '../../src/mp/match/authorityRow.ts';
+import { applyAuthorityRow } from '../../src/mp/match/authorityRow.ts';
 import { createDedicatedWorldCollision } from '../dedicatedWorldCollision.ts';
 import type { WorldKernelModule } from '../../src/world/wasmWorldKernels.ts';
 import {
@@ -34,7 +33,7 @@ import type {
   EntityRow, EventMessage, HelloMessage, InputMessage, ResumeHintMessage, RosterEntry, ShellRow, SnapshotFrame, SnapshotMeta, WireEvent, WireMessage,
 } from '../../src/mp/wire/messages.ts';
 import { captureShellSnapshot, type QuantizedShellSnapshot, type SnapshotShellSource } from '../../src/sim/worldSnapshot.ts';
-import { dequantizeAngle, dequantizePosition, dequantizeVelocity } from '../../src/mp/wire/quantize.ts';
+import { dequantizePosition } from '../../src/mp/wire/quantize.ts';
 import { estimateEntityRowBytes } from '../../src/mp/wire/rows.ts';
 import { createEventPayloadCache } from '../../src/mp/wire/eventPayload.ts';
 import { MATCH_BUILD, compareMatchBuilds, matchBuildRefusalCode, matchBuildRefused } from '../../src/mp/wire/matchBuild.ts';
@@ -115,6 +114,11 @@ export interface MatchActorResume {
   phase?: 'countdown' | 'playing' | 'ended';
   countdownMs?: number;
   verdict?: { result: 'alpha' | 'bravo' | 'draw'; reason: string } | null;
+  /**
+   * The battle this actor plays (round 3 A3; WelcomeMessage.battleId, u32): the resumed battle's (the sealed keyframe's),
+   * or a fallback restart's own (migrationState.ts migrationFallback). Absent: 0, a match's first battle.
+   */
+  battleId?: number;
 }
 
 export interface MatchActorOptions {
@@ -339,6 +343,8 @@ export interface MatchActor {
   wireIdOf(playerId: string): number | null;
   /** Battle time the actor resumed at (0 for a fresh match): every published battle clock adds it. */
   readonly resumedBattleTimeMs: number;
+  /** The battle this actor plays (MatchActorResume.battleId; 0 for a match's first battle): its WELCOMEs and keyframes carry it. */
+  readonly battleId: number;
   /**
    * The row an entity was restored from at a migration (`applyResumeState` names it): a later RESUME_HINT from that
    * entity's own seat is applied only when it is newer than this row and within the distance the hull could have driven
@@ -481,6 +487,10 @@ export function createMatchActor(options: MatchActorOptions): MatchActor {
       || (resume.countdownMs !== undefined && !(resume.countdownMs >= 0 && Number.isFinite(resume.countdownMs))))) {
     throw new TypeError('resume phase must be countdown, playing or ended, and its countdownMs finite and >= 0');
   }
+  if (resume && resume.battleId !== undefined && !(Number.isInteger(resume.battleId) && resume.battleId >= 0 && resume.battleId <= 0xffffffff)) {
+    throw new TypeError('resume battleId must be a u32');
+  }
+  const battleId = resume?.battleId ?? 0;
   const mode: GameModeId = normalizeGameMode(options.mode ?? 'standard');
   const ruleset = options.ruleset && options.ruleset.mode === mode ? options.ruleset : matchRulesetFor(mode);
   const snapshotHz = options.snapshotHz ?? SNAPSHOT_HZ;
@@ -625,9 +635,6 @@ export function createMatchActor(options: MatchActorOptions): MatchActor {
   // later hint is stale (a withheld hint sent mid-fight would teleport the hull; security audit 2026-10-22)
   const driven = new Uint8Array(MAX_ENTITIES + 1);
   const RESUME_HINT_WINDOW_TICKS = TICK_HZ * 10;
-  // a hinted hull this far above the ground under it is in the air (RESUME_HINT carries no body bits); nearer, it is on
-  // the ground: a hull at rest stands about 0.02 m over the field's height on the flat, a little more across a crest
-  const RESUME_HINT_AIRBORNE_M = 0.5;
   // the tick the resumed loop started from (past resume.tick by the ticks the world stood still, MatchActorResume.dueAtMs)
   let resumedFromTick = resume ? resume.tick : 0;
   const resumeHints: ResumeHintStats = { applied: 0, rejected: 0, reasons: { noResume: 0, notRestored: 0, repeated: 0, older: 0, future: 0, tooFar: 0, noSeat: 0, late: 0 } };
@@ -767,8 +774,8 @@ export function createMatchActor(options: MatchActorOptions): MatchActor {
    * A viewer's own newest authority row from the host it lost (P3b): applied to its entity only when this actor resumed
    * a migration, the entity was restored from the migration state, no hint was taken for it yet, the row is newer than
    * the restored one and older than the resume tick, and it lies within the distance the hull could have driven since
-   * the restored row (top speed × the ticks between, with a margin) — pose fields only, never combat state. A client
-   * never places itself: outside those bounds the hint is refused and counted.
+   * the restored row (top speed × the ticks between, with a margin) — the pose and its body bits only, never combat state.
+   * A client never places itself: outside those bounds the hint is refused and counted.
    */
   function receiveResumeHint(client: ActorClient, hint: ResumeHintMessage): void {
     const entity = client.entity;
@@ -787,24 +794,12 @@ export function createMatchActor(options: MatchActorOptions): MatchActor {
     const allowedM = (hint.tick - restoredTick) * SIM_DT * topSpeedMps(entity) * 1.25 + 3;
     const movedM = Math.hypot(x - restoredX[entityId]!, z - restoredZ[entityId]!);
     if (movedM > allowedM) { refuse('tooFar'); actorLog.warn('resume hint refused', { player: client.playerId, movedM: Math.round(movedM * 10) / 10, allowedM: Math.round(allowedM * 10) / 10 }); return; }
-    const tank = entity.state;
-    tank.pos.x = x;
-    tank.pos.y = dequantizePosition(hint.y);
-    tank.pos.z = z;
-    tank.yaw = dequantizeAngle(hint.yaw);
-    tank.speed = dequantizeVelocity(hint.speed);
-    tank.verticalSpeed = dequantizeVelocity(hint.verticalSpeed);
-    tank.turretYaw = dequantizeAngle(hint.turretYaw);
-    tank.gunPitch = dequantizeAngle(hint.gunPitch);
-    tank.visualPitch = dequantizeAngle(hint.pitch);
-    tank.visualRoll = dequantizeAngle(hint.roll);
-    // The restore (migrationState.ts applyResumeState through applyAuthorityRow) seated the contact, spring and ride on the
-    // restored row; the hint's pose is newer, so they are seated again on it, as a row's are (round 2 U2, review round 1:
-    // a hull airborne in the keyframe whose hint had it landed flew back up to the keyframe's height). The hint has no body
-    // bits: its height over the ground is the contact, and the restored row's body mode stands (an overturned hull stays
-    // overturned; a tumble settles on its own).
-    setHullGrounded(tank, !(tank.pos.y > authority.heightField.getHeightAt(x, z) + RESUME_HINT_AIRBORNE_M));
-    reseatAuthorityBody(tank);
+    // The hint is the seat's newest row of its own hull from the host it lost, and seats as a row does: pose, ground
+    // contact and body mode from its body bits, then the spring and ride on that pose (authorityRow.ts applyAuthorityRow,
+    // the restore's own owner; round 3 A14). Before, the hint carried no body bits: its contact was read from its height
+    // over the terrain field (a hull on a roof or a bridge read as airborne and dropped onto its support in a tick) and
+    // the restored row's body mode stood under the newer pose (a hull that had righted came back tumbling).
+    applyAuthorityRow(entity.state, hint);
     hinted[entityId] = 1;
     resumeHints.applied++;
     actorLog.info('resume hint applied', { player: client.playerId, tick: hint.tick, restoredTick, movedM: Math.round(movedM * 100) / 100 });
@@ -1348,7 +1343,7 @@ export function createMatchActor(options: MatchActorOptions): MatchActor {
       protocolVersion: PROTOCOL_VERSION, tickHz: TICK_HZ, snapshotHz,
       seat: client.seat, entityId, team: TEAM_ID[seatSpec.team],
       serverTick: loop.tick, serverTimeMs: serverTimeMs(loop.tick), seed: seed >>> 0, capabilities: client.capabilities,
-      roomId, mapId, mode, rulesetJson, roster: rosterEntries.map((row) => ({ ...row })),
+      roomId, mapId, mode, rulesetJson, roster: rosterEntries.map((row) => ({ ...row })), battleId,
     });
     // a link that closed under the WELCOME (send returns false on a closed link, without a throw) leaves the seat now
     // (audit M3, 2026-11-02): before, the client stayed seated and marked connected until a close event that may not follow
@@ -1431,6 +1426,7 @@ export function createMatchActor(options: MatchActorOptions): MatchActor {
     entityForWireId: (entityId) => entityByWireId.get(entityId) ?? null,
     wireIdOf: (playerId) => entityIdOf.get(playerId) ?? null,
     resumedBattleTimeMs,
+    battleId,
     noteRestoredRow(entityId, tick, x, z) {
       if (!Number.isInteger(entityId) || entityId < 1 || entityId > MAX_ENTITIES || !Number.isInteger(tick) || tick < 0) return;
       restoredTicks[entityId] = tick;

@@ -32,7 +32,9 @@ import { PLAYER_ACTION_BITS } from '../../sim/playerActions.ts';
 // prop as it fell, not as a ram toward +Z; the falls take only the room the frame leaves under MAX_MESSAGE_BYTES (past it
 // they travel as none), so they never stop a keyframe. (b) U31:
 // SNAPSHOT_FLAGS.HAS_UNSEEN_SHELLS and, after the shells, the rounds this viewer was shown that left its view still in
-// flight (codec.ts writeUnseenShells), so a client tells a spotting loss from an end.
+// flight (codec.ts writeUnseenShells), so a client tells a spotting loss from an end. Round 3 (2026-11-05, unreleased with
+// it, so no further bump): WELCOME ends with a u32 battleId, RESUME_HINT with a varint of the row's body bits, and HOLD
+// (type 22) is new (README.md).
 export const WIRE_VERSION = 11;
 /**
  * 2 (P3b, 2026-09-29): entity rows carry the authority tick they were captured at (`EntityRow.tick`, ROW_GROUP.AGE on the
@@ -61,7 +63,12 @@ export const WIRE_VERSION = 11;
 // and the host handover a migration seals, which an older build would misread (round 2 U2, mp-resume): the extras'
 // reload channels at rest as null and the consumables' and auxiliary kit's at-rest fields absent (`MigrationEntityExtras`,
 // hostProtocol.ts: only what differs from a fresh host's state), and the resume state's keyframeBattleTimeMs.
-export const PROTOCOL_VERSION = 12; // wire 11 (destroyed falls, unseen rounds) and the round-2 migration handover
+// Round 3 (mp-resume, 2026-11-05; still unreleased, so 12 carries it): the battle's identity (WelcomeMessage.battleId: 0 for
+// a match's first battle, kept by every resume through the sealed keyframe's battleId, new for a fallback restart; a client
+// judges a restart by it, round 3 A3), the resume hint's body bits (ResumeHintMessage.flags: the new host seats the hint's
+// contact and body mode as a row's, round 3 A14) and the held seat's HOLD notice (HoldMessage: a host that holds a HELLO
+// through its boot or its resume hold says how long, round 3 B1/X6).
+export const PROTOCOL_VERSION = 12; // wire 11 (destroyed falls, unseen rounds, the battle id, hint body bits, HOLD) and the round-2/3 migration handover
 
 export const TICK_HZ = 60;
 /**
@@ -122,6 +129,12 @@ export const MESSAGE_TYPE = Object.freeze({
   PONG: 19,
   CLOSE: 20,
   ERROR: 21,
+  /**
+   * Before the WELCOME (round 3 B1/X6, protocol 12): this host holds the seat's HELLO (its boot, its resume hold) and
+   * answers within `holdMs`. The seat's stall clock allows that long (MatchClient receiveHold); a host that announces
+   * nothing leaves the clock as it was.
+   */
+  HOLD: 22,
 } as const);
 
 /** Finite reasons for CLOSE, ERROR and LEAVE. */

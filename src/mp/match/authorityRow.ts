@@ -2,7 +2,7 @@
  * An authority row onto a hull's simulation state: the client's predictor rewinds its own hull with it
  * (prediction.ts LocalPredictor.reconcile), a migrated host restores every hull from its keyframe or newest row with it
  * (migrationState.ts applyResumeState, round 2 U2), and the new host's resume hint seats a newer pose with its second half
- * (matchActor.ts receiveResumeHint). One copy, so every copy of a hull takes a row the same way.
+ * (matchActor.ts receiveResumeHint, whole since round 3 A14). One copy, so every copy of a hull takes a row the same way.
  *
  * Its own module (round-two merge review, 2026-11-05): the two functions lived in prediction.ts, and the two authority
  * imports put the client predictor, its interpolator and the wire barrel (about 81 KB) into the host Worker's static
@@ -16,11 +16,18 @@ import { dequantizeAngle, dequantizePosition, dequantizeVelocity } from '../wire
 import { applyHullBodyRowFlags } from './hullBodyRow.ts';
 
 /**
+ * What a hull's authority row and a migrated host's resume hint both carry (round 3 A14: the hint carries the row's body
+ * bits too, ResumeHintMessage.flags; absent: 0, a hull on the ground, upright).
+ */
+export type AuthorityPose = Pick<EntityRow, 'x' | 'y' | 'z' | 'yaw' | 'speed' | 'verticalSpeed' | 'pitch' | 'roll' | 'turretYaw' | 'gunPitch'>
+  & { flags?: number };
+
+/**
  * The authority row's pose and body flags onto the simulation state (the predictor's checkpoint refines the integrator).
  * The pose alone left a migrated host's ground contact, body mode, spring and ride under it, so an airborne hull fell from
  * its old ride height or snapped to the ground on the first step, and one on its side or roof came back supported.
  */
-export function applyAuthorityRow(state: TankState, row: EntityRow): void {
+export function applyAuthorityRow(state: TankState, row: AuthorityPose): void {
   state.pos.set(dequantizePosition(row.x), dequantizePosition(row.y), dequantizePosition(row.z));
   state.yaw = dequantizeAngle(row.yaw);
   state.speed = dequantizeVelocity(row.speed);
@@ -31,7 +38,7 @@ export function applyAuthorityRow(state: TankState, row: EntityRow): void {
   state.gunPitch = dequantizeAngle(row.gunPitch);
   // ground contact and the body mode, the rigid phase itself included (wire 10, hullBodyRow.ts); the viewer checkpoint
   // restores them again right after (prediction.ts restoreCheckpoint)
-  applyHullBodyRowFlags(state, row.flags);
+  applyHullBodyRowFlags(state, row.flags ?? 0);
   reseatAuthorityBody(state);
 }
 

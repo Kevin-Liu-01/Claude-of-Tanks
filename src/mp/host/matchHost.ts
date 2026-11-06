@@ -15,10 +15,11 @@ import type { Transport, Unsubscribe } from '../transport/transport.ts';
 import type { RtcIceConfig, RtcPeerConnectionFactory, Signaler } from '../transport/webRtcTransport.ts';
 import { createRtcHostAcceptor } from '../match/rtcClientLink.ts';
 import type { RtcClientLink, RtcHostAcceptor, RtcHostAcceptorStats } from '../match/rtcClientLink.ts';
-import { CLOSE_REASON } from '../wire/constants.ts';
+import { CLOSE_REASON, MESSAGE_TYPE } from '../wire/constants.ts';
+import { encodeMessage } from '../wire/codec.ts';
 import type { CloseReasonId } from '../wire/constants.ts';
-import { HOST_LOOPBACK_PEER } from './hostProtocol.ts';
-import { ELECTED_HOST_BOOT_MS } from '../match/recovery.ts';
+import { HOST_LOOPBACK_PEER, bootHoldNoticeMs } from './hostProtocol.ts';
+import { ELECTED_HOST_BOOT_MS, RESUME_HOLD_MS } from '../match/recovery.ts';
 import { reportSimKernels } from '../../world/simKernelsReport.ts';
 import type { HostBootConfig, HostCoreStats, HostMatchReport, HostPort, HostToWorkerMessage, WorkerToHostMessage } from './hostProtocol.ts';
 
@@ -144,6 +145,8 @@ export function createMatchHost({
   const bridges = new Map<number, { link: RtcClientLink; playerId: string; lastPressure: number }>();
   const queuedLoopback: Uint8Array<ArrayBuffer>[] = [];
   let bootTimer: unknown = null;
+  /** When start() began the boot (clock()); null before it. */
+  let bootStartedAtMs: number | null = null;
   let lastPressureMs = -Infinity;
   let uplinkWindowStartMs: number | null = null;
   let uplinkWindowBytes = 0;
@@ -167,7 +170,17 @@ export function createMatchHost({
   pair = loopback;
   loopback.server.open();
   loopback.server.onFrame((bytes) => {
-    if (!ready) { queuedLoopback.push(bytes.slice()); return; }
+    if (!ready) {
+      // (round 3 B1/X6) the host's own seat waits for the boot as a peer's does (matchHostCore.ts noticeHeld): its first
+      // word hears how long at most, the boot's bound left and a resume's hold after it (bootHoldNoticeMs, the core's
+      // formula and bound); the core tells the hold's own
+      if (!queuedLoopback.length) {
+        const bootLeftMs = bootStartedAtMs === null ? bootTimeoutMs : bootTimeoutMs - (clock() - bootStartedAtMs);
+        loopback.server.send(encodeMessage({ type: MESSAGE_TYPE.HOLD, holdMs: bootHoldNoticeMs(bootLeftMs, RESUME_HOLD_MS, config) }));
+      }
+      queuedLoopback.push(bytes.slice());
+      return;
+    }
     const copy = bytes.slice();
     post({ type: 'link_frame', peer: HOST_LOOPBACK_PEER, bytes: copy.buffer }, [copy.buffer]);
   });
@@ -310,13 +323,17 @@ export function createMatchHost({
       if (state !== 'idle') { reject(new Error(`host is ${state}`)); return; }
       if (!next || typeof next.hostSecret !== 'string' || next.hostSecret.length < 16) { const error = new TypeError('a boot config with the host secret is required'); fail(error.message); reject(error); return; }
       config = next;
+      bootStartedAtMs = clock();
       setState('booting', 'boot');
       const off = stateListeners.add(({ state: current, detail }) => {
         if (current === 'live') { off(); resolve(); }
         else if (current === 'failed' || current === 'stopped') { off(); reject(new Error(detail || current)); }
       });
       bootTimer = setTimer(() => { bootTimer = null; if (!ready) fail('host boot timed out'); }, bootTimeoutMs);
-      post({ type: 'boot', config: next });
+      // the core tells the seats its boot holds this bound (bootHoldNoticeMs), counted from its own start of the boot: the
+      // message's transit later than this timer's, so a peer is told at most that much more than the runtime allows (its
+      // link is dropped when the timer fails the boot, teardown)
+      post({ type: 'boot', config: next, bootTimeoutMs });
     });
     return startPromise;
   }
