@@ -253,7 +253,13 @@ function pinWorldTime(t) {
 /** The grass and the ground litter with no cell left to build near the camera (page side; ground-269's groundSettled). */
 function groundSettled() {
   const W = window.__DEBUG.world, g = W?._tallGrass?.getState?.(), l = W?._litter?.getState?.();
-  return (!g || !g.enabled || (!g.near.pending && !g.far.pending)) && (!l || !l.pending);
+  // (ground-269's f26a717570: the arm shot first drew fewer near blades) the mid ring too, and the rings' published counts
+  // unchanged for 1.5 s
+  const idle = (!g || !g.enabled || (!g.near.pending && !g.mid.pending && !g.far.pending)) && (!l || !l.pending);
+  const sig = g ? [g.near, g.mid, g.far].map((r) => `${r.count}/${r.publishes}`).join() : '';
+  const now = performance.now(), last = window.__gsSettle;
+  window.__gsSettle = { sig, since: last && last.sig === sig ? last.since : now };
+  return idle && now - window.__gsSettle.since > 1500;
 }
 
 /** The pinned layer held (its frames traced), or no layer. */
@@ -361,8 +367,9 @@ async function shootMap(entry, options, frames) {
     // (ab6, Saltmere's A/A: a pair's first page, thawed from the queue, framed its near grass still streaming in — 14 % of
     // the frame differed from the settled twin) the grass settled or the pose fails, to be shot again
     const settled = await page.waitForFunction(grassSettled, { timeout: 60_000, polling: 250 }).then(() => true, () => false);
-    const streamed = settled && await page.waitForFunction(groundSettled, { timeout: 60_000, polling: 250 }).then(() => true, () => false);
-    if (!streamed) throw new Error(`${mapId} ${pose.name}: the grass or the ground litter did not settle within 60 s`);
+    await page.evaluate(() => { window.__gsSettle = null; });
+    const streamed = settled && await page.waitForFunction(groundSettled, { timeout: 90_000, polling: 250 }).then(() => true, () => false);
+    if (!streamed) throw new Error(`${mapId} ${pose.name}: the grass or the ground litter did not settle within 90 s`);
     const timesPinned = await page.evaluate(pinWorldTime, WORLD_TIME_S);
     await page.evaluate(pinClouds());
     // (48 frames: the long view of a big town under a loaded machine draws a few a second)
