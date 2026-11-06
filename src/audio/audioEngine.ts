@@ -252,6 +252,8 @@ function moduleHealth(entity: AudioEntity, name: string): ModuleHealth {
 interface ShellFiredEvent {
   feedbackPredicted?: boolean;
   shellId?: number;
+  /** (270) a rotary gun's round between two full ones (sim/fireCycleFloor.ts createRotaryShotThinning): no flash, report or kick */
+  thinned?: boolean;
   shooterId?: string;
   muzzlePos: Vec3;
   caliberMm: number;
@@ -912,13 +914,13 @@ export function createAudio({
 
   function onShellFired(event: ShellFiredEvent): void {
     const ownShot = listenerOwnerId != null ? event.shooterId === listenerOwnerId : !!event.isPlayer;
-    if (!event.feedbackPredicted) fireWeapon(event.muzzlePos, event.caliberMm, event.weaponSound, ownShot, event.muzzleIndex, false, event.shooterId, event.shellName ?? null);
+    if (!event.feedbackPredicted && !event.thinned) fireWeapon(event.muzzlePos, event.caliberMm, event.weaponSound, ownShot, event.muzzleIndex, false, event.shooterId, event.shellName ?? null);
     if (!ownShot) shellFlyby(event);
     if (!ownShot && event.caliberMm >= 20 && !sameTeam(event.shooterId, playerId) && listenerValid) {
       const [gx, gy, gz] = event.muzzlePos;
       if (distanceTo(gx, gy, gz) < 350) caption('gunfire', gx, gy, gz);
     }
-    if (event.isPlayer) {
+    if (event.isPlayer && !event.thinned) {
       if (/launch/.test(String(event.weaponSound || ''))) say('missile_away', { delayS: 0.1 });
       else say('firing', { prob: 0.1, delayS: 0.08 });
     }
@@ -937,7 +939,7 @@ export function createAudio({
 
   function onPredictedWeapon(event: ShellFiredEvent): void {
     if (!ctx || phase !== 'battle' || battleOver || !event.isPlayer) return;
-    if (listenerOwnerId == null || event.shooterId !== listenerOwnerId) return;
+    if (listenerOwnerId == null || event.shooterId !== listenerOwnerId || event.thinned) return;
     // Intent-only report: no flyby, crew call or shell bookkeeping.
     fireWeapon(event.muzzlePos, event.caliberMm, event.weaponSound, true, event.muzzleIndex, false, null, event.shellName ?? null);
   }

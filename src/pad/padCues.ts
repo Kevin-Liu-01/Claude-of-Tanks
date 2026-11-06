@@ -33,8 +33,10 @@ export function padCueOf(type: string, payload: unknown, owner: PadCueOwner): Pa
   const me = owner.id;
   switch (type) {
     case 'shell:fired':
-      // a heavier gun kicks harder: 20 mm is a flick, 150 mm and up the full thump
-      return me && field(payload, 'shooterId') === me ? { c: 'shot', m: clamp01((num(payload, 'caliberMm') - 20) / 130) } : null;
+      // a heavier gun kicks harder: 20 mm is a flick, 150 mm and up the full thump; a rotary gun's thinned rounds (270,
+      // sim/fireCycleFloor.ts) send nothing, its flicks at the floor's density
+      return me && field(payload, 'shooterId') === me && !field(payload, 'thinned')
+        ? { c: 'shot', m: clamp01((num(payload, 'caliberMm') - 20) / 130) } : null;
     case 'shell:hit': {
       if (!me || field(payload, 'kind') === 'heal') return null;
       const target = field(payload, 'targetId');

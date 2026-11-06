@@ -47,6 +47,8 @@ interface TracerShell {
   shooterId?: ShellKey;
   /** times the round has been deflected (sim/damage.ts deflectShell) */
   bounces?: number;
+  /** (270) a rotary gun's round between full ones (sim/fireCycleFloor.ts): no tracer, as the wire carries no row for it */
+  thinned?: boolean;
   spec?: { type?: string; caliberMm?: number; tracer?: string; name?: string; reloadGroup?: string; soundProfile?: string;
     guided?: boolean } | null;
 }
@@ -674,7 +676,7 @@ export function createProjectileTracers(o: TracerOptions): ProjectileTracers {
       records.forEach(unsee);
     },
     write(shell) {
-      if (shell.dead) return;
+      if (shell.dead || shell.thinned) return;
       const r = record(shell);
       r.seen = true;
       if (!r.lit) return;

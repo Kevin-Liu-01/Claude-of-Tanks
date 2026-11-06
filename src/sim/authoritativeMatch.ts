@@ -76,6 +76,7 @@ import type {
   SpottingVector3,
 } from './spotting.ts';
 import { captureWorldSnapshot } from './worldSnapshot.ts';
+import { createRotaryShotThinning } from './fireCycleFloor.ts';
 import { createWreckEnvironment, createWreckTurrets, wreckGroundSampler } from './wreckTurrets.ts';
 import { sweepLightCover, type LightCoverQuery } from './shellLightCover.ts';
 import { capturePredictionAuthorityState } from './predictionAuthorityState.ts';
@@ -837,6 +838,7 @@ export function createAuthoritativeMatch({
   const destroyedObstacleSet = new Set<number>();
   let destructibleRevision = 0;
   const shells: DamageShell[] = [];
+  const thinRotaryShot = createRotaryShotThinning();
   const destroyedBeforeBurst = new Map<string, boolean>();
   let nextShellId = 1;
   const nextAerialShellId = () => nextShellId++;
@@ -1725,8 +1727,10 @@ export function createAuthoritativeMatch({
     applyDispersion(_gunDir, sigma, rng);
     const firedSlot = combat.shellSlot;
     if (!consumeAmmunition(combat, firedSlot)) return;
-    const shell = createShell(shellSpec, entity.id, true, gun.muzzle, _gunDir, nextShellId++);
+    const shell: DamageShell = createShell(shellSpec, entity.id, true, gun.muzzle, _gunDir, nextShellId++);
     shell.rocket = isUnguidedRocket(entity.spec.gun, shellSpec);
+    // (270) a rotary gun's rounds between full ones fly unrowed (fireCycleFloor.ts): the viewers' shell rows at the floor's density
+    shell.thinned = entity.spec.gun.autoloader?.rotary === true && shellSpec.guided !== true && thinRotaryShot(entity.id, timeS);
     if (usesLauncherMuzzles(entity.spec.gun, shellSpec)) {
       combat.launcherCursor = launcherMuzzleIndex(entity.spec.gun, shellSpec, combat.launcherCursor ?? 0) + 1;
     }
@@ -2630,6 +2634,7 @@ export function createAuthoritativeMatch({
         return canObserveEntity(viewer, String(source.id));
       };
       const canObserveShell = (_id: string, shell: SnapshotShellSource): boolean => {
+        if ((shell as DamageShell).thinned) return false;
         const shooter = entityById.get(String(shell.shooterId));
         return !shooter || canObserve(viewerId, shooter);
       };
@@ -2656,6 +2661,7 @@ export function createAuthoritativeMatch({
         if (entity.id === viewerId || canObserveEntity(viewer, entity.id)) entitiesOut.push(entity);
       }
       for (const shell of shells) {
+        if (shell.thinned) continue;
         const shooter = entityById.get(String(shell.shooterId));
         if (!shooter || canObserveEntity(viewer, shooter.id)) shellsOut.push(shell as unknown as SnapshotShellSource);
       }

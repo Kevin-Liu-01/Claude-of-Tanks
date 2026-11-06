@@ -22,6 +22,7 @@ import type { MagazineIndicator } from './magazineIndicator.ts';
 
 import { Vector3, Matrix4, Quaternion, Euler } from 'three';
 import { penAtDistanceMm } from './ballistics.ts';
+import { intraClipCycleS } from './fireCycleFloor.ts';
 import type {
   BallisticShellSpec,
   ShellEntity,
@@ -86,6 +87,10 @@ export interface DamageShell extends ShellEntity<DamageShellSpec> {
   /** A roof station's round (sim/auxiliarySystems.ts): the authority lays it on where the target will be in its own
    * time, so lag compensation never rewinds it (server/match/lagCompensation.ts). */
   roofStation?: boolean;
+  /** (270) a rotary gun's round between two full ones (fireCycleFloor.ts createRotaryShotThinning): simulated whole, but
+   * no tracer draws it and no viewer's shell rows carry it (its hit and impact are events), so a rotary gun's rounds in
+   * flight cost the floor's density on the wire and in the tracers. */
+  thinned?: boolean;
   /** Survives screen-piercing across fixed steps; scoped to each target. */
   weaponModuleRolls?: Map<string, Set<ModuleId>>;
 }
@@ -105,6 +110,8 @@ export interface DamageGunSpec {
     magazineSize: number;
     fullReloadS?: number;
     intraClipS?: number;
+    /** a rotary gun: one round a tick, below every other gun's floor (fireCycleFloor.ts) */
+    rotary?: boolean;
   } | null;
 }
 
@@ -2464,7 +2471,7 @@ export function startPostShotReload(combatState: CombatState, spec: DamageTankSp
     beginMagazineReload(combatState, spec);
     return;
   }
-  const totalS = Math.max(0.05, Number(autoloader.intraClipS) || spec.gun.reloadS);
+  const totalS = intraClipCycleS(autoloader, spec.gun.reloadS);
   combatState.reload.totalS = totalS;
   combatState.reload.t = totalS;
   combatState.reload.kind = 'intraClip';
