@@ -153,10 +153,17 @@ function pinClouds(release = false) {
   })()`;
 }
 
-/** The near and far grass rings and the ground litter built (ground-269: the litter too, before a frame). */
+/**
+ * The grass rings (near, mid, far) and the ground litter built, and the rings' published counts unchanged for 1.5 s
+ * (ground-269's ab21 A/A, f26a717570: the mid ring was not waited for, so the arm shot first drew fewer near blades).
+ */
 function groundSettled() {
   const W = window.__DEBUG.world, g = W?._tallGrass?.getState?.(), l = W?._litter?.getState?.();
-  return (!g || !g.enabled || (!g.near.pending && !g.far.pending)) && (!l || !l.pending);
+  const idle = (!g || !g.enabled || (!g.near.pending && !g.mid.pending && !g.far.pending)) && (!l || !l.pending);
+  const sig = g ? [g.near, g.mid, g.far].map((r) => `${r.count}/${r.publishes}`).join() : '';
+  const now = performance.now(), last = window.__gsSettle;
+  window.__gsSettle = { sig, since: last && last.sig === sig ? last.since : now };
+  return idle && now - window.__gsSettle.since > 1500;
 }
 
 /** The pinned layer held (its frames traced), or no layer. */
@@ -236,7 +243,8 @@ async function shootMap(entry, options, frames) {
     if (!p) { receipt.poses[name] = { skipped: true }; continue; }
     const resolved = await page.evaluate(externalPoseScript({ ...p, fov: name === 'long' ? 50 : 60 }));
     await sleep(900);
-    const settled = await page.waitForFunction(groundSettled, { timeout: 8000, polling: 250 }).then(() => true, () => false);
+    await page.evaluate(() => { window.__gsSettle = null; });
+    const settled = await page.waitForFunction(groundSettled, { timeout: 90_000, polling: 250 }).then(() => true, () => false);
     await page.evaluate(pinClouds());
     // (48 frames: the long view of a big town under a loaded machine draws a few a second)
     const cloudsPinned = await page.waitForFunction(cloudsHeld, { timeout: 180_000, polling: 250 }).then(() => true, () => false);
