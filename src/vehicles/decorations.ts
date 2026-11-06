@@ -2681,6 +2681,57 @@ const BRAZIL_MANIFESTS: Readonly<Record<string, () => DecorManifestRow[]>> = Obj
   ee_t3_osorio: brazilSmallKit, ee_t4_osorio: brazilSmallKit,
   x1_pioneiro: brazilBowKit, x1a2_carcara: brazilBowKit,
 });
+// Release 269 (the owner 2026-11-05: "make the m113s have a lot more personal equipment annd decorations and tank
+// gear"; Main: the crew kit through the decor layer): the four M113s' crew and field kit where the Australian service
+// photographs (aus-m113-20261102: the AS4's heaped roof in the field and ashore, the MRVs on the range) and the M113A3's
+// blind critics put it: packs, duffels and bedrolls on the rear roof behind each gun's reach, the net rolled across the
+// trim vane, cans beside the A1 hulls' ramps (the A3's and AS4's armoured tanks hold the plate) and the cable on the side.
+// The hull's own fittings (the pioneer tools, the A3's launchers and mirrors, the ramp's hinges) are
+// profiles/m113Fittings.ts's.
+const m113Net = (): DecorManifestRow[] => [
+  { kit: 'camonet', p: 1, v: { v: 'roll', len: 1.25 }, slot: ['glacis', { side: -1 }] },
+];
+// (each row's seat measured in Node against the decor's own checks: loads stand behind the guns' reach, clear of the
+// mission attachment's dock and of each other; the pioneer tools are the hull's fittings, inside the track width)
+const M113_MANIFESTS: Readonly<Record<string, () => DecorManifestRow[]>> = Object.freeze({
+  m113a3: () => [
+    { kit: 'tarp', p: 1, v: { v: 'fat', len: 1.30 }, slot: ['hullRoof', { x: 0, z: -2.21 }] },
+    { kit: 'cargo', p: 1, v: { v: 'large-rucksack' }, slot: ['hullRoof', { x: -0.80, z: -1.78 }] },
+    { kit: 'cargo', p: 1, v: { v: 'large-rucksack' }, slot: ['hullRoof', { x: -0.14, z: -1.78 }] },
+    { kit: 'cargo', p: 1, v: { v: 'blue-water-can' }, slot: ['hullRoof', { x: 0.40, z: -1.80 }] },
+    { kit: 'cargo', p: 1, v: { v: 'twin-can-cradle' }, slot: ['hullRoof', { x: -1.02, z: -1.30 }] },
+    { kit: 'cargo', p: 1, v: { v: 'fifty-cal-ammo-can' }, slot: ['hullRoof', { x: -0.45, z: -1.31 }] },
+    { kit: 'cargo', p: 1, v: { v: 'ration-case' }, slot: ['hullRoof', { x: -0.05, z: -1.31 }] },
+    { kit: 'cargo', p: 1, v: { v: 'fifty-cal-ammo-can' }, slot: ['hullRoof', { x: 0.36, z: -1.31 }] },
+    ...m113Net(),
+    { kit: 'cable', p: 1, v: { len: 2.4 }, slot: ['hullSideCable', { side: -1 }] },
+  ],
+  m113a1_fsv: () => [
+    { kit: 'jerry', p: 1, v: { n: 2 }, slot: ['hullRearHang', { side: 1 }] },
+    { kit: 'jerry', p: 1, v: { n: 2 }, slot: ['hullRear', { side: -1 }] },
+    // the bedroll across the roof's rear left (the right rear is the mission attachment's dock)
+    { kit: 'tarp', p: 1, v: { v: 'fat', len: 0.74 }, slot: ['hullRoof', { x: 0.43, z: -2.28 }] },
+    ...m113Net(),
+    { kit: 'cable', p: 1, v: { len: 2.4 }, slot: ['hullSideCable', { side: -1 }] },
+  ],
+  // the MRV's sides are its buoyancy pods (no cable)
+  m113a1_mrv: () => [
+    { kit: 'jerry', p: 1, v: { n: 2 }, slot: ['hullRearRack', { x: 0.39 }] },
+    { kit: 'jerry', p: 1, v: { n: 2 }, slot: ['hullRearRack', { x: -0.39 }] },
+    { kit: 'tarp', p: 1, v: { v: 'fat', len: 0.74 }, slot: ['hullRoof', { x: 0.43, z: -2.28 }] },
+    ...m113Net(),
+  ],
+  // the AS4's heaped roof between its bins, a swag on each bin's lid
+  m113as4: () => [
+    { kit: 'cargo', p: 1, v: { v: 'large-rucksack' }, slot: ['hullRoof', { x: -0.38, z: -2.42 }] },
+    { kit: 'cargo', p: 1, v: { v: 'large-rucksack' }, slot: ['hullRoof', { x: 0.38, z: -2.42 }] },
+    { kit: 'cargo', p: 1, v: { v: 'bedroll-pair' }, slot: ['hullRoof', { x: -0.30, z: -1.95 }] },
+    { kit: 'cargo', p: 1, v: { v: 'camo-net-bag' }, slot: ['hullRoof', { x: 0.28, z: -1.95 }] },
+    { kit: 'tarp', p: 1, v: { v: 'thin', len: 0.6 }, slot: ['hullRoof', { x: 0.90, z: -2.27 }] },
+    { kit: 'tarp', p: 1, v: { v: 'thin', len: 0.6 }, slot: ['hullRoof', { x: -0.90, z: -2.27 }] },
+    ...m113Net(),
+  ],
+});
 const TANK_MANIFESTS: Record<string, DecorManifestBuilder> = {
   // --- WW2 ---
   kv2: () => [
@@ -3180,9 +3231,10 @@ export function decorManifestFor(spec: FleetTankSpec, rng: Rng): DecorManifestRo
   // study with the TMAPU, racks and kit, the Redback's T2000 and Iron Fist). The era field load doubled them (a second
   // discharger pair, a roof gun) and heaped cargo where the Abrams' field nets lie (the decor raises field nets), as on
   // the Danish Leopards it was cloned beside and the South African Centurions' blind critics (269).
-  if (['m113a1_fsv', 'm113a1_mrv', 'm113as4', 'leopard_as1', 'm1a1_aim_sa_aus', 'm1a2_sepv3_aus', 'redback'].includes(spec.id)) return [];
-  // 269: the US M113A3 carries its own tarp roll and fuel tanks (profiles/m113.ts)
-  if (spec.id === 'm113a3') return [];
+  // The M113s take their own crew kit instead (M113_MANIFESTS).
+  const m113 = M113_MANIFESTS[spec.id];
+  if (m113) return m113();
+  if (['leopard_as1', 'm1a1_aim_sa_aus', 'm1a2_sepv3_aus', 'redback'].includes(spec.id)) return [];
   // These source-study profiles already own their complete equipment and
   // open racks. Preserve their authored cargo without a random overlay.
   // Originals and unrelated X studies keep their existing loadouts.
