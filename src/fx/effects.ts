@@ -11,6 +11,7 @@ import { createMissileWires, WIRE_SLOTS } from './missileWires.ts';
 import { createSceneLightUniforms, readSceneLight, type SceneLightData } from './sceneLight.ts';
 import { MISSILE_AIRFRAMES, createMissileBodies, missileBodyDims } from './missileBodies.ts';
 import { usesLauncherMuzzles } from '../sim/launcherPolicy.ts';
+import { SHELL_MAX_LIFETIME_S } from '../sim/ballistics.ts';
 import { puffRandom } from './atmosRecipes.ts';
 import type { SmokeScreen } from '../sim/auxiliarySystems.ts';
 import { smokeWindForMap } from '../sim/smokeScreen.ts';
@@ -2223,26 +2224,63 @@ function* createFxSteps(
 
   // destruction-fx lane: shellId -> the round's munition class and charge (fed by shell:fired, read by its impact)
   interface ShellMunition { munition: MunitionClass; chargeKg: number; caliberMm: number }
-  /** The records of rounds in flight: a round's record leaves here at its first hull event or at its expiry. */
-  const shellMunitions = new Map<ShellId, ShellMunition>();
+  /** (round 4 F6) A record as kept: the round's class, and the fx-clock time by which the round has ended. */
+  interface ShellRecord extends ShellMunition { dueS: number }
+  /**
+   * The records of rounds in flight that have not met a hull: a round's record leaves here at its first hull event (a
+   * ricochet's too) or at its expiry, and in any case by its flight-time bound (ageShellRecords).
+   */
+  const shellMunitions = new Map<ShellId, ShellRecord>();
   /**
    * (round 3 B4) The records of rounds that met a hull. A hull hit usually ends its round with no expiry (a kinetic one
    * always), but a kinetic round may carry through, an HE round's expiry may land after its hull event, and its pending
    * hull events read the class at the next update: kept here, apart, they never crowd a round still in flight. (They had
    * waited in shellMunitions for drop-oldest at 256: a sustained fight held it at its cap, and a long-flight round, a
    * smoke round, a howitzer's, a rocket, lost its class to 256 later hull hits, its expiry bursting as HE by its type.)
+   * (round 4 F6) A ricochet moves the record here too: the sim ends a shaped charge at its first ricochet and any round at
+   * its second (damage.ts RICOCHET_MAX_BOUNCES) with no expiry after it, so a round that ends on a ricochet waited in
+   * shellMunitions for drop-oldest as the kinetic hits had; a round that ricochets and flies on reads its class here.
    */
-  const hullMetMunitions = new Map<ShellId, ShellMunition>();
+  const hullMetMunitions = new Map<ShellId, ShellRecord>();
+  /**
+   * (round 4 F6) How long a record outlives its round's firing on the fx clock: the sim ends every fired round by
+   * SHELL_MAX_LIFETIME_S of flight (sim/ballistics.ts stepShell; a drone, the one round with its own maxLifetimeS, raises
+   * no shell:fired), and the grace covers a peer's events reaching this presentation late. A record past it belongs to a
+   * round whose end never came here (a peer's shell_impact withheld once its shooter left this viewer's sight, or a round
+   * in flight when its host went), and it leaves the records then, not at drop-oldest. The fx clock stands still while
+   * the battle is paused and slows in a replay, so the bound only ever runs long.
+   */
+  const SHELL_RECORD_BOUND_S = SHELL_MAX_LIFETIME_S + 4;
+  /** The earliest dueS any record holds (Infinity with none): the frame's one test before a sweep. */
+  let shellRecordsDueS = Infinity;
+  timeShifts.on('shellRecords', (delta) => {
+    for (const record of shellMunitions.values()) record.dueS += delta;
+    for (const record of hullMetMunitions.values()) record.dueS += delta;
+    shellRecordsDueS += delta;
+  });
+  function sweepShellRecords(map: Map<ShellId, ShellRecord>, nowS: number, next: number): number {
+    for (const [id, record] of map) {
+      if (record.dueS <= nowS) map.delete(id);
+      else if (record.dueS < next) next = record.dueS;
+    }
+    return next;
+  }
+  /** (round 4 F6) Every frame: the records whose round has outlived its flight-time bound go. */
+  function ageShellRecords(nowS: number): void {
+    if (nowS < shellRecordsDueS) return;
+    shellRecordsDueS = sweepShellRecords(hullMetMunitions, nowS, sweepShellRecords(shellMunitions, nowS, Infinity));
+  }
   const _munShell = { type: '', caliberMm: 0, name: '', guided: false as boolean | undefined, tracer: undefined as string | undefined,
     blastRadiusM: undefined as number | undefined, launcherTubes: 0 };
   /** The records each map keeps at most: an overflow drops the oldest. (Round 2 U31 review: the map was cleared past 96,
    *  so a heavy fight's machine-gun rounds dropped the class of every round in flight, and a WP smoke round's expiry read
    *  as an HE burst by its type.) */
   const SHELL_RECORDS_MAX = 256;
-  function keepNewest(map: Map<ShellId, ShellMunition>, id: ShellId, record: ShellMunition): void {
+  function keepNewest(map: Map<ShellId, ShellRecord>, id: ShellId, record: ShellRecord): void {
     map.delete(id);
     if (map.size >= SHELL_RECORDS_MAX) map.delete(map.keys().next().value as ShellId);
     map.set(id, record);
+    if (record.dueS < shellRecordsDueS) shellRecordsDueS = record.dueS;
   }
   /** A round's record wherever it is (in flight, or since its first hull event). */
   function munitionOf(id: ShellId): ShellMunition | null {
@@ -2253,8 +2291,8 @@ function* createFxSteps(
     shellMunitions.delete(id);
     hullMetMunitions.delete(id);
   }
-  /** (round 3 B4) A round met a hull (any hull event but a ricochet, which flies on): its record leaves the rounds in
-   *  flight for the hull-met records, where its later events still read it. */
+  /** (round 3 B4) A round met a hull (any hull event; round 4 F6: a ricochet's too, which may have ended it): its record
+   *  leaves the rounds in flight for the hull-met records, where its later events still read it. */
   function munitionMetHull(id: ShellId): void {
     const record = shellMunitions.get(id);
     if (!record) return;
@@ -2272,7 +2310,8 @@ function* createFxSteps(
       munition = munition ?? munitionClassForShell(_munShell);
       chargeKg = munitionChargeKg(_munShell, munition);
     }
-    keepNewest(shellMunitions, e.shellId, { munition, chargeKg: chargeKg as number, caliberMm: e.caliberMm });
+    keepNewest(shellMunitions, e.shellId, { munition, chargeKg: chargeKg as number, caliberMm: e.caliberMm,
+      dueS: particles.getTime() + SHELL_RECORD_BOUND_S });
   }
   /**
    * The class of a shell ending with no fired record: its own type and calibre when the event carries them (the solo
@@ -6779,6 +6818,7 @@ function* createFxSteps(
         impactDecals.material.color.copy(tint);
       }
       particles.update(dt);
+      ageShellRecords(particles.getTime());
       structMask?.setClock(particles.getTime());
       stages?.update();
       fractureStages?.update();
@@ -7000,8 +7040,9 @@ function* createFxSteps(
         // A terminal ERA absorb already received its exact activation above.
         // Legacy payloads still fall through to their ordinary `era` impact.
         // (round 3 B4) a round that met a hull leaves the records of rounds in flight (a kinetic hit has no expiry to take
-        // its record; it waited for drop-oldest, and a sustained fight crowded a long-flight round's class out)
-        if (e.shellId != null && e.kind !== 'ricochet') munitionMetHull(e.shellId);
+        // its record; it waited for drop-oldest, and a sustained fight crowded a long-flight round's class out); (round 4
+        // F6) a ricochet too: it may have been the round's end (a shaped charge's, a second bounce), with no expiry after it
+        if (e.shellId != null) munitionMetHull(e.shellId);
         // destruction-fx lane: an HE round's hull events resolve to one burst at the next update (queueHeHit)
         if ((e.kind === 'he_pen' || e.kind === 'he_splash') && queueHeHit(e, directHull)) return;
         if (e.kind !== 'era' || !eraActivations.length) {
@@ -7976,6 +8017,7 @@ function* createFxSteps(
       wreckLit = null; // (2026-11-02 audit F10) never a column of the last battle
       shellMunitions.clear();
       hullMetMunitions.clear();
+      shellRecordsDueS = Infinity;
       lastTickS = particles.getTime();
       // fresh battle — arm the flyby exhaust start-up burst (atmospherics r2, wave 311: not for a Studio scene, whose hulls
       // are already running: its cough read as the smoke launch "bursting into dark brown-black smoke")

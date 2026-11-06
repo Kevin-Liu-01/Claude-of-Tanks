@@ -13,8 +13,11 @@
 //    burst's crater mark, the cover it clears and the water's ring were lost, and the last blast's crater record stood
 //    (a later burst beside it read as dug and left no mark);
 //  - a clock rebase inside a round's wait moves its records and its waiting hull event (timeShift.ts): a forward pin drew
-//    the hull's burst already aged (none to see) and let the round's other event draw a second one.
+//    the hull's burst already aged (none to see) and let the round's other event draw a second one;
+//  - (round 4 F6) a round that ends on a ricochet leaves the records of rounds in flight at that end, and a round whose end
+//    never comes (a peer's withheld or lost end event) ages out of the records by its flight-time bound, not drop-oldest.
 import assert from 'node:assert/strict';
+import { Session } from 'node:inspector';
 import { createRequire } from 'node:module';
 import * as THREE from 'three';
 import { createFx } from './effects.ts';
@@ -37,6 +40,34 @@ const handlers = new Map();
 fx.bindBus({ on(n, f) { (handlers.get(n) ?? handlers.set(n, []).get(n)).push(f); return () => {}; } });
 const emit = (n, p) => { for (const f of handlers.get(n) ?? []) f(p); };
 const frames = (n, dt = 1 / 60) => { for (let i = 0; i < n; i++) fx.update(dt, [], camera, () => null); };
+/** (round 4 F6) how many round records the runtime holds, read from its own closure (node:inspector, a debugger's view):
+ *  the records of rounds in flight and of rounds that met a hull (effects.ts shellMunitions, hullMetMunitions) */
+function recordCounts() {
+  const session = new Session();
+  session.connect();
+  const post = (method, params) => {
+    let out, err;
+    session.post(method, params, (e, r) => { err = e; out = r; });
+    if (err) throw err;
+    return out;
+  };
+  try {
+    globalThis.__heRecordsFn = fx.update;
+    const fid = post('Runtime.evaluate', { expression: 'globalThis.__heRecordsFn' }).result.objectId;
+    const internal = post('Runtime.getProperties', { objectId: fid, ownProperties: true }).internalProperties ?? [];
+    const scopes = internal.find((p) => p.name === '[[Scopes]]');
+    let vars = null;
+    globalThis.__heRecordsSink = (list) => { vars = list.map((s) => s.object).find((o) => o && o.shellMunitions instanceof Map) ?? null; };
+    post('Runtime.callFunctionOn', { objectId: scopes.value.objectId,
+      functionDeclaration: 'function () { globalThis.__heRecordsSink(Array.from(this)); }' });
+    assert.ok(vars, 'the runtime\'s round records are in fx.update\'s closure');
+    return { inFlight: vars.shellMunitions.size, hullMet: vars.hullMetMunitions.size };
+  } finally {
+    session.disconnect();
+    delete globalThis.__heRecordsFn;
+    delete globalThis.__heRecordsSink;
+  }
+}
 const bodies = () => fx.group.getObjectByName('fx-volume-media').children[0].geometry.instanceCount;
 // the bodies born round the HE round's point (a machine gun's strikes below lie 30 m off)
 const bodiesHere = () => {
@@ -196,6 +227,73 @@ const run = (script) => { fx.resetAll(); frames(2); const shellId = id++; fired(
   const foughtSmoke = hullFight(300);
   assert.ok(near(foughtSmoke, quietSmoke),
     `a smoke round's class outlasts 300 kinetic hull hits in its flight (${foughtSmoke} bodies at its point vs ${quietSmoke})`);
+  // (round 4 F6) a round that ends on a ricochet raises no expiry (state.ts stepLiveShell emits none after a hull impact):
+  // the sim kills a shaped charge at its first ricochet and any round at its second (damage.ts RICOCHET_MAX_BOUNCES), so
+  // the ricochet is its last event. It skipped the move out of the records of rounds in flight and waited there for
+  // drop-oldest at 256, so a sustained fight's double ricochets crowded a long-flight round's class out again
+  const ricochetFight = (rounds, type, bounces) => {
+    fx.resetAll(); frames(2);
+    const s = id++;
+    fireAt(s, smoke);
+    for (let k = 0; k < rounds; k++) {
+      const round = 900000 + id * 1000 + k;
+      emit('shell:fired', { shellId: round, shooterId: 'ac', pos: [40, 2, 40], muzzlePos: [40, 2, 40], dir: [1, 0, 0],
+        shellType: type, caliberMm: 30, shellName: `30 mm ${type}` });
+      for (let b = 0; b < bounces; b++) {
+        emit('shell:hit', { shellId: round, attackerId: 'ac', targetId: 't2', kind: 'ricochet', damage: 0, pos: [44, 1, 40 + b],
+          normal: [-1, 0, 0], caliberMm: 30, shellType: type, destroyed: false });
+      }
+    }
+    frames(1);
+    groundEnd(s, smoke); frames(6);
+    return bodiesHere();
+  };
+  const bouncedSmoke = ricochetFight(300, 'APFSDS', 2);
+  assert.ok(near(bouncedSmoke, quietSmoke),
+    `a smoke round's class outlasts 300 rounds ended on their second ricochet in its flight (${bouncedSmoke} bodies at its point vs ${quietSmoke})`);
+  const jetSmoke = ricochetFight(300, 'HEAT', 1);
+  assert.ok(near(jetSmoke, quietSmoke),
+    `a smoke round's class outlasts 300 shaped charges ended on a ricochet in its flight (${jetSmoke} bodies at its point vs ${quietSmoke})`);
+  // (round 4 F6) a round whose end never comes: a peer's shell_impact is withheld once its shooter leaves this viewer's
+  // sight (authoritativeMatch canObserveEvent), and a round in flight when its host went has none. Its record ages out by
+  // the round's flight-time bound (the sim ends every fired round by sim/ballistics.ts SHELL_MAX_LIFETIME_S), not by
+  // drop-oldest at 256, and so do the hull-met records (a kinetic hull hit has no expiry either)
+  {
+    fx.resetAll(); frames(2);
+    for (let k = 0; k < 300; k++) {
+      const round = 950000 + k;
+      emit('shell:fired', { shellId: round, shooterId: 'mg', pos: [40, 2, 40], muzzlePos: [40, 2, 40], dir: [1, 0, 0],
+        shellType: 'AP', caliberMm: 12.7, shellName: '12.7 mm' });
+      if (k % 2) {
+        emit('shell:hit', { shellId: round, attackerId: 'mg', targetId: 't2', kind: 'nonpen', damage: 0, pos: [44, 1, 40],
+          normal: [-1, 0, 0], caliberMm: 12.7, shellType: 'AP', destroyed: false });
+      }
+    }
+    frames(1);
+    const held = recordCounts();
+    assert.ok(held.inFlight > 100 && held.hullMet > 100, `the rounds are on record (${JSON.stringify(held)})`);
+    // the rounds' flight-time bound and its grace pass on the fx clock (12 s, half-second frames)
+    frames(24, 0.5);
+    const aged = recordCounts();
+    assert.deepEqual(aged, { inFlight: 0, hullMet: 0 },
+      `rounds whose end never came leave the records by their flight-time bound, not at drop-oldest (${JSON.stringify(aged)} left)`);
+  }
+  // the bound never cuts a live flight short: a smoke round at the end of the longest flight the sim allows, and one
+  // whose clock a capture pinned 500 s on mid-flight (the records' times move with the rebase), keep their class
+  const lateSmoke = (pin) => {
+    fx.resetAll(); frames(2);
+    const s = id++;
+    fireAt(s, smoke);
+    frames(1);
+    if (pin) fx.resetClock(fxClockNow() + 500);
+    frames(59, 0.1);
+    groundEnd(s, smoke); frames(6);
+    return bodiesHere();
+  };
+  const longFlight = lateSmoke(false), pinnedFlight = lateSmoke(true);
+  assert.ok(near(longFlight, quietSmoke), `a smoke round's class lasts its whole flight (${longFlight} bodies at its point vs ${quietSmoke})`);
+  assert.ok(near(pinnedFlight, quietSmoke),
+    `a smoke round's class lasts a forward pin of the clock mid-flight (${pinnedFlight} bodies at its point vs ${quietSmoke})`);
   // a kinetic round that carries through a hull (sim/damage.ts resolveCarryThrough) and ends on the ground still reads its
   // own class there: a 30 mm HEI typed AP is an autocannon HE round by its name, an AP strike by its type alone
   const heiEnd = (throughHull) => {
