@@ -2,15 +2,14 @@
 // owner, 2026-11-05: "add a bunch of extra decorations annd tank props and boxes and bags and other soldier reuqipment onn
 // all of these bradleys and m1a1s").
 //
-// 1. The crew-kit vocabulary (accessoryKits CREW_KIT_VARIANTS through decorations' `crewkit`), the cargo net and the coiled
-//    tow cable: every piece authored on its foot, its near level inside the 700-triangle piece budget, its coarse level
+// 1. The crew-kit vocabulary (accessoryKits CREW_KIT_VARIANTS through decorations' `crewkit`) and the cargo net: every piece authored on its foot, its near level inside the 700-triangle piece budget, its coarse level
 //    no heavier, in the same envelope and from the same random draws (the placement seats both with one matrix).
 // 2. The lived-in rows come after every other row of their tank, always carried, drawing nothing from the manifest's
 //    stream (the rows before them keep their draws and seats); every Bradley's turret carries a load; the M3A2 keeps the
 //    M2A2's seed (DECOR_TWIN) with rows for its own turret and gutters; every other vehicle's manifest has none.
-// 3. Built with its decor, an M1A1 seats the bustle rack's load under its cargo net, the packs on its side rack's rails and
-//    the rolls in its trough, and an M2A2 the gutter rolls, the trim vane's net, the ramp's coiled cable and its turret
-//    rack's load, inside the lived-in budget (LIVED_IN_TRIS).
+// 3. Built with its decor, an M1A1 seats the bustle rack's load under its cargo net, the packs hung from its side rack's
+//    top rail and the rolls in its trough, and an M2A2 the gutter rolls and its bustle rack's duffel, with nothing on its
+//    nose, glacis or ramp, inside the lived-in budget (LIVED_IN_TRIS).
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import { installCanvasFixture } from './canvasFixture.test-support.mjs';
@@ -52,15 +51,14 @@ for (const [kit, args, label] of [
   ...CREW_KIT_VARIANTS.map((v) => ['crewkit', { v }, `crewkit:${v}`]),
   ['crewkit', { v: 'long-duffel' }, 'crewkit:long-duffel (a fleet cargo name)'],
   ['cargonet', { w: 1.2, len: 0.36 }, 'cargonet'],
-  ['coil', { r: 0.27, n: 3 }, 'coil'],
 ]) {
   const { near, coarse, draws } = levels(kit, args);
   const n = measure(near), c = measure(coarse);
   ok(draws[1] === draws[0], `${label}: near and coarse levels consume the same random draws`);
   ok(n.triangles > 0 && c.triangles <= n.triangles, `${label}: coarse level no heavier (${c.triangles} vs ${n.triangles})`);
-  ok(n.triangles <= (kit === 'coil' ? 1000 : 1100) && (kit !== 'crewkit' || n.triangles <= 700),
+  ok(n.triangles <= 1100 && (kit !== 'crewkit' || n.triangles <= 700),
     `${label}: near level inside its piece budget (${n.triangles})`);
-  if (kit !== 'coil') ok(n.box.min.y > -0.006, `${label}: authored on its foot (min y ${n.box.min.y.toFixed(3)})`);
+  ok(n.box.min.y > -0.006, `${label}: authored on its foot (min y ${n.box.min.y.toFixed(3)})`);
   // (the coarse net is a flat band facing up: no height of its own)
   for (const axis of kit === 'cargonet' ? ['x', 'z'] : ['x', 'y', 'z']) {
     ok(c.size[axis] >= n.size[axis] * 0.8 - 0.004 && c.size[axis] <= n.size[axis] * 1.05 + 0.01,
@@ -81,9 +79,9 @@ for (const [kit, args, label] of [
 
 // 2. the manifests
 // the rows each carries at least: the owner's-model racks a full load and four rail packs, the tejas racks what their
-// profile's own load leaves room for, the Bradley hulls their gutter rolls and the coil
-const LIVED_IN_ROWS_MIN = Object.freeze({ m1a1: 15, m1a1ha: 13, m1a1_abrams_sa: 13, m1a1_abrams_aim: 16, m1a1_abrams_hc: 2,
-  m1a1_abrams_fep: 4, m2a2_bradley: 13, m3a2_bradley: 17, m3a3_bradley: 16, ua_m2a3_bradley: 13, m6_linebacker: 13 });
+// profile's own load leaves room for, the Bradleys their gutter rolls and bustle racks
+const LIVED_IN_ROWS_MIN = Object.freeze({ m1a1: 15, m1a1ha: 8, m1a1_abrams_sa: 13, m1a1_abrams_aim: 16, m1a1_abrams_hc: 1,
+  m1a1_abrams_fep: 3, m2a2_bradley: 7, m3a2_bradley: 14, m3a3_bradley: 15, ua_m2a3_bradley: 11, m6_linebacker: 10 });
 const LIVED_IN_IDS = Object.keys(LIVED_IN_ROWS_MIN);
 const BRADLEYS = new Set(['m2a2_bradley', 'm3a2_bradley', 'm3a3_bradley', 'ua_m2a3_bradley', 'm6_linebacker']);
 const counting = () => { let n = 0; const rng = () => { n++; return ((n * 0.618034) % 1); }; rng.count = () => n; return rng; };
@@ -99,7 +97,10 @@ for (const id of LIVED_IN_IDS) {
     `${id}: its load (${manifest.filter((row) => row.livedIn).length} rows, at least ${LIVED_IN_ROWS_MIN[id]})`);
   if (BRADLEYS.has(id)) {
     ok(manifest.some((row) => row.livedIn && (row.slot[1].turret || row.slot[0].startsWith('turret'))), `${id}: its turret carries a load`);
+    ok(manifest.filter((row) => row.livedIn && !row.slot[1].turret).every((row) => row.slot[0] === 'gutterRoll'),
+      `${id}: its hull carries gutter rolls only (nothing on the nose, glacis or ramp)`);
   }
+  if (id === 'm1a1_abrams_fep') ok(!manifest.some((row) => row.livedIn && row.kit === 'cargonet'), `${id}: no cargo net (its load strapped)`);
 }
 // the lived-in rows draw nothing: the M3A2 (DECOR_TWIN) and the M2A2 draw the same stream and carry the same rows before
 // the lived-in ones; the M3A2's lived-in rows are its own (its source-measured turret sweeps its gutters less)
@@ -116,10 +117,10 @@ for (const id of ['leo2a4', 'challenger2', 't90am', 'ua_m1a1', 'abramsx']) {
 }
 
 // 3. built with its decor
-const MINE = /^(crewkit|cargonet|coil)/;
+const MINE = /^(crewkit|cargonet)/;
 const rows = [];
 try {
-  for (const [id, want] of [['m1a1', { crewkit: 12, cargonet: 1, turret: 13 }], ['m2a2_bradley', { crewkit: 7, coil: 1, turret: 3 }]]) {
+  for (const [id, want] of [['m1a1', { crewkit: 12, cargonet: 1, turret: 13 }], ['m2a2_bradley', { crewkit: 6, turret: 1 }]]) {
     const tank = createTank(id, null, { camoSeed: 4242, quality: 'high', decor: true, staticPreview: true });
     try {
       const summary = tank.root.userData.__decorSummary;
@@ -128,7 +129,6 @@ try {
       const count = (re) => lived.filter((piece) => re.test(piece.kit)).length;
       ok(count(/^crewkit/) >= want.crewkit, `${id}: ${count(/^crewkit/)} crew loads seated (>= ${want.crewkit})`);
       if (want.cargonet) ok(count(/^cargonet/) === want.cargonet, `${id}: the bustle rack's net is laid`);
-      if (want.coil) ok(count(/^coil/) === want.coil, `${id}: the ramp's tow cable is coiled`);
       if (want.turret) ok(lived.filter((piece) => piece.frame === 'turret').length >= want.turret,
         `${id}: the turret is loaded (${lived.filter((piece) => piece.frame === 'turret').length} pieces)`);
       ok(summary.tris <= 16000, `${id}: inside the lived-in budget (${summary.tris})`);
