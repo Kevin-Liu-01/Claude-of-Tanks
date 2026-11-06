@@ -5855,9 +5855,25 @@ void splatCompute() {
         }
         vec2 bc = floor(bq), bf = fract(bq) - 0.5;
         float bh = fract(sin(dot(bc, vec2(127.1, 311.7))) * 43758.5453);
-        float bShape = uBank.x > 3.5
-          ? max(abs(bf.x), abs(bf.y))
-          : length(bf - (vec2(bh, fract(bh * 7.13)) - 0.5) * 0.28) * (0.9 + 0.3 * fract(bh * 3.7));
+        float bShape;
+        if (uBank.x > 3.5) {
+          bShape = max(abs(bf.x), abs(bf.y));
+        } else {
+          // (r3, the fjord's frames: equal stones on a square grid read as a cobbled path) shingle as a jittered cellular
+          // field: the nearest centre and the second nearest give each stone its own irregular outline and size
+          float f1 = 8.0, f2 = 8.0;
+          vec2 bn = vec2(0.0), bo = vec2(0.0);
+          for (int j = -1; j <= 1; j++) for (int i = -1; i <= 1; i++) {
+            vec2 cc = bc + vec2(float(i), float(j));
+            float hh = fract(sin(dot(cc, vec2(127.1, 311.7))) * 43758.5453);
+            vec2 o = vec2(float(i), float(j)) + vec2(hh, fract(hh * 7.13)) * 0.84 + 0.08 - (fract(bq));
+            float dd = dot(o, o) * (0.75 + 0.5 * fract(hh * 3.7));
+            if (dd < f1) { f2 = f1; f1 = dd; bn = cc; bo = o; } else if (dd < f2) { f2 = dd; }
+          }
+          bh = fract(sin(dot(bn, vec2(127.1, 311.7))) * 43758.5453);
+          bf = -bo * 0.5;
+          bShape = 0.48 - clamp((sqrt(f2) - sqrt(f1)) * 0.9, 0.0, 0.48);
+        }
         float bStone = 1.0 - smoothstep(0.36, 0.48, bShape);
         float bVis = tileVis(sz);
         float bTone = mix(1.0, (0.74 + 0.5 * bh) * mix(0.42, 1.0 + 0.10 * (0.4 - bShape), bStone), bVis);
