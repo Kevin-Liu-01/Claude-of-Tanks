@@ -8,7 +8,7 @@ import { readDestructionEntries, writeDestructionEntries } from './destructionLo
 import { readDestroyedFalls, readDestroyedSet, writeDestroyedFalls, writeDestroyedSet } from './destroyedSet.ts';
 import { encodeEventPayload, readEventPayload } from './eventPayload.ts';
 import {
-  CLOSE_REASON, EVENT_KIND_NAMES, EVENT_KIND_OTHER, MAX_BUILD_BYTES, MAX_CHAT_BYTES,
+  CLOSE_REASON, ENTITY_FLAG_BITS, EVENT_KIND_NAMES, EVENT_KIND_OTHER, MAX_BUILD_BYTES, MAX_CHAT_BYTES,
   MAX_CONTROLS_PER_INPUT, MAX_DETAIL_BYTES, MAX_ENTITIES, MAX_EVENTS_PER_MESSAGE,
   MAX_EVENT_JSON_BYTES, MAX_ID_BYTES, MAX_MESSAGE_BYTES, MAX_MODE_STATE_JSON_BYTES, MAX_MOVEMENT_VALUES,
   MAX_NAME_BYTES, MAX_REASON_BYTES, MAX_RULESET_JSON_BYTES, MAX_SEATS, MAX_SHELLS, MAX_TOKEN_BYTES,
@@ -18,7 +18,7 @@ import {
 import type { CloseReasonId, PhaseId, TeamId, VerdictId } from './constants.ts';
 import type {
   ChatMessage, CloseMessage, ControlFrame, EntityRow, EntityRowPatch, ErrorMessage, EventMessage,
-  HelloMessage, InputMessage, LeaveMessage, PingMessage, PongMessage, ResumeHintMessage, RosterEntry, ShellRow,
+  HelloMessage, HoldMessage, InputMessage, LeaveMessage, PingMessage, PongMessage, ResumeHintMessage, RosterEntry, ShellRow,
   SnapshotAckMessage, SnapshotFrame, SnapshotMeta, SnapshotPacket, ViewerState, WelcomeMessage,
   WireEvent, WireMessage,
 } from './messages.ts';
@@ -34,6 +34,8 @@ const CLOSE_REASON_MAX = Math.max(...Object.values(CLOSE_REASON));
 const EVENT_KIND_INDEX = new Map<string, number>(EVENT_KIND_NAMES.map((name, index) => [name, index]));
 const SHELL_TYPE_INDEX = new Map<string, number>(SHELL_TYPE_NAMES.map((name, index) => [name, index]));
 const sharedWriter = new ByteWriter(2048);
+/** The widest flag word a resume hint may carry (the row's ENTITY_FLAGS; the actor reads its body bits). */
+const HINT_FLAGS_MAX = (1 << ENTITY_FLAG_BITS) - 1;
 
 function reason(value: number): CloseReasonId {
   if (!Number.isInteger(value) || value < 0 || value > CLOSE_REASON_MAX) {
@@ -125,6 +127,8 @@ function writeWelcome(writer: ByteWriter, message: WelcomeMessage): void {
   writer.string(message.mode, MAX_ID_BYTES);
   writer.string(message.rulesetJson, MAX_RULESET_JSON_BYTES);
   writeRoster(writer, message.roster);
+  // the battle's identity (round 3 A3): absent is a match's first battle
+  writer.u32(message.battleId ?? 0);
 }
 
 function writeShell(writer: ByteWriter, shell: ShellRow): void {
@@ -294,6 +298,10 @@ function writeResumeHint(writer: ByteWriter, message: ResumeHintMessage): void {
   writer.i16(message.speed); writer.i16(message.verticalSpeed);
   writer.u16(message.yaw); writer.u16(message.pitch); writer.u16(message.roll);
   writer.u16(message.turretYaw); writer.u16(message.gunPitch);
+  // the row's body bits (round 3 A14): absent is a hull on the ground, upright
+  const flags = message.flags ?? 0;
+  if (!Number.isInteger(flags) || flags < 0 || flags > HINT_FLAGS_MAX) throw new WireError('range', `resume hint flags out of range: ${flags}`);
+  writer.varint(flags);
 }
 
 function readResumeHint(reader: ByteReader): ResumeHintMessage {
@@ -304,7 +312,14 @@ function readResumeHint(reader: ByteReader): ResumeHintMessage {
     x: reader.i32(), y: reader.i32(), z: reader.i32(),
     speed: reader.i16(), verticalSpeed: reader.i16(),
     yaw: reader.u16(), pitch: reader.u16(), roll: reader.u16(), turretYaw: reader.u16(), gunPitch: reader.u16(),
+    flags: readHintFlags(reader),
   };
+}
+
+function readHintFlags(reader: ByteReader): number {
+  const flags = reader.varint();
+  if (flags > HINT_FLAGS_MAX) throw new WireError('range', 'resume hint flags out of range');
+  return flags;
 }
 
 function writeEvents(writer: ByteWriter, message: EventMessage): void {
@@ -348,6 +363,7 @@ export function encodeMessage(message: WireMessage, baseline: SnapshotFrame | nu
     case MESSAGE_TYPE.ERROR:
       writer.u8(reason(message.reason)); writer.string(message.detail, MAX_DETAIL_BYTES);
       break;
+    case MESSAGE_TYPE.HOLD: writer.u32(message.holdMs); break;
     default:
       throw new WireError('unknown_type', `cannot encode message type ${String((message as { type: unknown }).type)}`);
   }
@@ -444,7 +460,7 @@ function readWelcome(reader: ByteReader): WelcomeMessage {
     type: MESSAGE_TYPE.WELCOME, protocolVersion, tickHz, snapshotHz, seat, entityId, team,
     serverTick: tickOrNone(reader.u32()), serverTimeMs: reader.u32(), seed: reader.u32(), capabilities: reader.u32(),
     roomId: reader.string(MAX_ID_BYTES), mapId: reader.string(MAX_ID_BYTES), mode: reader.string(MAX_ID_BYTES),
-    rulesetJson: reader.string(MAX_RULESET_JSON_BYTES), roster: readRoster(reader),
+    rulesetJson: reader.string(MAX_RULESET_JSON_BYTES), roster: readRoster(reader), battleId: reader.u32(),
   };
 }
 
@@ -665,6 +681,7 @@ export function decodeMessage(input: unknown, options: DecodeOptions = {}): Deco
       case MESSAGE_TYPE.ERROR:
         message = { type: MESSAGE_TYPE.ERROR, reason: reason(reader.u8()), detail: reader.string(MAX_DETAIL_BYTES) } satisfies ErrorMessage;
         break;
+      case MESSAGE_TYPE.HOLD: message = { type: MESSAGE_TYPE.HOLD, holdMs: reader.u32() } satisfies HoldMessage; break;
       default:
         throw new WireError('unknown_type', `unknown message type ${type}`);
     }

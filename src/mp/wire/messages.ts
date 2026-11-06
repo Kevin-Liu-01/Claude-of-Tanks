@@ -96,6 +96,12 @@ export interface ResumeHintMessage {
   roll: number;
   turretYaw: number;
   gunPitch: number;
+  /**
+   * The row's body bits (round 3 A14, protocol 12; ENTITY_FLAGS AIRBORNE, OVERTURNED, AUTO_RIGHTING, TUMBLING, STACKED,
+   * src/mp/match/hullBodyRow.ts; absent on the producer side: 0): the new host seats the hint's ground contact and body
+   * mode as it seats a row's (authorityRow.ts applyAuthorityRow), never from its height.
+   */
+  flags?: number;
 }
 
 export interface RosterEntry {
@@ -130,6 +136,13 @@ export interface WelcomeMessage {
   /** JSON text of the match ruleset (sim/matchRuleset.ts shape). */
   rulesetJson: string;
   roster: RosterEntry[];
+  /**
+   * The battle this host plays (round 3 A3, protocol 12; u32, absent on the producer side: 0): 0 for a match's first
+   * battle, kept by every host that resumes it (the sealed keyframe carries it, migrationState.ts), a fresh value when a
+   * host restarts it from its spawns (migrationState.ts migrationFallback). A client that followed another battle id
+   * drops what it retained of that battle (MatchClient receiveWelcome).
+   */
+  battleId?: number;
 }
 
 /** Full quantized state of one entity as the wire carries it. */
@@ -350,9 +363,19 @@ export interface ErrorMessage {
   detail: string;
 }
 
+/**
+ * Sent before the WELCOME by a host that holds the seat's HELLO (round 3 B1/X6, protocol 12): through its boot (it has no
+ * actor yet) or its resume hold (matchHostCore.ts). `holdMs`: the most it will hold from now. The seat's stall clock waits
+ * that long before it counts (MatchClient receiveHold); a later notice replaces an earlier one.
+ */
+export interface HoldMessage {
+  type: typeof MESSAGE_TYPE.HOLD;
+  holdMs: number;
+}
+
 type ClientMessage =
   | HelloMessage | InputMessage | SnapshotAckMessage | PingMessage | ChatMessage | LeaveMessage | ResumeHintMessage;
 type ServerMessage =
-  | WelcomeMessage | SnapshotPacket | EventMessage | PongMessage | CloseMessage | ErrorMessage;
+  | WelcomeMessage | SnapshotPacket | EventMessage | PongMessage | CloseMessage | ErrorMessage | HoldMessage;
 export type WireMessage = ClientMessage | ServerMessage;
 
