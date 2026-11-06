@@ -1948,14 +1948,12 @@ export function createShotInfo(bus: EventBus): ShotInfoRuntime {
     killLedger.respawn(p.id);
     recordCombatantRevived(combatant(p.id));
   });
-  // (round 3 merge review r1) a network battle restarted under this seat (battlePresentation.ts 'battle:restarted'):
-  // every hull stands at its spawn again, a revive of each (the edge above, for the whole field, with no revive beat and
-  // no reviving mode read from it): no combatant is dead, and the kill ledger re-arms every hull, so one that died in the
-  // abandoned battle and dies again is counted. Deaths stay counts, as a revive's do.
-  bus.on('battle:restarted', () => {
-    killLedger.reviveAll();
-    for (const row of combatants.values()) recordCombatantRevived(row);
-  });
+  // (round 3 merge review r1; round 4 E6b) a network battle restarted under this seat (battlePresentation.ts
+  // 'battle:restarted'): every hull stands at its spawn again, and the restart opens a new battle (the session's decision;
+  // Kevin may overrule), so the report starts over as at a battle's start (reset(): shots, hits, damage both ways, the
+  // combatants' kills, deaths and life, the kill ledger, the timeline, the spotting assists). Before, only the dead were
+  // revived, and the report of the battle that ended added the abandoned battle's shots, damage and kills to its own.
+  bus.on('battle:restarted', () => api.reset());
 
   // --- REPORT GATE: battle-report rendering deferred past the kill-cam ------
   // state.ts emits battle:ended in the very sim step the player dies, but

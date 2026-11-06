@@ -92,6 +92,11 @@ interface BattleResultPresentationRuntime {
   clearPending(): void;
   /** Watch mode (watch-mode-243): a freshly taken seat gets the player's death flow afresh. */
   newSeat(): void;
+  /**
+   * A network battle restarted under this seat (round 4 E6b; battlePresentation.ts 'battle:restarted', main.ts): a new
+   * battle's ending facts and the player's death flow afresh, unless its result is already on screen.
+   */
+  restart(): void;
   /** Feed the director the bus facts it reads (mode:* events, tank:destroyed). */
   observe(type: string, payload: unknown): void;
   snapshot(): BattleResultPresentationSnapshot;
@@ -338,6 +343,18 @@ export function createBattleResultPresentationRuntime({
     },
     newSeat() {
       if (endShown) return;
+      deathCamShown = false;
+      pending = null;
+    },
+    // (round 4 E6b) A restart opens a new battle (the session's decision; Kevin may overrule): the ending reads only its
+    // facts (the director's last kill, zone, flag, goal and wave: a restarted battle that ends on time framed the
+    // abandoned battle's last wreck, where no wreck stands), and the player's death flow is its own again. Before, a seat
+    // that died in the abandoned battle kept its death beat's replay pending, which then played over the restarted battle,
+    // and a seat whose death cam had run got none, and no death replay at the verdict, when it died again.
+    restart() {
+      if (endShown) return;
+      cancelBeat();
+      director.reset();
       deathCamShown = false;
       pending = null;
     },

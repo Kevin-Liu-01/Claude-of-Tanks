@@ -12,7 +12,8 @@
 //   3. serviceRecord.ts: the seat stayed dead for the record, an enemy damaged in the abandoned battle was no longer
 //      fresh for One Shot, and an abandoned round stayed a hull's killing shot;
 //   4. hud.ts and shotInfo.ts: their kill ledgers kept the abandoned battle's dead, so a hull that died there and dies
-//      again in the restarted battle was never fed nor counted.
+//      again in the restarted battle was never fed nor counted (round 4 E6b: moved to battleRestartTallies, on the real
+//      HUD, where a restart opens a new battle and the counts start over).
 // Cases 1-4 fail on the merged head before that fix (b598626c30) and pass now.
 // Review r2: the presentation's own actors kept the abandoned battle's deaths. A row writes a hull's life, a wreck is
 // sent to every seat and a live hull this seat does not spot is not, so a hull that died in the abandoned battle and is
@@ -27,10 +28,7 @@
 // with 0 hull points (the HUD's ear row drew an empty bar on a living enemy until it was spotted), and a hidden hull
 // damaged there kept its damage and its broken module (told by module_state). Case 5 asserts both and fails on 0edd0e1ab5.
 import assert from 'node:assert/strict';
-import { readFile } from 'node:fs/promises';
-import { stripTypeScriptTypes } from 'node:module';
 import { Scene, PerspectiveCamera, Vector3 } from 'three';
-import { BattleKillLedger } from '../../game/battleEventStats.ts';
 import {
   installFetch, namedContext, terrain, tank, listener, sounding, probeOf, mark, since, count,
 } from '../../audio/engineHarness.test-support.mjs';
@@ -175,51 +173,10 @@ const wrong = [];
   if (row?.survived !== true) wrong.push('serviceRecord: the seat destroyed in the abandoned battle is recorded dead at the restarted battle\'s end');
 }
 
-// ---- 4. the HUD's and the battle report's kill ledgers: a hull that died in the abandoned battle is fed and counted again
-{
-  const hud = await readFile(new URL('../../ui/hud.ts', import.meta.url), 'utf8');
-  const handler = (source, opener) => {
-    const start = source.indexOf(opener);
-    return start < 0 ? null : stripTypeScriptTypes(source.slice(start, source.indexOf('\n  });', start) + 6));
-  };
-  const listeners = {};
-  const hudLedger = new BattleKillLedger();
-  const fed = [];
-  const spotById = new Map([['foe', { vis: false, ever: true, lastX: 10, lastZ: 20 }]]);
-  const calls = [];
-  const destroyed = handler(hud, "  on('tank:destroyed',");
-  const restarted = handler(hud, "  on('battle:restarted',");
-  if (!restarted) wrong.push('hud: no listener hears the restart');
-  else {
-    for (const source of [destroyed, restarted]) {
-      new Function('on', 'killLedger', 'teamById', 'spotById', 'pushKill', 'reviveCountdown', 'playerId', 'resetConsumableTray', source)(
-        (name, fn) => { listeners[name] = fn; }, hudLedger, new Map([['foe', 'enemy'], ['me', 'player']]), spotById,
-        (p) => fed.push(p.id), { onDestroyed() {}, revived() { calls.push('revived'); } }, 'me', () => calls.push('tray'));
-    }
-    listeners['tank:destroyed']({ id: 'foe', killerId: 'me' });
-    listeners['battle:restarted'](RESTART);
-    listeners['tank:destroyed']({ id: 'foe', killerId: 'me' });
-    if (fed.length !== 2) wrong.push(`hud: the kill feed showed the foe's deaths ${fed.length} times over both battles (twice)`);
-    if (hudLedger.count('me') !== 2) wrong.push(`hud: the seat's kills count ${hudLedger.count('me')} (both battles' deaths: 2)`);
-    if (spotById.size) wrong.push('hud: the abandoned battle\'s contact memory outlived the restart');
-    if (calls.join() !== 'revived,tray') wrong.push(`hud: the seat's revive count and consumable tray were not its fresh hull's (${calls.join() || 'nothing'})`);
-  }
-  const shotInfo = await readFile(new URL('../../ui/shotInfo.ts', import.meta.url), 'utf8');
-  const reportRestart = handler(shotInfo, "  bus.on('battle:restarted',");
-  if (!reportRestart) wrong.push('shotInfo: the battle report hears no restart');
-  else {
-    const reportLedger = new BattleKillLedger();
-    reportLedger.record('foe', 'me', 'enemy', 'player');
-    const rows = new Map([['foe', { dead: true, deaths: 1 }], ['me', { dead: false, deaths: 0 }]]);
-    let onRestart = null;
-    new Function('bus', 'killLedger', 'combatants', 'recordCombatantRevived', reportRestart)(
-      { on: (name, fn) => { if (name === 'battle:restarted') onRestart = fn; } }, reportLedger, rows, (row) => { row.dead = false; });
-    onRestart(RESTART);
-    if (rows.get('foe').dead) wrong.push('shotInfo: the foe destroyed in the abandoned battle is still dead in the report');
-    if (rows.get('foe').deaths !== 1) wrong.push('shotInfo: the restart rewrote a death count');
-    if (!reportLedger.record('foe', 'me', 'enemy', 'player')) wrong.push('shotInfo: the restarted battle\'s death of the foe is refused by the report\'s ledger');
-  }
-}
+// ---- 4. moved (round 4 E6b) to battleRestartTallies.selftest.mjs, which drives the real HUD and its report over the
+// recording DOM instead of the handlers' source: a restart now opens a new battle, so the kill counts start over (round 3
+// kept them), a hull that died in the abandoned battle and dies again is fed once and counted, and the seat's revive count
+// is its fresh hull's.
 
 // ---- 5. the presentation's own actors, and the network side counts that read them (review r2)
 {
@@ -344,4 +301,4 @@ if (wrong.length) {
   console.error(`battleRestartLives: a battle restart left per-life state of the abandoned battle:\n  ${wrong.join('\n  ')}`);
   assert.fail('a battle restart is a new life for every hull in every per-life listener');
 }
-console.log('battleRestartLives: a battle restart gives every hull a new life in the killcam (the dead seat\'s chase ends, an observer\'s stays), the audio engine (a hidden hull\'s next death heard, the old alarm and wrecks gone), the service record, the HUD\'s and report\'s kill ledgers, and the presentation\'s own actors (a hidden hull alive again for the roster, the side counts, the prediction and the end roster) PASS');
+console.log('battleRestartLives: a battle restart gives every hull a new life in the killcam (the dead seat\'s chase ends, an observer\'s stays), the audio engine (a hidden hull\'s next death heard, the old alarm and wrecks gone), the service record, and the presentation\'s own actors (a hidden hull alive again for the roster, the side counts, the prediction and the end roster) PASS');

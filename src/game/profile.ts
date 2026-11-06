@@ -234,17 +234,13 @@ export function installBattleRecords(bus: ProfileEventBus | null | undefined): v
   installedBuses.add(bus);
 
   let tally: BattleTally | null = null;
+  /** A battle's tally from nothing: its start, and a network battle's restart (round 4 E6b). */
+  const openTally = (playerId: string, vehicleId: string, mapId: string, reached: boolean): BattleTally =>
+    ({ playerId, vehicleId, mapId, kills: 0, damage: 0, startedAt: Date.now(), reached });
   bus.on('ui:battleStart', (payload) => {
     const event = recordOf(payload) ?? {};
-    tally = {
-      playerId: firstString(event.playerId, event.entityId, event.specId),
-      vehicleId: firstString(event.specId, event.vehicleId),
-      mapId: firstString(event.mapId),
-      kills: 0,
-      damage: 0,
-      startedAt: Date.now(),
-      reached: false,
-    };
+    tally = openTally(firstString(event.playerId, event.entityId, event.specId), firstString(event.specId, event.vehicleId),
+      firstString(event.mapId), false);
   });
   // (2026-11-02 audit F2) a battle left without its result (a quit) keeps no tally: the Garage's phase drops it, so
   // a later battle can never be recorded under the earlier one's vehicle, map or start time. Every entry path now
@@ -259,6 +255,13 @@ export function installBattleRecords(bus: ProfileEventBus | null | undefined): v
     if (!tally) return;
     if (event?.phase === 'battle') tally.reached = true;
     else if (event?.phase === 'garage' && (tally.reached || event.from !== 'battle')) tally = null;
+  });
+  // (round 4 E6b) A network battle restarted under this seat (battlePresentation.ts 'battle:restarted') opens a new
+  // battle (the session's decision; Kevin may overrule): the record takes only the battle that ends, so its kills and
+  // damage start over, as at a battle's start, for the same player, vehicle and map in the battle it already reached.
+  // Before, the career totals and the battle's row added the abandoned battle's kills and damage to its own.
+  bus.on('battle:restarted', () => {
+    if (tally) tally = openTally(tally.playerId, tally.vehicleId, tally.mapId, tally.reached);
   });
   bus.on('shell:hit', (payload) => {
     const event = recordOf(payload) ?? {};
