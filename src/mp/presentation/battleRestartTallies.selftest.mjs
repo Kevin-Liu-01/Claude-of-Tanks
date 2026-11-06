@@ -8,20 +8,29 @@
 //      memory and the sixth sense on the restarted clock. Before, the kill ledger only re-armed its dead (round 3), so the
 //      ear rows counted the abandoned battle's kills into the restarted one's, its feed lines stayed, and its sixth-sense
 //      fuse lit the lamp at its own time on the restarted clock. A hull that died in the abandoned battle and dies again is
-//      fed once and counted, and the seat's revive count is its fresh hull's (round 3's case 4 of battleRestartLives, now
-//      on the real HUD);
+//      fed once and counted, and the seat's revive count, its contact memory and its consumable tray are its fresh hull's
+//      (round 3's case 4 of battleRestartLives, all four of its checks, now on the real HUD; review r1: the contact memory
+//      read on the minimap, where a hidden enemy's last-seen ghost is drawn, and the tray on its tiles; each fails with its
+//      line removed from the HUD's restart listener or resetBattleRecord);
 //   2. shotInfo.ts (reset(), also 'ui:battleStart''s): the report's shots, hits, damage, kills, deaths and timeline.
 //      Before, the report of the battle that ended added the abandoned battle's to its own;
 //   3. serviceRecord.ts (begin, also start's): kills, damage, shots and medals of the battle that ends only. Before, its
 //      history row and career totals added the abandoned battle's;
 //   4. profile.ts (openTally, also 'ui:battleStart''s): the career kills and damage and the battle's row likewise;
-//   5. battleResultPresentationRuntime.ts (restart(), main.ts wires it to the edge; the wiring is page code, not run here):
-//      the ending's facts and the player's death flow. Before, a death beat pending at the restart played its replay over
-//      the restarted battle, a seat whose death cam had run got none when it died again, and a restarted battle that ended
-//      on time framed the abandoned battle's last wreck.
+//   5. battleResultPresentationRuntime.ts (startOver, also reset()'s; review r1: it hears the edge on its own bus, as the
+//      HUD and the records do, so the receipt drives the page's path): the ending's facts and the player's death flow.
+//      Before, a death beat pending at the restart played its replay over the restarted battle, a seat whose death cam
+//      had run got none when it died again, and a restarted battle that ended on time framed the abandoned battle's last
+//      wreck. On the real camera rig (review r1, the completeness lens): a seat whose death orbit ran gets its player's
+//      camera back at the restart, whether the restart lands in its death beat or in its replay, and whichever of the
+//      killcam (whose cancel ends the replay through the runtime's own hand-back) and the runtime hears the edge first;
+//      before, the orbit circled the living hull until the battle ended;
+//   6. medalToast.ts (review r1): a medal card the abandoned battle earned (the real service record's live award) is not
+//      on screen, nor waiting, in the restarted battle.
 // Cases 1-2 drive the real battle HUD (initHud) with its own report and end screen over the recording DOM; 3-4 the real
-// installers on the same bus; 5 the real runtime. Each fails on 0edd0e1ab5 and passes now.
-import { created } from '../../ui/hudDomHarness.test-support.mjs';
+// installers on the same bus; 5 the real runtime and camera rig; 6 the real medal toasts. 1-5 fail on 0edd0e1ab5 and pass
+// now (13 checks there; the revive count passed there); 6 and the camera of 5 are review r1's.
+import { created, resizeObserved, StubElement } from '../../ui/hudDomHarness.test-support.mjs';
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import { ensureAuthorityFleet } from '../../vehicles/authorityFleet.ts';
@@ -34,6 +43,8 @@ import { installServiceRecord, getServiceRecord } from '../../game/serviceRecord
 import { installBattleRecords, getLastBattleRecord, getPlayerRecord } from '../../game/profile.ts';
 import { createBattleResultPresentationRuntime } from '../../game/battleResultPresentationRuntime.ts';
 import { createBattleEndingDirector } from '../../game/battleEnding.ts';
+import { createCameraRig } from '../../engine/cameraRig.ts';
+import { installMedalToasts } from '../../ui/medalToast.ts';
 import { matchRulesetFor } from '../../sim/matchRuleset.ts';
 
 const SPEC = 'm1a1_abrams_hc';
@@ -49,6 +60,10 @@ installServiceRecord(bus, {
   playerAerialKind: () => null, respawns: () => false, playerObjectiveTeam: () => null,
 });
 installBattleRecords(bus);
+const medalSeat = new StubElement('div');
+installMedalToasts(bus, medalSeat);
+const medalCards = () => medalSeat.children[0]?.children.length ?? 0;
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 const spec = getSpec(SPEC);
 const tank = (id, team, isPlayer = false) => ({
   id, team, isPlayer, displayName: id, spec, combat: createCombatState(spec), specialAction: createSpecialActionState(spec),
@@ -61,7 +76,25 @@ const aim = { singleReticle: false, point: new THREE.Vector3(0, 0, 100), distM: 
   reload: { t: 0, totalS: 0 }, magazine: { rounds: 0, capacity: 0, launcher: false }, shellSlot: 0, shells: [], zoom: 1,
   gunDistM: 0, gunTargetId: null, gunMarker: new THREE.Vector3(), blockedDistM: null, blockedLabel: false, penRatio: null };
 let timeS = 0;
-const frame = () => { timeS += 1 / 60; hud.update({ timeS, mode: 'battle', player: me, tanks, spotting: { isSpotted: () => true }, aim, camera: null }); };
+// the seat's spotting: every hull in view but the hidden ones
+const hidden = new Set();
+const spotting = { isSpotted: (id) => !hidden.has(id) };
+const frame = () => { timeS += 1 / 60; hud.update({ timeS, mode: 'battle', player: me, tanks, spotting, aim, camera: null }); };
+// the minimap's canvas, laid out (uiCanvas sizes its store from the box): its paint draws a hidden enemy's last-seen
+// contact as a hollow ghost arrow, the one stroke in that ink (hud.ts drawGhostMarker)
+const minimap = created.find((element) => element.classes.has('cot-minimap')).children.find((child) => child.tagName === 'CANVAS');
+resizeObserved(minimap, 220, 220);
+const minimapOps = minimap.getContext('2d').ops;
+const GHOST_INK = '#e5a19b';
+const MAP_GROUND = '#0b100e';
+/** The minimap's paints from `from` on: whether it repainted, and whether any of them drew a ghost contact. */
+const minimapSince = (from) => {
+  const ops = minimapOps.slice(from);
+  return { painted: ops.some((op) => op.op === 'fillRect' && op.style === MAP_GROUND), ghost: ops.some((op) => op.op === 'stroke' && op.style === GHOST_INK) };
+};
+/** A frame the minimap repaints in (its cadence is 15 to 30 Hz of wall time: hud.ts updateMinimapIfDue). */
+const paintedFrame = async () => { await sleep(80); frame(); };
+const tile = (slot) => created.filter((element) => element.classes.has('cot-con'))[slot];
 const fire = (shellId) => bus.emit('shell:fired', { shooterId: 'me', isPlayer: true, shellId, caliberMm: 120, shellType: 'APFSDS', timeS });
 const hit = (shellId, targetId, damage, destroyed = false) => bus.emit('shell:hit', {
   attackerId: 'me', targetId, shellId, damage, hpRemoved: damage, kind: 'pen', destroyed, targetName: targetId, timeS });
@@ -88,6 +121,20 @@ fire(3); hit(3, 'e2', 600, true); kill('e2');
 bus.emit('player:spotted', { timeS }); // the sixth sense's fuse: the lamp would light 3 s later, at 33 s
 frame();
 assert.equal(earKills('me'), 2, 'setup: the ear row counts the abandoned battle\'s two kills');
+// e3 was seen at (180, 0, 140), then hides: the HUD keeps its last-seen contact (the minimap's ghost)
+tanks.find((entity) => entity.id === 'e3').state.pos.set(180, 0, 140);
+frame();
+hidden.add('e3');
+const ghostFrom = minimapOps.length;
+await paintedFrame();
+const abandonedMap = minimapSince(ghostFrom);
+assert.ok(abandonedMap.painted && abandonedMap.ghost, `setup: the minimap draws the hidden e3's last-seen contact (${JSON.stringify(abandonedMap)})`);
+// a consumable spent in the abandoned battle: its tile empty and cooling (the authority's consumable_used)
+bus.emit('ui:consumableUsed', { slot: 0, readyAt: timeS + 60, cooldownS: 60, charges: 0 });
+frame();
+assert.equal(tile(0).classes.has('empty'), true, 'setup: the spent kit reads empty');
+// the abandoned battle's first kill earned a medal live (serviceRecord.ts first_blood): its card is on screen
+assert.ok(medalCards() >= 1, 'setup: the abandoned battle\'s medal card shows');
 // and the seat dies: its revive count shows
 me.combat.destroyed = true;
 bus.emit('tank:destroyed', { id: 'me', specId: SPEC, killerId: 'e3', cause: 'shot', pos: [0, 0, 0], timeS });
@@ -95,12 +142,20 @@ frame();
 const revive = created.find((element) => element.classes.has('cot-revive'));
 assert.equal(revive.classes.has('on'), true, 'setup: the dead seat\'s revive count shows');
 
-// ---- the restart: every hull at its spawn, the battle's clock at 0
+// ---- the restart: every hull at its spawn, the battle's clock at 0 (e3 alive and still hidden)
 for (const entity of tanks) { entity.combat = createCombatState(spec); }
 bus.emit('battle:restarted', RESTART);
+// 6. the medal toasts
+if (medalCards()) wrong.push(`medals: ${medalCards()} card(s) of the abandoned battle's medals still on screen in the restarted battle`);
 timeS = 0;
-frame();
+const restartFrom = minimapOps.length;
+await paintedFrame();
 if (revive.classes.has('on')) wrong.push('hud: the seat alive again at its spawn still shows its revive count');
+const restartedMap = minimapSince(restartFrom);
+assert.ok(restartedMap.painted, 'setup: the minimap repainted in the restarted battle');
+if (restartedMap.ghost) wrong.push('hud: the abandoned battle\'s contact memory outlived the restart (the minimap draws e3 where it was last seen in the abandoned battle)');
+if (tile(0).classes.has('empty') || tile(0).classes.has('cooling')) wrong.push('hud: the seat\'s consumable tray is not its fresh hull\'s (the abandoned battle\'s spent kit reads empty or cooling)');
+if (medalCards()) wrong.push('medals: a card of the abandoned battle\'s medals entered in the restarted battle');
 // ---- the restarted battle: one round, one kill (2000 hull points) of e1, which died in the abandoned battle too
 const feedBefore = created.filter((element) => element.classes.has('cot-kf')).length;
 timeS = 20;
@@ -115,7 +170,7 @@ const lingering = created.filter((element) => element.classes.has('cot-kf') && !
 if (lingering.length) wrong.push(`hud: the kill feed still lists ${lingering.length} of the abandoned battle's kills`);
 // the restarted battle's clock passes the abandoned battle's fuse time
 const sixth = created.find((element) => element.classes.has('cot-sixth'));
-while (timeS < 35) { timeS += 0.25; hud.update({ timeS, mode: 'battle', player: me, tanks, spotting: { isSpotted: () => true }, aim, camera: null }); }
+while (timeS < 35) { timeS += 0.25; hud.update({ timeS, mode: 'battle', player: me, tanks, spotting, aim, camera: null }); }
 if (sixth.classes.has('on')) wrong.push('hud: the abandoned battle\'s sixth-sense fuse lit the lamp 33 s into the restarted battle');
 // the battle ends: the report, the service record, the career record
 const roster = tanks.map((entity) => ({ id: entity.id, specId: SPEC, vehicle: spec.name, team: entity.team, alive: !entity.combat.destroyed, isPlayer: entity.isPlayer }));
@@ -140,45 +195,97 @@ const last = getLastBattleRecord();
 if (last?.kills !== 1 || last?.damage !== 2000) wrong.push(`profile: the battle's record reads ${last?.kills} kills and ${last?.damage} damage (1 and 2000)`);
 if (getPlayerRecord().kills !== 1) wrong.push(`profile: the career kills took ${getPlayerRecord().kills} from a battle of 1`);
 
-// ---- 5. the result flow: the ending's facts and the player's death flow (the real runtime; main.ts wires the edge)
-{
+// ---- 5. the result flow: the ending's facts, the player's death flow and its camera (the real runtime on its own bus,
+// as main.ts builds it, with the real camera rig)
+const idle = { mouseDX: 0, mouseDY: 0, wheel: 0, rmb: false, shiftPressed: false };
+/**
+ * One seat's result flow. `replay`: the death beat's replay is running at the restart (the killcam pins its pose; its
+ * cancel at the restart releases the pin and runs the replay's end, as killcam.ts cancel -> finish does). `killcamFirst`:
+ * the killcam hears the edge before the runtime (main.ts binds the lazy killcam's bus after the runtime is built, so the
+ * page's order is the runtime first).
+ */
+function resultFlow({ replay, killcamFirst }) {
+  const label = `result flow (${replay ? 'restart in the replay' : 'restart in the death beat'}, ${killcamFirst ? 'killcam first' : 'runtime first'})`;
+  const flowBus = createBus();
   const calls = [];
   let wallMs = 1000;
-  const player = { combat: { destroyed: false }, state: { pos: { x: 0, y: 0, z: 0 } } };
+  let veiled = false;
+  const root = new THREE.Object3D();
+  const player = {
+    combat: { destroyed: false }, state: { pos: new THREE.Vector3(), yaw: 0.3, turretYaw: 0 }, input: { aimPoint: new THREE.Vector3() }, aerial: null,
+    visual: { root, turretTopWorld: (out) => out.set(0, 2, 0), gunPivotWorld: (out) => out.set(0, 1.7, 0.2) },
+  };
   const game = { result: null, resultReason: null, gameMode: 'standard', timeS: 10, player, ruleset: { respawnS: null }, matchModeState: null };
+  const rig = createCameraRig(new THREE.PerspectiveCamera(60, 16 / 9, 0.1, 2000), {
+    heightField: { getHeightAt: () => 0 }, raycast: () => null, getPlayer: () => player,
+  });
+  rig.snapArcade(2, 0.3, -0.1);
+  let replayEnd = null;
+  const killcam = {
+    lastBeginWallMs: null,
+    playForResult(result, _timeS, onDone) {
+      calls.push(`replay:${result}:${player.combat.destroyed ? 'dead' : 'alive'}`);
+      if (!replay) return false;
+      rig.setExternalPose(new THREE.Vector3(20, 10, 20), new THREE.Vector3());
+      replayEnd = onDone;
+      return true;
+    },
+  };
+  const killcamHearsRestart = () => flowBus.on('battle:restarted', () => {
+    const done = replayEnd;
+    replayEnd = null;
+    if (!done) return;
+    rig.release();
+    done();
+  });
+  if (killcamFirst) killcamHearsRestart();
   const director = createBattleEndingDirector();
+  // the page passes the rig itself; this port forwards to it and counts the death cams the runtime starts
+  const rigPort = {
+    release: () => rig.release(),
+    startDeathCam: () => { calls.push('deathCam'); rig.startDeathCam(); },
+    endDeathCam: () => rig.endDeathCam?.(),
+  };
   const runtime = createBattleResultPresentationRuntime({
-    game,
-    killcam: { lastBeginWallMs: null, playForResult(result) { calls.push(`replay:${result}:${player.combat.destroyed ? 'dead' : 'alive'}`); return false; } },
-    rig: { release: () => {}, startDeathCam: () => calls.push('deathCam') },
-    veilHud: () => {}, showEndOverlay: () => {}, emitPresented: () => {}, exitPointerLock: () => {}, recordFlow: () => {},
+    game, bus: flowBus, killcam, rig: rigPort,
+    veilHud: (on) => { veiled = on; }, showEndOverlay: () => {}, emitPresented: () => {}, exitPointerLock: () => {}, recordFlow: () => {},
     ending: { director, camera: { begin: () => true, frame() {}, end() {} }, modeState: () => null, emitBeat() {} },
     now: () => wallMs, deathBeatMs: 2600,
   });
-  const step = (ms) => { wallMs += ms; runtime.update(); };
-  // the abandoned battle: an enemy's wreck at (300, 0, 300), then the player dies; its death beat starts
+  if (!killcamFirst) killcamHearsRestart();
+  const step = (ms) => { wallMs += ms; runtime.update(); rig.update(ms / 1000, idle); };
+  // the abandoned battle: an enemy's wreck at (300, 0, 300), then the player dies; its death beat and orbit start
   runtime.observe('tank:destroyed', { id: 'e9', pos: [300, 0, 300], cause: 'shot' });
   runtime.update();
   player.combat.destroyed = true;
   step(16);
-  assert.deepEqual(calls, ['deathCam'], 'setup: the player\'s death starts its death cam and its beat');
-  step(1000);
-  // the restart, inside the death beat: the player alive at its spawn
+  assert.equal(rig.cameraOwner, 'death', `setup: ${label}: the player's death starts its death orbit`);
+  if (replay) {
+    for (let i = 0; i < 12; i++) step(250);
+    assert.ok(veiled && rig.cameraOwner === 'external', `setup: ${label}: the death replay runs (veiled ${veiled}, camera ${rig.cameraOwner})`);
+  } else step(1000);
+  calls.length = 0;
+  // the restart: the player alive at its spawn
   player.combat.destroyed = false;
-  runtime.restart?.();
+  flowBus.emit('battle:restarted', RESTART);
   for (let i = 0; i < 20; i++) step(250);
   const stale = calls.filter((call) => call.startsWith('replay'));
-  if (stale.length) wrong.push(`result flow: the abandoned battle's death beat played its replay over the restarted battle (${stale.join(', ')})`);
-  if (director.facts.lastDestroyed) wrong.push(`result flow: the restarted battle's ending reads the abandoned battle's last wreck (${director.facts.lastDestroyed.id})`);
+  if (stale.length) wrong.push(`${label}: the abandoned battle's death beat played its replay over the restarted battle (${stale.join(', ')})`);
+  if (director.facts.lastDestroyed) wrong.push(`${label}: the restarted battle's ending reads the abandoned battle's last wreck (${director.facts.lastDestroyed.id})`);
+  if (rig.cameraOwner !== 'player') wrong.push(`${label}: the camera is the ${rig.cameraOwner} owner's over the living hull at its spawn (the abandoned battle's death orbit)`);
+  if (veiled) wrong.push(`${label}: the HUD stays veiled after the abandoned battle's replay was cancelled`);
   // the restarted battle: the player dies again
   calls.length = 0;
   player.combat.destroyed = true;
   step(16);
-  if (!calls.includes('deathCam')) wrong.push('result flow: the player\'s death in the restarted battle got no death cam (the abandoned battle\'s had run)');
+  if (!calls.includes('deathCam') || rig.cameraOwner !== 'death') wrong.push(`${label}: the player's death in the restarted battle got no death cam (the abandoned battle's had run)`);
 }
+resultFlow({ replay: false, killcamFirst: false });
+resultFlow({ replay: true, killcamFirst: false });
+resultFlow({ replay: true, killcamFirst: true });
 
 if (wrong.length) {
   console.error(`battleRestartTallies: a battle restart left the abandoned battle in the restarted battle's records:\n  ${wrong.join('\n  ')}`);
   assert.fail('a battle restart opens a new battle for every per-battle record');
 }
-console.log('battleRestartTallies: a battle restart opens a new battle for the HUD\'s kill counts, the battle report, the service record, the career record and the result flow (its ending facts and the player\'s death flow) PASS');
+console.log('battleRestartTallies: a battle restart opens a new battle for the HUD (kill counts, feed, contact memory, sixth sense, revive count, consumable tray), the battle report, the service record, the career record, the result flow (its ending facts, the player\'s death flow and its camera) and the medal toasts PASS');

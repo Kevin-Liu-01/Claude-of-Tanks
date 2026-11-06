@@ -19,6 +19,7 @@ function harness({ ending = false } = {}) {
   };
   const runtime = createBattleResultPresentationRuntime({
     game,
+    bus: { on() {} },
     killcam: {
       lastBeginWallMs: null,
       playForResult(result, timeS, onDone, options) { plays.push({ result, onDone, options }); return false; },

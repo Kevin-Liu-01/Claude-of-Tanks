@@ -13,8 +13,9 @@
 //      fresh for One Shot, and an abandoned round stayed a hull's killing shot;
 //   4. hud.ts and shotInfo.ts: their kill ledgers kept the abandoned battle's dead, so a hull that died there and dies
 //      again in the restarted battle was never fed nor counted (round 4 E6b: moved to battleRestartTallies, on the real
-//      HUD, where a restart opens a new battle and the counts start over).
-// Cases 1-4 fail on the merged head before that fix (b598626c30) and pass now.
+//      HUD, where a restart opens a new battle and the counts start over; its contact memory, revive count and consumable
+//      tray checks went with it, review r1).
+// Cases 1-3 fail on the merged head before that fix (b598626c30) and pass now; case 4 is battleRestartTallies case 1.
 // Review r2: the presentation's own actors kept the abandoned battle's deaths. A row writes a hull's life, a wreck is
 // sent to every seat and a live hull this seat does not spot is not, so a hull that died in the abandoned battle and is
 // hidden in the restarted one read destroyed after the restart:
@@ -175,8 +176,8 @@ const wrong = [];
 
 // ---- 4. moved (round 4 E6b) to battleRestartTallies.selftest.mjs, which drives the real HUD and its report over the
 // recording DOM instead of the handlers' source: a restart now opens a new battle, so the kill counts start over (round 3
-// kept them), a hull that died in the abandoned battle and dies again is fed once and counted, and the seat's revive count
-// is its fresh hull's.
+// kept them), a hull that died in the abandoned battle and dies again is fed once and counted, and the seat's revive count,
+// contact memory and consumable tray are its fresh hull's (review r1: all four of the case's checks, on the real HUD).
 
 // ---- 5. the presentation's own actors, and the network side counts that read them (review r2)
 {

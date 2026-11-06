@@ -163,4 +163,8 @@ export function installMedalToasts(bus: ToastBus, parent: HTMLElement = document
     if ((payload as { phase?: RuntimeValue } | undefined)?.phase !== 'battle') clear();
   });
   bus.on('battle:presented', clear);
+  // (round 4 E6b review r1) a network battle's restart opens a new battle (battlePresentation.ts 'battle:restarted'):
+  // the service record drops the abandoned battle's medals (serviceRecord.ts begin), so no card of them shows or waits
+  // to show in the restarted battle
+  bus.on('battle:restarted', clear);
 }

@@ -264,6 +264,8 @@ export interface CameraRig {
   recoilKick(amount?: number, fovScale?: number): void;
   startCinematic(durationS?: number): void;
   startDeathCam(): void;
+  /** Leave the death orbit for the player's camera (a restart's living hull); another owner is left as it is. */
+  endDeathCam(): void;
   startSpectate(entity: CameraEntity): void;
   snapSpectateForReveal(): boolean;
   setSpectateTarget(entity: CameraEntity): void;
@@ -1368,6 +1370,15 @@ export function createCameraRig(
       rig.mode = 'ARCADE';
       camera.userData.scoped = false; // death r1: scope consumers follow this frame
       applyPlayerVisibility(player, true);
+    },
+
+    /**
+     * The death orbit ends with the player's camera (round 4 E6b review r1): the player's hull lives again without a
+     * revive's own camera flow (a network battle's restart: game/battleResultPresentationRuntime.ts). Another owner
+     * (an external pin, the ally chase, the flyby) is left as it is.
+     */
+    endDeathCam(): void {
+      if (owner === 'death') enterOwner('player');
     },
 
     // --- SPECTATE (killcam_endscreen r1) ------------------------------------

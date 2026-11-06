@@ -34,6 +34,13 @@ interface ResultKillcam {
 interface ResultCameraRig {
   release(): void;
   startDeathCam?(): void;
+  /** Leave the death orbit for the player's camera (engine/cameraRig.ts); another owner is left as it is. */
+  endDeathCam?(): void;
+}
+
+/** The game bus, as far as this owner hears it itself: a network battle's restart (round 4 E6b review r1). */
+interface ResultBus {
+  on(type: 'battle:restarted', listener: () => void): unknown;
 }
 
 /** The browser camera twin of the director (battleEndingCamera.ts); a receipt supplies a fake. */
@@ -65,6 +72,11 @@ interface BattleResultFlowReceipt {
 
 interface BattleResultPresentationOptions {
   game: ResultGame;
+  /**
+   * The bus this owner hears a network battle's restart on ('battle:restarted', told once by
+   * mp/presentation/battlePresentation.ts resetSettledWorld), as the HUD, the report and the records hear it themselves.
+   */
+  bus: ResultBus;
   killcam: ResultKillcam;
   rig: ResultCameraRig;
   veilHud(veiled: boolean): void;
@@ -92,11 +104,6 @@ interface BattleResultPresentationRuntime {
   clearPending(): void;
   /** Watch mode (watch-mode-243): a freshly taken seat gets the player's death flow afresh. */
   newSeat(): void;
-  /**
-   * A network battle restarted under this seat (round 4 E6b; battlePresentation.ts 'battle:restarted', main.ts): a new
-   * battle's ending facts and the player's death flow afresh, unless its result is already on screen.
-   */
-  restart(): void;
   /** Feed the director the bus facts it reads (mode:* events, tank:destroyed). */
   observe(type: string, payload: unknown): void;
   snapshot(): BattleResultPresentationSnapshot;
@@ -128,6 +135,7 @@ const MAX_BEAT_STEP_MS = 250;
  */
 export function createBattleResultPresentationRuntime({
   game,
+  bus,
   killcam,
   rig,
   veilHud,
@@ -139,7 +147,7 @@ export function createBattleResultPresentationRuntime({
   now = () => performance.now(),
   deathBeatMs = DEFAULT_DEATH_BEAT_MS,
 }: BattleResultPresentationOptions): BattleResultPresentationRuntime {
-  const required = [killcam?.playForResult, rig?.release, veilHud,
+  const required = [bus?.on, killcam?.playForResult, rig?.release, veilHud,
     showEndOverlay, emitPresented, exitPointerLock, recordFlow, now];
   if (required.some((entry) => typeof entry !== 'function')) {
     throw new TypeError('battle result presentation requires every lifecycle port');
@@ -173,6 +181,8 @@ export function createBattleResultPresentationRuntime({
   let deathCamShown = false;
   let pending: PendingReplay | null = null;
   let beat: RunningBeat | null = null;
+  /** The battle a death flow belongs to (round 4 E6b review r1): a reset or a restart starts the next. */
+  let battleSerial = 0;
 
   const record = (played: boolean, result: BattleResult, plan: BattleEndingPlan, ran: BattleEndingBeat | 'replay'): void => {
     recordFlow({
@@ -302,10 +312,14 @@ export function createBattleResultPresentationRuntime({
       // Keep capture through the death beat and spectator handoff. Esc remains
       // the player's explicit release; a final result still releases above.
       rig.startDeathCam?.();
+      // (round 4 E6b review r1) the death's replay ends in its own battle's orbit only: a replay cancelled by a restart
+      // (killcam.ts hears 'battle:restarted' and runs this from its cancel, before or after this owner's restart) gives
+      // the HUD and the camera back, and the revived hull keeps its player's camera
+      const battle = battleSerial;
       const afterDeath = (): void => {
         veilHud(false);
         rig.release();
-        rig.startDeathCam?.();
+        if (battle === battleSerial) rig.startDeathCam?.();
       };
       pending = {
         deadline: clock + deathBeatMs,
@@ -328,33 +342,40 @@ export function createBattleResultPresentationRuntime({
     }
   };
 
+  /** A battle's start over: no ending beat, no ending facts, no result shown, the player's death flow afresh. */
+  const startOver = (): void => {
+    cancelBeat();
+    director.reset();
+    endShown = false;
+    deathCamShown = false;
+    pending = null;
+    battleSerial++;
+  };
+
+  // (round 4 E6b) A network battle restarted under this seat opens a new battle (the session's decision; Kevin may
+  // overrule): the battle start's own reset (startOver), so its ending reads only its facts (the director's last kill,
+  // zone, flag, goal and wave: a restarted battle that ended on time framed the abandoned battle's last wreck) and the
+  // player's death flow is its own again (a death beat pending at the restart played its replay over the restarted
+  // battle; a seat whose death cam had run got none, and no death replay at the verdict, when it died again). It runs
+  // unconditionally: a restart cannot follow this seat's verdict (the edge's policy, battlePresentation.ts
+  // resetSettledWorld; review r1). What a battle's start does not need: a seat whose death orbit ran gets its camera
+  // back, its hull alive at its spawn (a start opens on its own flyby); before, the orbit circled the living hull until
+  // the battle ended. This owner hears the edge itself (review r1), so a receipt drives it as the page does.
+  bus.on('battle:restarted', () => {
+    const orbiting = deathCamShown;
+    startOver();
+    if (orbiting) rig.endDeathCam?.();
+  });
+
   return {
     update,
-    reset() {
-      cancelBeat();
-      director.reset();
-      endShown = false;
-      deathCamShown = false;
-      pending = null;
-    },
+    reset: startOver,
     clearPending() {
       cancelBeat();
       pending = null;
     },
     newSeat() {
       if (endShown) return;
-      deathCamShown = false;
-      pending = null;
-    },
-    // (round 4 E6b) A restart opens a new battle (the session's decision; Kevin may overrule): the ending reads only its
-    // facts (the director's last kill, zone, flag, goal and wave: a restarted battle that ends on time framed the
-    // abandoned battle's last wreck, where no wreck stands), and the player's death flow is its own again. Before, a seat
-    // that died in the abandoned battle kept its death beat's replay pending, which then played over the restarted battle,
-    // and a seat whose death cam had run got none, and no death replay at the verdict, when it died again.
-    restart() {
-      if (endShown) return;
-      cancelBeat();
-      director.reset();
       deathCamShown = false;
       pending = null;
     },

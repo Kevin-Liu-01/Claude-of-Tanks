@@ -2215,6 +2215,7 @@ const battleEndingCamera = createBattleEndingCamera({
 });
 const battleResultPresentation = createBattleResultPresentationRuntime({
   game,
+  bus,
   killcam,
   rig,
   veilHud,
@@ -2237,8 +2238,6 @@ const battleResultPresentation = createBattleResultPresentationRuntime({
 for (const type of ['mode:flag_captured', 'mode:zone_captured', 'mode:goal_scored', 'mode:wave_started', 'tank:destroyed']) {
   bus.on(type, (payload) => battleResultPresentation.observe(type, payload));
 }
-// (round 4 E6b) a network battle's restart opens a new battle: its ending facts and the player's death flow start over
-bus.on('battle:restarted', () => battleResultPresentation.restart());
 const battlePhase = createBattlePhasePolicy({
   getPhase: () => game.phase,
   hasResult: () => !!game.result,
