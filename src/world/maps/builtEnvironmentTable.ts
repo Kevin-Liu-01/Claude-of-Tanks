@@ -181,9 +181,10 @@ export const BUILT_ENVIRONMENT = Object.freeze({
   // (built-env-270, the photos: the coast road and the village streets a patched asphalt; the beach pale limestone shingle
   // and pebbles, not sand)
   saltwind: row({ paved: { tone: 0.92, patches: 1, cracks: 0.8, covers: 0.3, markings: 0.6 }, paths: ['patched', 'patched', 'patched', null, null, null], work: 'off' },
-    null, { boats: 'gajeta', jetty: 'riva', reeds: 'phragmites', drift: 'breton', ford: 'gauge', bank: { kind: 'shingle', widthM: 14, hex: 0xc9c2b4, stoneM: 0.07 } }),
-  // the Rur dams, 1944–45
-  reservoir: row(PROTECTED, null),
+    null, { boats: 'gajeta', jetty: 'riva', reeds: 'phragmites', drift: 'breton', ford: 'gauge', bank: { kind: 'shingle', widthM: 14, hex: 0xd2cdc3, stoneM: 0.07 } }),
+  // the Rur dams, 1944–45 (built-env-270, the photos: the lakes drawn down that winter, a wide bare band of grey-brown slate
+  // and greywacke scree and silt below the dark root line)
+  reservoir: row(PROTECTED, null, banked({ kind: 'shingle', widthM: 8, hex: 0x7d776c, stoneM: 0.09 })),
   // Olympus Basin, the future: no potholes in its regolith
   mars: row({ paved: null, paths: null, work: { potholes: 0 } }, null),
   // Taurus–Littrow, 1972: the regolith has no potholes or washboard

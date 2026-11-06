@@ -6,6 +6,7 @@ import { BOAT_FAMILIES } from './boatHulls.ts';
 import { CIVIC_STYLES } from '../civic/styles.ts';
 import { CIVIC_PLAN_MAPS, civicPlanFor } from '../civic/plans/index.ts';
 import { ROAD_SURFACE_CODE } from '../roadSurfaces.ts';
+import { BUILT_ENVIRONMENT_RECORDS } from './builtEnvironmentRecords.ts';
 
 // The built-environment table (item built-env-270, DECISIONS 2026-11-05 "Built environment per map"): one row per
 // battlefield, and every row names real kits. Pins: a row per map and none for anything else; the civic style a row names
@@ -54,6 +55,19 @@ assert.deepEqual(['coastal', 'fjord', 'saltwind', 'mangrove', 'delta', 'alpine']
 assert.equal(shore('fjord').drift, 'nordland'); assert.equal(shore('coastal').drift, 'breton');
 assert.equal(shore('delta').ford, 'bamboo'); assert.equal(shore('autumn').ford, 'gauge');
 assert.deepEqual(['autumn', 'delta', 'mangrove'].map((id) => shore(id).reeds), ['phragmites', 'kash', 'nipa']);
+
+// the photographs: every real place has its own, each a free licence with its source (mars is the future: its setting only)
+assert.deepEqual(Object.keys(BUILT_ENVIRONMENT_RECORDS).sort(), [...MAP_IDS].sort(), 'a record for every battlefield');
+for (const id of MAP_IDS) {
+  const rec = BUILT_ENVIRONMENT_RECORDS[id];
+  assert.ok(rec.setting.length > 20, `${id}: its setting`);
+  if (id === 'mars') continue;
+  assert.ok(rec.photos.length >= 2, `${id}: two photographs or more`);
+  for (const ph of rec.photos) {
+    assert.match(ph.url, /^https:\/\/commons\.wikimedia\.org\/wiki\/File:/, `${id}: a Commons file`);
+    assert.match(ph.license, /CC|Public domain|PD|No restrictions|Attribution/i, `${id}: ${ph.license} is free`);
+  }
+}
 
 console.log(`builtEnvironmentTable.selftest: ${MAP_IDS.length} rows, ${MAP_IDS.filter((id) => BUILT_ENVIRONMENT[id].civic).length} civic styles, `
   + `${MAP_IDS.filter((id) => BUILT_ENVIRONMENT[id].roads.paved).length} paved catalogues`);
