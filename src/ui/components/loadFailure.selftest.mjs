@@ -248,6 +248,8 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
     // (audit, 16-audio-gallery item 8) a fleet row whose vehicle did not load: every way to it (a click, the [ ] keys,
     // the history) goes through loadTank, which reloads once it failed
     ['src/gallery/gallery.ts', "the Gallery's fleet rows", /async function loadTank\([^]{0,200}?\{\n\s*if \(pressFailed\(rowFor\(requestedId/, /if \(row\) markLoadFailed\(\[row\], /],
+    // (round 3 X9) the Studio's field-frames archive, whose stylesheet is an opener's chunk (studioArchiveOpener.selftest)
+    ['src/ui/studioPanel.ts', "the Studio's field-frames archive", /function openArchive\(\): void \{[^]{0,300}?if \(pressFailed\(archiveBtn\)\) \{/, /markLoadFailed\(\[archiveBtn\]\);/],
   ];
   for (const [file, name, press, mark] of OPENERS) {
     const source = blankComments(readFileSync(join(ROOT, file), 'utf8'));
