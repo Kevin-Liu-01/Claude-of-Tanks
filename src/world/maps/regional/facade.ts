@@ -408,6 +408,35 @@ export function sillStreaks(sink: PartSink, bucket: RegionalBucket, face: Face, 
   }
 }
 
+/**
+ * (buildings-270) The rain's runs down a rendered wall from under its eave: narrow tongues from the eave line down a metre
+ * or two between the openings (`gaps` their spans along the face), a third darker at the eave and washing out down the
+ * wall, 12 mm proud in the wall's bucket (fine: drawn near the camera only), one every 2.6 m of wall at the craft's own
+ * grime, more on a dirtier place's walls (its row's surface.grime). Their places and lengths hash from the face, never a
+ * stream. `y1` is the eave's line, `y0` the storey's floor.
+ */
+export function eaveStreaks(sink: PartSink, bucket: RegionalBucket, face: Face, y1: number, y0: number,
+  gaps: ReadonlyArray<readonly [number, number]>): void {
+  const g = facadeGrime(), half = face.width / 2;
+  const n = Math.min(8, Math.floor(face.width / 2.6 * g));
+  const dark = Math.min(0.5, 0.3 * g);
+  for (let k = 0; k < n; k++) {
+    const h = hash01(face.origin[0], face.origin[2], y1, k);
+    const cu = -half + 0.35 + (half * 2 - 0.7) * ((k + 0.25 + h * 0.5) / Math.max(1, n));
+    const w = 0.05 + h * 0.07;
+    if (gaps.some(([a, b]) => cu + w > a - 0.15 && cu - w < b + 0.15)) continue;
+    const len = Math.min(y1 - y0 - 0.3, 0.8 + hash01(cu, y1, k) * 1.3);
+    if (len < 0.4) continue;
+    const top = y1 - 0.04, bottom = top - len;
+    const at = (p: Vec3) => {
+      const t = Math.min(1, Math.max(0, (top - p[1]) / len));
+      return 1 - dark + dark * t;
+    };
+    sink.polygon(bucket, [facePoint(face, cu - w * 0.5, bottom, 0.012), facePoint(face, cu + w * 0.5, bottom, 0.012),
+      facePoint(face, cu + w, top, 0.012), facePoint(face, cu - w, top, 0.012)], { ...DECOR, fine: 'near', shadeAt: at });
+  }
+}
+
 // -------------------------------------------------------------------------------------------------------------------
 // Masonry: window heads, cornices, string courses
 // -------------------------------------------------------------------------------------------------------------------
