@@ -27,7 +27,6 @@ interface FilmSupportSource {
   trackScroll: { l: number; r: number };
   _swayEst?: number;
   _susp?: { p: number; r: number };
-  _flinch?: { p: number; r: number; pv: number; rv: number };
 }
 
 interface SupportPose {
@@ -39,10 +38,6 @@ interface SupportPose {
   swayEst: number;
   suspP: number;
   suspR: number;
-  flinchP: number;
-  flinchR: number;
-  flinchPV: number;
-  flinchRV: number;
 }
 
 /** The presentation state handed to the tank visual (tankFactoryCore.ts TankPoseState). */
@@ -58,7 +53,6 @@ interface FilmSupportPresentation {
   trackScroll: { l: number; r: number };
   _swayEst: number;
   _susp: { p: number; r: number };
-  _flinch: { p: number; r: number; pv: number; rv: number };
 }
 
 export interface FilmSupport {
@@ -76,7 +70,7 @@ export const FILM_SUPPORT_ON_GRID = 1e-6;
 
 const supportPose = (): SupportPose => ({
   y: 0, visualPitch: 0, visualRoll: 0, speed: 0, yawRate: 0, swayEst: 0,
-  suspP: 0, suspR: 0, flinchP: 0, flinchR: 0, flinchPV: 0, flinchRV: 0,
+  suspP: 0, suspR: 0,
 });
 
 export function createFilmSupport(): FilmSupport {
@@ -88,7 +82,7 @@ export function createFilmSupport(): FilmSupport {
     pose: {
       pos: { x: 0, y: 0, z: 0 }, yaw: 0, visualPitch: 0, visualRoll: 0, yawRate: 0, speed: 0,
       turretYaw: 0, gunPitch: 0, trackScroll: { l: 0, r: 0 }, _swayEst: 0,
-      _susp: { p: 0, r: 0 }, _flinch: { p: 0, r: 0, pv: 0, rv: 0 },
+      _susp: { p: 0, r: 0 },
     },
   };
 }
@@ -108,10 +102,6 @@ function readPose(out: SupportPose, state: FilmSupportSource): void {
   out.swayEst = state._swayEst ?? 0;
   out.suspP = state._susp?.p ?? 0;
   out.suspR = state._susp?.r ?? 0;
-  out.flinchP = state._flinch?.p ?? 0;
-  out.flinchR = state._flinch?.r ?? 0;
-  out.flinchPV = state._flinch?.pv ?? 0;
-  out.flinchRV = state._flinch?.rv ?? 0;
 }
 
 /** Record the support pose the solver just produced for grid step `step`. */
@@ -170,9 +160,5 @@ export function presentFilmSupport(
   out._swayEst = mix(a.swayEst, b.swayEst, t);
   out._susp.p = mix(a.suspP, b.suspP, t);
   out._susp.r = mix(a.suspR, b.suspR, t);
-  out._flinch.p = mix(a.flinchP, b.flinchP, t);
-  out._flinch.r = mix(a.flinchR, b.flinchR, t);
-  out._flinch.pv = mix(a.flinchPV, b.flinchPV, t);
-  out._flinch.rv = mix(a.flinchRV, b.flinchRV, t);
   return out;
 }
