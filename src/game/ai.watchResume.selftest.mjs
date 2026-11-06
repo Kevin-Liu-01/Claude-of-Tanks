@@ -42,6 +42,7 @@ import '../vehicles/fleetFactory.ts';
 import { getSpec } from '../vehicles/specs.ts';
 import { createTankState, updateTank, SIM_DT } from '../sim/movement.ts';
 import { CLASSIC_BOT_DOCTRINE } from '../sim/matchRuleset.ts';
+import * as detMath from '../sim/detMath.ts';
 import { createAI, mulberry32 } from './ai.ts';
 import { leaveWatchSeat, openWatchSeats, prepareWatchSeat, takeWatchSeat } from './watchSeat.ts';
 
@@ -591,24 +592,42 @@ console.log('[10] a leg that doubles back over its own line keeps its apex: on a
 // Round 4 (E8): hullOnItsWay moved the cursor on while the next stretch lay no farther (`<=`), so a hull handed back on
 // a stretch that doubles back over the one before it (equally near both) went to the later one and turned back short of
 // the apex, against the rule its doc states (a route that doubles back past the hull is not skipped ahead). The cursor
-// now moves on only to a stretch that lies nearer. On 0edd0e1ab5 the hull turns back to the waypoint after the apex.
+// now moves on only to a stretch that lies nearer by more than WAY_TIE_M (1 mm). On 0edd0e1ab5 the hull turns back to
+// the waypoint after the apex. Fix-up r1 (both reviews): a strict `<` kept the apex only where the two distances are
+// bit-equal, as on the north-south leg; on a diagonal leg each stretch's nearest point is its own projection, rounding
+// leaves the way back ~1e-15 m nearer, and on ab8a817159 the -48.3 degree leg still skipped its apex (cursor 0 -> 2).
 {
-  const APEX = [0, -340];
-  // the planner fixture lays a leg up to an apex and back down the same line before it turns for the goal's sector
-  const doublingBack = () => [[0, -380], APEX, [0, -400], [40, 150]];
-  const { bot, ctl, run, hull, clock } = searchScene(true, doublingBack);
-  run(40, (info) => info.searching && info.routeOwner === 'search');
-  const before = ctl.debugInfo();
-  // the watcher drives the hull onto the leg's road halfway up to the apex, 0.5 m beside its line, and stops there
-  const away = () => { bot.state.pos.x = 0.5; bot.state.pos.z = -360; bot.state.yaw = 0; bot.state.speed = 0; };
-  takeAndLeave(bot, ctl, clock, hull, 0.5, away);
-  const back = ctl.debugInfo();
-  let closest = Infinity;
-  run(8, () => { closest = Math.min(closest, Math.hypot(APEX[0] - bot.state.pos.x, APEX[1] - bot.state.pos.z)); return false; });
-  ok(before.wpCount === 4 && before.wpIndex === 0 && back.searchLegs === before.searchLegs && back.routeOwner === 'search',
-    `setup: the search leg runs up to the apex and back (${before.wpCount} waypoints, owner ${back.routeOwner}, legs ${before.searchLegs} -> ${back.searchLegs})`);
-  ok(back.wpIndex === 1 && closest < 6.5,
-    `handed back 0.5 m beside both the stretch up to the apex and the one back down it: the cursor goes to the apex, and the hull drives up to it (cursor ${before.wpIndex} -> ${back.wpIndex}, nearest ${closest.toFixed(1)} m of the apex after)`);
+  // segmentNearestXZ's arithmetic (ai.ts), to show the diagonal leg's tie is broken by rounding alone
+  const clampTo = (v, lo, hi) => (v < lo ? lo : v > hi ? hi : v);
+  const stretchDistance = (px, pz, ax, az, bx, bz) => {
+    const dx = bx - ax, dz = bz - az, lengthSq = dx * dx + dz * dz;
+    const along = lengthSq > 1e-9 ? clampTo(((px - ax) * dx + (pz - az) * dz) / lengthSq, 0, 1) : 0;
+    return detMath.hypot(px - (ax + dx * along), pz - (az + dz * along));
+  };
+  for (const headingDeg of [0, -48.3]) {
+    // the planner fixture lays a leg up to an apex 40 m on and back down the same line 60 m before it turns for the
+    // goal's sector; the watcher drives the hull onto the leg's road halfway up to the apex, 0.5 m beside its line
+    const heading = headingDeg * Math.PI / 180, ux = Math.sin(heading), uz = Math.cos(heading);
+    const START = [0, -380], APEX = [START[0] + ux * 40, START[1] + uz * 40], BACK = [START[0] - ux * 20, START[1] - uz * 20];
+    const HANDED = [START[0] + ux * 20 - uz * 0.5, START[1] + uz * 20 + ux * 0.5];
+    const upM = stretchDistance(HANDED[0], HANDED[1], START[0], START[1], APEX[0], APEX[1]);
+    const downM = stretchDistance(HANDED[0], HANDED[1], APEX[0], APEX[1], BACK[0], BACK[1]);
+    const doublingBack = () => [START.slice(), APEX.slice(), BACK.slice(), [40, 150]];
+    const { bot, ctl, run, hull, clock } = searchScene(true, doublingBack);
+    run(40, (info) => info.searching && info.routeOwner === 'search');
+    const before = ctl.debugInfo();
+    const away = () => { bot.state.pos.x = HANDED[0]; bot.state.pos.z = HANDED[1]; bot.state.yaw = heading; bot.state.speed = 0; };
+    takeAndLeave(bot, ctl, clock, hull, 0.5, away);
+    const back = ctl.debugInfo();
+    let closest = Infinity;
+    run(8, () => { closest = Math.min(closest, Math.hypot(APEX[0] - bot.state.pos.x, APEX[1] - bot.state.pos.z)); return false; });
+    const tie = upM === downM ? 'bit-equal' : `the way back ${(upM - downM).toExponential(1)} m nearer by rounding`;
+    ok(before.wpCount === 4 && before.wpIndex === 0 && back.searchLegs === before.searchLegs && back.routeOwner === 'search'
+      && Math.abs(upM - 0.5) < 1e-9 && (headingDeg === 0 ? upM === downM : downM < upM && upM - downM < 1e-9),
+      `setup, heading ${headingDeg} deg: the search leg runs up to the apex and back (${before.wpCount} waypoints, owner ${back.routeOwner}, legs ${before.searchLegs} -> ${back.searchLegs}); both stretches lie 0.5 m off (${tie})`);
+    ok(back.wpIndex === 1 && closest < 6.5,
+      `heading ${headingDeg} deg, handed back beside both the stretch up to the apex and the one back down it: the cursor goes to the apex, and the hull drives up to it (cursor ${before.wpIndex} -> ${back.wpIndex}, nearest ${closest.toFixed(1)} m of the apex after)`);
+  }
 }
 
 /**

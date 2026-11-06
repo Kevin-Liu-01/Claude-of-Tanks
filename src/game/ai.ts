@@ -893,6 +893,10 @@ const LEVEL_ROUTE_OPTIONS = Object.freeze({ requireGoalLevel: true });
 // who drove a level route's hull off a causeway's crest onto the floor 11 m beside it left the route held from below,
 // and its stuck strikes ended it with the UNBEARABLE_S verdict). Another level is ELEVATION_LEVEL_M away, as for a gun.
 const RESUME_ON_LEVEL_M = ELEVATION_LEVEL_M;
+// Two stretches of a way whose distances from a hull handed back differ by no more than this are a tie, and the earlier
+// keeps the resume's cursor (hullOnItsWay). Each stretch's nearest point is its own projection, so a leg that retraces
+// its own line on a diagonal reads ~1e-15 m nearer one way or the other by rounding alone (round 4, E8, fix-up r1).
+const WAY_TIE_M = 1e-3;
 // The declared order of one hull's shell results (or hits) on a bot in one phase (round 2, U17; see pendingBefore).
 const PENDING_KIND_ORDER: readonly string[] = Object.freeze(['pen', 'he_pen', 'nonpen', 'ricochet', 'spaced_absorb', 'era']);
 // Search goal order by how many legs have ended without contact: straight at the enemy first, then the last
@@ -7053,10 +7057,11 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
    * The hull lies on its way at the hand-back (round 3, A2; round 4, F5 and E8): within RESUME_ON_WAY_M on the ground plan
    * of the route the park left it on, from where it stood (park()) through the waypoints still ahead of the cursor, and
    * on that route's level there (wayOffset); with no waypoint ahead, where it stood (hullStoodPut). The cursor moves to
-   * the waypoint ahead of the hull: the earliest stretch the hull lies by, then on only while the next lies nearer. On a
-   * tie the earlier stretch keeps it, so a route that doubles back over its own line is driven to its apex, not skipped
-   * at it, and one that doubles back past the hull is not skipped ahead. A hull driven off it, onto another level beside
-   * it, or carried off it by its coast is not on it (resumeOwnLegs). Allocation-free.
+   * the waypoint ahead of the hull: the earliest stretch the hull lies by, then on only while the next lies nearer by more
+   * than WAY_TIE_M. Within that the stretches tie and the earlier keeps it, so a route that doubles back over its own line
+   * is driven to its apex, not skipped at it, on any heading, and one that doubles back past the hull is not skipped
+   * ahead. A hull driven off it, onto another level beside it, or carried off it by its coast is not on it
+   * (resumeOwnLegs). Allocation-free.
    */
   function hullOnItsWay(): boolean {
     if (wpIndex >= waypoints.length) return hullStoodPut();
@@ -7066,7 +7071,7 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     for (let i = wpIndex; i < waypoints.length; i++) {
       const to = waypoints[i];
       const distance = wayOffset(x, z, fromX, fromZ, to.x, to.z);
-      if (on < 0 ? distance <= RESUME_ON_WAY_M : distance < nearest) { on = i; nearest = distance; }
+      if (on < 0 ? distance <= RESUME_ON_WAY_M : distance < nearest - WAY_TIE_M) { on = i; nearest = distance; }
       else if (on >= 0) break;
       fromX = to.x;
       fromZ = to.z;
