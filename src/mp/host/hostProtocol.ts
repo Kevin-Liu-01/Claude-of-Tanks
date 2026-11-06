@@ -198,12 +198,7 @@ export interface HostPrepareConfig {
 }
 
 export type HostToWorkerMessage =
-  /**
-   * `bootTimeoutMs`: the host runtime's boot bound (matchHost.ts: past it the runtime fails itself and the room elects
-   * another), which the core tells the seats its boot holds, as the runtime tells its own (bootHoldNoticeMs; round 3 B1/X6
-   * review r1). Absent: ELECTED_HOST_BOOT_MS, the runtime's default.
-   */
-  | { type: 'boot'; config: HostBootConfig; bootTimeoutMs?: number }
+  | { type: 'boot'; config: HostBootConfig }
   /** Load the world and the fleet a later boot will use (a standby host thread; ignored once a boot began). */
   | { type: 'prepare'; prepare: HostPrepareConfig }
   // playerId: the room-authenticated peer behind the link (the relayed signal's `from`; the host's own id on the loopback)
@@ -267,9 +262,9 @@ export const HOST_LOOPBACK_PEER = 0;
 /**
  * The most a HELLO that arrives during a host's boot waits for its WELCOME, as the host tells the seat (wire HOLD, round 3
  * B1/X6): what is left of the boot's bound, then the resume hold when the boot may await seats (one not yet configured may).
- * The one formula for both tellers (review r1: they were two), the host runtime to its own loopback seat (matchHost.ts) and
- * the core to its peers (matchHostCore.ts noticeHeld), each from the same bound, the runtime's bootTimeoutMs, and the same
- * hold, RESUME_HOLD_MS. Rounded up to whole milliseconds, within the wire's u32.
+ * Its one teller is the host runtime, to every link before its actor runs (matchHost.ts bootHoldNotice, from its own boot
+ * timer's bound and RESUME_HOLD_MS; round 4 F0: the core told its peers, once its Worker had evaluated). Rounded up to
+ * whole milliseconds, within the wire's u32.
  */
 export function bootHoldNoticeMs(bootLeftMs: number, holdMs: number, config: Pick<HostBootConfig, 'resume'> | null): number {
   const awaitsSeats = holdMs > 0 && (config === null || (config.resume?.holdForSeats?.length ?? 0) > 0);

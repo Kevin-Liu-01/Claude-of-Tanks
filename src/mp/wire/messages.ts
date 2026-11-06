@@ -364,9 +364,10 @@ export interface ErrorMessage {
 }
 
 /**
- * Sent before the WELCOME by a host that holds the seat's HELLO (round 3 B1/X6, protocol 12): through its boot (it has no
- * actor yet) or its resume hold (matchHostCore.ts). `holdMs`: the most it will hold from now. The seat's stall clock waits
- * that long before it counts (MatchClient receiveHold); a later notice replaces an earlier one.
+ * Sent before the WELCOME by a host that holds the seat's HELLO (round 3 B1/X6, protocol 12): through its boot, before its
+ * actor runs (the host runtime on its main thread, matchHost.ts bootHoldNotice; round 4 F0), or its resume hold
+ * (matchHostCore.ts noticeHeld). `holdMs`: the most it will hold from now. The seat's stall clock waits that long and a
+ * release margin, at most 33 s together, before it counts (MatchClient receiveHold); a later notice replaces an earlier one.
  */
 export interface HoldMessage {
   type: typeof MESSAGE_TYPE.HOLD;

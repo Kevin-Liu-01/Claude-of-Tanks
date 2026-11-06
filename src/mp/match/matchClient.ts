@@ -943,14 +943,14 @@ export class MatchClient {
   }
 
   /**
-   * The host holds this seat's HELLO for at most `holdMs` more (wire HOLD, round 3 B1/X6: through its boot, or a migrated
-   * host's resume hold, matchHostCore.ts noticeHeld): the stall clock's handshake allowance runs to then, and its stall
-   * counts from there. The host's own word replaces whatever the link opened with: a newly elected host's whole boot and
-   * hold bound (MIGRATION_WELCOME_ALLOWANCE_MS, all a seat could allow before), and a kept host's nothing (matchSession.ts
-   * bootKeptHost holds its seats at the room's same generation, which the opening allowance never read). So a seat waits
-   * through a slow boot or a long hold on any link, and asks for a fresh one once its host overruns what it announced (by
-   * more than HOLD_RELEASE_MARGIN_MS, the WELCOME's way out through the host's main thread), not 33 s after the link
-   * opened. Capped at that bound; after the WELCOME it means nothing.
+   * The host holds this seat's HELLO for at most `holdMs` more (wire HOLD, round 3 B1/X6: through its boot, matchHost.ts
+   * bootHoldNotice, or a migrated host's resume hold, matchHostCore.ts noticeHeld): the stall clock's handshake allowance
+   * runs to then, and its stall counts from there. The host's own word replaces whatever the link opened with: a newly
+   * elected host's whole boot and hold bound (MIGRATION_WELCOME_ALLOWANCE_MS, all a seat could allow before), and a kept
+   * host's nothing (matchSession.ts bootKeptHost holds its seats at the room's same generation, which the opening allowance
+   * never read). So a seat waits through a slow boot or a long hold on any link, and asks for a fresh one once its host
+   * overruns what it announced (by more than HOLD_RELEASE_MARGIN_MS, the WELCOME's way out through the host's main thread),
+   * not 33 s after the link opened. Capped at that bound; after the WELCOME it means nothing.
    */
   private receiveHold(holdMs: number, nowMs: number): void {
     if (this.welcomeMessage || this.openedAtMs === null) return;

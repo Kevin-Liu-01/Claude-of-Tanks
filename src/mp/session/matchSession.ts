@@ -1103,8 +1103,10 @@ export class MatchSession {
    * The kept host restarts a battle that had begun (migrationFallback's last resort) on the newest tick it knows (review
    * round 1, U1): the room's election that named it carries the old host's last report tick (roomActor.ts migrateHost),
    * and it used to be dropped for 0, so the restart ran behind every peer's clock by the whole battle. What the seat cannot
-   * know (the ticks since that report; a reload hears no election at all) the peers' clients follow at their WELCOME
-   * (matchClient.ts receiveWelcome: a host on another timeline re-anchors the clocks).
+   * know (the ticks since that report; a reload hears no election at all) its peers' clients need not be told: the
+   * restart's WELCOME carries the new battle's id (migrationState.ts migrationFallback mints one), which tells each client
+   * the battle restarted whatever its tick or phase (matchClient.ts receiveWelcome: restartBattle; round 3 A3), and a first
+   * snapshot on another timeline re-anchors its clocks (followTimeline).
    */
   private bootKeptHost(round: SessionRound, detail: string): void {
     const client = this.matchClient;

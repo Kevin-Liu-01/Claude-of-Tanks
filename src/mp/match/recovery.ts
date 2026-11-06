@@ -1,9 +1,12 @@
 /**
  * Connection recovery policy (v1 "Client smoothness" watchdog rules kept):
  * the match is `live` while accepted authority keeps arriving; 5 s without
- * it is `stalled` (the transport is asked for a fresh socket once); the
- * transport's own reconnects show as `reconnecting`; 60 s after the first
- * loss without recovery the match is `failed`; an explicit leave is `left`.
+ * it is `stalled` (the transport is asked for a fresh socket once; before
+ * a WELCOME, 5 s past holdAllowanceMs: from the host's notice, the hold it
+ * announced plus a 3 s release margin, those two at most 33 s, or 33 s on a
+ * newly elected host's link before any notice); the transport's own
+ * reconnects show as `reconnecting`; 60 s after the first loss without
+ * recovery the match is `failed`; an explicit leave is `left`.
  * A pure state machine: the client owns the side effects.
  */
 import type { TransportState } from '../transport/transport.ts';
@@ -31,10 +34,11 @@ export const ELECTED_HOST_BOOT_MS = 30_000;
  * the host answers no HELLO until its boot is done and its hold is over. A fixed RESUME_HOLD_MS held only while the boot
  * fit in the stall clock (5 s + 3 s against a 3.4-4.3 s unprepared boot plus up to 3 s of hold): a slower device's boot
  * pushed every held seat into a fresh link during the hold. Round 3 (B1/X6): a host that holds a HELLO says so at once
- * (wire HOLD: matchHostCore.ts noticeHeld, through the boot and again in the hold, with what is left), and the seat's
- * allowance runs to what it announced (MatchClient receiveHold), on any link (a kept host's, at the same generation, too);
- * this bound only covers the time before that word, and caps it. A host that died meanwhile is the room's to replace (its
- * socket lease, its reports, the boot timeout's decline): the seat follows the next election on a fresh link and clock.
+ * (wire HOLD: its runtime through the boot, matchHost.ts bootHoldNotice, and its core again in the hold, matchHostCore.ts
+ * noticeHeld, with what is left), and the seat's allowance runs to what it announced (MatchClient receiveHold), on any
+ * link (a kept host's, at the same generation, too); this bound only covers the time before that word, and caps it. A
+ * host that died meanwhile is the room's to replace (its socket lease, its reports, the boot timeout's decline): the seat
+ * follows the next election on a fresh link and clock.
  */
 export const MIGRATION_WELCOME_ALLOWANCE_MS = ELECTED_HOST_BOOT_MS + RESUME_HOLD_MS;
 
@@ -69,10 +73,9 @@ export interface RecoveryInput {
   welcomedAtMs?: number | null;
   /**
    * How much longer than `stallMs` the current socket may wait for its WELCOME, from its open: what its host announced it
-   * holds the seat's HELLO for (wire HOLD, round 3 B1/X6: the time to the notice plus its holdMs and HOLD_RELEASE_MARGIN_MS),
-   * else
-   * MIGRATION_WELCOME_ALLOWANCE_MS on a link to a host the room just elected (its boot and its resume hold may keep this
-   * seat's HELLO unanswered that long), 0 otherwise.
+   * holds the seat's HELLO for (wire HOLD, round 3 B1/X6: the time to the notice plus its holdMs and HOLD_RELEASE_MARGIN_MS,
+   * those two at most MIGRATION_WELCOME_ALLOWANCE_MS), else MIGRATION_WELCOME_ALLOWANCE_MS on a link to a host the room
+   * just elected (its boot and its resume hold may keep this seat's HELLO unanswered that long), 0 otherwise.
    */
   holdAllowanceMs?: number;
   /**
