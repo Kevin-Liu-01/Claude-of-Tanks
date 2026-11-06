@@ -303,6 +303,13 @@ export default {
     litter: { density: 0.2, clods: 0.25, splinters: 0, stoneTint: [0.20, 0.115, 0.075] },
   },
   props: {
+    // (landmarks-271, 2026-11-06; the owner: "new special buildings like the way our airport map has hangars and our
+    // seaside map has a harbor area with a lighthouse ... integrated with the whole identity of the map") Wadi Rum's
+    // signature (src/world/landmarks/forts.ts): the Desert Patrol's police fort on the village's east edge, its gate and
+    // flagged tower turned to the village.
+    landmarks: [
+      { kind: 'desertFort', x: 148, z: -98, yawDeg: -81, name: 'the Desert Patrol fort' },
+    ],
     // regional-buildings lane: the Wadi Rum outpost kit (maps/regional/wadirum.ts)
     architecture: 'wadirum',
     // (round 10, the gauntlet's wave 270: "a handful of flat-textured boxes, sheds and a scaffold tower over an open sand

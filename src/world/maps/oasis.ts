@@ -125,6 +125,14 @@ export default {
     palmFallback: 'acacia',
   },
   props: {
+    // (landmarks-271, 2026-11-06; the owner: "new special buildings like the way our airport map has hangars and our
+    // seaside map has a harbor area with a lighthouse ... integrated with the whole identity of the map") Siwa's
+    // signatures (src/world/landmarks/siwa.ts): the old Shali mosque and its mud minaret at the town's foot, its doors on
+    // the market's ground; Ain Juba's spring pool by the lake's palm gardens, its channels running out into them.
+    landmarks: [
+      { kind: 'shaliMosque', x: 50, z: 80, yawDeg: 180, name: 'the old Shali mosque' },
+      { kind: 'springPool', x: -80, z: 110, yawDeg: 20, name: 'the Ain Juba spring' },
+    ],
     // (2026-10-17, the maps lane; the fleet dressing rules 227, the coordinator's ruling) a fence run's module or gate that
     // meets a building's plot is left out (props.ts dressingRules.fencesClearBuildings; no stub rule)
     dressingRules: { fencesClearBuildings: true },

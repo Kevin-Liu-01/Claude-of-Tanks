@@ -5,6 +5,8 @@ import type { LandmarkKind, LandmarkParams, LandmarkPlacement } from './types.ts
 import type { StructureClearance } from '../vegetationClearance.ts';
 import { roundhouseLayout } from './railWorks.ts';
 import { blastFurnaceLayout } from './ironWorks.ts';
+import { shrineLayout } from './shrine.ts';
+import { ksarLayout } from './ksar.ts';
 
 type LandmarkFamily = 'bridge' | 'monument' | 'park' | 'gate' | 'tower' | 'civic' | 'wreck' | 'harbour' | 'works';
 
@@ -390,6 +392,35 @@ export const LANDMARK_KINDS: Readonly<Record<LandmarkKind, LandmarkKindSpec>> = 
   // the cast house in front: centred on the whole plan (ironWorks.ts blastFurnaceLayout)
   blastFurnace: { family: 'works', defaults: { height: 30, stoves: 3, skip: 34 },
     footprint: (p) => { const l = blastFurnaceLayout(p); return [l.across, l.along]; } },
+  // (shrine.ts, landmarks-271) the precinct along its approach: the torii (a child) at the mouth, the rōmon at `gate` of
+  // the way in, the haiden's karahafu and steps reaching toward the gate from the back fence
+  shrine: { family: 'civic', defaults: { length: 70, width: 30, gate: 0.3 },
+    footprint: (p) => { const l = shrineLayout(p); return [l.width / 2 + 0.4, l.length / 2 + 0.2]; } },
+  // (ksar.ts, landmarks-271) the ghorfa ksar: its court and the ranges round it; the marabout: its enclosure (`yard`)
+  // (it drapes: each column stands on its own ground, its foot to the lowest under it, so it steps up a slope)
+  ghorfaKsar: { family: 'civic', drapes: true, defaults: { court: 26, courtDepth: 18, cell: 8, bay: 2.8, tiers: 4, tierHeight: 2.9 },
+    footprint: (p) => { const l = ksarLayout(p); return [l.across, l.along]; } },
+  marabout: { family: 'monument', defaults: { size: 6, height: 4.2, yard: 14 },
+    footprint: (p) => { const y = Math.max(num(p, 'size') + 4, num(p, 'yard')) / 2 + 0.2; return [y, y + 0.1]; } },
+  // (forts.ts, landmarks-271) the desert fort: its square, the tower 1 m proud at the front-left corner, the plinth's
+  // batter, the water tank 3.3 m out of the front
+  desertFort: { family: 'civic', defaults: { size: 30, height: 5, rooms: 4.2, tower: 9.5 },
+    footprint: (p) => [num(p, 'size') / 2 + 1.2, num(p, 'size') / 2 + 3.5] },
+  // (siwa.ts, landmarks-271) the mosque: its hall's slumped walls and the ablution court 5.8 m out of the front; the
+  // spring: its ring, the channels up to 13.2 m out to -x, the café's shade to +x
+  shaliMosque: { family: 'civic', defaults: { width: 13, depth: 12, height: 4.2, minaret: 13 },
+    footprint: (p) => [num(p, 'width') / 2 + 0.9, num(p, 'depth') / 2 + 6.0] },
+  // (andalusia.ts, landmarks-271) the bullring: its ring to the roof's eaves 0.7 m out, the portal's columns 1.4 m proud
+  bullring: { family: 'civic', defaults: { radius: 30, height: 11, arena: 21, sides: 32 },
+    footprint: (p) => [num(p, 'radius') + 0.9, num(p, 'radius') + 1.8] },
+  // (canalWorks.ts, landmarks-271) at the canal's edge (inWater: the bank and the water under them): the market's hall
+  // behind its quay, the pontoons and sampans up to 16.5 m out on the water; the kilns' shed, billets and landing stage
+  canalMarket: { family: 'harbour', inWater: true, defaults: { length: 30, depth: 13, pontoons: 3, boats: 5 },
+    footprint: (p) => [num(p, 'length') / 2 + 1.6, Math.max(num(p, 'depth') + 2.2, 16.6)] },
+  charcoalKilns: { family: 'works', inWater: true, defaults: { kilns: 4, radius: 2.7 },
+    footprint: (p) => [num(p, 'kilns') * (2 * num(p, 'radius') + 1.4) / 2 + 1.9, num(p, 'radius') + 2.5 + 7.4] },
+  springPool: { family: 'park', defaults: { radius: 7.5, channels: 2 },
+    footprint: (p) => [num(p, 'radius') + (num(p, 'channels') > 0 ? 13.4 : 7.6), num(p, 'radius') + 1.6] },
 });
 
 /** A placement's parameters over its kind's defaults. An unknown kind fails closed. */

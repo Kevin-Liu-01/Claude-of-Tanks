@@ -358,10 +358,10 @@ function waterCrane(sink: PartSink, x: number, z: number, swing: number, mobile:
  *  operator's cab at one end (dressing; the pit is flush, the yard's level). */
 function turntable(sink: PartSink, cx: number, cz: number, R: number, v: () => number, mobile: boolean): void {
   const n = mobile ? 28 : 48;
-  revolve(sink, 'stone', cx, cz, [[R + 0.55, -0.4], [R + 0.55, 0.14], [R, 0.14], [R, 0.02]], n, { decor: true, shade: 0.88 });
+  revolve(sink, 'stone', cx, cz, [[R + 0.55, -0.4], [R + 0.55, 0.14], [R, 0.14], [R, 0.02], [R + 0.01, 0.02]], n, { decor: true, shade: 0.88 });
   // the pit floor (cinders and oil), and the circular running rail near the wall
   revolve(sink, 'stone', cx, cz, [[R, 0.035], [0.001, 0.035]], n, { decor: true, shade: 0.42 });
-  revolve(sink, 'structureMetal', cx, cz, [[R - 0.75, 0.04], [R - 0.75, 0.12], [R - 0.65, 0.12], [R - 0.65, 0.04]], n, { colour: RAIL, decor: true });
+  revolve(sink, 'structureMetal', cx, cz, [[R - 0.76, 0.04], [R - 0.75, 0.04], [R - 0.75, 0.12], [R - 0.65, 0.12], [R - 0.65, 0.04], [R - 0.64, 0.04]], n, { colour: RAIL, decor: true });
   // the bridge, turned toward a stall (look stream)
   const yaw = (v() - 0.5) * 0.9;
   sink.placed(yaw, cx, 0, cz, () => {

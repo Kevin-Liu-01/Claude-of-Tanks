@@ -243,6 +243,13 @@ export default {
     tuftTone: (h: number, s: number, l: number) => [0.19, 0.3, clamp01(l * 0.64 + 0.08)],
   },
   props: {
+    // (landmarks-271, 2026-11-06; the owner: "new special buildings like the way our airport map has hangars and our
+    // seaside map has a harbor area with a lighthouse ... integrated with the whole identity of the map") Aso's
+    // signature (src/world/landmarks/shrine.ts): the shrine's precinct on the paddy floor's dry ground east of the centre,
+    // its sandō from the torii at the north road's side through the two-storey rōmon to the haiden.
+    landmarks: [
+      { kind: 'shrine', x: 60, z: 25, yawDeg: 0, name: 'the Aso shrine' },
+    ],
     // (round 3: the village authored, CALDERA_VILLAGE above; no roadside plan, no block fill; a building 2 m off a
     // neighbour's reach so a farmstead's barns stand round its yard; was the 30-building plan, block fill and 9 m)
     plan: [],

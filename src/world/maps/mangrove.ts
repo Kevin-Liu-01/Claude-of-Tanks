@@ -142,6 +142,14 @@ export default {
     ],
   },
   props: {
+    // (landmarks-271, 2026-11-06; the owner: "new special buildings like the way our airport map has hangars and our
+    // seaside map has a harbor area with a lighthouse ... integrated with the whole identity of the map") the canal
+    // country's signatures (src/world/landmarks/canalWorks.ts): the chợ on the creek's south bank, its hall on the bank and
+    // its pontoons and sampans on the water; downstream, the charcoal kilns under their thatched shed with their landing.
+    landmarks: [
+      { kind: 'canalMarket', x: -60, z: 216, yawDeg: 0, name: 'the canal market' },
+      { kind: 'charcoalKilns', x: 22, z: 212, yawDeg: 0, name: 'the charcoal kilns' },
+    ],
     // regional-buildings lane: the Ca Mau stilt-house kit (maps/regional/mekong.ts)
     architecture: 'mekong',
     riverLandings: [

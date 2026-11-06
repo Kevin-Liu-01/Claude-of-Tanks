@@ -75,7 +75,7 @@ function pipe(sink: PartSink, a: Vec3, b: Vec3, r: number, colour: Rgb, mobile: 
 
 /** A riveted cylinder's bands (the plates' seams) up a drum from y0 to y1 (dressing, fine). */
 function bands(sink: PartSink, x: number, z: number, r: number, y0: number, y1: number, pitch: number, colour: Rgb, n: number): void {
-  for (let y = y0 + pitch; y < y1 - 0.3; y += pitch) revolve(sink, 'structureMetal', x, z, [[r + 0.04, y], [r + 0.04, y + 0.14]], n, { colour, decor: true, fine: true });
+  for (let y = y0 + pitch; y < y1 - 0.3; y += pitch) revolve(sink, 'structureMetal', x, z, [[r, y], [r + 0.04, y], [r + 0.04, y + 0.14], [r, y + 0.14]], n, { colour, decor: true, fine: true });
 }
 
 /** A ring of a platform's railing at radius r on its deck at y (dressing). */
@@ -107,7 +107,7 @@ export const blastFurnace: LandmarkBuilder = (ctx) => {
     // the stack's binding hoops
     for (let y = boshY + 3; y < top - 3; y += 2.4) {
       const r = boshR + (throatR - boshR) * (y - boshY - 1.5) / (top - 2.5 - boshY - 1.5);
-      revolve(sink, 'structureMetal', 0, 0, [[r + 0.08, y], [r + 0.08, y + 0.3]], n, { colour: RUST_DARK, decor: true, fine: mobile ? undefined : 'near' });
+      revolve(sink, 'structureMetal', 0, 0, [[r, y], [r + 0.08, y], [r + 0.08, y + 0.3], [r, y + 0.3]], n, { colour: RUST_DARK, decor: true, fine: mobile ? undefined : 'near' });
     }
     // the bustle main ringing the bosh and the tuyere stocks down to the hearth
     const bustleY = boshY + 1.2, bustleR = boshR + 2.4, tuyeres = mobile ? 8 : 14;

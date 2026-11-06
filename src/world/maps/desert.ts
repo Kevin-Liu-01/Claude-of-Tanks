@@ -389,6 +389,15 @@ export default {
   },
 
   props: {
+    // (landmarks-271, 2026-11-06; the owner: "new special buildings like the way our airport map has hangars and our
+    // seaside map has a harbor area with a lighthouse ... integrated with the whole identity of the map") the Dahar's
+    // signature (src/world/landmarks/ksar.ts): a ghorfa ksar of vaulted granaries stacked round its court, stepping up the
+    // spur east of the village with its gate on the village, and a saint's white marabout on the knoll across it; both on
+    // the line equidistant from the deployments.
+    landmarks: [
+      { kind: 'ghorfaKsar', x: 150, z: -45, yawDeg: -73, name: 'the ghorfa ksar on the east spur' },
+      { kind: 'marabout', x: -140, z: 60, yawDeg: 107, name: 'the marabout on the west knoll' },
+    ],
     // (2026-10-17, the maps lane; the fleet dressing rules 227, the coordinator's ruling) a fence run's module or gate that
     // meets a building's plot is left out (props.ts dressingRules.fencesClearBuildings; no stub rule)
     dressingRules: { fencesClearBuildings: true },

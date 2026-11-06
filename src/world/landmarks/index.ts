@@ -101,6 +101,16 @@ const LANDMARK_TABLE: Readonly<Record<string, LandmarkRow>> = Object.freeze({
   roundhouse: { load: () => import('./railWorks.ts') },
   signalBox: { load: () => import('./railWorks.ts') },
   blastFurnace: { load: () => import('./ironWorks.ts') },
+  bullring: { load: () => import('./andalusia.ts') },
+  canalMarket: { load: () => import('./canalWorks.ts') },
+  charcoalKilns: { load: () => import('./canalWorks.ts') },
+  desertFort: { load: () => import('./forts.ts') },
+  shaliMosque: { load: () => import('./siwa.ts') },
+  springPool: { load: () => import('./siwa.ts') },
+  ghorfaKsar: { load: () => import('./ksar.ts') },
+  marabout: { load: () => import('./ksar.ts') },
+  shrine: { load: () => import('./shrine.ts'),
+    spawns: () => [{ kind: 'torii' as LandmarkKind }] },
 });
 /** The kinds compose.ts places itself whenever a map has set pieces (a building's worn approach paths). */
 const COMPOSED_KINDS: readonly string[] = ['path'];

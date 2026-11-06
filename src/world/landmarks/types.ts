@@ -48,7 +48,19 @@ export type LandmarkKind =
   // a junction's railway works (railWorks.ts, landmarks-271): the engine shed round its turntable, the signal box
   | 'roundhouse' | 'signalBox'
   // an ironworks' furnace (ironWorks.ts, landmarks-271)
-  | 'blastFurnace';
+  | 'blastFurnace'
+  // a Shinto shrine's precinct (shrine.ts, landmarks-271)
+  | 'shrine'
+  // the Dahar's ksar and saint's tomb (ksar.ts, landmarks-271)
+  | 'ghorfaKsar' | 'marabout'
+  // forts (forts.ts, landmarks-271)
+  | 'desertFort'
+  // Siwa's mosque and spring (siwa.ts, landmarks-271)
+  | 'shaliMosque' | 'springPool'
+  // the Serranía's bullring (andalusia.ts, landmarks-271)
+  | 'bullring'
+  // a canal hamlet's market and charcoal works (canalWorks.ts, landmarks-271)
+  | 'canalMarket' | 'charcoalKilns';
 
 /** A kind's parameters: numbers (metres, counts), choices (strings) and switches. */
 export type LandmarkParams = Readonly<Record<string, number | string | boolean>>;
