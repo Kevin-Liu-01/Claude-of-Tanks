@@ -210,7 +210,19 @@ export async function renderStudioExamples(args = process.argv.slice(2), { creat
     renderer: { width, height, fps, videoBitsPerSecond },
     videos: existingVideos,
   };
-  const stillsManifest = { version: 1, collection, renderer: { width, height }, stills: [] };
+  // (round 4 E10) a --stills run with --only keeps the takes stills.json already lists, as the video manifest does: the
+  // finishing run a stop names (--only <left>) listed only its own takes, and the first run's stills dropped out
+  const stillsPath = join(outDir, 'stills.json');
+  let existingStills = [];
+  if (only.size && stills.length && existsSync(stillsPath)) {
+    const existing = JSON.parse(readFileSync(stillsPath, 'utf8'));
+    if (existing.version !== 1 || existing.collection !== collection
+      || JSON.stringify(existing.renderer) !== JSON.stringify({ width, height })) {
+      throw new Error('Selective rendering requires a matching collection and renderer stills listing');
+    }
+    existingStills = existing.stills.filter((still) => !only.has(still.index));
+  }
+  const stillsManifest = { version: 1, collection, renderer: { width, height }, stills: existingStills };
 
   function writeManifest() {
     manifest.videos.sort((a,b)=>a.index-b.index);
@@ -440,7 +452,8 @@ export async function renderStudioExamples(args = process.argv.slice(2), { creat
           writeFileSync(join(outDir, file), bytes);
           stillsManifest.stills.push({ index: scenario.index, file, tMs, map: scenario.map, stage: scenario.stage ?? null });
         }
-        writeFileSync(join(outDir, 'stills.json'), `${JSON.stringify({
+        stillsManifest.stills.sort((a, b) => a.index - b.index || a.tMs - b.tMs);
+        writeFileSync(stillsPath, `${JSON.stringify({
           ...stillsManifest, shotTimes: staged.shotTimes,
         }, null, 2)}\n`);
         console.log(`[studio-examples] ${baseName}: ${stills.length} stills (shots at ${staged.shotTimes.join(', ')} ms)`);
@@ -541,7 +554,7 @@ export async function renderStudioExamples(args = process.argv.slice(2), { creat
   }
   if (takesLeft.length) {
     // a stopped hold ended the run (between takes, or the take in flight once its browser is stopped): the manifest
-    // holds the finished takes, and the run that finishes the rest is named
+    // (stills.json for --stills) holds the finished takes, and the run that finishes the rest is named
     console.error(`[studio-examples] the capture hold was stopped (${heldStopWhy(hold.signal)}): `
       + `${takesLeft.length} take(s) left; finish with the same options and --only ${takesLeft.join(',')}`);
   } else {

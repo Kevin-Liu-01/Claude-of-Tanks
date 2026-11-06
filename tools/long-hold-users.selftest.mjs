@@ -17,7 +17,8 @@
 //   stop     an item past the grace is stopped (its signal aborts), finishes before the teardown and is kept; the rest are
 //            left and the finishing command is named; the run exits 3 (E10: shoot and studio-example-videos exited 1);
 //   signal   (E10, a child process per tool) SIGTERM during an item: the tool's way out runs and the process exits 143
-//            (turret-parent-audit set 3 over it, shoot exited 1, studio-example-videos rethrew: 1).
+//            (turret-parent-audit set 3 over it, shoot exited 1, studio-example-videos rethrew: 1);
+//   stills   (E10) a --stills run with --only keeps the takes stills.json already lists (it listed only its own).
 // No real browser, server or lock starts; the real Chrome runs stay the owner's (manualRecommended).
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
@@ -373,6 +374,17 @@ if (process.argv[2] === '--signal-child') {
       assert.equal(run.error, undefined, `a stop is no failure (${run.error?.message})`);
       assert.equal(run.exitCode, 3, `takes left: exit 3 (${run.exitCode})`);
     });
+    // (E10) the finishing run a stop names keeps what the first run listed; a re-rendered take replaces its own stills
+    await check('studio-example-videos stills listing', async () => {
+      const dir = scratch(), quick = () => SECOND;
+      const first = await studioRun({ takeMs: quick, waiters: 0, dir, args: ['--only', '1', '--stills', '0'] });
+      assert.equal(first.error, undefined, first.error?.message);
+      const finishing = await studioRun({ takeMs: quick, waiters: 0, dir, args: ['--only', '2,3', '--stills', '0'] });
+      assert.equal(finishing.error, undefined, finishing.error?.message);
+      assert.deepEqual(finishing.stills, ['1:0', '2:0', '3:0'], 'the first run\'s take stays listed');
+      const again = await studioRun({ takeMs: quick, waiters: 0, dir, args: ['--only', '2', '--stills', '0,500'] });
+      assert.deepEqual(again.stills, ['1:0', '2:0', '2:500', '3:0'], 'take 2\'s stills replaced, in index order');
+    });
 
     // ---- (E10) a signal during an item: the way out runs and the process exits 128 + n ------------------------------------
     const expected = { turret: /--ids=tpa_one,tpa_two/, shoot: /--match 01_a,02_b/, studio: /--only 1,2/ };
@@ -386,8 +398,8 @@ if (process.argv[2] === '--signal-child') {
     }
     assert.deepEqual(failed, [], `long hold users:\n  ${failed.join('\n  ')}`);
     console.log('long-hold-users.selftest: turret-parent-audit, marketing-shots/shoot and studio-example-videos yield at the cap inside '
-      + 'their graces (180 s, 180 s, 300 s), are stopped past them, keep what finished, name what is left (exit 3) and exit 128 + n '
-      + 'on a signal');
+      + 'their graces (180 s, 180 s, 300 s), are stopped past them, keep what finished, name what is left (exit 3), exit 128 + n on a '
+      + 'signal, and a --stills finishing run keeps the listing');
   } finally {
     for (const dir of roots) rmSync(dir, { recursive: true, force: true });
   }
