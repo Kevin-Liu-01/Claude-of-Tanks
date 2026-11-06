@@ -13,7 +13,12 @@
 // - a failed load: the entry goes on at once on the TypeScript, the failure reported;
 // - a load still pending at the bound: the entry goes on at the bound, and the load, landing later, is installed for the
 //   next battle; a load that settles first leaves no timer behind;
-// - ?simKernels=ts: nothing loads and nothing waits.
+// - ?simKernels=ts: nothing loads and nothing waits;
+// - (round 4 F3) the wait never rejects: an installer that throws is a failed load (reported, the TypeScript), a failure
+//   report that throws leaves the TypeScript unreported, and either way the entry goes on and the page's re-ask of the
+//   cached chunk resolves (a rejection there failed every solo entry for the document's life);
+// - (round 4 F3) the bound is the entry's own, started at its wait: a garage dwell that outlasts the Battle intent's
+//   preload (which evaluates the chunk) still leaves the covered entry its own bound for the kernels.
 // Not reproduced here: a browser's fetch racing a real covered entry (the timing half; MANUAL solo-kernels-probe).
 import assert from 'node:assert/strict';
 import { registerHooks } from 'node:module';
@@ -25,7 +30,10 @@ const AUTHORITY_STUB = `data:text/javascript,${encodeURIComponent(`
 const noop = () => {};
 export const createCollider = noop, prepareNextOpeningRoute = noop, resetProvingRange = noop, setProvingTargetsMoving = noop,
   setupBattle = noop, simStep = noop;
-export function setSoloWorldKernels(kernels) { globalThis.__soloKernelEntry.events.push(['installed', kernels]); }
+export function setSoloWorldKernels(kernels) {
+  if (globalThis.__soloKernelEntry.installThrows) throw new Error('installer threw');
+  globalThis.__soloKernelEntry.events.push(['installed', kernels]);
+}
 `)}`;
 const KERNELS_STUB = `data:text/javascript,${encodeURIComponent(`
 export function loadSoloWorldKernels(check) { return globalThis.__soloKernelEntry.load(check); }
@@ -62,6 +70,8 @@ const entry = () => {
   const preload = access.preload().then((runtime) => { events.push(['preloaded']); return runtime; });
   return { access, preload };
 };
+/** How a preload ended, never a throw (a rejection is the finding, not the receipt's crash). */
+const outcome = (promise) => promise.then(() => 'resolved', (error) => `rejected: ${error?.message ?? error}`);
 const deferred = () => {
   let resolve, reject;
   const promise = new Promise((res, rej) => { resolve = res; reject = rej; });
@@ -145,6 +155,66 @@ try {
     assert.deepEqual(events, [['preloaded']]);
     assert.equal(globalThis.__SIM_KERNELS?.reason, 'off');
   }
+
+  // ---- (round 4 F3) an installer that throws: a failed load, never a rejection, and no wedge on the re-ask
+  {
+    events.length = 0;
+    bounds.length = 0;
+    globalThis.__soloKernelEntry.installThrows = true;
+    globalThis.__soloKernelEntry.load = () => Promise.resolve({ provider: 'throws' });
+    try {
+      const { access, preload } = entry();
+      assert.equal(await outcome(preload), 'resolved', 'an installer that throws is a failed load: the entry goes on');
+      assert.equal(access.isReady(), true, 'on the TypeScript');
+      assert.equal(globalThis.__SIM_KERNELS?.mode, 'ts');
+      assert.equal(globalThis.__SIM_KERNELS?.reason, 'error', 'the failure is reported');
+      // the page's next entry asks the chunk again (import() hands back the cached module): no wedge
+      assert.equal(await outcome(access.preload()), 'resolved', 'the re-ask of the cached chunk resolves');
+      assert.ok(bounds.length >= 1 && bounds.every((bound) => bound.cleared), 'no bound left running');
+    } finally {
+      globalThis.__soloKernelEntry.installThrows = false;
+    }
+  }
+
+  // ---- (round 4 F3) a failure report that throws (an unprintable failure): the TypeScript stands, never a rejection
+  {
+    events.length = 0;
+    bounds.length = 0;
+    const unprintable = { toString() { throw new Error('unprintable failure'); } };
+    globalThis.__soloKernelEntry.load = () => Promise.reject(unprintable);
+    const { access, preload } = entry();
+    assert.equal(await outcome(preload), 'resolved', 'a failure report that throws still settles the wait: the entry goes on');
+    assert.equal(await outcome(access.preload()), 'resolved', 'and the re-ask of the cached chunk resolves');
+    assert.deepEqual(events, [['preloaded']], 'nothing installed');
+    assert.equal(access.isReady(), true);
+  }
+
+  // ---- (round 4 F3) the bound is the entry's own: a dwell past the Battle intent's bound still waits at the entry
+  {
+    events.length = 0;
+    bounds.length = 0;
+    const kernels = { provider: 'dwell' };
+    const landing = deferred();
+    globalThis.__soloKernelEntry.load = () => landing.promise;
+    // the Battle intent's preload (game/battleIntentRuntime.ts) evaluates the chunk and starts the load
+    const { access, preload: intent } = entry();
+    for (let i = 0; i < 50 && bounds.length === 0; i++) await turns(1);
+    assert.equal(bounds.length, 1, 'the intent\'s wait set its bound');
+    bounds[0].fn(); // the garage dwell outlasts it, the kernels still loading
+    await intent;
+    assert.deepEqual(events, [['preloaded']]);
+    // the covered entry's barrier asks the authority (game/soloBattleLoadingRuntime.ts preloadSoloAuthority)
+    events.length = 0;
+    const entering = access.preload().then(() => { events.push(['entered']); });
+    await turns();
+    assert.deepEqual(events, [], 'the covered entry waits for the kernels on a bound of its own (it went on at once: the '
+      + 'bound ran from the chunk\'s first load at the intent, spent in the garage, and the first battle was set up on the TypeScript)');
+    assert.equal(bounds.length, 2, 'the entry\'s wait set its own bound, at the wait');
+    landing.resolve(kernels);
+    await entering;
+    assert.deepEqual(events, [['installed', kernels], ['entered']], 'the kernels are installed before the entry goes on');
+    assert.equal(bounds[1].cleared, true, 'and its bound is cleared');
+  }
 } finally {
   globalThis.setTimeout = realSetTimeout;
   globalThis.clearTimeout = realClearTimeout;
@@ -153,4 +223,5 @@ try {
 
 console.log('soloKernelEntry selftest passed: the solo battle entry waits for the world kernels its chunk loads (installed '
   + 'before the entry goes on), goes on at once after a failed load and at the bound after a slow one (installed later for '
-  + 'the next battle), and loads and waits for nothing under ?simKernels=ts');
+  + 'the next battle), and loads and waits for nothing under ?simKernels=ts; the wait never rejects (a throwing installer '
+  + 'or failure report, the re-ask of the cached chunk), and its bound runs from the entry\'s own wait, not the intent\'s');

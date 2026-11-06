@@ -10,7 +10,7 @@ interface SoloBattleRuntime {
   setProvingTargetsMoving(...args: RuntimeValue[]): RuntimeValue;
 }
 
-/** The chunk as loaded: the runtime, and (round 3 X10) its world kernels installed or failed, or their bound passed. */
+/** The chunk as loaded: the runtime, and (round 3 X10) a wait for its world kernels (round 4 F3: each call its own bound). */
 interface SoloBattleRuntimeChunk extends SoloBattleRuntime {
   soloKernelsSettled(): Promise<void>;
 }
@@ -34,9 +34,12 @@ export function createSoloBattleRuntimeAccess(
   let runtime: SoloBattleRuntime | null = null;
   // (2026-11-02 audit R6, round 2 U35) one app/lazyChunk.ts chunk: a failed transfer is asked again under the one policy
   // (at once after one failure, then past its backoff; a removed chunk shows the reload action), not at once by every call
-  // (round 3 X10) ready once the chunk's world kernels have settled too, so a battle set up after the preload rides them
-  const chunk = createLazyChunk(() => load().then((loaded) => loaded.soloKernelsSettled().then(() => (runtime = loaded))));
-  const preload = () => chunk.load();
+  // (round 3 X10) ready once the chunk's world kernels have settled too, so a battle set up after the preload rides them.
+  // (round 4 F3) The wait is each preload's own, outside the chunk's kept load: its bound starts when the caller asks (the
+  // covered entry's barrier), not at the chunk's first load (the Battle intent, then the garage dwell), and the chunk's
+  // load stays the transfer alone. The wait never rejects (soloBattleRuntime.ts).
+  const chunk = createLazyChunk(load);
+  const preload = () => chunk.load().then((loaded) => loaded.soloKernelsSettled().then(() => (runtime = loaded)));
 
   const requireRuntime = () => {
     if (!runtime) throw new Error('Solo battle runtime is not ready.');

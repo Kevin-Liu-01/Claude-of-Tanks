@@ -21,11 +21,12 @@ assert.throws(() => access.simStep('early'), /not ready/,
 await assert.rejects(access.preload(), /simulated transfer failure/);
 assert.equal(access.isReady(), false, 'a rejected transfer does not poison readiness');
 
+// (round 4 F3) each preload is a wait of its own for the chunk's kernels (its bound starts at the call), so two calls are
+// two promises; the transfer they share is one: one load for both, one runtime
 const first = access.preload();
 const shared = access.preload();
-assert.equal(first, shared, 'concurrent acquisition shares one in-flight transfer');
-await first;
-assert.equal(loads, 2, 'a rejected transfer is retried exactly once');
+assert.equal(await first, await shared, 'concurrent acquisition shares one in-flight transfer');
+assert.equal(loads, 2, 'a rejected transfer is retried exactly once, for both concurrent calls');
 assert.equal(access.isReady(), true);
 
 access.setupBattle('game', 'tank');
