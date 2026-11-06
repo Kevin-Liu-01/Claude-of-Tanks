@@ -4,9 +4,9 @@ import * as THREE from 'three';
 import { NIGHT_EMISSION_ATTRIBUTE, NIGHT_HEADLIGHT_COLOR, NIGHT_LED_COLOR, NIGHT_RED_DISPLAY_LEVEL, NIGHT_RED_FLOOR_EXPOSURE, NIGHT_SHTORA_COLOR,
   setNightEmissionExposure, setNightEmissionMask, installNightEmissionMask } from './nightEmissionMaterial.ts';
 import { EXPOSURE_KEY, EXPOSURE_MIN, NIGHT_EV, exposureFor, whiteBalanceGains } from './lightModel.ts';
-import { EXPOSURE_REFERENCE_ILLUMINANCE, LEGACY_EXPOSURE, loadGroundedLightModel } from './lightModelCore.ts';
+import { EXPOSURE_REFERENCE_ILLUMINANCE, LEGACY_EXPOSURE, importGroundedLightModel } from './lightModelCore.ts';
 
-await loadGroundedLightModel(); // the exposure law (lightModel.ts) meters against the core's handed-over reference
+await importGroundedLightModel(); // the exposure law (lightModel.ts) meters against the core's handed-over reference
 
 const geometry = new THREE.BoxGeometry(1, 2, 3);
 const original = geometry.getAttribute('position').array.slice();

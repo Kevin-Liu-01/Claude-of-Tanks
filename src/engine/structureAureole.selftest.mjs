@@ -19,7 +19,7 @@ import {
 } from './structureGroundOcclusion.ts';
 import { createStructureGroundOcclusion } from './structureGroundOcclusionRuntime.ts';
 import { sunDirectionOf, skyPresetToAtmosphere } from './atmosphere.ts';
-import { loadGroundedLightModel, resolveLightModel } from './lightModelCore.ts';
+import { importGroundedLightModel, resolveLightModel } from './lightModelCore.ts';
 import { DECK_AUREOLE_G, DECK_AUREOLE_MAX } from './lightModel.ts';
 import { DEFAULT_SKY_PRESET } from './sky.ts';
 import { getMapConfig } from '../world/maps/index.ts';
@@ -116,7 +116,7 @@ assert.ok(atM(-10, 0).v < 0.3, `a mast's shadow 10 m out stays faint (${atM(-10,
 assert.equal(atM(-AUREOLE_REACH_M - 4, 0).v, 0, 'nothing past the reach');
 
 // ---- 6. the light model's share: a thin closed deck, by day
-await loadGroundedLightModel();
+await importGroundedLightModel();
 const irr = [0.11, 0.125, 0.16];
 const model = (sky) => resolveLightModel(sky, skyPresetToAtmosphere(sky), { irradianceRaw: irr }, null, true);
 const whiteout = getMapConfig('whiteout');

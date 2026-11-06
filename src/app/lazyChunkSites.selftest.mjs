@@ -122,9 +122,23 @@ const SITES = [
     'const loadModule = (): Promise<WorldMapModule<World>> => moduleChunk.load();'], [/\bmodulePromise\s*=\s*dependencies\.loadModule\(/]],
   ['src/ui/garageConsumables.ts', ["createLazyChunk(() => import('../vehicles/auxiliaryInventory.ts')", 'smokeChunk.load().then(undefined, () => undefined)'],
     [/\bsmokeLoad\s*\?\?=/]],
-  // the light model's and the cloudscapes' memos (KNOWN) rode only the battle atmosphere runtime's first acquisition, a lazy
+  // the light model's and the cloudscapes' memos rode only the battle atmosphere runtime's first acquisition, a lazy
   // runtime owner that never loads again once ready: every prepare asks them again
   ['src/engine/battleAtmosphereAccess.ts', ['await Promise.all([owner.preload(), loadGroundedLightModel(), loadCloudscapeLayers()])'], []],
+  // (round 3 A4) and every prepare includes the Studio's, one per sun-dial or slider move, and a Studio sky applied for the
+  // Moon asks its land mask per move: the three memos, cleared on failure, were asked again by every move, offline too.
+  // Each is a chunk now; the light model's import rejects and keeps no memo (lightModelCore.ts rides two worker graphs
+  // that do not carry this policy), and the main thread's battle atmosphere access holds its chunk
+  ['src/engine/cloudPresets.ts', ["createLazyChunk((): Promise<void> => import('./cloudscapeLayer.ts')",
+    'cloudscapeChunk.load().then(undefined, () => undefined)'], [/\bcloudscapeLoad\b/]],
+  ['src/engine/lightModelCore.ts', ["return import('./lightModel.ts').then((module) => { grounded = module.groundedLightModel(GROUNDED_ENV); });"],
+    [/\bgroundedLoad\b/, /\bcreateLazyChunk\b/]],
+  ['src/engine/battleAtmosphereAccess.ts', ['const groundedLightChunk = createLazyChunk(importGroundedLightModel);',
+    'groundedLightChunk.load().then(undefined, () => undefined)'], []],
+  ['src/main.ts', ["import { createBattleAtmosphereAccess, loadGroundedLightModel } from './engine/battleAtmosphereAccess.ts';"],
+    [/import \{[^}]*\bloadGroundedLightModel\b[^}]*\} from '\.\/engine\/lightModelCore\.ts'/]],
+  ['src/engine/earthLandAccess.ts', ["createLazyChunk((): Promise<EarthLandModule> => import('./earthLandMask.ts'))",
+    'return earthLandChunk.load();'], [/\bearthLandLoad\b/]],
 ];
 const offenders = [];
 for (const [file, present, absent] of SITES) {
@@ -142,14 +156,10 @@ assert.deepEqual(offenders, [], `a named lazy chunk is not on app/lazyChunk.ts:\
 const KNOWN = new Set([
   // a memo cleared on failure, asked again by the next call without the policy's backoff. None carries a stylesheet, and
   // each is asked once per lifecycle edge or deliberate open, never per frame, tick, pointer move or focus move (review
-  // round 2: the AC-130 airframe's was asked every frame and the consumables' smoke table on every hover; both are held
-  // now). Their callers: every battle's covered atmosphere prepare (battleAtmosphereAccess.ts asks them at each prepare,
-  // since its runtime loads once) and the shot staging (cloudscapeLoad, groundedLoad; lightModelCore.ts also rides the
-  // horizon ring and hinterland workers, which do not carry this policy); a world build and a Studio light or map sky
-  // applied for an Earth sky (earthLandLoad); the battle's start and its phase change into battle
-  // (battleEndGarageWarmLoad); the opening of a dossier's technical drawing section (infoGuides mounted; the drawing
-  // holds its own sheet below)
-  'src/engine/cloudPresets.ts cloudscapeLoad', 'src/engine/earthLandAccess.ts earthLandLoad', 'src/engine/lightModelCore.ts groundedLoad',
+  // round 2: the AC-130 airframe's was asked every frame and the consumables' smoke table on every hover; round 3: the
+  // light model, the cloudscapes and the Moon's land mask on every Studio sun-dial move; all are held now). Their callers:
+  // the battle's start and its phase change into battle (battleEndGarageWarmLoad); the opening of a dossier's technical
+  // drawing section (infoGuides mounted; the drawing holds its own sheet below)
   'src/main.ts battleEndGarageWarmLoad', 'src/ui/infoGuides.ts mounted',
   // a stylesheet alone: kept for the document, the policy's rule for a failed stylesheet (asked again it never applies)
   'src/ui/technicalDiagramLabels.ts sheet', 'src/ui/technicalDrawing.ts sheet',

@@ -553,7 +553,8 @@ test('queued diagnostics obey the exact production phase/world/entry guards', ()
   assert.deepEqual(run('battle', 'day', { illuminance: 1.5 }), { nightRadianceScale: 0.5 }, 'a closed deck by day is low light too');
   assert.deepEqual(run('garage', 'night', { illuminance: 0.2 }), {});
   assert.deepEqual(run('garage', 'sunset', { illuminance: 0.494 }), {});
-  assert.match(main, /import \{ EXPOSURE_REFERENCE_ILLUMINANCE, loadGroundedLightModel \} from '\.\/engine\/lightModelCore\.ts';/);
+  // (round 3 A4) the grounded model's loader moved to battleAtmosphereAccess.ts (its lazy chunk); the meter stays the core's
+  assert.match(main, /import \{ EXPOSURE_REFERENCE_ILLUMINANCE \} from '\.\/engine\/lightModelCore\.ts';/);
   assert.match(main, /signal, measureTimings: true, \.\.\.currentSceneWatchdogOptions\(\)/);
 });
 
