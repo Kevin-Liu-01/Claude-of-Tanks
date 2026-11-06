@@ -12,8 +12,12 @@
 // at once stays linear) together; restoreAll() stands every one
 // of them again; the upright pose is the tree's placement before any crater lift (craterBase), taken at each fall; the
 // falls are advanced by one declared driver (round 2 U28: setDriver; the frame's update unless the Studio's timeline has
-// taken the world, studioCrush.ts). It was a per-call latch: the first Studio frame could advance a fall twice, and in a
-// paused Studio the frame's update went on finishing falls the timeline holds.
+// taken the world, studioCrush.ts). It was a per-call latch (the timeline's call took the frame's turn for one frame). A
+// latch could advance a fall twice in the first Studio frame and let a paused Studio's update finish a fall, but only on a
+// nonzero frame dt, and the Studio updates its world with dt 0 (studio.ts tick and prepareWorld), so neither ever showed
+// (round 3 B13). What the declaration buys is an explicit owner, with an obligation the latch never had: whoever takes the
+// falls gives them back. The Studio does at its exit (studioCrush restore); every battle start declares 'frame' too
+// (world/battleWorldReset.ts), since a Studio teardown that throws gives nothing back.
 import * as THREE from 'three';
 import { setCrushedRecords, type CollisionRecord } from './collision.ts';
 import { setToppleAxis, settledToppleAngle } from './topple.ts';
