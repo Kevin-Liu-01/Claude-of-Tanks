@@ -20,7 +20,7 @@ import { uiIconSVG } from './uiIcons.ts';
 import { markDatum } from './dom.ts';
 import { wireRovingKeys } from './components/components.ts';
 import { noticeRegion, notify } from './components/notice.ts';
-import { markLoadFailed, pressFailed } from './components/loadFailure.ts';
+import { loadFailed, markLoadFailed, pressFailed } from './components/loadFailure.ts';
 import { flagIconUrl } from './flags.ts';
 import { brandMarkSVG } from './brandMark.ts';
 import { MAP_HEROES, MAP_THUMBS } from './mapThumbs.ts';
@@ -1913,7 +1913,13 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
 
   function openArchive(): void {
     // (round 3 X9) its sheet did not arrive in this document: the press reloads the page once online (offline a reload is
-    // the browser's error page, so the press says so again and waits)
+    // the browser's error page, so the press says so again and waits). (review r1) Never over the Studio's running work (a
+    // recording, a film or its export, a queue run, a load, a light change): the reload would end it, so the press asks
+    // for it to finish first. The last edit reaches the autosave on the reload's pagehide (studio.ts commitHistory).
+    if (loadFailed(archiveBtn) && panelBusy()) {
+      flashBusy(t('studio.error.busy'));
+      return;
+    }
     if (pressFailed(archiveBtn)) {
       if (navigator.onLine === false) flashBusy(t('loadFailed.generic'));
       return;

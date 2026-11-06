@@ -503,7 +503,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/ui/studioQueue.selftest.mjs',
     // 2026-11-02 audit F9: Clear during a queue run skips no job, Export film waits for the queue, a hidden sound lane stops
     'src/ui/studioPanelBusy.selftest.mjs',
-    // 2026-11-02 audit X9 (round 3, R6/Q17): the field-frames archive's failed sheet closes it, says so once and marks its button
+    // 2026-11-02 audit X9 (round 3, R6/Q17): the field-frames archive's failed sheet closes it, says so once and marks its button;
+    // its next press reloads, never over the Studio's running work
     'src/ui/studioArchiveOpener.selftest.mjs',
     'tools/media-production/campaign.selftest.mjs',
     'tools/media-production/campaignPublication.selftest.mjs',

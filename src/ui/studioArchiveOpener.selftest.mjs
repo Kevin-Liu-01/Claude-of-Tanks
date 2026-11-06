@@ -4,13 +4,14 @@
 // each press of the archive's button opened an empty dialog and said Vite's untranslated "Unable to preload CSS" again,
 // for the rest of the page. Now the failure closes the dialog, says so once and marks the button (components/
 // loadFailure.ts), and the button's next press reloads the page once online, as every opener's does (offline it says
-// so again and waits). The browser itself (a real failed <link>) was not reproduced.
+// so again and waits). (review r1) That press never reloads over the Studio's running work (a recording, an export, a queue
+// run: panelBusy()): it asks for the work to finish first. The browser itself (a real failed <link>) was not reproduced.
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { stripTypeScriptTypes } from 'node:module';
 import ts from 'typescript-compiler-api';
 import { createLazyChunk } from '../app/lazyChunk.ts';
-import { markLoadFailed, pressFailed } from './components/loadFailure.ts';
+import { loadFailed, markLoadFailed, pressFailed } from './components/loadFailure.ts';
 
 const text = readFileSync(new URL('./studioPanel.ts', import.meta.url), 'utf8');
 const source = ts.createSourceFile('studioPanel.ts', text, ts.ScriptTarget.Latest, true);
@@ -40,8 +41,8 @@ function makeDialog() {
     addEventListener() {}, showModal() { this.open = true; this.shown += 1; }, close() { this.open = false; },
   };
 }
-/** The panel's archive over its real chunk; `sheet` is the stylesheet import's outcome. */
-function makePanel(sheet) {
+/** The panel's archive over its real chunk; `sheet` is the stylesheet import's outcome; `work.busy` is panelBusy(). */
+function makePanel(sheet, work = { busy: false }) {
   const said = [], mounted = [], dialogs = [];
   const document = {
     querySelector: (selector) => (selector === '.cot-studio-archive' ? dialogs[0] ?? null : null),
@@ -50,7 +51,7 @@ function makePanel(sheet) {
   };
   const archiveBtn = { dataset: {}, attributes: {}, setAttribute(name, value) { this.attributes[name] = value; } };
   const ports = {
-    createLazyChunk, markLoadFailed, pressFailed, document, archiveBtn,
+    createLazyChunk, loadFailed, markLoadFailed, pressFailed, document, archiveBtn, panelBusy: () => work.busy,
     loadSheet: () => sheet(), t: (key) => key, uiIconSVG: () => '<svg/>', errorMessage: (error) => String(error?.message ?? error),
     flashBusy: (message) => said.push(message), console,
     mountMediaArchive: async (root, options) => { mounted.push(options); root.dataset.mediaMounted = 'true'; return {}; },
@@ -114,4 +115,25 @@ const cssFailure = () => new Error('Unable to preload CSS for /assets/mediaArchi
   assert.equal(reloads, 0);
 }
 
-console.log('studioArchiveOpener.selftest: a field-frames archive whose stylesheet did not arrive closes, says so once and marks its button, whose next press reloads once online; a loaded archive opens and mounts');
+// 4. (review r1) A press on the failed archive while the Studio works (a recording, an export, a queue run): no reload,
+// which would end that work; the press asks for it to finish first. Once the Studio is free the press reloads.
+{
+  online = true; reloads = 0;
+  const work = { busy: false };
+  const h = makePanel(() => Promise.reject(cssFailure()), work);
+  h.openArchive();
+  await settle();
+  assert.equal(h.archiveBtn.dataset.loadState, 'error');
+  work.busy = true;
+  h.openArchive();
+  await settle();
+  assert.equal(reloads, 0, 'a press on the failed archive never reloads over the Studio\'s running work');
+  assert.equal(h.dialogs[0].shown, 1, 'nor opens the empty archive');
+  assert.deepEqual(h.said, ['loadFailed.generic', 'studio.error.busy'], 'it asks for the work to finish first');
+  work.busy = false;
+  h.openArchive();
+  await settle();
+  assert.equal(reloads, 1, 'once the Studio is free the press reloads');
+}
+
+console.log('studioArchiveOpener.selftest: a field-frames archive whose stylesheet did not arrive closes, says so once and marks its button, whose next press reloads once online (never over the Studio\'s running work); a loaded archive opens and mounts');
