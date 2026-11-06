@@ -1,8 +1,9 @@
 /**
  * Connection recovery policy (v1 "Client smoothness" watchdog rules kept):
  * the match is `live` while accepted authority keeps arriving; 5 s without
- * it is `stalled` (the transport is asked for a fresh socket once); the
- * transport's own reconnects show as `reconnecting`; 60 s after the first
+ * it is `stalled` (the transport is asked for a fresh socket once; before
+ * a WELCOME, 5 s past the hold the seat's host announced: holdAllowanceMs);
+ * the transport's own reconnects show as `reconnecting`; 60 s after the first
  * loss without recovery the match is `failed`; an explicit leave is `left`.
  * A pure state machine: the client owns the side effects.
  */
@@ -69,10 +70,9 @@ export interface RecoveryInput {
   welcomedAtMs?: number | null;
   /**
    * How much longer than `stallMs` the current socket may wait for its WELCOME, from its open: what its host announced it
-   * holds the seat's HELLO for (wire HOLD, round 3 B1/X6: the time to the notice plus its holdMs and HOLD_RELEASE_MARGIN_MS),
-   * else
-   * MIGRATION_WELCOME_ALLOWANCE_MS on a link to a host the room just elected (its boot and its resume hold may keep this
-   * seat's HELLO unanswered that long), 0 otherwise.
+   * holds the seat's HELLO for (wire HOLD, round 3 B1/X6: the time to the notice plus its holdMs and HOLD_RELEASE_MARGIN_MS,
+   * those two at most MIGRATION_WELCOME_ALLOWANCE_MS), else MIGRATION_WELCOME_ALLOWANCE_MS on a link to a host the room
+   * just elected (its boot and its resume hold may keep this seat's HELLO unanswered that long), 0 otherwise.
    */
   holdAllowanceMs?: number;
   /**
