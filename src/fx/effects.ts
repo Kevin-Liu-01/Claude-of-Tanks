@@ -2243,12 +2243,17 @@ function* createFxSteps(
    */
   const hullMetMunitions = new Map<ShellId, ShellRecord>();
   /**
-   * (round 4 F6) How long a record outlives its round's firing on the fx clock: the sim ends every fired round by
-   * SHELL_MAX_LIFETIME_S of flight (sim/ballistics.ts stepShell; a drone, the one round with its own maxLifetimeS, raises
-   * no shell:fired), and the grace covers a peer's events reaching this presentation late. A record past it belongs to a
-   * round whose end never came here (a peer's shell_impact withheld once its shooter left this viewer's sight, or a round
-   * in flight when its host went), and it leaves the records then, not at drop-oldest. The fx clock stands still while
-   * the battle is paused and slows in a replay, so the bound only ever runs long.
+   * (round 4 F6) How long a record outlives its round's firing, or the last sweep that found its round still drawn in
+   * flight, on the fx clock: the sim ends every fired round by SHELL_MAX_LIFETIME_S of flight (sim/ballistics.ts
+   * stepShell; a drone, the one round with its own maxLifetimeS, raises no shell:fired), and the grace covers a round's
+   * end event trailing its last drawn frame. A record past it belongs to a round whose end never came here (a peer's
+   * shell_impact withheld once its shooter left this viewer's sight, or a round in flight when its host went), and it
+   * leaves the records then, not at drop-oldest. (round 4 F6 review) The fx clock is render time: it stands still in a
+   * pause and slows in a replay, but in a network view it runs on while a peer's events stall (a link hitch, a HOLD, a
+   * host handover), and a stall past the grace aged out the record of a round still in flight, whose late expiry then
+   * took its class from its type (a WP smoke round's burst drawn as HE). The frame still draws such a round as its last
+   * snapshot left it (battlePresentation applyShells), so a sweep restarts the bound of every round it is handed in
+   * flight (ageShellRecords): only a round no longer drawn ages.
    */
   const SHELL_RECORD_BOUND_S = SHELL_MAX_LIFETIME_S + 4;
   /** A sweep's least spacing: in a sustained fight a record falls due every frame, and a record may outlive its bound by
@@ -2269,9 +2274,14 @@ function* createFxSteps(
     }
     return next;
   }
-  /** (round 4 F6) Every frame: the records whose round has outlived its flight-time bound go. */
-  function ageShellRecords(nowS: number): void {
+  /** (round 4 F6) Every frame: the records whose round has outlived its flight-time bound go; (review) the frame's rounds
+   *  in flight (`shells`, the update's) are in flight, however late their events: their bounds restart from now. */
+  function ageShellRecords(nowS: number, shells: readonly LiveShell[]): void {
     if (nowS < shellRecordsDueS) return;
+    for (let i = 0; i < shells.length; i++) {
+      const record = shellMunitions.get(shells[i].id) ?? hullMetMunitions.get(shells[i].id);
+      if (record) record.dueS = nowS + SHELL_RECORD_BOUND_S;
+    }
     const next = sweepShellRecords(hullMetMunitions, nowS, sweepShellRecords(shellMunitions, nowS, Infinity));
     shellRecordsDueS = next === Infinity ? Infinity : Math.max(next, nowS + SHELL_RECORD_SWEEP_S);
   }
@@ -2285,7 +2295,6 @@ function* createFxSteps(
     map.delete(id);
     if (map.size >= SHELL_RECORDS_MAX) map.delete(map.keys().next().value as ShellId);
     map.set(id, record);
-    if (record.dueS < shellRecordsDueS) shellRecordsDueS = record.dueS;
   }
   /** A round's record wherever it is (in flight, or since its first hull event). */
   function munitionOf(id: ShellId): ShellMunition | null {
@@ -2315,8 +2324,12 @@ function* createFxSteps(
       munition = munition ?? munitionClassForShell(_munShell);
       chargeKg = munitionChargeKg(_munShell, munition);
     }
-    keepNewest(shellMunitions, e.shellId, { munition, chargeKg: chargeKg as number, caliberMm: e.caliberMm,
-      dueS: particles.getTime() + SHELL_RECORD_BOUND_S });
+    const record: ShellRecord = { munition, chargeKg: chargeKg as number, caliberMm: e.caliberMm,
+      dueS: particles.getTime() + SHELL_RECORD_BOUND_S };
+    keepNewest(shellMunitions, e.shellId, record);
+    // (round 4 F6 review) a new record only can fall due before the next sweep: a record moved to the hull-met records
+    // keeps its dueS, which the last sweep counted (lowering the sweep for it too broke the spacing at a late hull event)
+    if (record.dueS < shellRecordsDueS) shellRecordsDueS = record.dueS;
   }
   /**
    * The class of a shell ending with no fired record: its own type and calibre when the event carries them (the solo
@@ -6823,7 +6836,7 @@ function* createFxSteps(
         impactDecals.material.color.copy(tint);
       }
       particles.update(dt);
-      ageShellRecords(particles.getTime());
+      ageShellRecords(particles.getTime(), shells);
       structMask?.setClock(particles.getTime());
       stages?.update();
       fractureStages?.update();

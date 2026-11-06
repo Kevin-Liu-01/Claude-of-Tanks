@@ -19,7 +19,8 @@
 // does not reach yet, are below). A part that starts reading the clock on a path the scenario does not drive fails here
 // until the scenario drives it, and then the census checks what it stamps. The scenario drives the gunship's rounds and
 // missile, the auxiliary systems, a wire-guided missile, a building's stages and sections (a default-kit house), a
-// crater event, the screenshot composer and the battle warm.
+// crater event, the screenshot composer and the battle warm; (round 4 F6 review) a round drawn in flight past its
+// record's bound.
 // (round 3 B5, review round 1) What the reach check measures, exactly: the reads of the fx clock in src/fx (the
 // runtime's particles.getTime(), fxClockNow(), a part's injected `now()`, and a call of any local bound to one of them,
 // such as volumeMedia's `const o_now = o.now`), and the stores of a clock a part is handed as a `now` parameter
@@ -164,14 +165,14 @@ let matchClockS = 300;
 // (review r1) the drones in the air: every frame writes them (a drone missing from a frame reads as a flight that ended)
 const airborne = new Set();
 const live = [];
-const frames = (n, shells = []) => {
+const frames = (n, shells = [], dt = 1 / 60) => {
   for (let i = 0; i < n; i++) {
-    matchClockS += 1 / 60;
-    syncCarrier(1 / 60);
+    matchClockS += dt;
+    syncCarrier(dt);
     live.length = 0;
     for (const shell of shells) live.push(shell);
     for (const shell of airborne) live.push(shell);
-    fx.update(1 / 60, live, camera, () => null);
+    fx.update(dt, live, camera, () => null);
     // the late pass asks every frame whether its soft media draw (the volume media's clock read)
     fx.group.userData.softParticles.isActive();
   }
@@ -198,6 +199,14 @@ const droneHome = drone(73, 13, 9, 6), droneStruck = drone(80, -4, 6, 24), drone
 
 fx.resetAll();
 fx.resetClock(T0);
+// (round 4 F6 review) a round drawn in flight past its record's bound (a peer's events stalled): a sweep finds it in the
+// frame and restarts its record's bound (effects.ts ageShellRecords), so the record lives on into the rebase
+{
+  const stalled = { id: 81, pos: new THREE.Vector3(30, 40, -80), vel: new THREE.Vector3(0, 0, 300), spec: { tracer: 'TANK' }, shooterId: 'g',
+    ageS: 0.1, distM: 30 };
+  emit('shell:fired', { shellId: 81, shooterId: 'g', pos: [30, 40, -80], muzzlePos: [30, 40, -80], dir: [0, 0, 1], shellName: '125 mm HE', ...he });
+  frames(12, [stalled], 1);
+}
 airborne.add(droneHome);
 frames(3);
 // an engine running 2.5 s (past the cold start), then a throttle-up: its billow burst
