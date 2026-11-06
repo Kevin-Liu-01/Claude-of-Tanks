@@ -25803,15 +25803,15 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 32530,
-      "sha256": "5c539af04a204631b955257f17d567319478fa61e97a2259bc3ae685ee106df4",
+      "bytes": 26306,
+      "sha256": "c1515177c0646a41eec02779c62a71f1f61852a047341ab2b0ed0efecb42195d",
       "thumbnail": {
         "file": "thumbs/type10_dozer_angle.webp",
         "width": 256,
         "height": 256,
         "mime": "image/webp",
-        "bytes": 12552,
-        "sha256": "8b361c65b74062d2d20c06a1cfa5af0a376c3cfa7e2f506dfe7efa28970d68b1"
+        "bytes": 10596,
+        "sha256": "bc48b2315e79f86b53f488ae8994f1976ea7b860019907caca56200ef714c191"
       }
     },
     "top": {
@@ -25819,16 +25819,16 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 18646,
-      "sha256": "362ca185791002892c85b8a81716123e9ce413bf49ae9ec021e7c9c685ad78d1"
+      "bytes": 12894,
+      "sha256": "f6004f353faff0a769e057613fb2f6941c01a486fe4c4822d1af4deb91d9ee51"
     },
     "side": {
       "file": "type10_dozer_side.webp",
       "width": 512,
       "height": 256,
       "mime": "image/webp",
-      "bytes": 16406,
-      "sha256": "a7b8102591b7f8bfe0c134739d308730fcdee382afa1ee9da51ad6f04d827f30"
+      "bytes": 12914,
+      "sha256": "c84b5b64afd175c86fc1972b53ca7d35e0803a57d2e23bae31490de6be4e437c"
     },
     "topSilhouette": {
       "file": "type10_dozer_top_silhouette.png",
@@ -25851,24 +25851,24 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 43216,
-      "sha256": "818e61ff144c59a77adb051b67f72c034db2fac3f634594ab458dd22f6ffcd44"
+      "bytes": 38320,
+      "sha256": "eae9b319770210ca0769461a5132c51923be69ac791c6443d7bb40c054580279"
     },
     "modulesSide": {
       "file": "type10_dozer_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 34180,
-      "sha256": "b98b1128c6a389455e46da54c89eddb93ebbc792107c66fddaab62ff672cb113"
+      "bytes": 28492,
+      "sha256": "3e068e66bfbb84b6abfec17190fcbeec11b0e37076020eae4c8ff47fd50e8436"
     },
     "crewSide": {
       "file": "type10_dozer_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 32172,
-      "sha256": "5abdceb67c3c052f5172ba1429e843f7264ba7e4b8310715cd6acd51f381fec2"
+      "bytes": 24212,
+      "sha256": "412bf0520dc9c5d4bb68fdc032f14afd3f2aa7bbe184cc54a0212a0391a496f7"
     },
     "markings": {
       "file": "type10_dozer_markings.png",

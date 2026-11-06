@@ -306,3 +306,15 @@ the M242 gun axis follows the same correction and remains buried in its
 mantlet. Equipment keeps its authored proportions: TOW pod, CIV/ISU sights,
 roof weapons, smoke banks, radios, service bins, bustle rack and stowage are
 re-seated onto their corrected supports rather than vertically squashed.
+
+## 268 — on the source-measured Bradley shell (2026-11-02)
+
+The CFV keeps its A3 turret on the shared Bradley rebuilt to the owner's supplied model (m2a2_bradley.md, 268): the
+measured hull, track and side armour; the A3 ring on the M2's datum (`profiles/bradleyScoutTurretShell.ts`
+BRADLEY_SCOUT_TURRET_PIVOT, [−0.14, 2.06, −0.40], was [0.04, 1.895, −0.36]), its underside clear of the deck by 5.5 cm;
+the TOW twin box on the turret's LEFT (+X) and the stowage wing on the right (they were mirrored); the M242 to the M2's
+muzzle at world z 2.37 (2.42 → 1.99 m); the glacis ERA field re-seated on the measured glacis between the deck break and
+the trim vane, inside the deck crown (`flush-glacis-carrier-and-era-r2`); the old engine-raise cap gone; a two-link
+spare run on the nose shelf (the ERA field covers the shared course's glacis station). Spec fields: hw 1.64 → 1.70,
+trkTop 0.95 → 1.16, roofY 1.90 → 2.06, turretPivot as above, barrelLenM 2.30 → 1.99. `fleetLauncherMuzzles.ts` m3a3
+row x −0.91 → 0.91.

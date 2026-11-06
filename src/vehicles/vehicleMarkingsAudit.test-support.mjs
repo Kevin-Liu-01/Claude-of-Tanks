@@ -7,7 +7,7 @@ import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import {
   SURFACE_MARKING_STYLE, VEHICLE_MARKING_ANCHORS, vehicleMarkingAnchor,
-  vehicleMarkingRecord, vehicleMarkingSeats, vehicleMarkingIncludesPermanentHullArmor,
+  vehicleMarkingRecord, vehicleMarkingSeats, vehicleMarkingIncludesPermanentHullArmor, vehicleMarkingPaintsOnSuit,
 } from './vehicleMarkings.ts';
 import { ALL_TANK_IDS } from './specs.ts';
 import { measureSeatedMarkingVisibility } from './vehicleMarkingSeating.ts';
@@ -63,11 +63,17 @@ export function createVehicleMarkingsAudit() {
         if (!current.visible) visible = false;
         if (current === owner) break;
       }
+      // the backing the seat solver paints on (vehicleMarkingSeating.ts markingArmorMeshes): the owner's permanent armour,
+      // the permanent hull armour opt-in, and a suit's net that carries its vehicle's markings (release 268, the M1A1 FEP:
+      // the owner's 2026-10-23 "Paint it on the drape", vehicleMarkings.ts vehicleMarkingPaintsOnSuit; its flank cover
+      // lies on the turret's flank cassettes, 34-40 mm off the wall, so no seat on it has the wall within this ray's reach;
+      // only for the vehicles whose markings are painted on the suit, within the same 5 cm as the armour (Main, 2026-11-05)
       if (visible && object.isMesh && !object.isInstancedMesh
           && (armorNames[mark.userData.surfaceOwner].has(object.name)
             || (mark.userData.surfaceOwner === 'hull'
               && vehicleMarkingIncludesPermanentHullArmor(id)
-              && object.name === 'hullExternalArmor'))) {
+              && object.name === 'hullExternalArmor')
+            || (vehicleMarkingPaintsOnSuit(id) && object.userData.backsMarkingPaint === true))) {
         candidates.push(object);
       }
     });

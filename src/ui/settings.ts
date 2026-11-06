@@ -188,6 +188,8 @@ export interface SettingsOptions {
   readonly registerMenuAction?: boolean;
   /** The local player's battle facts for a paired phone (docs/PHONE-CONTROLLER.md): ammunition, reload, scope. */
   readonly phoneSource?: () => PadStatusSource | null;
+  /** The battle's event bus (its `on`), for what a paired phone feels (src/pad/padCues.ts). */
+  readonly phoneEvents?: (type: string, listener: (payload: unknown) => void) => () => void;
 }
 
 export interface SettingsRuntime {
@@ -939,6 +941,7 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
   const padPorts = () => ({
     input,
     source: () => opts.phoneSource?.() ?? null,
+    ...(opts.phoneEvents ? { listen: opts.phoneEvents } : {}),
     // the phone's pause is Escape's: in a battle only, and its resume never asks for the pointer without a gesture
     togglePause: () => { if (!isBattleActive()) return; if (open) closePanel({ noRelock: true }); else openPanel(); },
   });

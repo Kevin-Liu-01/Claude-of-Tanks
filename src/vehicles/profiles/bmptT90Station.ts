@@ -32,7 +32,7 @@ const BOX = Object.freeze({ x: 0.95, w: 0.42, y: 0.85, h: 0.34, rearZ: -0.45, fr
 const TUBE_X = [0.85, 1.05] as const, TUBE_Y = [0.77, 0.93] as const, TUBE_R = 0.07;
 const LAUNCH_FACE_Z = 1.695;         // the front cover's terminal discs (fleetLauncherMuzzles.ts bmpt_t90)
 
-function hull(points: readonly P3[]): THREE.BufferGeometry {
+export function hull(points: readonly P3[]): THREE.BufferGeometry {
   const geometry = new ConvexGeometry(points.map(([x, y, z]) => new THREE.Vector3(x, y, z)));
   const position = geometry.getAttribute('position');
   const uv: number[] = [];

@@ -77,6 +77,8 @@ export const SELFTEST_SCANS = Object.freeze({
   // (264, premiere-battle) every source module, for a function key acted on with no row or a synthetic KeyboardEvent
   'src/game/keybindingCensus.selftest.mjs': lists('src/**/*.{ts,mjs,js}'),
   'src/mp/host/hostStandby.selftest.mjs': lists('server/world-collision-manifests/*.json'),
+  // phone-feel-269: every module, for a desktop importer of a pad module the phone's page loads
+  'src/pad/padPhoneHalf.selftest.mjs': lists('src/**/*.ts'),
   'src/mp/host/worldCollision.selftest.mjs': lists('server/world-collision-manifests/*.json'),
   'src/mp/host/worldCollisionMobileTier.selftest.mjs': lists('server/world-collision-manifests/*.json'),
   'src/mp/room/roomWorkerProgram.selftest.mjs': lists('cloudflare/rooms/src/*.ts'),

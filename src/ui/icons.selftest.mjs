@@ -193,7 +193,7 @@ const paintAlpha = (x0, y0, x1, y1, alpha = 255) => {
 };
 paintAlpha(20, 48, 79, 87); // dense hull and running gear on the shared baseline
 paintAlpha(49, 13, 50, 47); // sparse antenna
-paintAlpha(80, 58, 99, 59); // sparse barrel
+paintAlpha(80, 58, 97, 59); // sparse barrel
 const syntheticCore = measurePortraitCoreBounds(syntheticPixels, syntheticWidth, syntheticHeight);
 assert(syntheticCore, 'dense synthetic tank has measurable portrait bounds');
 assert(syntheticCore.x0 >= 20 && syntheticCore.x1 <= 79 && syntheticCore.y0 >= 47,
@@ -210,6 +210,11 @@ assert.equal(
   true,
   'a normalized tank with sparse equipment passes the shared release envelope',
 );
+const cutPixels = syntheticPixels.slice();
+for (let y = 0; y < 13; y++) for (const x of [49, 50]) cutPixels[(y * syntheticWidth + x) * 4 + 3] = 255;
+const cutAudit = auditPortraitPixels(cutPixels, syntheticWidth, syntheticHeight);
+assert.equal(cutAudit.whole, false, 'an antenna that leaves the canvas is seen: the measured silhouette is only its visible part');
+assert.equal(cutAudit.passes, false, 'a tank cut at the canvas edge never passes the envelope');
 
 const iconNames = (await readdir(new URL('../../public/icons/', import.meta.url)))
   .filter((name) => name.endsWith('_angle.webp'))
