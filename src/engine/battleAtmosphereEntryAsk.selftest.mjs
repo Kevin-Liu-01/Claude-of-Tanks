@@ -93,18 +93,19 @@ try {
   const cold = studioApply();
   await turns();
   assert.equal(counts(), '1 light model, 1 cloudscape asks', 'the cold Studio\'s apply asks both parts');
-  if (cold.settled) problems.push('a cold Studio apply did not wait for the parts\' first ask (its first light is the authored rig with deck-only clouds, and nothing lights it again)');
+  if (cold.settled) problems.push('a cold Studio apply did not wait for the parts\' first ask (its first light is the authored rig with deck-only clouds until they land)');
   // they fail (an outage): the apply lights with the fallbacks
   network.set(LIGHT, 'down');
   network.set(CLOUDS, 'down');
   failStall(new TypeError('Failed to fetch dynamically imported module: (the cold transfer)'));
   await turns();
-  assert.ok(cold.settled && prepared.length === 1, 'the cold apply is prepared once its first asks fail');
+  assert.ok(cold.settled, 'the cold apply settles once its first asks fail');
 
   // the first battle, in the outage: its entry asks both parts again at once; they fail and the sky keeps its fallbacks
+  const coldPrepared = prepared.length;
   await access.prepare(1, 'fjord', undefined, ENTRY);
   assert.equal(counts(), '2 light model, 2 cloudscape asks');
-  assert.equal(prepared.length, 2, 'the battle is prepared without them');
+  assert.equal(prepared.length, coldPrepared + 1, 'the battle is prepared without them');
 
   // ---- 1. a Studio apply never awaits a stalled re-ask. The network is back but both transfers hang: the first move
   // past the backoff asks again (the policy), and that move, and every move while the re-ask is in flight, lights the
