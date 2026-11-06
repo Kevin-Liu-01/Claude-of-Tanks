@@ -114,14 +114,14 @@ const FROZEN_FRONTAGE_SOUTH: readonly { structure: string; x: number; z: number;
   { structure: 'shed', x: -248.31, z: -68.03, yawDeg: 1.13 },
   { structure: 'shed', x: -226.86, z: -63.53, yawDeg: 80.52 },
   { structure: 'ruin', x: -223.1, z: -94.82, yawDeg: 81.58 },
-  { structure: 'containerRow', x: -175.79, z: -61.36, yawDeg: 86.17 },
+  { structure: 'depot', x: -175.79, z: -61.36, yawDeg: 86.17 },
   { structure: 'shed', x: -125.79, z: -58.33, yawDeg: 89.31 },
   { structure: 'ruin', x: -99.24, z: -85.14, yawDeg: 88.68 },
-  { structure: 'containerRow', x: -74.4, z: -83.98, yawDeg: 85.88 },
+  { structure: 'depot', x: -74.4, z: -83.98, yawDeg: 85.88 },
   { structure: 'warehouse', x: -54.64, z: -107.67, yawDeg: 3.76 },
   { structure: 'shed', x: 176.54, z: -67.91, yawDeg: 82.72 },
   { structure: 'warehouse', x: 201.46, z: -64.63, yawDeg: 83.61 },
-  { structure: 'containerRow', x: 223.71, z: -34.64, yawDeg: 82.26 },
+  { structure: 'depot', x: 223.71, z: -34.64, yawDeg: 82.26 },
   // (2026-10-28, the world-reds lane; mapLayoutBrief since 241) 3.5 m south of where the r2 plan put it (z -20.44): built
   // as its twin's twin since the 241 restyle, its 27 m end stood 1.8 m on the east crossing's apron and 2 m inside zone
   // 3's 30 m disc (its twin likewise in zone 1's), so both zones seated 8 m off their aprons
@@ -420,12 +420,12 @@ export default {
       // station on the north side, and its twin; (round 3, 2026-10-11; gauntlet wave 396b: "the goods aren't at the
       // stubs") the other two rows of each side at the loading stub, past its goods shed on the coal stage's side, where
       // the wagons are loaded (were at x 110 and 150 off the stub's yard side)
-      { structure: 'containerRow', x: 70, z: 40, yawDeg: -3.8 },
-      { structure: 'containerRow', x: -145, z: 29.6, yawDeg: -3.8 },
-      { structure: 'containerRow', x: -168, z: 29, yawDeg: -3.8 },
-      { structure: 'containerRow', x: -70, z: -40, yawDeg: 176.2 },
-      { structure: 'containerRow', x: 145, z: -29.6, yawDeg: 176.2 },
-      { structure: 'containerRow', x: 168, z: -29, yawDeg: 176.2 },
+      { structure: 'depot', x: 70, z: 40, yawDeg: -3.8 },
+      { structure: 'depot', x: -145, z: 29.6, yawDeg: -3.8 },
+      { structure: 'depot', x: -168, z: 29, yawDeg: -3.8 },
+      { structure: 'depot', x: -70, z: -40, yawDeg: 176.2 },
+      { structure: 'depot', x: 145, z: -29.6, yawDeg: 176.2 },
+      { structure: 'depot', x: 168, z: -29, yawDeg: 176.2 },
       // the coal washeries at the foot of the spoil banks, between the service road and the bank
       { structure: 'warehouse', x: -130, z: -104, yawDeg: 0 },
       { structure: 'warehouse', x: 130, z: 104, yawDeg: 180 },

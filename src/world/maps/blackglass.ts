@@ -142,7 +142,7 @@ export default {
     ],
     destructibleBuildings: [
       'motorpool', 'transformershed', 'commandtent', 'checkpointhut',
-      'servicegarage', 'relaystation', 'corneroffice',
+      'servicegarage', 'corneroffice',
     ],
     tacticalBeats: [
       { id: 'sunken-exchange', role: 'brawl', x: -58, z: 42, yawDeg: 45,
