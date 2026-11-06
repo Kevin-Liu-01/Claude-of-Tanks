@@ -394,7 +394,7 @@ export default {
         structure: 'motorpool', redoubt: true, outcrop: false, wreck: true, wreckOffsetZ: 16 },
     ],
     tones: {
-      plaster: (h: number, s: number, l: number) => [0.12, clamp01(s * 0.1 + 0.04), clamp01(l * 0.55 + 0.56)], // sun-baked lime wash (the kit's lime-wash canvas: #d7d6d3; buildings-270)
+      plaster: (h: number, s: number, l: number) => [0.12, clamp01(s * 0.1 + 0.2), clamp01(l * 0.55 + 0.57)], // sun-baked lime wash (the kit's lime-wash canvas: #e0dbcf; buildings-270)
       // (2026-10-07, wave 204: "terracotta roofs") corrugated asbestos-cement, a pale cool grey (the kit's own sheet)
       roof: (h: number, s: number, l: number) => [0.1, clamp01(s * 0.1), clamp01(l * 0.9 + 0.1)],
       stone: (h: number, s: number, l: number) => [0.09, clamp01(s * 0.45), clamp01(l * 1.0)],
