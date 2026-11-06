@@ -7110,13 +7110,14 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
   }
   /**
    * The hull can drive from where it stands to (tx,tz), where the ground (or the hull taken there) stands at ty (round 4,
-   * F5): the line between crosses no bridge deck's side (crossesDeckSide), and from the hull's own height to ty, through
-   * the ground on it (terrainSafety.surfaceY: the terrain, or a bridge deck over it) read at most RESUME_STEP_M apart, no
-   * step rises or falls more steeply than this hull can climb or hold (terrainTravelCostFactor, with its damage, as
-   * terrainLineCost reads a line; CLIFF_GRADE is a wall for every hull). Each step's rise is read over RESUME_STEP_M, as the
-   * movement's cliff probe reads one, so the hull's own height at a short reach is one probe's step. A hull at the foot of
-   * a face, on the floor beside a crest, on the bank beside a deck, under a deck or up on a structure the ground does not
-   * carry cannot. Allocation-free.
+   * F5): the line between crosses no bridge deck's side (crossesDeckSide), and through the ground on it
+   * (terrainSafety.surfaceY: the terrain, or a bridge deck over it) read at most RESUME_STEP_M apart, no step rises or
+   * falls more steeply than this hull can climb or hold (terrainTravelCostFactor, with its damage, as terrainLineCost reads
+   * a line; CLIFF_GRADE is a wall for every hull). Each step's rise is read over RESUME_STEP_M, as the movement's cliff
+   * probe reads one. Each end is read at its own height where it stands below that ground (a hull under a deck), and on
+   * that ground where it rides above it (on a record's top: a rock's tier, rubble, a wreck, a roof), as the follower's
+   * edge safety (corridorSafe) and the planner read it: the hull drives off a record as off flat ground (fix-up r2). A hull
+   * at the foot of a face, on the floor beside a crest, on the bank beside a deck or under one cannot. Allocation-free.
    */
   function hullReaches(tx: number, tz: number, ty: number): boolean {
     const position = entity.state.pos;
@@ -7126,10 +7127,10 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     const debuff = entity.state._debuff;
     const powerMult = debuff?.powerMult ?? 1;
     const accelMult = debuff?.accelMult ?? 1;
-    let previousY = position.y;
+    let previousY = Math.min(position.y, terrainSafety.surfaceY(position.x, position.z));
     for (let step = 1; step <= steps; step++) {
       const x = position.x + dx * step / steps, z = position.z + dz * step / steps;
-      const y = step === steps ? ty : terrainSafety.surfaceY(x, z);
+      const y = step === steps ? Math.min(ty, terrainSafety.surfaceY(tx, tz)) : terrainSafety.surfaceY(x, z);
       const grade = (y - previousY) / RESUME_STEP_M;
       const cost = terrainTravelCostFactor(spec, driveGroundTypeAt(hf, x, z), grade, powerMult, accelMult);
       if (!Number.isFinite(cost)) return false;

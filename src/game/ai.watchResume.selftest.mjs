@@ -42,13 +42,15 @@
 // past z 14); and the stood-put test's level half has a case ([12], left on the deck above where it was taken). Fix-up r2
 // (the round's second reviews): [10] a hull taken on the way up, off the route's line, and handed back short of the apex
 // still skipped it (the first stretch runs from where it was taken), so the cursor now passes a waypoint only where the
-// hull has gone by it; and [13] a bridge deck's side is a wall to the walk whatever the step, as it is to the planner.
+// hull has gone by it; [13] a bridge deck's side is a wall to the walk whatever the step, as it is to the planner; and
+// [14] a hull on a record's top (a rock) is read from the ground under it, as the follower reads it, not as a drop.
 import { Vector3 } from 'three';
 import '../vehicles/fleetFactory.ts';
 import { getSpec } from '../vehicles/specs.ts';
-import { createTankState, updateTank, SIM_DT } from '../sim/movement.ts';
+import { createTankState, resetTankVerticalState, updateTank, SIM_DT } from '../sim/movement.ts';
 import { CLASSIC_BOT_DOCTRINE } from '../sim/matchRuleset.ts';
 import * as detMath from '../sim/detMath.ts';
+import { createHullSupportPose, createStructureSupportField, hullSupportPose } from '../sim/structureSupport.ts';
 import { createAI, mulberry32 } from './ai.ts';
 import { leaveWatchSeat, openWatchSeats, prepareWatchSeat, takeWatchSeat } from './watchSeat.ts';
 
@@ -891,6 +893,46 @@ console.log('[13] a hull handed back beside a bridge deck, outside its parapets,
   ok(onIt.first.searchLegs === onIt.before.searchLegs && onIt.first.searchLegsDisplaced === onIt.before.searchLegsDisplaced
     && onIt.first.routeOwner === 'search',
     `a 0.5 s Take and Leave that left the hull on the deck, 1.5 m beside its axis: the leg runs on (${label(onIt)})`);
+}
+
+console.log('[14] a hull handed back on a record\'s top beside its leg (a rock, rubble, a roof) is read from the ground under it, as the follower reads it');
+// Round 4 fix-up r2 (the completeness review): hullReaches walked from the hull's own height, so a hull standing on a
+// record the height field does not carry (a rock's tier, rubble, a wreck, a roof: structureSupport) read the record's
+// edge as a drop steeper than it can hold (1.34 m per 1.5 m step for an M1A1 on firm ground, 0.79 m on soft), and its leg
+// ended at the hand-back. The follower's edge safety (corridorSafe) and the planner read the ground the field carries,
+// not records: the follower drives off a rock as off flat ground. On 40405a3ec7 a Take and Leave that left the hull on a
+// rock's top 1.5 m up, 5 m beside its leg, ended the leg (0edd0e1ab5 held it). The walk now starts and ends on the ground
+// under a hull that rides above it, and at the hull's own height only where it stands below the ground the field
+// carries (under a deck).
+{
+  const ROCK_TOP = 1.5;
+  const { bot, ctl, run, hull, clock } = searchScene();
+  run(40, (info) => info.searching);
+  run(10);
+  const before = ctl.debugInfo();
+  let settledY = NaN;
+  // the watcher drove the hull onto a rock 5 m to its right: a 10 m block ROCK_TOP high, which the structure support
+  // carries the hull on (the match steps every hull through it)
+  const ontoTheRock = () => {
+    const cx = bot.state.pos.x + Math.cos(bot.state.yaw) * 5, cz = bot.state.pos.z - Math.sin(bot.state.yaw) * 5;
+    const rock = { min: [cx - 5, 0, cz - 5], max: [cx + 5, ROCK_TOP, cz + 5] };
+    const support = createStructureSupportField(field, { getObstacles: () => [rock] });
+    const pose = createHullSupportPose();
+    bot.state.pos.x = cx; bot.state.pos.z = cz; bot.state.speed = 0;
+    resetTankVerticalState(bot.state, ROCK_TOP);
+    for (let i = 0; i < 30; i++) {
+      support.beginHull(bot.state.pos.x, bot.state.pos.z, bot.state.pos.y, hullSupportPose(bot.spec, bot.state, pose));
+      updateTank(bot, support, SIM_DT, null);
+    }
+    settledY = bot.state.pos.y;
+  };
+  const took = takeAndLeave(bot, ctl, clock, hull, 0.5, ontoTheRock);
+  run(SIM_DT * 2);
+  const first = ctl.debugInfo();
+  ok(before.searching && before.routeOwner === 'search' && Math.abs(settledY - ROCK_TOP) < 0.3,
+    `setup: taken on its search leg at ${took.speedAtTake.toFixed(1)} m/s; the watcher leaves it on a rock's top 5 m to its right, ${settledY.toFixed(2)} m over the ground`);
+  ok(first.searchLegs === before.searchLegs && first.searchLegsDisplaced === before.searchLegsDisplaced && first.routeOwner === 'search',
+    `a 0.5 s Take and Leave that left the hull on the rock beside its leg: the leg runs on (legs ${before.searchLegs} -> ${first.searchLegs}, displaced ${before.searchLegsDisplaced} -> ${first.searchLegsDisplaced}, owner ${first.routeOwner})`);
 }
 
 if (failures) { console.error(`ai.watchResume.selftest: ${failures} failure(s)`); process.exit(1); }
