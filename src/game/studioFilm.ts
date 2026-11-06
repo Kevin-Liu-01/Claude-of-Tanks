@@ -539,6 +539,7 @@ export function createStudioFilm(ports: StudioFilmPorts) {
       const centerMs = ports.clockMs();
       let count = samples;
       enter(width, height);
+      let still: FilmStill;
       try {
         if (moving) {
           // Film mode is on, so the probe sees the same cue attack and shake scale as the render.
@@ -577,15 +578,25 @@ export function createStudioFilm(ports: StudioFilmPorts) {
         context.imageSmoothingEnabled = true;
         context.imageSmoothingQuality = 'high';
         context.drawImage(renderer.domElement, 0, 0, output.width, output.height);
-        return { canvas: output, width: output.width, height: output.height, samples: count, exposureMs: moving ? exposureMs : 0 };
-      } finally {
-        try {
-          leave();
-        } finally {
-          // An exposure moved the timeline across its shutter: put the playhead back.
-          if (moving) ports.seek(centerMs);
+        still = { canvas: output, width: output.width, height: output.height, samples: count, exposureMs: moving ? exposureMs : 0 };
+      } catch (error) {
+        // (round 3 B3, review r1) the still's own error is the one that surfaces: leave() gives every hold back even when
+        // it throws too (logged), and the playhead still goes back
+        leaveAfterFailure();
+        if (moving) {
+          try { ports.seek(centerMs); } catch (seekError) { console.error('[studio film] putting the playhead back also threw', seekError); }
         }
+        throw error;
       }
+      // An exposure moved the timeline across its shutter: put the playhead back, after a leave() that threw too (the
+      // first error is the one rethrown).
+      let failure: unknown = null;
+      try { leave(); } catch (error) { failure = error; }
+      if (moving) {
+        try { ports.seek(centerMs); } catch (error) { failure ??= error; }
+      }
+      if (failure !== null) throw failure;
+      return still;
     },
   };
 }
