@@ -104,8 +104,13 @@ export const STRIKE_MARKS_GLSL = /* glsl */ `
     vec3 dpx = dFdx( wp ), dpy = dFdy( wp );
     vec3 nrm = cross( dpx, dpy );
     float up = smoothstep( 0.55, 0.8, abs( nrm.y ) / max( length( nrm ), 1e-6 ) );
+    // where the next pixel is another surface metres away (a grass blade's edge, a crown against the field) the derivatives
+    // are a depth break, not the ground's footprint: no mark there, and no line widened by it (the phone capture's
+    // binoculars: the strafe lane's lines ballooned at every blade edge into blue speckle across the field)
+    float jump = length( vec2( length( dpx.xz ), length( dpy.xz ) ) );
+    up *= 1.0 - smoothstep( px * 3.0, px * 8.0, jump );
     if ( up <= 0.0 ) return rgb;
-    px = max( max( px, length( vec2( length( dpx.xz ), length( dpy.xz ) ) ) * 0.7 ), 0.02 );
+    px = max( max( px, min( jump, px * 3.0 ) * 0.7 ), 0.02 );
     for ( int i = 0; i < COT_STRIKE_MAX; i++ ) {
       if ( i >= uStrikeN ) break;
       vec4 A = uStrikeA[ i ], B = uStrikeB[ i ], C = uStrikeC[ i ];

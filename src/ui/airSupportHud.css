@@ -71,8 +71,10 @@
  .binocular-hint{display:none}
  .binocular-call{display:block;position:absolute;right:max(18px,env(safe-area-inset-right));bottom:calc(max(10px,env(safe-area-inset-bottom)) + 214px);min-width:96px;min-height:52px;padding:0 18px;border:0;background:var(--btn-primary-fill);color:var(--btn-primary-ink);font-weight:800;letter-spacing:.14em}
  .binocular-call:disabled{opacity:.45}
- .binocular-close{display:flex;align-items:center;justify-content:center;position:absolute;left:max(18px,env(safe-area-inset-left));top:max(18px,env(safe-area-inset-top));width:44px;height:44px;border:1px solid var(--ink-4);background:var(--hud-plate);color:var(--ink-1);font-size:22px}
- .binocular-readout{top:max(64px,env(safe-area-inset-top));gap:8px;padding:5px 10px}
+ /* (the phone capture: the close button sat under the minimap, the readout under the mode banner) close beside CALL; the
+    readout below the sectors' badges */
+ .binocular-close{display:flex;align-items:center;justify-content:center;position:absolute;right:calc(max(18px,env(safe-area-inset-right)) + 104px);bottom:calc(max(10px,env(safe-area-inset-bottom)) + 214px);width:52px;height:52px;border:1px solid var(--ink-4);background:var(--hud-plate);color:var(--ink-1);font-size:24px}
+ .binocular-readout{top:calc(max(10px,env(safe-area-inset-top)) + 112px);gap:8px;padding:5px 10px}
  .binocular-facts{display:none}
 }
 @media(pointer:coarse) and (orientation:portrait){.cot-strike-strip[data-open=true]{width:calc(100% - 24px);justify-content:space-between}.strike-points{min-width:40px}}
