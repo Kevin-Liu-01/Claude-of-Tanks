@@ -12,13 +12,12 @@
 // The control: the same walk before the rebase finds the runtime's live stamps (it sees into closures at all).
 //
 // (round 3 B5) The census covered only the paths its scenario drove (drones and the gunship were not driven), so an
-// unregistered stamp on any other path passed it. Now the scenario's reach is measured too: V8's block coverage, taken
-// through the same inspector session from before the fx modules load, must show every fx-clock read in src/fx (the
-// runtime's particles.getTime(), fxClockNow(), and the clock its parts are handed, `now()`) run at least once, or the
-// receipt fails naming each read it never ran. A part that starts reading the clock on a path the scenario does not
-// drive fails here until the scenario drives it, and then the census checks what it stamps. The scenario drives the
-// gunship's rounds and missile, the auxiliary systems, a wire-guided missile, a building's stages and sections (a
-// default-kit house), a crater event, the screenshot composer and the battle warm.
+// unregistered stamp on any other path passed it. Now the scenario's reach is measured too, with V8's block coverage
+// taken through the same inspector session from before the fx modules load (what it counts, and the named few reads it
+// does not reach yet, are below). A part that starts reading the clock on a path the scenario does not drive fails here
+// until the scenario drives it, and then the census checks what it stamps. The scenario drives the gunship's rounds and
+// missile, the auxiliary systems, a wire-guided missile, a building's stages and sections (a default-kit house), a
+// crater event, the screenshot composer and the battle warm.
 // (round 3 B5, review round 1) What the reach check measures, exactly: the reads of the fx clock in src/fx (the
 // runtime's particles.getTime(), fxClockNow(), a part's injected `now()`, and a call of any local bound to one of them,
 // such as volumeMedia's `const o_now = o.now`), and the stores of a clock a part is handed as a `now` parameter

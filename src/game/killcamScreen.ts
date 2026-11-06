@@ -7,11 +7,11 @@
  * emits 'killcam:done' even when a restore or a completion callback throws, round 3 A9). The controller publishes its
  * reader on the bus it binds, and the consumers read the fact here rather than keeping a copy: the battle input owner
  * (src/ui/battleInputOwner.ts, which the Esc menu, the veil and the report gate ask), the audio battle mode's kill-cam
- * overlay (src/audio/battleMode.ts, through
- * audioEngine.ts and lazyAudio.ts), and the phase policy (src/game/battlePhasePolicy.ts isKillcamActive, which main.ts
- * binds to the same flag through killcam.isActive()). 'killcam:begin' / 'killcam:done' stay edge notifications: a
- * consumer acts on an edge (a sound, a closed panel, the skip press's grace) and reads the state here, so a repeated or
- * lost edge cannot leave two consumers disagreeing about whether a replay is on screen.
+ * overlay (src/audio/battleMode.ts, through audioEngine.ts and lazyAudio.ts), and the phase policy
+ * (src/game/battlePhasePolicy.ts isKillcamActive, which main.ts binds to the same flag through killcam.isActive()).
+ * 'killcam:begin' / 'killcam:done' stay edge notifications: a consumer acts on an edge (a sound, a closed panel, the
+ * skip press's grace) and reads the state here, so a repeated or lost edge cannot leave two consumers disagreeing about
+ * whether a replay is on screen.
  *
  * Before the replay chunk binds (and on a bus it never binds) no replay can be on screen: false.
  */
