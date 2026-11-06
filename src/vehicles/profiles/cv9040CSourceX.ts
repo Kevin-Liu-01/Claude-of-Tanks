@@ -70,6 +70,10 @@ function cHullKit(P: TankBuilderPort): void {
       P.add('hullDetail', KIT.box(0.036, 0.012, 0.036), side * x, noseTop(z) + 0.002, z);
     }
   }
+  // the troop door's hinge pillar on the rear plate (seated 1 cm into it), between the door's hinge edge (x -0.50) and
+  // the right corner bin's step, under the base vehicle's hinge knuckles (it closes the 5 cm well between them that the
+  // top-down coverage read as a hole)
+  P.add('hullDark', KIT.box(0.062, 0.80, 0.06), -0.531, 1.18, -3.27);
   // the tow cable, stowed in a loop on the right-front tile (the C's tiles cover the base vehicle's cable run)
   KIT.towCable(P, [[-1.36, 2.46], [-0.92, 2.58], [-0.66, 2.52], [-0.64, 2.86], [-1.10, 2.95], [-1.38, 2.84]]
     .map(([x, z]) => [x, tileTop(z) + 0.018, z]));
@@ -107,7 +111,9 @@ function cTurretKit(P: TankBuilderPort): void {
     P.add('turret', cylY(0.16, 0.16, 0.04, P.q ? 20 : 12), x, 0.675, -1.21);
     P.add('turretDark', cylY(0.13, 0.13, 0.012, P.q ? 20 : 12), x, 0.697, -1.21);
   }
-  for (const [x, height, seed] of [[-0.78, 0.95, 9055], [0.80, 0.80, 9056]] as const) {
+  // the whips at their service length: the tall one's tip at the published 4.17 m envelope (docs/references/photos/
+  // ifvs-20260925.json, tallestM)
+  for (const [x, height, seed] of [[-0.78, 1.55, 9055], [0.80, 1.35, 9056]] as const) {
     P.add('turretDark', cylY(0.040, 0.050, 0.08, 10), x, 0.76, -0.92);
     mount(P, 'turret', FITTINGS.antennaWhip({ mats: P.mats, h: height, r: 0.010, seed }), x, 0.80, -0.92);
   }
