@@ -203,6 +203,9 @@ function* buildT95Steps(P: TankBuilderPort): TankProfileBuild {
         P.addEquipment('hull', xform(box(1.84, 0.025, 0.035), 0, 0, 0, -pitch, 0, 0), 0, y + 0.03, z0 + 0.06 + k * (z1 - z0 - 0.12) / 8);
       }
       P.add('hullDetail', xform(box(0.05, 0.05, z1 - z0), 0, 0, 0, -pitch, 0, 0), 0, y + 0.035, zc);
+      // each panel's raised armoured frame
+      for (const sx of [-1, 1] as const) P.add('hullDetail', xform(box(0.07, 0.07, z1 - z0), 0, 0, 0, -pitch, 0, 0), sx * 0.93, y + 0.03, zc);
+      for (const ez of [z0, z1]) P.add('hullDetail', box(1.93, 0.07, 0.07), 0, roofAt(ez) + 0.03, ez);
     }
     P.add('hullDark', box(1.20, 0.18, 0.06), 0, 1.18, H.sternZ - 0.02);
     for (let k = 0; k < 4; k++) P.addEquipment('hull', box(1.16, 0.02, 0.05), 0, 1.11 + k * 0.045, H.sternZ - 0.045);
@@ -231,6 +234,13 @@ function* buildT95Steps(P: TankBuilderPort): TankProfileBuild {
     for (const s of [-1, 1] as const) {
       P.add('hullDark', box(0.14, 0.12, 0.10), s * 0.36, 0.62, 0.20);
       P.add('hullDark', torus(0.06, 0.02, 12, 6), s * 0.36, 0.56, 0.27, Math.PI / 2, 0, 0);
+    }
+    // the A-frame jibs on the unit covers' fronts (the outer units' removal gear; the 1946 and museum photographs)
+    for (const s of [-1, 1] as const) {
+      const x = s * 1.78, zf = 1.05, zb = 0.78, apexY = H.coverY + 0.44, apexZ = 0.98;
+      for (const dx of [-0.16, 0.16]) bar('hullDark', [x + dx, H.coverY + 0.01, zf], [x, apexY, apexZ], 0.022);
+      bar('hullDark', [x, H.coverY + 0.01, zb], [x, apexY, apexZ], 0.022);
+      P.add('hullDark', box(0.10, 0.06, 0.10), x, apexY, apexZ);
     }
     // lifting eyes at the casemate's corners
     for (const s of [-1, 1] as const) {
@@ -274,7 +284,7 @@ function* buildT95Steps(P: TankBuilderPort): TankProfileBuild {
     // (the gun rides the ring's outboard side, as the print and the 1946 photographs carry it)
     mg.position.set(cx - 0.55, cy + 0.46, cz + 0.10);
     // the cut-down M49C ring over the cupola and its four posts from the cupola's base ring
-    P.add('hullDark', torus(0.56, 0.025, P.q ? 32 : 18, 6), cx, cy + 0.40, cz, Math.PI / 2, 0, 0);
+    P.add('hullDark', torus(0.56, 0.025, P.q ? 32 : 18, 6), cx, cy + 0.40, cz);
     for (let k = 0; k < 4; k++) {
       const a = (k + 0.5) * Math.PI / 2;
       bar('hullDark', [cx + Math.sin(a) * 0.43, cy + 0.12, cz + Math.cos(a) * 0.43], [cx + Math.sin(a) * 0.54, cy + 0.38, cz + Math.cos(a) * 0.54], 0.022);
