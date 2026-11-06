@@ -1877,6 +1877,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'tools/mp-soak.selftest.mjs',
     'tools/starvation-meter.selftest.mjs', // 267: the soak's starvation meter on driven clocks
     'server/authoritativeBots.selftest.mjs',
+    'server/soakRams.selftest.mjs', // 2026-11-06 round 3 B8: the bot soak's ally gate and per-ram viewer check judge a staged battle with rams (the soak's own battles had none)
     'server/botModes.selftest.mjs',
     'server/botObjectives.selftest.mjs',
     // 2026-10-16 (test-speed R9a): the 132 pacing matches play in eight one-thread shards; battlePacing merges their
