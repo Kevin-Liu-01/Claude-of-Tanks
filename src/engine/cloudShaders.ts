@@ -818,8 +818,13 @@ void main() {
 					// past both cascades (the far field, hazed): the column over the point along the sun at half its own density
 					// (a far tower's interior stays a cloud's, never lit through); the cascades fade into it at their outer edge
 					float column = sigma * 0.5 * clamp( dot( wgt, uLayerTop ) - h, 0.0, 1500.0 ) / max( sunUp, 0.05 );
+					// clouds-269 (Main, 2026-11-05; Whiteout's "long straight streaks fanning from one point", the owner: "yeah the
+					// straight line in whiteout"): under a closing deck the map's depth along a low sun held one value down
+					// kilometre strips toward it, so the overcast's thin places lit as straight rays; a closing deck takes its light
+					// diffuse, the map fading in over a higher sun (to 0.75 against the open sky's 0.3)
+					float deckSun = smoothstep( 0.6, 1.0, dot( wgt, uLayerFlat ) );
 					od += cl2BsmDepth( p, run, column )
-						* mix( uBsmLowSun.x, 1.0, smoothstep( 0.0, max( uBsmLowSun.y, 1e-3 ), sunUp ) );
+						* mix( uBsmLowSun.x, 1.0, smoothstep( 0.0, max( mix( uBsmLowSun.y, 0.75, deckSun ), 1e-3 ), sunUp ) );
 				}
 				lit++;
 				// [ported] the multiple-scattering octaves (a = b = c = 1/2 per octave)
