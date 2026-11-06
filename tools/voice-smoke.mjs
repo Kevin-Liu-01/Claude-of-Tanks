@@ -28,6 +28,7 @@ import { createServer } from 'vite';
 import puppeteer from 'puppeteer';
 import { bandEnergy } from './audio/pcm.mjs';
 import { CREW_LANGUAGES } from '../src/audio/vehicleAudioProfiles.ts';
+import { pageLoadBudget } from './tool-page-load.mjs';
 import { mkdirSync, writeFileSync, rmSync } from 'node:fs';
 import { resolve, join } from 'node:path';
 
@@ -107,10 +108,13 @@ async function openPage() {
     if (msg.type() === 'error' && !msg.text().includes('favicon')) consoleErrors.push(msg.text());
   });
   page.on('pageerror', (err) => consoleErrors.push(String(err)));
+  // the tools' page budget (tool-page-load.mjs: 180 s navigation, COT_NAV_TIMEOUT_MS): its cold private vite cache took
+  // past 90 s on a loaded machine, twice, before any line was heard
+  const { navTimeoutMs, readyTimeoutMs } = pageLoadBudget({ readyTimeoutMs: 90000 });
   for (let attempt = 0; ; attempt++) {
     try {
-      await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 90000 });
-      await page.waitForFunction('window.__GAME_READY === true', { timeout: 90000 });
+      await page.goto(url, { waitUntil: 'domcontentloaded', timeout: navTimeoutMs });
+      await page.waitForFunction('window.__GAME_READY === true', { timeout: readyTimeoutMs });
       break;
     } catch (err) {
       if (attempt >= 1) throw err;
@@ -123,7 +127,9 @@ async function openPage() {
 async function bootIntoBattle() {
   await page.mouse.click(640, 360);
   await sleep(300);
-  await page.evaluate(() => window.__DEBUG.startBattle('t90am'));
+  // the battle behind the smoke held alive and still for the whole run (src/dev/battleHold.ts): its bots never end it in
+  // defeat (one run lost it at ~260 s of ~520 s) and never fire, so no hit call of theirs crosses the lines driven here
+  await page.evaluate(() => { window.__DEBUG.battleHold.set(true); return window.__DEBUG.startBattle('t90am'); });
   await page.waitForFunction(
     'window.__COT_AUDIO && window.__COT_AUDIO.ctx && window.__COT_AUDIO.ctx.currentTime > 0',
     { timeout: 20000 },
