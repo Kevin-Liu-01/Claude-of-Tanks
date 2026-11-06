@@ -307,10 +307,12 @@ const GROUNDED_ENV: GroundedLightEnv = Object.freeze({
 let grounded: GroundedLightResolver | null = null;
 /**
  * Import the grounded model and install it. Its one caller is the main thread's lazy chunk (battleAtmosphereAccess.ts
- * loadGroundedLightModel: the battle atmosphere's acquisition, the capture staging), which holds it under the one
- * lazy-chunk policy. (round 3 A4) It rejects when the chunk does not arrive and keeps no memo of its own: its memo was
- * cleared on a failure and asked again at once by the next call, every Studio sun-dial move; and this module also rides
- * the horizon ring and hinterland worker graphs, which do not carry that policy (app/lazyChunk.ts).
+ * groundedLightChunk: the battle atmosphere's prepare and loadGroundedLightModel, the capture staging), which holds it
+ * under the one lazy-chunk policy. (round 3 A4) It rejects when the chunk does not arrive and keeps no memo of its own:
+ * its memo was cleared on a failure and asked again at once by the next call, every Studio sun-dial move; and this module
+ * also rides the horizon ring and hinterland worker graphs, which do not carry that policy (app/lazyChunk.ts). (round 4
+ * E9) That chunk is its policy: app/lazyChunkSites.selftest.mjs fails any other use of it in a .ts module under src and
+ * any other runtime import of lightModel.ts. The Node receipts call it to install the model.
  */
 export function importGroundedLightModel(): Promise<void> {
   return import('./lightModel.ts').then((module) => { grounded = module.groundedLightModel(GROUNDED_ENV); });

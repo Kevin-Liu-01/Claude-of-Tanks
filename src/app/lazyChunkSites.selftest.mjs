@@ -264,6 +264,20 @@ const bodyOf = (source, name) => {
   if (source[at] === '{') return source.slice(at, closeOf(source, at));
   return head[1] ? source.slice(at, at + 600).split(/;\n/)[0] : '';
 };
+// ---- (round 4 E9) a raw loader with one holder. lightModelCore.ts importGroundedLightModel rejects and keeps no memo (it
+// rides the horizon ring and hinterland worker graphs, which do not carry app/lazyChunk.ts); its policy is the chunk
+// battleAtmosphereAccess.ts holds it in. A second caller (a Studio, capture or shot path calling it directly) would ask
+// lightModel.ts on every call with no backoff, offline too, and a bare call is no memo for the ratchet above to see. So
+// the definition and that chunk are its only uses in src/**/*.ts (strings and comments aside), and no other module
+// imports lightModel.ts at runtime
+const SOLE_LOADERS = [{
+  name: 'importGroundedLightModel', chunk: 'src/engine/lightModel.ts', definer: 'src/engine/lightModelCore.ts',
+  holder: 'src/engine/battleAtmosphereAccess.ts', held: 'createLazyChunk(importGroundedLightModel)',
+}];
+/** Per loader name, the files that use it in code (strings blanked too) and how often. */
+const loaderUses = new Map(SOLE_LOADERS.map(({ name }) => [name, new Map()]));
+const blankStrings = (source) => source.replace(/'(?:\\[\s\S]|[^'\\])*'?|"(?:\\[\s\S]|[^"\\])*"?|`(?:\\[\s\S]|[^`\\])*`?/g,
+  (part) => part.replace(/[^\n]/g, ' '));
 const walk = (dir) => {
   for (const entry of readdirSync(dir, { withFileTypes: true })) {
     const path = join(dir, entry.name);
@@ -271,6 +285,11 @@ const walk = (dir) => {
     else if (/\.ts$/.test(entry.name) && !/\.d\.ts$/.test(entry.name)) {
       const source = blankComments(readFileSync(path, 'utf8'));
       const file = relative(ROOT, path).split('\\').join('/');
+      for (const { name } of SOLE_LOADERS) {
+        if (!source.includes(name)) continue;
+        const uses = blankStrings(source).match(new RegExp(`\\b${name}\\b`, 'g'))?.length ?? 0;
+        if (uses) loaderUses.get(name).set(file, uses);
+      }
       const edges = [], sheets = [];
       for (const match of source.matchAll(/(?:import|export)\s+(?!type\b)(?:[^'";]*?\sfrom\s*)?['"](\.{1,2}\/[^'"]+)['"]/g)) {
         if (match.index === 0 || /[;\s]/.test(source[match.index - 1])) edges.push(resolveSpecifier(file, match[1]));
@@ -351,6 +370,23 @@ const walk = (dir) => {
   }
 };
 walk(join(ROOT, 'src'));
+const loaderOffenders = [];
+for (const { name, chunk, definer, holder, held } of SOLE_LOADERS) {
+  // the definition once; the holder twice (its import and its chunk); nowhere else
+  const expected = new Map([[definer, 1], [holder, 2]]);
+  for (const [file, uses] of loaderUses.get(name)) {
+    if (uses !== (expected.get(file) ?? 0)) loaderOffenders.push(`${file} uses ${name} ${uses} times (${expected.get(file) ?? 0} allowed)`);
+  }
+  for (const [file, allowed] of expected) {
+    if (!loaderUses.get(name).has(file)) loaderOffenders.push(`${file} uses ${name} 0 times (${allowed} expected)`);
+  }
+  for (const [file, module] of graph) {
+    if (file !== definer && module.edges.includes(chunk)) loaderOffenders.push(`${file} imports ${chunk} (only ${definer}'s ${name} does)`);
+  }
+  if (!read(holder).includes(held)) loaderOffenders.push(`${holder} lacks ${held}`);
+}
+assert.deepEqual(loaderOffenders, [], `a raw lazy loader used outside its one chunk (hold it there; app/lazyChunk.ts):\n  ${loaderOffenders.join('\n  ')}`);
+
 assert.deepEqual(multipart, [], `a lazy chunk of several parts settles them with importAll (app/lazyChunk.ts), so a module's failure never hides its stylesheet's:\n  ${multipart.join('\n  ')}`);
 const fresh = [...found].filter((site) => !KNOWN.has(site));
 assert.deepEqual(fresh, [], `a lazy chunk memoized by hand (hold it in app/lazyChunk.ts createLazyChunk):\n  ${fresh.join('\n  ')}`);
