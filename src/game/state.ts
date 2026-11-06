@@ -816,7 +816,7 @@ function createBattleSpotting(game: SoloGameState, world: SoloWorld): SpottingSy
     getEquipment: (tank) => {
       // the kit applyEquipmentToCombat wrote (combat.equip, gated by the hull), as the authority's spotting reads it.
       // entity.equip is the seat's loadout, another array, so Fresh Foliage's list was rebuilt from it at each life's
-      // first read (round 4 F8)
+      // first read, and a live re-equip, which rewrites combat.equip alone, never reached the spotting (round 4 F8)
       const entity = tank as SpottingTank & { combat?: { equip?: readonly string[] }; consumables?: ConsumableState };
       return consumableSpottingIds(entity.consumables, entity.combat?.equip, game.timeS);
     },
