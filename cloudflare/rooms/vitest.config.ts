@@ -9,9 +9,13 @@ import { defineConfig } from 'vitest/config';
  *            with STUN alone while the secrets are unset; the phone controller's pairing (test/pad.test.ts).
  *   relay  — wrangler.relay.test.jsonc (a fake Cloudflare TURN key, an eight-hour lease asked for): the relay
  *            credentials minted inside the room for seated players only (test/relay.test.ts, 2026-10-02, §13.14).
- * A test's timeout is a hang guard, not a speed bound (round 3 B14, 2026-11-06): the four files run at once, and on a
- * machine at load 250-420 the keepalive case (an eviction, five object round trips, some 270 frames) passed 20 s in
- * full runs while taking about a second idle; the 28-seat and admin-migration cases took 13-14 s.
+ * A test's timeout is a hang guard, not a speed bound (round 3 B14, 2026-11-06): the four files run at once, each in its
+ * own Workers runtime (one Miniflare per pool worker), sharing only the CPU; the 28-seat and admin-migration cases took
+ * 13-14 s in full runs at load 150, the keepalive case (an eviction, five object round trips, some 270 frames) about a
+ * second idle and 3 s alone at load 63. Its 20 s timeouts at load 250-420 were a hang, not its time (round 4 F9,
+ * reproduced on 92f415e879): its envelope flood handled across the room's rate window left the socket open, and the case
+ * sat on the close. The floods hold Date still (round 3), and a close that never comes fails by name (client.ts
+ * closedWithin).
  */
 const TEST_TIMEOUT_MS = 90_000;
 export default defineConfig({
