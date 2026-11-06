@@ -15,7 +15,7 @@ import { servedPublicOnly } from './served-public.mjs';
 import { boundOrigin, toolServerOptions } from './tool-page-load.mjs';
 import { STEPS } from './changed-only/steps.mjs';
 
-assert.deepEqual(ICONS_PAGE_PUBLIC, ['fonts'], 'the measured list: only the material painter\'s font directory');
+assert.deepEqual(ICONS_PAGE_PUBLIC, [], 'the measured list: none (269: the Glacis painter worker loads no font)');
 
 // (1) the guard on a real Vite server over a scratch root
 const root = mkdtempSync(join(tmpdir(), 'icons-page-public-'));
@@ -46,23 +46,22 @@ async function serve(plugins, run) {
 try {
   const refused = [];
   await serve([iconsPagePublicOnly((file) => refused.push(file))], async (get) => {
-    assert.deepEqual(await get('/fonts/face.woff2'), { status: 200, text: 'font' }, 'a file under ICONS_PAGE_PUBLIC is served');
     assert.equal((await get('/src/module.js')).status, 200, 'a module outside public/ passes');
     assert.equal((await get('/index.html')).status, 200, 'a page outside public/ passes');
     assert.equal(refused.length, 0, 'nothing refused yet');
     // /@fs/ in both forms of a symlinked temp root (macOS's /var is /private/var; a Vite that resolves its root, 8.3 in one
     // lane, answered the unresolved form itself before the guard saw it)
-    for (const path of ['/llms.txt', '/site.webmanifest', '/textures/a.webp', '/public/llms.txt', `/@fs${root}/public/llms.txt`,
+    for (const path of ['/fonts/face.woff2', '/llms.txt', '/site.webmanifest', '/textures/a.webp', '/public/llms.txt', `/@fs${root}/public/llms.txt`,
       `/@fs${realpathSync(root)}/public/llms.txt`]) {
       const response = await get(path);
-      assert.equal(response.status, 403, `${path}: a public file outside ICONS_PAGE_PUBLIC is refused`);
+      assert.equal(response.status, 403, `${path}: a public file outside ICONS_PAGE_PUBLIC is refused (269: the fonts too)`);
       assert.match(response.text, /not an input of this page's changed-only key/);
     }
-    assert.deepEqual(refused, ['public/llms.txt', 'public/site.webmanifest', 'public/textures/a.webp', 'public/llms.txt', 'public/llms.txt',
+    assert.deepEqual(refused, ['public/fonts/face.woff2', 'public/llms.txt', 'public/site.webmanifest', 'public/textures/a.webp', 'public/llms.txt', 'public/llms.txt',
       'public/llms.txt'], 'each refusal is reported by its repository path');
     assert.deepEqual(await get('/favicon.ico'), { status: 204, text: '' }, 'the browser\'s favicon request is answered empty, unread');
     assert.notEqual((await get('/missing.txt')).status, 403, 'a missing path is left to Vite');
-    assert.equal(refused.length, 6, 'favicon and missing paths are not refusals');
+    assert.equal(refused.length, 7, 'favicon and missing paths are not refusals');
   });
   // exact files: a page keyed per id (the geometry gate's oracles) is served those files and no sibling
   const exactRefused = [];
@@ -96,4 +95,4 @@ for (const name of ['centering', 'icons']) {
   assert.equal(step.excludeReads, undefined, `${name}: nothing to exclude from reads that name only served directories`);
 }
 
-console.log(`icons-page-public.selftest: PASS (serves public/${ICONS_PAGE_PUBLIC.join(', public/')}; refuses the rest)`);
+console.log(`icons-page-public.selftest: PASS (serves ${ICONS_PAGE_PUBLIC.length ? `public/${ICONS_PAGE_PUBLIC.join(', public/')}` : 'no public file'}; refuses the rest)`);
