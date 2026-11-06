@@ -6601,18 +6601,23 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
    * stays in the console, since it may quote the scene).
    */
   async function openSharedScene(result: SceneLinkDecoded, fallbackMap: string): Promise<void> {
+    // (round 3 A10) the session the link opens into: the live one, or the one its own entry begins (session.claim()). An
+    // exit that took that entry back resolves enter() (doEnter's abandoned path), and a Studio entered again before it
+    // returned read `active`: the link's scene loaded, or its refusal was said, in that later Studio
+    const owner = session.claim();
     if (!result.ok) {
       console.warn(`[studio] scene link refused (${result.reason}): ${result.detail}`);
       await enter({ map: fallbackMap });
+      if (!owner.current()) return;
       const failure = sceneLinkOpenFailure(result);
       panel.notice(failure.message, 'error', failure.detail);
       return;
     }
     const json = result.scene as StudioSceneInput;
     await enter({ map: json.map || fallbackMap });
-    if (!active) return; // (audit F9) an exit took the entry back: load() would enter the Studio again
+    if (!owner.current()) return; // (audit F9) an exit took the entry back: load() would enter the Studio again
     try {
-      await load(json);
+      await load(json, { owner });
       // what opened: its battlefield, its tanks and its length
       const mapId = getWorld()?.mapId ?? json.map ?? 'verdant';
       panel.notice(t('studio.sceneLink.openedScene', {
@@ -6655,8 +6660,14 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
     return {
       map: scene.then((json) => (typeof json?.map === 'string' ? json.map : null)),
       open: (fallbackMap) => whenGameReady().then(() => scene).then(async (json) => {
+        const owner = session.claim(); // (round 3 A10) the session this link opens into, as openSharedScene's
         await enter({ map: json?.map || fallbackMap });
-        if (json && active) await load(json); // (audit F9) never re-enters a Studio an exit closed
+        if (!json || !owner.current()) return; // (audit F9) never re-enters a Studio an exit closed, nor loads into a later one
+        try {
+          await load(json, { owner });
+        } catch (error) {
+          if (!isStudioSessionEnded(error)) throw error; // the Studio closed while the scene built: no boot failure
+        }
       }),
     };
   }

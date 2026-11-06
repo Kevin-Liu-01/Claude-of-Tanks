@@ -19,8 +19,9 @@ assert.match(studio, /const scenePath = sceneLinkPath\(urlParam\('scene'\)\);/);
 // bootScene() (2026-10-20): the boot enters on the scene's map, then loads it once the game is ready; main.ts's direct
 // /studio boot opens it too (studioSceneShare.selftest checks that wiring).
 assert.match(studio, /map: scene\.then\(\(json\) => \(typeof json\?\.map === 'string' \? json\.map : null\)\),/);
-// (2026-11-02 audit F9) an exit that took the entry back loads nothing (load() would enter the Studio again)
-assert.match(studio, /await enter\(\{ map: json\?\.map \|\| fallbackMap \}\);\n\s+if \(json && active\) await load\(json\);/);
+// (2026-11-02 audit F9) an exit that took the entry back loads nothing (load() would enter the Studio again); (round 3
+// A10) nor into a Studio entered after it: the link's own session decides (studioLinkSession.selftest runs it)
+assert.match(studio, /const owner = session\.claim\(\);[^\n]*\n\s+await enter\(\{ map: json\?\.map \|\| fallbackMap \}\);\n\s+if \(!json \|\| !owner\.current\(\)\) return;[^\n]*\n\s+try \{\n\s+await load\(json, \{ owner \}\);/);
 // Leaving the Studio drops the link from the address, so a refresh in the garage stays in the garage.
 assert.match(studio, /sp\.delete\('studio'\);\n\s+if \(!inStudio\) sp\.delete\('scene'\);/);
 
