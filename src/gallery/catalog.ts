@@ -13,6 +13,7 @@ import {
 } from '../vehicles/vehicleFacets.ts';
 import { matchesVehicleFacetQuery, parseVehicleFacetQuery } from '../vehicles/vehicleFacetSearch.ts';
 import { formatNumber, getLocale, t } from '../ui/i18n.ts';
+import { intraClipCycleS } from '../sim/fireCycleFloor.ts';
 
 interface GalleryShellSpec {
   name?: string;
@@ -35,6 +36,7 @@ interface GalleryAutoloaderSpec {
   magazineSize?: number;
   intraClipS?: number;
   fullReloadS?: number;
+  rotary?: boolean;
 }
 
 export interface GalleryVehicleSpec {
@@ -98,6 +100,11 @@ function clamp(value: number, min = 0, max = 100): number {
 
 function rounded(value: number, digits = 1): number {
   return Number.isFinite(value) ? Number(value.toFixed(digits)) : 0;
+}
+
+/** A magazine's cycle: a rotary gun's or a floor-cycle gun's hundredths would round to 0 or 0.1 at one digit. */
+function roundedCycle(seconds: number): number {
+  return rounded(seconds, seconds < 0.1 ? 2 : 1);
 }
 
 function normalized(value: number, low: number, high: number): number {
@@ -193,7 +200,7 @@ function summarizeGalleryGun(spec: GalleryVehicleSpec): GalleryGunSummary {
     ? Math.max(1, Math.floor(Number(autoloader.magazineSize) || 1))
     : 1;
   const intraClipS = autoloader
-    ? Math.max(0.05, Number(autoloader.intraClipS) || Number(spec.gun?.reloadS) || 0.1)
+    ? intraClipCycleS(autoloader, Number(spec.gun?.reloadS) || 0.1)
     : 0;
   const fullReloadS = Math.max(
     0.1,
@@ -269,7 +276,7 @@ function galleryArmamentSentence(spec: GalleryVehicleSpec, gun: GalleryGunSummar
   return t('gallery.brief.armedAuto', {
     caliber: Number(spec.gun?.caliberMm || 0),
     size: gun.magazineSize,
-    cycle: rounded(gun.intraClipS),
+    cycle: roundedCycle(gun.intraClipS),
     reload: rounded(gun.fullReloadS),
     count: familyCount,
     family: familyLabel,
@@ -322,7 +329,7 @@ function galleryHighlights(
     ...(gun.autoloader ? [t('gallery.highlight.magazine', {
       size: gun.magazineSize,
       damage: formatNumber(gun.burstDamage),
-      cycle: rounded(gun.intraClipS),
+      cycle: roundedCycle(gun.intraClipS),
     })] : []),
     gun.best
       ? t('gallery.highlight.shell', {

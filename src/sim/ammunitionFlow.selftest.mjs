@@ -696,6 +696,33 @@ match.step({ dt: SIM_DT, inputs: new Map() });
 assert.equal(gunner.combat.shellSlot, 2,
   'bot ammunition requests pass through authoritative shell selection');
 
+// (270) the M163's Vulcan in the authority (sim/fireCycleFloor.ts): one round a tick, every round an event, the viewer's
+// shell rows one round in three (the rest fly unrowed: their hits and impacts are events)
+{
+  const vulcanMatch = createAuthoritativeMatch({
+    mapId: 'verdant',
+    countdownS: 0,
+    players: [
+      { id: 'vulcan', specId: 'm163_vads', team: 'alpha', spawn: { x: 0, z: -200, yaw: 0 } },
+      { id: 'vulcan-target', specId: 't90am', team: 'bravo', spawn: { x: 0, z: 200, yaw: Math.PI } },
+    ],
+  });
+  vulcanMatch.onMatchReady();
+  const skyward = { ...input(0, true), aimPitch: 0.6, aimDistance: 1500 };
+  let fired = 0;
+  for (let tick = 0; tick < 60; tick++) {
+    vulcanMatch.step({ dt: SIM_DT, inputs: new Map([['vulcan', skyward], ['vulcan-target', input(0)]]) });
+    fired += vulcanMatch.eventsForViewer('vulcan').filter((event) => event.type === 'shell_fired').length;
+    vulcanMatch.afterEventBroadcast();
+  }
+  assert.equal(fired, 60, 'the Vulcan fires one round a tick, each an event');
+  const rowEntities = [], rowShells = [];
+  vulcanMatch.observeForViewer('vulcan', rowEntities, rowShells);
+  assert.equal(rowShells.length, 20, 'the viewer\'s shell rows carry one round in three');
+  assert.equal(vulcanMatch.snapshot({ tick: 60, serverTimeMs: 1000, viewerId: 'vulcan', ackInputSeq: null }).shells.length, 20,
+    'and so does its snapshot');
+}
+
 console.log(`ammunitionFlow.selftest: ${multiChannelLoadouts} multi-channel loadouts, ` +
   `${depletedChannelTransitions} depleted-slot transitions, ${guidedAuthorityLaunches} guided ` +
   `authority launches, ${fleetFinalRoundLaunches} fleet final-round launches, finite ammo, ` +
