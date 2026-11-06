@@ -446,7 +446,8 @@ function rescaleModuleHp(
  * rack, suspension, safety fuel and the other moduleHp items). Both drivers call it for each life, at the spawn and at
  * a mode's revive, right after createCombatState and before applyRulesetToCombat. A second call on the same state (a
  * live re-equip; no product caller makes one yet) swaps the kit whole: the multipliers and their layers, the ruleset's
- * reload fold, Fresh Foliage's spotting ids and module HP all follow the new kit at once (round 3 B7, round 4 E7).
+ * reload fold and module HP follow the new kit at once (round 3 B7, round 4 E7), and Fresh Foliage's spotting ids at
+ * the spotting's next read, since both drivers' spotting reads combat.equip (round 4 F8; spottingKitParity.selftest).
  * @param {object} combat CombatState (mutated)
  * @param {?Array<string>} ids equipped item ids
  * @param {?object} [spec] spec for era validation
