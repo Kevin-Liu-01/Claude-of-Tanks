@@ -60,6 +60,9 @@ export const USA_TREE: NationTree = Object.freeze({
     node({ id: 'm6_linebacker', tier: 5, line: 'bradley', lane: 1, parents: ['m2a2_bradley'], slot: 'line' }),
     node({ id: 'griffin50mm', tier: 10, line: 'bradley', lane: 9, parents: ['m3a3_bradley'], slot: 'line' }),
     // Special
+    // release 270: the T95 superheavy tank destroyer with its fictional 152 mm (owner 2026-11-05), the WWII casemate at
+    // tier I beside the Jagdpanzer E100 and the KV-2 (Main rules the tier from the duels)
+    node({ id: 't95', tier: 1, line: 'special', lane: 0, parents: [], slot: 'special' }),
     node({ id: 'm60a2', tier: 2, line: 'special', lane: 0, parents: [], slot: 'special' }),
     node({ id: 'm1a2_abrams_tusk', tier: 9, line: 'special', lane: 0, parents: [], slot: 'special' }),
   ]),

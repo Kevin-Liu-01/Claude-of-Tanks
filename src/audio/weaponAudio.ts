@@ -73,7 +73,7 @@ export type WeaponKey =
   | '20/belt' | '25/belt' | '30/belt' | '35/belt' | '40/belt' | '50/belt'
   | '76/unitary_brass' | '84/unitary_brass' | '90/unitary_brass' | '100/unitary_brass' | '100lp/unitary_brass' | '105/unitary_brass'
   | '120/combustible' | '120/separate_bag' | '125/two_piece' | '130/combustible'
-  | '152/separate_case' | '152/caseless' | '165/separate_bag' | '170/separate_case'
+  | '152/separate_case' | '152n/separate_case' | '152/caseless' | '165/separate_bag' | '170/separate_case'
   | '220/rocket' | 'guided/missile'
   | 'ac130-30/belt' | 'ac130-105/unitary_brass' | 'ac130-missile/missile';
 
@@ -211,6 +211,15 @@ export const WEAPON_ROWS: { readonly [K in WeaponKey]: WeaponRow } = Object.free
     weight: 'superheavy',
     loudDb: 149, closeFadeM: [150, 420], farFadeM: [100, 480], tailRate: 0.82, tailGain: 0.95, actionDelayS: 0.22, spent: 'case_eject_brass_heavy',
   }),
+  // 270: the T95's fictional 152 mm, the US Navy 6"/47 Mark 16 in a tank's ball mount (owner 2026-11-05): a long naval
+  // gun with a double-baffle brake and brass cases, a harder, heavier report than the KV-2's short howitzer above, under
+  // the 17 cm's
+  '152n/separate_case': cannon('152n/separate_case', 152, 'separate_case', 'gun_152n', {
+    ordnance: '152 mm on the 6"/47 Mark 16 (T95, fictional)', rifling: 'rifled', barrel: 'long (L/47)', brake: 'double_baffle',
+    weight: 'superheavy',
+    loudDb: 151, closeFadeM: [158, 440], farFadeM: [115, 500], tailRate: 0.81, tailGain: 0.98, actionDelayS: 0.22,
+    spent: 'case_eject_brass_heavy',
+  }),
   '152/caseless': cannon('152/caseless', 152, 'caseless', 'gun_152gl', {
     ordnance: '152 mm M81, M162 and XM150 gun-launchers (M551, M60A2, MBT-70, T49)', rifling: 'rifled', barrel: 'short (L/17.5–L/30)',
     brake: 'none', weight: 'heavy',
@@ -289,6 +298,8 @@ const REPORT_TRIMS: Readonly<Record<string, WeaponReportTrim>> = Object.freeze({
   'xm913-50': { rate: 1, gainDb: 0.5 },
   // BMP-3's 2A70 is a low-pressure 100 mm gun-launcher: its own softer, shorter report.
   'bmp3-100mm': { rate: 1, gainDb: 0, key: '100lp/unitary_brass' },
+  // the T95's long 152 mm (the 6"/47 Mark 16), not the KV-2's short howitzer that the bore alone resolves to
+  't95-152': { rate: 1, gainDb: 0, key: '152n/separate_case' },
   'tow-launch': { rate: 0.96, gainDb: 0, launcher: true },
   'konkurs-launch': { rate: 0.92, gainDb: 0.5, launcher: true },
   'spike-launch': { rate: 1.06, gainDb: -0.5, launcher: true },

@@ -32,16 +32,16 @@ import type { VehicleProfileRecord } from '../profileBuilderAdapter.ts';
 
 // ------------------------------------------------------------------------------------------------- datums --
 const H = Object.freeze({
-  sternZ: -5.30, faceZ: 0.30, bellyY: 0.45, tubX: 0.94, coverY: 1.20,
-  skirtX: 2.185, skirtT: 0.10, skirtTop: 1.24, skirtLow: 0.40, coverFrontZ: 1.55, noseZ: 2.05, noseY: 0.84,
-  spacerX: 1.50,
+  sternZ: -5.26, faceZ: 0.30, bellyY: 0.45, tubX: 0.94, coverY: 1.20,
+  skirtX: 2.185, skirtT: 0.05, skirtTop: 1.24, skirtLow: 0.40, coverFrontZ: 1.45, noseZ: 1.90, noseY: 0.86,
+  coverInX: 0.78, spacerX: 1.52,
 });
 /** Track units: the inner and outer centres, the 19.5 in (0.495 m) T80 track cut down. */
-const TRACK = Object.freeze({ inner: 1.205, outer: 1.79, w: 0.50, topY: 1.08 });
+const TRACK = Object.freeze({ inner: 1.21, outer: 1.83, w: 0.52, topY: 1.08 });
 /** Eight dual road wheels a unit, front to rear: four HVSS bogies. */
 const ROAD_WHEEL_ZS = Object.freeze([0.67, -0.15, -0.73, -1.55, -2.15, -2.97, -3.64, -4.465]);
 const WHEEL = Object.freeze({ r: 0.26, y: 0.30 });
-const SPROCKET = Object.freeze({ z: -4.98, y: 0.64, r: 0.32 });
+const SPROCKET = Object.freeze({ z: -4.93, y: 0.66, r: 0.31 });
 const IDLER = Object.freeze({ z: 1.17, y: 0.64, r: 0.30 });
 const ROLLER_ZS = Object.freeze([-0.42, -1.86, -3.31]);
 /** The ball mount: its centre is the yaw and pitch pivot. */
@@ -63,9 +63,9 @@ interface ShellStation {
   readonly yo: number;
 }
 const SHELL: readonly ShellStation[] = Object.freeze([
-  { z: -5.30, roofY: 1.40, xr: 0.95, xs: 1.10, ys: 1.36, xo: 2.185, yo: 1.22 },
-  { z: -5.02, roofY: 1.68, xr: 1.00, xs: 1.20, ys: 1.60, xo: 2.185, yo: 1.24 },
-  { z: -4.40, roofY: 1.79, xr: 1.02, xs: 1.20, ys: 1.72, xo: 2.185, yo: 1.25 },
+  { z: -5.26, roofY: 1.62, xr: 0.98, xs: 1.18, ys: 1.55, xo: 2.185, yo: 1.24 },
+  { z: -5.02, roofY: 1.72, xr: 1.00, xs: 1.20, ys: 1.65, xo: 2.185, yo: 1.25 },
+  { z: -4.40, roofY: 1.80, xr: 1.02, xs: 1.20, ys: 1.72, xo: 2.185, yo: 1.25 },
   { z: -3.60, roofY: 1.91, xr: 1.02, xs: 1.20, ys: 1.84, xo: 2.185, yo: 1.27 },
   { z: -2.80, roofY: 2.02, xr: 1.02, xs: 1.20, ys: 1.86, xo: 2.185, yo: 1.27 },
   { z: -1.40, roofY: 2.02, xr: 1.04, xs: 1.22, ys: 1.86, xo: 2.185, yo: 1.27 },
@@ -133,23 +133,30 @@ function* buildT95Steps(P: TankBuilderPort): TankProfileBuild {
       [-H.tubX, H.coverY + 0.02]] as SectionPoint[] }))));
     // the track-unit covers forward of the turtle back, flat at the cover line, their noses sloping down ahead of the idlers
     for (const s of [-1, 1] as const) {
-      const xi = s > 0 ? H.tubX - 0.01 : -H.skirtX, xe = s > 0 ? H.skirtX : -(H.tubX - 0.01);
-      const ring = (b: number, t: number): SectionPoint[] => [[xi, b], [xe, b], [xe, t], [xi, t]];
+      const ring = (xin: number, b: number, t: number): SectionPoint[] => {
+        const xi = s > 0 ? xin : -H.skirtX, xe = s > 0 ? H.skirtX : -xin;
+        return [[xi, b], [xe, b], [xe, t], [xi, t]];
+      };
       P.add('hull', sectionSolid([
-        { z: -1.10, ring: ring(H.coverY - 0.07, H.coverY + 0.005) },
-        { z: H.coverFrontZ, ring: ring(H.coverY - 0.07, H.coverY + 0.005) },
-        { z: H.noseZ, ring: ring(H.noseY - 0.06, H.noseY) },
+        { z: -1.10, ring: ring(H.tubX - 0.01, H.coverY - 0.07, H.coverY + 0.005) },
+        { z: H.faceZ, ring: ring(H.coverInX, H.coverY - 0.07, H.coverY + 0.005) },
+        { z: H.coverFrontZ, ring: ring(H.coverInX, H.coverY - 0.07, H.coverY + 0.005) },
+        { z: H.noseZ, ring: ring(1.02, H.noseY - 0.06, H.noseY) },
       ]));
+      // the cover's inner wall down to the tub forward of the bow face (the units' front carriers)
+      P.add('hull', box(H.tubX - H.coverInX + 0.02, H.coverY - 0.60, H.coverFrontZ - H.faceZ), s * (H.tubX + H.coverInX) / 2, (H.coverY + 0.60) / 2 - 0.03, (H.faceZ + H.coverFrontZ) / 2);
       // the spacer wall between the two units of a side (the unit carrier the outer unit's four bolts pull to)
-      P.add('hull', box(0.06, H.coverY - 0.62, 6.10), s * H.spacerX, (H.coverY + 0.62) / 2, -1.88);
+      P.add('hull', box(0.06, H.coverY - 0.34, 6.0), s * H.spacerX, (H.coverY + 0.34) / 2, -1.90);
       // the outer skirt, 4 in thick, from the stern to the nose slope, its foot rising ahead of the front bogie
       const so = s * H.skirtX, si = s * (H.skirtX - H.skirtT);
       const [x0, x1] = s > 0 ? [si, so] : [so, si];
-      const sk = (b: number, t: number): SectionPoint[] => [[x0, b], [x1, b], [x1, t], [x0, t]];
+      // (the foot bevelled up to the outer face, as the print's)
+      const sk = (b: number, t: number): SectionPoint[] => s > 0 ? [[x0, b], [x1, b + 0.16], [x1, t], [x0, t]]
+        : [[x0, b + 0.16], [x1, b], [x1, t], [x0, t]];
       P.add('hull', sectionSolid([
         { z: H.sternZ - 0.02, ring: sk(H.skirtLow + 0.03, H.skirtTop - 0.02) },
-        { z: 1.20, ring: sk(H.skirtLow, H.skirtTop) },
-        { z: 1.62, ring: sk(0.68, H.skirtTop - 0.02) },
+        { z: 1.10, ring: sk(H.skirtLow, H.skirtTop) },
+        { z: 1.50, ring: sk(0.68, H.skirtTop - 0.04) },
         { z: H.noseZ, ring: sk(H.noseY - 0.02, H.noseY + 0.02) },
       ]));
     }
@@ -204,19 +211,24 @@ function* buildT95Steps(P: TankBuilderPort): TankProfileBuild {
       P.add('hullDark', box(0.12, 0.14, 0.12), s * 0.62, 0.70, H.sternZ - 0.05);
       P.add('hullDark', torus(0.06, 0.02, 12, 6), s * 0.62, 0.62, H.sternZ - 0.12, Math.PI / 2, 0, 0);
     }
-    P.add('hullDark', box(0.22, 0.20, 0.16), 0, 0.82, H.sternZ - 0.08);
-    P.add('hullDark', cylY(0.05, 0.05, 0.16, 10), 0, 0.82, H.sternZ - 0.16);
+    P.add('hullDark', box(0.22, 0.20, 0.12), 0, 0.82, H.sternZ - 0.06);
+    P.add('hullDark', cylY(0.05, 0.05, 0.16, 10), 0, 0.82, H.sternZ - 0.13);
     // the bow: the headlights in their brush guards on the unit covers, the tow clevises at the cover noses
     for (const s of [-1, 1] as const) {
-      const x = s * 1.20, z = 1.08;
+      const x = s * 1.40, z = H.coverFrontZ + 0.02;
       P.add('hullDetail', box(0.36, 0.06, 0.22), x, H.coverY + 0.03, z);
-      for (const dx of [-0.09, 0.09]) headlight(P, x + dx, H.coverY + 0.14, z + 0.04, 0, 0.06);
-      for (const dx of [-0.17, 0.17]) bar('hullDark', [x + dx, H.coverY + 0.05, z - 0.08], [x + dx, H.coverY + 0.26, z + 0.10], 0.012);
-      bar('hullDark', [x - 0.17, H.coverY + 0.26, z + 0.10], [x + 0.17, H.coverY + 0.26, z + 0.10], 0.012);
+      for (const dx of [-0.09, 0.09]) headlight(P, x + dx, H.coverY + 0.14, z + 0.10, 0, 0.065);
+      for (const dx of [-0.17, 0.17]) bar('hullDark', [x + dx, H.coverY + 0.05, z - 0.08], [x + dx, H.coverY + 0.30, z + 0.30], 0.012);
+      bar('hullDark', [x - 0.17, H.coverY + 0.30, z + 0.30], [x + 0.17, H.coverY + 0.30, z + 0.30], 0.012);
       for (const xc of [TRACK.inner, TRACK.outer]) {
-        P.add('hullDark', box(0.12, 0.10, 0.10), s * xc, H.noseY - 0.02, H.noseZ + 0.02);
-        P.add('hullDark', torus(0.05, 0.016, 12, 6), s * xc, H.noseY - 0.08, H.noseZ + 0.06, 0, 0, Math.PI / 2);
+        P.add('hullDark', box(0.12, 0.10, 0.08), s * xc, H.noseY + 0.04, H.noseZ - 0.04);
+        P.add('hullDark', torus(0.05, 0.016, 12, 6), s * xc, H.noseY + 0.03, H.noseZ + 0.02, 0, 0, Math.PI / 2);
       }
+    }
+    // the tow eyes on the lower bow plate
+    for (const s of [-1, 1] as const) {
+      P.add('hullDark', box(0.14, 0.12, 0.10), s * 0.36, 0.62, 0.20);
+      P.add('hullDark', torus(0.06, 0.02, 12, 6), s * 0.36, 0.56, 0.27, Math.PI / 2, 0, 0);
     }
     // lifting eyes at the casemate's corners
     for (const s of [-1, 1] as const) {
@@ -234,6 +246,16 @@ function* buildT95Steps(P: TankBuilderPort): TankProfileBuild {
       bar('hullDark', [s * (cx - 0.08), sideAt(cx - 0.08, cz0) + 0.035, cz0], [s * (cx - 0.08), sideAt(cx - 0.08, cz1) + 0.035, cz1], 0.022);
     }
     P.addEquipment('hullDark', cylZ(0.07, 0.62, 12), -1.35, sideAt(1.35, -3.9) + 0.08, -3.9);
+    // the right side's stowage bins along the slope beside the commander (the print's raised run, z -2.7 to -1.2)
+    for (const [z0, z1] of [[-2.70, -1.98], [-1.94, -1.20]] as const) {
+      const ax = 1.78, slope = Math.atan2(sideAt(ax + 0.2, z0) - sideAt(ax - 0.2, z0), 0.4);
+      P.addEquipment('hullDetail', xform(box(0.42, 0.18, z1 - z0), 0, 0, 0, 0, 0, -slope), -ax, sideAt(ax, (z0 + z1) / 2) + 0.10, (z0 + z1) / 2);
+    }
+    // and the left side's bins forward, beside the driver (the print's run, z -1.4 to -0.5)
+    {
+      const ax = 1.80, z0 = -1.30, z1 = -0.62, slope = Math.atan2(sideAt(ax + 0.2, z0) - sideAt(ax - 0.2, z0), 0.4);
+      P.addEquipment('hullDetail', xform(box(0.40, 0.16, z1 - z0), 0, 0, 0, 0, 0, slope), ax, sideAt(ax, (z0 + z1) / 2) + 0.09, (z0 + z1) / 2);
+    }
   };
   buildT95Fittings();
   yield 'buildT95Fittings';
@@ -249,10 +271,15 @@ function* buildT95Steps(P: TankBuilderPort): TankProfileBuild {
       P.add('hullGlass', xform(box(0.09, 0.05, 0.01), 0, 0, 0, 0, -a, 0), cx + Math.sin(a) * 0.405, cy + 0.12, cz + Math.cos(a) * 0.405);
     }
     const mg = FITTINGS.americanM2({
-      mats: P.mats, tone: 'dark', ammoSide: 1, barrelLength: 0.65, elev: 0.05, ring: { r: 0.56, stubs: 4 }, shield: false,
+      mats: P.mats, tone: 'dark', ammoSide: 1, barrelLength: 0.65, elev: 0.55, ring: { r: 0.56, stubs: 4 }, shield: false,
       seed: 27095, working: true,
     });
-    mg.position.set(cx, cy + 0.36, cz);
+    mg.position.set(cx, cy + 0.40, cz);
+    // the ring's four posts from the cupola's base ring
+    for (let k = 0; k < 4; k++) {
+      const a = (k + 0.5) * Math.PI / 2;
+      bar('hullDark', [cx + Math.sin(a) * 0.43, cy + 0.12, cz + Math.cos(a) * 0.43], [cx + Math.sin(a) * 0.54, cy + 0.38, cz + Math.cos(a) * 0.54], 0.022);
+    }
     P.hullG.add(mg);
     // the driver's cupola front left, its periscopes, and the gunner's sight hood front right
     const dx = 0.60, dz = -0.70, dy = roofAt(dz);
@@ -262,7 +289,7 @@ function* buildT95Steps(P: TankBuilderPort): TankProfileBuild {
     P.add('hullDetail', box(0.22, 0.12, 0.26), -0.55, roofAt(-0.35) + 0.06, -0.35);
     P.add('hullGlass', box(0.16, 0.05, 0.01), -0.55, roofAt(-0.35) + 0.08, -0.215);
     // three whips: two on the casemate's rear roof, one forward of the commander
-    for (const [x, z, h] of [[0.20, -2.40, 1.05], [0.60, -2.00, 1.05], [0.0, -1.20, 1.05]] as const) {
+    for (const [x, z, h] of [[0.08, -2.40, 1.05], [0.68, -2.00, 1.05], [-0.12, -1.20, 1.05]] as const) {
       const y = roofAt(z);
       P.add('hullDark', cylY(0.04, 0.05, 0.08, 10), x, y + 0.03, z);
       const whip = FITTINGS.antennaWhip({ mats: P.mats, h, r: 0.009, rake: 0.04, seed: 27100 + Math.round(z * 10) });

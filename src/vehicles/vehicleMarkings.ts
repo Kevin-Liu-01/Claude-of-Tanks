@@ -131,6 +131,7 @@ export const VEHICLE_MARKING_ANCHORS: Readonly<Record<string, VehicleMarkingAnch
   chieftain_mk10: anchor('turret', 'right', .40, .40, .24, 1),
   t72b3: anchor('turret', 'left', .31, .33, .24, -1),
   jpz_e100: anchor('hull', 'right', .38, .69, .28, 1),
+  t95: anchor('hull', 'right', 0.62, 0.42, 0.26, 1),
   type10: anchor('turret', 'right', .30, .44, .24, 1),
   type90: anchor('hull', 'left', .24, .82, .24, 1),
   type90b: anchor('hull', 'left', .24, .82, .24, 1), // the Type 90's hull seat (type90)

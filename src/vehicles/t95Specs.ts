@@ -30,7 +30,7 @@ Object.assign(t95, {
 });
 t95.gun = {
   ...t95.gun,
-  caliberMm: 152, reloadS: 24, baseAccuracy: 0.38, aimTimeS: 3.0,
+  caliberMm: 152, reloadS: 24, baseAccuracy: 0.38, aimTimeS: 3.0, soundProfile: 't95-152',
   shells: [
     shell('AP Mk 35 (6"/47)', 'AP', 152, 310, 290, 1100, 762),
     shell('Common Mk 27 (6"/47)', 'APHE', 152, 165, 150, 1250, 853),
