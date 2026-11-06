@@ -1630,7 +1630,7 @@ const garage: MainGarageRuntime = await bootStage('ui', () => createGarage({
   // (round 3 B2, review r1) the press asks the entry before it announces: a refused one shows the way out, never a
   // battle start that does not follow (the pointer lock grabbed over a failed return's notice)
   refusesBattle: () => soloBattleEntry.refuses(),
-  onPlayRequest:(request) => playSurface.open(request).catch((error) => {
+  onPlayRequest: (request) => playSurface.open(request).catch((error) => {
     console.error('[play-menu] failed to open', error);
   }),
   onPlayModeIntent: playSurface.preload,
