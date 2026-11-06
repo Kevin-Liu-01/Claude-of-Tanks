@@ -8,15 +8,3 @@
 export function botDriven(entity: { readonly bot?: boolean; readonly isPlayer?: boolean }): boolean {
   return !!entity.bot && !entity.isPlayer;
 }
-
-/**
- * Whether the rollover lifecycle rights this hull by itself after ROLLOVER_AUTO_RIGHT_S (sim/rollover.ts): every live hull
- * no player is at the keys of — a bot's seat, and the human seat while Watch has its brain drive it; a player keeps the
- * self-right key, a watcher's taken seat too. Both drivers gate their rollover step on this (2026-11-02 audit M6: the
- * authority read `!bot`, the solo step `isPlayer` — the same outside Watch, and only `isPlayer` follows a taken seat).
- */
-export function autoRightsItself(entity: {
-  readonly isPlayer?: boolean; readonly modeActive?: boolean; readonly combat?: { readonly destroyed?: boolean } | null;
-}): boolean {
-  return entity.modeActive !== false && !!entity.combat && !entity.combat.destroyed && !entity.isPlayer;
-}
