@@ -821,10 +821,11 @@ void main() {
 					// clouds-269 (Main, 2026-11-05; Whiteout's "long straight streaks fanning from one point", the owner: "yeah the
 					// straight line in whiteout"): under a closing deck the map's depth along a low sun held one value down
 					// kilometre strips toward it, so the overcast's thin places lit as straight rays; a closing deck takes its light
-					// diffuse, the map fading in over a higher sun (to 0.75 against the open sky's 0.3)
-					float deckSun = smoothstep( 0.6, 1.0, dot( wgt, uLayerFlat ) );
-					od += cl2BsmDepth( p, run, column )
-						* mix( uBsmLowSun.x, 1.0, smoothstep( 0.0, max( mix( uBsmLowSun.y, 0.75, deckSun ), 1e-3 ), sunUp ) );
+					// diffuse, the column's own estimate standing in for the map under a low sun and the map returning by 0.75
+					// (scaling the map's depth kept its strips: only the map's absence, CLOUD_BSM_OFF, cleared them)
+					float deckSun = smoothstep( 0.6, 1.0, dot( wgt, uLayerFlat ) ) * ( 1.0 - smoothstep( 0.3, 0.75, sunUp ) );
+					od += mix( cl2BsmDepth( p, run, column ), column, deckSun )
+						* mix( uBsmLowSun.x, 1.0, smoothstep( 0.0, max( uBsmLowSun.y, 1e-3 ), sunUp ) );
 				}
 				lit++;
 				// [ported] the multiple-scattering octaves (a = b = c = 1/2 per octave)
