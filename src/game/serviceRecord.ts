@@ -574,12 +574,16 @@ export function installServiceRecord(bus: ServiceEventBus | null | undefined, ct
     const next = text(recordOf(payload)?.phase);
     // Leaving a battle without its result (a quit) drops what it tracked; debug and API entry can skip the garage's
     // battle start, so arriving in one starts tracking if nothing is.
-    // (round 4 F1, review r1) Every leaving drops it, as profile.ts drops its tally at every 'garage': every announcer
-    // waits for a Garage return in flight, so the battle before hands its screen over before the next start begins
-    // tracking. Round 2 U19 kept a tracker that had not reached its battle through that hand-over, for the Garage press
-    // announced under a return's veil; with the press waiting, only an entry that never reached its battle met it (a kept
-    // room's rematch that failed over the report), whose tracker then took the next battle no entry announced.
-    if (phase === 'battle' && next !== 'battle') battle = null;
+    // (round 4 F1, review r1) Every leaving drops it: every announcer waits for a Garage return in flight, so the battle
+    // before hands its screen over before the next start begins tracking. Round 2 U19 kept a tracker that had not
+    // reached its battle through that hand-over, for the Garage press announced under a return's veil; with the press
+    // waiting, only an entry that never reached its battle met it (a kept room's rematch that failed over the report),
+    // whose tracker then took the next battle no entry announced.
+    // (review r2) And every 'garage' drops it, as profile.ts drops its tally: an entry that failed before its battle kept
+    // its tracker through its recovery return (the Garage announced from the Garage), and the next battle no entry
+    // announced (the debug hook) was recorded under the failed entry's vehicle (garageReturnState). Only a Garage return
+    // announces 'garage', and every announcer runs after it (the same producer audit).
+    if (next === 'garage' || (phase === 'battle' && next !== 'battle')) battle = null;
     if (next === 'battle' && !battle) start({});
     phase = next;
   });
