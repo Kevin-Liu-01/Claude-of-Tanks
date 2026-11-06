@@ -1057,16 +1057,16 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 27068,
-      "sha256": "c39a59d8791586e9574530864d3bb6228ab1f57fdeae41b198f4e3d91107b196"
+      "bytes": 27284,
+      "sha256": "8230e83306ce7d14051a1df75348bf63809983207eda991337f4059b30bcfd7f"
     },
     "modulesSide": {
       "file": "k30_biho_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 28676,
-      "sha256": "d737cecb69256c0d29f9288142d181e386f9f22fd6412b95d4c3ed92930c5185"
+      "bytes": 28916,
+      "sha256": "33fbf3ffe3f584c75ef05c5ac02f453b2d5127ffcbd27149c820babf4bec570d"
     },
     "crewSide": {
       "file": "k30_biho_crew_side.webp",
@@ -1087,8 +1087,8 @@
     "technicalLabels": {
       "file": "k30_biho_technical.json",
       "mime": "application/json",
-      "bytes": 5607,
-      "sha256": "723e6a21d409d3279f85eccd60398e28a57d32765d7dac1eb3fd255028cb4161"
+      "bytes": 4495,
+      "sha256": "b88b3dcf4bec3bcb702cd0db7bae78bcf521eb3699b874d8f0b98b79ca4482d0"
     }
   }
 }

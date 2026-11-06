@@ -825,8 +825,8 @@
       {
         "volumeId": "M07",
         "name": "ammoRack",
-        "min": [-0.2537,0.5243,-0.7662],
-        "max": [-0.0563,1.2857,-0.1776],
+        "min": [-0.32,0.5,-0.785],
+        "max": [0.28,1.55,-0.1588],
         "turretLocal": false
       },
       {
@@ -875,8 +875,8 @@
       {
         "volumeId": "C02",
         "name": "gunner",
-        "min": [-0.3329,-1.22,-0.5474],
-        "max": [0.0768,-0.02,0.274],
+        "min": [-0.3729,-0.044,-0.7974],
+        "max": [0.0571,1.3081,-0.0887],
         "turretLocal": true
       },
       {
@@ -896,7 +896,7 @@
     ]
   },
   "geometryHash": "4a63ad19",
-  "metadataHash": "1d2a7aab",
+  "metadataHash": "69d53126",
   "presentationAnchor": {
     "xM": -0.0002,
     "zM": -0.0794
@@ -1008,16 +1008,16 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 28678,
-      "sha256": "4cda116f86f996de352e23ff6885d8cbaa9cfd69ab8b19fef50c94248eb56df8"
+      "bytes": 28796,
+      "sha256": "3c01e0f57e4f0c1210a4bab4d07849d0491e199be111c34b4d6f4188dee784aa"
     },
     "crewSide": {
       "file": "m163_vads_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 28332,
-      "sha256": "ac355a054815da62a11d2b7e87da207c52a2aa059026f0b1c66c48e7679bdcec"
+      "bytes": 28318,
+      "sha256": "a47d716f24caec61daf84ac4afbdbb6b7f854fdd0bfe69c49a58d877b34c9a0d"
     },
     "markings": {
       "file": "m163_vads_markings.png",
@@ -1030,8 +1030,8 @@
     "technicalLabels": {
       "file": "m163_vads_technical.json",
       "mime": "application/json",
-      "bytes": 4320,
-      "sha256": "7d4588ff7efc9ea5010e6e5477da2762bd3a146478c6fa7f8c3d0956b47e8402"
+      "bytes": 4317,
+      "sha256": "677c7745c50b5a154c5f137be526aefbdfea4d27df423272af4784e669501e0a"
     }
   }
 }

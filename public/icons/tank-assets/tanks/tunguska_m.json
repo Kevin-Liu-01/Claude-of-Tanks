@@ -2338,15 +2338,15 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 25474,
-      "sha256": "9bcfe170d25c13704a9eb50780c54b39573d97bdb76c0fa8a1b06c7eef121f81",
+      "bytes": 32410,
+      "sha256": "3659506a4dd04a11f58e0be3bbe3a2686adbc5dd29d7ac06ee93e7fb6b25bd29",
       "thumbnail": {
         "file": "thumbs/tunguska_m_angle.webp",
         "width": 256,
         "height": 256,
         "mime": "image/webp",
-        "bytes": 10990,
-        "sha256": "7df2f354118e7db0b6305cf7eadebc779152f055230e5432214937a6c76d4f51"
+        "bytes": 13354,
+        "sha256": "f6bbfc2cd30ca32ba147b2e73218a1110d579b7e3988c6c9f9c7c82e88af2f4e"
       }
     },
     "top": {
@@ -2354,16 +2354,16 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 10200,
-      "sha256": "87303e7e91f1917473eddc091f2909c1e4cd7a697d4895b67fdf1f2b0d5c8117"
+      "bytes": 18024,
+      "sha256": "4b3010d8990125a7f5e1dfef2e63feef963701740a90ae20a8fd85acc9bd4eb1"
     },
     "side": {
       "file": "tunguska_m_side.webp",
       "width": 512,
       "height": 256,
       "mime": "image/webp",
-      "bytes": 14054,
-      "sha256": "14a54bacf1889e21ff7710164d2f5ec1b504db34beef726ead26517d859cd7db"
+      "bytes": 20414,
+      "sha256": "2662933fd3b1a981addd09abb16f505c8e36abdf7184b161e5df5ddfe59f653b"
     },
     "topSilhouette": {
       "file": "tunguska_m_top_silhouette.png",
@@ -2386,24 +2386,24 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 34662,
-      "sha256": "4b3bf967e98101e804af4672f833d8e3a09344428bca57322d648e881f233e60"
+      "bytes": 42204,
+      "sha256": "fa3c045d3c4fc45d5fae614f0a7508fbee335375a8411129a2accb822abe3451"
     },
     "modulesSide": {
       "file": "tunguska_m_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 35012,
-      "sha256": "8e481e05fc34899ad984ac4197ca04348fd0b5fa67644f0805fad277fbda875e"
+      "bytes": 44936,
+      "sha256": "462ef1323632e1dbb004b91515f2ed716e7aeb305fe8534d3dd1fb71ad216b2f"
     },
     "crewSide": {
       "file": "tunguska_m_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 29924,
-      "sha256": "d2c798f58ec0ff5623b68873beffb740ab337f885cf3bb08ea2b8ce92ecf8ddf"
+      "bytes": 42426,
+      "sha256": "9b9498c36ffab563a832634dfa3d223381377768d878a8249ebcc9461054c12c"
     },
     "markings": {
       "file": "tunguska_m_markings.png",
