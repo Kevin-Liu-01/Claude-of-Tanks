@@ -42,17 +42,19 @@ const kernelMode = typeof location === 'object' ? new URLSearchParams(location.s
  * wait on it, and with them the access's preload, so each solo entry for the document's life (import() hands every re-ask
  * the cached module, and its one load).
  */
-let kernelsLoad: Promise<void> = Promise.resolve();
-if (kernelMode === 'ts') {
-  reportSimKernels('solo', { mode: 'ts', reason: 'off' });
-} else {
-  kernelsLoad = import('../world/soloWorldKernels.ts')
+function loadKernels(): Promise<void> {
+  if (kernelMode === 'ts') {
+    reportSimKernels('solo', { mode: 'ts', reason: 'off' });
+    return Promise.resolve();
+  }
+  return import('../world/soloWorldKernels.ts')
     .then((kernels) => kernels.loadSoloWorldKernels(kernelMode === 'wasm-check'))
     .then(setSoloWorldKernels)
     .then(undefined, (error: unknown) => { reportSimKernels('solo', { mode: 'ts', reason: simKernelsFailureReason(error) }, error); })
     .then(undefined, () => { /* the report itself threw: the TypeScript stands, unreported */ });
-  // (no top-level await: the kernels' chunk may import modules the bundler placed in this one, and would wait on it)
 }
+// (no top-level await: the kernels' chunk may import modules the bundler placed in this one, and would wait on it)
+const kernelsLoad = loadKernels();
 
 /**
  * One battle entry's wait for the kernels (round 3 X10, round 4 F3): the load installed or failed, or
