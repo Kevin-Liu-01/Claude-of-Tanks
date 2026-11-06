@@ -1873,6 +1873,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/game/ai.allyYield.selftest.mjs',
     // 268 (Main item 10 (A)): a hull pressed into a static solid with no way releases at once (Desert seed 12's boulder gap).
     'src/game/ai.rockWedge.selftest.mjs',
+    // 269 (Main item 11): a bot with a shot open turns its hull within its share of the turret's traverse and lays its gun.
+    'src/game/ai.layGunFirst.selftest.mjs',
     // 2026-10-03 (bots lane): an engaged casemate keeps its bow on its target (scoots, jinks, cover).
     'src/game/ai.casemateLay.selftest.mjs',
     // 2026-10-03 (bots lane): a patrol leg the grid cannot route still drives (the bridge gate's no-route hold).
