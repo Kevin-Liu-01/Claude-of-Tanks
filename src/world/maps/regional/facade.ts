@@ -48,6 +48,11 @@ export function facadeGrime(): number {
   return facadeContext?.grime ?? 1;
 }
 
+/** The place sets its walls' surface (its row's surface; a map reverted to its base look, or a build outside a kit, does not). */
+export function facadeSurfaced(): boolean {
+  return facadeContext?.grime !== undefined;
+}
+
 /** The craft's switch: on in the game; the receipts turn it off to hold a desktop build to the kits' own (facade.selftest). */
 let craftEnabled = true;
 export function setFacadeCraft(on: boolean): void {
@@ -398,10 +403,11 @@ export function sillStreaks(sink: PartSink, bucket: RegionalBucket, face: Face, 
     // (wave 116: readable at 30 m — a hand wide under the sill's end, a third darker, washing out down the wall)
     const half = 0.06 + k * 0.04, top = y - 0.1, bottom = top - len;
     // (buildings-270) as dark as the place's walls weather (its row's grime; 1: a third darker under the sill)
-    const dark = Math.min(0.6, 0.36 * facadeGrime());
+    const dark = Math.min(0.6, 0.36 * facadeGrime()), surfaced = facadeSurfaced();
     const at = (p: Vec3) => {
       const t = Math.min(1, Math.max(0, (top - p[1]) / len));
-      return 1 - dark + dark * t;
+      // (a place without its own surface keeps the craft's own shade, bit for bit)
+      return surfaced ? 1 - dark + dark * t : 0.64 + 0.36 * t;
     };
     sink.polygon(bucket, [facePoint(face, cu - half, bottom, 0.012), facePoint(face, cu + half, bottom, 0.012),
       facePoint(face, cu + half * 0.6, top, 0.012), facePoint(face, cu - half * 0.6, top, 0.012)], { ...DECOR, fine: 'near', shadeAt: at });

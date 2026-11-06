@@ -8,7 +8,7 @@ import {
   type Face, type RegionalBucket, type Rgb, type Vec3, type EmitOptions,
 } from './geometry.ts';
 import {
-  carvedVerge, eaveStreaks, facadeGrime, facadeGround, facadeGroundCraft, facadeLegacy, facadeOn, sillStreaks, styleGroundCraft, thatchCourses, withFacade,
+  carvedVerge, eaveStreaks, facadeGrime, facadeGround, facadeGroundCraft, facadeLegacy, facadeOn, facadeSurfaced, sillStreaks, styleGroundCraft, thatchCourses, withFacade,
   type FacadeContext,
 } from './facade.ts';
 import { withSillShadow } from './openings.ts';
@@ -1135,14 +1135,14 @@ export function buildHouse(sink: PartSink, spec: HouseSpec, dialect: HouseDialec
   if (facadeOn() && spec.roof.eave >= 0.15 && rg.kind !== 'flat') {
     // (wave 116: "almost nothing shows weathering": deep enough to read at 30 m)
     // (buildings-270) as deep as the place's walls weather (its row's grime)
-    const k = 1 - Math.min(0.5, (0.14 + 0.3 * spec.roof.eave) * facadeGrime());
+    const k = facadeSurfaced() ? 1 - Math.min(0.5, (0.14 + 0.3 * spec.roof.eave) * facadeGrime()) : 1 - Math.min(0.34, 0.14 + 0.3 * spec.roof.eave);
     if (rg.kind === 'shed') rainShadow.right = k;
     else { rainShadow.left = k; rainShadow.right = k; }
     if (rg.kind === 'hip') { rainShadow.front = k; rainShadow.back = k; }
   }
   // the grime where the ground storey meets the ground (facade craft, desktop; wave 116: "almost nothing shows weathering
   // or grime where walls meet the ground"): its bottom row of corners darker, fading up to the next row it has
-  const footGrime = facadeOn() ? 1 - Math.min(0.5, 0.3 * facadeGrime()) : 1;
+  const footGrime = !facadeOn() ? 1 : facadeSurfaced() ? 1 - Math.min(0.5, 0.3 * facadeGrime()) : 0.7;
   // the storey bodies: four faces cut by their openings (with reveals), the top, and a jetty's underside
   bodies.forEach((b, i) => {
     const wall = spec.storeys[i].wall;
@@ -1272,7 +1272,7 @@ export function buildHouse(sink: PartSink, spec: HouseSpec, dialect: HouseDialec
       }
       // (buildings-270; Main: "streaks under sills and eaves") the rain's runs down a rendered top storey from under its eave,
       // between the openings, as many as the place's walls weather (its row's grime)
-      if (facadeOn() && !storey.framed && RENDERS.has(storey.wall) && i === bodies.length - 1 && rainShadow[name] < 1) {
+      if (facadeOn() && facadeSurfaced() && !storey.framed && RENDERS.has(storey.wall) && i === bodies.length - 1 && rainShadow[name] < 1) {
         eaveStreaks(sink, storey.wall, face, bodies[i].y1, bodies[i].y0, own.map((o) => [o.u - o.w / 2, o.u + o.w / 2] as const));
       }
     }
