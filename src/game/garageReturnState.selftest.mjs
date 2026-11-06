@@ -605,11 +605,11 @@ function mainLeave(runtime) {
 // room launch a silent no-op, after the press had announced its battle (ui:battleStart: the pointer lock grabbed, the play
 // surface hidden, the loading hold set); on 92f415e879 the press loaded a battle under the frozen return instead. A press
 // now asks before it announces (garage.ts launchBattle's refusesBattle, bound by main), and every refusal brings back the
-// way out: the failed return's notice with its Retry, or, for a return a context change cut short over the Garage with the
-// graphics live again, the return itself. main's own exits, Leave, solo entry, hand-over rule and room launch, and
+// way out: the failed return's notice with its Retry (a return a context change cut short over the Garage is the
+// context recovery's: round 4 E13). main's own exits, Leave, solo entry, hand-over rule and room launch, and
 // garage.ts's own press, over the real return, the real entry latch and the real solo entry.
 const garageSource = readFileSync(new URL('../ui/garage.ts', import.meta.url), 'utf8');
-function owedGarageMain(runtime, game, { contextLost = () => false } = {}) {
+function owedGarageMain(runtime, game, { contextRecovery = false } = {}) {
   const events = [];
   const notices = [];
   const slice = (source, head, close) => {
@@ -635,7 +635,9 @@ function owedGarageMain(runtime, game, { contextLost = () => false } = {}) {
     battleEntryIntent: { begin() {} }, terrainVariantFor: () => null,
     VISIBLE_TANK_IDS: ['m1a1_abrams_hc'], garage: { getSelected: () => 'm1a1_abrams_hc', getSelectedMap: () => 'verdant' },
     loadFailure: async () => ({ showSoloEntryFailure() {}, showGarageReturnFailure: (error, retry) => notices.push({ error, retry }) }),
-    get graphicsContextLost() { return contextLost(); },
+    // main's `let`, written by its own context recovery (onLost, onRestored) when the case runs it
+    graphicsContextLost: false,
+    renderer: { info: {}, getContext: () => ({ isContextLost: () => false }), userData: {} },
     // garage.ts launchBattle's own names: its failed-load gate, its emit (the bus), the selected mode
     pressFailed: () => false, battleBtn: {}, emit: (type) => events.push(`emit:${type}`), battleGameMode: 'standard',
     console: { error() {}, warn() {}, info() {} },
@@ -647,8 +649,11 @@ function owedGarageMain(runtime, game, { contextLost = () => false } = {}) {
     mainFn('function takeSceneForRound('), mainFn('function beginMultiplayerV2Battle('), mainFn('function beginLocalBattleEntry('),
     `const onBattle = ${onBattle};`, `const opts = { refusesBattle: ${refusesBattle} };`,
     slice(garageSource, '  function launchBattle(', '\n  }\n'),
+    // (round 4 E13) main's own context recovery: onLost, and onRestored, which retries the return before it clears
+    // graphicsContextLost
+    ...(contextRecovery ? [slice(mainSource, 'renderer.userData.contextRecovery = {', '\n};\n')] : []),
   ], scope, '{ leave: leaveBattleToGarage, launchBattle, beginMultiplayerV2Battle, retryGarageReturn }');
-  return { ...main, events, notices };
+  return { ...main, events, notices, scope, contextRecovery: scope.renderer.userData.contextRecovery ?? null };
 }
 const press = (main) => main.launchBattle('m1a1_abrams_hc', 'verdant'); // the Garage BATTLE button
 const started = ['emit:ui:click', 'emit:ui:battleStart', 'cover@garage', 'load@garage'];
@@ -682,37 +687,48 @@ const started = ['emit:ui:click', 'emit:ui:battleStart', 'cover@garage', 'load@g
   await flush();
   assert.deepEqual(main.events, started, 'and the next press starts its battle');
 }
-// a return a context change cut short over the Garage: the recovery's while the graphics are lost; with them live again
-// and no recovery coming, a press runs the return again
+// a return a context change cut short over the Garage: the context recovery's. While the graphics are lost a press is
+// refused with no return notice (the context recovery's notice is the screen). (round 4 E13) Then main's own
+// onRestored: it retries the return (garageReturn.recoverAfterContextRestore) before it clears graphicsContextLost, and
+// only a return writes the 'garage' phase, so the graphics are never live over a return the recovery still owes; the
+// press after it starts its battle. (Round three drove a state the product does not reach: the graphics live again with
+// nothing retried.)
 {
   let contextCurrent = true;
   let losses = 1;
-  let lost = false;
+  let main = null;
+  const lostDuringRetry = [];
   const f = createFixture({
     entryScheduler: { isCurrent: () => contextCurrent, yieldControl: async () => {} },
-    placement: () => { if (losses-- > 0) { contextCurrent = false; lost = true; } },
+    placement: () => {
+      // lost while the Garage placement builds: main's onLost
+      if (losses-- > 0) { contextCurrent = false; main.contextRecovery.onLost(); }
+      else lostDuringRetry.push(main.scope.graphicsContextLost);
+    },
   });
-  const main = owedGarageMain(f.runtime, f.game, { contextLost: () => lost });
+  main = owedGarageMain(f.runtime, f.game, { contextRecovery: true });
+  assert.equal(typeof main.contextRecovery?.onRestored, 'function', "main's context recovery");
   await main.leave();
   await flush();
   assert.equal(f.runtime.state, 'superseded');
   assert.equal(f.game.phase, 'garage');
+  assert.equal(main.scope.graphicsContextLost, true, "(main's onLost)");
   main.events.length = 0;
   press(main);
   await flush();
   assert.deepEqual(main.events, [], 'with the graphics lost the press is refused (92f415e879: cover and load in the Garage)');
   assert.equal(f.runtime.state, 'superseded', 'and the context recovery keeps the return: no second return beside it');
   assert.equal(main.notices.length, 0);
-  contextCurrent = true;
-  lost = false; // the device is back, and nothing retried the return
-  press(main);
-  for (let index = 0; index < 8 && f.runtime.state !== 'idle'; index += 1) await flush();
-  assert.equal(f.runtime.state, 'idle', 'the press runs the return again (6ab835cbb4: nothing happened)');
-  assert.deepEqual(main.events, [], 'and announces no battle');
+  contextCurrent = true; // the device is back
+  assert.equal(await main.contextRecovery.onRestored(new AbortController().signal), true,
+    "main's onRestored completes");
+  assert.equal(f.runtime.state, 'idle', 'its recovery retried the interrupted return');
+  assert.deepEqual(lostDuringRetry, [true], 'while graphicsContextLost still held: the graphics were not live over it');
+  assert.equal(main.scope.graphicsContextLost, false, 'then the graphics are live, over the restored Garage');
   assert.equal(main.notices.length, 0);
   press(main);
   await flush();
-  assert.deepEqual(main.events, started);
+  assert.deepEqual(main.events, started, 'and the press starts its battle');
 }
 // a press during the Retry's return waits for it: owesGarage is false while a return is in flight (that return decides),
 // the window a Leave's veil fades in over the failed return included, where the state is still 'failed'

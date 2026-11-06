@@ -3604,16 +3604,18 @@ const retryGarageReturn = (): void => { void enterGarageWithExit().catch(() => {
  * silent no-op: the refusal brings back the return's way out. A failed return's notice closes by its X, Escape or a press
  * beside it, which runs nothing, and the return stays 'failed' until a return lands, so every refused start reopens the
  * notice with its Retry (the return again). A return a context change cut short over the Garage's scene is the context
- * recovery's while the graphics are lost (its own notice is the screen); with them live no recovery is coming, so the
- * start runs the return again, whose exit opens the notice if it fails too. The Garage press asks before it announces
- * (garage.ts refusesBattle), so a press refused there fires no `ui:battleStart` (its pointer lock, play-surface hide, hero
- * skin park and loading governor hold); a start refused only after a return wait was announced by its press under the
- * veil (round 2 U19), and the return that lands releases that hold (garageReturnRuntime: setAdaptiveSuspended(false)).
+ * recovery's: only a return writes the 'garage' phase, and onRestored above retries it before it clears
+ * graphicsContextLost, so while it owes the Garage the graphics are lost and the recovery's notice is the screen
+ * (round 4 E13: the start no longer runs the return beside it for graphics live over such a return, a state the
+ * product never holds). The Garage press asks before it announces (garage.ts refusesBattle), so a press refused there
+ * fires no `ui:battleStart` (its pointer lock, play-surface hide, hero skin park and loading governor hold); a start
+ * refused only after a return wait was announced by its press under the veil (round 2 U19), and the return that lands
+ * releases that hold (garageReturnRuntime: setAdaptiveSuspended(false)).
  */
 const offerOwedGarageReturn = (): void => {
-  if (!garageReturn.owesGarage) return;
-  if (garageReturn.state === 'failed') void presentGarageReturnFailure(garageReturn.failure, retryGarageReturn);
-  else if (!graphicsContextLost) retryGarageReturn();
+  if (garageReturn.owesGarage && garageReturn.state === 'failed') {
+    void presentGarageReturnFailure(garageReturn.failure, retryGarageReturn);
+  }
 };
 /**
  * (round 2 U20) The room's own returns (its room closed or left, or the seat dropped, during a revealed battle): the
