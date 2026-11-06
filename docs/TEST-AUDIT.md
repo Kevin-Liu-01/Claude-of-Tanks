@@ -15,15 +15,15 @@ Run times: `tools/selftest-durations.json`, else this machine's latest observati
 
 | Decision | Receipts | CPU-min |
 |---|---:|---:|
-| KEEP | 1710 | 166.8 |
+| KEEP | 1712 | 166.8 |
 | MERGE | 0 | 0.0 |
 | MANUAL | 655 | 1157.1 |
 | RETIRE | 2 | 0.7 |
 
 | Suite run | Receipts | CPU-min | Simulated wall (min) |
 |---|---:|---:|---:|
-| Before: every receipt (npm test without the tiers) | 2366 | 1324.2 | 233.5 |
-| After: the default tier | 1710 | 166.8 | 37.3 |
+| Before: every receipt (npm test without the tiers) | 2368 | 1324.2 | 233.5 |
+| After: the default tier | 1712 | 166.8 | 37.3 |
 
 Default tier: 12.6 % of the whole registry's CPU; 18.2 % of the 916 CPU-min the snapshot gave for the 1,863 receipts it timed. Its wall: 0.2 min exclusive receipts, 18.5 min pool, 18.6 min browser receipts.
 
@@ -802,7 +802,7 @@ None. Folding receipts saves only process starts (about a second each) and would
 | `tools/media-r5/fleet-coverage.selftest.mjs` | n/a | MANUAL (media) | media: the media lane's fleet backlog, n/a s: 267: the fleet's media backlog (every vehicle leads a take, the survey bars): the manual media suite | test:heavy -- media; test:recommend flags it when its inputs change |
 | `tools/mp-rooms-entry.browser.selftest.mjs` | n/a | MANUAL (ui) | ui: heavy interface paint and layout sweeps, n/a s: 268 (the 267 production smoke): the multiplayer end-to-end opens the rooms panel the way the Garage's layout o | test:heavy -- ui; test:recommend flags it when its inputs change |
 
-## KEEP (1710)
+## KEEP (1712)
 
 | Receipt | Run (s) | Decision | Reason | Coverage now |
 |---|---:|---|---|---|
@@ -2337,14 +2337,16 @@ None. Folding receipts saves only process starts (about a second each) and would
 | `src/audio/audioLatches.selftest.mjs` | n/a | KEEP | audio contract, n/a s: 2026-11-02 audit F11: delayed captions on the audio clock and per battle, the gunship start-up disarmed | default tier (npm test, the release gate; lane mode by its closure) |
 | `src/audio/battleMode.selftest.mjs` | n/a | KEEP | audio contract, n/a s: 2026-11-02 audit F11: the engine's battle mode is one state with one transition function (next round, duplicat | default tier (npm test, the release gate; lane mode by its closure) |
 | `src/audio/crewRadioInterrupt.selftest.mjs` | n/a | KEEP | audio contract, n/a s: 2026-11-02 audit F11: an interrupted transmission takes its scheduled release click, crackle and static swell | default tier (npm test, the release gate; lane mode by its closure) |
+| `src/audio/lazyAudioMixerChunk.selftest.mjs` | n/a | KEEP | audio contract, n/a s: 2026-11-02 audit X8 (round 3): the audio mixer's chunk is asked again under the lazy-chunk policy, never per p | default tier (npm test, the release gate; lane mode by its closure) |
 | `src/audio/sfxSmokeDeaths.selftest.mjs` | n/a | KEEP | audio contract, n/a s: 2026-11-02 audit Q16 (round 2): sfx-smoke's synthetic deaths, read from the tool, revive first and are heard o | default tier (npm test, the release gate; lane mode by its closure) |
 | `src/audio/wantedLoops.selftest.mjs` | n/a | KEEP | audio contract, n/a s: 2026-11-02 audit F11: wanted loops (loader, fire alarm, cook-off, heartbeat) start once decoded, never after t | default tier (npm test, the release gate; lane mode by its closure) |
 | `src/engine/adaptiveHolds.selftest.mjs` | n/a | KEEP | renderer contract, n/a s: 2026-11-02 audit R3: the governor's suspension as named holds (a restore mid-load, a film across a load releas | default tier (npm test, the release gate; lane mode by its closure) |
-| `src/engine/battleAtmosphereChunkReask.selftest.mjs` | n/a | KEEP | renderer contract, n/a s: 2026-11-02 audit R6 (round 2 U35): a failed light model or cloudscape chunk is asked again by the next battle | default tier (npm test, the release gate; lane mode by its closure) |
+| `src/engine/battleAtmosphereChunkReask.selftest.mjs` | n/a | KEEP | renderer contract, n/a s: 2026-11-02 audit R6 (round 2 U35): a failed light model or cloudscape chunk is asked again by the next battle; | default tier (npm test, the release gate; lane mode by its closure) |
 | `src/engine/cameraRigOwner.selftest.mjs` | n/a | KEEP | renderer contract, n/a s: 2026-11-02 audit F7: one camera owner; entering one tears the last down | default tier (npm test, the release gate; lane mode by its closure) |
 | `src/engine/capabilityGateRefusal.selftest.mjs` | n/a | KEEP | renderer contract, n/a s: 2026-11-02 audit R3: a worker refusal seen before confirm() is this boot's answer only (no 14-day record) | default tier (npm test, the release gate; lane mode by its closure) |
 | `src/engine/castShadowHolds.selftest.mjs` | n/a | KEEP | renderer contract, n/a s: 2026-11-02 audit R4: named castShadow holds (the covered warm and an articulated batch give back only their ow | default tier (npm test, the release gate; lane mode by its closure) |
 | `src/engine/contextRestoreOwner.selftest.mjs` | n/a | KEEP | renderer contract, n/a s: 2026-11-02 audit R3: one restoration at a time (aborted by a newer loss), the loss counted first, a typed outc | default tier (npm test, the release gate; lane mode by its closure) |
+| `src/engine/earthLandReask.selftest.mjs` | n/a | KEEP | renderer contract, n/a s: 2026-11-02 audit A4 (round 3, U35): the Moon's land mask is asked again under the lazy-chunk policy, never per | default tier (npm test, the release gate; lane mode by its closure) |
 | `src/engine/governorWarmup.selftest.mjs` | n/a | KEEP | renderer contract, n/a s: 2026-11-02 audit R4: the governor's tier-down warmup is each workload's, measured from its reset | default tier (npm test, the release gate; lane mode by its closure) |
 | `src/engine/phaseGpuResidencyRestoreRace.selftest.mjs` | n/a | KEEP | renderer contract, n/a s: 2026-11-02 audit R5: the Garage GPU restore is a state; a suspend or context loss during it is kept, overlappi | default tier (npm test, the release gate; lane mode by its closure) |
 | `src/engine/qualityBroadcast.selftest.mjs` | n/a | KEEP | renderer contract, n/a s: 2026-11-02 audit R3: the preset broadcast's one owner (isolated, never nested) and governor steps under a reco | default tier (npm test, the release gate; lane mode by its closure) |
