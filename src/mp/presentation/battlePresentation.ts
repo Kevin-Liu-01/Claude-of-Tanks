@@ -1098,6 +1098,30 @@ export function createBattlePresentation({
     updateEra(actor, NO_IDS);
   }
 
+  /**
+   * A mode revived this hull (round 4 E6a; sim/matchModes.ts reviveAtSpawn emits `mode_respawn`, which every viewer
+   * receives): a new life where no row carries it. A hull no row reached this frame (out of this seat's view: a live hull
+   * this seat does not spot is not sent) begins it here (beginActorLife), as every hull does at a restart; before, it
+   * stayed the wreck it was until a row reached it (in game.tanks, dead in the roster's side counts and battle:ended's
+   * roster, a prediction collider, with 0 hull points and its broken modules). A row that reached it this frame is the
+   * authority's word for its life and pose and stands: its fresh row is the new life's, and a row the host still holds
+   * from before the revive (server/match/interestTiers.ts needsFreshRow: a row in the view is refreshed on its tier's
+   * cadence, and a wreck is in every view) shows the wreck until the next fresh one, which revives it as any row does;
+   * undone here, the wreck would be laid again by that held row (a flicker). Such a hull cannot leave the view before
+   * its fresh row: an ally is always in it, and an enemy spotted at its spawn stays spotted SPOT_LINGER_S (sim/spotting.ts,
+   * its record retired at its death), past the held window (at most twice a far tier's 3-snapshot cadence). Either way
+   * the modules and the crew, which no row carries for a remote hull, are the new life's. The own hull's viewer row and
+   * state carry all of it every frame.
+   */
+  function reviveAtRespawn(actor: MatchActor): void {
+    if (actor.networkVisible) {
+      mendModulesAndCrew(actor.combat);
+      return;
+    }
+    beginActorLife(actor);
+    publishRoster();
+  }
+
   /** What no row carries for a remote hull: its modules whole and its crew up (a new life's). */
   function mendModulesAndCrew(combat: CombatState): void {
     for (const module of Object.values(combat.modules)) {
@@ -1531,6 +1555,13 @@ export function createBattlePresentation({
         const result = payload.result;
         const verdict = result === 'alpha' ? VERDICT.ALPHA : result === 'bravo' ? VERDICT.BRAVO : result === 'draw' ? VERDICT.DRAW : VERDICT.NONE;
         applyVerdict(verdict, String(payload.reason ?? 'elimination'));
+        return;
+      }
+      case 'mode_respawn': {
+        // the hull's new life first, so the bus's listeners hear a hull that is alive (round 4 E6a)
+        const actor = actors.get(String(payload.id ?? ''));
+        if (actor && actor !== own) reviveAtRespawn(actor);
+        bus.emit('mode:respawn', { type: kind, ...payload });
         return;
       }
       default:
