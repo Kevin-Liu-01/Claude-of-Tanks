@@ -219,6 +219,8 @@ export interface MatchClientStats {
   closeReason: CloseReasonId | null;
   /** Own-row hints sent after a resumed link (P3b: the migration seed for a hull the new host could not see). */
   resumeHintsSent: number;
+  /** HOLD notices taken before a WELCOME (round 3 B1/X6: a host holding this seat's HELLO said how long; receiveHold). */
+  holdNotices: number;
   /** Fresh links asked for before the WELCOME after a "hello timeout" or a "peer offered again" CLOSE (MAX_HELLO_RETRIES). */
   helloRetries: number;
   /** Episodes where this tab's own tasks were starved past TASK_STARVED_MS (the stall clock rested; taskProbe). */
@@ -350,6 +352,7 @@ export class MatchClient {
   private keyframeRequests = 0;
   private inputFramesSent = 0;
   private resumeHintsSent = 0;
+  private holdNotices = 0;
   private timelineRestarts = 0;
   private battleRestarts = 0;
   /** The battle id of the newest WELCOME (WelcomeMessage.battleId; null before the first): the battle this client follows. */
@@ -640,6 +643,7 @@ export class MatchClient {
       outageMs: this.recovery.outageStartedAtMs === null ? 0 : Math.max(0, this.clock() - this.recovery.outageStartedAtMs),
       closeReason: this.closeReason,
       resumeHintsSent: this.resumeHintsSent,
+      holdNotices: this.holdNotices,
       helloRetries: this.helloRetries,
       taskStarvations: this.starvations,
       timelineRestarts: this.timelineRestarts,
@@ -655,7 +659,8 @@ export class MatchClient {
       this.openedAtMs = this.clock();
       // a link to the host the room just elected (the session followed its host_changed: migration.setGeneration): that
       // host's boot and resume hold may keep this seat's HELLO unanswered, so the stall clock allows both (audit M1,
-      // round 2 Q1: the hold alone ran out under a slow boot; recovery.ts MIGRATION_WELCOME_ALLOWANCE_MS)
+      // round 2 Q1: the hold alone ran out under a slow boot; recovery.ts MIGRATION_WELCOME_ALLOWANCE_MS) until the host
+      // says how long it holds it (round 3 B1/X6: receiveHold, which any host that holds a HELLO sends, a kept one too)
       this.holdAllowanceMs = change.resumed && this.migration.hostGeneration > this.welcomedGeneration ? MIGRATION_WELCOME_ALLOWANCE_MS : 0;
       // A resumed link may be a new host (a migration): the own newest authority row from the host we lost is the seed
       // for our hull if the new host could not see it (P3b); the actor bounds it and ignores it on a plain reconnect.
@@ -750,6 +755,7 @@ export class MatchClient {
       case MESSAGE_TYPE.SNAPSHOT: this.receiveSnapshot(message, nowMs); break;
       case MESSAGE_TYPE.EVENT: this.receiveEvents(message); break;
       case MESSAGE_TYPE.PONG: this.receivePong(message, nowMs); break;
+      case MESSAGE_TYPE.HOLD: this.receiveHold(message.holdMs, nowMs); break;
       case MESSAGE_TYPE.ERROR:
         this.serverErrors++;
         this.errors.push(message);
@@ -934,6 +940,21 @@ export class MatchClient {
     this.pingsSent++;
     this.pendingPings.push({ key, sentAtMs: nowMs });
     if (this.pendingPings.length > MAX_PENDING_PINGS) this.pendingPings.shift();
+  }
+
+  /**
+   * The host holds this seat's HELLO for at most `holdMs` more (wire HOLD, round 3 B1/X6: through its boot, or a migrated
+   * host's resume hold, matchHostCore.ts noticeHeld): the stall clock's handshake allowance runs to then, and its stall
+   * counts from there. The host's own word replaces whatever the link opened with: a newly elected host's whole boot and
+   * hold bound (MIGRATION_WELCOME_ALLOWANCE_MS, all a seat could allow before), and a kept host's nothing (matchSession.ts
+   * bootKeptHost holds its seats at the room's same generation, which the opening allowance never read). So a seat waits
+   * through a slow boot or a long hold on any link, and asks for a fresh one once its host overruns what it announced,
+   * not 33 s after the link opened. Capped at that bound; after the WELCOME it means nothing.
+   */
+  private receiveHold(holdMs: number, nowMs: number): void {
+    if (this.welcomeMessage || this.openedAtMs === null) return;
+    this.holdAllowanceMs = Math.max(0, nowMs - this.openedAtMs) + Math.min(Math.max(0, holdMs), MIGRATION_WELCOME_ALLOWANCE_MS);
+    this.holdNotices++;
   }
 
   private receivePong(pong: PongMessage, nowMs: number): void {

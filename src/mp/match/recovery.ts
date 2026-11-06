@@ -26,13 +26,15 @@ export const ELECTED_HOST_BOOT_MS = 30_000;
 
 /**
  * How much longer than its stall clock a seat waits for the WELCOME on a link to a host the room just elected (round 2
- * Q1; RecoveryInput.holdAllowanceMs): the host's whole boot bound and its resume hold. The link opens about the election,
- * before the boot (peers re-offer the moment they hear it), and the host answers no HELLO until its boot is done and
- * its hold is over: no signal reaches the seat in between, so nothing shorter than the host's own bounds is safe. A
- * fixed RESUME_HOLD_MS held only while the boot fit in the stall clock (5 s + 3 s against a 3.4-4.3 s unprepared boot
- * plus up to 3 s of hold): a slower device's boot pushed every held seat into a fresh link during the hold. A host that
- * died meanwhile is the room's to replace (its socket lease, its reports, the boot timeout's decline): the seat follows
- * the next election on a fresh link and clock.
+ * Q1; RecoveryInput.holdAllowanceMs), until that host says how long it holds the seat's HELLO: the host's whole boot bound
+ * and its resume hold. The link opens about the election, before the boot (peers re-offer the moment they hear it), and
+ * the host answers no HELLO until its boot is done and its hold is over. A fixed RESUME_HOLD_MS held only while the boot
+ * fit in the stall clock (5 s + 3 s against a 3.4-4.3 s unprepared boot plus up to 3 s of hold): a slower device's boot
+ * pushed every held seat into a fresh link during the hold. Round 3 (B1/X6): a host that holds a HELLO says so at once
+ * (wire HOLD: matchHostCore.ts noticeHeld, through the boot and again in the hold, with what is left), and the seat's
+ * allowance runs to what it announced (MatchClient receiveHold), on any link (a kept host's, at the same generation, too);
+ * this bound only covers the time before that word, and caps it. A host that died meanwhile is the room's to replace (its
+ * socket lease, its reports, the boot timeout's decline): the seat follows the next election on a fresh link and clock.
  */
 export const MIGRATION_WELCOME_ALLOWANCE_MS = ELECTED_HOST_BOOT_MS + RESUME_HOLD_MS;
 
@@ -56,9 +58,10 @@ export interface RecoveryInput {
   /** Local time the WELCOME was accepted on the current socket (the stall clock starts here before the first snapshot). */
   welcomedAtMs?: number | null;
   /**
-   * How much longer than `stallMs` the current socket may wait for its WELCOME: MIGRATION_WELCOME_ALLOWANCE_MS on a link
-   * to a host the room just elected (its boot and its resume hold may keep this seat's HELLO unanswered that long), 0
-   * otherwise.
+   * How much longer than `stallMs` the current socket may wait for its WELCOME, from its open: what its host announced it
+   * holds the seat's HELLO for (wire HOLD, round 3 B1/X6: the time to the notice plus its holdMs), else
+   * MIGRATION_WELCOME_ALLOWANCE_MS on a link to a host the room just elected (its boot and its resume hold may keep this
+   * seat's HELLO unanswered that long), 0 otherwise.
    */
   holdAllowanceMs?: number;
   /**

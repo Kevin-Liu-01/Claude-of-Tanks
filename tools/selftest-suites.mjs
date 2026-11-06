@@ -1742,6 +1742,7 @@ export const SELFTEST_SUITES = Object.freeze({
     // 2026-10-10 (MP lane): a migrated host holds its world still until the seats that were playing are back
     'src/mp/host/resumeHold.selftest.mjs',
     'src/mp/host/resumeHoldClocks.selftest.mjs', // 2026-11-02 audit M1: a held seat's stall clock allows the resume hold; a seat whose link closed is not counted back
+    'src/mp/host/holdNotice.selftest.mjs', // 2026-11-02 audit round 3 B1/X6: a host that holds a HELLO says how long (HOLD); a kept host's and its own seat wait, a silent host's stalls at its announced end
     // 2026-11-02 audit U1 (round 2; round 3 A3): a client follows a host that restarts the battle (clocks re-anchored, inputs admitted, the abandoned battle's
     // retained state dropped), told by the battle's id at the WELCOME: a plain reconnect's late first snapshot restarts nothing, a restart after its countdown is seen
     'src/mp/match/timelineRestart.selftest.mjs',
