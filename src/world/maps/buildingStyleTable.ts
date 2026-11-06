@@ -63,7 +63,7 @@ export const BUILDING_STYLES = {
     roof: { forms: ['vault', 'flat', 'dome'], pitchDeg: null },
     core: 'adobe', storeys: [1, 4], storeyM: [2, 3.2], bayM: null,
     weathering: { damp: 0.25, moss: 0.05 }, wear: 0.15,
-    variation: { axes: { paint: ['#2e5f9e', '#3a7ab0', '#4e7a5a'] }, roofAge: [0, 1] },
+    variation: { axes: { paint: ['#2e5f9e', '#3a7ab0', '#24508a'] }, roofAge: [0, 1] },
     surface: { grime: 0.6, patches: 0.6, tileRelief: 1, reveal: 0.3, eave: 0 },
   },
   winter: {
@@ -311,7 +311,7 @@ export const BUILDING_STYLES = {
     roof: { forms: ['gable', 'hip'], pitchDeg: [18, 30] },
     core: 'masonry', storeys: [1, 3], storeyM: [2.6, 3.4], bayM: [1.4, 3.4],
     weathering: { damp: 0.35, moss: 0.3 }, wear: 0.18,
-    variation: { axes: { band: ['ochre', 'grey', 'none'], joinery: ['green', 'brown', 'white'] }, roofAge: [0.2, 1] },
+    variation: { axes: { band: ['ochre', 'grey'], joinery: ['green', 'brown'] }, roofAge: [0.2, 1] },
     surface: { grime: 0.9, patches: 0.65, tileRelief: 1.35, reveal: 0.25, eave: 0.3 },
   },
 } as const satisfies { readonly [K in MapId]: BuildingStyleRow };

@@ -465,7 +465,8 @@ export default {
     tones: {
       // (buildings-270, the census: the houses' render was the sand's own orange, and they sank into the ground; the Dahar
       // photos' mud-lime render is a greyer buff ochre over the rubble)
-      plaster: (h: number, s: number, l: number) => [0.095, clamp01(s * 0.4 + 0.36), clamp01(l + 0.2)], // buff mud-lime render (the kit's lime-wash canvas: #d1b794)
+      // (the round-2 critics, 0/3: the buff read washed-out grey beside the before's ochre; the photos' render #c79a5a-#d8b47a)
+      plaster: (h: number, s: number, l: number) => [0.092, clamp01(s * 0.4 + 0.46), clamp01(l + 0.13)], // ochre mud-lime render (the kit's lime-wash canvas: #d0a671)
       roof: (h: number, s: number, l: number) => [0.065, clamp01(s * 0.8), clamp01(l * 1.1)],
       stone: (h: number, s: number, l: number) => [0.07, clamp01(s * 2 + 0.1), clamp01(l * 1.18 + 0.03)], // sandstone
       wood: (h: number, s: number, l: number) => [0.08, clamp01(s * 0.9), clamp01(l * 1.15)],
