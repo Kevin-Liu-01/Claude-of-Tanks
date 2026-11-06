@@ -114,7 +114,7 @@ export const woodenChurch: LandmarkBuilder = (ctx) => {
   const capTop = iy1 + 4.2;
   for (const [[ax, az], [bx, bz]] of sides) sink.polygon('roof', [tq(ax, az, iw + 0.5, iy1 - 0.2), tq(bx, bz, iw + 0.5, iy1 - 0.2), [0, capTop, tz]], { colour: SHINGLE });
   revolve(sink, 'roof', 0, tz, [[0.3, capTop - 0.5], [0.55, capTop + 0.2], [0.45, capTop + 0.75], [0.12, capTop + 1.2], [0.001, capTop + 1.3]], mobile ? 8 : 12, { colour: SHINGLE });
-  cross(sink, 'structureMetal', 0, capTop + 1.3, tz, 1.1, 'latin', { colour: IRON, decor: true });
+  cross(sink, 'structureMetal', 0, capTop + 1.3, tz, 1.1, 'latin', IRON);
   // the porch at the tower's door: two posts and a small gable roof, the door itself
   const pz = tz + tb / 2;
   sink.span('dark', -0.65, 0.4, pz + 0.01, 0.65, 2.4, pz + 0.04, { decor: true });

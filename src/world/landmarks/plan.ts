@@ -390,6 +390,9 @@ export const LANDMARK_KINDS: Readonly<Record<LandmarkKind, LandmarkKindSpec>> = 
     footprint: (p) => [num(p, 'length') / 2 + 1.7, num(p, 'depth') / 2 + Math.max(3.5, num(p, 'base') * 1.15) + 0.3] },
   // (ironWorks.ts, landmarks-271) the furnace with its stoves behind, the dust catcher at -x and the skip bridge to +x,
   // the cast house in front: centred on the whole plan (ironWorks.ts blastFurnaceLayout)
+  // the gasholder: its guide columns 2.6 m round the tank, their lattices and the walkway ring 0.6 m past them
+  gasholder: { family: 'works', defaults: { radius: 18, height: 36, lifts: 3, columns: 14 },
+    footprint: (p) => { const r = num(p, 'radius') + 4.0; return [r, r]; } },
   blastFurnace: { family: 'works', defaults: { height: 30, stoves: 3, skip: 34 },
     footprint: (p) => { const l = blastFurnaceLayout(p); return [l.across, l.along]; } },
   // (shrine.ts, landmarks-271) the precinct along its approach: the torii (a child) at the mouth, the rōmon at `gate` of

@@ -101,6 +101,7 @@ const LANDMARK_TABLE: Readonly<Record<string, LandmarkRow>> = Object.freeze({
   roundhouse: { load: () => import('./railWorks.ts') },
   signalBox: { load: () => import('./railWorks.ts') },
   blastFurnace: { load: () => import('./ironWorks.ts') },
+  gasholder: { load: () => import('./ironWorks.ts') },
   alcazaba: { load: () => import('./andalusia.ts') },
   bullring: { load: () => import('./andalusia.ts') },
   canalMarket: { load: () => import('./canalWorks.ts') },

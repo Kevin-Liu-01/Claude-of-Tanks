@@ -121,6 +121,13 @@ export default {
     bushCount: 0.5, bushSpecies: 'oak',
   },
   props: {
+    // (landmarks-271, 2026-11-06; the owner: "new special buildings like the way our airport map has hangars and our
+    // seaside map has a harbor area with a lighthouse ... integrated with the whole identity of the map") the works'
+    // gasholder (src/world/landmarks/ironWorks.ts gasholder): a riveted, column-guided holder of the Völklingen works
+    // between the furnace line and the western rail fan, its lifts telescoped in their guide frame.
+    landmarks: [
+      { kind: 'gasholder', x: -200, z: -35, yawDeg: 0, name: 'the works gasholder' },
+    ],
     // the map-revival lane (2026-10-05): the works' own architecture (maps/regional/saar.ts) — the blast furnaces and
     // their stoves, the rolling mills under north lights, gas holders, conveyor galleries, the colliery headframe, the
     // works office and the workers' terraces in the coalfield's brick — in place of the generic halls and sheds

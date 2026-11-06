@@ -109,8 +109,9 @@ export const canalMarket: LandmarkBuilder = (ctx) => {
   }
   // the raised gable over the landward entrance (the hall's back, -z) with its sign board
   const gw = 7.0, gz = hz0 - 0.2;
-  sink.polygon('plaster', [[-gw / 2, ey - 0.3, gz], [gw / 2, ey - 0.3, gz], [gw / 2, ey + 1.6, gz], [0, ey + 3.2, gz], [-gw / 2, ey + 1.6, gz]].reverse() as Vec3[], {});
-  sink.polygon('plaster', [[-gw / 2, ey - 0.3, gz + 0.3], [gw / 2, ey - 0.3, gz + 0.3], [gw / 2, ey + 1.6, gz + 0.3], [0, ey + 3.2, gz + 0.3], [-gw / 2, ey + 1.6, gz + 0.3]] as Vec3[], { shade: 0.8 });
+  const gable = (z: number): Vec3[] => [[-gw / 2, ey - 0.3, z], [gw / 2, ey - 0.3, z], [gw / 2, ey + 1.6, z], [0, ey + 3.2, z], [-gw / 2, ey + 1.6, z]];
+  sink.polygon('plaster', gable(gz).reverse(), {});
+  sink.polygon('plaster', gable(gz + 0.3), { shade: 0.8 });
   sink.span('structureMetal', -2.6, ey + 0.1, gz - 0.06, 2.6, ey + 1.2, gz - 0.02, { colour: rgb(0x2a5a8a), decor: true });
   sink.span('structureMetal', -2.3, ey + 0.35, gz - 0.07, 2.3, ey + 0.95, gz - 0.06, { colour: rgb(0xe8d8b0), decor: true, fine: mobile ? undefined : 'near' });
   // the stalls inside: low tables with their baskets and awnings, in two rows along the hall

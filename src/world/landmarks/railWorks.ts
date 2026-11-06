@@ -115,7 +115,7 @@ export const roundhouse: LandmarkBuilder = (ctx) => {
       archWindow(sink, f, { u: 0, w: door.w - 0.2, y0: door.spring + 0.05, spring: door.spring + 0.06, form: 'segmental', rise: 0.5 }, 0.3, FRAME, false, { bars: true });
     } else {
       // swung open to the front, each leaf at its jamb turned 100-120 degrees out
-      for (const s of [-1, 1]) {
+      for (const s of [-1, 1] as const) {
         const swing = (100 + v() * 22) * deg;
         leafOpen(sink, f, s, lw, door.spring - 0.05, swing, v() < 0.5 ? DOOR : DOOR_PAINT, mobile);
       }

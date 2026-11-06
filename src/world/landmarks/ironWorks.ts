@@ -216,3 +216,55 @@ export const blastFurnace: LandmarkBuilder = (ctx) => {
   });
   return { parts: sink.finish() };
 };
+
+/**
+ * gasholder: the works' column-guided gasholder (the census for Foundry: "a riveted steel column-guided gasholder,
+ * 40 m across, 40 m high, between the works and the railway"). The tank's water basin ring at the foot, the telescoping
+ * lifts (`lifts`, each a riveted drum set in from the one below, the gas's level drawn by the look stream), the crown's
+ * shallow dome; round it the guide frame of lattice columns (`columns`) tied by two rings of girders and the walkway at
+ * the top, the stair up one column. Rust-oxide steel as the furnaces.
+ */
+export const gasholder: LandmarkBuilder = (ctx) => {
+  const sink = new PartSink(uvOffset(ctx.rng));
+  const mobile = ctx.tier === 'mobile', v = ctx.variant;
+  const R = num(ctx, 'radius', 10, 30), H = num(ctx, 'height', 16, 50), lifts = Math.round(num(ctx, 'lifts', 1, 4)), cols = Math.round(num(ctx, 'columns', 8, 20));
+  const foot = -0.8 - ctx.groundFall, n = mobile ? 20 : 36;
+  // the basin's ring wall at the foot
+  revolve(sink, 'stone', 0, 0, [[R + 1.2, foot], [R + 1.2, 2.4], [R + 0.4, 2.4], [R + 0.39, 2.4]], n, { shade: 0.82 });
+  // the lifts: each drum set 0.9 m in from the one below; the gas's level: how far the top lift stands up its guides
+  const fill = 0.55 + v() * 0.4, step = (H - 4) / lifts;
+  let r = R, y = 2.4;
+  for (let k = 0; k < lifts; k++) {
+    const h = k === lifts - 1 ? step * fill : step;
+    revolve(sink, 'structureMetal', 0, 0, [[r, y - 0.5], [r, y + h], [r - 0.9, y + h], [r - 0.91, y + h]], n, { colour: shade(RUST, 0.9 + 0.08 * k) });
+    bands(sink, 0, 0, r, y, y + h, 1.5, RUST_DARK, n);
+    // the cup and grip's lip at the lift's head
+    revolve(sink, 'structureMetal', 0, 0, [[r - 0.9, y + h], [r + 0.25, y + h], [r + 0.25, y + h + 0.5], [r - 0.6, y + h + 0.5], [r - 0.61, y + h + 0.5]], n, { colour: RUST_DARK, decor: true });
+    y += h; r -= 0.9;
+  }
+  // the crown: a shallow dome over the top lift
+  const dome: Array<[number, number]> = [];
+  for (let i = 0; i <= 6; i++) { const a = (Math.PI / 2) * i / 6; dome.push([Math.max(0.001, Math.cos(a) * r), y + Math.sin(a) * r * 0.12]); }
+  revolve(sink, 'structureMetal', 0, 0, dome, n, { colour: OXIDE });
+  // the guide frame: lattice columns round the tank, two girder rings, the top walkway's ring
+  const Rc = R + 2.6, top = H + 2;
+  for (let k = 0; k < cols; k++) {
+    const a = (k / cols) * Math.PI * 2;
+    const p: Vec3 = [Math.cos(a) * Rc, foot, Math.sin(a) * Rc], q: Vec3 = [Math.cos(a) * Rc, top, Math.sin(a) * Rc];
+    sink.cylinder('structureMetal', [p[0], foot, p[2]], 'y', 3.4 - foot, 0.5, 8, { colour: RUST_DARK });
+    // (two faces laced: a ring of fourteen columns is the frame's look, not each one's every lacing bar)
+    lattice(sink, [p[0], 3.4, p[2]], q, 1.2, RUST_DARK, true, 0.16);
+  }
+  for (const gy of [H * 0.5, top]) for (let k = 0; k < cols; k++) {
+    const a = (k / cols) * Math.PI * 2, b = ((k + 1) / cols) * Math.PI * 2;
+    bar(sink, 'structureMetal', [Math.cos(a) * Rc, gy, Math.sin(a) * Rc], [Math.cos(b) * Rc, gy, Math.sin(b) * Rc], 0.4, { colour: RUST_DARK, decor: true });
+  }
+  if (!mobile) ringRail(sink, 0, 0, Rc + 0.6, top + 0.2, cols * 2, STEEL);
+  // the stair up the first column, flight by flight
+  const a0 = 0, sx = Math.cos(a0) * (Rc + 1.2), sz = Math.sin(a0) * (Rc + 1.2);
+  for (let fy = 0; fy < top - 0.5; fy += 3) {
+    const dz = (Math.floor(fy / 3) % 2 ? -1 : 1) * 2.2;
+    bar(sink, 'structureMetal', [sx, fy, sz - dz], [sx, Math.min(top, fy + 3), sz + dz], 0.12, { colour: STEEL, decor: true, fine: mobile ? undefined : true });
+  }
+  return { parts: sink.finish() };
+};

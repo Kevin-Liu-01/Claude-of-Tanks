@@ -48,7 +48,7 @@ export type LandmarkKind =
   // a junction's railway works (railWorks.ts, landmarks-271): the engine shed round its turntable, the signal box
   | 'roundhouse' | 'signalBox'
   // an ironworks' furnace (ironWorks.ts, landmarks-271)
-  | 'blastFurnace'
+  | 'blastFurnace' | 'gasholder'
   // a Shinto shrine's precinct (shrine.ts, landmarks-271)
   | 'shrine'
   // the Dahar's ksar and saint's tomb (ksar.ts, landmarks-271)

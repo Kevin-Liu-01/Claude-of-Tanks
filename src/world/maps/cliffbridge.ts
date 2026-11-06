@@ -296,8 +296,8 @@ export default {
     // toros beside the north bridgehead's square, its Puerta del Príncipe on the main road; the old town's alcazaba, the
     // Moorish keep and its breached curtain, on the south lip, its gate on the same road.
     landmarks: [
-      { kind: 'bullring', x: 95, z: 192, yawDeg: -90, name: 'the plaza de toros' },
-      { kind: 'alcazaba', x: 95, z: -192, yawDeg: -90, name: 'the alcazaba' },
+      { kind: 'bullring', x: 106, z: 192, yawDeg: -90, name: 'the plaza de toros' },
+      { kind: 'alcazaba', x: 106, z: -192, yawDeg: -90, name: 'the alcazaba' },
     ],
     // (2026-10-17, the maps lane; the fleet dressing rules 227, the coordinator's ruling) a fence run's module or gate that
     // meets a building's plot is left out (props.ts dressingRules.fencesClearBuildings; no stub rule)
