@@ -5375,6 +5375,7 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
   async function redo(): Promise<boolean> { return stepHistory(redoStack, undoStack); }
   async function stepHistory(from: string[], to: string[]): Promise<boolean> {
     if (busy()) return false;
+    const owner = session.token();
     commitHistory(); // a pending edit becomes its own step first
     const target = from.pop();
     if (target == null || historyHead == null) return false;
@@ -5382,7 +5383,10 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
     try {
       await restoreDocument(JSON.parse(target) as StudioSceneInput);
     } catch (error) {
-      if (isStudioSessionEnded(error)) return false; // the Studio closed under the restore (audit F9)
+      // the Studio closed under the restore (audit F9); (round 3 A10 r1) or its session ended and the restore's build then
+      // failed another way (a battlefield build a later entry superseded): the head, autosave and history are a later
+      // Studio's, not this step's
+      if (isStudioSessionEnded(error) || !owner.current()) return false;
       console.error('[studio] undo/redo could not restore the scene', error);
     }
     historyHead = JSON.stringify(documentJson()); // the restored scene as this build writes it
@@ -6711,9 +6715,11 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
         window.history.replaceState(window.history.state, '', `${window.location.pathname}${window.location.search}${previousHash}`);
       } catch (_) { /* a sandboxed frame keeps its address */ }
     };
+    const owner = session.token(); // (round 3 A10 r1) the Studio the link was pasted into
     void decodeSceneLink(value).then((result) => {
-      // the Studio may have closed, or begun a load, an entry or a film while the link decoded
-      if (busy()) {
+      // the Studio may have closed (and another been entered: it reads idle), or begun a load, an entry or a film while the
+      // link decoded
+      if (!owner.current() || busy()) {
         restoreAddress();
         return undefined;
       }

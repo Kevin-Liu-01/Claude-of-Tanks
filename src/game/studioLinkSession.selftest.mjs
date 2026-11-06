@@ -4,25 +4,34 @@
 // Studio's) and loaded the link's scene into that Studio, or said the refused link's error there. A path link's load that
 // an exit ended rejected its boot open, which main.ts logs as '[studio] boot scene failed'. (review r1) A link's load that
 // failed another way once its session ended (a battlefield build a later entry superseded, a chunk) said its error card in
-// the Studio entered since, or failed the boot: the links decide by their session, not by the error's type.
+// the Studio entered since, or failed the boot: the links decide by their session, not by the error's type. (review r1,
+// completeness) A link pasted into the open Studio's address bar (hashchange) decoded, then read only busy(): an exit and
+// a new entry during the decode left the new Studio idle, and the link opened into it.
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { stripTypeScriptTypes } from 'node:module';
 import ts from 'typescript-compiler-api';
 import * as THREE from 'three';
 import { assertAppPhaseTransition, assertGarageScreenSettled, transitionAppPhase } from './appLifecycle.ts';
-import { createStudioSession, isStudioSessionEnded } from './studioSession.ts';
+import { createStudioSession, isStudioSessionEnded, studioBusy } from './studioSession.ts';
 
 const source = ts.createSourceFile('studio.ts',
   readFileSync(new URL('./studio.ts', import.meta.url), 'utf8'), ts.ScriptTarget.Latest, true);
 const names = new Set(['enter', 'doEnter', 'doExit', 'withStage', 'leaveForGarage', 'tearDownToGarage', 'tearDownStudio',
   'prepareAtmosphere', 'ensureSessionWorld', 'openSharedScene', 'bootScene']);
 const functions = [];
+// (review r1) the address bar's listener and the address it puts back (statements of the runtime, not functions)
+const listener = [];
 (function visit(node) {
   if (ts.isFunctionDeclaration(node) && names.has(node.name?.text)) functions.push(node.getText(source));
+  if ((ts.isVariableStatement(node) && /^let shownHash = /.test(node.getText(source)))
+    || (ts.isExpressionStatement(node) && node.getText(source).startsWith("window.addEventListener('hashchange'"))) {
+    listener.push(node.getText(source));
+  }
   ts.forEachChild(node, visit);
 })(source);
 assert.equal(functions.length, names.size, 'studio.ts declares the link and entry functions');
+assert.equal(listener.length, 2, 'studio.ts listens for a scene link pasted into the open Studio');
 
 const noop = () => {};
 const turns = async (count = 6) => { for (let i = 0; i < count; i++) await new Promise((resolve) => setImmediate(resolve)); };
@@ -50,7 +59,15 @@ function harness({ scenePath = null, loadHangs = false } = {}) {
     };
   });
   let world = null;
-  let finishLoad = null;
+  let finishLoad = null, finishDecode = null;
+  const listeners = {};
+  // the page: its address (a pasted link changes the hash), the bar a refused or stale link puts back, the confirm
+  const win = {
+    requestIdleCallback: (callback) => callback(), location: { hash: '', pathname: '/studio', search: '' },
+    addEventListener: (type, listener) => { listeners[type] = listener; },
+    history: { state: null, replaceState: (_state, _title, url) => calls.push(['address', url]) },
+    confirm: () => true,
+  };
   const game = { phase: 'garage', preBattleS: 0, result: null, resultTimeS: null, timeS: 0 };
   const session = createStudioSession();
   const ports = {
@@ -58,12 +75,14 @@ function harness({ scenePath = null, loadHangs = false } = {}) {
     console: Object.assign(Object.create(console), { error: (message) => calls.push(['console-error', String(message)]) }),
     ctx: { prepareStudioAtmosphere: async () => {}, restoreStudioAtmosphere: () => calls.push('atmosphere-restored') },
     filmRenderer: { active: false }, endFilm: noop, game, camera: new THREE.PerspectiveCamera(),
-    window: { requestIdleCallback: (callback) => callback(), location: { hash: '' } },
+    window: win, busy: () => studioBusy({ open: session.phase === 'open' }),
     isBootReady: () => true, whenBootReady: (callback) => { callback(); return noop; },
     whenGameReady: () => Promise.resolve(),
     warmFleet: () => Promise.resolve(), resolveMapId: (id) => id, getMapConfig: (id) => ({ name: id }),
     urlParam: (name) => (name === 'scene' ? scenePath : null), sceneLinkPath: (value) => value || null,
-    sceneLinkValue: () => null, decodeSceneLink: async () => ({ ok: false, reason: 'empty', detail: '' }),
+    // a pasted link's decode waits for finishDecode(result) (studioSceneShare.ts: an inflate, never a throw)
+    sceneLinkValue: (hash) => (hash.startsWith('#scene=') ? hash.slice('#scene='.length) : null),
+    decodeSceneLink: () => new Promise((resolve) => { finishDecode = resolve; }),
     sceneLinkOpenFailure: (result) => ({ message: 'studio.sceneLink.refused', detail: result.detail }),
     fetch: async () => ({ ok: true, json: async () => ({ map: 'whiteout', actors: [{ id: 'leo2a4' }] }) }),
     post: { resetAdaptiveResolution: noop, render: noop, warmFirstFrame: async () => {} },
@@ -78,7 +97,7 @@ function harness({ scenePath = null, loadHangs = false } = {}) {
       notice: (message, tone) => calls.push(['notice', message, tone ?? 'info', session.generation]) },
     transition: { run: async (work) => work(noop) }, syncRoute: noop, docBrand: noop,
     marker: { group: { visible: true } }, keys: new Set(), clearActors: noop, shells: [], effectLog: [], activeEffectIds: new Set(),
-    releaseCrushes: noop, normalizeStoryboard: () => ({}), releaseStudioFx: noop, rail: { rebuild: noop, updateVisibility: noop },
+    releaseCrushes: noop, normalizeStoryboard: () => ({ durationMs: 12000, shots: [], actorTracks: [], cameraCues: [] }), releaseStudioFx: noop, rail: { rebuild: noop, updateVisibility: noop },
     unsweepPool: noop, stopRecording: noop, disposePicture: noop, applyPictureRuntime: noop, studioStages: new Map(),
     resetStudioGround: noop, flareToWallClock: noop, prepareFirstViewPrograms: async () => {}, nextFrame: async () => {},
     createFrameBudgetYielder: () => async () => {},
@@ -103,18 +122,25 @@ function harness({ scenePath = null, loadHangs = false } = {}) {
     function makeStudio(ports) {
     const { ${Object.keys(ports).join(',')} } = ports;
     let active = false, entering = null, timeScale = 1, recording = false, buildPlateUp = false, exitRun = null, closing = null;
-    let placeArmed = null, dragActor = null, dragging = false, storyboard = { durationMs: 12000 };
+    let placeArmed = null, dragActor = null, dragging = false, storyboard = { durationMs: 12000, shots: [], actorTracks: [], cameraCues: [] };
     let selectedShotId = null, shotUidSeq = 1, actorKeyUidSeq = 1;
     ${functions.join('\n')}
+    ${listener.join('\n')}
     return { enter, doExit, openSharedScene, bootScene, active: () => active };
     }
   `);
   const studio = new Function('ports', `${code}\nreturn makeStudio(ports);`)(ports);
-  return { studio, calls, session, game, releaseWorld: () => releaseWorld(), finishLoad: (failure) => finishLoad?.(failure) };
+  return {
+    studio, calls, session, game, window: win, releaseWorld: () => releaseWorld(), finishLoad: (failure) => finishLoad?.(failure),
+    /** The user pastes a scene link into the address bar (a same-document navigation). */
+    paste: (hash) => { win.location.hash = hash; listeners.hashchange?.(); },
+    decoding: () => finishDecode != null, finishDecode: (result) => finishDecode?.(result),
+  };
 }
 const loads = (calls) => calls.filter((call) => Array.isArray(call) && call[0] === 'scene-load');
 const notices = (calls) => calls.filter((call) => Array.isArray(call) && call[0] === 'notice');
 const logged = (calls) => calls.filter((call) => Array.isArray(call) && call[0] === 'console-error');
+const addresses = (calls) => calls.filter((call) => Array.isArray(call) && call[0] === 'address');
 
 /**
  * The link's entry is building; the user exits (the exit's teardown hands the Garage back) and enters again before the
@@ -303,4 +329,50 @@ for (const [label, failure] of [['superseded build', superseded], ['chunk', chun
   }
 }
 
-console.log('studioLinkSession.selftest: a shared, refused or path scene link whose entry an exit took back loads and says nothing in the Studio entered again; a kept link loads into its own session; a path link\'s load ended by an exit is no boot failure; a link\'s build that fails another way after its session ended says nothing and fails no boot, and in its live session it is said');
+
+// 7. (review r1, completeness) A link pasted into the open Studio's address bar (hashchange): the listener decodes it
+// (studioSceneShare.ts: an inflate), then opens it once the Studio is idle. An exit and a new entry during the decode left
+// busy() null (the new Studio is idle), and openSharedScene's claim took the new session: the link pasted in one Studio
+// loaded into the next, or its refusal was said there. The listener now asks the session it was pasted in after the
+// decode, and puts the address back (the bar never shows a link the Studio is not showing). In its live session it opens.
+for (const [label, result] of [
+  ['scene', { ok: true, scene: { map: 'whiteout', actors: [{ id: 'leo2a4' }] } }],
+  ['refused', { ok: false, reason: 'damaged', detail: 'scene.actors[0]' }],
+]) {
+  {
+    const h = harness();
+    const entry = h.studio.enter({ map: 'whiteout' });
+    h.releaseWorld();
+    await entry;
+    h.paste('#scene=1.z.pasted');
+    await turns(2);
+    assert.ok(h.decoding(), `(${label}) the pasted link is decoding`);
+    await exitAndReenter(h);
+    const since = h.calls.length;
+    h.finishDecode(result);
+    await turns(8);
+    assert.deepEqual(loads(h.calls), [], `(${label}) a link pasted in a Studio an exit closed loads nothing into the Studio entered again`);
+    assert.deepEqual(notices(h.calls.slice(since)), [], `(${label}) and says nothing there`);
+    assert.deepEqual(addresses(h.calls), [['address', '/studio']], `(${label}) the address bar is put back`);
+  }
+  {
+    const h = harness();
+    const entry = h.studio.enter({ map: 'whiteout' });
+    h.releaseWorld();
+    await entry;
+    const generation = h.session.generation;
+    h.paste('#scene=1.z.pasted');
+    await turns(2);
+    h.finishDecode(result);
+    await turns(8);
+    if (result.ok) {
+      assert.deepEqual(loads(h.calls), [['scene-load', 'whiteout', generation]], `(${label}) in its live session the pasted link opens there`);
+    } else {
+      assert.deepEqual(notices(h.calls).map((call) => [call[1], call[2], call[3]]), [['studio.sceneLink.refused', 'error', generation]],
+        `(${label}) in its live session the pasted link's refusal is said there`);
+    }
+    assert.deepEqual(addresses(h.calls), [], `(${label}) and the address stays`);
+  }
+}
+
+console.log('studioLinkSession.selftest: a shared, refused or path scene link whose entry an exit took back loads and says nothing in the Studio entered again; a kept link loads into its own session; a path link\'s load ended by an exit is no boot failure; a link\'s build that fails another way after its session ended says nothing and fails no boot, and in its live session it is said; a link pasted into a Studio an exit closed during its decode opens nothing in the Studio entered again');

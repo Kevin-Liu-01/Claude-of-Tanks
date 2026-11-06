@@ -919,4 +919,56 @@ for (const [name, start, ended] of [
   }
 }
 
-console.log('studioSessionExit.selftest: an exit during a map switch, its lighting (bounded or not), a scene load, a film export, the export\'s module gap and a time change lands nothing after the teardown; a build that outlives the exit leaves the Garage its presentation; a closed session\'s load never re-enters; a recording, a battlefield change, a staging or a light change refuses the export\'s film; a staging refuses a film, an export or a light change; queued switches run in order; a superseded exit cover still leaves; an exit during a build commits the last edit; a restore the exit took back resolves false; a closed session\'s build, load, staging, undo or light change holds no later Studio; the late build\'s undo waits for a settled Garage');
+// 19. (round 3 A10, review r1 correctness) An undo across battlefields whose build an exit outlived (Exit never waits for a
+// build), then a new entry: the dead build fails another way than StudioSessionEnded (the world runtime's
+// WorldActivationSuperseded once the new Studio's own build asks; setMap passes it on unchanged). stepHistory read that as
+// its own failure: it logged '[studio] undo/redo could not restore the scene', took the new Studio's document as its
+// history head, wrote it to the autosave and said true, so the new Studio's pending edit then made no undo step (its text
+// already equalled the head). The undo decides by the session it began in: it ends as no step (false). In its live
+// session the same failure is still logged and the restored scene is the head.
+const supersededBuild = () => Object.assign(new Error('Battlefield activation for desert was superseded'), { name: 'WorldActivationSuperseded' });
+for (const exitFirst of [true, false]) {
+  const builds = [];
+  const logged = [];
+  let h = null;
+  h = makeStudio({
+    console: Object.assign(Object.create(console), { error: (...args) => logged.push(args.map(String).join(' ')) }),
+    ensureWorld: (id) => new Promise((resolve, reject) => {
+      h.calls.push(['ensure-world', id]);
+      builds.push({ id, fail: reject });
+    }),
+  });
+  h.ports.undoStack.push(JSON.stringify({ map: 'desert', actors: [{ id: 'm1a1' }] }));
+  const undoing = h.studio.undo().then((value) => ({ value }), (error) => ({ error: error.name }));
+  await settle();
+  assert.deepEqual(h.calls.filter((c) => Array.isArray(c) && c[0] === 'ensure-world').map((c) => c[1]), ['desert'],
+    'the undo builds its scene\'s battlefield');
+  if (exitFirst) {
+    h.studio.exit();
+    await settle();
+    assert.equal(h.studio.active, false, 'the exit tore the Studio down without waiting for the undo\'s build');
+    h.studio.reenter();
+    h.ports.edits.push('reentered-edit'); // an edit in the Studio entered again, still settling
+    h.studio.invalidate();
+  }
+  const since = h.calls.length;
+  builds[0].fail(supersededBuild());
+  const undone = await Promise.race([undoing, settle().then(() => 'still undoing')]);
+  if (exitFirst) {
+    assert.deepEqual(undone, { value: false }, 'an undo whose session ended before its build failed is no step');
+    assert.deepEqual(logged, [], 'and no failure of the Studio entered again');
+    assert.ok(!h.calls.slice(since).some((c) => Array.isArray(c) && c[0] === 'autosave'),
+      'it writes nothing to the autosave for the Studio entered since');
+    const undoSteps = h.ports.undoStack.length;
+    h.studio.flushHistory();
+    assert.ok(h.calls.slice(since).some((c) => Array.isArray(c) && c[0] === 'autosave' && c[1].includes('reentered-edit')),
+      'the edit in the Studio entered again reaches the autosave');
+    assert.equal(h.ports.undoStack.length, undoSteps + 1, 'as an undo step of its own');
+  } else {
+    assert.deepEqual(undone, { value: true }, 'in its live session the undo ends as a step');
+    assert.deepEqual(logged, ['[studio] undo/redo could not restore the scene WorldActivationSuperseded: Battlefield activation for desert was superseded'],
+      'its failure is logged');
+  }
+}
+
+console.log('studioSessionExit.selftest: an exit during a map switch, its lighting (bounded or not), a scene load, a film export, the export\'s module gap and a time change lands nothing after the teardown; a build that outlives the exit leaves the Garage its presentation; a closed session\'s load never re-enters; a recording, a battlefield change, a staging or a light change refuses the export\'s film; a staging refuses a film, an export or a light change; queued switches run in order; a superseded exit cover still leaves; an exit during a build commits the last edit; a restore the exit took back resolves false; a closed session\'s build, load, staging, undo or light change holds no later Studio; the late build\'s undo waits for a settled Garage; an undo whose session ended before its build failed is no step in the Studio entered again');
