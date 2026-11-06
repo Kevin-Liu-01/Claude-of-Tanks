@@ -8,6 +8,9 @@
  */
 import type { AirStrikeKind } from '../sim/matchRuleset.ts';
 
+/** The call-ins' names, for the owners that take the sim's rules as ports (game/playerBattleActions.ts). */
+export type { AirStrikeKind };
+
 export interface StrikeViewState {
   /** The binoculars are up (or going up: `blend` rises 0 -> 1 over the transition, falls back on the way out). */
   open: boolean;
