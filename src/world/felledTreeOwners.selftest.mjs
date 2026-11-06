@@ -27,6 +27,7 @@ import { createHeadlessCollisionWorld } from './headlessCollisionWorld.ts';
 import { createFelledTrees } from './felledTrees.ts';
 import { setCircleShape } from './collision.ts';
 import { fellConcealersAt } from '../sim/spotting.ts';
+import * as detMath from '../sim/detMath.ts';
 import { isFortifiedCoverRecord } from '../sim/fortifiedCover.ts';
 import { PROP_FELL_PER_BLAST, PROP_FELL_PER_TICK, propFellRadiusM } from '../sim/munitionBlast.ts';
 import { createAuthoritativeMatch } from '../sim/authoritativeMatch.ts';
@@ -58,10 +59,11 @@ function soloFunction(name, deps) {
 }
 let stepFells = 0;
 const countedFell = (...args) => { stepFells++; return fellConcealersAt(...args); };
-const resolveCrushContacts = soloFunction('resolveCrushContacts', { CRUSH_SPEED_KEEP: 0.94, fellConcealersAt: countedFell });
+// (268: the solo step reads its directions through sim/detMath.ts, as the authority does)
+const resolveCrushContacts = soloFunction('resolveCrushContacts', { CRUSH_SPEED_KEEP: 0.94, fellConcealersAt: countedFell, detMath });
 const fellBlastProps = soloFunction('fellBlastProps', {
   stepObstacleQuery: (_game, world) => world.queryObstacles, PROP_FELL_PER_TICK, PROP_FELL_PER_BLAST, propFellRadiusM,
-  isFortifiedCoverRecord, _blastCandidates: [], _blastFelled: [],
+  isFortifiedCoverRecord, _blastCandidates: [], _blastFelled: [], detMath,
 });
 const bus = { emit() {} };
 const hull = { id: 'p', specId: 't90am', isPlayer: true, state: { speed: 9, yaw: Math.PI / 2 } };
@@ -116,7 +118,8 @@ const hull = { id: 'p', specId: 't90am', isPlayer: true, state: { speed: 9, yaw:
   const soloCalls = callsOf(solo);
   assert.deepEqual(soloCalls, ['fellConcealersAt(world.getConcealment(), obstacle.shape2.cx, obstacle.shape2.cz);'],
     'the solo step fells a canopy in one place');
-  assert.match(solo, /if \(world\.crushObstacle\) world\.crushObstacle\(obstacle, directionX, directionZ, overrunMps\);\s*else if \(obstacle\.treeIdx != null && obstacle\.shape2 && world\.getConcealment\) \{\s*fellConcealersAt\(/,
+  // (268) a prop the world refuses stands: the step skips it (`=== false` continue), the world's own crush owning its canopy
+  assert.match(solo, /if \(world\.crushObstacle\) \{\s*if \(world\.crushObstacle\(obstacle, directionX, directionZ, overrunMps\) === false\) continue;\s*\} else if \(obstacle\.treeIdx != null && obstacle\.shape2 && world\.getConcealment\) \{\s*fellConcealersAt\(/,
     'and only where its world crushes nothing');
   const authority = readFileSync(new URL('../sim/authoritativeMatch.ts', import.meta.url), 'utf8');
   assert.deepEqual(callsOf(authority), ['if (!worldCrushes && obstacle.treeIdx != null && obstacle.shape2) fellConcealersAt(worldConcealers, obstacle.shape2.cx, obstacle.shape2.cz);'],
