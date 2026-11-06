@@ -327,7 +327,8 @@ async function main(argv) {
   let shot = 0, failed = 0;
   try {
     await lock.acquire(options.waitHours * 3600 * 1000, {
-      lockClass: 'render', prepare: async () => { await openPair(pairs[0]); session = await freezePage(entry.page); },
+      lockClass: 'render', place: `${TOOL}-${path.basename(options.out)}`,
+      prepare: async () => { await openPair(pairs[0]); session = await freezePage(entry.page); },
     });
     held = true;
     for (let i = 0; i < pairs.length; i++) {
