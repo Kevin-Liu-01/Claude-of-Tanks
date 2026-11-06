@@ -15077,7 +15077,7 @@
       }
     ]
   },
-  "geometryHash": "c11dc8af",
+  "geometryHash": "04eb9cb0",
   "metadataHash": "098695e2",
   "presentationAnchor": {
     "xM": 0.0028,
@@ -15158,8 +15158,8 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 29634,
-      "sha256": "eeeb6db92e9fc0c41083c560f5bd50a4402f579a9dc0907582cd1c17efbbea49",
+      "bytes": 29644,
+      "sha256": "2477ee53e3090622e443c53302b97cd6a469e11c723955213e550f816947fb24",
       "thumbnail": {
         "file": "thumbs/t90ms_tagil_angle.webp",
         "width": 256,
