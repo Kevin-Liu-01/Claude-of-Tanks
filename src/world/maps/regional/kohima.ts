@@ -421,16 +421,13 @@ export const KOHIMA_STYLE: ArchitectureStyle = Object.freeze<ArchitectureStyle>(
   surfaces: {
     roof: { kind: 'sheet', tint: [0.56, 0.30, 0.24] },
     stone: { kind: 'rubble', tint: [0.55, 0.52, 0.47] },
-    // (buildings-270, the sourced class: under the timber photo set the dark-stained tone below never showed, and the bazaar's
-    // planks read grey-black) the timber the procedural canvas under that tone
-    sourced: { plaster: false, wood: false },
+    sourced: { plaster: false, wood: true },
     // (the facades lane, round 11; waves 319/320: the walls' procedural canvas read as "speckle", "sponge", "cork",
     // "camouflage noise": its 6 cm bumps shade as dots from the street, as Steinburg's did before round 8) the walls
     // painted as the region renders them (regionalSurfaces.ts paintLimewash), every family under the kit's and the map's
     // tones; the plaster photo set is off (its 2.4 m tile repeats a lichen motif down every wall)
     render: { kind: 'limewash', seed: 0x6b0a },
-    // (buildings-270, the census: the bazaar's planks read grey-black; the Naga Hills photos' timber is a dark-stained brown)
-    tones: { straw: (h, s, l) => [h - 0.02, Math.min(1, s * 0.5), Math.min(1, l * 0.8)], wood: (_h, s, l) => [0.065, Math.min(1, s * 0.7 + 0.16), Math.min(1, l * 0.95 + 0.02)] },
+    tones: { straw: (h, s, l) => [h - 0.02, Math.min(1, s * 0.5), Math.min(1, l * 0.8)] },
   },
   builders: KOHIMA_BUILDERS,
   // the Angami yards: a bamboo fence round the vegetable terrace and the granary on posts, an open gap (yards.ts)

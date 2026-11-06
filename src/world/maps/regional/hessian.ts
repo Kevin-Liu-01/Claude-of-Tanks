@@ -1038,19 +1038,12 @@ export const HESSIAN_STYLE: ArchitectureStyle = Object.freeze<ArchitectureStyle>
   id: 'hessian',
   region: 'Osthessen (Fulda Gap, Hünfeld basin): Fachwerk villages on Buntsandstein',
   surfaces: {
-    // (buildings-270, the census: every roof the same bright new orange at the battle camera; Osthessen's photos' tile is a
-    // dark red-brown, #742b26 to #8a3a2c, which the lit roof reads at about 1.6 times its texture: #5a2920 here, was #713927;
-    // the round-2 frames still read #632e22 as bright orange)
-    roof: { kind: 'beavertail', tint: [0.4, 0.18, 0.14] },
+    roof: { kind: 'beavertail', tint: [0.50, 0.25, 0.17] },
     // (the facades lane, round 10; wave 301 on the Frontier church: "oversized, saturated red-brick quoins and door
     // surround that read as toy blocks against plain render") the Buntsandstein a third less saturated, at the same
     // light: the weathered red-brown of an old church's dressings, not a fresh-cut red
     stone: { kind: 'sandstone', tint: [0.52, 0.39, 0.34] },
-    // (buildings-270, the sourced-plaster class: under the photo set none of the map's render tones showed) the walls the
-    // procedural limewash canvas, the primary family's tone measured on it against the reference photos (the white lime infill, #e5e0d4 (warmed: a neutral white read violet under the sky in round 2) against #eeede6)
-    sourced: { plaster: false, wood: true },
-    render: { kind: 'limewash', seed: 0x3e51 },
-    tones: { plaster: (_h, s, l) => [0.115, Math.min(1, s * 0.15 + 0.24), Math.min(1, l * 0.55 + 0.59)] },
+    sourced: { plaster: true, wood: true },
   },
   builders: HESSIAN_BUILDERS,
   // the churchyard on the church's freest side but its front, walled in stone, its graves in place of the yards' beds
@@ -1060,9 +1053,7 @@ export const HESSIAN_STYLE: ArchitectureStyle = Object.freeze<ArchitectureStyle>
   weather: {
     plaster: [[1, 1, 1], [1, 0.97, 0.9], [1, 0.94, 0.84], [0.97, 0.96, 0.93], [1, 0.93, 0.89]],
     stone: [[1, 1, 1], [0.92, 0.9, 0.88], [1.04, 0.98, 0.94]],
-    // (buildings-270, the census: every roof the same new orange tile) the village's roofs of every age, as Osthessen's
-    // photos show them: new engobe, weathered red-brown, the old dark tile, a re-laid grey-brown, a slate-dark one
-    roof: [[1, 1, 1], [0.86, 0.8, 0.74], [0.78, 0.74, 0.7], [1.05, 0.98, 0.95], [0.92, 0.86, 0.82], [0.66, 0.58, 0.54], [0.58, 0.56, 0.56]],
+    roof: [[1, 1, 1], [0.86, 0.8, 0.74], [0.78, 0.74, 0.7], [1.05, 0.98, 0.95], [0.92, 0.86, 0.82]],
   },
   // the farmyards: a board fence (the Hessian Staketenzaun of rough boards, not the white picket the gauntlet read as
   // American, waves 183–184) round a kitchen garden and the woodshed, a gate to the lane (yards.ts)

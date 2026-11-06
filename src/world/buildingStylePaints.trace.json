@@ -570,68 +570,6 @@
   ],
   "note": "fjord_2 shows a sunlit falu-red door and a white window frame, and fjord_1 shows dark red window frames on a white wall (overcast, low resolution); fjord_0 and fjord_4 are black-and-white and fjord_3's white houses are too distant to show joinery."
  },
- "frontier": {
-  "paint": [
-   "#6b2724",
-   "#566c74",
-   "#645450"
-  ],
-  "samples": [
-   {
-    "photo": "frontier_3.jpg",
-    "box": [
-     508,
-     520,
-     522,
-     940
-    ],
-    "what": "ox-blood door post, Alt Hünfeld, sunlit",
-    "raw": "#6b2724",
-    "corrected": null,
-    "white": null
-   },
-   {
-    "photo": "frontier_3.jpg",
-    "box": [
-     820,
-     712,
-     950,
-     740
-    ],
-    "what": "ox-blood window sill timber, sunlit",
-    "raw": "#6e2a27",
-    "corrected": null,
-    "white": null
-   },
-   {
-    "photo": "frontier_1.jpg",
-    "box": [
-     749,
-     418,
-     756,
-     450
-    ],
-    "what": "teal-grey door, Burghaun rendered house, shade",
-    "raw": "#293641",
-    "corrected": "#566c74",
-    "white": "#71747d"
-   },
-   {
-    "photo": "frontier_1.jpg",
-    "box": [
-     432,
-     392,
-     450,
-     426
-    ],
-    "what": "brown church door, Burghaun",
-    "raw": "#645450",
-    "corrected": null,
-    "white": null
-   }
-  ],
-  "note": "No shutter in any photo: ox-blood timbers and door posts, white sashes, a teal-grey door and a brown church door."
- },
  "longleaf": {
   "paint": [
    "#dfd5cf",
@@ -794,55 +732,6 @@
    }
   ],
   "note": "Overcast dusk on mangrove_3 (corrected with its white posts) shows pale blue panels, mid-blue doors and cream frames; mangrove_4 adds a royal-blue gate in shade that can't be corrected; mangrove_0 shows no buildings, mangrove_1 is too distant, and mangrove_2 is black-and-white."
- },
- "monsoon": {
-  "paint": [
-   "#64814b",
-   "#652f34",
-   "#768aa2"
-  ],
-  "samples": [
-   {
-    "photo": "monsoon_3.jpg",
-    "box": [
-     915,
-     340,
-     955,
-     470
-    ],
-    "what": "painted green wall, Kohima, sunlit",
-    "raw": "#64814b",
-    "corrected": null,
-    "white": null
-   },
-   {
-    "photo": "monsoon_3.jpg",
-    "box": [
-     775,
-     425,
-     815,
-     465
-    ],
-    "what": "painted maroon wall, Kohima, sunlit",
-    "raw": "#652f34",
-    "corrected": null,
-    "white": null
-   },
-   {
-    "photo": "monsoon_1.jpg",
-    "box": [
-     380,
-     200,
-     470,
-     380
-    ],
-    "what": "blue-grey painted plank house, Khonoma",
-    "raw": "#768aa2",
-    "corrected": null,
-    "white": null
-   }
-  ],
-  "note": "Dark-stained plank houses with Kohima's painted green, maroon and blue; no 1944 colour photograph."
  },
  "reservoir": {
   "paint": [
