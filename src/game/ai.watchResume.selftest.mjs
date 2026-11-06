@@ -39,7 +39,10 @@
 // through a park that left the hull where it was taken and restarts after a drive off. Fix-up r1 (the round's two
 // reviews): the tie rule now holds on a diagonal leg, where rounding breaks the tie ([10] at -48.3 degrees); the level
 // test is whether the hull can drive there, not the gun's 8 m band, which held the route from 5.5 m below ([11] taken
-// past z 14); and the stood-put test's level half has a case ([12], left on the deck above where it was taken).
+// past z 14); and the stood-put test's level half has a case ([12], left on the deck above where it was taken). Fix-up r2
+// (the round's second reviews): [10] a hull taken on the way up, off the route's line, and handed back short of the apex
+// still skipped it (the first stretch runs from where it was taken), so the cursor now passes a waypoint only where the
+// hull has gone by it.
 import { Vector3 } from 'three';
 import '../vehicles/fleetFactory.ts';
 import { getSpec } from '../vehicles/specs.ts';
@@ -591,14 +594,15 @@ console.log('[9] a displaced search leg waits for the route that took it through
   }
 }
 
-console.log('[10] a leg that doubles back over its own line keeps its apex: on a tie the earlier stretch holds the cursor');
+console.log('[10] a leg that doubles back over its own line keeps its apex: the cursor passes a waypoint only where the hull lies past it');
 // Round 4 (E8): hullOnItsWay moved the cursor on while the next stretch lay no farther (`<=`), so a hull handed back on
 // a stretch that doubles back over the one before it (equally near both) went to the later one and turned back short of
-// the apex, against the rule its doc states (a route that doubles back past the hull is not skipped ahead). The cursor
-// now moves on only to a stretch that lies nearer by more than WAY_TIE_M (1 mm). On 0edd0e1ab5 the hull turns back to
-// the waypoint after the apex. Fix-up r1 (both reviews): a strict `<` kept the apex only where the two distances are
-// bit-equal, as on the north-south leg; on a diagonal leg each stretch's nearest point is its own projection, rounding
-// leaves the way back ~1e-15 m nearer, and on ab8a817159 the -48.3 degree leg still skipped its apex (cursor 0 -> 2).
+// the apex, against the rule its doc states (a route that doubles back past the hull is not skipped ahead). On 0edd0e1ab5
+// the hull turns back to the waypoint after the apex. Fix-up r1 (both reviews): a strict `<` kept the apex only where the
+// two distances are bit-equal, as on the north-south leg; on a diagonal leg each stretch's nearest point is its own
+// projection, rounding leaves the way back ~1e-15 m nearer, and on ab8a817159 the -48.3 degree leg still skipped its apex
+// (cursor 0 -> 2); fix-up r1 made a 1 mm tie. Fix-up r2: no tie; the cursor passes a waypoint only where the hull has
+// gone by it (lies beyond the line square to the stretch through it), whatever the distances (see the second half).
 {
   // segmentNearestXZ's arithmetic (ai.ts), to show the diagonal leg's tie is broken by rounding alone
   const clampTo = (v, lo, hi) => (v < lo ? lo : v > hi ? hi : v);
@@ -630,6 +634,33 @@ console.log('[10] a leg that doubles back over its own line keeps its apex: on a
       `setup, heading ${headingDeg} deg: the search leg runs up to the apex and back (${before.wpCount} waypoints, owner ${back.routeOwner}, legs ${before.searchLegs} -> ${back.searchLegs}); both stretches lie 0.5 m off (${tie})`);
     ok(back.wpIndex === 1 && closest < 6.5,
       `heading ${headingDeg} deg, handed back beside both the stretch up to the apex and the one back down it: the cursor goes to the apex, and the hull drives up to it (cursor ${before.wpIndex} -> ${back.wpIndex}, nearest ${closest.toFixed(1)} m of the apex after)`);
+  }
+  // Fix-up r2 (the completeness review): the way's first stretch runs from where the hull was taken to the waypoint ahead,
+  // not along the route's own line. A hull taken on the way up, off the line (it cut START's corner: 3.3 m off at 0
+  // degrees, 15 m at -48.3), and handed back further up, 0.5 m beside the line, lies nearer the way back than that first
+  // stretch by far more than any tie: on 40405a3ec7 the cursor went 1 -> 2 and the hull turned back 8.6 m short of the
+  // apex (the review's probe: 10 of 12 hand-backs).
+  for (const headingDeg of [0, -48.3]) {
+    const heading = headingDeg * Math.PI / 180, ux = Math.sin(heading), uz = Math.cos(heading), nx = -uz, nz = ux;
+    const START = [0, -380], APEX = [START[0] + ux * 40, START[1] + uz * 40], BACK = [START[0] - ux * 20, START[1] - uz * 20];
+    const doublingBack = () => [START.slice(), APEX.slice(), BACK.slice(), [40, 150]];
+    const { bot, ctl, run, hull, clock } = searchScene(true, doublingBack);
+    run(40, (info) => info.searching && info.routeOwner === 'search');
+    const along = () => (bot.state.pos.x - START[0]) * ux + (bot.state.pos.z - START[1]) * uz;
+    const lateral = () => (bot.state.pos.x - START[0]) * nx + (bot.state.pos.z - START[1]) * nz;
+    const upTheLeg = run(40, (info) => info.wpIndex === 1 && along() > 6);
+    const before = ctl.debugInfo();
+    const takenAt = [along(), lateral()];
+    const HANDED = [START[0] + ux * 30 + nx * 0.5, START[1] + uz * 30 + nz * 0.5];
+    const away = () => { bot.state.pos.x = HANDED[0]; bot.state.pos.z = HANDED[1]; bot.state.yaw = heading; bot.state.speed = 0; };
+    takeAndLeave(bot, ctl, clock, hull, 0.5, away);
+    const back = ctl.debugInfo();
+    let closest = Infinity;
+    run(8, () => { closest = Math.min(closest, Math.hypot(APEX[0] - bot.state.pos.x, APEX[1] - bot.state.pos.z)); return false; });
+    ok(upTheLeg && before.wpIndex === 1 && back.searchLegs === before.searchLegs && back.routeOwner === 'search' && Math.abs(takenAt[1]) > 1,
+      `setup, heading ${headingDeg} deg: taken on the way up to the apex (cursor ${before.wpIndex}) ${takenAt[0].toFixed(1)} m along, ${Math.abs(takenAt[1]).toFixed(1)} m off the line; handed back 30 m along, 0.5 m beside it (legs ${before.searchLegs} -> ${back.searchLegs})`);
+    ok(back.wpIndex === 1 && closest < 6.5,
+      `heading ${headingDeg} deg, taken on the way up and handed back short of the apex: the cursor keeps the apex, and the hull drives up to it (cursor ${before.wpIndex} -> ${back.wpIndex}, nearest ${closest.toFixed(1)} m of the apex after)`);
   }
 }
 

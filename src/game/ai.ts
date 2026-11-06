@@ -895,10 +895,6 @@ const LEVEL_ROUTE_OPTIONS = Object.freeze({ requireGoalLevel: true });
 // 11 m beside it left the route held from below, and its stuck strikes ended it with the UNBEARABLE_S verdict; the first
 // fix's band (ELEVATION_LEVEL_M, 8 m: the gun's level, not the drive's) still held it from 5.5 m below (fix-up r1).
 const RESUME_STEP_M = 1.5;
-// Two stretches of a way whose distances from a hull handed back differ by no more than this are a tie, and the earlier
-// keeps the resume's cursor (hullOnItsWay). Each stretch's nearest point is its own projection, so a leg that retraces
-// its own line on a diagonal reads ~1e-15 m nearer one way or the other by rounding alone (round 4, E8, fix-up r1).
-const WAY_TIE_M = 1e-3;
 // The declared order of one hull's shell results (or hits) on a bot in one phase (round 2, U17; see pendingBefore).
 const PENDING_KIND_ORDER: readonly string[] = Object.freeze(['pen', 'he_pen', 'nonpen', 'ricochet', 'spaced_absorb', 'era']);
 // Search goal order by how many legs have ended without contact: straight at the enemy first, then the last
@@ -7062,22 +7058,28 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
    * The hull lies on its way at the hand-back (round 3, A2; round 4, F5 and E8): within RESUME_ON_WAY_M on the ground plan
    * of the route the park left it on, from where it stood (park()) through the waypoints still ahead of the cursor, where
    * it can drive onto that route (wayOffset); with no waypoint ahead (an emptied list), where it stood (hullStoodPut). The
-   * cursor moves to the waypoint ahead of the hull: the earliest stretch the hull lies by, then on only while the next
-   * lies nearer by more than WAY_TIE_M. Within that the stretches tie and the earlier keeps it, so a route that doubles
-   * back over its own line is driven to its apex, not skipped at it, on any heading, and one that doubles back past the
-   * hull is not skipped ahead. A hull driven off it, onto another level beside it, or carried off it by its coast is not
-   * on it (resumeOwnLegs). Allocation-free.
+   * cursor goes to the earliest stretch the hull lies by, and on past that stretch's waypoint only where the hull has gone
+   * by the waypoint (lies beyond the line square to the stretch through it) and lies by the stretch after it too, which it
+   * then lies no farther from (that stretch starts at the waypoint). A waypoint the hull has not gone by is driven to,
+   * however near a later stretch the hull lies: a route that doubles back over its own line is driven to its apex wherever
+   * the hull was taken on the way up (the first stretch runs from where it was taken, off the route's line when the hull
+   * was, so the way back can lie far nearer than it: fix-up r2), and one that doubles back past the hull is not skipped
+   * ahead. A hull driven off it, onto another level beside it, or carried off it by its coast is not on it
+   * (resumeOwnLegs). Allocation-free.
    */
   function hullOnItsWay(): boolean {
     if (wpIndex >= waypoints.length) return hullStoodPut();
     const x = entity.state.pos.x, z = entity.state.pos.z;
     let fromX = parkHullX, fromZ = parkHullZ;
-    let on = -1, nearest = Infinity;
+    let on = -1, wentBy = false;
     for (let i = wpIndex; i < waypoints.length; i++) {
       const to = waypoints[i];
-      const distance = wayOffset(x, z, fromX, fromZ, to.x, to.z);
-      if (on < 0 ? distance <= RESUME_ON_WAY_M : distance < nearest - WAY_TIE_M) { on = i; nearest = distance; }
-      else if (on >= 0) break;
+      if (on >= 0 && !wentBy) break;
+      if (wayOffset(x, z, fromX, fromZ, to.x, to.z) <= RESUME_ON_WAY_M) {
+        on = i;
+        // the hull has gone by this stretch's waypoint: it lies beyond the line square to the stretch through it
+        wentBy = (x - to.x) * (to.x - fromX) + (z - to.z) * (to.z - fromZ) >= 0;
+      } else if (on >= 0) break;
       fromX = to.x;
       fromZ = to.z;
     }
