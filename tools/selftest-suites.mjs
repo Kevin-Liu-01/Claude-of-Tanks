@@ -2690,6 +2690,9 @@ export const SELFTEST_SUITES = Object.freeze({
     'tools/vehicle-ground-occlusion.browser.selftest.mjs',
     'tools/articulated-shadow-batch.browser.selftest.mjs',
     'tools/battle-geometry-sharing.browser.selftest.mjs',
+    // 2026-11-06 (crew-languages-270): the crew voice picker lists languages, and a real touch drag (wheel on desktop)
+    // reaches and chooses its last row and an RTL row on a phone sheet
+    'tools/crew-voice-picker.browser.selftest.mjs',
     'tools/track-texture-source.browser.selftest.mjs',
     'tools/sourced-building-source.browser.selftest.mjs',
     'tools/horizon-panorama-bake.browser.selftest.mjs',
