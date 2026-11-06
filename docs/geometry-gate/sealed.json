@@ -1,5 +1,5 @@
 {
- "generatedAt": "2026-11-01T06:26:00.074Z",
+ "generatedAt": "2026-11-03T01:31:58.442Z",
  "res": 256,
  "minArea": 6,
  "note": "Sealed-hull ledger: per-tank open (true opening), inside-out, see-through and netting pixel totals over the 33 census views, one row per playable id, each measured in the census frame recorded on its row (frame: [x, y, z, radius] in the tank root, so an unrelated extremity edit never moves the pixel grid). Gate: a tank may not exceed its ledger open px, nor its see-through px (the world seen through glass, markings or undeclared alpha-cut parts), by more than max(12, 10%), and a sealed tank must stay sealed; its netting px (sky between declared alpha-cut net and leaf dressing, netSeeThroughPx) must stay within max(12, 2%) of the row either way; an open row may not open in a view outside its openViewNames. The frame is fixed: a build whose own frame is within min(0.5 m, 15%) of it is judged in it; past that it fails OUT OF FRAME or FRAME STALE, the only cases --reframe serves (no column may exceed the row in the row's frame; never past half again the row's first frame). A plain update never changes a row; --tighten-ledger lowers one, --accept-see-through=<id>:<reason> raises see-through or netting and --reframe=<id>:<reason> re-frames, each recorded in the row's accepts history. (guards 229, 2026-10-20: every row re-measured in its recorded frame on integ/229 93cfe22c21.)",
@@ -762,7 +762,7 @@
    "openViews": 0,
    "insideOutPx": 512,
    "seeThroughPx": 0,
-   "netSeeThroughPx": 4633,
+   "netSeeThroughPx": 3357,
    "tris": 80482,
    "frame": [
     0,
@@ -779,6 +779,16 @@
      "from": {
       "seeThroughPx": 0,
       "netSeeThroughPx": 4731
+     }
+    },
+    {
+     "kind": "see-through",
+     "reason": "267 rebuild: the ghillie suit (owner 2026-10-09) refit to the rebuilt CV90 hull and turret with a new hole over the mission dock",
+     "by": "ifv-modern-267",
+     "date": "2026-11-01",
+     "from": {
+      "seeThroughPx": 0,
+      "netSeeThroughPx": 4633
      }
     }
    ]
@@ -1097,14 +1107,56 @@
    "openPx": 5,
    "openViews": 0,
    "insideOutPx": 228,
-   "seeThroughPx": 26,
-   "netSeeThroughPx": 3480,
+   "seeThroughPx": 0,
+   "netSeeThroughPx": 3960,
    "tris": 123430,
    "frame": [
     0,
     1.7,
     1.75,
     6.5
+   ],
+   "accepts": [
+    {
+     "kind": "see-through",
+     "reason": "267 RWS seating and the round-1 KF51-U: the ghillie suit re-drapes over the rebuilt roof station and the clean KF51 glacis",
+     "by": "ifv-modern-267",
+     "date": "2026-11-01",
+     "from": {
+      "seeThroughPx": 26,
+      "netSeeThroughPx": 3480
+     }
+    },
+    {
+     "kind": "see-through",
+     "reason": "268 owner review rebuilt the turret front (sensor tower and cheek block and pods and conical mantlet) so the woodland suit net over it shows 2968 px where it showed 3040 and see-through stays 0",
+     "by": "kevinliu",
+     "date": "2026-11-02",
+     "from": {
+      "seeThroughPx": 0,
+      "netSeeThroughPx": 3040
+     }
+    },
+    {
+     "kind": "see-through",
+     "reason": "268 r11 moved the RWS from the turret rear to beside the sensor tower and cut the cheek sensors flush so the woodland suit net now covers the vacated rear roof and shows 3266 px where it showed 2968 and see-through stays 0",
+     "by": "kevinliu",
+     "date": "2026-11-02",
+     "from": {
+      "seeThroughPx": 0,
+      "netSeeThroughPx": 2968
+     }
+    },
+    {
+     "kind": "see-through",
+     "reason": "268 r15 owner rebuild raised the turret shoulders and roof and added the shelf and roof kit and the hull cupolas so the woodland suit net re-drapes and shows 3960 px where it showed 3266 and see-through stays 0",
+     "by": "kevinliu",
+     "date": "2026-11-02",
+     "from": {
+      "seeThroughPx": 0,
+      "netSeeThroughPx": 3266
+     }
+    }
    ]
   },
   "kurganets25": {
@@ -1726,7 +1778,7 @@
    "openViews": 0,
    "insideOutPx": 0,
    "seeThroughPx": 0,
-   "netSeeThroughPx": 2661,
+   "netSeeThroughPx": 3053,
    "tris": 130668,
    "frame": [
     0,
@@ -1743,6 +1795,26 @@
      "from": {
       "seeThroughPx": 0,
       "netSeeThroughPx": 3128
+     }
+    },
+    {
+     "kind": "see-through",
+     "reason": "268 shell rebuilt to the owner m1a1-abrams-usa model, the FEP hull drapes hang flat on the skirt line and the ua_m1a1 cage net sits on the new turret and skirts, so less declared netting shows",
+     "by": "abrams-bradley-268",
+     "date": "2026-11-04",
+     "from": {
+      "seeThroughPx": 0,
+      "netSeeThroughPx": 2661
+     }
+    },
+    {
+     "kind": "see-through",
+     "reason": "268 final net, the FEP ULCANS cover lies on the turret, cheeks and gun and the ua_m1a1 cage net lies on its roof, measured from the owner model shell",
+     "by": "abrams-bradley-268",
+     "date": "2026-11-04",
+     "from": {
+      "seeThroughPx": 0,
+      "netSeeThroughPx": 1829
      }
     }
    ]
@@ -1858,7 +1930,7 @@
    "openViews": 0,
    "insideOutPx": 56,
    "seeThroughPx": 0,
-   "netSeeThroughPx": 4382,
+   "netSeeThroughPx": 0,
    "tris": 121819,
    "frame": [
     0,
@@ -1915,6 +1987,16 @@
      "from": {
       "seeThroughPx": 0,
       "netSeeThroughPx": 4256
+     }
+    },
+    {
+     "kind": "see-through",
+     "reason": "the owner removed the M1E3 field net on 2026-11-02 (remove the ghillie on the m1e3), so it declares no netting",
+     "by": "kevinliu",
+     "date": "2026-11-03",
+     "from": {
+      "seeThroughPx": 0,
+      "netSeeThroughPx": 4382
      }
     }
    ]
@@ -2591,14 +2673,26 @@
    "openPx": 0,
    "openViews": 0,
    "insideOutPx": 115,
-   "seeThroughPx": 1,
-   "netSeeThroughPx": 3076,
+   "seeThroughPx": 0,
+   "netSeeThroughPx": 4601,
    "tris": 103086,
    "frame": [
     0,
     1.7,
     -0.05,
     4.5
+   ],
+   "accepts": [
+    {
+     "kind": "see-through",
+     "reason": "267 rebuild: the ghillie suit (owner 2026-10-09) refit to the rebuilt Wotan hull and remote turret",
+     "by": "ifv-modern-267",
+     "date": "2026-11-01",
+     "from": {
+      "seeThroughPx": 1,
+      "netSeeThroughPx": 3076
+     }
+    }
    ]
   },
   "stb1": {
@@ -4068,13 +4162,35 @@
    "openViews": 0,
    "insideOutPx": 1,
    "seeThroughPx": 0,
-   "netSeeThroughPx": 36300,
+   "netSeeThroughPx": 22935,
    "tris": 138014,
    "frame": [
     -0.05,
     1.7,
     0.9,
     5.8
+   ],
+   "accepts": [
+    {
+     "kind": "see-through",
+     "reason": "268 shell rebuilt to the owner m1a1-abrams-usa model, the FEP hull drapes hang flat on the skirt line and the ua_m1a1 cage net sits on the new turret and skirts, so less declared netting shows",
+     "by": "abrams-bradley-268",
+     "date": "2026-11-04",
+     "from": {
+      "seeThroughPx": 0,
+      "netSeeThroughPx": 36300
+     }
+    },
+    {
+     "kind": "see-through",
+     "reason": "268 final net, the FEP ULCANS cover lies on the turret, cheeks and gun and the ua_m1a1 cage net lies on its roof, measured from the owner model shell",
+     "by": "abrams-bradley-268",
+     "date": "2026-11-04",
+     "from": {
+      "seeThroughPx": 0,
+      "netSeeThroughPx": 27470
+     }
+    }
    ]
   },
   "ua_m1a2_abrams": {
@@ -5245,6 +5361,111 @@
     1.6,
     1,
     5.5
+   ]
+  },
+  "m3a2_bradley": {
+   "sealed": true,
+   "openPx": 0,
+   "openViews": 0,
+   "insideOutPx": 298,
+   "seeThroughPx": 0,
+   "netSeeThroughPx": 0,
+   "tris": 82095,
+   "frame": [
+    0,
+    1.55,
+    -0.05,
+    4.2
+   ]
+  },
+  "tunguska_m": {
+   "sealed": true,
+   "openPx": 0,
+   "openViews": 0,
+   "insideOutPx": 174,
+   "seeThroughPx": 0,
+   "netSeeThroughPx": 0,
+   "tris": 90240,
+   "frame": [
+    0,
+    2.15,
+    -0.05,
+    5
+   ]
+  },
+  "pantsir_s1": {
+   "sealed": true,
+   "openPx": 0,
+   "openViews": 0,
+   "insideOutPx": 174,
+   "seeThroughPx": 0,
+   "netSeeThroughPx": 0,
+   "tris": 94124,
+   "frame": [
+    0,
+    2.15,
+    -0.05,
+    5
+   ]
+  },
+  "gepard_1a2": {
+   "sealed": true,
+   "openPx": 0,
+   "openViews": 0,
+   "insideOutPx": 376,
+   "seeThroughPx": 0,
+   "netSeeThroughPx": 0,
+   "tris": 103219,
+   "frame": [
+    0,
+    2.5,
+    0.3,
+    5.1
+   ]
+  },
+  "pgz95": {
+   "sealed": true,
+   "openPx": 5,
+   "openViews": 0,
+   "insideOutPx": 422,
+   "seeThroughPx": 0,
+   "netSeeThroughPx": 0,
+   "tris": 86997,
+   "frame": [
+    0,
+    1.95,
+    -0.05,
+    4.4
+   ]
+  },
+  "pgz09": {
+   "sealed": true,
+   "openPx": 0,
+   "openViews": 0,
+   "insideOutPx": 314,
+   "seeThroughPx": 0,
+   "netSeeThroughPx": 0,
+   "tris": 87068,
+   "frame": [
+    0,
+    1.7,
+    -0.05,
+    4.5
+   ]
+  },
+  "bmpt_terminator": {
+   "sealed": true,
+   "openPx": 0,
+   "openViews": 0,
+   "insideOutPx": 107,
+   "seeThroughPx": 0,
+   "netSeeThroughPx": 0,
+   "tris": 134854,
+   "frame": [
+    0,
+    1.95,
+    -0.05,
+    4.9
    ]
   }
  }

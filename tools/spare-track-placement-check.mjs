@@ -1764,6 +1764,7 @@ const NON_LINK_TRACK_PARTS = [
   { site: /^(tejasRoofKit\w*|buildTejasFamilyTurretCourse\d+)@profiles\/abrams\.ts:/, why: 'Tejas-family roof rings and fittings' },
   { site: /^addT90RadialArmorBelt@profiles\/t90\.ts:/, why: 'T-90 radial ERA belt (K-5 cassettes)' },
   { site: /^addTerminatorStation@profiles\/afvFamily\.ts:/, why: 'BMPT station ring base' },
+  { site: /^addTurretBody@profiles\/bmpt72Station\.ts:/, why: 'BMPT-72 Ramka turntable ring (its own steel)' },
   { site: /^build(BV|Kursk)RunningGearAndSkirts@profiles\/ukraine\.ts:/, why: 'Ukrainian skirt strips' },
   { site: /^buildKurskHull@profiles\/ukraine\.ts:/, why: 'Kontakt-5 glacis cassettes' },
   { site: /^buildLeo2A5HullStage[18]@profiles\/leopard\.ts:/, why: 'Leopard 2A5 board slivers and deck panel' },

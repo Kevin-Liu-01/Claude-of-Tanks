@@ -4,6 +4,7 @@
 // switches tables on its first tick), the memoised frozen tables (a tick allocates nothing), and the ordering the owner
 // asked for: the Horde's zombies the most aggressive, the infected second, the survivors fighting back at range.
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import { GAME_MODE_IDS } from './matchModes.ts';
 import { CLASSIC_BOT_DOCTRINE, HUNT_RULES, RUSH_DRIVE, STRIKER_JUMP, matchRulesetFor, rulesetBotDoctrine, rulesetRoutePush } from './matchRuleset.ts';
 
@@ -22,20 +23,20 @@ for (const mode of ['standard', 'realistic', 'zone_control', 'gun_game', 'drone'
     assert.equal(rulesetBotDoctrine(matchRulesetFor(mode), team), CLASSIC_BOT_DOCTRINE, `${mode} ${team}: classic`);
   }
 }
-// the route push each builder ran before the doctrine (round 2, the critic's E9: one figure for both changed the solo
-// battle's 4 s / 18 m): the solo battle 4 s / 18 m (Turbo Ball 1.25 s on any move), the authority 3 s / 12 m (Turbo
-// Ball, Endless Horde and Mars 1.25 s on any move); a doctrine's own figures win in both
-const push = (mode, team, builder) => ({ ...rulesetRoutePush(matchRulesetFor(mode), team, builder) });
+// the route push before the doctrine, one for both drivers (268: sim/modeRoutePush.ts): the solo battle's 4 s / 18 m (round
+// 2, the critic's E9 kept it), Turbo Ball 1.25 s on any move; a doctrine's own figures win. The authority's own 3 s / 12 m
+// (fast in the Horde and Mars too) is retired.
+const push = (mode, team) => ({ ...rulesetRoutePush(matchRulesetFor(mode), team) });
 for (const mode of ['zone_control', 'ac130', 'gun_game', 'drone', 'juggernaut', 'realistic', 'mars']) {
-  assert.deepEqual(push(mode, 'alpha', 'solo'), { refreshS: 4, moveM: 18 }, `${mode}: the solo battle's legacy push`);
+  for (const team of ['alpha', 'bravo']) assert.deepEqual(push(mode, team), { refreshS: 4, moveM: 18 }, `${mode} ${team}: the legacy push`);
 }
-for (const mode of ['zone_control', 'ac130', 'juggernaut']) assert.deepEqual(push(mode, 'bravo', 'authority'), { refreshS: 3, moveM: 12 }, `${mode}: the authority's`);
-assert.deepEqual(push('mars', 'alpha', 'authority'), { refreshS: 1.25, moveM: 0 }, 'Mars keeps the authority\'s fast route there alone');
-for (const builder of ['solo', 'authority']) {
-  assert.deepEqual(push('turbo_ball', 'alpha', builder), { refreshS: 1.25, moveM: 0 }, `Turbo Ball's doctrine in the ${builder}`);
-  assert.deepEqual(push('endless_horde', 'bravo', builder), { refreshS: 1.25, moveM: 8 }, `the zombies' doctrine in the ${builder}`);
+assert.deepEqual(push('endless_horde', 'alpha'), { refreshS: 1.25, moveM: 8 }, 'the Horde\'s defenders on their doctrine\'s push');
+assert.deepEqual(push('turbo_ball', 'alpha'), { refreshS: 1.25, moveM: 0 }, 'Turbo Ball\'s doctrine');
+assert.deepEqual(push('endless_horde', 'bravo'), { refreshS: 1.25, moveM: 8 }, 'the zombies\' doctrine');
+assert.equal(rulesetRoutePush(matchRulesetFor('zone_control'), 'alpha'), rulesetRoutePush(matchRulesetFor('zone_control'), 'player'), 'memoised');
+for (const [file, call] of [['../game/state.ts', /pushModeRoutes\(game\.tanks, game\.gameMode, game\.ruleset,/], ['./authoritativeMatch.ts', /pushModeRoutes\(entities, normalizedGameMode, ruleset,/]]) {
+  assert.match(readFileSync(new URL(file, import.meta.url), 'utf8'), call, `${file} runs the one route push`);
 }
-assert.equal(rulesetRoutePush(matchRulesetFor('zone_control'), 'alpha', 'solo'), rulesetRoutePush(matchRulesetFor('zone_control'), 'player', 'solo'), 'memoised');
 
 // every table is complete, frozen, memoised, and keyed by side only (bravo / solo's enemy, everything else alpha)
 const keys = Object.keys(CLASSIC_BOT_DOCTRINE).sort();
@@ -92,10 +93,11 @@ assert.equal(CLASSIC_BOT_DOCTRINE.missionOwnsRoute, false, 'classic: the search 
 assert.equal(rulesetBotDoctrine(matchRulesetFor('turbo_ball'), 'alpha').offensiveJump, true, 'strikers jump at the ball');
 // the drive and hunt tables the controller and the mode controller read
 // round 3: the run-in beside the quarry and the pack's orbit rings; round 3b: the wider, longer no-ram lane, the lane
-// keepers' back-off where they stand
+// keepers' back-off where they stand; 268 item 10: the back-off held 1.2 s with its turn, a rusher passing a stopped ally
+// after 1.5 s
 assert.deepEqual({ ...RUSH_DRIVE }, { directM: 70, orbitInM: 28, orbitMinM: 16, orbitMaxM: 28, noRamM: 12, runInSideM: 24, orbitStepM: 10,
   orbitRings: 3, tangentLeadM: 18, closingLeadM: 6, laneMarginM: 3, lookaheadS: 1, brakeGapM: 3, backOffGapM: 1.5, backOffThrottle: 0.5,
-  swerveThrottle: 0.45, laneBackOffGapM: 3 });
+  swerveThrottle: 0.45, laneBackOffGapM: 3, backOffHoldS: 1.2, allyHoldS: 1.5 });
 assert.ok(RUSH_DRIVE.laneBackOffGapM <= RUSH_DRIVE.brakeGapM, 'a lane keeper backs off only inside the brake gap');
 for (const id of ['frontline_assault', 'infected', 'endless_horde', 'turbo_ball']) {
   for (const side of ['alpha', 'bravo']) {

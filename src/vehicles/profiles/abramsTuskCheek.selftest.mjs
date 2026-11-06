@@ -67,6 +67,10 @@ for (const side of [-1, 1]) {
 // 155 mm cheek cassettes. Both banks must now project past |x|=1.52 while
 // staying inside the turret plan envelope, proving the complete launchers
 // moved with their bores rather than leaving partial cylinders behind.
+// Re-pinned 2026-11-02 (release 268, abrams-bradley-268 builder A): the M250 banks moved from the cheek faces to the
+// side walls behind the cheek corners (the photographed M1A1 seat, profiles/abrams.ts tejasSmokeCluster); on the
+// TUSK their brackets stand on the side cassettes' face (~|x| 1.44 at the bank), so the bores read past |x| 1.55
+// at y 0.45-0.68, z 0.78-1.02.
 const darkPosition = dark.geometry.getAttribute('position');
 for (const side of [-1, 1]) {
   const exposedLauncherVertices = [];
@@ -74,8 +78,11 @@ for (const side of [-1, 1]) {
     const x = darkPosition.getX(i);
     const y = darkPosition.getY(i);
     const z = darkPosition.getZ(i);
-    if (side * x > 1.52 && side * x < 1.59
-      && y > 0.52 && y < 0.72 && z > 1.20 && z < 1.70) {
+    // 2026-11-03 (release 268 builder E): on the owner's model's turret the banks stand where the model carries them,
+    // low on the side wall 0.3-0.7 m behind the cheek corner (tejasSmokeCluster: bracket y 0.14-0.44, z 0.40-0.70), so
+    // the bores read at y 0.40-0.66, z 0.66-0.90 (were y 0.45-0.68, z 0.78-1.02).
+    if (side * x > 1.55 && side * x < 1.85
+      && y > 0.40 && y < 0.66 && z > 0.66 && z < 0.90) {
       exposedLauncherVertices.push([x, y, z]);
     }
   }

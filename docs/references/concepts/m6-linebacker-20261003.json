@@ -14,9 +14,9 @@
       "id": "m6_linebacker",
       "test": "src/vehicles/profiles/m6Linebacker.selftest.mjs",
       "ring": [
-        0.04,
-        1.895,
-        -0.36
+        -0.14,
+        2.06,
+        -0.4
       ],
       "gunLocal": [
         0,

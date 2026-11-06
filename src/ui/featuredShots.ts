@@ -28,10 +28,10 @@ interface FeaturedShot {
 
 export const FEATURED_SHOTS: readonly FeaturedShot[] = Object.freeze([
   {
-    img: '/media/site50-r14/stills/s21-fields-assault-close.webp',
-    bootImg: '/media/site50-r14/stills/s21-fields-assault-boot.webp',
-    capKey: 'media.site50.title.s21FieldsAssault',
-    maps: ['verdant'], focal: '45% 62%',
+    img: '/media/versus-r1/f6-leo2a6-steinburg-r7.webp',
+    bootImg: '/media/versus-r1/f6-leo2a6-steinburg-r7-boot-1280.webp',
+    capKey: 'media.versus.title.f6Leo2a6SteinburgR7',
+    maps: ['urban'], focal: '46% 60%',
   },
   {
     img: '/media/site50-r14/stills/s07-lake-shellfire.webp',

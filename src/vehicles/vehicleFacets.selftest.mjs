@@ -102,6 +102,12 @@ const RULINGS = {
   m3a3_bradley: ['ifv', 'scout', 'service'],
   ares_apc: ['apc', 'scout', 'service'],
   m6_linebacker: ['spaa', 'scout', 'service'],
+  // 268: the twin-cannon air defence (the tracked Pantsir-S1 is the 2012 GM-352M1E option, listed with the prototypes)
+  tunguska_m: ['spaa', 'scout', 'service'],
+  pantsir_s1: ['spaa', 'scout', 'prototype'],
+  gepard_1a2: ['spaa', 'scout', 'service'],
+  pgz95: ['spaa', 'scout', 'service'],
+  pgz09: ['spaa', 'scout', 'service'],
   tos1a_tagil: ['fire-support', 'support', 'service'],
   bmpt_terminator2: ['fire-support', 'support', 'service'],
   t14_armata: ['mbt', 'breakthrough', 'prototype'],
