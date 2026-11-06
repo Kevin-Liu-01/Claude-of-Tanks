@@ -588,11 +588,10 @@ const keyOf = (scenario, size, pass, label = '') => `${label ? `${label}--` : ''
 let activeBrowser = null;
 // a guard trip (exit: false) released the capture FIFO with the browser: the next battle takes its place again
 let guardReleasedLocks = false;
-for (const signal of ['SIGTERM', 'SIGINT']) {
-  process.once(signal, () => {
-    const closing = activeBrowser ? activeBrowser.close().catch(() => {}) : Promise.resolve();
-    void closing.finally(() => process.exit(130));
-  });
+/** The census's own SIGTERM/SIGINT handler (runCensus installs it while it runs): the browser playing closes, then exit. */
+function stopCensus() {
+  const closing = activeBrowser ? activeBrowser.close().catch(() => {}) : Promise.resolve();
+  void closing.finally(() => process.exit(130));
 }
 
 /** A scenario raced against its watchdog's abort and its deadline: a stuck page never holds the census (and the FIFO). */
@@ -870,8 +869,20 @@ function analyzeWindows({ readout, trace, observers, entryStartMs, liveStartMs, 
 
 const readGz = (file) => JSON.parse(gunzipSync(readFileSync(file)).toString('utf8'));
 
-/** Re-run the analysis over a finished census folder from the saved readouts and traces; rewrite each record and census.json. */
-function reanalyze(dir) {
+/** census.json's run state (round 3 A5 review): the battles that failed and a stop's left count. A rewrite of the summary
+ *  keeps it, so a judge of the folder (perf:spikes:check --report) never reads a failed battle's missing records as left,
+ *  or a stopped census's unplayed battles as failed. */
+function censusRunState(dir) {
+  try {
+    const { failures, stopped } = JSON.parse(readFileSync(path.join(dir, 'census.json'), 'utf8'));
+    return { ...(Array.isArray(failures) && failures.length ? { failures } : {}), ...(stopped ? { stopped } : {}) };
+  } catch { return {}; }
+}
+
+/** Re-run the analysis over a finished census folder from the saved readouts and traces; rewrite each record and census.json
+ *  (its run state kept). */
+export function reanalyze(dir) {
+  const state = censusRunState(dir);
   for (const name of readdirSync(dir).filter((n) => /-(cold|warm)\.json$/.test(n))) {
     const file = path.join(dir, name);
     const record = JSON.parse(readFileSync(file, 'utf8'));
@@ -884,12 +895,24 @@ function reanalyze(dir) {
     writeFileSync(file, JSON.stringify(record, null, 1));
     log(`${name}: ${record.analysis.intervals.over33} over 33 ms, ${record.analysis.intervals.hitches} hitches, ${record.analysis.longTasks.length} long tasks`);
   }
-  writeFileSync(path.join(dir, 'census.json'), JSON.stringify(summarizeCensus(dir), null, 1));
+  writeFileSync(path.join(dir, 'census.json'), JSON.stringify({ ...summarizeCensus(dir), ...state }, null, 1));
 }
 
 /** The census's battles under the pair's hold. `deps` (round 3 A5) are its outside world, for a receipt that drives it
  *  without a browser: the locks, the preview servers and one battle's run. */
-export async function runCensus(options, { acquireLocks = acquireProbeLocks, openServer = openPreview, runOne = runScenario } = {}) {
+export async function runCensus(options, deps = {}) {
+  // (round 3 B16 review) its signal handler lives while it runs, never from the import: battle-memory-probe imports this
+  // module (driveBattle) and holds through acquireProbeLocks, whose hold owns the signal; a handler installed at import
+  // was a second owner there, and its exit 130 cut that hold's unwind on SIGINT and SIGTERM
+  for (const signal of ['SIGTERM', 'SIGINT']) process.once(signal, stopCensus);
+  try {
+    return await censusRun(options, deps);
+  } finally {
+    for (const signal of ['SIGTERM', 'SIGINT']) process.removeListener(signal, stopCensus);
+  }
+}
+
+async function censusRun(options, { acquireLocks = acquireProbeLocks, openServer = openPreview, runOne = runScenario } = {}) {
   mkdirSync(options.out, { recursive: true });
   const done = new Set(options.resume ? readdirSync(options.out).filter((n) => /-(cold|warm)\.json$/.test(n)).map((n) => n.replace(/\.json$/, '')) : []);
   for (const side of options.roots) {
@@ -947,9 +970,12 @@ export async function runCensus(options, { acquireLocks = acquireProbeLocks, ope
     clearInterval(refresh);
     await locks.release();
   }
-  // what was measured is summarized either way; a stopped census says how many battles are left and how to finish it
+  // what was measured is summarized either way; a stopped census says how many battles are left and how to finish it, and
+  // (round 3 A5 review) which battles failed, so a judge of the folder (perf:spikes:check --report) never reads a failed
+  // battle's missing records as left
   const left = total - finished;
-  writeFileSync(path.join(options.out, 'census.json'), JSON.stringify({ ...summarizeCensus(options.out), ...(stopped ? { stopped: { left } } : {}) }, null, 1));
+  writeFileSync(path.join(options.out, 'census.json'), JSON.stringify({ ...summarizeCensus(options.out),
+    ...(failures.length ? { failures } : {}), ...(stopped ? { stopped: { left } } : {}) }, null, 1));
   if (options.roots.length > 1) writeFileSync(path.join(options.out, 'census-ab.json'), JSON.stringify(compareCensus(options.out), null, 1));
   if (stopped) log(`${left} battle(s) left for the next run: run again with --out=${options.out} --resume to finish this census`);
   return stopped ? { failures, stopped: true, left } : { failures };

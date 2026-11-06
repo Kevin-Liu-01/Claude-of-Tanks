@@ -450,7 +450,10 @@ export async function runShadowTruth(options, { acquireLocks = acquireProbeLocks
       if (unit.outcome === 'left') {
         report.left = options.maps.slice(index);
         report.stopped = unit.why;
-        log(`the capture hold was stopped (${unit.why}): ${report.left.join(', ')} left for the next run`);
+        // (round 3 A5 review) the run that finishes them: a run writes result.json for its own maps, so a fresh --out keeps
+        // this one's beside it
+        log(`the capture hold was stopped (${unit.why}): ${report.left.join(', ')} left for the next run; finish with the same options, `
+          + `--maps=${report.left.join(',')} and a fresh --out (this run's result.json stays in ${options.out})`);
         break;
       }
       if (unit.outcome === 'failed') throw unit.error;

@@ -436,13 +436,14 @@ export async function runMemoryProbe(options, { acquireLocks = acquireProbeLocks
   let failed = 0;
   try {
     const budget = options.gate ? JSON.parse(readFileSync(BUDGET_FILE, 'utf8')) : null;
-    for (const scenario of options.scenarios) {
-      // the hold's stop (the lock's cap with a waiter, a signal): the scenarios left wait for the next run, never a gate's pass
-      if (locks.signal.aborted) { log('the capture hold was stopped: the scenarios left wait for the next run'); markUnitsLeft(); break; }
-      // (round 3 A5) a scenario the stop cut (its browser stopped under it) waits for the next run too: no uncaught crash
+    for (const [index, scenario] of options.scenarios.entries()) {
+      // the hold's stop (the lock's cap with a waiter, a signal) before a scenario, or (round 3 A5) during one (its browser
+      // stopped under it): it and the scenarios after it wait for the next run, never a gate's pass and no uncaught crash.
+      // (round 3 A5 review) The log names the run that finishes them: this probe keeps no list of what it measured.
       const unit = await runProbeUnit(locks, () => probe(options, scenario));
       if (unit.outcome === 'left') {
-        log(`${keyOf(scenario, options.size)}: the capture hold was stopped mid-scenario (${unit.why}): it and the scenarios after it wait for the next run`);
+        const left = options.scenarios.slice(index);
+        log(`the capture hold was stopped (${unit.why}): ${left.join(', ')} left for the next run; finish with the same options and --scenarios=${left.join(',')}`);
         markUnitsLeft();
         break;
       }
