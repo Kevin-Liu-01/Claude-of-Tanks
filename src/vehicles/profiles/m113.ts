@@ -407,37 +407,73 @@ function* buildM113Steps(P: TankBuilderPort, mark: M113Mark): TankProfileBuild {
     muzzleBore(P, { len: 1.42, r: 0.05 });
     P.muzzleZ = 1.42;
   } else if (a3) {
-    // the commander's cupola on its ring, its vision blocks round it and its hatch lid thrown open astern on its hinge
-    P.add('turret', cylY(0.42, 0.44, 0.08, P.q ? 24 : 16), 0, 0.04, 0);
-    P.add('turret', cylY(0.34, 0.38, 0.16, P.q ? 24 : 16), 0, 0.16, 0);
-    for (let k = 0; k < 8; k++) {
-      const a = (k / 8) * Math.PI * 2;
-      if (Math.cos(a) > 0.6) continue;
-      P.add('turretGlass', box(0.07, 0.04, 0.02), Math.sin(a) * 0.365, 0.18, Math.cos(a) * 0.365, 0, a, 0);
+    // (the owner 2026-11-05: "i feel ike the a3 should have a much better turret") the commander's cupola as a gunner's
+    // protection kit turret, the 2000s A3s' fit: the cupola's race ring and its turning body with five vision blocks in
+    // armoured hoods round its front and flanks; the shield's bolted front plate with the M2's slot and a two-pane
+    // armoured-glass window over it, angled wings with their own glass, side plates with vision slits, open astern to the
+    // commander's hatch thrown back on its hinge; the M2 on its pintle and cradle
+    const seg = P.q ? 28 : 16;
+    P.add('turret', cylY(0.44, 0.46, 0.06, seg), 0, 0.03, 0);
+    P.add('turretDark', torus(0.445, 0.010, seg, 6), 0, 0.062, 0, Math.PI / 2, 0, 0);
+    P.add('turret', cylY(0.36, 0.40, 0.17, seg), 0, 0.145, 0);
+    P.add('turret', cylY(0.30, 0.36, 0.04, seg), 0, 0.25, 0);
+    for (const k of [-2, -1, 0, 1, 2]) {
+      const a = k * 0.62, sa = Math.sin(a), ca = Math.cos(a);
+      P.add('turretDark', box(0.13, 0.07, 0.07), sa * 0.37, 0.195, ca * 0.37, 0, a, 0);
+      P.add('turretGlass', box(0.09, 0.035, 0.012), sa * 0.408, 0.19, ca * 0.408, 0, a, 0);
     }
+    // the hatch lid thrown open astern, its raised rim and latch handle toward the cupola, its two hinge arms
     P.add('turretDark', cylX(0.025, 0.30, 8), 0, 0.25, -0.36);
     P.addEquipment('turret', xform(cylY(0.30, 0.30, 0.035, P.q ? 20 : 14), 0, 0, 0, Math.PI / 2 - 0.22, 0, 0), 0, 0.53, -0.42);
-    // (the second blind critic read the bare lid as a dish on a post) its raised rim and latch handle on the face toward
-    // the cupola, and the two hinge arms from the ring's hinge up to the lid
     P.add('turretDark', torus(0.27, 0.014, P.q ? 24 : 14, 6), 0, 0.534, -0.402, -0.22, 0, 0);
     P.add('turretDark', box(0.16, 0.035, 0.03), 0, 0.60, -0.388, -0.22, 0, 0);
     for (const x of [-0.10, 0.10]) P.add('turretDark', box(0.035, 0.30, 0.03), x, 0.36, -0.40, -0.22, 0, 0);
-    // the ACAV-style gun shield: a front plate either side of the gun's window, bridged under and over it, and a wing on
-    // each flank on a stay from the ring
-    for (const s of [-1, 1] as const) {
-      P.addEquipment('turret', box(0.33, 0.52, 0.025), s * 0.235, 0.50, 0.38);
-      P.addEquipment('turret', box(0.025, 0.46, 0.28), s * 0.40, 0.47, 0.24);
-      P.addEquipment('turret', box(0.06, 0.18, 0.06), s * 0.40, 0.16, 0.24);
+    // the shield's front plate: below the M2's slot, either side of it and over it, its two rows of bolt heads, then the
+    // window's frame and its two armoured-glass panes
+    const fz = 0.43, y0 = 0.24, ySlot0 = 0.41, ySlot1 = 0.53, yWin = 0.67, yTop = 0.95;
+    P.addEquipment('turret', box(0.60, ySlot0 - y0, 0.03), 0, (y0 + ySlot0) / 2, fz);
+    for (const s of [-1, 1] as const) P.addEquipment('turret', box(0.22, ySlot1 - ySlot0, 0.03), s * 0.19, (ySlot0 + ySlot1) / 2, fz);
+    P.addEquipment('turret', box(0.60, yWin - ySlot1, 0.03), 0, (ySlot1 + yWin) / 2, fz);
+    for (const y of [0.275, 0.375]) for (const x of [-0.25, -0.15, -0.05, 0.05, 0.15, 0.25]) {
+      P.add('turretDark', cylZ(0.012, 0.012, 8), x, y, fz + 0.019);
     }
-    P.addEquipment('turret', box(0.14, 0.14, 0.025), 0, 0.31, 0.38);
-    P.addEquipment('turret', box(0.14, 0.20, 0.025), 0, 0.66, 0.38);
-    // the M2 .50 on its cradle behind the shield: the receiver, the ammunition can on its left, the spade grips, the barrel
-    // through the window to its flash hider
+    P.addEquipment('turret', box(0.60, 0.04, 0.035), 0, yTop, fz);
+    for (const x of [-0.275, 0, 0.275]) P.addEquipment('turret', box(x ? 0.05 : 0.03, yTop - yWin, 0.035), x, (yWin + yTop) / 2, fz);
+    for (const s of [-1, 1] as const) P.add('turretGlass', box(0.235, yTop - yWin - 0.03, 0.014), s * 0.1375, (yWin + yTop) / 2 - 0.005, fz);
+    // the angled wings from the front plate's edges back and out at 45 degrees, armour below and glass above
+    const wl = Math.hypot(0.25, 0.25);
+    for (const s of [-1, 1] as const) {
+      const x = s * 0.425, z = 0.305, yaw = s * Math.PI / 4;
+      P.addEquipment('turret', box(wl, yWin - y0, 0.03), x, (y0 + yWin) / 2, z, 0, yaw, 0);
+      P.addEquipment('turret', box(wl, 0.04, 0.035), x, yTop, z, 0, yaw, 0);
+      P.addEquipment('turret', box(0.04, yTop - yWin, 0.035), s * 0.545, (yWin + yTop) / 2, 0.185, 0, yaw, 0);
+      P.add('turretGlass', box(wl - 0.06, yTop - yWin - 0.03, 0.014), x - s * 0.01, (yWin + yTop) / 2 - 0.005, z + 0.01, 0, yaw, 0);
+      // the side plate back to the cupola's rear quarter, its vision slit, and its two stays from the ring
+      P.addEquipment('turret', box(0.03, 0.55, 0.40), s * 0.55, y0 + 0.275, -0.02);
+      P.add('turretGlass', box(0.012, 0.07, 0.20), s * 0.567, 0.69, -0.02);
+      for (const z2 of [-0.12, 0.20]) P.add('turretDark', box(0.18, 0.035, 0.035), s * 0.46, 0.22, z2);
+    }
+    // the pintle post and the cradle's yoke under the M2's receiver
+    P.add('turretDark', cylY(0.035, 0.04, 0.125, 10), 0, 0.3025, 0.16);
+    P.add('turretDark', box(0.18, 0.03, 0.14), 0, 0.38, 0.16);
+    // the M2 .50: the receiver, its feed cover and backplate, the spade grips and their trigger, the cocking handle on its
+    // right, the perforated barrel support, the carrying handle, the ammunition can on its left feeding the belt in, and
+    // the barrel through the slot to its flash hider
     P.gunG.position.set(0, 0.46, 0.34);
-    P.addGunExtra(box(0.13, 0.15, 0.40), 0, 0, -0.22);
-    P.addGunExtra(box(0.10, 0.18, 0.26), 0.12, -0.03, -0.20);
-    for (const s of [-1, 1] as const) P.add('gunDark', cylY(0.012, 0.012, 0.10, 8), s * 0.04, 0, -0.44);
-    P.add('gunDark', cylZ(0.04, 0.24, 10), 0, 0, 0.10);
+    P.addGunExtra(box(0.105, 0.125, 0.40), 0, 0, -0.18);
+    P.addGunExtra(box(0.095, 0.03, 0.20), 0, 0.075, -0.10);
+    P.add('gunDark', box(0.12, 0.11, 0.025), 0, 0, -0.392);
+    for (const s of [-1, 1] as const) P.add('gunDark', cylY(0.012, 0.012, 0.11, 8), s * 0.045, 0, -0.43);
+    P.add('gunDark', box(0.10, 0.015, 0.015), 0, 0.05, -0.43);
+    P.add('gunDark', box(0.04, 0.03, 0.01), 0, 0, -0.415);
+    P.add('gunDark', box(0.03, 0.02, 0.06), -0.068, 0.02, -0.08);
+    P.add('gunDark', cylZ(0.042, 0.14, 12), 0, 0, 0.09);
+    for (const z of [0.045, 0.09, 0.135]) P.add('gun', cylZ(0.045, 0.012, 12), 0, 0, z);
+    for (const z of [0.30, 0.42]) P.add('gunDark', box(0.015, 0.07, 0.015), 0.05, 0.035, z);
+    P.add('gunDark', box(0.015, 0.015, 0.14), 0.05, 0.075, 0.36);
+    P.addGunExtra(box(0.10, 0.19, 0.29), 0.125, -0.045, -0.16);
+    P.add('gunDark', box(0.11, 0.02, 0.30), 0.125, 0.06, -0.16);
+    P.add('gunDark', box(0.05, 0.012, 0.09), 0.075, 0.055, -0.10, 0, 0, -0.6);
     buildGun(P, { len: 1.14, r: 0.022, evac: null, baseR: 0.04, collar: false });
     P.add('gunDark', cylZ(0.032, 0.10, 10), 0, 0, 1.09);
     muzzleBore(P, { len: 1.14, r: 0.022 });

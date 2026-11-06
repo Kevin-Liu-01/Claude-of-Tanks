@@ -11,8 +11,8 @@ import { KIT } from './kit.ts';
 const { box, cylX, cylY, cylZ } = KIT;
 const B = M113_BASE;
 
-/** A pioneer tool lying on the roof's edge strip along the hull, its head across at the front end, in two clamps; its
- * 3 cm stands under every gun's and launcher's lowest pass (the gun depression sweep holds it). */
+/** A pioneer tool lying on the roof's edge strip along the hull, its head across at the front end, in two clamps; it
+ * stands 3 cm, and the gun depression sweep's curves hold the guns over it (about a degree on the FSV's flank). */
 function roofTool(P: TankBuilderPort, kind: 'axe' | 'pick', x: number, z: number, len: number): void {
   const y = B.roofY + 0.022;
   P.add('hullWood', cylZ(kind === 'axe' ? 0.019 : 0.016, len, 8), x, y, z);
