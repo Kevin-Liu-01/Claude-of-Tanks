@@ -1758,6 +1758,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/mp/presentation/battlePresentation.selftest.mjs',
     'src/mp/presentation/wreckCause.selftest.mjs', // 2026-11-02 audit F10: a late cook-off cause reaches the wreck; a respawn forgets the last life's cause
     'src/mp/presentation/settledFalls.selftest.mjs', // 2026-11-02 audit U27: a late joiner's settled props lie as they fell (wire 11 falls, withheld as their events are), a withheld one along its own heading, never a ram toward +Z
+    'src/mp/presentation/battleRestartReset.selftest.mjs', // 2026-11-02 audit round 3 X5: a battle restart stands the old battle's settled props, structures and heaps on the seat; the restarted battle lays its own
     'src/mp/presentation/unseenRounds.selftest.mjs', // 2026-11-02 audit U31: a round that left the view in flight is named unseen (wire 11) and held by the effects, not ended
     // 2026-10-07 (destruction core lane): the authority's stages on a peer's world, the log on the wire and through a migration.
     'src/mp/presentation/destructionMirror.selftest.mjs',

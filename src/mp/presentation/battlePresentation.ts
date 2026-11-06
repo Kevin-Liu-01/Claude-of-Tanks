@@ -532,6 +532,8 @@ export function createBattlePresentation({
   let snapshotPhase: number | null = null;
   let appliedDestructibleRevision = -1;
   let appliedDestroyedLength = -1;
+  /** The client's battle restarts as of the last frame (MatchFrame.battleRestarts); null before the first frame. */
+  let presentedBattleRestarts: number | null = null;
   // which record of this world is the authority's obstacle: its index where this world shares them, else its identity
   const authorityObstacles = createAuthorityObstacles(worldCollision);
   // the authority's destruction on this world: stages, collapses, heaps (docs/DESTRUCTION.md §8)
@@ -1038,6 +1040,21 @@ export function createBattlePresentation({
     }
   }
 
+  /**
+   * The battle restarted under this seat (round 3 X5; MatchFrame.battleRestarts: a host restarted it from its spawns, or
+   * resumed it from a frame still in its countdown): what this presentation laid down as settled state belongs to a battle
+   * no longer played, and the host has it standing. The world's destructibles stand again (props, trees, poles and their
+   * marks: the world's own reset, as a battle's start runs it), the destruction mirror forgets its stages, heaps and
+   * craters, and the applied list is forgotten, so the restarted battle's list and log lay down from nothing. Before, the
+   * client's collision kept the abandoned battle's crushes and its prediction drove through props the host blocks.
+   */
+  function resetSettledWorld(): void {
+    (worldCollision as { resetDestructibles?(): void } | null)?.resetDestructibles?.();
+    destruction.reset();
+    appliedDestructibleRevision = -1;
+    appliedDestroyedLength = -1;
+  }
+
   function resultRoster(): Array<Record<string, RuntimeValue>> {
     return roster.map((actor) => ({
       id: actor.id, name: actor.displayName || actor.spec.name || actor.specId, vehicle: actor.displayName || actor.spec.name || actor.specId,
@@ -1105,6 +1122,10 @@ export function createBattlePresentation({
 
   function applyFrame(frame: MatchFrame): void {
     if (disposed) return;
+    // a battle restart first: this frame's list and log, and its events after it, are the restarted battle's
+    const restarts = frame.battleRestarts ?? 0;
+    if (presentedBattleRestarts !== null && restarts !== presentedBattleRestarts) resetSettledWorld();
+    presentedBattleRestarts = restarts;
     lastFrameAtMs = clock();
     if (mounted) recordKillcamStep(frame.renderTimeMs);
     snapshotPhase = frame.meta.phase;
