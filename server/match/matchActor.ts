@@ -115,6 +115,11 @@ export interface MatchActorResume {
   phase?: 'countdown' | 'playing' | 'ended';
   countdownMs?: number;
   verdict?: { result: 'alpha' | 'bravo' | 'draw'; reason: string } | null;
+  /**
+   * The battle this actor plays (round 3 A3; WelcomeMessage.battleId, u32): the resumed battle's (the sealed keyframe's),
+   * or a fallback restart's own (migrationState.ts migrationFallback). Absent: 0, a match's first battle.
+   */
+  battleId?: number;
 }
 
 export interface MatchActorOptions {
@@ -339,6 +344,8 @@ export interface MatchActor {
   wireIdOf(playerId: string): number | null;
   /** Battle time the actor resumed at (0 for a fresh match): every published battle clock adds it. */
   readonly resumedBattleTimeMs: number;
+  /** The battle this actor plays (MatchActorResume.battleId; 0 for a match's first battle): its WELCOMEs and keyframes carry it. */
+  readonly battleId: number;
   /**
    * The row an entity was restored from at a migration (`applyResumeState` names it): a later RESUME_HINT from that
    * entity's own seat is applied only when it is newer than this row and within the distance the hull could have driven
@@ -481,6 +488,10 @@ export function createMatchActor(options: MatchActorOptions): MatchActor {
       || (resume.countdownMs !== undefined && !(resume.countdownMs >= 0 && Number.isFinite(resume.countdownMs))))) {
     throw new TypeError('resume phase must be countdown, playing or ended, and its countdownMs finite and >= 0');
   }
+  if (resume && resume.battleId !== undefined && !(Number.isInteger(resume.battleId) && resume.battleId >= 0 && resume.battleId <= 0xffffffff)) {
+    throw new TypeError('resume battleId must be a u32');
+  }
+  const battleId = resume?.battleId ?? 0;
   const mode: GameModeId = normalizeGameMode(options.mode ?? 'standard');
   const ruleset = options.ruleset && options.ruleset.mode === mode ? options.ruleset : matchRulesetFor(mode);
   const snapshotHz = options.snapshotHz ?? SNAPSHOT_HZ;
@@ -1348,7 +1359,7 @@ export function createMatchActor(options: MatchActorOptions): MatchActor {
       protocolVersion: PROTOCOL_VERSION, tickHz: TICK_HZ, snapshotHz,
       seat: client.seat, entityId, team: TEAM_ID[seatSpec.team],
       serverTick: loop.tick, serverTimeMs: serverTimeMs(loop.tick), seed: seed >>> 0, capabilities: client.capabilities,
-      roomId, mapId, mode, rulesetJson, roster: rosterEntries.map((row) => ({ ...row })),
+      roomId, mapId, mode, rulesetJson, roster: rosterEntries.map((row) => ({ ...row })), battleId,
     });
     // a link that closed under the WELCOME (send returns false on a closed link, without a throw) leaves the seat now
     // (audit M3, 2026-11-02): before, the client stayed seated and marked connected until a close event that may not follow
@@ -1431,6 +1442,7 @@ export function createMatchActor(options: MatchActorOptions): MatchActor {
     entityForWireId: (entityId) => entityByWireId.get(entityId) ?? null,
     wireIdOf: (playerId) => entityIdOf.get(playerId) ?? null,
     resumedBattleTimeMs,
+    battleId,
     noteRestoredRow(entityId, tick, x, z) {
       if (!Number.isInteger(entityId) || entityId < 1 || entityId > MAX_ENTITIES || !Number.isInteger(tick) || tick < 0) return;
       restoredTicks[entityId] = tick;

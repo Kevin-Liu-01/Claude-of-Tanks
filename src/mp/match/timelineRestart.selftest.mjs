@@ -24,6 +24,14 @@
 //       goes; a fall and a keyframe the restarted host sent between its WELCOME and its first snapshot stay;
 //   (d) as (b), with that fall and keyframe: the restarted host's first keyframe (id 1 again, at a tick below the old
 //       battle's keyframe, at the same generation) is retained, not ranked under the abandoned one.
+// Round 3 (A3, 2026-11-05): a restart is told by the battle's id at the WELCOME (WelcomeMessage.battleId: kept by a
+// resume, new for a fallback restart), not by the first snapshot's distance from the clock:
+//   (e) a plain reconnect to the same host, the battle running on, its first snapshot 2.5 s late (a congested downlink):
+//       no restart, nothing retained goes (before: read as a restart behind the clocks, the keyframe and the fallen fence
+//       dropped, battleRestarts 1, so an election of this seat declined and the presentation would stand the props);
+//   (f) a restart on the clients' clock seen by a seat whose first WELCOME from the restarted host comes after its
+//       countdown ended (playing again): told by the battle's id (before: neither test fired, the old battle's fence,
+//       stage and revive stayed retained for the next election).
 import assert from 'node:assert/strict';
 import { MigratingTransport, createLoopbackPair } from '../transport/index.ts';
 import { MESSAGE_TYPE, TEAM, TICK_HZ, decodeMessage, encodeMessage } from '../wire/index.ts';
@@ -71,7 +79,7 @@ function welcomeLink(inner, shiftTicks, afterWelcome) {
   };
 }
 
-function run({ newHostTick, welcomeShiftTicks = 0, countdownTicks = 0, afterWelcome = false }) {
+function run({ newHostTick, welcomeShiftTicks = 0, countdownTicks = 0, afterWelcome = false, firstSnapshotLateMs = 0, joinAfterTicks = 0, framesAfter = 120 }) {
   let nowMs = 100_000;
   const clock = () => nowMs;
   const first = new ScriptedMatchServer({ clock, heightField: FIELD, specFor: () => SPEC, seats: SEATS, countdownTicks: 0 });
@@ -110,16 +118,24 @@ function run({ newHostTick, welcomeShiftTicks = 0, countdownTicks = 0, afterWelc
   assert.equal(before.destruction?.length, 1, 'setup: the structure stage is retained');
   assert.deepEqual(before.respawns?.map(([id]) => id), ['p1'], 'setup: the revive is retained');
   // the first host goes; the next runs the same epoch from `newHostTick`, its time locked to its ticks as matchActor.ts
-  // stamps them (the fixture's own clock runs `behindMs` late, so its stall skip never moves the epoch)
-  servers.length = 0;
-  const startTick = newHostTick === 'continue' || newHostTick === 'on-clock' ? first.currentTick : newHostTick;
-  const behindMs = (first.currentTick - startTick) * TICK_MS;
-  const next = new ScriptedMatchServer({ clock: () => nowMs - behindMs, heightField: FIELD, specFor: () => SPEC, seats: SEATS, countdownTicks: startTick + countdownTicks });
-  next.tick = startTick;
-  next.startedAtMs = first.startedAtMs;
-  if (newHostTick === 'continue') next.destroyObstacle(7); // a resumed host keeps what fell
-  servers.push(next);
-  const nextPair = createLoopbackPair({ clock, clientToServer: LINK, serverToClient: LINK });
+  // stamps them (the fixture's own clock runs `behindMs` late, so its stall skip never moves the epoch). A resumed host
+  // plays the same battle (its id, 0); a restarted one a battle of its own (migrationFallback's fresh id). 'same-host': a
+  // plain reconnect to the first host, which plays on.
+  let next = first;
+  if (newHostTick !== 'same-host') {
+    servers.length = 0;
+    const startTick = newHostTick === 'continue' || newHostTick === 'on-clock' ? first.currentTick : newHostTick;
+    const behindMs = (first.currentTick - startTick) * TICK_MS;
+    next = new ScriptedMatchServer({ clock: () => nowMs - behindMs, heightField: FIELD, specFor: () => SPEC, seats: SEATS, countdownTicks: startTick + countdownTicks,
+      battleId: newHostTick === 'continue' ? first.battleId : 0x5eed0001 });
+    next.tick = startTick;
+    next.startedAtMs = first.startedAtMs;
+    if (newHostTick === 'continue') next.destroyObstacle(7); // a resumed host keeps what fell
+    servers.push(next);
+  }
+  // a seat that comes back late: the restarted host plays on alone meanwhile
+  for (let index = 0; index < joinAfterTicks; index++) { nowMs += 1000 / 60; next.advance(); }
+  const nextPair = createLoopbackPair({ clock, clientToServer: LINK, serverToClient: firstSnapshotLateMs ? { ...LINK, latencyMs: firstSnapshotLateMs } : LINK });
   pairs.push(nextPair);
   next.attach(nextPair.server);
   const inputs = [];
@@ -135,7 +151,7 @@ function run({ newHostTick, welcomeShiftTicks = 0, countdownTicks = 0, afterWelc
     return [{ kind: 'world_prop_destroyed', payload: { obstacleIndex: 9, kind: 'fence', cause: 'script' } }, keyframeChunk(1, tick)];
   } : null;
   migrating.replace(welcomeLink(nextPair.client, welcomeShiftTicks, welcomeEvents), 'host changed');
-  for (frameIndex = 0; frameIndex < 120; frameIndex++) frame();
+  for (frameIndex = 0; frameIndex < framesAfter; frameIndex++) frame();
   const admitted = (input) => input.clientTick <= input.serverTick + MAX_LEAD_TICKS && input.clientTick > input.serverTick;
   const stats = client.stats();
   const after = client.retainedMigration();
@@ -215,4 +231,30 @@ function run({ newHostTick, welcomeShiftTicks = 0, countdownTicks = 0, afterWelc
     `(d) the restarted host's first keyframe is retained, not ranked under the abandoned battle's higher tick (held ${result.after.keyframe?.tick})`);
 }
 
-console.log('timelineRestart.selftest: a client follows a host that restarts the battle (the clocks re-anchored when off them, inputs admitted, everything retained of the abandoned battle dropped and the restarted host\'s kept), and keeps its clocks and retained state on a host that continues the battle');
+// (e) round 3 A3: a plain reconnect to the same host, the battle running on, every frame of the new link 2.5 s late
+{
+  const result = run({ newHostTick: 'same-host', firstSnapshotLateMs: 2500, framesAfter: 360 });
+  assert.ok(result.after.latestFrame && result.after.latestFrame.tick > result.oldTick, `(e) setup: the late link's snapshots arrived (newest ${result.after.latestFrame?.tick}, ${result.oldTick} before it)`);
+  assert.equal(result.battleRestarts, 0, `(e) a host that plays on restarts nothing, however late its first snapshot (told ${result.battleRestarts}; the clocks re-anchored ${result.timelineRestarts})`);
+  assert.equal(result.after.keyframe?.tick, result.oldTick - 30, '(e) the retained keyframe stays: an election of this seat resumes the battle');
+  assert.deepEqual(result.after.fallen, [7], '(e) the fallen fence stays retained');
+  assert.equal(result.after.destruction?.length, 1, '(e) the structure stage stays retained');
+  assert.deepEqual(result.after.respawns?.map(([id]) => id), ['p1'], '(e) the revive stays retained');
+  assert.equal(result.presentedRestarts, 0, '(e) the presented frame tells no restart: the settled world stays laid');
+}
+
+// (f) round 3 A3: a restart on the clients' clock, the seat back only after the restarted battle's countdown ended
+{
+  const result = run({ newHostTick: 'on-clock', countdownTicks: 300, joinAfterTicks: 420 });
+  assert.equal(result.after.latestFrame?.meta.phase, 2, '(f) setup: the restarted battle is playing when this seat is welcomed');
+  assert.equal(result.timelineRestarts, 0, '(f) a host on the clients\' clock re-anchors nothing');
+  assert.equal(result.battleRestarts, 1, `(f) the battle restart is told once, by the battle's id (told ${result.battleRestarts})`);
+  assert.equal(result.presentedRestarts, 1, '(f) the presented frame carries the restart for the settled world');
+  assert.equal(result.after.keyframe, null, '(f) the keyframe of the abandoned battle goes');
+  assert.deepEqual(result.after.fallen, [], '(f) the fence the abandoned battle felled goes');
+  assert.deepEqual(result.after.destruction, [], '(f) the abandoned battle\'s destruction goes');
+  assert.deepEqual(result.after.respawns, [], '(f) the abandoned battle\'s revive goes');
+  assert.deepEqual(result.resumed.frame.destroyed, [], '(f) a later election resumes the restarted battle with nothing destroyed');
+}
+
+console.log('timelineRestart.selftest: a client follows a host that restarts the battle (the clocks re-anchored when off them, inputs admitted, everything retained of the abandoned battle dropped and the restarted host\'s kept), and keeps its clocks and retained state on a host that continues the battle, a late first snapshot included (the battle\'s id tells a restart, round 3 A3)');

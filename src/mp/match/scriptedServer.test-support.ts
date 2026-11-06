@@ -69,6 +69,8 @@ export interface ScriptedServerOptions {
   ammo?: number;
   /** Ends the match with this verdict at the tick (null = never). */
   verdictAtTick?: { tick: number; verdict: number; reason: string } | null;
+  /** The battle this server plays (WelcomeMessage.battleId, round 3 A3): 0, a match's first; a restarted battle's own. */
+  battleId?: number;
 }
 
 interface ServerEntity {
@@ -158,6 +160,7 @@ export class ScriptedMatchServer {
   readonly maxTicksAhead: number;
   readonly reloadS: number;
   readonly verdictAtTick: { tick: number; verdict: number; reason: string } | null;
+  readonly battleId: number;
   readonly stats: ScriptedServerStats = {
     ticks: 0, snapshotsSent: 0, keyframesSent: 0, inputFrames: 0, inputControlsApplied: 0, inputHeld: 0,
     inputRejected: 0, lateInputs: 0, eventsSent: 0, shotsFired: 0, bytesSent: 0,
@@ -190,7 +193,9 @@ export class ScriptedMatchServer {
     reloadS = 2,
     ammo = 40,
     verdictAtTick = null,
+    battleId = 0,
   }: ScriptedServerOptions) {
+    this.battleId = battleId;
     this.clock = clock;
     this.heightField = heightField;
     this.specFor = specFor;
@@ -332,6 +337,7 @@ export class ScriptedMatchServer {
         mode: 'standard',
         rulesetJson: '{"mode":"standard"}',
         roster: this.roster(),
+        battleId: this.battleId,
       }));
       return;
     }

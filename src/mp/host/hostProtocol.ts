@@ -70,6 +70,11 @@ export interface MigrationEntityExtras {
 /** The retained state a newly elected host boots from (decrypted on the main thread with the host secret). */
 export interface HostResumeState {
   modeCheckpoint?: NewModeCheckpoint | null;
+  /**
+   * The battle the state belongs to (round 3 A3; WelcomeMessage.battleId): the sealed keyframe's, which a resume keeps, or a
+   * fallback restart's new one (migrationState.ts migrationFallback). Absent: 0, a match's first battle.
+   */
+  battleId?: number;
   /** The authority tick the keyframe describes. */
   tick: number;
   battleTimeMs: number;

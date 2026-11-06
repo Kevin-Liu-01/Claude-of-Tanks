@@ -410,7 +410,8 @@ export function createMatchHostCore({
     };
     const status = currentPhase(live);
     const phase = status === 'ended' ? 'ended' : status === 'playing' ? 'playing' : 'countdown';
-    return { tick, battleTimeMs, timeS: live.authority.timeS, phase, frame, entities: captureEntityExtras(live), modeCheckpoint: live.authority.captureModeCheckpoint() };
+    return { tick, battleTimeMs, timeS: live.authority.timeS, phase, frame, entities: captureEntityExtras(live), modeCheckpoint: live.authority.captureModeCheckpoint(),
+      ...(live.battleId ? { battleId: live.battleId } : {}) };
   }
 
   async function broadcastSealed(kind: typeof MIGRATION_EVENT_KIND[keyof typeof MIGRATION_EVENT_KIND], id: number, tick: number, plain: Uint8Array): Promise<void> {
@@ -526,7 +527,9 @@ export function createMatchHostCore({
       // the resume tick was due as the boot arrived (MatchSession fixes it from the wall just before): the loop starts on that
       // timeline, the ticks spent loading the world and holding for the seats skipped (267)
       // and in the phase the old host was in (audit M1: a countdown with its time left, an ended match with its verdict)
-      resume: resume ? { tick: resume.resumeTick, battleTimeMs: resume.battleTimeMs, dueAtMs: bootStarted, ...resumePhaseOf(resume) } : null,
+      // the battle it plays (round 3 A3): the resumed battle's, or a fallback restart's own; its WELCOMEs and keyframes carry it
+      resume: resume ? { tick: resume.resumeTick, battleTimeMs: resume.battleTimeMs, dueAtMs: bootStarted, ...resumePhaseOf(resume),
+        ...(resume.battleId ? { battleId: resume.battleId } : {}) } : null,
       ...(next.snapshotHz !== undefined ? { snapshotHz: next.snapshotHz } : {}),
       ...(build !== undefined ? { build } : {}),
       onVerdict: () => { const live = actor; if (live) report(live, now()); },
