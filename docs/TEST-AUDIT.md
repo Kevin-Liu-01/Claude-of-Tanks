@@ -15,17 +15,17 @@ Run times: `tools/selftest-durations.json`, else this machine's latest observati
 
 | Decision | Receipts | CPU-min |
 |---|---:|---:|
-| KEEP | 1517 | 166.0 |
+| KEEP | 1518 | 178.2 |
 | MERGE | 0 | 0.0 |
 | MANUAL | 661 | 1167.4 |
 | RETIRE | 2 | 0.7 |
 
 | Suite run | Receipts | CPU-min | Simulated wall (min) |
 |---|---:|---:|---:|
-| Before: every receipt (npm test without the tiers) | 2179 | 1333.8 | 234.7 |
-| After: the default tier | 1517 | 166.0 | 37.2 |
+| Before: every receipt (npm test without the tiers) | 2180 | 1346.0 | 236.2 |
+| After: the default tier | 1518 | 178.2 | 38.8 |
 
-Default tier: 12.4 % of the whole registry's CPU; 18.1 % of the 916 CPU-min the snapshot gave for the 1,863 receipts it timed. Its wall: 0.2 min exclusive receipts, 18.4 min pool, 18.6 min browser receipts.
+Default tier: 13.2 % of the whole registry's CPU; 19.5 % of the 916 CPU-min the snapshot gave for the 1,863 receipts it timed. Its wall: 0.2 min exclusive receipts, 19.9 min pool, 18.6 min browser receipts.
 
 ## Manual suites
 
@@ -808,11 +808,12 @@ None. Folding receipts saves only process starts (about a second each) and would
 | `tools/media-r5/fleet-coverage.selftest.mjs` | n/a | MANUAL (media) | media: the media lane's fleet backlog, n/a s: 267: the fleet's media backlog (every vehicle leads a take, the survey bars): the manual media suite | test:heavy -- media; test:recommend flags it when its inputs change |
 | `tools/mp-rooms-entry.browser.selftest.mjs` | n/a | MANUAL (ui) | ui: heavy interface paint and layout sweeps, n/a s: 268 (the 267 production smoke): the multiplayer end-to-end opens the rooms panel the way the Garage's layout o | test:heavy -- ui; test:recommend flags it when its inputs change |
 
-## KEEP (1517)
+## KEEP (1518)
 
 | Receipt | Run (s) | Decision | Reason | Coverage now |
 |---|---:|---|---|---|
 | `tools/pane-stack-layer.browser.selftest.mjs` | 969 | KEEP | GPU regression, 969 s: local-fps-266: a regional window's stack (dark, pane, frame) draws the same at 20-700 m in any draw order | default tier (npm test, the release gate; lane mode by its closure) |
+| `tools/second-solo-battle.browser.selftest.mjs` | 722 | KEEP | GPU regression, 722 s: 269 (the 268 drive smoke's second battle at 97%): a second solo battle in one page, started while the Leave's | default tier (npm test, the release gate; lane mode by its closure) |
 | `src/vehicles/japaneseMantlet.selftest.mjs` | 444 | KEEP | vehicle rule, 444 s: 261 (owner: "the stb 1 and type 74 still need completgely new mantlets and turret geometrry around the mantlet | default tier (npm test, the release gate; lane mode by its closure) |
 | `src/vehicles/profiles/leopard2a3B4.selftest.mjs` | 333 | KEEP | vehicle rule, 333 s: release 262: the fourth batch's Leopard 2A3 on the same hull: the 2A3's combat data, the shared construction, | default tier (npm test, the release gate; lane mode by its closure) |
 | `src/vehicles/internalPlacement.selftest.mjs` | 238 | KEEP | vehicle rule, 238 s: 2026-10-30 (crew-side 266): +X is the vehicle's left; every side-named station on its side, no ring crossings, | default tier (npm test, the release gate; lane mode by its closure) |
@@ -1091,6 +1092,7 @@ None. Folding receipts saves only process starts (about a second each) and would
 | `tools/generate-manual-reference.selftest.mjs` | 8.0 | KEEP | tool contract, 8.0 s | default tier (npm test, the release gate; lane mode by its closure) |
 | `tools/selftest-suites.selftest.mjs` | 8.0 | KEEP | test, gate or release tooling, 8.0 s | default tier (npm test, the release gate; lane mode by its closure) |
 | `server/match/forcedKeyframes.selftest.mjs` | 7.8 | KEEP | match authority, 7.8 s: 243 security: forced keyframes from a bucket of 8, refilling at 2/s | default tier (npm test, the release gate; lane mode by its closure) |
+| `src/pad/padPhoneHalf.selftest.mjs` | 7.7 | KEEP | contract, 7.7 s: phone-feel-269: no desktop-only export rides to the phone's page | default tier (npm test, the release gate; lane mode by its closure) |
 | `src/sim/honestHunt.selftest.mjs` | 7.7 | KEEP | simulation rule, 7.7 s: The honest hunt (gameplay-modes-228; the coordinator: "spotting-respecting, no cheating"). The Horde's zombies | default tier (npm test, the release gate; lane mode by its closure) |
 | `src/vehicles/vehicleFacets.selftest.mjs` | 7.6 | KEEP | vehicle rule, 7.6 s: 2026-10-17 (owner): class, battle role and design status for every playable id, once per facet. | default tier (npm test, the release gate; lane mode by its closure) |
 | `src/game/vehicleActions.selftest.mjs` | 7.5 | KEEP | game flow, 7.5 s: 2026-10-25 (owner): one vehicle-action table, each action on its own key and in one order on every vehicle | default tier (npm test, the release gate; lane mode by its closure) |
@@ -2328,4 +2330,3 @@ None. Folding receipts saves only process starts (about a second each) and would
 | `tools/fused-roof-gun-boxes.selftest.mjs` | 0.1 | KEEP | tool contract, 0.1 s: 266 (Main 2026-10-31): a fused source names its roof gun by registered boxes; the boxed ids' records compare b | default tier (npm test, the release gate; lane mode by its closure) |
 | `tools/heap-retainers.selftest.mjs` | 0.1 | KEEP | tool contract, 0.1 s: battle-spikes-253: a leaked object's strong retainer paths from a streamed heap snapshot | default tier (npm test, the release gate; lane mode by its closure) |
 | `tools/interaction-access.selftest.mjs` | 0.1 | KEEP | tool contract, 0.1 s: The keyboard and touch judge (INTERACTION-REDESIGN.md part D, UI-GAUNTLET line 12): judgeAccess() over hand-ma | default tier (npm test, the release gate; lane mode by its closure) |
-| `src/pad/padPhoneHalf.selftest.mjs` | n/a | KEEP | contract, n/a s: phone-feel-269: no desktop-only export rides to the phone's page | default tier (npm test, the release gate; lane mode by its closure) |
