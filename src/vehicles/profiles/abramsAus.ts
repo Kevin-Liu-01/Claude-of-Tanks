@@ -11,12 +11,15 @@ import { addVehicleGhillieSuit } from '../ghillieSuit.ts';
 
 const { box, cylX, cylY, cylZ } = KIT;
 
-// Turret-local stations (pivot 0, 1.632, 0.350 on the hull): the M1A1 rack's rear frame stands at z -3.47 between
-// x +-1.07 with its floor at y 0.24 and its dropped top rail at 0.63; the extension carries it to z -3.97
-const RACK = { x: 1.05, floor: 0.24, low: 0.29, mid: 0.63, tier: 0.98, front: -3.47, rear: -3.97 } as const;
+// Turret-local stations (pivot 0, 1.632, 0.350 on the hull), measured off the 268 M1A1 shell's build (b0b4d539fb, the
+// owner's model; .qa-dev rack probe): the bustle's rear face at M1A1_TURRET.REAR_Z (-2.56), the rack's rear rail at
+// z -2.95 across the full x +-1.65 with its floor at y 0.26, its low rail at 0.28 and its top rail at 0.62; the extension
+// carries it 0.50 m further, to z -3.45 (the old shell's rack stood at z -3.47 between x +-1.07)
+const RACK = { x: 1.65, floor: 0.26, low: 0.28, mid: 0.62, tier: 0.98, front: -2.95, rear: -3.45 } as const;
 // the TMAPU on the rack's left (+x: a +Z hull's left), read off the square rear photograph (rear_adfa2015, ~2.5 mm a pixel
-// on the 3.5 m hull): 0.72 m across from 0.22 m off the centreline, 0.52 m tall over the rack floor
-const TMAPU = { x0: 0.22, x1: 0.94, z0: -3.40, z1: -3.92, y1: 0.77 } as const;
+// on the 3.5 m hull): 0.72 m across from 0.22 m off the centreline, 0.52 m tall over the rack floor, in the extension
+// just behind the rack's rear rail
+const TMAPU = { x0: 0.22, x1: 0.94, z0: -2.89, z1: -3.40, y1: 0.79 } as const;
 
 /** The rack's extension: mesh floor, side and rear rails at the rack's two heights, and the raised tier over the rear. */
 function rackExtension(P: TankBuilderPort): void {
@@ -26,7 +29,7 @@ function rackExtension(P: TankBuilderPort): void {
     P.add('turretDetail', box(RACK.x * 2 + 0.045, 0.045, 0.045), 0, y, RACK.rear);
     for (const side of [-1, 1]) P.add('turretDetail', box(0.045, 0.045, depth), side * RACK.x, y, zc);
   }
-  for (const x of [-RACK.x, -0.35, 0.35, RACK.x]) {
+  for (const x of [-RACK.x, -0.85, 0, 0.85, RACK.x]) {
     P.add('turretDetail', box(0.04, RACK.tier - RACK.low, 0.04), x, (RACK.tier + RACK.low) / 2, RACK.rear);
   }
   // the tier's front posts rise from the old rack's dropped rail
@@ -62,11 +65,11 @@ function tmapu(P: TankBuilderPort): void {
  * critic: the lengthened rack read as an empty cage), lashed under the low rail. */
 function rackLoad(P: TankBuilderPort): void {
   const y = RACK.floor + 0.006;
-  P.add('turretCloth', box(0.42, 0.30, 0.36), -0.70, y + 0.15, -3.66, 0, 0.12, 0);   // a large pack
-  P.add('turretDark', box(0.30, 0.22, 0.26), -0.30, y + 0.11, -3.62);                 // a crate
-  P.add('turretCloth', cylX(0.13, 0.50, 12), -0.64, y + 0.13, -3.86);                 // a rolled bag
-  for (const x of [-0.15, -0.31]) P.add('turretDetail', box(0.15, 0.34, 0.24), x, y + 0.17, -3.85);   // two cans
-  P.add('turretDark', box(0.90, 0.025, 0.025), -0.50, RACK.low + 0.04, -3.72);        // the lashing strap
+  P.add('turretCloth', box(0.42, 0.30, 0.36), -0.70, y + 0.15, -3.14, 0, 0.12, 0);   // a large pack
+  P.add('turretDark', box(0.30, 0.22, 0.26), -0.30, y + 0.11, -3.10);                 // a crate
+  P.add('turretCloth', cylX(0.13, 0.50, 12), -0.64, y + 0.13, -3.34);                 // a rolled bag
+  for (const x of [-0.15, -0.31]) P.add('turretDetail', box(0.15, 0.34, 0.24), x, y + 0.17, -3.33);   // two cans
+  P.add('turretDark', box(0.90, 0.025, 0.025), -0.50, RACK.low + 0.04, -3.20);        // the lashing strap
 }
 
 /** The call-sign plate hung on the rack's right side rail (the tank's number on it; the TMAPU holds the left rear). */
