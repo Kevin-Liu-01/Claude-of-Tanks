@@ -71,8 +71,9 @@ for (const quality of ['high', 'low']) {
     const receipt = turretRig.userData.bradleyClassicTurretReceipt;
     assert.ok(receipt?.revision.startsWith('classic-7cc204ab32'), `${quality}: ${CLASSIC} carries the classic turret`);
     assert.equal(turretRig.userData.bradleyA2TurretClosureReceipt, undefined, `${quality}: ${CLASSIC} carries no family turret`);
-    // mirrored: the TOW pod's bridge on the left (+X), the bin's on the right
-    assert.ok(receipt.towBridge.x > 0 && receipt.binBridge.x < 0, `${quality}: ${CLASSIC}'s TOW pod is on the turret's left`);
+    // mirrored: the TOW launcher on the left (+X), the bin on the right. 2026-11-05 (269 T2, the ODS rebuild): the
+    // receipt carries the stowed launcher's box and the bin in place of the 268 shell's bridges to them
+    assert.ok(receipt.towBox.x0 > 0 && receipt.bin.innerX < 0, `${quality}: ${CLASSIC}'s TOW launcher is on the turret's left`);
     // the pod is turret stock: the gun group stays a slim 25 mm (mantlet block, boot, tube)
     const gunBox = new THREE.Box3().setFromObject(gunRig);
     const gunLocal = [gunBox.min, gunBox.max].map((v) => turretRig.worldToLocal(v.clone()));
