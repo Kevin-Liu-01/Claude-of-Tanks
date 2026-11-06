@@ -18,6 +18,9 @@
 // ('battle:restarted') and the effects reset what the battle laid as a battle's start does (fx/effects.ts resetAll):
 //   5. the real effects runtime on the presentation's bus: house 2's collapse is drawn (its structure mask), the restart
 //      stands it in the effects too, and the restarted battle's collapse of it is drawn again.
+// Round 3 merge review r1: the restart is a battle start, so it takes the world as every battle start does
+// (world/battleWorldReset.ts resetWorldForBattle): the frame drives the falls and the crush sweeps run, then the world
+// stands (case 2 reads the order off the world's seams; case 4 declares nothing).
 import assert from 'node:assert/strict';
 import { createRequire } from 'node:module';
 import * as THREE from 'three';
@@ -61,6 +64,7 @@ async function seat() {
   const stages = [];
   let worldResets = 0;
   let restartsTold = 0;
+  const worldEdge = [];
   let ground = null;
   // the page's bus: what the presentation tells, and the listeners bound to it (the effects, case 5)
   const listeners = new Map();
@@ -90,7 +94,11 @@ async function seat() {
       },
       // the round's ground (craters, heaps) the world draws and drapes on (the mirror's overlay)
       bindGroundOverlay(overlay) { ground = overlay; },
+      // the battle edge's declarations (map.ts: the felled trees' driver, the props' crush sweeps)
+      setFallDriver(driver) { worldEdge.push(`driver ${driver}`); },
+      setCrushSweeps(on) { worldEdge.push(`sweeps ${on}`); },
       resetDestructibles() {
+        worldEdge.push('reset');
         worldResets++;
         for (const obstacle of field.obstacles) if (obstacle.kind === 'fence') obstacle.crushed = false;
       },
@@ -100,7 +108,7 @@ async function seat() {
   });
   await presentation.applyRoster([{ entityId: 1, seat: 0, team: 0, bot: false, connected: true, playerId: 'me', name: 'Me', specId: 'm1a1_abrams_hc' }],
     { ownEntityId: 1, ownPlayerId: 'me', roomId: 'r', mapId: 'winter', mode: 'standard', rulesetJson: '{}' });
-  return { presentation, bus, field, crushes, stages, resets: () => worldResets, told: () => restartsTold, heapAt: (x, z) => ground?.offsetAt(x, z) ?? NaN };
+  return { presentation, bus, field, crushes, stages, resets: () => worldResets, told: () => restartsTold, edge: () => worldEdge.join(', '), heapAt: (x, z) => ground?.offsetAt(x, z) ?? NaN };
 }
 
 const frame = ({ restarts, destroyed = [], destruction = [], revision = destroyed.length }) => ({
@@ -126,6 +134,7 @@ const frame = ({ restarts, destroyed = [], destruction = [], revision = destroye
   const wrong = [];
   if (one.resets() !== 1) wrong.push(`the world's destructibles reset ${one.resets()} times (once at the restart)`);
   if (one.told() !== 1) wrong.push(`the bus heard the restart ${one.told()} times (once, for the effects)`);
+  if (one.edge() !== 'driver frame, sweeps true, reset') wrong.push(`the restart took the world as '${one.edge()}' (a battle start's: 'driver frame, sweeps true, reset')`);
   if (one.field.obstacles[0].crushed || one.field.obstacles[1].crushed) wrong.push('the old battle\'s fences still lie on this seat');
   if (houseRecord.crushed || houseCollider.dead) wrong.push(`the old battle's collapse of house 2 still stands in this seat's collision (crushed ${houseRecord.crushed}, dead ${houseCollider.dead})`);
   if (!(one.heapAt(40, 0) === 0)) wrong.push(`the old battle's heap is still on this seat's ground (${one.heapAt(40, 0)} m)`);
@@ -150,6 +159,7 @@ const frame = ({ restarts, destroyed = [], destruction = [], revision = destroye
   late.presentation.applyFrame(frame({ restarts: 2, destroyed: [3] }));
   assert.equal(late.resets(), 0, 'no reset on the first frame');
   assert.equal(late.told(), 0, 'and none told on the bus');
+  assert.equal(late.edge(), '', 'nor the world taken (its activation did that)');
   assert.deepEqual(late.crushes.map((crush) => crush.index), [3], 'its list lays down as ever');
   late.presentation.dispose();
 }

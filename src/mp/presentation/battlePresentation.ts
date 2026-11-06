@@ -52,6 +52,7 @@ import type { EventContext, PresentationAdapter, RosterContext } from './adapter
 import { createPredictionWorld } from './predictionWorld.ts';
 import { createDestructionMirror } from './destructionMirror.ts';
 import { DESTRUCTION_BUS_EVENTS, type MunitionBlastEvent } from '../../sim/destructionEvents.ts';
+import { resetWorldForBattle, type BattleResetWorld } from '../../world/battleWorldReset.ts';
 import { FUEL_CHARGE_KG, cookOffChargeKg } from '../../sim/munitionBlast.ts';
 import { shellHitsWater } from '../../sim/shellSurface.ts';
 import type { WorldCollisionLike } from './predictionWorld.ts';
@@ -1044,16 +1045,18 @@ export function createBattlePresentation({
    * The battle restarted under this seat (round 3 X5; MatchFrame.battleRestarts: a host restarted it from its spawns, or
    * resumed it from a frame still in its countdown): what this presentation laid down as settled state belongs to a battle
    * no longer played, and the host has it standing. The world's destructibles stand again (props, trees, poles and their
-   * marks: the world's own reset, as a battle's start runs it), the destruction mirror forgets its stages, heaps and
-   * craters, and the applied list is forgotten, so the restarted battle's list and log lay down from nothing. Before, the
-   * client's collision kept the abandoned battle's crushes and its prediction drove through props the host blocks.
+   * marks) through the battle edge's one reset (world/battleWorldReset.ts, round 3 review r1): a restart is a battle start,
+   * so it declares the frame as the falls' driver and the crush sweeps on as the solo start and a round's activation do,
+   * then stands the world; the destruction mirror forgets its stages, heaps and craters, and the applied list is
+   * forgotten, so the restarted battle's list and log lay down from nothing. Before, the client's collision kept the
+   * abandoned battle's crushes and its prediction drove through props the host blocks.
    * The bus hears it too ('battle:restarted', review r1): the effects (fx/effects.ts) reset what the abandoned battle laid
    * as a battle's start does (structure stages and their ledger, rubble, craters, decals), so a collapsed building stops
    * being drawn over the collision that stands again and the restarted battle's own collapse of it plays (the stage
    * ledger refused it); its smoke screens go with that reset, so this frame tells the restarted battle's again.
    */
   function resetSettledWorld(restarts: number): void {
-    (worldCollision as { resetDestructibles?(): void } | null)?.resetDestructibles?.();
+    resetWorldForBattle(worldCollision as BattleResetWorld | null);
     destruction.reset();
     appliedDestructibleRevision = -1;
     appliedDestroyedLength = -1;

@@ -1,5 +1,6 @@
 // (round 3 A7/M4) The battle edge's one reset of a cached, reused world: every battle start (the solo start, a network
-// round's activation, a dev still) runs it in place of a bare resetDestructibles.
+// round's activation, a network battle's restart under a seat (mp/presentation/battlePresentation.ts resetSettledWorld,
+// round 3 X5; review r1), a dev still) runs it in place of a bare resetDestructibles.
 //
 // The Studio takes two things from the world it plans on and gives them back at its exit (studioCrush.ts setPlan and
 // restore, studio.ts syncCrushPlan and releaseCrushes): the felled trees' falls ('timeline', round 2 U28's declared
