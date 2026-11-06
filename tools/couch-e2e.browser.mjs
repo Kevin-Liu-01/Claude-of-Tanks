@@ -14,6 +14,7 @@ import puppeteer from 'puppeteer';
 import { createServer } from 'vite';
 import { launchGuardedBrowser } from './browser-launch.mjs';
 import { openCaptureHold } from './capture-hold.mjs';
+import { readinessExpression } from './game-readiness.mjs';
 import { createLocalPadService } from '../server/rooms/localPadService.ts';
 
 const root = resolve(new URL('..', import.meta.url).pathname);
@@ -81,7 +82,8 @@ try {
   await cdp.send('Network.enable');
   cdp.on('Network.webSocketCreated', ({ url }) => desktopRequests.push(url));
   await desktop.goto(`${origin}/?nosplash=1&tier=desktop&padService=${encodeURIComponent(padService)}`, { waitUntil: 'domcontentloaded', timeout: 240_000 });
-  await desktop.waitForFunction(() => window.__GAME_READY === true && window.__DEBUG?.game?.phase === 'garage', { timeout: 300_000, polling: 250 });
+  // the one readiness owner (tools/game-readiness.mjs; docs/AUTOMATION-PATHS.md), as pad-e2e waits
+  await desktop.waitForFunction(readinessExpression('garage'), { timeout: 300_000, polling: 250 });
   check('unopened: nothing reaches the pairing service', !desktopRequests.some((url) => url.startsWith(padService) || url.startsWith(padService.replace('ws:', 'http:'))));
   deadline();
 
@@ -127,7 +129,8 @@ try {
   report.step = 'battle';
   if (phones > 4) await desktop.evaluate(() => document.querySelector('.cot-couch-sides [data-value="teams"]')?.click());
   await desktop.evaluate(() => document.querySelector('.cot-couch-modal .cot-c-btn--primary')?.click());
-  await desktop.waitForFunction(() => window.__DEBUG?.game?.phase === 'battle' && window.__DEBUG.game.couch && window.__DEBUG.game.preBattleS <= 0,
+  // the countdown over in the couch battle (controlsReleased: the lifecycle's own state, not the phase and the countdown)
+  await desktop.waitForFunction(`${readinessExpression('controlsReleased')} && !!window.__DEBUG?.game?.couch`,
     { timeout: 300_000, polling: 250 });
   const seated = await desktop.evaluate(() => window.__DEBUG.game.couch.seats.map(({ seat, entity }) => ({ seat, id: entity.id, team: entity.team, bot: !!entity.aiCtl })));
   report.seated = seated;
