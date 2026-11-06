@@ -22,7 +22,7 @@
 // folds over ~23 % of the ground and stretches it past 8:1 over a fifth (measured on the noise's own bake, diag2), which
 // is harmless to the 80 m macro thresholds it was made for and smears any metre-scale field into long parallel strands —
 // Blackglass's "combed strokes" (c6), through the mosaic's patches.
-// Cost: six noise reads for the mosaic and the swaths, two for the worn ground, seven for the town, two for the works floor, and one hash cell per stone layer
+// Cost: six noise reads for the mosaic and the swaths, two for the worn ground, one for the stones' lag patches, seven for the town, two for the works floor, and one hash cell per stone layer
 // (no loop, no neighbour search, no texture fetch of a layer). uLandTier sets the phones' share: 0 (Low and the phones' lower tiers) the
 // mosaic and the town's tones only, 1 adds the stones, 2 the full block.
 export const GROUND_SURFACE_GLSL = /* glsl */`  // ground-269 (groundSurfaceShader.ts): the ground-surface table's laws — the open ground's mosaic, the close stones and
@@ -47,8 +47,8 @@ export const GROUND_SURFACE_GLSL = /* glsl */`  // ground-269 (groundSurfaceShad
       vec2 gsS = mix(vec2(0.5), nzq(uv, 0.018, vec2(0.47, 0.11)), tileVis(14.0));
       float lushS = smoothstep(0.50, 0.62, gsS.x);
       float curedS = smoothstep(0.53, 0.65, gsS.y) * (1.0 - lushS);
-      vec3 gsW = mix(a.rgb, a.rgb * vec3(0.84, 0.93, 0.86), lushS * 0.75);
-      gsW = mix(gsW, gsW * vec3(1.14, 1.08, 0.84), curedS * 0.60);
+      vec3 gsW = mix(a.rgb, a.rgb * vec3(0.80, 0.91, 0.83), lushS * 0.85);
+      gsW = mix(gsW, gsW * vec3(1.17, 1.10, 0.82), curedS * 0.70);
       a.rgb = mix(a.rgb, gsW, min(1.0, gsSwathW));
       a.rgb *= mix(1.0, mix(0.90, 1.08, smoothstep(0.42, 0.62, gsS.x)), min(1.0, gsGrowW));
     }
@@ -59,7 +59,7 @@ export const GROUND_SURFACE_GLSL = /* glsl */`  // ground-269 (groundSurfaceShad
     // its blades would stand between the eye and its floor: it fades as the view grazes, by the mid dapple's law
     float gsSwardW = uGsOpen.y * meadowG * (1.0 - fR) * (1.0 - max(gCropW, gSoilW)) * (1.0 - woods) * gsOff
       * (1.0 - smoothstep(120.0, 240.0, camDist)) * tileVis(2.5)
-      * smoothstep(0.15, 0.55, saturate(dot(normalize(cameraPosition - wp), wn)));
+      * smoothstep(0.04, 0.22, saturate(dot(normalize(cameraPosition - wp), wn)));
     if (uGsOpen.x > 0.5 && uGsOpen.x < 2.5 && gsSwardW > 0.003) {
       // (ab3: at a grazing view the fine field's metre features stretched into thin arcs across the turf) each field eases to
       // its median once its features stop resolving — the patches' ~4 m and the fine field's ~1 m held while they span
@@ -80,10 +80,14 @@ export const GROUND_SURFACE_GLSL = /* glsl */`  // ground-269 (groundSurfaceShad
       // smudges) neither state darker than the turf it lies in: the straw a shade paler than the turf's mean, the soil a
       // shade under it; on a muted turf the levels above
       float turfL = reduxLuma(uMeanG.rgb * gMeadowTint);
+      // (c9, Autumn near and chase: "B gains soil patches but is visibly blurred", "A's leaf litter sharper" — the states'
+      // flat colours took 55–60 % of the drawn ground's grain, its 1–5 px contrast down 6–8 %) each state carries near half
+      // the drawn ground's grain, its luminance against the turf's mean
+      float gsGr = mix(1.0, clamp(reduxLuma(a.rgb) / max(turfL, 0.02), 0.6, 1.5), 0.45);
       vec3 strawC = vec3(0.15, 0.13, 0.08) * uTintA / max(reduxLuma(uTintA), 0.3) * max(1.0, turfL * 1.12 / 0.131)
-        * (0.88 + 0.24 * gsF);
+        * (0.88 + 0.24 * gsF) * gsGr;
       vec3 soilC = uMeanD.rgb * uSoilTint;
-      soilC *= (max(0.10, turfL * 0.92) / max(reduxLuma(soilC), 0.02)) * (0.84 + 0.32 * gsF);
+      soilC *= (max(0.10, turfL * 0.92) / max(reduxLuma(soilC), 0.02)) * (0.84 + 0.32 * gsF) * gsGr;
       vec3 gsA = a.rgb;
       gsA = mix(gsA, gsA * vec3(0.80, 0.92, 0.82), lush * 0.85);
       gsA = mix(gsA, strawC, cured * 0.55);
@@ -114,9 +118,10 @@ export const GROUND_SURFACE_GLSL = /* glsl */`  // ground-269 (groundSurfaceShad
         // the floor's own tone: the map's soil greyed toward a gravel, its light three tenths of the way from the drawn
         // ground's own to a pale gravel's 0.20 (the critics' rounds on Suzhou Creek: a paler floor laid a flat sandy apron
         // round the towers), carrying a third of the drawn ground's grain (the woods' litter of the dirt set: twigs, straw)
+        // (c9, Autumn's yards: "A's straw detail crisper", the floor's fine contrast down 8 %) — now over half of it
         float gL = reduxLuma(a.rgb), dL = max(reduxLuma(uMeanD.rgb), 0.02);
         vec3 grey = mix(vec3(dL), uMeanD.rgb, 0.35) * uSoilTint;
-        grey *= (mix(min(gL, 0.20), 0.20, 0.3) / max(reduxLuma(grey), 0.02)) * mix(1.0, gL / dL, 0.33);
+        grey *= (mix(min(gL, 0.20), 0.20, 0.3) / max(reduxLuma(grey), 0.02)) * mix(1.0, gL / dL, 0.55);
         vec3 floorC;
         if (uGsTown.x < 4.5) {
           // yard: pale trodden gravel and earth, its paths paler, its hollows damp, weeds where nothing treads
@@ -178,8 +183,13 @@ export const GROUND_SURFACE_GLSL = /* glsl */`  // ground-269 (groundSurfaceShad
     if (uLandTier > 0.5) {
       // (on a sward the stones lie where it thins over its soil; a class with no mosaic of the table's — sand, snow, the
       // canyons' hardpan, regolith, gravel — carries them over its open ground)
-      float gsOpenS = uGsOpen.z > 0.5 ? (uGsOpen.x > 0.5 && uGsOpen.x < 2.5 ? gsThin : meadowG * (1.0 - fR) * gsOff) * uGsOpen.w : 0.0;
-      float gsWornS = uGsWorn.z > 0.5 ? fD * (1.0 - gsTownW) * keepM * gsOff * uGsWorn.w : 0.0;
+      // (c8, Redrock, Olympus and Whiteout near the camera: "an evenly spaced grid of pale grey dots", "pale disc spots that
+      // read stamped" — one stone a cell over all the open ground is the cells' own lattice) there they lie in lag patches,
+      // ~6 m, over about a quarter of it, the ground between bare
+      float gsLag = uGsOpen.x < 0.5 && (uGsOpen.z > 0.5 || uGsWorn.z > 0.5)
+        ? smoothstep(0.54, 0.68, nzq(uv, 0.05, vec2(0.83, 0.37)).x) : 1.0;
+      float gsOpenS = uGsOpen.z > 0.5 ? (uGsOpen.x > 0.5 && uGsOpen.x < 2.5 ? gsThin : meadowG * (1.0 - fR) * gsOff * gsLag) * uGsOpen.w : 0.0;
+      float gsWornS = uGsWorn.z > 0.5 ? fD * (1.0 - gsTownW) * keepM * gsOff * gsLag * uGsWorn.w : 0.0;
       float gsTownS = uGsTown.y > 0.5 ? gsTownW * uGsTown.z : 0.0;
       float kind = gsTownS > max(gsOpenS, gsWornS) ? uGsTown.y : gsWornS > gsOpenS ? uGsWorn.z : uGsOpen.z;
       float gsS = max(gsOpenS, max(gsWornS, gsTownS)) * mix(0.55, 1.0, step(1.5, uLandTier));
