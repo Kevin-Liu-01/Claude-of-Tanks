@@ -25,7 +25,7 @@ Run times: `tools/selftest-durations.json`, else this machine's latest observati
 | Before: every receipt (npm test without the tiers) | 2197 | 1389.5 | 241.7 |
 | After: the default tier | 1535 | 221.7 | 59.7 |
 
-Default tier: 16.0 % of the whole registry's CPU; 24.2 % of the 916 CPU-min the snapshot gave for the 1,863 receipts it timed. Its wall: 0.2 min exclusive receipts, 40.8 min pool, 18.6 min browser receipts.
+Default tier: 16.0 % of the whole registry's CPU; 24.2 % of the 916 CPU-min the snapshot gave for the 1,863 receipts it timed. Its wall: 0.2 min exclusive receipts, 40.9 min pool, 18.6 min browser receipts.
 
 ## Manual suites
 
