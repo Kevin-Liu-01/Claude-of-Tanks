@@ -2248,6 +2248,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/game/watchTakeover.selftest.mjs',
     'src/game/battleResultPresentationRuntime.selftest.mjs',
     'src/game/battleResultBeatClock.selftest.mjs', // 2026-11-02 audit F4: death and ending beats hold through a pause
+    'src/game/deathFlowExits.selftest.mjs', // 2026-11-02 audit round 5 U4: every exit that ends the player's death replay (a teardown, a fresh Watch seat, a mode's revive) leaves the result runtime owing no hand-back; a revive hands the HUD and camera back and re-arms the death flow (real runtime, rig and killcam)
     'src/game/battleEnding.selftest.mjs',
     'src/game/battleEndingHold.selftest.mjs',
     'src/game/killcamSelection.selftest.mjs',
