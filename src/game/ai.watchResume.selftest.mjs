@@ -47,6 +47,11 @@
 // Round 5 (U5, the round-four correctness review): that reading at both ends of the stood-put walk let a park onto or off
 // a record keep the elevation lock's dwell where the record's side is a wall by the slope law; [12] a park onto or off a
 // 2.2 m rock now restarts it, and one onto a 1 m rock the hull steps onto and off keeps it.
+// Cost (round 5, U6; the default tier): [11] stepped three fixed 60 s windows after Leave, and now runs each only until
+// what it reads is settled (a verdict, the road planned again, the route's end), and [12]'s window is a whole dwell and a
+// margin. Measured as the process's own CPU at load 100-135: [11] 3.05-3.25 s to 1.31-1.45 s, the file 9.8-10.2 s user
+// to 8.5-8.9 s (round three's file 5.9 s, the fleet import 2.2 s of each). It stays in the default tier: the only default
+// receipt of the Watch hand-back's route legs and dwell (ai.watchTakeover steps whole battles: MANUAL).
 import { Vector3 } from 'three';
 import '../vehicles/fleetFactory.ts';
 import { getSpec } from '../vehicles/specs.ts';
@@ -760,13 +765,17 @@ console.log('[11] a level route ends with no verdict when the watcher drives its
     const dropM = getHeightAt(0, floor.state.pos.z) - floor.state.pos.y;
     const handBackS = clock();
     let nextRouteAfterS = null;
+    // round 5 (U6): the window after Leave runs only until what the case reads is settled, at most 60 s: a verdict (a
+    // route held from the wrong level ends in one, 44.8-46.6 s after Leave on 0edd0e1ab5), the road planned again (the
+    // drops), or the route's end (on the crest)
     run(60, (info) => {
-      if (info.levelRoutes > before.levelRoutes && nextRouteAfterS === null) nextRouteAfterS = clock() - handBackS;
-      return false;
+      if (info.unbearableVerdicts > before.unbearableVerdicts) return true;
+      if (info.levelRoutes > before.levelRoutes) { nextRouteAfterS = clock() - handBackS; return true; }
+      return !offTheSide && !info.levelRouting;
     });
-    return { routing, onCrest, before, back, after: ctl.debugInfo(), nextRouteAfterS, dropM, ...took };
+    return { routing, onCrest, before, back, after: ctl.debugInfo(), nextRouteAfterS, dropM, windowS: clock() - handBackS, ...took };
   };
-  const label = (r) => `verdicts ${r.before.unbearableVerdicts} -> ${r.after.unbearableVerdicts}, levelRouting ${r.before.levelRouting} -> ${r.back.levelRouting}, owner ${r.back.routeOwner}, routes ${r.before.levelRoutes} -> ${r.after.levelRoutes}`;
+  const label = (r) => `verdicts ${r.before.unbearableVerdicts} -> ${r.after.unbearableVerdicts}, levelRouting ${r.before.levelRouting} -> ${r.back.levelRouting}, owner ${r.back.routeOwner}, routes ${r.before.levelRoutes} -> ${r.after.levelRoutes}; window ${r.windowS.toFixed(1)} s`;
   // taken high on the crest (a drop over the gun's 8 m band) and low on it (under the band: the review's case)
   for (const [takeZ, low, high] of [[45, 8, Infinity], [14, 4, 8]]) {
     const dropped = await crestHandBack({ parkS: 0.5, offTheSide: true, takeZ });
@@ -774,14 +783,14 @@ console.log('[11] a level route ends with no verdict when the watcher drives its
       `setup: the floor bot drives its level route up the causeway's crest past z ${takeZ} (owner ${dropped.before.routeOwner}); the watcher leaves it ${dropped.dropM.toFixed(1)} m below the road`);
     ok(!dropped.back.levelRouting && dropped.back.routeOwner !== 'level'
       && dropped.after.unbearableVerdicts === dropped.before.unbearableVerdicts,
-      `a 0.5 s Take and Leave in which the watcher drove off the crest onto the floor 11 m beside the road, ${dropped.dropM.toFixed(1)} m below it: the route ends at the hand-back with no verdict, then or in the 60 s after (${label(dropped)})`);
+      `a 0.5 s Take and Leave in which the watcher drove off the crest onto the floor 11 m beside the road, ${dropped.dropM.toFixed(1)} m below it: the route ends at the hand-back with no verdict, then or before the road is planned again (${label(dropped)})`);
     ok(dropped.nextRouteAfterS !== null && dropped.nextRouteAfterS >= 6 - 0.05,
       `and the lock plans the road again from the floor (${dropped.nextRouteAfterS === null ? 'never' : `${dropped.nextRouteAfterS.toFixed(2)} s`} after the hand-back; ELEVATION_LOCK_S 6 s)`);
   }
   const stayed = await crestHandBack({ parkS: 0.5, offTheSide: false });
   ok(stayed.back.levelRouting && stayed.back.routeOwner === 'level' && stayed.after.unbearableVerdicts === stayed.before.unbearableVerdicts
     && stayed.after.levelRoutes === stayed.before.levelRoutes,
-    `a 0.5 s Take and Leave on the crest: the hull coasts on up the road on its level, and the route runs on (coasted ${stayed.coastM.toFixed(1)} m; ${label(stayed)})`);
+    `a 0.5 s Take and Leave on the crest: the hull coasts on up the road on its level, and the route runs on to its end (coasted ${stayed.coastM.toFixed(1)} m; ${label(stayed)})`);
 }
 
 console.log('[12] the elevation lock\'s dwell counts the bot\'s own ticks: it holds through a park that left the hull where it was taken and restarts after a drive off');
@@ -812,7 +821,9 @@ console.log('[12] the elevation lock\'s dwell counts the bot\'s own ticks: it ho
     const handedBackAt = [floor.state.pos.x, floor.state.pos.y, floor.state.pos.z];
     const handBackS = clock();
     let decidedAfterS = null;
-    run(10, (info) => {
+    // a whole dwell (ELEVATION_LOCK_S, 6 s) and a margin: a dwell that held decides within its rest, one that restarted
+    // at 6 s (round 5, U6: 10 s before)
+    run(6.5, (info) => {
       if (info.levelRoutes > before.levelRoutes || info.unbearableVerdicts > before.unbearableVerdicts) { decidedAfterS = clock() - handBackS; return true; }
       return false;
     });
