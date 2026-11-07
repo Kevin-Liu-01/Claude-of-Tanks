@@ -1312,7 +1312,7 @@ export async function runFrameProbe(options, { acquireLocks = acquireProbeLocks,
   // (round 5 U9) the run sets its exit code, as battle-memory-probe's and shadow-cache-truth's runs do: a failed slot 1,
   // never over a signal's 128 + n (heldRunExitCode; `= 1` set it over the signal), else slots left 3. The CLI set the 1
   // after the run, where no receipt reached it (tools/probe-unit-stop.selftest.mjs 'frame-budget-probe SIGTERM after a
-  // failed slot' now does)
+  // failure' now does)
   if (!ok) heldRunExitCode({ failed: true });
   else if (remaining) markUnitsLeft();
   return { ok, remaining };

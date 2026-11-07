@@ -117,8 +117,8 @@ export async function runTurretParentAudit(argv = process.argv.slice(2), { creat
       if (!hold.signal.aborted) throw error;
       stopped = heldStopWhy(hold.signal);
     });
-    // (round 5 U9) the output holds what ran: a stop before any id (a signal while Vite starts, the chunk's launch refused,
-    // the first checkpoint's yield stopped) writes nothing, as the roster branch above does. It wrote [] over the previous
+    // (round 5 U9) the output holds what ran: a stop before any id finished (a signal while Vite starts, the chunk's launch
+    // refused, the first checkpoint's yield stopped, the first id cut) writes nothing, as the roster branch above does. It wrote [] over the previous
     // run's output, and then named the run that finishes it with "keep this one first", the rows already gone.
     if (audited.size || !stopped) {
       mkdirSync(dirname(outFile), { recursive: true });
