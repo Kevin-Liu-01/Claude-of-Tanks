@@ -37,8 +37,10 @@
 //   queued   a tool queued when the signal comes starts nothing (openHeldRun's null: `if (!hold) return;`): what serves
 //            and draws says when it starts, and nothing may (the line and the 143 come from openHeldRun and the signal
 //            owner, so a tool that ran on past the null passed);
-//   baked    a flag given twice takes its last value: no npm script that bakes a tool's flags bakes the selection a
-//            stop's finishing run appends (--only, --match), and reels:render's own flags hold under a trailing one.
+//   npm      a finishing run through an npm script: a script runs studio-example-videos or shoot as its last
+//            command (the flags after `npm run <script> --` reach the tool, not a command after an &&), and
+//            reels:render's baked flags hold under a typed selection and the appended one (the last --only wins),
+//            take 3 of the battle-reel pool (loaded with the run) rendered.
 // No real browser, server or lock starts; the real Chrome runs stay the owner's (manualRecommended).
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
@@ -273,13 +275,14 @@ const listed = (dir) => {
   return existsSync(file) ? JSON.parse(readFileSync(file, 'utf8')).stills.map((still) => `${still.index}:${still.tMs}`) : [];
 };
 async function studioRun({ takeMs, graceSeconds, args = ['--count', '4', '--stills', '0'], waiters = 1, dir = scratch(), requeue = 'resume' }) {
-  const events = [], holdLog = [], staged = [];
+  const events = [], holdLog = [], staged = [], takes = [];
   const lock = standInLock({ waiters, events, requeue });
-  const chrome = studioChrome({ takeMs, events, onCall: ({ method, arg }) => { if (method === 'evaluate' && Number.isInteger(arg?.index)) staged.push(arg.index); } });
+  const chrome = studioChrome({ takeMs, events, onCall: ({ method, arg }) => {
+    if (method === 'evaluate' && Number.isInteger(arg?.index)) { staged.push(arg.index); takes.push(arg); } } });
   const renderStudioExamples = await tools.studio();
   const run = await onMockClock(() => renderStudioExamples([...args, '--out', dir], { createServer: standInVite,
     puppeteer: chrome.launcher, hold: holdFor({ lock, chrome, holdLog, graceSeconds }) }));
-  return { ...run, events, holdLog: holdLog.join('\n'), stills: listed(dir), staged };
+  return { ...run, events, holdLog: holdLog.join('\n'), stills: listed(dir), staged, takes };
 }
 
 // ---- (E10) the signal child: one tool, SIGTERM while its first item runs, or while it boots --------------------------------
@@ -528,32 +531,37 @@ if (process.argv[2] === '--signal-child') {
       assert.deepEqual(finishing.staged, [4], `the named run renders only the take left (${finishing.said})`);
       assert.deepEqual(finishing.stills, ['1:0', '2:0', '3:0', '4:0'], 'and stills.json lists all four');
     });
-    // (round 5 U9) opt() takes a flag's last value, so a flag after an npm script's baked ones overrides that flag (it was
-    // ignored before round 4). That is meant for a flag someone types; the one flag a tool appends to the same options, a
-    // stop's finishing selection (--only, --match), must not be one a script bakes, or the finishing run would drop it
-    await check('baked npm scripts', async () => {
-      const finishingFlag = { 'tools/studio-example-videos.mjs': '--only', 'tools/marketing-shots/shoot.mjs': '--match' };
-      const bakedSelections = (scripts) => Object.entries(scripts).flatMap(([name, command]) => Object.entries(finishingFlag)
-        .filter(([file]) => command.includes(`node ${file}`))
-        .map(([file, flag]) => ({ name, flag, args: command.split(`node ${file}`)[1].split('&&')[0].trim().split(/\s+/).filter(Boolean) })));
+    // (round 5 U9 review) A finishing run through an npm script: `npm run <script> -- --only <left>` adds the flags to
+    // the end of the script's command, so they reach the tool only when it is the script's last command (after an &&,
+    // ;, || or | they go to the next one). A baked selection is harmless: the last --only / --match wins, and what a
+    // stop leaves is inside it. Then reels:render's baked flags (its --out set aside: this receipt writes to a scratch
+    // folder), a selection typed after them and the finishing run's appended one: the baked collection and size hold,
+    // the appended --only selects, and the take is the battle-reel pool's (round 5 U6: the pool loads with the run)
+    await check('npm finishing run', async () => {
+      const finishing = ['tools/studio-example-videos.mjs', 'tools/marketing-shots/shoot.mjs'];
+      const runners = (scripts) => Object.entries(scripts).flatMap(([name, command]) => finishing
+        .filter((file) => command.includes(`node ${file}`))
+        .map((file) => {
+          const commands = command.split(/&&|\|\||;|\|/).map((part) => part.trim());
+          return { name, last: commands.at(-1).startsWith(`node ${file}`), args: command.split(`node ${file}`)[1].trim().split(/\s+/).filter(Boolean) };
+        }));
       const { scripts } = JSON.parse(readFileSync(join(ROOT, 'package.json'), 'utf8'));
-      const baked = bakedSelections(scripts);
-      const reels = baked.find(({ name }) => name === 'reels:render');
-      assert.ok(reels && baked.some(({ name }) => name === 'studio:features:render'), `the scripts that bake flags are found (${baked.map(({ name }) => name)})`);
-      assert.deepEqual(baked.filter(({ flag, args }) => args.includes(flag)).map(({ name, flag }) => `${name} bakes ${flag}`), [],
-        'no script bakes the selection a finishing run appends');
-      // the check reads a planted script that does
-      const planted = bakedSelections({ ...scripts, 'reels:render': `${scripts['reels:render']} --only 3,7` });
-      assert.deepEqual(planted.filter(({ flag, args }) => args.includes(flag)).map(({ name }) => name), ['reels:render'], 'a planted --only is found');
-      // reels:render's own flags (its --out set aside: this receipt writes to a scratch folder), then a finishing run's
-      // --only: the baked collection and size hold, the selection is the trailing one
+      const found = runners(scripts);
+      const reels = found.find(({ name }) => name === 'reels:render');
+      assert.ok(reels && found.some(({ name }) => name === 'studio:features:render'), `the scripts that run the tools are found (${found.map(({ name }) => name)})`);
+      assert.deepEqual(found.filter(({ last }) => !last).map(({ name }) => name), [], 'each script runs its tool last, so the flags after -- reach it');
+      // the check reads a planted script whose tool is not its last command
+      const planted = runners({ ...scripts, 'reels:render': `${scripts['reels:render']} && echo rendered` });
+      assert.deepEqual(planted.filter(({ last }) => !last).map(({ name }) => name), ['reels:render'], 'a planted && after the tool is found');
       const dir = scratch(), outAt = reels.args.indexOf('--out');
       const bakedArgs = outAt < 0 ? reels.args : [...reels.args.slice(0, outAt), ...reels.args.slice(outAt + 2)];
-      const run = await studioRun({ dir, waiters: 0, takeMs: () => SECOND, args: [...bakedArgs, '--stills', '0', '--only', '3'] });
+      const run = await studioRun({ dir, waiters: 0, takeMs: () => SECOND, args: [...bakedArgs, '--stills', '0', '--only', '2,3', '--only', '3'] });
       assert.equal(run.error, undefined, run.error?.message);
       const listing = JSON.parse(readFileSync(join(dir, 'stills.json'), 'utf8'));
       assert.deepEqual([listing.collection, listing.renderer], ['battle-reels', { width: 1280, height: 720 }], 'the baked flags hold');
-      assert.deepEqual(run.staged, [3], `the trailing --only selects (${run.said})`);
+      assert.deepEqual(run.staged, [3], `the appended --only selects, not the typed one before it (${run.said})`);
+      const { BATTLE_REEL_SCENARIOS } = await import('./studio-example-scenarios.mjs');
+      assert.deepEqual(run.takes, [BATTLE_REEL_SCENARIOS.find((scenario) => scenario.index === 3)], 'the take is the battle-reel pool\'s take 3');
     });
 
     // ---- (round 4 review) tools/held-items.mjs's rules on their own --------------------------------------------------------
@@ -615,7 +623,7 @@ if (process.argv[2] === '--signal-child') {
       + 'their graces (180 s, 180 s, 300 s), are stopped past them or by a refused re-queue, keep what finished, name what is left '
       + '(exit 3) in a finishing run that runs only that, exit 128 + n on a signal (queued, held, re-queued, booting), and a --stills '
       + 'finishing run keeps the listing; the signal owner keeps 128 + n over an open-form tool\'s own exit; a stop before any id '
-      + 'keeps turret-parent-audit\'s output, a queued tool starts nothing, and no baked npm script names a finishing selection');
+      + 'keeps turret-parent-audit\'s output, a queued tool starts nothing, and an npm script\'s finishing run reaches its tool');
   } finally {
     for (const dir of roots) rmSync(dir, { recursive: true, force: true });
   }

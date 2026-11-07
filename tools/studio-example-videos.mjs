@@ -11,7 +11,8 @@ import { heldRunExitCode, heldStopWhy, openHeldRun, runHeldItem } from './held-i
 //     --stills 0,900,1850,2900,3900,5000,6000 --out shots/hero-rails-r2/preview
 // A flag given twice takes its last value (round 4 E10; recorded round 5 U9): a flag after an npm script's baked ones
 // overrides that flag (`npm run reels:render -- --out shots/x` writes to shots/x), and the --only a stop's finishing run
-// appends replaces the run's own. No package.json script bakes --only (tools/long-hold-users.selftest.mjs checks it).
+// appends replaces the run's own. A package.json script runs this tool as its last command, so the flags after
+// `npm run <script> --` reach it (tools/long-hold-users.selftest.mjs checks both).
 //
 // Collections: `duels` (every registered map, the Studio duel showcase),
 // `features` (the six feature loops cut from approved action frames),
