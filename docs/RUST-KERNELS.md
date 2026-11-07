@@ -130,6 +130,8 @@ the module's bytes by `HOST_KERNELS_FETCH_MS`), `compile`, `link`, `missing` (a 
 | `node tools/sim-determinism-audit.mjs --craters --kernels` | A match on the kernels against one on the TypeScript, the dug ground included |
 | `node tools/solo-kernels-probe.mjs --check` | A solo battle in Chrome: `wasm-check`'s comparison, then the sim step A B B A |
 | `node src/world/simKernelsReport.selftest.mjs`, `src/mp/host/hostStandby.selftest.mjs` | A fallback's reason named and reported: the host core's `ready` (`off`, a refused module's `http_404`, `wasm`) |
+| `node src/game/soloKernelEntry.selftest.mjs` | The solo load's bounds (round 5 Q1): an entry waits up to 3 s of its own while the load is younger than its deadline, at once after it; a request with no answer is aborted (`timeout`); an answered load is installed however late |
+| `node src/mp/host/hostKernelsFetch.selftest.mjs` | The host's fetch bound (round 5 Q1): a request with no answer, or a body that stalls, is aborted at `HOST_KERNELS_FETCH_MS`, and the boot goes live on the TypeScript, its `ready` `ts`/`timeout` |
 
 Changing a ported TypeScript function means regenerating its vectors (`node tools/port-golden-vectors.mjs`) and
 porting the change to its Rust file; `cargo test` fails until both agree.
