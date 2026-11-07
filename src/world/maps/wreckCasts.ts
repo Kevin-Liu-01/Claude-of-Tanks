@@ -27,6 +27,9 @@ export interface WreckCast {
   readonly ids: readonly string[];
   /** The states this ground shows (default every state). */
   readonly states?: readonly WreckState[];
+  /** (Main, 2026-11-07) A map the blind A/B reverted whole to base: main's hulks as they were, five of its cast in
+   *  turn, each burnt out or cooked off on main's draw, on main's authored beats and roads (props.ts). */
+  readonly base?: true;
 }
 
 function cast(setting: string, era: WreckCast['era'], nations: readonly string[], count: number, ids: readonly string[],
@@ -35,6 +38,11 @@ function cast(setting: string, era: WreckCast['era'], nations: readonly string[]
     setting, era, nations: Object.freeze(nations), count, debris: true, ids: Object.freeze(ids),
     ...(states ? { states: Object.freeze(states) } : {}),
   });
+}
+
+/** A map reverted whole to base: main's row, its hulks burnt out or cooked off. */
+function baseCast(setting: string, era: WreckCast['era'], nations: readonly string[], ids: readonly string[]): WreckCast {
+  return Object.freeze({ ...cast(setting, era, nations, 5, ids, ['burnt_out', 'turret_blown_off']), base: true as const });
 }
 
 /** The desert's states: the sand takes a hulk over the years; nothing overturns on the flat erg. */
@@ -58,10 +66,12 @@ export const WRECK_CASTS = {
     ['ztz99a', 'type96b', 'aft10', 'type10', 'type90', 'type89']),
   caldera: cast('the Aso caldera, Kyushu: a JGSDF range and its hulks', 'modern', ['Japan'], 10,
     ['type10_tk_x', 'type90', 'type74', 'type89', 'hayate_ifv', 'm41_jgsdf']),
-  cliffbridge: cast('Ronda, Málaga: the Spanish Army\'s Cold War armour (AMX-30E, M47E, M48A5E, M41)', 'cold-war',
-    ['Spain'], 9, ['amx30b', 'm48a5_patton', 'm47_patton', 'm41a3', 'm60a3']),
-  coastal: cast('the Pays de Léon, Brittany: a present-day landing', 'modern', ['France', 'Russia'], 10,
-    ['leclerc_s2', 't90am', 'cv90', 'bmp3', 'leo2_improved', 'amx10p_25', 't80u']),
+  // (Main, 2026-11-07) the round-5 A/B's significant losers (coastal 0-7, cliffbridge 1-7): whole to base for this
+  // release, never re-added in it
+  cliffbridge: baseCast('Ronda, Málaga: the Spanish Army\'s Cold War armour (AMX-30E, M47E, M48A5E)', 'cold-war',
+    ['Spain'], ['amx30b', 'm48a5_patton', 'm47_patton']),
+  coastal: baseCast('the Pays de Léon, Brittany: a present-day landing', 'modern', ['France', 'Russia'],
+    ['leclerc_s2', 't90am', 'cv90', 'bmp3', 'leo2_improved']),
   copper_mesa: cast('Queenstown under Mount Lyell, Tasmania: the Australian Army\'s Centurions and Leopards left in the cuts',
     'cold-war', ['Australia'], 9, ['centurion5_1_aus', 'centurion5_2', 'leo1a5', 'leo1a2a1', 'm41a3']),
   delta: cast('the braided Jamuna, Bangladesh, December 1971', 'cold-war', ['India', 'Pakistan'], 10,

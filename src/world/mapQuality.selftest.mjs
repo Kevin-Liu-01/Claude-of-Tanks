@@ -162,7 +162,9 @@ for (const mapId of MAP_IDS) {
   const cast = config.props.tankWrecks;
   const fleetYear = Number(/(\d{4})s?$/.exec(fleetForMap(mapId).id)?.[1] ?? NaN);
   const warYears = fleetYear <= 1945, noHulks = mapId === 'moon';
-  assert.ok(noHulks ? cast.count === 0 : cast.count >= 8 && cast.count <= 12, `${mapId}: 8-12 hulks (none on the Moon)`);
+  // (Main, 2026-11-07) a map the blind A/B reverted whole to base keeps main's five
+  if (cast.base) assert.equal(cast.count, 5, `${mapId}: reverted to base, main's five hulks`);
+  else assert.ok(noHulks ? cast.count === 0 : cast.count >= 8 && cast.count <= 12, `${mapId}: 8-12 hulks (none on the Moon)`);
   assert.ok(cast.setting && Array.isArray(cast.nations), `${mapId}: the cast names its place, year and armies`);
   for (const state of cast.states ?? []) assert.ok(WRECK_STATES.includes(state), `${mapId}/${state}: a damage state of the table`);
   assert.ok(noHulks ? cast.ids.length === 0 : cast.ids.length >= 1 && cast.ids.length <= cast.count,
