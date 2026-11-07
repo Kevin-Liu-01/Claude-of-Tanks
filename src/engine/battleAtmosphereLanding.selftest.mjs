@@ -103,6 +103,7 @@ try {
   if (!(plainInstalled?.landing instanceof Promise)) problems.push('a Studio apply that is no relight left out an installed part whose chunk was loading (its runtime may have kept a light without it, and nothing lights it again)');
   // the chunk's own transfer lands: the latest landing is true, the ones the later prepares replaced false
   openLight();
+  await turns();
   if (plainInstalled?.landing instanceof Promise) assert.equal(await plainInstalled.landing, true, 'the latest landing is true once the part lands');
   if (plain?.landing instanceof Promise) assert.equal(await plain.landing, false, 'a later prepare makes an earlier landing false');
   if (relit?.landing instanceof Promise) assert.equal(await relit.landing, false);
