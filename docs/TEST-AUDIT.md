@@ -15,17 +15,17 @@ Run times: `tools/selftest-durations.json`, else this machine's latest observati
 
 | Decision | Receipts | CPU-min |
 |---|---:|---:|
-| KEEP | 1510 | 164.7 |
+| KEEP | 1511 | 167.1 |
 | MERGE | 0 | 0.0 |
 | MANUAL | 655 | 1156.8 |
 | RETIRE | 2 | 0.7 |
 
 | Suite run | Receipts | CPU-min | Simulated wall (min) |
 |---|---:|---:|---:|
-| Before: every receipt (npm test without the tiers) | 2166 | 1321.8 | 233.2 |
-| After: the default tier | 1510 | 164.7 | 37.1 |
+| Before: every receipt (npm test without the tiers) | 2167 | 1324.2 | 233.5 |
+| After: the default tier | 1511 | 167.1 | 37.4 |
 
-Default tier: 12.5 % of the whole registry's CPU; 18.0 % of the 916 CPU-min the snapshot gave for the 1,863 receipts it timed. Its wall: 0.2 min exclusive receipts, 18.2 min pool, 18.6 min browser receipts.
+Default tier: 12.6 % of the whole registry's CPU; 18.2 % of the 916 CPU-min the snapshot gave for the 1,863 receipts it timed. Its wall: 0.2 min exclusive receipts, 18.5 min pool, 18.6 min browser receipts.
 
 ## Manual suites
 
@@ -802,7 +802,7 @@ None. Folding receipts saves only process starts (about a second each) and would
 | `tools/media-r5/fleet-coverage.selftest.mjs` | n/a | MANUAL (media) | media: the media lane's fleet backlog, n/a s: 267: the fleet's media backlog (every vehicle leads a take, the survey bars): the manual media suite | test:heavy -- media; test:recommend flags it when its inputs change |
 | `tools/mp-rooms-entry.browser.selftest.mjs` | n/a | MANUAL (ui) | ui: heavy interface paint and layout sweeps, n/a s: 268 (the 267 production smoke): the multiplayer end-to-end opens the rooms panel the way the Garage's layout o | test:heavy -- ui; test:recommend flags it when its inputs change |
 
-## KEEP (1510)
+## KEEP (1511)
 
 | Receipt | Run (s) | Decision | Reason | Coverage now |
 |---|---:|---|---|---|
@@ -812,6 +812,7 @@ None. Folding receipts saves only process starts (about a second each) and would
 | `src/vehicles/internalPlacement.selftest.mjs` | 238 | KEEP | vehicle rule, 238 s: 2026-10-30 (crew-side 266): +X is the vehicle's left; every side-named station on its side, no ring crossings, | default tier (npm test, the release gate; lane mode by its closure) |
 | `src/vehicles/profiles/merkavaFamilyGunClearance.selftest.mjs` | 223 | KEEP | vehicle rule, 223 s: Release 262 (the owner on the Merkava family: "we will need their gun assemblies back and beautiful"): each ma | default tier (npm test, the release gate; lane mode by its closure) |
 | `tools/i18n-page-catalogs.selftest.mjs` | 156 | KEEP | every public page loads exactly its catalog keys (must-keep: i18n) | default tier (npm test, the release gate; lane mode by its closure) |
+| `src/vehicles/stowageRackSeats.selftest.mjs` | 141 | KEEP | vehicle rule, 141 s: 270 (Main 2026-11-06: "the dock is a mission add-on, so it finds clear deck"): no mission seat over a stowage | default tier (npm test, the release gate; lane mode by its closure) |
 | `src/vehicles/tankVisualClone.selftest.mjs` | 135 | KEEP | a battle clone equals a pristine build (vehicle core) | default tier (npm test, the release gate; lane mode by its closure) |
 | `src/vehicles/profiles/leopard2A4Family.selftest.mjs` | 127 | KEEP | vehicle rule, 127 s: release 264: the 2A4-era Leopards on the same hull (the photo packets' native fixture): the owner's square/wed | default tier (npm test, the release gate; lane mode by its closure) |
 | `src/vehicles/profiles/merkavaFamily.selftest.mjs` | 103 | KEEP | vehicle rule, 103 s: 262 (the Merkava family builder): the six marks' structure, guns and packages, and their guns over their hulls | default tier (npm test, the release gate; lane mode by its closure) |
@@ -2202,6 +2203,7 @@ None. Folding receipts saves only process starts (about a second each) and would
 | `src/vehicles/trackRollerSag.selftest.mjs` | 0.7 | KEEP | vehicle rule, 0.7 s: A roller-carried upper track run hangs by the length of each span (fleet lane 2026-10-08, the coordinator's tr | default tier (npm test, the release gate; lane mode by its closure) |
 | `tools/pr-census.selftest.mjs` | 0.7 | KEEP | tool contract, 0.7 s: 2026-10-07 (the perf census lane, ported 2026-10-23): the whole-PR draw census's report, batches, FIFO hold an | default tier (npm test, the release gate; lane mode by its closure) |
 | `tools/vercel-static-preview.selftest.mjs` | 0.7 | KEEP | tool contract, 0.7 s: tools/vercel-static-preview.mjs (2026-10-22, nav-perf-240): a built dist answered the way production answers i | default tier (npm test, the release gate; lane mode by its closure) |
+| `tools/oracle-width-audit.selftest.mjs` | 0.6 | KEEP | tool contract, 0.6 s: 270 (Main 2026-11-06): the loose-part class detector (whole-file width against the body's) and the §E excision | default tier (npm test, the release gate; lane mode by its closure) |
 | `src/gallery/trueScale.selftest.mjs` | 0.6 | KEEP | site, manual or app contract, 0.6 s: trueScale.selftest.mjs — a true-scale canvas is a uiCanvas: its backing store is its CSS box × min(DPR, 2), a | default tier (npm test, the release gate; lane mode by its closure) |
 | `src/game/provingRangeDressing.selftest.mjs` | 0.6 | KEEP | game flow, 0.6 s: 2026-10-20: the range's furniture — plates on the simulation's faces, boards, the course, the draw budget. | default tier (npm test, the release gate; lane mode by its closure) |
 | `src/presentation/localizedBody.selftest.mjs` | 0.6 | KEEP | site, manual or app contract, 0.6 s | default tier (npm test, the release gate; lane mode by its closure) |
@@ -2315,4 +2317,3 @@ None. Folding receipts saves only process starts (about a second each) and would
 | `tools/fused-roof-gun-boxes.selftest.mjs` | 0.1 | KEEP | tool contract, 0.1 s: 266 (Main 2026-10-31): a fused source names its roof gun by registered boxes; the boxed ids' records compare b | default tier (npm test, the release gate; lane mode by its closure) |
 | `tools/heap-retainers.selftest.mjs` | 0.1 | KEEP | tool contract, 0.1 s: battle-spikes-253: a leaked object's strong retainer paths from a streamed heap snapshot | default tier (npm test, the release gate; lane mode by its closure) |
 | `tools/interaction-access.selftest.mjs` | 0.1 | KEEP | tool contract, 0.1 s: The keyboard and touch judge (INTERACTION-REDESIGN.md part D, UI-GAUNTLET line 12): judgeAccess() over hand-ma | default tier (npm test, the release gate; lane mode by its closure) |
-| `tools/oracle-width-audit.selftest.mjs` | n/a | KEEP | tool contract, n/a s: 270 (Main 2026-11-06): the loose-part class detector (whole-file width against the body's) and the §E excision | default tier (npm test, the release gate; lane mode by its closure) |

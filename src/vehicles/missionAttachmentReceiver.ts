@@ -35,8 +35,9 @@ export const MISSION_RECEIVER_SEATS: Readonly<Record<ReceiverId, ReceiverSeat>> 
     minX: -1.675, maxX: -1.325, minZ: -1.146, maxZ: -.854 },
   t80u_zoria: { x: -1.30, z: -.18, topY: 1.068,
     minX: -1.475, maxX: -1.125, minZ: -.326, maxZ: -.034 },
-  shot_kal: { x: .45, z: -2.10, topY: .894,
-    minX: .275, maxX: .625, minZ: -2.246, maxZ: -1.954 },
+  // 270: on the right turret bin's lid (centurionFamily.ts buildTurretBins), off the bustle basket (Main, 2026-11-06)
+  shot_kal: { x: -1.25, z: -1.06, topY: .76,
+    minX: -1.425, maxX: -1.075, minZ: -1.206, maxZ: -.914 },
 };
 
 /**
@@ -90,11 +91,14 @@ export function missionReceiverParts(id: ReceiverId): MissionReceiverPart[] {
     }
   } else if (id === 'shot_kal') {
     // The Sho't Kal's commander's M2 and loader's .30 sweep its whole cast roof, and its raised AVDS deck lies under the
-    // main gun's arc: the dock rides on the IDF bustle basket instead (centurionFamily.ts buildIdfTurretRacks: its top
-    // rear rail at y .858 and z -2.40, the bustle bin's lid at .88 to z -1.78). Two bars run fore and aft under the dock
-    // feet, seated 8 mm into the rear rail and the bin's lid, about 1.9 m from both roof guns' pivots.
+    // main gun's arc. Until round 270 the dock rode on the IDF bustle basket; Main, 2026-11-06: "The rack and its load are
+    // the real vehicle's stowage; the dock is a mission add-on, so it finds clear deck" (src/vehicles/stowageRacks.ts).
+    // It stands outboard of both roof guns' sweep on the rear of the right turret bin's flat lid (centurionFamily.ts
+    // buildTurretBins: z -1.30..0.72, its lid at .74 from the casting out to x -1.395 here), behind the commander's
+    // cupola (x -.52, z -.52, r .42) so it stands out of his vision blocks. Two bars run fore and aft under the dock
+    // feet, seated 8 mm into the lid and ending inside it (its back end at z -1.30).
     for (const dx of [-.108, .108]) {
-      parts.push({ role: 'crossarm', size: [.116, .028, .64], center: [seat.x + dx, seat.topY - .014, -2.09] });
+      parts.push({ role: 'crossarm', size: [.116, .028, .46], center: [seat.x + dx, seat.topY - .014, seat.z] });
     }
     return parts;
   } else if (id === 't80u_zoria') {
