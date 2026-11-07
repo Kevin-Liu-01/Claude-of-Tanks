@@ -71,17 +71,21 @@ it happens; a NaN the kernel answered (its ground's) passes.
     does not spend the entry's. A battle rides the kernels when they land within its entry's bound or before the rest
     of its barrier ends; otherwise it is set up on the TypeScript and the load goes on. While it is pending, each later
     entry, a Battle Again included, waits up to 3 s of its own again, and the first battle set up after the load lands
-    rides them. A load that never settles (the fetch has no timeout) costs every solo entry up to 3 s past the rest of
-    its barrier. The wait never rejects: an installer or a failure report that throws leaves the TypeScript, and the
-    entry goes on.
+    rides them. The load has one deadline of its own (round 5 Q1): `SOLO_KERNELS_LOAD_DEADLINE_MS` (15 s) from its
+    start, the chunk's body at its first ask. A load still pending then settles as a failed one, reported `timeout`:
+    its fetch is aborted, and an answer that comes later is never installed, so every later battle runs on the
+    TypeScript and every entry after the deadline goes on at once. A load that never answers costs only the entries
+    within the deadline, each up to 3 s past the rest of its barrier (one that begins near the deadline goes on at it).
+    The wait never rejects: an installer or a failure report that throws leaves the TypeScript, and the entry goes on.
   - `?simKernels=wasm-check` runs both in a solo battle: the TypeScript drives, every answer of the kernels is compared,
     and `window.__SIM_KERNELS.check` counts the comparisons and mismatches.
 
 ## A fallback is reported
 
 Every path keeps its fallback to the TypeScript, and none of them is silent. `src/world/simKernelsStatus.ts` names the
-cause: `csp` (a Content Security Policy without `'wasm-unsafe-eval'`), `http_<status>`, `network`, `compile`, `link`,
-`missing` (a server image without the binary), `no_webassembly` or `error`. `off` means an opt-out.
+cause: `csp` (a Content Security Policy without `'wasm-unsafe-eval'`), `http_<status>`, `network`, `timeout` (a solo
+load past its deadline), `compile`, `link`, `missing` (a server image without the binary), `no_webassembly` or `error`.
+`off` means an opt-out.
 
 - **Browser host:** its Worker's `ready` carries `kernels: { mode, reason }`.
 - **Solo battle:** `soloBattleRuntime.ts` reports its load failure.

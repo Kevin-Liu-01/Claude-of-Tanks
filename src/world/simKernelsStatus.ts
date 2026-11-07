@@ -17,6 +17,8 @@ export interface SimKernelsStatus {
  * - 'csp': a Content Security Policy without 'wasm-unsafe-eval' refused the compile;
  * - 'http_<status>': the asset's fetch answered an error;
  * - 'network': the fetch failed;
+ * - 'timeout': the load did not settle by its deadline (round 5 Q1: game/soloBattleRuntime.ts
+ *   SOLO_KERNELS_LOAD_DEADLINE_MS, a DOMException named TimeoutError, as AbortSignal.timeout's);
  * - 'compile' and 'link': the bytes were not a module this engine accepts;
  * - 'no_webassembly': the engine has none;
  * - 'missing': the server's binary is not on disk (a deploy image without crates/cot-sim-wasm/pkg);
@@ -25,6 +27,7 @@ export interface SimKernelsStatus {
 export function simKernelsFailureReason(error: unknown): string {
   if (typeof WebAssembly !== 'object') return 'no_webassembly';
   if ((error as { code?: unknown } | null)?.code === 'ENOENT') return 'missing';
+  if ((error as { name?: unknown } | null)?.name === 'TimeoutError') return 'timeout';
   const message = error instanceof Error ? error.message : String(error ?? '');
   if (/content security policy|unsafe-eval/i.test(message)) return 'csp';
   const status = /HTTP (\d{3})/.exec(message);

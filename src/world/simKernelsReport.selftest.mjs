@@ -1,7 +1,8 @@
 // The world kernels' fallback is observable (simKernelsStatus.ts, simKernelsReport.ts): a failed load is named by its
-// cause — a Content Security Policy without 'wasm-unsafe-eval', an HTTP error, a failed fetch, bytes the engine refuses, a
-// server binary missing — and the page's report sets __SIM_KERNELS's mode, source and reason. A fallback is reported
-// once a session; an explicit opt-out ('off') is recorded and nothing more. Outside a browser no telemetry is touched.
+// cause — a Content Security Policy without 'wasm-unsafe-eval', an HTTP error, a failed fetch, a load past its deadline,
+// bytes the engine refuses, a server binary missing — and the page's report sets __SIM_KERNELS's mode, source and reason.
+// A fallback is reported once a session; an explicit opt-out ('off') is recorded and nothing more. Outside a browser no
+// telemetry is touched.
 import assert from 'node:assert/strict';
 import { simKernelsFailureReason } from './simKernelsStatus.ts';
 import { reportSimKernels } from './simKernelsReport.ts';
@@ -11,6 +12,8 @@ assert.equal(simKernelsFailureReason(csp), 'csp');
 assert.equal(simKernelsFailureReason(new Error('world kernels: HTTP 404')), 'http_404');
 assert.equal(simKernelsFailureReason(new TypeError('Failed to fetch')), 'network');
 assert.equal(simKernelsFailureReason(new TypeError('Load failed')), 'network');
+// (round 5 Q1) the solo load's deadline (game/soloBattleRuntime.ts), named as AbortSignal.timeout names its own
+assert.equal(simKernelsFailureReason(new DOMException('world kernels: no answer in 15000 ms', 'TimeoutError')), 'timeout');
 let compileError;
 try { new WebAssembly.Module(new Uint8Array([0, 1, 2, 3])); } catch (error) { compileError = error; }
 assert.equal(simKernelsFailureReason(compileError), 'compile');
@@ -30,4 +33,4 @@ assert.equal(globalThis.__SIM_KERNELS.mode, 'wasm');
 assert.equal(globalThis.__SIM_KERNELS.reason, null);
 delete globalThis.__SIM_KERNELS;
 
-console.log('simKernelsReport.selftest: csp, http_404, network, compile, missing and error named; __SIM_KERNELS carries the mode, source and reason');
+console.log('simKernelsReport.selftest: csp, http_404, network, timeout, compile, missing and error named; __SIM_KERNELS carries the mode, source and reason');

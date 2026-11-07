@@ -13,9 +13,13 @@ import kernelsUrl from '../../crates/cot-sim-wasm/pkg/cot_sim_wasm.wasm?url';
 import { compileWorldKernels } from './wasmWorldKernels.ts';
 import { createSoloWorldKernels } from './soloWorldKernelProvider.ts';
 
-/** The kernels' module compiled, and a provider of each world's kernels (game/state.ts setSoloWorldKernels). */
-export async function loadSoloWorldKernels(check: boolean) {
-  const response = await fetch(kernelsUrl);
+/**
+ * The kernels' module compiled, and a provider of each world's kernels (game/state.ts setSoloWorldKernels). `signal` aborts
+ * the fetch and its body (round 5 Q1: the load's deadline, game/soloBattleRuntime.ts SOLO_KERNELS_LOAD_DEADLINE_MS); a
+ * compile cannot be aborted, and the caller drops an answer that comes after its deadline.
+ */
+export async function loadSoloWorldKernels(check: boolean, signal?: AbortSignal) {
+  const response = await fetch(kernelsUrl, { signal });
   if (!response.ok) throw new Error(`world kernels: HTTP ${response.status}`);
   return createSoloWorldKernels(await compileWorldKernels(await response.arrayBuffer()), check);
 }
