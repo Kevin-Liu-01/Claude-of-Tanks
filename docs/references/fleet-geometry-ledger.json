@@ -482,8 +482,8 @@
    "low": {"meshes":69,"vertices":299917,"triangles":100583,"digest":"a27a114531973ea1","groups":{"hull":"0ce7e544b3f9742f","turret":"97855e2b856bfb0f","gun":"094b930eda149236","runningGear":"f9256e5d543ef678","other":"e3b0c44298fc1c14"}}
   },
   "m1a1_aim_sa_aus": {
-   "high": {"meshes":62,"vertices":360496,"triangles":120904,"digest":"7c101eaff124bd86","groups":{"hull":"d1410afe470f7d0d","turret":"93ed189a1753acb8","gun":"5d7b3f86dfbfe6b4","runningGear":"8bc1725efe4c9e96","other":"e3b0c44298fc1c14"}},
-   "low": {"meshes":60,"vertices":286204,"triangles":96012,"digest":"f0212705c5927cd6","groups":{"hull":"08ba214c26a3eeec","turret":"917ff20897c36ed1","gun":"5cf4e7793ad10caf","runningGear":"f89ba6aa5f7595e8","other":"e3b0c44298fc1c14"}}
+   "high": {"meshes":60,"vertices":329266,"triangles":110494,"digest":"7d5f5432f909c155","groups":{"hull":"fe6ff4b78992a6d0","turret":"44668fb3d4301264","gun":"e0e76794f742cb64","runningGear":"dc02886ab9022ff6","other":"e3b0c44298fc1c14"}},
+   "low": {"meshes":58,"vertices":263926,"triangles":88586,"digest":"ce4dddb6a5773f44","groups":{"hull":"d7906541c5806913","turret":"35e7aa2f0a94c21f","gun":"ca2793766805592d","runningGear":"567181080152853a","other":"e3b0c44298fc1c14"}}
   },
   "m1a1ha": {
    "high": {"meshes":64,"vertices":318385,"triangles":106867,"digest":"37959be79c777f9a","groups":{"hull":"4ff2b563f4149784","turret":"cd48c14d8e8c56e4","gun":"481dda6641265239","runningGear":"7cbb0cddbe60da55","other":"e3b0c44298fc1c14"}},

@@ -135,7 +135,7 @@
   "m1a1_abrams_fep": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"2ba7b7565daeab49","gun":"597112a81b3347f8"}},
   "m1a1_abrams_hc": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"72df9432b8dff07f","gun":"5c6e44384228ae91"}},
   "m1a1_abrams_sa": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"02d7887c25b69f72","gun":"8a19ec34c44e0582"}},
-  "m1a1_aim_sa_aus": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"93ed189a1753acb8","gun":"5d7b3f86dfbfe6b4"}},
+  "m1a1_aim_sa_aus": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"44668fb3d4301264","gun":"e0e76794f742cb64"}},
   "m1a1ha": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"cd48c14d8e8c56e4","gun":"481dda6641265239"}},
   "m1a2_abrams": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"429cf7d974b2eee2","gun":"9f64474740acaeff"}},
   "m1a2_abrams_sepv2": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"023f80154a044a9b","gun":"109e061ee0f81f71"}},
