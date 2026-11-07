@@ -34,8 +34,8 @@ export function ksarLayout(p: Readonly<Record<string, number | string | boolean>
  * its front each vault's rounded end in a raised rim, its door, lintel and pegs.
  */
 function ghorfaColumn(sink: PartSink, x0: number, x1: number, D: number, tiers: number, tier: number, foot: number, v: () => number,
-  mobile: boolean, opts: { gate?: boolean } = {}): void {
-  const w = x1 - x0, r = w / 2, cx = (x0 + x1) / 2, H = tiers * tier, n = mobile ? 6 : 10;
+  opts: { gate?: boolean } = {}): void {
+  const w = x1 - x0, r = w / 2, cx = (x0 + x1) / 2, H = tiers * tier, n = 10;
   // (foot is relative to the column's own ground, which the caller has placed at y = 0)
   const wall: RegionalBucket = 'plaster';
   // the column's mass up to the springing of its top vault, then the vault's half barrel along z
@@ -70,7 +70,7 @@ function ghorfaColumn(sink: PartSink, x0: number, x1: number, D: number, tiers: 
     sink.span('dark', cx + du - dw / 2, yb + 0.3, 0.01, cx + du + dw / 2, yb + 0.3 + dh, 0.03, { decor: true });
     sink.span('structureWood', cx + du - dw / 2 - 0.2, yb + 0.3 + dh, -0.02, cx + du + dw / 2 + 0.2, yb + 0.45 + dh, 0.12, { colour: PALM, decor: true });
     if (v() < 0.45) sink.span('structureWood', cx + du - dw / 2 + 0.04, yb + 0.32, 0.03, cx + du + dw / 2 - 0.04, yb + 0.28 + dh, 0.07, { colour: v() < 0.3 ? DOOR_BLUE : DOOR, decor: true, fine: true });
-    if (!mobile) for (let k = 0; k < 2 + Math.floor(v() * 3); k++) {
+    for (let k = 0; k < 2 + Math.floor(v() * 3); k++) {
       const px = x0 + 0.35 + v() * (w - 0.7), py = yb + 0.6 + v() * (tier - 1.2);
       if (Math.abs(px - (cx + du)) < dw / 2 + 0.15) continue;
       bar(sink, 'structureWood', [px, py, 0.0], [px, py - 0.04, 0.45], 0.07, { colour: PALM, decor: true, fine: true });
@@ -82,7 +82,7 @@ function ghorfaColumn(sink: PartSink, x0: number, x1: number, D: number, tiers: 
  * A stair ramp against a range's front (the range's frame, front at z = 0): from the ground at u0 up to the door sill
  * at height h over u1, d deep, its treads stepped on the top (no rail, as the ksour have none).
  */
-function stair(sink: PartSink, u0: number, u1: number, h: number, d: number, mobile: boolean): void {
+function stair(sink: PartSink, u0: number, u1: number, h: number, d: number): void {
   const wall: RegionalBucket = 'plaster', dir = Math.sign(u1 - u0), run = Math.abs(u1 - u0), steps = Math.max(4, Math.round(h / 0.28));
   // the solid wedge under the treads
   const a: Vec3 = [u0, 0, 0], b: Vec3 = [u1, h, 0];
@@ -94,7 +94,7 @@ function stair(sink: PartSink, u0: number, u1: number, h: number, d: number, mob
     const x0 = u0 + (u1 - u0) * t0, x1 = u0 + (u1 - u0) * t1, y = h * t1;
     sink.span(wall, Math.min(x0, x1), Math.max(0, y - h / steps - 0.02), 0, Math.max(x0, x1), y, d, {});
   }
-  void run; void mobile;
+  void run;
 }
 
 /**
@@ -103,7 +103,7 @@ function stair(sink: PartSink, u0: number, u1: number, h: number, d: number, mob
  */
 export const ghorfaKsar: LandmarkBuilder = (ctx) => {
   const sink = new PartSink(uvOffset(ctx.rng));
-  const v = ctx.variant, mobile = ctx.tier === 'mobile';
+  const v = ctx.variant;
   const { cw, cd, D } = ksarLayout(ctx.params);
   const bay = num(ctx, 'bay', 2.2, 4), tierH = num(ctx, 'tierHeight', 2.4, 3.6), maxT = Math.round(num(ctx, 'tiers', 2, 5));
   const foot = -0.6 - ctx.groundFall;
@@ -152,7 +152,7 @@ export const ghorfaKsar: LandmarkBuilder = (ctx) => {
         // each column on its own ground: seated at its front's ground (its doors never buried), its foot down to the
         // lowest ground under it, so a ksar on a slope steps up it as the hillside ksour do
         const [base, low] = groundOf(range, x0, x1, D);
-        sink.placed(0, 0, base, 0, () => ghorfaColumn(sink, x0, x1, D, heights[c], tierH, foot + (low - base), v, mobile, { gate: range.gate && c === gateCol }));
+        sink.placed(0, 0, base, 0, () => ghorfaColumn(sink, x0, x1, D, heights[c], tierH, foot + (low - base), v, { gate: range.gate && c === gateCol }));
         bases[range.name].push(base);
       }
       // the stair ramps up the court face: one per three or four columns, each to a second-tier door
@@ -160,7 +160,7 @@ export const ghorfaKsar: LandmarkBuilder = (ctx) => {
         if (heights[c] < 2 || (range.gate && Math.abs(c - gateCol) < 2)) continue;
         const x = -range.len / 2 + (c + 0.5) * b, up = Math.min(heights[c] - 1, 2) * tierH + 0.3, dir = v() < 0.5 ? -1 : 1;
         const foot0 = groundAt(range, x + dir * (up * 1.1 + 0.4), 0.5);
-        sink.placed(0, 0, foot0, 0, () => stair(sink, x + dir * (up * 1.1 + 0.4), x + dir * 0.4, Math.max(1, up + bases[range.name][c] - foot0), 0.95, mobile));
+        sink.placed(0, 0, foot0, 0, () => stair(sink, x + dir * (up * 1.1 + 0.4), x + dir * 0.4, Math.max(1, up + bases[range.name][c] - foot0), 0.95));
       }
     });
   }
@@ -171,7 +171,7 @@ export const ghorfaKsar: LandmarkBuilder = (ctx) => {
     const xa = -cw / 2 + cw * i / nx, xb = -cw / 2 + cw * (i + 1) / nx, za = cd / 2 - cd * j / nz, zb = cd / 2 - cd * (j + 1) / nz;
     sink.quad('stone', [xa, g(xa, za), za], [xb, g(xb, za), za], [xb, g(xb, zb), zb], [xa, g(xa, zb), zb], { decor: true, shade: 0.9, uv: { kind: 'world' } });
   }
-  sink.placed(0, 0, g(0, -cd / 6), -cd / 6, () => revolve(sink, 'stone', 0, 0, [[3.2, 0.02], [3.2, 0.1], [2.9, 0.1], [0.001, 0.05]], mobile ? 12 : 20, { decor: true, shade: 0.8 }));
+  sink.placed(0, 0, g(0, -cd / 6), -cd / 6, () => revolve(sink, 'stone', 0, 0, [[3.2, 0.02], [3.2, 0.1], [2.9, 0.1], [0.001, 0.05]], 20, { decor: true, shade: 0.8 }));
   const ty = g(cw / 2 - 2.5, cd / 2 - 1.6);
   sink.span('stone', cw / 2 - 3.5, ty - 0.6, cd / 2 - 2.0, cw / 2 - 1.5, ty + 0.6, cd / 2 - 1.2, { shade: 0.85 });
   return { parts: sink.finish() };
@@ -184,7 +184,7 @@ export const ghorfaKsar: LandmarkBuilder = (ctx) => {
  */
 export const marabout: LandmarkBuilder = (ctx) => {
   const sink = new PartSink(uvOffset(ctx.rng));
-  const v = ctx.variant, mobile = ctx.tier === 'mobile';
+  const v = ctx.variant;
   const S = num(ctx, 'size', 4, 9), H = num(ctx, 'height', 3, 6), Y = Math.max(S + 4, num(ctx, 'yard', S + 4, 30));
   const foot = -0.6 - ctx.groundFall, white: RegionalBucket = 'plaster3';
   sink.span('stone', -S / 2 - 0.4, foot, -S / 2 - 0.4, S / 2 + 0.4, 0.35, S / 2 + 0.4, { shade: 0.9 });
@@ -197,7 +197,7 @@ export const marabout: LandmarkBuilder = (ctx) => {
   sink.polygon('dark', [...arc], { decor: true });
   sink.span('structureWood', -0.5, 0.36, S / 2 + 0.02, 0.5, 2.25, S / 2 + 0.06, { colour: v() < 0.6 ? rgb(0x2f6b4f) : DOOR_BLUE, decor: true });
   // the drum and the egg dome
-  const dr = S * 0.36, n = mobile ? 10 : 18;
+  const dr = S * 0.36, n = 18;
   revolve(sink, white, 0, 0, [[S * 0.42, H - 0.01], [S * 0.42, H + 0.25], [dr, H + 0.25], [dr, H + 1.0]], 8, {}, Math.PI / 8);
   const dome: Array<[number, number]> = [];
   for (let k = 0; k <= 8; k++) { const a = (Math.PI / 2) * k / 8; dome.push([Math.max(0.001, Math.cos(a) * dr * (1 + 0.12 * Math.sin(a * 2))), H + 1.0 + Math.sin(a) * dr * 1.25]); }

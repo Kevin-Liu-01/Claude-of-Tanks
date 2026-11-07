@@ -36,7 +36,7 @@ export function shrineLayout(p: Readonly<Record<string, number | string | boolea
  * the fascia under its edge, the ridge's cap and its end tiles; `skirt` (a pent roof) has no upper part.
  */
 function irimoya(sink: PartSink, cx: number, cz: number, w: number, d: number, y: number, ridgeY: number, opts: {
-  over: number; sori: number; breakFrac?: number; bucket?: RegionalBucket; fascia?: Rgb; mobile: boolean;
+  over: number; sori: number; breakFrac?: number; bucket?: RegionalBucket; fascia?: Rgb;
 }): void {
   const bucket = opts.bucket ?? 'roof', X = w / 2 + opts.over, Z = d / 2 + opts.over;
   const yr = ridgeY, yh = y + (yr - y) * (opts.breakFrac ?? 0.5);
@@ -44,7 +44,7 @@ function irimoya(sink: PartSink, cx: number, cz: number, w: number, d: number, y
   const a = Math.max(0.6, X - Z * 0.9);
   const P = (x: number, yy: number, z: number): Vec3 => [cx + x, yy, cz + z];
   // the eave line: each side's edge rises toward its corners (the sori), in segments
-  const n = opts.mobile ? 4 : 8;
+  const n = 8;
   const eave = (t: number): number => y + opts.sori * Math.pow(Math.abs(t), 2.2);
   // front and back slopes: the eave from -X to X, up to the break points and the ridge
   for (const s of [1, -1]) {
@@ -84,7 +84,7 @@ function irimoya(sink: PartSink, cx: number, cz: number, w: number, d: number, y
     bar(sink, 'structureWood', P(s * (a + 0.12), yh - 0.1, zh + 0.15), P(s * (a + 0.12), yr + 0.2, 0), 0.32, { colour: TIMBER_DARK, decor: true });
     bar(sink, 'structureWood', P(s * (a + 0.12), yh - 0.1, -zh - 0.15), P(s * (a + 0.12), yr + 0.2, 0), 0.32, { colour: TIMBER_DARK, decor: true });
     // the copper fish-scale ornament (gegyo) at the gable's apex
-    sink.span('structureMetal', cx + s * (a + 0.1) - 0.05, yr - 1.0, cz - 0.5, cx + s * (a + 0.1) + 0.05, yr - 0.1, cz + 0.5, { colour: COPPER, decor: true, fine: opts.mobile ? undefined : 'near' });
+    sink.span('structureMetal', cx + s * (a + 0.1) - 0.05, yr - 1.0, cz - 0.5, cx + s * (a + 0.1) + 0.05, yr - 0.1, cz + 0.5, { colour: COPPER, decor: true, fine: 'near' });
   }
   // the ridge: its cap the roof's length, the end tiles (onigawara) rising at each end
   sink.span(bucket, cx - a - 0.4, yr - 0.1, cz - 0.45, cx + a + 0.4, yr + 0.55, cz + 0.45, { decor: true, shade: 0.75 });
@@ -99,8 +99,8 @@ function irimoya(sink: PartSink, cx: number, cz: number, w: number, d: number, y
 
 /** A stone lantern (ishidōrō, the kasuga form) at (x, z): its base, shaft, fire box with its openings, the hat with
  *  upturned corners and the jewel on it. */
-function lantern(sink: PartSink, x: number, z: number, h: number, mobile: boolean): void {
-  const k = h / 2.2, n = mobile ? 6 : 8;
+function lantern(sink: PartSink, x: number, z: number, h: number): void {
+  const k = h / 2.2, n = 8;
   revolve(sink, 'stone', x, z, [[0.42 * k, -0.4], [0.42 * k, 0.22 * k], [0.32 * k, 0.3 * k], [0.14 * k, 0.36 * k], [0.14 * k, 1.05 * k], [0.3 * k, 1.12 * k], [0.3 * k, 1.2 * k]], 6, { shade: 0.95 }, Math.PI / 6);
   sink.span('stone', x - 0.25 * k, 1.2 * k, z - 0.25 * k, x + 0.25 * k, 1.62 * k, z + 0.25 * k, {});
   sink.span('dark', x - 0.12 * k, 1.28 * k, z + 0.249 * k, x + 0.12 * k, 1.52 * k, z + 0.252 * k, { decor: true });
@@ -110,14 +110,13 @@ function lantern(sink: PartSink, x: number, z: number, h: number, mobile: boolea
 }
 
 /** A run of posts and rails between two plan points (the tamagaki fence of slats on its rails), dressing over posts. */
-function fence(sink: PartSink, a: readonly [number, number], b: readonly [number, number], h: number, mobile: boolean): void {
+function fence(sink: PartSink, a: readonly [number, number], b: readonly [number, number], h: number): void {
   const L = Math.hypot(b[0] - a[0], b[1] - a[1]), ux = (b[0] - a[0]) / L, uz = (b[1] - a[1]) / L;
   for (let t = 0; t <= L + 1e-6; t += 2.2) {
     const x = a[0] + ux * Math.min(t, L), z = a[1] + uz * Math.min(t, L);
     sink.span('structureWood', x - 0.1, -0.4, z - 0.1, x + 0.1, h + 0.12, z + 0.1, { colour: TIMBER });
   }
   for (const y of [0.25, h - 0.15]) bar(sink, 'structureWood', [a[0], y, a[1]], [b[0], y, b[1]], 0.1, { colour: TIMBER, decor: true });
-  if (mobile) return;
   for (let t = 0.1; t < L; t += 0.16) {
     const x = a[0] + ux * t, z = a[1] + uz * t;
     bar(sink, 'structureWood', [x, 0.12, z], [x, h - 0.05, z], 0.05, { colour: shade(TIMBER, 1.1), decor: true, fine: true });
@@ -125,35 +124,35 @@ function fence(sink: PartSink, a: readonly [number, number], b: readonly [number
 }
 
 /** A round post from the ground (or y0) to y1 at (x, z), on its stone footing. */
-function post(sink: PartSink, x: number, z: number, y0: number, y1: number, r: number, mobile: boolean, colour: Rgb = TIMBER): void {
+function post(sink: PartSink, x: number, z: number, y0: number, y1: number, r: number, colour: Rgb = TIMBER): void {
   if (y0 <= 0.01) sink.span('stone', x - r * 1.6, -0.4, z - r * 1.6, x + r * 1.6, 0.22, z + r * 1.6, { shade: 0.9 });
-  sink.cylinder('structureWood', [x, Math.max(y0, 0.22), z], 'y', y1 - Math.max(y0, 0.22), r, mobile ? 8 : 10, { colour });
+  sink.cylinder('structureWood', [x, Math.max(y0, 0.22), z], 'y', y1 - Math.max(y0, 0.22), r, 10, { colour });
 }
 
 /** The rōmon: the two-storey gate over the approach at z = gz, w across (three bays), its passage open along z. */
-function romon(sink: PartSink, gz: number, w: number, d: number, mobile: boolean): void {
+function romon(sink: PartSink, gz: number, w: number, d: number): void {
   const bay = w / 3, y1 = 5.4, ySkirt = 5.6, yDeck = 6.5, y2 = 10.6, top = 17.2;
   // the lower storey: four rows of round posts across, the side bays walled in white render between rails, the
   // passage's bay open
-  for (const zz of [-d / 2, d / 2]) for (let i = 0; i <= 3; i++) post(sink, -w / 2 + i * bay, gz + zz, 0, y1, 0.32, mobile);
+  for (const zz of [-d / 2, d / 2]) for (let i = 0; i <= 3; i++) post(sink, -w / 2 + i * bay, gz + zz, 0, y1, 0.32);
   for (const s of [-1, 1]) {
     // the side bays' walls (the guardian niches behind lattice on the approach faces)
     const x0 = s * (w / 2 - bay * 0.5);
     sink.span('plaster', x0 - bay / 2 + 0.3, 0.6, gz - 0.12, x0 + bay / 2 - 0.3, y1 - 0.5, gz + 0.12, { shade: 0.98 });
     for (const zz of [-1, 1]) {
       sink.span('dark', x0 - bay / 2 + 0.6, 1.0, gz + zz * 0.14, x0 + bay / 2 - 0.6, y1 - 1.0, gz + zz * 0.15, { decor: true });
-      if (!mobile) for (let u = -bay / 2 + 0.75; u < bay / 2 - 0.6; u += 0.22) bar(sink, 'structureWood', [x0 + u, 1.0, gz + zz * 0.2], [x0 + u, y1 - 1.0, gz + zz * 0.2], 0.05, { colour: TIMBER, decor: true, fine: true });
+      for (let u = -bay / 2 + 0.75; u < bay / 2 - 0.6; u += 0.22) bar(sink, 'structureWood', [x0 + u, 1.0, gz + zz * 0.2], [x0 + u, y1 - 1.0, gz + zz * 0.2], 0.05, { colour: TIMBER, decor: true, fine: true });
     }
     sink.span('stone', x0 - bay / 2 + 0.2, -0.4, gz - d / 2 + 0.3, x0 + bay / 2 - 0.2, 0.6, gz + d / 2 - 0.3, { shade: 0.88 });
   }
   // the tie beams and the bracket sets over the posts, the pent roof skirting the lower storey
   for (const zz of [-d / 2, d / 2]) sink.span('structureWood', -w / 2 - 0.2, y1 - 0.3, gz + zz - 0.2, w / 2 + 0.2, y1 + 0.1, gz + zz + 0.2, { colour: TIMBER_DARK });
   for (let i = 0; i <= 3; i++) sink.span('structureWood', -w / 2 + i * bay - 0.2, y1 - 0.3, gz - d / 2, -w / 2 + i * bay + 0.2, y1 + 0.1, gz + d / 2, { colour: TIMBER_DARK });
-  if (!mobile) for (const zz of [-d / 2, d / 2]) for (let i = 0; i <= 3; i++) {
+  for (const zz of [-d / 2, d / 2]) for (let i = 0; i <= 3; i++) {
     const x = -w / 2 + i * bay;
     sink.span('structureWood', x - 0.45, y1 + 0.1, gz + zz - 0.45, x + 0.45, y1 + 0.45, gz + zz + 0.45, { colour: TIMBER, decor: true, fine: true });
   }
-  irimoya(sink, 0, gz, w, d, ySkirt, ySkirt + 0.9, { over: 1.9, sori: 0.35, breakFrac: 0.99, mobile });
+  irimoya(sink, 0, gz, w, d, ySkirt, ySkirt + 0.9, { over: 1.9, sori: 0.35, breakFrac: 0.99 });
   // the upper storey: its floor and the railed balcony round it, the walls set in from the posts, the windows
   const uw = w - 1.4, ud = d - 1.2;
   sink.span('structureWood', -w / 2 - 0.7, yDeck - 0.3, gz - d / 2 - 0.7, w / 2 + 0.7, yDeck, gz + d / 2 + 0.7, { colour: TIMBER_DARK });
@@ -170,31 +169,31 @@ function romon(sink: PartSink, gz: number, w: number, d: number, mobile: boolean
   for (let k = 0; k < 4; k++) {
     const [ax, az] = ring[k], [bx, bz] = ring[(k + 1) % 4];
     bar(sink, 'structureWood', [ax, ry, gz + az], [bx, ry, gz + bz], 0.12, { colour: TIMBER_DARK, decor: true });
-    if (!mobile) {
+    {
       const L = Math.hypot(bx - ax, bz - az);
       for (let t = 0; t <= L; t += 1.1) bar(sink, 'structureWood', [ax + (bx - ax) * t / L, yDeck, gz + az + (bz - az) * t / L], [ax + (bx - ax) * t / L, ry, gz + az + (bz - az) * t / L], 0.08, { colour: TIMBER_DARK, decor: true, fine: true });
     }
   }
   // the great roof: its eaves well out on the bracket sets, the corners swept up
-  irimoya(sink, 0, gz, uw, ud, y2 + 0.2, top, { over: 2.6, sori: 0.75, breakFrac: 0.48, mobile });
+  irimoya(sink, 0, gz, uw, ud, y2 + 0.2, top, { over: 2.6, sori: 0.75, breakFrac: 0.48 });
   // the name tablet under the upper eave on the approach face
   sink.span('structureWood', -0.7, y2 - 2.6, gz + ud / 2 + 0.02, 0.7, y2 - 0.6, gz + ud / 2 + 0.16, { colour: TIMBER_DARK, decor: true });
-  sink.span('structureMetal', -0.5, y2 - 2.4, gz + ud / 2 + 0.16, 0.5, y2 - 0.8, gz + ud / 2 + 0.18, { colour: rgb(0xb59a4e), decor: true, fine: mobile ? undefined : 'near' });
+  sink.span('structureMetal', -0.5, y2 - 2.4, gz + ud / 2 + 0.16, 0.5, y2 - 0.8, gz + ud / 2 + 0.18, { colour: rgb(0xb59a4e), decor: true, fine: 'near' });
 }
 
 /** The haiden at z = hz on its stone podium: w x d, its front (+z) open under the karahafu porch over the steps. */
-function haiden(sink: PartSink, hz: number, w: number, d: number, mobile: boolean): void {
+function haiden(sink: PartSink, hz: number, w: number, d: number): void {
   const podium = 0.9, eaveY = podium + 4.6, ridgeY = eaveY + 5.2;
   sink.span('stone', -w / 2 - 1.2, -0.6, hz - d / 2 - 1.2, w / 2 + 1.2, podium, hz + d / 2 + 1.2, { shade: 0.86 });
   // the posts round the hall, its walls white render between them at the sides and back, the front's lattice doors
   const bays = 5, bw = w / bays;
-  for (let i = 0; i <= bays; i++) for (const s of [-1, 1]) post(sink, -w / 2 + i * bw, hz + s * d / 2, podium, eaveY, 0.24, mobile);
-  for (let j = 1; j < 3; j++) for (const s of [-1, 1]) post(sink, s * w / 2, hz - d / 2 + j * d / 3, podium, eaveY, 0.24, mobile);
+  for (let i = 0; i <= bays; i++) for (const s of [-1, 1]) post(sink, -w / 2 + i * bw, hz + s * d / 2, podium, eaveY, 0.24);
+  for (let j = 1; j < 3; j++) for (const s of [-1, 1]) post(sink, s * w / 2, hz - d / 2 + j * d / 3, podium, eaveY, 0.24);
   sink.span('plaster', -w / 2 + 0.1, podium, hz - d / 2 + 0.05, w / 2 - 0.1, eaveY - 0.4, hz - d / 2 + 0.25, { shade: 0.97 });
   for (const s of [-1, 1]) sink.span('plaster', s * w / 2 - 0.1 - (s > 0 ? 0.1 : -0.1), podium, hz - d / 2 + 0.2, s * w / 2 + (s > 0 ? -0.05 : 0.05), eaveY - 0.4, hz + d / 2 - 0.2, { shade: 0.95 });
   // the front: the dark interior beyond lattice doors folded up, and the tie beam
   sink.span('dark', -w / 2 + 0.2, podium, hz + d / 2 - 1.4, w / 2 - 0.2, eaveY - 0.4, hz + d / 2 - 1.2, {});
-  if (!mobile) for (let i = 0; i < bays; i++) {
+  for (let i = 0; i < bays; i++) {
     const x0 = -w / 2 + i * bw;
     for (let u = 0.3; u < bw - 0.2; u += 0.3) bar(sink, 'structureWood', [x0 + u, eaveY - 1.3, hz + d / 2 - 0.05], [x0 + u, eaveY - 0.45, hz + d / 2 - 0.05], 0.05, { colour: TIMBER, decor: true, fine: true });
   }
@@ -202,11 +201,11 @@ function haiden(sink: PartSink, hz: number, w: number, d: number, mobile: boolea
   // the veranda (engawa) along the front with its railing
   sink.span('structureWood', -w / 2 - 0.9, podium, hz + d / 2, w / 2 + 0.9, podium + 0.35, hz + d / 2 + 1.1, { colour: TIMBER });
   // the hall's roof, then the karahafu porch: posts, its own sweeping roof over the steps
-  irimoya(sink, 0, hz, w, d, eaveY + 0.15, ridgeY, { over: 2.2, sori: 0.6, breakFrac: 0.5, mobile });
+  irimoya(sink, 0, hz, w, d, eaveY + 0.15, ridgeY, { over: 2.2, sori: 0.6, breakFrac: 0.5 });
   const pw = Math.min(6.4, w * 0.45), pz0 = hz + d / 2 + 1.1, pd = 3.6;
-  for (const s of [-1, 1]) for (const zz of [pz0 + 0.3, pz0 + pd - 0.2]) post(sink, s * pw / 2, zz, podium * (zz < pz0 + 1 ? 1 : 0), eaveY - 0.3, 0.2, mobile);
+  for (const s of [-1, 1]) for (const zz of [pz0 + 0.3, pz0 + pd - 0.2]) post(sink, s * pw / 2, zz, podium * (zz < pz0 + 1 ? 1 : 0), eaveY - 0.3, 0.2);
   // the karahafu: a gable whose bargeboard sweeps up to a rounded crest, its roof two curved slopes
-  const cy = eaveY + 0.2, crest = eaveY + 2.4, segs = mobile ? 6 : 12;
+  const cy = eaveY + 0.2, crest = eaveY + 2.4, segs = 12;
   const curve = (t: number): number => cy + (crest - cy) * (t < 0.5 ? Math.sin(t * Math.PI) ** 1.6 : Math.sin(t * Math.PI) ** 1.6);
   for (let k = 0; k < segs; k++) {
     const t0 = k / segs, t1 = (k + 1) / segs;
@@ -219,9 +218,9 @@ function haiden(sink: PartSink, hz: number, w: number, d: number, mobile: boolea
   for (let k = 0; k < 3; k++) sink.span('stone', -pw / 2 + 0.4, -0.3, pz0 + 1.1 + k * 0.45, pw / 2 - 0.4, podium - k * 0.3, pz0 + 1.55 + k * 0.45, { shade: 0.92 });
   sink.span('structureWood', -1.0, podium + 0.35, pz0 + 0.1, 1.0, podium + 1.15, pz0 + 0.8, { colour: TIMBER_DARK });
   bar(sink, 'straw', [-pw / 2 + 0.2, eaveY - 0.7, pz0 + pd - 0.2], [pw / 2 - 0.2, eaveY - 0.7, pz0 + pd - 0.2], 0.42, { colour: STRAW, decor: true });
-  if (!mobile) for (const x of [-pw / 4, 0, pw / 4]) bar(sink, 'straw', [x, eaveY - 0.9, pz0 + pd - 0.2], [x, eaveY - 1.7, pz0 + pd - 0.2], 0.1, { colour: STRAW, decor: true, fine: true });
+  for (const x of [-pw / 4, 0, pw / 4]) bar(sink, 'straw', [x, eaveY - 0.9, pz0 + pd - 0.2], [x, eaveY - 1.7, pz0 + pd - 0.2], 0.1, { colour: STRAW, decor: true, fine: true });
   // the white paper streamers (shide) on the rope
-  if (!mobile) for (const x of [-pw / 3, -pw / 9, pw / 9, pw / 3]) sink.span('structureWood', x - 0.08, eaveY - 1.6, pz0 + pd - 0.17, x + 0.08, eaveY - 0.95, pz0 + pd - 0.15, { colour: WHITE, decor: true, fine: 'near' });
+  for (const x of [-pw / 3, -pw / 9, pw / 9, pw / 3]) sink.span('structureWood', x - 0.08, eaveY - 1.6, pz0 + pd - 0.17, x + 0.08, eaveY - 0.95, pz0 + pd - 0.15, { colour: WHITE, decor: true, fine: 'near' });
 }
 
 /**
@@ -230,7 +229,6 @@ function haiden(sink: PartSink, hz: number, w: number, d: number, mobile: boolea
  */
 export const shrine: LandmarkBuilder = (ctx) => {
   const sink = new PartSink(uvOffset(ctx.rng));
-  const mobile = ctx.tier === 'mobile';
   const { length, width, front, back } = shrineLayout(ctx.params);
   const gateZ = front - Math.max(16, length * num(ctx, 'gate', 0.15, 0.6));
   const courtZ = gateZ - 3.2, hallW = Math.min(15, width - 8), hallD = 9.5, hallZ = back + hallD / 2 + 2.4;
@@ -241,23 +239,23 @@ export const shrine: LandmarkBuilder = (ctx) => {
   // the inner court's gravel
   sink.quad('stone', [-width / 2 + 1, 0.03, courtZ], [width / 2 - 1, 0.03, courtZ], [width / 2 - 1, 0.03, back + 1], [-width / 2 + 1, 0.03, back + 1], { decor: true, shade: 0.93, uv: { kind: 'world' } });
   // the lantern pairs along the approach outside the gate and in the court
-  for (let z = front - 6; z > gateZ + 5; z -= 5.5) for (const s of [-1, 1]) lantern(sink, s * (sw / 2 + 1.4), z, 2.2, mobile);
-  for (let z = courtZ - 4; z > hallZ + hallD / 2 + 6; z -= 6) for (const s of [-1, 1]) lantern(sink, s * (sw / 2 + 1.6), z, 2.0, mobile);
-  romon(sink, gateZ, 12, 7, mobile);
+  for (let z = front - 6; z > gateZ + 5; z -= 5.5) for (const s of [-1, 1]) lantern(sink, s * (sw / 2 + 1.4), z, 2.2);
+  for (let z = courtZ - 4; z > hallZ + hallD / 2 + 6; z -= 6) for (const s of [-1, 1]) lantern(sink, s * (sw / 2 + 1.6), z, 2.0);
+  romon(sink, gateZ, 12, 7);
   // the tamagaki round the inner court, from the gate's ends round to the back
   const fx = width / 2 - 0.6;
-  fence(sink, [-6.4, courtZ + 0.4], [-fx, courtZ + 0.4], 1.6, mobile);
-  fence(sink, [6.4, courtZ + 0.4], [fx, courtZ + 0.4], 1.6, mobile);
-  fence(sink, [-fx, courtZ + 0.4], [-fx, back + 0.6], 1.6, mobile);
-  fence(sink, [fx, courtZ + 0.4], [fx, back + 0.6], 1.6, mobile);
-  fence(sink, [-fx, back + 0.6], [fx, back + 0.6], 1.6, mobile);
-  haiden(sink, hallZ, hallW, hallD, mobile);
+  fence(sink, [-6.4, courtZ + 0.4], [-fx, courtZ + 0.4], 1.6);
+  fence(sink, [6.4, courtZ + 0.4], [fx, courtZ + 0.4], 1.6);
+  fence(sink, [-fx, courtZ + 0.4], [-fx, back + 0.6], 1.6);
+  fence(sink, [fx, courtZ + 0.4], [fx, back + 0.6], 1.6);
+  fence(sink, [-fx, back + 0.6], [fx, back + 0.6], 1.6);
+  haiden(sink, hallZ, hallW, hallD);
   // the purification basin's pavilion (temizuya) beside the approach inside the court: four posts, a little gabled roof
   const tx = sw / 2 + 4.6, tz = courtZ - 5;
-  for (const [dx, dz] of [[-1.3, -0.9], [1.3, -0.9], [1.3, 0.9], [-1.3, 0.9]] as const) post(sink, tx + dx, tz + dz, 0, 2.6, 0.13, mobile);
+  for (const [dx, dz] of [[-1.3, -0.9], [1.3, -0.9], [1.3, 0.9], [-1.3, 0.9]] as const) post(sink, tx + dx, tz + dz, 0, 2.6, 0.13);
   sink.span('stone', tx - 0.9, -0.3, tz - 0.45, tx + 0.9, 0.75, tz + 0.45, { shade: 0.8 });
   sink.span('dark', tx - 0.75, 0.74, tz - 0.3, tx + 0.75, 0.76, tz + 0.3, { decor: true });
-  irimoya(sink, tx, tz, 2.6, 1.8, 2.7, 3.9, { over: 0.6, sori: 0.15, breakFrac: 0.55, mobile });
+  irimoya(sink, tx, tz, 2.6, 1.8, 2.7, 3.9, { over: 0.6, sori: 0.15, breakFrac: 0.55 });
   // the torii at the mouth of the approach (gates.ts torii, placed after this piece in its frame)
   const children: LandmarkPlacement[] = [{ kind: 'torii', x: 0, z: front - 1.4, yawDeg: 0, params: { span: 6.2, height: 7.6 }, ground: 'veto' }];
   return { parts: sink.finish(), children };

@@ -25,7 +25,7 @@ const num = (ctx: LandmarkBuildContext, key: string, min: number, max = Infinity
 /** Goulding's trading post: the main block (`width` x `depth`, two storeys), the wareroom at +x, the porch at +z. */
 export const tradingPost: LandmarkBuilder = (ctx) => {
   const sink = new PartSink(uvOffset(ctx.rng));
-  const mobile = ctx.tier === 'mobile', v = ctx.variant;
+  const v = ctx.variant;
   const W = num(ctx, 'width', 10, 24), D = num(ctx, 'depth', 8, 16), H = 6.6, foot = -0.6 - ctx.groundFall;
   const x0 = -W / 2 - 3, x1 = x0 + W;
   // the block's sandstone walls with their windows: two rows on the front, the door in the middle
@@ -39,10 +39,10 @@ export const tradingPost: LandmarkBuilder = (ctx) => {
   sink.span('structureWood', x0 + W / 2 - 0.6, 0.02, D / 2 + 0.02, x0 + W / 2 + 0.6, 2.3, D / 2 + 0.06, { colour: rgb(0x3e5a6a), decor: true });
   // the parapet and the vigas' ends through the wall under it
   for (const [a, b, c, d] of [[x0, D / 2 - 0.35, x1, D / 2], [x0, -D / 2, x1, -D / 2 + 0.35], [x0, -D / 2, x0 + 0.35, D / 2], [x1 - 0.35, -D / 2, x1, D / 2]] as const) sink.span('stone', a, H, b, c, H + 0.7, d, {});
-  if (!mobile) for (let u = x0 + 0.8; u < x1 - 0.4; u += 1.2) bar(sink, 'structureWood', [u, H - 0.5, D / 2], [u, H - 0.5, D / 2 + 0.45], 0.2, { colour: VIGA, decor: true, fine: true });
+  for (let u = x0 + 0.8; u < x1 - 0.4; u += 1.2) bar(sink, 'structureWood', [u, H - 0.5, D / 2], [u, H - 0.5, D / 2 + 0.45], 0.2, { colour: VIGA, decor: true, fine: true });
   // the sign board on the parapet
   sink.span('structureWood', x0 + 1, H + 0.7, D / 2 - 0.2, x1 - 1, H + 1.7, D / 2 - 0.05, { colour: SIGN, decor: true });
-  sink.span('structureWood', x0 + 1.3, H + 0.95, D / 2 - 0.06, x1 - 1.3, H + 1.45, D / 2 - 0.04, { colour: rgb(0x6a2a20), decor: true, fine: mobile ? undefined : 'near' });
+  sink.span('structureWood', x0 + 1.3, H + 0.95, D / 2 - 0.06, x1 - 1.3, H + 1.45, D / 2 - 0.04, { colour: rgb(0x6a2a20), decor: true, fine: 'near' });
   // the porch of peeled posts along the front, its shed roof of planks and the bench
   const pz = D / 2 + 3.2;
   for (let u = x0 + 0.3; u <= x1 - 0.2; u += (W - 0.5) / 4) bar(sink, 'structureWood', [u, -0.2, pz], [u, 3.0, pz], 0.22, { colour: POST, decor: true });
@@ -83,19 +83,19 @@ export const tradingPost: LandmarkBuilder = (ctx) => {
  */
 export const hogan: LandmarkBuilder = (ctx) => {
   const sink = new PartSink(uvOffset(ctx.rng));
-  const mobile = ctx.tier === 'mobile', v = ctx.variant;
+  const v = ctx.variant;
   const R = num(ctx, 'radius', 2.5, 6), foot = -0.6 - ctx.groundFall, n = 8, wallH = 1.9;
   // the eight walls of cribbed logs, chinked with mud (the log ends at the corners as dressing)
   const corner = (k: number, r: number, y: number): Vec3 => [Math.sin((k + 0.5) / n * Math.PI * 2) * r, y, Math.cos((k + 0.5) / n * Math.PI * 2) * r];
   for (let k = 0; k < n; k++) {
     sink.quad('structureWood', corner(k, R, foot), corner(k + 1, R, foot), corner(k + 1, R, wallH), corner(k, R, wallH), { colour: JUNIPER });
-    if (!mobile) for (let y = 0.25; y < wallH; y += 0.28) bar(sink, 'structureWood', corner(k, R + 0.05, y), corner(k + 1, R + 0.05, y), 0.09, { colour: shade(JUNIPER, 0.7 + v() * 0.3), decor: true, fine: true });
+    for (let y = 0.25; y < wallH; y += 0.28) bar(sink, 'structureWood', corner(k, R + 0.05, y), corner(k + 1, R + 0.05, y), 0.09, { colour: shade(JUNIPER, 0.7 + v() * 0.3), decor: true, fine: true });
   }
   // the earth dome over the cribbed roof, mounded higher at the middle round the smoke hole
   const dome: Array<[number, number]> = [[R + 0.35, wallH - 0.3]];
   for (let i = 1; i <= 7; i++) { const a = (Math.PI / 2) * i / 7; dome.push([Math.max(0.5, Math.cos(a) * (R + 0.35)), wallH - 0.3 + Math.sin(a) * R * 0.62]); }
   dome.push([0.45, wallH - 0.3 + R * 0.62 - 0.05]);
-  revolve(sink, 'structureWood', 0, 0, dome, mobile ? 10 : 16, { colour: EARTH });
+  revolve(sink, 'structureWood', 0, 0, dome, 16, { colour: EARTH });
   revolve(sink, 'structureWood', 0, 0, [[0.45, wallH - 0.3 + R * 0.62 - 0.05], [0.3, wallH - 0.3 + R * 0.62 - 0.4], [0.29, wallH - 0.3 + R * 0.62 - 0.4]], 8, { colour: EARTH_DARK, decor: true });
   bar(sink, 'structureMetal', [0.1, wallH, 0.1], [0.1, wallH + R * 0.62 + 0.8, 0.1], 0.1, { colour: rgb(0x2e2e2e), decor: true });
   // the entry on the east: a short boxed passage under its own earth, the blanket over the door
@@ -105,7 +105,7 @@ export const hogan: LandmarkBuilder = (ctx) => {
   sink.span('structureWood', -0.5, 0.05, ez + 1.2, 0.5, 1.7, ez + 1.24, { colour: BLANKET, decor: true });
   // the sheep corral beside it: juniper posts leaning every way, brush between, its gate gap toward the hogan
   if (ctx.params.corral !== false) {
-    const cx = R + 7.5, cr = 5.0, posts = mobile ? 14 : 24;
+    const cx = R + 7.5, cr = 5.0, posts = 24;
     for (let k = 0; k < posts; k++) {
       const a = (k / posts) * Math.PI * 2;
       if (Math.abs(Math.sin(a) + 1) < 0.08) continue;
@@ -113,7 +113,7 @@ export const hogan: LandmarkBuilder = (ctx) => {
       const x = cx + Math.cos(a) * cr, z = Math.sin(a) * cr, lean = (v() - 0.5) * 0.3, gy = ctx.ground?.(x, z) ?? 0;
       bar(sink, 'structureWood', [x, gy - 0.3, z], [x + lean, gy + 1.4 + v() * 0.4, z + lean], 0.13, { colour: shade(JUNIPER, 0.8 + v() * 0.4), decor: true });
       const b = ((k + 1) / posts) * Math.PI * 2, bx = cx + Math.cos(b) * cr, bz = Math.sin(b) * cr;
-      bar(sink, 'structureWood', [x, gy + 0.9, z], [bx, (ctx.ground?.(bx, bz) ?? 0) + 0.9 + v() * 0.3, bz], 0.08, { colour: JUNIPER, decor: true, fine: mobile ? undefined : true });
+      bar(sink, 'structureWood', [x, gy + 0.9, z], [bx, (ctx.ground?.(bx, bz) ?? 0) + 0.9 + v() * 0.3, bz], 0.08, { colour: JUNIPER, decor: true, fine: true });
     }
   }
   return { parts: sink.finish() };

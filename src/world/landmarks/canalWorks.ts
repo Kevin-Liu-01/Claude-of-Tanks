@@ -40,7 +40,7 @@ function surfaceAt(ctx: LandmarkBuildContext, x: number, z: number): number | nu
 }
 
 /** A sampan at (x, y, z) heading yaw: its hull narrowing to both ends, the thwarts, and (hood) an arched nipa hood. */
-function sampan(sink: PartSink, x: number, y: number, z: number, yaw: number, len: number, colour: Rgb, hood: boolean, mobile: boolean): void {
+function sampan(sink: PartSink, x: number, y: number, z: number, yaw: number, len: number, colour: Rgb, hood: boolean): void {
   sink.placed(yaw, x, y, z, () => {
     const n = 8, beam = len * 0.17, sheer = 0.55;
     const half = (t: number): number => beam / 2 * Math.sin(Math.PI * t) ** 0.6;
@@ -65,7 +65,7 @@ function sampan(sink: PartSink, x: number, y: number, z: number, yaw: number, le
         sink.quad('straw', p(a0, hz1), p(a0, hz0), p(a1, hz0), p(a1, hz1), { colour: NIPA, decor: true });
         sink.quad('straw', p(a1, hz1), p(a1, hz0), p(a0, hz0), p(a0, hz1), { colour: shade(NIPA, 0.6), decor: true });
       }
-    } else if (!mobile) {
+    } else {
       bar(sink, 'structureWood', [-beam * 0.4, 0.4, len * 0.3], [beam * 0.4, 0.4, len * 0.3], 0.08, { colour: HULL, decor: true, fine: true });
       // the long-tail's motor and its shaft at the stern
       sink.span('structureMetal', -0.2, 0.3, -len / 2 + 0.6, 0.2, 0.7, -len / 2 + 1.1, { colour: rgb(0x2a2a2a), decor: true });
@@ -80,7 +80,7 @@ function sampan(sink: PartSink, x: number, y: number, z: number, yaw: number, le
  */
 export const canalMarket: LandmarkBuilder = (ctx) => {
   const sink = new PartSink(uvOffset(ctx.rng));
-  const v = ctx.variant, mobile = ctx.tier === 'mobile';
+  const v = ctx.variant;
   const L = num(ctx, 'length', 16, 40), D = num(ctx, 'depth', 8, 18), P = Math.round(num(ctx, 'pontoons', 0, 5)), B = Math.round(num(ctx, 'boats', 0, 10));
   const hz0 = -D - 0.5, hz1 = -0.5;
   // the hall's floor: a concrete slab on the bank's top, its plinth down to the lowest ground under it
@@ -101,7 +101,7 @@ export const canalMarket: LandmarkBuilder = (ctx) => {
   sink.polygon('structureMetal', [[X, ey - 0.4, Z1], [X, ey - 0.4, Z0], [rl, ry, zm]], { colour: shade(TIN, 0.85) });
   sink.polygon('structureMetal', [[-X, ey - 0.4, Z0], [-X, ey - 0.4, Z1], [-rl, ry, zm]], { colour: shade(TIN, 0.85) });
   // the corrugations' ridges down the slopes (dressing)
-  if (!mobile) for (let x = -X + 0.4; x < X; x += 0.8) {
+  for (let x = -X + 0.4; x < X; x += 0.8) {
     for (const [z0, z1] of [[Z1, zm], [Z0, zm]] as const) {
       const ax = Math.max(-rl, Math.min(rl, x));
       bar(sink, 'structureMetal', [x, ey - 0.38, z0], [ax, ry + 0.02, z1 + (z0 > zm ? 0.05 : -0.05)], 0.03, { colour: shade(TIN, 1.1), decor: true, fine: true });
@@ -113,14 +113,14 @@ export const canalMarket: LandmarkBuilder = (ctx) => {
   sink.polygon('plaster', gable(gz).reverse(), {});
   sink.polygon('plaster', gable(gz + 0.3), { shade: 0.8 });
   sink.span('structureMetal', -2.6, ey + 0.1, gz - 0.06, 2.6, ey + 1.2, gz - 0.02, { colour: rgb(0x2a5a8a), decor: true });
-  sink.span('structureMetal', -2.3, ey + 0.35, gz - 0.07, 2.3, ey + 0.95, gz - 0.06, { colour: rgb(0xe8d8b0), decor: true, fine: mobile ? undefined : 'near' });
+  sink.span('structureMetal', -2.3, ey + 0.35, gz - 0.07, 2.3, ey + 0.95, gz - 0.06, { colour: rgb(0xe8d8b0), decor: true, fine: 'near' });
   // the stalls inside: low tables with their baskets and awnings, in two rows along the hall
-  const stalls = mobile ? Math.round(bays * 0.8) : bays * 2;
+  const stalls = bays * 2;
   for (let k = 0; k < stalls; k++) {
     const x = -L / 2 + (k % bays + 0.5) * bw + (v() - 0.5), z = k < bays ? zm - D * 0.22 : zm + D * 0.22;
     sink.span('structureWood', x - 1.2, fy + 0.7, z - 0.7, x + 1.2, fy + 0.8, z + 0.7, { colour: TIMBER, decor: true });
     for (const [dx, dz] of [[-1.1, -0.6], [1.1, -0.6], [1.1, 0.6], [-1.1, 0.6]] as const) bar(sink, 'structureWood', [x + dx, fy, z + dz], [x + dx, fy + 0.72, z + dz], 0.06, { colour: TIMBER, decor: true, fine: true });
-    if (!mobile) for (let b = 0; b < 3; b++) revolve(sink, 'straw', x - 0.7 + b * 0.7, z + (v() - 0.5) * 0.6, [[0.2, fy + 0.8], [0.26, fy + 0.98], [0.001, fy + 1.0]], 8, { colour: shade(NIPA, 0.8 + v() * 0.3), decor: true, fine: true });
+    for (let b = 0; b < 3; b++) revolve(sink, 'straw', x - 0.7 + b * 0.7, z + (v() - 0.5) * 0.6, [[0.2, fy + 0.8], [0.26, fy + 0.98], [0.001, fy + 1.0]], 8, { colour: shade(NIPA, 0.8 + v() * 0.3), decor: true, fine: true });
     if (v() < 0.6) sink.span('structureMetal', x - 1.4, fy + 2.1, z - 1.0, x + 1.4, fy + 2.15, z + 1.0, { colour: AWNING[Math.floor(v() * AWNING.length)], decor: true });
   }
   // the quay's edge before the hall: its steps down to the water at each end
@@ -140,13 +140,13 @@ export const canalMarket: LandmarkBuilder = (ctx) => {
     for (const dx of [-0.6, 0.6]) bar(sink, 'structureWood', [r0[0] + dx, r0[1] - 0.05, r0[2]], [r1[0] + dx, r1[1], r1[2]], 0.12, { colour: TIMBER, decor: true });
     sink.quad('structureWood', [px - 0.6, top + 0.04, pz + 0.2], [px + 0.6, top + 0.04, pz + 0.2], [px + 0.6, fy + 0.04, qz], [px - 0.6, fy + 0.04, qz], { colour: shade(TIMBER, 1.1), decor: true });
     // the bollards at the float's corners
-    if (!mobile) for (const [dx, dz] of [[-1.8, 0.4], [1.8, 0.4], [-1.8, pl - 0.4], [1.8, pl - 0.4]] as const) bar(sink, 'structureWood', [px + dx, top, pz + dz], [px + dx, top + 0.5, pz + dz], 0.14, { colour: shade(TIMBER, 0.7), decor: true, fine: true });
+    for (const [dx, dz] of [[-1.8, 0.4], [1.8, 0.4], [-1.8, pl - 0.4], [1.8, pl - 0.4]] as const) bar(sink, 'structureWood', [px + dx, top, pz + dz], [px + dx, top + 0.5, pz + dz], 0.14, { colour: shade(TIMBER, 0.7), decor: true, fine: true });
     // a boat either side, moored along the float
     for (const side of [-1, 1]) {
       if (boats >= B) break;
       const bx = px + side * 3.2, bz = pz + pl / 2 + (v() - 0.5) * 1.5, bs = surfaceAt(ctx, bx, bz);
       if (bs === null) continue;
-      sampan(sink, bx, bs + 0.1, bz, (v() - 0.5) * 0.15, 7 + v() * 2.5, HULL_PAINT[Math.floor(v() * HULL_PAINT.length)], v() < 0.5, mobile);
+      sampan(sink, bx, bs + 0.1, bz, (v() - 0.5) * 0.15, 7 + v() * 2.5, HULL_PAINT[Math.floor(v() * HULL_PAINT.length)], v() < 0.5);
       boats++;
     }
   }
@@ -159,10 +159,10 @@ export const canalMarket: LandmarkBuilder = (ctx) => {
  */
 export const charcoalKilns: LandmarkBuilder = (ctx) => {
   const sink = new PartSink(uvOffset(ctx.rng));
-  const v = ctx.variant, mobile = ctx.tier === 'mobile';
+  const v = ctx.variant;
   const K = Math.round(num(ctx, 'kilns', 2, 8)), R = num(ctx, 'radius', 2, 3.5), H = R * 1.45;
   const span = K * (2 * R + 1.4), y0 = bankTop(ctx, -span / 2, -R - 1, span / 2, R + 1);
-  const foot = -0.6 - ctx.groundFall, n = mobile ? 12 : 20;
+  const foot = -0.6 - ctx.groundFall, n = 20;
   for (let k = 0; k < K; k++) {
     const x = -span / 2 + (k + 0.5) * (2 * R + 1.4), z = 0;
     // the dome: brick under a mud skin, its foot ring of brick, the stoking arch on the front and the vent holes round it
@@ -174,7 +174,7 @@ export const charcoalKilns: LandmarkBuilder = (ctx) => {
       sink.span('dark', -0.45, 0.2, 0, 0.45, 1.1, 0.3, { decor: true });
       bar(sink, 'structureMetal', [-0.6, 1.2, 0.25], [0.6, 1.2, 0.25], 0.18, { colour: shade(BRICK, 0.7), decor: true });
     });
-    if (!mobile) for (let i = 0; i < 6; i++) {
+    for (let i = 0; i < 6; i++) {
       const a = (i / 6) * Math.PI * 2 + 0.3;
       sink.span('dark', x + Math.cos(a) * (R - 0.02) - 0.08, y0 + 0.9, z + Math.sin(a) * (R - 0.02) - 0.08, x + Math.cos(a) * (R + 0.02) + 0.08, y0 + 1.05, z + Math.sin(a) * (R + 0.02) + 0.08, { decor: true, fine: true });
     }
@@ -195,13 +195,13 @@ export const charcoalKilns: LandmarkBuilder = (ctx) => {
   for (let k = 0; k < K; k++) {
     const x = -span / 2 + (k + 0.5) * (2 * R + 1.4), z = -R - 2.2;
     sink.span('structureWood', x - R * 0.8, y0, z - 0.6, x + R * 0.8, y0 + 1.4 + v() * 0.4, z + 0.6, { colour: BILLET });
-    if (!mobile) for (let i = 0; i < 6; i++) sink.cylinder('structureWood', [x - R * 0.7 + i * R * 0.28, y0 + 0.3 + (i % 2) * 0.5, z + 0.6], 'z', 0.04, 0.1, 6, { colour: shade(BILLET, 1.3), decor: true, fine: true });
+    for (let i = 0; i < 6; i++) sink.cylinder('structureWood', [x - R * 0.7 + i * R * 0.28, y0 + 0.3 + (i % 2) * 0.5, z + 0.6], 'z', 0.04, 0.1, 6, { colour: shade(BILLET, 1.3), decor: true, fine: true });
   }
   const lz = sd / 2 + 1.2, ly = (surfaceAt(ctx, 0, lz + 2) ?? y0) + 0.5;
   const deck = Math.max(ly, y0 + 0.1);
   sink.span('structureWood', -3, deck - 0.3, lz, 3, deck, lz + 4, { colour: TIMBER, decor: true });
   for (const [dx, dz] of [[-2.8, 0.2], [2.8, 0.2], [-2.8, 3.8], [2.8, 3.8]] as const) bar(sink, 'structureWood', [dx, foot - 1.5, lz + dz], [dx, deck + 0.4, lz + dz], 0.14, { colour: shade(TIMBER, 0.8), decor: true });
   const bs = surfaceAt(ctx, 5, lz + 3);
-  if (bs !== null) sampan(sink, 5.5, bs + 0.1, lz + 2.5, Math.PI / 2 + (v() - 0.5) * 0.2, 9, HULL, false, mobile);
+  if (bs !== null) sampan(sink, 5.5, bs + 0.1, lz + 2.5, Math.PI / 2 + (v() - 0.5) * 0.2, 9, HULL, false);
   return { parts: sink.finish() };
 };

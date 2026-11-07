@@ -22,10 +22,9 @@ const num = (ctx: LandmarkBuildContext, key: string, min: number, max = Infinity
 
 /** A log wall from a to b (plan points), y0..y1: the face and its log courses' shadow lines, the corner notches' ends
  *  (dressing), facing out to the right of a->b. */
-function logWall(sink: PartSink, a: readonly [number, number], b: readonly [number, number], y0: number, y1: number, mobile: boolean, colour: Rgb = LOG): void {
+function logWall(sink: PartSink, a: readonly [number, number], b: readonly [number, number], y0: number, y1: number, colour: Rgb = LOG): void {
   const P = (p: readonly [number, number], y: number): Vec3 => [p[0], y, p[1]];
   sink.quad('structureWood', P(b, y0), P(a, y0), P(a, y1), P(b, y1), { colour });
-  if (mobile) return;
   const L = Math.hypot(b[0] - a[0], b[1] - a[1]), nx = (b[1] - a[1]) / L * -1, nz = (b[0] - a[0]) / L;
   // (the outward normal is to the right of a->b seen from above: (dz, -dx))
   const ox = -nx, oz = -nz;
@@ -52,7 +51,6 @@ function steepRoof(sink: PartSink, w: number, z0: number, z1: number, y: number,
  */
 export const woodenChurch: LandmarkBuilder = (ctx) => {
   const sink = new PartSink(uvOffset(ctx.rng));
-  const mobile = ctx.tier === 'mobile';
   const W = num(ctx, 'width', 6, 12), L = num(ctx, 'length', 8, 18), T = num(ctx, 'tower', 10, 22);
   const foot = -0.6 - ctx.groundFall, wallH = 5.0, pitch = Math.tan(56 * Math.PI / 180);
   const Wc = W * 0.7, Lc = L * 0.55, nz0 = -L / 2 + 2, nz1 = nz0 + L, cz1 = nz0, cz0 = nz0 - Lc;
@@ -61,10 +59,10 @@ export const woodenChurch: LandmarkBuilder = (ctx) => {
   sink.span('stone', -Wc / 2 - 0.2, foot, cz0, Wc / 2 + 0.2, 0.5, cz1, { shade: 0.85 });
   // the nave's log walls (a box), the chancel's with its three-sided end
   const nave: Array<[number, number]> = [[-W / 2, nz1], [W / 2, nz1], [W / 2, nz0], [-W / 2, nz0]];
-  for (let k = 0; k < 4; k++) logWall(sink, nave[(k + 1) % 4], nave[k], 0.5, wallH, mobile);
+  for (let k = 0; k < 4; k++) logWall(sink, nave[(k + 1) % 4], nave[k], 0.5, wallH);
   const e = Wc * 0.32;
   const chancel: Array<[number, number]> = [[Wc / 2, cz1], [Wc / 2, cz0 + e], [Wc / 4, cz0], [-Wc / 4, cz0], [-Wc / 2, cz0 + e], [-Wc / 2, cz1]];
-  for (let k = 0; k + 1 < chancel.length; k++) logWall(sink, chancel[k + 1], chancel[k], 0.5, wallH - 0.4, mobile);
+  for (let k = 0; k + 1 < chancel.length; k++) logWall(sink, chancel[k + 1], chancel[k], 0.5, wallH - 0.4);
   sink.quad('structureWood', [-W / 2, wallH, nz1], [W / 2, wallH, nz1], [W / 2, wallH, nz0], [-W / 2, wallH, nz0], { colour: LOG_DARK });
   // the small windows high in the side walls
   for (const s of [-1, 1]) for (const z of [nz0 + L * 0.3, nz0 + L * 0.7]) sink.span('dark', s * W / 2 - 0.02, 2.6, z - 0.4, s * W / 2 + 0.02, 3.5, z + 0.4, { decor: true });
@@ -98,7 +96,7 @@ export const woodenChurch: LandmarkBuilder = (ctx) => {
   const sides: Array<[[number, number], [number, number]]> = [[[-1, 1], [1, 1]], [[1, 1], [1, -1]], [[1, -1], [-1, -1]], [[-1, -1], [-1, 1]]];
   for (const [[ax, az], [bx, bz]] of sides) {
     sink.quad('structureWood', tq(ax, az, tb, foot), tq(bx, bz, tb, foot), tq(bx, bz, tt, ty), tq(ax, az, tt, ty), { colour: BOARD });
-    if (!mobile) for (let k = 1; k < 14; k++) {
+    for (let k = 1; k < 14; k++) {
       const f = k / 14, p0 = tq(ax + (bx - ax) * f, az + (bz - az) * f, tb, 0.6), p1 = tq(ax + (bx - ax) * f, az + (bz - az) * f, tt, ty);
       bar(sink, 'structureWood', p0, p1, 0.05, { colour: shade(BOARD, 0.7), decor: true, fine: true });
     }
@@ -113,7 +111,7 @@ export const woodenChurch: LandmarkBuilder = (ctx) => {
   // the cap: a steep shingled pyramid to the neck, the little bulb and its lantern, the cross
   const capTop = iy1 + 4.2;
   for (const [[ax, az], [bx, bz]] of sides) sink.polygon('roof', [tq(ax, az, iw + 0.5, iy1 - 0.2), tq(bx, bz, iw + 0.5, iy1 - 0.2), [0, capTop, tz]], { colour: SHINGLE });
-  revolve(sink, 'roof', 0, tz, [[0.3, capTop - 0.5], [0.55, capTop + 0.2], [0.45, capTop + 0.75], [0.12, capTop + 1.2], [0.001, capTop + 1.3]], mobile ? 8 : 12, { colour: SHINGLE });
+  revolve(sink, 'roof', 0, tz, [[0.3, capTop - 0.5], [0.55, capTop + 0.2], [0.45, capTop + 0.75], [0.12, capTop + 1.2], [0.001, capTop + 1.3]], 12, { colour: SHINGLE });
   cross(sink, 'structureMetal', 0, capTop + 1.3, tz, 1.1, 'latin', IRON);
   // the porch at the tower's door: two posts and a small gable roof, the door itself
   const pz = tz + tb / 2;

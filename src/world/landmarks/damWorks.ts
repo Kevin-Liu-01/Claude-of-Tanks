@@ -25,12 +25,12 @@ const uvOffset = (rng: () => number): [number, number] => [rng() * 7.31, rng() *
 const num = (ctx: LandmarkBuildContext, key: string, min: number, max = Infinity): number => Math.min(max, Math.max(min, Number(ctx.params[key])));
 
 /** A lattice leg's lacing between two of its chords (zig-zag every `step` up), dressing. */
-function lace(sink: PartSink, a0: Vec3, a1: Vec3, b0: Vec3, b1: Vec3, steps: number, colour: Rgb, mobile: boolean): void {
+function lace(sink: PartSink, a0: Vec3, a1: Vec3, b0: Vec3, b1: Vec3, steps: number, colour: Rgb): void {
   const at = (p: Vec3, q: Vec3, t: number): Vec3 => [p[0] + (q[0] - p[0]) * t, p[1] + (q[1] - p[1]) * t, p[2] + (q[2] - p[2]) * t];
   for (let k = 0; k < steps; k++) {
     const t0 = k / steps, t1 = (k + 1) / steps;
-    bar(sink, 'structureMetal', at(a0, a1, t0), at(b0, b1, t1), 0.09, { colour, decor: true, fine: mobile ? undefined : true });
-    bar(sink, 'structureMetal', at(a0, a1, t1), at(b0, b1, t1), 0.08, { colour, decor: true, fine: mobile ? undefined : true });
+    bar(sink, 'structureMetal', at(a0, a1, t0), at(b0, b1, t1), 0.09, { colour, decor: true, fine: true });
+    bar(sink, 'structureMetal', at(a0, a1, t1), at(b0, b1, t1), 0.08, { colour, decor: true, fine: true });
   }
 }
 
@@ -51,7 +51,7 @@ function catenary(sink: PartSink, a: Vec3, b: Vec3, sag: number, r: number, n: n
  */
 export const cablewayTower: LandmarkBuilder = (ctx) => {
   const sink = new PartSink(uvOffset(ctx.rng));
-  const mobile = ctx.tier === 'mobile', v = ctx.variant;
+  const v = ctx.variant;
   const H = num(ctx, 'height', 20, 60), B = 9, T = 3, foot = -0.6 - ctx.groundFall;
   const legs: Array<[number, number]> = [[-1, -1], [1, -1], [1, 1], [-1, 1]];
   const P = (sx: number, sz: number, y: number): Vec3 => { const w = B + (T - B) * Math.max(0, y) / H; return [sx * w / 2, y, sz * w / 2]; };
@@ -64,7 +64,7 @@ export const cablewayTower: LandmarkBuilder = (ctx) => {
   const panels = Math.max(6, Math.round(H / 4));
   for (let k = 0; k < 4; k++) {
     const [ax, az] = legs[k], [bx, bz] = legs[(k + 1) % 4];
-    lace(sink, P(ax, az, 0.8), P(ax, az, H), P(bx, bz, 0.8), P(bx, bz, H), panels, RED_OXIDE, mobile);
+    lace(sink, P(ax, az, 0.8), P(ax, az, H), P(bx, bz, 0.8), P(bx, bz, H), panels, RED_OXIDE);
   }
   // the head frame: a deck on the tower's top and the boom cantilevered 7 m over the span, its sheaves at the tip
   const hy = H, tip = 7.5;
@@ -75,7 +75,7 @@ export const cablewayTower: LandmarkBuilder = (ctx) => {
     bar(sink, 'structureMetal', [s * T / 2, hy + 3.8, -T / 2 + 0.5], [s * 0.9, hy + 2.6, T / 2 + tip], 0.18, { colour: RED_OXIDE, decor: true });
     bar(sink, 'structureMetal', [s * T / 2, hy + 0.4, -T / 2 + 0.5], [s * T / 2, hy + 3.8, -T / 2 + 0.5], 0.22, { colour: RED_OXIDE, decor: true });
   }
-  for (const s of [-0.5, 0.5]) sink.cylinder('structureMetal', [s - 0.15, hy + 1.6, T / 2 + tip - 0.2], 'x', 0.3, 0.9, mobile ? 10 : 16, { colour: STEEL, decor: true });
+  for (const s of [-0.5, 0.5]) sink.cylinder('structureMetal', [s - 0.15, hy + 1.6, T / 2 + tip - 0.2], 'x', 0.3, 0.9, 16, { colour: STEEL, decor: true });
   // the operator's cab on its platform two thirds up, its windows to the span
   const cy = H * 0.62, cw = 3.4;
   const wAt = B + (T - B) * cy / H;
@@ -93,7 +93,7 @@ export const cablewayTower: LandmarkBuilder = (ctx) => {
   if (ctx.params.cable === true) {
     const span = num(ctx, 'span', 40, 600), rise = Number(ctx.params.farRise) || 0;
     const a: Vec3 = [-0.5, hy + 2.4, T / 2 + tip], b: Vec3 = [0.5, hy + 2.4 + rise, span - T / 2 - tip];
-    const sag = span * 0.045, n = mobile ? 12 : 24;
+    const sag = span * 0.045, n = 24;
     const track = catenary(sink, a, b, sag, 0.09, n);
     catenary(sink, [0.5, a[1] - 0.6, a[2]], [-0.5, b[1] - 0.6, b[2]], sag * 1.02, 0.05, n);
     const k = Math.round(n * (0.3 + v() * 0.4)), at = track[k];
@@ -105,8 +105,8 @@ export const cablewayTower: LandmarkBuilder = (ctx) => {
 };
 
 /** A lander standing on its legs at (0, 0): a stubby hull, its nose, the engine skirt and the four legs on their pads. */
-function lander(sink: PartSink, mobile: boolean): void {
-  const R = 4.2, n = mobile ? 14 : 24, base = 3.2;
+function lander(sink: PartSink): void {
+  const R = 4.2, n = 24, base = 3.2;
   revolve(sink, 'structureMetal', 0, 0, [[R * 0.9, base], [R, base + 1.2], [R, base + 11], [R * 0.82, base + 13.5], [R * 0.45, base + 15.2], [0.001, base + 15.8]], n, { colour: HULL });
   revolve(sink, 'structureMetal', 0, 0, [[R * 0.9, base], [R * 0.95, base - 0.6], [R * 0.4, base - 0.8], [R * 0.39, base - 0.8]], n, { colour: HULL_DARK, decor: true });
   // the engine bells under the skirt
@@ -136,8 +136,8 @@ function lander(sink: PartSink, mobile: boolean): void {
  */
 export const landingPad: LandmarkBuilder = (ctx) => {
   const sink = new PartSink(uvOffset(ctx.rng));
-  const mobile = ctx.tier === 'mobile', v = ctx.variant;
-  const R = num(ctx, 'radius', 16, 40), n = mobile ? 24 : 48;
+  const v = ctx.variant;
+  const R = num(ctx, 'radius', 16, 40), n = 48;
   // the sintered disc, its marking ring and the cross, the approach lights round its rim
   revolve(sink, 'structureMetal', 0, 0, [[R + 0.6, -0.3], [R, 0.12], [0.001, 0.12]], n, { colour: PAD, decor: true });
   revolve(sink, 'structureMetal', 0, 0, [[R * 0.72, 0.13], [R * 0.68, 0.13]], n, { colour: MARK, decor: true });
@@ -147,7 +147,7 @@ export const landingPad: LandmarkBuilder = (ctx) => {
     sink.span('structureMetal', Math.cos(a) * (R + 1.2) - 0.25, 0, Math.sin(a) * (R + 1.2) - 0.25, Math.cos(a) * (R + 1.2) + 0.25, 0.5, Math.sin(a) * (R + 1.2) + 0.25, { colour: LAMP, decor: true });
   }
   // the blast berm: bagged regolith in a 150-degree arc on the -z side, its courses stepped
-  const bR = R + 5, segs = mobile ? 10 : 18;
+  const bR = R + 5, segs = 18;
   for (let k = 0; k < segs; k++) {
     const a0 = Math.PI * (1.08 + 0.84 * k / segs), a1 = Math.PI * (1.08 + 0.84 * (k + 1) / segs);
     const am = (a0 + a1) / 2, len = bR * (a1 - a0) + 0.1;
@@ -170,13 +170,13 @@ export const landingPad: LandmarkBuilder = (ctx) => {
   // the service module at -x: a pressurised cylinder lying on its cradles, the airlock at its end, its radiator
   const mx = -R - 9;
   sink.placed(0, mx, 0, 0, () => {
-    sink.cylinder('structureMetal', [0, 2.4, -6], 'z', 12, 2.4, mobile ? 12 : 18, { colour: HULL });
+    sink.cylinder('structureMetal', [0, 2.4, -6], 'z', 12, 2.4, 18, { colour: HULL });
     for (const z of [-4.5, 4.5]) sink.span('structureMetal', -2.2, 0, z - 0.4, 2.2, 1.0, z + 0.4, { colour: HULL_DARK });
     sink.cylinder('structureMetal', [0, 2.0, 6], 'z', 2.4, 1.4, 12, { colour: shade(HULL, 0.85) });
     sink.span('structureMetal', -0.6, 1.2, 8.4, 0.6, 2.8, 8.45, { colour: HULL_DARK, decor: true });
     sink.span('structureMetal', -5.8, 4.6, -4, -2.6, 4.7, 4, { colour: rgb(0xe8e8e8), decor: true });
     bar(sink, 'structureMetal', [-2.4, 3.6, 0], [-4.2, 4.6, 0], 0.12, { colour: HULL_DARK, decor: true });
   });
-  if (ctx.params.lander !== false) lander(sink, mobile);
+  if (ctx.params.lander !== false) lander(sink);
   return { parts: sink.finish() };
 };

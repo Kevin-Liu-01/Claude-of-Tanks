@@ -42,7 +42,7 @@ export function roundhouseLayout(p: Readonly<Record<string, number | string | bo
 }
 
 /** A pair of rails on their sleepers from a to b (plan points, y the rail foot), dressing. */
-function track(sink: PartSink, a: readonly [number, number], b: readonly [number, number], y: number, mobile: boolean): void {
+function track(sink: PartSink, a: readonly [number, number], b: readonly [number, number], y: number): void {
   const dx = b[0] - a[0], dz = b[1] - a[1], L = Math.hypot(dx, dz);
   if (L < 0.5) return;
   const ux = dx / L, uz = dz / L, nx = uz, nz = -ux, g = STANDARD_GAUGE / 2 + 0.035;
@@ -52,7 +52,6 @@ function track(sink: PartSink, a: readonly [number, number], b: readonly [number
     // the running surface worn bright
     bar(sink, 'structureMetal', [p0[0], y + 0.125, p0[2]], [p1[0], y + 0.125, p1[2]], 0.05, { colour: RAIL_TOP, decor: true, fine: 'near' });
   }
-  if (mobile) return;
   for (let t = 0.35; t < L - 0.2; t += 0.65) {
     const cx = a[0] + ux * t, cz = a[1] + uz * t;
     bar(sink, 'structureWood', [cx - nx * 1.3, y + 0.02, cz - nz * 1.3], [cx + nx * 1.3, y + 0.02, cz + nz * 1.3], 0.12, { colour: SLEEPER, decor: true, fine: true });
@@ -76,7 +75,7 @@ function chordFace(a: readonly [number, number], b: readonly [number, number]): 
  */
 export const roundhouse: LandmarkBuilder = (ctx) => {
   const sink = new PartSink(uvOffset(ctx.rng));
-  const v = ctx.variant, mobile = ctx.tier === 'mobile';
+  const v = ctx.variant;
   const L = roundhouseLayout(ctx.params);
   const { stalls, da, Rt, Rf, Rb, half, zT } = L;
   const wall: RegionalBucket = 'stone', foot = -0.6 - ctx.groundFall;
@@ -107,9 +106,9 @@ export const roundhouse: LandmarkBuilder = (ctx) => {
     // the door: two boarded leaves, closed in its reveal or swung out against the front
     const lw = door.w / 2;
     if (!isOpen) {
-      for (const s of [-1, 1]) leaf(sink, f, s * lw / 2, lw - 0.04, door.spring, -0.3, 0, v() < 0.5 ? DOOR : DOOR_PAINT, mobile);
+      for (const s of [-1, 1]) leaf(sink, f, s * lw / 2, lw - 0.04, door.spring, -0.3, 0, v() < 0.5 ? DOOR : DOOR_PAINT);
       // the wicket door's frame in the right leaf
-      if (!mobile) sink.member('structureWood', facePoint(f, lw / 2 - 0.45, 0.1, -0.26), facePoint(f, lw / 2 - 0.45, 2.0, -0.26), 0.06, 0.04, f.out,
+      sink.member('structureWood', facePoint(f, lw / 2 - 0.45, 0.1, -0.26), facePoint(f, lw / 2 - 0.45, 2.0, -0.26), 0.06, 0.04, f.out,
         { colour: shade(DOOR, 0.7), decor: true, fine: true });
       // the fanlight over the leaves
       archWindow(sink, f, { u: 0, w: door.w - 0.2, y0: door.spring + 0.05, spring: door.spring + 0.06, form: 'segmental', rise: 0.5 }, 0.3, FRAME, false, { bars: true });
@@ -117,17 +116,17 @@ export const roundhouse: LandmarkBuilder = (ctx) => {
       // swung open to the front, each leaf at its jamb turned 100-120 degrees out
       for (const s of [-1, 1] as const) {
         const swing = (100 + v() * 22) * deg;
-        leafOpen(sink, f, s, lw, door.spring - 0.05, swing, v() < 0.5 ? DOOR : DOOR_PAINT, mobile);
+        leafOpen(sink, f, s, lw, door.spring - 0.05, swing, v() < 0.5 ? DOOR : DOOR_PAINT);
       }
       // the dark shed beyond: the stall's floor, its sooted walls and roof seen through the arch, and its pit
       shedInterior(sink, at, a0, a1, Rf + 0.62, Math.min(Rb - 1, Rf + 14), Hf - 0.6);
-      if (engineAt.has(i)) engine(sink, at, am, Rf - 3.2, v, mobile);
+      if (engineAt.has(i)) engine(sink, at, am, Rf - 3.2, v);
     }
     // the back: the bay's tall iron window in a segmental head over a sill band
     const b = chordFace(at(a1, Rb), at(a0, Rb));
     const win: ArchHole = { u: 0, w: Math.min(3.2, b.width - 1.6), y0: 1.6, spring: 4.9, form: 'segmental', rise: 0.45 };
     archedFace(sink, wall, b, { u0: -b.width / 2, u1: b.width / 2, y0: foot, y1: Hb }, [win], 0.3);
-    ironWindow(sink, b, win, 0.3, mobile);
+    ironWindow(sink, b, win, 0.3);
     faceStrip(sink, wall, b, -b.width / 2 + 0.28, foot, 0.56, Hb - 0.4, 0.14, { shade: 0.95 });
     corbelCornice(sink, wall, b, Hb, b.width);
     // the ceiling closing the stall's solid (hidden under the roof)
@@ -146,15 +145,15 @@ export const roundhouse: LandmarkBuilder = (ctx) => {
       { u: toU(Rf + (Rb - Rf) * 0.82), w: 1.5, y0: 1.5, spring: 4.0, form: 'segmental', rise: 0.3 },
     ];
     archedFace(sink, wall, f, { u0: -f.width / 2, u1: f.width / 2, y0: foot, y1: Hb }, holes, 0.3);
-    for (const h of holes) if (h.y0 > 0) ironWindow(sink, f, h, 0.3, mobile);
+    for (const h of holes) if (h.y0 > 0) ironWindow(sink, f, h, 0.3);
     // the gable over the eaves line: the front wall's head, up the rake to the ridge and down to the back (both faces)
     const rakeF = at(ae, Rf), rakeR = at(ae, Rm), rakeB = at(ae, Rb);
     const gable: Vec3[] = [[rakeF[0], Hb, rakeF[1]], [rakeB[0], Hb, rakeB[1]], [rakeR[0], Hr, rakeR[1]], [rakeF[0], Hf, rakeF[1]]];
     sink.polygon(wall, side > 0 ? gable : [...gable].reverse(), {});
     // the door's boarded leaf in its reveal and a lamp bracket over it
     const dh = holes[1];
-    leaf(sink, f, dh.u, dh.w - 0.06, dh.spring, -0.27, 0, DOOR, mobile);
-    if (!mobile) bar(sink, 'structureMetal', facePoint(f, dh.u, dh.spring + 0.9, 0), facePoint(f, dh.u, dh.spring + 0.9, 0.6), 0.04, { colour: IRON, decor: true, fine: true });
+    leaf(sink, f, dh.u, dh.w - 0.06, dh.spring, -0.27, 0, DOOR);
+    bar(sink, 'structureMetal', facePoint(f, dh.u, dh.spring + 0.9, 0), facePoint(f, dh.u, dh.spring + 0.9, 0.6), 0.04, { colour: IRON, decor: true, fine: true });
   }
 
   // ---- the roof: a shallow radial gable over every stall (its ridge an arc at Rm), the lantern along the ridge, the
@@ -183,7 +182,7 @@ export const roundhouse: LandmarkBuilder = (ctx) => {
     sink.quad('glass', Q(b0, Rm + lw, ly0), Q(b1, Rm + lw, ly0), Q(b1, Rm + lw, ly1), Q(b0, Rm + lw, ly1), { decor: true, window: [0, 0, -1] });
     sink.quad('roof', Q(b1, Rm - lw - 0.3, ly1 - 0.05), Q(b0, Rm - lw - 0.3, ly1 - 0.05), Q(b0, Rm, ly1 + 0.45), Q(b1, Rm, ly1 + 0.45), { decor: true });
     sink.quad('roof', Q(b0, Rm + lw + 0.3, ly1 - 0.05), Q(b1, Rm + lw + 0.3, ly1 - 0.05), Q(b1, Rm, ly1 + 0.45), Q(b0, Rm, ly1 + 0.45), { decor: true });
-    if (!mobile) for (const a of [b0 + 0.02 * da, (b0 + b1) / 2, b1 - 0.02 * da]) for (const r of [Rm - lw, Rm + lw]) {
+    for (const a of [b0 + 0.02 * da, (b0 + b1) / 2, b1 - 0.02 * da]) for (const r of [Rm - lw, Rm + lw]) {
       bar(sink, 'structureMetal', Q(a, r, ly0), Q(a, r, ly1), 0.05, { colour: FRAME, decor: true, fine: true });
     }
     // the smoke jack over the chimney of an engine standing in the stall: a sooted timber hood up through the front slope
@@ -201,13 +200,13 @@ export const roundhouse: LandmarkBuilder = (ctx) => {
   }
 
   // ---- the turntable in its pit, flush with the yard (all dressing: a hull drives over it)
-  turntable(sink, 0, zT, Rt, v, mobile);
+  turntable(sink, 0, zT, Rt, v);
   // the stall roads: from the table's rim to each door and on into the open stalls; the lead track out to the yard
   for (let i = 0; i < stalls; i++) {
     const am = (theta(i) + theta(i + 1)) / 2;
-    track(sink, at(am, Rt + 0.3), at(am, Rf + (open.has(i) ? 12 : 0.1)), 0, mobile);
+    track(sink, at(am, Rt + 0.3), at(am, Rf + (open.has(i) ? 12 : 0.1)), 0);
     // the inspection pit's kerb before the door (ash pits at the stalls' throats)
-    if (!mobile && i % 2 === 0) {
+    if (i % 2 === 0) {
       const [px, pz] = at(am, Rf - 5), [qx, qz] = at(am, Rf - 1.2);
       for (const s of [-1, 1]) {
         const nx = Math.cos(am) * 0.95 * s, nz = Math.sin(am) * 0.95 * s;
@@ -215,9 +214,9 @@ export const roundhouse: LandmarkBuilder = (ctx) => {
       }
     }
   }
-  if (L.lead > 0) track(sink, [0, zT + Rt + 0.3], [0, zT + Rt + L.lead], 0, mobile);
+  if (L.lead > 0) track(sink, [0, zT + Rt + 0.3], [0, zT + Rt + L.lead], 0);
   // the water cranes at the lead track either side of the table's mouth, and the ash heap by the inspection pits
-  for (const s of [-1, 1]) waterCrane(sink, s * 3.1, zT + Rt + Math.min(L.lead, 5) - 1.5, s * (0.4 + v() * 0.5), mobile);
+  for (const s of [-1, 1]) waterCrane(sink, s * 3.1, zT + Rt + Math.min(L.lead, 5) - 1.5, s * (0.4 + v() * 0.5));
   return { parts: sink.finish() };
 };
 
@@ -243,10 +242,9 @@ function corbelCornice(sink: PartSink, bucket: RegionalBucket, face: Face, y: nu
 }
 
 /** A boarded door leaf in an opening's reveal: centred at u, `w` wide, from the threshold to `top`, `o` out of the face. */
-function leaf(sink: PartSink, face: Face, u: number, w: number, top: number, o: number, y0: number, colour: Rgb, mobile: boolean): void {
+function leaf(sink: PartSink, face: Face, u: number, w: number, top: number, o: number, y0: number, colour: Rgb): void {
   const P = (uu: number, y: number, oo: number): Vec3 => facePoint(face, uu, y, oo);
   sink.quad('structureWood', P(u - w / 2, y0, o), P(u + w / 2, y0, o), P(u + w / 2, top, o), P(u - w / 2, top, o), { colour, decor: true });
-  if (mobile) return;
   // the ledges and the brace, and the boards' joints
   for (const y of [y0 + 0.5, (y0 + top) / 2, top - 0.5]) {
     sink.quad('structureWood', P(u - w / 2 + 0.06, y - 0.09, o + 0.04), P(u + w / 2 - 0.06, y - 0.09, o + 0.04), P(u + w / 2 - 0.06, y + 0.09, o + 0.04), P(u - w / 2 + 0.06, y + 0.09, o + 0.04),
@@ -259,7 +257,7 @@ function leaf(sink: PartSink, face: Face, u: number, w: number, top: number, o: 
 }
 
 /** A door leaf swung open on its jamb hinge: side -1 the left leaf, +1 the right; `swing` from closed (radians). */
-function leafOpen(sink: PartSink, face: Face, side: -1 | 1, w: number, top: number, swing: number, colour: Rgb, mobile: boolean): void {
+function leafOpen(sink: PartSink, face: Face, side: -1 | 1, w: number, top: number, swing: number, colour: Rgb): void {
   // the hinge at the jamb's outer edge; the leaf runs back toward the centre when closed (along -side*u) and swings out
   const hu = side * (w + 0.02), dirU = -side * Math.cos(swing), dirO = Math.sin(swing);
   const P = (along: number, y: number, off: number): Vec3 => facePoint(face, hu + dirU * along + side * dirO * 0 + (off * dirO * 0), y, 0.05 + dirO * along + off);
@@ -267,14 +265,12 @@ function leafOpen(sink: PartSink, face: Face, side: -1 | 1, w: number, top: numb
   // two faces (each side of the leaf seen)
   sink.quad('structureWood', a, b, c, d, { colour, decor: true });
   sink.quad('structureWood', b, a, d, c, { colour: shade(colour, 0.75), decor: true });
-  if (mobile) return;
   for (const y of [0.5, top / 2, top - 0.5]) bar(sink, 'structureWood', P(0.08, y, 0.03), P(w - 0.13, y, 0.03), 0.07, { colour: shade(colour, 0.8), decor: true, fine: true });
 }
 
 /** An iron window of small panes in its opening: the glazing, a grid of glazing bars (coarse frame, fine bars). */
-function ironWindow(sink: PartSink, face: Face, h: ArchHole, reveal: number, mobile: boolean): void {
+function ironWindow(sink: PartSink, face: Face, h: ArchHole, reveal: number): void {
   archWindow(sink, face, h, reveal, FRAME, false, { bars: true, coarse: true });
-  if (mobile) return;
   const o = -reveal + 0.04;
   for (let y = h.y0 + 0.42; y < h.spring; y += 0.42) {
     sink.member('structureMetal', facePoint(face, h.u - h.w / 2, y, o), facePoint(face, h.u + h.w / 2, y, o), 0.03, 0.03, face.out, { colour: FRAME, decor: true, fine: true });
@@ -303,7 +299,7 @@ function shedInterior(sink: PartSink, at: (a: number, r: number) => [number, num
  * classes, simplified to what reads from a tank: the boiler on its frames, the smokebox door, the chimney and dome,
  * the cab, the smoke deflectors, the coupled wheels and cylinders). Its axis along the stall road, its front at r0.
  */
-function engine(sink: PartSink, at: (a: number, r: number) => [number, number], a: number, r0: number, v: () => number, mobile: boolean): void {
+function engine(sink: PartSink, at: (a: number, r: number) => [number, number], a: number, r0: number, v: () => number): void {
   const black = rgb(0x1c1c1d), red = rgb(0x6c1f1a), steel = rgb(0x3b3c3e);
   const front = at(a, r0), back = at(a, r0 + 13.5);
   const ux = (back[0] - front[0]) / 13.5, uz = (back[1] - front[1]) / 13.5, nx = uz, nz = -ux;
@@ -327,7 +323,7 @@ function engine(sink: PartSink, at: (a: number, r: number) => [number, number], 
     for (const s of [-1, 1]) sink.cylinder('structureMetal', [s * 0.85, 1.05, -7.35], 'z', 0.45, 0.2, 8, { colour: steel, decor: true });
     // the coupled wheels (five axles) under the running plate
     for (let k = 0; k < 5; k++) for (const s of [-1, 1]) {
-      sink.cylinder('structureMetal', [s * 0.82, 0.7, -3.9 + k * 1.45], 'x', 0.14, 0.7, mobile ? 10 : 16, { colour: shade(red, 0.9), decor: true });
+      sink.cylinder('structureMetal', [s * 0.82, 0.7, -3.9 + k * 1.45], 'x', 0.14, 0.7, 16, { colour: shade(red, 0.9), decor: true });
     }
     // the cab
     sink.span('structureMetal', -1.45, 1.68, 3.0, 1.45, 4.0, 6.4, { colour: black, decor: true });
@@ -341,7 +337,7 @@ function engine(sink: PartSink, at: (a: number, r: number) => [number, number], 
  * A water crane (Wasserkran) at the lead track: its column on a plinth, the swinging arm out over the track with the
  * leather hose hanging from its end, the counterweight and the drain grating at its foot. `swing` turns its arm.
  */
-function waterCrane(sink: PartSink, x: number, z: number, swing: number, mobile: boolean): void {
+function waterCrane(sink: PartSink, x: number, z: number, swing: number): void {
   const paint = rgb(0x26302b);
   sink.cylinder('stone', [x, -0.4, z], 'y', 0.75, 0.55, 10, { shade: 0.9 });
   sink.cylinder('structureMetal', [x, 0.35, z], 'y', 3.6, 0.2, 10, { colour: paint }, 0.16);
@@ -351,13 +347,13 @@ function waterCrane(sink: PartSink, x: number, z: number, swing: number, mobile:
   bar(sink, 'structureMetal', [x, 3.6, z], [x - ax * 0.9, 3.55, z - az * 0.9], 0.14, { colour: paint, decor: true });
   sink.span('structureMetal', x - ax * 0.9 - 0.2, 3.1, z - az * 0.9 - 0.2, x - ax * 0.9 + 0.2, 3.5, z - az * 0.9 + 0.2, { colour: paint, decor: true });
   bar(sink, 'structureWood', [x + ax * 3.0, 3.7, z + az * 3.0], [x + ax * 3.05, 1.6, z + az * 3.05], 0.12, { colour: rgb(0x2a201a), decor: true });
-  if (!mobile) sink.span('structureMetal', x - 0.6, 0.02, z - 0.6, x + 0.6, 0.05, z + 0.6, { colour: IRON, decor: true, fine: true });
+  sink.span('structureMetal', x - 0.6, 0.02, z - 0.6, x + 0.6, 0.05, z + 0.6, { colour: IRON, decor: true, fine: true });
 }
 
 /** The turntable: its pit's coping ring, the dark pit, the circular rail, the bridge's girders, deck and rails, the
  *  operator's cab at one end (dressing; the pit is flush, the yard's level). */
-function turntable(sink: PartSink, cx: number, cz: number, R: number, v: () => number, mobile: boolean): void {
-  const n = mobile ? 28 : 48;
+function turntable(sink: PartSink, cx: number, cz: number, R: number, v: () => number): void {
+  const n = 48;
   revolve(sink, 'stone', cx, cz, [[R + 0.55, -0.4], [R + 0.55, 0.14], [R, 0.14], [R, 0.02], [R + 0.01, 0.02]], n, { decor: true, shade: 0.88 });
   // the pit floor (cinders and oil), and the circular running rail near the wall
   revolve(sink, 'stone', cx, cz, [[R, 0.035], [0.001, 0.035]], n, { decor: true, shade: 0.42 });
@@ -380,7 +376,7 @@ function turntable(sink: PartSink, cx: number, cz: number, R: number, v: () => n
     }
     // the deck between the girders and the bridge's rails on it
     sink.span('structureWood', -1.05, 0.88, -R + 0.3, 1.05, 0.95, R - 0.3, { colour: SLEEPER, decor: true });
-    track(sink, [0, -R + 0.3], [0, R - 0.3], 0.95, mobile);
+    track(sink, [0, -R + 0.3], [0, R - 0.3], 0.95);
     // the end carriages on the circular rail and the operator's cab at the +z end, on its bracket off the girder
     for (const z of [-R + 0.6, R - 0.6]) sink.span('structureMetal', -1.6, 0.1, z - 0.35, 1.6, 0.9, z + 0.35, { colour: IRON, decor: true });
     const cz2 = R - 2.2;
@@ -402,7 +398,7 @@ function turntable(sink: PartSink, cx: number, cz: number, R: number, v: () => n
  */
 export const signalBox: LandmarkBuilder = (ctx) => {
   const sink = new PartSink(uvOffset(ctx.rng));
-  const mobile = ctx.tier === 'mobile', v = ctx.variant;
+  const v = ctx.variant;
   const W = num(ctx, 'length', 6, 16), D = num(ctx, 'depth', 3.5, 6), Hb = num(ctx, 'base', 3, 8), Hc = 3.1;
   const foot = -0.6 - ctx.groundFall, wall: RegionalBucket = 'stone';
   // the locking-room storey: a door in the back, small segmental windows to the front
@@ -410,9 +406,9 @@ export const signalBox: LandmarkBuilder = (ctx) => {
   for (let u = -W / 2 + 1.2; u < W / 2 - 0.9; u += 1.8) lower.front!.push({ u, w: 0.9, y0: 1.2, spring: 2.3, form: 'segmental', rise: 0.2 });
   lower.right!.push({ u: 0, w: 0.9, y0: 1.2, spring: 2.3, form: 'segmental', rise: 0.2 });
   const lf = archedBody(sink, wall, 0, 0, W, D, foot, Hb, lower, 0.26);
-  for (const h of lower.front!) ironWindow(sink, lf.front, h, 0.26, mobile);
-  ironWindow(sink, lf.right, lower.right![0], 0.26, mobile);
-  leaf(sink, lf.back, lower.back![0].u, 1.04, 2.1, -0.24, 0, DOOR, mobile);
+  for (const h of lower.front!) ironWindow(sink, lf.front, h, 0.26);
+  ironWindow(sink, lf.right, lower.right![0], 0.26);
+  leaf(sink, lf.back, lower.back![0].u, 1.04, 2.1, -0.24, 0, DOOR);
   for (const f of [lf.front, lf.back, lf.left, lf.right]) corbelCornice(sink, wall, f, Hb + 0.2, f.width);
   // the operating floor: timber walls proud of the brick on the cornice, the window band across its front and ends
   const ow = W + 0.4, od = D + 0.4, y0 = Hb + 0.05, y1 = Hb + Hc;
@@ -425,10 +421,10 @@ export const signalBox: LandmarkBuilder = (ctx) => {
   const uf = archedBody(sink, 'wood', 0, 0, ow, od, y0, y1, upper, 0.08);
   for (const name of ['front', 'right', 'back'] as const) for (const h of upper[name]) archWindow(sink, uf[name], h, 0.08, CAB_TRIM, v() < 0.3, { bars: true, coarse: true });
   // the boarding's battens and the trim at the sill and the head
-  if (!mobile) for (const f of [uf.front, uf.back, uf.left, uf.right]) {
+  for (const f of [uf.front, uf.back, uf.left, uf.right]) {
     for (const y of [y0 + 1.0, y1 - 0.3]) sink.member('structureWood', facePoint(f, -f.width / 2, y, 0.03), facePoint(f, f.width / 2, y, 0.03), 0.09, 0.05, f.out, { colour: CAB_TRIM, decor: true, fine: true });
   }
-  leaf(sink, uf.left, 0, 0.9, y0 + 2.1, -0.06, y0, DOOR_PAINT, mobile);
+  leaf(sink, uf.left, 0, 0.9, y0 + 2.1, -0.06, y0, DOOR_PAINT);
   // the hipped roof, its eaves well out over the windows, and the stove pipe
   const roof: RoofSpec = { kind: 'hip', pitchDeg: 32, eave: 0.6, verge: 0.6, thickness: 0.12, bucket: 'roof', ridge: null };
   emitRoof(sink, roofGeometry(ow, od, y1, roof), roof);
@@ -444,14 +440,14 @@ export const signalBox: LandmarkBuilder = (ctx) => {
   const steps = Math.max(6, Math.round(Hb / 0.21));
   for (let k = 1; k < steps; k++) {
     const y = y0 - k * (y0 / steps), z = -od / 2 + 0.2 - k * run / steps;
-    sink.span('structureWood', landX, y - 0.04, z - 0.14, landX + 1.0, y, z + 0.14, { colour: CAB_TIMBER, decor: true, fine: mobile ? undefined : undefined });
+    sink.span('structureWood', landX, y - 0.04, z - 0.14, landX + 1.0, y, z + 0.14, { colour: CAB_TIMBER, decor: true, fine: undefined });
   }
   bar(sink, 'structureMetal', [landX - 0.02, y0 + 0.95, -od / 2 + 0.2], [landX - 0.02, 0.95, -od / 2 + 0.2 - run], 0.04, { colour: IRON, decor: true });
   bar(sink, 'structureMetal', [landX - 0.02, y0 + 0.95, -od / 2 + 0.2], [landX - 0.02, y0 + 0.95, od / 2 - 0.2], 0.04, { colour: IRON, decor: true });
   // the name board on the front under the windows
   sink.span('structureWood', -1.3, y0 + 0.35, od / 2 + 0.02, 1.3, y0 + 0.75, od / 2 + 0.06, { colour: rgb(0x1e2a24), decor: true });
   // the rodding and wires leaving the box's front at the foot, out to the tracks (the run of point rods on its stools)
-  if (!mobile) for (let k = 0; k < 6; k++) {
+  for (let k = 0; k < 6; k++) {
     const x = -W / 2 + 1 + k * (W - 2) / 5;
     bar(sink, 'structureMetal', [x, 0.25, D / 2], [x, 0.25, D / 2 + 3.4], 0.03, { colour: IRON, decor: true, fine: true });
   }

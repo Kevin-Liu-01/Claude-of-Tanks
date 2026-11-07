@@ -42,7 +42,7 @@ function crenels(sink: PartSink, bucket: RegionalBucket, a: readonly [number, nu
  */
 export const desertFort: LandmarkBuilder = (ctx) => {
   const sink = new PartSink(uvOffset(ctx.rng));
-  const mobile = ctx.tier === 'mobile', v = ctx.variant;
+  const v = ctx.variant;
   const S = num(ctx, 'size', 18, 44), H = num(ctx, 'height', 3.5, 8), T = 0.9, R = num(ctx, 'rooms', 3, 7), TH = num(ctx, 'tower', H + 2, 16);
   const foot = -0.6 - ctx.groundFall, wall: RegionalBucket = 'plaster', h2 = S / 2;
   // the four outer walls (the front's two runs either side of the gate) with their loopholes; the plinth's batter
@@ -76,7 +76,7 @@ export const desertFort: LandmarkBuilder = (ctx) => {
   crenels(sink, wall, [-gw / 2 - 1.4, h2 - T / 2], [gw / 2 + 1.4, h2 - T / 2], H + 1.6, T, 0.6, 0.55, 0.45);
   // the gate's leaves, studded, closed in the arch; the lamp over it and the fort's name plaque
   sink.span('structureWood', -gw / 2 + 0.05, 0, h2 - T + 0.2, gw / 2 - 0.05, gh, h2 - T + 0.32, { colour: DOOR, decor: true });
-  if (!mobile) for (let y = 0.5; y < gh - 0.3; y += 0.6) for (let x = -gw / 2 + 0.35; x < gw / 2 - 0.2; x += 0.5) sink.span('structureMetal', x - 0.04, y - 0.04, h2 - T + 0.32, x + 0.04, y + 0.04, h2 - T + 0.36, { colour: IRON, decor: true, fine: 'near' });
+  for (let y = 0.5; y < gh - 0.3; y += 0.6) for (let x = -gw / 2 + 0.35; x < gw / 2 - 0.2; x += 0.5) sink.span('structureMetal', x - 0.04, y - 0.04, h2 - T + 0.32, x + 0.04, y + 0.04, h2 - T + 0.36, { colour: IRON, decor: true, fine: 'near' });
   sink.span('stone', -1.6, gh + 0.5, h2 + 0.01, 1.6, gh + 1.25, h2 + 0.08, { decor: true, shade: 0.8 });
   // the rooms round the court: their flat roofs (the walk behind the parapet) on the inner walls, doors and windows on
   // the court, the court's floor
@@ -162,7 +162,7 @@ const TURF = rgb(0x6f7d45), TURF_DRY = rgb(0x8a8456), ARMOUR = rgb(0x3e423f), WI
  */
 export const casemateFort: LandmarkBuilder = (ctx) => {
   const sink = new PartSink(uvOffset(ctx.rng));
-  const v = ctx.variant, mobile = ctx.tier === 'mobile';
+  const v = ctx.variant;
   const alpine = ctx.params.style === 'alpine';
   const Lf = num(ctx, 'length', 24, 90), D = num(ctx, 'depth', 10, 30), H = num(ctx, 'height', 3.5, 8);
   const cup = Math.round(num(ctx, 'cupolas', 0, 4)), foot = -0.6 - ctx.groundFall;
@@ -191,7 +191,7 @@ export const casemateFort: LandmarkBuilder = (ctx) => {
     else if (!alpine) {
       // the steel shutters folded back either side of the window
       for (const s of [-1, 1]) sink.quad('structureMetal', P(h.u + s * h.w / 2, h.y0, 0.02), P(h.u + s * (h.w / 2 + 0.6), h.y0, 0.25), P(h.u + s * (h.w / 2 + 0.6), h.spring, 0.25), P(h.u + s * h.w / 2, h.spring, 0.02),
-        { colour: ARMOUR, decor: true, fine: mobile ? undefined : 'near' });
+        { colour: ARMOUR, decor: true, fine: 'near' });
     }
   }
   // the cornice over the front, and (alpine) the dressed quoins and the string course
@@ -207,7 +207,7 @@ export const casemateFort: LandmarkBuilder = (ctx) => {
   // (the back's foot, in the block's frame: the ground there less the block's seat)
   const back: Vec3[] = [[-Lf / 2 - ex, g(-Lf / 2 - ex, z0) - yb, z0], [Lf / 2 + ex, g(Lf / 2 + ex, z0) - yb, z0]];
   const turf = (k: number) => (k % 2 ? TURF : TURF_DRY);
-  const segs = mobile ? 4 : 10;
+  const segs = 10;
   for (let i = 0; i < segs; i++) {
     const a = i / segs, b = (i + 1) / segs, lerp = (p: Vec3, q: Vec3, t: number): Vec3 => [p[0] + (q[0] - p[0]) * t, p[1] + (q[1] - p[1]) * t, p[2] + (q[2] - p[2]) * t];
     const c = shade(turf(i), 0.92 + v() * 0.16);
@@ -234,10 +234,10 @@ export const casemateFort: LandmarkBuilder = (ctx) => {
     // the turret battery's cupolas: steel domes in their armour collars, the gun's slit in each, and an observation cloche
     for (let k = 0; k < cup; k++) {
       const x = -Lf / 2 + (k + 0.5) * Lf / cup + (v() - 0.5) * 2, z = cz - 2.5, y = crest - 0.3;
-      revolve(sink, 'stone', x, z, [[3.6, y - 0.4], [3.4, y + 0.3], [2.5, y + 0.45], [2.45, y + 0.4]], mobile ? 14 : 24, { shade: 0.86 });
+      revolve(sink, 'stone', x, z, [[3.6, y - 0.4], [3.4, y + 0.3], [2.5, y + 0.45], [2.45, y + 0.4]], 24, { shade: 0.86 });
       const dome: Array<[number, number]> = [];
       for (let i = 0; i <= 6; i++) { const a = (Math.PI / 2) * i / 6; dome.push([Math.max(0.001, Math.cos(a) * 2.2), y + 0.4 + Math.sin(a) * 1.1]); }
-      revolve(sink, 'structureMetal', x, z, dome, mobile ? 14 : 24, { colour: ARMOUR });
+      revolve(sink, 'structureMetal', x, z, dome, 24, { colour: ARMOUR });
       // its guns' muzzles through the slit, turned (look stream) to the valley
       const yaw = (v() - 0.5) * 1.2;
       sink.placed(yaw, x, y + 0.9, z, () => {
@@ -260,7 +260,7 @@ export const casemateFort: LandmarkBuilder = (ctx) => {
   if (!alpine) {
     for (let x = -Lf / 2 - 1.5; x <= Lf / 2 + 1.5; x += 2.5) {
       const zz = dz + 2.0 + (v() - 0.5) * 0.3, y0 = g(x, zz), y1 = g(x + 2.5, zz);
-      bar(sink, 'structureMetal', [x, y0, zz], [x + (v() - 0.5) * 0.15, y0 + 1.4, zz], 0.05, { colour: WIRE, decor: true, fine: mobile ? undefined : true });
+      bar(sink, 'structureMetal', [x, y0, zz], [x + (v() - 0.5) * 0.15, y0 + 1.4, zz], 0.05, { colour: WIRE, decor: true, fine: true });
       for (const y of [0.5, 0.95, 1.3]) bar(sink, 'structureMetal', [x, y0 + y, zz], [x + 2.5, y1 + y + (v() - 0.5) * 0.1, zz], 0.015, { colour: WIRE, decor: true, fine: true });
     }
   }

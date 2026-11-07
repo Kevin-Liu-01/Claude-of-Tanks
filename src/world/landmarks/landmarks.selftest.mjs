@@ -104,6 +104,10 @@ const BUDGET = {
   hayRack: 3000, fishRack: 9000, stabbur: 3000,
   // (the Earthrise 228 rebuild) Taurus-Littrow Station's set pieces
   apolloSite: 9000, isruWorks: 12000, solarTower: 5000, stationDome: 9000, relayRepeater: 4000,
+  // (landmarks-271) the signature set pieces of the maps that had none
+  roundhouse: 15000, signalBox: 3000, blastFurnace: 22000, gasholder: 30000, shrine: 21000, ghorfaKsar: 27000, marabout: 1500,
+  desertFort: 4000, casemateFort: 4500, shaliMosque: 3800, springPool: 1300, canalMarket: 4600, charcoalKilns: 3800,
+  alcazaba: 3900, bullring: 23000, woodenChurch: 2700, tradingPost: 1400, hogan: 1700, cablewayTower: 2500, landingPad: 3000,
 };
 assert.deepEqual(Object.keys(BUDGET).sort(), [...KINDS].sort(), 'a budget for every kind');
 /** The authored variants each kind is built in besides its defaults. */
@@ -135,6 +139,10 @@ const VARIANTS = {
   harbour: [{ basin: 'left', boats: 0, slip: 0, nets: false }, { turn: 40, arm: 16, light: 'red', length: 30 }],
   isruWorks: [{ part: 'front' }],
   apolloSite: [{ radius: 16 }],
+  roundhouse: [{ stalls: 7, front: 22, depth: 18, lead: 4 }],
+  casemateFort: [{ style: 'alpine', length: 44, depth: 20, height: 4.5 }],
+  cablewayTower: [{ cable: true, span: 269.5, farRise: -1.27 }],
+  landingPad: [{ radius: 16 }],
 };
 const COLOURED = new Set(['structureMetal', 'structureWood', 'regionalPlaster', 'regionalPlaster2', 'regionalPlaster3', 'regionalStone', 'regionalRoof']);
 
@@ -206,14 +214,16 @@ for (const kind of KINDS) {
     } else {
       assert.ok(LANDMARK_KINDS[kind].dressing?.(resolveLandmarkParams({ kind, x: 0, z: 0, params })), `${label}: only a dressing kind is all dressing`);
     }
-    // the footprint holds the piece (its vegetation clearance and reserved ground cover what stands)
+    // the footprint holds the piece (its vegetation clearance and reserved ground cover what stands); a cableway's track
+    // cable (overhead dressing) runs on along its line to the far tower, `span` out
     const [hw, hl] = landmarkFootprint({ kind, x: 0, z: 0, params });
+    const reach = kind === 'cablewayTower' && params.cable ? params.span : 0;
     let mx = 0, mz = 0;
     for (const g of geometries(a.parts)) {
       const p = g.getAttribute('position');
       for (let i = 0; i < p.count; i++) { mx = Math.max(mx, Math.abs(p.getX(i))); mz = Math.max(mz, Math.abs(p.getZ(i))); }
     }
-    assert.ok(mx <= hw + 0.6 && mz <= hl + 0.6, `${label}: the piece (±${mx.toFixed(2)}, ±${mz.toFixed(2)}) stands in its footprint (±${hw.toFixed(2)}, ±${hl.toFixed(2)})`);
+    assert.ok(mx <= hw + 0.6 && mz <= Math.max(hl, reach) + 0.6, `${label}: the piece (±${mx.toFixed(2)}, ±${mz.toFixed(2)}) stands in its footprint (±${hw.toFixed(2)}, ±${hl.toFixed(2)})`);
     for (const g of [...geometries(a.parts), ...geometries(b.parts), ...geometries(mobile.parts)]) g.dispose();
     built++; total += tris;
   });

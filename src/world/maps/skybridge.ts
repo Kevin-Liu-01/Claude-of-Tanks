@@ -220,8 +220,8 @@ export default {
     // drowned gorge (a rotation pair about the layout's centre), the track cable sagging across the lake between them with
     // the carriage and its concrete bucket hung on it.
     landmarks: [
-      { kind: 'cablewayTower', x: -90, z: 120, yawDeg: 122.3, params: { cable: true, span: 224.7, farRise: -0.43 }, name: 'the cableway head tower (west shore)' },
-      { kind: 'cablewayTower', x: 100, z: 0, yawDeg: -57.7, name: 'the cableway tail tower (east shore)' },
+      { kind: 'cablewayTower', x: -103.3, z: 140.2, yawDeg: 126.5, params: { cable: true, span: 269.5, farRise: -1.27 }, name: 'the cableway head tower (west shore)' },
+      { kind: 'cablewayTower', x: 113.3, z: -20.2, yawDeg: -53.5, name: 'the cableway tail tower (east shore)' },
     ],
     // the map-revival lane (2026-10-05): Glen Canyon Dam and Page, Arizona (maps/regional/glencanyon.ts)
     architecture: 'glencanyon',

@@ -25,7 +25,7 @@ const num = (ctx: LandmarkBuildContext, key: string, min: number, max = Infinity
  * its top rounded, the rain's notches in the parapet. In the wall's own frame: u along, the outer face on the right.
  */
 function mudWall(sink: PartSink, bucket: RegionalBucket, a: readonly [number, number], b: readonly [number, number], foot: number, h: number, t: number,
-  v: () => number, opts: { crenels?: boolean; beams?: boolean; mobile: boolean }): void {
+  v: () => number, opts: { crenels?: boolean; beams?: boolean }): void {
   const L = Math.hypot(b[0] - a[0], b[1] - a[1]), ux = (b[0] - a[0]) / L, uz = (b[1] - a[1]) / L, nx = uz, nz = -ux;
   const lean = 0.18, segs = Math.max(2, Math.round(L / 2.4));
   const P = (s: number, y: number, o: number): Vec3 => [a[0] + ux * s + nx * o, y, a[1] + uz * s + nz * o];
@@ -42,10 +42,10 @@ function mudWall(sink: PartSink, bucket: RegionalBucket, a: readonly [number, nu
       // the rounded crenels of the parapet, two to a segment
       for (const f of [0.25, 0.75]) {
         const s = s0 + (s1 - s0) * f, y = y0 + (y1 - y0) * f + 0.1;
-        revolve(sink, bucket, P(s, 0, 0)[0], P(s, 0, 0)[2], [[0.32, y - 0.05], [0.3, y + 0.35], [0.16, y + 0.62], [0.001, y + 0.7]], opts.mobile ? 6 : 8, {});
+        revolve(sink, bucket, P(s, 0, 0)[0], P(s, 0, 0)[2], [[0.32, y - 0.05], [0.3, y + 0.35], [0.16, y + 0.62], [0.001, y + 0.7]], 8, {});
       }
     }
-    if (opts.beams && !opts.mobile && k % 2 === 0) {
+    if (opts.beams && k % 2 === 0) {
       // the palm-trunk beam ends through the wall under the roof line
       const s = (s0 + s1) / 2, y = Math.min(y0, y1) - 0.7;
       bar(sink, 'structureWood', P(s, y, t / 2 - lean * 0.8), P(s, y, t / 2 + 0.35), 0.18, { colour: PALM, decor: true, fine: true });
@@ -63,12 +63,12 @@ function mudWall(sink: PartSink, bucket: RegionalBucket, a: readonly [number, nu
  */
 export const shaliMosque: LandmarkBuilder = (ctx) => {
   const sink = new PartSink(uvOffset(ctx.rng));
-  const v = ctx.variant, mobile = ctx.tier === 'mobile';
+  const v = ctx.variant;
   const W = num(ctx, 'width', 8, 20), D = num(ctx, 'depth', 8, 20), H = num(ctx, 'height', 3, 6), M = num(ctx, 'minaret', 8, 18);
   const foot = -0.6 - ctx.groundFall, mud: RegionalBucket = 'plaster', t = 0.9;
   // the hall's four walls (doors cut as dark recesses in the front), its roof of palm logs under mud
   const c: Array<[number, number]> = [[-W / 2, D / 2], [W / 2, D / 2], [W / 2, -D / 2], [-W / 2, -D / 2]];
-  for (let k = 0; k < 4; k++) mudWall(sink, mud, c[k], c[(k + 1) % 4], foot, H + 0.7, t, v, { crenels: true, beams: true, mobile });
+  for (let k = 0; k < 4; k++) mudWall(sink, mud, c[k], c[(k + 1) % 4], foot, H + 0.7, t, v, { crenels: true, beams: true });
   sink.quad(mud, [-W / 2 + 0.4, H, D / 2 - 0.4], [W / 2 - 0.4, H, D / 2 - 0.4], [W / 2 - 0.4, H, -D / 2 + 0.4], [-W / 2 + 0.4, H, -D / 2 + 0.4], { shade: 0.9 });
   sink.span(mud, -W / 2 + 0.4, foot, -D / 2 + 0.4, W / 2 - 0.4, H - 0.02, D / 2 - 0.4, { decor: false });
   for (const u of [-W / 4, W / 6]) {
@@ -77,7 +77,7 @@ export const shaliMosque: LandmarkBuilder = (ctx) => {
     if (v() < 0.6) sink.span('structureWood', u - 0.5, 0.02, D / 2 + 0.42, u + 0.5, 1.95, D / 2 + 0.47, { colour: DOOR, decor: true });
   }
   // the minaret: its battered square foot rounding into the tapering cone, the openings up it, the palm-rib balcony
-  const mx = W / 2 - 1.2, mz = D / 2 - 1.2, n = mobile ? 8 : 12;
+  const mx = W / 2 - 1.2, mz = D / 2 - 1.2, n = 12;
   const r0 = 1.7;
   const profile: Array<[number, number]> = [[r0 * 1.15, foot], [r0, 1.0], [r0 * 0.9, M * 0.35], [r0 * 0.78, M * 0.6], [r0 * 0.66, M * 0.8], [r0 * 0.5, M * 0.9], [r0 * 0.3, M * 0.97], [0.001, M]];
   revolve(sink, mud, mx, mz, profile, n, {}, Math.PI / 4);
@@ -87,15 +87,15 @@ export const shaliMosque: LandmarkBuilder = (ctx) => {
   }
   const by = M * 0.62, br = r0 * 0.72 + 0.5;
   revolve(sink, 'structureWood', mx, mz, [[br, by], [br, by + 0.12], [r0 * 0.7, by + 0.12]], n, { colour: PALM, decor: true });
-  if (!mobile) for (let k = 0; k < 12; k++) {
+  for (let k = 0; k < 12; k++) {
     const a = (k / 12) * Math.PI * 2;
     bar(sink, 'structureWood', [mx + Math.cos(a) * br, by, mz + Math.sin(a) * br], [mx + Math.cos(a) * br, by + 0.8, mz + Math.sin(a) * br], 0.05, { colour: FROND, decor: true, fine: true });
   }
   // the ablution court's wall before the doors, its gap on the approach
   const cz = D / 2 + 5.5;
-  mudWall(sink, mud, [-W / 2, D / 2 + 0.4], [-W / 2, cz], foot, 1.6, 0.6, v, { mobile });
-  mudWall(sink, mud, [-W / 2, cz], [-1.4, cz], foot, 1.6, 0.6, v, { mobile });
-  mudWall(sink, mud, [1.4, cz], [W / 2 - 3.2, cz], foot, 1.6, 0.6, v, { mobile });
+  mudWall(sink, mud, [-W / 2, D / 2 + 0.4], [-W / 2, cz], foot, 1.6, 0.6, v, {});
+  mudWall(sink, mud, [-W / 2, cz], [-1.4, cz], foot, 1.6, 0.6, v, {});
+  mudWall(sink, mud, [1.4, cz], [W / 2 - 3.2, cz], foot, 1.6, 0.6, v, {});
   sink.quad('stone', [-W / 2 + 0.3, 0.03, cz - 0.3], [W / 2 - 0.3, 0.03, cz - 0.3], [W / 2 - 0.3, 0.03, D / 2 + 0.5], [-W / 2 + 0.3, 0.03, D / 2 + 0.5], { decor: true, shade: 0.9, uv: { kind: 'world' } });
   return { parts: sink.finish() };
 };
@@ -106,8 +106,8 @@ export const shaliMosque: LandmarkBuilder = (ctx) => {
  */
 export const springPool: LandmarkBuilder = (ctx) => {
   const sink = new PartSink(uvOffset(ctx.rng));
-  const mobile = ctx.tier === 'mobile', v = ctx.variant;
-  const R = num(ctx, 'radius', 4, 12), n = mobile ? 24 : 40, ch = Math.round(num(ctx, 'channels', 0, 4));
+  const v = ctx.variant;
+  const R = num(ctx, 'radius', 4, 12), n = 40, ch = Math.round(num(ctx, 'channels', 0, 4));
   // the stone ring's coping, its outer batter and the inner wall dropping to the water
   revolve(sink, 'stone', 0, 0, [[R + 1.4, -0.4], [R + 1.2, 0.35], [R + 0.1, 0.45], [R, 0.42], [R, 0.08]], n, { shade: 0.9 });
   // the water (a dark green disc, its surface just under the kerb) and a lighter ring where the sun reaches the bed
@@ -115,7 +115,7 @@ export const springPool: LandmarkBuilder = (ctx) => {
   revolve(sink, 'structureMetal', 0, 0, [[R * 0.98, 0.105], [R * 0.7, 0.105]], n, { colour: shade(WATER, 1.3), decor: true });
   // the steps down into it on the front, the bubbles' rings at its middle
   for (let k = 0; k < 4; k++) sink.span('stone', -1.2, 0.0, R - 0.3 - k * 0.55, 1.2, 0.42 - k * 0.1, R + 0.1 - k * 0.55, { decor: true, shade: 0.88 });
-  if (!mobile) for (const r of [0.6, 1.1]) revolve(sink, 'structureMetal', v() * 0.6, v() * 0.6, [[r + 0.06, 0.112], [r, 0.112]], 16, { colour: shade(WATER, 1.5), decor: true, fine: 'near' });
+  for (const r of [0.6, 1.1]) revolve(sink, 'structureMetal', v() * 0.6, v() * 0.6, [[r + 0.06, 0.112], [r, 0.112]], 16, { colour: shade(WATER, 1.5), decor: true, fine: 'near' });
   // the outflow channels: stone-lined runs out through the ring into the gardens
   for (let k = 0; k < ch; k++) {
     // (parallel runs out to -x, 3 m apart, into the gardens' plots)
@@ -133,7 +133,7 @@ export const springPool: LandmarkBuilder = (ctx) => {
   }
   for (const dz of [-1.8, 1.8]) bar(sink, 'structureWood', [sx - 2.7, 2.6, sz + dz], [sx + 2.7, 2.6, sz + dz], 0.14, { colour: PALM, decor: true });
   sink.span('straw', sx - 2.9, 2.68, sz - 2.2, sx + 2.9, 2.85, sz + 2.2, { colour: FROND, decor: true });
-  if (!mobile) for (let x = -2.6; x <= 2.6; x += 0.45) bar(sink, 'straw', [sx + x, 2.88, sz - 2.3], [sx + x + (v() - 0.5) * 0.3, 2.88, sz + 2.3], 0.12, { colour: shade(FROND, 0.9 + v() * 0.2), decor: true, fine: true });
+  for (let x = -2.6; x <= 2.6; x += 0.45) bar(sink, 'straw', [sx + x, 2.88, sz - 2.3], [sx + x + (v() - 0.5) * 0.3, 2.88, sz + 2.3], 0.12, { colour: shade(FROND, 0.9 + v() * 0.2), decor: true, fine: true });
   // its benches: palm-log seats on mud blocks
   for (const dz of [-1.2, 1.2]) {
     sink.span('plaster', sx - 1.8, -0.2, sz + dz - 0.25, sx - 1.4, 0.45, sz + dz + 0.25, {});

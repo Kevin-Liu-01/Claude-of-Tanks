@@ -34,8 +34,9 @@ export function blastFurnaceLayout(p: Readonly<Record<string, number | string | 
   return { H, stoves, skip, fx: -(x0 + x1) / 2, fz: -(z0 + z1) / 2, across: (x1 - x0) / 2 + 0.5, along: (z1 - z0) / 2 + 0.5 };
 }
 
-/** A square lattice tower or girder's four chords from a to b (centre line), `w` wide, with zig-zag lacing (dressing). */
-function lattice(sink: PartSink, a: Vec3, b: Vec3, w: number, colour: Rgb, mobile: boolean, chord = 0.16): void {
+/** A square lattice tower or girder's four chords from a to b (centre line), `w` wide, with zig-zag lacing (dressing) on
+ *  its four faces, or on two opposite faces (`faces` 2). */
+function lattice(sink: PartSink, a: Vec3, b: Vec3, w: number, colour: Rgb, chord = 0.16, faces: 2 | 4 = 4): void {
   const dx = b[0] - a[0], dy = b[1] - a[1], dz = b[2] - a[2], L = Math.hypot(dx, dy, dz);
   const t: Vec3 = [dx / L, dy / L, dz / L];
   // two axes across the member: one horizontal, one completing the frame
@@ -48,12 +49,12 @@ function lattice(sink: PartSink, a: Vec3, b: Vec3, w: number, colour: Rgb, mobil
   for (const [i, j] of corners) bar(sink, 'structureMetal', corner(a, i, j), corner(b, i, j), chord, o);
   const panels = Math.max(1, Math.round(L / Math.max(1.2, w)));
   const at = (k: number): Vec3 => [a[0] + dx * k / panels, a[1] + dy * k / panels, a[2] + dz * k / panels];
-  const lace: EmitOptions = { colour: shade(colour, 0.9), decor: true, fine: mobile ? undefined : true };
+  const lace: EmitOptions = { colour: shade(colour, 0.9), decor: true, fine: true };
   for (let k = 0; k < panels; k++) {
     const p = at(k), q = at(k + 1);
     for (let f = 0; f < 4; f++) {
+      if (faces === 2 && f % 2) continue;
       const [i0, j0] = corners[f], [i1, j1] = corners[(f + 1) % 4];
-      if (mobile && f % 2) continue;
       bar(sink, 'structureMetal', corner(p, k % 2 ? i0 : i1, k % 2 ? j0 : j1), corner(q, k % 2 ? i1 : i0, k % 2 ? j1 : j0), chord * 0.55, lace);
     }
     bar(sink, 'structureMetal', corner(q, -1, -1), corner(q, 1, -1), chord * 0.6, lace);
@@ -62,9 +63,8 @@ function lattice(sink: PartSink, a: Vec3, b: Vec3, w: number, colour: Rgb, mobil
 }
 
 /** A run of large pipe from a to b (r its radius), its flanged joints every 6 m (dressing). */
-function pipe(sink: PartSink, a: Vec3, b: Vec3, r: number, colour: Rgb, mobile: boolean): void {
+function pipe(sink: PartSink, a: Vec3, b: Vec3, r: number, colour: Rgb): void {
   bar(sink, 'structureMetal', a, b, r * 2, { colour, decor: true });
-  if (mobile) return;
   const L = Math.hypot(b[0] - a[0], b[1] - a[1], b[2] - a[2]);
   for (let s = 3; s < L - 1; s += 6) {
     const k = s / L, p: Vec3 = [a[0] + (b[0] - a[0]) * k, a[1] + (b[1] - a[1]) * k, a[2] + (b[2] - a[2]) * k];
@@ -94,10 +94,10 @@ function ringRail(sink: PartSink, x: number, z: number, r: number, y: number, n:
  */
 export const blastFurnace: LandmarkBuilder = (ctx) => {
   const sink = new PartSink(uvOffset(ctx.rng));
-  const mobile = ctx.tier === 'mobile', v = ctx.variant;
+  const v = ctx.variant;
   const L = blastFurnaceLayout(ctx.params);
   const { H, stoves } = L;
-  const foot = -0.8 - ctx.groundFall, n = mobile ? 14 : 22;
+  const foot = -0.8 - ctx.groundFall, n = 22;
   sink.placed(0, L.fx, 0, L.fz, () => {
     // ---- the furnace: the hearth's jacket, the bosh, the stack tapering to the throat, the top cone
     const hearthR = 5.2, boshY = 7.5, boshR = 6.4, throatR = 4.2, top = H;
@@ -107,13 +107,13 @@ export const blastFurnace: LandmarkBuilder = (ctx) => {
     // the stack's binding hoops
     for (let y = boshY + 3; y < top - 3; y += 2.4) {
       const r = boshR + (throatR - boshR) * (y - boshY - 1.5) / (top - 2.5 - boshY - 1.5);
-      revolve(sink, 'structureMetal', 0, 0, [[r, y], [r + 0.08, y], [r + 0.08, y + 0.3], [r, y + 0.3]], n, { colour: RUST_DARK, decor: true, fine: mobile ? undefined : 'near' });
+      revolve(sink, 'structureMetal', 0, 0, [[r, y], [r + 0.08, y], [r + 0.08, y + 0.3], [r, y + 0.3]], n, { colour: RUST_DARK, decor: true, fine: 'near' });
     }
     // the bustle main ringing the bosh and the tuyere stocks down to the hearth
-    const bustleY = boshY + 1.2, bustleR = boshR + 2.4, tuyeres = mobile ? 8 : 14;
+    const bustleY = boshY + 1.2, bustleR = boshR + 2.4, tuyeres = 14;
     for (let k = 0; k < tuyeres; k++) {
       const a = (k / tuyeres) * Math.PI * 2, b = ((k + 1) / tuyeres) * Math.PI * 2;
-      pipe(sink, [Math.cos(a) * bustleR, bustleY, Math.sin(a) * bustleR], [Math.cos(b) * bustleR, bustleY, Math.sin(b) * bustleR], 0.65, STEEL, true);
+      pipe(sink, [Math.cos(a) * bustleR, bustleY, Math.sin(a) * bustleR], [Math.cos(b) * bustleR, bustleY, Math.sin(b) * bustleR], 0.65, STEEL);
       bar(sink, 'structureMetal', [Math.cos(a) * bustleR, bustleY - 0.6, Math.sin(a) * bustleR], [Math.cos(a) * (hearthR + 0.2), boshY - 4.6, Math.sin(a) * (hearthR + 0.2)], 0.28,
         { colour: STEEL, decor: true });
     }
@@ -125,12 +125,12 @@ export const blastFurnace: LandmarkBuilder = (ctx) => {
       bar(sink, 'structureMetal', [Math.cos(a) * colR0, bustleY + 2, Math.sin(a) * colR0], [Math.cos(a) * colR1, platY, Math.sin(a) * colR1], 0.62, { colour: RUST_DARK, decor: true });
       if (k % 2 === 0) {
         const b = a + Math.PI / 4;
-        bar(sink, 'structureMetal', [Math.cos(a) * colR0, 3, Math.sin(a) * colR0], [Math.cos(b) * colR0, bustleY + 2, Math.sin(b) * colR0], 0.22, { colour: RUST_DARK, decor: true, fine: mobile ? undefined : true });
+        bar(sink, 'structureMetal', [Math.cos(a) * colR0, 3, Math.sin(a) * colR0], [Math.cos(b) * colR0, bustleY + 2, Math.sin(b) * colR0], 0.22, { colour: RUST_DARK, decor: true, fine: true });
       }
     }
     // the charging platform at the throat and its railing, the top's bell housing and the receiving hopper
     sink.span('structureMetal', -colR1 - 1.2, platY - 0.35, -colR1 - 1.2, colR1 + 1.2, platY, colR1 + 1.2, { colour: STEEL, decor: true });
-    if (!mobile) ringRail(sink, 0, 0, colR1 + 1.0, platY, 16, STEEL);
+    ringRail(sink, 0, 0, colR1 + 1.0, platY, 16, STEEL);
     revolve(sink, 'structureMetal', 0, 0, [[throatR, top], [throatR - 0.6, top + 1.8], [2.2, top + 3.6], [2.2, top + 6.5], [1.6, top + 7.2], [0.001, top + 7.4]], n, { colour: OXIDE, decor: true });
     // the gas uptakes: four from the top's shoulder, joined in pairs and on to the downcomer's head
     const upY = top + 11, headX = -2.2;
@@ -138,14 +138,14 @@ export const blastFurnace: LandmarkBuilder = (ctx) => {
       const a = (k / 4) * Math.PI * 2 + Math.PI / 4;
       const p: Vec3 = [Math.cos(a) * (throatR - 0.4), top + 1.0, Math.sin(a) * (throatR - 0.4)];
       const q: Vec3 = [Math.cos(a) * 2.2, upY, Math.sin(a) * 2.2];
-      pipe(sink, p, q, 0.7, RUST, mobile);
-      pipe(sink, q, [headX, upY + 1.4, 0], 0.7, RUST, mobile);
+      pipe(sink, p, q, 0.7, RUST);
+      pipe(sink, q, [headX, upY + 1.4, 0], 0.7, RUST);
     }
     // the bleeders' caps over the uptakes' head
     for (const s of [-1, 1]) sink.cylinder('structureMetal', [headX, upY + 1.4, s * 0.9], 'y', 2.4, 0.4, 8, { colour: RUST_DARK, decor: true });
     // the downcomer: from the head down at a steep fall to the dust catcher's top at -x
     const dcX = -14, dcZ = 2, dcTop = 15;
-    pipe(sink, [headX, upY + 1.0, 0], [dcX + 0.8, dcTop + 2.4, dcZ], 1.15, RUST, mobile);
+    pipe(sink, [headX, upY + 1.0, 0], [dcX + 0.8, dcTop + 2.4, dcZ], 1.15, RUST);
     // the dust catcher: a tall drum on its legs, its cone below, the clean-gas main out of its side to the stoves
     revolve(sink, 'structureMetal', dcX, dcZ, [[0.6, 3.0], [3.6, 7.2], [3.6, dcTop], [2.0, dcTop + 2.2], [1.0, dcTop + 2.8], [0.001, dcTop + 2.9]], n, { colour: RUST });
     bands(sink, dcX, dcZ, 3.6, 7.2, dcTop, 1.4, RUST_DARK, n);
@@ -162,30 +162,30 @@ export const blastFurnace: LandmarkBuilder = (ctx) => {
         { colour: shade(RUST, 0.92 + v() * 0.12) });
       bands(sink, sx, sz, stoveR, 1.4, stoveH, 1.6, RUST_DARK, n);
       // the hot-blast valve and its branch to the main, the chimney valve's stub, the ladder up its side
-      pipe(sink, [sx, 9, sz + stoveR - 0.2], [sx, 9, sz + 6.8], 0.75, STEEL, true);
+      pipe(sink, [sx, 9, sz + stoveR - 0.2], [sx, 9, sz + 6.8], 0.75, STEEL);
       sink.cylinder('structureMetal', [sx, 8.0, sz + stoveR + 1.2], 'z', 1.2, 1.0, 10, { colour: STEEL, decor: true });
-      if (!mobile) for (const dx of [-0.25, 0.25]) bar(sink, 'structureMetal', [sx + stoveR + 0.35 + 0, 1.4, sz + dx], [sx + stoveR + 0.35, stoveH, sz + dx], 0.05, { colour: STEEL, decor: true, fine: true });
+      for (const dx of [-0.25, 0.25]) bar(sink, 'structureMetal', [sx + stoveR + 0.35 + 0, 1.4, sz + dx], [sx + stoveR + 0.35, stoveH, sz + dx], 0.05, { colour: STEEL, decor: true, fine: true });
       // the platform ring at the dome's foot
-      if (!mobile) ringRail(sink, sx, sz, stoveR + 0.9, stoveH, 14, STEEL);
+      ringRail(sink, sx, sz, stoveR + 0.9, stoveH, 14, STEEL);
       revolve(sink, 'structureMetal', sx, sz, [[stoveR + 1.0, stoveH - 0.2], [stoveR + 1.0, stoveH], [stoveR, stoveH]], n, { colour: STEEL, decor: true });
     }
     // the hot-blast main along the stoves' fronts, on to the bustle main
-    pipe(sink, [stoveXs[0] - 2, 9, sz + 6.8], [stoveXs[stoveXs.length - 1] + 2, 9, sz + 6.8], 1.0, STEEL, mobile);
-    pipe(sink, [0, 9, sz + 6.8], [0, bustleY, -bustleR + 0.4], 1.0, STEEL, mobile);
+    pipe(sink, [stoveXs[0] - 2, 9, sz + 6.8], [stoveXs[stoveXs.length - 1] + 2, 9, sz + 6.8], 1.0, STEEL);
+    pipe(sink, [0, 9, sz + 6.8], [0, bustleY, -bustleR + 0.4], 1.0, STEEL);
     // the clean-gas main from the dust catcher round to the stoves' burners, on its trestles
     const gasY = 12.5;
-    pipe(sink, [dcX, gasY, dcZ - 3.4], [dcX, gasY, sz - 6], 1.0, RUST, mobile);
-    pipe(sink, [dcX, gasY, sz - 6], [stoveXs[stoveXs.length - 1], gasY, sz - 6], 1.0, RUST, mobile);
-    for (const sx of stoveXs) pipe(sink, [sx, gasY, sz - 6], [sx, 3.5, sz - stoveR - 0.2], 0.55, RUST, mobile);
-    for (let x = dcX; x <= stoveXs[stoveXs.length - 1]; x += 8) lattice(sink, [x, foot, sz - 6], [x, gasY - 1, sz - 6], 1.2, RUST_DARK, mobile, 0.14);
+    pipe(sink, [dcX, gasY, dcZ - 3.4], [dcX, gasY, sz - 6], 1.0, RUST);
+    pipe(sink, [dcX, gasY, sz - 6], [stoveXs[stoveXs.length - 1], gasY, sz - 6], 1.0, RUST);
+    for (const sx of stoveXs) pipe(sink, [sx, gasY, sz - 6], [sx, 3.5, sz - stoveR - 0.2], 0.55, RUST);
+    for (let x = dcX; x <= stoveXs[stoveXs.length - 1]; x += 8) lattice(sink, [x, foot, sz - 6], [x, gasY - 1, sz - 6], 1.2, RUST_DARK, 0.14);
     // ---- the skip bridge: a lattice girder from the stock house's skip pit up to the furnace's top
     const skipRun = L.skip;
     if (skipRun > 0) {
       const sx0 = 6 + skipRun, top0: Vec3 = [3.0, top + 5.5, 0], foot0: Vec3 = [sx0, 1.5, 0];
-      lattice(sink, foot0, top0, 2.6, RUST_DARK, mobile, 0.2);
+      lattice(sink, foot0, top0, 2.6, RUST_DARK, 0.2);
       // its trestle bent at the mid-run, the skip pit's head frame and the skip on its track
       const mid: Vec3 = [(foot0[0] + top0[0]) / 2, (foot0[1] + top0[1]) / 2, 0];
-      lattice(sink, [mid[0], foot, 0], [mid[0], mid[1] - 1.4, 0], 2.0, RUST_DARK, mobile, 0.18);
+      lattice(sink, [mid[0], foot, 0], [mid[0], mid[1] - 1.4, 0], 2.0, RUST_DARK, 0.18);
       sink.span('structureMetal', sx0 - 2.5, foot, -2.5, sx0 + 2.5, 3.2, 2.5, { colour: RUST_DARK });
       const k = 0.35 + v() * 0.4, skipAt: Vec3 = [foot0[0] + (top0[0] - foot0[0]) * k, foot0[1] + (top0[1] - foot0[1]) * k + 1.6, 0];
       sink.placed(0, skipAt[0], skipAt[1], skipAt[2], () => sink.span('structureMetal', -1.0, -0.6, -0.8, 1.0, 0.6, 0.8, { colour: SOOT, decor: true }));
@@ -226,9 +226,9 @@ export const blastFurnace: LandmarkBuilder = (ctx) => {
  */
 export const gasholder: LandmarkBuilder = (ctx) => {
   const sink = new PartSink(uvOffset(ctx.rng));
-  const mobile = ctx.tier === 'mobile', v = ctx.variant;
+  const v = ctx.variant;
   const R = num(ctx, 'radius', 10, 30), H = num(ctx, 'height', 16, 50), lifts = Math.round(num(ctx, 'lifts', 1, 4)), cols = Math.round(num(ctx, 'columns', 8, 20));
-  const foot = -0.8 - ctx.groundFall, n = mobile ? 20 : 36;
+  const foot = -0.8 - ctx.groundFall, n = 36;
   // the basin's ring wall at the foot
   revolve(sink, 'stone', 0, 0, [[R + 1.2, foot], [R + 1.2, 2.4], [R + 0.4, 2.4], [R + 0.39, 2.4]], n, { shade: 0.82 });
   // the lifts: each drum set 0.9 m in from the one below; the gas's level: how far the top lift stands up its guides
@@ -253,18 +253,18 @@ export const gasholder: LandmarkBuilder = (ctx) => {
     const p: Vec3 = [Math.cos(a) * Rc, foot, Math.sin(a) * Rc], q: Vec3 = [Math.cos(a) * Rc, top, Math.sin(a) * Rc];
     sink.cylinder('structureMetal', [p[0], foot, p[2]], 'y', 3.4 - foot, 0.5, 8, { colour: RUST_DARK });
     // (two faces laced: a ring of fourteen columns is the frame's look, not each one's every lacing bar)
-    lattice(sink, [p[0], 3.4, p[2]], q, 1.2, RUST_DARK, true, 0.16);
+    lattice(sink, [p[0], 3.4, p[2]], q, 1.2, RUST_DARK, 0.16, 2);
   }
   for (const gy of [H * 0.5, top]) for (let k = 0; k < cols; k++) {
     const a = (k / cols) * Math.PI * 2, b = ((k + 1) / cols) * Math.PI * 2;
     bar(sink, 'structureMetal', [Math.cos(a) * Rc, gy, Math.sin(a) * Rc], [Math.cos(b) * Rc, gy, Math.sin(b) * Rc], 0.4, { colour: RUST_DARK, decor: true });
   }
-  if (!mobile) ringRail(sink, 0, 0, Rc + 0.6, top + 0.2, cols * 2, STEEL);
+  ringRail(sink, 0, 0, Rc + 0.6, top + 0.2, cols * 2, STEEL);
   // the stair up the first column, flight by flight
   const a0 = 0, sx = Math.cos(a0) * (Rc + 1.2), sz = Math.sin(a0) * (Rc + 1.2);
   for (let fy = 0; fy < top - 0.5; fy += 3) {
     const dz = (Math.floor(fy / 3) % 2 ? -1 : 1) * 2.2;
-    bar(sink, 'structureMetal', [sx, fy, sz - dz], [sx, Math.min(top, fy + 3), sz + dz], 0.12, { colour: STEEL, decor: true, fine: mobile ? undefined : true });
+    bar(sink, 'structureMetal', [sx, fy, sz - dz], [sx, Math.min(top, fy + 3), sz + dz], 0.12, { colour: STEEL, decor: true, fine: true });
   }
   return { parts: sink.finish() };
 };

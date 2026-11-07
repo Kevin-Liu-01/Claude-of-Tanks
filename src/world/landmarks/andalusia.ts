@@ -32,7 +32,7 @@ const num = (ctx: LandmarkBuildContext, key: string, min: number, max = Infinity
  */
 export const bullring: LandmarkBuilder = (ctx) => {
   const sink = new PartSink(uvOffset(ctx.rng));
-  const mobile = ctx.tier === 'mobile', v = ctx.variant;
+  const v = ctx.variant;
   const Ro = num(ctx, 'radius', 18, 40), H = num(ctx, 'height', 8, 16), Ra = Math.min(Ro - 6, num(ctx, 'arena', 10, 34));
   const n = Math.max(16, Math.round(num(ctx, 'sides', 16, 48)));
   const foot = -0.6 - ctx.groundFall, F1 = H * 0.48;
@@ -68,13 +68,13 @@ export const bullring: LandmarkBuilder = (ctx) => {
       sink.quad('dark', P(-gw / 2, gy0, -0.5), P(gw / 2, gy0, -0.5), P(gw / 2, gy1, -0.5), P(-gw / 2, gy1, -0.5), { decor: true });
       for (const s of [-1, 1]) sink.quad('plaster3', P(s * gw / 2, gy0, s < 0 ? 0 : -0.5), P(s * gw / 2, gy0, s < 0 ? -0.5 : 0), P(s * gw / 2, gy1, s < 0 ? -0.5 : 0), P(s * gw / 2, gy1, s < 0 ? 0 : -0.5), { shade: 0.75, decor: true });
       sink.quad('stone', P(-gw / 2 - 0.2, gy0 - 0.15, 0.06), P(gw / 2 + 0.2, gy0 - 0.15, 0.06), P(gw / 2 + 0.2, gy0, 0.06), P(-gw / 2 - 0.2, gy0, 0.06), { decor: true });
-      if (!mobile) for (let u = -gw / 2 + 0.15; u < gw / 2; u += 0.15) bar(sink, 'structureMetal', P(u, gy0, -0.1), P(u, gy1, -0.1), 0.025, { colour: IRON, decor: true, fine: true });
+      for (let u = -gw / 2 + 0.15; u < gw / 2; u += 0.15) bar(sink, 'structureMetal', P(u, gy0, -0.1), P(u, gy1, -0.1), 0.025, { colour: IRON, decor: true, fine: true });
       // (its dark back 0.16 m in: in front of the gallery's inner wall, 0.2 m behind the facet at its middle)
       const back: Vec3[] = [P(-aw / 2, ay0, -0.16), P(aw / 2, ay0, -0.16), ...arch.map((p) => [p[0] - ox * 0.16, p[1], p[2] - oz * 0.16] as Vec3)];
       sink.polygon('dark', [back[0], back[1], ...back.slice(2)], { decor: true });
       for (let i = 0; i < 6; i++) bar(sink, 'stone', [arch[i][0] + ox * 0.05, arch[i][1] + 0.1, arch[i][2] + oz * 0.05], [arch[i + 1][0] + ox * 0.05, arch[i + 1][1] + 0.1, arch[i + 1][2] + oz * 0.05], 0.2, { decor: true });
       // the iron balcony rail across the upper opening
-      if (!mobile) bar(sink, 'structureMetal', P(-aw / 2, ay0 + 0.95, 0.15), P(aw / 2, ay0 + 0.95, 0.15), 0.04, { colour: IRON, decor: true, fine: true });
+      bar(sink, 'structureMetal', P(-aw / 2, ay0 + 0.95, 0.15), P(aw / 2, ay0 + 0.95, 0.15), 0.04, { colour: IRON, decor: true, fine: true });
     }
     // the pilasters at the facet's corners and the stone bands at the floor and the eaves, the plinth
     sink.quad('stone', P(-half, foot, 0.12), P(half, foot, 0.12), P(half, 0.9, 0.12), P(-half, 0.9, 0.12), { decor: true, shade: 0.9 });
@@ -106,10 +106,10 @@ export const bullring: LandmarkBuilder = (ctx) => {
   for (let k = 0; k < n * 2; k++) {
     const a = (k / (n * 2)) * Math.PI * 2;
     const x = Math.sin(a) * Rg, z = Math.cos(a) * Rg;
-    revolve(sink, 'stone', x, z, columnProfile(0.2, yi - yTop - 0.05, yTop), mobile ? 6 : 8, { decor: true });
+    revolve(sink, 'stone', x, z, columnProfile(0.2, yi - yTop - 0.05, yTop), 8, { decor: true });
   }
   // the arena's sand, the barrera (its red boards on posts) and the burladeros' screens, the callejón behind it
-  revolve(sink, 'structureMetal', 0, 0, [[Ra, 0.05], [0.001, 0.05]], mobile ? 24 : 40, { colour: SAND, decor: true });
+  revolve(sink, 'structureMetal', 0, 0, [[Ra, 0.05], [0.001, 0.05]], 40, { colour: SAND, decor: true });
   revolve(sink, 'structureMetal', 0, 0, [[Ra - 0.01, 0.05], [Ra, 0.05], [Ra, 1.45], [Ra + 0.08, 1.45], [Ra + 0.08, 0.05], [Ra + 0.09, 0.05]], n * 2, { colour: BARRERA, decor: true });
   revolve(sink, 'structureMetal', 0, 0, [[Ra + 0.19, 1.4], [Ra + 0.2, 1.4], [Ra + 0.2, 1.55], [Ra - 0.05, 1.55]], n * 2, { colour: shade(BARRERA, 0.7), decor: true });
   for (let k = 0; k < 4; k++) {
@@ -131,20 +131,20 @@ export const bullring: LandmarkBuilder = (ctx) => {
   }
   sink.span('structureWood', -gw / 2 + 0.05, 0, pz + 0.46, gw / 2 - 0.05, gh - 0.05, pz + 0.5, { colour: DOOR, decor: true });
   for (const s of [-1, 1]) for (const dx of [2.2, 3.0]) {
-    revolve(sink, 'stone', s * dx, pz + 1.1, columnProfile(0.3, F1 - 0.2, 0.2), mobile ? 8 : 12, {});
+    revolve(sink, 'stone', s * dx, pz + 1.1, columnProfile(0.3, F1 - 0.2, 0.2), 12, {});
     sink.span('stone', s * dx - 0.45, -0.3, pz + 0.65, s * dx + 0.45, 0.2, pz + 1.55, {});
   }
   sink.span('stone', -3.6, F1 - 0.1, pz + 0.5, 3.6, F1 + 0.6, pz + 1.7, {});
   // the balcony over the gate and its door, the pediment over the upper storey
   sink.span('dark', -0.8, F1 + 0.65, pz + 0.49, 0.8, F1 + 3.2, pz + 0.52, { decor: true });
-  if (!mobile) for (let x = -3.3; x <= 3.31; x += 0.22) bar(sink, 'structureMetal', [x, F1 + 0.6, pz + 1.6], [x, F1 + 1.6, pz + 1.6], 0.03, { colour: IRON, decor: true, fine: true });
+  for (let x = -3.3; x <= 3.31; x += 0.22) bar(sink, 'structureMetal', [x, F1 + 0.6, pz + 1.6], [x, F1 + 1.6, pz + 1.6], 0.03, { colour: IRON, decor: true, fine: true });
   bar(sink, 'structureMetal', [-3.4, F1 + 1.6, pz + 1.6], [3.4, F1 + 1.6, pz + 1.6], 0.05, { colour: IRON, decor: true });
   const py = H + 0.1;
   sink.polygon('stone', [[-3.4, py, pz + 0.7], [3.4, py, pz + 0.7], [0, py + 1.7, pz + 0.7]], {});
   sink.span('stone', -3.6, py - 0.4, pz + 0.5, 3.6, py, pz + 0.9, {});
   sink.cylinder('stone', [0, py + 0.6, pz + 0.7], 'z', 0.12, 0.42, 12, { decor: true });
   // the bull's-head shield, the lamps either side of the gate
-  if (!mobile) for (const s of [-1, 1]) {
+  for (const s of [-1, 1]) {
     bar(sink, 'structureMetal', [s * 1.8, gh - 0.4, pz + 0.5], [s * 1.8, gh - 0.4, pz + 1.2], 0.04, { colour: IRON, decor: true, fine: true });
     sink.span('structureMetal', s * 1.8 - 0.18, gh - 0.9, pz + 1.05, s * 1.8 + 0.18, gh - 0.35, pz + 1.4, { colour: IRON, decor: true, fine: true });
   }
@@ -172,7 +172,7 @@ function merlons(sink: PartSink, a: readonly [number, number], b: readonly [numb
  */
 export const alcazaba: LandmarkBuilder = (ctx) => {
   const sink = new PartSink(uvOffset(ctx.rng));
-  const v = ctx.variant, mobile = ctx.tier === 'mobile';
+  const v = ctx.variant;
   const K = num(ctx, 'keep', 8, 16), KH = num(ctx, 'height', 12, 26), WH = num(ctx, 'wall', 5, 12), W = num(ctx, 'ward', 24, 60), D = num(ctx, 'depth', 18, 50);
   const ruin = num(ctx, 'ruin', 0, 0.6), foot = -0.6 - ctx.groundFall, t = 2.0, earth = 'plaster2' as const;
   // the walls: the four sides of the ward between the corner towers, each in runs with breaches; the front's gate gap
@@ -206,7 +206,7 @@ export const alcazaba: LandmarkBuilder = (ctx) => {
   const gr = Math.max(2, Math.round(W / 6)), gs0 = W * Math.floor(gr / 2) / gr - W / 2, gs1 = gs0 + W / gr;
   for (const gx of [gs0 - 1.8, gs1 + 1.8]) sink.span(earth, gx - 1.8, foot, D / 2 - 2.0, gx + 1.8, WH + 2.2, D / 2 + 1.6, {});
   for (const gx of [gs0 - 1.8, gs1 + 1.8]) merlons(sink, [gx - 1.8, D / 2 + 1.6], [gx + 1.8, D / 2 + 1.6], WH + 2.2, 0.5, v, 0.2);
-  const ga = (gs1 - gs0) / 2, gc = (gs0 + gs1) / 2, spring = 3.6, n = mobile ? 6 : 10;
+  const ga = (gs1 - gs0) / 2, gc = (gs0 + gs1) / 2, spring = 3.6, n = 10;
   sink.span(earth, gs0, spring + ga * 1.1, D / 2 - 1.0, gs1, WH + 0.6, D / 2 + 1.0, {});
   for (let i = 0; i < n; i++) {
     // the horseshoe: the arc runs past the half circle (to 200 degrees) back in toward the jambs
