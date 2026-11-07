@@ -25,7 +25,8 @@
 // (its combat stream kept equal) is found at the first spotting check, the stagger the solo step once drew from a seed of
 // its own.
 // Every section runs, a red one included, and the receipt fails at the end with each failure listed, rethrowing the
-// first one's own error (round 5 S1).
+// first one's own error (round 5 S1). The two Mars sections red on 268 run last (round 6 V8), so a new red elsewhere
+// is the first failure and keys apart from the inherited one.
 import assert from 'node:assert/strict';
 import { Euler, Group, Matrix4, Quaternion, Vector3 } from 'three';
 import { createAuthoritativeMatch } from './authoritativeMatch.ts';
@@ -331,6 +332,10 @@ async function realAiBattle(authorityWorld, pageWorld, ticks, perturb, foeRecord
 // to its core-parity lane: TESTS-OWED 2026-11-06) stopped the receipt before its later controls (the Mars nudge, the
 // reseeded spotting), so they never ran on a tree where Mars is red. Each section's assertions are the ones it had;
 // only the runner is new.
+// The order (round 6 V8, 2026-11-07): the lane's and the release gate's classifiers key a red receipt by its first
+// failure alone, so a section that runs after an inherited red can turn red unseen (keyed inherited, never blocking).
+// 268's two red Mars sections, the bot's death and its respawn, therefore run last: every control, and the zone, run
+// before them. Only the respawn sits behind the death check, and it is red on 268 too.
 const failures = [];
 const passed = [];
 async function section(name, body) {
@@ -422,6 +427,15 @@ await section('control: the page\'s ammunition switch a tick late', async () => 
   assert.ok(late.divergence, 'the page switching its ammunition a tick late is caught');
   assert.equal(late.divergence.tick, SWITCH, `at the switch's tick (${JSON.stringify(late.divergence)})`);
   return `caught at tick ${late.divergence.tick} (${late.divergence.field})`;
+});
+
+// ---- negative control: a spotting stagger drawn from another seed is a different world (the solo step's old own seed)
+let reseeded = null;
+await section('control: an authority seeded one off', async () => {
+  reseeded = await run(60, null, { authoritySeed: SEED + 1 });
+  assert.ok(reseeded.divergence && reseeded.divergence.field.startsWith('sees'),
+    `an authority seeded one off is caught on what a team sees, at the first check (${JSON.stringify(reseeded.divergence)})`);
+  return `caught at tick ${reseeded.divergence.tick} (${reseeded.divergence.field})`;
 });
 
 // ---- (268, Main item 8) an objective mode on both drivers: Mars (zone control, the seeded boost caches, its low gravity
@@ -548,8 +562,17 @@ async function modeBattle(authorityWorld, pageWorld, ticks, perturb) {
   exercised.zoneOwners = [...exercised.zoneOwners];
   return { divergence, exercised, shed: shed.id, foe: foe.id };
 }
+const MODE_NUDGE = 1200;
+let marsNudged = null;
+await section('control: Mars, the own heading a billionth off', async () => {
+  marsNudged = await runModeBattle(MODE_NUDGE + 20, (tick, own) => { if (tick === MODE_NUDGE) own.state.yaw += 1e-9; });
+  assert.deepEqual(marsNudged.divergence?.tick, MODE_NUDGE, `Mars: the own heading a billionth off on the page at ${MODE_NUDGE} is caught there (${JSON.stringify(marsNudged.divergence)})`);
+  return `caught at tick ${marsNudged.divergence.tick} (${marsNudged.divergence.field ?? marsNudged.divergence.hull})`;
+});
+
 const MODE_TICKS = 6000;
-// the run, then each of its coverage assertions on its own, so a red one lists every miss beside it
+// the run, then each of its coverage assertions on its own, so a red one lists every miss beside it; the two red on 268
+// (the bot's death, its respawn: TESTS-OWED 2026-11-06) come last, so no other section runs behind them (round 6 V8)
 let mars = null;
 await section('Mars, byte-identical', async () => {
   mars = await runModeBattle(MODE_TICKS);
@@ -564,6 +587,9 @@ if (mars) {
   await section('Mars: the rammed buildings', () => {
     assert.ok(mars.exercised.collapses.length >= 2 && mars.exercised.collapses.includes(mars.shed), `two buildings came down alike (${mars.exercised.collapses})`);
   });
+  await section('Mars: a zone', () => {
+    assert.ok(mars.exercised.zoneOwners.length >= 1, `a zone was taken, alike (${mars.exercised.zoneOwners})`);
+  });
   await section('Mars: the bot\'s death and its turret', () => {
     assert.ok(mars.exercised.killedAt !== null && mars.exercised.turretIds.includes(mars.foe),
       `the bot was destroyed (tick ${mars.exercised.killedAt}) and its turret flew as a body, alike`);
@@ -571,26 +597,7 @@ if (mars) {
   await section('Mars: the respawn', () => {
     assert.ok(mars.exercised.foeDeaths >= 2, `the bot respawned on its slot and fought again, alike (${mars.exercised.foeDeaths} deaths)`);
   });
-  await section('Mars: a zone', () => {
-    assert.ok(mars.exercised.zoneOwners.length >= 1, `a zone was taken, alike (${mars.exercised.zoneOwners})`);
-  });
 }
-const MODE_NUDGE = 1200;
-let marsNudged = null;
-await section('control: Mars, the own heading a billionth off', async () => {
-  marsNudged = await runModeBattle(MODE_NUDGE + 20, (tick, own) => { if (tick === MODE_NUDGE) own.state.yaw += 1e-9; });
-  assert.deepEqual(marsNudged.divergence?.tick, MODE_NUDGE, `Mars: the own heading a billionth off on the page at ${MODE_NUDGE} is caught there (${JSON.stringify(marsNudged.divergence)})`);
-  return `caught at tick ${marsNudged.divergence.tick} (${marsNudged.divergence.field ?? marsNudged.divergence.hull})`;
-});
-
-// ---- negative control: a spotting stagger drawn from another seed is a different world (the solo step's old own seed)
-let reseeded = null;
-await section('control: an authority seeded one off', async () => {
-  reseeded = await run(60, null, { authoritySeed: SEED + 1 });
-  assert.ok(reseeded.divergence && reseeded.divergence.field.startsWith('sees'),
-    `an authority seeded one off is caught on what a team sees, at the first check (${JSON.stringify(reseeded.divergence)})`);
-  return `caught at tick ${reseeded.divergence.tick} (${reseeded.divergence.field})`;
-});
 
 if (failures.length) {
   console.error(`driverStepParity.selftest: ${failures.length} of ${failures.length + passed.length} sections failed (every section ran):`);
