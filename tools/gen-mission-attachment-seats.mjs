@@ -12,6 +12,7 @@ import {missionAttachmentCandidates,missionAttachmentMotionClear,missionAttachme
 import {authoredSupportCandidates,collectMissionStock,nativeSupportedSeat,nativeMissionCollision,nativeMissionTakeoffCollision,nativeRoofHeight,missionStockFingerprint} from './mission-attachment-geometry.mjs';
 import {missionSeatTrials} from './mission-attachment-seat-trials.mjs';
 import {DRONE_DOCK_EXEMPT} from '../src/sim/droneDockExempt.ts';
+import {LIVED_IN_RACKS,publishedStowageRacks,seatRackOverlaps} from '../src/vehicles/stowageRacks.ts';
 import {partArgs,writePartRows} from './changed-only/parts.mjs';
 const args=process.argv.slice(2),value=(name,fallback)=>args.find(a=>a.startsWith(name+'='))?.slice(name.length+1)??fallback;
 const check=args.includes('--check'),dryRun=args.includes('--dry-run'),ids=uniqueIds(value('--ids',Object.keys(TANK_SPECS).join(',')).split(','),'gen-mission-attachment-seats --ids');
@@ -61,6 +62,14 @@ function caseStock(entry,frame,candidates){
   entry.frames.set(frame,stock);
  }
  return entry.frames.get(frame);
+}
+// Round 270 (Main, 2026-11-06: "The rack and its load are the real vehicle's stowage; the dock is a mission add-on, so it
+// finds clear deck"): a stowage rack (src/vehicles/stowageRacks.ts: the racks the lived-in decor loads and every rack fitting
+// the builders publish) and the load over its rails are occupied, so the chooser passes over a seat whose keep-out boxes
+// enter one. Only the chooser reads it: a kept record is held to it by src/vehicles/stowageRackSeats.selftest.mjs.
+function caseRacks(entry){
+ entry.racks??=[...(LIVED_IN_RACKS[entry.spec.id]??[]),...publishedStowageRacks(entry.tank.root)];
+ return entry.racks;
 }
 function sameSupport(stock,seat){
  const supported=nativeSupportedSeat(stock,{...seat,y:Math.max(...seat.supportY)+.045},seat.y-Math.max(...seat.supportY));
@@ -117,6 +126,7 @@ function findSeat(spec,candidates,cases,refined=false,cantilever=false){
   reportSearchProgress(spec.id,refined,checked,rejections);
   if(!seat){reject(candidate.frame+':support');continue;}
   if(!missionAttachmentMotionClear(spec,seat)){reject(candidate.frame+':roof-gun');continue;}
+  if(seatRackOverlaps(seat,caseRacks(entry)).length){reject(candidate.frame+':stowage-rack');continue;}
   const collision=nativeMissionCollision(stock,seat)??nativeMissionTakeoffCollision(stock,seat);if(collision){reject(candidate.frame+':'+collision.kind+':'+collision.mesh);firstFailure??=collision;continue;}
   const validation=validateCases(spec,seat,candidates,cases);
   if(validation.failures.length){firstFailure??=validation.failures[0];continue;}

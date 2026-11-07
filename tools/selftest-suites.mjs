@@ -1193,6 +1193,8 @@ export const SELFTEST_SUITES = Object.freeze({
   'src/vehicles/decorationsEquipment.selftest.mjs',
     // 269 (lane abrams-bradley-269): the lived-in loads of the M1A1s and the Bradleys (crew kit, cargo net, coiled cable)
     'src/vehicles/decorLivedIn.selftest.mjs',
+    // 270 (Main 2026-11-06: "the dock is a mission add-on, so it finds clear deck"): no mission seat over a stowage rack
+    'src/vehicles/stowageRackSeats.selftest.mjs',
     'src/vehicles/decorationsStaging.selftest.mjs',
     'src/vehicles/decorDockKeepOut.selftest.mjs',
     // 2026-10-30 (the owner: "for tanks like griffin, dont allow decorations to be on the missile pods"): every launcher id
