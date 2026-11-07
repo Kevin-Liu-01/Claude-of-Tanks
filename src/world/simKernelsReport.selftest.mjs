@@ -12,7 +12,8 @@ assert.equal(simKernelsFailureReason(csp), 'csp');
 assert.equal(simKernelsFailureReason(new Error('world kernels: HTTP 404')), 'http_404');
 assert.equal(simKernelsFailureReason(new TypeError('Failed to fetch')), 'network');
 assert.equal(simKernelsFailureReason(new TypeError('Load failed')), 'network');
-// (round 5 Q1) the solo load's deadline (game/soloBattleRuntime.ts), named as AbortSignal.timeout names its own
+// (round 5 Q1) a solo request with no answer by its deadline (world/soloWorldKernels.ts), named as AbortSignal.timeout
+// names its own
 assert.equal(simKernelsFailureReason(new DOMException('world kernels: no answer in 15000 ms', 'TimeoutError')), 'timeout');
 let compileError;
 try { new WebAssembly.Module(new Uint8Array([0, 1, 2, 3])); } catch (error) { compileError = error; }

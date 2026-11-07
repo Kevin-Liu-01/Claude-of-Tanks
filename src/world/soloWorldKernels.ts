@@ -14,12 +14,20 @@ import { compileWorldKernels } from './wasmWorldKernels.ts';
 import { createSoloWorldKernels } from './soloWorldKernelProvider.ts';
 
 /**
- * The kernels' module compiled, and a provider of each world's kernels (game/state.ts setSoloWorldKernels). `signal` aborts
- * the fetch and its body (round 5 Q1: the load's deadline, game/soloBattleRuntime.ts SOLO_KERNELS_LOAD_DEADLINE_MS); a
- * compile cannot be aborted, and the caller drops an answer that comes after its deadline.
+ * The kernels' module compiled, and a provider of each world's kernels (game/state.ts setSoloWorldKernels). Round 5 Q1: a
+ * request with no answer `answerWithinMs` after its start (game/soloBattleRuntime.ts SOLO_KERNELS_LOAD_DEADLINE_MS) is
+ * aborted, a DOMException named TimeoutError (reported 'timeout', world/simKernelsStatus.ts), and nothing is installed;
+ * before, a request that never answered held its connection for the document's life. The bound ends at the answer:
+ * the body may still be coming over a slow link, and an abort would error it, so an answered load is never cut. Its
+ * compile, however late, ends in the provider, which reports 'wasm' (soloWorldKernelProvider.ts) for a module the caller
+ * always installs.
  */
-export async function loadSoloWorldKernels(check: boolean, signal?: AbortSignal) {
-  const response = await fetch(kernelsUrl, { signal });
+export async function loadSoloWorldKernels(check: boolean, answerWithinMs: number) {
+  const abort = new AbortController();
+  const unanswered = setTimeout(() => {
+    abort.abort(new DOMException(`world kernels: no answer in ${answerWithinMs} ms`, 'TimeoutError'));
+  }, answerWithinMs);
+  const response = await fetch(kernelsUrl, { signal: abort.signal }).finally(() => { clearTimeout(unanswered); });
   if (!response.ok) throw new Error(`world kernels: HTTP ${response.status}`);
   return createSoloWorldKernels(await compileWorldKernels(await response.arrayBuffer()), check);
 }

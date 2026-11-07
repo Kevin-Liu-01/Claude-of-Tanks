@@ -17,8 +17,8 @@ export interface SimKernelsStatus {
  * - 'csp': a Content Security Policy without 'wasm-unsafe-eval' refused the compile;
  * - 'http_<status>': the asset's fetch answered an error;
  * - 'network': the fetch failed;
- * - 'timeout': the load did not settle by its deadline (round 5 Q1: game/soloBattleRuntime.ts
- *   SOLO_KERNELS_LOAD_DEADLINE_MS, a DOMException named TimeoutError, as AbortSignal.timeout's);
+ * - 'timeout': the request had no answer by its deadline (round 5 Q1: world/soloWorldKernels.ts, held to
+ *   game/soloBattleRuntime.ts SOLO_KERNELS_LOAD_DEADLINE_MS; a DOMException named TimeoutError, as AbortSignal.timeout's);
  * - 'compile' and 'link': the bytes were not a module this engine accepts;
  * - 'no_webassembly': the engine has none;
  * - 'missing': the server's binary is not on disk (a deploy image without crates/cot-sim-wasm/pkg);
