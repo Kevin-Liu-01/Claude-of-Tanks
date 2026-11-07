@@ -16,7 +16,9 @@ import { defineConfig } from 'vitest/config';
  * 13-14 s. Those runs do not tell which of two causes timed it out: its own time on a starved runtime, which only this
  * timeout bounds now, or a hang reproduced on 92f415e879 (round 4 F9), its envelope flood handled across the room's rate
  * window, which left the socket open while the case sat on the close. The floods hold Date still (round 3), which
- * removes the hang at any load, and a close that never comes fails by name (client.ts closedWithin).
+ * removes the hang at any load, and a close that never comes fails by name (client.ts closedWithin). At load 110-130
+ * (round 5 Q0, f60d0aa200) five full runs under round two's 20 s timeout passed, the keepalive case in 0.7-2.6 s and the
+ * slowest cases (admin migration, the 24 h expiry) in 10-11 s; the 90 s stays the bound on a case's own time.
  */
 const TEST_TIMEOUT_MS = 90_000;
 export default defineConfig({
