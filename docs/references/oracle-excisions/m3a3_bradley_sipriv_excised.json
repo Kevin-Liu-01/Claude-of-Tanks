@@ -1,0 +1,16 @@
+{
+  "id": "m3a3_bradley",
+  "authority": "Main 2026-11-06 (release 270): \"Register and pin the cleaned sipriv print (sha 0f92442e) through the oracle-repair route: a BUILD-STANDARD section E excision, with the three removed parts and the reason recorded in its provenance row.\"",
+  "source": "/models/community-candidates/m3a3_bradley_sipriv.glb",
+  "sourceSha256": "a5a3a985c8074a4383c97e33340e51d22f19860dfe3c2a072677f543d08ba4f2",
+  "sourceRecord": "\"Low Poly M3A3 Bradley\" by SIpriv (Sketchfab, CC-BY; docs/ATTRIBUTION.md §5.248 batch A, the owner's low_poly_m3a3_bradley.glb). The pristine file is no longer registered or pinned; it stays beside the excised one, the section E .bak.",
+  "removed": [
+    { "node": "bone52_278", "what": "a spare TOW round (cylinder_261 and its eight fin cuboids) lying on the ground right of the hull, raw x 3.39..3.68" },
+    { "node": "bone63_296", "what": "a spare TOW round (cylinder_279 and its eight fin cuboids) lying on the ground right of the hull, raw x 2.80..2.90" },
+    { "node": "bone61_298", "what": "a TOW launch tube (cylinder_297) lying on the ground right of the hull, raw x 2.13..2.32" }
+  ],
+  "reason": "The three parts stand 0.9 to 2.5 m clear of the vehicle (its hull, skirts and tracks span raw x -1.84..1.22) and widen the file to 5.525 raw against the vehicle's 3.063. The reference loader fits every uncertified print to the spec's published width over the whole file (tools/reference-glb-loader.ts normalizeReferenceWidth), so the gate measured a Bradley scaled x0.653 (3.91 m long, 1.75 m tall): every geometry-gate curve 0 and procedural-fidelity 48.6 (H40 T38 G100 R63). Without them the same page scores 88.4 (H91 T77 G100 R84). Nothing on the vehicle is touched: the turret (bone11_169) and gun (bone28_163) nodes, every other mesh and transform are the source's.",
+  "output": "/models/community-candidates/m3a3_bradley_sipriv_excised.glb",
+  "outputSha256": "0f92442e651af6987f4f48bee429933f239cf6a58b707646bc7f3cc98cee896d",
+  "untextured": "MeshStandardMaterial 0x798167 on every mesh (GLTFLoader cannot decode the source's images in Node)."
+}

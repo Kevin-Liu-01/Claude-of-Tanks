@@ -339,6 +339,9 @@ export const SELFTEST_SUITES = Object.freeze({
     'tools/gate-stowage.selftest.mjs',
     // 267 (Main 2026-11-01): an oracle is measured only as the version its pin names; the ledger holds only the fleet's ids
     'tools/gate-oracle-pins.selftest.mjs',
+    // 270 (Main 2026-11-06): the loose-part class detector (whole-file width against the body's) and the §E excision
+    // recipe; the M3A3 registers its pinned excised print
+    'tools/oracle-width-audit.selftest.mjs',
     // 266: gate:repin's chunks (one capture ticket each) stop at the first failing chunk; a row it cannot re-pin is named
     'tools/gate-repin.selftest.mjs',
     'tools/source-comparison-cameras.selftest.mjs',

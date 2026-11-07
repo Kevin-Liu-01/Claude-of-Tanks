@@ -14,6 +14,16 @@ row's family base). The classic turret described below is the M2A2's (`modern3.t
 envelope and rear stops set on the M2A2 in `m3a2BradleySpecs.ts`). The M3A2 keeps its id, name, tier, the M3's stowed
 loads and its number B-31. The sections below record the 268 build.
 
+## Release 270: compared to the source turret's model
+
+Main, 2026-11-06: "The comparison registration follows the owner's swap. m3a2_bradley takes the source turret's model".
+The M3A2 is measured against the 42manako M2 Bradley print the source turret was measured from
+(`/models/tanks/community/m2_bradley_ifv.glb`, pinned 0d3f779a…; `tools/procedural-fidelity.html`, turret node
+`^turret_lod$`, autoPivot, the registration the M2A2 used), not a photo packet: its 268/269 packet
+(`docs/references/photos/m3a2-bradley-20261102.json`) is retired, and the M2A2 (now the classic turret) proves its own
+packet. Scores on 2026-11-06: procedural-fidelity 89.4 (H92 T78 G100 R88); geometry gate 34.1/90 (hull 45.3, whole 34.1,
+turret 64.2, stations 49.1, dims 44.9, floaters 100), the M2A2's 268 row on the same build to within 0.02.
+
 ## Why it exists (release 268)
 
 The owner, 2026-11-02, after release 268 rebuilt the Bradley family from his supplied model: "also make a new variant
@@ -71,8 +81,8 @@ ports (the shared hull shows none).
 
 ## References
 
-Photo packet `docs/references/photos/m3a2-bradley-20261102.json` (photographic route; numerical 3D comparison
-unverified: the turret is kept as main built it), fixture `src/vehicles/profiles/m3a2Bradley.selftest.mjs`.
+Comparison target since 270: the 42manako print (above). Release 268 and 269 proved the photo packet
+`docs/references/photos/m3a2-bradley-20261102.json` (retired in 270, in git history); the photographs below are its.
 
 1. https://commons.wikimedia.org/wiki/File:M2A2_ODS-SA_Bradley_Fighting_Vehicle.JPG — public domain (US Army); the M2A2
    ODS exterior the M3A2 ODS shares

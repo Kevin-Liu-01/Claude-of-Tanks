@@ -48,7 +48,8 @@ export const ORACLE_PINS = Object.freeze({
   '/models/community-candidates/leo2a7v_x_source.glb': pin('8cf3935defb761e0b6b02299d7c2af8648a949ee5733c8851f14525c5e2c9611'), // leo2a7v
   '/models/community-candidates/leopard_revolution_owner_2026.glb': pin('7a19d4244aa647a50cf7c1f18268da60329b11d14254a8c009ad09fac4c4b3f1'), // leo2_revolution
   '/models/community-candidates/m1a2_sepv2_dc_source.glb': pin('7fc3216da131d26e6389c4d40818f70ba03603c99812c5ae42c2f8b798910d16'), // m1a2_abrams_sepv2 (certificate)
-  '/models/community-candidates/m3a3_bradley_sipriv.glb': pin('a5a3a985c8074a4383c97e33340e51d22f19860dfe3c2a072677f543d08ba4f2'), // m3a3_bradley
+  '/models/community-candidates/m3a3_bradley_sipriv_excised.glb': pin('0f92442e651af6987f4f48bee429933f239cf6a58b707646bc7f3cc98cee896d',
+    "270 §E excision of the pristine a5a3a985… (two spare TOW rounds and a launch tube on the ground beside the hull removed; docs/references/oracle-excisions/m3a3_bradley_sipriv_excised.json)"), // m3a3_bradley
   // /models/community-candidates/m41_walker_bulldog_lowpoly.glb: m41a3: no copy on this machine, not pinned (the gate refuses it until one is registered)
   '/models/community-candidates/m48a5_patton_x_source.glb': pin('b54aff317407b292bd4d352a3d60ea0531a36bfbc3c21c698a9ba12ebb495285'), // m48a5_patton (certificate)
   '/models/community-candidates/m551_sheridan_war_thunder.glb': pin('d24f5245cd58d33d6bf7b41e2de46159a4a36a37cf9303d7f9df5c8b79b993c2',
@@ -121,7 +122,7 @@ export const ORACLE_PINS = Object.freeze({
     "no version reproduces the 08-10 row (90.1): four versions (lane, archive and two hash-named) score 0 to 23; the 55ff0b575d page gives the same curves"), // challenger2
   '/models/tanks/community/fv510_warrior.glb': pin('d4bcad966b92d0735f0affe65a926502eee9e2a158ff0b35cfe6c443453fa389',
     "the only version on this machine; the 09-12 row scored 0 (whole 7.9), this file whole 80.2"), // fv510
-  '/models/tanks/community/m2_bradley_ifv.glb': pin('0d3f779a17a549f7206281331731af4400db7eb1d6907ae6ab7e504cbcfb3d10'), // m2a2_bradley
+  '/models/tanks/community/m2_bradley_ifv.glb': pin('0d3f779a17a549f7206281331731af4400db7eb1d6907ae6ab7e504cbcfb3d10'), // m3a2_bradley (270: the source turret moved there in the 269 swap)
   '/models/tanks/community/recovered/challenger1.glb': pin('aab22967e5d66d7c122fdb8d7fe83dcc9f43c506d1454af58e30749f91134d27'), // challenger1_mk2
   '/models/tanks/community/recovered/chieftain5.glb': pin('c5d9e375b065e25eb23803608208d201781f3bab5c78b0349f42fd705eeb5f7c'), // chieftain3
   '/models/tanks/community/recovered/leopard2_proto.glb': pin('749d03ae92863ddda0a388501f54c19f7d460a149ab81e230f3e1602e5148fb5'), // leopard2_proto
