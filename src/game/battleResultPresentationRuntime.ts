@@ -203,10 +203,9 @@ export function createBattleResultPresentationRuntime({
    * (clearPending), a freshly taken Watch seat (newSeat) and a Watch seat left (leaveSeat: a replay on screen then plays
    * out under the killcam and its own end, afterDeath, hands back; with no seat neither reader acts). A verdict's
    * replay that takes the screen from it leaves it set: the verdict's own end hands back (presentResult). Its two
-   * readers, the restart's and the revive's
-   * listeners, never read it after this seat's verdict: a restart cannot follow the verdict (battlePresentation.ts
-   * resetSettledWorld's policy) before the teardown or the next battle's reset clears it, and the revive's listener
-   * returns once the verdict is shown (endShown).
+   * readers, the restart's and the revive's listeners, never read it after this seat's verdict: a restart cannot follow
+   * the verdict (battlePresentation.ts resetSettledWorld's policy) before the teardown or the next battle's reset clears
+   * it, and the revive's listener returns once the verdict is shown (endShown).
    */
   let deathReplayShown = false;
   /**
@@ -455,13 +454,22 @@ export function createBattleResultPresentationRuntime({
   // a wave is cleared; and a Watch seat driving an allied bot (WATCH_RULES.modes; watchController.ts drivenHandoff
   // keeps the seat while the replay runs), which Horde's next wave or a Frontline sector's capture stands up. Most
   // often the revive comes after the death replay ended on its own (a wave runs on well past a replay), while the
-  // death orbit circles the wreck; it can also land inside the death beat or the replay (up to 15 s). The killcam's own
-  // 'mode:respawn' listener cancels that replay, so before, the revived hull played on under the replay's frozen pin
-  // with the HUD veiled; a revive inside the death beat left the orbit on the living hull and the beat's late fire
-  // restarted it; one after the replay left the orbit circling the living hull; and the hull's next death got no
-  // death cam or replay (deathCamShown stayed set). In a mode with a respawn timer the flow never starts (update's
-  // `revives`), so this is a no-op there. Only this seat's hull counts: inside its death window every other revive
-  // (Horde's arrivals and wave start, Frontline's bot allies and reinforcements) tells the same event with its own id.
+  // killcam's ally chase holds the camera (round 6 V5: it starts at the death replay's end whenever an ally lives, and
+  // a room goes on only while another human does; the killcam's own 'mode:respawn' listener ends it, so the camera was
+  // the player's again there before this owner heard the revive); the death orbit holds after the replay only with no
+  // ally to chase. The revive can also land inside the death beat or the replay (up to 15 s). The killcam's listener
+  // cancels that replay, so before, the revived hull played on under the replay's frozen pin with the HUD veiled; a
+  // revive inside the death beat left the orbit on the living hull and the beat's late fire restarted it; one after the
+  // replay with the orbit holding left it circling the living hull. In every timing the hull's later deaths got no
+  // death flow (deathCamShown stayed set): where the camera had come back, the chase view over the wreck with the HUD
+  // live, no replay and no ally chase (the killcam starts it only from a death flow) until the next wave, and a verdict
+  // on such a death got the wreck orbit instead of its kill cam (owner 2026-09-21: "if u die before end it shows a kill
+  // cam of that end"). The revive ends the life that latch belongs to, as the killcam's listener ends its lethal chain,
+  // so the death cam re-arms (round 6 V5 keeps it; Kevin may overrule: origin/main 268 ran only a hull's first death
+  // flow in a room).
+  // In a mode with a respawn timer the flow never starts (update's `revives`), so this is a no-op there. Only this
+  // seat's hull counts: inside its death window every other revive (Horde's arrivals and wave start, Frontline's bot
+  // allies and reinforcements) tells the same event with its own id.
   // After the verdict the ending owns the camera and the report, so a revive then is not this owner's (a defensive
   // guard: once the verdict latches a mode's step revives no more, matchModes.ts step's `result` latch, which
   // state.ts's matchEnded sets for a verdict the mode did not reach). What the flow held on screen goes back at the
