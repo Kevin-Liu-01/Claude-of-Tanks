@@ -2694,7 +2694,7 @@ const m113Net = (): DecorManifestRow[] => [
 // (each row's seat measured in Node against the decor's own checks: loads stand behind the guns' reach, clear of the
 // mission attachment's dock and of each other; the pioneer tools are the hull's fittings, inside the track width)
 const M113_MANIFESTS: Readonly<Record<string, () => DecorManifestRow[]>> = Object.freeze({
-  m113a3: () => [
+  m113a3: (): DecorManifestRow[] => [
     { kit: 'tarp', p: 1, v: { v: 'fat', len: 1.30 }, slot: ['hullRoof', { x: 0, z: -2.21 }] },
     { kit: 'cargo', p: 1, v: { v: 'large-rucksack' }, slot: ['hullRoof', { x: -0.80, z: -1.78 }] },
     { kit: 'cargo', p: 1, v: { v: 'large-rucksack' }, slot: ['hullRoof', { x: -0.14, z: -1.78 }] },
@@ -2709,20 +2709,20 @@ const M113_MANIFESTS: Readonly<Record<string, () => DecorManifestRow[]>> = Objec
   // the FSV's blind A/B (2026-11-06) chose the plain stern: cans hung off the plate's corners broke its side silhouette and
   // no FSV photograph shows the net across its nose; its 76 mm sweeps the rear roof (each roof seat ahead of the bedroll
   // is the gun's) and holds the ramp's rack below its floor, so the FSV carries the bedroll and the cable
-  m113a1_fsv: () => [
+  m113a1_fsv: (): DecorManifestRow[] => [
     // the bedroll across the roof's rear left (the right rear is the mission attachment's dock)
     { kit: 'tarp', p: 1, v: { v: 'fat', len: 0.74 }, slot: ['hullRoof', { x: 0.43, z: -2.28 }] },
     { kit: 'cable', p: 1, v: { len: 2.4 }, slot: ['hullSideCable', { side: -1 }] },
   ],
   // the MRV's sides are its buoyancy pods (no cable)
-  m113a1_mrv: () => [
+  m113a1_mrv: (): DecorManifestRow[] => [
     { kit: 'jerry', p: 1, v: { n: 2 }, slot: ['hullRearRack', { x: 0.39 }] },
     { kit: 'jerry', p: 1, v: { n: 2 }, slot: ['hullRearRack', { x: -0.39 }] },
     { kit: 'tarp', p: 1, v: { v: 'fat', len: 0.74 }, slot: ['hullRoof', { x: 0.43, z: -2.28 }] },
     ...m113Net(),
   ],
   // the AS4's heaped roof between its bins, a swag on each bin's lid
-  m113as4: () => [
+  m113as4: (): DecorManifestRow[] => [
     { kit: 'cargo', p: 1, v: { v: 'large-rucksack' }, slot: ['hullRoof', { x: -0.38, z: -2.42 }] },
     { kit: 'cargo', p: 1, v: { v: 'large-rucksack' }, slot: ['hullRoof', { x: 0.38, z: -2.42 }] },
     { kit: 'cargo', p: 1, v: { v: 'bedroll-pair' }, slot: ['hullRoof', { x: -0.30, z: -1.95 }] },
