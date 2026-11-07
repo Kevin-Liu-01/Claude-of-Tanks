@@ -1974,6 +1974,9 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/sim/impactPhysics.selftest.mjs',
     'src/sim/impactParity.selftest.mjs',
     'src/sim/ramModuleLaw.selftest.mjs', // 2026-11-02 audit M6: one module law, and a lethal ram's module damage on both drivers
+    // 2026-11-06 round 5 S2 (audit M6 ram rule after the 268 merge): a teammate ram deals nothing on the solo step or a room's
+    // authority, and its report reaches the page's bus and its one listener (the audio) with no damage event or cue
+    'src/sim/teammateRam.selftest.mjs',
     // 265 (the owner, 2026-10-29: one core, two drivers): the local step and the authority's leave the same world, byte for byte
     // (2026-11-02 audit M6: and what each team sees, tick for tick — spotting through one factory)
     'src/sim/driverStepParity.selftest.mjs',
