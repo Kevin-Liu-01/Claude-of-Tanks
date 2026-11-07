@@ -9,6 +9,10 @@ import { heldRunExitCode, heldStopWhy, openHeldRun, runHeldItem } from './held-i
 //     --width 1280 --height 720 --fps 30 --bitrate 8000000 --out shots/battle-reels-v3/masters
 //   node tools/studio-example-videos.mjs --collection hero-rails --only 2 \
 //     --stills 0,900,1850,2900,3900,5000,6000 --out shots/hero-rails-r2/preview
+// A flag given twice takes its last value (round 4 E10; recorded round 5 U9): a flag after an npm script's baked ones
+// overrides that flag (`npm run reels:render -- --out shots/x` writes to shots/x), and the --only a stop's finishing run
+// appends replaces the run's own. A package.json script runs this tool as its last command, so the flags after
+// `npm run <script> --` reach it (tools/long-hold-users.selftest.mjs checks both).
 //
 // Collections: `duels` (every registered map, the Studio duel showcase),
 // `features` (the six feature loops cut from approved action frames),
@@ -28,7 +32,6 @@ import {spawnSync} from 'node:child_process';
 import { resolve, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import {BATTLE_REEL_SCENARIOS, DUEL_SCENARIOS as SCENARIOS} from './studio-example-scenarios.mjs';
 import { BOOT_LOADED_EXPRESSION } from './game-readiness.mjs';
 
 const FEATURE_SCENE_FILES = [
@@ -151,6 +154,15 @@ function heroRailScenario(config, index) {
 }
 
 const HERO_RAIL_SCENARIOS = HERO_RAIL_FILES.map(heroRailScenario);
+// (round 5 U6) the duel and battle-reel pools load with the run that renders one: tools/studio-example-scenarios.mjs
+// reads every map's config (src/world/maps/index.ts, ~0.35 s of CPU), which a features or hero-rails run never needs
+// (tools/long-hold-users.selftest.mjs's signal children render features, each in a process of its own)
+const SCENARIO_POOLS = {
+  duels: async () => (await import('./studio-example-scenarios.mjs')).DUEL_SCENARIOS,
+  features: async () => FEATURE_SCENARIOS,
+  'hero-rails': async () => HERO_RAIL_SCENARIOS,
+  'battle-reels': async () => (await import('./studio-example-scenarios.mjs')).BATTLE_REEL_SCENARIOS,
+};
 
 /**
  * The run as a function (round 4 F12: tools/long-hold-users.selftest.mjs drives it in Node, with no Vite or Chrome).
@@ -168,14 +180,10 @@ export async function renderStudioExamples(args = process.argv.slice(2), { creat
 
   const outDir = resolve(opt('out', 'shots/studio-modern-examples'));
   const collection = opt('collection', 'duels');
-  const POOLS = {
-    duels: SCENARIOS,
-    features: FEATURE_SCENARIOS,
-    'hero-rails': HERO_RAIL_SCENARIOS,
-    'battle-reels': BATTLE_REEL_SCENARIOS,
-  };
-  const scenarioPool = POOLS[collection];
-  if (!scenarioPool) throw new Error(`unknown collection ${collection}; expected ${Object.keys(POOLS).join(', ')}`);
+  if (!Object.hasOwn(SCENARIO_POOLS, collection)) {
+    throw new Error(`unknown collection ${collection}; expected ${Object.keys(SCENARIO_POOLS).join(', ')}`);
+  }
+  const scenarioPool = await SCENARIO_POOLS[collection]();
   const count = Math.max(1, Math.min(scenarioPool.length, Number.parseInt(opt('count', String(scenarioPool.length)), 10) || scenarioPool.length));
   const only = new Set(String(opt('only', ''))
     .split(',')

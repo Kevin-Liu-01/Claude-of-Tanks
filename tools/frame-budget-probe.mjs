@@ -1309,7 +1309,14 @@ export async function runFrameProbe(options, { acquireLocks = acquireProbeLocks,
     writtenAt: new Date().toISOString(), options, machine, remaining, voided,
     scenes: Object.fromEntries([...staging].map(([k, v]) => [k, v.history])), node: process.version }, null, 1));
   log(`${ok ? 'done' : 'FAILED'}${remaining ? ` (${remaining} slot(s) left for the next hold)` : ''}${voided ? ` — ${voided} slot(s) VOID` : ''}`);
-  if (ok && remaining) markUnitsLeft();
+  // (round 5 U9) the run sets its exit code, as battle-memory-probe's and shadow-cache-truth's runs do: a failed slot
+  // 1, never over a signal's 128 + n (heldRunExitCode; `= 1` set it over the signal), else slots left 3. The CLI set
+  // the 1 after the run, where no receipt reached it. tools/probe-unit-stop.selftest.mjs pins both halves:
+  // 'frame-budget-probe failure writer' (no signal: a FAILED slot exits 1, alone or beside a slot left; this line is
+  // the CLI's only exit 1 for a FAILED slot) and 'frame-budget-probe SIGTERM after a failure' (its 1 is never over
+  // a signal's 128 + n)
+  if (!ok) heldRunExitCode({ failed: true });
+  else if (remaining) markUnitsLeft();
   return { ok, remaining };
 }
 
@@ -1522,8 +1529,7 @@ if (isMainModule(import.meta.url)) {
     writeFileSync(path.join(outDir, 'frame-report.md'), md);
     console.log(md);
   } else {
-    const result = await runFrameProbe(options);
-    // (round 4 review) a failure exits 1, never over a signal's 128 + n (heldRunExitCode; `= 1` set it over the signal)
-    if (!result.ok) heldRunExitCode({ failed: true });
+    // the run sets its exit code (round 5 U9): a failure 1, never over a signal's 128 + n; slots left 3
+    await runFrameProbe(options);
   }
 }

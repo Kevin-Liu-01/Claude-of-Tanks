@@ -31,6 +31,17 @@
 //   owner    the signal owner keeps 128 + n for every open-form tool however it ends: its last `process.exit(failed ? 1 :
 //            0)` after the release (screenshot, gunnery_gate, perfprobe, the audio smokes, studio-selftest,
 //            visual-evaluator: exit 1) or an uncaught queued open (exit 1); and tools/held-items.mjs's rules directly.
+// (round 5 U9) And:
+//   output   turret-parent-audit's output holds what ran: a stop before any id (a signal while held, booting or
+//            re-queued, or a cap stop, which exits 3) leaves the previous output as it was (it wrote [] over it);
+//   queued   a tool queued when the signal comes starts nothing (openHeldRun's null: `if (!hold) return;`): what serves
+//            and draws says when it starts, and nothing may (the line and the 143 come from openHeldRun and the signal
+//            owner, so a tool that ran on past the null passed);
+//   npm      a finishing run through an npm script: a script that names studio-example-videos or shoot (however it
+//            calls node) runs it as its last command (the flags after `npm run <script> --` reach the tool, not a
+//            command after an &&), and reels:render's baked flags hold under a typed selection and the appended one
+//            (the last --only wins), take 3 of the battle-reel pool (loaded with the run) rendered; a duels run's takes
+//            are the duel pool's.
 // No real browser, server or lock starts; the real Chrome runs stay the owner's (manualRecommended).
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
@@ -41,9 +52,16 @@ import { mock } from 'node:test';
 import { fileURLToPath } from 'node:url';
 import { openCaptureHold } from './capture-hold.mjs';
 import { heldRunExitCode, heldStopWhy, runHeldItem } from './held-items.mjs';
-import { shootMarketing } from './marketing-shots/shoot.mjs';
-import { renderStudioExamples } from './studio-example-videos.mjs';
-import { runTurretParentAudit } from './turret-parent-audit.mjs';
+
+// (round 5 U6) A tool loads when a run needs it: a signal child imports only the tool it runs (the open-form children
+// none), the parent all three. studio-example-videos cost ~0.37 s of CPU to import (its scenarios import every map's
+// config; it now loads them only for a duels or battle-reels run, and the studio children render features), and each of
+// the 14 children imported all three statically: ~5.5 s of the receipt's 6.4 s user.
+const tools = {
+  turret: async () => (await import('./turret-parent-audit.mjs')).runTurretParentAudit,
+  shoot: async () => (await import('./marketing-shots/shoot.mjs')).shootMarketing,
+  studio: async () => (await import('./studio-example-videos.mjs')).renderStudioExamples,
+};
 
 const SECOND = 1000, MINUTE = 60 * SECOND;
 const CAP_MS = 20 * MINUTE; // the lock's base hold cap (capture-lock.mjs DEFAULT_HOLD_CAP_MS)
@@ -205,7 +223,7 @@ const indexOfEvent = (events, prefix) => events.findIndex((event) => event.start
 
 // ---- turret-parent-audit: ids, grace 180 s, an idle page through the yield ------------------------------------------------
 const IDS = ['tpa_one', 'tpa_two', 'tpa_three', 'tpa_four'];
-async function turretRun({ idMs, graceSeconds, requeue = 'resume' }) {
+async function turretRun({ idMs, graceSeconds, requeue = 'resume', previous = null }) {
   const dir = scratch(), events = [], holdLog = [];
   const lock = standInLock({ waiters: 1, events, requeue });
   const chrome = standInChrome({ events, script: ({ method, url }) => {
@@ -215,10 +233,12 @@ async function turretRun({ idMs, graceSeconds, requeue = 'resume' }) {
     return { value: { id, stranded: [], abutting: [], dangling: [] } };
   } });
   const outFile = join(dir, 'turret-parent.json');
+  if (previous !== null) writeFileSync(outFile, previous); // a previous run's output
+  const runTurretParentAudit = await tools.turret();
   const run = await onMockClock(() => runTurretParentAudit([`--ids=${IDS.join(',')}`], { createServer: standInVite,
     puppeteer: chrome.launcher, outFile, hold: holdFor({ lock, chrome, holdLog, graceSeconds }) }));
-  const rows = existsSync(outFile) ? JSON.parse(readFileSync(outFile, 'utf8')) : null;
-  return { ...run, events, holdLog: holdLog.join('\n'), rows };
+  const text = existsSync(outFile) ? readFileSync(outFile, 'utf8') : null;
+  return { ...run, events, holdLog: holdLog.join('\n'), rows: text === null ? null : JSON.parse(text), text };
 }
 
 // ---- marketing-shots/shoot: scenes, grace 180 s, the Studio page frozen through the yield -------------------------------
@@ -236,6 +256,7 @@ async function shootRun({ sceneMs, graceSeconds, requeue = 'resume', extra = [],
     return { ms: sceneMs(arg.name) }; // __STUDIO.load(scene): the scene's world
   } });
   const args = ['--scenes', scenesDir, '--out', out, '--width', '64', ...extra];
+  const shootMarketing = await tools.shoot();
   const run = await onMockClock(() => shootMarketing(args, { createServer: standInVite,
     puppeteer: chrome.launcher, hold: holdFor({ lock, chrome, holdLog, graceSeconds }) }));
   return { ...run, args, events, holdLog: holdLog.join('\n'), loaded, shot: SCENES.filter((name) => existsSync(join(out, `${name}.png`))) };
@@ -256,12 +277,14 @@ const listed = (dir) => {
   return existsSync(file) ? JSON.parse(readFileSync(file, 'utf8')).stills.map((still) => `${still.index}:${still.tMs}`) : [];
 };
 async function studioRun({ takeMs, graceSeconds, args = ['--count', '4', '--stills', '0'], waiters = 1, dir = scratch(), requeue = 'resume' }) {
-  const events = [], holdLog = [], staged = [];
+  const events = [], holdLog = [], staged = [], takes = [];
   const lock = standInLock({ waiters, events, requeue });
-  const chrome = studioChrome({ takeMs, events, onCall: ({ method, arg }) => { if (method === 'evaluate' && Number.isInteger(arg?.index)) staged.push(arg.index); } });
+  const chrome = studioChrome({ takeMs, events, onCall: ({ method, arg }) => {
+    if (method === 'evaluate' && Number.isInteger(arg?.index)) { staged.push(arg.index); takes.push(arg); } } });
+  const renderStudioExamples = await tools.studio();
   const run = await onMockClock(() => renderStudioExamples([...args, '--out', dir], { createServer: standInVite,
     puppeteer: chrome.launcher, hold: holdFor({ lock, chrome, holdLog, graceSeconds }) }));
-  return { ...run, events, holdLog: holdLog.join('\n'), stills: listed(dir), staged };
+  return { ...run, events, holdLog: holdLog.join('\n'), stills: listed(dir), staged, takes };
 }
 
 // ---- (E10) the signal child: one tool, SIGTERM while its first item runs, or while it boots --------------------------------
@@ -299,19 +322,26 @@ if (process.argv[2] === '--signal-child') {
     for (let wait = 0; process.exitCode !== 143 && wait < 3000; wait++) await new Promise((done) => setTimeout(done, 10));
     return standInVite(config);
   };
-  const deps = { createServer: phase === 'boot' ? slowVite : standInVite, puppeteer: chrome.launcher,
+  // (round 5 U9) what serves and draws prints a [stand-in] line when it starts: a queued child's tool starts neither
+  const vite = phase === 'boot' ? slowVite : standInVite;
+  const deps = { createServer: async (config) => { console.error('[stand-in] Vite started'); return vite(config); },
+    puppeteer: { launch: async (options) => { console.error('[stand-in] Chrome launched'); return chrome.launcher.launch(options); } },
     hold: { lock, log: (line) => console.error(line), teardown: chrome.teardown } };
   // each tool's own command-line entry, its stand-ins aside
   if (tool === 'turret') {
+    const runTurretParentAudit = await tools.turret();
     await runTurretParentAudit(phase === 'list' ? [] : ['--ids=tpa_one,tpa_two'], { ...deps, outFile: join(dir, 'turret-parent.json') });
   } else if (tool === 'shoot') {
+    const shootMarketing = await tools.shoot();
     const scenesDir = join(dir, 'scenes');
     mkdirSync(scenesDir);
     for (const name of ['01_a', '02_b']) writeFileSync(join(scenesDir, `${name}.json`), JSON.stringify({ map: 'verdant', name }));
     await shootMarketing(['--scenes', scenesDir, '--out', join(dir, 'raw'), '--width', '64'], deps);
     process.exit();
   } else if (tool === 'studio') {
-    await renderStudioExamples(['--count', '2', '--stills', '0', '--out', dir], deps);
+    const renderStudioExamples = await tools.studio();
+    // the features collection: its pool reads no map config (the duels' would cost ~0.35 s of CPU in each child)
+    await renderStudioExamples(['--collection', 'features', '--count', '2', '--stills', '0', '--out', dir], deps);
   } else if (phase === 'exit') {
     // an open-form tool's shape (screenshot.mjs and the others): its hold, its page call cut by the hold's teardown, the
     // finally's release, then its own exit
@@ -337,8 +367,11 @@ if (process.argv[2] === '--signal-child') {
   const check = async (name, run) => {
     try { await run(); } catch (error) { failed.push(`${name}: ${String(error?.message ?? error).split('\n').slice(0, 6).join('\n    ')}`); }
   };
+  // (round 5 U9) each turret child's output file holds a previous run's row first
+  const PREVIOUS = `${JSON.stringify([{ id: 'tpa_previous', stranded: [], abutting: [], dangling: [] }], null, 1)}`;
   const signalChild = (tool) => new Promise((done) => {
     const dir = scratch();
+    if (tool.startsWith('turret')) writeFileSync(join(dir, 'turret-parent.json'), PREVIOUS);
     const child = spawn(process.execPath, [SELF, '--signal-child', tool, dir], { cwd: ROOT, stdio: ['ignore', 'pipe', 'pipe'] });
     let output = '';
     child.stdout.setEncoding('utf8').on('data', (chunk) => { output += chunk; });
@@ -348,7 +381,7 @@ if (process.argv[2] === '--signal-child') {
   });
   try {
     // the signal children start first (each imports its tool); the mock-clock cases run meanwhile
-    const children = Object.fromEntries(['turret', 'turret-list', 'shoot', 'shoot-boot', 'studio', 'studio-boot',
+    const children = Object.fromEntries(['turret', 'turret-list', 'turret-boot', 'shoot', 'shoot-boot', 'studio', 'studio-boot',
       'turret-queued', 'shoot-queued', 'studio-queued', 'turret-requeue', 'shoot-requeue', 'studio-requeue', 'open-exit', 'open-uncaught']
       .map((tool) => [tool, signalChild(tool)]));
 
@@ -380,6 +413,18 @@ if (process.argv[2] === '--signal-child') {
       assert.ok(run.rows.every((row) => !row.error), 'no ERROR row');
       assert.match(run.said, /--ids=tpa_four\b/, 'the finishing run names the id left');
       assert.equal(run.exitCode, 3, 'ids left: exit 3');
+    });
+    // (round 5 U9 review) a cap stop with no signal before any id: tpa_one runs 0-1500 s, the hold is stopped at 1260 s
+    // (the default 60-s grace) and its teardown at 1320 s cuts the id. Nothing audited, so the previous output stays,
+    // and the run still exits 3 (every id left, the finishing run named); the signal children's 143 hid this path's code
+    await check('turret-parent-audit stop before any id', async () => {
+      const run = await turretRun({ idMs: () => 1500 * SECOND, graceSeconds: 60, previous: PREVIOUS });
+      assert.equal(run.error, undefined, `no throw (${run.error?.message})`);
+      assert.match(run.holdLog, /00:21:00\] hold cap: no checkpoint within 60 s; asking the work to stop/, run.holdLog);
+      assert.match(run.holdLog, /00:22:00\] still running 60 s past the stop: tearing down/, run.holdLog);
+      assert.equal(run.text, PREVIOUS, `nothing audited: the previous output kept (${run.said})`);
+      assert.match(run.said, /4 id\(s\) left[^\n]*--ids=tpa_one,tpa_two,tpa_three,tpa_four \(nothing audited/, run.said);
+      assert.equal(run.exitCode, 3, `every id left: exit 3, the run unfinished (${run.exitCode})`);
     });
 
     // ---- marketing-shots/shoot -----------------------------------------------------------------------------------------
@@ -416,6 +461,9 @@ if (process.argv[2] === '--signal-child') {
       const run = await studioRun({ takeMs: () => 483 * SECOND });
       assert.equal(run.error, undefined, `no throw (${run.error?.message})`);
       assert.deepEqual(run.stills, ['1:0', '2:0', '3:0', '4:0'], `every take's still listed (${run.said})`);
+      // (round 5 U6 review) the default collection's takes are the duel pool's, which loads with the run
+      const { DUEL_SCENARIOS } = await import('./studio-example-scenarios.mjs');
+      assert.deepEqual(run.takes, DUEL_SCENARIOS.slice(0, 4), 'the takes are the duel pool\'s first four');
       const [frozen, released, again, thawed] = ['frozen@1449', 'release@1449', 'held again@1569', 'active@1569'].map((event) => run.events.indexOf(event));
       assert.ok(frozen >= 0 && frozen < released && released < again && again < thawed,
         `the take in flight finished inside the 300-s grace, then the yield froze and thawed the page (${run.events.join(' ')})`);
@@ -500,6 +548,58 @@ if (process.argv[2] === '--signal-child') {
       assert.deepEqual(finishing.staged, [4], `the named run renders only the take left (${finishing.said})`);
       assert.deepEqual(finishing.stills, ['1:0', '2:0', '3:0', '4:0'], 'and stills.json lists all four');
     });
+    // (round 5 U9 review) A finishing run through an npm script: `npm run <script> -- --only <left>` adds the flags to
+    // the end of the script's command, so they reach the tool only when it is the script's last command (after an &&,
+    // ;, ||, | or a background & they go to the next one; a redirect's 2>&1 splits nothing). A script names the tool by
+    // its path, however node is called (`node ./tools/…`, `node --max-old-space-size=… tools/…`, an absolute path);
+    // round 5's first form matched only `node tools/<file>`, and a script spelt another way went unchecked. A baked
+    // selection is harmless: the last --only / --match wins, and what a stop leaves is inside it. Then reels:render's
+    // baked flags (its --out set aside: this receipt writes to a scratch folder), a selection typed after them and the
+    // finishing run's appended one: the baked collection and size hold, the appended --only selects, and the take is
+    // the battle-reel pool's (round 5 U6: the pool loads with the run)
+    await check('npm finishing run', async () => {
+      const finishing = ['tools/studio-example-videos.mjs', 'tools/marketing-shots/shoot.mjs'];
+      const toolAt = (file) => new RegExp(String.raw`(?:^|\s)(?:\S*/)?${file.replaceAll('.', '\\.')}(?=$|[\s;&|])`);
+      const runners = (scripts) => Object.entries(scripts).flatMap(([name, command]) => finishing
+        .filter((file) => toolAt(file).test(command))
+        .map((file) => {
+          const commands = command.split(/&&|\|\||[;|]|(?<![<>])&(?!>)/).map((part) => part.trim());
+          const at = commands.findLastIndex((part) => toolAt(file).test(part));
+          const call = toolAt(file).exec(commands[at]);
+          return { name, last: at === commands.length - 1,
+            args: commands[at].slice(call.index + call[0].length).trim().split(/\s+/).filter(Boolean) };
+        }));
+      const { scripts } = JSON.parse(readFileSync(join(ROOT, 'package.json'), 'utf8'));
+      const found = runners(scripts);
+      const reels = found.find(({ name }) => name === 'reels:render');
+      assert.ok(reels && ['studio:features:render', 'studio:examples'].every((script) => found.some(({ name }) => name === script)),
+        `the scripts that run the tools are found (${found.map(({ name }) => name)})`);
+      assert.deepEqual(found.filter(({ last }) => !last).map(({ name }) => name), [], 'each script runs its tool last, so the flags after -- reach it');
+      // the check reads planted scripts: a tool that is not its script's last command, in each spelling, is found
+      const planted = runners({ ...scripts, 'reels:render': `${scripts['reels:render']} && echo rendered`,
+        'planted:dot': 'node ./tools/studio-example-videos.mjs --collection duels && echo done',
+        'planted:flag': 'node --max-old-space-size=8192 tools/studio-example-videos.mjs; echo done',
+        'planted:pipe': 'node /repo/tools/marketing-shots/shoot.mjs --match 01 | tee shoot.log',
+        'planted:background': 'node tools/studio-example-videos.mjs --only 2 & wait',
+        'planted:last': 'npm run -s prepare && node ./tools/marketing-shots/shoot.mjs --match 01',
+        'planted:redirect': 'node tools/studio-example-videos.mjs --only 2 2>&1',
+        'planted:other': 'node tools/studio-example-videos.mjs.bak && node tools/studio-example-videos-x.mjs && echo done' });
+      assert.deepEqual(planted.filter(({ last }) => !last).map(({ name }) => name), ['reels:render', 'planted:dot', 'planted:flag', 'planted:pipe',
+        'planted:background'],
+        `a planted command after the tool is found in each spelling (${JSON.stringify(planted)})`);
+      assert.deepEqual(planted.find(({ name }) => name === 'planted:last')?.args, ['--match', '01'], 'a tool run last is read with its flags');
+      assert.equal(planted.find(({ name }) => name === 'planted:redirect')?.last, true, 'a redirect after the tool keeps it last');
+      assert.ok(!planted.some(({ name }) => name === 'planted:other'), 'another file whose name starts with the tool\'s is not the tool');
+      const dir = scratch(), outAt = reels.args.indexOf('--out');
+      const bakedArgs = outAt < 0 ? reels.args : [...reels.args.slice(0, outAt), ...reels.args.slice(outAt + 2)];
+      const run = await studioRun({ dir, waiters: 0, takeMs: () => SECOND, args: [...bakedArgs, '--stills', '0', '--only', '2,3', '--only', '3'] });
+      assert.equal(run.error, undefined, run.error?.message);
+      const listing = JSON.parse(readFileSync(join(dir, 'stills.json'), 'utf8'));
+      assert.deepEqual([listing.collection, listing.renderer], ['battle-reels', { width: 1280, height: 720 }], 'the baked flags hold');
+      assert.deepEqual(run.staged, [3], `the appended --only selects, not the typed one before it (${run.said})`);
+      const { BATTLE_REEL_SCENARIOS } = await import('./studio-example-scenarios.mjs');
+      assert.deepEqual(run.takes, [BATTLE_REEL_SCENARIOS.find((scenario) => scenario.index === 3)], 'the take is the battle-reel pool\'s take 3');
+    });
 
     // ---- (round 4 review) tools/held-items.mjs's rules on their own --------------------------------------------------------
     await check('held-items rules', async () => {
@@ -531,7 +631,8 @@ if (process.argv[2] === '--signal-child') {
 
     // ---- (E10) a signal during an item: the way out runs and the process exits 128 + n ------------------------------------
     const nothingRan = /SIGTERM: the process is stopping, so the capture hold ends before the lock was held: nothing ran; run it again/;
-    const expected = { turret: /--ids=tpa_one,tpa_two/, 'turret-list': /before the roster was read/, shoot: /--match 01_a,02_b/,
+    const expected = { turret: /--ids=tpa_one,tpa_two/, 'turret-list': /before the roster was read/,
+      'turret-boot': /2 id\(s\) left[^\n]*--ids=tpa_one,tpa_two \(nothing audited/, shoot: /--match 01_a,02_b/,
       'shoot-boot': /--match 01_a,02_b/, studio: /--only 1,2/, 'studio-boot': /--only 1,2/,
       'turret-queued': nothingRan, 'shoot-queued': nothingRan, 'studio-queued': nothingRan,
       'turret-requeue': /2 id\(s\) left[^\n]*--ids=tpa_one,tpa_two/, 'shoot-requeue': /2 scene\(s\) left[^\n]*--match 01_a,02_b/,
@@ -539,17 +640,27 @@ if (process.argv[2] === '--signal-child') {
       'open-exit': /\[open-exit\] FAILED: Protocol error/, 'open-uncaught': /SIGTERM: leaving the queue/ };
     for (const [tool, child] of Object.entries(children)) {
       await check(`${tool} SIGTERM`, async () => {
-        const { code, signal, output } = await child;
+        const { code, signal, output, dir } = await child;
         assert.equal(signal, null, `${tool}: ended by its own exit, not killed (${signal})\n${output.slice(-1500)}`);
         assert.match(output, expected[tool], `${tool}: the items left are named\n${output.slice(-1500)}`);
         assert.equal(code, 143, `${tool}: exits 128 + 15 after its way out, not ${code}\n${output.slice(-1500)}`);
+        // (round 5 U9) a tool queued at the signal returns on openHeldRun's null: it starts no server or browser (the
+        // line and the 143 above hold for a tool that ran on past the null too)
+        if (tool.endsWith('-queued')) {
+          assert.doesNotMatch(output, /\[stand-in\]|TypeError|^\s+at /m, `${tool}: nothing starts after the queued open's null\n${output.slice(-1500)}`);
+        }
+        // (round 5 U9) no turret child audits an id, so the previous run's output stays (a stop before any id wrote [])
+        if (tool.startsWith('turret')) {
+          assert.equal(readFileSync(join(dir, 'turret-parent.json'), 'utf8'), PREVIOUS, `${tool}: nothing audited, the previous output kept\n${output.slice(-1500)}`);
+        }
       });
     }
     assert.deepEqual(failed, [], `long hold users:\n  ${failed.join('\n  ')}`);
     console.log('long-hold-users.selftest: turret-parent-audit, marketing-shots/shoot and studio-example-videos yield at the cap inside '
       + 'their graces (180 s, 180 s, 300 s), are stopped past them or by a refused re-queue, keep what finished, name what is left '
       + '(exit 3) in a finishing run that runs only that, exit 128 + n on a signal (queued, held, re-queued, booting), and a --stills '
-      + 'finishing run keeps the listing; the signal owner keeps 128 + n over an open-form tool\'s own exit');
+      + 'finishing run keeps the listing; the signal owner keeps 128 + n over an open-form tool\'s own exit; a stop before any id '
+      + 'keeps turret-parent-audit\'s output, a queued tool starts nothing, and an npm script\'s finishing run reaches its tool');
   } finally {
     for (const dir of roots) rmSync(dir, { recursive: true, force: true });
   }

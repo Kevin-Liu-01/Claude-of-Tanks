@@ -78,7 +78,7 @@ export async function runTurretParentAudit(argv = process.argv.slice(2), { creat
     // unheld). A hold that was stopped (a signal, a yield that could not hold again) ends the run there: the ids it audited
     // are written and the ones left named for the next run, never an ERROR row each. (round 4 E10) Each id's end is
     // tools/held-items.mjs runHeldItem's ('done', 'failed': an ERROR row, 'left'), and the exit code heldRunExitCode's:
-    // 3 with ids left, a signal's 128 + n kept.
+    // 3 with ids left, a signal's 128 + n kept. The output file is written only when an id ran (round 5 U9, below).
     const audited = new Set();
     let stopped = null;
     // A fresh browser per chunk of ids (tools/browser-id-chunks.mjs), inside the run's one capture hold.
@@ -117,14 +117,20 @@ export async function runTurretParentAudit(argv = process.argv.slice(2), { creat
       if (!hold.signal.aborted) throw error;
       stopped = heldStopWhy(hold.signal);
     });
-    mkdirSync(dirname(outFile), { recursive: true });
-    writeFileSync(outFile, JSON.stringify(results, null, 1));
-    const offenders = results.filter((r) => (r.stranded && r.stranded.length) || (r.abutting && r.abutting.length) || (r.dangling && r.dangling.length));
-    console.log(`[turret-parent] offenders: ${offenders.length}/${results.length} -> ${outFile}`);
+    // (round 5 U9) the output holds what ran: a stop before any id finished (a signal while Vite starts, the chunk's
+    // launch refused, the first checkpoint's yield stopped, the first id cut) writes nothing, as the roster branch
+    // above does. It wrote [] over the previous run's output, and then named the run that finishes it with "keep this
+    // one first", the rows already gone.
+    if (audited.size || !stopped) {
+      mkdirSync(dirname(outFile), { recursive: true });
+      writeFileSync(outFile, JSON.stringify(results, null, 1));
+      const offenders = results.filter((r) => (r.stranded && r.stranded.length) || (r.abutting && r.abutting.length) || (r.dangling && r.dangling.length));
+      console.log(`[turret-parent] offenders: ${offenders.length}/${results.length} -> ${outFile}`);
+    }
     if (stopped) {
       const left = ids.filter((id) => !audited.has(id));
       console.error(`[turret-parent] the capture hold was stopped (${stopped}): ${left.length} id(s) left for the next run; finish with `
-        + `--ids=${left.join(',')} (it rewrites ${outFile}: keep this one first)`);
+        + `--ids=${left.join(',')} (${audited.size ? `it rewrites ${outFile}: keep this one first` : `nothing audited: ${outFile} is as it was`})`);
     }
     heldRunExitCode({ left: stopped !== null });
   } finally {
