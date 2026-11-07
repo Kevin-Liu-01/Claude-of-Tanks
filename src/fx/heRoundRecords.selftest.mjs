@@ -21,8 +21,12 @@
 //    shaped charge's record) leaves no shaped charge ended on a ricochet among the rounds in flight;
 //  - (round 5 U11) a round's record keeps its grace after the round's last drawn frame, however long the round was drawn:
 //    renewed only at a sweep, it lapsed in the sweep one frame after that frame, before the end event trailing it.
-//    (round 6 V1) An end trailing that frame by a frame or by 3.5 s keeps the class, and one trailing it past the 4 s
-//    grace and a sweep's 1 s spacing finds the record gone: the grace is pinned from both sides, not one frame of it.
+//    (round 6 V1) For a round drawn past its 6 s flight bound (a round drawn shorter keeps its record to its firing's
+//    10 s bound), an end trailing that frame by a frame or by 235 frames (3.92 s) keeps the class, and one trailing it
+//    315 frames, past the 4 s grace and a sweep's 1 s spacing, finds the record gone: the renewal is held between 3.92 s
+//    and 5.25 s, not to one frame of it. (review r1) In either map: a round that carried through a hull and flies on
+//    keeps its hull-met record so; and a dead round, which the Studio hands each frame until its timeline resets, renews
+//    none.
 import assert from 'node:assert/strict';
 import { Session } from 'node:inspector';
 import { createRequire } from 'node:module';
@@ -308,10 +312,13 @@ const run = (script) => { fx.resetAll(); frames(2); const shellId = id++; fired(
   // round by a frame or more (a peer's queue releases a stalled end a few frames on: mp/match/events.ts). A round drawn
   // 9.99 s through a stall (its record due 10 s after its firing, no sweep since) or 19.99 s (renewed at the sweep at
   // 10 s, due at 20 s) lost its record in the sweep one frame after its last drawn frame, before its end: an HE burst.
-  // (round 6 V1) The end trails by one frame and by 3.5 s, most of the 4 s grace: a renewal that kept the record 0.05 s,
-  // 0.1 s or a sweep's spacing past the frame passed the one-frame case alone. And the grace is a bound: an end trailing
-  // past it and a sweep's spacing (5 s, the most a record outlives the round's last drawn frame) finds the record gone
-  // and draws by its type, so the class the shorter trails keep is the record's
+  // (round 6 V1) The end trails by one frame and by 235 frames (3.92 s), most of the 4 s grace: a renewal that kept the
+  // record 0.05 s, 0.1 s or a sweep's spacing past the frame passed the one-frame case alone. And the grace is a bound:
+  // an end trailing past it and a sweep's spacing finds the record gone and draws by its type, so the class the shorter
+  // trails keep is the record's. (review r1) That is the most a record outlives the last drawn frame of a round drawn past
+  // its flight bound (SHELL_MAX_LIFETIME_S, 6 s), as both here are: a round drawn shorter keeps its record to its firing's
+  // bound (effects.ts SHELL_RECORD_BOUND_S, 10 s after it), later than the grace. In both, a sweep comes due with the
+  // renewed record, so a renewal shorter than 3.92 s or longer than 5.25 s fails here
   const drawnRound = (drawnS) => {
     fx.resetAll(); frames(2);
     const s = id++;
@@ -326,7 +333,7 @@ const run = (script) => { fx.resetAll(); frames(2); const shellId = id++; fired(
     return s;
   };
   for (const drawnS of [9.99, 19.99]) {
-    for (const trailFrames of [1, 210]) {
+    for (const trailFrames of [1, 235]) {
       const s = drawnRound(drawnS);
       frames(trailFrames); // the snapshot that drops the round, and the frames its end trails it by
       groundEnd(s, smoke); frames(6);
@@ -334,7 +341,7 @@ const run = (script) => { fx.resetAll(); frames(2); const shellId = id++; fired(
       assert.ok(near(trailing, quietSmoke),
         `a smoke round drawn ${drawnS} s whose end trails its last drawn frame by ${trailFrames} frame(s) keeps its class (${trailing} bodies at its point vs ${quietSmoke})`);
     }
-    // past the grace and a sweep's spacing (a sweep may come up to a spacing after the record falls due), and a frame
+    // past the grace and a sweep's spacing (a sweep may come up to a spacing after the record falls due), and 15 frames
     const pastFrames = (4 + 1) * 60 + 15;
     const s = drawnRound(drawnS);
     frames(pastFrames);
@@ -345,6 +352,22 @@ const run = (script) => { fx.resetAll(); frames(2); const shellId = id++; fired(
     const typed = bodiesHere();
     assert.ok(typed > quietSmoke + 30,
       `and its end ${pastFrames} frames on draws by its type, so the class kept above is the record's (${typed} bodies at its point vs ${quietSmoke})`);
+  }
+  // (round 6 V1 review r1) a dead round renews no record: the Studio hands every round it fired each frame, a dead one too,
+  // until its timeline resets (studio.ts fx.update(dt, shells, ...)), and an actor's round that flew out past 4000 m
+  // (fireActorGun, the Studio's one fired record) raises no end event. Its record leaves by its firing's bound, 10 s on, as
+  // any round's whose end never came; renewed while it was handed dead, it stayed till the reset, a slot of the 256 each
+  // map keeps
+  {
+    fx.resetAll(); frames(2);
+    const s = id++;
+    fireAt(s, smoke);
+    const spent = { id: s, shooterId: 'g', pos: new THREE.Vector3(0, 12, -30), prevPos: new THREE.Vector3(0, 12.2, -31),
+      vel: new THREE.Vector3(0, -4, 60), spec: { tracer: 'TANK' }, ageS: 0.5, distM: 30, dead: true };
+    for (let k = 0; k < 24; k++) fx.update(0.5, [spent], camera, () => null);
+    const kept = recordCounts();
+    assert.deepEqual(kept, { inFlight: 0, hullMet: 0 },
+      `a dead round handed each frame for 12 s leaves the records by its firing's bound (${JSON.stringify(kept)} left)`);
   }
   // (round 4 F6 review) a sweep's least spacing holds when a record moves maps: a hull event for a record falling due
   // inside the spacing brought the next sweep forward (keepNewest lowered it for every record it stored, a moved one too)
@@ -405,6 +428,43 @@ const run = (script) => { fx.resetAll(); frames(2); const shellId = id++; fired(
   const heiGround = heiEnd(false);
   assert.ok(heiGround > 0, `control: a 30 mm HEI's ground strike draws its burst (${heiGround} fire puffs)`);
   assert.equal(heiEnd(true), heiGround, 'a 30 mm HEI that carried through a hull bursts on the ground by its own class');
+  // (round 6 V1 review r1) the drawn round's renewal keeps its record in either map: a round that met a hull and flies on
+  // (a carry-through, a ricochet) reads its class from the hull-met records (round 3 B4), and its end trails a stall of
+  // its events as any round's. The HEI carries through, is drawn 12 s (past its record's 10 s firing bound) and strikes the
+  // ground a frame or 235 frames after its last drawn frame: its burst, as one drawn 2 s. Past the grace and a sweep's
+  // spacing its record is gone and the same strike is an AP round's by its type (no fire puffs), so the burst is the
+  // record's. (Renewed from the in-flight records alone, its record left at its firing's bound, mid-stall.)
+  const heiDrawn = (drawnS, trailFrames) => {
+    fx.resetAll(); frames(2);
+    const s = id++;
+    emit('shell:fired', { shellId: s, shooterId: 'ac', pos: [0, 2, -40], muzzlePos: [0, 2, -40], dir: [0, 0, 1],
+      shellType: 'AP', caliberMm: 30, shellName: '30 mm HEI-T' });
+    frames(1);
+    emit('shell:hit', { shellId: s, attackerId: 'ac', targetId: 't3', kind: 'pen', damage: 6, pos: [0, 1, -10],
+      normal: [0, 0, -1], caliberMm: 30, shellType: 'AP', destroyed: false });
+    frames(1);
+    const round = { id: s, shooterId: 'ac', pos: new THREE.Vector3(0, 1, -5), prevPos: new THREE.Vector3(0, 1, -6),
+      vel: new THREE.Vector3(0, 0, 900), spec: { tracer: 'AP' }, ageS: 0.1, distM: 35 };
+    for (let k = 0; k < drawnS * 2; k++) fx.update(0.5, [round], camera, () => null);
+    frames(trailFrames);
+    const held = recordCounts();
+    const before = fires();
+    emit('shell:expired', { shellId: s, pos: [0, 0, 0], hitTerrain: true, hitKind: 'terrain', shellType: 'AP', caliberMm: 30 });
+    frames(6);
+    return { held, puffs: fires() - before };
+  };
+  const heiShort = heiDrawn(2, 1);
+  assert.deepEqual(heiShort.held, { inFlight: 0, hullMet: 1 }, `control: the HEI's record is a hull-met one (${JSON.stringify(heiShort.held)})`);
+  assert.ok(heiShort.puffs > 0, `control: drawn 2 s after its carry-through, its ground strike draws its burst (${heiShort.puffs} fire puffs)`);
+  for (const trailFrames of [1, 235]) {
+    const stalled = heiDrawn(12, trailFrames);
+    assert.equal(stalled.puffs, heiShort.puffs,
+      `an HEI drawn 12 s after its carry-through, whose ground strike trails its last drawn frame by ${trailFrames} frame(s), bursts by its class (${JSON.stringify(stalled)})`);
+  }
+  const heiPast = heiDrawn(12, (4 + 1) * 60 + 15);
+  assert.deepEqual(heiPast.held, { inFlight: 0, hullMet: 0 },
+    `its hull-met record leaves by the grace and a sweep's spacing after its last drawn frame (${JSON.stringify(heiPast.held)})`);
+  assert.equal(heiPast.puffs, 0, `and the strike 315 frames on is an AP round's by its type (${heiPast.puffs} fire puffs)`);
   // a late expiry's mark is its round's class: an L31 HESH's scorch, as on time, not an HE crater guessed from its type
   const kindsOf = (late) => {
     fx.resetAll(); frames(2);
