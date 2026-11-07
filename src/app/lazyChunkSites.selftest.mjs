@@ -293,8 +293,14 @@ const SOLE_LOADERS = [{
 }];
 /** Per loader name, the files that use it in code (strings blanked too) and how often. */
 const loaderUses = new Map(SOLE_LOADERS.map(({ name }) => [name, new Map()]));
+/** `source` with each string's text blanked, every offset unchanged. (round 5 U8 review) A closed literal keeps its
+ *  quotes, so a string argument still reads as an argument (callsWith: blanked whole, a last one read as a trailing
+ *  comma). */
 const blankStrings = (source) => source.replace(/'(?:\\[\s\S]|[^'\\])*'?|"(?:\\[\s\S]|[^"\\])*"?|`(?:\\[\s\S]|[^`\\])*`?/g,
-  (part) => part.replace(/[^\n]/g, ' '));
+  (part) => {
+    const blank = part.replace(/[^\n]/g, ' ');
+    return part.length > 1 && part.at(-1) === part[0] ? `${part[0]}${blank.slice(1, -1)}${part[0]}` : blank;
+  });
 /** How many calls of `name` in `code` (comments and strings blanked: a plain, member or optional call, never a `function`
  *  declaration) pass `least` or more arguments; a spread passes any number. */
 const callsWith = (code, name, least) => {
@@ -314,6 +320,26 @@ const callsWith = (code, name, least) => {
   }
   return calls;
 };
+/** How often `source` (comments blanked, strings kept; `code` is it with its strings blanked) passes the relight
+ *  option by name: an object key, bare (valued or shorthand), quoted or a computed literal. (round 5 U8 review) A
+ *  parameter, an argument or an array element named relight is none (its innermost open bracket is no brace); a type
+ *  literal or a destructuring that names it with no `readonly` or `?` counts (strict: the message names the file). */
+const optionKeys = (source, code) => {
+  let keys = 0;
+  for (const match of source.matchAll(/[{,]\s*(?:relight|(['"])relight\1|\[\s*(['"`])relight\2\s*\])\s*(?=[:,}])/g)) {
+    if (code[match.index] !== source[match.index]) continue; // inside a string
+    let at = match.index;
+    if (code[at] === ',') { // the innermost bracket open at the comma
+      for (let depth = 0; --at >= 0;) {
+        const c = code[at];
+        if (c === ')' || c === ']' || c === '}') depth += 1;
+        else if (c === '(' || c === '[' || c === '{') { if (depth === 0) break; depth -= 1; }
+      }
+    }
+    if (code[at] === '{') keys += 1;
+  }
+  return keys;
+};
 // ---- (round 4 F2 review) the lifecycle-edge asks, held to their callers. `load({ backoff: false })` asks a failure again
 // whatever the backoff, a prepare's `{ entry: true }` asks the battle atmosphere's chunks and the map's air that way, and
 // a relight (the `relight` option, studio.ts's pass-throughs of it, main.ts's port `how`) applies the battle light and
@@ -322,18 +348,19 @@ const callsWith = (code, name, least) => {
 // a full relight per move. So each spelling, or each call with that many arguments, appears only in the files listed, as
 // often as listed (code only: strings and comments blanked), and the SITES rows above pin each call; a new edge caller is
 // listed here with its reason
-const RELIGHT_OPTION = 'the relight option by name (valued or shorthand)';
+const RELIGHT_OPTION = 'the relight option by name (an object key: valued, shorthand or quoted)';
 const EDGE_ASKS = [
   // the access's AT_ONCE, asked by an entry (battleAtmosphereAccess.ts: the runtime, both parts, the Moon's land mask)
   { spelling: /\bbackoff\s*:\s*false\b/g, allowed: new Map([['src/engine/battleAtmosphereAccess.ts', 1], ['src/world/mapAmbienceAccess.ts', 1]]) },
   // main.ts's three entries (the solo entry, the network warm, the capture's battle time), each for the atmosphere and the air
   { spelling: /\bentry\s*:\s*true\b/g, allowed: new Map([['src/main.ts', 6]]) },
-  // the Studio's relight, once per Studio apply (studio.ts prepareAtmosphere's `landed`), in every spelling that reaches
-  // the runtimes. (round 5 U8) Round 4 read it as two literals, so a three-argument prepareAtmosphere(time, light, true),
-  // a fourth argument that is not a literal, or the option passed by name all passed (the planted relights below).
-  // The option by name, valued or shorthand: main.ts's to the battle atmosphere, studio.ts's in the port's `how`
-  { label: RELIGHT_OPTION, spelling: /[{,]\s*relight\s*(?=[:,}])/g,
-    allowed: new Map([['src/main.ts', 1], ['src/game/studio.ts', 1]]) },
+  // the Studio's relight, once per Studio apply (studio.ts prepareAtmosphere's `landed`), in the spellings this reads:
+  // the option by name as an object key, and studio.ts's pass-throughs and main.ts's port by their arity. (round 5
+  // U8) Round 4 read it as two literals, so a three-argument prepareAtmosphere(time, light, true), a fourth argument
+  // that is not a literal, or the option passed by name all passed (the planted relights below). Unseen: a computed
+  // key that is no literal, a spread or an assignment of an options object built elsewhere, a renamed function.
+  // The option by name (optionKeys): main.ts's to the battle atmosphere, studio.ts's in the port's `how`
+  { label: RELIGHT_OPTION, count: optionKeys, allowed: new Map([['src/main.ts', 1], ['src/game/studio.ts', 1]]) },
   // studio.ts's pass-throughs, by arity whatever the argument: prepareAtmosphere's third (applyStudioLight's work passes
   // its own on) and applyStudioLight's fourth (`landed`'s literal true, the one such call)
   { call: 'prepareAtmosphere', least: 3, allowed: new Map([['src/game/studio.ts', 1]]) },
@@ -343,9 +370,13 @@ const EDGE_ASKS = [
   { call: 'prepareStudioAtmosphere', least: 4, allowed: new Map([['src/game/studio.ts', 1]]) },
 ];
 const edgeUses = EDGE_ASKS.map(() => new Map());
-/** Each EDGE_ASKS rule's uses in one module's code (comments and strings blanked). */
-const edgeAskCounts = (code) => EDGE_ASKS.map(({ spelling, call, least }) => (call ? callsWith(code, call, least)
-  : code.match(spelling)?.length ?? 0));
+/** Each EDGE_ASKS rule's uses in one module's source (comments blanked): its code alone (strings blanked too), but for
+ *  the option by name, which reads a quoted key. */
+const edgeAskCounts = (source) => {
+  const code = blankStrings(source);
+  return EDGE_ASKS.map(({ spelling, call, least, count }) => (count ? count(source, code) : call ? callsWith(code, call, least)
+    : code.match(spelling)?.length ?? 0));
+};
 /** What breaks EDGE_ASKS, from each rule's uses per file. */
 const edgeAskOffenders = (usesByRule) => EDGE_ASKS.flatMap(({ label, spelling, call, least, allowed }, index) => {
   const uses = usesByRule[index], offenders = [];
@@ -357,6 +388,21 @@ const edgeAskOffenders = (usesByRule) => EDGE_ASKS.flatMap(({ label, spelling, c
   for (const [file, count] of allowed) if (!uses.has(file)) offenders.push(`${file} ${what} 0 times (${count} expected)`);
   return offenders;
 });
+// (round 5 U8 review) the readers' own bounds: a string is an argument (a fourth one is a relight), and the option by
+// name is an object key in any literal spelling, never a parameter, an argument, an element or text in a string
+const OPTION_RULE = EDGE_ASKS.findIndex(({ label }) => label === RELIGHT_OPTION);
+const APPLY_RULE = EDGE_ASKS.findIndex(({ call }) => call === 'applyStudioLight');
+for (const [snippet, rule, uses] of [
+  ["applyStudioLight(timeOfDay, next, false, 'again');", APPLY_RULE, 1],
+  ['applyStudioLight(timeOfDay, next, false, `${again}`);', APPLY_RULE, 1],
+  ["applyStudioLight('dusk', next, false);", APPLY_RULE, 0],
+  ["prepare(0, mapId, ['day'], { relight });", OPTION_RULE, 1],
+  ["prepare(0, mapId, ['day'], { entry: false, 'relight': true });", OPTION_RULE, 1],
+  ["prepare(0, mapId, ['day'], { [\"relight\"]: true });", OPTION_RULE, 1],
+  ['function again(time: StudioTimeOfDay, relight: boolean) {}', OPTION_RULE, 0],
+  ["again(time, relight, ['relight', 'entry']);", OPTION_RULE, 0],
+  ["log('prepare({ relight: true }), { relight }');", OPTION_RULE, 0],
+]) assert.equal(edgeAskCounts(snippet)[rule], uses, `EDGE_ASKS rule ${rule} reads ${snippet} ${uses} times`);
 const walk = (dir) => {
   for (const entry of readdirSync(dir, { withFileTypes: true })) {
     const path = join(dir, entry.name);
@@ -370,7 +416,7 @@ const walk = (dir) => {
         if (uses) loaderUses.get(name).set(file, uses);
       }
       if (/\b(?:backoff|entry|relight|applyStudioLight|prepareAtmosphere|prepareStudioAtmosphere)\b/.test(source)) {
-        edgeAskCounts(blankStrings(source)).forEach((uses, index) => { if (uses) edgeUses[index].set(file, uses); });
+        edgeAskCounts(source).forEach((uses, index) => { if (uses) edgeUses[index].set(file, uses); });
       }
       const edges = [], sheets = [];
       for (const match of source.matchAll(/(?:import|export)\s+(?!type\b)(?:[^'";]*?\sfrom\s*)?['"](\.{1,2}\/[^'"]+)['"]/g)) {
@@ -500,7 +546,7 @@ const plantedUses = edgeUses.map((uses) => new Map(uses));
 for (const [file, anchor, planted] of PLANTS) {
   const source = read(file);
   assert.equal(source.split(anchor).length, 2, `${file} holds the plant's anchor once: ${anchor.trim()}`);
-  edgeAskCounts(blankStrings(source.replace(anchor, planted))).forEach((uses, index) => {
+  edgeAskCounts(source.replace(anchor, planted)).forEach((uses, index) => {
     if (uses) plantedUses[index].set(file, uses); else plantedUses[index].delete(file);
   });
 }

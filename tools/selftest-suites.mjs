@@ -997,7 +997,9 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/app/lazyChunk.selftest.mjs',
     // 2026-11-02 audit R6: the named lazy chunks and the session-long memos hold their load in app/lazyChunk.ts; no new
     // hand-made memo or failure-cleared latch; a default-policy load of several parts settles them with importAll; every
-    // lazy stylesheet is held and has one owner per document
+    // lazy stylesheet is held and has one owner per document; (round 4 F2 review) the lifecycle-edge asks (backoff:
+    // false, entry: true, the Studio relight in the spellings it reads) held to their callers, (round 5 U8) with
+    // relights planted on a per-move path that it must name
     'src/app/lazyChunkSites.selftest.mjs',
     // 2026-11-02 audit R6 (review round 2): the hero cards' one load keeps a failed heroCard.css for every surface
     'src/ui/heroCardChunk.selftest.mjs',
