@@ -2227,7 +2227,10 @@ const battleResultPresentation = createBattleResultPresentationRuntime({
   veilHud,
   showEndOverlay: endOverlay.show,
   emitPresented: (result: RuntimeValue) => bus.emit('battle:presented', { result }),
-  exitPointerLock: () => { document.exitPointerLock?.(); },
+  // (round 6 V6) through the input layer, whose releaseLock also withdraws a request still in flight (input.ts, round 5
+  // Q2): a canvas recapture asked in the frame before the verdict lands a task later, after document.exitPointerLock
+  // had nothing to release, and held the pointer over the result. `input` is built below; the port runs at a verdict.
+  exitPointerLock: () => { input.releaseLock(); },
   recordFlow: (receipt: RuntimeValue) => { debugFlags.lastEndFlow = receipt; },
   ending: {
     camera: battleEndingCamera,
