@@ -281,8 +281,9 @@ function groundSettled() {
   const v = W?.getGrassWorkState?.();
   const idle = (!g || !g.enabled || (!g.near.pending && !g.mid.pending && !g.far.pending)) && (!l || !l.pending)
     && (!v || (!v.pendingVisible && !v.carpet?.pending));
+  // and the terrain stream's built count, so no LOD mounts between the arms
   const sig = (g ? [g.near, g.mid, g.far].map((r) => `${r.count}/${r.publishes}`).join() : '')
-    + (v ? `|${v.built}/${v.carpet?.publishedGeneration}` : '');
+    + (v ? `|${v.built}/${v.carpet?.publishedGeneration}` : '') + `|${W?._buildDetail?.terrain?.streamedGeometryCount ?? ''}`;
   const now = performance.now(), frame = window.__gsFrames.n, last = window.__gsSettle;
   const same = last && last.sig === sig;
   window.__gsSettle = { sig, since: same ? last.since : now, sinceFrame: same ? last.sinceFrame : frame };
@@ -319,6 +320,9 @@ function externalPoseScript(pose) {
     : `resolveGroundPose(${JSON.stringify({ cam: pose.cam, at: pose.at })}, (x, z) => hf.getHeightAt(x, z), 511, ${pose.fov})`};
     D.rig.setExternalPose(new V(...resolved.cam), new V(...resolved.at), resolved.fov);
     ${pinClouds(true)};
+    // (ab22 A/A, whiteout chase: streaks on the snow crests near 200 m, where one arm drew a chunk on its coarser level
+    // while the stream was still building the finer one) every level this camera wants, built before the first update
+    D.world.warmTerrainLookahead?.(D.camera.position, 512);
     D.world.update(0, D.camera.position, D.camera.getWorldDirection(new V()), null);
     D.lighting.updateFrustums();
     D.lighting.update(true);
@@ -331,6 +335,9 @@ function chasePoseScript(yaw) {
     const D = window.__DEBUG, V = D.camera.position.constructor;
     D.rig.snapArcade(2, ${yaw}, -0.10);
     ${pinClouds(true)};
+    // (ab22 A/A, whiteout chase: streaks on the snow crests near 200 m, where one arm drew a chunk on its coarser level
+    // while the stream was still building the finer one) every level this camera wants, built before the first update
+    D.world.warmTerrainLookahead?.(D.camera.position, 512);
     D.world.update(0, D.camera.position, D.camera.getWorldDirection(new V()), null);
     D.lighting.updateFrustums();
     D.lighting.update(true);
