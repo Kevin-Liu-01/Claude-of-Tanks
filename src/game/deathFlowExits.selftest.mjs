@@ -64,7 +64,10 @@
 //      fired the left hull's replay over the drone up to 1.6 s later, veiled the HUD and took the camera for up to
 //      15 s: watchController.ts leave told the runtime nothing). Leave while its replay is on screen: the replay plays
 //      out and its own end hands back, then the drone (as on f60d0aa200; the contract the runtime's leaveSeat states).
-// On f60d0aa200 (no revive or destruction listener, no leaveSeat) 1-4, 7-9 and 10's beat leave fail (54 checks); 5, 6
+//      After either Leave, the battle's defeat (round 6 fix-up r1) shows its report over the drone and replays no
+//      death of the left hull as the watcher's own: its death cam ran, and that stands at a Leave (leaveSeat's
+//      contract; a leaveSeat that re-armed it played the left hull's death over the drone at the verdict).
+// On f60d0aa200 (no revive or destruction listener, no leaveSeat) 1-4, 7-9 and 10's beat leave fail (56 checks); 5, 6
 // and 10's replay leave pass there (5 and 6 are mutation controls: 5 fails with the revive's id gate taken out, 6 with
 // the endShown guard; 10's replay leave pins the contract leaveSeat states). 8 and 10's beat leave fail on the
 // round-five r1 head too (ab43905660: no destruction listener, no leaveSeat), and 7 on the r0 head (8a8907c9c0: the
@@ -72,8 +75,8 @@
 // newSeat's drop (2), the revive's listener (3, 4, 7, 8, 9), its re-arm at the event (3's and 9's next death), the
 // re-arm at the alive edge (7's next death on its row), its hand-back (3, 4, 7, 8, 9), the destruction listener (8's
 // next death), its debt gate (8's first death), its id gate (7), leaveSeat's drop and the controller's call to it
-// (10's beat leave). The browser half (the camera's motion, the replay's WebGL frames, the HUD's paint) is not
-// reproduced here.
+// (10's beat leave, and its verdict); a leaveSeat that also re-arms the death cam fails 10's verdict after either
+// Leave. The browser half (the camera's motion, the replay's WebGL frames, the HUD's paint) is not reproduced here.
 import { StubElement, windowStub } from '../ui/hudDomHarness.test-support.mjs';
 import assert from 'node:assert/strict';
 import { setMaxListeners } from 'node:events';
@@ -599,6 +602,20 @@ for (const killcamFirst of [false, true]) {
           + `${frames.drone + frames.other} frames elsewhere, view ${controller.view})`);
       }
     }
+    // (round 6 V5 fix-up r1) the battle's verdict after the Leave: the left hull's death cam ran, which stands at the
+    // Leave (leaveSeat's contract), so the verdict replays no death of it as the watcher's own over the drone (the
+    // final kill is past its window): its report, no veil, no replay
+    p.calls.length = 0;
+    game.result = 'defeat';
+    game.resultReason = 'elimination';
+    for (let i = 0; i < 8; i++) step(250);
+    if (p.calls.includes('veil:true') || p.killcam.isActive() || !p.calls.includes('presented:defeat')
+      || !p.runtime.snapshot().deathCamShown) {
+      wrong.push(`${label}: at the verdict after the Leave the left hull's death replays over the drone, its report `
+        + `waits or the death cam re-armed (${p.calls.join(', ') || 'no call'}; replay ${p.killcam.isActive()}, death `
+        + `cam shown ${p.runtime.snapshot().deathCamShown})`);
+    }
+    p.killcam.cancel(); // a replay the verdict started would hold its wall-clock timers
     controller.stop();
   }
 }
@@ -611,4 +628,4 @@ console.log('deathFlowExits: a teardown, a fresh seat, a mode\'s revive and a Wa
   + 'flow (no stale hand-back at a later restart; the revive hands the HUD and the camera back, in the beat, in the '
   + 'replay or after it, and the next death has its own; another hull\'s revive and a revive after the verdict leave it '
   + 'alone; a revive ahead of its row re-arms the death cam once the hull reads alive, one under the row of its next '
-  + 'death at that death\'s event; no replay follows a Leave) PASS');
+  + 'death at that death\'s event; no replay follows a Leave, nor its verdict) PASS');

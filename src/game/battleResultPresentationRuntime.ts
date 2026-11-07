@@ -455,8 +455,8 @@ export function createBattleResultPresentationRuntime({
   // keeps the seat while the replay runs), which Horde's next wave or a Frontline sector's capture stands up. Most
   // often the revive comes after the death replay ended on its own (a wave runs on well past a replay), while the
   // killcam's ally chase holds the camera (round 6 V5: it starts at the death replay's end whenever an ally lives, and
-  // a room goes on only while another human does; the killcam's own 'mode:respawn' listener ends it, so the camera was
-  // the player's again there before this owner heard the revive); the death orbit holds after the replay only with no
+  // a room goes on only while another human does; the killcam's own 'mode:respawn' listener ends it, so origin/main,
+  // with no revive listener here, gave the camera back there too); the death orbit holds after the replay only with no
   // ally to chase. The revive can also land inside the death beat or the replay (up to 15 s). The killcam's listener
   // cancels that replay, so before, the revived hull played on under the replay's frozen pin with the HUD veiled; a
   // revive inside the death beat left the orbit on the living hull and the beat's late fire restarted it; one after the
