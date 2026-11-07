@@ -214,7 +214,7 @@ async function soloRam(struckTeam) {
   // the negative control: the same contact against a hostile is priced and called
   const foe = await soloRam('enemy');
   const foeRams = foe.events.filter((event) => event.type === 'tank:ram').map((event) => event.payload);
-  assert.ok(foeRams.length > 0 && foeRams.some((ram) => ram.dmgA > 0 || ram.dmgB > 0), `control: a hostile ram is priced (${JSON.stringify(foeRams.map((ram) => [ram.dmgA, ram.dmgB]))})`);
+  assert.ok(foeRams.some((ram) => ram.dmgA > 0 || ram.dmgB > 0), `control: a hostile ram is priced (${JSON.stringify(foeRams.map((ram) => [ram.dmgA, ram.dmgB]))})`);
   assert.notEqual(foe.after.struck, foe.before.struck, 'control: the struck hostile loses hit points');
   assert.ok(foe.heard.say.includes('rammed'), `control: the crew calls a hostile's ram (${foe.heard.say})`);
   console.log(`teammateRam: solo control, a hostile ram priced ${JSON.stringify(foeRams.map((ram) => [Math.round(ram.dmgA), Math.round(ram.dmgB)]))}, crew ${foe.heard.say}`);
