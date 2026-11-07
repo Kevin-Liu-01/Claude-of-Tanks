@@ -34,6 +34,9 @@
 // (round 5 U9) And:
 //   output   turret-parent-audit's output holds what ran: a stop before any id (while held, booting or re-queued) leaves
 //            the previous output as it was (it wrote [] over it);
+//   queued   a tool queued when the signal comes starts nothing (openHeldRun's null: `if (!hold) return;`): what serves
+//            and draws says when it starts, and nothing may (the line and the 143 come from openHeldRun and the signal
+//            owner, so a tool that ran on past the null passed);
 // No real browser, server or lock starts; the real Chrome runs stay the owner's (manualRecommended).
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
@@ -311,7 +314,10 @@ if (process.argv[2] === '--signal-child') {
     for (let wait = 0; process.exitCode !== 143 && wait < 3000; wait++) await new Promise((done) => setTimeout(done, 10));
     return standInVite(config);
   };
-  const deps = { createServer: phase === 'boot' ? slowVite : standInVite, puppeteer: chrome.launcher,
+  // (round 5 U9) what serves and draws prints a [stand-in] line when it starts: a queued child's tool starts neither
+  const vite = phase === 'boot' ? slowVite : standInVite;
+  const deps = { createServer: async (config) => { console.error('[stand-in] Vite started'); return vite(config); },
+    puppeteer: { launch: async (options) => { console.error('[stand-in] Chrome launched'); return chrome.launcher.launch(options); } },
     hold: { lock, log: (line) => console.error(line), teardown: chrome.teardown } };
   // each tool's own command-line entry, its stand-ins aside
   if (tool === 'turret') {
@@ -562,6 +568,11 @@ if (process.argv[2] === '--signal-child') {
         assert.equal(signal, null, `${tool}: ended by its own exit, not killed (${signal})\n${output.slice(-1500)}`);
         assert.match(output, expected[tool], `${tool}: the items left are named\n${output.slice(-1500)}`);
         assert.equal(code, 143, `${tool}: exits 128 + 15 after its way out, not ${code}\n${output.slice(-1500)}`);
+        // (round 5 U9) a tool queued at the signal returns on openHeldRun's null: it starts no server or browser (the
+        // line and the 143 above hold for a tool that ran on past the null too)
+        if (tool.endsWith('-queued')) {
+          assert.doesNotMatch(output, /\[stand-in\]|TypeError|^\s+at /m, `${tool}: nothing starts after the queued open's null\n${output.slice(-1500)}`);
+        }
         // (round 5 U9) no turret child audits an id, so the previous run's output stays (a stop before any id wrote [])
         if (tool.startsWith('turret')) {
           assert.equal(readFileSync(join(dir, 'turret-parent.json'), 'utf8'), PREVIOUS, `${tool}: nothing audited, the previous output kept\n${output.slice(-1500)}`);
@@ -573,7 +584,7 @@ if (process.argv[2] === '--signal-child') {
       + 'their graces (180 s, 180 s, 300 s), are stopped past them or by a refused re-queue, keep what finished, name what is left '
       + '(exit 3) in a finishing run that runs only that, exit 128 + n on a signal (queued, held, re-queued, booting), and a --stills '
       + 'finishing run keeps the listing; the signal owner keeps 128 + n over an open-form tool\'s own exit; a stop before any id '
-      + 'keeps turret-parent-audit\'s output');
+      + 'keeps turret-parent-audit\'s output and a queued tool starts nothing');
   } finally {
     for (const dir of roots) rmSync(dir, { recursive: true, force: true });
   }
