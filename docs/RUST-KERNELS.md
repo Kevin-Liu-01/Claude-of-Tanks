@@ -60,8 +60,12 @@ it happens; a NaN the kernel answered (its ground's) passes.
     the migration config. Its boot (and a standby's preparation) waits for the module before it builds the world, so the
     fetch, its answer and its bytes, has `HOST_KERNELS_FETCH_MS` (15 s, `src/mp/host/worldCollision.ts`) from its start
     (round 5 Q1, review r2): past it the request is aborted and the world is built on the TypeScript, reported
-    `timeout`, inside the boot's own 30 s bound. Before, a request that never answered held the boot until that bound
-    failed it, and the room elected another seat.
+    `timeout`, inside the boot's own 30 s bound (`ELECTED_HOST_BOOT_MS`). Before, a request that never answered held
+    the boot until that bound failed it, and the room elected another seat. A standby's preparation, which starts 20 s
+    after the seat is welcomed as a peer (`STANDBY_HOST_DELAY_MS`) and may have minutes before any boot needs its world,
+    is held to the same bound: where the module takes longer than 15 s, the standby builds its world on the TypeScript,
+    and a migration onto it reuses that world, so the new host runs on the TypeScript too, reported `timeout` (the same
+    match, without the kernels' tick saving).
   - A solo battle steps on the main thread over the rendered world (`game/state.ts`). There the kernels take the hulls'
     support: `src/world/soloWorldKernels.ts` gives each world its own instance, its grid loaded in the order of the
     world's own obstacle grid, its ground mirrored from the battle's overlay. Each battle chooses once, at its setup
@@ -131,7 +135,7 @@ the module's bytes by `HOST_KERNELS_FETCH_MS`), `compile`, `link`, `missing` (a 
 | `node tools/solo-kernels-probe.mjs --check` | A solo battle in Chrome: `wasm-check`'s comparison, then the sim step A B B A |
 | `node src/world/simKernelsReport.selftest.mjs`, `src/mp/host/hostStandby.selftest.mjs` | A fallback's reason named and reported: the host core's `ready` (`off`, a refused module's `http_404`, `wasm`) |
 | `node src/game/soloKernelEntry.selftest.mjs` | The solo load's bounds (round 5 Q1): an entry waits up to 3 s of its own while the load is younger than its deadline, at once after it; a request with no answer is aborted (`timeout`); an answered load is installed however late |
-| `node src/mp/host/hostKernelsFetch.selftest.mjs` | The host's fetch bound (round 5 Q1): a request with no answer, or a body that stalls, is aborted at `HOST_KERNELS_FETCH_MS`, and the boot goes live on the TypeScript, its `ready` `ts`/`timeout` |
+| `node src/mp/host/hostKernelsFetch.selftest.mjs` | The host's fetch bound (round 5 Q1): a request with no answer, or a body that stalls, is aborted at `HOST_KERNELS_FETCH_MS`, and the boot goes live on the TypeScript, its `ready` `ts`/`timeout`; through the host runtime too, with an unprepared boot's room before its boot timer (`ELECTED_HOST_BOOT_MS`) |
 
 Changing a ported TypeScript function means regenerating its vectors (`node tools/port-golden-vectors.mjs`) and
 porting the change to its Rust file; `cargo test` fails until both agree.
