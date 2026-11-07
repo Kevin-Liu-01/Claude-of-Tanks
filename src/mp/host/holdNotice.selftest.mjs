@@ -8,8 +8,8 @@
 // Now a host that holds a HELLO says how long (wire HOLD): through the boot its runtime does, on the main thread, to every
 // link (matchHost.ts bootHoldNotice), and in the resume hold its core does (matchHostCore.ts noticeHeld); the seat's
 // allowance runs to that (MatchClient receiveHold). Every case runs the real host runtime and core and a real MatchClient
-// in virtual time, a 4 s boot and a 3 s hold that alice's partner bob never ends. In cases 1, 2 and 4 bob is the host and
-// alice a peer on her WebRTC link (the scripted double), which the runtime's acceptor answers and bridges to its core:
+// in virtual time, a 4 s boot and a 3 s hold that alice's partner bob never ends. In cases 1, 2, 4 and 5 bob is the host
+// and alice a peer on her WebRTC link (the scripted double), which the runtime's acceptor answers and bridges to its core:
 //   1. a kept host (same generation): alice is told twice (boot, hold), asks for no fresh link, and is welcomed when the
 //      hold ends (before round 3: stalled at 5 s, inside the hold);
 //   2. a newly elected host that goes silent once it has announced its hold: alice asks for a fresh link at the announced
