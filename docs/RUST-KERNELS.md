@@ -61,11 +61,14 @@ it happens; a NaN the kernel answered (its ground's) passes.
     fetch, its answer and its bytes, has `HOST_KERNELS_FETCH_MS` (15 s, `src/mp/host/worldCollision.ts`) from its start
     (round 5 Q1, review r2): past it the request is aborted and the world is built on the TypeScript, reported
     `timeout`, inside the boot's own 30 s bound (`ELECTED_HOST_BOOT_MS`). Before, a request that never answered held
-    the boot until that bound failed it, and the room elected another seat. A standby's preparation, which starts 20 s
-    after the seat is welcomed as a peer (`STANDBY_HOST_DELAY_MS`) and may have minutes before any boot needs its world,
-    is held to the same bound: where the module takes longer than 15 s, the standby builds its world on the TypeScript,
-    and a migration onto it reuses that world, so the new host runs on the TypeScript too, reported `timeout` (the same
-    match, without the kernels' tick saving).
+    the boot until that bound failed it, and the room elected another seat. That holds where the module's own request
+    stalls or crawls: the boot fetches the map's collision manifest only after the module, and a manifest is 6 to 34
+    times the module's bytes (gzipped), so a link slow enough to cut the module at 15 s also holds a manifest the
+    browser has not cached past the boot's bound, and that boot fails at 30 s with or without the bound. A standby's
+    preparation, which starts 20 s after the seat is welcomed as a peer (`STANDBY_HOST_DELAY_MS`) and may have minutes
+    before any boot needs its world, is held to the same bound: where the module takes longer than 15 s, the standby
+    builds its world on the TypeScript, and a migration onto it reuses that world, so the new host runs on the
+    TypeScript too, reported `timeout` (the same match, without the kernels' tick saving).
   - A solo battle steps on the main thread over the rendered world (`game/state.ts`). There the kernels take the hulls'
     support: `src/world/soloWorldKernels.ts` gives each world its own instance, its grid loaded in the order of the
     world's own obstacle grid, its ground mirrored from the battle's overlay. Each battle chooses once, at its setup

@@ -31,6 +31,8 @@ import { simKernelsFailureReason } from '../../world/simKernelsStatus.ts';
 
 /** What an unprepared boot needs past the bound for its manifest and world (3.4-4.3 s: worldCollision.ts). */
 const BOOT_ROOM_MS = 5_000;
+/** How long, in wall time, a boot released at the bound may take to build its world here before it is a load stall. */
+const SETTLE_WALL_MS = 120_000;
 // a stuck guard, not a cost bound (the receipt's user time is a few seconds; under a heavy load its wall runs minutes)
 const watchdog = setTimeout(() => { console.error('hostKernelsFetch.selftest: stuck'); process.exit(1); }, 600_000);
 watchdog.unref();
@@ -60,6 +62,8 @@ const kernelBytes = readFileSync(new URL('../../../crates/cot-sim-wasm/pkg/cot_s
 const bufferOf = (bytes) => bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength);
 /** Each kernels request this receipt saw, by URL: its init (the signal) and how it answers. */
 const requests = new Map();
+/** How many manifest requests the boots made: a boot asks for its manifest once its kernels' wait has ended. */
+let manifestAsks = 0;
 /** A response whose body never ends: like a platform's, it errors with the abort's reason when its request is aborted. */
 const stalledBody = (signal) => ({ ok: true, status: 200, json: async () => ({}),
   arrayBuffer: () => new Promise((_, reject) => { signal?.addEventListener('abort', () => reject(signal.reason), { once: true }); }) });
@@ -73,6 +77,7 @@ const realFetch = globalThis.fetch;
 globalThis.fetch = (url, init) => {
   const answer = kernelAnswers[String(url)];
   if (answer) { requests.set(String(url), init); return answer(init); }
+  manifestAsks++;
   const bytes = files.get(String(url));
   if (!bytes) return Promise.resolve({ ok: false, status: 404, arrayBuffer: async () => new ArrayBuffer(0), json: async () => ({}) });
   return Promise.resolve({ ok: true, status: 200, arrayBuffer: async () => bufferOf(bytes), json: async () => JSON.parse(bytes.toString('utf8')) });
@@ -126,7 +131,7 @@ try {
     assert.equal(bounds[0].ms, worldCollision.HOST_KERNELS_FETCH_MS, 'the bound is HOST_KERNELS_FETCH_MS');
     assert.ok(worldCollision.HOST_KERNELS_FETCH_MS + BOOT_ROOM_MS < ELECTED_HOST_BOOT_MS,
       'the bound leaves an unprepared boot its world inside the boot timer (ELECTED_HOST_BOOT_MS)');
-    await until(() => posted.some((message) => message.type === 'ready' || message.type === 'boot_failed'), 'ready after the bound', 120_000);
+    await until(() => posted.some((message) => message.type === 'ready' || message.type === 'boot_failed'), 'ready after the bound', SETTLE_WALL_MS);
     assert.equal(posted.some((message) => message.type === 'boot_failed'), false, 'the boot did not fail');
     assert.deepEqual(posted.find((message) => message.type === 'ready').kernels, { mode: 'ts', reason: 'timeout' },
       'the boot goes live on the TypeScript and its ready names the timeout');
@@ -166,7 +171,9 @@ try {
     const bootTimer = runtimeTimers[0];
     assert.equal(bootTimer.ms, ELECTED_HOST_BOOT_MS, 'the runtime\'s boot timer is ELECTED_HOST_BOOT_MS (matchHost.ts, its default)');
     // virtual time: each timer of seconds the two armed at the boot's start fires in due order, one at a time, and the
-    // real world build gets its time to answer before the next
+    // real world build gets its time to answer before the next. A boot the fired timer released (it asked for its
+    // manifest) that has not settled within SETTLE_WALL_MS is a world build stalled by load: a timeout, never the next
+    // timer, which would read as the hazard (round 6 V7 review r2). A boot still held goes on to the next timer.
     const fired = [];
     for (;;) {
       const next = [...bounds.map((timer) => ({ timer, who: 'core' })), ...runtimeTimers.map((timer) => ({ timer, who: 'runtime' }))]
@@ -174,8 +181,11 @@ try {
       if (!next || host.state !== 'booting') break;
       next.timer.fired = true;
       fired.push(`${next.who} ${next.timer.ms}`);
+      const asksBefore = manifestAsks;
       next.timer.fn();
-      await within(() => host.state !== 'booting', 120_000);
+      if (!(await within(() => host.state !== 'booting', SETTLE_WALL_MS)) && manifestAsks > asksBefore) {
+        throw new Error(`timeout: the boot asked for its manifest after ${fired.at(-1)} fired but did not settle within ${SETTLE_WALL_MS / 1000} s of wall time (load: rerun)`);
+      }
     }
     await turns();
     assert.deepEqual(fired, [`core ${worldCollision.HOST_KERNELS_FETCH_MS}`],
