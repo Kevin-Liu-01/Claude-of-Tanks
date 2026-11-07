@@ -268,13 +268,39 @@ function cloudsHeld() {
 /** The grass and the ground litter with no cell left to build near the camera (page side). */
 function groundSettled() {
   // (ab21 A/A, urban chase: the base, shot first, drew fewer near blades than the arms after it) the mid ring too, and the
-  // rings' published counts unchanged for 1.5 s
+  // rings' published counts unchanged; (ab22 A/A, the town poses at load 200: frames a second apart, so 1.5 s held no
+  // update at all and the sward kept filling across the arms) unchanged over 30 rendered frames as well as 1.5 s
   const W = window.__DEBUG.world, g = W?._tallGrass?.getState?.(), l = W?._litter?.getState?.();
+  if (!window.__gsFrames) {
+    window.__gsFrames = { n: 0 };
+    const tick = () => { window.__gsFrames.n++; requestAnimationFrame(tick); };
+    requestAnimationFrame(tick);
+  }
   const idle = (!g || !g.enabled || (!g.near.pending && !g.mid.pending && !g.far.pending)) && (!l || !l.pending);
   const sig = g ? [g.near, g.mid, g.far].map((r) => `${r.count}/${r.publishes}`).join() : '';
-  const now = performance.now(), last = window.__gsSettle;
-  window.__gsSettle = { sig, since: last && last.sig === sig ? last.since : now };
-  return idle && now - window.__gsSettle.since > 1500;
+  const now = performance.now(), frame = window.__gsFrames.n, last = window.__gsSettle;
+  const same = last && last.sig === sig;
+  window.__gsSettle = { sig, since: same ? last.since : now, sinceFrame: same ? last.sinceFrame : frame };
+  return idle && now - window.__gsSettle.since > 1500 && frame - window.__gsSettle.sinceFrame >= 30;
+}
+
+/** Holds the grass rings and the ground litter as published (page side): `on` true while a pose's arms are shot, so every
+ *  arm draws one set of blades whatever the streaming would have done between them. Returns the grass's ring counts. */
+function pageFreezeGround(on) {
+  const W = window.__DEBUG.world, g = W?._tallGrass, l = W?._litter;
+  if (g && !g.__gsHold) {
+    const update = g.update;
+    g.update = (dt, cam, focus, fwd, fill) => update.call(g, dt, cam, focus, fwd, window.__gsHold ? false : fill);
+    g.__gsHold = true;
+  }
+  if (l && !l.__gsHold) {
+    const update = l.update;
+    l.update = (cam) => { if (!window.__gsHold) update.call(l, cam); };
+    l.__gsHold = true;
+  }
+  window.__gsHold = on;
+  const s = g?.getState?.();
+  return s ? [s.near, s.mid, s.far].map((r) => `${r.count}/${r.publishes}`).join() : null;
 }
 
 /** An absolute pose (`resolved: true` keeps the y values as given; otherwise they are heights over the ground). */
@@ -546,7 +572,8 @@ async function shootMap(entry, options, frames) {
     settled = await page.waitForFunction(groundSettled, { timeout: 90000, polling: 250 }).then(() => settled, () => false);
     await sleep(400);
     const order = poseIndex % 2 ? [...options.variants].reverse() : options.variants;
-    const shots = { groundSettled: settled, order, clouds: { timeS: CLOUD_TIME_S, frames: CLOUD_FRAMES } };
+    const grass = await page.evaluate(pageFreezeGround, true);
+    const shots = { groundSettled: settled, grass, order, clouds: { timeS: CLOUD_TIME_S, frames: CLOUD_FRAMES } };
     for (const variant of order) {
       const pv = parseVariant(variant);
       const n = await page.evaluate(pageSetUniforms, pv.sets);
@@ -566,9 +593,10 @@ async function shootMap(entry, options, frames) {
         await holdClouds(`${pose.name} ${variant}`);
         const file = path.join(frames, `${mapId}-${pose.name}-${tag}.png`);
         await page.screenshot({ path: file, type: 'png' });
-        shots[variant] = { file: path.basename(file), materials: n, decalsHidden: hidden };
+        shots[variant] = { file: path.basename(file), materials: n, decalsHidden: hidden, grass: await page.evaluate(pageFreezeGround, true) };
       }
     }
+    await page.evaluate(pageFreezeGround, false);
     await page.evaluate(pageSetUniforms, null);
     await page.evaluate(pageHideDecals, []);
     receipt.poses[pose.name] = { resolved, town: pose.town ?? null, hull: pose.hull ?? null, offDeg: pose.offDeg ?? null, tried: pose.tried ?? null, shots };
