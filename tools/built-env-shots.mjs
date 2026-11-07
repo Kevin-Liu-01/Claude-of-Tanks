@@ -261,8 +261,13 @@ function groundSettled() {
     const tick = () => { window.__gsFrames.n++; requestAnimationFrame(tick); };
     requestAnimationFrame(tick);
   }
-  const idle = (!g || !g.enabled || (!g.near.pending && !g.mid.pending && !g.far.pending)) && (!l || !l.pending);
-  const sig = g ? [g.near, g.mid, g.far].map((r) => `${r.count}/${r.publishes}`).join() : '';
+  // (ab6's phone A/A: the tall grass is off on the mobile tier, and the vegetation's grass carpet was still publishing
+  // cells between two base boots — 1.4 % of saltwind's street moved, all of it blades) the carpet idle and unchanged too
+  const v = W?.getGrassWorkState?.();
+  const idle = (!g || !g.enabled || (!g.near.pending && !g.mid.pending && !g.far.pending)) && (!l || !l.pending)
+    && (!v || (!v.pendingVisible && !v.active && !v.carpet?.pending));
+  const sig = (g ? [g.near, g.mid, g.far].map((r) => `${r.count}/${r.publishes}`).join() : '')
+    + (v ? `|${v.built}/${v.carpet?.publishedGeneration ?? 0}` : '');
   const now = performance.now(), frame = window.__gsFrames.n, last = window.__gsSettle;
   const same = last && last.sig === sig;
   window.__gsSettle = { sig, since: same ? last.since : now, sinceFrame: same ? last.sinceFrame : frame };
@@ -284,8 +289,8 @@ function pageFreezeGround(on) {
     l.__gsHold = true;
   }
   window.__gsHold = on;
-  const s = g?.getState?.();
-  return s ? [s.near, s.mid, s.far].map((r) => `${r.count}/${r.publishes}`).join() : null;
+  const s = g?.getState?.(), v = W?.getGrassWorkState?.();
+  return `${s ? [s.near, s.mid, s.far].map((r) => `${r.count}/${r.publishes}`).join() : '-'}|${v ? `${v.built}/${v.carpet?.publishedGeneration ?? 0}` : '-'}`;
 }
 
 /** The pinned layer held (its frames traced), or no layer. */
