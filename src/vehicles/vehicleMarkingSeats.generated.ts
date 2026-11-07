@@ -60,6 +60,7 @@ import { VEHICLE_MARKING_SEATS as SEATS_PATTON } from './vehicleMarkingSeatGroup
 import { VEHICLE_MARKING_SEATS as SEATS_POLAND } from './vehicleMarkingSeatGroups/poland.generated.ts';
 import { VEHICLE_MARKING_SEATS as SEATS_PUMAS1SOURCEX } from './vehicleMarkingSeatGroups/pumaS1SourceX.generated.ts';
 import { VEHICLE_MARKING_SEATS as SEATS_RUSSIA } from './vehicleMarkingSeatGroups/russia.generated.ts';
+import { VEHICLE_MARKING_SEATS as SEATS_RUSSIA152 } from './vehicleMarkingSeatGroups/russia152.generated.ts';
 import { VEHICLE_MARKING_SEATS as SEATS_SABRAMK2SOURCEX } from './vehicleMarkingSeatGroups/sabraMk2SourceX.generated.ts';
 import { VEHICLE_MARKING_SEATS as SEATS_SHERIDAN } from './vehicleMarkingSeatGroups/sheridan.generated.ts';
 import { VEHICLE_MARKING_SEATS as SEATS_SINOSOVIETCONCEPTS } from './vehicleMarkingSeatGroups/sinoSovietConcepts.generated.ts';
@@ -151,6 +152,7 @@ export const VEHICLE_MARKING_SEATS: Readonly<Record<string, VehicleMarkingSeatRe
   SEATS_POLAND,
   SEATS_PUMAS1SOURCEX,
   SEATS_RUSSIA,
+  SEATS_RUSSIA152,
   SEATS_SABRAMK2SOURCEX,
   SEATS_SHERIDAN,
   SEATS_SINOSOVIETCONCEPTS,

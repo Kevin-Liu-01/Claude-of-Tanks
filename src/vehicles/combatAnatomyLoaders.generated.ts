@@ -64,6 +64,7 @@ export const COMBAT_ANATOMY_GROUP_LOADERS: Readonly<Record<string, () => Promise
   "poland": () => import('./combatAnatomyGroups/poland.generated.ts'),
   "pumaS1SourceX": () => import('./combatAnatomyGroups/pumaS1SourceX.generated.ts'),
   "russia": () => import('./combatAnatomyGroups/russia.generated.ts'),
+  "russia152": () => import('./combatAnatomyGroups/russia152.generated.ts'),
   "sabraMk2SourceX": () => import('./combatAnatomyGroups/sabraMk2SourceX.generated.ts'),
   "sheridan": () => import('./combatAnatomyGroups/sheridan.generated.ts'),
   "sinoSovietConcepts": () => import('./combatAnatomyGroups/sinoSovietConcepts.generated.ts'),
