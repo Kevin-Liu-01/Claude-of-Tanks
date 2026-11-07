@@ -226,6 +226,8 @@ function pageSpotPose({ hull, range, after = -1 }) {
 
 /** The scene time the clouds are drawn at, and the frames traced there before the layer is held. */
 const CLOUD_TIME_S = 0, CLOUD_FRAMES = 48;
+// (ab23, foundry on a machine at load 300: 36 of the 48 frames in 180 s) the hold's wait, longer where the machine is busy
+const CLOUD_HOLD_S = Number(process.env.GROUND_SHOTS_CLOUD_HOLD_S) || 180;
 
 /**
  * The cloud layer pinned (page side): at CLOUD_TIME_S, a fresh trace sequence, its drift held (the frame's dt 0) while
@@ -563,9 +565,9 @@ async function shootMap(entry, options, frames) {
   /** The pinned sky traced and held, or the pose fails (48 frames: a loaded machine draws a few a second). */
   const holdClouds = async (what) => {
     await page.evaluate(pinClouds());
-    if (await page.waitForFunction(cloudsHeld, { timeout: 180_000, polling: 250 }).then(() => true, () => false)) return;
+    if (await page.waitForFunction(cloudsHeld, { timeout: CLOUD_HOLD_S * 1000, polling: 250 }).then(() => true, () => false)) return;
     const left = await page.evaluate(() => window.__DEBUG.scene.userData.volumetricClouds?.__pin?.left ?? null);
-    throw new Error(`${mapId} ${what}: the cloud layer did not hold within 180 s (${left} of ${CLOUD_FRAMES} frames left)`);
+    throw new Error(`${mapId} ${what}: the cloud layer did not hold within ${CLOUD_HOLD_S} s (${left} of ${CLOUD_FRAMES} frames left)`);
   };
   for (const [poseIndex, pose] of poses.entries()) {
     if (pose.kind === 'spot' && !(await visibleSpotPose(page, pose))) {
