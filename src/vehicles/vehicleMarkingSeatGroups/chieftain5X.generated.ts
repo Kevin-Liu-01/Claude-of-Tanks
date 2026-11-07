@@ -6,6 +6,55 @@ export const VEHICLE_MARKING_SEAT_SCHEMA_VERSION = 1;
 import type { VehicleMarkingSeatRecord } from '../vehicleMarkingSeatRegistry.ts';
 
 export const VEHICLE_MARKING_SEATS: Readonly<Record<string, VehicleMarkingSeatRecord>> = Object.freeze({
+  "chieftain3": {
+    "schemaVersion": 1,
+    "seats": [
+      {
+        "kind": "designation",
+        "parent": "hull",
+        "size": 0.2992,
+        "pos": [
+          1.429,
+          1.335129,
+          0
+        ],
+        "quaternion": [
+          0,
+          0.7071068,
+          0,
+          0.7071068
+        ],
+        "surfaceMesh": "hull",
+        "anchorProfile": "chieftain3",
+        "visibilitySamples": 9,
+        "visibilityClearSamples": 6,
+        "visibilityRatio": 0.6666667,
+        "maximumSurfaceErrorM": 0.22041
+      },
+      {
+        "kind": "insignia",
+        "parent": "turret",
+        "size": 0.25,
+        "pos": [
+          -1.0812132,
+          0.4505982,
+          -0.9035526
+        ],
+        "quaternion": [
+          -0.0651175,
+          -0.7733276,
+          -0.0529165,
+          0.6284297
+        ],
+        "surfaceMesh": "turret",
+        "anchorProfile": "chieftain3",
+        "visibilitySamples": 9,
+        "visibilityClearSamples": 9,
+        "visibilityRatio": 1,
+        "maximumSurfaceErrorM": 0.0098935
+      }
+    ]
+  },
   "chieftain5": {
     "schemaVersion": 1,
     "seats": [

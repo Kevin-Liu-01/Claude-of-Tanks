@@ -1,5 +1,5 @@
 {
- "generatedAt": "2026-11-05T05:34:02.441Z",
+ "generatedAt": "2026-11-07T10:12:17.990Z",
  "gate": "every component >= its registered floor (90 fleet / 92 exemplar / 99 historical preservation); min is the headline; preservation is not source fidelity",
  "passed": 44,
  "total": 154,
@@ -514,7 +514,7 @@
     "stations": 0,
     "turretCurves": 0,
     "wholeCurves": 0,
-    "dims": 40.4,
+    "dims": 8.8,
     "floaters": 100
    },
    "comparisonPurpose": "source-fidelity"
@@ -579,6 +579,22 @@
     "turretCurves": 49.1,
     "wholeCurves": 43.5,
     "dims": 10.8,
+    "floaters": 100
+   },
+   "comparisonPurpose": "source-fidelity"
+  },
+  {
+   "id": "bmp3",
+   "geoMin": 0,
+   "requiredMinimum": 90,
+   "qualityBar": "fleet",
+   "gatePassed": false,
+   "components": {
+    "hullCurves": 61.4,
+    "stations": 51.4,
+    "turretCurves": 25.7,
+    "wholeCurves": 42.4,
+    "dims": 0,
     "floaters": 100
    },
    "comparisonPurpose": "source-fidelity"
@@ -841,22 +857,6 @@
    "comparisonPurpose": "source-fidelity"
   },
   {
-   "id": "bmp3",
-   "geoMin": 39.4,
-   "requiredMinimum": 90,
-   "qualityBar": "fleet",
-   "gatePassed": false,
-   "components": {
-    "hullCurves": 57.8,
-    "stations": 78.2,
-    "turretCurves": 39.4,
-    "wholeCurves": 52.6,
-    "dims": 100,
-    "floaters": 100
-   },
-   "comparisonPurpose": "source-fidelity"
-  },
-  {
    "id": "bm_oplot_m",
    "geoMin": 40,
    "requiredMinimum": 92,
@@ -932,6 +932,22 @@
    "comparisonPurpose": "source-fidelity"
   },
   {
+   "id": "c1_ariete_preserie",
+   "geoMin": 43.8,
+   "requiredMinimum": 90,
+   "qualityBar": "fleet",
+   "gatePassed": false,
+   "components": {
+    "hullCurves": 53.9,
+    "stations": 64,
+    "turretCurves": 54.4,
+    "wholeCurves": 43.8,
+    "dims": 90.6,
+    "floaters": 100
+   },
+   "comparisonPurpose": "source-fidelity"
+  },
+  {
    "id": "t90sm_2013",
    "geoMin": 46.5,
    "requiredMinimum": 90,
@@ -948,17 +964,17 @@
    "comparisonPurpose": "source-fidelity"
   },
   {
-   "id": "c1_ariete_preserie",
-   "geoMin": 47.4,
+   "id": "bmp2",
+   "geoMin": 48.9,
    "requiredMinimum": 90,
    "qualityBar": "fleet",
    "gatePassed": false,
    "components": {
-    "hullCurves": 55.6,
-    "stations": 66,
-    "turretCurves": 59,
-    "wholeCurves": 47.4,
-    "dims": 97.9,
+    "hullCurves": 65.5,
+    "stations": 48.9,
+    "turretCurves": 62.8,
+    "wholeCurves": 54,
+    "dims": 100,
     "floaters": 100
    },
    "comparisonPurpose": "source-fidelity"
@@ -1062,22 +1078,6 @@
     "turretCurves": 61.2,
     "wholeCurves": 62.1,
     "dims": 59.9,
-    "floaters": 100
-   },
-   "comparisonPurpose": "source-fidelity"
-  },
-  {
-   "id": "bmp2",
-   "geoMin": 60.2,
-   "requiredMinimum": 90,
-   "qualityBar": "fleet",
-   "gatePassed": false,
-   "components": {
-    "hullCurves": 66.3,
-    "stations": 61.5,
-    "turretCurves": 70.6,
-    "wholeCurves": 60.2,
-    "dims": 97.3,
     "floaters": 100
    },
    "comparisonPurpose": "source-fidelity"
@@ -2159,19 +2159,6 @@
    "comparisonPurpose": "source-fidelity"
   },
   {
-   "id": "k21",
-   "geoMin": 94.8,
-   "requiredMinimum": 92,
-   "qualityBar": "exemplar",
-   "gatePassed": true,
-   "components": {
-    "wholeCurves": 94.8,
-    "dims": 100,
-    "floaters": 100
-   },
-   "comparisonPurpose": "source-fidelity"
-  },
-  {
    "id": "merkava1b",
    "geoMin": 95.1,
    "requiredMinimum": 92,
@@ -2257,6 +2244,19 @@
    "gatePassed": true,
    "components": {
     "wholeCurves": 95.9,
+    "dims": 100,
+    "floaters": 100
+   },
+   "comparisonPurpose": "source-fidelity"
+  },
+  {
+   "id": "k21",
+   "geoMin": 96,
+   "requiredMinimum": 92,
+   "qualityBar": "exemplar",
+   "gatePassed": true,
+   "components": {
+    "wholeCurves": 96,
     "dims": 100,
     "floaters": 100
    },

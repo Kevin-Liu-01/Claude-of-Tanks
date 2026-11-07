@@ -203,42 +203,17 @@
    "hostSweep": []
   },
   "bmp2": {
-   "inputHash": "fa0db03d0f22ec8a",
-   "runs": [
-    {
-     "index": 0,
-     "site": "fitting:spareTrackLinks@buildBMP2@modern3.ts",
-     "source": "fitting",
-     "frame": "hull",
-     "registered": false,
-     "classes": [],
-     "primary": "OK",
-     "why": {},
-     "notes": [
-      "carried on its rack"
-     ],
-     "measures": {
-      "support": 0.214,
-      "gap": 0.786,
-      "air": 0,
-      "hidden": 0,
-      "sunkMaxM": 0.012,
-      "sweepM": 0,
-      "traverseM": null,
-      "exposure": 0.922,
-      "host": "hull<buildBMP2@modern3.ts:3730>"
-     }
-    }
-   ],
+   "inputHash": "c9b36991926e978c",
+   "runs": [],
    "uncovered": [],
    "hostSweep": []
   },
   "bmp3": {
-   "inputHash": "f4b6404c671e6795",
+   "inputHash": "44bee4ab177516a0",
    "runs": [
     {
      "index": 0,
-     "site": "fitting:spareTrackLinks@buildBMP3@profiles/afvFamily.ts",
+     "site": "fitting:spareTrackLinks@buildBMP3Hull@profiles/afvFamily.ts",
      "source": "fitting",
      "frame": "hull",
      "registered": false,
@@ -247,15 +222,15 @@
      "why": {},
      "notes": [],
      "measures": {
-      "support": 0.977,
-      "gap": 0.023,
+      "support": 1,
+      "gap": 0,
       "air": 0,
       "hidden": 0,
       "sunkMaxM": 0,
       "sweepM": 0,
       "traverseM": null,
-      "exposure": 0.966,
-      "host": "hull<buildBMP3@profiles/afvFamily.ts:1056>"
+      "exposure": 0.932,
+      "host": "hull<buildBMP3Hull@profiles/afvFamily.ts:900>"
      }
     }
    ],
@@ -263,31 +238,28 @@
    "hostSweep": []
   },
   "bmp3_rok": {
-   "inputHash": "270b36ae7836ddaf",
+   "inputHash": "b01b37fad5b6be62",
    "runs": [
     {
      "index": 0,
-     "site": "fitting:spareTrackLinks@buildBMP2@modern3.ts",
+     "site": "fitting:spareTrackLinks@buildBMP3Hull@profiles/afvFamily.ts",
      "source": "fitting",
      "frame": "hull",
      "registered": false,
      "classes": [],
      "primary": "OK",
      "why": {},
-     "notes": [
-      "clips <= 5 cm cosmetic",
-      "carried on its rack"
-     ],
+     "notes": [],
      "measures": {
-      "support": 0.217,
-      "gap": 0.783,
+      "support": 1,
+      "gap": 0,
       "air": 0,
       "hidden": 0,
-      "sunkMaxM": 0.046,
+      "sunkMaxM": 0,
       "sweepM": 0,
       "traverseM": null,
-      "exposure": 0.944,
-      "host": "hull<buildBMP2@modern3.ts:3730>"
+      "exposure": 0.932,
+      "host": "hull<buildBMP3Hull@profiles/afvFamily.ts:900>"
      }
     }
    ],
@@ -325,28 +297,30 @@
    "hostSweep": []
   },
   "bwp1": {
-   "inputHash": "7c94ed4453455033",
+   "inputHash": "c3c324b5a6c594d0",
    "runs": [
     {
      "index": 0,
-     "site": "fitting:spareTrackLinks@buildBMP2@modern3.ts",
+     "site": "fitting:spareTrackLinks@buildBmpBoatHull@profiles/bmpBoatHull.ts",
      "source": "fitting",
      "frame": "hull",
      "registered": false,
      "classes": [],
      "primary": "OK",
      "why": {},
-     "notes": [],
+     "notes": [
+      "clips <= 5 cm cosmetic"
+     ],
      "measures": {
-      "support": 0.834,
-      "gap": 0.093,
-      "air": 0.073,
-      "hidden": 0,
-      "sunkMaxM": 0.01,
+      "support": 0.643,
+      "gap": 0.356,
+      "air": 0.001,
+      "hidden": 0.008,
+      "sunkMaxM": 0.018,
       "sweepM": 0,
       "traverseM": null,
-      "exposure": 0.933,
-      "host": "hull<buildBMP2@modern3.ts:3704>"
+      "exposure": 0.91,
+      "host": "hull<addTubAndStern@profiles/bmpBoatHull.ts:261>"
      }
     }
    ],
@@ -385,7 +359,7 @@
    "hostSweep": []
   },
   "c1_ariete_preserie": {
-   "inputHash": "0d6ad26e7d6cc244",
+   "inputHash": "f8536f2fa14ea5b3",
    "runs": [
     {
      "index": 0,
@@ -406,7 +380,7 @@
       "sweepM": 0,
       "traverseM": null,
       "exposure": 0.944,
-      "host": "hull<buildArieteHullStage2@profiles/misc.ts:530>"
+      "host": "hull<buildArieteHullStage2@profiles/misc.ts:489>"
      }
     }
    ],
@@ -414,7 +388,7 @@
    "hostSweep": []
   },
   "c1_ariete_proto_serie1": {
-   "inputHash": "feacbc4b63ae0f3e",
+   "inputHash": "30811277de8eecf2",
    "runs": [
     {
      "index": 0,
@@ -435,7 +409,7 @@
       "sweepM": 0,
       "traverseM": null,
       "exposure": 0.966,
-      "host": "hull<buildArieteMkHullStage2@profiles/italy.ts:323>"
+      "host": "hull<buildArieteMkHullStage2@profiles/italy.ts:308>"
      }
     }
    ],
@@ -474,7 +448,7 @@
    "hostSweep": []
   },
   "c2_ariete_proto": {
-   "inputHash": "fb31e1a151606df3",
+   "inputHash": "b5aaf86aa40867e1",
    "runs": [
     {
      "index": 0,
@@ -495,7 +469,7 @@
       "sweepM": 0,
       "traverseM": null,
       "exposure": 0.966,
-      "host": "hull<buildArieteMkHullStage2@profiles/italy.ts:323>"
+      "host": "hull<buildArieteMkHullStage2@profiles/italy.ts:308>"
      }
     }
    ],
@@ -503,7 +477,7 @@
    "hostSweep": []
   },
   "carro45t": {
-   "inputHash": "fc504bbb390e9ee3",
+   "inputHash": "d23b2d52ab4e7327",
    "runs": [
     {
      "index": 0,
@@ -514,19 +488,39 @@
      "classes": [],
      "primary": "OK",
      "why": {},
-     "notes": [
-      "clips <= 5 cm cosmetic"
-     ],
+     "notes": [],
      "measures": {
-      "support": 0.992,
-      "gap": 0.008,
+      "support": 1,
+      "gap": 0,
       "air": 0,
       "hidden": 0,
-      "sunkMaxM": 0.013,
+      "sunkMaxM": 0.006,
       "sweepM": 0,
       "traverseM": 0,
-      "exposure": 0.856,
+      "exposure": 0.922,
       "host": "orphan:turret"
+     }
+    },
+    {
+     "index": 1,
+     "site": "adhoc:carro45t-nose-links@<anon>@profiles/carro45tParts.ts",
+     "source": "adhoc",
+     "frame": "hull",
+     "registered": true,
+     "classes": [],
+     "primary": "OK",
+     "why": {},
+     "notes": [],
+     "measures": {
+      "support": 1,
+      "gap": 0,
+      "air": 0,
+      "hidden": 0,
+      "sunkMaxM": 0.006,
+      "sweepM": 0,
+      "traverseM": null,
+      "exposure": 0.685,
+      "host": "hull<buildCarro45TMarkingsStage1@profiles/italy.ts:826>"
      }
     }
    ],
@@ -783,7 +777,7 @@
    "hostSweep": []
   },
   "chieftain3": {
-   "inputHash": "9d93215aad075a77",
+   "inputHash": "a8fa1a35d467d1e8",
    "runs": [],
    "uncovered": [],
    "hostSweep": []
@@ -801,7 +795,7 @@
    "hostSweep": []
   },
   "chieftain_mk9": {
-   "inputHash": "63a235cd5e52c24a",
+   "inputHash": "3810775de9ada184",
    "runs": [],
    "uncovered": [],
    "hostSweep": []
@@ -1019,7 +1013,7 @@
    "hostSweep": []
   },
   "k1e1": {
-   "inputHash": "4f5ac6822eaf3b9f",
+   "inputHash": "64d1ccb01442e8ce",
    "runs": [
     {
      "index": 0,
@@ -1042,7 +1036,7 @@
       "sweepM": 0,
       "traverseM": null,
       "exposure": 0.933,
-      "host": "hull<buildK1A1Hull@modern3.ts:1246>"
+      "host": "hull<buildK1A1Hull@modern3.ts:1255>"
      }
     }
    ],
@@ -1050,7 +1044,7 @@
    "hostSweep": []
   },
   "k21": {
-   "inputHash": "a456f53c5bdbee22",
+   "inputHash": "f22c3c0bc344e01e",
    "runs": [],
    "uncovered": [],
    "hostSweep": []
@@ -1062,7 +1056,7 @@
    "hostSweep": []
   },
   "k2b": {
-   "inputHash": "c2f18747932ee421",
+   "inputHash": "18f60c70fe760123",
    "runs": [],
    "uncovered": [],
    "hostSweep": []
@@ -4007,33 +4001,8 @@
    "hostSweep": []
   },
   "xk2_black_panther": {
-   "inputHash": "d2f896f549255883",
-   "runs": [
-    {
-     "index": 0,
-     "site": "fitting:spareTrackLinks@buildK2HullFurniture@modern3.ts",
-     "source": "fitting",
-     "frame": "hull",
-     "registered": false,
-     "classes": [],
-     "primary": "OK",
-     "why": {},
-     "notes": [
-      "carried on its rack"
-     ],
-     "measures": {
-      "support": 0.151,
-      "gap": 0.848,
-      "air": 0.001,
-      "hidden": 0.002,
-      "sunkMaxM": 0.023,
-      "sweepM": 0,
-      "traverseM": null,
-      "exposure": 0.978,
-      "host": "hull<buildK2HullBody@modern3.ts:258>"
-     }
-    }
-   ],
+   "inputHash": "776eac8c00274dc4",
+   "runs": [],
    "uncovered": [],
    "hostSweep": []
   },
