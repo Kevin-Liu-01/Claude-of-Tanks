@@ -1,7 +1,9 @@
 /**
  * What this page's simulation runs on (docs/RUST-KERNELS.md): the world kernels, or the TypeScript and why. A failed
- * load keeps its fallback to the TypeScript, but never silently. A solo battle's (game/soloBattleRuntime.ts) or a room
- * host's (mp/host/matchHost.ts, from its Worker's 'ready') status:
+ * load keeps its fallback to the TypeScript, but never silently (a solo load that has not settled, an answered request
+ * whose body or compile never ends or a kernels chunk that never lands, has not failed and is not reported: the doc's
+ * one silent window). A solo battle's (game/soloBattleRuntime.ts) or a room host's (mp/host/matchHost.ts, from its
+ * Worker's 'ready') status:
  * - sets globalThis.__SIM_KERNELS's mode, source and reason;
  * - on a fallback, sends one telemetry note a session (`kernels:<source>:<reason>`);
  * - in development, writes one console line. Production writes nothing to the console (the zero-warnings budget).

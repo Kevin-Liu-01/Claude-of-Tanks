@@ -5,7 +5,9 @@
  */
 /**
  * Whether a world steps on the kernels, and why not ('off': the flag or the boot named none; otherwise the failure's
- * reason, simKernelsFailureReason): a failed load falls back to the TypeScript, never silently (simKernelsReport.ts).
+ * reason, simKernelsFailureReason): a failed load falls back to the TypeScript, never silently (simKernelsReport.ts). A
+ * solo load that has not settled (an answered request whose body or compile never ends, or a kernels chunk that never
+ * lands) has not failed and is not reported: the one silent window (docs/RUST-KERNELS.md).
  */
 export interface SimKernelsStatus {
   mode: 'wasm' | 'ts';

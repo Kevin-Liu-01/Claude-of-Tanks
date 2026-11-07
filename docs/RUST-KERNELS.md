@@ -72,33 +72,38 @@ it happens; a NaN the kernel answered (its ground's) passes.
     the kernels are installed or failed, or `SOLO_KERNELS_ENTRY_WAIT_MS` (3 s, `game/soloBattleRuntime.ts`) after that
     ask has the chunk: after its transfer, when that is still in flight, since the chunk's body starts the load. The
     bound is each ask's own (round 4 F3), so a garage dwell after the Battle intent, whose ask first loads the chunk,
-    does not spend the entry's. A battle rides the kernels when they land within its entry's bound or before the rest
-    of its barrier ends; otherwise it is set up on the TypeScript and the load goes on. While it is pending, each later
-    entry, a Battle Again included, waits up to 3 s of its own again, and the first battle set up after the load lands
-    rides them. The load has one deadline of its own (round 5 Q1): `SOLO_KERNELS_LOAD_DEADLINE_MS` (15 s) from its
-    start, the chunk's body at its first ask. No entry waits for the kernels past it: every entry after the deadline
-    goes on at once, so a load that never answers costs only the entries within the deadline, each up to 3 s past the
-    rest of its barrier (one that begins near the deadline goes on at it). The deadline ends the waits, not the load
-    (round 5 review r1). The load's request (`src/world/soloWorldKernels.ts`) is held to the same deadline from its own
-    start: one with no answer by then is aborted and the load fails, reported `timeout`, nothing installed, and every
-    later battle runs on the TypeScript. So the rule above (a battle rides the kernels that land before the rest of its
-    barrier ends) holds past the deadline only for a load whose request was answered within it. An answered load is
-    never cut, however slow its body or late its compile: it is installed when it lands, and only then does
-    `__SIM_KERNELS` say `wasm`. The deadline asks for the answer's headers within 15 s (a few hundred bytes behind what is
-    already queued on the link), not the 117 KB module, so a slow link shared with the Battle intent's preload wave does
-    not cut a live load; argued, not measured, since no receipt throttles a browser's link. A response whose body stalls
-    after its headers is not aborted (on HTTP/2 it holds one stream, not a connection) and is reported only when it
-    settles. The wait never rejects: an installer or a failure report that throws leaves the TypeScript, and the entry
-    goes on.
+    does not spend the entry's while the load is younger than its deadline (below); a dwell that outlasts the deadline
+    with the load still pending leaves the entry no wait. A battle rides the kernels when they land within its entry's
+    bound or before the rest of its barrier ends; otherwise it is set up on the TypeScript and the load goes on. While
+    it is pending, each later entry, a Battle Again included, waits up to 3 s of its own again, and the first battle set
+    up after the load lands rides them. The load has one deadline of its own (round 5 Q1):
+    `SOLO_KERNELS_LOAD_DEADLINE_MS` (15 s) from its start, the chunk's body at its first ask. No entry waits for the
+    kernels past it: every entry after the deadline goes on at once, so a load that never answers costs only the entries
+    within the deadline, each up to 3 s past the rest of its barrier (one that begins near the deadline goes on at it).
+    The deadline ends the waits, not the load (round 5 review r1). The load's request (`src/world/soloWorldKernels.ts`)
+    is held to the same deadline from its own start: one with no answer by then is aborted and the load fails, reported
+    `timeout`, nothing installed, and every later battle runs on the TypeScript. So the rule above (a battle rides the
+    kernels that land before the rest of its barrier ends) holds past the deadline only for a load whose request was
+    answered within it. An answered load is never cut, however slow its body or late its compile: it is installed when
+    it lands, and only then does `__SIM_KERNELS` say `wasm`. The deadline asks for the answer's headers within 15 s (a
+    few hundred bytes behind what is already queued on the link), not the 117 KB module, so a slow link shared with the
+    Battle intent's preload wave does not cut a live load; argued, not measured, since no receipt throttles a browser's
+    link. A response whose body stalls after its headers is not aborted (on HTTP/2 it holds one stream, not a
+    connection) and is reported only when it settles: until then its battles run on the TypeScript and `__SIM_KERNELS`
+    stays unset, as for a kernels chunk that never lands (the one silent window, below). The wait never rejects: an
+    installer or a failure report that throws leaves the TypeScript, and the entry goes on.
   - `?simKernels=wasm-check` runs both in a solo battle: the TypeScript drives, every answer of the kernels is compared,
     and `window.__SIM_KERNELS.check` counts the comparisons and mismatches.
 
 ## A fallback is reported
 
-Every path keeps its fallback to the TypeScript, and none of them is silent. `src/world/simKernelsStatus.ts` names the
-cause: `csp` (a Content Security Policy without `'wasm-unsafe-eval'`), `http_<status>`, `network`, `timeout` (a solo
-load's request with no answer by its deadline, or a host's fetch without the module's bytes by `HOST_KERNELS_FETCH_MS`),
-`compile`, `link`, `missing` (a server image without the binary), `no_webassembly` or `error`. `off` means an opt-out.
+Every path keeps its fallback to the TypeScript, and every failed load is reported. One window stays silent: a solo load
+whose request was answered within its deadline but whose body or compile never ends, or whose kernels chunk never lands,
+has not failed, so its battles run on the TypeScript with `__SIM_KERNELS` unset until it settles (above).
+`src/world/simKernelsStatus.ts` names the cause: `csp` (a Content Security Policy without `'wasm-unsafe-eval'`),
+`http_<status>`, `network`, `timeout` (a solo load's request with no answer by its deadline, or a host's fetch without
+the module's bytes by `HOST_KERNELS_FETCH_MS`), `compile`, `link`, `missing` (a server image without the binary),
+`no_webassembly` or `error`. `off` means an opt-out.
 
 - **Browser host:** its Worker's `ready` carries `kernels: { mode, reason }`.
 - **Solo battle:** `soloBattleRuntime.ts` reports its load failure.
