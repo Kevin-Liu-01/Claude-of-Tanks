@@ -1108,6 +1108,8 @@ export const SELFTEST_SUITES = Object.freeze({
     // and V8's block coverage measures its reach: an fx-clock read it never runs that is not in its named KNOWN_UNREACHED
     // list fails it, and so does a listed read it now runs
     'src/fx/fxClockStampCensus.selftest.mjs',
+    // round 5 U12: the census whole, with the two houses' destruction the default receipt leaves out (manual: fx)
+    'src/fx/fxClockStampCensusFull.selftest.mjs',
     // 2026-10-10 (physics lane, for the destruction core's natural collapses): the presentation pool of falling pieces.
     'src/fx/debrisPhysics.selftest.mjs',
     'src/gallery/chunkRecovery.selftest.mjs',
