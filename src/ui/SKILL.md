@@ -124,10 +124,10 @@ consumables slot, the Studio's sun dial and sliders, the battle canvas's press
 that resumes the audio) as well as builders, warms, notices and decorative
 paint: at once after one failure and then past the INFRA-P11 backoff capped at a
 minute, with no budget that would spend it for the document, never by itself and
-never offline. A battle's covered entry asks past that backoff
-(`load({ backoff: false })`, which `lazyChunkSites`' EDGE_ASKS holds to its
-callers) (`node src/app/lazyChunk.selftest.mjs`,
-`node src/app/lazyChunkSites.selftest.mjs`). The stylesheet guarantee holds per
+never offline (`node src/app/lazyChunk.selftest.mjs`,
+`node src/app/lazyChunkSites.selftest.mjs`). A battle's covered entry asks past
+that backoff with `load({ backoff: false })`, which `lazyChunkSites`' EDGE_ASKS
+holds to its callers. The stylesheet guarantee holds per
 owner: Vite's preload keeps one `seen` map for the whole document, so a sheet
 that failed at one owner loads "successfully" without it at any other. Give
 each lazy stylesheet one owner per document (the hero cards' is

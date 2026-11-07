@@ -32,8 +32,9 @@
  * An opener (a surface the player opens from a trigger) declares itself (`opener: true`): any failure of its chunk is
  * terminal, and the kit takes it from there: the failure marks the trigger (components/loadFailure.ts markLoadFailed)
  * and the next press reloads once online (pressFailed), the one recovery that always works and the one the player can
- * see. The re-ask is for the callers with no trigger: builders, warms, presentation attachments, notices, decorative
- * paint.
+ * see. The re-ask is for every other caller: pressed and dragged triggers on default-policy chunks among them (the
+ * consumables slot, the Studio's sun dial and sliders, the battle canvas's press that resumes the audio) as well as
+ * builders, warms, presentation attachments, notices and decorative paint.
  *
  * The access facades hold theirs here too, through lazyRuntimeOwner.ts (a module and the runtime made from it) or a
  * createLazyChunk of their own (round 2 U35: they were a second policy, a memo their failure cleared, asked again at once
