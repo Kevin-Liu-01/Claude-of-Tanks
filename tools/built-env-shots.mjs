@@ -412,7 +412,9 @@ async function main(argv) {
   }
   let browser = null, held = false, entry = null, pagesSinceLaunch = 0;
   const launch = () => launchGuardedBrowser(puppeteer, { ...mapProbeLaunchOptions({ width: 1920, height: 1080, protocolTimeout: 2700000 }), timeout: 180000 });
+  const dropBrowser = async () => { if (browser) await browser.close().catch(() => {}); browser = null; pagesSinceLaunch = 0; };
   const openPair = async ({ job, mapId }) => {
+    if (browser && !browser.connected) await dropBrowser();
     browser ??= await launch();
     pagesSinceLaunch++;
     entry = await bootPage(browser, servers.get(job.dist).url, job.device);
@@ -458,8 +460,16 @@ async function main(argv) {
       } catch (error) {
         console.log(`[${label}] ${stamp()} ${job.name} ${mapId} failed: ${String(error?.message ?? error).slice(0, 200)}`);
       } finally {
+        // (ab6: a browser that died while queued failed seven maps in one second, and its successor could not fetch
+        // modules) a pair that does not shoot takes the browser down with it, and goes once more to the run's end
+        if (outcome !== 'shot') {
+          if (entry) await entry.page.close().catch(() => {});
+          entry = null;
+          await dropBrowser();
+          if (!pairs[i].retried) pairs.push({ ...pairs[i], retried: true });
+        }
         // the page goes on to the job's next map unless this pair failed, the job changes or the page has staged its share
-        const keep = outcome === 'shot' && entry && pairs[i + 1]?.job === job && entry.staged < MAPS_PER_PAGE;
+        const keep = entry && pairs[i + 1]?.job === job && entry.staged < MAPS_PER_PAGE;
         if (!keep && entry) { await entry.page.close().catch(() => {}); entry = null; }
       }
       if (outcome === 'shot') {
@@ -469,12 +479,12 @@ async function main(argv) {
         failed++;
         console.log(`[${label}] ${stamp()} ${job.name} ${mapId} ${outcome}`);
       }
-      if (!entry && pagesSinceLaunch >= 8 && browser) { await browser.close().catch(() => {}); browser = null; pagesSinceLaunch = 0; }
+      if (!entry && pagesSinceLaunch >= 8) await dropBrowser();
       if (i < pairs.length - 1) {
         const cp = await lock.checkpoint({ timeoutMs: options.waitHours * 3600 * 1000,
           // (a page kept for the next map is closed while others hold: it draws nothing in their holds, and a frozen page
-          // did not come back settled)
-          beforeYield: async () => { if (entry) { await entry.page.close().catch(() => {}); entry = null; } held = false; },
+          // did not come back settled; the browser goes too — one left idle through an 84-min wait was dead at the resume)
+          beforeYield: async () => { if (entry) { await entry.page.close().catch(() => {}); entry = null; } await dropBrowser(); held = false; },
           afterResume: async () => { held = true; } });
         if (cp.yielded) console.log(`[${label}] ${stamp()} yielded at the cap, held again after ${(cp.waitedMs / 60000).toFixed(1)} min at the back`);
       }
