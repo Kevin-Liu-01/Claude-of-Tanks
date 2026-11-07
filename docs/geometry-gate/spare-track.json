@@ -1644,7 +1644,7 @@
    "hostSweep": []
   },
   "m1a1_abrams_fep": {
-   "inputHash": "3f9282e3f566b8c2",
+   "inputHash": "ace65382d632ce40",
    "runs": [],
    "uncovered": [],
    "hostSweep": []
@@ -1746,7 +1746,7 @@
    "hostSweep": []
   },
   "m2a2_bradley": {
-   "inputHash": "a2ccd81c51db2466",
+   "inputHash": "531496ab1b52900a",
    "runs": [
     {
      "index": 0,
@@ -1767,7 +1767,7 @@
       "sweepM": 0,
       "traverseM": null,
       "exposure": 0.966,
-      "host": "hull<addBradleyBowKit@modern3.ts:3535>"
+      "host": "hull<addBradleyBowKit@modern3.ts:3570>"
      }
     }
    ],
@@ -1775,7 +1775,7 @@
    "hostSweep": []
   },
   "m3a2_bradley": {
-   "inputHash": "5047c22a1aae490b",
+   "inputHash": "40e9099456189703",
    "runs": [
     {
      "index": 0,
@@ -1796,7 +1796,7 @@
       "sweepM": 0,
       "traverseM": null,
       "exposure": 0.966,
-      "host": "hull<addBradleyBowKit@modern3.ts:3530>"
+      "host": "hull<addBradleyBowKit@modern3.ts:3570>"
      }
     }
    ],
@@ -1804,7 +1804,7 @@
    "hostSweep": []
   },
   "m3a3_bradley": {
-   "inputHash": "2cac32d7d6b9288f",
+   "inputHash": "37c54cfb3826fcb8",
    "runs": [
     {
      "index": 0,
@@ -1827,7 +1827,7 @@
       "sweepM": 0,
       "traverseM": null,
       "exposure": 0.978,
-      "host": "hull<addBradleyBowKit@modern3.ts:3535>"
+      "host": "hull<addBradleyBowKit@modern3.ts:3570>"
      }
     },
     {
@@ -1849,31 +1849,7 @@
       "sweepM": 0,
       "traverseM": null,
       "exposure": 0.865,
-      "host": "hull<addBradleyHullCore@modern3.ts:1815>"
-     }
-    },
-    {
-     "index": 2,
-     "site": "fitting:spareTrackLinks@addM3A3Turret@profiles/afvFamily.ts",
-     "source": "fitting",
-     "frame": "turret",
-     "registered": false,
-     "classes": [],
-     "primary": "OK",
-     "why": {},
-     "notes": [
-      "carried on its rack"
-     ],
-     "measures": {
-      "support": 0.164,
-      "gap": 0.836,
-      "air": 0,
-      "hidden": 0,
-      "sunkMaxM": 0.01,
-      "sweepM": 0,
-      "traverseM": 0,
-      "exposure": 0.989,
-      "host": "turretEquipment<addM3A3Turret@profiles/afvFamily.ts:983>"
+      "host": "hull<addBradleyHullCore@modern3.ts:1817>"
      }
     }
    ],
