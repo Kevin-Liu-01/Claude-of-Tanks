@@ -16,6 +16,7 @@ import { addShtoraEyes } from './shtora.ts';
 import { GUN_2A83, build152Gun } from './gun152.ts';
 import { OBJECT195_FRAME as F } from '../russia152Frames.ts';
 import { markVehicleNightLens } from '../vehicleNightLighting.ts';
+import { antennaPart } from './antennaPart.ts';
 import type { TankBuilderPort } from '../tankFactoryCore.ts';
 
 const { box, cylX, cylY, cylZ, torus } = KIT;
@@ -484,8 +485,8 @@ function addModuleBustleFittings(P: TankBuilderPort): void {
   P.addEquipment('turretDark', box(.012, .06, .10), .45, TOP + .50, -1.36);
   // the whips on the bustle's roof (their tips 3.76 m over the ground, as before)
   for (const [x, h] of [[.48, .70], [-.48, .55]]) {
-    P.addEquipment('turretDetail', cylY(.04, .05, .08, 12), x, TOP + .04, -1.88);
-    P.addEquipment('turretDark', cylY(.009, .012, h, 8), x, TOP + .08 + h / 2, -1.88);
+    P.addEquipment('turretDetail', antennaPart(cylY(.04, .05, .08, 12)), x, TOP + .04, -1.88);
+    P.addEquipment('turretDark', antennaPart(cylY(.009, .012, h, 8)), x, TOP + .08 + h / 2, -1.88);
   }
 }
 

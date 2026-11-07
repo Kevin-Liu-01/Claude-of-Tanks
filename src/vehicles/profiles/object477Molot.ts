@@ -18,6 +18,7 @@ import { reserveDecorVolume } from './fieldChest.ts';
 import { GUN_2A73, build152Gun } from './gun152.ts';
 import { MOLOT_FRAME as F } from '../russia152Frames.ts';
 import { markVehicleNightLens } from '../vehicleNightLighting.ts';
+import { antennaPart } from './antennaPart.ts';
 import type { TankBuilderPort } from '../tankFactoryCore.ts';
 
 const { box, cylX, cylY, cylZ } = KIT;
@@ -309,8 +310,8 @@ function addTurret(P: TankBuilderPort): void {
   for (const [x, y, z] of [[.84, .47, .98], [-.84, .55, .98], [.90, .55, -1.40], [-.90, .55, -1.40]]) P.addEquipment('turretDetail', box(.03, .06, .08), x, y, z);
   // the antennas on the roof's rear corners, the wind sensor's mast on the bustle
   for (const [x, z, h] of [[-1.00, -1.40, 1.03], [1.00, -1.40, .83]]) {
-    P.addEquipment('turretDetail', cylY(.04, .05, .08, 12), x, .53, z);
-    P.addEquipment('turretDark', cylY(.009, .012, h, 8), x, .57 + h / 2, z);
+    P.addEquipment('turretDetail', antennaPart(cylY(.04, .05, .08, 12)), x, .53, z);
+    P.addEquipment('turretDark', antennaPart(cylY(.009, .012, h, 8)), x, .57 + h / 2, z);
   }
   P.addEquipment('turretDark', cylY(.012, .015, .36, 8), -.62, .62, -1.60);
   P.addEquipment('turretDetail', box(.10, .04, .04), -.62, .80, -1.60);
