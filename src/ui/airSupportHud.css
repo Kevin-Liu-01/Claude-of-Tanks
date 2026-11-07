@@ -4,6 +4,8 @@
    top left, the figure top right, the consumables' conic cooldown shade and the tray's one selected state. */
 @layer surfaces{
 .cot-strike-dock[hidden],.cot-strike-rack[hidden],.cot-binoculars[hidden],.cot-strike-warning[hidden],.strike-slot[hidden]{display:none}
+/* (a3: the warning's own rule is a class heavier, over the HUD's reset, and kept an empty plate up with nothing incoming) */
+.cot-hud .cot-strike-warning[hidden]{display:none}
 /* the Support slot's own seat when no tray takes it (a phone's, below) */
 .cot-strike-dock{position:absolute;left:max(16px,env(safe-area-inset-left));bottom:calc(max(16px,env(safe-area-inset-bottom)) + 216px);pointer-events:auto;color:var(--ink-1);z-index:var(--z-hud-controls)}
 /* the call-ins: a row centred over the tray while the binoculars are up; like the tray, no box of its own */
