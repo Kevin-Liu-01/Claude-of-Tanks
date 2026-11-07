@@ -219,7 +219,7 @@ const CLASS_VEHICLE_IDS: Readonly<Record<VehicleClass, readonly string[]>> = Obj
   ifv: Object.freeze([
     'ajax', 'amx10p', 'amx10p_25', 'bmp2', 'bmp3', 'bmp3_rok', 'borsuk', 'bwp1', 'cv90', 'cv9035dk', 'cv9040c', 'cv90_mk4',
     'cv90_mk4_concept', 'dardo', 'fv510', 'fv510_milan', 'griffin50mm', 'hayate_ifv', 'k21', 'kf41_lynx',
-    'kurganets25', 'lrmv_lynx', 'm2a2_bradley', 'm3a3_bradley', 'marder1a3', 'marder2', 'namer_ifv', 'puma_s1',
+    'kurganets25', 'lrmv_lynx', 'm2a2_bradley', 'm3a2_bradley', 'm3a3_bradley', 'marder1a3', 'marder2', 'namer_ifv', 'puma_s1',
     'raiju_ifv', 'spz_puma', 'spz_wotan', 'type100', 'type89', 'ua_cv9040c', 'ua_m2a3_bradley', 'upior', 'warrior_tes_h',
   ]),
   apc: Object.freeze([
@@ -230,12 +230,12 @@ const CLASS_VEHICLE_IDS: Readonly<Record<VehicleClass, readonly string[]>> = Obj
     'aft10', 'griffin_viper', 'jpz_e100', 'object695', 'strv103a', 'strv103b', 'udes03',
   ]),
   spaa: Object.freeze([
-    'm6_linebacker',
+    'gepard_1a2', 'm6_linebacker', 'pantsir_s1', 'pgz09', 'pgz95', 'tunguska_m',
   ]),
   // Tank-support fighting vehicles (BMPT), the TOS-1A rocket system and the owner-authored ZTZ-100 missile-support
   // prototype: none is a tank, a troop carrier or a dedicated tank destroyer.
   'fire-support': Object.freeze([
-    'bmpt_t90', 'bmpt_terminator2', 'tos1a_tagil', 'ztz100_prototype',
+    'bmpt_t90', 'bmpt_terminator', 'bmpt_terminator2', 'tos1a_tagil', 'ztz100_prototype',
   ]),
 });
 
@@ -281,14 +281,14 @@ const ROLE_VEHICLE_IDS: Readonly<Record<VehicleBattleRole, readonly string[]>> =
     'strv122', 'strv81', 'ua_challenger2', 'udes03',
   ]),
   scout: Object.freeze([
-    'ajax', 'amx10p', 'amx10p_25', 'ares_apc', 'bmp3m_dragun125', 'borsuk', 'cv90105_tml', 'k21', 'lrmv_lynx',
-    'm3a3_bradley', 'm41_bw', 'm41_jgsdf', 'm41a3', 'm41dk1', 'm551_sheridan', 'm551a1_tts', 'm6_linebacker',
-    'pl01', 'pl01_105', 't49', 'x1_pioneiro', 'x1a2_carcara',
+    'ajax', 'amx10p', 'amx10p_25', 'ares_apc', 'bmp3m_dragun125', 'borsuk', 'cv90105_tml', 'gepard_1a2', 'k21', 'lrmv_lynx',
+    'm3a2_bradley', 'm3a3_bradley', 'm41_bw', 'm41_jgsdf', 'm41a3', 'm41dk1', 'm551_sheridan', 'm551a1_tts', 'm6_linebacker',
+    'pantsir_s1', 'pgz09', 'pgz95', 'pl01', 'pl01_105', 't49', 'tunguska_m', 'x1_pioneiro', 'x1a2_carcara',
   ]),
   // Doctrines support and armored-support, plus the TOS-1A (siege doctrine, rocket fire support).
   support: Object.freeze([
-    'bmp2', 'bmp3', 'bmp3_rok', 'bmpt_t90', 'bmpt_terminator2', 'bwp1', 'cv90', 'cv9035dk', 'cv9040c', 'cv90_mk4',
-    'cv90_mk4_concept', 'dardo', 'fv510', 'fv510_milan', 'griffin50mm', 'griffin_viper', 'hayate_ifv',
+    'bmp2', 'bmp3', 'bmp3_rok', 'bmpt_t90', 'bmpt_terminator', 'bmpt_terminator2', 'bwp1', 'cv90', 'cv9035dk', 'cv9040c',
+    'cv90_mk4', 'cv90_mk4_concept', 'dardo', 'fv510', 'fv510_milan', 'griffin50mm', 'griffin_viper', 'hayate_ifv',
     'kf41_lynx', 'kurganets25', 'm2a2_bradley', 'marder1a3', 'marder2', 'namer_ifv', 'object695', 'puma_s1',
     'raiju_ifv', 'spz_puma', 'spz_wotan', 'tos1a_tagil', 'type100', 'type89', 'ua_cv9040c', 'ua_m2a3_bradley', 'upior',
     'warrior_tes_h',
@@ -298,26 +298,26 @@ const ROLE_VEHICLE_IDS: Readonly<Record<VehicleBattleRole, readonly string[]>> =
 const STATUS_VEHICLE_IDS: Readonly<Record<VehicleDesignStatus, readonly string[]>> = Object.freeze({
   service: Object.freeze([
     'aft10', 'ajax', 'amx10p', 'amx10p_25', 'amx30', 'amx30b', 'amx30b2', 'amx56', 'ares_apc', 'bm_oplot_m',
-    'bm_oplot_t', 'bmp2', 'bmp3', 'bmp3_rok', 'bmpt_terminator2', 'borsuk', 'bwp1', 'c1_ariete', 'c2_ariete',
+    'bm_oplot_t', 'bmp2', 'bmp3', 'bmp3_rok', 'bmpt_terminator', 'bmpt_terminator2', 'borsuk', 'bwp1', 'c1_ariete', 'c2_ariete',
     'centurion13', 'centurion3', 'centurion5_1_aus', 'centurion5_2', 'centurion5_2dk', 'centurion5_avre', 'challenger1_mk1',
     'challenger1_mk2', 'challenger1_mk3', 'challenger2', 'challenger3', 'challenger_x', 'challenger_x_sleek',
     'chieftain3', 'chieftain5', 'chieftain_mk10', 'chieftain_mk9', 'cv90', 'cv9035dk', 'cv9040c', 'cv90_mk4',
-    'dardo', 'fv510', 'fv510_milan', 'hayate_ifv', 'k1a1', 'k1e1', 'k21', 'k2_black_panther', 'kf41_lynx', 'kv2',
+    'dardo', 'fv510', 'fv510_milan', 'gepard_1a2', 'hayate_ifv', 'k1a1', 'k1e1', 'k21', 'k2_black_panther', 'kf41_lynx', 'kv2',
     'leclerc_s1', 'leclerc_s2', 'leclerc_sxxi', 'leclerc_xlr', 'leo1a2a1', 'leo1a3dk', 'leo1a5', 'leo1a5dk',
     'leo1a5dk1', 'leo2_improved', 'leo2_revolution', 'leo2a2', 'leo2a3', 'leo2a3_b4', 'leo2a4', 'leo2a4_otco',
     'leo2a4_v', 'leo2a4m_can', 'leo2a5', 'leo2a5dk', 'leo2a5m', 'leo2a6', 'leo2a6_ua', 'leo2a6m', 'leo2a7dk', 'leo2a7v',
     'lrmv_lynx', 'm1a1', 'm1a1_abrams_aim', 'm1a1_abrams_fep', 'm1a1_abrams_hc', 'm1a1_abrams_sa', 'm1a1ha',
-    'm1a2_abrams', 'm1a2_abrams_sepv2', 'm1a2_abrams_sepv3', 'm1a2_abrams_tusk', 'm2a2_bradley', 'm3a3_bradley',
+    'm1a2_abrams', 'm1a2_abrams_sepv2', 'm1a2_abrams_sepv3', 'm1a2_abrams_tusk', 'm2a2_bradley', 'm3a2_bradley', 'm3a3_bradley',
     'm41_bw', 'm41_jgsdf', 'm41a3', 'm41dk1', 'm46_patton', 'm47_patton', 'm48a2ga2', 'm48a3_patton',
     'm48a5_patton', 'm551_sheridan', 'm551a1_tts', 'm60a1', 'm60a2', 'm60a3', 'm6_linebacker', 'magach3',
     'magach6b', 'magach7c', 'marder1a3', 'merkava1b', 'merkava2b', 'merkava2d', 'merkava3_baz', 'merkava3c',
     'merkava3d', 'merkava4', 'merkava4_barak', 'merkava4_trophy', 'merkava4b', 'namer_ifv', 'olifant_mk2',
-    'pt91a_twardy', 'pt91m', 'puma_s1', 'sabra_mk2', 'shot_kal', 'spz_puma', 'spz_wotan', 'strv103a', 'strv103b',
+    'pgz09', 'pgz95', 'pt91a_twardy', 'pt91m', 'puma_s1', 'sabra_mk2', 'shot_kal', 'spz_puma', 'spz_wotan', 'strv103a', 'strv103b',
     'strv121', 'strv122', 'strv81', 't55a', 't62_1975', 't62mv1', 't64b1v_2022', 't64bm1m', 't64bv', 't64bv1',
     't64bv_donbas', 't72b3', 't72b3m_2016', 't72b3m_2022', 't72b_1987', 't72bu', 't72bu_1989', 't72m1_jaguar',
     't80', 't80b', 't80bv', 't80u', 't80u_kursk', 't80uk', 't84bm_oplot_m', 't90', 't90_1992', 't90a', 't90a_2004',
     't90a_2006', 't90a_vladimir', 't90am', 't90m', 't90m_proryv', 't90ms_2011', 't90ms_tagil', 't90sm',
-    't90sm_2013', 'tos1a_tagil', 'type10', 'type100', 'type10_dozer', 'type59', 'type74', 'type89', 'type90', 'type90b',
+    't90sm_2013', 'tos1a_tagil', 'tunguska_m', 'type10', 'type100', 'type10_dozer', 'type59', 'type74', 'type89', 'type90', 'type90b',
     'type96b', 'ua_challenger2', 'ua_cv9040c', 'ua_m1a1', 'ua_m1a2_abrams', 'ua_m2a3_bradley', 'ua_t80bv',
     'vickers_mk1', 'vt4a1', 'warrior_tes_h', 'x1_pioneiro', 'x1a2_carcara', 'ztz99a', 'ztz99a2',
   ]),
@@ -329,7 +329,7 @@ const STATUS_VEHICLE_IDS: Readonly<Record<VehicleDesignStatus, readonly string[]
     'c1_ariete_proto_serie1', 'c2_ariete_proto', 'challenger2e', 'challenger3_proto', 'challenger3_td',
     'cv90105_tml', 'fv4034', 'griffin50mm', 'k2b', 'kf51_evo', 'kf51_panther', 'kf51_u', 'kurganets25',
     'leo2_revolution_proto', 'leopard2_proto', 'm48_super', 'marder2', 'mbt70', 'object148_proto', 'object195', 'object292', 'object477_molot', 'osorio_p1',
-    'osorio_p2', 'stb1', 'strv105', 't14_armata', 't84', 't90a_burlak', 't90a_burlak_proto', 'tamoyo1', 'tamoyo3',
+    'osorio_p2', 'pantsir_s1', 'stb1', 'strv105', 't14_armata', 't84', 't90a_burlak', 't90a_burlak_proto', 'tamoyo1', 'tamoyo3',
     'type10_tk_x', 'type90_kyumaru', 'type90a', 'udes03', 'xk2_black_panther', 'ztz100',
     'ztz100_prototype', 'ztz20_prototype', 'ztz85_iii',
   ]),

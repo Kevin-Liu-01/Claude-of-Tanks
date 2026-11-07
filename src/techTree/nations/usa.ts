@@ -50,12 +50,15 @@ export const USA_TREE: NationTree = Object.freeze({
     node({ id: 'm41a3', tier: 1, line: 'm41', lane: 6, parents: ['m46_patton'], slot: 'line' }),
     // the T49 (the owner 2026-10-30): the M41's hull under the M551's turret, the Sheridan's gun a tier up (lane 10: the
     // M551's connector to the M2A2 runs down tier II's lanes 1-9, the M60A3's to the M1A1 along lane 0)
-    node({ id: 't49', tier: 2, line: 'm41', lane: 10, parents: ['m41a3'], slot: 'line' }),
+    // (268: lane 11, so the M2A2's connector to the M3A2 beside it on lane 10 runs clear)
+    node({ id: 't49', tier: 2, line: 'm41', lane: 11, parents: ['m41a3'], slot: 'line' }),
     node({ id: 'm551_sheridan', tier: 2, line: 'sheridan', lane: 1, parents: ['m48a5_patton'], slot: 'line' }),
     node({ id: 'm551a1_tts', tier: 4, line: 'sheridan', lane: 8, parents: ['m551_sheridan'], slot: 'line' }),
     node({ id: 'griffin_viper', tier: 3, line: 'sheridan', lane: 8, parents: ['m551_sheridan'], slot: 'line' }),
     // Bradley
     node({ id: 'm2a2_bradley', tier: 2, line: 'bradley', lane: 9, parents: ['m551_sheridan'], slot: 'line' }),
+    // 268 (owner 2026-11-02): the M3A2 cavalry Bradley under the classic turret, beside the M2A2 at II
+    node({ id: 'm3a2_bradley', tier: 2, line: 'bradley', lane: 10, parents: ['m2a2_bradley'], slot: 'line' }),
     node({ id: 'm3a3_bradley', tier: 5, line: 'bradley', lane: 9, parents: ['m2a2_bradley'], slot: 'line' }),
     node({ id: 'm6_linebacker', tier: 5, line: 'bradley', lane: 1, parents: ['m2a2_bradley'], slot: 'line' }),
     node({ id: 'griffin50mm', tier: 10, line: 'bradley', lane: 9, parents: ['m3a3_bradley'], slot: 'line' }),

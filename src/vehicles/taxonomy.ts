@@ -49,6 +49,8 @@ const ERA_VEHICLE_IDS: Readonly<Record<VehicleEra, readonly string[]>> = Object.
     't80uk', 'strv81', 'strv105', 'udes03', 'strv103a', 'strv103b',
     'chieftain3', 'chieftain_mk9', 'challenger1_mk1', 'challenger1_mk2', 'challenger_x', 'challenger_x_sleek', 'fv4034', 'stb1', 'type74', 'type90_kyumaru',
     'type90a', 'm2a2_bradley', 'bmp2', 'bmp3', 'hayate_ifv', 'carro45t',
+    // release 268: the M3A2 (1988), the M2A2's cavalry twin under the classic turret
+    'm3a2_bradley',
     'amx40_proto', 'leo1a5', 'leo1a2a1', 'leo1a3dk', 'leo1a5dk', 'leo1a5dk1', 'leopard2_proto', 'leo2a2', 'mbt70', 'm1a1',
     'fv510',
     'm1a1ha', 'm60a1', 'merkava1b', 'merkava2b', 'merkava2d', 'fv510_milan',
@@ -83,7 +85,7 @@ const ERA_VEHICLE_IDS: Readonly<Record<VehicleEra, readonly string[]>> = Object.
     'm1a1_abrams_fep', 'merkava3c', 'merkava3_baz', 'merkava4b', 't72m1_jaguar',
     'pt91a_twardy', 'k2b', 'bmp3_rok', 't64bv_donbas', 't64bm1m', 't64b1v_2022', 'pt64_tur', 'ua_t80bv', 't80u_kursk', 't84bm_oplot_m', 'bm_oplot_m', 'bm_oplot_t',
     'pt84_orzel', 'pt84_sokol', 'pt84_zbik', 'ua_m1a1', 'ua_m2a3_bradley', 'ua_cv9040c', 'bmpt_terminator2',
-    'm3a3_bradley', 'bmpt_t90', 'cv90', 'cv9035dk',
+    'm3a3_bradley', 'bmpt_t90', 'bmpt_terminator', 'cv90', 'cv9035dk',
     'ajax', 'aft10', 'k21', 'type96b', 'cv90105_tml', 'sabra_mk2',
     // 2026-10-25 (owner: "properly label next gen vs modern"): upgrades and new builds of in-service families are
     // modern however recent. The T-72B3 and T-80U national modernizations, the Challenger 3 (a rebuilt Challenger 2),
@@ -95,6 +97,9 @@ const ERA_VEHICLE_IDS: Readonly<Record<VehicleEra, readonly string[]>> = Object.
     'lrmv_lynx', 'borsuk', 'type89', 'm551a1_tts',
     // release 264: the Longwei family, fleet hulls under a modernized Longwei turret
     'ztz99a2_qinglong', 'vt4a1_baihu', 't72b3_zhuque', 't72b3m_xuanwu',
+    // release 268: the twin-cannon air defence: the 2K22M (1990) and the Pantsir-S1 (2012 tracked option), the Gepard 1A2
+    // (the 1996-2000 service-life extension), the PGZ-95 (1999) and the PGZ-09 (2009)
+    'tunguska_m', 'pantsir_s1', 'gepard_1a2', 'pgz95', 'pgz09',
     // release 269: the Object 292, a T-80BV under a 152 mm turret (the 152 mm line's clean-sheet tanks are next generation)
     'object292',
   ]),

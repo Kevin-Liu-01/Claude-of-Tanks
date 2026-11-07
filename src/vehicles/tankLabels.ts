@@ -247,6 +247,11 @@ const LABEL_OVERRIDES: Readonly<Record<string, TankLabelOverride>> = Object.free
     displayName: 'BMPT T-90', shortName: 'BMPT T-90',
     searchAliases: ['Terminator 3', 'BMPT-90', 'T-90 Terminator'],
   },
+  // 267: the original Ob'yekt 199 "Ramka" (2009-2013, Kazakhstan's)
+  bmpt_terminator: {
+    displayName: 'BMPT Terminator', shortName: 'Terminator',
+    searchAliases: ['BMPT', 'Object 199', "Ob'yekt 199", 'Ramka', 'Ramka-99', 'Terminator 1'],
+  },
   bwp1: {
     displayName: 'BWP-1 (Bojowy Wóz Piechoty 1)', shortName: 'BWP-1',
     searchAliases: ['Bojowy Wóz Piechoty 1', 'BWP 1', 'Polish BMP-1', 'BMP-1 Poland'],
@@ -272,6 +277,31 @@ const LABEL_OVERRIDES: Readonly<Record<string, TankLabelOverride>> = Object.free
     searchAliases: ['SPz Puma', 'Puma IFV'],
   },
   m6_linebacker: {displayName:'M6 Linebacker',shortName:'M6 Linebacker',searchAliases:['Linebacker modernization','Bradley air defense concept']},
+  // 268: the twin-cannon air-defence round
+  tunguska_m: {
+    displayName: '2K22M Tunguska-M', shortName: 'Tunguska-M',
+    searchAliases: ['Tunguska', '2S6M', '2K22M', '2K22 Tunguska', 'SA-19 Grison', 'Тунгуска-М'],
+  },
+  pantsir_s1: {
+    displayName: 'Pantsir-S1 (tracked)', shortName: 'Pantsir-S1',
+    searchAliases: ['Pantsir', 'Pantsir S1', '96K6', 'Pantsir-S1 GM-352M1E', 'tracked Pantsir', 'SA-22 Greyhound', 'Панцирь-С1'],
+  },
+  gepard_1a2: {
+    displayName: 'Flakpanzer Gepard 1A2', shortName: 'Gepard 1A2',
+    searchAliases: ['Gepard', 'Flakpanzer Gepard', 'Flugabwehrkanonenpanzer Gepard', 'FlakPz Gepard', 'Gepard SPAAG'],
+  },
+  pgz95: {
+    displayName: 'PGZ-95', shortName: 'PGZ-95',
+    searchAliases: ['PGZ95', 'Type 95 SPAAA', 'Type 95 SPAAG', 'Type 95 self-propelled anti-aircraft gun', '95式自行高炮'],
+  },
+  pgz09: {
+    displayName: 'PGZ-09', shortName: 'PGZ-09',
+    searchAliases: ['PGZ09', 'Type 09 SPAAA', 'Type 09 SPAAG', 'Type 09 self-propelled anti-aircraft gun', '09式自行高炮'],
+  },
+  m3a2_bradley: {
+    displayName: 'M3A2 Bradley', shortName: 'M3A2 Bradley',
+    searchAliases: ['M3A2 ODS', 'M3A2 Cavalry Fighting Vehicle', 'Bradley CFV'],
+  },
   marder2: {displayName:'Marder 2',shortName:'Marder 2',searchAliases:['Marder 2 VT 001','TS503']},
   spz_wotan: {
     displayName: 'SPz Wotan', shortName: 'SPz Wotan',

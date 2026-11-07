@@ -88,6 +88,8 @@ interface JetOptions {
   readonly alpha: number;
   readonly birthOffset?: number;
   readonly seed?: number;
+  /** the emitter's own world velocity at birth (m/s): a moving muzzle's jets leave with it */
+  readonly carry?: Vec3Tuple;
 }
 
 interface ParticleOptionsByPool {
@@ -740,6 +742,7 @@ attribute vec4 aPB;   // origin.xyz, birth
 attribute vec4 aAL;   // axis.xyz (unit), life
 attribute vec4 aWL;   // width, len0, len1, seed
 attribute vec4 aC;    // color.rgb, peakAlpha
+attribute vec3 aCV;   // carried velocity: the emitting muzzle's motion (m/s)
 uniform float uTime;
 varying vec2 vUv;
 varying vec4 vColor;
@@ -763,7 +766,7 @@ void main() {
   // fast initial expansion, then hold while alpha decays (sub-100ms flash)
   float len = mix( aWL.y, aWL.z, pow( t, 0.3 ) );
   float u = position.x + 0.5;               // 0 at muzzle -> 1 at tip
-  vec3 tipPos = aPB.xyz + axis * ( u * len );
+  vec3 tipPos = aPB.xyz + aCV * age + axis * ( u * len );
   vec3 viewDir = normalize( cameraPosition - tipPos );
   vec3 side = cross( axis, viewDir );
   float sl = length( side );
@@ -1458,6 +1461,7 @@ class Pool {
     }
     this.geometry = geometry;
     this.mesh = new THREE.Mesh(geometry, material);
+    this.mesh.name = `particles:${name}`;
     this.mesh.frustumCulled = false;
     this.mesh.matrixAutoUpdate = false;
     this.mesh.castShadow = false;
@@ -1833,7 +1837,7 @@ export function createParticleSystem(
   const PUFF_LAYOUT = { aPB: 4, aVL: 4, aSR: 4, aC0: 4, aC1: 4 };
   const STREAK_LAYOUT = { aPB: 4, aVL: 4, aWS: 4, aC: 4 };
   const DEBRIS_LAYOUT = { aPB: 4, aVL: 4, aAR: 4, aSG: 4 };
-  const JET_LAYOUT = { aPB: 4, aAL: 4, aWL: 4, aC: 4 };
+  const JET_LAYOUT = { aPB: 4, aAL: 4, aWL: 4, aC: 4, aCV: 3 };
 
   const pools: Record<ParticlePoolName, Pool> = {
     smoke: new Pool('smoke', makeQuadGeometry(sizes.smoke),
@@ -2016,12 +2020,14 @@ export function createParticleSystem(
     const i = pool.claim();
     const birth = uTime.value + (o.birthOffset || 0);
     const A = pool.attrs;
-    const pb = A.aPB.array, al = A.aAL.array, wl = A.aWL.array, c = A.aC.array;
+    const pb = A.aPB.array, al = A.aAL.array, wl = A.aWL.array, c = A.aC.array, cv = A.aCV.array;
     const j = i * 4;
     pb[j] = o.pos[0]; pb[j + 1] = o.pos[1]; pb[j + 2] = o.pos[2]; pb[j + 3] = birth;
     al[j] = o.axis[0]; al[j + 1] = o.axis[1]; al[j + 2] = o.axis[2]; al[j + 3] = o.life;
     wl[j] = o.width; wl[j + 1] = o.len0; wl[j + 2] = o.len1; wl[j + 3] = o.seed || 0;
     c[j] = o.col[0]; c[j + 1] = o.col[1]; c[j + 2] = o.col[2]; c[j + 3] = o.alpha;
+    const k = i * 3, carry = o.carry;
+    cv[k] = carry ? carry[0] : 0; cv[k + 1] = carry ? carry[1] : 0; cv[k + 2] = carry ? carry[2] : 0;
     lateFxUntil = Math.max(lateFxUntil, birth + Math.max(0, o.life || 0));
     pool.dirty(i);
   }

@@ -1,5 +1,6 @@
 // Counts only (4.8 kB): the 217 kB mount-geometry inventory stays on the battle path (FE-P2).
 import { vehicleActionsFor } from './vehicleActionList.ts';
+import type { CouchBattle } from '../game/couchSeats.ts';
 import type { VehicleActionBinding } from '../game/vehicleActions.ts';
 import { movementDispersionFactor } from '../sim/movementDispersion.ts';
 import type { RuntimeValue } from '../runtimeTypes.ts';
@@ -83,7 +84,7 @@ import { currentLocationHrefForLocale, hrefForLocale } from './localeRouting.ts'
 import { DEPLOY_MODE_ORDER, isPracticeMode, normalizeGameMode } from '../sim/gameModeCatalog.ts';
 import { testDriveLaunch } from '../game/provingGroundSession.ts';
 import {
-  isWatchableMode, isWaveMode, matchRulesetFor, modeCopyValues, rulesetBattlefield, rulesetReloadMultiplier, rulesetSides, RULESET_SCORE_TARGETS, MARS_CACHE_IDS, MARS_GRAVITY_IDS, SIDES_PRESETS, sidesPresetOf,
+  isCouchMode, isWatchableMode, isWaveMode, matchRulesetFor, modeCopyValues, rulesetBattlefield, rulesetReloadMultiplier, rulesetSides, RULESET_SCORE_TARGETS, MARS_CACHE_IDS, MARS_GRAVITY_IDS, SIDES_PRESETS, sidesPresetOf,
 } from '../sim/matchRuleset.ts';
 import { readMarsSettings, readTeamArrangement, writeMarsSettings, writeTeamArrangement } from '../game/teamArrangement.ts';
 import { battleTimeChoicesMarkup, bindBattleTimeChoices } from './battleTimeChoices.ts';
@@ -202,8 +203,10 @@ interface GarageOptions {
   readonly onBattle?: (
     specId: string,
     mapId: string,
-    options: { readonly gameMode: GameModeId; readonly campaignOperationId?: string; readonly watch?: boolean },
+    options: { readonly gameMode: GameModeId; readonly campaignOperationId?: string; readonly watch?: boolean; readonly couch?: CouchBattle },
   ) => void;
+  /** Couch mode (docs/COUCH-MODE.md): open the lobby over the Deploy screen; its Start deploys the seats here. */
+  readonly onCouch?: (request: { readonly gameMode: GameModeId; start(couch: CouchBattle): void }) => void;
   readonly onPlayRequest?: (request: PlayRequest) => void;
   readonly onPlayModeIntent?: (mode: BattleMode) => void;
   readonly onBattleIntent?: (request: { readonly specId: string; readonly mapId: string }) => void;
@@ -777,6 +780,9 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     `<div class="cot-battle-menu-foot"><div class="cot-deploy-tank" data-deploy-tank></div>` +
     // Watch (watch-mode-243) beside Deploy: the selected mode, map and sides with every seat a bot's, from the drone
     `<span data-setup-selection hidden></span><div class="cot-deploy-acts">` +
+    // Couch (docs/COUCH-MODE.md): phones join by QR and each drives a tank of this battle
+    `<button type="button" data-battle-couch data-ui-sound="deploy" aria-label="${t('couch.entry')}">` +
+    `${uiIconSVG('phone', 20)}<span>${t('couch.entry')}</span></button>` +
     `<button type="button" data-battle-watch data-ui-sound="deploy" aria-label="${t('watch.entry')}">` +
     `${uiIconSVG('freeLook', 20)}<span>${t('watch.entry')}</span></button>` +
     `<button type="button" data-battle-launch data-ui-sound="deploy">` +
@@ -3681,11 +3687,12 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
   function launchBattle(
     specId: string,
     mapId: string,
-    { emitClick = true, gameMode = battleGameMode, campaignOperationId, watch = false }: {
+    { emitClick = true, gameMode = battleGameMode, campaignOperationId, watch = false, couch }: {
       emitClick?: boolean;
       gameMode?: GameModeId;
       campaignOperationId?: string;
       watch?: boolean;
+      couch?: CouchBattle;
     } = {},
   ): void {
     // Battle entry must be unstoppable: the pre-battle emits fan out to five+
@@ -3702,7 +3709,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     } catch (err) {
       console.error('[garage] battle-start listener failed:', err);
     }
-    if (onBattle) onBattle(specId, mapId, campaignOperationId ? { gameMode, campaignOperationId } : watch ? { gameMode, watch } : { gameMode }); // MAP-CONFIG WIRING
+    if (onBattle) onBattle(specId, mapId, campaignOperationId ? { gameMode, campaignOperationId } : watch ? { gameMode, watch } : couch ? { gameMode, couch } : { gameMode }); // MAP-CONFIG WIRING
   }
 
   /** The proving ground with this vehicle (the dossier's button, the Gallery's link): never inside a room's lobby. */
@@ -4212,6 +4219,14 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
   const setupLaunch = requiredElement<HTMLButtonElement>(battleMenu, '[data-battle-launch]');
   const setupWatch = requiredElement<HTMLButtonElement>(battleMenu, '[data-battle-watch]');
   setupWatch.addEventListener('click', () => { if (!setupWatch.disabled) battle(true); });
+  const setupCouch = requiredElement<HTMLButtonElement>(battleMenu, '[data-battle-couch]');
+  setupCouch.addEventListener('click', () => {
+    if (setupCouch.disabled || !selectedId || !opts.onCouch) return;
+    const specId = selectedId;
+    const mapId = fieldMapId();
+    const gameMode = battleGameMode;
+    opts.onCouch({ gameMode, start: (couch) => { closeBattleMenu(); launchBattle(specId, mapId, { gameMode, couch }); } });
+  });
   // The mode settings and the TEAMS switch load with the battle menu's first render (round 2, the critic's E3: the TEAMS
   // control grew the game's entry chunk); MONO's switch leads with the selected vehicle's flag
   let arrangementPanel: { render(mode: GameModeId): void; close(): void } | null = null;
@@ -4437,6 +4452,9 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     // a mode whose human seat no bot plays (the AC-130's gunship) or a room cannot be watched (WATCH_RULES)
     setupWatch.disabled = !solo || !isWatchableMode(battleGameMode);
     setupWatch.hidden = range;
+    // a couch battle plays the couch modes (COUCH_RULES), never inside a room
+    setupCouch.disabled = !solo || !isCouchMode(battleGameMode) || !opts.onCouch;
+    setupCouch.hidden = range;
     timeOptions.hidden = shown || range;
     galaxySky.hidden = !shown;
     soloOptions.hidden = !solo;

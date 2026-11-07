@@ -17,6 +17,8 @@ const ERA_VEHICLE_IDS = Object.freeze([
   't64bv_donbas', 't64bm1m', 't64bv', 't64b1v_2022', 'pt64_tur', 'ua_t80bv', 't80u_kursk', 't84bm_oplot_m',
   'leo2a6_ua', 't72m1_jaguar', 'pt91a_twardy',
   'bmpt_terminator2', 'm3a3_bradley', 'bmpt_t90',
+  // 267: the original BMPT Terminator's Kontakt-5 glacis and boxed skirt containers on the T-72 X hull
+  'bmpt_terminator',
   'kf51_u',
 ]);
 

@@ -41,7 +41,7 @@ interface BattleIntentRuntimeOptions {
   anisotropy: number;
   setCamoBiome(mapId: string): void;
   clearCamoOverrides(): void;
-  setCamoOverride(specId: string, patternId: 'auto'): void;
+  setCamoOverride(specId: string, patternId: 'auto' | 'factory'): void;
   applyCamoPatterns(options: {
     priorityIds: readonly string[];
     onlySpecIds: readonly string[];
@@ -258,7 +258,9 @@ export function createBattleIntentRuntime({
     await cancelTextureWarm();
     setCamoBiome(mapId);
     clearCamoOverrides();
-    for (const id of autoCamoIds) setCamoOverride(id, 'auto');
+    // (268, item 6) as setupBattle paints them: the rolled bots AUTO, every other bot its stock scheme, the player its own
+    const auto = new Set(autoCamoIds);
+    for (const id of rosterIds) if (id !== specId) setCamoOverride(id, auto.has(id) ? 'auto' : 'factory');
     await applyCamoPatterns({ priorityIds: [specId], onlySpecIds: rosterIds });
     await warmRosterTextures(specId, rosterIds, yieldForBudget);
   };

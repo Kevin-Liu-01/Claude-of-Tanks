@@ -45,7 +45,7 @@ function prismAcrossX(outline: ReadonlyArray<readonly [number, number]>, x0: num
  * hangs on two push arms in front of its track, its curved moldboard, skids and tines 0.40 m over the ground. The
  * blades sit outside the gun lane, and the beam's crown (1.05 m) stays under the 10-degree depressed bore there.
  */
-export function addTrackWidthMinePlow(P: MinePlowPort): void {
+export function addTrackWidthMinePlow(P: MinePlowPort, opts: { readonly chainOnSkids?: boolean } = {}): void {
   const BEAM_Z = 4.04, BEAM_Y = 0.98, BLADE_X0 = 0.94, BLADE_X1 = 1.86;
   // Hull brackets: from inside the nose casting out to the beam.
   for (const side of [-1, 1]) {
@@ -92,9 +92,12 @@ export function addTrackWidthMinePlow(P: MinePlowPort): void {
     }
   }
   // The dog-bone chain links the two blade units low across the centre.
+  // (release 268 builder E, the floating-kit class, chainOnSkids: its ends hung 2 cm clear of both blade units, so the
+  // chain touched nothing; they end on the inner skids' tops, where its shackles bear)
+  const end = opts.chainOnSkids ? { x: BLADE_X0 + 0.06, y: 0.48 } : { x: 0.95, y: 0.50 };
   const chain = new THREE.TubeGeometry(new THREE.CatmullRomCurve3([
-    new THREE.Vector3(-0.95, 0.50, 4.50), new THREE.Vector3(-0.45, 0.42, 4.52), new THREE.Vector3(0, 0.40, 4.53),
-    new THREE.Vector3(0.45, 0.42, 4.52), new THREE.Vector3(0.95, 0.50, 4.50),
+    new THREE.Vector3(-end.x, end.y, 4.50), new THREE.Vector3(-0.45, 0.42, 4.52), new THREE.Vector3(0, 0.40, 4.53),
+    new THREE.Vector3(0.45, 0.42, 4.52), new THREE.Vector3(end.x, end.y, 4.50),
   ], false, 'centripetal'), 16, 0.018, 6, false);
   P.addEquipment('hullDark', chain);
   P.hullG.userData.minePlowReceipt = Object.freeze({

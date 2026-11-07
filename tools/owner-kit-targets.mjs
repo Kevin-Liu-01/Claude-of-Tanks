@@ -1,8 +1,10 @@
 // Owner-directed kit set aside from a registered source comparison (the K1's photo-supplement mechanism,
 // reference-supplement.mjs, for parts an owner asked for that the print does not carry). Each part is one named group
-// directly under its rig; procedural-fidelity.html authenticates its exact geometry, pose and materials against the
-// receipt before the numeric masks drop it, the shaded boards keep the whole vehicle, and the drivers keep a fresh
-// raw full-vehicle comparison beside it. Nothing else on the vehicle is excused: the rest clears its own bar.
+// directly under its rig; procedural-fidelity.html authenticates its exact shape and pose (positions, index, poses,
+// visibility: reference-supplement.mjs 'shape', receipt schemaVersion 2) against the receipt before the numeric masks drop
+// it, the shaded boards keep the whole vehicle, and the drivers keep a fresh raw full-vehicle comparison beside it. The
+// kit's paint is the vehicle's coat, reviewed with the coat (268: the Oplot-M's MM-14 coat staled its whole kit when the
+// receipt held texture pixels). Nothing else on the vehicle is excused: the rest clears its own bar.
 // First-party: Kevin B. Liu (NOTICE.md).
 
 // The owner's words, verbatim (2026-10-27, release 262's Oplot lane).

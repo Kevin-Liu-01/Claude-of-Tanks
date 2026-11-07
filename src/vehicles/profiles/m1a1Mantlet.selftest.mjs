@@ -67,75 +67,56 @@ for(const quality of ['high','low'])for(const id of ids){
     for(const x of [-.30,.25])for(const y of [.23,.38,.48]){
       assert.ok(front(fixed,x,y)<=gun.position.z-.039,`${id}: central pitch bay is open`);
     }
-    // The old shield and the fixed roof both contained this point, 60 mm
-    // inside each solid. Both now leave it in the relieved rotating bay.
-    const formerCube = new Vector3(-.20,.20,-.10);
-    ray.set(formerCube,new Vector3(0,0,1));ray.far=1;
-    const shieldEntry=ray.intersectObject(moving)[0];
-    assert.ok(shieldEntry?.face.normal.z < -.5 && shieldEntry.distance > .20,
-      `${id}: the deep rear shield cube is absent`);
-    ray.set(formerCube.clone().add(gun.position),new Vector3(0,0,-1));ray.far=1;
-    const roofEntry=ray.intersectObject(fixed)[0];
-    assert.ok(roofEntry?.face.normal.z > .5 && roofEntry.distance > .15,
-      `${id}: the fixed roof no longer overlaps the old shield volume`);
+    // 2026-11-03 (release 268 builder E, owner: "the mantlet and cannon ... match the model"): the gun shield is the owner's
+    // model's narrow recessed shield (profiles/m1a1GunMount.ts): it fills the 0.319 slot between the cheeks with a 12 mm
+    // running gap a side, its face bulges forward at the gun axis, its top lies on the turret roof's forward course at
+    // rest, its rear is a rotor arc nested in the fixed elevation recess, and the round collar and coax tube stand out of
+    // it. The print-era broad raked plate, its journals and recessed coax receiver are gone; these checks replace theirs.
+    const sideHit=(side)=>{ray.set(new Vector3(side*.6,0,.10),new Vector3(-side,0,0));ray.far=.6;return ray.intersectObject(moving)[0];};
+    for(const side of [-1,1]){
+      near(Math.abs(sideHit(side).point.x),.307,.0005,`${id}: shield fills the slot`);
+      ray.set(new Vector3(0,gun.position.y,gun.position.z+.10),new Vector3(side,0,0));ray.far=.6;
+      const cheek=ray.intersectObject(fixed)[0];
+      const gap=Math.abs(cheek.point.x)-.307;
+      assert.ok(gap>.008&&gap<.020,`${id}: 12 mm running gap to the cheek's slot wall (${gap} m)`);
+    }
+    const faceAxis=front(moving,.20,0),faceLow=front(moving,.20,-.25),faceHigh=front(moving,.20,.225);
+    assert.ok(faceAxis>faceLow+.08&&faceAxis>faceHigh+.10,`${id}: the model's face bulges forward at the gun axis`);
+    for(const y of [.20,-.20])near(front(moving,-.25,y),front(moving,.25,y),.002,`${id}: face is straight across the barrel`);
+    ray.set(new Vector3(.20,1,0),new Vector3(0,-1,0));ray.far=2;
+    const top=ray.intersectObject(moving)[0].point.y;
+    const roofCourse=.7671-.1418*gun.position.z-gun.position.y;
+    near(top,roofCourse,.003,`${id}: shield top lies on the roof's forward course at rest`);
+    ray.set(new Vector3(.20,-1,.10),new Vector3(0,1,0));ray.far=2;
+    near(ray.intersectObject(moving)[0].point.y,-.265,.001,`${id}: shield sill`);
     const throatFront=[];
     for(const dy of [0,.10,.20]){
       const fixedZ=front(fixed,-.25,gun.position.y+dy)-gun.position.z;
       ray.set(new Vector3(-.20,dy,-1),new Vector3(0,0,1));ray.far=1;
       const rotorRear=ray.intersectObject(moving)[0].point.z;
       const gap=rotorRear-fixedZ;
-      assert.ok(gap>.025&&gap<.070,
-        `${id}: fixed throat closely clears the actual curved rotor (${gap} m)`);
+      assert.ok(gap>.010&&gap<.030,
+        `${id}: fixed recess closely clears the shield's rotor arc (${gap} m)`);
       throatFront.push(fixedZ);
     }
     assert.ok(throatFront[0]<throatFront[2]-.04,
       `${id}: the turret throat wraps the rotor instead of ending in a flat block`);
-    // Actual plate stock is 105 mm along Z, rather than the previous
-    // 312–615 mm extrusion; this is measured through the rendered triangles.
-    ray.set(new Vector3(.28,.12,1),new Vector3(0,0,-1));ray.far=1.1;
-    const faceHits=ray.intersectObject(moving);
-    const plateDepth=faceHits[0].point.z-faceHits[1].point.z;
-    assert.ok(plateDepth>.085&&plateDepth<.125,
-      `${id}: finite front armor, with no deep square rear extrusion (${plateDepth} m)`);
-    for(const side of [-1,1]){
-      ray.set(new Vector3(side*.6,0,0),new Vector3(-side,0,0));ray.far=.4;
-      const journal=ray.intersectObject(moving)[0];
-      near(journal.point.x,side<0?-.335:.435,.0001,
-        `${id}: pivot-centered journal reaches into the fixed cheek bearing`);
-    }
-    // The owner's front photograph shows one broad raked armor face. The
-    // previous cheek-following cover skewed 235 mm across this region.
-    for (const y of [.08,.19]) {
-      const left=front(moving,-.23,y),right=front(moving,.37,y);
-      near(left,right,.002,`${id}: face is straight across the barrel`);
-    }
-    assert.ok(front(moving,.36,-.12)>front(moving,.36,.19)+.12,
-      `${id}: front plate has a real rake rather than a vertical cube`);
-    ray.set(new Vector3(-.24,-.26,4),new Vector3(0,0,-1));ray.far=8;
-    const underChin=ray.intersectObject(moving)[0];
-    assert.ok(!underChin||underChin.point.z<front(moving,-.24,-.205)-.10,
-      `${id}: undercut removes the deep lower chin beneath the main shield`);
-    // Coax aperture has finite depth on the actual rendered armor, with a
-    // receiver behind it. A painted circle on the face fails this ray pair.
+    // The model's coax tube, with a dark bore at its end, beside the collar's upper right (vehicle right).
     const dark=new Mesh(tank.root.getObjectByName('gunMountDark').geometry,mat);
     dark.updateMatrixWorld(true);
-    ray.set(new Vector3(-.265,-.095,1),new Vector3(0,0,-1));ray.far=1.1;
-    assert.ok(ray.intersectObjects([moving,dark])[0]?.object === dark,
-      `${id}: recessed receiver is visible through the coax aperture`);
-    ray.set(new Vector3(-.264,-.094,1),new Vector3(0,0,-1));ray.far=1.2;
-    const supportFront=ray.intersectObject(moving)[0].point.z;
-    assert.ok(ray.intersectObject(dark).some(h=>h.point.z<supportFront-.02&&h.point.z>-.16),
-      `${id}: recessed coax receiver overlaps its trunnion support`);
-    const coaxWall=front(moving,-.265,-.04),coaxRear=front(dark,-.265,-.095);
-    assert.ok(coaxWall-coaxRear>.08,`${id}: recessed coax aperture`);
-    // Round fixed sleeve leaves clearance around the recoiling thermal tube.
-    for(const z of [.54,.58,.61])for(let k=0;k<16;k++){
+    ray.set(new Vector3(-.225,.145,2),new Vector3(0,0,-1));ray.far=2.2;
+    assert.ok(ray.intersectObjects([moving,dark])[0]?.object === dark,`${id}: dark coax bore at the tube's mouth`);
+    assert.ok(front(moving,-.225,.145)>front(moving,-.225,.30)+.30,`${id}: coax tube stands out of the shield`);
+    // Round fixed collar round the recoiling tube. Re-pinned 2026-11-03 (release 268 builder E, the blind A/B fix round):
+    // sliced from the owner's model at 2.5 cm, the sleeve runs straight out of the shield face at r 0.146 to its 0.165
+    // lip ring (the 0.172 drum was the face boss's radius); the fixed sleeve is 0.150 over the 0.146 thermal sleeve.
+    for(const z of [.50,.60,.70])for(let k=0;k<16;k++){
       const a=(k+.5)*Math.PI/8,dx=Math.cos(a),dy=Math.sin(a);
-      ray.set(new Vector3(dx*.24,dy*.24,z),new Vector3(-dx,-dy,0));ray.far=.13;
+      ray.set(new Vector3(dx*.20,dy*.20,z),new Vector3(-dx,-dy,0));ray.far=.08; // from inside the coax tube's nearest edge (0.23)
       const h=ray.intersectObject(moving)[0];
-      assert.ok(h,`${id}: continuous round cradle ${z}/${k}`);
+      assert.ok(h,`${id}: continuous round collar ${z}/${k}`);
       const r=Math.hypot(h.point.x,h.point.y);
-      assert.ok(r>.153&&r<.157,`${id}: circular cradle radius ${r}`);
+      assert.ok(r>.148&&r<.1525,`${id}: circular collar radius ${r}`);
     }
     const shell=mount.geometry.attributes.position;
     const meshes=[];tank.root.traverse(o=>{if(o.isMesh&&visible(o))meshes.push(o);});
@@ -143,7 +124,7 @@ for(const quality of ['high','low'])for(const id of ids){
     for(const yaw of [0,Math.PI/2,Math.PI])for(const pitch of [-spec.gunDepressionDeg,0,spec.gunElevationDeg]){
       state.turretYaw=yaw;state.gunPitch=pitch*Math.PI/180;
       tank.syncFromState(state,0);tank.root.updateMatrixWorld(true);
-      for(const x of [-.25,.35]){
+      for(const x of [-.20,.25]){
         // Check the actual surface's immediate clearance, including every
         // visible mesh. A distant camera ray can legitimately meet the UA
         // stand-off cage before reaching the otherwise exposed shield.
@@ -170,7 +151,8 @@ for(const quality of ['high','low'])for(const id of ids){
     for(let i=0;i<=32;i++){
       tank.recoilKick(.12*i/32,1);tank.syncFromState(state,0);tank.root.updateMatrixWorld(true);
       toGun.copy(gun.matrixWorld).invert().multiply(tube.matrixWorld);
-      const clearance=.132-radiusInSlab(tube,toGun,-.14,.62);
+      // (builder E: the shield's square recoil passage, 0.121 m half-width, is the narrowest bore the root runs in)
+      const clearance=.121-radiusInSlab(tube,toGun,-.14,.62);
       assert.ok(clearance>.005,`${id}: root clears sleeve throughout recoil (${clearance} m)`);
     }
     // Test the complete rear casting, not just the nominal sleeve radius:
@@ -179,9 +161,11 @@ for(const quality of ['high','low'])for(const id of ids){
     for(let z=-.14;z<=.001;z+=.01)for(let angle=0;angle<Math.PI*2;angle+=Math.PI/8){
       ray.set(new Vector3(0,0,z),new Vector3(Math.cos(angle),Math.sin(angle),0));ray.far=.25;
       const wall=ray.intersectObject(moving)[0];
-      assert.ok(!wall||wall.distance>=.130,`${id}: entire rotor casting leaves the axial recoil passage open at z=${z}, angle=${angle}`);
+      assert.ok(!wall||wall.distance>=.120,`${id}: entire rotor casting leaves the axial recoil passage open at z=${z}, angle=${angle}`);
     }
-    if(id==='m1a1ha'||id==='ua_m1a1'){
+    // 2026-11-02 (release 268, abrams-bradley-268 builder A): the gun-rig searchlight is the Desert Storm HA's alone; the
+    // Ukrainian M1A1 SA borrows the HA shell without it (research/ua_m1a1/photos), so only the HA keeps this support.
+    if(id==='m1a1ha'){
       // Across the former air gap, the lamp now has finite painted support.
       for(const x of [-.41,-.48]){
         ray.set(new Vector3(x,.04,.70),new Vector3(0,0,-1));ray.far=.42;
@@ -216,7 +200,7 @@ for(const quality of ['high','low'])for(const id of ids){
       });
       assert.ok(invalid.minimum<-.02,`${id}: lowered mount must fail the finite aft-deck check`);
     }
-    console.log(`${id}/${quality}: broad raked face, stepped chin, recessed coax, open receiver, round cradle, pitch/recoil PASS; hull clearance >= ${(minClearance*1000).toFixed(1)} mm`);
+    console.log(`${id}/${quality}: slot-filling bulged shield, roof-course top, rotor recess, coax tube, round collar, pitch/recoil PASS; hull clearance >= ${(minClearance*1000).toFixed(1)} mm`);
     console.log(`${id}/${quality}: whole gun/structural hull clearance ${(hullClearance.minimum*1000).toFixed(2)} mm across ${hullClearance.poses} poses`);
   }finally{tank.dispose();}
 }

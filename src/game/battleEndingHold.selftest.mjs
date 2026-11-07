@@ -24,7 +24,8 @@ const simStep = state.slice(state.indexOf('export function simStep('), state.ind
 assert.match(simStep,
   /\): void \{\n\s*\/\/[^\n]*\n\s*if \(endingHoldExpired\(game\.ruleset, game\.resultTimeS, game\.timeS\)\) return;\n\s*game\.timeS \+= SIM_DT;/,
   'past the hold the step returns before the clock advances (the field stands still under the report)');
-assert.match(simStep, /stepBotControllers\(game\);\n\s*silenceGunsAfterVerdict\(game\);\n\s*applyBotSupportActions\(game, bus\);/,
+// (268) every hull's controls, presses and consumables are one per-hull stage (stepHullControls, the authority's order)
+assert.match(simStep, /stepHullControls\(game, bus, world\);\n\s*silenceGunsAfterVerdict\(game\);/,
   'the verdict silences every trigger after the AI writes input and before weapons resolve');
 // (battle-spikes-253: a frame-stage mark, game/frameStages.ts, may name the damage stage between them)
 assert.match(simStep, /stepShells\(game, bus, world\);\n(\s*stages\?\.stage\(FRAME_STAGE\.damage\);\n)?\s*stepFireDamage\(game, bus\);/,

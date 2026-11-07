@@ -4,9 +4,11 @@ import type { RuntimeValue } from '../runtimeTypes.ts';
  *
  * Particles are deliberately world-space after birth: smoke should trail a
  * moving tank instead of behaving like a rigid model accessory. Only a
- * continuous emitter's source follows its owner. The policy table makes that
- * distinction explicit so new long-lived effects cannot silently inherit the
- * wrong space.
+ * continuous emitter's source follows its owner, and a muzzle's bright
+ * sub-200 ms parts leave with the shooter's own velocity (gas thrown from a
+ * moving bore carries the bore's motion; the pools' drag then slows it
+ * against still air). The policy table makes those distinctions explicit so
+ * new effects cannot silently inherit the wrong space.
  */
 export const EFFECT_ATTACHMENT_POLICY = Object.freeze({
   burningColumn: 'subject-local-emitter',
@@ -16,8 +18,15 @@ export const EFFECT_ATTACHMENT_POLICY = Object.freeze({
   guidedMissileBody: 'live-shell-position',
   guidedMissileTrail: 'world-space-history',
   turretPopTrail: 'caller-refreshed-emitter',
-  muzzleFlash: 'world-space-burst',
-  muzzleRing: 'world-space-burst',
+  // (fleet review 2026-11-03: s272/s86/s271) born world-fixed, a ~100 ms core
+  // lagged 0.5-1.5 m back along the barrel of a tank firing at 5-15 m/s. The
+  // core, petals, axial and brake jets, combustion tongues, bore sparks, ring
+  // and light ride the muzzle; its propellant mass, smoke, wisps and ground
+  // dust stay world-space and trail it.
+  muzzleFlash: 'shooter-velocity-burst',
+  muzzleRing: 'shooter-velocity-burst',
+  muzzleLight: 'shooter-velocity-burst',
+  muzzleSmoke: 'world-space-burst',
   impactParticles: 'world-space-burst',
   destructionParticles: 'world-space-burst',
   // wreck r1 (owner 2026-09-17): the wreck column rides the corpse's visual root and retires with it
@@ -137,5 +146,62 @@ export function syncSubjectEmitterAnchor(
   emitter.pos[0] = p.x + c * local[0] + s * local[2];
   emitter.pos[1] = p.y + local[1];
   emitter.pos[2] = p.z - s * local[0] + c * local[2];
+  return true;
+}
+
+type EffectAttachmentFamily = keyof typeof EFFECT_ATTACHMENT_POLICY;
+
+/** 1 when the family's burst leaves with its shooter's velocity, 0 when it stays world-space after birth. */
+export function shooterVelocityGain(family: EffectAttachmentFamily): number {
+  return EFFECT_ATTACHMENT_POLICY[family] === 'shooter-velocity-burst' ? 1 : 0;
+}
+
+interface EffectSubjectMotion {
+  state?: {
+    pos?: Partial<MutablePosition>;
+    yaw?: number;
+    /** signed hull speed along its yaw (m/s), as sim, network and Studio actors all publish it */
+    speed?: number;
+    yawRate?: number;
+    verticalSpeed?: number;
+  } | null;
+}
+
+/** No ground vehicle outruns it; a teleporting key's one-tick speed never throws a burst across the map. */
+const MAX_CARRIED_MPS = 40;
+
+function finiteOr(value: number | undefined, fallback: number): number {
+  return typeof value === 'number' && Number.isFinite(value) ? value : fallback;
+}
+
+/**
+ * World velocity (m/s) of a point the subject carries (its muzzle tip): the
+ * hull's speed along its yaw and its vertical speed, plus the yaw rate
+ * swinging the point about the hull origin. Writes `out` (zeroed when the
+ * subject is unresolved) and never allocates.
+ */
+export function subjectPointVelocity(
+  subject: EffectSubjectMotion | null | undefined,
+  x: number,
+  z: number,
+  out: number[],
+): boolean {
+  out[0] = 0; out[1] = 0; out[2] = 0;
+  const state = subject && subject.state;
+  if (!state || typeof state.yaw !== 'number' || !Number.isFinite(state.yaw)) return false;
+  const speed = finiteOr(state.speed, 0);
+  let vx = Math.sin(state.yaw) * speed;
+  let vz = Math.cos(state.yaw) * speed;
+  const vy = finiteOr(state.verticalSpeed, 0);
+  const yawRate = finiteOr(state.yawRate, 0);
+  const p = state.pos;
+  if (yawRate !== 0 && isFinitePosition(p)) {
+    // yaw += yawRate * dt turns forward (sin yaw, 0, cos yaw): an offset r swings at yawRate * (r.z, 0, -r.x)
+    vx += yawRate * (z - p.z);
+    vz -= yawRate * (x - p.x);
+  }
+  const m = Math.hypot(vx, vy, vz);
+  const k = m > MAX_CARRIED_MPS ? MAX_CARRIED_MPS / m : 1;
+  out[0] = vx * k; out[1] = vy * k; out[2] = vz * k;
   return true;
 }

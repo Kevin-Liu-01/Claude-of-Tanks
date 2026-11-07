@@ -26,6 +26,7 @@ const CURVES = {
   t72b3m_bulat_m: [],
   t72b3_bastion_m: [],
   type96b: [],
+  gepard_1a2: [], // 268: its published curve lifts the guns at most 1 deg over the stern deck's outlet covers (yaw 140-180)
   type96_72_long: [],
   type96_80_feng: [],
   type96_72m_lei: [],
@@ -42,6 +43,8 @@ const CURVES = {
   c2_ariete: [],
   m3a3_bradley: [[0, 39]], // the mantlet's underside 11 mm over the roof at -9; the M3 keeps its full forward depression
   m6_linebacker: [],
+  // 268: the M3A2 under the classic turret, its turret-fixed TOW pod clear of the gun; its measured rear stops (m3a2BradleySpecs.ts)
+  m3a2_bradley: [],
   // release 230 (the gun-hull lane): the T-72B3's measured stops (t72b3XArmor.ts) and the T-72 Ryś on its raised ring
   // (t80uXArmor.ts T80U_X_RING_RAISE_M; before it, its mount stood in the deck through most of the traverse)
   t72b3: [],
@@ -134,9 +137,9 @@ const CURVES = {
   osorio_p2: [],
   ee_t3_osorio: [],
   ee_t4_osorio: [],
-  // 267: the mantlet with its camera saddle sits on the deck (the sweep's mountConflicts: +7.1 deg ahead, +18 to +20 aft
-  // and touching at full elevation from 154), geometry older than 267 and its fix owed; the barrel is held there
-  amx40_proto: [[0, 71], [108, 180]],
+  // 268: the mantlet's underside lifted off the deck (france.ts); its measured whole-gun stops (franceSpecs.ts) ride over
+  // the engine deck aft (267 held the barrel alone in [0, 71] and [108, 180])
+  amx40_proto: [],
 };
 // Tanks whose camouflage suit (ghillieSuit.ts, cut to the gun's own stops, so it regrows under any stop it is given) comes
 // within 25 mm of the gun: the curve holds their hull stock and the suit's working clearance is the suit's to fix (the Type

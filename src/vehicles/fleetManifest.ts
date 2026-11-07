@@ -6,6 +6,7 @@ export const FLEET_GROUP_IDS = Object.freeze({
   sinoSovietConcepts: Object.freeze(['type96_72_long','type96_80_feng','type96_72m_lei']),
   t72Rys: Object.freeze(['t72_rys']),
   m6Linebacker: Object.freeze(['m6_linebacker']),
+  m3a2Bradley: Object.freeze(['m3a2_bradley']),
   marder2: Object.freeze(['marder2']),
   amx10p: Object.freeze(['amx10p', 'amx10p_25']),
   dardo: Object.freeze(['dardo']),
@@ -126,11 +127,15 @@ export const FLEET_GROUP_IDS = Object.freeze({
     'bmp3_rok', 'ua_m2a3_bradley',
     'bmpt_terminator2', 'bwp1', 'marder1a3', 'm3a3_bradley', 'spz_puma', 'spz_wotan',
     'raiju_ifv',
-    'bmp3', 'upior', 'bmpt_t90',
+    'bmp3', 'upior', 'bmpt_t90', 'bmpt_terminator',
   ]),
   korea: Object.freeze(['k2b']),
   japan: Object.freeze(['stb1', 'type90a', 'type10b', 'type10_tk_x', 'type10_dozer', 'type90b']),
   sheridan: Object.freeze(['m551_sheridan', 'm551a1_tts']),
+  // 268: the twin-cannon air-defence round, three self-contained groups (the TOS-1A's pattern)
+  gm352AirDefense: Object.freeze(['tunguska_m', 'pantsir_s1']),
+  gepard: Object.freeze(['gepard_1a2']),
+  chineseAirDefense: Object.freeze(['pgz95', 'pgz09']),
 } as const);
 
 export type FleetGroup = keyof typeof FLEET_GROUP_IDS;
