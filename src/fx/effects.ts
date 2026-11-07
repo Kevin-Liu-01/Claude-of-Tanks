@@ -93,7 +93,10 @@ import { createStructureStageLedger } from './structureStageLedger.ts';
 type Rng = () => number;
 type MutableVec3 = [number, number, number];
 type WireVec3 = readonly [number, number, number];
-/** A hull's last event point (effects' lastKnownPos): in the world, and on the hull when the hull resolved then. */
+/**
+ * A hull's last event point (effects' lastKnownPos): in the world, and on the hull when the hull resolved then and this
+ * seat saw it (round 5 U16: a network hull out of sight stands at its last sample's pose).
+ */
 interface KnownHullPoint { world: MutableVec3; local: MutableVec3; onHull: boolean }
 type ShellId = string | number;
 type TracerType = 'DRONE' | 'ATGM' | 'AP' | 'APCR' | 'HEAT' | 'HE' | 'HESH' | 'APFSDS';
@@ -246,6 +249,8 @@ interface FxEntity {
   };
   /** Solo/authority entities carry the combat record; a revived one reads destroyed:false. */
   combat?: { destroyed?: boolean; fire?: { burning?: boolean } } | null;
+  /** A network peer's actor (battlePresentation): false while this seat does not see it; its pose is the last sample's. */
+  networkVisible?: boolean;
 }
 
 interface FxDebugSurface {
@@ -2196,7 +2201,8 @@ function* createFxSteps(
   /**
    * Each hull's last event point in this life, fed by the hit and death events that carry one: where it was in the
    * world, and where it sits on the hull (the hull's frame by its position and yaw, as effectAttachments' state-yaw
-   * anchor reads it) when the hull resolved then (round 4 merge review r2; knownPosOf reads it, a mode respawn drops it).
+   * anchor reads it) when the hull resolved then and this seat saw it (round 4 merge review r2, round 5 U16;
+   * knownPosOf reads it, a mode respawn drops it).
    */
   const lastKnownPos = new Map<string, KnownHullPoint>();
   const _knownAt: MutableVec3 = [0, 0, 0]; // knownPosOf's answer for a hull that resolves
@@ -4801,7 +4807,14 @@ function* createFxSteps(
     return typeof yaw === 'number' && Number.isFinite(yaw) ? yaw : 0;
   }
 
-  /** Record the point a hit or a death carried for its hull (lastKnownPos): one record a hull, rewritten in place. */
+  /**
+   * Record the point a hit or a death carried for its hull (lastKnownPos): one record a hull, rewritten in place.
+   * (round 5 U16) A network hull this seat does not see (networkVisible false; a shooter still hears its own hit on
+   * it) stands at its last sample's pose, not where the round struck it: measured on the hull from there, the point
+   * was off by the distance the hull went unseen and rode it that far off once it was seen again. Its point stays in
+   * the world only, so knownPosOf answers the hull's pose. networkVisible itself, not hullHidden: a solo hull out of
+   * the player's spotting is hidden by the page, but its state is live and its point is right on it.
+   */
   function noteKnownPos(id: string, p: WireVec3): void {
     let known = lastKnownPos.get(id);
     if (!known) {
@@ -4811,8 +4824,8 @@ function* createFxSteps(
     known.world[0] = p[0]; known.world[1] = p[1]; known.world[2] = p[2];
     const ent = decalEntityFor(id);
     const at = ent?.state?.pos ?? ent?.visual?.root?.position ?? null;
-    known.onHull = !!(ent && at);
-    if (!ent || !at) return;
+    known.onHull = !!(ent && at) && ent?.networkVisible !== false;
+    if (!ent || !at || !known.onHull) return;
     const yaw = hullYawOf(ent), c = Math.cos(yaw), s = Math.sin(yaw), dx = p[0] - at.x, dz = p[2] - at.z;
     known.local[0] = c * dx - s * dz; known.local[1] = p[1] - at.y; known.local[2] = s * dx + c * dz;
   }
@@ -4823,6 +4836,9 @@ function* createFxSteps(
    * its step), else where the hull stands; the world point only for a hull that does not resolve. (round 4 merge
    * review r2) A world point goes stale as the hull moves: a ram's or a crash's thrown track drew at the life's first
    * such event's spot, at an older hit's, or at the last life's wreck. A resolving hull's answer is shared scratch.
+   * (round 5 U16) A point taken while the hull was out of this seat's sight is not on the hull: the hull's pose. No
+   * reader asks while it stays out of sight (module_state and tank_fire name only the hull and are withheld from a seat
+   * that does not see it, authoritativeMatch canObserveEvent; the burn scan skips a hidden hull).
    */
   function knownPosOf(id: string): MutableVec3 | null {
     const known = lastKnownPos.get(id);
