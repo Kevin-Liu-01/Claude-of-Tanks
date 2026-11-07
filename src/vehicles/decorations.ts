@@ -2755,12 +2755,12 @@ const M113_MANIFESTS: Readonly<Record<string, () => DecorManifestRow[]>> = Objec
     ...m113Net(),
     { kit: 'cable', p: 1, v: { len: 2.4 }, slot: ['hullSideCable', { side: -1 }] },
   ],
+  // the FSV's blind A/B (2026-11-06) chose the plain stern: cans hung off the plate's corners broke its side silhouette and
+  // no FSV photograph shows the net across its nose; its 76 mm sweeps the rear roof (each roof seat ahead of the bedroll
+  // is the gun's) and holds the ramp's rack below its floor, so the FSV carries the bedroll and the cable
   m113a1_fsv: () => [
-    { kit: 'jerry', p: 1, v: { n: 2 }, slot: ['hullRearHang', { side: 1 }] },
-    { kit: 'jerry', p: 1, v: { n: 2 }, slot: ['hullRear', { side: -1 }] },
     // the bedroll across the roof's rear left (the right rear is the mission attachment's dock)
     { kit: 'tarp', p: 1, v: { v: 'fat', len: 0.74 }, slot: ['hullRoof', { x: 0.43, z: -2.28 }] },
-    ...m113Net(),
     { kit: 'cable', p: 1, v: { len: 2.4 }, slot: ['hullSideCable', { side: -1 }] },
   ],
   // the MRV's sides are its buoyancy pods (no cable)
