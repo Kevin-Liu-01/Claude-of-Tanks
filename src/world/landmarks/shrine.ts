@@ -13,7 +13,7 @@
 // Drawn in its own frame (x across, y up, z out of the front) into the regional part sink, so the roofs take the kit's
 // kawara and the walls its render (no draw call of its own). The posts, walls, podium and lanterns are structure; the
 // rails, ropes, brackets and the fence's slats are dressing.
-import { PartSink, rgb, shade, type EmitOptions, type RegionalBucket, type Rgb, type Vec3 } from '../maps/regional/geometry.ts';
+import { PartSink, rgb, shade, type RegionalBucket, type Rgb, type Vec3 } from '../maps/regional/geometry.ts';
 import { bar, revolve } from './kit.ts';
 import type { LandmarkBuilder, LandmarkBuildContext, LandmarkPlacement } from './types.ts';
 

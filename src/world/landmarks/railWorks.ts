@@ -434,13 +434,12 @@ export const signalBox: LandmarkBuilder = (ctx) => {
   const sx0 = -ow / 2 - 0.15, landX = sx0 - 1.1, run = Hb * 1.15;
   sink.span('structureWood', landX - 0.1, y0 - 0.12, -od / 2 + 0.2, sx0, y0, od / 2 - 0.2, { colour: CAB_TIMBER });
   for (const z of [-od / 2 + 0.3, od / 2 - 0.3]) bar(sink, 'structureWood', [landX, foot, z], [landX, y0 - 0.12, z], 0.14, { colour: CAB_TIMBER });
-  const zs0 = -od / 2 + 0.25, zs1 = zs0 + 1.0;
-  for (const z of [zs0, zs1]) bar(sink, 'structureWood', [landX + 0.5, y0 - 0.06, -od / 2 + 0.2], [landX + 0.5, 0, -od / 2 + 0.2 - run], 0.1, { colour: CAB_TIMBER, decor: true });
-  void zs1;
+  // the stair's two stringers, at its edges
+  for (const x of [landX + 0.05, landX + 0.95]) bar(sink, 'structureWood', [x, y0 - 0.06, -od / 2 + 0.2], [x, 0, -od / 2 + 0.2 - run], 0.1, { colour: CAB_TIMBER, decor: true });
   const steps = Math.max(6, Math.round(Hb / 0.21));
   for (let k = 1; k < steps; k++) {
     const y = y0 - k * (y0 / steps), z = -od / 2 + 0.2 - k * run / steps;
-    sink.span('structureWood', landX, y - 0.04, z - 0.14, landX + 1.0, y, z + 0.14, { colour: CAB_TIMBER, decor: true, fine: undefined });
+    sink.span('structureWood', landX, y - 0.04, z - 0.14, landX + 1.0, y, z + 0.14, { colour: CAB_TIMBER, decor: true });
   }
   bar(sink, 'structureMetal', [landX - 0.02, y0 + 0.95, -od / 2 + 0.2], [landX - 0.02, 0.95, -od / 2 + 0.2 - run], 0.04, { colour: IRON, decor: true });
   bar(sink, 'structureMetal', [landX - 0.02, y0 + 0.95, -od / 2 + 0.2], [landX - 0.02, y0 + 0.95, od / 2 - 0.2], 0.04, { colour: IRON, decor: true });
