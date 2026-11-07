@@ -10,7 +10,7 @@ import { createBattleEntryLifecycle } from './battleEntryLifecycle.ts';
 import { createSoloBattleEntryRuntime } from './soloBattleEntryRuntime.ts';
 import { createBattleAgainAction } from './battleAgainAction.ts';
 import { createBus, createGameState } from './stateCore.ts';
-import { createInput } from './input.ts';
+import { createChromePointerLockPage } from './chromePointerLockPage.test-support.mjs';
 import { createPointerLockFeedbackRuntime } from './pointerLockFeedbackRuntime.ts';
 import { mainSource, mainStatement, runMainStatements } from '../app/mainComposition.test-support.mjs';
 
@@ -863,74 +863,14 @@ const started = ['emit:ui:click', 'emit:ui:battleStart', 'cover@garage', 'load@g
 }
 
 // (round 5 U15, Q2) What a press's ui:battleStart leaves standing, on a page whose pointer lock behaves as Chrome's
-// (inputPointerLockFocus.selftest.mjs's model): a request lands a task later; after the player's own unlock (Esc) one
-// with no user activation (about 5 s after a press) is refused, after the page's own exitPointerLock it is not (Chrome's
-// MouseLockController: last_unlocked_by_target). The real input layer (input.ts) asks for it, through the real pointer
-// lock owner (pointerLockFeedbackRuntime.ts), main's own ui:battleStart listeners (the play surface, post's loading
-// hold) and settings.ts's own (its battle state, which a 'garage' announcement clears) on one bus.
+// (chromePointerLockPage.test-support.mjs, the model inputPointerLockFocus.selftest.mjs drives; given no clock, its
+// 1250 ms post-Esc window is not modelled: these presses come after the Leave, its failed return and its notice): a
+// request lands a task later; after the player's own unlock (Esc) one with no user activation (about 5 s after a press)
+// is refused, after the page's own exitPointerLock it is not (Chrome's MouseLockController: last_unlocked_by_target).
+// The real input layer (input.ts) asks for it, through the real pointer lock owner (pointerLockFeedbackRuntime.ts),
+// main's own ui:battleStart listeners (the play surface, post's loading hold) and settings.ts's own (its battle state,
+// which a 'garage' announcement clears) on one bus.
 const tick = () => new Promise((resolve) => setImmediate(resolve));
-function chromePointerLockPage() {
-  const activation = { isActive: true };
-  let unlockedByTarget = true;
-  const stats = { attempts: 0, refused: 0 };
-  const document = Object.assign(new EventTarget(), {
-    hidden: false,
-    pointerLockElement: null,
-    body: { dataset: { cotInput: 'fine' } },
-    exitPointerLock() {
-      if (!document.pointerLockElement) return;
-      unlockedByTarget = true;
-      document.pointerLockElement = null;
-      queueMicrotask(() => document.dispatchEvent(new Event('pointerlockchange')));
-    },
-  });
-  const canvas = Object.assign(new EventTarget(), {
-    getBoundingClientRect: () => ({ left: 0, top: 0, width: 1280, height: 800 }),
-    requestPointerLock() {
-      stats.attempts += 1;
-      if (!unlockedByTarget && !activation.isActive) {
-        stats.refused += 1;
-        setImmediate(() => document.dispatchEvent(new Event('pointerlockerror')));
-        return Promise.reject(new Error('pointer lock refused'));
-      }
-      setImmediate(() => {
-        document.pointerLockElement = canvas;
-        document.dispatchEvent(new Event('pointerlockchange'));
-      });
-      return Promise.resolve();
-    },
-  });
-  const globals = {
-    window: new EventTarget(),
-    document,
-    localStorage: { getItem: () => null, setItem() {} },
-    navigator: { userActivation: activation },
-    matchMedia: (query) => ({ matches: query === '(pointer: fine)' }),
-  };
-  const prior = Object.fromEntries(Object.keys(globals).map((key) => [key, Object.getOwnPropertyDescriptor(globalThis, key)]));
-  for (const [key, value] of Object.entries(globals)) {
-    Object.defineProperty(globalThis, key, { value, configurable: true, writable: true });
-  }
-  const input = createInput({ lockElement: canvas });
-  return {
-    input, document, canvas, activation, stats,
-    locked: () => document.pointerLockElement === canvas,
-    // main's binding of the return's ui.exitPointerLock
-    exitPointerLock: () => { if (document.exitPointerLock) document.exitPointerLock(); },
-    /** The player's Esc while locked: Chrome consumes it and drops the lock (a user unlock). */
-    userEscape() {
-      unlockedByTarget = false;
-      document.pointerLockElement = null;
-      document.dispatchEvent(new Event('pointerlockchange'));
-    },
-    restore() {
-      for (const [key, descriptor] of Object.entries(prior)) {
-        if (descriptor) Object.defineProperty(globalThis, key, descriptor);
-        else delete globalThis[key];
-      }
-    },
-  };
-}
 const settingsSource = readFileSync(new URL('../ui/settings.ts', import.meta.url), 'utf8');
 function battleStartEffects(page) {
   const bus = createBus();
@@ -976,7 +916,7 @@ const battleStands = { pointerLock: true, playSurfaceHidden: true, loadingHold: 
 // starts its battle with them. (0edd0e1ab5: ui:battleStart at the press, and its pointer lock, hidden play surface,
 // loading hold and battle settings stood over the notice that came back.)
 {
-  const page = chromePointerLockPage();
+  const page = createChromePointerLockPage();
   const effects = battleStartEffects(page);
   try {
     let failRestore = true;
@@ -1048,7 +988,7 @@ const battleStands = { pointerLock: true, playSurfaceHidden: true, loadingHold: 
 // the page's own unlock, after which the announcement's request needs no activation. (f60d0aa200: refused after the
 // wait in both windows.)
 for (const during of ['restore', 'placement']) {
-  const page = chromePointerLockPage();
+  const page = createChromePointerLockPage();
   const effects = battleStartEffects(page);
   try {
     page.input.requestLock(); // the battle the player left held the lock; their Esc dropped it (a user unlock)
@@ -1101,7 +1041,7 @@ for (const during of ['restore', 'placement']) {
 // refusal never counts toward the cursor-aim fallback, and the next press locks again.
 for (const lockLandsFirst of [true, false]) {
   const label = lockLandsFirst ? 'a lock that landed during the wait' : 'a lock still in flight at the refusal';
-  const page = chromePointerLockPage();
+  const page = createChromePointerLockPage();
   const effects = battleStartEffects(page);
   try {
     let failRestore = true;
