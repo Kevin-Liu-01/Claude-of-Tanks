@@ -10262,6 +10262,12 @@ export function* createTankRuntimeSteps(
   // invisible from the normal chase orbit even though it was scale-plausible.
   const RAPID_BACK = 0.045, RAPID_HOLD = 0.055, RAPID_RETURN = 0.18;
   const RAPID_AMP = Math.min(0.085, Math.max(0.055, REC_CAL * 0.0022));
+  // 2026-11-06 (the owner's air-defence firepower, airDefenseFirepower.ts): a twin whose tubes alternate faster than this
+  // stroke (each tube refires every tubes x cycle) takes the stroke in that time, so each tube is back in battery for its
+  // own next shot. Every slower mount, and every single tube, keeps the stroke above.
+  const RAPID_STROKE_S = RAPID_BACK + RAPID_HOLD + RAPID_RETURN;
+  const RAPID_CYCLE_S = Math.min(Number(spec.gun?.autoloader?.intraClipS) || Infinity,
+    ...((spec.gun?.shells || []).filter((round) => !round.guided).map((round) => Number(round.reloadS || spec.gun.reloadS) || Infinity)));
   // §5.362 tube census: only a real tube riding rig_recoil may slide.
   // Use the original length heuristic or verified short-tube stock below.
   // Casemates print their cannon into
@@ -11339,9 +11345,10 @@ export function* createTankRuntimeSteps(
       // §5.362: per-shot stroke profile — cannon recuperate cycle vs the
       // short autocannon-belt shudder (selected by recoilKick's impulseScale
       // contract; see the RAPID_* constants note).
-      const rBack = recoilRapid ? RAPID_BACK : REC_BACK;
-      const rHold = recoilRapid ? RAPID_HOLD : REC_HOLD;
-      const rReturn = recoilRapid ? RAPID_RETURN : REC_RETURN;
+      const rapidFit = recoilRapid && barrelGs.length > 1 ? Math.min(1, RAPID_CYCLE_S * barrelGs.length / RAPID_STROKE_S) : 1;
+      const rBack = recoilRapid ? RAPID_BACK * rapidFit : REC_BACK;
+      const rHold = recoilRapid ? RAPID_HOLD * rapidFit : REC_HOLD;
+      const rReturn = recoilRapid ? RAPID_RETURN * rapidFit : REC_RETURN;
       const syncFromStateAssemblyStage8 = (): void => {
         if (recoilT < rBack + rHold + rReturn) {
           const syncFromStateAssemblyCourse1 = (): void => {

@@ -11,6 +11,7 @@
 import './afvFamily.ts';
 import { ALL_TANK_IDS, MODEL_SOURCE, TANK_SPECS } from './specs.ts';
 import { bindFleetRegistries, cloneFleetVariant, registerFleetSpecs, stripSilhouetteDimensions } from './fleetSpecRegistry.ts';
+import { applyAirDefenseFirepower } from './airDefenseFirepower.ts';
 import { crewBox, frontPlate, leftSidePlate, moduleBox, plate, rearPlate, rightSidePlate, roofPlate, shell,
   type ArmorPlate } from './specHelpers.ts';
 import type { FleetTankSpec } from './specContracts.ts';
@@ -151,6 +152,9 @@ for (const key of ['launcherSalvo', 'autoloader', 'fixedLaunchCanisters', 'prima
 spec.visual = { ...spec.visual, scheme: 'nato', base: '#4c5844', weather: '#56624d', patches: ['#23261f', '#5a4a38'],
   camoScale: .5, marking: 'number', number: '312', trackWidthM: K30_HULL.gear.trackW };
 
+// The owner's air-defence firepower (2026-11-06, airDefenseFirepower.ts): the floor cycle, twice the output, six times the
+// rounds.
+applyAirDefenseFirepower(spec);
 registerFleetSpecs(registries, ['k30_biho'], { k30_biho: spec });
 
 let synchronized = false;

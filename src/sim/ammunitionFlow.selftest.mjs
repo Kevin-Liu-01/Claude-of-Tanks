@@ -153,6 +153,11 @@ for (const spec of Object.values(TANK_SPECS)) {
         `${spec.id} slot ${slot + 1}: primary missile follows the main-gun reload`);
       assert.ok(round.reloadS >= 6 && round.reloadS <= 10,
         `${spec.id} slot ${slot + 1}: primary missile uses a standard tank reload`);
+    } else if (spec.gun.launcherSalvo) {
+      // (270, airDefenseFirepower.ts) an auxiliary rack fired whole in salvos reloads as a group: slower than one missile,
+      // as magazineIndicator.selftest.mjs holds every salvo (the Tunguska-M's, the Pantsir-S1's and the PGZ-95's)
+      assert.ok(round.reloadS >= 5 && round.reloadS <= 8,
+        `${spec.id} slot ${slot + 1}: an auxiliary salvo rack reloads in 5-8 seconds`);
     } else {
       assert.ok(round.reloadS >= 2 && round.reloadS <= 3,
         `${spec.id} slot ${slot + 1}: auxiliary missile reload is 2-3 seconds`);

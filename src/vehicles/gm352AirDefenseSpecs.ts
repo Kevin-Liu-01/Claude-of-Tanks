@@ -10,6 +10,7 @@
 import './afvFamily.ts';
 import { ALL_TANK_IDS, MODEL_SOURCE, TANK_SPECS } from './specs.ts';
 import { bindFleetRegistries, cloneFleetVariant, registerFleetSpecs, stripSilhouetteDimensions } from './fleetSpecRegistry.ts';
+import { applyAirDefenseFirepower } from './airDefenseFirepower.ts';
 import { crewBox, frontPlate, leftSidePlate, modernArmor, moduleBox, plate, rearPlate, rightSidePlate, roofPlate, shell,
   type ArmorPlate } from './specHelpers.ts';
 import type { FleetTankSpec } from './specContracts.ts';
@@ -307,4 +308,8 @@ pantsir.gun = {
 pantsir.visual = { ...pantsir.visual, scheme: 'blotch', base: '#4b5a36', weather: '#5c6844', patches: ['#8c7a55', '#24271f'],
   camoScale: .7, patchK: 1.3, marking: 'number', number: '421' };
 
+// The owner's air-defence firepower (2026-11-06, airDefenseFirepower.ts): the floor cycle, twice the output, six times the
+// rounds; each rack fires whole: the Tunguska-M's eight 9M311M, the Pantsir-S1's twelve 57E6, three loads of each.
+applyAirDefenseFirepower(tunguska, { rounds: 8, intervalS: 0.15 });
+applyAirDefenseFirepower(pantsir, { rounds: 12, intervalS: 0.15 });
 registerFleetSpecs(registries, ['tunguska_m', 'pantsir_s1'], { tunguska_m: tunguska, pantsir_s1: pantsir });
