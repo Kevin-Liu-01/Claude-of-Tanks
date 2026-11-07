@@ -51,8 +51,9 @@ import { openCaptureHold } from './capture-hold.mjs';
 import { heldRunExitCode, heldStopWhy, runHeldItem } from './held-items.mjs';
 
 // (round 5 U6) A tool loads when a run needs it: a signal child imports only the tool it runs (the open-form children
-// none), the parent all three. studio-example-videos costs ~0.35 s of CPU to import (its scenarios import every map's
-// config), and each of the 14 children imported all three statically: ~5.5 s of the receipt's 6.4 s user.
+// none), the parent all three. studio-example-videos cost ~0.37 s of CPU to import (its scenarios import every map's
+// config; it now loads them only for a duels or battle-reels run, and the studio children render features), and each of
+// the 14 children imported all three statically: ~5.5 s of the receipt's 6.4 s user.
 const tools = {
   turret: async () => (await import('./turret-parent-audit.mjs')).runTurretParentAudit,
   shoot: async () => (await import('./marketing-shots/shoot.mjs')).shootMarketing,
@@ -334,7 +335,8 @@ if (process.argv[2] === '--signal-child') {
     process.exit();
   } else if (tool === 'studio') {
     const renderStudioExamples = await tools.studio();
-    await renderStudioExamples(['--count', '2', '--stills', '0', '--out', dir], deps);
+    // the features collection: its pool reads no map config (the duels' would cost ~0.35 s of CPU in each child)
+    await renderStudioExamples(['--collection', 'features', '--count', '2', '--stills', '0', '--out', dir], deps);
   } else if (phase === 'exit') {
     // an open-form tool's shape (screenshot.mjs and the others): its hold, its page call cut by the hold's teardown, the
     // finally's release, then its own exit
