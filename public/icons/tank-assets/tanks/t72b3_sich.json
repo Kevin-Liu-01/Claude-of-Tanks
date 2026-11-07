@@ -27643,8 +27643,8 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 19696,
-      "sha256": "6851417794889e2404956b66ff4b49ac5dbb427bf4c0ff93966c8ab2bc72caff"
+      "bytes": 19702,
+      "sha256": "b9b3ef97615be11a1b3946ad9b68ad0e72db5e2f6a077cba385e7b27e34ce124"
     },
     "side": {
       "file": "t72b3_sich_side.webp",
@@ -27675,8 +27675,8 @@
       "width": 256,
       "height": 128,
       "mime": "image/png",
-      "bytes": 35781,
-      "sha256": "e946661b08b39e7dabde72504a95a004b546fefdac893a1eed8622e9176e2ac6"
+      "bytes": 32530,
+      "sha256": "3c321594026afaab9cd5588bd360c51ba6692bc12a7bc6d204ae25f999c778e8"
     },
     "technicalLabels": {
       "file": "t72b3_sich_technical.json",

@@ -12626,15 +12626,15 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 34412,
-      "sha256": "57d96125f1bf53b42469f3a15af71d3e5fa7c05f9a300a56039920f767be99c9",
+      "bytes": 34416,
+      "sha256": "cda471f6e3eb4e76907e72d0b50647109083153e7c7af1cacf564264bacaccf3",
       "thumbnail": {
         "file": "thumbs/merkava4b_angle.webp",
         "width": 256,
         "height": 256,
         "mime": "image/webp",
-        "bytes": 13318,
-        "sha256": "24c5aa74d218ba9db37d0c53f214f5a6a09caf161eefc67227815e69ca74d86e"
+        "bytes": 13316,
+        "sha256": "387bf086715640fb607aed255b12a5bd743e063b29b3f994563923932a0e42f1"
       }
     },
     "top": {
@@ -12698,8 +12698,8 @@
       "width": 256,
       "height": 128,
       "mime": "image/png",
-      "bytes": 33397,
-      "sha256": "28a1c7147b1bf50fe70a3370138621f413f8be53249ba3a8bc1663cd7de8dad6"
+      "bytes": 33091,
+      "sha256": "9c07853422e957b37884a834a98f7de411a01fa4e27c922cd420beafa0130e55"
     },
     "technicalLabels": {
       "file": "merkava4b_technical.json",

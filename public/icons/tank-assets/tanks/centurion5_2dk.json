@@ -863,15 +863,15 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 23590,
-      "sha256": "139e3494d3538246de9c4443c2c1f5152268f2b3e3fa661fce952311d156f09d",
+      "bytes": 23584,
+      "sha256": "2a61e39338a082f7c7aaa419e0f2bfdd0942b5008a03f241bfc6d7cfc6cd4f77",
       "thumbnail": {
         "file": "thumbs/centurion5_2dk_angle.webp",
         "width": 256,
         "height": 256,
         "mime": "image/webp",
-        "bytes": 9630,
-        "sha256": "259c57545af6a5f59b6d792daca71cb45100ddeacaf6ef227fb1a875e73c5f5a"
+        "bytes": 9632,
+        "sha256": "333b087294d2abfc23cc09529231daee6d08008ec7e0e4007c538ae96d6254d8"
       }
     },
     "top": {
@@ -887,8 +887,8 @@
       "width": 512,
       "height": 256,
       "mime": "image/webp",
-      "bytes": 10482,
-      "sha256": "942c23479257b056e3cc1f1c5eeeb91ba8b3428ecf3426bb6e41347508aa15c4"
+      "bytes": 10476,
+      "sha256": "f06ceb941f8a255c9696418676f35268643b947563de58136378a499291b64f8"
     },
     "topSilhouette": {
       "file": "centurion5_2dk_top_silhouette.png",
@@ -911,32 +911,32 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 26018,
-      "sha256": "383e2dcfac403fdf641a6bc8474bdb29c1a5653af843b0be894539291f1c10e1"
+      "bytes": 26000,
+      "sha256": "3d8c6afcf61b1156836bba95edaf274598ddea652a31f5acf5582478ece9e31a"
     },
     "modulesSide": {
       "file": "centurion5_2dk_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 25600,
-      "sha256": "7fddb0e87a9b394bcf337cdbebf41b1c72c943dbd7fa777e2ac2b554f1f9ea3c"
+      "bytes": 25576,
+      "sha256": "3708958ac8df2020d362d6b2044d7693a949c70ab5ded4551ccde96e9e956a35"
     },
     "crewSide": {
       "file": "centurion5_2dk_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 21934,
-      "sha256": "fe73df1d0c3da7792ec89d2cfb5430f31e3a874a6f841b51c9d094a659b9248d"
+      "bytes": 21924,
+      "sha256": "bf91b36443a7ce1285059b0fa188e1ae8915c222615d64771b4160921ec1f222"
     },
     "markings": {
       "file": "centurion5_2dk_markings.png",
       "width": 256,
       "height": 128,
       "mime": "image/png",
-      "bytes": 34418,
-      "sha256": "be42a18bc5dcc212785b9f47af58c961104605236deb89f2fcd7ec669f63ac79"
+      "bytes": 31412,
+      "sha256": "af2c5d6a3ed7b5739aa4f9f1fda53dc3d4f56c288243d8ea381ae12ad41df5e6"
     },
     "technicalLabels": {
       "file": "centurion5_2dk_technical.json",

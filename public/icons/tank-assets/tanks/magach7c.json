@@ -554,15 +554,15 @@
       "height": 512,
       "mime": "image/webp",
       "bytes": 11278,
-      "sha256": "d779aeff225eadd1c32fb06ed87ee3836a59866843f7b209053b460ec6061984"
+      "sha256": "efa8a6a030b971c35354867d95ff8ea97bf1929e5d6ad8d78d814b20ca19d617"
     },
     "side": {
       "file": "magach7c_side.webp",
       "width": 512,
       "height": 256,
       "mime": "image/webp",
-      "bytes": 11600,
-      "sha256": "3ec38a90e5063b03432c4d00731845318c295b1ca6d7796c9f261e5ca066385c"
+      "bytes": 11602,
+      "sha256": "7ecd61bafc4561cf78a8913e118962f5fa5657573e9277c5cd23d2fe705d0105"
     },
     "topSilhouette": {
       "file": "magach7c_top_silhouette.png",
@@ -585,32 +585,32 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 28390,
-      "sha256": "aae927dfb02b954a07c5521cf6ffe60b645af6a69207eb5d360cc11fa55c9901"
+      "bytes": 28380,
+      "sha256": "4dae783fd6dc1ea2634ba2b599cd89541026ff67de945ba9ba5053d1117fd521"
     },
     "modulesSide": {
       "file": "magach7c_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 29018,
-      "sha256": "7e598ce5d570858077ccbe677937b8a9016cf4a8a95f2d14598958f9676cd71f"
+      "bytes": 29020,
+      "sha256": "fc4c31822fccdbcf2268ccc5824922f0e9e25681f3a05714aa99dbdf7902f710"
     },
     "crewSide": {
       "file": "magach7c_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 24930,
-      "sha256": "962e5a130a3c4b9f7b4bbd1141c2f6b7db51ce47b69fa1e38352813d6d8319ed"
+      "bytes": 24958,
+      "sha256": "a99f2a39fe194c03acdb5f3740f89fe36778f12ad22f3c1d47ff8f03ac3f0036"
     },
     "markings": {
       "file": "magach7c_markings.png",
       "width": 256,
       "height": 128,
       "mime": "image/png",
-      "bytes": 34183,
-      "sha256": "fed613786b1242439943d1d778f982b26ebff1ced9077f3568ea8a9d26ab0113"
+      "bytes": 33547,
+      "sha256": "618e066858386a7985758691ae650c4aa02c6dbe9b493b3f0fdda1b77d6f2c3a"
     },
     "technicalLabels": {
       "file": "magach7c_technical.json",

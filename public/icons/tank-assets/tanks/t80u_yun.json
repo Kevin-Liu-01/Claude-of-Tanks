@@ -11232,23 +11232,23 @@
       "height": 512,
       "mime": "image/webp",
       "bytes": 29172,
-      "sha256": "0589f920c85c387275c76cb57dcd90532e4aa5cd51af08ca6372599764d0dcae"
+      "sha256": "4289e8ef3c62a5b52e85340a794d23537365f5ad70c47b2bd21da62d34d71aa7"
     },
     "modulesSide": {
       "file": "t80u_yun_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 25498,
-      "sha256": "8dccc8266b7fed05afc7f995f4a7270513995778a043870dcbc50c02fba2cb66"
+      "bytes": 25474,
+      "sha256": "f841a5cb0e1216aa368088223dbf0f6e02c8619d328470314175df35914690a4"
     },
     "crewSide": {
       "file": "t80u_yun_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 23512,
-      "sha256": "bd1da2d97ee464b0fcb2f139c2c06e9742576562680761a4a732b912991fd4b6"
+      "bytes": 23498,
+      "sha256": "4faa428b34b09fde23f77594cc8014aa6d8e00219e33b9e0f4446e0834930c03"
     },
     "angle": {
       "file": "t80u_yun_angle.webp",
@@ -11279,8 +11279,8 @@
       "width": 512,
       "height": 256,
       "mime": "image/webp",
-      "bytes": 10912,
-      "sha256": "1abc01e9b6222c8117fd8bc0b12506e10076c27c01e1366809722d5b653ea430"
+      "bytes": 10906,
+      "sha256": "8179f17062ec2dba0087b62b29d03fea5af9b409bdeab068358892319defb011"
     },
     "topSilhouette": {
       "file": "t80u_yun_top_silhouette.png",
@@ -11303,8 +11303,8 @@
       "width": 256,
       "height": 128,
       "mime": "image/png",
-      "bytes": 35983,
-      "sha256": "2ba9a59cd56b8ea585a08d2d9352b504c0954cb25b9eb8cb18d120f6fd3fbec8"
+      "bytes": 32437,
+      "sha256": "f96c34f124930e284bcc18800676ef65940e347bd5571cd628e426d855b79c12"
     },
     "technicalLabels": {
       "file": "t80u_yun_technical.json",

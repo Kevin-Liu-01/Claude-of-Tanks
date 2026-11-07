@@ -2405,24 +2405,24 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 26164,
-      "sha256": "5ca946a8ed221a1e13a4ff5634de055a216c1a2b026b3beaf9a3b29a12a85e48"
+      "bytes": 26220,
+      "sha256": "a63eee6a97b6bad78d35ed354434bf317e9a544c8c603b4cdd5b52ffe6d2360b"
     },
     "modulesSide": {
       "file": "amx56_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 23114,
-      "sha256": "9a86fc2a0481da7f0b5ebd5b16b69b81d3ca83735e6752c086812814cbbec537"
+      "bytes": 24076,
+      "sha256": "c33922d32fbe22c72e9f785aca13303548e452aeb30b39387f1f667651cf85b7"
     },
     "crewSide": {
       "file": "amx56_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 19936,
-      "sha256": "911b7bffd3cf7519c5a2ea55d746a8c0dea65e8ca9832c108918e737a8cbfb1c"
+      "bytes": 19894,
+      "sha256": "5c1b98b1b8949f0cb91e33d2f093b1058d88648dc1f67f3f6f240c909a50a3fe"
     },
     "angle": {
       "file": "amx56_angle.webp",
@@ -2453,8 +2453,8 @@
       "width": 512,
       "height": 256,
       "mime": "image/webp",
-      "bytes": 9340,
-      "sha256": "cad49fdc78ff1fec5b17413f083c0b2869d28b55957c7286e5d47a35e3bfa402"
+      "bytes": 9322,
+      "sha256": "8fb55441a34b8164795508a629f98efd69cdd125fc2e098cd1fab05e77317718"
     },
     "topSilhouette": {
       "file": "amx56_top_silhouette.png",
@@ -2477,8 +2477,8 @@
       "width": 256,
       "height": 128,
       "mime": "image/png",
-      "bytes": 35959,
-      "sha256": "1b456bb564f42ce5f774dd9ceb0fa4c026154433ee6414550f6b67481f7f32e2"
+      "bytes": 32945,
+      "sha256": "07979120937289823ecd847ed93cff3a09b78b647853872c3f2c73259daa2c2d"
     },
     "technicalLabels": {
       "file": "amx56_technical.json",

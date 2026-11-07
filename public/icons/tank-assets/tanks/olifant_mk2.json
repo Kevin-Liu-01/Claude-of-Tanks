@@ -776,14 +776,14 @@
       "height": 512,
       "mime": "image/webp",
       "bytes": 29606,
-      "sha256": "74c17b3a82a7627812aac36665d54932fc08c083ba178fef7757c2c6bceb387f",
+      "sha256": "9294899cde830931be7ccc772574b33784f87c794d7e9b04f126ec57adb8f899",
       "thumbnail": {
         "file": "thumbs/olifant_mk2_angle.webp",
         "width": 256,
         "height": 256,
         "mime": "image/webp",
-        "bytes": 12362,
-        "sha256": "0a8d474b7acf2cf46e28dbd768eeed0230d90540f5575aabaf1927f204ddb41c"
+        "bytes": 12366,
+        "sha256": "d30503c133cbe0d219a435bbcb3e88584e7bc8b07f58b93bf0d20ddbf61f2318"
       }
     },
     "top": {
@@ -799,8 +799,8 @@
       "width": 512,
       "height": 256,
       "mime": "image/webp",
-      "bytes": 13864,
-      "sha256": "b4c3f427519bb9b8f0ca99d2b5f80b2e1e13b6d56e05b4407df3d9779628f92a"
+      "bytes": 13856,
+      "sha256": "f11a92aab2c9528635a50255056e108dd5ba8ab83fe33fd703d5050531816350"
     },
     "topSilhouette": {
       "file": "olifant_mk2_top_silhouette.png",
@@ -823,32 +823,32 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 31130,
-      "sha256": "02208242f7768ac6d7ebe48741887ea44cff74162d358ef3a8ee4b526d909bbe"
+      "bytes": 31172,
+      "sha256": "d0f94fa438a631013b292b00c35b8557a68af37510081d65efbdb342200e84ec"
     },
     "modulesSide": {
       "file": "olifant_mk2_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 29944,
-      "sha256": "f42b3b52b0ba97efad9be5e2c59377d65d8c967bb97a002fcb67a6b73e99396b"
+      "bytes": 29904,
+      "sha256": "66802a124e3ae4f6cead64d9a06aba2e4cbe6e7ee7a831c91402cf29d3b80184"
     },
     "crewSide": {
       "file": "olifant_mk2_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 27644,
-      "sha256": "cbc0ce3ebd4819c4d02a3176beb3bde850c25f1786aebbf56b2455d7e30d0edd"
+      "bytes": 27694,
+      "sha256": "e4db094a6bf1679d162737cfa34598e1e1e5517a3c02d2fe657fe8556900f34a"
     },
     "markings": {
       "file": "olifant_mk2_markings.png",
       "width": 256,
       "height": 128,
       "mime": "image/png",
-      "bytes": 35010,
-      "sha256": "c700edc2b9eaadda2874294bae3ae5612572bf88f90aafa3222ef95c735dd48c"
+      "bytes": 33485,
+      "sha256": "e313dd7e59f373c7ae6556365e765ed9eca4fcf6632ee9fc832f721acb46c138"
     },
     "technicalLabels": {
       "file": "olifant_mk2_technical.json",

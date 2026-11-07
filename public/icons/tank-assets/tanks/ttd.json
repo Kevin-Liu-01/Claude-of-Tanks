@@ -874,15 +874,15 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 27690,
-      "sha256": "ee275e1f494b7d13a4995e56e591d59f1bd58e6b6c2b1a10ed07bd65bbec07f8",
+      "bytes": 27702,
+      "sha256": "560c4b44638561709c8b47e605b86b4982b2bf9ed8b8d4559c898fb9ad940a79",
       "thumbnail": {
         "file": "thumbs/ttd_angle.webp",
         "width": 256,
         "height": 256,
         "mime": "image/webp",
-        "bytes": 11622,
-        "sha256": "ad3d99cdc7bdbac054e6077ce96a76f9feb25b5a6b0fb6707f780c522cb8ad18"
+        "bytes": 11616,
+        "sha256": "11db4ba2eb2e9128e2dcbb4750c2b9247340cc1ba699d059a3e6d32c0936b946"
       }
     },
     "top": {
@@ -898,8 +898,8 @@
       "width": 512,
       "height": 256,
       "mime": "image/webp",
-      "bytes": 14102,
-      "sha256": "15b7488da25a55e6b1d058f81e4d35653d2491542ae54792cf5430e2f3a5ffc0"
+      "bytes": 14094,
+      "sha256": "542a297fef1e61a66dc47e3e0d6d1af656aec0505e0c031c9e4a43a939e04564"
     },
     "topSilhouette": {
       "file": "ttd_top_silhouette.png",
@@ -922,32 +922,32 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 24688,
-      "sha256": "327f8ac4fde7eda0fdaf81cc7e7f0b4a60087e9cb3850358d2726629028815ad"
+      "bytes": 24680,
+      "sha256": "13dac613be7c0a0c5d4b209af28e9e3ee3fdca692d307ead5c0bfdf1207f44c8"
     },
     "modulesSide": {
       "file": "ttd_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 28098,
-      "sha256": "fc8378ac7bdcb8dbd5016a7680ea4d62f3a3aa46ed098552565fdd749ea82ec0"
+      "bytes": 28050,
+      "sha256": "79000bb3b207cf89c1d7a5a018ef4391319727aa4e6c5a4ba197746edaa91e39"
     },
     "crewSide": {
       "file": "ttd_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 26648,
-      "sha256": "036040d88110ab8b20e6989b9a6a3573a3df51f10366f2f0f019e4f6aeb98ff4"
+      "bytes": 26626,
+      "sha256": "5fe5c082e3f7886e2c1c48f3aac0df3246a40ee7cd493d68f1ca7e52ce1c2919"
     },
     "markings": {
       "file": "ttd_markings.png",
       "width": 256,
       "height": 128,
       "mime": "image/png",
-      "bytes": 35147,
-      "sha256": "6f9a3ac7c92c8f03315403d8871fa18d95feb31f1aed2932a9f1db565614bb38"
+      "bytes": 33408,
+      "sha256": "be597472d166d31454ce77beee11fc4fdd364754c85b266af8871cd3bbc35058"
     },
     "technicalLabels": {
       "file": "ttd_technical.json",

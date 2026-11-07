@@ -687,15 +687,15 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 26892,
-      "sha256": "57c41b291dc22e413c4632ce5d130eaa7823ca3508de265489f4d95b095ed420",
+      "bytes": 26894,
+      "sha256": "96340991e1837b08d902650d560fec795b2ce695979c97c5b580bd115a73d5f3",
       "thumbnail": {
         "file": "thumbs/xk2_black_panther_angle.webp",
         "width": 256,
         "height": 256,
         "mime": "image/webp",
-        "bytes": 11192,
-        "sha256": "3710acda1eb5bdabffc1b75042a7e7f73e60b431702200143c7914d28411920b"
+        "bytes": 11184,
+        "sha256": "ed5f8ed7114cd76e92100a744635b431aef6123866e60ce61b1a5a8fe9174634"
       }
     },
     "top": {
@@ -711,8 +711,8 @@
       "width": 512,
       "height": 256,
       "mime": "image/webp",
-      "bytes": 14530,
-      "sha256": "f9d561b230c8d7d1719f1e65f097b14b4cc356da0029547afbf0acfac16b06c5"
+      "bytes": 14522,
+      "sha256": "dd45360297e090def317c68d73e28c38830b550b814e56d9ac30ccef4ed59986"
     },
     "topSilhouette": {
       "file": "xk2_black_panther_top_silhouette.png",
@@ -735,16 +735,16 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 30882,
-      "sha256": "84edeafb7bc95ea2c59c063400156ecdbb0e8f1ab9f2f6d42a0c5e6d8b84a33e"
+      "bytes": 30888,
+      "sha256": "90b175bcb8a6c65176e98827c8c70a445b8c8a10a670f3e417c1d6b7b63db3aa"
     },
     "modulesSide": {
       "file": "xk2_black_panther_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 30364,
-      "sha256": "8bed786667db7329c41e67a1be57101ad39cd32436443ad26ca8c7e8c8f357d7"
+      "bytes": 30458,
+      "sha256": "3b36433ada7904e0326f5e43c03ea0a7eec0f76af33fdc41618e0507f313fc2b"
     },
     "crewSide": {
       "file": "xk2_black_panther_crew_side.webp",
@@ -752,15 +752,15 @@
       "height": 512,
       "mime": "image/webp",
       "bytes": 26852,
-      "sha256": "ac12a74993e17fbccf70c9936af5c9063e905802d6d41af049ebf802296950f6"
+      "sha256": "962c69058158442c7129cb4ed28e1d72e72dfb59f279dd7712482d91fce8227d"
     },
     "markings": {
       "file": "xk2_black_panther_markings.png",
       "width": 256,
       "height": 128,
       "mime": "image/png",
-      "bytes": 37335,
-      "sha256": "6b85839db6c620edc1d44d631f3b6b275e1de49e89478bccdc36074fe0159e54"
+      "bytes": 33358,
+      "sha256": "ddef4b32ed8328a1431602cc6fa26f866be3d0c968cdb856673226602c70c750"
     },
     "technicalLabels": {
       "file": "xk2_black_panther_technical.json",

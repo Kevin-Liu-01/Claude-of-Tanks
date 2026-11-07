@@ -590,15 +590,15 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 28046,
-      "sha256": "8f07771cf5558c963966ea07e8d63c3b8c14747d93d2337f263f865054ab8221",
+      "bytes": 28532,
+      "sha256": "82291d4ead317ea5449ac01c0ab1f2446b179a6ab69eb744fc726df9c8a4ad5a",
       "thumbnail": {
         "file": "thumbs/m113a3_angle.webp",
         "width": 256,
         "height": 256,
         "mime": "image/webp",
-        "bytes": 11262,
-        "sha256": "38600bb07c3f4aec331255a33dd1161b33b43b89918aecc52df271118ad6d004"
+        "bytes": 11700,
+        "sha256": "07cc497d8e560801d1ce3434741c93ee7948b3534b2ffa8d10063567fc7fb120"
       }
     },
     "top": {
@@ -614,8 +614,8 @@
       "width": 512,
       "height": 256,
       "mime": "image/webp",
-      "bytes": 13998,
-      "sha256": "1bbcc9bfd577ff485353a2e9a03983c6a6ab58a31d270cbcb4d23708751a0728"
+      "bytes": 14002,
+      "sha256": "2f0b985b73301d0c9172d57732df2ce9af6179c7621d5e382df7ef5d3e77411f"
     },
     "topSilhouette": {
       "file": "m113a3_top_silhouette.png",
@@ -638,32 +638,32 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 29220,
-      "sha256": "52e134225dece37a5d312060e369bf1d47e1f91db422f533d6e2f77120bac42f"
+      "bytes": 28604,
+      "sha256": "519618b3e0957e2f938782627113b479d4e81328d11de5e0124acf9310325a85"
     },
     "modulesSide": {
       "file": "m113a3_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 28848,
-      "sha256": "f9607f4f2582127073803fddaa0fb518e37a010780687fc3906ad3b623ed9d04"
+      "bytes": 28788,
+      "sha256": "b29394c325bd4b0945b816e72bfe8d4fc019ba935797cfcc443164e37221f23a"
     },
     "crewSide": {
       "file": "m113a3_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 28082,
-      "sha256": "cbdd244a618c99b7308f382524d5d1b7435f3cc0c2740baa392e4bcb348689ce"
+      "bytes": 28036,
+      "sha256": "a7302fee99835d9df5dc560ee5c5deb19aa19227fce827656c62e79e0702c0b3"
     },
     "markings": {
       "file": "m113a3_markings.png",
       "width": 256,
       "height": 128,
       "mime": "image/png",
-      "bytes": 37719,
-      "sha256": "c837fa55b0090a0a54c82422690f79fb1cc0b18da369b3952e9c90fc27befb83"
+      "bytes": 34334,
+      "sha256": "450ec17a7ddd6dc0e0ae01893f3e5968dbc0902ec85d49cd0714aa46b2a7a38a"
     },
     "technicalLabels": {
       "file": "m113a3_technical.json",

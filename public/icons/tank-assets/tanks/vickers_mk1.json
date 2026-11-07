@@ -510,15 +510,15 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 23088,
-      "sha256": "6ff761dc8b1e1bb77bc091e7714c4ca0cbbe52bdfc24995cb621622d7305e17d",
+      "bytes": 22764,
+      "sha256": "274af1ad0a5c02b057587e0a50643cfe2cc67aa3caa2f75a09d771ae388b5c99",
       "thumbnail": {
         "file": "thumbs/vickers_mk1_angle.webp",
         "width": 256,
         "height": 256,
         "mime": "image/webp",
-        "bytes": 9794,
-        "sha256": "ae688fc75b6a4827209612c97c2ccf980dcbbb79c9e13893bc1efeccb9139252"
+        "bytes": 9790,
+        "sha256": "2fce2861bf66d44336b7aad43ecafa5d39714c855adfd31856efbff5c0df785e"
       }
     },
     "top": {
@@ -526,16 +526,16 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 8822,
-      "sha256": "4d0c43c65d9c832c08628be532d7e5f2698fdd5e14e703b67cc3f953313d0b7e"
+      "bytes": 8828,
+      "sha256": "262c23ea85deeb4202fe46d3591fc5e6260356d650f6d84148c7ef70abfad021"
     },
     "side": {
       "file": "vickers_mk1_side.webp",
       "width": 512,
       "height": 256,
       "mime": "image/webp",
-      "bytes": 10086,
-      "sha256": "8e40941a6cb3dfc9fb3ea0a9040e7000af9e6bb3bfef0c94793d054b142ca3b0"
+      "bytes": 10052,
+      "sha256": "151d5233fec9e7e094a5854f6c4eb4c3ab4501ac000409aec7c123b469a6f59a"
     },
     "topSilhouette": {
       "file": "vickers_mk1_top_silhouette.png",
@@ -558,16 +558,16 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 26214,
-      "sha256": "dd0dcd7af97290607f17231debc8365cba4543c681b8ec754b365cef3c997c11"
+      "bytes": 26164,
+      "sha256": "2df62e6434e2d5ec35e9c65e0a1168ee1b214a287cae4b39d0ee1aee077909c9"
     },
     "modulesSide": {
       "file": "vickers_mk1_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 23130,
-      "sha256": "38a04546adf8be68aa6e770e60334a56b5a6fb4605a0b5fbab08e1840cd96ff2"
+      "bytes": 23158,
+      "sha256": "9cf2f03661b458e58412af1d19fa1ef17c6a18fa94176e926d3de083ff3659f1"
     },
     "crewSide": {
       "file": "vickers_mk1_crew_side.webp",
@@ -575,15 +575,15 @@
       "height": 512,
       "mime": "image/webp",
       "bytes": 20174,
-      "sha256": "9c036129cc8cd10414d2c078f75e998a8264c6fbbe494bc66eab5958a2a9b457"
+      "sha256": "7aa9d25619db231386c5bb3dc2c0c82f42e6532cdee6f93aade0eee18eee014d"
     },
     "markings": {
       "file": "vickers_mk1_markings.png",
       "width": 256,
       "height": 128,
       "mime": "image/png",
-      "bytes": 35017,
-      "sha256": "6d3af5088dfef0a8c3f61b20e45a43adaebe5d146151ae179d4b7f65b4707691"
+      "bytes": 33989,
+      "sha256": "c8a75ed6b97a5c0c77559d38b92478332606e250d6eb14e1ee17a942e96454a1"
     },
     "technicalLabels": {
       "file": "vickers_mk1_technical.json",

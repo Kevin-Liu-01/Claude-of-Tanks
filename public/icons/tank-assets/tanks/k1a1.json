@@ -728,7 +728,7 @@
       "height": 512,
       "mime": "image/webp",
       "bytes": 26522,
-      "sha256": "38c2c1a65beb124e25354bd7acf99ba42204b39e0da8acd4bad5d67c8e68fa11"
+      "sha256": "4c49334393235b2b3881fa0fbf6ebc098cc9571b9bb304669420f2bc017622e5"
     },
     "modulesSide": {
       "file": "k1a1_modules_side.webp",
@@ -736,15 +736,15 @@
       "height": 512,
       "mime": "image/webp",
       "bytes": 26228,
-      "sha256": "8cb6e617eeca7ab1687aa19664dd6e8cc0e615cd85e8536f24ed40756659c859"
+      "sha256": "e061b5e29beb5004546bd13efa0fffe6675850069521cddcd14b42de4d3c21f2"
     },
     "crewSide": {
       "file": "k1a1_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 25684,
-      "sha256": "ce14b12c0c11538d21ab8a131ba53d34b1c27a562d9b3ae954219b3173964b62"
+      "bytes": 25658,
+      "sha256": "3f13a5456a3932d5cdc8a3392e43b6e5268cabd20a8d49c8c24fafa5771a0663"
     },
     "angle": {
       "file": "k1a1_angle.webp",
@@ -767,16 +767,16 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 13202,
-      "sha256": "a09774e3e284e83ea18bb40f4786fcb6d612454636025df30c94b2185f83f6dc"
+      "bytes": 13214,
+      "sha256": "aa916f9c2ab92efc695f4f763dd6256aec3442914bd469f80361772550216ede"
     },
     "side": {
       "file": "k1a1_side.webp",
       "width": 512,
       "height": 256,
       "mime": "image/webp",
-      "bytes": 11212,
-      "sha256": "97248fe1eeddb8d915d669f34547b91e820c2d7a6134da8bb7e78709835ebe0a"
+      "bytes": 11206,
+      "sha256": "e3d1ae5518c2ddfe502793ce666b78754e2917bc84184f13ed177b32d5867d73"
     },
     "topSilhouette": {
       "file": "k1a1_top_silhouette.png",
@@ -799,8 +799,8 @@
       "width": 256,
       "height": 128,
       "mime": "image/png",
-      "bytes": 35434,
-      "sha256": "c358d04cff611359b4b12f039cd43ee7e8805e6afc522be862dac4470cdb498e"
+      "bytes": 33692,
+      "sha256": "495f08dbfaaee0577f9b5718b8fe53cbdb1f385f3caeeaa370596f6f5cdcefd8"
     },
     "technicalLabels": {
       "file": "k1a1_technical.json",

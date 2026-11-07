@@ -870,15 +870,15 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 29156,
-      "sha256": "89fd7a371e3f904f7424430833ca70beebd5c61b264fbc11f96ea127718c16fb",
+      "bytes": 29162,
+      "sha256": "96e5ea57ad254befaf99b919b409936201c0cb44c9d35fe14268fb417009cc83",
       "thumbnail": {
         "file": "thumbs/leopard_as1_angle.webp",
         "width": 256,
         "height": 256,
         "mime": "image/webp",
-        "bytes": 12088,
-        "sha256": "0ecb4d0a08632e4c3240a58f3a3b15652add6d982ea17faf2beb3bc59d030430"
+        "bytes": 12086,
+        "sha256": "4e37386b394c6dc6b77a00f94e7924389e84b57e0d8cd4029c99e4c3451801a9"
       }
     },
     "top": {
@@ -894,8 +894,8 @@
       "width": 512,
       "height": 256,
       "mime": "image/webp",
-      "bytes": 12318,
-      "sha256": "ac2898fd6e1e471825bb3128e710e9a0f33ed467f87d9fb3197f2619e48ed2ff"
+      "bytes": 12280,
+      "sha256": "0b0a814c532560c54f8d234849aae230fa0e2caa7168912a96e5d86f7833fb34"
     },
     "topSilhouette": {
       "file": "leopard_as1_top_silhouette.png",
@@ -918,32 +918,32 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 24216,
-      "sha256": "c8df4decc44a5a9991a2c1a15e0e6e180e48f409524ca2512dc242a8de35a66d"
+      "bytes": 24184,
+      "sha256": "39c1532acf596a357365343a7c185346839c7be373c001a4282b6bbf3701e78e"
     },
     "modulesSide": {
       "file": "leopard_as1_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 26526,
-      "sha256": "966be484abde7860070408d40cb1d460ed673fa896d21b060229b53601c84b49"
+      "bytes": 26518,
+      "sha256": "537884aa0efdc02ffef6527b824f1588e7e4b797f206422d2b24ceda7ec95926"
     },
     "crewSide": {
       "file": "leopard_as1_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 24442,
-      "sha256": "9abc8b0b48cee512ed6bacd467963c559921bc593220c3704ecf639f3ed3f6ab"
+      "bytes": 24470,
+      "sha256": "8e7a6c8894718bd42aba0f3b01ada12c05f3f5a4334cdaffd98cc416fa860405"
     },
     "markings": {
       "file": "leopard_as1_markings.png",
       "width": 256,
       "height": 128,
       "mime": "image/png",
-      "bytes": 35446,
-      "sha256": "3bb6f75594a5564b9440ab14ee78a662d3329cf803b9c814a55f41f4faff605d"
+      "bytes": 33550,
+      "sha256": "797b4290765e8644b53a70940e39d7d5364e64840fdd735d895b004dafaa2c03"
     },
     "technicalLabels": {
       "file": "leopard_as1_technical.json",

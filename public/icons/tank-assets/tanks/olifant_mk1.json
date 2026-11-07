@@ -927,8 +927,8 @@
       "width": 256,
       "height": 128,
       "mime": "image/png",
-      "bytes": 35729,
-      "sha256": "c95e41f24a4cb2247a8da58e441b3873223259182f0ab36a7cf1e4c204178d50"
+      "bytes": 33190,
+      "sha256": "e9d692c67800dcaf4f7e031b21b5adafaf13c83ada9ec9b21e32cc17292078cc"
     },
     "technicalLabels": {
       "file": "olifant_mk1_technical.json",

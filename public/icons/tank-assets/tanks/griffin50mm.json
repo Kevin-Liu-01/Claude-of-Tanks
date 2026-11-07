@@ -539,24 +539,24 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 30558,
-      "sha256": "e5d9f64410104f4e95a92e452e7673afddc2be74b0295870c7aa1b18b7b778fd"
+      "bytes": 30518,
+      "sha256": "b396d16980526a4c769702db6c9ad11f25fe3e9c449f9fa12fd3f7fc56d4684a"
     },
     "modulesSide": {
       "file": "griffin50mm_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 31832,
-      "sha256": "3c349ccea4ef84cdb56ccbd01a85938de630901350e818f03a13dfc570126b89"
+      "bytes": 31846,
+      "sha256": "d5ddddef061fcd48e850d1890e541cbbd5954a79f4122db88ce7eef069c6ec8a"
     },
     "crewSide": {
       "file": "griffin50mm_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 29324,
-      "sha256": "e831bfea4bd84325f984cdede8206f956dad80a8172fe0f8f5f72f00562a3e02"
+      "bytes": 29308,
+      "sha256": "d9ce1b2e4775f29c5bb9f87c15a528cc6a43b54095200e04902ed3515089f944"
     },
     "angle": {
       "file": "griffin50mm_angle.webp",
@@ -587,8 +587,8 @@
       "width": 512,
       "height": 256,
       "mime": "image/webp",
-      "bytes": 15346,
-      "sha256": "3b08111cbfb90f8f9aef5d0e48ca9de637d80ccbb2e901e143d2c6d77cae7db5"
+      "bytes": 15336,
+      "sha256": "21727e610c518eaf49debf978a9de2e77042c4faa7e3816b2681df7609fdcb61"
     },
     "topSilhouette": {
       "file": "griffin50mm_top_silhouette.png",
@@ -611,8 +611,8 @@
       "width": 256,
       "height": 128,
       "mime": "image/png",
-      "bytes": 37521,
-      "sha256": "74f1de7c9d0cb1f371657601e480b5c09a06e34c8469c6cfae4d686c438d485c"
+      "bytes": 35567,
+      "sha256": "c86ffe20ad34d3e86f2b51c7a5d56e0cffbed52765cbcd52fd92bececd45c0b1"
     },
     "technicalLabels": {
       "file": "griffin50mm_technical.json",

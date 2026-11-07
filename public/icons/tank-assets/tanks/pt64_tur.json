@@ -3009,15 +3009,15 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 25078,
-      "sha256": "3fb21aa56605504f66ba0ce3eb7c91ede06f172974aa866031dfb946b8be4377",
+      "bytes": 25086,
+      "sha256": "90b56d2021f9263867efe0fde7a636ea528a09ffdc29305dc1cbb5951eb6a36e",
       "thumbnail": {
         "file": "thumbs/pt64_tur_angle.webp",
         "width": 256,
         "height": 256,
         "mime": "image/webp",
-        "bytes": 10184,
-        "sha256": "d8efe73814ec91026d239d41e5777ec859b3092e3c813a07680edce120be3c13"
+        "bytes": 10186,
+        "sha256": "c84eb39fcee323cb5178497b979226561628ab1b88879d9a5928c735397eaf80"
       }
     },
     "top": {
@@ -3025,8 +3025,8 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 11770,
-      "sha256": "960b3371ffc5779f0faebfd92da5500bb9e21496d96f5e39c06213cedfb9ef43"
+      "bytes": 11800,
+      "sha256": "2c733f4be6bfb2bbd14fc840fc2e80a04004e9e2e76d42c0954e4de7572a98de"
     },
     "side": {
       "file": "pt64_tur_side.webp",
@@ -3081,8 +3081,8 @@
       "width": 256,
       "height": 128,
       "mime": "image/png",
-      "bytes": 33641,
-      "sha256": "b834de3b2421655998a43373a62a03e5809bede62c15bd1f6e9290c504ba958f"
+      "bytes": 30106,
+      "sha256": "af29826f90002782ec42edad44e4e3f4cdc862479cbcef73291ce0bbd1889324"
     },
     "technicalLabels": {
       "file": "pt64_tur_technical.json",
