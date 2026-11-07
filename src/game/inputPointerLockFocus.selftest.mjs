@@ -197,7 +197,10 @@ for (const lock of ['none', 'refuse-all']) {
 // 5. (round 5 Q2) releaseLock withdraws an attempt still in flight: Chrome grants a lock a task after the request, so a
 //    caller that asked and then gave the cursor back (a battle start refused while it waited for a Garage return, a
 //    Settings panel opened) lost nothing it held, and the lock landed over it after the release. A later request
-//    supersedes the withdrawal, and one with no attempt in flight withdraws nothing.
+//    supersedes the withdrawal. (review r1) An answered attempt, its lock engaged or refused, is never withdrawn: a
+//    release with nothing in flight marks nothing (input.ts lockEngagedAttempt, lockDeniedAttempt). input.ts is the
+//    page's only requester, Chrome answers each request once and a later request supersedes a mark, so only a lock that
+//    lands with no request since (the page model's landWithoutRequest) can show a mark left on an answered attempt.
 {
   const page = createPage();
   try {
@@ -214,12 +217,27 @@ for (const lock of ['none', 'refuse-all']) {
     await flush();
     await flush();
     assert.equal(page.input.isLocked(), true, 'a later request supersedes the withdrawal');
-    page.userEscape();
-    clock += CHROME_ESCAPE_REFUSAL_MS + 100;
-    page.input.releaseLock(); // nothing in flight: the last attempt was answered
+  } finally {
+    page.restore();
+  }
+}
+for (const answered of ['engaged', 'refused']) {
+  const page = createPage();
+  try {
     page.input.requestLock();
     await flush();
-    assert.equal(page.input.isLocked(), true, 'a release with nothing in flight withdraws nothing');
+    assert.equal(page.input.isLocked(), true);
+    page.userEscape(); // the player's Esc drops it
+    if (answered === 'refused') {
+      page.input.requestLock(); // inside Chrome's post-Esc window
+      await flush();
+      assert.equal(page.stats.refused, 1, '(refused)');
+    }
+    clock += CHROME_ESCAPE_REFUSAL_MS + 100;
+    page.input.releaseLock(); // nothing in flight: the last attempt was answered
+    page.landWithoutRequest();
+    await flush();
+    assert.equal(page.input.isLocked(), true, `a release after an attempt ${answered} withdraws nothing`);
   } finally {
     page.restore();
   }
