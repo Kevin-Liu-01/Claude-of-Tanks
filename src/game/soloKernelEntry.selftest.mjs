@@ -73,8 +73,9 @@ const hook = registerHooks({
   },
 });
 
-// each wait's bound (a timer of a second or more, up to 10 s) and the load's deadline (round 5 Q1: a longer one),
-// captured on a virtual clock and fired by hand or by advance(); shorter timers run as ever
+// each wait's bound (a timer of a second or more, up to 10 s), and the load's deadline and its request's own bound
+// (round 5 Q1: longer ones, in `deadlines`), captured on a virtual clock and fired by hand or by advance(); shorter
+// timers run as ever
 const realSetTimeout = globalThis.setTimeout, realClearTimeout = globalThis.clearTimeout;
 const bounds = [], deadlines = [], captured = new Set();
 let clock = 0;
