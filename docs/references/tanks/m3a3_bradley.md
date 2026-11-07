@@ -412,3 +412,17 @@ procedural-fidelity 88.4 (H91 T77 G100 R84); geometry gate 0/90 — hull 55.3, w
 turret stands 3.41 m to its body top against `silhouetteHeightM` 3.05 (11.8 % over). `tools/oracle-width-audit.mjs` is
 the class detector (whole-file width against the body's, read-only); the pristine print reads 80.4 % wider than its body.
 
+270, the same day: the gate's turret rows and the dims row.
+- The 0.79 m in the turret plan row's `reg` is not a sideways turret offset. The plan view's columns run across x and its
+  band along z, so the row's `dy` (−0.788) is fore-aft, and it is the HULL registration the turret rows are pinned to:
+  the print stands 0.78 m forward of the build in world (its origin sits 0.66 raw behind its hull centre, ×1.179 after
+  the yaw), and the hull curves' midpoints remove that (the side row's `dAlong` −0.807 is the same shift). Rebuilt in
+  Node from the gate's own transforms (`r270/R/planoverlay.mjs`: plan registration 0.330 / 0.788 against the record's
+  0.340 / −0.788, the sign the camera's), overlay `r270/R/m3a3-plan-overlay-gate.png`: after it the two turrets overlap;
+  the build's ring stands 0.14 m to the right (the family ring, x −0.14) and its turret ends 0.37 m short of the print's
+  rear rack, and the right-hand TOW launcher stands alone at x −1.3.
+- `silhouetteHeightM` 3.05 → 3.41 (`afvFamily.ts`; Main: "The spec describes what we build"): the gate's heightM row
+  measures the build from body top 3.4098 to roof-fittings top 3.4177, so 3.41 reads 0 %. Gate after it: min 11.9/90 —
+  hull 55.3, whole 25.0, turret 11.9, stations 47.1, dims 78.4 (hull length 6.529 against 6.71, 2.7 %; overall 6.565
+  against 6.70, 2.0 %), floaters 100; fidelity 88.4 unchanged.
+
