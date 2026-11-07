@@ -276,8 +276,13 @@ function groundSettled() {
     const tick = () => { window.__gsFrames.n++; requestAnimationFrame(tick); };
     requestAnimationFrame(tick);
   }
-  const idle = (!g || !g.enabled || (!g.near.pending && !g.mid.pending && !g.far.pending)) && (!l || !l.pending);
-  const sig = g ? [g.near, g.mid, g.far].map((r) => `${r.count}/${r.publishes}`).join() : '';
+  // (ab22 A/A, phone urban chase with no tall grass: the vegetation's grass carpet and chunks still filling) no visible
+  // grass chunk unbuilt and the carpet idle, their counts in the signature
+  const v = W?.getGrassWorkState?.();
+  const idle = (!g || !g.enabled || (!g.near.pending && !g.mid.pending && !g.far.pending)) && (!l || !l.pending)
+    && (!v || (!v.pendingVisible && !v.carpet?.pending));
+  const sig = (g ? [g.near, g.mid, g.far].map((r) => `${r.count}/${r.publishes}`).join() : '')
+    + (v ? `|${v.built}/${v.carpet?.publishedGeneration}` : '');
   const now = performance.now(), frame = window.__gsFrames.n, last = window.__gsSettle;
   const same = last && last.sig === sig;
   window.__gsSettle = { sig, since: same ? last.since : now, sinceFrame: same ? last.sinceFrame : frame };
@@ -285,7 +290,8 @@ function groundSettled() {
 }
 
 /** Holds the grass rings and the ground litter as published (page side): `on` true while a pose's arms are shot, so every
- *  arm draws one set of blades whatever the streaming would have done between them. Returns the grass's ring counts. */
+ *  arm draws one set of blades whatever the streaming would have done between them. Returns the grass's ring counts and
+ *  the vegetation grass's built/visible-pending chunks and carpet generation (a change between arms shows here). */
 function pageFreezeGround(on) {
   const W = window.__DEBUG.world, g = W?._tallGrass, l = W?._litter;
   if (g && !g.__gsHold) {
@@ -299,8 +305,9 @@ function pageFreezeGround(on) {
     l.__gsHold = true;
   }
   window.__gsHold = on;
-  const s = g?.getState?.();
-  return s ? [s.near, s.mid, s.far].map((r) => `${r.count}/${r.publishes}`).join() : null;
+  const s = g?.getState?.(), v = W?.getGrassWorkState?.();
+  return (s ? [s.near, s.mid, s.far].map((r) => `${r.count}/${r.publishes}`).join() : '')
+    + (v ? `|${v.built}/${v.pendingVisible}/${v.carpet?.publishedGeneration}/${v.carpet?.pending}` : '');
 }
 
 /** An absolute pose (`resolved: true` keeps the y values as given; otherwise they are heights over the ground). */
