@@ -392,5 +392,5 @@ async function onlineRam(mateTeam) {
 
 console.log('teammateRam.selftest: a teammate ram deals nothing to either hull (hit points, modules, crew, fire, tiles) on the solo step and '
   + 'on the room\'s authority; its report (tank:ram, zero damage) reaches the page\'s bus on both, with no damage event; the audio '
-  + 'plays the contact and the friendly_ram call, no damage cue, and the paired phone feels the contact, no damage; a hostile\'s ram '
-  + 'is priced and called on both');
+  + 'plays the contact and the friendly_ram call, no damage cue, and the paired phone buzzes no damage on either page (the solo '
+  + 'contact\'s impact only); a hostile\'s ram is priced and called on both');
