@@ -35,7 +35,7 @@ export {
  * compile. A barrier that outlasts the bound with the kernels still loading sets its battle up on the TypeScript; the
  * first battle set up after they land rides them. Until then every entry, a Battle Again's included, waits up to this
  * bound of its own again: a load that never settles (world/soloWorldKernels.ts's fetch has no timeout) costs each solo
- * entry up to 3 s past its own barrier (round 3's one bound, once lapsed, let every later entry go on at once).
+ * entry up to 3 s past the rest of its barrier (round 3's one bound, once lapsed, let every later entry go on at once).
  */
 export const SOLO_KERNELS_ENTRY_WAIT_MS = 3000;
 
