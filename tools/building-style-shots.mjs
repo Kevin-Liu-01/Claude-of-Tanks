@@ -120,6 +120,9 @@ function pagePlan({ buildings, range, longRange }) {
 
 /** The scene time the clouds are drawn at, and the frames traced there before the layer is held. */
 const CLOUD_TIME_S = 0, CLOUD_FRAMES = 48;
+// (ground-269's ab23, 5815c5b1bc: foundry at load 300 drew 36 of the 48 frames in 180 s) the hold's wait, longer where
+// the machine is busy
+const CLOUD_HOLD_S = Number(process.env.BUILDING_SHOTS_CLOUD_HOLD_S) || 180;
 
 /**
  * The cloud layer pinned (page side): at CLOUD_TIME_S, a fresh trace sequence, its drift held (the frame's dt 0) while
@@ -166,8 +169,14 @@ function groundSettled() {
     const tick = () => { window.__gsFrames.n++; requestAnimationFrame(tick); };
     requestAnimationFrame(tick);
   }
-  const idle = (!g || !g.enabled || (!g.near.pending && !g.mid.pending && !g.far.pending)) && (!l || !l.pending);
-  const sig = g ? [g.near, g.mid, g.far].map((r) => `${r.count}/${r.publishes}`).join() : '';
+  // (ground-269's ab22, 2c2d4bf757: the vegetation's grass carpet and chunks still filling, on phone with no tall grass)
+  // no visible grass chunk unbuilt and the carpet idle; (27beaa0e2c, whiteout chase: a terrain level mounting between the
+  // arms) the terrain stream's built count, all in the signature
+  const v = W?.getGrassWorkState?.();
+  const idle = (!g || !g.enabled || (!g.near.pending && !g.mid.pending && !g.far.pending)) && (!l || !l.pending)
+    && (!v || (!v.pendingVisible && !v.carpet?.pending));
+  const sig = (g ? [g.near, g.mid, g.far].map((r) => `${r.count}/${r.publishes}`).join() : '')
+    + (v ? `|${v.built}/${v.carpet?.publishedGeneration}` : '') + `|${W?._buildDetail?.terrain?.streamedGeometryCount ?? ''}`;
   const now = performance.now(), frame = window.__gsFrames.n, last = window.__gsSettle;
   const same = last && last.sig === sig;
   window.__gsSettle = { sig, since: same ? last.since : now, sinceFrame: same ? last.sinceFrame : frame };
@@ -176,8 +185,8 @@ function groundSettled() {
 
 /**
  * Holds the grass rings and the ground litter as published (page side), `on` from the settle to the screenshot: the cloud
- * pin takes up to 180 s on a loaded machine and the streaming would go on filling the sward through it (ground-269,
- * 56f6aa65d7). Returns the rings' counts, which each arm records so the arms of a pose can be compared.
+ * pin takes minutes on a loaded machine and the streaming would go on filling the sward through it (ground-269,
+ * 56f6aa65d7). Returns the rings', the vegetation grass's and the terrain stream's counts, which each arm records so the arms of a pose can be compared.
  */
 function pageFreezeGround(on) {
   const W = window.__DEBUG.world, g = W?._tallGrass, l = W?._litter;
@@ -192,8 +201,10 @@ function pageFreezeGround(on) {
     l.__gsHold = true;
   }
   window.__gsHold = on;
-  const s = g?.getState?.();
-  return s ? [s.near, s.mid, s.far].map((r) => `${r.count}/${r.publishes}`).join() : null;
+  const s = g?.getState?.(), v = W?.getGrassWorkState?.();
+  return (s ? [s.near, s.mid, s.far].map((r) => `${r.count}/${r.publishes}`).join() : '')
+    + (v ? `|${v.built}/${v.pendingVisible}/${v.carpet?.publishedGeneration}/${v.carpet?.pending}` : '')
+    + `|${W?._buildDetail?.terrain?.streamedGeometryCount ?? ''}`;
 }
 
 /** The pinned layer held (its frames traced), or no layer. */
@@ -207,6 +218,9 @@ function externalPoseScript(pose) {
     const D = window.__DEBUG, V = D.camera.position.constructor;
     D.rig.setExternalPose(new V(...${JSON.stringify(pose.cam)}), new V(...${JSON.stringify(pose.at)}), ${pose.fov});
     ${pinClouds(true)};
+    // (ground-269's ab22, 27beaa0e2c, whiteout chase: streaks near 200 m where one arm drew a chunk on its coarser level
+    // while the stream built the finer one) every level this camera wants, built before the first update
+    D.world.warmTerrainLookahead?.(D.camera.position, 512);
     D.world.update(0, D.camera.position, D.camera.getWorldDirection(new V()), null);
     D.lighting.updateFrustums();
     D.lighting.update(true);
@@ -278,10 +292,10 @@ async function shootMap(entry, options, frames) {
     const grassAtSettle = await page.evaluate(pageFreezeGround, true);
     await page.evaluate(pinClouds());
     // (48 frames: the long view of a big town under a loaded machine draws a few a second)
-    const cloudsPinned = await page.waitForFunction(cloudsHeld, { timeout: 180_000, polling: 250 }).then(() => true, () => false);
+    const cloudsPinned = await page.waitForFunction(cloudsHeld, { timeout: CLOUD_HOLD_S * 1000, polling: 250 }).then(() => true, () => false);
     if (!cloudsPinned) {
       const left = await page.evaluate(() => window.__DEBUG.scene.userData.volumetricClouds?.__pin?.left ?? null);
-      throw new Error(`${mapId} ${name}: the cloud layer did not hold within 180 s (${left} of ${CLOUD_FRAMES} frames left)`);
+      throw new Error(`${mapId} ${name}: the cloud layer did not hold within ${CLOUD_HOLD_S} s (${left} of ${CLOUD_FRAMES} frames left)`);
     }
     const file = path.join(frames, `${mapId}-${name}.png`);
     await page.screenshot({ path: file, type: 'png' });
