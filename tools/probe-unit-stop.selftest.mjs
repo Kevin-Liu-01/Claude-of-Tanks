@@ -196,8 +196,9 @@ try {
     assert.deepEqual(signalListeners(), [0, 0], 'and gives them back when it returns');
   });
   // battle-memory-probe in a process of its own, a signal mid-scenario: the hold unwinds (the scenario is left, its server
-  // stopped) and the process exits 128 + n after it
-  for (const [signal, code] of [['SIGTERM', 143], ['SIGINT', 130]]) {
+  // stopped) and the process exits 128 + n after it. (round 5 U6/U9) SIGTERM is the 'battle-memory-probe SIGTERM after a
+  // failure' child below, which asserts the same three and its writer's code: one child fewer than a SIGTERM of its own
+  for (const [signal, code] of [['SIGINT', 130]]) {
     await check(`battle-memory-probe ${signal}`, async () => {
       const dir = scratch(), script = join(dir, 'memory-probe-signal.mjs');
       const href = (name) => JSON.stringify(new URL(name, import.meta.url).href);
@@ -252,7 +253,7 @@ try {
       'killed.catch(() => {});',
       'const acquireLocks = (options = {}) => acquireProbeLocks({ ...options, lock, hold: { ...options.hold, log: () => {},',
       '  teardown: async () => { die(new Error(\'Protocol error: Target closed\')); } } });',
-      'const standIn = { close: async () => {} };',
+      'const standIn = { close: async () => {} }, server = { close: async () => { console.log(\'server closed\'); } };',
       // the unit the signal cuts: a live browser keeps a real run's event loop alive until the teardown stops it
       'const cut = () => { const alive = setInterval(() => {}, 1000); console.log(\'probing\'); return killed.finally(() => clearInterval(alive)); };',
       run({ out: JSON.stringify(`--out=${dir}`), root: (flag) => JSON.stringify(`--${flag}=${root}`) }),
@@ -279,19 +280,19 @@ try {
     'frame-budget-probe': failedThenSignalled('frame-budget-probe', [['parseFrameProbeArgs, runFrameProbe', './frame-budget-probe.mjs']], ({ out, root }) => [
       `let slots = 0;`,
       `await runFrameProbe(parseFrameProbeArgs([${root('roots')}, '--labels=a', '--maps=verdant', '--pattern=AA', ${out}, '--scene-check=off', '--tag=t']), {`,
-      '  acquireLocks, launchBrowser: async () => standIn, openServer: async () => standIn,',
+      '  acquireLocks, launchBrowser: async () => standIn, openServer: async () => server,',
       // the first slot fails while held; the second is cut by the signal
       '  measure: async () => { if (slots++ === 0) throw new Error(\'page crashed\'); return cut(); } });',
     ].join('\n')),
     'battle-memory-probe': failedThenSignalled('battle-memory-probe', [['parseMemoryArgs, runMemoryProbe', './battle-memory-probe.mjs']], ({ out }) => [
       `await runMemoryProbe(parseMemoryArgs(['--scenarios=urban:zone_control,verdant:zone_control', '--gate', ${out}]), { acquireLocks,`,
-      '  openServer: async () => ({ close: async () => { console.log(\'server closed\'); } }),',
+      '  openServer: async () => server,',
       // the first scenario measures nothing, so every limit fails ('not measured'); the second is cut by the signal
       '  probe: async (_options, scenario) => (scenario.startsWith(\'urban\') ? { growth: {}, peakRss: {} } : cut()) });',
     ].join('\n')),
     'shadow-cache-truth': failedThenSignalled('shadow-cache-truth', [['parseArgs, runShadowTruth', './shadow-cache-truth.mjs']], ({ out, root }) => [
       `await runShadowTruth(parseArgs([${root('root')}, '--maps=verdant,steppe', ${out}, '--gate']), { acquireLocks,`,
-      '  openServer: async () => standIn, launchBrowser: async () => standIn,',
+      '  openServer: async () => server, launchBrowser: async () => standIn,',
       // the first map differs; the second is cut by the signal
       '  probe: async (_browser, _options, mapId) => (mapId === \'verdant\' ? { failures: [\'verdant: the cached shadow differs\'], record: {} } : cut()) });',
     ].join('\n')),
@@ -305,6 +306,7 @@ try {
       const { exit, sent, said, tail } = await child;
       assert.ok(sent && failure[name].test(said), `${name}: a unit failed while held, then the next was signalled (${tail})`);
       assert.match(said, leftLine[name], `${name}: the unit cut is left (${tail})`);
+      assert.match(said, /server closed/, `${name}: the hold's unwind ran to the caller's finally (${tail})`);
       assert.match(said, /after the run: exit code 143\b/, `${name}: the failure writer keeps the signal's 128 + n (${tail})`);
       assert.equal(exit, 143, `${name}: the process exits 128 + n (${tail})`);
     });
