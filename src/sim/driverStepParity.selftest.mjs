@@ -24,7 +24,8 @@
 // set up on the receipt's seed, which the authority is seated with. Negative control: the authority's battle seed one off
 // (its combat stream kept equal) is found at the first spotting check, the stagger the solo step once drew from a seed of
 // its own.
-// Every section runs, a red one included, and the receipt fails at the end with each failure listed (round 5 S1).
+// Every section runs, a red one included, and the receipt fails at the end with each failure listed, rethrowing the
+// first one's own error (round 5 S1).
 import assert from 'node:assert/strict';
 import { Euler, Group, Matrix4, Quaternion, Vector3 } from 'three';
 import { createAuthoritativeMatch } from './authoritativeMatch.ts';
@@ -96,6 +97,20 @@ const foeShellSlot = (tick) => ((tick >= 100 && tick < 140) || (tick >= 250 && t
 const FOE_PRESSES = new Map([[70, 1 << 0], [160, 1 << 6], [220, 1 << 7], [330, 1 << 3], [380, 1 << 1]]);
 
 /**
+ * The two drivers' collision worlds on MAP for one run, released when it ends, a throw inside it included (round 5 S1:
+ * a failed section no longer ends the process, so its worlds are released before the next section builds its own).
+ */
+async function withWorlds(body) {
+  const authorityWorld = createDedicatedWorldCollision(MAP), pageWorld = createDedicatedWorldCollision(MAP);
+  try {
+    return await body(authorityWorld, pageWorld);
+  } finally {
+    authorityWorld.release?.();
+    pageWorld.release?.();
+  }
+}
+
+/**
  * The battle on both steps for `ticks` ticks; `perturb(tick, side, id, input)` may change one side's input. Returns the
  * first tick and field where the two worlds differ (null when they never do) and what the scenario exercised.
  */
@@ -105,14 +120,13 @@ async function run(ticks, perturb = null, { fourthShell = false, authoritySeed =
   if (fourthShell) ownShells.push({ ...ownShells[1], name: `${ownShells[1].name} (fourth slot)` });
   const chosen = fourthShell ? 3 : 1;
   try {
-    return await runBattle(ticks, perturb, chosen, authoritySeed);
+    return await withWorlds((authorityWorld, pageWorld) => runBattle(authorityWorld, pageWorld, ticks, perturb, chosen, authoritySeed));
   } finally {
     if (fourthShell) ownShells.pop();
   }
 }
 
-async function runBattle(ticks, perturb, chosen, authoritySeed) {
-  const authorityWorld = createDedicatedWorldCollision(MAP), pageWorld = createDedicatedWorldCollision(MAP);
+async function runBattle(authorityWorld, pageWorld, ticks, perturb, chosen, authoritySeed) {
   const authored = pageWorld.heightField._layout.spawns;
   const spawnOf = (point) => ({ pos: [point.x, pageWorld.heightField.getHeightAt(point.x, point.z), point.z], yaw: point.yaw ?? 0 });
   pageWorld.spawnPoints = { player: spawnOf(authored.player), enemies: authored.enemies.map(spawnOf) };
@@ -217,8 +231,6 @@ async function runBattle(ticks, perturb, chosen, authoritySeed) {
   }
   const exercised = { ownHp: own.combat.hp / own.combat.maxHp, foeHp: foe.combat.hp / foe.combat.maxHp, spottedTicks, denied,
     shots: shots.map(({ tick, slot }) => [tick, slot]), foeSlots, foeSmokeS: foe.combat.auxiliary?.smoke?.born ?? null };
-  authorityWorld.release?.();
-  pageWorld.release?.();
   return { divergence, exercised, own: own.state, foe: foe.state };
 }
 
@@ -231,7 +243,9 @@ async function runBattle(ticks, perturb, chosen, authoritySeed) {
  */
 const AI_FOE_SPEC = 'vt4a1';
 async function runRealAi(ticks, perturb = null, { foeRecord = {} } = {}) {
-  const authorityWorld = createDedicatedWorldCollision(MAP), pageWorld = createDedicatedWorldCollision(MAP);
+  return withWorlds((authorityWorld, pageWorld) => realAiBattle(authorityWorld, pageWorld, ticks, perturb, foeRecord));
+}
+async function realAiBattle(authorityWorld, pageWorld, ticks, perturb, foeRecord) {
   const authored = pageWorld.heightField._layout.spawns;
   const spawnOf = (point) => ({ pos: [point.x, pageWorld.heightField.getHeightAt(point.x, point.z), point.z], yaw: point.yaw ?? 0 });
   pageWorld.spawnPoints = { player: spawnOf(authored.player), enemies: authored.enemies.map(spawnOf) };
@@ -307,15 +321,16 @@ async function runRealAi(ticks, perturb = null, { foeRecord = {} } = {}) {
   }
   Object.assign(exercised, { movedM: Math.hypot(foe.state.pos.x - start.x, foe.state.pos.z - start.z), botHp: foe.combat.hp / foe.combat.maxHp,
     ownHp: own.combat.hp / own.combat.maxHp, paint });
-  authorityWorld.release?.();
-  pageWorld.release?.();
   return { divergence, exercised };
 }
 
 // ---- every section runs (round 5 S1, 2026-11-06): a section whose assertion fails is recorded and the next one still
-// runs, and the receipt fails at the end with every failure listed. 268's Mars coverage (owed to its core-parity lane:
-// TESTS-OWED 2026-11-06) stopped the receipt before its later controls (the Mars nudge, the reseeded spotting), so they
-// never ran on a tree where Mars is red. Each section's assertions are the ones it had; only the runner is new.
+// runs, and the receipt fails at the end with every failure listed on stderr, then rethrows the first failure's own
+// error, so the receipt's failure identity (tools/gate.mjs failureSignature/failureKey: the uncaught error's header and
+// its actual/expected/operator) is the one the old fail-fast run gave for the same first red. 268's Mars coverage (owed
+// to its core-parity lane: TESTS-OWED 2026-11-06) stopped the receipt before its later controls (the Mars nudge, the
+// reseeded spotting), so they never ran on a tree where Mars is red. Each section's assertions are the ones it had;
+// only the runner is new.
 const failures = [];
 const passed = [];
 async function section(name, body) {
@@ -417,7 +432,9 @@ await section('control: the page\'s ammunition switch a tick late', async () => 
 const MODE_FOE_SPEC = 'm41a3';
 const bits = (value) => Buffer.from(new Float64Array([value]).buffer).toString('hex');
 async function runModeBattle(ticks, perturb = null) {
-  const authorityWorld = createDedicatedWorldCollision(MAP), pageWorld = createDedicatedWorldCollision(MAP);
+  return withWorlds((authorityWorld, pageWorld) => modeBattle(authorityWorld, pageWorld, ticks, perturb));
+}
+async function modeBattle(authorityWorld, pageWorld, ticks, perturb) {
   const authored = pageWorld.heightField._layout.spawns;
   const spawnOf = (point) => ({ pos: [point.x, pageWorld.heightField.getHeightAt(point.x, point.z), point.z], yaw: point.yaw ?? 0 });
   pageWorld.spawnPoints = { player: spawnOf(authored.player), enemies: authored.enemies.map(spawnOf) };
@@ -529,8 +546,6 @@ async function runModeBattle(ticks, perturb = null) {
     if (exercised.killedAt !== null && tick - exercised.killedAt >= 240) break;
   }
   exercised.zoneOwners = [...exercised.zoneOwners];
-  authorityWorld.release?.();
-  pageWorld.release?.();
   return { divergence, exercised, shed: shed.id, foe: foe.id };
 }
 const MODE_TICKS = 6000;
@@ -580,7 +595,7 @@ await section('control: an authority seeded one off', async () => {
 if (failures.length) {
   console.error(`driverStepParity.selftest: ${failures.length} of ${failures.length + passed.length} sections failed (every section ran):`);
   for (const { name, error } of failures) console.error(`--- FAIL ${name}\n${error?.stack ?? error}`);
-  throw new Error(`driverStepParity.selftest: ${failures.length} failed section(s): ${failures.map(({ name, error }) => `${name}: ${error?.message ?? error}`).join('; ')}`);
+  throw failures[0].error;
 }
 
 const { denied } = same.exercised;
