@@ -15,17 +15,17 @@ Run times: `tools/selftest-durations.json`, else this machine's latest observati
 
 | Decision | Receipts | CPU-min |
 |---|---:|---:|
-| KEEP | 1534 | 180.9 |
+| KEEP | 1535 | 221.7 |
 | MERGE | 0 | 0.0 |
 | MANUAL | 661 | 1167.4 |
 | RETIRE | 2 | 0.7 |
 
 | Suite run | Receipts | CPU-min | Simulated wall (min) |
 |---|---:|---:|---:|
-| Before: every receipt (npm test without the tiers) | 2196 | 1348.6 | 236.6 |
-| After: the default tier | 1534 | 180.9 | 39.1 |
+| Before: every receipt (npm test without the tiers) | 2197 | 1389.5 | 241.7 |
+| After: the default tier | 1535 | 221.7 | 59.7 |
 
-Default tier: 13.4 % of the whole registry's CPU; 19.7 % of the 916 CPU-min the snapshot gave for the 1,863 receipts it timed. Its wall: 0.2 min exclusive receipts, 20.3 min pool, 18.6 min browser receipts.
+Default tier: 16.0 % of the whole registry's CPU; 24.2 % of the 916 CPU-min the snapshot gave for the 1,863 receipts it timed. Its wall: 0.2 min exclusive receipts, 40.8 min pool, 18.6 min browser receipts.
 
 ## Manual suites
 
@@ -808,10 +808,11 @@ None. Folding receipts saves only process starts (about a second each) and would
 | `tools/media-r5/fleet-coverage.selftest.mjs` | n/a | MANUAL (media) | media: the media lane's fleet backlog, n/a s: 267: the fleet's media backlog (every vehicle leads a take, the survey bars): the manual media suite | test:heavy -- media; test:recommend flags it when its inputs change |
 | `tools/mp-rooms-entry.browser.selftest.mjs` | n/a | MANUAL (ui) | ui: heavy interface paint and layout sweeps, n/a s: 268 (the 267 production smoke): the multiplayer end-to-end opens the rooms panel the way the Garage's layout o | test:heavy -- ui; test:recommend flags it when its inputs change |
 
-## KEEP (1534)
+## KEEP (1535)
 
 | Receipt | Run (s) | Decision | Reason | Coverage now |
 |---|---:|---|---|---|
+| `src/vehicles/wreckGunBend.selftest.mjs` | 2451 | KEEP | vehicle rule, 2451 s: 2026-11-05 (owner: "when destroyed you can still see the double barrles"): every public tank's battle wreck ki | default tier (npm test, the release gate; lane mode by its closure) |
 | `tools/pane-stack-layer.browser.selftest.mjs` | 969 | KEEP | GPU regression, 969 s: local-fps-266: a regional window's stack (dark, pane, frame) draws the same at 20-700 m in any draw order | default tier (npm test, the release gate; lane mode by its closure) |
 | `tools/second-solo-battle.browser.selftest.mjs` | 722 | KEEP | GPU regression, 722 s: 269 (the 268 drive smoke's second battle at 97%): a second solo battle in one page, started while the Leave's | default tier (npm test, the release gate; lane mode by its closure) |
 | `src/vehicles/japaneseMantlet.selftest.mjs` | 444 | KEEP | vehicle rule, 444 s: 261 (owner: "the stb 1 and type 74 still need completgely new mantlets and turret geometrry around the mantlet | default tier (npm test, the release gate; lane mode by its closure) |
