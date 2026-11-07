@@ -162,7 +162,7 @@ export function createAirSupportHud(parent: HTMLElement, bus: EventBus) {
   const warningTitle = node('strong', '', warning);
   const warningTime = node('span', 'num', warning);
 
-  let lastTimeS = 0, called = false, glyphKind: AirStrikeKind | null = null;
+  let lastTimeS = 0, called = false, glyphKind: AirStrikeKind | null = null, scopedFlag = false;
   bus.on('ui:strikeCalled', () => { called = true; });
   bus.on('ui:strikeView', (payload) => {
     const open = !!(payload as { open?: boolean } | null)?.open;
@@ -187,6 +187,7 @@ export function createAirSupportHud(parent: HTMLElement, bus: EventBus) {
     if (!air || !shown) {
       if (strikeView.open) bus.emit('ui:strikeViewClose', {});
       setHidden(binoculars, true); setHidden(warning, true);
+      if (scopedFlag) { scopedFlag = false; document.documentElement.toggleAttribute('data-cot-strike-view', false); }
       strikeView.blend = 0;
       return;
     }
@@ -223,6 +224,8 @@ export function createAirSupportHud(parent: HTMLElement, bus: EventBus) {
     }
 
     setHidden(binoculars, !strikeView.open);
+    // the controls card (settings.ts .cot-hints) stands down under the binoculars, as it does under the scope
+    if (scopedFlag !== strikeView.open) { scopedFlag = strikeView.open; document.documentElement.toggleAttribute('data-cot-strike-view', scopedFlag); }
     if (strikeView.open) {
       const kind = strikeView.kind;
       if (glyphKind !== kind) { kindGlyph.innerHTML = icon(STRIKE_ICON[kind], { size: 20 }); glyphKind = kind; }
