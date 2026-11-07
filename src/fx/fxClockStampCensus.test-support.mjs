@@ -23,7 +23,8 @@
 // until the scenario drives it, and then the census checks what it stamps. The scenario drives the gunship's rounds and
 // missile, the auxiliary systems, a wire-guided missile, a building's stages and sections (a default-kit house), a
 // crater event, the screenshot composer and the battle warm; (round 4 review r1) the Studio's cinematic layer on this
-// runtime's port (its rings, scorches and companion pools), and a round drawn in flight past its record's bound.
+// runtime's port (its rings, scorches and companion pools), and a round drawn in flight past its record's bound
+// ((round 5 U11 review r1) whose record, kept by the drawn round's renewal alone, the walk must meet at the rebase).
 // (round 3 B5, review round 1) What the reach check measures, exactly: the reads of the fx clock in src/fx (the
 // runtime's particles.getTime(), fxClockNow(), a part's injected `now()`, and a call of any local bound to one of them,
 // such as volumeMedia's `const o_now = o.now`; (round 4 review r1) and a read of the shared clock uniform's value, which
@@ -187,6 +188,8 @@ export async function runFxClockStampCensus({ houses }) {
   let matchClockS = 300;
   // (review r1) the drones in the air: every frame writes them (a drone missing from a frame reads as a flight that ended)
   const airborne = new Set();
+  // (round 5 U11 review r1) the stalled round: every frame draws it from its stall to three frames before the rebase
+  const stalledRounds = new Set();
   const live = [];
   const frames = (n, shells = [], dt = 1 / 60) => {
     for (let i = 0; i < n; i++) {
@@ -195,6 +198,7 @@ export async function runFxClockStampCensus({ houses }) {
       live.length = 0;
       for (const shell of shells) live.push(shell);
       for (const shell of airborne) live.push(shell);
+      for (const shell of stalledRounds) live.push(shell);
       fx.update(dt, live, camera, () => null);
       // the late pass asks every frame whether its soft media draw (the volume media's clock read)
       fx.group.userData.softParticles.isActive();
@@ -223,13 +227,15 @@ export async function runFxClockStampCensus({ houses }) {
   fx.resetAll();
   fx.resetClock(T0);
   // (round 4 F6 review) a round drawn in flight past its record's bound (a peer's events stalled): (round 5 U11) every
-  // frame that draws it keeps its record a grace on (effects.ts ageShellRecords), so the record lives on into the rebase
-  {
-    const stalled = { id: 81, pos: new THREE.Vector3(30, 40, -80), vel: new THREE.Vector3(0, 0, 300), spec: { tracer: 'TANK' }, shooterId: 'g',
-      ageS: 0.1, distM: 30 };
-    emit('shell:fired', { shellId: 81, shooterId: 'g', pos: [30, 40, -80], muzzlePos: [30, 40, -80], dir: [0, 0, 1], shellName: '125 mm HE', ...he });
-    frames(12, [stalled], 1);
-  }
+  // frame that draws it keeps its record a grace on (effects.ts ageShellRecords). (round 5 U11 review r1) Its record is
+  // due 10 s from its firing; drawn 12 s, then on until three frames before the rebase, the record the renewal keeps
+  // lives into the rebase, and the walk must meet it (checked after the walk). Drawn only through those 12 s, it aged
+  // out 4 s after its last drawn frame, before the rebase, and no record the renewal kept was walked.
+  const stalled = { id: 81, pos: new THREE.Vector3(30, 40, -80), vel: new THREE.Vector3(0, 0, 300), spec: { tracer: 'TANK' }, shooterId: 'g',
+    ageS: 0.1, distM: 30 };
+  emit('shell:fired', { shellId: 81, shooterId: 'g', pos: [30, 40, -80], muzzlePos: [30, 40, -80], dir: [0, 0, 1], shellName: '125 mm HE', ...he });
+  frames(12, [stalled], 1);
+  stalledRounds.add(stalled);
   airborne.add(droneHome);
   frames(3);
   // an engine running 2.5 s (past the cold start), then a throttle-up: its billow burst
@@ -335,6 +341,9 @@ export async function runFxClockStampCensus({ houses }) {
       points: 30, integrity: 0.5, previous: 'breached', stage: 'collapsed', x: 0, y: 3, z: 8, dirX: 1, dirZ: 0 };
     houseEvent(DESTRUCTION_BUS_EVENTS.stage, { ...stage, structureId: 7 });
     houseEvent(DESTRUCTION_BUS_EVENTS.stage, { ...stage, structureId: 8, sections: true });
+    // (round 5 U11 review r1) the stalled round's last drawn frame was the one before these: its record, a grace on
+    // from it, is the renewal's alone at the rebase (no frame after it writes the record again)
+    stalledRounds.delete(stalled);
     frames(3);
   }
   groundBurst(20);
@@ -415,6 +424,10 @@ export async function runFxClockStampCensus({ houses }) {
   const movedFiles = new Set([...after.moved.keys()].map((at) => at.split(':')[0]));
   // (round 4 F7 review) the walk reaches the Studio cinematic layer's stamps (its group under the runtime's)
   assert.ok([...after.moved.keys()].some((at) => at.includes('<fx-cinematic>')), 'the census sees the cinematic layer\'s stamps moved');
+  // (round 5 U11 review r1) the walk meets the stalled round's record, which only the renewal kept past its bound
+  const stalledRecord = [...after.moved.keys()].filter((at) => at.endsWith(`.get(${stalled.id}).dueS`));
+  if (process.env.FX_CENSUS_REACH) console.log(`the stalled round's record: ${stalledRecord.join(', ')}`);
+  assert.ok(stalledRecord.length > 0, 'the census walks the stalled round\'s record (the due time a drawn round\'s renewal wrote) and the rebase moved it');
   assert.ok(after.moved.size >= 12 && movedFiles.size >= 5,
     `the control: the census sees the runtime's stamps the rebase moved (${after.moved.size} in ${movedFiles.size} files: ${[...movedFiles].join(', ')})`);
   const left = [...after.left].map(([at, x]) => `  ${at} = ${x}`);
