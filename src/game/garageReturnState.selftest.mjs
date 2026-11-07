@@ -1038,7 +1038,9 @@ for (const during of ['restore', 'placement']) {
 // (round 5 Q2) The refusal half: a start refused after the wait releases the lock its press took (the page's own unlock,
 // main's binding: input.releaseLock) before the refused start's notice opens, and a lock that lands only after the
 // refusal is released as it lands (input.ts withdraws the attempt in flight). Nothing stands over the notice, the
-// refusal never counts toward the cursor-aim fallback, and the next press locks again.
+// refusal never counts toward the cursor-aim fallback, and the next press locks again. (review r1) The failed Retry's
+// own notice opens first, while the press still waits: main frees the cursor before every return notice opens
+// (presentGarageReturnFailure), so neither notice opens under the press's lock (7705cfeb18: the Retry's did).
 for (const lockLandsFirst of [true, false]) {
   const label = lockLandsFirst ? 'a lock that landed during the wait' : 'a lock still in flight at the refusal';
   const page = createChromePointerLockPage();
@@ -1075,7 +1077,8 @@ for (const lockLandsFirst of [true, false]) {
     hold.resolve();
     for (let index = 0; index < 12 && main.notices.length < shown + 2; index += 1) await flush();
     assert.equal(main.notices.length, shown + 2, `${label}: (the Retry's notice and the refused start's)`);
-    assert.equal(main.notices.at(-1).at, false, `${label}: no lock over the refused start's notice`);
+    assert.deepEqual(main.notices.slice(shown).map((notice) => notice.at), [false, false],
+      `${label}: no lock over the Retry's own notice or the refused start's`);
     await tick();
     await tick();
     assert.deepEqual(effects.standing(), nothingStands, `${label}: nothing stands after the refusal`);
@@ -1091,6 +1094,83 @@ for (const lockLandsFirst of [true, false]) {
     assert.deepEqual(effects.standing(), battleStands, `${label}: the next press starts its battle with the lock`);
   } finally {
     effects.dispose();
+    page.restore();
+  }
+}
+// (round 5 Q2, review r1) The entry's own release, where no return notice opens: a network round the room's session
+// entered during the wait has the screen (main's isNetworkRoundEntering), the Retry lands, and the start is refused
+// with no notice to free the cursor; its press's lock is released all the same (soloBattleEntryRuntime.ts run()).
+{
+  const page = createChromePointerLockPage();
+  const effects = battleStartEffects(page);
+  try {
+    let failRestore = true;
+    let hold = null;
+    let held = false;
+    const f = createFixture({
+      bus: effects.bus, exitPointerLock: page.exitPointerLock,
+      restore: async () => {
+        if (hold) { held = true; await hold.promise; }
+        if (failRestore) throw new Error('the Garage presentation did not restore');
+        return { totalMs: 1 };
+      },
+    });
+    const main = owedGarageMain(f.runtime, f.game, { bus: effects.bus, input: page.input });
+    await main.leave();
+    await flush();
+    press(main); // the closed notice: the press brings it back, with the bare Retry
+    await flush();
+    failRestore = false;
+    hold = deferred();
+    const shown = main.notices.length;
+    main.notices.at(-1).retry();
+    for (let index = 0; index < 12 && !held; index += 1) await flush();
+    main.events.length = 0;
+    press(main);
+    await tick();
+    assert.equal(page.locked(), true, '(the press holds the lock while it waits)');
+    main.scope.onlineMatch.current.entering = true; // a round the room's session entered meanwhile
+    hold.resolve();
+    for (let index = 0; index < 12 && f.runtime.state !== 'idle'; index += 1) await flush();
+    await tick();
+    assert.equal(f.runtime.state, 'idle', '(the Retry landed)');
+    assert.equal(main.notices.length, shown, '(no return notice opens)');
+    assert.deepEqual(main.events, ['emit:ui:click'], 'the start is refused: the round has the screen');
+    assert.deepEqual(effects.standing(), nothingStands, "the press's lock is released all the same");
+  } finally {
+    effects.dispose();
+    page.restore();
+  }
+}
+// (round 5 Q2, review r1) Every Garage return notice opens with the cursor free: main's presentGarageReturnFailure
+// releases the lock (input.releaseLock) before the notice. A room's own return (its room closed during a revealed
+// battle, whose lock the player holds) that fails before its screen's exitPointerLock, here at its placement, opened
+// its notice under the battle's lock on f60d0aa200, so the Retry could not be clicked before an Esc.
+{
+  const binding = mainSource.match(/\n\s+returnToGarage: ([^\n]+),\n/)?.[1];
+  assert.ok(binding, "main binds the room's returnToGarage");
+  const page = createChromePointerLockPage();
+  try {
+    page.input.requestLock(); // the revealed battle holds the lock
+    await tick();
+    assert.equal(page.locked(), true);
+    const f = createFixture({ exitPointerLock: page.exitPointerLock,
+      placement: async () => { throw new Error('the Garage placement failed'); } });
+    const notices = [];
+    const room = runMainStatements(exitStatements, {
+      garageReturn: f.runtime, input: page.input,
+      console: { error() {}, info() {}, warn() {} },
+      loadFailure: async () => ({
+        showGarageReturnFailure: (error, retry) => notices.push({ error, retry, at: page.locked() }),
+      }),
+    }, `{ returnToGarage: (${binding}) }`);
+    await assert.rejects(room.returnToGarage(), /the Garage placement failed/, 'the room still sees the rejection');
+    await flush();
+    assert.equal(f.runtime.state, 'failed', '(before its screen: its exitPointerLock never ran)');
+    assert.deepEqual(notices.map((notice) => notice.at), [false], "no lock over the failed room return's notice");
+    await tick();
+    assert.equal(page.locked(), false, 'and none stands after it');
+  } finally {
     page.restore();
   }
 }
