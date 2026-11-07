@@ -3,7 +3,7 @@
 // the warm, outside the lock, starts a dev server and a guarded browser and brings two pages into an Air Support battle
 // on Verdant (a desktop page, and a phone-tier page at a phone's landscape viewport); the hold only stages and shoots.
 //
-//   node tools/air-support-shots.mjs --out=DIR [--map=verdant] [--only=desktop|phone] [--no-perf]
+//   node tools/air-support-shots.mjs --out=DIR [--map=verdant] [--only=desktop|phone] [--no-perf] [--aircraft]
 //
 // Shots (DIR/*.png): the strip in third person; the strike view's binoculars with each call-in's reticle on the ground;
 // each strike from a camera over its mark (the recon jet's pass, the barrage, the strafing jet's run, the bomb, the AC-130
@@ -24,6 +24,8 @@ const out = path.resolve(arg('out', '.qa-dev/air-support'));
 const mapId = arg('map', 'verdant');
 const only = arg('only');
 const perf = !argv.includes('--no-perf');
+// --aircraft: the desktop page films the aircraft (shootAircraft) in place of the strip, views and strikes
+const aircraft = argv.includes('--aircraft');
 mkdirSync(out, { recursive: true });
 const root = process.cwd();
 const receipt = { map: mapId, shots: [], calls: [], errors: {}, perf: {} };
@@ -127,6 +129,112 @@ async function shootDesktop(page, signal, tag) {
 }
 
 /**
+ * The aircraft as a crew would find them (owner 2026-11-06: "show me what our planes look like if u were to try to look
+ * for them"): each flying call-in on the mark ahead, filmed from the crew's own hatch looking up at it (the plain eye),
+ * through the binoculars' field of view, and from a chase camera beside it with the HUD off. Every shot calls its own
+ * strike (points and cooldowns restored) and a page-side follow loop re-aims the pinned camera at the airframe each
+ * frame, so a jet stays framed however late a loaded page takes the shot.
+ */
+async function shootAircraft(page, signal, tag) {
+  await page.evaluate(stage);
+  await page.evaluate(() => {
+    const D = window.__DEBUG, V = D.camera.position.constructor;
+    const eye = new V(), at = new V(), dir = new V();
+    const style = document.createElement('style');
+    style.textContent = 'html.as-hud-hidden :is(.cot-hud,.cot-dp,.cot-si-stats,.cot-hints,.cot-medal-toasts,.cot-touch,'
+      + '.cot-mode-status,.cot-mp-strip,.cot-strike-rack,.cot-binoculars,.cot-strike-warning){display:none!important}';
+    document.head.append(style);
+    /** The followed airframe: a jet by its strike's own name; the AC-130's sits beside its anchor (the visible one
+     *  nearest the mark). */
+    window.__airCraft = (f) => {
+      if (!f) return null;
+      if (!f.gunship) { const o = D.scene.getObjectByName(f.name); return o?.visible ? o : null; }
+      let craft = null, best = Infinity;
+      D.scene.traverseVisible((o) => {
+        if (o.name !== 'AC-130 gunship') return;
+        const d = Math.hypot(o.position.x - f.x, o.position.z - f.z);
+        if (d < best) { best = d; craft = o; }
+      });
+      return craft;
+    };
+    window.__airFollow = null;
+    const loop = () => {
+      const f = window.__airFollow;
+      const craft = window.__airCraft(f);
+      if (craft) {
+        craft.getWorldPosition(at);
+        if (f.from === 'crew') {
+          const p = D.game.player.state.pos;
+          eye.set(p.x, p.y + 4.2, p.z);
+        } else {
+          // beside the airframe: behind its heading, off its port side and above it
+          craft.getWorldDirection(dir);
+          dir.y = 0; dir.normalize();
+          eye.set(at.x - dir.x * f.back + dir.z * f.side, at.y + f.up, at.z - dir.z * f.back - dir.x * f.side);
+        }
+        D.rig.setExternalPose(eye, at, f.fov);
+      }
+      requestAnimationFrame(loop);
+    };
+    requestAnimationFrame(loop);
+  });
+  const call = (kind) => page.evaluate((kind) => {
+    const D = window.__DEBUG, game = D.game, air = game.matchModeController.airSupport;
+    const saved = air.capture();
+    saved.points = saved.points.map(([id, value]) => [id, id === game.player.id ? air.rules.points.cap : value]);
+    saved.cooldowns = saved.cooldowns.filter(([key]) => !key.startsWith(`${game.player.id}:`));
+    air.restore(saved);
+    const p = game.player.state.pos, yaw = game.player.state.yaw;
+    const x = p.x + Math.sin(yaw) * 260, z = p.z + Math.cos(yaw) * 260;
+    const ok = air.requestStrike(game.player.id, kind, x, z, game.timeS);
+    const mine = air.capture().strikes.filter((s) => s.callerId === game.player.id);
+    return ok ? mine[mine.length - 1] : null;
+  }, kind);
+  const SHOTS = {
+    strafe: [['eye', 'crew', 55, 900], ['binoculars', 'crew', 8, 1400], ['close', { back: 16, side: 9, up: 4 }, 42],
+      ['firing', { back: 20, side: 10, up: 3 }, 50, null, 'firing']],
+    bomb: [['eye', 'crew', 55, 900], ['binoculars', 'crew', 8, 1400], ['close', { back: 16, side: 9, up: 4 }, 42]],
+    gunship: [['eye', 'crew', 55], ['binoculars', 'crew', 6], ['close', { back: 40, side: 32, up: 10 }, 45]],
+  };
+  for (const [kind, shots] of Object.entries(SHOTS)) {
+    for (const [label, from, fov, withinM, when] of shots) {
+      if (signal.aborted) return;
+      // a fresh strike for each shot (the side's air may be full of the bots' own for a while)
+      let accepted = null;
+      for (let tries = 0; !accepted && tries < 40 && !signal.aborted; tries++) {
+        accepted = await call(kind);
+        if (!accepted) await sleep(1500);
+      }
+      receipt.calls.push({ kind, label, accepted: !!accepted });
+      if (!accepted) continue;
+      await page.evaluate(() => window.__DEBUG.bus.emit('ui:strikeViewClose', {}));
+      const follow = { name: `air-support ${kind === 'gunship' ? 'gunship' : 'jet'} ${accepted.id}`, gunship: kind === 'gunship',
+        x: accepted.x, z: accepted.z, fov, ...(from === 'crew' ? { from } : { from: 'chase', ...from }) };
+      const hud = from === 'crew';
+      await page.evaluate((follow, hud) => {
+        document.documentElement.classList.toggle('as-hud-hidden', !hud);
+        window.__airFollow = follow;
+      }, follow, hud);
+      // the moment: a jet inside its range of the crew (or firing); the AC-130 settled into its orbit
+      await page.waitForFunction((f, withinM, when, s) => {
+        const D = window.__DEBUG, craft = window.__airCraft(f);
+        if (!craft) return false;
+        if (when === 'firing') return D.game.timeS >= s.landsS + 0.3;
+        if (f.gunship) return D.game.timeS >= s.landsS + 2;
+        if (!withinM) return D.game.timeS >= s.landsS - 1.4;
+        const p = D.game.player.state.pos, w = craft.getWorldPosition(D.camera.position.clone());
+        return Math.hypot(w.x - p.x, w.z - p.z) < withinM;
+      }, { timeout: 90_000, polling: 50 }, follow, withinM ?? null, when ?? null, accepted);
+      await sleep(150);
+      await shot(page, `${tag}-${kind}-${label}`);
+      await page.evaluate(() => { window.__airFollow = null; document.documentElement.classList.remove('as-hud-hidden'); window.__DEBUG.rig.release(); });
+      await page.waitForFunction((end) => window.__DEBUG.game.timeS >= end, { timeout: 120_000, polling: 250 },
+        Math.min(accepted.endS, accepted.landsS + 6));
+    }
+  }
+}
+
+/**
  * Paired GPU frame time: eight marks up against none, alternated. Every animation-frame callback's GL work is timed with
  * its own TIME_ELAPSED query (EXT_disjoint_timer_query_webgl2; the post chain's governor timer pauses once it pins), so
  * a pair compares the whole frame's GPU time with and without the marks' term. Null without the extension.
@@ -203,7 +311,9 @@ await runWarmHold({
     return { pages: Object.values(pages), byTag: pages, close: async () => { await browser.close(); await server.close(); } };
   },
   shoot: async ({ byTag, signal }) => {
-    if (byTag.desktop) {
+    if (byTag.desktop && aircraft) {
+      await shootAircraft(byTag.desktop, signal, 'aircraft');
+    } else if (byTag.desktop) {
       await shootDesktop(byTag.desktop, signal, 'desktop');
       if (perf && !signal.aborted) await measureMarks(byTag.desktop, 'desktop');
     }

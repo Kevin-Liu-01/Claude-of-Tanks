@@ -344,4 +344,8 @@
 <symbol id="i-stepForward"><path d="M18 5v14M6 5l9 7-9 7Z"/></symbol>
 <symbol id="i-plus"><path d="M12 5v14M5 12h14"/></symbol>
 <symbol id="i-link"><path d="M10.2 13.8a4 4 0 0 0 5.7 0l3.4-3.4a4 4 0 0 0-5.7-5.7l-1.2 1.2M13.8 10.2a4 4 0 0 0-5.7 0l-3.4 3.4a4 4 0 0 0 5.7 5.7l1.2-1.2"/></symbol>
+<symbol id="i-strikeRecon"><path d="M2.5 12c2.5-4 5.75-6 9.5-6s7 2 9.5 6c-2.5 4-5.75 6-9.5 6s-7-2-9.5-6ZM15 12a3 3 0 1 1-6 0 3 3 0 1 1 6 0Z"/></symbol>
+<symbol id="i-strikeArtillery"><path d="M4.5 3h3v6L6 11 4.5 9ZM10.5 6h3v6L12 14l-1.5-2ZM16.5 3h3v6L18 11l-1.5-2ZM3 20.5h18M6 15v2.5M12 17.5v1M18 15v2.5"/></symbol>
+<symbol id="i-strikeStrafe"><path d="M12 14.5l-1.5-2.5V8.5L4 10.5V9l6.5-3.75V3l1.5-1 1.5 1v2.25L20 9v1.5l-6.5-2V12ZM3 20h3M10.5 20h3M18 20h3M12 16.5v1.5"/></symbol>
+<symbol id="i-strikeBomb"><path d="M8.5 3h7M9 3 8.5 6.5h7L15 3M8.5 6.5V14c0 2.75 1.5 5 3.5 6.5 2-1.5 3.5-3.75 3.5-6.5V6.5ZM8.5 10.5h7"/></symbol>
 </svg>

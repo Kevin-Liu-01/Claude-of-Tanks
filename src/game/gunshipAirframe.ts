@@ -20,7 +20,7 @@ interface GunshipMaterialHooks { setup(material: THREE.Material): void; release(
 /** A built airframe: its root (nose +Z, port wing +X, up +Y), its props' spin, and its release. */
 interface BuiltAirframe { root: THREE.Group; spin(dt: number): void; dispose(): void }
 
-const GREY = 0x5d6468, RADOME = 0x4c5357, BOOT = 0x26292c, GLASS = 0x14181b, DARK = 0x222528, PROP = 0x1d2022,
+const GREY = 0x5d6468, RADOME = 0x4c5357, GLASS = 0x14181b, DARK = 0x222528, PROP = 0x1d2022,
   TIP = 0xc89a26, EXHAUST = 0x34302d;
 /** prop speed (rad/s): read as turning at 60 fps and as a blur at a film's 30 fps, never wagon-wheeling back */
 const PROP_RAD_S = 26;

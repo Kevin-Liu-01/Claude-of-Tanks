@@ -155,6 +155,12 @@ export const SURFACE_REGISTRY = Object.freeze({
       { screen: 'battle', owner: HUD, surface: '.cot-cons', states: ['tank'] },
     ],
   },
+  // Air Support's ledger: the crew's support points, beside the call-ins it buys (air-support-270)
+  'support-points': {
+    places: [
+      { screen: 'battle', owner: 'src/ui/airSupportHud.ts', surface: '.strike-support .strike-points', states: ['tank'] },
+    ],
+  },
   equipment: {
     places: [
       { screen: 'battle', owner: 'src/ui/damagePanel.ts', surface: '.cot-dp .equiprow', states: ['tank'] },
