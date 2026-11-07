@@ -9,6 +9,9 @@ import { heldRunExitCode, heldStopWhy, openHeldRun, runHeldItem } from './held-i
 //     --width 1280 --height 720 --fps 30 --bitrate 8000000 --out shots/battle-reels-v3/masters
 //   node tools/studio-example-videos.mjs --collection hero-rails --only 2 \
 //     --stills 0,900,1850,2900,3900,5000,6000 --out shots/hero-rails-r2/preview
+// A flag given twice takes its last value (round 4 E10; recorded round 5 U9): a flag after an npm script's baked ones
+// overrides that flag (`npm run reels:render -- --out shots/x` writes to shots/x), and the --only a stop's finishing run
+// appends replaces the run's own. No package.json script bakes --only (tools/long-hold-users.selftest.mjs checks it).
 //
 // Collections: `duels` (every registered map, the Studio duel showcase),
 // `features` (the six feature loops cut from approved action frames),

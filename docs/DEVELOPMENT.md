@@ -329,7 +329,12 @@ only:
   stand-in lock and browser). A failed item is each tool's own: shoot exits 1 for a FAILED scene, studio-example-videos
   rethrows a failed take (exit 1), and turret-parent-audit's ERROR rows do not fail the run (0, or 3 with ids left). Each
   opens its hold through `openHeldRun`: a signal while it waits in the queue ends the run with nothing done, and says so.
-  A signal's 128 + n stands over all of these. One that cannot yield without
+  A signal's 128 + n stands over all of these. The finishing run a stop names is the same options with the selection
+  appended (`--only <left>` for studio-example-videos, `--match <left>` for shoot, `--ids=<left>` for
+  turret-parent-audit, which rewrites its output: a stop before any id writes nothing). Their options take a flag's last
+  value, so the appended selection replaces the run's own, and a flag after an npm script's baked ones overrides that
+  flag (`npm run reels:render -- --out shots/x` writes to shots/x); no script bakes `--only` or `--match`
+  (long-hold-users checks it). One that cannot yield without
   losing its take (a frame-stepped film) declares `atCap: 'keep'`. `frame-budget-probe.mjs` `acquireProbeLocks` (the
   capture FIFO with the session mutex, for that probe, time-to-battle-probe, battle-spike-census, battle-memory-probe
   and shadow-cache-truth) holds its FIFO through the open form too, and hands its callers the hold's `signal`. A unit

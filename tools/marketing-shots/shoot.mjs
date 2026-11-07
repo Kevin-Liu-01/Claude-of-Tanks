@@ -17,6 +17,9 @@ import { heldRunExitCode, heldStopWhy, openHeldRun, runHeldItem } from '../held-
 //                                                        # one of the tokens
 //   node tools/marketing-shots/shoot.mjs --out shots/marketing/raw
 //
+// A flag given twice takes its last value (round 4 E10; recorded round 5 U9): the --match a stop's finishing run appends
+// to the same options replaces the run's own, and a trailing flag overrides one given before it.
+//
 // Scenes are shot grouped by map (fewest map rebuilds) but written under
 // their own names, so ordering never changes output. Extra keys on the scene
 // JSON (e.g. "meta") are ignored by __STUDIO.load.
