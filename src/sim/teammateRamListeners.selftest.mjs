@@ -39,16 +39,14 @@ assert.equal(padCueOf('tank:impact', contact('mate'), me), null, 'the teammate\'
 assert.ok(!PAD_CUE_EVENTS.includes('tank:ram'), 'the ram\'s report is no cue event: the phone feels the contact once, as its thud');
 assert.equal(padCueOf('tank:ram', { aId: 'me', bId: 'mate', dmgA: 0, dmgB: 0, closingMps: 8.2, aIsPlayer: true }, me), null,
   'and maps to nothing');
-// the class at every speed; the strength only as a buzz's range and its rise with the closing speed, so retuning the
-// buzz (padCues.ts's floor or its full-jolt speed) is no red here (round 6 V9)
-const strengths = [0.5, 4, 12, 30].map((speedMps) => {
+// the class at every speed, and the strength only as a buzz the phone plays, (0, 1]. How the strength follows the
+// closing speed is the pad's own rule, which src/pad/padCues.selftest.mjs pins ('a harder crash, a harder jolt'), so a
+// retune of the buzz (its floor, its full-jolt speed, a flat buzz) is no red here (round 6 V9)
+for (const speedMps of [0.5, 4, 12, 30]) {
   const cue = padCueOf('tank:impact', { ...contact('me'), speedMps }, me);
   assert.equal(cue?.c, 'impact', `a contact at ${speedMps} m/s buzzes as a contact, never as damage (${JSON.stringify(cue)})`);
   assert.ok(cue.m > 0 && cue.m <= 1, `a contact at ${speedMps} m/s buzzes within the phone's range, (0, 1] (${JSON.stringify(cue)})`);
-  return cue.m;
-});
-assert.ok(strengths.every((m, i) => i === 0 || m >= strengths[i - 1]) && strengths[3] > strengths[0],
-  `a harder contact buzzes no softer (${strengths.join(', ')} at 0.5, 4, 12 and 30 m/s)`);
+}
 
 console.log('teammateRamListeners.selftest: tank:ram has one listener in src (audioEngine.ts), tank:impact two (audioEngine.ts, '
   + 'padCues.ts); a teammate ram\'s contact buzzes the own hull\'s phone as an impact, never as damage, and its report is no cue event');
