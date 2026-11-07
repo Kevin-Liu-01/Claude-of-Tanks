@@ -641,12 +641,14 @@ License/author/source are embedded in the GLB's own `asset.extras`
 
 | In-game vehicle (spec id) | Asset | Author | Source | License | File |
 |---|---|---|---|---|---|
-| M2A2 Bradley (`m2a2_bradley`, oracle only) | M2 Bradley IFV | 42manako | https://sketchfab.com/3d-models/m2-bradley-ifv-ab022158ab5f4fbfa55d4142db7595ab | CC-BY-4.0 (embedded: "CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)") | `public/models/tanks/community/m2_bradley_ifv.glb` (nodes: body_lod0 hull, turret_lod turret+25mm, treads_lod, bagsbagsba stowage; ground y=0, z long) |
+| M3A2 Bradley (`m3a2_bradley`, oracle only; the M2A2's until the 269 turret swap) | M2 Bradley IFV | 42manako | https://sketchfab.com/3d-models/m2-bradley-ifv-ab022158ab5f4fbfa55d4142db7595ab | CC-BY-4.0 (embedded: "CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)") | `public/models/tanks/community/m2_bradley_ifv.glb` (nodes: body_lod0 hull, turret_lod turret+25mm, treads_lod, bagsbagsba stowage; ground y=0, z long) |
 
 Release 268: the M3A2 Bradley (`m3a2_bradley`) carried the first-party M2A2 turret as main built it at 7cc204ab32, whose
 numbers were measured against this oracle, extracted and mirrored (`src/vehicles/profiles/bradleyClassicTurret.ts`). Since
 269 the M2A2 carries it and the M3A2 the turret measured from the owner's supplied model. Both are procedural like the
-rest of the fleet: no source mesh, texture or vertex data enters runtime or public output.
+rest of the fleet: no source mesh, texture or vertex data enters runtime or public output. Since 270 the comparison
+registration follows that swap: this oracle measures the M3A2 (its turret is the one this print shows), and the M2A2 proves
+its photo packet (`docs/references/photos/m2a2-bradley-20261106.json`).
 
 ### User drops waves 5–7 (recovered fleet, integrated 2026-07-29) — local-only models
 

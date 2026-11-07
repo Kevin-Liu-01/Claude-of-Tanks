@@ -121,7 +121,7 @@ export const ORACLE_PINS = Object.freeze({
     "no version reproduces the 08-10 row (90.1): four versions (lane, archive and two hash-named) score 0 to 23; the 55ff0b575d page gives the same curves"), // challenger2
   '/models/tanks/community/fv510_warrior.glb': pin('d4bcad966b92d0735f0affe65a926502eee9e2a158ff0b35cfe6c443453fa389',
     "the only version on this machine; the 09-12 row scored 0 (whole 7.9), this file whole 80.2"), // fv510
-  '/models/tanks/community/m2_bradley_ifv.glb': pin('0d3f779a17a549f7206281331731af4400db7eb1d6907ae6ab7e504cbcfb3d10'), // m2a2_bradley
+  '/models/tanks/community/m2_bradley_ifv.glb': pin('0d3f779a17a549f7206281331731af4400db7eb1d6907ae6ab7e504cbcfb3d10'), // m3a2_bradley (270: the source turret moved there in the 269 swap)
   '/models/tanks/community/recovered/challenger1.glb': pin('aab22967e5d66d7c122fdb8d7fe83dcc9f43c506d1454af58e30749f91134d27'), // challenger1_mk2
   '/models/tanks/community/recovered/chieftain5.glb': pin('c5d9e375b065e25eb23803608208d201781f3bab5c78b0349f42fd705eeb5f7c'), // chieftain3
   '/models/tanks/community/recovered/leopard2_proto.glb': pin('749d03ae92863ddda0a388501f54c19f7d460a149ab81e230f3e1602e5148fb5'), // leopard2_proto

@@ -26,9 +26,11 @@ const PHOTO_REFERENCE_PACKETS=Object.freeze({
   'docs/references/photos/type90b-20261031.json':Object.freeze(['type90b']),
   'docs/references/photos/type10-tk-x-20261031.json':Object.freeze(['type10_tk_x']),
   'docs/references/photos/type10b-20261031.json':Object.freeze(['type10b']),
-  // 268 (owner 2026-11-02): the M3A2 Bradley, the shared Bradley hull under main's classic M2A2 turret (mirrored); the
-  // turret is kept as main built it, not measured to a model, so the id proves its packet
-  'docs/references/photos/m3a2-bradley-20261102.json':Object.freeze(['m3a2_bradley']),
+  // 270 (Main 2026-11-06, following the owner's 269 swap): the M2A2 Bradley, the shared Bradley hull under the classic
+  // turret rebuilt as an ODS turret in 269, which no registered model shows, so the id proves its packet. The M3A2 (the
+  // source turret since 269) is measured against that turret's model, the 42manako print (procedural-fidelity.html), and
+  // its 268 packet is retired.
+  'docs/references/photos/m2a2-bradley-20261106.json':Object.freeze(['m2a2_bradley']),
 });
 export const PHOTO_REFERENCE_IDS=Object.freeze(Object.values(PHOTO_REFERENCE_PACKETS).flat());
 /** The packet holding an id's photographic target; null for an id with none. */

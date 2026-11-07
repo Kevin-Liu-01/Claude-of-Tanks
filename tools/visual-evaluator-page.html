@@ -221,7 +221,9 @@ const CRITIC_REFERENCE_OVERRIDES = {
   // harness LOCAL_REFERENCE_OVERRIDES (bmp2 b584a7c, m2a2_bradley 7578848).
   bmp2: { source:'glb', glb:{ path:'/models/tanks/community/bmp2_bergman.glb',
     turretNode:'^Turret$', autoPivot:true, paintUntextured:true } },
-  m2a2_bradley: { source:'glb', glb:{ path:'/models/tanks/community/m2_bradley_ifv.glb',
+  // 270: the 42manako print is the source turret's model, which the M3A2 carries since the 269 swap; the M2A2's classic
+  // turret has no registered model (fidelity page, its photo packet)
+  m3a2_bradley: { source:'glb', glb:{ path:'/models/tanks/community/m2_bradley_ifv.glb',
     turretNode:'^turret_lod$', autoPivot:true } },
   // AFV lane (2026-08-06): SPz Puma oracle row mirroring the fidelity
   // harness (42manako CC-BY-4.0; playable stays procedural).
