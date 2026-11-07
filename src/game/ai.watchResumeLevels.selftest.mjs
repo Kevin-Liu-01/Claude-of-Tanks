@@ -1,21 +1,23 @@
 // 2026-11-02 audit M7 (round 6 V4, split off from ai.watchResume.selftest): the Watch hand-back's checks that repeat a
-// check of ai.watchResume's at another length, height or branch, in the MANUAL bots suite (tools/selftest-tiers.mjs).
-// ai.watchResume read 7.8-10 s of user CPU in the default tier (round three's file 5.9 s); this file reads 3.4-3.5 s of
-// user CPU at load 52-79 (the import about 1.5 s of it) and runs when the owner names the suite. Every mutant of the
-// round's matrix fails one of the two receipts, and every check here but the setups fails on one of them (round 6 bots
-// NOTES, fix-up r1). The sections keep ai.watchResume's numbers; their history is there.
+// check of ai.watchResume's at another length, height or branch, and the one rule with no case there, in the MANUAL bots
+// suite (tools/selftest-tiers.mjs). ai.watchResume read 7.8-10 s of user CPU in the default tier (round three's file
+// 5.9 s); this file reads 3.9-4.2 s of user CPU at load 46-70 (the import 1.5-1.7 s of it) and runs when the owner names
+// the suite. Every mutant of the round's matrix (40) fails one of the two receipts, two of them this file alone (the
+// obstacle list's branch, the walk's last point under a deck), and every check here but the setups fails on one of them
+// (round 6 bots NOTES, fix-up r2). The sections keep ai.watchResume's numbers; their history is there.
 // [7] (round 2; round 3, A2) a level route held through a park on its way: here the 30 s park off the way (its deadline
 // not yet up) and the 0.1 s, 0.5 s and 2 s coasting toggles; the default keeps the 200 s parks (on and off the way, the
 // one on it coasting from route speed) and the revive, and [8]'s toggles of a search leg.
 // [11] (round 4, F5) a stretch is the hull's way only where it can drive to it: here the drop off the causeway's crest
 // over the gun's 8 m band and a toggle on the crest; the default keeps the drop under the band (the round-four review's).
 // [12] (round 5, U5 and its fix-up r1; round 6, V3) the elevation dwell's record rule (hullOnParkLevel): here off and onto
-// a 2.2 m rock, the 1 m box read from the last obstacle list (a fixture's branch: every solo bot has the match's query)
-// and the hull in the air; the default keeps a case of each part of the rule (round 6 V4 fix-up r1).
+// a 2.2 m rock, the 1 m box read from the last obstacle list (a fixture's branch: every solo bot has the match's query),
+// off a tiered rock, up a formation's caps, and the walk's last point under a deck (fix-up r2: its only case); the
+// default keeps a case of each other part of the rule (round 6 V4, fix-ups r1 and r2).
 import { SIM_DT } from '../sim/movement.ts';
 import {
-  beside, coasted, crestHandBack, crestLabel, dwellHandBack, dwellLabel, kept, levelRouteHandBack, levelRouteLabel, planOf,
-  restarted, setupOk, where,
+  beside, coasted, column, compoundRecord, crestHandBack, crestLabel, dwellHandBack, dwellLabel, kept, levelRouteHandBack,
+  levelRouteLabel, restarted, setupOk, where,
 } from './ai.watchResume.test-support.mjs';
 
 let failures = 0;
@@ -59,8 +61,9 @@ console.log('[11] a level route ends with no verdict when the watcher drives its
 }
 
 console.log('[12] the elevation lock\'s dwell after a park onto, off or between records: the record rule (the rest)');
-// ai.watchResume [12]'s history and its record cases (a case of each part of the rule); here the same parts at another
-// height or branch. On f60d0aa200 each restart below kept 2.9 s of dwell and the lock decided 3.15 s after Leave.
+// ai.watchResume [12]'s history and its record cases (a case of each part of the rule but one); here the same parts at
+// another height, direction or branch, and that one (the walk's last point under a deck). On f60d0aa200 each restart below
+// kept 2.9 s of dwell and the lock decided 3.15 s after Leave.
 {
   const label = dwellLabel;
   // a 2.2 m rock's top and the ground beside it, either way (ai.watchResume's 1 m box, off and onto)
@@ -79,13 +82,35 @@ console.log('[12] the elevation lock\'s dwell after a park onto, off or between 
   ok(setupOk(ontoBoxList, 0, 1), `setup: as the default receipt's 1 m box, with no obstacle query (${where(ontoBoxList)})`);
   ok(restarted(ontoBoxList),
     `a 0.5 s park that left the hull on a 1 m box, read from the last obstacle list: the dwell restarts (${label(ontoBoxList)})`);
-  // fix-up r1 (the completeness review's risk): a hull riding over the ground with no record under it is on that ground:
-  // endFloor reads the floor under it as the ground (no record within its step at its root or its contact rect's edges),
-  // and the walk between two ends on the ground reads no record here either
-  const aloft = await dwellHandBack((at) => [at[0], at[2]], null, null, { onY: null, awayY: 1.5 });
-  ok(Math.abs(aloft.handedBackAt[1] - 1.5) < 0.05 && planOf(aloft) < 12 && aloft.before.elevationLockT >= 2.5,
-    `setup: the watcher leaves the hull in the air 1.5 m over the ground it was taken on (${where(aloft)})`);
-  ok(kept(aloft), `a 0.5 s park that left the hull in the air over the same ground: the dwell holds (${label(aloft)})`);
+  // fix-up r2 (the completeness review r2): ai.watchResume's tiered rock the other way, taken on its 1.3 m top (the tiers
+  // nested columns from the ground, 0.7 m and 1.3 m), left on the ground beside it
+  const tiers = compoundRecord([column(-10, 18, 10, 38, 0.7), column(-7, 21, 7, 35, 1.3)], 0, 1.3);
+  const offTiers = await dwellHandBack((at) => [-13, at[2]], null, tiers, { onY: 1.3 });
+  ok(setupOk(offTiers, 1.3, 0), `setup: the floor bot dwells on a two-tier rock's 1.3 m top; the watcher leaves it on the ground beside the rock (${where(offTiers)})`);
+  ok(restarted(offTiers),
+    `a 0.5 s park that left the hull on the ground below the tiered rock it was taken on: the dwell restarts (${label(offTiers)})`);
+  // fix-up r2 (the completeness review r2): a formation's blocks, each one part under its own drawn top (rockCollision.ts
+  // applyFormationCollision), here two caps rising 0.4 per metre from z 26; ai.watchResume's roof is the drawn compound
+  // part's default case
+  const capTop = [-40, 26, 0, -0.4, 0];
+  const caps = compoundRecord([column(-40, 10, -25, 26, 3, -0.5, capTop.slice()), column(-25, 10, -10, 26, 3, -0.5, capTop.slice())],
+    -0.5, 3);
+  const upCaps = await dwellHandBack((at) => [at[0], 22], [-16, 31], caps, { onY: null, awayY: 1.6 });
+  ok(setupOk(upCaps, 0, 1.6), `setup: the floor bot dwells on the ground; the watcher leaves it 1.6 m up a formation's two drawn caps (${where(upCaps)})`);
+  ok(kept(upCaps), `a 0.5 s park that left the hull up a formation's caps it drives down and back up: the dwell holds (${label(upCaps)})`);
+  // fix-up r2 (the correctness review r2): the walk's last point reads the ground of the spot it arrives at, the hull's
+  // own height where it stood under a deck the field publishes (recordWalkReaches: b.ground, as hullReaches reads an end
+  // under a deck), not the deck's top over it. Taken on the ground under a 4.5 m deck, 1 m inside its south end (the line
+  // runs out through the end; hullReaches reads every point under a deck before the last as its top, so only a spot
+  // within one 1.5 m point of the end is read stood put), left on a 0.5 m step outside it
+  const DECK = Object.freeze([Object.freeze({ x: -22.7, z: 42.2, ux: 0, uz: 1, halfLength: 10, halfWidth: 6, deckY: 4.5, approachM: 0 })]);
+  const underDeckEnd = await dwellHandBack((at) => [at[0], 22], [-16, 31], beside(0.5, -0.5), { onY: null, awayY: 0.5, decks: DECK });
+  const [takenX, , takenZ] = underDeckEnd.parkedAt;
+  ok(setupOk(underDeckEnd, 0, 0.5) && takenZ > DECK[0].z - DECK[0].halfLength && takenZ < DECK[0].z - DECK[0].halfLength + 1.5
+    && Math.abs(takenX - DECK[0].x) < DECK[0].halfWidth,
+    `setup: the floor bot dwells on the ground under a deck's end; the watcher leaves it on a 0.5 m step outside the deck (${where(underDeckEnd)})`);
+  ok(kept(underDeckEnd),
+    `a 0.5 s park that left the hull on a 0.5 m step beside the deck it was taken under: the dwell holds (${label(underDeckEnd)})`);
 }
 
 if (failures) { console.error(`ai.watchResumeLevels.selftest: ${failures} failure(s)`); process.exit(1); }

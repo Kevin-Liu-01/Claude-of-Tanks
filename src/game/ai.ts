@@ -7358,10 +7358,14 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
   /**
    * The hull drives from one end's floor to the other's, records included (hullOnParkLevel; each end's point and floor:
    * endFloor): from a's floor, through the line to b's point read RESUME_STEP_M apart (as hullReaches reads it), it stands
-   * on the floor the movement carries it onto at each point from the last (recordFloorAt), and arrives on b's floor. A top
-   * it cannot get onto is passed by on the ground under it (the line beside a building or a boulder is not the hull's only
-   * way round it), so the walk misses b's floor only where that floor is a top it cannot get onto from the ground about it,
-   * or from the records it drives over to it. The last point's ground is b's own. Allocation-free.
+   * on the highest floor the movement carries it onto at each point from the last (recordFloorAt), and arrives on b's
+   * floor. A top it cannot get onto is passed by on the ground under it (the line beside a building or a boulder is not the
+   * hull's only way round it), and a top it can get onto is taken. So the walk misses b's floor where that floor is a top it
+   * cannot get onto from the ground about it, or from the records it drives over to it, and also where b stands under a
+   * top the walk climbs onto along the line (the ground under an overpass deck it reaches up its ramp): a false restart of
+   * the dwell (the lock decides up to ELEVATION_LOCK_S later, never earlier). Two ends on their ground are decided before
+   * the walk (hullOnParkLevel); an end on a record's top beside such a top is decided by the walk, as its points fall. The
+   * last point's ground is b's own (a hull under a deck the field publishes stands at its own height). Allocation-free.
    */
   function recordWalkReaches(
     solids: readonly AiObstacle[], a: { x: number; z: number; y: number },

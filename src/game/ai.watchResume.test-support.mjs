@@ -1,17 +1,18 @@
 // ai.watchResume.test-support.mjs: (2026-11-02 audit M7; round 6 V4) the Watch hand-back fixtures that
 // ai.watchResume.selftest (default tier) and ai.watchResumeLevels.selftest (MANUAL bots) share: a bot's hull, Watch
 // mode's own Take and Leave around a stepped park, ai.levels' deck scene, a level route's hand-back on it ([7]), the
-// causeway and a hand-back on its crest ([11]) and the elevation lock's dwell over a hand-back ([12]). Importing it
-// registers the fleet and finalizes the combat anatomy of the two specs the receipts drive, as the authority does
-// (vehicles/authorityFleet.ts; round 6 V4: the player's fleet factory cost 0.3-1.3 s more of each receipt's user CPU and
-// left both specs without their anatomy, so the contact rectangle the movement and hullOnParkLevel read was the
-// published dims', not a battle hull's). Not a receipt itself (no .selftest suffix).
+// causeway and a hand-back on its crest ([11]), the elevation lock's dwell over a hand-back and the compound records it
+// reads ([12]; fix-up r2: a tiered stone's, a formation's and a building's parts, and a deck the field publishes).
+// Importing it registers the fleet and finalizes the combat anatomy of the two specs the receipts drive, as the
+// authority does (vehicles/authorityFleet.ts; round 6 V4: the player's fleet factory cost 0.3-1.3 s more of each
+// receipt's user CPU and left both specs without their anatomy, so the contact rectangle the movement and
+// hullOnParkLevel read was the published dims', not a battle hull's). Not a receipt itself (no .selftest suffix).
 import { Vector3 } from 'three';
 import { ensureAuthorityFleet } from '../vehicles/authorityFleet.ts';
 import { getSpec } from '../vehicles/specs.ts';
 import { createTankState, resetTankVerticalState, updateTank, SIM_DT } from '../sim/movement.ts';
 import { createHullSupportPose, createStructureSupportField, hullSupportPose } from '../sim/structureSupport.ts';
-import { createObstacleGrid } from '../world/collision.ts';
+import { createObstacleGrid, setCompoundShape } from '../world/collision.ts';
 import { createAI, mulberry32 } from './ai.ts';
 import { leaveWatchSeat, openWatchSeats, prepareWatchSeat, takeWatchSeat } from './watchSeat.ts';
 
@@ -62,8 +63,10 @@ let deckNavigation = null;
  * and the bot reads them as its obstacles, as the match gives both the world's records (state.ts, botConstruction.ts):
  * the list, and (round 6 V3) the match's obstacle query over them (world/collision.ts createObstacleGrid, as
  * headlessCollisionWorld builds it; the solo battle's obstacleQuery), unless `query` is false (a fixture without one).
+ * `decks` (fix-up r2): bridge decks the field publishes (bridgeDecks: the bot's terrain safety reads each one's top over
+ * its rectangle, and its sides as walls); the movement and the planner's grid read the field's heights alone.
  */
-export async function deckScene(records = null, { query = true } = {}) {
+export async function deckScene(records = null, { query = true, decks = null } = {}) {
   const DECK_Y = 25, CLIFF_Z = 40;
   const cliff = (z) => Math.max(0, Math.min(DECK_Y, (z - (CLIFF_Z - 2)) / 4 * DECK_Y));
   const getHeightAt = (x, z) => {
@@ -78,7 +81,8 @@ export async function deckScene(records = null, { query = true } = {}) {
     const nx = -dx / (2 * e), nz = -dz / (2 * e), length = Math.hypot(nx, 1, nz);
     return { x: nx / length, y: 1 / length, z: nz / length };
   };
-  const deckField = { getHeightAt, getNormalAt, getGroundType: () => 'firm' };
+  const plainField = { getHeightAt, getNormalAt, getGroundType: () => 'firm' };
+  const deckField = decks ? { ...plainField, bridgeDecks: decks } : plainField;
   const raycast = (origin, dir, maxDist) => {
     for (let d = 1; d < maxDist; d += 1) {
       if (origin.y + dir.y * d < getHeightAt(origin.x + dir.x * d, origin.z + dir.z * d)) return { dist: d };
@@ -91,7 +95,7 @@ export async function deckScene(records = null, { query = true } = {}) {
     return t;
   };
   const { createBotNavigationGrid, planBotRoute } = await import('../sim/botRoutePlanner.ts');
-  deckNavigation ??= createBotNavigationGrid({ heightField: deckField });
+  deckNavigation ??= createBotNavigationGrid({ heightField: plainField });
   const navigation = deckNavigation;
   const routeRng = mulberry32(431);
   const floor = place('floor', 'alpha', 0, 30, 0);
@@ -250,11 +254,12 @@ export const crestLabel = (r) => `verdicts ${r.before.unbearableVerdicts} -> ${r
  * route yet): a 0.5 s Take and Leave, then a whole dwell and a margin of the bot's own ticks. `away`: where the watcher
  * leaves the hull ([x, z], or a function of the spot it was taken on); `rock`: a record the structure support carries the
  * hull on (or a list of them), which it starts on (`onY`: the height it stands at, the first record's top by default) or
- * is left on (`awayY`: the height the watcher leaves it at); `query`: deckScene's.
+ * is left on (`awayY`: the height the watcher leaves it at); `query` and `decks`: deckScene's.
  */
 export async function dwellHandBack(away, from = null, rock = null,
-  { onY = rock && !Array.isArray(rock) ? rock.max[1] : null, awayY = null, query = true } = {}) {
-  const { ctl, floor, run, moveTo, hull, clock } = await deckScene(rock ? (Array.isArray(rock) ? rock : [rock]) : null, { query });
+  { onY = rock && !Array.isArray(rock) ? rock.max[1] : null, awayY = null, query = true, decks = null } = {}) {
+  const { ctl, floor, run, moveTo, hull, clock } = await deckScene(rock ? (Array.isArray(rock) ? rock : [rock]) : null,
+    { query, decks });
   if (from) moveTo(...from);
   if (onY !== null) resetTankVerticalState(floor.state, onY); // the floor bot stands on the rock's top
   run(3); // the floor bot sees the deck target its gun cannot reach: 3 s into the 6 s dwell, no route yet
@@ -289,3 +294,17 @@ export const restarted = (r) => r.back.elevationLockT === 0 && (r.decidedAfterS 
 export const kept = (r) => r.back.elevationLockT >= 2.5 && r.decidedAfterS !== null && r.decidedAfterS < 4;
 // a record south of where the bot dwells on the ground (clear of its hull), its top within 12 m of that spot
 export const beside = (top, bottom = 0) => Object.freeze({ min: [-40, bottom, 14], max: [-10, top, 26] });
+/**
+ * A compound record (fix-up r2, the completeness review r2), as the world builds its tiered stones, capped formations and
+ * buildings (rockCollision.ts applyRockCollisionProfile, applyFormationCollision; structureCollision's bands and decks):
+ * its parts, each a convex column over the rectangle (x0, z0)-(x1, z1) from `y0` to `y1` (`tp`: a drawn top), and its own
+ * vertical extent.
+ */
+export const column = (x0, z0, x1, z1, y1, y0 = 0, tp = undefined) => ({ kind: 'convex', cx: (x0 + x1) / 2, cz: (z0 + z1) / 2,
+  points: [x0, z0, x1, z0, x1, z1, x0, z1], y0, y1, ...(tp ? { tp } : {}) });
+export function compoundRecord(parts, y0, y1) {
+  const record = setCompoundShape({ min: [0, y0, 0], max: [0, y1, 0] }, parts);
+  record.min[1] = y0;
+  record.max[1] = y1;
+  return Object.freeze(record);
+}
