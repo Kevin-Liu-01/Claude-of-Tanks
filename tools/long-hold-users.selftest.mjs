@@ -31,6 +31,9 @@
 //   owner    the signal owner keeps 128 + n for every open-form tool however it ends: its last `process.exit(failed ? 1 :
 //            0)` after the release (screenshot, gunnery_gate, perfprobe, the audio smokes, studio-selftest,
 //            visual-evaluator: exit 1) or an uncaught queued open (exit 1); and tools/held-items.mjs's rules directly.
+// (round 5 U9) And:
+//   output   turret-parent-audit's output holds what ran: a stop before any id (while held, booting or re-queued) leaves
+//            the previous output as it was (it wrote [] over it);
 // No real browser, server or lock starts; the real Chrome runs stay the owner's (manualRecommended).
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
@@ -349,8 +352,11 @@ if (process.argv[2] === '--signal-child') {
   const check = async (name, run) => {
     try { await run(); } catch (error) { failed.push(`${name}: ${String(error?.message ?? error).split('\n').slice(0, 6).join('\n    ')}`); }
   };
+  // (round 5 U9) each turret child's output file holds a previous run's row first
+  const PREVIOUS = `${JSON.stringify([{ id: 'tpa_previous', stranded: [], abutting: [], dangling: [] }], null, 1)}`;
   const signalChild = (tool) => new Promise((done) => {
     const dir = scratch();
+    if (tool.startsWith('turret')) writeFileSync(join(dir, 'turret-parent.json'), PREVIOUS);
     const child = spawn(process.execPath, [SELF, '--signal-child', tool, dir], { cwd: ROOT, stdio: ['ignore', 'pipe', 'pipe'] });
     let output = '';
     child.stdout.setEncoding('utf8').on('data', (chunk) => { output += chunk; });
@@ -360,7 +366,7 @@ if (process.argv[2] === '--signal-child') {
   });
   try {
     // the signal children start first (each imports its tool); the mock-clock cases run meanwhile
-    const children = Object.fromEntries(['turret', 'turret-list', 'shoot', 'shoot-boot', 'studio', 'studio-boot',
+    const children = Object.fromEntries(['turret', 'turret-list', 'turret-boot', 'shoot', 'shoot-boot', 'studio', 'studio-boot',
       'turret-queued', 'shoot-queued', 'studio-queued', 'turret-requeue', 'shoot-requeue', 'studio-requeue', 'open-exit', 'open-uncaught']
       .map((tool) => [tool, signalChild(tool)]));
 
@@ -543,7 +549,8 @@ if (process.argv[2] === '--signal-child') {
 
     // ---- (E10) a signal during an item: the way out runs and the process exits 128 + n ------------------------------------
     const nothingRan = /SIGTERM: the process is stopping, so the capture hold ends before the lock was held: nothing ran; run it again/;
-    const expected = { turret: /--ids=tpa_one,tpa_two/, 'turret-list': /before the roster was read/, shoot: /--match 01_a,02_b/,
+    const expected = { turret: /--ids=tpa_one,tpa_two/, 'turret-list': /before the roster was read/,
+      'turret-boot': /2 id\(s\) left[^\n]*--ids=tpa_one,tpa_two \(nothing audited/, shoot: /--match 01_a,02_b/,
       'shoot-boot': /--match 01_a,02_b/, studio: /--only 1,2/, 'studio-boot': /--only 1,2/,
       'turret-queued': nothingRan, 'shoot-queued': nothingRan, 'studio-queued': nothingRan,
       'turret-requeue': /2 id\(s\) left[^\n]*--ids=tpa_one,tpa_two/, 'shoot-requeue': /2 scene\(s\) left[^\n]*--match 01_a,02_b/,
@@ -551,17 +558,22 @@ if (process.argv[2] === '--signal-child') {
       'open-exit': /\[open-exit\] FAILED: Protocol error/, 'open-uncaught': /SIGTERM: leaving the queue/ };
     for (const [tool, child] of Object.entries(children)) {
       await check(`${tool} SIGTERM`, async () => {
-        const { code, signal, output } = await child;
+        const { code, signal, output, dir } = await child;
         assert.equal(signal, null, `${tool}: ended by its own exit, not killed (${signal})\n${output.slice(-1500)}`);
         assert.match(output, expected[tool], `${tool}: the items left are named\n${output.slice(-1500)}`);
         assert.equal(code, 143, `${tool}: exits 128 + 15 after its way out, not ${code}\n${output.slice(-1500)}`);
+        // (round 5 U9) no turret child audits an id, so the previous run's output stays (a stop before any id wrote [])
+        if (tool.startsWith('turret')) {
+          assert.equal(readFileSync(join(dir, 'turret-parent.json'), 'utf8'), PREVIOUS, `${tool}: nothing audited, the previous output kept\n${output.slice(-1500)}`);
+        }
       });
     }
     assert.deepEqual(failed, [], `long hold users:\n  ${failed.join('\n  ')}`);
     console.log('long-hold-users.selftest: turret-parent-audit, marketing-shots/shoot and studio-example-videos yield at the cap inside '
       + 'their graces (180 s, 180 s, 300 s), are stopped past them or by a refused re-queue, keep what finished, name what is left '
       + '(exit 3) in a finishing run that runs only that, exit 128 + n on a signal (queued, held, re-queued, booting), and a --stills '
-      + 'finishing run keeps the listing; the signal owner keeps 128 + n over an open-form tool\'s own exit');
+      + 'finishing run keeps the listing; the signal owner keeps 128 + n over an open-form tool\'s own exit; a stop before any id '
+      + 'keeps turret-parent-audit\'s output');
   } finally {
     for (const dir of roots) rmSync(dir, { recursive: true, force: true });
   }
