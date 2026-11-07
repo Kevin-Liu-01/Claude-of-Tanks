@@ -343,9 +343,14 @@ const AFV_FAMILY_SPECS: Record<string, FleetTankSpec> = {
     // §5.306 base revert: the pre-§5.286 declared dims return with the
     // buildBradley base (silhouette* rows are that base's honest-measured
     // values; re-trued against the hybrid build at gate time).
+    // 2026-11-06 (270, Main: "The spec describes what we build"): silhouetteHeightM 3.05 -> 3.41, the drawn height as the
+    // gate's dims row measures it (procedural-fidelity.html heightM: body top 3.4098 to roof-fittings top 3.4177 at the
+    // gate's width fit). The 269 A3 turret and the owner's order of 2026-11-05 ("make the m3a3 special by having a munch of
+    // extra optics tech and a launcher aonn its other sdie and a bunch of extra boxes") raised it: the LRAS3-pattern
+    // sensor head over the gunner's hatch, the camera pods and the rear-corner posts stand over the 3.05 m roof line.
     dims: { hullLengthM: 6.55, overallLengthM: 6.55, widthM: 3.61, heightM: 3.73,
       silhouetteHullLengthM: 6.71, silhouetteOverallLengthM: 6.70,
-      silhouetteWidthM: 3.61, silhouetteHeightM: 3.05 },
+      silhouetteWidthM: 3.61, silhouetteHeightM: 3.41 },
     armor: ifvArmor({
       // 268: the shared hull measured from the owner's source (modern3.ts BRADLEY_HULL): hw 1.64 -> 1.70, trkTop 0.95 ->
       // 1.16, roofY 1.90 -> 2.06; the A3 ring on the M2's datum (modern3.ts BRADLEY_TURRET_RING, was
