@@ -282,4 +282,35 @@ for (const lock of ['none', 'refuse-all']) {
   }
 }
 
+// 5. (round 5 Q2) releaseLock withdraws an attempt still in flight: Chrome grants a lock a task after the request, so a
+//    caller that asked and then gave the cursor back (a battle start refused while it waited for a Garage return, a
+//    Settings panel opened) lost nothing it held, and the lock landed over it after the release. A later request
+//    supersedes the withdrawal, and one with no attempt in flight withdraws nothing.
+{
+  const page = createPage();
+  try {
+    page.input.requestLock();
+    page.input.releaseLock(); // before the browser's answer
+    await flush();
+    await flush();
+    assert.equal(page.document.pointerLockElement, null, 'a lock released while in flight does not stand when it lands');
+    assert.equal(page.input.isLocked(), false);
+    assert.equal(page.input.isCursorAim(), false, 'and the withdrawal is no refusal');
+    page.input.requestLock();
+    page.input.releaseLock();
+    page.input.requestLock(); // asked again before the first answer
+    await flush();
+    await flush();
+    assert.equal(page.input.isLocked(), true, 'a later request supersedes the withdrawal');
+    page.userEscape();
+    clock += CHROME_ESCAPE_REFUSAL_MS + 100;
+    page.input.releaseLock(); // nothing in flight: the last attempt was answered
+    page.input.requestLock();
+    await flush();
+    assert.equal(page.input.isLocked(), true, 'a release with nothing in flight withdraws nothing');
+  } finally {
+    page.restore();
+  }
+}
+
 console.log('inputPointerLockFocus selftest: OK');
