@@ -47,6 +47,8 @@ export interface BattleAtmospherePrepared {
    * The runtime or sky parts this prepare did not wait for (a re-ask after a failure, still in flight): resolves true
    * once one of them lands while this is still the latest prepare (its caller lights again, `{ relight: true }`), false
    * once they all failed or a later prepare or a reset came first. Null when it waited for everything it asked.
+   * (round 5 U8) A relight's landing leaves out a sky part installed by the time its light applied, though the part's
+   * chunk may still read 'loading'; any other prepare's keeps it (engine/battleAtmosphereLanding.selftest.mjs).
    */
   readonly landing: Promise<boolean> | null;
 }
