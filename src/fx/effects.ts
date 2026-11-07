@@ -93,6 +93,8 @@ import { createStructureStageLedger } from './structureStageLedger.ts';
 type Rng = () => number;
 type MutableVec3 = [number, number, number];
 type WireVec3 = readonly [number, number, number];
+/** A hull's last event point (effects' lastKnownPos): in the world, and on the hull when the hull resolved then. */
+interface KnownHullPoint { world: MutableVec3; local: MutableVec3; onHull: boolean }
 type ShellId = string | number;
 type TracerType = 'DRONE' | 'ATGM' | 'AP' | 'APCR' | 'HEAT' | 'HE' | 'HESH' | 'APFSDS';
 type DestructionCause = 'ammorack' | 'shot' | 'fire';
@@ -534,6 +536,8 @@ interface FxEventMap {
   'aps:intercept': ApsInterceptEvent;
   /** (round 2 of the 2026-11-02 audit, U31) a network round that left this view still in flight (battlePresentation). */
   'shell:unseen': { shellId: ShellId; shooterId?: ShellId | null };
+  /** a mode revived a hull (both drivers: state.ts's mode events, battlePresentation mode_respawn) */
+  'mode:respawn': { id?: unknown };
 }
 
 /**
@@ -2189,8 +2193,13 @@ function* createFxSteps(
   const columns: SmokeColumn[] = [];
   // Battle budget; only the Studio cinematic port may raise it (setColumnCap).
   let columnCap = MAX_COLUMNS;
-  /** last known world position per tank id (fed by bus events that carry pos) */
-  const lastKnownPos = new Map<string, MutableVec3>();
+  /**
+   * Each hull's last event point in this life, fed by the hit and death events that carry one: where it was in the
+   * world, and where it sits on the hull (the hull's frame by its position and yaw, as effectAttachments' state-yaw
+   * anchor reads it) when the hull resolved then (round 4 merge review r2; knownPosOf reads it, a mode respawn drops it).
+   */
+  const lastKnownPos = new Map<string, KnownHullPoint>();
+  const _knownAt: MutableVec3 = [0, 0, 0]; // knownPosOf's answer for a hull that resolves
   // world-dressing r1: shellId -> shell type, so a world impact knows whether
   // it was HE (radius-breaks destructible props) — fed by shell:fired,
   // cleared on shell:expired (+ a hard size guard against leaks).
@@ -4787,16 +4796,46 @@ function* createFxSteps(
     return !!auxiliaryVisible && auxiliaryVisible(entity as AuxiliaryVisualEntity) === false;
   }
 
-  /** A position for a hull's event: the last one an event carried, else where the hull stands now (recorded). */
+  function hullYawOf(entity: FxEntity): number {
+    const yaw = entity.state?.yaw;
+    return typeof yaw === 'number' && Number.isFinite(yaw) ? yaw : 0;
+  }
+
+  /** Record the point a hit or a death carried for its hull (lastKnownPos): one record a hull, rewritten in place. */
+  function noteKnownPos(id: string, p: WireVec3): void {
+    let known = lastKnownPos.get(id);
+    if (!known) {
+      known = { world: [0, 0, 0], local: [0, 0, 0], onHull: false };
+      lastKnownPos.set(id, known);
+    }
+    known.world[0] = p[0]; known.world[1] = p[1]; known.world[2] = p[2];
+    const ent = decalEntityFor(id);
+    const at = ent?.state?.pos ?? ent?.visual?.root?.position ?? null;
+    known.onHull = !!(ent && at);
+    if (!ent || !at) return;
+    const yaw = hullYawOf(ent), c = Math.cos(yaw), s = Math.sin(yaw), dx = p[0] - at.x, dz = p[2] - at.z;
+    known.local[0] = c * dx - s * dz; known.local[1] = p[1] - at.y; known.local[2] = s * dx + c * dz;
+  }
+
+  /**
+   * A position for a hull's event that names none (a module break, a fire, the burn scan): the hull's last event point
+   * on the hull where it stands now (the point itself while the hull has not moved, as for the track a hit throws in
+   * its step), else where the hull stands; the world point only for a hull that does not resolve. (round 4 merge
+   * review r2) A world point goes stale as the hull moves: a ram's or a crash's thrown track drew at the life's first
+   * such event's spot, at an older hit's, or at the last life's wreck. A resolving hull's answer is shared scratch.
+   */
   function knownPosOf(id: string): MutableVec3 | null {
     const known = lastKnownPos.get(id);
-    if (known) return known;
     const ent = decalEntityFor(id);
-    const pos = ent?.state?.pos ?? ent?.visual?.root?.position ?? null;
-    if (!pos) return null;
-    const p: MutableVec3 = [pos.x, pos.y, pos.z];
-    lastKnownPos.set(id, p);
-    return p;
+    const at = ent?.state?.pos ?? ent?.visual?.root?.position ?? null;
+    if (!ent || !at) return known ? known.world : null;
+    _knownAt[0] = at.x; _knownAt[1] = at.y; _knownAt[2] = at.z;
+    if (!known?.onHull) return _knownAt;
+    const yaw = hullYawOf(ent), c = Math.cos(yaw), s = Math.sin(yaw), l = known.local;
+    _knownAt[0] += c * l[0] + s * l[2];
+    _knownAt[1] += l[1];
+    _knownAt[2] += c * l[2] - s * l[0];
+    return _knownAt;
   }
 
   /** One live column per burning hull (refreshed if it burns on): from tank:fire, or the combat scan below. */
@@ -7095,7 +7134,7 @@ function* createFxSteps(
         if (e.kind !== 'ricochet') { tracers.strike(e.shellId, e.pos); partWire(e.shellId); endTrail(e.shellId, e.pos); }
         _v3.set(e.pos[0], e.pos[1], e.pos[2]);
         _v4.set(e.normal[0], e.normal[1], e.normal[2]);
-        if (e.targetId) lastKnownPos.set(e.targetId, [e.pos[0], e.pos[1], e.pos[2]]);
+        if (e.targetId) noteKnownPos(e.targetId, e.pos);
         // world-dressing r1: a tank hit still ends the shell — sweep the
         // unswept flight remainder against destructible props and drop the
         // bookkeeping (fences between shooter and target break too)
@@ -7270,7 +7309,7 @@ function* createFxSteps(
         // Transition from a moving live-tank emitter to one world-fixed wreck
         // emitter. Fire deaths otherwise left both columns alive for 40 s.
         retireSubjectColumn(e.id);
-        lastKnownPos.set(e.id, [e.pos[0], e.pos[1], e.pos[2]]);
+        noteKnownPos(e.id, e.pos);
         // wreck burnt-swap clears the battle scarring (same beat that hides
         // the profile decalMeshes in setDestroyed) — and guarantees the burn
         // material traverse never converts a decal mesh into an opaque quad
@@ -7286,7 +7325,7 @@ function* createFxSteps(
         // slump and road-wheel scatter live on the visual — tankFactory
         // setTrackState — this is the particle side of the same beat)
         if ((e.module === 'trackL' || e.module === 'trackR') && e.state === 'red') {
-          // (2026-11-02 audit F10) where the hull stands when no hit event named it first
+          // (2026-11-02 audit F10; round 4 merge review r2) at the hit that threw it, else on the hull where it stands now
           const p = knownPosOf(e.id);
           if (!p) return;
           // r5: the whole beat scaled ~3x and lifted above the grass line —
@@ -7330,7 +7369,7 @@ function* createFxSteps(
       });
       onFxEvent(bus, 'tank:fire', (e) => {
         if (e.burning) {
-          // (2026-11-02 audit F10) where the hull stands when no hit event named it first
+          // (2026-11-02 audit F10; round 4 merge review r2) at the hit that lit it, else on the hull where it stands now
           const p = knownPosOf(e.id);
           if (!p) return;
           // one column per tank id; refresh if already burning
@@ -7339,6 +7378,8 @@ function* createFxSteps(
           retireSubjectColumn(e.id);
         }
       });
+      // (round 4 merge review r2) a new life starts with no event point: its last life's hit or wreck spot is not on it
+      onFxEvent(bus, 'mode:respawn', (e) => { if (typeof e.id === 'string') lastKnownPos.delete(e.id); });
       // (round 2 of the 2026-11-02 audit, U31) a network round out of view, not ended: held (unseenRounds)
       onFxEvent(bus, 'shell:unseen', (e) => { if (e.shellId != null) unseenRounds.set(e.shellId, UNSEEN_ROUND_HOLD_S); });
     },

@@ -7,6 +7,10 @@
 //  - smoke columns: a fire raised with no hit before it smokes where its hull stands, a fire seen burning whose
 //    burning:false was lost goes out with the combat record, and a late joiner's already-burning hull smokes; the scan
 //    reads only hulls this viewer sees (a hidden one's frozen record re-lit a column for ever) and never evicts a column;
+//  - a hull's event point (round 4 merge review r2): a beat no hit names (a ram's or a crash's thrown track, a fire
+//    raised later) lands on the hull where it stands now, at its last hit's point on the hull (the hit's own spot when
+//    it came with the hit), never where the hull was first placed in this life, where it last died or where an older
+//    hit struck it; a mode respawn forgets the last life's point;
 //  - one HE round, one burst: its hull event and its expiry split across frames (a network peer's queue) drew two; a
 //    direct hull hit (no expiry ever follows it) bursts on the next update, and a late wall expiry still strikes its
 //    building;
@@ -151,6 +155,74 @@ function fakeVisual() {
   fx.resetAll();
 }
 
+// ---- (round 4 merge review r2) a hull's event point is on the hull where it stands now ----
+{
+  const hull = { id: 'foe', visual: { root: new THREE.Group() }, state: { pos: new THREE.Vector3(0, 0, 0), yaw: 0 },
+    combat: { destroyed: false, fire: { burning: false } } };
+  const entities = new Map([['foe', hull]]);
+  const { fx, bus, frames } = runtime(entities);
+  frames(5);
+  // the scorch a thrown track stamps (the pooled ground discs: renderOrder 2, written in world space): its centre
+  const discs = [];
+  fx.group.traverse((o) => { if (o.isMesh && o.renderOrder === 2 && o.matrixAutoUpdate === false) discs.push(o); });
+  const scorchOf = (emit) => {
+    const versions = discs.map((m) => m.geometry.attributes.position.version);
+    emit();
+    const disc = discs.find((m, i) => m.geometry.attributes.position.version !== versions[i]);
+    if (!disc) return null;
+    const a = disc.geometry.attributes.position.array, n = a.length / 3;
+    let x = 0, z = 0;
+    for (let i = 0; i < a.length; i += 3) { x += a[i]; z += a[i + 2]; }
+    return [x / n, z / n];
+  };
+  const thrown = (module, source) => () => bus.emit('module:state', { id: 'foe', module, state: 'red', source });
+  const at = (p, x, z, what) => assert.ok(p && Math.hypot(p[0] - x, p[1] - z) < 0.5,
+    `${what}: at (${x}, ${z}), not (${p?.map((v) => v.toFixed(1))})`);
+  // a mode respawn (restart E6a): it died at (60, 60), lives again at (0, 0) and throws a track by a ram
+  hull.state.pos.set(60, 0, 60);
+  bus.emit('tank:destroyed', { id: 'foe', cause: 'shot', pos: [60, 0, 60] });
+  hull.combat.destroyed = true;
+  frames(30);
+  hull.combat.destroyed = false;
+  hull.state.pos.set(0, 0, 0);
+  bus.emit('mode:respawn', { type: 'mode_respawn', id: 'foe', team: 'bravo' });
+  frames(30);
+  at(scorchOf(thrown('trackL', 'ram')), 0, 0, "a new life's ram-thrown track scorches where the hull stands, not at its wreck");
+  // one life, no hit: a crash throws one track at (10, 10), a ram the other at (90, 90)
+  hull.state.pos.set(10, 0, 10);
+  at(scorchOf(thrown('trackL', 'impact')), 10, 10, 'a crash-thrown track scorches where the hull stands');
+  frames(30);
+  hull.state.pos.set(90, 0, 90);
+  frames(30);
+  at(scorchOf(thrown('trackR', 'ram')), 90, 90, 'and a later ram-thrown one where it stands then, not at the first');
+  // a hit names its point: the track it throws in the same step scorches there; the hull drives on and turns, a ram
+  // throws the other track and a fire is raised later (the marketing deck fire): both on the hull where it stands now,
+  // at the hit's point on it (its height kept), not where the round struck it
+  hull.state.pos.set(20, 0, -20);
+  bus.emit('shell:hit', { targetId: 'foe', kind: 'pen', caliberMm: 120, pos: [21, 1.2, -20], normal: [1, 0, 0] });
+  at(scorchOf(thrown('trackL', 'hit')), 21, -20, "a hit's thrown track scorches at the hit");
+  frames(30);
+  hull.state.pos.set(50, 0, 30);
+  hull.state.yaw = Math.PI / 2;
+  frames(30);
+  // the hit sat 1 m to the hull's +X at 1.2 m; turned a quarter (yaw pi/2), that point is 1 m to the world's -Z
+  at(scorchOf(thrown('trackR', 'ram')), 50, 29,
+    'a later ram-thrown track scorches on the hull where it stands, not at the old hit (21, -20)');
+  bus.emit('tank:fire', { id: 'foe', burning: true });
+  frames(1);
+  const column = fx.getAttachmentDebug().subjects.find((s) => s.id === 'foe');
+  assert.ok(column && Math.hypot(column.pos[0] - 50, column.pos[2] - 29) < 0.5 && Math.abs(column.pos[1] - 1.2) < 0.3,
+    `a fire raised later is born at the hit's point on the hull where it stands (${column?.pos.map((v) => v.toFixed(1))})`);
+  bus.emit('tank:fire', { id: 'foe', burning: false });
+  // a hull that no longer resolves keeps its last point in this life, and loses it at a respawn (no beat at the wreck)
+  bus.emit('tank:destroyed', { id: 'foe', cause: 'shot', pos: [70, 0, -70] });
+  entities.delete('foe');
+  at(scorchOf(thrown('trackL', 'impact')), 70, -70, 'a hull that does not resolve: its last point in this life');
+  bus.emit('mode:respawn', { type: 'mode_respawn', id: 'foe', team: 'bravo' });
+  assert.equal(scorchOf(thrown('trackR', 'ram')), null, "after a respawn its last life's point draws nothing");
+  fx.resetAll();
+}
+
 // ---- one burst per HE round, whatever frames its events land on ----
 {
   // the building a wall expiry consults (its look, its strike's seam): counted, so a skipped strike shows
@@ -286,4 +358,4 @@ function fakeVisual() {
   for (const r of [once, twice, first, second, page]) r.fx.resetAll();
 }
 
-console.log('fxLifecycles.selftest: deferred beats fire under suppression and never outlive their visual\'s life; a building\'s stages are laid once; smoke columns follow the fire; one burst per HE round; the scene graph stays hidden under the suppression; a bus takes one runtime');
+console.log('fxLifecycles.selftest: deferred beats fire under suppression and never outlive their visual\'s life; a building\'s stages are laid once; smoke columns follow the fire; a hull\'s event point is on the hull where it stands now; one burst per HE round; the scene graph stays hidden under the suppression; a bus takes one runtime');
