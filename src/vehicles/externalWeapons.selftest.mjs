@@ -11,7 +11,8 @@ const ids=PRODUCTION_TANK_IDS.filter(id=>getSpec(id).gun.shells.some(w=>w.launch
 // Includes the independent M6's four-cell Stinger installation.
 // 268: + the BMPT Terminator's Ataka, the Tunguska-M's 9M311M, the Pantsir-S1's 57E6 and the PGZ-95's QW-2 (twin-aa
 // 16953d9526), and the M3A2's TOW (abrams-bradley b0b4d539fb): 29 -> 34. The gun-only Gepard 1A2 and PGZ-09 carry none.
-assert.equal(ids.length,34,'external-launcher fleet census must be reviewed when the roster changes');
+// 269: + the Redback's Spike LR2 and the twin TOW on the M113A1 FSV, MRV and AS4 (m113-kit-269): 34 -> 38.
+assert.equal(ids.length,38,'external-launcher fleet census must be reviewed when the roster changes');
 for(const id of PRODUCTION_TANK_IDS.filter(id=>!ids.includes(id))) {
   assert.equal(getSpec(id).armor.externalWeapons,undefined,
     `${id}: conventional vehicles do not gain launcher metadata or inherited donor hitboxes`);

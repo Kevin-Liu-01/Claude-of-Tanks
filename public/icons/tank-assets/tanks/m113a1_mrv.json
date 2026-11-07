@@ -57,6 +57,161 @@
   },
   "armor": {
     "schemaVersion": 3,
+    "externalWeapons": [
+      {
+        "module": "missileRack",
+        "turretLocal": true,
+        "gunFollow": false,
+        "min": [-1.14,0.11,-0.87],
+        "max": [-0.86,0.61,0.3],
+        "physicalMm": 10,
+        "surfaceFingerprint": "f818fbed"
+      },
+      {
+        "module": "missileRack",
+        "turretLocal": true,
+        "gunFollow": false,
+        "min": [-1.12,0.13,-0.915],
+        "max": [-0.88,0.59,-0.865],
+        "physicalMm": 10,
+        "surfaceFingerprint": "d62c3ba1"
+      },
+      {
+        "module": "missileRack",
+        "turretLocal": true,
+        "gunFollow": false,
+        "min": [-0.87,0.3,-0.685],
+        "max": [-0.61,0.42,-0.525],
+        "physicalMm": 10,
+        "surfaceFingerprint": "1c6631f3"
+      },
+      {
+        "module": "missileRack",
+        "turretLocal": true,
+        "gunFollow": false,
+        "min": [-0.87,0.3,-0.065],
+        "max": [-0.61,0.42,0.095],
+        "physicalMm": 10,
+        "surfaceFingerprint": "052d9951"
+      },
+      {
+        "module": "missileRack",
+        "turretLocal": true,
+        "gunFollow": false,
+        "min": [-1.07,0.61,-0.07],
+        "max": [-0.89,0.75,0.23],
+        "physicalMm": 10,
+        "surfaceFingerprint": "ac25aa7d"
+      },
+      {
+        "module": "missileRack",
+        "turretLocal": true,
+        "gunFollow": false,
+        "min": [-1.105,0.135,0.295],
+        "max": [-0.895,0.345,0.345],
+        "physicalMm": 10,
+        "surfaceFingerprint": "5782c491"
+      },
+      {
+        "module": "missileRack",
+        "turretLocal": true,
+        "gunFollow": false,
+        "min": [-1.105,0.375,0.295],
+        "max": [-0.895,0.585,0.345],
+        "physicalMm": 10,
+        "surfaceFingerprint": "e8322a31"
+      },
+      {
+        "module": "missileRack",
+        "turretLocal": true,
+        "gunFollow": false,
+        "min": [-1.045,0.7056,0.229],
+        "max": [-0.915,0.72,0.241],
+        "physicalMm": 10,
+        "surfaceFingerprint": "051871b5"
+      },
+      {
+        "module": "missileRack",
+        "turretLocal": true,
+        "gunFollow": false,
+        "min": [-1.045,0.64,0.229],
+        "max": [-0.915,0.6544,0.241],
+        "physicalMm": 10,
+        "surfaceFingerprint": "1832912d"
+      },
+      {
+        "module": "missileRack",
+        "turretLocal": true,
+        "gunFollow": false,
+        "min": [-0.9294,0.6544,0.229],
+        "max": [-0.915,0.7056,0.241],
+        "physicalMm": 10,
+        "surfaceFingerprint": "53edeabb"
+      },
+      {
+        "module": "missileRack",
+        "turretLocal": true,
+        "gunFollow": false,
+        "min": [-1.045,0.6544,0.229],
+        "max": [-1.0306,0.7056,0.241],
+        "physicalMm": 10,
+        "surfaceFingerprint": "376de833"
+      },
+      {
+        "module": "missileRack",
+        "turretLocal": true,
+        "gunFollow": false,
+        "min": [-1.15,0.1,-0.6225],
+        "max": [-0.85,0.62,-0.5875],
+        "physicalMm": 10,
+        "surfaceFingerprint": "99a283d5"
+      },
+      {
+        "module": "missileRack",
+        "turretLocal": true,
+        "gunFollow": false,
+        "min": [-1.15,0.1,-0.0025],
+        "max": [-0.85,0.62,0.0325],
+        "physicalMm": 10,
+        "surfaceFingerprint": "00e7d831"
+      },
+      {
+        "module": "missileRack",
+        "turretLocal": true,
+        "gunFollow": false,
+        "min": [-1.085,0.155,0.34],
+        "max": [-0.915,0.325,0.352],
+        "physicalMm": 10,
+        "surfaceFingerprint": "036955ad"
+      },
+      {
+        "module": "missileRack",
+        "turretLocal": true,
+        "gunFollow": false,
+        "min": [-1.085,0.395,0.34],
+        "max": [-0.915,0.565,0.352],
+        "physicalMm": 10,
+        "surfaceFingerprint": "2f760dbd"
+      },
+      {
+        "module": "missileRack",
+        "turretLocal": true,
+        "gunFollow": false,
+        "min": [-1.13,0.35,0.3],
+        "max": [-0.87,0.37,0.312],
+        "physicalMm": 10,
+        "surfaceFingerprint": "fa6200cb"
+      },
+      {
+        "module": "missileRack",
+        "turretLocal": true,
+        "gunFollow": false,
+        "min": [-1.126,0.6,-0.77],
+        "max": [-1.094,0.632,0],
+        "physicalMm": 10,
+        "surfaceFingerprint": "0153af9f"
+      }
+    ],
     "turretPivot": [0,1.86,0.4815],
     "plates": [
       {
@@ -634,16 +789,16 @@
       }
     ]
   },
-  "geometryHash": "f26f5ed2",
-  "metadataHash": "744bfe98",
+  "geometryHash": "3c999397",
+  "metadataHash": "b2c62a32",
   "presentationAnchor": {
-    "xM": 0,
-    "zM": -0.0178
+    "xM": -0.0098,
+    "zM": -0.049
   },
-  "presentationHash": "9d78220a",
+  "presentationHash": "d4aa6b61",
   "presentationProjection": {
     "centerYM": 2.0649,
-    "topHalfM": 2.8294,
+    "topHalfM": 3.03,
     "sideHalfM": 2.2095
   },
   "appearance": {
@@ -661,7 +816,8 @@
       "armorPaint": 11,
       "gunmetal": 8,
       "opticGlass": 2,
-      "unclassified": 5,
+      "wood": 1,
+      "unclassified": 13,
       "gearShadow": 2,
       "fittingPaint": 3,
       "machineGun": 3
@@ -691,15 +847,15 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 25496,
-      "sha256": "966a4941a4057b8981c6eca060590f01002d9027a3b37dfa21acc7c1db81a950",
+      "bytes": 25948,
+      "sha256": "f0def13699105da709c13ed71c6443cfb4f9236238392c8bbf31ff3c1c115008",
       "thumbnail": {
         "file": "thumbs/m113a1_mrv_angle.webp",
         "width": 256,
         "height": 256,
         "mime": "image/webp",
-        "bytes": 10548,
-        "sha256": "1c0004e428eaae074908914d8eec4af76fb4ba26f3e36a66db22355586c2285e"
+        "bytes": 10640,
+        "sha256": "672c895bfe29ea0a0a08ee8dbc1c5aa6c492406431a759bbd8373929a365e31e"
       }
     },
     "top": {
@@ -707,56 +863,56 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 14692,
-      "sha256": "677d9844e6ac740e8ccf8c68d5675574941dfb13e967489d00ab4cd5d8818114"
+      "bytes": 16688,
+      "sha256": "045747278be999bc1bc1a1f774f302e127410263b6eb86c2542a6a62e8318241"
     },
     "side": {
       "file": "m113a1_mrv_side.webp",
       "width": 512,
       "height": 256,
       "mime": "image/webp",
-      "bytes": 11994,
-      "sha256": "97e1bf826c6a147cadfcb6dbc12ce4e20f31e0b0f5b6dc5f2ddf52791eb64fc3"
+      "bytes": 13170,
+      "sha256": "0d4777904f3c17994251cab5b1bf99c7c4f69bf531133eacd74026997e611342"
     },
     "topSilhouette": {
       "file": "m113a1_mrv_top_silhouette.png",
       "width": 128,
       "height": 128,
       "mime": "image/png",
-      "bytes": 1230,
-      "sha256": "f99491bf094587003ad9935ed3f0cae5a675eb6063d19511a80fa5300995679e"
+      "bytes": 1532,
+      "sha256": "13181933a9282334229adac23dc7849c636d5d5798a01161e1a6ccb47e1d816f"
     },
     "sideSilhouette": {
       "file": "m113a1_mrv_side_silhouette.png",
       "width": 256,
       "height": 128,
       "mime": "image/png",
-      "bytes": 4734,
-      "sha256": "dfbcae535f60143bfe2fc6240dc485acd29c624930bf5ccbee52d155ec114d92"
+      "bytes": 5121,
+      "sha256": "fab8aa570cc55d79acf5f9eda0205b7f43757bb46f303d44918ac4f7f10ccef1"
     },
     "armorSide": {
       "file": "m113a1_mrv_armor_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 26816,
-      "sha256": "56030caa2c54d8ad3c2b4f2110feb8d82c5d045af1bcd46974c449116530dcb9"
+      "bytes": 27890,
+      "sha256": "943ddce155ae975077fdee690926ed411d15b6a5e6090c125f8e67ca4fc0e576"
     },
     "modulesSide": {
       "file": "m113a1_mrv_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 29040,
-      "sha256": "806a3634765c233355862b21bbb38f1e37068bf5ae52cdb11a81c18887b46bae"
+      "bytes": 29380,
+      "sha256": "2058f1d8a14246d00cd6332e03294619f28cf8abf04c7dd930c0262bf862668e"
     },
     "crewSide": {
       "file": "m113a1_mrv_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 26882,
-      "sha256": "3d4680e911924e3cfee81618f022d0227860ad9d343dbb0e69c6fa765abe4880"
+      "bytes": 28366,
+      "sha256": "44dd549f833e153ce95e5e58e0982dda17c7419502151121423ce1d21d7c6d77"
     },
     "markings": {
       "file": "m113a1_mrv_markings.png",
@@ -769,8 +925,8 @@
     "technicalLabels": {
       "file": "m113a1_mrv_technical.json",
       "mime": "application/json",
-      "bytes": 4012,
-      "sha256": "fe6950b47976666a377a055ad8f0b19469d4f3ca8d1f6a021bc1355e61407b42"
+      "bytes": 4868,
+      "sha256": "3e8f6dac6983a85410c1a00a103cee985f4b6d5f2d145f2268be195323b95cee"
     }
   }
 }

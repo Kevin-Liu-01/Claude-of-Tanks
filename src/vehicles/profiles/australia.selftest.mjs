@@ -14,6 +14,9 @@ import { getSpec } from '../specs.ts';
 import { ensureInteriorFills } from '../interiorFills.ts';
 import { nodeForVehicle } from '../../techTree/trees.ts';
 import { displayTier } from '../../techTree/tiers.ts';
+import { buildM113HullSteps } from './m113.ts';
+import { M113_BASE, m113Datums } from '../m113Datums.ts';
+import { M741_COMMANDER_HATCH, M741_RING } from '../m741Datums.ts';
 
 const M113 = 'aus-m113-20261102.json', ABRAMS = 'aus-abrams-20261102.json';
 // muzzle: the gun at rest is the build's front (null where the hull's nose leads, as on the Redback)
@@ -87,5 +90,19 @@ for (const [id, row] of Object.entries(IDS)) {
       tank.dispose?.();
     }
   }
+}
+// the M163 VADS's carrier (the twin-aa lane builds its Vulcan turret over buildM113HullSteps(P, 'm741')): the M741's
+// turret race centred on the roof's rear half, inside the roof, the driver's hatch ahead of it and the commander's round
+// hatch behind it at the right rear (the owner's photo of 2026-11-04)
+{
+  const D = m113Datums('fsv'), R = M741_RING, H = M741_COMMANDER_HATCH;
+  assert.equal(typeof buildM113HullSteps, 'function', 'the M113 hull steps exported for the M741');
+  assert.deepEqual([D.wheelZs.length, D.length, R.roofY], [5, M113_BASE.length, M113_BASE.roofY], 'the M741 on the A1\'s hull and roof');
+  assert.ok(R.z < (D.glacisTopZ + D.sternZ) / 2, 'the race on the roof\'s rear half');
+  assert.ok(Math.abs(R.x) + R.diameter / 2 < M113_BASE.hw - 0.2, 'the race inside the roof\'s sides');
+  // (m113.ts's driver's hatch: 0.30 m behind the glacis' top, 0.31 m in radius)
+  assert.ok(D.glacisTopZ - 0.30 - 0.31 > R.z + R.diameter / 2, 'the driver\'s hatch ahead of the race');
+  assert.ok(H.x < 0 && H.z - H.r > D.sternZ && Math.hypot(H.x - R.x, H.z - R.z) > R.diameter / 2 + H.r + 0.2,
+    'the commander\'s hatch at the right rear, on the roof and clear of the race');
 }
 console.log(`australia.selftest: ${Object.keys(IDS).length} Australian ids at both qualities in their packets, tree and tiers`);
