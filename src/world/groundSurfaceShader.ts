@@ -251,7 +251,9 @@ export const GROUND_SURFACE_GLSL = /* glsl */`  // ground-269 (groundSurfaceShad
  * streets (yardW): Low and the phones' lower tiers draw its tones only. */
 export const GROUND_SURFACE_WORKS_GLSL = /* glsl */`  // ground-269 (groundSurfaceShader.ts): the works floor — a slag or cinder town floor over the lots, roads and hardstands
   // (ab7, Cinder Junction on the phone: the yard's coal-dust floor "near-black and featureless" beside the brick paths)
-  float wkF = uGsTown.x > 5.5 ? max(gWorksFloor, yardW * (1.0 - roadCore) * keepM) : 0.0;
+  // (c14, Ironworks' town pose: ash, rust and clinker laid half over a works street's setts read as tread plate) a works'
+  // paved street keeps its setts; its pads and its unpaved roads carry the floor
+  float wkF = uGsTown.x > 5.5 ? max(gWorksFloor * (1.0 - gPaveStreet), yardW * (1.0 - roadCore) * keepM) : 0.0;
   if (wkF > 0.003) {
     // (ab7, Ironworks: the slag lots, the works roads and the hardstands one black-grey tone from the chase camera to the
     // horizon — "dark asphalt with only track prints", flat on every view) ash blown into drifts, rust-stained ground,

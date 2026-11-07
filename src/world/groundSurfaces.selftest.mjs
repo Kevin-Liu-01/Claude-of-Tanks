@@ -136,8 +136,8 @@ assert.ok(!GROUND_SURFACE_GLSL.startsWith('\n') && !GROUND_SURFACE_GLSL.endsWith
 for (const text of ['uGsOpen.x < 2.5', 'step(1.5, uGsOpen.x)', 'uGsTown.x > 3.5 && uGsTown.x < 5.5', 'uGsTown.x < 4.5', 'kind > 2.5',
   'kind > 1.5', 'uLandTier > 0.5'])
   assert.ok(GROUND_SURFACE_GLSL.includes(text), `the chunk draws ${text}`);
-assert.ok(GROUND_SURFACE_WORKS_GLSL.includes('float wkF = uGsTown.x > 5.5 ? max(gWorksFloor, yardW * (1.0 - roadCore) * keepM) : 0.0;'),
-  'the works floor by its code, over a works and a rail yard');
+assert.ok(GROUND_SURFACE_WORKS_GLSL.includes('float wkF = uGsTown.x > 5.5 ? max(gWorksFloor * (1.0 - gPaveStreet), yardW * (1.0 - roadCore) * keepM) : 0.0;'),
+  'the works floor by its code, over a works (its paved streets keeping their setts) and a rail yard');
 for (const chunk of [GROUND_SURFACE_GLSL, GROUND_SURFACE_WORKS_GLSL]) {
   assert.ok(!chunk.includes('`') && !chunk.includes('${'), 'plain GLSL');
   assert.ok(!/texture2D|textureLod\(u(Alb|Nrm)/.test(chunk), 'no layer fetch: noise reads and hash cells only');
