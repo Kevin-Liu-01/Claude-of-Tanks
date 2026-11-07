@@ -147,7 +147,8 @@ const SITES = [
   // (round 5 U8) studio.ts's relight, once per prepare however many of its landings land
   ['src/game/studio.ts', ['if (relit || !owner.current() || transportHeld(busy())) return;',
     'void applyStudioLight(time, light, false, true).catch(() => undefined);',
-    'ctx.prepareStudioAtmosphere?.(time, light, owner, { relight, landed })'], []],
+    'ctx.prepareStudioAtmosphere?.(time, light, owner, { relight, landed })',
+    'await prepareAtmosphere(time, light, relight);'], []],
   // (round 3 A4) and every prepare includes the Studio's, one per sun-dial or slider move, and a Studio sky applied for the
   // Moon asks its land mask per move: the three memos, cleared on failure, were asked again by every move, offline too.
   // Each is a chunk now; the light model's import rejects and keeps no memo (lightModelCore.ts rides two worker graphs
@@ -294,23 +295,68 @@ const SOLE_LOADERS = [{
 const loaderUses = new Map(SOLE_LOADERS.map(({ name }) => [name, new Map()]));
 const blankStrings = (source) => source.replace(/'(?:\\[\s\S]|[^'\\])*'?|"(?:\\[\s\S]|[^"\\])*"?|`(?:\\[\s\S]|[^`\\])*`?/g,
   (part) => part.replace(/[^\n]/g, ' '));
+/** How many calls of `name` in `code` (comments and strings blanked: a plain, member or optional call, never a `function`
+ *  declaration) pass `least` or more arguments; a spread passes any number. */
+const callsWith = (code, name, least) => {
+  let calls = 0;
+  for (const match of code.matchAll(new RegExp(`(?<![\\w$])${name}\\s*(?:\\?\\.\\s*)?\\(`, 'g'))) {
+    if (/\bfunction\s*\*?\s*$/.test(code.slice(Math.max(0, match.index - 24), match.index))) continue;
+    const open = match.index + match[0].length - 1;
+    const inside = code.slice(open + 1, closeOf(code, open) - 1);
+    let depth = 0, args = inside.trim() ? 1 : 0;
+    for (const c of inside) {
+      if (c === '(' || c === '[' || c === '{') depth += 1;
+      else if (c === ')' || c === ']' || c === '}') depth -= 1;
+      else if (c === ',' && depth === 0) args += 1;
+    }
+    if (/,\s*$/.test(inside)) args -= 1; // a trailing comma
+    if (args >= least || /(?:^|,)\s*\.\.\./.test(inside)) calls += 1;
+  }
+  return calls;
+};
 // ---- (round 4 F2 review) the lifecycle-edge asks, held to their callers. `load({ backoff: false })` asks a failure again
 // whatever the backoff, a prepare's `{ entry: true }` asks the battle atmosphere's chunks and the map's air that way, and
-// a relight (`{ relight: true }`, studio.ts's applyStudioLight(..., true)) applies the battle light and the Studio's plan
-// again: each is for a caller that asks once per lifecycle edge (a battle's covered entry, a landing). A per-frame or
-// per-move caller that passed one would bring back round 3 A4's per-move ask storm (offline excepted), or a full relight
-// per move. So each spelling appears only in the files listed, as often as listed (code only: strings and comments
-// blanked), and the SITES rows above pin each call; a new edge caller is listed here with its reason
+// a relight (the `relight` option, studio.ts's pass-throughs of it, main.ts's port `how`) applies the battle light and
+// the Studio's plan again: each is for a caller that asks once per lifecycle edge (a battle's covered entry, a landing).
+// A per-frame or per-move caller that passed one would bring back round 3 A4's per-move ask storm (offline excepted), or
+// a full relight per move. So each spelling, or each call with that many arguments, appears only in the files listed, as
+// often as listed (code only: strings and comments blanked), and the SITES rows above pin each call; a new edge caller is
+// listed here with its reason
+const RELIGHT_OPTION = 'the relight option by name (valued or shorthand)';
 const EDGE_ASKS = [
   // the access's AT_ONCE, asked by an entry (battleAtmosphereAccess.ts: the runtime, both parts, the Moon's land mask)
   { spelling: /\bbackoff\s*:\s*false\b/g, allowed: new Map([['src/engine/battleAtmosphereAccess.ts', 1], ['src/world/mapAmbienceAccess.ts', 1]]) },
   // main.ts's three entries (the solo entry, the network warm, the capture's battle time), each for the atmosphere and the air
   { spelling: /\bentry\s*:\s*true\b/g, allowed: new Map([['src/main.ts', 6]]) },
-  // the Studio's relight, once per landing
-  { spelling: /\brelight\s*:\s*true\b/g, allowed: new Map([['src/main.ts', 1]]) },
+  // the Studio's relight, once per Studio apply (studio.ts prepareAtmosphere's `landed`), in every spelling that reaches
+  // the runtimes. (round 5 U8) Round 4 read it as two literals, so a three-argument prepareAtmosphere(time, light, true),
+  // a fourth argument that is not a literal, or the option passed by name all passed (the planted relights below).
+  // The option by name, valued or shorthand: main.ts's to the battle atmosphere, studio.ts's in the port's `how`
+  { label: RELIGHT_OPTION, spelling: /[{,]\s*relight\s*(?=[:,}])/g,
+    allowed: new Map([['src/main.ts', 1], ['src/game/studio.ts', 1]]) },
+  // studio.ts's pass-throughs, by arity whatever the argument: prepareAtmosphere's third (applyStudioLight's work passes
+  // its own on) and applyStudioLight's fourth (`landed`'s literal true, the one such call)
+  { call: 'prepareAtmosphere', least: 3, allowed: new Map([['src/game/studio.ts', 1]]) },
+  { call: 'applyStudioLight', least: 4, allowed: new Map([['src/game/studio.ts', 1]]) },
   { spelling: /\bapplyStudioLight\(\s*[^,()]+,\s*[^,()]+,\s*[^,()]+,\s*true\s*\)/g, allowed: new Map([['src/game/studio.ts', 1]]) },
+  // main.ts's port with its `how`, which prepareAtmosphere alone passes
+  { call: 'prepareStudioAtmosphere', least: 4, allowed: new Map([['src/game/studio.ts', 1]]) },
 ];
 const edgeUses = EDGE_ASKS.map(() => new Map());
+/** Each EDGE_ASKS rule's uses in one module's code (comments and strings blanked). */
+const edgeAskCounts = (code) => EDGE_ASKS.map(({ spelling, call, least }) => (call ? callsWith(code, call, least)
+  : code.match(spelling)?.length ?? 0));
+/** What breaks EDGE_ASKS, from each rule's uses per file. */
+const edgeAskOffenders = (usesByRule) => EDGE_ASKS.flatMap(({ label, spelling, call, least, allowed }, index) => {
+  const uses = usesByRule[index], offenders = [];
+  const what = call ? `calls ${call} with ${least} or more arguments` : `spells ${label ?? spelling.source}`;
+  for (const [file, count] of uses) {
+    const limit = allowed.get(file) ?? 0;
+    if (count !== limit) offenders.push(`${file} ${what} ${count} times (${limit} allowed)`);
+  }
+  for (const [file, count] of allowed) if (!uses.has(file)) offenders.push(`${file} ${what} 0 times (${count} expected)`);
+  return offenders;
+});
 const walk = (dir) => {
   for (const entry of readdirSync(dir, { withFileTypes: true })) {
     const path = join(dir, entry.name);
@@ -323,12 +369,8 @@ const walk = (dir) => {
         const uses = blankStrings(source).match(new RegExp(`\\b${name}\\b`, 'g'))?.length ?? 0;
         if (uses) loaderUses.get(name).set(file, uses);
       }
-      if (/\b(?:backoff|entry|relight)\b|applyStudioLight/.test(source)) {
-        const code = blankStrings(source);
-        EDGE_ASKS.forEach(({ spelling }, index) => {
-          const uses = code.match(spelling)?.length ?? 0;
-          if (uses) edgeUses[index].set(file, uses);
-        });
+      if (/\b(?:backoff|entry|relight|applyStudioLight|prepareAtmosphere|prepareStudioAtmosphere)\b/.test(source)) {
+        edgeAskCounts(blankStrings(source)).forEach((uses, index) => { if (uses) edgeUses[index].set(file, uses); });
       }
       const edges = [], sheets = [];
       for (const match of source.matchAll(/(?:import|export)\s+(?!type\b)(?:[^'";]*?\sfrom\s*)?['"](\.{1,2}\/[^'"]+)['"]/g)) {
@@ -432,14 +474,44 @@ for (const { name, chunk, definer, holder, held } of SOLE_LOADERS) {
   if (!own.test(bodyOf(read(definer), name))) loaderOffenders.push(`${definer}'s import of ${chunk} is not inside ${name}`);
   if (!read(holder).includes(held)) loaderOffenders.push(`${holder} lacks ${held}`);
 }
-EDGE_ASKS.forEach(({ spelling, allowed }, index) => {
-  const uses = edgeUses[index];
-  for (const [file, count] of uses) {
-    if (count !== (allowed.get(file) ?? 0)) loaderOffenders.push(`${file} spells ${spelling.source} ${count} times (${allowed.get(file) ?? 0} allowed)`);
-  }
-  for (const [file, count] of allowed) if (!uses.has(file)) loaderOffenders.push(`${file} spells ${spelling.source} 0 times (${count} expected)`);
-});
+loaderOffenders.push(...edgeAskOffenders(edgeUses));
 assert.deepEqual(loaderOffenders, [], `a raw lazy loader used outside its one chunk (hold it there; app/lazyChunk.ts), or a lifecycle-edge ask outside its listed callers (EDGE_ASKS):\n  ${loaderOffenders.join('\n  ')}`);
+
+// ---- (round 5 U8) the relight rules' own mutant: relights planted on the Studio's per-move path (studio.ts setLight,
+// a sun-dial or slider move), in each spelling the rules read, over this checkout's files (each plant in place of an
+// anchor its file holds once). The f60d0aa200 ratchet, round 4's two literal rules, passed all five; each must be named
+// here, and nothing else
+const PLANTS = [
+  ['src/game/studio.ts', '    if (!sameLight(next, studioLight)) await applyStudioLight(timeOfDay, next, false);\n', [
+    // by arity, a literal or not, and the port's `how` passed again
+    '    if (!sameLight(next, studioLight)) await applyStudioLight(timeOfDay, next, false, patch !== null);\n',
+    '    await prepareAtmosphere(timeOfDay, next, true);\n',
+    '    await ctx.prepareStudioAtmosphere?.(timeOfDay, next, session.token(), again);\n',
+  ].join('')],
+  // the option by name: valued (main.ts, beside its one relight) and shorthand (the access itself)
+  ['src/main.ts', '    restoreStudioAtmosphere: () => {\n',
+    "    restoreStudioAtmosphere: () => {\n"
+      + "      void battleAtmosphere.prepare(0, game.mapId, ['day'], { relight: studioLightLive !== null });\n"],
+  ['src/engine/battleAtmosphereAccess.ts', '    reset(): void { generation++; owner.current?.reset(); },\n',
+    "    reset(): void { generation++; owner.current?.reset(); },\n"
+      + "    again(relight: boolean) { return this.prepare(0, 'day', ['day'], { relight }); },\n"],
+];
+const plantedUses = edgeUses.map((uses) => new Map(uses));
+for (const [file, anchor, planted] of PLANTS) {
+  const source = read(file);
+  assert.equal(source.split(anchor).length, 2, `${file} holds the plant's anchor once: ${anchor.trim()}`);
+  edgeAskCounts(blankStrings(source.replace(anchor, planted))).forEach((uses, index) => {
+    if (uses) plantedUses[index].set(file, uses); else plantedUses[index].delete(file);
+  });
+}
+assert.deepEqual(edgeAskOffenders(plantedUses).sort(), [
+  `src/engine/battleAtmosphereAccess.ts spells ${RELIGHT_OPTION} 1 times (0 allowed)`,
+  'src/game/studio.ts calls applyStudioLight with 4 or more arguments 2 times (1 allowed)',
+  'src/game/studio.ts calls prepareAtmosphere with 3 or more arguments 2 times (1 allowed)',
+  'src/game/studio.ts calls prepareStudioAtmosphere with 4 or more arguments 2 times (1 allowed)',
+  `src/main.ts spells ${RELIGHT_OPTION} 2 times (1 allowed)`,
+], 'EDGE_ASKS names each relight planted on the Studio\'s per-move path, and nothing else');
+
 
 assert.deepEqual(multipart, [], `a lazy chunk of several parts settles them with importAll (app/lazyChunk.ts), so a module's failure never hides its stylesheet's:\n  ${multipart.join('\n  ')}`);
 const fresh = [...found].filter((site) => !KNOWN.has(site));
@@ -471,4 +543,4 @@ for (const page of pages) {
   }
 }
 assert.deepEqual(shared, [], `a lazy stylesheet with two owners in one document (Vite's preload skips a sheet that failed at one, so the other runs unstyled; give it one owner, as ui/heroCardChunk.ts):\n  ${shared.join('\n  ')}`);
-console.log(`lazyChunkSites.selftest: ${SITES.length} sites on app/lazyChunk.ts, their loads of several parts settled by importAll; ${found.size} older hand-made memos (each with its reason in KNOWN), no new one; ${sheetCount} lazy stylesheets over ${pages.length} pages, each held and with one owner per document`);
+console.log(`lazyChunkSites.selftest: ${SITES.length} sites on app/lazyChunk.ts, their loads of several parts settled by importAll; ${found.size} older hand-made memos (each with its reason in KNOWN), no new one; the lifecycle-edge asks held to their callers, ${PLANTS.length} files of relights planted on a per-move path each named; ${sheetCount} lazy stylesheets over ${pages.length} pages, each held and with one owner per document`);

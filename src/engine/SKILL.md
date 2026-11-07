@@ -96,8 +96,11 @@ that draws the Earth, the land mask at once whatever that backoff
 (`prepare(..., { entry: true })`). A Studio apply waits on a first ask only,
 never a re-ask; what it lit without is its prepare's `landing`, and the Studio
 lights the same light again once that lands (`game/studio.ts`
-prepareAtmosphere, `{ relight: true }`). `app/lazyChunkSites.selftest.mjs`
-EDGE_ASKS holds these edge asks to their listed callers.
+prepareAtmosphere, `{ relight: true }`), once per apply however many land
+together; a relight's landing leaves out a part its light was lit with.
+`app/lazyChunkSites.selftest.mjs` EDGE_ASKS holds these edge asks to their
+listed callers, the relight in every spelling that reaches the runtimes (the
+option by name, studio.ts's pass-throughs by their arity, the port's `how`).
 Keep each rate-capped far-cascade projection paired with the depth map rendered
 from that pose. Do not move its light fit on an unscheduled frame. Shadow visual
 changes must pass both the raw CSM motion comparison and composed temporal-AO
