@@ -3,7 +3,7 @@ import fs from 'node:fs';
 import { execFileSync } from 'node:child_process';
 import { SELFTEST_SUITES } from './selftest-suites.mjs';
 
-const tracked = execFileSync('git', ['ls-files', '-z'], { encoding: 'utf8' })
+const tracked = execFileSync('git', ['ls-files', '-z'], { encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 })
   .split('\0')
   .filter((file) => file && fs.existsSync(file));
 
