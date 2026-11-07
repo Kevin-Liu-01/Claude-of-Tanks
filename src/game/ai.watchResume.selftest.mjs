@@ -48,7 +48,10 @@
 // stood-put walk let a park onto, off or between records keep the elevation lock's dwell; [12] the test now reads each
 // end's floor as the movement carries the hull (a flat top's side past the 0.55 m step is a wall, a drawn top is driven
 // as terrain): a park off or onto a 2.2 m rock, onto a 1 m box or a rock's edge, or from one rock's top onto another's
-// restarts it, and one onto a 0.5 m step, up a drawn top, or into the air over the same ground keeps it.
+// restarts it, and one onto a 0.5 m step, up a drawn top, or into the air over the same ground keeps it. Round 6 (V3,
+// the review of that fix-up): [12] read the records only through the controller's last obstacle list, not the match's
+// obstacle query the solo battle gives every bot (a mutant that finds no solid through the query passed); the deck
+// scene now gives both, as the match does, and a park off a 1 m box (the correctness review's example) restarts.
 // Cost (round 5, U6; the default tier): [11] stepped three fixed 60 s windows after Leave, and now runs each only until
 // what it reads is settled (a verdict, the road planned again, the route's end), and [12]'s window is a whole dwell and a
 // margin. Measured as the process's own user CPU (fix-up r1, at load 103-128, two runs each): [11] 2.69-2.76 s to
@@ -62,7 +65,7 @@ import { createTankState, resetTankVerticalState, updateTank, SIM_DT } from '../
 import { CLASSIC_BOT_DOCTRINE } from '../sim/matchRuleset.ts';
 import * as detMath from '../sim/detMath.ts';
 import { createHullSupportPose, createStructureSupportField, hullSupportPose } from '../sim/structureSupport.ts';
-import { setConvexTopShape } from '../world/collision.ts';
+import { createObstacleGrid, setConvexTopShape } from '../world/collision.ts';
 import { createAI, mulberry32 } from './ai.ts';
 import { leaveWatchSeat, openWatchSeats, prepareWatchSeat, takeWatchSeat } from './watchSeat.ts';
 
@@ -376,9 +379,11 @@ console.log('[6] after a park that could have hidden a move or a round, the bot 
 /**
  * ai.levels' deck (as ai.routeOwner [3]-[4]): a 25 m cliff north of z 40, a ramp up it at x 100..130; a floor bot under a
  * deck enemy. With `records`, the hull is stepped through the structure support over them, as the match steps every hull,
- * and the bot reads them as its obstacles, as the match gives both the world's records (state.ts, botConstruction.ts).
+ * and the bot reads them as its obstacles, as the match gives both the world's records (state.ts, botConstruction.ts):
+ * the list, and (round 6 V3) the match's obstacle query over them (world/collision.ts createObstacleGrid, as
+ * headlessCollisionWorld builds it; the solo battle's obstacleQuery), unless `query` is false (a fixture without one).
  */
-async function deckScene(records = null) {
+async function deckScene(records = null, { query = true } = {}) {
   const DECK_Y = 25, CLIFF_Z = 40;
   const cliff = (z) => Math.max(0, Math.min(DECK_Y, (z - (CLIFF_Z - 2)) / 4 * DECK_Y));
   const getHeightAt = (x, z) => {
@@ -412,6 +417,7 @@ async function deckScene(records = null) {
   const deck = place('deck', 'bravo', 0, 55, Math.PI);
   const ctl = createAI(floor, { difficulty: 'normal', rng: mulberry32(73), deps: {
     heightField: deckField, raycast, getEnemies: () => [deck], getAllies: () => [], getObstacles: () => records ?? [],
+    queryObstacles: records && query ? createObstacleGrid(records) : null,
     spotting: { isSpotted: () => true },
     planRoute: (start, goal, options) => planBotRoute({ start, goal, navigation, rng: routeRng, role: 'brawler',
       spec: floor.spec, useRoleDetour: false, requireGoalLevel: options?.requireGoalLevel === true }),
@@ -810,9 +816,9 @@ console.log('[12] the elevation lock\'s dwell counts the bot\'s own ticks: it ho
 {
   // `away`: where the watcher leaves the hull ([x, z], or a function of the spot it was taken on); `rock`: a record the
   // structure support carries the hull on (or a list of them), which it starts on (`onY`: the height it stands at, the
-  // first record's top by default) or is left on (`awayY`: the height the watcher leaves it at)
-  const dwellHandBack = async (away, from = null, rock = null, { onY = rock && !Array.isArray(rock) ? rock.max[1] : null, awayY = null } = {}) => {
-    const { ctl, floor, run, moveTo, hull, clock } = await deckScene(rock ? (Array.isArray(rock) ? rock : [rock]) : null);
+  // first record's top by default) or is left on (`awayY`: the height the watcher leaves it at); `query`: deckScene's
+  const dwellHandBack = async (away, from = null, rock = null, { onY = rock && !Array.isArray(rock) ? rock.max[1] : null, awayY = null, query = true } = {}) => {
+    const { ctl, floor, run, moveTo, hull, clock } = await deckScene(rock ? (Array.isArray(rock) ? rock : [rock]) : null, { query });
     if (from) moveTo(...from);
     if (onY !== null) resetTankVerticalState(floor.state, onY); // the floor bot stands on the rock's top
     run(3); // the floor bot sees the deck target its gun cannot reach: 3 s into the 6 s dwell, no route yet
@@ -865,9 +871,9 @@ console.log('[12] the elevation lock\'s dwell counts the bot\'s own ticks: it ho
   // between. The stood-put test now reads each end's floor as the movement carries the hull (hullOnParkLevel): onto a
   // flat top's vertical side it steps no more than HULL_STEP_UP_M (0.55 m: the structure support's floor rule; the
   // review's mount probe drove an M1A1 onto 0.55 m and under 0.6-2.2 m, a wall in game), up a drawn top (a stone's
-  // surface) by its slope law, and off any top. On f60d0aa200 each of the five restarts below kept 2.9 s of dwell and
+  // surface) by its slope law, and off any top. On f60d0aa200 each of the seven restarts below kept 2.9 s of dwell and
   // the lock decided 3.15 s after Leave; round 5's first fix (a192a5a9a3) read the ride difference as one 1.5 m slope-law
-  // step, which kept the 1 m box and the rock-to-rock park and restarted the drawn top and the hull in the air.
+  // step, which kept the 1 m boxes and the rock-to-rock park and restarted the drawn top and the hull in the air.
   const planOf = (r) => Math.hypot(r.handedBackAt[0] - r.parkedAt[0], r.handedBackAt[2] - r.parkedAt[2]);
   const where = (r) => `taken at (${r.parkedAt.map((v) => v.toFixed(1)).join(', ')}), handed back at (${r.handedBackAt.map((v) => v.toFixed(1)).join(', ')}), ${planOf(r).toFixed(1)} m on the plan`;
   const setupOk = (r, takenY, leftY) => Math.abs(r.parkedAt[1] - takenY) < 0.3 && Math.abs(r.handedBackAt[1] - leftY) < 0.3
@@ -898,6 +904,19 @@ console.log('[12] the elevation lock\'s dwell counts the bot\'s own ticks: it ho
   ok(setupOk(ontoBox, 0, 1), `setup: the floor bot dwells on the ground; the watcher leaves it on a 1 m box's top (${where(ontoBox)})`);
   ok(restarted(ontoBox),
     `a 0.5 s park that left the hull on a 1 m box, whose side is past the 0.55 m step it mounts: the dwell restarts (${label(ontoBox)})`);
+  // round 6 (V3; the correctness review's example for (a)): taken on a 1 m box's top, left on the ground beside it (the
+  // hull drives off the box, never back up its side); kept at f60d0aa200 and at a192a5a9a3 (1 m over one 1.5 m step: 0.67)
+  const LOW = Object.freeze({ min: [-10, 0, 18], max: [10, 1, 38] });
+  const offBox = await dwellHandBack((at) => [-13, at[2]], null, LOW);
+  ok(setupOk(offBox, 1, 0), `setup: the floor bot dwells on a 1 m box's top; the watcher leaves it on the ground beside the box (${where(offBox)})`);
+  ok(restarted(offBox),
+    `a 0.5 s park that left the hull on the ground below the 1 m box it was taken on: the dwell restarts (${label(offBox)})`);
+  // round 6 (V3): these cases read the records through the match's obstacle query; a fixture without one reads the
+  // controller's last obstacle list (parkLevelSolids' other branch), to the same restart
+  const ontoBoxList = await dwellHandBack((at) => [at[0], 22], [-16, 31], beside(1), { onY: null, awayY: 1, query: false });
+  ok(setupOk(ontoBoxList, 0, 1), `setup: as the 1 m box above, with no obstacle query (${where(ontoBoxList)})`);
+  ok(restarted(ontoBoxList),
+    `a 0.5 s park that left the hull on a 1 m box, read from the last obstacle list: the dwell restarts (${label(ontoBoxList)})`);
   // a step the hull mounts: a record standing 1 m from its foot 0.5 m under the ground, its top 0.5 m over it
   const ontoStep = await dwellHandBack((at) => [at[0], 22], [-16, 31], beside(0.5, -0.5), { onY: null, awayY: 0.5 });
   ok(setupOk(ontoStep, 0, 0.5), `setup: the floor bot dwells on the ground; the watcher leaves it on a record's top 0.5 m over the ground (${where(ontoStep)})`);
