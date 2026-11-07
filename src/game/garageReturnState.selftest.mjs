@@ -620,11 +620,14 @@ function mainLeave(runtime) {
 // no ui:battleStart effect standing (the pointer lock over the return's notice, settings' battle state, the hidden play
 // surface, post's 'loading' hold), over the Leave's Retry and the bare one (retryGarageReturn) alike.
 const garageSource = readFileSync(new URL('../ui/garage.ts', import.meta.url), 'utf8');
-function owedGarageMain(runtime, game, { contextRecovery = false, bus = null, loadFails = false } = {}) {
+function owedGarageMain(runtime, game, { contextRecovery = false, bus = null, loadFails = false, input = null,
+  noticeState = null } = {}) {
   const events = [];
   const notices = [];
   // (review r2: `bus`, a real one the records listen on, takes main's and garage.ts's emits too; `loadFails`, the
   // entry's load throws, as a failed cold import or world build does)
+  // (round 5 Q2: `input`, the real input layer main's own bindings ask for the pointer lock; `noticeState`, what a case
+  // reads as each notice opens)
   const emit = (type, payload) => { events.push(`emit:${type}`); bus?.emit(type, payload); };
   const slice = (source, head, close) => {
     const start = source.indexOf(`\n${head}`);
@@ -652,7 +655,9 @@ function owedGarageMain(runtime, game, { contextRecovery = false, bus = null, lo
     bus: { emit },
     battleEntryIntent: { begin() {} }, terrainVariantFor: () => null,
     VISIBLE_TANK_IDS: ['m1a1_abrams_hc'], garage: { getSelected: () => 'm1a1_abrams_hc', getSelectedMap: () => 'verdant' },
-    loadFailure: async () => ({ showSoloEntryFailure() {}, showGarageReturnFailure: (error, retry) => notices.push({ error, retry }) }),
+    loadFailure: async () => ({ showSoloEntryFailure() {}, showGarageReturnFailure: (error, retry) => notices.push(
+      noticeState ? { error, retry, at: noticeState() } : { error, retry }) }),
+    ...(input ? { input } : {}),
     // main's `let`, written by its own context recovery (onLost, onRestored) when the case runs it
     graphicsContextLost: false,
     renderer: { info: {}, getContext: () => ({ isContextLost: () => false }), userData: {} },
@@ -987,7 +992,8 @@ const battleStands = { pointerLock: true, playSurfaceHidden: true, loadingHold: 
         return { totalMs: 1 };
       },
     });
-    const main = owedGarageMain(f.runtime, f.game, { bus: effects.bus });
+    // (round 5 Q2: main's own bindings ask the same input layer for the lock)
+    const main = owedGarageMain(f.runtime, f.game, { bus: effects.bus, input: page.input });
     await main.leave();
     await flush();
     assert.equal(f.runtime.state, 'failed');
@@ -1027,6 +1033,122 @@ const battleStands = { pointerLock: true, playSurfaceHidden: true, loadingHold: 
         assert.deepEqual(main.events, ['emit:ui:click'], `${label}: the start is refused and announced nothing`);
       }
     }
+  } finally {
+    effects.dispose();
+    page.restore();
+  }
+}
+
+// (round 5 Q2) A long return keeps the press's pointer lock. Since round 4 F1 the press's announcement, whose listener
+// asks for the lock (pointerLockFeedbackRuntime.ts), runs after the return's wait; after the player's own unlock (the
+// Esc that left the battle) Chrome refuses a lock with no user activation, which lasts about 5 s after the press, so a
+// longer restore lost it and the battle began unlocked until a canvas click. The entry now asks for it in the press's
+// task when it must wait (soloBattleEntryRuntime.ts holdPointerLock, main's binding): a press in the restore window
+// keeps it through the restore; a press before the Retry's showGarageScreen loses it to that screen's exitPointerLock,
+// the page's own unlock, after which the announcement's request needs no activation. (f60d0aa200: refused after the
+// wait in both windows.)
+for (const during of ['restore', 'placement']) {
+  const page = chromePointerLockPage();
+  const effects = battleStartEffects(page);
+  try {
+    page.input.requestLock(); // the battle the player left held the lock; their Esc dropped it (a user unlock)
+    await tick();
+    assert.equal(page.locked(), true);
+    page.userEscape();
+    let failRestore = true;
+    let hold = null;
+    let held = false;
+    const holdIn = (step) => async () => {
+      if (step === during && hold) { held = true; await hold.promise; }
+      if (step === 'restore' && failRestore) throw new Error('the Garage presentation did not restore');
+      return { totalMs: 1 };
+    };
+    const f = createFixture({ bus: effects.bus, exitPointerLock: page.exitPointerLock, placement: holdIn('placement'),
+      restore: holdIn('restore') });
+    const main = owedGarageMain(f.runtime, f.game, { bus: effects.bus, input: page.input });
+    await main.leave();
+    await flush();
+    assert.equal(f.runtime.state, 'failed');
+    press(main); // the closed notice: the press brings it back, with the bare Retry
+    await flush();
+    failRestore = false;
+    hold = deferred();
+    main.notices.at(-1).retry();
+    for (let index = 0; index < 12 && !held; index += 1) await flush();
+    assert.equal(held, true, `${during} window: (the Retry's return runs)`);
+    main.events.length = 0;
+    press(main); // in its gesture
+    await flush();
+    await tick();
+    assert.deepEqual(main.events, ['emit:ui:click'], `${during} window: (the press waits, unannounced)`);
+    page.activation.isActive = false; // a long return: the press's user activation has expired
+    hold.resolve();
+    for (let index = 0; index < 12 && main.events.length < started.length; index += 1) await flush();
+    await tick();
+    await tick();
+    assert.deepEqual(main.events, started, `${during} window: the press starts its battle once the return lands`);
+    assert.equal(page.locked(), true,
+      `${during} window: with its pointer lock (f60d0aa200: asked only after the wait, and refused)`);
+    assert.equal(page.input.isCursorAim(), false);
+  } finally {
+    effects.dispose();
+    page.restore();
+  }
+}
+// (round 5 Q2) The refusal half: a start refused after the wait releases the lock its press took (the page's own unlock,
+// main's binding: input.releaseLock) before the refused start's notice opens, and a lock that lands only after the
+// refusal is released as it lands (input.ts withdraws the attempt in flight). Nothing stands over the notice, the
+// refusal never counts toward the cursor-aim fallback, and the next press locks again.
+for (const lockLandsFirst of [true, false]) {
+  const label = lockLandsFirst ? 'a lock that landed during the wait' : 'a lock still in flight at the refusal';
+  const page = chromePointerLockPage();
+  const effects = battleStartEffects(page);
+  try {
+    let failRestore = true;
+    let hold = null;
+    let held = false;
+    const f = createFixture({
+      bus: effects.bus, exitPointerLock: page.exitPointerLock,
+      restore: async () => {
+        if (hold) { held = true; await hold.promise; }
+        if (failRestore) throw new Error('the Garage presentation did not restore');
+        return { totalMs: 1 };
+      },
+    });
+    const main = owedGarageMain(f.runtime, f.game, { bus: effects.bus, input: page.input, noticeState: () => page.locked() });
+    await main.leave();
+    await flush();
+    press(main); // the closed notice: the press brings it back, with the bare Retry
+    await flush();
+    hold = deferred();
+    const shown = main.notices.length;
+    main.notices.at(-1).retry();
+    for (let index = 0; index < 12 && !held; index += 1) await flush();
+    main.events.length = 0;
+    const attempts = page.stats.attempts;
+    press(main);
+    assert.equal(page.stats.attempts, attempts + 1, `${label}: the press asks for the lock in its own task (its gesture)`);
+    if (lockLandsFirst) {
+      await tick();
+      assert.equal(page.locked(), true, `${label}: (held while the press waits)`);
+    }
+    hold.resolve();
+    for (let index = 0; index < 12 && main.notices.length < shown + 2; index += 1) await flush();
+    assert.equal(main.notices.length, shown + 2, `${label}: (the Retry's notice and the refused start's)`);
+    assert.equal(main.notices.at(-1).at, false, `${label}: no lock over the refused start's notice`);
+    await tick();
+    await tick();
+    assert.deepEqual(effects.standing(), nothingStands, `${label}: nothing stands after the refusal`);
+    assert.deepEqual(main.events, ['emit:ui:click']);
+    assert.equal(page.input.isCursorAim(), false, `${label}: the refusal is no evidence the page cannot lock`);
+    failRestore = false;
+    hold = null;
+    main.notices.at(-1).retry();
+    for (let index = 0; index < 12 && f.runtime.state !== 'idle'; index += 1) await flush();
+    press(main);
+    await flush();
+    await tick();
+    assert.deepEqual(effects.standing(), battleStands, `${label}: the next press starts its battle with the lock`);
   } finally {
     effects.dispose();
     page.restore();

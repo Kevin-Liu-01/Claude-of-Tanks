@@ -98,6 +98,16 @@ interface SoloBattleEntryRuntimeOptions {
    * network round's entry refused (its loader is the screen). Its own failure is reported, never thrown.
    */
   presentSceneRefusal?(): void;
+  /**
+   * (round 5 Q2) An announced start that must wait for a Garage return asks for the pointer lock its announcement's
+   * listener asks for (pointerLockFeedbackRuntime.ts), now, in its caller's task: the press's gesture. After the
+   * player's own unlock (the Esc that left the battle) Chrome refuses a lock with no user activation, which lasts about
+   * 5 s after the press, so a longer return lost it when only the announcement after the wait asked (round 4 F1). Returns
+   * the release, run if the start is refused after the wait, before the refusal shows its way out: no lock stands over
+   * the Garage or its notice. An accepted start keeps the lock (its announcement finds it held). main binds the input
+   * layer (input.requestLock, whose releaseLock also withdraws a request still in flight).
+   */
+  holdPointerLock?(): () => void;
 }
 
 interface SoloBattleEntryRuntime {
@@ -108,7 +118,9 @@ interface SoloBattleEntryRuntime {
    * refused (busy, a network round entering, a scene no battle may take). On 0edd0e1ab5 the press announced itself
    * before calling this, so a start refused after a return wait left that announcement's effects standing over the
    * failed return's notice: the pointer lock, settings' battle state, the hidden play surface and post's 'loading'
-   * hold. Without one (the debug hook) the entry announces nothing.
+   * hold. Without one (the debug hook) the entry announces nothing, and asks for no pointer lock while it waits.
+   * (round 5 Q2) An announced start that waits asks for the lock in the press's task and releases it on a refusal
+   * (holdPointerLock).
    */
   begin(
     specId: string,
@@ -166,18 +178,25 @@ export function createSoloBattleEntryRuntime({
   isNetworkRoundEntering = () => false,
   canTakeScene = () => true,
   presentSceneRefusal = () => {},
+  holdPointerLock = () => () => {},
 }: SoloBattleEntryRuntimeOptions): SoloBattleEntryRuntime {
   const required = [battleLoad?.showPending, lifecycle?.run, lifecycle?.coverRendering,
     lifecycle?.uncoverRendering, loading?.begin, audio?.loadingOn, enterGarage,
     nextFrame, isVisibleSpecId, getSelectedSpecId, getSelectedMapId, reportError, presentFailure, presentReturnFailure,
-    onFailure, announce, whenGarageSettled, recordIntent, isNetworkRoundEntering, canTakeScene, presentSceneRefusal];
+    onFailure, announce, whenGarageSettled, recordIntent, isNetworkRoundEntering, canTakeScene, presentSceneRefusal,
+    holdPointerLock];
   /**
    * Another owner has the screen (a network round entering), or the scene may not hand over to a battle: busy. A scene
-   * refusal brings back its way out (presentSceneRefusal; round 3 B2 review r1).
+   * refusal brings back its way out (presentSceneRefusal; round 3 B2 review r1). `beforeRefusal` runs first on either
+   * refusal (round 5 Q2: the waiting start's pointer lock goes back before the way out shows).
    */
-  const sceneRefused = (): boolean => {
-    if (isNetworkRoundEntering()) return true;
+  const sceneRefused = (beforeRefusal: () => void = () => {}): boolean => {
+    if (isNetworkRoundEntering()) {
+      beforeRefusal();
+      return true;
+    }
     if (canTakeScene()) return false;
+    beforeRefusal();
     try { presentSceneRefusal(); } catch (error) { reportError('[battle] scene refusal notice unavailable', error); }
     return true;
   };
@@ -192,29 +211,51 @@ export function createSoloBattleEntryRuntime({
     options: SoloBattleLoadingStartOptions | undefined,
   ) => () => announce({ specId, mapId, gameMode: options?.gameMode ?? 'standard',
     campaignOperationId: options?.campaignOperationId ?? null });
-  /** `announcement`: the one announcement of this entry, run once it is accepted (round 4 F1). */
+  /**
+   * `announcement`: the one announcement of this entry, run once it is accepted (round 4 F1); null for an entry that
+   * announces nothing (the debug hook).
+   */
   const run = (
     specId: string,
     mapId: string | null,
     options: SoloBattleLoadingStartOptions | undefined,
-    announcement: () => void,
+    announcement: (() => void) | null,
   ): Promise<void> => (sceneRefused() ? Promise.resolve() : lifecycle.run(async () => {
+    // (round 5 Q2) the pointer lock this start holds while it waits for a return: released if it is refused, or fails,
+    // before its announcement; an accepted start keeps it
+    let heldPointer: (() => void) | null = null;
+    const releasePointer = (): void => {
+      const release = heldPointer;
+      heldPointer = null;
+      try { release?.(); } catch (error) { reportError('[battle] pointer lock release failed', error); }
+    };
     try {
       // A Garage return still in flight (its veil, its restore) finishes first: the entry latch holds this request.
       // (no return in flight: no wait, so the announcement and the cover still land inside the press's task)
       const returning = whenGarageSettled();
       if (returning) {
+        // (round 5 Q2) the lock its announcement will ask for, asked now while the press's gesture lasts
+        if (announcement) {
+          try {
+            const release = holdPointerLock();
+            heldPointer = typeof release === 'function' ? release : null;
+          } catch (error) {
+            reportError('[battle] pointer lock request failed', error);
+          }
+        }
         await returning;
         // (round 2, app-flow) a network round the room's session entered meanwhile has the screen, or (review 2) the
-        // scene is not one a battle may take (a Studio opened meanwhile): busy, as at the press
-        if (sceneRefused()) return;
+        // scene is not one a battle may take (a Studio opened meanwhile): busy, as at the press (round 5 Q2: with the
+        // lock released first)
+        if (sceneRefused(releasePointer)) return;
       }
+      heldPointer = null; // accepted: the lock is its battle's
       // (round 2 U19) announced once the return is done: its 'garage' announcement (the battle before leaving) comes
       // first, so every ui:battleStart listener sees this battle begin after it (profile.ts and serviceRecord.ts drop a
       // battle's tally at every Garage). (round 4 F1) The Garage press's own announcement too: only an accepted start is
       // announced, so a refusal (above, or at the press) leaves no effect of one standing
       try {
-        announcement();
+        announcement?.();
       } catch (error) {
         // the press's listeners never block the entry (garage.ts launchBattle contains them the same way)
         reportError('[battle] battle-start listener failed', error);
@@ -231,6 +272,7 @@ export function createSoloBattleEntryRuntime({
       lifecycle.coverRendering();
       await loading.begin(specId, mapId, options);
     } catch (error) {
+      releasePointer(); // (round 5 Q2) a failure before the acceptance: nothing announced, no lock kept
       reportError('[battle] entry failed', error);
       // the notice's retry: the same entry again, announced by the entry (its recovery return's 'garage' came between)
       const retry = () => run(specId, mapId, options, announcedByEntry(specId, mapId, options));
@@ -275,7 +317,7 @@ export function createSoloBattleEntryRuntime({
   return Object.freeze({
     /** The Garage BATTLE button's entry: the press's own announcement runs once the entry accepts it (round 4 F1). */
     begin: (specId: string, mapId: string | null = null, options: SoloBattleLoadingStartOptions | undefined = undefined,
-      announcePress: () => void = () => {}) => run(specId, mapId, options, announcePress),
+      announcePress?: () => void) => run(specId, mapId, options, announcePress ?? null),
     beginSelected({
       specId,
       mapId,

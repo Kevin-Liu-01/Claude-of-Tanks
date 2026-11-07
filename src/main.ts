@@ -3711,6 +3711,13 @@ const soloBattleEntry = createSoloBattleEntryRuntime({
   canTakeScene: () => battleSceneRefusal('solo-start') === null,
   // (round 3 B2, review r1) and a refused start shows the way out: a closed notice left the BATTLE button doing nothing
   presentSceneRefusal: () => offerOwedGarageReturn(),
+  // (round 5 Q2) a start that waits for a return asks for the pointer lock inside its press (Chrome refuses one with no
+  // user activation, about 5 s, after the player's Esc) and gives it back if refused. fromUi: its refusal is not counted
+  // toward cursor aim; the announcement's own request, every entry's, still is
+  holdPointerLock: () => {
+    input.requestLock({ fromUi: true });
+    return () => input.releaseLock();
+  },
   // (audit F2 review) every accepted entry records its whole intent, a failure notice's retry included (its recovery
   // return's 'garage' announcement cleared the record). batch 19 (2026-09-14): the Garage BATTLE button is a free
   // sortie in the chosen rules, so a Frontline Assault pick carves the trenches like a ladder launch does.

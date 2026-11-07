@@ -14,7 +14,7 @@ globalThis.localStorage ??= {
 };
 const { getPlayerRecord, installBattleRecords } = await import('./profile.ts');
 
-function createEntry({ whenGarageSettled, canTakeScene } = {}) {
+function createEntry({ whenGarageSettled, canTakeScene, isNetworkRoundEntering, holdPointerLock } = {}) {
   const bus = createBus();
   const order = [];
   const announced = [];
@@ -35,6 +35,8 @@ function createEntry({ whenGarageSettled, canTakeScene } = {}) {
     announce: (payload) => bus.emit('ui:battleStart', payload),
     ...(whenGarageSettled ? { whenGarageSettled } : {}),
     ...(canTakeScene ? { canTakeScene } : {}),
+    ...(isNetworkRoundEntering ? { isNetworkRoundEntering } : {}),
+    ...(holdPointerLock ? { holdPointerLock } : {}),
   });
   return { bus, order, announced, lifecycle, runtime, finish: () => finishLoad?.() };
 }
@@ -98,6 +100,64 @@ function createEntry({ whenGarageSettled, canTakeScene } = {}) {
     } else assert.deepEqual(waiting.order, [], 'refused after the wait: nothing was announced, so nothing stands');
     await start;
   }
+}
+
+// (round 5 Q2) An announced start that waits for a return asks for the pointer lock in its caller's task (the press's
+// gesture: its announcement, whose listener asks for it, runs only after the wait) and releases it if it is refused
+// after the wait, before the refusal's way out shows; an accepted start keeps it. No wait, a busy refusal and the
+// debug hook (no announcement) ask for nothing. The real-path proofs are garageReturnState's round 5 Q2 cases.
+{
+  const pressAnnouncement = (entry) => () => entry.bus.emit('ui:battleStart', { specId: 'm1a1_abrams_hc', mapId: 'desert' });
+  for (const after of ['lands', 'scene refused', 'round entering']) {
+    let settle;
+    let inFlight = true;
+    let refusedScene = false;
+    let roundEntering = false;
+    const returning = new Promise((resolve) => { settle = resolve; });
+    const order = [];
+    const entry = createEntry({
+      whenGarageSettled: () => (inFlight ? returning : null),
+      canTakeScene: () => !refusedScene,
+      isNetworkRoundEntering: () => roundEntering,
+      holdPointerLock: () => { order.push('lock'); return () => order.push('release'); },
+    });
+    const start = entry.runtime.begin('m1a1_abrams_hc', 'desert', undefined, pressAnnouncement(entry));
+    assert.deepEqual(order, ['lock'], `${after}: the waiting press asks for the lock in its own task`);
+    assert.equal(await entry.runtime.begin('t90a', 'desert', undefined, pressAnnouncement(entry)), undefined);
+    assert.deepEqual(order, ['lock'], `${after}: a press refused as busy asks for nothing`);
+    refusedScene = after === 'scene refused';
+    roundEntering = after === 'round entering';
+    inFlight = false;
+    settle();
+    for (let i = 0; i < 4; i += 1) await Promise.resolve();
+    if (after === 'lands') {
+      assert.deepEqual(order, ['lock'], 'accepted: the start keeps its lock');
+      assert.deepEqual(entry.order, ['announce', 'cover', 'load']);
+      entry.finish();
+    } else {
+      assert.deepEqual(order, ['lock', 'release'], `${after}: refused after the wait, the lock is released`);
+      assert.deepEqual(entry.order, [], `${after}: and nothing announced`);
+    }
+    await start;
+  }
+  // no return in flight, or no announcement (the debug hook): nothing asked for
+  const order = [];
+  let inFlight = false;
+  let settle;
+  const returning = new Promise((resolve) => { settle = resolve; });
+  const entry = createEntry({ whenGarageSettled: () => (inFlight ? returning : null),
+    holdPointerLock: () => { order.push('lock'); return () => order.push('release'); } });
+  const now = entry.runtime.begin('m1a1_abrams_hc', 'desert', undefined, pressAnnouncement(entry));
+  entry.finish();
+  await now;
+  inFlight = true;
+  const hooked = entry.runtime.begin('m1a1_abrams_hc', 'desert');
+  inFlight = false;
+  settle();
+  for (let i = 0; i < 4; i += 1) await Promise.resolve();
+  entry.finish();
+  await hooked;
+  assert.deepEqual(order, [], 'no wait, or no announcement: the entry asks for no lock');
 }
 
 // The profile records a Play-menu battle (it began its tally only on ui:battleStart).

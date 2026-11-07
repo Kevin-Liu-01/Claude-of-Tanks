@@ -3787,7 +3787,9 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     }
     // (round 4 F1) the press's battle announcement is its entry's to run, once the entry accepts the start (inside this
     // task unless a Garage return is in flight): announced here, a start refused after that return's wait left the
-    // pointer lock, the battle settings, the hidden play surface and the loading hold over the return's notice
+    // pointer lock, the battle settings, the hidden play surface and the loading hold over the return's notice. (round 5
+    // Q2) An entry that waits asks for the pointer lock in this task, the press's gesture, and releases it if refused
+    // (soloBattleEntryRuntime.ts holdPointerLock)
     const announce = (): void => {
       try {
         emit('ui:battleStart', { specId, mapId });
