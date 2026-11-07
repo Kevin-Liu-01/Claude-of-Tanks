@@ -22,7 +22,9 @@ const IDS = {
   'm113a1_mrv': { tier: 1, role: 'light', caliber: 76, packet: M113, muzzle: null },
   'm113as4': { tier: 3, role: 'ifv', caliber: 12.7, packet: M113, muzzle: null },
   'leopard_as1': { tier: 1, role: 'mbt', caliber: 105, packet: 'aus-leopard-as1-20261102.json', muzzle: 6.078 },
-  'm1a1_aim_sa_aus': { tier: 8, role: 'mbt', caliber: 120, packet: ABRAMS, muzzle: 5.80 },
+  // 269 integration (Main's ruling): 6.030 m is measured on 268's owner-approved M1A1 shell with the measured M256 (5.80 was
+  // pinned on the pre-268 shell); its rebuild lane aus-m1a1-268-269 rides 270
+  'm1a1_aim_sa_aus': { tier: 8, role: 'mbt', caliber: 120, packet: ABRAMS, muzzle: 6.030 },
   'm1a2_sepv3_aus': { tier: 9, role: 'mbt', caliber: 120, packet: ABRAMS, muzzle: 5.809 },
   'redback': { tier: 6, role: 'ifv', caliber: 30, packet: 'aus-redback-20261102.json', muzzle: null },
   // 269 (the owner, 2026-11-03): the US Army's M113A3 on the same M113 build, in the US tree's special lane
