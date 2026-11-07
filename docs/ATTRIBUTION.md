@@ -1010,7 +1010,9 @@ nazidefenseforceofficial account = adjudicated rip-poster 2026-07-27;
 leo2a4_otco/leo2a4m additionally carry the WT-lineage chassis_vlo scheme —
 extraction-suspect, measurement/influence only, §E vlo shell-isolation
 required); m3a3_bradley_sipriv (CC-BY original rigged lowpoly) — new
-m3a3_bradley candidate; m2a3_bradley_ua_42manako (CC-BY, fused) —
+m3a3_bradley candidate (270: registered as its §E excision m3a3_bradley_sipriv_excised.glb, sha256 0f92442e…, without
+the two spare TOW rounds and the launch tube modelled on the ground beside the hull; provenance
+docs/references/oracle-excisions/m3a3_bradley_sipriv_excised.json); m2a3_bradley_ua_42manako (CC-BY, fused) —
 m2a2-family alternate; stb1_pyaesone (CC-BY-NC, 125MB) — stb1 oracle
 candidate; type90_42manako (CC-BY-NC) — type90_kyumaru alternate reference;
 spz_puma_42manako (CC-BY, SAME Sketchfab source as the registered

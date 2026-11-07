@@ -189,7 +189,11 @@ const LOCAL_REFERENCE_OVERRIDES = {
     // the hull objects (station tops 2.7-2.9 read hull-side), so scored
     // hull/turret decomposition is dishonest (t72m1_jaguar/type99a class).
     componentMasks:false } },
-  m3a3_bradley: { source:'glb', glb:{ path:'/models/community-candidates/m3a3_bradley_sipriv.glb', turretNode:'^bone11_169$', gunNode:'^bone28_163$', autoPivot:true, yawOffset:Math.PI } },
+  // 270 (Main 2026-11-06, BUILD-STANDARD §E excision): the print without the two spare TOW rounds and the launch tube
+  // modelled on the ground beside the hull, which widened the file to 5.525 raw against the vehicle's 3.063 and so
+  // scaled the whole Bradley x0.653 under the loader's width fit. Recipe and provenance:
+  // docs/references/oracle-excisions/m3a3_bradley_sipriv_excised.json (tools/oracle-excision.mjs).
+  m3a3_bradley: { source:'glb', glb:{ path:'/models/community-candidates/m3a3_bradley_sipriv_excised.glb', turretNode:'^bone11_169$', gunNode:'^bone28_163$', autoPivot:true, yawOffset:Math.PI } },
   // 264 (Main ruling 2026-10-28: "where a rebuild's registered oracle shows a different (later) variant, unregister it"): leo2a4_otco is rebuilt on the release-262 Leopard 2 hull (fidelity first-party-unregistered, N/A; the blind photo critic is its visual bar). Its oracle leo2a6m_arrafi.glb shows a Leopard 2A6M (fleet id leo2a6m): re-register it there later.
   // §5.248 germany round row addition: fused whole-shell pairs (Object_3/4
   // both carry hull+turret+gun; Object_5 = vlo running-gear band) — NO

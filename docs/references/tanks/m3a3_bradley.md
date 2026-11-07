@@ -402,6 +402,13 @@ low-poly print's hull sits about 0.14 m lower with a shorter glacis than the fam
 print, and the turret carries the owner's 2026-11-05 additions the print does not (the right-hand TOW launcher, the
 LRAS3-pattern head, the camera pods, the bustle box), with the 25 mm line about 0.15 m higher than the print's.
 
-Fixing it needs either a prepared oracle without the loose parts (registered, pinned in `tools/oracle-pins.mjs` and
-copied to every checkout that runs the gate) or a node-exclusion option in the shared loader; neither is applied here.
+Main ruled the same day: "Register and pin the cleaned sipriv print (sha 0f92442e) through the oracle-repair route: a
+BUILD-STANDARD section E excision ... Leave the shared loader as it is." Registered: `m3a3_bradley_sipriv_excised.glb`
+(sha256 0f92442e…, pinned in `tools/oracle-pins.mjs`; built byte-idempotently by `tools/oracle-excision.mjs` from the
+recipe `docs/references/oracle-excisions/m3a3_bradley_sipriv_excised.json`, its provenance row: the pristine source's
+hash, the three removed nodes and why). Same turret and gun nodes and yaw. Scores against it (2026-11-06):
+procedural-fidelity 88.4 (H91 T77 G100 R84); geometry gate 0/90 — hull 55.3, whole 25.0, turret 11.9 (side 51.8, plan
+11.9), stations 47.1, dims 0, floaters 100. Dims is the build against the spec's silhouette rows, not the print: the 269
+turret stands 3.41 m to its body top against `silhouetteHeightM` 3.05 (11.8 % over). `tools/oracle-width-audit.mjs` is
+the class detector (whole-file width against the body's, read-only); the pristine print reads 80.4 % wider than its body.
 

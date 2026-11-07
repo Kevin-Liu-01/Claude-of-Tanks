@@ -124,7 +124,11 @@ const CRITIC_REFERENCE_OVERRIDES = {
     // the hull objects (station tops 2.7-2.9 read hull-side), so scored
     // hull/turret decomposition is dishonest (t72m1_jaguar/type99a class).
     componentMasks:false } },
-  m3a3_bradley: { source:'glb', glb:{ path:'/models/community-candidates/m3a3_bradley_sipriv.glb', turretNode:'^bone11_169$', gunNode:'^bone28_163$', autoPivot:true, yawOffset:Math.PI } },
+  // 270 (Main 2026-11-06, BUILD-STANDARD §E excision): the print without the two spare TOW rounds and the launch tube
+  // modelled on the ground beside the hull, which widened the file to 5.525 raw against the vehicle's 3.063 and so
+  // scaled the whole Bradley x0.653 under the loader's width fit. Recipe and provenance:
+  // docs/references/oracle-excisions/m3a3_bradley_sipriv_excised.json (tools/oracle-excision.mjs).
+  m3a3_bradley: { source:'glb', glb:{ path:'/models/community-candidates/m3a3_bradley_sipriv_excised.glb', turretNode:'^bone11_169$', gunNode:'^bone28_163$', autoPivot:true, yawOffset:Math.PI } },
   stb1: { source:'glb', glb:{ path:'/models/community-candidates/stb1_pyaesone.glb', turretNode:'^Turret_2$', autoPivot:true, yawOffset:Math.PI/2 } },
   // §5.248 germany round: componentMasks:false per the _vlo shell-isolation
   // audit (gun tube + at-rest turret band baked into the chassis.0 hull
