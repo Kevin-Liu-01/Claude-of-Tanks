@@ -8,13 +8,19 @@
 // btvt's drawing spaces them (small, with gaps, the idler and sprocket low); a compact walled turret with the crew under
 // it, and in its roof the 152 mm gun in its sloped armoured housing (the gun was first mounted in the open, then cased: the
 // casing is the Molot's signature), the 30 mm cannon on the housing's left shoulder, the commander's sight in a dome on
-// the housing's roof (btvt's drawing; Apukhtin: raised clear of the casing), the ready rounds' belt in the bustle.
-// 10,650 mm over the gun, 2,434 mm to the casing's roof, a 2,088 mm line of fire (btvt). First-party procedural geometry:
-// Kevin B. Liu (NOTICE.md); sources in docs/references/photos/russia-152-20261104.json.
+// the housing's roof (btvt's drawing; Apukhtin: raised clear of the casing), the ready rounds' belt in the bustle; Shtora-1's
+// dazzlers in the turret's front corners and the commander's remote NSVT on a pedestal behind his sight (owner
+// 2026-11-07, "add shotra eyes to the molot and a machine gun to it"). 10,650 mm over the gun, 2,434 mm to the casing's
+// roof, a 2,088 mm line of fire (btvt). First-party procedural geometry: Kevin B. Liu (NOTICE.md); sources in
+// docs/references/photos/russia-152-20261104.json.
+import * as THREE from 'three';
 import { KIT, FITTINGS } from './kit.ts';
 import { sectionSolid, type SectionPoint, type SolidSection } from './sectionSolid.ts';
 import { add30mmCannon, sideSolid } from './russia152Kit.ts';
 import { reserveDecorVolume } from './fieldChest.ts';
+import { addShtoraEyes } from './shtora.ts';
+import { libraryRoofMg } from './libraryRoofMg.ts';
+import { captureAuxiliaryStock } from './auxiliaryStation.ts';
 import { GUN_2A73, build152Gun } from './gun152.ts';
 import { MOLOT_FRAME as F } from '../russia152Frames.ts';
 import { markVehicleNightLens } from '../vehicleNightLighting.ts';
@@ -334,6 +340,64 @@ function addTurret(P: TankBuilderPort): void {
       [2.9496, 0.073], [2.9671, 0.067]] });
 }
 
+/** Shtora-1's eyes (owner 2026-11-07, "add shotra eyes to the molot"; the Molot art's two red lamps flanking the gun at
+ * the corners of the turret's face): the two OTShU-1-7 infrared dazzlers with their louvres, cheek plates and cable
+ * boxes, the fleet's emitter (profiles/shtora.ts), one in each front corner of the turret between the casing's face and
+ * the cheek wall. Each housing's back stands 4 cm into the nose's armour and its inner side into the casing's lower
+ * corner; the gun's sleeve passes 25 cm inboard of them. Their lids stand 3 cm under the GSh-30's barrel at its full
+ * depression over the left front quarter, the cable boxes over the turret's lowest line. The TShU-1-11 laser-warning heads
+ * on short posts at the casing roof's front corners (profiles/object195X.ts warningHead). Turret frame. */
+const SHTORA = { x: .56, y: .21, z: 1.61, scale: .9 } as const;
+function addShtora(P: TankBuilderPort): void {
+  addShtoraEyes({ mats: P.mats, turretG: P.turretG, disposables: P.disposables,
+    add: (slot, geometry, x, y, z) => P.addEquipment(slot, geometry, x, y, z),
+  }, { ...SHTORA, round: true, kit: true });
+  for (const s of [-1, 1]) {
+    const x = s * .33, z = 1.16, foot = .834, post = .03, y = foot + post;
+    P.addEquipment('turretDetail', cylY(.035, .035, .015, 10), x, foot + .0075, z);
+    P.addEquipment('turretDetail', cylY(.016, .016, post, 8), x, foot + post / 2, z);
+    P.addEquipment('turretDetail', cylY(.05, .05, .05, 14), x, y + .025, z);
+    P.addEquipment('turretDark', cylY(.053, .053, .035, 14), x, y + .068, z);
+    P.addEquipment('turretDetail', cylY(.03, .05, .025, 14), x, y + .098, z);
+  }
+}
+
+/** The commander's remote 12.7 mm (owner 2026-11-07, "... and a machine gun to it"; btvt's profile drawing: a machine gun
+ * on a pedestal at the rear of the casing's roof, its barrel along the roof towards the commander's sight): the fleet's
+ * true-scale NSVT in its remote cradle (libraryRoofMg.ts) on a cast pedestal standing on the casing's roof behind the
+ * roof plate, right of the centreline on the commander's side, its muzzle at rest short of the sight's dome. It turns a
+ * full circle at full depression (.qa-dev/r152/station-levels.mjs and station-table-full.mjs against the turret's stock:
+ * no blocked degree, no shallower depression), so it needs no yawArc or depressionByYaw; with both guns turning, its
+ * barrel's axis keeps 9.6 cm from the GSh-30's (the GSh-30 at its rear stop and full elevation). Turret frame. */
+const MG_SEAT = [-.12, .94, -.36] as const, MG_RISER = 'molotCommanderMgRiser';
+function addCommanderMg(P: TankBuilderPort): void {
+  const { station } = libraryRoofMg(P, { station: 'molotCommanderMgStation', cls: 'nsvt', seat: MG_SEAT, remote: true });
+  // the pedestal, the gun's mount and not the turret's body (t80uX.ts nsvtRiser): a static group under the station tagged
+  // as a weapon-station mount, its stock merged into it, standing still while the gun turns on it: a boss bedded in the
+  // roof where the casing's tail falls away behind it, three gusset webs, a tapered column round the gun's own post and a
+  // collar 1 cm under its yaw ring
+  const mount = new THREE.Group();
+  mount.name = MG_RISER;
+  Object.assign(mount.userData, { fitting: 'weaponStationMount', hasWeapon: false, supportAssembly: station.name });
+  station.add(mount);
+  const finish = captureAuxiliaryStock(P, MG_RISER, 'yaw');
+  const [x, seat, z] = MG_SEAT, foot = .800, boss = .862, top = seat + .085;
+  P.addEquipment('turretDetail', KIT.lathe([[0, foot], [.105, foot], [.105, boss - .008], [.097, boss], [.078, boss],
+    [.072, boss + .01], [.058, top - .03], [.068, top - .024], [.068, top - .006], [.062, top], [0, top]], 20), x, 0, z);
+  for (let k = 0; k < 3; k++) {
+    const a = Math.PI / 3 + k * 2 * Math.PI / 3;
+    P.addEquipment('turretDetail', box(.01, .06, .032), x + .086 * Math.sin(a), boss + .025, z + .086 * Math.cos(a), 0, a, 0);
+  }
+  for (let k = 0; k < 4; k++) {
+    const a = k * Math.PI / 2;
+    P.addEquipment('turretDark', cylY(.010, .009, .012, 6), x + .092 * Math.sin(a), boss + .003, z + .092 * Math.cos(a));
+  }
+  finish();
+  // the decor's loads keep out of the gun's sweep over the casing (fieldChest.ts reserveDecorVolume; turret frame): the
+  // decor's spare whip, which stood on the casing's tail 0.8 m behind the pivot, goes; the turret keeps its own two
+  reserveDecorVolume(P.turretG, [x - 1.10, .80, z - 1.05], [x + 1.10, 1.50, z + 1.10]);
+}
+
 /** The gun's mount inside the housing, its armoured cradle sleeve out of the housing's face with the boresight's box on it,
  * and the 152 mm tube. Gun frame. */
 function addGun(P: TankBuilderPort): void {
@@ -361,6 +425,8 @@ export function buildObject477Molot(P: TankBuilderPort): void {
   addDeckAndStern(P);
   addRunningGear(P);
   addTurret(P);
+  addShtora(P);
+  addCommanderMg(P);
   addGun(P);
   P.topY = 1.12;
 }

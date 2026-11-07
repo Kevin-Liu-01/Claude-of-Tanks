@@ -18,9 +18,11 @@ export const OBJECT292_FRAME = Object.freeze({
 /** The Object 195: a 7.9 m hull on seven road wheels (militaryrussia; btvt), its unmanned module's ring amidships over the
  * autoloader's carousel, the 2A83's trunnion in the module's lower half, about half a metre over the hull's roof (Gur Khan's
  * hangar photograph, owner image 2: the tube leaves the module's face 40 % of the way up; 2.30 m stood it a metre over
- * the roof), 10.6 m over the gun. */
+ * the roof), 10.6 m over the gun. The deck (roofY) stands 10 cm over the ring's seat since the owner's hull round of
+ * 2026-11-07 ("more proportional and look better with its turret"): the turntable's disc half sunk in a deeper hull, as
+ * high as the 2A83's full depression allows round the turntable. */
 export const OBJECT195_FRAME = Object.freeze({
-  hullFrontZ: 3.95, hullRearZ: -3.95, roofY: 1.60, ringY: 1.60, ringZ: -0.30,
+  hullFrontZ: 3.95, hullRearZ: -3.95, roofY: 1.70, ringY: 1.60, ringZ: -0.30,
   trunnionY: 2.12, trunnionZ: 0.95, muzzleZ: 6.70,
 });
 
