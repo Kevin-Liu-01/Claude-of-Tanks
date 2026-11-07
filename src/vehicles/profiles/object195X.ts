@@ -40,6 +40,9 @@ const GLACIS_RAKE = Math.atan2(R - NOSE_Y, NOSE_Z - GL0);
  * plain panels and ledge behind them to the stern (SKIRT_Z0); the lower skirt and its band run the whole side to the nose,
  * their foot rising over the sprocket. */
 const ERA_Z0 = -1.20, ERA_Z1 = 2.40, ERA_N = 10, ERA_TIER = 1.40, SKIRT_Z0 = -3.88, ROW_FOOT = 1.06;
+/** The lower skirt's stepped lower tier (critics r13): eleven plates from the stern to the fender's apron, 2.5 cm proud of
+ * the skirt from its foot to TIER_TOP. */
+const TIER_Z0 = -3.86, TIER_PITCH = (3.80 - TIER_Z0) / 11, TIER_TOP = .90, TIER_STEP = .025;
 const skirtFoot = (z: number) => z >= -3.25 ? FOOT : FOOT + (-3.25 - z) * ((1.10 - FOOT) / (-3.25 - SKIRT_Z0));
 function along(line: readonly (readonly [number, number])[], z: number): number {
   for (let i = 1; i < line.length; i++) {
@@ -48,14 +51,15 @@ function along(line: readonly (readonly [number, number])[], z: number): number 
   }
   return line[0][1];
 }
-/** The fender boxes over the idlers (render 3; critics r12, "a deep, blunt nose block ... a level fender top running
- * forward over the idler"): flat with the deck, then 2 cm proud of the glacis down to its middle, then level over the
- * idler to the front's bevel and a full-depth front face ahead of the track; their floors over the track's top run and round the idler's wrap
+/** The fender boxes over the idlers (renders 3 and 4; critics r12, "a deep, blunt nose block"; r13, "sloped fender
+ * wedges: a top that falls toward the front and an angled front face carrying the lamp"): flat with the deck, 2 cm proud
+ * of the glacis down to its middle, falling gently over the idler to the angled front face, then an apron down to the
+ * skirts' foot ahead of the track; their floors over the track's top run and round the idler's wrap
  * (.qa-dev/r152/track-top.mjs; .qa-dev/r195hull/track-gap.mjs), then down in front of it. The outer corner keeps under the
  * 2A83's depressed line (1.54 m at the front corner). */
 const FENDER_Z0 = 2.34, FENDER_Z1 = 3.93, FENDER_X0 = 1.15, FENDER_X1 = XE, FENDER_LEVEL = 1.38;
 const FENDER_TOP: readonly (readonly [number, number])[] = [[FENDER_Z0, R], [2.40, R], [3.30, glacisY(3.30) + .02],
-  [3.87, FENDER_LEVEL], [FENDER_Z1, FENDER_LEVEL - .05]];
+  [3.60, FENDER_LEVEL - .045], [3.92, .98], [FENDER_Z1, .97]];
 const FENDER_FLOOR: readonly (readonly [number, number])[] = [[FENDER_Z0, 1.235], [3.52, 1.235], [3.62, 1.17],
   [3.70, 1.08], [3.75, 1.02], [3.80, FOOT], [FENDER_Z1, FOOT]];
 
@@ -92,12 +96,14 @@ function addHull(P: TankBuilderPort): void {
     [3.62, glacisY(3.62), .56, FENDER_X0 + .01, 1.06, 1.00],
     [NOSE_Z, NOSE_Y, .70, FENDER_X0 + .01, 1.02, .96],
   ]);
-  // the chin (render 4): the heavy lower plate hung ahead of the nose between the tracks, a thick block raked back and
-  // narrowing to its foot, two rows of strips across its top
-  P.add('hull', KIT.slab([-1.07, .44, 3.87], [1.07, .44, 3.87], [1.07, .44, 3.60], [-1.07, .44, 3.60],
-    [-1.15, 1.12, 3.98], [1.15, 1.12, 3.98], [1.15, 1.12, 3.62], [-1.15, 1.12, 3.62]));
-  for (const y of [1.02, .96]) for (const x of [-.82, -.27, .27, .82]) {
-    P.addEquipment('hullDetail', box(.50, .036, .02), x, y, 3.87 + (y - .44) * (.11 / .68) + .012);
+  // the chin (render 4; critics r13, "the nose's second plane"): the lower plate from under the glacis' edge raked back
+  // 27 degrees to its foot between the fenders, no wider than the glacis, two rows of strips across its top
+  const CHIN_RAKE = Math.atan2(.33, .66), chinZ = (y: number) => 3.60 + (y - .46) * (.33 / .66);
+  P.add('hull', KIT.slab([-1.04, .46, 3.60], [1.04, .46, 3.60], [1.04, .46, 3.40], [-1.04, .46, 3.40],
+    [-1.12, 1.12, 3.93], [1.12, 1.12, 3.93], [1.12, 1.12, 3.68], [-1.12, 1.12, 3.68]));
+  for (const y of [1.03, .96]) for (const x of [-.80, -.27, .27, .80]) {
+    const w = .48 - (1.12 - y) * .12;
+    P.addEquipment('hullDetail', box(w, .036, .02), x, y - .01 * Math.sin(CHIN_RAKE), chinZ(y) + .01 * Math.cos(CHIN_RAKE), CHIN_RAKE, 0, 0);
   }
   // the row of bolted blocks over the glacis' lower edge, wrapping the nose down onto the chin
   const noseBlock: [number, number][] = [[3.58, glacisY(3.58) + .045], [3.90, glacisY(3.90) + .045], [3.955, 1.14],
@@ -118,29 +124,38 @@ function addHull(P: TankBuilderPort): void {
   });
   for (const s of [-1, 1]) {
     P.add('hull', sideSolid(fender, s));
-    // the front face's two bolted plates and its lower edge's rubber strip
-    for (const y of [1.17, .90]) P.addEquipment('hullDark', box(.56, .012, .012), s * 1.475, y, FENDER_Z1 + .004);
-    for (const dx of [-.22, .22]) for (const y of [1.25, 1.04, .82]) {
-      P.addEquipment('hullDetail', cylZ(.018, .012, 8), s * 1.475 + dx, y, FENDER_Z1 + .006);
+    // the angled face's bolt rows, the apron's seam and bolts, and its lower edge's rubber strip
+    const faceRake = Math.atan2(3.92 - 3.60, 1.335 - .98);
+    for (const t of [.30, .70]) {
+      const z = 3.60 + .32 * t, y = 1.335 - .355 * t;
+      for (const dx of [-.22, 0, .22]) {
+        P.addEquipment('hullDetail', cylY(.018, .018, .012, 8), s * 1.475 + dx, y + .004, z + .004, faceRake, 0, 0);
+      }
     }
+    P.addEquipment('hullDark', box(.60, .012, .012), s * 1.475, .975, FENDER_Z1 + .002);
+    for (const dx of [-.22, .22]) P.addEquipment('hullDetail', cylZ(.018, .012, 8), s * 1.475 + dx, .85, FENDER_Z1 + .006);
     P.addMudguard('object195-front-flap', 'hullRubber', box(.60, .12, .03), s * 1.475, FOOT - .05, FENDER_Z1 - .02);
   }
-  // the crew capsule's three hatches side by side on the deck ahead of the turntable (render 4): each a raised rim, its
-  // lid and handle, a hinge at its back, two periscope blocks ahead of it along the glacis' top edge; all under the 2A83's
-  // depressed line (1.76 m there)
-  const HZ = 2.08;
-  const rim = [[.235, R - .01], [.31, R - .01], [.31, R + .03], [.295, R + .045], [.235, R + .045], [.235, R - .01]];
+  // the crew capsule's three hatches side by side on the deck ahead of the turntable (render 4; critics r13, "raise the
+  // coamings"): each a broad coaming 5 cm high with a stepped base ring, the lid domed 8 cm over the deck at its middle,
+  // a dark seam between them, its handle, a hinge at its back, two periscope blocks ahead of it along the glacis' top
+  // edge; all under the 2A83's depressed line (1.76 m at the coamings' rims, 1.81 m over the lids' middles)
+  const HZ = 2.10;
+  const rim = [[.225, R - .01], [.36, R - .01], [.36, R + .012], [.33, R + .02], [.33, R + .035], [.31, R + .05],
+    [.225, R + .05], [.225, R - .01]];
   for (const x of [-.70, 0, .70]) {
-    P.add('hull', KIT.lathe(rim, 28), x, 0, HZ);
-    P.addHatch('hullDetail', cylY(.225, .235, .035, 22), x, R + .03, HZ);
-    P.addEquipment('hullDark', cylY(.10, .10, .006, 16), x, R + .049, HZ);
-    P.addEquipment('hullDetail', box(.16, .018, .03), x, R + .054, HZ + .10);
+    const lid = KIT.xform(KIT.sph(.15, 18, Math.PI / 2), 0, 0, 0, 0, 0, 0, [1, .22, 1]);
+    P.add('hull', KIT.lathe(rim, 32), x, 0, HZ);
+    P.addEquipment('hullDark', cylY(.226, .226, .008, 24), x, R + .041, HZ);
+    P.addHatch('hullDetail', cylY(.215, .222, .02, 24), x, R + .043, HZ);
+    P.addHatch('hullDetail', lid, x, R + .046, HZ);
+    P.addEquipment('hullDetail', box(.03, .016, .12), x + .16, R + .058, HZ);
     for (const dx of [-.11, .11]) P.addEquipment('hullDetail', cylX(.026, .09, 10), x + dx, R + .022, HZ - .29);
     P.addEquipment('hullDark', box(.26, .025, .05), x, R + .0125, HZ - .29);
     for (const dx of [-.15, .15]) {
-      P.addEquipment('hullDetail', box(.13, .04, .11), x + dx, R + .018, 2.38);
-      P.addEquipment('hullGlass', box(.10, .026, .01), x + dx, R + .02, 2.437);
-      P.addEquipment('hullDark', box(.135, .006, .115), x + dx, R + .039, 2.38);
+      P.addEquipment('hullDetail', box(.13, .06, .11), x + dx, R + .008, 2.445);
+      P.addEquipment('hullGlass', box(.10, .026, .01), x + dx, R + .018, 2.502);
+      P.addEquipment('hullDark', box(.135, .006, .115), x + dx, R + .039, 2.445);
     }
   }
   // the deck's plate seams and the collar round the turntable's foot (the deck now stands over the disc's lower half)
@@ -205,18 +220,21 @@ function addHullKit(P: TankBuilderPort): void {
       [x, R + .018, 2.36], [x, R + .018, 2.10], [x, R + .006, 2.00]]);
     for (const z of [3.36, 2.86]) P.addEquipment('hullDetail', box(.02, .042, .02), x, glacisY(z) + .021, z, GLACIS_RAKE, 0, 0);
   }
-  // the headlights (render 3): a round lamp standing on each fender box's level top at its front outer corner, on a
-  // base, its lens, a cage of bars round it; under the 2A83's depressed line there (1.57 m)
+  // the headlights (renders 3 and 4; critics r13, "large round headlamps with guards standing on top of each fender's
+  // front corner"): a 19 cm lamp can on a saddle at the top of each fender's angled face, its bezel ring and lens, and a
+  // guard of three bars and a hoop over it; under the 2A83's depressed line there (1.60 m)
   for (const s of [-1, 1]) {
-    const x = s * 1.56, z = 3.72, y = FENDER_LEVEL + .085;
-    P.addEquipment('hullDetail', box(.18, .03, .16), x, FENDER_LEVEL + .015, z - .02);
-    P.addEquipment('hullDetail', box(.05, .05, .06), x, FENDER_LEVEL + .045, z - .04);
-    P.addEquipment('hullDetail', cylZ(.065, .12, 18), x, y, z);
-    P.addEquipment('hullDark', cylZ(.056, .02, 18), x, y, z + .055);
-    P.addEquipment('hullGlass', markVehicleNightLens(cylZ(.052, .008, 18), 'headlight'), x, y, z + .063);
-    for (const dx of [-.085, .085]) P.addEquipment('hullDetail', box(.014, .15, .014), x + dx, FENDER_LEVEL + .075, z + .08);
-    P.addEquipment('hullDetail', box(.184, .014, .014), x, FENDER_LEVEL + .148, z + .08);
-    for (const dx of [-.085, .085]) P.addEquipment('hullDetail', box(.014, .014, .16), x + dx, FENDER_LEVEL + .148, z);
+    const x = s * 1.52, z = 3.55, foot = along(FENDER_TOP, z), y = foot + .115;
+    P.addEquipment('hullDetail', box(.20, .04, .18), x, foot + .01, z - .03);
+    P.addEquipment('hullDetail', box(.06, .05, .08), x, foot + .045, z - .05);
+    P.addEquipment('hullDetail', cylZ(.095, .16, 22, .085), x, y, z);
+    P.addEquipment('hullDetail', torus(.097, .014, 22, 6), x, y, z + .08, Math.PI / 2, 0, 0);
+    P.addEquipment('hullDark', cylZ(.084, .012, 22), x, y, z + .082);
+    P.addEquipment('hullGlass', markVehicleNightLens(cylZ(.08, .008, 22), 'headlight'), x, y, z + .09);
+    for (const dx of [-.075, 0, .075]) P.addEquipment('hullDetail', box(.012, .20, .012), x + dx, y, z + .13);
+    P.addEquipment('hullDetail', box(.20, .012, .012), x, y - .095, z + .13);
+    for (const dx of [-.11, .11]) P.addEquipment('hullDetail', box(.014, .014, .17), x + dx, y + .02, z + .05);
+    P.addEquipment('hullDetail', box(.234, .014, .014), x, y + .02, z + .13);
   }
   // the stowage bins on the plain sides' ledges (render 3's rear quarter), their lids and straps; the louvred exhaust over
   // the left ledge between them
@@ -313,12 +331,25 @@ function addSkirts(P: TankBuilderPort): void {
       P.addEquipment('hullDetail', cylX(.018, .012, 8), s * (XE + .004), LEDGE - .05, z);
     }
     for (const z of [-1.65, -2.55, -3.45]) P.addEquipment('hullDark', box(.012, .05, .16), s * (XE + .004), ROW_FOOT + .15, z);
-    // the lower skirt's joint straps, its bolts under the upper row's foot and its handles, the length of the side
-    for (const z of [-2.80, -1.50, -.20, 1.10, 2.40, 3.30]) {
-      P.addEquipment('hullDetail', box(.012, ROW_FOOT - FOOT - .02, .05), s * (XK1 + .006), (ROW_FOOT + FOOT) / 2, z);
+    // the lower skirt's relief (critics r13, "vertical panel seams, bolt rows and its own stepped plates down over the
+    // wheels"): its upper plate's joint straps and bolt row under the upper row's foot, then a stepped lower tier of
+    // plates 2.5 cm proud along its foot, each with its bolts and a handle, gaps between them
+    for (let k = 0; k <= 11; k++) {
+      const z = TIER_Z0 + k * TIER_PITCH;
+      P.addEquipment('hullDetail', box(.012, ROW_FOOT - TIER_TOP - .01, .05), s * (XK1 + .006), (ROW_FOOT + TIER_TOP) / 2, z);
     }
-    for (let z = 3.70; z > -3.30; z -= .325) P.addEquipment('hullDetail', cylX(.016, .012, 8), s * (XK1 + .004), ROW_FOOT - .05, z);
-    for (const z of [-2.15, -.85, .45, 1.75]) P.addEquipment('hullDark', box(.012, .045, .15), s * (XK1 + .004), FOOT + .10, z);
+    for (let z = 3.70; z > -3.30; z -= .325) P.addEquipment('hullDetail', cylX(.016, .012, 8), s * (XK1 + .004), ROW_FOOT - .045, z);
+    for (let k = 0; k < 11; k++) {
+      const z0 = TIER_Z0 + k * TIER_PITCH + .012, z1 = z0 + TIER_PITCH - .024, zc = (z0 + z1) / 2;
+      const tier = [z0, z1].map((z): SolidSection => {
+        const y0 = skirtFoot(z) + .005, y1 = Math.max(TIER_TOP, y0 + .17), x0 = XK1 - .01, x1 = XK1 + TIER_STEP;
+        return { z, ring: [[x0, y0], [x1, y0], [x1, y1 - .02], [x1 - .02, y1], [x0, y1]] };
+      });
+      P.add('hull', sideSolid(tier, s));
+      const boltY = Math.max(TIER_TOP, skirtFoot(zc) + .175) - .045;
+      for (const dz of [-.22, 0, .22]) P.addEquipment('hullDetail', cylX(.017, .012, 8), s * (XK1 + TIER_STEP + .004), boltY, zc + dz);
+      P.addEquipment('hullDark', box(.012, .045, .14), s * (XK1 + TIER_STEP + .004), skirtFoot(zc) + .07, zc);
+    }
   }
 }
 
