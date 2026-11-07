@@ -254,12 +254,38 @@ function pinWorldTime(t) {
 function groundSettled() {
   const W = window.__DEBUG.world, g = W?._tallGrass?.getState?.(), l = W?._litter?.getState?.();
   // (ground-269's f26a717570: the arm shot first drew fewer near blades) the mid ring too, and the rings' published counts
-  // unchanged for 1.5 s
+  // unchanged for 1.5 s; (its 56f6aa65d7: at load 200 frames came a second apart, so 1.5 s held no update at all) and over
+  // 30 rendered frames
+  if (!window.__gsFrames) {
+    window.__gsFrames = { n: 0 };
+    const tick = () => { window.__gsFrames.n++; requestAnimationFrame(tick); };
+    requestAnimationFrame(tick);
+  }
   const idle = (!g || !g.enabled || (!g.near.pending && !g.mid.pending && !g.far.pending)) && (!l || !l.pending);
   const sig = g ? [g.near, g.mid, g.far].map((r) => `${r.count}/${r.publishes}`).join() : '';
-  const now = performance.now(), last = window.__gsSettle;
-  window.__gsSettle = { sig, since: last && last.sig === sig ? last.since : now };
-  return idle && now - window.__gsSettle.since > 1500;
+  const now = performance.now(), frame = window.__gsFrames.n, last = window.__gsSettle;
+  const same = last && last.sig === sig;
+  window.__gsSettle = { sig, since: same ? last.since : now, sinceFrame: same ? last.sinceFrame : frame };
+  return idle && now - window.__gsSettle.since > 1500 && frame - window.__gsSettle.sinceFrame >= 30;
+}
+
+/** Holds the grass rings and the ground litter as published (page side; ground-269's pageFreezeGround): `on` from the
+ *  settle to the screenshot, so the 48 held cloud frames stream no blades in. Returns the grass's ring counts. */
+function pageFreezeGround(on) {
+  const W = window.__DEBUG.world, g = W?._tallGrass, l = W?._litter;
+  if (g && !g.__gsHold) {
+    const update = g.update;
+    g.update = (dt, cam, focus, fwd, fill) => update.call(g, dt, cam, focus, fwd, window.__gsHold ? false : fill);
+    g.__gsHold = true;
+  }
+  if (l && !l.__gsHold) {
+    const update = l.update;
+    l.update = (cam) => { if (!window.__gsHold) update.call(l, cam); };
+    l.__gsHold = true;
+  }
+  window.__gsHold = on;
+  const s = g?.getState?.();
+  return s ? [s.near, s.mid, s.far].map((r) => `${r.count}/${r.publishes}`).join() : null;
 }
 
 /** The pinned layer held (its frames traced), or no layer. */
@@ -370,6 +396,7 @@ async function shootMap(entry, options, frames) {
     await page.evaluate(() => { window.__gsSettle = null; });
     const streamed = settled && await page.waitForFunction(groundSettled, { timeout: 90_000, polling: 250 }).then(() => true, () => false);
     if (!streamed) throw new Error(`${mapId} ${pose.name}: the grass or the ground litter did not settle within 90 s`);
+    const grass = await page.evaluate(pageFreezeGround, true);
     const timesPinned = await page.evaluate(pinWorldTime, WORLD_TIME_S);
     await page.evaluate(pinClouds());
     // (48 frames: the long view of a big town under a loaded machine draws a few a second)
@@ -380,7 +407,8 @@ async function shootMap(entry, options, frames) {
     }
     const file = path.join(frames, `${mapId}-${pose.name}.png`);
     await page.screenshot({ path: file, type: 'png' });
-    receipt.poses[pose.name] = { resolved, at: pose.at, grassSettled: settled, clouds: { timeS: CLOUD_TIME_S, frames: CLOUD_FRAMES },
+    const grassShot = await page.evaluate(pageFreezeGround, false);
+    receipt.poses[pose.name] = { resolved, at: pose.at, grassSettled: settled, grass: { settled: grass, shot: grassShot }, clouds: { timeS: CLOUD_TIME_S, frames: CLOUD_FRAMES },
       worldTime: { timeS: WORLD_TIME_S, uniformsPinned: timesPinned },
       file: path.basename(file) };
   }
