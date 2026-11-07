@@ -13,7 +13,7 @@ import * as THREE from 'three';
 import { createTank } from '../tankFactory.ts';
 import { getSpec } from '../specs.ts';
 import { BRADLEY_TURRET_RING } from '../modern3.ts';
-import { CLASSIC_GUN_PIVOT, CLASSIC_TOW_MOUTHS, CLASSIC_BARREL_LENGTH_M, CLASSIC_GUN_PITCH_BY_YAW_DEG } from '../bradleyClassicTurretLayout.ts';
+import { CLASSIC_GUN_PIVOT, CLASSIC_TOW_MOUTHS, CLASSIC_MUZZLE_Z, CLASSIC_GUN_PITCH_BY_YAW_DEG } from '../bradleyClassicTurretLayout.ts';
 import { bradleySourceArmorInput } from '../modern3Specs.ts';
 
 const ID = 'm3a2_bradley', CLASSIC = 'm2a2_bradley';
@@ -41,7 +41,9 @@ assert.equal(m3.gunPitchByYawDeg, undefined, `${ID}'s source turret depresses it
 assert.deepEqual(m3.gun.launcherMuzzles, getSpec('ua_m2a3_bradley').gun.launcherMuzzles,
   `${ID} fires TOW from the source turret's pod, as the Ukrainian M2A3 does`);
 assert.deepEqual(m2.armor.gunPivot, [...CLASSIC_GUN_PIVOT], `${CLASSIC} carries the classic turret's gun pivot`);
-assert.equal(m2.armor.gunBarrel.lengthM, CLASSIC_BARREL_LENGTH_M);
+// 269 (2026-11-06): the combat-rig census (combatGunRigs.generated.ts) seats the combat barrel on the drawn 25 mm, whose
+// suppressor mouth is CLASSIC_MUZZLE_Z (2.23), not the spec's 2.30; the swap had left the source turret's row on the M2A2.
+assert.equal(m2.armor.gunBarrel.lengthM, CLASSIC_MUZZLE_Z, `${CLASSIC}'s combat barrel ends at the drawn muzzle`);
 assert.deepEqual(m2.gunPitchByYawDeg, CLASSIC_GUN_PITCH_BY_YAW_DEG, `${CLASSIC} keeps the classic turret's rear stops`);
 assert.deepEqual(m2.gun.launcherMuzzles.map(({ x, y, z, frame }) => [x, y, z, frame]),
   CLASSIC_TOW_MOUTHS.map(({ x, y, z }) => [x, y, z, 'turret']), `${CLASSIC} fires TOW from the pod's two collar mouths`);
