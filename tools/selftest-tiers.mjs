@@ -806,6 +806,11 @@ export const MANUAL_SUITES = Object.freeze({
     'tools/destruction-first-use.browser.selftest.mjs',
     'tools/source-dimension-frame.browser.selftest.mjs',
   ]),
+  // round 5 U12 (2026-11-02 audit, sm-fix): the census's two houses cost about 1.7 s of its 4.1-4.4 s of CPU; the default
+  // receipt (src/fx/fxClockStampCensus.selftest.mjs) runs the rest of it and leaves their sites to this one
+  fx: suite('the fx-clock stamp census whole: two houses brought down (stages, sections, collapse bodies, the hanging sweep) before the rebase, and every fx-clock site\'s reach', [
+    'src/fx/fxClockStampCensusFull.selftest.mjs',
+  ]),
   media: suite('the media lane\'s fleet backlog: every production vehicle leads a take, and every fleet take clears its battlefield survey (the media lane\'s local dumps: run it where they are)', [
     'tools/media-r5/fleet-coverage.selftest.mjs',
   ]),

@@ -93,7 +93,10 @@ import { createStructureStageLedger } from './structureStageLedger.ts';
 type Rng = () => number;
 type MutableVec3 = [number, number, number];
 type WireVec3 = readonly [number, number, number];
-/** A hull's last event point (effects' lastKnownPos): in the world, and on the hull when the hull resolved then. */
+/**
+ * A hull's last event point (effects' lastKnownPos): in the world, and on the hull when the hull resolved then and this
+ * seat saw it (round 5 U16: a network hull out of sight stands at its last sample's pose).
+ */
 interface KnownHullPoint { world: MutableVec3; local: MutableVec3; onHull: boolean }
 type ShellId = string | number;
 type TracerType = 'DRONE' | 'ATGM' | 'AP' | 'APCR' | 'HEAT' | 'HE' | 'HESH' | 'APFSDS';
@@ -246,6 +249,8 @@ interface FxEntity {
   };
   /** Solo/authority entities carry the combat record; a revived one reads destroyed:false. */
   combat?: { destroyed?: boolean; fire?: { burning?: boolean } } | null;
+  /** A network peer's actor (battlePresentation): false while this seat does not see it; its pose is the last sample's. */
+  networkVisible?: boolean;
 }
 
 interface FxDebugSurface {
@@ -2196,7 +2201,8 @@ function* createFxSteps(
   /**
    * Each hull's last event point in this life, fed by the hit and death events that carry one: where it was in the
    * world, and where it sits on the hull (the hull's frame by its position and yaw, as effectAttachments' state-yaw
-   * anchor reads it) when the hull resolved then (round 4 merge review r2; knownPosOf reads it, a mode respawn drops it).
+   * anchor reads it) when the hull resolved then and this seat saw it (round 4 merge review r2, round 5 U16;
+   * knownPosOf reads it, a mode respawn drops it).
    */
   const lastKnownPos = new Map<string, KnownHullPoint>();
   const _knownAt: MutableVec3 = [0, 0, 0]; // knownPosOf's answer for a hull that resolves
@@ -2297,24 +2303,30 @@ function* createFxSteps(
    */
   const hullMetMunitions = new Map<ShellId, ShellRecord>();
   /**
-   * (round 4 F6) How long a record outlives its round's firing, or the last sweep that found its round still drawn in
-   * flight, on the fx clock: the sim ends every fired round by SHELL_MAX_LIFETIME_S of flight (sim/ballistics.ts
-   * stepShell; a drone, the one round with its own maxLifetimeS, raises no shell:fired), and the grace covers a round's
-   * end event trailing its last drawn frame. A record past it belongs to a round whose end never came here (a peer's
-   * shell_impact withheld once its shooter left this viewer's sight, or a round in flight when its host went), and it
-   * leaves the records then, not at drop-oldest. (round 4 F6 review) The fx clock is render time: it stands still in a
-   * pause and slows in a replay, but in a network view it runs on while a peer's events stall (a link hitch, a HOLD, a
-   * host handover), and a stall past the grace aged out the record of a round still in flight, whose late expiry then
-   * took its class from its type (a WP smoke round's burst drawn as HE). The frame still draws such a round as its last
-   * snapshot left it (battlePresentation applyShells), so a sweep restarts the bound of every round it is handed in
-   * flight (ageShellRecords): only a round no longer drawn ages.
+   * (round 5 U11) The grace a record keeps after its round's last drawn frame, for the round's end event trailing the
+   * snapshot that drops it (a peer's queue releases a stalled end a few frames on: mp/match/events.ts): every frame a
+   * round is handed in flight moves its record's due time to at least this far on (ageShellRecords), so only a round no
+   * longer drawn ages. (Renewed at a sweep only, a round drawn through a stall lost its record in the sweep one frame
+   * after its last drawn frame, before its end.)
    */
-  const SHELL_RECORD_BOUND_S = SHELL_MAX_LIFETIME_S + 4;
+  const SHELL_RECORD_GRACE_S = 4;
+  /**
+   * (round 4 F6) How long a record outlives its round's firing, on the fx clock: the sim ends every fired round by
+   * SHELL_MAX_LIFETIME_S of flight (sim/ballistics.ts stepShell; a drone, the one round with its own maxLifetimeS,
+   * raises no shell:fired), plus the grace. A record past its bound belongs to a round whose end never came here (a
+   * peer's shell_impact withheld once its shooter left this viewer's sight, or a round in flight when its host went),
+   * and it leaves the records then, not at drop-oldest. (round 4 F6 review) The fx clock is render time: it stands still
+   * in a pause and slows in a replay, but in a network view it runs on while a peer's events stall (a link hitch, a
+   * HOLD, a host handover), and the frame still draws a round in flight as its last snapshot left it (battlePresentation
+   * applyShells): a stall past the bound aged out the record of a round still in flight, whose late expiry then took its
+   * class from its type (a WP smoke round's burst drawn as HE).
+   */
+  const SHELL_RECORD_BOUND_S = SHELL_MAX_LIFETIME_S + SHELL_RECORD_GRACE_S;
   /** A sweep's least spacing: in a sustained fight a record falls due every frame, and a record may outlive its bound by
    *  this much rather than every frame walking both maps. */
   const SHELL_RECORD_SWEEP_S = 1;
   /** When the next sweep runs: the earliest dueS any record holds, no sooner than a spacing after the last sweep (Infinity
-   *  with none): the frame's one test. */
+   *  with none). A drawn round's renewal only moves a dueS later, so a sweep may come early and find nothing due. */
   let shellRecordsDueS = Infinity;
   timeShifts.on('shellRecords', (delta) => {
     for (const record of shellMunitions.values()) record.dueS += delta;
@@ -2328,14 +2340,20 @@ function* createFxSteps(
     }
     return next;
   }
-  /** (round 4 F6) Every frame: the records whose round has outlived its flight-time bound go; (review) the frame's rounds
-   *  in flight (`shells`, the update's) are in flight, however late their events: their bounds restart from now. */
+  /** (round 4 F6) Every frame: (round 5 U11) a round the update is handed in flight (`shells`, the frame's) keeps its
+   *  record at least the grace past this frame, however late its events (a map lookup a round, no allocation); the
+   *  records whose due time has passed go. */
   function ageShellRecords(nowS: number, shells: readonly LiveShell[]): void {
-    if (nowS < shellRecordsDueS) return;
-    for (let i = 0; i < shells.length; i++) {
-      const record = shellMunitions.get(shells[i].id) ?? hullMetMunitions.get(shells[i].id);
-      if (record) record.dueS = nowS + SHELL_RECORD_BOUND_S;
+    if (shellMunitions.size || hullMetMunitions.size) {
+      const keepS = nowS + SHELL_RECORD_GRACE_S;
+      for (let i = 0; i < shells.length; i++) {
+        const shell = shells[i];
+        if (shell.dead) continue;
+        const record = shellMunitions.get(shell.id) ?? hullMetMunitions.get(shell.id);
+        if (record && record.dueS < keepS) record.dueS = keepS;
+      }
     }
+    if (nowS < shellRecordsDueS) return;
     const next = sweepShellRecords(hullMetMunitions, nowS, sweepShellRecords(shellMunitions, nowS, Infinity));
     shellRecordsDueS = next === Infinity ? Infinity : Math.max(next, nowS + SHELL_RECORD_SWEEP_S);
   }
@@ -4801,7 +4819,14 @@ function* createFxSteps(
     return typeof yaw === 'number' && Number.isFinite(yaw) ? yaw : 0;
   }
 
-  /** Record the point a hit or a death carried for its hull (lastKnownPos): one record a hull, rewritten in place. */
+  /**
+   * Record the point a hit or a death carried for its hull (lastKnownPos): one record a hull, rewritten in place.
+   * (round 5 U16) A network hull this seat does not see (networkVisible false; a shooter still hears its own hit on
+   * it) stands at its last sample's pose, not where the round struck it: measured on the hull from there, the point
+   * was off by the distance the hull went unseen and rode it that far off once it was seen again. Its point stays in
+   * the world only, so knownPosOf answers the hull's pose. networkVisible itself, not hullHidden: a solo hull out of
+   * the player's spotting is hidden by the page, but its state is live and its point is right on it.
+   */
   function noteKnownPos(id: string, p: WireVec3): void {
     let known = lastKnownPos.get(id);
     if (!known) {
@@ -4811,8 +4836,8 @@ function* createFxSteps(
     known.world[0] = p[0]; known.world[1] = p[1]; known.world[2] = p[2];
     const ent = decalEntityFor(id);
     const at = ent?.state?.pos ?? ent?.visual?.root?.position ?? null;
-    known.onHull = !!(ent && at);
-    if (!ent || !at) return;
+    known.onHull = !!(ent && at) && ent?.networkVisible !== false;
+    if (!ent || !at || !known.onHull) return;
     const yaw = hullYawOf(ent), c = Math.cos(yaw), s = Math.sin(yaw), dx = p[0] - at.x, dz = p[2] - at.z;
     known.local[0] = c * dx - s * dz; known.local[1] = p[1] - at.y; known.local[2] = s * dx + c * dz;
   }
@@ -4823,6 +4848,9 @@ function* createFxSteps(
    * its step), else where the hull stands; the world point only for a hull that does not resolve. (round 4 merge
    * review r2) A world point goes stale as the hull moves: a ram's or a crash's thrown track drew at the life's first
    * such event's spot, at an older hit's, or at the last life's wreck. A resolving hull's answer is shared scratch.
+   * (round 5 U16) A point taken while the hull was out of this seat's sight is not on the hull: the hull's pose. No
+   * reader asks while it stays out of sight (module_state and tank_fire name only the hull and are withheld from a seat
+   * that does not see it, authoritativeMatch canObserveEvent; the burn scan skips a hidden hull).
    */
   function knownPosOf(id: string): MutableVec3 | null {
     const known = lastKnownPos.get(id);

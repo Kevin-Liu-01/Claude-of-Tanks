@@ -10,7 +10,9 @@
 //  - a hull's event point (round 4 merge review r2): a beat no hit names (a ram's or a crash's thrown track, a fire
 //    raised later) lands on the hull where it stands now, at its last hit's point on the hull (the hit's own spot when
 //    it came with the hit), never where the hull was first placed in this life, where it last died or where an older
-//    hit struck it; a mode respawn forgets the last life's point;
+//    hit struck it; a mode respawn forgets the last life's point; (round 5 U16) a hit on a network hull this seat does
+//    not see is not measured on it from its last sample's pose (once seen again, its beats landed off it by the distance
+//    it went unseen), while an unspotted solo hull's hit stays on the hull;
 //  - one HE round, one burst: its hull event and its expiry split across frames (a network peer's queue) drew two; a
 //    direct hull hit (no expiry ever follows it) bursts on the next update, and a late wall expiry still strikes its
 //    building;
@@ -223,6 +225,75 @@ function fakeVisual() {
   fx.resetAll();
 }
 
+// ---- (round 5 U16) a hit on a hull this seat does not see ----
+// A network peer's actor out of this seat's spotting carries networkVisible false and its last sample's pose (it moves
+// only when a sample comes), and a shooter still hears its own hit on it. Measured on the hull from that pose, the hit
+// was off by the distance the hull went unseen, and a beat no hit names once it is seen again (a ram's thrown track,
+// the burn scan's column) landed that far off the hull. The hit keeps its world point but no point on the hull. A solo
+// hull out of the player's spotting (the page's auxiliaryVisible) stands where its state says: its point stays on it.
+{
+  const disc = (fx) => {
+    const discs = [];
+    fx.group.traverse((o) => { if (o.isMesh && o.renderOrder === 2 && o.matrixAutoUpdate === false) discs.push(o); });
+    return (emit) => {
+      const versions = discs.map((m) => m.geometry.attributes.position.version);
+      emit();
+      const d = discs.find((m, i) => m.geometry.attributes.position.version !== versions[i]);
+      if (!d) return null;
+      const a = d.geometry.attributes.position.array, n = a.length / 3;
+      let x = 0, z = 0;
+      for (let i = 0; i < a.length; i += 3) { x += a[i]; z += a[i + 2]; }
+      return [x / n, z / n];
+    };
+  };
+  const near = (p, x, z, what) => assert.ok(p && Math.hypot(p[0] - x, p[1] - z) < 0.5,
+    `${what}: at (${x}, ${z}), not (${p?.map((v) => v.toFixed(1))})`);
+  const peer = (extra) => ({ id: 'foe', visual: { root: new THREE.Group() },
+    state: { pos: new THREE.Vector3(0, 0, 0), yaw: 0 }, combat: { destroyed: false, fire: { burning: false } }, ...extra });
+  const hit = (bus, x) => bus.emit('shell:hit',
+    { targetId: 'foe', shooterId: 'me', kind: 'pen', caliberMm: 120, pos: [x, 1.2, 0], normal: [-1, 0, 0] });
+  // last seen at (0, 0); struck unseen at (hitX, 1.2, 0); seen again at (seenX, 0): a ram throws a track, then the
+  // hull is seen burning (its fire's tank:fire edge withheld while it was hidden: the scan starts the column)
+  const unseenHit = (hitX, seenX, order) => {
+    const hull = peer({ networkVisible: false });
+    const entities = new Map([['foe', hull]]);
+    const { fx, bus, frames } = runtime(entities);
+    const scorchOf = disc(fx);
+    frames(5);
+    hit(bus, hitX);
+    frames(30);
+    hull.networkVisible = true;
+    hull.state.pos.set(seenX, 0, 0);
+    frames(5);
+    near(scorchOf(() => bus.emit('module:state', { id: 'foe', module: 'trackL', state: 'red', source: 'ram' })), seenX, 0,
+      `${order}: a ram-thrown track once the hull is seen again scorches on the hull`);
+    hull.combat.fire.burning = true;
+    frames(45);
+    const column = fx.getAttachmentDebug().subjects.find((s) => s.id === 'foe');
+    assert.ok(column && Math.hypot(column.pos[0] - seenX, column.pos[2]) < 0.5,
+      `${order}: the burn scan's column stands on the hull at (${seenX}, 0), not (${column?.pos.map((v) => v.toFixed(1))})`);
+    fx.resetAll();
+  };
+  unseenHit(30, 32, 'struck 30 m from where it was last seen, seen again 2 m on');
+  unseenHit(1, 60, 'struck 1 m from where it was last seen, seen again 59 m on');
+  // solo: an unspotted hull (auxiliaryVisible false, no networkVisible) is where its state says; the hit 1 m to its +X
+  // rides it 20 m on and through a quarter turn (1 m to the world's -Z)
+  const hull = peer({});
+  hull.state.pos.set(29, 0, 0);
+  const entities = new Map([['foe', hull]]);
+  const { fx, bus, frames } = runtime(entities, { auxiliaryVisible: () => false });
+  const scorchOf = disc(fx);
+  frames(5);
+  hit(bus, 30);
+  frames(30);
+  hull.state.pos.set(50, 0, 0);
+  hull.state.yaw = Math.PI / 2;
+  frames(5);
+  near(scorchOf(() => bus.emit('module:state', { id: 'foe', module: 'trackL', state: 'red', source: 'ram' })), 50, -1,
+    "an unspotted solo hull's hit stays on the hull (its state is live, not a last sample)");
+  fx.resetAll();
+}
+
 // ---- one burst per HE round, whatever frames its events land on ----
 {
   // the building a wall expiry consults (its look, its strike's seam): counted, so a skipped strike shows
@@ -358,4 +429,4 @@ function fakeVisual() {
   for (const r of [once, twice, first, second, page]) r.fx.resetAll();
 }
 
-console.log('fxLifecycles.selftest: deferred beats fire under suppression and never outlive their visual\'s life; a building\'s stages are laid once; smoke columns follow the fire; a hull\'s event point is on the hull where it stands now; one burst per HE round; the scene graph stays hidden under the suppression; a bus takes one runtime');
+console.log('fxLifecycles.selftest: deferred beats fire under suppression and never outlive their visual\'s life; a building\'s stages are laid once; smoke columns follow the fire; a hull\'s event point is on the hull where it stands now, never measured from an unseen hull\'s last sample; one burst per HE round; the scene graph stays hidden under the suppression; a bus takes one runtime');

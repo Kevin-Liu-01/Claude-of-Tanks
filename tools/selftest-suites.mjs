@@ -524,8 +524,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/fx/shellBurstColumn.selftest.mjs',
     'src/fx/killLight.selftest.mjs',
     'src/fx/absenceGrace.selftest.mjs', // 2026-11-02 audit F10: a round missing from a frame has not ended (tracers, trails, wires, drones)
-    'src/fx/fxLifecycles.selftest.mjs', // 2026-11-02 audit F10: the battle FX runtime's deferred beats, stage ledger, columns, visibility, HE dedupe, bus binding; a hull's event point on the hull where it stands (round 4 merge review r2)
-    'src/fx/heRoundRecords.selftest.mjs', // 2026-11-02 audit U31/U33 (round 2): an HE round's records outlast other rounds and a rebase; a late ground expiry keeps its marks
+    'src/fx/fxLifecycles.selftest.mjs', // 2026-11-02 audit F10: the battle FX runtime's deferred beats, stage ledger, columns, visibility, HE dedupe, bus binding; a hull's event point on the hull where it stands (round 4 merge review r2), never measured from a hidden network hull's last sample (round 5 U16)
+    'src/fx/heRoundRecords.selftest.mjs', // 2026-11-02 audit U31/U33 (round 2): an HE round's records outlast other rounds and a rebase; a late ground expiry keeps its marks; (round 5 U11) a record keeps its grace after its round's last drawn frame
     'src/fx/replayVeil.selftest.mjs', // 2026-11-02 audit U31 (round 2): the killcam's suppression hides the FX veil, never an owner's own flag (the lens guns)
     // 2026-10-08 (destruction core lane, P2): the Studio films the sim's own holes and falls
     'src/game/studioDestruction.selftest.mjs',
@@ -1104,10 +1104,18 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/fx/clock.selftest.mjs',
     'src/fx/clockRebase.selftest.mjs', // 2026-11-02 audit R7: one registry of fx-clock shifts; embers, fracture holds and pieces keep their time
     // 2026-11-02 audit U33/Q15 (round 2): a rebase leaves no fx-clock stamp the runtime holds (by census, no list); (round
-    // 3 B5) its scenario drives the drones, the gunship, the auxiliary systems, wires, a house's stages and the composer,
-    // and V8's block coverage measures its reach: an fx-clock read it never runs that is not in its named KNOWN_UNREACHED
-    // list fails it, and so does a listed read it now runs
+    // 3 B5) its scenario drives the drones, the gunship, the auxiliary systems, wires and the composer, and V8's block
+    // coverage measures its reach: an fx-clock site it never runs that is not in its named KNOWN_UNREACHED list fails it,
+    // and so does a listed site it now runs; (round 4 F7) a key names one site, and a clock handed under another name and
+    // a read of the shared uTime uniform are sites; an unloaded src/fx module that reads the clock fails it, and so does a
+    // stamp moved twice; its scenario drives the Studio cinematic layer and a round drawn past its record's bound
+    // (round 5 U11: the record the drawn round's renewal keeps is walked at the rebase); (round 5 U12) it leaves the
+    // two houses' destruction, what it stamps wherever that lives and the sites only it reaches, to the census whole
+    // (next)
     'src/fx/fxClockStampCensus.selftest.mjs',
+    // 2026-11-02 audit U12 (round 5): the census whole, with the two houses' destruction the default receipt leaves out
+    // (manual: fx)
+    'src/fx/fxClockStampCensusFull.selftest.mjs',
     // 2026-10-10 (physics lane, for the destruction core's natural collapses): the presentation pool of falling pieces.
     'src/fx/debrisPhysics.selftest.mjs',
     'src/gallery/chunkRecovery.selftest.mjs',
