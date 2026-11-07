@@ -44,6 +44,9 @@
 // still skipped it (the first stretch runs from where it was taken), so the cursor now passes a waypoint only where the
 // hull has gone by it; [13] a bridge deck's side is a wall to the walk whatever the step, as it is to the planner; and
 // [14] a hull on a record's top (a rock) is read from the ground under it, as the follower reads it, not as a drop.
+// Round 5 (U5, the round-four correctness review): that reading at both ends of the stood-put walk let a park onto or off
+// a record keep the elevation lock's dwell where the record's side is a wall by the slope law; [12] a park onto or off a
+// 2.2 m rock now restarts it, and one onto a 1 m rock the hull steps onto and off keeps it.
 import { Vector3 } from 'three';
 import '../vehicles/fleetFactory.ts';
 import { getSpec } from '../vehicles/specs.ts';
@@ -791,22 +794,29 @@ console.log('[12] the elevation lock\'s dwell counts the bot\'s own ticks: it ho
 // completeness review): the stood-put test's level half had no case; a hull taken at the cliff's foot and left on the
 // deck 9 m away on the plan (25 m up the face) is not where it was taken.
 {
-  const dwellHandBack = async (away, from = null, rock = null) => {
+  // `away`: where the watcher leaves the hull ([x, z], or a function of the spot it was taken on); `rock`: a record the
+  // structure support carries the hull on, which it starts on (`onRock`) or is left on (`awayOnRock`)
+  const dwellHandBack = async (away, from = null, rock = null, { onRock = rock !== null, awayOnRock = false } = {}) => {
     const { ctl, floor, run, moveTo, hull, clock } = await deckScene(rock ? [rock] : null);
     if (from) moveTo(...from);
-    if (rock) resetTankVerticalState(floor.state, rock.max[1]); // the floor bot stands on the rock's top
+    if (onRock) resetTankVerticalState(floor.state, rock.max[1]); // the floor bot stands on the rock's top
     run(3); // the floor bot sees the deck target its gun cannot reach: 3 s into the 6 s dwell, no route yet
     const before = ctl.debugInfo();
     const parkedAt = [floor.state.pos.x, floor.state.pos.y, floor.state.pos.z];
-    const took = takeAndLeave(floor, ctl, clock, hull, 0.5, away ? () => moveTo(...away) : null);
+    const leave = () => {
+      moveTo(...(typeof away === 'function' ? away(parkedAt) : away));
+      if (awayOnRock) resetTankVerticalState(floor.state, rock.max[1]); // left on the rock's top
+    };
+    const took = takeAndLeave(floor, ctl, clock, hull, 0.5, away ? leave : null);
     const back = ctl.debugInfo();
+    const handedBackAt = [floor.state.pos.x, floor.state.pos.y, floor.state.pos.z];
     const handBackS = clock();
     let decidedAfterS = null;
     run(10, (info) => {
       if (info.levelRoutes > before.levelRoutes || info.unbearableVerdicts > before.unbearableVerdicts) { decidedAfterS = clock() - handBackS; return true; }
       return false;
     });
-    return { before, back, decidedAfterS, parkedAt, ...took };
+    return { before, back, decidedAfterS, parkedAt, handedBackAt, ...took };
   };
   const label = (r) => `dwell ${r.before.elevationLockT} -> ${r.back.elevationLockT} s, the lock decided ${r.decidedAfterS === null ? 'never' : `${r.decidedAfterS.toFixed(2)} s`} after Leave`;
   const held = await dwellHandBack(null);
@@ -833,6 +843,39 @@ console.log('[12] the elevation lock\'s dwell counts the bot\'s own ticks: it ho
     `setup: the floor bot dwells on a rock's top (taken at ${onRock.parkedAt.map((v) => v.toFixed(1)).join(', ')}, 3 s into the dwell)`);
   ok(onRock.back.elevationLockT >= 2.5 && onRock.decidedAfterS !== null && onRock.decidedAfterS < 4,
     `a 0.5 s Take and Leave in place on the rock: the dwell holds (coasted ${onRock.coastM.toFixed(1)} m; ${label(onRock)})`);
+  // round 5 (U5, the round-four correctness review): the walk reads a record's top as the ground under it at both ends,
+  // so a park that moved the hull onto or off a record read only the ground between, and kept the dwell where the
+  // record's side is a wall by the slope law the planner holds every edge to (both ways): 2.2 m over one 1.5 m step is a
+  // grade of 1.47, past CLIFF_GRADE (1.28) and the M1A1's own 0.89. A hull left below a record it was taken on cannot
+  // drive back up to that spot, and one left on a record it could not have driven onto is on another level; on
+  // f60d0aa200 both kept 2.9 s of dwell and the lock decided 3.15 s after Leave. A record the hull steps onto and off by
+  // that law (1 m: 0.67) keeps the dwell.
+  const planOf = (r) => Math.hypot(r.handedBackAt[0] - r.parkedAt[0], r.handedBackAt[2] - r.parkedAt[2]);
+  const where = (r) => `taken at (${r.parkedAt.map((v) => v.toFixed(1)).join(', ')}), handed back at (${r.handedBackAt.map((v) => v.toFixed(1)).join(', ')}), ${planOf(r).toFixed(1)} m on the plan`;
+  const HIGH = Object.freeze({ min: [-10, 0, 18], max: [10, 2.2, 38] });
+  const offHigh = await dwellHandBack([-16, 31], null, HIGH);
+  ok(offHigh.parkedAt[1] > HIGH.max[1] - 0.3 && offHigh.handedBackAt[1] < 0.3 && planOf(offHigh) < 12
+    && offHigh.before.elevationLockT >= 2.5 && offHigh.before.levelRoutes === 0,
+    `setup: the floor bot dwells on a 2.2 m rock's top; the watcher leaves it on the ground beside the rock (${where(offHigh)})`);
+  // the dwell restarts, and the lock decides nothing before a whole dwell from the hand-back (the bot's own drive after
+  // Leave may bring the target into the gun's arc first: then it decides nothing in the 10 s)
+  const restarted = (r) => r.back.elevationLockT === 0 && (r.decidedAfterS === null || r.decidedAfterS >= 6 - 0.05);
+  ok(restarted(offHigh),
+    `a 0.5 s park that left the hull on the ground below the 2.2 m rock it was taken on: the dwell restarts (${label(offHigh)}; ELEVATION_LOCK_S 6 s)`);
+  // a rock south of where the bot dwells on the ground (clear of its hull), its top within 12 m of that spot
+  const beside = (top) => Object.freeze({ min: [-40, 0, 14], max: [-10, top, 26] });
+  const ontoHigh = await dwellHandBack((at) => [at[0], 22], [-16, 31], beside(2.2), { onRock: false, awayOnRock: true });
+  ok(ontoHigh.parkedAt[1] < 0.5 && ontoHigh.handedBackAt[1] > 2.2 - 0.3 && planOf(ontoHigh) < 12
+    && ontoHigh.before.elevationLockT >= 2.5 && ontoHigh.before.levelRoutes === 0,
+    `setup: the floor bot dwells on the ground; the watcher leaves it on a 2.2 m rock's top (${where(ontoHigh)})`);
+  ok(restarted(ontoHigh),
+    `a 0.5 s park that left the hull on a 2.2 m rock beside the ground it was taken on: the dwell restarts (${label(ontoHigh)}; ELEVATION_LOCK_S 6 s)`);
+  const ontoLow = await dwellHandBack((at) => [at[0], 22], [-16, 31], beside(1), { onRock: false, awayOnRock: true });
+  ok(ontoLow.parkedAt[1] < 0.5 && ontoLow.handedBackAt[1] > 1 - 0.3 && planOf(ontoLow) < 12
+    && ontoLow.before.elevationLockT >= 2.5 && ontoLow.before.levelRoutes === 0,
+    `setup: the floor bot dwells on the ground; the watcher leaves it on a 1 m rock's top (${where(ontoLow)})`);
+  ok(ontoLow.back.elevationLockT >= 2.5 && ontoLow.decidedAfterS !== null && ontoLow.decidedAfterS < 4,
+    `a 0.5 s park that left the hull on a 1 m rock it can step onto and off: the dwell holds (${label(ontoLow)})`);
 }
 
 /**

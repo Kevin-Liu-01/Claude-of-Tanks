@@ -41,7 +41,7 @@ import {
   selectedWeaponModuleState,
   ramDamage,
 } from '../sim/damage.ts';
-import { driveGroundTypeAt, terrainTravelCostFactor } from '../sim/terrainMobility.ts';
+import { driveGroundTypeAt, groundResistanceFor, terrainTravelCostFactor } from '../sim/terrainMobility.ts';
 import { PLAYER_ACTION_BITS } from '../sim/playerActions.ts';
 import { DEFAULT_CONSUMABLE_LOADOUT, consumableActive, type ConsumableId, type ConsumableState } from '../sim/consumableRules.ts';
 import { totalAmmunition, totalAmmunitionCapacity } from '../sim/ammunition.ts';
@@ -7211,9 +7211,11 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
    * The elevation lock's dwell (0 while a level route runs) counts the bot's own ticks, wherever it drives itself, while
    * its target stays on a level the gun cannot reach (updateElevationLock). The park's stretch is no tick of the bot's: the
    * bot saw neither the ground the watcher drove nor the target from it. So the dwell holds through a park that left the
-   * hull where it was taken (hullStoodPut: within RESUME_ON_WAY_M of that spot, and able to drive back to it), and a Take
-   * and Leave in place loses nothing; after a park that moved the hull further, or onto another level, and after a revive,
-   * it starts again from the hull as it stands (round 4, E8).
+   * hull where it was taken (hullStoodPut: within RESUME_ON_WAY_M of that spot, able to drive back to it, and riding as
+   * high over the ground within a step), and a Take and Leave in place, on the ground or on a record's top, loses nothing;
+   * after a park that moved the hull further, or onto another level (up or down a face, or onto or off a record whose
+   * side is a wall by the slope law), and after a revive, it starts again from the hull as it stands (round 4, E8; round
+   * 5, U5).
    */
   function resumeOwnLegs(parked: boolean, parkS: number): void {
     if (!parked || !hullStoodPut()) elevationLockT = 0;
@@ -7278,11 +7280,38 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     const ground = terrainSafety.surfaceY(wayScratch.x, wayScratch.z);
     return hullReaches(wayScratch.x, wayScratch.z, ground) ? distance : Infinity;
   }
-  /** The hull stands where the park took it (park()): within RESUME_ON_WAY_M of that spot, and able to drive back to it. */
+  /**
+   * The hull stands where the park took it (park()): within RESUME_ON_WAY_M of that spot, able to drive back to it over
+   * the ground between (hullReaches), and on its level (hullOnParkLevel).
+   */
   function hullStoodPut(): boolean {
     const position = entity.state.pos;
     return detMath.hypot(position.x - parkHullX, position.z - parkHullZ) <= RESUME_ON_WAY_M
-      && hullReaches(parkHullX, parkHullZ, parkHullY);
+      && hullReaches(parkHullX, parkHullZ, parkHullY) && hullOnParkLevel();
+  }
+  /**
+   * The hull rides over the ground as high as it did where the park took it, give or take one step it can drive both
+   * ways (round 5, U5). hullReaches reads an end that rides above the ground the field carries (a record's top: a rock's
+   * tier, rubble, a wreck, a roof) on that ground, so it alone reads a park onto or off a record as the ground between.
+   * The rides it sets aside (each end's height over that ground; none under a deck) are one step of RESUME_STEP_M here,
+   * held to the slope law both ways on the softer of the two ends' grounds, as the planner holds every edge
+   * (botRoutePlanner reachableNeighbor and routeGroundType). A record's side that is a wall by that law (2.2 m: a grade of
+   * 1.47, past CLIFF_GRADE) parts the hull from the spot it was taken on, whichever side it was taken on; a record it
+   * steps onto and off (1 m for an M1A1 on firm ground) does not, and a Take and Leave in place on a record rides the
+   * same. Allocation-free.
+   */
+  function hullOnParkLevel(): boolean {
+    const position = entity.state.pos;
+    const rideHere = Math.max(0, position.y - terrainSafety.surfaceY(position.x, position.z));
+    const rideThere = Math.max(0, parkHullY - terrainSafety.surfaceY(parkHullX, parkHullZ));
+    const grade = (rideThere - rideHere) / RESUME_STEP_M;
+    const here = driveGroundTypeAt(hf, position.x, position.z), there = driveGroundTypeAt(hf, parkHullX, parkHullZ);
+    const ground = groundResistanceFor(spec, there) >= groundResistanceFor(spec, here) ? there : here;
+    const debuff = entity.state._debuff;
+    const powerMult = debuff?.powerMult ?? 1;
+    const accelMult = debuff?.accelMult ?? 1;
+    return Number.isFinite(terrainTravelCostFactor(spec, ground, grade, powerMult, accelMult))
+      && Number.isFinite(terrainTravelCostFactor(spec, ground, -grade, powerMult, accelMult));
   }
   /**
    * The hull can drive from where it stands to (tx,tz), where the ground (or the hull taken there) stands at ty (round 4,
@@ -7292,8 +7321,9 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
    * a line; CLIFF_GRADE is a wall for every hull). Each step's rise is read over RESUME_STEP_M, as the movement's cliff
    * probe reads one. Each end is read at its own height where it stands below that ground (a hull under a deck), and on
    * that ground where it rides above it (on a record's top: a rock's tier, rubble, a wreck, a roof), as the follower's
-   * edge safety (corridorSafe) and the planner read it: the hull drives off a record as off flat ground (fix-up r2). A hull
-   * at the foot of a face, on the floor beside a crest, on the bank beside a deck or under one cannot. Allocation-free.
+   * edge safety (corridorSafe) and the planner read it: the hull drives off a record as off flat ground (fix-up r2); the
+   * stood-put test reads the rides this sets aside on its own (hullOnParkLevel). A hull at the foot of a face, on the floor
+   * beside a crest, on the bank beside a deck or under one cannot. Allocation-free.
    */
   function hullReaches(tx: number, tz: number, ty: number): boolean {
     const position = entity.state.pos;
