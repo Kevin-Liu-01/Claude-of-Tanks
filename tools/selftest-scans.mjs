@@ -87,6 +87,8 @@ export const SELFTEST_SCANS = Object.freeze({
   'src/mp/host/worldCollisionMobileTier.selftest.mjs': lists('server/world-collision-manifests/*.json'),
   'src/mp/room/roomWorkerProgram.selftest.mjs': lists('cloudflare/rooms/src/*.ts'),
   'src/mp/room/roomSizeRules.selftest.mjs': lists('cloudflare/rooms/src/*.ts'),
+  // round 5 S2: every source, for a new listener of the two bus events a teammate ram raises (tank:ram, tank:impact)
+  'src/sim/teammateRam.selftest.mjs': lists('src/**/*.ts'),
   'src/techTree/techTree.selftest.mjs': lists('src/techTree/*.ts', 'src/techTree/nations/*'),
   'src/ui/tokens/modeColours.selftest.mjs': lists('src/**/*.css', 'src/**/*.ts', 'src/**/*.mjs', 'src/**/*.html'),
   // item 259: every source, for a Settings category hue written outside the token files
