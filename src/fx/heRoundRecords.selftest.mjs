@@ -18,7 +18,9 @@
 //    never comes (a peer's withheld or lost end event) ages out of the records by its flight-time bound, not drop-oldest;
 //    (review r1) a round still drawn in flight keeps its record through a stall of its events longer than that bound, a
 //    record moving maps keeps the sweeps a second apart, and the phone tier (no volume media, so no plate burst forgets a
-//    shaped charge's record) leaves no shaped charge ended on a ricochet among the rounds in flight.
+//    shaped charge's record) leaves no shaped charge ended on a ricochet among the rounds in flight;
+//  - (round 5 U11) a round's record keeps its grace after the round's last drawn frame, however long the round was drawn:
+//    renewed only at a sweep, it lapsed in the sweep one frame after that frame, before the end event trailing it.
 import assert from 'node:assert/strict';
 import { Session } from 'node:inspector';
 import { createRequire } from 'node:module';
@@ -299,6 +301,27 @@ const run = (script) => { fx.resetAll(); frames(2); const shellId = id++; fired(
     const stalledSmoke = bodiesHere();
     assert.ok(near(stalledSmoke, quietSmoke),
       `a smoke round drawn in flight through a 20 s stall of its events keeps its class (${stalledSmoke} bodies at its point vs ${quietSmoke})`);
+  }
+  // (round 5 U11) the grace runs from the round's last drawn frame: its end event trails the snapshot that drops the
+  // round by a frame or more (a peer's queue releases a stalled end a few frames on: mp/match/events.ts). A round drawn
+  // 9.99 s through a stall (its record due 10 s after its firing, no sweep since) or 19.99 s (renewed at the sweep at
+  // 10 s, due at 20 s) lost its record in the sweep one frame after its last drawn frame, before its end: an HE burst
+  for (const drawnS of [9.99, 19.99]) {
+    fx.resetAll(); frames(2);
+    const s = id++;
+    fireAt(s, smoke);
+    const t0 = fxClockNow();
+    const round = { id: s, shooterId: 'g', pos: new THREE.Vector3(0, 12, -30), prevPos: new THREE.Vector3(0, 12.2, -31),
+      vel: new THREE.Vector3(0, -4, 60), spec: { tracer: 'TANK' }, ageS: 0.5, distM: 30 };
+    for (let k = 0; k < 100 && fxClockNow() - t0 < drawnS - 1e-9; k++) {
+      fx.update(Math.min(0.5, drawnS - (fxClockNow() - t0)), [round], camera, () => null);
+    }
+    assert.ok(Math.abs(fxClockNow() - t0 - drawnS) < 1e-6, `the round is drawn for ${drawnS} s`);
+    frames(1); // the snapshot that drops the round
+    groundEnd(s, smoke); frames(6);
+    const trailing = bodiesHere();
+    assert.ok(near(trailing, quietSmoke),
+      `a smoke round drawn ${drawnS} s whose end trails its last drawn frame by one frame keeps its class (${trailing} bodies at its point vs ${quietSmoke})`);
   }
   // (round 4 F6 review) a sweep's least spacing holds when a record moves maps: a hull event for a record falling due
   // inside the spacing brought the next sweep forward (keepNewest lowered it for every record it stored, a moved one too)

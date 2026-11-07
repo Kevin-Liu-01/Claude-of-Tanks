@@ -2303,24 +2303,30 @@ function* createFxSteps(
    */
   const hullMetMunitions = new Map<ShellId, ShellRecord>();
   /**
-   * (round 4 F6) How long a record outlives its round's firing, or the last sweep that found its round still drawn in
-   * flight, on the fx clock: the sim ends every fired round by SHELL_MAX_LIFETIME_S of flight (sim/ballistics.ts
-   * stepShell; a drone, the one round with its own maxLifetimeS, raises no shell:fired), and the grace covers a round's
-   * end event trailing its last drawn frame. A record past it belongs to a round whose end never came here (a peer's
-   * shell_impact withheld once its shooter left this viewer's sight, or a round in flight when its host went), and it
-   * leaves the records then, not at drop-oldest. (round 4 F6 review) The fx clock is render time: it stands still in a
-   * pause and slows in a replay, but in a network view it runs on while a peer's events stall (a link hitch, a HOLD, a
-   * host handover), and a stall past the grace aged out the record of a round still in flight, whose late expiry then
-   * took its class from its type (a WP smoke round's burst drawn as HE). The frame still draws such a round as its last
-   * snapshot left it (battlePresentation applyShells), so a sweep restarts the bound of every round it is handed in
-   * flight (ageShellRecords): only a round no longer drawn ages.
+   * (round 5 U11) The grace a record keeps after its round's last drawn frame, for the round's end event trailing the
+   * snapshot that drops it (a peer's queue releases a stalled end a few frames on: mp/match/events.ts): every frame a
+   * round is handed in flight moves its record's due time to at least this far on (ageShellRecords), so only a round no
+   * longer drawn ages. (Renewed at a sweep only, a round drawn through a stall lost its record in the sweep one frame
+   * after its last drawn frame, before its end.)
    */
-  const SHELL_RECORD_BOUND_S = SHELL_MAX_LIFETIME_S + 4;
+  const SHELL_RECORD_GRACE_S = 4;
+  /**
+   * (round 4 F6) How long a record outlives its round's firing, on the fx clock: the sim ends every fired round by
+   * SHELL_MAX_LIFETIME_S of flight (sim/ballistics.ts stepShell; a drone, the one round with its own maxLifetimeS,
+   * raises no shell:fired), plus the grace. A record past its bound belongs to a round whose end never came here (a
+   * peer's shell_impact withheld once its shooter left this viewer's sight, or a round in flight when its host went),
+   * and it leaves the records then, not at drop-oldest. (round 4 F6 review) The fx clock is render time: it stands still
+   * in a pause and slows in a replay, but in a network view it runs on while a peer's events stall (a link hitch, a
+   * HOLD, a host handover), and the frame still draws a round in flight as its last snapshot left it (battlePresentation
+   * applyShells): a stall past the bound aged out the record of a round still in flight, whose late expiry then took its
+   * class from its type (a WP smoke round's burst drawn as HE).
+   */
+  const SHELL_RECORD_BOUND_S = SHELL_MAX_LIFETIME_S + SHELL_RECORD_GRACE_S;
   /** A sweep's least spacing: in a sustained fight a record falls due every frame, and a record may outlive its bound by
    *  this much rather than every frame walking both maps. */
   const SHELL_RECORD_SWEEP_S = 1;
   /** When the next sweep runs: the earliest dueS any record holds, no sooner than a spacing after the last sweep (Infinity
-   *  with none): the frame's one test. */
+   *  with none). A drawn round's renewal only moves a dueS later, so a sweep may come early and find nothing due. */
   let shellRecordsDueS = Infinity;
   timeShifts.on('shellRecords', (delta) => {
     for (const record of shellMunitions.values()) record.dueS += delta;
@@ -2334,14 +2340,20 @@ function* createFxSteps(
     }
     return next;
   }
-  /** (round 4 F6) Every frame: the records whose round has outlived its flight-time bound go; (review) the frame's rounds
-   *  in flight (`shells`, the update's) are in flight, however late their events: their bounds restart from now. */
+  /** (round 4 F6) Every frame: (round 5 U11) a round the update is handed in flight (`shells`, the frame's) keeps its
+   *  record at least the grace past this frame, however late its events (a map lookup a round, no allocation); the
+   *  records whose due time has passed go. */
   function ageShellRecords(nowS: number, shells: readonly LiveShell[]): void {
-    if (nowS < shellRecordsDueS) return;
-    for (let i = 0; i < shells.length; i++) {
-      const record = shellMunitions.get(shells[i].id) ?? hullMetMunitions.get(shells[i].id);
-      if (record) record.dueS = nowS + SHELL_RECORD_BOUND_S;
+    if (shellMunitions.size || hullMetMunitions.size) {
+      const keepS = nowS + SHELL_RECORD_GRACE_S;
+      for (let i = 0; i < shells.length; i++) {
+        const shell = shells[i];
+        if (shell.dead) continue;
+        const record = shellMunitions.get(shell.id) ?? hullMetMunitions.get(shell.id);
+        if (record && record.dueS < keepS) record.dueS = keepS;
+      }
     }
+    if (nowS < shellRecordsDueS) return;
     const next = sweepShellRecords(hullMetMunitions, nowS, sweepShellRecords(shellMunitions, nowS, Infinity));
     shellRecordsDueS = next === Infinity ? Infinity : Math.max(next, nowS + SHELL_RECORD_SWEEP_S);
   }
