@@ -41,7 +41,7 @@
 //            calls node) runs it as its last command (the flags after `npm run <script> --` reach the tool, not a
 //            command after an &&), and reels:render's baked flags hold under a typed selection and the appended one
 //            (the last --only wins), take 3 of the battle-reel pool (loaded with the run) rendered; a duels run's takes
-//            are the duel pool's.
+//            are the duel pool's. (round 6 V10) A script that names a tool in a spelling the check cannot read fails.
 // No real browser, server or lock starts; the real Chrome runs stay the owner's (manualRecommended).
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
@@ -550,9 +550,11 @@ if (process.argv[2] === '--signal-child') {
     });
     // (round 5 U9 review) A finishing run through an npm script: `npm run <script> -- --only <left>` adds the flags to
     // the end of the script's command, so they reach the tool only when it is the script's last command (after an &&,
-    // ;, ||, | or a background & they go to the next one; a redirect's 2>&1 splits nothing). A script names the tool by
-    // its path, however node is called (`node ./tools/…`, `node --max-old-space-size=… tools/…`, an absolute path);
-    // round 5's first form matched only `node tools/<file>`, and a script spelt another way went unchecked. A baked
+    // ;, ||, |, a newline or a background & they go to the next one; a redirect's 2>&1 splits nothing). A script names
+    // the tool by its path, however node is called (`node ./tools/…`, `node --max-old-space-size=… tools/…`, an
+    // absolute path); round 5's first form matched only `node tools/<file>`, and a script spelt another way went
+    // unchecked. (round 6 V10) A script that names the tool's file where that match cannot read it (a quoted path, a cd
+    // into tools/) still went unchecked: it now fails here, so a new spelling is read or the match widened. A baked
     // selection is harmless: the last --only / --match wins, and what a stop leaves is inside it. Then reels:render's
     // baked flags (its --out set aside: this receipt writes to a scratch folder), a selection typed after them and the
     // finishing run's appended one: the baked collection and size hold, the appended --only selects, and the take is
@@ -560,10 +562,15 @@ if (process.argv[2] === '--signal-child') {
     await check('npm finishing run', async () => {
       const finishing = ['tools/studio-example-videos.mjs', 'tools/marketing-shots/shoot.mjs'];
       const toolAt = (file) => new RegExp(String.raw`(?:^|\s)(?:\S*/)?${file.replaceAll('.', '\\.')}(?=$|[\s;&|])`);
+      // the tool's file name in any spelling of its path: quoted, after a cd, in a subshell
+      const named = (file) => new RegExp(String.raw`(?:^|[\s/"'(])${file.split('/').at(-1).replaceAll('.', '\\.')}(?=$|[\s;&|"')])`);
+      const unread = (scripts) => Object.entries(scripts)
+        .filter(([, command]) => finishing.some((file) => named(file).test(command) && !toolAt(file).test(command)))
+        .map(([name]) => name);
       const runners = (scripts) => Object.entries(scripts).flatMap(([name, command]) => finishing
         .filter((file) => toolAt(file).test(command))
         .map((file) => {
-          const commands = command.split(/&&|\|\||[;|]|(?<![<>])&(?!>)/).map((part) => part.trim());
+          const commands = command.split(/&&|\|\||[;|\n]|(?<![<>])&(?!>)/).map((part) => part.trim());
           const at = commands.findLastIndex((part) => toolAt(file).test(part));
           const call = toolAt(file).exec(commands[at]);
           return { name, last: at === commands.length - 1,
@@ -575,6 +582,11 @@ if (process.argv[2] === '--signal-child') {
       assert.ok(reels && ['studio:features:render', 'studio:examples'].every((script) => found.some(({ name }) => name === script)),
         `the scripts that run the tools are found (${found.map(({ name }) => name)})`);
       assert.deepEqual(found.filter(({ last }) => !last).map(({ name }) => name), [], 'each script runs its tool last, so the flags after -- reach it');
+      assert.deepEqual(unread(scripts), [], 'every script that names a tool is one the check reads (read the new spelling in toolAt)');
+      assert.deepEqual(unread({ ...scripts, 'planted:quoted': 'node "tools/studio-example-videos.mjs" --only 2 && echo done',
+        'planted:cd': 'cd tools/marketing-shots && node shoot.mjs --match 01 && echo done',
+        'planted:read': 'node ./tools/studio-example-videos.mjs && echo done' }), ['planted:quoted', 'planted:cd'],
+        'a script naming a tool in a spelling the check cannot read is refused, not skipped');
       // the check reads planted scripts: a tool that is not its script's last command, in each spelling, is found
       const planted = runners({ ...scripts, 'reels:render': `${scripts['reels:render']} && echo rendered`,
         'planted:dot': 'node ./tools/studio-example-videos.mjs --collection duels && echo done',
@@ -583,9 +595,10 @@ if (process.argv[2] === '--signal-child') {
         'planted:background': 'node tools/studio-example-videos.mjs --only 2 & wait',
         'planted:last': 'npm run -s prepare && node ./tools/marketing-shots/shoot.mjs --match 01',
         'planted:redirect': 'node tools/studio-example-videos.mjs --only 2 2>&1',
-        'planted:other': 'node tools/studio-example-videos.mjs.bak && node tools/studio-example-videos-x.mjs && echo done' });
+        'planted:other': 'node tools/studio-example-videos.mjs.bak && node tools/studio-example-videos-x.mjs && echo done',
+        'planted:newline': 'node tools/studio-example-videos.mjs --only 2\necho done' });
       assert.deepEqual(planted.filter(({ last }) => !last).map(({ name }) => name), ['reels:render', 'planted:dot', 'planted:flag', 'planted:pipe',
-        'planted:background'],
+        'planted:background', 'planted:newline'],
         `a planted command after the tool is found in each spelling (${JSON.stringify(planted)})`);
       assert.deepEqual(planted.find(({ name }) => name === 'planted:last')?.args, ['--match', '01'], 'a tool run last is read with its flags');
       assert.equal(planted.find(({ name }) => name === 'planted:redirect')?.last, true, 'a redirect after the tool keeps it last');
