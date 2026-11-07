@@ -319,16 +319,17 @@ try {
     await advance(bounds[0].ms - 1);
     assert.deepEqual(events, [], 'a young load: the entry waits up to its own bound');
     await advance(1);
-    await second;
     assert.deepEqual(events, [['second', 2 * bounds[0].ms + 1000]], 'and goes on at it');
+    await second;
     // an entry that begins a second before the deadline goes on at the deadline, not its own bound's end
     await advance(deadline - 1000 - clock);
     const third = access.preload().then(() => { events.push(['third', clock]); });
     await advance(1000 - 1);
     assert.deepEqual(events, [['second', 2 * bounds[0].ms + 1000]], 'it waits up to the deadline');
     await advance(1);
+    assert.deepEqual(events.at(-1), ['third', deadline], 'and goes on at the deadline, the load settled (it waited on its '
+      + 'own bound, past the deadline)');
     await third;
-    assert.deepEqual(events.at(-1), ['third', deadline], 'and goes on at the deadline, the load settled');
   }
 
   // ---- (round 5 Q1) the deadline's abort reaches the fetch: world/soloWorldKernels.ts hands the signal on
