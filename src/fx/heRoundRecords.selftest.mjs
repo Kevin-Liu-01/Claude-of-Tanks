@@ -21,6 +21,8 @@
 //    shaped charge's record) leaves no shaped charge ended on a ricochet among the rounds in flight;
 //  - (round 5 U11) a round's record keeps its grace after the round's last drawn frame, however long the round was drawn:
 //    renewed only at a sweep, it lapsed in the sweep one frame after that frame, before the end event trailing it.
+//    (round 6 V1) An end trailing that frame by a frame or by 3.5 s keeps the class, and one trailing it past the 4 s
+//    grace and a sweep's 1 s spacing finds the record gone: the grace is pinned from both sides, not one frame of it.
 import assert from 'node:assert/strict';
 import { Session } from 'node:inspector';
 import { createRequire } from 'node:module';
@@ -305,8 +307,12 @@ const run = (script) => { fx.resetAll(); frames(2); const shellId = id++; fired(
   // (round 5 U11) the grace runs from the round's last drawn frame: its end event trails the snapshot that drops the
   // round by a frame or more (a peer's queue releases a stalled end a few frames on: mp/match/events.ts). A round drawn
   // 9.99 s through a stall (its record due 10 s after its firing, no sweep since) or 19.99 s (renewed at the sweep at
-  // 10 s, due at 20 s) lost its record in the sweep one frame after its last drawn frame, before its end: an HE burst
-  for (const drawnS of [9.99, 19.99]) {
+  // 10 s, due at 20 s) lost its record in the sweep one frame after its last drawn frame, before its end: an HE burst.
+  // (round 6 V1) The end trails by one frame and by 3.5 s, most of the 4 s grace: a renewal that kept the record 0.05 s,
+  // 0.1 s or a sweep's spacing past the frame passed the one-frame case alone. And the grace is a bound: an end trailing
+  // past it and a sweep's spacing (5 s, the most a record outlives the round's last drawn frame) finds the record gone
+  // and draws by its type, so the class the shorter trails keep is the record's
+  const drawnRound = (drawnS) => {
     fx.resetAll(); frames(2);
     const s = id++;
     fireAt(s, smoke);
@@ -317,11 +323,28 @@ const run = (script) => { fx.resetAll(); frames(2); const shellId = id++; fired(
       fx.update(Math.min(0.5, drawnS - (fxClockNow() - t0)), [round], camera, () => null);
     }
     assert.ok(Math.abs(fxClockNow() - t0 - drawnS) < 1e-6, `the round is drawn for ${drawnS} s`);
-    frames(1); // the snapshot that drops the round
+    return s;
+  };
+  for (const drawnS of [9.99, 19.99]) {
+    for (const trailFrames of [1, 210]) {
+      const s = drawnRound(drawnS);
+      frames(trailFrames); // the snapshot that drops the round, and the frames its end trails it by
+      groundEnd(s, smoke); frames(6);
+      const trailing = bodiesHere();
+      assert.ok(near(trailing, quietSmoke),
+        `a smoke round drawn ${drawnS} s whose end trails its last drawn frame by ${trailFrames} frame(s) keeps its class (${trailing} bodies at its point vs ${quietSmoke})`);
+    }
+    // past the grace and a sweep's spacing (a sweep may come up to a spacing after the record falls due), and a frame
+    const pastFrames = (4 + 1) * 60 + 15;
+    const s = drawnRound(drawnS);
+    frames(pastFrames);
+    const left = recordCounts();
+    assert.deepEqual(left, { inFlight: 0, hullMet: 0 },
+      `a smoke round drawn ${drawnS} s leaves the records by the grace and a sweep's spacing after its last drawn frame (${JSON.stringify(left)} after ${pastFrames} frames)`);
     groundEnd(s, smoke); frames(6);
-    const trailing = bodiesHere();
-    assert.ok(near(trailing, quietSmoke),
-      `a smoke round drawn ${drawnS} s whose end trails its last drawn frame by one frame keeps its class (${trailing} bodies at its point vs ${quietSmoke})`);
+    const typed = bodiesHere();
+    assert.ok(typed > quietSmoke + 30,
+      `and its end ${pastFrames} frames on draws by its type, so the class kept above is the record's (${typed} bodies at its point vs ${quietSmoke})`);
   }
   // (round 4 F6 review) a sweep's least spacing holds when a record moves maps: a hull event for a record falling due
   // inside the spacing brought the next sweep forward (keepNewest lowered it for every record it stored, a moved one too)
