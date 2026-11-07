@@ -24,6 +24,7 @@
 // set up on the receipt's seed, which the authority is seated with. Negative control: the authority's battle seed one off
 // (its combat stream kept equal) is found at the first spotting check, the stagger the solo step once drew from a seed of
 // its own.
+// Every section runs, a red one included, and the receipt fails at the end with each failure listed (round 5 S1).
 import assert from 'node:assert/strict';
 import { Euler, Group, Matrix4, Quaternion, Vector3 } from 'three';
 import { createAuthoritativeMatch } from './authoritativeMatch.ts';
@@ -311,60 +312,102 @@ async function runRealAi(ticks, perturb = null, { foeRecord = {} } = {}) {
   return { divergence, exercised };
 }
 
+// ---- every section runs (round 5 S1, 2026-11-06): a section whose assertion fails is recorded and the next one still
+// runs, and the receipt fails at the end with every failure listed. 268's Mars coverage (owed to its core-parity lane:
+// TESTS-OWED 2026-11-06) stopped the receipt before its later controls (the Mars nudge, the reseeded spotting), so they
+// never ran on a tree where Mars is red. Each section's assertions are the ones it had; only the runner is new.
+const failures = [];
+const passed = [];
+async function section(name, body) {
+  try {
+    const note = await body();
+    passed.push(name);
+    console.log(`driverStepParity: PASS ${name}${note ? ` (${note})` : ''}`);
+  } catch (error) {
+    failures.push({ name, error });
+    console.log(`driverStepParity: FAIL ${name}: ${error?.message ?? error}`);
+  }
+}
+
 // ---- the same seed, world, hulls and inputs: byte-identical every tick ------------------------------------------------
 const TICKS = 900;
-const same = await run(TICKS);
-assert.equal(same.divergence, null, `the local step and the authority's step part at ${JSON.stringify(same.divergence)}`);
-assert.ok(same.exercised.foeHp < 1, `the own shots hit the hostile on both sides (${(same.exercised.foeHp * 100).toFixed(1)} % hp)`);
-assert.ok(same.exercised.ownHp < 1, `and the own hull took damage, the hostile's shots and a crash (${(same.exercised.ownHp * 100).toFixed(1)} % hp)`);
-assert.ok(Math.abs(same.own.turretYaw) > 0.5, 'the turret laid its gun round onto the target');
-assert.ok(same.exercised.spottedTicks > TICKS, `both teams spot each other on both sides, tick for tick (${same.exercised.spottedTicks} hull-ticks)`);
-const { denied, shots, foeSlots, foeSmokeS } = same.exercised;
-assert.ok(Math.abs(foeSmokeS - 161 / 60) < 1e-9, `the bot's smoke fired the tick it was pressed, on both sides (${foeSmokeS})`);
-assert.deepEqual(foeSlots, [[120, 1], [200, 0], [260, 1]], `the bot switched its ammunition without firing, on both sides (${JSON.stringify(foeSlots)})`);
-assert.deepEqual(shots, [[90, 0], [540, 1]], `the own hull fired its first slot, then its second, and nothing on the refused slot (${JSON.stringify(shots)})`);
-assert.deepEqual(denied.page, denied.authority, 'the same ammunition refusals on both sides, tick for tick');
-assert.deepEqual(denied.page.map(({ tick, slot, reason }) => [tick, slot, reason]), [[460, EMPTY_SLOT, 'AMMO_EMPTY']],
-  `the emptied slot is refused once, when first asked for (${JSON.stringify(denied.page)})`);
+let same = null;
+await section('the scripted battle, byte-identical', async () => {
+  same = await run(TICKS);
+  assert.equal(same.divergence, null, `the local step and the authority's step part at ${JSON.stringify(same.divergence)}`);
+  assert.ok(same.exercised.foeHp < 1, `the own shots hit the hostile on both sides (${(same.exercised.foeHp * 100).toFixed(1)} % hp)`);
+  assert.ok(same.exercised.ownHp < 1, `and the own hull took damage, the hostile's shots and a crash (${(same.exercised.ownHp * 100).toFixed(1)} % hp)`);
+  assert.ok(Math.abs(same.own.turretYaw) > 0.5, 'the turret laid its gun round onto the target');
+  assert.ok(same.exercised.spottedTicks > TICKS, `both teams spot each other on both sides, tick for tick (${same.exercised.spottedTicks} hull-ticks)`);
+  const { denied, shots, foeSlots, foeSmokeS } = same.exercised;
+  assert.ok(Math.abs(foeSmokeS - 161 / 60) < 1e-9, `the bot's smoke fired the tick it was pressed, on both sides (${foeSmokeS})`);
+  assert.deepEqual(foeSlots, [[120, 1], [200, 0], [260, 1]], `the bot switched its ammunition without firing, on both sides (${JSON.stringify(foeSlots)})`);
+  assert.deepEqual(shots, [[90, 0], [540, 1]], `the own hull fired its first slot, then its second, and nothing on the refused slot (${JSON.stringify(shots)})`);
+  assert.deepEqual(denied.page, denied.authority, 'the same ammunition refusals on both sides, tick for tick');
+  assert.deepEqual(denied.page.map(({ tick, slot, reason }) => [tick, slot, reason]), [[460, EMPTY_SLOT, 'AMMO_EMPTY']],
+    `the emptied slot is refused once, when first asked for (${JSON.stringify(denied.page)})`);
+  return `${TICKS} ticks, ${same.exercised.spottedTicks} hull-ticks spotted`;
+});
 
 // ---- negative control: one input on one side moved by a billionth is a different world, found at its tick ------------
 const SEEDED = 300;
-const nudged = await run(SEEDED + 30, (tick, side, id, input) => (tick === SEEDED && side === 'page' && input.throttle > 0
-  ? { ...input, throttle: input.throttle + 1e-9 } : null));
-assert.ok(nudged.divergence, 'a throttle a billionth higher on the page at tick 300 is caught');
-assert.equal(nudged.divergence.tick, SEEDED, `at the tick it was seeded (${JSON.stringify(nudged.divergence)})`);
+let nudged = null;
+await section('control: a throttle a billionth off', async () => {
+  nudged = await run(SEEDED + 30, (tick, side, id, input) => (tick === SEEDED && side === 'page' && input.throttle > 0
+    ? { ...input, throttle: input.throttle + 1e-9 } : null));
+  assert.ok(nudged.divergence, 'a throttle a billionth higher on the page at tick 300 is caught');
+  assert.equal(nudged.divergence.tick, SEEDED, `at the tick it was seeded (${JSON.stringify(nudged.divergence)})`);
+  return `caught at tick ${nudged.divergence.tick} (${nudged.divergence.field})`;
+});
 // ---- a fourth slot fires as the fourth on both sides ------------------------------------------------------------------
-const four = await run(TICKS, null, { fourthShell: true });
-assert.equal(four.divergence, null, `with a fourth shell the two steps part at ${JSON.stringify(four.divergence)}`);
-assert.deepEqual(four.exercised.shots, [[90, 0], [540, 3]], `the fourth slot fired as the fourth (${JSON.stringify(four.exercised.shots)})`);
+let four = null;
+await section('a fourth shell fires as the fourth', async () => {
+  four = await run(TICKS, null, { fourthShell: true });
+  assert.equal(four.divergence, null, `with a fourth shell the two steps part at ${JSON.stringify(four.divergence)}`);
+  assert.deepEqual(four.exercised.shots, [[90, 0], [540, 3]], `the fourth slot fired as the fourth (${JSON.stringify(four.exercised.shots)})`);
+});
 
 // ---- the real AI on both drivers, through the engagement ---------------------------------------------------------------
 // 3000 ticks: the opening, the sighting near 1780, the shots both ways, the hulls' contact and the bot's destruction
 const REAL_AI_TICKS = 3000;
-const real = await runRealAi(REAL_AI_TICKS);
-assert.equal(real.divergence, null, `the real AI parts the two drivers at ${JSON.stringify(real.divergence)}`);
-assert.ok(real.exercised.movedM > 200, `the bot drove its opening route and the engagement (${real.exercised.movedM.toFixed(0)} m)`);
-assert.ok(real.exercised.sightedAt !== null, 'the bot sighted the own hull');
-assert.ok(real.exercised.pulls >= 1, `the bot fired (${real.exercised.pulls} trigger pulls)`);
-assert.ok(real.exercised.closestM < 10, `the two hulls met (${real.exercised.closestM.toFixed(1)} m apart at the closest)`);
-assert.equal(real.exercised.botHp, 0, `the own hull destroyed the bot (${(real.exercised.botHp * 100).toFixed(1)} % hp)`);
-// (268, item 6) one bot paint rule: both drivers rolled the bot's paint from the match seed at its roster index (1), and an
-// index slip would show (the seed rolls another paint at 0); a paint the authority is handed instead parts them at tick 0
-assert.deepEqual(real.exercised.paint, { page: botCamoRoll(SEED, 1, MAP), authority: botCamoRoll(SEED, 1, MAP) },
-  `both drivers painted the bot by the roll (${JSON.stringify(real.exercised.paint)})`);
-assert.notEqual(botCamoRoll(SEED, 0, MAP), botCamoRoll(SEED, 1, MAP), 'the seed rolls another paint one slot over');
-const wrongPaint = await runRealAi(3, null, { foeRecord: { camo: real.exercised.paint.page === 'auto' ? 'factory' : 'auto' } });
-assert.deepEqual(wrongPaint.divergence, { tick: 0, hull: 'bot', field: 'camo' }, `a bot handed the other paint is caught (${JSON.stringify(wrongPaint.divergence)})`);
+let real = null;
+await section('the real AI, byte-identical', async () => {
+  real = await runRealAi(REAL_AI_TICKS);
+  assert.equal(real.divergence, null, `the real AI parts the two drivers at ${JSON.stringify(real.divergence)}`);
+  assert.ok(real.exercised.movedM > 200, `the bot drove its opening route and the engagement (${real.exercised.movedM.toFixed(0)} m)`);
+  assert.ok(real.exercised.sightedAt !== null, 'the bot sighted the own hull');
+  assert.ok(real.exercised.pulls >= 1, `the bot fired (${real.exercised.pulls} trigger pulls)`);
+  assert.ok(real.exercised.closestM < 10, `the two hulls met (${real.exercised.closestM.toFixed(1)} m apart at the closest)`);
+  assert.equal(real.exercised.botHp, 0, `the own hull destroyed the bot (${(real.exercised.botHp * 100).toFixed(1)} % hp)`);
+  // (268, item 6) one bot paint rule: both drivers rolled the bot's paint from the match seed at its roster index (1), and an
+  // index slip would show (the seed rolls another paint at 0); a paint the authority is handed instead parts them at tick 0
+  assert.deepEqual(real.exercised.paint, { page: botCamoRoll(SEED, 1, MAP), authority: botCamoRoll(SEED, 1, MAP) },
+    `both drivers painted the bot by the roll (${JSON.stringify(real.exercised.paint)})`);
+  assert.notEqual(botCamoRoll(SEED, 0, MAP), botCamoRoll(SEED, 1, MAP), 'the seed rolls another paint one slot over');
+  return `${REAL_AI_TICKS} ticks, paint '${real.exercised.paint.page}'`;
+});
+await section('control: a bot handed the other paint', async () => {
+  const wrongPaint = await runRealAi(3, null, { foeRecord: { camo: real?.exercised.paint.page === 'auto' ? 'factory' : 'auto' } });
+  assert.deepEqual(wrongPaint.divergence, { tick: 0, hull: 'bot', field: 'camo' }, `a bot handed the other paint is caught (${JSON.stringify(wrongPaint.divergence)})`);
+});
 const BOT_NUDGE = 600;
-const botNudged = await runRealAi(BOT_NUDGE + 20, (tick, foe) => { if (tick === BOT_NUDGE) foe.state.yaw += 1e-9; });
-assert.ok(botNudged.divergence, 'the bot\'s heading a billionth off on the page is caught');
-assert.equal(botNudged.divergence.tick, BOT_NUDGE, `at the tick it was seeded (${JSON.stringify(botNudged.divergence)})`);
+let botNudged = null;
+await section('control: the bot\'s heading a billionth off', async () => {
+  botNudged = await runRealAi(BOT_NUDGE + 20, (tick, foe) => { if (tick === BOT_NUDGE) foe.state.yaw += 1e-9; });
+  assert.ok(botNudged.divergence, 'the bot\'s heading a billionth off on the page is caught');
+  assert.equal(botNudged.divergence.tick, BOT_NUDGE, `at the tick it was seeded (${JSON.stringify(botNudged.divergence)})`);
+  return `caught at tick ${botNudged.divergence.tick} (${botNudged.divergence.field})`;
+});
 
 const SWITCH = 200;
-const late = await run(SWITCH + 30, (tick, side, id, input) => (tick === SWITCH && side === 'page' && input.shellSlot === 1
-  ? { ...input, shellSlot: 0 } : null));
-assert.ok(late.divergence, 'the page switching its ammunition a tick late is caught');
-assert.equal(late.divergence.tick, SWITCH, `at the switch's tick (${JSON.stringify(late.divergence)})`);
+let late = null;
+await section('control: the page\'s ammunition switch a tick late', async () => {
+  late = await run(SWITCH + 30, (tick, side, id, input) => (tick === SWITCH && side === 'page' && input.shellSlot === 1
+    ? { ...input, shellSlot: 0 } : null));
+  assert.ok(late.divergence, 'the page switching its ammunition a tick late is caught');
+  assert.equal(late.divergence.tick, SWITCH, `at the switch's tick (${JSON.stringify(late.divergence)})`);
+  return `caught at tick ${late.divergence.tick} (${late.divergence.field})`;
+});
 
 // ---- (268, Main item 8) an objective mode on both drivers: Mars (zone control, the seeded boost caches, its low gravity
 // and respawns), the own hull scripted through a cache's pickup, rams that bring two buildings down and a fight to the bot's
@@ -491,24 +534,56 @@ async function runModeBattle(ticks, perturb = null) {
   return { divergence, exercised, shed: shed.id, foe: foe.id };
 }
 const MODE_TICKS = 6000;
-const mars = await runModeBattle(MODE_TICKS);
-assert.equal(mars.divergence, null, `Mars parts the two drivers at ${JSON.stringify(mars.divergence)}`);
-assert.ok(mars.exercised.cachesDropped >= 2 && mars.exercised.collectedAt !== null,
-  `the seeded caches dropped alike (${mars.exercised.cachesDropped}) and the own hull took one at tick ${mars.exercised.collectedAt}`);
-assert.ok(mars.exercised.collapses.length >= 2 && mars.exercised.collapses.includes(mars.shed), `two buildings came down alike (${mars.exercised.collapses})`);
-assert.ok(mars.exercised.killedAt !== null && mars.exercised.turretIds.includes(mars.foe),
-  `the bot was destroyed (tick ${mars.exercised.killedAt}) and its turret flew as a body, alike`);
-assert.ok(mars.exercised.foeDeaths >= 2, `the bot respawned on its slot and fought again, alike (${mars.exercised.foeDeaths} deaths)`);
-assert.ok(mars.exercised.zoneOwners.length >= 1, `a zone was taken, alike (${mars.exercised.zoneOwners})`);
+// the run, then each of its coverage assertions on its own, so a red one lists every miss beside it
+let mars = null;
+await section('Mars, byte-identical', async () => {
+  mars = await runModeBattle(MODE_TICKS);
+  assert.equal(mars.divergence, null, `Mars parts the two drivers at ${JSON.stringify(mars.divergence)}`);
+  return `${MODE_TICKS} ticks`;
+});
+if (mars) {
+  await section('Mars: the caches', () => {
+    assert.ok(mars.exercised.cachesDropped >= 2 && mars.exercised.collectedAt !== null,
+      `the seeded caches dropped alike (${mars.exercised.cachesDropped}) and the own hull took one at tick ${mars.exercised.collectedAt}`);
+  });
+  await section('Mars: the rammed buildings', () => {
+    assert.ok(mars.exercised.collapses.length >= 2 && mars.exercised.collapses.includes(mars.shed), `two buildings came down alike (${mars.exercised.collapses})`);
+  });
+  await section('Mars: the bot\'s death and its turret', () => {
+    assert.ok(mars.exercised.killedAt !== null && mars.exercised.turretIds.includes(mars.foe),
+      `the bot was destroyed (tick ${mars.exercised.killedAt}) and its turret flew as a body, alike`);
+  });
+  await section('Mars: the respawn', () => {
+    assert.ok(mars.exercised.foeDeaths >= 2, `the bot respawned on its slot and fought again, alike (${mars.exercised.foeDeaths} deaths)`);
+  });
+  await section('Mars: a zone', () => {
+    assert.ok(mars.exercised.zoneOwners.length >= 1, `a zone was taken, alike (${mars.exercised.zoneOwners})`);
+  });
+}
 const MODE_NUDGE = 1200;
-const marsNudged = await runModeBattle(MODE_NUDGE + 20, (tick, own) => { if (tick === MODE_NUDGE) own.state.yaw += 1e-9; });
-assert.deepEqual(marsNudged.divergence?.tick, MODE_NUDGE, `Mars: the own heading a billionth off on the page at ${MODE_NUDGE} is caught there (${JSON.stringify(marsNudged.divergence)})`);
+let marsNudged = null;
+await section('control: Mars, the own heading a billionth off', async () => {
+  marsNudged = await runModeBattle(MODE_NUDGE + 20, (tick, own) => { if (tick === MODE_NUDGE) own.state.yaw += 1e-9; });
+  assert.deepEqual(marsNudged.divergence?.tick, MODE_NUDGE, `Mars: the own heading a billionth off on the page at ${MODE_NUDGE} is caught there (${JSON.stringify(marsNudged.divergence)})`);
+  return `caught at tick ${marsNudged.divergence.tick} (${marsNudged.divergence.field ?? marsNudged.divergence.hull})`;
+});
 
 // ---- negative control: a spotting stagger drawn from another seed is a different world (the solo step's old own seed)
-const reseeded = await run(60, null, { authoritySeed: SEED + 1 });
-assert.ok(reseeded.divergence && reseeded.divergence.field.startsWith('sees'),
-  `an authority seeded one off is caught on what a team sees, at the first check (${JSON.stringify(reseeded.divergence)})`);
+let reseeded = null;
+await section('control: an authority seeded one off', async () => {
+  reseeded = await run(60, null, { authoritySeed: SEED + 1 });
+  assert.ok(reseeded.divergence && reseeded.divergence.field.startsWith('sees'),
+    `an authority seeded one off is caught on what a team sees, at the first check (${JSON.stringify(reseeded.divergence)})`);
+  return `caught at tick ${reseeded.divergence.tick} (${reseeded.divergence.field})`;
+});
 
+if (failures.length) {
+  console.error(`driverStepParity.selftest: ${failures.length} of ${failures.length + passed.length} sections failed (every section ran):`);
+  for (const { name, error } of failures) console.error(`--- FAIL ${name}\n${error?.stack ?? error}`);
+  throw new Error(`driverStepParity.selftest: ${failures.length} failed section(s): ${failures.map(({ name, error }) => `${name}: ${error?.message ?? error}`).join('; ')}`);
+}
+
+const { denied } = same.exercised;
 console.log(`driverStepParity.selftest: ${MAP} 1v1, ${TICKS} ticks, both hulls byte-identical on the local step (game/state.ts simStep) and the `
   + `authority's (sim/authoritativeMatch.ts), the page's controls through the authority's input stage (sim/playerInputStage.ts): `
   + `drive, turn, gun lay, a crash, shots, hits, knock, bloom and reload (hostile at ${(same.exercised.foeHp * 100).toFixed(1)} % hp, `
