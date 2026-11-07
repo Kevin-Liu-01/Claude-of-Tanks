@@ -1,10 +1,14 @@
 // The fx-clock stamp census, default tier (round 2 U33/Q15; round 3 B5; round 4 F7): a rebase leaves no fx-clock stamp
 // the battle runtime holds. The harness (fxClockStampCensus.test-support.mjs, whose header says what it drives and
 // checks) runs its whole scenario but the two houses' destruction: their stages, sections, collapse bodies and hanging
-// sweep, about 1.7 s of the census's 4.1-4.4 s of CPU (round 5 U12). Every other check runs here: the walk (no stamp left,
-// none moved twice, the control), the reach of every fx-clock site outside the houses' modules against its named
-// unreached list, the clock followed under other names, every src/fx module with a clock read loaded, the drones and the
-// cinematic layer live at the rebase. src/fx/fxClockStampCensusFull.selftest.mjs (the manual fx suite) runs it whole.
+// sweep, about 1.7 s of the census's 4.1-4.4 s of CPU (round 5 U12). Every check runs here, over that scenario: the
+// walk (no stamp left, none moved twice, the control), the reach of every fx-clock site outside the houses'
+// (HOUSE_MODULES and HOUSE_SITES_ELSEWHERE) against its named unreached list, the clock followed under other names,
+// every src/fx module with a clock read loaded, the drones, the cinematic layer and the stalled round's record live at
+// the rebase. (review r1) What only the houses' destruction makes or reaches is the whole census's, wherever it lives:
+// its stamps in the houses' modules, structureMask's crumble fronts (only a collapse starts one), the rubble bodies,
+// effects.ts and the scene graph, and its sites' reach. src/fx/fxClockStampCensusFull.selftest.mjs (the manual fx
+// suite) runs it whole.
 import { runFxClockStampCensus } from './fxClockStampCensus.test-support.mjs';
 
 const census = await runFxClockStampCensus({ houses: false });

@@ -566,7 +566,9 @@ every receipt (decision, reason, where its coverage lives) is `docs/TEST-AUDIT.m
   budgets), `fleet` (the fleet passes and every other build-the-whole-fleet sweep, then `tank:anatomy:check`'s other
   steps), `tanks` (per-tank and per-family pins, id-scoped), `world` (every map built: scenery, structure collision,
   buildings, the wreck bake, the collision shards, civic areas, horizons), `ui` and `browser` (the strenuous real-battle
-  GPU receipts). `npm run test:heavy` alone lists them with their size; `all` names every suite. A new receipt lands
+  GPU receipts), `media` (the media lane's fleet backlog, run where its local dumps are) and `fx` (the fx-clock stamp
+  census whole, two houses brought down before the rebase; the default census leaves out what only they stamp or
+  reach). `npm run test:heavy` alone lists them with their size; `all` names every suite. A new receipt lands
   in the default tier; one that builds the fleet or every map joins a suite (the tiers selftest fails on a default
   receipt the snapshot times at a minute or more unless it is a must-keep invariant).
 - **Who runs them**: neither `npm test`, the release gate, a hook nor CI runs a manual suite, and `test:heavy` refuses a

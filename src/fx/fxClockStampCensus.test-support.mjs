@@ -44,9 +44,14 @@
 // (round 5 U12) The two houses' destruction (their stages and sections, the collapse bodies, the hanging sweep) is about
 // 1.7 s of the whole census's 4.1-4.4 s of user CPU (load 110-190, nice 10); without it the census takes 2.5-2.7 s, and
 // round two's census 2.7-3.0 s at that load. runFxClockStampCensus({ houses: false }) raises none of their events
-// (no seam stands, so the wall's rounds are plain prop strikes; their frames still run, so every timing holds) and leaves
-// the sites only their destruction reaches (HOUSE_MODULES, HOUSE_SITES_ELSEWHERE) to { houses: true }, which drives them,
-// walks their stamps and holds the whole reach to KNOWN_UNREACHED. Every other check runs in both.
+// (no seam stands, so the wall's rounds are plain prop strikes; their frames still run, so every timing holds). Both
+// modes run every check, each over what its own scenario makes and reaches, so what only the houses' destruction makes
+// or reaches is checked by { houses: true } alone, by scenario, not by module. (review r1) That is the stamps it makes
+// wherever they live: most in HOUSE_MODULES; structureMask's crumble fronts, which only a collapse starts
+// (structureStages.ts, fractureStages.ts) and whose shift effects.ts registers; a few more under the rubble bodies,
+// effects.ts and the scene graph (review r1 counted about 1,900 stamps moved whole, 1,630 without the houses). And it
+// is the reach of the sites only it runs (HOUSE_MODULES, HOUSE_SITES_ELSEWHERE), which { houses: true } holds to
+// KNOWN_UNREACHED and { houses: false } leaves out.
 import assert from 'node:assert/strict';
 import { readdirSync, readFileSync } from 'node:fs';
 import { Session } from 'node:inspector';

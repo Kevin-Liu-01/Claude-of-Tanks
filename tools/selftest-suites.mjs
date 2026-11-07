@@ -1108,10 +1108,13 @@ export const SELFTEST_SUITES = Object.freeze({
     // coverage measures its reach: an fx-clock site it never runs that is not in its named KNOWN_UNREACHED list fails it,
     // and so does a listed site it now runs; (round 4 F7) a key names one site, and a clock handed under another name and
     // a read of the shared uTime uniform are sites; an unloaded src/fx module that reads the clock fails it, and so does a
-    // stamp moved twice; its scenario drives the Studio cinematic layer and a round drawn past its record's bound; (round
-    // 5 U12) it leaves the two houses' destruction, and the sites only that reaches, to the census whole (next)
+    // stamp moved twice; its scenario drives the Studio cinematic layer and a round drawn past its record's bound
+    // (round 5 U11: the record the drawn round's renewal keeps is walked at the rebase); (round 5 U12) it leaves the
+    // two houses' destruction, what it stamps wherever that lives and the sites only it reaches, to the census whole
+    // (next)
     'src/fx/fxClockStampCensus.selftest.mjs',
-    // round 5 U12: the census whole, with the two houses' destruction the default receipt leaves out (manual: fx)
+    // 2026-11-02 audit U12 (round 5): the census whole, with the two houses' destruction the default receipt leaves out
+    // (manual: fx)
     'src/fx/fxClockStampCensusFull.selftest.mjs',
     // 2026-10-10 (physics lane, for the destruction core's natural collapses): the presentation pool of falling pieces.
     'src/fx/debrisPhysics.selftest.mjs',
