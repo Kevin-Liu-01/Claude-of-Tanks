@@ -1374,8 +1374,10 @@ export function createCameraRig(
 
     /**
      * The death orbit ends with the player's camera (round 4 E6b review r1): the player's hull lives again without a
-     * revive's own camera flow (a network battle's restart: game/battleResultPresentationRuntime.ts). Another owner
-     * (an external pin, the ally chase, the flyby) is left as it is.
+     * revive's own camera flow (a network battle's restart; round 5 U4: a mode's revive of a hull its ruleset gives no
+     * respawn timer, which a network Horde room's next wave or a Watch seat's allied bot reaches:
+     * game/battleResultPresentationRuntime.ts). Another owner (an external pin, the ally chase, the flyby) is left as it
+     * is.
      */
     endDeathCam(): void {
       if (owner === 'death') enterOwner('player');

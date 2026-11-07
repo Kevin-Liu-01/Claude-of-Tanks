@@ -7,6 +7,8 @@ import type { ObjectiveStateView } from '../ui/minimapObjectives.ts';
 export type BattleResult = 'victory' | 'defeat' | 'draw';
 
 interface ResultPlayer {
+  /** The seat's hull: a mode's revive of it ('mode:respawn' with this id) ends its death flow (round 5 U4). */
+  id?: string | null;
   combat?: { destroyed?: boolean } | null;
   state?: { pos?: { x: number; y: number; z: number } | null } | null;
 }
@@ -38,9 +40,14 @@ interface ResultCameraRig {
   endDeathCam?(): void;
 }
 
-/** The game bus, as far as this owner hears it itself: a network battle's restart (round 4 E6b review r1). */
+/**
+ * The game bus, as far as this owner hears it itself: a network battle's restart (round 4 E6b review r1), a mode's
+ * revive of a hull (round 5 U4; both drivers tell it: state.ts's mode events, battlePresentation.ts mode_respawn) and a
+ * hull's destruction (round 5 U4 review r2; state.ts and battlePresentation.ts tank_destroyed), which pays a revive
+ * heard while the hull read destroyed (reviveOwed).
+ */
 interface ResultBus {
-  on(type: 'battle:restarted', listener: () => void): unknown;
+  on(type: 'battle:restarted' | 'mode:respawn' | 'tank:destroyed', listener: (payload?: unknown) => void): unknown;
 }
 
 /** The browser camera twin of the director (battleEndingCamera.ts); a receipt supplies a fake. */
@@ -101,9 +108,15 @@ interface BattleResultPresentationSnapshot {
 interface BattleResultPresentationRuntime {
   update(): void;
   reset(): void;
+  /** The battle's teardown (main.ts clearBattle, before killcam.cancel()): no ending beat, no death beat and no
+   *  death replay left on this owner's books (round 5 U4). */
   clearPending(): void;
-  /** Watch mode (watch-mode-243): a freshly taken seat gets the player's death flow afresh. */
+  /** Watch mode (watch-mode-243): a freshly taken seat gets the player's death flow afresh (round 5 U4: its death
+   *  replay off this owner's books too). */
   newSeat(): void;
+  /** Watch mode: the watcher left the seat (watchController.ts leave): its death flow ends with it, so no death beat
+   *  left pending fires its replay over the drone (round 5 U4 review r2). */
+  leaveSeat(): void;
   /** Feed the director the bus facts it reads (mode:* events, tank:destroyed). */
   observe(type: string, payload: unknown): void;
   snapshot(): BattleResultPresentationSnapshot;
@@ -182,12 +195,40 @@ export function createBattleResultPresentationRuntime({
   let pending: PendingReplay | null = null;
   let beat: RunningBeat | null = null;
   /**
-   * The player's death replay is on screen (round 4 E6b review r2): from the killcam taking the death beat's replay until
-   * its end (afterDeath). Its end hands the HUD and the camera back; a replay the killcam cancels never ends that way
-   * (killcam.ts cancel -> finish(false) -> teardown(false): no onDone, and the rig keeps the replay's external pin), so a
-   * restart that cancels it hands them back here.
+   * The player's death replay is on screen and its HUD and camera are this owner's to hand back (round 4 E6b review
+   * r2; round 5 U4): set when the killcam takes the death beat's replay (the beat's fire), cleared by the replay's
+   * own end (afterDeath, which hands them back) and by dropDeathFlow on every other exit that ends the replay's life
+   * here: a battle's start (reset), a network battle's restart and a mode's revive of the hull (their listeners read
+   * what the flow holds on screen, drop the flow, then hand that back: handBackDeathFlow), the battle's teardown
+   * (clearPending), a freshly taken Watch seat (newSeat) and a Watch seat left (leaveSeat: a replay on screen then plays
+   * out under the killcam and its own end, afterDeath, hands back; with no seat neither reader acts). A verdict's
+   * replay that takes the screen from it leaves it set: the verdict's own end hands back (presentResult). Its two
+   * readers, the restart's and the revive's
+   * listeners, never read it after this seat's verdict: a restart cannot follow the verdict (battlePresentation.ts
+   * resetSettledWorld's policy) before the teardown or the next battle's reset clears it, and the revive's listener
+   * returns once the verdict is shown (endShown).
    */
   let deathReplayShown = false;
+  /**
+   * (round 5 U4 review r1) A mode's revive of the hull was heard while the hull still read destroyed: its next death
+   * flow re-arms at the first update that reads it alive (rearmDeathCam), not at the event, or that update would
+   * start the abandoned life's death flow over the wreck the next frame shows alive. (Review r2) The debt is also paid
+   * by the hull's next destruction told for its id (the 'tank:destroyed' listener): a death the revived hull met before
+   * any update read it alive. A network seat reaches that one: its own row is the newest authority row while a frame
+   * tells only the events up to its interpolated tick (mp/match/matchClient.ts frame: viewer.row = ownRow,
+   * events.flush(sample.tick)), so a hull revived and killed again within that delay hears its revive under the row of
+   * its next death, and that death's tank_destroyed comes after it (events run in tick order); before, that death got
+   * no death cam, beat or replay. The solo driver tells neither order (matchModes.ts reviveAtSpawn revives before it
+   * emits; state.ts tells the step's mode events after the step), and a revive told a frame ahead of a lagging row is
+   * the owner's transition (deathFlowExits case 7). The first death's own tank:destroyed, which a network seat hears
+   * after its row started the flow, comes before the revive (tick order), so it never pays the debt.
+   */
+  let reviveOwed = false;
+  /** The hull's next death gets its own death flow (the death cam, the beat, its replay): deathCamShown's one clearer. */
+  const rearmDeathCam = (): void => {
+    deathCamShown = false;
+    reviveOwed = false;
+  };
 
   const record = (played: boolean, result: BattleResult, plan: BattleEndingPlan, ran: BattleEndingBeat | 'replay'): void => {
     recordFlow({
@@ -286,6 +327,7 @@ export function createBattleResultPresentationRuntime({
     // at spawn; both branches below read the same two facts.
     const revives = game.ruleset?.respawnS != null;
     const destroyed = !!game.player?.combat?.destroyed;
+    if (reviveOwed && !destroyed) rearmDeathCam();
     if (result && !endShown) {
       endShown = true;
       exitPointerLock();
@@ -346,14 +388,44 @@ export function createBattleResultPresentationRuntime({
     }
   };
 
+  /**
+   * (round 5 U4) The player's death flow leaves the screen to whoever owns it next: no death beat stays pending and
+   * no death replay stays on this owner's books (deathReplayShown's one clearer but the replay's own end). Before,
+   * the battle's teardown and a fresh Watch seat left the replay on the books after the killcam's cancel had taken it
+   * off the screen (main.ts clearBattle runs clearPending, then killcam.cancel(), which runs no afterDeath), so a
+   * restart heard without a reset unveiled the HUD and released the rig for a replay that was gone: the release took
+   * the camera from whichever owner had pinned it since. Whether the death cam ran (deathCamShown) is each caller's
+   * to say.
+   */
+  const dropDeathFlow = (): void => {
+    pending = null;
+    deathReplayShown = false;
+  };
+
+  /**
+   * The hull lives again on this battle's screen (a network battle's restart, a mode's revive): what its abandoned
+   * death flow held there goes back to the player. A death replay on screen at that edge is cancelled by the
+   * killcam's own listener, and a cancelled replay runs no onDone (afterDeath) and keeps the rig's external pin
+   * (killcam.ts cancel -> finish(false) -> teardown(false); publishReplayCompletion runs onDone only on a finish or
+   * skip), so its HUD and its camera come back here. The death orbit ends with the player's camera (the rig leaves
+   * only its own 'death' owner; an external pin, the ally chase or the flyby stays). Neither listener touches what
+   * the other one does, so the order in which the killcam and this owner hear the edge does not matter.
+   */
+  const handBackDeathFlow = (replaying: boolean, orbiting: boolean): void => {
+    if (replaying) {
+      veilHud(false);
+      rig.release();
+    }
+    if (orbiting) rig.endDeathCam?.();
+  };
+
   /** A battle's start over: no ending beat, no ending facts, no result shown, the player's death flow afresh. */
   const startOver = (): void => {
     cancelBeat();
     director.reset();
     endShown = false;
-    deathCamShown = false;
-    pending = null;
-    deathReplayShown = false;
+    rearmDeathCam();
+    dropDeathFlow();
   };
 
   // (round 4 E6b) A network battle restarted under this seat opens a new battle (the session's decision; Kevin may
@@ -364,22 +436,60 @@ export function createBattleResultPresentationRuntime({
   // unconditionally: a restart cannot follow this seat's verdict (the edge's policy, battlePresentation.ts
   // resetSettledWorld; review r1). What a battle's start does not need: a seat whose death orbit ran gets its camera
   // back, its hull alive at its spawn (a start opens on its own flyby); before, the orbit circled the living hull until
-  // the battle ended. A seat whose death replay was on screen gets its HUD and its camera back here too (review r2): the
-  // killcam's own restart listener cancels the replay, and a cancelled replay runs no onDone (afterDeath) and leaves the
-  // rig on the replay's external pin (killcam.ts cancel -> finish(false) -> teardown(false); publishReplayCompletion
-  // runs onDone only on a finish or skip), so before, the restarted battle played under a frozen camera with no HUD
-  // until the seat died again or the battle ended. Neither listener touches what the other one does, so the order in
-  // which the killcam and this owner hear the edge does not matter. This owner hears the edge itself (review r1), so a
-  // receipt drives it as the page does.
+  // the battle ended. A seat whose death replay was on screen gets its HUD and its camera back here too (review r2,
+  // handBackDeathFlow): before, the restarted battle played under a frozen camera with no HUD until the seat died again
+  // or the battle ended. This owner hears the edge itself (review r1), so a receipt drives it as the page does.
   bus.on('battle:restarted', () => {
     const orbiting = deathCamShown;
     const replaying = deathReplayShown;
     startOver();
-    if (replaying) {
-      veilHud(false);
-      rig.release();
-    }
-    if (orbiting) rig.endDeathCam?.();
+    handBackDeathFlow(replaying, orbiting);
+  });
+
+  // (round 5 U4) A mode revived the player's hull: its life's death flow ends, as at a restart, and the battle goes
+  // on (its ending facts and verdict stand). A mode can revive a hull its ruleset gives no respawn timer
+  // (matchRuleset.ts endless_horde and frontline_assault, respawnS null), so update() ran the full death flow for it.
+  // A solo human's death there ends the battle in the same step (matchModes.ts stepHorde and stepAssault: no living
+  // human, overrun), so the verdict takes it; two seats live on (review r1): a network Horde room with another human
+  // alive, whose next wave stands every fallen Alpha hull up, humans too (startHordeWave has no bot filter), 8 s after
+  // a wave is cleared; and a Watch seat driving an allied bot (WATCH_RULES.modes; watchController.ts drivenHandoff
+  // keeps the seat while the replay runs), which Horde's next wave or a Frontline sector's capture stands up. Most
+  // often the revive comes after the death replay ended on its own (a wave runs on well past a replay), while the
+  // death orbit circles the wreck; it can also land inside the death beat or the replay (up to 15 s). The killcam's own
+  // 'mode:respawn' listener cancels that replay, so before, the revived hull played on under the replay's frozen pin
+  // with the HUD veiled; a revive inside the death beat left the orbit on the living hull and the beat's late fire
+  // restarted it; one after the replay left the orbit circling the living hull; and the hull's next death got no
+  // death cam or replay (deathCamShown stayed set). In a mode with a respawn timer the flow never starts (update's
+  // `revives`), so this is a no-op there. Only this seat's hull counts: inside its death window every other revive
+  // (Horde's arrivals and wave start, Frontline's bot allies and reinforcements) tells the same event with its own id.
+  // After the verdict the ending owns the camera and the report, so a revive then is not this owner's (a defensive
+  // guard: once the verdict latches a mode's step revives no more, matchModes.ts step's `result` latch, which
+  // state.ts's matchEnded sets for a verdict the mode did not reach). What the flow held on screen goes back at the
+  // edge, as the killcam's cancel does; the death cam re-arms once the hull reads alive, or at its next death told
+  // before any update read it alive (reviveOwed, review r2).
+  bus.on('mode:respawn', (payload) => {
+    const id = typeof payload === 'object' && payload !== null ? Reflect.get(payload, 'id') : null;
+    const player = game.player;
+    if (endShown || !player || id == null || id !== player.id) return;
+    const orbiting = deathCamShown;
+    const replaying = deathReplayShown;
+    if (player.combat?.destroyed) reviveOwed = true;
+    else rearmDeathCam();
+    dropDeathFlow();
+    handBackDeathFlow(replaying, orbiting);
+  });
+
+  // (round 5 U4 review r2) A revive heard while the hull read destroyed is paid by the hull's next destruction told for
+  // its id, when no update read it alive first: that death is the new life's (reviveOwed), so update() starts its death
+  // flow. Only while the debt stands (a network seat hears its first death's own event after its row started the flow)
+  // and only for this seat's hull (another hull's death must not start the abandoned life's flow over a wreck the next
+  // row shows alive).
+  bus.on('tank:destroyed', (payload) => {
+    if (!reviveOwed) return;
+    const id = typeof payload === 'object' && payload !== null ? Reflect.get(payload, 'id') : null;
+    const player = game.player;
+    if (!player || id == null || id !== player.id) return;
+    rearmDeathCam();
   });
 
   return {
@@ -387,12 +497,23 @@ export function createBattleResultPresentationRuntime({
     reset: startOver,
     clearPending() {
       cancelBeat();
-      pending = null;
+      dropDeathFlow();
     },
     newSeat() {
       if (endShown) return;
-      deathCamShown = false;
-      pending = null;
+      rearmDeathCam();
+      dropDeathFlow();
+    },
+    // (round 5 U4 review r2) The seat's death flow ends with the seat (watchController.ts leave: Enter, pad R3 or the
+    // touch button while driving): a death beat left pending fired its replay over the drone up to the beat's length
+    // later, the HUD veiled and the camera pinned while the drone yielded (the frame runtime gives a replay the camera),
+    // for up to 15 s. A replay on screen at the leave plays out under the killcam (the leave's Enter also steps it a
+    // beat, killcam.ts onReplayKey) and its own end hands back, as the automatic hand-off's does (drivenHandoff waits for
+    // it). Whether the death cam ran stands, as before: a hull left after its death cam keeps the verdict from replaying
+    // that death as the watcher's own (ownDeath); the next seat's take re-arms (newSeat). After the verdict there is no
+    // beat left to drop (update's verdict branch takes it).
+    leaveSeat() {
+      dropDeathFlow();
     },
     observe(type, payload) {
       director.observe(type, payload);
