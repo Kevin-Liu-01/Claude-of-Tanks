@@ -57,7 +57,11 @@ it happens; a NaN the kernel answered (its ground's) passes.
 - **Browser host and solo battles:** on unless `?simKernels=ts`. The lazy chunks read the flag and carry the asset URL;
   nothing loads at boot. A module that does not arrive or compile leaves that host or battle on the TypeScript.
   - A multiplayer host's Worker fetches and compiles the module. The choice stays with the host: it is never sealed into
-    the migration config.
+    the migration config. Its boot (and a standby's preparation) waits for the module before it builds the world, so the
+    fetch, its answer and its bytes, has `HOST_KERNELS_FETCH_MS` (15 s, `src/mp/host/worldCollision.ts`) from its start
+    (round 5 Q1, review r2): past it the request is aborted and the world is built on the TypeScript, reported
+    `timeout`, inside the boot's own 30 s bound. Before, a request that never answered held the boot until that bound
+    failed it, and the room elected another seat.
   - A solo battle steps on the main thread over the rendered world (`game/state.ts`). There the kernels take the hulls'
     support: `src/world/soloWorldKernels.ts` gives each world its own instance, its grid loaded in the order of the
     world's own obstacle grid, its ground mirrored from the battle's overlay. Each battle chooses once, at its setup
@@ -93,8 +97,8 @@ it happens; a NaN the kernel answered (its ground's) passes.
 
 Every path keeps its fallback to the TypeScript, and none of them is silent. `src/world/simKernelsStatus.ts` names the
 cause: `csp` (a Content Security Policy without `'wasm-unsafe-eval'`), `http_<status>`, `network`, `timeout` (a solo
-load's request with no answer by its deadline), `compile`, `link`, `missing` (a server image without the binary),
-`no_webassembly` or `error`. `off` means an opt-out.
+load's request with no answer by its deadline, or a host's fetch without the module's bytes by `HOST_KERNELS_FETCH_MS`),
+`compile`, `link`, `missing` (a server image without the binary), `no_webassembly` or `error`. `off` means an opt-out.
 
 - **Browser host:** its Worker's `ready` carries `kernels: { mode, reason }`.
 - **Solo battle:** `soloBattleRuntime.ts` reports its load failure.
