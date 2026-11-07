@@ -10,6 +10,8 @@ import { createBattleEntryLifecycle } from './battleEntryLifecycle.ts';
 import { createSoloBattleEntryRuntime } from './soloBattleEntryRuntime.ts';
 import { createBattleAgainAction } from './battleAgainAction.ts';
 import { createBus, createGameState } from './stateCore.ts';
+import { createInput } from './input.ts';
+import { createPointerLockFeedbackRuntime } from './pointerLockFeedbackRuntime.ts';
 import { mainSource, mainStatement, runMainStatements } from '../app/mainComposition.test-support.mjs';
 
 const { createGarageReturnRuntime, GARAGE_RETURN_EDGES = {} } = garageReturnModule;
@@ -22,7 +24,7 @@ function deferred() {
 const flush = async (turns = 12) => { for (let i = 0; i < turns; i += 1) await Promise.resolve(); };
 
 function createFixture({ restore = null, clearBattle = () => {}, phase = 'battle', placement = null, entryScheduler = null,
-  showGarage = () => {}, transitionRun = null, bus = null } = {}) {
+  showGarage = () => {}, transitionRun = null, bus = null, exitPointerLock = () => {} } = {}) {
   const game = createGameState();
   game.phase = phase;
   const announcements = [];
@@ -55,7 +57,8 @@ function createFixture({ restore = null, clearBattle = () => {}, phase = 'battle
     roster: { adoptBattlePlayer: () => null, clearBattle: noop, repaintHero: noop },
     settings: { isOpen: () => false, close: noop },
     // (emitGaragePhase: the port of old, ignored now that the session's lifecycle announces the phase)
-    ui: { setGarageSpots: noop, setGarageSunTrim: noop, emitGaragePhase: noop, hideEndOverlay: noop, exitPointerLock: noop, hideHud: noop,
+    // (exitPointerLock: main's own binding, document.exitPointerLock, when a case runs a page's pointer lock)
+    ui: { setGarageSpots: noop, setGarageSunTrim: noop, emitGaragePhase: noop, hideEndOverlay: noop, exitPointerLock, hideHud: noop,
       showGarage, poseGarageCamera: noop, startShowroom: noop,
       triggerBattle: () => { game.phase = 'battle'; setTimeout(() => setCovering(true), 5); return true; } },
     audio: { ambientOn: noop, playGarageSting: noop },
@@ -851,6 +854,182 @@ const started = ['emit:ui:click', 'emit:ui:battleStart', 'cover@garage', 'load@g
       assert.equal(main.notices.length, shown + 2, `${label}: its notice and the refused start's`);
       assert.equal(main.notices.at(-1).retry, main.retryGarageReturn, `${label}: the bare Retry again`);
     }
+  }
+}
+
+// (round 5 U15, Q2) What a press's ui:battleStart leaves standing, on a page whose pointer lock behaves as Chrome's
+// (inputPointerLockFocus.selftest.mjs's model): a request lands a task later; after the player's own unlock (Esc) one
+// with no user activation (about 5 s after a press) is refused, after the page's own exitPointerLock it is not (Chrome's
+// MouseLockController: last_unlocked_by_target). The real input layer (input.ts) asks for it, through the real pointer
+// lock owner (pointerLockFeedbackRuntime.ts), main's own ui:battleStart listeners (the play surface, post's loading
+// hold) and settings.ts's own (its battle state, which a 'garage' announcement clears) on one bus.
+const tick = () => new Promise((resolve) => setImmediate(resolve));
+function chromePointerLockPage() {
+  const activation = { isActive: true };
+  let unlockedByTarget = true;
+  const stats = { attempts: 0, refused: 0 };
+  const document = Object.assign(new EventTarget(), {
+    hidden: false,
+    pointerLockElement: null,
+    body: { dataset: { cotInput: 'fine' } },
+    exitPointerLock() {
+      if (!document.pointerLockElement) return;
+      unlockedByTarget = true;
+      document.pointerLockElement = null;
+      queueMicrotask(() => document.dispatchEvent(new Event('pointerlockchange')));
+    },
+  });
+  const canvas = Object.assign(new EventTarget(), {
+    getBoundingClientRect: () => ({ left: 0, top: 0, width: 1280, height: 800 }),
+    requestPointerLock() {
+      stats.attempts += 1;
+      if (!unlockedByTarget && !activation.isActive) {
+        stats.refused += 1;
+        setImmediate(() => document.dispatchEvent(new Event('pointerlockerror')));
+        return Promise.reject(new Error('pointer lock refused'));
+      }
+      setImmediate(() => {
+        document.pointerLockElement = canvas;
+        document.dispatchEvent(new Event('pointerlockchange'));
+      });
+      return Promise.resolve();
+    },
+  });
+  const globals = {
+    window: new EventTarget(),
+    document,
+    localStorage: { getItem: () => null, setItem() {} },
+    navigator: { userActivation: activation },
+    matchMedia: (query) => ({ matches: query === '(pointer: fine)' }),
+  };
+  const prior = Object.fromEntries(Object.keys(globals).map((key) => [key, Object.getOwnPropertyDescriptor(globalThis, key)]));
+  for (const [key, value] of Object.entries(globals)) {
+    Object.defineProperty(globalThis, key, { value, configurable: true, writable: true });
+  }
+  const input = createInput({ lockElement: canvas });
+  return {
+    input, document, canvas, activation, stats,
+    locked: () => document.pointerLockElement === canvas,
+    // main's binding of the return's ui.exitPointerLock
+    exitPointerLock: () => { if (document.exitPointerLock) document.exitPointerLock(); },
+    /** The player's Esc while locked: Chrome consumes it and drops the lock (a user unlock). */
+    userEscape() {
+      unlockedByTarget = false;
+      document.pointerLockElement = null;
+      document.dispatchEvent(new Event('pointerlockchange'));
+    },
+    restore() {
+      for (const [key, descriptor] of Object.entries(prior)) {
+        if (descriptor) Object.defineProperty(globalThis, key, descriptor);
+        else delete globalThis[key];
+      }
+    },
+  };
+}
+const settingsSource = readFileSync(new URL('../ui/settings.ts', import.meta.url), 'utf8');
+function battleStartEffects(page) {
+  const bus = createBus();
+  const state = { playSurfaceHidden: false, loadingHold: false, battleSettings: false };
+  const feedback = createPointerLockFeedbackRuntime({
+    input: page.input, bus, canvas: page.canvas, audioResume() {}, isBattleStageVisible: () => false,
+    canRecapturePointer: () => false, ensureTouchControls: async () => null, notices: { show() {}, dismiss() {} },
+  });
+  const line = (source, text) => {
+    assert.equal(source.split(`\n${text}\n`).length, 2, text);
+    return text.trim();
+  };
+  runMainStatements([
+    mainStatement("bus.on('ui:battleStart', () => {"),
+    line(mainSource, "bus.on('ui:battleStart', () => post.setAdaptiveHold('loading', true));"),
+  ], {
+    bus, pedestal: { current: null }, parkGarageTankEnergyVisual() {}, garageModePreview: { clear() {} },
+    playSurface: { hideForBattle: () => { state.playSurfaceHidden = true; } },
+    post: { setAdaptiveHold: (hold, on) => { if (hold === 'loading') state.loadingHold = on; } },
+  }, 'null');
+  const phaseAt = settingsSource.indexOf("\n    bus.on('phase:change', (ev) => {");
+  assert.ok(phaseAt > 0, "settings' phase listener");
+  runMainStatements([
+    settingsSource.slice(phaseAt + 1, settingsSource.indexOf('\n    });', phaseAt) + 8),
+    line(settingsSource, "    bus.on('ui:battleStart', () => { battleUiVisibility.setBattle(true); updateGear(); });"),
+  ], {
+    bus, updateGear() {}, hideResumeVeil() {}, hideHints() {},
+    battleUiVisibility: { setBattle: (battle) => { state.battleSettings = battle; } },
+  }, 'null');
+  return {
+    bus,
+    /** What stands now: the pointer lock, the hidden play surface, post's loading hold, settings' battle state. */
+    standing: () => ({ pointerLock: page.locked(), ...state }),
+    dispose: () => feedback.dispose(),
+  };
+}
+const nothingStands = { pointerLock: false, playSurfaceHidden: false, loadingHold: false, battleSettings: false };
+const battleStands = { pointerLock: true, playSurfaceHidden: true, loadingHold: true, battleSettings: true };
+// (round 5 U15) the bare Retry's restore window: the press lands after the Retry's showGarageScreen (its 'garage'
+// announcement and exitPointerLock), while its restore runs, where the Garage UI is up. (Case 5 above holds the Garage
+// placement, before that screen, whose exitPointerLock released a lock a base press took there.) If the restore fails
+// again the start is refused and none of its announcement's effects stands over the notice; if it lands the press
+// starts its battle with them. (0edd0e1ab5: ui:battleStart at the press, and its pointer lock, hidden play surface,
+// loading hold and battle settings stood over the notice that came back.)
+{
+  const page = chromePointerLockPage();
+  const effects = battleStartEffects(page);
+  try {
+    let failRestore = true;
+    let hold = null;
+    let restoring = false;
+    const f = createFixture({
+      bus: effects.bus, exitPointerLock: page.exitPointerLock,
+      restore: async () => {
+        restoring = true;
+        await hold?.promise;
+        restoring = false;
+        if (failRestore) throw new Error('the Garage presentation did not restore');
+        return { totalMs: 1 };
+      },
+    });
+    const main = owedGarageMain(f.runtime, f.game, { bus: effects.bus });
+    await main.leave();
+    await flush();
+    assert.equal(f.runtime.state, 'failed');
+    press(main); // the closed notice: the press brings it back, with the bare Retry
+    await flush();
+    assert.equal(main.notices.at(-1).retry, main.retryGarageReturn, '(the refused press offers the bare Retry)');
+    assert.deepEqual(effects.standing(), nothingStands, '(nothing announced)');
+    for (const lands of [false, true]) {
+      const label = lands ? 'the restore window, a Retry that lands' : 'the restore window, a Retry that fails again';
+      failRestore = !lands;
+      hold = deferred();
+      const shown = main.notices.length;
+      main.notices.at(-1).retry();
+      for (let index = 0; index < 12 && !restoring; index += 1) await flush();
+      assert.equal(restoring, true, `${label}: (its restore runs)`);
+      assert.deepEqual(f.announcements.at(-1), { phase: 'garage', from: 'garage', reason: 'garage-return:screen' },
+        `${label}: (after its showGarageScreen: the Garage's screen is up)`);
+      main.events.length = 0;
+      press(main);
+      await flush();
+      await tick();
+      assert.deepEqual(main.events, ['emit:ui:click'], `${label}: the press waits for the restore, unannounced`);
+      hold.resolve();
+      const settled = () => (lands ? main.events.length >= started.length : main.notices.length >= shown + 2);
+      for (let index = 0; index < 12 && !settled(); index += 1) await flush();
+      await tick();
+      if (lands) {
+        assert.equal(f.runtime.state, 'idle', label);
+        assert.deepEqual(main.events, started, `${label}: the press announces and starts its battle once it lands`);
+        assert.deepEqual(effects.standing(), battleStands, `${label}: with its announcement's effects`);
+      } else {
+        assert.equal(f.runtime.state, 'failed', label);
+        assert.equal(main.notices.length, shown + 2, `${label}: its notice and the refused start's`);
+        assert.equal(main.notices.at(-1).retry, main.retryGarageReturn, `${label}: the bare Retry again`);
+        assert.deepEqual(effects.standing(), nothingStands,
+          `${label}: no pointer lock, hidden play surface, loading hold or battle settings stand over the notice`);
+        assert.deepEqual(main.events, ['emit:ui:click'], `${label}: the start is refused and announced nothing`);
+      }
+    }
+  } finally {
+    effects.dispose();
+    page.restore();
   }
 }
 
