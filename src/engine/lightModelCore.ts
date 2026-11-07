@@ -317,6 +317,14 @@ let grounded: GroundedLightResolver | null = null;
 export function importGroundedLightModel(): Promise<void> {
   return import('./lightModel.ts').then((module) => { grounded = module.groundedLightModel(GROUNDED_ENV); });
 }
+/**
+ * (round 5 U8) Whether the grounded model is installed. The import above installs it a moment before the chunk holding it
+ * reads 'ready' (that state follows when the import's promise settles), so a light applied in between is lit with it
+ * (battleAtmosphereAccess.ts: a relight's landing).
+ */
+export function groundedLightModelInstalled(): boolean {
+  return grounded !== null;
+}
 
 /**
  * Resolve the light. `sky` is the atmosphere's summary; without it (the Preetham tier, a failed readback), and for a

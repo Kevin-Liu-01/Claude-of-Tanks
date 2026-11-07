@@ -997,7 +997,9 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/app/lazyChunk.selftest.mjs',
     // 2026-11-02 audit R6: the named lazy chunks and the session-long memos hold their load in app/lazyChunk.ts; no new
     // hand-made memo or failure-cleared latch; a default-policy load of several parts settles them with importAll; every
-    // lazy stylesheet is held and has one owner per document
+    // lazy stylesheet is held and has one owner per document; (round 4 F2 review) the lifecycle-edge asks (backoff:
+    // false, entry: true, the Studio relight in the spellings it reads) held to their callers, (round 5 U8) with
+    // relights planted on a per-move path that it must name
     'src/app/lazyChunkSites.selftest.mjs',
     // 2026-11-02 audit R6 (review round 2): the hero cards' one load keeps a failed heroCard.css for every surface
     'src/ui/heroCardChunk.selftest.mjs',
@@ -1445,7 +1447,8 @@ export const SELFTEST_SUITES = Object.freeze({
     // 2026-11-02 audit F9: the take owns the playhead (one busy reading); pointercancel releases the history hold
     'src/game/studioTransport.selftest.mjs',
     // 2026-11-02 audit R6 (round 4 F2 review): a Studio light never waits on a re-ask and is lit again once what it was
-    // applied without lands (light model, cloudscapes, atmosphere runtime, map air); never after its session or in a take
+    // applied without lands (light model, cloudscapes, atmosphere runtime, map air); never after its session or in a take;
+    // (round 5 U8) once per apply however many land together, a skipped landing leaving it to the next
     'src/game/studioLightLanding.selftest.mjs',
     // 2026-10-08 (fix/studio-world-step): an export step advances the props' clock and syncs the drawn ground
     'src/game/studioWorldStep.selftest.mjs',
@@ -1610,6 +1613,9 @@ export const SELFTEST_SUITES = Object.freeze({
     // 2026-11-02 audit R6 (round 4 F2): a battle entry asks the light model, the cloudscapes and the atmosphere runtime at
     // once whatever the backoff a Studio drag raised; a Studio light apply keeps the backoff and never awaits a stalled re-ask
     'src/engine/battleAtmosphereEntryAsk.selftest.mjs',
+    // 2026-11-02 audit R6 (round 5 U8 review): a sky part in flight is a prepare's landing, a relight's too while it
+    // is not installed; a relight leaves out a part installed before its light applied, and any other prepare keeps it
+    'src/engine/battleAtmosphereLanding.selftest.mjs',
     // 2026-11-02 audit R6 (round 4 F2 review): a Moon battle entered inside the backoff a Studio drag raised binds the
     // Earth's land mask (its entry asks it at once), not the all-sea placeholder
     'src/engine/earthLandEntryAsk.selftest.mjs',

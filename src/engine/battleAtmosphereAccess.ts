@@ -1,8 +1,8 @@
 import { BATTLE_TIMES, type BattleTimeOfDay } from './battleWeatherPolicy.ts';
 import { createLazyRuntimeOwner } from '../app/lazyRuntimeOwner.ts';
 import { createLazyChunk, type LazyChunkLoadOptions, type LazyChunkState } from '../app/lazyChunk.ts';
-import { importGroundedLightModel } from './lightModelCore.ts';
-import { cloudscapeChunk } from './cloudPresets.ts';
+import { groundedLightModelInstalled, importGroundedLightModel } from './lightModelCore.ts';
+import { cloudscapeChunk, cloudscapeLayersInstalled } from './cloudPresets.ts';
 import { loadEarthLand, skyDrawsEarth } from './earthLandAccess.ts';
 import type { BattleAtmosphereRuntime, BattleAtmosphereRuntimeOptions } from './battleAtmosphereRuntime.ts';
 
@@ -35,7 +35,8 @@ export interface BattleAtmospherePrepareOptions {
   /**
    * (round 4 F2 review) The Studio's light applied again because something an earlier prepare lit without has landed
    * (its `landing`): the runtime applies its light again, where its prepare keeps a light it has already applied for
-   * the same battlefield, seed and time. Once per landing, never per move (app/lazyChunkSites.selftest.mjs).
+   * the same battlefield, seed and time. Once per Studio apply however many of its landings land (studio.ts
+   * prepareAtmosphere, round 5 U8), never per move (app/lazyChunkSites.selftest.mjs EDGE_ASKS).
    */
   readonly relight?: boolean;
 }
@@ -46,6 +47,8 @@ export interface BattleAtmospherePrepared {
    * The runtime or sky parts this prepare did not wait for (a re-ask after a failure, still in flight): resolves true
    * once one of them lands while this is still the latest prepare (its caller lights again, `{ relight: true }`), false
    * once they all failed or a later prepare or a reset came first. Null when it waited for everything it asked.
+   * (round 5 U8) A relight's landing leaves out a sky part installed by the time its light applied, though the part's
+   * chunk may still read 'loading'; any other prepare's keeps it (engine/battleAtmosphereLanding.selftest.mjs).
    */
   readonly landing: Promise<boolean> | null;
 }
@@ -75,6 +78,11 @@ function ask<T>(chunk: AskedChunk<T>, entry: boolean): Asked<T> {
   const request = chunk.load(entry ? AT_ONCE : undefined);
   return { chunk, request, wait: entry || chunk.failures === 0 ? request : undefined };
 }
+
+/** (round 5 U8) Each sky part's install: its load installs the part a moment before its chunk reads 'ready'. */
+const PART_INSTALLED: ReadonlyMap<unknown, () => boolean> = new Map([
+  [groundedLightChunk, groundedLightModelInstalled], [cloudscapeChunk, cloudscapeLayersInstalled],
+]);
 
 /** True once one of the requests lands while `latest()` holds; false once they all failed or it no longer holds. */
 function landingOf(requests: readonly Promise<unknown>[], latest: () => boolean): Promise<boolean> {
@@ -135,7 +143,13 @@ export function createBattleAtmosphereAccess(
         if (how.relight === true) runtime.reset(); // its prepare keeps a light it applied: this one applies it again
         runtime.prepare(seed, mapId, times);
       }
-      const late = [runtimeAsk, ...parts].filter((asked) => !asked.wait && asked.chunk.state === 'loading');
+      // (round 5 U8) a relight applies its light again whatever it applied before (the runtime's reset above, main.ts's
+      // restore of the Studio's plan), so a part that light was lit with is no landing of it, though the part's chunk may
+      // still read 'loading': a part's load installs it a moment before its chunk reads 'ready', and a relight asks in the
+      // turn of the landing that started it, while the other transfers of a network that came back are landing. Counted,
+      // the part relit the Studio once more for nothing
+      const late = [runtimeAsk, ...parts].filter((asked) => !asked.wait && asked.chunk.state === 'loading'
+        && !(how.relight === true && PART_INSTALLED.get(asked.chunk)?.()));
       return { landing: late.length ? landingOf(late.map((asked) => asked.request), () => requested === generation) : null };
     },
     reset(): void { generation++; owner.current?.reset(); },

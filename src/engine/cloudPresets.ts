@@ -358,6 +358,11 @@ export const cloudscapeChunk = createLazyChunk((): Promise<void> => import('./cl
     clamp, tintOf, hexToLinear, neutralWeather, cloudNightAmount, cloudTimeOfDay,
   });
 }));
+/** (round 5 U8) Whether the cloudscape is installed: the load installs it a moment before cloudscapeChunk reads 'ready'
+ *  (battleAtmosphereAccess.ts: a relight's landing). */
+export function cloudscapeLayersInstalled(): boolean {
+  return cloudscape !== null;
+}
 /**
  * 2026-10-02 (the boot weight): a map's cloudscape (its regime, its knobs, the time of day, the weather beyond the
  * slab) lights only a battlefield, so it loads behind the battle entry (cloudscapeLayer.ts: the battle atmosphere's

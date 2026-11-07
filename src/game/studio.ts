@@ -237,7 +237,10 @@ interface StudioTransitionRuntime {
 interface StudioAtmosphereAsk {
   /** This apply is the light again, after something it was applied without landed: the runtimes apply it again. */
   readonly relight?: boolean;
-  /** Called once something this apply lit without has landed: the Studio lights again (prepareAtmosphere). */
+  /**
+   * Called as each thing this apply lit without lands: the Studio lights again, once per apply however many land
+   * (prepareAtmosphere; round 5 U8).
+   */
   readonly landed?: () => void;
 }
 
@@ -271,8 +274,9 @@ interface StudioContext {
    * itself, after its own awaits: `owner` is the Studio session asking (audit F9), and once it is no longer current the
    * preparation applies no light and no ambience override (the exit restored the battlefield's own). Resolves with the
    * light it applied, or null when its session ended first (whatever it applied came before that session's restore).
-   * `how` (round 4 F2 review): `landed` is called once something this light was applied without (a re-ask after a
-   * failure, which no Studio apply waits on) has landed, and `relight` marks the apply that follows it.
+   * `how` (round 4 F2 review): `landed` is called as each thing this light was applied without (a re-ask after a
+   * failure, which no Studio apply waits on) lands, and `relight` marks the apply that follows (one per apply, round 5
+   * U8).
    */
   prepareStudioAtmosphere?(
     time: StudioTimeOfDay, light?: StudioLight | null, owner?: { current(): boolean }, how?: StudioAtmosphereAsk,
@@ -5644,9 +5648,18 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
     // (round 4 F2 review) what this light was applied without (the battle atmosphere's runtime, the light model, the
     // cloudscapes or the map's air, asked again after a failure: no Studio apply waits on a re-ask, whose transfer may
     // hang) lights it again once it lands, as an uncovered change of this same light in this session, never inside a
-    // take (a recording, a film, an export), so the light it lands with is the one the take keeps
+    // take (a recording, a film, an export), so the light it lands with is the one the take keeps.
+    // (round 5 U8) Once per prepare: its landings (the runtime's or the sky parts', and the air's) often land together
+    // when the network comes back, and main.ts calls this once for each. A second relight would only repeat the first (a
+    // battle runtime reset and prepare, the Studio plan's restore and apply, the air's prepare). What is still in flight
+    // when that relight asks is its own prepare's landing (each access's generation moves on, so this prepare's later
+    // landing resolves false), so a landing that comes later still lights. A landing this skips (another session, a take)
+    // leaves the relight to the next one
+    let relit = false;
     const landed = (): void => {
-      if (owner.current() && !transportHeld(busy())) void applyStudioLight(time, light, false, true).catch(() => undefined);
+      if (relit || !owner.current() || transportHeld(busy())) return;
+      relit = true;
+      void applyStudioLight(time, light, false, true).catch(() => undefined);
     };
     const work = Promise.resolve(ctx.prepareStudioAtmosphere?.(time, light, owner, { relight, landed })).then((applied) => {
       lit = applied != null;

@@ -11,6 +11,12 @@
 // landing (battleAtmosphereAccess.ts, mapAmbienceAccess.ts), and once it lands the Studio lights the same light again
 // through its own guarded change (an uncovered applyStudioLight with `relight`: the battle runtime and the Studio's plan
 // apply again, where both keep a light they already applied), only in the session that asked and never inside a take.
+// (round 5 U8) Once per apply, however many of its landings land together (cases 1 and 5), and with no second relight
+// for a part its relight asked while the part was landing and was lit with (case 1); landings that come apart still each
+// light (case 6), and a landing the Studio skips (inside a take) leaves the relight to the next (case 7). Case 1
+// also holds the sky parts' re-ask as the first light's landing (the air's relight lights the parts too, so the
+// Studio's last light alone would not show it); battleAtmosphereLanding.selftest.mjs holds which parts a landing
+// counts.
 //
 // This runs studio.ts's own prepareAtmosphere, applyStudioLight and busy (read from the source) over main.ts's own
 // prepareStudioAtmosphere and restoreStudioAtmosphere (read from main.ts), the real battle atmosphere access and runtime,
@@ -149,34 +155,86 @@ function makeStudio({ loadRuntime, loadAir } = {}) {
 }
 const ENTRY = Object.freeze({ entry: true });
 const problems = [];
+/** The lights main.ts's preparation is asked for from now on that are relights (studio.ts passes them `how.relight`). */
+const relightsOf = (h) => {
+  const relights = [];
+  const prepare = h.ctx.prepareStudioAtmosphere;
+  h.ctx.prepareStudioAtmosphere = (time, light, owner, how) => {
+    if (how?.relight) relights.push(time);
+    return prepare(time, light, owner, how);
+  };
+  return relights;
+};
+/** A map air stand-in that records the hours it is prepared at, and its loader: 'down' throws, 'hang' waits for arrive(). */
+const makeAir = () => {
+  const runtime = { prepared: [], setEnabled() {}, setDensityOverride() {}, refreshTier() {}, reset() {}, isActive: () => false };
+  const air = { mode: 'down', arrive: () => {}, runtime };
+  air.runtime.prepare = (seed, mapId, time) => air.runtime.prepared.push(time);
+  const gate = new Promise((resolve) => { air.arrive = resolve; });
+  air.load = async () => {
+    if (air.mode === 'down') throw new TypeError('Failed to fetch dynamically imported module: ./mapAmbience.ts');
+    await gate;
+    return { createMapAmbience: () => air.runtime };
+  };
+  return air;
+};
 
 try {
-  // ---- 1. a battle entry fails the light model and the cloudscapes in an outage; the network comes back (their next
-  // transfers arrive a moment after they are asked); the player opens the Studio at golden hour. Its first light starts
-  // the re-ask and must not wait on it, and once the parts land the Studio's light must be lit by them with no dial move
+  // ---- 1. a battle entry fails the light model, the cloudscapes and the map's air in an outage; the network comes back
+  // (their next transfers arrive a moment after they are asked); the player opens the Studio at golden hour. Its first
+  // light starts the re-asks and must not wait on them, and once they land the Studio's light must be lit by them with no
+  // dial move. (round 5 U8) They land together, the usual case when the network comes back, and the Studio is lit again
+  // once: not once per landing, nor once more for a part that its relight asked while the part was landing and was lit
+  // with (a second relight only repeats the first: a battle runtime reset and prepare, the Studio plan's restore and
+  // apply, the air's prepare)
   {
-    const h = makeStudio();
+    const air = makeAir();
+    const h = makeStudio({ loadAir: air.load });
     await h.battleAtmosphere.prepare(1, 'verdant', undefined, ENTRY);
     assert.equal(partsAsked, 2, 'the entry asked both parts');
     assert.deepEqual(h.applied, ['battle 0/0'], 'the battle is lit without them');
+    await assert.rejects(h.mapAmbience.prepare(1, 'verdant', 'day', undefined, ENTRY), /dynamically imported module/);
+    const relights = relightsOf(h);
+    // (round 5 U8 review) each battle light's landing, as main.ts's preparation gets it: the air lands first and its
+    // relight finds the parts installed, so the Studio ends lit by them even if the parts were never a landing; the
+    // first light's own landing is the proof that they are
+    const landings = [];
+    const accessPrepare = h.battleAtmosphere.prepare;
+    h.battleAtmosphere.prepare = (...args) => {
+      const prepared = accessPrepare(...args);
+      prepared.then((result) => landings.push(result?.landing ?? null), () => {});
+      return prepared;
+    };
     partsNetwork = 'hang';
+    air.mode = 'hang';
     globalThis.__cotPartsGate = new Promise((resolve) => { openParts = resolve; });
     const entered = track(h.studio.enterLight('golden'));
     await turns();
     assert.equal(partsAsked, 4, 'the Studio\'s first light asks both parts again at once');
     if (!entered.settled) problems.push('the Studio\'s first light waited on the parts\' re-ask (a hung transfer holds it)');
-    openParts(); // the transfers arrive
-    await turns();
+    if (!(landings[0] instanceof Promise)) {
+      problems.push('the Studio\'s first light reported no landing for the parts\' re-ask (the runtime is loaded: they alone were in flight)');
+    }
+    assert.deepEqual(air.runtime.prepared, [], 'no air while its module is in flight');
+    openParts(); // the transfers arrive together
+    air.arrive();
+    await turns(60);
     if (!entered.settled) problems.push('the Studio\'s first light was still waiting after the parts landed');
     assert.equal(lit(), '1/1', 'the parts are installed');
     if (h.applied.at(-1) !== 'studio 1/1') {
       problems.push(`once the parts landed the Studio kept the light it had without them, with no dial move (its lights: ${h.applied.join(', ')})`);
     }
+    if (relights.length !== 1) {
+      problems.push(`once the parts and the air landed together the Studio was lit again ${relights.length} times, not once (its lights: `
+        + `${h.applied.join(', ')}; the air at ${air.runtime.prepared.join(', ') || 'none'})`);
+    }
+    assert.equal(air.runtime.prepared.at(-1), 'golden', 'the air is prepared at the Studio\'s hour');
     // nothing is left in flight: the Studio's next lights ask nothing and light with the parts
-    const asked = partsAsked;
+    const asked = partsAsked, relit = relights.length;
     await h.studio.setTime('dusk');
     assert.equal(partsAsked, asked);
     assert.equal(h.applied.at(-1), 'studio 1/1');
+    assert.equal(relights.length, relit, 'a change of light is no relight');
   }
 
   // ---- 2. the atmosphere runtime's re-ask: after a battle entry failed it, the Studio's authored-day light (the battle
@@ -273,8 +331,96 @@ try {
       }
     }
   }
+
+  // ---- 5. (round 5 U8) case 1's landing with the atmosphere runtime for the parts (they loaded for good in case 1): one
+  // Studio apply lit without the runtime and the map's air, and they land together. The Studio is lit again once.
+  // ---- 6. the control: when the two come apart (the runtime lands, and its relight asks the air while the air is still
+  // in flight), that relight's own landing lights the Studio once more: the once-per-apply rule loses no landing
+  const runtimeModule = await import('../engine/battleAtmosphereRuntime.ts');
+  for (const together of [true, false]) {
+    const label = together ? 'landing together' : 'landing apart';
+    let runtimeMode = 'down', arriveRuntime = () => {};
+    const runtimeGate = new Promise((resolve) => { arriveRuntime = resolve; });
+    const air = makeAir();
+    const h = makeStudio({
+      loadRuntime: async () => {
+        if (runtimeMode === 'down') throw new TypeError('Failed to fetch dynamically imported module: ./battleAtmosphereRuntime.ts');
+        await runtimeGate;
+        return runtimeModule;
+      },
+      loadAir: air.load,
+    });
+    await assert.rejects(h.battleAtmosphere.prepare(1, 'verdant', undefined, ENTRY), /dynamically imported module/);
+    await assert.rejects(h.mapAmbience.prepare(1, 'verdant', 'day', undefined, ENTRY), /dynamically imported module/);
+    const relights = relightsOf(h);
+    runtimeMode = 'hang';
+    air.mode = 'hang';
+    const entered = track(h.studio.enterLight('golden'));
+    await turns();
+    if (!entered.settled) { problems.push(`(${label}) the Studio's light waited on a hung re-ask`); continue; }
+    assert.deepEqual([relights.length, air.runtime.prepared.length], [0, 0], `(${label}) nothing landed yet`);
+    arriveRuntime();
+    if (together) air.arrive();
+    await turns(60);
+    if (!together) {
+      assert.deepEqual([relights.length, air.runtime.prepared.length], [1, 0], '(landing apart) the runtime\'s relight, the air in flight');
+      air.arrive();
+      await turns(60);
+    }
+    const wanted = together ? 1 : 2;
+    if (relights.length !== wanted) {
+      problems.push(`(${label}) the Studio was lit again ${relights.length} times, not ${wanted} (its lights: ${h.applied.join(', ')}; `
+        + `the air at ${air.runtime.prepared.join(', ')})`);
+    }
+    assert.ok(h.applied.includes('battle 1/1'), `(${label}) the battle runtime lit the Studio once it landed`);
+    assert.equal(h.applied.at(-1), 'studio 1/1', `(${label}) the Studio's plan is its last light`);
+    assert.equal(air.runtime.prepared.at(-1), 'golden', `(${label}) the air is prepared at the Studio's hour`);
+  }
+
+  // ---- 7. (round 5 U8 review) a landing the Studio skips leaves the apply's relight to the next: case 5's apply,
+  // lit without the runtime and the map's air; the runtime lands inside a take (no light), the take ends, and the air
+  // lands. The Studio is lit again once, by the battle runtime and its plan, with the air at its hour
+  {
+    let runtimeMode = 'down', arriveRuntime = () => {};
+    const runtimeGate = new Promise((resolve) => { arriveRuntime = resolve; });
+    const air = makeAir();
+    const h = makeStudio({
+      loadRuntime: async () => {
+        if (runtimeMode === 'down') throw new TypeError('Failed to fetch dynamically imported module: ./battleAtmosphereRuntime.ts');
+        await runtimeGate;
+        return runtimeModule;
+      },
+      loadAir: air.load,
+    });
+    await assert.rejects(h.battleAtmosphere.prepare(1, 'verdant', undefined, ENTRY), /dynamically imported module/);
+    await assert.rejects(h.mapAmbience.prepare(1, 'verdant', 'day', undefined, ENTRY), /dynamically imported module/);
+    const relights = relightsOf(h);
+    runtimeMode = 'hang';
+    air.mode = 'hang';
+    const entered = track(h.studio.enterLight('golden'));
+    await turns();
+    if (!entered.settled) {
+      problems.push('(a landing skipped) the Studio\'s light waited on a hung re-ask');
+    } else {
+      assert.deepEqual(h.applied, ['studio 1/1'], 'the first light is the Studio\'s plan alone (the runtime is in flight)');
+      h.studio.recording = {};
+      arriveRuntime();
+      await turns(60);
+      assert.deepEqual([relights.length, h.applied.length], [0, 1], 'a landing inside a take lights nothing');
+      h.studio.recording = null;
+      air.arrive();
+      await turns(60);
+      if (relights.length !== 1) {
+        problems.push(`once the take ended and the air landed the Studio was lit again ${relights.length} times, not once (its lights: `
+          + `${h.applied.join(', ')}; the air at ${air.runtime.prepared.join(', ') || 'none'}): the landing it skipped used up its relight`);
+      } else {
+        assert.deepEqual(h.applied, ['studio 1/1', 'battle 1/1', 'studio 1/1'], 'the relight: the battle runtime, then the Studio\'s plan');
+        assert.equal(air.runtime.prepared.at(-1), 'golden', 'the air is prepared at the Studio\'s hour');
+      }
+    }
+  }
 } finally {
   hook.deregister();
 }
 assert.deepEqual(problems, [], `the Studio's light after a re-ask:\n  ${problems.join('\n  ')}`);
-console.log('studioLightLanding.selftest: OK (a Studio light never waits on a re-ask, and is lit again once what it was applied without lands: the light model, the cloudscapes, the atmosphere runtime, the map\'s air; never after its session, inside a take or over a later light)');
+console.log('studioLightLanding.selftest: OK (a Studio light never waits on a re-ask, and is lit again once what it was applied without lands: the light model, the cloudscapes, the atmosphere runtime, the map\'s air; once per apply however many land together, a skipped landing leaving it to the next; never after its session, inside a take or over a later light)');
