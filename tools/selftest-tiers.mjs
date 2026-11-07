@@ -135,6 +135,10 @@ export const MANUAL_SUITES = Object.freeze({
     'server/botObjectives.selftest.mjs',
     'src/game/ai.lastRun.selftest.mjs',
     'src/game/ai.levels.selftest.mjs',
+    // 2026-11-07 round 6 V4 (2026-11-02 audit M7): the Watch hand-back's costliest refinements, split off ai.watchResume
+    // (a level route's 30 s park off its way and short toggles, the causeway drops, the elevation dwell's record
+    // hand-backs: 4.4-5.6 s of user CPU at load 100-170); ai.watchResume keeps a default check of every rule they refine
+    'src/game/ai.watchResumeLevels.selftest.mjs',
     'src/sim/botRouteClearance.selftest.mjs',
     'src/sim/botVerdantApproach.selftest.mjs',
     'tools/mode-aggression-harness.selftest.mjs',
