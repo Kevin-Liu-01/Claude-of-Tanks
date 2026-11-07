@@ -25,7 +25,9 @@ import {
   auditPortraitPixels,
   directPortraitPlacement,
   measurePortraitCoreBounds,
+  measurePortraitFullBounds,
 } from '/src/ui/portraitFraming.ts';
+import { isAntennaTag, roofFittingParts } from '/tools/body-height-parts.mjs';
 
 const BASE = 512;
 const SS = 2;
@@ -112,10 +114,11 @@ function silhouette(srcCanvas, outW, outH) {
  * antennas, searchlights and family-specific turret height moved otherwise
  * related vehicles up/down or sideways inside identical roster cards.
  */
-function normalizeAnglePortrait(src, outSize) {
-  const context = src.getContext('2d');
-  const pixels = context.getImageData(0, 0, src.width, src.height).data;
-  const bounds = measurePortraitCoreBounds(pixels, src.width, src.height);
+/** `placeBy`: the source whose core places the card (a whip-free twin is placed exactly as its card is). */
+function normalizeAnglePortrait(src, outSize, placeBy = src) {
+  const context = placeBy.getContext('2d');
+  const pixels = context.getImageData(0, 0, placeBy.width, placeBy.height).data;
+  const bounds = measurePortraitCoreBounds(pixels, placeBy.width, placeBy.height);
   if (!bounds) return src;
   const { x: dx, y: dy, scale } = directPortraitPlacement(bounds, outSize, outSize);
   const drawWidth = src.width * scale;
@@ -141,10 +144,42 @@ function normalizeAnglePortrait(src, outSize) {
   return out;
 }
 
-function auditPortraitCanvas(canvas) {
+/** `frame`: the card's whip-free frame, [x0, y0, x1, y1] (portraitFraming.ts auditPortraitPixels). */
+function auditPortraitCanvas(canvas, frame = null) {
   const pixels = canvas.getContext('2d', { willReadFrequently: true })
     .getImageData(0, 0, canvas.width, canvas.height).data;
-  return auditPortraitPixels(pixels, canvas.width, canvas.height);
+  return auditPortraitPixels(pixels, canvas.width, canvas.height, undefined, undefined, undefined, frame);
+}
+
+// (270, Main 2026-11-06) thin whip antennas never set a card's frame, as tools/body-height-parts.mjs leaves them out of
+// every body measure: a card with whips is audited against its whip-free twin's frame, drawn from the same camera and
+// placed by the card's own core; the card itself, whips and all, must still be whole on the canvas.
+/** The build's whips: its antenna fittings and the antenna spans cut from merged meshes; null when it has none. */
+function portraitWhips(root) {
+  const { nodes, trimmed } = roofFittingParts(root, { isRenderNode: (o) => (o.isMesh || o.isSkinnedMesh || o.isInstancedMesh) && o.geometry });
+  const hidden = [...nodes].filter(([, tag]) => isAntennaTag(tag)).map(([node]) => node);
+  if (hidden.length || trimmed.size) return { hidden, trimmed };
+  return null;
+}
+
+/** `draw` with the whips out of the scene: their fittings hidden, their merged spans cut. */
+function withoutWhips(whips, draw) {
+  const shown = whips.hidden.map((node) => node.visible), merged = [...whips.trimmed.keys()].map((node) => node.geometry);
+  for (const node of whips.hidden) node.visible = false;
+  for (const [node, body] of whips.trimmed) node.geometry = body;
+  try { return draw(); } finally {
+    whips.hidden.forEach((node, index) => { node.visible = shown[index]; });
+    [...whips.trimmed.keys()].forEach((node, index) => { node.geometry = merged[index]; });
+  }
+}
+
+/** The card's frame without its whips, in the thumbnail's pixels: [x0, y0, x1, y1]. */
+function whipFreeFrame(whips, camera, cardSource) {
+  const source = withoutWhips(whips, () => capture(camera, BASE * 2, BASE * 2));
+  const thumb = normalizeAnglePortrait(source, BASE / 2, cardSource);
+  const bounds = measurePortraitFullBounds(thumb.getContext('2d', { willReadFrequently: true })
+    .getImageData(0, 0, thumb.width, thumb.height).data, thumb.width, thumb.height);
+  return bounds ? [bounds.x0, bounds.y0, bounds.x1, bounds.y1] : null;
 }
 
 function loadPortraitCanvas(url) {
@@ -162,13 +197,13 @@ function loadPortraitCanvas(url) {
   });
 }
 
-async function auditSavedPortraits(ids, sources = {}) {
+async function auditSavedPortraits(ids, sources = {}, frames = {}) {
   const result = {};
   await Promise.all(ids.map(async (id) => {
     try {
       const file = tankAssetFile(id, 'angle');
       const canvas = await loadPortraitCanvas(sources[id] || `/icons/thumbs/${file}`);
-      result[id] = auditPortraitCanvas(canvas);
+      result[id] = auditPortraitCanvas(canvas, frames[id] ?? null);
     } catch (error) {
       result[id] = { error: String(error && error.stack || error), passes: false };
     }
@@ -741,22 +776,41 @@ function inspectOne(id, renderFiles, requestedViews = null) {
       // fleet envelope, then the first ladder azimuth whose card fits, side-on before head-on. Tall source fittings remain intact; the
       // comparison/technical cameras, the dense-core scale and the pixel gates do not change.
       let angleSource = null, angleCanvas = null, thumbCanvas = null, portraitAudit = null, standardAudit = null, sideRatio = null;
-      for (const ratio of portraitSideRatios()) {
+      const whips = portraitWhips(root);
+      const ladder = portraitSideRatios();
+      let frame = null;
+      const azimuthCamera = (ratio) => {
         const dir = new THREE.Vector3(ratio, 0.34, 1.0).normalize();
-        const angleCam = new THREE.PerspectiveCamera(fov, 1, 0.1, dist * 4);
-        angleCam.position.copy(center).addScaledVector(dir, dist);
-        angleCam.lookAt(center);
-        angleCam.updateMatrixWorld();
+        const camera = new THREE.PerspectiveCamera(fov, 1, 0.1, dist * 4);
+        camera.position.copy(center).addScaledVector(dir, dist);
+        camera.lookAt(center);
+        camera.updateMatrixWorld();
+        return camera;
+      };
+      for (const ratio of ladder) {
+        const angleCam = azimuthCamera(ratio);
         angleSource = capture(angleCam, BASE * 2, BASE * 2);
         // Both sizes in the order the cards were always drawn: the browser resamples the thumbnail differently when
         // it is drawn first, so a reordered pair would move every card by pixels.
         angleCanvas = normalizeAnglePortrait(angleSource, BASE);
         thumbCanvas = normalizeAnglePortrait(angleSource, BASE / 2);
-        portraitAudit = auditPortraitCanvas(thumbCanvas);
+        frame = whips ? whipFreeFrame(whips, angleCam, angleSource) : null;
+        portraitAudit = auditPortraitCanvas(thumbCanvas, frame);
         standardAudit ??= portraitAudit;
         sideRatio = ratio;
         if (portraitAudit.passes) break;
       }
+      // the control (window.__PORTRAIT_CONTROL, tools/genIcons.mjs --portrait-control): the azimuth the ladder takes when the
+      // whips do set the frame, so a fleet run shows that only whip-equipped builds move
+      let ruleless = null;
+      if (window.__PORTRAIT_CONTROL) {
+        for (const ratio of ladder) {
+          const source = capture(azimuthCamera(ratio), BASE * 2, BASE * 2);
+          normalizeAnglePortrait(source, BASE);
+          if (auditPortraitCanvas(normalizeAnglePortrait(source, BASE / 2)).passes) { ruleless = ratio; break; }
+        }
+      }
+      for (const body of whips?.trimmed.values() ?? []) body.dispose();
       if (!portraitAudit.passes) {
         throw new Error(
           `${id}: portrait framing outside fleet envelope at every azimuth `
@@ -764,8 +818,13 @@ function inspectOne(id, renderFiles, requestedViews = null) {
           + `${standardAudit.displayedFullHeight.toFixed(1)} card px at the standard ${PORTRAIT_SIDE_RATIO})`,
         );
       }
-      if (sideRatio !== PORTRAIT_SIDE_RATIO) portrait = { sideRatio,
-        standard: [+standardAudit.displayedFullWidth.toFixed(1), +standardAudit.displayedFullHeight.toFixed(1)] };
+      // the row records an off-standard azimuth (268) and a whip-equipped card's frame (270, tank-assets-check audits by it)
+      const offStandard = sideRatio !== PORTRAIT_SIDE_RATIO;
+      if (offStandard || frame || window.__PORTRAIT_CONTROL) portrait = {
+        ...(offStandard ? { sideRatio, standard: [+standardAudit.displayedFullWidth.toFixed(1), +standardAudit.displayedFullHeight.toFixed(1)] } : {}),
+        ...(frame ? { frame } : {}),
+        ...(window.__PORTRAIT_CONTROL ? { control: { azimuth: sideRatio, ruleless, whips: !!whips } } : {}),
+      };
       const angleFile = tankAssetFile(id, 'angle');
       // Full dossier art and the Garage thumbnail are one atomic output. New
       // vehicle captures can no longer update one size while leaving the
@@ -1053,7 +1112,7 @@ window.__AUDIT = (ids) => {
   return result;
 };
 
-window.__AUDIT_PORTRAITS = (ids, sources) => auditSavedPortraits(idsOrFleet(ids), sources);
+window.__AUDIT_PORTRAITS = (ids, sources, frames) => auditSavedPortraits(idsOrFleet(ids), sources, frames);
 
 window.__CENTER_AUDIT = (ids) => {
   const result = {};

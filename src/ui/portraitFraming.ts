@@ -130,7 +130,7 @@ export function measurePortraitCoreBounds(
   );
 }
 
-function measurePortraitFullBounds(
+export function measurePortraitFullBounds(
   pixels: ArrayLike<number>,
   width: number,
   height: number,
@@ -205,6 +205,7 @@ export function auditPortraitPixels(
   boxWidth = 140,
   boxHeight = 88,
   policy: Readonly<PortraitFramePolicy> = TANK_PORTRAIT_FRAME_POLICY,
+  frame: readonly number[] | null = null,
 ): PortraitFrameAudit {
   const core = measurePortraitCoreBounds(pixels, naturalWidth, naturalHeight, policy);
   const full = measurePortraitFullBounds(
@@ -243,9 +244,13 @@ export function auditPortraitPixels(
   // A tank cut off at the canvas edge looks smaller than it is, so its envelope cannot pass (268: the derived
   // azimuth turned x1_pioneiro head-on until its antenna left the card).
   const whole = full.x0 > 0 && full.y0 > 0 && full.x1 < naturalWidth - 1 && full.y1 < naturalHeight - 1;
+  // (270, Main 2026-11-06) thin whip antennas never set a card's frame, as tools/body-height-parts.mjs leaves them out of
+  // every body measure: `frame` is the same card drawn without its whips, its silhouette's [x0, y0, x1, y1]. The card itself
+  // still has to be whole on the canvas, whips and all.
+  const extent = frame ? pixelBounds(frame[0], frame[1], frame[2], frame[3]) : full;
   const fitScale = Math.min(boxWidth / naturalWidth, boxHeight / naturalHeight);
-  const displayedFullWidth = full.width * fitScale * placement.scale;
-  const displayedFullHeight = full.height * fitScale * placement.scale;
+  const displayedFullWidth = extent.width * fitScale * placement.scale;
+  const displayedFullHeight = extent.height * fitScale * placement.scale;
   const displayedFullWidthRatio = displayedFullWidth / boxWidth;
   const displayedFullHeightRatio = displayedFullHeight / boxHeight;
   const displayedCoreWidthRatio = core.width * fitScale * placement.scale / boxWidth;
