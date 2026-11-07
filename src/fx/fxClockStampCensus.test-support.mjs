@@ -222,8 +222,8 @@ export async function runFxClockStampCensus({ houses }) {
 
   fx.resetAll();
   fx.resetClock(T0);
-  // (round 4 F6 review) a round drawn in flight past its record's bound (a peer's events stalled): a sweep finds it in the
-  // frame and restarts its record's bound (effects.ts ageShellRecords), so the record lives on into the rebase
+  // (round 4 F6 review) a round drawn in flight past its record's bound (a peer's events stalled): (round 5 U11) every
+  // frame that draws it keeps its record a grace on (effects.ts ageShellRecords), so the record lives on into the rebase
   {
     const stalled = { id: 81, pos: new THREE.Vector3(30, 40, -80), vel: new THREE.Vector3(0, 0, 300), spec: { tracer: 'TANK' }, shooterId: 'g',
       ageS: 0.1, distM: 30 };
