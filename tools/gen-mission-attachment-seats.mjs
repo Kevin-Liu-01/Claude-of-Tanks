@@ -24,11 +24,18 @@ const reportPath=value('--report','.qa-dev/drone-dock/native-seats-report.json')
 // through flush(); a failing id is a report row there too, and the merge's exit says so.
 const PART_TOOL='gen-mission-attachment-seats',parts=partArgs(args,PART_TOOL),partRows={};
 if((parts.partDir||parts.merging)&&(check||dryRun))throw new Error(PART_TOOL+': parts (--out-dir, --merge-from) seat; never with --check or --dry-run');
-// Authored stands taller than the standard rises reach; a --hints row for the same id replaces one. The BMPT's braced
+// Authored stands taller than the standard rises reach, or a seat the grid's order passes over (a level seat clear of
+// hatches); a --hints row for the same id replaces one. The BMPT's braced
 // stand is the one src/game/missionAttachmentMechanical.selftest.mjs certifies independently: no other BMPT roof or
 // hull seat clears its twin 30 mm envelope (2026-10-08: none in 295,000 grid candidates).
 const AUTHORED_DOCKS=[
  {id:'bmpt_t90',chosen:{frame:'turret',x:.07,y:1.3280000162124634,z:.09,payloadOffset:[-.24,-.24],braced:true},riseM:.32},
+ // Round 270 (the coordinator, 2026-11-06: a dock foot on the gunner's hatch lid rim is not clear of hatches): the M2A2
+ // classic turret's roof between the commander's ring (x -0.36, z -0.25, r 0.32) and the gunner's hatch (x 0.38,
+ // z -0.42, r 0.25), all four feet on the 0.66 roof plane and the airframe forward of the bustle rack (z -0.98). The
+ // chooser's first seat at the standard rises stood one foot on the hatch lid (0.71); this is the one level, rack-clear
+ // seat a 2 cm grid of the roof found, on the standard 0.125 rise.
+ {id:'m2a2_bradley',chosen:{frame:'turret',x:.02,y:.785,z:-.58},riseM:.125},
 ];
 const hintsPath=value('--hints',''),fileHints=hintsPath?JSON.parse(fs.readFileSync(hintsPath)):[];
 const hintRows=[...AUTHORED_DOCKS.filter(dock=>!fileHints.some(row=>row.id===dock.id)),...fileHints];
