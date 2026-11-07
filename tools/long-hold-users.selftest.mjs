@@ -41,9 +41,15 @@ import { mock } from 'node:test';
 import { fileURLToPath } from 'node:url';
 import { openCaptureHold } from './capture-hold.mjs';
 import { heldRunExitCode, heldStopWhy, runHeldItem } from './held-items.mjs';
-import { shootMarketing } from './marketing-shots/shoot.mjs';
-import { renderStudioExamples } from './studio-example-videos.mjs';
-import { runTurretParentAudit } from './turret-parent-audit.mjs';
+
+// (round 5 U6) A tool loads when a run needs it: a signal child imports only the tool it runs (the open-form children
+// none), the parent all three. studio-example-videos costs ~0.35 s of CPU to import (its scenarios import every map's
+// config), and each of the 14 children imported all three statically: ~5.5 s of the receipt's 6.4 s user.
+const tools = {
+  turret: async () => (await import('./turret-parent-audit.mjs')).runTurretParentAudit,
+  shoot: async () => (await import('./marketing-shots/shoot.mjs')).shootMarketing,
+  studio: async () => (await import('./studio-example-videos.mjs')).renderStudioExamples,
+};
 
 const SECOND = 1000, MINUTE = 60 * SECOND;
 const CAP_MS = 20 * MINUTE; // the lock's base hold cap (capture-lock.mjs DEFAULT_HOLD_CAP_MS)
@@ -215,6 +221,7 @@ async function turretRun({ idMs, graceSeconds, requeue = 'resume' }) {
     return { value: { id, stranded: [], abutting: [], dangling: [] } };
   } });
   const outFile = join(dir, 'turret-parent.json');
+  const runTurretParentAudit = await tools.turret();
   const run = await onMockClock(() => runTurretParentAudit([`--ids=${IDS.join(',')}`], { createServer: standInVite,
     puppeteer: chrome.launcher, outFile, hold: holdFor({ lock, chrome, holdLog, graceSeconds }) }));
   const rows = existsSync(outFile) ? JSON.parse(readFileSync(outFile, 'utf8')) : null;
@@ -236,6 +243,7 @@ async function shootRun({ sceneMs, graceSeconds, requeue = 'resume', extra = [],
     return { ms: sceneMs(arg.name) }; // __STUDIO.load(scene): the scene's world
   } });
   const args = ['--scenes', scenesDir, '--out', out, '--width', '64', ...extra];
+  const shootMarketing = await tools.shoot();
   const run = await onMockClock(() => shootMarketing(args, { createServer: standInVite,
     puppeteer: chrome.launcher, hold: holdFor({ lock, chrome, holdLog, graceSeconds }) }));
   return { ...run, args, events, holdLog: holdLog.join('\n'), loaded, shot: SCENES.filter((name) => existsSync(join(out, `${name}.png`))) };
@@ -259,6 +267,7 @@ async function studioRun({ takeMs, graceSeconds, args = ['--count', '4', '--stil
   const events = [], holdLog = [], staged = [];
   const lock = standInLock({ waiters, events, requeue });
   const chrome = studioChrome({ takeMs, events, onCall: ({ method, arg }) => { if (method === 'evaluate' && Number.isInteger(arg?.index)) staged.push(arg.index); } });
+  const renderStudioExamples = await tools.studio();
   const run = await onMockClock(() => renderStudioExamples([...args, '--out', dir], { createServer: standInVite,
     puppeteer: chrome.launcher, hold: holdFor({ lock, chrome, holdLog, graceSeconds }) }));
   return { ...run, events, holdLog: holdLog.join('\n'), stills: listed(dir), staged };
@@ -303,14 +312,17 @@ if (process.argv[2] === '--signal-child') {
     hold: { lock, log: (line) => console.error(line), teardown: chrome.teardown } };
   // each tool's own command-line entry, its stand-ins aside
   if (tool === 'turret') {
+    const runTurretParentAudit = await tools.turret();
     await runTurretParentAudit(phase === 'list' ? [] : ['--ids=tpa_one,tpa_two'], { ...deps, outFile: join(dir, 'turret-parent.json') });
   } else if (tool === 'shoot') {
+    const shootMarketing = await tools.shoot();
     const scenesDir = join(dir, 'scenes');
     mkdirSync(scenesDir);
     for (const name of ['01_a', '02_b']) writeFileSync(join(scenesDir, `${name}.json`), JSON.stringify({ map: 'verdant', name }));
     await shootMarketing(['--scenes', scenesDir, '--out', join(dir, 'raw'), '--width', '64'], deps);
     process.exit();
   } else if (tool === 'studio') {
+    const renderStudioExamples = await tools.studio();
     await renderStudioExamples(['--count', '2', '--stills', '0', '--out', dir], deps);
   } else if (phase === 'exit') {
     // an open-form tool's shape (screenshot.mjs and the others): its hold, its page call cut by the hold's teardown, the
