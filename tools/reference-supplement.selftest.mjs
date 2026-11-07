@@ -23,4 +23,22 @@ await assert.rejects(verifySupplement(base.root,declaration,{...receipt,referenc
 const textured=fixture();textured.mesh.material.map=new DataTexture(new Uint8Array([255,127,3,255]),1,1,RGBAFormat);
 const tr=await makeReceipt(textured.root);await verifySupplement(textured.root,declaration,tr);
 textured.mesh.material.map.image.data[0]=0;await assert.rejects(verifySupplement(textured.root,declaration,tr));
-console.log('photo supplement: accepted exact stock; geometry/index/normals/pose/ancestor/visibility/material/texture/ownership changes reject');
+// 268: the owner kits' 'shape' scope keeps the shape, pose and visibility and leaves the paint to the coat
+const shapeReceipt=async(root)=>({arrangementAccepted:true,reference:declaration.reference,geometryPoseSha256:await supplementDigest(supplementSnapshot(root,declaration,'shape'))});
+const sr=await shapeReceipt(fixture().root);
+assert.notEqual(sr.geometryPoseSha256,receipt.geometryPoseSha256,'the two scopes digest different snapshots');
+for(const repaint of [
+ f=>f.mesh.material.color.setHex(0x123456),f=>f.mesh.material.roughness=.2,f=>f.mesh.material.side=2,f=>f.mesh.material.opacity=.1,
+ f=>{f.mesh.material.map=new DataTexture(new Uint8Array([9,9,9,255]),1,1,RGBAFormat)},f=>f.mesh.geometry.attributes.normal.setY(0,.5),
+ f=>f.mesh.geometry.attributes.uv.setX(0,.3),f=>f.mesh.material=new MeshStandardMaterial({color:0xff0000}),
+]){const f=fixture();repaint(f);await verifySupplement(f.root,declaration,sr,'shape');}
+for(const change of [
+ f=>f.mesh.geometry.attributes.position.setX(0,.7),f=>f.mesh.geometry.index.setX(0,4),f=>f.mesh.geometry.setDrawRange(0,3),
+ f=>f.mesh.position.setX(.1),f=>f.turret.position.setY(.1),f=>f.gun.visible=false,f=>f.mesh.layers.disableAll(),
+ f=>f.mesh.material.visible=false,f=>f.mesh.material.colorWrite=false,f=>f.gun.add(new Mesh(new BoxGeometry(),new MeshStandardMaterial())),
+ f=>f.gun.userData.reference='wrong',
+]){const f=fixture();change(f);await assert.rejects(verifySupplement(f.root,declaration,sr,'shape'));}
+await assert.rejects(verifySupplement(base.root,declaration,sr),'a shape receipt never passes the full scope');
+assert.throws(()=>supplementSnapshot(base.root,declaration,'paint'),/unknown supplement scope/);
+console.log('photo supplement: accepted exact stock; geometry/index/normals/pose/ancestor/visibility/material/texture/ownership changes reject;'
+  +' the shape scope accepts repaints and rejects shape, pose, visibility and ownership changes');

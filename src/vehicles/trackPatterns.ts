@@ -129,7 +129,8 @@ const FAMILY_RULES: ReadonlyArray<readonly [RegExp, TrackPatternId]> = Object.fr
   [/jpz_e100/, 'interleaved-cleat'],
   [/(?:^|_)kv2(?:$|_)/, 'early-cast-steel'],
   [/(?:udes03|strv103a|strv103)(?:$|_)/, 'hydropneumatic-dead-track'],
-  [/(?:bmp2|bmp3|bwp1|upior|bmpt|kurganets25)/, 'eastern-ifv'],
+  // 268: the GM-352 family (the Tunguska-M and the tracked Pantsir-S1) runs the eastern IFV track
+  [/(?:bmp2|bmp3|bwp1|upior|bmpt|kurganets25|tunguska|pantsir)/, 'eastern-ifv'],
   [/(?:m6_linebacker|m2a2_bradley|m3a3_bradley|m3a2_bradley|m2a3_bradley|spz_puma|marder1a3|cv90)/, 'compact-ifv'],
   [/(?:chieftain|challenger|centurion|vickers|fv510)/, 'british-rubber-pad'],
   [/(?:amx|leclerc|carro45t|ariete)/, 'franco-italian-modular'],

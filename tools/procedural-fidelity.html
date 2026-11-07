@@ -470,25 +470,7 @@ const LOCAL_REFERENCE_OVERRIDES = {
   // without them a gate run writes a FALSE 0 row (leo2a4 incident,
   // repaired). Configs are the retired registrations verbatim.
   // 264 (Main ruling 2026-10-28: "where a rebuild's registered oracle shows a different (later) variant, unregister it"): leo2a4 is rebuilt on the release-262 Leopard 2 hull (fidelity first-party-unregistered, N/A; the blind photo critic is its visual bar). Its oracle leo2a6_buh.glb shows a Leopard 2A6 (fleet id leo2a6): re-register it there later.
-  // kf51_evo (graduated 2026-08-03): retired source-model registration —
-  // measurement-only.
-  kf51_evo: {
-    source:'glb',
-    glb:{ path:'/models/tanks/kf51_grip420.glb',
-      turretNode:'^(?:KF51_Turret_Msh|Turret)$', gunNode:'^(?:Gun_Msh|Gun)$',
-      autoPivot:true, pivot:[0.52, 1.7, 0],
-      yawOffset:-Math.PI/2 },
-  },
-  // Additive owner rebuild of the same woodland source.  Keep the stable
-  // kf51_evo graduate intact while giving kf51_u its own source-comparison lane;
-  // processed local oracles normalize the FBX nodes to Turret/Gun.
-  kf51_u: {
-    source:'glb',
-    glb:{ path:'/models/tanks/kf51_grip420.glb',
-      turretNode:'^(?:KF51_Turret_Msh|Turret)$', gunNode:'^(?:Gun_Msh|Gun)$',
-      autoPivot:true, pivot:[0.52, 1.7, 0],
-      yawOffset:-Math.PI/2 },
-  },
+  // 267 (Main ruling 2026-10-28: "where a rebuild's registered oracle shows a different (later) variant, unregister it"): kf51_evo is rebuilt as the Eurosatory KF51 EVO (profiles/kf51Evo.ts) and kf51_u is the KF51-U (fidelity first-party-unregistered, N/A; the blind photo critic is their visual bar). Their oracle kf51_grip420.glb shows the 2022 KF51 Panther demonstrator (fleet id kf51_panther, scored on its own source).
   // chieftain3 (graduated 2026-08-04, the 18th — UK's first): retired
   // userdrops5 registration — measurement-only (Z-up print).
   chieftain3: {
@@ -695,15 +677,17 @@ const OWNER_KIT_RECEIPTS={bm_oplot_m:oplotOwnerKitReceipt,stb1:stb1OwnerKitRecei
 const ownerKitTarget=params.get('comparison')!=='raw-source'?OWNER_KIT_TARGETS[id]??null:null;
 let ownerKit=null;const ownerKitGroups=[];
 if(ownerKitTarget){
-  const receipts=OWNER_KIT_RECEIPTS[id]?.parts??{},missing=[];
+  // 268: an owner kit is held to its shape and pose (reference-supplement.mjs 'shape'); its paint is the coat's, reviewed
+  // with the coat. Only a schemaVersion 2 receipt was taken in that scope.
+  const receipts=OWNER_KIT_RECEIPTS[id]?.schemaVersion===2?OWNER_KIT_RECEIPTS[id].parts??{}:{},missing=[];
   for(const part of ownerKitTarget.parts){
-    const digest=await supplementDigest(supplementSnapshot(procedural.root,part));
+    const digest=await supplementDigest(supplementSnapshot(procedural.root,part,'shape'));
     if(receipts[part.group]?.geometryPoseSha256!==digest)missing.push(`${part.group} ${digest}`);
   }
   if(missing.length)failFidelity(`owner kit parts without an accepted receipt or changed since it (geometryPoseSha256 now): ${missing.join('; ')}`);
   ownerKit=[];
   try{for(const part of ownerKitTarget.parts){
-    ownerKit.push({...await verifySupplement(procedural.root,part,receipts[part.group]),part:part.part,ownerWords:part.ownerWords});
+    ownerKit.push({...await verifySupplement(procedural.root,part,receipts[part.group],'shape'),part:part.part,ownerWords:part.ownerWords});
   }}catch(error){failFidelity(String(error.message));}
   for(const part of ownerKitTarget.parts){const group=procedural.root.getObjectByName(part.group);group.visible=false;ownerKitGroups.push(group);}
   document.querySelector('#summary').textContent += ' · owner kit set aside (authenticated)';

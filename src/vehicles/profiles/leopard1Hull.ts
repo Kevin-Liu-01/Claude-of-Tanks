@@ -35,6 +35,10 @@ export interface Leo1HullOptions {
    * stern bin (Munster side, Cosford quarter), or the Danish tanks' continuous slats from their last fender bin to the
    * stern (Krigsmuseet side). */
   readonly outlets?: 'bays' | 'continuous';
+  /** The seven skirt sections along the fender's edge over the return run and their joint strips (268: the Flakpanzer
+   * Gepard runs without them, its upper track run and return rollers open under the fender: photos 01, 11 in
+   * docs/references/tanks/gepard_1a2.md). The front and rear hems stay. */
+  readonly sideSkirts?: boolean;
 }
 
 /** The hull datums a turret or national kit seats on. */
@@ -55,7 +59,7 @@ export interface Leo1HullDatums {
 
 export function* buildLeo1HullSteps(P: TankBuilderPort, options: Leo1HullOptions = {}): Generator<string, Leo1HullDatums, void> {
   const { grouserRack = true, sideTools = true, deckTools = true, skirtBucket: skirtOption = 'hullRubber', rearCans = false,
-    rearCanBucket = 'hullCloth', denseGrilles = false, outlets = 'bays' } = options;
+    rearCanBucket = 'hullCloth', denseGrilles = false, outlets = 'bays', sideSkirts = true } = options;
   const skirtBucket = skirtOption === 'hullRubber' ? 'hullDetail' : skirtOption;
   const { box, cylX, cylY, cylZ, torus, sph, buildRunningGear, headlight, liftEye, towCable, shovelTool, xform } = KIT;
   const slab = orientedSlab;
@@ -222,7 +226,7 @@ export function* buildLeo1HullSteps(P: TankBuilderPort, options: Leo1HullOptions
       // edge down over the road-wheel tops.
       P.hangMudguard('leo1a5-front-skirt-hem', skirtBucket, box(0.014, 0.30, 0.36), s * skirtX, 0.97, 3.31, -0.06, 0, 0);
       P.hangMudguard('leo1a5-rear-skirt-hem', skirtBucket, box(0.014, 0.32, 0.40), s * skirtX, 0.96, -3.34, 0.08, 0, 0);
-      for (let k = 0; k < 7; k++) {
+      for (let k = 0; sideSkirts && k < 7; k++) {
         const z = 2.40 - k * 0.82;
         P.hangMudguard('leo1a5-skirt-hem', skirtBucket, box(0.014, 0.40, 0.82), s * skirtX, 0.915, z);
         P.add('hullDetail', box(0.012, 0.41, 0.03), s * (skirtX - 0.004), 0.915, z - 0.41);
@@ -444,7 +448,7 @@ export function* buildLeo1HullSteps(P: TankBuilderPort, options: Leo1HullOptions
       skirtOuterX: skirtX + 0.007,
       skirtHemY: 0.715,
       slopedUpperSides: true,
-      segmentedSideAprons: 14,
+      segmentedSideAprons: sideSkirts ? 14 : 0,
       rearFuelCans: rearCans ? 2 : 0,
       ...(rearCans ? { rearFuelCanSize: [0.56, 0.66, 0.24] } : {}),
       roadWheelStations: 7,

@@ -17,8 +17,8 @@ await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
 const base = `ws://127.0.0.1:${server.address().port}`;
 
 /** A socket with an inbox: next() awaits the next JSON frame. */
-function open(path) {
-  const ws = new WebSocket(`${base}${path}`);
+function open(path, at = base) {
+  const ws = new WebSocket(`${at}${path}`);
   const inbox = [];
   const waiters = [];
   let closeInfo = null;
@@ -29,7 +29,7 @@ function open(path) {
     if (waiter) waiter(value); else inbox.push(value);
   });
   const closed = new Promise((resolve) => ws.on('close', (code, reason) => { closeInfo = { code, reason: reason.toString() }; resolve(closeInfo); }));
-  const opened = new Promise((resolve, reject) => { ws.on('open', resolve); ws.on('error', reject); ws.on('unexpected-response', (_req, res) => reject(new Error(`HTTP ${res.statusCode}`))); });
+  const opened = new Promise((resolve, reject) => { ws.on('open', resolve); ws.on('error', reject); ws.on('unexpected-response', (_req, res) => reject(new Error(`HTTP ${res.statusCode} ${path}`))); });
   return {
     ws, opened, closed,
     next: () => inbox.length ? Promise.resolve(inbox.shift()) : new Promise((resolve) => waiters.push(resolve)),
@@ -101,6 +101,44 @@ await assert.rejects(open('/pad/join/QQQQQQ').opened, /HTTP 429/, 'past the limi
 await pads.close();
 await new Promise((resolve) => server.close(resolve));
 
+// a couch lobby over real sockets (docs/COUCH-MODE.md): one code seats several phones, each numbered, and the desktop's
+// signals reach only the seat they name
+{
+  const lobbyServer = http.createServer();
+  const lobbies = createLocalPadService({ connectLimit: 30, drawCode: () => 'KKKKKK' });
+  lobbyServer.on('upgrade', (request, socket, head) => {
+    if (!lobbies.handleUpgrade(request, socket, head)) { socket.write('HTTP/1.1 404 Not Found\r\n\r\n'); socket.destroy(); }
+  });
+  await new Promise((resolve) => lobbyServer.listen(0, '127.0.0.1', resolve));
+  const at = `ws://127.0.0.1:${lobbyServer.address().port}`;
+  const host = open('/pad/lobby', at);
+  await host.opened;
+  assert.equal((await host.next()).code, 'KKKKKK', '/pad/lobby hands out a code');
+  assert.equal((await host.next()).t, 'lobby');
+  const phones = [];
+  for (let seat = 1; seat <= 3; seat++) {
+    const phone = open('/pad/join/KKKKKK', at);
+    await phone.opened;
+    const joined = await phone.next();
+    assert.equal(joined.seat, seat, 'each phone takes the next seat');
+    assert.deepEqual(await phone.next(), { t: 'peer', state: 'here' });
+    assert.deepEqual(await host.next(), { t: 'seat', seat, state: 'here' });
+    phones.push(phone);
+  }
+  phones[1].send({ t: 'signal', kind: 'offer', sdp: 'o2' });
+  assert.deepEqual(await host.next(), { t: 'signal', kind: 'offer', sdp: 'o2', seat: 2 });
+  host.send({ t: 'signal', kind: 'answer', sdp: 'a2', seat: 2 });
+  assert.deepEqual(await phones[1].next(), { t: 'signal', kind: 'answer', sdp: 'a2' }, 'the answer reaches seat 2');
+  phones[2].send({ t: 'end' });
+  assert.deepEqual(await phones[2].next(), { t: 'end', reason: 'ended' });
+  assert.deepEqual(await host.next(), { t: 'seat', seat: 3, state: 'gone' }, 'a phone that leaves frees its seat');
+  assert.equal(lobbies.pairs, 1, 'the lobby holds');
+  host.send({ t: 'end' });
+  assert.deepEqual(await phones[0].next(), { t: 'end', reason: 'ended' });
+  await lobbies.close();
+  await new Promise((resolve) => lobbyServer.close(resolve));
+}
+
 // the LAN helper mounts it beside the rooms on one port
 const rooms = await createRoomsServer({ seatSecret: 'x'.repeat(32), world: 'terrain' });
 const lan = new WebSocket(`${rooms.url}/pad/new`);
@@ -109,4 +147,4 @@ assert.equal(first.t, 'code', 'the LAN helper serves /pad/new');
 lan.close();
 await rooms.close();
 
-console.log('localPadService: PASS — pairing over real sockets, refusals, keepalive, resume, connect limit, LAN mount');
+console.log('localPadService: PASS — pairing over real sockets, refusals, keepalive, resume, connect limit, a lobby of seats, LAN mount');

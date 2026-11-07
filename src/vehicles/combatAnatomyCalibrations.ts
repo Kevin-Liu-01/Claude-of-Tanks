@@ -18,6 +18,7 @@ import { COMBAT_ANATOMY_CALIBRATIONS as CALIBRATIONS_CHALLENGER } from './combat
 import { COMBAT_ANATOMY_CALIBRATIONS as CALIBRATIONS_CHALLENGER1X } from './combatAnatomyGroups/challenger1X.generated.ts';
 import { COMBAT_ANATOMY_CALIBRATIONS as CALIBRATIONS_CHIEFTAIN10X } from './combatAnatomyGroups/chieftain10X.generated.ts';
 import { COMBAT_ANATOMY_CALIBRATIONS as CALIBRATIONS_CHIEFTAIN5X } from './combatAnatomyGroups/chieftain5X.generated.ts';
+import { COMBAT_ANATOMY_CALIBRATIONS as CALIBRATIONS_CHINESEAIRDEFENSE } from './combatAnatomyGroups/chineseAirDefense.generated.ts';
 import { COMBAT_ANATOMY_CALIBRATIONS as CALIBRATIONS_CHRISTIAN2 } from './combatAnatomyGroups/christian2.generated.ts';
 import { COMBAT_ANATOMY_CALIBRATIONS as CALIBRATIONS_CV90105TMLSOURCEX } from './combatAnatomyGroups/cv90105TmlSourceX.generated.ts';
 import { COMBAT_ANATOMY_CALIBRATIONS as CALIBRATIONS_CV9040CSOURCEX } from './combatAnatomyGroups/cv9040CSourceX.generated.ts';
@@ -26,6 +27,8 @@ import { COMBAT_ANATOMY_CALIBRATIONS as CALIBRATIONS_DARDO } from './combatAnato
 import { COMBAT_ANATOMY_CALIBRATIONS as CALIBRATIONS_DENMARK } from './combatAnatomyGroups/denmark.generated.ts';
 import { COMBAT_ANATOMY_CALIBRATIONS as CALIBRATIONS_FRANCECORE } from './combatAnatomyGroups/franceCore.generated.ts';
 import { COMBAT_ANATOMY_CALIBRATIONS as CALIBRATIONS_FV510MILANX } from './combatAnatomyGroups/fv510MilanX.generated.ts';
+import { COMBAT_ANATOMY_CALIBRATIONS as CALIBRATIONS_GEPARD } from './combatAnatomyGroups/gepard.generated.ts';
+import { COMBAT_ANATOMY_CALIBRATIONS as CALIBRATIONS_GM352AIRDEFENSE } from './combatAnatomyGroups/gm352AirDefense.generated.ts';
 import { COMBAT_ANATOMY_CALIBRATIONS as CALIBRATIONS_GRIFFIN50X } from './combatAnatomyGroups/griffin50X.generated.ts';
 import { COMBAT_ANATOMY_CALIBRATIONS as CALIBRATIONS_GRIFFINVIPER } from './combatAnatomyGroups/griffinViper.generated.ts';
 import { COMBAT_ANATOMY_CALIBRATIONS as CALIBRATIONS_ITALY } from './combatAnatomyGroups/italy.generated.ts';
@@ -108,6 +111,7 @@ export const COMBAT_ANATOMY_CALIBRATIONS: Readonly<Record<string, CombatAnatomyC
   CALIBRATIONS_CHALLENGER1X,
   CALIBRATIONS_CHIEFTAIN10X,
   CALIBRATIONS_CHIEFTAIN5X,
+  CALIBRATIONS_CHINESEAIRDEFENSE,
   CALIBRATIONS_CHRISTIAN2,
   CALIBRATIONS_CV90105TMLSOURCEX,
   CALIBRATIONS_CV9040CSOURCEX,
@@ -116,6 +120,8 @@ export const COMBAT_ANATOMY_CALIBRATIONS: Readonly<Record<string, CombatAnatomyC
   CALIBRATIONS_DENMARK,
   CALIBRATIONS_FRANCECORE,
   CALIBRATIONS_FV510MILANX,
+  CALIBRATIONS_GEPARD,
+  CALIBRATIONS_GM352AIRDEFENSE,
   CALIBRATIONS_GRIFFIN50X,
   CALIBRATIONS_GRIFFINVIPER,
   CALIBRATIONS_ITALY,

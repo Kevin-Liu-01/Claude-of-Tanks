@@ -30,6 +30,15 @@ if((parts.partDir||parts.merging)&&(check||dryRun))throw new Error(PART_TOOL+': 
 // hull seat clears its twin 30 mm envelope (2026-10-08: none in 295,000 grid candidates).
 const AUTHORED_DOCKS=[
  {id:'bmpt_t90',chosen:{frame:'turret',x:.07,y:1.3280000162124634,z:.09,payloadOffset:[-.24,-.24],braced:true},riseM:.32},
+ // 2026-11-01 (267, the CV90 rebuild): the Strf 9040's roof station at the right rear sweeps about 1 m, which leaves the
+ // left front of the roof as the only patch clear of it; the feet stand on the roof plate ahead of the commander's sight
+ // and the pad cantilevers 0.24 m forward over the left cheek, outside the gun mask's ±90 degree sweep. The native grid
+ // and its cantilever pass do not reach this foot/offset pair, so the seat is offered first (standard rise; every check runs).
+ {id:'cv90',chosen:{frame:'turret',x:.6,y:.747,z:.46,payloadOffset:[0,.24]}},
+ // 2026-11-02 (268 r11, the KF51-U's RWS moved beside the sensor tower as photographed): the tower top that carried the
+ // dock is now under the RWS barrel's sweep, and the suit nets the rest of the roof; the dock takes the roof plate the
+ // RWS left at the turret's back (installed frame; roof y 0.634 there), clear of that sweep, in the suit's hole for it.
+ {id:'kf51_u',chosen:{frame:'turret',x:.315,y:.679,z:-2.205}},
  // Round 270 (the coordinator, 2026-11-06: a dock foot on the gunner's hatch lid rim is not clear of hatches): the M2A2
  // classic turret's roof between the commander's ring (x -0.36, z -0.25, r 0.32) and the gunner's hatch (x 0.38,
  // z -0.42, r 0.25), all four feet on the 0.66 roof plane and the airframe forward of the bustle rack (z -0.98). The

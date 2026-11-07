@@ -11,14 +11,14 @@ import { parseAst } from 'rolldown/parseAst';
 const SCRIPT_RE = /\.(?:[cm]?[jt]s)$/;
 
 /** The shared core: the simulation, plus the bot brains and the kernels' loader that live beside their callers. */
-const CORE_EXTRA_ROOTS = Object.freeze(['src/game/ai.ts', 'src/game/botAbilities.ts', 'src/world/wasmWorldKernels.ts']);
+const CORE_EXTRA_ROOTS = Object.freeze(['src/game/ai.ts', 'src/game/botAbilities.ts', 'src/game/botConstruction.ts', 'src/world/wasmWorldKernels.ts']);
 /**
  * Core modules a lane landing beside this one adds, checked as core once present: the page's kernel provider, split from
  * world/soloWorldKernels.ts so Node runs it (item/local-fps-265 90189a90f7).
  */
 const CORE_PENDING_ROOTS = Object.freeze(['src/world/soloWorldKernelProvider.ts']);
-/** The core's modules outside src/sim that are core (the bots): nothing else under src/game is. */
-const CORE_GAME_MODULES = Object.freeze(['src/game/ai.ts', 'src/game/botAbilities.ts']);
+/** The core's modules outside src/sim that are core (the bots, and their one construction for both drivers, 268): nothing else under src/game is. */
+const CORE_GAME_MODULES = Object.freeze(['src/game/ai.ts', 'src/game/botAbilities.ts', 'src/game/botConstruction.ts']);
 /** Code the core never reaches: either driver's, the composition root, and the presentation around them. */
 const CORE_FORBIDDEN = Object.freeze([
   /^src\/mp\//, /^server\//, /^src\/main\.ts$/, /^src\/app\//, /^src\/entry\//, /^src\/presentation\//, /^src\/gallery\//,

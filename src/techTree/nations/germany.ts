@@ -49,6 +49,9 @@ export const GERMANY_TREE: NationTree = Object.freeze({
       builds: ['kf51_u'],
     }),
     node({ id: 'mbt70', tier: 3, line: 'leopard_side', lane: 5, parents: ['leo1a5'], slot: 'line' }),
+    // 268: the Flakpanzer Gepard 1A2, a Leopard 1 variant, at V on the Leopard 1 row (lane 5: a direct child of the 1A5
+    // at V would run through the MBT-70; lanes 4 and 8 cross the Lynx's and the A4 V's connectors)
+    node({ id: 'gepard_1a2', tier: 5, line: 'leopard_side', lane: 5, parents: ['mbt70'], slot: 'line' }),
     // Export Leopard 2
     node({ id: 'leo2a4', tier: 8, line: 'export', lane: 1, parents: ['leo2a2'], slot: 'line' }),
     node({ id: 'leo2a4m_can', tier: 8, line: 'export', lane: 2, parents: ['leo2a4'], slot: 'line' }),

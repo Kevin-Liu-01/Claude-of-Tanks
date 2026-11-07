@@ -88,6 +88,10 @@ import { synchronizeFleetRenewalMetadata } from './fleetRenewalSpecs.ts';
 import { synchronizeNationalModernizationMetadata } from './nationalModernizationSpecs.ts';
 // release 264: the Longwei family clones the national concepts' hulls, so it registers and synchronizes after them
 import { synchronizeLongweiFamilyMetadata } from './longweiFamilySpecs.ts';
+// 268: the twin-cannon air-defence round registers last, so every earlier id keeps its roster place
+import './gm352AirDefenseSpecs.ts';
+import './gepardSpecs.ts';
+import './chineseAirDefenseSpecs.ts';
 
 import { TANK_SPECS, finalizeFirstPartyRoster } from './specs.ts';
 import { applyNativeFamilyOrderToCatalogs } from './fleetOrder.ts';

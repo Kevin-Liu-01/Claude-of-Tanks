@@ -11,6 +11,9 @@ import { buildType89X } from './profiles/type89SourceX.ts';
 import { XK2_PROFILES } from './profiles/xk2.ts';
 import { GRIFFIN_VIPER_PROFILES } from './profiles/griffinViper.ts';
 import { TOS1A_TAGIL_PROFILES } from './profiles/tos1aTagil.ts';
+import { GM352_AIR_DEFENSE_PROFILES } from './profiles/gm352AirDefense.ts';
+import { GEPARD_PROFILES } from './profiles/gepard.ts';
+import { CHINESE_AIR_DEFENSE_PROFILES } from './profiles/chineseAirDefense.ts';
 import { buildFv510MilanX } from './profiles/fv510MilanX.ts';
 import { buildGriffin50X } from './profiles/griffin50X.ts';
 import { buildAjaxX } from './profiles/ajaxX.ts';
@@ -221,6 +224,10 @@ export const PROCEDURAL_PROFILES: VehicleProfileRecord = {
   ...KF51_X_PROFILES,
   ...T14_X_PROFILES,
   ...KURGANETS_X_PROFILES,
+  // 268: the twin-cannon air-defence round
+  ...GM352_AIR_DEFENSE_PROFILES,
+  ...GEPARD_PROFILES,
+  ...CHINESE_AIR_DEFENSE_PROFILES,
 };
 
 export const PROFILED_BUILDERS = createProfileBuilders(PROCEDURAL_PROFILES, {

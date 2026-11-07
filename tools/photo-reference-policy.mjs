@@ -26,6 +26,10 @@ const PHOTO_REFERENCE_PACKETS=Object.freeze({
   'docs/references/photos/type90b-20261031.json':Object.freeze(['type90b']),
   'docs/references/photos/type10-tk-x-20261031.json':Object.freeze(['type10_tk_x']),
   'docs/references/photos/type10b-20261031.json':Object.freeze(['type10b']),
+  // 267 (Main 2026-10-28 and 2026-10-29, as the 2A4-era Leopards): the Eurosatory 2024 KF51 Panther EVO and KF51-U,
+  // rebuilt from photographs, their registered print (the 2022 demonstrator) unregistered
+  'docs/references/photos/kf51-evo-20261101.json':Object.freeze(['kf51_evo']),
+  'docs/references/photos/kf51-u-20261101.json':Object.freeze(['kf51_u']),
   // 270 (Main 2026-11-06, following the owner's 269 swap): the M2A2 Bradley, the shared Bradley hull under the classic
   // turret rebuilt as an ODS turret in 269, which no registered model shows, so the id proves its packet. The M3A2 (the
   // source turret since 269) is measured against that turret's model, the 42manako print (procedural-fidelity.html), and
