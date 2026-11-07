@@ -3584,6 +3584,11 @@ const presentGarageReturnFailure = (error: RuntimeValue, retry: () => void): Pro
     console.info('[garage return] superseded:', Reflect.get(Object(error), 'message'));
     return Promise.resolve();
   }
+  // (round 5 Q2, review r1) the notice is the way out, so the cursor is freed before it opens: a lock a press asked for
+  // while it waits for this return (holdPointerLock, released by its own refusal only after this notice) or one the
+  // battle held (a room's return that failed before its screen's exitPointerLock). releaseLock also withdraws a request
+  // still in flight.
+  input.releaseLock();
   return import('./ui/garageReturnFailure.ts').then(({ showGarageReturnFailure }) => { showGarageReturnFailure(error, retry); })
     .catch((noticeError: RuntimeValue) => console.error('[garage return] failure notice unavailable', noticeError));
 };
@@ -3711,6 +3716,13 @@ const soloBattleEntry = createSoloBattleEntryRuntime({
   canTakeScene: () => battleSceneRefusal('solo-start') === null,
   // (round 3 B2, review r1) and a refused start shows the way out: a closed notice left the BATTLE button doing nothing
   presentSceneRefusal: () => offerOwedGarageReturn(),
+  // (round 5 Q2) a start that waits for a return asks for the pointer lock inside its press (Chrome refuses one with no
+  // user activation, about 5 s, after the player's Esc) and gives it back if refused. fromUi: its refusal is not counted
+  // toward cursor aim; the announcement's own request, every entry's, still is
+  holdPointerLock: () => {
+    input.requestLock({ fromUi: true });
+    return () => input.releaseLock();
+  },
   // (audit F2 review) every accepted entry records its whole intent, a failure notice's retry included (its recovery
   // return's 'garage' announcement cleared the record). batch 19 (2026-09-14): the Garage BATTLE button is a free
   // sortie in the chosen rules, so a Frontline Assault pick carves the trenches like a ladder launch does.

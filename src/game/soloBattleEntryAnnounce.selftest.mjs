@@ -14,7 +14,8 @@ globalThis.localStorage ??= {
 };
 const { getPlayerRecord, installBattleRecords } = await import('./profile.ts');
 
-function createEntry({ whenGarageSettled, canTakeScene } = {}) {
+function createEntry({ whenGarageSettled, canTakeScene, isNetworkRoundEntering, holdPointerLock, presentSceneRefusal,
+  presentFailure } = {}) {
   const bus = createBus();
   const order = [];
   const announced = [];
@@ -35,6 +36,10 @@ function createEntry({ whenGarageSettled, canTakeScene } = {}) {
     announce: (payload) => bus.emit('ui:battleStart', payload),
     ...(whenGarageSettled ? { whenGarageSettled } : {}),
     ...(canTakeScene ? { canTakeScene } : {}),
+    ...(isNetworkRoundEntering ? { isNetworkRoundEntering } : {}),
+    ...(holdPointerLock ? { holdPointerLock } : {}),
+    ...(presentSceneRefusal ? { presentSceneRefusal } : {}),
+    ...(presentFailure ? { presentFailure } : {}),
   });
   return { bus, order, announced, lifecycle, runtime, finish: () => finishLoad?.() };
 }
@@ -98,6 +103,100 @@ function createEntry({ whenGarageSettled, canTakeScene } = {}) {
     } else assert.deepEqual(waiting.order, [], 'refused after the wait: nothing was announced, so nothing stands');
     await start;
   }
+}
+
+// (round 5 Q2) An announced start that waits for a return asks for the pointer lock in its caller's task (the press's
+// gesture: its announcement, whose listener asks for it, runs only after the wait) and releases it if it is refused
+// after the wait, before the refusal's way out shows (review r1: the scene refusal's notice comes after the release);
+// an accepted start keeps it. A failure before the acceptance releases it too, before the entry's failure notice
+// (review r1: defensive in the product, where main's whenGarageSettled, garageReturn.whenSettled, never rejects and the
+// scene checks do not throw; driven here by a wait that rejects and a scene check that throws). No wait, a busy refusal
+// and a begin() with no announcement (__DEBUG.beginBattleEntry) ask for nothing; beginSelected's starts (the Play menu,
+// the ladder, __DEBUG.beginSoloBattle), which the entry announces, hold it as the press does. The real-path proofs are
+// garageReturnState's round 5 Q2 cases.
+{
+  const pressAnnouncement = (entry) => () => entry.bus.emit('ui:battleStart', { specId: 'm1a1_abrams_hc', mapId: 'desert' });
+  const outcomes = {
+    'lands': ['lock'],
+    'scene refused': ['lock', 'release', 'refusal notice'],
+    'round entering': ['lock', 'release'], // (no notice: the round's loader is the screen)
+    'wait rejected': ['lock', 'release', 'failure notice'],
+    'scene check throws': ['lock', 'release', 'failure notice'],
+  };
+  for (const [after, expected] of Object.entries(outcomes)) {
+    let settle;
+    let fail;
+    let inFlight = true;
+    let refusedScene = false;
+    let sceneThrows = false;
+    let roundEntering = false;
+    const returning = new Promise((resolve, reject) => { settle = resolve; fail = reject; });
+    const order = [];
+    const entry = createEntry({
+      whenGarageSettled: () => (inFlight ? returning : null),
+      canTakeScene: () => {
+        if (sceneThrows) throw new Error('the scene check failed');
+        return !refusedScene;
+      },
+      isNetworkRoundEntering: () => roundEntering,
+      holdPointerLock: () => { order.push('lock'); return () => order.push('release'); },
+      presentSceneRefusal: () => order.push('refusal notice'),
+      presentFailure: async () => { order.push('failure notice'); },
+    });
+    const start = entry.runtime.begin('m1a1_abrams_hc', 'desert', undefined, pressAnnouncement(entry));
+    assert.deepEqual(order, ['lock'], `${after}: the waiting press asks for the lock in its own task`);
+    assert.equal(await entry.runtime.begin('t90a', 'desert', undefined, pressAnnouncement(entry)), undefined);
+    assert.deepEqual(order, ['lock'], `${after}: a press refused as busy asks for nothing`);
+    refusedScene = after === 'scene refused';
+    roundEntering = after === 'round entering';
+    sceneThrows = after === 'scene check throws';
+    inFlight = false;
+    if (after === 'wait rejected') fail(new Error('the return wait failed'));
+    else settle();
+    if (after === 'lands') {
+      for (let i = 0; i < 4; i += 1) await Promise.resolve();
+      assert.deepEqual(entry.order, ['announce', 'cover', 'load']);
+      entry.finish();
+    }
+    await start;
+    assert.deepEqual(order, expected, after === 'lands' ? 'accepted: the start keeps its lock'
+      : `${after}: the lock is released before any way out shows`);
+    assert.equal(entry.announced.length, after === 'lands' ? 1 : 0, `${after}: announced only once accepted`);
+  }
+  // no return in flight, or no announcement (begin() with none: __DEBUG.beginBattleEntry): nothing asked for
+  const order = [];
+  let inFlight = false;
+  let settle;
+  const returning = new Promise((resolve) => { settle = resolve; });
+  const entry = createEntry({ whenGarageSettled: () => (inFlight ? returning : null),
+    holdPointerLock: () => { order.push('lock'); return () => order.push('release'); } });
+  const now = entry.runtime.begin('m1a1_abrams_hc', 'desert', undefined, pressAnnouncement(entry));
+  entry.finish();
+  await now;
+  inFlight = true;
+  const hooked = entry.runtime.begin('m1a1_abrams_hc', 'desert');
+  inFlight = false;
+  settle();
+  for (let i = 0; i < 4; i += 1) await Promise.resolve();
+  entry.finish();
+  await hooked;
+  assert.deepEqual(order, [], 'no wait, or no announcement: the entry asks for no lock');
+  // a beginSelected start (the Play menu, the ladder, __DEBUG.beginSoloBattle) that waits: announced by the entry, it
+  // holds the lock as the press does, and keeps it once accepted
+  let menuSettle;
+  let menuInFlight = true;
+  const menuReturn = new Promise((resolve) => { menuSettle = resolve; });
+  const menuOrder = [];
+  const menu = createEntry({ whenGarageSettled: () => (menuInFlight ? menuReturn : null),
+    holdPointerLock: () => { menuOrder.push('lock'); return () => menuOrder.push('release'); } });
+  const menuStart = menu.runtime.beginSelected({ specId: 'leo2_improved', mapId: 'urban' });
+  assert.deepEqual(menuOrder, ['lock'], 'a waiting beginSelected start asks for the lock in its own task');
+  menuInFlight = false;
+  menuSettle();
+  for (let i = 0; i < 4; i += 1) await Promise.resolve();
+  menu.finish();
+  await menuStart;
+  assert.deepEqual([menuOrder, menu.announced.length], [['lock'], 1], 'and keeps it once accepted and announced');
 }
 
 // The profile records a Play-menu battle (it began its tally only on ui:battleStart).
