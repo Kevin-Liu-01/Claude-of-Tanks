@@ -414,13 +414,14 @@ if (process.argv[2] === '--signal-child') {
       assert.match(run.said, /--ids=tpa_four\b/, 'the finishing run names the id left');
       assert.equal(run.exitCode, 3, 'ids left: exit 3');
     });
-    // (round 5 U9 review) a cap stop with no signal before any id: tpa_one runs 1-1501 s, the hold is stopped at 1260 s
-    // (the default 60-s grace) and its teardown cuts the id. Nothing audited, so the previous output stays, and the run
-    // still exits 3 (every id left, the finishing run named); the signal children's 143 hid the code this path keeps
+    // (round 5 U9 review) a cap stop with no signal before any id: tpa_one runs 0-1500 s, the hold is stopped at 1260 s
+    // (the default 60-s grace) and its teardown at 1320 s cuts the id. Nothing audited, so the previous output stays,
+    // and the run still exits 3 (every id left, the finishing run named); the signal children's 143 hid this path's code
     await check('turret-parent-audit stop before any id', async () => {
       const run = await turretRun({ idMs: () => 1500 * SECOND, graceSeconds: 60, previous: PREVIOUS });
       assert.equal(run.error, undefined, `no throw (${run.error?.message})`);
-      assert.match(run.holdLog, /no checkpoint within 60 s/, run.holdLog);
+      assert.match(run.holdLog, /00:21:00\] hold cap: no checkpoint within 60 s; asking the work to stop/, run.holdLog);
+      assert.match(run.holdLog, /00:22:00\] still running 60 s past the stop: tearing down/, run.holdLog);
       assert.equal(run.text, PREVIOUS, `nothing audited: the previous output kept (${run.said})`);
       assert.match(run.said, /4 id\(s\) left[^\n]*--ids=tpa_one,tpa_two,tpa_three,tpa_four \(nothing audited/, run.said);
       assert.equal(run.exitCode, 3, `every id left: exit 3, the run unfinished (${run.exitCode})`);
