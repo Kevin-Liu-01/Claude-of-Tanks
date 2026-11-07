@@ -3,7 +3,10 @@
 // later edge hands back a HUD or a camera for a replay that is not on screen, and an edge that ends it on screen hands
 // them back. The runtime, the camera rig (createCameraRig) and the killcam (createKillCam, whose replay pins the rig
 // through setExternalPose) are the real ones on one bus, as main.ts builds them; the runtime's ports forward to them
-// and count what the runtime asks.
+// and count what the runtime asks. A death is told as the solo step tells it (the lethal hit and tank:destroyed, then
+// the frame's update reads the wreck) unless a case says a network seat's order (its own row, the newest authority row,
+// shows the wreck a frame before the frame tells that death's events: mp/match/matchClient.ts flushes events through
+// the interpolated tick).
 //   1. The battle's teardown (main.ts clearBattle: runtime.clearPending(), then killcam.cancel(), whose cancelled
 //      replay runs no onDone, so no afterDeath), then a restart reached without reset(). Before, clearPending() left
 //      the flag set, and the restart's listener unveiled the HUD and released the rig for a replay no longer on
@@ -23,7 +26,7 @@
 //      "the revive takes the camera back"), and the cancel runs no onDone. Before, the revived hull played on under
 //      the replay's frozen pin with the HUD veiled, and its next death got no death cam (deathCamShown stayed set).
 //      Both orders in which the killcam and the runtime hear the revive (the page's is the runtime first: it
-//      subscribes when built, and the killcam binds its bus later); cases 3-7 run both.
+//      subscribes when built, and the killcam binds its bus later); cases 3-9 run both.
 //   4. The same revive inside the death beat, before the replay: the death orbit ends with the player's camera and
 //      the beat does not fire over the living hull (before, the orbit circled it, and the beat's late fire restarted
 //      it).
@@ -34,19 +37,42 @@
 //   6. The seat's own revive after its verdict is shown: the ending's camera and HUD stay (the listener's endShown
 //      guard; defensive, as a mode's step revives no more once its verdict latches: matchModes.ts step's `result`).
 //   7. A revive told before its hull reads alive (the row a frame behind its event), in the beat and in the replay:
-//      the screen comes back at the edge, the abandoned life's death flow does not start over the wreck, and the death
-//      cam re-arms once the hull reads alive (reviveOwed). Neither driver orders it so today (solo reviveAtSpawn revives
-//      before it emits; mp/presentation/adapter.ts applies a frame's rows before its events), so 7 is the owner's
-//      transition (round 5 review r1).
-// On f60d0aa200 (no revive listener) 1-4 and 7 fail (30 checks); 5 and 6 pass there trivially, so they are mutation
-// controls: 5 fails with the id gate taken out, 6 with the endShown guard. 7 fails on the round-five r1 head too,
-// which re-armed the death cam at the event. Each line of the owner fails its own cases when taken out: clearPending's
-// drop (1), newSeat's drop (2), the revive's listener (3, 4, 7), its re-arm at the event (3's next death), the re-arm
-// at the alive edge (7's next death), its hand-back (3, 4, 7). The browser half (the camera's motion, the replay's
-// WebGL frames, the HUD's paint) is not reproduced here.
+//      the screen comes back at the edge, the abandoned life's death flow does not start over the wreck (not even when
+//      another hull's destruction is told before the row: the destruction listener's id gate), and the death cam
+//      re-arms once the hull reads alive, so the next death's flow starts on its row (reviveOwed). Neither driver
+//      orders it so today (solo reviveAtSpawn revives before it emits; a network seat's own row leads its events), so 7
+//      is the owner's transition (round 5 review r1).
+//   8. A network seat revived and killed again within the interpolation delay (review r2): the revive is told under
+//      the row of its next death, in the beat and in the replay. The screen comes back at the edge, no flow starts
+//      until that death's own tank:destroyed is told, which pays the debt: the next death gets its death cam and
+//      replay. Its first death is told in the network's order too: that death's own tank:destroyed, heard after its row
+//      started the flow, does not start it again (the destruction listener reads only a standing debt).
+//   9. The revive's most frequent timing in a network Horde room (review r2): after the death replay ended on its own
+//      (the killcam's phases run out under update(), then its exit's wall-clock fade, killcam.ts beginExit/
+//      completeExit; afterDeath ran and the death orbit circles the wreck). The orbit ends with the player's camera and
+//      nothing else is asked (no veil, no release), and the next death gets its own death cam and replay.
+//  10. A Watch seat left (review r2): the real watch controller (createWatchController, createWatchCamera, the seat
+//      ledger) on the same bus, rig and killcam, its frame asked only while no replay is on screen, as
+//      app/mainFrameRuntime.ts updateCombatCamera does. The watcher takes an allied bot in a watched Standard battle
+//      (no respawn timer: the full death flow), it dies, and Leave (the touch button's toggleSeat; Enter and pad R3 run
+//      the same leave()) inside its death beat: no replay follows and the drone keeps the screen (before, the beat
+//      fired the left hull's replay over the drone up to 1.6 s later, veiled the HUD and took the camera for up to
+//      15 s: watchController.ts leave told the runtime nothing). Leave while its replay is on screen: the replay plays
+//      out and its own end hands back, then the drone (as on f60d0aa200; the contract the runtime's leaveSeat states).
+// On f60d0aa200 (no revive or destruction listener, no leaveSeat) 1-4, 7-9 and 10's beat leave fail (48 checks); 5, 6
+// and 10's replay leave pass there (5 and 6 are mutation controls: 5 fails with the revive's id gate taken out, 6 with
+// the endShown guard; 10's replay leave pins the contract leaveSeat states). 8 and 10's beat leave fail on the
+// round-five r1 head too (ab43905660: no destruction listener, no leaveSeat), and 7 on the r0 head (8a8907c9c0: the
+// death cam re-armed at the event). Each line of the owner fails its own cases when taken out: clearPending's drop (1),
+// newSeat's drop (2), the revive's listener (3, 4, 7, 8, 9), its re-arm at the event (3's and 9's next death), the
+// re-arm at the alive edge (7's next death on its row), its hand-back (3, 4, 7, 8, 9), the destruction listener (8's
+// next death), its debt gate (8's first death), its id gate (7), leaveSeat's drop and the controller's call to it
+// (10's beat leave). The browser half (the camera's motion, the replay's WebGL frames, the HUD's paint) is not
+// reproduced here.
 import { StubElement, windowStub } from '../ui/hudDomHarness.test-support.mjs';
 import assert from 'node:assert/strict';
 import { setMaxListeners } from 'node:events';
+import { setTimeout as sleep } from 'node:timers/promises';
 import * as THREE from 'three';
 import { ensureAuthorityFleet } from '../vehicles/authorityFleet.ts';
 import { getSpec } from '../vehicles/specs.ts';
@@ -54,55 +80,65 @@ import { createBus } from './stateCore.ts';
 import { createBattleResultPresentationRuntime } from './battleResultPresentationRuntime.ts';
 import { createBattleEndingDirector } from './battleEnding.ts';
 import { createCameraRig } from '../engine/cameraRig.ts';
+import { createWatchCamera } from '../engine/watchCamera.ts';
 import { createKillCam } from './killcam.ts';
+import { createWatchController } from './watchController.ts';
+import { prepareWatchSeat } from './watchSeat.ts';
+import { matchRulesetFor, watchRulesetFor } from '../sim/matchRuleset.ts';
 
 const SPEC = 'm1a1_abrams_hc';
 const RESTART = { battleRestarts: 1 };
 const idle = { mouseDX: 0, mouseDY: 0, wheel: 0, rmb: false, shiftPressed: false };
+const flat = { getHeightAt: () => 0 };
 const wrong = [];
 assert.equal(typeof StubElement, 'function', 'setup: the recording DOM is installed');
 // Node's EventTarget ignores a boolean capture in removeEventListener (Node 24; a browser honours it), so every replay
 // this receipt opens leaves the killcam's replay key listener on the one recording window (killcam.ts teardown removes
-// it with `true`): the window's cap sits above the cases' replays instead of warning of a leak the page does not have.
-setMaxListeners(64, windowStub);
+// it with `true`), as does each watch controller's stop(): the window's cap sits above the cases' replays and
+// controllers instead of warning of a leak the page does not have.
+setMaxListeners(96, windowStub);
 
 await ensureAuthorityFleet([SPEC]);
 const spec = getSpec(SPEC);
 
-/**
- * One seat's result flow on the real runtime, rig and killcam. `killcamFirst`: the killcam hears the bus's edges before
- * the runtime (the page's order is the runtime first). `respawnS`: the ruleset's respawn timer (null: Horde's, whose
- * fallen Alpha hulls still stand up at a wave's start).
- */
-function seat({ killcamFirst = false, respawnS = null } = {}) {
-  const bus = createBus();
-  const calls = [];
-  let wallMs = 1000;
-  const hud = { veiled: false };
+/** A hull the killcam, the rig and the seat ledger can all read (a parked pool entry's fields are not needed). */
+function hull(id, team, { x = 0, z = 0, bot = true } = {}) {
   const root = new THREE.Object3D();
-  const player = {
-    id: 'me', isPlayer: true, team: 'player', spec, specId: SPEC,
+  root.position.set(x, 0, z);
+  root.updateMatrixWorld(true);
+  const entity = {
+    id, team, isPlayer: false, bot, modeActive: true, spec, specId: SPEC, aiCtl: { update() {} },
     combat: { destroyed: false, crew: {}, modules: {} },
-    state: { pos: new THREE.Vector3(), yaw: 0.3, turretYaw: 0, gunPitch: 0, visualPitch: 0, visualRoll: 0 },
-    input: { aimPoint: new THREE.Vector3() }, aerial: null,
+    state: { pos: root.position, yaw: 0.3, turretYaw: 0, gunPitch: 0, visualPitch: 0, visualRoll: 0 },
+    input: { throttle: 0, steer: 0, brake: false, fire: false, actionBits: 0, aimLocked: false,
+      aimPoint: new THREE.Vector3(x, 2, z + 300) },
+    aerial: null,
     visual: {
-      root, turretTopWorld: (out) => out.set(0, 2, 0), gunPivotWorld: (out) => out.set(0, 1.7, 0.2),
-      isDestroyed: () => player.combat.destroyed, wreckState: () => (player.combat.destroyed ? 'plain' : 'intact'),
+      root, turretTopWorld: (out) => out.set(0, 2, 0).applyMatrix4(root.matrixWorld),
+      gunPivotWorld: (out) => out.set(0, 1.7, 0.2).applyMatrix4(root.matrixWorld),
+      isDestroyed: () => entity.combat.destroyed, wreckState: () => (entity.combat.destroyed ? 'plain' : 'intact'),
       setDestroyed() {}, resetDestroyed() {}, syncFromState() {}, setVisible() {},
     },
   };
-  const game = {
-    result: null, resultReason: null, gameMode: respawnS == null ? 'endless_horde' : 'standard', timeS: 10, player,
-    ruleset: { respawnS }, matchModeState: null, phase: 'battle', tanks: [player], tankById: new Map([['me', player]]),
-  };
+  return entity;
+}
+
+/**
+ * The real runtime, rig and killcam for `game` (its player read live, as main.ts wires getPlayer), with the runtime's
+ * ports counting what it asks. `killcamFirst`: the killcam hears the bus's edges before the runtime (the page's order is
+ * the runtime first).
+ */
+function presentation(game, { killcamFirst }) {
+  const bus = createBus();
+  const calls = [];
+  const clock = { wallMs: 1000 };
+  const hud = { veiled: false };
   const camera = new THREE.PerspectiveCamera(60, 16 / 9, 0.1, 2000);
-  const rig = createCameraRig(camera, {
-    heightField: { getHeightAt: () => 0 }, raycast: () => null, getPlayer: () => player,
-  });
+  const rig = createCameraRig(camera, { heightField: flat, raycast: () => null, getPlayer: () => game.player });
   rig.snapArcade(2, 0.3, -0.1);
   const killcam = createKillCam({
-    scene: new THREE.Scene(), camera, rig, heightField: { getHeightAt: () => 0 },
-    getPlayer: () => player, getGame: () => game, isBattleEntryCovered: () => false,
+    scene: new THREE.Scene(), camera, rig, heightField: flat,
+    getPlayer: () => game.player, getGame: () => game, isBattleEntryCovered: () => false,
   });
   if (killcamFirst) killcam.bindBus(bus);
   const runtime = createBattleResultPresentationRuntime({
@@ -110,7 +146,7 @@ function seat({ killcamFirst = false, respawnS = null } = {}) {
     killcam: {
       get lastBeginWallMs() { return killcam.lastBeginWallMs ?? null; },
       playForResult(result, timeS, onDone, options) {
-        calls.push(`replay:${player.combat.destroyed ? 'dead' : 'alive'}`);
+        calls.push(`replay:${game.player?.combat.destroyed ? 'dead' : game.player ? 'alive' : 'no seat'}`);
         return killcam.playForResult(result, timeS, onDone, options);
       },
     },
@@ -126,18 +162,47 @@ function seat({ killcamFirst = false, respawnS = null } = {}) {
       director: createBattleEndingDirector(), camera: { begin: () => true, frame() {}, end() {} },
       modeState: () => null, emitBeat() {},
     },
-    now: () => wallMs, deathBeatMs: 2600,
+    now: () => clock.wallMs, deathBeatMs: 2600,
   });
   if (!killcamFirst) killcam.bindBus(bus);
-  const step = (ms) => { wallMs += ms; game.timeS += ms / 1000; runtime.update(); rig.update(ms / 1000, idle); };
-  /** The player dies to a recorded lethal shell (its death beat and death orbit start, unless the flow is spent). */
+  /** The seat's hull takes a lethal shell (the killcam's capture of the death its replay shows). */
+  const lethalHit = (target) => killcam.onShellHit({
+    shellId: null, targetId: target.id, attackerId: 'e9', destroyed: true, timeS: game.timeS,
+    pos: [0, 1, 0], normal: [0, 0, 1], localPos: [0, 1, 0], localDir: [0, 0, -1], modulesHit: [], crewHit: [],
+    shellType: 'APFSDS', zone: 'hull',
+  }, target);
+  const told = (id) => bus.emit('tank:destroyed', { id, killerId: 'e9', cause: 'shot' });
+  /**
+   * The replay ends on its own: its phases run out under update() (the x-ray hold's end begins the exit), then the
+   * exit's letterbox and fade hand back on their wall-clock timers (beginExit: EXIT_HOLD_MS), update() its second driver.
+   */
+  const endReplay = async (label) => {
+    for (let i = 0; i < 2400 && killcam.isActive() && killcam.phase !== 'exit'; i++) killcam.update(1 / 30);
+    for (let waited = 0; killcam.isActive() && waited < 20000; waited += 25) {
+      await sleep(25);
+      killcam.update(1 / 60);
+    }
+    assert.ok(!killcam.isActive(), `setup: ${label}: the replay ended on its own (phase ${killcam.phase})`);
+  };
+  return { bus, calls, clock, hud, camera, rig, killcam, runtime, lethalHit, told, endReplay };
+}
+
+/** One seat's result flow (its hull 'me', no Watch), with no respawn timer (Horde's: fallen Alpha hulls stand up). */
+function seat({ killcamFirst = false } = {}) {
+  const player = hull('me', 'player', { bot: false });
+  player.isPlayer = true;
+  const game = {
+    result: null, resultReason: null, gameMode: 'endless_horde', timeS: 10, player,
+    ruleset: { respawnS: null }, matchModeState: null, phase: 'battle', tanks: [player], tankById: new Map([['me', player]]),
+  };
+  const p = presentation(game, { killcamFirst });
+  const { calls, clock, hud, rig, killcam, runtime } = p;
+  const step = (ms) => { clock.wallMs += ms; game.timeS += ms / 1000; runtime.update(); rig.update(ms / 1000, idle); };
+  /** The solo step's order: the lethal hit and tank:destroyed are told in the step, the frame's update reads the wreck. */
   const kill = () => {
     player.combat.destroyed = true;
-    killcam.onShellHit({
-      shellId: null, targetId: 'me', attackerId: 'e9', destroyed: true, timeS: game.timeS,
-      pos: [0, 1, 0], normal: [0, 0, 1], localPos: [0, 1, 0], localDir: [0, 0, -1], modulesHit: [], crewHit: [],
-      shellType: 'APFSDS', zone: 'hull',
-    }, player);
+    p.lethalHit(player);
+    p.told('me');
     step(16);
   };
   const die = (label) => {
@@ -153,14 +218,27 @@ function seat({ killcamFirst = false, respawnS = null } = {}) {
   };
   /** Another owner pins the camera after the replay left the screen (a shot view, the ending camera, a replay). */
   const pinNext = () => rig.setExternalPose(new THREE.Vector3(60, 40, 60), new THREE.Vector3(0, 0, 0), 40);
-  return { bus, game, calls, hud, player, rig, killcam, runtime, step, kill, die, toReplay, pinNext };
+  return { ...p, game, calls, hud, player, rig, killcam, runtime, step, kill, die, toReplay, pinNext };
+}
+
+/** The revived hull's next death (the solo order) gets its own death flow: the death orbit, then the beat's replay. */
+function nextDeathRuns(s, label) {
+  s.calls.length = 0;
+  s.kill();
+  if (!s.calls.includes('deathCam') || s.rig.cameraOwner !== 'death') {
+    wrong.push(`${label}: the revived hull's next death got no death cam (camera ${s.rig.cameraOwner})`);
+  }
+  for (let i = 0; i < 12; i++) s.step(250);
+  if (!s.calls.includes('replay:dead') || !s.killcam.isActive()) {
+    wrong.push(`${label}: the revived hull's next death got no death replay (${s.calls.join(', ') || 'no call'})`);
+  }
 }
 
 // ---- 1-2. the replay's life ends at a teardown or a fresh seat; a restart reached without reset() owes it nothing
 for (const exit of ['teardown', 'newSeat']) {
   const label = exit === 'teardown' ? 'teardown (clearBattle\'s order), then a restart without reset()'
     : 'a fresh Watch seat after a cancelled replay, then a restart without reset()';
-  const s = seat({ respawnS: null });
+  const s = seat();
   s.die(label);
   s.toReplay(label);
   s.calls.length = 0;
@@ -189,7 +267,7 @@ for (const exit of ['teardown', 'newSeat']) {
 // ---- 3. the seat's hull revived by its mode while its death replay is on screen (no respawn timer)
 for (const killcamFirst of [false, true]) {
   const label = `a revive in the death replay (${killcamFirst ? 'killcam first' : 'runtime first'})`;
-  const s = seat({ killcamFirst, respawnS: null });
+  const s = seat({ killcamFirst });
   s.die(label);
   s.toReplay(label);
   s.calls.length = 0;
@@ -203,22 +281,13 @@ for (const killcamFirst of [false, true]) {
   }
   const stale = s.calls.filter((call) => call.startsWith('replay'));
   if (stale.length) wrong.push(`${label}: a replay was asked for over the revived hull (${stale.join(', ')})`);
-  // the revived hull dies again: its death gets its own death flow (the death orbit, then the beat's replay)
-  s.calls.length = 0;
-  s.kill();
-  if (!s.calls.includes('deathCam') || s.rig.cameraOwner !== 'death') {
-    wrong.push(`${label}: the revived hull's next death got no death cam (camera ${s.rig.cameraOwner})`);
-  }
-  for (let i = 0; i < 12; i++) s.step(250);
-  if (!s.calls.includes('replay:dead') || !s.killcam.isActive()) {
-    wrong.push(`${label}: the revived hull's next death got no death replay (${s.calls.join(', ') || 'no call'})`);
-  }
+  nextDeathRuns(s, label);
 }
 
 // ---- 4. the same revive inside the death beat, before the replay
 for (const killcamFirst of [false, true]) {
   const label = `a revive in the death beat (${killcamFirst ? 'killcam first' : 'runtime first'})`;
-  const s = seat({ killcamFirst, respawnS: null });
+  const s = seat({ killcamFirst });
   s.die(label);
   s.step(1000);
   s.calls.length = 0;
@@ -240,7 +309,7 @@ for (const killcamFirst of [false, true]) {
   for (const phase of ['beat', 'replay']) {
     for (const other of [{ id: 'ally1', team: 'player' }, { id: 'e9', team: 'enemy' }]) {
       const label = `${other.id}'s revive in the death ${phase} (${killcamFirst ? 'killcam first' : 'runtime first'})`;
-      const s = seat({ killcamFirst, respawnS: null });
+      const s = seat({ killcamFirst });
       s.die(label);
       if (phase === 'beat') s.step(1000);
       else s.toReplay(label);
@@ -280,7 +349,7 @@ for (const killcamFirst of [false, true]) {
 // ---- 6. the seat's own revive after its verdict is shown is the ending's
 for (const killcamFirst of [false, true]) {
   const label = `a revive after the verdict (${killcamFirst ? 'killcam first' : 'runtime first'})`;
-  const s = seat({ killcamFirst, respawnS: null });
+  const s = seat({ killcamFirst });
   s.die(label);
   s.toReplay(label);
   s.game.result = 'defeat';
@@ -305,12 +374,14 @@ for (const killcamFirst of [false, true]) {
   for (const phase of ['beat', 'replay']) {
     const label = `a revive told a frame before its row, in the death ${phase} `
       + `(${killcamFirst ? 'killcam first' : 'runtime first'})`;
-    const s = seat({ killcamFirst, respawnS: null });
+    const s = seat({ killcamFirst });
     s.die(label);
     if (phase === 'beat') s.step(1000);
     else s.toReplay(label);
     s.calls.length = 0;
     s.bus.emit('mode:respawn', { id: 'me', team: 'player' });
+    // another hull's destruction told in the same frame, before the seat's row shows it alive
+    s.told('ally1');
     s.step(16);
     s.player.combat.destroyed = false;
     for (let i = 0; i < 20; i++) s.step(250);
@@ -320,11 +391,17 @@ for (const killcamFirst of [false, true]) {
       wrong.push(`${label}: the screen is not the revived hull's (replay ${s.killcam.isActive()}, veiled `
         + `${s.hud.veiled}, camera ${s.rig.cameraOwner})`);
     }
+    // the next death in a network seat's order: its row first, its events a frame later; the flow starts on the row
     s.calls.length = 0;
-    s.kill();
+    s.player.combat.destroyed = true;
+    s.step(16);
     if (!s.calls.includes('deathCam') || s.rig.cameraOwner !== 'death') {
-      wrong.push(`${label}: the revived hull's next death got no death cam (camera ${s.rig.cameraOwner})`);
+      wrong.push(`${label}: the revived hull's next death started no death cam on its row (camera `
+        + `${s.rig.cameraOwner}; ${s.calls.join(', ') || 'no call'})`);
     }
+    s.lethalHit(s.player);
+    s.told('me');
+    s.step(16);
     for (let i = 0; i < 12; i++) s.step(250);
     if (!s.calls.includes('replay:dead') || !s.killcam.isActive()) {
       wrong.push(`${label}: the revived hull's next death got no death replay (${s.calls.join(', ') || 'no call'})`);
@@ -332,11 +409,173 @@ for (const killcamFirst of [false, true]) {
   }
 }
 
+// ---- 8. a network seat revived and killed again within the interpolation delay: its revive is told under the row
+// of its next death, and that death's events come after (review r2)
+for (const killcamFirst of [false, true]) {
+  for (const phase of ['beat', 'replay']) {
+    const label = `a revive told under the row of the hull's next death, in the death ${phase} `
+      + `(${killcamFirst ? 'killcam first' : 'runtime first'})`;
+    const s = seat({ killcamFirst });
+    // the first death in the network's order: the row starts the flow, the death's own events come a frame later
+    s.player.combat.destroyed = true;
+    s.step(16);
+    const deadline = s.runtime.snapshot().pendingDeadlineMs;
+    assert.ok(s.calls.includes('deathCam') && deadline !== null, `setup: ${label}: the row starts the death flow`);
+    s.lethalHit(s.player);
+    s.told('me');
+    s.step(16);
+    const cams = s.calls.filter((call) => call === 'deathCam').length;
+    if (cams !== 1 || s.runtime.snapshot().pendingDeadlineMs !== deadline) {
+      wrong.push(`${label}: the first death's own tank:destroyed started its flow again (${cams} death cams, beat due `
+        + `${s.runtime.snapshot().pendingDeadlineMs} for ${deadline})`);
+    }
+    if (phase === 'beat') s.step(1000);
+    else s.toReplay(label);
+    s.calls.length = 0;
+    // the hull stays destroyed: the row already shows its next death
+    s.bus.emit('mode:respawn', { id: 'me', team: 'player' });
+    s.step(16);
+    if (s.killcam.isActive() || s.hud.veiled) {
+      wrong.push(`${label}: the abandoned life's replay holds the screen (replay ${s.killcam.isActive()}, veiled `
+        + `${s.hud.veiled})`);
+    }
+    const early = s.calls.filter((call) => call.startsWith('replay') || call === 'deathCam');
+    if (early.length) wrong.push(`${label}: a death flow ran before the next death was told (${early.join(', ')})`);
+    // the next death's events (tick order: after the revive)
+    s.calls.length = 0;
+    s.lethalHit(s.player);
+    s.told('me');
+    s.step(16);
+    if (!s.calls.includes('deathCam') || s.rig.cameraOwner !== 'death') {
+      wrong.push(`${label}: the next death got no death cam (camera ${s.rig.cameraOwner}; `
+        + `${s.calls.join(', ') || 'no call'})`);
+    }
+    for (let i = 0; i < 12; i++) s.step(250);
+    if (!s.calls.includes('replay:dead') || !s.killcam.isActive() || s.rig.cameraOwner !== 'external') {
+      wrong.push(`${label}: the next death got no death replay (${s.calls.join(', ') || 'no call'})`);
+    }
+  }
+}
+
+// ---- 9. the revive after the death replay ended on its own (the death orbit holds)
+for (const killcamFirst of [false, true]) {
+  const label = `a revive after the death replay ended (${killcamFirst ? 'killcam first' : 'runtime first'})`;
+  const s = seat({ killcamFirst });
+  s.die(label);
+  s.toReplay(label);
+  s.calls.length = 0;
+  await s.endReplay(label);
+  s.step(16);
+  assert.deepEqual(s.calls, ['veil:false', 'release', 'deathCam'], `setup: ${label}: the replay's end ran afterDeath`);
+  assert.ok(s.rig.cameraOwner === 'death' && !s.hud.veiled, `setup: ${label}: the death orbit holds, the HUD is back`);
+  s.calls.length = 0;
+  s.player.combat.destroyed = false;
+  s.bus.emit('mode:respawn', { id: 'me', team: 'player' });
+  for (let i = 0; i < 8; i++) s.step(250);
+  if (s.calls.join() !== 'endDeathCam' || s.rig.cameraOwner !== 'player') {
+    wrong.push(`${label}: the revive did not end the orbit alone (camera ${s.rig.cameraOwner}; `
+      + `${s.calls.join(', ') || 'no call'})`);
+  }
+  nextDeathRuns(s, label);
+}
+
+// ---- 10. a Watch seat left inside its death beat or replay
+for (const killcamFirst of [false, true]) {
+  for (const phase of ['beat', 'replay']) {
+    const label = `a Watch seat left in its death ${phase} (${killcamFirst ? 'killcam first' : 'runtime first'})`;
+    const human = hull('me', 'player', { z: -100, bot: false });
+    const ally = hull('ally1', 'player', { x: 30, z: -110 });
+    const foe = hull('e9', 'enemy', { z: 100 });
+    const tanks = [human, ally, foe];
+    const game = {
+      phase: 'battle', player: human, tanks, tankById: new Map(tanks.map((tank) => [tank.id, tank])),
+      result: null, resultReason: null, gameMode: 'standard', timeS: 10, matchModeState: null, watch: null,
+      ruleset: watchRulesetFor(matchRulesetFor('standard')),
+    };
+    human.isPlayer = true;
+    prepareWatchSeat(game, human);
+    const p = presentation(game, { killcamFirst });
+    const watchCamera = createWatchCamera(p.camera, { heightField: flat, raycast: () => null });
+    const controller = createWatchController({
+      game, camera: p.camera, watchCamera, rig: p.rig, bus: p.bus, killcam: p.killcam, cameraInput: idle,
+      input: {
+        getState: () => ({ forward: false, back: false, left: false, right: false }),
+        isDown: () => false, pressVirtual() {}, releaseVirtual() {}, getVirtualMove: () => false,
+        getPadSnapshot: (out) => Object.assign(out, { connected: false, leftX: 0, leftY: 0, rightX: 0, rightY: 0,
+          leftTrigger: 0, rightTrigger: 0, buttons: 0 }),
+        isLocked: () => true,
+      },
+      resultPresentation: p.runtime,
+      onSeat() {}, isInputHeld: () => false, pickSurface: () => true,
+      openingFrame: (out) => { out.position.set(0, 60, -250); out.yaw = 0; out.pitch = -0.35; return true; },
+    });
+    // app/mainFrameRuntime.ts: the result runtime each frame; Watch's frame (else the rig) only while no replay is on
+    // screen, the killcam's own update while one is
+    const frames = { drone: 0, other: 0 };
+    const step = (ms) => {
+      p.clock.wallMs += ms;
+      game.timeS += ms / 1000;
+      p.runtime.update();
+      if (p.killcam.isActive()) { frames.other++; return; }
+      if (controller.frame(ms / 1000)) frames.drone++;
+      else { frames.other++; p.rig.update(ms / 1000, idle); }
+    };
+    controller.open();
+    assert.equal(game.player, null, `setup: ${label}: the watched battle opens on the drone`);
+    controller.rideId('ally1');
+    for (let i = 0; i < 400 && controller.focusId !== 'ally1'; i++) step(16);
+    controller.toggleSeat();
+    assert.ok(controller.view === 'drive' && game.player === ally, `setup: ${label}: the watcher drives the ally`);
+    step(16);
+    ally.combat.destroyed = true;
+    p.lethalHit(ally);
+    p.told('ally1');
+    step(16);
+    assert.equal(p.rig.cameraOwner, 'death', `setup: ${label}: the driven hull's death starts its death orbit`);
+    if (phase === 'beat') step(1000);
+    else {
+      for (let i = 0; i < 12; i++) step(250);
+      assert.ok(p.hud.veiled && p.killcam.isActive(), `setup: ${label}: the driven hull's death replay runs`);
+    }
+    p.calls.length = 0;
+    controller.toggleSeat();
+    assert.ok(controller.view === 'drone' && game.player === null, `setup: ${label}: Leave lifts the drone off`);
+    if (phase === 'beat') {
+      frames.drone = frames.other = 0;
+      for (let i = 0; i < 20; i++) step(250);
+      const flow = p.calls.filter((call) => call.startsWith('replay') || call === 'veil:true');
+      if (flow.length || p.killcam.isActive() || p.hud.veiled) {
+        wrong.push(`${label}: the left seat's death flow ran over the drone (${flow.join(', ') || 'no call'}; replay `
+          + `${p.killcam.isActive()}, veiled ${p.hud.veiled})`);
+      }
+      if (frames.other || controller.view !== 'drone') {
+        wrong.push(`${label}: the drone lost the screen for ${frames.other} of ${frames.drone + frames.other} frames `
+          + `(view ${controller.view})`);
+      }
+    } else {
+      // the replay on screen plays out (the leave's Enter steps it a beat) and its own end hands back
+      await p.endReplay(label);
+      frames.drone = frames.other = 0;
+      for (let i = 0; i < 8; i++) step(250);
+      if (p.calls.join() !== 'veil:false,release,deathCam' || p.hud.veiled) {
+        wrong.push(`${label}: the replay's end did not hand back once (${p.calls.join(', ') || 'no call'}; veiled `
+          + `${p.hud.veiled})`);
+      }
+      if (frames.other || controller.view !== 'drone') {
+        wrong.push(`${label}: the drone did not take the screen after the replay (${frames.other} of `
+          + `${frames.drone + frames.other} frames elsewhere, view ${controller.view})`);
+      }
+    }
+    controller.stop();
+  }
+}
+
 if (wrong.length) {
   console.error(`deathFlowExits: the player's death flow outlived the exit that ended it:\n  ${wrong.join('\n  ')}`);
   assert.fail('every exit that ends the player\'s death replay leaves the result runtime owing nothing for it');
 }
-console.log('deathFlowExits: a teardown, a fresh seat and a mode\'s revive end the player\'s death flow (no stale '
-  + 'hand-back at a later restart; the revive hands the HUD and the camera back, and the next death has its own; '
-  + 'another hull\'s revive and a revive after the verdict leave it alone; a revive ahead of its row re-arms the death '
-  + 'cam only once the hull reads alive) PASS');
+console.log('deathFlowExits: a teardown, a fresh seat, a mode\'s revive and a Watch seat left end the player\'s death '
+  + 'flow (no stale hand-back at a later restart; the revive hands the HUD and the camera back, in the beat, in the '
+  + 'replay or after it, and the next death has its own; another hull\'s revive and a revive after the verdict leave it '
+  + 'alone; a revive ahead of its row re-arms the death cam once the hull reads alive, one under the row of its next '
+  + 'death at that death\'s event; no replay follows a Leave) PASS');

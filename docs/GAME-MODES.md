@@ -96,7 +96,8 @@ reads exactly as `bot`. Per mode:
 `game.player`. The fixed step drives a hull from its controller only while `aiCtl` is set, so the frame input
 (`playerFrameInput.ts`) is the only writer of the hull's input while it is driven. Leaving gives the controller back,
 and it resumes from the hull's live state. A driven hull's death plays the player's death flow (death camera, replay),
-then the watcher is back on the drone.
+then the watcher is back on the drone. Leaving inside the death beat ends the flow there, so no replay follows over the
+drone; a replay already on screen plays out (`battleResultPresentationRuntime.ts` leaveSeat).
 
 Receipts:
 - `src/game/watchSeat.selftest.mjs`: the ruleset entry, bot → player → bot leaves the hull identical, an exact replay

@@ -13,7 +13,8 @@
  *  - DRIVE: Take control (Enter, pad R3, the touch button) puts the watcher in that bot's seat through the player's own
  *    path (game/watchSeat.ts): the camera rig, the HUD and the controls are the player's from that frame, and Leave
  *    (the same key) hands the hull back to its bot and lifts the drone off the chase pose. A taken hull destroyed plays
- *    the player's death flow, then the drone.
+ *    the player's death flow, then the drone; a Leave inside its death beat ends the flow there (no replay follows),
+ *    and a replay already on screen plays out.
  *
  * The camera is the watch camera's while watching and the rig's while driving; the frame runtime asks frame() each
  * frame and solves the rig only when it answers false. The sim never reads this owner: seats change through
@@ -83,8 +84,9 @@ export interface WatchControllerOptions<TEntity extends WatchEntity> {
   cameraInput: Pick<CameraFrameInput, 'mouseDX' | 'mouseDY' | 'wheel' | 'shiftPressed'>;
   bus: EventBus;
   killcam: { isActive(): boolean; spectate: { readonly active: boolean; stop(emitEnd?: boolean): void } };
-  /** The player's death flow re-arms for a freshly taken seat (battleResultPresentationRuntime). */
-  resultPresentation: { newSeat(): void };
+  /** The player's death flow re-arms for a freshly taken seat and ends with a seat left (battleResultPresentationRuntime;
+   *  round 5 U4 review r2: a death beat pending at Leave fired its replay over the drone). */
+  resultPresentation: { newSeat(): void; leaveSeat(): void };
   /** The player-facing owners follow the seat: the HUD's shells, the damage panel, the shot log (null: watching). */
   onSeat(entity: TEntity | null): void;
   /** Settings or a modal own the input. */
@@ -326,6 +328,8 @@ export function createWatchController<TEntity extends WatchEntity>(options: Watc
     rig.release();
     leaveWatchSeat(game);
     driving = null;
+    // the seat's death flow ends with it: no death beat left to fire its replay over the drone
+    resultPresentation.leaveSeat();
     options.onSeat(null);
     // the drone lifts off the chase pose the rig held: no cut
     toDrone(true);
