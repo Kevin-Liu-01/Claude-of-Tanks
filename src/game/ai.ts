@@ -41,15 +41,21 @@ import {
   selectedWeaponModuleState,
   ramDamage,
 } from '../sim/damage.ts';
-import { driveGroundTypeAt, groundResistanceFor, terrainTravelCostFactor } from '../sim/terrainMobility.ts';
+import { driveGroundTypeAt, terrainTravelCostFactor } from '../sim/terrainMobility.ts';
 import { PLAYER_ACTION_BITS } from '../sim/playerActions.ts';
 import { DEFAULT_CONSUMABLE_LOADOUT, consumableActive, type ConsumableId, type ConsumableState } from '../sim/consumableRules.ts';
 import { totalAmmunition, totalAmmunitionCapacity } from '../sim/ammunition.ts';
 import {
   CLEARANCE_SKIP_BRIDGE,
   CLEARANCE_SKIP_CRUSHABLE,
+  HULL_STANDABLE_HEIGHT_M,
+  HULL_STEP_UP_M,
+  bandRoofTopAt,
   collisionClearanceContainsPoint,
+  collisionPartTopAt,
+  collisionRecordHasDrawnTop,
   hullYieldingRecord,
+  pointInsideCollisionRecord,
   rayCollisionClearanceEntry2,
   type CollisionRecord,
   type CollisionShape,
@@ -913,6 +919,9 @@ const LEVEL_ROUTE_OPTIONS = Object.freeze({ requireGoalLevel: true });
 // held it from 5.5 m below (fix-up r1), and the walk then read a deck 1.2-1.9 m over the bank beside it as its way
 // through the parapet (fix-up r2).
 const RESUME_STEP_M = 1.5;
+// The stood-put test's record walk (hullOnParkLevel) ends on the floor of the spot it walks to within this: both read the
+// same top or ground there, so it only absorbs rounding.
+const RESUME_LEVEL_EPS_M = 0.05;
 // The declared order of one hull's shell results (or hits) on a bot in one phase (round 2, U17; see pendingBefore).
 const PENDING_KIND_ORDER: readonly string[] = Object.freeze(['pen', 'he_pen', 'nonpen', 'ricochet', 'spaced_absorb', 'era']);
 // Search goal order by how many legs have ended without contact: straight at the enemy first, then the last
@@ -7085,7 +7094,10 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
   let parkTargetX = 0, parkTargetZ = 0, parkTargetYaw = 0, parkTargetReloadT = 0;
   // where the hull stood when the park began: the start of its way at the hand-back (resume's hullOnItsWay), and the
   // spot the elevation lock's dwell was read from (hullStoodPut)
-  let parkHullX = 0, parkHullY = 0, parkHullZ = 0;
+  let parkHullX = 0, parkHullY = 0, parkHullZ = 0, parkHullYaw = 0;
+  // the solids near the hand-back's two spots and the point each end stands on its floor at (hullOnParkLevel), reused
+  const parkLevelScratch: AiObstacle[] = [];
+  const floorHere = { x: 0, z: 0, y: 0, ground: 0 }, floorThere = { x: 0, z: 0, y: 0, ground: 0 };
   /**
    * The park entry point (round 2, U18): something else drives the hull from `timeS` (the match clock) until resume().
    * The controller is not stepped meanwhile; resume() reads how long the park lasted, where the hull went and what
@@ -7096,6 +7108,7 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     parkHullX = entity.state.pos.x;
     parkHullY = entity.state.pos.y;
     parkHullZ = entity.state.pos.z;
+    parkHullYaw = entity.state.yaw;
     const seen = target && enemyAlive(target) ? target : null;
     parkTargetId = seen ? seen.id : null;
     if (!seen) return;
@@ -7211,11 +7224,11 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
    * The elevation lock's dwell (0 while a level route runs) counts the bot's own ticks, wherever it drives itself, while
    * its target stays on a level the gun cannot reach (updateElevationLock). The park's stretch is no tick of the bot's: the
    * bot saw neither the ground the watcher drove nor the target from it. So the dwell holds through a park that left the
-   * hull where it was taken (hullStoodPut: within RESUME_ON_WAY_M of that spot, able to drive back to it, and riding as
-   * high over the ground within a step), and a Take and Leave in place, on the ground or on a record's top, loses nothing;
-   * after a park that moved the hull further, or onto another level (up or down a face, or onto or off a record whose
-   * side is a wall by the slope law), and after a revive, it starts again from the hull as it stands (round 4, E8; round
-   * 5, U5).
+   * hull where it was taken (hullStoodPut: within RESUME_ON_WAY_M of that spot, able to drive back to it, and on a floor
+   * it drives to and from that spot's: hullOnParkLevel), and a Take and Leave in place, on the ground or on a record's
+   * top, loses nothing; after a park that moved the hull further, or onto another level (up or down a face; onto, off or
+   * from one record's top to another's across a side the hull cannot drive up: a vertical side past its step, a drawn top
+   * past its slope law), and after a revive, it starts again from the hull as it stands (round 4, E8; round 5, U5).
    */
   function resumeOwnLegs(parked: boolean, parkS: number): void {
     if (!parked || !hullStoodPut()) elevationLockT = 0;
@@ -7282,7 +7295,7 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
   }
   /**
    * The hull stands where the park took it (park()): within RESUME_ON_WAY_M of that spot, able to drive back to it over
-   * the ground between (hullReaches), and on its level (hullOnParkLevel).
+   * the ground between (hullReaches), and on a floor it drives to and from that spot's (hullOnParkLevel).
    */
   function hullStoodPut(): boolean {
     const position = entity.state.pos;
@@ -7290,28 +7303,134 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
       && hullReaches(parkHullX, parkHullZ, parkHullY) && hullOnParkLevel();
   }
   /**
-   * The hull rides over the ground as high as it did where the park took it, give or take one step it can drive both
-   * ways (round 5, U5). hullReaches reads an end that rides above the ground the field carries (a record's top: a rock's
-   * tier, rubble, a wreck, a roof) on that ground, so it alone reads a park onto or off a record as the ground between.
-   * The rides it sets aside (each end's height over that ground; none under a deck) are one step of RESUME_STEP_M here,
-   * held to the slope law both ways on the softer of the two ends' grounds, as the planner holds every edge
-   * (botRoutePlanner reachableNeighbor and routeGroundType). A record's side that is a wall by that law (2.2 m: a grade of
-   * 1.47, past CLIFF_GRADE) parts the hull from the spot it was taken on, whichever side it was taken on; a record it
-   * steps onto and off (1 m for an M1A1 on firm ground) does not, and a Take and Leave in place on a record rides the
-   * same. Allocation-free.
+   * The hull stands on a floor it can drive to and from the one it was taken on, records included (round 5, U5; fix-up
+   * r1, the round's two reviews). hullReaches reads each end on the ground the field carries, so it alone reads a park
+   * onto, off or between records (a rock's tiers, rubble, a wreck, a roof) as the ground between. Each end's floor is
+   * what the movement stands the hull on there (recordFloorAt with no slope: the highest of the ground and the records'
+   * tops within the hull's step over it, the structure support's floor rule). Two ends on their ground are one level: the
+   * ground between is hullReaches' (a hull riding over the ground with no record under it, in the air or on its
+   * suspension, is on that ground). Otherwise the hull reaches each end from the other along the line between, record by
+   * record (recordWalkReaches), as the movement carries it: it steps onto a top at most HULL_STEP_UP_M over the floor it
+   * stands on (a flat top's vertical side is a wall past that for every hull on every ground: the support mounts nothing
+   * higher; a 1 m box, a rock's 0.7 m first tier), drives up a drawn top (a stone's surface, a roof's deck) as terrain, by
+   * its slope law on the ground there, and drives off any top. So a park off a 1 m box onto the ground beside it, onto a
+   * 2.2 m rock, or from one rock's top onto another's restarts the dwell; one up a drawn top the hull drives back down,
+   * onto a step it mounts, or in place on a record keeps it. Allocation-free.
    */
   function hullOnParkLevel(): boolean {
     const position = entity.state.pos;
-    const rideHere = Math.max(0, position.y - terrainSafety.surfaceY(position.x, position.z));
-    const rideThere = Math.max(0, parkHullY - terrainSafety.surfaceY(parkHullX, parkHullZ));
-    const grade = (rideThere - rideHere) / RESUME_STEP_M;
-    const here = driveGroundTypeAt(hf, position.x, position.z), there = driveGroundTypeAt(hf, parkHullX, parkHullZ);
-    const ground = groundResistanceFor(spec, there) >= groundResistanceFor(spec, here) ? there : here;
+    const rect = tankContactRect(spec);
+    const reach = detMath.hypot(rect.halfLength + Math.abs(rect.centerZ), rect.halfWidth);
+    const solids = parkLevelSolids(Math.min(position.x, parkHullX) - reach, Math.min(position.z, parkHullZ) - reach,
+      Math.max(position.x, parkHullX) + reach, Math.max(position.z, parkHullZ) + reach);
+    endFloor(solids, rect, position.x, position.z, position.y, entity.state.yaw, floorHere);
+    endFloor(solids, rect, parkHullX, parkHullZ, parkHullY, parkHullYaw, floorThere);
+    if (floorHere.y <= floorHere.ground + RESUME_LEVEL_EPS_M && floorThere.y <= floorThere.ground + RESUME_LEVEL_EPS_M) return true;
+    return recordWalkReaches(solids, floorHere, floorThere) && recordWalkReaches(solids, floorThere, floorHere);
+  }
+  /**
+   * The floor a hull with its root at (x, y, z), heading `yaw`, stands on, and the point it stands on it at, into `out`
+   * (hullOnParkLevel). The ground is hullReaches' (at the root's own height where it stands below the ground the field
+   * carries). The floor is the movement's under its root (recordFloorAt with no slope); where the hull rides over that by
+   * more than its step (a hull on a record's edge with its root past it, or in the air), the highest record top within its
+   * step that the ends or sides of its contact rect stand over, at that point (with the ground there); the ground at the
+   * root when there is none. Allocation-free.
+   */
+  function endFloor(
+    solids: readonly AiObstacle[], rect: { centerZ: number; halfLength: number; halfWidth: number },
+    x: number, z: number, y: number, yaw: number, out: { x: number; z: number; y: number; ground: number },
+  ): void {
+    const ground = Math.min(y, terrainSafety.surfaceY(x, z));
+    out.x = x; out.z = z; out.ground = ground;
+    out.y = recordFloorAt(solids, x, z, y, ground, 0);
+    if (y - out.y <= HULL_STEP_UP_M) return;
+    const fx = detMath.sin(yaw), fz = detMath.cos(yaw);
+    const cx = x + fx * rect.centerZ, cz = z + fz * rect.centerZ;
+    for (let side = 0; side < 4; side++) {
+      const along = side === 0 ? rect.halfLength : side === 1 ? -rect.halfLength : 0;
+      const across = side === 2 ? rect.halfWidth : side === 3 ? -rect.halfWidth : 0;
+      const px = cx + fx * along + fz * across, pz = cz + fz * along - fx * across;
+      const top = recordFloorAt(solids, px, pz, y, -Infinity, 0);
+      if (top > out.y) { out.x = px; out.z = pz; out.y = top; out.ground = Math.min(y, terrainSafety.surfaceY(px, pz)); }
+    }
+  }
+  /**
+   * The hull drives from one end's floor to the other's, records included (hullOnParkLevel; each end's point and floor:
+   * endFloor): from a's floor, through the line to b's point read RESUME_STEP_M apart (as hullReaches reads it), it stands
+   * on the floor the movement carries it onto at each point from the last (recordFloorAt), and arrives on b's floor. A top
+   * it cannot get onto is passed by on the ground under it (the line beside a building or a boulder is not the hull's only
+   * way round it), so the walk misses b's floor only where that floor is a top it cannot get onto from the ground about it,
+   * or from the records it drives over to it. The last point's ground is b's own. Allocation-free.
+   */
+  function recordWalkReaches(
+    solids: readonly AiObstacle[], a: { x: number; z: number; y: number }, b: { x: number; z: number; y: number; ground: number },
+  ): boolean {
+    const dx = b.x - a.x, dz = b.z - a.z;
+    const steps = Math.max(1, Math.ceil(detMath.hypot(dx, dz) / RESUME_STEP_M));
+    let y = a.y;
+    for (let step = 1; step <= steps; step++) {
+      const x = a.x + dx * step / steps, z = a.z + dz * step / steps;
+      y = recordFloorAt(solids, x, z, y, step === steps ? b.ground : terrainSafety.surfaceY(x, z), RESUME_STEP_M);
+    }
+    return Math.abs(y - b.y) <= RESUME_LEVEL_EPS_M;
+  }
+  /**
+   * The floor the movement carries a hull at height `y` onto at (x, z) (hullOnParkLevel): the highest of `ground` and each
+   * standing record's top there that the hull gets onto from y. The records and tops are the structure support's own
+   * (structureSupport.ts structureTopAt: no crushable cover, nothing felled, no flat part shorter than
+   * HULL_STANDABLE_HEIGHT_M, a band under its building's roof at the roof), and so is the step: a top at most
+   * HULL_STEP_UP_M over y, or below it. With `run` (the walk's spacing; 0 at a spot the hull stands on), a drawn top (a
+   * stone's surface, a roof's deck), which the hull drives up as terrain, is also got onto by a rise over `run` this hull's
+   * slope law holds on the ground there, with its damage (terrainTravelCostFactor, as hullReaches reads a step).
+   * Allocation-free.
+   */
+  function recordFloorAt(solids: readonly AiObstacle[], x: number, z: number, y: number, ground: number, run: number): number {
+    let best = ground;
+    for (let i = 0; i < solids.length; i++) {
+      const record = solids[i] as CollisionRecord;
+      if (x < record.min[0] || x > record.max[0] || z < record.min[2] || z > record.max[2]) continue;
+      if (record.crushed || record.dead || record.crushable) continue;
+      if (record.max[1] - record.min[1] < HULL_STANDABLE_HEIGHT_M && !collisionRecordHasDrawnTop(record)) continue;
+      const shape = record.shape2;
+      if (shape && shape.kind === 'compound') {
+        const parts = shape.parts;
+        for (let p = 0; p < parts.length; p++) {
+          const part = parts[p];
+          if (!part) continue;
+          const drawn = part.kind === 'convex' && !!part.tp;
+          let top = collisionPartTopAt(record, part, x, z);
+          if (!drawn) {
+            const roof = bandRoofTopAt(record, part, x, z);
+            if (roof > -Infinity && roof < top) top = roof;
+          }
+          if (top > best && floorReached(top, y, run, drawn, x, z) && pointInsideCollisionRecord(record, part, x, z)) best = top;
+        }
+      } else {
+        const drawn = !!shape && shape.kind === 'convex' && !!shape.tp;
+        const top = drawn ? collisionPartTopAt(record, shape, x, z) : record.max[1];
+        if (top > best && floorReached(top, y, run, drawn, x, z) && pointInsideCollisionRecord(record, shape ?? null, x, z)) best = top;
+      }
+    }
+    return best;
+  }
+  /** A top at `top` is got onto from height y (recordFloorAt): within the step, or up a drawn top by the slope law. */
+  function floorReached(top: number, y: number, run: number, drawn: boolean, x: number, z: number): boolean {
+    if (top <= y + HULL_STEP_UP_M) return true;
+    if (!drawn || run <= 0) return false;
     const debuff = entity.state._debuff;
-    const powerMult = debuff?.powerMult ?? 1;
-    const accelMult = debuff?.accelMult ?? 1;
-    return Number.isFinite(terrainTravelCostFactor(spec, ground, grade, powerMult, accelMult))
-      && Number.isFinite(terrainTravelCostFactor(spec, ground, -grade, powerMult, accelMult));
+    return Number.isFinite(terrainTravelCostFactor(spec, driveGroundTypeAt(hf, x, z), (top - y) / run,
+      debuff?.powerMult ?? 1, debuff?.accelMult ?? 1));
+  }
+  /** The solids within the box (hullOnParkLevel): the obstacle query's, into a reused list, else the last obstacle list. */
+  function parkLevelSolids(minX: number, minZ: number, maxX: number, maxZ: number): AiObstacle[] {
+    if (deps.queryObstacles) return deps.queryObstacles(minX, minZ, maxX, maxZ, parkLevelScratch);
+    parkLevelScratch.length = 0;
+    for (let i = 0; i < obstacles.length; i++) {
+      const o = obstacles[i];
+      if (o.max[0] < minX || o.min[0] > maxX || o.max[2] < minZ || o.min[2] > maxZ) continue;
+      parkLevelScratch.push(o);
+    }
+    return parkLevelScratch;
   }
   /**
    * The hull can drive from where it stands to (tx,tz), where the ground (or the hull taken there) stands at ty (round 4,
@@ -7322,8 +7441,8 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
    * probe reads one. Each end is read at its own height where it stands below that ground (a hull under a deck), and on
    * that ground where it rides above it (on a record's top: a rock's tier, rubble, a wreck, a roof), as the follower's
    * edge safety (corridorSafe) and the planner read it: the hull drives off a record as off flat ground (fix-up r2); the
-   * stood-put test reads the rides this sets aside on its own (hullOnParkLevel). A hull at the foot of a face, on the floor
-   * beside a crest, on the bank beside a deck or under one cannot. Allocation-free.
+   * stood-put test reads the records this sets aside on its own (hullOnParkLevel). A hull at the foot of a face, on the
+   * floor beside a crest, on the bank beside a deck or under one cannot. Allocation-free.
    */
   function hullReaches(tx: number, tz: number, ty: number): boolean {
     const position = entity.state.pos;
