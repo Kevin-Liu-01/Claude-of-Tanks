@@ -1104,9 +1104,12 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/fx/clock.selftest.mjs',
     'src/fx/clockRebase.selftest.mjs', // 2026-11-02 audit R7: one registry of fx-clock shifts; embers, fracture holds and pieces keep their time
     // 2026-11-02 audit U33/Q15 (round 2): a rebase leaves no fx-clock stamp the runtime holds (by census, no list); (round
-    // 3 B5) its scenario drives the drones, the gunship, the auxiliary systems, wires, a house's stages and the composer,
-    // and V8's block coverage measures its reach: an fx-clock read it never runs that is not in its named KNOWN_UNREACHED
-    // list fails it, and so does a listed read it now runs
+    // 3 B5) its scenario drives the drones, the gunship, the auxiliary systems, wires and the composer, and V8's block
+    // coverage measures its reach: an fx-clock site it never runs that is not in its named KNOWN_UNREACHED list fails it,
+    // and so does a listed site it now runs; (round 4 F7) a key names one site, and a clock handed under another name and
+    // a read of the shared uTime uniform are sites; an unloaded src/fx module that reads the clock fails it, and so does a
+    // stamp moved twice; its scenario drives the Studio cinematic layer and a round drawn past its record's bound; (round
+    // 5 U12) it leaves the two houses' destruction, and the sites only that reaches, to the census whole (next)
     'src/fx/fxClockStampCensus.selftest.mjs',
     // round 5 U12: the census whole, with the two houses' destruction the default receipt leaves out (manual: fx)
     'src/fx/fxClockStampCensusFull.selftest.mjs',
