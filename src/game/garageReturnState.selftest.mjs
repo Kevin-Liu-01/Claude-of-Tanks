@@ -1037,10 +1037,11 @@ for (const during of ['restore', 'placement']) {
 }
 // (round 5 Q2) The refusal half: a start refused after the wait releases the lock its press took (the page's own unlock,
 // main's binding: input.releaseLock) before the refused start's notice opens, and a lock that lands only after the
-// refusal is released as it lands (input.ts withdraws the attempt in flight). Nothing stands over the notice, the
-// refusal never counts toward the cursor-aim fallback, and the next press locks again. (review r1) The failed Retry's
-// own notice opens first, while the press still waits: main frees the cursor before every return notice opens
-// (presentGarageReturnFailure), so neither notice opens under the press's lock (7705cfeb18: the Retry's did).
+// refusal is released as it lands (input.ts withdraws the attempt in flight). Nothing stands over the notice and the
+// next press locks again. (review r1) The failed Retry's own notice opens first, while the press still waits: main
+// frees the cursor before every return notice opens (presentGarageReturnFailure), so neither notice opens under the
+// press's lock (7705cfeb18: the Retry's did). (review r2: no lock request is refused here, so the cursor-aim fallback
+// is pinned below, on a page that refuses every lock.)
 for (const lockLandsFirst of [true, false]) {
   const label = lockLandsFirst ? 'a lock that landed during the wait' : 'a lock still in flight at the refusal';
   const page = createChromePointerLockPage();
@@ -1083,7 +1084,6 @@ for (const lockLandsFirst of [true, false]) {
     await tick();
     assert.deepEqual(effects.standing(), nothingStands, `${label}: nothing stands after the refusal`);
     assert.deepEqual(main.events, ['emit:ui:click']);
-    assert.equal(page.input.isCursorAim(), false, `${label}: the refusal is no evidence the page cannot lock`);
     failRestore = false;
     hold = null;
     main.notices.at(-1).retry();
@@ -1137,6 +1137,60 @@ for (const lockLandsFirst of [true, false]) {
     assert.equal(main.notices.length, shown, '(no return notice opens)');
     assert.deepEqual(main.events, ['emit:ui:click'], 'the start is refused: the round has the screen');
     assert.deepEqual(effects.standing(), nothingStands, "the press's lock is released all the same");
+  } finally {
+    effects.dispose();
+    page.restore();
+  }
+}
+// (round 5 Q2, review r2) The hold's own refusal is no evidence the page cannot lock: main's binding asks with fromUi,
+// so a waiting press counts one refusal toward the cursor-aim fallback, the one its announcement's request draws
+// (pointerLockFeedbackRuntime.ts), as every press did on f60d0aa200, never two. On a page that refuses every lock
+// (input.ts LOCK_DENY_LATCH_STREAK, 3), two waiting presses leave the fallback off and one more counted refusal turns
+// it on. (Without fromUi the second press's hold turned it on.)
+{
+  const page = createChromePointerLockPage({ lock: 'refuse-all' });
+  const effects = battleStartEffects(page);
+  try {
+    for (const nth of [1, 2]) {
+      let failRestore = true;
+      let hold = null;
+      let held = false;
+      const f = createFixture({
+        bus: effects.bus, exitPointerLock: page.exitPointerLock,
+        restore: async () => {
+          if (hold) { held = true; await hold.promise; }
+          if (failRestore) throw new Error('the Garage presentation did not restore');
+          return { totalMs: 1 };
+        },
+      });
+      const main = owedGarageMain(f.runtime, f.game, { bus: effects.bus, input: page.input });
+      await main.leave();
+      await flush();
+      const before = page.stats.attempts;
+      press(main); // the closed notice: the press brings it back, with the bare Retry
+      await flush();
+      assert.equal(page.stats.attempts, before, `press ${nth}: (a press refused at once asks for nothing)`);
+      failRestore = false;
+      hold = deferred();
+      main.notices.at(-1).retry();
+      for (let index = 0; index < 12 && !held; index += 1) await flush();
+      main.events.length = 0;
+      press(main);
+      assert.equal(page.stats.attempts, before + 1, `press ${nth}: (the waiting press asks in its own task)`);
+      await tick();
+      hold.resolve();
+      for (let index = 0; index < 12 && main.events.length < started.length; index += 1) await flush();
+      await tick();
+      assert.deepEqual(main.events, started, `press ${nth}: (its battle starts once the return lands)`);
+      assert.equal(page.stats.attempts, before + 2, `press ${nth}: (its announcement asks again)`);
+      assert.equal(page.stats.refused, page.stats.attempts, `press ${nth}: (and every request was refused)`);
+      assert.equal(page.input.isCursorAim(), false,
+        `press ${nth}: the hold's refusal is not counted toward cursor aim, only its announcement's`);
+    }
+    page.input.requestLock(); // a counted refusal: a canvas click's
+    await tick();
+    assert.equal(page.input.isCursorAim(), true,
+      'the third counted refusal turns cursor aim on: each press counted one');
   } finally {
     effects.dispose();
     page.restore();
