@@ -142,7 +142,8 @@ export const MANUAL_SUITES = Object.freeze({
     // dwell rule's one part ai.watchResume does not keep, the ground under a deck the field publishes (the walk's last
     // point, an end on a record under a deck's end: a spot read stood put only within 1.5 m of the deck's end): 4.5-4.8 s
     // of user CPU at load 61-97 (3.8 s at load 22), the import 1.5-1.9 s of it. Of the round's 50 mutants six fail this
-    // file alone: four readings of the ground under a deck, and the obstacle list's branch (a fixture's path)
+    // file alone: five of the ground under a deck (its four readings, and all of them at once) and the obstacle list's
+    // branch (a fixture's path)
     'src/game/ai.watchResumeLevels.selftest.mjs',
     'src/sim/botRouteClearance.selftest.mjs',
     'src/sim/botVerdantApproach.selftest.mjs',
