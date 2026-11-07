@@ -3,18 +3,19 @@
 // Copyright © 2026 Kevin B. Liu.
 //
 // The grounded light model (battleAtmosphereAccess.ts, chunk lightModel.ts), the maps' cloudscapes (cloudPresets.ts,
-// chunk cloudscapeLayer.ts) and the atmosphere runtime itself are held under app/lazyChunk.ts (round 3 A4): a failure is
-// asked again at once after one failure, then past a backoff that doubles to a minute, never offline. Every prepare asks them, and the
-// Studio prepares once per sun-dial or slider move (main.ts prepareStudioAtmosphere -> prepare(0, map, ['day'])). Two
-// costs moved with that (round 3 review): during an outage a Studio drag raises the failure count once per backoff
-// window, up to the minute's cap, and a battle entered inside that backoff got the kept failure and played the whole
-// battle on the authored rig with deck-only clouds (or, for the runtime, failed its atmosphere), where every entry used
-// to ask at once; and an apply that made the policy's re-ask awaited that transfer, so a stalled import held the Studio's
-// light (and its busy 'light' hold) until the browser failed it. Now a battle entry (prepare's `{ entry: true }`, main.ts's
-// solo and network entries) asks every part at once whatever the backoff (never offline), and a Studio apply asks as the
-// policy allows and awaits a part's first ask only, never a re-ask (round 4 F2 review: the runtime's re-ask too, case 5).
-// What an apply did not wait for is its prepare's `landing`, and the Studio lights again once it lands
-// (game/studioLightLanding.selftest.mjs drives that through studio.ts and main.ts).
+// chunk cloudscapeLayer.ts) and the atmosphere runtime itself are held under app/lazyChunk.ts (round 3 A4): a failure
+// is asked again at once after one failure, then past a backoff that doubles to a minute, never offline. Every prepare
+// asks them, and the Studio prepares once per sun-dial or slider move (main.ts prepareStudioAtmosphere ->
+// prepare(0, map, ['day'])). Two costs moved with that (round 3 review): during an outage a Studio drag raises the
+// failure count once per backoff window, up to the minute's cap, and a battle entered inside that backoff got the kept
+// failure and played the whole battle on the authored rig with deck-only clouds (or, for the runtime, failed its
+// atmosphere), where every entry used to ask at once; and an apply that made the policy's re-ask awaited that transfer,
+// so a stalled import held the Studio's light (and its busy 'light' hold) until the browser failed it. Now a battle
+// entry (prepare's `{ entry: true }`, main.ts's solo and network entries) asks every part at once whatever the backoff
+// (never offline), and a Studio apply asks as the policy allows and awaits a part's first ask only, never a re-ask
+// (round 4 F2 review: the runtime's re-ask too, case 5). What an apply did not wait for is its prepare's `landing`, and
+// the Studio lights again once it lands (game/studioLightLanding.selftest.mjs drives that through studio.ts and
+// main.ts).
 //
 // A chunk "fails" the way a browser's import does when the network drops (its resolve throws) and "stalls" the way a
 // hung transfer does (its module never finishes arriving: top-level await on a gate this test holds).
@@ -43,8 +44,10 @@ const holdGate = () => {
 // stand-ins that record their install (the real modules only refine the light and the layer); each ask its own URL, so a
 // module that failed evaluating is never the one the next ask gets
 const BODY = new Map([
-  [LIGHT, 'export function groundedLightModel() { globalThis.__cotGrounded = (globalThis.__cotGrounded ?? 0) + 1; return () => null; }'],
-  [CLOUDS, 'export function cloudscapeLayer() { globalThis.__cotCloudscape = (globalThis.__cotCloudscape ?? 0) + 1; return (legacy) => legacy; }'],
+  [LIGHT, 'export function groundedLightModel() { globalThis.__cotGrounded = (globalThis.__cotGrounded ?? 0) + 1;'
+    + ' return () => null; }'],
+  [CLOUDS, 'export function cloudscapeLayer() { globalThis.__cotCloudscape = (globalThis.__cotCloudscape ?? 0) + 1;'
+    + ' return (legacy) => legacy; }'],
 ]);
 const hook = registerHooks({
   resolve(specifier, context, next) {
