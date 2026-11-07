@@ -335,14 +335,13 @@ only:
   (`npm run reels:render -- --out shots/x` writes to shots/x); an npm script runs either tool as its last command, so
   the flags after `npm run <script> --` reach it (long-hold-users checks both). turret-parent-audit's one option is
   `--ids=`, and it reads the first: its finishing run is `--ids=<left>` alone, in place of its own. It rewrites its
-  output, and a stop before any id writes nothing. One that cannot yield without
-  losing its take (a frame-stepped film) declares `atCap: 'keep'`. `frame-budget-probe.mjs` `acquireProbeLocks` (the
-  capture FIFO with the session mutex, for that probe, time-to-battle-probe, battle-spike-census, battle-memory-probe
-  and shadow-cache-truth) holds its FIFO through the open form too, and hands its callers the hold's `signal`. A unit
-  the hold's stop comes before or cuts (a slot, a scenario, a battle, a map, a build) is left for the next run, never a
-  failure (`runProbeUnit`): the run exits 3 and says how to finish. These are held-items' rules too (`heldItemOutcome`,
-  `heldRunExitCode`): a failure exits 1 over the 3 of units left, and never over a signal's 128 + n. A shell holds one
-  normal ticket across several steps
+  output, and a stop before any id writes nothing. A tool that cannot yield without losing its take (a frame-stepped
+  film) declares `atCap: 'keep'`. `frame-budget-probe.mjs` `acquireProbeLocks` (the capture FIFO with the session mutex,
+  for that probe, time-to-battle-probe, battle-spike-census, battle-memory-probe and shadow-cache-truth) holds its FIFO
+  through the open form too, and hands its callers the hold's `signal`. A unit the hold's stop comes before or cuts (a
+  slot, a scenario, a battle, a map, a build) is left for the next run, never a failure (`runProbeUnit`): the run exits
+  3 and says how to finish. These are held-items' rules too (`heldItemOutcome`, `heldRunExitCode`): a failure exits 1
+  over the 3 of units left, and never over a signal's 128 + n. A shell holds one normal ticket across several steps
   with `node tools/with-capture-lock.mjs [--lock-class=render|timing] [--place=<key>] -- <command>`: every tool under it
   that takes the lock nests in that hold (its token), and a wait that runs out exits 77.
   `tools/capture-hold-census.selftest.mjs` lists the few tools that still acquire the lock themselves (under whatever

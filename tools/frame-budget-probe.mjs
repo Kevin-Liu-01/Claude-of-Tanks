@@ -1313,7 +1313,8 @@ export async function runFrameProbe(options, { acquireLocks = acquireProbeLocks,
   // 1, never over a signal's 128 + n (heldRunExitCode; `= 1` set it over the signal), else slots left 3. The CLI set
   // the 1 after the run, where no receipt reached it. tools/probe-unit-stop.selftest.mjs pins both halves:
   // 'frame-budget-probe failure writer' (no signal: a FAILED slot exits 1, alone or beside a slot left; this line is
-  // the CLI's only exit 1) and 'frame-budget-probe SIGTERM after a failure' (the 1 never lands over 128 + n)
+  // the CLI's only exit 1 for a FAILED slot) and 'frame-budget-probe SIGTERM after a failure' (its 1 is never over
+  // a signal's 128 + n)
   if (!ok) heldRunExitCode({ failed: true });
   else if (remaining) markUnitsLeft();
   return { ok, remaining };
