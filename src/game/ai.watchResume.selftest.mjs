@@ -44,14 +44,17 @@
 // still skipped it (the first stretch runs from where it was taken), so the cursor now passes a waypoint only where the
 // hull has gone by it; [13] a bridge deck's side is a wall to the walk whatever the step, as it is to the planner; and
 // [14] a hull on a record's top (a rock) is read from the ground under it, as the follower reads it, not as a drop.
-// Round 5 (U5, the round-four correctness review): that reading at both ends of the stood-put walk let a park onto or off
-// a record keep the elevation lock's dwell where the record's side is a wall by the slope law; [12] a park onto or off a
-// 2.2 m rock now restarts it, and one onto a 1 m rock the hull steps onto and off keeps it.
+// Round 5 (U5, the round-four correctness review; fix-up r1, the round's two reviews): that reading at both ends of the
+// stood-put walk let a park onto, off or between records keep the elevation lock's dwell; [12] the test now reads each
+// end's floor as the movement carries the hull (a flat top's side past the 0.55 m step is a wall, a drawn top is driven
+// as terrain): a park off or onto a 2.2 m rock, onto a 1 m box or a rock's edge, or from one rock's top onto another's
+// restarts it, and one onto a 0.5 m step, up a drawn top, or into the air over the same ground keeps it.
 // Cost (round 5, U6; the default tier): [11] stepped three fixed 60 s windows after Leave, and now runs each only until
 // what it reads is settled (a verdict, the road planned again, the route's end), and [12]'s window is a whole dwell and a
-// margin. Measured as the process's own CPU at load 100-135: [11] 3.05-3.25 s to 1.31-1.45 s, the file 9.8-10.2 s user
-// to 8.5-8.9 s (round three's file 5.9 s, the fleet import 2.2 s of each). It stays in the default tier: the only default
-// receipt of the Watch hand-back's route legs and dwell (ai.watchTakeover steps whole battles: MANUAL).
+// margin. Measured as the process's own user CPU (fix-up r1, at load 103-128, two runs each): [11] 2.69-2.76 s to
+// 1.05-1.36 s, [12] 0.31-0.33 s to 0.91-1.23 s (12 hand-backs, 4 before), the file 8.5-9.0 s to 7.8-8.6 s (the
+// fleet import 2.2 s of each). It stays in the default tier: the only default receipt of the Watch hand-back's route legs
+// and dwell (ai.watchTakeover steps whole battles: MANUAL).
 import { Vector3 } from 'three';
 import '../vehicles/fleetFactory.ts';
 import { getSpec } from '../vehicles/specs.ts';

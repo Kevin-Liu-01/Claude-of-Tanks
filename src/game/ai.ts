@@ -7325,7 +7325,8 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
       Math.max(position.x, parkHullX) + reach, Math.max(position.z, parkHullZ) + reach);
     endFloor(solids, rect, position.x, position.z, position.y, entity.state.yaw, floorHere);
     endFloor(solids, rect, parkHullX, parkHullZ, parkHullY, parkHullYaw, floorThere);
-    if (floorHere.y <= floorHere.ground + RESUME_LEVEL_EPS_M && floorThere.y <= floorThere.ground + RESUME_LEVEL_EPS_M) return true;
+    const onGround = floorHere.y <= floorHere.ground + RESUME_LEVEL_EPS_M;
+    if (onGround && floorThere.y <= floorThere.ground + RESUME_LEVEL_EPS_M) return true;
     return recordWalkReaches(solids, floorHere, floorThere) && recordWalkReaches(solids, floorThere, floorHere);
   }
   /**
@@ -7363,7 +7364,8 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
    * or from the records it drives over to it. The last point's ground is b's own. Allocation-free.
    */
   function recordWalkReaches(
-    solids: readonly AiObstacle[], a: { x: number; z: number; y: number }, b: { x: number; z: number; y: number; ground: number },
+    solids: readonly AiObstacle[], a: { x: number; z: number; y: number },
+    b: { x: number; z: number; y: number; ground: number },
   ): boolean {
     const dx = b.x - a.x, dz = b.z - a.z;
     const steps = Math.max(1, Math.ceil(detMath.hypot(dx, dz) / RESUME_STEP_M));
@@ -7384,7 +7386,9 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
    * slope law holds on the ground there, with its damage (terrainTravelCostFactor, as hullReaches reads a step).
    * Allocation-free.
    */
-  function recordFloorAt(solids: readonly AiObstacle[], x: number, z: number, y: number, ground: number, run: number): number {
+  function recordFloorAt(
+    solids: readonly AiObstacle[], x: number, z: number, y: number, ground: number, run: number,
+  ): number {
     let best = ground;
     for (let i = 0; i < solids.length; i++) {
       const record = solids[i] as CollisionRecord;
@@ -7403,12 +7407,14 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
             const roof = bandRoofTopAt(record, part, x, z);
             if (roof > -Infinity && roof < top) top = roof;
           }
-          if (top > best && floorReached(top, y, run, drawn, x, z) && pointInsideCollisionRecord(record, part, x, z)) best = top;
+          if (top <= best || !floorReached(top, y, run, drawn, x, z)) continue;
+          if (pointInsideCollisionRecord(record, part, x, z)) best = top;
         }
       } else {
         const drawn = !!shape && shape.kind === 'convex' && !!shape.tp;
         const top = drawn ? collisionPartTopAt(record, shape, x, z) : record.max[1];
-        if (top > best && floorReached(top, y, run, drawn, x, z) && pointInsideCollisionRecord(record, shape ?? null, x, z)) best = top;
+        if (top <= best || !floorReached(top, y, run, drawn, x, z)) continue;
+        if (pointInsideCollisionRecord(record, shape ?? null, x, z)) best = top;
       }
     }
     return best;
