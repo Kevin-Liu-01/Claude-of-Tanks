@@ -15,19 +15,24 @@
 //      as driverStepParity scripts one); the seat's real MatchClient over a loopback pair, bound to the real battle
 //      presentation as the page binds it (bindMatchPresentation): the authority's hulls untouched, the wire's tank_ram
 //      priced at zero, and the page's bus carrying tank:ram (zero damage, on its own hull) and no damage event;
-//   3. the listeners: in src/ the page's bus has one listener for tank:ram (audio/audioEngine.ts onTankRam) and two for
-//      tank:impact (audioEngine.ts onTankImpact, pad/padCues.ts' impact buzz); the real audio engine, bound to each
-//      page's bus and fed its frames, plays the contact's crunch and the cab's knock and asks for the crew's
-//      friendly_ram line, never 'rammed' and no damage sound (the shell, module, crew, fire and destruction cues);
+//   3. the listeners, followed on each page's recorded bus: tank:ram has one in src/ (audio/audioEngine.ts onTankRam)
+//      and tank:impact two (audioEngine.ts onTankImpact, pad/padCues.ts). The real audio engine, bound to each page's bus
+//      and fed its frames, plays the contact's crunch and the cab's knock and asks for the crew's friendly_ram line, never
+//      'rammed' and no damage sound (the shell, module, crew, fire and destruction cues). The paired phone's cue rule
+//      (padCueOf, run on every recorded PAD_CUE_EVENTS event for the page's own hull, as pad/padReceiver.ts runs it)
+//      buzzes no 'hurt', 'glance', 'module', 'burning', 'dead' or 'kill' for it;
 //   4. the negative control: the same contact against a hostile on each driver is priced (hit points lost) and the crew
 //      calls 'rammed', so the receipt's checks see a ram's damage when there is one.
 // Passes on f60d0aa200 too: no listener shows a teammate ram as damage there (the session's direction: gate a listener
 // only if one does). The checks bite: pricing teammates (impact.ts resolveRamPairDamage's team gate dropped) fails case 1
 // at 'the report prices nothing', and the crew calling a teammate's shove 'rammed' (audioEngine.ts onTankRam's team check
-// dropped) fails it at the friendly_ram line. Run: node src/sim/teammateRam.selftest.mjs
+// dropped) fails it at the friendly_ram line.
+// MANUAL tier (test:heavy -- sims; round 5 S2, 2026-11-06): the battle on Verdant and the room cost about 10 s of user
+// CPU, past the default tier's few seconds. Its default-tier half, src/sim/teammateRamListeners.selftest.mjs, holds the
+// listener census (a new listener of either event fails there) and the phone's cue for a contact; the sim halves are
+// ramModuleLaw.selftest's. Run: node src/sim/teammateRam.selftest.mjs
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
-import { readFileSync, readdirSync } from 'node:fs';
 
 // the page's saved loadouts: none
 globalThis.localStorage = { getItem: () => null, setItem() {}, removeItem() {} };
@@ -47,6 +52,7 @@ const { Group, Vector3 } = await import('three');
 const { createFakeContext, fakeBuffer } = await import('../audio/fakeAudioContext.test-support.mjs');
 const { createAudio } = await import('../audio/audioEngine.ts');
 const { VOICE_LINES } = await import('../audio/voiceLines.ts');
+const { PAD_CUE_EVENTS, padCueOf } = await import('../pad/padCues.ts');
 const { ensureAuthorityFleet } = await import('../vehicles/authorityFleet.ts');
 const { encodeAimIntent } = await import('./aimIntent.ts');
 const { applyPlayerInput } = await import('./playerInputStage.ts');
@@ -121,6 +127,11 @@ const DAMAGE_LINES = new Set([...Object.entries(VOICE_LINES).filter(([, meta]) =
 const CONTACT_SFX = new Set(['ram_light', 'ram_heavy', 'hit_metal', 'nonpen_interior']);
 /** The cues the engine plays for damage (a round's hit or penetration, a module or crew loss, a fire, a destruction). */
 const DAMAGE_SFX = /hit|pen|ricochet|break|module|crew|fire|burn|explo|cookoff|kill|destroy|alarm|heartbeat/;
+/** The paired phone's damage buzzes (pad/padCues.ts): a teammate ram makes none of them. */
+const DAMAGE_PAD_CUES = new Set(['hurt', 'glance', 'module', 'burning', 'dead', 'kill', 'hit', 'deflect']);
+/** What the paired phone of `ownId` feels from a recorded bus: padCueOf on every cue event, as padReceiver.ts runs it. */
+const padCuesOf = (events, ownId) => events.filter((event) => PAD_CUE_EVENTS.includes(event.type))
+  .map((event) => padCueOf(event.type, event.payload, { id: ownId, player: true })?.c).filter(Boolean);
 
 // ---- 1. the solo step ----------------------------------------------------------------------------------------------
 const world = createDedicatedWorldCollision(MAP);
@@ -210,6 +221,10 @@ async function soloRam(struckTeam) {
   assert.ok(mate.heard.say.includes('friendly_ram'), `the crew's friendly_ram line is asked for (${mate.heard.say})`);
   assert.deepEqual(mate.heard.say.filter((id) => DAMAGE_LINES.has(id)), [], 'the crew calls no damage, no ram by a foe, no friendly fire');
   assert.ok(mate.traumas.some((amount) => amount > 0), 'the cab still feels the shove (the camera jolt)');
+  const soloPad = padCuesOf(mate.events, mate.own.id);
+  assert.ok(soloPad.includes('impact'), `the solo page's phone feels the contact (${soloPad})`);
+  assert.deepEqual(soloPad.filter((cue) => DAMAGE_PAD_CUES.has(cue)), [], `the solo page's phone buzzes no damage (${soloPad})`);
+  console.log(`teammateRam: solo, the phone's cues ${[...new Set(soloPad)]} (${soloPad.length})`);
 
   // the negative control: the same contact against a hostile is priced and called
   const foe = await soloRam('enemy');
@@ -363,6 +378,9 @@ async function onlineRam(mateTeam) {
   assert.ok(room.heard.sfx.every((id) => CONTACT_SFX.has(id) || !DAMAGE_SFX.test(id)), `online: the page sounds the contact, no damage cue (${room.heard.sfx})`);
   assert.ok(room.heard.say.includes('friendly_ram'), `online: the crew's friendly_ram line is asked for (${room.heard.say})`);
   assert.deepEqual(room.heard.say.filter((id) => DAMAGE_LINES.has(id)), [], 'online: the crew calls no damage, no ram by a foe, no friendly fire');
+  const onlinePad = padCuesOf(room.events, 'me');
+  assert.deepEqual(onlinePad.filter((cue) => DAMAGE_PAD_CUES.has(cue)), [], `online: the page's phone buzzes no damage (${onlinePad})`);
+  console.log(`teammateRam: online, the phone's cues ${[...new Set(onlinePad)]} (${onlinePad.length})`);
 
   const hostile = await onlineRam('bravo');
   const priced = hostile.wire.filter((event) => event.kind === 'tank_ram').map((event) => event.payload);
@@ -372,21 +390,7 @@ async function onlineRam(mateTeam) {
   console.log(`teammateRam: online control, a hostile ram priced ${JSON.stringify(priced.map((ram) => [Math.round(ram.damageA), Math.round(ram.damageB)]))}, crew ${hostile.heard.say}`);
 }
 
-// ---- 3. the page's listeners of the two events a teammate ram raises -----------------------------------------------
-{
-  const srcRoot = new URL('../', import.meta.url);
-  const files = readdirSync(srcRoot, { recursive: true }).map(String)
-    .filter((file) => file.endsWith('.ts') && !/\.selftest\.|\.test-support\./.test(file));
-  const listenersOf = (name) => files.filter((file) => readFileSync(new URL(file, srcRoot), 'utf8').split('\n').some((line) => {
-    const text = line.trim();
-    return text.includes(`'${name}'`) && !text.startsWith('//') && !text.startsWith('*') && !new RegExp(`emit\\(\\s*'${name}'`).test(text);
-  })).sort();
-  assert.deepEqual(listenersOf('tank:ram'), ['audio/audioEngine.ts'],
-    'tank:ram has one listener on the page, the audio engine\'s onTankRam (the crunch, the cab\'s knock, the crew\'s call): any new one is checked here');
-  assert.deepEqual(listenersOf('tank:impact'), ['audio/audioEngine.ts', 'pad/padCues.ts'],
-    'tank:impact has two, the audio engine\'s thud and the paired phone\'s impact buzz: any new one is checked here');
-}
-
 console.log('teammateRam.selftest: a teammate ram deals nothing to either hull (hit points, modules, crew, fire, tiles) on the solo step and '
-  + 'on the room\'s authority; its report (tank:ram, zero damage) reaches the page\'s bus on both, with no damage event, and its one '
-  + 'listener plays the contact and the friendly_ram call, no damage cue; a hostile\'s ram is priced and called on both');
+  + 'on the room\'s authority; its report (tank:ram, zero damage) reaches the page\'s bus on both, with no damage event; the audio '
+  + 'plays the contact and the friendly_ram call, no damage cue, and the paired phone feels the contact, no damage; a hostile\'s ram '
+  + 'is priced and called on both');

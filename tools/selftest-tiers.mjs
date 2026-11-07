@@ -147,6 +147,10 @@ export const MANUAL_SUITES = Object.freeze({
     'src/sim/droneRecon.selftest.mjs',
     'src/sim/gunshipEscortMaps.selftest.mjs',
     'src/sim/missileRoles.selftest.mjs',
+    // 2026-11-06 round 5 S2: a teammate ram on the solo step and in a room, followed to the page's audio and phone (a battle
+    // on Verdant and a room start, about 10 s of user CPU); its listener census and the phone's cue stay default
+    // (src/sim/teammateRamListeners.selftest.mjs), the sim halves are ramModuleLaw.selftest's
+    'src/sim/teammateRam.selftest.mjs',
   ], { hits: true }),
   perf: suite('host-time budgets (tick cost, soaks, heap plateaus, restore timing): they measure the machine as much as the code', [
     'server/collisionRestoreIndex.selftest.mjs',
