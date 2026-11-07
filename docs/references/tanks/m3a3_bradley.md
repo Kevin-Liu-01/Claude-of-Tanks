@@ -425,4 +425,13 @@ the class detector (whole-file width against the body's, read-only); the pristin
   measures the build from body top 3.4098 to roof-fittings top 3.4177, so 3.41 reads 0 %. Gate after it: min 11.9/90 —
   hull 55.3, whole 25.0, turret 11.9, stations 47.1, dims 78.4 (hull length 6.529 against 6.71, 2.7 %; overall 6.565
   against 6.70, 2.0 %), floaters 100; fidelity 88.4 unchanged.
+- The rear rack (Main 2026-11-06: "first check M3A3 photos, with dated sources, for the rear rack's length ... If the photos
+  show our length is right, leave it and name it"): left as built. In the two side-on photographs with the gun forward
+  (Commons Defense.gov 041117-F-2034C-030 and -033, M3A3s of C/1-4 CAV, 2004-11-17) the turret's rear-most point stands
+  1.77 m and 1.66-1.75 m from the hull's rear (pixel ratios against the 6.618 m hull extreme); the build's rear wall
+  stands 1.75 m from it and its 269 bustle box and rack (0.465 m deep) end at 1.28 m. The print's wall stands at 1.44 m and
+  its 0.40 m rack ends at 1.04 m: its turret sits about 0.3 m further aft on its hull than the photographed vehicles, so
+  the 0.37 m in the gate's plan overlay is the print's turret placement (with the width fit's 6 % oversize), not a short
+  rack. Named: the M3A3 print's turret placement, a policy red beside the ring (a) and the right TOW (c). Evidence:
+  `~/cot-lanes/abrams-bradley-268-evidence/research/m3a3_bradley/` (notes.md, sources.md, photos-270/).
 
