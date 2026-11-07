@@ -4,6 +4,6 @@
 import type { InteriorFillRecord } from '../interiorFills.ts';
 
 export const INTERIOR_FILLS: Readonly<Record<string, InteriorFillRecord>> = Object.freeze({
-  "cv9040c": { v: 0.025, o: [-1.7875, 0.295, -3.532], t: [0, 1.78, -0.76], g: [0, 2.185, 0.8], hull: "CwAkAA0ACwAkAA0AgwAkAA0AgwAkAA0A" },
-  "ua_cv9040c": { v: 0.025, o: [-1.7875, 0.295, -3.548121], t: [0, 1.78, -0.76], g: [0, 2.185, 0.8], hull: "DgBAAAkADgBAAAwAgABAAAkAgABAAAwACwA/ACsADQA/ACsAgQA/ACsAgwA/ACsACwA+ACwAIwA+ACwAZAA+ACwAgwA+ACwACwA9AC0AJQA9AC0AYwA9AC0AgwA9AC0ACwA8AC4AJwA8AC4AZgA8AC4AgwA8AC4ADgA7AC8AKQA7AC8AZAA7AC8AgAA7AC8A", turret: "UwBbAFwAVABcAFwA" },
+  "cv9040c": { v: 0.025, o: [-1.805, 0.27, -3.549], t: [0, 1.69, -0.48], g: [0, 2.08, 0.67], turret: "YABeAF8AYABeAGIAYQBeAGIAYQBeAGIAVQBYAHwAVQBYAH0AVQBZAH0AVQBbAH0AVQBbAH4AVQBbAH4A" },
+  "ua_cv9040c": { v: 0.025, o: [-1.805, 0.27, -3.549], t: [0, 1.69, -0.48], g: [0, 2.08, 0.67], hull: "DAA5AAkAHwA5AAoAcAA5AAkAgwA5AAoAIAA5AAoAIAA5AAoAigA3ACAAigA3ACMA", turret: "YABeAF8AYABeAGIAYQBeAGIAYQBeAGIAVQBYAHwAVQBYAH0AVQBZAH0AVQBbAH0AVQBbAH4AVQBbAH4A" },
 });
