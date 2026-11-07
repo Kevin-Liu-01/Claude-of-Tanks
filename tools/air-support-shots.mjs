@@ -201,7 +201,7 @@ async function shootAircraft(page, signal, tag) {
       if (signal.aborted) return;
       // a fresh strike for each shot (the side's air may be full of the bots' own for a while)
       let accepted = null;
-      for (let tries = 0; !accepted && tries < 40 && !signal.aborted; tries++) {
+      for (let tries = 0; !accepted && tries < 120 && !signal.aborted; tries++) {
         accepted = await call(kind);
         if (!accepted) await sleep(1500);
       }
