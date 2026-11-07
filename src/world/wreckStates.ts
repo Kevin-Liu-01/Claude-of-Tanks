@@ -14,9 +14,10 @@
 //   - track_thrown: a track shot off or slipped, the run lying out behind the sprocket, the hull on its bare wheels;
 //   - nose_down: a hull driven or blown into a ditch or crater, its nose in the earth (Golan Heights, 1973);
 //   - half_buried: a hulk the drifting sand, the snow or the mud took over years (Kuwait's and Sinai's desert hulks);
-//   - stripped: a hulk salvaged where it stood — tracks, wheels and fittings taken, the hull down on its belly (the
-//     Afghan and Eritrean tank graveyards);
-//   - overturned: rolled off an embankment or flipped by a mine, lying on its side (Iraq, 2003; Chechnya, 1995);
+//   - stripped: a hulk salvaged where it stood — tracks, wheels and fittings taken, the hull down on its belly and settled
+//     into the ground to its sponsons (the Afghan and Eritrean tank graveyards);
+//   - overturned: flipped by a mine or rolled off an embankment onto its roof, the turret thrown clear beside it, the
+//     running gear in the air (Iraq, 2003; Chechnya, 1995);
 //   - scrap_cut: cut up for scrap where it lay, the turret lifted off and set down, the gun cut away (Ethiopia, Angola).
 //
 // This table is data: no three, no DOM, Node-runnable; the maps' wreck casts (maps/wreckCasts.ts) name these ids.
@@ -32,8 +33,9 @@ export type WreckSite = typeof WRECK_SITES[number];
 
 /** What a hulk's state reads as from across a field (the repeat critic, 11-06: a burnt-out, a track-thrown and a
  *  nose-down hulk at 40-100 m, the map's paint shared, read as one hulk twice): turret on and hull up; turret gone;
- *  sunk to the deck; down on its belly with the running gear gone; on its side. */
-export type WreckLook = 'upright' | 'turretless' | 'sunk' | 'bare' | 'tipped';
+ *  sunk to the deck; down on its belly with the running gear gone; on its roof with its wheels in the air (the round-5
+ *  A/B, 11-07: on its side, seen end-on or belly-on, the critics read it as a crate or a slab on end in 25 lost pairs). */
+export type WreckLook = 'upright' | 'turretless' | 'sunk' | 'bare' | 'inverted';
 /** What the fire, or its absence, left of a hulk's paint (the repeat critics, 11-06: two hulks of different models and
  *  states in one rust read as one hulk twice): soot over everything, decades of oxide, or the camouflage a crew bailed
  *  out of. */
@@ -93,14 +95,17 @@ export const WRECK_STATE_TABLE: Readonly<Record<WreckState, WreckStateRow>> = Ob
   }),
   stripped: Object.freeze({
     pop: false, removes: Object.freeze({ track: 'both', wheels: true, fittings: true, gun: false } as const),
-    pitch: LEVEL, roll: LEVEL, sink: LEVEL, turretSetDown: false, age: 0.75,
+    // (the round-5 A/B, 11-07) settled 0.2-0.3 m: on its belly alone the sponsons overhung an empty half-metre gap the
+    // critics read as a hull floating over debris
+    pitch: LEVEL, roll: LEVEL, sink: Object.freeze([0.1, 0.14] as const), turretSetDown: false, age: 0.75,
     // (11-06) and the road verge: a roadside line then has four looks, not three
     sites: Object.freeze(['roadside', 'field_edge', 'town_square'] as const), look: 'bare', finish: 'rusted',
   }),
   overturned: Object.freeze({
-    pop: false, removes: NONE, pitch: Object.freeze([-0.06, 0.06] as const), roll: Object.freeze([1.5, 1.72] as const),
-    sink: LEVEL, turretSetDown: false, age: 0.4,
-    sites: Object.freeze(['field_edge', 'roadside'] as const), look: 'tipped', finish: 'charred',
+    // on its roof, listing a few degrees, the turret thrown clear and set down beside it (wrecks.ts poseWreckState)
+    pop: false, removes: NONE, pitch: Object.freeze([-0.06, 0.06] as const), roll: Object.freeze([3.0, 3.1] as const),
+    sink: LEVEL, turretSetDown: true, age: 0.4,
+    sites: Object.freeze(['field_edge', 'roadside'] as const), look: 'inverted', finish: 'charred',
   }),
   scrap_cut: Object.freeze({
     pop: true, removes: Object.freeze({ track: 'both', wheels: false, fittings: true, gun: true } as const),

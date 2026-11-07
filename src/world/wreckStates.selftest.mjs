@@ -1,7 +1,7 @@
 // wreckStates (wrecks-270, 2026-11-05): one real donor baked in every damage state (wreckStates.ts) through the
 // production bake (wrecks.ts poseWreckState), and each state checked for what it must show: a thrown track's run gone
-// from one side, a ditched nose under the ground line, a half-buried hull, a stripped hull down on its belly, a hulk on
-// its side, a cut-up hulk's turret set down beside it; the collision solids posed with the geometry, and every bake
+// from one side, a ditched nose under the ground line, a half-buried hull, a stripped hull settled on its belly, a hulk
+// on its roof with its turret thrown clear, a cut-up hulk's turret set down beside it; the collision solids posed with the geometry, and every bake
 // deterministic.
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
@@ -51,7 +51,12 @@ assert.ok(bakes.half_buried.buried > 0.8 && bakes.half_buried.h - bakes.half_bur
   `a half-buried hull stands low (${bakes.half_buried.buried?.toFixed(2)} m under, ${(bakes.half_buried.h - bakes.half_buried.buried).toFixed(2)} of ${base.h.toFixed(2)} m showing)`);
 assert.ok(bakes.stripped.tris < base.tris * 0.95, `a stripped hull lost its running gear (${bakes.stripped.tris} < ${base.tris})`);
 assert.ok(bakes.stripped.h < base.h, `and stands lower, down on its belly (${bakes.stripped.h.toFixed(2)} < ${base.h.toFixed(2)})`);
-assert.ok(Math.abs(bakes.overturned.hx - base.hx) > 0.3, `on its side, its plan changes (${bakes.overturned.hx.toFixed(2)} vs ${base.hx.toFixed(2)})`);
+assert.ok(bakes.stripped.buried > 0.15, `settled into the ground to its sponsons (${bakes.stripped.buried?.toFixed(2)} m)`);
+// (the round-5 A/B, 11-07: on its side the critics read a crate or a slab on end) on its roof, its turret thrown clear: the
+// plan widens by the turret beside it, and the hull alone stands lower than the upright hulk's hull and turret
+assert.ok(bakes.overturned.hx > base.hx + 0.8, `on its roof, its turret lies beside it (${bakes.overturned.hx.toFixed(2)} vs ${base.hx.toFixed(2)})`);
+const showing = (b) => b.h - (b.buried ?? 0);
+assert.ok(showing(bakes.overturned) < showing(base), `and stands lower than an upright hulk (${showing(bakes.overturned).toFixed(2)} < ${showing(base).toFixed(2)} m)`);
 assert.ok(bakes.scrap_cut.hx > base.hx + 0.8, `a cut-up hulk's turret is set down beside it (${bakes.scrap_cut.hx.toFixed(2)} vs ${base.hx.toFixed(2)})`);
 for (const b of Object.values(bakes)) { b.geo.dispose(); b.shadowGeo?.dispose(); }
 

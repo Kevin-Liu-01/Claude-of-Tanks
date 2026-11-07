@@ -666,8 +666,8 @@ function wreckBakeResult(
   // the ground contact: the plan of the vertices within 12 cm of the base (the track runs), for the seat (seatHulk)
   const pos = merged.attributes.position.array;
   let cx0 = Infinity, cx1 = -Infinity, cz0 = Infinity, cz1 = -Infinity;
-  // (wrecks-270) a hulk on its side rests on its fender's and turret's edges: when the 12 cm band holds no plan, it is
-  // read 40 cm deep
+  // (wrecks-270) a hulk on its roof rests on its deck's high points and its listing edge: when the 12 cm band holds no
+  // plan, it is read 40 cm deep
   for (const band of [0.12, 0.4]) {
     cx0 = Infinity; cx1 = -Infinity; cz0 = Infinity; cz1 = -Infinity;
     for (let i = 0; i < pos.length; i += 3) {
@@ -758,12 +758,29 @@ function rootFrameBox(object: THREE.Object3D, rootInv: THREE.Matrix4): THREE.Box
   return box;
 }
 
+/** `object`'s lowest vertex in the root frame, `skip`'s subtree left out (a listed hull's turned boxes reach 0.3-0.45 m
+ *  under its steel). */
+function rootFrameLowest(object: THREE.Object3D, rootInv: THREE.Matrix4, skip: THREE.Object3D | null = null): number {
+  const m = new THREE.Matrix4(), v = new THREE.Vector3();
+  let low = Infinity;
+  object.updateMatrixWorld(true);
+  object.traverse((node) => {
+    if (!(node instanceof THREE.Mesh) || node instanceof THREE.InstancedMesh || !chainVisible(node, object)) return;
+    for (let up: THREE.Object3D | null = node; skip && up && up !== object; up = up.parent) if (up === skip) return;
+    const pos = node.geometry?.attributes?.position;
+    if (!pos) return;
+    m.multiplyMatrices(rootInv, node.matrixWorld);
+    for (let i = 0; i < pos.count; i++) low = Math.min(low, v.fromBufferAttribute(pos, i).applyMatrix4(m).y);
+  });
+  return low;
+}
+
 const pick = (range: readonly [number, number], rng: () => number): number => range[0] + (range[1] - range[0]) * rng();
 
 /**
  * (wrecks-270) A damage state's moves on the settled wreck's hierarchy, before the bake reads it (wreckStates.ts): the
- * tracks, wheels, fittings or gun taken off; the turret lifted off and set down beside the hull; the whole hulk pitched
- * nose-down about its tail, rolled onto its side about a track's outer edge, or sunk. Returns the ground line in the
+ * tracks, wheels, fittings or gun taken off; the turret lifted off and set down beside the hull; the whole hull pitched
+ * nose-down about its tail, rolled onto its roof about its middle (a set-down turret stays on its ground), or sunk. Returns the ground line in the
  * root frame when the state sinks the hulk into it (the bake's base), else null (the base is its lowest point), and the
  * side a thrown track came off (0 for none). Its
  * own stream from the seed: the bake's other draws are the same in every state.
@@ -811,27 +828,37 @@ function poseWreckState(root: THREE.Object3D, state: WreckStateRow, seed: number
   }
   const pitch = pick(state.pitch, rng), rollSide = dropSide || (rng() < 0.5 ? -1 : 1), roll = pick(state.roll, rng);
   const sink = pick(state.sink, rng) * (hullBox.max.y - hullBox.min.y);
+  // what a sunk hulk settles from: its lowest steel left once the running gear is taken (a stripped hull's belly)
+  const bed = sink > 0 ? rootFrameBox(hull, rootInv).min.y : ground0;
   const onSide = Math.abs(roll) > 0.5;
   if (pitch || roll || sink) {
-    // the pivot: a ditched nose turns about the tail's lower edge; a hulk on its side about its middle (then laid on its
-    // flank); the rest about the hull's middle on the ground
+    // the pivot: a ditched nose turns about the tail's lower edge; a hulk on its roof about its middle (then laid on its
+    // deck); the rest about the hull's middle on the ground
     const pivot = pitch > 0.1 ? new THREE.Vector3(0, ground0, hullBox.min.z)
       : new THREE.Vector3((hullBox.min.x + hullBox.max.x) / 2, onSide ? (hullBox.min.y + hullBox.max.y) / 2 : ground0,
         (hullBox.min.z + hullBox.max.z) / 2);
     const turn = new THREE.Matrix4().makeTranslation(pivot.x, pivot.y, pivot.z)
       .multiply(new THREE.Matrix4().makeRotationFromEuler(new THREE.Euler(pitch, 0, -rollSide * Math.abs(roll), 'XYZ')))
       .multiply(new THREE.Matrix4().makeTranslation(-pivot.x, -pivot.y, -pivot.z));
-    for (const child of [...root.children]) child.applyMatrix4(turn);
+    for (const child of [...root.children]) if (!(state.turretSetDown && child === turret)) child.applyMatrix4(turn);
+    // the hull's box below reads its world matrix, which hangs under the turned children
+    root.updateMatrixWorld(true);
   }
-  // a hulk on its side or cut up keeps its plan centred on its origin (the seat tests its footprint about it)
+  // (the round-5 A/B, 11-07) a turret thrown clear of a hull on its roof stands on the ground the rolled hull's deck
+  // rests on, on its own steel: its drooped gun digs into the earth
+  if (onSide && state.turretSetDown && turret) {
+    const gun = root.getObjectByName('rig_gun');
+    turret.position.y += rootFrameLowest(hull, rootInv) - rootFrameLowest(turret, rootInv, gun ?? null) - 0.04;
+  }
+  // a hulk on its roof or cut up keeps its plan centred on its origin (the seat tests its footprint about it)
   if (onSide || state.turretSetDown) {
     const all = rootFrameBox(root, rootInv);
     const shift = new THREE.Matrix4().makeTranslation(-(all.min.x + all.max.x) / 2, 0, -(all.min.z + all.max.z) / 2);
     for (const child of [...root.children]) child.applyMatrix4(shift);
   }
-  // a ditched nose and a sunk hulk keep the ground where it was (the tail's edge, the drift's top); one on its side
-  // rests on its hull's flank (the gun digs in); the rest on their lowest point
-  const ground = pitch > 0.1 ? ground0 : sink > 0 ? ground0 + sink : onSide ? rootFrameBox(hull, rootInv).min.y : null;
+  // a ditched nose and a sunk hulk keep the ground where it was (the tail's edge, the drift's top); one on its roof
+  // rests on its deck; the rest on their lowest point
+  const ground = pitch > 0.1 ? ground0 : sink > 0 ? bed + sink : onSide ? rootFrameLowest(hull, rootInv) : null;
   return { ground, thrownSide: dropSide };
 }
 
