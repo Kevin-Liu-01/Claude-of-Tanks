@@ -264,12 +264,27 @@ export const BUNDLE_BUDGETS = Object.freeze({
   //   matchRuleset +103, camoPolicy +93 (the Kaitaku coat, the AA paints), crewVoice +68 (da, pt-BR, en-AU, af),
   //   roleProfiles +66; materials -185. Home +9 B, docs +11 B, 404 -5 B stay inside their slack; pad's 14th request
   //   (padProtocol) is phone-feel-269's own pin in tools/bundle-budget.json.
-  game: { brotliBytes: 1176116, requests: 127, entryBrotliBytes: 249894 },
-  cn: { brotliBytes: 1220822, requests: 128, entryBrotliBytes: 249894 },
-  gallery: { brotliBytes: 744685, requests: 73 },
-  home: { brotliBytes: 28617, requests: 8 },
-  docs: { brotliBytes: 36911, requests: 12 },
-  notFound: { brotliBytes: 18355, requests: 7 },
+  // 2026-11-07 (the implicit state machine fixes' integration, round five merge, item U3; Kevin: "id like you to resolve
+  //   all of them"; the round's brief re-pins the byte rows alone, with attribution against origin/main's
+  //   build): re-pinned at item/sm-fix5-merge 809bb9cb28's build (Node 24.22.1, vite 8.3.5, rolldown 1.2.15) over main
+  //   baff0f6924 built beside it on the same node_modules (game 1,176,072 B, entry 249,403 B, within the 268 pins).
+  //   Requests unchanged at 127 / 128 / 73 / 8 / 12 / 7, and every page's boot chunk names equal main's. Game +14,543 B
+  //   brotli, entry +6,797 B, cn +14,564 B, Gallery +2,883 B, home +144 B, docs +152 B, 404 +210 B: the audit's owners
+  //   from rounds one to five (app lifecycle, battle entry and Garage return, input and pointer lock, the result and
+  //   death-flow runtimes, holds, battle mode). By boot chunk, brotli [raw]: main +6,797 [+22,103] (the entry), playMode
+  //   +2,479 [+7,398] (round four's grouped boot leaves: app lifecycle, battle input owner, battle mode, kill-cam claim,
+  //   pre-battle countdown), turretSeatPlane +1,310 [+3,259], tankFactoryCore +783 [+2,899], garageStage +649 [+1,632],
+  //   collision +433 [+1,229], vehicleActions +431 [+1,387], materials +364 [+1,309], terrainDeformation +212, brandMark
+  //   +206, programWarm +178 (named holds), quality +131, i18n +121 (the chunk every page loads: with publicPages +18 and
+  //   notFound +84 it is the whole of home's, docs' and 404's growth), the rest under 100 B each. Round four's head
+  //   f60d0aa200 read game 1,190,261 and entry 255,828: round five adds game +354 B and entry +372 B (main.js carries
+  //   flow's Q2 pointer-lock hold, soloBattleEntryRuntime.ts, and input.ts's withdrawn request), Gallery -77 B (noise).
+  game: { brotliBytes: 1190615, requests: 127, entryBrotliBytes: 256200 },
+  cn: { brotliBytes: 1235342, requests: 128, entryBrotliBytes: 256200 },
+  gallery: { brotliBytes: 747568, requests: 73 },
+  home: { brotliBytes: 28778, requests: 8 },
+  docs: { brotliBytes: 37139, requests: 12 },
+  notFound: { brotliBytes: 18679, requests: 7 },
 });
 /** Byte noise between two builds of the same code (chunk hashes in import specifiers); requests have none. */
 const BUNDLE_SLACK = { brotliBytes: 160, entryBrotliBytes: 96, requests: 0 };
