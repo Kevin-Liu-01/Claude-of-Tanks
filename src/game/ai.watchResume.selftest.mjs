@@ -54,24 +54,33 @@
 // scene now gives both, as the match does, and a park off a 1 m box (the correctness review's example) restarts.
 // Cost (round 5, U6; the default tier): [11] stepped three fixed 60 s windows after Leave, and now runs each only until
 // what it reads is settled (a verdict, the road planned again, the route's end), and [12]'s window is a whole dwell and a
-// margin. Round 6 (V4): the file read 7.8-10 s of user CPU (round three's 5.9 s). The checks that refine a rule this file
-// keeps a default check of run in src/game/ai.watchResumeLevels.selftest.mjs (MANUAL bots): [7]'s 30 s park off the way
-// and its toggles, [11] whole ([13]'s deck-side hand-backs here fail without its walk), and [12]'s record hand-backs but
-// the 1 m box (which fails at f60d0aa200, at a192a5a9a3's slope-law step and without the record walk). The fixtures they
-// share are ai.watchResume.test-support.mjs, on the authority's fleet (the two specs' combat anatomy) for the player's
-// fleet factory; [5], [6] and the search scenes' waits no longer read the controller's snapshot (debugInfo, the costliest
-// call) on ticks whose answer nothing reads. The process's own user CPU, alternating runs at load 115-172: b03868e697's
-// file 7.6-7.7 s, this file 4.9-5.0 s, ai.watchResumeLevels 4.4-4.8 s (the import about 1.5 s of each). Every check
-// still fails on its mutant in one tier or the other (round 6 bots NOTES).
+// margin. Round 6 (V4): the file read 7.8-10 s of user CPU (round three's 5.9 s). Each rule keeps a case here, and the
+// cases that repeat one at another length, height or branch run in src/game/ai.watchResumeLevels.selftest.mjs (MANUAL
+// bots): [7]'s 30 s park off the way and its toggles ([8]'s toggles pin a short Take and Leave of a moving bot here),
+// [11]'s drop over the gun's band and its toggle on the crest, and [12]'s 2.2 m rock (off and onto), its 1 m box read from
+// the last obstacle list and its hull in the air. Fix-up r1 (both reviews): the split had left two rules no case here,
+// [11]'s slope walk ([13] pins only a deck's side) and [12]'s record walk and step; [11]'s drop under the band and [12]'s
+// off-box, edge, step, rock-to-rock and drawn-top hand-backs came back, and a hand-back under an overpass pins the rule
+// that two ends on their ground are one level, which no case decided. The fixtures the two files share are
+// ai.watchResume.test-support.mjs, on the authority's fleet (the two specs' combat anatomy) for the player's fleet
+// factory, with one navigation grid for every deck scene; [5], [6] and the search scenes' waits no longer read the
+// controller's snapshot (debugInfo, the costliest call) on ticks whose answer nothing reads. The process's own user CPU,
+// three alternating rounds at load 52-79: b03868e697's file 7.6-8.2 s; this file 5.8-6.1 s against 7f71f2f5c3's
+// 5.0-5.2 s, [11] 0.3-0.4 s and [12]'s eleven hand-backs 0.9-1.0 s of it; ai.watchResumeLevels 3.4-3.5 s (7f71f2f5c3's
+// 4.7-4.8 s); the import about 1.5 s of each. Every mutant of the round's matrix but one fails this file; that one (the
+// obstacle list's branch, a fixture's path: every solo bot has the match's query) fails ai.watchResumeLevels (round 6
+// bots NOTES, fix-up r1).
 import { getSpec } from '../vehicles/specs.ts';
 import { resetTankVerticalState, updateTank, SIM_DT } from '../sim/movement.ts';
 import { CLASSIC_BOT_DOCTRINE } from '../sim/matchRuleset.ts';
 import * as detMath from '../sim/detMath.ts';
 import { createHullSupportPose, createStructureSupportField, hullSupportPose } from '../sim/structureSupport.ts';
+import { setConvexTopShape } from '../world/collision.ts';
 import { createAI, mulberry32 } from './ai.ts';
 import { leaveWatchSeat, openWatchSeats, prepareWatchSeat, takeWatchSeat } from './watchSeat.ts';
 import {
-  beside, coasted, dwellHandBack, dwellLabel, levelRouteHandBack, levelRouteLabel, restarted, setupOk, tank, takeAndLeave, where,
+  beside, coasted, crestHandBack, crestLabel, dwellHandBack, dwellLabel, kept, levelRouteHandBack, levelRouteLabel, restarted,
+  setupOk, tank, takeAndLeave, where,
 } from './ai.watchResume.test-support.mjs';
 
 let failures = 0;
@@ -372,12 +381,10 @@ console.log('[7] a level route ends with no verdict at a hand-back that finds th
   ok(held.routing && held.before.routeOwner === 'level', `the floor bot drives a level route to the deck (owner ${held.before.routeOwner})`);
   ok(held.after.unbearableVerdicts === held.before.unbearableVerdicts && held.back.levelRouting && held.oldRouteTicks > 400,
     `a 200 s park with nobody at the keys: the route runs on, its deadline moved by the park (${coasted(held)}; ${label(held)}; ${(held.oldRouteTicks * SIM_DT).toFixed(1)} s driven after)`);
-  for (const parkS of [200]) {
-    const far = await levelRouteHandBack({ parkS, far: true });
-    ok(far.after.unbearableVerdicts === far.before.unbearableVerdicts && !far.back.levelRouting && far.back.routeOwner !== 'level'
-      && far.oldRouteTicks === 0,
-      `a ${parkS} s park in which the watcher drove 270 m off: the route ends with no verdict and is not driven on from there (${label(far)}; ${(far.oldRouteTicks * SIM_DT).toFixed(1)} s of it after)`);
-  }
+  const far = await levelRouteHandBack({ parkS: 200, far: true });
+  ok(far.after.unbearableVerdicts === far.before.unbearableVerdicts && !far.back.levelRouting && far.back.routeOwner !== 'level'
+    && far.oldRouteTicks === 0,
+    `a 200 s park in which the watcher drove 270 m off: the route ends with no verdict and is not driven on from there (${label(far)}; ${(far.oldRouteTicks * SIM_DT).toFixed(1)} s of it after)`);
   const revived = await levelRouteHandBack({ parkS: 200, revive: true });
   ok(revived.after.unbearableVerdicts === revived.before.unbearableVerdicts && !revived.back.levelRouting
     && revived.back.routeOwner !== 'level' && revived.oldRouteTicks === 0,
@@ -405,7 +412,8 @@ function searchScene(hidden = true, planRoute = undefined) {
       t += SIM_DT;
       ctl.update(SIM_DT, t);
       updateTank(bot, field, SIM_DT, null);
-      if (until && until(ctl.debugInfo())) return true;
+      // a wait that reads only the hull (no parameter) takes no snapshot: debugInfo only reads (round 6 V4, fix-up r1)
+      if (until && until(until.length ? ctl.debugInfo() : null)) return true;
     }
     return false;
   };
@@ -419,13 +427,17 @@ function searchScene(hidden = true, planRoute = undefined) {
 }
 /**
  * `run(40, until)` for a scene's wait for its search to start (25 s of silence, the doctrine's), reading the snapshot
- * (debugInfo) only from 20 s on: the same tick ends it, and a search begun in the first 20 s fails the setup (round 6 V4:
- * the snapshot each tick was the receipt's costliest call).
+ * (debugInfo) only from 20 s on (round 6 V4: the snapshot each tick was the receipt's costliest call). Every wait's
+ * condition needs a search under way, and a search is under way only after a leg begins (startSearchLeg, the one writer of
+ * `searching`, counts it in searchLegs, which never falls); so with no leg begun by 20 s the condition held on no tick
+ * before, and the same tick ends both waits. A leg begun in the first 20 s, still under way or not, fails the setup
+ * (fix-up r1, both reviews: the guard read the condition at 20 s alone).
  */
 function searchStart(ctl, run) {
   return (until) => {
     run(20);
-    if (until(ctl.debugInfo())) throw new Error('setup: the search began within 20 s');
+    const at20 = ctl.debugInfo();
+    if (at20.searchLegs !== 0 || at20.searching) throw new Error(`setup: a search leg began within 20 s (legs ${at20.searchLegs})`);
     return run(20, until);
   };
 }
@@ -589,6 +601,29 @@ console.log('[10] a leg that doubles back over its own line keeps its apex: the 
   }
 }
 
+console.log('[11] a level route ends with no verdict when the watcher drives its hull off the road onto the level below, within reach of it');
+// Round 4 (F5): hullOnItsWay measured the hull's way on the ground plan alone, 12 m either side of the route ahead. A
+// watcher who drove the hull off the causeway's crest onto the floor beside it, 11 m from the road and 13 m below it,
+// left the level route held from the wrong level: on 0edd0e1ab5 the follower drove at the crest's side, and its stuck
+// strikes ended the route with the 75 s unbearable verdict (the class round 2 removed). Fix-up r1 (both reviews): the
+// first fix read another level as ELEVATION_LEVEL_M (8 m) above or below, the gun's band, so a drop under it still held
+// the route from below: taken on the crest past z 14 and left on the floor 5.5 m under the road, the verdict came 21.4 s
+// after Leave on ab8a817159 (44.8 s on 0edd0e1ab5). A stretch is the hull's way only where the hull can drive to it: no
+// step of the ground from the hull to the stretch's nearest point (every RESUME_STEP_M, 1.5 m) is steeper than its hull
+// can climb or hold (terrainTravelCostFactor, the slope law the planner and the local router read). Round 6 (V4, fix-up
+// r1): this drop is the default check of that walk ([13] pins only a deck's side: a way test that keeps the side and
+// drops the slope walk held this route); the drop over the band and a toggle on the crest run in ai.watchResumeLevels.
+{
+  const dropped = await crestHandBack({ parkS: 0.5, offTheSide: true, takeZ: 14 });
+  ok(dropped.routing && dropped.onCrest && dropped.before.routeOwner === 'level' && dropped.dropM > 4 && dropped.dropM < 8,
+    `setup: the floor bot drives its level route up the causeway's crest past z 14 (owner ${dropped.before.routeOwner}); the watcher leaves it ${dropped.dropM.toFixed(1)} m below the road`);
+  ok(!dropped.back.levelRouting && dropped.back.routeOwner !== 'level'
+    && dropped.after.unbearableVerdicts === dropped.before.unbearableVerdicts,
+    `a 0.5 s Take and Leave in which the watcher drove off the crest onto the floor 11 m beside the road, ${dropped.dropM.toFixed(1)} m below it: the route ends at the hand-back with no verdict, then or before the road is planned again (${crestLabel(dropped)})`);
+  ok(dropped.nextRouteAfterS !== null && dropped.nextRouteAfterS >= 6 - 0.05,
+    `and the lock plans the road again from the floor (${dropped.nextRouteAfterS === null ? 'never' : `${dropped.nextRouteAfterS.toFixed(2)} s`} after the hand-back; ELEVATION_LOCK_S 6 s)`);
+}
+
 console.log('[12] the elevation lock\'s dwell counts the bot\'s own ticks: it holds through a park that left the hull where it was taken and restarts after a drive off');
 // Round 4 (E8): round 3 kept the dwell through every park, a watcher's drive off included, with no receipt either way.
 // The dwell counts the bot's own ticks, wherever it drives itself, while its target stays on a level the gun cannot reach
@@ -627,16 +662,63 @@ console.log('[12] the elevation lock\'s dwell counts the bot\'s own ticks: it ho
   // round 5 (U5, the round-four correctness review; fix-up r1, the round's two reviews): the walk reads a record's top as
   // the ground under it at both ends, so a park that moved the hull onto, off or between records read only the ground
   // between. The stood-put test now reads each end's floor as the movement carries the hull (hullOnParkLevel): onto a
-  // flat top's vertical side it steps no more than HULL_STEP_UP_M (0.55 m: the structure support's floor rule), up a
-  // drawn top by its slope law, and off any top. Round 6 (V4): the record rule's other hand-backs (off and onto a 2.2 m
-  // rock, its edge, off a 1 m box, a 0.5 m step, rock to rock, a drawn top, the air, a fixture without the obstacle query)
-  // run in ai.watchResumeLevels (MANUAL bots). This one fails at f60d0aa200 and at a192a5a9a3 (2.9 -> 2.9 s, decided
-  // 3.15 s after Leave: a 1 m side read as one 1.5 m slope-law step), and reads the records through the match's obstacle
-  // query (round 6 V3).
+  // flat top's vertical side it steps no more than HULL_STEP_UP_M (0.55 m: the structure support's floor rule; the
+  // round's correctness review drove an M1A1 onto 0.55 m and under 0.6-2.2 m, a wall in game), up a drawn top (a stone's
+  // surface) by its slope law, and off any top; each end's floor is read under its contact rect where its root is past a
+  // record's edge, and the walk between them runs both ways record by record. On f60d0aa200 each restart below kept 2.9 s
+  // of dwell and the lock decided 3.15 s after Leave; round 5's first fix (a192a5a9a3) read the ride difference as one
+  // 1.5 m slope-law step, which kept the 1 m boxes and the rock-to-rock park and restarted the drawn top and the hull in
+  // the air (ai.watchResumeLevels). The records are read through the match's obstacle query (round 6 V3). Round 6 (V4,
+  // fix-up r1): a case of each part of the rule runs here; the same parts at another height or branch (a 2.2 m rock, off
+  // and onto; the 1 m box from the last obstacle list) and a hull in the air run in ai.watchResumeLevels (MANUAL bots).
   const ontoBox = await dwellHandBack((at) => [at[0], 22], [-16, 31], beside(1), { onY: null, awayY: 1 });
   ok(setupOk(ontoBox, 0, 1), `setup: the floor bot dwells on the ground; the watcher leaves it on a 1 m box's top (${where(ontoBox)})`);
   ok(restarted(ontoBox),
     `a 0.5 s park that left the hull on a 1 m box, whose side is past the 0.55 m step it mounts: the dwell restarts (${label(ontoBox)})`);
+  // round 6 (V3; the correctness review's example for (a)): taken on a 1 m box's top, left on the ground beside it (the
+  // hull drives off the box, never back up its side: the walk back to the spot it was taken on); kept at f60d0aa200 and
+  // at a192a5a9a3 (1 m over one 1.5 m step: 0.67)
+  const LOW = Object.freeze({ min: [-10, 0, 18], max: [10, 1, 38] });
+  const offBox = await dwellHandBack((at) => [-13, at[2]], null, LOW);
+  ok(setupOk(offBox, 1, 0), `setup: the floor bot dwells on a 1 m box's top; the watcher leaves it on the ground beside the box (${where(offBox)})`);
+  ok(restarted(offBox),
+    `a 0.5 s park that left the hull on the ground below the 1 m box it was taken on: the dwell restarts (${label(offBox)})`);
+  // fix-up r1: a hull the watcher pulls up on a rock's edge, its root 0.3 m past it and its rear half on the top (the
+  // floor under its root is the ground; under its contact rect, the rock)
+  const ontoEdge = await dwellHandBack((at) => [at[0], 26.3], [-16, 31], beside(2.2), { onY: null, awayY: 2.2 });
+  ok(setupOk(ontoEdge, 0, 2.2), `setup: the floor bot dwells on the ground; the watcher leaves it on a 2.2 m rock's edge, its root 0.3 m past it (${where(ontoEdge)})`);
+  ok(restarted(ontoEdge),
+    `a 0.5 s park that left the hull on a 2.2 m rock's edge, its root past it: the dwell restarts (${label(ontoEdge)})`);
+  // a step the hull mounts: a record standing 1 m from its foot 0.5 m under the ground, its top 0.5 m over it
+  const ontoStep = await dwellHandBack((at) => [at[0], 22], [-16, 31], beside(0.5, -0.5), { onY: null, awayY: 0.5 });
+  ok(setupOk(ontoStep, 0, 0.5), `setup: the floor bot dwells on the ground; the watcher leaves it on a record's top 0.5 m over the ground (${where(ontoStep)})`);
+  ok(kept(ontoStep), `a 0.5 s park that left the hull on a 0.5 m step it mounts and drives off: the dwell holds (${label(ontoStep)})`);
+  // fix-up r1 (the completeness review, round 5's major): from one 2.2 m rock's top onto another's across 3 m of ground
+  const rockA = Object.freeze({ min: [-40, 0, 27], max: [-10, 2.2, 37] }), rockB = Object.freeze({ min: [-40, 0, 8], max: [-10, 2.2, 24] });
+  const rockToRock = await dwellHandBack((at) => [at[0], 23], [-16, 32], [rockA, rockB], { onY: 2.2, awayY: 2.2 });
+  ok(setupOk(rockToRock, 2.2, 2.2), `setup: the floor bot dwells on one 2.2 m rock's top; the watcher leaves it on another's past 3 m of ground (${where(rockToRock)})`);
+  ok(restarted(rockToRock),
+    `a 0.5 s park from one 2.2 m rock's top onto another's: the dwell restarts (${label(rockToRock)})`);
+  // fix-up r1 (the correctness review, b): a drawn top (a formation's cap) rising 0.4 per metre from its edge at z 26,
+  // which the hull drives up and back down as terrain (the review's probe: up to 3.1 m and back down to the spot)
+  const ramp = setConvexTopShape({ min: [-40, -0.5, 10], max: [-10, 3, 26] }, [-40, 10, -10, 10, -10, 26, -40, 26], [0, 26, 0, -0.4, 0], -0.5, 3);
+  const upRamp = await dwellHandBack((at) => [at[0], 22], [-16, 31], ramp, { onY: null, awayY: 1.6 });
+  ok(setupOk(upRamp, 0, 1.6), `setup: the floor bot dwells on the ground; the watcher leaves it 1.6 m up a drawn top that rises 0.4 per metre (${where(upRamp)})`);
+  ok(kept(upRamp), `a 0.5 s park that left the hull up a drawn top it drives down and back up: the dwell holds (${label(upRamp)})`);
+  // fix-up r1 (the completeness review: two ends on their ground are one level, and that had no case): taken on the
+  // ground, left on the ground 11.5 m to its side under an overpass, a deck 2.6-3.6 m up (over the hull), with the deck's
+  // drawn ramp (0.6 per metre) between the two spots; the walk along the line climbs the ramp onto the deck (without the
+  // shortcut the dwell restarts), but the hull stands on the ground under it, the level of the spot it was taken on
+  const overRamp = setConvexTopShape({ min: [-25.3, -0.5, 27], max: [-18.7, 3.6, 37.4] },
+    [-25.3, 27, -18.7, 27, -18.7, 37.4, -25.3, 37.4], [-18.7, 0, -0.6, 0, 0], -0.5, 3.6);
+  const overDeck = Object.freeze({ min: [-40, 2.6, 27], max: [-25.3, 3.6, 37.4] });
+  const underDeck = await dwellHandBack((at) => [at[0] - 11.5, at[2]], [-16, 31], [overRamp, overDeck], { onY: null });
+  const [leftX, , leftZ] = underDeck.handedBackAt, [takenX] = underDeck.parkedAt;
+  ok(setupOk(underDeck, 0, 0) && takenX > overRamp.max[0] && leftX < overDeck.max[0] && leftX > overDeck.min[0]
+    && leftZ > overDeck.min[2] && leftZ < overDeck.max[2],
+    `setup: the floor bot dwells on the ground east of a ramp; the watcher leaves it on the ground under the deck the ramp climbs to (${where(underDeck)})`);
+  ok(kept(underDeck),
+    `a 0.5 s park that left the hull on the ground under an overpass, its ramp between: the dwell holds (${label(underDeck)})`);
 }
 
 /**
@@ -671,7 +753,8 @@ function bridgeScene() {
       t += SIM_DT;
       ctl.update(SIM_DT, t);
       updateTank(bot, bridged, SIM_DT, null);
-      if (until && until(ctl.debugInfo())) return true;
+      // a wait that reads only the hull (no parameter) takes no snapshot: debugInfo only reads (round 6 V4, fix-up r1)
+      if (until && until(until.length ? ctl.debugInfo() : null)) return true;
     }
     return false;
   };

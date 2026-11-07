@@ -1,11 +1,11 @@
 // ai.watchResume.test-support.mjs: (2026-11-02 audit M7; round 6 V4) the Watch hand-back fixtures that
 // ai.watchResume.selftest (default tier) and ai.watchResumeLevels.selftest (MANUAL bots) share: a bot's hull, Watch
-// mode's own Take and Leave around a stepped park, ai.levels' deck scene, a level route's hand-back on it ([7]) and the
-// elevation lock's dwell over a hand-back ([12]). Importing it registers the fleet and finalizes the combat anatomy of the
-// two specs the receipts drive, as the authority does (vehicles/authorityFleet.ts; round 6 V4: the player's fleet
-// factory cost 0.3-1.3 s more of each receipt's user CPU and left both specs without their anatomy, so the contact
-// rectangle the movement and hullOnParkLevel read was the published dims', not a battle hull's). Not a receipt itself (no
-// .selftest suffix).
+// mode's own Take and Leave around a stepped park, ai.levels' deck scene, a level route's hand-back on it ([7]), the
+// causeway and a hand-back on its crest ([11]) and the elevation lock's dwell over a hand-back ([12]). Importing it
+// registers the fleet and finalizes the combat anatomy of the two specs the receipts drive, as the authority does
+// (vehicles/authorityFleet.ts; round 6 V4: the player's fleet factory cost 0.3-1.3 s more of each receipt's user CPU and
+// left both specs without their anatomy, so the contact rectangle the movement and hullOnParkLevel read was the
+// published dims', not a battle hull's). Not a receipt itself (no .selftest suffix).
 import { Vector3 } from 'three';
 import { ensureAuthorityFleet } from '../vehicles/authorityFleet.ts';
 import { getSpec } from '../vehicles/specs.ts';
@@ -50,6 +50,13 @@ export function takeAndLeave(entity, ctl, clock, between, seconds, away) {
 }
 
 /**
+ * The planner's navigation grid over the deck's field, built by the first deckScene and shared by the rest (round 6 V4,
+ * fix-up r1): every scene's field is the same terrain (the records are the support's and the bot's, never the grid's),
+ * and planBotRoute only reads a grid; one build is 40-50 ms of user CPU.
+ */
+let deckNavigation = null;
+
+/**
  * ai.levels' deck (as ai.routeOwner [3]-[4]): a 25 m cliff north of z 40, a ramp up it at x 100..130; a floor bot under a
  * deck enemy. With `records`, the hull is stepped through the structure support over them, as the match steps every hull,
  * and the bot reads them as its obstacles, as the match gives both the world's records (state.ts, botConstruction.ts):
@@ -84,7 +91,8 @@ export async function deckScene(records = null, { query = true } = {}) {
     return t;
   };
   const { createBotNavigationGrid, planBotRoute } = await import('../sim/botRoutePlanner.ts');
-  const navigation = createBotNavigationGrid({ heightField: deckField });
+  deckNavigation ??= createBotNavigationGrid({ heightField: deckField });
+  const navigation = deckNavigation;
   const routeRng = mulberry32(431);
   const floor = place('floor', 'alpha', 0, 30, 0);
   const deck = place('deck', 'bravo', 0, 55, Math.PI);
@@ -108,7 +116,8 @@ export async function deckScene(records = null, { query = true } = {}) {
       t += SIM_DT;
       ctl.update(SIM_DT, t);
       stepHull();
-      if (until && until(ctl.debugInfo())) return true;
+      // a wait that reads only the hull (no parameter) takes no snapshot: debugInfo only reads (round 6 V4, fix-up r1)
+      if (until && until(until.length ? ctl.debugInfo() : null)) return true;
     }
     return false;
   };
@@ -147,6 +156,94 @@ export async function levelRouteHandBack({ parkS, far = false, revive = false })
 }
 export const levelRouteLabel = (r) => `verdicts ${r.before.unbearableVerdicts} -> ${r.after.unbearableVerdicts}, levelRouting ${r.before.levelRouting} -> ${r.back.levelRouting}, owner ${r.back.routeOwner}, routes ${r.before.levelRoutes} -> ${r.after.levelRoutes}`;
 export const coasted = (r) => `taken at ${r.speedAtTake.toFixed(1)} m/s, coasted ${r.coastM.toFixed(1)} m`;
+
+/**
+ * A causeway (round 4, F5): a 16 m crest with 2 m sides runs up from the floor at z 0 to a 25 m plateau north of z 100,
+ * where the enemy stands; the floor bot below the plateau's cliff takes the road up the crest to it. The planner is a
+ * fixture that lays that road: the navigation grid's 25 m cells cannot see a crest narrower than a cell, and over this
+ * one the real planner sends the floor bot straight up its 2 m side.
+ */
+function causewayScene() {
+  const TOP = 25, HALF = 8, SIDE = 2;
+  const plateau = (z) => Math.max(0, Math.min(TOP, (z - 98) / 4 * TOP));
+  const crest = (x, z) => {
+    if (z < 0 || z > 104) return 0;
+    const top = Math.min(TOP, z / 100 * TOP), ax = Math.abs(x);
+    return ax <= HALF ? top : ax >= HALF + SIDE ? 0 : top * (HALF + SIDE - ax) / SIDE;
+  };
+  const getHeightAt = (x, z) => Math.max(plateau(z), crest(x, z));
+  const getNormalAt = (x, z) => {
+    const e = 0.5, dx = getHeightAt(x + e, z) - getHeightAt(x - e, z), dz = getHeightAt(x, z + e) - getHeightAt(x, z - e);
+    const nx = -dx / (2 * e), nz = -dz / (2 * e), length = Math.hypot(nx, 1, nz);
+    return { x: nx / length, y: 1 / length, z: nz / length };
+  };
+  const causeway = { getHeightAt, getNormalAt, getGroundType: () => 'firm' };
+  const raycast = (origin, dir, maxDist) => {
+    for (let d = 1; d < maxDist; d += 1) {
+      if (origin.y + dir.y * d < getHeightAt(origin.x + dir.x * d, origin.z + dir.z * d)) return { dist: d };
+    }
+    return null;
+  };
+  const place = (id, team, x, z, yaw) => {
+    const t = tank(id, team, x, z, yaw, 'm1a1_abrams_hc');
+    t.state.pos.y = getHeightAt(x, z);
+    return t;
+  };
+  const ROAD = Object.freeze([[25, 0], [0, -10], [0, 25], [0, 50], [0, 75], [0, 100], [30, 112]]);
+  const floor = place('floor', 'alpha', 40, 70, Math.PI);
+  const plateauEnemy = place('plateau', 'bravo', 30, 112, Math.PI);
+  const ctl = createAI(floor, { difficulty: 'normal', rng: mulberry32(73), deps: {
+    heightField: causeway, raycast, getEnemies: () => [plateauEnemy], getAllies: () => [], getObstacles: () => [],
+    spotting: { isSpotted: () => true },
+    planRoute: (_start, _goal, options) => (options?.requireGoalLevel ? ROAD : []),
+  } });
+  let t = 300;
+  const run = (seconds, until) => {
+    for (let i = 0; i < Math.round(seconds / SIM_DT); i++) {
+      t += SIM_DT;
+      ctl.update(SIM_DT, t);
+      updateTank(floor, causeway, SIM_DT, null);
+      // a wait that reads only the hull (no parameter) takes no snapshot: debugInfo only reads (round 6 V4, fix-up r1)
+      if (until && until(until.length ? ctl.debugInfo() : null)) return true;
+    }
+    return false;
+  };
+  const moveTo = (x, z) => { floor.state.pos.x = x; floor.state.pos.z = z; floor.state.pos.y = getHeightAt(x, z); floor.state.speed = 0; };
+  const hull = (seconds) => {
+    for (let i = 0; i < Math.round(seconds / SIM_DT); i++) {
+      t += SIM_DT;
+      updateTank(floor, causeway, SIM_DT, null);
+    }
+  };
+  return { ctl, floor, run, moveTo, hull, clock: () => t, getHeightAt };
+}
+
+/**
+ * [11]'s hand-back on the causeway: the floor bot drives its level route up the crest past `takeZ`; a park of `parkS`
+ * through Watch mode's Take and Leave (`offTheSide`: the watcher drove it off the crest onto the floor 11 m beside the
+ * road), then the bot's own ticks until what the case reads is settled.
+ */
+export async function crestHandBack({ parkS, offTheSide, takeZ = 45 }) {
+  const { ctl, floor, run, moveTo, hull, clock, getHeightAt } = causewayScene();
+  const routing = run(30, (info) => info.levelRouting);
+  const onCrest = run(60, () => Math.abs(floor.state.pos.x) < 3 && floor.state.pos.z > takeZ);
+  const before = ctl.debugInfo();
+  const took = takeAndLeave(floor, ctl, clock, hull, parkS, offTheSide ? () => moveTo(11, floor.state.pos.z + 3) : null);
+  const back = ctl.debugInfo();
+  const dropM = getHeightAt(0, floor.state.pos.z) - floor.state.pos.y;
+  const handBackS = clock();
+  let nextRouteAfterS = null;
+  // round 5 (U6): the window after Leave runs only until what the case reads is settled, at most 60 s: a verdict (a
+  // route held from the wrong level ends in one, 44.8-46.6 s after Leave on 0edd0e1ab5), the road planned again (the
+  // drops), or the route's end (on the crest)
+  run(60, (info) => {
+    if (info.unbearableVerdicts > before.unbearableVerdicts) return true;
+    if (info.levelRoutes > before.levelRoutes) { nextRouteAfterS = clock() - handBackS; return true; }
+    return !offTheSide && !info.levelRouting;
+  });
+  return { routing, onCrest, before, back, after: ctl.debugInfo(), nextRouteAfterS, dropM, windowS: clock() - handBackS, ...took };
+}
+export const crestLabel = (r) => `verdicts ${r.before.unbearableVerdicts} -> ${r.after.unbearableVerdicts}, levelRouting ${r.before.levelRouting} -> ${r.back.levelRouting}, owner ${r.back.routeOwner}, routes ${r.before.levelRoutes} -> ${r.after.levelRoutes}; window ${r.windowS.toFixed(1)} s`;
 
 /**
  * [12]'s hand-back of the floor bot 3 s into the elevation lock's 6 s dwell (its deck target out of the gun's reach, no
