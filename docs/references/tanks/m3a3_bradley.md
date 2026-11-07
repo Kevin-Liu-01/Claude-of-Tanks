@@ -380,3 +380,28 @@ bunch of extra boxes". All on `profiles/bradleyA3Turret.ts`, turret-local:
 
 The traversing turret keeps 47 mm over the hull at its closest, as the M2A2's shell does (`.qa-dev` overhang probe:
 every turret vertex beyond 0.95 m of the ring axis, 360 yaws).
+
+## 270 — what the fidelity 48.6 and the gate's 0s measure (2026-11-06)
+
+Main, 2026-11-06: "m3a3 fidelity 48.6: read what it's measured against." Verdict: a **broken registration**, not a
+geometry gap. The 08-17 note above ("the rigged print does NOT assemble ... a disassembled parts kit") misread it: the
+print (sha256 a5a3a985…, the owner's `low_poly_m3a3_bradley.glb`) loads assembled, turret `bone11_169` (73 meshes) and gun
+`bone28_163` in place. Three loose subtrees lie on the ground beside the hull, two spare TOW rounds and a launch tube
+(`bone52_278`, `bone63_296`, `bone61_298`, raw x 2.13..3.68 against the hull's −1.84..1.22). The loader registers every
+uncertified print on the spec's published width over the WHOLE file (`tools/reference-glb-loader.ts`
+`normalizeReferenceWidth`): 3.61 / 5.525 raw = ×0.653 where the vehicle alone gives ×1.179, so the gate compares the build
+with a Bradley 3.91 m long and 1.75 m tall (its own record's `referenceDimensions` / `referenceBodyExtent`, run
+2026-11-06 at 2c1c5f8198 + this lane's registry commit). Every curve is 0; fidelity 48.6 (H40 T38 G100 R63). The base
+ledger's 0s (11-04, before the 269 turret redesign) are the same defect.
+
+With those three subtrees set aside (lane experiment, nothing registered: the print re-exported untextured with its
+hierarchy, `~/cot-lanes/abrams-bradley-268-evidence/r270/R/m3a3clean.mjs`, sha256 0f92442e…), the same page scores
+**88.4 (H91 T77 G100 R84)**, the class of the M3A2 against its print (89.4, T78). Silhouette IoU (Node raster, the
+loader's width fit; `r270/R/m3a3reg.mjs`): side 0.27 → 0.79, top 0.32 → 0.96, front 0.21 → 0.78. What remains: the
+low-poly print's hull sits about 0.14 m lower with a shorter glacis than the family hull measured from the 42manako
+print, and the turret carries the owner's 2026-11-05 additions the print does not (the right-hand TOW launcher, the
+LRAS3-pattern head, the camera pods, the bustle box), with the 25 mm line about 0.15 m higher than the print's.
+
+Fixing it needs either a prepared oracle without the loose parts (registered, pinned in `tools/oracle-pins.mjs` and
+copied to every checkout that runs the gate) or a node-exclusion option in the shared loader; neither is applied here.
+
