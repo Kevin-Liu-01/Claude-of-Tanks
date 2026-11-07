@@ -32,15 +32,16 @@
 //            0)` after the release (screenshot, gunnery_gate, perfprobe, the audio smokes, studio-selftest,
 //            visual-evaluator: exit 1) or an uncaught queued open (exit 1); and tools/held-items.mjs's rules directly.
 // (round 5 U9) And:
-//   output   turret-parent-audit's output holds what ran: a stop before any id (while held, booting or re-queued) leaves
-//            the previous output as it was (it wrote [] over it);
+//   output   turret-parent-audit's output holds what ran: a stop before any id (a signal while held, booting or
+//            re-queued, or a cap stop, which exits 3) leaves the previous output as it was (it wrote [] over it);
 //   queued   a tool queued when the signal comes starts nothing (openHeldRun's null: `if (!hold) return;`): what serves
 //            and draws says when it starts, and nothing may (the line and the 143 come from openHeldRun and the signal
 //            owner, so a tool that ran on past the null passed);
-//   npm      a finishing run through an npm script: a script runs studio-example-videos or shoot as its last
-//            command (the flags after `npm run <script> --` reach the tool, not a command after an &&), and
-//            reels:render's baked flags hold under a typed selection and the appended one (the last --only wins),
-//            take 3 of the battle-reel pool (loaded with the run) rendered.
+//   npm      a finishing run through an npm script: a script that names studio-example-videos or shoot (however it
+//            calls node) runs it as its last command (the flags after `npm run <script> --` reach the tool, not a
+//            command after an &&), and reels:render's baked flags hold under a typed selection and the appended one
+//            (the last --only wins), take 3 of the battle-reel pool (loaded with the run) rendered; a duels run's takes
+//            are the duel pool's.
 // No real browser, server or lock starts; the real Chrome runs stay the owner's (manualRecommended).
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
@@ -222,7 +223,7 @@ const indexOfEvent = (events, prefix) => events.findIndex((event) => event.start
 
 // ---- turret-parent-audit: ids, grace 180 s, an idle page through the yield ------------------------------------------------
 const IDS = ['tpa_one', 'tpa_two', 'tpa_three', 'tpa_four'];
-async function turretRun({ idMs, graceSeconds, requeue = 'resume' }) {
+async function turretRun({ idMs, graceSeconds, requeue = 'resume', previous = null }) {
   const dir = scratch(), events = [], holdLog = [];
   const lock = standInLock({ waiters: 1, events, requeue });
   const chrome = standInChrome({ events, script: ({ method, url }) => {
@@ -232,11 +233,12 @@ async function turretRun({ idMs, graceSeconds, requeue = 'resume' }) {
     return { value: { id, stranded: [], abutting: [], dangling: [] } };
   } });
   const outFile = join(dir, 'turret-parent.json');
+  if (previous !== null) writeFileSync(outFile, previous); // a previous run's output
   const runTurretParentAudit = await tools.turret();
   const run = await onMockClock(() => runTurretParentAudit([`--ids=${IDS.join(',')}`], { createServer: standInVite,
     puppeteer: chrome.launcher, outFile, hold: holdFor({ lock, chrome, holdLog, graceSeconds }) }));
-  const rows = existsSync(outFile) ? JSON.parse(readFileSync(outFile, 'utf8')) : null;
-  return { ...run, events, holdLog: holdLog.join('\n'), rows };
+  const text = existsSync(outFile) ? readFileSync(outFile, 'utf8') : null;
+  return { ...run, events, holdLog: holdLog.join('\n'), rows: text === null ? null : JSON.parse(text), text };
 }
 
 // ---- marketing-shots/shoot: scenes, grace 180 s, the Studio page frozen through the yield -------------------------------
@@ -412,6 +414,17 @@ if (process.argv[2] === '--signal-child') {
       assert.match(run.said, /--ids=tpa_four\b/, 'the finishing run names the id left');
       assert.equal(run.exitCode, 3, 'ids left: exit 3');
     });
+    // (round 5 U9 review) a cap stop with no signal before any id: tpa_one runs 1-1501 s, the hold is stopped at 1260 s
+    // (the default 60-s grace) and its teardown cuts the id. Nothing audited, so the previous output stays, and the run
+    // still exits 3 (every id left, the finishing run named); the signal children's 143 hid the code this path keeps
+    await check('turret-parent-audit stop before any id', async () => {
+      const run = await turretRun({ idMs: () => 1500 * SECOND, graceSeconds: 60, previous: PREVIOUS });
+      assert.equal(run.error, undefined, `no throw (${run.error?.message})`);
+      assert.match(run.holdLog, /no checkpoint within 60 s/, run.holdLog);
+      assert.equal(run.text, PREVIOUS, `nothing audited: the previous output kept (${run.said})`);
+      assert.match(run.said, /4 id\(s\) left[^\n]*--ids=tpa_one,tpa_two,tpa_three,tpa_four \(nothing audited/, run.said);
+      assert.equal(run.exitCode, 3, `every id left: exit 3, the run unfinished (${run.exitCode})`);
+    });
 
     // ---- marketing-shots/shoot -----------------------------------------------------------------------------------------
     await check('shoot yield', async () => {
@@ -447,6 +460,9 @@ if (process.argv[2] === '--signal-child') {
       const run = await studioRun({ takeMs: () => 483 * SECOND });
       assert.equal(run.error, undefined, `no throw (${run.error?.message})`);
       assert.deepEqual(run.stills, ['1:0', '2:0', '3:0', '4:0'], `every take's still listed (${run.said})`);
+      // (round 5 U6 review) the default collection's takes are the duel pool's, which loads with the run
+      const { DUEL_SCENARIOS } = await import('./studio-example-scenarios.mjs');
+      assert.deepEqual(run.takes, DUEL_SCENARIOS.slice(0, 4), 'the takes are the duel pool\'s first four');
       const [frozen, released, again, thawed] = ['frozen@1449', 'release@1449', 'held again@1569', 'active@1569'].map((event) => run.events.indexOf(event));
       assert.ok(frozen >= 0 && frozen < released && released < again && again < thawed,
         `the take in flight finished inside the 300-s grace, then the yield froze and thawed the page (${run.events.join(' ')})`);
@@ -533,26 +549,46 @@ if (process.argv[2] === '--signal-child') {
     });
     // (round 5 U9 review) A finishing run through an npm script: `npm run <script> -- --only <left>` adds the flags to
     // the end of the script's command, so they reach the tool only when it is the script's last command (after an &&,
-    // ;, || or | they go to the next one). A baked selection is harmless: the last --only / --match wins, and what a
-    // stop leaves is inside it. Then reels:render's baked flags (its --out set aside: this receipt writes to a scratch
-    // folder), a selection typed after them and the finishing run's appended one: the baked collection and size hold,
-    // the appended --only selects, and the take is the battle-reel pool's (round 5 U6: the pool loads with the run)
+    // ;, ||, | or a background & they go to the next one; a redirect's 2>&1 splits nothing). A script names the tool by
+    // its path, however node is called (`node ./tools/…`, `node --max-old-space-size=… tools/…`, an absolute path);
+    // round 5's first form matched only `node tools/<file>`, and a script spelt another way went unchecked. A baked
+    // selection is harmless: the last --only / --match wins, and what a stop leaves is inside it. Then reels:render's
+    // baked flags (its --out set aside: this receipt writes to a scratch folder), a selection typed after them and the
+    // finishing run's appended one: the baked collection and size hold, the appended --only selects, and the take is
+    // the battle-reel pool's (round 5 U6: the pool loads with the run)
     await check('npm finishing run', async () => {
       const finishing = ['tools/studio-example-videos.mjs', 'tools/marketing-shots/shoot.mjs'];
+      const toolAt = (file) => new RegExp(String.raw`(?:^|\s)(?:\S*/)?${file.replaceAll('.', '\\.')}(?=$|[\s;&|])`);
       const runners = (scripts) => Object.entries(scripts).flatMap(([name, command]) => finishing
-        .filter((file) => command.includes(`node ${file}`))
+        .filter((file) => toolAt(file).test(command))
         .map((file) => {
-          const commands = command.split(/&&|\|\||;|\|/).map((part) => part.trim());
-          return { name, last: commands.at(-1).startsWith(`node ${file}`), args: command.split(`node ${file}`)[1].trim().split(/\s+/).filter(Boolean) };
+          const commands = command.split(/&&|\|\||[;|]|(?<![<>])&(?!>)/).map((part) => part.trim());
+          const at = commands.findLastIndex((part) => toolAt(file).test(part));
+          const call = toolAt(file).exec(commands[at]);
+          return { name, last: at === commands.length - 1,
+            args: commands[at].slice(call.index + call[0].length).trim().split(/\s+/).filter(Boolean) };
         }));
       const { scripts } = JSON.parse(readFileSync(join(ROOT, 'package.json'), 'utf8'));
       const found = runners(scripts);
       const reels = found.find(({ name }) => name === 'reels:render');
-      assert.ok(reels && found.some(({ name }) => name === 'studio:features:render'), `the scripts that run the tools are found (${found.map(({ name }) => name)})`);
+      assert.ok(reels && ['studio:features:render', 'studio:examples'].every((script) => found.some(({ name }) => name === script)),
+        `the scripts that run the tools are found (${found.map(({ name }) => name)})`);
       assert.deepEqual(found.filter(({ last }) => !last).map(({ name }) => name), [], 'each script runs its tool last, so the flags after -- reach it');
-      // the check reads a planted script whose tool is not its last command
-      const planted = runners({ ...scripts, 'reels:render': `${scripts['reels:render']} && echo rendered` });
-      assert.deepEqual(planted.filter(({ last }) => !last).map(({ name }) => name), ['reels:render'], 'a planted && after the tool is found');
+      // the check reads planted scripts: a tool that is not its script's last command, in each spelling, is found
+      const planted = runners({ ...scripts, 'reels:render': `${scripts['reels:render']} && echo rendered`,
+        'planted:dot': 'node ./tools/studio-example-videos.mjs --collection duels && echo done',
+        'planted:flag': 'node --max-old-space-size=8192 tools/studio-example-videos.mjs; echo done',
+        'planted:pipe': 'node /repo/tools/marketing-shots/shoot.mjs --match 01 | tee shoot.log',
+        'planted:background': 'node tools/studio-example-videos.mjs --only 2 & wait',
+        'planted:last': 'npm run -s prepare && node ./tools/marketing-shots/shoot.mjs --match 01',
+        'planted:redirect': 'node tools/studio-example-videos.mjs --only 2 2>&1',
+        'planted:other': 'node tools/studio-example-videos.mjs.bak && node tools/studio-example-videos-x.mjs && echo done' });
+      assert.deepEqual(planted.filter(({ last }) => !last).map(({ name }) => name), ['reels:render', 'planted:dot', 'planted:flag', 'planted:pipe',
+        'planted:background'],
+        `a planted command after the tool is found in each spelling (${JSON.stringify(planted)})`);
+      assert.deepEqual(planted.find(({ name }) => name === 'planted:last')?.args, ['--match', '01'], 'a tool run last is read with its flags');
+      assert.equal(planted.find(({ name }) => name === 'planted:redirect')?.last, true, 'a redirect after the tool keeps it last');
+      assert.ok(!planted.some(({ name }) => name === 'planted:other'), 'another file whose name starts with the tool\'s is not the tool');
       const dir = scratch(), outAt = reels.args.indexOf('--out');
       const bakedArgs = outAt < 0 ? reels.args : [...reels.args.slice(0, outAt), ...reels.args.slice(outAt + 2)];
       const run = await studioRun({ dir, waiters: 0, takeMs: () => SECOND, args: [...bakedArgs, '--stills', '0', '--only', '2,3', '--only', '3'] });
