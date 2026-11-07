@@ -148,8 +148,9 @@ try {
     const runtimeTimers = [];
     const pair = createHostPortPair();
     const core = createMatchHostCore({ port: pair.worker, reportIntervalMs: 500 });
-    const readies = [];
-    pair.main.onMessage((message) => { if (message.type === 'ready') readies.push(message); });
+    /** The core's word that ends its boot (ready or boot_failed), seen in the same dispatch as the runtime's. */
+    const coreEnds = [];
+    pair.main.onMessage((message) => { if (message.type === 'ready' || message.type === 'boot_failed') coreEnds.push(message); });
     const relay = new FakeSignalRelay('me', 1);
     const host = createMatchHost({
       playerId: 'me', generation: () => 2, createPort: () => pair.main, createPeerConnection: new RtcWorld().createPeerConnection,
@@ -171,9 +172,12 @@ try {
     const bootTimer = runtimeTimers[0];
     assert.equal(bootTimer.ms, ELECTED_HOST_BOOT_MS, 'the runtime\'s boot timer is ELECTED_HOST_BOOT_MS (matchHost.ts, its default)');
     // virtual time: each timer of seconds the two armed at the boot's start fires in due order, one at a time, and the
-    // real world build gets its time to answer before the next. A boot the fired timer released (it asked for its
-    // manifest) that has not settled within SETTLE_WALL_MS is a world build stalled by load: a timeout, never the next
-    // timer, which would read as the hazard (round 6 V7 review r2). A boot still held goes on to the next timer.
+    // real world build gets its time to answer before the next. The port hands the core's ready or boot_failed to this
+    // receipt's listener and the runtime's in one dispatch (hostProtocol.ts createHostPortPair), so a runtime still
+    // booting after that word has dropped it: a defect, failed at once (round 6 V7 review r3). A boot the fired timer
+    // released (it asked for its manifest) with no word from the core within SETTLE_WALL_MS is a world build stalled by
+    // load: a timeout, never the next timer, which would read as the hazard (review r2). A boot still held goes on to
+    // the next timer.
     const fired = [];
     for (;;) {
       const next = [...bounds.map((timer) => ({ timer, who: 'core' })), ...runtimeTimers.map((timer) => ({ timer, who: 'runtime' }))]
@@ -183,7 +187,12 @@ try {
       fired.push(`${next.who} ${next.timer.ms}`);
       const asksBefore = manifestAsks;
       next.timer.fn();
-      if (!(await within(() => host.state !== 'booting', SETTLE_WALL_MS)) && manifestAsks > asksBefore) {
+      await within(() => host.state !== 'booting' || coreEnds.length > 0, SETTLE_WALL_MS);
+      await turns();
+      if (host.state === 'booting' && coreEnds.length > 0) {
+        assert.fail(`the core posted ${coreEnds[0].type} after ${fired.at(-1)} fired, but the runtime stayed booting (it dropped the core's word)`);
+      }
+      if (host.state === 'booting' && manifestAsks > asksBefore) {
         throw new Error(`timeout: the boot asked for its manifest after ${fired.at(-1)} fired but did not settle within ${SETTLE_WALL_MS / 1000} s of wall time (load: rerun)`);
       }
     }
@@ -194,7 +203,7 @@ try {
     assert.equal(started.now, 'resolved', 'the runtime\'s start resolves');
     assert.equal(bootTimer.cleared, true, 'the live boot clears its boot timer, unfired');
     assert.ok(bounds[0].ms + BOOT_ROOM_MS < bootTimer.ms, 'the bound leaves an unprepared boot its world inside the boot timer the runtime arms');
-    assert.deepEqual(readies[0]?.kernels, { mode: 'ts', reason: 'timeout' }, 'its ready names the timeout');
+    assert.deepEqual(coreEnds.find((message) => message.type === 'ready')?.kernels, { mode: 'ts', reason: 'timeout' }, 'its ready names the timeout');
     host.stop();
     core.dispose();
   }
