@@ -1437,7 +1437,8 @@ export const SELFTEST_SUITES = Object.freeze({
     // 2026-11-02 audit F9: the take owns the playhead (one busy reading); pointercancel releases the history hold
     'src/game/studioTransport.selftest.mjs',
     // 2026-11-02 audit R6 (round 4 F2 review): a Studio light never waits on a re-ask and is lit again once what it was
-    // applied without lands (light model, cloudscapes, atmosphere runtime, map air); never after its session or in a take
+    // applied without lands (light model, cloudscapes, atmosphere runtime, map air); never after its session or in a take;
+    // (round 5 U8) once per apply however many land together
     'src/game/studioLightLanding.selftest.mjs',
     // 2026-10-08 (fix/studio-world-step): an export step advances the props' clock and syncs the drawn ground
     'src/game/studioWorldStep.selftest.mjs',

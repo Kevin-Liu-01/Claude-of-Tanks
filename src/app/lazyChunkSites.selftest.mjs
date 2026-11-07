@@ -144,7 +144,9 @@ const SITES = [
     'await mapAmbience.prepare(0, currentWorld()?.mapId ?? game.mapId, battleAmbienceTime(), undefined, { entry: true });',
     "await battleAtmosphere.prepare(0, currentWorld()?.mapId ?? game.mapId, ['day'], how?.relight ? { relight: true } : undefined);",
     'const air = await mapAmbience.prepare(0, currentWorld()?.mapId ?? game.mapId, time, owner);'], []],
-  ['src/game/studio.ts', ['if (owner.current() && !transportHeld(busy())) void applyStudioLight(time, light, false, true).catch(() => undefined);',
+  // (round 5 U8) studio.ts's relight, once per prepare however many of its landings land
+  ['src/game/studio.ts', ['if (relit || !owner.current() || transportHeld(busy())) return;',
+    'void applyStudioLight(time, light, false, true).catch(() => undefined);',
     'ctx.prepareStudioAtmosphere?.(time, light, owner, { relight, landed })'], []],
   // (round 3 A4) and every prepare includes the Studio's, one per sun-dial or slider move, and a Studio sky applied for the
   // Moon asks its land mask per move: the three memos, cleared on failure, were asked again by every move, offline too.
