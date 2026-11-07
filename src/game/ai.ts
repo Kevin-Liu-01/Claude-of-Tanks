@@ -7331,17 +7331,17 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
   }
   /**
    * The floor a hull with its root at (x, y, z), heading `yaw`, stands on, and the point it stands on it at, into `out`
-   * (hullOnParkLevel). The ground is hullReaches' (at the root's own height where it stands below the ground the field
-   * carries). The floor is the movement's under its root (recordFloorAt with no slope); where the hull rides over that by
-   * more than its step (a hull on a record's edge with its root past it, or in the air), the highest record top within its
-   * step that the ends or sides of its contact rect stand over, at that point (with the ground there); the ground at the
-   * root when there is none. Allocation-free.
+   * (hullOnParkLevel). The ground is groundUnder's (the bed under a deck the field publishes), at the root's own height
+   * where it stands below it. The floor is the movement's under its root (recordFloorAt with no slope); where the hull
+   * rides over that by more than its step (a hull on a record's edge with its root past it, or in the air), the highest
+   * record top within its step that the ends or sides of its contact rect stand over, at that point (with the ground
+   * there); the ground at the root when there is none. Allocation-free.
    */
   function endFloor(
     solids: readonly AiObstacle[], rect: { centerZ: number; halfLength: number; halfWidth: number },
     x: number, z: number, y: number, yaw: number, out: { x: number; z: number; y: number; ground: number },
   ): void {
-    const ground = Math.min(y, terrainSafety.surfaceY(x, z));
+    const ground = Math.min(y, groundUnder(x, z, y));
     out.x = x; out.z = z; out.ground = ground;
     out.y = recordFloorAt(solids, x, z, y, ground, 0);
     if (y - out.y <= HULL_STEP_UP_M) return;
@@ -7352,8 +7352,21 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
       const across = side === 2 ? rect.halfWidth : side === 3 ? -rect.halfWidth : 0;
       const px = cx + fx * along + fz * across, pz = cz + fz * along - fx * across;
       const top = recordFloorAt(solids, px, pz, y, -Infinity, 0);
-      if (top > out.y) { out.x = px; out.z = pz; out.y = top; out.ground = Math.min(y, terrainSafety.surfaceY(px, pz)); }
+      if (top > out.y) { out.x = px; out.z = pz; out.y = top; out.ground = Math.min(y, groundUnder(px, pz, y)); }
     }
+  }
+  /**
+   * The ground a hull at height y drives on at (x, z) (endFloor's ends, at the root's own height where it stands below
+   * it; recordWalkReaches' points): the drivable surface hullReaches reads (terrainSafety.surfaceY: the terrain, or a
+   * bridge deck the field publishes over it), and more than a step below it, under a deck (no hull stands within a step
+   * under one: its own height keeps its root lower), the field's own height there, the bed the movement stands it on.
+   * Off every deck, surfaceY is the field's height and the two readings are one. Round 6 V3 (fix-up r3; the correctness
+   * review r3): the deck's top read as the ground under it took a record's top there for an end's ground, and lifted the
+   * walk over the records under it, so a park onto or off a record under a deck kept the dwell. Allocation-free.
+   */
+  function groundUnder(x: number, z: number, y: number): number {
+    const surface = terrainSafety.surfaceY(x, z);
+    return y < surface - HULL_STEP_UP_M ? hf.getHeightAt(x, z) : surface;
   }
   /**
    * The hull drives from one end's floor to the other's, records included (hullOnParkLevel; each end's point and floor:
@@ -7364,8 +7377,9 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
    * cannot get onto from the ground about it, or from the records it drives over to it, and also where b stands under a
    * top the walk climbs onto along the line (the ground under an overpass deck it reaches up its ramp): a false restart of
    * the dwell (the lock decides up to ELEVATION_LOCK_S later, never earlier). Two ends on their ground are decided before
-   * the walk (hullOnParkLevel); an end on a record's top beside such a top is decided by the walk, as its points fall. The
-   * last point's ground is b's own (a hull under a deck the field publishes stands at its own height). Allocation-free.
+   * the walk (hullOnParkLevel); an end on a record's top beside such a top is decided by the walk, as its points fall.
+   * Each point's ground is groundUnder's from the floor the walk stands on (under a deck the field publishes, the bed, not
+   * the deck's top over it), and the last point's is b's own. Allocation-free.
    */
   function recordWalkReaches(
     solids: readonly AiObstacle[], a: { x: number; z: number; y: number },
@@ -7376,7 +7390,7 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     let y = a.y;
     for (let step = 1; step <= steps; step++) {
       const x = a.x + dx * step / steps, z = a.z + dz * step / steps;
-      y = recordFloorAt(solids, x, z, y, step === steps ? b.ground : terrainSafety.surfaceY(x, z), RESUME_STEP_M);
+      y = recordFloorAt(solids, x, z, y, step === steps ? b.ground : groundUnder(x, z, y), RESUME_STEP_M);
     }
     return Math.abs(y - b.y) <= RESUME_LEVEL_EPS_M;
   }

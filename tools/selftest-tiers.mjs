@@ -135,13 +135,14 @@ export const MANUAL_SUITES = Object.freeze({
     'server/botObjectives.selftest.mjs',
     'src/game/ai.lastRun.selftest.mjs',
     'src/game/ai.levels.selftest.mjs',
-    // 2026-11-07 round 6 V4 (2026-11-02 audit M7; fix-ups r1 and r2): the Watch hand-back's cases that repeat one of
+    // 2026-11-07 round 6 V4 (2026-11-02 audit M7; fix-ups r1 to r3): the Watch hand-back's cases that repeat one of
     // ai.watchResume's at another length, height or branch, split off it (a level route's 30 s park off its way and its
     // toggles, the causeway's drop over the gun's band and its crest toggle, the dwell off and onto a 2.2 m rock, from the
-    // last obstacle list, off a tiered rock and up a formation's caps), and the dwell rule's one case ai.watchResume does
-    // not keep (the walk's last point under a deck: a spot read stood put only within 1.5 m of the deck's end): 3.9-4.2 s
-    // of user CPU at load 46-70, the import 1.5-1.7 s of it. Of the round's 40 mutants two fail this file alone: that
-    // last point and the obstacle list's branch (a fixture's path)
+    // last obstacle list, off a tiered rock's top and first tier, onto its second tier and up a formation's caps), and the
+    // dwell rule's one part ai.watchResume does not keep, the ground under a deck the field publishes (the walk's last
+    // point, an end on a record under a deck's end: a spot read stood put only within 1.5 m of the deck's end): 4.5-4.8 s
+    // of user CPU at load 61-97 (3.8 s at load 22), the import 1.5-1.9 s of it. Of the round's 50 mutants six fail this
+    // file alone: four readings of the ground under a deck, and the obstacle list's branch (a fixture's path)
     'src/game/ai.watchResumeLevels.selftest.mjs',
     'src/sim/botRouteClearance.selftest.mjs',
     'src/sim/botVerdantApproach.selftest.mjs',

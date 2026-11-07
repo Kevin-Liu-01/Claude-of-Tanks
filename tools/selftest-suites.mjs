@@ -2194,8 +2194,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/game/ai.eventOrder.selftest.mjs',
     // 2026-11-02 audit M7: a brain Watch mode hands back resumes from the hull as it stands (no burst, shot or spike)
     'src/game/ai.watchResume.selftest.mjs',
-    // 2026-11-02 audit M7 (round 6 V4): the hand-back's cases that repeat ai.watchResume's, split off it, and the walk's
-    // last point under a deck (MANUAL bots)
+    // 2026-11-02 audit M7 (round 6 V4): the hand-back's cases that repeat ai.watchResume's, split off it, and the ground
+    // under a deck the field publishes (MANUAL bots)
     'src/game/ai.watchResumeLevels.selftest.mjs',
     // 2026-11-02 audit M7: both drivers apply the bots' news at the end of the fire-and-shells phase; teammates read it
     'src/game/ai.newsFlush.selftest.mjs',

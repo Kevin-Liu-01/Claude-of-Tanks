@@ -1,10 +1,11 @@
 // 2026-11-02 audit M7 (round 6 V4, split off from ai.watchResume.selftest): the Watch hand-back's checks that repeat a
-// check of ai.watchResume's at another length, height or branch, and the one rule with no case there, in the MANUAL bots
+// check of ai.watchResume's at another length, height or branch, and the rules with no case there, in the MANUAL bots
 // suite (tools/selftest-tiers.mjs). ai.watchResume read 7.8-10 s of user CPU in the default tier (round three's file
-// 5.9 s); this file reads 3.9-4.2 s of user CPU at load 46-70 (the import 1.5-1.7 s of it) and runs when the owner names
-// the suite. Every mutant of the round's matrix (40) fails one of the two receipts, two of them this file alone (the
-// obstacle list's branch, the walk's last point under a deck), and every check here but the setups fails on one of them
-// (round 6 bots NOTES, fix-up r2). The sections keep ai.watchResume's numbers; their history is there.
+// 5.9 s); this file reads 4.5-4.8 s of user CPU at load 61-97 and 3.8 s at load 22 (the import 1.5-1.9 s of it), and
+// runs when the owner names the suite. Every mutant of the round's matrix (50) fails one of the two receipts, six of
+// them this file alone (the obstacle list's branch; the ground under a deck the field publishes, at the walk's last
+// point, an end's root, its contact rect's mid-edge and the walk's points), and every check here but the setups fails on
+// one of them (round 6 bots NOTES, fix-up r3). The sections keep ai.watchResume's numbers; their history is there.
 // [7] (round 2; round 3, A2) a level route held through a park on its way: here the 30 s park off the way (its deadline
 // not yet up) and the 0.1 s, 0.5 s and 2 s coasting toggles; the default keeps the 200 s parks (on and off the way, the
 // one on it coasting from route speed) and the revive, and [8]'s toggles of a search leg.
@@ -12,8 +13,9 @@
 // over the gun's 8 m band and a toggle on the crest; the default keeps the drop under the band (the round-four review's).
 // [12] (round 5, U5 and its fix-up r1; round 6, V3) the elevation dwell's record rule (hullOnParkLevel): here off and onto
 // a 2.2 m rock, the 1 m box read from the last obstacle list (a fixture's branch: every solo bot has the match's query),
-// off a tiered rock, up a formation's caps, and the walk's last point under a deck (fix-up r2: its only case); the
-// default keeps a case of each other part of the rule (round 6 V4, fix-ups r1 and r2).
+// off a tiered rock's top and off its first tier, onto a three-tier rock's second tier, up a formation's caps, and the
+// ground under a deck the field publishes (its only cases: the walk's last point, fix-up r2; a record's top under a
+// deck's end, fix-up r3); the default keeps a case of each other part of the rule (round 6 V4, fix-ups r1 to r3).
 import { SIM_DT } from '../sim/movement.ts';
 import {
   beside, coasted, column, compoundRecord, crestHandBack, crestLabel, dwellHandBack, dwellLabel, kept, levelRouteHandBack,
@@ -62,8 +64,8 @@ console.log('[11] a level route ends with no verdict when the watcher drives its
 
 console.log('[12] the elevation lock\'s dwell after a park onto, off or between records: the record rule (the rest)');
 // ai.watchResume [12]'s history and its record cases (a case of each part of the rule but one); here the same parts at
-// another height, direction or branch, and that one (the walk's last point under a deck). On f60d0aa200 each restart below
-// kept 2.9 s of dwell and the lock decided 3.15 s after Leave.
+// another height, direction or branch, and that one (the ground under a deck the field publishes). On f60d0aa200 each
+// restart below kept 2.9 s of dwell and the lock decided 3.15 s after Leave; on b03868e697 the two under a deck's end did.
 {
   const label = dwellLabel;
   // a 2.2 m rock's top and the ground beside it, either way (ai.watchResume's 1 m box, off and onto)
@@ -89,6 +91,21 @@ console.log('[12] the elevation lock\'s dwell after a park onto, off or between 
   ok(setupOk(offTiers, 1.3, 0), `setup: the floor bot dwells on a two-tier rock's 1.3 m top; the watcher leaves it on the ground beside the rock (${where(offTiers)})`);
   ok(restarted(offTiers),
     `a 0.5 s park that left the hull on the ground below the tiered rock it was taken on: the dwell restarts (${label(offTiers)})`);
+  // fix-up r3 (the completeness review r3, its B and C): ai.watchResume's lower tier (ontoLedge) the other way, taken on a
+  // two-tier rock's 0.7 m first tier (its 1.3 m tier clear of the hull to the east), left on the ground beside it; and
+  // onto a three-tier rock's 1.3 m second tier (0.7, 1.3 and 1.9 m), where the part's own top is neither the record's nor
+  // the first tier's
+  const ledge = compoundRecord([column(-10, 18, 10, 38, 0.7), column(4, 18, 10, 38, 1.3)], 0, 1.3);
+  const offLedge = await dwellHandBack((at) => [-13, at[2]], null, ledge, { onY: 0.7 });
+  ok(setupOk(offLedge, 0.7, 0), `setup: the floor bot dwells on a two-tier rock's 0.7 m first tier; the watcher leaves it on the ground beside the rock (${where(offLedge)})`);
+  ok(restarted(offLedge),
+    `a 0.5 s park that left the hull on the ground below the tiered rock's first tier it was taken on: the dwell restarts (${label(offLedge)})`);
+  const threeTiers = compoundRecord([column(-40, 14, -8, 26, 0.7), column(-40, 14, -14, 26, 1.3), column(-40, 14, -30, 26, 1.9)],
+    0, 1.9);
+  const ontoMiddleTier = await dwellHandBack((at) => [at[0], 22], [-16, 31], threeTiers, { onY: null, awayY: 1.3 });
+  ok(setupOk(ontoMiddleTier, 0, 1.3), `setup: the floor bot dwells on the ground; the watcher leaves it on a three-tier rock's 1.3 m second tier (${where(ontoMiddleTier)})`);
+  ok(restarted(ontoMiddleTier),
+    `a 0.5 s park that left the hull on a tiered rock's 1.3 m second tier: the dwell restarts (${label(ontoMiddleTier)})`);
   // fix-up r2 (the completeness review r2): a formation's blocks, each one part under its own drawn top (rockCollision.ts
   // applyFormationCollision), here two caps rising 0.4 per metre from z 26; ai.watchResume's roof is the drawn compound
   // part's default case
@@ -98,11 +115,11 @@ console.log('[12] the elevation lock\'s dwell after a park onto, off or between 
   const upCaps = await dwellHandBack((at) => [at[0], 22], [-16, 31], caps, { onY: null, awayY: 1.6 });
   ok(setupOk(upCaps, 0, 1.6), `setup: the floor bot dwells on the ground; the watcher leaves it 1.6 m up a formation's two drawn caps (${where(upCaps)})`);
   ok(kept(upCaps), `a 0.5 s park that left the hull up a formation's caps it drives down and back up: the dwell holds (${label(upCaps)})`);
-  // fix-up r2 (the correctness review r2): the walk's last point reads the ground of the spot it arrives at, the hull's
-  // own height where it stood under a deck the field publishes (recordWalkReaches: b.ground, as hullReaches reads an end
-  // under a deck), not the deck's top over it. Taken on the ground under a 4.5 m deck, 1 m inside its south end (the line
-  // runs out through the end; hullReaches reads every point under a deck before the last as its top, so only a spot
-  // within one 1.5 m point of the end is read stood put), left on a 0.5 m step outside it
+  // fix-up r2 (the correctness review r2): the walk's last point reads the ground of the spot it arrives at, where it
+  // stood under a deck the field publishes the bed under it (recordWalkReaches: b.ground; groundUnder, fix-up r3), not
+  // the deck's top over it. Taken on the ground under a 4.5 m deck, 1 m inside its south end (the line runs out through
+  // the end; hullReaches reads every point under a deck before the last as its top, so only a spot within one 1.5 m
+  // point of the end is read stood put), left on a 0.5 m step outside it
   const DECK = Object.freeze([Object.freeze({ x: -22.7, z: 42.2, ux: 0, uz: 1, halfLength: 10, halfWidth: 6, deckY: 4.5, approachM: 0 })]);
   const underDeckEnd = await dwellHandBack((at) => [at[0], 22], [-16, 31], beside(0.5, -0.5), { onY: null, awayY: 0.5, decks: DECK });
   const [takenX, , takenZ] = underDeckEnd.parkedAt;
@@ -111,6 +128,33 @@ console.log('[12] the elevation lock\'s dwell after a park onto, off or between 
     `setup: the floor bot dwells on the ground under a deck's end; the watcher leaves it on a 0.5 m step outside the deck (${where(underDeckEnd)})`);
   ok(kept(underDeckEnd),
     `a 0.5 s park that left the hull on a 0.5 m step beside the deck it was taken under: the dwell holds (${label(underDeckEnd)})`);
+  // fix-up r3 (the correctness review r3; fix-up r2's probe P2): an end on a record's top under a deck the field
+  // publishes. Taken on the ground, left on a 1 m box's top under a 4.5 m deck, 1 m inside its north end: endFloor read
+  // the ground there as the hull's own height (the deck's top over it, clamped to the root), so the box's top was that
+  // ground, both ends read their ground, and the dwell held (b03868e697 and 1cbcc1faaf: 2.9 -> 2.9 s, decided 3.15 s);
+  // it reads the bed now (groundUnder), and the walk gets onto the box no more than without the deck
+  const deckOverBox = Object.freeze([Object.freeze({ x: -22.7, z: 13, ux: 0, uz: 1, halfLength: 10, halfWidth: 6, deckY: 4.5, approachM: 0 })]);
+  const underDeckBox = await dwellHandBack((at) => [at[0], 22], [-16, 31], beside(1), { onY: null, awayY: 1, decks: deckOverBox });
+  const [boxX, , boxZ] = underDeckBox.handedBackAt, [box] = deckOverBox;
+  ok(setupOk(underDeckBox, 0, 1) && boxZ < box.z + box.halfLength && boxZ > box.z + box.halfLength - 1.5
+    && Math.abs(boxX - box.x) < box.halfWidth,
+    `setup: the floor bot dwells on the ground; the watcher leaves it on a 1 m box's top under a deck's end (${where(underDeckBox)})`);
+  ok(restarted(underDeckBox),
+    `a 0.5 s park that left the hull on a 1 m box under a deck, past the 0.55 m step it mounts: the dwell restarts (${label(underDeckBox)})`);
+  // fix-up r3: the same under a deck at a record's edge (ai.watchResume's ontoEdge on a 1 m box): the root 0.3 m past the
+  // box's north edge, 1 m inside the deck's north end, the rear half of the hull on the box deeper under the deck. The
+  // end's point is then its contact rect's mid-edge over the box (endFloor), whose ground is the bed too, and the walk to
+  // it from the spot it was taken on passes under the deck, where each point's ground is the bed (groundUnder) and not
+  // the deck's top it would step down from onto the box. This case alone reads the mid-edge's ground and the walk's
+  // points under a deck; both kept this dwell at 1cbcc1faaf
+  const deckOverEdge = Object.freeze([Object.freeze({ x: -22.7, z: 17.3, ux: 0, uz: 1, halfLength: 10, halfWidth: 6, deckY: 4.5, approachM: 0 })]);
+  const edgeUnderDeck = await dwellHandBack((at) => [at[0], 26.3], [-16, 31], beside(1), { onY: null, awayY: 1, decks: deckOverEdge });
+  const [edgeX, , edgeZ] = edgeUnderDeck.handedBackAt, [over] = deckOverEdge;
+  ok(setupOk(edgeUnderDeck, 0, 1) && edgeZ > 26 && edgeZ < over.z + over.halfLength && edgeZ > over.z + over.halfLength - 1.5
+    && Math.abs(edgeX - over.x) < over.halfWidth,
+    `setup: the floor bot dwells on the ground; the watcher leaves it on a 1 m box's edge under a deck's end, its root past the box (${where(edgeUnderDeck)})`);
+  ok(restarted(edgeUnderDeck),
+    `a 0.5 s park that left the hull on a 1 m box's edge under a deck: the dwell restarts (${label(edgeUnderDeck)})`);
 }
 
 if (failures) { console.error(`ai.watchResumeLevels.selftest: ${failures} failure(s)`); process.exit(1); }
