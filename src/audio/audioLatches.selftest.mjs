@@ -1,7 +1,8 @@
 // 2026-11-02 audit F11 (machine 12): the engine's smaller latches. A caption for a cue heard later (an aircraft's
 // pass) is due on the audio clock, not a wall-clock timer, and never lands in the next battle; the caption stream's
 // cooldowns start afresh with each battle (captions.reset was never called); a gunship player, who has no rig of its
-// own, does not keep the engine start-up armed for the whole battle.
+// own, does not keep the engine start-up armed for the whole battle; and a mode respawn starts the hull's audio module
+// states whole, so its new life's first break of a module the last life broke sounds (round 4 merge review r1).
 import assert from 'node:assert/strict';
 import { createBus } from '../game/stateCore.ts';
 import { installFetch, namedContext, terrain, tank, listener, probeOf, mark, since, count } from './engineHarness.test-support.mjs';
