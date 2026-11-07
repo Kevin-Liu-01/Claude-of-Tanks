@@ -105,7 +105,10 @@ interface SoloBattleEntryRuntimeOptions {
    * 5 s after the press, so a longer return lost it when only the announcement after the wait asked (round 4 F1). Returns
    * the release, run if the start is refused after the wait, before the refusal shows its way out: no lock stands over
    * the Garage or its notice. An accepted start keeps the lock (its announcement finds it held). main binds the input
-   * layer (input.requestLock, whose releaseLock also withdraws a request still in flight).
+   * layer (input.requestLock, whose releaseLock also withdraws a request still in flight). (review r1) A return that
+   * fails opens its own notice first, while the start still waits: main frees the cursor before every return notice
+   * (presentGarageReturnFailure); this release covers every refusal, those that open none too (a network round
+   * entering, a Studio opened meanwhile).
    */
   holdPointerLock?(): () => void;
 }
@@ -118,9 +121,10 @@ interface SoloBattleEntryRuntime {
    * refused (busy, a network round entering, a scene no battle may take). On 0edd0e1ab5 the press announced itself
    * before calling this, so a start refused after a return wait left that announcement's effects standing over the
    * failed return's notice: the pointer lock, settings' battle state, the hidden play surface and post's 'loading'
-   * hold. Without one (the debug hook) the entry announces nothing, and asks for no pointer lock while it waits.
-   * (round 5 Q2) An announced start that waits asks for the lock in the press's task and releases it on a refusal
-   * (holdPointerLock).
+   * hold. Without one (__DEBUG.beginBattleEntry) the entry announces nothing, and asks for no pointer lock while it
+   * waits. (round 5 Q2) An announced start that waits asks for the lock in the press's task and releases it on a
+   * refusal (holdPointerLock): this press, and beginSelected's starts, which the entry announces (the Play menu, the
+   * ladder, __DEBUG.beginSoloBattle).
    */
   begin(
     specId: string,
@@ -213,7 +217,7 @@ export function createSoloBattleEntryRuntime({
     campaignOperationId: options?.campaignOperationId ?? null });
   /**
    * `announcement`: the one announcement of this entry, run once it is accepted (round 4 F1); null for an entry that
-   * announces nothing (the debug hook).
+   * announces nothing (begin() with none: __DEBUG.beginBattleEntry).
    */
   const run = (
     specId: string,
@@ -272,7 +276,10 @@ export function createSoloBattleEntryRuntime({
       lifecycle.coverRendering();
       await loading.begin(specId, mapId, options);
     } catch (error) {
-      releasePointer(); // (round 5 Q2) a failure before the acceptance: nothing announced, no lock kept
+      // (round 5 Q2) a failure before the acceptance: nothing announced, no lock kept. Defensive (review r1): main's
+      // whenGarageSettled (garageReturn.whenSettled) never rejects and its scene checks do not throw;
+      // soloBattleEntryAnnounce drives it with ports that do
+      releasePointer();
       reportError('[battle] entry failed', error);
       // the notice's retry: the same entry again, announced by the entry (its recovery return's 'garage' came between)
       const retry = () => run(specId, mapId, options, announcedByEntry(specId, mapId, options));
