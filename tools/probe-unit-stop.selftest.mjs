@@ -232,14 +232,19 @@ try {
       assert.equal(exit, code, `${signal}: the process exits 128 + n after the unwind (${tail})`);
     });
   }
-  // (round 4 review) the same with --gate and a scenario whose limits failed before the signal: the failure writer set 1
-  // over the signal's 128 + n (`process.exitCode = 1`, after markUnitsLeft kept it), so the process exited 1
-  await check('battle-memory-probe SIGTERM after a failed limit', async () => {
-    const dir = scratch(), script = join(dir, 'memory-probe-failed-signal.mjs');
-    const href = (name) => JSON.stringify(new URL(name, import.meta.url).href);
+  // (round 4 review) the same with --gate and a unit that failed before the signal: the failure writer set 1 over the
+  // signal's 128 + n (`process.exitCode = 1`, after markUnitsLeft kept it), so the process exited 1. (round 5 U9) The
+  // process's exit alone cannot pin the writer: the signal owner's exit listener (capture-hold.mjs onHoldSignal) puts 128 +
+  // n back however the process ends, so a writer that sets 1 still exits 143 (round 4 review mutant N6). Each child prints
+  // process.exitCode once its run returns, before the exit: that is the writer's own code. One child per failure writer
+  // (heldRunExitCode({ failed: true }) in frame-budget-probe's run, battle-memory-probe's gate, shadow-cache-truth's gate),
+  // each a unit that failed while held and one the signal cut.
+  const failedThenSignalled = (name, imports, run) => {
+    const dir = scratch(), root = builtTree(), script = join(dir, `${name}-failed-signal.mjs`);
+    const href = (file) => JSON.stringify(new URL(file, import.meta.url).href);
     writeFileSync(script, [
       `import { acquireProbeLocks } from ${href('./frame-budget-probe.mjs')};`,
-      `import { parseMemoryArgs, runMemoryProbe } from ${href('./battle-memory-probe.mjs')};`,
+      ...imports.map(([names, file]) => `import { ${names} } from ${href(file)};`),
       'let held = false, die;',
       'const lock = { nested: false, acquire: async () => { held = true; }, release: () => { held = false; return true; }, refresh: () => held,',
       '  waiting: () => 0, get held() { return held; }, get heldCapMs() { return null; } };',
@@ -247,27 +252,63 @@ try {
       'killed.catch(() => {});',
       'const acquireLocks = (options = {}) => acquireProbeLocks({ ...options, lock, hold: { ...options.hold, log: () => {},',
       '  teardown: async () => { die(new Error(\'Protocol error: Target closed\')); } } });',
-      `await runMemoryProbe(parseMemoryArgs(['--scenarios=urban:zone_control,verdant:zone_control', '--gate', ${JSON.stringify(`--out=${dir}`)}]), { acquireLocks,`,
+      'const standIn = { close: async () => {} };',
+      // the unit the signal cuts: a live browser keeps a real run's event loop alive until the teardown stops it
+      'const cut = () => { const alive = setInterval(() => {}, 1000); console.log(\'probing\'); return killed.finally(() => clearInterval(alive)); };',
+      run({ out: JSON.stringify(`--out=${dir}`), root: (flag) => JSON.stringify(`--${flag}=${root}`) }),
+      'console.log(`after the run: exit code ${process.exitCode}`);',
+    ].join('\n'));
+    return new Promise((done) => {
+      const child = spawn(process.execPath, [script], { stdio: ['ignore', 'pipe', 'pipe'] });
+      let stdout = '', stderr = '', sent = false;
+      child.stdout.on('data', (chunk) => {
+        stdout += chunk;
+        if (!sent && stdout.includes('probing')) { sent = true; child.kill('SIGTERM'); }
+      });
+      child.stderr.on('data', (chunk) => { stderr += chunk; });
+      const wall = setTimeout(() => child.kill('SIGKILL'), 120_000);
+      child.once('exit', (exit) => {
+        clearTimeout(wall);
+        const said = `${stdout}${stderr}`;
+        done({ exit, sent, said, tail: said.split('\n').slice(-6).join(' | ') });
+      });
+    });
+  };
+  // started together (each child imports its tool); checked in turn
+  const writers = {
+    'frame-budget-probe': failedThenSignalled('frame-budget-probe', [['parseFrameProbeArgs, runFrameProbe', './frame-budget-probe.mjs']], ({ out, root }) => [
+      `let slots = 0;`,
+      `await runFrameProbe(parseFrameProbeArgs([${root('roots')}, '--labels=a', '--maps=verdant', '--pattern=AA', ${out}, '--scene-check=off', '--tag=t']), {`,
+      '  acquireLocks, launchBrowser: async () => standIn, openServer: async () => standIn,',
+      // the first slot fails while held; the second is cut by the signal
+      '  measure: async () => { if (slots++ === 0) throw new Error(\'page crashed\'); return cut(); } });',
+    ].join('\n')),
+    'battle-memory-probe': failedThenSignalled('battle-memory-probe', [['parseMemoryArgs, runMemoryProbe', './battle-memory-probe.mjs']], ({ out }) => [
+      `await runMemoryProbe(parseMemoryArgs(['--scenarios=urban:zone_control,verdant:zone_control', '--gate', ${out}]), { acquireLocks,`,
       '  openServer: async () => ({ close: async () => { console.log(\'server closed\'); } }),',
       // the first scenario measures nothing, so every limit fails ('not measured'); the second is cut by the signal
-      '  probe: async (_options, scenario) => { if (scenario.startsWith(\'urban\')) return { growth: {}, peakRss: {} };',
-      '    const alive = setInterval(() => {}, 1000); console.log(\'probing\'); return killed.finally(() => clearInterval(alive)); } });',
-    ].join('\n'));
-    const child = spawn(process.execPath, [script], { stdio: ['ignore', 'pipe', 'pipe'] });
-    let stdout = '', stderr = '', sent = false;
-    child.stdout.on('data', (chunk) => {
-      stdout += chunk;
-      if (!sent && stdout.includes('probing')) { sent = true; child.kill('SIGTERM'); }
+      '  probe: async (_options, scenario) => (scenario.startsWith(\'urban\') ? { growth: {}, peakRss: {} } : cut()) });',
+    ].join('\n')),
+    'shadow-cache-truth': failedThenSignalled('shadow-cache-truth', [['parseArgs, runShadowTruth', './shadow-cache-truth.mjs']], ({ out, root }) => [
+      `await runShadowTruth(parseArgs([${root('root')}, '--maps=verdant,steppe', ${out}, '--gate']), { acquireLocks,`,
+      '  openServer: async () => standIn, launchBrowser: async () => standIn,',
+      // the first map differs; the second is cut by the signal
+      '  probe: async (_browser, _options, mapId) => (mapId === \'verdant\' ? { failures: [\'verdant: the cached shadow differs\'], record: {} } : cut()) });',
+    ].join('\n')),
+  };
+  const failure = { 'frame-budget-probe': /verdant-s0-a FAILED: page crashed/, 'battle-memory-probe': /limit\(s\) FAILED/,
+    'shadow-cache-truth': /DIFFERENCES: verdant: the cached shadow differs/ };
+  const leftLine = { 'frame-budget-probe': /verdant-s1-a left for the next hold/, 'battle-memory-probe': /verdant:zone_control left for the next run/,
+    'shadow-cache-truth': /steppe left for the next run/ };
+  for (const [name, child] of Object.entries(writers)) {
+    await check(`${name} SIGTERM after a failure`, async () => {
+      const { exit, sent, said, tail } = await child;
+      assert.ok(sent && failure[name].test(said), `${name}: a unit failed while held, then the next was signalled (${tail})`);
+      assert.match(said, leftLine[name], `${name}: the unit cut is left (${tail})`);
+      assert.match(said, /after the run: exit code 143\b/, `${name}: the failure writer keeps the signal's 128 + n (${tail})`);
+      assert.equal(exit, 143, `${name}: the process exits 128 + n (${tail})`);
     });
-    child.stderr.on('data', (chunk) => { stderr += chunk; });
-    const wall = setTimeout(() => child.kill('SIGKILL'), 120_000);
-    const [exit] = await once(child, 'exit');
-    clearTimeout(wall);
-    const said = `${stdout}${stderr}`, tail = said.split('\n').slice(-6).join(' | ');
-    assert.ok(sent && /limit\(s\) FAILED/.test(said), `the first scenario's limits failed, then the second was signalled (${tail})`);
-    assert.match(said, /verdant:zone_control left for the next run/, `the scenario cut is left (${tail})`);
-    assert.equal(exit, 143, `a signal's 128 + n stands over the failed gate's 1 (${tail})`);
-  });
+  }
 
   // ---- shadow-cache-truth: a map the stop cut is left; result.json is written; exit 3 ---------------------------------------
   await check('shadow-cache-truth', async () => {
@@ -331,4 +372,4 @@ try {
 }
 assert.deepEqual(failed, [], `a cap stop mid-unit leaves the unit for the next run:\n  ${failed.join('\n  ')}`);
 
-console.log('probe-unit-stop.selftest: a cap stop mid-unit leaves the unit for the next run in frame-budget-probe, battle-memory-probe, battle-spike-census (and its gate, which still fails a failed battle), shadow-cache-truth and time-to-battle-probe --warm=relaunch (a cut cold run or a refused relaunch): exit 3, never FAILED or a crash, the finishing run named; a signal unwinds battle-memory-probe\'s hold, and its 128 + n stands over a failed gate PASS');
+console.log('probe-unit-stop.selftest: a cap stop mid-unit leaves the unit for the next run in frame-budget-probe, battle-memory-probe, battle-spike-census (and its gate, which still fails a failed battle), shadow-cache-truth and time-to-battle-probe --warm=relaunch (a cut cold run or a refused relaunch): exit 3, never FAILED or a crash, the finishing run named; a signal unwinds battle-memory-probe\'s hold, and its 128 + n stands over each failure writer (frame-budget-probe\'s run, battle-memory-probe\'s and shadow-cache-truth\'s gates) PASS');
