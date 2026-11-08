@@ -292,12 +292,21 @@ export const BUNDLE_BUDGETS = Object.freeze({
   //   anchors +214, the en-US catalog +134, structureGroundOcclusion +129, roleProfiles +109, turretSeatPlane +98,
   //   garageStage +66; materials -158, crewVoice -121. Gallery adds vehicleFacets +105. Home +8 B, docs -10 B and 404 +5 B
   //   stay inside their slack; pad's row is phone-feel-269's in tools/bundle-budget.json, held.
-  // 2026-11-08 (the state machine fixes' round eight, item Y0: integ/269 21d5c7fd30 merged into item/sm-fix-integration
-  //   b03868e697): the merge carries both re-pins above; each row holds the larger of the two until the merged build
-  //   re-pins it (the next comment).
-  game: { brotliBytes: 1190615, requests: 127, entryBrotliBytes: 256200 },
-  cn: { brotliBytes: 1235342, requests: 128, entryBrotliBytes: 256200 },
-  gallery: { brotliBytes: 756634, requests: 73 },
+  // 2026-11-08 (the implicit state machine fixes' round eight, item Y0; Kevin: "id like you to resolve all of them"):
+  //   integ/269 21d5c7fd30 merged into item/sm-fix-integration b03868e697 (round five's re-pin above, over 268) carries
+  //   both re-pins above; neither fits the merge, since each side grew the same pages over 268. Re-pinned at
+  //   item/sm-fix8-269's build (Node 24.22.1, vite 8.3.5, rolldown 1.2.15; the same node_modules) at the measures, the
+  //   byte rows that missed only. Against both parents' pins: game 1,204,277 B brotli (+13,662 over ours 1,190,615,
+  //   +14,865 over 269's 1,189,412), entry 257,684 (+1,484 over ours 256,200, +7,025 over 269's 250,659), cn 1,249,096
+  //   (+13,754 over ours 1,235,342, +14,956 over 269's 1,234,140), Gallery 759,827 (+12,259 over ours 747,568, +3,193
+  //   over 269's 756,634). Each is the two sides' own growth over 268's measured build summed (game: ours +14,543, 269's
+  //   +13,296; entry +6,797 and +1,212; cn +14,564 and +13,318; Gallery +2,883 and +11,949) plus 366, 272, 436 and 310 B:
+  //   both sides edit the same chunks (main, the audio engine, the fleet), and brotli does not add across them.
+  //   Requests unchanged at 127 / 128 / 73 / 8 / 12 / 7 (check:bundle PASS, tools/bundle-budget.json untouched). Home
+  //   28,756, docs 37,096 and 404 18,677 measure within the larger of the two pins (ours), which they keep.
+  game: { brotliBytes: 1204277, requests: 127, entryBrotliBytes: 257684 },
+  cn: { brotliBytes: 1249096, requests: 128, entryBrotliBytes: 257684 },
+  gallery: { brotliBytes: 759827, requests: 73 },
   home: { brotliBytes: 28778, requests: 8 },
   docs: { brotliBytes: 37139, requests: 12 },
   notFound: { brotliBytes: 18679, requests: 7 },
