@@ -42,7 +42,10 @@ for (const name of ['hull_roof', 'loara_deck_side_l', 'loara_deck_side_r', 'loar
 }
 for (const [x, y] of plates.get('hull_roof').verts.map((v) => [v[0], v[1]])) {
   near(y, LOARA_DECK.topY, 'the deck plate on the drawn roof');
-  near(Math.abs(x), LOARA_DECK.halfW, 'the deck plate to the drawn flanks');
+  // finalizeCombatAnatomy maps the authored plates into the hull frame it measures from the model, so the plate's edges sit
+  // between the deck's core and its drawn flanks, not on the authored half-width
+  assert.ok(Math.abs(x) >= LOARA_DECK.coreHalfW && Math.abs(x) <= LOARA_DECK.halfW + 0.005,
+    `the deck plate between the core and the drawn flanks: ${Math.abs(x)} in ${LOARA_DECK.coreHalfW}..${LOARA_DECK.halfW}`);
 }
 // the turret ring's module rises onto the raised deck with the ring
 const ring = spec.armor.modules.find((m) => m.module === 'turretRing' && !m.turretLocal);

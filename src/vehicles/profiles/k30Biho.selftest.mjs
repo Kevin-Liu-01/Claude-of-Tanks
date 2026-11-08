@@ -17,6 +17,7 @@ import { createTank } from '../tankFactory.ts';
 import { getSpec } from '../specs.ts';
 import '../fleetRegistration.ts';
 import { synchronizeK30BihoFrame } from '../k30BihoSpecs.ts';
+import { armorVolumeOverflows } from '../armorInterior.ts';
 import { GUN_HULL_KEEP_M, SurfaceGrid, densePoints, gunHullProbe, meshTriangles, meshesUnder } from '../gunHullClearance.test-support.mjs';
 import { K30_HULL, k200Driver, k200HullLayout, k200HullPlates } from './k200HullLayout.ts';
 import { K30_GUN_PIVOT, K30_GUNS, K30_TURRET, K30_TURRET_PIVOT } from './k30BihoLayout.ts';
@@ -49,10 +50,21 @@ const spec = getSpec(id);
 synchronizeK30BihoFrame();
 assert.deepEqual(spec.armor.turretPivot, [...K30_TURRET_PIVOT], 'spec ring datum');
 assert.deepEqual(spec.armor.gunPivot, [...K30_GUN_PIVOT], 'spec trunnion datum');
-assert.deepEqual(spec.armor.hullPlates.map((p) => p.name), k200HullPlates(K30_HULL).map((p) => p.name), 'the hull plates are the K200 hull\'s');
+// (beside them, the hatch plates finalizeCombatAnatomy measures from the model: armorInterior.ts leaves them out the same way)
+assert.deepEqual(spec.armor.hullPlates.map((p) => p.name).filter((name) => !/^(?:hull|turret)_(?:hatch|cupola)_\d+_/.test(name)),
+  k200HullPlates(K30_HULL).map((p) => p.name), 'the hull plates are the K200 hull\'s');
 {
+  // the K200 hull's driver station: the fleet's seat fitter (tools/crew-seat-fit.mjs) seats a P50 body nearest it, inside the
+  // hull's armour (armorInterior.ts), so the seated box keeps the station's frame and side and stands within a seat of it
   const driver = spec.armor.crew.find((c) => c.crew === 'driver'), own = k200Driver(K30_HULL);
-  assert.deepEqual([driver.min, driver.max, driver.turretLocal], [own.min, own.max, own.turretLocal], 'the driver is the K200 hull\'s');
+  const centre = (box) => [0, 1, 2].map((k) => (box.min[k] + box.max[k]) / 2);
+  const [dc, oc] = [centre(driver), centre(own)];
+  assert.equal(driver.turretLocal, own.turretLocal, 'the driver rides in the K200 hull');
+  assert.ok(Math.sign(dc[0]) === Math.sign(oc[0]) && Math.hypot(dc[0] - oc[0], dc[2] - oc[2]) <= 0.35,
+    `the driver at the K200 hull's station (${dc.map((v) => v.toFixed(2))} against ${oc.map((v) => v.toFixed(2))})`);
+  const out = Math.max(...armorVolumeOverflows(spec.armor, null).filter((part) => !part.turretLocal && part.name === 'driver')
+    .map((part) => part.overflow));
+  assert.ok(out <= 0.15, `the driver inside the hull's armour (${out.toFixed(3)} m out)`);
 }
 assert.deepEqual(spec.armor.crew.map((c) => c.crew).sort(), ['commander', 'driver', 'gunner', 'radioOperator'], 'crew 4');
 near(spec.visual.trackWidthM, K30_HULL.gear.trackW, 1e-9, 'the track width is the K200 hull\'s');

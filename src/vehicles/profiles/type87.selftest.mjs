@@ -11,6 +11,8 @@ import * as THREE from 'three';
 import { createTank } from '../tankFactory.ts';
 import { getSpec } from '../specs.ts';
 import { INTERNAL_LAYOUT_BY_TANK } from '../internalLayoutRegistry.ts';
+import { armorVolumeOverflows } from '../armorInterior.ts';
+import { combatAnatomyCalibration } from '../combatAnatomyCalibrationRegistry.ts';
 import { SurfaceGrid, densePoints, gunHullProbe, meshTriangles, meshesUnder, GUN_HULL_KEEP_M } from '../gunHullClearance.test-support.mjs';
 import { BODY_EXCLUDED_SEAT_ROLES, bodyGeometryWithout } from '../../../tools/body-height-parts.mjs';
 import { TYPE74_HULL_STATIONS as HULL } from './type74Family.ts';
@@ -41,9 +43,12 @@ const layout = INTERNAL_LAYOUT_BY_TANK[ID];
 assert.equal(layout.layoutKey, 'spaaType87');
 assert.deepEqual(layout.crew.map((c) => c.role).sort(), ['commander', 'driver', 'gunner']);
 assert.deepEqual(spec.armor.crew.filter((c) => c.turretLocal).map((c) => c.crew).sort(), ['commander', 'gunner']);
+// in the central body or the basket under it: the fleet's seat fitter (tools/crew-seat-fit.mjs) seats turret crew down
+// through the ring, and internalPlacement.selftest.mjs holds every interior volume to armorInterior.ts's turret-or-basket rule
+const overflows = armorVolumeOverflows(spec.armor, combatAnatomyCalibration(ID)?.turretRing);
 for (const box of spec.armor.crew.filter((c) => c.turretLocal)) {
-  assert.ok(box.min[0] >= -T.bodyHalfW && box.max[0] <= T.bodyHalfW && box.min[1] >= T.floorY && box.max[1] <= T.roofY
-    && box.min[2] >= T.rearZ && box.max[2] <= T.faceZ, `${box.crew} sits inside the central body`);
+  const out = Math.max(...overflows.filter((part) => part.turretLocal && part.name === box.crew).map((part) => part.overflow));
+  assert.ok(out <= 0.15, `${box.crew} sits inside the central body or the basket under it (${out.toFixed(3)} m out)`);
 }
 assert.ok(spec.armor.crew.find((c) => c.crew === 'gunner').min[0] > 0, 'the gunner on the left (+x)');
 // the driver on the left (photos 03, 05), the radio module beside him moved with him off the APU's side

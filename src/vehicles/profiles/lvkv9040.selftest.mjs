@@ -11,7 +11,8 @@
 //    body of revolution about the elevation axis, keeps it at every pitch by construction), and 2.5 cm from the hull at
 //    every 5 degrees of yaw (every degree near the stern stops) and pitch from each yaw's published stop
 //    (gunHullClearance.test-support.mjs);
-//  - the turret's crew and modules lie inside the turret's body (15 cm over its roof at most, as armorInterior.ts), and no
+//  - the turret's modules lie inside the turret's body (15 cm over its roof at most, as armorInterior.ts), its crew in the
+//    body or the basket under it (armorInterior.ts's turret-or-basket rule, where the fleet's seat fitter seats them), and no
 //    crew box overlaps a module box but the gunner's at his sight.
 // First-party tooling: Kevin B. Liu (NOTICE.md).
 import assert from 'node:assert/strict';
@@ -20,6 +21,8 @@ import { createTank } from '../tankFactory.ts';
 import { getSpec } from '../specs.ts';
 import { GUN_HULL_KEEP_M, SurfaceGrid, densePoints, gunHullProbe, meshTriangles, meshesUnder } from '../gunHullClearance.test-support.mjs';
 import { minimumMechanicalGunPitch } from '../../sim/gunPitchLimits.ts';
+import { armorVolumeOverflows } from '../armorInterior.ts';
+import { combatAnatomyCalibration } from '../combatAnatomyCalibrationRegistry.ts';
 import { LVKV_MUZZLE_Z, LVKV_RADAR, LVKV_TRUNNION, LVKV_TURRET as T } from './lvkv9040Frame.ts';
 
 const DEG = Math.PI / 180;
@@ -152,9 +155,16 @@ const boxOf = (record) => [record.min, record.max];
 const turretCrew = spec.armor.crew.filter((c) => c.turretLocal);
 const turretModules = spec.armor.modules.filter((m) => m.turretLocal && m.module !== 'feedSystem');
 assert.equal(turretCrew.length, 3, 'gunner, commander and radar operator in the turret');
-for (const record of [...turretCrew, ...turretModules]) {
+for (const record of turretModules) {
   const [min, max] = boxOf(record);
-  assert.ok(min && max && inBody(min, max), `${record.crew ?? record.module}: inside the turret's body (${min}..${max})`);
+  assert.ok(min && max && inBody(min, max), `${record.module}: inside the turret's body (${min}..${max})`);
+}
+// the crew in the turret's body or the basket under it: the fleet's seat fitter (tools/crew-seat-fit.mjs) seats turret crew
+// down through the ring, held by armorInterior.ts's turret-or-basket rule (internalPlacement.selftest.mjs)
+const overflows = armorVolumeOverflows(spec.armor, combatAnatomyCalibration(ID)?.turretRing);
+for (const record of turretCrew) {
+  const out = Math.max(...overflows.filter((part) => part.turretLocal && part.name === record.crew).map((part) => part.overflow));
+  assert.ok(out <= 0.15, `${record.crew}: inside the turret's body or the basket under it (${out.toFixed(3)} m out)`);
 }
 const overlap = (a, b) => [0, 1, 2].every((k) => a[0][k] < b[1][k] - 0.02 && b[0][k] < a[1][k] - 0.02);
 // (internalPlacement.selftest.mjs's exception: a crew member at the drawn sight he uses)
