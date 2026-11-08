@@ -150,8 +150,10 @@ function addSideKit(P: TankBuilderPort): void {
 // --------------------------------------------------------------------- turret --
 function addTurretBody(P: TankBuilderPort): void {
   const { box, cylX, cylY } = KIT;
-  // the ring collar on the hull's race, 2 cm into the deck and 3 cm into the body's floor
-  P.add('turret', cylY(0.98, 1.02, 0.09, P.q ? 32 : 20), 0, 0.005, 0);
+  // the ring collar on the hull's race, 2 cm into the deck and 3 cm into the body's floor: the race's own steel (as the
+  // BMPT's turntable, bmpt72Station.ts), out of the armoured body's bucket, whose measured box it took 1 cm under the
+  // body's floor (270: type87.selftest's turret plates)
+  P.add('turretTrack', cylY(0.98, 1.02, 0.09, P.q ? 32 : 20), 0, 0.005, 0);
   // the central body: one welded shell, its rear corners chamfered, the roof's edges chamfered, the nose a wedge with its
   // vertical front edges chamfered (photos 01, 04, 06)
   const w = T.bodyHalfW, c = T.roofChamfer, wr = w - T.rearChamfer, wn = T.noseHalfW, edge = T.noseEdgeZ - T.bevelZ;

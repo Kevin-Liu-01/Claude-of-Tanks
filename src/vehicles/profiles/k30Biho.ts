@@ -302,6 +302,10 @@ export function buildK30Biho(P: TankBuilderPort): void {
   k30HullFittings(P);
   P.turretG.position.set(...K30_TURRET_PIVOT);
   P.gunG.position.set(...K30_GUN_PIVOT);
+  // 270: the guns' receivers swing low behind the trunnions through the 85 deg elevation: the ring collar keeps the fleet's
+  // 2 cm gun clearance (k30Biho.selftest) and reads the sweep every 2.5 deg (turretSeatRace.ts addSeatCollar)
+  P.turretG.userData.turretSeatCollarGunClearM = 0.022;
+  P.turretG.userData.turretSeatCollarGunStepDeg = 2.5;
   k30Turret(P);
   k30Guns(P);
 }
