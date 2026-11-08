@@ -116,6 +116,7 @@ import { createStudioCinematics } from '../fx/cinematicFx.ts';
 import type { CineActor, CineTrackActor, CineTrackSample, StudioCinematics } from '../fx/cinematicFx.ts';
 import type { SmokeScreenWalls } from '../fx/cinematicRecipes.ts';
 import type { FxCinematicPort } from '../fx/effects.ts';
+import { subjectPointVelocity } from '../fx/effectAttachments.ts';
 import {
   STUDIO_FX_QUALITIES, STUDIO_FX_PARAMS, normalizeStudioFx, studioFxState, fxParam, flareColor,
 } from './studioFxSettings.ts';
@@ -193,7 +194,9 @@ interface StudioFxRuntime {
     camera: THREE.PerspectiveCamera,
     resolveSubject: (id: RuntimeValue) => StudioActor | null,
   ): void;
-  muzzleFlash(position: THREE.Vector3, direction: THREE.Vector3, caliberMm: number): void;
+  /** `shooterId`: the firing actor, whose motion the flash's bright parts leave with */
+  muzzleFlash(position: THREE.Vector3, direction: THREE.Vector3, caliberMm: number, rocket?: boolean,
+    shooterId?: string | null): void;
   /** A hull toppling a pole or dressing (the battle's crush burst) and kicking loose dressing (effects.ts). */
   propCrush?(position: THREE.Vector3, direction: THREE.Vector3, heightM?: number): void;
   loosePropHit?(position: THREE.Vector3, direction: THREE.Vector3, heightM?: number): void;
@@ -677,6 +680,8 @@ const _firstViewMatrix = new THREE.Matrix4();
 const _firstViewFrustum = new THREE.Frustum();
 const _v2 = new THREE.Vector3();
 const _v3 = new THREE.Vector3();
+/** a firing actor's muzzle velocity (m/s): the cinematic blast's bright parts ride it as the battle flash's do */
+const _muzzleVel: [number, number, number] = [0, 0, 0];
 const _fwd = new THREE.Vector3();
 /** The camera's view for the night lamps (studioLightRuntime.update): the lamps ahead of it take the pooled lights. */
 const _lampFwd = new THREE.Vector3();
@@ -2238,7 +2243,8 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
     });
     filmCue('cannon', _v2.x, _v2.y, _v2.z, shellSpec.caliberMm);
     if (cinematicFor(params) && !isUnguidedRocket(actor.spec.gun, shellSpec)) {
-      ensureCinematics().muzzleBlast(id, _v2, _v3, shellSpec.caliberMm);
+      subjectPointVelocity(actor, _v2.x, _v2.z, _muzzleVel);
+      ensureCinematics().muzzleBlast(id, _v2, _v3, shellSpec.caliberMm, 0, _muzzleVel);
     }
     if (params.tracer !== false) {
       const shell = createShell(shellSpec, actor.uid, false, _v2, _v3, shellId);
@@ -2258,9 +2264,10 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
       _v3.set(Math.sin(direction), 0, Math.cos(direction));
     }
     const caliberMm = params.caliberMm || (actor ? actor.spec.gun.caliberMm : 120);
-    fx.muzzleFlash(_v2, _v3, caliberMm);
+    fx.muzzleFlash(_v2, _v3, caliberMm, false, actor ? actor.uid : null);
     filmCue('cannon', _v2.x, _v2.y, _v2.z, caliberMm);
-    if (cinematicFor(params)) ensureCinematics().muzzleBlast(id, _v2, _v3, caliberMm);
+    subjectPointVelocity(actor, _v2.x, _v2.z, _muzzleVel);
+    if (cinematicFor(params)) ensureCinematics().muzzleBlast(id, _v2, _v3, caliberMm, 0, _muzzleVel);
     return true;
   }
 
@@ -2641,7 +2648,7 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
     if (!actor) return false;
     actor.visual.gunMuzzleWorld(_v2);
     actor.visual.gunDirWorld(_v3);
-    fx.muzzleFlash(_v2, _v3, params.caliberMm || 25);
+    fx.muzzleFlash(_v2, _v3, params.caliberMm || 25, false, actor.uid);
     const count = Math.max(1, Math.min(14, params.count != null ? params.count : 7));
     const gapM = params.gapM != null ? params.gapM : 7;
     if (cinematicFor(params)) ensureCinematics().mgBurst(id, _v2, _v3, count, gapM, params.speedMps || 820);

@@ -1,7 +1,11 @@
-// Kevin B. Liu — M256 raked shield, curved rotor and concentric cradle.
+// Kevin B. Liu — M1A1 gun shield and M256 cannon, measured from the owner's model (release 268 builder E).
+// The shield fills the narrow slot between the cheeks (its face bulging forward at the gun axis, its top on the turret
+// roof's forward course, its rear a rotor arc that turns in the turret's elevation recess); the round collar and the
+// coax tube stand out of it; the cannon is lathed to the model's stations: thermal sleeve, band, bore evacuator,
+// barrel and the slimmer muzzle end. Gun-local metres (trunnion origin, +z along the bore). Measurements:
+// abrams-bradley-268-evidence/m1fid/measure.md (the source never enters the repository).
 import * as THREE from 'three';
 import {KIT} from './kit.ts';
-import {sectionSolid} from './sectionSolid.ts';
 
 interface GunMountPort {
   readonly q: boolean;
@@ -10,128 +14,119 @@ interface GunMountPort {
   addGunExtraDark(geometry: THREE.BufferGeometry, ...transform: number[]): void;
 }
 
-/** Finite front armor with actual gun/coax apertures. Its broad raked face
- * stays straight across the vehicle: the staggered fixed cheeks do not twist
- * the mantlet. The rear rotor seats inside the turret's separate pitch bay. */
-function armoredShield(segments: number): THREE.BufferGeometry {
+/** Shield half-width: the slot's 0.319 less a 12 mm running gap at each cheek. */
+const SHIELD_HALF_W = 0.307;
+/** The turret roof's forward course in gun-local coordinates (y = ROOF_Y0 - ROOF_K z at rest). */
+export interface M1A1ShieldRoof { readonly y0: number; readonly k: number }
+
+/** Shield side profile (z, y): flat bottom, the model's bulged face, the roof course on top, a rotor arc behind that
+ * stays `rotorR` from the trunnion (the fixed recess is 18 mm larger). */
+function shieldProfile(roof: M1A1ShieldRoof, rotorR: number, segments: number): THREE.Shape {
+  const yBottom = -0.265;
+  const face: readonly (readonly [number, number])[] = [[0.31, yBottom], [0.35, -0.175], [0.39, -0.075], [0.42, 0],
+    [0.39, 0.075], [0.35, 0.125], [0.32, 0.175], [0.28, 0.225]];
+  const topFrontZ = 0.25, topFront: readonly [number, number] = [topFrontZ, roof.y0 - roof.k * topFrontZ];
+  // the rear end of the roof course: on the rotor circle
+  const a = 1 + roof.k * roof.k, b = -2 * roof.k * roof.y0, c = roof.y0 * roof.y0 - rotorR * rotorR;
+  const zTop = (-b - Math.sqrt(b * b - 4 * a * c)) / (2 * a), yTop = roof.y0 - roof.k * zTop;
+  const zBottom = -Math.sqrt(rotorR * rotorR - yBottom * yBottom);
   const shape = new THREE.Shape();
-  shape.moveTo(-.322, -.145);
-  shape.lineTo(-.18, -.215);
-  shape.lineTo(.28, -.215);
-  shape.lineTo(.422, -.145);
-  shape.lineTo(.422, .265);
-  shape.quadraticCurveTo(.422, .35, .337, .35);
-  shape.lineTo(-.237, .35);
-  shape.quadraticCurveTo(-.322, .35, -.322, .265);
+  shape.moveTo(zBottom, yBottom);
+  for (const [z, y] of face) shape.lineTo(z, y);
+  shape.lineTo(topFront[0], topFront[1]);
+  shape.lineTo(zTop, yTop);
+  const a0 = Math.atan2(yTop, zTop), a1 = Math.atan2(yBottom, zBottom) + Math.PI * 2;
+  for (let i = 1; i < segments; i++) {
+    const ang = a0 + (a1 - a0) * (i / segments);
+    shape.lineTo(rotorR * Math.cos(ang), rotorR * Math.sin(ang));
+  }
   shape.closePath();
-  for (const [x, y, radius] of [[0, 0, .184], [-.265, -.095, .039]]) {
-    const hole = new THREE.Path();
-    hole.absarc(x, y, radius, 0, Math.PI * 2, true);
-    shape.holes.push(hole);
-  }
-  const geometry = new THREE.ExtrudeGeometry(shape, {
-    depth: 1, bevelEnabled: false, steps: 1, curveSegments: segments / 2,
-  });
-  const p = geometry.attributes.position;
-  for (let i = 0; i < p.count; i++) {
-    const frontZ = .455 - .5 * (p.getY(i) + .255);
-    p.setZ(i, THREE.MathUtils.lerp(frontZ - .105, frontZ, p.getZ(i)));
-  }
-  geometry.computeVertexNormals();
-  return geometry;
+  return shape;
 }
 
-function collar(segments: number): THREE.BufferGeometry {
-  // A hollow non-recoiling sleeve; the actual recoiling barrel runs through
-  // its 132 mm internal radius. Winding closes the annulus, never the opening itself.
-  const profile = [[.132, -.14], [.182, -.14], [.182, .27], [.174, .39],
-    [.156, .48], [.156, .62], [.132, .62], [.132, -.14]];
-  return new THREE.LatheGeometry(profile.map(([r, z]) => new THREE.Vector2(r, z)), segments)
-    .rotateX(Math.PI / 2);
-}
-
-export function buildM1A1GunMount(P: GunMountPort, searchlight: boolean): void {
-  const segments = P.q ? 32 : 20;
-  // Journals share the actual elevation axis and enter the fixed side
-  // bearings. Their inboard ends keep clear of the longitudinal recoil bore.
-  for (const x of [-.255,.355]) P.addGunExtra(KIT.cylX(.175, .16, segments), x, 0, 0);
-  // A hollow curved rear casting replaces the former deep rectangular
-  // extrusion. It nests in the turret's matching relieved throat, and the
-  // longitudinal gun bore remains open through the middle of the assembly.
-  const rotor = new THREE.Shape();
-  rotor.absarc(0, 0, .31, Math.PI / 2, Math.PI, false);
-  rotor.lineTo(-.27,0);
-  rotor.absarc(0, 0, .27, Math.PI, Math.PI / 2, true);
-  rotor.closePath();
-  P.addGunExtra(new THREE.ExtrudeGeometry(rotor, {
-    depth: .688, steps: 1, bevelEnabled: false, curveSegments: segments / 2,
-  }).rotateY(-Math.PI / 2), .394, 0, 0);
-  // Shallow lower side webs clear hull stowage without crossing the axial
-  // recoil passage. Their inner faces sit outside the entire 132 mm bore;
-  // a continuous transverse lower casting would cut the recoiling root.
-  const lowerReturn = new THREE.Shape();
-  lowerReturn.moveTo(-.31,0);
-  for (const [z,y] of [[-.235,-.065],[-.12,-.15],[0,-.18],[0,-.15],[-.105,-.12],[-.21,-.045],[-.27,0]])
-    lowerReturn.lineTo(z,y);
-  lowerReturn.closePath();
-  for (const [x0,x1] of [[-.294,-.15],[.15,.394]]) {
-    P.addGunExtra(new THREE.ExtrudeGeometry(lowerReturn, {
-      depth: x1-x0, steps: 1, bevelEnabled: false, curveSegments: segments / 2,
-    }).rotateY(-Math.PI / 2), x1, 0, 0);
-  }
-  P.addGunExtra(armoredShield(segments));
-  // The sloping top casting joins the rotor crown to the thin face; its
-  // tapered shoulders follow the shield's rounded upper corners. It closes
-  // the roof across the whole bay rather than leaving the side plates as fins.
-  P.addGunExtra(sectionSolid([
-    {z: -.045, ring: [[-.294,.272],[.394,.272],[.337,.307],[-.237,.307]]},
-    {z: 0, ring: [[-.294,.275],[.394,.275],[.337,.314],[-.237,.314]]},
-    {z: .05, ring: [[-.294,.300],[.394,.300],[.337,.344],[-.237,.344]]},
-    {z: .105, ring: [[-.294,.315],[.394,.315],[.337,.350],[-.237,.350]]},
-  ]));
-  // A compact undercut preserves the stepped chin while clearing the
-  // rising rear deck at full depression and every turret heading.
-  P.addGunExtra(sectionSolid([
-    {z: -.02, ring: [[-.242,-.18],[.342,-.18],[.394,-.145],[-.294,-.145]]},
-    {z: .12, ring: [[-.267,-.185],[.367,-.185],[.422,-.145],[-.322,-.145]]},
-    {z: .25, ring: [[-.257,-.19],[.357,-.19],[.422,-.145],[-.322,-.145]]},
-    {z: .425, ring: [[-.247,-.225],[.347,-.225],[.422,-.145],[-.322,-.145]]},
-  ]));
-  P.addGunExtra(collar(segments));
-  // Recessed coax receiver behind its real aperture, not a black decal or a
-  // second cannon protruding from an arbitrary side of the gun cover.
-  P.addGunExtraDark(KIT.cylZ(.037, .24, P.q ? 16 : 10), -.265, -.095, .14);
-  for (const side of [-1, 1]) {
-    const x = .05 + side * .372;
-    // The side casting tapers back into a circular rotor instead of an
-    // exposed rectangular support block.
-    // The seam hardware follows the rake instead of floating on a vertical row.
-    const sideShape = new THREE.Shape();
-    sideShape.moveTo(.396, -.14);
-    sideShape.lineTo(.194, .268);
-    sideShape.lineTo(.05, .305);
-    sideShape.lineTo(0, .31);
-    sideShape.absarc(0, 0, .31, Math.PI / 2, Math.PI, false);
-    sideShape.lineTo(-.235,-.065);
-    sideShape.lineTo(-.12,-.15);
-    sideShape.lineTo(0,-.18);
-    sideShape.lineTo(.12, -.185);
-    sideShape.lineTo(.25, -.19);
-    sideShape.closePath();
-    const sideCover = new THREE.ExtrudeGeometry(sideShape, {
-      depth: .028, steps: 1, bevelEnabled: false, curveSegments: P.q ? 8 : 4,
-    }).rotateY(-Math.PI / 2);
-    P.addGunExtra(sideCover, x + (side < 0 ? .028 : 0), 0, 0);
-    if (P.q) for (const y of [-.12,-.065,.05,.165,.28]) {
-      P.addGunExtra(KIT.cylX(.018, .009, 6), x + side * .004, y,
-        .455 - .5 * (y + .255) - .052);
+/** Bands of revolution about +z from an (r, z) profile: smooth round the bore, crisp at every station. */
+export function latheBands(profile: readonly (readonly [number, number])[], segments: number): THREE.BufferGeometry {
+  const pos: number[] = [], nor: number[] = [];
+  for (let i = 0; i + 1 < profile.length; i++) {
+    const [r0, z0] = profile[i], [r1, z1] = profile[i + 1];
+    const dr = r1 - r0, dz = z1 - z0, len = Math.hypot(dr, dz);
+    if (len < 1e-9) continue;
+    const nr = dz / len, nz = -dr / len; // outward normal of the profile segment (for r increasing outward)
+    for (let k = 0; k < segments; k++) {
+      const t0 = (k / segments) * Math.PI * 2, t1 = ((k + 1) / segments) * Math.PI * 2;
+      const c0 = Math.cos(t0), s0 = Math.sin(t0), c1 = Math.cos(t1), s1 = Math.sin(t1);
+      const p = (r: number, z: number, c: number, s: number): number[] => [r * c, r * s, z];
+      const n = (c: number, s: number): number[] => [nr * c, nr * s, nz];
+      const A = p(r0, z0, c0, s0), B = p(r0, z0, c1, s1), C = p(r1, z1, c1, s1), D = p(r1, z1, c0, s0);
+      // outward winding (A, B, C) + (A, C, D); a band that starts or ends on the axis keeps its one real triangle
+      if (r0 > 1e-9) for (const [v, cc, ss] of [[A, c0, s0], [B, c1, s1], [C, c1, s1]] as const) { pos.push(...v); nor.push(...n(cc, ss)); }
+      if (r1 > 1e-9) for (const [v, cc, ss] of [[A, c0, s0], [C, c1, s1], [D, c0, s0]] as const) { pos.push(...v); nor.push(...n(cc, ss)); }
     }
-    // Upper lifting eyes have a visible return and two feet on the plate.
-    const lugX = .05 + side * .23;
-    P.addGunExtra(KIT.box(.06, .06, .026), lugX, .366, .061);
-    P.addGunExtra(KIT.box(.06, .06, .026), lugX, .366, .137);
-    P.addGunExtra(KIT.box(.06, .025, .103), lugX, .402, .099);
   }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  g.setAttribute('normal', new THREE.Float32BufferAttribute(nor, 3));
+  const uv: number[] = [];
+  for (let i = 0; i < pos.length; i += 3) uv.push(pos[i + 2], Math.atan2(pos[i + 1], pos[i]));
+  g.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
+  g.computeBoundingBox();
+  return g;
+}
+
+/** The M256 to the model's stations (gun-local z = world z − 1.91 on the model): a hidden root (r 0.110) from the breech
+ * collar behind the trunnion (z −0.075, where the stock tube's root began) through the shield's passage and the collar,
+ * thermal sleeve r 0.146, band 0.158, the tube under the bore evacuator, its collar 0.145, the barrel 0.110 and the
+ * slimmer muzzle end 0.091 to the muzzle at `len`. */
+export function m1a1CannonGeometry(len: number, segments: number): THREE.BufferGeometry {
+  return latheBands([[0, -0.075], [0.110, -0.075], [0.110, 0.86], [0.146, 0.86], [0.146, 1.16], [0.158, 1.165],
+    [0.158, 1.255], [0.110, 1.255], [0.110, 1.795], [0.145, 1.80], [0.145, 1.885],
+    [0.120, 1.905], [0.110, 1.915], [0.110, len - 0.32], [0.091, len - 0.305], [0.091, len], [0, len]], segments);
+}
+
+/** The model's bore evacuator (release 268 builder E, the A/B fix round: sliced at 5 cm from the source, half-width
+ * 0.183, top +0.201, bottom -0.165, z 1.29-1.79 gun-local): r 0.183 about an axis 18 mm over the bore, its tapered
+ * ends, and an inner wall (r 0.092, flush with the tube's top) that closes it round the tube. Gun-local metres. */
+export function m1a1BoreEvacuatorGeometry(segments: number): THREE.BufferGeometry {
+  return latheBands([[0.092, 1.255], [0.168, 1.255], [0.183, 1.28], [0.183, 1.78], [0.168, 1.795], [0.092, 1.795],
+    [0.092, 1.255]], segments).translate(0, 0.018, 0);
+}
+
+/** The part of a (z, y) contour at or above (keepAbove) / below a level y = c (Sutherland-Hodgman). */
+function clipAtY(points: readonly THREE.Vector2[], c: number, keepAbove: boolean): THREE.Vector2[] {
+  const inside = (p: THREE.Vector2): boolean => (keepAbove ? p.y >= c : p.y <= c);
+  const out: THREE.Vector2[] = [];
+  for (let i = 0; i < points.length; i++) {
+    const a = points[i], b = points[(i + 1) % points.length];
+    if (inside(a)) out.push(a);
+    if (inside(a) !== inside(b)) out.push(new THREE.Vector2(a.x + (b.x - a.x) * (c - a.y) / (b.y - a.y), c));
+  }
+  return out;
+}
+/** Shield passage half-width: the recoiling root (r 0.110) runs through it; the collar (r 0.172) covers its corners. */
+const PASSAGE = 0.121;
+
+export function buildM1A1GunMount(P: GunMountPort, searchlight: boolean, roof: M1A1ShieldRoof): void {
+  const segments = P.q ? 32 : 20;
+  // The shield: one casting across the slot (face, roof course, rotor arc), cut by the gun's square passage: two cheeks
+  // of the casting either side of it and its crown and sill above and below.
+  const contour = shieldProfile(roof, 0.342, P.q ? 12 : 8).getPoints();
+  if (contour.length > 2 && contour[0].distanceTo(contour[contour.length - 1]) < 1e-9) contour.pop();
+  const extrude = (pts: readonly THREE.Vector2[], x0: number, x1: number): THREE.BufferGeometry =>
+    new THREE.ExtrudeGeometry(new THREE.Shape([...pts]), { depth: x1 - x0, steps: 1, bevelEnabled: false })
+      .rotateY(-Math.PI / 2).translate(x1, 0, 0);
+  P.addGunExtra(extrude(contour, -SHIELD_HALF_W, -PASSAGE));
+  P.addGunExtra(extrude(contour, PASSAGE, SHIELD_HALF_W));
+  P.addGunExtra(extrude(clipAtY(contour, PASSAGE, true), -PASSAGE, PASSAGE));
+  P.addGunExtra(extrude(clipAtY(contour, -PASSAGE, false), -PASSAGE, PASSAGE));
+  // The sleeve the barrel runs out of, straight from the shield face to the model's lip ring (sliced from the source,
+  // release 268 A/B fix round: r 0.146 from the face to world 2.75, the ring 0.165 to 2.80; the 0.172 drum before it
+  // was the face boss's radius): a hollow non-recoiling sleeve, its 0.147 bore taking the 0.146 thermal sleeve in recoil.
+  P.addGunExtra(new THREE.LatheGeometry([[0.147, 0.38], [0.150, 0.38], [0.150, 0.84], [0.165, 0.84], [0.165, 0.89],
+    [0.147, 0.89], [0.147, 0.38]].map(([r, z]) => new THREE.Vector2(r, z)), segments).rotateX(Math.PI / 2));
+  // Coax: the model's tube out of the shield face, above and right (vehicle right) of the collar.
+  const coaxX = -0.225, coaxY = 0.145;
+  P.addGunExtra(KIT.cylZ(0.038, 0.50, P.q ? 14 : 10), coaxX, coaxY, 0.57);
+  P.addGunExtraDark(KIT.cylZ(0.024, 0.012, P.q ? 12 : 8), coaxX, coaxY, 0.8165);
   if (searchlight) {
     // Keep the support in the central bay until it is ahead of the longer
     // left cheek, then turn outward into the lamp housing. A direct wide

@@ -1,6 +1,6 @@
 {
  "id": "bm_oplot_m",
- "geoMin": 92.8,
+ "geoMin": 40,
  "requiredMinimum": 92,
  "registration": {
   "passed": true,
@@ -20,30 +20,30 @@
    {
     "reference": "owner-kit:bm_oplot_m:oplotMKt762",
     "group": "oplotMKt762",
-    "geometryPoseSha256": "30181580fb94aa62f673b789abf1030088fa87b58fdbf1d7bec6fb20eda121e6",
+    "geometryPoseSha256": "6d3a93daebefb5209d6b49bfdf6777581b8a89a108bdc161354a248557a36077",
     "arrangementAccepted": true,
     "numericPhotoFidelity": null,
-    "scope": "Previously reviewed assembly geometry, pose and material invariance; not photo survey dimensions",
+    "scope": "Previously reviewed assembly shape and pose invariance (positions, index, poses, visibility); its paint is the coat's",
     "part": "the second roof station: the KT-7.62 mini-turret on its ring (the print carries the KT-12.7 only)",
     "ownerWords": "2 gun towers instead of 1"
    },
    {
     "reference": "owner-kit:bm_oplot_m:oplotMKitSternDrums",
     "group": "oplotMKitSternDrums",
-    "geometryPoseSha256": "b49b8ff8a5121e0c2a3514bf37694dc7e4c0d620c8e0c832c4c0aef6fd3564ac",
+    "geometryPoseSha256": "83958040940701f9fc1a8f9b6763aebd2546b518d75f9cc5c9708cb2888882b2",
     "arrangementAccepted": true,
     "numericPhotoFidelity": null,
-    "scope": "Previously reviewed assembly geometry, pose and material invariance; not photo survey dimensions",
+    "scope": "Previously reviewed assembly shape and pose invariance (positions, index, poses, visibility); its paint is the coat's",
     "part": "the twin 200 L stern drums, their cradle and straps",
     "ownerWords": "fuel barrles inn back"
    },
    {
     "reference": "owner-kit:bm_oplot_m:oplotMKitLights",
     "group": "oplotMKitLights",
-    "geometryPoseSha256": "5ea57e9623c2d0a69304923387efd65a03ab14c5648efcfa97b12a938271a703",
+    "geometryPoseSha256": "ad65cb09b24df372d75bc4562f2dce60114031e2e2ac3c1ebf910667a744ca4a",
     "arrangementAccepted": true,
     "numericPhotoFidelity": null,
-    "scope": "Previously reviewed assembly geometry, pose and material invariance; not photo survey dimensions",
+    "scope": "Previously reviewed assembly shape and pose invariance (positions, index, poses, visibility); its paint is the coat's",
     "part": "the LED light bars on the cheek stacks and the bustle work lamp",
     "ownerWords": "lights"
    }
@@ -54,16 +54,16 @@
  },
  "dimensionTarget": "published specification",
  "qualityBar": "exemplar",
- "gatePassed": true,
- "rawGeoMin": 92.78885993597771,
+ "gatePassed": false,
+ "rawGeoMin": 39.99493791375828,
  "rawComponents": {
-  "wholeCurves": 92.78885993597771,
-  "dims": 94.64240155901213,
+  "wholeCurves": 92.83519187589192,
+  "dims": 39.99493791375828,
   "floaters": 100
  },
  "components": {
   "wholeCurves": 92.8,
-  "dims": 94.6,
+  "dims": 40,
   "floaters": 100
  },
  "wholeShapeMetric": "registered-standard-view-masks (fused reference)",
@@ -178,8 +178,8 @@
    ]
   },
   "side_whole": {
-   "score": 79.85445190062964,
-   "meanPct": 1.33,
+   "score": 79.47090411669149,
+   "meanPct": 1.37,
    "p95Pct": 4.08,
    "coverPct": 1.12,
    "reg": {
@@ -196,6 +196,14 @@
      "errM": 0.548
     },
     {
+     "at": 2.37,
+     "refTop": 1.78,
+     "refBot": -1.99,
+     "procTop": 0.74,
+     "procBot": -1.99,
+     "errM": 0.52
+    },
+    {
      "at": 2.49,
      "refTop": 0.97,
      "refBot": -1.99,
@@ -204,20 +212,20 @@
      "errM": 0.51
     },
     {
-     "at": 2.37,
-     "refTop": 1.78,
-     "refBot": -1.99,
-     "procTop": 0.8,
-     "procBot": -1.99,
-     "errM": 0.493
-    },
-    {
      "at": -2.37,
      "refTop": -0.08,
      "refBot": -1.09,
      "procTop": -0.08,
      "procBot": -0.3,
      "errM": 0.396
+    },
+    {
+     "at": 2.6,
+     "refTop": 0.41,
+     "refBot": -1.99,
+     "procTop": 0.72,
+     "procBot": -1.99,
+     "errM": 0.157
     },
     {
      "at": 4.57,
@@ -274,14 +282,6 @@
      "procTop": 0.19,
      "procBot": -1.98,
      "errM": 0.103
-    },
-    {
-     "at": 4.68,
-     "refTop": -0.53,
-     "refBot": -0.92,
-     "procTop": -0.52,
-     "procBot": -1.07,
-     "errM": 0.081
     }
    ]
   },
@@ -610,7 +610,7 @@
    ]
   },
   "front_whole": {
-   "score": 63.39160396254159,
+   "score": 63.48183852526882,
    "meanPct": 2.48,
    "p95Pct": 9.93,
    "coverPct": 0.56,
@@ -860,14 +860,16 @@
   {
    "name": "heightM",
    "actual": 2.9598988503031434,
+   "roofFittingsTop": 2.9598988503031434,
    "published": 2.96,
+   "method": "interval: body top to roof-fittings top",
    "pct": 0.003417219488398481
   },
   {
    "name": "hullLengthM",
-   "actual": 6.938957011699678,
+   "actual": 7.40516818592325,
    "published": 6.825,
-   "pct": 1.6696998051234837
+   "pct": 8.500632760780215
   },
   {
    "name": "overallLengthM",
@@ -894,7 +896,18 @@
  },
  "proceduralBodyExtent": {
   "h": 2.96,
-  "len": 6.939
+  "len": 7.405,
+  "roofFittingsTop": 2.96
+ },
+ "roofFittingsExcluded": {
+  "procedural": [
+   "antennaSpans:turretDark",
+   "pintleMG:sourceMachineGun_turretDark",
+   "pintleMG:sourceMachineGun_turretDetail",
+   "pintleMG:sourceMachineGun_turretGlass",
+   "pintleMG:sourceMachineGun_yawSupport"
+  ],
+  "reference": []
  },
  "floaterFails": 0,
  "floaterRows": [
@@ -904,7 +917,7 @@
    "islandCount": 1,
    "regions": [
     {
-     "area": 135077,
+     "area": 135036,
      "minX": 171,
      "minY": 318,
      "maxX": 931,
@@ -918,7 +931,7 @@
    "islandCount": 1,
    "regions": [
     {
-     "area": 134235,
+     "area": 134254,
      "minX": 232,
      "minY": 318,
      "maxX": 1010,
@@ -932,7 +945,7 @@
    "islandCount": 1,
    "regions": [
     {
-     "area": 132274,
+     "area": 132225,
      "minX": 232,
      "minY": 318,
      "maxX": 1010,
@@ -946,7 +959,7 @@
    "islandCount": 1,
    "regions": [
     {
-     "area": 132955,
+     "area": 132914,
      "minX": 173,
      "minY": 318,
      "maxX": 931,
@@ -960,7 +973,7 @@
    "islandCount": 1,
    "regions": [
     {
-     "area": 135234,
+     "area": 135193,
      "minX": 181,
      "minY": 318,
      "maxX": 931,
@@ -972,7 +985,11 @@
  "rawSourceComparison": {
   "file": "bm_oplot_m.raw-source.json",
   "gatePassed": false,
-  "rawGeoMin": 27.80359761066103,
+  "rawGeoMin": 0,
   "scope": "Full vehicle with its owner-directed kit against the print; retained diagnostic, not the owner-selected target"
+ },
+ "oracle": {
+  "path": "/models/community-candidates/bm_oplot_m_x_source.glb",
+  "sha256": "d2adad43bba88a867f743aeeacf969587e7be0c2bbcaeee0259218f3145ab22a"
  }
 }

@@ -5101,6 +5101,9 @@ void splatCompute() {
   // under every texel of it — its lots, its roads, its pads and its banks alike (the bake's crop, read once; the village
   // mask's alpha is the wear, patchy, not the floor); 0 on every other map
   float gWorksFloor = 0.0;
+  // ground-269 (c14, Ironworks' town pose: the works floor's ash, rust and clinker over a works street's setts, "tread-plate
+  // repeat") a works' paved street, set in the paving below; its setts stay as laid
+  float gPaveStreet = 0.0;
   if (uLandE.w > 1.5) {
     int kc = int(luA.r * 255.0 + 0.5) & 31;
     gWorksFloor = (kc >= 15 && kc <= 16) || (kc >= 18 && kc <= 19) ? 1.0 : 0.0;
@@ -7837,6 +7840,7 @@ ${ROAD_PAVING_GLSL}
         pav.a = mix(pav.a, 0.95, worksPad);
         pnn = mix(pnn, NRM_MEAN, worksPad * 0.7);
       }
+      gPaveStreet = paveCore * (1.0 - worksPad);
       if (uLandE.w > 1.5 && paveCore > 0.003) {
         vec2 sq = nzq(uv, 0.071, vec2(0.53, 0.21));
         float soot = smoothstep(0.38, 0.78, sq.x);

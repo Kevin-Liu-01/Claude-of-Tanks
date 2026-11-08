@@ -367,7 +367,7 @@ export const STATION_KEYS: Readonly<Record<string, readonly FleetWeaponKey[]>> =
   pt84_zbik: ['12.7/belt', '7.62/belt'],
   pt91a_twardy: ['12.7/belt'],
   pt91m: ['12.7/belt'],
-  raiju_ifv: ['12.7/belt'],
+  raiju_ifv: ['12.7/belt', '7.62/belt'],
   sabra_mk2: ['12.7/belt'],
   shot_kal: ['12.7/belt', '7.62/belt'],
   stb1: ['12.7/belt'],
