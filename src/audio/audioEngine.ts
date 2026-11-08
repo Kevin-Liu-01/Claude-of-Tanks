@@ -2670,6 +2670,8 @@ export function createAudio({
   function resetBattleFields(): void {
     tanks.clear();
     structureSounds.clear();
+    // (world-sfx-269) where each carrier's drone was last heard belongs to the battle it flew in
+    droneLastAt.clear();
     playerId = null;
     playerTeam = null;
     latestPlayer = null;
