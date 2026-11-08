@@ -2,7 +2,8 @@
 // ai.watchResume.selftest (default tier) and ai.watchResumeLevels.selftest (MANUAL bots) share: a bot's hull, Watch
 // mode's own Take and Leave around a stepped park, ai.levels' deck scene, a level route's hand-back on it ([7]), the
 // causeway and a hand-back on its crest ([11]), the elevation lock's dwell over a hand-back and the compound records it
-// reads ([12]; fix-up r2: a tiered stone's, a formation's and a building's parts, and a deck the field publishes).
+// reads ([12]; fix-up r2: a tiered stone's, a formation's and a building's parts, and a deck the field publishes;
+// fix-up r6: the ground type the bot and the movement read, and the hull's damage in the park).
 // Importing it registers the fleet and finalizes the combat anatomy of the two specs the receipts drive, as the
 // authority does (vehicles/authorityFleet.ts; round 6 V4: the player's fleet factory cost 0.3-1.3 s more of each
 // receipt's user CPU and left both specs without their anatomy, so the contact rectangle the movement and
@@ -65,8 +66,10 @@ let deckNavigation = null;
  * headlessCollisionWorld builds it; the solo battle's obstacleQuery), unless `query` is false (a fixture without one).
  * `decks` (fix-up r2): bridge decks the field publishes (bridgeDecks: the bot's terrain safety reads each one's top over
  * its rectangle, and its sides as walls); the movement and the planner's grid read the field's heights alone.
+ * `ground` (fix-up r6): the ground type at (x, z) the bot and the movement read (the game's 'hard', 'medium' or 'soft');
+ * 'firm' (the M1A1's medium) by default, and always on the planner's shared grid.
  */
-export async function deckScene(records = null, { query = true, decks = null } = {}) {
+export async function deckScene(records = null, { query = true, decks = null, ground = null } = {}) {
   const DECK_Y = 25, CLIFF_Z = 40;
   const cliff = (z) => Math.max(0, Math.min(DECK_Y, (z - (CLIFF_Z - 2)) / 4 * DECK_Y));
   const getHeightAt = (x, z) => {
@@ -82,7 +85,8 @@ export async function deckScene(records = null, { query = true, decks = null } =
     return { x: nx / length, y: 1 / length, z: nz / length };
   };
   const plainField = { getHeightAt, getNormalAt, getGroundType: () => 'firm' };
-  const deckField = decks ? { ...plainField, bridgeDecks: decks } : plainField;
+  const groundField = ground ? { ...plainField, getGroundType: ground } : plainField;
+  const deckField = decks ? { ...groundField, bridgeDecks: decks } : groundField;
   const raycast = (origin, dir, maxDist) => {
     for (let d = 1; d < maxDist; d += 1) {
       if (origin.y + dir.y * d < getHeightAt(origin.x + dir.x * d, origin.z + dir.z * d)) return { dist: d };
@@ -254,12 +258,15 @@ export const crestLabel = (r) => `verdicts ${r.before.unbearableVerdicts} -> ${r
  * route yet): a 0.5 s Take and Leave, then a whole dwell and a margin of the bot's own ticks. `away`: where the watcher
  * leaves the hull ([x, z], or a function of the spot it was taken on); `rock`: a record the structure support carries the
  * hull on (or a list of them), which it starts on (`onY`: the height it stands at, the first record's top by default) or
- * is left on (`awayY`: the height the watcher leaves it at); `query` and `decks`: deckScene's.
+ * is left on (`awayY`: the height the watcher leaves it at); `query`, `decks` and `ground`: deckScene's. `damage`
+ * (fix-up r6): module states the hull takes as the park begins (a round that hit it while the watcher held it), so the
+ * park's steps read them as the movement does (movement.ts readDebuffs into state._debuff) before the hand-back.
  */
 export async function dwellHandBack(away, from = null, rock = null,
-  { onY = rock && !Array.isArray(rock) ? rock.max[1] : null, awayY = null, query = true, decks = null } = {}) {
+  { onY = rock && !Array.isArray(rock) ? rock.max[1] : null, awayY = null, query = true, decks = null, ground = null,
+    damage = null } = {}) {
   const { ctl, floor, run, moveTo, hull, clock } = await deckScene(rock ? (Array.isArray(rock) ? rock : [rock]) : null,
-    { query, decks });
+    { query, decks, ground });
   if (from) moveTo(...from);
   if (onY !== null) resetTankVerticalState(floor.state, onY); // the floor bot stands on the rock's top
   run(3); // the floor bot sees the deck target its gun cannot reach: 3 s into the 6 s dwell, no route yet
@@ -269,6 +276,7 @@ export async function dwellHandBack(away, from = null, rock = null,
     moveTo(...(typeof away === 'function' ? away(parkedAt) : away));
     if (awayY !== null) resetTankVerticalState(floor.state, awayY); // left on a record's top (or over the ground)
   };
+  if (damage) Object.assign(floor.combat.modules, damage);
   const took = takeAndLeave(floor, ctl, clock, hull, 0.5, away ? leave : null);
   const back = ctl.debugInfo();
   const handedBackAt = [floor.state.pos.x, floor.state.pos.y, floor.state.pos.z];
