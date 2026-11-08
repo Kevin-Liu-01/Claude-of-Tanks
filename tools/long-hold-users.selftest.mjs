@@ -557,17 +557,18 @@ if (process.argv[2] === '--signal-child') {
     // `node --max-old-space-size=… tools/…`, an absolute path, a redirect right after it); round 5's first form matched
     // only `node tools/<file>`, and a script spelt another way went unchecked. (round 6 V10) A script that names the
     // tool's file more often than that match reads it (a quoted path, a cd into tools/, a backtick, a variable holding
-    // the file name; a name is read as the shell reads it, so `studio\-example…` names it too) fails here; so does one
-    // that calls a script that runs a tool (`npm run <it> -- …` or concurrently's `npm:<it>` hands the flags to npm, or
-    // to that script's last command, which this check never reads), and one of either kind that holds a quote, a
-    // backtick, a parenthesis, a $ or a backslash (`sh -c '…'`, `$(…)`, `bash -c node\ tools/…`: the outer command
-    // takes the flags). A new spelling is read or the match widened. The tool's first read is the one that must come
-    // last, so a later mention of its path (`&& echo tools/<file>`) cannot stand in for the call, and an earlier one (a
-    // `test -f tools/<file>` guard, an echo) is taken as the call and fails closed. A baked selection is harmless: the
-    // last --only / --match wins, and what a stop leaves is inside it. Then reels:render's baked flags (its --out set
-    // aside: this receipt writes to a scratch folder), a selection typed after them and the finishing run's appended
-    // one: the baked collection and size hold, the appended --only selects, and the take is the battle-reel pool's
-    // (round 5 U6: the pool loads with the run)
+    // the file name; a name is read with the shell's quoting taken out, so `studio\-example…`, or a line continuation
+    // or an empty $'' or $"" inside it, names it too, while an expansion inside it is not read) fails here; so does
+    // one that calls a script that runs a tool (`npm run <it> -- …` or concurrently's `npm:<it>` hands the flags to
+    // npm, or to that script's last command, which this check never reads), and one of either kind that holds a
+    // quote, a backtick, a parenthesis, a $ or a backslash (`sh -c '…'`, `$(…)`, `bash -c node\ tools/…`: the outer
+    // command takes the flags). A new spelling is read or the match widened. The tool's first read is the one that
+    // must come last, so a later mention of its path (`&& echo tools/<file>`) cannot stand in for the call, and an
+    // earlier one (a `test -f tools/<file>` guard, an echo) is taken as the call and fails closed. A baked selection
+    // is harmless: the last --only / --match wins, and what a stop leaves is inside it. Then reels:render's baked
+    // flags (its --out set aside: this receipt writes to a scratch folder), a selection typed after them and the
+    // finishing run's appended one: the baked collection and size hold, the appended --only selects, and the take is
+    // the battle-reel pool's (round 5 U6: the pool loads with the run)
     await check('npm finishing run', async () => {
       const finishing = ['tools/studio-example-videos.mjs', 'tools/marketing-shots/shoot.mjs'];
       const escaped = (text) => text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -577,7 +578,8 @@ if (process.argv[2] === '--signal-child') {
       const fileIn = (file) => new RegExp(String.raw`(?<![\w.-])${escaped(file.split('/').at(-1))}(?![\w.-])`, 'g');
       // a runner's prefix still names the script (concurrently's npm:<it>, yarn:<it>); a longer name after it does not
       const scriptIn = (name) => new RegExp(String.raw`(?<![\w.-])${escaped(name)}(?![\w:.-])`, 'g');
-      // the shell's quoting taken out (studio\-example…, stu"di"o-…, reels\:render); a caller that holds any is refused
+      // the shell's quoting taken out (studio\-example…, stu"di"o-…, reels\:render; a line continuation and an empty
+      // $'' or $"" go whole), not its expansions (a variable, a glob, a \x escape); a caller that holds any is refused
       const unquoted = (command) => command.replace(/\\(?:\n|(.))|\$?['"]/gs, '$1');
       const unread = (scripts) => {
         const callers = new Set(); // the scripts that name a tool, then (to a fixed point) the ones that name one of those
