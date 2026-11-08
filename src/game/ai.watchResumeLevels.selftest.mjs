@@ -2,9 +2,9 @@
 // check of ai.watchResume's at another length, height or branch, and the rules with no case there, in the MANUAL bots
 // suite (tools/selftest-tiers.mjs). ai.watchResume read 7.8-10 s of user CPU in the default tier (round three's file
 // 5.9 s); this file reads 4.4-7.5 s of user CPU at load 70-160 (09654a0bb6's 5.6-6.1 s; the import 1.5-2.8 s of it),
-// and runs when the owner names the suite. Of the round's 60 mutants of ai.ts, 53 fail one of the two receipts, two of
+// and runs when the owner names the suite. Of the round's 64 mutants of ai.ts, 57 fail one of the two receipts, two of
 // them this file alone (the obstacle list's branch; the walk's last point under a deck the field publishes), and every
-// check here but the setups fails on one of them; seven fail neither (round 6 bots NOTES, fix-up r4). The sections keep
+// check here but the setups fails on one of them; seven fail neither (round 6 bots NOTES, fix-up r5). The sections keep
 // ai.watchResume's numbers; their history is there.
 // [7] (round 2; round 3, A2) a level route held through a park on its way: here the 30 s park off the way (its deadline
 // not yet up) and the 0.1 s, 0.5 s and 2 s coasting toggles; the default keeps the 200 s parks (on and off the way, the
@@ -15,8 +15,9 @@
 // a 2.2 m rock, the 1 m box read from the last obstacle list (a fixture's branch: every solo bot has the match's query),
 // off a tiered rock's top and off its first tier, onto a three-tier rock's second tier, up a formation's caps, a 1 m
 // box's top under a deck's end (fix-up r3; the default keeps the box's edge there, fix-up r4), and the walk's last point
-// under a deck the field publishes (fix-up r2: its only case); the default keeps a case of each other part of the rule
-// (round 6 V4, fix-ups r1 to r4).
+// under a deck the field publishes (fix-up r2: its only case). The mutants of two parts of the rule fail only here (the
+// obstacle list's branch, that last point), and seven readings of the ground under a deck fail neither file (round 6
+// V4, fix-ups r1 to r5; ai.watchResume's header).
 import { SIM_DT } from '../sim/movement.ts';
 import {
   beside, coasted, column, compoundRecord, crestHandBack, crestLabel, dwellHandBack, dwellLabel, kept, levelRouteHandBack,
@@ -64,8 +65,9 @@ console.log('[11] a level route ends with no verdict when the watcher drives its
 }
 
 console.log('[12] the elevation lock\'s dwell after a park onto, off or between records: the record rule (the rest)');
-// ai.watchResume [12]'s history and its record cases (a case of each part of the rule but one); here the same parts at
-// another height, direction or branch, and that one (the walk's last point under a deck the field publishes). On
+// ai.watchResume [12]'s history and its record cases (which parts of the rule they reach: its [12] comment and header);
+// here the same parts at another height, direction or branch, and the only case of the walk's last point under a deck
+// the field publishes; the 1 m box read from the last obstacle list is the only case of that branch. On
 // f60d0aa200 each restart below kept 2.9 s of dwell and the lock decided 3.15 s after Leave; on b03868e697 the one on a
 // box under a deck's end did.
 {

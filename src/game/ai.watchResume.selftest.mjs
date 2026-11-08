@@ -74,15 +74,19 @@
 // over a fence, a felled wall and a collapsed collider came in. Fix-up r4 (both fourth reviews): fix-up r3's reading of
 // the ground under a deck the field publishes (groundUnder, the round's one logic change to ai.ts) had its cases only
 // in ai.watchResumeLevels, and no case read a short record's drawn top or a hull on a bridge's deck; a 1 m box's edge
-// under a deck's end came here, and a low stone's top to a box and a bridge's deck under an overpass came in. The
-// fixtures the two files share are ai.watchResume.test-support.mjs, on the authority's fleet (the two specs' combat
-// anatomy) for the player's fleet factory, with one navigation grid for every deck scene; [5], [6] and the search
-// scenes' waits no longer read the controller's snapshot (debugInfo, the costliest call) on ticks whose answer nothing
-// reads. The process's own user CPU, three alternating rounds at load 70-160 (fix-up r4): b03868e697's file
-// 10.4-14.6 s; this file 7.5-10.8 s against 09654a0bb6's 7.3-9.9 s, [12]'s twenty-one hand-backs 2.2-2.8 s of it
-// (09654a0bb6's eighteen 1.7-2.4 s); ai.watchResumeLevels 4.4-7.5 s (09654a0bb6's 5.6-6.1 s); the import 1.5-2.8 s of
-// each (fix-up r3, at load 22: this file 6.0 s, ai.watchResumeLevels 3.8 s). Of the round's 60 mutants of ai.ts
-// (round 6 bots NOTES, fix-up r4), 53 fail one of the two receipts, all but two this file; those two fail
+// under a deck's end came here, and a low stone's top to a box and a bridge's deck under an overpass came in. Fix-up
+// r5 (both fifth reviews): no case read a plain record's drawn top at a spot more than a step under the record's top,
+// so a walk that read it flat passed, and the sandbag line was an unshaped box, so a short filter that kept any record
+// with a footprint shape passed; a stone's drawn top past its face came in, and the line is laid a second time with a
+// prop's OBB footprint. The fixtures the two files share are ai.watchResume.test-support.mjs, on the authority's fleet
+// (the two specs' combat anatomy) for the player's fleet factory, with one navigation grid for every deck scene; [5],
+// [6] and the search scenes' waits no longer read the controller's snapshot (debugInfo, the costliest call) on ticks
+// whose answer nothing reads. The process's own user CPU at load 46-63 (fix-up r5: seven alternating runs of each
+// default file, three of the others): b03868e697's file 8.1-11.4 s; this file 6.7-10.3 s (median 7.8 s) against
+// 9068dcb2de's 6.5-8.9 s (median 7.1 s), [12]'s twenty-two hand-backs 1.9-3.5 s of it (median 2.2 s; 9068dcb2de's
+// twenty-one 1.7-3.2 s, median 2.1 s); ai.watchResumeLevels 4.0-5.6 s; the import 1.4-2.3 s of each (fix-up r4, at
+// load 70-160: this file 7.5-10.8 s; fix-up r3, at load 22: 6.0 s). Of the round's 64 mutants of ai.ts
+// (round 6 bots NOTES, fix-up r5), 57 fail one of the two receipts, all but two this file; those two fail
 // ai.watchResumeLevels: the obstacle list's branch (a fixture's path: every solo bot has the match's query) and the
 // walk's last point under a deck the field publishes (a spot read stood put there only within one 1.5 m point of the
 // deck's end). Seven fail neither: readings of the ground under a deck that no fixture tells apart (groundUnder's
@@ -93,7 +97,7 @@ import { resetTankVerticalState, updateTank, SIM_DT } from '../sim/movement.ts';
 import { CLASSIC_BOT_DOCTRINE } from '../sim/matchRuleset.ts';
 import * as detMath from '../sim/detMath.ts';
 import { createHullSupportPose, createStructureSupportField, hullSupportPose } from '../sim/structureSupport.ts';
-import { setConvexTopShape } from '../world/collision.ts';
+import { setConvexTopShape, setObbShape } from '../world/collision.ts';
 import { createAI, mulberry32 } from './ai.ts';
 import { leaveWatchSeat, openWatchSeats, prepareWatchSeat, takeWatchSeat } from './watchSeat.ts';
 import {
@@ -686,14 +690,16 @@ console.log('[12] the elevation lock\'s dwell counts the bot\'s own ticks: it ho
   // record's edge, and the walk between them runs both ways record by record. On f60d0aa200 each restart below kept 2.9 s
   // of dwell and the lock decided 3.15 s after Leave; round 5's first fix (a192a5a9a3) read the ride difference as one
   // 1.5 m slope-law step, which kept the 1 m boxes and the rock-to-rock park and restarted the drawn top and the hull in
-  // the air. The records are read through the match's obstacle query (round 6 V3). Round 6 (V4, fix-ups r1 to r4): each
-  // part of the rule the round's mutants change has a case here (round 6 bots NOTES, fix-up r4: the matrix), compound
-  // records (their top tier and a lower one), the records the support never stands a hull on (and a short one it does,
-  // a stone's drawn top) and the ground under a deck the field publishes (a bridge's deck; a box's edge under a deck's
-  // end: fix-up r3's groundUnder) included, but one, the walk's last point under a deck the field publishes; that one
-  // and the same parts at another height, direction or branch (a 2.2 m rock, off and onto; the 1 m box from the last
+  // the air. The records are read through the match's obstacle query (round 6 V3). Round 6 (V4, fix-ups r1 to r5): the
+  // cases here read compound records (their top tier and a lower one), a plain record's drawn top at the hull's spot,
+  // the records the support never stands a hull on (an unshaped and a shaped one) and a short one it does (a stone's
+  // drawn top), and the ground under a deck the field publishes (a bridge's deck; a box's edge under a deck's end: fix-up
+  // r3's groundUnder). Of the round's 64 mutants of ai.ts (round 6 bots NOTES, fix-up r5: the matrix), 55 fail a case
+  // here; two fail only ai.watchResumeLevels (MANUAL bots: the obstacle list's branch and the walk's last point under a
+  // deck the field publishes), and seven, readings of the ground under a deck, fail neither (the header). That file also
+  // runs the same parts at another height, direction or branch (a 2.2 m rock, off and onto; the 1 m box from the last
   // obstacle list; off a tiered rock's top and its first tier; its second tier; a formation's caps; a box's top under a
-  // deck's end) run in ai.watchResumeLevels (MANUAL bots).
+  // deck's end).
   const ontoBox = await dwellHandBack((at) => [at[0], 22], [-16, 31], beside(1), { onY: null, awayY: 1 });
   ok(setupOk(ontoBox, 0, 1), `setup: the floor bot dwells on the ground; the watcher leaves it on a 1 m box's top (${where(ontoBox)})`);
   ok(restarted(ontoBox),
@@ -724,9 +730,15 @@ console.log('[12] the elevation lock\'s dwell counts the bot\'s own ticks: it ho
     `a 0.5 s park that left the hull on a 0.6 m step, past the 0.55 m it mounts: the dwell restarts (${label(ontoTallStep)})`);
   // fix-up r3 (the completeness review r3): a flat record shorter than HULL_STANDABLE_HEIGHT_M (0.9 m), which the structure
   // support never stands a hull on (recordFloorAt's filter, as structureTopAt's), here a sandbag line 0.5 m tall along the
-  // 1 m box's north side, across the line; a walk that stood the hull on it stepped from it onto the box and kept this dwell
+  // 1 m box's north side, across the line; a walk that stood the hull on it stepped from it onto the box and kept this
+  // dwell. Fix-up r5 (the completeness review r5): the game's props carry a footprint shape (props.ts
+  // applyDestructibleObstacleShape: an OBB for a wall, a fence, a sandbag line), so the line is laid twice over one
+  // footprint, an unshaped box and an OBB; a filter that kept a short record for any shape (not only a drawn top), or
+  // skipped only a shaped one, stood the hull on one of them and kept this dwell
   const sandbags = Object.freeze({ min: [-40, 0, 26], max: [-10, 0.5, 27.8] });
-  const pastSandbags = await dwellHandBack((at) => [at[0], 22], [-16, 31], [beside(1), sandbags], { onY: null, awayY: 1 });
+  const shapedSandbags = Object.freeze(setObbShape({ min: [0, 0, 0], max: [0, 0.5, 0] }, -25, 26.9, 15, 0.9));
+  const pastSandbags = await dwellHandBack((at) => [at[0], 22], [-16, 31], [beside(1), sandbags, shapedSandbags],
+    { onY: null, awayY: 1 });
   ok(setupOk(pastSandbags, 0, 1), `setup: the floor bot dwells on the ground; the watcher leaves it on a 1 m box's top past a 0.5 m sandbag line (${where(pastSandbags)})`);
   ok(restarted(pastSandbags),
     `a 0.5 s park that left the hull on a 1 m box past a 0.5 m sandbag line it never stands on: the dwell restarts (${label(pastSandbags)})`);
@@ -762,6 +774,18 @@ console.log('[12] the elevation lock\'s dwell counts the bot\'s own ticks: it ho
   const upRamp = await dwellHandBack((at) => [at[0], 22], [-16, 31], ramp, { onY: null, awayY: 1.6 });
   ok(setupOk(upRamp, 0, 1.6), `setup: the floor bot dwells on the ground; the watcher leaves it 1.6 m up a drawn top that rises 0.4 per metre (${where(upRamp)})`);
   ok(kept(upRamp), `a 0.5 s park that left the hull up a drawn top it drives down and back up: the dwell holds (${label(upRamp)})`);
+  // fix-up r5 (the correctness review r5): a plain record's drawn top read at the hull's spot (collisionPartTopAt), the
+  // game's commonest drawn record (a capped stone, a one-cap formation: rockCollision.ts applyRockCollisionProfile,
+  // applyFormationCollision). Taken on the ground, left 2.6 m up a stone whose drawn top rises 0.3 per metre from a 1.4 m
+  // face at its north edge (past the step and the slope law from the ground) to a 4 m crest: the walk from the ground
+  // cannot get onto it. A walk that read that top flat (at the record's 4 m top) found no top within the step at the
+  // hull's root or its contact rect's mid-edges, read the hull as riding over its ground and kept this dwell, as
+  // f60d0aa200 did; upRamp's hold reads the same under that walk (its 3 m top is past the step from 1.6 m too)
+  const stoneFace = setConvexTopShape({ min: [-40, 0, 10], max: [-10, 4, 26] }, [-40, 10, -10, 10, -10, 26, -40, 26], [0, 26, 0, -0.3, 1.4], 0, 4);
+  const upStone = await dwellHandBack((at) => [at[0], 22], [-16, 31], stoneFace, { onY: null, awayY: 2.6 });
+  ok(setupOk(upStone, 0, 2.6), `setup: the floor bot dwells on the ground; the watcher leaves it 2.6 m up a stone's drawn top, past its 1.4 m face (${where(upStone)})`);
+  ok(restarted(upStone),
+    `a 0.5 s park that left the hull up a stone's drawn top it cannot get onto from the ground: the dwell restarts (${label(upStone)})`);
   // fix-up r2 (the completeness review r2; round five's correctness review (a), "a rock's lower tiers"): the game's tiered
   // stones and capless formations are compound records, each tier a column from the record's floor to its own top
   // (rockCollision.ts tierParts), read through recordFloorAt's compound branch; taken on the ground, left on a two-tier
