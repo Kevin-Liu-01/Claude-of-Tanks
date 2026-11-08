@@ -33,6 +33,9 @@ import { simKernelsFailureReason } from '../../world/simKernelsStatus.ts';
 const BOOT_ROOM_MS = 5_000;
 /** How long, in wall time, a boot released at the bound may take to build its world here before it is a load stall. */
 const SETTLE_WALL_MS = 120_000;
+/** How long, in wall time, a runtime that has the core's ready or boot_failed may take to act on it here (in a later task:
+ * its boot timer is 30 s) before it has dropped the word. */
+const WORD_WALL_MS = 5_000;
 // a stuck guard, not a cost bound (the receipt's user time is a few seconds; under a heavy load its wall runs minutes)
 const watchdog = setTimeout(() => { console.error('hostKernelsFetch.selftest: stuck'); process.exit(1); }, 600_000);
 watchdog.unref();
@@ -173,11 +176,13 @@ try {
     assert.equal(bootTimer.ms, ELECTED_HOST_BOOT_MS, 'the runtime\'s boot timer is ELECTED_HOST_BOOT_MS (matchHost.ts, its default)');
     // virtual time: each timer of seconds the two armed at the boot's start fires in due order, one at a time, and the
     // real world build gets its time to answer before the next. The port hands the core's ready or boot_failed to this
-    // receipt's listener and the runtime's in one dispatch (hostProtocol.ts createHostPortPair), so a runtime still
-    // booting after that word has dropped it: a defect, failed at once (round 6 V7 review r3). A boot the fired timer
-    // released (it asked for its manifest) with no word from the core within SETTLE_WALL_MS is a world build stalled by
-    // load: a timeout, never the next timer, which would read as the hazard (review r2). A boot still held goes on to
-    // the next timer.
+    // receipt's listener and the runtime's in one dispatch (hostProtocol.ts createHostPortPair). Today's runtime takes
+    // the word there, but one that takes it in a later task (a scheduled handler) is right too, far inside its 30 s boot
+    // timer, so the runtime gets WORD_WALL_MS of wall time after the word; one still booting then has dropped it: a
+    // defect (round 6 V7 review r3; the wait, round 7 W2). A runtime that would take the word later than WORD_WALL_MS is
+    // reported the same way: that is this receipt's contract. A boot the fired timer released (it asked for its
+    // manifest) with no word from the core within SETTLE_WALL_MS is a world build stalled by load: a timeout, never the
+    // next timer, which would read as the hazard (review r2). A boot still held goes on to the next timer.
     const fired = [];
     for (;;) {
       const next = [...bounds.map((timer) => ({ timer, who: 'core' })), ...runtimeTimers.map((timer) => ({ timer, who: 'runtime' }))]
@@ -189,8 +194,9 @@ try {
       next.timer.fn();
       await within(() => host.state !== 'booting' || coreEnds.length > 0, SETTLE_WALL_MS);
       await turns();
+      if (coreEnds.length > 0) await within(() => host.state !== 'booting', WORD_WALL_MS);
       if (host.state === 'booting' && coreEnds.length > 0) {
-        assert.fail(`the core posted ${coreEnds[0].type} after ${fired.at(-1)} fired, but the runtime stayed booting (it dropped the core's word)`);
+        assert.fail(`the core posted ${coreEnds[0].type} after ${fired.at(-1)} fired, but the runtime did not take it within ${WORD_WALL_MS / 1000} s and stayed booting (it dropped the core's word)`);
       }
       if (host.state === 'booting' && manifestAsks > asksBefore) {
         throw new Error(`timeout: the boot asked for its manifest after ${fired.at(-1)} fired but did not settle within ${SETTLE_WALL_MS / 1000} s of wall time (load: rerun)`);
