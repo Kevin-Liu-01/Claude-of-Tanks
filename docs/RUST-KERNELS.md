@@ -70,7 +70,8 @@ it happens; a NaN the kernel answered (its ground's) passes.
     the standby builds its world on the TypeScript, and a migration onto it once that world is built reuses it, so the
     new host runs on the TypeScript too, reported `timeout` (the same match, without the kernels' tick saving). A
     migration that comes before that world is built waits for it inside the boot's 30 s bound, so on a link slow
-    enough to cut the module, where the preparation's manifest crawls too, it fails as above.
+    enough to cut the module, where the preparation's manifest crawls too, it fails as above unless that world is built
+    inside the bound.
   - A solo battle steps on the main thread over the rendered world (`game/state.ts`). There the kernels take the hulls'
     support: `src/world/soloWorldKernels.ts` gives each world its own instance, its grid loaded in the order of the
     world's own obstacle grid, its ground mirrored from the battle's overlay. Each battle chooses once, at its setup
