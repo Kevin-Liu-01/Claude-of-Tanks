@@ -140,8 +140,8 @@ export const MANUAL_SUITES = Object.freeze({
     // toggles, the causeway's drop over the gun's band and its crest toggle, the dwell off and onto a 2.2 m rock, from
     // the last obstacle list, off a tiered rock's top and first tier, onto its second tier, up a formation's caps and
     // onto a 1 m box's top under a deck's end), and the only case of the walk's last point under a deck the field
-    // publishes (a spot read stood put there only within 1.5 m of the deck's end): 4.0-4.3 s of user CPU at load
-    // 43-76 (4.4-7.5 s at load 70-160), the import 1.5-1.6 s of it. Of the round's 76 mutants of ai.ts 69 fail one of
+    // publishes (a spot read stood put there only within 1.5 m of the deck's end): 3.9-4.9 s of user CPU at load
+    // 29-62 (4.4-7.5 s at load 70-160), the import 1.5-1.8 s of it. Of the round's 76 mutants of ai.ts 69 fail one of
     // the two receipts, two of them this file alone (that last point, and the obstacle list's branch, a fixture's
     // path); seven readings of the ground under a deck fail neither (round 6 bots NOTES, fix-up r6)
     'src/game/ai.watchResumeLevels.selftest.mjs',

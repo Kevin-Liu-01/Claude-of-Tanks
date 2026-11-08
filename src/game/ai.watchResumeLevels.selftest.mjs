@@ -1,8 +1,8 @@
 // 2026-11-02 audit M7 (round 6 V4, split off from ai.watchResume.selftest): the Watch hand-back's checks that repeat a
 // check of ai.watchResume's at another length, height or branch, and the rules with no case there, in the MANUAL bots
 // suite (tools/selftest-tiers.mjs). ai.watchResume read 7.8-10 s of user CPU in the default tier (round three's file
-// 5.9 s); this file reads 4.0-4.3 s of user CPU at load 43-76 (fix-up r6; 4.4-7.5 s at load 70-160 in fix-up r4,
-// 09654a0bb6's 5.6-6.1 s; the import 1.5-1.6 s of it), and runs when the owner names the suite. Of the round's 76
+// 5.9 s); this file reads 3.9-4.9 s of user CPU at load 29-62 (fix-up r6; 4.4-7.5 s at load 70-160 in fix-up r4,
+// 09654a0bb6's 5.6-6.1 s; the import 1.5-1.8 s of it), and runs when the owner names the suite. Of the round's 76
 // mutants of ai.ts, 69 fail one of the two receipts, two of them this file alone (the obstacle list's branch; the walk's
 // last point under a deck the field publishes), and every check here but the setups fails on one of them; seven fail
 // neither (round 6 bots NOTES, fix-up r6). The sections keep ai.watchResume's numbers; their history is there.
