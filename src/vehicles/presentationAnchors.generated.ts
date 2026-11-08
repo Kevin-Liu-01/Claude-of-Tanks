@@ -432,7 +432,7 @@ export const TANK_PRESENTATION_PROJECTIONS: Readonly<Record<string, TankPresenta
   m1a2_abrams_sepv3: Object.freeze({ centerYM: 2.0885, topHalfM: 6.183, sideHalfM: 3.0915 }),
   m1a2_abrams_tusk: Object.freeze({ centerYM: 2.0619, topHalfM: 6.2063, sideHalfM: 3.1032 }),
   m1a3: Object.freeze({ centerYM: 2.1317, topHalfM: 6.8996, sideHalfM: 3.4498 }),
-  m2a2_bradley: Object.freeze({ centerYM: 2.0034, topHalfM: 3.9823, sideHalfM: 2.1436 }),
+  m2a2_bradley: Object.freeze({ centerYM: 1.9909, topHalfM: 3.9823, sideHalfM: 2.1303 }),
   m3a2_bradley: Object.freeze({ centerYM: 2.0659, topHalfM: 3.99, sideHalfM: 2.2105 }),
   m3a3_bradley: Object.freeze({ centerYM: 2.2959, topHalfM: 3.9712, sideHalfM: 2.4566 }),
   m41_bw: Object.freeze({ centerYM: 2.105, topHalfM: 5.5795, sideHalfM: 2.7897 }),

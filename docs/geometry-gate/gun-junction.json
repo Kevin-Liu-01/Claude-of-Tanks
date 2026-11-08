@@ -193,7 +193,7 @@
   "puma_s1": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"540e472a612c5703","gun":"bef90fd9efba6a66"}},
   "raiju_ifv": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"87507aa38b27460a","gun":"40d7c2ea02f21271"}},
   "sabra_mk2": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"02ce85d6323a7a47","gun":"1ed4c507882a338a"}},
-  "shot_kal": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"b6724695f3e6fd71","gun":"5a75deba097fcaa9"}},
+  "shot_kal": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"73223886f6819e3c","gun":"5a75deba097fcaa9"}},
   "spz_puma": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"984f031f9253ad71","gun":"de2a10962cee378f"}},
   "spz_wotan": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"cd74cd9cb06cdcf3","gun":"3803479be5baae35"}},
   "stb1": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"764c1392cdf7913f","gun":"32b6f1c7c93ee088"}},
