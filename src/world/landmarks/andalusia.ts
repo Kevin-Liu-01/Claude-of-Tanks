@@ -18,7 +18,7 @@
 // stone and roofing (no draw call of their own). The outer walls, tiers, the keep and the curtain are structure; the
 // columns, barrera, railings, the merlons' rubble and the window joinery are dressing.
 import { PartSink, rgb, shade, type Vec3 } from '../maps/regional/geometry.ts';
-import { bar, revolve, columnProfile } from './kit.ts';
+import { bar, columnProfile, extrude, revolve } from './kit.ts';
 import type { LandmarkBuilder, LandmarkBuildContext } from './types.ts';
 
 const BARRERA = rgb(0x7a2a1e), IRON = rgb(0x2a2726), SAND = rgb(0xc9a56a), DOOR = rgb(0x5a3a26);
@@ -190,13 +190,28 @@ export const alcazaba: LandmarkBuilder = (ctx) => {
       const fallen = r > 0 && r < runs - 1 && v() < ruin;
       const h = fallen ? 1.2 + v() * 1.8 : WH - v() * 0.8;
       sink.placed(yaw, cx, 0, cz, () => {
-        // (the wall's run along its local z, t thick across x)
-        sink.span(earth, -t / 2, foot, -(s1 - s0) / 2 - 0.01, t / 2, h, (s1 - s0) / 2 + 0.01, {});
+        // (the wall's run along its local z, t thick across x; local -x is the ward's outside)
+        const len = s1 - s0, pieces = Math.max(2, Math.round(len / 1.5));
+        // its mass, the head eroded block by block
+        for (let i = 0; i < pieces; i++) {
+          const z0 = -len / 2 + len * i / pieces - 0.01, z1 = -len / 2 + len * (i + 1) / pieces + 0.01;
+          sink.span(earth, -t / 2, foot, z0, t / 2, h - v() * (fallen ? 0.9 : 0.45), z1, {});
+        }
         // the stone plinth's batter at its foot
-        sink.span('stone', -t / 2 - 0.35, foot, -(s1 - s0) / 2, t / 2 + 0.35, 1.1, (s1 - s0) / 2, { shade: 0.9 });
+        sink.span('stone', -t / 2 - 0.35, foot, -len / 2, t / 2 + 0.35, 1.1, len / 2, { shade: 0.9 });
+        // the tapia's formwork: the courses' seams on both faces, the putlog holes along them on the outside
+        for (let y = 1.75; y < h - 0.55; y += 0.85) {
+          sink.quad('dark', [-t / 2 - 0.006, y, len / 2], [-t / 2 - 0.006, y, -len / 2], [-t / 2 - 0.006, y + 0.045, -len / 2], [-t / 2 - 0.006, y + 0.045, len / 2], { decor: true, shade: 1.6 });
+          sink.quad('dark', [t / 2 + 0.006, y, -len / 2], [t / 2 + 0.006, y, len / 2], [t / 2 + 0.006, y + 0.045, len / 2], [t / 2 + 0.006, y + 0.045, -len / 2], { decor: true, shade: 1.6 });
+          for (let z = -len / 2 + 0.6 + v() * 0.4; z < len / 2 - 0.3; z += 1.15) sink.quad('dark', [-t / 2 - 0.008, y + 0.05, z + 0.08], [-t / 2 - 0.008, y + 0.05, z - 0.08], [-t / 2 - 0.008, y + 0.2, z - 0.08], [-t / 2 - 0.008, y + 0.2, z + 0.08], { decor: true, fine: 'near' });
+        }
         if (fallen) {
-          // the breach's rubble spilling out of it
-          for (let i = 0; i < 4; i++) sink.span('stone', -t * 1.6 + v() * t * 1.4, -0.2, -(s1 - s0) / 2 + v() * (s1 - s0) * 0.8, -t * 0.8 + v() * t * 1.6, 0.4 + v() * 0.8, -(s1 - s0) / 2 + v() * (s1 - s0) * 0.8 + 1.2, { shade: 0.85, decor: true });
+          // the breach's rubble: a spill of earth and stones down both faces, blocks thrown off it
+          extrude(sink, 'stone', [[-t * 1.5, -0.3, -len * 0.38], [t * 1.5, -0.3, -len * 0.38], [t * 0.5, h * 0.75, -len * 0.38], [-t * 0.5, h * 0.75, -len * 0.38]], [0, 0, 1], len * 0.76, { shade: 0.8, decor: true });
+          for (let i = 0; i < 6; i++) {
+            const x = (v() < 0.5 ? -1 : 1) * (t * 0.8 + v() * t * 0.75), z = -len / 2 + v() * len, r = 0.3 + v() * 0.45;
+            sink.span('stone', x - r, -0.2, z - r * 0.8, x + r, r * 1.1, z + r * 0.8, { shade: 0.78 + v() * 0.12, decor: true });
+          }
         }
       });
       if (!fallen) merlons(sink, [a[0] + ux * s0, a[1] + uz * s0], [a[0] + ux * s1, a[1] + uz * s1], WH - 0.6, t * 0.4, v, 0.35);
@@ -206,14 +221,26 @@ export const alcazaba: LandmarkBuilder = (ctx) => {
   const gr = Math.max(2, Math.round(W / 6)), gs0 = W * Math.floor(gr / 2) / gr - W / 2, gs1 = gs0 + W / gr;
   for (const gx of [gs0 - 1.8, gs1 + 1.8]) sink.span(earth, gx - 1.8, foot, D / 2 - 2.0, gx + 1.8, WH + 2.2, D / 2 + 1.6, {});
   for (const gx of [gs0 - 1.8, gs1 + 1.8]) merlons(sink, [gx - 1.8, D / 2 + 1.6], [gx + 1.8, D / 2 + 1.6], WH + 2.2, 0.5, v, 0.2);
-  const ga = (gs1 - gs0) / 2, gc = (gs0 + gs1) / 2, spring = 3.6, n = 10;
-  sink.span(earth, gs0, spring + ga * 1.1, D / 2 - 1.0, gs1, WH + 0.6, D / 2 + 1.0, {});
+  const ga = (gs1 - gs0) / 2, gc = (gs0 + gs1) / 2, spring = 3.6, n = 12, zf = D / 2 + 1.0, zb = D / 2 - 1.0;
+  sink.span(earth, gs0, spring + ga * 1.1, zb, gs1, WH + 0.6, zf, {});
+  // the horseshoe: the arc runs past the half circle (to 200 degrees) back in toward the jambs; its spandrels, the
+  // soffit through the wall's depth, the imposts where it springs, the voussoirs in alternating stone and brick on the
+  // face, and the alfiz framing it
+  const arcAt = (i: number): number => -0.17 * Math.PI + 1.34 * Math.PI * i / n;
+  const p = (a: number, z: number, k = 1): Vec3 => [gc + Math.cos(a) * ga * k, spring + Math.sin(a) * ga * 1.1 * k, z];
   for (let i = 0; i < n; i++) {
-    // the horseshoe: the arc runs past the half circle (to 200 degrees) back in toward the jambs
-    const a0 = -0.17 * Math.PI + 1.34 * Math.PI * i / n, a1 = -0.17 * Math.PI + 1.34 * Math.PI * (i + 1) / n;
-    const p = (a: number, z: number): Vec3 => [gc + Math.cos(a) * ga, spring + Math.sin(a) * ga * 1.1, z];
-    sink.quad(earth, p(a1, D / 2 + 1.0), p(a0, D / 2 + 1.0), [gc + Math.cos(a0) * ga * 1.12, spring + ga * 1.1 + 0.02, D / 2 + 1.0], [gc + Math.cos(a1) * ga * 1.12, spring + ga * 1.1 + 0.02, D / 2 + 1.0], { shade: 0.95 });
-    bar(sink, 'stone', p(a0, D / 2 + 1.05), p(a1, D / 2 + 1.05), 0.35, { decor: true });
+    const a0 = arcAt(i), a1 = arcAt(i + 1);
+    sink.quad(earth, p(a1, zf), p(a0, zf), [gc + Math.cos(a0) * ga * 1.12, spring + ga * 1.1 + 0.02, zf], [gc + Math.cos(a1) * ga * 1.12, spring + ga * 1.1 + 0.02, zf], { shade: 0.95 });
+    sink.quad(earth, p(a0, zf), p(a1, zf), p(a1, zb), p(a0, zb), { shade: 0.7 });
+    sink.quad(i % 2 ? 'stone' : 'roof', p(a1, zf + 0.04), p(a0, zf + 0.04), p(a0, zf + 0.04, 1.34), p(a1, zf + 0.04, 1.34), { decor: true, shade: i % 2 ? 1.0 : 0.9 });
+  }
+  for (const s of [-1, 1]) sink.span(earth, s < 0 ? gc - ga - 0.01 : gc + ga * 0.86, spring - ga * 0.62, zb, s < 0 ? gc - ga * 0.86 : gc + ga + 0.01, spring + 0.1, zf, {});
+  const ay0 = spring - ga * 0.66, ay1 = spring + ga * 1.1 * 1.42, ax = ga * 1.48;
+  for (const [x0, y0, x1, y1] of [[gc - ax - 0.25, ay0, gc - ax, ay1], [gc + ax, ay0, gc + ax + 0.25, ay1], [gc - ax - 0.25, ay1, gc + ax + 0.25, ay1 + 0.25]] as const)
+    sink.span('stone', x0, y0, zf, x1, y1, zf + 0.14, { decor: true, shade: 0.92 });
+  // the leaves standing open in the passage, iron-banded
+  for (const s of [-1, 1]) {
+    sink.span('structureWood', s < 0 ? gc - ga * 0.84 : gc + ga * 0.78, 0, zb + 0.2, s < 0 ? gc - ga * 0.78 : gc + ga * 0.84, spring + ga * 0.4, zb + 0.2 + ga * 0.8, { colour: DOOR, decor: true });
   }
   // the corner towers: square, proud of both walls, their tops broken
   for (const [cx, cz] of corners) {
@@ -229,7 +256,7 @@ export const alcazaba: LandmarkBuilder = (ctx) => {
   // the formwork's course lines (tapia) and the putlog holes in rows, the slits, on the keep's faces
   for (let y = 2.4; y < KH - 0.5; y += 0.85) for (const [ox, oz] of [[0, 1], [1, 0], [0, -1], [-1, 0]] as const) {
     const ax = ox === 0 ? 1 : 0, az = ox === 0 ? 0 : 1, px = kx + ox * (K / 2 + 0.005), pz = kz + oz * (K / 2 + 0.005);
-    sink.span('dark', Math.min(px - ax * K / 2, px + ax * K / 2), y, Math.min(pz - az * K / 2, pz + az * K / 2), Math.max(px - ax * K / 2, px + ax * K / 2) + (ax ? 0 : 0.01), y + 0.03, Math.max(pz - az * K / 2, pz + az * K / 2) + (az ? 0 : 0.01), { decor: true, fine: true });
+    sink.span('dark', Math.min(px - ax * K / 2, px + ax * K / 2), y, Math.min(pz - az * K / 2, pz + az * K / 2), Math.max(px - ax * K / 2, px + ax * K / 2) + (ax ? 0 : 0.01), y + 0.045, Math.max(pz - az * K / 2, pz + az * K / 2) + (az ? 0 : 0.01), { decor: true });
   }
   for (const [ox, oz] of [[0, 1], [1, 0], [0, -1], [-1, 0]] as const) for (const y of [KH * 0.45, KH * 0.75]) {
     sink.span('dark', kx + ox * (K / 2 + 0.01) - (oz ? 0.12 : 0.02), y, kz + oz * (K / 2 + 0.01) - (ox ? 0.12 : 0.02), kx + ox * (K / 2 + 0.01) + (oz ? 0.12 : 0.02), y + 1.3, kz + oz * (K / 2 + 0.01) + (ox ? 0.12 : 0.02), { decor: true });

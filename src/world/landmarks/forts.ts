@@ -10,7 +10,7 @@
 // render (no draw call of its own). The walls, rooms and tower are structure; the merlons are structure too (a shell
 // meets them); the doors, flag and fittings are dressing.
 import { PartSink, rgb, shade, type RegionalBucket, type Vec3 } from '../maps/regional/geometry.ts';
-import { archedFace, bar, revolve, type ArchHole } from './kit.ts';
+import { archSurround, archedFace, bar, extrude, revolve, type ArchHole } from './kit.ts';
 import type { LandmarkBuilder, LandmarkBuildContext } from './types.ts';
 
 const DOOR = rgb(0x5a4a38), IRON = rgb(0x2c2b2a);
@@ -21,17 +21,18 @@ const num = (ctx: LandmarkBuildContext, key: string, min: number, max = Infinity
 
 /** A crenellated parapet along a wall's top from a to b (plan points) at y, `t` thick: the merlons and the coping. */
 function crenels(sink: PartSink, bucket: RegionalBucket, a: readonly [number, number], b: readonly [number, number], y: number, t: number,
-  h = 0.7, merlon = 0.7, gap = 0.55): void {
+  h = 0.7, merlon = 0.7, gap = 0.55, v?: () => number): void {
   const L = Math.hypot(b[0] - a[0], b[1] - a[1]), ux = (b[0] - a[0]) / L, uz = (b[1] - a[1]) / L, nx = -uz, nz = ux;
   const n = Math.max(1, Math.round((L + gap) / (merlon + gap))), m = (L - (n - 1) * gap) / n;
   // the parapet's breast wall under the crenels
   const corner = (s: number, w: number, o: number, yy: number): Vec3 => [a[0] + ux * s + nx * w * o, yy, a[1] + uz * s + nz * w * o];
   for (let k = 0; k < n; k++) {
-    const s0 = k * (m + gap), s1 = s0 + m;
-    const p = [corner(s0, t / 2, -1, y), corner(s1, t / 2, 1, y + h)];
+    // (hand-laid: each merlon's height a little its own, `v` the look stream)
+    const s0 = k * (m + gap), s1 = s0 + m, hk = v ? h * (0.88 + v() * 0.22) : h;
+    const p = [corner(s0, t / 2, -1, y), corner(s1, t / 2, 1, y + hk)];
     sink.span(bucket, Math.min(p[0][0], p[1][0], corner(s1, t / 2, -1, y)[0], corner(s0, t / 2, 1, y)[0]), y,
       Math.min(p[0][2], p[1][2], corner(s1, t / 2, -1, y)[2], corner(s0, t / 2, 1, y)[2]),
-      Math.max(p[0][0], p[1][0], corner(s1, t / 2, -1, y)[0], corner(s0, t / 2, 1, y)[0]), y + h,
+      Math.max(p[0][0], p[1][0], corner(s1, t / 2, -1, y)[0], corner(s0, t / 2, 1, y)[0]), y + hk,
       Math.max(p[0][2], p[1][2], corner(s1, t / 2, -1, y)[2], corner(s0, t / 2, 1, y)[2]), {});
   }
 }
@@ -67,11 +68,19 @@ export const desertFort: LandmarkBuilder = (ctx) => {
     const P = (uu: number, y: number, oo: number): Vec3 => [face.origin[0] + u[0] * uu + o[0] * oo, y, face.origin[2] + u[2] * uu + o[2] * oo];
     sink.quad(wall, P(-S / 2, H, 0), P(S / 2, H, 0), P(S / 2, H, -T), P(-S / 2, H, -T), {});
     sink.quad(wall, P(-S / 2, foot, 0.45), P(S / 2, foot, 0.45), P(S / 2, 0.9, 0), P(-S / 2, 0.9, 0), { decor: true, shade: 0.9 });
+    // the string course under the parapet walk, and the roofs' water spouts through it (timber canales, stained below)
+    const sc0 = P(-S / 2 - 0.08, H - 0.55, 0), sc1 = P(S / 2 + 0.08, H - 0.25, 0.14);
+    sink.span(wall, Math.min(sc0[0], sc1[0]), H - 0.55, Math.min(sc0[2], sc1[2]), Math.max(sc0[0], sc1[0]), H - 0.25, Math.max(sc0[2], sc1[2]), { decor: true, shade: 0.93 });
+    for (let uu = -S / 2 + 4.9; uu < S / 2 - 2; uu += 7.2) {
+      if (name === 'front' && Math.abs(uu) < gw / 2 + 1.5) continue;
+      bar(sink, 'structureWood', P(uu, H - 0.75, -0.1), P(uu, H - 0.85, 0.75), 0.2, { colour: DOOR, decor: true });
+      sink.quad(wall, P(uu - 0.2, H - 2.8, 0.012), P(uu + 0.2, H - 2.8, 0.012), P(uu + 0.12, H - 0.95, 0.012), P(uu - 0.12, H - 0.95, 0.012), { decor: true, shade: 0.72, fine: 'near' });
+    }
   }
   // the parapet's crenels round the wall heads (the gate's raised in a stepped pediment)
   const c = h2 - T / 2;
   const corners: Array<[number, number]> = [[-c, c], [c, c], [c, -c], [-c, -c]];
-  for (let k = 0; k < 4; k++) crenels(sink, wall, corners[k], corners[(k + 1) % 4], H, T);
+  for (let k = 0; k < 4; k++) crenels(sink, wall, corners[k], corners[(k + 1) % 4], H, T, 0.7, 0.7, 0.55, v);
   sink.span(wall, -gw / 2 - 1.4, H, h2 - T, gw / 2 + 1.4, H + 1.6, h2, {});
   crenels(sink, wall, [-gw / 2 - 1.4, h2 - T / 2], [gw / 2 + 1.4, h2 - T / 2], H + 1.6, T, 0.6, 0.55, 0.45);
   // the gate's leaves, studded, closed in the arch; the lamp over it and the fort's name plaque
@@ -139,6 +148,26 @@ export const desertFort: LandmarkBuilder = (ctx) => {
     const tri: Vec3[] = [[fx, fy, fz + s * 0.01], [fx + fw * 0.45, fy + fh / 2, fz + wave(fw * 0.45) + s * 0.01], [fx, fy + fh, fz + s * 0.01]];
     sink.polygon('structureMetal', s > 0 ? tri : [tri[0], tri[2], tri[1]], { colour: FLAG_RED, decor: true });
   }
+  // the chevron's white seven-pointed star (the Jordanian flag's; without it the flag reads as another's)
+  const sx = fx + fw * 0.15, sy = fy + fh / 2, sr = fh * 0.13, sz = fz + wave(fw * 0.15);
+  for (const s of [1, -1]) for (let i = 0; i < 14; i++) {
+    const r0 = i % 2 === 0 ? sr : sr * 0.48, r1 = i % 2 === 0 ? sr * 0.48 : sr, a0 = Math.PI / 2 + i * Math.PI / 7, a1 = a0 + Math.PI / 7;
+    const c: Vec3 = [sx, sy, sz + s * 0.02], p0: Vec3 = [sx + Math.cos(a0) * r0, sy + Math.sin(a0) * r0, sz + s * 0.02], p1: Vec3 = [sx + Math.cos(a1) * r1, sy + Math.sin(a1) * r1, sz + s * 0.02];
+    sink.polygon('structureMetal', s > 0 ? [c, p1, p0] : [c, p0, p1], { colour: FLAG_WHITE, decor: true });
+  }
+  // the stair up to the wall walk along the left range's court face, its flights' parapet; the shade over the court's
+  // front corner (timber posts and a palm-frond mat) with the patrol's stores under it
+  const stx = -ri + 0.6, stRun = rh * 1.3;
+  for (let k = 0; k < 9; k++) {
+    const y = rh * (k + 1) / 9, z = ri - 1.2 - stRun * k / 9;
+    sink.span(wall, stx, foot, z - stRun / 9, stx + 1.1, y, z, {});
+  }
+  sink.span(wall, stx + 1.1, foot, ri - 1.2 - stRun, stx + 1.3, rh * 0.5, ri - 1.2, { decor: true });
+  const cx0 = ri - 7.5, cz0 = ri - 6.0;
+  for (const [x, z] of [[cx0, cz0], [ri - 0.3, cz0], [cx0, ri - 0.3], [ri - 0.3, ri - 0.3]] as const) bar(sink, 'structureWood', [x, 0, z], [x, 2.7, z], 0.14, { colour: DOOR, decor: true });
+  sink.span('straw', cx0 - 0.3, 2.7, cz0 - 0.3, ri, 2.82, ri, { colour: rgb(0x9a8058), decor: true });
+  for (let k = 0; k < 5; k++) sink.cylinder('structureMetal', [cx0 + 1 + k * 1.1, 0, cz0 + 1.0 + (k % 2) * 0.4], 'y', 0.9, 0.3, 8, { colour: [rgb(0x4a5a3a), rgb(0x6a5a3a)][k % 2], decor: true });
+  sink.span('structureWood', cx0 + 1.0, 0, ri - 2.4, cx0 + 3.2, 0.8, ri - 1.2, { colour: rgb(0x7a6a4a), decor: true });
   // the water tank on its stand beside the gate, outside the front wall
   const wx = gw / 2 + 3.6, wz = h2 + 2.2;
   for (const [dx, dz] of [[-0.9, -0.9], [0.9, -0.9], [0.9, 0.9], [-0.9, 0.9]] as const) bar(sink, 'structureMetal', [wx + dx, foot, wz + dz], [wx + dx * 0.8, 3.2, wz + dz * 0.8], 0.12, { colour: IRON });
@@ -187,23 +216,37 @@ export const casemateFort: LandmarkBuilder = (ctx) => {
   archedFace(sink, wall, front, { u0: -Lf / 2, u1: Lf / 2, y0: blockFoot, y1: H }, holes, 0.9, {});
   for (const h of holes) {
     const P = (u: number, y: number, o: number): Vec3 => [front.origin[0] + u, y, front.origin[2] + o];
+    // each opening's dressed surround: the voussoirs of squared stone (alpine), a cast concrete frame (lorraine)
+    archSurround(sink, wall, front, h, alpine ? 0.42 : 0.28, alpine ? 0.1 : 0.12, { keystone: alpine, sill: !alpine });
     if (h.y0 === 0) sink.span('structureMetal', h.u - h.w / 2 + 0.05, 0, z1 - 0.88, h.u + h.w / 2 - 0.05, h.spring + 0.2, z1 - 0.84, { colour: alpine ? rgb(0x4a3a2a) : ARMOUR, decor: true });
     else if (!alpine) {
       // the steel shutters folded back either side of the window
-      for (const s of [-1, 1]) sink.quad('structureMetal', P(h.u + s * h.w / 2, h.y0, 0.02), P(h.u + s * (h.w / 2 + 0.6), h.y0, 0.25), P(h.u + s * (h.w / 2 + 0.6), h.spring, 0.25), P(h.u + s * h.w / 2, h.spring, 0.02),
-        { colour: ARMOUR, decor: true, fine: 'near' });
+      // (heavy plate, each leaf's two faces and its edge: they read from the valley)
+      for (const s of [-1, 1]) {
+        const a = P(h.u + s * (h.w / 2 + 0.3), h.y0 - 0.05, 0.14), b = P(h.u + s * (h.w / 2 + 0.95), h.y0 - 0.05, 0.62);
+        const c = P(h.u + s * (h.w / 2 + 0.95), h.spring + 0.1, 0.62), d = P(h.u + s * (h.w / 2 + 0.3), h.spring + 0.1, 0.14);
+        sink.quad('structureMetal', ...(s > 0 ? [a, b, c, d] as const : [b, a, d, c] as const), { colour: ARMOUR, decor: true });
+        sink.quad('structureMetal', ...(s > 0 ? [b, a, d, c] as const : [a, b, c, d] as const), { colour: shade(ARMOUR, 0.8), decor: true });
+      }
     }
   }
   // the cornice over the front, and (alpine) the dressed quoins and the string course
   sink.span(wall, -Lf / 2 - 0.3, H - 0.1, z1 - 0.2, Lf / 2 + 0.3, H + 0.4, z1 + 0.5, { decor: true, shade: 0.9 });
+  // the front's battered foot and (alpine) the string course at the casemates' springing
+  sink.quad(wall, [-Lf / 2, blockFoot, z1 + 0.7], [Lf / 2, blockFoot, z1 + 0.7], [Lf / 2, 1.1, z1 + 0.02], [-Lf / 2, 1.1, z1 + 0.02], { decor: true, shade: 0.86 });
+  if (alpine) sink.span('stone', -Lf / 2 - 0.1, 2.75, z1 - 0.1, Lf / 2 + 0.1, 3.0, z1 + 0.16, { decor: true, shade: 1.05 });
   if (alpine) for (const s of [-1, 1]) for (let y = 0.3; y < H - 0.3; y += 0.9) sink.span('stone', s * Lf / 2 - (s > 0 ? 0.9 : -0.0) - (s > 0 ? 0 : 0), y, z1 - 0.1, s * Lf / 2 + (s > 0 ? 0 : 0.9) * (s < 0 ? 1 : 0), y + 0.45, z1 + 0.12, { decor: true, shade: 1.08 });
   // the earth cover: from the cornice up over the vaults to its crest, then the long back slope to the ground; the ends
   // fall to the ground too (a mound, its turf seamed)
   const crest = H + (alpine ? 1.2 : 2.6), cz = z1 - 3.5, ex = 4;
   // the vaults' mass behind the front, under the crest (the back slope's earth covers the rest)
   sink.span(wall, -Lf / 2, blockFoot, cz - 1.0, Lf / 2, H, z1 - 0.88, {});
-  const ridge: Vec3[] = [[-Lf / 2, crest, cz], [Lf / 2, crest, cz]];
+  // (alpine: the crest runs back flat to the gun terrace's rear, the plateau the terrace stands on)
+  const rz = alpine ? cz - 5 : cz;
+  const ridge: Vec3[] = [[-Lf / 2, crest, rz], [Lf / 2, crest, rz]];
   const eave: Vec3[] = [[-Lf / 2 - 0.3, H + 0.4, z1 + 0.5], [Lf / 2 + 0.3, H + 0.4, z1 + 0.5]];
+  // (the cover's shoulder: the earth rounding up off the cornice, a thick mass and not a lid)
+  const shoulder: Vec3[] = [[-Lf / 2 - 0.1, H + (crest - H) * 0.78, z1 - 0.9], [Lf / 2 + 0.1, H + (crest - H) * 0.78, z1 - 0.9]];
   // (the back's foot, in the block's frame: the ground there less the block's seat)
   const back: Vec3[] = [[-Lf / 2 - ex, g(-Lf / 2 - ex, z0) - yb, z0], [Lf / 2 + ex, g(Lf / 2 + ex, z0) - yb, z0]];
   const turf = (k: number) => (k % 2 ? TURF : TURF_DRY);
@@ -212,23 +255,39 @@ export const casemateFort: LandmarkBuilder = (ctx) => {
     const a = i / segs, b = (i + 1) / segs, lerp = (p: Vec3, q: Vec3, t: number): Vec3 => [p[0] + (q[0] - p[0]) * t, p[1] + (q[1] - p[1]) * t, p[2] + (q[2] - p[2]) * t];
     const c = shade(turf(i), 0.92 + v() * 0.16);
     // front slope (eave to ridge), back slope (ridge to the back's foot), each a strip along x
-    sink.quad('structureWood', lerp(eave[0], eave[1], a), lerp(eave[0], eave[1], b), lerp(ridge[0], ridge[1], b), lerp(ridge[0], ridge[1], a), { colour: c });
+    sink.quad('structureWood', lerp(eave[0], eave[1], a), lerp(eave[0], eave[1], b), lerp(shoulder[0], shoulder[1], b), lerp(shoulder[0], shoulder[1], a), { colour: shade(c, 0.94) });
+    sink.quad('structureWood', lerp(shoulder[0], shoulder[1], a), lerp(shoulder[0], shoulder[1], b), lerp(ridge[0], ridge[1], b), lerp(ridge[0], ridge[1], a), { colour: c });
     sink.quad('structureWood', lerp(ridge[0], ridge[1], a), lerp(ridge[0], ridge[1], b), lerp(back[0], back[1], b), lerp(back[0], back[1], a), { colour: shade(c, 0.95) });
   }
   // the mound's ends: from the ridge's ends down to the ground at either side
   for (const s of [-1, 1]) {
-    const r: Vec3 = [s * Lf / 2, crest, cz], e: Vec3 = [s * (Lf / 2 + 0.3), H + 0.4, z1 + 0.5], b: Vec3 = back[s > 0 ? 1 : 0];
+    const r: Vec3 = [s * Lf / 2, crest, rz], e: Vec3 = [s * (Lf / 2 + 0.3), H + 0.4, z1 + 0.5], b: Vec3 = back[s > 0 ? 1 : 0];
     const gr: Vec3 = [s * (Lf / 2 + ex * 0.6), Math.min(g(s * (Lf / 2 + ex * 0.6), z1 + 0.5) - yb, 0) - 0.6, z1 + 0.5];
     sink.polygon('structureWood', s > 0 ? [e, gr, b, r] : [r, b, gr, e], { colour: TURF });
+    // the earth banked against the block's end, its wing slope falling from the cornice to the ground beside the front,
+    // so the block sits buried in the hill and only its front shows
+    const ge = Math.min(g(s * (Lf / 2 + ex), z1) - yb, 0) - 0.4;
+    extrude(sink, 'structureWood', [[s * Lf / 2, blockFoot, z1 + 0.5], [s * (Lf / 2 + ex), ge, z1 + 0.5], [s * Lf / 2, H + 0.4, z1 + 0.5]], [0, 0, -1], z1 + 0.5 - (cz - 1.0), { colour: shade(TURF, 0.96) });
   }
+  // the cornice's drip edge, a thin slab proud under its lip
+  sink.span(wall, -Lf / 2 - 0.4, H - 0.32, z1 + 0.35, Lf / 2 + 0.4, H - 0.1, z1 + 0.62, { decor: true, shade: 0.8 });
   if (alpine) {
-    // the gun terrace on the cover's crest: its parapet of squared stone with the embrasures, the traverses between them
-    const py = crest, tz = cz - 2;
+    // the gun terrace on the cover's crest: its earth parapet (revetted inside in squared stone, its superior slope
+    // falling to the front) cut by the embrasures, the earth traverses between the guns running front to back
+    const py = crest, tz = cz - 2, pitch = 7;
     sink.span('stone', -Lf / 2 + 2, py - 0.3, tz - 3, Lf / 2 - 2, py + 0.05, tz + 1.5, { shade: 0.85 });
-    for (let k = 0; k < Math.round(Lf / 7); k++) {
-      const x0 = -Lf / 2 + 2 + k * 7;
-      sink.span('stone', x0, py, tz + 1.5, x0 + 4.4, py + 1.3, tz + 2.6, {});
-      sink.span('stone', x0 + 5.6, py, tz - 3, x0 + 7, py + 1.6, tz + 2.6, {});
+    const guns = Math.round((Lf - 4) / pitch);
+    for (let k = 0; k <= guns; k++) {
+      // the parapet's run between two embrasures (or the terrace's ends)
+      const x0 = -Lf / 2 + 2 + k * pitch - (k ? pitch / 2 - 0.7 : 0), x1 = Math.min(Lf / 2 - 2, -Lf / 2 + 2 + k * pitch + pitch / 2 - 0.7);
+      if (x1 - x0 < 0.5) continue;
+      extrude(sink, 'structureWood', [[x0, py, tz + 1.5], [x0, py + 1.35, tz + 1.5], [x0, py + 1.35, tz + 2.5], [x0, py - 0.2, tz + 4.4]], [1, 0, 0], x1 - x0, { colour: shade(TURF, 0.95 + v() * 0.08) });
+      sink.span('stone', x0, py, tz + 1.36, x1, py + 1.35, tz + 1.5, { decor: true, shade: 0.95 });
+      if (k > 0 && k < guns) {
+        // the traverse behind the parapet between the guns: an earth wedge, high at the parapet, low at the back
+        const xm = -Lf / 2 + 2 + k * pitch - pitch / 2;
+        extrude(sink, 'structureWood', [[xm - 1.1, py, tz + 1.5], [xm + 1.1, py, tz + 1.5], [xm + 0.6, py + 1.7, tz + 1.5], [xm - 0.6, py + 1.7, tz + 1.5]], [0, 0, -1], 4.2, { colour: shade(TURF, 0.9) });
+      }
     }
   } else {
     // the turret battery's cupolas: steel domes in their armour collars, the gun's slit in each, and an observation cloche

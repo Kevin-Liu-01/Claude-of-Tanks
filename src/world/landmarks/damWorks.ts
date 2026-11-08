@@ -15,11 +15,12 @@
 // own). The legs, footings, berm, module and the lander's body are structure; lattices, cables, lights and markings
 // are dressing.
 import { PartSink, rgb, shade, type Rgb, type Vec3 } from '../maps/regional/geometry.ts';
-import { bar, revolve } from './kit.ts';
+import { bar, extrude, revolve } from './kit.ts';
 import type { LandmarkBuilder, LandmarkBuildContext } from './types.ts';
 
 const STEEL = rgb(0x5a5f62), RED_OXIDE = rgb(0x8a3a2a), CABLE = rgb(0x2a2a2a), CAB = rgb(0xd2c8a8), BUCKET = rgb(0x5e5e5a);
-const PAD = rgb(0x6a4a3c), MARK = rgb(0xd8d2c4), BERM = rgb(0x8a5a42), HULL = rgb(0xd4d6d8), HULL_DARK = rgb(0x3a3c40), LAMP = rgb(0xf2d27a);
+const PAD = rgb(0x6a4a3c), MARK = rgb(0xd8d2c4), BERM = rgb(0x8a5a42), HULL = rgb(0xc9ccd0), HULL_DARK = rgb(0x3a3c40), LAMP = rgb(0xf2d27a);
+const TILE = rgb(0x1e1f22), SEAM = rgb(0x4a3328), SCORCH = rgb(0x2a1e1a);
 
 const uvOffset = (rng: () => number): [number, number] => [rng() * 7.31, rng() * 5.17];
 const num = (ctx: LandmarkBuildContext, key: string, min: number, max = Infinity): number => Math.min(max, Math.max(min, Number(ctx.params[key])));
@@ -104,29 +105,71 @@ export const cablewayTower: LandmarkBuilder = (ctx) => {
   return { parts: sink.finish() };
 };
 
-/** A lander standing on its legs at (0, 0): a stubby hull, its nose, the engine skirt and the four legs on their pads. */
+/**
+ * A lander standing on its legs at (0, 0), a steel cargo ship of the 2090s: the hull in its welded rings under the ogive
+ * nose, the dark heat shield down its windward (-x) side, the aft flaps and forward canards on its flanks, the engine bay
+ * with its sea-level and vacuum bells below the skirt, six shock-strut legs braced to the skirt on their pads, the cargo
+ * hatch (+x) with its deck and the lift tower down to the pad, the crew portholes' ring, the RCS pods.
+ */
 function lander(sink: PartSink): void {
-  const R = 4.2, n = 24, base = 3.2;
-  revolve(sink, 'structureMetal', 0, 0, [[R * 0.9, base], [R, base + 1.2], [R, base + 11], [R * 0.82, base + 13.5], [R * 0.45, base + 15.2], [0.001, base + 15.8]], n, { colour: HULL });
-  revolve(sink, 'structureMetal', 0, 0, [[R * 0.9, base], [R * 0.95, base - 0.6], [R * 0.4, base - 0.8], [R * 0.39, base - 0.8]], n, { colour: HULL_DARK, decor: true });
-  // the engine bells under the skirt
-  for (let k = 0; k < 3; k++) {
-    const a = (k / 3) * Math.PI * 2;
-    revolve(sink, 'structureMetal', Math.cos(a) * 1.5, Math.sin(a) * 1.5, [[0.4, base - 0.8], [0.95, base - 2.2], [0.9, base - 2.2]], 10, { colour: shade(HULL_DARK, 0.8), decor: true });
+  const R = 4.2, n = 24, base = 3.4, top = base + 15.6;
+  revolve(sink, 'structureMetal', 0, 0, [[R * 0.94, base], [R, base + 0.6], [R, base + 11.4], [R * 0.9, base + 13.4], [R * 0.66, base + 14.8],
+    [R * 0.32, top - 0.3], [0.001, top]], n, { colour: HULL });
+  // the welded rings of the barrel
+  for (let y = base + 1.9; y < base + 11.2; y += 1.85) revolve(sink, 'structureMetal', 0, 0, [[R, y], [R + 0.035, y], [R + 0.035, y + 0.07], [R, y + 0.07]], n, { colour: shade(HULL, 0.78), decor: true });
+  // the heat shield's tiles down the windward half, its edge at the flaps' hinge line
+  sink.cylinder('structureMetal', [0, base + 0.6, 0], 'y', 10.8, R + 0.045, 12, { colour: TILE, decor: true }, R + 0.045, false, Math.PI / 2, Math.PI);
+  // the flaps on the flanks (±z), set a little to windward: the aft pair long and deep, the canards high and short
+  for (const s of [-1, 1]) {
+    const flap = (y0: number, y1: number, y2: number, r0: number, out: number): void => {
+      const P = (y: number, r: number): Vec3 => [-1.25, y, s * r];
+      extrude(sink, 'structureMetal', [P(y0, r0), P(y0, r0 + out), P(y1, r0 + out), P(y2, r0)], [1, 0, 0], 0.32, { colour: TILE, decor: true });
+    };
+    flap(base + 0.8, base + 5.0, base + 6.6, R - 0.4, 2.6);
+    flap(base + 11.3, base + 12.6, base + 13.8, R * 0.9 - 0.6, 1.7);
   }
-  // the legs: struts from the hull's shoulder out and down to round pads
-  for (let k = 0; k < 4; k++) {
-    const a = (k / 4) * Math.PI * 2 + Math.PI / 4, ox = Math.cos(a), oz = Math.sin(a);
-    const pad: Vec3 = [ox * (R + 3.4), 0.3, oz * (R + 3.4)];
-    bar(sink, 'structureMetal', [ox * R * 0.95, base + 3.0, oz * R * 0.95], pad, 0.32, { colour: HULL_DARK });
-    bar(sink, 'structureMetal', [ox * R * 0.92, base + 0.2, oz * R * 0.92], pad, 0.22, { colour: HULL_DARK, decor: true });
-    revolve(sink, 'structureMetal', pad[0], pad[2], [[0.001, 0.0], [0.9, 0.0], [0.9, 0.25], [0.3, 0.45], [0.29, 0.45]], 10, { colour: HULL_DARK, decor: true });
-  }
-  // the hull's markings: the cargo door's outline and the windows' band
-  sink.span('structureMetal', -1.4, base + 4.0, R - 0.02, 1.4, base + 7.4, R + 0.03, { colour: shade(HULL, 0.82), decor: true });
+  // the engine bay: three sea-level bells inside, three vacuum bells outboard, open below the skirt
   for (let k = 0; k < 6; k++) {
-    const a = (k / 6) * Math.PI * 2;
-    sink.placed(a, 0, base + 10, 0, () => sink.span('glass', -0.3, 0, R - 0.03, 0.3, 0.6, R + 0.02, { decor: true }));
+    const vac = k % 2 === 1, a = (k / 6) * Math.PI * 2, r = vac ? 2.55 : 1.15, e = vac ? 1.1 : 0.72, L = vac ? 2.8 : 1.9;
+    revolve(sink, 'structureMetal', Math.cos(a) * r, Math.sin(a) * r, [[0.32, base - 0.05], [0.42, base - 0.45], [e * 0.72, base - L * 0.6], [e, base - L], [e - 0.06, base - L]], 12,
+      { colour: shade(HULL_DARK, vac ? 0.9 : 0.75), decor: true });
+  }
+  // the legs: a shock strut from the hull's skirt out and down to its pad, its damper's sleeve, two braces to the skirt
+  for (let k = 0; k < 6; k++) {
+    const a = (k / 6) * Math.PI * 2 + Math.PI / 6, ox = Math.cos(a), oz = Math.sin(a);
+    const top3: Vec3 = [ox * R * 0.97, base + 2.6, oz * R * 0.97], pad: Vec3 = [ox * (R + 2.6), 0.42, oz * (R + 2.6)];
+    const knee: Vec3 = [top3[0] + (pad[0] - top3[0]) * 0.7, top3[1] + (pad[1] - top3[1]) * 0.7, top3[2] + (pad[2] - top3[2]) * 0.7];
+    const mid: Vec3 = [(top3[0] + pad[0]) / 2, (top3[1] + pad[1]) / 2, (top3[2] + pad[2]) / 2];
+    bar(sink, 'structureMetal', top3, pad, 0.34, { colour: HULL_DARK });
+    bar(sink, 'structureMetal', top3, mid, 0.52, { colour: shade(HULL_DARK, 1.25), decor: true });
+    for (const d of [-0.24, 0.24]) {
+      const b = a + d;
+      bar(sink, 'structureMetal', [Math.cos(b) * R * 0.95, base + 0.25, Math.sin(b) * R * 0.95], knee, 0.17, { colour: HULL_DARK, decor: true });
+    }
+    revolve(sink, 'structureMetal', pad[0], pad[2], [[0.001, 0.0], [1.05, 0.0], [1.05, 0.2], [0.42, 0.44], [0.41, 0.44]], 12, { colour: HULL_DARK, decor: true });
+  }
+  // the cargo hatch on the lee side (+x): its dark opening in a frame, the deck swung out from its sill, the lift tower
+  // down to the pad with its car at the foot
+  const hy0 = base + 5.6, hy1 = base + 8.4, hw = 1.3;
+  sink.span('dark', R - 0.3, hy0, -hw, R + 0.05, hy1, hw, { decor: true });
+  for (const z of [-hw - 0.1, hw + 0.1]) bar(sink, 'structureMetal', [R + 0.06, hy0 - 0.1, z], [R + 0.06, hy1 + 0.1, z], 0.18, { colour: shade(HULL, 0.7), decor: true });
+  bar(sink, 'structureMetal', [R + 0.06, hy1 + 0.1, -hw - 0.1], [R + 0.06, hy1 + 0.1, hw + 0.1], 0.18, { colour: shade(HULL, 0.7), decor: true });
+  sink.span('structureMetal', R, hy0 - 0.25, -1.2, R + 2.3, hy0, 1.2, { colour: STEEL, decor: true });
+  for (const z of [-1.15, 1.15]) bar(sink, 'structureMetal', [R + 0.3, hy0 + 1.0, z], [R + 2.3, hy0 + 1.0, z], 0.05, { colour: LAMP, decor: true });
+  const tx = R + 2.0;
+  for (const z of [-1.0, 1.0]) bar(sink, 'structureMetal', [tx, 0.25, z], [tx, hy0, z], 0.2, { colour: STEEL });
+  for (let y = 1.2; y < hy0; y += 1.2) bar(sink, 'structureMetal', [tx, y, -1.0], [tx, y + 1.2, 1.0], 0.07, { colour: STEEL, decor: true, fine: true });
+  sink.span('structureMetal', tx - 1.1, 0.25, -0.9, tx + 1.1, 0.4, 0.9, { colour: STEEL, decor: true });
+  for (const [x, z] of [[tx - 1.05, -0.85], [tx - 1.05, 0.85], [tx + 1.05, -0.85], [tx + 1.05, 0.85]] as const) bar(sink, 'structureMetal', [x, 0.4, z], [x, 2.6, z], 0.06, { colour: LAMP, decor: true });
+  sink.span('structureMetal', tx - 1.1, 2.6, -0.9, tx + 1.1, 2.7, 0.9, { colour: LAMP, decor: true });
+  // the crew deck's portholes all round under the nose; the RCS pods fore and aft
+  for (let k = 0; k < 10; k++) {
+    const a = (k / 10) * Math.PI * 2 + 0.3;
+    sink.placed(a, 0, base + 12.2, 0, () => sink.span('glass', -0.2, 0, R * 0.93 - 0.05, 0.2, 0.4, R * 0.93 + 0.06, { decor: true }));
+  }
+  for (const [y, r] of [[base + 1.6, R], [base + 13.9, R * 0.78]] as const) for (let k = 0; k < 4; k++) {
+    const a = (k / 4) * Math.PI * 2 + Math.PI / 4;
+    sink.placed(a, 0, y, 0, () => sink.span('structureMetal', -0.35, 0, r - 0.1, 0.35, 0.7, r + 0.35, { colour: shade(HULL, 0.82), decor: true }));
   }
 }
 
@@ -138,23 +181,38 @@ export const landingPad: LandmarkBuilder = (ctx) => {
   const sink = new PartSink(uvOffset(ctx.rng));
   const v = ctx.variant;
   const R = num(ctx, 'radius', 16, 40), n = 48;
-  // the sintered disc, its marking ring and the cross, the approach lights round its rim
-  revolve(sink, 'structureMetal', 0, 0, [[R + 0.6, -0.3], [R, 0.12], [0.001, 0.12]], n, { colour: PAD, decor: true });
-  revolve(sink, 'structureMetal', 0, 0, [[R * 0.72, 0.13], [R * 0.68, 0.13]], n, { colour: MARK, decor: true });
-  for (const yaw of [0, Math.PI / 2]) sink.placed(yaw, 0, 0, 0, () => sink.span('structureMetal', -0.6, 0.12, -R * 0.55, 0.6, 0.14, R * 0.55, { colour: MARK, decor: true }));
-  for (let k = 0; k < 16; k++) {
-    const a = (k / 16) * Math.PI * 2;
-    sink.span('structureMetal', Math.cos(a) * (R + 1.2) - 0.25, 0, Math.sin(a) * (R + 1.2) - 0.25, Math.cos(a) * (R + 1.2) + 0.25, 0.5, Math.sin(a) * (R + 1.2) + 0.25, { colour: LAMP, decor: true });
+  // the sintered slab with its chamfered edge (low enough to drive onto), the tiles' seams, the marking ring and the
+  // cross, the scorch under the lander, the approach lights on their posts round the rim
+  revolve(sink, 'structureMetal', 0, 0, [[R + 1.0, -0.3], [R + 0.4, 0.22], [R, 0.25], [0.001, 0.25]], n, { colour: PAD, decor: true });
+  for (const r of [R * 0.36, R * 0.84]) revolve(sink, 'structureMetal', 0, 0, [[r + 0.05, 0.255], [r - 0.05, 0.255]], n, { colour: SEAM, decor: true });
+  for (let k = 0; k < 24; k++) {
+    const a = (k / 24) * Math.PI * 2;
+    sink.placed(a, 0, 0, 0, () => sink.span('structureMetal', -0.05, 0.25, R * 0.36, 0.05, 0.256, R - 0.1, { colour: SEAM, decor: true }));
   }
-  // the blast berm: bagged regolith in a 150-degree arc on the -z side, its courses stepped
-  const bR = R + 5, segs = 18;
+  revolve(sink, 'structureMetal', 0, 0, [[7.5, 0.258], [0.001, 0.258]], 24, { colour: SCORCH, decor: true });
+  revolve(sink, 'structureMetal', 0, 0, [[R * 0.72, 0.26], [R * 0.68, 0.26]], n, { colour: MARK, decor: true });
+  for (const yaw of [0, Math.PI / 2]) sink.placed(yaw, 0, 0, 0, () => {
+    for (const s of [-1, 1]) sink.span('structureMetal', -0.6, 0.25, s > 0 ? R * 0.42 : -R * 0.62, 0.6, 0.262, s > 0 ? R * 0.62 : -R * 0.42, { colour: MARK, decor: true });
+  });
+  for (let k = 0; k < 16; k++) {
+    const a = (k / 16) * Math.PI * 2, x = Math.cos(a) * (R + 1.6), z = Math.sin(a) * (R + 1.6);
+    bar(sink, 'structureMetal', [x, 0, z], [x, 1.3, z], 0.12, { colour: STEEL, decor: true });
+    sink.span('structureMetal', x - 0.22, 1.3, z - 0.22, x + 0.22, 1.6, z + 0.22, { colour: LAMP, decor: true });
+  }
+  // the blast berm: bagged regolith in a 150-degree arc on the -z side, a sloped bank with its courses of bags
+  const bR = R + 4.4, segs = 18;
   for (let k = 0; k < segs; k++) {
     const a0 = Math.PI * (1.08 + 0.84 * k / segs), a1 = Math.PI * (1.08 + 0.84 * (k + 1) / segs);
     const am = (a0 + a1) / 2, len = bR * (a1 - a0) + 0.1;
     sink.placed(-am + Math.PI / 2, Math.cos(am) * bR, 0, Math.sin(am) * bR, () => {
-      sink.span('structureWood', -len / 2, -0.4, -1.6, len / 2, 2.2, 1.6, { colour: shade(BERM, 0.92 + v() * 0.1) });
-      sink.span('structureWood', -len / 2, 2.2, -1.1, len / 2, 3.4, 1.1, { colour: shade(BERM, 0.88 + v() * 0.1) });
-      sink.span('structureWood', -len / 2, 3.4, -0.6, len / 2, 4.2, 0.6, { colour: shade(BERM, 0.84 + v() * 0.1) });
+      const c = shade(BERM, 0.9 + v() * 0.12);
+      extrude(sink, 'structureWood', [[-len / 2, -0.4, -2.5], [-len / 2, -0.4, 2.5], [-len / 2, 4.2, 0.8], [-len / 2, 4.2, -0.8]], [1, 0, 0], len, { colour: c });
+      // the bag courses on both slopes, a few centimetres proud
+      for (const s of [-1, 1]) for (let t = 0.12; t < 0.95; t += 0.11) {
+        const z0 = s * (2.5 - 1.7 * t), y0 = -0.4 + 4.6 * t, z1 = s * (2.5 - 1.7 * (t + 0.012)), y1 = -0.4 + 4.6 * (t + 0.012), nz = s * 0.06, ny = 0.03;
+        const a: Vec3 = [-len / 2, y0 + ny, z0 + nz], b: Vec3 = [len / 2, y0 + ny, z0 + nz], cc: Vec3 = [len / 2, y1 + ny, z1 + nz], d: Vec3 = [-len / 2, y1 + ny, z1 + nz];
+        sink.quad('structureWood', ...(s > 0 ? [a, b, cc, d] as const : [b, a, d, cc] as const), { colour: shade(c, 0.72), decor: true, fine: 'near' });
+      }
     });
   }
   // the cargo gantry over the unloading lane at +x: two A-frame legs, the girder and the trolley with its hook

@@ -4,7 +4,7 @@
 // on the ground and everything over the passage (the lintel, the arch ring, the tower above it) is a separate solid
 // lifted clear of them (kit.ts ARCH_GAP_M), so the movement record leaves the passage open while shells and sight
 // still meet the arch.
-import { PartSink, facePoint, rgb, shade, type Face, type RegionalBucket, type Rgb, type Vec3 } from '../maps/regional/geometry.ts';
+import { PartSink, facePoint, rgb, shade, type EmitOptions, type Face, type RegionalBucket, type Rgb, type Vec3 } from '../maps/regional/geometry.ts';
 import { emitRoof, roofGeometry, type RoofSpec } from '../maps/regional/house.ts';
 import { dressedQuoin } from '../maps/regional/facade.ts';
 import {
@@ -530,33 +530,37 @@ export const triumphalArch: LandmarkBuilder = (ctx) => {
 /**
  * The torii (a Shinto shrine's gate, myōjin form): two vermilion pillars leaning in, the tie beam (nuki) through them,
  * the black-lacquered top lintel (kasagi) with its upswept ends over the shimaki, the central strut with its plaque.
+ * `material` 'stone': the same form in granite (a great shrine's ichi-no-torii, Aso's among them), unpainted.
  */
 export const torii: LandmarkBuilder = (ctx) => {
   const sink = new PartSink(uvOffset(ctx.rng));
   const span = Math.max(3, Number(ctx.params.span)), H = Math.max(4, Number(ctx.params.height));
   const base = -0.6 - ctx.groundFall, r = Math.max(0.22, span * 0.05), lean = 0.04;
+  const granite = ctx.params.material === 'stone';
+  // each member's bucket and finish: lacquer and vermilion, or the granite's own (a shade per member for its joints)
+  const paint = (colour: Rgb, s = 1): [RegionalBucket, EmitOptions] => granite ? ['stone', { shade: 0.9 * s }] : ['structureMetal', { colour }];
   for (const sx of [-1, 1]) {
     const x = sx * span / 2;
     sink.span('stone', x - r * 1.5, base, -r * 1.5, x + r * 1.5, 0.35, r * 1.5);
-    revolve(sink, 'structureMetal', x, 0, [[r * 1.25, 0.35], [r * 1.25, 0.8], [r, 0.8]], 12, { colour: LACQUER_BLACK });
+    revolve(sink, paint(LACQUER_BLACK, 0.85)[0], x, 0, [[r * 1.25, 0.35], [r * 1.25, 0.8], [r, 0.8]], 12, paint(LACQUER_BLACK, 0.85)[1]);
     // the pillar leaning in toward the centre
-    sink.member('structureMetal', [x, 0.8, 0], [x - sx * lean * H, H - 1.3, 0], r * 2, r * 2, [0, 0, 1], { colour: VERMILION, exposed: true }, r);
+    sink.member(paint(VERMILION)[0], [x, 0.8, 0], [x - sx * lean * H, H - 1.3, 0], r * 2, r * 2, [0, 0, 1], { ...paint(VERMILION)[1], exposed: true }, r);
   }
   // the nuki tie beam, the shimaki and kasagi (its ends sweeping up), the central strut and plaque
   const nukiY = H * 0.7, topY = H - 0.95;
   sink.placed(0, 0, ARCH_GAP_M, 0, () => {
-    sink.span('structureMetal', -span / 2 - 0.9, nukiY, -r * 0.6, span / 2 + 0.9, nukiY + 0.42, r * 0.6, { colour: VERMILION });
-    sink.span('structureMetal', -span / 2 - 1.2, topY, -r * 0.9, span / 2 + 1.2, topY + 0.35, r * 0.9, { colour: VERMILION });
+    sink.span(paint(VERMILION)[0], -span / 2 - 0.9, nukiY, -r * 0.6, span / 2 + 0.9, nukiY + 0.42, r * 0.6, { ...paint(VERMILION)[1] });
+    sink.span(paint(VERMILION)[0], -span / 2 - 1.2, topY, -r * 0.9, span / 2 + 1.2, topY + 0.35, r * 0.9, { ...paint(VERMILION)[1] });
     const kas: Vec3[] = [];
     const L = span / 2 + 1.7;
     for (let i = 0; i <= 12; i++) { const t = -1 + 2 * i / 12; kas.push([t * L, topY + 0.35 + 0.28 * t * t * t * t, 0]); }
     for (let i = 0; i + 1 < kas.length; i++) {
       const [a, b] = [kas[i], kas[i + 1]];
-      sink.span('structureMetal', Math.min(a[0], b[0]), Math.min(a[1], b[1]), -r * 1.15, Math.max(a[0], b[0]), Math.max(a[1], b[1]) + 0.45, r * 1.15, { colour: LACQUER_BLACK });
+      sink.span(paint(LACQUER_BLACK, 0.8)[0], Math.min(a[0], b[0]), Math.min(a[1], b[1]), -r * 1.15, Math.max(a[0], b[0]), Math.max(a[1], b[1]) + 0.45, r * 1.15, { ...paint(LACQUER_BLACK, 0.8)[1] });
     }
-    sink.span('structureMetal', -0.2, nukiY + 0.42, -r * 0.5, 0.2, topY, r * 0.5, { colour: VERMILION });
-    sink.span('structureMetal', -0.45, nukiY + 0.7, -r * 0.62, 0.45, topY - 0.15, r * 0.62, { colour: LACQUER_BLACK, decor: true });
-    sink.span('structureMetal', -0.35, nukiY + 0.8, -r * 0.64, 0.35, topY - 0.25, r * 0.64, { colour: GILT, decor: true });
+    sink.span(paint(VERMILION)[0], -0.2, nukiY + 0.42, -r * 0.5, 0.2, topY, r * 0.5, { ...paint(VERMILION)[1] });
+    sink.span(paint(LACQUER_BLACK, 0.8)[0], -0.45, nukiY + 0.7, -r * 0.62, 0.45, topY - 0.15, r * 0.62, { ...paint(LACQUER_BLACK, 0.8)[1], decor: true });
+    sink.span(paint(GILT)[0], -0.35, nukiY + 0.8, -r * 0.64, 0.35, topY - 0.25, r * 0.64, { ...paint(GILT)[1], decor: true });
   });
   return { parts: sink.finish() };
 };
