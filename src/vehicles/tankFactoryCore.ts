@@ -403,12 +403,14 @@ interface WheelArmFollower {
   /** pivot to axle at rest (hull frame) */
   dy0: number;
   dz0: number;
+  /** the gear's published scale over its authored frame: the wheel's travel (off) is authored (seatWheelDressing) */
+  travelScale?: number;
 }
 
 /** An arm's pose for its wheel's travel, as the gear's own links (updateSuspensionLinks): its geometry lies along local
  * +Z from its pivot; it is aimed at the axle and stretched to it. */
 function poseWheelArm(arm: WheelArmFollower): void {
-  const dy = arm.dy0 + (arm.wheel.thrown ? 0 : (arm.wheel.off || 0));
+  const dy = arm.dy0 + (arm.wheel.thrown ? 0 : (arm.wheel.off || 0) * (arm.travelScale ?? 1));
   arm.mesh.rotation.x = Math.atan2(-dy, arm.dz0);
   arm.mesh.scale.z = Math.hypot(dy, arm.dz0) / Math.hypot(arm.dy0, arm.dz0);
 }
@@ -6031,6 +6033,16 @@ function buildRunningGear(P: RunningGearBuilderPort, cfg: RunningGearConfig): Ru
         seats.push(seat);
       }
     }
+    // The gear as it stands now (hull = gs * authored + gt). A profile may scale its whole build after the gear is made
+    // (applyAdvancedIfvScale: the Raiju, the CV90s and the Puma are authored at real size and published at 90 %), which
+    // scales the parts and every gear mesh but not the gear's own numbers the seats read: the seats are moved into the
+    // frame the parts and wheels stand in (the parts themselves are not touched), and what is made here is laid out in it.
+    const frameOf = made[0]?.im ?? spinnerInstances[0]?.batch ?? null;
+    const gs = frameOf ? frameOf.scale.y : 1, gt = frameOf ? frameOf.position : null;
+    if (gt && (gs !== 1 || gt.x !== 0 || gt.y !== 0 || gt.z !== 0)) for (const seat of seats) {
+      seat.x = gs * seat.x + gt.x; seat.y = gs * seat.y + gt.y; seat.z = gs * seat.z + gt.z; seat.r *= gs;
+      seat.axIn = gs * seat.axIn + seat.side * gt.x; seat.axOut = gs * seat.axOut + seat.side * gt.x;
+    }
     const rest: WheelDressingPart[] = [];
     const onSeat = new Map<Seat, WheelDressingPart[]>();
     const chosen = new Map<WheelDressingPart, { seat: Seat; snap: boolean }>();
@@ -6159,7 +6171,10 @@ function buildRunningGear(P: RunningGearBuilderPort, cfg: RunningGearConfig): Ru
     }
     for (const { geometry, part, seats: on } of roadLayers.values()) {
       const list = on.map((seat) => ({ ...seat.entry!, suspensionSource: seat.entry! }));
+      // its instances are the wheels' authored stations, so the layer takes the gear's frame (as the wheels' own layers)
+      if (gs !== 1) geometry.scale(1 / gs, 1 / gs, 1 / gs);
       const im = mkInst(geometry, part.material, list, part.appearanceRole, part.name);
+      if (gt) { im.position.copy(gt); im.scale.setScalar(gs); }
       for (let i = 0; i < list.length; i++) {
         _m.makeTranslation(list[i]!.x, list[i]!.y + (list[i]!.suspensionSource.off || 0), list[i]!.z);
         im.setMatrixAt(i, _m);
@@ -6206,7 +6221,8 @@ function buildRunningGear(P: RunningGearBuilderPort, cfg: RunningGearConfig): Ru
         if (appearanceRole) mesh.userData.appearanceRole = appearanceRole;
         mesh.castShadow = false;
         mesh.receiveShadow = true;
-        const arm: WheelArmFollower = { mesh, wheel: seat.entry!, pivotY, pivotZ, dy0: seat.y - pivotY, dz0: seat.z - pivotZ };
+        const arm: WheelArmFollower = { mesh, wheel: seat.entry!, pivotY, pivotZ, dy0: seat.y - pivotY, dz0: seat.z - pivotZ,
+          ...(gs !== 1 ? { travelScale: gs } : {}) };
         poseWheelArm(arm);
         hullG.add(mesh);
         disposables.push(geometry);
