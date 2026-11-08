@@ -272,6 +272,17 @@ export default {
       [-306, -140, -214, -104, 2], [-298, 130, -206, 166, 3],
       [204, -142, 300, -106, 3], [202, 134, 296, 168, 2],
       [-144, 248, -42, 278, 3], [68, -270, 164, -238, 2],
+      // (buildings-271, the 3D census: "walled farmstead compounds ... round a packed yard, hedge or block wall") each
+      // farmstead's dry-laid lava-stone wall round its back and both ends, 2 m outside its buildings (the minka, the naya,
+      // the kura row, the greenhouse; their footprints in the minka's frame from the built world), a field gate to the
+      // paddies in the back run; the side to the road stays open, the minka and its yard facing it
+      [-123.7, 157.6, -116.4, 194.3], [-116.4, 194.3, -65.2, 184.1, 4], [-65.2, 184.1, -72.5, 147.4],
+      [2.5, 115.4, -4.1, 79.2], [-4.1, 79.2, -55.0, 88.5, 4], [-55.0, 88.5, -48.4, 124.7],
+      [34.6, 145.2, 20.6, 184.2], [20.6, 184.2, 74.0, 203.3, 4], [74.0, 203.3, 87.9, 164.3],
+      [153.7, 171.9, 162.4, 144.9], [162.4, 144.9, 110.4, 128.2, 4], [110.4, 128.2, 101.7, 155.2],
+      [-32.7, -72.0, -15.2, -112.8], [-15.2, -112.8, -67.9, -135.4, 5], [-67.9, -135.4, -85.4, -94.6],
+      [13.5, -67.8, 17.2, -41.4], [17.2, -41.4, 67.4, -48.5, 4], [67.4, -48.5, 63.6, -74.9],
+      [179.0, -143.6, 152.0, -182.5], [152.0, -182.5, 103.2, -148.6, 5], [103.2, -148.6, 130.2, -109.7],
     ],
     buildingLat: [12, 7], sideSkip: 0.08, maxSpread: 3.4,
     well: false, hayCrates: false, fences: true, telegraph: true, carts: false, logs: true,
