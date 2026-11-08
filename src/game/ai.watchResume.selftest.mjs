@@ -54,33 +54,40 @@
 // scene now gives both, as the match does, and a park off a 1 m box (the correctness review's example) restarts.
 // Cost (round 5, U6; the default tier): [11] stepped three fixed 60 s windows after Leave, and now runs each only until
 // what it reads is settled (a verdict, the road planned again, the route's end), and [12]'s window is a whole dwell and
-// a margin. Round 6 (V4): the file read 7.8-10 s of user CPU (round three's 5.9 s). Each rule keeps a case here but two
-// (the obstacle list's branch and the ground under a deck the field publishes: below), and the cases that repeat one at
-// another length, height or branch run in src/game/ai.watchResumeLevels.selftest.mjs (MANUAL bots): [7]'s 30 s park off
-// the way and its toggles ([8]'s toggles pin a short Take and Leave of a moving bot here), [11]'s drop over the gun's
-// band and its toggle on the crest, and [12]'s 2.2 m rock (off and onto), its 1 m box read from the last obstacle list,
-// its tiered rock taken on its top or first tier or left on a second tier, and a formation's caps. Fix-up r1 (both
-// reviews): the split had left two rules no case here, [11]'s slope walk ([13] pins only a deck's side) and [12]'s
-// record walk and step; [11]'s drop under the band and [12]'s off-box, edge, step, rock-to-rock and drawn-top
-// hand-backs came back, and a hand-back under an overpass pins the rule that two ends on their ground are one level,
-// which no case decided. Fix-up r2 (both second reviews): [12]'s records were plain boxes and single drawn tops, so a
-// walk that skipped every compound record (the game's tiered stones, capped formations and buildings) or read a
-// building's band over its roof passed, and the step was pinned only between 0.5 m and 1 m; a tiered rock, a roof over
-// its building's band and a 0.6 m step came in, and the hull in the air (MANUAL's only case of that rule) came back.
-// Fix-up r3 (both third reviews): no case stood the hull on a compound record's lower part, so a walk that read a flat
-// part at its record's top passed, and none put a record the support never stands a hull on (a flat one under 0.9 m;
-// crushable, crushed or dead ones) across the walk; a tiered rock's first tier, a 1 m box past a sandbag line and a
-// park between two rocks over a fence, a felled wall and a collapsed collider came in. The fixtures the two files share
-// are ai.watchResume.test-support.mjs, on the authority's fleet (the two specs' combat anatomy) for the player's fleet
-// factory, with one navigation grid for every deck scene; [5], [6] and the search scenes' waits no longer read the
-// controller's snapshot (debugInfo, the costliest call) on ticks whose answer nothing reads. The process's own user
-// CPU, two alternating rounds at load 61-97: b03868e697's file 8.0-9.4 s; this file 7.5-7.6 s against 1cbcc1faaf's
-// 6.6-7.7 s, [12]'s eighteen hand-backs 1.8-1.9 s of it; ai.watchResumeLevels 4.5-4.8 s (1cbcc1faaf's 4.2-4.9 s); the
-// import 1.5-1.9 s of each; at load 22 this file read 6.0 s and ai.watchResumeLevels 3.8 s. Every mutant of the round's
-// matrix (50) but six fails this file, and those six fail ai.watchResumeLevels: the obstacle list's branch (a fixture's
-// path: every solo bot has the match's query) and the ground under a deck the field publishes, at the walk's last point
-// and (fix-up r3) at an end's root, its contact rect's mid-edge and the walk's points (where a hand-back is read stood
-// put at all, within one 1.5 m point of a deck's end) (round 6 bots NOTES, fix-up r3).
+// a margin. Round 6 (V4): the file read 7.8-10 s of user CPU (round three's 5.9 s). The cases that repeat one here at
+// another length, height or branch run in src/game/ai.watchResumeLevels.selftest.mjs (MANUAL bots), and so do the only
+// cases of two parts of the rule the round's mutants change (the obstacle list's branch and the walk's last point under
+// a deck the field publishes: the matrix below): [7]'s 30 s park off the way and its toggles ([8]'s toggles pin a short
+// Take and Leave of a moving bot here), [11]'s drop over the gun's band and its toggle on the crest, and [12]'s 2.2 m
+// rock (off and onto), its 1 m box read from the last obstacle list, its tiered rock taken on its top or first tier or
+// left on a second tier, a formation's caps, and a 1 m box's top under a deck's end. Fix-up r1 (both reviews): the
+// split had left two rules no case here, [11]'s slope walk ([13] pins only a deck's side) and [12]'s record walk and
+// step; [11]'s drop under the band and [12]'s off-box, edge, step, rock-to-rock and drawn-top hand-backs came back, and
+// a hand-back under an overpass pins the rule that two ends on their ground are one level, which no case decided.
+// Fix-up r2 (both second reviews): [12]'s records were plain boxes and single drawn tops, so a walk that skipped every
+// compound record (the game's tiered stones, capped formations and buildings) or read a building's band over its roof
+// passed, and the step was pinned only between 0.5 m and 1 m; a tiered rock, a roof over its building's band and a
+// 0.6 m step came in, and the hull in the air (MANUAL's only case of that rule) came back. Fix-up r3 (both third
+// reviews): no case stood the hull on a compound record's lower part, so a walk that read a flat part at its record's
+// top passed, and none put a record the support never stands a hull on (a flat one under 0.9 m; crushable, crushed or
+// dead ones) across the walk; a tiered rock's first tier, a 1 m box past a sandbag line and a park between two rocks
+// over a fence, a felled wall and a collapsed collider came in. Fix-up r4 (both fourth reviews): fix-up r3's reading of
+// the ground under a deck the field publishes (groundUnder, the round's one logic change to ai.ts) had its cases only
+// in ai.watchResumeLevels, and no case read a short record's drawn top or a hull on a bridge's deck; a 1 m box's edge
+// under a deck's end came here, and a low stone's top to a box and a bridge's deck under an overpass came in. The
+// fixtures the two files share are ai.watchResume.test-support.mjs, on the authority's fleet (the two specs' combat
+// anatomy) for the player's fleet factory, with one navigation grid for every deck scene; [5], [6] and the search
+// scenes' waits no longer read the controller's snapshot (debugInfo, the costliest call) on ticks whose answer nothing
+// reads. The process's own user CPU, three alternating rounds at load 70-160 (fix-up r4): b03868e697's file
+// 10.4-14.6 s; this file 7.5-10.8 s against 09654a0bb6's 7.3-9.9 s, [12]'s twenty-one hand-backs 2.2-2.8 s of it
+// (09654a0bb6's eighteen 1.7-2.4 s); ai.watchResumeLevels 4.4-7.5 s (09654a0bb6's 5.6-6.1 s); the import 1.5-2.8 s of
+// each (fix-up r3, at load 22: this file 6.0 s, ai.watchResumeLevels 3.8 s). Of the round's 60 mutants of ai.ts
+// (round 6 bots NOTES, fix-up r4), 53 fail one of the two receipts, all but two this file; those two fail
+// ai.watchResumeLevels: the obstacle list's branch (a fixture's path: every solo bot has the match's query) and the
+// walk's last point under a deck the field publishes (a spot read stood put there only within one 1.5 m point of the
+// deck's end). Seven fail neither: readings of the ground under a deck that no fixture tells apart (groundUnder's
+// threshold; at the walk's points, its deck arm and the height it reads from; endFloor's ground at a mid-edge, and its
+// clamp to the root).
 import { getSpec } from '../vehicles/specs.ts';
 import { resetTankVerticalState, updateTank, SIM_DT } from '../sim/movement.ts';
 import { CLASSIC_BOT_DOCTRINE } from '../sim/matchRuleset.ts';
@@ -679,12 +686,14 @@ console.log('[12] the elevation lock\'s dwell counts the bot\'s own ticks: it ho
   // record's edge, and the walk between them runs both ways record by record. On f60d0aa200 each restart below kept 2.9 s
   // of dwell and the lock decided 3.15 s after Leave; round 5's first fix (a192a5a9a3) read the ride difference as one
   // 1.5 m slope-law step, which kept the 1 m boxes and the rock-to-rock park and restarted the drawn top and the hull in
-  // the air. The records are read through the match's obstacle query (round 6 V3). Round 6 (V4, fix-ups r1 to r3): a
-  // case of each part of the rule but one runs here, compound records (their top tier and a lower one) and the records
-  // the support never stands a hull on included; that one (the ground under a deck the field publishes: the walk's last
-  // point there, and since fix-up r3 an end's and the walk's points') and the same parts at another height, direction or
-  // branch (a 2.2 m rock, off and onto; the 1 m box from the last obstacle list; off a tiered rock's top and its first
-  // tier; its second tier; a formation's caps) run in ai.watchResumeLevels (MANUAL bots).
+  // the air. The records are read through the match's obstacle query (round 6 V3). Round 6 (V4, fix-ups r1 to r4): each
+  // part of the rule the round's mutants change has a case here (round 6 bots NOTES, fix-up r4: the matrix), compound
+  // records (their top tier and a lower one), the records the support never stands a hull on (and a short one it does,
+  // a stone's drawn top) and the ground under a deck the field publishes (a bridge's deck; a box's edge under a deck's
+  // end: fix-up r3's groundUnder) included, but one, the walk's last point under a deck the field publishes; that one
+  // and the same parts at another height, direction or branch (a 2.2 m rock, off and onto; the 1 m box from the last
+  // obstacle list; off a tiered rock's top and its first tier; its second tier; a formation's caps; a box's top under a
+  // deck's end) run in ai.watchResumeLevels (MANUAL bots).
   const ontoBox = await dwellHandBack((at) => [at[0], 22], [-16, 31], beside(1), { onY: null, awayY: 1 });
   ok(setupOk(ontoBox, 0, 1), `setup: the floor bot dwells on the ground; the watcher leaves it on a 1 m box's top (${where(ontoBox)})`);
   ok(restarted(ontoBox),
@@ -721,6 +730,15 @@ console.log('[12] the elevation lock\'s dwell counts the bot\'s own ticks: it ho
   ok(setupOk(pastSandbags, 0, 1), `setup: the floor bot dwells on the ground; the watcher leaves it on a 1 m box's top past a 0.5 m sandbag line (${where(pastSandbags)})`);
   ok(restarted(pastSandbags),
     `a 0.5 s park that left the hull on a 1 m box past a 0.5 m sandbag line it never stands on: the dwell restarts (${label(pastSandbags)})`);
+  // fix-up r4 (the completeness review r4): that filter keeps a short record with a drawn top, a stone's own surface and a
+  // floor however low (as structureTopAt's). Taken on a stone 0.8 m tall with a flat drawn top, left on a 1.3 m box beside
+  // it, the box's top within the step of the stone's; a walk that skipped the stone as a short flat record read the spot it
+  // was taken on as the ground, from which the box is a wall, and restarted this dwell
+  const stone = setConvexTopShape({ min: [-40, 0, 26], max: [-10, 0.8, 38] }, [-40, 26, -10, 26, -10, 38, -40, 38], [0, 0, 0, 0, 0.8], 0, 0.8);
+  const stoneToBox = await dwellHandBack((at) => [at[0], 22], [-16, 32], [stone, beside(1.3)], { onY: 0.8, awayY: 1.3 });
+  ok(setupOk(stoneToBox, 0.8, 1.3), `setup: the floor bot dwells on a 0.8 m stone's drawn top; the watcher leaves it on a 1.3 m box beside the stone (${where(stoneToBox)})`);
+  ok(kept(stoneToBox),
+    `a 0.5 s park from a low stone's top onto a box within the step of it: the dwell holds (${label(stoneToBox)})`);
   // fix-up r1 (the completeness review, round 5's major): from one 2.2 m rock's top onto another's across 3 m of ground
   const rockA = Object.freeze({ min: [-40, 0, 27], max: [-10, 2.2, 37] }), rockB = Object.freeze({ min: [-40, 0, 8], max: [-10, 2.2, 24] });
   const rockToRock = await dwellHandBack((at) => [at[0], 23], [-16, 32], [rockA, rockB], { onY: 2.2, awayY: 2.2 });
@@ -788,6 +806,41 @@ console.log('[12] the elevation lock\'s dwell counts the bot\'s own ticks: it ho
     `setup: the floor bot dwells on the ground east of a ramp; the watcher leaves it on the ground under the deck the ramp climbs to (${where(underDeck)})`);
   ok(kept(underDeck),
     `a 0.5 s park that left the hull on the ground under an overpass, its ramp between: the dwell holds (${label(underDeck)})`);
+  // fix-up r4 (the completeness review r4: groundUnder's reading on a deck the field publishes): a hull on a bridge's deck
+  // is on its ground there, as one on the terrain is. In game the deck is also the bridge's collision record (mapKits.ts,
+  // the kit's bridge), which the structure support carries the hull on: here a 4.5 m deck and its slab, with underDeck's
+  // overpass on it (a drawn ramp, 0.75 per metre, up to an upper deck 2.6-3.6 m over the bridge's). Taken on the deck
+  // east of the ramp, left on it under the upper deck; a groundUnder that read the bed under a hull on the deck read both
+  // ends as on the slab, not their ground, and the walk climbed the ramp onto the upper deck over the spot it was left
+  // on: a false restart of this dwell
+  const BRIDGE = Object.freeze([Object.freeze({ x: -26, z: 24, ux: 0, uz: 1, halfLength: 14, halfWidth: 14, deckY: 4.5, approachM: 0 })]);
+  const slab = Object.freeze({ min: [-40, 3.5, 10], max: [-12, 4.5, 38] });
+  const bridgeRamp = setConvexTopShape({ min: [-25.4, 4, 27], max: [-20.4, 8.1, 37.4] },
+    [-25.4, 27, -20.4, 27, -20.4, 37.4, -25.4, 37.4], [-20.4, 0, -0.75, 0, 4.5], 4, 8.1);
+  const upperDeck = Object.freeze({ min: [-40, 7.1, 27], max: [-25.4, 8.1, 37.4] });
+  const onBridge = await dwellHandBack((at) => [at[0] - 11.5, at[2]], [-16, 31], [slab, bridgeRamp, upperDeck],
+    { onY: 4.5, awayY: 4.5, decks: BRIDGE });
+  const [bridgeLeftX] = onBridge.handedBackAt, [bridgeTakenX] = onBridge.parkedAt;
+  ok(setupOk(onBridge, 4.5, 4.5) && bridgeTakenX > bridgeRamp.max[0] && bridgeLeftX < upperDeck.max[0],
+    `setup: the floor bot dwells on a bridge's deck east of an overpass's ramp; the watcher leaves it on the deck under the overpass (${where(onBridge)})`);
+  ok(kept(onBridge),
+    `a 0.5 s park that left the hull on the bridge's deck it was taken on, under an overpass, its ramp between: the dwell holds (${label(onBridge)})`);
+  // fix-up r3 (the correctness review r3; fix-up r4, the correctness review r4: from ai.watchResumeLevels, the default
+  // case of fix-up r3's groundUnder): an end on a record's top at its edge under a deck the field publishes. Taken on the
+  // ground, left on a 1 m box's edge under a 4.5 m deck, the root 0.3 m past the box's north edge, 1 m inside the deck's
+  // north end, the rear half of the hull on the box deeper under the deck. The end's point is its contact rect's mid-edge
+  // over the box (endFloor), whose ground is the bed, and the walk to it passes under the deck, where each point's ground
+  // is the bed (groundUnder), not the deck's top it would step down from onto the box; the root's ground is the bed too.
+  // b03868e697 and 1cbcc1faaf kept this dwell (2.9 -> 2.9 s, decided 3.15 s); ai.watchResumeLevels keeps the box's top
+  // under a deck (underDeckBox) and the walk's last point under one (underDeckEnd)
+  const deckOverEdge = Object.freeze([Object.freeze({ x: -22.7, z: 17.3, ux: 0, uz: 1, halfLength: 10, halfWidth: 6, deckY: 4.5, approachM: 0 })]);
+  const edgeUnderDeck = await dwellHandBack((at) => [at[0], 26.3], [-16, 31], beside(1), { onY: null, awayY: 1, decks: deckOverEdge });
+  const [edgeX, , edgeZ] = edgeUnderDeck.handedBackAt, [over] = deckOverEdge;
+  ok(setupOk(edgeUnderDeck, 0, 1) && edgeZ > 26 && edgeZ < over.z + over.halfLength && edgeZ > over.z + over.halfLength - 1.5
+    && Math.abs(edgeX - over.x) < over.halfWidth,
+    `setup: the floor bot dwells on the ground; the watcher leaves it on a 1 m box's edge under a deck's end, its root past the box (${where(edgeUnderDeck)})`);
+  ok(restarted(edgeUnderDeck),
+    `a 0.5 s park that left the hull on a 1 m box's edge under a deck: the dwell restarts (${label(edgeUnderDeck)})`);
   // fix-up r1 (the completeness review's risk; fix-up r2, the completeness review r2: from ai.watchResumeLevels, its only
   // case): a hull riding over the ground with no record under it is on that ground (endFloor reads the floor under it as
   // the ground: no record within its step at its root or its contact rect's edges), and the walk between two ends on the

@@ -135,15 +135,15 @@ export const MANUAL_SUITES = Object.freeze({
     'server/botObjectives.selftest.mjs',
     'src/game/ai.lastRun.selftest.mjs',
     'src/game/ai.levels.selftest.mjs',
-    // 2026-11-07 round 6 V4 (2026-11-02 audit M7; fix-ups r1 to r3): the Watch hand-back's cases that repeat one of
+    // 2026-11-07 round 6 V4 (2026-11-02 audit M7; fix-ups r1 to r4): the Watch hand-back's cases that repeat one of
     // ai.watchResume's at another length, height or branch, split off it (a level route's 30 s park off its way and its
-    // toggles, the causeway's drop over the gun's band and its crest toggle, the dwell off and onto a 2.2 m rock, from the
-    // last obstacle list, off a tiered rock's top and first tier, onto its second tier and up a formation's caps), and the
-    // dwell rule's one part ai.watchResume does not keep, the ground under a deck the field publishes (the walk's last
-    // point, an end on a record under a deck's end: a spot read stood put only within 1.5 m of the deck's end): 4.5-4.8 s
-    // of user CPU at load 61-97 (3.8 s at load 22), the import 1.5-1.9 s of it. Of the round's 50 mutants six fail this
-    // file alone: five of the ground under a deck (its four readings, and all of them at once) and the obstacle list's
-    // branch (a fixture's path)
+    // toggles, the causeway's drop over the gun's band and its crest toggle, the dwell off and onto a 2.2 m rock, from
+    // the last obstacle list, off a tiered rock's top and first tier, onto its second tier, up a formation's caps and
+    // onto a 1 m box's top under a deck's end), and the only case of the walk's last point under a deck the field
+    // publishes (a spot read stood put there only within 1.5 m of the deck's end): 4.4-7.5 s of user CPU at load
+    // 70-160, the import 1.5-2.8 s of it. Of the round's 60 mutants of ai.ts 53 fail one of the two receipts, two of
+    // them this file alone (that last point, and the obstacle list's branch, a fixture's path); seven readings of the
+    // ground under a deck fail neither (round 6 bots NOTES, fix-up r4)
     'src/game/ai.watchResumeLevels.selftest.mjs',
     'src/sim/botRouteClearance.selftest.mjs',
     'src/sim/botVerdantApproach.selftest.mjs',
