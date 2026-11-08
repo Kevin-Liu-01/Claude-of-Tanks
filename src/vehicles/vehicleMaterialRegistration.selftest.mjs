@@ -141,9 +141,12 @@ try {
   // --- 3. the tanks whose own materials left the registration
   const recorder = createCascadeRecorder();
   const IDS = ['m46_patton', 'm47_patton', 'kf51_evo', 'm1a1_abrams_hc', 'merkava1b', 'kv2', 'challenger1_mk2', 'leo2a4m', 't90a'];
-  // the profiles' chained patches over a set material that binds its own sky-light trim (the Abrams' track grime, the
-  // KF51's track ceiling): round 3 holds them to the whole sky light their replaced hooks compiled
-  const CHAINED = /^(?:abrams-(?:band|pad|link|chain)grime-v1|kf51-(?:track|shoe)-hicap-r8)$/;
+  // the profiles' chained patches over a set material that binds its own sky-light trim (the Abrams' track grime): round
+  // 3 holds them to the whole sky light their replaced hooks compiled. 267 (ifv-kf51-modern-267): the KF51 EVO's rebuild
+  // retired its two track-ceiling patches (kf51-track/shoe-hicap-r8) and its light-immune mud flaps with the old builder's
+  // gate-era finishing; it stays in the sweep as a plain material set, and the Abrams' pad and band grime are the chained
+  // patches the fleet still draws (measured on m1a1_abrams_hc, LOW and HIGH).
+  const CHAINED = /^(?:abrams-(?:band|pad|link|chain)grime-v1)$/;
   const chainedKeys = new Set();
   let checked = 0, unlit = 0;
   for (const id of IDS) {
@@ -165,16 +168,12 @@ try {
       assert.equal(compile(material).uniforms.uVehEnvScale?.value, 1,
         `${id}: ${key} keeps the whole sky light (its own trim ${material.envMapIntensity})`);
     }
-    if (id === 'kf51_evo') {
-      assert.ok([...drawn].some((m) => m.name === 'cot:kf51-mudguard' && m.isMeshBasicMaterial),
-        'kf51_evo: its light-immune mud flaps are drawn (and audited above)');
-    }
     visual.dispose();
     assert.deepEqual(leakedRegistrations(recorder, before), [], `${id}: every registration its build made is released on dispose`);
   }
   assert.ok(checked > 150, `real material sets (${checked} drawn materials)`);
   assert.ok(unlit >= 2, `the unlit flat class is in the sweep (${unlit} drawn)`);
-  assert.ok(chainedKeys.size >= 3, `the chained track patches are checked (${[...chainedKeys].join(', ')})`);
+  assert.ok(chainedKeys.size >= 2, `the chained track patches are checked (${[...chainedKeys].join(', ')})`);
   console.log(`vehicleMaterialRegistration.selftest: the audit sees all four exits; registered clones compile their hand `
     + `re-hooks in a stub; ${IDS.length} tanks, ${checked} drawn materials (${unlit} unlit), all tagged and released; `
     + `${chainedKeys.size} chained patches keep the whole sky PASS`);

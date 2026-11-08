@@ -34,7 +34,9 @@ for (const id of ['m1a1_abrams_hc', 'm1a1_abrams_sa', 'm1a1_abrams_aim']) {
   assert.ok(near(roofCarrier.frontBottomY,
     roofCarrier.frontRoofY - roofCarrier.seatDepthM),
   `${id}: carrier front edge is seated into the roof`);
-  assert.ok(roofCarrier.rearBottomY - roofCarrier.frontBottomY > 0.095,
+  // 2026-11-03 (release 268 builder E): the station stands at the owner's model's seat on the level roof behind the knee
+  // (profiles/m1a1Turret.ts); the carrier follows the roof under it (the print-era seat's roof fell > 0.095 under it).
+  assert.ok(near(roofCarrier.rearBottomY - roofCarrier.frontBottomY, roofCarrier.rearRoofY - roofCarrier.frontRoofY),
     `${id}: carrier follows the roof pitch instead of hovering horizontally`);
   assert.ok(near(roofCarrier.thicknessM, 0.12),
     `${id}: carrier retains its original 120 mm plate depth`);
@@ -59,11 +61,13 @@ for (const id of ['m1a1_abrams_hc', 'm1a1_abrams_sa', 'm1a1_abrams_aim']) {
   assert.ok(near(loaderMount.frontBottomY,
     loaderMount.frontRoofY - loaderMount.seatDepthM),
   `${id}: loader mounting foot is seated at its front edge`);
-  assert.ok(loaderMount.rearBottomY > loaderMount.frontBottomY,
+  assert.ok(near(loaderMount.rearBottomY - loaderMount.frontBottomY, loaderMount.rearRoofY - loaderMount.frontRoofY),
     `${id}: loader mounting foot follows the local roof slope`);
-  assert.ok(near(loaderMount.x, 0.95) && near(loaderMount.z, -0.10),
+  // 2026-11-03 (release 268 builder E): the loader's hatch and his M240 mount stand at the owner's model's seat, 0.175 m
+  // inboard and 0.29 m aft of the print-era (0.95, -0.10), the mount's top datum 8.1 cm lower with the model's roof.
+  assert.ok(near(loaderMount.x, 0.775) && near(loaderMount.z, -0.39),
     `${id}: loader mounting foot retains the marked roof position`);
-  assert.ok(near(loaderMount.topY, 0.85),
+  assert.ok(near(loaderMount.topY, 0.769),
     `${id}: loader mounting foot retains the marked top datum`);
 
   assert.ok(near(gunnerSight.rearBottomY,

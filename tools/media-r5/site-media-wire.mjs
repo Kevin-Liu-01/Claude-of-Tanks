@@ -9,11 +9,13 @@
 // trailers and its own shots (each data-home-slot) are generated there, so the v5 landing's swaps are retired here, as
 // are the 404 page's preload and background (the Premiere 404 is built by hand).
 //
-//   node tools/media-r5/site-media-wire.mjs --root=<tree> [--dry-run] [--report]
+//   node tools/media-r5/site-media-wire.mjs --root=<tree> [--dry-run] [--report] [--only=<section>,...]
 // Run it on an export of main after site-media.mjs. Every rewrite matches its block exactly once, or the run stops
 // naming the block and writes nothing; the selftests that pin these surfaces are updated with the same picks.
 // --report (2026-10-24) lists every block that fails to match in one pass instead of stopping at the first, writes
 // nothing and exits 1 when any failed: for a tree whose pages moved under the wiring.
+// --only (2026-11-04) runs just the named sections (docs, topics, reels, game, social, readme, landing, catalogs), each
+// still all or nothing: a change to one surface lands while another section's pages wait to be re-wired.
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -79,6 +81,15 @@ const versusParts = (title) => {
 };
 // a hero slide: a take's still, or (2026-10-19) a versus still
 const heroSrc = (h) => (h.versus ? versus(h.versus).path : still(h.id, h.still));
+// a featured still: a take's, or (2026-11-03, the owner's boot pick) a versus still, whose boot opener is its own 1280
+// rung or another versus still's (bootVersus: the same scene through the boot lens, the pair under the lockup)
+const featuredSrc = (f) => (f.versus ? versus(f.versus).path : f.fourK ? built(`${C}/stills/${f.id}-4k.webp`) : still(f.id, f.still));
+const featuredBoot = (f) => {
+  if (!f.versus) return built(`${C}/stills/${f.id}-boot.webp`);
+  const rung = versus(f.bootVersus ?? f.versus).rungs.find((r) => r.width === 1280);
+  if (!rung) throw new Error(`featured ${f.versus}: ${f.bootVersus ?? f.versus} has no 1280 rung`);
+  return rung.path;
+};
 const esc = (s) => String(s).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 const mapName = (map) => EN[`map.${map}`] ?? map;
 const reKey = (key) => key.replace(/\./g, '\\.');
@@ -239,14 +250,14 @@ function wireReels() {
 function wireGame() {
   const F = 'src/ui/featuredShots.ts';
   const entries = PICKS.featured.map((f) => {
-    const lines = [`    img: '${f.fourK ? built(`${C}/stills/${f.id}-4k.webp`) : still(f.id, f.still)}',`];
-    if (f.boot) lines.push(`    bootImg: '${built(`${C}/stills/${f.id}-boot.webp`)}',`);
-    lines.push(`    capKey: '${titleKey(f.id)}',`);
+    const lines = [`    img: '${featuredSrc(f)}',`];
+    if (f.boot) lines.push(`    bootImg: '${featuredBoot(f)}',`);
+    lines.push(`    capKey: '${f.versus ? versusKey('title', f.versus) : titleKey(f.id)}',`);
     lines.push(`    ${f.maps?.length ? `maps: [${f.maps.map((m) => `'${m}'`).join(', ')}], ` : ''}focal: '${f.focal ?? '50% 50%'}',`);
     return `  {\n${lines.join('\n')}\n  },`;
   });
   swap(F, /(export const FEATURED_SHOTS: readonly FeaturedShot\[\] = Object\.freeze\(\[\n)[\s\S]*?(\n\]\);)/, (_, open, close) => `${open}${entries.join('\n')}${close}`, 'featured shots');
-  const shots = PICKS.featured.slice(0, 4).map((f) => `          "https://cot.kevinliu.studio${still(f.id, f.still)}"`);
+  const shots = PICKS.featured.slice(0, 4).map((f) => `          "https://cot.kevinliu.studio${f.versus ? versus(f.versus).path : still(f.id, f.still)}"`);
   swap('index.html', /("screenshot": \[\n)(?:[ \t]*"https:\/\/cot\.kevinliu\.studio\/media\/[^"]+",?\n)+/, (_, open) => `${open}${shots.join(',\n')}\n`, 'JSON-LD screenshots');
   swap('src/ui/garage.ts', /  \/\/ Assets \+ captions come from the marketing-shots pipeline\n  \/\/ \(tools\/marketing-shots, encoded to public\/media\/featured\/\)\. The panel is\n/,
     () => `  // Assets + captions are the site fifty's stills (public/media/${PICKS.collection}/stills, picked in\n  // tools/media-r5/site-media/picks.json; captions from the catalog). The panel is\n`, 'Garage panel comment',
@@ -449,7 +460,7 @@ function wireCatalogs() {
     }
     Object.assign(catalog, COPY[locale]);
     // the versus stills the landing shows: each one's title (its alt), its matchup and its place (the wall's caption)
-    for (const id of new Set([...PICKS.home.hero.filter((h) => h.versus).map((h) => h.versus), ...PICKS.home.versus])) {
+    for (const id of new Set([...[...PICKS.home.hero, ...PICKS.featured].filter((h) => h.versus).map((h) => h.versus), ...PICKS.home.versus])) {
       const title = versus(id).title[locale];
       const { place, match } = versusParts(title);
       Object.assign(catalog, { [versusKey('title', id)]: title, [versusKey('match', id)]: match, [versusKey('place', id)]: place });
@@ -465,14 +476,11 @@ function wireCatalogs() {
 
 function main() {
   if (!existsSync(join(ROOT, 'site/home.html'))) throw new Error(`--root=${ROOT} is not a tree with site/home.html`);
-  wireDocs();
-  wireTopics();
-  wireReels();
-  wireGame();
-  wireSocialCards();
-  wireReadme();
-  wireLandingManifest();
-  wireCatalogs();
+  const sections = { docs: wireDocs, topics: wireTopics, reels: wireReels, game: wireGame, social: wireSocialCards, readme: wireReadme,
+    landing: wireLandingManifest, catalogs: wireCatalogs };
+  const only = arg('only')?.split(',');
+  if (only?.some((name) => !sections[name])) throw new Error(`--only takes sections of ${Object.keys(sections).join(', ')}`);
+  for (const [name, wire] of Object.entries(sections)) if (!only || only.includes(name)) wire();
   for (const [path, text] of texts) {
     if (readFileSync(join(ROOT, path), 'utf8') === text) continue;
     if (!dryRun) writeFileSync(join(ROOT, path), text);

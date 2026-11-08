@@ -139,11 +139,15 @@ export function synchronizeFleetRenewalMetadata():void{
     TANK_SPECS[id].armor.gunPivot=[0,.33,1.30];
     TANK_SPECS[id].armor.gunBarrel.lengthM=4.95;
   }
-  const bmpt=TANK_SPECS.bmpt_terminator2, hull=donors.t80u;
-  bmpt.dims={...hull.dims,overallLengthM:hull.dims.hullLengthM,heightM:3.33};stripSilhouetteDimensions(bmpt.dims);
+  // 267 (lane bmpt-family-267): the BMPT-72 rides the T-72B3M (2016) X hull (profiles/afvFamily.ts buildBMPT2; it was the
+  // T-80U's) with the Ramka-72 module on that hull's ring (profiles/bmpt72Station.ts): the hull's plates, modules and
+  // track, the ring at the T-72B3M's datum (on the centreline), the twin 2A42's trunnion 0.92 over the ring and 0.10 ahead of it, their tubes
+  // to 3.22; heightM the panoramic sight's head (3.24; whips and the wind-sensor mast are left out).
+  const bmpt=TANK_SPECS.bmpt_terminator2, hull=donors.t72b3m_2016;
+  bmpt.dims={...hull.dims,overallLengthM:hull.dims.hullLengthM,heightM:3.24};stripSilhouetteDimensions(bmpt.dims);
   bmpt.armor.hullPlates=structuredClone(hull.armor.hullPlates);
   bmpt.armor.modules=hybridModules(hull,bmpt);
-  bmpt.armor.turretPivot=[0,1.565,.07187];bmpt.armor.gunPivot=[0,.50,.36];
+  bmpt.armor.turretPivot=[0,hull.armor.turretPivot[1],hull.armor.turretPivot[2]];bmpt.armor.gunPivot=[0,.92,.10];
   bmpt.armor.gunBarrel={lengthM:3.22,radiusM:.033};
   bmpt.visual.trackWidthM=hull.visual.trackWidthM;
   // Owner-authorized Oplot hybrid: retain the original weapon and protection

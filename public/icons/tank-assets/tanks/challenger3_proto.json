@@ -620,15 +620,15 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 25658,
-      "sha256": "65e5537f1b025a2f0e28bb54f5cbc3bb1fea4d8e404919e3c0a2a48645460947",
+      "bytes": 25860,
+      "sha256": "9158f8e10ff70793631e361e3bbabd3b1d8a200e3dce7273f7002244cb3bd946",
       "thumbnail": {
         "file": "thumbs/challenger3_proto_angle.webp",
         "width": 256,
         "height": 256,
         "mime": "image/webp",
-        "bytes": 11494,
-        "sha256": "52046c30fb5fa09875f7fddafa490a25cdbe3e2c2b90b196df25cb5ce338d5a4"
+        "bytes": 11080,
+        "sha256": "d0fa0365b6ec8bf5d36a726304458b5df1bb1696867d40eedd7cb8ad8cdd95cc"
       }
     },
     "top": {

@@ -5,7 +5,8 @@
  * src/ui/surfaceRegistry.ts); while a code waits it shows the QR, the code and its countdown. The QR is one SVG path
  * (src/pad/qr.ts), dark on light so every camera reads it.
  */
-import { formatPadCode, padPageUrl } from './padProtocol.ts';
+import { formatPadCode } from './padProtocol.ts';
+import { padPageUrl } from './padDesk.ts';
 import { startPadReceiver, storedDeskResume } from './padReceiver.ts';
 import type { PadReceiver, PadReceiverPorts, PadReceiverView } from './padReceiver.ts';
 import { padServiceUrl } from './padEndpoint.ts';

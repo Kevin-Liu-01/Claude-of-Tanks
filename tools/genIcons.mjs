@@ -185,6 +185,9 @@ try {
         return { ...window.__AUDIT(ids), files: {} };
       }, chunk, selectedViews, metadataOnly);
       Object.assign(generated.tanks, part.tanks);
+      // 268: an angle portrait framed off the standard azimuth says so (the page derives it from the card, no rows)
+      for (const [id, { sideRatio, standard }] of Object.entries(part.portraits ?? {}))
+        console.log(`[tank-assets] ${id}: portrait azimuth ${sideRatio} (at the standard the card measured ${standard.join('x')} px, outside the fleet envelope)`);
       for (const [name, dataUrl] of Object.entries(part.files)) {
         generated.files[name] = true;
         if (name.endsWith('.error')) {

@@ -82,10 +82,16 @@ import './ukraineCv90Specs.ts';
 import './amx10pSpecs.ts';
 import './marder2Specs.ts';
 import './m6LinebackerSpecs.ts';
+// release 268: the M3A2 clones the M2A2 row (modern3Specs.ts) under the classic turret
+import './m3a2BradleySpecs.ts';
 import { synchronizeFleetRenewalMetadata } from './fleetRenewalSpecs.ts';
 import { synchronizeNationalModernizationMetadata } from './nationalModernizationSpecs.ts';
 // release 264: the Longwei family clones the national concepts' hulls, so it registers and synchronizes after them
 import { synchronizeLongweiFamilyMetadata } from './longweiFamilySpecs.ts';
+// 268: the twin-cannon air-defence round registers last, so every earlier id keeps its roster place
+import './gm352AirDefenseSpecs.ts';
+import './gepardSpecs.ts';
+import './chineseAirDefenseSpecs.ts';
 
 import { TANK_SPECS, finalizeFirstPartyRoster } from './specs.ts';
 import { applyNativeFamilyOrderToCatalogs } from './fleetOrder.ts';

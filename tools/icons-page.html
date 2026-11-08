@@ -20,7 +20,7 @@ import {
 import { auditTankAppearance } from '/src/vehicles/appearanceAudit.ts';
 import { drawVehicleDesignation } from '/src/vehicles/vehicleMarkings.ts';
 import { createInspectionOverlay } from '/src/gallery/overlays.ts';
-import { portraitSideRatio } from '/tools/portrait-camera.ts';
+import { PORTRAIT_SIDE_RATIO, portraitSideRatios } from '/tools/portrait-camera.ts';
 import {
   auditPortraitPixels,
   directPortraitPlacement,
@@ -731,42 +731,49 @@ function inspectOne(id, renderFiles, requestedViews = null) {
     }
     if (wants('markings')) files[tankAssetFile(id, 'markings')] = drawMarkingsDiagram(metadata).toDataURL('image/png');
 
+    let portrait = null;
     if (wants('angle')) {
       const fov = 28;
       const radius = Math.hypot(extentX,
         Math.max(center.y - box.min.y, box.max.y - center.y), extentZ);
-      // Challenger 3 combines the fleet's long L55-class gun with a dense
-      // bustle/sensor silhouette. Its centered aft field load leaves only a
-      // fraction of a card pixel at the standard margin, so give this one
-      // portrait a 3% camera cushion instead of weakening the fleet audit.
-      const portraitMargin = id === 'challenger3_proto' ? MARGIN * 1.03 : MARGIN;
-      const dist = (radius * portraitMargin) / Math.sin((fov / 2) * Math.PI / 180);
-      // Tall source fittings remain intact; only their portrait azimuth changes.
-      // Comparison/technical cameras, dense-core scale and pixel gates do not.
-      const dir = new THREE.Vector3(portraitSideRatio(id), 0.34, 1.0).normalize();
-      const angleCam = new THREE.PerspectiveCamera(fov, 1, 0.1, dist * 4);
-      angleCam.position.copy(center).addScaledVector(dir, dist);
-      angleCam.lookAt(center);
-      angleCam.updateMatrixWorld();
-      const angleSource = capture(angleCam, BASE * 2, BASE * 2);
-      const angleFile = tankAssetFile(id, 'angle');
-      const angleCanvas = normalizeAnglePortrait(angleSource, BASE);
-      const thumbCanvas = normalizeAnglePortrait(angleSource, BASE / 2);
-      const portraitAudit = auditPortraitCanvas(thumbCanvas);
+      const dist = (radius * MARGIN) / Math.sin((fov / 2) * Math.PI / 180);
+      // The azimuth comes from the card (268, tools/portrait-camera.ts): the standard view unless its card leaves the
+      // fleet envelope, then the first ladder azimuth whose card fits, side-on before head-on. Tall source fittings remain intact; the
+      // comparison/technical cameras, the dense-core scale and the pixel gates do not change.
+      let angleSource = null, angleCanvas = null, thumbCanvas = null, portraitAudit = null, standardAudit = null, sideRatio = null;
+      for (const ratio of portraitSideRatios()) {
+        const dir = new THREE.Vector3(ratio, 0.34, 1.0).normalize();
+        const angleCam = new THREE.PerspectiveCamera(fov, 1, 0.1, dist * 4);
+        angleCam.position.copy(center).addScaledVector(dir, dist);
+        angleCam.lookAt(center);
+        angleCam.updateMatrixWorld();
+        angleSource = capture(angleCam, BASE * 2, BASE * 2);
+        // Both sizes in the order the cards were always drawn: the browser resamples the thumbnail differently when
+        // it is drawn first, so a reordered pair would move every card by pixels.
+        angleCanvas = normalizeAnglePortrait(angleSource, BASE);
+        thumbCanvas = normalizeAnglePortrait(angleSource, BASE / 2);
+        portraitAudit = auditPortraitCanvas(thumbCanvas);
+        standardAudit ??= portraitAudit;
+        sideRatio = ratio;
+        if (portraitAudit.passes) break;
+      }
       if (!portraitAudit.passes) {
         throw new Error(
-          `${id}: portrait framing outside fleet envelope `
-          + `(${portraitAudit.displayedFullWidth.toFixed(1)}x`
-          + `${portraitAudit.displayedFullHeight.toFixed(1)} card px)`,
+          `${id}: portrait framing outside fleet envelope at every azimuth `
+          + `(${standardAudit.displayedFullWidth.toFixed(1)}x`
+          + `${standardAudit.displayedFullHeight.toFixed(1)} card px at the standard ${PORTRAIT_SIDE_RATIO})`,
         );
       }
+      if (sideRatio !== PORTRAIT_SIDE_RATIO) portrait = { sideRatio,
+        standard: [+standardAudit.displayedFullWidth.toFixed(1), +standardAudit.displayedFullHeight.toFixed(1)] };
+      const angleFile = tankAssetFile(id, 'angle');
       // Full dossier art and the Garage thumbnail are one atomic output. New
       // vehicle captures can no longer update one size while leaving the
       // other stale or hand-resized.
       files[angleFile] = encodeWebp(angleCanvas);
       files[`thumbs/${angleFile}`] = encodeWebp(thumbCanvas);
     }
-    return { files, meta };
+    return { files, meta, portrait };
   } finally {
     scene.remove(root);
     visual.dispose();
@@ -1022,12 +1029,13 @@ window.__WARM = async (ids) => {
 };
 
 window.__GEN = (ids, views) => {
-  const result = { schemaVersion: TANK_ASSET_SCHEMA_VERSION, files: {}, tanks: {} };
+  const result = { schemaVersion: TANK_ASSET_SCHEMA_VERSION, files: {}, tanks: {}, portraits: {} };
   for (const id of idsOrFleet(ids)) {
     try {
       const one = inspectOne(id, true, views && views.length ? views : null);
       Object.assign(result.files, one.files);
       result.tanks[id] = one.meta;
+      if (one.portrait) result.portraits[id] = one.portrait;
     } catch (error) {
       result.files[`${id}.error`] = String(error && error.stack || error);
     }

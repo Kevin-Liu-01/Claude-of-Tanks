@@ -27,7 +27,7 @@ function removeDonorTurret(P: TankBuilderPort): void {
 }
 
 function flankKit(P: TankBuilderPort): void {
-  bradleyFlankDressing(P);
+  bradleyFlankDressing(P, {turretSeat: 'flush'});                       // (its own ring seats on the pre-268 sunk seat)
   for (const side of [-1,1]) {
     sideWall(P,side,LINEBACKER_SKIRT_INNER,LINEBACKER_SKIRT_OUTER,LINEBACKER_SKIRT_STATIONS);
     // Continuous folded shoulder bridges the native fender and the armor carrier.
@@ -37,9 +37,8 @@ function flankKit(P: TankBuilderPort): void {
     // ... and a web under its inner edge drops onto the native fender wall (x 1.55..1.62, top 1.64): the bridge alone
     // met the sloped upper side only along its box faces, which carried nothing.
     P.addExternalArmor('hull',box(.07,.17,4.45),side*1.585,1.705,-.49);
-    // 2026-10-19 (owner float sweep): the left hull has no such fender wall (its sloped skirt apron tops out at 1.605
-    // at x -1.50), so the left kit still floated 54 mm; four hangers drop from the bridge onto that apron, clear of
-    // the apron gap and the cloth roll at z -2.55..-1.95.
+    // 2026-10-19 (owner float sweep): the left hull had no such fender wall then, so four hangers drop from the bridge
+    // onto the side (268: the shared hull's upper side plate now stands under both bridges; the hangers stay as brackets).
     if (side<0) for (const z of [-2.65,-1.30,.10,1.40]) P.addEquipment('hullDetail',box(.07,.29,.10),-1.585,1.635,z);
     for (let bay=0;bay<6;bay++) {
       const z=-2.27+bay*.73;
@@ -62,11 +61,14 @@ function flankKit(P: TankBuilderPort): void {
     for (let row=0;row<5;row++) P.addEquipment('hullDetail',box(.32,.027,.035),side*1.91,1.04+row*.135,-2.66);
     // Clamped pioneer kit and storage cases on the rear shoulders.
     // 2026-10-19 (owner float sweep): the kit stood 59-79 mm over the rear deck; seated by dropping it onto the deck.
-    P.snapGroup(`m6-pioneer-kit-${side}`,()=>{
-      P.addEquipment('hullDetail',box(.26,.24,.78),side*1.42,1.97,-2.12);
-      for (const z of [-2.39,-1.85]) P.addEquipment('hullDark',box(.28,.026,.045),side*1.42,2.10,z);
-      P.addEquipment('hullDetail',cylZ(.018,1.06,8),side*1.33,2.025,-2.10);
-    },{reachM:.10,mode:'down'});
+    // 268: the shared hull's roof now falls from the deck crown (x 0.85, 2.06) into the gutter behind the side plates
+    // (x 1.51; 1.60 on the left, 1.67 on the right), so the case lies on that slope, strapped, with its bar inboard.
+    const slope=(side>0?.46:.39)/.66,tilt=Math.atan(slope),nx=Math.sin(tilt),ny=Math.cos(tilt);
+    const roofY=(x:number)=>2.06-slope*(x-.85),sx=1.20;
+    const at=(lift:number):[number,number]=>[side*(sx+nx*lift),roofY(sx)+ny*lift];
+    P.addEquipment('hullDetail',box(.26,.24,.78),...at(.118),-2.12,0,0,-side*tilt);
+    for (const z of [-2.39,-1.85]) P.addEquipment('hullDark',box(.28,.026,.045),...at(.250),z,0,0,-side*tilt);
+    P.addEquipment('hullDetail',cylZ(.018,1.06,8),side*1.00,roofY(1.00)+.016,-2.10);
   }
 }
 
@@ -91,6 +93,22 @@ function turretBody(P: TankBuilderPort): void {
   crown.lineTo(-.05, .912);
   crown.closePath();
   P.add('turret', new THREE.ExtrudeGeometry(crown, {
+    depth: .78, steps: 1, bevelEnabled: false,
+  }).rotateY(-Math.PI / 2), .39, 0, 0);
+  // 268 round 4 (roof-pocket census, 1792 cm2): the compartment's lower front wall under the crown, the recess's lower
+  // quarter on the same 0.305 m radius (33 mm off the receiver's swept back) down to the cradle floor. Open, the crown
+  // roofed the empty compartment, seen under the receiver's chin.
+  const breast = new THREE.Shape();
+  breast.moveTo(-.05, .10);
+  breast.lineTo(.90, .10);
+  breast.lineTo(.90, .175);
+  for (let step = 1; step <= 8; step++) {
+    const angle = 1.5 * Math.PI - step * (Math.PI / 2) / 8;
+    breast.lineTo(.90 + .305 * Math.cos(angle), .48 + .305 * Math.sin(angle));
+  }
+  breast.lineTo(-.05, .48);
+  breast.closePath();
+  P.add('turret', new THREE.ExtrudeGeometry(breast, {
     depth: .78, steps: 1, bevelEnabled: false,
   }).rotateY(-Math.PI / 2), .39, 0, 0);
   for (const side of [-1,1]) {
@@ -121,10 +139,11 @@ function turretBody(P: TankBuilderPort): void {
 
 function launcher(P: TankBuilderPort): void {
   weaponAssembly(P,()=>{
-    // Two connected trunnion arms hold the pitching pod off the left cheek.
-    P.addGunExtra(box(1.12,.13,.23),-.77,.04,.03);
-    P.addGunExtra(box(.13,.59,.24),-1.29,.28,.03);
-    P.addGunExtra(cylX(.14,.20,24),-1.32,L.y,.03);
+    // Two connected trunnion arms hold the pitching pod off the left (+X) cheek (268: the source's TOW side).
+    const s0=Math.sign(L.x);
+    P.addGunExtra(box(1.12,.13,.23),s0*.77,.04,.03);
+    P.addGunExtra(box(.13,.59,.24),s0*1.29,.28,.03);
+    P.addGunExtra(cylX(.14,.20,24),s0*1.32,L.y,.03);
     const depth=L.front-L.rear,s=L.scale;
     for (const dx of [-.32,.32]) P.addGunExtra(box(.05*s,.69*s,depth),L.x+dx*s,L.y,(L.front+L.rear)/2);
     for (const dy of [-.32,.32]) P.addGunExtra(box(.69*s,.05*s,depth),L.x,L.y+dy*s,(L.front+L.rear)/2);
@@ -190,8 +209,12 @@ function turretFieldKit(P: TankBuilderPort): void {
   for(const side of [-1,1]){
     // Bradley-style layered flank cassettes. Their inner polygon intersects
     // the actual sloped shell; the outer knee carries bolts and smoke banks.
-    for(const z of [-.96,-.57,-.18]){
-      const ring: [number,number][]=[[1.20,.28],[1.40,.28],[1.48,.50],[1.35,.77],[1.17,.77]];
+    // 268 round 4 (roof-pocket census, 108 cm2): the course runs a fourth cassette aft to the basket floor, closing the
+    // slot the bustle's flared underside roofed between the third cassette and the basket. The bustle narrows aft, so
+    // that one's inner face reaches in to x 1.00/1.05 to meet the shell (the shell lies at 1.02-1.19 over its length).
+    for(const z of [-1.35,-.96,-.57,-.18]){
+      const [inLow,inHigh]=z<-1.2?[1.00,1.05]:[1.20,1.17];
+      const ring: [number,number][]=[[inLow,.28],[1.40,.28],[1.48,.50],[1.35,.77],[inHigh,.77]];
       const cassette=sectionSolid([{z:z-.175,ring},{z:z+.175,ring}]);
       P.addExternalArmor('turret',side<0?mirrorX(cassette):cassette);
       for(const dz of [-.115,.115])P.addEquipment('turretDetail',cylX(.024,.028,10),side*1.483,.50,z+dz);

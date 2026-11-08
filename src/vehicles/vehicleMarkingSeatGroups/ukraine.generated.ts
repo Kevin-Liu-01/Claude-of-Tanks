@@ -428,9 +428,9 @@ export const VEHICLE_MARKING_SEATS: Readonly<Record<string, VehicleMarkingSeatRe
         "parent": "hull",
         "size": 0.27,
         "pos": [
-          1.818,
-          1.2676,
-          -3.30724
+          1.801,
+          1.45012,
+          -3.30652
         ],
         "quaternion": [
           0,
@@ -450,22 +450,22 @@ export const VEHICLE_MARKING_SEATS: Readonly<Record<string, VehicleMarkingSeatRe
         "parent": "turret",
         "size": 0.27,
         "pos": [
-          1.4603955,
-          0.4995926,
+          1.3385395,
+          0.5022315,
           -0.1244897
         ],
         "quaternion": [
-          -0.114204,
-          0.6978234,
-          0.114204,
-          0.6978234
+          -0.1596191,
+          0.6888554,
+          0.1596191,
+          0.6888554
         ],
         "surfaceMesh": "turret",
         "anchorProfile": "ua_m1a1",
         "visibilitySamples": 9,
         "visibilityClearSamples": 9,
         "visibilityRatio": 1,
-        "maximumSurfaceErrorM": 0
+        "maximumSurfaceErrorM": 0.0000305
       }
     ]
   },

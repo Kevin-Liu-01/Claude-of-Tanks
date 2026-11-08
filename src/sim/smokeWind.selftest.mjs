@@ -115,10 +115,14 @@ assert.ok(smokeClipReach([0.01, 0]) === 14.2, 'never shorter than the legacy rea
 // ---- 5. the wiring: every authority launches on its map's wind; the presentation draws the screen's own ---------------
 {
   const read = async (p) => readFile(new URL(p, import.meta.url), 'utf8');
-  assert.match(await read('../game/state.ts'), /requestAuxiliary\(entity,'smoke',game\.timeS,groundFor\(world\)\.field\.getHeightAt,world,smokeWindForMap\(game\.mapId\)\)/, 'the solo battle');
+  const state = await read('../game/state.ts');
+  assert.match(state, /requestAuxiliary\(entity,'smoke',game\.timeS,groundFor\(world\)\.field\.getHeightAt,world,smokeWindForMap\(game\.mapId\)\)/, 'the solo battle\'s player');
+  // (268) a staged hull (a bot, a seat) launches in sim/hullActions.ts on its driver's wind
+  assert.match(await read('./hullActions.ts'), /requestAuxiliary\(entity, 'smoke', timeS, host\.ground, host\.world, host\.wind\)/, 'a staged hull');
+  assert.match(state, /get wind\(\) \{ return smokeWindForMap\(game\.mapId\); \}/, 'the solo battle\'s staged hulls');
   const match = await read('./authoritativeMatch.ts');
   assert.match(match, /const smokeWind = smokeWindForMap\(mapId\);/);
-  assert.match(match, /requestAuxiliary\(entity, 'smoke', timeS, heightField\.getHeightAt, worldCollision, smokeWind\)/, 'the match authority');
+  assert.match(match, /wind: smokeWind,/, 'the match authority');
   const studio = await read('../game/studio.ts');
   assert.equal((studio.match(/smokeWindForMap\(getWorld\(\)\?\.mapId\)/g) ?? []).length, 3, 'the Studio\'s salvos (battle, cinematic, its walls)');
   const pres = await read('../fx/auxiliaryPresentation.ts');

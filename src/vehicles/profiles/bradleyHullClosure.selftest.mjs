@@ -1,13 +1,19 @@
 import assert from 'node:assert/strict';
 import { createTank } from '../tankFactory.ts';
+import { getSpec } from '../specs.ts';
 
+// 268 (the owner: "the m1a1s and bradleys look odd. here are the actual models, runn our tank generation procedures on
+// them"): the four Bradleys share one hull core measured from the owner's supplied model (modern3.ts BRADLEY_HULL,
+// bradleyHullCoreReceipt), the source's side armour and skirt course (bradleySideArmorReceipt) and, on the M2A2 and
+// the Ukrainian vehicle, the source's turret (bradleyA2TurretClosureReceipt). The Marder 1A3 keeps the pre-268 donor
+// build byte for byte, so it alone still carries the donor's continuous upper-hull closure receipt.
 const IDS = [
   'm2a2_bradley',
   'ua_m2a3_bradley',
   'm3a3_bradley',
+  'm6_linebacker',
   'marder1a3',
 ];
-const BRADLEY_IDS = new Set(['m2a2_bradley', 'ua_m2a3_bradley', 'm3a3_bradley']);
 const A2_TURRET_IDS = new Set(['m2a2_bradley', 'ua_m2a3_bradley']);
 
 const near = (a, b, tolerance = 1e-4) => Math.abs(a - b) <= tolerance;
@@ -22,47 +28,11 @@ for (const id of IDS) {
   try {
     const hullRig = tank.root.getObjectByName('rig_hull');
     const hull = hullRig?.getObjectByName('hull');
-    const receipt = hullRig?.userData.bradleyUpperHullClosureReceipt;
-    const bowReceipt = hullRig?.userData.bradleyGlacisClosureReceipt;
-    const apronReceipt = hullRig?.userData.bradleySkirtApronReceipt;
+    const core = hullRig?.userData.bradleyHullCoreReceipt;
+    const donor = hullRig?.userData.bradleyUpperHullClosureReceipt;
+    const sideReceipt = hullRig?.userData.bradleySideArmorReceipt;
     const gear = hullRig?.userData.runningGearReceipts?.[0];
-    assert.ok(hullRig && hull && receipt && gear,
-      `${id}: shared Bradley hull exposes closure and running-gear receipts`);
-    assert.equal(receipt.revision, 'continuous-upper-hull-volume-r1',
-      `${id}: uses the continuous shared upper-hull closure`);
-    assert.equal(receipt.flankWedges.count, 2,
-      `${id}: closes both vehicle-length flank cavities`);
-    assert.ok(receipt.centralCore.floorY < receipt.tubRoofY
-      && receipt.centralCore.roofY > receipt.upperHullFloorY,
-    `${id}: center core overlaps both tub roof and upper-hull floor`);
-    assert.ok(receipt.upperGlacisBacker.rearZ < receipt.centralCore.frontZ
-      && receipt.upperGlacisBacker.frontZ > receipt.centralCore.frontZ,
-    `${id}: sloped front backer overlaps the longitudinal core`);
-    assert.ok(receipt.upperGlacisBacker.frontRoofY < receipt.upperGlacisBacker.rearRoofY,
-      `${id}: front backer follows the descending upper-glacis underside`);
-    assert.ok(near(receipt.upperGlacisBacker.angleRad,
-      Math.atan2(receipt.upperGlacisBacker.riseM, receipt.upperGlacisBacker.runM)),
-    `${id}: publishes the shared upper-glacis angle from its authored endpoints`);
-    assert.ok(receipt.upperGlacisBacker.tangentRearward.y > 0
-      && receipt.upperGlacisBacker.tangentRearward.z < 0
-      && receipt.upperGlacisBacker.normalOutward.y > 0
-      && receipt.upperGlacisBacker.normalOutward.z > 0,
-    `${id}: upper-glacis tangent and outward normal use the Bradley hull frame`);
-    assert.ok(near(receipt.upperGlacisBacker.outerSurface.angleRad, Math.atan(0.5))
-      && near(receipt.upperGlacisBacker.outerSurface.referenceCenter.y, 1.715)
-      && near(receipt.upperGlacisBacker.outerSurface.referenceCenter.z, 2.02),
-    `${id}: publishes the exact shared outer-glacis plane used by fitted armor`);
-    assert.ok(receipt.upperGlacisOverlapM > 0,
-      `${id}: upper-glacis backer terminates inside the armor skin`);
-
-    const trackLaneInnerX = gear.xcLeft - gear.trackW / 2;
-    const highestShoeY = Math.max(...gear.loopPoints.map(([, y]) => y)) + gear.trackTh / 2;
-    assert.ok(receipt.centralCore.halfWidthM < trackLaneInnerX
-      && receipt.flankWedges.wideFloorHalfWidthM < trackLaneInnerX,
-    `${id}: closure floor remains inboard of both animated track lanes`);
-    assert.ok(receipt.flankWedges.wideFloorY > highestShoeY + 0.04,
-      `${id}: flank expansion begins above the animated shoe crown`);
-
+    assert.ok(hullRig && hull && gear, `${id}: hull and running-gear receipts`);
     const positions = hull.geometry.getAttribute('position');
     const hasVertex = ([x, y, z], tolerance = 1e-4) => {
       for (let i = 0; i < positions.count; i++) {
@@ -71,131 +41,113 @@ for (const id of IDS) {
       }
       return false;
     };
-    assert.ok(hasVertex([
-      receipt.centralCore.halfWidthM,
-      receipt.centralCore.floorY,
-      receipt.centralCore.frontZ,
-    ], 0.025) && hasVertex([
-      -receipt.centralCore.halfWidthM,
-      receipt.centralCore.floorY,
-      receipt.centralCore.rearZ,
-    ], 0.025),
-      `${id}: merged hull contains the central closure core`);
-    // Owner review 2026-09-13 (second flank markup, faces 2222/2223): the buried
-    // flank wedges are now flat shelf blocks — floor at the sponson floor, vertical
-    // outer face — so the flank reads as one side skirt. Box parts carry the kit's
-    // 1 cm inset, hence the same 2.5 cm tolerance as the central core above.
-    assert.ok(hasVertex([1.39, 1.61, 1.65], 0.025) && hasVertex([-1.375, 1.61, 1.65], 0.025)
-      && hasVertex([1.39, 1.23, -3.16], 0.025) && hasVertex([-1.375, 1.23, -3.16], 0.025),
-    `${id}: merged hull contains both flat flank shelf blocks (roof-front and floor-rear corners)`);
-    assert.ok(hasVertex([1.40, 1.50, 2.39]) && hasVertex([-1.18, 1.88, 1.62]),
-      `${id}: merged hull contains the sloped upper-glacis backer`);
+    const trackLaneInnerX = gear.xcLeft - gear.trackW / 2;
+    const trackLaneOuterX = gear.xcLeft + gear.trackW / 2;
+    const highestShoeY = Math.max(...gear.loopPoints.map(([, y]) => y)) + gear.trackTh / 2;
 
-    if (BRADLEY_IDS.has(id)) {
-      assert.equal(bowReceipt?.revision, 'tub-to-bow-overlap-r1',
-        `${id}: carries the Bradley-only lower-glacis closure`);
-      assert.ok(bowReceipt.rearOverlapM > 0 && bowReceipt.frontOverlapM > 0,
-        `${id}: bow closure overlaps both marked hull faces`);
-      assert.ok(bowReceipt.rearRoofY >= receipt.upperGlacisBacker.floorY,
-        `${id}: bow closure rises into the shared upper-glacis backer`);
-      assert.ok(hasVertex([
-        bowReceipt.rearHalfWidthM,
-        bowReceipt.rearRoofY,
-        bowReceipt.rearZ,
-      ]) && hasVertex([
-        -bowReceipt.frontHalfWidthM,
-        bowReceipt.frontRoofY,
-        bowReceipt.frontZ,
-      ]),
-      `${id}: merged hull contains the tapered tub-to-bow solid`);
-      assert.equal(apronReceipt?.revision, 'continuous-left-front-glacis-shoulder-r1',
-        `${id}: carries the continuous left-front skirt-to-glacis shoulder`);
-      assert.ok(apronReceipt.leftFront.rearZ <= 1.55
-        && apronReceipt.leftFront.frontZ >= 3.11
-        && apronReceipt.leftFront.bowOverlapM > 0,
-      `${id}: left-front mounting apron reaches and overlaps the bow closure`);
-      assert.ok(apronReceipt.leftFront.lowestY > highestShoeY + 0.04,
-        `${id}: left-front shoulder closure remains above the animated track crown`);
-      assert.ok(hasVertex([
-        apronReceipt.leftFront.innerX,
-        1.565,
-        apronReceipt.leftFront.frontZ,
-      ]) && hasVertex([
-        apronReceipt.leftFront.outerX,
-        apronReceipt.leftFront.lowestY,
-        apronReceipt.leftFront.rearZ,
-      ]), `${id}: merged hull contains the full left-front raked apron`);
+    if (id === 'marder1a3') {
+      assert.equal(donor?.revision, 'continuous-upper-hull-volume-r1',
+        `${id}: keeps the pre-268 donor's continuous upper-hull closure`);
+      assert.equal(core, undefined, `${id}: does not take the Bradleys' source-measured hull core`);
+      assert.equal(sideReceipt, undefined, `${id}: Marder donor remains outside the Bradley side-armour treatment`);
     } else {
-      assert.equal(bowReceipt, undefined,
-        `${id}: Marder donor remains outside the Bradley-only bow treatment`);
-      assert.equal(apronReceipt, undefined,
-        `${id}: Marder donor remains outside the Bradley skirt-apron treatment`);
+      assert.equal(donor, undefined, `${id}: the donor's closure volumes gave way to the measured core`);
+      assert.equal(core?.revision, 'source-measured-core-r2', `${id}: carries the source-measured hull core`);
+      assert.ok(core.tubHalfW < trackLaneInnerX,
+        `${id}: the tub between the tracks stays inboard of both animated track lanes`);
+      assert.ok(core.sponsonY > highestShoeY + 0.04,
+        `${id}: the sponson floor stands clear over the animated shoe crown`);
+      assert.ok(core.crownY > core.edgeY && core.edgeY > core.sponsonY && core.sideX > core.edgeX
+        && core.edgeX > core.crownX,
+      `${id}: crown over the side plates' top, the plates over the sponson, the plate inside its outer face`);
+      assert.ok(core.crownY - core.gutterDrop > core.sponsonY && core.crownY - core.gutterDrop < core.edgeY,
+        `${id}: the roof gutter lies under the plate top and over the sponson`);
+      assert.ok(near(core.glacisAngleRad, Math.atan((core.crownY - core.glacisToeY) / (core.glacisToeZ - core.glacisTopZ))),
+        `${id}: publishes the glacis angle from its own break and toe`);
+      // the body stations' ring corners (left plate top, right gutter, crown) and the glacis break are in the merged hull
+      assert.ok(hasVertex([core.sideX, core.edgeY, -2.80]) && hasVertex([-core.edgeX, core.crownY - core.rightGutterDrop, -2.80])
+        && hasVertex([core.edgeX, core.crownY - core.gutterDrop, -2.80]) && hasVertex([core.crownX, core.crownY, core.glacisTopZ])
+        && hasVertex([-core.crownX, core.glacisToeY, core.glacisToeZ]),
+      `${id}: merged hull contains the measured core's stations`);
+
+      assert.equal(sideReceipt?.revision, 'source-side-armor-r2', `${id}: carries the source's side armour`);
+      assert.ok(near(sideReceipt.upperSide.faceX, core.sideX) && near(sideReceipt.upperSide.edgeY, core.edgeY),
+        `${id}: the appliqué sits on the core's upper side`);
+      assert.ok(sideReceipt.skirt.innerX > trackLaneOuterX + 0.04,
+        `${id}: the skirt stands clear outboard of the animated track lane`);
+      assert.ok(sideReceipt.skirt.ledgeInnerX < core.sideX && sideReceipt.skirt.ledgeInnerX < sideReceipt.skirt.innerX,
+        `${id}: the skirt's ledge reaches into the upper side`);
+      assert.ok(sideReceipt.skirt.hemY < 0.70 && sideReceipt.skirt.rearZ < -3.0 && sideReceipt.skirt.bowZ > 3.1,
+        `${id}: the skirt hangs over the road-wheel tops from the stern to the bow`);
+      assert.ok(sideReceipt.fenderBox.innerX < core.sideX && sideReceipt.fenderBox.topY > sideReceipt.upperSide.ledgeTop,
+        `${id}: the front fender box laps the upper side above the ledge`);
     }
 
     const turretRig = tank.root.getObjectByName('rig_turret');
     const turretReceipt = turretRig?.userData.bradleyA2TurretClosureReceipt;
     if (A2_TURRET_IDS.has(id)) {
-      assert.equal(turretReceipt?.revision, 'roof-risers-and-side-interfaces-r1',
-        `${id}: retains the A2 roof and side-interface closure`);
-      assert.ok(near(turretReceipt.roofRisers.bottomY, turretReceipt.roofY),
-        `${id}: both right roof risers land on the turret roof`);
-      assert.ok(turretReceipt.rightBinBridge.x + turretReceipt.rightBinBridge.w / 2 > 0.80
-        && turretReceipt.rightBinBridge.x - turretReceipt.rightBinBridge.w / 2 < 0.74,
-      `${id}: right bridge overlaps both the turret wall and stowage bin`);
-      assert.ok(turretReceipt.leftTowBridge.x - turretReceipt.leftTowBridge.w / 2 < -0.785
-        && turretReceipt.leftTowBridge.x + turretReceipt.leftTowBridge.w / 2 > -0.74,
-      `${id}: left bridge overlaps both the turret wall and TOW interface`);
+      // 268: the source's two-man turret (modern3.ts addBradleyTurretShell): off its ring by plusInset (the left wall
+      // 0.84 from the pivot, the right 0.98), the erect TOW launcher on its left, the stowage bin on its right.
+      assert.equal(turretReceipt?.revision, 'source-turret-r3', `${id}: carries the source-measured turret`);
+      const plusWall = turretReceipt.shell.halfWidthM - turretReceipt.shell.plusInsetM;
+      assert.ok(turretReceipt.towLauncher.x0 > plusWall + 0.02, `${id}: the TOW launcher stands off the left wall`);
+      assert.ok(turretReceipt.stowageBin.innerX > -turretReceipt.shell.halfWidthM
+        && turretReceipt.stowageBin.outerX < -turretReceipt.shell.halfWidthM,
+      `${id}: the right stowage bin laps the turret wall`);
+      const gunX = getSpec(id).armor.gunPivot[0];
+      assert.ok(turretReceipt.gunBay.leftX < gunX - 0.13 && turretReceipt.gunBay.rightX > gunX + 0.13,
+        `${id}: the M242 bay holds the mantlet's swept width`);
+      assert.ok(near(turretRig.position.x, getSpec(id).armor.turretPivot[0]) && near(turretRig.position.y, core.crownY),
+        `${id}: the ring sits on the deck at the spec's pivot`);
     } else {
-      assert.equal(turretReceipt, undefined,
-        `${id}: replacement turret does not retain a stale A2 closure receipt`);
+      assert.equal(turretReceipt, undefined, `${id}: replacement turret does not retain a stale A2 closure receipt`);
     }
 
     const uaRoofReceipt = turretRig?.userData.uaBradleyRoofSeatingReceipt;
     if (id === 'ua_m2a3_bradley') {
-      assert.equal(uaRoofReceipt?.revision, 'cupola-and-isu-plinth-r1',
-        `${id}: carries the Ukrainian roof seating receipt`);
-      assert.ok(near(uaRoofReceipt.machineGunPedestal.bottomY, uaRoofReceipt.roofY)
-        && near(uaRoofReceipt.isuPlinth.bottomY, uaRoofReceipt.roofY),
-      `${id}: machine-gun pedestal and ISU plinth both land on the roof`);
+      // 268: no roof pintle (the owner's field standard 2026-10-08); the shell's ISU is the roof's one plinth
+      assert.equal(uaRoofReceipt?.revision, 'source-roof-r3', `${id}: carries the Ukrainian roof seating receipt`);
+      assert.ok(uaRoofReceipt.isuPlinth.bottomY <= uaRoofReceipt.roofY && uaRoofReceipt.isuPlinth.topY > uaRoofReceipt.roofY
+        && near(uaRoofReceipt.roofY, turretReceipt.roofY),
+      `${id}: the ISU plinth lands on the roof`);
     } else {
-      assert.equal(uaRoofReceipt, undefined,
-        `${id}: does not claim Ukrainian roof equipment`);
+      assert.equal(uaRoofReceipt, undefined, `${id}: does not claim Ukrainian roof equipment`);
     }
 
     const glacisArmor = hullRig?.userData.bradleyUpperGlacisArmorReceipt;
     if (id === 'm3a3_bradley') {
-      assert.equal(glacisArmor?.revision, 'flush-glacis-carrier-and-era-r1',
-        `${id}: carries the corrected upper-glacis armor seating receipt`);
+      assert.equal(glacisArmor?.revision, 'flush-glacis-carrier-and-era-r2',
+        `${id}: carries the upper-glacis armour seating receipt`);
+      assert.ok(near(glacisArmor.angleRad, core.glacisAngleRad),
+        `${id}: reactive package and hull share one glacis plane`);
       assert.ok(near(glacisArmor.carrier.rotationXRad, glacisArmor.angleRad),
-        `${id}: carrier long axis follows the upper-glacis tangent`);
-      assert.ok(near(glacisArmor.angleRad,
-        receipt.upperGlacisBacker.outerSurface.angleRad),
-      `${id}: reactive package and donor hull share one exact glacis plane`);
-      assert.ok(near(glacisArmor.cassettes.rotationXRad,
-        glacisArmor.angleRad - Math.PI / 2),
-      `${id}: cassette depth axes follow the upper-glacis outward normal`);
-      assert.equal(glacisArmor.cassettes.count, 12,
-        `${id}: retains both mirrored three-by-two glacis ERA fields`);
+        `${id}: carrier long axis follows the glacis tangent`);
+      assert.ok(near(glacisArmor.cassettes.rotationXRad, glacisArmor.angleRad - Math.PI / 2),
+        `${id}: cassette depth axes follow the glacis outward normal`);
+      assert.equal(glacisArmor.cassettes.count, 12, `${id}: retains both mirrored three-by-two glacis ERA fields`);
       assert.ok(near(
         glacisArmor.cassettes.centerOffsetM - glacisArmor.cassettes.depthM / 2,
         glacisArmor.carrier.centerOffsetM + glacisArmor.carrier.thicknessM / 2
           - glacisArmor.cassettes.seatOverlapM,
       ), `${id}: ERA cassette backs overlap the carrier instead of floating or sinking`);
+      const glacisY = (z) => core.crownY - Math.tan(core.glacisAngleRad) * (z - core.glacisTopZ);
+      assert.ok(near(glacisArmor.surfaceCenter.y, glacisY(glacisArmor.surfaceCenter.z)),
+        `${id}: the field's reference centre lies on the hull's glacis`);
       for (const center of glacisArmor.cassettes.centers) {
         const dy = center.y - glacisArmor.surfaceCenter.y;
         const dz = center.z - glacisArmor.surfaceCenter.z;
-        const normalOffset = dy * glacisArmor.normalOutward.y
-          + dz * glacisArmor.normalOutward.z;
+        const normalOffset = dy * glacisArmor.normalOutward.y + dz * glacisArmor.normalOutward.z;
         assert.ok(near(normalOffset, glacisArmor.cassettes.centerOffsetM),
           `${id}: every ERA cassette center stays on the shared offset plane`);
+        assert.ok(Math.abs(center.x) < core.crownX && center.z > core.glacisTopZ,
+          `${id}: every cassette stays on the glacis inside the deck crown`);
       }
     } else {
-      assert.equal(glacisArmor, undefined,
-        `${id}: does not claim the M3A3 reactive upper-glacis package`);
+      assert.equal(glacisArmor, undefined, `${id}: does not claim the M3A3 reactive upper-glacis package`);
     }
   } finally {
     tank.dispose();
   }
 }
 
-console.log('bradleyHullClosure.selftest: Bradley roof, side, bow and shared donor closures are connected');
+console.log('bradleyHullClosure.selftest: the Bradleys share the source-measured hull core, side armour and turret; the Marder keeps its donor');

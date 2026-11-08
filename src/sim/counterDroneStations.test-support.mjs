@@ -126,12 +126,15 @@ export const COUNTER_DRONE_SETS = Object.freeze({
  * run exactly, so none of their lethality moved; t90a_2004 still moves 14 of 24 on its own T-90 family rebuilds (266,
  * 267). Outcomes that flipped: m1a1 front:1 strike to downed; t90a_2004 front:4 and side:2 to downed, side:7, rear:6
  * and rear:7 to strikes. The lone band is 9 of 48 as before (m1a1 6, t90a_2004 3).
+ * Re-pinned 2026-11-04 (268) on the M1A1 shell measured from the owner's m1a1-abrams-usa model (the loader's M240
+ * station seated on the new roof): m1a1 moves 11 of its 24 pinned runs a tick or a round apart, every outcome as before;
+ * the lone band still 9 of 48 (m1a1 6, t90a_2004 3), so no lethality moved.
  */
 export const COUNTER_DRONE_PINS = Object.freeze({
   // every pinned flight launches from it: tools/counter-drone-engage.mjs and the receipt check it first
   carrierDock: 'kv2 turret 0.3,1.615,-1.4066',
   runs: Object.freeze({
-    m1a1: Object.freeze({ seed0: 1, runs: 8, rows: 'd:9@711 s:15@700 d:12@569 s:13@657 s:8@677 s:11@591 s:6@607 s:11@671 d:10@643 d:15@657 d:15@640 s:7@659 s:7@669 s:11@606 s:15@634 s:11@706 s:8@657 d:9@683 s:6@693 s:10@725 s:8@696 s:11@657 s:11@633 s:8@690' }),
+    m1a1: Object.freeze({ seed0: 1, runs: 8, rows: 'd:9@711 s:15@700 d:12@568 s:13@658 s:8@677 s:11@591 s:6@608 s:11@671 d:10@642 d:15@657 d:15@639 s:8@659 s:7@668 s:12@606 s:15@633 s:11@706 s:8@657 d:9@682 s:6@693 s:11@725 s:8@696 s:11@657 s:11@633 s:8@690' }),
     t90a_2004: Object.freeze({ seed0: 1, runs: 8, rows: 's:7@715 d:15@690 s:8@587 d:13@641 s:9@677 s:12@591 s:9@607 s:12@671 s:7@652 d:15@677 s:10@668 s:7@659 s:7@669 s:11@606 s:13@634 s:9@706 s:7@658 s:8@689 s:9@694 s:11@726 s:6@696 s:10@657 s:10@634 s:9@691' }),
     leo2a7v: Object.freeze({ seed0: 1, runs: 1, rows: 'd:6/7@694 d:7/6@604 d:8/12@614' }),
     leo2a5: Object.freeze({ seed0: 2, runs: 1, rows: 'd:9/12@653 d:9/9@627 d:6/4@667' }),
