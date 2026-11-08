@@ -12,7 +12,7 @@
   "width": 1920,
   "height": 1080
  },
- "count": 27,
+ "count": 29,
  "featured": [
   "f6-leo2a6-steinburg-r7-top",
   "vs09-alpine-strv122-t80bv-r7",
@@ -54,8 +54,8 @@
    ],
    "scene": "tools/media-r5/versus/scenes/f6-leo2a6-steinburg-r6.json",
    "path": "/media/versus-r1/f6-leo2a6-steinburg-r6.webp",
-   "bytes": 418898,
-   "sha256": "7917ec537ae46bd7cc150af28e445f22d4134b07c6e10106e19cbf2768ae48b0",
+   "bytes": 433068,
+   "sha256": "65714d862a403a47d0ca7b2239b3386689921e2a5b1abf240d5af8b93c36d440",
    "width": 1920,
    "height": 1080,
    "source": "f6-leo2a6-steinburg-r6-1920.webp",
@@ -63,22 +63,22 @@
     {
      "width": 640,
      "path": "/media/versus-r1/f6-leo2a6-steinburg-r6-640.webp",
-     "bytes": 43396
+     "bytes": 40942
     },
     {
      "width": 1280,
      "path": "/media/versus-r1/f6-leo2a6-steinburg-r6-1280.webp",
-     "bytes": 147546
+     "bytes": 126516
     },
     {
      "width": 1920,
      "path": "/media/versus-r1/f6-leo2a6-steinburg-r6.webp",
-     "bytes": 418898
+     "bytes": 433068
     },
     {
      "width": 3840,
      "path": "/media/versus-r1/f6-leo2a6-steinburg-r6-3840.webp",
-     "bytes": 823382
+     "bytes": 654850
     }
    ]
   },
@@ -132,8 +132,8 @@
    ],
    "scene": "tools/media-r5/versus/scenes/f7-t90m-column-r5.json",
    "path": "/media/versus-r1/f7-t90m-column-r5.webp",
-   "bytes": 434474,
-   "sha256": "a6dd7e3aac556c50a977d89de2ce3350cd6c2d67e401f5eb2eee2ad32aa585d8",
+   "bytes": 452888,
+   "sha256": "34307266f3db90d128be79be84472f5839d75d8c71aa2a9f093a23f9bdc6f59f",
    "width": 1920,
    "height": 1080,
    "source": "f7-t90m-column-r5-1920.webp",
@@ -141,22 +141,22 @@
     {
      "width": 640,
      "path": "/media/versus-r1/f7-t90m-column-r5-640.webp",
-     "bytes": 40674
+     "bytes": 38030
     },
     {
      "width": 1280,
      "path": "/media/versus-r1/f7-t90m-column-r5-1280.webp",
-     "bytes": 138306
+     "bytes": 118344
     },
     {
      "width": 1920,
      "path": "/media/versus-r1/f7-t90m-column-r5.webp",
-     "bytes": 434474
+     "bytes": 452888
     },
     {
      "width": 3840,
      "path": "/media/versus-r1/f7-t90m-column-r5-3840.webp",
-     "bytes": 854202
+     "bytes": 667190
     }
    ]
   },
@@ -186,8 +186,8 @@
    ],
    "scene": "tools/media-r5/versus/scenes/vs01-desert-abrams-t90m-r6.json",
    "path": "/media/versus-r1/vs01-desert-abrams-t90m-r6.webp",
-   "bytes": 233834,
-   "sha256": "85f33f2acea203457d2f92a8eac88bae8421e259fa5e97e67f885449732fb2f5",
+   "bytes": 242418,
+   "sha256": "41f395fc5ea1dcd96dd9f53cc270b14c94eb336b7f60a479bfb1313c895a682d",
    "width": 1920,
    "height": 1080,
    "source": "vs01-desert-abrams-t90m-r6-1920.webp",
@@ -195,22 +195,22 @@
     {
      "width": 640,
      "path": "/media/versus-r1/vs01-desert-abrams-t90m-r6-640.webp",
-     "bytes": 22556
+     "bytes": 19754
     },
     {
      "width": 1280,
      "path": "/media/versus-r1/vs01-desert-abrams-t90m-r6-1280.webp",
-     "bytes": 75852
+     "bytes": 61496
     },
     {
      "width": 1920,
      "path": "/media/versus-r1/vs01-desert-abrams-t90m-r6.webp",
-     "bytes": 233834
+     "bytes": 242418
     },
     {
      "width": 3840,
      "path": "/media/versus-r1/vs01-desert-abrams-t90m-r6-3840.webp",
-     "bytes": 452492
+     "bytes": 343896
     }
    ]
   },
@@ -240,8 +240,8 @@
    ],
    "scene": "tools/media-r5/versus/scenes/vs02-verdant-challenger-t80u-r6.json",
    "path": "/media/versus-r1/vs02-verdant-challenger-t80u-r6.webp",
-   "bytes": 254496,
-   "sha256": "fb4c53e65f74ed80efe1e8d8f498dfbce74ea105bb9b980fa24404c1e289b9fc",
+   "bytes": 265340,
+   "sha256": "2d5a2f2b12109c2d1ed6b1b2ce2a0d7df66f82900e76f78d512fe0ecca5b6941",
    "width": 1920,
    "height": 1080,
    "source": "vs02-verdant-challenger-t80u-r6-1920.webp",
@@ -249,22 +249,22 @@
     {
      "width": 640,
      "path": "/media/versus-r1/vs02-verdant-challenger-t80u-r6-640.webp",
-     "bytes": 25808
+     "bytes": 23812
     },
     {
      "width": 1280,
      "path": "/media/versus-r1/vs02-verdant-challenger-t80u-r6-1280.webp",
-     "bytes": 84682
+     "bytes": 73532
     },
     {
      "width": 1920,
      "path": "/media/versus-r1/vs02-verdant-challenger-t80u-r6.webp",
-     "bytes": 254496
+     "bytes": 265340
     },
     {
      "width": 3840,
      "path": "/media/versus-r1/vs02-verdant-challenger-t80u-r6-3840.webp",
-     "bytes": 461870
+     "bytes": 379582
     }
    ]
   },
@@ -294,8 +294,8 @@
    ],
    "scene": "tools/media-r5/versus/scenes/vs03-reservoir-k2-ztz99-r6.json",
    "path": "/media/versus-r1/vs03-reservoir-k2-ztz99-r6.webp",
-   "bytes": 285526,
-   "sha256": "e4edc06cede7f85d6d01cff03804256cb5302017bf07290b32c07ca5e1725fe1",
+   "bytes": 284276,
+   "sha256": "b84be397430af5076563c56e040f5a4ded7ef8e2c9b1c3882ef76c6e9f0ab772",
    "width": 1920,
    "height": 1080,
    "source": "vs03-reservoir-k2-ztz99-r6-1920.webp",
@@ -303,22 +303,22 @@
     {
      "width": 640,
      "path": "/media/versus-r1/vs03-reservoir-k2-ztz99-r6-640.webp",
-     "bytes": 29894
+     "bytes": 27626
     },
     {
      "width": 1280,
      "path": "/media/versus-r1/vs03-reservoir-k2-ztz99-r6-1280.webp",
-     "bytes": 93908
+     "bytes": 80136
     },
     {
      "width": 1920,
      "path": "/media/versus-r1/vs03-reservoir-k2-ztz99-r6.webp",
-     "bytes": 285526
+     "bytes": 284276
     },
     {
      "width": 3840,
      "path": "/media/versus-r1/vs03-reservoir-k2-ztz99-r6-3840.webp",
-     "bytes": 579878
+     "bytes": 442566
     }
    ]
   },
@@ -348,8 +348,8 @@
    ],
    "scene": "tools/media-r5/versus/scenes/vs04-railyard-leclerc-t14-r6.json",
    "path": "/media/versus-r1/vs04-railyard-leclerc-t14-r6.webp",
-   "bytes": 410510,
-   "sha256": "d619adf0176cd258a820159f872f62032c8448d52f259214678138dc70617e1c",
+   "bytes": 412480,
+   "sha256": "f97c1aca425f1d2a81f478629fd236f863cc159dcf4649e7d2bc9be60ee3c690",
    "width": 1920,
    "height": 1080,
    "source": "vs04-railyard-leclerc-t14-r6-1920.webp",
@@ -357,22 +357,22 @@
     {
      "width": 640,
      "path": "/media/versus-r1/vs04-railyard-leclerc-t14-r6-640.webp",
-     "bytes": 40424
+     "bytes": 36474
     },
     {
      "width": 1280,
      "path": "/media/versus-r1/vs04-railyard-leclerc-t14-r6-1280.webp",
-     "bytes": 139756
+     "bytes": 115354
     },
     {
      "width": 1920,
      "path": "/media/versus-r1/vs04-railyard-leclerc-t14-r6.webp",
-     "bytes": 410510
+     "bytes": 412480
     },
     {
      "width": 3840,
      "path": "/media/versus-r1/vs04-railyard-leclerc-t14-r6-3840.webp",
-     "bytes": 815316
+     "bytes": 601886
     }
    ]
   },
@@ -408,8 +408,8 @@
    ],
    "scene": "tools/media-r5/versus/scenes/vs05-oasis-merkava-t72b3-r6.json",
    "path": "/media/versus-r1/vs05-oasis-merkava-t72b3-r6.webp",
-   "bytes": 257256,
-   "sha256": "c91413a0514a621efd2233ade13ae6ddcb9a429f98476686c6292c6e3fd1bd27",
+   "bytes": 257658,
+   "sha256": "55775a36ee8e48c236fd7fcd71e1e54791993778b904ec6f2abe77d278d6be38",
    "width": 1920,
    "height": 1080,
    "source": "vs05-oasis-merkava-t72b3-r6-1920.webp",
@@ -417,22 +417,22 @@
     {
      "width": 640,
      "path": "/media/versus-r1/vs05-oasis-merkava-t72b3-r6-640.webp",
-     "bytes": 25268
+     "bytes": 22598
     },
     {
      "width": 1280,
      "path": "/media/versus-r1/vs05-oasis-merkava-t72b3-r6-1280.webp",
-     "bytes": 84772
+     "bytes": 69508
     },
     {
      "width": 1920,
      "path": "/media/versus-r1/vs05-oasis-merkava-t72b3-r6.webp",
-     "bytes": 257256
+     "bytes": 257658
     },
     {
      "width": 3840,
      "path": "/media/versus-r1/vs05-oasis-merkava-t72b3-r6-3840.webp",
-     "bytes": 527422
+     "bytes": 389210
     }
    ]
   },
@@ -462,8 +462,8 @@
    ],
    "scene": "tools/media-r5/versus/scenes/vs06-coastal-type10-ztz99a2-r6.json",
    "path": "/media/versus-r1/vs06-coastal-type10-ztz99a2-r6.webp",
-   "bytes": 220906,
-   "sha256": "0af63e50986536edd9681f90beff28b3b082cccbbee82da01f80bfe7cdf721ac",
+   "bytes": 231244,
+   "sha256": "cb44c0307aef01412dab18d31e41f38e8b16351a6af190d40bff636d98d76c24",
    "width": 1920,
    "height": 1080,
    "source": "vs06-coastal-type10-ztz99a2-r6-1920.webp",
@@ -471,22 +471,22 @@
     {
      "width": 640,
      "path": "/media/versus-r1/vs06-coastal-type10-ztz99a2-r6-640.webp",
-     "bytes": 19400
+     "bytes": 17870
     },
     {
      "width": 1280,
      "path": "/media/versus-r1/vs06-coastal-type10-ztz99a2-r6-1280.webp",
-     "bytes": 66814
+     "bytes": 54646
     },
     {
      "width": 1920,
      "path": "/media/versus-r1/vs06-coastal-type10-ztz99a2-r6.webp",
-     "bytes": 220906
+     "bytes": 231244
     },
     {
      "width": 3840,
      "path": "/media/versus-r1/vs06-coastal-type10-ztz99a2-r6-3840.webp",
-     "bytes": 451770
+     "bytes": 336186
     }
    ]
   },
@@ -516,8 +516,8 @@
    ],
    "scene": "tools/media-r5/versus/scenes/vs07-autumn-ariete-t62-r6.json",
    "path": "/media/versus-r1/vs07-autumn-ariete-t62-r6.webp",
-   "bytes": 439678,
-   "sha256": "a984471fcc8336826101ee38d8026f3e84dbd23e875919e82af16e17af9a4b25",
+   "bytes": 469152,
+   "sha256": "3330e9bbb6dd6e838cbc794c195a8653dfcb07a015532073a92128ba89eba099",
    "width": 1920,
    "height": 1080,
    "source": "vs07-autumn-ariete-t62-r6-1920.webp",
@@ -525,22 +525,22 @@
     {
      "width": 640,
      "path": "/media/versus-r1/vs07-autumn-ariete-t62-r6-640.webp",
-     "bytes": 29966
+     "bytes": 28226
     },
     {
      "width": 1280,
      "path": "/media/versus-r1/vs07-autumn-ariete-t62-r6-1280.webp",
-     "bytes": 117076
+     "bytes": 99456
     },
     {
      "width": 1920,
      "path": "/media/versus-r1/vs07-autumn-ariete-t62-r6.webp",
-     "bytes": 439678
+     "bytes": 469152
     },
     {
      "width": 3840,
      "path": "/media/versus-r1/vs07-autumn-ariete-t62-r6-3840.webp",
-     "bytes": 905414
+     "bytes": 718964
     }
    ]
   },
@@ -570,8 +570,8 @@
    ],
    "scene": "tools/media-r5/versus/scenes/vs08-winter-cv90-bmp3-r6.json",
    "path": "/media/versus-r1/vs08-winter-cv90-bmp3-r6.webp",
-   "bytes": 355984,
-   "sha256": "b9c8845240282c06672def42957ceeddd3839b3ab822bcea38f2e1d1a4b16d6a",
+   "bytes": 366114,
+   "sha256": "66df4b816a336bad7e65b058e8c8464154321dbe429b7139ef9f511675af5deb",
    "width": 1920,
    "height": 1080,
    "source": "vs08-winter-cv90-bmp3-r6-1920.webp",
@@ -579,22 +579,22 @@
     {
      "width": 640,
      "path": "/media/versus-r1/vs08-winter-cv90-bmp3-r6-640.webp",
-     "bytes": 29424
+     "bytes": 26078
     },
     {
      "width": 1280,
      "path": "/media/versus-r1/vs08-winter-cv90-bmp3-r6-1280.webp",
-     "bytes": 101406
+     "bytes": 78992
     },
     {
      "width": 1920,
      "path": "/media/versus-r1/vs08-winter-cv90-bmp3-r6.webp",
-     "bytes": 355984
+     "bytes": 366114
     },
     {
      "width": 3840,
      "path": "/media/versus-r1/vs08-winter-cv90-bmp3-r6-3840.webp",
-     "bytes": 702164
+     "bytes": 493888
     }
    ]
   },
@@ -624,8 +624,8 @@
    ],
    "scene": "tools/media-r5/versus/scenes/vs09-alpine-strv122-t80bv-r6.json",
    "path": "/media/versus-r1/vs09-alpine-strv122-t80bv-r6.webp",
-   "bytes": 317160,
-   "sha256": "865b0476648626d1a56bf0dbbd4ca7592264375680926f088fa24e9cdb8bc1f4",
+   "bytes": 325000,
+   "sha256": "da056c7c199f8e4005a83c86e012d48aed0c3917681d54d4dc3069f5c2cac3ba",
    "width": 1920,
    "height": 1080,
    "source": "vs09-alpine-strv122-t80bv-r6-1920.webp",
@@ -633,22 +633,22 @@
     {
      "width": 640,
      "path": "/media/versus-r1/vs09-alpine-strv122-t80bv-r6-640.webp",
-     "bytes": 27756
+     "bytes": 24872
     },
     {
      "width": 1280,
      "path": "/media/versus-r1/vs09-alpine-strv122-t80bv-r6-1280.webp",
-     "bytes": 97452
+     "bytes": 79246
     },
     {
      "width": 1920,
      "path": "/media/versus-r1/vs09-alpine-strv122-t80bv-r6.webp",
-     "bytes": 317160
+     "bytes": 325000
     },
     {
      "width": 3840,
      "path": "/media/versus-r1/vs09-alpine-strv122-t80bv-r6-3840.webp",
-     "bytes": 628794
+     "bytes": 465050
     }
    ]
   },
@@ -678,8 +678,8 @@
    ],
    "scene": "tools/media-r5/versus/scenes/vs10-steppe-chieftain-t64-r6.json",
    "path": "/media/versus-r1/vs10-steppe-chieftain-t64-r6.webp",
-   "bytes": 302630,
-   "sha256": "6bd0acc92ecfcae71a31a4cc78267f265b4e87792cb267064101d8c0b49c1aed",
+   "bytes": 303588,
+   "sha256": "b2e978106f9cba21fdc966632612a0390134812d43ac7cabc48815701b345832",
    "width": 1920,
    "height": 1080,
    "source": "vs10-steppe-chieftain-t64-r6-1920.webp",
@@ -687,22 +687,22 @@
     {
      "width": 640,
      "path": "/media/versus-r1/vs10-steppe-chieftain-t64-r6-640.webp",
-     "bytes": 21486
+     "bytes": 18488
     },
     {
      "width": 1280,
      "path": "/media/versus-r1/vs10-steppe-chieftain-t64-r6-1280.webp",
-     "bytes": 83876
+     "bytes": 61174
     },
     {
      "width": 1920,
      "path": "/media/versus-r1/vs10-steppe-chieftain-t64-r6.webp",
-     "bytes": 302630
+     "bytes": 303588
     },
     {
      "width": 3840,
      "path": "/media/versus-r1/vs10-steppe-chieftain-t64-r6-3840.webp",
-     "bytes": 633454
+     "bytes": 441658
     }
    ]
   },
@@ -732,8 +732,8 @@
    ],
    "scene": "tools/media-r5/versus/scenes/f6-leo2a6-steinburg-r7.json",
    "path": "/media/versus-r1/f6-leo2a6-steinburg-r7.webp",
-   "bytes": 376500,
-   "sha256": "d88003ce8757e73e5aed9ae1be2ccc0302e34da7b3934deef3bd76dbf3f39a5a",
+   "bytes": 390640,
+   "sha256": "641c98c7c9d4dbf2e60ada17fdfc26b6701a6189f01b12576ac8f52d7701fadd",
    "width": 1920,
    "height": 1080,
    "source": "f6-leo2a6-steinburg-r7-1920.webp",
@@ -741,22 +741,22 @@
     {
      "width": 640,
      "path": "/media/versus-r1/f6-leo2a6-steinburg-r7-640.webp",
-     "bytes": 39746
+     "bytes": 37164
     },
     {
      "width": 1280,
      "path": "/media/versus-r1/f6-leo2a6-steinburg-r7-1280.webp",
-     "bytes": 131066
+     "bytes": 112608
     },
     {
      "width": 1920,
      "path": "/media/versus-r1/f6-leo2a6-steinburg-r7.webp",
-     "bytes": 376500
+     "bytes": 390640
     },
     {
      "width": 3840,
      "path": "/media/versus-r1/f6-leo2a6-steinburg-r7-3840.webp",
-     "bytes": 722502
+     "bytes": 558038
     }
    ]
   },
@@ -786,8 +786,8 @@
    ],
    "scene": "tools/media-r5/versus/scenes/vs04-railyard-leclerc-t14-r7.json",
    "path": "/media/versus-r1/vs04-railyard-leclerc-t14-r7.webp",
-   "bytes": 283468,
-   "sha256": "22b7565f1ee946d3b4b3678afb02e86dff6a4d42ca71f2730efa7da529510250",
+   "bytes": 292816,
+   "sha256": "11cba26a59dd3e48848f67a806433089c4aa260ec4b3fa89f5cad3e7e7fdce2b",
    "width": 1920,
    "height": 1080,
    "source": "vs04-railyard-leclerc-t14-r7-1920.webp",
@@ -795,22 +795,22 @@
     {
      "width": 640,
      "path": "/media/versus-r1/vs04-railyard-leclerc-t14-r7-640.webp",
-     "bytes": 28970
+     "bytes": 28442
     },
     {
      "width": 1280,
      "path": "/media/versus-r1/vs04-railyard-leclerc-t14-r7-1280.webp",
-     "bytes": 92848
+     "bytes": 82406
     },
     {
      "width": 1920,
      "path": "/media/versus-r1/vs04-railyard-leclerc-t14-r7.webp",
-     "bytes": 283468
+     "bytes": 292816
     },
     {
      "width": 3840,
      "path": "/media/versus-r1/vs04-railyard-leclerc-t14-r7-3840.webp",
-     "bytes": 539916
+     "bytes": 425332
     }
    ]
   },
@@ -846,8 +846,8 @@
    ],
    "scene": "tools/media-r5/versus/scenes/vs06-coastal-type10-ztz99a2-r7.json",
    "path": "/media/versus-r1/vs06-coastal-type10-ztz99a2-r7.webp",
-   "bytes": 262148,
-   "sha256": "bfad67405080b9f6510ad335911ccb31a74cccdfc6207847ee3e1e2ee35f2069",
+   "bytes": 281948,
+   "sha256": "d6526c4c0add8a6e372509d31391baf14ae85cb859feb17e5612ac05682b844c",
    "width": 1920,
    "height": 1080,
    "source": "vs06-coastal-type10-ztz99a2-r7-1920.webp",
@@ -855,22 +855,22 @@
     {
      "width": 640,
      "path": "/media/versus-r1/vs06-coastal-type10-ztz99a2-r7-640.webp",
-     "bytes": 24552
+     "bytes": 22100
     },
     {
      "width": 1280,
      "path": "/media/versus-r1/vs06-coastal-type10-ztz99a2-r7-1280.webp",
-     "bytes": 83236
+     "bytes": 69478
     },
     {
      "width": 1920,
      "path": "/media/versus-r1/vs06-coastal-type10-ztz99a2-r7.webp",
-     "bytes": 262148
+     "bytes": 281948
     },
     {
      "width": 3840,
      "path": "/media/versus-r1/vs06-coastal-type10-ztz99a2-r7-3840.webp",
-     "bytes": 548594
+     "bytes": 411060
     }
    ]
   },
@@ -900,8 +900,8 @@
    ],
    "scene": "tools/media-r5/versus/scenes/vs07-autumn-ariete-t62-r7.json",
    "path": "/media/versus-r1/vs07-autumn-ariete-t62-r7.webp",
-   "bytes": 286084,
-   "sha256": "05f5b214f6d869683541b3f7861a09c541e1f6508ce5c04b1d8b133ef5eff6f7",
+   "bytes": 274020,
+   "sha256": "47a45a09e977a03299730baf43de76a8a6c73d1a45c8abd2f76b2839272bdffe",
    "width": 1920,
    "height": 1080,
    "source": "vs07-autumn-ariete-t62-r7-1920.webp",
@@ -909,17 +909,22 @@
     {
      "width": 640,
      "path": "/media/versus-r1/vs07-autumn-ariete-t62-r7-640.webp",
-     "bytes": 29164
+     "bytes": 26702
     },
     {
      "width": 1280,
      "path": "/media/versus-r1/vs07-autumn-ariete-t62-r7-1280.webp",
-     "bytes": 90842
+     "bytes": 77420
     },
     {
      "width": 1920,
      "path": "/media/versus-r1/vs07-autumn-ariete-t62-r7.webp",
-     "bytes": 286084
+     "bytes": 274020
+    },
+    {
+     "width": 3840,
+     "path": "/media/versus-r1/vs07-autumn-ariete-t62-r7-3840.webp",
+     "bytes": 396646
     }
    ]
   },
@@ -949,8 +954,8 @@
    ],
    "scene": "tools/media-r5/versus/scenes/vs08-winter-cv90-bmp3-r7.json",
    "path": "/media/versus-r1/vs08-winter-cv90-bmp3-r7.webp",
-   "bytes": 211662,
-   "sha256": "94745f87e4e2af18794a7939b173b01e30c3f50913e1ec47e08255e52107bedd",
+   "bytes": 207656,
+   "sha256": "ef38bfcd93f327141ed7da3338442314fd9a5995a43977092a40045a4f699092",
    "width": 1920,
    "height": 1080,
    "source": "vs08-winter-cv90-bmp3-r7-1920.webp",
@@ -958,22 +963,22 @@
     {
      "width": 640,
      "path": "/media/versus-r1/vs08-winter-cv90-bmp3-r7-640.webp",
-     "bytes": 21936
+     "bytes": 19976
     },
     {
      "width": 1280,
      "path": "/media/versus-r1/vs08-winter-cv90-bmp3-r7-1280.webp",
-     "bytes": 68008
+     "bytes": 55102
     },
     {
      "width": 1920,
      "path": "/media/versus-r1/vs08-winter-cv90-bmp3-r7.webp",
-     "bytes": 211662
+     "bytes": 207656
     },
     {
      "width": 3840,
      "path": "/media/versus-r1/vs08-winter-cv90-bmp3-r7-3840.webp",
-     "bytes": 393066
+     "bytes": 285844
     }
    ]
   },
@@ -1003,8 +1008,8 @@
    ],
    "scene": "tools/media-r5/versus/scenes/vs09-alpine-strv122-t80bv-r7.json",
    "path": "/media/versus-r1/vs09-alpine-strv122-t80bv-r7.webp",
-   "bytes": 234648,
-   "sha256": "f3fbc930144ec3a1afb003dda3465f8135e4d76916392d6252d59517263cdf9f",
+   "bytes": 239942,
+   "sha256": "3bf558d6cd7ae58129ced151e1b4c7d0942adbe20337826fce831d09ae80ce38",
    "width": 1920,
    "height": 1080,
    "source": "vs09-alpine-strv122-t80bv-r7-1920.webp",
@@ -1012,22 +1017,22 @@
     {
      "width": 640,
      "path": "/media/versus-r1/vs09-alpine-strv122-t80bv-r7-640.webp",
-     "bytes": 26636
+     "bytes": 24332
     },
     {
      "width": 1280,
      "path": "/media/versus-r1/vs09-alpine-strv122-t80bv-r7-1280.webp",
-     "bytes": 79206
+     "bytes": 64946
     },
     {
      "width": 1920,
      "path": "/media/versus-r1/vs09-alpine-strv122-t80bv-r7.webp",
-     "bytes": 234648
+     "bytes": 239942
     },
     {
      "width": 3840,
      "path": "/media/versus-r1/vs09-alpine-strv122-t80bv-r7-3840.webp",
-     "bytes": 420454
+     "bytes": 311978
     }
    ]
   },
@@ -1057,8 +1062,8 @@
    ],
    "scene": "tools/media-r5/versus/scenes/vs10-steppe-chieftain-t64-r7.json",
    "path": "/media/versus-r1/vs10-steppe-chieftain-t64-r7.webp",
-   "bytes": 391890,
-   "sha256": "cb677648239b758efcd2c48eff02ea3375846196edde15a84421a22a9b635f6f",
+   "bytes": 404192,
+   "sha256": "995e5c530c1d8e047a647b775c588006255431e9a7ef7e2f199f630745def349",
    "width": 1920,
    "height": 1080,
    "source": "vs10-steppe-chieftain-t64-r7-1920.webp",
@@ -1066,22 +1071,22 @@
     {
      "width": 640,
      "path": "/media/versus-r1/vs10-steppe-chieftain-t64-r7-640.webp",
-     "bytes": 41966
+     "bytes": 39208
     },
     {
      "width": 1280,
      "path": "/media/versus-r1/vs10-steppe-chieftain-t64-r7-1280.webp",
-     "bytes": 135936
+     "bytes": 114140
     },
     {
      "width": 1920,
      "path": "/media/versus-r1/vs10-steppe-chieftain-t64-r7.webp",
-     "bytes": 391890
+     "bytes": 404192
     },
     {
      "width": 3840,
      "path": "/media/versus-r1/vs10-steppe-chieftain-t64-r7-3840.webp",
-     "bytes": 766766
+     "bytes": 595552
     }
    ]
   },
@@ -1111,8 +1116,8 @@
    ],
    "scene": "tools/media-r5/versus/scenes/vs04-railyard-leclerc-t14-r7-top.json",
    "path": "/media/versus-r1/vs04-railyard-leclerc-t14-r7-top.webp",
-   "bytes": 478472,
-   "sha256": "fb4fe9401dbc178f7cae7a075beb79aef2a5724b0b617b940eec70c3b5588fb4",
+   "bytes": 488380,
+   "sha256": "7a90e6a2ed3eb9afa767a277ba122306b53edad14d54a6b5555ea9cbc72fd2a7",
    "width": 1920,
    "height": 1080,
    "source": "vs04-railyard-leclerc-t14-r7-top-1920.webp",
@@ -1120,22 +1125,22 @@
     {
      "width": 640,
      "path": "/media/versus-r1/vs04-railyard-leclerc-t14-r7-top-640.webp",
-     "bytes": 42292
+     "bytes": 38540
     },
     {
      "width": 1280,
      "path": "/media/versus-r1/vs04-railyard-leclerc-t14-r7-top-1280.webp",
-     "bytes": 150264
+     "bytes": 127778
     },
     {
      "width": 1920,
      "path": "/media/versus-r1/vs04-railyard-leclerc-t14-r7-top.webp",
-     "bytes": 478472
+     "bytes": 488380
     },
     {
      "width": 3840,
      "path": "/media/versus-r1/vs04-railyard-leclerc-t14-r7-top-3840.webp",
-     "bytes": 896256
+     "bytes": 683370
     }
    ]
   },
@@ -1165,8 +1170,8 @@
    ],
    "scene": "tools/media-r5/versus/scenes/vs10-steppe-chieftain-t64-r7-top.json",
    "path": "/media/versus-r1/vs10-steppe-chieftain-t64-r7-top.webp",
-   "bytes": 515484,
-   "sha256": "612ffa4ad23c51b05deda64eae81ebf6a51d126d0aeed8d746490d9444aa3f7b",
+   "bytes": 536044,
+   "sha256": "56e41380db4099d95ce087d34fc7082eefc00bad693cb9ccc78d3bd563d52cd7",
    "width": 1920,
    "height": 1080,
    "source": "vs10-steppe-chieftain-t64-r7-top-1920.webp",
@@ -1174,22 +1179,22 @@
     {
      "width": 640,
      "path": "/media/versus-r1/vs10-steppe-chieftain-t64-r7-top-640.webp",
-     "bytes": 36900
+     "bytes": 33396
     },
     {
      "width": 1280,
      "path": "/media/versus-r1/vs10-steppe-chieftain-t64-r7-top-1280.webp",
-     "bytes": 151514
+     "bytes": 119846
     },
     {
      "width": 1920,
      "path": "/media/versus-r1/vs10-steppe-chieftain-t64-r7-top.webp",
-     "bytes": 515484
+     "bytes": 536044
     },
     {
      "width": 3840,
      "path": "/media/versus-r1/vs10-steppe-chieftain-t64-r7-top-3840.webp",
-     "bytes": 1227826
+     "bytes": 912608
     }
    ]
   },
@@ -1219,8 +1224,8 @@
    ],
    "scene": "tools/media-r5/versus/scenes/f6-leo2a6-steinburg-r7-top.json",
    "path": "/media/versus-r1/f6-leo2a6-steinburg-r7-top.webp",
-   "bytes": 391726,
-   "sha256": "52eb5b0e0883e7d21087853d3148abb5647448d8c7f25a331f06fc126a39fff8",
+   "bytes": 391922,
+   "sha256": "c871f9503cb13914b85c8a9b8611bfdef3f9c1b1f0268254f14649346bf87ff3",
    "width": 1920,
    "height": 1080,
    "source": "f6-leo2a6-steinburg-r7-top-1920.webp",
@@ -1228,22 +1233,22 @@
     {
      "width": 640,
      "path": "/media/versus-r1/f6-leo2a6-steinburg-r7-top-640.webp",
-     "bytes": 45894
+     "bytes": 42750
     },
     {
      "width": 1280,
      "path": "/media/versus-r1/f6-leo2a6-steinburg-r7-top-1280.webp",
-     "bytes": 138658
+     "bytes": 117352
     },
     {
      "width": 1920,
      "path": "/media/versus-r1/f6-leo2a6-steinburg-r7-top.webp",
-     "bytes": 391726
+     "bytes": 391922
     },
     {
      "width": 3840,
      "path": "/media/versus-r1/f6-leo2a6-steinburg-r7-top-3840.webp",
-     "bytes": 698150
+     "bytes": 534368
     }
    ]
   },
@@ -1273,8 +1278,8 @@
    ],
    "scene": "tools/media-r5/versus/scenes/vs07-autumn-ariete-t62-r7-top.json",
    "path": "/media/versus-r1/vs07-autumn-ariete-t62-r7-top.webp",
-   "bytes": 446346,
-   "sha256": "39ffcd2a419b469634ac1b02d4ad84f5f4fe587930c4e10d0a28e47b39fdea71",
+   "bytes": 465302,
+   "sha256": "6660b8d904e078bb0def3057d4056507d2c15669c0e6f5f6343ee73727f3ed27",
    "width": 1920,
    "height": 1080,
    "source": "vs07-autumn-ariete-t62-r7-top-1920.webp",
@@ -1282,17 +1287,22 @@
     {
      "width": 640,
      "path": "/media/versus-r1/vs07-autumn-ariete-t62-r7-top-640.webp",
-     "bytes": 39470
+     "bytes": 34278
     },
     {
      "width": 1280,
      "path": "/media/versus-r1/vs07-autumn-ariete-t62-r7-top-1280.webp",
-     "bytes": 131380
+     "bytes": 111388
     },
     {
      "width": 1920,
      "path": "/media/versus-r1/vs07-autumn-ariete-t62-r7-top.webp",
-     "bytes": 446346
+     "bytes": 465302
+    },
+    {
+     "width": 3840,
+     "path": "/media/versus-r1/vs07-autumn-ariete-t62-r7-top-3840.webp",
+     "bytes": 672360
     }
    ]
   },
@@ -1322,8 +1332,8 @@
    ],
    "scene": "tools/media-r5/versus/scenes/vs08-winter-cv90-bmp3-r7-top.json",
    "path": "/media/versus-r1/vs08-winter-cv90-bmp3-r7-top.webp",
-   "bytes": 232480,
-   "sha256": "84e7536e964f3d906cbd211f1cdade025be6b03254396d85ee5ea170c4bc18f7",
+   "bytes": 233110,
+   "sha256": "29ef52922f19d689eb72858f51f6b20d0635d25d8731ac5fe5629d913bc5bbe0",
    "width": 1920,
    "height": 1080,
    "source": "vs08-winter-cv90-bmp3-r7-top-1920.webp",
@@ -1331,22 +1341,22 @@
     {
      "width": 640,
      "path": "/media/versus-r1/vs08-winter-cv90-bmp3-r7-top-640.webp",
-     "bytes": 23752
+     "bytes": 21334
     },
     {
      "width": 1280,
      "path": "/media/versus-r1/vs08-winter-cv90-bmp3-r7-top-1280.webp",
-     "bytes": 73600
+     "bytes": 59884
     },
     {
      "width": 1920,
      "path": "/media/versus-r1/vs08-winter-cv90-bmp3-r7-top.webp",
-     "bytes": 232480
+     "bytes": 233110
     },
     {
      "width": 3840,
      "path": "/media/versus-r1/vs08-winter-cv90-bmp3-r7-top-3840.webp",
-     "bytes": 429516
+     "bytes": 307794
     }
    ]
   },
@@ -1376,8 +1386,8 @@
    ],
    "scene": "tools/media-r5/versus/scenes/vs09-alpine-strv122-t80bv-r7-top.json",
    "path": "/media/versus-r1/vs09-alpine-strv122-t80bv-r7-top.webp",
-   "bytes": 291356,
-   "sha256": "119b6ffe73c6ccfed1050bb087426e9a263f58479df1877d15adf8fd001a4fe3",
+   "bytes": 300884,
+   "sha256": "6ff56b49d8b133c05771c22cafa4c55989e4f6f3e95c3d0745a94ab09f750068",
    "width": 1920,
    "height": 1080,
    "source": "vs09-alpine-strv122-t80bv-r7-top-1920.webp",
@@ -1385,22 +1395,22 @@
     {
      "width": 640,
      "path": "/media/versus-r1/vs09-alpine-strv122-t80bv-r7-top-640.webp",
-     "bytes": 24232
+     "bytes": 20882
     },
     {
      "width": 1280,
      "path": "/media/versus-r1/vs09-alpine-strv122-t80bv-r7-top-1280.webp",
-     "bytes": 84966
+     "bytes": 65634
     },
     {
      "width": 1920,
      "path": "/media/versus-r1/vs09-alpine-strv122-t80bv-r7-top.webp",
-     "bytes": 291356
+     "bytes": 300884
     },
     {
      "width": 3840,
      "path": "/media/versus-r1/vs09-alpine-strv122-t80bv-r7-top-3840.webp",
-     "bytes": 625690
+     "bytes": 426098
     }
    ]
   },
@@ -1430,8 +1440,8 @@
    ],
    "scene": "tools/media-r5/versus/scenes/vs03-reservoir-k2-vt4a1-r8.json",
    "path": "/media/versus-r1/vs03-reservoir-k2-vt4a1-r8.webp",
-   "bytes": 541178,
-   "sha256": "397d55ba892aeb62917deb24f85bd3d6ef85d7dd8231c1bf227b869bab78b3e9",
+   "bytes": 322240,
+   "sha256": "c5d4259dad76e7245e883a5b52ad3f690e60b49ea0d2418df229f66b143503e8",
    "width": 1920,
    "height": 1080,
    "source": "vs03-reservoir-k2-vt4a1-r8-1920.webp",
@@ -1439,22 +1449,22 @@
     {
      "width": 640,
      "path": "/media/versus-r1/vs03-reservoir-k2-vt4a1-r8-640.webp",
-     "bytes": 49720
+     "bytes": 25670
     },
     {
      "width": 1280,
      "path": "/media/versus-r1/vs03-reservoir-k2-vt4a1-r8-1280.webp",
-     "bytes": 179134
+     "bytes": 81088
     },
     {
      "width": 1920,
      "path": "/media/versus-r1/vs03-reservoir-k2-vt4a1-r8.webp",
-     "bytes": 541178
+     "bytes": 322240
     },
     {
      "width": 3840,
      "path": "/media/versus-r1/vs03-reservoir-k2-vt4a1-r8-3840.webp",
-     "bytes": 1045890
+     "bytes": 472188
     }
    ]
   },
@@ -1508,8 +1518,8 @@
    ],
    "scene": "tools/media-r5/versus/scenes/f7-type90-column-r8.json",
    "path": "/media/versus-r1/f7-type90-column-r8.webp",
-   "bytes": 395012,
-   "sha256": "f688e0fac6202e816aeed855b41af87515b1b8d1d531fe11d81b738ede395d1d",
+   "bytes": 403742,
+   "sha256": "d68bcc81ec2918f29fdbd53fa454669845fed0f1ce0d103a34cd50c2fa811fd5",
    "width": 1920,
    "height": 1080,
    "source": "f7-type90-column-r8-1920.webp",
@@ -1517,22 +1527,142 @@
     {
      "width": 640,
      "path": "/media/versus-r1/f7-type90-column-r8-640.webp",
-     "bytes": 35766
+     "bytes": 32936
     },
     {
      "width": 1280,
      "path": "/media/versus-r1/f7-type90-column-r8-1280.webp",
-     "bytes": 120770
+     "bytes": 100812
     },
     {
      "width": 1920,
      "path": "/media/versus-r1/f7-type90-column-r8.webp",
-     "bytes": 395012
+     "bytes": 403742
     },
     {
      "width": 3840,
      "path": "/media/versus-r1/f7-type90-column-r8-3840.webp",
-     "bytes": 759046
+     "bytes": 584080
+    }
+   ]
+  },
+  {
+   "id": "f6-leo2a6-steinburg-r7-boot",
+   "round": 3,
+   "map": "urban",
+   "hour": "day",
+   "view": "side",
+   "title": {
+    "en": "Steinburg, day: Leopard 2A6 v T-90M Proryv",
+    "zh": "斯泰因堡，白天：Leopard 2A6 对 T-90M Proryv"
+   },
+   "tanks": [
+    {
+     "role": "hero",
+     "id": "leo2a6",
+     "displayName": "Leopard 2A6",
+     "paint": "urbanblock"
+    },
+    {
+     "role": "foe",
+     "id": "t90m",
+     "displayName": "T-90M Proryv",
+     "paint": "digital"
+    }
+   ],
+   "scene": "tools/media-r5/versus/scenes/f6-leo2a6-steinburg-r7-boot.json",
+   "path": "/media/versus-r1/f6-leo2a6-steinburg-r7-boot.webp",
+   "bytes": 405202,
+   "sha256": "c71be877c23d9664e496d700851cd138ef109563d6b715dd503c6a0d7df3496b",
+   "width": 1920,
+   "height": 1080,
+   "source": "f6-leo2a6-steinburg-r7-boot-1920.webp",
+   "rungs": [
+    {
+     "width": 640,
+     "path": "/media/versus-r1/f6-leo2a6-steinburg-r7-boot-640.webp",
+     "bytes": 38000
+    },
+    {
+     "width": 1280,
+     "path": "/media/versus-r1/f6-leo2a6-steinburg-r7-boot-1280.webp",
+     "bytes": 114154
+    },
+    {
+     "width": 1920,
+     "path": "/media/versus-r1/f6-leo2a6-steinburg-r7-boot.webp",
+     "bytes": 405202
+    },
+    {
+     "width": 3840,
+     "path": "/media/versus-r1/f6-leo2a6-steinburg-r7-boot-3840.webp",
+     "bytes": 580980
+    }
+   ]
+  },
+  {
+   "id": "s199-m1a2-x-desert",
+   "round": 4,
+   "map": "desert",
+   "hour": "day",
+   "view": "side",
+   "title": {
+    "en": "Sirocco Wadi, day: M1A2 Abrams v T-90M Proryv",
+    "zh": "西罗科旱谷，白天：M1A2 Abrams 对 T-90M Proryv"
+   },
+   "tanks": [
+    {
+     "role": "hero",
+     "id": "m1a2_abrams",
+     "displayName": "M1A2 Abrams",
+     "paint": "service_usa_desert"
+    },
+    {
+     "role": "ally",
+     "id": "m551a1_tts",
+     "displayName": "M551A1 TTS",
+     "paint": "service_usa_desert"
+    },
+    {
+     "role": "foe",
+     "id": "t90m",
+     "displayName": "T-90M Proryv",
+     "paint": "service_t90m"
+    },
+    {
+     "role": "foe",
+     "id": "t72b3m_2016",
+     "displayName": "T-72B3M obr. 2016",
+     "paint": "service_t90m"
+    }
+   ],
+   "scene": "tools/media-r5/versus/scenes/s199-m1a2-x-desert.json",
+   "path": "/media/versus-r1/s199-m1a2-x-desert.webp",
+   "bytes": 246458,
+   "sha256": "14ab53dd5f6e55a067b57ae1935e394e05e04bda28e268e2deb832c42c03b56f",
+   "width": 1920,
+   "height": 1080,
+   "source": "s199-m1a2-x-desert-1920.webp",
+   "rungs": [
+    {
+     "width": 640,
+     "path": "/media/versus-r1/s199-m1a2-x-desert-640.webp",
+     "bytes": 24686
+    },
+    {
+     "width": 1280,
+     "path": "/media/versus-r1/s199-m1a2-x-desert-1280.webp",
+     "bytes": 68192
+    },
+    {
+     "width": 1920,
+     "path": "/media/versus-r1/s199-m1a2-x-desert.webp",
+     "bytes": 246458
+    },
+    {
+     "width": 3840,
+     "path": "/media/versus-r1/s199-m1a2-x-desert-3840.webp",
+     "bytes": 341270
     }
    ]
   }

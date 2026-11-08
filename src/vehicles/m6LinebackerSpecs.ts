@@ -34,7 +34,9 @@ spec.gun = {...spec.gun, caliberMm: 25, reloadS: .30, baseAccuracy: .24, aimTime
     shell('M792 HEI-T', 'HE', 25, 8, 8, 62, 1100, {pen2000Mm: 8, reloadS: .30, count: 300}),
   ]};
 for (const key of ['launcherSalvo','autoloader','muzzles','fixedLaunchCanisters','primaryGuided'] as const) delete spec.gun[key];
-const armor = modernArmor({hl: 3.27, hw: 1.64, inW: .95, floor: .45, trkTop: .95, roofY: 1.90,
+// 268: the shared hull measured from the owner's source (modern3.ts BRADLEY_HULL): hw 1.64 -> 1.70, trkTop .95 -> 1.16,
+// roofY 1.90 -> 2.06; the ring follows LINEBACKER_RING (m6LinebackerLayout.ts).
+const armor = modernArmor({hl: 3.27, hw: 1.70, inW: .95, floor: .45, trkTop: 1.16, roofY: 2.06,
   turretPivot: LINEBACKER_RING, gunPivot: LINEBACKER_GUN, barrelLenM: LINEBACKER_MUZZLE, barrelRadM: .039,
   glacis: [45,70,80], lower: [45,60,60], side: [35,40,45], skirt: null, rear: 25, roof: 20,
   tw: 1.10, tFrontZ: 1.06, tRearZ: -1.48, tH: .90,

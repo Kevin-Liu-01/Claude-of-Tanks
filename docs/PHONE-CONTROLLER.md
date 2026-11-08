@@ -44,7 +44,11 @@ Pass rule:
   (`cloudflare/rooms/src/padPair.ts`) and the LAN helper (`server/rooms/localPadService.ts`, mounted by
   `server/rooms/serve.ts`) host the same code, so receipts run it in Node.
 - `src/pad/padLink.ts`: the transport both pages use: the signaling socket, the RTC peer, the relay fallback.
-- `src/pad/padInput.ts`: the steering model (phone) and the frame-to-action mapping (desktop), pure.
+- `src/pad/padInput.ts`: the steering and aim models, and `src/pad/padBuzz.ts`: each cue's buzz; the phone's, pure.
+- `src/pad/padDesk.ts`: the desktop's half, pure: the frame-to-action mapping, the axes and guide decoders, the pairing
+  page's address. With `src/pad/padCues.ts` (which events are cues) the phone's page never imports it: a module both
+  sides import rides whole to the phone, so each export lives on the side that runs it
+  (`src/pad/padPhoneHalf.selftest.mjs`).
 - `src/pad/padReceiver.ts` + `src/pad/padConnectCard.ts`: the desktop side, one lazy chunk behind `src/pad/padAccess.ts`.
 - `site/pad.html` + `src/pad/padPage.ts` + `src/pad/pad.css`: the phone page.
 - `src/pad/qr.ts`: a small QR encoder (byte mode, level M), drawn as SVG.
@@ -115,16 +119,81 @@ and shows a press at once, with no transition.
 - The gun: the gunner's sight under the right thumb, a dark optic with a stadia reticle that leans toward the drag. The
   fire button sits in a turned collar; the ring around it fills as the gun loads (two half rings turned by transform),
   and the button lights red when the gun is ready. Scope is a latching key that lights while the sight is engaged, zoom
-  a rocker beside it while scoped, Look a held key.
+  a rocker beside it while scoped, Look a held key, and Lock on (the autoAim tap, the T key's lock on the enemy nearest
+  the reticle) a key over the trigger that lights while it holds a target; a couch seat has none (its sight is its own
+  bearing).
+- Aiming (owner 2026-11-03: looking around, shooting and firing "needs to be a lot more intuitive"). Before, a swipe
+  across the sight turned the gun about 30° at the mouse's gain, so a turn to the rear took six swipes, and the thumb had
+  to leave the sight to fire. Now:
+  - The sight's gain follows the finger's speed (`padInput.ts` `aimGain`): a slow drag keeps the mouse's precision
+    (1×), a swipe at 0.5 px/ms turns 2.6 times as far, and a flick up to 5 times (2 times in the scope, so a flick never
+    throws the sight off a target). A 150 px flick turns the gun about 118°.
+  - A thumb on the fire button drags to aim once it has moved 10 px (a press's wobble never nudges the gun), so one
+    thumb aims and shoots; held, the gun fires again the moment it loads. A finger that lands on the sight takes the aim
+    from it.
 - Steering: tilt like a wheel. The phone's up vector from `deviceorientation` (β, γ) is taken in the locked frame (below),
   and the wheel angle is its angle in the screen plane, so how far the phone leans back does not matter. A 3° dead zone,
   a 1.6 power curve, full lock at 35° (25 to 60 in options). Level is the centre.
 - Options (a native modal, two columns so it fits the short side whole): tilt on or off, the fire hand (a left-handed
   mirror), steering lock and aim speed.
-- Screen Wake Lock keeps the phone awake. Each press ticks a haptic: `navigator.vibrate` where it exists, and on iOS 18
-  Safari a hidden switch control toggled under the thumb (unverified on hardware: the simulator has no haptics).
+- Screen Wake Lock keeps the phone awake. The phone is felt as well as seen (below, Haptics).
 
 Every button goes through input actions, so the hold-or-toggle Accessibility setting applies to the phone as to keys.
+
+### Haptics
+
+Owner 2026-11-03: "it should buzz and vibrate and do everything". Every press ticks, and the battle's events reach the
+hands the moment they happen:
+
+- The desktop's receiver listens to the battle's bus (`listen`, the bus's `on`, handed over by Settings for the single
+  pairing and by the couch runtime for each seat) and sends a `cue` on `ctl` for its own tank's events
+  (`src/pad/padCues.ts` `padCueOf`): `shot` (its gun, harder for a heavier gun), `hit` and `deflect` (a hit it gave that
+  hurt or glanced off), `hurt` (stronger for more damage) and `glance` (a hit taken), `module` (a module knocked out,
+  never a repair's report), `burning`, `impact` (a crash or a ram, by the closing speed), `kill`, `dead`; and for the
+  page's player alone, the events that name no tank: `spotted` (the sixth sense), `denied` (a consumable or a shell the
+  battle refused) and `lock` / `unlock`. A paused battle or a hidden tab sends none. On the relay, where each message is
+  a billed request and counts against the pairing's relay budget, a cue waits 500 ms after the last (a kill and a
+  death never wait). No Worker change: the relay carries `ctl` text without reading it.
+- The phone plays each one's pattern (`padBuzz.ts` `padBuzzPattern`) with `navigator.vibrate` (Android). iOS Safari has no Vibration
+  API; it ticks once when a switch control toggles (iOS 18), so the page toggles a hidden switch for each tick of the
+  pattern (`padBuzzTicks`: one tick per pulse, a long pulse ticks on every 50 ms, six at most).
+- The phone's own buzzes: a tick per press; at the trigger, the shot's kick at once when the gun is loaded (the
+  battle's cue for that one shot then adds none), a refusal while it loads; and the gun loaded (a load of 1.5 s or
+  more), timed from the status's reload, never with the trigger held (the shot's own kick follows).
+- A press never cuts a buzz still playing short. Options has a Vibration switch.
+- Unverified on hardware: whether iOS ticks outside a touch's own handler (a cue that arrives off the link). The
+  simulator has no haptics; the owner's phone settles it.
+
+### The controls guide
+
+Owner 2026-11-03: "a tutorial should show up on first phone pairing mode that u can skip and also disappears after like
+10 seconds". The first status after a phone's first pairing (`cot.pad.tour` in its storage) shows a ring on each control
+and its name beside it over the live panel: tilt to steer (with tilt on), the throttle (or the stick), drag to aim and
+flick to turn, tap to fire and drag to aim, the scope, and Lock on where there is one. A ghost thumb strokes the
+throttle and the sight. The thumbs work through it (no pointer events but Skip's); Skip, or ten seconds with the time
+running out under Skip, ends it; Options shows it again. Skip stands at the foot of the middle column, where the status
+line gives way to it while the guide shows. The marks are placed in the frame's own layout, so they turn
+with it, and each name takes the first side with room, clear of the other controls and names.
+
+The game screen shows the same guide at the same time (owner 2026-11-03: "the tutorial should open on game screen and
+the phone"), because the big screen is where the player looks:
+
+- With the guide the phone sends its picture of itself on `ctl` (`tour`, `PadTourLayout`): its frame, every control's
+  box (as outlines: keys, round keys, dials, the lever, the sight, the trigger), each stop's ring and where its name
+  sits, in whole frame px. It travels as compact text (`encodePadTour`: base64 of 9 bytes a part and 14 a stop, about
+  340 characters for a full panel), because the guide opens while a pairing may still be on the relay, whose payload
+  the actor takes up to 512 characters. The first build sent it as JSON, about 700 characters: the actor dropped the
+  phone's socket as invalid and the pairing ended at once (pad-e2e, 2026-11-03). `padLink` now refuses to relay any
+  ctl message past that limit, so no message can end a pairing that way again.
+- The receiver draws it (`src/pad/padTourScreen.ts`, in the receiver's lazy chunk): the phone in outline at the foot of
+  the screen, up to 720 px wide, each name in the game screen's own language where the phone put its own (kept inside
+  the drawn screen, since its words may run wider than the phone's), the same ghost strokes, and Skip with the ten
+  seconds running out under it. It stands in the top layer (a manual popover, as the kit's hover tip does), so it shows
+  over Settings, where a phone pairs, and over the couch lobby. It takes no input but Skip, and it stays off the
+  surface stack: opened there it would replace the Settings panel or the couch lobby it stands over
+  (`transientSurfaceRegistry.selftest.mjs` names it an exempt).
+- Skip on either side, or the ten seconds, ends it on both (`tour` with `on: false`; an ending is never echoed). A couch
+  lobby shows one at a time: a newer phone's guide replaces the one showing.
 
 ### Locked landscape
 
@@ -209,11 +278,16 @@ a battle, while paused and while its tab is hidden (the pause button still works
 
 - Receipts: `src/pad/padProtocol.selftest.mjs` (codes, routes, frame codec), `src/pad/padActor.selftest.mjs` (a code
   expires, is single use, a wrong code is refused, resume, limits, relay budget), `src/pad/padInput.selftest.mjs` (the
-  steering model and the action mapping), `src/pad/qr.selftest.mjs`, `server/rooms/localPadService.selftest.mjs` (real
+  steering model and the action mapping), `src/pad/padPhoneHalf.selftest.mjs` (no desktop-only export rides to the
+  phone), `src/pad/qr.selftest.mjs`, `server/rooms/localPadService.selftest.mjs` (real
   sockets), `cloudflare/rooms/test/pad.test.ts` (the Worker route and the DO).
 - `tools/pad-e2e.browser.mjs`: two pages pair through the LAN helper, synthetic orientation and touch events drive a tank
   in a solo battle (several thumbs at once through CDP touch points), the network log shows zero requests before
-  pairing, the latency is measured on one clock, and a desktop reload resumes the pairing.
+  pairing, the latency is measured on one clock, and a desktop reload resumes the pairing. It also checks the guide (it
+  shows on the first pairing on the phone and on the game screen together, a thumb works through it, it leaves both by
+  itself after ten seconds (timed where each screen saw it go), Options shows it again on both, and Skip on either side ends it on both), the lock key, a shot felt once (the trigger's kick, the battle's cue for it adding none), a thumb
+  on fire dragging to aim while the gun loads, and the loaded buzz.
+- `src/pad/padCues.selftest.mjs`: which events are whose cues, the cue on the wire, every buzz's pattern and ticks.
 - iOS Simulator for the pad page: the locked frame at every rotation, two-finger presses against a Node desktop that logs
   every input (`desk.mjs` in the evidence folder, which also replays a fixed tilt and reports the screen angle, the
   viewport and its scale), zoom, backgrounding and the desktop vanishing; a real phone on the preview by the owner.

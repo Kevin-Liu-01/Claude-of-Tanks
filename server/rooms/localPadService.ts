@@ -110,7 +110,7 @@ export function createLocalPadService({
       if (closed || url.search || (origins && (!origin || !origins.has(origin)))) { refuse('403 Forbidden'); return true; }
       if (!admit(request.socket.remoteAddress ?? 'local')) { refuse('429 Too Many Requests'); return true; }
       let actor: PadActor;
-      if (route.kind === 'new') {
+      if (route.kind === 'new' || route.kind === 'lobby') {
         // a held code is drawn again, as the Worker does
         let code = '';
         for (let attempt = 0; attempt < 3 && !code; attempt++) {
@@ -137,6 +137,7 @@ export function createLocalPadService({
           if (actor.vacant && actor.liveSockets === 0) actors.delete(actor.code);
         });
         if (route.kind === 'new') actor.openDesktop(socketId);
+        else if (route.kind === 'lobby') actor.openLobby(socketId);
         else if (route.kind === 'join') actor.openJoin(socketId);
         else actor.openResume(socketId);
         if (actor.vacant && actor.liveSockets === 0) actors.delete(actor.code);

@@ -28,7 +28,7 @@ const LOCKUP = join(ROOT, 'public/brand/lockup.svg');
 
 // [id, title (English, '' for a brand card), source, focus (object-position), corner (tl | tr)]
 export const OG_IMAGE_CARDS = [
-  ['game', '', 'public/media/versus-r1/f6-leo2a6-steinburg-r6-3840.webp', '50% 50%', 'tr'],
+  ['game', '', 'public/media/versus-r1/s199-m1a2-x-desert-3840.webp', '50% 50%', 'tr'],
   ['home', '', 'public/media/home-r2/vs03-reservoir-k2-vt4a1-1280.mp4#t=0.5', '50% 50%', 'tl'],
   ['gallery', 'Tank Gallery', 'public/media/home-r2/fleet-montage.mp4#t=3', '50% 50%', 'tr'],
   ['studio', 'Scene Studio', 'public/media/site50-r14/loops/s33-water-tower.jpg', '50% 50%', 'tl'],

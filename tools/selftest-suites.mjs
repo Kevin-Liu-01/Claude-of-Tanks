@@ -170,6 +170,10 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/vehicles/dragunAssaultBalance.selftest.mjs',
     'src/vehicles/missileConceptCombat.selftest.mjs',
     'src/vehicles/profiles/tos1aTagil.selftest.mjs',
+    // 268: the GM-352 air-defence pair (Tunguska-M, Pantsir-S1): datums, fire axes, launch exits, the shared chassis, sweeps
+    'src/vehicles/profiles/gm352AirDefense.selftest.mjs',
+    // 268: the PLA air-defence pair (PGZ-95, PGZ-09): datums, every bore, the QW-2 exits, the clearance scans
+    'src/vehicles/profiles/chineseAirDefense.selftest.mjs',
     'src/vehicles/profiles/arieteC2X.selftest.mjs',
     'src/vehicles/profiles/xk2.selftest.mjs',
     'src/sim/rocketBattery.selftest.mjs',
@@ -525,6 +529,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/vehicles/profiles/mbt70UpperFenders.selftest.mjs',
     'src/sim/specialActions.selftest.mjs',
     'src/vehicles/profiles/leopard1A5Source.selftest.mjs',
+    // 268: the Flakpanzer Gepard 1A2 on the shared Leopard 1 hull: frame, bores, crew, height, gun and hull clearance
+    'src/vehicles/profiles/gepard.selftest.mjs',
     'src/vehicles/profiles/leopard1A2A1Source.selftest.mjs',
     'src/vehicles/profiles/leclercTrackCourse.selftest.mjs',
     'src/vehicles/profiles/japaneseCastTurrets.selftest.mjs',
@@ -554,6 +560,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/vehicles/profiles/pumaS1.selftest.mjs',
     'src/vehicles/profiles/marder2.selftest.mjs',
     'src/vehicles/profiles/m6Linebacker.selftest.mjs',
+    // 268: the M3A2 under the classic turret (its photo packet fixture)
+    'src/vehicles/profiles/m3a2Bradley.selftest.mjs',
     'src/vehicles/profiles/m3BradleyGunMount.selftest.mjs',
     'src/vehicles/profiles/type89LightTiger.selftest.mjs',
     'src/vehicles/profiles/cv90.selftest.mjs',
@@ -751,6 +759,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/vehicles/profiles/t72TrackFinish.selftest.mjs',
     'src/vehicles/profiles/t72MaterialLifetime.selftest.mjs',
     'src/vehicles/profiles/t72TurretCleanup.selftest.mjs',
+    // 267 (lane bmpt-family-267): the Ob'yekt 199 "Ramka" BMPT Terminator's native fixture (frame, tubes, crew, height)
+    'src/vehicles/profiles/bmptTerminator.selftest.mjs',
     'src/vehicles/profiles/ztz99a2RearService.selftest.mjs',
     // release 227 (CN critic round 5): the fleet Type 96B's and ZTZ-99A2's donor parts each seated on real stock
     'src/vehicles/profiles/donorStockSeating.selftest.mjs',
@@ -789,6 +799,8 @@ export const SELFTEST_SUITES = Object.freeze({
     // vehicleMarkings and tankAssets (2026-10-02).
     'src/vehicles/fleetPassDefault.selftest.mjs',
     'src/vehicles/fleetFloorClearance.selftest.mjs',
+    // release 268 (Main): a suit-painted marking is backed by its suit within the armour's 5 cm, and by nothing farther
+    'src/vehicles/vehicleMarkingSuitBacking.selftest.mjs',
     // 267 (Main): every internal module sketch mostly inside its armour, with a KNOWN ratchet (fleet suite)
     'tools/module-outside-share.selftest.mjs',
     // 2026-10-25 (the coordinator's pinned-math ruling): the authority's deterministic math is the Rust jsmath bit for
@@ -1600,7 +1612,12 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/pad/padProtocol.selftest.mjs',
     'src/pad/padActor.selftest.mjs',
     'src/pad/padInput.selftest.mjs',
+    'src/pad/padCues.selftest.mjs', // phone-feel-269: what a paired phone feels, the wire, the buzzes
+    'src/pad/padPhoneHalf.selftest.mjs', // phone-feel-269: no desktop-only export rides to the phone's page
     'src/pad/padLink.selftest.mjs',
+    'src/pad/padLobby.selftest.mjs', // 2026-11-01 (couch-mode-268, docs/COUCH-MODE.md): one lobby, a receiver per seat
+    'src/game/couchSeats.selftest.mjs', // couch-mode-268: which roster tank each phone drives, and a seat's controls
+    'src/game/couchCamera.selftest.mjs', // couch-mode-268: the shared camera frames every seat
     'src/pad/qr.selftest.mjs',
     'server/rooms/localPadService.selftest.mjs',
     'tools/mp-rooms-e2e.selftest.mjs',
@@ -1707,6 +1724,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/sim/impactParity.selftest.mjs',
     // 265 (the owner, 2026-10-29: one core, two drivers): the local step and the authority's leave the same world, byte for byte
     'src/sim/driverStepParity.selftest.mjs',
+    // 268 (couch mode): one seat's input stage, the authority's and the local seats' alike
+    'src/sim/playerInputStage.selftest.mjs',
     'src/sim/structureSupport.selftest.mjs',
     // 2026-10-10 (physics lane, owner: "the turret snaps into a pre-ordained resting position ... just let physics work"):
     // the game's own rigid bodies, and a dead hull's turret as one.
@@ -1806,6 +1825,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/sim/matchModes.selftest.mjs',
     // 2026-10-03 (bots lane): the frontline attack regroups before the last sector.
     'src/sim/frontlineRegroup.selftest.mjs',
+    // 268 (Main item 9): Frontline's opening line out of the attack's reach and sight on 64 seeds (manual: pacing).
+    'src/sim/frontlineLineGuard.selftest.mjs',
     // 2026-10-18 (owner, gameplay-modes-228): per-mode bot doctrine (classic byte-identical), the Horde's wave law and
     // arrival ring, the honest hunt, Frontline's line and counter-attack, CTF and Turbo Ball roles, the revived bot's
     // fresh route, a mission owns its waypoints, TEAM NATIONS (planner, nation index, room seating) and the harness gate
@@ -1846,6 +1867,12 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/game/ai.zoneHold.selftest.mjs',
     // 2026-10-03 (bots lane): a route corner the hull pivots toward is held through the rechecks.
     'src/game/ai.cornerHold.selftest.mjs',
+    // 268 (Main item 10): a planned leg is judged by the planner's clearance; a hull off it rejoins it before corners.
+    'src/game/ai.plannedLeg.selftest.mjs',
+    // 268 (Main item 10b): exactly one hull of an ally pair yields; the follower in a following pair, whatever the ids.
+    'src/game/ai.allyYield.selftest.mjs',
+    // 268 (Main item 10 (A)): a hull pressed into a static solid with no way releases at once (Desert seed 12's boulder gap).
+    'src/game/ai.rockWedge.selftest.mjs',
     // 2026-10-03 (bots lane): an engaged casemate keeps its bow on its target (scoots, jinks, cover).
     'src/game/ai.casemateLay.selftest.mjs',
     // 2026-10-03 (bots lane): a patrol leg the grid cannot route still drives (the bridge gate's no-route hold).

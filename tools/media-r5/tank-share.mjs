@@ -12,8 +12,10 @@
 //        deliveries), then write the table
 //   node tools/media-r5/tank-share.mjs --check                  exit 1 when the table is stale
 // Copyright © 2026 Kevin B. Liu.
+import { execFileSync } from 'node:child_process';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
-import { dirname, join, resolve } from 'node:path';
+import { tmpdir } from 'node:os';
+import { basename, dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import '../../src/vehicles/tankFactory.ts';
 import { TANK_SPECS, VISIBLE_TANK_IDS } from '../../src/vehicles/specs.ts';
@@ -24,14 +26,12 @@ const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
 const TABLE = join(ROOT, 'src/presentation/tankShare.json');
 export const TANK_CARD_DIR = 'brand/og-r2/tanks';
 const arg = (name) => process.argv.find((a) => a.startsWith(`--${name}=`))?.slice(name.length + 3);
-/** Takes whose 4K frame does not show their tank clearly (the review of every rendered card, 2026-11-01): no card, the
- *  Gallery's until the take is filmed again. */
-export const REFILM = Object.freeze({
-  challenger3_proto: 'the hull is lost in the grass', fv4034: 'a small dark hull at dusk', leo2a6: 'hidden behind a fireball',
-  leo2a4_otco: 'hidden in dust', leo2a4_v: 'hidden in foliage and fire', m1a1_abrams_hc: 'washed out in smoke',
-  m1a2_abrams_tusk: 'behind smoke and buildings', sabra_mk2: 'a distant speck', t72b3m_hetman_ii: 'a night frame, the hull unseen',
-  type10: 'hidden in dust', type10_tk_x: 'hidden in dust', ztz99_longwei: 'the frame shows an empty slope',
-  type89: 'a small dim hull in the grass', udes03: 'a night frame, the hull unseen',
+/** Takes whose 4K still does not show their tank clearly (the review of every rendered card, 2026-11-01): the card is a
+ *  frame of the take's film where it does, at these seconds (the review of eight frames a take). */
+export const CARD_FRAME = Object.freeze({
+  challenger3_proto: 3.3, fv4034: 1.05, leo2a4_v: 2.55, leo2a6: 3.3, leo2a4_otco: 4.8, m1a1_abrams_hc: 1.05,
+  m1a2_abrams_tusk: 1.05, sabra_mk2: 1.05, type10_tk_x: 5.55, type10: 1.05, type89: 4.05, ztz99_longwei: 1.05,
+  t72b3m_hetman_ii: 4.8, udes03: 1.05,
 });
 
 /** The table as the fleet stands: each visible tank's display name, and its card's site path when one is rendered. */
@@ -39,7 +39,7 @@ export function tankShareTable() {
   const tanks = {};
   for (const id of [...VISIBLE_TANK_IDS].sort()) {
     const card = `${TANK_CARD_DIR}/${id}-card.jpg`;
-    tanks[id] = { name: tankDisplayName(TANK_SPECS[id]), card: !REFILM[id] && existsSync(join(ROOT, 'public', card)) ? `/${card}` : null };
+    tanks[id] = { name: tankDisplayName(TANK_SPECS[id]), card: existsSync(join(ROOT, 'public', card)) ? `/${card}` : null };
   }
   return { schemaVersion: 1, tanks };
 }
@@ -88,12 +88,17 @@ async function renderCards(stills, only) {
       // resumable: a card already rendered stays unless --force (the run is long; a laptop may sleep through it)
       if (!process.argv.includes('--force') && existsSync(join(ROOT, 'public', TANK_CARD_DIR, `${id}-card.jpg`))) continue;
       if (!TANK_SPECS[id] || !still || !existsSync(still)) { skipped.push(`${id}: no still`); continue; }
-      if (REFILM[id]) { skipped.push(`${id}: re-film (${REFILM[id]})`); continue; }
-      const read = await readStill(still);
+      // a chosen frame of the take's film (CARD_FRAME), else its 4K still
+      const film = join(dirname(still), `${basename(dirname(still))}.mp4`);
+      const source = CARD_FRAME[id] === undefined ? still : join(tmpdir(), `tank-card-${id}.jpg`);
+      if (source !== still) {
+        execFileSync('ffmpeg', ['-v', 'error', '-y', '-ss', String(CARD_FRAME[id]), '-i', film, '-frames:v', '1', '-q:v', '2', source]);
+      }
+      const read = await readStill(source);
       // a broken delivery (a black frame) is no card: the link keeps the Gallery's until the take is filmed again
       if (read.luma < 0.12) { skipped.push(`${id}: still too dark (${read.luma.toFixed(2)})`); continue; }
-      const mime = still.endsWith('.png') ? 'image/png' : 'image/jpeg';
-      const data = `data:${mime};base64,${readFileSync(still).toString('base64')}`;
+      const mime = source.endsWith('.png') ? 'image/png' : 'image/jpeg';
+      const data = `data:${mime};base64,${readFileSync(source).toString('base64')}`;
       await page.setContent(cardHtml(tankDisplayName(TANK_SPECS[id]), data, '50% 50%', read.tr < read.tl ? 'tr' : 'tl', 'en'), { waitUntil: 'load' });
       await page.evaluate(async () => {
         await document.fonts.load('700 76px "Chakra Petch"');
