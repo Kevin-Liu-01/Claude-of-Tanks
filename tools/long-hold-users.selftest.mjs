@@ -579,8 +579,9 @@ if (process.argv[2] === '--signal-child') {
       // a runner's prefix still names the script (concurrently's npm:<it>, yarn:<it>); a longer name after it does not
       const scriptIn = (name) => new RegExp(String.raw`(?<![\w.-])${escaped(name)}(?![\w:.-])`, 'g');
       // the shell's quoting taken out (studio\-example…, stu"di"o-…, reels\:render; a line continuation and an empty
-      // $'' or $"" go whole, the $ too where a continuation stands between it and its quote), not its expansions (a
-      // variable, a glob, a \x escape); a caller that holds any is refused
+      // $'' or $"" go whole, the $ too where a continuation stands between it and its quote), and a caller that holds
+      // any of that quoting (a quote or a backslash) is refused; its expansions (a variable, a glob, a \x escape) are
+      // not read
       const unquoted = (command) => command.replace(/\\(?:\n|(.))|\$(?:\\\n)*['"]|['"]/gs, '$1');
       const unread = (scripts) => {
         const callers = new Set(); // the scripts that name a tool, then (to a fixed point) the ones that name one of those
