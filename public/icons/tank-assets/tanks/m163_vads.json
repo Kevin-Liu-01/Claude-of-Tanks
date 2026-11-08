@@ -952,15 +952,16 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 37768,
-      "sha256": "15501eec19d9af042fd776ada2d41e2770ddd8e8e8b3f8a27a55f3f00b9016b7",
+      "bytes": 37368,
+      "sha256": "36bb619cdf3327ecdf3c003fdedbd87bcde3978d213a53744b6efca9b6be3aa2",
       "thumbnail": {
         "file": "thumbs/m163_vads_angle.webp",
         "width": 256,
         "height": 256,
         "mime": "image/webp",
-        "bytes": 15246,
-        "sha256": "547fc0c1ec1f5aa2c8740737c28807f254137781fd63166b2a378a0550765adf"
+        "bytes": 15094,
+        "sha256": "381fada74de59d7a3db972ee74323554964bb3bb06ce0c052163e53aac726dfd",
+        "frame": [26,75,226,250]
       }
     },
     "top": {

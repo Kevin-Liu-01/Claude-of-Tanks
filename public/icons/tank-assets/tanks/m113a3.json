@@ -564,15 +564,16 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 25512,
-      "sha256": "d703a392d457c4c189c3c6aad3e05145e02cbc21fc41de61cc02710aafbaa7d3",
+      "bytes": 26058,
+      "sha256": "1e34b01ac62f083ba26d4f7def5772f33c6625df0c38b44d658bd868da2533ec",
       "thumbnail": {
         "file": "thumbs/m113a3_angle.webp",
         "width": 256,
         "height": 256,
         "mime": "image/webp",
-        "bytes": 10776,
-        "sha256": "a2ac71355002a5158733a66b25bd4ac06545c5de691f5ac86655bc6afda20c0c"
+        "bytes": 11028,
+        "sha256": "41ca2d5ba7a8c1ad5b8a13483a83803b3058ab668be3ed8f2b4b9b03542cb851",
+        "frame": [28,105,225,250]
       }
     },
     "top": {

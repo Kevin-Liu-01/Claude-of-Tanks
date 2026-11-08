@@ -1,5 +1,5 @@
 {
- "generatedAt": "2026-11-05T05:34:02.441Z",
+ "generatedAt": "2026-11-07T11:42:27.901Z",
  "gate": "every component >= its registered floor (90 fleet / 92 exemplar / 99 historical preservation); min is the headline; preservation is not source fidelity",
  "passed": 44,
  "total": 154,
@@ -582,6 +582,16 @@
     "floaters": 100
    },
    "comparisonPurpose": "source-fidelity"
+  },
+  {
+   "id": "t90sm",
+   "geoMin": 0,
+   "requiredMinimum": 92,
+   "qualityBar": "exemplar",
+   "gatePassed": false,
+   "components": {
+    "oracleAvailability": 0
+   }
   },
   {
    "id": "c2_ariete_proto",
@@ -1584,22 +1594,6 @@
    "components": {
     "wholeCurves": 91.3,
     "dims": 89.1,
-    "floaters": 100
-   },
-   "comparisonPurpose": "source-fidelity"
-  },
-  {
-   "id": "t90sm",
-   "geoMin": 89.2,
-   "requiredMinimum": 92,
-   "qualityBar": "exemplar",
-   "gatePassed": false,
-   "components": {
-    "hullCurves": 92.2,
-    "stations": 94,
-    "turretCurves": 89.2,
-    "wholeCurves": 93.6,
-    "dims": 100,
     "floaters": 100
    },
    "comparisonPurpose": "source-fidelity"

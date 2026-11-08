@@ -846,15 +846,16 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 25496,
-      "sha256": "966a4941a4057b8981c6eca060590f01002d9027a3b37dfa21acc7c1db81a950",
+      "bytes": 26672,
+      "sha256": "30627fcf253de0d88fa8dd976134830266691f1040451abd59c02520de7358e2",
       "thumbnail": {
         "file": "thumbs/m113a1_mrv_angle.webp",
         "width": 256,
         "height": 256,
         "mime": "image/webp",
-        "bytes": 10548,
-        "sha256": "1c0004e428eaae074908914d8eec4af76fb4ba26f3e36a66db22355586c2285e"
+        "bytes": 11184,
+        "sha256": "37dd102a747232efa6ddeacd72de9257a1ba3241201cc13562e3d384821966fd",
+        "frame": [28,100,224,250]
       }
     },
     "top": {
