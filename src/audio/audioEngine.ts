@@ -840,8 +840,9 @@ export function createAudio({
   const crew = createCrewProcedure({
     say,
     now: () => ctx?.currentTime ?? 0,
-    live: () => phase === 'battle' && rolledOut && !battleOver && playerId != null && tanks.get(playerId)?.alive !== false,
-    inBattle: () => phase === 'battle' && !battleOver,
+    // the battle mode's own facts (2026-11-02 audit F11: battleMode.ts), never flags of the crew's or the engine's
+    live: () => battleMode.phase === 'battle' && battleMode.rolledOut && !battleMode.over && playerId != null && tanks.get(playerId)?.alive !== false,
+    inBattle: () => battleMode.phase === 'battle' && !battleMode.over,
     playerId: () => playerId,
     player: () => (latestPlayer && latestPlayer.id === playerId ? latestPlayer : null),
     tanks: () => tanks,
