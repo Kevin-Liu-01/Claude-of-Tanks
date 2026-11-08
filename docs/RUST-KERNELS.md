@@ -71,7 +71,7 @@ it happens; a NaN the kernel answered (its ground's) passes.
     new host runs on the TypeScript too, reported `timeout` (the same match, without the kernels' tick saving). A
     migration that comes before that world is built waits for it inside the boot's 30 s bound, so on a link slow
     enough to cut the module, where the preparation's manifest crawls too, it fails as above unless that world is built
-    inside the bound.
+    inside those 30 s.
   - A solo battle steps on the main thread over the rendered world (`game/state.ts`). There the kernels take the hulls'
     support: `src/world/soloWorldKernels.ts` gives each world its own instance, its grid loaded in the order of the
     world's own obstacle grid, its ground mirrored from the battle's overlay. Each battle chooses once, at its setup
