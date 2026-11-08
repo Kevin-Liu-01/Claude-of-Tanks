@@ -18,7 +18,8 @@ export const NO_ROOF_WEAPON: Readonly<Record<string, string>> = Object.freeze({
     + 'coaxial gun; no roof machine gun.',
   bmp2: 'BMP-2: 30 mm 2A42, a coaxial 7.62 mm PKT and the 9M113 Konkurs launcher on the turret roof; no roof machine gun.',
   m2a2_bradley: 'M2A2 Bradley: 25 mm M242, a coaxial M240C and the twin TOW launcher; no pintle or roof machine gun.',
-  m3a3_bradley: 'M3A3 Bradley CFV: 25 mm M242, a coaxial M240C and the twin TOW launcher; no pintle or roof machine gun.',
+  m3a3_bradley: 'M3A3 Bradley CFV: 25 mm M242, a coaxial M240C and two twin TOW launchers (269, the owner\'s second on the '
+    + 'right); no pintle or roof machine gun.',
   m3a2_bradley: 'M3A2 Bradley CFV: 25 mm M242, a coaxial M240C and the twin TOW launcher; no pintle or roof machine gun.',
   ua_m2a3_bradley: 'M2A3 Bradley in Ukrainian service: 25 mm M242, a coaxial M240C and the twin TOW launcher; no pintle or '
     + 'roof machine gun.',

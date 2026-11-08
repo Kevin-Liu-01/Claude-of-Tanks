@@ -7,7 +7,7 @@
   "targets": {
     "m3a2_bradley": {
       "name": "M3A2 Bradley",
-      "authority": "Release 268 (owner 2026-11-02, \"also make a new variant of the bradley based on the old turret we had before doing this. i liked the shape and all the stuff arounnd it\"; the coordinator's ruling the same day: a new id, the M3A2 cavalry Bradley, which carried the M2A2's turret). The shared Bradley hull (modern3.ts buildBradleyHull, measured from the owner's supplied model for the M2A2) under main's 7cc204ab32 m2a2_bradley turret and kit, extracted and mirrored so the TOW pod stands on the turret's left as on the real vehicle (profiles/bradleyClassicTurret.ts). The turret is kept as main built it, not re-measured: numerical 3D comparison is unverified. Externally the M3A2 ODS is the M2A2 ODS (no firing ports, scouts and more ammunition inside), so the M2A2 ODS photographs stand for its exterior beside a captioned M3A2. docs/references/tanks/m3a2_bradley.md records the build and its sources.",
+      "authority": "Release 268 (owner 2026-11-02, \"also make a new variant of the bradley based on the old turret we had before doing this. i liked the shape and all the stuff arounnd it\"; the coordinator's ruling the same day: a new id, the M3A2 cavalry Bradley). Release 269 (owner 2026-11-05, \"the m3a2 bradley USA should be m2a2 bradley, and our current m2a2 bradley usa should be the m3a2 bradley\"): the M3A2 is the shared Bradley hull (modern3.ts buildBradleyHull, measured from the owner's supplied model) under the turret measured from that model, with its flank dressing and crew bags (modern3.ts buildBradleySourceTurretIfv); the classic 7cc204ab32 turret moved to the M2A2. Externally the M3A2 ODS is the M2A2 ODS (no firing ports, scouts and more ammunition inside), so the M2A2 ODS photographs stand for its exterior beside a captioned M3A2. docs/references/tanks/m3a2_bradley.md records the build and its sources.",
       "sources": [
         "https://commons.wikimedia.org/wiki/File:M2A2_ODS-SA_Bradley_Fighting_Vehicle.JPG",
         "https://commons.wikimedia.org/wiki/File:M2A2_Bradley.jpg",
@@ -17,10 +17,10 @@
         "https://en.wikipedia.org/wiki/M2_Bradley",
         "https://www.globalsecurity.org/military/systems/ground/m2-specs.htm"
       ],
-      "widthM": 3.502,
-      "overallLengthM": 6.659,
-      "tallestM": 3.145,
-      "envelopeBasis": "As built (Box3 at both qualities, the photo check's rule). Width over the skirt course's grab handles (the published M3A2's 3.28 m is without the armour kit, 3.61 m over the appliqué). Length from the ramp's tail-lamp guards to the bow's tow shackles (published 6.55 m hull). Tallest is the top of the antenna mast cluster on the turret's left rear, as built rather than published; the commander's riser roof stands at 2.885 m (published turret roof 2.97 m).",
+      "widthM": 3.604,
+      "overallLengthM": 6.618,
+      "tallestM": 3.57,
+      "envelopeBasis": "As built (Box3 at both qualities, the photo check's rule; 269, the source-turret build). Width over the skirt course's grab handles and the turret's TOW pod (the published M3A2's 3.28 m is without the armour kit, 3.61 m over the appliqué). Length from the ramp's tail-lamp guards to the bow's tow shackles (published 6.55 m hull). Tallest is the top of the turret's antenna whips, as built rather than published (published turret roof 2.97 m).",
       "caliberMm": 25,
       "launcherTubes": 2,
       "roofMachineGuns": 0,
