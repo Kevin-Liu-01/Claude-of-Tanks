@@ -10,7 +10,7 @@ import {censusEquipment} from '../../../tools/source-equipment-policy.mjs';
 import {LINEBACKER_TURRET_SCALE as T,LINEBACKER_MOUTHS,LINEBACKER_LAUNCHER as L} from '../m6LinebackerLayout.ts';
 import {measureBradleyGunClearance,measureGunHullClearance} from './bradleyGunClearance.test-support.mjs';
 import {minimumMechanicalGunPitch} from '../../sim/gunPitchLimits.ts';
-import {placeBradleyScoutCheekEra} from './bradleyScoutTurretShell.ts';
+import {BRADLEY_SCOUT_TURRET_PIVOT,placeBradleyScoutCheekEra} from './bradleyScoutTurretShell.ts';
 import {ensureInteriorFills,hasInteriorFills} from '../interiorFills.ts';
 import {createEraGameplayRegistrationAudit} from '../eraGameplayRegistrationAudit.test-support.mjs';
 
@@ -56,7 +56,10 @@ for(const quality of ['high','low']){
     // 2026-10-21 (float-gaps 230): the rear-shoulder pioneer kit, which stood 59-79 mm over the deck, is dropped onto
     // it (m6Linebacker.ts flankKit, the owner's 2026-10-19 float sweep), so the unrestricted gun now sinks 39 mm into its
     // clamp instead of 101 mm (yaw 145, both tiers): the control keeps a real intersection, from the seated kit
-    assert.ok(measureGunHullClearance(tank,{pitchDegrees:[-9],yawDegrees:[145],recoilDistances:[.06]}).minimum<-.03,
+    // 2026-11-02 (268, the shared hull rebuilt on the owner's source): the pioneer kit lies on the roof's slopes now, clear
+    // of the gun at 145; the unrestricted gun's deepest rear intrusion is the source's raised troop roof's left rear
+    // corner at yaw 162 (-32 mm, recoiled), so the control moves there and keeps its 30 mm threshold
+    assert.ok(measureGunHullClearance(tank,{pitchDegrees:[-9],yawDegrees:[162],recoilDistances:[.06]}).minimum<-.03,
       'the former unrestricted depression really intersects rear equipment');
     assert.ok(measureGunHullClearance(tank,{pitchDegrees:[-9],yawDegrees:[0,180],recoilDistances:[0],
       pivotOverride:[gun.position.x,gun.position.y-.5,gun.position.z]}).minimum<0,
@@ -97,13 +100,16 @@ for(const quality of ['high','low']){
     });
     // The full inner wall of the pod stays outside the broadened turret and
     // its fitted equipment, including the upper rear corner at high elevation.
+    // 2026-11-02 (268): the pod rides the turret's left, +X, as the source Bradley's TOW does (it rode -X); the probe
+    // follows its side: from outboard of the pod, inboard, the first stationary stock must lie inboard of its inner wall.
+    const podSide=Math.sign(L.x);
     for(const pitch of [-9,0,15,30,45]){
       gun.rotation.x=-pitch*Math.PI/180;root.updateMatrixWorld(true);
       for(const y of [L.y-L.halfWidth,L.y,L.y+L.halfWidth])for(const z of [L.rear-.028*L.scale,(L.rear+L.front)/2,L.front]){
-        const inner=turret.worldToLocal(gun.localToWorld(new Vector3(L.x+L.halfWidth,y,z).multiplyScalar(T)));
-        const from=turret.localToWorld(new Vector3(-3,inner.y,inner.z));
-        const h=new Raycaster(from,new Vector3(1,0,0),0,6).intersectObjects(stationaryTurret,false)[0];
-        if(h)assert.ok(turret.worldToLocal(h.point.clone()).x>inner.x+.01,
+        const inner=turret.worldToLocal(gun.localToWorld(new Vector3(L.x-podSide*L.halfWidth,y,z).multiplyScalar(T)));
+        const from=turret.localToWorld(new Vector3(podSide*3,inner.y,inner.z));
+        const h=new Raycaster(from,new Vector3(-podSide,0,0),0,6).intersectObjects(stationaryTurret,false)[0];
+        if(h)assert.ok(podSide*(inner.x-turret.worldToLocal(h.point.clone()).x)>.01,
           `${quality}: pod clears stationary turret/equipment at ${pitch}, ${y}/${z}`);
       }
     }
@@ -181,7 +187,9 @@ for(const quality of ['high','low']){
     const clearance=measureBradleyGunClearance(scout);
     assert.ok(clearance.minimum>.005,`${quality}: lowered gun clears actual hull triangles, including fill and recoil: ${JSON.stringify(clearance)}`);
     near(minimumMechanicalGunPitch(getSpec('m3a3_bradley'),0),-9*Math.PI/180,1e-12,'M3 full forward depression retained');
-    assert.ok(measureGunHullClearance(scout,{minimumHullY:1.7,pitchDegrees:[-9],yawDegrees:[163.55],recoilDistances:[0]}).minimum<-.070,
+    // 2026-11-02 (268): the M242 runs to the M2's muzzle (2.42 -> 1.99 m) over the source's raised troop roof; the
+    // unrestricted gun's intrusion at this bearing is 68 mm now (was over 70), so the control's threshold moves to 60 mm
+    assert.ok(measureGunHullClearance(scout,{minimumHullY:1.7,pitchDegrees:[-9],yawDegrees:[163.55],recoilDistances:[0]}).minimum<-.060,
       'lowering without the rear mechanical stop really intersects the aft hatch');
     assert.ok(measureBradleyGunClearance(scout,{negativeControl:true}).minimum<-.04,
       'old low trunnion is a real collision, not a vacuous clearance pass');
@@ -234,7 +242,8 @@ for(const quality of ['high','low']){
       const probes=[];
       placeBradleyScoutCheekEra(side,(x,y,z,rx,ry,rz)=>{
         const normal=new Vector3(0,0,1).applyEuler(new Euler(rx,ry,rz));
-        const origin=turret.localToWorld(new Vector3(x,y-1.895,z+.36).addScaledVector(normal,.20));
+        // 268: the cassettes are placed in the hull frame about the A3 ring datum (BRADLEY_SCOUT_TURRET_PIVOT, was 1.895/-0.36)
+        const origin=turret.localToWorld(new Vector3(x,y-BRADLEY_SCOUT_TURRET_PIVOT[1],z-BRADLEY_SCOUT_TURRET_PIVOT[2]).addScaledVector(normal,.20));
         const probe=new Raycaster(origin,normal.negate(),0,.26);
         const backing=probe.intersectObject(body)[0],cassette=probe.intersectObject(external)[0];
         assert.ok(backing&&cassette,'each cheek cassette has visible stock and a real body backing');

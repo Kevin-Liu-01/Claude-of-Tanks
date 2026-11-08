@@ -2,7 +2,7 @@ import type { ModeCheckpoint } from './matchModes.ts';
 import { initializeAerial, stepAerial, isGunship, captureAerial, restoreAerial, droneTankAlong, strikeDrone, killSourceOf, supportKillSource, type AerialCheckpoint, type AerialView, type AerialWorldQuery } from './aerialCombat.ts';
 import { setModeWeapon } from './modeLoadout.ts';
 import { packSmokeScreen } from './smokeReceipt.ts';
-import { auxiliaryCapabilities, requestAuxiliary, stepRoofGun, stepRoofStation, roofStationCount, auxiliaryShot, smokeBlocks, smokeWindForMap, type SmokeScreen } from './auxiliarySystems.ts';
+import { auxiliaryCapabilities, stepRoofGun, stepRoofStation, roofStationCount, auxiliaryShot, smokeBlocks, smokeWindForMap, type SmokeScreen } from './auxiliarySystems.ts';
 import { bridgeBallFloor } from './bridgeBallSupport.ts';
 import { usesLauncherMuzzles, isUnguidedRocket, launcherMuzzleIndex } from './launcherPolicy.ts';
 import type { RuntimeValue } from '../runtimeTypes.ts';
@@ -16,6 +16,7 @@ import type { RuntimeValue } from '../runtimeTypes.ts';
  */
 
 import { Euler, Matrix4, Quaternion, Vector3 } from 'three';
+import { stockCamoPatternIdFor } from '../vehicles/camoPolicy.ts';
 import { getSpec } from '../vehicles/specs.ts';
 import type { FleetTankSpec } from '../vehicles/specContracts.ts';
 import { getMapConfig } from '../world/maps/index.ts';
@@ -27,7 +28,6 @@ import {
   computeDispersionRadM,
   createTankState,
   fireRecoil,
-  requestTankJump,
   applyShellKnock,
   shellKnockMps,
   updateTank,
@@ -36,17 +36,15 @@ import {
 } from './movement.ts';
 import type { MovementCombatState, TankState } from './movement.ts';
 import {
-  exchangeRamMomentum, fallAttitudeFactor, hullVelocityAlong, ramAggression, ramShares, resolveHullImpact,
+  exchangeRamMomentum, fallAttitudeFactor, ramAggression, ramShares, resolveHullImpact,
   type HullImpactKind, type HullImpactResult,
 } from './impact.ts';
 import { createHullSupportPose, createStructureSupportField, hullSupportPose, type SupportHeightField as StructureSupportTerrain } from './structureSupport.ts';
 import {
-  prefersVerticalTankContact,
-  tanksVerticallyClear,
   resolveTankBodyContacts,
 } from './tankBodyContacts.ts';
 import { tankBodyTopM, tankContactRect } from './tankContactShape.ts';
-import { requestTankSelfRight, stepRolloverLifecycle } from './rollover.ts';
+import { stepBotRollovers } from './rollover.ts';
 import {
   applyDispersion, createShell, guideShellToward, stepShell,
 } from './ballistics.ts';
@@ -55,16 +53,10 @@ import type { ArmorIntersection } from './armor.ts';
 import {
   createCombatState,
   isHeClass,
-  repairAllModules,
-  repairModules,
   resolveHeBurst,
   resolveShellHit,
   selectFirstAvailableShell,
-  selectShell,
-  strainModule,
   selectedWeaponModuleState,
-  magazineReloadDenialReason,
-  startMagazineReload,
   startPostShotReload,
   tickReload,
   tickFire,
@@ -77,7 +69,7 @@ import type {
   DamageShellSpec,
   HitEvent,
 } from './damage.ts';
-import { createSpottingSystem } from './spotting.ts';
+import { createMatchSpotting } from './matchSpotting.ts';
 import type {
   ConcealerDisc,
   SpottingRayHit,
@@ -93,7 +85,7 @@ import type {
   WorldSnapshot,
 } from './worldSnapshot.ts';
 import {
-  pushHullFromHull, createHullFootprint, crushableLoadedFromAbove, hullFootprint, obstacleContactBottom, obstacleContactTop,
+  createHullFootprint, crushableLoadedFromAbove, hullFootprint, obstacleContactBottom, obstacleContactTop,
   hullPassesRecordTop, hullUndersideOver, pushHullFromObstacle,
   shellPassesThroughCollisionRecord, shellSparesStoppedRecord,
 } from '../world/collision.ts';
@@ -101,32 +93,35 @@ import type { CollisionRecord } from '../world/collision.ts';
 import { pushHullInsidePlayableBounds } from '../world/battlefieldBounds.ts';
 import { applyEquipmentToCombat, defaultLoadoutFor } from './equipmentRules.ts';
 import type { EquipmentCombatState } from './equipmentRules.ts';
-import { botFriendlyFireRisk, createAI, roleOf } from '../game/ai.ts';
+import { botFriendlyFireRisk } from '../game/ai.ts';
+import { createBotController, createOpeningPlan, openingRoute } from '../game/botConstruction.ts';
+import type { BotMatch } from '../game/botConstruction.ts';
 import type { AiDifficulty } from '../game/ai.ts';
 import {
-  collectNavigationWrecks, createBotNavigationGrid, planBotRoute, syncNavigationWrecks, type NavigationWreck,
+  collectNavigationWrecks, createBotNavigationGrid, syncNavigationWrecks, type NavigationWreck,
 } from './botRoutePlanner.ts';
 import type { BotRoutePoint } from './botRoutePlanner.ts';
 import {
-  APS_BURST_OFFSET_M, CONSUMABLE_SLOTS, DEFAULT_CONSUMABLE_LOADOUT, GOVERNOR_STRAIN_HP_FRACTION, apsIntercepts,
-  botConsumableLoadout, consumableSpottingIds, createConsumableState, jammerCovers, sanitizeConsumableLoadout,
-  suppressNewFire, tickConsumables, useConsumableSlot as useConsumableSlotRule,
-  type ConsumableHost, type ConsumableId, type ConsumableState,
+  APS_BURST_OFFSET_M, DEFAULT_CONSUMABLE_LOADOUT, apsIntercepts,
+  botConsumableLoadout, createConsumableState, jammerCovers, sanitizeConsumableLoadout,
+  type ConsumableId, type ConsumableState,
 } from './consumableRules.ts';
-import { PLAYER_ACTION_BITS } from './playerActions.ts';
-import { decodeAimIntent } from './aimIntent.ts';
-import type { AimIntentInput } from './aimIntent.ts';
+import { applyBotInput, applyPlayerInput } from './playerInputStage.ts';
+import { pushModeRoutes } from './modeRoutePush.ts';
+import { applyHullActions, tickHullConsumables } from './hullActions.ts';
+import type { HullActionsHost } from './hullActions.ts';
+import { pushFromHulls } from './tankPairContact.ts';
+import type { AuthoritativePlayerInput } from './playerInputStage.ts';
 import {
-  activateSpecialAction,
   bindSpecialActionState,
   createSpecialActionState,
   specialActionGuidesShell,
 } from './specialActions.ts';
-import { consumeAmmunition, hasAmmunition, replenishAmmunition } from './ammunition.ts';
+import { consumeAmmunition, hasAmmunition } from './ammunition.ts';
 import { createMatchModeController, normalizeGameMode } from './matchModes.ts';
 import {
-  applyRulesetToCombat, rulesetSeatHullScale, endingHoldExpired, isWaveMode, matchRulesetFor, refillUnlimitedAmmunition, rulesetBotDifficulty, rulesetBotDoctrine,
-  consumableTiming, rulesetConsumableGate, rulesetLoadout, rulesetObjectiveAxisM, rulesetRoutePush, rulesetUnlimitedFor,
+  applyRulesetToCombat, rulesetSeatHullScale, endingHoldExpired, isWaveMode, matchRulesetFor, refillUnlimitedAmmunition,
+  consumableTiming, rulesetConsumableGate, rulesetLoadout, rulesetObjectiveAxisM, rulesetUnlimitedFor,
   type MatchRuleset,
   type RulesetPhysics,
 } from './matchRuleset.ts';
@@ -152,6 +147,10 @@ import { createDeformedHeightField, createTerrainDeformation, rubbleFalloffM, ty
 import { structureRubbleHeightM } from './structureDamage.ts';
 import { mapCraterStampsOf, stampMapCraters, type MapCraterStamp } from '../world/mapCraters.ts';
 import { fellConcealersAt } from './spotting.ts';
+import { botCamoRoll, camoSelectionBonus } from './camoPaint.ts';
+import { hullReachM, shellMayReachHull } from './shellHullReach.ts';
+import { applyLethalRamModuleDamage } from './ramModuleDamage.ts';
+import type { BotCamo } from './camoPaint.ts';
 
 import * as detMath from './detMath.ts';
 type Team = typeof TEAM_ALPHA | typeof TEAM_BRAVO;
@@ -173,22 +172,16 @@ export interface AuthoritativePlayerRecord {
   spawn?: AuthoritativeSpawn;
   bot?: boolean;
   equipment?: readonly string[] | null;
+  /** The seat's paint bonus against the map (sim/matchSpotting.ts camoBonus); absent, none. A bot's follows its paint. */
+  camoBonus?: number;
+  /** A bot's paint as the roster carried it (a resumed match); absent, the match rolls it (sim/camoPaint.ts botCamoRoll). */
+  camo?: BotCamo;
   /** The consumable in each slot (2026-10-26, the catalog: sim/consumableRules.ts); absent carries the default trio. */
   consumables?: readonly string[] | null;
   difficulty?: AiDifficulty;
 }
 
-export interface AuthoritativePlayerInput extends AimIntentInput {
-  throttle: number;
-  steer: number;
-  brake: boolean;
-  fire: boolean;
-  fireIntentSeq?: number | null;
-  aimLocked?: boolean;
-  shellSlot: number;
-  actionBits: number;
-  auxiliaryBits?: number;
-}
+export type { AuthoritativePlayerInput };
 
 interface AuthoritativeInput {
   auxiliaryBits?: number;
@@ -263,6 +256,10 @@ export interface AuthoritativeEntity {
   _modeTargetX?: number;
   _modeTargetZ?: number;
   _deniedShellSlot?: number;
+  /** Its paint's spotting bonus for this match (sim/matchSpotting.ts): a seat's from its record, a bot's from its paint. */
+  camoBonus?: number;
+  /** A bot's paint (sim/camoPaint.ts botCamoRoll; the roster carries it to every client); null for a seat. */
+  camo?: BotCamo | null;
   /** Impact physics: closing speed already priced in the crash still resolving, and when it last grew. */
   _impactAccumMps?: number;
   _impactAccumT?: number;
@@ -480,8 +477,6 @@ const CRUSH_PRESS_S = 0.45;
 const CRUSH_PRESS_GAP_S = 0.2;
 const CRUSH_SPEED_KEEP = 0.94;
 const RAM_PAIR_COOLDOWN_S = 0.5;
-/** A Governor Override that ended strains the engine (one function for every tank: the tick allocates nothing). */
-const strainEngine = (combat: CombatState): boolean => strainModule(combat, 'engine', GOVERNOR_STRAIN_HP_FRACTION);
 const TEAM_ALPHA = 'alpha';
 const TEAM_BRAVO = 'bravo';
 const TEAM_SPECTATOR = 'spectator';
@@ -593,60 +588,6 @@ function spawnFor(
   return { x: slot.x, z: slot.z, yaw: slot.yaw };
 }
 
-function botOpeningGoal(
-  entity: AuthoritativeEntity,
-  teamSlot: number,
-  entities: readonly AuthoritativeEntity[],
-  opponents: readonly AuthoritativeEntity[],
-): { x: number; z: number } {
-  const allies = entities.filter((entry) => entry.team === entity.team);
-  let ownX = 0;
-  let ownZ = 0;
-  for (const ally of allies) {
-    ownX += ally.state.pos.x;
-    ownZ += ally.state.pos.z;
-  }
-  ownX /= Math.max(1, allies.length);
-  ownZ /= Math.max(1, allies.length);
-  let enemyX = 0;
-  let enemyZ = 0;
-  for (const opponent of opponents) {
-    enemyX += opponent.state.pos.x;
-    enemyZ += opponent.state.pos.z;
-  }
-  enemyX /= Math.max(1, opponents.length);
-  enemyZ /= Math.max(1, opponents.length);
-  let dx = enemyX - ownX;
-  let dz = enemyZ - ownZ;
-  const distance = Math.max(1, detMath.hypot(dx, dz));
-  dx /= distance;
-  dz /= distance;
-
-  // Deploy into distinct lanes on our side of the battlefield instead of
-  // plotting every bot straight through a random enemy spawn. Roles shape
-  // the opening, but both teams use the exact same deterministic doctrine.
-  const role = roleOf(entity.spec);
-  // Keep a genuine deployment line between the teams.  The former fixed
-  // fraction sent both sides toward the same point on compact maps, so the
-  // opening regularly became an 80 m ram-fight inside 30 seconds.  Advance
-  // only the distance the map can spare while retaining a ~340 m front;
-  // faster roles may probe beyond it and snipers remain slightly behind.
-  const spareAdvance = Math.max(0, (distance - 340) * 0.5);
-  const roleAdvance = role === 'scout' ? 1.16
-    : role === 'flanker' ? 1.07
-      : role === 'brawler' ? 0.94 : 0.82;
-  const advanceM = Math.min(distance * 0.34, spareAdvance * roleAdvance);
-  const laneOrder = allies.length <= 1 ? [1] : [-1, 1, -0.35, 0.35, -1.5, 1.5, 0];
-  const laneScale = role === 'flanker' || role === 'scout' ? 1.2
-    : role === 'sniper' ? 1 : 0.85;
-  const laneM = Math.min(110, Math.max(55, distance * 0.14));
-  const lane = laneOrder[teamSlot % laneOrder.length]! * laneM * laneScale;
-  return {
-    x: Math.max(-440, Math.min(440, ownX + dx * advanceM + dz * lane)),
-    z: Math.max(-440, Math.min(440, ownZ + dz * advanceM - dx * lane)),
-  };
-}
-
 function gunWorldPose(entity: AuthoritativeEntity, shellSpec?: DamageShellSpec): { muzzle: Vector3; direction: Vector3 } {
   const state = entity.state;
   const armor = entity.spec.armor || {};
@@ -722,8 +663,7 @@ function segmentTerrainHit(
   return null;
 }
 
-/** A wreck's turret off its ring: the reach of its plates and gun from its frame (m), and its frame as a matrix. */
-const WRECK_TURRET_REACH_M = 6.5;
+/** A wreck's turret off its ring: its frame as a matrix (its reach is sim/shellHullReach.ts WRECK_TURRET_REACH_M). */
 const _wreckTurretMatrix = new Matrix4();
 const _wreckTurretPos = new Vector3();
 const _wreckTurretQuat = new Quaternion();
@@ -745,13 +685,10 @@ function firstTankTrace(
   for (const target of entities) {
     if (target.id === shell.shooterId || target.modeActive === false || isGunship(target) ||
         !target.state || !target.combat) continue;
-    const radius = finite(target.spec.armor && target.spec.armor.boundingRadiusM,
-      target.spec.dims.hullLengthM * 0.65);
-    const centerDistance = target.state.pos.distanceTo(shell.prevPos);
     // physics lane: a wreck whose turret came off its ring is traced with the turret where its body lies
     const body = target.combat.destroyed ? target._wreckTurret : null;
-    if (centerDistance > segmentLength + radius + 2 && !(body && detMath.hypot(body[0] - shell.prevPos.x, body[1] - shell.prevPos.y,
-      body[2] - shell.prevPos.z) <= segmentLength + WRECK_TURRET_REACH_M)) continue;
+    // (268, item 8) the broad phase both drivers run (sim/shellHullReach.ts)
+    if (!shellMayReachHull(shell.prevPos, segmentLength, target.state.pos, hullReachM(target.spec), body)) continue;
     const pose = tankPoseFromState(target.state);
     if (body) pose.turretWorld = wreckTurretMatrix(body, target.state.modeScale ?? 1);
     const hits = traceTank(shell.prevPos, shell.pos, pose, target.spec.armor,
@@ -1030,6 +967,9 @@ export function createAuthoritativeMatch({
     applyRulesetToCombat(combat, spec.gun.shells, ruleset, rulesetSeatHullScale(ruleset, team, bot));
     const consumableItems = consumableLoadoutFor(spec, bot, record.consumables);
     const consumables = createConsumableState(consumableItems, consumableTiming, combat);
+    // (268, item 6) a bot's paint is the match's roll at its roster index, as the solo battle rolls it, or the roster's on
+    // a resumed match; its bonus follows that paint
+    const camo = !bot ? null : record.camo === 'auto' || record.camo === 'factory' ? record.camo : botCamoRoll(seed, entities.length, mapId);
     const entity: AuthoritativeEntity = {
       id,
       specId: spec.id,
@@ -1042,6 +982,9 @@ export function createAuthoritativeMatch({
       input,
       bot,
       isPlayer: !bot,
+      camo,
+      camoBonus: camo ? camoSelectionBonus(camo, stockCamoPatternIdFor(spec.id), mapId)
+        : Number.isFinite(record.camoBonus) ? record.camoBonus : 0,
       connected: true,
       kills: 0,
       damage: 0,
@@ -1081,18 +1024,16 @@ export function createAuthoritativeMatch({
   const auxiliarySmokeScreens: SmokeScreen[] = [];
   const worldConcealers = worldCollision && typeof worldCollision.getConcealment === 'function'
     ? worldCollision.getConcealment() ?? [] : [];
-  const spotting = createSpottingSystem({
+  // (268) one spotting construction for both drivers (sim/matchSpotting.ts): the solo battle builds its spotting the same way
+  const spotting = createMatchSpotting({
+    seed,
     getTanks: () => entities,
     alwaysVisible: !!ruleset.alwaysVisible,
     raycast: spottingRaycast,
-    opticalBlocked: (a,b) => smokeBlocks(auxiliarySmokeScreens,a,b,timeS,heightField.getHeightAt),
+    smokeScreens: () => auxiliarySmokeScreens,
+    timeS: () => timeS,
+    groundHeightAt: heightField.getHeightAt,
     concealers: worldConcealers,
-    getEquipment: (entity) => {
-      const tank = entityById.get(entity.id);
-      return tank ? consumableSpottingIds(tank.consumables, tank.equip, timeS) : null;
-    },
-    getCamoBonus: () => 0,
-    rng: mulberry32(seed + 31000),
     teams: [TEAM_ALPHA, TEAM_BRAVO],
   });
   const botNavigation = placement.navigation ?? (entities.some((entity) => entity.bot)
@@ -1103,73 +1044,28 @@ export function createAuthoritativeMatch({
     })
     : null);
 
+  // (268) one bot construction for both drivers (game/botConstruction.ts): the solo battle builds its bots the same way
+  const botMatch: BotMatch = {
+    seed,
+    ruleset: () => ruleset,
+    tanks: () => entities,
+    spotting: () => spotting,
+    mode: () => modeController,
+    heightField,
+    raycast: spottingRaycast,
+    getObstacles: () => staticObstacles,
+    queryObstacles: worldCollision?.queryObstacles || null,
+    navigation: botNavigation,
+  };
+  const opening = createOpeningPlan(entities.filter((entity) => entity.bot), layout.spawns, layout.village ?? null,
+    worldCollision?.getConcealment?.() ?? []);
+
   function initializeBot(entity: AuthoritativeEntity, index: number): void {
-    const opponents = entities.filter((entry) => entry.team !== entity.team);
-    const allies = entities.filter((entry) => entry !== entity && entry.team === entity.team);
-    const botRng = mulberry32(seed + 41000 + index * 997);
-    // round 62 pacing: the no-contact search plans its legs over the shared navigation grid; its own seeded
-    // stream keeps the controller's draws where they were
-    const searchRng = mulberry32(seed + 43000 + index * 991);
-    const navigation = botNavigation;
-    entity.aiCtl = createAI(entity, {
-      // the seat's difficulty, stepped down for the Horde's zombies by the ruleset
-      difficulty: rulesetBotDifficulty(ruleset, entity.team, playerRecordById.get(entity.id)?.difficulty || 'normal'),
-      // the side's doctrine, read live: an Infected convert plays the infected's table from its first tick
-      doctrine: () => rulesetBotDoctrine(ruleset, entity.team),
-      rng: botRng,
-      deps: {
-        heightField,
-        raycast: spottingRaycast,
-        getEnemies: () => {
-          opponents.length = 0;
-          for (const candidate of entities) if (candidate.team !== entity.team && candidate.modeActive !== false && !isGunship(candidate)) opponents.push(candidate);
-          return opponents;
-        },
-        // A wreck is no teammate: a falling-back or retiring bot looks for support among its allies (ai.ts
-        // nearestSupport), and the authority handed it destroyed hulls too, so it could drive to a teammate's wreck.
-        // The solo step filters wrecks (game/state.ts getAllies); the authority now does the same.
-        getAllies: () => {
-          allies.length = 0;
-          for (const candidate of entities) {
-            if (candidate !== entity && candidate.team === entity.team && !candidate.combat.destroyed) allies.push(candidate);
-          }
-          return allies;
-        },
-        getObstacles: () => staticObstacles,
-        queryObstacles: worldCollision?.queryObstacles || null,
-        spotting: {
-          isSpotted: (targetId, receiver) =>
-            spotting.isSpotted(targetId, entity.team, receiver || entity),
-        },
-        // bot philosophy r1: the mode's live objective ranks targets (objective → closest → weakest)
-        getObjective: () => modeController.botObjective(entity),
-        // what the side knows (the honest search): its freshest sighting, else the enemy's deployment
-        intel: {
-          freshestContact: () => modeController.freshestSighting(entity),
-          enemyDeployment: () => modeController.enemyDeployment(entity),
-        },
-        ...(navigation ? {
-          planRoute: (start: { x: number; z: number }, goal: { x: number; z: number; y?: number },
-            options?: { requireGoalLevel?: boolean }) => planBotRoute({
-            start, goal, navigation, rng: searchRng, role: roleOf(entity.spec), spec: entity.spec,
-            useRoleDetour: false, requireGoalLevel: options?.requireGoalLevel === true,
-          }),
-        } : {}),
-      },
-    });
-    const teamSlot = entities.filter((entry) => entry.team === entity.team).indexOf(entity);
-    const goal = opponents.length
-      ? botOpeningGoal(entity, teamSlot, entities, opponents)
-      : null;
-    if (!goal) return;
-    entity.aiCtl.setWaypoints(planBotRoute({
-      start: entity.state.pos,
-      goal,
-      navigation: botNavigation,
-      rng: botRng,
-      role: roleOf(entity.spec),
-      spec: entity.spec,
-    }), { loop: false });
+    const controller = createBotController(entity, index, playerRecordById.get(entity.id)?.difficulty || 'normal', botMatch);
+    entity.aiCtl = controller;
+    // the opening route's legs all at once (the solo battle's warm takes them a leg a step)
+    const route = openingRoute(entity, index, { x: entity.state.pos.x, z: entity.state.pos.z }, opening, botMatch, controller);
+    while (!route.next().done) { /* every leg now */ }
   }
 
   function initializeBots(): void {
@@ -1264,54 +1160,6 @@ export function createAuthoritativeMatch({
     if (isGunship(entity)) setModeWeapon(entity, 'gunship');
   }
   const nextModeRouteS = { alpha: 0, bravo: 0 };
-
-  function applyNetworkInput(
-    entity: AuthoritativeEntity,
-    input: AuthoritativePlayerInput | null | undefined,
-  ): void {
-    if (!input || entity.modeActive === false || entity.combat.destroyed) {
-      entity.input.throttle = 0;
-      entity.input.steer = 0;
-      entity.input.brake = true;
-      entity.input.fire = false;
-      // No driver must also stop sight-driven hull traverse/hydraulic lay.
-      entity.input.aimLocked = true;
-      entity.input.actionBits = 0;
-      return;
-    }
-    entity.input.throttle = input.throttle;
-    entity.input.steer = input.steer;
-    entity.input.brake = input.brake;
-    entity.input.fire = input.fire;
-    entity.input.fireIntentSeq = Number.isSafeInteger(input.fireIntentSeq) ? input.fireIntentSeq : null;
-    entity.input.aimLocked = !!input.aimLocked;
-    entity.input.actionBits = input.actionBits | 0;
-    const shellSlot = Math.max(0, Math.min(
-      entity.spec.gun.shells.length - 1,
-      input.shellSlot | 0,
-    ));
-    if (shellSlot !== entity.combat.shellSlot) {
-      if (selectShell(entity.combat, shellSlot, entity.spec)) {
-        entity._deniedShellSlot = undefined;
-      } else {
-        // A stale/depleted ammo request must not fire a different, ready
-        // weapon merely because its fallback no longer starts a reload.
-        entity.input.fire = false;
-        if (entity._deniedShellSlot !== shellSlot) {
-          emit('ammo_selection_denied', {
-            id: entity.id,
-            slot: shellSlot,
-            reason: 'AMMO_EMPTY',
-            guided: entity.spec.gun.shells[shellSlot]?.guided === true,
-          });
-          entity._deniedShellSlot = shellSlot;
-        }
-      }
-    }
-    entity.input.shellSlot = entity.combat.shellSlot;
-    decodeAimIntent(input, entity.aerial?.active ? entity.aerial : entity.state.pos, _aim);
-    entity.input.aimPoint.copy(_aim);
-  }
 
   function obstacleCandidates(
     centerX: number,
@@ -1460,23 +1308,6 @@ export function createAuthoritativeMatch({
     return hard;
   }
 
-  function queueRamFromPush(
-    entity: AuthoritativeEntity,
-    other: AuthoritativeEntity,
-    pushX: number,
-    pushZ: number,
-  ): void {
-    const pushLength = detMath.hypot(pushX, pushZ);
-    if (pushLength <= 1e-6) return;
-    const nx = pushX / pushLength;
-    const nz = pushZ / pushLength;
-    // impact physics: the same pre-contact normal velocities the solo step records (game/state.ts queueRamFromPush)
-    const vAn = hullVelocityAlong(entity.state, nx, nz);
-    const vBn = hullVelocityAlong(other.state, nx, nz);
-    const closing = vBn - vAn;
-    if (closing > 0) pendingRams.push({ a: entity, b: other, closing, nx, nz, vAn, vBn, vertical: false });
-  }
-
   /** The most any hull's contact rect reaches from its root (its half-diagonal and its centre's offset), over every hull,
    * for the movement step (advanceTankMovement); Infinity outside it (no bound, no early rejection). */
   let pairReachMaxM = Infinity;
@@ -1497,47 +1328,10 @@ export function createAuthoritativeMatch({
     halfW: number,
     outPush: Vector3,
   ): void {
-    // Match the local simulation's exact-shell OBB contact. Shared geometry
-    // keeps private rooms and solo from disagreeing at rectangular shoulders.
-    // (physics stream, 2026-10-13, the MP stream's tick profile: this pair loop was a fifth of the movement step) a hull
-    // whose root lies further than the two rects' half-diagonals and the other's rect offset can meet none of them: the
-    // movement step's bound over every hull (pairReachMaxM) rejects it before its rect, trig and hypot are read, exactly
-    // where the full test below would reject it too
-    const ownReach = detMath.hypot(halfL, halfW) + pairReachMaxM;
-    const ownReach2 = ownReach * ownReach;
-    for (const other of entities) {
-      if (other === entity || other.modeActive === false || !other.state) continue;
-      const rootDX = centerX - other.state.pos.x, rootDZ = centerZ - other.state.pos.z;
-      if (rootDX * rootDX + rootDZ * rootDZ > ownReach2) continue;
-      const otherRect = tankContactRect(other.spec);
-      const otherHalfW = otherRect.halfWidth;
-      const otherHalfL = otherRect.halfLength;
-      const ofx = detMath.sin(other.state.yaw);
-      const ofz = detMath.cos(other.state.yaw);
-      const orx = ofz;
-      const orz = -ofx;
-      const otherCenterX = other.state.pos.x + orx * otherRect.centerX + ofx * otherRect.centerZ;
-      const otherCenterZ = other.state.pos.z + orz * otherRect.centerX + ofz * otherRect.centerZ;
-      const dx = centerX - otherCenterX;
-      const dz = centerZ - otherCenterZ;
-      const outer = detMath.hypot(halfL, halfW) + detMath.hypot(otherHalfL, otherHalfW);
-      if (dx * dx + dz * dz > outer * outer || prefersVerticalTankContact(entity, other)
-        || tanksVerticallyClear(entity, other)) {
-        continue;
-      }
-      const beforeX = outPush.x;
-      const beforeZ = outPush.z;
-      const pushed = pushHullFromHull(
-        centerX, centerZ, fx, fz, rx, rz, halfL, halfW,
-        otherCenterX, otherCenterZ, ofx, ofz, orx, orz, otherHalfL, otherHalfW,
-        outPush,
-      );
-      if (!pushed) continue;
-      queueRamFromPush(
-        entity, other,
-        outPush.x - beforeX, outPush.z - beforeZ,
-      );
-    }
+    // (268) one hull-pair contact for both drivers (sim/tankPairContact.ts); the movement step's bound over every hull
+    // (pairReachMaxM) rejects a far hull before its rect, trig and hypot are read (the physics stream, 2026-10-13: this pair
+    // loop was a fifth of the movement step)
+    pushFromHulls(entity, entities, centerX, centerZ, fx, fz, rx, rz, halfL, halfW, outPush, pendingRams, pairReachMaxM);
   }
 
   function collideFor(
@@ -1742,6 +1536,10 @@ export function createAuthoritativeMatch({
     if (!bWasDestroyed) b.combat.hp = Math.max(0, b.combat.hp - damageB);
     a.combat.destroyed = a.combat.hp <= 0;
     if (!bWasDestroyed) b.combat.destroyed = b.combat.hp <= 0;
+    // (268, item 8) a lethal ram disables the struck running gear and the drivetrain, as the solo battle's does
+    // (sim/ramModuleDamage.ts)
+    if (a.combat.destroyed) applyLethalRamModuleDamage(a, contact.nx, contact.nz);
+    if (b.combat.destroyed && !bWasDestroyed) applyLethalRamModuleDamage(b, -contact.nx, -contact.nz);
     emit('tank_ram', {
       aId: a.id,
       bId: b.id,
@@ -1769,29 +1567,6 @@ export function createAuthoritativeMatch({
     }
   }
 
-  function reloadMagazine(entity: AuthoritativeEntity): void {
-    const reason = magazineReloadDenialReason(entity.combat);
-    if (!reason && startMagazineReload(entity.combat, entity.spec)) {
-      emit('magazine_reload', { id: entity.id });
-      return;
-    }
-    emit('magazine_reload_denied', {
-      id: entity.id,
-      reason: reason || 'NO_MAGAZINE',
-    });
-  }
-
-  function useSpecialAction(entity: AuthoritativeEntity): void {
-    const action = activateSpecialAction(entity);
-    emit(action.ok ? 'special_action' : 'special_action_denied', {
-      id: entity.id,
-      kind: action.kind,
-      active: !!action.active,
-      slot: action.slot ?? null,
-      reason: action.reason || null,
-    });
-  }
-
   /** A seat's consumables: a bot's role picks, a player's chosen items (or the default trio), within the mode's gate. */
   function consumableLoadoutFor(
     spec: AuthoritativeSpec, bot: boolean, chosen: readonly string[] | null | undefined,
@@ -1800,52 +1575,6 @@ export function createAuthoritativeMatch({
     const gate = rulesetConsumableGate(ruleset);
     return bot ? botConsumableLoadout(vehicle, gate)
       : sanitizeConsumableLoadout(Array.isArray(chosen) ? chosen : DEFAULT_CONSUMABLE_LOADOUT, vehicle, gate);
-  }
-
-  /** The authority's side of an item: modules, ammunition, smoke and the events a use emits. */
-  function consumableHost(entity: AuthoritativeEntity): ConsumableHost {
-    return {
-      timeS,
-      repairAll: () => repairAllModules(entity.combat),
-      repair: (names) => repairModules(entity.combat, names),
-      restock: (fraction) => replenishAmmunition(entity.combat, fraction).totalAdded,
-      smoke: auxiliaryCapabilities(entity.spec)?.smoke?.length ? entity.combat.auxiliary ?? null : null,
-      moduleRepaired: (module) => emit('module_state', { id: entity.id, module, state: 'ok' }),
-      fireOut: () => emit('tank_fire', { id: entity.id, burning: false }),
-    };
-  }
-
-  function useConsumableSlot(
-    entity: AuthoritativeEntity,
-    bits: number,
-    slot: number,
-  ): void {
-    const bit = 1 << slot;
-    if (!(bits & bit)) return;
-    if (!ruleset.consumables) {
-      emit('consumable_denied', { id: entity.id, slot, reason: 'RULESET' });
-      return;
-    }
-    const use = useConsumableSlotRule(entity.consumables, slot, entity.combat, consumableHost(entity), consumableTiming);
-    if (!use.ok) {
-      emit('consumable_denied', {
-        id: entity.id, slot, reason: use.reason, ...(use.item ? { item: use.item } : {}),
-        ...(use.remainingS !== undefined ? { remainingS: use.remainingS } : {}),
-      });
-      return;
-    }
-    emit('consumable_used', {
-      id: entity.id, slot, item: use.item, cooldownS: use.cooldownS, readyAt: use.readyAt, charges: use.charges,
-    });
-  }
-
-  /** One tick of a crew's timed consumables: ended effects, a strained engine, a suppressed fire. */
-  function tickEntityConsumables(entity: AuthoritativeEntity): void {
-    const combat = entity.combat;
-    if (combat.destroyed) return;
-    const strained = tickConsumables(entity.consumables, combat, timeS, rng, strainEngine);
-    if (strained) emit('module_state', { id: entity.id, module: 'engine', state: combat.modules.engine?.state ?? 'yellow' });
-    if (suppressNewFire(entity.consumables, combat, timeS)) emit('tank_fire', { id: entity.id, burning: false });
   }
 
   /** A missile steered at a point is jammed when an enemy with its IR Jammer on stands there. */
@@ -1858,35 +1587,54 @@ export function createAuthoritativeMatch({
     return false;
   }
 
-  function useConsumables(entity: AuthoritativeEntity): void {
-    const bits = entity.input.actionBits | 0;
-    entity.input.actionBits = 0;
-    if (!bits || entity.combat.destroyed) return;
-    if (!result) {
-      if(bits&PLAYER_ACTION_BITS.SUPPLY_AMMO)modeController.requestSupply(entity.id,'ammo',timeS+modeTimeOffsetS);
-      if(bits&PLAYER_ACTION_BITS.SUPPLY_HEAL)modeController.requestSupply(entity.id,'heal',timeS+modeTimeOffsetS);
-      // (2026-10-09) the canisters fly through the match's collision (the shards and their destruction state): they
-      // bounce off walls, and the clouds stay out of the houses beside them
-      // (FX lane 2026-10-17) on its map's wind; the drift crosses the wire with the screen
-      if (bits & PLAYER_ACTION_BITS.SMOKE && requestAuxiliary(entity, 'smoke', timeS, heightField.getHeightAt, worldCollision, smokeWind)) {
-        auxiliarySmokeScreens.push(entity.combat.auxiliary!.smoke!);
-        if(auxiliarySmokeScreens.length>84)auxiliarySmokeScreens.shift();
+  // (268) one action path for both drivers (sim/hullActions.ts): the authority's side of a hull's presses and consumables
+  const actionsHost: HullActionsHost<AuthoritativeEntity> = {
+    get timeS() { return timeS; },
+    get verdict() { return !!result; },
+    get consumables() { return !!ruleset.consumables; },
+    rng,
+    ground: heightField.getHeightAt,
+    world: worldCollision,
+    // (FX lane 2026-10-17) on its map's wind; the drift crosses the wire with the screen
+    wind: smokeWind,
+    supply: (entity, kind) => modeController.requestSupply(entity.id, kind, timeS + modeTimeOffsetS),
+    smokeLaunched: (_entity, screen) => {
+      auxiliarySmokeScreens.push(screen);
+      if (auxiliarySmokeScreens.length > 84) auxiliarySmokeScreens.shift();
+    },
+    magazineReload: (entity, reason) => {
+      if (reason === null) emit('magazine_reload', { id: entity.id });
+      else emit('magazine_reload_denied', { id: entity.id, reason });
+    },
+    specialAction: (entity, action) => {
+      emit(action.ok ? 'special_action' : 'special_action_denied', {
+        id: entity.id,
+        kind: action.kind,
+        active: !!action.active,
+        slot: action.slot ?? null,
+        reason: action.reason || null,
+      });
+    },
+    selfRighted: (entity) => { emit('tank_self_right', { id: entity.id }); },
+    consumable: (entity, slot, use) => {
+      if (!use) { emit('consumable_denied', { id: entity.id, slot, reason: 'RULESET' }); return; }
+      if (!use.ok) {
+        emit('consumable_denied', {
+          id: entity.id, slot, reason: use.reason, ...(use.item ? { item: use.item } : {}),
+          ...(use.remainingS !== undefined ? { remainingS: use.remainingS } : {}),
+        });
+        return;
       }
-      if (bits & PLAYER_ACTION_BITS.DRONE) entity.input.auxiliaryBits = (entity.input.auxiliaryBits ?? 0) | PLAYER_ACTION_BITS.DRONE;
-      if (bits & PLAYER_ACTION_BITS.LIGHTS_OFF) requestAuxiliary(entity, 'lightsOff', timeS);
-      if (bits & PLAYER_ACTION_BITS.LIGHTS) requestAuxiliary(entity, 'lights', timeS);
-      if (bits & PLAYER_ACTION_BITS.ROOF_GUN) requestAuxiliary(entity, 'roofGun', timeS);
-    }
-    if (bits & PLAYER_ACTION_BITS.RELOAD_MAGAZINE) reloadMagazine(entity);
-    if (bits & PLAYER_ACTION_BITS.SPECIAL_ACTION) useSpecialAction(entity);
-    if (bits & PLAYER_ACTION_BITS.SELF_RIGHT) {
-      if (requestTankSelfRight(entity.state, entity.modeGravityScale ?? 1)) emit('tank_self_right', { id: entity.id });
-      else requestTankJump(entity.state, entity.modeJumpMps, entity.modeGravityScale ?? 1);
-    }
-    for (let slot = 0; slot < CONSUMABLE_SLOTS; slot++) {
-      useConsumableSlot(entity, bits, slot);
-    }
-  }
+      emit('consumable_used', {
+        id: entity.id, slot, item: use.item, cooldownS: use.cooldownS, readyAt: use.readyAt, charges: use.charges,
+      });
+    },
+    moduleRepaired: (entity, module) => { emit('module_state', { id: entity.id, module, state: 'ok' }); },
+    fireOut: (entity) => { emit('tank_fire', { id: entity.id, burning: false }); },
+    engineStrained: (entity) => {
+      emit('module_state', { id: entity.id, module: 'engine', state: entity.combat.modules.engine?.state ?? 'yellow' });
+    },
+  };
 
   function selectedShellForFire(
     entity: AuthoritativeEntity,
@@ -2399,7 +2147,7 @@ export function createAuthoritativeMatch({
   function stepCountdown(dt: number): boolean {
     if (phase !== 'countdown') return false;
     countdownRemainingS = Math.max(0, countdownRemainingS - dt);
-    for (const entity of entities) applyNetworkInput(entity, null);
+    for (const entity of entities) applyPlayerInput(entity, null, emit);
     if (countdownRemainingS === 0) {
       phase = 'playing';
       emit('match_started', { countdownMs: 0 });
@@ -2408,41 +2156,9 @@ export function createAuthoritativeMatch({
     return true;
   }
 
-  /**
-   * The mode route push: each side on its cadence (sim/matchRuleset.ts rulesetRoutePush: the doctrine's, or the
-   * authority's legacy 3 s / 12 m, 1.25 s on any move in its fast modes) re-routes a bot whose destination moved that far.
-   */
+  /** The mode route push, one for both drivers (268, sim/modeRoutePush.ts). */
   function refreshModeBotRoutes(): void {
-    if (normalizedGameMode === 'standard') return;
-    const alphaDue = timeS >= nextModeRouteS.alpha, bravoDue = timeS >= nextModeRouteS.bravo;
-    if (!alphaDue && !bravoDue) return;
-    if (alphaDue) nextModeRouteS.alpha = timeS + rulesetRoutePush(ruleset, 'alpha', 'authority').refreshS;
-    if (bravoDue) nextModeRouteS.bravo = timeS + rulesetRoutePush(ruleset, 'bravo', 'authority').refreshS;
-    for (const entity of entities) {
-      if (!entity.bot || entity.modeActive === false || entity.combat.destroyed) continue;
-      if (entity.team === 'bravo' ? !bravoDue : !alphaDue) continue;
-      const target = modeController.botTarget(entity);
-      if (!target) continue;
-      const moved = detMath.hypot(
-        target.x - (entity._modeTargetX ?? Infinity),
-        target.z - (entity._modeTargetZ ?? Infinity),
-      );
-      if (moved < rulesetRoutePush(ruleset, entity.team, 'authority').moveM) continue;
-      entity._modeTargetX = target.x;
-      entity._modeTargetZ = target.z;
-      entity.aiCtl?.setWaypoints([[target.x, target.z]], { loop: false });
-    }
-  }
-
-  function reconcileBotShell(entity: AuthoritativeEntity): void {
-    const shellSlot = Math.max(0, Math.min(
-      entity.spec.gun.shells.length - 1,
-      entity.input.shellSlot | 0,
-    ));
-    if (shellSlot === entity.combat.shellSlot) return;
-    if (!selectShell(entity.combat, shellSlot, entity.spec)) {
-      entity.input.shellSlot = entity.combat.shellSlot;
-    }
+    pushModeRoutes(entities, normalizedGameMode, ruleset, timeS, nextModeRouteS, (entity) => modeController.botTarget(entity));
   }
 
   // wrecks narrow streets: the bots' grid re-tests the edges round them a few times a second (the solo step too)
@@ -2459,17 +2175,12 @@ export function createAuthoritativeMatch({
     for (const entity of entities) {
       if (entity.modeActive === false) continue;
       if (entity.bot) {
-        // Countdown holds every gun through applyNetworkInput(null). Unlike
-        // humans, bots have no incoming frame to release that safety hold;
-        // hand aiming back to the shared solo AI before it writes this tick.
-        if (!entity.combat.destroyed) entity.input.aimLocked = false;
-        entity.aiCtl?.update(dt, timeS);
-        reconcileBotShell(entity);
+        applyBotInput(entity, dt, timeS);
       } else {
-        applyNetworkInput(entity, inputs.get(entity.id));
+        applyPlayerInput(entity, inputs.get(entity.id), emit);
       }
-      useConsumables(entity);
-      tickEntityConsumables(entity);
+      applyHullActions(entity, actionsHost);
+      tickHullConsumables(entity, actionsHost);
     }
     // battle endings (2026-09-25): the verdict silences every trigger — bots and humans — while the ruleset's
     // hold keeps the field alive (the solo step does the same in state.ts silenceGunsAfterVerdict)
@@ -2582,7 +2293,7 @@ export function createAuthoritativeMatch({
   }
   function advanceEachTankMovement(dt: number): void {
     for (const entity of entities) {
-      // wrecks keep moving (2026-09-19): applyNetworkInput already zeroes their input; readDebuffs skids them
+      // wrecks keep moving (2026-09-19): applyPlayerInput already zeroes their input; readDebuffs skids them
       if (entity.modeActive === false) continue;
       if (isGunship(entity)) continue;
       movingEntity = entity;
@@ -2625,10 +2336,8 @@ export function createAuthoritativeMatch({
   }
 
   function advanceRollover(dt: number): void {
-    for (const entity of entities) {
-      if (entity.modeActive === false || entity.combat.destroyed || !entity.bot) continue;
-      if (stepRolloverLifecycle(entity.state, dt)) emit('tank_autoflip', { id: entity.id });
-    }
+    // (268) one rule for both drivers (sim/rollover.ts stepBotRollovers): a bot rights itself on the timer
+    stepBotRollovers(entities, dt, (entity) => { emit('tank_autoflip', { id: entity.id }); });
   }
 
   const auxRay = new Vector3();

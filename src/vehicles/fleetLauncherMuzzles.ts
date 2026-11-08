@@ -2,6 +2,7 @@ import type { FleetTankSpec } from './specContracts.ts';
 import type { LauncherMuzzle } from '../sim/launcherPolicy.ts';
 
 import * as detMath from '../sim/detMath.ts';
+import { CLASSIC_TOW_MOUTHS } from './bradleyClassicTurretLayout.ts';
 // Terminal centers measured from the native builders, in final metre frames.
 // These are launch exits, never spare tubes, smoke dispensers or cannon bores.
 // Batteries with authored layouts keep their existing shared geometry datums.
@@ -10,7 +11,10 @@ function turret(x: number, y: number, z: number, pitch = 0, yaw = 0): LauncherMu
 }
 function mouth(x: number, y: number, z: number): LauncherMuzzle { return { x, y, z }; }
 // 2026-10-21: the TOW collars' mouths on the flat-fronted pod (modern3.ts), 8.5 cm ahead of the old sloped face.
-const bradley = [mouth(-.97, .04, .23), mouth(-.97, -.20, .23)];
+// 268 (2026-11-02): the launcher on the turret's LEFT as the owner's supplied model carries it, built in its travel
+// pose: stowed along the left wall, folded 90 deg down and out about the source's pivot (modern3.ts BRADLEY_TOW x0/y0),
+// so its two mouths at the plate's 4 cm-proud collars stand one over the other (the source's erected 1.05/1.35 at 1.055).
+const bradley = [turret(1.105, .68, .60), turret(1.105, .38, .60)];
 const mounts: Readonly<Record<string, readonly LauncherMuzzle[]>> = {
   m2a2_bradley: bradley,
   ua_m2a3_bradley: bradley,
@@ -26,14 +30,23 @@ const mounts: Readonly<Record<string, readonly LauncherMuzzle[]>> = {
   hayate_ifv: [-1, 1].map(s => turret(s * .92, .385 + .02 * detMath.sin(.14), .285 + .02 * detMath.cos(.14), .14)),
   fv510_milan: [turret(.56 * 1.1, (.92 + .0125 * detMath.sin(.04)) * 1.1 * .84,
     (.927 + .0125 * detMath.cos(.04)) * 1.1, detMath.atan(detMath.tan(.04) * .84))],
-  bmpt_terminator2: [-1, 1].flatMap(s => [.335, .575].map(y => turret(s * (.93 + .011 * detMath.sin(.035)), y, .668 + .011 * detMath.cos(.035), 0, s * .035))),
+  // 267: the front caps of the two armoured Ataka boxes, two tubes side by side in each box's outboard part
+  // (profiles/bmpt72Station.ts: tubes x .905 / 1.075, axis y .985, cap faces z .985)
+  bmpt_terminator2: [-1, 1].flatMap(s => [.905, 1.075].map(x => turret(s * x, .985, .985))),
   bwp1: [turret(.28, 1.11, .76)],
+  // 268: the M3A2's classic TOW pod on the turret's LEFT, turret-fixed, its two collar mouths one over the other
+  // (profiles/bradleyClassicTurret.ts; 7cc204ab32's gun-frame mouths, mirrored, plus the mirrored gun pivot)
+  m3a2_bradley: CLASSIC_TOW_MOUTHS.map(m => turret(m.x, m.y, m.z)),
   marder1a3: [turret(.55, .92, .445)],
   // 2026-10-21: the TOW collar mouths of the rebuilt pack (profiles/afvFamily.ts addM3A3Turret), final datums.
-  m3a3_bradley: [-1, 1].map(s => turret(-.91, .6626 + s * .0949, .3633 - s * .0047, .05)),
+  // 268 (2026-11-02): the pack on the turret's LEFT, +X, as the owner's supplied Bradley carries it (was x -.91).
+  m3a3_bradley: [-1, 1].map(s => turret(.91, .6626 + s * .0949, .3633 - s * .0047, .05)),
   upior: [turret(1.10, .37, .83)],
   // 267: the frangible discs on the two armoured Ataka boxes' front covers (profiles/bmptT90Station.ts), 2 x 2 a box
   bmpt_t90: [-1, 1].flatMap(s => [.85, 1.05].flatMap(x => [.77, .93].map(y => turret(s * x, y, 1.695)))),
+  // 267: the original Terminator's open Ataka tubes ride the cradle's arms (profiles/bmptTerminatorStation.ts RAMKA_ATAKA): the
+  // gun frame, each mouth the front end cap's face, 2 x 2 a side (lower, upper)
+  bmpt_terminator: [-1, 1].flatMap(s => [-.155, .155].map(y => mouth(s * .95, y, 2.032))),
   // Preserve the source battery's left-to-right, lower/upper firing order.
   aft10: [-1.035, -.505, .505, 1.035].flatMap(x => [0, 1].map(r => ({ ...mouth(x, -.025 + r * .475, 1.244), covered: true }))),
 };

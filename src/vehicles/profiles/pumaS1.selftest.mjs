@@ -38,7 +38,7 @@ assert.doesNotMatch(source, /buildPuma(?:Oracle)?\s*\(/,
 assert.doesNotMatch(source, /from ['"]\.\.\/modern3\.ts['"]/,
   'new Puma S1 profile has no dependency on the old canonical builder pack');
 assert.doesNotMatch(source, /mantlet/i,
-  'Puma S1 keeps its base gun cradle without introducing a separate mantlet');
+  'Puma S1 keeps its armoured gun housing without introducing a separate mantlet');
 assert.doesNotMatch(source, /height:\s*\[/,
   'Puma S1 never builds a non-planar roof or turret cap from per-vertex heights');
 assert.doesNotMatch(source, /inset:\s*\[/,
@@ -82,42 +82,33 @@ try {
   tank.root.updateMatrixWorld(true);
   tank.root.traverse((o) => { if (o.isMesh && !/_ghillie_/.test(o.name)) bareBox.expandByObject(o); });
   const compactBounds = bareBox.getSize(new Vector3());
-  assert.ok(Math.abs(compactBounds.x - 4.127999782562256 * 0.9) < 0.01,
-    'Puma outer width is exactly ten percent smaller');
-  // 3.733 = the S1's height / 0.9: the hull, turret and gun scale by 0.9 while the ground-datum track stack
-  // (shoe soles on y = 0) does not, so the compact height is the scaled equipment above an unscaled stack (2026-09-17)
-  assert.ok(Math.abs(compactBounds.y - 3.7331689 * 0.9) < 0.01,
-    'Puma full equipment height is exactly ten percent smaller');
+  // 267 (ifv-modern-267): the rebuild on the measured S1, in the 90 % frame: the width across the flank sensor heads (the
+  // 2026-09-25 design's 3.715 m within its 3 % concept band) and the height to the turret whip's tip
+  assert.ok(Math.abs(compactBounds.x - 4.0920 * 0.9) < 0.01,
+    `Puma outer width across the flank sensor heads in the compact frame (${compactBounds.x})`);
+  assert.ok(Math.abs(compactBounds.y - 3.7390 * 0.9) < 0.01,
+    `Puma full equipment height (the turret whip's tip) in the compact frame (${compactBounds.y})`);
   assert.deepEqual(hull.userData.pumaS1Receipt, {
     independentFromLegacyPuma: true,
-    hullConstruction: 'puma-high-shoulder-troop-cell-v7',
-    turretConstruction: 'asymmetric-rct30-spine-bustle-v5',
+    hullConstruction: 'puma-s1-measured-troop-cell-v8',
+    roofY: 1.95,
+    glacisBreakZ: 1.40,
+    glacisFallPerM: 0.255,
+    lowerGlacis: 'section-solid-28deg',
+    rearRampRakePerM: 0.4557,
     roadWheelsPerSide: 6,
     canonicalTrackCourses: 1,
-    duplicateTrackMeshes: 0,
-    suspensionPlacement: 'inboard-behind-road-wheel',
-    trackCenterlineM: 1.47,
-    sideArmorCassettesPerSide: 8,
-    sideArmorLayers: 2,
-    sideArmorInnerSeatM: 1.76,
-    sideArmorOuterEnvelopeM: 2.058,
-    skirtArchitecture: 'segmented-sloped-amap-jacket',
-    skirtAttachment: 'direct-monocoque-overlap-seat-v4',
-    frontSkirtTransition: 'revolution-amap-glacis-downfold-v4',
-    frontShoulderBridge: 'cyclic-hull-amap-overlap-volume-v1',
-    rearTrackDepartureZM: -2.20,
-    rearBulkheadClosureDepthM: 0.20,
-    nativeTrackPattern: 'compact-ifv',
-    baseGunAssembly: 'compact-slash-port-mk30-cradle-v7',
-    mellsLaunchTubes: 0,
-    mellsSquareLaunchCells: 2,
-    panoramicOpticStages: 2,
+    trackCenterlineM: 1.31,
+    sideArmorUpperModulesPerSide: 12,
+    sideArmorLowerModulesPerSide: 6,
+    sideArmorOuterFaceM: 1.905,
+    sideArmorFootY: 0.70,
+    skirtArchitecture: 'two-row-bevelled-cassettes-v1',
+    rightSideCoolingLouvre: true,
+    slatQuarters: 2,
+    cornerCameras: 4,
+    rearStowageBins: 2,
     crewLocation: 'protected-hull-cell',
-    planarRoofCell: true,
-    upperGlacisConstruction: 'separate-planar-wedge',
-    monotonicArmorInset: true,
-    concaveSurfaceCount: 0,
-    fenderBridge: 'continuous-hull-skirt-seat',
     rearTroopRamp: true,
   });
   assert.deepEqual(turret.userData.pumaS1TurretReceipt, {
@@ -125,18 +116,12 @@ try {
     gun: 'MK30-2/ABM',
     launcher: 'MELLS-Spike-LR2',
     stabilizedPanoramicSight: true,
-    allAroundCameraCount: 4,
+    gunnerSight: 'left-cheek',
+    turretBodyM: [1.64, 0.755, 2.80],
+    ringOffsetSide: 'vehicle-left',
     remoteSecondaryWeapon: null,
-    gunCenterlineOffsetFromTurretM: 0.14,
-    gunSideEquipmentPods: 2,
-    gunSideOpticApertures: 4,
-    rotatingOpticAssembly: 'right-front-peri-rtwl',
-    mellsLauncherArchitecture: 'twin-square-armored-cells-v1',
-    turretFlankElectronicsBoxes: 2,
-    roofElectronicsBoxes: 2,
-    planarRoofCrown: true,
-    monotonicArmorInset: true,
-    concaveSurfaceCount: 0,
+    smokeStacks: 2,
+    hardKillProtection: true,
   });
   // Critic panel 2026-10-15 on the owner markup: the sight column carries the PERI RTWL head (no open-yoke station), and
   // the Puma S1 carries no roof weapon (VH.14; its compact 12.7 mm remote station is gone)
@@ -144,64 +129,58 @@ try {
   assert.ok(tank.root.getObjectByName('pumaS1CompactRoofRws') === undefined, 'no roof weapon station');
   assert.deepEqual(turret.userData.pumaS1RoofOpticsReceipt, {
     sight: 'PERI RTWL commander panoramic periscope',
-    mountLocal: [0.62, 0.8925, 0.52],
-    headSizeM: [0.44, 0.30, 0.42],
+    mountLocal: [0.30, 0.82, -0.06],
+    headSizeM: [0.38, 0.30, 0.38],
     windows: 3,
     hasWeapon: false,
     turretOwned: true,
   });
+  assert.deepEqual(turret.userData.wotanProtectionReceipt, { hardKillRadarFaces: 4, hardKillLaunchers: 2,
+    softKillWarners: 4, jammer: 1 }, 'the Wotan carries its own hard-kill set beside the S1 soft-kill warners');
   assert.equal(turret.userData.pumaS1RoofRwsReceipt, undefined, 'no roof weapon receipt');
   let roofWeapons = 0;
   tank.root.traverse((node) => { if (node.userData.fittingRoot && ['pintleMG', 'openYokeRws', 'weaponStationMount'].includes(node.userData.fitting)) roofWeapons++; });
   assert.equal(roofWeapons, 0, 'the Puma S1 draws no roof weapon');
+  // (the Wotan's twin cells stand on the right flank at the published launch exits, fleetLauncherMuzzles.ts)
   assert.deepEqual(turret.userData.pumaS1MellsLauncherReceipt, {
-    architecture: 'twin-square-armored-cells-v1',
+    architecture: 'twin-square-armored-cells-v2',
     launchCells: 2,
     circularLaunchTubes: 0,
-    mountSide: 'vehicle-left',
+    mountSide: 'vehicle-right',
     turretOwned: true,
   }, 'Puma S1 MELLS launcher uses two square armored cells and no circular tubes');
   const gear = hull.userData.runningGearReceipts?.at(-1);
-  assert.equal(gear?.wheelZs.length, 6, 'six road wheels are authored per side');
-  assert.equal(gear?.xcLeft, 1.47, 'left Puma track lane is tucked beneath the attached skirt');
-  assert.equal(gear?.xcRight, 1.47, 'right Puma track lane is tucked beneath the attached skirt');
-  assert.equal(gear?.trackW, 0.56, 'S1 native course is slightly widened under the new skirts');
+  assert.deepEqual(gear?.wheelZs, [1.79, 1.01, 0.25, -0.68, -1.43, -2.17], 'six road wheels at the S1 oracle stations');
+  assert.equal(gear?.xcLeft, 1.31, 'left Puma track lane at the measured S1 lane');
+  assert.equal(gear?.xcRight, 1.31, 'right Puma track lane at the measured S1 lane');
+  assert.equal(gear?.trackW, 0.52, 'S1 native course width');
+  assert.deepEqual([gear?.sprocket.z, gear?.sprocket.y, gear?.idler.z, gear?.idler.y], [2.65, 0.96, -2.81, 0.835],
+    'raised front sprocket and rear tension idler at the S1 stations');
   assert.equal(gear?.trackPatternId, 'compact-ifv',
     'S1 uses its unique fine-rib heavy IFV shoe construction');
-  assert.equal(hull.userData.pumaS1Receipt.rearTrackDepartureZM, -2.20,
-    'Puma rear track departure is seated under the aft road-wheel quadrant');
   const rearRoadWheelZ = Math.min(...gear.wheelZs);
   const lowerCourse = gear.loopPoints.filter(([, y]) => Math.abs(y - gear.botY) < 1e-6);
   const rearGroundJointZ = Math.min(...lowerCourse.map(([z]) => z));
-  // 2026-09-14: the loaded run leaves the ground under the aft axle (-2.20) and wraps the wheel
-  assert.ok(Math.abs(rearGroundJointZ - (-2.20)) < 0.01,
-    `Puma loaded course joins its rear rise under the aft road wheel at -2.20 m (${rearGroundJointZ})`);
   assert.ok(Math.abs(rearRoadWheelZ - rearGroundJointZ) < 1e-6,
-    'Puma loaded course begins rising under the aft axle and wraps the wheel (2026-09-14 tangent wrap)');
-  assert.ok(gear?.loopPoints.some(([z]) => z > 3.48) && gear?.loopPoints.some(([z]) => z < -3.42),
-    'S1 track course reaches both full-length hull shoulders');
+    `Puma loaded course begins rising under the aft axle and wraps the wheel (2026-09-14 tangent wrap; ${rearGroundJointZ})`);
+  assert.ok(gear?.loopPoints.some(([z]) => z > 2.95) && gear?.loopPoints.some(([z]) => z < -3.05),
+    'S1 track course wraps the front sprocket and the rear idler');
   assert.equal(gear?.suspensionDynamic, true, 'S1 road wheels retain dynamic suspension arms');
   assert.equal(hull.userData.runningGearUnitCount, 1,
     'S1 owns one canonical animated running-gear course');
   assert.equal(tank.root.getObjectByName('gearTrackPads')?.userData.trackShoeDetailMode,
     'family-integrated', 'S1 uses the canonical detailed shoe course');
   assert.ok(gun.getObjectByName('gunMount'),
-    'Puma S1 carries a camouflaged open gun cradle');
+    'Puma S1 carries a camouflaged armoured gun housing');
   assert.ok(gun.getObjectByName('gunMountDark'),
-    'Puma S1 retains its dark trunnion inside the painted cradle');
-  assert.deepEqual(gun.userData.pumaS1OpenGunCradleReceipt, {
-    architecture: 'hollow-trapezoid-slash-port-cradle-v3',
+    'Puma S1 carries its housing ribs and cradle perforations dark');
+  assert.deepEqual(gun.userData.pumaS1GunHousingReceipt, {
+    architecture: 'tapered-armoured-housing-perforated-cradle-v1',
     movingWithGun: true,
-    verticalOffsetM: -0.13,
-    scaleFromInitialCompactEnvelope: 0.70,
-    lengthM: 1.232,
-    diagonalSidePortsPerSide: 4,
-    topBottomSkins: true,
-    sideSkinPanelsPerSide: 7,
-    openFrontRear: true,
-    surroundsMainBarrel: true,
-    surroundsCoax: true,
-  }, 'Puma S1 uses a compact hollow trapezoid cradle with four raked side ports');
+    housingLengthM: 1.44,
+    perforatedCradleHolesPerSide: 9,
+    coaxSide: 'left',
+  }, 'Puma S1 MK30-2 sits in its tapered armoured housing with the perforated barrel cradle ahead');
   assertHollowMuzzle(tank.root);
 } finally {
   tank.dispose();

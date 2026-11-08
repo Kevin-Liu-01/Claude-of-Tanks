@@ -2,7 +2,7 @@
 // tools/audio/voice-casting.mjs — find native crew voices in the ElevenLabs
 // Voice Library for every crew language and write a candidate sheet.
 //
-//   node tools/audio/voice-casting.mjs --search        # list candidates per language
+//   node tools/audio/voice-casting.mjs --search [out.json] [--langs da,af]   # list candidates per language
 //   node tools/audio/voice-casting.mjs --add           # add the cast in crew-voices.json
 //
 // Candidates are native male voices with no credit multiplier and no live
@@ -33,11 +33,17 @@ const LANGUAGE_QUERY = {
   it: { language: 'it' },
   pl: { language: 'pl' },
   he: { language: 'he' },
+  da: { language: 'da' },
+  'pt-BR': { language: 'pt', accent: 'brazilian' },
+  'en-AU': { language: 'en', accent: 'australian' },
+  af: { language: 'af' },
+  'en-ZA': { language: 'en', accent: 'south african' },
 };
 
-async function search(outFile) {
+async function search(outFile, langs) {
   const sheet = {};
   for (const [lang, q] of Object.entries(LANGUAGE_QUERY)) {
+    if (langs && !langs.includes(lang)) continue;
     const seen = new Map();
     for (const sort of ['usage_character_count_1y', 'cloned_by_count']) {
       const voices = await searchSharedVoices({
@@ -98,7 +104,7 @@ if (args.includes('--search')) {
     ? args[args.indexOf('--search') + 1] : join(HERE, '..', '..', '.cache-voice-candidates.json');
   const dir = dirname(out);
   if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
-  await search(out);
+  await search(out, args.includes('--langs') ? args[args.indexOf('--langs') + 1].split(',') : null);
 } else if (args.includes('--add')) {
   await add();
 } else {

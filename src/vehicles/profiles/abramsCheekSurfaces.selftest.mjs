@@ -23,7 +23,9 @@ for(const quality of ['high','low'])for(const id of ids){
    const [a,b]=pair.map(i=>part.triangles[i].triangle.getNormal(new Vector3()));
    assert.ok(a.dot(b)>1-1e-9,`${id}: broad front and roof courses have no diagonal fold`);
   }
-  assert.ok(part.vertices.every(p=>Math.abs(p[0])>=.38999),`${id}: real central gun throat survives`);
+  // 2026-11-03 (release 268 builder E, owner: "turret shape and mantlet ... match the model"): the cheeks' slot walls
+  // stand at the owner's model's 0.319 m (was the print-era 0.39 throat); the gun shield fills it with 12 mm a side.
+  assert.ok(part.vertices.every(p=>Math.abs(p[0])>=.31899),`${id}: real central gun throat survives`);
  }
  tank.dispose();
 }

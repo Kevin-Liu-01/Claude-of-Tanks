@@ -15,6 +15,7 @@
  * export steps produce the same particles. Each emitter owns a private
  * seeded RNG stream: the interleaving of other effects never changes it.
  */
+import { shooterVelocityGain } from './effectAttachments.ts';
 
 export type Rng = () => number;
 type Vec3 = [number, number, number];
@@ -37,6 +38,8 @@ export interface Chunk {
 export interface Jet {
   pos: Vec3; axis: Vec3; life: number; width: number; len0: number; len1: number;
   seed: number; col: Vec3; alpha: number; birthOffset: number;
+  /** the emitter's own world velocity at birth (m/s): a moving muzzle's jets leave with it */
+  carry?: Vec3;
 }
 
 /** Particle destination (the companion pools, or a recording fake in tests). */
@@ -165,10 +168,15 @@ function hexRgb(out: Vec3, hex: number): Vec3 {
 const P: Puff = { pos: [0, 0, 0], vel: [0, 0, 0], life: 1, size0: 1, size1: 2, rot: 0, rotVel: 0, col0: [0, 0, 0], col1: [0, 0, 0], alpha: 1, grav: 0, birthOffset: 0 };
 const S: Streak = { pos: [0, 0, 0], vel: [0, 0, 0], life: 1, width: 0.03, stretch: 0.02, grav: -9.8, col: [1, 1, 1], alpha: 1, seed: 0, birthOffset: 0 };
 const C: Chunk = { pos: [0, 0, 0], vel: [0, 0, 0], life: 2, axis: [0, 1, 0], spin: 6, scale: 0.15, groundY: 0, hot: 0, seed: 0, birthOffset: 0 };
-const J: Jet = { pos: [0, 0, 0], axis: [0, 1, 0], life: 0.2, width: 0.4, len0: 0.5, len1: 3, seed: 0, col: [1, 1, 1], alpha: 1, birthOffset: 0 };
+const J: Jet & { carry: Vec3 } = { pos: [0, 0, 0], axis: [0, 1, 0], life: 0.2, width: 0.4, len0: 0.5, len1: 3, seed: 0, col: [1, 1, 1], alpha: 1,
+  birthOffset: 0, carry: [0, 0, 0] };
 const TONE: GroundTone = { light: [0, 0, 0], dark: [0, 0, 0], snow: false, wet: false };
 const _a: Vec3 = [0, 0, 0];
 const _b: Vec3 = [0, 0, 0];
+const ZERO_VEL: Readonly<Vec3> = [0, 0, 0];
+/** what a muzzle blast's bright parts carry of the firing muzzle's motion (EFFECT_ATTACHMENT_POLICY.muzzleFlash) */
+const _mCarry: Vec3 = [0, 0, 0];
+const MUZZLE_FLASH_CARRY = shooterVelocityGain('muzzleFlash');
 
 function set3(out: Vec3, x: number, y: number, z: number): Vec3 { out[0] = x; out[1] = y; out[2] = z; return out; }
 
@@ -219,8 +227,10 @@ function streak(
 function jet(
   ctx: CineCtx, x: number, y: number, z: number, ax: number, ay: number, az: number,
   life: number, width: number, len0: number, len1: number, col: Vec3, alpha: number, birthOffset: number,
+  carry: Readonly<Vec3> = ZERO_VEL,
 ): void {
   set3(J.pos, x, y, z);
+  set3(J.carry, carry[0], carry[1], carry[2]);
   const l = Math.hypot(ax, ay, az) || 1;
   set3(J.axis, ax / l, ay / l, az / l);
   J.life = life; J.width = width; J.len0 = len0; J.len1 = len1;
@@ -318,13 +328,17 @@ const SNOW_DUST = Object.freeze({ life: 0.45, size: 0.62, lift: 0.4, alpha: 0.7,
  * Cinematic main-gun blast layered over the battle muzzle flash: an incandescent
  * fireball, the expanding propellant ring, a forward gas cone and — within a few
  * metres of the ground — the blast fan of dust and grit thrown off the terrain,
- * leaving a haze that hangs for seconds.
+ * leaving a haze that hangs for seconds. `vel` is the firing muzzle's world
+ * velocity (subjectPointVelocity): the fireball, flash disc and sparks leave
+ * with it, the propellant, dust and grit stay world-space and trail.
  */
 export function muzzleBlast(
   ctx: CineCtx, px: number, py: number, pz: number, dx: number, dy: number, dz: number, caliberMm: number,
+  vel: Readonly<Vec3> = ZERO_VEL,
 ): void {
   const r = ctx.rng;
   const s = clamp(caliberMm / 120, 0.35, 1.45);
+  const c = set3(_mCarry, vel[0] * MUZZLE_FLASH_CARRY, vel[1] * MUZZLE_FLASH_CARRY, vel[2] * MUZZLE_FLASH_CARRY);
   const u: Vec3 = _a, v: Vec3 = _b;
   basis(dx, dy, dz, u, v);
   // incandescent fireball (fire pool: additive, short); calmer at night so a
@@ -337,7 +351,7 @@ export function muzzleBlast(
     const oy = (u[1] * (r() - 0.5) + v[1] * (r() - 0.5)) * 0.5 * s;
     const oz = (u[2] * (r() - 0.5) + v[2] * (r() - 0.5)) * 0.5 * s;
     puff(ctx, 'fire', px + dx * along + ox, py + dy * along + oy, pz + dz * along + oz,
-      dx * sp + ox * 6, dy * sp + oy * 6 + 0.4, dz * sp + oz * 6,
+      dx * sp + ox * 6 + c[0], dy * sp + oy * 6 + 0.4 + c[1], dz * sp + oz * 6 + c[2],
       0.07 + r() * 0.11, (0.9 + r() * 0.5) * s, (2.4 + r() * 1.3) * s,
       i < 3 ? WHITE_HOT : FLAME_Y, FLAME_O, (0.75 + r() * 0.2) * hot, 0.5, -r() * 0.012);
   }
@@ -349,7 +363,7 @@ export function muzzleBlast(
     const cz = u[2] * Math.cos(a) + v[2] * Math.sin(a);
     jet(ctx, px + dx * 0.35 * s, py + dy * 0.35 * s, pz + dz * 0.35 * s,
       cx + dx * 0.35, cy + dy * 0.35, cz + dz * 0.35,
-      0.05 + r() * 0.04, 0.22 * s, 0.25 * s, (0.9 + r() * 0.7) * s, FLAME_Y, 0.55 * hot, 0);
+      0.05 + r() * 0.04, 0.22 * s, 0.25 * s, (0.9 + r() * 0.7) * s, FLAME_Y, 0.55 * hot, 0, c);
   }
   // propellant ring (the doughnut thrown out perpendicular to the bore). Owner 2026-10-05 (the round puffs in s28):
   // thirty small cards flung 4-6 m/s scattered into separate soft discs that defocus read as polka dots — sixteen
@@ -387,9 +401,9 @@ export function muzzleBlast(
     const spread = r() * 0.14;
     const a = r() * TAU;
     streak(ctx, px + dx * 0.4, py + dy * 0.4, pz + dz * 0.4,
-      (dx + (u[0] * Math.cos(a) + v[0] * Math.sin(a)) * spread) * sp,
-      (dy + (u[1] * Math.cos(a) + v[1] * Math.sin(a)) * spread) * sp,
-      (dz + (u[2] * Math.cos(a) + v[2] * Math.sin(a)) * spread) * sp,
+      (dx + (u[0] * Math.cos(a) + v[0] * Math.sin(a)) * spread) * sp + c[0],
+      (dy + (u[1] * Math.cos(a) + v[1] * Math.sin(a)) * spread) * sp + c[1],
+      (dz + (u[2] * Math.cos(a) + v[2] * Math.sin(a)) * spread) * sp + c[2],
       0.08 + r() * 0.16, 0.018 + r() * 0.014, 0.012, -6, SPARK, 0.85, -r() * 0.01);
   }
   // ground blast fan: only when the muzzle sits low over open ground

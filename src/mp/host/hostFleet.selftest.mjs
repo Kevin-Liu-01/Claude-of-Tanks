@@ -74,7 +74,11 @@ const sourceBytes = closure.reduce((sum, file) => sum + statSync(resolve(root, f
 // 7.93 MB (7,934,589 B) at integ/267 for release 267 (the fleet at 279: the Leopard 2A7 DK, the Centurion Mk 5/2 DK and
 // the Type 90 (B); the sim's plate-along-shot planes; no builder, kit or calibration literal entered): the same rule,
 // plus 2 % (8.09 MB).
-assert.ok(sourceBytes < 8.09e6, `the host Worker's static source stays spec-sized (${(sourceBytes / 1e6).toFixed(2)} MB)`);
+// 8.18 MB (8,175,479 B) at integ/268 a2e4bf429e for release 268 (the fleet at 286: the BMPT Terminator, the Tunguska-M,
+// the Pantsir-S1, the Gepard 1A2, the PGZ-95, the PGZ-09 and the M3A2 Bradley; core-parity's shared sim stages (player
+// input, hull actions, tank pair contact, ram module damage, mode route push, camo paint) and the bots' construction;
+// no builder, kit or calibration literal entered: the assertion above holds): the same rule, plus 2 % (8.34 MB).
+assert.ok(sourceBytes < 8.34e6, `the host Worker's static source stays spec-sized (${(sourceBytes / 1e6).toFixed(2)} MB)`);
 
 // Behaviour, in this fresh process: nothing loaded until the roster asks.
 const { createMatchActor } = await import('../../../server/match/matchActor.ts');

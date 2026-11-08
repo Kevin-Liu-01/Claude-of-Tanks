@@ -1065,6 +1065,12 @@ export function placeModules(spec, seats, { drawn = new Set(), ring = null, hitS
   const order = (box) => { const rank = MODULE_ORDER.indexOf(box.module); return rank < 0 ? MODULE_ORDER.length : rank; };
   const modules = (armor.modules || []).filter((box) => placeable(box, drawn))
     .map((box, index) => ({ box, index })).sort((a, b) => order(a.box) - order(b.box) || a.index - b.index).map(({ box }) => box);
+  // drawn sights are measured from the model and stay where they are drawn: a sketched module settles clear of them as
+  // it does of the crew (268: bmpt_terminator2's ammunition boxes ran into the shoulder's side vision block; no other id
+  // had a module within the placement tolerance of a drawn sight, so none moves)
+  const sights = (armor.modules || []).filter((box) => box.module === 'optics' && drawn.has(moduleKey(box)))
+    .map((box) => ({ frame: box.turretLocal ? 'turret' : 'hull',
+      shapes: (box.shapes || []).filter((shape) => shape.kind === 'capsule' || shape.kind === 'ellipsoid') }));
   const placed = [];
   const out = [];
   const report = [];
@@ -1073,7 +1079,8 @@ export function placeModules(spec, seats, { drawn = new Set(), ring = null, hitS
     const crewShapes = seats.flatMap((seat) => seat.shapes.map((shape) => translate(shape, toFrame(frame, seat.frame))));
     const earlier = placed.filter((entry) => !NESTED.has(`${box.module}|${entry.module}`))
       .flatMap((entry) => entry.shapes.map((shape) => translate(shape, toFrame(frame, entry.frame))));
-    const obstacles = [...crewShapes, ...earlier];
+    const sightShapes = sights.flatMap((entry) => entry.shapes.map((shape) => translate(shape, toFrame(frame, entry.frame))));
+    const obstacles = [...crewShapes, ...earlier, ...sightShapes];
     // the hit shapes the runtime fits to one part (the inscribed ellipsoid where no fitter is given)
     const partShapes = (part) => (hitShapes
       ? hitShapes(armor, { module: box.module, turretLocal: !!box.turretLocal, external: box.external, min: part.min, max: part.max, parts: [part] })
