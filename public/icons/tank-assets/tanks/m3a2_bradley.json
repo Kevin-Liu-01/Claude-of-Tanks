@@ -653,15 +653,15 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 26096,
-      "sha256": "0c9c44247eb9682cc067bbfc4d552edc78566879a5793f85accd2f93d387ea4e",
+      "bytes": 26086,
+      "sha256": "b19cf1504bca155518a8e4fab15fd33518c90eb9e98e2ba007b1cb29e7677274",
       "thumbnail": {
         "file": "thumbs/m3a2_bradley_angle.webp",
         "width": 256,
         "height": 256,
         "mime": "image/webp",
-        "bytes": 10648,
-        "sha256": "054426da1845cf683a4a9e865f4237fad9582bcc695af883ba761b2d40efe756"
+        "bytes": 10658,
+        "sha256": "b20d4753562838f90c934ec0ece0ec75da905efd30b90138b55daee43bd844c7"
       }
     },
     "top": {
@@ -677,8 +677,8 @@
       "width": 512,
       "height": 256,
       "mime": "image/webp",
-      "bytes": 17306,
-      "sha256": "dbe3bea979c96295228aeb08cfe5dc546c8b9d559179dd22c167089c5e65a0c8"
+      "bytes": 17308,
+      "sha256": "a569a7cde1042b8f80c7b8f43eeff56139c4fc0d7a8d6df723c186cdd79e8c4d"
     },
     "topSilhouette": {
       "file": "m3a2_bradley_top_silhouette.png",
@@ -701,32 +701,32 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 35776,
-      "sha256": "6c7a97863821175b0d550d1301541ab063d5646fc36839b3f0e736f3aab82412"
+      "bytes": 35844,
+      "sha256": "6656db393235ef7dc8e9df349cc2a153d5569fd3b4bd048a221905f3526bd067"
     },
     "modulesSide": {
       "file": "m3a2_bradley_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 38378,
-      "sha256": "c253e65512669233a2ded4eb460bdd18e9dcfe2f9ac83be9f0ff4b4e9d42decf"
+      "bytes": 40380,
+      "sha256": "98e036e203142c15c01f32159aaa4c9ea75167580dabd4cf383fd2af105d19a8"
     },
     "crewSide": {
       "file": "m3a2_bradley_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 35586,
-      "sha256": "5786c6c2a4a33d42931ca3935cd1abdc7adf1503e1278e0b9080e6ba5be89ba7"
+      "bytes": 35528,
+      "sha256": "361eca6a774085bae78308a421815e8efd3a8b873c57e8b276c8b623da37870d"
     },
     "markings": {
       "file": "m3a2_bradley_markings.png",
       "width": 256,
       "height": 128,
       "mime": "image/png",
-      "bytes": 37070,
-      "sha256": "70f56233c1ffc81f56bbdf4b1d582c5e5dad7b9b4febcd01d74c77fa302fa223"
+      "bytes": 34695,
+      "sha256": "b8239b9ddda079fbc881e67afbd354b7a63aca66679d5eec93a52249108d0b17"
     },
     "technicalLabels": {
       "file": "m3a2_bradley_technical.json",

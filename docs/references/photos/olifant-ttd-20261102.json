@@ -1,0 +1,31 @@
+{
+  "schemaVersion": 1,
+  "tankIdSchema": 3,
+  "comparisonPurpose": "photographic-reference",
+  "numerical3DComparison": "unverified",
+  "dimensionToleranceFraction": 0.03,
+  "targets": {
+    "ttd": {
+      "name": "Olifant TTD",
+      "authority": "Main ruled the South Africa line on 2026-11-02 (DECISIONS) on the owner's request the same day: the TTD (Project Loggim's one Tank Technology Demonstrator, 1992) as the South African special at tier III (IV ruled, III by its same-tier duels); the owner, the same day: \"the ttd needs to properly be based on an actual leopard 2\". A first-party build on the fleet's Leopard 2 (the release's Leopard 2 hull and the 2A4 turret's square block) with the TTD's own fit; no registered 3D comparison exists. Numerical 3D comparison remains unverified.",
+      "sources": [
+        "https://tanks-encyclopedia.com/modern/south-africa/tank-technology-demonstrator/",
+        "https://www.saarmourmuseum.com/tanktechnologydemonstrator",
+        "https://en.wikipedia.org/wiki/Loggim_program",
+        "https://tanks-encyclopedia.com/wp-content/uploads/2019/04/STT.jpg",
+        "https://www.tanks-encyclopedia.com/wp-content/uploads/2019/03/DSCF3794-640x480.jpg",
+        "https://www.tanks-encyclopedia.com/wp-content/uploads/2019/03/SA-ARMOUR-MUSEUM-3-640x427.jpg"
+      ],
+      "widthM": 3.672,
+      "overallLengthM": 10.056,
+      "tallestM": 4.241,
+      "envelopeBasis": "The as-built envelope of the fleet's Leopard 2 (the release hull, 3.67 m over its skirts, and the 2A4 turret with its sleeved L/44 tube 4.10 m ahead of the trunnion standing for the GT3's 51 calibres) under the TTD's own fit, as the owner asked; TE's 7.78 x 3.62 x 2.99 m TTD hull is 1 % narrower than the Leopard 2's and its 9.41 m over the gun 6 % shorter. The envelope holds the loader's FN MAG and the whips.",
+      "caliberMm": 105,
+      "launcherTubes": 0,
+      "roofMachineGuns": 1,
+      "crew": 4,
+      "unmannedTurret": false,
+      "test": "src/vehicles/profiles/southAfrica.selftest.mjs"
+    }
+  }
+}

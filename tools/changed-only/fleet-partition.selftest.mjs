@@ -187,7 +187,8 @@ for (const name of ['icons', 'centering']) {
   const step = STEPS.find((entry) => entry.name === name);
   assert.ok(state.steps[name].toolFiles.includes('tools/icons-page-public.mjs'), `${name}: keys the served public list`);
   assert.ok(!state.steps[name].toolFiles.includes('public'), `${name}: never keys public/ whole (a name such as the guard's /public/ prefix)`);
-  assert.ok(step.reads.length && step.reads.every((glob) => /^public\/[^/*]+\/\*\*$/.test(glob)) && !step.reads.includes('public/**'),
+  // 269: the list may be empty (the Glacis painter loads no font): then the step keys no public file at all
+  assert.ok(step.reads.every((glob) => /^public\/[^/*]+\/\*\*$/.test(glob)) && !step.reads.includes('public/**'),
     `${name}: reads named public directories (${step.reads.join(', ')}), never public/**`);
 }
 // 267: the gate step keys each id's oracle from its own record (geometryGate.oracle), the public files its page loads

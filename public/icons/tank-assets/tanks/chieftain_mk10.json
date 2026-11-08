@@ -530,15 +530,15 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 23484,
-      "sha256": "e8ec4201ae77c721ec2f3f6d380c09b92688fcc0a2e8016bc536f643c2a8287b",
+      "bytes": 23498,
+      "sha256": "3147fac2c7cabe4645f71b259bc63773c316bbb30b223c6c4a516a836d17f9e0",
       "thumbnail": {
         "file": "thumbs/chieftain_mk10_angle.webp",
         "width": 256,
         "height": 256,
         "mime": "image/webp",
-        "bytes": 9978,
-        "sha256": "7d2e47d3f1b76af9e6a1085ac488df6c9cfdc4f2ff7fe4c181de2dd8efc1b529"
+        "bytes": 9970,
+        "sha256": "220c90f5381e920534ee7f9b12d7da689837537d5afad75cd9503bcc855b2765"
       }
     },
     "top": {
@@ -546,8 +546,8 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 9226,
-      "sha256": "e6bc71132890e200ef4c31d52ccaf9b5e434900239d1330fdfd623cd894330ab"
+      "bytes": 9222,
+      "sha256": "87f0ebbce3221551a5730e71ec75f6b58a5d6729d34c4b0f554624b1c12c6999"
     },
     "side": {
       "file": "chieftain_mk10_side.webp",
@@ -578,8 +578,8 @@
       "width": 256,
       "height": 128,
       "mime": "image/png",
-      "bytes": 35710,
-      "sha256": "1c6243fce3687bbdbd955b6812b8c8948fe9db2ff5304cba873d7fa57e5693aa"
+      "bytes": 33253,
+      "sha256": "01b45a6217627452b8f1fccecb3868bdea89c751b6752e6596a9836681008bf5"
     },
     "technicalLabels": {
       "file": "chieftain_mk10_technical.json",

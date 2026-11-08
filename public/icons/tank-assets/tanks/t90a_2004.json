@@ -6536,15 +6536,15 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 26840,
-      "sha256": "46bf21be3be9789df54c1b0158a239d567f86d2f19edb27a7583efd82c011576",
+      "bytes": 26852,
+      "sha256": "f2899ce039ee81daa0c6a724641062f5e436dbc94607fec3169cc63ade87d9de",
       "thumbnail": {
         "file": "thumbs/t90a_2004_angle.webp",
         "width": 256,
         "height": 256,
         "mime": "image/webp",
-        "bytes": 10526,
-        "sha256": "b50d29e01484e181d1a84de707e9cd4be70a0f9c1c0a6482a2997155cb081511"
+        "bytes": 10532,
+        "sha256": "d3b3a2214394fbd7ea28ed2d91be2cb5c8e338e559cd3ee34652dba325d2c260"
       }
     },
     "top": {
@@ -6608,8 +6608,8 @@
       "width": 256,
       "height": 128,
       "mime": "image/png",
-      "bytes": 34322,
-      "sha256": "85d5bac40b6996ce7d9e30a542c7e59a4bcf8c3f0f1b1ba673449d2d6bc8a4c1"
+      "bytes": 32679,
+      "sha256": "23f781492163efb67f56329166feed9e34111c8becda94c9031167668eee7ea4"
     },
     "technicalLabels": {
       "file": "t90a_2004_technical.json",

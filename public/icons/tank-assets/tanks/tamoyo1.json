@@ -784,15 +784,15 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 24412,
-      "sha256": "130239255a63f332835ee26a9be6b4d671e552cb47ec6664f02bb28740fd0342",
+      "bytes": 24420,
+      "sha256": "65cd61f3e99932c6b45181c98314b13d2246065c05ca0cdc67b8428e4edb07d3",
       "thumbnail": {
         "file": "thumbs/tamoyo1_angle.webp",
         "width": 256,
         "height": 256,
         "mime": "image/webp",
-        "bytes": 10430,
-        "sha256": "1b19f45879f6879d97b78fa15ccb0aa38be70d74960710c6b097d393d9961650"
+        "bytes": 10428,
+        "sha256": "62d69f33f834c9f91a0229aa6fbb5ad554a55b8931c1b4f242719657db3cd67b"
       }
     },
     "top": {
@@ -800,16 +800,16 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 8074,
-      "sha256": "c9e3654c4a171361a4ae7fb062bcb3678356309c009244b848f04f0a83376e76"
+      "bytes": 8070,
+      "sha256": "cb2f99e544621302aa835675aedc1cd45758724596fe5d12e3dad2788d97561d"
     },
     "side": {
       "file": "tamoyo1_side.webp",
       "width": 512,
       "height": 256,
       "mime": "image/webp",
-      "bytes": 9850,
-      "sha256": "41194bfc2f3a1d3128da8cd394f3b9ba21afcc48d45eae31d645c904bd528978"
+      "bytes": 9876,
+      "sha256": "aa0b31b33588c4ad92cfae02183eece23d1e73036c735c8c35681a78ef302b36"
     },
     "topSilhouette": {
       "file": "tamoyo1_top_silhouette.png",
@@ -833,31 +833,31 @@
       "height": 512,
       "mime": "image/webp",
       "bytes": 21762,
-      "sha256": "f8b60caabdfe6a559065d09abef9fb55be801b995af97549ffd6912d6d4c8bba"
+      "sha256": "5437cac223f424ecbfef05d5286294d669559c044c1d4f9af90720ef0e6ecc76"
     },
     "modulesSide": {
       "file": "tamoyo1_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 22196,
-      "sha256": "04936fa373c7632761f43d338366feaa6311aac53cc01c2b4de22e9f2442b0dd"
+      "bytes": 22132,
+      "sha256": "e66c992f8a7579361b1530b25ee7b381c5e8a243f28e5983583b28c788722a39"
     },
     "crewSide": {
       "file": "tamoyo1_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 20316,
-      "sha256": "44e024ff42810df463e6c9abd2c6a635c588ba31cdc39803e9d006322e83d47a"
+      "bytes": 20254,
+      "sha256": "b7456c46d87dfd26089cbd0f020c00513c2eb8a7f3b1ed86d231c6ce2bf39bea"
     },
     "markings": {
       "file": "tamoyo1_markings.png",
       "width": 256,
       "height": 128,
       "mime": "image/png",
-      "bytes": 32544,
-      "sha256": "21157ae733fe68fb1312a9b22ea79dd6e44e991736484a2c6c4dc95e47dd6a1c"
+      "bytes": 32292,
+      "sha256": "bd408a5f58b9e1a4bdb8a28cdf5a8db900ca1637e2eb54641bd6a14ceb59b178"
     },
     "technicalLabels": {
       "file": "tamoyo1_technical.json",

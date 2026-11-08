@@ -940,24 +940,24 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 32776,
-      "sha256": "802a05e45f0a3d15f43ca3ae3b1bf1d560bd425e748c55fc3efe309d4900d0e2"
+      "bytes": 32748,
+      "sha256": "786eed95f4ec2fb7d37d07e02ac0827a66828ed37c535cb095b51b112d3d5fd6"
     },
     "modulesSide": {
       "file": "kurganets25_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 33572,
-      "sha256": "2cce849e662333ddf365d4552bc3a5e5485221587f69a0a5ec4f1944dff45028"
+      "bytes": 33556,
+      "sha256": "77b51e918aed16dde7a2c2ea91211d2dbe369738906af1d41298bf8fc4278a54"
     },
     "crewSide": {
       "file": "kurganets25_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 29698,
-      "sha256": "860508524f292fd9b244bf2ddfba8ec5c1d72986e02542645a7ebacee7aaa2f7"
+      "bytes": 29716,
+      "sha256": "2ed3ae3da7db207090b0d3b9623b90e71f53bffd75a0c63a86a2622762ddd9bb"
     },
     "angle": {
       "file": "kurganets25_angle.webp",
@@ -980,16 +980,16 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 22692,
-      "sha256": "60e064a929f5ccb285aecc250027a2c524a2f5bfa16fbb2af1820cff27b53a73"
+      "bytes": 22658,
+      "sha256": "552b74290ce35499674d78049686c9dacdd65a4bf5633c18e2a94bb625c0226d"
     },
     "side": {
       "file": "kurganets25_side.webp",
       "width": 512,
       "height": 256,
       "mime": "image/webp",
-      "bytes": 13574,
-      "sha256": "e6317412381b46c73768e491c22956eb0f903a8aa9634f92bff4876d334adab5"
+      "bytes": 13568,
+      "sha256": "24d09798267e56ba006ae79fc0c4ee9a68db51edbf8f8b3a7edce6f6afa712da"
     },
     "topSilhouette": {
       "file": "kurganets25_top_silhouette.png",
@@ -1012,8 +1012,8 @@
       "width": 256,
       "height": 128,
       "mime": "image/png",
-      "bytes": 35991,
-      "sha256": "339381d20dc5410f7415cb643633e4d13330361c310769e36fc333586b884272"
+      "bytes": 33464,
+      "sha256": "f5d0cdc794569f79fed491245fe3e05a586a88c77e2309326fd682e1c92eb5ea"
     },
     "technicalLabels": {
       "file": "kurganets25_technical.json",

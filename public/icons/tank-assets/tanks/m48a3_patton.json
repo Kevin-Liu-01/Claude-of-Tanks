@@ -590,16 +590,16 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 11064,
-      "sha256": "e93b21ecf3cc3ebf7b95d427c5276d771f5277237258b7fbe1f890bc60e96784"
+      "bytes": 11068,
+      "sha256": "cca893fb8aa20c5e51ce0f5144db1c1d2ad3bbe190a7102a0341ef74ee1db5cb"
     },
     "side": {
       "file": "m48a3_patton_side.webp",
       "width": 512,
       "height": 256,
       "mime": "image/webp",
-      "bytes": 12570,
-      "sha256": "a580a71c8ffad9ec17869787052a1d6e1dc3eaf3d40ffd2ce3fb4a7683510cd5"
+      "bytes": 12592,
+      "sha256": "66caaeda7582d8684fd6ea74a09e5003f01684430b94b215d37964565e25c496"
     },
     "topSilhouette": {
       "file": "m48a3_patton_top_silhouette.png",
@@ -622,32 +622,32 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 29196,
-      "sha256": "ec38ddcbcef4581da1fad6cc43038cc6865b5e1892748ca6a235cc946c343e5e"
+      "bytes": 29136,
+      "sha256": "a731e2d4d6fd61240cafc73777304d2a0f0ae080d407e32d715980cadc618dcd"
     },
     "modulesSide": {
       "file": "m48a3_patton_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 29532,
-      "sha256": "44e0f004a49184d1a50e52d5906b1dc5da5e8cfa24277d8769b498abcb727fee"
+      "bytes": 29622,
+      "sha256": "c36c0ac1922f568bb931640a621301e57c6a024b3e300e1f02ef60f138cd1ed8"
     },
     "crewSide": {
       "file": "m48a3_patton_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 26968,
-      "sha256": "f05746129395aaccf5be93aa410c5d0688284c6b82b6411be93d89627947c074"
+      "bytes": 26944,
+      "sha256": "cdd36b2bfeda34022caa5f4af308198e11b57e5808d11d4a719459a020ade31a"
     },
     "markings": {
       "file": "m48a3_patton_markings.png",
       "width": 256,
       "height": 128,
       "mime": "image/png",
-      "bytes": 37640,
-      "sha256": "79288fe1645efbcf70c94e0edba30661f81e5b5d990a0fdb482c694b183eb2b6"
+      "bytes": 34088,
+      "sha256": "7f4de5eb8be628107719e9068541600ec8d9673b6a0c39d4836227c222890abd"
     },
     "technicalLabels": {
       "file": "m48a3_patton_technical.json",

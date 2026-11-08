@@ -12878,7 +12878,7 @@
       "height": 512,
       "mime": "image/webp",
       "bytes": 13870,
-      "sha256": "17c6187bfd8c8fb611f143f3523562e129c28b809d8e1ff7fccff32c9d09687e"
+      "sha256": "df48f4ec80ac43ce7d491216133ba048b48a3e5c5807042fbdc5396d6b56695d"
     },
     "sideSilhouette": {
       "file": "t72b3m_2022_side_silhouette.png",
@@ -12901,8 +12901,8 @@
       "width": 256,
       "height": 128,
       "mime": "image/png",
-      "bytes": 35810,
-      "sha256": "7fedc0da7fd4c705b763a2e51b18b78df84644fc1dd1ea723d93228cf7c5107a"
+      "bytes": 32850,
+      "sha256": "83c71b7d5bb67b2be61725d56e231429bdfcc110217e2aad1674fe3c1d28e49b"
     },
     "side": {
       "file": "t72b3m_2022_side.webp",

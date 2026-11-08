@@ -10207,8 +10207,8 @@
       "width": 256,
       "height": 128,
       "mime": "image/png",
-      "bytes": 36557,
-      "sha256": "07f1e896e85a228bac51feb0fcc8b37937918c01a4b5f23442df425d5379cfd2"
+      "bytes": 34841,
+      "sha256": "06091fb7beb03fe8c033bac48accc730cb3d5f8337323c0cf6fc530fd4a19bee"
     },
     "technicalLabels": {
       "file": "bmpt_t90_technical.json",

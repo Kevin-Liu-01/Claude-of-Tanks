@@ -901,15 +901,15 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 23578,
-      "sha256": "d2eafc8781b09704ac6ad99cb247ace247142f348c162f83c42f4de2a7337cf4",
+      "bytes": 23618,
+      "sha256": "ad125a3bb9d2b7404e6bffe3df74c876b9c6fbf736072261e580686a99f414a2",
       "thumbnail": {
         "file": "thumbs/cv9035dk_angle.webp",
         "width": 256,
         "height": 256,
         "mime": "image/webp",
-        "bytes": 9898,
-        "sha256": "ac73c6a1091ce93adf1d10f0d4cfac6a3bdf7e0c359e05b459dc036a84371abf"
+        "bytes": 9902,
+        "sha256": "f53f0e593089359d4b23c74e77abe2c9866e0b9672a79e6ce95feda163ca4403"
       }
     },
     "top": {
@@ -925,8 +925,8 @@
       "width": 512,
       "height": 256,
       "mime": "image/webp",
-      "bytes": 12972,
-      "sha256": "3229972ba1c6bafb0a6aead0581455a975260ed6a7084bbe20f1ea44fafb1864"
+      "bytes": 12922,
+      "sha256": "8af5dcf1558dfda30b9171763cefc6d1f9febbf92eeb9f18c09a3afdac1a1f08"
     },
     "topSilhouette": {
       "file": "cv9035dk_top_silhouette.png",
@@ -949,32 +949,32 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 34128,
-      "sha256": "f626baac200aa3eb99e52f62b7b453d1c2b015fc13e7bb6773ca7164fb3f0261"
+      "bytes": 34126,
+      "sha256": "60244b1a8ad3bb99438319aebda6166075d1d8377bb4d8b04c529772fe937fa3"
     },
     "modulesSide": {
       "file": "cv9035dk_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 32430,
-      "sha256": "516fa09bd9150b865826fc3369f8f1b00f83fd443c143f1fe3d65ac3c2b55b7d"
+      "bytes": 32426,
+      "sha256": "fa69d0c4baff656ba8cd002ee4ccb256d0777bd77c33425ebc6031fe8bcb40e2"
     },
     "crewSide": {
       "file": "cv9035dk_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 29914,
-      "sha256": "058de2888d9e1d2040acd3b6958dc49f5010116555dce4e917e1d7aa5d6c00ef"
+      "bytes": 29926,
+      "sha256": "18d4581866cfd87db516647e8f068bf586187bcef46054f25ffe907d3c176f6c"
     },
     "markings": {
       "file": "cv9035dk_markings.png",
       "width": 256,
       "height": 128,
       "mime": "image/png",
-      "bytes": 33376,
-      "sha256": "427cabd8abe451ac00a073fb19d963617e8bfa79b6dabf189ea11dfa24ea0a0b"
+      "bytes": 31288,
+      "sha256": "846e3a99e652367aa4bf273fdf360919bcca2ff8105fffa7cc3d256624e70046"
     },
     "technicalLabels": {
       "file": "cv9035dk_technical.json",

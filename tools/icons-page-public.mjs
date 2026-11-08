@@ -9,9 +9,11 @@
 // directories, and their server refuses every other public file (tools/served-public.mjs: 403, and the run fails), so a
 // new load outside them fails loudly instead of slipping past the keys. A page that needs another directory adds it
 // here; the edit moves both steps' keys once.
+// 269 (Glacis markings, item/glacis-269 a504c5fa32): the material painter's worker loads no font, so the page loads no
+// public file at all and the list is empty: every public file is refused, and neither step keys any of public/.
 import { servedPublicOnly } from './served-public.mjs';
 
-export const ICONS_PAGE_PUBLIC = Object.freeze(['fonts']);
+export const ICONS_PAGE_PUBLIC = Object.freeze([]);
 
 /** The icons page's server plugin: ICONS_PAGE_PUBLIC's directories of public/, any other public file refused. */
 export const iconsPagePublicOnly = (refused) => servedPublicOnly({ dirs: ICONS_PAGE_PUBLIC }, refused);

@@ -204,6 +204,12 @@ export const SELFTEST_SUITES = Object.freeze({
     // release 266 (owner: "lets build brazil ... flesh it out with all its own tanks"; "EE-T1 Osório"): the Brazilian line's
     // X1, X1A2, Tamoyos and Osórios in their trees, tiers and photo packets at both qualities, each mark's kit
     'src/vehicles/profiles/brazil.selftest.mjs',
+    // release 269 (owner: "flesh out south african and australian tank trees"): the South African line's Semel and Olifants
+    // on the Centurion family and the TTD in their tree, tiers and photo packets at both qualities, each mark's kit
+    'src/vehicles/profiles/southAfrica.selftest.mjs',
+    // release 269 (owner: "flesh out south african and australian tank trees"): the Australian line's M113s, Leopard AS1,
+    // Abrams pair and Redback in their tree, tiers and photo packets at both qualities, each one's own kit
+    'src/vehicles/profiles/australia.selftest.mjs',
     // 265: the M41 family on its supplied print's datums, each mark's kit and tree
     'src/vehicles/profiles/m41.selftest.mjs',
     'src/vehicles/ztz20GunClearance.selftest.mjs',
@@ -284,6 +290,9 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/vehicles/interiorFillSurface.selftest.mjs',
     // 2026-10-16 (tank-opt HIDDEN): a wreck draws the closed boxes again (setDestroyed), the rematch the surface
     'src/vehicles/interiorFillWreck.selftest.mjs',
+    // 2026-11-05 (owner: "when destroyed you can still see the double barrles"): every public tank's battle wreck kinks
+    // each drawn gun piece along the crease (cutAtKink), plain and cook-off; no straight chord beside the bent barrel
+    'src/vehicles/wreckGunBend.selftest.mjs',
     'tools/barak-rear-bay-fill-policy.selftest.mjs',
     'src/vehicles/profiles/kurganetsRearDoorStock.selftest.mjs',
     'src/vehicles/profiles/kurganetsBowStock.selftest.mjs',
@@ -1135,6 +1144,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/ui/technicalDrawing.selftest.mjs',
     'src/ui/damagePanel.selftest.mjs',
     'src/ui/damagePanelMarkers.selftest.mjs',
+    // plates-overlap-269 (owner 2026-11-04): the hull bars over tanks on their own seats, overlapping, never pushed apart
+    'src/ui/hullBarMarkers.selftest.mjs',
     'src/ui/damagePanelMaskRetry.selftest.mjs',
     'src/ui/damagePanelEntryMasks.selftest.mjs',
     // 2026-10-13 (owner: "even if im destroyed, the tank in bottom left corner can have its turret rotating"): a
@@ -1297,6 +1308,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/game/soloKernelObstacleQuery.selftest.mjs',
     // fix-detached-buffer-265: the kernels' views across a memory growth (Desert's first step threw on live 264c)
     'src/game/soloKernelMemoryGrowth.selftest.mjs',
+    // dev-battle-freeze: the dev battle hold (__DEBUG.battleHold) keeps a solo battle alive and still; off, the step byte for byte
+    'src/game/devBattleHold.selftest.mjs',
     'src/game/soloBattleRuntime.selftest.mjs',
     'tools/boot-static-closure.selftest.mjs',
     // 265: the core imports no driver code; a local battle never reaches src/mp or the room host (seeded violations caught)
@@ -1453,6 +1466,10 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/engine/cloudLayers.selftest.mjs',
     'src/engine/cloudBeerShadow.selftest.mjs',
     'src/engine/cloudDeckCover.selftest.mjs',
+    // clouds-269 (2026-11-04): the cloud field without rows or a lattice, the cumulus domed, the phones' deck unrepeated
+    'src/engine/cloudField.selftest.mjs',
+    // clouds-269: every map's cumulus as the medium places it, aperiodic (round 71's ruled rolls the negative control)
+    'src/engine/cloudPlacement.selftest.mjs',
     // 2026-10-05 (the skies-and-atmosphere lane): one wind per battlefield — every map's surface wind from its source, its
     // clouds' drift veered from it (never opposed)
     'src/world/sceneWind.selftest.mjs',
@@ -1873,6 +1890,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/game/ai.allyYield.selftest.mjs',
     // 268 (Main item 10 (A)): a hull pressed into a static solid with no way releases at once (Desert seed 12's boulder gap).
     'src/game/ai.rockWedge.selftest.mjs',
+    // 269 (Main item 11): a bot with a shot open turns its hull within its share of the turret's traverse and lays its gun.
+    'src/game/ai.layGunFirst.selftest.mjs',
     // 2026-10-03 (bots lane): an engaged casemate keeps its bow on its target (scoots, jinks, cover).
     'src/game/ai.casemateLay.selftest.mjs',
     // 2026-10-03 (bots lane): a patrol leg the grid cannot route still drives (the bridge gate's no-route hold).
@@ -2738,6 +2757,9 @@ export const SELFTEST_SUITES = Object.freeze({
     'tools/pane-stack-layer.browser.selftest.mjs',
     // fx-first-use-261: a battle's first broken building (a scripted strike after the reveal) links no FX program
     'tools/destruction-first-use.browser.selftest.mjs',
+    // 269 (the 268 drive smoke's second battle at 97%): a second solo battle in one page, started while the Leave's Garage
+    // restore runs under a loaded GPU, reveals on its first frame
+    'tools/second-solo-battle.browser.selftest.mjs',
     // the drawn-geometry shape's control and garages (the maps ride on collisionManifestDrift, the tanks on fleetPassHigh)
     'src/world/maps/drawnGeometryShape.selftest.mjs',
     'tools/props-build-profile.selftest.mjs',

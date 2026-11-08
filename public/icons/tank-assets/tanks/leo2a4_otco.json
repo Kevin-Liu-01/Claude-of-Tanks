@@ -3582,8 +3582,8 @@
       "width": 512,
       "height": 256,
       "mime": "image/webp",
-      "bytes": 11088,
-      "sha256": "a3800983e002e979a6184cccb743b1a7cfacb3b86aef96edea755d97b8e6c482"
+      "bytes": 11090,
+      "sha256": "f00cdff7478ece1309c52bc365bf91caa28de46a779cdfc81d8181da9b615178"
     },
     "topSilhouette": {
       "file": "leo2a4_otco_top_silhouette.png",
@@ -3606,32 +3606,32 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 29110,
-      "sha256": "7c36ecaaafeb564f757c36e15911b4b3cb76be4eb4e04f36dcf228ac6177080f"
+      "bytes": 28968,
+      "sha256": "3ef6b411040a8e947a5e8632ffe83270b22cde9dee9bd1052fc06f0c55f09ff5"
     },
     "modulesSide": {
       "file": "leo2a4_otco_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 29770,
-      "sha256": "857454a8c7911a150b734f9b0a43d446002228d2ccb271b2b0ec3eed81fe366f"
+      "bytes": 29846,
+      "sha256": "a679ebe3c9bd6bdeb75cac510ed8bd4779bd91c075eb0e1d2e596df419d83618"
     },
     "crewSide": {
       "file": "leo2a4_otco_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 27106,
-      "sha256": "5cc4c7483566ce08291163bebaeb4ee8e779e305562b4068c3c8f49bd7d3ab3b"
+      "bytes": 27098,
+      "sha256": "e241b36d69cd1f2cbe5097cbe9a231e6cb79b2bc904cd50582844ccad1ecad3f"
     },
     "markings": {
       "file": "leo2a4_otco_markings.png",
       "width": 256,
       "height": 128,
       "mime": "image/png",
-      "bytes": 35012,
-      "sha256": "272d586d1982ba09c1daf5de9876c71973fc73d5b8aa8d646f9e26412ac1c543"
+      "bytes": 31786,
+      "sha256": "b0f49e3e0db803bfd092ef2a82e0070e0c4213e21f54290b85a05e6df0e60ac5"
     },
     "technicalLabels": {
       "file": "leo2a4_otco_technical.json",
