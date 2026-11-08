@@ -118,6 +118,7 @@ Through `__DEBUG.beginSoloBattle` (the solo entry, its cover and countdown):
 - `tools/mobilelap.mjs`
 - `tools/phase-resource-probe.mjs`
 - `tools/render-stability-audit.mjs`
+- `tools/second-solo-battle.browser.selftest.mjs`
 - `tools/shadow-render-truth.mjs`
 - `tools/suspension-strip-probe.mjs`
 - `tools/track-system-audit.mjs`
@@ -226,6 +227,7 @@ Waits and polls built by hand:
 - `tools/battle-spike-census.mjs`: its trace starts at the phase edge itself (the covered load is the recorder's, the countdown and the fight are the trace's)
 - `tools/black-world-repro.mjs`: the black-world hunt: it watches the cover lift and the HUD show (the visual edge it hunts at) and samples the loader in its monitor
 - `tools/click-timeline.mjs`: measures the Garage's paint, the entry gate and the reveal latch (visual edges), not readiness
+- `tools/cloud-sky-shots.mjs`: a 269 tool merged in round 8 Y0 with its own `__GAME_READY` boot wait; the tools-capture cluster (round 8 Y8, sweep s6-01) moves it onto the probe
 - `tools/controls-probe.mjs`: times the loading cover's show from the click (a mutation observer on the loader)
 - `tools/garage-action-timing.mjs`: times the Garage's and the battle's visual edges (painted, the loader's classes), its subject
 - `tools/interaction-steps.mjs`: click-timeline's steps: the cover's show and the reveal latch are what it times
@@ -240,6 +242,7 @@ Waits and polls built by hand:
 - `tools/nav-timeline.mjs`: measures the cover's and the HUD's visual edges, its subject
 - `tools/pinch-zoom-probe.mjs`: measures box positions, so past the controls' release it waits for the loading veil out of layout (its leaving fade moves boxes)
 - `tools/render-stability-audit.mjs`: an agent-browser session: it waits on its own entry promise, and the phase confirms the battle
+- `tools/second-solo-battle.browser.selftest.mjs`: a 269 receipt merged in round 8 Y0: it times a second solo start against a running Garage restore, reading the boot mirror, the phase, the loader and the countdown itself; the tools-capture cluster (round 8 Y8, sweep s6-02) moves its waits onto the probe
 - `tools/solo-cold-import-cover-probe.mjs`: the cold entry's cover is its subject: it judges the battle from its own cover observer's samples
 - `tools/solo-kernels-probe.mjs`: after `__DEBUG.startBattle` (no cover, no countdown) the phase alone confirms the battle
 - `tools/track-system-audit.mjs`: a page function closed over the tank id with its own conditions; the tool sets the countdown itself
