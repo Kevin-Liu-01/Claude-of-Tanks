@@ -103,12 +103,38 @@ function bankFacingToggle(on) {
   })()`;
 }
 
+/** The in-page switch of the paving (the street-paving toggle): off sets the terrain material's uRoadTex to 0 and its
+ *  styled road net off (uRoadClass.z 0), so no road pixel runs the paving block (terrain.ts gRoadTex) — the paving the
+ *  built-environment rows gave a map that had none (coastal, frontier, saltwind); on restores the row's values. */
+function streetPavingToggle(on) {
+  return `(() => {
+    const D = window.__DEBUG, props = D.renderer.properties;
+    let n = 0;
+    D.scene.traverse((o) => {
+      const mats = Array.isArray(o.material) ? o.material : o.material ? [o.material] : [];
+      for (const m of mats) {
+        const us = props.get(m)?.uniforms;
+        if (!us?.uRoadTex || !us.uRoadClass) continue;
+        us.uRoadTex.__pave ??= us.uRoadTex.value;
+        us.uRoadClass.__net ??= us.uRoadClass.value.z;
+        us.uRoadTex.value = ${on ? 'us.uRoadTex.__pave' : '0'};
+        us.uRoadClass.value.z = ${on ? 'us.uRoadClass.__net' : '0'};
+        n++;
+      }
+    });
+    if (!n) throw new Error('no terrain program carries uRoadTex');
+    return n;
+  })()`;
+}
+
 /** Runtime A/B switches the probe can flip inside one page (off = the baseline). */
 const FRAME_PROBE_TOGGLES = Object.freeze({
   // (built-env-270, DECISIONS 2026-11-05: "measure the bank-facing term's per-pixel cost against base on both quality
   // tiers") the terrain material's bank facing (terrain.ts uBank): off sets its kind to 0, so the uniform-gated block is
   // skipped on every terrain draw; on restores the map's row. The delta is the term's whole per-pixel cost.
   'bank-facing': Object.freeze({ on: bankFacingToggle(true), off: bankFacingToggle(false) }),
+  // (built-env-270: the base-vs-lane scene step +4.6..6.2 ms on desktop) the paving on the roads of a map the rows paved
+  'street-paving': Object.freeze({ on: streetPavingToggle(true), off: streetPavingToggle(false) }),
   // the static shadow-caster cache (engine/shadowStaticCache.ts): off forces every caster every frame
   'shadow-cache': Object.freeze({ on: 'window.__SHADOW_DEBUG = Object.assign(window.__SHADOW_DEBUG || {}, { noStaticCache: false })',
     off: 'window.__SHADOW_DEBUG = Object.assign(window.__SHADOW_DEBUG || {}, { noStaticCache: true })' }),
