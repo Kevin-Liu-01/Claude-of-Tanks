@@ -19,6 +19,7 @@ import type { LandmarkBuilder, LandmarkBuildContext } from './types.ts';
 const POST = rgb(0x8a7458), VIGA = rgb(0x6a5440), EARTH = rgb(0x9a5a3a), EARTH_DARK = rgb(0x7a4630), PUMP = rgb(0xb2302a), SIGN = rgb(0xe6dcc0);
 const JUNIPER = rgb(0x5e4e3c), BLANKET = rgb(0x8a2f2a);
 
+const FRAME = rgb(0x4a6a72);
 const uvOffset = (rng: () => number): [number, number] => [rng() * 7.31, rng() * 5.17];
 const num = (ctx: LandmarkBuildContext, key: string, min: number, max = Infinity): number => Math.min(max, Math.max(min, Number(ctx.params[key])));
 
@@ -34,6 +35,10 @@ export const tradingPost: LandmarkBuilder = (ctx) => {
     if (y0 < 2 && Math.abs(u - (x0 + W / 2)) < 1.2) continue;
     sink.span('dark', u - 0.5, y0, D / 2 - 0.01, u + 0.5, y1, D / 2 + 0.02, { decor: true });
     sink.span('structureWood', u - 0.65, y1, D / 2, u + 0.65, y1 + 0.18, D / 2 + 0.12, { colour: VIGA, decor: true });
+    // its frame and mullion of painted timber, the sandstone sill proud under it
+    for (const x of [u - 0.5, u + 0.5]) sink.span('structureWood', x - 0.07, y0, D / 2, x + 0.07, y1, D / 2 + 0.07, { colour: FRAME, decor: true });
+    sink.span('structureWood', u - 0.03, y0, D / 2 + 0.02, u + 0.03, y1, D / 2 + 0.06, { colour: FRAME, decor: true, fine: 'near' });
+    sink.span('stone', u - 0.68, y0 - 0.16, D / 2, u + 0.68, y0, D / 2 + 0.18, { decor: true, shade: 0.88 });
   }
   sink.span('dark', x0 + W / 2 - 0.7, 0, D / 2 - 0.01, x0 + W / 2 + 0.7, 2.4, D / 2 + 0.02, { decor: true });
   sink.span('structureWood', x0 + W / 2 - 0.6, 0.02, D / 2 + 0.02, x0 + W / 2 + 0.6, 2.3, D / 2 + 0.06, { colour: rgb(0x3e5a6a), decor: true });
@@ -89,13 +94,22 @@ export const hogan: LandmarkBuilder = (ctx) => {
   const corner = (k: number, r: number, y: number): Vec3 => [Math.sin((k + 0.5) / n * Math.PI * 2) * r, y, Math.cos((k + 0.5) / n * Math.PI * 2) * r];
   for (let k = 0; k < n; k++) {
     sink.quad('structureWood', corner(k, R, foot), corner(k + 1, R, foot), corner(k + 1, R, wallH), corner(k, R, wallH), { colour: JUNIPER });
-    for (let y = 0.25; y < wallH; y += 0.28) bar(sink, 'structureWood', corner(k, R + 0.05, y), corner(k + 1, R + 0.05, y), 0.09, { colour: shade(JUNIPER, 0.7 + v() * 0.3), decor: true, fine: true });
+    // the cribbed logs, each course running past the corners (their ends crossing the next side's)
+    for (let y = 0.2 + (k % 2) * 0.16; y < wallH; y += 0.32) {
+      const a = corner(k, R + 0.08, y), b = corner(k + 1, R + 0.08, y), dx = (b[0] - a[0]) * 0.1, dz = (b[2] - a[2]) * 0.1;
+      bar(sink, 'structureWood', [a[0] - dx, y, a[2] - dz], [b[0] + dx, y, b[2] + dz], 0.15, { colour: shade(JUNIPER, 0.7 + v() * 0.3), decor: true });
+    }
   }
   // the earth dome over the cribbed roof, mounded higher at the middle round the smoke hole
-  const dome: Array<[number, number]> = [[R + 0.35, wallH - 0.3]];
-  for (let i = 1; i <= 7; i++) { const a = (Math.PI / 2) * i / 7; dome.push([Math.max(0.5, Math.cos(a) * (R + 0.35)), wallH - 0.3 + Math.sin(a) * R * 0.62]); }
-  dome.push([0.45, wallH - 0.3 + R * 0.62 - 0.05]);
-  revolve(sink, 'structureWood', 0, 0, dome, 16, { colour: EARTH });
+  // (eight-sided, stepped where the cribbed roof's courses draw in under the earth)
+  const dome: Array<[number, number]> = [[R + 0.4, wallH - 0.3], [R * 0.92, wallH + 0.28], [R * 0.84, wallH + 0.36], [R * 0.66, wallH + R * 0.24],
+    [R * 0.58, wallH + R * 0.27], [R * 0.36, wallH + R * 0.44], [0.45, wallH - 0.3 + R * 0.62 - 0.05]];
+  revolve(sink, 'structureWood', 0, 0, dome, n, { colour: EARTH }, Math.PI / n);
+  // the cribbing's log ends showing under the earth's edge
+  for (let k = 0; k < n * 2; k++) {
+    const a = (k + 0.5) / (n * 2) * Math.PI * 2;
+    bar(sink, 'structureWood', [Math.sin(a) * (R - 0.2), wallH + 0.05, Math.cos(a) * (R - 0.2)], [Math.sin(a) * (R + 0.55), wallH - 0.05, Math.cos(a) * (R + 0.55)], 0.14, { colour: shade(JUNIPER, 0.75), decor: true });
+  }
   revolve(sink, 'structureWood', 0, 0, [[0.45, wallH - 0.3 + R * 0.62 - 0.05], [0.3, wallH - 0.3 + R * 0.62 - 0.4], [0.29, wallH - 0.3 + R * 0.62 - 0.4]], 8, { colour: EARTH_DARK, decor: true });
   bar(sink, 'structureMetal', [0.1, wallH, 0.1], [0.1, wallH + R * 0.62 + 0.8, 0.1], 0.1, { colour: rgb(0x2e2e2e), decor: true });
   // the entry on the east: a short boxed passage under its own earth, the blanket over the door
@@ -103,6 +117,10 @@ export const hogan: LandmarkBuilder = (ctx) => {
   sink.span('structureWood', -0.9, foot, ez - 0.2, 0.9, 1.9, ez + 1.2, { colour: JUNIPER });
   sink.span('structureWood', -1.0, 1.9, ez - 0.3, 1.0, 2.25, ez + 1.35, { colour: EARTH });
   sink.span('structureWood', -0.5, 0.05, ez + 1.2, 0.5, 1.7, ez + 1.24, { colour: BLANKET, decor: true });
+  // its door frame of two juniper posts and a lintel log, the passage's cribbed sides
+  for (const s of [-0.62, 0.62]) bar(sink, 'structureWood', [s, -0.1, ez + 1.28], [s, 1.95, ez + 1.28], 0.18, { colour: shade(JUNIPER, 0.85), decor: true });
+  bar(sink, 'structureWood', [-1.1, 1.95, ez + 1.3], [1.1, 1.95, ez + 1.3], 0.2, { colour: shade(JUNIPER, 0.85), decor: true });
+  for (const s of [-1, 1]) for (let y = 0.3; y < 1.9; y += 0.34) bar(sink, 'structureWood', [s * 0.93, y, ez - 0.25], [s * 0.93, y, ez + 1.4], 0.13, { colour: shade(JUNIPER, 0.75 + v() * 0.25), decor: true });
   // the sheep corral beside it: juniper posts leaning every way, brush between, its gate gap toward the hogan
   if (ctx.params.corral !== false) {
     const cx = R + 7.5, cr = 5.0, posts = 24;
@@ -113,7 +131,13 @@ export const hogan: LandmarkBuilder = (ctx) => {
       const x = cx + Math.cos(a) * cr, z = Math.sin(a) * cr, lean = (v() - 0.5) * 0.3, gy = ctx.ground?.(x, z) ?? 0;
       bar(sink, 'structureWood', [x, gy - 0.3, z], [x + lean, gy + 1.4 + v() * 0.4, z + lean], 0.13, { colour: shade(JUNIPER, 0.8 + v() * 0.4), decor: true });
       const b = ((k + 1) / posts) * Math.PI * 2, bx = cx + Math.cos(b) * cr, bz = Math.sin(b) * cr;
-      bar(sink, 'structureWood', [x, gy + 0.9, z], [bx, (ctx.ground?.(bx, bz) ?? 0) + 0.9 + v() * 0.3, bz], 0.08, { colour: JUNIPER, decor: true, fine: true });
+      const by = ctx.ground?.(bx, bz) ?? 0;
+      for (const h of [0.55, 1.1]) bar(sink, 'structureWood', [x, gy + h, z], [bx, by + h + v() * 0.25, bz], 0.09, { colour: JUNIPER, decor: true });
+      // the brush woven between the rails, sticks leaning every way
+      for (let i = 0; i < 3; i++) {
+        const f = (i + 0.5) / 3, mx = x + (bx - x) * f, mz = z + (bz - z) * f, my = gy + (by - gy) * f;
+        bar(sink, 'structureWood', [mx - 0.2 + v() * 0.4, my - 0.1, mz - 0.2 + v() * 0.4], [mx - 0.25 + v() * 0.5, my + 1.2 + v() * 0.4, mz - 0.25 + v() * 0.5], 0.05, { colour: shade(JUNIPER, 1.1 + v() * 0.3), decor: true, fine: true });
+      }
     }
   }
   return { parts: sink.finish() };

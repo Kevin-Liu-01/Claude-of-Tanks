@@ -255,16 +255,38 @@ export const gasholder: LandmarkBuilder = (ctx) => {
     // (two faces laced: a ring of fourteen columns is the frame's look, not each one's every lacing bar)
     lattice(sink, [p[0], 3.4, p[2]], q, 1.2, RUST_DARK, 0.16, 2);
   }
-  for (const gy of [H * 0.5, top]) for (let k = 0; k < cols; k++) {
+  // the ring girders tying the columns, each a deep pair of chords, at the quarters of the frame's height
+  for (const gy of [H * 0.27, H * 0.52, H * 0.77, top]) for (let k = 0; k < cols; k++) {
     const a = (k / cols) * Math.PI * 2, b = ((k + 1) / cols) * Math.PI * 2;
-    bar(sink, 'structureMetal', [Math.cos(a) * Rc, gy, Math.sin(a) * Rc], [Math.cos(b) * Rc, gy, Math.sin(b) * Rc], 0.4, { colour: RUST_DARK, decor: true });
+    for (const dy of [0, -0.9]) bar(sink, 'structureMetal', [Math.cos(a) * Rc, gy + dy, Math.sin(a) * Rc], [Math.cos(b) * Rc, gy + dy, Math.sin(b) * Rc], 0.34, { colour: RUST_DARK, decor: true });
+  }
+  // each lift's guide rollers on their brackets running on the columns, at its head
+  {
+    let rr = R, yy = 2.4;
+    for (let k = 0; k < lifts; k++) {
+      const h = k === lifts - 1 ? step * fill : step;
+      yy += h;
+      for (let c = 0; c < cols; c++) {
+        const a = (c / cols) * Math.PI * 2, ca = Math.cos(a), sa = Math.sin(a);
+        bar(sink, 'structureMetal', [ca * (rr + 0.2), yy + 0.3, sa * (rr + 0.2)], [ca * (Rc - 0.7), yy + 0.3, sa * (Rc - 0.7)], 0.22, { colour: STEEL, decor: true });
+        sink.span('structureMetal', ca * (Rc - 0.75) - 0.3, yy, sa * (Rc - 0.75) - 0.3, ca * (Rc - 0.75) + 0.3, yy + 0.6, sa * (Rc - 0.75) + 0.3, { colour: shade(STEEL, 0.8), decor: true });
+      }
+      rr -= 0.9;
+    }
   }
   ringRail(sink, 0, 0, Rc + 0.6, top + 0.2, cols * 2, STEEL);
   // the stair up the first column, flight by flight
   const a0 = 0, sx = Math.cos(a0) * (Rc + 1.2), sz = Math.sin(a0) * (Rc + 1.2);
+  // (the flights switch back on landings every 3 m, each flight a stringer pair with its treads and a handrail)
   for (let fy = 0; fy < top - 0.5; fy += 3) {
-    const dz = (Math.floor(fy / 3) % 2 ? -1 : 1) * 2.2;
-    bar(sink, 'structureMetal', [sx, fy, sz - dz], [sx, Math.min(top, fy + 3), sz + dz], 0.12, { colour: STEEL, decor: true, fine: true });
+    const dz = (Math.floor(fy / 3) % 2 ? -1 : 1) * 2.2, y1 = Math.min(top, fy + 3);
+    for (const dx of [-0.45, 0.45]) bar(sink, 'structureMetal', [sx + dx, fy, sz - dz], [sx + dx, y1, sz + dz], 0.1, { colour: STEEL, decor: true });
+    for (let t = 0.1; t < 1; t += 0.14) {
+      const y = fy + (y1 - fy) * t, z = sz - dz + 2 * dz * t;
+      sink.span('structureMetal', sx - 0.45, y - 0.03, z - 0.12, sx + 0.45, y + 0.03, z + 0.12, { colour: STEEL, decor: true, fine: 'near' });
+    }
+    bar(sink, 'structureMetal', [sx + 0.5, fy + 1.0, sz - dz], [sx + 0.5, y1 + 1.0, sz + dz], 0.05, { colour: STEEL, decor: true });
+    sink.span('structureMetal', sx - 0.6, y1 - 0.08, sz + dz - 0.7 * Math.sign(dz) - 0.7, sx + 0.6, y1, sz + dz + 0.7 * Math.sign(dz) - 0.7 + 1.4 * (dz > 0 ? 1 : 0), { colour: STEEL, decor: true });
   }
   return { parts: sink.finish() };
 };

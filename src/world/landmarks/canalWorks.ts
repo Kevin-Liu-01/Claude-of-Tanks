@@ -165,24 +165,34 @@ export const charcoalKilns: LandmarkBuilder = (ctx) => {
   const foot = -0.6 - ctx.groundFall, n = 20;
   for (let k = 0; k < K; k++) {
     const x = -span / 2 + (k + 0.5) * (2 * R + 1.4), z = 0;
+    // (each kiln built to its own size: the look stream)
+    const Rk = R * (0.84 + v() * 0.2), Hk = H * (0.88 + v() * 0.2);
     // the dome: brick under a mud skin, its foot ring of brick, the stoking arch on the front and the vent holes round it
-    revolve(sink, 'stone', x, z, [[R + 0.3, foot], [R + 0.3, y0 + 0.5], [R, y0 + 0.6]], n, { shade: 0.85 });
+    revolve(sink, 'stone', x, z, [[Rk + 0.3, foot], [Rk + 0.3, y0 + 0.5], [Rk, y0 + 0.6]], n, { shade: 0.85 });
     const dome: Array<[number, number]> = [];
-    for (let i = 0; i <= 8; i++) { const a = (Math.PI / 2) * i / 8; dome.push([Math.max(0.001, Math.cos(a) * R), y0 + 0.6 + Math.sin(a) * H]); }
+    for (let i = 0; i <= 8; i++) { const a = (Math.PI / 2) * i / 8; dome.push([Math.max(0.001, Math.cos(a) * Rk), y0 + 0.6 + Math.sin(a) * Hk]); }
     revolve(sink, 'structureMetal', x, z, dome, n, { colour: shade(BRICK, 0.85 + v() * 0.15) });
-    sink.placed(0, x, y0, z + R - 0.15, () => {
-      sink.span('dark', -0.45, 0.2, 0, 0.45, 1.1, 0.3, { decor: true });
-      bar(sink, 'structureMetal', [-0.6, 1.2, 0.25], [0.6, 1.2, 0.25], 0.18, { colour: shade(BRICK, 0.7), decor: true });
+    // the fire door in its arched brick surround, proud of the dome's foot
+    sink.placed(0, x, y0, z + Rk - 0.15, () => {
+      sink.span('dark', -0.5, 0.2, 0, 0.5, 1.15, 0.35, { decor: true });
+      sink.span('stone', -0.85, 0.0, 0.0, 0.85, 1.55, 0.3, { decor: true, shade: 0.7 });
+      for (let i = 0; i < 6; i++) {
+        const a0 = Math.PI * i / 6, a1 = Math.PI * (i + 1) / 6;
+        bar(sink, 'structureMetal', [Math.cos(a0) * 0.62, 1.15 + Math.sin(a0) * 0.42, 0.36], [Math.cos(a1) * 0.62, 1.15 + Math.sin(a1) * 0.42, 0.36], 0.2, { colour: shade(BRICK, 0.7), decor: true });
+      }
     });
+    // its flue on the shoulder
+    const fa = v() * Math.PI * 2, fr = Rk * 0.55;
+    sink.cylinder('structureMetal', [x + Math.cos(fa) * fr, y0 + 0.6 + Hk * 0.75, z + Math.sin(fa) * fr], 'y', 0.9, 0.24, 8, { colour: shade(BRICK, 0.6), decor: true });
     for (let i = 0; i < 6; i++) {
       const a = (i / 6) * Math.PI * 2 + 0.3;
-      sink.span('dark', x + Math.cos(a) * (R - 0.02) - 0.08, y0 + 0.9, z + Math.sin(a) * (R - 0.02) - 0.08, x + Math.cos(a) * (R + 0.02) + 0.08, y0 + 1.05, z + Math.sin(a) * (R + 0.02) + 0.08, { decor: true, fine: true });
+      sink.span('dark', x + Math.cos(a) * (Rk - 0.02) - 0.08, y0 + 0.9, z + Math.sin(a) * (Rk - 0.02) - 0.08, x + Math.cos(a) * (Rk + 0.02) + 0.08, y0 + 1.05, z + Math.sin(a) * (Rk + 0.02) + 0.08, { decor: true, fine: true });
     }
     // the smoke-blackened crown
-    revolve(sink, 'structureMetal', x, z, [[R * 0.42, y0 + 0.6 + H * 0.9 + 0.01], [0.001, y0 + 0.6 + H + 0.03]], n, { colour: rgb(0x2a2420), decor: true });
+    revolve(sink, 'structureMetal', x, z, [[Rk * 0.42, y0 + 0.6 + Hk * 0.9 + 0.01], [0.001, y0 + 0.6 + Hk + 0.03]], n, { colour: rgb(0x2a2420), decor: true });
   }
   // the shed over the row: poles and a long nipa roof, its ridge along x
-  const sw = span + 2, sd = 2 * R + 5, sy = y0 + H + 1.6, ry = sy + 2.4;
+  const sw = span + 2, sd = 2 * R + 5, sy = y0 + H + 1.0, ry = sy + 2.6;
   for (let x = -sw / 2; x <= sw / 2 + 0.01; x += sw / Math.max(2, K)) for (const z of [-sd / 2, sd / 2]) bar(sink, 'structureWood', [x, foot, z], [x, sy, z], 0.18, { colour: TIMBER });
   for (const s of [-1, 1]) {
     sink.quad('straw', s > 0 ? [-sw / 2 - 0.8, sy - 0.3, s * (sd / 2 + 1)] : [sw / 2 + 0.8, sy - 0.3, s * (sd / 2 + 1)], s > 0 ? [sw / 2 + 0.8, sy - 0.3, s * (sd / 2 + 1)] : [-sw / 2 - 0.8, sy - 0.3, s * (sd / 2 + 1)],
@@ -191,11 +201,21 @@ export const charcoalKilns: LandmarkBuilder = (ctx) => {
       s > 0 ? [-sw / 2 - 0.8, ry, 0] : [sw / 2 + 0.8, ry, 0], s > 0 ? [sw / 2 + 0.8, ry, 0] : [-sw / 2 - 0.8, ry, 0], { colour: shade(NIPA, 0.55), decor: true });
   }
   bar(sink, 'structureWood', [-sw / 2 - 0.8, ry, 0], [sw / 2 + 0.8, ry, 0], 0.2, { colour: TIMBER, decor: true });
+  // the thatch's thickness at its eaves and the ragged fringe of frond ends hanging from them
+  for (const s of [-1, 1]) {
+    const ez = s * (sd / 2 + 1);
+    sink.span('straw', -sw / 2 - 0.8, sy - 0.65, ez - 0.25, sw / 2 + 0.8, sy - 0.25, ez + 0.25, { colour: shade(NIPA, 0.8), decor: true });
+    for (let x = -sw / 2 - 0.6; x < sw / 2 + 0.6; x += 0.18 + v() * 0.22) {
+      // (frond ends of every length, overlapping, some splayed)
+      const d = 0.2 + v() * v() * 0.9, wd = 0.22 + v() * 0.3, tip = x + wd * (0.2 + v() * 0.6);
+      sink.quad('straw', [x + (s > 0 ? 0 : wd), sy - 0.62, ez + s * 0.26], [x + (s > 0 ? wd : 0), sy - 0.62, ez + s * 0.26], [tip + 0.04, sy - 0.62 - d, ez + s * 0.32], [tip - 0.04, sy - 0.62 - d, ez + s * 0.32], { colour: shade(NIPA, 0.65 + v() * 0.3), decor: true });
+    }
+  }
   // the billet stacks behind the kilns (cords of mangrove wood, bark on), and the landing stage before them
   for (let k = 0; k < K; k++) {
     const x = -span / 2 + (k + 0.5) * (2 * R + 1.4), z = -R - 2.2;
     sink.span('structureWood', x - R * 0.8, y0, z - 0.6, x + R * 0.8, y0 + 1.4 + v() * 0.4, z + 0.6, { colour: BILLET });
-    for (let i = 0; i < 6; i++) sink.cylinder('structureWood', [x - R * 0.7 + i * R * 0.28, y0 + 0.3 + (i % 2) * 0.5, z + 0.6], 'z', 0.04, 0.1, 6, { colour: shade(BILLET, 1.3), decor: true, fine: true });
+    for (let i = 0; i < 12; i++) sink.cylinder('structureWood', [x - R * 0.7 + (i % 6) * R * 0.28, y0 + 0.3 + Math.floor(i / 6) * 0.55 + (i % 2) * 0.2, z + 0.6], 'z', 0.05, 0.13, 6, { colour: shade(BILLET, 1.3), decor: true });
   }
   const lz = sd / 2 + 1.2, ly = (surfaceAt(ctx, 0, lz + 2) ?? y0) + 0.5;
   const deck = Math.max(ly, y0 + 0.1);

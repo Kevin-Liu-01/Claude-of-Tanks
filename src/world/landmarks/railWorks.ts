@@ -133,6 +133,11 @@ export const roundhouse: LandmarkBuilder = (ctx) => {
     const p00 = at(a0, Rf), p01 = at(a1, Rf), p10 = at(a0, Rb), p11 = at(a1, Rb);
     sink.quad(wall, [p01[0], Hb, p01[1]], [p00[0], Hb, p00[1]], [p10[0], Hb, p10[1]], [p11[0], Hb, p11[1]], { shade: 0.5 });
   }
+  // the brick pilasters on the front between the stalls' doors, from the plinth to the eaves
+  for (let k = 0; k <= stalls; k++) {
+    const a = theta(k), [px, pz] = at(a, Rf - 0.16), [qx, qz] = at(a, Rf + 1);
+    sink.placed(Math.atan2(qx - px, qz - pz), px, 0, pz, () => sink.span(wall, -0.38, foot, -0.18, 0.38, Hf - 0.05, 0.16, { decor: true, shade: 0.9 }));
+  }
   // the end walls: radial gables at either side of the fan, pierced by a door and two windows
   for (const side of [-1, 1] as const) {
     const ae = side < 0 ? theta(0) : theta(stalls);
@@ -185,12 +190,13 @@ export const roundhouse: LandmarkBuilder = (ctx) => {
     for (const a of [b0 + 0.02 * da, (b0 + b1) / 2, b1 - 0.02 * da]) for (const r of [Rm - lw, Rm + lw]) {
       bar(sink, 'structureMetal', Q(a, r, ly0), Q(a, r, ly1), 0.05, { colour: FRAME, decor: true, fine: true });
     }
-    // the smoke jack over the chimney of an engine standing in the stall: a sooted timber hood up through the front slope
+    // the smoke jack over the chimney of an engine standing in the stall: the sooted hood flaring on the front slope,
+    // its tall thin flue and the conical rain cap on its stays
     const am = (b0 + b1) / 2, rj = Rf + 3.6, yj = yAtR(rj);
     const [jx, jz] = at(am, rj);
-    sink.span('structureMetal', jx - 0.7, yj - 0.6, jz - 0.7, jx + 0.7, yj + 1.5, jz + 0.7, { colour: SOOT, decor: true });
-    sink.span('structureMetal', jx - 0.95, yj + 1.5, jz - 0.95, jx + 0.95, yj + 1.68, jz + 0.95, { colour: shade(SOOT, 1.3), decor: true });
-    sink.span('structureMetal', jx - 0.45, yj + 1.68, jz - 0.45, jx + 0.45, yj + 2.3, jz + 0.45, { colour: SOOT, decor: true });
+    revolve(sink, 'structureMetal', jx, jz, [[0.95, yj - 0.5], [0.95, yj + 0.35], [0.34, yj + 1.1], [0.32, yj + 4.4], [0.31, yj + 4.4]], 8, { colour: SOOT, decor: true });
+    revolve(sink, 'structureMetal', jx, jz, [[0.001, yj + 4.75], [0.72, yj + 4.75], [0.001, yj + 5.25]], 8, { colour: shade(SOOT, 1.25), decor: true });
+    for (const d of [-0.3, 0.3]) bar(sink, 'structureMetal', [jx + d, yj + 4.35, jz], [jx + d * 1.5, yj + 4.78, jz], 0.04, { colour: SOOT, decor: true, fine: 'near' });
   }
   // the end gables' verges under the roof's edge
   for (const k of [0, stalls]) {

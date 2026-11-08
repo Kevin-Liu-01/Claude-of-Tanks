@@ -13,7 +13,9 @@ import { TOWN_LIGHT_PLANS, TOWN_PLANS } from './maps/townPlans.generated.ts';
 // The PR head's (0bbb0cddc; polders 5d2461283) 'structure' footprints per map, [centre x, centre z, width, depth] in metres, and how many
 // of them stood in a carriageway there (and so may move off it).
 const PR_HEAD = {
-  titan_gorge: { carriageway: 5, structures: [
+  // (setPieces: landmarks-271's signature set pieces, 2026-11-06: Goulding's trading post and two hogans; the cableway's
+  // two head towers; the station's landing pad; the works' gasholder)
+  titan_gorge: { carriageway: 5, setPieces: 3, structures: [
     [-112.8, 48.69, 27.35, 26.51], [58.71, -50.19, 27.41, 24.25], [75.47, -24.66, 18.7, 23.15],
     [46.16, -6.49, 11.23, 11.9], [90.05, 3.45, 11.48, 9.24], [61.22, 21.14, 5.64, 5.64],
     [106.94, 29.99, 10.05, 9.36], [128.68, 19.75, 24.06, 22.37], [111.97, 46.53, 19.7, 22.73],
@@ -25,7 +27,7 @@ const PR_HEAD = {
     [118.28, -61.62, 14.96, 7.18], [-100.21, -35.47, 14.76, 19.7], [95.77, -41.61, 24.29, 17.09],
     [-127.75, -8.86, 8.59, 6.81],
   ] },
-  skybridge: { carriageway: 8, structures: [
+  skybridge: { carriageway: 8, setPieces: 2, structures: [
     [54.7, -48.28, 37.26, 34.14], [70.64, -22.84, 19.55, 22.71], [85.22, 4.08, 16.64, 12.04],
     [98.31, 31.82, 34.35, 32.47], [69.64, 47.66, 10.79, 11.84], [144.85, 105.99, 18.54, 18.96],
     [158.28, 129.4, 24.89, 27.59], [169.46, 153.6, 26.78, 27.48], [158.35, 190.82, 16.01, 13.16],
@@ -37,10 +39,10 @@ const PR_HEAD = {
     [92.05, -117.12, 27.06, 36.37], [99.24, -86.13, 21.93, 16.7], [147.9, -128.93, 22.7, 27.52],
     [148.54, -93.45, 25.69, 23.91], [178.99, -124.71, 7.75, 18.61], [171.75, -92.39, 10.49, 8.43],
   ] },
-  mars: { carriageway: 2, structures: [
+  mars: { carriageway: 2, setPieces: 1, structures: [
     [30.7, -1.31, 17.36, 6.04], [32.51, 31.47, 15.53, 7.33], [34.59, 96, 14.88, 7.33], [97.14, 71.61, 6.08, 18.1],
   ] },
-  foundry: { carriageway: 0, structures: [
+  foundry: { carriageway: 0, setPieces: 1, structures: [
     [-74, -29, 18.98, 22.61], [-44, -36, 3.2, 3.2], [-104, -64, 3.2, 3.2], [199, -26.85, 15.97, 24.74],
     [-236.61, -231.01, 11.73, 15.51], [-276.21, -231.03, 13.92, 15.04], [163.45, -106.1, 18.2, 6.95],
     [71.5, -96, 17.94, 4.6], [133, -110, 3.2, 3.2], [117, -123, 6.4, 9.43], [-237.22, -115.56, 4.25, 4.25],
@@ -281,7 +283,9 @@ function kitSeats(mapId, config, carriageway, structures, now, setPieces = 0) {
   // (the map-revival lane, 2026-10-07) the landmarks lane's set pieces (props.landmarks: Polders' two tower mills and its
   // lift bridge) stand as structures of their own on their seats: up to `setPieces` extras within 6 m of a piece's seat
   // are those, every other extra a yard's shed
-  const onPiece = (s) => (config.props.landmarks ?? []).some((piece) => Math.hypot(s.cx - piece.x, s.cz - piece.z) <= 6);
+  // (or whose box holds a piece's seat: a cableway tower's box reaches back over its backstays' anchors, landmarks-271)
+  const onPiece = (s) => (config.props.landmarks ?? []).some((piece) => Math.hypot(s.cx - piece.x, s.cz - piece.z) <= 6
+    || (Math.abs(piece.x - s.cx) <= s.w / 2 && Math.abs(piece.z - s.cz) <= s.d / 2));
   const pieces = now.filter((s, i) => !taken.has(i) && onPiece(s));
   assert.ok(pieces.length <= setPieces, `${mapId}: ${pieces.length} set pieces stand on their seats (up to ${setPieces})`);
   // the map's authored row additions (props.townRowPlanAdditions: Suzhou Creek's lilong lanes, 2026-10-07) stand where

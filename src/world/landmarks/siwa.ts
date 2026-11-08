@@ -17,6 +17,7 @@ import type { LandmarkBuilder, LandmarkBuildContext } from './types.ts';
 
 const PALM = rgb(0x5b4a37), FROND = rgb(0x7c7146), DOOR = rgb(0x4d3b2a), WATER = rgb(0x2f5d5a);
 
+const FROND_GREEN = rgb(0x4e6a2c);
 const uvOffset = (rng: () => number): [number, number] => [rng() * 7.31, rng() * 5.17];
 const num = (ctx: LandmarkBuildContext, key: string, min: number, max = Infinity): number => Math.min(max, Math.max(min, Number(ctx.params[key])));
 
@@ -30,7 +31,7 @@ function mudWall(sink: PartSink, bucket: RegionalBucket, a: readonly [number, nu
   const lean = 0.18, segs = Math.max(2, Math.round(L / 2.4));
   const P = (s: number, y: number, o: number): Vec3 => [a[0] + ux * s + nx * o, y, a[1] + uz * s + nz * o];
   // the top's height along the wall: it sags and swells as the mud has slumped
-  const tops = Array.from({ length: segs + 1 }, () => h - 0.25 + v() * 0.5);
+  const tops = Array.from({ length: segs + 1 }, () => h - 0.45 + v() * 0.9);
   for (let k = 0; k < segs; k++) {
     const s0 = L * k / segs, s1 = L * (k + 1) / segs, y0 = tops[k], y1 = tops[k + 1];
     // outer face (+o) and inner face (-o), leaning in toward the top; the rounded top between them
@@ -48,7 +49,7 @@ function mudWall(sink: PartSink, bucket: RegionalBucket, a: readonly [number, nu
     if (opts.beams && k % 2 === 0) {
       // the palm-trunk beam ends through the wall under the roof line
       const s = (s0 + s1) / 2, y = Math.min(y0, y1) - 0.7;
-      bar(sink, 'structureWood', P(s, y, t / 2 - lean * 0.8), P(s, y, t / 2 + 0.35), 0.18, { colour: PALM, decor: true, fine: true });
+      bar(sink, 'structureWood', P(s, y, t / 2 - lean * 0.8), P(s, y, t / 2 + 0.45), 0.2, { colour: PALM, decor: true });
     }
   }
   // the wall's ends
@@ -79,17 +80,21 @@ export const shaliMosque: LandmarkBuilder = (ctx) => {
   // the minaret: its battered square foot rounding into the tapering cone, the openings up it, the palm-rib balcony
   const mx = W / 2 - 1.2, mz = D / 2 - 1.2, n = 12;
   const r0 = 1.7;
-  const profile: Array<[number, number]> = [[r0 * 1.15, foot], [r0, 1.0], [r0 * 0.9, M * 0.35], [r0 * 0.78, M * 0.6], [r0 * 0.66, M * 0.8], [r0 * 0.5, M * 0.9], [r0 * 0.3, M * 0.97], [0.001, M]];
+  // (hand-moulded: its taper swells and pinches course by course, the top rounded off)
+  const profile: Array<[number, number]> = [[r0 * 1.18, foot], [r0 * 1.04, 1.0]];
+  for (let k = 1; k <= 9; k++) { const f = k / 10; profile.push([r0 * (1 - 0.52 * f) * (0.93 + v() * 0.12), 1.0 + (M * 0.9 - 1.0) * f]); }
+  profile.push([r0 * 0.4, M * 0.93], [r0 * 0.27, M * 0.975], [0.12, M], [0.001, M + 0.04]);
   revolve(sink, mud, mx, mz, profile, n, {}, Math.PI / 4);
   for (let y = 2.6; y < M * 0.8; y += 2.2) {
     const k = y / M, r = r0 * (1 - 0.4 * k) + 0.03, a = v() * Math.PI * 2;
     sink.placed(a, mx, y, mz, () => sink.span('dark', -0.12, 0, r - 0.05, 0.12, 0.45, r + 0.01, { decor: true }));
   }
-  const by = M * 0.62, br = r0 * 0.72 + 0.5;
-  revolve(sink, 'structureWood', mx, mz, [[br, by], [br, by + 0.12], [r0 * 0.7, by + 0.12]], n, { colour: PALM, decor: true });
-  for (let k = 0; k < 12; k++) {
-    const a = (k / 12) * Math.PI * 2;
-    bar(sink, 'structureWood', [mx + Math.cos(a) * br, by, mz + Math.sin(a) * br], [mx + Math.cos(a) * br, by + 0.8, mz + Math.sin(a) * br], 0.05, { colour: FROND, decor: true, fine: true });
+  // the muezzin's balcony: a thick moulded mud ring round the shaft on its palm-log brackets, its low rounded parapet
+  const by = M * 0.62, rs = r0 * (1 - 0.52 * 0.62), br = rs + 0.55;
+  revolve(sink, mud, mx, mz, [[rs - 0.05, by - 0.35], [br - 0.1, by - 0.12], [br, by + 0.1], [br - 0.05, by + 0.55], [br - 0.22, by + 0.6], [br - 0.24, by + 0.15], [rs - 0.05, by + 0.15]], n, { shade: 0.95 }, Math.PI / 4);
+  for (let k = 0; k < 6; k++) {
+    const a = (k / 6) * Math.PI * 2 + 0.3;
+    bar(sink, 'structureWood', [mx + Math.cos(a) * (rs - 0.1), by - 0.2, mz + Math.sin(a) * (rs - 0.1)], [mx + Math.cos(a) * (br + 0.2), by - 0.25, mz + Math.sin(a) * (br + 0.2)], 0.14, { colour: PALM, decor: true });
   }
   // the ablution court's wall before the doors, its gap on the approach
   const cz = D / 2 + 5.5;
@@ -109,12 +114,12 @@ export const springPool: LandmarkBuilder = (ctx) => {
   const v = ctx.variant;
   const R = num(ctx, 'radius', 4, 12), n = 40, ch = Math.round(num(ctx, 'channels', 0, 4));
   // the stone ring's coping, its outer batter and the inner wall dropping to the water
-  revolve(sink, 'stone', 0, 0, [[R + 1.4, -0.4], [R + 1.2, 0.35], [R + 0.1, 0.45], [R, 0.42], [R, 0.08]], n, { shade: 0.9 });
+  revolve(sink, 'stone', 0, 0, [[R + 1.5, -0.4], [R + 1.25, 0.72], [R + 0.1, 0.82], [R, 0.78], [R, 0.08]], n, { shade: 0.9 });
   // the water (a dark green disc, its surface just under the kerb) and a lighter ring where the sun reaches the bed
   revolve(sink, 'structureMetal', 0, 0, [[R, 0.1], [0.001, 0.1]], n, { colour: WATER, decor: true });
   revolve(sink, 'structureMetal', 0, 0, [[R * 0.98, 0.105], [R * 0.7, 0.105]], n, { colour: shade(WATER, 1.3), decor: true });
   // the steps down into it on the front, the bubbles' rings at its middle
-  for (let k = 0; k < 4; k++) sink.span('stone', -1.2, 0.0, R - 0.3 - k * 0.55, 1.2, 0.42 - k * 0.1, R + 0.1 - k * 0.55, { decor: true, shade: 0.88 });
+  for (let k = 0; k < 5; k++) sink.span('stone', -1.2, 0.0, R + 0.9 - k * 0.5, 1.2, 0.8 - k * 0.15, R + 1.4 - k * 0.5, { decor: true, shade: 0.88 });
   for (const r of [0.6, 1.1]) revolve(sink, 'structureMetal', v() * 0.6, v() * 0.6, [[r + 0.06, 0.112], [r, 0.112]], 16, { colour: shade(WATER, 1.5), decor: true, fine: 'near' });
   // the outflow channels: stone-lined runs out through the ring into the gardens
   for (let k = 0; k < ch; k++) {
@@ -125,6 +130,23 @@ export const springPool: LandmarkBuilder = (ctx) => {
       sink.span('stone', 0.3, -0.3, R + 1.2, 0.55, 0.2, R + 1.2 + len, { decor: true, shade: 0.85 });
       sink.span('structureMetal', -0.3, 0.02, R + 0.6, 0.3, 0.08, R + 1.2 + len, { colour: WATER, decor: true });
     });
+  }
+  // the date palms round the pool: each trunk leaning a little, ringed, its crown of drooping fronds
+  // (in two rows along the channels' gardens, inside the footprint)
+  for (let k = 0; k < 4; k++) {
+    const px = -(R + 3 + (k >> 1) * 5.5) + (v() - 0.5), pz = (k % 2 ? 1 : -1) * (4.4 + v() * 0.6);
+    const h = 7 + v() * 4, lx = (v() - 0.5) * 1.2, lz = -Math.sign(pz) * v() * 0.6, topP: Vec3 = [px + lx, h, pz + lz];
+    sink.cylinder('structureWood', [px, -0.3, pz], 'y', 0.4, 0.42, 8, { colour: PALM, decor: true });
+    bar(sink, 'structureWood', [px, 0, pz], topP, 0.36, { colour: shade(PALM, 0.9), decor: true });
+    for (let f = 0; f < 9; f++) {
+      const b = (f / 9) * Math.PI * 2 + v() * 0.4, len = 2.7 + v() * 0.6, droop = 1.3 + v() * 0.9;
+      const mid: Vec3 = [topP[0] + Math.cos(b) * len * 0.5, h + 0.5, topP[2] + Math.sin(b) * len * 0.5], tip: Vec3 = [topP[0] + Math.cos(b) * len, h - droop, topP[2] + Math.sin(b) * len];
+      const sx = -Math.sin(b) * 0.45, sz = Math.cos(b) * 0.45;
+      for (const [p, q] of [[topP, mid], [mid, tip]] as const) {
+        sink.quad('structureWood', [p[0] - sx, p[1], p[2] - sz], [p[0] + sx, p[1], p[2] + sz], [q[0] + sx * 0.7, q[1], q[2] + sz * 0.7], [q[0] - sx * 0.7, q[1], q[2] - sz * 0.7], { colour: shade(FROND_GREEN, 0.85 + v() * 0.3), decor: true });
+        sink.quad('structureWood', [p[0] + sx, p[1], p[2] + sz], [p[0] - sx, p[1], p[2] - sz], [q[0] - sx * 0.7, q[1], q[2] - sz * 0.7], [q[0] + sx * 0.7, q[1], q[2] + sz * 0.7], { colour: shade(FROND_GREEN, 0.7), decor: true });
+      }
+    }
   }
   // the café's shade: six posts and a roof of laid palm fronds on its rafters, beside the pool's steps
   const sx = R + 4.5, sz = R * 0.4;

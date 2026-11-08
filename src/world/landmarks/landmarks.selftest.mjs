@@ -104,10 +104,10 @@ const BUDGET = {
   hayRack: 3000, fishRack: 9000, stabbur: 3000,
   // (the Earthrise 228 rebuild) Taurus-Littrow Station's set pieces
   apolloSite: 9000, isruWorks: 12000, solarTower: 5000, stationDome: 9000, relayRepeater: 4000,
-  // (landmarks-271) the signature set pieces of the maps that had none
-  roundhouse: 15000, signalBox: 3000, blastFurnace: 22000, gasholder: 30000, shrine: 21000, ghorfaKsar: 27000, marabout: 1500,
-  desertFort: 4000, casemateFort: 4500, shaliMosque: 3800, springPool: 1300, canalMarket: 4600, charcoalKilns: 3800,
-  alcazaba: 3900, bullring: 23000, woodenChurch: 2700, tradingPost: 1400, hogan: 1700, cablewayTower: 2500, landingPad: 3000,
+  // (landmarks-271) the signature set pieces of the maps that had none (11-08: their realism pass)
+  roundhouse: 16000, signalBox: 3000, blastFurnace: 22000, gasholder: 34500, shrine: 24500, ghorfaKsar: 25000, marabout: 1500,
+  desertFort: 4500, casemateFort: 5400, shaliMosque: 3900, springPool: 1700, canalMarket: 4600, charcoalKilns: 5100,
+  alcazaba: 7000, bullring: 23000, woodenChurch: 4300, tradingPost: 2000, hogan: 2900, cablewayTower: 3200, landingPad: 6500,
 };
 assert.deepEqual(Object.keys(BUDGET).sort(), [...KINDS].sort(), 'a budget for every kind');
 /** The authored variants each kind is built in besides its defaults. */
@@ -143,6 +143,7 @@ const VARIANTS = {
   casemateFort: [{ style: 'alpine', length: 44, depth: 20, height: 4.5 }],
   cablewayTower: [{ cable: true, span: 269.5, farRise: -1.27 }],
   landingPad: [{ radius: 16 }],
+  torii: [{ material: 'stone' }],
 };
 const COLOURED = new Set(['structureMetal', 'structureWood', 'regionalPlaster', 'regionalPlaster2', 'regionalPlaster3', 'regionalStone', 'regionalRoof']);
 

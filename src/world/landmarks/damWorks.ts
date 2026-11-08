@@ -25,13 +25,13 @@ const TILE = rgb(0x1e1f22), SEAM = rgb(0x4a3328), SCORCH = rgb(0x2a1e1a);
 const uvOffset = (rng: () => number): [number, number] => [rng() * 7.31, rng() * 5.17];
 const num = (ctx: LandmarkBuildContext, key: string, min: number, max = Infinity): number => Math.min(max, Math.max(min, Number(ctx.params[key])));
 
-/** A lattice leg's lacing between two of its chords (zig-zag every `step` up), dressing. */
+/** A lattice's lacing between two of its chords (zig-zag every `step` up), dressing; heavy enough to read at range. */
 function lace(sink: PartSink, a0: Vec3, a1: Vec3, b0: Vec3, b1: Vec3, steps: number, colour: Rgb): void {
   const at = (p: Vec3, q: Vec3, t: number): Vec3 => [p[0] + (q[0] - p[0]) * t, p[1] + (q[1] - p[1]) * t, p[2] + (q[2] - p[2]) * t];
   for (let k = 0; k < steps; k++) {
     const t0 = k / steps, t1 = (k + 1) / steps;
-    bar(sink, 'structureMetal', at(a0, a1, t0), at(b0, b1, t1), 0.09, { colour, decor: true, fine: true });
-    bar(sink, 'structureMetal', at(a0, a1, t1), at(b0, b1, t1), 0.08, { colour, decor: true, fine: true });
+    bar(sink, 'structureMetal', at(a0, a1, t0), at(b0, b1, t1), 0.14, { colour, decor: true });
+    bar(sink, 'structureMetal', at(a0, a1, t1), at(b0, b1, t1), 0.16, { colour, decor: true });
   }
 }
 
@@ -59,7 +59,7 @@ export const cablewayTower: LandmarkBuilder = (ctx) => {
   for (const [sx, sz] of legs) {
     sink.span('stone', sx * B / 2 - 1.1, foot, sz * B / 2 - 1.1, sx * B / 2 + 1.1, 0.8, sz * B / 2 + 1.1, { shade: 0.88 });
     // the leg: a heavy angle member from the footing to the head (structure), battered in
-    bar(sink, 'structureMetal', P(sx, sz, 0.8), P(sx, sz, H), 0.42, { colour: RED_OXIDE });
+    bar(sink, 'structureMetal', P(sx, sz, 0.8), P(sx, sz, H), 0.6, { colour: RED_OXIDE });
   }
   // the lacing on all four faces and the horizontal struts every panel
   const panels = Math.max(6, Math.round(H / 4));
@@ -67,16 +67,24 @@ export const cablewayTower: LandmarkBuilder = (ctx) => {
     const [ax, az] = legs[k], [bx, bz] = legs[(k + 1) % 4];
     lace(sink, P(ax, az, 0.8), P(ax, az, H), P(bx, bz, 0.8), P(bx, bz, H), panels, RED_OXIDE);
   }
-  // the head frame: a deck on the tower's top and the boom cantilevered 7 m over the span, its sheaves at the tip
-  const hy = H, tip = 7.5;
+  // the gusset plates where each panel's lacing meets the legs
+  for (let k = 1; k < panels; k++) for (const [sx, sz] of legs) {
+    const c = P(sx, sz, 0.8 + (H - 0.8) * k / panels);
+    sink.span('structureMetal', c[0] - 0.42, c[1] - 0.4, c[2] - 0.42, c[0] + 0.42, c[1] + 0.4, c[2] + 0.42, { colour: shade(RED_OXIDE, 0.85), decor: true });
+  }
+  // the head frame: a deck on the tower's top, the A-frame mast and the boom cantilevered 11 m over the span, laced,
+  // its head block with the two great sheaves at the tip
+  const hy = H, tip = 11;
   sink.span('structureMetal', -T / 2 - 0.6, hy, -T / 2 - 0.6, T / 2 + 0.6, hy + 0.4, T / 2 + 0.6, { colour: STEEL, decor: true });
   for (const s of [-1, 1]) {
-    bar(sink, 'structureMetal', [s * T / 2, hy + 0.4, -T / 2], [s * 0.9, hy + 2.6, T / 2 + tip], 0.3, { colour: RED_OXIDE, decor: true });
-    bar(sink, 'structureMetal', [s * T / 2, hy + 0.4, T / 2], [s * 0.9, hy + 0.6, T / 2 + tip], 0.3, { colour: RED_OXIDE, decor: true });
-    bar(sink, 'structureMetal', [s * T / 2, hy + 3.8, -T / 2 + 0.5], [s * 0.9, hy + 2.6, T / 2 + tip], 0.18, { colour: RED_OXIDE, decor: true });
-    bar(sink, 'structureMetal', [s * T / 2, hy + 0.4, -T / 2 + 0.5], [s * T / 2, hy + 3.8, -T / 2 + 0.5], 0.22, { colour: RED_OXIDE, decor: true });
+    bar(sink, 'structureMetal', [s * T / 2, hy + 0.4, -T / 2], [s * 1.0, hy + 3.0, T / 2 + tip], 0.45, { colour: RED_OXIDE, decor: true });
+    bar(sink, 'structureMetal', [s * T / 2, hy + 0.4, T / 2], [s * 1.0, hy + 0.7, T / 2 + tip], 0.45, { colour: RED_OXIDE, decor: true });
+    bar(sink, 'structureMetal', [s * T / 2, hy + 5.6, -T / 2 + 0.5], [s * 1.0, hy + 3.0, T / 2 + tip], 0.24, { colour: RED_OXIDE, decor: true });
+    bar(sink, 'structureMetal', [s * T / 2, hy + 0.4, -T / 2 + 0.5], [s * 0.4, hy + 5.6, -T / 2 + 0.5], 0.3, { colour: RED_OXIDE, decor: true });
+    lace(sink, [s * T / 2, hy + 0.4, T / 2], [s * 1.0, hy + 0.7, T / 2 + tip], [s * T / 2, hy + 0.4 + 2.6 * T / (T + tip), T / 2], [s * 1.0, hy + 3.0, T / 2 + tip], 5, RED_OXIDE);
   }
-  for (const s of [-0.5, 0.5]) sink.cylinder('structureMetal', [s - 0.15, hy + 1.6, T / 2 + tip - 0.2], 'x', 0.3, 0.9, 16, { colour: STEEL, decor: true });
+  sink.span('structureMetal', -1.3, hy + 0.5, T / 2 + tip - 1.2, 1.3, hy + 3.2, T / 2 + tip + 0.4, { colour: shade(STEEL, 0.8), decor: true });
+  for (const s of [-0.65, 0.65]) sink.cylinder('structureMetal', [s - 0.12, hy + 1.85, T / 2 + tip + 0.2], 'x', 0.24, 1.6, 20, { colour: STEEL, decor: true });
   // the operator's cab on its platform two thirds up, its windows to the span
   const cy = H * 0.62, cw = 3.4;
   const wAt = B + (T - B) * cy / H;
@@ -84,6 +92,17 @@ export const cablewayTower: LandmarkBuilder = (ctx) => {
   sink.span('structureWood', -cw / 2 + 0.2, cy, wAt / 2 + 0.1, cw / 2 - 0.2, cy + 2.4, wAt / 2 + 2.2, { colour: CAB, decor: true });
   sink.span('glass', -cw / 2 + 0.4, cy + 1.1, wAt / 2 + 2.2, cw / 2 - 0.4, cy + 2.1, wAt / 2 + 2.22, { decor: true });
   sink.span('structureWood', -cw / 2, cy + 2.4, wAt / 2, cw / 2, cy + 2.6, wAt / 2 + 2.4, { colour: shade(CAB, 0.6), decor: true });
+  // the platform's brackets back to the legs, its railing, and the caged ladder up the near leg from the ground
+  for (const s of [-1, 1]) {
+    bar(sink, 'structureMetal', [s * cw / 2, cy - 0.2, wAt / 2 + 2.4], P(s, 1, cy - 3.2), 0.2, { colour: RED_OXIDE, decor: true });
+    bar(sink, 'structureMetal', [s * cw / 2, cy + 1.05, wAt / 2], [s * cw / 2, cy + 1.05, wAt / 2 + 2.4], 0.06, { colour: STEEL, decor: true });
+  }
+  const lx = B / 2 - 0.9;
+  for (const dx of [-0.25, 0.25]) bar(sink, 'structureMetal', [lx + dx, 0.8, B / 2 + 0.4], [lx * (wAt / B) + dx, cy, wAt / 2 + 0.4], 0.06, { colour: STEEL, decor: true });
+  for (let y = 3; y < cy - 0.5; y += 1.5) {
+    const f = y / cy, x = lx + (lx * (wAt / B) - lx) * f, z = B / 2 + 0.4 + (wAt / 2 - B / 2) * f;
+    bar(sink, 'structureMetal', [x - 0.4, y, z], [x + 0.4, y, z + 0.7], 0.05, { colour: STEEL, decor: true, fine: true });
+  }
   // the backstays from the head down to the deadman anchors behind
   const back = num(ctx, 'backstay', 12, 40);
   for (const s of [-1, 1]) {

@@ -48,8 +48,10 @@ function ghorfaColumn(sink: PartSink, x0: number, x1: number, D: number, tiers: 
     for (let k = 0; k < n; k++) sink.quad(wall, [arc[k + 1][0], arc[k + 1][1], 0], [arc[k][0], arc[k][1], 0], [arc[k][0], arc[k][1], -D], [arc[k + 1][0], arc[k + 1][1], -D], { decor: true, shade: 0.7 });
     sink.span(wall, x0, tier, -D, x1, spring, 0, {});
   } else sink.span(wall, x0, foot, -D, x1, spring, 0, {});
+  // (hand-built: each vault's barrel sags or rises and leans a little its own way, the look stream)
+  const sagK = 0.68 + v() * 0.24, lean = (v() - 0.5) * 0.4;
   const top: Array<[number, number]> = [];
-  for (let k = 0; k <= n; k++) { const a = Math.PI * k / n; top.push([cx + Math.cos(a) * r, spring + Math.sin(a) * r * 0.8]); }
+  for (let k = 0; k <= n; k++) { const a = Math.PI * k / n; top.push([cx + Math.cos(a) * r + lean * Math.sin(a), spring + Math.sin(a) * r * sagK]); }
   for (let k = 0; k < n; k++) {
     const [ax, ay] = top[k], [bx, by] = top[k + 1];
     sink.quad(wall, [bx, by, 0], [ax, ay, 0], [ax, ay, -D], [bx, by, -D], {});
@@ -73,8 +75,13 @@ function ghorfaColumn(sink: PartSink, x0: number, x1: number, D: number, tiers: 
     for (let k = 0; k < 2 + Math.floor(v() * 3); k++) {
       const px = x0 + 0.35 + v() * (w - 0.7), py = yb + 0.6 + v() * (tier - 1.2);
       if (Math.abs(px - (cx + du)) < dw / 2 + 0.15) continue;
-      bar(sink, 'structureWood', [px, py, 0.0], [px, py - 0.04, 0.45], 0.07, { colour: PALM, decor: true, fine: true });
+      bar(sink, 'structureWood', [px, py, 0.0], [px, py - 0.05, 0.55], 0.11, { colour: PALM, decor: true });
     }
+  }
+  // the crown worn: lumps of fallen render and mud on the top vault, its rim crumbled at one end
+  for (let k = 0; k < 1 + Math.floor(v() * 2); k++) {
+    const t = 0.25 + v() * 0.5, x = x0 + w * t, y = spring + Math.sin(Math.PI * t) * r * sagK, z = -D * (0.15 + v() * 0.7), q = 0.25 + v() * 0.25;
+    sink.span(wall, x - q, y - 0.15, z - q * 1.2, x + q, y + q * 0.6, z + q * 1.2, { decor: true, shade: 0.9 + v() * 0.1 });
   }
 }
 
