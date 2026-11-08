@@ -62,7 +62,8 @@ for (const box of spec.armor.crew.filter((c) => c.turretLocal)) {
 }
 assert.ok(spec.armor.crew.find((c) => c.crew === 'gunner').min[0] > 0, 'the gunner on the left (+x)');
 // the turret's plates on the drawn shell: the body and the nose under the tracking radar
-for (const p of spec.armor.turretPlates) for (const [x, y, z] of p.verts) {
+// (270: the hatches' structure plates, appendStructurePlates in combatAnatomy.ts, stand on the roof by design: k30Biho.selftest)
+for (const p of spec.armor.turretPlates.filter((plate) => !/^(?:hull|turret)_(?:hatch|cupola)_\d+_/.test(plate.name))) for (const [x, y, z] of p.verts) {
   assert.ok(Math.abs(x) <= T.halfW + T.skirtFlare + 1e-9 && y >= T.floorY - 1e-9 && y <= T.roofY + 1e-9 && z >= T.rearZ - 1e-9
     && z <= T.chinFrontZ + 1e-9, `${p.name} within the drawn turret`);
 }

@@ -97,6 +97,9 @@ interface ShapedMudguardOptions {
   readonly support?: boolean;
   /** Hang the guard from the hull stock above its top edge once the profile is done (P.hangMudguard). */
   readonly hang?: boolean;
+  /** (270, default 'hull') the slot the painted hanger joins: a guard hung ahead of the armour (the Type 87's at its
+   *  fenders' tips) takes 'hullEquipment', out of the armoured hull's measured box. */
+  readonly supportSlot?: string;
 }
 
 interface SharedMudguardReceipt {
@@ -1238,7 +1241,7 @@ function addShapedMudguard(builder: RuntimeValue, options: ShapedMudguardOptions
   const attachedSupport = options.support ?? !options.geometry;
   if (attachedSupport) {
     const supportY = options.y + height / 2 - Math.max(0.012, height * 0.035);
-    P.add('hull', KIT.box(thickness * 1.45, Math.max(0.035, height * 0.08), length * 0.94),
+    P.add(options.supportSlot ?? 'hull', KIT.box(thickness * 1.45, Math.max(0.035, height * 0.08), length * 0.94),
       options.x, supportY, options.z, rotation[0], rotation[1], rotation[2]);
   }
 
