@@ -265,9 +265,11 @@ async function main(argv) {
     await stageUnit(entry, unit);
   };
   const close = async () => {
+    // (round 8 Y0, the 269 merge) the browser closes before the lock goes: the next holder's GPU work never overlaps it
+    // (tools/capture-hold-census.selftest.mjs)
+    if (browser) await browser.close().catch(() => {});
     if (held) lock.release();
     held = false;
-    if (browser) await browser.close().catch(() => {});
     for (const server of servers.values()) await server.close().catch(() => {});
   };
   for (const signal of ['SIGTERM', 'SIGINT', 'SIGHUP']) {
