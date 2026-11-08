@@ -578,7 +578,7 @@ if (process.argv[2] === '--signal-child') {
       // a runner's prefix still names the script (concurrently's npm:<it>, yarn:<it>); a longer name after it does not
       const scriptIn = (name) => new RegExp(String.raw`(?<![\w.-])${escaped(name)}(?![\w:.-])`, 'g');
       // the shell's quoting taken out (studio\-example…, stu"di"o-…, reels\:render); a caller that holds any is refused
-      const unquoted = (command) => command.replace(/\\(.)|['"]/gs, '$1');
+      const unquoted = (command) => command.replace(/\\(?:\n|(.))|['"]/gs, '$1');
       const unread = (scripts) => {
         const callers = new Set(); // the scripts that name a tool, then (to a fixed point) the ones that name one of those
         for (let grew = true; grew;) {
@@ -628,6 +628,8 @@ if (process.argv[2] === '--signal-child') {
         'planted:escaped-name': 'node tools/studio\\-example-videos.mjs --only 2 && echo done',
         'planted:split-name': 'node tools/studio"-"example-videos.mjs --only 2 && echo done',
         'planted:escaped-runner': 'npm run reels\\:render && echo done',
+        'planted:continued-name': 'node tools/studio-example-\\\nvideos.mjs --only 2 && echo done',
+        'planted:continued-runner': 'npm run reels:\\\nrender && echo done',
         'planted:outer': 'npm run planted:inner -- --only 2',
         'planted:inner': 'npm run -s reels:render && echo done',
         'planted:concurrently': 'concurrently "npm:reels:render" "npm:reels:publish"',
@@ -635,7 +637,8 @@ if (process.argv[2] === '--signal-child') {
         'planted:tight': 'node tools/studio-example-videos.mjs>render.log && echo done' }),
         ['planted:quoted', 'planted:cd', 'planted:backtick', 'planted:variable', 'planted:echo', 'planted:cd-tight', 'planted:sh',
           'planted:substitution', 'planted:backslash', 'planted:escaped-name', 'planted:split-name',
-          'planted:escaped-runner', 'planted:outer', 'planted:inner', 'planted:concurrently'],
+          'planted:escaped-runner', 'planted:continued-name', 'planted:continued-runner',
+          'planted:outer', 'planted:inner', 'planted:concurrently'],
         'a script naming a tool in a spelling the check cannot read, calling a script that runs one, or nesting the call is '
         + 'refused, not skipped');
       // the check reads planted scripts: a tool that is not its script's last command, in each spelling, is found
