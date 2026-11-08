@@ -9,6 +9,10 @@ import {sectionSolid} from './sectionSolid.ts';
 
 type PlaceEra = (...transform: number[]) => void;
 
+/** The A3 turret's ring datum on the shared Bradley hull (268, the owner's source: deck 2.06, the ring 0.14 m right of
+ *  the centreline, z −0.40; was [0.04, 1.895, −0.36]). The spec's armor.turretPivot repeats it for the combat frame. */
+export const BRADLEY_SCOUT_TURRET_PIVOT = Object.freeze([-0.14, 2.06, -0.40] as const);
+
 /** Seat each cassette on the real sloped cheek after the A3's height conversion. */
 export function placeBradleyScoutCheekEra(side: number, put: PlaceEra): void {
   for (const fraction of [.18,.55]) for (const z of [.60,.79,.98]) {
@@ -22,7 +26,7 @@ export function placeBradleyScoutCheekEra(side: number, put: PlaceEra): void {
     const rotation = new THREE.Euler().setFromQuaternion(new THREE.Quaternion()
       .setFromUnitVectors(new THREE.Vector3(0,0,1),normal));
     point.addScaledVector(normal,.07*1.05/2-.005);
-    put(point.x,1.895+point.y,-.36+point.z,rotation.x,rotation.y,rotation.z,.72,.92*.80,1.05);
+    put(point.x,BRADLEY_SCOUT_TURRET_PIVOT[1]+point.y,BRADLEY_SCOUT_TURRET_PIVOT[2]+point.z,rotation.x,rotation.y,rotation.z,.72,.92*.80,1.05);
   }
 }
 
@@ -68,6 +72,14 @@ export function buildBradleyScoutTurretShell(P: TankBuilderPort): void {
     {z:.60,ring:[[-.42,.601],[.30,.601],[.30,.666],[-.42,.666]]},
   ]));
   P.add('turret',KIT.box(.72,.06,1.18),-.06,.025,.49);
+  // 268 round 4 (roof-pocket census, 56 cm2): the compartment's front plate under that plate, between the cheeks: its
+  // face 255 mm behind the pitch axis (outside the cradle's 0.25 m lower sweep, 42 mm behind the mask's rearmost reach
+  // at -9/+30), its gun port inside the mask's outline (x -0.30..0.18, from 0.245 up after the conversion), and its toe
+  // on the bay floor where the sweep stands 10 cm off (below 0.15). Open, the bay showed the empty compartment past the
+  // mask's side; the gun still enters the turret through its port.
+  P.add('turret',KIT.box(.48,.281,.04),-.06,.1655,.505);
+  for (const x of [-.36,.24]) P.add('turret',KIT.box(.12,.625,.04),x,.3375,.505);
+  P.add('turret',KIT.box(.72,.1625,.095),-.06,.10625,.5725);
   // A finite lower sill ties both cheeks to the bay floor. It ends below
   // the rocking shoe's full sweep, leaving a working seam, not an open slot
   // down to the hull. Coordinates here undergo the same 0.80 Y conversion.

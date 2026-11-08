@@ -1,8 +1,9 @@
 // Release 262 (Main's ruling on the owner's Oplot kit): every owner-kit part tools/owner-kit-targets.mjs sets aside is one
 // unique named group directly under its declared rig, carrying the declared metadata, with physical stock at both
 // qualities; each part quotes the owner's words it answers; each accepted receipt row is a well-formed digest of an
-// accepted arrangement under the part's own reference. The digests themselves are proved in the browser
-// (procedural-fidelity.html via reference-supplement.mjs), where the materials' texture pixels exist.
+// accepted arrangement under the part's own reference, taken in the 'shape' scope (schemaVersion 2). The digests
+// themselves are proved in the browser (procedural-fidelity.html via reference-supplement.mjs): the browser build lays
+// the kit's positions out differently from a Node geometryReceipt build (weapon finish, vertex colours), so Node cannot.
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { OWNER_KIT_TARGETS } from './owner-kit-targets.mjs';
@@ -36,6 +37,8 @@ for (const [id, target] of Object.entries(OWNER_KIT_TARGETS)) {
   }
   const receipt = JSON.parse(readFileSync(new URL(`../docs/references/tanks/${id}-owner-kit-receipt.json`, import.meta.url), 'utf8'));
   assert.equal(receipt.tankId, id);
+  assert.equal(receipt.schemaVersion, 2, `${id}: a shape-scope receipt (the page ignores any other)`);
+  assert.equal(receipt.digestScope, 'shape', `${id}: the receipt names its scope`);
   for (const [group, row] of Object.entries(receipt.parts)) {
     const part = target.parts.find((entry) => entry.group === group);
     assert.ok(part, `${id}: receipt row ${group} is a declared part`);

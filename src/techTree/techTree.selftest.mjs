@@ -221,6 +221,16 @@ const digest = createHash('sha256').update(JSON.stringify(TECH_TREES)).digest('h
 // 267 (the owner 2026-11-01, "finish it"): the Leopard 2A7 DK, held since 2026-10-30, at X after the 2A5 DK; the
 // Centurion Mk 5/2 DK (the owner, the same day) at III after the M41 DK-1, the CV9035 DK after it again.
 // 267 (the Japan line): the Type 90 (B) built on the Type 90's node (builds: type90_kyumaru, type90b), its tier 8.
-// 270 (the owner 2026-11-05; Main's tier ruling the same day): the T95 with its fictional 152 mm on the US special lane at II.
-assert.equal(digest, 'bd805a058b71831b', `tree content changed: re-pin to ${digest} if deliberate`);
+// 267 re-pin (lane bmpt-family-267, the owner's "make a BMPT Terminator"): the original Ob'yekt 199 Terminator at VI on
+// the support line (lane 13) off the BMPT-72, beside the BMPT T-90.
+// 268 (the twin-cannon air defence; tiers by capability on the coordinator's suggestion): Russia's Tunguska and Pantsir
+// line (the 2K22M Tunguska-M at V off the BMP-3, lane 14 under the BMPTs, the tracked Pantsir-S1 at VI after it); the
+// Flakpanzer Gepard 1A2 at V on Germany's Leopard 1 row after the MBT-70 (lane 5); China's PGZ-95 and PGZ-09 line (the
+// PGZ-95 at V off the AFT-10, lane 4, the PGZ-09 at VI after it).
+// 2026-11-02 re-pin (268, lane abrams-bradley-268, the owner's ask): the M3A2 Bradley at II beside the M2A2 on the
+// Bradley line (lane 10, off the M2A2); the T49 one lane down to 11 so that connector runs clear.
+// 268 integration (2026-11-04): both 268 trees together, the twin-cannon air defence's lanes and the M3A2 on the
+// Bradley line; neither moves the other's nodes (Russia/Germany/China vs USA).
+// 270 (the owner 2026-11-05; Main's tier ruling the same day): the T95 with its fictional 152 mm on the US special lane at II. Merged onto 268 (2026-11-08): re-pinned with the 268 trees; the T95 stays on the US special line, lane 1.
+assert.equal(digest, '87f87524bd78724a', `tree content changed: re-pin to ${digest} if deliberate`);
 console.log(`techTree: ${TECH_TREES.length} trees, ${drawn.length} vehicles, pin ${digest}`);

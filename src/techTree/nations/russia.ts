@@ -22,6 +22,7 @@ export const RUSSIA_TREE: NationTree = Object.freeze({
     { id: 't90_late', name: 'T-90MS, Burlak and Object 695' },
     { id: 'bmp', name: 'BMP and Kurganets' },
     { id: 'support', name: 'TOS and BMPT' },
+    { id: 'air_defence', name: 'Tunguska and Pantsir' },
     { id: 'special', name: 'Special' },
   ].map((line) => Object.freeze(line))),
   nodes: Object.freeze([
@@ -77,6 +78,11 @@ export const RUSSIA_TREE: NationTree = Object.freeze({
     node({ id: 'tos1a_tagil', tier: 5, line: 'support', lane: 11, parents: ['bmp3'], slot: 'line' }),
     node({ id: 'bmpt_terminator2', tier: 5, line: 'support', lane: 12, parents: ['tos1a_tagil'], slot: 'line' }),
     node({ id: 'bmpt_t90', tier: 6, line: 'support', lane: 12, parents: ['bmpt_terminator2'], slot: 'line' }),
+    // 267: the original Ob'yekt 199 Terminator (2009-2013, Kazakhstan's) at VI beside the BMPT T-90, off the BMPT-72
+    node({ id: 'bmpt_terminator', tier: 6, line: 'support', lane: 13, parents: ['bmpt_terminator2'], slot: 'line' }),
+    // Tunguska and Pantsir (268, the twin-cannon air defence): off the BMP-3 line, under the BMPTs
+    node({ id: 'tunguska_m', tier: 5, line: 'air_defence', lane: 14, parents: ['bmp3'], slot: 'line' }),
+    node({ id: 'pantsir_s1', tier: 6, line: 'air_defence', lane: 14, parents: ['tunguska_m'], slot: 'line' }),
     // Special
     node({
       id: 't14_armata', tier: 10, line: 'special', lane: 0, parents: [], slot: 'special', builds: ['object148_proto'],

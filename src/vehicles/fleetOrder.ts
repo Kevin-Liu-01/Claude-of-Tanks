@@ -84,6 +84,9 @@ export const NATIVE_FAMILY_ORDER = Object.freeze({
   t95: Object.freeze(['t95']),
   suppliedBritish: Object.freeze(['fv510', 'fv510_milan', 'warrior_tes_h', 'ajax', 'ares_apc']),
   suppliedRussian: Object.freeze(['bmp3', 'bmp3m_dragun125', 'kurganets25', 'tos1a_tagil']),
+  // 268: the twin-cannon air defence, each pair in service order
+  russianAirDefense: Object.freeze(['tunguska_m', 'pantsir_s1']),
+  chineseAirDefense: Object.freeze(['pgz95', 'pgz09']),
   poland: Object.freeze([
     't72m1_jaguar', 't72_rys', 'pt91a_twardy', 'pl01', 'borsuk',
   ]),

@@ -170,6 +170,40 @@ const at = (point, target) => Math.hypot(point.x - target.state.pos.x, point.z -
   const ring = Math.hypot(sweep.x - leads[0].x, sweep.z - leads[0].z);
   assert.ok(Math.abs(ring - HUNT_RULES.localSweep.firstM) < 1, `at its lead point the hunter sweeps out round it (${ring.toFixed(0)} m)`);
 }
+// The search (268, item 10; Main: a hunter "never stands"). A hunter that reaches its side's last sighting with nobody in
+// sight hunts on past it (a sweep round the spent point), never circling an empty place until the sighting goes stale;
+// and a search point it reaches is spent at once: the next is drawn then, a golden angle on, not at the next sweep epoch.
+{
+  spotted.clear();
+  const rules = matchRulesetFor('infected');
+  const quarry = tank('quarry', 'alpha', 400, 0), player = tank('player', 'alpha', 380, 20, false), hunter = tank('hunter', 'bravo', 0, 0);
+  const mode = make('infected', [player, quarry, hunter], { ...rules, infectionBots: { ...rules.infectionBots, arrival: null } });
+  spotted.add('quarry'); spotted.add('player');
+  Object.assign(hunter.state.pos, { x: 0, z: 0 });
+  let t = 0; mode.step(1 / 60, t += 0.6);
+  // the survivors slip away unseen; the side keeps its sighting
+  spotted.clear();
+  quarry.state.pos.x = -300; player.state.pos.x = -320;
+  for (let i = 0; i < 2; i++) mode.step(1 / 60, t += 0.6);
+  const lead = mode.freshestSighting(hunter);
+  assert.ok(lead, 'the side holds its sighting');
+  // it gets there: nobody
+  Object.assign(hunter.state.pos, { x: lead.x, z: lead.z });
+  for (let i = 0; i < 2; i++) mode.step(1 / 60, t += 0.6);
+  assert.ok(mode.freshestSighting(hunter), `the sighting is still fresh (inside lastSeenMaxS ${HUNT_RULES.lastSeenMaxS} s)`);
+  const past = mode.botObjective(hunter);
+  const out = Math.hypot(past.x - lead.x, past.z - lead.z);
+  assert.ok(out > HUNT_RULES.lead.arriveM, `the hunter hunts on past the spent sighting (${out.toFixed(0)} m out), never circling an empty place`);
+  for (const s of [quarry, player]) assert.ok(at(past, s) > 40, 'naming no hidden position');
+  // it reaches that search point: the next is drawn at once, inside the same sweep epoch
+  Object.assign(hunter.state.pos, { x: past.x, z: past.z });
+  for (let i = 0; i < 2; i++) mode.step(1 / 60, t += 0.6);
+  assert.ok(t < HUNT_RULES.sweepEpochS, 'still the first sweep epoch');
+  const next = mode.botObjective(hunter);
+  const moved = Math.hypot(next.x - past.x, next.z - past.z);
+  assert.ok(moved > HUNT_RULES.lead.arriveM, `a reached search point is spent: the next lies ${moved.toFixed(0)} m on`);
+  for (const s of [quarry, player]) assert.ok(at(next, s) > 40, 'and names no hidden position either');
+}
 // The network authority hands its own spotting to the hunt (round 2, the critic's M14: without the hook every survivor
 // read as spotted, so a room's hunters would have routed on hidden survivors). Survivors 1.1 km from the infected on a
 // flat field, past every view range: after the first seconds the infected side has no sighting at all.
@@ -197,4 +231,4 @@ const at = (point, target) => Math.hypot(point.x - target.state.pos.x, point.z -
     assert.ok(!hunt || Math.hypot(hunt.x - survivor.state.pos.x, hunt.z - survivor.state.pos.z) > 60, `the authority's hunt does not name hidden ${id}`);
   }
 }
-console.log('honestHunt.selftest: the hunt names only spotted quarry, then its last sighting, then its arrival orders or a sweep; the hunters spread; the allies leash; survivors rally; the infected rise on the ring, a converted human only round its side\'s sighting');
+console.log('honestHunt.selftest: the hunt names only spotted quarry, then its last sighting, then its arrival orders or a sweep, and hunts on past a spent lead; the hunters spread; the allies leash; survivors rally; the infected rise on the ring, a converted human only round its side\'s sighting');

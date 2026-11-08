@@ -125,7 +125,8 @@ for(const quality of ['high','low']) {
   try {
     assert.equal(parts.length,1);outerSupport(parts[0]);
     assert.ok(mirroredSurfaceError(parts[0],parts[0]).maxM<1e-6,`${quality}: actual KF51-U cheek and crown triangles mirror`);
-    for(const [actual,expected]of[[parts[0].bounds.min.x,-1.55],[parts[0].bounds.max.x,1.55],[parts[0].bounds.min.z,-2.96],[parts[0].bounds.max.y,.66]])
+    // (268: the owner's r15 KF51-U turret raised its roof crown 0.66 -> 0.68 m on the same plan)
+    for(const [actual,expected]of[[parts[0].bounds.min.x,-1.55],[parts[0].bounds.max.x,1.55],[parts[0].bounds.min.z,-2.96],[parts[0].bounds.max.y,.68]])
       assert.ok(Math.abs(actual-expected)<1e-6,`${quality}: Panther primary silhouette remains`);
   }finally{panther.dispose();}
   const cutStocks=[];

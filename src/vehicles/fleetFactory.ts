@@ -168,6 +168,7 @@ const GROUP_LOADERS = Object.freeze({
   type96bX: () => import('./profiles/type96bX.ts').then(mod => registerProfiles({ type96b: { build: mod.buildType96bX } })),
   kf41LynxSourceX: () => import('./profiles/kf41LynxSourceX.ts').then(mod => registerProfiles({ kf41_lynx: { build: mod.buildKf41LynxX } })),
   m6Linebacker: () => import('./profiles/m6Linebacker.ts').then(mod => registerProfiles({ m6_linebacker: { build: mod.buildM6Linebacker } })),
+  m3a2Bradley: () => import('./profiles/m3a2Bradley.ts').then(mod => registerProfiles({ m3a2_bradley: { build: mod.buildM3A2Bradley } })),
   marder2: () => import('./profiles/marder2.ts').then(mod => registerProfiles({ marder2: { build: mod.buildMarder2 } })),
   amx10p: () => import('./profiles/amx10p.ts').then(mod => registerProfiles({ amx10p: { build: mod.buildAmx10p }, amx10p_25: { build: mod.buildAmx10p } })),
   dardo: () => import('./profiles/dardo.ts').then(mod => registerProfiles({ dardo: { build: mod.buildDardo } })),
@@ -234,6 +235,11 @@ const GROUP_LOADERS = Object.freeze({
   korea: () => import('./profiles/korea.ts').then((mod) => registerProfiles(mod.KOREA_PROFILES)),
   japan: () => import('./profiles/japan.ts').then((mod) => registerProfiles(mod.JAPAN_PROFILES)),
   sheridan: () => import('./profiles/sheridan.ts').then((mod) => registerProfiles(mod.SHERIDAN_PROFILES)),
+  // 268: the twin-cannon air-defence round
+  gm352AirDefense: () => import('./profiles/gm352AirDefense.ts').then((mod) => registerProfiles(mod.GM352_AIR_DEFENSE_PROFILES)),
+  gepard: () => import('./profiles/gepard.ts').then((mod) => registerProfiles(mod.GEPARD_PROFILES)),
+  chineseAirDefense: () => import('./profiles/chineseAirDefense.ts')
+    .then((mod) => registerProfiles(mod.CHINESE_AIR_DEFENSE_PROFILES)),
 } satisfies Record<FleetGroup, GroupLoader>);
 const groupPromises = new Map<FleetGroup, Promise<void>>();
 const readyGroups = new Set<FleetGroup>();

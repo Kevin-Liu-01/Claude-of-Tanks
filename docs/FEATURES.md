@@ -14,7 +14,7 @@ stack, authoring tools, test rigs, and public presentation.
 
 | Area | Current implementation |
 | --- | --- |
-| Playable fleet | 280 production-visible and 280 local-development first-party procedural vehicles |
+| Playable fleet | 287 production-visible and 287 local-development first-party procedural vehicles |
 | Runtime vehicle provenance | 0 playable vehicles sourced from GLB geometry |
 | Battlefields | 33 authored and destructible maps |
 | Simulation | Fixed 60 Hz movement and combat rules |
@@ -28,10 +28,10 @@ The executable provenance check is:
 
     npm run tank:native:check
 
-At the time of this document update it reports 280 first-party procedural battle
+At the time of this document update it reports 287 first-party procedural battle
 playables, no GLB-sourced playables, and no comparison-source paths in the
 runtime registry. Offline reference articulation lives under `tools/` only.
-The canonical saved-roster report tracks the same 280 playable records.
+The canonical saved-roster report tracks the same 287 playable records.
 
 ## Battle rules
 
@@ -337,7 +337,10 @@ exhibits wear. Any hull can wear any other hull's paint identically: the paint
 noise stream is keyed by the recipe and pattern id (`camoPatternStreamSeed`),
 not by the hull, so switching tanks never reseeds a shared pattern. Carousel and
 dossier portraits face left (`tools/portrait-camera.ts`, regenerated through the
-unchanged framing gate).
+unchanged framing gate). Each portrait's azimuth comes from its own card: the
+standard view unless the card leaves the fleet envelope there, then the first
+azimuth of a fixed ladder whose card fits, turning side-on before head-on (268),
+so no tank carries a hand row. A card that cuts its tank at the edge never fits.
 The OpenAI, X and Gemini brand camos (2026-09-21, owner: "make the openai x
 and gemini camos more sporadic and random then predictably placed") share the
 Claude and Claude Spark composition: one hero mark, four mediums on a loosely

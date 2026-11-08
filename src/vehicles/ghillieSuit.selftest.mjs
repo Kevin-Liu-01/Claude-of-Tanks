@@ -285,8 +285,12 @@ for (const id of ids) checkSuited('suited', id, (track) => {
     for (let i = 0; i < at.count; i++) {
       wrapped.add(Math.floor(new THREE.Vector3().fromBufferAttribute(at, i).applyMatrix4(gunNet.matrixWorld).applyMatrix4(toGun).z / 0.05));
     }
-    assert.ok(wrapped.size * 0.05 > 0.5 && wrapped.size * 0.05 <= 1.4,
-      `${id} wraps short sections of the tube (${(wrapped.size * 0.05).toFixed(2)} m), its bore open`);
+    // 2026-11-03 (release 268 builder E; the owner on the M1A1 FEP: "for the fep cover the roof turret cheeks and cannonn with
+    // gfhillie and nett too"): that mark's ULCANS sleeves its M256 from the shield's collar to 0.35 m short of the muzzle
+    // (3.2 m); its muzzle end and bore stay open (muzzle-bore-inventory). Every other suited gun keeps the short wraps.
+    const fullWrap = id === 'm1a1_abrams_fep';
+    assert.ok(fullWrap ? wrapped.size * 0.05 > 2.8 && wrapped.size * 0.05 <= 3.4 : wrapped.size * 0.05 > 0.5 && wrapped.size * 0.05 <= 1.4,
+      `${id} wraps ${fullWrap ? 'its tube from the collar to short of the muzzle' : 'short sections of the tube'} (${(wrapped.size * 0.05).toFixed(2)} m), its bore open`);
     assert.ok(gunBounds.max.z < tank.root.getObjectByName('rig_muzzle').getWorldPosition(new THREE.Vector3()).z,
       `${id} gun shroud stops behind the live muzzle anchor`);
   }

@@ -1,25 +1,26 @@
 {
-  "schemaVersion": 1,
+  "schemaVersion": 2,
+  "digestScope": "shape",
   "tankId": "bm_oplot_m",
   "quality": "high",
   "decision": "Main 262 (2026-10-27): exempt the owner's kit from the source comparison; tools/owner-kit-targets.mjs",
-  "reviewer": "blind critics, rounds 1-2 (z-buffered renders against the owner's references): distinctness PASS with the kit; Main's ruling on the exemption",
-  "reviewScope": "Owner-directed kit parts the print does not carry, set aside from the numeric source comparison only; boards and the raw-source sidecar keep the whole vehicle. Digests from procedural-fidelity.html (high, camoSeed 4242), the fail-closed passes at 2026-10-27 23:49 and (the drums, their cradle re-seated on the stepped stern) 2026-10-28 03:22.",
+  "reviewer": "blind critics, rounds 1-2 (z-buffered renders against the owner's references): distinctness PASS with the kit; Main's ruling on the exemption. 268: the KT-7.62 re-accepted on blind A/B critics (Opus, Sonnet), two rounds: the library 7.62 mm beats the 262 stand-in in every view; the re-seated receiver (no collar behind the mantlet, inside the housing over its full depression) PASS in every view, no blocker",
+  "reviewScope": "Owner-directed kit parts the print does not carry, set aside from the numeric source comparison only; boards and the raw-source sidecar keep the whole vehicle. Digests from procedural-fidelity.html (high, camoSeed 4242), the fail-closed passes at 2026-10-27 23:49 and (the drums, their cradle re-seated on the stepped stern) 2026-10-28 03:22. 268: re-taken (integ/267 aa83677589 plus the KT-7.62 re-seat) after two moves since 10-28. The owner's MM-14 digital coat (ecfac741a3, 10-30) changed the drums' and lights' texture pixels only: their geometry, pose and material settings are unchanged (browser snapshots either side of ecfac741a3). The KT-7.62 took the coat and the fleet's library 7.62 mm at true scale (264: aae28f0970, 2fb092227c); 268 seats its receiver 0.28 m behind the trunnion under a housing roof 5 cm higher (oplotBM.ts enclosedStation). 268: keyed on the kit's shape (reference-supplement.mjs 'shape': positions, index, poses, visibility; its paint is the coat's), taken from the same accepted state, whose full digests (oplotMKt762 804278fd, oplotMKitSternDrums 2d2fa5a5, oplotMKitLights 3fa492ce) passed on this tree.",
   "parts": {
     "oplotMKt762": {
       "arrangementAccepted": true,
       "reference": "owner-kit:bm_oplot_m:oplotMKt762",
-      "geometryPoseSha256": "30181580fb94aa62f673b789abf1030088fa87b58fdbf1d7bec6fb20eda121e6"
+      "geometryPoseSha256": "6d3a93daebefb5209d6b49bfdf6777581b8a89a108bdc161354a248557a36077"
     },
     "oplotMKitSternDrums": {
       "arrangementAccepted": true,
       "reference": "owner-kit:bm_oplot_m:oplotMKitSternDrums",
-      "geometryPoseSha256": "b49b8ff8a5121e0c2a3514bf37694dc7e4c0d620c8e0c832c4c0aef6fd3564ac"
+      "geometryPoseSha256": "83958040940701f9fc1a8f9b6763aebd2546b518d75f9cc5c9708cb2888882b2"
     },
     "oplotMKitLights": {
       "arrangementAccepted": true,
       "reference": "owner-kit:bm_oplot_m:oplotMKitLights",
-      "geometryPoseSha256": "5ea57e9623c2d0a69304923387efd65a03ab14c5648efcfa97b12a938271a703"
+      "geometryPoseSha256": "ad65cb09b24df372d75bc4562f2dce60114031e2e2ac3c1ebf910667a744ca4a"
     }
   }
 }

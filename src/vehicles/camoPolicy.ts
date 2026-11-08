@@ -145,8 +145,10 @@ const AUTHORED_PAINT_IDS_AFTER_265 = Object.freeze(['paint_leo1a5dk1', 'paint_le
 /** Release 267: the Danish Leopard 2A7 DK's olive under its Barracuda cover (denmarkSpecs.ts), held from 265, and the
  * Centurion Mk 5/2 DK's 1980s three-tone; then (the Japan line) the Type 90 (B)'s JGSDF two-tone in large bands, olive
  * drab under chocolate brown (the photo critic: the family's sage-and-tan service paint read as no JGSDF coat), and the
- * Type 10 paint. Appended after 266's saved catalog indices, the Danish coats first. */
-const AUTHORED_PAINT_IDS_AFTER_266 = Object.freeze(['paint_leo2a7dk', 'paint_centurion5_2dk', 'paint_type90b', 'paint_type10'] as const);
+ * Type 10 paint. Appended after 266's saved catalog indices, the Danish coats first; the original BMPT Terminator's
+ * Engineering Technologies 2012 three-tone desert came with that vehicle and appends last. */
+const AUTHORED_PAINT_IDS_AFTER_266 = Object.freeze(['paint_leo2a7dk', 'paint_centurion5_2dk', 'paint_type90b', 'paint_type10',
+  'paint_bmpt_terminator'] as const);
 type AuthoredPaintIdAfterGt = typeof AUTHORED_PAINT_IDS_AFTER_GT[number] | typeof AUTHORED_PAINT_IDS_AFTER_233[number]
   | typeof AUTHORED_PAINT_IDS_AFTER_262[number] | typeof AUTHORED_PAINT_IDS_AFTER_264[number]
   | typeof AUTHORED_PAINT_IDS_AFTER_265[number] | typeof AUTHORED_PAINT_IDS_AFTER_266[number];
@@ -856,6 +858,7 @@ const DEFAULT_CAMO_PATTERN_BY_TANK_ID: Readonly<Record<string, CamoPatternId>> =
   // release 266: the M48A3 in the A5's US coat; the Magach 3 and the German M48s take their nations' Factory coats
   m48a3_patton: 'summer',
   m2a2_bradley: 'summer',
+  m3a2_bradley: 'summer',
   ztz100_prototype: 'sig_ztz100_x',
   // 262: the production ZTZ-20 wears its family's PLA digital woodland
   ztz20: 'sig_ztz100_x',
@@ -925,6 +928,16 @@ const DEFAULT_CAMO_PATTERN_BY_TANK_ID: Readonly<Record<string, CamoPatternId>> =
   // 2026-11-01: the TK-X and the 10B "need to look a lot more unique" than the Type 10 and the Kaitaku)
   type90b: 'paint_type90b',
   type10_tk_x: 'paint_type10',
+  // release 267: the original BMPT Terminator in the Engineering Technologies 2012 vehicle's three-tone desert
+  bmpt_terminator: 'paint_bmpt_terminator',
+  // release 268: the twin-cannon air defence in existing coats (no new paint; saved catalog indices hold): the Russian pair
+  // in Russia's plain service green (the photographs' solid coat), the PGZ-95 in the PLA green-and-sand organic coat (the
+  // Type 59's Signature recipe, the museum vehicle's), the PGZ-09 in the PLA digital woodland (the ZTZ-100's Signature,
+  // the ZTZ-20's stock; the 2017 parade photographs). The Gepard 1A2 wears Germany's Factory coat with the Leopard 1A5.
+  tunguska_m: 'national_ru',
+  pantsir_s1: 'national_ru',
+  pgz95: 'sig_type59',
+  pgz09: 'sig_ztz100_x',
 });
 
 /** The stock appearance, independent of the player's saved selection. */

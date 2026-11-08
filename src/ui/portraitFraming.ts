@@ -60,6 +60,8 @@ interface PortraitPlacement {
 
 interface PortraitFrameAudit {
   passes: boolean;
+  /** The complete silhouette stays inside the canvas: a tank cut at an edge measures only its visible part. */
+  whole: boolean;
   displayedFullWidth: number;
   displayedFullHeight: number;
   displayedFullWidthRatio: number;
@@ -214,6 +216,7 @@ export function auditPortraitPixels(
   if (!core || !full) {
     return {
       passes: false,
+      whole: false,
       displayedFullWidth: 0,
       displayedFullHeight: 0,
       displayedFullWidthRatio: 0,
@@ -237,6 +240,9 @@ export function auditPortraitPixels(
     boxHeight,
     policy,
   );
+  // A tank cut off at the canvas edge looks smaller than it is, so its envelope cannot pass (268: the derived
+  // azimuth turned x1_pioneiro head-on until its antenna left the card).
+  const whole = full.x0 > 0 && full.y0 > 0 && full.x1 < naturalWidth - 1 && full.y1 < naturalHeight - 1;
   const fitScale = Math.min(boxWidth / naturalWidth, boxHeight / naturalHeight);
   const displayedFullWidth = full.width * fitScale * placement.scale;
   const displayedFullHeight = full.height * fitScale * placement.scale;
@@ -256,7 +262,8 @@ export function auditPortraitPixels(
     sourceCoreHeightRatio / policy.heightRatio,
   );
   return {
-    passes: sourceCoreFillRatio >= policy.auditMinCoreFillRatio
+    passes: whole
+      && sourceCoreFillRatio >= policy.auditMinCoreFillRatio
       && sourceCoreFillRatio <= policy.auditMaxCoreFillRatio
       && sourceCoreWidthRatio <= policy.widthRatio * policy.auditMaxCoreFillRatio
       && sourceCoreHeightRatio <= policy.heightRatio * policy.auditMaxCoreFillRatio
@@ -264,6 +271,7 @@ export function auditPortraitPixels(
       && coreFillRatio >= policy.auditMinCoreFillRatio
       && displayedFullWidthRatio <= policy.auditMaxFullWidthRatio
       && displayedFullHeightRatio <= policy.auditMaxFullHeightRatio,
+    whole,
     displayedFullWidth,
     displayedFullHeight,
     displayedFullWidthRatio,
