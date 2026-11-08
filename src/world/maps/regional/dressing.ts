@@ -178,6 +178,50 @@ export function woodpile(sink: PartSink, face: Face, u0: number, u1: number, hei
 }
 
 /**
+ * A cellar vent (soupirail) in a plinth: a dressed-stone frame proud of the wall, the dark of the cellar behind it and
+ * two or three iron bars across (buildings-271, the owner's realism ask: the plinth read as a blank band). (u, y) is the
+ * vent's centre on the face, `w` x `h` its clear opening.
+ */
+export function cellarVent(sink: PartSink, face: Face, u: number, y: number, w: number, h: number, stone: Rgb): void {
+  const t = 0.09, out = 0.05;
+  faceBox(sink, 'stone', face, u, y + h / 2 + t / 2, out / 2, w + t * 2, t, out, { ...DECOR, colour: stone });
+  faceBox(sink, 'stone', face, u, y - h / 2 - t / 2, out / 2 + 0.01, w + t * 2 + 0.04, t, out + 0.02, { ...DECOR, colour: shade(stone, 0.94) });
+  for (const side of [-1, 1]) faceBox(sink, 'stone', face, u + side * (w / 2 + t / 2), y, out / 2, t, h, out, { ...DECOR, colour: stone });
+  faceBox(sink, 'structureMetal', face, u, y, 0.004, w, h, 0.008, { ...DECOR, colour: [0.05, 0.045, 0.04] });
+  const bars = w > 0.5 ? 3 : 2;
+  for (let k = 0; k < bars; k++) {
+    faceBox(sink, 'structureMetal', face, u - w / 2 + (k + 1) * w / (bars + 1), y, 0.03, 0.022, h + 0.02, 0.022, { ...DECOR, colour: [0.12, 0.11, 0.1] });
+  }
+}
+
+/**
+ * A manure heap on the forecourt before a stable door (the Lorraine usoir, the Alpine Miststock): a bed of boards on
+ * three sides, the heap stepped in three courses of straw and muck, the top forked over, a few loose straw wisps
+ * (buildings-271, the 3D census: "a 5-10 m usoir forecourt with manure, wood piles and carts"). It stands `gap` off the
+ * wall, `w` along it and `d` out from it; decor only (a hull goes through it).
+ */
+export function dungHeap(sink: PartSink, face: Face, u: number, w: number, d: number, gap: number, rng: () => number): void {
+  const board: Rgb = [0.3, 0.25, 0.2], muck: Rgb = [0.2, 0.15, 0.1], straw: Rgb = [0.52, 0.43, 0.26];
+  const o0 = gap + d / 2;
+  // the boards: the long one out front and the two ends
+  faceBox(sink, 'structureWood', face, u, 0.14, gap + d - 0.03, w, 0.28, 0.05, { ...DECOR, colour: board });
+  for (const side of [-1, 1]) faceBox(sink, 'structureWood', face, u + side * (w / 2 - 0.025), 0.14, o0, 0.05, 0.28, d, { ...DECOR, colour: shade(board, 0.92) });
+  // three courses, each smaller and set back toward the wall, the muck dark under the straw on top
+  const courses = [[0.36, 0.0, muck], [0.28, 0.16, shade(muck, 1.25)], [0.2, 0.3, straw]] as const;
+  let y = 0;
+  for (const [ch, inset, colour] of courses) {
+    const cw = w - 0.12 - inset * 1.4 - rng() * 0.12, cd = d - 0.1 - inset - rng() * 0.1;
+    faceBox(sink, 'structureWood', face, u + (rng() - 0.5) * 0.12, y + ch / 2, gap + 0.05 + cd / 2, cw, ch, cd, { ...DECOR, colour });
+    y += ch * 0.92;
+  }
+  // loose wisps of straw thrown on the top
+  for (let k = 0; k < 4; k++) {
+    const wu = u + (rng() - 0.5) * (w - 0.6), wo = gap + 0.25 + rng() * (d - 0.7);
+    faceBox(sink, 'structureWood', face, wu, y + 0.02, wo, 0.32 + rng() * 0.2, 0.03, 0.12, { ...DECOR, colour: shade(straw, 0.9 + rng() * 0.25) });
+  }
+}
+
+/**
  * The roof ladder (Dachleiter) from the eaves up to the stack on the +x or -x slope at z: two rails and rungs riding
  * on hooks a hand's breadth above the covering.
  */
