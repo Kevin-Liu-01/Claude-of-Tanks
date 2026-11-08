@@ -549,16 +549,16 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 13992,
-      "sha256": "79023cce3a390bb2207dd905c1871a4e6313be23310049eec5e27da5985186ca"
+      "bytes": 13974,
+      "sha256": "5f6979883e7cb6b05895c594b49cad1059162b182b48e1d9bda56ae118bb122c"
     },
     "side": {
       "file": "m60a1_side.webp",
       "width": 512,
       "height": 256,
       "mime": "image/webp",
-      "bytes": 15912,
-      "sha256": "6ee40db1e7619b87f57c0e2cd65dd4f92a07714406df38191e2522c078f4aa43"
+      "bytes": 15908,
+      "sha256": "13155ed7047207c5140e5863a38b9e726d19f752018b8a62fb84a7b559438838"
     },
     "topSilhouette": {
       "file": "m60a1_top_silhouette.png",
@@ -581,32 +581,32 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 32312,
-      "sha256": "d45c1b6b827b6718e542358b3bf342a53988579d1a489584e4a8055eb2537618"
+      "bytes": 32292,
+      "sha256": "dea7f15252a282ef8a3722bb4df9a2f57134e7519dd4c21c03ef9bf55cdc29c4"
     },
     "modulesSide": {
       "file": "m60a1_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 35164,
-      "sha256": "d8a3a153fc8c95976ed6f474fc2856bc036e225241f0998fc20d5cf3937db098"
+      "bytes": 35102,
+      "sha256": "18e1cd2387809384781a481fdb6e030563a362be32cbfc99d3f267f343473455"
     },
     "crewSide": {
       "file": "m60a1_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 33096,
-      "sha256": "4e8714e5a39cb1fd5308a30e854eb738dad11990962cf708fd3ee56a75ae11ea"
+      "bytes": 33106,
+      "sha256": "0151da732b32db742f49d8b9f869d3a73e1f54f8565ad53a506a0953a8282930"
     },
     "markings": {
       "file": "m60a1_markings.png",
       "width": 256,
       "height": 128,
       "mime": "image/png",
-      "bytes": 37352,
-      "sha256": "a2e5ec54e89a1d261589784c22382cfd2006043ebb58250567ca043c07b0114a"
+      "bytes": 34400,
+      "sha256": "5194895dece82e9ba7813543094cda3fcb8d5490bd288f1752e3c8d004939908"
     },
     "technicalLabels": {
       "file": "m60a1_technical.json",

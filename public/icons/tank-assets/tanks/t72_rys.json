@@ -3020,24 +3020,24 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 25108,
-      "sha256": "bcfa470fb55fe13753d3e71423a5d6bc0db2c5a4dd7a4d02bdc5ab0b50824456"
+      "bytes": 25090,
+      "sha256": "389af8166a58ccf0a5500011c1000b4834bf5106fee7af5c0575e857de1bca26"
     },
     "modulesSide": {
       "file": "t72_rys_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 23438,
-      "sha256": "b2ee4188667bb13a31b45884e9f19deeb3cb54acf414b13b3ca4235614f9a682"
+      "bytes": 23418,
+      "sha256": "53997ab37db1fc19c4fce244579b3b097a9760be2606113cc466668cd1f21d5f"
     },
     "crewSide": {
       "file": "t72_rys_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 20910,
-      "sha256": "9eb8bb980d3f1a2ce972576c2297053a85f5bcf747fc6f964266dbd9d6dcdbac"
+      "bytes": 20948,
+      "sha256": "e7473e163d8ccdc457bb0085bef3a0d0c50c8736bf90bf5817ee3c8b8a12973c"
     },
     "angle": {
       "file": "t72_rys_angle.webp",
@@ -3045,14 +3045,14 @@
       "height": 512,
       "mime": "image/webp",
       "bytes": 25508,
-      "sha256": "2d6a4cadc226ca198df16d2caac952ebbe8333bb2e7506c2cd1e4b5da77acbd2",
+      "sha256": "a05a298e6a2f7e96fd7303dd18776d9546c17f256dc1e026ffc71e2b2d4d1541",
       "thumbnail": {
         "file": "thumbs/t72_rys_angle.webp",
         "width": 256,
         "height": 256,
         "mime": "image/webp",
-        "bytes": 10436,
-        "sha256": "e7058e46002ab18adc15cf04fa903fe97c108ad98e967a57b543b231f35931c1"
+        "bytes": 10440,
+        "sha256": "f5f4dea995caf02da0dc887b225a578e177690d93ca85a96bc3afedbf90727df"
       }
     },
     "top": {
@@ -3060,16 +3060,16 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 11064,
-      "sha256": "ecc202a036bf72c4242a03e05011680db6236287d8dc2cfa5d7c4c586fbeed58"
+      "bytes": 11044,
+      "sha256": "3316ad0e51817c1d26d8c5979907b60aab1887288e9f2ba0aa705cf21577f4d5"
     },
     "side": {
       "file": "t72_rys_side.webp",
       "width": 512,
       "height": 256,
       "mime": "image/webp",
-      "bytes": 8982,
-      "sha256": "ff58189fded9352f0e7aa65620e89ba599ad5e7e1c67ccf6d2f082357f72ed04"
+      "bytes": 8984,
+      "sha256": "b544ad29a7ff13d7cb33c60e931413567611f88480f4de2c187ab9af9202b009"
     },
     "topSilhouette": {
       "file": "t72_rys_top_silhouette.png",
@@ -3092,8 +3092,8 @@
       "width": 256,
       "height": 128,
       "mime": "image/png",
-      "bytes": 33387,
-      "sha256": "3700d4e92d4f418c169ca2e38d8f0e3de6eca4ff9e7da00d00287b54a5096cac"
+      "bytes": 30129,
+      "sha256": "3438b6109af730723e4786492ea5924724f974f777fe202f56203416e10d2fa7"
     },
     "technicalLabels": {
       "file": "t72_rys_technical.json",

@@ -1183,24 +1183,24 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 50414,
-      "sha256": "988892820163bb06c561ef1735763067e40fdfc7f296f8c45bd806ffb4f0bbf8"
+      "bytes": 50412,
+      "sha256": "97c98fd64d21fa62bd7e20632ff32099b74b2e8db34265944f2c0552e7d7b517"
     },
     "modulesSide": {
       "file": "griffin_viper_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 50202,
-      "sha256": "b33204eadacaaec657005778e9ae5869e230cee40317065034cd74d18aad3f5c"
+      "bytes": 50204,
+      "sha256": "b4e1df9df0b516a2a4bdbf69e9e2ac6495fab5c249cba369a8faa0a3ac887b6a"
     },
     "crewSide": {
       "file": "griffin_viper_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 47870,
-      "sha256": "90b8da6f8d5e2c138ae476b417fc1f915033e51d9a9ef4634be5512ab55dd00e"
+      "bytes": 47846,
+      "sha256": "9f21c1a5fbd6d5a167f38f2288ef22aba6609c83a51337ada1a998605b2f3797"
     },
     "angle": {
       "file": "griffin_viper_angle.webp",
@@ -1231,8 +1231,8 @@
       "width": 512,
       "height": 256,
       "mime": "image/webp",
-      "bytes": 20504,
-      "sha256": "4846ca7bfe811761a93e1fe13c4a4ef7b96acfbae5169cff747317bbcca274ad"
+      "bytes": 20468,
+      "sha256": "7fbcd104f834825ae428198c2e4947098f7e610acdd9dd3f7499f38495bb58a0"
     },
     "topSilhouette": {
       "file": "griffin_viper_top_silhouette.png",
@@ -1255,8 +1255,8 @@
       "width": 256,
       "height": 128,
       "mime": "image/png",
-      "bytes": 37685,
-      "sha256": "9522cca096f7559f1fa5d640e5b86812c5f6c6d1a337cb3ce674fdf724aafd15"
+      "bytes": 34383,
+      "sha256": "85eeb62086dc94cd96a134c83fe918261837245e1dbd18e9637dfa7534b8647a"
     },
     "technicalLabels": {
       "file": "griffin_viper_technical.json",

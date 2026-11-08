@@ -6,6 +6,7 @@
 // Sound tab's own labels (src/ui/settings.ts). Node only (tools/docs-prerender.mjs).
 import { CAPTION_SCRIPT } from '../../audio/captionScript.generated.ts';
 import { ATMOSPHERES, propagationDelayS } from '../../audio/audioMath.ts';
+import { CEASE, GUNSHIP } from '../../audio/crewProcedure.ts';
 import { CREW_LANGUAGES } from '../../audio/vehicleAudioProfiles.ts';
 import { WEAPON_CLASSES } from '../../audio/weaponAudio.ts';
 import { flagMarkup } from '../../presentation/publicShell.ts';
@@ -27,10 +28,16 @@ function quotes(call: string): string {
   return (zh ? script['zh-CN'] : script['en-US']).map((take) => `<q>${esc(zh ? take.replace(/。$/u, '') : take)}</q>`).join('');
 }
 
+/** The numbers a call's meaning quotes, from the crew's own rules (crewProcedure.ts). */
+const CALL_VALUES: Readonly<Record<string, Record<string, string>>> = {
+  cease_fire: { km: String(CEASE.rangeM / 1000) },
+  gunship_danger_close: { m: String(GUNSHIP.dangerM) },
+};
+
 /** A table of calls: the glyph, what the crew says, and what it means. */
 function callTable(rows: ReadonlyArray<readonly [string, IconId]>, aria: string): string {
   const body = rows.map(([call, glyph]) => `<tr><th scope="row"><span class="dm-cell dm-cell--quotes">${icon(glyph, { size: 18 })}<span>${quotes(call)}</span></span></th>`
-    + `<td>${esc(t(`docs.audio.call.${call}`))}</td></tr>`).join('');
+    + `<td>${esc(t(`docs.audio.call.${call}`, CALL_VALUES[call] ?? {}))}</td></tr>`).join('');
   return `<div class="dm-table dm-table--wrap" tabindex="0" role="region" aria-label="${esc(aria)}"><table><thead><tr>`
     + `<th scope="col">${esc(t('docs.audio.col.says'))}</th><th scope="col">${esc(t('docs.audio.col.means'))}</th></tr></thead><tbody>${body}</tbody></table></div>`;
 }
@@ -45,6 +52,21 @@ const WARNING_CALLS = [
   ['were_hit', 'damage'], ['bounced_us', 'shield'], ['fire', 'statusFire'], ['ammo_rack', 'ammoRack'], ['engine_damaged', 'engine'],
   ['track_gone', 'track'], ['gun_damaged', 'gun'], ['low_hp', 'heartbeat'], ['sixth_sense', 'lightbulb'], ['missile_incoming', 'rocket'],
   ['drone_incoming', 'modeDrone'],
+] as const satisfies ReadonlyArray<readonly [string, IconId]>;
+
+/** The fire command and its answers, the AC-130 crew's fire control and the modes' own calls (crew-lines-269). */
+const FIRE_CALLS = [
+  ['fire_command_kinetic', 'shellApfsds'], ['identified', 'scope'], ['firing', 'fireGun'], ['re_engage', 'reload'], ['cease_fire', 'check'],
+] as const satisfies ReadonlyArray<readonly [string, IconId]>;
+
+const GUNSHIP_CALLS = [
+  ['gunship_cleared_hot', 'modeAc130'], ['gunship_tally', 'visionThermal'], ['gunship_shift_fire', 'search'], ['gunship_rifle', 'rocket'],
+  ['gunship_splash', 'blocked'], ['gunship_good_hits', 'penetration'], ['gunship_danger_close', 'alert'], ['gunship_rounds_complete', 'pause'],
+] as const satisfies ReadonlyArray<readonly [string, IconId]>;
+
+const MODE_CALLS = [
+  ['flag_dropped_ours', 'modeFlag'], ['objective_contesting', 'modeZones'], ['goal_conceded', 'modeTurbo'], ['wave_swarm', 'modeHorde'],
+  ['counter_attack', 'modeFrontline'], ['infected_turned', 'modeInfected'], ['juggernaut_spotted', 'modeJuggernaut'], ['gun_game_final', 'modeGunGame'],
 ] as const satisfies ReadonlyArray<readonly [string, IconId]>;
 
 /** How late a shot is heard: the engine's own delay at three ranges, on Earth and on Mars. */
@@ -99,6 +121,9 @@ export function audioSections(): RichSection[] {
   const sections: Array<[string, string, string]> = [
     ['hits', t('docs.audio.hits'), p('docs.audio.hitsLede') + callTable(RESULT_CALLS, t('docs.audio.hitsAria')) + `<h3>${esc(t('docs.audio.delaysTitle'))}</h3>` + delays()],
     ['warnings', t('docs.audio.warnings'), p('docs.audio.warningsLede') + callTable(WARNING_CALLS, t('docs.audio.warningsAria'))],
+    ['procedure', t('docs.audio.procedure'), p('docs.audio.procedureLede') + callTable(FIRE_CALLS, t('docs.audio.procedureAria'))
+      + `<h3>${esc(t('docs.audio.gunshipTitle'))}</h3>` + callTable(GUNSHIP_CALLS, t('docs.audio.gunshipAria'))
+      + `<h3>${esc(t('docs.audio.modesTitle'))}</h3>` + callTable(MODE_CALLS, t('docs.audio.modesAria'))],
     ['radio', t('docs.audio.radio'), p('docs.audio.radioLede', { languages: String(CREW_LANGUAGES.length) }) + languages()
       + facts([['docs.audio.fact.oneAtATime', {}], ['docs.audio.fact.damagedRadio', {}], ['docs.audio.fact.crewSetting', { languages: String(CREW_LANGUAGES.length) }]])],
     ['gunfire', t('docs.audio.gunfire'), p('docs.audio.gunfireLede', { classes: String(Object.keys(WEAPON_CLASSES).length) }) + reports()

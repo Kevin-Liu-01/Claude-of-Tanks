@@ -169,10 +169,11 @@ function loopRegion(id, stereo = false) {
 // ------------------------------------------------------------------ events (as audioEngine.ts plays them)
 const WEAPON_CLOSE = { mg_rifle: 'mg_rifle_close', mg_heavy: 'mg_heavy_close', ac_20: 'ac_20_close', ac_25: 'ac_25_close', ac_30: 'ac_30_close',
   ac_40: 'ac_40_close', ac_50: 'ac_50_close', gun_90: 'gun_90_close', gun_105: 'gun_105_close', gun_120: 'gun_120_close', gun_125: 'gun_125_close',
-  gun_130: 'gun_130_close', gun_152: 'gun_152_close', atgm: 'atgm_launch', rocket_heavy: 'rocket_salvo' };
-const WEAPON_FAR = { mg_rifle: 'mg_far', mg_heavy: 'mg_far', ac_20: 'ac_far_light', ac_25: 'ac_far_light', ac_30: 'ac_far_light', ac_40: 'ac_far_heavy',
-  ac_50: 'ac_far_heavy', gun_90: 'gun_far_light', gun_105: 'gun_far_light', gun_120: 'gun_far_medium', gun_125: 'gun_far_medium',
-  gun_130: 'gun_far_heavy', gun_152: 'gun_far_heavy', atgm: 'ac_far_light', rocket_heavy: 'gun_far_heavy' };
+  gun_130: 'gun_130_close', gun_152: 'gun_152h_close', atgm: 'atgm_launch', rocket_heavy: 'rocket_salvo' };
+// gun-reports-269: each bore's own distant bank (src/audio/weaponAudio.ts WEAPON_ROWS); the grouped ones retired
+const WEAPON_FAR = { mg_rifle: 'mg_rifle_far', mg_heavy: 'mg_heavy_far', ac_20: 'ac_20_far', ac_25: 'ac_25_far', ac_30: 'ac_30_far', ac_40: 'ac_40_far',
+  ac_50: 'ac_50_far', gun_90: 'gun_90_far', gun_105: 'gun_105_far', gun_120: 'gun_120_far', gun_125: 'gun_125_far',
+  gun_130: 'gun_130_far', gun_152: 'gun_152h_far', atgm: 'launch_far', rocket_heavy: 'rocket_salvo_far' };
 const BLAST_DB = { cannon: -6, autocannon: -16, mg: -19 };
 function punchFor(family, caliberMm) {
   if (family === 'mg') return { id: 'blast_punch_light', rate: clamp(1.12 - (caliberMm - 7.62) / 50, 0.96, 1.12), maxDurS: 0.22 };

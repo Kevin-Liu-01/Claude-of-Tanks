@@ -59,6 +59,11 @@ export interface AssetLibrary {
   /** A decoded variant, avoiding an immediate repeat; asked for before it has decoded, the asset joins the front lane. */
   pick(id: string, random: () => number): AudioBuffer | null;
   variant(id: string, index: number): AudioBuffer | null;
+  /**
+   * Hold each named asset's picks on one variant (a receipt's capture: tools/audio-mix-balance.mjs judges every moment
+   * at its loudest take, so a gate never rides on the take the seeded stream drew); null lets the stream choose again.
+   */
+  holdVariants(held: Readonly<Record<string, number>> | null): void;
   /** Decode assets (deduplicated); `front` puts them in the front lane, ahead of every bulk load queued before or after. */
   load(ids: Iterable<string>, options?: { front?: boolean }): Promise<void>;
   /**
@@ -115,6 +120,14 @@ function defaultDecoder(sampleRate: number): DecodeContext | null {
   if (!scope.OfflineAudioContext) return null;
   try { return new scope.OfflineAudioContext(1, 1, sampleRate); } catch { return null; }
 }
+
+/**
+ * Crew speech decode rate. Every take plays through the radio's 320 Hz–3.4 kHz
+ * band and a headset speaker rolling off from 4.6 kHz, so 16 kHz (8 kHz
+ * Nyquist) keeps all of it at two thirds of a 24 kHz decode's memory: a
+ * 371-take pack is about 40 MB decoded (crew-lines-269).
+ */
+const VOICE_DECODE_HZ = 16000;
 
 function bufferBytes(buffer: AudioBuffer): number {
   return buffer.length * buffer.numberOfChannels * 4;
@@ -309,6 +322,9 @@ export function createAssetLibrary({
     return target.promise;
   }
 
+  /** Variants a receipt holds its picks on (holdVariants), by asset id. */
+  let held: Record<string, number> | null = null;
+
   function choose(entry: Entry, random: () => number): AudioBuffer | null {
     const n = entry.buffers.length;
     if (!n) return null;
@@ -350,7 +366,12 @@ export function createAssetLibrary({
         if (!entry || entry.state === 'idle' || retry) void loadOne(id);
         return null;
       }
+      const hold = held?.[id];
+      if (hold != null && entry.buffers[hold]) return entry.buffers[hold];
       return choose(entry, random);
+    },
+    holdVariants(next) {
+      held = next ? { ...next } : null;
     },
     variant(id, index) {
       const entry = entries.get(id);
@@ -390,8 +411,7 @@ export function createAssetLibrary({
             try {
               const res = await fetchImpl(`${root}audio/voice/${language}/${line}_${i}.webm`);
               if (!res.ok) throw new Error(`HTTP ${res.status}`);
-              // Speech is band-limited by the radio chain anyway: 24 kHz decode.
-              return await decode(await res.arrayBuffer(), 24000);
+              return await decode(await res.arrayBuffer(), VOICE_DECODE_HZ);
             } catch {
               failed++;
               return null;

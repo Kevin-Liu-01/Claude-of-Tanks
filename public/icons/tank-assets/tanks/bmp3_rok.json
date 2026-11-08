@@ -495,15 +495,15 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 28412,
-      "sha256": "ce740cdc27be32c22cbfd933b4ab922040e901339c3f28e78faf5f9fdef34a02",
+      "bytes": 28402,
+      "sha256": "0ec76ebfbf0ab273143e33950c067418d545113fdcba5b429ba0eac2411f7a8c",
       "thumbnail": {
         "file": "thumbs/bmp3_rok_angle.webp",
         "width": 256,
         "height": 256,
         "mime": "image/webp",
-        "bytes": 11458,
-        "sha256": "0f5aba8efc173323eca56c49a564c04e68c1fdfeb082ff484134d0d0fa5fb8ad"
+        "bytes": 11468,
+        "sha256": "e76a35dba50ad6a6188708c28940211d7f28951e645727afc92acc41123e87d2"
       }
     },
     "top": {
@@ -511,8 +511,8 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 24344,
-      "sha256": "490d51e9f82002d622cf2597655d2eeda806149e58c2cde3d9f4317e770cb910"
+      "bytes": 24370,
+      "sha256": "fff0534e29311a03acc2d783e7f6decf6a86f72215bc7b97a34b76091b370146"
     },
     "side": {
       "file": "bmp3_rok_side.webp",
@@ -567,8 +567,8 @@
       "width": 256,
       "height": 128,
       "mime": "image/png",
-      "bytes": 37486,
-      "sha256": "c4e34fe4018b5410bb04dbb88b85733164935e64c35fada54809da915a6c2c29"
+      "bytes": 35034,
+      "sha256": "57cdf8a63b227f49cedd4a0c99c88f8a9a4789c13f76dd5de055ce26318a8db2"
     },
     "technicalLabels": {
       "file": "bmp3_rok_technical.json",

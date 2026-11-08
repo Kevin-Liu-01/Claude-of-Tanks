@@ -36,7 +36,8 @@ const audioBindings = {
   logSound: (kind) => calls.push(['log', kind]),
   // Own main-gun rounds in flight, for the gunner's miss call.
   ownRounds: new Map(),
-  resolveWeaponReport: () => ({ cls: { id: 'gun_120' } }),
+  // the mount a shot is heard as (gun-reports-269: by the shooter's spec and the round it names)
+  shotMount: () => ({ key: '120/combustible' }),
   // The route log's range and level fields.
   listenerValid: true,
   distanceTo: () => 120,

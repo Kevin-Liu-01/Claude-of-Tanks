@@ -870,15 +870,15 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 26026,
-      "sha256": "d0dda5ca9bd0e08fa13242569cb7fb92737bd2a0b2cf8172689c1ac0a20faa9d",
+      "bytes": 26048,
+      "sha256": "2605e972364fbccac4507bbc6866954461a04a01ca96823a2107a81fe651adde",
       "thumbnail": {
         "file": "thumbs/amx40_angle.webp",
         "width": 256,
         "height": 256,
         "mime": "image/webp",
-        "bytes": 10832,
-        "sha256": "0dedf03bae8f8177e5056b1d4e061cfa03a6e9c95f4a625bf54caadd3347e396"
+        "bytes": 10830,
+        "sha256": "c98240b3109b6fca321d959d39c175f8f18ddf9d13886b1d4e16b3a49f3e56ac"
       }
     },
     "top": {
@@ -886,8 +886,8 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 8120,
-      "sha256": "5c79aaee6ba56d8fa7462a015eaa12b2ad87316b69412e7350b86e4766b41fb4"
+      "bytes": 8112,
+      "sha256": "32ef52d5fe438b7d3603fe6684a41b32c0e749072522493a5db9400db7ca5486"
     },
     "side": {
       "file": "amx40_side.webp",
@@ -918,8 +918,8 @@
       "width": 256,
       "height": 128,
       "mime": "image/png",
-      "bytes": 35435,
-      "sha256": "a9282189f73d40f100c33c7aa302ae0a226ef0ac995929e7fe59d9cd8159258b"
+      "bytes": 32768,
+      "sha256": "da6afe3ac39893fbcdff89d6136d8be0ae54d4d2d83463922724e21eef7a85d6"
     },
     "technicalLabels": {
       "file": "amx40_technical.json",

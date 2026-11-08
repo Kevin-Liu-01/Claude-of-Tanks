@@ -66,6 +66,8 @@ export interface GameState<Entity = RuntimeValue, Spotting = RuntimeValue, Match
   watch?: WatchSession | null;
   /** Couch mode (game/couchSeats.ts): which tank each phone drives; null otherwise. */
   couch?: CouchSession<Entity> | null;
+  /** The dev battle hold's switch (dev/battleHold.ts; game/devBattleHold.ts reads it); absent in a player's session. */
+  devBattleHold?: boolean;
 }
 
 /**

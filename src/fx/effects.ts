@@ -56,11 +56,13 @@ import { battleLightTintFromRig } from './sceneLightTint.ts';
 import { addLocalPoint, addLocalSpot, beginLocalLights, endLocalLights, localLightsCompiled, localLightsForPreset,
   setLocalLightsCompiled } from './localLights.ts';
 import { refreshWorldWind, worldWind } from './worldWind.ts';
-import { mapTintHex, setMapGroundAlbedo } from './mapPalette.ts';
+import { mapTintHex, setMapGroundAlbedo, surfaceLook } from './mapPalette.ts';
+import { strikeLookOf } from './strikeLooks.ts';
+import { grazes } from '../sim/shellSurface.ts';
 import { createDebrisChunks, makeChunkPiece, type DebrisChunks } from './debrisChunks.ts';
 import {
   armorHit, blastScale, columnPuff as mediaColumnPuff, exhaustPuff, exhaustSpacing, craterEjecta, dustSurge, fragmentStrike,
-  groundBurst, HULL_EARTH_MIN_KG, isExplosive, kineticStrike, killDust, killFireball, muzzleBlast as mediaMuzzleBlast, plateBurst,
+  groundBurst, HULL_EARTH_MIN_KG, isExplosive, kineticStrike, killDust, killFireball, muzzleBlast as mediaMuzzleBlast, partSpray, plateBurst,
   smolderPuff as mediaSmolderPuff, trackSkirt, trackSkirtSpacing, waterBurst,
   type BlastContext,
 } from './blastRecipes.ts';
@@ -478,6 +480,8 @@ interface ShellHitEvent {
   localDir?: WireVec3;
   /** a peer's direct hit: the round's detonation on this hull (battlePresentation shell_hit; splash hits carry none) */
   blast?: readonly number[];
+  /** (impact-materials-269) the struck plate's material (sim/plateMaterial.ts), for strikeLooks.ts; absent from an older peer */
+  material?: string;
 }
 
 interface ShellExpiredEvent {
@@ -498,6 +502,8 @@ interface ShellExpiredEvent {
   surfaceKind?: string;
   /** the building it struck (2026-10-10: a round with no charge raises no blast to name it), when it struck one */
   structureId?: number;
+  /** (impact-materials-269) the round's incidence off the surface, whole degrees (90 grazing): a graze skips on */
+  impactAngleDeg?: number;
 }
 
 interface TankDestroyedEvent {
@@ -616,7 +622,7 @@ export interface FxRuntime {
     normal: THREE.Vector3,
     closingMps?: number,
   ): void;
-  impact(kind: string, pos: THREE.Vector3, normal: THREE.Vector3, caliberMm: number): void;
+  impact(kind: string, pos: THREE.Vector3, normal: THREE.Vector3, caliberMm: number, material?: string): void;
   armorScar(
     visual: FxVisual,
     pos: THREE.Vector3,
@@ -2645,10 +2651,11 @@ function* createFxSteps(
    * dust cloud, surge, residue), kinetic rounds and bullets strike (a spurt of the ground along the shot, chunks).
    * Returns false when the media layer is off (the phone tier keeps the pooled plume). `noBurst` (round 2 U31): the round's
    * burst was drawn already (at a hull, its wait over before this expiry): the ground keeps its own marks, the crater mark
-   * of a burst that dug none, the cover it clears and the water's ring, and draws no second burst.
+   * of a burst that dug none, the cover it clears and the water's ring, and draws no second burst. `graze`
+   * (impact-materials-269): a solid round's glancing strike sprays forward and low (kineticStrike's graze look).
    */
   function mediaGroundHit(pos: THREE.Vector3, info: ShellMunition, water: boolean, dir: THREE.Vector3 | null,
-    birthOffset = 0, noBurst = false): boolean {
+    birthOffset = 0, noBurst = false, graze = false): boolean {
     if (!blast) return false;
     const surface = water ? 'water' : classifyTerrain(heightField, pos.x, pos.z);
     if (isExplosive(info.munition) && info.chargeKg > 0) {
@@ -2677,7 +2684,7 @@ function* createFxSteps(
       }
     } else {
       if (!noBurst) kineticStrike(blast, { x: pos.x, y: pos.y, z: pos.z, dx: dir ? dir.x : 0, dy: dir ? dir.y : -1, dz: dir ? dir.z : 0,
-        caliberMm: info.caliberMm, munition: info.munition, surface, birthOffset });
+        caliberMm: info.caliberMm, munition: info.munition, surface, graze, birthOffset });
       // a rod or an AP shot leaves a gouge, a bullet nothing worth a mark
       if (!water && craters && info.munition !== 'small_arms' && info.caliberMm >= 20) {
         craters.stamp(pos.x, pos.z, 0.16 + 0.22 * Math.min(1.4, info.caliberMm / 120), surface, false, rng(),
@@ -3562,6 +3569,68 @@ function* createFxSteps(
     // of dark ejecta sampled along the same drag trajectory the debris shader
     // integrates (k = 0.12, g = -21.6) — the WoT "soil fountain" signature
     emitDirtClods(pos, s, big, birthOffset, gy, baseY);
+  }
+
+  /**
+   * (impact-materials-269) A skip, not a plunge, on the tiers without the volume media: a round grazing the ground flies
+   * on, and its ground (surfaceLooks.ts, in the map's colour) sprays forward and low along its path; no column stands up.
+   */
+  function grazeSprayLow(pos: THREE.Vector3, dir: THREE.Vector3, caliberMm: number, water: boolean): void {
+    const L = surfaceLook(water ? 'water' : classifyTerrain(heightField, pos.x, pos.z));
+    const s = calScale(caliberMm);
+    let fx = dir.x, fz = dir.z;
+    const fl = Math.hypot(fx, fz) || 1;
+    fx /= fl; fz /= fl;
+    const baseY = Math.max(pos.y, groundY(pos.x, pos.z)) + 0.15;
+    for (let i = 0; i < 6; i++) {
+      const v = (8 + rng() * 6) * s, side = (rng() - 0.5) * 0.5;
+      _puffO.pos[0] = pos.x + fx * 0.5 * i; _puffO.pos[1] = baseY; _puffO.pos[2] = pos.z + fz * 0.5 * i;
+      _puffO.vel[0] = (fx + fz * side) * v; _puffO.vel[1] = (1.2 + rng() * 1.5) * s; _puffO.vel[2] = (fz - fx * side) * v;
+      _puffO.life = 0.8 + rng() * 0.6;
+      _puffO.size0 = 0.4 * s; _puffO.size1 = (1.5 + rng() * 0.8) * s;
+      _puffO.rot = rng() * Math.PI * 2; _puffO.rotVel = (rng() - 0.5) * 2;
+      _puffO.col0[0] = L.ejecta[0]; _puffO.col0[1] = L.ejecta[1]; _puffO.col0[2] = L.ejecta[2];
+      _puffO.col1[0] = L.dust[0]; _puffO.col1[1] = L.dust[1]; _puffO.col1[2] = L.dust[2];
+      _puffO.alpha = 0.75; _puffO.grav = -4; _puffO.birthOffset = i * 0.012;
+      particles.emit('smoke', _puffO);
+    }
+    for (let i = 0; i < 3; i++) {
+      _puffO.pos[0] = pos.x + fx * (1 + i); _puffO.pos[1] = baseY + 0.1; _puffO.pos[2] = pos.z + fz * (1 + i);
+      _puffO.vel[0] = fx * (1.5 + rng()); _puffO.vel[1] = 0.4 + rng() * 0.4; _puffO.vel[2] = fz * (1.5 + rng());
+      _puffO.life = 2.2 + rng() * 1.2;
+      _puffO.size0 = 0.8 * s; _puffO.size1 = (2.6 + rng()) * s;
+      _puffO.rot = rng() * Math.PI * 2; _puffO.rotVel = (rng() - 0.5);
+      _puffO.col0[0] = L.dust[0]; _puffO.col0[1] = L.dust[1]; _puffO.col0[2] = L.dust[2];
+      _puffO.col1[0] = L.dust[0]; _puffO.col1[1] = L.dust[1]; _puffO.col1[2] = L.dust[2];
+      _puffO.alpha = 0.3; _puffO.grav = -0.25; _puffO.birthOffset = 0.05;
+      particles.emit('dust', _puffO);
+    }
+  }
+
+  /**
+   * (impact-materials-269) The ground a tank's running gear carries, struck off it: a hit on a track, a road wheel or the
+   * rubber skirt over them throws that ground (the media tiers' partSpray; here a few puffs of its colour), by `k`.
+   */
+  function groundOff(pos: THREE.Vector3, normal: THREE.Vector3, caliberMm: number, k: number): void {
+    const surface = classifyTerrain(heightField, pos.x, pos.z);
+    if (blast) {
+      partSpray(blast, { x: pos.x, y: pos.y, z: pos.z, nx: normal.x, ny: normal.y, nz: normal.z, caliberMm, surface, k });
+      return;
+    }
+    const L = surfaceLook(surface);
+    const s = calScale(caliberMm);
+    for (let i = 0; i < Math.max(1, Math.round(4 * k)); i++) {
+      const v = 2.5 + rng() * 2.5;
+      _puffO.pos[0] = pos.x + normal.x * 0.2; _puffO.pos[1] = pos.y + normal.y * 0.2; _puffO.pos[2] = pos.z + normal.z * 0.2;
+      _puffO.vel[0] = normal.x * v + (rng() - 0.5); _puffO.vel[1] = normal.y * v + 0.3; _puffO.vel[2] = normal.z * v + (rng() - 0.5);
+      _puffO.life = 0.8 + rng() * 0.6;
+      _puffO.size0 = 0.3 * s; _puffO.size1 = (1.0 + rng() * 0.5) * s;
+      _puffO.rot = rng() * Math.PI * 2; _puffO.rotVel = (rng() - 0.5) * 2;
+      _puffO.col0[0] = L.ejecta[0]; _puffO.col0[1] = L.ejecta[1]; _puffO.col0[2] = L.ejecta[2];
+      _puffO.col1[0] = L.dust[0]; _puffO.col1[1] = L.dust[1]; _puffO.col1[2] = L.dust[2];
+      _puffO.alpha = 0.6; _puffO.grav = -2.5; _puffO.birthOffset = 0;
+      particles.emit('dust', _puffO);
+    }
   }
 
   /** Open water under a world point: past the shore feather of the map's shallow-water mask. */
@@ -7208,7 +7277,7 @@ function* createFxSteps(
         // destruction-fx lane: an HE round's hull events resolve to one burst at the next update (queueHeHit)
         if ((e.kind === 'he_pen' || e.kind === 'he_splash') && queueHeHit(e, directHull)) return;
         if (e.kind !== 'era' || !eraActivations.length) {
-          fx.impact(e.kind, _v3, _v4, e.caliberMm);
+          fx.impact(e.kind, _v3, _v4, e.caliberMm, e.material);
         }
         // a shaped charge (HEAT, an ATGM, a drone's warhead) detonates on the plate whatever its jet then does
         const info = e.shellId != null ? munitionOf(e.shellId) : null;
@@ -7323,13 +7392,17 @@ function* createFxSteps(
         if (e.hitTerrain) {
           const water = !!e.hitWater || shellPointOnWater(_v3);
           // (2026-11-02 audit F10) a hull's burst stood for this round's: the ground draws none of its own; (round 2 U31)
-          // but keeps the ground's own marks (its crater mark, the cover it clears, the water's ring)
-          if (mediaGroundHit(_v3, m, water, arrival, 0, burstDrawn)) {
+          // but keeps the ground's own marks (its crater mark, the cover it clears, the water's ring).
+          // (impact-materials-269) a solid round meeting the ground at a glancing angle skips on: its ground sprays forward
+          // and low along its path (sim/shellSurface.ts grazes, the angle the audio plays as a graze too)
+          const graze = grazes(e.impactAngleDeg) && !charged;
+          if (mediaGroundHit(_v3, m, water, arrival, 0, burstDrawn, graze)) {
             if (recorded) noteBurst(e.shellId);
             return;
           }
           if (burstDrawn) return;
-          if (water) waterSplash(_v3, e.caliberMm || 76, false);
+          if (graze && arrival) grazeSprayLow(_v3, arrival, e.caliberMm || 76, water);
+          else if (water) waterSplash(_v3, e.caliberMm || 76, false);
           else dirtPlume(_v3, e.caliberMm || 76, false);
         }
       });
@@ -7500,6 +7573,7 @@ function* createFxSteps(
       pos: THREE.Vector3,
       normal: THREE.Vector3,
       caliberMm: number,
+      material?: string,
     ): void {
       // r5 combat-range readability: an aimed 340 m pen produced ZERO visible
       // impact through the scope — flash/spall/smoke sizes get the same
@@ -7507,6 +7581,12 @@ function* createFxSteps(
       // 90 m up to ~1.9x at 300 m), so hits read down the sight line.
       const dk = distBoost(pos.x, pos.y, pos.z);
       const s = calScale(caliberMm) * dk;
+      // (impact-materials-269) what was struck (strikeLooks.ts): sparks and a hot flash only where steel was, rubber, canvas
+      // or a wreck's ash off the face, and the ground the running gear carries thrown off it; armour's draws are unchanged
+      const look = strikeLookOf(material);
+      const sp = look.sparks;
+      const sparkN = (count: number): number => (sp === 1 ? count : Math.round(count * sp));
+      const faceNear = (hex: number): number => look.puff?.[0] ?? hex, faceFar = (hex: number): number => look.puff?.[1] ?? hex;
       switch (kind) {
         case 'pen': {
           // layered penetration (r6: "a single small star sprite"):
@@ -7527,7 +7607,7 @@ function* createFxSteps(
           // destruction-fx lane (owner 2026-10-08: every effect on the media layer): on the media tiers the spall jet,
           // the armour-dust ring and the chips are the recipe's (lit, turbulent, drifting; steel that falls and lies)
           if (blast) {
-            armorHit(blast, { x: pos.x, y: pos.y, z: pos.z, nx: normal.x, ny: normal.y, nz: normal.z, caliberMm, kind: 'pen' });
+            armorHit(blast, { x: pos.x, y: pos.y, z: pos.z, nx: normal.x, ny: normal.y, nz: normal.z, caliberMm, kind: 'pen', look });
           }
           // dust ring puffing out radially in the armor plane (before the
           // sparkFans — they clobber the shared _v1/_v2 basis)
@@ -7598,9 +7678,10 @@ function* createFxSteps(
           particles.emit('fire', _puffO);
           // tight bright spall cone + wide dimmer secondary fan (widths get
           // the distance boost too — a 0.03 m streak is sub-pixel at 340 m)
-          sparkFan(pos, normal, 22, 26 * s, 0.45, 0xffd27e, 0.55, 0.032 * dk, 0.03, 0, 0.1);
-          sparkFan(pos, normal, 14, 14 * s, 1.05, 0xffb860, 0.75, 0.024 * dk, 0.022, 0, 0.15);
+          sparkFan(pos, normal, sparkN(22), 26 * s, 0.45, 0xffd27e, 0.55, 0.032 * dk, 0.03, 0, 0.1);
+          sparkFan(pos, normal, sparkN(14), 14 * s, 1.05, 0xffb860, 0.75, 0.024 * dk, 0.022, 0, 0.15);
           if (!blast) impactSmoke(pos, normal, 5, 1.1 * s, 0x2e2c2a, 0x5a5854, 0.65);
+          if (look.ground > 0) groundOff(pos, normal, caliberMm, look.ground);
           break;
         }
         case 'he_pen':
@@ -7609,14 +7690,15 @@ function* createFxSteps(
           sparkFan(pos, normal, 22, 18 * s, 1.1, 0xffc060, 0.8, 0.035, 0.028);
           break;
         case 'nonpen':
-          sparkFan(pos, normal, 22, 20 * s, 0.9, 0xffd884, 0.55, 0.025 * dk, 0.022);
-          if (blast) armorHit(blast, { x: pos.x, y: pos.y, z: pos.z, nx: normal.x, ny: normal.y, nz: normal.z, caliberMm, kind: 'nonpen' });
-          else impactSmoke(pos, normal, 4, 0.8 * s, 0x8a867e, 0xa7a49c, 0.45);
+          sparkFan(pos, normal, sparkN(22), 20 * s, 0.9, 0xffd884, 0.55, 0.025 * dk, 0.022);
+          if (blast) armorHit(blast, { x: pos.x, y: pos.y, z: pos.z, nx: normal.x, ny: normal.y, nz: normal.z, caliberMm, kind: 'nonpen', look });
+          else impactSmoke(pos, normal, 4, 0.8 * s, faceNear(0x8a867e), faceFar(0xa7a49c), 0.45);
+          if (look.ground > 0) groundOff(pos, normal, caliberMm, look.ground);
           break;
         case 'ricochet': {
-          // elongated deflection streaks skimming along the plate
+          // elongated deflection streaks skimming along the plate (a steel face's: none off rubber or canvas)
           basisFrom(normal, _v1, _v2);
-          for (let i = 0; i < 8; i++) {
+          for (let i = 0; i < sparkN(8); i++) {
             const a = rng() * Math.PI * 2;
             const v = 30 + rng() * 25;
             _strkO.pos[0] = pos.x; _strkO.pos[1] = pos.y; _strkO.pos[2] = pos.z;
@@ -7628,15 +7710,26 @@ function* createFxSteps(
             col3(0xffe0a0, _strkO.col); _strkO.alpha = 1.0; _strkO.seed = rng(); _strkO.birthOffset = 0;
             particles.emit('sparks', _strkO);
           }
-          sparkFan(pos, normal, 8, 12 * s, 1.1, 0xffcf80, 0.4, 0.02, 0.02);
-          if (blast) armorHit(blast, { x: pos.x, y: pos.y, z: pos.z, nx: normal.x, ny: normal.y, nz: normal.z, caliberMm, kind: 'ricochet' });
+          sparkFan(pos, normal, sparkN(8), 12 * s, 1.1, 0xffcf80, 0.4, 0.02, 0.02);
+          if (blast) armorHit(blast, { x: pos.x, y: pos.y, z: pos.z, nx: normal.x, ny: normal.y, nz: normal.z, caliberMm, kind: 'ricochet', look });
+          else if (look.puff) impactSmoke(pos, normal, 2, 0.6 * s, look.puff[0], look.puff[1], 0.4);
+          if (look.ground > 0) groundOff(pos, normal, caliberMm, look.ground);
           break;
         }
         case 'spaced_absorb':
-          hitFlash(pos, normal, s * 0.7, 0xffe9b0, 0xff9040);
-          sparkFan(pos, normal, 10, 12 * s, 1.0, 0xffce7a, 0.45, 0.022, 0.02);
-          if (blast) armorHit(blast, { x: pos.x, y: pos.y, z: pos.z, nx: normal.x, ny: normal.y, nz: normal.z, caliberMm, kind: 'spaced' });
-          else impactSmoke(pos, normal, 3, 0.7 * s, 0x77746e, 0x93908a, 0.4);
+          if (sp > 0) hitFlash(pos, normal, s * 0.7, 0xffe9b0, 0xff9040);
+          sparkFan(pos, normal, sparkN(10), 12 * s, 1.0, 0xffce7a, 0.45, 0.022, 0.02);
+          if (blast) armorHit(blast, { x: pos.x, y: pos.y, z: pos.z, nx: normal.x, ny: normal.y, nz: normal.z, caliberMm, kind: 'spaced', look });
+          else impactSmoke(pos, normal, 3, 0.7 * s, faceNear(0x77746e), faceFar(0x93908a), 0.4);
+          if (look.ground > 0) groundOff(pos, normal, caliberMm, look.ground);
+          break;
+        case 'screen_pierce':
+          // (impact-materials-269) a round through a skirt, a track or a rack on its way: the screen's own tear, lighter
+          // than a spaced plate stopping it (it drew nothing before)
+          sparkFan(pos, normal, sparkN(6), 10 * s, 1.0, 0xffce7a, 0.4, 0.02, 0.02);
+          if (blast) armorHit(blast, { x: pos.x, y: pos.y, z: pos.z, nx: normal.x, ny: normal.y, nz: normal.z, caliberMm, kind: 'spaced', look });
+          else impactSmoke(pos, normal, 2, 0.6 * s, faceNear(0x77746e), faceFar(0x93908a), 0.35);
+          if (look.ground > 0) groundOff(pos, normal, caliberMm, look.ground);
           break;
         case 'era': {
           // reactive tile pop: sharp directed blast + brick fragments

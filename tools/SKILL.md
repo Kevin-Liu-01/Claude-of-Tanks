@@ -196,6 +196,10 @@ and `npm run test:net:v2:soak` run the client and host without a browser; `npm r
 test:net:v2:rooms` runs the Worker under the Workers runtime. Run every Chrome
 under the probe mutex at nice 19, one at a time. Production health is the Worker's
 `/healthz` plus `npm run test:net:v2:p2p -- --site` (docs/DEVELOPMENT.md).
+A browser check that needs a stable battle (an inspection camera, minutes of radio) arms
+`window.__DEBUG.battleHold.set(true)` before entering it, as `track-system-audit.mjs` and
+`voice-smoke.mjs` do: the bots stand and never fire, the player takes no damage, no verdict
+comes (src/dev/SKILL.md).
 Battle entry is a per-deploy check of its own: `node tools/battle-entry-sweep.mjs
 <url>|--dist=<dir> --tier=mobile|desktop --times=sunset,day,night --force-black` loads
 into every battlefield through the player's covered solo entry on the player's

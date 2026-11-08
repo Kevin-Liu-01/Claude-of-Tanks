@@ -1360,24 +1360,24 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 37906,
-      "sha256": "a1b7f2adb8b2667982524d4975e06873b831d23a3bdd12e29d520af0a5d82b39"
+      "bytes": 37850,
+      "sha256": "ed080b91fda058445f21f6936fa3072b535574ff0aca298ee8b5b147c22f8c45"
     },
     "modulesSide": {
       "file": "raiju_ifv_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 38524,
-      "sha256": "52c4dda37f6649c0e45b81043db188a5c384a86cc9827bf9a0fcc14328bb150e"
+      "bytes": 38490,
+      "sha256": "1a5036d33421a607fd54552e6b0d024e5552fa90617f133b3391fc9552adb986"
     },
     "crewSide": {
       "file": "raiju_ifv_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 33766,
-      "sha256": "d3ebac259ec893f34436f1c7eccc45dc3e240a50d2a2c4014857540dec69608c"
+      "bytes": 33716,
+      "sha256": "2852c23294df6c25608a04bb897919838b4afa0503f168bf198b6bec9c16cd9d"
     },
     "angle": {
       "file": "raiju_ifv_angle.webp",
@@ -1400,16 +1400,16 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 16852,
-      "sha256": "40fbf3f804c105bc50a168f9363e6014abfdf36f8f21a3d9f980631021442289"
+      "bytes": 16910,
+      "sha256": "ca3c5fdc093b05e70cf5297714133a376da27fc703bc44ac5a5249725ab86d8d"
     },
     "side": {
       "file": "raiju_ifv_side.webp",
       "width": 512,
       "height": 256,
       "mime": "image/webp",
-      "bytes": 17126,
-      "sha256": "0c3e0f860ccc818aa8ffce242f71b3877967af20e1ef46ed00ccee510fd38996"
+      "bytes": 17118,
+      "sha256": "c87ab39de1ccb72b5e73775dcc46fb7bf6cec7bc48cd5add519ed0a8c0d84c0b"
     },
     "topSilhouette": {
       "file": "raiju_ifv_top_silhouette.png",
@@ -1432,8 +1432,8 @@
       "width": 256,
       "height": 128,
       "mime": "image/png",
-      "bytes": 35097,
-      "sha256": "de959b6b12410f83eed564a1e7c072d18dbe0e587d1fcd505073471ae34dabaf"
+      "bytes": 33034,
+      "sha256": "69985a19d233d0dcb04857ac8b41eea5049fb832bb253072b156c66e880ec100"
     },
     "technicalLabels": {
       "file": "raiju_ifv_technical.json",

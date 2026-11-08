@@ -1633,16 +1633,16 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 19166,
-      "sha256": "4e4b26a8a351f4966d7c12b87f58d3de97f7e29eb21d2330be57295f8e9365ca"
+      "bytes": 19146,
+      "sha256": "fccfed2000d5449c78499de7129d6d3ac44218904209c6ffd843892a07f273ee"
     },
     "side": {
       "file": "type100_side.webp",
       "width": 512,
       "height": 256,
       "mime": "image/webp",
-      "bytes": 19032,
-      "sha256": "8bb4770f6f20a7cba04ce74d757cd7c097304597694ee8b48fa58d355bf229f7"
+      "bytes": 19080,
+      "sha256": "146d3f436ed28a5f8f928f270434c0bf7765d0436b0469680d3c50080fc56a6e"
     },
     "topSilhouette": {
       "file": "type100_top_silhouette.png",
@@ -1665,32 +1665,32 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 47906,
-      "sha256": "335fab719381c7409daf311c85e9d28f90c193fb4446e72e257ab7a5a507aff6"
+      "bytes": 47978,
+      "sha256": "0850117d3877cf3b9d82f205468474d969007910c61a22321044a8ed38ba910a"
     },
     "modulesSide": {
       "file": "type100_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 43790,
-      "sha256": "6f465baee39644a8d200f04e08a240dedca5469288a2e2186aa3f6f7c8fe3347"
+      "bytes": 43788,
+      "sha256": "a677c28e19b81d4fd6dfed19cc180a41bd143f961cc6fd3b344d8d9fa3b2392a"
     },
     "crewSide": {
       "file": "type100_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 41456,
-      "sha256": "35061eec3dc6b9dd58da2483761bd2ac63461eb4a6aada801dfc05a2f266eb8c"
+      "bytes": 41948,
+      "sha256": "f3295d849de10e99b323ab7668d4a418609598bc3112b287c85c6a53fee48fce"
     },
     "markings": {
       "file": "type100_markings.png",
       "width": 256,
       "height": 128,
       "mime": "image/png",
-      "bytes": 35721,
-      "sha256": "6bca0bdd877f762b341580aefb2945d0d9d08e54cd04918b035741d436f75c8f"
+      "bytes": 33179,
+      "sha256": "0534611f330d61a5a17abfea6f40242ace44d683d282767c3791d577b8365cbc"
     },
     "technicalLabels": {
       "file": "type100_technical.json",

@@ -13,7 +13,7 @@
  * recovers; the HDR window (see admit) trims new voices that fall well
  * below the loudest recent event and culls what drops out of the bottom of
  * the window; crew speech ducks the beds. Settings channels scale the buses
- * they own; gunfire, impacts and the hull's gun carry a low shelf.
+ * they own and their reverb sends (reverbSend); gunfire, impacts and the hull's gun carry a low shelf.
  */
 
 import { dbToGain, clamp, mulberry32 } from './audioMath.ts';
@@ -34,7 +34,12 @@ interface MixerOptions {
 export interface Mixer {
   readonly ctx: AudioContext;
   input(bus: BusId): AudioNode;
-  readonly reverbInput: AudioNode;
+  /**
+   * Where a voice or rig on `bus` sends to the reverb: scaled by the bus's settings channel, so a channel at 0 sends it
+   * nothing (a send straight into the reverb skipped the channel, and Engine 0 still played the engines' reverb). The
+   * reverb has no other input.
+   */
+  reverbSend(bus: BusId): AudioNode;
   readonly master: GainNode;
   readonly snapshot: SnapshotId;
   /** The room the reverb rings in (setReverb's last id). */
@@ -247,8 +252,16 @@ export function createMixer({ context: ctx, reverb, channelVolumes, masterVolume
     bus[id] = g;
   }
 
-  // ---- reverb send/return (desktop tier only; mobile keeps the dry mix).
+  // ---- reverb send/return (desktop tier only; mobile keeps the dry mix). A send joins its channel's send, which the
+  // channel scales as it scales the dry buses: no send reaches the reverb past its channel.
   const reverbInput = ctx.createGain();
+  const channelSend = {} as Record<SettingsChannel, GainNode>;
+  for (const id of new Set(Object.values(BUS_CHANNEL))) {
+    const g = ctx.createGain();
+    g.gain.value = chan[id];
+    g.connect(reverbInput);
+    channelSend[id] = g;
+  }
   const reverbReturn = ctx.createGain();
   reverbReturn.gain.value = 0;
   let convolver: ConvolverNode | null = null;
@@ -274,6 +287,9 @@ export function createMixer({ context: ctx, reverb, channelVolumes, masterVolume
       const value = BUS_LEVELS[id] * chan[BUS_CHANNEL[id]];
       if (smooth) glide(bus[id].gain, value, 0.03, 0.2); else bus[id].gain.value = value;
     }
+    for (const id of Object.keys(channelSend) as SettingsChannel[]) {
+      if (smooth) glide(channelSend[id].gain, chan[id], 0.03, 0.2); else channelSend[id].gain.value = chan[id];
+    }
   }
 
   function applySnapshot(target: MixSnapshot, fadeS: number): void {
@@ -297,7 +313,7 @@ export function createMixer({ context: ctx, reverb, channelVolumes, masterVolume
   return {
     ctx,
     input: (id) => bus[id],
-    reverbInput,
+    reverbSend: (id) => channelSend[BUS_CHANNEL[id]],
     master,
     get snapshot() { return snapshot; },
     get reverb() { return reverbId; },
@@ -377,6 +393,7 @@ export function createMixer({ context: ctx, reverb, channelVolumes, masterVolume
     dispose() {
       for (const node of [master, clip, glue, preMaster, body, concussionLp, concussionGain, worldSum, worldLp, worldSnap,
         worldDuck, ownLp, ownSnap, interiorSnap, ambienceSnap, ambienceDuck, reverbInput, reverbReturn,
+        ...Object.values(channelSend),
         ...(convolver ? [convolver] : []), ...busFilters, ...Object.values(bus)]) {
         try { node.disconnect(); } catch { /* detached */ }
       }

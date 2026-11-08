@@ -15,7 +15,7 @@ import { openCaptureHold } from './capture-hold.mjs';
 //      by bearing), track loss, reload done, sixth sense and a penetration;
 //   4. the crew-voice setting switches live: 'english' → en-US, back to
 //      'national' → ru;
-//   5. all 13 crew packs decode and are audible through the radio chain,
+//   5. all 17 crew packs decode and are audible through the radio chain,
 //      band-limited like an intercom (one PCM capture per language);
 //   6. zero page console errors (known-unrelated tankFactory wheel-sync
 //      errors quarantined, same as tools/audio-probe.mjs).
@@ -28,6 +28,7 @@ import { createServer } from 'vite';
 import puppeteer from 'puppeteer';
 import { bandEnergy } from './audio/pcm.mjs';
 import { CREW_LANGUAGES } from '../src/audio/vehicleAudioProfiles.ts';
+import { pageLoadBudget } from './tool-page-load.mjs';
 import { mkdirSync, writeFileSync, rmSync } from 'node:fs';
 import { resolve, join } from 'node:path';
 import { waitForBootLoaded } from './game-readiness.mjs';
@@ -105,10 +106,13 @@ async function openPage() {
     if (msg.type() === 'error' && !msg.text().includes('favicon')) consoleErrors.push(msg.text());
   });
   page.on('pageerror', (err) => consoleErrors.push(String(err)));
+  // the tools' page budget (tool-page-load.mjs: 180 s navigation, COT_NAV_TIMEOUT_MS): its cold private vite cache took
+  // past 90 s on a loaded machine, twice, before any line was heard
+  const { navTimeoutMs, readyTimeoutMs } = pageLoadBudget({ readyTimeoutMs: 90000 });
   for (let attempt = 0; ; attempt++) {
     try {
-      await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 90000 });
-      await waitForBootLoaded(page, { timeout: 90000 });
+      await page.goto(url, { waitUntil: 'domcontentloaded', timeout: navTimeoutMs });
+      await waitForBootLoaded(page, { timeout: readyTimeoutMs });
       break;
     } catch (err) {
       if (attempt >= 1) throw err;
@@ -121,7 +125,9 @@ async function openPage() {
 async function bootIntoBattle() {
   await page.mouse.click(640, 360);
   await sleep(300);
-  await page.evaluate(() => window.__DEBUG.startBattle('t90am'));
+  // the battle behind the smoke held alive and still for the whole run (src/dev/battleHold.ts): its bots never end it in
+  // defeat (one run lost it at ~260 s of ~520 s) and never fire, so no hit call of theirs crosses the lines driven here
+  await page.evaluate(() => { window.__DEBUG.battleHold.set(true); return window.__DEBUG.startBattle('t90am'); });
   await page.waitForFunction(
     'window.__COT_AUDIO && window.__COT_AUDIO.ctx && window.__COT_AUDIO.ctx.currentTime > 0',
     { timeout: 20000 },
@@ -205,8 +211,10 @@ try {
     { id: window.__P.playerId, module: 'trackL', state: 'red' })), { gapMs: 5000 })) {
     fail('track loss never called');
   }
+  // The loader calls a finished reload on 35 % of them (audioEngine, prob 0.35) and the battle's own calls can hold the
+  // net: four tries missed it in about one run in five, ten leave about 1 %.
   if (!await untilSaid(['reloaded'], () => page.evaluate(() => window.__P.emit('player:reload',
-    { t: 0, total: 7, kind: 'shell', caliberMm: 125, progress: 1, done: true })))) {
+    { t: 0, total: 7, kind: 'shell', caliberMm: 125, progress: 1, done: true })), { attempts: 10 })) {
     fail('reload done never called');
   }
   if (!await untilSaid(['sixth_sense'], () => page.evaluate(() => window.__P.emit('player:spotted',
@@ -272,7 +280,11 @@ try {
       { timeout: 20000 }, lang,
     ).then(() => true, () => false);
     if (!ok) { fail(`${lang}: pack did not decode`); continue; }
-    await page.evaluate(() => { window.__COT_AUDIO.clearVoiceQueue(); window.__COT_AUDIO.startTap(6); });
+    const t0 = await page.evaluate(() => {
+      window.__COT_AUDIO.clearVoiceQueue();
+      window.__COT_AUDIO.startTap(6);
+      return window.__COT_AUDIO.ctx.currentTime;
+    });
     await sleep(120);
     await page.evaluate(() => window.__COT_AUDIO.sayVoice('enemy_spotted'));
     await sleep(2300);
@@ -282,9 +294,16 @@ try {
     const bytes = Buffer.from(b64, 'base64');
     const i16 = new Int16Array(bytes.buffer, bytes.byteOffset, bytes.length / 2);
     writeWav(join(outDir, `${lang}.wav`), i16, sampleRate);
-    const a = analyze(i16, sampleRate);
-    const last = await page.evaluate(() => window.__COT_AUDIO.voiceLog.at(-1) || null);
-    report.languages[lang] = { rmsDb: +a.rmsDb.toFixed(1), highShare: +a.highShare.toFixed(4), lowShare: +a.lowShare.toFixed(4), line: last };
+    // The battle runs on behind the capture and its crew keeps calling (a missile warning, enemy smoke): find our
+    // line among the calls keyed in the window rather than taking the last one, and measure the span it played.
+    const heard = await page.evaluate((t) => window.__COT_AUDIO.voiceLog.filter((v) => v.t >= t), t0);
+    const last = heard.find((v) => v.id === 'enemy_spotted') ?? heard.at(-1) ?? null;
+    const span = last && last.id === 'enemy_spotted'
+      ? i16.subarray(Math.max(0, Math.floor((last.t - t0) * sampleRate)) * 2, Math.ceil((last.t - t0 + last.dur) * sampleRate) * 2)
+      : i16;
+    const a = analyze(span.length >= 8192 ? span : i16, sampleRate);
+    report.languages[lang] = { rmsDb: +a.rmsDb.toFixed(1), highShare: +a.highShare.toFixed(4), lowShare: +a.lowShare.toFixed(4), line: last,
+      others: heard.filter((v) => v !== last).map((v) => `${v.id}/${v.lang}`) };
     console.log(`[voice-smoke] ${lang.padEnd(5)} rms ${a.rmsDb.toFixed(1).padStart(6)} dBFS  >6k ${(a.highShare * 100).toFixed(1)}%  <150 ${(a.lowShare * 100).toFixed(1)}%  ${last ? `${last.id}/${last.lang}` : '(no line)'}`);
     if (!last || last.lang !== lang || last.id !== 'enemy_spotted') fail(`${lang}: the line did not play from its own pack (${last ? `${last.id}/${last.lang}` : 'none'})`);
     if (a.rms < 0.003) fail(`${lang}: radio line inaudible (${a.rmsDb.toFixed(1)} dBFS)`);
@@ -300,7 +319,10 @@ try {
   // 2b) battle END: victory over the fanfare.
   await page.evaluate(() => window.__P.emit('battle:ended', { result: 'victory', timeS: window.__P.timeS(), map: 'debug' }));
   await page.evaluate(() => window.__P.emit('battle:presented', { result: 'victory' }));
-  await sleep(2600);
+  // The result waits its 0.4 s and any call on air (the battle behind it keeps talking): give it up to 8 s, not a fixed
+  // 2.6 s.
+  await page.waitForFunction(() => window.__COT_AUDIO.voiceLog.some((v) => v.id === 'victory'), { timeout: 8000, polling: 100 })
+    .catch(() => {});
 
   const state = await page.evaluate(() => ({
     played: window.__COT_AUDIO.voiceLog.map((v) => v.id),

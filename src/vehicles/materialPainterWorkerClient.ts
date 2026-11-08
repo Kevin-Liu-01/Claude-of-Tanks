@@ -18,7 +18,6 @@ interface MaterialPainterClientPorts {
   createWorker(): MaterialPainterWorkerPort | null;
   schedule(callback: () => void, delayMs: number): () => void;
   clone(request: MaterialPainterRequest): MaterialPainterRequest;
-  fontUrl: string;
 }
 interface PendingPaint {
   requestId: number;
@@ -35,8 +34,8 @@ interface MaterialPainterClient {
 /** One serial private worker; one consumer never cancels another shared bake. (2026-11-02 audit R6) The worker-client
  *  pattern (src/workerClientHealth.ts): a job's deadline runs from its dispatch, never its queueing (with 16 queued, or
  *  a laptop that slept mid-bake, the old absolute deadline tripped on a healthy worker); a failure closes the worker and
- *  settles what it held with the main-thread fallback, and the next bake starts a fresh worker (a fresh realm loads its
- *  font again); three in a row leave the client unavailable. Before, one failure turned it off for the session. */
+ *  settles what it held with the main-thread fallback, and the next bake starts a fresh worker (it loads no font since
+ *  glacis-269); three in a row leave the client unavailable. Before, one failure turned it off for the session. */
 export function createMaterialPainterClient(
   ports: MaterialPainterClientPorts,
   options: { timeoutMs?: number; idleMs?: number; maxPending?: number } = {},
@@ -111,7 +110,7 @@ export function createMaterialPainterClient(
       const job = active = queue.shift()!;
       // the deadline runs from the job's dispatch (its turn at the serial worker), not from its request
       job.cancelTimer = ports.schedule(() => { if (active === job) fail(); }, timeoutMs);
-      owned.postMessage({ requestId: job.requestId, request: job.request, fontUrl: ports.fontUrl });
+      owned.postMessage({ requestId: job.requestId, request: job.request });
     } catch { fail(); }
   }
   function paint(request: MaterialPainterRequest): Promise<MaterialPainterResult | null> {
@@ -135,7 +134,7 @@ let sharedClient: MaterialPainterClient | null = null;
 
 export function canPaintMaterialBaseInWorker(): boolean {
   return typeof Worker === 'function' && typeof OffscreenCanvas === 'function'
-    && typeof FontFace === 'function' && typeof Path2D === 'function' && typeof DOMMatrix === 'function'
+    && typeof Path2D === 'function' && typeof DOMMatrix === 'function'
     && typeof document !== 'undefined' && typeof structuredClone === 'function'
     && (!sharedClient || sharedClient.available());
 }
@@ -163,7 +162,6 @@ export function tryPaintMaterialBase(request: MaterialPainterRequest): Promise<M
         createWorker: browserWorker,
         clone: value => structuredClone(value),
         schedule: (callback, delay) => { const timer = setTimeout(callback, delay); return () => clearTimeout(timer); },
-        fontUrl: new URL(`${import.meta.env?.BASE_URL ?? '/'}fonts/chakra-petch/ChakraPetch-Bold-Latin.woff2`, document.baseURI).href,
       });
     }
     owner = sharedClient;

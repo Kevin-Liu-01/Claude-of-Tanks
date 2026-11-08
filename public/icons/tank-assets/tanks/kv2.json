@@ -511,8 +511,8 @@
       "width": 512,
       "height": 256,
       "mime": "image/webp",
-      "bytes": 15226,
-      "sha256": "b30a41e2ed8efd9e11569333ae82b77399f87c95fa051a1c8ce9ff8d6c18e7e5"
+      "bytes": 15218,
+      "sha256": "81c14d55044ae8a37ea1ff2dd4d44c97fc9cd9b5ecb85318c2972e4263e77d37"
     },
     "topSilhouette": {
       "file": "kv2_top_silhouette.png",
@@ -535,32 +535,32 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 34524,
-      "sha256": "4eb06c75ca42954aa0ca95d38796ade69b25364c013ae3fe44932f1344b44b26"
+      "bytes": 34500,
+      "sha256": "460958b9de18a163cf4ecdc52dc5848a5d1ef2de49b16208e416797ef28a4e77"
     },
     "modulesSide": {
       "file": "kv2_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 34648,
-      "sha256": "349646a2211bbde6f85d43544e7bc9c79e08a8639513766430aa8b0670c8e67e"
+      "bytes": 34626,
+      "sha256": "3a2c7d69cbf4410c93a721f7ec7ae4cc7b9a9f9cfd6d441e6f4086f3b87b7846"
     },
     "crewSide": {
       "file": "kv2_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 34356,
-      "sha256": "feb4c47a1a9e3bb3cde5353b24f2d48f4694aa43b1bc2df75be701808d61f391"
+      "bytes": 34338,
+      "sha256": "8f483f65f15f307e229aa33bce1ca0bd48163b4209b817aa65f1ebd725b3533b"
     },
     "markings": {
       "file": "kv2_markings.png",
       "width": 256,
       "height": 128,
       "mime": "image/png",
-      "bytes": 34765,
-      "sha256": "0f473ffa7d373f7ec57aafef64b2fd962fc722e5c8dfdf63266be0ca58c9d531"
+      "bytes": 33428,
+      "sha256": "f5f0a9fa4e1df790ad1a4c0c3f4c3c64d9593fa25892ecd0348f06c6f670173d"
     },
     "technicalLabels": {
       "file": "kv2_technical.json",

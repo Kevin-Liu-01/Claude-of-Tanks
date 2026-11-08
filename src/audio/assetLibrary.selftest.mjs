@@ -36,6 +36,16 @@ assert.equal(desktop.pick('pen_heavy', Math.random), null);
 await desktop.load(['pen_heavy']);
 assert.ok(desktop.pick('pen_heavy', Math.random), 'and plays once decoded');
 
+// A receipt holds an asset on one variant whatever the stream draws (audio-mix-balance: each moment at its loudest
+// take), and releasing the hold lets the stream choose again.
+await desktop.load(['gun_120_close']);
+const takes = Array.from({ length: SFX_ASSETS.gun_120_close.n }, (_, i) => desktop.variant('gun_120_close', i));
+const last = takes.length - 1;
+desktop.holdVariants({ gun_120_close: last });
+for (const draw of [0, 0.3, 0.6, 0.99]) assert.equal(desktop.pick('gun_120_close', () => draw), takes[last], 'a held asset plays its held take');
+desktop.holdVariants(null);
+assert.equal(desktop.pick('gun_120_close', () => 0), takes[0], 'released, the stream chooses again');
+
 // Crew packs never count against the sound-effect cap.
 await desktop.loadVoice('ru');
 const stats = desktop.stats();
@@ -46,6 +56,16 @@ assert.ok(missTakes >= 2, `the miss line has a short take (${missTakes})`);
 const short = desktop.voice('ru', 'miss', () => 0, 1);
 assert.ok(short && short !== desktop.voice('ru', 'miss', () => 0, 0), 'the requested take, not a random one');
 assert.equal(desktop.voice('ru', 'miss', () => 0, 1), short, 'and the same take every time');
+
+// Crew speech decodes at 16 kHz on every tier: the radio passes nothing above its 4.6 kHz speaker roll-off.
+for (const lowMemory of [false, true]) {
+  const rates = [];
+  const lib = createAssetLibrary({ ...options, lowMemory, createDecoder: (rate) => { rates.push(rate); return ctx; } });
+  await lib.ready;
+  rates.length = 0;
+  await lib.loadVoice('ru');
+  assert.deepEqual([...new Set(rates)], [16000], `${lowMemory ? 'mobile' : 'desktop'} crew packs decode at 16 kHz (${rates})`);
+}
 
 // Mobile: one variant per asset.
 fetched.length = 0;
