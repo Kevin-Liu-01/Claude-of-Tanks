@@ -2829,11 +2829,9 @@ export function createAudio({
   }
 
   function rolloutCues(): void {
-    const gameMode = getGameMode?.() || 'standard';
-    if (gameMode !== 'realistic') {
-      const opener = MODE_OPENER[gameMode] ?? 'sting_battle';
-      play(opener, opener === 'gunship_flyover' ? { space: 'flat', bus: 'environment' } : undefined);
-    }
+    // each mode's own opener (modeSounds.ts MODE_OPENER: Realistic opens on silence, an unnamed mode on the battle horn)
+    const opener = modeOpener(getGameMode?.() || 'standard');
+    if (opener) play(opener, opener === 'gunship_flyover' ? { space: 'flat', bus: 'environment' } : undefined);
     // The commander buttons up as the column moves off (a gunship crew has no hatch).
     if (latestPlayer?.aerial?.kind !== 'gunship') play('hatch', hullOptions({ gainDb: -4, delayS: 0.15 }));
     play('ui_countdown_go', { gainDb: -6 });
