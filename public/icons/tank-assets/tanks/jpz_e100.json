@@ -499,15 +499,15 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 24940,
-      "sha256": "3f67a0542b45b9be4f88b11c5c0e0d91e4067997c7b52eb44bf3b096415c647c",
+      "bytes": 24950,
+      "sha256": "6382100a5a8e2faf434006161b1c4f02aa4b655544220a3288d9bec16ac1136f",
       "thumbnail": {
         "file": "thumbs/jpz_e100_angle.webp",
         "width": 256,
         "height": 256,
         "mime": "image/webp",
-        "bytes": 10294,
-        "sha256": "a680db00116fe8a1c1ce4bc5c2722c4ee73e976963460715aaac2cb217d2f959"
+        "bytes": 10282,
+        "sha256": "fa5cd10b189a0e79309d495c87ae0d76157b1261e4adfea3b67c75e80c3b76a8"
       }
     },
     "top": {
@@ -515,8 +515,8 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 12482,
-      "sha256": "3a72b764ff14cb9153cb317c1bceed11fdec069877acbf9383f3de3b146880f9"
+      "bytes": 12486,
+      "sha256": "a825c5de1dea349e35e45d8df43a24fd3b9fb5b42fd5b8d04ce9a545773dc1af"
     },
     "side": {
       "file": "jpz_e100_side.webp",
@@ -547,8 +547,8 @@
       "width": 256,
       "height": 128,
       "mime": "image/png",
-      "bytes": 33968,
-      "sha256": "d7030abfca650c7b3e7f11a5f502b531e437e91e26115fccf103a2f596adc3e6"
+      "bytes": 30889,
+      "sha256": "f45b8f484d23f9f616ef7d5b0566db3fd0d11ec5730a24e2fcf713380806df2c"
     },
     "technicalLabels": {
       "file": "jpz_e100_technical.json",

@@ -43,8 +43,12 @@ export {
 } from './camoPolicy.ts';
 import { tagVehicleMaterial } from './appearanceAudit.ts';
 import { liftSrgbToWheelFloor } from './wheelPaintFloor.ts';
-import { drawNationalInsignia, drawTacticalNumber, vehicleMarkingRecord } from './vehicleMarkings.ts';
+import {
+  drawNationalInsignia, drawTacticalNumber, glacisMarkingOutline, GLACIS_MARKING_TRACKING, SHELL_MIDDLE_CAP_LIFT,
+  vehicleMarkingRecord,
+} from './vehicleMarkings.ts';
 import type { VehicleMarkingRecord } from './vehicleMarkings.ts';
+import { glacisPath, glacisSetsMarking, glacisWidth } from '../ui/glacisText.ts';
 import { isPostwarVehicleEra } from './taxonomy.ts';
 import { paintRubberSurface } from './rubberSurface.ts';
 // MOBILE r1: central texture-resolution lever (quality.ts). Every canvas bake
@@ -226,10 +230,51 @@ function paintTrack(rng: Rng): HTMLCanvasElement {
   return c;
 }
 
-function redrawWhenMarkingFontReady(draw: () => void): void {
-  if (document.fonts && !document.fonts.check("bold 16px 'Cot UI'")) {
-    document.fonts.load("bold 16px 'Cot UI'").then(faces => { if (faces.length) draw(); }).catch(() => {});
+// Lettering Glacis cannot set as written (a stencil's CTEx) keeps 'Cot UI': it bakes once in the face at hand and again
+// when the bold face arrives. Glacis lettering is outlines and never waits for a face.
+function redrawWhenMarkingFontReady(text: string, draw: () => void): void {
+  if (glacisSetsMarking(text) || !document.fonts || document.fonts.check("bold 16px 'Cot UI'")) return;
+  document.fonts.load("bold 16px 'Cot UI'").then(faces => { if (faces.length) draw(); }).catch(() => {});
+}
+
+/** The share of a 256 px text decal its lettering may span, outline included (8 px margins). */
+const MARKING_TEXT_SPAN = 240;
+
+/**
+ * A text decal's lettering (DECISIONS 2026-11-03): Glacis's outlines, spaced as painted markings are, at the decal's
+ * size rule brought down where the measured run would pass MARKING_TEXT_SPAN, an outlined marking's outline
+ * (glacisMarkingOutline: 6 % of the size, never under the old face's 6-texel stencil halo nor over the old face's halo on
+ * that marking) stroked under the fill with mitred corners clipped short so the chamfers stay crisp. `outlineWidth` is the
+ * old face's halo (and says the marking has one). Hull lettering's caps stand where the shell face's did over (x, y) (SHELL_MIDDLE_CAP_LIFT); a plate's or a
+ * disc's centre on it. Text Glacis cannot set keeps 'Cot UI' bold at the rule's size.
+ */
+function letterMarking(
+  ctx: CanvasRenderingContext2D, text: string, x: number, y: number, ruleSize: number,
+  fill: string, outlineWidth = 0, outline = '', seat: 'hull' | 'plate' = 'hull',
+): void {
+  ctx.save();
+  if (glacisSetsMarking(text)) {
+    const options = { tracking: GLACIS_MARKING_TRACKING, align: 'center', baseline: 'middle' } as const;
+    const size = Math.min(ruleSize,
+      (MARKING_TEXT_SPAN - outlineWidth) / Math.max(1e-6, glacisWidth(text, { ...options, size: 1 })));
+    const path = glacisPath(text, x, seat === 'hull' ? y - size * SHELL_MIDDLE_CAP_LIFT : y, { ...options, size });
+    if (outlineWidth) {
+      ctx.lineWidth = glacisMarkingOutline(size, outlineWidth);
+      ctx.lineJoin = 'miter'; ctx.miterLimit = 2; ctx.strokeStyle = outline;
+      ctx.stroke(path);
+    }
+    ctx.fillStyle = fill;
+    ctx.fill(path);
+  } else {
+    ctx.font = `bold ${ruleSize}px 'Cot UI', sans-serif`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    const anchorY = seat === 'hull' ? y : y + ruleSize * SHELL_MIDDLE_CAP_LIFT;
+    if (outlineWidth) { ctx.lineWidth = outlineWidth; ctx.strokeStyle = outline; ctx.strokeText(text, x, anchorY); }
+    ctx.fillStyle = fill;
+    ctx.fillText(text, x, anchorY);
   }
+  ctx.restore();
 }
 
 function paintDesignationDecal(
@@ -241,7 +286,7 @@ function paintDesignationDecal(
     drawTacticalNumber(ctx, marking, { x: 2, y: 34, width: 252, height: 188 });
   };
   draw();
-  redrawWhenMarkingFontReady(draw);
+  redrawWhenMarkingFontReady(marking.tacticalNumber, draw);
 }
 
 function paintStarDecal(ctx: CanvasRenderingContext2D): void {
@@ -325,17 +370,10 @@ function paintTextDecal(ctx: CanvasRenderingContext2D, text: string): void {
   const length = Math.max(1, text.length);
   const draw = (): void => {
     ctx.clearRect(0, 0, 256, 256);
-    ctx.font = `bold ${Math.min(120, Math.floor(380 / length))}px 'Cot UI', sans-serif`;
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.lineWidth = 10;
-    ctx.strokeStyle = 'rgba(20,20,20,0.55)';
-    ctx.strokeText(text, 128, 128);
-    ctx.fillStyle = 'rgba(174,172,162,0.92)';
-    ctx.fillText(text, 128, 128);
+    letterMarking(ctx, text, 128, 128, Math.min(120, Math.floor(380 / length)), 'rgba(174,172,162,0.92)', 10, 'rgba(20,20,20,0.55)');
   };
   draw();
-  redrawWhenMarkingFontReady(draw);
+  redrawWhenMarkingFontReady(text, draw);
 }
 
 /** Stencilled black lettering with a thin pale edge (the United Nations' "UN" on white vehicles). */
@@ -349,31 +387,21 @@ function paintMlcDecal(ctx: CanvasRenderingContext2D, text: string): void {
     ctx.lineWidth = 6;
     ctx.strokeStyle = 'rgba(20,20,18,0.9)';
     ctx.stroke();
-    ctx.font = `bold ${text.length > 2 ? 100 : 130}px 'Cot UI', sans-serif`;
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillStyle = 'rgba(18,18,18,0.95)';
-    ctx.fillText(text, 128, 134);
+    letterMarking(ctx, text, 128, 128, text.length > 2 ? 100 : 130, 'rgba(18,18,18,0.95)', 0, '', 'plate');
   };
   draw();
-  redrawWhenMarkingFontReady(draw);
+  redrawWhenMarkingFontReady(text, draw);
 }
 
 function paintStencilDecal(ctx: CanvasRenderingContext2D, text: string, white = false): void {
   const length = Math.max(1, text.length);
   const draw = (): void => {
     ctx.clearRect(0, 0, 256, 256);
-    ctx.font = `bold ${Math.min(150, Math.floor(400 / length))}px 'Cot UI', sans-serif`;
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.lineWidth = 6;
-    ctx.strokeStyle = white ? 'rgba(24,24,22,0.45)' : 'rgba(232,230,222,0.55)';
-    ctx.strokeText(text, 128, 128);
-    ctx.fillStyle = white ? 'rgba(236,234,226,0.95)' : 'rgba(18,18,18,0.94)';
-    ctx.fillText(text, 128, 128);
+    letterMarking(ctx, text, 128, 128, Math.min(150, Math.floor(400 / length)),
+      white ? 'rgba(236,234,226,0.95)' : 'rgba(18,18,18,0.94)', 6, white ? 'rgba(24,24,22,0.45)' : 'rgba(232,230,222,0.55)');
   };
   draw();
-  redrawWhenMarkingFontReady(draw);
+  redrawWhenMarkingFontReady(text, draw);
 }
 
 // A registration plate: black lettering on a white plate with a thin black border, the plate a strip across the square
@@ -386,14 +414,16 @@ function paintPlateDecal(ctx: CanvasRenderingContext2D, text: string): void {
     ctx.fillRect(2, 98, 252, 60);
     ctx.fillStyle = 'rgba(238,236,228,0.98)';
     ctx.fillRect(6, 102, 244, 52);
-    ctx.font = `bold ${Math.min(46, Math.floor(330 / length))}px 'Cot UI', sans-serif`;
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillStyle = 'rgba(18,18,18,0.96)';
-    ctx.fillText(text, 128, 129);
+    letterMarking(ctx, text, 128, 128, Math.min(46, Math.floor(330 / length)), 'rgba(18,18,18,0.96)', 0, '', 'plate');
   };
   draw();
-  redrawWhenMarkingFontReady(draw);
+  redrawWhenMarkingFontReady(text, draw);
+}
+
+/** The lettering a decal kind bakes ('' for the drawn marks: insignia, flags, crosses, the star, soot). */
+function decalLettering(kind: string, text: string | null | undefined, marking: VehicleMarkingRecord): string {
+  if (kind === 'designation') return marking.tacticalNumber;
+  return ['insignia', 'star', 'cross', 'soot', 'crossgrey', 'flag'].includes(kind) ? '' : text ?? '';
 }
 
 // Transparent marking decal canvases.
@@ -2073,7 +2103,7 @@ function patternVisual(spec: MaterialTankSpec, patternId: MaterialPatternId): Ma
     o = { scheme: 'star', base: '#57603f', weather: '#4e5738',
       patches: ['#ded8c8'] };
   } else if (patternId === 'berlin45') {
-    // Soviet 4BO with the white air-recognition band + tactical number.
+    // Soviet 4BO with the white air-recognition band.
     o = { scheme: 'idband', base: '#4a5138', weather: '#525a3e',
       patches: ['#e0dccb'] };
   } else if (patternId === 'ardennes44') {
@@ -2084,8 +2114,8 @@ function patternVisual(spec: MaterialTankSpec, patternId: MaterialPatternId): Ma
       patches: ['#4c5539', '#6e6f64'] };
   } else if (patternId === 'pacific45') {
     // camo r8: late-war USMC — forest green under hard-edged black wave
-    // bands, white hull number, coral-dust stipple. patches = [black band,
-    // coral dust, stencil white].
+    // bands, coral-dust stipple. patches = [black band, coral dust, stencil
+    // white].
     o = { scheme: 'usmc', base: '#46543d', weather: '#3e4b36',
       patches: ['#282e26', '#c2ab84', '#e3ded1'] };
   } else if (patternId === 'jungleops') {
@@ -3833,9 +3863,9 @@ vec4 burntTri( sampler2D m, vec3 p, vec3 n, float sc ) {
         : null;
       if (lease) decalTextureLeases.push(lease);
       const t = lease?.texture ?? track(canvasTex(paintDecal(kind, text, marking), { aniso }));
-      // number decals re-bake when their font loads (paintDecal registered first, so
-      // its redraw runs before this) — push the fresh canvas to the GPU.
-      if (document.fonts && !document.fonts.check("bold 16px 'Cot UI'")) {
+      // lettering Glacis cannot set re-bakes when its face loads (paintDecal registered first, so its redraw runs
+      // before this): push the fresh canvas to the GPU. Glacis lettering is final on the first bake.
+      if (!glacisSetsMarking(decalLettering(kind, text, marking)) && document.fonts && !document.fonts.check("bold 16px 'Cot UI'")) {
         document.fonts.load("bold 16px 'Cot UI'").then(faces => { if (faces.length) t.needsUpdate = true; }).catch(() => {});
       }
       const m = track(setup(new THREE.MeshStandardMaterial({

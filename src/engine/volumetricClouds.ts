@@ -664,7 +664,7 @@ function createMediumUniforms(): Record<string, THREE.IUniform> {
     uLayerExp: { value: new THREE.Vector4(1, 1, 1, 1) }, uLayerStreets: { value: new THREE.Vector4() }, uLayerEnvelope: { value: new THREE.Vector4() }, uCellStretch: { value: 1 },
     uLayerCells: { value: new THREE.Vector4() }, uLayerWisp: { value: new THREE.Vector4() },
     uLayerFlat: { value: new THREE.Vector4() }, uLayerHang: { value: new THREE.Vector4() }, uLayerAnvil: { value: new THREE.Vector4() },
-    uLayerCore: { value: new THREE.Vector4(0.6, 0.6, 0.6, 0.6) }, uLayerLumps: { value: new THREE.Vector4() },
+    uLayerCore: { value: new THREE.Vector4(0.6, 0.6, 0.6, 0.6) }, uLayerLumps: { value: new THREE.Vector4() }, uLayerDome: { value: new THREE.Vector4() },
     uProfA: { value: new THREE.Vector4() }, uProfB: { value: new THREE.Vector4() }, uProfC: { value: new THREE.Vector4() },
     uProfD: { value: new THREE.Vector4(1, 1, 1, 1) }, uLayerChannels: { value: new THREE.Matrix4().set(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0) },
     uHeightRange: { value: new THREE.Vector2(1e6, 1e6 + 1) },

@@ -33,5 +33,5 @@ Configuration: C Squadron, 1st Armoured Regiment, Vietnam, 1968-71. Implementati
 | Rear | the 100-gallon armoured fuel tank on the rear plate (HN) | a 1.78 x 0.46 x 0.40 m tank on two brackets with its filler and feed, the infantry telephone on its right end; no slung tow cable there |
 | Turret stowage | mesh baskets round the bustle and the turret's side, the squadron number on them (Owner's photograph) | a deep rear basket on arms, a side basket along the left rear bins, the number on the rear basket |
 | Roof gun | the commander's .30 Browning (no Browning class in the fleet) | the Mk 5's cupola MAG 58 station |
-| Coat | Australian khaki green (Owner) | `paint_centurion5_1_aus` "RAAC Plain Olive Drab" |
+| Coat | Australian khaki green (Owner) | `paint_centurion5_1_aus` "RAAC Disruptive Woodland": the khaki green (#5a5c30) in interlocking dark-green fields with sand and black bars (owner 2026-11-03: "the existing centurion mk 5/1 ... need a proper camoo"; plain before) |
 | Length | 8.02 m over the fuel tank and telephone (the family hull 7.56 m) | measured |

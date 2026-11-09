@@ -123,6 +123,9 @@ async function auditChunk(browser, entries) {
     await waitForBootLoaded(battlePage, { polling: 100 });
     await battlePage.evaluate(() => {
       window.__DEBUG.flags.rosterExact = true;
+      // every audited battle held alive and still (src/dev/battleHold.ts): the bots stand off the inspection camera and
+      // never fire, and the audited player takes no damage
+      window.__DEBUG.battleHold.set(true);
     });
     for (const [index, id] of entries) {
       const mapId = maps[index % maps.length];
@@ -138,8 +141,6 @@ async function auditChunk(browser, entries) {
           .filter((specId) => specId !== tankId)
           .slice(0, 7);
         debug.flags.rosterExact = true;
-        debug.flags.godMode = true;
-        debug.flags.freezeBots = true;
         await debug.beginSoloBattle({ specId: tankId, mapId: battlefield, randomRoster: false });
         await debug.battleAtmosphere.prepare(1, battlefield, ['day']);
       }, { tankId: id, battlefield: mapId });

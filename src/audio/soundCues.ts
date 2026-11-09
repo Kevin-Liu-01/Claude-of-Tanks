@@ -7,6 +7,8 @@
  * to); a short override table tunes the assets that differ. Pure data.
  */
 
+import { WEAPON_ROWS } from './weaponAudio.ts';
+
 export type BusId =
   | 'weapons' | 'impacts' | 'vehicles' | 'own' | 'ownCombat' | 'interior' | 'environment'
   | 'ambience' | 'ui' | 'music' | 'voice' | 'alarm' | 'cinematic';
@@ -69,6 +71,19 @@ export const GROUP_PROFILES: Readonly<Record<string, CueProfile>> = Object.freez
 
 const o = (value: Partial<ProfileSeed>): Partial<CueProfile> => Object.freeze(value);
 
+/**
+ * The policies a family shares (impact-materials-269): a strike on a new surface keeps the policy of the one it
+ * replaced, so the moment changes its sound, not its level, reach or weight in the HDR window. A member left out falls
+ * to its group's default: a bullet into sand then carried like a shell's strike, 10 dB hot, uncapped, and loud enough
+ * in the HDR window to duck the battle. impactMaterials.selftest.mjs holds every strike the resolver names to its role.
+ */
+const BULLET_ON_ARMOUR = o({ maxInstances: 4, refM: 4, maxM: 180, loudDb: 112, cooldownS: 0.05, gainDb: -3 });
+const BULLET_IN_DIRT = o({ maxInstances: 4, refM: 4, maxM: 120, loudDb: 106, cooldownS: 0.05, priority: 30, gainDb: -3 });
+const BULLET_ON_MASONRY = o({ maxInstances: 4, refM: 4, maxM: 140, loudDb: 108, cooldownS: 0.05, priority: 30, gainDb: -3 });
+const DEBRIS_RAIN = o({ priority: 40, maxM: 250, loudDb: 112, gainDb: -5 });
+const HULL_PATTER = o({ bus: 'ownCombat', gainDb: -4 });
+const SPALL = o({ bus: 'ownCombat', space: 'hull', priority: 92, loudDb: 140 });
+
 /** Assets that differ from their group default. */
 const CUE_OVERRIDES: Readonly<Record<string, Partial<CueProfile>>> = Object.freeze({
   // The punch under a close report keeps the report's own distance law, and the air takes the slam's top first.
@@ -78,34 +93,30 @@ const CUE_OVERRIDES: Readonly<Record<string, Partial<CueProfile>>> = Object.free
   // A6 (2026-10-13): the 125 mm crack carries a little further (refM 35 → 56: +2.2 dB at 150 m, the same inside 56 m,
   // faded out by 400 m by the class's close fade), with its distant thunder joining earlier (weaponAudio gun_125).
   gun_125_close: o({ refM: 56 }),
-  // Main guns carry across the whole battlefield as distant thunder.
-  gun_far_light: o({ refM: 80, rolloff: 0.62, maxM: 2600, absorb: 0.5, send: 0.3, loudDb: 140 }),
-  gun_far_medium: o({ refM: 90, rolloff: 0.62, maxM: 2800, absorb: 0.45, send: 0.3, loudDb: 144 }),
-  gun_far_heavy: o({ refM: 100, rolloff: 0.62, maxM: 3000, absorb: 0.4, send: 0.3, loudDb: 148 }),
-  ac_far_light: o({ refM: 50, rolloff: 0.68, maxM: 1600, absorb: 0.55, send: 0.26, loudDb: 128 }),
-  ac_far_heavy: o({ refM: 60, rolloff: 0.68, maxM: 1900, absorb: 0.55, send: 0.26, loudDb: 133 }),
-  mg_far: o({ refM: 40, rolloff: 0.72, maxM: 900, absorb: 0.6, send: 0.24, loudDb: 116, gainDb: -2 }),
+  // The rocket salvo's distant ripple (every gun's distant bank is placed by its row: WEAPON_BANK_CUES).
+  rocket_salvo_far: o({ refM: 100, rolloff: 0.62, maxM: 3000, absorb: 0.4, send: 0.3, loudDb: 148 }),
   mg_rifle_close: o({ maxInstances: 8, refM: 14, rolloff: 0.7, maxM: 500, loudDb: 120, gainDb: -2, pitch: [0.95, 1.05] }),
   mg_heavy_close: o({ maxInstances: 8, refM: 16, rolloff: 0.68, maxM: 700, loudDb: 126, gainDb: -1, pitch: [0.95, 1.05] }),
   tail_open: o({ refM: 60, rolloff: 0.7, maxM: 2500, absorb: 0.4, send: 0.1, gainDb: -4 }),
   tail_forest: o({ refM: 60, rolloff: 0.7, maxM: 2500, absorb: 0.45, send: 0.1, gainDb: -4 }),
   tail_urban: o({ refM: 60, rolloff: 0.7, maxM: 2500, absorb: 0.4, send: 0.1, gainDb: -3 }),
   tail_mountain: o({ refM: 70, rolloff: 0.65, maxM: 3000, absorb: 0.35, send: 0.1, gainDb: -3 }),
-  gun_interior_medium: o({ bus: 'ownCombat', space: 'hull', loudDb: 140 }),
-  gun_interior_large: o({ bus: 'ownCombat', space: 'hull', loudDb: 142 }),
-  gun_interior_heavy: o({ bus: 'ownCombat', space: 'hull', loudDb: 144 }),
   missile_flight_loop: o({ priority: 70, maxM: 900, loudDb: 128 }),
   rocket_salvo: o({ loudDb: 150, maxM: 3000 }),
   smoke_launcher: o({ priority: 60, refM: 8, maxM: 400, loudDb: 120, gainDb: -2 }),
   smoke_burst: o({ priority: 40, refM: 8, maxM: 300, loudDb: 112, gainDb: -4 }),
   // Interior and hull-attached impacts: the receiving end of a hit.
-  pen_interior: o({ bus: 'ownCombat', space: 'hull', priority: 92, loudDb: 140 }),
+  pen_interior: SPALL,
+  spall_driver: SPALL, spall_engine: SPALL,
   nonpen_interior: o({ bus: 'ownCombat', space: 'hull', priority: 90, loudDb: 134 }),
-  bullet_armor: o({ maxInstances: 4, refM: 4, maxM: 180, loudDb: 112, cooldownS: 0.05, gainDb: -3 }),
-  bullet_dirt: o({ maxInstances: 4, refM: 4, maxM: 120, loudDb: 106, cooldownS: 0.05, priority: 30, gainDb: -3 }),
+  bullet_armor: BULLET_ON_ARMOUR,
+  bullet_rubber: BULLET_ON_ARMOUR, bullet_stowage: BULLET_ON_ARMOUR,
+  bullet_dirt: BULLET_IN_DIRT,
+  bullet_sand: BULLET_IN_DIRT, bullet_snow: BULLET_IN_DIRT, bullet_mud: BULLET_IN_DIRT,
   bullet_water: o({ maxInstances: 3, refM: 4, maxM: 120, loudDb: 104, priority: 28 }),
   // a bullet's strike on a wall, a steel body or timber: as local as one in the dirt (2026-10-13)
-  bullet_masonry: o({ maxInstances: 4, refM: 4, maxM: 140, loudDb: 108, cooldownS: 0.05, priority: 30, gainDb: -3 }),
+  bullet_masonry: BULLET_ON_MASONRY,
+  bullet_paved: BULLET_ON_MASONRY,
   bullet_metal: o({ maxInstances: 4, refM: 4, maxM: 150, loudDb: 110, cooldownS: 0.05, priority: 32, gainDb: -3 }),
   bullet_wood: o({ maxInstances: 4, refM: 4, maxM: 120, loudDb: 106, cooldownS: 0.05, priority: 30, gainDb: -3 }),
   ricochet_light: o({ refM: 6, maxM: 220, loudDb: 116, gainDb: -3 }),
@@ -142,7 +153,8 @@ const CUE_OVERRIDES: Readonly<Record<string, Partial<CueProfile>>> = Object.free
   // sweep it replaced (level matched to it); the shock of a hit on our own hull is felt inside it.
   blast_sub: o({ priority: 72, maxInstances: 6, refM: 22, rolloff: 0.7, maxM: 1800, absorb: 0.2, send: 0.12, loudDb: 146, gainDb: -8, pitch: [0.96, 1.04] }),
   hull_thud_sub: o({ bus: 'ownCombat', space: 'hull', priority: 91, loudDb: 136 }),
-  debris_dirt: o({ priority: 40, maxM: 250, loudDb: 112, gainDb: -5 }),
+  debris_dirt: DEBRIS_RAIN,
+  debris_sand: DEBRIS_RAIN, debris_mud: DEBRIS_RAIN, debris_snow: DEBRIS_RAIN, debris_grit: DEBRIS_RAIN,
   ground_dirt: o({ loudDb: 130 }),
   water_small: o({ priority: 35, maxM: 300, loudDb: 112 }),
   // Fires and cook-off loops ride the vehicle bus.
@@ -164,7 +176,9 @@ const CUE_OVERRIDES: Readonly<Record<string, Partial<CueProfile>>> = Object.free
   extinguisher: o({ gainDb: -3 }),
   // Edge-case cues: world-placed ones.
   rollover: o({ bus: 'impacts', space: 'world', priority: 70, refM: 10, rolloff: 1.05, maxM: 500, absorb: 1, send: 0.15, loudDb: 128, gainDb: -1 }),
-  hull_debris_patter: o({ bus: 'ownCombat', gainDb: -4 }),
+  hull_debris_patter: HULL_PATTER,
+  hull_patter_sand: HULL_PATTER, hull_patter_mud: HULL_PATTER, hull_patter_snow: HULL_PATTER, hull_patter_grit: HULL_PATTER,
+  hull_patter_water: HULL_PATTER,
   missile_warning: o({ bus: 'alarm', space: 'flat', priority: 94, gainDb: -8 }),
   lock_on: o({ bus: 'alarm', space: 'flat', gainDb: -10 }),
   lock_off: o({ bus: 'alarm', space: 'flat', gainDb: -12 }),
@@ -203,7 +217,51 @@ const CUE_OVERRIDES: Readonly<Record<string, Partial<CueProfile>>> = Object.free
   heli_loop: o({ bus: 'environment', space: 'world', priority: 25, refM: 120, rolloff: 0.7, maxM: 5000, absorb: 0.35, send: 0.2, loudDb: 150, gainDb: -6 }),
   // Workshop sounds inside the hangar: placed a few metres away (indoor scene).
   garage_clank: o({ bus: 'ambience', space: 'world', refM: 6, rolloff: 0.9, maxM: 80, absorb: 0.3, send: 0.45, loudDb: 100, gainDb: -2 }),
+  // world-sfx-269 (2026-11-03): the hydraulic drive's stop sits where the electric's does; an automatic's shift under the
+  // manual box's clunk; water under any hull heard across a river; crashes by material on the steel strike's law; a
+  // light vehicle's end under a tank's; an intercept like a small shell; a drone breaking up short-ranged; the
+  // counter-attack's flare carrying across the field; the Turbo Ball buoy across its pitch.
+  turret_stop_hydraulic: o({ bus: 'own', space: 'hull', gainDb: -8 }),
+  gear_shift_auto: o({ maxM: 120, loudDb: 106, gainDb: -6 }),
+  water_splash_in: o({ priority: 58, maxM: 400, loudDb: 124 }),
+  water_exit: o({ priority: 40, maxM: 220, loudDb: 112, gainDb: -4 }),
+  hit_timber: o({ priority: 70, refM: 9, maxM: 400, loudDb: 130 }),
+  hit_earth: o({ priority: 68, refM: 9, maxM: 350, loudDb: 128 }),
+  vehicle_explode_light: o({ loudDb: 146 }),
+  aps_intercept: o({ priority: 84, refM: 20, rolloff: 0.7, maxM: 1600, loudDb: 140 }),
+  drone_shot_down: o({ priority: 60, refM: 8, maxM: 500, loudDb: 120 }),
+  mode_counter_attack: o({ bus: 'environment', space: 'world', priority: 70, maxInstances: 2, refM: 60, rolloff: 0.7, maxM: 3000, absorb: 0.5, send: 0.3, loudDb: 132, gainDb: -2 }),
+  ball_strike: o({ priority: 72, maxInstances: 3, refM: 15, rolloff: 0.8, maxM: 900, loudDb: 134, gainDb: 0 }),
 });
+
+/**
+ * The per-bore report banks (gun-reports-269), placed from their row's loudness (weaponAudio.ts WEAPON_ROWS): the
+ * closed turret's report on our own hull, a roof machine gun's own report as local as its close one, and each distant
+ * bank carrying across the battlefield as the grouped banks it replaced did (a 120 mm's as gun_far_medium's, a 130 mm's
+ * as the grouped heavy bank had). An explicit override above still wins.
+ */
+const WEAPON_BANK_CUES: Readonly<Record<string, Partial<CueProfile>>> = (() => {
+  const out: Record<string, Partial<CueProfile>> = {};
+  const unit = (v: number): number => Math.max(0, Math.min(1, v));
+  for (const row of Object.values(WEAPON_ROWS)) {
+    if (row.interior) out[row.interior] = o({ bus: 'ownCombat', space: 'hull', loudDb: Math.max(112, Math.min(147, row.loudDb - 5)) });
+    if (row.family === 'mg' && row.own) {
+      out[row.own] = o({ maxInstances: 8, refM: row.boreMm < 9 ? 14 : 16, rolloff: 0.7, maxM: 600, loudDb: row.boreMm < 9 ? 120 : 126, gainDb: -1, pitch: [0.95, 1.05] });
+    }
+    if (!/^(gun_\w+|ac_\d+|mg_(rifle|heavy))_far$/.test(row.far)) continue;
+    if (row.family === 'cannon') {
+      const t = unit((row.loudDb - 138) / 14);
+      out[row.far] = o({ refM: 78 + 24 * t, rolloff: 0.62, maxM: 2500 + 500 * t, absorb: 0.52 - 0.12 * t, send: 0.3, loudDb: Math.max(135, Math.min(149, row.loudDb - 3)) });
+    } else if (row.family === 'autocannon') {
+      const t = unit((row.loudDb - 128) / 9);
+      out[row.far] = o({ refM: 50 + 10 * t, rolloff: 0.68, maxM: 1600 + 300 * t, absorb: 0.55, send: 0.26, loudDb: row.loudDb - 2 });
+    } else {
+      const heavy = row.boreMm >= 9;
+      out[row.far] = o({ refM: heavy ? 45 : 40, rolloff: 0.72, maxM: heavy ? 1100 : 900, absorb: 0.6, send: 0.24, loudDb: heavy ? 120 : 116, gainDb: -2 });
+    }
+  }
+  return Object.freeze(out);
+})();
 
 const profileCache = new Map<string, CueProfile>();
 
@@ -213,7 +271,7 @@ export function cueProfile(assetId: string, group: string): CueProfile {
   let profile = profileCache.get(key);
   if (!profile) {
     const base = GROUP_PROFILES[group] ?? GROUP_PROFILES.impacts;
-    profile = Object.freeze({ ...base, ...(CUE_OVERRIDES[assetId] ?? {}) });
+    profile = Object.freeze({ ...base, ...(WEAPON_BANK_CUES[assetId] ?? {}), ...(CUE_OVERRIDES[assetId] ?? {}) });
     profileCache.set(key, profile);
   }
   return profile;

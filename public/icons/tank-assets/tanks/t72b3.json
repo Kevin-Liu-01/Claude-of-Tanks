@@ -2010,24 +2010,24 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 27586,
-      "sha256": "c73ef0593cc00584dcb1f4a2c16c9687d5f0c643545149fa54f680e3ea50b431"
+      "bytes": 27602,
+      "sha256": "b75786810170a89a5d63ee1b206c4c0f89e7eed4d73ca2afc4df370ce7e9225c"
     },
     "modulesSide": {
       "file": "t72b3_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 24610,
-      "sha256": "f89e710bd65d514f126893f9eed6b7215b65091e9965fd1c208a4243da129650"
+      "bytes": 24592,
+      "sha256": "e75abfc1c85d5e6aecd191d7a385c33f143a56e8a8d77c15ea47b317c1065220"
     },
     "crewSide": {
       "file": "t72b3_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 22466,
-      "sha256": "06967aa03529eadb8a64964d973a8c484abe0a2dad5b8e0492895611323cbfa9"
+      "bytes": 22458,
+      "sha256": "d2528fd6ff2350141313870d27c0af446951d1f67696f8eefab9147b77382e4c"
     },
     "angle": {
       "file": "t72b3_angle.webp",
@@ -2050,16 +2050,16 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 12366,
-      "sha256": "1133de610931ebfc7e2bce73e6d83803c81a0292e5405c4f7523d1d15176858e"
+      "bytes": 12374,
+      "sha256": "238e381971da5f0a5e1f646a75cd31925c658771bef80b36690bed1f1f6a84f2"
     },
     "side": {
       "file": "t72b3_side.webp",
       "width": 512,
       "height": 256,
       "mime": "image/webp",
-      "bytes": 11532,
-      "sha256": "a4dfaf548ae539a44d76c769deb8bde22d6cd7d2154b481ea7101cef502b1b02"
+      "bytes": 11536,
+      "sha256": "81f81a55cedba5f385c31bcc2f0d9c1958d00ecf47a223a1a708f7c010565eb5"
     },
     "topSilhouette": {
       "file": "t72b3_top_silhouette.png",
@@ -2082,8 +2082,8 @@
       "width": 256,
       "height": 128,
       "mime": "image/png",
-      "bytes": 35810,
-      "sha256": "7fedc0da7fd4c705b763a2e51b18b78df84644fc1dd1ea723d93228cf7c5107a"
+      "bytes": 32850,
+      "sha256": "83c71b7d5bb67b2be61725d56e231429bdfcc110217e2aad1674fe3c1d28e49b"
     },
     "technicalLabels": {
       "file": "t72b3_technical.json",

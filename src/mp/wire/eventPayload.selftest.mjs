@@ -27,6 +27,10 @@ const crafted = [
   Object.assign(Object.create(null), { nullProto: 1.5, inner: Object.assign(Object.create(null), { z: -2 }) }),
   { toJSONInside: { toJSON() { return { replaced: 7.123456 }; } } },
   { sparse: [1, , 3], localDir: [0.7071067811865476, 0, -0.7071067811865476] }, // eslint-disable-line no-sparse-arrays
+  // (impact-materials-269) the presentation fields: a hit's struck material and screen (inline keys), a world impact's
+  // incidence (the table's impactAngleDeg)
+  { type: 'shell_hit', kind: 'ricochet', zone: 'hull_side_lower_R', plateKind: 'main', material: 'armour', screenMaterial: 'trackLinks', impactAngleDeg: 81.234567 },
+  { type: 'shell_impact', kind: 'terrain', surfaceKind: 'terrain', nx: 0, ny: 1, nz: 0, impactAngleDeg: 86 },
 ];
 for (const payload of crafted) {
   const decoded = roundTrip(payload);

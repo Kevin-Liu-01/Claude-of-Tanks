@@ -384,6 +384,30 @@ assert.equal(restoreCover({ phase: 'garage' }, { restoringGpu: false }, { curren
   'pristine Garage boot never acquires or waits on a return owner');
 assert.equal(isCovered(direct, true), true, 'the existing active GPU restore guard is retained');
 
+// (269, the second solo battle at 97%: tools/second-solo-battle.browser.selftest.mjs) a Leave's restore still running
+// when a battle started from the Garage takes the screen: it covers no battle frame (the battle's reveal waits for one),
+// and it is no longer current, so its next step abandons it
+{
+  let restoreCurrent = null, abandon = null;
+  const fixture = createFixture({
+    restore: (isCurrent) => new Promise((_resolve, reject) => {
+      restoreCurrent = isCurrent;
+      abandon = () => reject(new Error('Garage restore abandoned'));
+    }),
+  });
+  const left = fixture.runtime.leave();
+  for (let turns = 0; turns < 20 && !restoreCurrent; turns++) await new Promise((done) => setImmediate(done));
+  assert.ok(restoreCurrent, 'the Leave reached its GPU restore');
+  assert.equal(restoreCurrent(), true, 'the restore is current while the Garage is the phase');
+  assert.equal(isCovered(fixture, true), true, 'a running restore covers the Garage');
+  fixture.game.phase = 'battle';
+  assert.equal(isCovered(fixture, true), false, 'a running restore never covers the battle that took the screen');
+  assert.equal(restoreCurrent(), false, 'a battle that took the screen abandons the restore');
+  abandon();
+  await assert.rejects(left, /abandoned/);
+  assert.equal(fixture.runtime.transitioning, false, 'the abandoned Leave releases its latch');
+}
+
 {
   let finishPlacement;
   let reentered;

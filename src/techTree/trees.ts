@@ -2,6 +2,7 @@
 // Node-runnable. First-party: Kevin B. Liu (NOTICE.md).
 
 import type { NationTree, TreeNode } from './model.ts';
+import { AUSTRALIA_TREE } from './nations/australia.ts';
 import { BRAZIL_TREE } from './nations/brazil.ts';
 import { CHINA_TREE } from './nations/china.ts';
 import { DENMARK_TREE } from './nations/denmark.ts';
@@ -12,6 +13,7 @@ import { ITALY_TREE } from './nations/italy.ts';
 import { JAPAN_TREE } from './nations/japan.ts';
 import { POLAND_TREE } from './nations/poland.ts';
 import { RUSSIA_TREE } from './nations/russia.ts';
+import { SOUTH_AFRICA_TREE } from './nations/south_africa.ts';
 import { SOUTH_KOREA_TREE } from './nations/south_korea.ts';
 import { SWEDEN_TREE } from './nations/sweden.ts';
 import { UK_TREE } from './nations/uk.ts';
@@ -21,7 +23,7 @@ import { USA_TREE } from './nations/usa.ts';
 /** Every national tree, in the Garage's nation order. */
 export const TECH_TREES: readonly NationTree[] = Object.freeze([
   USA_TREE, GERMANY_TREE, RUSSIA_TREE, UK_TREE, FRANCE_TREE, CHINA_TREE, ITALY_TREE, JAPAN_TREE, POLAND_TREE,
-  SOUTH_KOREA_TREE, SWEDEN_TREE, DENMARK_TREE, ISRAEL_TREE, UKRAINE_TREE, BRAZIL_TREE,
+  SOUTH_KOREA_TREE, SWEDEN_TREE, DENMARK_TREE, ISRAEL_TREE, UKRAINE_TREE, SOUTH_AFRICA_TREE, BRAZIL_TREE, AUSTRALIA_TREE,
 ]);
 
 interface TreePlace {

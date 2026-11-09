@@ -20,9 +20,9 @@
 
 | id | turret kit | hull kit | coat |
 |---|---|---|---|
-| leo1a3dk | TEM 2A rangefinder ports open, XSW-30-U searchlight, PERI R12 low | Danish dozer channels, periscope wipers, slope-fitted fender bins (no German grousers or side tools) | 1970s plain olive drab |
+| leo1a3dk | TEM 2A rangefinder ports open, XSW-30-U searchlight, PERI R12 low | Danish dozer channels, periscope wipers, slope-fitted fender bins (no German grousers or side tools) | 1970s olive drab under black and earth field bands (plain until 2026-11-03: the owner's "any tank without a proper camo") |
 | leo1a5dk | EMES 18 box right front, PERI R12 raised, ports blanked (pale ring), roof rifle clips, rear rack, MRS | as above | 1990s three-tone |
-| leo1a5dk1 | as 1A5 DK plus the air conditioning and Honda generator housing over the rear bin, the M41 DK-1's halogen searchlight | as above plus GPS | United Nations white |
+| leo1a5dk1 | as 1A5 DK plus the air conditioning and Honda generator housing over the rear bin, the M41 DK-1's halogen searchlight | as above plus GPS | United Nations white kept dominant, broken by pale-grey fields with bright and dark bars (`paint_leo1a5dk1`, 2026-11-03) |
 
 ## Sources
 

@@ -56,6 +56,8 @@ import {
 } from './teamArrangement.ts';
 // The roster plan is pure and shared with the garage boot (main.ts), which must not import this module.
 import { battleRosterPlan } from './soloRosterPlan.ts';
+// the dev battle hold (src/dev/battleHold.ts, __DEBUG.battleHold): bots stand, the player takes no damage, no verdict
+import { battleHeld, holdBattleStep, undoHeldDamage } from './devBattleHold.ts';
 import { createJevCommander, createJevFetchTransport, createJevSession, type JevBattleView, type JevCommander } from './jevCommander.ts';
 import type { SpecialActionSpec, SpecialActionState } from '../sim/specialActionPolicy.ts';
 import type { ConcealerDisc, SpottingSystem, SpottingTank } from '../sim/spotting.ts';
@@ -139,7 +141,7 @@ import {
 } from './equipment.ts';
 import { mulberry32 } from './stateCore.ts';
 import { createMatchModeController, normalizeGameMode } from '../sim/matchModes.ts';
-import { classifyShellSurface, shellHitsWater } from '../sim/shellSurface.ts';
+import { classifyShellSurface, shellHitsWater, shellIncidenceDeg } from '../sim/shellSurface.ts';
 import { createDestructionMatch, resetStructureRecords, type DestructionMatch } from '../sim/destructionMatch.ts';
 import { createFortifiedCoverLedger, isFortifiedCoverRecord, type FortifiedCoverLedger } from '../sim/fortifiedCover.ts';
 import {
@@ -319,6 +321,8 @@ type SoloPooledEntity = Omit<RosterEntity,
     _ramRecord?: CollisionRecord | null;
     /** What the hull last struck hard this step (a record kind, 'structure', 'cliff'): the crash's sound (audio). */
     _struckKind?: string | null;
+    /** The building it struck (its structureIdx), when it struck one: the crash sounds of its walls (audio, presentation only). */
+    _struckStructure?: number | null;
     /** Destruction: the share of its speed the hull keeps after rammed structures yielded this tick. */
     _ramKeep?: number;
     _modeTargetX?: number;
@@ -1558,6 +1562,7 @@ function resolveObstacleCollisions(
     pushed = true;
     _hardObstacles[hardCount++] = obstacle;
     if (self) self._struckKind = obstacle.structureIdx !== undefined ? 'structure' : obstacle.kind ?? null;
+    if (self) self._struckStructure = obstacle.structureIdx ?? null;
     if (self && obstacle.structureIdx !== undefined && !self._ramRecord) self._ramRecord = obstacle;
   }
   // a second sweep over the contacts that pushed, from where the first left the hull (sim/authoritativeMatch.ts)
@@ -1701,6 +1706,8 @@ function announceDestroyed(
   cause: 'ammorack' | 'shot' | 'ram' | 'fire' | HullImpactKind,
   source: 'ac130' | 'drone' | null = null,
 ): void {
+  // a held player is never announced destroyed: the step's losses are undone before the verdict (devBattleHold.ts)
+  if (ent === game.player && battleHeld(game)) return;
   ent._destroyedAnnounced = true;
   game.matchModeController?.recordDestruction(ent.id, killerId);
   // a cook-off or a fuel fire bursts on the structures beside the hull (never on the tanks)
@@ -2145,6 +2152,8 @@ function resolveWorldShellImpact(
     surfaceKind: classifyShellSurface(world, hit),
     hitWater: shellHitsWater(world, hit),
     normal: hit.normal ? [hit.normal.x, hit.normal.y, hit.normal.z] : null,
+    // (impact-materials-269, presentation) how the round met it: a graze skips, a plunge digs in
+    impactAngleDeg: shellIncidenceDeg(shell.vel, hit.normal),
     shellType: shell.spec.type,
     caliberMm: shell.spec.caliberMm,
     // the building it struck (2026-10-10: every round's hole on it, not only a burst's that names it in its blast)
@@ -2281,6 +2290,9 @@ function stepSpotting(game: SoloGameState, bus: EventBus): void {
 function stepHullControls(game: SoloGameState, bus: EventBus, world: SoloWorld): void {
   // what reached the bots since the last flush (the commander's orders) lands before the first of them thinks (audit M7)
   applyPendingBotNews(game.tanks);
+  // a held battle's bots stand in place of their controllers, and the player's damage state is pinned (devBattleHold.ts)
+  const held = battleHeld(game);
+  if (held) holdBattleStep(game);
   // wrecks narrow streets: the bots' grid re-tests the edges round them a few times a second (as the authority does)
   if (game._botNavigation && game._navigationWrecks && (game._navigationWreckTicks = (game._navigationWreckTicks ?? 0) + 1) % 15 === 1) {
     syncNavigationWrecks(game._botNavigation, game._navigationWrecks,
@@ -2290,6 +2302,8 @@ function stepHullControls(game: SoloGameState, bus: EventBus, world: SoloWorld):
   const host = soloActionsHost(game, bus, world);
   for (const entity of game.tanks) {
     if (entity.modeActive === false) continue;
+    // a held battle's bots take no controls, actions or consumables: only the player's hull acts (devBattleHold.ts)
+    if (held && entity !== game.player) continue;
     // (268) the authority's bot stage (sim/playerInputStage.ts), wrecks included: one rule for a bot's controls on both drivers
     if (entity.aiCtl) applyBotInput(entity, SIM_DT, game.timeS);
     else if (proving && entity._provingMark && !entity.combat.destroyed) driveProvingTarget(entity, proving);
@@ -2361,6 +2375,7 @@ function publishHullImpact(
     cause: kind,
     // what it struck, for the crash's sound (2026-10-13; a landing struck the ground)
     struck: kind === 'impact' ? entity._struckKind ?? null : null,
+    struckStructureId: kind === 'impact' ? entity._struckStructure ?? null : null,
     hard: true,
     damage,
     destroyed: !!result?.destroyed,
@@ -2413,7 +2428,7 @@ function resolveTankImpacts(
     });
     if (result || (impact > 1.5 && game.timeS - (entity._lastImpactT || -1) > IMPACT_CRASH_WINDOW_S)) {
       entity._lastImpactT = game.timeS;
-      if (state.impactSource === IMPACT_SOURCE_CLIFF) entity._struckKind = 'cliff';
+      if (state.impactSource === IMPACT_SOURCE_CLIFF) { entity._struckKind = 'cliff'; entity._struckStructure = null; }
       publishHullImpact(game, entity, bus, rig, 'impact', closing, result);
     }
     // destruction: the structure the hull struck takes the crash's energy (docs/DESTRUCTION.md §4.4)
@@ -2565,6 +2580,7 @@ function stepTankMovement(
     const { throttle, steer, brake, aimLocked } = entity.input;
     if (parking) { entity.input.throttle = 0; entity.input.steer = 0; entity.input.brake = true; entity.input.aimLocked = true; }
     entity._struckKind = null;
+    entity._struckStructure = null;
     entity._ramRecord = null;
     entity._ramKeep = undefined;
     try { updateTank(entity, support, SIM_DT, collider.collide); }
@@ -2806,7 +2822,9 @@ function stepAuxiliarySystems(game: SoloGameState, world: SoloWorld, bus: EventB
   context.entities=game.tanks;
   const screens=game.auxiliarySmokeScreens;
   if(screens)for(let i=screens.length-1;i>=0;i--)if(game.timeS-screens[i]!.born>18)screens.splice(i,1);
-  for(const entity of game.tanks){
+  // a held battle's bots (devBattleHold.ts) fire no roof gun and ask for nothing
+  const held=battleHeld(game);
+  for(const entity of game.tanks){if(held&&entity!==game.player)continue;
     const bits=entity.input.auxiliaryBits||0; entity.input.auxiliaryBits=0;
     if(bits&2048)game.matchModeController?.requestSupply(entity.id,'ammo',game.timeS);
     if(bits&4096)game.matchModeController?.requestSupply(entity.id,'heal',game.timeS);
@@ -2851,6 +2869,8 @@ function stepFireDamage(game: SoloGameState, bus: EventBus): void {
 }
 
 function stepMatchMode(game: SoloGameState, bus: EventBus): MatchModeResult | null {
+  // a held step's losses to the player are undone before the mode and the verdict read them (devBattleHold.ts)
+  if (battleHeld(game)) undoHeldDamage(game);
   const outcome = game.matchModeController?.step(SIM_DT, game.timeS) || null;
   // a watched battle with no driver reads the mode from the battle's side (watchSeat.ts watchViewer)
   const perspective = game.player ?? (game.watch ? watchViewer(game) : null);
@@ -2949,7 +2969,8 @@ function settleBattleResult(
 ): void {
   // the verdict's side is the player's, or a watched battle's human seat's whoever drives it (watchSeat.ts)
   const seat = verdictSeat(game);
-  if (game.result !== null || !seat) return;
+  // a held battle reaches no verdict until its release; the mode's outcome repeats until then (devBattleHold.ts)
+  if (game.result !== null || !seat || battleHeld(game)) return;
   let enemiesLeft = 0;
   let alliesLeft = 0;
   for (const entity of game.tanks) {

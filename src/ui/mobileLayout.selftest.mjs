@@ -286,7 +286,9 @@ assert.match(hud, /const plateX = bar\.sx \+ bar\.seatDx - bar\.layoutW \* 0\.5;
   'world tank labels must remain centered on their literal projected tank anchors, but for a slide off a blocked seat');
 // (a slide off a blocked seat, markers r20: each frame starts on the seat, the tank's x stays inside the bar, and the
 // pointer is moved back over the tank)
-assert.match(hud, /bar\.seatDx = 0; bar\.seatDy = 0;\s*if \(!hpBarClear\(x0, y0, x1, y1, count\)\)/,
+// (owner 2026-11-04: plates overlap; the seat's test reads the screen, the plate, the ring and the furniture, never the other
+// bars: src/ui/hullBarMarkers.selftest.mjs drives it)
+assert.match(hud, /bar\.seatDx = 0; bar\.seatDy = 0;\s*if \(!hpBarClear\(x0, y0, x1, y1\)\)/,
   'a hull bar must try its own seat over its tank before any slide');
 assert.match(hud, /const lo = Math\.max\(0, bar\.sx - width \+ TARGET_ANCHOR_INSET\) - x0, hi = Math\.min\(w - width, bar\.sx - TARGET_ANCHOR_INSET\) - x0;/,
   'a hull bar slide must keep its tank inside the bar');

@@ -2538,8 +2538,8 @@
       "width": 512,
       "height": 256,
       "mime": "image/webp",
-      "bytes": 12394,
-      "sha256": "e09f3198389e4b0949129985437e4c8ac1e9ffa83f9e3ad14f8b6b73ce27a9e1"
+      "bytes": 12382,
+      "sha256": "2a886812675dae4aa3d08330be1b65ef2b4bbd471f1212a05f1c54e839f6dc41"
     },
     "topSilhouette": {
       "file": "pantsir_s1_top_silhouette.png",
@@ -2562,32 +2562,32 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 32634,
-      "sha256": "6456daa4aac00ce76b0a61a886c35be6c509ed425a4aa2b127f5b40d48d540d3"
+      "bytes": 32654,
+      "sha256": "49e7eb7ef8c5d652d9a44ecdd9c7c899533d1acec2c53292d3de672f46f620b5"
     },
     "modulesSide": {
       "file": "pantsir_s1_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 35722,
-      "sha256": "a92ad37d5e8bd38cd30f23b410a41a7e9a42797156664ffb6fa324a7958a9b32"
+      "bytes": 35644,
+      "sha256": "52a52ac27926ab0db1ecac5b1a2924453b3f006f67200ac2128ee31da4fa034c"
     },
     "crewSide": {
       "file": "pantsir_s1_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 29850,
-      "sha256": "eb16e04ea566e079c7c2a0b4a4b2919be875e563e716ecfce7779dbbb7f0b72e"
+      "bytes": 29802,
+      "sha256": "3fc1cb035fc4a7b7f2b259a29442fa13c3214fce21f4d57d7ea9b860d7753b75"
     },
     "markings": {
       "file": "pantsir_s1_markings.png",
       "width": 256,
       "height": 128,
       "mime": "image/png",
-      "bytes": 34720,
-      "sha256": "18fedb860331a50d4490a837733a412e179145a7874d63d1da3faa747854a65d"
+      "bytes": 32683,
+      "sha256": "4a472157880398fcd6c9a481936c1165f466ed4bf4bedd450feb40a803ae6f27"
     },
     "technicalLabels": {
       "file": "pantsir_s1_technical.json",

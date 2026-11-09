@@ -53,6 +53,39 @@ export function onsets(samples) {
   return found;
 }
 
+/** Assets played once per round fired/struck: one report each, never a burst. */
+export const SINGLE_SHOT = /^(mg_|ac_\d+_(close|own|interior|far)|ac_far_|bullet_|ricochet_light|radio_key_in|blast_punch_)/;
+/**
+ * A distant single shot (gun-reports-269): its rolling echo is the sound, so only a report about as loud as the first
+ * (within 3 dB) is a second shot; cutting at the echo had left 80–190 ms of a 2 s thump.
+ */
+export const SINGLE_FAR = /^(ac_\d+_far|ac_far_\w+|mg_far|mg_(rifle|heavy)_far)$/;
+
+/**
+ * Cut a single-shot take before its second report (some generations answer a
+ * "single shot" prompt with a short burst). Leaves the first report and its
+ * own tail; the master's fade-out closes the cut. Only a report within 8 dB of
+ * the first counts: a much quieter onset is the shot's own echo and stays.
+ */
+export function firstShotOnly(channels, sr, entry) {
+  if (!SINGLE_SHOT.test(entry.id)) return channels;
+  const mono = channels.length > 1 ? channels[0].map((v, i) => 0.5 * (v + channels[1][i])) : channels[0];
+  const on = onsets(mono);
+  if (on.length < 2) return channels;
+  const level = (t) => {
+    let peak = 0;
+    const from = Math.round(t * sr);
+    for (let i = from; i < Math.min(mono.length, from + Math.round(0.02 * sr)); i++) peak = Math.max(peak, Math.abs(mono[i]));
+    return peak;
+  };
+  const first = level(on[0]);
+  const ratio = SINGLE_FAR.test(entry.id) ? 0.7 : 0.4;
+  const second = on.slice(1).find((t) => t - on[0] <= 1.2 && level(t) >= first * ratio);
+  if (second == null) return channels;
+  const cut = Math.max(Math.round((on[0] + 0.06) * sr), Math.round((second - 0.008) * sr));
+  return channels.map((ch) => ch.slice(0, cut));
+}
+
 /** Seconds from the peak until the envelope stays below −30 dB re peak. */
 export function decayS(samples) {
   const { env, win } = envelope(samples, 0.01);
