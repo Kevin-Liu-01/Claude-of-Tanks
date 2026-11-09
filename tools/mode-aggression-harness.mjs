@@ -51,6 +51,7 @@
 import { spawn } from 'node:child_process';
 import { mkdirSync, readdirSync, readFileSync, writeFileSync, existsSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
+import { createPlant, createStand } from './mode-aggression-stand.mjs';
 
 const SELF = fileURLToPath(import.meta.url);
 const ROOT = new URL('../', import.meta.url);
@@ -645,7 +646,7 @@ const pinnedRoster = pinFile ? (() => {
   }
   return deal;
 })() : null;
-const plant = { id: null, holding: false, leaving: false, from: null, still0: 0, slow: 0, done: false, tries: 0 };
+const plant = createPlant({ standS: PLANT_STAND_S, fromS: PLANT_FROM_S, minS: STAND_MIN_S });
 // --teamSurvival (Endless Horde only): every alpha seat reads as human while the mode controller steps, so the overrun
 // comes when the whole team is down instead of when the harness-driven player seat dies (a measurement shim, as the
 // authority engine's h1 shim; it would change Frontline's regroup gate, so it is refused there)
@@ -845,7 +846,7 @@ const recOf = (e) => {
     r = { id: e.id, specId: e.specId, nation: nationKey(e.spec?.nation), team0: normTeam(e.team), human: adapter.isHuman(e), hull0: e.combat?.maxHp ?? null,
       shots: 0, hits: 0, damagingHits: 0, damageDealt: 0, damageTaken: 0, kills: 0, deaths: 0, aliveS: 0,
       move: { advance: 0, hold: 0, retreat: 0, lateral: 0 }, ai: {}, engage: { samples: 0, still: 0, settled: 0, settledStill: 0 }, liveT: null, spawnT: null,
-      slowFromT: null, pendingStill: 0, pendingSettledStill: 0,
+      stand: createStand({ minS: STAND_MIN_S, windowS: SAMPLE_TICKS * SIM_DT }),
       flags: { fallingBack: 0, kiting: 0, scooting: 0, relocating: 0, escaping: 0, settling: 0, reacting: 0, searching: 0, pressing: 0, passivePress: 0, missionReleased: 0, ramming: 0, samples: 0 },
       engageDistSum: 0, engageDistN: 0,
       // guards: slow-while-free time (stuck), moving samples and the ones with a friendly inside 10 m (bunching)
@@ -1116,15 +1117,11 @@ function sample(t) {
         const settled = t - r.spawnT >= SPAWN_SETTLE_S;
         r.engage.samples++;
         if (settled) r.engage.settled++;
-        if (speed < MOVE_EPS_MPS) {
-          if (plant.from != null && !plant.done && e.id === plant.id) plant.slow++;
-          if (STAND_MIN_S === 0 || (r.slowFromT != null && t - r.slowFromT > STAND_MIN_S)) {
-            r.engage.still++;
-            if (settled) r.engage.settledStill++;
-          } else if (r.slowFromT != null) {
-            r.pendingStill++;
-            if (settled) r.pendingSettledStill++;
-          }
+        const slowSample = speed < MOVE_EPS_MPS;
+        if (e.id === plant.id) plant.noteSample({ t, slowSample });
+        if (r.stand.sample(t, { settled, slowSample }) === 'still') {
+          r.engage.still++;
+          if (settled) r.engage.settledStill++;
         }
       }
       if (!r.human) {
@@ -1385,20 +1382,15 @@ function trackStands(t) {
   for (const e of ents) {
     const r = recs.get(e.id);
     if (!r) continue;
-    const slow = alive(e) && Math.abs(e.state.speed ?? 0) < MOVE_EPS_MPS;
-    if (slow && r.slowFromT == null) r.slowFromT = t;
-    else if (!slow && r.slowFromT != null) { r.slowFromT = null; r.pendingStill = 0; r.pendingSettledStill = 0; }
-    if (r.slowFromT != null && t - r.slowFromT > STAND_MIN_S && (r.pendingStill || r.pendingSettledStill)) {
-      r.engage.still += r.pendingStill; r.engage.settledStill += r.pendingSettledStill;
-      r.pendingStill = 0; r.pendingSettledStill = 0;
-    }
+    const commit = r.stand.step(alive(e) && Math.abs(e.state.speed ?? 0) < MOVE_EPS_MPS, t);
+    if (commit) { r.engage.still += commit.still; r.engage.settledStill += commit.settledStill; }
   }
 }
 /** The planted stand (--plantStand): pick the hull, hold it until it has stood the planted time, report the stand. */
 function plantStep(t) {
-  if (!PLANT_STAND_S || plant.done) return;
+  if (!PLANT_STAND_S || plant.ended) return;
   if (plant.id == null) {
-    if (t < PLANT_FROM_S || plant.tries >= 3) return;
+    if (!plant.wants(t)) return;
     let e = null, far = -1;
     for (const x of ents) {
       if (!x.aiCtl || adapter.isHuman(x) || normTeam(x.team) !== 'bravo' || !alive(x) || x.aiCtl.state !== 'engage' || !(Math.abs(x.state.speed ?? 0) > 2)) continue;
@@ -1411,36 +1403,32 @@ function plantStep(t) {
     ctl.update = (dt, timeS) => {
       update.call(ctl, dt, timeS);
       if (plant.id !== id) return;
-      if (plant.holding) { e.input.throttle = 0; e.input.steer = 0; e.input.brake = true; }
-      else if (plant.leaving) { e.input.throttle = 1; e.input.steer = 0; e.input.brake = false; }
+      const drive = plant.drive;
+      if (drive === 'hold') { e.input.throttle = 0; e.input.steer = 0; e.input.brake = true; }
+      else if (drive === 'go') { e.input.throttle = 1; e.input.steer = 0; e.input.brake = false; }
     };
-    plant.id = id; plant.holding = true; plant.tries++;
+    plant.pick(id, t);
     return;
   }
   const e = ents.find((x) => x.id === plant.id), r = recs.get(plant.id);
-  const ended = plant.from == null ? !alive(e) : r.slowFromT == null;
-  if (plant.from == null && r.slowFromT != null) { plant.from = r.slowFromT; plant.still0 = r.engage.still; }
-  if (plant.from != null && plant.holding && t - plant.from >= PLANT_STAND_S) { plant.holding = false; plant.leaving = true; }
-  if (!ended) return;
-  if (!alive(e) && plant.tries < 3) {
-    console.error(`PLANT ${plant.id} destroyed ${plant.from == null ? 'before its stand' : `${(t - plant.from).toFixed(3)} s into its stand`}; planting the next hull`);
-    Object.assign(plant, { id: null, holding: false, leaving: false, from: null, still0: 0, slow: 0 });
-    return;
-  }
-  plant.done = true; plant.leaving = false;
-  console.error(`PLANT ${plant.id} stood ${plant.from == null ? '0.000' : (t - plant.from).toFixed(3)} s (held ${PLANT_STAND_S} s, T_REV ${STAND_MIN_S} s), `
-    + `${alive(e) ? 'under way' : 'destroyed'}: slow engaged samples ${plant.slow}, counted ${r.engage.still - plant.still0}`);
+  const report = plant.tick({ t, alive: alive(e), standFromT: r.stand.fromT, still: r.engage.still });
+  if (report) console.error(report.line);
 }
 for (; tick < ticks; tick++) {
   adapter.step();
   const t = adapter.timeS();
   trackStands(t);
   plantStep(t);
-  if (plant.done) break;
+  if (plant.ended) break;
   for (const ev of adapter.drain()) onEvent(ev, t);
   if (horde.pendingArrivals.length) settleArrivals();
   if (front.pendingPlacements.length) settlePlacements();
-  if (tick % SAMPLE_TICKS === 0) sample(t);
+  if (tick % SAMPLE_TICKS === 0) {
+    sample(t);
+    const report = PLANT_STAND_S ? plant.afterSample(t) : null;
+    if (report) console.error(report.line);
+    if (plant.ended) break;
+  }
   if (traceIds.size && tick % traceEvery === 0 && t >= traceFrom && t <= traceTo) traceStep(t);
   const res = adapter.result();
   if (res) { result = res; break; }
