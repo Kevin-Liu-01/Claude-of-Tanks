@@ -698,7 +698,7 @@
       }
     ]
   },
-  "geometryHash": "1f0405de",
+  "geometryHash": "45bb5c2a",
   "metadataHash": "1a4511e5",
   "presentationAnchor": {
     "xM": 0.0043,
@@ -772,16 +772,16 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 14460,
-      "sha256": "a6fb67cae1cb6dfa17b804511bfd0073c3b7c2661fa3f6d6ccd9438122b95708"
+      "bytes": 14446,
+      "sha256": "a20ccf9ebd289bbd21de00b5eabacca1e06a5f372bf18fd9db2df5a1aa8a9649"
     },
     "side": {
       "file": "k30_biho_side.webp",
       "width": 512,
       "height": 256,
       "mime": "image/webp",
-      "bytes": 11508,
-      "sha256": "4fc02f42530c14e490f2e3ee3f636b49fb2786d3d3095486949aa2970754649f"
+      "bytes": 11526,
+      "sha256": "2a8febf142d02aaf9ccd978d2a62e8b5b6a2af587abcac1a6d584899ee57305c"
     },
     "topSilhouette": {
       "file": "k30_biho_top_silhouette.png",
@@ -804,32 +804,32 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 27284,
-      "sha256": "8230e83306ce7d14051a1df75348bf63809983207eda991337f4059b30bcfd7f"
+      "bytes": 27248,
+      "sha256": "6ebfe82dcafb4933097bee09381f69585c1df5abace7b0f0e905dead77cb863c"
     },
     "modulesSide": {
       "file": "k30_biho_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 28916,
-      "sha256": "33fbf3ffe3f584c75ef05c5ac02f453b2d5127ffcbd27149c820babf4bec570d"
+      "bytes": 28942,
+      "sha256": "2c53878b4a21b30423ac289c6a4dcd0f1a10fa3fb529e82c1b47aeda47fc1e7c"
     },
     "crewSide": {
       "file": "k30_biho_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 26348,
-      "sha256": "ceec7514a07abd871ce2354f58573f364a3b21fa2de38a679dfae376fd4b4f34"
+      "bytes": 26332,
+      "sha256": "378c0b9b57b0b6d1488c9490779d01591065d775ef0ad831a03a689c1a6768a0"
     },
     "markings": {
       "file": "k30_biho_markings.png",
       "width": 256,
       "height": 128,
       "mime": "image/png",
-      "bytes": 36598,
-      "sha256": "ba1a50e01281b8258366cb130a1dd0530c58fdf85525b7188f10b690c9e5fefb"
+      "bytes": 33652,
+      "sha256": "0f4fdcca092d3e78eb8bfdd9004ce723b65424ff2294ee4f4cb6b6bdc6e4b485"
     },
     "technicalLabels": {
       "file": "k30_biho_technical.json",
