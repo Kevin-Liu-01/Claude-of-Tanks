@@ -324,12 +324,22 @@ export const BUNDLE_BUDGETS = Object.freeze({
   //   (e71b3e5ee9), 257,562 B (99e46f93c9) and 257,710 B (e09e561ed2): a 177 B spread, past BUNDLE_SLACK's 96 B on the
   //   entry (264c's "+170 B" was this). The game, cn and entry rows take the largest build's (e09e561ed2: game
   //   1,204,303 B, cn 1,249,122 B, entry 257,710 B), as 264c took the larger.
+  // 2026-11-09 (the implicit state machine fixes' round eight, item Y0b; Kevin: "id like you to resolve all of them"):
+  //   round seven's integration 3e4bf3c4db merged into round eight's H0 d8a6b5e623, each of which merged 269 with its own
+  //   re-pin (the two entries above). The merged build (item/sm-fix8-y0b 8ef46d8770; Node 24.22.1, vite 8.3.5, rolldown
+  //   1.2.15, the same node_modules) reads game 1,204,144 B brotli, entry 257,551 B, cn 1,248,963 B, Gallery 759,827 B,
+  //   home 28,756 B, docs 37,096 B, 404 18,677 B; requests 127 / 128 / 73 / 8 / 12 / 7 (pad 14), unchanged. No row
+  //   missed the larger of the two parents' pins: the merge adds no code of its own over them (round six's main.ts
+  //   releaseLock is inside round seven's figures; the audio engine is a lazy chunk). Game, cn and the entry keep round
+  //   seven's largest-of-three-builds pins (1,204,303 / 1,249,122 / 257,710): this build sits 159 B under each, inside
+  //   the entry's commit-hash spread (201 B over five commits) that BUNDLE_SLACK's 96 B does not cover. Home, docs and 404
+  //   re-pinned at this build (stable at 28,756 / 37,096 / 18,677 over every build of either parent since 269).
   game: { brotliBytes: 1204303, requests: 127, entryBrotliBytes: 257710 },
   cn: { brotliBytes: 1249122, requests: 128, entryBrotliBytes: 257710 },
   gallery: { brotliBytes: 759827, requests: 73 },
-  home: { brotliBytes: 28778, requests: 8 },
-  docs: { brotliBytes: 37139, requests: 12 },
-  notFound: { brotliBytes: 18679, requests: 7 },
+  home: { brotliBytes: 28756, requests: 8 },
+  docs: { brotliBytes: 37096, requests: 12 },
+  notFound: { brotliBytes: 18677, requests: 7 },
 });
 /** Byte noise between two builds of the same code (chunk hashes in import specifiers); requests have none. */
 const BUNDLE_SLACK = { brotliBytes: 160, entryBrotliBytes: 96, requests: 0 };
