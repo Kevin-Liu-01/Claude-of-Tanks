@@ -623,6 +623,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/vehicles/guidedLauncherTubes.selftest.mjs',
     'src/vehicles/launcherOrigins.selftest.mjs',
     'src/vehicles/ifvReplicas.selftest.mjs',
+    // 2026-11-08 round 8 s5-04: the Redback's gun is the Puma S1's registration-time gun, whenever its pack evaluates
+    'src/vehicles/redbackRegistrationGun.selftest.mjs',
     'src/vehicles/europePhotoIfvs.selftest.mjs',
   'src/vehicles/amx10p.selftest.mjs',
     'src/vehicles/staggeredTrackGround.selftest.mjs',
