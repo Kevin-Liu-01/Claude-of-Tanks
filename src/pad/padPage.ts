@@ -897,6 +897,8 @@ function feelCue(cue: PadCue, strength?: number): void {
 }
 
 function paintStatus(next: PadStatus): void {
+  // the loaded buzz hears every status first: no paint below and no early return can keep one from it
+  readyBuzz.status(next);
   const buttons = ctl.querySelectorAll<HTMLButtonElement>('.pad-shell');
   buttons.forEach((button, slot) => {
     const shell = next.shells[slot];
@@ -942,7 +944,6 @@ function paintStatus(next: PadStatus): void {
   needle.style.transform = `rotate(${Math.round(-1200 + share * 2400) / 10}deg)`;
   if (kmhReadout.textContent !== String(kmh)) kmhReadout.textContent = String(kmh);
   ctl.dataset.state = padGunState(next);
-  readyBuzz.status(next);
   message.textContent = !next.battle ? t('pad.waitingBattle') : next.paused ? t('pad.paused') : !next.alive ? t('pad.destroyed')
     : settings.tilt && tiltSeen && tiltAngle === null ? t('pad.flat') : '';
   const key = `${next.reloadS > 0 ? Math.round(next.reloadTotalS * 10) : 0}|${Math.round((next.reloadTotalS - next.reloadS) * 2)}`;

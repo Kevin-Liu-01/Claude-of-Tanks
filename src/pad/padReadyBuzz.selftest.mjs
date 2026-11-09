@@ -235,7 +235,8 @@ assert.deepEqual(readyBuzz.PAD_READY_STATES, ['idle', 'loading', 'paused']);
 
 // ---- the phone page's wiring, pinned in its source (fix-up r1 of round 8 Y5 s3-06) ------------------------------------
 // The module above is the owner; these pins hold the page to it: deleting the link edge in onState, moving it after the
-// ending's return, dropping the status call, or putting back H0's page-global seat (written through onSeat) each fails.
+// ending's return, dropping the status call or putting anything before it (an early return at any depth), or putting
+// back H0's page-global seat (written through onSeat) each fails.
 {
   const page = readFileSync(new URL('./padPage.ts', import.meta.url), 'utf8');
   /** A block's text from the `{` after `head` to its matching `}` (the page's braces in strings and templates pair up). */
@@ -257,12 +258,11 @@ assert.deepEqual(readyBuzz.PAD_READY_STATES, ['idle', 'loading', 'paused']);
     return lines.filter((line) => line.length - line.trimStart().length === indent).map((line) => line.trim());
   };
 
-  // every status reaches the buzz: a statement of paintStatus's own, before any of its own returns
-  const paint = topLines(block('function paintStatus(next: PadStatus): void {'));
-  const statusAt = paint.indexOf('readyBuzz.status(next);');
-  assert.ok(statusAt >= 0, 'paintStatus hands every status to the buzz (readyBuzz.status(next), unconditionally)');
-  const firstReturn = paint.findIndex((line) => /\breturn\b/.test(line));
-  assert.ok(firstReturn < 0 || statusAt < firstReturn, 'paintStatus hands the status over before any early return');
+  // every status reaches the buzz: readyBuzz.status(next) is paintStatus's first statement (fix-up r2), so no return at
+  // any depth (a branch's, such as a paused status's, or a callback's) and no paint that throws can come before it
+  const paint = topLines(block('function paintStatus(next: PadStatus): void {')).filter((line) => !/^(?:\/\/|\/\*|\*)/.test(line));
+  assert.equal(paint[0], 'readyBuzz.status(next);',
+    'paintStatus hands every status to the buzz first (readyBuzz.status(next) is its first statement, before any return at any depth)');
 
   // every link state reaches the buzz, the ending's included: a statement of onState's own, before the ending returns
   const onState = block('onState(state) {');
