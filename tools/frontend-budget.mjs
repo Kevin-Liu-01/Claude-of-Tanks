@@ -306,9 +306,13 @@ export const BUNDLE_BUDGETS = Object.freeze({
   //   +212, programWarm +178, quality +131, i18n +120 (with publicPages -11 and notFound +78, the whole of home's, docs'
   //   and 404's growth), medalArt +94, rosterState +81, the rest under 70 B each; the Gallery's gallery.js +223. It is the
   //   branch's share named in round five's re-pin above (rounds one to six; round six's own +4 B: main.ts's result
-  //   presentation releasing through input.releaseLock), now over 269's code.
-  game: { brotliBytes: 1204126, requests: 127, entryBrotliBytes: 257533 },
-  cn: { brotliBytes: 1248945, requests: 128, entryBrotliBytes: 257533 },
+  //   presentation releasing through input.releaseLock), now over 269's code. The stamp reaches these rows one way: the
+  //   entry names the stamped chunks (browserComposition, browserHostPort, matchHostWorker) by their hashes, which move
+  //   with every commit (32 bytes of main.js, raw equal): +29 B brotli on the entry from e71b3e5ee9's build to
+  //   99e46f93c9's, the same code. The game, cn and entry rows take the larger build's (99e46f93c9: game 1,204,155 B,
+  //   cn 1,248,974 B, entry 257,562 B), as 264c did; BUNDLE_SLACK's 96 B on the entry is that noise's room.
+  game: { brotliBytes: 1204155, requests: 127, entryBrotliBytes: 257562 },
+  cn: { brotliBytes: 1248974, requests: 128, entryBrotliBytes: 257562 },
   gallery: { brotliBytes: 759827, requests: 73 },
   home: { brotliBytes: 28617, requests: 8 },
   docs: { brotliBytes: 37096, requests: 12 },
