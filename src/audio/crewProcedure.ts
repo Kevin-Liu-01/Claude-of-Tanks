@@ -20,21 +20,24 @@
  * the audio clock; nothing here draws from the battle's random streams.
  *
  * Two declared scopes, each with one owner (round 8 Y3, s1-01 and s1-03). The battle's calls (CrewBattle) start afresh
- * through `startBattle`, from the engine's one per-battle reset (audioEngine.ts resetBattlePlay: a battle edge, a network
- * restart). Our tank's life's calls (CrewLife) start afresh through `startLife`, at each new life the engine notices
- * (audioEngine.ts startOwnLife: our hull's respawn event, or with no event the frame that shows it standing again after
- * its death, a migrated host's adoptLiveCombat; and each seat the player takes in the battle, a watched battle's
- * takeWatchSeat, which revives nothing and announces nothing). While our tank is dead, or driven by its brain rather than
- * the player (a watched battle's seat), the crew is silent (`live()` reads both), so nothing the last life armed (a cease
- * fire, a drone's recovery, a fire mission), nor anything its rounds arm after our death or our leaving (a posthumous
- * kill's cease fire, a miss's re-engage), is called in the next. Each pause edge (`cancelArmed`: the menu opening and
- * closing) cancels every call armed so far, a recalled drone's recovery included; the engine runs no crew frame while
- * paused and its radio takes no line (the crew is silent behind the pause menu, a network battle's included, as the
- * engine's quiet-radio rule always was). Where the game holds a fact the crew reads it rather than keeping its own copy:
- * the gun is loaded while our reload channel is ready (`combat.reload.t`), an enemy is named only while the player sees
- * it (the engine's frame index, src/game/playerVisibility.ts), an escort has been extracted when its mode life is
- * 'rescued' (sim/matchModes.ts setLife), our drone is flying home when the authority has accepted its recall (the flight
- * view's `returnS`, sim/aerialCombat.ts; `recallS` is only the recall's gate at launch).
+ * through `startBattle`, from the engine's one per-battle reset (audioEngine.ts resetBattlePlay: a battle edge, a
+ * network restart). Our tank's life's calls (CrewLife) start afresh through `startLife`, at each new life the engine
+ * notices (audioEngine.ts startOwnLife: our hull's respawn event, or with no event the frame that shows it standing
+ * again after its death, a migrated host's adoptLiveCombat; and each seat the player takes in the battle, a watched
+ * battle's takeWatchSeat, which revives nothing and announces nothing). While our tank is dead, or driven by its brain
+ * rather than the player (a watched battle's seat), the crew makes none of its per-life or sighting calls (`live()`
+ * reads both), so nothing the last life armed (a cease fire, a drone's recovery, a fire mission), nor anything its
+ * rounds arm after our death or our leaving (a posthumous kill's cease fire, a miss's re-engage), is called in the
+ * next. The battle's mode calls (`onMode`, gated on `inBattle()` alone) are the side's news, not our life's: a seat its
+ * brain drives still hears them, as it hears the engine's own mode calls (with our tank dead the engine's `say` refuses
+ * them, its result calls apart). Each pause edge (`cancelArmed`: the menu opening and closing) cancels every call armed
+ * so far, a recalled drone's recovery included; the engine runs no crew frame while paused and its radio takes no line
+ * (the crew is silent behind the pause menu, a network battle's included, as the engine's quiet-radio rule always was).
+ * Where the game holds a fact the crew reads it rather than keeping its own copy: the gun is loaded while our reload
+ * channel is ready (`combat.reload.t`), an enemy is named only while the player sees it (the engine's frame index,
+ * src/game/playerVisibility.ts), an escort has been extracted when its mode life is 'rescued' (sim/matchModes.ts
+ * setLife), our drone is flying home when the authority has accepted its recall (the flight view's `returnS`,
+ * sim/aerialCombat.ts; `recallS` is only the recall's gate at launch).
  */
 
 import { AERIAL_RULES, GUN_GAME_WEAPONS } from '../sim/matchRuleset.ts';
@@ -78,9 +81,10 @@ export interface CrewProcedureHost {
   /** The audio clock (s). */
   now(): number;
   /** In a battle that has rolled out, not ended and not paused (the engine's battle mode, battleMode.ts), our tank alive
-   *  and the player driving it (a watched battle's seat its brain drives has no crew of ours). */
+   *  and the player driving it (a watched battle's seat its brain drives makes no per-life or sighting call). */
   live(): boolean;
-  /** In a battle's countdown (rolled out or not), not ended. */
+  /** In a battle's countdown (rolled out or not), not ended: the gate of the battle's own calls (the countdown report,
+   *  the mode calls), which a seat its brain drives still makes. */
   inBattle(): boolean;
   playerId(): string | null;
   player(): CrewPlayer | null;

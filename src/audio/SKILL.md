@@ -67,12 +67,15 @@ revive of our hull (`startOwnLife`: the respawn event, or with none the frame
 that shows our hull standing again after its death) and at each seat the player
 takes in a watched battle (the frame's `isPlayer` on another hull, or back on
 one its brain drove: no revive, no event), so nothing a dead crew's rounds arm
-is said in the next life; a seat its brain drives is nobody's crew (`live()`
-reads the frame's `isPlayer`). The pause menu silences the net (the line on
-the air and the queue go as it opens, each edge cancels the crew's armed calls,
-a recalled drone's recovery included, `say()` refuses 'paused', no radio or
-crew frame runs behind the menu, a network battle's included). Our drone is
-read as the authority flies it: its feed live while `active`, a recall
+is said in the next life; a seat taken keeps its hull's radio set and fire
+alarm as the frame shows them. A seat its brain drives makes none of the crew's
+per-life or sighting calls (`live()` reads the frame's `isPlayer`); the
+battle's mode calls (`onMode`, gated on `inBattle()`) are the side's news and
+still play there, as the engine's own do. The pause menu silences the net (the
+line on the air and the queue go as it opens, each edge cancels the crew's
+armed calls, a recalled drone's recovery included, `say()` refuses 'paused',
+no radio or crew frame runs behind the menu, a network battle's included). Our
+drone is read as the authority flies it: its feed live while `active`, a recall
 accepted as `returnS` (the flight home, "recovered" once it is parked), never
 `recallS` (the recall's gate at launch). It names only what the
 player sees: `src/game/playerVisibility.ts` is the one rule (the network's

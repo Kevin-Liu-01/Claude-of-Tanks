@@ -638,10 +638,15 @@ the calls the crew had armed (a kill heard behind it arms no cease fire for
 the resume; a recalled drone that docks behind it is not called recovered,
 nor an enemy's smoke popped behind it called, at the resume), and the radio
 takes no line while it is open
-(`crewProcedure.selftest.mjs`). The crew is our tank's only while the player
-drives it: a watched battle's seat its brain drives calls nothing, and each
-seat the watcher takes starts a new life, as a respawn does. The drone's calls
-follow the authority's flight view: "Drone recovered." when a recalled
+(`crewProcedure.selftest.mjs`). The crew's own calls are our tank's only while
+the player drives it: a watched battle's seat its brain drives makes none of
+the per-life or sighting calls (the fire command, cease fire, re-engage, the
+drone, APS, crushes, the Juggernaut sighted), while the mode's calls in the
+table above are the side's news and still play there, as the engine's own
+mode calls do. Each seat the watcher takes starts a new life, as a respawn
+does, with that hull's own radio set (a set broken while its brain drove it
+sounds broken) and its own fire alarm (the last seat's stops). The drone's
+calls follow the authority's flight view: "Drone recovered." when a recalled
 airframe is parked on its dock (`returnS` run out), never at the loss of one
 (`recallS` is only the recall's gate at launch).
 

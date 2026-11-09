@@ -233,6 +233,8 @@ interface AudioEntity {
     reload?: { t?: number };
     /** The roof gun and the lights (sim/auxiliarySystems): the same object solo and in a network battle. */
     auxiliary?: { gunOn?: boolean; lights?: number };
+    /** The hull's fire (sim/damage.ts combat.fire; a network actor's mirrors the row's BURNING flag). */
+    fire?: { burning?: boolean };
   };
   modeActive?: boolean;
   /** A network battle's actor: whether the authority sent it this frame (the player's visibility rule reads it). */
@@ -861,7 +863,10 @@ export function createAudio({
     // the battle mode's own facts (2026-11-02 audit F11: battleMode.ts), never flags of the crew's or the engine's; the
     // crew's battle and life start on the engine's edges (resetBattlePlay; startOwnLife at each revive of our hull and
     // each seat the player takes). Our tank is the one the frame shows the player driving: a watched battle's seat its
-    // brain drives (openWatchSeats, leaveWatchSeat) is nobody's crew, so it calls nothing (round 8 Y3 review r2)
+    // brain drives (openWatchSeats, leaveWatchSeat) makes none of the crew's per-life or sighting calls (the lay and fire
+    // commands, cease fire, re-engage, the drone, APS, crushes, the Juggernaut sighted: round 8 Y3 review r2); the
+    // battle's mode calls (onMode) are the side's news and gate on inBattle, so they still play, as do the engine's own
+    // (review r3)
     live: () => battleMode.phase === 'battle' && battleMode.rolledOut && !battleMode.over && !battleMode.paused
       && playerId != null && tanks.get(playerId)?.alive !== false && tanks.get(playerId)?.isPlayer === true,
     inBattle: () => battleMode.phase === 'battle' && !battleMode.over,
@@ -1807,18 +1812,22 @@ export function createAudio({
     }
   }
 
+  /** A module state's severity: 0 whole (or unknown), 1 damaged, 2 destroyed; a radio's is its set's damage level. */
+  function moduleRank(state: string | undefined): 0 | 1 | 2 {
+    return state === 'red' ? 2 : state === 'yellow' ? 1 : 0;
+  }
+
   function onModuleState(event: ModuleStateEvent): void {
     const key = `${event.id}:${event.module}`;
     const prev = moduleStates.get(key) || 'ok';
     moduleStates.set(key, event.state);
     if (event.state === prev) return;
-    const rank = (s: string) => (s === 'red' ? 2 : s === 'yellow' ? 1 : 0);
-    const worse = rank(event.state) > rank(prev);
+    const worse = moduleRank(event.state) > moduleRank(prev);
     const info = tanks.get(event.id);
     if (worse && event.state === 'red' && (event.module === 'trackL' || event.module === 'trackR') && info) {
       play('track_break', at(info.pos));
     }
-    if (event.id === playerId && event.module === 'radio') radio?.setRadioDamage(rank(event.state) as 0 | 1 | 2);
+    if (event.id === playerId && event.module === 'radio') radio?.setRadioDamage(moduleRank(event.state));
     if (playerId == null || event.id !== playerId || battleMode.phase !== 'battle') return;
     if (event.source === 'hit') {
       if (worse && event.module === 'ammoRack') { play('alarm_ammo', { delayS: 0.01 }); caption('ammoRack'); }
@@ -2251,15 +2260,27 @@ export function createAudio({
    * no event the frame that shows it standing again after its death (indexTanks; sim/matchModes.ts adoptLiveCombat, a
    * migrated host's revive, emits no mode_respawn), and each seat the player takes in the battle (indexTanks: a watched
    * battle's takeWatchSeat moves isPlayer to another hull, or back to one its brain drove meanwhile, with no revive and no
-   * event). The life's one-shot calls (low hull, low ammunition) arm again, the heartbeat and the radio damage go with the
-   * old life, and the crew's life starts afresh: nothing the last life armed, or its rounds armed after our death (a
-   * posthumous kill's cease fire), is called in this one.
+   * event). The life's one-shot calls (low hull, low ammunition) arm again, the heartbeat goes with the old life, and the
+   * crew's life starts afresh: nothing the last life armed, or its rounds armed after our death (a posthumous kill's cease
+   * fire), is called in this one. The radio set and the fire alarm are our hull's own (review r3): a revive (`seat`
+   * absent) starts them clean and silent, as it always did (a respawn mends the hull, and the death that came before it
+   * put its fire out); a seat taken (`seat`, the frame's hull) takes that hull's set and fire as the frame shows them (the
+   * sim's own module state and fire; a network actor mirrors both), so a set broken while its brain drove it sounds
+   * broken from the take, and the last seat's fire alarm stops (its fire's end and its death are another hull's events
+   * after the take) while a hull taken burning sounds its own.
    */
-  function startOwnLife(): void {
+  function startOwnLife(seat?: AudioEntity): void {
     lowHpCalled = false;
     ammoLowCalled = false;
     heartbeatBelow = 0;
-    radio?.setRadioDamage(0);
+    radio?.setRadioDamage(moduleRank(seat?.combat?.modules?.radio?.state));
+    const burning = !!seat?.combat?.fire?.burning && !seat.combat.destroyed;
+    if (burning !== playerBurning) {
+      playerBurning = burning;
+      fireAlarm?.stop();
+      fireAlarm = burning && mixer ? loopRig('alarm_fire_loop') : null;
+      if (fireAlarm) caption('fire');
+    }
     crew.startLife();
   }
 
@@ -2323,18 +2344,19 @@ export function createAudio({
       if (info.suited == null) info.suited = fieldSuitOf(list[i]);
       if (entity.isPlayer && playerId !== entity.id) {
         // a seat the player takes in the battle (a watched battle's takeWatchSeat moves isPlayer to a living bot: no
-        // revive, no event) is a new life, as a revive is; the battle's first seat starts with the battle (resetBattlePlay)
+        // revive, no event) is a new life, as a revive is, with the taken hull's own radio set and fire; the battle's first
+        // seat starts with the battle (resetBattlePlay)
         const taken = playerId != null;
         playerId = entity.id;
         playerTeam = info.team;
         applyCrewLanguage();
         preloadVehicle(info.identity);
         preloadOwnWeapons(info);
-        if (taken) startOwnLife();
+        if (taken) startOwnLife(entity);
       } else if (entity.isPlayer) {
         if (vehicleChanged) applyCrewLanguage();
         // our hull taken again after a look that showed its brain driving it (the watch's leave, then a take): a new life
-        if (!drivenBefore) startOwnLife();
+        if (!drivenBefore) startOwnLife(entity);
       }
     }
     if (listenerOwnerId == null && listenerKind === 'player-tank') listenerOwnerId = playerId;

@@ -12,7 +12,9 @@
 //     announces (a migrated host's adoptLiveCombat: the frame shows our hull standing again), whose new life also has its
 //     low-hull call armed again; and at each seat the player takes in a watched battle (review r2: game/watchSeat.ts
 //     takeWatchSeat moves the player to a living bot, no revive, no event), so the last seat's cease fire, posthumous kill
-//     or recalled drone is not called for the next, nor for the same hull taken back from its brain.
+//     or recalled drone is not called for the next, nor for the same hull taken back from its brain; and the seat taken
+//     keeps its own hull's radio set and fire alarm (review r3): a set broken while its brain drove it sounds broken from
+//     the take, a whole one clean, and the last seat's fire alarm stops while a hull taken burning sounds its own.
 //   - review r2, our drone as the authority flies it (sim/aerialCombat.ts stepAerial, the real fixed-step flight): a flight
 //     lost to its battery or its link gets its low-battery and weak-link calls and is never "recovered"; a recall is
 //     recovered when the airframe is parked on its dock, not when the recall is accepted.
@@ -23,8 +25,9 @@
 //   - s1-02, one visibility truth: the crew names only what the player sees (src/game/playerVisibility.ts, handed to
 //     audio.update as the listener's runtime does): no fire command on an enemy whose spot lingered out, one a far ally
 //     lit, one revived at its spawn, or a network hull the authority stopped sending; a hidden enemy near does not hold
-//     the cease fire; an enemy the player sees is still commanded; a watched battle's seat its brain drives is nobody's
-//     crew, so the drone camera laid on an enemy the watch reveals commands nothing (review r2).
+//     the cease fire; an enemy the player sees is still commanded; a watched battle's seat its brain drives makes none of
+//     the crew's per-life or sighting calls, so the drone camera laid on an enemy the watch reveals commands nothing
+//     (review r2), while the battle's mode calls, the side's news, still play there (review r3, a guard).
 // Each case runs on its own battle; a case that fails is reported with the rest, so one run shows every red.
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
@@ -37,7 +40,7 @@ import { matchRulesetFor } from '../sim/matchRuleset.ts';
 import { PLAYER_ACTION_BITS } from '../sim/playerActions.ts';
 import { stepShell } from '../sim/ballistics.ts';
 import { getSpec } from '../vehicles/specs.ts';
-import { installFetch, namedContext, terrain, tank, probeOf } from './engineHarness.test-support.mjs';
+import { installFetch, namedContext, terrain, tank, probeOf, sounding } from './engineHarness.test-support.mjs';
 
 globalThis.window = {};
 installFetch();
@@ -86,6 +89,26 @@ const spoken = (id, since) => probe.voiceLog.some((e) => e.t >= since && e.id ==
 const said = (since) => probe.sayLog.filter((e) => e.t >= since).map((e) => `${e.id}${e.ok ? '' : `(${e.why})`}`).join(', ');
 const foe = (id, z, x = 0) => tank(id, { team: 'enemy', x, z });
 const spot = (id) => bus.emit('tank:spotted', { id, team: 'player', spotterId: 'me', timeS: 0 });
+/** A hull's radio set damaged or destroyed, and a hull set on fire, as the sim does it: the hull's state, then the event
+ *  (state.ts emitHitStateEvents). */
+function radioHit(hull, state) {
+  hull.combat.modules.radio = { state };
+  bus.emit('module:state', { id: hull.id, module: 'radio', state, source: 'hit' });
+}
+function setFire(hull, burning) {
+  hull.combat.fire = { burning };
+  bus.emit('tank:fire', { id: hull.id, burning });
+}
+/** The crew radio's band top (crewRadio.ts: the chain's second low-pass, which feeds the presence peak): every line plays
+ *  through it, 3400 Hz on a whole set, 2700 on a damaged one, 2100 on a destroyed one. */
+const RADIO_BAND = Object.freeze({ ok: 3400, yellow: 2700, red: 2100 });
+function radioBand() {
+  const top = ctx.nodes.filter((n) => n.kind === 'filter' && n.type === 'lowpass' && n.outputs.some((o) => o.kind === 'filter' && o.type === 'peaking'));
+  assert.equal(top.length, 1, 'one crew radio chain');
+  return top[0].frequency.value;
+}
+/** Fire alarms sounding now. */
+const fireAlarms = () => sounding(ctx).filter((n) => n === 'alarm_fire_loop').length;
 
 /** A battle of `mode` with this field, rolled out and quiet. */
 async function battle(mode, roster, visible = EVERY_HULL) {
@@ -563,6 +586,69 @@ await check('s1-01 a seat taken back from its brain is a new life', async () => 
   assert.ok(!asked('cease_fire', killed), `no cease fire for a seat its brain drove, nor at the take back (asked ${said(killed)})`);
 });
 
+await check('review r3 a seat taken keeps its own hull\'s radio set, not the last seat\'s', async () => {
+  const seat = tank('me', { isPlayer: true }), w1 = tank('w1', { x: 40 }), w2 = tank('w2', { x: 80 }), w3 = tank('w3', { x: 120 });
+  const watch = await watchedTake('standard', [seat, w1, w2, w3, foe('f9', 4000)], seat, w1);
+  assert.equal(radioBand(), RADIO_BAND.ok, 'w1\'s whole set');
+  // the reading's control: our seat's set destroyed while the watcher drives it
+  radioHit(w1, 'red');
+  frames(0.5);
+  assert.equal(radioBand(), RADIO_BAND.red, 'w1\'s destroyed set narrows the band');
+  // w2's set is damaged while its brain drives it; the watcher leaves w1 and takes w2
+  radioHit(w2, 'yellow');
+  nextSeat(watch, w2);
+  frames(1);
+  assert.equal(radioBand(), RADIO_BAND.yellow, 'w2\'s set, damaged while its brain drove it, sounds damaged from the take');
+  // w2 left, its set destroyed under its brain, taken back
+  leaveWatchSeat(watch.game);
+  listener.kind = 'camera';
+  listener.ownerId = null;
+  frames(1);
+  radioHit(w2, 'red');
+  frames(1);
+  assert.ok(takeWatchSeat(watch.game, w2), 'the watcher takes w2 back');
+  listener.kind = 'player-tank';
+  listener.ownerId = 'w2';
+  frames(1);
+  assert.equal(radioBand(), RADIO_BAND.red, 'w2\'s set, destroyed while its brain drove it, sounds destroyed from the take back');
+  // a whole hull taken sounds whole: the last seat's set does not carry
+  nextSeat(watch, w3);
+  frames(1);
+  assert.equal(radioBand(), RADIO_BAND.ok, 'w3\'s whole set sounds whole, not w2\'s');
+});
+
+await check('review r3 a seat taken sounds its own hull\'s fire alarm, not the last seat\'s', async () => {
+  const seat = tank('me', { isPlayer: true }), w1 = tank('w1', { x: 40 }), w2 = tank('w2', { x: 80 }), w3 = tank('w3', { x: 120 });
+  const watch = await watchedTake('standard', [seat, w1, w2, w3, foe('f9', 4000)], seat, w1);
+  setFire(w1, true);
+  frames(0.5);
+  assert.equal(fireAlarms(), 1, 'w1 burning: its fire alarm sounds');
+  // w3 catches fire under its brain: another hull's fire, no alarm of ours
+  setFire(w3, true);
+  frames(0.5);
+  assert.equal(fireAlarms(), 1, 'w3\'s fire is not ours');
+  // the watcher leaves w1 burning and takes w2, which does not burn
+  nextSeat(watch, w2);
+  frames(1);
+  assert.equal(fireAlarms(), 0, 'the last seat\'s fire alarm stops at the take (w2 does not burn)');
+  // w1's fire goes out and w1 dies: another hull's events now
+  setFire(w1, false);
+  frames(0.5);
+  w1.combat.destroyed = true;
+  bus.emit('tank:destroyed', { id: 'w1', killerId: 'f9', pos: [40, 0, 0], cause: 'shot' });
+  frames(1);
+  assert.equal(fireAlarms(), 0, 'nothing sounds for w2 when w1\'s fire goes out or w1 dies');
+  // a hull taken burning sounds its own alarm, and its fire going out stops it
+  nextSeat(watch, w3);
+  frames(1);
+  assert.equal(fireAlarms(), 1, 'w3 taken burning: its alarm sounds');
+  const out = now();
+  setFire(w3, false);
+  frames(1);
+  assert.equal(fireAlarms(), 0, 'w3\'s fire out: its alarm stops');
+  assert.ok(asked('fire_out', out), `w3's fire out is called (asked ${said(out)})`);
+});
+
 // ---- amendment 6: the escort's life is the mode's.
 await check('amendment 6 an escort extracted is the mode\'s rescued life', async () => {
   const source = readFileSync(new URL('./crewProcedure.ts', import.meta.url), 'utf8');
@@ -710,5 +796,24 @@ await check('s1-02 a watched battle\'s seat its brain drives is nobody\'s crew',
   assert.ok(asked('fire_command_kinetic', driven), `the seat the watcher drives commands the enemy it sees (asked ${said(driven)})`);
 });
 
+await check('s1-02 a watched battle\'s seat its brain drives still hears the battle\'s mode calls (review r3, a guard)', async () => {
+  // the boundary of the driven gate: the crew's per-life and sighting calls are the driven seat's, the battle's mode calls
+  // (onMode, gated on inBattle) are the side's news, heard with nobody driving as the engine's own mode calls are
+  const seat = tank('me', { isPlayer: true }), ally = tank('a1', { x: 20 });
+  const roster = [seat, ally, foe('f9', 3000)];
+  const watch = watchedBattle(roster, seat);
+  await battle('endless_horde', roster, watch.sees);
+  openWatchSeats(watch.game);
+  assert.ok(!seat.isPlayer, 'nobody drives');
+  listener.kind = 'camera';
+  listener.ownerId = null;
+  frames(2);
+  const since = now();
+  bus.emit('mode:wave_started', { wave: 2, special: 'runner' });
+  frames(5);
+  assert.ok(spoken('wave_incoming', since), `the engine's wave call (heard ${probe.voiceLog.filter((e) => e.t >= since).map((e) => e.id)})`);
+  assert.ok(spoken('wave_runners', since), `the crew's runner call (asked ${said(since)}; heard ${probe.voiceLog.filter((e) => e.t >= since).map((e) => e.id)})`);
+});
+
 assert.deepEqual(failures, [], `crewProcedure.selftest:\n  ${failures.join('\n  ')}`);
-console.log('crewProcedure.selftest: the pause silences the net and cancels armed calls on both edges (a recalled drone docked behind it too), the crew\'s battle is the engine\'s, a fresh weapon is loaded, a kill\'s cease fire and a drone\'s recovery die with our tank, each revive and each seat the watcher takes starts a life (a posthumous kill arms nothing for it), our drone is called as the authority flies it, an escort the controller rescues is extracted, the crew names only what the player sees and speaks only for the seat the player drives passed');
+console.log('crewProcedure.selftest: the pause silences the net and cancels armed calls on both edges (a recalled drone docked behind it too), the crew\'s battle is the engine\'s, a fresh weapon is loaded, a kill\'s cease fire and a drone\'s recovery die with our tank, each revive and each seat the watcher takes starts a life (a posthumous kill arms nothing for it) with the taken hull\'s own radio set and fire alarm, our drone is called as the authority flies it, an escort the controller rescues is extracted, the crew names only what the player sees, its per-life calls are the driven seat\'s and the battle\'s mode calls the side\'s passed');
