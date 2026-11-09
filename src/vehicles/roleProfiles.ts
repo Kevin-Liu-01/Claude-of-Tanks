@@ -268,6 +268,18 @@ export const VEHICLE_ROLE_PROFILES: Readonly<Record<string, VehicleRoleProfile>>
   gepard_1a2: { doctrine: 'recon', viewM: 450, still: 0.225, moving: 0.195 },
   pgz95: { doctrine: 'recon', viewM: 430, still: 0.240, moving: 0.210 },
   pgz09: { doctrine: 'recon', viewM: 445, still: 0.230, moving: 0.200 },
+  // 269: the second air-defence round on the same recon doctrine: the Type 87's tall radar post; the Marksman turret's
+  // radar on its short mast (the Leopard hull larger to see, the T-55 lower); the Lvkv 9040 and the K30 the smallest
+  // hulls under their drum and mast; the Loara's flat 3D array on its tall mast
+  type87_aw: { doctrine: 'recon', viewM: 440, still: 0.230, moving: 0.200 },
+  marksman_t55: { doctrine: 'recon', viewM: 445, still: 0.225, moving: 0.195 },
+  itpsv_leopard2: { doctrine: 'recon', viewM: 450, still: 0.215, moving: 0.185 },
+  lvkv9040: { doctrine: 'recon', viewM: 435, still: 0.245, moving: 0.215 },
+  k30_biho: { doctrine: 'recon', viewM: 440, still: 0.245, moving: 0.215 },
+  pza_loara: { doctrine: 'recon', viewM: 455, still: 0.220, moving: 0.190 },
+  // 269: the M163 VADS on the same recon doctrine: the M113's small hull under the open mount and the radar's cases (a
+  // taller mark than the M113A3's cupola), its AN/VPS-2 a range-only set that searches nothing
+  m163_vads: { doctrine: 'recon', viewM: 440, still: 0.262, moving: 0.228 },
   m551_sheridan: { doctrine: 'scout', viewM: 480, still: 0.361, moving: 0.361 },
   // 265: the Danish reconnaissance squadrons' M41 DK-1, its thermal sight seeing far for a light tank
   m41dk1: { doctrine: 'scout', viewM: 470, still: 0.355, moving: 0.340 },

@@ -63,6 +63,10 @@ const ERA_VEHICLE_IDS: Readonly<Record<VehicleEra, readonly string[]>> = Object.
     // release 269: the Australian M113A1 FSV and MRV (1970-96) and the Leopard AS1 (1976-2007)
     'm113a1_fsv', 'm113a1_mrv', 'leopard_as1',
     'type59', 'ztz85_iii', 'bwp1', 'marder1a3', 'm551_sheridan', 'm41a3', 'm41_bw', 'm41_jgsdf', 'm41dk1', 't49',
+    // release 269: the Type 87 self-propelled anti-aircraft gun (in service 1987, on the cold-war Type 74)
+    'type87_aw',
+    // release 269: the M163 VADS (in US service 1968 to the 1990s, on the M741, an M113A1)
+    'm163_vads',
   ]),
   [VEHICLE_ERAS.MODERN]: Object.freeze([
     // 2026-10-13 (VEH-11, coordinator ruling): the Warrior TES(H) is a 2000s Afghanistan fit at tier X.
@@ -111,6 +115,9 @@ const ERA_VEHICLE_IDS: Readonly<Record<VehicleEra, readonly string[]>> = Object.
     // release 268: the twin-cannon air defence: the 2K22M (1990) and the Pantsir-S1 (2012 tracked option), the Gepard 1A2
     // (the 1996-2000 service-life extension), the PGZ-95 (1999) and the PGZ-09 (2009)
     'tunguska_m', 'pantsir_s1', 'gepard_1a2', 'pgz95', 'pgz09',
+    // release 269: the second air-defence round: the ItPsv 90 Marksman (1990, as the 2K22M), the ItPsv Leopard 2 (2016),
+    // the Lvkv 9040 (the 1990s CV90 family), the K30 Biho (1999) and the PZA Loara (2004)
+    'marksman_t55', 'itpsv_leopard2', 'lvkv9040', 'k30_biho', 'pza_loara',
   ]),
   // A new generation: clean-sheet architectures past the third-generation tank (uncrewed turrets and crew capsules,
   // 130 mm-class guns, hybrid drives), whether fielded, prototypes or concepts. The T-14 Armata is the yardstick.

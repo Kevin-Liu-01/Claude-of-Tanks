@@ -266,6 +266,15 @@ export const WHEEL_STANDARD_EXCEPTIONS: Readonly<Record<string, WheelStandardExc
   // 268: the PLA air-defence pair roll on solid dished wheels with a raised hub (photos), China's MBT standard, not the IFV ribs
   pgz95: { donor: 'ztz100', reason: 'photographs show solid dished road wheels with a raised hub → China MBT standard (ZTZ-100 recessed web)' },
   pgz09: { donor: 'ztz100', reason: 'photographs show solid dished road wheels with a bolted hub → China MBT standard (ZTZ-100 recessed web)' },
+  // 269: the second air-defence round rides its base vehicles' running gear, so each draws its base hull's wheel, not its
+  // nation's IFV wheel (the Marksmen are filed under the UK, the turret's maker; their hulls are the T-55's and the
+  // Leopard 2A4's). The Lvkv 9040 (Sweden's IFV rule, the CV90's) and the K30 (South Korea's IFV rule, the K1A1 wheel
+  // the Korean IFV hulls draw) need no exception.
+  type87_aw: { donor: 'type10_tk_x', reason: '269: the Type 74 hull under an SPAA turret keeps the Type 74\'s Type 10 face' },
+  marksman_t55: { donor: T54_STARFISH_WHEELS ? 'type59' : 't90_1992',
+    reason: '269: the ItPsv 90 is a T-55 hull: the T-55A\'s wheel (the period starfish while T54_STARFISH_WHEELS holds)' },
+  itpsv_leopard2: { donor: 'leo2a4', reason: '269: the ItPsv Leopard 2 is a Leopard 2A4 hull → Germany MBT donor (the 2A4\'s)' },
+  pza_loara: { donor: 'pl01', reason: '269: the PT-91 MBT hull under an SPAA turret → Poland MBT donor (the PT-91 Twardy\'s)' },
   bmp2: { donor: 'bmp3m_dragun125', reason: 'nation USSR, cold-war IFV → the Russia light set' },
   ua_t80bv: { donor: 't90_1992', reason: 'Ukraine: T-80 base hull → Russia older T-series donor' },
   ua_cv9040c: { donor: 'cv90_mk4', reason: 'Ukraine: the CV9040C base hull keeps its Swedish CV90 wheel' },

@@ -10,6 +10,7 @@
 import './afvFamily.ts';
 import { ALL_TANK_IDS, MODEL_SOURCE, TANK_SPECS } from './specs.ts';
 import { bindFleetRegistries, cloneFleetVariant, registerFleetSpecs, stripSilhouetteDimensions } from './fleetSpecRegistry.ts';
+import { applyAirDefenseFirepower } from './airDefenseFirepower.ts';
 import { crewBox, frontPlate, leftSidePlate, modernArmor, moduleBox, plate, rearPlate, rightSidePlate, roofPlate, shell,
   type ArmorPlate } from './specHelpers.ts';
 import type { FleetTankSpec } from './specContracts.ts';
@@ -224,9 +225,10 @@ tunguska.gun = {
     shell('3UOF8 HE-I', 'HE', 30, 8, 8, 48, 960, { pen2000Mm: 8, reloadS: .30, count: 952 }),
   ],
 };
-// Russia's plain service green: the photographs' solid coat is the national_ru preset's (camoPolicy.ts), worn as stock
-tunguska.visual = { ...tunguska.visual, scheme: 'solid', base: '#44553a', weather: '#4f6144', patches: [],
-  marking: 'number', number: '211' };
+// The 2008 Moscow parade coat (owner 2026-11-05: "tunguska and pantsir need camos"; the parade rehearsal photographs):
+// broad soft bands of a grey buff and a near-black over the olive, about equal in area
+tunguska.visual = { ...tunguska.visual, scheme: 'nato', base: '#5a5d3b', weather: '#6b6d4a', patches: ['#a59e7f', '#2f3329'],
+  camoScale: .9, patchK: 1.2, marking: 'number', number: '211' };
 
 // ---- Pantsir-S1 (tracked) -----------------------------------------------------------------------------------------
 // The Pantsir-S1 combat module: twelve 57E6 in two six-tube banks (Wikipedia Pantsir: "up to twelve 57E6"), two
@@ -301,7 +303,13 @@ pantsir.gun = {
     shell('3UOF8 HE-I', 'HE', 30, 8, 8, 46, 960, { pen2000Mm: 8, reloadS: .28, count: 700 }),
   ],
 };
-pantsir.visual = { ...pantsir.visual, scheme: 'solid', base: '#44553a', weather: '#4f6144', patches: [],
-  marking: 'number', number: '421' };
+// The Pantsir-S1's Russian tri-colour (owner 2026-11-05): green under khaki and black blotches, warmer and darker than
+// the Tunguska's parade bands so the two GM-352 vehicles read apart
+pantsir.visual = { ...pantsir.visual, scheme: 'blotch', base: '#4b5a36', weather: '#5c6844', patches: ['#8c7a55', '#24271f'],
+  camoScale: .7, patchK: 1.3, marking: 'number', number: '421' };
 
+// The owner's air-defence firepower (2026-11-06, airDefenseFirepower.ts): the floor cycle, twice the output, six times the
+// rounds; each rack fires whole: the Tunguska-M's eight 9M311M, the Pantsir-S1's twelve 57E6, three loads of each.
+applyAirDefenseFirepower(tunguska, { rounds: 8, intervalS: 0.15 });
+applyAirDefenseFirepower(pantsir, { rounds: 12, intervalS: 0.15 });
 registerFleetSpecs(registries, ['tunguska_m', 'pantsir_s1'], { tunguska_m: tunguska, pantsir_s1: pantsir });

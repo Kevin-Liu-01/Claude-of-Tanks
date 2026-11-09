@@ -25,7 +25,13 @@ function closedCell(P: TankBuilderPort, contour: readonly Point[], front: (x: nu
   const point = (i: number, face: (x: number, y: number) => number) => {
     const [x, y] = contour[i], z = face(x, y); return top ? [x, z, -y] : [x, y, z];
   };
-  const triangle = (a: number[], b: number[], c: number[]) => points.push(...a, ...b, ...c);
+  // (269) where the face and rear planes meet, the cell closes on a knife edge: the wall there has no area, and its
+  // triangles' normals came out zero (24 in the merged turret detail), so a zero-area triangle is never emitted
+  const triangle = (a: number[], b: number[], c: number[]) => {
+    const u = [b[0] - a[0], b[1] - a[1], b[2] - a[2]], v = [c[0] - a[0], c[1] - a[1], c[2] - a[2]];
+    if (Math.hypot(u[1] * v[2] - u[2] * v[1], u[2] * v[0] - u[0] * v[2], u[0] * v[1] - u[1] * v[0]) < 1e-12) return;
+    points.push(...a, ...b, ...c);
+  };
   const caps = THREE.ShapeUtils.triangulateShape(contour.map(([x, y]) => new THREE.Vector2(x, y)), []);
   for (const [a, b, c] of caps) {
     triangle(point(a, front), point(b, front), point(c, front));

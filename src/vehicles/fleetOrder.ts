@@ -92,6 +92,8 @@ export const NATIVE_FAMILY_ORDER = Object.freeze({
   // 268: the twin-cannon air defence, each pair in service order
   russianAirDefense: Object.freeze(['tunguska_m', 'pantsir_s1']),
   chineseAirDefense: Object.freeze(['pgz95', 'pgz09']),
+  // 269: the two Marksmen, the T-55 first (registered after every earlier id, so no roster place moves)
+  marksman: Object.freeze(['marksman_t55', 'itpsv_leopard2']),
   poland: Object.freeze([
     't72m1_jaguar', 't72_rys', 'pt91a_twardy', 'pl01', 'borsuk',
   ]),

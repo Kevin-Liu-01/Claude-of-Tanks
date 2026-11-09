@@ -689,15 +689,16 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 32662,
-      "sha256": "06890b789c9f5a632ceee4a0d17bef5cde23de6cf757f6eabcc49c00869c9b52",
+      "bytes": 33870,
+      "sha256": "d9b8446684ccc8f7ff3b1256d2d5c6b38e7fba3c5057131afc37755d2a185c95",
       "thumbnail": {
         "file": "thumbs/merkava4_barak_angle.webp",
         "width": 256,
         "height": 256,
         "mime": "image/webp",
-        "bytes": 13232,
-        "sha256": "eb2fd41105116e69c1781a952a253ef0f1b5ef49d11581f2b734e70b2a2eb434"
+        "bytes": 13700,
+        "sha256": "ae112718db01a2d722979ec52ec738fa06ab011df5ed20cfc1bf4e73f85509a8",
+        "frame": [23,88,226,249]
       }
     },
     "top": {

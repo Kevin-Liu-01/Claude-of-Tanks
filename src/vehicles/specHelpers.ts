@@ -77,6 +77,8 @@ export interface ArmorEnvelope {
   turretPlates: ArmorPlate[];
   modules: ModuleBox[];
   crew: CrewBox[];
+  /** (269) open mounts' crew stations: tools/crew-seat-fit.mjs seats their riders over the armour in them. */
+  openStations?: ArmorModel['openStations'];
   bodyContactPoints?: { hull: number[]; turret: number[] };
 }
 

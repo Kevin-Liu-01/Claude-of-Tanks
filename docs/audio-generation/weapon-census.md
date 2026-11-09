@@ -22,12 +22,12 @@ simulation; roof, loader and remote stations are. Loader makes come from `src/ve
 | `152n/separate_case` | 152 mm on the 6"/47 Mark 16 (T95, fictional) | rifled | long (L/47) | none | separate_case | manual | `gun_152n_close` / `gun_152n_own` / `gun_152n_interior` / `gun_152n_far` | 1 |
 | `165/separate_bag` | 165 mm L9A1 demolition gun (Centurion AVRE) | rifled | short | none | separate_bag | manual | `gun_165_close` / `gun_165_own` / `gun_165_interior` / `gun_165_far` | 1 |
 | `170/separate_case` | 17 cm gun (Jagdpanzer E-100) | rifled | long | double_baffle | separate_case | manual | `gun_170_close` / `gun_170_own` / `gun_170_interior` / `gun_170_far` | 1 |
-| `20/belt` | Rh 202 (Marder 1A3, AMX-10P, the MBT-70's station) | rifled | long | multi_baffle | belt | autocannon | `ac_20_close` / `ac_20_own` / `ac_20_interior` / `ac_20_far` | 3 |
+| `20/belt` | Rh 202 (Marder 1A3, AMX-10P, the MBT-70's station) | rifled | long | multi_baffle | belt | autocannon | `ac_20_close` / `ac_20_own` / `ac_20_interior` / `ac_20_far` | 4 |
 | `220/rocket` | 220 mm rockets (TOS-1A) | none | launcher tubes | none | rocket | rocket_rack | `rocket_salvo` / `—` / `—` / `rocket_salvo_far` | 1 |
 | `25/belt` | M242 Bushmaster chain gun (Bradley, Dardo, AMX-10P 25, Linebacker) | rifled | long | flash_hider | belt | autocannon | `ac_25_close` / `ac_25_own` / `ac_25_interior` / `ac_25_far` | 8 |
-| `30/belt` | 2A42, 2A72, Mk 30-2, L21A1 Rarden, the 30 mm remote cannons | rifled | long | multi_baffle | belt | autocannon | `ac_30_close` / `ac_30_own` / `ac_30_interior` / `ac_30_far` | 36 |
-| `35/belt` | Oerlikon KDE 35 (CV9035, Lynx KF41, Type 89, the ZTZ-100 prototype) | rifled | long | multi_baffle | belt | autocannon | `ac_35_close` / `ac_35_own` / `ac_35_interior` / `ac_35_far` | 8 |
-| `40/belt` | Bofors 40/70 (CV9040, Ajax, K21) | rifled | long | multi_baffle | belt | autocannon | `ac_40_close` / `ac_40_own` / `ac_40_interior` / `ac_40_far` | 5 |
+| `30/belt` | 2A42, 2A72, Mk 30-2, L21A1 Rarden, the 30 mm remote cannons | rifled | long | multi_baffle | belt | autocannon | `ac_30_close` / `ac_30_own` / `ac_30_interior` / `ac_30_far` | 37 |
+| `35/belt` | Oerlikon KDE 35 (CV9035, Lynx KF41, Type 89, the ZTZ-100 prototype) | rifled | long | multi_baffle | belt | autocannon | `ac_35_close` / `ac_35_own` / `ac_35_interior` / `ac_35_far` | 12 |
+| `40/belt` | Bofors 40/70 (CV9040, Ajax, K21) | rifled | long | multi_baffle | belt | autocannon | `ac_40_close` / `ac_40_own` / `ac_40_interior` / `ac_40_far` | 6 |
 | `50/belt` | XM913, Rh 503 (CV90 Mk IV, Griffin, Marder 2) | rifled | long | multi_baffle | belt | autocannon | `ac_50_close` / `ac_50_own` / `ac_50_interior` / `ac_50_far` | 4 |
 | `7.62/belt` | PKT, M240, MG3, FN MAG, L37/L94, Ksp 58, UKM-2000 (roof, loader and remote stations) | rifled | long | flash_hider | belt | autocannon | `mg_rifle_close` / `mg_rifle_own` / `mg_rifle_interior` / `mg_rifle_far` | 132 |
 | `76/unitary_brass` | 76 mm M32 (the M41 Walker Bulldog family) | rifled | long (L/60) | deflector | unitary_brass | manual | `gun_76_close` / `gun_76_own` / `gun_76_interior` / `gun_76_far` | 6 |
@@ -109,12 +109,14 @@ simulation; roof, loader and remote stations are. Loader makes come from `src/ve
 | Griffin 50 mm (`griffin50mm`) | 50 mm | `50/belt`: 50 mm APFSDS, 50 mm HE | manual | no | 12.7 mm `12.7/belt` |
 | Griffin Viper (`griffin_viper`) | 140 mm | `guided/missile`: Viper micro-missile | manual | no | — |
 | Hayate IFV (`hayate_ifv`) | 35 mm | `guided/missile`: Type 79 Jyu-MAT<br>`35/belt`: Type 89 APDS-T, 35mm HEI-T | manual | no | — |
+| ItPsv Leopard 2 (Leopard 2 Marksman) (`itpsv_leopard2`) | 35 mm | `35/belt`: 35 mm APDS-T, 35 mm HEI-T | manual | no | — |
 | Jagdpanzer E100 (`jpz_e100`) | 170 mm | `170/separate_case`: 17cm PzGr APCBC, 17cm PzGr 50 APCR, 17cm Sprgr HE | manual | no | 7.92 mm `7.62/belt` |
 | K1A1 (`k1a1`) | 120 mm | `120/combustible`: K276 APFSDS, K277 HEAT-MP, 120 HE | manual | no | 12.7 mm `12.7/belt` |
 | K1E1 (`k1e1`) | 120 mm | `120/combustible`: K276 APFSDS, K277 HEAT-MP, 120 HE | manual | no | 12.7 mm `12.7/belt`, 7.62 mm `7.62/belt` |
 | K21 (`k21`) | 40 mm | `guided/missile`: Guided missile<br>`40/belt`: 40 mm APFSDS, 40 mm HE | manual | no | — |
 | K2 Black Panther (`k2_black_panther`) | 120 mm | `120/combustible`: K279 APFSDS, K280 HEAT-MP, K281 HE | bustle | no | 12.7 mm `12.7/belt` |
 | K2B (`k2b`) | 120 mm | `120/combustible`: DM63A1 APFSDS, K280 HEAT-MP, K281 HE | bustle | no | 12.7 mm `12.7/belt` |
+| K30 Biho (`k30_biho`) | 30 mm | `30/belt`: 30 mm APDS-T, 30 mm HEI-T | manual | no | — |
 | KF41 Lynx (`kf41_lynx`) | 35 mm | `35/belt`: 35 mm APFSDS, 35 mm HE | manual | no | — |
 | KF51 EVO (`kf51_evo`) | 130 mm | `130/combustible`: DM13 130mm APFSDS, 130mm HEAT-MP, 130mm HE-ABM | bustle | no | 12.7 mm `12.7/belt` |
 | KF51 Panther (`kf51_panther`) | 130 mm | `130/combustible`: DM13 130mm APFSDS, 130mm HEAT-MP, 130mm HE-ABM | bustle | no | 7.62 mm `7.62/belt` |
@@ -152,10 +154,12 @@ simulation; roof, loader and remote stations are. Loader makes come from `src/ve
 | Leopard 2 Prototype (`leopard2_proto`) | 120 mm | `120/combustible`: DM33 APFSDS, DM12 HEAT-MP, DM12 HE proxy | manual | yes | 12.7 mm `12.7/belt`, 7.62 mm `7.62/belt` |
 | Leopard AS1 (`leopard_as1`) | 105 mm | `105/unitary_brass`: DM23 APFSDS, DM512 HEAT, DM21 HE | manual | yes | 12.7 mm `12.7/belt`, 7.62 mm `7.62/belt` |
 | LRMV Lynx (`lrmv_lynx`) | 30 mm | `30/belt`: 30 mm APFSDS, 30 mm HE | manual | no | — |
+| Lvkv 9040 (`lvkv9040`) | 40 mm | `40/belt`: 40 mm APFSDS-T, 40 mm 3P HE-T | manual | no | — |
 | M113A1 FSV (`m113a1_fsv`) | 76 mm | `guided/missile`: BGM-71A TOW<br>`76/unitary_brass`: L29 HESH, L24 HE | manual | no | 12.7 mm `12.7/belt` |
 | M113A1 MRV (`m113a1_mrv`) | 76 mm | `guided/missile`: BGM-71A TOW<br>`76/unitary_brass`: L32 HESH, L24 HE | manual | no | 12.7 mm `12.7/belt` |
 | M113A3 (`m113a3`) | 12.7 mm | `12.7/belt`: M962 SLAP-T, M20 API-T, M33 Ball | manual | no | — |
 | M113AS4 (`m113as4`) | 12.7 mm | `guided/missile`: BGM-71E TOW-2A<br>`12.7/belt`: L111A1 AP-T, L111A1 Ball | manual | no | — |
+| M163 VADS (`m163_vads`) | 20 mm | `20/belt`: M53 API, M56 HEI | manual | no | — |
 | M1A1 Abrams (`m1a1`) | 120 mm | `120/combustible`: M829A1 APFSDS, M830 HEAT, M908 HE-OR | manual | yes | 7.62 mm `7.62/belt` |
 | M1A1 Abrams AIM (`m1a1_abrams_aim`) | 120 mm | `120/combustible`: M829A4 APFSDS, M830A1 MPAT, M1147 AMP | manual | yes | 12.7 mm `12.7/belt`, 7.62 mm `7.62/belt` |
 | M1A1 Abrams FEP (`m1a1_abrams_fep`) | 120 mm | `120/combustible`: M829A4 APFSDS, M830A1 MPAT, XM1147 AMP | manual | yes | 12.7 mm `12.7/belt`, 7.62 mm `7.62/belt` |
@@ -193,6 +197,7 @@ simulation; roof, loader and remote stations are. Loader makes come from `src/ve
 | Magach 7C (`magach7c`) | 105 mm | `105/unitary_brass`: DM63 (105) APFSDS, DM512 HEAT, DM21 HE | manual | no | 12.7 mm `12.7/belt`, 7.62 mm `7.62/belt` |
 | Schützenpanzer Marder 1A3 (`marder1a3`) | 20 mm | `guided/missile`: MILAN 2<br>`20/belt`: DM63 APDS-T, DM81 HEI-T | manual | no | — |
 | Marder 2 (`marder2`) | 50 mm | `50/belt`: Rh 503 50 mm APFSDS-T, Rh 503 50 mm HEI-T | manual | no | — |
+| Marksman (T-55) (`marksman_t55`) | 35 mm | `35/belt`: 35 mm APDS-T, 35 mm HEI-T | manual | no | — |
 | MBT-70 (`mbt70`) | 152 mm | `guided/missile` (through the gun): XMGM-51C Shillelagh ATGM<br>`152/caseless`: XM578 APFSDS-T, M409A1 HEAT-MP | bustle | no | 20 mm `20/belt` |
 | Merkava Mk 1B (`merkava1b`) | 120 mm | `120/combustible`: M322 APFSDS, M325 HEAT-MP, M339 HE-MP | manual | no | 7.62 mm `7.62/belt`, 7.62 mm `7.62/belt` |
 | Merkava Mk 2B (`merkava2b`) | 120 mm | `120/combustible`: M322 APFSDS, M325 HEAT-MP, M339 HE-MP | manual | no | 7.62 mm `7.62/belt`, 7.62 mm `7.62/belt` |
@@ -225,6 +230,7 @@ simulation; roof, loader and remote stations are. Loader makes come from `src/ve
 | PT-91A Twardy (`pt91a_twardy`) | 125 mm | `125/two_piece`: Pronit 125 APFSDS, 3BK29 HEAT, 3OF26 HE-Frag | carousel_az | no | 12.7 mm `12.7/belt` |
 | PT-91M Pendekar (`pt91m`) | 125 mm | `125/two_piece`: 3BM46 Svinets, 3BK29 HEAT, 3OF26 HE-Frag | carousel_az | no | 12.7 mm `12.7/belt` |
 | Puma S1 (`puma_s1`) | 30 mm | `guided/missile`: MELLS / Spike LR<br>`30/belt`: MK30-2 APFSDS-T, MK30-2 KETF ABM | manual | no | — |
+| PZA Loara (`pza_loara`) | 35 mm | `35/belt`: 35 mm APDS-T, 35 mm HEI-T | manual | no | — |
 | Raijū IFV (`raiju_ifv`) | 35 mm | `guided/missile`: Type 01 Jyu-MAT Kai<br>`35/belt`: KDE-35 LT APFSDS-T, 35 mm AHEAD-Kai | manual | no | 12.7 mm `12.7/belt`, 7.62 mm `7.62/belt` |
 | AS21 Redback (`redback`) | 30 mm | `guided/missile`: Spike LR2<br>`30/belt`: MK30-2 APFSDS-T, MK30-2 KETF ABM | manual | no | — |
 | Sabra Mk 2 (`sabra_mk2`) | 120 mm | `120/combustible`: M322 APFSDS, M325 HEAT-MP, M339 HE-MP | manual | no | 12.7 mm `12.7/belt` |
@@ -309,6 +315,7 @@ simulation; roof, loader and remote stations are. Loader makes come from `src/ve
 | Type 10B (`type10b`) | 120 mm | `120/combustible`: Type 10 Kai APFSDS, JM12A1 HEAT-MP, Type 10 HE | bustle | no | 12.7 mm `12.7/belt` |
 | Type 59 (`type59`) | 100 mm | `100/unitary_brass`: DM63 (105) APFSDS, DM512 HEAT, DM21 HE | manual | no | 12.7 mm `12.7/belt` |
 | Type 74 (`type74`) | 105 mm | `105/unitary_brass`: Type 93 APFSDS, Type 91 HEAT-MP, M393 HEP | manual | no | 12.7 mm `12.7/belt` |
+| Type 87 Self-Propelled Anti-Aircraft Gun (`type87_aw`) | 35 mm | `35/belt`: 35 mm APDS-T, 35 mm HEI-T | manual | no | — |
 | Type 89 (`type89`) | 35 mm | `guided/missile`: Type 79 Jyu-MAT<br>`35/belt`: KDE 35 mm APFSDS-T, KDE 35 mm HEI-T | manual | no | — |
 | Type 90 (`type90`) | 120 mm | `120/combustible`: JM33 APFSDS, JM12A1 HEAT-MP, Type 10 HE | bustle | no | 12.7 mm `12.7/belt` |
 | STC-1 (`type90_kyumaru`) | 120 mm | `120/combustible`: JM33 APFSDS, JM12A1 HEAT-MP, Type 10 HE | bustle | no | 12.7 mm `12.7/belt` |

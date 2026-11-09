@@ -27,6 +27,8 @@ const CURVES = {
   t72b3_bastion_m: [],
   type96b: [],
   gepard_1a2: [], // 268: its published curve lifts the guns at most 1 deg over the stern deck's outlet covers (yaw 140-180)
+  marksman_t55: [], // 269: the Marksman turret's measured stern curves (marksmanSpecs.ts), on the T-55A deck
+  itpsv_leopard2: [], // 269: and on the Leopard 2A4 deck
   type96_72_long: [],
   type96_80_feng: [],
   type96_72m_lei: [],

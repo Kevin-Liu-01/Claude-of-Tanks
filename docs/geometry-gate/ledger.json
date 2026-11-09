@@ -1539,19 +1539,13 @@
   },
   {
    "id": "t90sm",
-   "geoMin": 89.2,
+   "geoMin": 0,
    "requiredMinimum": 92,
    "qualityBar": "exemplar",
    "gatePassed": false,
    "components": {
-    "hullCurves": 92.2,
-    "stations": 94,
-    "turretCurves": 89.2,
-    "wholeCurves": 93.6,
-    "dims": 100,
-    "floaters": 100
-   },
-   "comparisonPurpose": "source-fidelity"
+    "oracleAvailability": 0
+   }
   },
   {
    "id": "challenger3_td",

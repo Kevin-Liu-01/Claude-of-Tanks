@@ -269,6 +269,10 @@
    "name": "Hayate IFV",
    "card": "/brand/og-r2/tanks/hayate_ifv-card.jpg"
   },
+  "itpsv_leopard2": {
+   "name": "ItPsv Leopard 2 (Leopard 2 Marksman)",
+   "card": null
+  },
   "jpz_e100": {
    "name": "Jagdpanzer E100",
    "card": null
@@ -292,6 +296,10 @@
   "k2b": {
    "name": "K2B",
    "card": "/brand/og-r2/tanks/k2b-card.jpg"
+  },
+  "k30_biho": {
+   "name": "K30 Biho",
+   "card": null
   },
   "kf41_lynx": {
    "name": "KF41 Lynx",
@@ -441,6 +449,10 @@
    "name": "LRMV Lynx",
    "card": "/brand/og-r2/tanks/lrmv_lynx-card.jpg"
   },
+  "lvkv9040": {
+   "name": "Lvkv 9040",
+   "card": null
+  },
   "m113a1_fsv": {
    "name": "M113A1 FSV",
    "card": null
@@ -455,6 +467,10 @@
   },
   "m113as4": {
    "name": "M113AS4",
+   "card": null
+  },
+  "m163_vads": {
+   "name": "M163 VADS",
    "card": null
   },
   "m1a1": {
@@ -605,6 +621,10 @@
    "name": "Marder 2",
    "card": null
   },
+  "marksman_t55": {
+   "name": "Marksman (T-55)",
+   "card": null
+  },
   "mbt70": {
    "name": "MBT-70",
    "card": "/brand/og-r2/tanks/mbt70-card.jpg"
@@ -732,6 +752,10 @@
   "puma_s1": {
    "name": "Puma S1",
    "card": "/brand/og-r2/tanks/puma_s1-card.jpg"
+  },
+  "pza_loara": {
+   "name": "PZA Loara",
+   "card": null
   },
   "raiju_ifv": {
    "name": "Raijū IFV",
@@ -1068,6 +1092,10 @@
   "type74": {
    "name": "Type 74",
    "card": "/brand/og-r2/tanks/type74-card.jpg"
+  },
+  "type87_aw": {
+   "name": "Type 87 Self-Propelled Anti-Aircraft Gun",
+   "card": null
   },
   "type89": {
    "name": "Type 89",

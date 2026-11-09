@@ -8,7 +8,7 @@
 
 <p align="center">
 <!-- product-summary:start -->
-A World of Tanks-style armored combat simulator built directly with Three.js and Vite: 300 vehicles, 33 destructible battlefields, and 14 modes, with plate-level armor, ballistics, modules, spotting, and physics. Play in your browser on desktop or mobile. Built end-to-end by a multi-agent Claude/Codex pipeline.
+A World of Tanks-style armored combat simulator built directly with Three.js and Vite: 307 vehicles, 33 destructible battlefields, and 14 modes, with plate-level armor, ballistics, modules, spotting, and physics. Play in your browser on desktop or mobile. Built end-to-end by a multi-agent Claude/Codex pipeline.
 <!-- product-summary:end -->
 </p>
 

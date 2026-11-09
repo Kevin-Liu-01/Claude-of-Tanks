@@ -3637,17 +3637,53 @@
   },
   "t90a_2006": {
    "sealed": true,
-   "openPx": 0,
+   "openPx": 2,
    "openViews": 0,
-   "insideOutPx": 214,
-   "seeThroughPx": 4,
+   "insideOutPx": 154,
+   "seeThroughPx": 0,
    "netSeeThroughPx": 0,
-   "tris": 112626,
+   "tris": 119198,
    "frame": [
     0,
-    1.6,
-    0.45,
-    6.2
+    2,
+    1.3,
+    6.5
+   ],
+   "accepts": [
+    {
+     "kind": "reframe",
+     "reason": "the 267-268 T-90 rebuilds' measured 125 mm guns (muzzles at z 6.9-7.4 m) and roof whips outgrew the rows' pre-rebuild frames, and main 2fda70a158 builds the same boxes",
+     "by": "kevinliu",
+     "date": "2026-11-08",
+     "from": {
+      "sealed": true,
+      "openPx": 0,
+      "openViews": 0,
+      "seeThroughPx": 4,
+      "netSeeThroughPx": 0,
+      "frame": [
+       0,
+       1.6,
+       0.45,
+       6.2
+      ]
+     },
+     "to": [
+      0,
+      2,
+      1.3,
+      6.5
+     ],
+     "oldFrameCensus": {
+      "sealed": true,
+      "openPx": 0,
+      "openViews": 0,
+      "openViewNames": [],
+      "seeThroughPx": 0,
+      "seeThroughViews": 0,
+      "netSeeThroughPx": 0
+     }
+    }
    ]
   },
   "t90a_burlak": {
@@ -3786,21 +3822,57 @@
    ]
   },
   "t90sm_2013": {
-   "sealed": false,
-   "openPx": 18,
-   "openViews": 1,
-   "openViewNames": [
-    "cube_0_0_-1"
-   ],
-   "insideOutPx": 116,
-   "seeThroughPx": 3,
+   "sealed": true,
+   "openPx": 8,
+   "openViews": 0,
+   "insideOutPx": 83,
+   "seeThroughPx": 0,
    "netSeeThroughPx": 0,
-   "tris": 123938,
+   "tris": 139666,
    "frame": [
     0,
-    1.3,
-    1.45,
-    5.7
+    1.65,
+    1.5,
+    6.6
+   ],
+   "accepts": [
+    {
+     "kind": "reframe",
+     "reason": "the 267-268 T-90 rebuilds' measured 125 mm guns (muzzles at z 6.9-7.4 m) and roof whips outgrew the rows' pre-rebuild frames, and main 2fda70a158 builds the same boxes",
+     "by": "kevinliu",
+     "date": "2026-11-08",
+     "from": {
+      "sealed": false,
+      "openPx": 18,
+      "openViews": 1,
+      "openViewNames": [
+       "cube_0_0_-1"
+      ],
+      "seeThroughPx": 3,
+      "netSeeThroughPx": 0,
+      "frame": [
+       0,
+       1.3,
+       1.45,
+       5.7
+      ]
+     },
+     "to": [
+      0,
+      1.65,
+      1.5,
+      6.6
+     ],
+     "oldFrameCensus": {
+      "sealed": true,
+      "openPx": 14,
+      "openViews": 0,
+      "openViewNames": [],
+      "seeThroughPx": 0,
+      "seeThroughViews": 0,
+      "netSeeThroughPx": 0
+     }
+    }
    ]
   },
   "tos1a_tagil": {
@@ -5547,6 +5619,111 @@
     2.05,
     -0.25,
     3.8
+   ]
+  },
+  "type87_aw": {
+   "sealed": true,
+   "openPx": 0,
+   "openViews": 0,
+   "insideOutPx": 432,
+   "seeThroughPx": 0,
+   "netSeeThroughPx": 0,
+   "tris": 66574,
+   "frame": [
+    0,
+    2.3,
+    0,
+    5
+   ]
+  },
+  "k30_biho": {
+   "sealed": true,
+   "openPx": 0,
+   "openViews": 0,
+   "insideOutPx": 344,
+   "seeThroughPx": 0,
+   "netSeeThroughPx": 0,
+   "tris": 67204,
+   "frame": [
+    0,
+    2.45,
+    -0.05,
+    4.5
+   ]
+  },
+  "lvkv9040": {
+   "sealed": true,
+   "openPx": 0,
+   "openViews": 0,
+   "insideOutPx": 574,
+   "seeThroughPx": 0,
+   "netSeeThroughPx": 0,
+   "tris": 57884,
+   "frame": [
+    0.05,
+    1.7,
+    0.15,
+    4.3
+   ]
+  },
+  "pza_loara": {
+   "sealed": true,
+   "openPx": 2,
+   "openViews": 0,
+   "insideOutPx": 134,
+   "seeThroughPx": 0,
+   "netSeeThroughPx": 0,
+   "tris": 76492,
+   "frame": [
+    0,
+    2.65,
+    0.1,
+    4.9
+   ]
+  },
+  "marksman_t55": {
+   "sealed": true,
+   "openPx": 0,
+   "openViews": 0,
+   "insideOutPx": 68,
+   "seeThroughPx": 0,
+   "netSeeThroughPx": 0,
+   "tris": 62040,
+   "frame": [
+    0,
+    2.45,
+    0.6,
+    5.2
+   ]
+  },
+  "itpsv_leopard2": {
+   "sealed": true,
+   "openPx": 4,
+   "openViews": 0,
+   "insideOutPx": 502,
+   "seeThroughPx": 0,
+   "netSeeThroughPx": 0,
+   "tris": 99483,
+   "frame": [
+    0,
+    2.55,
+    0.5,
+    5.8
+   ]
+  },
+  "m163_vads": {
+   "sealed": true,
+   "openPx": 0,
+   "openViews": 0,
+   "insideOutPx": 404,
+   "seeThroughPx": 0,
+   "netSeeThroughPx": 0,
+   "tris": 69037,
+   "frame": [
+    0,
+    2.55,
+    -0.2,
+    4.1
    ]
   },
   "semel": {

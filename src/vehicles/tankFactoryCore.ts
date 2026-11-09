@@ -8,6 +8,7 @@ import { DetachedGear } from './detachedGear.ts';
 import { vehicleAuthoringSpec, VEHICLE_SIZE_FACTORS } from './vehicleSizePolicy.ts';
 import { resizeAuthoredVehicle } from './profiles/vehicleSize.ts';
 import { markSmokeTube, alignSmokeBanks, transferSmokeSockets } from './vehicleAuxiliaryGeometry.ts';
+import { createGunRotorSpin, findGunRotor } from './gunRotorSpin.ts';
 // src/vehicles/tankFactoryCore.ts — cycle-free procedural factory implementation.
 // Recognizable replicas composed from BufferGeometries (ARCHITECTURE §3.3.2).
 // No top-level side effects; all randomness seeded; time arrives via
@@ -10652,6 +10653,10 @@ export function* createTankRuntimeSteps(
   let recoilRollAmp = 0;             // §5.362 twin-plant kick: roll dip onto the firing side
   let recoilBarrelIndex = -1;        // independently animated firing tube, -1 = shared recoilG
   let muzzleAltCursor = 0;           // §5.362 fallback shot alternator (no-index callers)
+  // 269: a rotary cannon's barrel cluster (the M163's Vulcan) turns while it fires: kicked with each recoil kick,
+  // advanced on the recoil stroke's fx-clock step (gunRotorSpin.ts); null on every gun without a tagged rotor
+  const gunRotor = findGunRotor(recoilG);
+  const gunRotorSpin = gunRotor ? createGunRotorSpin(gunRotor) : null;
   // effects_combat r5 FX-CLOCK ADVANCEMENT: recoil/pop/wreck timelines no
   // longer trust the caller's dt directly — each syncFromState advances them
   // by the SHARED FX CLOCK's forward motion since the previous call (see
@@ -10687,6 +10692,12 @@ export function* createTankRuntimeSteps(
   // invisible from the normal chase orbit even though it was scale-plausible.
   const RAPID_BACK = 0.045, RAPID_HOLD = 0.055, RAPID_RETURN = 0.18;
   const RAPID_AMP = Math.min(0.085, Math.max(0.055, REC_CAL * 0.0022));
+  // 2026-11-06 (the owner's air-defence firepower, airDefenseFirepower.ts): a twin whose tubes alternate faster than this
+  // stroke (each tube refires every tubes x cycle) takes the stroke in that time, so each tube is back in battery for its
+  // own next shot. Every slower mount, and every single tube, keeps the stroke above.
+  const RAPID_STROKE_S = RAPID_BACK + RAPID_HOLD + RAPID_RETURN;
+  const RAPID_CYCLE_S = Math.min(Number(spec.gun?.autoloader?.intraClipS) || Infinity,
+    ...((spec.gun?.shells || []).filter((round) => !round.guided).map((round) => Number(round.reloadS || spec.gun.reloadS) || Infinity)));
   // §5.362 tube census: only a real tube riding rig_recoil may slide.
   // Use the original length heuristic or verified short-tube stock below.
   // Casemates print their cannon into
@@ -11768,9 +11779,10 @@ export function* createTankRuntimeSteps(
       // §5.362: per-shot stroke profile — cannon recuperate cycle vs the
       // short autocannon-belt shudder (selected by recoilKick's impulseScale
       // contract; see the RAPID_* constants note).
-      const rBack = recoilRapid ? RAPID_BACK : REC_BACK;
-      const rHold = recoilRapid ? RAPID_HOLD : REC_HOLD;
-      const rReturn = recoilRapid ? RAPID_RETURN : REC_RETURN;
+      const rapidFit = recoilRapid && barrelGs.length > 1 ? Math.min(1, RAPID_CYCLE_S * barrelGs.length / RAPID_STROKE_S) : 1;
+      const rBack = recoilRapid ? RAPID_BACK * rapidFit : REC_BACK;
+      const rHold = recoilRapid ? RAPID_HOLD * rapidFit : REC_HOLD;
+      const rReturn = recoilRapid ? RAPID_RETURN * rapidFit : REC_RETURN;
       const syncFromStateAssemblyStage8 = (): void => {
         if (recoilT < rBack + rHold + rReturn) {
           const syncFromStateAssemblyCourse1 = (): void => {
@@ -11834,6 +11846,8 @@ export function* createTankRuntimeSteps(
         }
       };
       syncFromStateAssemblyStage8();
+      // 269: the rotary cluster spins up while the shots come and coasts down after them (gunRotorSpin.ts)
+      if (gunRotorSpin) gunRotorSpin.advance(adv);
       // The stabilized sight direction may exceed a fixed casemate's bearing
       // under cosmetic roll/flinch. Keep its actual trunnion inside the same
       // mechanical traverse window used by movement; never change state aim.
@@ -11897,6 +11911,7 @@ export function* createTankRuntimeSteps(
         const index = muzzleIndex ?? launcherCursor++;
         return ((index % launcherTips.length) + launcherTips.length) % launcherTips.length;
       }
+      gunRotorSpin?.kick();
       recoilT = Math.max(0, ageS);
       recoilScale = Math.max(0, Math.min(1, impulseScale));
       recoilRapid = recoilScale < 1;
@@ -12225,6 +12240,7 @@ export function* createTankRuntimeSteps(
       popTrailAcc = 0;
       popScale = 1;
       recoilT = 1e9;
+      gunRotorSpin?.stop();
       recoilPending = false;
       recoilScale = 1;
       recoilPendingScale = 1;

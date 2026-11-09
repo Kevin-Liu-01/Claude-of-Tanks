@@ -15,6 +15,7 @@
 //    yaw/roll kick mirroring with the firing barrel, flash-origin swap
 //    distance, belt-refire clearance — plus a roster guard that fails if a
 //    future gun.muzzles id is added without coverage here;
+//  - the rotary plant (269, the M163 VADS): its rotor rides the stroke, spins on its kicks, coasts to rest;
 //  - casemate law: fixedMount chains re-seat rig_muzzle AND rig_recoil under
 //    rig_hull; tubeless mounts (hull-printed cannons, incl. the hidden
 //    ball-mount stub collars) never slide — their budget rides a boosted
@@ -115,7 +116,10 @@ function rig(id, options = {}) {
 // the Gepard's two KDA in their flank bays (profiles/gepardFrame.ts); the PGZ-95's two side pairs, one fire axis each on its
 // upper gun with both guns of a side in that side's group (profiles/chineseAirDefenseLayout.ts); the PGZ-09's two 35 mm, one
 // a turret side (profiles/chineseAirDefenseLayout.ts)
-const TWIN_PLANT = ['bmpt_terminator2', 'bmpt_t90', 'bmpt_terminator', 'tunguska_m', 'pantsir_s1', 'gepard_1a2', 'pgz95', 'pgz09'];
+// 269: the second air-defence round's twin 35 mm (the Type 87, both Marksmen, the PZA Loara) and twin 30 mm (the K30
+// Biho), one fire axis a turret side on the registrar's placeholders until their builders' layouts; the Lvkv 9040 has one gun
+const TWIN_PLANT = ['bmpt_terminator2', 'bmpt_t90', 'bmpt_terminator', 'tunguska_m', 'pantsir_s1', 'gepard_1a2', 'pgz95', 'pgz09',
+  'type87_aw', 'marksman_t55', 'itpsv_leopard2', 'k30_biho', 'pza_loara'];
 for (const id of TWIN_PLANT) {
   const bore = getSpec(id).gun.muzzles.map((m) => m.x);
   assert.equal(bore.length, 2, `${id}: twin plant`);
@@ -156,9 +160,13 @@ for (const id of TWIN_PLANT) {
 
   // the belt stroke follows the calibre (tankFactoryCore RAPID_AMP): 5.5 cm for the 25 mm, 6.6 cm for the 30 mm, 7.7 cm for the 35 mm
   const stroke = Math.min(0.085, Math.max(0.055, getSpec(id).gun.caliberMm * 0.0022));
+  // 2026-11-06 (tankFactoryCore RAPID_CYCLE_S): a twin whose tubes alternate faster than the 0.28 s stroke takes it in
+  // tubes x cycle (the air-defence twins' 0.05 s: 0.1 s); the kick is read inside the stroke's hold
+  const cycle = getSpec(id).gun.shells[0].reloadS;
+  const kickS = Math.min(0.06, 0.095 * Math.min(1, cycle * barrelGs.length / 0.28));
   // asymmetric kick: yaw/roll flip sides with the firing barrel
   visual.recoilKick(0, 0.36, 0); // left barrel
-  visual.syncFromState(state, 0.06);
+  visual.syncFromState(state, kickS);
   const yawL = turretG.rotation.y - state.turretYaw;
   const rollL = recoilG.rotation.z;
   assert.ok(yawL < -0.010, `${id}: left barrel yaws the station left (got ${yawL})`);
@@ -168,7 +176,7 @@ for (const id of TWIN_PLANT) {
   near(barrelGs[1].position.z, 0, 1e-12, `${id}: right idle tube stays in battery`);
   visual.syncFromState(state, 0.5); // settle
   visual.recoilKick(0, 0.36, 1); // right barrel
-  visual.syncFromState(state, 0.06);
+  visual.syncFromState(state, kickS);
   const yawR = turretG.rotation.y - state.turretYaw;
   const rollR = recoilG.rotation.z;
   assert.ok(yawR > 0.010, `${id}: right barrel yaws the station right (got ${yawR})`);
@@ -182,9 +190,8 @@ for (const id of TWIN_PLANT) {
   // rapid stroke spans exactly 0.28 s, matching the fastest twin cycle.
   // 268: the PGZ-95's 0.25 s cycle is shorter than the stroke. The belt alternates (shot N -> muzzles[N % len]), so
   // its next shot finds the other tube in battery and the fired tube has until its own refire two cycles on.
-  const cycle = getSpec(id).gun.shells[0].reloadS;
   const STROKE_S = 0.28; // tankFactoryCore RAPID_BACK + RAPID_HOLD + RAPID_RETURN
-  visual.syncFromState(state, cycle - 0.06);
+  visual.syncFromState(state, cycle - kickS);
   near(barrelGs[0].position.z, 0, 1e-9, `${id}: the next tube in battery for the ${cycle}s belt refire`);
   if (cycle < STROKE_S) visual.syncFromState(state, cycle);
   const refireS = cycle < STROKE_S ? 2 * cycle : cycle;
@@ -194,6 +201,34 @@ for (const id of TWIN_PLANT) {
   }
   near(recoilG.rotation.z, 0, 1e-12, `${id}: cradle roll returns to zero`);
 }
+// 269: the rotary plant (the M163 VADS's Vulcan; gunRotorSpin.ts): its six barrels ride one rotor on rig_recoil, so the
+// belt stroke carries them; each kick runs the rotor up, the rotor's spin never moves the fire axis, and with no shot it
+// coasts to rest. Every other id carries no rotor.
+{
+  const { visual, state, recoilG } = rig('m163_vads');
+  const rotor = recoilG.children.find((child) => child.userData.gunRotor);
+  assert.ok(rotor, 'm163_vads: the rotor rides rig_recoil');
+  const axis = visual.gunDirWorld(new THREE.Vector3()).clone();
+  const cycle = getSpec('m163_vads').gun.autoloader.intraClipS;
+  visual.recoilKick(0, 0.36);
+  visual.syncFromState(state, 0.03);
+  assert.ok(recoilG.position.z < -0.04, 'm163_vads: the belt stroke carries the rotor');
+  for (let shot = 0; shot < 8; shot++) { visual.recoilKick(0, 0.36); visual.syncFromState(state, cycle); }
+  assert.ok(rotor.rotation.z !== 0, 'm163_vads: the kicks spin the rotor');
+  for (let f = 0; f < 300; f++) visual.syncFromState(state, 1 / 60);
+  const rest = rotor.rotation.z;
+  visual.syncFromState(state, 1 / 60);
+  assert.equal(rotor.rotation.z, rest, 'm163_vads: the rotor coasts to rest without shots');
+  assert.ok(rest !== 0 && visual.gunDirWorld(new THREE.Vector3()).angleTo(axis) < 1e-3,
+    'm163_vads: the turned rotor leaves the fire axis on the bore');
+  for (const id of ['bmp3', 'gepard_1a2']) {
+    const other = rig(id);
+    let rotors = 0;
+    other.visual.root.traverse((object) => { if (object.userData.gunRotor) rotors++; });
+    assert.equal(rotors, 0, `${id}: no rotor`);
+  }
+}
+
 // Eight fixed missile canisters use separate launch origins, without the
 // barrel stroke of a cannon. The measured cradle remains the pitch pivot.
 const FIXED_LAUNCHERS = ['aft10'];

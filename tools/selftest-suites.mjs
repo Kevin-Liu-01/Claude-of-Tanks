@@ -176,6 +176,17 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/vehicles/profiles/gm352AirDefense.selftest.mjs',
     // 268: the PLA air-defence pair (PGZ-95, PGZ-09): datums, every bore, the QW-2 exits, the clearance scans
     'src/vehicles/profiles/chineseAirDefense.selftest.mjs',
+    // 269: the second air-defence round: the Type 87 on the Type 74 hull, the Marksman turret on the T-55 and Leopard 2A4,
+    // the Lvkv 9040 on the CV90 Mk 4, the K30 Biho on its K200 hull, the PZA Loara on the PT-91: frames, bores, sweeps
+    'src/vehicles/profiles/type87.selftest.mjs',
+    'src/vehicles/profiles/marksman.selftest.mjs',
+    'src/vehicles/profiles/lvkv9040.selftest.mjs',
+    'src/vehicles/profiles/k30Biho.selftest.mjs',
+    'src/vehicles/profiles/loara.selftest.mjs',
+    // 269: the M163 VADS on the M113 builder's M741: its frame, the Vulcan's rotor and its spin, the sweeps
+    'src/vehicles/profiles/m163.selftest.mjs',
+    // 2026-11-06: the owner's air-defence firepower (airDefenseFirepower.ts): the floor cycle, the output, the rounds, the racks
+    'src/vehicles/airDefenseFirepower.selftest.mjs',
     'src/vehicles/profiles/arieteC2X.selftest.mjs',
     'src/vehicles/profiles/xk2.selftest.mjs',
     'src/sim/rocketBattery.selftest.mjs',
@@ -2067,6 +2078,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/vehicles/tankVisualClone.selftest.mjs', // perf-252: a copied visual (battle builds too) draws as a fresh build
     'src/vehicles/farLod.selftest.mjs', // perf-255: the far LOD past 180 m, the near law after a far trip
     'src/vehicles/recoilRig.selftest.mjs',
+    // 269: a rotary cannon's rotor spinning while it fires (gunRotorSpin.ts, the M163 VADS's Vulcan)
+    'src/vehicles/gunRotorSpin.selftest.mjs',
     'src/fx/fxRuntimeAccess.selftest.mjs',
     'src/game/garageDressingAccess.selftest.mjs',
     'src/game/garageDressingFleet.selftest.mjs',

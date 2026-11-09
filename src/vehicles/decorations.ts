@@ -3234,6 +3234,8 @@ export function decorManifestFor(spec: FleetTankSpec, rng: Rng): DecorManifestRo
   // 268: the twin-cannon air defence: the turret-side guns, radars and launchers sweep the deck and roof at every
   // bearing and elevation, so no random stowage; the builders author each vehicle's own fittings
   if (['tunguska_m', 'pantsir_s1', 'gepard_1a2', 'pgz95', 'pgz09'].includes(spec.id)) return [];
+  // 269: the second air-defence round likewise (the Lvkv 9040's single gun and radar drum sweep its roof)
+  if (['type87_aw', 'marksman_t55', 'itpsv_leopard2', 'lvkv9040', 'k30_biho', 'pza_loara'].includes(spec.id)) return [];
   // Release 269 (the Australian line): every Australian build authors its own dischargers and roof guns (the M113s'
   // Saladin, Scorpion and Tenix turrets, the Leopard AS1 on the Danish build, the Abrams pair on the M1A1 and the SEPv3
   // study with the TMAPU, racks and kit, the Redback's T2000 and Iron Fist). The era field load doubled them (a second
@@ -3243,6 +3245,8 @@ export function decorManifestFor(spec: FleetTankSpec, rng: Rng): DecorManifestRo
   const m113 = M113_MANIFESTS[spec.id];
   if (m113) return m113();
   if (['leopard_as1', 'm1a1_aim_sa_aus', 'm1a2_sepv3_aus', 'redback'].includes(spec.id)) return [];
+  // 269: the M163 VADS: the Vulcan and the radar sweep the roof at every bearing; its builder authors its stowage case
+  if (spec.id === 'm163_vads') return [];
   // These source-study profiles already own their complete equipment and
   // open racks. Preserve their authored cargo without a random overlay.
   // Originals and unrelated X studies keep their existing loadouts.

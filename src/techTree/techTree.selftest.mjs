@@ -234,6 +234,11 @@ const digest = createHash('sha256').update(JSON.stringify(TECH_TREES)).digest('h
 // 2026-11-02 re-pin (269, Main's ruling on the South Africa tree, head A): the South Africa tree, its root the Olifant Mk 1
 // (II) with the Semel as its twin, the Mk 1A and Mk 1B (III) and the Olifant Mk 2 (III) moved here from the UK tree's
 // special lane; the TTD the special (III by its same-tier duels; IV ruled). The UK tree's nations drop South Africa.
+// 269 (the second air-defence round; tiers by capability on the coordinator's suggestion): the Type 87 SPAAG at V on
+// Japan's STB-1 to Type 10 line off the Type 74 (lane 1); the UK's new Marksman line off the Chieftain Mk 10 on lane 5,
+// the Marksman (T-55) at V and the ItPsv Leopard 2 at VI after it; the Lvkv 9040 at V straight on from Sweden's CV90
+// (lane 2); the K30 Biho at V off South Korea's BMP-3 (ROK), lane 2 under the K21; the PZA Loara at VI off Poland's
+// PT-91A Twardy (lane 1). (Pinned be0f063a807fb64f on the air-defence side.)
 // 2026-11-02 re-pin (269, Main's ruling on the Australia tree, head B): the Australia tree, its root the Leopard AS1 (I),
 // the M1A1 AIM SA (VIII) and the M1A2 SEPv3 (IX) after it, the Centurion Mk 5/1 (II) moved here from the UK tree's special
 // lane, the M113A1 FSV and MRV (I), the M113AS4 (II, with the Ares APC) and the AS21 Redback (VI). The UK tree's nations
@@ -244,5 +249,9 @@ const digest = createHash('sha256').update(JSON.stringify(TECH_TREES)).digest('h
 // tree's special lane at II.
 // 269 integration (2026-11-06): + the US M113A3 at II in the US special lane.
 // 270 (the owner 2026-11-05; Main's tier ruling the same day): the T95 with its fictional 152 mm on the US special lane at II. Merged onto 269 (2026-11-08): re-pinned with the 268 and 269 trees; the T95 moves to the US special line's lane 2 (the M113A3 holds lane 1 at II).
-assert.equal(digest, 'd321a538ffbb129c', `tree content changed: re-pin to ${digest} if deliberate`);
+// 270 (item/twin-aa-269): the second air-defence round (above) and the M163 VADS in the US tree's special lane at IV,
+// after the M113A3 on its lane 1 (the owner, 2026-11-04: "also add the m163 VADS"); the merge of main 72addd0635
+// (release 269): both sides' trees together. (Pinned 3a59594b312e8b40 at the merge.)
+// 271 (integration): the T95 (270) and the twin-aa round's trees together; re-pinned at the merge (6a5a7ecd456ca7fd).
+assert.equal(digest, '6a5a7ecd456ca7fd', `tree content changed: re-pin to ${digest} if deliberate`);
 console.log(`techTree: ${TECH_TREES.length} trees, ${drawn.length} vehicles, pin ${digest}`);

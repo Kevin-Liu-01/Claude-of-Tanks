@@ -299,6 +299,39 @@ const LABEL_OVERRIDES: Readonly<Record<string, TankLabelOverride>> = Object.free
     displayName: 'PGZ-09', shortName: 'PGZ-09',
     searchAliases: ['PGZ09', 'Type 09 SPAAA', 'Type 09 SPAAG', 'Type 09 self-propelled anti-aircraft gun', '09式自行高炮'],
   },
+  // 269: the second air-defence round
+  type87_aw: {
+    displayName: 'Type 87 Self-Propelled Anti-Aircraft Gun', shortName: 'Type 87',
+    searchAliases: ['Type 87 SPAAG', 'Type 87 AW', '87AW', 'Type 87 self-propelled anti-aircraft gun', '87式自走高射機関砲'],
+  },
+  marksman_t55: {
+    displayName: 'Marksman (T-55)', shortName: 'Marksman T-55',
+    searchAliases: ['Marksman', 'UK Marksman', 'Marconi Marksman', 'T-55 Marksman', 'T-55AM Marksman', 'ItPsv 90',
+      'ItPsv 90 Marksman'],
+  },
+  itpsv_leopard2: {
+    displayName: 'ItPsv Leopard 2 (Leopard 2 Marksman)', shortName: 'ItPsv Leopard 2',
+    searchAliases: ['Leopard 2 Marksman', 'Leopard 2A4 Marksman', 'ItPsv Leopard', 'Finnish Leopard 2 Marksman',
+      'Ilmatorjuntapanssarivaunu Leopard 2'],
+  },
+  lvkv9040: {
+    displayName: 'Lvkv 9040', shortName: 'Lvkv 9040',
+    searchAliases: ['Lvkv 90', 'Lvkv9040', 'Luftvärnskanonvagn 9040', 'Luftvarnskanonvagn 90', 'CV9040 AAV',
+      'CV90 anti-aircraft'],
+  },
+  k30_biho: {
+    displayName: 'K30 Biho', shortName: 'K30 Biho',
+    searchAliases: ['Biho', 'K-30', 'K30', 'K30 SPAAG', 'Flying Tiger', 'K30 비호'],
+  },
+  pza_loara: {
+    displayName: 'PZA Loara', shortName: 'PZA Loara',
+    searchAliases: ['Loara', 'Loara-A', 'PZA Loara-A', 'Przeciwlotniczy Zestaw Artyleryjski Loara'],
+  },
+  // 269: the M163 VADS
+  m163_vads: {
+    displayName: 'M163 VADS', shortName: 'M163',
+    searchAliases: ['M163', 'M163A1', 'VADS', 'Vulcan Air Defense System', 'M163 Vulcan', 'M741', 'M168 Vulcan', 'Vulcan SPAAG'],
+  },
   m3a2_bradley: {
     displayName: 'M3A2 Bradley', shortName: 'M3A2 Bradley',
     searchAliases: ['M3A2 ODS', 'M3A2 Cavalry Fighting Vehicle', 'Bradley CFV'],

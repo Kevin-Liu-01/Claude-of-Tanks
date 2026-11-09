@@ -66,15 +66,36 @@ const EXPECTED = Object.freeze({
   borsuk:              { hp: 2650, speed: 65, reverse: 30, traverse: 51.5, damage: 84, pen: [185, 170, 155], reload: 0.38, sound: 'mk30-2', missile: [650, 'spike-launch'] },
   // 268: the twin-cannon air defence on the BMPT twin 2A42 rows (30 mm), scaled by calibre for 25 and 35 mm; their SAMs on
   // the M6 Linebacker's Stinger handling (gm352AirDefenseSpecs.ts, gepardSpecs.ts, chineseAirDefenseSpecs.ts)
-  tunguska_m:          { hp: 2300, speed: 65, reverse: 18, traverse: 44.8, damage: 52, pen: [125, 112, 100], reload: 0.30, sound: 'twin-2a42', missile: [360, 'tow-launch'] },
-  pantsir_s1:          { hp: 2450, speed: 65, reverse: 18, traverse: 43.7, damage: 50, pen: [122, 110, 98], reload: 0.28, sound: 'twin-2a42', missile: [380, 'tow-launch'] },
-  gepard_1a2:          { hp: 2500, speed: 65, reverse: 25, traverse: 42.6, damage: 61, pen: [146, 131, 117], reload: 0.35, sound: 'kde-35', missile: null },
-  pgz95:               { hp: 2000, speed: 53, reverse: 16, traverse: 49.3, damage: 43, pen: [125, 112, 100], reload: 0.25, sound: 'm242-bushmaster', missile: [300, 'tow-launch'] },
-  pgz09:               { hp: 2400, speed: 55, reverse: 18, traverse: 44.8, damage: 58, pen: [142, 128, 114], reload: 0.33, sound: 'kde-35', missile: null },
+  // 2026-11-06 (the owner: "a super super high fire rate and a tonn of ammo", airDefenseFirepower.ts): every air-defence gun
+  // at the 0.05 s floor, each round's damage scaled for twice the sustained output, the M163 in 300-round bursts.
+  tunguska_m:          { hp: 2300, speed: 65, reverse: 18, traverse: 44.8, damage: 17, pen: [125, 112, 100], reload: 0.05, sound: 'twin-2a42', missile: [360, 'tow-launch'] },
+  pantsir_s1:          { hp: 2450, speed: 65, reverse: 18, traverse: 43.7, damage: 18, pen: [122, 110, 98], reload: 0.05, sound: 'twin-2a42', missile: [380, 'tow-launch'] },
+  gepard_1a2:          { hp: 2500, speed: 65, reverse: 25, traverse: 42.6, damage: 17, pen: [146, 131, 117], reload: 0.05, sound: 'kde-35', missile: null },
+  pgz95:               { hp: 2000, speed: 53, reverse: 16, traverse: 49.3, damage: 17, pen: [125, 112, 100], reload: 0.05, sound: 'm242-bushmaster', missile: [300, 'tow-launch'] },
+  pgz09:               { hp: 2400, speed: 55, reverse: 18, traverse: 44.8, damage: 18, pen: [142, 128, 114], reload: 0.05, sound: 'kde-35', missile: null },
+  // 269: the second air-defence round, guns only: the Gepard's KDA rows for the four twin-35 mm vehicles, the Tunguska-M's
+  // 30 mm rows for the K30's KCB, and the twin-35 mm rows scaled by calibre (x 40/35) for the Lvkv 9040's one Bofors
+  // (type87Specs.ts, marksmanSpecs.ts, lvkv9040Specs.ts, k30BihoSpecs.ts, loaraSpecs.ts)
+  type87_aw:           { hp: 2350, speed: 53, reverse: 20, traverse: 42.6, damage: 17, pen: [146, 131, 117], reload: 0.05, sound: 'kde-35', missile: null },
+  marksman_t55:        { hp: 2400, speed: 50, reverse: 12, traverse: 40.3, damage: 17, pen: [146, 131, 117], reload: 0.05, sound: 'kde-35', missile: null },
+  itpsv_leopard2:      { hp: 2600, speed: 72, reverse: 25, traverse: 44.8, damage: 17, pen: [146, 131, 117], reload: 0.05, sound: 'kde-35', missile: null },
+  lvkv9040:            { hp: 2350, speed: 70, reverse: 40, traverse: 51.5, damage: 18, pen: [167, 150, 134], reload: 0.05, sound: 'bofors-40', missile: null },
+  k30_biho:            { hp: 2150, speed: 65, reverse: 20, traverse: 51.5, damage: 17, pen: [125, 112, 100], reload: 0.05, sound: 'mk30-2', missile: null },
+  pza_loara:           { hp: 2550, speed: 60, reverse: 20, traverse: 38.1, damage: 17, pen: [146, 131, 117], reload: 0.05, sound: 'kde-35', missile: null },
+  // 269 (the m113-hull-269 side, pinned at its merge into the air-defence lane at the merged tree's values): the
+  // M113AS4's .50 and twin TOW-2A and the US M113A3's .50 on the Ares APC's rows (australiaSpecs.ts, usaM113Specs.ts),
+  // the AS21 Redback's 30 mm and Spike LR2 (australiaSpecs.ts)
+  m113as4:             { hp: 1300, speed: 65, reverse: 14, traverse: 61.6, damage: 24, pen: [80, 70, 55], reload: 0.14, sound: 'heavy-machine-gun', missile: [450, 'tow-launch'] },
+  redback:             { hp: 2700, speed: 65, reverse: 30, traverse: 47, damage: 95, pen: [245, 224, 202], reload: 0.28, sound: 'mk30-2', missile: [680, 'spike-launch'] },
+  m113a3:              { hp: 1500, speed: 66, reverse: 14, traverse: 61.6, damage: 24, pen: [80, 70, 55], reload: 0.14, sound: 'heavy-machine-gun', missile: null },
+  // 269: the M163 VADS (m163Specs.ts): its 20 mm Vulcan at the gun's 1,000 rounds a minute (cycle 0.06 s) in the burst
+  // limiter's 60-round bursts, the headline reload the burst limiter's 4.0 s reset (a magazine's: fleetBalance.selftest)
+  // (2026-11-06, airDefenseFirepower.ts: the floor cycle 0.05 s, 300-round bursts, the reset 2 s)
+  m163_vads:           { hp: 1750, speed: 64, reverse: 14, traverse: 61.6, damage: 18, pen: [90, 72, 55], reload: 2, cycle: 0.05, magazine: 300, sound: 'rh202', missile: null },
 });
 
 const ifvIds = ALL_TANK_IDS.filter((id) => TANK_SPECS[id]?.role === 'ifv');
-assert.equal(ifvIds.length, 50, 'complete selectable IFV fleet'); // Includes independent Marder 2 and M6; SPz Wotan remains selectable; 265: the CV9035 DK; 266: the Ukrainian CV9040C; 267: the BMPT Terminator; 268: the five twin-cannon air-defence vehicles and the M3A2.
+assert.equal(ifvIds.length, 60, 'complete selectable IFV fleet'); // Includes independent Marder 2 and M6; SPz Wotan remains selectable; 265: the CV9035 DK; 266: the Ukrainian CV9040C; 267: the BMPT Terminator; 268: the five twin-cannon air-defence vehicles and the M3A2; 269: the second air-defence round's six, then (the m113-hull-269 merge) the M113AS4, the Redback and the US M113A3, then the M163 VADS.
 assert.deepEqual([...ifvIds].sort(), Object.keys(EXPECTED).sort(),
   'the explicit stat table covers exactly the selectable IFVs');
 
@@ -103,7 +124,12 @@ for (const id of ifvIds) {
 
   const round = spec.gun.shells[0];
   assert.equal(spec.gun.reloadS, expected.reload, `${id}: headline reload`);
-  assert.equal(round.reloadS, expected.reload, `${id}: default-round reload`);
+  // (a burst magazine's rounds cycle at the magazine's own interval: the M163 VADS, 269)
+  assert.equal(round.reloadS, expected.cycle ?? expected.reload, `${id}: default-round reload`);
+  if (expected.magazine) {
+    assert.deepEqual(spec.gun.autoloader, { magazineSize: expected.magazine, intraClipS: expected.cycle, fullReloadS: expected.reload },
+      `${id}: the burst magazine`);
+  }
   assert.equal(round.dmg, expected.damage, `${id}: default-round damage`);
   assert.deepEqual([round.pen100Mm, round.pen1000Mm, round.pen2000Mm], expected.pen,
     `${id}: default-round penetration curve`);

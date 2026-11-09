@@ -304,4 +304,11 @@ export const NATION_INDEX: readonly (readonly [string, CountryId | null, string 
   ["gepard_1a2","germany","modern",5],
   ["pgz95","china","modern",5],
   ["pgz09","china","modern",6],
+  ["type87_aw","japan","cold-war",5],
+  ["marksman_t55","uk","modern",5],
+  ["itpsv_leopard2","uk","modern",6],
+  ["lvkv9040","sweden","modern",5],
+  ["k30_biho","south_korea","modern",5],
+  ["pza_loara","poland","modern",6],
+  ["m163_vads","usa","cold-war",4],
 ];

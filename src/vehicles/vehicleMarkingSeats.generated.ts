@@ -39,6 +39,7 @@ import { VEHICLE_MARKING_SEATS as SEATS_JAPAN } from './vehicleMarkingSeatGroups
 import { VEHICLE_MARKING_SEATS as SEATS_K1A1X } from './vehicleMarkingSeatGroups/k1a1X.generated.ts';
 import { VEHICLE_MARKING_SEATS as SEATS_K21X } from './vehicleMarkingSeatGroups/k21X.generated.ts';
 import { VEHICLE_MARKING_SEATS as SEATS_K2X } from './vehicleMarkingSeatGroups/k2X.generated.ts';
+import { VEHICLE_MARKING_SEATS as SEATS_K30BIHO } from './vehicleMarkingSeatGroups/k30Biho.generated.ts';
 import { VEHICLE_MARKING_SEATS as SEATS_KF41LYNXSOURCEX } from './vehicleMarkingSeatGroups/kf41LynxSourceX.generated.ts';
 import { VEHICLE_MARKING_SEATS as SEATS_KF51X } from './vehicleMarkingSeatGroups/kf51X.generated.ts';
 import { VEHICLE_MARKING_SEATS as SEATS_KOREA } from './vehicleMarkingSeatGroups/korea.generated.ts';
@@ -50,11 +51,15 @@ import { VEHICLE_MARKING_SEATS as SEATS_LEOPARD2A3B4 } from './vehicleMarkingSea
 import { VEHICLE_MARKING_SEATS as SEATS_LEOPARD2A4FAMILY } from './vehicleMarkingSeatGroups/leopard2a4Family.generated.ts';
 import { VEHICLE_MARKING_SEATS as SEATS_LEOPARDA6X } from './vehicleMarkingSeatGroups/leopardA6X.generated.ts';
 import { VEHICLE_MARKING_SEATS as SEATS_LEOPARDX } from './vehicleMarkingSeatGroups/leopardX.generated.ts';
+import { VEHICLE_MARKING_SEATS as SEATS_LOARA } from './vehicleMarkingSeatGroups/loara.generated.ts';
 import { VEHICLE_MARKING_SEATS as SEATS_LRMVLYNX } from './vehicleMarkingSeatGroups/lrmvLynx.generated.ts';
+import { VEHICLE_MARKING_SEATS as SEATS_LVKV9040 } from './vehicleMarkingSeatGroups/lvkv9040.generated.ts';
+import { VEHICLE_MARKING_SEATS as SEATS_M163 } from './vehicleMarkingSeatGroups/m163.generated.ts';
 import { VEHICLE_MARKING_SEATS as SEATS_M3A2BRADLEY } from './vehicleMarkingSeatGroups/m3a2Bradley.generated.ts';
 import { VEHICLE_MARKING_SEATS as SEATS_M41 } from './vehicleMarkingSeatGroups/m41.generated.ts';
 import { VEHICLE_MARKING_SEATS as SEATS_M6LINEBACKER } from './vehicleMarkingSeatGroups/m6Linebacker.generated.ts';
 import { VEHICLE_MARKING_SEATS as SEATS_MARDER2 } from './vehicleMarkingSeatGroups/marder2.generated.ts';
+import { VEHICLE_MARKING_SEATS as SEATS_MARKSMAN } from './vehicleMarkingSeatGroups/marksman.generated.ts';
 import { VEHICLE_MARKING_SEATS as SEATS_MERKAVA } from './vehicleMarkingSeatGroups/merkava.generated.ts';
 import { VEHICLE_MARKING_SEATS as SEATS_MERKAVAX } from './vehicleMarkingSeatGroups/merkavaX.generated.ts';
 import { VEHICLE_MARKING_SEATS as SEATS_MISC } from './vehicleMarkingSeatGroups/misc.generated.ts';
@@ -90,6 +95,7 @@ import { VEHICLE_MARKING_SEATS as SEATS_T90MSX } from './vehicleMarkingSeatGroup
 import { VEHICLE_MARKING_SEATS as SEATS_T95 } from './vehicleMarkingSeatGroups/t95.generated.ts';
 import { VEHICLE_MARKING_SEATS as SEATS_TOS1ATAGIL } from './vehicleMarkingSeatGroups/tos1aTagil.generated.ts';
 import { VEHICLE_MARKING_SEATS as SEATS_TYPE10X } from './vehicleMarkingSeatGroups/type10X.generated.ts';
+import { VEHICLE_MARKING_SEATS as SEATS_TYPE87 } from './vehicleMarkingSeatGroups/type87.generated.ts';
 import { VEHICLE_MARKING_SEATS as SEATS_TYPE89SOURCEX } from './vehicleMarkingSeatGroups/type89SourceX.generated.ts';
 import { VEHICLE_MARKING_SEATS as SEATS_TYPE90X } from './vehicleMarkingSeatGroups/type90X.generated.ts';
 import { VEHICLE_MARKING_SEATS as SEATS_TYPE96BX } from './vehicleMarkingSeatGroups/type96bX.generated.ts';
@@ -137,6 +143,7 @@ export const VEHICLE_MARKING_SEATS: Readonly<Record<string, VehicleMarkingSeatRe
   SEATS_K1A1X,
   SEATS_K21X,
   SEATS_K2X,
+  SEATS_K30BIHO,
   SEATS_KF41LYNXSOURCEX,
   SEATS_KF51X,
   SEATS_KOREA,
@@ -148,11 +155,15 @@ export const VEHICLE_MARKING_SEATS: Readonly<Record<string, VehicleMarkingSeatRe
   SEATS_LEOPARD2A4FAMILY,
   SEATS_LEOPARDA6X,
   SEATS_LEOPARDX,
+  SEATS_LOARA,
   SEATS_LRMVLYNX,
+  SEATS_LVKV9040,
+  SEATS_M163,
   SEATS_M3A2BRADLEY,
   SEATS_M41,
   SEATS_M6LINEBACKER,
   SEATS_MARDER2,
+  SEATS_MARKSMAN,
   SEATS_MERKAVA,
   SEATS_MERKAVAX,
   SEATS_MISC,
@@ -188,6 +199,7 @@ export const VEHICLE_MARKING_SEATS: Readonly<Record<string, VehicleMarkingSeatRe
   SEATS_T95,
   SEATS_TOS1ATAGIL,
   SEATS_TYPE10X,
+  SEATS_TYPE87,
   SEATS_TYPE89SOURCEX,
   SEATS_TYPE90X,
   SEATS_TYPE96BX,

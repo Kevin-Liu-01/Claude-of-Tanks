@@ -267,7 +267,7 @@ export function createCombatAnatomyAudit() {
               && box.module !== 'gun' && box.module !== 'optics') {
             const cells = box.turretLocal ? shell.turret : shell.hull;
             if (box.crew && box.posture) {
-              const crew = crewArmour(spec.armor, box.turretLocal ? 'turret' : 'hull');
+              const crew = crewArmour(spec.armor, box.turretLocal ? 'turret' : 'hull', box.crew);
               assert(shapeSamples(shape).every((point) => crew.inside(point, -0.003)),
                 `${id}/${box.crew}: seated crew shape stays inside closed armor`);
             } else {

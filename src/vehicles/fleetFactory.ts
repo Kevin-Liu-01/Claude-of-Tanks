@@ -242,6 +242,13 @@ const GROUP_LOADERS = Object.freeze({
   gepard: () => import('./profiles/gepard.ts').then((mod) => registerProfiles(mod.GEPARD_PROFILES)),
   chineseAirDefense: () => import('./profiles/chineseAirDefense.ts')
     .then((mod) => registerProfiles(mod.CHINESE_AIR_DEFENSE_PROFILES)),
+  // 269: the second air-defence round
+  type87: () => import('./profiles/type87.ts').then((mod) => registerProfiles(mod.TYPE87_PROFILES)),
+  marksman: () => import('./profiles/marksman.ts').then((mod) => registerProfiles(mod.MARKSMAN_PROFILES)),
+  lvkv9040: () => import('./profiles/lvkv9040.ts').then((mod) => registerProfiles(mod.LVKV9040_PROFILES)),
+  k30Biho: () => import('./profiles/k30Biho.ts').then((mod) => registerProfiles(mod.K30_BIHO_PROFILES)),
+  loara: () => import('./profiles/loara.ts').then((mod) => registerProfiles(mod.LOARA_PROFILES)),
+  m163: () => import('./profiles/m163.ts').then((mod) => registerProfiles(mod.M163_PROFILES)),
 } satisfies Record<FleetGroup, GroupLoader>);
 const groupPromises = new Map<FleetGroup, Promise<void>>();
 const readyGroups = new Set<FleetGroup>();

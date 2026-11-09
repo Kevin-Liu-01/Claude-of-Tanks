@@ -2,7 +2,7 @@
 
 > Generated from `TANK_SPECS` by `npm run tank:roster`. Do not maintain a second hand-written roster.
 
-Claude of Tanks currently retains **300 saved vehicle records**: **300 production-visible**, **0 local development models**, and **0 non-playable reference placeholders**. Production carousels, matchmaking, the Tank Gallery, and Scene Studio use the production projection.
+Claude of Tanks currently retains **307 saved vehicle records**: **307 production-visible**, **0 local development models**, and **0 non-playable reference placeholders**. Production carousels, matchmaking, the Tank Gallery, and Scene Studio use the production projection.
 
 To inspect every playable saved model locally, copy `.env.example` to `.env.local` and run the Vite development server. The `VITE_COT_DEV_FLEET_KEY` switch is accepted only when Vite reports `DEV=true`; it is ignored by production builds. Development-only entries display a blue `DEV` tag in vehicle pickers. `REF` records remain report-only because they are generic community placeholders, not first-party playable models.
 
@@ -308,6 +308,13 @@ To inspect every playable saved model locally, copy `.env.example` to `.env.loca
 | 298 | PROD | `gepard_1a2` | Flakpanzer Gepard 1A2 | Germany | V | Modern | Production |
 | 299 | PROD | `pgz95` | PGZ-95 | China | V | Modern | Production |
 | 300 | PROD | `pgz09` | PGZ-09 | China | VI | Modern | Production |
+| 301 | PROD | `type87_aw` | Type 87 Self-Propelled Anti-Aircraft Gun | Japan | V | Cold War | Production |
+| 302 | PROD | `marksman_t55` | Marksman (T-55) | UK | V | Modern | Production |
+| 303 | PROD | `itpsv_leopard2` | ItPsv Leopard 2 (Leopard 2 Marksman) | UK | VI | Modern | Production |
+| 304 | PROD | `lvkv9040` | Lvkv 9040 | Sweden | V | Modern | Production |
+| 305 | PROD | `k30_biho` | K30 Biho | South Korea | V | Modern | Production |
+| 306 | PROD | `pza_loara` | PZA Loara | Poland | VI | Modern | Production |
+| 307 | PROD | `m163_vads` | M163 VADS | USA | IV | Cold War | Production |
 
 ## Policy ownership
 
