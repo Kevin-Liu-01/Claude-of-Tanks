@@ -17,10 +17,17 @@
 // Writes public/audio/voice/<lang>/<line>_<n>.webm and
 // src/audio/voiceManifest.generated.ts. `--dry` writes nothing and calls no
 // API: it counts the takes whose first attempt is not cached yet and their
-// characters (speech bills one credit per character). `--append` keeps each
-// line's shipped takes as they are and builds only the takes the script added
-// after them (a line that gains a take keeps the ones already approved; a
-// rebuild of a take re-picks among its cached attempts and re-encodes it).
+// characters (speech bills one credit per character), planned as the build
+// plans them. `--append` keeps each line's shipped takes as they are and builds
+// only the takes after them (a line that gains a take keeps the ones already
+// approved; a rebuild of a take re-picks among its cached attempts and
+// re-encodes it). File <line>_<n> is always script take n (voicePlan.mjs): a
+// take that fails or comes back empty ends its line there, and --append
+// resumes at it. So does a take under the bar that a budget or quota stop cut
+// short (its attempts ended before all ran, or its cut pass never started;
+// pickTake); one whose attempts and cuts all ran ships its best attempt, under
+// the bar or not, flagged below 0.34. --append keeps by count, so a take whose
+// words change is rebuilt without --append (--lines <id>).
 
 import { readFileSync, writeFileSync, existsSync, mkdirSync, rmSync, readdirSync, mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -29,6 +36,7 @@ import { fileURLToPath } from 'node:url';
 import { speech, speechCached, transcribe, ElevenLabsError } from './elevenlabs.mjs';
 import { s16ToFloat, wavFromS16 } from './pcm.mjs';
 import { masterTake } from './master.mjs';
+import { buildLine, pickTake, planLine } from './voicePlan.mjs';
 
 /** Exactly one asset's take files (`<id>_<n>.webm|m4a`): never a longer id sharing the prefix. */
 const takeFileOf = (id) => new RegExp(`^${id.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}_\\d+\\.(webm|m4a)$`);
@@ -203,31 +211,24 @@ function speechParams(lang, line, text, attempt) {
 async function bestTake(lang, line, text) {
   // Very short calls ("Up!", "HE!") transcribe loosely; accept a lower bar.
   const bar = normalize(text).length <= 4 ? 0.34 : 0.62;
-  let best = null;
-  const tried = [];
-  for (let attempt = 0; attempt < attempts && !stop; attempt++) {
-    const { file, cost } = await speech(speechParams(lang, line, text, attempt));
-    spent += cost;
-    if (spent >= budget) stop = true;
-    const raw = readFileSync(file);
-    const result = verify ? await check(lang, line, text, raw, `${attempt}`) : { heard: '', repeated: false, sim: 1 };
-    const durS = raw.length / 2 / 24000;
-    const candidate = { ...result, raw, durS, attempt };
-    tried.push(candidate);
-    if (!best || betterTake(candidate, best)) best = candidate;
-    if (candidate.sim >= bar && durS < 6) break;
-  }
-  // No attempt passed: cut each at its pauses until one reads as the script
-  // (a short cut can transcribe as a near-homophone, so one attempt is not enough).
-  if (verify && best && best.sim < bar && !stop) {
-    for (const candidate of tried) {
+  return pickTake({
+    attempts, bar, verify, better: betterTake, stopped: () => stop,
+    attempt: async (attempt) => {
+      const { file, cost } = await speech(speechParams(lang, line, text, attempt));
+      spent += cost;
+      if (spent >= budget) stop = true;
+      const raw = readFileSync(file);
+      const result = verify ? await check(lang, line, text, raw, `${attempt}`) : { heard: '', repeated: false, sim: 1 };
+      return { ...result, raw, durS: raw.length / 2 / 24000, attempt };
+    },
+    // No attempt passed: cut each at its pauses until one reads as the script
+    // (a short cut can transcribe as a near-homophone, so one attempt is not enough).
+    trim: async (candidate) => {
       const cut = await trimmedTake(lang, line, text, candidate);
-      if (!cut) continue;
-      trims.push(`${lang}/${line.id}: "${candidate.heard}" → "${cut.heard}"`);
+      if (cut) trims.push(`${lang}/${line.id}: "${candidate.heard}" → "${cut.heard}"`);
       return cut;
-    }
-  }
-  return best;
+    },
+  });
 }
 
 const languages = (langsArg || script.languages);
@@ -238,10 +239,12 @@ if (dry) {
   for (const lang of languages) {
     if (!cast[lang]) continue;
     for (const line of script.lines.filter((l) => !linesArg || linesArg.includes(l.id))) {
-      const kept = append ? (state[lang]?.[line.id]?.length ?? 0) : 0;
-      for (const text of (line[lang] || []).slice(kept)) {
+      const takesOf = line[lang] || [];
+      const plan = planLine({ previous: state[lang]?.[line.id] ?? [], takes: takesOf, append,
+        exists: (i) => existsSync(join(OUT, lang, `${line.id}_${i}.webm`)) });
+      for (const i of plan.build) {
         takes++;
-        const params = speechParams(lang, line, text, 0);
+        const params = speechParams(lang, line, takesOf[i], 0);
         if (speechCached(params)) continue;
         uncached++;
         chars += params.text.length;
@@ -250,6 +253,7 @@ if (dry) {
   }
   console.log(`dry: ${takes} takes, ${uncached} not cached, ${chars} characters on their first attempt `
     + `(~${Math.round(chars * 1.5)} credits with re-rolls; speech-to-text adds about one credit a take)`);
+  rmSync(tmp, { recursive: true, force: true });
   process.exit(0);
 }
 for (const lang of languages) {
@@ -262,25 +266,29 @@ for (const lang of languages) {
     if (!Array.isArray(takes) || !takes.length) { failures.push(`${lang}/${line.id}: no script`); return; }
     // --append: the shipped takes stay (their files and lengths) when the script still has at least as many
     const previous = state[lang][line.id] ?? [];
-    const kept = append && previous.length <= takes.length && previous.every((_, i) => existsSync(join(dir, `${line.id}_${i}.webm`)))
-      ? previous.length : 0;
+    const plan = planLine({ previous, takes, append, exists: (i) => existsSync(join(dir, `${line.id}_${i}.webm`)) });
     for (const name of readdirSync(dir)) {
       const match = takeFileOf(line.id).test(name) ? Number(name.slice(line.id.length + 1).split('.')[0]) : -1;
-      if (match >= kept) rmSync(join(dir, name));
+      if (match >= plan.kept) rmSync(join(dir, name));
     }
-    const shipped = previous.slice(0, kept);
-    for (let i = kept; i < takes.length && !stop; i++) {
-      try {
+    const { shipped } = await buildLine({
+      previous,
+      plan,
+      stopped: () => stop,
+      take: async (i) => {
         const best = await bestTake(lang, line, takes[i]);
-        if (!best) continue;
-        if (best.sim < 0.34) failures.push(`${lang}/${line.id}#${i}: "${takes[i]}" heard "${best.heard}" (${best.sim.toFixed(2)}${best.repeated ? ', repeats' : ''})`);
-        const facts = masterTake({ channels: [s16ToFloat(best.raw)], sr: 24000, preset: 'voice', outBase: join(dir, `${line.id}_${shipped.length}`) });
-        shipped.push(+facts.dur.toFixed(3));
-      } catch (error) {
-        failures.push(`${lang}/${line.id}#${i}: ${error.message}`);
+        if (best && best.sim < 0.34) failures.push(`${lang}/${line.id}#${i}: "${takes[i]}" heard "${best.heard}" (${best.sim.toFixed(2)}${best.repeated ? ', repeats' : ''})`);
+        return best;
+      },
+      ship: (index, best) => {
+        const facts = masterTake({ channels: [s16ToFloat(best.raw)], sr: 24000, preset: 'voice', outBase: join(dir, `${line.id}_${index}`) });
+        return +facts.dur.toFixed(3);
+      },
+      onError: (i, error) => {
+        failures.push(`${lang}/${line.id}#${i}: ${error ? error.message : 'a budget or quota stop cut its attempts short under the bar, so no take was built'}; the line stops at take ${i} (--append resumes there)`);
         if (error instanceof ElevenLabsError && error.quota) stop = true;
-      }
-    }
+      },
+    });
     state[lang][line.id] = shipped;
   });
   await Promise.all(jobs);

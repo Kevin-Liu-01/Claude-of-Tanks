@@ -1784,6 +1784,12 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/audio/soundAssets.selftest.mjs',
     'src/audio/sfxLoudness.selftest.mjs',
     'src/audio/sfxVerdicts.selftest.mjs',
+    // 2026-11-08 state-machine round 8 (Y9 s1-11): a sound-effect bank rebuild is one transaction: staged and judged
+    // outside public/, swapped in when one take ships, else refused with the shipped bank and its records kept
+    'tools/audio/sfxBank.selftest.mjs',
+    // 2026-11-08 state-machine round 8 (Y9 s1-12): a crew line's file n is its script take n; a failed take ends the
+    // line at its aligned prefix and --append resumes there; --dry plans as the build does
+    'tools/audio/voicePlan.selftest.mjs',
     'src/audio/propSounds.selftest.mjs',
     'src/audio/destructionSounds.selftest.mjs',
     // 2026-11-03 (world-sfx-269): the vehicles, the world and the modes sound of what they are (exhaustive tables, the
