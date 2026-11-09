@@ -45,7 +45,7 @@ const SITES = [
   ['src/ui/battleLoad.ts', ["createLazyChunk(() => import('./mapLqip.ts')", 'heroCardChunk.load()'],
     [/\bmapLqipLoad\b/, /\bheroCards\s*\?\?=/, /(?<!typeof )import\('\.\/heroCard\.(?:ts|css)'\)/]],
   ['src/ui/camoSwatchAccess.ts', ['createLazyChunk(load)'], [/\bpending\s*=\s*null\b/]],
-  ['src/ui/battleHudAccess.ts', ['createLazyChunk(() => importAll([', "importAll([import('./hud.ts'), import('./aerialHud.css')])"], [/\bpending\s*=\s*null\b/]],
+  ['src/ui/battleHudAccess.ts', ['createLazyChunk(() => importAll([', "importAll([import('./hud.ts'), import('./aerialHud.css'), import('./airSupportHud.css')])"], [/\bpending\s*=\s*null\b/]],
   ['src/ui/accessibilitySettings.ts', ["createLazyChunk(() => import('./accessibilityMotion.ts'))"], [/void import\('\.\/accessibilityMotion\.ts'\)/]],
   ['src/gallery/gallery.ts', ["createLazyChunk((): Promise<AnatomyModule> => import('./anatomyView.ts'), { opener: true })", 'createLazyChunk(() => import(\'./inAction.ts\')',
     "createLazyChunk(() => import('../ui/components/notice.ts')"],
@@ -226,7 +226,7 @@ const SHEET_SITES = new Set([
   'src/ui/garage.ts ./serviceRecord.css', 'src/ui/garage.ts ./richTooltip.css', 'src/ui/garage.ts ./techTree.css',
   'src/ui/settings.ts ./hudEditor.css', 'src/docs/docs.ts ../presentation/mediaArchive.css',
   // a loader the battle HUD bundle's createLazyChunk calls (battleHudAccess.ts DEFAULT_LOADERS, settled by importAll)
-  'src/ui/battleHudAccess.ts ./aerialHud.css',
+  'src/ui/battleHudAccess.ts ./aerialHud.css', 'src/ui/battleHudAccess.ts ./airSupportHud.css',
   // asked once in the document: the report's sheet (createEndScreen, once per HUD), the Filming manual's library and pickers
   'src/ui/endScreen.ts ./endScreenPresentation.css', 'src/docs/filming.ts ../presentation/mediaLibrary.css', 'src/docs/filming.ts ./docsPickers.css',
   // a stylesheet alone, kept for the document (`sheet ??=`, in KNOWN above)
