@@ -2360,7 +2360,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/vehicles/sharedTextureLease.selftest.mjs',
     'src/vehicles/sootTextureSharing.selftest.mjs',
     // 2026-11-08 round 8 s5-09: a lettered decal's re-bake when 'Cot UI' loads: one predicate (paintDecal's), one waiter
-    // (decal()'s) that redraws and uploads together, dropped once the material set is disposed
+    // (decal()'s) that redraws and uploads together, kept past its set's dispose (a copied material still draws it)
     'src/vehicles/decalFontWaiter.selftest.mjs',
     'src/vehicles/decorKitTextureSelection.selftest.mjs',
     'src/vehicles/wreckBurn.selftest.mjs',

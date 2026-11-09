@@ -243,9 +243,10 @@ interface DecalLettering {
 /**
  * A decal's canvas and its bake (2026-11-08 round 8 s5-09). A decal is final at once (Glacis outlines, or a drawn mark
  * that letters nothing) or provisional: lettered in the face at hand, then redrawn and uploaded once 'Cot UI' loads
- * (final), or dropped when its material set is disposed first or the load brings no face. paintDecal answers for its
- * own lettering; createTankMaterials' decal() owns the one wait (one predicate, one waiter). Before, the painter
- * redrew on its own waiter and decal() uploaded on a second one under its own guess at what the painter lettered.
+ * (final), or dropped when the load brings no face. Its material set's dispose does not end it: a copied material
+ * (cloneTankVisual) still draws the texture. paintDecal answers for its own lettering; createTankMaterials' decal()
+ * owns the one wait (one predicate, one waiter). Before, the painter redrew on its own waiter and decal() uploaded on a
+ * second one under its own guess at what the painter lettered.
  */
 interface PaintedDecal {
   readonly canvas: HTMLCanvasElement;
@@ -3869,12 +3870,14 @@ vec4 burntTri( sampler2D m, vec3 p, vec3 n, float sc ) {
   const decalCache = new Map<string, THREE.MeshStandardMaterial>();
   const decalTextureLeases: SootTextureLease[] = [];
   /** A provisional decal's one wait (PaintedDecal): when 'Cot UI' loads, redraw its canvas and upload it in the same
-   *  callback; a set disposed first, or a load that brings no face, drops it. A final decal waits for nothing. */
+   *  callback; a load that brings no face drops it. A final decal waits for nothing. The set's dispose does not drop it
+   *  (fix-up r1): a copy of the decal's material (cloneTankVisual) draws this texture after the set is gone, and a
+   *  texture nothing draws is never uploaded, so the re-bake costs it one canvas redraw. */
   const rebakeWhenUiFaceLoads = (painted: PaintedDecal, texture: THREE.CanvasTexture): void => {
     const redraw = painted.redraw;
     if (!painted.needsUiFace || !redraw || !document.fonts || document.fonts.check(MARKING_UI_FACE)) return;
     document.fonts.load(MARKING_UI_FACE).then((faces) => {
-      if (!faces.length || materialSetDisposed) return;
+      if (!faces.length) return;
       redraw();
       texture.needsUpdate = true;
     }).catch(() => {});
