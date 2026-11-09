@@ -1,7 +1,8 @@
 // src/world/maps/buildScopes.ts — the map kits' ambient build slots, declared in one place (2026-11-02 audit R1).
 // A kit keeps its build context in a module-level slot set for the length of one synchronous build: the wear, facade,
 // house-plan and member slots (regional/house.ts, facade.ts), the ruin walls, lattices, sill shadow and palette
-// (shell.ts, lattice.ts, openings.ts, hessian.ts), the structure kit's craft capture and part tag (structureKit.ts).
+// (shell.ts, lattice.ts, openings.ts, hessian.ts), the structure kit's craft capture and part tag (structureKit.ts), and
+// 270's door and shutter paint (regional/appearance.ts withPaint).
 // That is sound only while no pacing yield falls inside a scope: a paced build that yielded inside one would hand its
 // context to whatever other world build ran before it resumed (the Garage's background build, a rematch prefetch), and
 // the 225 part-tag leak showed what a slot that outlives its build does to a world's pieces. Each slot registers here;

@@ -1,6 +1,7 @@
 // mapBuildScopes.selftest.mjs — (2026-11-02 audit R1) the map build's ambient slots and the latches that crossed builds.
-// 1. The kits' ten module-level build slots are declared in one registry (buildScopes.ts); none is open outside a build,
-//    an open one is named at a pacing yield, and the real props pacer (props.ts createPropsAsync) asserts at every slice.
+// 1. The kits' eleven module-level build slots (270's door and shutter paint the eleventh) are declared in one registry
+//    (buildScopes.ts); none is open outside a build, an open one is named at a pacing yield, and the real props pacer
+//    (props.ts createPropsAsync) asserts at every slice.
 // 2. Every light kind's build leaves the structure kit's part tag as it found it, a throw mid-tag included.
 // 3. The facade craft's switch is scoped: a receipt's build that throws cannot leave it off for the process.
 // 4. A market stall's wreck is its own build's stall: another world's stall built between the pool's intact and broken
@@ -36,7 +37,7 @@ function stream(seed) {
 
 // ---- 1. one registry, nothing open outside a build, an open slot named at a yield, the props pacer asserts
 const SLOTS = ['house.wear', 'house.plans', 'house.member', 'facade', 'shell.ruinWalls', 'lattice', 'openings.sillShadow',
-  'hessian.palette', 'structureKit.craftCapture', 'structureKit.partTag'];
+  'hessian.palette', 'structureKit.craftCapture', 'structureKit.partTag', 'appearance.paint'];
 assert.deepEqual(SLOTS.filter((name) => !buildScopeNames().includes(name)), [], 'every kit slot is declared in the registry');
 assert.deepEqual(openBuildScopes(), [], 'no slot is open outside a build');
 assert.doesNotThrow(() => assertNoBuildScopeOpen('outside'));
@@ -131,4 +132,4 @@ withFacade({ tier: 'desktop', rng: stream(2) }, () => {
   assert.equal(metalCount(), clean, 'the next wreck\'s metal bucket holds its own hulls only');
 }
 
-console.log('mapBuildScopes.selftest: ten kit slots in one registry (none open outside a build, named at a yield, the props pacer asserts each slice), the part tag closed after a thrown build, a scoped facade craft switch, the stall wreck from its own build, a skipped set piece without records, an aircraft wreck without leaked hulls PASS');
+console.log('mapBuildScopes.selftest: eleven kit slots in one registry (none open outside a build, named at a yield, the props pacer asserts each slice), the part tag closed after a thrown build, a scoped facade craft switch, the stall wreck from its own build, a skipped set piece without records, an aircraft wreck without leaked hulls PASS');
