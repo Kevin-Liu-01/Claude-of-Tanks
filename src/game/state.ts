@@ -5,7 +5,7 @@ import { setModeWeapon } from '../sim/modeLoadout.ts';
 import { requestAuxiliary, stepRoofGun, stepRoofStation, roofStationCount, auxiliaryShot, smokeBlocks, smokeWindForMap, type SmokeScreen } from '../sim/auxiliarySystems.ts';
 import { bridgeBallFloor } from '../sim/bridgeBallSupport.ts';
 import { sweepLightCover } from '../sim/shellLightCover.ts';
-import { usesLauncherMuzzles, isUnguidedRocket, launcherMuzzleIndex } from '../sim/launcherPolicy.ts';
+import { usesLauncherMuzzles, isUnguidedRocket, launcherMuzzleIndex, nextCannonMuzzle, type CannonMuzzleCursor } from '../sim/launcherPolicy.ts';
 /**
  * state.ts — legacy solo battle setup and fixed-step combat integration
  * (ARCHITECTURE.md §1.5, §2.4, §4 step 2). The typed session shell/event bus
@@ -57,7 +57,7 @@ import {
 // The roster plan is pure and shared with the garage boot (main.ts), which must not import this module.
 import { battleRosterPlan } from './soloRosterPlan.ts';
 // the dev battle hold (src/dev/battleHold.ts, __DEBUG.battleHold): bots stand, the player takes no damage, no verdict
-import { battleHeld, holdBattleStep, undoHeldDamage } from './devBattleHold.ts';
+import { battleHeld, stepBattleHold, undoHeldDamage } from './devBattleHold.ts';
 import { createJevCommander, createJevFetchTransport, createJevSession, type JevBattleView, type JevCommander } from './jevCommander.ts';
 import type { SpecialActionSpec, SpecialActionState } from '../sim/specialActionPolicy.ts';
 import type { ConcealerDisc, SpottingSystem, SpottingTank } from '../sim/spotting.ts';
@@ -173,7 +173,7 @@ import {
 import {
   createSoloConsumables, soloApsIntercepts, soloGuidanceJammed, 
 } from './soloConsumables.ts';
-import { assignCouchSeats, type CouchBattle, type CouchSession } from './couchSeats.ts';
+import { beginCouchSession, endCouchSession, type CouchBattle, type CouchSession } from './couchSeats.ts';
 import { FRAME_STAGE, frameStages } from './stateCore.ts';
 import {
   soloBotCamo,
@@ -214,9 +214,7 @@ type SoloSpec = FleetTankSpec & Omit<MovementSpec, 'gun' | 'armor'> &
     armor: SoloArmorSpec;
   };
 
-interface SoloCombatState extends CombatState {
-  muzzleCursor?: number;
-}
+interface SoloCombatState extends CombatState, CannonMuzzleCursor {}
 
 interface SoloInput extends MovementInput {
   throttle: number;
@@ -498,9 +496,6 @@ interface SoloWorld {
   ): boolean;
 }
 
-/** The tanks a couch battle named after their seats (setupBattle gives them their own names back next battle). */
-const couchNamed = new Set<SoloEntity>();
-
 interface SetupBattleOptions {
   random?: boolean;
   gameMode?: GameModeId | string | null;
@@ -765,7 +760,8 @@ function resetBattleSession(game: SoloGameState, options: SetupBattleOptions): v
   if (options.watch) game.ruleset = watchRulesetFor(game.ruleset);
   else if (options.couch) game.ruleset = couchRulesetFor(game.ruleset);
   game.watch = null;
-  game.couch = null;
+  // the last battle's couch session ends here if nothing ended it before (game/couchSeats.ts, its one owner)
+  endCouchSession(game);
   game.matchModeState = null;
   game.matchModeController = null;
   game.modeEvents.length = 0;
@@ -992,7 +988,8 @@ function spawnBattleEntities(context: BattleSpawnContext): void {
     const spawn: SpawnPoint = { pos: [safe.x, context.world.heightField.getHeightAt(safe.x, safe.z), safe.z], yaw: safe.yaw };
     initializeBattleEntity(context, entity, spawn, isPlayer, isAlly);
     if (!isPlayer && context.provingLayout) seatProvingTarget(context, entity, spawn);
-    // a couch seat (docs/COUCH-MODE.md): a phone drives this tank through the player input stage, no bot
+    // a couch seat (docs/COUCH-MODE.md): a phone drives this tank through the player input stage, no bot. The session's
+    // own read, not couchSeatsActive: this setup began it a moment ago, and the phase is still the Garage's
     else if (!isPlayer && game.couch?.seats.some((seat) => seat.entity === entity)) { entity.aiCtl = null; entity.ai = null; }
     else if (!isPlayer) createBattleBot(context, entity, index, spawn);
     else if (game.ruleset.watch) {
@@ -1245,20 +1242,10 @@ export function setupBattle(
     world.getConcealment?.() || [],
   );
 
-  // couch mode: the phones take tanks of this roster, side by side as the lobby asked (game/couchSeats.ts); each seat's
-  // tank wears its seat's name, and a tank that wore one last battle goes back to its own
-  for (const entity of couchNamed) (entity as { displayName?: string | null }).displayName = null;
-  couchNamed.clear();
+  // couch mode: the phones take tanks of this roster, side by side as the lobby asked; each seat's tank wears its seat's
+  // name while the session lasts (game/couchSeats.ts beginCouchSession, the session's one owner, which ends the last one)
   if (game.ruleset.couch && opts.couch) {
-    const sides = couchSeatSides(game.gameMode, opts.couch.sides, opts.couch.seats.length);
-    game.couch = { sides: opts.couch.sides, seats: assignCouchSeats(game.tanks, allySet, opts.couch.seats, sides) };
-    const ordered = [...opts.couch.seats].sort((a, b) => a - b);
-    for (const { seat, entity } of game.couch.seats) {
-      const name = opts.couch.names?.[ordered.indexOf(seat)];
-      if (!name) continue;
-      (entity as { displayName?: string | null }).displayName = name;
-      couchNamed.add(entity);
-    }
+    beginCouchSession(game, opts.couch, game.tanks, allySet, couchSeatSides(game.gameMode, opts.couch.sides, opts.couch.seats.length));
   }
   const spawnContext: BattleSpawnContext = {
     game,
@@ -1368,6 +1355,21 @@ export function prepareNextOpeningRoute(game: SoloGameState): boolean {
   if (!job) return false;
   if (job.next().done) game.openingRouteJobs.shift();
   return true;
+}
+
+/**
+ * Every opening route still pending, planned now (round 8 Y1 s2-02). The queue's states per bot: pending (its legs in
+ * game.openingRouteJobs) -> whole (the last leg sets its waypoints). The warm advances it a leg a step during the
+ * countdown; the first live step drains the rest here (simStep), as the authority plans every leg at its creation
+ * (authoritativeMatch initializeBot), so no route lands on a live bot on a tick the frame rate chose (a bot whose route
+ * was pending drove an auto-patrol from its controller's stream until then) and a warm that stopped before its route stage
+ * leaves no bot without one. A device whose warm kept up pays nothing; one that fell behind pays the rest once, here.
+ * @returns the legs it planned
+ */
+export function drainOpeningRoutes(game: SoloGameState): number {
+  let legs = 0;
+  while (prepareNextOpeningRoute(game)) legs++;
+  return legs;
 }
 
 // ---------------------------------------------------------------------------
@@ -1774,14 +1776,14 @@ function prepareMuzzleDirection(entity: SoloEntity, shell: DamageShellSpec): num
   if (!visual) return null;
   const launchers = usesLauncherMuzzles(entity.spec.gun, shell)
     ? entity.spec.gun.launcherMuzzles : null;
-  const muzzles = launchers ?? entity.spec.gun.muzzles;
   let muzzleIndex = -1;
   if (launchers) {
     muzzleIndex = launcherMuzzleIndex(entity.spec.gun, shell, entity.combat.launcherCursor ?? 0);
     entity.combat.launcherCursor = (muzzleIndex + 1) % launchers.length;
-  } else if (Array.isArray(muzzles) && muzzles.length > 1) {
-    muzzleIndex = (entity.combat.muzzleCursor || 0) % muzzles.length;
-    entity.combat.muzzleCursor = muzzleIndex + 1;
+  } else {
+    // the gun's own mouths (a twin cannon's bores): the barrel owner both drivers share (sim/launcherPolicy.ts); launcher
+    // tubes, aft10's canisters among them, took the branch above
+    muzzleIndex = nextCannonMuzzle(entity.spec.gun, shell, entity.combat);
   }
   const selectedMuzzle = muzzleIndex >= 0 ? muzzleIndex : undefined;
   visual.gunMuzzleWorld(_muzzle, selectedMuzzle, usesLauncherMuzzles(entity.spec.gun, shell));
@@ -2288,9 +2290,9 @@ function stepSpotting(game: SoloGameState, bus: EventBus): void {
  * player's presses go through its UI (game/playerBattleActions.ts).
  */
 function stepHullControls(game: SoloGameState, bus: EventBus, world: SoloWorld): void {
-  // a held battle's bots stand in place of their controllers, and the player's damage state is pinned (devBattleHold.ts)
-  const held = battleHeld(game);
-  if (held) holdBattleStep(game);
+  // a held battle's bots stand in place of their controllers, and the player's damage state is pinned; the hold's edges
+  // park and resume the bots' brains (devBattleHold.ts stepBattleHold, the held step's one owner)
+  const held = stepBattleHold(game);
   // what reached the bots since the last flush (the commander's orders) lands before the first of them thinks (audit M7);
   // the flush writes brain state only (never entity.input), and it drains while the battle is held too
   applyPendingBotNews(game.tanks);
@@ -2871,7 +2873,7 @@ function stepFireDamage(game: SoloGameState, bus: EventBus): void {
 
 function stepMatchMode(game: SoloGameState, bus: EventBus): MatchModeResult | null {
   // a held step's losses to the player are undone before the mode and the verdict read them (devBattleHold.ts)
-  if (battleHeld(game)) undoHeldDamage(game);
+  if (battleHeld(game)) undoHeldDamage(game, bus);
   const outcome = game.matchModeController?.step(SIM_DT, game.timeS) || null;
   // a watched battle with no driver reads the mode from the battle's side (watchSeat.ts watchViewer)
   const perspective = game.player ?? (game.watch ? watchViewer(game) : null);
@@ -3049,6 +3051,8 @@ export function simStep(
   // Past the ruleset's post-verdict hold the field stands still under the report (matchRuleset.endingHoldS).
   if (endingHoldExpired(game.ruleset, game.resultTimeS, game.timeS)) return;
   game.timeS += SIM_DT;
+  // the bots' opening routes are whole before any live step reads them (drainOpeningRoutes; empty after the first step)
+  if (game.openingRouteJobs.length) drainOpeningRoutes(game);
   // the battle's ground on the battle's clock, as the authority's (sim/authoritativeMatch.ts stepPlaying): a collapsed
   // structure's heap rises over RUBBLE_GROW_S with its fall (terrainDeformation). With no clock set, every heap of the
   // page's own battle stood up whole the instant its building came down, under the falling pieces (2026-10-29)

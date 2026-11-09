@@ -869,11 +869,13 @@ console.log('mp battle presentation: roster → hidden visuals, frames → game 
   {
     const guesses = [];
     const guessing = prebuildRosterVisuals([{ playerId: 'bot-3', specId: spec, camo: 'factory', isViewer: false }], { ...deps,
-      createTankVisualSteps: function* (specId, _engineCtx, opts) { yield; const visual = fakeVisual(specId, null, opts); visual.paint = opts.camoPattern; guesses.push(visual); return visual; } });
+      createTankVisualSteps: function* (specId, _engineCtx, opts) { yield; const visual = fakeVisual(specId, null, opts); visual.paint = opts.camoPattern; visual.opts = opts; guesses.push(visual); return visual; } });
     await guessing.settled;
     assert.equal(guesses.length, 1, 'the guess was built');
-    assert.deepEqual([guessing.has('bot-3'), guessing.has('bot-3', 'factory'), guessing.has('bot-3', 'auto')], [true, true, false],
-      'the prebuild holds the bot in the guessed paint only');
+    const built = guesses[0].opts;
+    assert.deepEqual([guessing.has('bot-3'), guessing.has('bot-3', { specId: spec, options: built }),
+      guessing.has('bot-3', { specId: spec, options: { ...built, camoPattern: 'auto' } })], [true, true, false],
+      'the prebuild holds the bot as it was guessed only (take()\'s own rule)');
     const added = [];
     const field = { tanks: [], tankById: new Map(), player: null, shells: [], spotting: null, allTanks: [], timeS: 0, preBattleS: 0, result: null, resultReason: null, mapId: 'verdant' };
     const rosterPaints = [], warmedPaints = [];
@@ -892,6 +894,33 @@ console.log('mp battle presentation: roster → hidden visuals, frames → game 
     assert.equal(guesses[0].disposed, true, 'the guessed vehicle is disposed');
     assert.ok(!added.includes(guesses[0].root), 'and never joined the scene: no frame draws the guess');
     assert.ok(added.includes(bot.visual.root) && bot.visual.visible && bot.visual.syncs > 0, 'the first battle frame shows the bot in the roster\'s paint');
+    q.dispose();
+  }
+
+  // (round 8 Y1 s4-06) a guess with the roster's paint and another vehicle (a rejoin after a human left: the bots' ids hold
+  // their roll index while their vehicles move, room/roomBots.ts) is no held seat either: has() and take() share one rule,
+  // so the roster warms and builds the bot's real vehicle with the others (never a cold build after the warm), and the
+  // guess is disposed without joining the scene
+  {
+    const other = ['t90am', 'leo2_improved', 'leo2a4'].find((id) => getSpec(id) && getSpec(id).id !== getSpec(spec).id);
+    assert.ok(other, 'a second vehicle for the roster row');
+    const guesses = [];
+    const guessing = prebuildRosterVisuals([{ playerId: 'bot-3', specId: spec, camo: 'auto', isViewer: false }], { ...deps,
+      createTankVisualSteps: function* (specId, _engineCtx, opts) { yield; const visual = fakeVisual(specId, null, opts); visual.specId = specId; guesses.push(visual); return visual; } });
+    await guessing.settled;
+    const added = [], warmedSeats = [], rosterBuilds = [];
+    const field = { tanks: [], tankById: new Map(), player: null, shells: [], spotting: null, allTanks: [], timeS: 0, preBattleS: 0, result: null, resultReason: null, mapId: 'verdant' };
+    const q = createBattlePresentation({ engineCtx: { scene: { add(object) { added.push(object); } }, anisotropy: 1 }, game: field, bus: { emit() {} }, prebuilt: guessing,
+      createTankVisual: (id, engineCtx, opts) => { rosterBuilds.push(`${id}:${opts.camoPattern}`); const visual = fakeVisual(id, engineCtx, opts); visual.specId = id; return visual; },
+      camoFor: (entry) => (entry.bot ? entry.camo : 'summer') ?? 'factory',
+      prepareVisualTextures: async (warmSpec, _aniso, quality, _tick, camo) => { warmedSeats.push(`${warmSpec.id}:${camo}:${quality}`); }, clock: () => nowMs });
+    await q.applyRoster([roster[0], { ...roster[2], specId: other, camo: 'auto' }], context);
+    assert.ok(warmedSeats.includes(`${getSpec(other).id}:auto:ai`),
+      `the bot's real vehicle is warmed with the roster, its guess in the right paint notwithstanding (${warmedSeats})`);
+    assert.ok(rosterBuilds.includes(`${other}:auto`), 'and built by the roster');
+    assert.equal(q.actors.get('bot-3').visual.specId, other, 'the bot drives its real vehicle');
+    assert.equal(guesses[0].disposed, true, 'the guessed vehicle is disposed');
+    assert.ok(!added.includes(guesses[0].root), 'and never joined the scene');
     q.dispose();
   }
 }

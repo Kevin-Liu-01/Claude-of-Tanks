@@ -326,10 +326,12 @@ export function createDeferredCombatWarmRuntime<
       // slice a frame (a real frame at each of their program checkpoints: combatWarmCoordinator
       // COMBAT_WARM_PROGRAM_CHECKPOINT); the vision programs one bounded step a real frame (a compile slice of at most
       // 8 ms, one link poll, or one actor's private first-bind render), every material restored before each yield
-      // (thermalVehicles.warmSteps). Whatever a battle reaches before its warm does the work at that first use — a bot
-      // plans its route, a tile streams, a kill or a sight compiles its variant at that draw (nothing drains the rare
-      // warm on a kill: combatWarm.drain runs only at a non-deferred battle start and in shot mode) — a one-time cost,
-      // as before these warms existed, never a stall.
+      // (thermalVehicles.warmSteps). Whatever a battle reaches before its warm does the work at that first use — a tile
+      // streams, a kill or a sight compiles its variant at that draw (nothing drains the rare warm on a kill:
+      // combatWarm.drain runs only at a non-deferred battle start and in shot mode) — a one-time cost, as before these
+      // warms existed, never a stall. The routes are the exception (round 8 Y1 s2-02): the battle's first live step plans
+      // every leg still pending (game/state.ts drainOpeningRoutes, as the authority plans them at its creation), so no
+      // bot drives a stopgap patrol while its route is pending, and this loop finds the queue empty from then on.
       trace.releasedAtPreBattleS = Number.isFinite(game.preBattleS) ? game.preBattleS ?? null : null;
       trace.releasedBeforeRollout = game.phase === 'battle' && typeof game.preBattleS === 'number' && game.preBattleS > 0;
       releaseHold();

@@ -14,7 +14,7 @@ import type { DestructionLogEntry } from '../../src/sim/destructionEvents.ts';
 import { quantizeDestructionEntry } from '../../src/mp/wire/destructionLog.ts';
 import { requireAuthorityFleet } from '../../src/vehicles/authorityFleet.ts';
 import { createAuthoritativeMatch } from '../../src/sim/authoritativeMatch.ts';
-import { camoSelectionBonus } from '../../src/sim/camoPaint.ts';
+import { camoSelectionBonus, planBotPaints } from '../../src/sim/camoPaint.ts';
 import type { BotCamo } from '../../src/sim/camoPaint.ts';
 import { stockCamoPatternIdFor } from '../../src/vehicles/camoPolicy.ts';
 import type {
@@ -561,16 +561,19 @@ export function createMatchActor(options: MatchActorOptions): MatchActor {
     });
     rosterEntries.push({ entityId, seat: spec.seat, team: TEAM_ID[spec.team], bot: false, connected: false, playerId: spec.playerId, name: spec.name, specId: spec.specId });
   }
-  for (const bot of bots) {
+  // (268, item 6; round 8 Y1 s4-06) each bot's paint is the match's roll at its roster index, or the roster's on a resumed
+  // match: the one rule (sim/camoPaint.ts planBotPaints) a client's guess before the WELCOME reads too. The authority takes
+  // it as the record's paint, its bonus with it; the WELCOME's roster carries it below, so every client paints what the
+  // authority scores
+  const botPaints = planBotPaints(seats, bots, seed, mapId);
+  bots.forEach((bot, ordinal) => {
     if (seatOfPlayer.has(bot.playerId) || entityIdOf.has(bot.playerId)) throw new TypeError(`duplicate bot ${bot.playerId}`);
     const entityId = nextEntityId++;
     entityIdOf.set(bot.playerId, entityId);
-    // (268, item 6) a bot's paint is the authority's roll (or the roster's, resumed), its bonus with it; the WELCOME's roster
-    // carries it below, so every client paints what the authority scores
     players.push({ id: bot.playerId, specId: bot.specId, team: bot.team, bot: true, difficulty: bot.difficulty ?? 'normal',
-      ...(bot.camo ? { camo: bot.camo } : {}) });
+      camo: botPaints[ordinal] });
     rosterEntries.push({ entityId, seat: NO_SEAT, team: TEAM_ID[bot.team], bot: true, connected: true, playerId: bot.playerId, name: bot.name, specId: bot.specId });
-  }
+  });
   if (players.length < 1 || players.length > MAX_ENTITIES) throw new TypeError(`rooms field 1..${MAX_ENTITIES} entities`);
   // Every hull's armor, modules, crew and hit shells are finalized before the authority reads them (spectators ride no hull).
   requireAuthorityFleet(players.map((player) => player.specId));

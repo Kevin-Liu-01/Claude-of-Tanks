@@ -9,7 +9,13 @@
 // - a held battle whose every hostile is slain stays unsettled, and settles victory on its first step after the release;
 // - the undo (losses back, gains stand), the switch's refusals (a public build, a network battle) and the wiring: the
 //   step reads the hold only through game/devBattleHold.ts, __DEBUG installs the switch, and both tools arm it in place
-//   of the dead godMode / freezeBots flags.
+//   of the dead godMode / freezeBots flags;
+// - (round 8 Y1 s2-05) the hold's edges, the owner's table on stand-ins (stepBattleHold): free -> held parks every bot's
+//   brain on the battle's clock, held -> free resumes each with the clock and the next shell id, held -> held and
+//   free -> free are no edge, a new battle starts free, a seat with no brain and the player are never parked; the undo's
+//   answers (module:state source 'hold', tank:fire burning false) are the unit block's. The same edges and answers on the
+//   page's own battle (a bot hurt while it stood books no burst at the release; a held step's worse module and fire each
+//   answered) are src/game/devBattleHoldEdges.selftest.mjs, MANUAL 'sims': this file's battles were already its cost.
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
@@ -20,7 +26,7 @@ import { createShell } from '../sim/ballistics.ts';
 import { spawnTanks } from './rosterState.ts';
 import { ensureFullFleet } from '../vehicles/fleetFactory.ts';
 import { createDedicatedWorldCollision } from '../../server/dedicatedWorldCollision.ts';
-import { DEV_BATTLE_HOLD, battleHeld, holdBattleStep, undoHeldDamage } from './devBattleHold.ts';
+import { DEV_BATTLE_HOLD, battleHeld, holdBattleStep, stepBattleHold, undoHeldDamage } from './devBattleHold.ts';
 import { createBattleHold } from '../dev/battleHold.ts';
 
 const read = (path) => readFileSync(new URL(path, import.meta.url), 'utf8');
@@ -35,8 +41,8 @@ const read = (path) => readFileSync(new URL(path, import.meta.url), 'utf8');
     eraSpent: new Set(['hull_l_1']),
   });
   const input = () => ({ throttle: 1, steer: -0.5, brake: false, aimLocked: false, fire: true, actionBits: 9, auxiliaryBits: 64 });
-  const player = { input: input(), combat: combat() };
-  const bot = { input: input(), combat: combat() };
+  const player = { id: 'me', input: input(), combat: combat() };
+  const bot = { id: 'bot', input: input(), combat: combat() };
   const game = { devBattleHold: true, player, tanks: [player, bot] };
   assert.equal(battleHeld(game), DEV_BATTLE_HOLD, 'armed with a player seat, the step is held');
   assert.equal(battleHeld({ ...game, player: null }), false, 'a watched battle (no player seat) is never held');
@@ -53,16 +59,63 @@ const read = (path) => readFileSync(new URL(path, import.meta.url), 'utf8');
   c.crew.gunner = false;
   c.fire.burning = true; c.fire.ticksLeft = 8;
   c.eraSpent.add('turret_r_2');
-  undoHeldDamage(game);
+  const said = [];
+  undoHeldDamage(game, { emit: (event, payload) => said.push({ event, ...payload }) });
   assert.equal(c.hp, 900); assert.equal(c.destroyed, false);
   assert.deepEqual(c.modules.gun, { hp: 100, maxHp: 100, state: 'ok', repairT: 0 }, 'a struck module comes back');
   assert.deepEqual(c.modules.engine, { hp: 95, maxHp: 100, state: 'ok', repairT: 0 }, 'a repair the step made stands');
   assert.deepEqual(c.crew, { commander: true, gunner: true, driver: false }, 'the crew come back; the already dead stay so');
   assert.deepEqual(c.fire, { burning: false, tickTimer: 0, ticksLeft: 0 }, 'a fire the step lit is out');
   assert.deepEqual([...c.eraSpent], ['hull_l_1'], 'ERA the step spent is back; ERA spent before stays spent');
+  assert.deepEqual(said, [{ event: 'module:state', id: 'me', module: 'gun', state: 'ok', source: 'hold' },
+    { event: 'tank:fire', id: 'me', burning: false }], 'the undo says what it gave back (never as a repair), and nothing else');
   c.hp = 950;
-  undoHeldDamage(game);
+  undoHeldDamage(game, { emit: (event, payload) => said.push({ event, ...payload }) });
+  assert.equal(said.length, 2, 'a step with no loss says nothing');
   assert.equal(c.hp, 950, 'a heal stands');
+}
+
+// ---- (round 8 Y1 s2-05) the hold's edges: the owner's table on stand-ins ------------------------------------------------
+{
+  const calls = [];
+  const brain = (id) => ({ park: (timeS) => calls.push(`${id} park ${timeS}`), resume: (timeS, shellId) => calls.push(`${id} resume ${timeS} ${shellId}`) });
+  const hull = (id, aiCtl) => ({ id, aiCtl, input: { throttle: 1, steer: 0.5, brake: false, aimLocked: false, fire: true, actionBits: 3, auxiliaryBits: 0 },
+    combat: { hp: 100, maxHp: 100, destroyed: false, modules: {}, crew: {}, fire: { burning: false, tickTimer: 0, ticksLeft: 0 }, eraSpent: new Set() } });
+  const player = hull('me', brain('me'));
+  const bots = [hull('b1', brain('b1')), hull('b2', brain('b2'))];
+  const seat = hull('seat-2', null); // a couch phone's seat: no brain
+  const game = { devBattleHold: true, player, tanks: [player, ...bots, seat], timeS: 0.5, nextShellId: 40, battleCount: 1 };
+  assert.equal(stepBattleHold(game), true, 'a battle begun armed is held from its first step');
+  assert.deepEqual(calls, ['b1 park 0.5', 'b2 park 0.5'], 'free -> held parks every bot\'s brain on the battle\'s clock, never the player\'s');
+  assert.deepEqual([bots[0].input.throttle, bots[0].input.fire, seat.input.brake], [0, false, true], 'and the held step stands them');
+  calls.length = 0;
+  game.timeS = 1;
+  stepBattleHold(game);
+  stepBattleHold(game);
+  assert.deepEqual(calls, [], 'held -> held is no edge');
+  game.devBattleHold = false;
+  game.timeS = 2;
+  game.nextShellId = 57;
+  assert.equal(stepBattleHold(game), false);
+  assert.deepEqual(calls, ['b1 resume 2 57', 'b2 resume 2 57'], 'held -> free resumes each with the battle\'s clock and its next shell id');
+  calls.length = 0;
+  stepBattleHold(game);
+  assert.deepEqual(calls, [], 'free -> free is no edge');
+  game.devBattleHold = true;
+  stepBattleHold(game);
+  calls.length = 0;
+  game.battleCount = 2;
+  game.devBattleHold = false;
+  stepBattleHold(game);
+  assert.deepEqual(calls, [], 'a new battle starts free: the last battle\'s hold is no release');
+  game.devBattleHold = true;
+  game.timeS = 3;
+  stepBattleHold(game);
+  assert.deepEqual(calls, ['b1 park 3', 'b2 park 3'], 'and is parked when it is held');
+  calls.length = 0;
+  const watched = { ...game, player: null, tanks: bots, devBattleHold: true, battleCount: 3 };
+  assert.equal(stepBattleHold(watched), false, 'a watched battle (no player seat) is never held');
+  assert.deepEqual(calls, [], 'so its brains are never parked');
 }
 
 // ---- the switch: armed, released, refused in a public build and a network battle ---------------------------------------
@@ -98,12 +151,13 @@ const read = (path) => readFileSync(new URL(path, import.meta.url), 'utf8');
   const state = read('./state.ts');
   assert.doesNotMatch(state, /game\.devBattleHold/, 'the step never reads the field itself, only through battleHeld');
   // (269 integration) 268's stepHullControls runs every hull's controls, actions and consumables in one roster pass
-  assert.match(state, /function stepHullControls\(game: SoloGameState, bus: EventBus, world: SoloWorld\): void \{\n(?:\s*\/\/[^\n]*\n)*\s*const held = battleHeld\(game\);\n\s*if \(held\) holdBattleStep\(game\);/,
+  // (round 8 Y1 s2-05) the held step's one owner opens the controls: its edges park and resume the brains, then the bots stand
+  assert.match(state, /function stepHullControls\(game: SoloGameState, bus: EventBus, world: SoloWorld\): void \{\n(?:\s*\/\/[^\n]*\n)*\s*const held = stepBattleHold\(game\);/,
     "a held step's bots stand in place of their controllers (proving targets too)");
   assert.match(state, /if \(entity\.modeActive === false\) continue;\n(?:\s*\/\/[^\n]*\n)*\s*if \(held && entity !== game\.player\) continue;/,
     "a held bot takes no controls, actions or consumables");
-  assert.match(state, /function stepMatchMode\(game: SoloGameState, bus: EventBus\): MatchModeResult \| null \{\n(?:\s*\/\/[^\n]*\n)*\s*if \(battleHeld\(game\)\) undoHeldDamage\(game\);/,
-    "the player's losses are undone before the mode and the verdict read them");
+  assert.match(state, /function stepMatchMode\(game: SoloGameState, bus: EventBus\): MatchModeResult \| null \{\n(?:\s*\/\/[^\n]*\n)*\s*if \(battleHeld\(game\)\) undoHeldDamage\(game, bus\);/,
+    "the player's losses are undone before the mode and the verdict read them, and the undo answers on the bus");
   assert.match(state, /if \(game\.result !== null \|\| !seat \|\| battleHeld\(game\)\) return;/, 'a held battle reaches no verdict');
   assert.match(state, /\): void \{\n(?:\s*\/\/[^\n]*\n)*\s*if \(ent === game\.player && battleHeld\(game\)\) return;\n\s*ent\._destroyedAnnounced = true;/,
     'a held player is never announced destroyed');
@@ -295,5 +349,6 @@ assert.equal(slain.game.resultReason, 'elimination');
 console.log(`devBattleHold selftest passed: off byte-identical over ${TICKS} ticks; unheld ${plain.botShots} rounds, the player hurt `
   + `from tick ${plain.playerDamage[0]}; held 0 bot rounds, no player loss, bots within ${held.maxBotDriftM.toFixed(3)} m, no verdict; `
   + `armed at tick ${AT} the battle parts there, the bots stand (${late.lastSecondDriftM.toFixed(3)} m in the last second) and the `
-  + 'fire costs nothing; the verdict waits for the release; undo, switch and wiring held');
+  + 'fire costs nothing; the verdict waits for the release; the hold\'s edges park and resume the brains once each, per battle; '
+  + 'undo, switch and wiring held');
 process.exit(0);

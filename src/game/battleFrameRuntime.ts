@@ -1,6 +1,6 @@
 import type { PlayerFrameInput, PlayerFrameSample } from './playerFrameInput.ts';
 import type { GameState } from './stateCore.ts';
-import { FRAME_STAGE, frameStages } from './stateCore.ts';
+import { FRAME_STAGE, couchSeatsActive, frameStages } from './stateCore.ts';
 import { battleCountdownState, transitionBattleCountdown, warmHoldActive, warmHoldElapsed } from './preBattleCountdown.ts';
 
 interface BattlePauseInfo {
@@ -199,7 +199,7 @@ export function createBattleFrameRuntime({
   };
 
   // hot-path: every battle frame; a couch battle's tanks are its phones' (docs/COUCH-MODE.md): the keyboard drives none,
-  // and the camera aims none
+  // and the camera aims none, while that battle runs (stateCore.ts couchSeatsActive; never another battle after it)
   const pollFrameInput = (
     appliedDtSeconds: number,
     inBattle: boolean,
@@ -213,7 +213,7 @@ export function createBattleFrameRuntime({
     inputSample.killcamActive = killcamActive;
     inputSample.cameraLocked = cameraLocked;
     inputSample.rigMode = getRigMode();
-    inputSample.player = (game.couch ? null : game.player) as PlayerFrameSample['player'];
+    inputSample.player = (couchSeatsActive(game) ? null : game.player) as PlayerFrameSample['player'];
     input.poll(inputSample);
   };
 

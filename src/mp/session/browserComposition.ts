@@ -48,7 +48,7 @@ import type { RoomMatchStartPayload, RoomSnapshot } from '../room/protocol.ts';
 import { getSpec } from '../../vehicles/specs.ts';
 import { programReceipt, type ProgramOriginWatch, type ProgramReceipt, type ReceiptProgram } from '../../engine/programReceipt.ts';
 import { planFromRoom } from '../host/hostPlan.ts';
-import { botCamoRoll } from '../../sim/camoPaint.ts';
+import { planBotPaints } from '../../sim/camoPaint.ts';
 import { sideFlags } from '../../sim/countries.ts';
 import type { SerializedLobby } from '../room/lobbyShape.ts';
 import { MATCH_BUILD, matchRefusalCodeOf, matchRefusalMessage, type MatchRefusalCode } from '../wire/matchBuild.ts';
@@ -1207,6 +1207,13 @@ export function createBrowserComposition({
       roster.emitBattleStart({ playerId: viewerId, specId: active.ownSpecId, mapId: active.mapId });
       showRoundLoad(viewerId, lobbyPlayers(sessionRound.room.players), ownPlayer, active.mapId, sessionRound.room.mode, active.round, 'Battle', sessionRound.room.settings.gameMode);
       load.audio.resume();
+      // (round 8 Y1 s1-04) every round loads in silence, as every other entry does: a rematch from the result screen is
+      // still the battle phase, so the last battlefield's scene played under the loader until this round's activation
+      // edge, where the engine's battle edge ends the intent (audioEngine.ts modeEdge). The intent now ends with the
+      // loader's start: in a battle it stops the scene; ambientOn(true) at the reveal below brings the new map's scene.
+      // roundLoaderAmbience.selftest reads the audio calls from showRoundLoad to the first await and plays them on the
+      // real engine, so they stay in that span
+      load.audio.ambientOn(false);
       load.audio.loadingOn(true);
       // the lobby's vehicles (ours first): their engines, with the map's beds and the running gear, decode ahead of the
       // combat banks while the round loads, so its countdown sounds (2026-10-14)
@@ -1228,15 +1235,14 @@ export function createBrowserComposition({
       // after it) held the 231 rejoins' roster stage about 2 s. The host plans them from this room and seed (host/hostPlan.ts
       // planFromRoom, the real room's match_start carries no plan), so the same plan names them here and their bakes join
       // the world load; a wrong guess is a spare bake, never a different roster.
-      // (268, item 6) each with the paint the authority will roll at its roster index (every seated hull first, then the
-      // bots in the plan's order: server/match/matchActor.ts), so its bake is the one the WELCOME's roster names
+      // (268, item 6) each with the paint the authority will roll at its roster index: the match actor's own rule
+      // (sim/camoPaint.ts planBotPaints, round 8 Y1 s4-06), so its bake is the one the WELCOME's roster names
       try {
         const plan = planFromRoom(sessionRound.room, { seed: matchStart.seed });
-        let index = plan.seats.filter((seat) => seat.team !== 'spectator').length;
-        for (const bot of plan.bots) {
-          const camo = botCamoRoll(matchStart.seed, index++, matchStart.mapId);
-          if (bot.specId) seats.push({ playerId: bot.playerId, specId: bot.specId, camo, isViewer: false });
-        }
+        const paints = planBotPaints(plan.seats, plan.bots, matchStart.seed, matchStart.mapId);
+        plan.bots.forEach((bot, ordinal) => {
+          if (bot.specId) seats.push({ playerId: bot.playerId, specId: bot.specId, camo: paints[ordinal]!, isViewer: false });
+        });
       } catch { /* no plan from this snapshot: the WELCOME paints them */ }
       // 2026-10-23 (item/mp-rejoin-levers-242): where the app can, the seats' vehicles themselves are built beside the world
       // (prebuildRoster; the roster takes them after the WELCOME), else their builders and textures are warmed
