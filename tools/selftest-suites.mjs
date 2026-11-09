@@ -2159,6 +2159,9 @@ export const SELFTEST_SUITES = Object.freeze({
     // fresh route, a mission owns its waypoints, TEAM NATIONS (planner, nation index, room seating) and the harness gate
     'src/sim/botDoctrine.selftest.mjs',
     'src/sim/hordeWaveLaw.selftest.mjs',
+    // round 8 Y2 (s2-06): each hunter's search is one record, carried with the hunt's plans, sightings and last contact
+    // in the mode checkpoint: a migrated host's hunters keep their leads and sweeps (Horde and Infected)
+    'src/sim/huntSearchMigration.selftest.mjs',
     // 2026-11-02 audit M4: one life state per tank (alive/down/benched/rescued) through one transition; a refused Horde
     // arrival retries as an arrival and stays owed, not alive; a restore benches its resting hulls
     'src/sim/modeLife.selftest.mjs',
