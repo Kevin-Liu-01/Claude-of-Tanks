@@ -11,8 +11,10 @@
 // hangar from its battle edge (269's world-sfx receipt, folded in here: battleEntryAmbience.selftest.mjs): a solo start,
 // an online first battle from the garage, a rematch from the result screen (battle to battle, ambience on) and an
 // online battle from a cold boot (the hangar barely started, ambience never asked for). appLifecycle.selftest owns the
-// census of the phase's writers.
+// census of the phase's writers. The one owner is also pinned where it lives (review r2): a second stop beside it would
+// leave every driven path green (each covers alone), so applyScene's body must stop no ambience and stopWorld's must.
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import { createBus } from '../game/stateCore.ts';
 import { createAppLifecycle, transitionAppPhase } from '../game/appLifecycle.ts';
 import { installFetch, namedContext, terrain, tank, listener, sounding, probeOf, settle } from './engineHarness.test-support.mjs';
@@ -180,4 +182,18 @@ cold.enter('network-activation');
 await silentLoad(cold, 'a cold boot\'s online battle');
 await revealed(cold, 'a cold boot\'s online battle');
 
-console.log('ambienceTeardown.selftest: only the loader under the loader (the garage hangar never revived, the battle world at the reveal, the intent per battle), and nothing of the hangar after the battle edge on every entry path (a solo start, an online activation, a rematch, a cold boot) passed');
+// the one owner, read where it lives (round 8 Y3 review r2): behaviour cannot tell a second owner from the first, so a
+// stop back in applyScene (269's `else ambience.stop(0.3)` on the battle edge) is refused here
+{
+  const source = readFileSync(new URL('./audioEngine.ts', import.meta.url), 'utf8');
+  const body = (name) => {
+    const start = source.indexOf(`\n  function ${name}(`);
+    assert.ok(start >= 0, `audioEngine.ts declares ${name}`);
+    const end = source.indexOf('\n  function ', start + 1);
+    return source.slice(start, end < 0 ? undefined : end);
+  };
+  assert.doesNotMatch(body('applyScene'), /ambience\??\.stop\(/, 'applyScene stops no ambience: the world\'s teardown (stopWorld) is the hangar\'s one owner under the loader');
+  assert.match(body('stopWorld'), /ambience\??\.stop\(/, 'stopWorld stops the ambience director with the loops it kills');
+}
+
+console.log('ambienceTeardown.selftest: only the loader under the loader (the garage hangar never revived, the battle world at the reveal, the intent per battle), and nothing of the hangar after the battle edge on every entry path (a solo start, an online activation, a rematch, a cold boot), its one owner in the source passed');

@@ -2712,7 +2712,7 @@ export function createAudio({
       // play sets the same room again).
       // The battle's scene waits for the reveal or the rollout (ambientOn). The hangar is gone by then: every battle edge
       // tears the old world down first, and stopWorld stops the director with it, its one owner (round 8 Y3 s1-06: 269's
-      // second stop here is gone; ambienceTeardown.selftest drives every entry path).
+      // second stop here is gone; ambienceTeardown.selftest drives every entry path and pins this body).
       mixer.setReverb(scene.reverb);
       if (ambientWanted) ambience.play(scene, true);
     } else {
