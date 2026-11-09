@@ -10,12 +10,12 @@ import { openCaptureHold } from './capture-hold.mjs';
 //      'ru') and its pack decodes with zero failures;
 //   2. the battle envelope plays through the game bus: a re-driven
 //      garage→battle edge announces battle_start, the presented victory
-//      announces victory;
+//      announces victory (while the battle behind the smoke is live);
 //   3. combat lines driven through the bus reach the radio: a spot (plain or
 //      by bearing), track loss, reload done, sixth sense and a penetration;
 //   4. the crew-voice setting switches live: 'english' → en-US, back to
 //      'national' → ru;
-//   5. all 17 crew packs decode and are audible through the radio chain,
+//   5. every crew pack (the 17 national and the 21 with no country) decodes and is audible through the radio chain,
 //      band-limited like an intercom (one PCM capture per language);
 //   6. zero page console errors (known-unrelated tankFactory wheel-sync
 //      errors quarantined, same as tools/audio-probe.mjs).
@@ -270,6 +270,27 @@ try {
   if (ui.stored !== 'en-US' || ui.lang !== 'en-US') fail(`Sound tab "English" did not persist and switch (stored ${ui.stored}, crew ${ui.lang})`);
   if (ui.back !== 'ru') fail(`Sound tab "National" did not return the crew to ru (${ui.back})`);
 
+  // 2b) battle END while the battle behind the smoke is live: victory over the fanfare. The frame loop services the
+  //     radio queue, and once that battle has ended its result presentation can hold the frames (mainFrameRuntime's
+  //     covering veils): a smoke that outlives it (the sweep below takes minutes on a loaded machine) heard no victory
+  //     in two runs, while the engine plays it in Node however the battle ended. The sweep's forced lines need no
+  //     frames, so it runs after.
+  const behind = await page.evaluate(() => ({ phase: window.__DEBUG.game.phase, result: window.__DEBUG.game.result ?? null,
+    timeS: +(window.__DEBUG.game.timeS ?? 0).toFixed(1) }));
+  report.battleBehind = behind;
+  if (behind.result) fail(`the battle behind the smoke ended (${behind.result} at ${behind.timeS} s) before its result step`);
+  await page.evaluate(() => window.__P.emit('battle:ended', { result: 'victory', timeS: window.__P.timeS(), map: 'debug' }));
+  await page.evaluate(() => window.__P.emit('battle:presented', { result: 'victory' }));
+  // The result waits its 0.4 s and any call on air (the battle behind it keeps talking): give it up to 8 s, not a fixed
+  // 2.6 s.
+  await page.waitForFunction(() => window.__COT_AUDIO.voiceLog.some((v) => v.id === 'victory'), { timeout: 8000, polling: 100 })
+    .catch(() => {});
+  // Checked now: the radio log keeps its last 64 calls, and the sweep adds 38 and the battle's own.
+  const envelope = await page.evaluate(() => window.__COT_AUDIO.voiceLog.map((v) => v.id));
+  for (const id of ['battle_start', 'victory']) {
+    if (!envelope.includes(id)) fail(`bus event never played voice line: ${id}`);
+  }
+
   // 5) every pack through the radio chain, isolated from the rest of the mix.
   await page.evaluate(() => window.__P.emit('ui:volumes', { master: 0.8, engine: 0, combat: 0, ambience: 0, ui: 0, voice: 1 }));
   await sleep(600);
@@ -311,18 +332,14 @@ try {
     if (a.lowShare > 0.12) fail(`${lang}: radio low cut missing (${(a.lowShare * 100).toFixed(1)}% below 150 Hz)`);
   }
   await page.evaluate(() => window.__COT_AUDIO.forceCrewLanguage(null));
+  // One pack is held at a time (crewRadio.setLanguage drops the one it leaves): the national crew's pack decodes again
+  // after the sweep.
+  await page.waitForFunction('window.__COT_AUDIO.crewLanguage === "ru" && window.__COT_AUDIO.voicesLoaded === true', { timeout: 20000 })
+    .catch(() => fail('the national crew (ru) pack did not decode again after the pack sweep'));
   await page.evaluate(() => window.__P.emit('ui:volumes', { master: 0.8, engine: 1, combat: 1, ambience: 1, ui: 1, voice: 1 }));
   const library = await page.evaluate(() => window.__COT_AUDIO.library());
   report.library = library;
   if (library.failed) fail(`${library.failed} audio assets failed to decode`);
-
-  // 2b) battle END: victory over the fanfare.
-  await page.evaluate(() => window.__P.emit('battle:ended', { result: 'victory', timeS: window.__P.timeS(), map: 'debug' }));
-  await page.evaluate(() => window.__P.emit('battle:presented', { result: 'victory' }));
-  // The result waits its 0.4 s and any call on air (the battle behind it keeps talking): give it up to 8 s, not a fixed
-  // 2.6 s.
-  await page.waitForFunction(() => window.__COT_AUDIO.voiceLog.some((v) => v.id === 'victory'), { timeout: 8000, polling: 100 })
-    .catch(() => {});
 
   const state = await page.evaluate(() => ({
     played: window.__COT_AUDIO.voiceLog.map((v) => v.id),
@@ -331,9 +348,6 @@ try {
   }));
   report.played = state.played;
   console.log(`[voice-smoke] ctx=${state.ctxState} t=${state.ctxTime.toFixed(1)}s played: ${state.played.join(', ') || '(none)'}`);
-  for (const id of ['battle_start', 'victory']) {
-    if (!state.played.includes(id)) fail(`bus event never played voice line: ${id}`);
-  }
   if (state.ctxState !== 'running') fail(`AudioContext not running: ${state.ctxState}`);
 
   // 6) console gate (quarantine the known-unrelated tankFactory wheel-sync)

@@ -31,6 +31,9 @@ export interface FacadeContext {
   groundCraft?: boolean;
   /** (round 10) the map's kit gated back to the craft's older layers (maps/regional/index.ts KIT_LEGACY_MAPS) */
   legacy?: boolean;
+  /** (buildings-270) how dirty the place's walls weather (its row's surface.grime; 1 the craft's own): the foot's grime,
+   *  the eaves' rain shadow and the runs off the sills */
+  grime?: number;
 }
 let facadeContext: FacadeContext | null = null;
 registerBuildScope('facade', () => facadeContext !== null); // (2026-11-02 audit R1: buildScopes.ts)
@@ -40,6 +43,16 @@ export function withFacade<T>(context: FacadeContext | null, build: () => T): T 
   const prior = facadeContext;
   facadeContext = context;
   try { return build(); } finally { facadeContext = prior; }
+}
+
+/** The place's grime (FacadeContext.grime), 1 outside a kit build. */
+export function facadeGrime(): number {
+  return facadeContext?.grime ?? 1;
+}
+
+/** The place sets its walls' surface (its row's surface; a map reverted to its base look, or a build outside a kit, does not). */
+export function facadeSurfaced(): boolean {
+  return facadeContext?.grime !== undefined;
 }
 
 /**
@@ -397,12 +410,44 @@ export function sillStreaks(sink: PartSink, bucket: RegionalBucket, face: Face, 
     if (len < 0.3) continue;
     // (wave 116: readable at 30 m — a hand wide under the sill's end, a third darker, washing out down the wall)
     const half = 0.06 + k * 0.04, top = y - 0.1, bottom = top - len;
+    // (buildings-270) as dark as the place's walls weather (its row's grime; 1: a third darker under the sill)
+    const dark = Math.min(0.6, 0.36 * facadeGrime()), surfaced = facadeSurfaced();
     const at = (p: Vec3) => {
       const t = Math.min(1, Math.max(0, (top - p[1]) / len));
-      return 0.64 + 0.36 * t;
+      // (a place without its own surface keeps the craft's own shade, bit for bit)
+      return surfaced ? 1 - dark + dark * t : 0.64 + 0.36 * t;
     };
     sink.polygon(bucket, [facePoint(face, cu - half, bottom, 0.012), facePoint(face, cu + half, bottom, 0.012),
       facePoint(face, cu + half * 0.6, top, 0.012), facePoint(face, cu - half * 0.6, top, 0.012)], { ...DECOR, fine: 'near', shadeAt: at });
+  }
+}
+
+/**
+ * (buildings-270) The rain's runs down a rendered wall from under its eave: narrow tongues from the eave line down a metre
+ * or two between the openings (`gaps` their spans along the face), a third darker at the eave and washing out down the
+ * wall, 12 mm proud in the wall's bucket (fine: drawn near the camera only), one every 2.6 m of wall at the craft's own
+ * grime, more on a dirtier place's walls (its row's surface.grime). Their places and lengths hash from the face, never a
+ * stream. `y1` is the eave's line, `y0` the storey's floor.
+ */
+export function eaveStreaks(sink: PartSink, bucket: RegionalBucket, face: Face, y1: number, y0: number,
+  gaps: ReadonlyArray<readonly [number, number]>): void {
+  const g = facadeGrime(), half = face.width / 2;
+  const n = Math.min(8, Math.floor(face.width / 2.6 * g));
+  const dark = Math.min(0.5, 0.3 * g);
+  for (let k = 0; k < n; k++) {
+    const h = hash01(face.origin[0], face.origin[2], y1, k);
+    const cu = -half + 0.35 + (half * 2 - 0.7) * ((k + 0.25 + h * 0.5) / Math.max(1, n));
+    const w = 0.05 + h * 0.07;
+    if (gaps.some(([a, b]) => cu + w > a - 0.15 && cu - w < b + 0.15)) continue;
+    const len = Math.min(y1 - y0 - 0.3, 0.8 + hash01(cu, y1, k) * 1.3);
+    if (len < 0.4) continue;
+    const top = y1 - 0.04, bottom = top - len;
+    const at = (p: Vec3) => {
+      const t = Math.min(1, Math.max(0, (top - p[1]) / len));
+      return 1 - dark + dark * t;
+    };
+    sink.polygon(bucket, [facePoint(face, cu - w * 0.5, bottom, 0.012), facePoint(face, cu + w * 0.5, bottom, 0.012),
+      facePoint(face, cu + w, top, 0.012), facePoint(face, cu - w, top, 0.012)], { ...DECOR, fine: 'near', shadeAt: at });
   }
 }
 

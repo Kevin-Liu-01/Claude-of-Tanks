@@ -334,11 +334,23 @@ export const BUNDLE_BUDGETS = Object.freeze({
   //   seven's largest-of-three-builds pins (1,204,303 / 1,249,122 / 257,710): this build sits 159 B under each, inside
   //   the entry's commit-hash spread (201 B over five commits) that BUNDLE_SLACK's 96 B does not cover. Home, docs and 404
   //   re-pinned at this build (stable at 28,756 / 37,096 / 18,677 over every build of either parent since 269).
+  // 2026-11-09 (integrator 270, the single end re-pin at integ/270's build; Node 24.22.1): game +5,200 B brotli over 269's
+  //   measured build (21d5c7fd30, equal to main 72addd0635 for the bundle; 1,189,441 B), cn +5,651 B, Gallery +273 B;
+  //   requests held at 127 / 128 / 73 (Air Support's three boot leaves, sim/playerActions, game/strikeViewState and
+  //   engine/strikeMarks, fold into vehicleActions; alone they were three more game and cn boot requests); the entry
+  //   +886 B (main) is re-pinned. By chunk and lane: vehicleActions +2,612 (air-support-270's action bits, strike view
+  //   and the terrain's strike marks), main +886 (the five merged lanes' boot wiring),
+  //   matchRuleset +611 (the Air Support mode's rules), the en-US catalog +350 and zh-CN +451 (cn; the mode, pad and
+  //   strike strings), crewVoice +222 (the 21 world packs), gameModeCatalog +109 (the fourteenth mode), battleLoad +93,
+  //   icons +87, icon +70 and the design tokens +68 (on every page). Home +143 B, docs
+  //   +123 B and 404 +57 B (the same shared chunks) are re-pinned at their measures; pad's row is held.
+  // (round 8 Y11, merging origin/main 1b10803a6b = 270 into the round-eight merge) both histories above kept; each row
+  //   holds the larger of the two sides' pins until the merged build re-pins it (the entry below).
   game: { brotliBytes: 1204303, requests: 127, entryBrotliBytes: 257710 },
   cn: { brotliBytes: 1249122, requests: 128, entryBrotliBytes: 257710 },
   gallery: { brotliBytes: 759827, requests: 73 },
-  home: { brotliBytes: 28756, requests: 8 },
-  docs: { brotliBytes: 37096, requests: 12 },
+  home: { brotliBytes: 28785, requests: 8 },
+  docs: { brotliBytes: 37100, requests: 12 },
   notFound: { brotliBytes: 18677, requests: 7 },
 });
 /** Byte noise between two builds of the same code (chunk hashes in import specifiers); requests have none. */

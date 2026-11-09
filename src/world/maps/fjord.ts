@@ -19,6 +19,7 @@
 // landform's geology cannot steepen what that blend sets, so their ground stays the PR head's.)
 
 import { gully, talusFan } from './geology.ts';
+import { BUILDING_STYLES } from './buildingStyleTable.ts';
 
 const clamp01 = (x: number) => Math.max(0, Math.min(1, x));
 
@@ -163,7 +164,7 @@ export default {
   },
   props: {
     // map revival lane 2 (2026-10-05): the nordland kit (maps/regional/nordland.ts)
-    architecture: 'nordland',
+    architecture: BUILDING_STYLES.fjord.kit,
     plan: ['fishery', 'netyard', 'depot', 'logcabin', 'alpine',
       'warehouse', 'boatshed', 'chapel', 'cornershop', 'ruin', 'netyard', 'depot', 'logcabin',
       'warehouse', 'boatshed', 'netyard', 'logcabin', 'alpine', 'depot', 'woodshed', 'chapel',

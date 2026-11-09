@@ -491,7 +491,11 @@ export default defineConfig({
             // 2026-11-05 (integrator 268): the camouflage paint's spotting bonus (sim/camoPaint.ts, core-parity-268's one paint
             // rule for both drivers), a DOM-free table the roster state reads at boot on the game and cn and the lazy battle
             // and match host read; on its own it was one more boot request on both.
-            { name: 'vehicleActions', test: /[\\/]src[\\/](?:game[\\/](?:vehicleActions|consumableLoadout)|sim[\\/](?:spottingStats|equipmentRules|consumableRules|camoPaint)|ui[\\/](?:minimapAssetUrl|battleSight)|engine[\\/](?:chaseFraming|cameraLens))\.ts$/, includeDependenciesRecursively: false },
+            // 2026-11-09 (integrator 270): Air Support's three boot leaves, all read by the game and cn at boot and by the lazy
+            // strike code: the action bits (sim/playerActions.ts, constants), the strike view's state (game/strikeViewState.ts)
+            // and the terrain's strike-mark uniforms (engine/strikeMarks.ts; three stays in its own chunk). Alone they were three
+            // more boot requests on both pages, on the same two pages this group already loads.
+            { name: 'vehicleActions', test: /[\\/]src[\\/](?:game[\\/](?:vehicleActions|consumableLoadout|strikeViewState)|sim[\\/](?:spottingStats|equipmentRules|consumableRules|camoPaint|playerActions)|ui[\\/](?:minimapAssetUrl|battleSight)|engine[\\/](?:chaseFraming|cameraLens|strikeMarks))\.ts$/, includeDependenciesRecursively: false },
             // 2026-10-05 (media Studio): three's Pass base and the light-model family (atmosphere, cloudscapes, light
             // model core, haze law, ground bounce) stay the one chunk the game, map, terrain and urban kit share. The
             // Studio's cinema passes and horizon relight import members of it; without the group those split into a

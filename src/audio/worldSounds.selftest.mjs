@@ -9,7 +9,12 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { readFileSync } from 'node:fs';
 import { SFX_ASSETS } from './sfxManifest.generated.ts';
-import { FLAG_CUE, MODE_EVENT_SOUND, MODE_EVENT_TYPES, MODE_OPENER, hordeWaveSiren, modeOpener, modeSoundAssets } from './modeSounds.ts';
+import {
+  AIR_EVENT_SOUND, AIR_EVENT_TYPES, AIR_STRIKE_SOUND, FLAG_CUE, MODE_EVENT_SOUND, MODE_EVENT_TYPES, MODE_OPENER, STRIKE_AIRCRAFT_LOOP,
+  STRIKE_OWNED_REPORTS, airSupportAssets, hordeWaveSiren, modeOpener, modeSoundAssets,
+} from './modeSounds.ts';
+import { AIR_STRIKE_KINDS, AIR_STRIKE_WEAPONS } from '../sim/matchRuleset.ts';
+import { VOICE_LINES } from './voiceLines.ts';
 import { GAME_MODE_IDS } from '../sim/gameModeCatalog.ts';
 import { RUNNING_SURFACE, SHIFT_SOUND, SUSPENSION_SOUND, TURRET_DRIVE_SOUND, WATER_SOUND } from './vehicleRig.ts';
 import { ENGINE_FAMILIES, ENGINE_FAMILY_IDS, resolveEngineFamily } from './vehicleAudioProfiles.ts';
@@ -62,6 +67,27 @@ const crewEvents = [...crewList[1].matchAll(/'([a-z_]+)'/g)].map((m) => m[1]);
 assert.ok(crewEvents.length >= 10, `the crew's mode events read (${crewEvents})`);
 assert.deepEqual(crewEvents.filter((type) => !MODE_EVENT_TYPES.includes(type)), [], 'every crew mode event is one the controller emits');
 assert.match(crewSource, /function onMode\(type: CrewModeEvent,[\s\S]*?const unheard: never = type;/, "the crew's mode handler names every one of its events");
+
+// ---- Air Support (air-support-270): every event its ledger and its authorities emit is named (scanned from
+// sim/airSupport.ts and the network authority's round), every call-in names its sounds, and every one ships.
+const airSource = readFileSync(new URL('../sim/airSupport.ts', import.meta.url), 'utf8')
+  + readFileSync(new URL('../sim/authoritativeMatch.ts', import.meta.url), 'utf8');
+const airEmitted = [...new Set([...airSource.matchAll(/emit\(\s*'mode_((?:strike|aircraft|recon)_[a-z_]+)'/g)].map((m) => m[1]))].sort();
+assert.deepEqual(airEmitted, [...AIR_EVENT_TYPES].sort(), 'every Air Support event is named in modeSounds.ts AIR_EVENT_SOUND, and only those');
+for (const type of AIR_EVENT_TYPES) {
+  const entry = AIR_EVENT_SOUND[type];
+  assert.ok(entry.ids.length > 0 || (entry.why && entry.why.length > 10), `${type}: a sound, or why it is heard as nothing`);
+}
+assert.deepEqual(Object.keys(AIR_STRIKE_SOUND).sort(), [...AIR_STRIKE_KINDS].sort(), 'every call-in names its sounds');
+for (const id of airSupportAssets()) ships(id, 'an Air Support sound');
+for (const [kind, sound] of Object.entries(AIR_STRIKE_SOUND)) {
+  assert.ok(VOICE_LINES[sound.readback], `${kind}: our crew's read-back ${sound.readback} is a crew line`);
+  if (sound.incoming) assert.ok(VOICE_LINES[sound.incoming], `${kind}: the targeted crew's call ${sound.incoming} is a crew line`);
+  if (sound.aircraft) ships(STRIKE_AIRCRAFT_LOOP[sound.aircraft], `${kind}'s aircraft`);
+}
+// a round the strike voices itself (the burst, the whistles) never plays as a fired report too
+for (const spec of Object.values(AIR_STRIKE_WEAPONS)) assert.ok(STRIKE_OWNED_REPORTS.has(spec.soundProfile), `${spec.name}: its report is the strike's`);
+assert.match(engineSource, /for \(const type of AIR_EVENT_TYPES\) on</, 'the engine listens to every Air Support event');
 
 // ---- the running gear: by ground, gearbox, turret drive and hull class; water under any hull.
 for (const surface of ['earth', 'hard', 'sand', 'snow', 'mud', 'water']) {
@@ -250,6 +276,55 @@ gameMode = 'frontline_assault';
 bus.emit('mode:counter_attack', { line: 1, squad: 3, x: 50, z: 300 });
 assert.ok(since(seq).includes('mode_horde_swarm'), 'a special wave comes on the attack warning');
 assert.ok(since(seq).includes('mode_counter_attack'), 'the counter-attack\'s flare goes up');
+// Air Support (air-support-270): the targeted side warned before anything lands, the aircraft heard from the call, the
+// bomb's whistle ending at its landing on its own blast, the A-10's one burst a run (never a report per round), the
+// barrage's whistles, a downed jet's crash where it falls, and our own call refused
+gameMode = 'air_support';
+await probe.preload(airSupportAssets());
+await probe.libraryIdle();
+const heardSince = (at, type) => probe.soundLog.filter((e) => e.seq > at && e.type === type);
+let logAt = probe.soundLog.at(-1)?.seq ?? 0;
+seq = mark();
+bus.emit('mode:strike_called', { strikeId: 901, kind: 'bomb', team: 'bravo', x: 5, y: 0, z: 5, heading: 0, landsS: 107, warningS: 7, callerId: 'ice' });
+assert.ok(since(seq).includes('air_strike_warning'), `an enemy bomb on our hull warns us at the call (${since(seq)})`);
+step(30);
+assert.ok(heardSince(logAt, 'aerial:start').some((e) => e.kind === 'strike_fast'), 'the bomber\'s engines are heard from the call');
+seq = mark();
+bus.emit('mode:strike_round', { strikeId: 901, kind: 'bomb', team: 'bravo', shellId: 9901, weaponSound: 'strike-bomb', caliberMm: 273,
+  velocityMps: 180, blastRadiusM: 22, x: 5, y: 350, z: -715, dx: 0, dy: 0, dz: 1 });
+assert.ok(since(seq).includes('air_bomb_fall'), `the bomb whistles down from its release (${since(seq)})`);
+seq = mark();
+bus.emit('shell:expired', { shellId: 9901, shooterId: 'ice', pos: [5, 0, 5], hitTerrain: true, caliberMm: 273, shellType: 'HE', munition: 'howitzer', chargeKg: 87 });
+assert.ok(since(seq).includes('air_bomb_blast') && !since(seq).includes('expl_he_large'), `a 500 lb bomb lands on its own blast (${since(seq)})`);
+seq = mark();
+bus.emit('mode:strike_called', { strikeId: 902, kind: 'strafe', team: 'alpha', x: 0, y: 0, z: 300, heading: 0, landsS: 205, warningS: 5, callerId: 'me' });
+assert.ok(!since(seq).includes('air_strike_warning'), 'our own side\'s strike warns none of ours');
+for (let k = 0; k < 4; k++) {
+  const round = { strikeId: 902, kind: 'strafe', team: 'alpha', shellId: 9910 + k, weaponSound: 'strike-strafe', caliberMm: 30, velocityMps: 1010,
+    x: 0, y: 90, z: 20 + 4 * k, dx: 0, dy: -0.34, dz: 0.94 };
+  bus.emit('mode:strike_round', round);
+  bus.emit('shell:fired', { shellId: round.shellId, shooterId: null, isPlayer: false, shellType: 'AP', shellName: 'GAU-8 30 mm API', caliberMm: 30,
+    velocityMps: 1010, weaponSound: 'strike-strafe', muzzlePos: [round.x, round.y, round.z], dir: [0, -0.34, 0.94], airStrike: 'strafe' });
+}
+const run = since(seq);
+assert.equal(run.filter((n) => n === 'air_gau8_close').length + run.filter((n) => n === 'air_gau8_far').length >= 1, true, `the run's burst is heard (${run})`);
+assert.ok(run.filter((n) => n === 'air_gau8_close').length <= 1 && run.filter((n) => n === 'air_gau8_far').length <= 1, `one burst a run (${run})`);
+assert.ok(!run.some((n) => /^(ac_30|gunship_30|blast_punch)/.test(n)), `no report per round under the burst (${run})`);
+seq = mark();
+bus.emit('mode:strike_called', { strikeId: 903, kind: 'artillery', team: 'bravo', x: 400, y: 0, z: 400, heading: 0, landsS: 306, warningS: 6, callerId: 'ice' });
+bus.emit('mode:strike_round', { strikeId: 903, kind: 'artillery', team: 'bravo', shellId: 9920, weaponSound: 'strike-artillery', caliberMm: 155,
+  velocityMps: 160, blastRadiusM: 18, x: 0, y: 420, z: -150, dx: 0, dy: 0.2, dz: 0.98 });
+assert.ok(since(seq).includes('air_strike_warning') && since(seq).includes('air_shell_incoming'), `a barrage far off still warns its side; its rounds whistle down (${since(seq)})`);
+logAt = probe.soundLog.at(-1)?.seq ?? 0;
+bus.emit('mode:aircraft_down', { strikeId: 901, kind: 'bomb', team: 'bravo', by: 'me', x: 5, y: 350, z: -300 });
+seq = mark();
+step(30 * 10);
+assert.ok(since(seq).includes('air_crash'), `a downed bomber crashes where it falls (${since(seq)})`);
+assert.ok(heardSince(logAt, 'air:crash').length === 1, 'and once');
+seq = mark();
+bus.emit('mode:strike_denied', { id: 'me', kind: 'gunship', reason: 'POINTS' });
+bus.emit('mode:strike_denied', { id: 'ice', kind: 'gunship', reason: 'POINTS' });
+assert.deepEqual(since(seq).filter((n) => n === 'ui_error'), ['ui_error'], 'our own refused call, never another crew\'s');
 // a battle entered in capture the flag warms its opener with the battle (presenceAssets); here the mode changed after it
 gameMode = 'capture_the_flag';
 await probe.preload(['mode_ctf_opener']);
@@ -287,4 +362,4 @@ for (const mode of GAME_MODE_IDS) {
 }
 
 bus.emit('phase:change', { phase: 'garage' });
-console.log(`worldSounds.selftest: ${GAME_MODE_IDS.length} mode openers, ${MODE_EVENT_TYPES.length} mode events, running gear by ground/gearbox/drive/class, water edges, ${ids.length} hulls' powertrains (${Object.keys(counts).length} families), night life on ${nightLife} maps, roofs and props by material, dirt roads, crashes, kills, APS and the modes in the engine passed`);
+console.log(`worldSounds.selftest: ${GAME_MODE_IDS.length} mode openers, ${MODE_EVENT_TYPES.length} mode events, running gear by ground/gearbox/drive/class, water edges, ${ids.length} hulls' powertrains (${Object.keys(counts).length} families), night life on ${nightLife} maps, roofs and props by material, dirt roads, crashes, kills, APS, the modes and Air Support's call-ins in the engine passed`);

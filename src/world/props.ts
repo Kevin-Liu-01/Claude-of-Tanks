@@ -299,6 +299,8 @@ import { geologyBoulderSite, restsOnTalus, TALUS_DEG } from './landformGeology.t
 import { createPropCrushPresentation } from './propCrushPresentation.ts';
 import { installPaneStackDepth } from './paneStack.ts';
 import { assertNoBuildScopeOpen } from './maps/buildScopes.ts';
+import { climateOf, surfaceOf } from './maps/buildingStyleTable.ts';
+import { AppearanceLedger } from './maps/regional/appearance.ts';
 
 /** A seated hulk's ground support: its track runs' plane (wrecks.ts seatHulk) or the footprint's grounded pose. */
 type WreckSupport = ReturnType<typeof planGroundedObbPose> | ReturnType<typeof seatHulk>;
@@ -2896,16 +2898,35 @@ function contactDarkeningMaterial(tex: THREE.Texture): THREE.MeshBasicMaterial {
   mat.onBeforeCompile = (shader) => {
     shader.vertexShader = _mustReplace(shader.vertexShader, '#include <common>', '#include <common>\nvarying float vCotContactDist;');
     shader.vertexShader = _mustReplace(shader.vertexShader, '#include <project_vertex>', '#include <project_vertex>\nvCotContactDist = -mvPosition.z;');
-    shader.fragmentShader = _mustReplace(shader.fragmentShader, '#include <common>', '#include <common>\nvarying float vCotContactDist;');
+    // (ground-269, groundSurfaces.ts: the critics' first round flagged a dark strip at every wall's foot on Suzhou Creek, in
+    // the old ground and the new) a foundation's ring — the faintest kind, strength 0.45 — keeps two fifths of its
+    // darkening where the ground-surface table runs (uGsContact 1; 0 = the old law); the boulders', the crushables' and the
+    // stacks' patches as they were
+    shader.uniforms.uGsContact = { value: 1 };
+    shader.fragmentShader = _mustReplace(shader.fragmentShader, '#include <common>', '#include <common>\nvarying float vCotContactDist;\nuniform float uGsContact;');
     // (MultiplyBlending: the target × (rgb·a + 1 − a) of the premultiplied output — the ground × mix(1, the grey, a))
     shader.fragmentShader = _mustReplace(shader.fragmentShader, '#include <premultiplied_alpha_fragment>', /* glsl */`{
+  if (vColor.r < 0.5) diffuseColor.a *= mix(1.0, 0.4, uGsContact);
   float cotContactA = clamp(diffuseColor.a * 2.5 * vColor.r, 0.0, 0.8) * (1.0 - smoothstep(80.0, 160.0, vCotContactDist));
   gl_FragColor = vec4(0.56, 0.53, 0.49, cotContactA);
 }
 #include <premultiplied_alpha_fragment>`);
   };
-  mat.customProgramCacheKey = () => 'props-contact-darkening-v1';
+  mat.customProgramCacheKey = () => 'props-contact-darkening-v2';
   return mat;
+}
+
+/**
+ * (ground-269, groundSurfaces.ts town floors; the critics' second round on Suzhou Creek: "a dark band along the foot of
+ * the wall", "a flat rectangle of a different ground laid round the buildings") the street-row towns' building aprons
+ * and courtyard discs were the old town floor — a flat grit decal laid over the ground round every building and in the
+ * yards, hiding the table's town floor there. Where the table runs (uGsApron 1) they draw nothing and the floor shows;
+ * 0 = the old decal (the A/B's legacy view).
+ */
+function apronGroundTableHook(shader: MaterialShader): void {
+  shader.uniforms.uGsApron = { value: 1 };
+  shader.fragmentShader = _mustReplace(shader.fragmentShader, '#include <common>', '#include <common>\nuniform float uGsApron;');
+  shader.fragmentShader = _mustReplace(shader.fragmentShader, '#include <alphatest_fragment>', 'diffuseColor.a *= 1.0 - uGsApron;\n#include <alphatest_fragment>');
 }
 
 function makeGroundDecalTexture(
@@ -4018,6 +4039,8 @@ function* propsBuildSteps(
 
   // regional-buildings lane: the map's architecture kit (maps/regional/index.ts) — its default tones sit under the map's
   const regionalArchitecture = resolveRegionalArchitecture(P.architecture);
+  // (buildings-270) this build's look ledger: no two neighbouring buildings share every feature (regional/appearance.ts)
+  const lookLedger = new AppearanceLedger();
   if (regionalArchitecture?.surfaces.tones) P.tones = { ...regionalArchitecture.surfaces.tones, ...(P.tones || {}) };
   // the facades lane (2026-10-08): a kit's render painter (surfaces.render) paints each render family the map tones, under
   // that tone — the primary on its seed, plaster2 and plaster3 on the next (plaster3 borrows plaster2's relief below)
@@ -4315,6 +4338,9 @@ function* propsBuildSteps(
       'straw', 'hay', 'structureWood', 'structureCanvas', 'burlap', 'structureMetal', 'steel', 'regionalPlaster', 'regionalPlaster2', 'regionalPlaster3', 'regionalStone', 'regionalRoof', 'bridgeStone']) {
       if (mats[key]) mats[key].aoMapIntensity = 0.82;
     }
+    // (buildings-270) the roof covering's relief as the place's photos show it (its row's surface.tileRelief): the same
+    // texture, its normal map's scale
+    if (mats.regionalRoof && regionalArchitecture) mats.regionalRoof.normalScale.multiplyScalar(surfaceOf(mapId, regionalArchitecture.id)?.tileRelief ?? 1);
     // the scenery lane (wave 52, Verdant's village wall: its face in shade "a flat extruded slab with a near-black blocky
     // texture"): the field print's occlusion takes half the skylight in a joint, not four fifths, so a wall's shaded face
     // keeps its stones (the sunlit face, lit directly, hardly changes)
@@ -4648,7 +4674,7 @@ ${snowCap ? `
   /** The gate kinds this map can hang (gateKit.ts): the timber families everywhere, the stone and mud walls' on a kit. */
   function gateTypes(): Record<string, PropsDestructibleMeta> {
     const style = gateStyleFor(regionalArchitecture?.id, mapId);
-    const ctx = { style, stone: gateStoneOf(regionalArchitecture), render: { damp: regionalArchitecture?.weather?.damp ?? 0.3 } };
+    const ctx = { style, stone: gateStoneOf(regionalArchitecture, mapId), render: { damp: climateOf(mapId, regionalArchitecture?.id).damp } };
     const out: Record<string, PropsDestructibleMeta> = {};
     for (const kind of GATE_KINDS) {
       const mat = kind === 'gatestone' ? 'regionalStone' : kind === 'gateadobe' ? 'regionalPlaster' : 'structureWood';
@@ -4665,7 +4691,7 @@ ${snowCap ? `
    *  kit's vertex-coloured stone; a map whose place builds neither keeps the destruction stream's. */
   function wellTypes(): Record<string, PropsDestructibleMeta> {
     const out: Record<string, PropsDestructibleMeta> = {};
-    const ctx = { stone: wellStoneOf(regionalArchitecture) };
+    const ctx = { stone: wellStoneOf(regionalArchitecture, mapId) };
     const wf = wellFormFor(regionalArchitecture?.id, mapId);
     if (wf) {
       const timber = TIMBER_WELLS.has(wf), mat = timber ? 'structureWood' : 'regionalStone';
@@ -4692,7 +4718,7 @@ ${snowCap ? `
    *  column wellKit's 'saeule' on the kit's stone), on a map whose civic plan places them. */
   function civicTypes(): Record<string, PropsDestructibleMeta> {
     const out = { ...civicFurnitureTypes() } as Record<string, PropsDestructibleMeta>;
-    const ctx = { stone: wellStoneOf(regionalArchitecture), mobile: mobileProps };
+    const ctx = { stone: wellStoneOf(regionalArchitecture, mapId), mobile: mobileProps };
     out.memorialcolumn = {
       ...(CIVIC_RECORDS.memorialcolumn as unknown as PropsDestructibleMeta), mat: mats.regionalStone ? 'regionalStone' : 'stone',
       build: () => buildMonument('saeule', ctx, false), broken: () => buildMonument('saeule', ctx, true),
@@ -5705,7 +5731,7 @@ ${snowCap ? `
       // (a building a carriageway may still move takes no ground: its strip lies level)
       // (props.plannedSiteTwins: a twin is built from its partner's pose — its hashes and form choices — on its own ground)
       const rebuilt = yield* rebuildRegionalStructureSteps(regionalArchitecture, structureId, tmp, info, wallBucket,
-        { mapId, snowCap: structureContext.snowCap, seed, ...regionalSun,
+        { mapId, snowCap: structureContext.snowCap, seed, ...regionalSun, ...(kitPose ? {} : { ledger: lookLedger }),
           ground: fromRoad && P.roadBuildingClearance ? undefined : regionalGround(px, pz, rot, fit.y + 0.05) },
         kitPose?.x ?? px, kitPose?.z ?? pz, kitPose?.rot ?? rot);
       if (rebuilt) {
@@ -5818,7 +5844,7 @@ ${snowCap ? `
       ?? (footprintWet(entry.x, entry.z, info.w, info.d, entry.rot) ? footprintOf(tmp, info) : null);
     if (regionalArchitecture && !regionalDonor) {
       tmp = rebuildRegionalStructure(regionalArchitecture, entry.structure, tmp, info, entry.wall,
-        { mapId, snowCap: structureContext.snowCap, seed, ...regionalSun,
+        { mapId, snowCap: structureContext.snowCap, seed, ...regionalSun, ledger: lookLedger,
           ground: P.roadBuildingClearance ? undefined : regionalGround(entry.x, entry.z, entry.rot, fit.y + 0.05) },
         entry.x, entry.z, entry.rot) ?? tmp;
     }
@@ -5968,7 +5994,7 @@ ${snowCap ? `
         if (footprintWet(entry.x, entry.z, info.w, info.d, entry.rot)) continue;
         if (regionalArchitecture) {
           tmp = (yield* rebuildRegionalStructureSteps(regionalArchitecture, entry.ruined ? 'ruin' : 'rowhouse', tmp, info, entry.wall,
-            { mapId, snowCap: structureContext.snowCap, seed, ...regionalSun }, entry.x, entry.z, entry.rot)) ?? tmp;
+            { mapId, snowCap: structureContext.snowCap, seed, ...regionalSun, ledger: lookLedger }, entry.x, entry.z, entry.rot)) ?? tmp;
         }
         addStructureCollision(entry.ruined ? 'ruin' : 'rowhouse', tmp, entry.x, fit.y + 0.05, entry.z, entry.rot);
         _quat.setFromAxisAngle(_upAxis, entry.rot);
@@ -6091,7 +6117,7 @@ ${snowCap ? `
       // regional-buildings lane: the street row's draws and pose are settled; the map's kit swaps in its row house
       if (regionalArchitecture) {
         tmp = rebuildRegionalStructure(regionalArchitecture, ruined ? 'ruin' : 'rowhouse', tmp, info, rowWall,
-          { mapId, snowCap: structureContext.snowCap, seed, ...regionalSun, ground: regionalGround(x, z, rot, fit.y + 0.05) }, x, z, rot) ?? tmp;
+          { mapId, snowCap: structureContext.snowCap, seed, ...regionalSun, ledger: lookLedger, ground: regionalGround(x, z, rot, fit.y + 0.05) }, x, z, rot) ?? tmp;
       }
       addStructureCollision(ruined ? 'ruin' : 'rowhouse', tmp, x, fit.y + 0.05, z, rot);
       _quat.setFromAxisAngle(_upAxis, rot);
@@ -10247,7 +10273,9 @@ ${snowCap ? `
         roughness: 0.97, metalness: 0,
         polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2,
       });
-      if (receiveShadow && !groundContact) engineCtx.setupShadowMaterial(mat as THREE.MeshStandardMaterial);
+      // (ground-269) the street-row towns' aprons give way to the ground-surface table's town floor (apronGroundTableHook)
+      if (decalKind === 'apron') (mat.defines ??= {}).COT_GS_APRON = '';
+      if (receiveShadow && !groundContact) engineCtx.setupShadowMaterial(mat as THREE.MeshStandardMaterial, decalKind === 'apron' ? apronGroundTableHook : null);
       // (the contact layer's per-ring shares ride its vertex alpha)
       if (geos[0].getAttribute('color')) mat.vertexColors = true;
       const mesh = new THREE.Mesh(mergeGeometries(geos, false), mat);
@@ -11614,7 +11642,7 @@ ${snowCap ? `
   // fine dressing on the kit's stone, the painted riser their far form (maps/terraceRisers.ts)
   const riserZones = (cfg as { terrain?: { terraces?: TerraceRiserZone[] } } | null)?.terrain?.terraces;
   if (riserZones?.length && !mobileProps && regionalArchitecture) {
-    const risers = yield* traceTerraceRisers(riserZones, { ground: (x, z) => heightField.getHeightAt(x, z), tint: gateStoneOf(regionalArchitecture)?.tint ?? [1, 1, 1],
+    const risers = yield* traceTerraceRisers(riserZones, { ground: (x, z) => heightField.getHeightAt(x, z), tint: gateStoneOf(regionalArchitecture, mapId)?.tint ?? [1, 1, 1],
       clear: (x, z) => heightField._roadDist(x, z) > 1.4 && !placedB.some((b) => Math.hypot(x - b.x, z - b.z) < b.rr + 0.5) });
     if (risers) buckets.regionalStone.push(...risers.parts.regionalStone);
   }

@@ -37,8 +37,9 @@ const ICON_CSS = [['src/gallery/gallery.css', /\.camera-view-glyph[^{]*\{[^}]*\}
  *  (the lead, 2026-10-26: bar line 3, a glyph drawn at 18 px or less gets its 16-unit master first) drew the 37 small
  *  masters of the Settings rows' glyphs: 11054 to 12262 B, re-pinned at 13 KB. Merged with 260's consumables catalog (its
  *  ten cs* glyphs and, for the Settings slot rows that draw them at 16 px, their small masters): 13200 B, re-pinned at
- *  14 KB. The boot slice holds. */
-const SPRITE_GZIP_MAX = 14 * 1024;
+ *  14 KB. The boot slice holds. Air Support (air-support-270), the fifteenth mode, and its strike-view key's glyph: 14382 B,
+ *  re-pinned at 14.5 KB. */
+const SPRITE_GZIP_MAX = 14.5 * 1024;
 const BOOT_BROTLI_MAX = 3 * 1024;
 
 const STROKE_LITERAL = /stroke-width(?:="|:|',\s*['"]?|\s*=\s*\{?)\s*([0-9.]+)/g;
@@ -112,7 +113,7 @@ function spriteRules() {
   for (const id of ACTIVE_ICON_IDS) if (!large.has(id)) problems.push(`active id ${id} missing`);
   const modes = [...large.keys()].filter((id) => id.startsWith('mode'));
   // The 13 rulesets plus the proving ground (2026-10-20), each with a glyph of its own.
-  if (modes.length !== 14) problems.push(`sprite: ${modes.length} mode glyphs (14 unique required)`);
+  if (modes.length !== 15) problems.push(`sprite: ${modes.length} mode glyphs (15 unique required)`);
   const modeBodies = new Set(modes.map((id) => large.get(id)));
   if (modeBodies.size !== modes.length) problems.push('sprite: two modes share one glyph');
   const host = readFileSync(join(root, 'src/ui/icons/icon.ts'), 'utf8');

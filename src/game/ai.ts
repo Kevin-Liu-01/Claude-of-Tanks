@@ -262,6 +262,8 @@ export interface AiOrder {
   untilS: number;
 }
 
+/** Air Support: the bore within ~1.5 degrees of where its round meets an aircraft fires (a jet's sphere at 300 m). */
+const AIR_SHOT_COS = detMath.cos(0.026);
 const CRITICAL_REPAIR_MODULES = new Set([
   'trackL', 'trackR', 'engine', 'gun', 'turretRing', 'gunMount',
   'ammoRack', 'autoloader', 'feedSystem', 'missileRack',
@@ -426,6 +428,11 @@ interface AiDependencies {
   intel?: {
     freshestContact(): { x: number; z: number } | null;
     enemyDeployment(): { x: number; z: number } | null;
+    /** Air Support (air-support-270): the distance to the nearest enemy aircraft in the air (Infinity: none). */
+    airThreatM?(): number;
+    /** Air Support: where a round at `roundMps` meets the nearest enemy aircraft this gun can elevate to (`maxPitchRad`),
+     *  or null (the gun's answer when it has no ground target). */
+    airShot?(roundMps: number, maxPitchRad: number): { x: number; y: number; z: number } | null;
   };
 }
 
@@ -4943,10 +4950,38 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     return true;
   }
 
+  /**
+   * Air Support (air-support-270): a gun with no ground target answers an enemy aircraft it can elevate to — laid on where
+   * its round meets the aircraft (the controller leads it from the aircraft's public flight), fired once the bore bears.
+   */
+  let airShots = 0;
+  function shootAircraft(input: AiInput, timeS: number): boolean {
+    const shell = selectedShell(entity.combat);
+    const airShot = deps.intel?.airShot;
+    if (!shell || !airShot) return false;
+    const aim = airShot(shell.velocityMps || 1000, (spec.gunElevationDeg ?? 15) * Math.PI / 180);
+    if (!aim) return false;
+    const st = entity.state;
+    input.aimPoint.set(aim.x, aim.y, aim.z);
+    input.fire = false;
+    if ((entity.combat?.reload?.t ?? 0) > 1e-3) return true;
+    _hullEuler.set(-(st.visualPitch || 0), st.yaw, st.visualRoll || 0, 'YXZ');
+    _hullQuat.setFromEuler(_hullEuler);
+    _vF.set(detMath.sin(st.turretYaw) * detMath.cos(st.gunPitch), detMath.sin(st.gunPitch), detMath.cos(st.turretYaw) * detMath.cos(st.gunPitch))
+      .applyQuaternion(_hullQuat).normalize();
+    const dx = aim.x - st.pos.x, dy = aim.y - (st.pos.y + selfEyeM), dz = aim.z - st.pos.z, d = detMath.hypot(dx, dy, dz) || 1;
+    if ((_vF.x * dx + _vF.y * dy + _vF.z * dz) / d < AIR_SHOT_COS) return true;
+    input.fire = true;
+    lastFiredAtS = timeS;
+    airShots++;
+    return true;
+  }
+
   function aimAndFire(input: AiInput, dt: number, timeS: number): void {
     if (!target || !enemyAlive(target)) {
       conserving = false;
       if (shootTheBall(input, timeS)) return;
+      if (shootAircraft(input, timeS)) return;
       setIdleScan(input, timeS);
       return;
     }
@@ -7080,6 +7115,7 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
       || (reaction !== null && timeS < reactUntilS) || (orderActive() && order!.posture === 'retreat');
     abilityContext.reloadS = slotReloadS(chosenSlot);
     abilityContext.contactM = target && losClear && isVisibleToTeam(target) ? currentTargetDistance() : Infinity;
+    abilityContext.airThreatM = deps.intel?.airThreatM?.() ?? Infinity;
     abilityContext.safeJump = false;
     abilityContext.offensive = offensiveJumpDue();
     if (abilities.jumpEligible(entity, timeS, abilityContext) && input.throttle > 0.2 && !input.brake) {

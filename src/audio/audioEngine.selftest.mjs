@@ -5,6 +5,7 @@ import { createFakeContext, fakeBuffer } from './fakeAudioContext.test-support.m
 import { createBus } from '../game/stateCore.ts';
 import { publishKillcamScreen } from '../game/killcamScreen.ts';
 import { CREW_VOICE_NATIONS } from './crewVoice.ts';
+import { WORLD_CREW_LANGUAGES } from './vehicleAudioProfiles.ts';
 import { emitDebrisLanding, emitTurretLanding } from '../fx/clock.ts';
 import { GAME_MODE_IDS } from '../sim/matchModes.ts';
 import { GUNSHIP_WEAPONS, matchRulesetFor } from '../sim/matchRuleset.ts';
@@ -645,15 +646,19 @@ ctx.advance(13);
 since = mark();
 bus.emit('player:spotted', { timeS: 13 });
 assert.ok(logSince(since).some((e) => e.n === 'ui_alert'), 'the lamp sounds each time it lights');
+assert.equal(probe.sayLog.at(-1)?.id, 'sixth_sense',
+  'and each exposure asks the radio: "once per exposure" is sixth_sense\'s cooldown, armed only when the call plays');
 since = mark();
 audio.loadingOn(true);
 assert.ok(logSince(since).some((e) => e.n === 'loading_bed_loop'), 'the loading screen has its recorded bed');
 audio.loadingOn(false);
 assert.equal(ctx.nodes.filter((n) => n.kind === 'oscillator').length, 0, 'a whole session synthesizes nothing');
 
-// The real settings event reaches every radio call, across every shipped pack.
-const lastPack = Object.keys(CREW_VOICE_NATIONS).at(-1);
-for (const language of Object.keys(CREW_VOICE_NATIONS)) {
+// The real settings event reaches every radio call, across every shipped pack: the national ones and the languages with no
+// country in the game.
+const shippedPacks = [...Object.keys(CREW_VOICE_NATIONS), ...WORLD_CREW_LANGUAGES];
+const lastPack = shippedPacks.at(-1);
+for (const language of shippedPacks) {
   bus.emit('ui:volumes', { crewVoice: language });
   assert.equal(probe.crewLanguage, language);
   await probe.libraryIdle();

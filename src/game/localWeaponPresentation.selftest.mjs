@@ -3,6 +3,7 @@ import { readFile } from 'node:fs/promises';
 import { runInNewContext } from 'node:vm';
 import ts from 'typescript-compiler-api';
 import { gunshipShotOf } from '../fx/gunshipRounds.ts';
+import { STRIKE_OWNED_REPORTS } from '../audio/modeSounds.ts';
 
 // Execute the production receiver bodies with their audio/WebGL boundaries
 // replaced. No AudioContext, GPU, timing guess, or duplicated routing policy.
@@ -47,6 +48,8 @@ const audioBindings = {
   caption: (id) => calls.push(['caption', id]),
   distanceAttenuationDb: () => -20,
   dbToGain: (db) => 10 ** (db / 20),
+  // Air Support's rounds own their reports (audio/modeSounds.ts): a strike's shell:fired plays none
+  STRIKE_OWNED_REPORTS,
 };
 const predictAudio = await receiver('../audio/audioEngine.ts', namedFunction('onPredictedWeapon'), audioBindings);
 const confirmAudio = await receiver('../audio/audioEngine.ts', namedFunction('onShellFired'), audioBindings);

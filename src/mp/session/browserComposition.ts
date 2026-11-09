@@ -512,7 +512,7 @@ export interface BrowserComposition {
   /** The page is going away (pagehide): a hosting seat hands its match on at once (plan step 11). True when it did. */
   handOffHosting(reason: string): boolean;
   queueConsumable(slot: number): void;
-  queueAction(action: 'reloadMagazine' | 'specialAction' | 'selfRight' | 'smoke' | 'lights' | 'roofGun' | 'lightsOff' | 'drone' | 'supplyAmmo' | 'supplyHeal'): void;
+  queueAction(action: 'reloadMagazine' | 'specialAction' | 'selfRight' | 'smoke' | 'lights' | 'roofGun' | 'lightsOff' | 'drone' | 'supplyAmmo' | 'supplyHeal' | 'strikeRecon' | 'strikeArtillery' | 'strikeStrafe' | 'strikeBomb' | 'strikeGunship'): void;
   /** The Garage return's network port: keep the room across the return? */
   shouldPreserveRoom(): boolean;
   /** Leave the match, keep the seat (the Garage return with a preserved room). */

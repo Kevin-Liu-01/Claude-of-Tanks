@@ -1,0 +1,114 @@
+@layer reset,tokens,base,components,surfaces,utilities,overrides;
+/* Air Support (air-support-270): the Support slot, the call-in row, the strike view's binoculars and the INCOMING plate
+   (airSupportHud.ts). The slots are the battle tray's (hud.ts .cot-shell/.cot-con): the plate, its edge and ring, the key
+   top left, the figure top right, the consumables' conic cooldown shade and the tray's one selected state. */
+@layer surfaces{
+.cot-strike-dock[hidden],.cot-strike-rack[hidden],.cot-binoculars[hidden],.cot-strike-warning[hidden],.strike-slot[hidden]{display:none}
+/* (a3: the warning's own rule is a class heavier, over the HUD's reset, and kept an empty plate up with nothing incoming) */
+.cot-hud .cot-strike-warning[hidden]{display:none}
+/* the Support slot's own seat when no tray takes it (a phone's, below) */
+.cot-strike-dock{position:absolute;left:max(16px,env(safe-area-inset-left));bottom:calc(max(16px,env(safe-area-inset-bottom)) + 216px);pointer-events:auto;color:var(--ink-1);z-index:var(--z-hud-controls)}
+/* the call-ins: a row centred over the tray while the binoculars are up; like the tray, no box of its own */
+.cot-strike-rack{position:absolute;left:50%;width:max-content;bottom:calc(max(16px,env(safe-area-inset-bottom)) + 150px);transform:translateX(-50%);display:flex;gap:6px;pointer-events:auto;color:var(--ink-1);z-index:var(--z-hud-controls)}
+.strike-slot{position:relative;box-sizing:border-box;width:64px;height:64px;padding:0;background:var(--hud-plate);border:1px solid var(--line-2);border-bottom-width:2px;border-radius:var(--r1);box-shadow:var(--hud-plate-ring);color:var(--ink-1)}
+/* the tray's other sizes (battleHudLayout.css: the stacked tray, a phone- or compact-width window) */
+body[data-cot-battle-layout]:not(.cot-touch-layout)[data-hud-tray='stacked']:not([data-cot-width='phone']):not([data-cot-width='compact']) .cot-shells .strike-support{width:48px;height:52px}
+body[data-cot-battle-layout]:not(.cot-touch-layout):is([data-cot-width='phone'],[data-cot-width='compact']) .cot-shells .strike-support{width:44px;height:52px}
+/* Support's count: the points, in the corner every count of the tray takes, and their fill toward the cap on its floor */
+.strike-support .strike-points{position:absolute;top:2px;right:3px;font:700 var(--battle-fs-fig-11)/1 var(--hud-font);line-height:13px;color:var(--ink-1)}
+.strike-points-fill{position:absolute;left:0;right:0;bottom:-2px;height:2px;background:var(--mode-air-support);transform-origin:left;transform:scaleX(var(--strike-fill,0))}
+/* a slot: the key, the price, the glyph, the short name, the cooldown shade and its seconds */
+.strike-slot{font:inherit;cursor:pointer;appearance:none;-webkit-tap-highlight-color:transparent;transition:transform var(--dur-instant) ease-out}
+.strike-slot:active{transform:scale(.97)}
+.strike-slot:focus-visible{outline:2px solid var(--focus-ink);outline-offset:2px}
+.strike-slot .key{position:absolute;top:2px;left:2px;padding:0 3px;border-radius:var(--control-radius);box-shadow:var(--ring-3);background:var(--hud-plate);font:500 var(--battle-fs-fig-11)/1 var(--font-data);line-height:13px;color:var(--ink-2)}
+.strike-slot .key:empty{display:none}
+.strike-slot .price{position:absolute;top:2px;right:3px;font:700 var(--battle-fs-fig-11)/1 var(--hud-font);line-height:13px;color:var(--ink-2)}
+.strike-slot .glyph{position:absolute;left:50%;top:calc(50% - 3px);display:block;width:26px;height:26px;transform:translate(-50%,-50%);color:var(--ink-1)}
+.strike-slot .glyph svg{display:block;width:100%;height:100%}
+.strike-slot .label{position:absolute;left:2px;right:2px;bottom:2px;font:700 var(--battle-fs-fig-11)/1 var(--font-display);line-height:12px;letter-spacing:0;text-align:center;text-transform:uppercase;white-space:nowrap;color:var(--ink-2)}
+.strike-slot .cool{position:absolute;inset:0;pointer-events:none;background:conic-gradient(var(--battle-veil) var(--strike-cool,0%),var(--battle-strike-lens-clear) 0)}
+.strike-slot .left{position:absolute;left:50%;top:calc(50% - 3px);transform:translate(-50%,-50%);font:700 var(--battle-fs-15)/1 var(--hud-font);color:var(--ink-1)}
+.strike-slot .left:empty{display:none}
+.strike-slot[data-state=cooldown] .glyph{opacity:.35}
+/* a call-in the crew cannot afford, or the side's air is full: the slot dims; short of points, the price says so */
+.strike-slot:is([data-state=points],[data-state=air]) :is(.glyph,.label){opacity:.4}
+.strike-slot[data-state=points] .price{color:var(--hud-danger)}
+/* the tray's one selected state: the accent's edge, wash and ring */
+.strike-slot[data-selected=true]{border-color:var(--accent);background:linear-gradient(var(--accent-wash),var(--accent-wash)),var(--hud-plate);box-shadow:var(--ring-accent)}
+.strike-slot[data-selected=true] :is(.label,.glyph){color:var(--accent)}
+.strike-slot[data-selected=true] .key{color:var(--accent-hi)}
+/* the full name and its facts, on hover (the tray's tip) */
+.strike-slot .tip{display:none;position:absolute;bottom:calc(100% + 8px);left:50%;transform:translateX(-50%);flex-direction:column;align-items:center;gap:2px;padding:5px 9px 6px;white-space:nowrap;background:var(--hud-plate-strong);border:1px solid var(--line-2);border-radius:var(--r1);box-shadow:var(--hud-plate-ring);font-size:var(--battle-fs-11);color:var(--ink-2)}
+.strike-slot .tip b{font-weight:600;color:var(--ink-1)}
+@media(hover:hover) and (pointer:fine){
+ .strike-slot:hover{border-color:var(--line-control)}
+ .strike-slot[data-selected=true]:hover{border-color:var(--accent)}
+ .strike-slot:hover .tip{display:flex}
+}
+
+/* the binoculars: two lenses' vignette over the scope's camera, the stadia scale, one readout plate, the keys */
+.cot-binoculars{position:absolute;inset:0;pointer-events:none;z-index:var(--z-hud-sight);color:var(--ink-1)}
+.binocular-lens{position:absolute;inset:0;background:
+ radial-gradient(ellipse 30% 42% at 35% 50%,var(--battle-strike-lens-clear) 0 92%,var(--battle-strike-lens) 100%),
+ radial-gradient(ellipse 30% 42% at 65% 50%,var(--battle-strike-lens-clear) 0 92%,var(--battle-strike-lens) 100%);
+ -webkit-mask:radial-gradient(ellipse 30% 42% at 35% 50%,var(--battle-strike-lens-clear) 0 91%,var(--battle-strike-lens-solid) 100%),radial-gradient(ellipse 30% 42% at 65% 50%,var(--battle-strike-lens-clear) 0 91%,var(--battle-strike-lens-solid) 100%);
+ -webkit-mask-composite:source-in;mask:radial-gradient(ellipse 30% 42% at 35% 50%,var(--battle-strike-lens-clear) 0 91%,var(--battle-strike-lens-solid) 100%) intersect,radial-gradient(ellipse 30% 42% at 65% 50%,var(--battle-strike-lens-clear) 0 91%,var(--battle-strike-lens-solid) 100%);background-color:var(--battle-strike-lens)}
+.binocular-scale{position:absolute;left:50%;top:50%;width:min(46vw,520px);height:1px;transform:translate(-50%,-50%);background:repeating-linear-gradient(90deg,var(--battle-strike-scale) 0 1px,var(--battle-strike-lens-clear) 1px 10%);opacity:.75}
+.binocular-scale::before,.binocular-scale::after{content:'';position:absolute;left:50%;width:1px;height:28px;background:var(--battle-strike-scale)}
+.binocular-scale::before{top:-38px}.binocular-scale::after{top:10px}
+/* (u3: the HUD's own box reset, .cot-hud :where(*), comes later at a class's weight and zeroed these plates' padding: each
+   rule that pads is set a class heavier) */
+/* the readout: the call-in's glyph and name, its price and warning, the range and bearing, its state as a chip */
+.cot-binoculars .binocular-readout{position:absolute;left:50%;width:max-content;top:104px;transform:translateX(-50%);display:flex;align-items:center;gap:12px;height:40px;box-sizing:border-box;padding:0 8px 0 12px;white-space:nowrap;background:var(--hud-plate-strong);border:1px solid var(--line-2);border-radius:var(--r1);box-shadow:var(--hud-plate-ring)}
+.binocular-readout .glyph{display:block;width:20px;height:20px;color:var(--mode-air-support)}
+.binocular-readout .glyph svg{display:block;width:100%;height:100%}
+.cot-binoculars .binocular-kind{margin-left:-4px;font:700 var(--battle-fs-15)/1 var(--font-display);letter-spacing:var(--track-label-s);text-transform:uppercase;color:var(--ink-1)}
+.cot-binoculars .binocular-group{display:flex;align-items:center;gap:10px;align-self:stretch;padding-left:12px;border-left:1px solid var(--line-2)}
+.binocular-stat{display:inline-flex;align-items:baseline;gap:4px}
+.binocular-stat b{font:600 var(--battle-fs-15)/1 var(--hud-font);color:var(--ink-1)}
+.binocular-stat small{font:700 var(--battle-fs-11)/1 var(--font-display);letter-spacing:var(--track-label-s);text-transform:uppercase;color:var(--ink-3)}
+.cot-binoculars .binocular-state{display:inline-flex;align-items:center;height:24px;padding:0 8px;border-radius:var(--control-radius);outline:1px solid currentColor;outline-offset:-1px;font:700 var(--battle-fs-11)/1 var(--font-display);letter-spacing:var(--battle-track-status);text-transform:uppercase;color:var(--accent)}
+.cot-binoculars[data-state=ready] .binocular-state{color:var(--ok)}
+.cot-binoculars[data-state=called] .binocular-state{color:var(--mode-air-support)}
+/* the keys, as the kit's key caps, over the tray */
+.cot-binoculars .binocular-hint{position:absolute;left:50%;width:max-content;bottom:calc(max(16px,env(safe-area-inset-bottom)) + 226px);transform:translateX(-50%);display:flex;align-items:center;gap:18px;padding:6px 12px;white-space:nowrap;background:var(--hud-plate);border-radius:var(--r1);box-shadow:var(--hud-plate-ring);font-size:var(--battle-fs-13);color:var(--ink-2)}
+.binocular-hint>span{display:inline-flex;align-items:center;gap:6px}
+.cot-binoculars .binocular-hint .cot-c-kbd{padding:0 6px}
+.binocular-hint .cot-c-kbd:empty{display:none}
+.binocular-call,.binocular-close{display:none;pointer-events:auto}
+/* the raise: the lenses close in from the full frame and the frame settles (a cut under reduced motion: --dur-stage
+   collapses to 1 ms, and airSupportHud.ts never raises it then) */
+.cot-binoculars.is-raising .binocular-lens{animation:cot-binocular-raise var(--dur-stage) cubic-bezier(.2,.7,.2,1) both}
+.cot-binoculars.is-raising :is(.binocular-scale,.binocular-readout,.binocular-hint){animation:cot-binocular-settle var(--dur-stage) ease-out both}
+@keyframes cot-binocular-raise{from{opacity:0;transform:scale(1.6)}to{opacity:1;transform:none}}
+/* (the phone capture: a transform here, filled both ways, undid the readout's and the scale's centring) */
+@keyframes cot-binocular-settle{from{opacity:0;translate:0 8px}to{opacity:1;translate:0 0}}
+
+/* INCOMING: a strike whose footprint covers the crew (the HUD alert's form: the glyph carries the tone) */
+.cot-hud .cot-strike-warning{position:absolute;left:50%;width:max-content;top:18%;transform:translateX(-50%);display:flex;align-items:center;gap:8px;height:40px;box-sizing:border-box;padding:0 14px 0 12px;white-space:nowrap;background:var(--hud-plate-strong);border:1px solid var(--line-2);border-radius:var(--r1);box-shadow:var(--hud-plate-ring);color:var(--ink-1);font:700 var(--battle-fs-13)/1 var(--font-display);letter-spacing:var(--track-label-s);text-transform:uppercase;pointer-events:none;z-index:var(--z-hud-status)}
+.cot-strike-warning .glyph{display:block;width:16px;height:16px;color:var(--hud-danger)}
+.cot-strike-warning .glyph svg{display:block;width:100%;height:100%}
+.cot-strike-warning[data-side=own] .glyph{color:var(--accent)}
+.cot-strike-warning .num{min-width:44px;font:700 var(--battle-fs-15)/1 var(--hud-font);letter-spacing:0;text-align:right;color:var(--hud-danger)}
+.cot-strike-warning[data-side=own] .num{color:var(--accent)}
+
+/* a phone: Support beside the vehicle's action row; with the binoculars up, the call-ins in a row above that row, CALL
+   and close as the kit's buttons */
+@media(pointer:coarse){
+ .cot-strike-dock{left:calc(50% - 76px);transform:translateX(-100%);bottom:calc(max(10px,env(safe-area-inset-bottom)) + 47px)}
+ .cot-strike-rack{gap:5px;bottom:calc(max(10px,env(safe-area-inset-bottom)) + 104px)}
+ .strike-slot{width:48px;height:48px}
+ .strike-slot :is(.key,.label,.tip){display:none}
+ .strike-slot .glyph,.strike-slot .left{top:calc(50% + 3px)}
+ .strike-slot .glyph{width:22px;height:22px}
+ .cot-binoculars .binocular-hint{display:none}
+ .binocular-call{display:inline-flex;position:absolute;right:max(18px,env(safe-area-inset-right));bottom:calc(max(10px,env(safe-area-inset-bottom)) + 214px);min-width:112px}
+ .binocular-close{display:inline-flex;position:absolute;right:calc(max(18px,env(safe-area-inset-right)) + 120px);bottom:calc(max(10px,env(safe-area-inset-bottom)) + 214px)}
+ /* (the phone capture: the readout under the mode banner) the readout below the sectors' badges; (u2: a box centred from
+    left:50% shrinks to the half it has left, which clipped READY) every centred plate is max-content wide */
+ .cot-binoculars .binocular-readout{top:calc(max(10px,env(safe-area-inset-top)) + 112px);gap:10px}
+ .cot-binoculars .binocular-facts{display:none}
+}
+@media(pointer:coarse) and (orientation:portrait){.cot-strike-rack{width:calc(100% - 24px);justify-content:space-between}}
+}

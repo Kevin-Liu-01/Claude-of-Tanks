@@ -24,6 +24,7 @@ import { cloneCollisionRecord, collisionFootprintContainsPoint, setCompoundShape
 import { sampleObbGround } from '../propPlacement.ts';
 import type { HeightField } from '../terrain.ts';
 import { REGIONAL_BUCKETS, hashSeed, streamFrom, type RegionalParts } from '../maps/regional/geometry.ts';
+import { climateOf } from '../maps/buildingStyleTable.ts';
 import { DEFAULT_WEATHER, pickWeatherTints, weatherRegionalParts, type WeatherTints } from '../maps/regional/weather.ts';
 import type { ArchitectureStyle } from '../maps/regional/types.ts';
 import { MATCH_OBJECTIVE_LAYOUTS } from '../../sim/matchObjectiveLayouts.ts';
@@ -400,7 +401,8 @@ export function* composeLandmarks(ctx: LandmarkComposeContext): Generator<Slice,
       const palette = ctx.architecture.weather ?? DEFAULT_WEATHER;
       const tints = { ...pickWeatherTints(palette, streamFrom(hashSeed(`landmark:weather:${ctx.mapId}:${placement.kind}`, ...identity))), ...built.tints,
         ...authoredTints(placement) };
-      finishParts = (own) => weatherRegionalParts(own, tints, { damp: palette.damp, moss: palette.moss, mossTint: palette.mossTint });
+      const climate = climateOf(ctx.mapId, ctx.architecture.id);
+      finishParts = (own) => weatherRegionalParts(own, tints, { damp: climate.damp, moss: climate.moss, mossTint: palette.mossTint });
     } else {
       // a map without a kit draws the plain buckets (no vertex colour there): the occlusion record never reaches the merge
       finishParts = (own) => {

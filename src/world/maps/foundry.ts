@@ -24,6 +24,7 @@
 import { makeRealisticCityBuildingTones } from './buildingTonePresets.ts';
 import { TOWN_LIGHT_PLANS, TOWN_PLANS } from './townPlans.generated.ts';
 import { FURNACE_LINE_ADDITIONS } from './saarWorksPlan.ts';
+import { BUILDING_STYLES } from './buildingStyleTable.ts';
 
 export default {
   id: 'foundry',
@@ -124,7 +125,7 @@ export default {
     // the map-revival lane (2026-10-05): the works' own architecture (maps/regional/saar.ts) — the blast furnaces and
     // their stoves, the rolling mills under north lights, gas holders, conveyor galleries, the colliery headframe, the
     // works office and the workers' terraces in the coalfield's brick — in place of the generic halls and sheds
-    architecture: 'saar',
+    architecture: BUILDING_STYLES.foundry.kit,
     sourcedPalette: 'ironworks',
     foundryServiceCourt: { sites: [
       { planIndex: 2, kind: 'containerRow', x: 163, z: -106, yawDeg: 0 },

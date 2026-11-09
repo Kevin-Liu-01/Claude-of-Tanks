@@ -21,6 +21,8 @@ import { registerHouseDamageKits } from './damage.ts';
 import { registerLatticeFrameKit } from './latticeFall.ts';
 import { setKitPlanReader } from '../../destructionKit.ts';
 import { preloadEveryKit } from '../../kitRegistryNode.ts';
+import { climateOf, surfaceOf, variationOf, wearOf } from '../buildingStyleTable.ts';
+import { pickLook, withPaint, type AppearanceLedger } from './appearance.ts';
 import type { ArchitectureStyle, BaseBounds, RegionalBuildContext, RegionalBuilder, RegionalGround } from './types.ts';
 import { assertNoBuildScopeOpen, openBuildScopes } from '../buildScopes.ts';
 
@@ -51,7 +53,7 @@ export function kitLegacy(mapId: string): boolean {
 //   so every synchronous builder and every receipt that iterates ARCHITECTURE_STYLES sees every kit.
 // A style asked for before it is loaded (the browser only) fails closed with its id: never a silent fallback.
 interface StyleRow { readonly name: string; readonly load: () => Promise<Record<string, unknown>> }
-const STYLE_TABLE: Readonly<Record<string, StyleRow>> = Object.freeze({
+const STYLE_TABLE = Object.freeze({
   hessian: { name: 'HESSIAN_STYLE', load: () => import('./hessian.ts') },
   savoyard: { name: 'SAVOYARD_STYLE', load: () => import('./savoyard.ts') },
   dalmatian: { name: 'DALMATIAN_STYLE', load: () => import('./dalmatian.ts') },
@@ -88,7 +90,10 @@ const STYLE_TABLE: Readonly<Record<string, StyleRow>> = Object.freeze({
   // (the Earthrise 228 rebuild, 2026-10-18) Taurus-Littrow Station's habitats, nodes, garages, tank farms, tower, lab,
   // crane, logistics modules and tool lockers
   littrow: { name: 'LITTROW_STYLE', load: () => import('./littrow.ts') },
-});
+} satisfies Record<string, StyleRow>);
+/** A regional kit's id (STYLE_TABLE's rows; the building-style table names one per map). */
+export type ArchitectureId = keyof typeof STYLE_TABLE;
+const ROWS: Readonly<Record<string, StyleRow | undefined>> = STYLE_TABLE;
 
 const loadedStyles = new Map<string, ArchitectureStyle>();
 export const ARCHITECTURE_STYLE_IDS: readonly string[] = Object.freeze(Object.keys(STYLE_TABLE));
@@ -107,15 +112,15 @@ function admitStyle(id: string, style: ArchitectureStyle | undefined): void {
 /** Load these styles (ids null/undefined are skipped); an unknown id fails as resolveRegionalArchitecture does. */
 export async function loadRegionalArchitectures(ids: Iterable<string | null | undefined>): Promise<void> {
   const wanted = [...new Set([...ids].filter((id): id is string => id != null))];
-  for (const id of wanted) if (!STYLE_TABLE[id]) throw unknownStyle(id);
-  const modules = await Promise.all(wanted.map((id) => (loadedStyles.has(id) ? null : STYLE_TABLE[id].load())));
+  for (const id of wanted) if (!ROWS[id]) throw unknownStyle(id);
+  const modules = await Promise.all(wanted.map((id) => (loadedStyles.has(id) ? null : ROWS[id]!.load())));
   // admitted in the table's order whatever order the modules arrived in
-  wanted.forEach((id, k) => { if (modules[k]) admitStyle(id, modules[k]![STYLE_TABLE[id].name] as ArchitectureStyle); });
+  wanted.forEach((id, k) => { if (modules[k]) admitStyle(id, modules[k]![ROWS[id]!.name] as ArchitectureStyle); });
 }
 const unknownStyle = (id: string): Error => new Error(`Unknown architecture style ${id} (known: ${ARCHITECTURE_STYLE_IDS.join(', ')})`);
 // Node: every style now, one module after another in the table's order (kitRegistryNode.ts)
 if (preloadEveryKit()) {
-  for (const id of ARCHITECTURE_STYLE_IDS) admitStyle(id, (await STYLE_TABLE[id].load())[STYLE_TABLE[id].name] as ArchitectureStyle);
+  for (const id of ARCHITECTURE_STYLE_IDS) admitStyle(id, (await ROWS[id]!.load())[ROWS[id]!.name] as ArchitectureStyle);
 }
 // (227, lane B) a catalog frame that carries its lattice (railKit.ts gantryFrame) falls as it (latticeFall.ts)
 registerLatticeFrameKit('gantry');
@@ -127,7 +132,7 @@ setKitPlanReader((parts) => regionalKitPlanOf(parts));
 /** The kit a map authored (`props.architecture`), or null. An unknown id fails closed; so does one not loaded yet. */
 export function resolveRegionalArchitecture(id: string | null | undefined): ArchitectureStyle | null {
   if (id == null) return null;
-  if (!STYLE_TABLE[id]) throw unknownStyle(id);
+  if (!ROWS[id]) throw unknownStyle(id);
   const style = loadedStyles.get(id);
   if (!style) {
     throw new Error(`Architecture style ${id} is not loaded: the world build loads its map's styles first `
@@ -199,8 +204,8 @@ function kitBuilder(style: ArchitectureStyle, mapId: string, structureId: string
  * A kit's whole build of one structure: the builder's parts, then the building's own tint and weathering
  * (weather.ts) drawn from `weatherRng` (never the build stream). Receipts build through this too.
  */
-export function buildRegionalParts(style: ArchitectureStyle, ctx: RegionalBuildContext, weatherRng: () => number): RegionalParts {
-  return drain(buildRegionalPartsSteps(style, ctx, weatherRng));
+export function buildRegionalParts(style: ArchitectureStyle, ctx: RegionalBuildContext, weatherRng: () => number, ledger?: AppearanceLedger): RegionalParts {
+  return drain(buildRegionalPartsSteps(style, ctx, weatherRng, ledger));
 }
 
 /** A checkpoint between a regional build's stages, where the props build paces (props.ts PropsBuildSlice). */
@@ -218,9 +223,11 @@ function drain<T>(steps: Generator<RegionalSlice, T, void>): T {
 
 /** buildRegionalParts with a checkpoint after the builder and after the weathering, for the props build's pacing. */
 function* buildRegionalPartsSteps(
-  style: ArchitectureStyle, ctx: RegionalBuildContext, weatherRng: () => number,
+  style: ArchitectureStyle, ctx: RegionalBuildContext, weatherRng: () => number, ledger?: AppearanceLedger,
 ): Generator<RegionalSlice, RegionalParts, void> {
   const palette = style.weather ?? DEFAULT_WEATHER;
+  // (buildings-270) the weathering's strengths and the war-wear share are the place's: the map's row of the building-style table
+  const climate = climateOf(ctx.mapId, style.id);
   const builder = kitBuilder(style, ctx.mapId, ctx.structureId);
   if (!builder) throw new Error(`${style.id} has no ${ctx.structureId}`);
   // (2026-11-02 audit R1) the scopes a caller holds open around this build (a nested build drained in one go); every scope
@@ -231,24 +238,30 @@ function* buildRegionalPartsSteps(
   // (and the facade craft's slot, house.ts withWear: window heads, thatch courses, gutter brackets ... on desktop builds, its
   // choices from a stream of its own forked from the same seed — the build, look, wear and weather streams draw as before)
   const legacy = kitLegacy(ctx.mapId);
-  const wear = { amount: style.wear ?? 0.2, rng: streamFrom(wearSeed), spall: streamFrom((wearSeed ^ 0x9e3779b9) >>> 0),
+  const surface = surfaceOf(ctx.mapId, style.id);
+  const wear = { amount: wearOf(ctx.mapId, style.id), patches: surface?.patches, rng: streamFrom(wearSeed), spall: streamFrom((wearSeed ^ 0x9e3779b9) >>> 0),
     facade: { tier: ctx.tier, rng: streamFrom((wearSeed ^ 0x6a09e667) >>> 0), stone: style.surfaces.stone, ground: ctx.ground,
-      groundCraft: style.groundCraft !== false && !legacy, legacy } };
-  const tints = pickWeatherTints(palette, weatherRng);
+      groundCraft: style.groundCraft !== false && !legacy, legacy, grime: surface?.grime } };
+  // (buildings-270) the building's look from its map's variation: tints, roof age and dress, none a neighbour shares in full
+  // (a map reverted to its base look has no variation: the kit's own pick, no ledger)
+  const variation = variationOf(ctx.mapId, style.id);
+  const look = variation && pickLook(palette, variation, weatherRng,
+    ledger && ctx.x !== undefined && ctx.z !== undefined ? { ledger, x: ctx.x, z: ctx.z } : undefined);
+  const tints = look ? look.tints : pickWeatherTints(palette, weatherRng);
   // (the facades lane, round 6) the sun's horizontal direction in the building's frame: the slopes turned from it
   // weather greener (a world direction turned back through the building's yaw, as props.ts places it)
   const sun = ctx.sunAzimuthDeg !== undefined ? (() => {
     const a = ctx.sunAzimuthDeg * Math.PI / 180, wx = Math.sin(a), wz = Math.cos(a), yaw = ctx.yaw ?? 0, c = Math.cos(yaw), s = Math.sin(yaw);
     return [wx * c - wz * s, wx * s + wz * c] as const;
   })() : null;
-  const [[[built, houses], ruinWalls], lattices] = withLattices(() => withRuinWalls(() => withHousePlans(() => withWear(wear, () => builder(ctx)))));
+  const [[[built, houses], ruinWalls], lattices] = withLattices(() => withRuinWalls(() => withHousePlans(() => withWear(wear, () => withPaint(look?.dress.paint, () => builder(look ? { ...ctx, dress: look.dress } : ctx))))));
   assertNoBuildScopeOpen(`${style.id}/${ctx.structureId}`, outerScopes);
   yield REGIONAL_SLICE;
   // (the map-revival lane, 2026-10-07: a kit that folds its third plaster paint into its second's bucket,
   // ArchitectureStyle.foldThirdPlaster, by the colour of its own two paints)
   // (the looks lane, 2026-10-14, the 225 integrity ledger: a war-worn window's thin strips and the damp band's cut at a
   // sill that lies a float's breadth under it leave zero-area and sliver triangles; they cover nothing, so they go)
-  const parts = dropSliverTriangles(weatherRegionalParts(built, tints, { damp: palette.damp, moss: palette.moss, mossTint: palette.mossTint, sun, legacy,
+  const parts = dropSliverTriangles(weatherRegionalParts(built, tints, { damp: climate.damp, moss: climate.moss, mossTint: palette.mossTint, sun, legacy,
     ...(style.foldThirdPlaster ? { plaster3Fold: foldOf(style) } : {}) }));
   KIT_PLANS.set(parts, { kind: 'regional-house', style: style.id, builder: ctx.structureId, houses, tints, info: ctx.info,
     ...(ruinWalls.length ? { ruinWalls } : {}), ...(lattices.length ? { lattices } : {}) });
@@ -286,6 +299,8 @@ interface RebuildContext {
   ground?: RegionalGround;
   /** the map's sun azimuth, degrees (RegionalBuildContext.sunAzimuthDeg) */
   sunAzimuthDeg?: number;
+  /** the map's look ledger (appearance.ts): no two neighbours share every feature; absent, the first pick stands */
+  ledger?: AppearanceLedger;
 }
 
 /**
@@ -318,7 +333,7 @@ export function* rebuildRegionalStructureSteps(
   };
   // the walls and roofs take the building's own tints and weathering (weather.ts), from a stream of their own
   const parts = yield* buildRegionalPartsSteps(style, ctx,
-    streamFrom(hashSeed(`${style.id}:weather:${context.mapId}:${structureId}`, context.seed, x, z, yaw)));
+    streamFrom(hashSeed(`${style.id}:weather:${context.mapId}:${structureId}`, context.seed, x, z, yaw)), context.ledger);
   for (const list of Object.values(base)) if (Array.isArray(list)) for (const geometry of list) geometry.dispose();
   const out = {} as PropsLikeBuckets;
   for (const name of REGIONAL_BUCKETS) out[name] = parts[name] ?? [];

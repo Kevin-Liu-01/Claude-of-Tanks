@@ -76,6 +76,10 @@ before the trial and is in the script with its history:
 | `mg` | one round not a toy, and the burst at the gun's rate ranks Machine gun level with Gunshot (within 5 %, at least 0.25) |
 | `rocket`, `rocket-salvo` | the motor (Whoosh / Hiss / Jet engine; a salvo also Artillery fire) at least 0.05 and over every gun class |
 | `rocket-gun` | a missile through a gun: the cannon rule and its motor |
+| `jet` | Air Support's strike jets (air-support-270): Jet engine / Aircraft / Aircraft engine / Fixed-wing aircraft at least 0.1 and over Vacuum cleaner / Hair dryer / Wind / Rain / Steam / White noise / Helicopter |
+| `gau8` | the A-10's burst: a gun class (Machine gun / Fusillade / Gunshot / Artillery fire / Explosion) at least 0.1 and over every motor or tool its buzz could be (Chainsaw / Power tool / Drill / Jackhammer / Motorcycle / Engine / Race car / Lawn mower / Buzz / Vacuum cleaner / Fart) |
+| `incoming` | a falling shell's or bomb's whistle: Whistle / Whistling / Whoosh at least 0.05 and over the blast it must not yet be and any tune, bird, train whistle or siren |
+| `alarm` | the targeted crew's warning: an alarm class at least 0.1 and over Music / Speech / Bird / Video game music |
 
 The verdict of record is the shipped file's. `build-sfx.mjs` judges each file
 it would ship (`tools/audio/critic.mjs`) and writes its verdict, the take, the

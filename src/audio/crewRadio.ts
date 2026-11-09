@@ -175,6 +175,8 @@ export function createCrewRadio({ mixer, library, random, initialLanguage = 'en-
   const lastPlay = new Map<string, number>();
   const lastGroupPlay = new Map<string, { t: number; pri: number }>();
   const queue: Request[] = [];
+  /** update()'s scratch: the due calls it found unable to play this pass. */
+  const waiting: Request[] = [];
   const log: RadioLogEntry[] = [];
   let currentEnd = -1;
   let currentPri = -1;
@@ -195,7 +197,10 @@ export function createCrewRadio({ mixer, library, random, initialLanguage = 'en-
     drive.curve = driveCurve(damage === 2 ? 0.75 : damage === 1 ? 0.45 : 0.25);
   }
 
-  /** The crew's own take, or nothing: every pack carries every line (crewRadio selftest), and one still decoding waits. */
+  /**
+   * The crew's own take, or nothing: every pack carries every line (crewRadio selftest). A line commits when it plays:
+   * one asked while its pack decodes waits in the queue until the pack lands or the line goes stale.
+   */
   function bufferFor(id: string, take?: number): { buffer: AudioBuffer; lang: string } | null {
     const own = library.voice(language, id, random, take);
     return own ? { buffer: own, lang: language } : null;
@@ -230,9 +235,8 @@ export function createCrewRadio({ mixer, library, random, initialLanguage = 'en-
     mixer.duckForVoice(false);
   }
 
-  function playNow(id: string, take?: number): boolean {
+  function playNow(id: string, take?: number, chosen = bufferFor(id, take)): boolean {
     const line = VOICE_LINES[id];
-    const chosen = line ? bufferFor(id, take) : null;
     if (!line || !chosen) return false;
     const now = ctx.currentTime;
     ensureBed();
@@ -374,13 +378,18 @@ export function createCrewRadio({ mixer, library, random, initialLanguage = 'en-
       const delayS = Math.max(0, options?.delayS || 0);
       const busyUntil = currentEnd + RADIO_DISCIPLINE.gapS;
       if (currentGroup === (line.group || id) && now < currentEnd && line.pri <= currentPri) return false;
-      if (delayS === 0) {
-        if (now >= busyUntil) return playNow(id, take);
-        if (canInterrupt(line.pri, now)) {
-          stopCurrent();
-          removeLowerPriority(line.pri);
-          return playNow(id, take);
+      if (delayS === 0 && (now >= busyUntil || canInterrupt(line.pri, now))) {
+        // Taken now only with its take decoded: while the pack decodes the call queues, and a pack that holds no take
+        // of it stays silent (nothing cut for it).
+        const chosen = bufferFor(id, take);
+        if (chosen) {
+          if (now < busyUntil) {
+            stopCurrent();
+            removeLowerPriority(line.pri);
+          }
+          return playNow(id, take, chosen);
         }
+        if (library.voiceReady(language)) return false;
       }
       if (line.pri === 0 && now < busyUntil) return false;
       return enqueue(id, line, now, delayS, options?.staleS, take);
@@ -389,18 +398,27 @@ export function createCrewRadio({ mixer, library, random, initialLanguage = 'en-
       if (!queue.length) return;
       const now = ctx.currentTime;
       for (let i = queue.length - 1; i >= 0; i--) if (now > queue[i].expiresAt) queue.splice(i, 1);
-      let best = -1;
-      for (let i = 0; i < queue.length; i++) {
-        if (queue[i].readyAt > now) continue;
-        if (best < 0 || queue[i].pri > queue[best].pri || (queue[i].pri === queue[best].pri && queue[i].atReq < queue[best].atReq)) best = i;
+      const busy = now < currentEnd + RADIO_DISCIPLINE.gapS;
+      // The best due call that can play now goes. One that cannot yet (its pack still decoding, its cooldown running)
+      // stays queued until it goes stale, without holding back the calls below it.
+      waiting.length = 0;
+      for (;;) {
+        let best = -1;
+        for (let i = 0; i < queue.length; i++) {
+          if (queue[i].readyAt > now || waiting.includes(queue[i])) continue;
+          if (best < 0 || queue[i].pri > queue[best].pri || (queue[i].pri === queue[best].pri && queue[i].atReq < queue[best].atReq)) best = i;
+        }
+        if (best < 0) return;
+        const next = queue[best];
+        // a call that cannot cut the line on air: nothing below it can either
+        if (busy && !canInterrupt(next.pri, now)) return;
+        const chosen = cooldownActive(next.id, VOICE_LINES[next.id], now) ? null : bufferFor(next.id, next.take);
+        if (!chosen) { waiting.push(next); continue; }
+        queue.splice(best, 1);
+        if (busy) stopCurrent();
+        playNow(next.id, next.take, chosen);
+        return;
       }
-      if (best < 0) return;
-      if (now < currentEnd + RADIO_DISCIPLINE.gapS) {
-        if (!canInterrupt(queue[best].pri, now)) return;
-        stopCurrent();
-      }
-      const { id, take } = queue.splice(best, 1)[0];
-      if (!cooldownActive(id, VOICE_LINES[id], now)) playNow(id, take);
     },
     silence() {
       queue.length = 0;
@@ -415,6 +433,8 @@ export function createCrewRadio({ mixer, library, random, initialLanguage = 'en-
       if (next !== language) {
         queue.length = 0;
         if (currentSrc) stopCurrent();
+        // One pack held at a time: the crew it leaves is released (assetLibrary.dropVoice).
+        if (language) library.dropVoice(language);
       }
       language = next;
       void library.loadVoice(next);

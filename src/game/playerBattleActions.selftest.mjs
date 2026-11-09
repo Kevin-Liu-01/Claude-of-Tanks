@@ -2,7 +2,8 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { createPlayerBattleActions } from './playerBattleActions.ts';
 import { createBus } from './stateCore.ts';
-import { couchRulesetFor, matchRulesetFor, rulesetUnlimitedFor } from '../sim/matchRuleset.ts';
+import { AIR_STRIKE_KINDS, couchRulesetFor, matchRulesetFor, rulesetUnlimitedFor } from '../sim/matchRuleset.ts';
+import { AIR_STRIKE_BITS } from '../sim/playerActions.ts';
 
 function createInput() {
   const handlers = new Map();
@@ -152,6 +153,7 @@ const actions = createPlayerBattleActions({
   bus,
   input,
   rules,
+  strikes: { kinds: AIR_STRIKE_KINDS, bit: (kind) => AIR_STRIKE_BITS[kind] },
   isSettingsOpen: () => settingsOpen,
   network: {
     isActive: () => networkActive,

@@ -61,7 +61,8 @@ import {
 import { createElement as el, datumAttr, markDatum } from './dom.ts';
 import { notice } from './components/notice.ts';
 import { ensureStyle } from './styleLayers.ts';
-import { CREW_VOICE_NATIONS, isCrewVoiceSetting } from '../audio/crewVoice.ts';
+import { crewLanguageLabel, isCrewVoiceSetting } from '../audio/crewVoice.ts';
+import { CREW_LANGUAGES } from '../audio/vehicleAudioProfiles.ts';
 import {
   getLocale,
   getSupportedLocales,
@@ -494,9 +495,9 @@ body[data-cot-input='coarse'] .cot-set-info::after{inset:calc((16px - var(--cot-
 /* (its caps are the battle's key caps, the vehicle-controls row's: battleHudLayout.css .sk) */
 .cot-hints .hk .cot-c-kbd{min-width:20px;height:20px;padding:0 var(--s1);box-sizing:border-box;border:0;border-radius:var(--control-radius);background:none;box-shadow:var(--ring-3);font:500 var(--battle-fs-fig-11)/1 var(--font-data);letter-spacing:0;color:var(--ink-2);}
 .cot-hints .hk .cot-c-kbd.cjk{font:500 var(--battle-fs-12)/1 var(--font-ui);}
-/* never over the scope, a flight (a drone, the gunship flies on other keys: the class is hud.ts's), Watch or a
-   spectated battle (owner 2026-10-25) */
-body.cot-hud-aerial .cot-hints,html[data-cot-scoped] .cot-hints,html[data-watch] .cot-hints,body.cot-spectating .cot-hints{display:none;}
+/* never over the scope, the strike view's binoculars (airSupportHud.ts), a flight (a drone, the gunship flies on other
+   keys: the class is hud.ts's), Watch or a spectated battle (owner 2026-10-25) */
+body.cot-hud-aerial .cot-hints,html[data-cot-scoped] .cot-hints,html[data-cot-strike-view] .cot-hints,html[data-watch] .cot-hints,body.cot-spectating .cot-hints{display:none;}
 /* The pause veil (247): one plate over a dimmed battle. The whole veil resumes (a click inside the gesture relocks);
    Settings, the Esc menu, is its one other way out. */
 .cot-resume{position:fixed;inset:0;z-index:79;display:none;place-items:center;cursor:pointer;
@@ -557,6 +558,20 @@ const MAX_PAD_BUTTONS = 17;
 
 /** The first-battle controls strip (247): driving, the gun, the right button's role, the sight and the menu. The shell
  *  and consumable keys stay off it, since the HUD tray's tiles carry their own caps. */
+/**
+ * Settings › Sound › Crew voices: National crews first, then every pack as a language, never a flag, named in the
+ * interface's language with its own name beside it and sorted by that name. The stored value is the pack's tag.
+ */
+export function crewVoiceItems(): PickerItem[] {
+  const locale = getLocale();
+  const collator = new Intl.Collator(locale);
+  const languages = CREW_LANGUAGES.map((id): PickerItem => {
+    const { name, own } = crewLanguageLabel(id, locale);
+    return { id, name, glyph: 'radio', ...(own ? { facts: [own] } : {}) };
+  }).sort((a, b) => collator.compare(a.name, b.name));
+  return [{ id: 'national', name: t('settings.crew.national'), glyph: 'globe' }, ...languages];
+}
+
 export function battleControlHintGroups(rmbMode: RmbMode = 'hold'): Array<[string, ActionId[]]> {
   return [
     [t('settings.group.move'), ['forward', 'left', 'back', 'right']],
@@ -1359,17 +1374,13 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
         onChange: emitVolumes, blipOnCommit: true,
       });
     }
-    // One flag dropdown: national crews, or a fixed pack for every vehicle.
+    // One dropdown: national crews, or one language's crew in every vehicle (crewVoiceItems).
     const crew = groupCard(body, t('settings.crew.title'));
     const crewRow = el('div', 'cot-set-row cot-set-crew-row', crew);
     settingLabel(crewRow, t('settings.crew.voice'), SETTINGS_OPTION_ICONS.crewVoice);
     const crewField = el('div', 'cot-set-crew-field', crewRow);
     crewField.dataset.setting = 'crewVoice';
-    const crewItems = (flag?: (nation: string) => string): PickerItem[] => [
-      { id: 'national', name: t('settings.crew.national'), glyph: 'globe' },
-      ...Object.entries(CREW_VOICE_NATIONS).map(([value, nation]) => ({ id: value, name: t(`nation.${nation}`), chip: flag?.(nation) })),
-    ];
-    const crewMenu = createPickerMenu(crewField, { id: 'settings-crew-voice', label: t('settings.crew.voice'), items: crewItems(),
+    const crewMenu = createPickerMenu(crewField, { id: 'settings-crew-voice', label: t('settings.crew.voice'), items: crewVoiceItems(),
       value: input.getSettings().crewVoice, layout: 'list', text: pickerText(),
       onChoose: (item) => {
         if (!isCrewVoiceSetting(item.id)) return;
@@ -1384,9 +1395,6 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
       event.stopPropagation();
       containModalTab(event, root, requiredElement<HTMLButtonElement>(root, '.cot-set-close'));
     });
-    // Flag assets are browser-only; retain the settings policy's Node import.
-    void import('./flags.ts').then(({ flagIconUrl }) => { if (crewField.isConnected) crewMenu.setItems(crewItems(flagIconUrl)); })
-      .catch(() => { /* the crew menu keeps its items without their flags */ });
     const crewNote = el('div', 'cot-set-note', crew);
     crewNote.textContent = t('settings.crew.note');
     const alarms = groupCard(body, t('settings.alarms.title'));

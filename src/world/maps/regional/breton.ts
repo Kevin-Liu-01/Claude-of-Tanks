@@ -868,9 +868,8 @@ export const BRETON_STYLE: ArchitectureStyle = Object.freeze<ArchitectureStyle>(
     plaster: [[1, 1, 1], [0.95, 0.95, 0.92], [0.97, 0.94, 0.87], [0.92, 0.93, 0.91]],
     stone: [[1, 1, 1], [0.92, 0.92, 0.92], [1.02, 0.99, 0.95], [0.88, 0.88, 0.9]],
     roof: [[1, 1, 1], [0.9, 0.92, 0.95], [0.86, 0.88, 0.84], [1.05, 1.04, 1.02]],
-    damp: 0.95, moss: 0.8, mossTint: [1.12, 1.0, 0.62],
+    mossTint: [1.12, 1.0, 0.62],
   },
-  wear: 0.25,
   // the yards: granite walls round a kitchen garden and a granite outhouse, a gate (yards.ts)
   yard: { kinds: ['cottage', 'farmhouse'], fence: 'wallstone', gate: 'gatestone', shed: 'granary', shedSize: [3.9, 4.3], garden: true },
 });

@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import {
-  CREW_LANGUAGES, ENGINE_FAMILIES, ENGINE_FAMILY_IDS, crewLanguageForVehicle, massClass,
+  CREW_LANGUAGES, ENGINE_FAMILIES, ENGINE_FAMILY_IDS, WORLD_CREW_LANGUAGES, crewLanguageForVehicle, massClass,
   resolveEngineFamily, resolveVehicleAudioIdentity,
 } from './vehicleAudioProfiles.ts';
 import { COUNTRIES } from '../sim/countries.ts';
@@ -18,13 +18,13 @@ const cases = [
   ['xk2_black_panther', 'mbt', 55, 'diesel_v12_modern'], ['namer_ifv', 'ifv', 63.5, 'diesel_v12_modern'], ['abramsx', 'mbt', 49, 'diesel_v12_modern'],
   ['m2a2_bradley', 'ifv', 30.4, 'diesel_ifv'], ['cv90', 'ifv', 37, 'diesel_ifv'], ['bmp2', 'ifv', 14.3, 'diesel_ifv'],
   ['centurion5_2', 'mbt', 52, 'gasoline_v12'], ['jpz_e100', 'td', 130, 'gasoline_v12'],
-  // 268: the twin-cannon air defence (the PLA pair's small diesels stay on the IFV family)
-  ['tunguska_m', 'ifv', 34, 'diesel_v12_soviet'], ['pantsir_s1', 'ifv', 35, 'diesel_v12_soviet'],
-  ['gepard_1a2', 'ifv', 47.5, 'diesel_v12_modern'], ['pgz95', 'ifv', 22.5, 'diesel_ifv'], ['pgz09', 'ifv', 35, 'diesel_ifv'],
   // world-sfx-269 (2026-11-03): /e100/ no longer catches the Type 100; the Strv 81 is a Centurion; the Magachs and the
   // Sho't Kal run the AVDS-1790
   ['type100', 'ifv', 38, 'diesel_ifv'], ['strv81', 'mbt', 51.8, 'gasoline_v12'], ['magach6b', 'mbt', 51, 'diesel_aircooled'],
   ['shot_kal', 'mbt', 51.8, 'diesel_aircooled'],
+  // 268: the twin-cannon air defence (the PLA pair's small diesels stay on the IFV family)
+  ['tunguska_m', 'ifv', 34, 'diesel_v12_soviet'], ['pantsir_s1', 'ifv', 35, 'diesel_v12_soviet'],
+  ['gepard_1a2', 'ifv', 47.5, 'diesel_v12_modern'], ['pgz95', 'ifv', 22.5, 'diesel_ifv'], ['pgz09', 'ifv', 35, 'diesel_ifv'],
 ];
 // …and a cold-war Western hull runs the cold-war diesel, the Leopard 2 lineage the MTU from its first prototype
 for (const [id, family] of [['leo1a5', 'diesel_v12_coldwar'], ['amx30b2', 'diesel_v12_coldwar'], ['challenger1_mk2', 'diesel_v12_coldwar'],
@@ -64,8 +64,12 @@ assert.equal(crewLanguageForVehicle(undefined, undefined), 'en-US');
 // Every country names a crew that ships (the Record is exhaustive at compile time; this checks the values).
 for (const { id, specNations } of COUNTRIES) {
   assert.ok(CREW_LANGUAGES.includes(crewLanguageForVehicle(null, specNations[0])), `${id} speaks a shipped crew language`);
+  assert.ok(!WORLD_CREW_LANGUAGES.includes(crewLanguageForVehicle(null, specNations[0])), `${id} speaks a national crew, not a world one`);
 }
-assert.equal(CREW_LANGUAGES.length, 17);
+// 17 national packs and 21 for languages with no country in the game (crew-languages-270).
+assert.equal(CREW_LANGUAGES.length, 38);
+assert.equal(WORLD_CREW_LANGUAGES.length, 21);
+assert.equal(new Set(CREW_LANGUAGES).size, CREW_LANGUAGES.length);
 
 // Identity details.
 const abrams = resolveVehicleAudioIdentity({ id: 'm1a1_abrams_hc', nation: 'USA', role: 'mbt', weightTons: 66.8, enginePowerHp: 1500, gun: { caliberMm: 120 } });

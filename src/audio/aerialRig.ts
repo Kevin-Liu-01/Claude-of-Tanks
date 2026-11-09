@@ -1,5 +1,6 @@
 /**
- * Continuous aircraft sound for the Drone and AC-130 modes.
+ * Continuous aircraft sound for the Drone and AC-130 modes, and Air Support's strike aircraft (air-support-270: the recon
+ * jet, the A-10 and the bomber, flown along each call-in's path; its AC-130 is the gunship's own orbit).
  *
  *   world – an aircraft heard from outside: one motor or engine loop placed in
  *           the listener frame (its distance law, air absorption, pan and
@@ -22,7 +23,7 @@ import {
 import type { AssetLibrary } from './assetLibrary.ts';
 import type { Mixer } from './mixer.ts';
 
-type AerialKind = 'drone' | 'gunship';
+type AerialKind = 'drone' | 'gunship' | 'strike_recon' | 'strike_attack' | 'strike_fast';
 type AerialPerspective = 'world' | 'own';
 
 /**
@@ -33,6 +34,11 @@ type AerialPerspective = 'world' | 'own';
 const AERIAL_SOUND = Object.freeze({
   drone: Object.freeze({ loop: 'drone_fpv_loop', ownLoop: 'drone_fpv_loop', hoverLoop: 'drone_fpv_hover_loop', windLoop: 'drone_wind_loop', rattleLoop: null, refM: 6, rolloff: 1, maxM: 500, ownLevelDb: -1, ownCutoffHz: 9000, rate: [0.9, 1.2] as const }),
   gunship: Object.freeze({ loop: 'gunship_orbit_loop', ownLoop: 'gunship_cabin_loop', hoverLoop: null, windLoop: null, rattleLoop: 'gunship_cabin_rattle_loop', refM: 80, rolloff: 0.8, maxM: 3000, ownLevelDb: -5, ownCutoffHz: 20000, rate: [1, 1] as const }),
+  // Air Support's jets are only ever heard from the ground: a jet carries further than the turboprops (the recon jet at
+  // 250 m and 200 m/s, the A-10 diving to 60 m, the bomber at 350 m); the pass itself is the Doppler of its path
+  strike_recon: Object.freeze({ loop: 'air_jet_recon_loop', ownLoop: 'air_jet_recon_loop', hoverLoop: null, windLoop: null, rattleLoop: null, refM: 160, rolloff: 0.9, maxM: 5000, ownLevelDb: 0, ownCutoffHz: 20000, rate: [1, 1] as const }),
+  strike_attack: Object.freeze({ loop: 'air_jet_attack_loop', ownLoop: 'air_jet_attack_loop', hoverLoop: null, windLoop: null, rattleLoop: null, refM: 110, rolloff: 0.9, maxM: 5000, ownLevelDb: 0, ownCutoffHz: 20000, rate: [1, 1] as const }),
+  strike_fast: Object.freeze({ loop: 'air_jet_fast_loop', ownLoop: 'air_jet_fast_loop', hoverLoop: null, windLoop: null, rattleLoop: null, refM: 160, rolloff: 0.9, maxM: 5000, ownLevelDb: 0, ownCutoffHz: 20000, rate: [1, 1] as const }),
 });
 
 interface AerialDeps {

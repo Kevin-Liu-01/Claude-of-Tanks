@@ -37,6 +37,7 @@
 import { WORN_YARD_PAINT } from '../hardstandSurface.ts';
 import { gully, talusFan } from './geology.ts';
 import { createMarshChannel } from './marshChannel.ts';
+import { BUILDING_STYLES } from './buildingStyleTable.ts';
 
 // The Biały Dunajec frozen in its bed (map revival lane 2, round 3; gauntlet wave 110b: "a chain of ponds"): one ice
 // ribbon down the valley floor through the old pools' centres, a pool (r 21) at each and a run (r 15) between them,
@@ -275,7 +276,7 @@ export default {
 
   props: {
     // map revival lane 2 (2026-10-05): the goral kit (maps/regional/goral.ts)
-    architecture: 'goral',
+    architecture: BUILDING_STYLES.winter.kit,
     // round 48: the timber-valley catalog — log cabins, steep-roof alpine
     // houses, the onion-dome church and open woodsheds make the terrace
     // village; depots, a warehouse and woodsheds make the sawmill yard at its

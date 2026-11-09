@@ -87,8 +87,58 @@ const STEP_LABELS = Object.freeze({
   world: ['world', 'world-water', 'world-grass', 'world-ocean'], clouds: ['clouds'],
   shadow: ['shadow', 'shadow-c0', 'shadow-c1', 'shadow-c2', 'shadow-c3'], scene: ['scene'],
 });
+/** The bank facing's switch (page side): every terrain program's uBank kind set to 0, or back to the value it was built with. */
+function bankFacingToggle(on) {
+  return `(() => {
+    const D = window.__DEBUG, props = D.renderer.properties;
+    let n = 0;
+    D.scene.traverse((o) => {
+      const mats = Array.isArray(o.material) ? o.material : o.material ? [o.material] : [];
+      for (const m of mats) {
+        const u = props.get(m)?.uniforms?.uBank;
+        if (!u) continue;
+        u.__bankKind ??= u.value.x;
+        u.value.x = ${on ? 'u.__bankKind' : '0'};
+        n++;
+      }
+    });
+    if (!n) throw new Error('no terrain program carries uBank');
+    return n;
+  })()`;
+}
+
+/** The in-page switch of the paving (the street-paving toggle): off sets the terrain material's uRoadTex to 0 and its
+ *  styled road net off (uRoadClass.z 0), so no road pixel runs the paving block (terrain.ts gRoadTex) — the paving the
+ *  built-environment rows gave a map that had none (coastal, frontier, saltwind); on restores the row's values. */
+function streetPavingToggle(on) {
+  return `(() => {
+    const D = window.__DEBUG, props = D.renderer.properties;
+    let n = 0;
+    D.scene.traverse((o) => {
+      const mats = Array.isArray(o.material) ? o.material : o.material ? [o.material] : [];
+      for (const m of mats) {
+        const us = props.get(m)?.uniforms;
+        if (!us?.uRoadTex || !us.uRoadClass) continue;
+        us.uRoadTex.__pave ??= us.uRoadTex.value;
+        us.uRoadClass.__net ??= us.uRoadClass.value.z;
+        us.uRoadTex.value = ${on ? 'us.uRoadTex.__pave' : '0'};
+        us.uRoadClass.value.z = ${on ? 'us.uRoadClass.__net' : '0'};
+        n++;
+      }
+    });
+    if (!n) throw new Error('no terrain program carries uRoadTex');
+    return n;
+  })()`;
+}
+
 /** Runtime A/B switches the probe can flip inside one page (off = the baseline). */
 const FRAME_PROBE_TOGGLES = Object.freeze({
+  // (built-env-270, DECISIONS 2026-11-05: "measure the bank-facing term's per-pixel cost against base on both quality
+  // tiers") the terrain material's bank facing (terrain.ts uBank): off sets its kind to 0, so the uniform-gated block is
+  // skipped on every terrain draw; on restores the map's row. The delta is the term's whole per-pixel cost.
+  'bank-facing': Object.freeze({ on: bankFacingToggle(true), off: bankFacingToggle(false) }),
+  // (built-env-270: the base-vs-lane scene step +4.6..6.2 ms on desktop) the paving on the roads of a map the rows paved
+  'street-paving': Object.freeze({ on: streetPavingToggle(true), off: streetPavingToggle(false) }),
   // the static shadow-caster cache (engine/shadowStaticCache.ts): off forces every caster every frame
   'shadow-cache': Object.freeze({ on: 'window.__SHADOW_DEBUG = Object.assign(window.__SHADOW_DEBUG || {}, { noStaticCache: false })',
     off: 'window.__SHADOW_DEBUG = Object.assign(window.__SHADOW_DEBUG || {}, { noStaticCache: true })' }),
@@ -172,10 +222,40 @@ const FRAME_PROBE_TOGGLES = Object.freeze({
   // the trees lane (2026-10-07, the coordinator's vegetation perf step 0): the near tree pools culled to the main
   // camera's view and their shadows' reach (vegetation.ts updateNearViewCull, opt-in since 2026-10-23); off draws every
   // near tree. The A/B that decides the cull's default
+  // ground-269 (2026-11-04): the ground-surface table's laws in the terrain splat (groundSurfaceShader.ts: the sward's mosaic,
+  // the close stones, the town floor, the detail relief's cap); off zeroes their four vectors on every terrain program —
+  // the legacy look on the same build — so the delta is the laws' whole cost
+  'ground-surfaces': Object.freeze({ on: groundSurfacesToggle(true), off: groundSurfacesToggle(false) }),
+  // its null control: the same walk over the same programs, a uniform's value rewritten to itself
+  'ground-surfaces-null': Object.freeze({ on: groundSurfacesToggle(null), off: groundSurfacesToggle(null) }),
   'tree-cull': Object.freeze({
     on: `(() => { window.__TREE_DEBUG = Object.assign(window.__TREE_DEBUG || {}, { noViewCull: false }); return { noViewCull: false }; })()`,
     off: `(() => { window.__TREE_DEBUG = Object.assign(window.__TREE_DEBUG || {}, { noViewCull: true }); return { noViewCull: true }; })()` }),
 });
+
+/** The in-page switch of the ground-surface table's laws (the ground-surfaces toggle): true restores every terrain
+ * program's four vectors as the build set them, false zeroes them, null rewrites them unchanged (the null control). */
+function groundSurfacesToggle(on) {
+  const act = on === true
+    ? 'for (const k of NAMES) u[k].value.copy(keep[k]);'
+    : on === false ? 'for (const k of NAMES) u[k].value.set(0, 0, 0, 0);' : 'for (const k of NAMES) u[k].value.copy(u[k].value);';
+  return `(() => {
+    const D = window.__DEBUG, props = D.renderer.properties, NAMES = ['uGsOpen', 'uGsWorn', 'uGsTown', 'uGsNear'];
+    let n = 0;
+    D.scene.traverse((o) => {
+      const mats = Array.isArray(o.material) ? o.material : o.material ? [o.material] : [];
+      for (const m of mats) {
+        const u = props.get(m)?.uniforms;
+        if (!u || !u.uGsOpen) continue;
+        const keep = (u.__gsKeep ||= Object.fromEntries(NAMES.map((k) => [k, u[k].value.clone()])));
+        ${act}
+        n++;
+      }
+    });
+    if (!n) throw new Error('no terrain program carries the ground-surface vectors');
+    return { programs: n };
+  })()`;
+}
 
 /** The in-page switch of the cache's depth copy (the shadow-cache-copy2 toggle): copy each depth texture twice, or once. */
 export function shadowCacheCopyToggle(twice) {

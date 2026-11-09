@@ -94,7 +94,16 @@ const sourceBytes = closure.reduce((sum, file) => sum + statSync(resolve(root, f
 // baff0f6924: 268's 8,175,479 B above plus the 2026-11-02 audit's rounds one to four, the migration handover, the bots'
 // resume legs and news queue, wire 11/12, the actor's unseen rounds, the shared crush press, ram rule and bot events; no
 // builder, kit or calibration literal entered: the assertion above holds): the same rule, plus 2 % (8.60 MB).
-assert.ok(sourceBytes < 8.60e6, `the host Worker's static source stays spec-sized (${(sourceBytes / 1e6).toFixed(2)} MB)`);
+// 8.45 MB (8,452,434 B) at integ/270 e4e9a3208c for release 270 (473 modules from 268's 464: Air Support's strike
+// controller and fire, +43.6 KB; ground-269's surface table and the terrain splat's GLSL that terrain.ts now imports,
+// +42.6 KB; the buildings' style and built-environment tables and three civic plans, +43.5 KB; edits to existing
+// modules, +46.4 KB; the fleet unchanged at 299, no builder, kit or calibration literal entered: the assertion above
+// holds): the same rule, plus 2 % (8.62 MB).
+// 8.75 MB (8,748,246 B, 484 files) on item/sm-fix8-merge with release 270 merged in (round 8 Y11: the 2026-11-02
+// audit's rounds one to eight over 269, the couch session owner, the hunt and raid checkpoint records and the sealed
+// boot configuration, beside 270's Air Support, ground and buildings tables above; no builder, kit or calibration
+// literal entered: the assertion above holds): the same rule, plus 2 % (8.92 MB).
+assert.ok(sourceBytes < 8.92e6, `the host Worker's static source stays spec-sized (${(sourceBytes / 1e6).toFixed(2)} MB)`);
 
 // Behaviour, in this fresh process: nothing loaded until the roster asks.
 const { createMatchActor } = await import('../../../server/match/matchActor.ts');

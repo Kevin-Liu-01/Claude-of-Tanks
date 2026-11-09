@@ -232,7 +232,13 @@ export const CONTROL_FLAGS = Object.freeze({
 /** Edge-triggered actions (identical to v1 PLAYER_ACTION_BITS). */
 /** The simulation's action bits (src/sim/playerActions.ts): one table for the solo step and the wire. */
 export const ACTION_BITS = PLAYER_ACTION_BITS;
-export const ACTION_BIT_MASK = 0x1fff; // thirteen action bits, including FPV launch/return
+/**
+ * Sixteen action bits, all taken (air-support-270): FPV launch/return, the supply drops, and Air Support's call-ins. Air
+ * Support reads the two supply-drop bits as its artillery and recon (sim/playerActions.ts AIR_STRIKE_BITS): only the
+ * AC-130's escort drops supplies and only Air Support calls strikes. A mode that wants either meaning beside the other
+ * fails sim/airSupport.selftest.mjs's exclusivity check first; it needs a wire change, not another reuse.
+ */
+export const ACTION_BIT_MASK = 0xffff;
 
 /** Shell types the fleet authors; unknown types encode as OTHER. */
 export const SHELL_TYPE_NAMES = Object.freeze(['AP', 'APCR', 'APFSDS', 'HEAT', 'HE', 'DRONE'] as const);

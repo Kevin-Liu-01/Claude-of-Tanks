@@ -26,6 +26,7 @@
  *
  *   node tools/mp-world-events-audit.mjs                       # ~2 min wall (its windows are host ticks: a slower machine takes longer, never fails sooner)
  *   node tools/mp-world-events-audit.mjs --play=30 --after=12 --out=/path --label=before
+ *   node tools/mp-world-events-audit.mjs --mode=air_support     # the room's mode (air-support-270: the bots call strikes)
  */
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
@@ -153,7 +154,7 @@ const dist = (a, b) => (a && b ? Math.hypot(a[0] - b[0], a[1] - b[1], a[2] - b[2
  * fells through its event is left out of that view's log, as a presentation that dropped it would leave it; the matrix
  * must count it missing (`report.planted` names it).
  */
-export async function runWorldEventsAudit({ playMs = 30_000, afterMs = 12_000, hostGraceMs = 1500, frameHz = 30, teamSize = 4, scripted = true, minLiveCrushes = 3, seed = AUDIT_MATCH_SEED, plant = null, log = () => {} } = {}) {
+export async function runWorldEventsAudit({ playMs = 30_000, afterMs = 12_000, hostGraceMs = 1500, frameHz = 30, teamSize = 4, scripted = true, minLiveCrushes = 3, seed = AUDIT_MATCH_SEED, plant = null, gameMode = null, log = () => {} } = {}) {
   const SECRET = 'mp-world-events-audit-seat-secret-0123456789abcdef';
   const roomEvents = [];
   const rooms = await createP2pRoomDouble({ seatSecret: SECRET, hostGraceMs, onEvent: (event) => roomEvents.push(event),
@@ -448,7 +449,7 @@ export async function runWorldEventsAudit({ playMs = 30_000, afterMs = 12_000, h
   try {
     // ---- start
     const p1 = spawn('p1', 'Creator', memoryStorage(), 0);
-    const room = await p1.room.create({ mode: 'lan', selection: { specId: 'm1a1_abrams_hc' }, settings: { teamSize, mapId: MAP_ID, botsFill: true } });
+    const room = await p1.room.create({ mode: 'lan', selection: { specId: 'm1a1_abrams_hc' }, settings: { teamSize, mapId: MAP_ID, botsFill: true, ...(gameMode ? { gameMode } : {}) } });
     code = room.roomCode;
     const p2 = spawn('p2', 'Two', memoryStorage(), 1);
     const p3 = spawn('p3', 'Three', memoryStorage(), 2);
@@ -902,7 +903,7 @@ if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
   const label = arg('label', null);
   const seedArg = arg('seed', String(AUDIT_MATCH_SEED));
   const report = await runWorldEventsAudit({ playMs: Number(arg('play', 30)) * 1000, afterMs: Number(arg('after', 12)) * 1000,
-    seed: seedArg === 'random' ? null : Number(seedArg) >>> 0, log: (line) => process.stderr.write(`[world-events] ${line}\n`) });
+    seed: seedArg === 'random' ? null : Number(seedArg) >>> 0, gameMode: arg('mode', null), log: (line) => process.stderr.write(`[world-events] ${line}\n`) });
   report.label = label;
   const text = formatMatrix(report);
   console.log(text);

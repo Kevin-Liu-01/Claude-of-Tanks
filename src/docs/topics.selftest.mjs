@@ -116,6 +116,9 @@ const CREW_LANGUAGE_NAMES = {
   'en-US': 'American', 'en-GB': 'British', de: 'German', ru: 'Russian', uk: 'Ukrainian', zh: 'Chinese',
   fr: 'French', sv: 'Swedish', ja: 'Japanese', ko: 'Korean', it: 'Italian', pl: 'Polish', he: 'Hebrew',
   da: 'Danish', 'pt-BR': 'Brazilian', 'en-AU': 'Australian', af: 'Afrikaans',
+  'es-ES': 'Spanish', 'es-419': 'Latin America', 'pt-PT': 'Portugal', nl: 'Dutch', no: 'Norwegian', fi: 'Finnish', el: 'Greek',
+  cs: 'Czech', hu: 'Hungarian', ro: 'Romanian', tr: 'Turkish', ar: 'Arabic', fa: 'Persian', hi: 'Hindi', ur: 'Urdu', bn: 'Bangla',
+  'id-ID': 'Indonesian', ms: 'Malay', vi: 'Vietnamese', th: 'Thai', fil: 'Filipino',
 };
 const crewRadioText = audioSections.find((section) => section.id === 'radio')?.text ?? '';
 for (const language of CREW_LANGUAGES) {
@@ -128,7 +131,7 @@ assert.match(audioText, /nothing is generated while you play/);
 assert.match(audioText, /No interface sound tells you a shot hit/);
 assert.match(audioText, /Short\. Adjusting\./);
 assert.match(audioText, /National crews/);
-assert.match(audioText, new RegExp(`\\b${CREW_LANGUAGES.length} existing national crews for every tank\\b`));
+assert.match(audioText, new RegExp(`\\bany of the ${CREW_LANGUAGES.length} languages for every tank's crew\\b`));
 assert.match(audioText, /saved across battles and reloads/);
 assert.doesNotMatch(audioText, /selftest|node (?:src|tools)\//, 'the sound chapter is written for players, not as a test checklist');
 

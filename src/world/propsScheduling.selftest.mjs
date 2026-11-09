@@ -683,6 +683,8 @@ function groundFixture(code = groundCandidate, streetRows = true, foundry = fals
     lowStones: { *collectScuffs() {}, releasePendingDiscs() {}, layScuffs() {} },
     // (b44) the contact layer's own material: a multiplicative darkening of the ground (props.ts), sliced with its helper
     contactDarkeningMaterial: contactMaterialFromSource(),
+    // (ground-269) the street-row aprons' hook toward the ground-surface table's town floor (a shader hook: no draw here)
+    apronGroundTableHook: () => {},
     foundryDonors: foundry ? [{ feature: buildingFeatures[0] }] : null,
     // (sealed lane 2026-10-11) a crater clod's drawn footprint for the parked vehicles' seat passes: the fixture runs none
     drawnPlanRecord: () => null, craterClodFootprints: [],

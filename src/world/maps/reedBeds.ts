@@ -16,16 +16,6 @@ import * as THREE from 'three';
 type BG = THREE.BufferGeometry;
 export type ReedForm = 'phragmites' | 'kash' | 'nipa' | 'frost';
 
-/** A river's or a shore's reed, by its boats (the Bengal nouka's chars: kash; the Mekong xuồng's: nipa and sedge;
- *  every other: Phragmites). The frozen lakes' reeds are frost-killed whatever the map (mapKits addWinterShoreReeds). */
-export function reedFormForBoat(boatType: string): ReedForm {
-  switch (boatType) {
-    case 'nouka': return 'kash';
-    case 'xuong': return 'nipa';
-    default: return 'phragmites';
-  }
-}
-
 const _c = new THREE.Color();
 function rgb(hex: number): [number, number, number] { _c.setHex(hex); return [_c.r, _c.g, _c.b]; }
 const PANICLE = rgb(0x5f4a45), PANICLE_TIP = rgb(0x8a7563), BLADE_AUTUMN = rgb(0x9a8a5c), BLADE_GREEN = rgb(0x5d7040),

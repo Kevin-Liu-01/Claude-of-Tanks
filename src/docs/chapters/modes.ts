@@ -32,7 +32,7 @@ function drawBadgeLetter(c: CanvasRenderingContext2D, label: string, x: number, 
 
 /** The chapter's groups: how a mode is won decides where it sits. */
 const GROUPS: ReadonlyArray<{ readonly id: string; readonly modes: readonly GameModeId[] }> = [
-  { id: 'team', modes: ['standard', 'capture_the_flag', 'zone_control', 'mars', 'gun_game', 'drone', 'realistic'] },
+  { id: 'team', modes: ['standard', 'capture_the_flag', 'zone_control', 'mars', 'air_support', 'gun_game', 'drone', 'realistic'] },
   { id: 'survive', modes: ['endless_horde', 'frontline_assault', 'ac130', 'juggernaut', 'infected'] },
   { id: 'arcade', modes: ['turbo_ball'] },
   { id: 'practice', modes: ['proving_ground'] },

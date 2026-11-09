@@ -88,6 +88,11 @@ export interface AssetLibrary {
   /** Mark assets as in use (LRU eviction never drops what played recently). */
   touch(id: string): void;
   loadVoice(language: string): Promise<void>;
+  /**
+   * Forget a crew pack and stop its load (crew-languages-270): the radio speaks one language at a time, so a phone holds
+   * one pack's ~40 MB decoded however many of the 38 crews a player tries. A later loadVoice fetches it again.
+   */
+  dropVoice(language: string): void;
   voiceReady(language: string): boolean;
   /** A decoded take of a crew line: the given take when it exists, else a random one (no immediate repeat). */
   voice(language: string, line: string, random: () => number, take?: number): AudioBuffer | null;
@@ -412,12 +417,14 @@ export function createAssetLibrary({
       if (!pack) return Promise.resolve();
       let promise = voiceLanguages.get(language);
       if (promise) return promise;
+      const current = (): boolean => voiceLanguages.get(language) === promise;
       promise = (async () => {
-        if (!(await ready)) return;
+        if (!(await ready) || !current()) return;
         await Promise.all(Object.entries(pack).map(async ([line, takes]) => {
           const entry: Entry = { buffers: [], state: 'loading', promise: null, last: 0, bytes: 0, lastVariant: -1 };
           voiceEntries.set(voiceKey(language, line), entry);
           entry.buffers = await Promise.all(takes.map((_, i) => voiceSlot(async () => {
+            if (!current()) return null;
             try {
               const res = await fetchImpl(`${root}audio/voice/${language}/${line}_${i}.webm`);
               if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -427,11 +434,12 @@ export function createAssetLibrary({
               return null;
             }
           })));
+          if (!current()) return;
           entry.bytes = entry.buffers.reduce((sum, b) => sum + (b ? bufferBytes(b) : 0), 0);
           voiceBytes += entry.bytes;
           entry.state = entry.buffers.some(Boolean) ? 'ready' : 'failed';
         }));
-        readyVoices.add(language);
+        if (current()) readyVoices.add(language);
       })();
       voiceLanguages.set(language, promise);
       return promise;
@@ -444,6 +452,15 @@ export function createAssetLibrary({
         for (const promise of voiceLanguages.values()) if (!settledLoads.has(promise)) inFlight.push(promise);
         if (!inFlight.length) return;
         await Promise.all(inFlight.map((promise) => promise.then(() => { settledLoads.add(promise); }, () => { settledLoads.add(promise); })));
+      }
+    },
+    dropVoice(language) {
+      if (!voiceLanguages.delete(language)) return;
+      readyVoices.delete(language);
+      for (const line of Object.keys(VOICE_PACKS[language] ?? {})) {
+        const key = voiceKey(language, line);
+        voiceBytes -= voiceEntries.get(key)?.bytes ?? 0;
+        voiceEntries.delete(key);
       }
     },
     voiceReady: (language) => readyVoices.has(language),
