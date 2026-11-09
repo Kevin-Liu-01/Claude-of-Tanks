@@ -54,6 +54,10 @@ const tableOf = (records, cardFrame = CARD_FRAME) => share.tankShareTable({ root
   assert.equal(tableOf({ [id]: { source: 'still', digest: 'aaaa' } }), `/brand/og-r2/tanks/${id}-card.jpg`, '(still published until then)');
   assert.equal(share.cardDue({ source: 'still' }, want(CARD_FRAME, 'bbbb')), null, 'a record without a digest (the seed) matches');
   assert.deepEqual(share.CARD_STATES, ['none', 'stale', 'published']);
+  // --check and a table write name each unpublished card and why
+  assert.deepEqual(share.staleCards({ root: fixture, records: { [id]: { source: 'still' } }, cardFrame: framed }),
+    [{ id, due: 'source', want: { source: 'film', frame: 2.25 } }], 'the stale card is listed with its reason');
+  assert.deepEqual(share.staleCards({ root: fixture, records: { [id]: { source: 'still' } } }), [], 'a published card is not');
 }
 
 // The renderer (renderDue with an injected render, frame grab and still reader: no browser, ffmpeg or master filter)
