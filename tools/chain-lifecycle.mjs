@@ -137,8 +137,10 @@ export function createChildGroups({ killGroup = (pid, signal) => process.kill(-p
  * the chain writes any more) and exits 128 + the signal's number. A second signal while stopping SIGKILLs the groups at
  * once. Process exit sweeps every group too. Returns a function that removes the handlers.
  * The handler runs only when the chain's event loop turns, and a synchronous child (execFileSync, spawnSync) holds the
- * loop for as long as it runs; so every child of a chain, its rows reads included (fingerprint.mjs readRowsAsync), starts
- * through `groups.spawn` and is awaited (round 8 Y10 s6-06).
+ * loop for as long as it runs; so every child a chain starts itself (its steps, its rows reads: fingerprint.mjs
+ * readRowsAsync, its headroom probes) starts through `groups.spawn` and is awaited (round 8 Y10 s6-06; the receipt's
+ * census of tank-regen-changed.mjs: tools/changed-only/rowsReadStop.selftest.mjs). The lock modules it calls
+ * (capture-lock) still read `ps` synchronously, milliseconds a probe.
  */
 export function stopOnSignal(groups, { cleanup = () => {}, graceMs = 15_000, log = () => {}, exit = (code) => process.exit(code),
   signals = process } = {}) {

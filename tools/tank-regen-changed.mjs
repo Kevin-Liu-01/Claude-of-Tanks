@@ -37,7 +37,6 @@
 // Under COT_CAPTURE_PRIORITY=release (the integrator's release chain) CPU children run un-niced too
 // (tools/changed-only/childPriority.mjs, 267). A CPU child's limit is a budget of its process tree's CPU, not of wall
 // time, with a 30-minute no-progress cap for a hang (tools/changed-only/childBudget.mjs, 267).
-import { spawnSync } from 'node:child_process';
 import { appendFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
@@ -124,9 +123,10 @@ const chainLock = takeChainLock(lockPath, { legacyFile: join(qaDir, 'chain.lock'
 if (!chainLock.held) { console.error(`[regen] another chain (pid ${chainLock.owner.pid ?? 'unknown'}) holds ${lockPath}`); process.exit(2); }
 const unlock = () => chainLock.release();
 process.on('exit', unlock);
-// Every child of the chain (its steps and its rows reads) leads its own process group: a stop signals them all, waits
-// for them, SIGKILLs what is left, then releases the GPU step's capture hold and the chain lock, so nothing of this chain
-// writes once the lock is free. From the signal on the groups refuse to start a child (chain-lifecycle 'stopping').
+// Every child of the chain (its steps, its rows reads, its headroom probes) leads its own process group: a stop signals
+// them all, waits for them, SIGKILLs what is left, then releases the GPU step's capture hold and the chain lock, so
+// nothing of this chain writes once the lock is free. From the signal on the groups refuse to start a child
+// (chain-lifecycle 'stopping').
 const children = createChildGroups();
 stopOnSignal(children, { log: (line) => console.error(`[regen] ${line}`),
   cleanup: (signal) => {
@@ -137,14 +137,24 @@ stopOnSignal(children, { log: (line) => console.error(`[regen] ${line}`),
 
 const childEnv = { ...process.env, NODE_OPTIONS: '--max-old-space-size=4096' };
 
+/**
+ * Whether headroom lets a `gb` GB child start (`headroom can-start`, exit 0). The probe is a child of the chain like its
+ * steps (round 8 Y10 fix-up r1): it starts through the chain's groups and is awaited, so the stop handler never waits on
+ * it and no probe starts once the stop began (the spawn throws the stop marker). No headroom CLI on this machine: yes.
+ */
 function headroomReady(gb) {
-  const probe = spawnSync('headroom', ['can-start', '--gb', String(gb)], { encoding: 'utf8' });
-  if (probe.error?.code === 'ENOENT') return true; // no headroom on this machine
-  return probe.status === 0;
+  return new Promise((done, fail) => {
+    const probe = children.spawn('headroom', ['can-start', '--gb', String(gb)], { stdio: 'ignore' });
+    probe.once('error', (error) => { if (!probe.pid) done(error.code === 'ENOENT'); });
+    probe.once('close', (code, signal) => {
+      if (children.stopping) fail(children.stopMarker(`the headroom probe ended (${signal ?? `exit ${code}`})`));
+      else done(code === 0);
+    });
+  });
 }
 async function gate(gb) {
   const started = Date.now();
-  while (!headroomReady(gb)) {
+  while (!(await headroomReady(gb))) {
     if (Date.now() - started > 4 * 3600_000) throw new Error(`headroom never allowed ${gb} GB in 4 h`);
     log(`[regen] waiting for headroom (${gb} GB)`);
     await new Promise((done) => setTimeout(done, 30_000));

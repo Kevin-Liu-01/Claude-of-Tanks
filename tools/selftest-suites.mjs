@@ -993,7 +993,8 @@ export const SELFTEST_SUITES = Object.freeze({
     // before the unlock, and a budget that tears down before it exits
     'tools/chain-lifecycle.selftest.mjs',
     // round 8 Y10 s6-06: a regen chain's stop reaches its rows read (the read runs in the chain's groups, awaited), and
-    // a rows read outside a chain ends with its caller or its runner's signal
+    // a rows read outside a chain ends with its caller or its runner's signal. Real processes: ~11-13 s of wall at load ~50,
+    // up to ~45 s at load ~220 (process starts and real waits; ~1.7 s of CPU)
     'tools/changed-only/rowsReadStop.selftest.mjs',
     // 268: the anatomy step's parallel parts merge byte for byte as one run; a part never writes a shared file
     'tools/combat-anatomy-parts.selftest.mjs',
