@@ -9,7 +9,7 @@
 // has left when the TV blinks; the lobby resumes instead of ending (its code was on screen), and a seat that leaves
 // while the TV is away leaves the desktop's grace in force and is let go on the TV once it is back (the resume's roll
 // call), in an emptied lobby and in one whose other phones stay (here or asleep). Reopen is not offered while the
-// lobby reconnects.
+// lobby reconnects, and the view's moves follow one rule (padLobbyMoveAllowed).
 import assert from 'node:assert/strict';
 import { createHash, randomBytes } from 'node:crypto';
 import { PadActor } from './padActor.ts';
@@ -234,13 +234,27 @@ function closeWhenAway(lobby, also = () => {}) {
   lobby.end();
 }
 
-// ---- the view's machine: its states and moves; `move` is the one writer --------------------------------------------
+// ---- the view's machine: its states and moves; `move` is the one writer and asks the rule --------------------------
+// No product path asks for a refused move (once ended, the socket is gone and a stale socket's frames are dropped), so
+// the refusal is proven on the rule move() asks (fix-up r2): every one of the 25 (from, to) pairs against the table, and
+// the census holds move() to asking it before it writes.
 {
-  assert.deepEqual(padLobby.PAD_LOBBY_STATES, ['connecting', 'open', 'closed', 'away', 'ended']);
-  assert.deepEqual(padLobby.PAD_LOBBY_MOVES, {
+  const table = {
     connecting: ['open', 'closed', 'away', 'ended'], open: ['closed', 'away', 'ended'], closed: ['open', 'away', 'ended'],
     away: ['open', 'closed', 'ended'], ended: [],
-  });
+  };
+  assert.deepEqual(padLobby.PAD_LOBBY_STATES, ['connecting', 'open', 'closed', 'away', 'ended']);
+  assert.deepEqual(padLobby.PAD_LOBBY_MOVES, table);
+  const refused = [];
+  for (const from of padLobby.PAD_LOBBY_STATES) {
+    for (const to of padLobby.PAD_LOBBY_STATES) {
+      const allowed = from === to || table[from].includes(to);
+      assert.equal(padLobby.padLobbyMoveAllowed(from, to), allowed, `the lobby view ${allowed ? 'may' : 'may not'} move ${from} -> ${to}`);
+      if (!allowed) refused.push(`${from}->${to}`);
+    }
+  }
+  assert.deepEqual(refused, ['open->connecting', 'closed->connecting', 'away->connecting', 'ended->connecting', 'ended->open',
+    'ended->closed', 'ended->away'], 'seven moves are refused: back to connecting, and out of ended');
   for (const state of padLobby.PAD_LOBBY_STATES) {
     assert.equal(couchLobby.reopenOffered({ state }), state === 'closed', `Reopen on a lobby ${state}`);
   }
@@ -249,7 +263,10 @@ function closeWhenAway(lobby, also = () => {}) {
   const writes = [...source.matchAll(/\bstate: '(connecting|open|closed|away|ended)'|\{ \.\.\.view, state \}/g)].map((match) => match[0]);
   assert.deepEqual(writes, ["state: 'connecting'", '{ ...view, state }'], 'the view starts connecting and only move() changes its state');
   assert.ok(!/publish\(\{[^}]*\bstate\b/.test(source), 'publish never carries a state');
+  assert.match(source, /const move = \([^)]*\): boolean => \{\n\s*if \(!padLobbyMoveAllowed\(view\.state, state\)\) return false;\n\s*view = \{ \.\.\.view, state \};/,
+    'move() asks padLobbyMoveAllowed before it writes, and refuses what it refuses');
+  assert.equal(source.match(/\bPAD_LOBBY_MOVES\[/g)?.length, 1, 'the table is read in one place (the rule)');
 }
 
-console.log('padLobbyResume.selftest: PASS — a setOpen(false) asked while the TV is away reaches the host after the resume; a lobby whose phones left resumes after a blink; the grace stands when the last seat leaves while away; the roll call keeps the seats the host names; Reopen only on a closed lobby; one state writer');
+console.log('padLobbyResume.selftest: PASS — a setOpen(false) asked while the TV is away reaches the host after the resume; a lobby whose phones left resumes after a blink; the grace stands when the last seat leaves while away; the roll call keeps the seats the host names; Reopen only on a closed lobby; one state writer that asks the move rule');
 process.exit(0);

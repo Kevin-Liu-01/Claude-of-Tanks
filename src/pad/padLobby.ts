@@ -11,12 +11,14 @@
  * seats' data channels carry on; the lobby comes back with its token, as a pairing's desktop does.
  *
  * The view's state is one declared machine (round 8 Y5 s3-08): connecting, then open or closed as the host says, away
- * while the lobby socket reconnects, and ended for good. `move` is its one writer and refuses a move LOBBY_MOVES does
- * not list (nothing leaves `ended`). A setOpen asked while the socket cannot carry it (away, or the reconnect still
- * opening) is kept, the last one asked, and sent once the host holds the lobby again ('resumed'); a remembered open flag
- * is never replayed, so the host's own reply stays the truth (a window that lapsed meanwhile stays closed). The resume's
- * roll call (the host's `lobby` names how many seats it holds, a `seat` follows for each) lets go of a seat whose phone
- * left while the socket was away: the host could not tell this side then.
+ * while the lobby socket reconnects, and ended for good. `move` is its one writer and refuses what padLobbyMoveAllowed
+ * refuses (a move PAD_LOBBY_MOVES does not list: nothing leaves `ended`). No product path asks for a refused move today
+ * (once ended, the socket is gone and a stale socket's frames are dropped), so the refusal is a guard, proven on the
+ * rule itself (padLobbyResume.selftest.mjs). A setOpen asked while the socket cannot carry it (away, or the reconnect
+ * still opening) is kept, the last one asked, and sent once the host holds the lobby again ('resumed'); a remembered
+ * open flag is never replayed, so the host's own reply stays the truth (a window that lapsed meanwhile stays closed).
+ * The resume's roll call (the host's `lobby` names how many seats it holds, a `seat` follows for each) lets go of a
+ * seat whose phone left while the socket was away: the host could not tell this side then.
  *
  * Lazy, as the receiver is: loaded when the host opens couch mode. Browser-only (WebSocket), injectable for tests.
  */
@@ -48,6 +50,13 @@ export const PAD_LOBBY_MOVES: Readonly<Record<PadLobbyState, readonly PadLobbySt
   away: ['open', 'closed', 'ended'],
   ended: [],
 });
+
+/** The view's transition rule, which `move` asks before every write: staying is always allowed (the state published
+ *  again with new fields); any other move only where PAD_LOBBY_MOVES lists it, so nothing leaves `ended` and nothing
+ *  goes back to `connecting`. */
+export function padLobbyMoveAllowed(from: PadLobbyState, to: PadLobbyState): boolean {
+  return from === to || PAD_LOBBY_MOVES[from].includes(to);
+}
 
 export interface PadLobbyView {
   state: PadLobbyState;
@@ -170,9 +179,9 @@ export function startPadLobby(serviceUrl: string, ports: PadLobbyPorts, options:
     };
     for (const listener of listeners) listener(view);
   };
-  /** The state's one writer: a move PAD_LOBBY_MOVES does not list is refused (false) and nothing is published. */
+  /** The state's one writer: a move padLobbyMoveAllowed refuses returns false and nothing is published. */
   const move = (state: PadLobbyState, next: Partial<Omit<PadLobbyView, 'state'>> = {}): boolean => {
-    if (state !== view.state && !PAD_LOBBY_MOVES[view.state].includes(state)) return false;
+    if (!padLobbyMoveAllowed(view.state, state)) return false;
     view = { ...view, state };
     publish(next);
     return true;
