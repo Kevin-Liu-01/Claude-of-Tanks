@@ -87,7 +87,7 @@
   "hayate_ifv": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"a02e86540a4b9b87","gun":"ded333a46f6ff563"}},
   "jpz_e100": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"e3b0c44298fc1c14","gun":"e36521b1fdbc66a8"}},
   "k1a1": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"dc114b7739cb0edf","gun":"1969a332c744d7ee"}},
-  "k1e1": {"status":"gap","kind":"turret","mouths":1,"worstMm":0,"openings":1,"geometry":{"turret":"791445e42c604d0c","gun":"f5eab06239c7fc75"}},
+  "k1e1": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"2845e32e478f74e2","gun":"f5eab06239c7fc75"}},
   "k21": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"e0de3405a7ff0aab","gun":"ca343a9fa983e354"}},
   "k2_black_panther": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"5bd6a663cc4e764d","gun":"a4599132f5db8197"}},
   "k2b": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"9c9e82cf79fb47e8","gun":"57d4b80a8f1ebb79"}},

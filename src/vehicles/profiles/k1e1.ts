@@ -81,7 +81,9 @@ function addShell(P: Modern3BuilderPort): void {
     [T.slotX, T.bottomY, T.cheekRootZ], [T.slotX, T.roofY, T.cheekRootZ],
     [T.slotX, T.bottomY, T.slotBackZ + 0.04], [T.slotX, T.roofY, T.slotBackZ - 0.06],
   ])));
-  const slotBack = new THREE.PlaneGeometry(T.slotX * 2 - 0.02, 0.56);
+  // A closed 8 mm plate, not a one-sided plane: the wall rakes back 9 degrees, so at 10 degrees of elevation the gun-line
+  // census (it looks perpendicular to the gun) saw the plane's back face from above (270 gun-junction receipt)
+  const slotBack = KIT.box(T.slotX * 2 - 0.02, 0.56, 0.008);
   slotBack.rotateX(-Math.atan2(0.10, 0.63));
   P.add('turretDark', slotBack, 0, 0.34, T.slotBackZ - 0.005);
   for (const s of [-1, 1]) {
