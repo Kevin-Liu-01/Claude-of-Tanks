@@ -16,6 +16,8 @@
 //   answers (module:state source 'hold', tank:fire burning false) are the unit block's. The same edges and answers on the
 //   page's own battle (a bot hurt while it stood books no burst at the release; a held step's worse module and fire each
 //   answered) are src/game/devBattleHoldEdges.selftest.mjs, MANUAL 'sims': this file's battles were already its cost.
+// - (round 8 merge review r1) a held battle's bots call no airstrikes: the mode controller's own bot calls wait (a flat
+//   Air Support battle through the solo step, as airSupportSolo.selftest steps one).
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
@@ -26,6 +28,11 @@ import { createShell } from '../sim/ballistics.ts';
 import { spawnTanks } from './rosterState.ts';
 import { ensureFullFleet } from '../vehicles/fleetFactory.ts';
 import { createDedicatedWorldCollision } from '../../server/dedicatedWorldCollision.ts';
+import { getSpec } from '../vehicles/specs.ts';
+import { createCombatState } from '../sim/damage.ts';
+import { createTankState } from '../sim/movement.ts';
+import { AIR_SUPPORT_RULES, matchRulesetFor } from '../sim/matchRuleset.ts';
+import { createMatchModeController } from '../sim/matchModes.ts';
 import { DEV_BATTLE_HOLD, battleHeld, holdBattleStep, stepBattleHold, undoHeldDamage } from './devBattleHold.ts';
 import { createBattleHold } from '../dev/battleHold.ts';
 
@@ -156,8 +163,9 @@ const read = (path) => readFileSync(new URL(path, import.meta.url), 'utf8');
     "a held step's bots stand in place of their controllers (proving targets too)");
   assert.match(state, /if \(entity\.modeActive === false\) continue;\n(?:\s*\/\/[^\n]*\n)*\s*if \(held && entity !== game\.player\) continue;/,
     "a held bot takes no controls, actions or consumables");
-  assert.match(state, /function stepMatchMode\(game: SoloGameState, bus: EventBus\): MatchModeResult \| null \{\n(?:\s*\/\/[^\n]*\n)*\s*if \(battleHeld\(game\)\) undoHeldDamage\(game, bus\);/,
-    "the player's losses are undone before the mode and the verdict read them, and the undo answers on the bus");
+  // (round 8 merge review r1) the step's held also reaches the mode controller: its own bot calls wait with its bots
+  assert.match(state, /function stepMatchMode\(game: SoloGameState, bus: EventBus\): MatchModeResult \| null \{\n(?:\s*\/\/[^\n]*\n)*\s*const held = battleHeld\(game\);\n\s*if \(held\) undoHeldDamage\(game, bus\);\n\s*const outcome = game\.matchModeController\?\.step\(SIM_DT, game\.timeS, held\) \|\| null;/,
+    "the player's losses are undone before the mode and the verdict read them, the undo answers on the bus, and the mode's bot calls are held");
   assert.match(state, /if \(game\.result !== null \|\| !seat \|\| battleHeld\(game\)\) return;/, 'a held battle reaches no verdict');
   assert.match(state, /\): void \{\n(?:\s*\/\/[^\n]*\n)*\s*if \(ent === game\.player && battleHeld\(game\)\) return;\n\s*ent\._destroyedAnnounced = true;/,
     'a held player is never announced destroyed');
@@ -346,9 +354,61 @@ const slain = battle(12, {
 assert.equal(slain.game.result, 'victory', 'released, the battle settles on its next step');
 assert.equal(slain.game.resultReason, 'elimination');
 
+// ---- (round 8 merge review r1) a held battle's bots call no airstrikes ---------------------------------------------------
+// Air Support's bots call in from the mode controller's own step (sim/airSupport.ts botCall, every decideEveryS), which the
+// hold's controls gate never reached: a held Air Support battle's bots called recon passes and strikes (their rounds hurt
+// allies and bots; only the player's damage is undone). The solo step (simStep -> stepMatchMode -> the controller ->
+// air.step) on a flat field, as airSupportSolo.selftest steps it: the player and a wingman 12 m apart, two hostile bots
+// 350 m off with the ledger's cap in points; held from the first step, no bot calls in 6 s (three decide windows);
+// released, they call within 3 s.
+const airCalls = [];
+{
+  const flat = { getHeightAt: () => 0, getGroundType: () => 'hard', getNormalAt: () => new Vector3(0, 1, 0) };
+  const flatCollider = { setSelf() {}, collide: () => false, pendingCrush: [], pendingRams: [], queueRam() {} };
+  const crew = (id, team, x, z, isPlayer) => {
+    const spec = getSpec('m1a1_abrams_hc'), combat = createCombatState(spec);
+    combat.equipMults = {};
+    const input = { throttle: 0, steer: 0, brake: true, fire: false, shellSlot: 0, aimYaw: 0, aimPitch: 0, aimDistance: 100, actionBits: 0,
+      aimPoint: new Vector3(x, 0, z), auxiliaryBits: 0 };
+    return { id, specId: spec.id, spec, isPlayer, bot: !isPlayer, team, combat, input, seat: [x, z],
+      state: createTankState(spec, new Vector3(x, 0, z), 0),
+      visual: { root: new Group(), gunMuzzleWorld: (out) => out.set(x, 3, z + 4), gunDirWorld: (out) => out.set(0, 0, 1), recoilKick() {} } };
+  };
+  const game = createGameState();
+  game.ruleset = matchRulesetFor('air_support');
+  const pilot = crew('pilot', 'player', 0, -200, true);
+  game.tanks = [pilot, crew('wing', 'player', 12, -200, false), crew('e1', 'enemy', 0, 150, false), crew('e2', 'enemy', 12, 150, false)];
+  game.allTanks = game.tanks;
+  game.player = pilot;
+  for (const t of game.tanks) game.tankById.set(t.id, t);
+  game.matchModeController = createMatchModeController({ mode: 'air_support', entities: game.tanks, seed: 3, ruleset: game.ruleset,
+    revive() {}, terrainHeight: () => 0, emit: (type, payload) => game.modeEvents.push({ type, payload }) });
+  game.matchModeState = game.matchModeController.serialize('pilot');
+  const air = game.matchModeController.airSupport;
+  const saved = air.capture();
+  saved.points = [['pilot', 0], ['wing', 0], ['e1', AIR_SUPPORT_RULES.points.cap], ['e2', AIR_SUPPORT_RULES.points.cap]];
+  air.restore(saved);
+  let tick = 0;
+  const bus = createBus((event, payload) => { if (event === 'mode:strike_called') airCalls.push({ tick, callerId: payload.callerId, kind: payload.kind }); });
+  const step = () => {
+    tick++;
+    simStep(game, bus, { heightField: flat, raycast: () => null }, null, flatCollider);
+    for (const t of game.tanks) t.state.pos.set(t.seat[0], 0, t.seat[1]);
+  };
+  const HELD_TICKS = 360;
+  game.devBattleHold = true;
+  for (let n = 0; n < HELD_TICKS; n++) step();
+  assert.deepEqual(airCalls, [], `held, no bot calls an airstrike (${JSON.stringify(airCalls.slice(0, 3))})`);
+  game.devBattleHold = false;
+  for (let n = 0; n < 180; n++) step();
+  const botCalls = airCalls.filter((call) => call.callerId === 'e1' || call.callerId === 'e2');
+  assert.ok(botCalls.length > 0 && botCalls[0].tick > HELD_TICKS, `released, the bots call in again (${JSON.stringify(airCalls)})`);
+}
+
 console.log(`devBattleHold selftest passed: off byte-identical over ${TICKS} ticks; unheld ${plain.botShots} rounds, the player hurt `
   + `from tick ${plain.playerDamage[0]}; held 0 bot rounds, no player loss, bots within ${held.maxBotDriftM.toFixed(3)} m, no verdict; `
   + `armed at tick ${AT} the battle parts there, the bots stand (${late.lastSecondDriftM.toFixed(3)} m in the last second) and the `
   + 'fire costs nothing; the verdict waits for the release; the hold\'s edges park and resume the brains once each, per battle; '
-  + 'undo, switch and wiring held');
+  + `held, no bot calls an airstrike, released ${airCalls.length} call(s) `
+  + `from ${airCalls[0]?.callerId} at tick ${airCalls[0]?.tick}; undo, switch and wiring held`);
 process.exit(0);

@@ -504,7 +504,12 @@ export interface MatchModeController<
   /** Air Support's ledger and strikes (null in every other mode): the authorities call it, fire its rounds and test
    *  their rounds against its aircraft. */
   readonly airSupport: AirSupport | null;
-  step(dt: number, timeS: number): MatchModeResult | null;
+  /**
+   * One step of the mode. `botsHeld` (round 8 merge review r1): the solo step's dev battle hold holds its bots this
+   * step (game/devBattleHold.ts), so the mode's own bot decisions wait with them (Air Support's bot call-ins); the
+   * authority never holds a battle and leaves it off.
+   */
+  step(dt: number, timeS: number, botsHeld?: boolean): MatchModeResult | null;
   /**
    * The match's verdict, decided outside the mode (audit M3, 2026-11-02: the authority's time limit or elimination): the
    * controller takes it as its own result, so through the ending hold it scores, respawns and starts waves no more and
@@ -2859,13 +2864,13 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
       }
       if (id === 'drone' && score[team] >= scoreTarget) finish(team, 'drone_score_limit');
     },
-    step(dt, timeS) {
+    step(dt, timeS, botsHeld = false) {
       if (result) { settleAfterVerdict(dt, timeS); return result; }
       placementTimeS = timeS;
       refreshIntel(timeS);
       handleDeathsAndRespawns(timeS);
       stepSupport(timeS);
-      air?.step(timeS);
+      air?.step(timeS, botsHeld);
       if(escort){const outcome=escort.step(timeS,ruleset.timeLimitS??480);if(outcome)return finish(outcome.result,outcome.reason);}
       if (boss && state.boss) {
         state.boss.hp = boss.combat.hp;

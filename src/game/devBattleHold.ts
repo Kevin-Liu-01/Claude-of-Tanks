@@ -13,6 +13,10 @@
  * it stood are no burst, no stale window and no queued news at the release. A battle begun armed parks at its first step.
  * A couch battle's phone seats stand like the bots (their inputs go neutral), and their damage is not undone: only the
  * player's is.
+ *
+ * (round 8 merge review r1) The mode's own bot decisions stand with the bots: the step hands its held to the mode
+ * controller (state.ts stepMatchMode), so a held Air Support battle's bots call in no strike or recon pass
+ * (sim/airSupport.ts step); a strike called before the hold still flies, as a round in flight still lands.
  */
 import type { CombatState, ModuleStateName } from '../sim/damage.ts';
 

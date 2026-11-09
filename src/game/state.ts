@@ -2913,9 +2913,11 @@ function stepFireDamage(game: SoloGameState, bus: EventBus): void {
 }
 
 function stepMatchMode(game: SoloGameState, bus: EventBus): MatchModeResult | null {
-  // a held step's losses to the player are undone before the mode and the verdict read them (devBattleHold.ts)
-  if (battleHeld(game)) undoHeldDamage(game, bus);
-  const outcome = game.matchModeController?.step(SIM_DT, game.timeS) || null;
+  // a held step's losses to the player are undone before the mode and the verdict read them, and the mode's own bot
+  // calls (Air Support's call-ins) wait with its bots (devBattleHold.ts; round 8 merge review r1)
+  const held = battleHeld(game);
+  if (held) undoHeldDamage(game, bus);
+  const outcome = game.matchModeController?.step(SIM_DT, game.timeS, held) || null;
   // a watched battle with no driver reads the mode from the battle's side (watchSeat.ts watchViewer)
   const perspective = game.player ?? (game.watch ? watchViewer(game) : null);
   if (game.matchModeState && perspective) {
