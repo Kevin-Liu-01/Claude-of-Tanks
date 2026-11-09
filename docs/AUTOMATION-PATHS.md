@@ -222,13 +222,17 @@ itself is listed below with its reason.
 Waits and polls built by hand:
 
 <!-- census:handBuiltWaits -->
+- `tools/air-support-shots.mjs`: release 270's file: its page helper's `ready` predicate is the boot mirror itself (`window.__GAME_READY === true`); move it onto `BOOT_LOADED_EXPRESSION` in a later round
 - `tools/battle-entry-sweep.mjs`: the covered entry is its subject: each run samples the reveal latch and the loader to judge that entry
 - `tools/battle-memory-probe.mjs`: its entry time is measured to the phase edge itself
 - `tools/battle-spike-census.mjs`: its trace starts at the phase edge itself (the covered load is the recorder's, the countdown and the fight are the trace's)
 - `tools/black-world-repro.mjs`: the black-world hunt: it watches the cover lift and the HUD show (the visual edge it hunts at) and samples the loader in its monitor
+- `tools/building-style-shots.mjs`: release 270's file: one hand-built wait for the boot mirror and the shot hooks (`__SHOTS`, `__DEBUG`) together; move it onto `waitForBootLoaded` and a hook wait in a later round
+- `tools/built-env-shots.mjs`: release 270's file: one hand-built wait for the boot mirror and the shot hooks (`__SHOTS`, `__DEBUG`) together; move it onto `waitForBootLoaded` and a hook wait in a later round
 - `tools/click-timeline.mjs`: measures the Garage's paint, the entry gate and the reveal latch (visual edges), not readiness
 - `tools/controls-probe.mjs`: times the loading cover's show from the click (a mutation observer on the loader)
 - `tools/garage-action-timing.mjs`: times the Garage's and the battle's visual edges (painted, the loader's classes), its subject
+- `tools/ground-surface-shots.mjs`: release 270's file: one hand-built wait for the boot mirror and the shot hooks (`__SHOTS`, `__DEBUG`) together; move it onto `waitForBootLoaded` and a hook wait in a later round
 - `tools/interaction-steps.mjs`: click-timeline's steps: the cover's show and the reveal latch are what it times
 - `tools/loading-budget-probe.mjs`: measures the loading screens and the exit, polling the phase inside the timed page function
 - `tools/marketing-shots/mode-battle-shots.mjs`: another lane's file (tools-chains); migrate after it lands
