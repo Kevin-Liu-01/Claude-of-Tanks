@@ -51,6 +51,7 @@ import { keycap, rules, scale20, segmented, setRoving, statChip, tag, wireRoving
 import { revealWhenReady } from './components/reveal.ts';
 import { markLoadFailed, pressFailed } from './components/loadFailure.ts';
 import { createLazyChunk, importAll } from '../app/lazyChunk.ts';
+import { CouchChunkError } from '../app/couchOpener.ts';
 import { BRAND_WORDMARK_HTML, brandMarkSVG } from './brandMark.ts';
 import { CAMPAIGN_ENEMY_NATIONS, CAMPAIGN_OPERATIONS, campaignLadder, campaignSummary } from '../game/campaignOperations.ts';
 import { mapRegionTags, regionTagIcon } from './regionTags.ts';
@@ -219,8 +220,9 @@ interface GarageOptions {
   ) => void;
   /**
    * Couch mode (docs/COUCH-MODE.md): open the lobby over the Deploy screen; its Start deploys the seats here. (round 8 Y4
-   * s3-03) A lazy opener: the lobby opens only while `ticket` holds (the Garage that asked still shows), with `trigger`
-   * as the modal's; the promise rejects when a chunk did not arrive (the press reports it).
+   * s3-03) A lazy opener: the lobby opens only while `ticket` holds (the Garage that asked still shows, and no press has
+   * handed the player on since), with `trigger` as the modal's; the promise rejects with a CouchChunkError when a chunk did
+   * not arrive (the press reports it), and with the open step's own error otherwise (the press logs it).
    */
   readonly onCouch?: (request: {
     readonly gameMode: GameModeId;
@@ -3816,6 +3818,9 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     };
     const options = campaignOperationId ? { gameMode, campaignOperationId } : watch ? { gameMode, watch } : couch ? { gameMode, couch } : { gameMode };
     if (!onBattle) return false;
+    // (round 8 Y4 s3-03, review r2) the start is handed on: a lazy opener still loading (the couch lobby, Deploy, the tech
+    // tree…) opens nothing over the loader, though the Garage shows under it until the activation hides it
+    garageScreen.handOff();
     onBattle(specId, mapId, options, announce); // MAP-CONFIG WIRING
     return true;
   }
@@ -3839,6 +3844,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     closeMobileNavigation();
     setGaragePanel('');
     emit('ui:click', {});
+    garageScreen.handOff(); // (round 8 Y4 s3-03) the room press hands the player on: no lazy opener lands over its menu
     // a room hosts the battle modes only: a practice mode (the range) opens it on Standard
     opts.onPlayRequest?.({ mode, specId: selectedId, mapId: selectedMapId, gameMode: isPracticeMode(battleGameMode) ? 'standard' : battleGameMode });
   }
@@ -3850,6 +3856,8 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     closeBattleMenu();
     if (opts.onPlayRequest) {
       try { emit('ui:click', {}); } catch (_) { /* presentation-only */ }
+      // (round 8 Y4 s3-03, review r2) the press hands the player on now: its solo start can wait on the play menu's chunk
+      garageScreen.handOff();
       opts.onPlayRequest({
         mode: watch ? 'solo' : battleMode,
         gameMode: battleGameMode,
@@ -3874,6 +3882,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     const start = () => launchBattle(specId, mapId, { emitClick: false, gameMode: 'frontline_assault', campaignOperationId: operationId });
     if (opts.onPlayRequest) {
       try { emit('ui:click', {}); } catch (_) { /* presentation-only */ }
+      garageScreen.handOff(); // (round 8 Y4 s3-03) as the BATTLE press
       opts.onPlayRequest({ mode: 'solo', gameMode: 'frontline_assault', specId, mapId, startSolo: start });
       return;
     }
@@ -4353,7 +4362,9 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
   const setupCouch = requiredElement<HTMLButtonElement>(battleMenu, '[data-battle-couch]');
   // (round 8 Y4 s3-03) the couch lobby is one of the Garage's lazy openers (2026-11-02 audit F5): the press takes the
   // Garage's ticket (main's onCouch opens the lobby only while it holds, src/app/couchOpener.ts), a repeat press while the
-  // chunks load does nothing, and a chunk that did not arrive is the kit's failure (the button's error state, Reload page)
+  // chunks load does nothing, and a chunk that did not arrive is the kit's failure (the button's error state, Reload page).
+  // (review r2) A lobby that failed to open once loaded (its socket, a bug) is not a failed chunk: the button stays a
+  // press, and the console keeps the cause either way
   let couchOpening = false;
   const openCouch = (): boolean => {
     const onCouch = opts.onCouch;
@@ -4366,7 +4377,11 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
       start: (couch: CouchBattle) => { closeBattleMenu(); return launchBattle(specId, mapId, { gameMode, couch }); } };
     couchOpening = true;
     void Promise.resolve().then(() => onCouch(request))
-      .catch(() => reportLoadFailure('cot-couch-load', t('loadFailed.generic'), [setupCouch]))
+      .catch((error: unknown) => {
+        if (!(error instanceof CouchChunkError)) { console.error('[couch] the lobby failed to open', error); return; }
+        reportLoadFailure('cot-couch-load', t('loadFailed.generic'), [setupCouch]);
+        console.warn('[couch] a couch chunk did not arrive', error);
+      })
       .finally(() => { couchOpening = false; });
     return true;
   };
@@ -5220,7 +5235,9 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
         closeBattleMenu();
         return launchBattle(selectedId, fieldMapId(), { gameMode: battleGameMode, couch });
       }
-      // the Watch and BATTLE presses, as their clicks run them (a disabled control starts nothing)
+      // the Watch and BATTLE presses, as their clicks run them (a disabled control starts nothing). (review r2) The replay
+      // is not a press: it sounds the handler's own ui:click, where the old click on the button sounded its confirm role;
+      // the player's Battle Again press sounded its own confirm in the end screen's dialog, and ui_deploy follows the load
       const control = watch ? setupWatch : battleBtn;
       if (control.disabled) return false;
       battle(watch);

@@ -88,7 +88,10 @@ graph). Its edges, round 8 (2026-11-09):
   now through the same start edge (the join window closes first). With no phone here it opens the lobby over the Garage
   instead of a keyboard battle, and the return settles there with no failure notice.
 - **The lobby's opener** is one of the Garage's lazy openers: the Couch press takes the Garage's ticket, and the lobby
-  opens only if that Garage still shows when its chunks land (`src/app/couchOpener.ts`).
+  opens only if that Garage still shows, and no press has handed the player on (a battle start, the play menu), when its
+  chunks land (`src/app/couchOpener.ts`, `src/ui/garageScreen.ts` `handOff`). A chunk that did not arrive marks the
+  Couch button (its next press reloads the page); a lobby that failed to open once loaded is logged and the button stays
+  a press.
 - **End** (`close`): every phone goes, every seat's controls release, the couch view drops.
 
 ## Seats in the battle

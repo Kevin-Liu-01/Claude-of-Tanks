@@ -171,6 +171,7 @@ for (const [battleGameMode, roomMode] of [['mars', 'mars'], ['proving_ground', '
     runInNewContext(openMultiplayer + ';openMultiplayer(requested);', {
       requested, selectedId: 'tank', selectedMapId: 'verdant', battleGameMode, isPracticeMode,
       closeBattleMenu: () => calls.push('close-setup'), closeMobileNavigation: () => {}, setGaragePanel: () => {},
+      garageScreen: { handOff: () => {} }, // (round 8 Y4 s3-03: the room press hands the Garage on, garageOpenState pins it)
       emit: (event) => { assert.equal(event, 'ui:click'); },
       opts: { onPlayRequest: (request) => calls.push(JSON.parse(JSON.stringify(request))) },
     });

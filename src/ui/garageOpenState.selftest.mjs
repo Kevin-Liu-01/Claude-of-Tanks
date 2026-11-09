@@ -9,7 +9,11 @@ import { createGameReadyWaiter } from './gameReady.ts';
 import { createBootReadiness } from '../app/bootReadiness.ts';
 import { CONSUMABLES_PICKER_CLOSED, nextConsumablesPicker } from './garageConsumables.ts';
 import { createCustomCamoStudioAccess } from './customCamoStudioAccess.ts';
+import { stripTypeScriptTypes } from 'node:module';
 import { createLazyChunk } from '../app/lazyChunk.ts';
+
+// (dynamic: a base without it fails by assertion, case 1b, not at link time)
+const { CouchChunkError } = await import('../app/couchOpener.ts').catch(() => ({}));
 
 // 1. The screen: one state, an epoch per open span, tickets that lapse on hide, closers run once per hide.
 {
@@ -48,6 +52,33 @@ import { createLazyChunk } from '../app/lazyChunk.ts';
   try { screen.hide(); } finally { console.warn = originalWarn; }
   assert.deepEqual(closed, ['timer']);
   assert.equal(screen.hide(), false, 'hiding a hidden Garage changes nothing');
+}
+
+// 1b. (round 8 Y4 s3-03, review r2) The hand-off: a battle start (or the play menu) takes the player on while the Garage
+//     still shows (under the loader until the activation hides it). Every ticket taken before lapses; the open state,
+//     its closers and a new press's ticket are untouched.
+{
+  const screen = createGarageScreen();
+  assert.equal(typeof screen.handOff, 'function', 'the screen owns the hand-off (before: only a hide lapsed a ticket)');
+  assert.equal(screen.handOff(), false, 'nothing to hand on before the first show');
+  screen.show();
+  const before = screen.ticket();
+  const closed = [];
+  screen.onHide(() => closed.push('closer'));
+  assert.equal(screen.handOff(), true);
+  assert.equal(before.current(), false, 'a lazy opener started before the hand-off opens nothing after its load');
+  assert.equal(screen.phase, 'open', 'the Garage still shows');
+  assert.equal(screen.isOpen, true);
+  assert.equal(screen.show(), 'already', 'and is not shown again');
+  const after = screen.ticket();
+  assert.equal(after.current(), true, 'a press after the hand-off (a refused start leaves the Garage) takes a live ticket');
+  assert.deepEqual(closed, [], 'a hand-off runs no closer: the hide does');
+  assert.equal(screen.hide(), true);
+  assert.deepEqual(closed, ['closer']);
+  assert.equal(after.current(), false);
+  const epoch = screen.epoch;
+  assert.equal(screen.handOff(), false, 'a hidden Garage hands nothing on');
+  assert.equal(screen.epoch, epoch);
 }
 
 // 2. The shared ready wait rides the boot latch's edge (round 2: no poll; gameReady.selftest drives it over garage.ts's
@@ -144,6 +175,23 @@ import { createLazyChunk } from '../app/lazyChunk.ts';
   assert.match(couchPress, /reloadsForFailure\(setupCouch, 'cot-couch-load', /, 'a press after a failed chunk reloads the page');
   assert.match(couchPress, /ticket: garageScreen\.ticket\(\), trigger: setupCouch,/, 'the ticket and the trigger');
   assert.match(couchPress, /reportLoadFailure\('cot-couch-load', /, 'a failed chunk marks the button');
+  // (review r2) the press's failure policy runs as written (case 7 drives it): only a CouchChunkError marks the button
+  assert.match(couchPress, /if \(!\(error instanceof CouchChunkError\)\) \{ console\.error\('\[couch\] the lobby failed to open', error\); return; \}/,
+    'a lobby that failed to open once loaded is logged, not a failed chunk');
+  // (review r2) every press that hands the player on from the Garage ends the lazy openers' tickets while it still shows:
+  // the start launchBattle hands on, and the BATTLE/Watch, campaign and room presses before their play request
+  const launch = source.slice(source.indexOf('  function launchBattle('), source.indexOf('\n  }\n', source.indexOf('  function launchBattle(')));
+  assert.ok(launch.indexOf('if (refused) return false;') < launch.indexOf('garageScreen.handOff();'),
+    'a refused press hands nothing on');
+  assert.match(launch, /garageScreen\.handOff\(\);\n    onBattle\(specId, mapId, options, announce\);/, 'the start handed on hands the Garage on');
+  for (const [name, head] of [['the BATTLE and Watch press', '  function battle('], ['the campaign press', '  function deployCampaign('],
+    ['the room press', '  function openMultiplayer(']]) {
+    const body = source.slice(source.indexOf(head), source.indexOf('\n  }\n', source.indexOf(head)));
+    assert.ok(body.length > 0, `garage.ts holds ${name}`);
+    const handOff = body.indexOf('garageScreen.handOff();');
+    const request = body.search(/opts\.onPlayRequest(?:\?\.)?\(\{/);
+    assert.ok(handOff > 0 && request > handOff, `${name} hands the player on before its play request`);
+  }
   const main = readFileSync(new URL('../main.ts', import.meta.url), 'utf8');
   const onCouch = main.slice(main.indexOf('\n  onCouch: '), main.indexOf('\n  },', main.indexOf('\n  onCouch: ')));
   assert.match(onCouch, /openCouchWhenCurrent\(\{ ticket: request\.ticket, load: /, "main's onCouch opens through the helper");
@@ -276,4 +324,42 @@ import { createLazyChunk } from '../app/lazyChunk.ts';
   }
 }
 
-console.log('garageOpenState.selftest: one open state, lapsing tickets, one ready wait, the consumables wait, the filter lazy toggle, the Garage wiring PASS');
+// 7. (round 8 Y4 s3-03, review r2) The Couch press as garage.ts writes it, over stand-ins for its closure: a chunk that did
+//    not arrive is the kit's failure (the button's mark, Reload page); a lobby that failed to open once loaded is logged
+//    and leaves the button a press (before: every rejection marked the button "part of the game did not arrive", and its
+//    next press reloaded the page, with no trace of the cause); a repeat press while one is in flight does nothing.
+{
+  const source = readFileSync(new URL('./garage.ts', import.meta.url), 'utf8');
+  const pressCode = stripTypeScriptTypes(source.slice(source.indexOf('  let couchOpening = false;'),
+    source.indexOf("  setupCouch.addEventListener('click'")));
+  const flush = () => new Promise((resolve) => setImmediate(resolve));
+  async function press(rejection) {
+    const marks = [];
+    const logged = [];
+    const requests = [];
+    const press = new Function('opts', 'setupCouch', 'selectedId', 'reloadsForFailure', 'reportLoadFailure', 't', 'fieldMapId',
+      'battleGameMode', 'garageScreen', 'closeBattleMenu', 'launchBattle', 'CouchChunkError', 'console',
+      `${pressCode}; return openCouch;`)(
+      { onCouch: (request) => { requests.push(request); return Promise.reject(rejection); } },
+      { disabled: false }, 'm1a2', () => false, (id) => marks.push(id), (key) => key, () => 'steppe', 'standard',
+      { ticket: () => ({ epoch: 1, current: () => true }) }, () => {}, () => true, CouchChunkError,
+      { error: (...args) => logged.push(['error', ...args]), warn: (...args) => logged.push(['warn', ...args]) });
+    assert.equal(press(), true);
+    assert.equal(press(), false, 'a repeat press while the chunks load does nothing');
+    await flush();
+    assert.equal(requests.length, 1);
+    return { marks, logged };
+  }
+  const chunk = await press(new CouchChunkError(new Error('offline')));
+  assert.deepEqual(chunk.marks, ['cot-couch-load'], 'a failed chunk marks the button (Reload page)');
+  assert.equal(chunk.logged.length, 1);
+  assert.equal(chunk.logged[0][0], 'warn');
+  const broken = new Error('the socket was refused');
+  const open = await press(broken);
+  assert.deepEqual(open.marks, [], 'a lobby that failed to open is not a failed chunk: the button stays a press');
+  assert.equal(open.logged.length, 1);
+  assert.equal(open.logged[0][0], 'error');
+  assert.equal(open.logged[0][2], broken, 'and its cause reaches the console');
+}
+
+console.log('garageOpenState.selftest: one open state, lapsing tickets, the hand-off, one ready wait, the consumables wait, the filter lazy toggle, the Garage wiring, the Couch press PASS');

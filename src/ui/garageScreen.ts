@@ -5,11 +5,19 @@
 // filter) opened after their download without asking whether the Garage still showed: a quick battle entry over a cold
 // chunk left a modal Deploy on the surface stack through the battle, where it took the first Escape. This owner holds
 // the one state, counts each open span as an epoch, hands a lazy opener a ticket that lapses when the Garage hides (or
-// hides and opens again), and runs every Garage-owned closer when it hides. Pure: no DOM, so the selftest drives it.
+// hides and opens again) or hands the player on, and runs every Garage-owned closer when it hides. Pure: no DOM, so the
+// selftest drives it.
+//
+// (round 8 Y4 s3-03, review r2) A battle start does not hide the Garage at once: the solo entry shows its loader and loads
+// the world under it, and the Garage hides only at the activation after that (soloBattleStartRuntime.ts ui.hideGarage).
+// A chunk that landed inside that covered load still held a current ticket and opened its surface over the loader (the
+// couch lobby: its modal and a pairing lobby). So the press that hands the player on (garage.ts: a start handed to the
+// entry, the BATTLE, Watch, campaign and room presses) ends the tickets with handOff(), while the Garage still shows.
 
 export type GarageScreenPhase = 'unpresented' | 'open' | 'hidden';
 
-/** A lazy opener's claim on the open span it started in: `current()` is false once the Garage hid since. */
+/** A lazy opener's claim on the open span it started in: `current()` is false once the Garage hid or handed the player
+ *  on since. */
 export interface GarageScreenTicket {
   readonly epoch: number;
   current(): boolean;
@@ -18,12 +26,19 @@ export interface GarageScreenTicket {
 export interface GarageScreen {
   readonly phase: GarageScreenPhase;
   readonly isOpen: boolean;
-  /** The open span's count: every show from closed and every hide moves it on. */
+  /** The tickets' count: every show from closed, every hide and every hand-off moves it on. */
   readonly epoch: number;
   /** 'first' for the first presentation, 'reopen' for a later one, 'already' when it was open. */
   show(): 'first' | 'reopen' | 'already';
   /** Hide and run every registered closer (newest first); false when it was not open. */
   hide(): boolean;
+  /**
+   * The player was handed on from the open Garage (a battle start, the play menu): every ticket taken before lapses, so
+   * a lazy opener still loading opens nothing over what follows. The Garage still shows (under the battle's loader until
+   * the activation hides it; a start refused later leaves it open, and a new press takes a new ticket). False when it
+   * was not open (its tickets had lapsed already).
+   */
+  handOff(): boolean;
   ticket(): GarageScreenTicket;
   /** A closer the next hides run (a sub-surface, a timer): the Garage takes everything it opened with it. */
   onHide(closer: () => void): () => void;
@@ -55,6 +70,11 @@ export function createGarageScreen({ warn = (message: string, error: unknown) =>
       for (const closer of [...closers].reverse()) {
         try { closer(); } catch (error) { warn('[garage] a closer failed while the Garage hid', error); }
       }
+      return true;
+    },
+    handOff() {
+      if (phase !== 'open') return false;
+      epoch += 1;
       return true;
     },
     ticket() {
