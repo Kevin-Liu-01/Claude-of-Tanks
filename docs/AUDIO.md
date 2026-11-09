@@ -16,7 +16,7 @@ and the voice cast are in [ATTRIBUTION.md](ATTRIBUTION.md#audio-publicaudio--gen
 | Payload | Where | Size | Loaded |
 |---|---|---|---|
 | 566 sound-effect assets, 1065 variant files | `public/audio/sfx/<group>/<id>_<n>.webm` | 28.1 MB | per battle: the battle set at the battle phase edge, the aircraft set on first sight of an aircraft, everything else on first use |
-| 38 crew radio packs (17 national, 21 for languages with no country in the game) × 190 lines × 1–4 takes | `public/audio/voice/<lang>/<line>_<n>.webm` | 2.69–3.64 MB per language (122.04 MB in all) | only the crew's pack, one at a time: switching crews releases the pack left (every pack carries every line; nothing stands in for a missing take) |
+| 38 crew radio packs (17 national, 21 for languages with no country in the game) × 198 lines × 1–4 takes | `public/audio/voice/<lang>/<line>_<n>.webm` | 2.69–3.66 MB per language (122.53 MB in all) | only the crew's pack, one at a time: switching crews releases the pack left (every pack carries every line; nothing stands in for a missing take) |
 | SFX manifest | `src/audio/sfxManifest.generated.ts` | | bundled in the lazy audio chunk |
 | Voice manifest | `src/audio/voiceManifest.generated.ts` | | bundled in the lazy audio chunk |
 
@@ -555,7 +555,7 @@ ambience bus, under the radio and the ambience slider.
 
 ### Crew radio
 
-`voiceLines.ts` defines 190 lines with priority (0–4), per-line and per-group
+`voiceLines.ts` defines 198 lines with priority (0–4), per-line and per-group
 cooldowns and staleness; `crewRadio.ts` schedules them with radio discipline:
 one transmission at a time, a 0.8 s gap, a two-line queue, stale calls dropped
 rather than played late. Survival calls cut anything below them, decisive
@@ -849,7 +849,7 @@ squaring the peak. Now:
 
 ```
 crew-lines.json ─┐                    crew-voices.json
- 190 lines,      ├──→ build-voices.mjs ──→ eleven_v4 TTS ──→ scribe_v2 STT check ──→ master 'voice' ──→ public/audio/voice + manifest
+ 198 lines,      ├──→ build-voices.mjs ──→ eleven_v4 TTS ──→ scribe_v2 STT check ──→ master 'voice' ──→ public/audio/voice + manifest
  38 languages,   │    (per language,       [delivery] text,     best of up to 3        −18 LUFS, 24 kHz
  deliveries ─────┘     per line, per take) stability 0.6        attempts               mono Opus
 ```
@@ -1261,6 +1261,15 @@ already approved (the Afrikaans "Laai nou." came back a different attempt).
   decodes at 16 kHz (the radio passes nothing above 4.6 kHz), about 40 MB
   where 24 kHz would have been 60. The lane cost 128,897 credits (119,731
   speech, 9,166 transcription) against its 3M cap.
+- **2026-11-09, Air Support's lines in the world packs (crew-languages-270,
+  for release 270).** Air Support added eight crew lines (`start_air_support`,
+  the four `air_call_*`, `air_incoming`, `artillery_incoming`,
+  `aircraft_downed`) to the 17 national packs; the 21 world packs, built
+  beside it, had none, and a pack with no take of a line plays nothing. The
+  owner approved the takes before the 270 preview: 336 (8 lines × 2 takes ×
+  21 packs), so every pack is 198 lines and 387 takes. The packs are now
+  2.69–3.66 MB (122.53 MB in all; Persian the largest), so soundAssets'
+  per-pack cap is 4 MiB, the measure rounded up to the next MiB.
 - **2026-11-04, crews in languages with no country in the game (lane
   crew-languages-270).** The owner: "add a bunch more crew radio lines for
   languages that might not have a country in the game but still can be applied
