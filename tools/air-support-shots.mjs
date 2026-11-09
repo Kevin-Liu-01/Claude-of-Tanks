@@ -306,6 +306,8 @@ async function shootGauntlet(page, tag) {
         s.cooldowns = s.cooldowns.filter(([key]) => !key.startsWith(`${game.player.id}:`))
           .concat(cooling.map((kind) => [`${game.player.id}:${kind}`, game.timeS + air.rules[kind].cooldownS * 0.6]));
         air.restore(s);
+        const c = game.player.combat;
+        if (!c.destroyed) c.hp = c.maxHp;
       },
       incoming() {
         const foe = enemy();
@@ -322,10 +324,12 @@ async function shootGauntlet(page, tag) {
   });
   const frame = async (name) => {
     const file = `${tag}-${locale}-${name}`;
+    // (g4: the battle went on around the frames and once destroyed the crew; the hull is topped up at every frame)
+    const crew = await page.evaluate(() => { const c = window.__DEBUG.game.player.combat; if (!c.destroyed) c.hp = c.maxHp; return c.destroyed ? ['destroyed'] : []; });
     // (g3: a focus loss on a loaded machine raised the pause veil over one frame; the veil is not this surface)
     if (await page.evaluate(() => { const go = document.querySelector('.cot-resume.show .rz-go'); go?.click(); return !!go; })) await sleep(600);
     await shot(page, file);
-    receipt.gauntlet[file] = { ...(await page.evaluate(surfaceCheck)), datum: await datumProblems(page) };
+    receipt.gauntlet[file] = { ...(await page.evaluate(surfaceCheck)), datum: await datumProblems(page), crew };
   };
   const aim = () => page.evaluate((spot) => {
     const D = window.__DEBUG, p = D.game.player.state.pos, hf = D.world.heightField;
