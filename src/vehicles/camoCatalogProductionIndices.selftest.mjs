@@ -45,6 +45,10 @@ import { resolveTankId } from './tankIdAliases.ts';
 // the Challenger 1 Mk 3 (schema-1 challenger1_x) keeps its stock paint_challenger1_x, whose recipe moves from plain light
 // stone to the same stone under a darker sand-brown disruptive (Main: no Caunter on a 1980s hull); its Factory visual is
 // the one row that moved (87eaa3d45551ed6a -> d78844a80602c170). The Magachs, the X1 and the other plain coats are tanks added since production (below).
+// Re-pinned 2026-11-09 (release 271 integration): the same Mk 3 row moved once more, by 8e2e25586a (269, Main's ruling on
+// the twin-aa lane's report: the MERDC scheme keeps its own fleet art, fleetCamoArtId merdc -> 'merdc'). paint_challenger1_x
+// (c581c80941 / 8b3b1b590e) paints the merdc scheme, so its Factory visual gained catalogPattern 'merdc'; recipe, colours,
+// number and seed are unchanged. d78844a80602c170 -> 4263613707d815e2 (red on main since 7b8d78c90b, 269).
 // Re-pinned 2026-10-27 (owner: the T-90 names, display only): one selection moved by its label alone, the tier X
 // chevron's Signature "T-90M Proryv Digital" -> "T-90AM II Digital" (t90m_proryv is the T-90AM II). With the old label
 // it equals production's digest; preset, visuals and every tank row are unchanged. sig_t90m_proryv 01bb4984381e11db ->
