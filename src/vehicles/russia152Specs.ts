@@ -130,7 +130,11 @@ molot.visual = { scheme: 'solid', base: '#44553a', weather: '#4f6144', patches: 
 // drawn on the build (profiles/object195X.ts).
 const object195 = variant('object195', 't14_armata', 'Object 195', 'Russia', 'next-generation');
 Object.assign(object195, {
-  hp: 2800, weightTons: 55, enginePowerHp: 1650, topSpeedKmh: 70, reverseSpeedKmh: 25,
+  // HP 2,800 -> 2,600 (2026-11-08): the owner's deeper hull (the deck 1.60 -> 1.70) puts more of the range's level rounds
+  // on the glacis, and the 195 went 17/29 fair at 12 seeds, 19/29 at 24 (mean 0.53, five pairs over). Damage 740-800
+  // moved nothing (16-17/29); HP 2,700 gave 18/29 at 12; 2,600 is the smallest trim holding Main's terms: 20/29, 0.461
+  // at 12 seeds and 22/29, 0.432 at 24 (fair/r23).
+  hp: 2600, weightTons: 55, enginePowerHp: 1650, topSpeedKmh: 70, reverseSpeedKmh: 25,
   turretTraverseDegS: 38, gunElevationDeg: 14, gunDepressionDeg: 7,
 });
 Object.assign(object195.dims, { hullLengthM: OBJECT195_FRAME.hullFrontZ - OBJECT195_FRAME.hullRearZ,

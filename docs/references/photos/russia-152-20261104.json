@@ -33,7 +33,7 @@
     },
     "object477_molot": {
       "name": "Object 477 Molot",
-      "authority": "Release 269 (owner 2026-11-04, 'Object 477 \"Molot\"', with two game images that guide the look only; DECISIONS \"2026-11-04 Russian 152 mm line\"). KhKBM Kharkiv's OKR \"Boxer\" (1986-91), coded \"Molot\" from the late 1980s, from its project leader's account (Yu. Apukhtin, topwar.ru 2018) and btvt.info (A. Tarasenko, from Apukhtin's diaries): two prototypes; a 50 t specification exceeded by several tonnes; the 6TDF-based 1,200 hp two-stroke diesel; 63 km/h on trials; three crew, the driver forward and the gunner and commander low under the turret; the Perm 152 mm smoothbore (btvt: 2A73) first mounted in the open and then cased in armour on the turret's roof; 8 ready rounds on a belt in the turret's rear fed from two hull conveyors of 32; a 30 mm cannon right of the gun; T-80UD running gear (Apukhtin: six large rubber-tyred road wheels a side, as the one photograph of a 477A shows). btvt's figures: 10,650 mm over the gun, 2,434 mm to the turret's roof, a 2,088 mm line of fire. No photograph shows the turret clearly; btvt's profile drawing and the owner's images guide its form.",
+      "authority": "Release 269 (owner 2026-11-04, 'Object 477 \"Molot\"', with two game images that guide the look only; DECISIONS \"2026-11-04 Russian 152 mm line\"). KhKBM Kharkiv's OKR \"Boxer\" (1986-91), coded \"Molot\" from the late 1980s, from its project leader's account (Yu. Apukhtin, topwar.ru 2018) and btvt.info (A. Tarasenko, from Apukhtin's diaries): two prototypes; a 50 t specification exceeded by several tonnes; the 6TDF-based 1,200 hp two-stroke diesel; 63 km/h on trials; three crew, the driver forward and the gunner and commander low under the turret; the Perm 152 mm smoothbore (btvt: 2A73) first mounted in the open and then cased in armour on the turret's roof; 8 ready rounds on a belt in the turret's rear fed from two hull conveyors of 32; a 30 mm cannon right of the gun; T-80UD running gear (Apukhtin: six large rubber-tyred road wheels a side, as the one photograph of a 477A shows). btvt's figures: 10,650 mm over the gun, 2,434 mm to the turret's roof, a 2,088 mm line of fire. No photograph shows the turret clearly; btvt's profile drawing and the owner's images guide its form. Two roof weapons: the 30 mm pod and a remote NSVT behind the sight, the owner's addition with the Shtora-1 eyes (2026-11-07: \"add shotra eyes to the molot and a machine gun to it\").",
       "sources": [
         "https://web.archive.org/web/2019/https://topwar.ru/145734-kak-sozdavalsja-poslednij-sovetskij-tank-bokser-molot-obekt-477-chast-1-jetapy-sozdanija-i-komponovka.html",
         "https://web.archive.org/web/2019/https://topwar.ru/145828-kak-sozdavalsja-poslednij-sovetskij-tank-bokser-molot-obekt-477-chast-2-vooruzhenie-podvizhnost-zaschita.html",
@@ -48,7 +48,7 @@
       "envelopeBasis": "The as-built envelope (Box3 at both qualities): 3.58 m over the skirts (no width is published; the T-80UD's running gear and skirts), 10.83 m from the unditching log to the muzzle (btvt's 10.65 m over the gun is to the hull's stern plate, 1.6 % under), 3.20 m to the whips' tips (the casing's roof at btvt's 2.434 m, the line of fire at 2.088 m).",
       "caliberMm": 152,
       "launcherTubes": 0,
-      "roofMachineGuns": 1,
+      "roofMachineGuns": 2,
       "crew": 3,
       "unmannedTurret": false,
       "test": "src/vehicles/profiles/russia152.selftest.mjs"

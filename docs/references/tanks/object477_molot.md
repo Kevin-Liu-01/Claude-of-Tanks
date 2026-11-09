@@ -2,16 +2,19 @@
 
 ## Current status
 
-- Updated: 2026-11-04. Lane item/russia-152 (batch contract: docs/history/research/russia-152-269.md).
+- Updated: 2026-11-08. Lane item/russia-152 (batch contract: docs/history/research/russia-152-269.md).
 - Owner request: "Object 477 \"Molot\" (image 3 and 4)" (2026-11-04); the same day: "use our proper tank generation procedure and dont use the old t80 hull only
   use modern new hulls like the nnew t80 x hulll".
 - ID and display name: object477_molot, "Object 477 Molot"; tier IX (Main 2026-11-04, no lever), USSR, next-generation, prototype.
-- Implementation status: built on its own high hull (profiles/object477Molot.ts, profiles/russia152Kit.ts), registered.
+- Owner looks rounds: 2026-11-05 (the full rebuild); 2026-11-07: "add shotra eyes to the molot and a machine gun to it"
+  (critics r12-r13).
+- Implementation status: built on its own high hull (profiles/object477Molot.ts, profiles/russia152Kit.ts), registered;
+  Main's lever applied (HP 2,550 -> 2,800).
 - Qualification status: photo-class (docs/references/photos/russia-152-20261104.json, fixture
   src/vehicles/profiles/russia152.selftest.mjs); the round audits, the anatomy update and the release gate are owed.
 - Publication status / exact authority: lane branch only; Main integrates. No deploy.
 - Worktree / branch / baseline commit: ~/cot-lanes/russia-152, item/russia-152, base f98c38c63c (the 269 audio stack).
-- Current next action: the round audits; the critic round on the round-3 build.
+- Current next action: the round-10 chain (regen on the merged tree, fairness fair/r22 at 12 and 24 seeds, the release gate), then READY.
 - Blocking choices / known failures: none open; residual likeness notes in the round log.
 
 ## Scope and preservation
@@ -20,7 +23,7 @@
 - Owned files: profiles/object477Molot.ts, profiles/russia152Kit.ts (shared with the 195), the molot rows of russia152Specs.ts and russia152Frames.ts (MOLOT_FRAME).
 - Protected original IDs: none (no shared builder is edited).
 - Explicitly excluded: the post-1991 "Nota" paper continuation.
-- Variant matrix: object477_molot = high hull with a long sloped glacis on seven road wheels, the multi-barrier skirts, a low turret, the 152 mm 2A73 in an armoured casing on its roof, the 30 mm GSh-30 to its right (a working station). Uncertainty: no photograph of the vehicle is published beyond one poor print; the btvt profile and two game artworks guide the look only.
+- Variant matrix: object477_molot = high hull with a long sloped glacis on seven road wheels, the multi-barrier skirts, a low turret, the 152 mm 2A73 in an armoured casing on its roof, the 30 mm GSh-30 to its right (a working station), Shtora-1 (two OTShU-1-7 dazzlers in the turret's front corners, two TShU-1-11 heads) and the commander's remote 12.7 mm NSVT behind his sight (a working station, molotCommanderMgStation; the BTVT profile drawing). Uncertainty: no photograph of the vehicle is published beyond one poor print; the btvt profile and two game artworks guide the look only.
 
 ## Source and comparison contract
 
@@ -57,7 +60,7 @@
 | Primitive reuse / high-low reduction / accessory material roles | NOT RUN | | | |
 | Live/spent/reset ERA / permanent backing | NOT RUN | | | |
 | Main/aux armor finite rays / modules / crew | NOT RUN | | npm run tank:anatomy:update | |
-| Markings, colors, bores, actual roof weapon | NOT RUN | | | packet: 1 roof MG |
+| Markings, colors, bores, actual roof weapon | NOT RUN | | | photo document: 2 roof weapons (the 30 mm pod and the NSVT; was 1 before the owner's round) |
 | Original-model/record preservation | NOT APPLICABLE (own hull; no shared builder edited) | | scripts/mesh-digest.mjs base v lane | |
 | Anatomy update / freshness | NOT RUN | | | |
 | Scoped assets / centering / source exclusion | NOT RUN | | npm run tank:regen:changed -- --ids=... | |
@@ -69,6 +72,17 @@
 - Rounds 1-3 (2026-11-04): blind critics matched 3/3 each round; likeness "partly" x3 in round 3: the hull's top line
   level (the drawing: a thicker five-panel front section and a lower rear), the casing a thin wedge (the drawing: tall,
   centred, forward), the commander's sight high at the rear.
+- Rounds 4-7 (2026-11-05, the owner's looks round): matched 3/3 every round; r7 likeness partly / yes / yes. Residual:
+  the gun's housing reads as a tier of the turret more than a separate armoured box.
+- Shtora and NSVT round 1 (da20677084, critics r12, solo, 3 critics): 3/3 at 7; Shtora partly x3 (plain dark boxes,
+  low and close in), the NSVT yes x3.
+- Round 2 (79462895ad, critics r13): 3/3 at 7; Shtora yes x3, the NSVT yes x3. The dazzlers at (+-.62, .37, 1.505),
+  scale .95, hull-painted housings with hoods so the red lens reads; the NSVT seat .94 -> .86 on a low boss, a full
+  circle at full depression (no tables). The left eye's lid holds the GSh-30 to .075-.078 rad from 14 to 2 degrees
+  inboard (was up to .18) and .12 at 1-0 degrees; its arc and the rest of its table are unchanged (re-measured with
+  .qa-dev/r152/station-table.mjs). The 12.7 mm fires the B-32 12.7x108 (auxiliaryWeapons.ts vehicleHeavyAmmunition).
+- The release gate's decor census (2026-11-08) counted two roof weapons against the photo document's one: the
+  document now declares 2 (docs/references/photos/russia-152-20261104.json, with the owner's words as the authority).
 
 ## Publication receipt (only if requested)
 
