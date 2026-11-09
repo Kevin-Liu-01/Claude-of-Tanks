@@ -151,6 +151,14 @@ export const MANUAL_SUITES = Object.freeze({
     // on Verdant and a room start, about 10 s of user CPU); its listener census and the phone's cue stay default
     // (src/sim/teammateRamListeners.selftest.mjs), the sim halves are ramModuleLaw.selftest's
     'src/sim/teammateRam.selftest.mjs',
+    // round 8 Y1 review r1 (2026-11-02 audit, sm-fix, round 8): the page-step halves of three default receipts, each a battle
+    // seated by setupBattle and stepped by simStep (the page import, a world and the staged roster's anatomy: about 4-5 s
+    // of user CPU each at load 50-65); their owners stay default: couchSessionLifecycle (the session's edges on stand-ins,
+    // 0.7 s), twinMuzzleParity (the selector on the authority, the screens, the census and the solo wiring, 3.4-4.6 s) and
+    // devBattleHold (the hold's edge table and the undo's events on stand-ins)
+    'src/game/couchSessionBattle.selftest.mjs',
+    'src/game/twinMuzzleSolo.selftest.mjs',
+    'src/game/devBattleHoldEdges.selftest.mjs',
   ], { hits: true }),
   perf: suite('host-time budgets (tick cost, soaks, heap plateaus, restore timing): they measure the machine as much as the code', [
     'server/collisionRestoreIndex.selftest.mjs',

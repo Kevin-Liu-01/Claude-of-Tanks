@@ -10,10 +10,12 @@
 // - the undo (losses back, gains stand), the switch's refusals (a public build, a network battle) and the wiring: the
 //   step reads the hold only through game/devBattleHold.ts, __DEBUG installs the switch, and both tools arm it in place
 //   of the dead godMode / freezeBots flags;
-// - (round 8 Y1 s2-05) the hold's edges: a battle begun armed parks every bot's brain at its first step and the release
-//   resumes each before its first update back, so a bot the player hurt while it stood books no burst at the release; and
-//   the undo answers what the held step announced (the flank round's red modules and fire): the last module:state of each
-//   module and the last tank:fire say what the hull is.
+// - (round 8 Y1 s2-05) the hold's edges, the owner's table on stand-ins (stepBattleHold): free -> held parks every bot's
+//   brain on the battle's clock, held -> free resumes each with the clock and the next shell id, held -> held and
+//   free -> free are no edge, a new battle starts free, a seat with no brain and the player are never parked; the undo's
+//   answers (module:state source 'hold', tank:fire burning false) are the unit block's. The same edges and answers on the
+//   page's own battle (a bot hurt while it stood books no burst at the release; a held step's worse module and fire each
+//   answered) are src/game/devBattleHoldEdges.selftest.mjs, MANUAL 'sims': this file's battles were already its cost.
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
@@ -24,8 +26,7 @@ import { createShell } from '../sim/ballistics.ts';
 import { spawnTanks } from './rosterState.ts';
 import { ensureFullFleet } from '../vehicles/fleetFactory.ts';
 import { createDedicatedWorldCollision } from '../../server/dedicatedWorldCollision.ts';
-import { DEV_BATTLE_HOLD, battleHeld, holdBattleStep, undoHeldDamage } from './devBattleHold.ts';
-import * as devBattleHold from './devBattleHold.ts';
+import { DEV_BATTLE_HOLD, battleHeld, holdBattleStep, stepBattleHold, undoHeldDamage } from './devBattleHold.ts';
 import { createBattleHold } from '../dev/battleHold.ts';
 
 const read = (path) => readFileSync(new URL(path, import.meta.url), 'utf8');
@@ -72,6 +73,49 @@ const read = (path) => readFileSync(new URL(path, import.meta.url), 'utf8');
   undoHeldDamage(game, { emit: (event, payload) => said.push({ event, ...payload }) });
   assert.equal(said.length, 2, 'a step with no loss says nothing');
   assert.equal(c.hp, 950, 'a heal stands');
+}
+
+// ---- (round 8 Y1 s2-05) the hold's edges: the owner's table on stand-ins ------------------------------------------------
+{
+  const calls = [];
+  const brain = (id) => ({ park: (timeS) => calls.push(`${id} park ${timeS}`), resume: (timeS, shellId) => calls.push(`${id} resume ${timeS} ${shellId}`) });
+  const hull = (id, aiCtl) => ({ id, aiCtl, input: { throttle: 1, steer: 0.5, brake: false, aimLocked: false, fire: true, actionBits: 3, auxiliaryBits: 0 },
+    combat: { hp: 100, maxHp: 100, destroyed: false, modules: {}, crew: {}, fire: { burning: false, tickTimer: 0, ticksLeft: 0 }, eraSpent: new Set() } });
+  const player = hull('me', brain('me'));
+  const bots = [hull('b1', brain('b1')), hull('b2', brain('b2'))];
+  const seat = hull('seat-2', null); // a couch phone's seat: no brain
+  const game = { devBattleHold: true, player, tanks: [player, ...bots, seat], timeS: 0.5, nextShellId: 40, battleCount: 1 };
+  assert.equal(stepBattleHold(game), true, 'a battle begun armed is held from its first step');
+  assert.deepEqual(calls, ['b1 park 0.5', 'b2 park 0.5'], 'free -> held parks every bot\'s brain on the battle\'s clock, never the player\'s');
+  assert.deepEqual([bots[0].input.throttle, bots[0].input.fire, seat.input.brake], [0, false, true], 'and the held step stands them');
+  calls.length = 0;
+  game.timeS = 1;
+  stepBattleHold(game);
+  stepBattleHold(game);
+  assert.deepEqual(calls, [], 'held -> held is no edge');
+  game.devBattleHold = false;
+  game.timeS = 2;
+  game.nextShellId = 57;
+  assert.equal(stepBattleHold(game), false);
+  assert.deepEqual(calls, ['b1 resume 2 57', 'b2 resume 2 57'], 'held -> free resumes each with the battle\'s clock and its next shell id');
+  calls.length = 0;
+  stepBattleHold(game);
+  assert.deepEqual(calls, [], 'free -> free is no edge');
+  game.devBattleHold = true;
+  stepBattleHold(game);
+  calls.length = 0;
+  game.battleCount = 2;
+  game.devBattleHold = false;
+  stepBattleHold(game);
+  assert.deepEqual(calls, [], 'a new battle starts free: the last battle\'s hold is no release');
+  game.devBattleHold = true;
+  game.timeS = 3;
+  stepBattleHold(game);
+  assert.deepEqual(calls, ['b1 park 3', 'b2 park 3'], 'and is parked when it is held');
+  calls.length = 0;
+  const watched = { ...game, player: null, tanks: bots, devBattleHold: true, battleCount: 3 };
+  assert.equal(stepBattleHold(watched), false, 'a watched battle (no player seat) is never held');
+  assert.deepEqual(calls, [], 'so its brains are never parked');
 }
 
 // ---- the switch: armed, released, refused in a public build and a network battle ---------------------------------------
@@ -202,7 +246,7 @@ function blows(tick, game, world, injected) {
  * The battle stepped `ticks` ticks. `hold(tick)` returns what the field is set to before that tick's step (undefined leaves
  * it alone; the field is never written when it always does); `onTick(tick, game)` runs after the hold, before the step.
  */
-function battle(ticks, { hold = () => undefined, onTick = null, onSetup = null, onEvent = null } = {}) {
+function battle(ticks, { hold = () => undefined, onTick = null } = {}) {
   const world = createDedicatedWorldCollision('verdant');
   const authored = world.heightField._layout.spawns;
   const spawnOf = (p) => ({ pos: [p.x, world.heightField.getHeightAt(p.x, p.z), p.z], yaw: p.yaw ?? 0 });
@@ -225,8 +269,7 @@ function battle(ticks, { hold = () => undefined, onTick = null, onSetup = null, 
     foe.state.yaw = side + Math.PI;
     foe.state.speed = 0;
   }
-  onSetup?.(game);
-  const bus = createBus(onEvent ? (event, payload) => onEvent(event, payload, game) : () => {});
+  const bus = createBus(() => {});
   const collider = createCollider(game, world);
   const hashes = [], seen = new Set(), injected = new Set(), heldBotShots = [], playerDamage = [], playerHp = [];
   const playerStart = damageOf(player.combat);
@@ -243,7 +286,7 @@ function battle(ticks, { hold = () => undefined, onTick = null, onSetup = null, 
       if (armedAt && tick === armTick + 30) armedAt = new Map(bots.map((e) => [e.id, e.state.pos.clone()]));
       if (tick === ticks - 60) lastSecond = new Map(bots.map((e) => [e.id, e.state.pos.clone()]));
       blows(tick, game, world, injected);
-      onTick?.(tick, game, world);
+      onTick?.(tick, game);
       simStep(game, bus, world, null, collider);
       for (const s of game.shells) {
         if (seen.has(s.id) || injected.has(s.id)) continue;
@@ -303,93 +346,9 @@ const slain = battle(12, {
 assert.equal(slain.game.result, 'victory', 'released, the battle settles on its next step');
 assert.equal(slain.game.resultReason, 'elimination');
 
-// ---- (round 8 Y1 s2-05) the hold's edges: the brains park when it holds and resume when it lets go --------------------
-// A battle begun armed, released at tick 200; every bot's controller watched (its park, resume and update, by tick); a
-// round of the player's into the nearest hostile's flank at tick 60, while it stands
-const RELEASE_AT = 200, BOT_STRIKE_AT = 60;
-let edgeCalls = null, struck = null, struckHpBefore = 0, struckBurstAfter = null;
-battle(RELEASE_AT + 2, {
-  hold: (tick) => (tick === 1 ? true : tick === RELEASE_AT ? false : undefined),
-  onSetup: (game) => {
-    edgeCalls = new Map();
-    for (const entity of game.tanks) {
-      if (!entity.aiCtl) continue;
-      const calls = [];
-      edgeCalls.set(entity.id, calls);
-      const brain = entity.aiCtl;
-      entity.aiCtl = new Proxy(brain, { get(target, key) {
-        const value = Reflect.get(target, key);
-        if (typeof value !== 'function') return value;
-        if (key === 'park' || key === 'resume' || key === 'update') return (...args) => { calls.push(`${key}@${Math.round(game.timeS * 60)}`); return value.apply(target, args); };
-        return value.bind(target);
-      } });
-    }
-  },
-  onTick: (tick, game, world) => {
-    if (tick === BOT_STRIKE_AT) {
-      const player = game.player;
-      struck = game.tanks.filter((e) => e.team === 'enemy').sort((a, b) => a.state.pos.distanceTo(player.state.pos) - b.state.pos.distanceTo(player.state.pos))[0];
-      struckHpBefore = struck.combat.hp;
-      const side = struck.state.yaw + Math.PI / 2, midY = struck.state.pos.y + struck.spec.dims.heightM * 0.45;
-      const x = struck.state.pos.x + 8 * Math.sin(side), z = struck.state.pos.z + 8 * Math.cos(side);
-      _from.set(x, Math.max(midY, world.heightField.getHeightAt(x, z) + 0.6), z);
-      _toward.set(struck.state.pos.x, midY, struck.state.pos.z).sub(_from).normalize();
-      game.shells.push(createShell(player.spec.gun.shells[0], player.id, true, _from, _toward, game.nextShellId++));
-    }
-    // the first update back is this tick's (the release ran at its start); its burst is read after it, at the next tick
-    if (tick === RELEASE_AT + 1) struckBurstAfter = struck.aiCtl.debugInfo().burstDamage;
-  },
-});
-assert.ok(struck && struck.combat.hp < struckHpBefore, `the player's round hurt the standing bot (${struckHpBefore} -> ${struck?.combat.hp})`);
-for (const [id, calls] of edgeCalls) {
-  // a step's tick is its clock (simStep advances it first): the battle's first step is tick 1
-  const parks = calls.filter((call) => call.startsWith('park')), resumes = calls.filter((call) => call.startsWith('resume'));
-  assert.deepEqual(parks, ['park@1'], `${id}: its brain parks once, at the battle's first (held) step (${calls.slice(0, 4)})`);
-  assert.deepEqual(resumes, [`resume@${RELEASE_AT}`], `${id}: and resumes once, at the release (${calls.slice(0, 4)})`);
-  assert.equal(calls.indexOf(resumes[0]), 1, `${id}: never updated while it stood, resumed before its first update back (${calls.slice(0, 4)})`);
-  assert.equal(calls[2], `update@${RELEASE_AT}`, `${id}: its first update is the release step's`);
-}
-assert.equal(struckBurstAfter, 0, `the hull the bot lost while it stood books no burst at the release (${struckBurstAfter})`);
-
-// ---- (round 8 Y1 s2-05) the undo answers what the held step said: the flank round's modules and fire, held throughout ---
-{
-  const said = [];
-  // the flank round (STRIKE_AT), then the field's heaviest high-explosive round into the hull's rear (the engine and its
-  // fuel) every few ticks: a red module and a fire, each undone in the step that made it
-  const run = battle(STRIKE_AT + 80, {
-    hold: (tick) => (tick === 1 ? true : undefined),
-    onTick: (tick, game, world) => {
-      if (tick <= STRIKE_AT || tick > STRIKE_AT + 60 || tick % 6 !== 0) return;
-      const player = game.player, foe = game.tanks.find((e) => e.team === 'enemy');
-      const heavy = game.tanks.flatMap((e) => e.spec.gun.shells).filter((shell) => shell.type === 'HE')
-        .sort((a, b) => (b.dmg ?? 0) - (a.dmg ?? 0))[0] ?? foe.spec.gun.shells[0];
-      const back = player.state.yaw + Math.PI, midY = player.state.pos.y + player.spec.dims.heightM * 0.4;
-      const x = player.state.pos.x + 9 * Math.sin(back), z = player.state.pos.z + 9 * Math.cos(back);
-      _from.set(x, Math.max(midY, world.heightField.getHeightAt(x, z) + 0.6), z);
-      _toward.set(player.state.pos.x, midY, player.state.pos.z).sub(_from).normalize();
-      game.shells.push(createShell(heavy, foe.id, false, _from, _toward, game.nextShellId++));
-    },
-    onEvent: (event, payload, game) => {
-      if ((event === 'module:state' || event === 'tank:fire') && payload?.id === game.player?.id) said.push({ event, ...payload });
-    },
-  });
-  const worse = said.filter((entry) => (entry.event === 'module:state' && entry.state !== 'ok' && entry.source !== 'hold')
-    || (entry.event === 'tank:fire' && entry.burning));
-  assert.ok(worse.length > 0, `the held step announced the flank round's harm (${JSON.stringify(said)})`);
-  const combat = run.game.player.combat;
-  const lastModule = new Map();
-  for (const entry of said) if (entry.event === 'module:state') lastModule.set(entry.module, entry.state);
-  for (const [module, state] of lastModule) {
-    assert.equal(state, combat.modules[module].state, `the last word on ${module} is its state (${JSON.stringify(said)})`);
-  }
-  const fires = said.filter((entry) => entry.event === 'tank:fire');
-  if (fires.length) assert.equal(fires.at(-1).burning, combat.fire.burning, `the last word on the fire is the fire (${JSON.stringify(fires)})`);
-  assert.ok(said.every((entry) => entry.repaired !== true), 'nothing the undo says plays a repair');
-}
-
 console.log(`devBattleHold selftest passed: off byte-identical over ${TICKS} ticks; unheld ${plain.botShots} rounds, the player hurt `
   + `from tick ${plain.playerDamage[0]}; held 0 bot rounds, no player loss, bots within ${held.maxBotDriftM.toFixed(3)} m, no verdict; `
   + `armed at tick ${AT} the battle parts there, the bots stand (${late.lastSecondDriftM.toFixed(3)} m in the last second) and the `
-  + 'fire costs nothing; the verdict waits for the release; the brains park at the hold and resume at the release, a bot '
-  + 'hurt while it stood books no burst; the undo answers the held step\'s announcements; undo, switch and wiring held');
+  + 'fire costs nothing; the verdict waits for the release; the hold\'s edges park and resume the brains once each, per battle; '
+  + 'undo, switch and wiring held');
 process.exit(0);

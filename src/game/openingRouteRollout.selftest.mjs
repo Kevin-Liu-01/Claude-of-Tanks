@@ -5,18 +5,22 @@
 // from their controllers' streams and drove it until their route landed, on a tick the frame rate chose, so one seed played
 // differently on two devices and differently from the authority, which plans every leg at its creation. The step now
 // plans whatever is still pending before its first live step, as the authority does.
-// Proof on the page's own step (verdant, a seeded Standard 7v7 on the openingRouteLegs stub world): the battle set up
-// eagerly, stepped 90 ticks, against the same battle with its routes deferred, one leg planned by the warm, then 30 live
-// ticks, the rest drained (the warm catching up), 60 more: every hull's pose, every bot's route and its controller's view
-// are the same, and no route is pending at the first live step.
+// Proof on the page's own step (verdant, the staged Standard roster, the player and seven bots, on the openingRouteLegs
+// stub world): the battle set up eagerly, stepped 90 ticks, against the same battle with its routes deferred, one leg
+// planned by the warm, then 30 live ticks, the rest drained (the warm catching up), 60 more: every hull's pose, every
+// bot's route and its controller's view are the same, and no route is pending at the first live step.
+// Cost (review r1): the staged roster's combat anatomy only (ensureAuthorityFleet, no vehicle builders) keeps it near 4 s
+// of CPU, the page import (state.ts, about 2 s) its floor: the drain lives in the page's step, so no lighter guard exists.
 import assert from 'node:assert/strict';
 import { Group, Vector3 } from 'three';
 import { createBus, createCollider, createGameState, prepareNextOpeningRoute, setupBattle, simStep } from './state.ts';
 import { spawnTanks } from './rosterState.ts';
-import { ensureFullFleet } from '../vehicles/fleetFactory.ts';
+import { ensureAuthorityFleet } from '../vehicles/authorityFleet.ts';
+import { TANK_IDS } from '../vehicles/specs.ts';
 import { createDedicatedWorldCollision } from '../../server/dedicatedWorldCollision.ts';
 
-await ensureFullFleet();
+// the staged roster (random: false), its combat anatomy only: no vehicle builders
+await ensureAuthorityFleet(TANK_IDS);
 const _dir = new Vector3(0, 0, 1);
 const visualFor = (entity) => ({ root: new Group(), setVisible() {}, syncFromState() {}, dispose() {}, recoilKick() {},
   setDestroyed() {}, resetDestroyed() {}, gunMuzzleWorld: (out) => out.copy(entity.state.pos), gunDirWorld: (out) => out.copy(_dir),
@@ -34,7 +38,7 @@ function battle(deferOpeningRoutes) {
   for (const entity of game.allTanks) entity.visual = visualFor(entity);
   game.battleCount = 3;
   setupBattle(game, 'm1a1_abrams_hc', world, {
-    gameMode: 'standard', random: true, brain: null, arrangement: { allies: 6, enemies: 7 }, deferVisuals: true, deferCamoRepaint: true,
+    gameMode: 'standard', random: false, brain: null, arrangement: { allies: 3, enemies: 4 }, deferVisuals: true, deferCamoRepaint: true,
     ...(deferOpeningRoutes ? { deferOpeningRoutes: true } : {}),
   });
   for (const entity of game.allTanks) entity.visual = visualFor(entity);
@@ -57,7 +61,7 @@ const eager = battle(false);
 const deferred = battle(true);
 try {
   const queued = deferred.game.openingRouteJobs.length;
-  assert.ok(queued >= 10, `the bots' routes are queued for the warm (${queued})`);
+  assert.ok(queued >= 6, `the bots' routes are queued for the warm (${queued})`);
   // the warm plans one leg before the count ends, then falls behind (a slow device; or a warm that stopped there)
   assert.equal(prepareNextOpeningRoute(deferred.game), true);
   step(deferred);

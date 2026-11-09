@@ -253,6 +253,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/game/missilePresentation.selftest.mjs',
     // round 8 Y1 s5-01: one barrel owner for twin cannons: the authority names and fires each mouth, solo and the screens agree
     'src/sim/twinMuzzleParity.selftest.mjs',
+    // round 8 Y1 s5-01 (review r1): the same mouths on the page's own step (MANUAL 'sims': a page import and a world)
+    'src/game/twinMuzzleSolo.selftest.mjs',
     'tools/first-party-concept-policy.selftest.mjs',
     'src/vehicles/arieteModernSpecs.selftest.mjs',
     'src/vehicles/suppliedSourceArmorRegistration.selftest.mjs',
@@ -1248,6 +1250,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/game/battleSides.selftest.mjs',
     // round 8 Y1 s2-01: a couch battle's seats end with it (the Garage return, a network activation): the online round drives
     'src/game/couchSessionLifecycle.selftest.mjs',
+    // round 8 Y1 s2-01 (review r1): the same three battles seated by the page's setupBattle (MANUAL 'sims')
+    'src/game/couchSessionBattle.selftest.mjs',
     'src/game/soloModeVerdict.selftest.mjs', // 2026-11-02 audit M3: a solo verdict the mode did not reach latches its controller (Zone Control scores no more in the hold)
     'src/game/battleSeatPlan.selftest.mjs', // the load card's teams before the world are the seated battle's (2026-10-26)
     'src/game/openingRouteLegs.selftest.mjs', // battle-spikes-253: the bots' opening routes a leg a step, each the eager route
@@ -1491,6 +1495,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/game/soloKernelEntry.selftest.mjs',
     // dev-battle-freeze: the dev battle hold (__DEBUG.battleHold) keeps a solo battle alive and still; off, the step byte for byte
     'src/game/devBattleHold.selftest.mjs',
+    // round 8 Y1 s2-05 (review r1): the hold's edges and the undo's answers on the page's own battle (MANUAL 'sims')
+    'src/game/devBattleHoldEdges.selftest.mjs',
     'src/game/soloBattleRuntime.selftest.mjs',
     'tools/boot-static-closure.selftest.mjs',
     // 265: the core imports no driver code; a local battle never reaches src/mp or the room host (seeded violations caught)

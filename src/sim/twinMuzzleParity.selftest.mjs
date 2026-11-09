@@ -10,28 +10,29 @@
 //   mouth (the profile's own data: trunnion, bores, mouth plane, in the turret frame at the shot, within 1 cm);
 // - a twin cannon with missiles (tunguska_m): a missile takes its launcher tube and leaves the cannon's alternation alone;
 //   aft10's canisters are launcher tubes (launcherMuzzles), so the launcher rule names them as before;
-// - the solo step (setupBattle, simStep) asks the same selector: the same mouths in the same order;
+// - the solo step (setupBattle, simStep) asks the same selector: the same mouths in the same order (a battle on the page's
+//   step: src/game/twinMuzzleSolo.selftest.mjs, MANUAL 'sims'; this file reads the authority's fleet only, so it costs a
+//   few seconds on every npm test);
 // - the network presentation: the own seat's predicted kick is the mouth the authority names next, a confirmed shot
 //   flashes at the mouth it names, a remote shooter's visual kicks the named barrel;
-// - one writer of a hull's barrel cursor (the selector; the presentation mirrors the authority's).
+// - one writer of a hull's barrel cursor (the selector; the presentation mirrors the authority's): no assignment, compound
+//   assignment, increment or decrement of muzzleCursor, and no object literal naming it, outside those two files.
 import assert from 'node:assert/strict';
 import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { Euler, Group, Matrix4, Quaternion, Vector3 } from 'three';
-import { ensureFullFleet } from '../vehicles/fleetFactory.ts';
+import { Euler, Matrix4, Quaternion, Vector3 } from 'three';
+import { ensureAuthorityFleet } from '../vehicles/authorityFleet.ts';
 import { getSpec } from '../vehicles/specs.ts';
 import { createAuthoritativeMatch } from './authoritativeMatch.ts';
 import { createTankState } from './movement.ts';
 import { GEPARD_BORE, GEPARD_MUZZLE_Z, GEPARD_TRUNNION } from '../vehicles/profiles/gepardFrame.ts';
-import { createBus, createCollider, createGameState, setupBattle, simStep } from '../game/state.ts';
-import { spawnTanks } from '../game/rosterState.ts';
-import { createDedicatedWorldCollision } from '../../server/dedicatedWorldCollision.ts';
 import { createBattlePresentation } from '../mp/presentation/index.ts';
 import { PHASE, TEAM, VERDICT, quantizePosition, zeroEntityRow } from '../mp/wire/index.ts';
 import { createEntitySample } from '../mp/match/interpolation.ts';
 
-await ensureFullFleet();
+// the four ids the authority fires here, their combat anatomy only: no vehicle builders, no page step (state.ts)
+await ensureAuthorityFleet(['gepard_1a2', 'tunguska_m', 'aft10', 'm1a1_abrams_hc']);
 const _euler = new Euler(), _quat = new Quaternion(), _unit = new Vector3(), _hull = new Matrix4(), _local = new Matrix4();
 const _turret = new Matrix4(), _inverse = new Matrix4(), _point = new Vector3();
 
@@ -106,43 +107,6 @@ assert.ok(Math.abs(gepardShots[0].local.x - gepardShots[1].local.x) > 1.9, 'the 
   assert.deepEqual(aft10.map((shot) => [shot.muzzleIndex, shot.cursor]), [[0, 0], [1, 0]], 'aft10\'s missiles leave tubes 0 and 1');
 }
 
-// ---- the solo step asks the same selector: the same mouths in the same order -------------------------------------------
-{
-  const world = createDedicatedWorldCollision('verdant');
-  const authored = world.heightField._layout.spawns;
-  const spawnOf = (p) => ({ pos: [p.x, world.heightField.getHeightAt(p.x, p.z), p.z], yaw: p.yaw ?? 0 });
-  world.spawnPoints = { player: spawnOf(authored.player), enemies: authored.enemies.map(spawnOf) };
-  const game = createGameState({ rosterSeed: 4 });
-  game.mapId = 'verdant';
-  spawnTanks(game, { scene: { remove() {} } });
-  const asked = [];
-  const visualFor = (entity) => ({ root: new Group(), setVisible() {}, syncFromState() {}, dispose() {}, recoilKick() {}, setDestroyed() {},
-    resetDestroyed() {},
-    gunMuzzleWorld: (out, index) => { if (entity.isPlayer) asked.push(index); return out.copy(entity.state.pos).setY(entity.state.pos.y + 2); },
-    gunDirWorld: (out) => out.set(Math.sin(entity.state.yaw), 0.01, Math.cos(entity.state.yaw)).normalize(),
-    gunPivotWorld: (out) => out.copy(entity.state.pos) });
-  for (const entity of game.allTanks) entity.visual = visualFor(entity);
-  game.battleCount = 1;
-  setupBattle(game, 'gepard_1a2', world, { gameMode: 'standard', random: false, brain: null, arrangement: { allies: 0, enemies: 1 },
-    deferVisuals: true, deferCamoRepaint: true });
-  for (const entity of game.allTanks) entity.visual = visualFor(entity);
-  game.preBattleS = 0;
-  const bus = createBus(() => {});
-  const fired = [];
-  bus.on('shell:fired', (event) => { if (event.isPlayer) fired.push(event.muzzleIndex); });
-  const collider = createCollider(game, world);
-  const player = game.player;
-  for (let tick = 0; tick < 400 && fired.length < 3; tick++) {
-    player.input.fire = true;
-    player.input.aimPoint.set(player.state.pos.x + 300 * Math.sin(player.state.yaw), player.state.pos.y + 4,
-      player.state.pos.z + 300 * Math.cos(player.state.yaw));
-    simStep(game, bus, world, null, collider);
-  }
-  world.release?.();
-  assert.deepEqual(fired, gepardShots.map((shot) => shot.muzzleIndex), 'the solo step fires the same mouths in the same order');
-  assert.deepEqual(asked, fired, 'and takes each round\'s origin at that mouth of the drawn gun');
-}
-
 // ---- the network presentation: the barrel the authority names --------------------------------------------------------
 {
   const kicks = new Map(), events = [];
@@ -208,6 +172,19 @@ assert.ok(Math.abs(gepardShots[0].local.x - gepardShots[1].local.x) > 1.9, 'the 
 
 // ---- one writer of the barrel cursor ---------------------------------------------------------------------------------
 {
+  // the solo step's shot asks the same owner (its battle is twinMuzzleSolo.selftest, MANUAL 'sims'; here, the wiring)
+  assert.match(readFileSync(new URL('../game/state.ts', import.meta.url), 'utf8'),
+    /muzzleIndex = nextCannonMuzzle\(entity\.spec\.gun, shell, entity\.combat\);/, 'the solo step\'s shot asks the barrel owner');
+  // a write in any shape: `x.muzzleCursor = | += | -= | *= ...`, `x.muzzleCursor++ / --`, `++x.muzzleCursor`, and an object
+  // literal or Object.assign naming the field (`{ muzzleCursor: n }`, `{ muzzleCursor }`); a read (`?? 0`, `===`) is none
+  const WRITE = [/\.muzzleCursor\s*(?:(?:[-+*\/%&|^]|\*\*|<<|>>>?|&&|\|\||\?\?)?=(?!=)|\+\+|--)/, /(?:\+\+|--)\s*[\w$.?\]\[]*\.muzzleCursor\b/,
+    /[{,]\s*muzzleCursor\s*[:,}]/];
+  const writesCursor = (source) => WRITE.some((pattern) => pattern.test(source));
+  for (const [plant, expected] of [['c.muzzleCursor = 1', true], ['c.muzzleCursor += 1', true], ['c.muzzleCursor++', true],
+    ['--c.muzzleCursor', true], ['Object.assign(c, { muzzleCursor: 2 })', true], ['({ id, muzzleCursor })', true],
+    ['c.muzzleCursor ??= 0', true], ['c.muzzleCursor ?? 0', false], ['c.muzzleCursor === 1', false], ['f(c.muzzleCursor, 1)', false]]) {
+    assert.equal(writesCursor(plant), expected, `the census reads \`${plant}\` as ${expected ? 'a write' : 'a read'}`);
+  }
   const root = fileURLToPath(new URL('../', import.meta.url));
   const writers = [];
   const walk = (dir) => {
@@ -215,7 +192,7 @@ assert.ok(Math.abs(gepardShots[0].local.x - gepardShots[1].local.x) > 1.9, 'the 
       const file = join(dir, name);
       if (statSync(file).isDirectory()) { walk(file); continue; }
       if (!file.endsWith('.ts')) continue;
-      if (/\.muzzleCursor\s*=[^=]/.test(readFileSync(file, 'utf8'))) writers.push(file.slice(root.length));
+      if (writesCursor(readFileSync(file, 'utf8'))) writers.push(file.slice(root.length));
     }
   };
   walk(root);
@@ -224,6 +201,5 @@ assert.ok(Math.abs(gepardShots[0].local.x - gepardShots[1].local.x) > 1.9, 'the 
 }
 
 console.log('twinMuzzleParity.selftest: the authority names and fires gepard_1a2 mouths 0, 1, 0 from its bores (within 1 cm); a '
-  + 'missile keeps its tube and the cannons\' turn; the solo step fires the same mouths; the network screens kick and flash the '
-  + 'named barrel; one cursor writer PASS');
+  + 'missile keeps its tube and the cannons\' turn; the network screens kick and flash the named barrel; one cursor writer PASS');
 process.exit(0);
