@@ -2032,9 +2032,12 @@ export function createAudio({
           deathLatch.delete(payload.id);
           forgetModuleStates(payload.id);
           // (round 8 Y3 residual) and with its fire out: both drivers revive a hull with a fresh combat (state.ts revive,
-          // authoritativeMatch.ts reviveForMode; a network actor's beginActorLife) and tell no tank:fire, so a living
-          // hull's revive (a Turbo Ball kick-off, the range reset: sim/matchModes.ts "alive -> alive") puts out the
-          // engine-deck fire its last life lit; before, it crackled on at the spawn until a next fire went out
+          // authoritativeMatch.ts reviveForMode, whose fresh row a network seat mirrors) and tell no tank:fire, so a
+          // living hull's revive (a Turbo Ball kick-off, the range reset: sim/matchModes.ts "alive -> alive") puts out
+          // the engine-deck fire its last life lit; before, it crackled on at the spawn until a next fire went out. Put
+          // out at the event, not read from the hull: on a network seat a hull in view can still show its last life's
+          // fire (a held row) until the host's fresh row comes, as battlePresentation reviveAtRespawn mends only its
+          // modules and crew (residual fix-up r1)
           rigs.get(payload.id)?.setBurning(false);
         }
         if (playerId != null && payload.id === playerId) {
