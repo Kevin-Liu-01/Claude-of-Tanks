@@ -86,6 +86,7 @@ import { COMBAT_ANATOMY_CALIBRATIONS as CALIBRATIONS_T90BURLAKX } from './combat
 import { COMBAT_ANATOMY_CALIBRATIONS as CALIBRATIONS_T90X } from './combatAnatomyGroups/t90X.generated.ts';
 import { COMBAT_ANATOMY_CALIBRATIONS as CALIBRATIONS_T90_1992 } from './combatAnatomyGroups/t90_1992.generated.ts';
 import { COMBAT_ANATOMY_CALIBRATIONS as CALIBRATIONS_T90MSX } from './combatAnatomyGroups/t90msX.generated.ts';
+import { COMBAT_ANATOMY_CALIBRATIONS as CALIBRATIONS_T95 } from './combatAnatomyGroups/t95.generated.ts';
 import { COMBAT_ANATOMY_CALIBRATIONS as CALIBRATIONS_TOS1ATAGIL } from './combatAnatomyGroups/tos1aTagil.generated.ts';
 import { COMBAT_ANATOMY_CALIBRATIONS as CALIBRATIONS_TYPE10X } from './combatAnatomyGroups/type10X.generated.ts';
 import { COMBAT_ANATOMY_CALIBRATIONS as CALIBRATIONS_TYPE89SOURCEX } from './combatAnatomyGroups/type89SourceX.generated.ts';
@@ -181,6 +182,7 @@ export const COMBAT_ANATOMY_CALIBRATIONS: Readonly<Record<string, CombatAnatomyC
   CALIBRATIONS_T90X,
   CALIBRATIONS_T90_1992,
   CALIBRATIONS_T90MSX,
+  CALIBRATIONS_T95,
   CALIBRATIONS_TOS1ATAGIL,
   CALIBRATIONS_TYPE10X,
   CALIBRATIONS_TYPE89SOURCEX,

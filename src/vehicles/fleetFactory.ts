@@ -137,6 +137,7 @@ const GROUP_LOADERS = Object.freeze({
   southAfrica: () => import('./profiles/southAfrica.ts').then((mod) => registerProfiles(mod.SOUTH_AFRICA_PROFILES)),
   australia: () => import('./profiles/australia.ts').then((mod) => registerProfiles(mod.AUSTRALIA_PROFILES)),
   m41: () => import('./profiles/m41.ts').then((mod) => registerProfiles(mod.M41_PROFILES)),
+  t95: () => import('./profiles/t95.ts').then((mod) => registerProfiles(mod.T95_PROFILES)),
   amx40X: () => import('./profiles/amx40X.ts').then((mod) => registerProfiles(mod.AMX40_X_PROFILES)),
   arieteX: () => import('./profiles/arieteX.ts').then((mod) => registerProfiles(mod.ARIETE_X_PROFILES)),
   strv122X: () => import('./profiles/strv122X.ts').then((mod) => registerProfiles(mod.STRV122_X_PROFILES)),

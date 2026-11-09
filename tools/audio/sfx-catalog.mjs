@@ -70,6 +70,8 @@ const GUN_REPORTS = [
   ['gun_125', '125 mm smoothbore tank cannon', 'a huge, deep, hard-hitting boom', 'heavy'],
   ['gun_130', '130 mm smoothbore tank cannon', 'an enormous, very deep boom', 'heavy'],
   ['gun_152h', '152 mm short tank howitzer', 'an enormous, dull, thunderous howitzer boom with a soft front and a long low roll', 'superheavy'],
+  // 270: the T95's fictional 152 mm, a long naval gun in a tank's ball mount
+  ['gun_152n', '152 mm long naval gun with a muzzle brake in a heavy tank', 'a colossal, deep, hard-hitting boom', 'superheavy'],
   ['gun_152gl', '152 mm short wide-bore gun-launcher', 'a deep, hollow boom from the short wide barrel, a soft front', 'superheavy'],
   // (two comparisons in a row, "a soft, blunt front, like heavy artillery", passed 2 of 16 as shipped; plain, 8 of 8)
   ['gun_165', '165 mm short demolition gun', 'a colossal, deep, thudding boom', 'superheavy'],

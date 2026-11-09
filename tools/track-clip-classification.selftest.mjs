@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { createTank } from '../src/vehicles/tankFactory.ts';
-import { isTrackShoeMesh } from './track-clip-classification.mjs';
+import { expectedTrackBandCount, isTrackShoeMesh } from './track-clip-classification.mjs';
 
 const tank = createTank('leo2_revolution', null, { proceduralOnly: true, geometryReceipt: true });
 try {
@@ -23,4 +23,17 @@ try {
 } finally {
   tank.dispose();
 }
-console.log('track-clip-classification.selftest: native shoes included; suspension mounts excluded');
+// two bands per running-gear unit: one unit on a conventional tank, two on the four-track T95
+for (const [id, units] of [['leo2_revolution', 1], ['t95', 2]]) {
+  const built = createTank(id, null, { proceduralOnly: true, geometryReceipt: true });
+  try {
+    const bands = [];
+    built.root.traverse((object) => { if (/^gearTrackBand[LR]$/.test(object.name)) bands.push(object); });
+    assert.equal(bands.length, 2 * units, `${id}: live bands`);
+    assert.equal(expectedTrackBandCount(bands), bands.length, `${id}: the audit expects every unit's pair`);
+  } finally {
+    built.dispose();
+  }
+}
+assert.equal(expectedTrackBandCount([]), 2, 'no bands still expects the factory pair (the hand-rolled fallback)');
+console.log('track-clip-classification.selftest: native shoes included; suspension mounts excluded; two bands per running-gear unit');

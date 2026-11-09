@@ -308,7 +308,7 @@ export const WHEEL_STANDARD_EXCEPTIONS: Readonly<Record<string, WheelStandardExc
 
 /** Pre-1950 hulls that keep their period wheel constructions (owner exception list, 2026-09-22). */
 export const PERIOD_WHEEL_HULLS: readonly string[] = Object.freeze([
-  'jpz_e100', 'kv2',
+  'jpz_e100', 'kv2', 't95',
 ]);
 
 interface NationWheelSpec {

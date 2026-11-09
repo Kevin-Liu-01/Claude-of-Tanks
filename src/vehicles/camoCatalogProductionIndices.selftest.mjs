@@ -164,7 +164,7 @@ const ADDED_SINCE_PRODUCTION = ['type10_dozer', 'christian2', 'bm_oplot_m', 'bm_
 const ADDED_IN_SPEC_COAT = ['leo1a3dk', 'leo1a5dk'];
 // Release 266: the US M41A3 and the T49 wear the US Factory coat (the owner's 2026-10-22 rule for plain coats).
 // Release 268: the Flakpanzer Gepard 1A2 wears Germany's Factory coat with the Leopard 1A5 whose hull it rides.
-const ADDED_IN_NATION_COAT = { m41a3: 'service_usa_desert', t49: 'service_usa_desert', ua_cv9040c: 'service_ua_m2a3_bradley',
+const ADDED_IN_NATION_COAT = { m41a3: 'service_usa_desert', t49: 'service_usa_desert', t95: 'service_usa_desert', ua_cv9040c: 'service_ua_m2a3_bradley',
   gepard_1a2: 'service_leo2a6m' };
 // (266: the Ukrainian CV9040C wears Ukraine's Bradley service coat, the national Factory coat for its IFVs)
 // Added since production in a donor's coat: the tank's stock is its donor's (release 262: the T-55A wears the T-62

@@ -243,5 +243,6 @@ const digest = createHash('sha256').update(JSON.stringify(TECH_TREES)).digest('h
 // 2026-11-03 re-pin (the owner: "make a USA m113 variant, that plays similar to the ares apc"): the US M113A3 in the US
 // tree's special lane at II.
 // 269 integration (2026-11-06): + the US M113A3 at II in the US special lane.
-assert.equal(digest, 'adc19a052d506677', `tree content changed: re-pin to ${digest} if deliberate`);
+// 270 (the owner 2026-11-05; Main's tier ruling the same day): the T95 with its fictional 152 mm on the US special lane at II. Merged onto 269 (2026-11-08): re-pinned with the 268 and 269 trees; the T95 moves to the US special line's lane 2 (the M113A3 holds lane 1 at II).
+assert.equal(digest, 'd321a538ffbb129c', `tree content changed: re-pin to ${digest} if deliberate`);
 console.log(`techTree: ${TECH_TREES.length} trees, ${drawn.length} vehicles, pin ${digest}`);

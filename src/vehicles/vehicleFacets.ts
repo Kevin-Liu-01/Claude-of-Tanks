@@ -228,7 +228,7 @@ const CLASS_VEHICLE_IDS: Readonly<Record<VehicleClass, readonly string[]>> = Obj
   ]),
   // Casemates (Strv 103, UDES 03, Jagdpanzer E100) and missile carriers (AFT-10, Griffin Viper, Object 695).
   td: Object.freeze([
-    'aft10', 'griffin_viper', 'jpz_e100', 'object695', 'strv103a', 'strv103b', 'udes03',
+    'aft10', 'griffin_viper', 'jpz_e100', 'object695', 'strv103a', 'strv103b', 't95', 'udes03',
   ]),
   spaa: Object.freeze([
     'gepard_1a2', 'm6_linebacker', 'pantsir_s1', 'pgz09', 'pgz95', 'tunguska_m',
@@ -251,7 +251,7 @@ const ROLE_VEHICLE_IDS: Readonly<Record<VehicleBattleRole, readonly string[]>> =
     't72b3m_hetman_ii', 't72b3m_kunlun', 't72b3m_wilk', 't72b3m_xuanwu', 't72b_1987', 't72bu', 't72bu_1989',
     't72m1_jaguar', 't80u_bars_m', 't80u_husarz', 't80u_yun', 't80u_zoria', 't90', 't90_1992', 't90a', 't90a_2004',
     't90a_2006', 't90a_burlak', 't90a_burlak_proto', 't90a_vladimir', 't90am', 't90m', 't90m_proryv', 't90ms_2011',
-    't90ms_tagil', 't90sm', 't90sm_2013', 'type10_dozer', 'type59', 'type96_72_long', 'type96_72m_lei', 'type96b',
+    't90ms_tagil', 't90sm', 't90sm_2013', 't95', 'type10_dozer', 'type59', 'type96_72_long', 'type96_72m_lei', 'type96b',
     'vt4a1', 'vt4a1_baihu', 'ztz100', 'ztz100_prototype', 'ztz20', 'ztz20_prototype', 'ztz85_iii', 'ztz99_longwei',
     'ztz99a', 'ztz99a2', 'ztz99a2_qinglong',
   ]),
@@ -349,7 +349,7 @@ const STATUS_VEHICLE_IDS: Readonly<Record<VehicleDesignStatus, readonly string[]
     'pt84_sokol', 'pt84_zbik', 'raiju_ifv', 't49', 't72_rys', 't72b3_bastion_m', 't72b3_qilin', 't72b3_sich',
     't72b3_zhuque', 't72b3_zubr', 't72b3_zubr_ii', 't72b3m_bulat_m', 't72b3m_hetman', 't72b3m_hetman_ii',
     't72b3m_kunlun', 't72b3m_wilk', 't72b3m_xuanwu', 't80u_bars_m', 't80u_husarz', 't80u_yun', 't80u_zoria',
-    'type10b', 'type96_72_long', 'type96_72m_lei', 'type96_80_feng', 'upior', 'vt4a1_baihu', 'ztz20', 'ztz99_longwei',
+    't95', 'type10b', 'type96_72_long', 'type96_72m_lei', 'type96_80_feng', 'upior', 'vt4a1_baihu', 'ztz20', 'ztz99_longwei',
     'ztz99a2_qinglong',
   ]),
 });

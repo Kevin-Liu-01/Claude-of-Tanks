@@ -273,6 +273,8 @@ const laterChannelCounts = {
   m113a1_fsv: 3, m113a1_mrv: 3, m113as4: 3, leopard_as1: 3,
   // 269: the US M113A3's three .50 belts (the Ares APC's)
   m113a3: 3, m1a1_aim_sa_aus: 3, m1a2_sepv3_aus: 3, redback: 3,
+  // 270: the T95's three 6"/47 rounds (AP, Common, HC)
+  t95: 3,
 };
 const southAfrica269Channels = ['semel', 'olifant_mk1', 'olifant_mk1a', 'olifant_mk1b', 'ttd'].reduce((n, id) => n + laterChannelCounts[id], 0);
 const australia269Channels = ['m113a1_fsv', 'm113a1_mrv', 'm113as4', 'leopard_as1', 'm1a1_aim_sa_aus', 'm1a2_sepv3_aus', 'redback', 'm113a3']
@@ -354,7 +356,7 @@ assert.equal(authoredShellChannels - laterChannelCounts.c2_ariete - laterChannel
   - laterChannelCounts.magach6b - laterChannelCounts.magach7c - brazil266Channels
   - laterChannelCounts.leo2a7dk - laterChannelCounts.centurion5_2dk - laterChannelCounts.type90b - airDefense268Channels
   - laterChannelCounts.bmpt_terminator - laterChannelCounts.m3a2_bradley - southAfrica269Channels
-  - australia269Channels, 560,
+  - australia269Channels - laterChannelCounts.t95, 560,
   'all 560 pre-C2 authored channels remain covered separately from its three new channels');
 assert.ok(multiChannelLoadouts > 100,
   `the playable multi-channel fleet is covered (${multiChannelLoadouts})`);

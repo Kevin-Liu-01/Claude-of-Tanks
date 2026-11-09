@@ -5752,6 +5752,21 @@
     -0.05,
     4.9
    ]
+  },
+  "t95": {
+   "sealed": true,
+   "openPx": 6,
+   "openViews": 0,
+   "insideOutPx": 210,
+   "seeThroughPx": 0,
+   "netSeeThroughPx": 0,
+   "tris": 151844,
+   "frame": [
+    0,
+    1.65,
+    0,
+    6.2
+   ]
   }
  }
 }

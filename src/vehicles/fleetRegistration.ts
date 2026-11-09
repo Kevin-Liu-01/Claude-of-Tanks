@@ -80,6 +80,7 @@ import './denmarkSpecs.ts';
 import './m60VariantSpecs.ts';
 import './brazilSpecs.ts';
 import './m41Specs.ts';
+import './t95Specs.ts';
 import './tos1aTagilSpecs.ts';
 import './griffinViperSpecs.ts';
 import { synchronizeIfvReplicaCombatMetadata } from './ifvReplicaSpecs.ts';

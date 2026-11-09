@@ -38,7 +38,7 @@ const ERA_VEHICLE_IDS: Readonly<Record<VehicleEra, readonly string[]>> = Object.
   // taxonomy for future vehicles.
   [VEHICLE_ERAS.INTERWAR]: Object.freeze([]),
   [VEHICLE_ERAS.WORLD_WAR_II]: Object.freeze([
-    'kv2', 'jpz_e100',
+    'kv2', 'jpz_e100', 't95',
   ]),
   [VEHICLE_ERAS.COLD_WAR]: Object.freeze([
     'amx10p', 'amx10p_25', 'amx30b', 'amx40', 'osorio_p1', 'osorio_p2', 'tamoyo1', 'tamoyo3', 'x1_pioneiro', 'x1a2_carcara', 't62mv1',

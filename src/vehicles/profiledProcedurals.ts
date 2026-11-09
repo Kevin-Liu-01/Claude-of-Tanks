@@ -85,6 +85,7 @@ import { BRAZIL_PROFILES } from './profiles/brazil.ts';
 import { SOUTH_AFRICA_PROFILES } from './profiles/southAfrica.ts';
 import { AUSTRALIA_PROFILES } from './profiles/australia.ts';
 import { M41_PROFILES } from './profiles/m41.ts';
+import { T95_PROFILES } from './profiles/t95.ts';
 import { AMX40_X_PROFILES } from './profiles/amx40X.ts';
 import { ARIETE_X_PROFILES } from './profiles/arieteX.ts';
 import { STRV122_X_PROFILES } from './profiles/strv122X.ts';
@@ -174,6 +175,7 @@ export const PROCEDURAL_PROFILES: VehicleProfileRecord = {
   ...SOUTH_AFRICA_PROFILES,
   ...AUSTRALIA_PROFILES,
   ...M41_PROFILES,
+  ...T95_PROFILES,
   ...AMX40_X_PROFILES,
   ...ARIETE_X_PROFILES,
   ...STRV122_X_PROFILES,

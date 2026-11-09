@@ -16,6 +16,7 @@ export type FleetWeaponKey =
   | '130/combustible'
   | '152/caseless'
   | '152/separate_case'
+  | '152n/separate_case'
   | '165/separate_bag'
   | '170/separate_case'
   | '20/belt'
@@ -45,6 +46,7 @@ export const FLEET_WEAPON_KEYS: readonly FleetWeaponKey[] = [
   '130/combustible',
   '152/caseless',
   '152/separate_case',
+  '152n/separate_case',
   '165/separate_bag',
   '170/separate_case',
   '20/belt',

@@ -280,6 +280,7 @@ export const NATION_INDEX: readonly (readonly [string, CountryId | null, string 
   ["osorio_p2","brazil","cold-war",4],
   ["ee_t3_osorio","brazil","modern",9],
   ["ee_t4_osorio","brazil","modern",10],
+  ["t95","usa","ww2",2],
   ["griffin_viper","usa","modern",3],
   ["amx10p","france","cold-war",3],
   ["amx10p_25","france","cold-war",4],

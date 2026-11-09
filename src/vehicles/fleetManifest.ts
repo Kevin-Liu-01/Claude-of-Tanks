@@ -40,6 +40,7 @@ export const FLEET_GROUP_IDS = Object.freeze({
   // 269: the Australian line's own builds
   australia: Object.freeze(['m113a1_fsv', 'm113a1_mrv', 'm113as4', 'leopard_as1', 'redback', 'm1a1_aim_sa_aus', 'm1a2_sepv3_aus', 'm113a3']),
   m41: Object.freeze(['m41a3', 'm41_bw', 'm41_jgsdf', 'm41dk1', 't49']),
+  t95: Object.freeze(['t95']),
   amx40X: Object.freeze(['amx40']),
   arieteX: Object.freeze(['c1_ariete', 'c2_ariete']),
   strv122X: Object.freeze(['strv122']),
