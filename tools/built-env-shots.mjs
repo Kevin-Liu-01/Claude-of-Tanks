@@ -456,9 +456,10 @@ async function main(argv) {
     await stageMap(entry, mapId);
   };
   const close = async () => {
+    // the browser goes before the capture lock (capture-hold-census: the next holder's GPU work would overlap it)
+    if (browser) await browser.close().catch(() => {});
     if (held) lock.release();
     held = false;
-    if (browser) await browser.close().catch(() => {});
     for (const server of servers.values()) await server.close().catch(() => {});
   };
   for (const signal of ['SIGTERM', 'SIGINT', 'SIGHUP']) {

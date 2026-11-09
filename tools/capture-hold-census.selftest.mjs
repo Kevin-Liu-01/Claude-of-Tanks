@@ -266,6 +266,10 @@ const acquiresDirectly = (file, text) => !HOLD_OWNERS.has(file)
  *  the one wrapper (round 2 U38: the other 68 of the 75 listed on 2026-11-02 hold through withCaptureHold or its open form,
  *  openCaptureHold). A new direct acquirer fails here; one with no reason, or one that no longer acquires, too. */
 const DIRECT_ACQUIRERS = Object.freeze({
+  // (round 8 Y11) release 270's three shot tools, ground-banding-shots' form; onto withCaptureHold in a later round
+  'tools/building-style-shots.mjs': '270\'s buildings shots, as ground-banding-shots: a render-class acquire() whose prepare stages and freezes the first pair while it waits, lock.checkpoint between pairs yielding at the 20-min cap and rejoining; its close takes the browser down before the release',
+  'tools/built-env-shots.mjs': '270\'s built-environment shots, as ground-banding-shots: a render-class acquire() whose prepare stages the first pair while it waits, lock.checkpoint between pairs yielding at the 20-min cap (the page and browser dropped first); its close takes the browser down before the release',
+  'tools/ground-surface-shots.mjs': '270\'s ground-surface shots, as ground-banding-shots: a render-class acquire() whose prepare stages and freezes the first pair while it waits, lock.checkpoint between pairs yielding at the 20-min cap and rejoining; its close takes the browser down before the release',
   'tools/anatomy-render-set.mjs': 'loads the lock from the checkout it renders (toolRoot), which may predate the open hold; its own 19.5-min watchdog ends the hold (exit 124) under the cap',
   'tools/ground-banding-shots.mjs': 'yields at the 20-min cap itself: --band gives the lock up and re-enters the priority band one past its highest live stamp, staging the next pair while it waits (a fresh ticket per yield)',
   'tools/media-r5/lab.mjs': 'the media lease protocol: per-job, per-map and budget leases with paid yields to normal-band holds (priority-yield.mjs), decided on lock.held (priority-yield.selftest pins it)',
@@ -284,6 +288,8 @@ const DIRECT_ACQUIRER_IMPORTERS = Object.freeze({
 /** The receipts that call acquire() on a capture lock (the lock's own, and the ones proving a wrapper on private
  *  directories), with the reason; the browser receipts that held the shared lock hold through the wrapper (round 2 U38). */
 const DIRECT_ACQUIRER_RECEIPTS = Object.freeze({
+  // (round 8 Y11) release 270's browser receipt; onto withCaptureHold in a later round
+  'tools/crew-voice-picker.browser.selftest.mjs': '270\'s crew voice picker page receipt: one hold of the shared lock for its browser (selftestLockTimeoutMs, refreshed every 30 s), taken at the start',
   'tools/browser-guard-holds.selftest.mjs': 'pins what a guard trip releases, on private locks',
   'tools/browser-launch.selftest.mjs': 'pins the guard trip\'s release of a private hold',
   'tools/capture-command.selftest.mjs': 'pins runCapturedCommand on a private lock',
