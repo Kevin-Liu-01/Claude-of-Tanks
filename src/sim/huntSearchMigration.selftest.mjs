@@ -34,7 +34,11 @@
 // the r4 reviews: a raider revived between the keyframe and the newest frame came back with its dead life's stage and
 // went in alone.) [6] window revive: a revived CTF raider stages afresh on the new host as on the old (its keyframe stage
 // dropped, whether it fell going in or still waiting, and every other raider's kept, a waiting one's included); a revived
-// Frontline attacker keeps its plan, as the old host keeps it.
+// Frontline attacker keeps its plan, as the old host keeps it. (Residual fix-up r2, the correctness review: the resume's
+// frames had no mode state, so [5] and the window revive, whose newest frame is newer than the keyframe, skipped
+// migrationState.ts checkpointAtNewestFrame, which every real migration in a mode runs, and a rewrite there that dropped
+// the hunt, the raid stages or the attack plan passed; the frames now carry it as the host's do, and each such case checks
+// its resume went that way.)
 import { Vector3 } from 'three';
 import { createMatchActor } from '../../server/match/matchActor.ts';
 import { captureEntityRow, captureMeta, createEraIndexer } from '../../server/match/entityRows.ts';
@@ -68,6 +72,23 @@ const copyHull = (from, to) => {
 const hunters = (entities) => entities.filter((e) => e.team === 'bravo' && e.bot && e.modeActive !== false && !e.combat.destroyed);
 const near = (a, b) => !!a && !!b && Math.abs(a.x - b.x) < 1e-6 && Math.abs(a.z - b.z) < 1e-6;
 const fmt = (p) => (p ? `(${p.x.toFixed(1)}, ${p.z.toFixed(1)})` : 'none');
+/**
+ * The actor's frame at `tick` in the shape the host sends it (server/match/matchActor.ts frames, matchHostCore.ts's
+ * keyframe), its mode state included: a resume whose newest frame is newer than the keyframe writes that state over the
+ * keyframe's checkpoint (migrationState.ts checkpointAtNewestFrame), so a frame without it would skip the path every real
+ * migration in a mode takes (residual fix-up r2, the correctness review).
+ */
+function hostFrame(actor, tick, era) {
+  const sim = actor.authority, battleTimeMs = Math.round(sim.timeS * 1000);
+  const snap = sim.snapshot({ tick, serverTimeMs: battleTimeMs, viewerId: 'migration', ackInputSeq: null });
+  return { tick, serverTimeMs: battleTimeMs, ackedInputTick: 0xffffffff, ackedFireSeq: 0, ackedActionSeq: 0, inputMarginTicks: 127,
+    meta: captureMeta({ ...snap.meta, battleTimeMs }, false), destroyed: [], entities: sim.entities.map((e) => captureEntityRow(e, actor.wireIdOf(e.id), era, tick)),
+    shells: [], viewer: null, modeStateJson: snap.meta?.modeState ? JSON.stringify(snap.meta.modeState) : null };
+}
+/** A case is built only when its resume took that path: a newest frame newer than the keyframe, with the mode state. */
+const throughNewestFrame = (state, keyframe) => state.frame.tick > (keyframe?.tick ?? Infinity) && typeof state.frame.modeStateJson === 'string';
+const newestText = (state, keyframe) => `the newest frame (tick ${state.frame.tick}, mode state ${state.frame.modeStateJson ? 'carried' : 'missing'}) `
+  + `against the keyframe (tick ${keyframe?.tick})`;
 
 /**
  * Run the old host to the migration, build the new one (its constructor's own opening included, as an elected host's
@@ -222,13 +243,7 @@ console.log('[5] a trickle arrival after the keyframe, through the real resume (
     const make = (resume) => createMatchActor({ roomId: 'hunt-revive', mapId: 'verdant', mode: infected ? 'infected' : 'endless_horde', seed: 7, seats,
       bots, ruleset: infected ? infectedArrivals : rules, world, countdownS: 0, autoStart: false, now: () => 0, schedule: () => () => {}, resume });
     const era = createEraIndexer();
-    const frameOf = (actor, tick) => {
-      const sim = actor.authority, battleTimeMs = Math.round(sim.timeS * 1000);
-      const snap = sim.snapshot({ tick, serverTimeMs: battleTimeMs, viewerId: 'migration', ackInputSeq: null });
-      return { tick, serverTimeMs: battleTimeMs, ackedInputTick: 0xffffffff, ackedFireSeq: 0, ackedActionSeq: 0, inputMarginTicks: 127,
-        meta: captureMeta({ ...snap.meta, battleTimeMs }, false), destroyed: [], entities: sim.entities.map((e) => captureEntityRow(e, actor.wireIdOf(e.id), era, tick)),
-        shells: [], viewer: null, modeStateJson: null };
-    };
+    const frameOf = (actor, tick) => hostFrame(actor, tick, era);
     const keyframeOf = (actor, tick) => decodeMigrationKeyframe(encodeMigrationKeyframe({ tick, battleTimeMs: Math.round(actor.authority.timeS * 1000),
       timeS: actor.authority.timeS, phase: 'playing', modeCheckpoint: actor.authority.captureModeCheckpoint(), entities: captureEntityExtras(actor), frame: frameOf(actor, tick) }));
     const old = make(null), sim = old.authority;
@@ -252,6 +267,8 @@ console.log('[5] a trickle arrival after the keyframe, through the real resume (
       if (revived.length) keyframe = sealed;
     }
     const { state } = resumeStateFromRetained(keyframe, 0, frameOf(old, tick), 1500, [], [], [...told]);
+    ok(throughNewestFrame(state, keyframe), `the case is built (${infected ? 'Infected' : 'Horde'}, ${hostiles} hostiles): ${newestText(state, keyframe)}, `
+      + 'so the resume writes the frame\'s mode state over the keyframe\'s checkpoint as a real migration does');
     const fresh = make({ tick: state.tick, battleTimeMs: state.battleTimeMs });
     applyResumeState(fresh, state);
     const hunt = keyframe?.modeCheckpoint?.mode?.hunt;
@@ -382,11 +399,8 @@ console.log('[6] the objective modes\' stages across a migration: a lone raider 
       if (scenario === 'waiting') keepInside(hull, 3, old);
     }
     // the keyframe, and the elected seat's resume from it (resumeStateFromRetained, applyResumeState)
-    const tick = Math.round(sim.timeS * 60), battleTimeMs = Math.round(sim.timeS * 1000), era = createEraIndexer();
-    const snap = sim.snapshot({ tick, serverTimeMs: battleTimeMs, viewerId: 'migration', ackInputSeq: null });
-    const frame = { tick, serverTimeMs: battleTimeMs, ackedInputTick: 0xffffffff, ackedFireSeq: 0, ackedActionSeq: 0, inputMarginTicks: 127,
-      meta: captureMeta({ ...snap.meta, battleTimeMs }, false), destroyed: [], entities: sim.entities.map((e) => captureEntityRow(e, old.wireIdOf(e.id), era, tick)),
-      shells: [], viewer: null, modeStateJson: null };
+    const tick = Math.round(sim.timeS * 60), battleTimeMs = Math.round(sim.timeS * 1000);
+    const frame = hostFrame(old, tick, createEraIndexer());
     const keyframe = decodeMigrationKeyframe(encodeMigrationKeyframe({ tick, battleTimeMs, timeS: sim.timeS, phase: 'playing',
       modeCheckpoint: sim.captureModeCheckpoint(), entities: captureEntityExtras(old), frame }));
     const { state } = resumeStateFromRetained(keyframe, 0, null, null, []);
@@ -503,13 +517,7 @@ console.log('[6] the objective modes\' stages across a migration: a lone raider 
       if (actor === old) tick++;
     };
     const era = createEraIndexer();
-    const frameOf = () => {
-      const battleTimeMs = Math.round(sim.timeS * 1000);
-      const snap = sim.snapshot({ tick, serverTimeMs: battleTimeMs, viewerId: 'migration', ackInputSeq: null });
-      return { tick, serverTimeMs: battleTimeMs, ackedInputTick: 0xffffffff, ackedFireSeq: 0, ackedActionSeq: 0, inputMarginTicks: 127,
-        meta: captureMeta({ ...snap.meta, battleTimeMs }, false), destroyed: [], entities: sim.entities.map((e) => captureEntityRow(e, old.wireIdOf(e.id), era, tick)),
-        shells: [], viewer: null, modeStateJson: null };
-    };
+    const frameOf = () => hostFrame(old, tick, era);
     const seal = () => decodeMigrationKeyframe(encodeMigrationKeyframe({ tick, battleTimeMs: Math.round(sim.timeS * 1000), timeS: sim.timeS,
       phase: 'playing', modeCheckpoint: sim.captureModeCheckpoint(), entities: captureEntityExtras(old), frame: frameOf() }));
     const stagesOf = (m) => (ctf ? m?.objectives?.raids : m?.waves?.line?.attack) ?? [];
@@ -532,6 +540,7 @@ console.log('[6] the objective modes\' stages across a migration: a lone raider 
     }
     const atRevive = sim.captureModeCheckpoint().mode;
     const { state } = resumeStateFromRetained(keyframe, 0, frameOf(), 1500, [], [], [...told]);
+    const newest = { through: throughNewestFrame(state, keyframe), text: newestText(state, keyframe) };
     const fresh = make({ tick: state.tick, battleTimeMs: state.battleTimeMs });
     applyResumeState(fresh, state);
     const restored = fresh.authority.captureModeCheckpoint().mode, sealed = keyframe.modeCheckpoint.mode;
@@ -550,7 +559,7 @@ console.log('[6] the objective modes\' stages across a migration: a lone raider 
       if (fromGoal(moved) > 1) newHeld++;
     }
     old.stop(); fresh.stop();
-    return { keyTick: keyframe.tick, revivedAt: told.get('a-0') ?? null, beforeKill: stageText(beforeKill), sealed: stageIn(sealed, 'a-0'),
+    return { keyTick: keyframe.tick, revivedAt: told.get('a-0') ?? null, newest, beforeKill: stageText(beforeKill), sealed: stageIn(sealed, 'a-0'),
       atRevive: stageIn(atRevive, 'a-0'), restored: stageIn(restored, 'a-0'), deadInKeyframe: new Map(sealed.destroyed).get('a-0') === true,
       second: stageIn(sealed, 'a-1'), others: { sealed: othersOf(sealed), atRevive: othersOf(atRevive), restored: othersOf(restored) },
       oldHeldS: oldHeld / 60, newHeldS: newHeld / 60 };
@@ -567,6 +576,8 @@ console.log('[6] the objective modes\' stages across a migration: a lone raider 
     ok(run.revivedAt !== null && run.revivedAt > run.keyTick && run.deadInKeyframe && run.beforeKill.endsWith(fell),
       `${name}: the case is built: the lone ${what} was ${run.beforeKill} when it fell; the keyframe (tick ${run.keyTick}) holds it down `
       + `and the old host revives it after (tick ${run.revivedAt})`);
+    ok(run.newest.through, `${name}: the case is built: ${run.newest.text}, so the resume writes the frame's mode state over the `
+      + 'checkpoint, its stages included, as every real migration in the mode does');
     if (ctf) {
       ok(run.sealed?.go === (fell === 'going in') && run.atRevive === null, `${name}: the case is built: the keyframe holds the dead life's `
         + `stage (${stageText(run.sealed)}), and the old host dropped it at its next role deal (at the revive: ${stageText(run.atRevive)})`);
