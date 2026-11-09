@@ -5,8 +5,8 @@
  * artillery annd recon with the 3 airstrikes").
  *
  * - At rest, one slot (owner 2026-11-06, of a row of seven down the left: "theres gotta be a better way than presenting
- *   that as an obtrusive line"): Support, the binoculars (X) with the crew's points as its count and their fill toward the
- *   cap, at the end of the battle tray on a desktop and beside the vehicle's action row on a phone.
+ *   that as an obtrusive line"): Support, the binoculars (X) with the crew's points as its count (no fill meter: gauntlet
+ *   g9 read it as an outline edge), at the end of the battle tray on a desktop and beside the vehicle's action row on a phone.
  * - The call-ins come up only with the binoculars: the five (1-5: recon, barrage, strafing run, precision bomb, AC-130)
  *   in a row centred over the tray, each a slot of the tray's own kind (the ammunition and consumable slots: the key top
  *   left, the price top right, the sprite glyph, the short name along the floor, the consumables' conic cooldown shade,
@@ -74,8 +74,6 @@ export function createAirSupportHud(parent: HTMLElement, bus: EventBus) {
   const points = markDatum(node('span', 'strike-points num', view), 'support-points');
   points.setAttribute('role', 'status');
   node('span', 'label', view).textContent = t('airSupport.short.view');
-  const pointsFill = node('i', 'strike-points-fill', view);
-  pointsFill.setAttribute('aria-hidden', 'true');
   view.addEventListener('click', () => bus.emit('ui:strikeViewToggle', {}));
   let seat: 'tray' | 'own' = 'own';
   /** The rest slot's seat: the tray's end on a desktop, its own place on a touch layout (or before the tray exists). */
@@ -209,7 +207,6 @@ export function createAirSupportHud(parent: HTMLElement, bus: EventBus) {
 
     const have = air.points ?? 0;
     setText(points, String(have));
-    setStyle(view, '--strike-fill', String(Math.min(1, have / R.points.cap)));
     setText(viewKey, keyX);
     setData(view, 'selected', strikeView.open ? 'true' : 'false');
     setAttr(view, 'aria-pressed', strikeView.open ? 'true' : 'false');
@@ -219,7 +216,8 @@ export function createAirSupportHud(parent: HTMLElement, bus: EventBus) {
       setData(slot.button, 'selected', strikeView.open && strikeView.kind === slot.kind ? 'true' : 'false');
       const cool = air.cooldowns?.[slot.kind] ?? 0;
       setStyle(slot.button, '--strike-cool', `${Math.round(Math.min(1, cool / R[slot.kind].cooldownS) * 100)}%`);
-      setText(slot.left, cool > 0 ? String(Math.ceil(cool)) : '');
+      // (gauntlet g10: a duration carries its unit, "35 s", as the readout's and the warning's do)
+      setText(slot.left, cool > 0 ? `${Math.ceil(cool)} s` : '');
       setAttr(slot.button, 'aria-label', `${t(`airSupport.kind.${slot.kind}`)}, ${R[slot.kind].cost} ${t('airSupport.points')}`
         + (slotWhy ? `, ${t(`airSupport.state.${slotWhy}`)}` : ''));
     }
