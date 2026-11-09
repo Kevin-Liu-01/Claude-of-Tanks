@@ -14,6 +14,7 @@
 // from the north bank's timber landing over the dry promontory between the lobes to the substation road.
 import { WORN_YARD_PAINT } from '../hardstandSurface.ts';
 import frontier from './frontier.ts';
+import { BUILDING_STYLES } from './buildingStyleTable.ts';
 export default {
   id: 'reservoir', name: 'Highland Reservoir',
   // Route preference only: other maps retain their authored shallow fords.
@@ -111,7 +112,7 @@ export default {
   },
   props: {
     // regional-buildings lane: the Eifel Fachwerk-and-greywacke kit (maps/regional/eifel.ts)
-    architecture: 'eifel',
+    architecture: BUILDING_STYLES.reservoir.kit,
     sourcedPalette: 'frontier',
     // The landmarks lane (2026-10-05; src/world/landmarks/towers.ts valveTower): the reservoir's valve tower, as the
     // Roer dams' stand off their walls (the Urft's of 1905) — the basin is closed by its ridges and holds no dam, so the

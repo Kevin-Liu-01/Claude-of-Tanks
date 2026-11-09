@@ -86,6 +86,18 @@ function aggregate(rows) {
       return { mean: Math.round(mean(xs)), median: median(xs) };
     })() } : {}),
     results: rows.map((r) => `${r.seed}:${r.result ?? 'none'}@${r.endS}`).join(' '),
+    // Air Support: the side wins, the support kills' share of all kills (pooled), the calls by kind, the warnings kept
+    ...(rows.some((r) => r.air) ? { air: (() => {
+      const kills = rows.reduce((s, r) => s + r.alpha.kills + r.bravo.kills, 0);
+      const support = rows.reduce((s, r) => s + (r.air?.supportKills ?? 0), 0);
+      const calls = {};
+      for (const r of rows) for (const [kind, n] of Object.entries(r.air?.calls ?? {})) calls[kind] = (calls[kind] || 0) + n;
+      return { alphaWins: rows.filter((r) => r.result === 'alpha').length, bravoWins: rows.filter((r) => r.result === 'bravo').length,
+        draws: rows.filter((r) => r.result !== 'alpha' && r.result !== 'bravo').length,
+        supportShare: +(support / Math.max(1, kills)).toFixed(3), supportKills: support, kills, calls,
+        downed: rows.reduce((s, r) => s + (r.air?.downed ?? 0), 0),
+        earlyArrivals: rows.reduce((s, r) => s + (r.air?.earlyArrivals ?? 0), 0), arrivals: rows.reduce((s, r) => s + (r.air?.arrivals ?? 0), 0) };
+    })() } : {}),
   };
 }
 
@@ -235,12 +247,32 @@ let humanDeathS = null;
 let conversions = 0;
 let firstInfectionS = null;
 const waves = [];
+// Air Support (air-support-270): the call-ins by kind and side, the kills they made (the authority's kill source), the
+// aircraft brought down, and every strike's warning against its first arrival (shell_hit / shell_impact of its rounds)
+const air = { calls: {}, callsBySide: { alpha: 0, bravo: 0 }, supportKills: 0, supportKillsBySource: {}, downed: 0, strikes: new Map(),
+  roundStrike: new Map(), earlyArrivals: 0, arrivals: 0 };
+const SUPPORT_SOURCES = new Set(['strafe', 'bomb', 'artillery', 'ac130']);
 const inputs = new Map();
 const ticks = Math.round(capS / SIM_DT);
 for (let tick = 0; tick < ticks; tick++) {
   match.step({ dt: SIM_DT, inputs });
   const t = match.timeS;
   for (const event of match.eventsForViewer('__probe__')) {
+    if (event.type === 'mode_strike_called') {
+      air.calls[event.kind] = (air.calls[event.kind] || 0) + 1;
+      air.callsBySide[event.team] = (air.callsBySide[event.team] || 0) + 1;
+      air.strikes.set(event.strikeId, { landsS: event.landsS, kind: event.kind });
+    } else if (event.type === 'mode_strike_round') air.roundStrike.set(event.shellId, event.strikeId);
+    else if (event.type === 'mode_aircraft_down') air.downed++;
+    else if ((event.type === 'shell_hit' || event.type === 'shell_impact') && air.roundStrike.has(event.shellId)) {
+      const strike = air.strikes.get(air.roundStrike.get(event.shellId));
+      air.arrivals++;
+      if (strike && event.timeS < strike.landsS - 1e-9) air.earlyArrivals++;
+    }
+    if (event.type === 'tank_destroyed' && SUPPORT_SOURCES.has(event.source)) {
+      air.supportKills++;
+      air.supportKillsBySource[event.source] = (air.supportKillsBySource[event.source] || 0) + 1;
+    }
     if (event.type === 'tank_destroyed') {
       const killerTeam = event.killerId && event.killerId !== event.id ? lastTeam.get(event.killerId) : null;
       if (killerTeam) kills[killerTeam] = (kills[killerTeam] || 0) + 1; else kills.self++;
@@ -283,6 +315,9 @@ const report = {
   bravo: { n: bravoIds.length, avgMaxHp: avgMaxHp(bravoIds), killsPerMin: +(kills.bravo / minutes).toFixed(2), kills: kills.bravo, shotsPerMin: +(shots.bravo / minutes).toFixed(1),
     ranDry: dry(false).length, liveHullOfOwn: +mean(hostileHull).toFixed(3) },
   humanSurvivalS: Math.round(humanDeathS ?? endS), humanDied: humanDeathS != null,
+  ...(match.modeController.airSupport ? { air: { calls: air.calls, callsBySide: air.callsBySide, supportKills: air.supportKills,
+    supportKillsBySource: air.supportKillsBySource, supportShare: +(air.supportKills / Math.max(1, kills.alpha + kills.bravo)).toFixed(3),
+    downed: air.downed, arrivals: air.arrivals, earlyArrivals: air.earlyArrivals, score: { ...match.modeController.state.score } } } : {}),
   conversions, firstInfectionS: firstInfectionS == null ? null : Math.round(firstInfectionS), maxWave, selfKills: kills.self, waves,
   wallMs: Math.round(performance.now() - started),
   ...(flag('detail') ? { entities: match.entities.map((e) => ({ id: e.id, spec: e.specId, team0: start.get(e.id).team, shots: perShots.get(e.id) || 0, kills: e.kills,

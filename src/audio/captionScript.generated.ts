@@ -4,6 +4,30 @@
 // for the caption renderer, which loads this with its own chunk.
 
 export const CAPTION_SCRIPT: Readonly<Record<string, Readonly<Record<"en-US" | "zh-CN", readonly string[]>>>> = {
+  air_call_artillery: {
+    "en-US": ["Fire mission. Ten rounds, on my mark.", "Requesting artillery. Target marked."],
+    "zh-CN": ["火力任务，十发，按标记。", "请求炮火支援，目标已标定。"],
+  },
+  air_call_bomb: {
+    "en-US": ["Lasing. Requesting bomb on target.", "Target marked. Send the bomb."],
+    "zh-CN": ["激光照射中，请求投弹。", "目标已标定，请求炸弹。"],
+  },
+  air_call_recon: {
+    "en-US": ["Requesting recon pass. Area marked.", "Recon pass, on my mark."],
+    "zh-CN": ["请求侦察飞越，区域已标定。", "侦察机，按我的标记。"],
+  },
+  air_call_strafe: {
+    "en-US": ["Requesting gun run, on my mark.", "Gun run, target marked."],
+    "zh-CN": ["请求机炮扫射，按标记。", "机炮扫射，目标已标定。"],
+  },
+  air_incoming: {
+    "en-US": ["Air strike on us! Move, move!", "Enemy aircraft inbound, get clear!"],
+    "zh-CN": ["空袭来了！快撤！", "敌机来袭，快离开！"],
+  },
+  aircraft_downed: {
+    "en-US": ["Aircraft down.", "Got the jet. It's going down."],
+    "zh-CN": ["敌机击落。", "打中飞机了，正在坠落。"],
+  },
   aircraft_overhead: {
     "en-US": ["Aircraft overhead.", "Planes passing over."],
     "zh-CN": ["头顶有飞机。", "飞机通过上空。"],
@@ -47,6 +71,10 @@ export const CAPTION_SCRIPT: Readonly<Record<string, Readonly<Record<"en-US" | "
   artillery_far: {
     "en-US": ["Artillery, far off.", "Heavy guns in the distance."],
     "zh-CN": ["远处有炮兵射击。", "远方重炮。"],
+  },
+  artillery_incoming: {
+    "en-US": ["Incoming artillery! Move!", "Shells inbound on us, get clear!"],
+    "zh-CN": ["炮击来袭！快撤！", "炮弹落向我们，快离开！"],
   },
   autoloader_damaged: {
     "en-US": ["Autoloader's damaged."],
@@ -623,6 +651,10 @@ export const CAPTION_SCRIPT: Readonly<Record<string, Readonly<Record<"en-US" | "
   spotted_right: {
     "en-US": ["Contact right.", "Tank, right."],
     "zh-CN": ["右侧发现目标。", "坦克，右侧。"],
+  },
+  start_air_support: {
+    "en-US": ["Take the sectors. Air support standing by.", "Seize the points. We have air on call."],
+    "zh-CN": ["夺取要点，空中支援待命。", "占领要点，空援随时可以呼叫。"],
   },
   start_assault: {
     "en-US": ["Assault. Take the first line.", "Attack. Advance on the line."],

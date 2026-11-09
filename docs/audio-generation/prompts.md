@@ -258,6 +258,25 @@ The drone has separate hover, full-throttle and wind loops that the engine
 crossfades; the gunship has an orbit loop heard from the ground and a cabin
 loop heard inside.
 
+Air Support's strike jets (air-support-270, 2026-11-05) are loops too, flown
+along each call-in's path so the pass is the rig's Doppler. The engine's own
+whine is what the ear proxy hears as an aircraft: "a powerful deep jet engine
+roar with a tearing rumble" was heard as wind (0 of 4 as shipped); "the loud,
+high whine of its jet engine over a powerful deep roar" passed. A falling
+round's whistle must not name where it lands: "falling … toward the listener …
+cut off suddenly at the end" came back with the explosion (1 of 8 shells, 1 of
+6 bombs), and a shell's "scream" was heard as a siren (1 of 8). What passed,
+7 of 10:
+
+> Sound effect: the whistle of a heavy artillery shell falling through the
+> air: one falling whistle and a fast, tearing rush of air, getting louder and
+> louder. Only the shell's whistle in the air. Real documentary sound, not a
+> movie effect, no music, no voices.
+
+The A-10's GAU-8 is one burst, written as the BRRRT it is ("the rounds firing
+so fast they blur into one continuous roar"): 8 of 8 close and 6 of 6 far were
+heard as gunfire, never as a chainsaw or an engine.
+
 ## Crew scripts
 
 Each line is written for what that army's armoured crews actually say over the

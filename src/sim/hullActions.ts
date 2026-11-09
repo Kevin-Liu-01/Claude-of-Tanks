@@ -16,9 +16,10 @@ import {
 } from './consumableRules.ts';
 import type { ConsumableHost, ConsumableState } from './consumableRules.ts';
 import { magazineReloadDenialReason, repairAllModules, repairModules, startMagazineReload, strainModule } from './damage.ts';
-import { consumableTiming } from './matchRuleset.ts';
+import { AIR_STRIKE_KINDS, consumableTiming } from './matchRuleset.ts';
+import type { AirStrikeKind } from './matchRuleset.ts';
 import { requestTankJump } from './movement.ts';
-import { PLAYER_ACTION_BITS } from './playerActions.ts';
+import { AIR_STRIKE_BITS, PLAYER_ACTION_BITS } from './playerActions.ts';
 import { requestTankSelfRight } from './rollover.ts';
 import { activateSpecialAction } from './specialActions.ts';
 
@@ -48,6 +49,8 @@ export interface HullActionsHost<Hull extends ActionHull> {
   readonly world: Parameters<typeof requestAuxiliary>[4];
   readonly wind: Parameters<typeof requestAuxiliary>[5];
   supply(entity: Hull, kind: 'ammo' | 'heal'): void;
+  /** Air Support (air-support-270): a call-in pressed, called at the hull's aim point; absent where the driver has no mode. */
+  strike?(entity: Hull, kind: AirStrikeKind): void;
   /** A smoke salvo fired: the driver keeps the match's screens. */
   smokeLaunched(entity: Hull, screen: SmokeScreen): void;
   /** A magazine reload started (reason null) or was refused. */
@@ -74,6 +77,8 @@ export function applyHullActions<Hull extends ActionHull>(entity: Hull, host: Hu
   if (!host.verdict) {
     if (bits & PLAYER_ACTION_BITS.SUPPLY_AMMO) host.supply(entity, 'ammo');
     if (bits & PLAYER_ACTION_BITS.SUPPLY_HEAL) host.supply(entity, 'heal');
+    // Air Support: the recon pass and the battery ride the supply bits (no mode reads both meanings; airSupport.selftest)
+    if (host.strike) for (const kind of AIR_STRIKE_KINDS) if (bits & AIR_STRIKE_BITS[kind]) host.strike(entity, kind);
     // (2026-10-09) the canisters fly through the match's collision: they bounce off walls, and the clouds stay out of the
     // houses beside them; (FX lane 2026-10-17) on its map's wind
     if (bits & PLAYER_ACTION_BITS.SMOKE && requestAuxiliary(entity, 'smoke', timeS, host.ground, host.world, host.wind)) {

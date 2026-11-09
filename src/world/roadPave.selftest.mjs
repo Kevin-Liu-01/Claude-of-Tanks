@@ -24,6 +24,20 @@ import { createLiveHeightFieldProxy } from './liveHeightFieldProxy.ts';
   assert.equal(roadPaveSampler(null, null)(0, 0, 0, false), 0, 'no splat config: no paving');
   assert.equal(dirt(Number.NaN, 0, 0, false), 0, 'an unknown road distance is off the road');
 }
+// (built-env-270) the catalogue's paving: its streets whole or in the town, and each road line by its own surface
+{
+  const town = { x0: -10, x1: 10, z0: -10, z1: 10 };
+  const roads = [[[-100, 0], [100, 0]], [[0, -100], [0, -20], [60, -20]]];
+  const lines = roadPaveSampler({ roadTexMix: 0.12 }, town, { streets: null, lines: [false, true], roads });
+  assert.equal(lines(1, 50, 1, false), 0.12, 'an earth line keeps the map\'s mix');
+  assert.equal(lines(1, 30, -21, false), 1, 'a line whose surface is paved is paved');
+  assert.equal(lines(1, 0.5, -60, false), 1, 'along its first leg too');
+  assert.equal(lines(ROAD_HARD_M + 0.2, 30, -24.5, false), 0, 'off its carriageway: no paving');
+  assert.equal(roadPaveSampler({ roadTexMix: 0.12 }, town, { streets: 'all', lines: null, roads })(1, 50, 1, false), 1, 'streets paved whole');
+  const townOnly = roadPaveSampler({ roadTexMix: 0.12 }, town, { streets: 'town', lines: null, roads });
+  assert.equal(townOnly(1, 2, 1, false), 1, "the works town's setts");
+  assert.equal(townOnly(1, 50, 1, false), 0.12, 'past the town the country road');
+}
 
 // ---- 2. grit or wake: none on a dirt road, all on a street --------------------------------------------------------------
 {
@@ -56,7 +70,9 @@ import { createLiveHeightFieldProxy } from './liveHeightFieldProxy.ts';
 // ---- 4. the wiring: the height field publishes it, the live proxy forwards it, dust() consults it -----------------------
 {
   const terrain = await readFile(new URL('./terrain.ts', import.meta.url), 'utf8');
-  assert.match(terrain, /const roadPaveAt = roadPaveSampler\(cfg\?\.splat, layout\.village\);/);
+  assert.match(terrain, /const roadPaveAt = roadPaveSampler\(cfg\?\.splat, layout\.village, \{/);
+  assert.match(terrain, /lines: layout\.roadStyles\?\.map\(\(style\) => !!style\?\.surface && style\.surface !== 'dirt'\) \?\? null,/,
+    "(built-env-270) each road line's own paved surface");
   assert.match(terrain, /getRoadPaveAt: \(x: number, z: number\): number => roadPaveAt\(gridSample\(gRoadDist, x, z\), x, z, bridgeDecks\.length > 0 && bridgeDeckOver\(x, z\) !== null\),/);
   assert.match(terrain, /if \(gridSample\(gRoadDist, x, z\) < 4\.3\) return 'hard';/, `getGroundType's carriageway is ROAD_HARD_M (${ROAD_HARD_M})`);
   let world = { heightField: { size: 1, minY: 0, maxY: 1, getHeightAt: () => 0, getNormalAt: () => null, getGroundType: () => 'hard',

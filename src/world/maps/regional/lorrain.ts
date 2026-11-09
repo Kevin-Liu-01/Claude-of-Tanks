@@ -906,9 +906,12 @@ const LORRAIN_BUILDERS: Readonly<Record<string, RegionalBuilder>> = Object.freez
   // (the r2 sweep, 2026-10-16: the town's sixteen row houses stood in the generic props.ts row house, its windows dark
   // plates on the render) the town house of the street rows: two or three storeys of the maison's dwelling bays, now and
   // then a shop under them (the look stream's choice), its height the plot's
+  // (buildings-270, the census: the rows read Provençal — tall, narrow, three storeys; the Moselle village's photos (Dornot,
+  // September 1944) show the maison lorraine low and wide, two storeys under the long canal-tile roof, the arched cart door
+  // of its barn beside the dwelling on the usoir) every row house two storeys, half of them a farm with its cart door
   rowhouse: (ctx) => {
-    const shop = ctx.variant() < 0.35, storeys = ctx.info.h > 9.6 ? 3 : 2;
-    return maison(ctx, { bays: shop ? ['shop', 'logis'] : ['logis', 'logis'], storeys, ...(shop ? { fascia: rgb(0x5a4a3a) } : {}) });
+    const shop = ctx.variant() < 0.35, farm = !shop && ctx.variant() < 0.5;
+    return maison(ctx, { bays: shop ? ['shop', 'logis'] : farm ? ['logis', 'cart'] : ['logis', 'logis'], storeys: 2, ...(shop ? { fascia: rgb(0x5a4a3a) } : {}) });
   },
   barn: grange,
   church,
@@ -928,11 +931,16 @@ export const LORRAIN_STYLE: ArchitectureStyle = Object.freeze<ArchitectureStyle>
   surfaces: {
     roof: { kind: 'canal', tint: [0.6, 0.38, 0.28] },
     stone: { kind: 'limestone', tint: [0.8, 0.69, 0.5] },
-    sourced: { plaster: true, wood: true },
+    // (buildings-270, the sourced-plaster class: under the photo set none of the map's render tones showed) the walls the
+    // procedural limeRender canvas, the primary family's tone measured on it against the reference photos (the crépi's grey-beige: the map's tone, #ccba98 against #c9b48a)
+    sourced: { plaster: false, wood: true },
+    render: { kind: 'limeRender', seed: 0x3e55 },
     tones: {
       // the crépi: ochre (the map's own tone wins), a rose-beige and a grey lime
-      plaster2: (_h, s, l) => [0.06, Math.min(1, s * 0.9 + 0.08), Math.min(1, l * 1.08 + 0.06)],
-      plaster3: (_h, s, l) => [0.1, Math.min(1, s * 0.3), Math.min(1, l * 1.1 + 0.05)],
+      // (buildings-270, on the lime render: the grey lime read lilac under the sky and the rose went muddy) a weathered
+      // ochre-rose (#b79375 against #a8794e-#b09a72) and a warm grey lime (#c1b8ab against #d8cfc0)
+      plaster2: (_h, s, l) => [0.075, Math.min(1, s * 0.5 + 0.26), Math.min(1, l + 0.13)],
+      plaster3: (_h, s, l) => [0.1, Math.min(1, s * 0.3 + 0.12), Math.min(1, l * 0.9 + 0.3)],
     },
   },
   builders: LORRAIN_BUILDERS,
@@ -940,9 +948,7 @@ export const LORRAIN_STYLE: ArchitectureStyle = Object.freeze<ArchitectureStyle>
     plaster: [[1, 1, 1], [1.0, 0.95, 0.88], [0.96, 0.94, 0.9], [1.02, 0.97, 0.9], [0.92, 0.9, 0.86]],
     stone: [[1, 1, 1], [0.94, 0.92, 0.88], [1.02, 0.98, 0.92], [0.9, 0.88, 0.85]],
     roof: [[1, 1, 1], [0.9, 0.86, 0.8], [0.84, 0.8, 0.76], [1.04, 0.98, 0.92], [0.94, 0.9, 0.86]],
-    damp: 0.75, moss: 0.45,
   },
-  wear: 0.3,
   // (2026-10-07, the cost trim; the coordinator's ruling) the grey lime drawn from the rose-beige's bucket under its
   // colour ratio: the two procedural renders share one relief, so one draw and one shadow caster fewer
   foldThirdPlaster: true,

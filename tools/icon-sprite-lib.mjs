@@ -12,11 +12,11 @@ export const STROKE = 1.5;
 export const STROKE_SMALL = 1.25;
 export const ID_PREFIX = 'i-';
 
-/** Glyphs drawn to take the filled active state (closed bodies, evenodd knock-outs): navigation and the 13 modes. */
+/** Glyphs drawn to take the filled active state (closed bodies, evenodd knock-outs): navigation and the 14 modes. */
 export const ACTIVE_ICON_IDS = new Set([
   'play', 'home', 'garage', 'deploy', 'gallery', 'manual', 'studio', 'media', 'record', 'settings',
   'modeStandard', 'modeFlag', 'modeZones', 'modeFrontline', 'modeTurbo', 'modeHorde', 'modeMars', 'modeJuggernaut',
-  'modeInfected', 'modeRealistic', 'modeGunGame', 'modeDrone', 'modeAc130', 'modeProving',
+  'modeInfected', 'modeRealistic', 'modeGunGame', 'modeDrone', 'modeAc130', 'modeProving', 'modeAirSupport',
 ]);
 
 /** Attributes a glyph element may carry. Stroke width, caps, joins and colour come from the host, never the glyph. */

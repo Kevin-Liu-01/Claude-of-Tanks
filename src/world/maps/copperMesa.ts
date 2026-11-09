@@ -12,6 +12,7 @@
 import { WORN_YARD_PAINT } from '../hardstandSurface.ts';
 import { makeRealisticCityBuildingTones } from './buildingTonePresets.ts';
 import { roundRoadBends } from './roadBends.ts';
+import { BUILDING_STYLES } from './buildingStyleTable.ts';
 
 const clamp01 = (x: number) => Math.max(0, Math.min(1, x));
 /** The fractured blocks' conglomerate (sceneryRocks.ts 'breccia': its clasts the pebbles): Queenstown's pink and
@@ -162,7 +163,7 @@ export default {
   },
   props: {
     // the map-revival lane (2026-10-05): the Queenstown kit (maps/regional/queenstown.ts)
-    architecture: 'queenstown',
+    architecture: BUILDING_STYLES.copper_mesa.kit,
     sourcedPalette: 'foundry',
     // (round 2, the gauntlet's wave 117: more of the town — the second warehouse and depot seats are cottage rows)
     // (round 3: the town authored lot by lot, QUEENSTOWN_TOWN above; no roadside plan)

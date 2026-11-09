@@ -911,9 +911,8 @@ export const SAVOYARD_STYLE: ArchitectureStyle = Object.freeze<ArchitectureStyle
     stone: [[1, 1, 1], [0.92, 0.94, 0.97], [0.97, 0.98, 1.0], [0.86, 0.88, 0.91], [0.8, 0.82, 0.84], [0.84, 0.85, 0.87]],
     roof: [[1, 1, 1], [0.9, 0.88, 0.84], [1.06, 1.03, 0.98], [0.84, 0.83, 0.82]],
     // (round 4, wave 188: "showroom-fresh, no grime"): the wall foot's splash and rising damp near full
-    damp: 0.95, moss: 0.5, mossTint: [0.96, 0.94, 0.8],
+    mossTint: [0.96, 0.94, 0.8],
   },
-  wear: 0.3,
   // the yards: a fence of split larch round the woodshed (no kitchen garden under the April snow)
   yard: { kinds: ['alpine', 'logcabin'], fence: 'fenceplank', gate: 'gate', shed: 'yardshed', shedSize: [3.6, 3.0], garden: false },
 });

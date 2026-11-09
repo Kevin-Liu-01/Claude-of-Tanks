@@ -12,11 +12,10 @@ import { readFileSync } from 'node:fs';
 import { registerHooks } from 'node:module';
 import * as THREE from 'three';
 import {
-  JETTY_DECK_TOP_OVER_Y, JETTY_HALF_WIDTH_M, buildGangway, buildJetty, buildRivaSteps, jettyFormForCoast, legacyJettyDraws,
+  JETTY_DECK_TOP_OVER_Y, JETTY_HALF_WIDTH_M, buildGangway, buildJetty, buildRivaSteps, legacyJettyDraws,
 } from './jettyKit.ts';
-import { DRIFT_SEAT_Y, buildDriftLog, buildMooringBuoy, driftCoastForBoat, fordMarker, fordStyleForBoat, mooringStakeGeometry } from './waterside.ts';
-import { dressReedClump, reedFormForBoat } from './reedBeds.ts';
-import { boatFamilyForMap } from './boatHulls.ts';
+import { DRIFT_SEAT_Y, buildDriftLog, buildMooringBuoy, fordMarker, mooringStakeGeometry } from './waterside.ts';
+import { dressReedClump } from './reedBeds.ts';
 
 // ------------------------------------------------------------------ helpers
 /** The lowest and the highest surface a vertical line through (x, z) meets in a list of geometries. */
@@ -39,13 +38,7 @@ function column(geometries, x, z) {
 }
 const finite = (g) => { for (const a of Object.values(g.attributes)) assert.ok(a.array.every(Number.isFinite)); };
 
-// ------------------------------------------------------------------ the forms per map (keyed on each coast's boats)
-const boat = (mapId) => boatFamilyForMap(mapId).hull.type;
-assert.deepEqual(['coastal', 'fjord', 'saltwind', 'mangrove', 'delta', 'alpine'].map((id) => jettyFormForCoast(boat(id))),
-  ['estacade', 'brygge', 'riva', 'stilts', 'stilts', 'stage']);
-assert.equal(driftCoastForBoat(boat('fjord')), 'nordland'); assert.equal(driftCoastForBoat(boat('coastal')), 'breton');
-assert.equal(fordStyleForBoat(boat('delta')), 'bamboo'); assert.equal(fordStyleForBoat(boat('autumn')), 'gauge');
-assert.deepEqual(['autumn', 'delta', 'mangrove'].map((id) => reedFormForBoat(boat(id))), ['phragmites', 'kash', 'nipa']);
+// (the forms per map are each map's built-environment row: builtEnvironmentTable.selftest.mjs)
 // (the frozen lakes' stage and frost-killed reeds are the winter-lake kit's own, whatever the map's boats)
 const kitSource = readFileSync(new URL('./mapKits.ts', import.meta.url), 'utf8');
 assert.match(kitSource, /jettyForm: JettyForm = 'stage'/, 'a frozen lake builds a stage');

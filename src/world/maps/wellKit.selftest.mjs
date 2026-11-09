@@ -39,7 +39,7 @@ for (const [key, form] of Object.entries(MONUMENT_FORMS)) if (!forms.has(`monume
 for (const [spec, key] of forms) {
   const [what, form] = spec.split(':');
   let arch = null; try { arch = resolveRegionalArchitecture(key); } catch { arch = null; }
-  const ctx = { stone: wellStoneOf(arch) };
+  const ctx = { stone: wellStoneOf(arch, 'selftest') };
   const meta = DESTRUCTIBLE_TYPES[what];
   const intact = what === 'well' ? buildWell(form, ctx, false) : buildMonument(form, ctx, false);
   const broken = what === 'well' ? buildWell(form, ctx, true) : buildMonument(form, ctx, true);

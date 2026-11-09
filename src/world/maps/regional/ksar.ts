@@ -488,11 +488,20 @@ export const KSAR_STYLE: ArchitectureStyle = Object.freeze<ArchitectureStyle>({
   surfaces: {
     roof: { kind: 'canal', tint: [0.70, 0.52, 0.38] },
     stone: { kind: 'rubble', tint: [0.68, 0.62, 0.53] },
-    sourced: { plaster: true, wood: true },
+    // (buildings-270, the census and the batch-1 A/B: under the sourced plaster photo no tone the map gave the walls showed,
+    // and the houses stayed the sand's own colour) the walls the procedural mud plaster under lime wash
+    // (regionalSurfaces.ts paintLimeRender since the round-3 pairs: the soft wash read flat beside the photos' weathered mud),
+    // each family's tone measured on that canvas against the Dahar photos: the ochre
+    // mud-lime render (the map's plaster, #d0a671 against #c79a5a-#d8b47a), the warm lime wash of the houses and cell bands
+    // (#d4cec4), the older, deeper ochre (#ce955a)
+    sourced: { plaster: false, wood: true },
+    render: { kind: 'limeRender', seed: 0x4b3d },
     tones: {
-      plaster: (_h, s, l) => [0.11, Math.min(1, s * 0.2), Math.min(1, l * 1.3 + 0.12)],
-      plaster2: (_h, s, l) => [0.09, Math.min(1, s * 0.6 + 0.18), Math.min(1, l * 1.08 + 0.06)],
-      plaster3: (_h, s, l) => [0.085, Math.min(1, s * 0.7 + 0.22), Math.min(1, l * 1.02 + 0.03)],
+      plaster: (_h, s, l) => [0.095, Math.min(1, s * 0.4 + 0.36), Math.min(1, l + 0.2)],
+      // (the round-2 critics: the cool lime wash read grey and washed out) a warm lime wash (#d4cec4) and the older, deeper
+      // ochre (#ce955a against #a87842)
+      plaster2: (_h, s, l) => [0.1, Math.min(1, s * 0.25 + 0.14), Math.min(1, l * 0.6 + 0.5)],
+      plaster3: (_h, s, l) => [0.085, Math.min(1, s * 0.4 + 0.5), Math.min(1, l + 0.08)],
     },
   },
   builders: KSAR_BUILDERS,
@@ -502,9 +511,7 @@ export const KSAR_STYLE: ArchitectureStyle = Object.freeze<ArchitectureStyle>({
     plaster: [[1, 1, 1], [1.04, 1.02, 0.98], [0.95, 0.9, 0.82], [0.9, 0.84, 0.74], [1.06, 1.05, 1.02]],
     stone: [[1, 1, 1], [0.94, 0.92, 0.9]],
     roof: [[1, 1, 1], [0.9, 0.86, 0.82]],
-    damp: 0.25, moss: 0.05,
   },
-  wear: 0.15,
   // the courtyards: mud-brick walls round each house's court (hosh), a gate (yards.ts)
   yard: { kinds: ['adobe'], fence: 'walladobe', gate: 'gateadobe', shed: null, garden: false },
 });
@@ -1311,9 +1318,7 @@ export const SIWA_STYLE: ArchitectureStyle = Object.freeze<ArchitectureStyle>({
     plaster: [[1, 1, 1], [1.05, 1.04, 1.02], [0.94, 0.92, 0.88], [0.9, 0.87, 0.82], [1.08, 1.07, 1.05]],
     stone: [[1, 1, 1], [0.95, 0.94, 0.92]],
     roof: [[1, 1, 1], [0.9, 0.87, 0.83]],
-    damp: 0.12, moss: 0,
   },
-  wear: 0.2,
   // the courtyards: palm-rib (jerid) fences round each house's court (yards.ts; round 2, wave 125: the generic adobe wall
   // read as "salmon-pink stucco with fired-brick coping")
   yard: { kinds: ['adobe'], fence: 'fencewattle', gate: null, shed: null, garden: false },

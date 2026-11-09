@@ -750,6 +750,38 @@
   "start_zones": [
    2.686,
    1.902
+  ],
+  "air_call_recon": [
+   1.9,
+   1.63
+  ],
+  "artillery_incoming": [
+   1.956,
+   1.978
+  ],
+  "air_call_bomb": [
+   2.712,
+   2.134
+  ],
+  "aircraft_downed": [
+   1.57,
+   2.106
+  ],
+  "air_call_artillery": [
+   2.572,
+   2.374
+  ],
+  "start_air_support": [
+   3.216,
+   3.592
+  ],
+  "air_incoming": [
+   1.954,
+   2.094
+  ],
+  "air_call_strafe": [
+   1.818,
+   1.664
   ]
  },
  "en-US": {
@@ -1503,6 +1535,38 @@
   "gunship_rifle": [
    0.5,
    1.73
+  ],
+  "air_call_recon": [
+   2.456,
+   1.762
+  ],
+  "air_call_strafe": [
+   1.994,
+   1.67
+  ],
+  "artillery_incoming": [
+   1.784,
+   2.09
+  ],
+  "start_air_support": [
+   2.634,
+   2.672
+  ],
+  "air_call_artillery": [
+   2.624,
+   2.216
+  ],
+  "air_incoming": [
+   2.096,
+   2.232
+  ],
+  "aircraft_downed": [
+   1.216,
+   1.976
+  ],
+  "air_call_bomb": [
+   2.316,
+   1.722
   ]
  },
  "en-GB": {
@@ -2256,6 +2320,38 @@
   "gunship_rounds_complete": [
    1.01,
    2.436
+  ],
+  "start_air_support": [
+   2.316,
+   3.202
+  ],
+  "air_call_strafe": [
+   1.73,
+   1.522
+  ],
+  "air_incoming": [
+   2.214,
+   2.094
+  ],
+  "air_call_recon": [
+   2.298,
+   1.538
+  ],
+  "air_call_artillery": [
+   2.376,
+   2.158
+  ],
+  "aircraft_downed": [
+   1.458,
+   1.224
+  ],
+  "air_call_bomb": [
+   2.804,
+   2.118
+  ],
+  "artillery_incoming": [
+   2.55,
+   1.93
   ]
  },
  "ru": {
@@ -3009,6 +3105,38 @@
   "defeat_overrun": [
    1.56,
    2.266
+  ],
+  "air_call_artillery": [
+   2.806,
+   2.954
+  ],
+  "air_call_recon": [
+   1.948,
+   1.678
+  ],
+  "air_call_strafe": [
+   1.836,
+   2.174
+  ],
+  "artillery_incoming": [
+   1.83,
+   1.798
+  ],
+  "air_call_bomb": [
+   2.69,
+   2.224
+  ],
+  "start_air_support": [
+   3.078,
+   3.3
+  ],
+  "air_incoming": [
+   1.88,
+   2.416
+  ],
+  "aircraft_downed": [
+   1.484,
+   1.814
   ]
  },
  "uk": {
@@ -3762,6 +3890,38 @@
   "wave_swarm": [
    2.794,
    2.638
+  ],
+  "air_call_recon": [
+   1.9,
+   1.826
+  ],
+  "air_call_bomb": [
+   2.596,
+   2.618
+  ],
+  "aircraft_downed": [
+   1.61,
+   1.818
+  ],
+  "start_air_support": [
+   3.342,
+   3.62
+  ],
+  "air_call_strafe": [
+   1.912,
+   2.72
+  ],
+  "artillery_incoming": [
+   2.16,
+   1.948
+  ],
+  "air_incoming": [
+   2.024,
+   2.566
+  ],
+  "air_call_artillery": [
+   3.004,
+   3.026
   ]
  },
  "zh": {
@@ -4515,6 +4675,38 @@
   "start_zones": [
    1.452,
    1.614
+  ],
+  "start_air_support": [
+   2.044,
+   2.594
+  ],
+  "air_incoming": [
+   1.376,
+   1.526
+  ],
+  "air_call_recon": [
+   2.368,
+   1.622
+  ],
+  "air_call_artillery": [
+   2.092,
+   2.086
+  ],
+  "air_call_strafe": [
+   1.87,
+   1.908
+  ],
+  "air_call_bomb": [
+   1.912,
+   1.962
+  ],
+  "artillery_incoming": [
+   1.444,
+   1.798
+  ],
+  "aircraft_downed": [
+   0.896,
+   1.89
   ]
  },
  "fr": {
@@ -5268,6 +5460,38 @@
   "gunship_good_hits": [
    0.874,
    2.422
+  ],
+  "air_call_artillery": [
+   2.386,
+   2.138
+  ],
+  "artillery_incoming": [
+   1.794,
+   1.67
+  ],
+  "air_call_recon": [
+   1.576,
+   1.964
+  ],
+  "aircraft_downed": [
+   1.342,
+   1.66
+  ],
+  "air_call_strafe": [
+   1.844,
+   1.672
+  ],
+  "air_incoming": [
+   2.02,
+   1.742
+  ],
+  "start_air_support": [
+   3.016,
+   3.044
+  ],
+  "air_call_bomb": [
+   2.952,
+   2.04
   ]
  },
  "sv": {
@@ -6021,6 +6245,38 @@
   "ally_infected": [
    2.44,
    2.458
+  ],
+  "air_call_recon": [
+   1.888,
+   1.852
+  ],
+  "aircraft_downed": [
+   1.63,
+   2.204
+  ],
+  "air_call_artillery": [
+   2.698,
+   2.824
+  ],
+  "air_call_bomb": [
+   2.688,
+   2.348
+  ],
+  "air_call_strafe": [
+   2.5,
+   2.49
+  ],
+  "start_air_support": [
+   3.368,
+   3.416
+  ],
+  "artillery_incoming": [
+   2.104,
+   1.802
+  ],
+  "air_incoming": [
+   1.882,
+   2.312
   ]
  },
  "ja": {
@@ -6774,6 +7030,38 @@
   "gunship_victory": [
    3.232,
    2.958
+  ],
+  "air_call_bomb": [
+   2.512,
+   2.444
+  ],
+  "air_call_artillery": [
+   2.776,
+   2.908
+  ],
+  "artillery_incoming": [
+   1.6,
+   1.702
+  ],
+  "start_air_support": [
+   3.178,
+   3.096
+  ],
+  "air_call_strafe": [
+   2.454,
+   2.212
+  ],
+  "air_call_recon": [
+   2.926,
+   1.91
+  ],
+  "air_incoming": [
+   1.6,
+   1.648
+  ],
+  "aircraft_downed": [
+   1.23,
+   2.054
   ]
  },
  "ko": {
@@ -7527,6 +7815,38 @@
   "fire_command_he": [
    1.862,
    2.372
+  ],
+  "air_call_strafe": [
+   1.974,
+   2.086
+  ],
+  "air_call_recon": [
+   2.904,
+   2.212
+  ],
+  "air_incoming": [
+   1.824,
+   1.672
+  ],
+  "air_call_artillery": [
+   3.046,
+   3.004
+  ],
+  "artillery_incoming": [
+   1.646,
+   1.72
+  ],
+  "start_air_support": [
+   2.592,
+   2.492
+  ],
+  "aircraft_downed": [
+   1.098,
+   2.288
+  ],
+  "air_call_bomb": [
+   2.172,
+   2.864
   ]
  },
  "it": {
@@ -8280,6 +8600,38 @@
   "infected_turned": [
    3.456,
    3.462
+  ],
+  "air_call_strafe": [
+   2,
+   2.556
+  ],
+  "air_call_recon": [
+   1.93,
+   1.738
+  ],
+  "air_incoming": [
+   2.258,
+   2.154
+  ],
+  "start_air_support": [
+   3.314,
+   3.344
+  ],
+  "artillery_incoming": [
+   1.804,
+   1.854
+  ],
+  "aircraft_downed": [
+   1.456,
+   1.994
+  ],
+  "air_call_artillery": [
+   2.71,
+   2.506
+  ],
+  "air_call_bomb": [
+   3.01,
+   2.364
   ]
  },
  "pl": {
@@ -9033,6 +9385,38 @@
   "defeat_overrun": [
    1.64,
    2.472
+  ],
+  "air_call_recon": [
+   1.776,
+   1.746
+  ],
+  "air_call_strafe": [
+   2.154,
+   2.338
+  ],
+  "air_call_bomb": [
+   2.202,
+   2.472
+  ],
+  "start_air_support": [
+   3.18,
+   3.01
+  ],
+  "artillery_incoming": [
+   2.198,
+   1.744
+  ],
+  "air_call_artillery": [
+   2.986,
+   2.694
+  ],
+  "air_incoming": [
+   1.844,
+   2.444
+  ],
+  "aircraft_downed": [
+   1.866,
+   1.834
   ]
  },
  "he": {
@@ -9786,6 +10170,38 @@
   "goal_conceded": [
    0.85,
    2.748
+  ],
+  "artillery_incoming": [
+   1.782,
+   1.852
+  ],
+  "air_call_strafe": [
+   1.692,
+   2.64
+  ],
+  "air_call_artillery": [
+   2.458,
+   2.404
+  ],
+  "aircraft_downed": [
+   1.364,
+   1.89
+  ],
+  "air_call_recon": [
+   2.486,
+   1.738
+  ],
+  "air_incoming": [
+   1.828,
+   2.09
+  ],
+  "start_air_support": [
+   3.356,
+   2.884
+  ],
+  "air_call_bomb": [
+   2.288,
+   2.138
   ]
  },
  "da": {
@@ -10539,6 +10955,38 @@
   "gunship_rifle": [
    0.53,
    2.338
+  ],
+  "start_air_support": [
+   2.394,
+   2.672
+  ],
+  "artillery_incoming": [
+   1.752,
+   1.56
+  ],
+  "aircraft_downed": [
+   1.286,
+   1.792
+  ],
+  "air_call_recon": [
+   1.916,
+   1.916
+  ],
+  "air_call_artillery": [
+   2.278,
+   2.552
+  ],
+  "air_call_strafe": [
+   2.486,
+   2.608
+  ],
+  "air_incoming": [
+   2.192,
+   1.932
+  ],
+  "air_call_bomb": [
+   2.688,
+   2.488
   ]
  },
  "pt-BR": {
@@ -11292,6 +11740,38 @@
   "victory_juggernaut": [
    2.208,
    1.526
+  ],
+  "air_call_recon": [
+   2.096,
+   1.688
+  ],
+  "air_call_bomb": [
+   2.408,
+   2.274
+  ],
+  "start_air_support": [
+   3.416,
+   3.152
+  ],
+  "air_call_strafe": [
+   1.902,
+   2.138
+  ],
+  "aircraft_downed": [
+   1.83,
+   1.966
+  ],
+  "artillery_incoming": [
+   1.726,
+   2.128
+  ],
+  "air_call_artillery": [
+   2.34,
+   2.302
+  ],
+  "air_incoming": [
+   2.56,
+   2.09
   ]
  },
  "en-AU": {
@@ -12045,6 +12525,38 @@
   "enemy_final_weapon": [
    1.696,
    2.52
+  ],
+  "start_air_support": [
+   2.808,
+   2.65
+  ],
+  "aircraft_downed": [
+   1.488,
+   2.11
+  ],
+  "air_call_strafe": [
+   1.68,
+   1.418
+  ],
+  "air_incoming": [
+   2.002,
+   1.946
+  ],
+  "air_call_artillery": [
+   2.376,
+   2.058
+  ],
+  "air_call_bomb": [
+   2.63,
+   1.846
+  ],
+  "air_call_recon": [
+   2.278,
+   1.518
+  ],
+  "artillery_incoming": [
+   2.402,
+   1.762
   ]
  },
  "af": {
@@ -12798,6 +13310,38 @@
   "victory_assault": [
    3.168,
    2.912
+  ],
+  "air_call_recon": [
+   1.49,
+   1.702
+  ],
+  "air_call_strafe": [
+   2.062,
+   2.282
+  ],
+  "aircraft_downed": [
+   2.072,
+   2.752
+  ],
+  "start_air_support": [
+   3.158,
+   3.114
+  ],
+  "air_call_artillery": [
+   2.536,
+   2.006
+  ],
+  "artillery_incoming": [
+   1.88,
+   2.12
+  ],
+  "air_incoming": [
+   2.074,
+   2.196
+  ],
+  "air_call_bomb": [
+   2.494,
+   1.838
   ]
  },
  "es-ES": {
@@ -13551,6 +14095,38 @@
   "reloading": [
    0.702,
    0.814
+  ],
+  "start_air_support": [
+   2.92,
+   3.152
+  ],
+  "air_call_recon": [
+   2.85,
+   2.376
+  ],
+  "air_incoming": [
+   2.726,
+   2.47
+  ],
+  "air_call_artillery": [
+   2.952,
+   2.268
+  ],
+  "air_call_strafe": [
+   2.56,
+   1.894
+  ],
+  "air_call_bomb": [
+   3.104,
+   2.056
+  ],
+  "aircraft_downed": [
+   1.226,
+   2.338
+  ],
+  "artillery_incoming": [
+   1.966,
+   2.14
   ]
  },
  "es-419": {
@@ -14304,6 +14880,38 @@
   "bounced_us": [
    2.506,
    1.01
+  ],
+  "start_air_support": [
+   2.978,
+   3.72
+  ],
+  "air_call_strafe": [
+   2.49,
+   2.134
+  ],
+  "air_call_recon": [
+   3.3,
+   2.34
+  ],
+  "air_call_artillery": [
+   3.15,
+   2.408
+  ],
+  "air_call_bomb": [
+   2.99,
+   2.236
+  ],
+  "artillery_incoming": [
+   2.022,
+   2.268
+  ],
+  "aircraft_downed": [
+   1.318,
+   2.274
+  ],
+  "air_incoming": [
+   2.982,
+   2.812
   ]
  },
  "pt-PT": {
@@ -15057,6 +15665,38 @@
   "gunship_cannon": [
    1.37,
    2.24
+  ],
+  "start_air_support": [
+   3.42,
+   3.332
+  ],
+  "air_call_artillery": [
+   2.97,
+   2.37
+  ],
+  "air_call_recon": [
+   3.142,
+   2.078
+  ],
+  "air_call_bomb": [
+   3.158,
+   1.982
+  ],
+  "aircraft_downed": [
+   1.372,
+   2.362
+  ],
+  "air_incoming": [
+   2.668,
+   2.86
+  ],
+  "air_call_strafe": [
+   2.286,
+   2.138
+  ],
+  "artillery_incoming": [
+   1.92,
+   2.524
   ]
  },
  "nl": {
@@ -15810,6 +16450,38 @@
   "spotted_front": [
    0.826,
    1.192
+  ],
+  "start_air_support": [
+   2.796,
+   2.728
+  ],
+  "air_call_recon": [
+   2.388,
+   1.948
+  ],
+  "artillery_incoming": [
+   1.9,
+   2.262
+  ],
+  "air_call_artillery": [
+   2.974,
+   2.248
+  ],
+  "air_call_strafe": [
+   2.384,
+   2.27
+  ],
+  "air_call_bomb": [
+   2.228,
+   2.018
+  ],
+  "aircraft_downed": [
+   1.268,
+   1.974
+  ],
+  "air_incoming": [
+   2.26,
+   2.106
   ]
  },
  "no": {
@@ -16563,6 +17235,38 @@
    1.034,
    0.98,
    1.61
+  ],
+  "start_air_support": [
+   2.98,
+   2.776
+  ],
+  "air_call_recon": [
+   3.034,
+   1.92
+  ],
+  "air_incoming": [
+   2.388,
+   2.41
+  ],
+  "air_call_artillery": [
+   3.014,
+   2.39
+  ],
+  "air_call_strafe": [
+   2.61,
+   2.516
+  ],
+  "artillery_incoming": [
+   1.988,
+   2.062
+  ],
+  "aircraft_downed": [
+   1.086,
+   1.936
+  ],
+  "air_call_bomb": [
+   2.632,
+   2.072
   ]
  },
  "fi": {
@@ -17316,6 +18020,38 @@
   "obstacle_through": [
    1.788,
    2.082
+  ],
+  "start_air_support": [
+   2.662,
+   2.792
+  ],
+  "air_call_strafe": [
+   2.094,
+   2.032
+  ],
+  "air_call_recon": [
+   2.432,
+   1.778
+  ],
+  "aircraft_downed": [
+   0.852,
+   2.594
+  ],
+  "air_call_artillery": [
+   2.888,
+   2.206
+  ],
+  "air_call_bomb": [
+   2.38,
+   2.06
+  ],
+  "air_incoming": [
+   2.472,
+   2.224
+  ],
+  "artillery_incoming": [
+   1.784,
+   2.23
   ]
  },
  "el": {
@@ -18069,6 +18805,38 @@
   "flag_dropped_theirs": [
    1.7,
    3.156
+  ],
+  "artillery_incoming": [
+   2.048,
+   2.506
+  ],
+  "air_call_artillery": [
+   2.992,
+   3.506
+  ],
+  "air_call_strafe": [
+   2.006,
+   3.044
+  ],
+  "air_call_recon": [
+   3.612,
+   1.704
+  ],
+  "start_air_support": [
+   4.06,
+   3.766
+  ],
+  "air_incoming": [
+   2.814,
+   2.96
+  ],
+  "aircraft_downed": [
+   1.734,
+   2.37
+  ],
+  "air_call_bomb": [
+   2.97,
+   2.804
   ]
  },
  "cs": {
@@ -18822,6 +19590,38 @@
   "bounced_us": [
    2.344,
    2.14
+  ],
+  "air_call_recon": [
+   2.73,
+   1.92
+  ],
+  "air_call_bomb": [
+   2.68,
+   2.088
+  ],
+  "air_call_strafe": [
+   2.594,
+   1.928
+  ],
+  "start_air_support": [
+   3.282,
+   3.482
+  ],
+  "air_call_artillery": [
+   2.662,
+   2.452
+  ],
+  "aircraft_downed": [
+   1.274,
+   1.784
+  ],
+  "air_incoming": [
+   2.548,
+   2.492
+  ],
+  "artillery_incoming": [
+   2.242,
+   1.976
   ]
  },
  "hu": {
@@ -19575,6 +20375,38 @@
    2.014,
    3.104,
    2.04
+  ],
+  "air_call_bomb": [
+   2.95,
+   2.192
+  ],
+  "air_call_recon": [
+   3.1,
+   2.244
+  ],
+  "start_air_support": [
+   3.908,
+   3.436
+  ],
+  "artillery_incoming": [
+   2.002,
+   2.148
+  ],
+  "air_call_artillery": [
+   2.65,
+   2.394
+  ],
+  "aircraft_downed": [
+   1.374,
+   2.224
+  ],
+  "air_call_strafe": [
+   2.446,
+   2.654
+  ],
+  "air_incoming": [
+   2.434,
+   2.588
   ]
  },
  "ro": {
@@ -20328,6 +21160,38 @@
   "spotted_right": [
    1.098,
    1.392
+  ],
+  "start_air_support": [
+   3.268,
+   3.194
+  ],
+  "air_call_strafe": [
+   2.676,
+   2.098
+  ],
+  "air_call_artillery": [
+   3.2,
+   2.512
+  ],
+  "aircraft_downed": [
+   1.142,
+   2.376
+  ],
+  "air_call_recon": [
+   3.134,
+   2.454
+  ],
+  "air_incoming": [
+   2.524,
+   2.336
+  ],
+  "artillery_incoming": [
+   2.024,
+   2.102
+  ],
+  "air_call_bomb": [
+   2.848,
+   2.124
   ]
  },
  "tr": {
@@ -21081,6 +21945,38 @@
   "bounced_us": [
    1.07,
    1.19
+  ],
+  "air_call_artillery": [
+   2.534,
+   2.622
+  ],
+  "start_air_support": [
+   2.478,
+   3.05
+  ],
+  "air_call_strafe": [
+   2.238,
+   1.994
+  ],
+  "air_call_recon": [
+   2.614,
+   1.846
+  ],
+  "air_incoming": [
+   2.488,
+   2.056
+  ],
+  "air_call_bomb": [
+   3.04,
+   2.08
+  ],
+  "aircraft_downed": [
+   0.944,
+   1.688
+  ],
+  "artillery_incoming": [
+   1.938,
+   1.912
   ]
  },
  "ar": {
@@ -21834,6 +22730,38 @@
   "gunship_howitzer": [
    1.252,
    2.782
+  ],
+  "air_call_recon": [
+   2.988,
+   2.326
+  ],
+  "start_air_support": [
+   3.476,
+   3.566
+  ],
+  "air_call_artillery": [
+   3.304,
+   2.422
+  ],
+  "air_incoming": [
+   3.21,
+   2.246
+  ],
+  "air_call_strafe": [
+   2.78,
+   2.522
+  ],
+  "aircraft_downed": [
+   1.838,
+   2.206
+  ],
+  "air_call_bomb": [
+   2.876,
+   2.282
+  ],
+  "artillery_incoming": [
+   2.032,
+   2.438
   ]
  },
  "fa": {
@@ -22587,6 +23515,38 @@
   "friendly_ram": [
    2.166,
    1.58
+  ],
+  "air_call_artillery": [
+   3.336,
+   3.062
+  ],
+  "start_air_support": [
+   3.892,
+   3.282
+  ],
+  "air_incoming": [
+   2.924,
+   3.166
+  ],
+  "air_call_strafe": [
+   3.06,
+   3.306
+  ],
+  "aircraft_downed": [
+   1.762,
+   2.66
+  ],
+  "air_call_recon": [
+   3.702,
+   2.77
+  ],
+  "artillery_incoming": [
+   2.568,
+   3.262
+  ],
+  "air_call_bomb": [
+   4.228,
+   3.152
   ]
  },
  "hi": {
@@ -23340,6 +24300,38 @@
   "gunner_down": [
    1.002,
    2.118
+  ],
+  "air_call_recon": [
+   2.71,
+   1.79
+  ],
+  "air_call_strafe": [
+   2.2,
+   1.766
+  ],
+  "air_call_artillery": [
+   2.69,
+   2.29
+  ],
+  "air_call_bomb": [
+   2.828,
+   1.698
+  ],
+  "air_incoming": [
+   2.164,
+   2.214
+  ],
+  "start_air_support": [
+   3.364,
+   3.158
+  ],
+  "aircraft_downed": [
+   1.452,
+   2.754
+  ],
+  "artillery_incoming": [
+   1.77,
+   2.226
   ]
  },
  "ur": {
@@ -24093,6 +25085,38 @@
   "missile_incoming": [
    1.314,
    2.47
+  ],
+  "air_call_artillery": [
+   2.81,
+   2.3
+  ],
+  "air_call_strafe": [
+   2.302,
+   1.828
+  ],
+  "air_call_recon": [
+   2.85,
+   1.83
+  ],
+  "air_call_bomb": [
+   2.986,
+   1.88
+  ],
+  "artillery_incoming": [
+   1.684,
+   2.442
+  ],
+  "start_air_support": [
+   4.086,
+   3.206
+  ],
+  "air_incoming": [
+   2.376,
+   2.32
+  ],
+  "aircraft_downed": [
+   2.044,
+   2.83
   ]
  },
  "bn": {
@@ -24846,6 +25870,38 @@
   "gunship_cannon": [
    1.12,
    1.752
+  ],
+  "air_call_artillery": [
+   3.052,
+   2.318
+  ],
+  "air_call_strafe": [
+   2.528,
+   2.302
+  ],
+  "air_call_recon": [
+   2.7,
+   1.856
+  ],
+  "air_incoming": [
+   2.636,
+   1.942
+  ],
+  "air_call_bomb": [
+   2.866,
+   1.746
+  ],
+  "start_air_support": [
+   3.292,
+   3.254
+  ],
+  "artillery_incoming": [
+   1.618,
+   2.248
+  ],
+  "aircraft_downed": [
+   1.514,
+   2.158
   ]
  },
  "id-ID": {
@@ -25599,6 +26655,38 @@
   "gunship_cannon": [
    1.336,
    1.72
+  ],
+  "start_air_support": [
+   2.72,
+   3.504
+  ],
+  "air_call_recon": [
+   2.674,
+   1.932
+  ],
+  "air_call_bomb": [
+   2.232,
+   1.992
+  ],
+  "air_call_strafe": [
+   2.516,
+   2.166
+  ],
+  "air_incoming": [
+   2.24,
+   1.874
+  ],
+  "air_call_artillery": [
+   2.972,
+   2.614
+  ],
+  "aircraft_downed": [
+   1.38,
+   2.244
+  ],
+  "artillery_incoming": [
+   1.618,
+   2.078
   ]
  },
  "ms": {
@@ -26352,6 +27440,38 @@
   "ally_infected": [
    3.522,
    2.83
+  ],
+  "start_air_support": [
+   2.802,
+   3.736
+  ],
+  "air_call_artillery": [
+   3.06,
+   2.744
+  ],
+  "air_call_bomb": [
+   2.718,
+   2.028
+  ],
+  "air_incoming": [
+   2.414,
+   2.394
+  ],
+  "aircraft_downed": [
+   1.354,
+   2.39
+  ],
+  "air_call_strafe": [
+   2.7,
+   2.556
+  ],
+  "air_call_recon": [
+   2.498,
+   2.158
+  ],
+  "artillery_incoming": [
+   1.456,
+   2.108
   ]
  },
  "vi": {
@@ -27105,6 +28225,38 @@
   "fire_out": [
    1.58,
    0.908
+  ],
+  "start_air_support": [
+   2.764,
+   2.314
+  ],
+  "air_call_artillery": [
+   2.594,
+   2.282
+  ],
+  "air_call_recon": [
+   2.548,
+   1.892
+  ],
+  "air_call_bomb": [
+   2.384,
+   1.778
+  ],
+  "air_incoming": [
+   2.01,
+   1.906
+  ],
+  "air_call_strafe": [
+   2.2,
+   2.082
+  ],
+  "aircraft_downed": [
+   1.104,
+   1.792
+  ],
+  "artillery_incoming": [
+   1.49,
+   1.99
   ]
  },
  "th": {
@@ -27858,6 +29010,38 @@
   "gunship_rounds_complete": [
    0.52,
    2.122
+  ],
+  "start_air_support": [
+   3.418,
+   3.222
+  ],
+  "air_call_artillery": [
+   2.878,
+   2.072
+  ],
+  "air_incoming": [
+   2.108,
+   2.328
+  ],
+  "air_call_strafe": [
+   2.47,
+   2.03
+  ],
+  "artillery_incoming": [
+   1.804,
+   2.52
+  ],
+  "aircraft_downed": [
+   1.324,
+   2.402
+  ],
+  "air_call_recon": [
+   2.898,
+   2.176
+  ],
+  "air_call_bomb": [
+   2.454,
+   1.942
   ]
  },
  "fil": {
@@ -28611,6 +29795,38 @@
   "era_us": [
    1.84,
    2.778
+  ],
+  "air_call_recon": [
+   2.974,
+   1.818
+  ],
+  "air_call_artillery": [
+   2.942,
+   2.818
+  ],
+  "air_call_strafe": [
+   1.916,
+   2.064
+  ],
+  "start_air_support": [
+   3.282,
+   3.644
+  ],
+  "air_call_bomb": [
+   2.678,
+   2.602
+  ],
+  "air_incoming": [
+   2.238,
+   2.542
+  ],
+  "artillery_incoming": [
+   2.228,
+   2.296
+  ],
+  "aircraft_downed": [
+   1.418,
+   2.414
   ]
  }
 }

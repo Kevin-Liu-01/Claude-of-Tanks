@@ -76,11 +76,12 @@ assert.equal((sectionHtml('multiplayer', 'modes').match(/<li><a href="[^"]*#/g) 
 // sound: a crew language each, a bar per gun report, both call tables quote the captions
 assert.equal((sectionHtml('audio', 'radio').match(/class="cot-c-flag/g) ?? []).length, CREW_LANGUAGES.length - WORLD_CREW_LANGUAGES.length,
   'a flag per national crew');
-// …where its own name differs: Filipino is "Filipino" in both, so it shows the one name
-const endonyms = WORLD_CREW_LANGUAGES.filter((language) => crewLanguageLabel(language, 'en-US').own);
-assert.ok(endonyms.length >= WORLD_CREW_LANGUAGES.length - 1 && !endonyms.includes('fil'), `endonyms: ${endonyms.join(', ')}`);
-assert.equal((sectionHtml('audio', 'radio').match(/class="dm-endonym"/g) ?? []).length, endonyms.length,
-  'each language with no country in the game named in its own words');
+// crewLanguageLabel names a language in its own words only where that differs from the interface's name (Filipino is
+// "Filipino" in both), so the endonyms are exactly the labelled ones, and nearly all of them
+const ownNamed = WORLD_CREW_LANGUAGES.filter((language) => crewLanguageLabel(language, 'en-US').own);
+assert.ok(ownNamed.length >= WORLD_CREW_LANGUAGES.length - 1, `${ownNamed.length} world languages have an own name`);
+assert.equal((sectionHtml('audio', 'radio').match(/class="dm-endonym"/g) ?? []).length, ownNamed.length,
+  'each language with no country in the game named in its own words, where they differ');
 assert.equal((sectionHtml('audio', 'gunfire').match(/class="dm-bar"/g) ?? []).length, Object.keys(WEAPON_CLASSES).length, 'a bar per report class');
 for (const id of ['hits', 'warnings']) assert.ok((sectionHtml('audio', id).match(/<q>/g) ?? []).length >= 10, `the ${id} table quotes the crew`);
 

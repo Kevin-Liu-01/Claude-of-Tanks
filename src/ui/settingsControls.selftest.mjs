@@ -35,7 +35,8 @@ for (const action of ['smoke', 'lights', 'roofGun', 'drone', 'aerialVision']) as
 for (const action of ['rangeReset', 'rangeMoving']) assert.ok(iconIds.has(SETTINGS_ACTION_ICONS[action].id), `${action} wears an icon of the shared set`);
 // the vehicle-action table (owner 2026-10-25, src/game/vehicleActions.ts): the ATGM (Q) joins them, and every vehicle and
 // flight action wears the table's glyph, as the HUD's controls row and the Garage do
-assert.equal(Object.keys(SETTINGS_ACTION_ICONS).length, 38,
+// Air Support (air-support-270): the strike view's binoculars (X) join them
+assert.equal(Object.keys(SETTINGS_ACTION_ICONS).length, 39,
   'every remappable action has a settings icon');
 for (const def of [...VEHICLE_ACTIONS, ...FLIGHT_ACTIONS].filter((entry) => entry.binding !== 'selfRight')) {
   assert.equal(SETTINGS_ACTION_ICONS[def.binding].id, def.glyph, `${def.binding} wears the table's ${def.glyph}`);
@@ -125,8 +126,8 @@ assert.doesNotMatch(armorSvg, /#[0-9a-f]{6}/i, 'the armour overlay glyph carries
   // its seat: over the vehicle-controls row (battleHudLayout.ts); never over the scope, a flight, Watch or a spectated battle
   // (gauntlet r3: the planner's place, over the rack's centre or beside the speedometer, battleHudLayout.ts hintsPlace)
   assert.match(source, /\.cot-hints\{position:fixed;left:var\(--hud-hints-x,50%\);top:var\(--hud-hints-bottom,calc\(var\(--hud-systems-top,/, 'the strip seats over the controls row');
-  assert.match(source, /body\.cot-hud-aerial \.cot-hints,html\[data-cot-scoped\] \.cot-hints,html\[data-watch\] \.cot-hints,body\.cot-spectating \.cot-hints\{display:none;\}/,
-    'the scope, a flight, Watch and spectating hide the strip');
+  assert.match(source, /body\.cot-hud-aerial \.cot-hints,html\[data-cot-scoped\] \.cot-hints,html\[data-cot-strike-view\] \.cot-hints,html\[data-watch\] \.cot-hints,body\.cot-spectating \.cot-hints\{display:none;\}/,
+    'the scope, the strike view, a flight, Watch and spectating hide the strip');
 }
 
 // crew-languages-270 (owner 2026-11-06: "also that selection should be in languages"): Crew voices lists National crews,

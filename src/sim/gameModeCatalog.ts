@@ -24,6 +24,7 @@ export const BATTLE_MODE_IDS = Object.freeze([
   'gun_game',
   'drone',
   'ac130',
+  'air_support',
 ] as const);
 
 /**
@@ -35,7 +36,7 @@ export const BATTLE_MODE_IDS = Object.freeze([
 export const MODE_PRESENTATION_ORDER = Object.freeze([
   'standard', 'drone', 'zone_control', 'capture_the_flag',
   'frontline_assault', 'turbo_ball', 'mars', 'endless_horde',
-  'gun_game', 'juggernaut', 'infected', 'realistic', 'ac130',
+  'gun_game', 'juggernaut', 'infected', 'realistic', 'ac130', 'air_support',
 ] as const satisfies readonly (typeof BATTLE_MODE_IDS[number])[]);
 /** How many of the presentation order's modes lead as picture cards (Deploy's top row). */
 export const HEADLINE_MODE_COUNT = 4;
@@ -130,6 +131,11 @@ export const GAME_MODE_DEFINITIONS: Readonly<Record<GameModeId, GameModeDefiniti
       description: 'Fight in your tank, launch an FPV attack drone, then pilot it into an enemy. Your parked tank stays vulnerable.', respawns: true }),
     ac130: Object.freeze({ id: 'ac130', label: 'AC-130', shortLabel: 'AC-130', icon: 'modeAc130',
       description: 'Protect vulnerable ground troops as they reach extraction. Save at least half using your autocannon, 152 mm howitzer and missiles.', respawns: false }),
+    // Air Support (air-support-270; owner 2026-11-05: "a new game mode where you can call in airstrikes and jet strikes"):
+    // the zone battle where every crew earns support points and spends them on call-ins (matchRuleset.ts airSupport)
+    air_support: Object.freeze({ id: 'air_support', label: 'Air Support', shortLabel: 'AIR', icon: 'modeAirSupport',
+      description: `Hold the three sectors and earn support points from combat. Spend them on recon, artillery, strafing runs, precision bombs and an AC-130 orbit. First team to ${RULESET_SCORE_TARGETS.air_support} points wins.`,
+      respawns: true }),
     // the proving ground (v2 progression, 2026-10-17): a test drive on a measured range — target hulls at set ranges
     // and angles, every shot's outcome on the shot card, no enemies, no clock, nothing recorded
     proving_ground: Object.freeze({ id: 'proving_ground', label: 'Proving Ground', shortLabel: 'RANGE', icon: 'modeProving',

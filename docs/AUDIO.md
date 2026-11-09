@@ -16,7 +16,7 @@ and the voice cast are in [ATTRIBUTION.md](ATTRIBUTION.md#audio-publicaudio--gen
 | Payload | Where | Size | Loaded |
 |---|---|---|---|
 | 566 sound-effect assets, 1065 variant files | `public/audio/sfx/<group>/<id>_<n>.webm` | 28.1 MB | per battle: the battle set at the battle phase edge, the aircraft set on first sight of an aircraft, everything else on first use |
-| 38 crew radio packs (17 national, 21 for languages with no country in the game) × 190 lines × 1–4 takes | `public/audio/voice/<lang>/<line>_<n>.webm` | 2.69–3.64 MB per language (122.04 MB in all) | only the crew's pack, one at a time: switching crews releases the pack left (every pack carries every line; nothing stands in for a missing take) |
+| 38 crew radio packs (17 national, 21 for languages with no country in the game) × 198 lines × 1–4 takes | `public/audio/voice/<lang>/<line>_<n>.webm` | 2.69–3.66 MB per language (122.53 MB in all) | only the crew's pack, one at a time: switching crews releases the pack left (every pack carries every line; nothing stands in for a missing take) |
 | SFX manifest | `src/audio/sfxManifest.generated.ts` | | bundled in the lazy audio chunk |
 | Voice manifest | `src/audio/voiceManifest.generated.ts` | | bundled in the lazy audio chunk |
 
@@ -445,6 +445,34 @@ or an own perspective for the pilot or crew.
   deeper, lands and rams with a superheavy's mass, and its gun reports carry
   2.5 dB further, a little deeper. Gravity mode's Olympus Basin has Mars
   acoustics (sound at 240 m/s, 14 dB thinner, nothing above 3.2 kHz).
+- **Air Support** (air-support-270). Each call-in is heard from its strike's
+  public record as the mode's events announce it (`modeSounds.ts`
+  `AIR_STRIKE_SOUND`, exhaustive over the kinds; `AIR_EVENT_SOUND` names every
+  event `sim/airSupport.ts` and the authorities emit). At the call the targeted
+  side's hull sounds its laser-warning alarm (`air_strike_warning`, full when
+  the footprint covers our hull, 9 dB down when it does not; full again if we
+  drive into it), our commander calls the crew out (`air_incoming`,
+  `artillery_incoming`), and a crew that made the call reads it back
+  (`air_call_*`; the AC-130 checks in with `gunship_cleared_hot`). The
+  aircraft are engine loops flown along `aircraftPose` from the call to their
+  exit in `aerialRig.ts` (`air_jet_recon_loop` high and fast,
+  `air_jet_attack_loop` for the A-10, `air_jet_fast_loop` for the bomber, the
+  AC-130's own `gunship_orbit_loop`): the distance law, air, pan and Doppler
+  make the pass. The A-10 fires one GAU-8 burst a run (`air_gau8_close`
+  fading into `air_gau8_far` by range), from where the jet is halfway down the
+  lane, so its rounds strike before the report arrives; its per-round
+  `shell:fired` plays no report (`STRIKE_OWNED_REPORTS`). Each 155 mm round and
+  the GBU-12 whistle down to their landings (`air_shell_incoming`,
+  `air_bomb_fall`, the variant's end placed on the solved landing time); the
+  barrage lands on the HE bank's `expl_he_large`, the bomb on its own
+  `air_bomb_blast` with the ground shock, the far rumble and the earth it
+  throws. A downed aircraft falls as the world draws it and crashes where it
+  meets the ground (`air_crash`); our gunner calls it when our guns did
+  (`aircraft_downed`). The strikes run on their own clock (the frames the
+  battle advances from the call; a pause stops it) and their own random
+  stream, so they never move the shared one. The family is in the Air Support
+  battle's warm, with the AC-130's report rows. The mode opens on
+  `jet_flyover` and its crews with `start_air_support`.
 - **Gun Game.** Advancing a stage plays the weapon changeover (breech, ram or
   missile tube, latch) and the loader's call for the new round. **Infected.**
   Being turned plays a grave sting and radio interference. The drone switch
@@ -527,7 +555,7 @@ ambience bus, under the radio and the ambience slider.
 
 ### Crew radio
 
-`voiceLines.ts` defines 190 lines with priority (0–4), per-line and per-group
+`voiceLines.ts` defines 198 lines with priority (0–4), per-line and per-group
 cooldowns and staleness; `crewRadio.ts` schedules them with radio discipline:
 one transmission at a time, a 0.8 s gap, a two-line queue, stale calls dropped
 rather than played late. Survival calls cut anything below them, decisive
@@ -821,7 +849,7 @@ squaring the peak. Now:
 
 ```
 crew-lines.json ─┐                    crew-voices.json
- 190 lines,      ├──→ build-voices.mjs ──→ eleven_v4 TTS ──→ scribe_v2 STT check ──→ master 'voice' ──→ public/audio/voice + manifest
+ 198 lines,      ├──→ build-voices.mjs ──→ eleven_v4 TTS ──→ scribe_v2 STT check ──→ master 'voice' ──→ public/audio/voice + manifest
  38 languages,   │    (per language,       [delivery] text,     best of up to 3        −18 LUFS, 24 kHz
  deliveries ─────┘     per line, per take) stability 0.6        attempts               mono Opus
 ```
@@ -1233,6 +1261,15 @@ already approved (the Afrikaans "Laai nou." came back a different attempt).
   decodes at 16 kHz (the radio passes nothing above 4.6 kHz), about 40 MB
   where 24 kHz would have been 60. The lane cost 128,897 credits (119,731
   speech, 9,166 transcription) against its 3M cap.
+- **2026-11-09, Air Support's lines in the world packs (crew-languages-270,
+  for release 270).** Air Support added eight crew lines (`start_air_support`,
+  the four `air_call_*`, `air_incoming`, `artillery_incoming`,
+  `aircraft_downed`) to the 17 national packs; the 21 world packs, built
+  beside it, had none, and a pack with no take of a line plays nothing. The
+  owner approved the takes before the 270 preview: 336 (8 lines × 2 takes ×
+  21 packs), so every pack is 198 lines and 387 takes. The packs are now
+  2.69–3.66 MB (122.53 MB in all; Persian the largest), so soundAssets'
+  per-pack cap is 4 MiB, the measure rounded up to the next MiB.
 - **2026-11-04, crews in languages with no country in the game (lane
   crew-languages-270).** The owner: "add a bunch more crew radio lines for
   languages that might not have a country in the game but still can be applied
@@ -1433,6 +1470,28 @@ already approved (the Afrikaans "Laai nou." came back a different attempt).
   the round; 64 of them were four more sand takes, after only two of the
   first eight passed once mastered. All 40 shipped files now pass
   (docs/audio-generation/quality.md).
+
+- **2026-11-05, Air Support (lane air-support-270).** The owner: "call in 3
+  differennt kinnds of airstrikes with their own special effects annd sounnt",
+  then "keep and add artillery annd recon with the 3 airstrikes". Ten new banks
+  (see Aircraft and mode sounds): three jet loops, the GAU-8 burst close and
+  far, the shell and bomb whistles, the 500 lb blast, the crash and the
+  targeted crew's alarm; reused the opener `jet_flyover`, the AC-130's orbit
+  and reports, the HE bank for each 155 mm landing. Every new bank names an
+  ear-proxy class written before its first take (`jet`, `gau8`, `incoming`,
+  `alarm`; the blast and crash `explosion`) and ships only files that pass as
+  shipped. Three prompts were rewritten after the proxy refused them (the
+  whistles came back with their landings or as a siren, the bomber's loop as
+  wind: docs/audio-generation/prompts.md). Eight crew lines in all 17 packs,
+  two takes each (the mode's opening, four read-backs, the two calls out of a
+  footprint, an aircraft down); an independent second transcript of all 272
+  shipped takes caught two that read wrong every time (French "passe canon",
+  Hebrew "בלייזר"), rewritten and rebuilt. Credits: 3,840 of sound generation
+  (60 takes, then 30 more for the re-prompts), 16,723 of speech with the
+  build's transcripts, about 320 for the second transcripts; 20,883 in all.
+  The sound-effect payload grew 0.66 MB (33.7 to 34.3 MB; the selftest cap
+  rose to 35 MB pending Main's ruling), decoded only in an Air Support battle;
+  the voice packs grew about 3.2 MB across 17 languages.
 
 ### Cost
 
