@@ -292,14 +292,27 @@ export const BUNDLE_BUDGETS = Object.freeze({
   //   anchors +214, the en-US catalog +134, structureGroundOcclusion +129, roleProfiles +109, turretSeatPlane +98,
   //   garageStage +66; materials -158, crewVoice -121. Gallery adds vehicleFacets +105. Home +8 B, docs -10 B and 404 +5 B
   //   stay inside their slack; pad's row is phone-feel-269's in tools/bundle-budget.json, held.
-  // 2026-11-08 (round seven's merge of origin/main 21d5c7fd30 into the implicit state machine fixes): both re-pins above
-  //   kept; the rows hold 269's until the merged head's build re-pins them (round 7 V11, its own commit).
-  game: { brotliBytes: 1189412, requests: 127, entryBrotliBytes: 250659 },
-  cn: { brotliBytes: 1234140, requests: 128, entryBrotliBytes: 250659 },
-  gallery: { brotliBytes: 756634, requests: 73 },
+  // 2026-11-08 (the implicit state machine fixes' round seven merge, item V11, after origin/main 21d5c7fd30 (269) merged in;
+  //   Kevin: "id like you to resolve all of them"): both re-pins above kept; the byte rows re-pinned at item/sm-fix7-merge
+  //   e71b3e5ee9's build (Node 24.22.1, vite 8.3.5, rolldown 1.2.15). The local build and the release way (the build with
+  //   VERCEL_GIT_COMMIT_SHA set, as vercel build sets it for tools/appVersion.ts) are byte-identical: a clean worktree
+  //   stamps the same commit from git, and the stamp (__COT_MATCH_BUILD__) rides only in browserComposition (lazy) and the
+  //   host Worker, 0 B on every row here. Over main 21d5c7fd30 built beside it on the same node_modules (game 1,189,441 B,
+  //   entry 250,688 B, within 269's pins): game +14,685 B brotli, entry +6,845 B, cn +14,776 B, Gallery +3,193 B, docs
+  //   +119 B, 404 +203 B; home +114 B stays inside its slack (its row held). Requests unchanged at 127 / 128 / 73 / 8 / 12
+  //   / 7, and no page's boot files changed. By boot chunk, brotli [raw]: main +6,845 [+22,093] (the entry), playMode
+  //   +2,474 [+7,398], turretSeatPlane +1,323 [+3,259], tankFactoryCore +1,024 [+2,896], garageStage +605 [+1,632],
+  //   vehicleActions +457 [+1,387], materials +439 [+1,306], collision +324 [+1,229], brandMark +216, terrainDeformation
+  //   +212, programWarm +178, quality +131, i18n +120 (with publicPages -11 and notFound +78, the whole of home's, docs'
+  //   and 404's growth), medalArt +94, rosterState +81, the rest under 70 B each; the Gallery's gallery.js +223. It is the
+  //   branch's share named in round five's re-pin above (rounds one to six; round six's own +4 B: main.ts's result
+  //   presentation releasing through input.releaseLock), now over 269's code.
+  game: { brotliBytes: 1204126, requests: 127, entryBrotliBytes: 257533 },
+  cn: { brotliBytes: 1248945, requests: 128, entryBrotliBytes: 257533 },
+  gallery: { brotliBytes: 759827, requests: 73 },
   home: { brotliBytes: 28617, requests: 8 },
-  docs: { brotliBytes: 36911, requests: 12 },
-  notFound: { brotliBytes: 18355, requests: 7 },
+  docs: { brotliBytes: 37096, requests: 12 },
+  notFound: { brotliBytes: 18677, requests: 7 },
 });
 /** Byte noise between two builds of the same code (chunk hashes in import specifiers); requests have none. */
 const BUNDLE_SLACK = { brotliBytes: 160, entryBrotliBytes: 96, requests: 0 };
