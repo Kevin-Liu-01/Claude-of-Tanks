@@ -6,9 +6,10 @@
 // onCouch and garage.ts's press are pinned to it in garageOpenState.selftest (case 5).
 // (review r2) Launch does not hide the Garage: the solo entry shows its loader and loads the world under it, and the
 // Garage hides only at the activation after that (soloBattleStartRuntime.ts ui.hideGarage). Chunks that landed inside
-// that covered load still held the ticket and opened the lobby over the loader. garage.ts's own launchBattle runs here
-// over the real screen owner: the start it hands on ends the press's ticket while the Garage still shows (handOff). And a
-// lobby that failed to open once loaded is not a failed chunk: only a load rejection is a CouchChunkError.
+// that covered load still held the ticket and opened the lobby over the loader. garage.ts's own launchBattle and battle()
+// run here over the real screen owner: the start launchBattle hands on, and the BATTLE/Launch press before its play
+// request, end the press's ticket while the Garage still shows (handOff). And a lobby that failed to open once loaded is
+// not a failed chunk: only a load rejection is a CouchChunkError.
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { stripTypeScriptTypes } from 'node:module';
@@ -20,14 +21,29 @@ assert.equal(typeof openCouchWhenCurrent, 'function', 'one couch opener checks t
 /** garage.ts's own launchBattle over stand-ins for its closure (its failed-load gate, the refusal, the bus, the entry) and
  *  the given Garage screen owner. */
 const garageSource = readFileSync(new URL('../ui/garage.ts', import.meta.url), 'utf8');
-const launchStart = garageSource.indexOf('  function launchBattle(');
-const launchCode = stripTypeScriptTypes(garageSource.slice(launchStart, garageSource.indexOf('\n  }\n', launchStart) + 4));
-assert.ok(launchStart > 0 && launchCode.includes('onBattle(specId, mapId, options, announce)'), 'garage.ts holds launchBattle');
+const garageFunction = (head) => {
+  const start = garageSource.indexOf(head);
+  assert.ok(start > 0, `garage.ts holds ${head.trim()}`);
+  return stripTypeScriptTypes(garageSource.slice(start, garageSource.indexOf('\n  }\n', start) + 4));
+};
+const launchCode = garageFunction('  function launchBattle(');
+assert.ok(launchCode.includes('onBattle(specId, mapId, options, announce)'), 'garage.ts holds launchBattle');
+const battleCode = garageFunction('  function battle(');
 function garageLaunch({ garageScreen, failed = false, refused = false, started }) {
   return new Function('garageScreen', 'pressFailed', 'battleBtn', 'opts', 'emit', 'onBattle', 'battleGameMode',
     `${launchCode}; return launchBattle;`)(
     garageScreen, () => failed, {}, { refusesBattle: () => refused }, () => {},
     (specId) => started.push(specId), 'standard');
+}
+/** garage.ts's own battle() (the BATTLE button and the Deploy foot's Launch, [data-battle-launch]) and launchBattle, with
+ *  main.ts's onPlayRequest as playSurface.open runs a solo request: request.startSolo after an await (on the play menu's
+ *  chunk when one is in flight, `menu`). */
+function garageBattlePress({ garageScreen, refused = false, started, menu = Promise.resolve() }) {
+  const opts = { refusesBattle: () => refused, onPlayRequest: (request) => { void menu.then(() => request.startSolo()); } };
+  return new Function('garageScreen', 'pressFailed', 'battleBtn', 'opts', 'emit', 'onBattle', 'battleGameMode', 'selectedId',
+    'fieldMapId', 'closeBattleMenu', 'battleMode', `${launchCode}\n${battleCode}; return battle;`)(
+    garageScreen, () => false, {}, opts, () => {}, (specId) => started.push(specId), 'standard', 'm1a2', () => 'steppe',
+    () => {}, 'solo');
 }
 
 function deferred() {
@@ -45,8 +61,9 @@ function loadedPair(calls) {
 }
 const show = ([runtime, lobby]) => lobby.openCouchLobby(runtime);
 
-// A press, then Launch on the same Deploy foot, with the chunks landing during the covered world load: garage.ts's
-// launchBattle hands the start on, the Garage still shows under the loader, and nothing opens over it.
+// A press, then a start launchBattle hands on (Test Drive, the couch lobby's Start, Battle Again's couch replay call it
+// directly; the BATTLE/Launch press reaches it through its play request, the next case), with the chunks landing during
+// the covered world load: the Garage still shows under the loader, and nothing opens over it.
 {
   const screen = createGarageScreen();
   screen.show();
@@ -75,8 +92,35 @@ const show = ([runtime, lobby]) => lobby.openCouchLobby(runtime);
   assert.deepEqual(calls, []);
 }
 
-// A Launch that started nothing (a press after a failed chunk, a refused battle) hands nothing on: the Garage that asked
-// still shows and is the player's, so the lobby opens over it once.
+// A press, then BATTLE or the Deploy foot's Launch: battle() hands the player on before its play request (a solo start
+// can wait there on the play menu's chunk), so the lobby opens nothing whether the start then follows or launchBattle
+// refuses it (a network round entering, a failed return's notice). The newest press wins: a refused one leaves the
+// player at its notice, and a Couch press after it opens the lobby (the hand-off case 1b, garageOpenState).
+for (const { refused, menuWait } of [{ refused: false }, { refused: true }, { refused: false, menuWait: true }]) {
+  const screen = createGarageScreen();
+  screen.show();
+  const calls = [];
+  const started = [];
+  const load = deferred();
+  const menu = deferred();
+  const opening = openCouchWhenCurrent({ ticket: screen.ticket(), load: () => load.promise, open: show });
+  garageBattlePress({ garageScreen: screen, refused, started, menu: menuWait ? menu.promise : Promise.resolve() })();
+  const flush = () => new Promise((resolve) => setImmediate(resolve));
+  await flush();
+  // the couch chunks land while the solo start waits on the play menu's chunk (menuWait), or after the start
+  load.resolve(loadedPair(calls));
+  const label = refused ? ', its start refused after it' : menuWait ? ', the chunks landing before its start' : '';
+  assert.equal(await opening, false, `the BATTLE/Launch press ends the press${label}`);
+  assert.deepEqual(calls, []);
+  menu.resolve();
+  await flush();
+  assert.equal(started.length, refused ? 0 : 1, refused ? 'a refused start starts nothing' : 'the press starts the battle');
+  assert.equal(screen.phase, 'open', 'the Garage still shows (under the loader, or at the refusal notice)');
+}
+
+// A start launchBattle refuses or cannot make (a press after a failed chunk, a refused battle), called directly (Test
+// Drive, the couch lobby's Start, Battle Again's couch replay), hands nothing on: the Garage that asked still shows and
+// is the player's, so the lobby opens over it once.
 for (const refusal of [{ failed: true }, { refused: true }]) {
   const screen = createGarageScreen();
   screen.show();
@@ -87,7 +131,7 @@ for (const refusal of [{ failed: true }, { refused: true }]) {
   assert.equal(garageLaunch({ garageScreen: screen, started, ...refusal })('m1a2', 'steppe'), false);
   assert.deepEqual(started, []);
   load.resolve(loadedPair(calls));
-  assert.equal(await opening, true, `a Launch that started nothing keeps the press (${Object.keys(refusal)[0]})`);
+  assert.equal(await opening, true, `a direct start that started nothing keeps the press (${Object.keys(refusal)[0]})`);
   assert.deepEqual(calls, ['openCouchLobby', 'lobby factory']);
 }
 
