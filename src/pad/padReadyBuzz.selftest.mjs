@@ -4,7 +4,11 @@
 // a status every 2 s, so a timer re-armed from a paused status buzzed 'ready' every two seconds of the pause, and a
 // pairing that ended mid-load buzzed afterwards. The seat label is the link's: a new pairing starts without a seat, and
 // a lobby phone that resumes hears its seat again. Driven on a virtual clock; the seat cases drive the real padLink.
+// The phone page's wiring (padPage.ts: each status to the buzz, each link state to it before an ending returns, the
+// label's seat read from the link) is pinned in its source at the end; the page itself (its DOM, the vibration, a real
+// pairing) is a browser half not reproduced here: the owner's pad-e2e and a real phone check it.
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 // (a namespace import: the committed extraction of today's rule lacks the declared states, and must fail on its buzzes)
 import * as readyBuzz from './padReadyBuzz.ts';
 import { createPadLink } from './padLink.ts';
@@ -229,4 +233,54 @@ assert.deepEqual(readyBuzz.PAD_READY_STATES, ['idle', 'loading', 'paused']);
   pairBack.link.dispose();
 }
 
-console.log('padReadyBuzz.selftest: PASS — no loaded buzz through a pause or after the link leaves live, one at the resume or the load\'s end, today\'s rule kept, a declared machine; the seat label is the link\'s');
+// ---- the phone page's wiring, pinned in its source (fix-up r1 of round 8 Y5 s3-06) ------------------------------------
+// The module above is the owner; these pins hold the page to it: deleting the link edge in onState, moving it after the
+// ending's return, dropping the status call, or putting back H0's page-global seat (written through onSeat) each fails.
+{
+  const page = readFileSync(new URL('./padPage.ts', import.meta.url), 'utf8');
+  /** A block's text from the `{` after `head` to its matching `}` (the page's braces in strings and templates pair up). */
+  const block = (head) => {
+    const at = page.indexOf(head);
+    assert.ok(at >= 0, `padPage.ts has ${head}`);
+    const open = page.indexOf('{', at + head.length - 1);
+    let depth = 0;
+    for (let i = open; i < page.length; i++) {
+      if (page[i] === '{') depth++;
+      else if (page[i] === '}' && --depth === 0) return page.slice(open + 1, i);
+    }
+    assert.fail(`${head}'s block never closes`);
+  };
+  /** The block's own statements: its lines at its least indent (a nested callback's or branch's lines sit deeper). */
+  const topLines = (body) => {
+    const lines = body.split('\n').filter((line) => line.trim());
+    const indent = Math.min(...lines.map((line) => line.length - line.trimStart().length));
+    return lines.filter((line) => line.length - line.trimStart().length === indent).map((line) => line.trim());
+  };
+
+  // every status reaches the buzz: a statement of paintStatus's own, before any of its own returns
+  const paint = topLines(block('function paintStatus(next: PadStatus): void {'));
+  const statusAt = paint.indexOf('readyBuzz.status(next);');
+  assert.ok(statusAt >= 0, 'paintStatus hands every status to the buzz (readyBuzz.status(next), unconditionally)');
+  const firstReturn = paint.findIndex((line) => /\breturn\b/.test(line));
+  assert.ok(firstReturn < 0 || statusAt < firstReturn, 'paintStatus hands the status over before any early return');
+
+  // every link state reaches the buzz, the ending's included: a statement of onState's own, before the ending returns
+  const onState = block('onState(state) {');
+  const linkAt = topLines(onState).indexOf('readyBuzz.link(state.kind);');
+  assert.ok(linkAt >= 0, "connect()'s onState hands every link state to the buzz (readyBuzz.link(state.kind), unconditionally)");
+  assert.ok(onState.indexOf('readyBuzz.link(state.kind);') < onState.search(/\breturn\b/),
+    "onState hands the state over before the ending's return (a pairing that ended mid-load would still buzz)");
+
+  // the one buzz path: the page plays 'ready' only through the module's port
+  assert.equal(page.match(/\bcreatePadReadyBuzz\(/g)?.length, 1, 'one loaded-buzz machine on the page');
+  assert.equal(page.match(/\bbuzz\('ready'\)/g)?.length, 1, "the page plays 'ready' in one place");
+  assert.match(block('const readyBuzz = createPadReadyBuzz('), /buzz: \(\) => buzz\('ready'\)/, "and that place is the machine's buzz port");
+
+  // the label's seat is the link's: read from the live link at each paint, never kept on the page (H0's seatNumber)
+  assert.ok(topLines(block('function paintLink(state: PadLinkState): void {')).includes('const seat = link?.seat ?? 0;'),
+    "paintLink reads the seat from the link it paints (a new pairing's link has none)");
+  assert.doesNotMatch(page, /^(?:let|var|const)\s+seat\w*\b/m, 'no page-global seat (a new pairing would inherit the last one)');
+  assert.doesNotMatch(page, /\bonSeat\b/, 'the page keeps no seat of its own from onSeat');
+}
+
+console.log('padReadyBuzz.selftest: PASS — no loaded buzz through a pause or after the link leaves live, one at the resume or the load\'s end, today\'s rule kept, a declared machine; the seat label is the link\'s; the phone page wires all three to their owners');
