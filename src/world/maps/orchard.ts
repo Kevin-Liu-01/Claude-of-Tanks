@@ -14,6 +14,7 @@
 // Mediterranean pines and the cedars as the cedar of Lebanon (treeBiomes.ts).
 import verdant from './verdant.ts';
 import { roundRoadBends } from './roadBends.ts';
+import { BUILDING_STYLES } from './buildingStyleTable.ts';
 
 // Round 5 (2026-10-07; gauntlet wave 252: "a dozen detached near-white boxes with orange hip roofs, strewn across a flat
 // lawn round the road junction" — the coordinator's order: "a dense village stacked on a terraced slope: houses that
@@ -224,7 +225,7 @@ export default {
     ],
     // the map-revival lane (2026-10-05): the Chouf kit (maps/regional/chouf.ts) builds the plan in the mountain
     // village's sandstone, every building where it stood
-    architecture: 'chouf',
+    architecture: BUILDING_STYLES.orchard.kit,
     // (round 5) no roadside houses: the houses strewn along the roads round the junction are the village on its hill;
     // the hammam keeps the plan's first seat on the bathhouse street south of the junction (the valley's public bath)
     plan: ['bathhouse'],

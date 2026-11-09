@@ -481,7 +481,11 @@ export default defineConfig({
             // 2026-11-05 (integrator 268): the camouflage paint's spotting bonus (sim/camoPaint.ts, core-parity-268's one paint
             // rule for both drivers), a DOM-free table the roster state reads at boot on the game and cn and the lazy battle
             // and match host read; on its own it was one more boot request on both.
-            { name: 'vehicleActions', test: /[\\/]src[\\/](?:game[\\/](?:vehicleActions|consumableLoadout)|sim[\\/](?:spottingStats|equipmentRules|consumableRules|camoPaint)|ui[\\/](?:minimapAssetUrl|battleSight)|engine[\\/](?:chaseFraming|cameraLens))\.ts$/, includeDependenciesRecursively: false },
+            // 2026-11-09 (integrator 270): Air Support's three boot leaves, all read by the game and cn at boot and by the lazy
+            // strike code: the action bits (sim/playerActions.ts, constants), the strike view's state (game/strikeViewState.ts)
+            // and the terrain's strike-mark uniforms (engine/strikeMarks.ts; three stays in its own chunk). Alone they were three
+            // more boot requests on both pages, on the same two pages this group already loads.
+            { name: 'vehicleActions', test: /[\\/]src[\\/](?:game[\\/](?:vehicleActions|consumableLoadout|strikeViewState)|sim[\\/](?:spottingStats|equipmentRules|consumableRules|camoPaint|playerActions)|ui[\\/](?:minimapAssetUrl|battleSight)|engine[\\/](?:chaseFraming|cameraLens|strikeMarks))\.ts$/, includeDependenciesRecursively: false },
             // 2026-10-05 (media Studio): three's Pass base and the light-model family (atmosphere, cloudscapes, light
             // model core, haze law, ground bounce) stay the one chunk the game, map, terrain and urban kit share. The
             // Studio's cinema passes and horizon relight import members of it; without the group those split into a
@@ -515,7 +519,9 @@ export default defineConfig({
             // profiles/gm352Layout.ts, profiles/chineseAirDefenseLayout.ts), dependency-free tables the boot specs
             // (gepardSpecs, gm352AirDefenseSpecs, chineseAirDefenseSpecs) and the lazy builders both read; alone they were
             // three more game, cn and Gallery boot requests.
-            { name: 'fleetLayouts', test: /[\\/]src[\\/]vehicles[\\/](?:leopardXWedges|leopard2A4Kontakt1|leopard2a3B4Armor|leopard2A4FamilyArmor|leopard2CheekFrontDatums|t62mv1XArmor|christian2Armor|leopard2HullDatums|leopardA6UaLayout|marder2Frame|abramsUpgradeDatums|amx10pSkirtLayout|griffinViperLayout|m6LinebackerLayout|abramsSourceXDatums|aresApcXFrame|tos1aTagilLayout|escortFieldKitLayout|national(?:DonorTurrets|UkraineDesign|PolandDesign|ChinaDesign|RussiaDesign|ModernizationDesign)|profiles[\\/](?:xk2Frame|strv122XSuppliedFrame|leopardRevolutionPrototypeFrame|leopardImprovedHull|challenger1XSuppliedFrame|gepardFrame|gm352Layout|chineseAirDefenseLayout))\.ts$/, includeDependenciesRecursively: false },
+            // 2026-11-07 (integrator 269): the AS21 Redback's datums (redbackDatums.ts, pure data), read by the boot specs
+            // (australiaSpecs) and the lazy builder (profiles/redback.ts); alone it was one more game, cn and Gallery boot request.
+            { name: 'fleetLayouts', test: /[\\/]src[\\/]vehicles[\\/](?:leopardXWedges|leopard2A4Kontakt1|leopard2a3B4Armor|leopard2A4FamilyArmor|leopard2CheekFrontDatums|t62mv1XArmor|christian2Armor|leopard2HullDatums|leopardA6UaLayout|marder2Frame|abramsUpgradeDatums|amx10pSkirtLayout|griffinViperLayout|m6LinebackerLayout|abramsSourceXDatums|aresApcXFrame|tos1aTagilLayout|escortFieldKitLayout|national(?:DonorTurrets|UkraineDesign|PolandDesign|ChinaDesign|RussiaDesign|ModernizationDesign)|redbackDatums|profiles[\\/](?:xk2Frame|strv122XSuppliedFrame|leopardRevolutionPrototypeFrame|leopardImprovedHull|challenger1XSuppliedFrame|gepardFrame|gm352Layout|chineseAirDefenseLayout))\.ts$/, includeDependenciesRecursively: false },
             // 2026-10-19 (ac130-fx-228 r2; the game's entry is over its budget): a kill's source identity (the AC-130's and
             // the drone's label and icon, ui/killSourceIdentity.ts) is read by the loading roster at boot and by the HUD,
             // killcam, battle report, final blow and debrief; on its own it became one more boot request and one more

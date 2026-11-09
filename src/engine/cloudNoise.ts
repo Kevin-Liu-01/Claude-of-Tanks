@@ -177,47 +177,62 @@ function* equaliseHistogram(field: Float32Array): Generator<void, Float32Array, 
 }
 
 /**
- * Tileable street rolls in the wind frame: `rows` Gaussian ridges across y per tile (the boundary layer's roll
- * circulation), each wandering along x by a low-frequency noise (never a ruled grid), its width varying along
- * its length, with a slowly varying amplitude along the roll (a roll fades and reappears over 6–12 km), a hashed
- * strength per row, and a chain of rounded lumps riding on it (the cumulus of a street: separate but aligned,
- * soft gaps between — 71b's continuous roll read as a tube, 71a's cells gated onto rows as beads).
+ * clouds-269 (the owner, 2026-11-04: "many clouds i see are in perfect lines or grrid which is noot like real cloud
+ * patterns"): the wind frame's cumulus as separate clouds, never rows. One lobe per cell of a `cells`² lattice (a fifth
+ * of the cells empty), centred anywhere in its cell, the lattice bent by a low-frequency warp of up to half a cell; each
+ * lobe its own radius (0.45–0.85 of a cell), along-wind aspect (1–1.15: longer lobes merged into Urban's long banks) and a
+ * yaw of up to 40° off the wind, peaked like a
+ * dome (1 − (d / r)², so the shell rounds every cloud over it), soft-unioned with its neighbours so they merge into masses
+ * of every size; a mesoscale gate gathers them into groups and clearings, a lobe whole or gone (a half-gated lobe was a
+ * fragment). Round 71's rolls (seven Gaussian ridges a tile, 1.7 km apart, a chain of lumps on each) drew every cumulus
+ * sky as parallel rows of beads at one spacing. (The first GPU passes' lobes were plateaus — a flat core inside a
+ * shoulder — which the shell stood up as mesas, the blind critics' "stacked cubes"; and a warp of a whole cell squeezed
+ * neighbours into chains.)
  */
-function* streetRolls(N: number, rows: number, seed: number, out: Float32Array): Generator<void, void, void> {
-  const wobble = new Float32Array(N * N);
-  yield* perlin2(N, 2, seed, wobble, 0.55, 4); yield* perlin2(N, 4, seed + 1, wobble, 0.25, 8);
-  const amp = new Float32Array(N * N);
-  yield* perlin2(N, 2, seed + 2, amp, 0.6, 3); yield* perlin2(N, 4, seed + 3, amp, 0.3, 6);
-  // the roll's width varies along its length (71c: a constant width read as a tube)
-  const widthN = new Float32Array(N * N);
-  yield* perlin2(N, 3, seed + 5, widthN, 0.7, 5); yield* perlin2(N, 6, seed + 6, widthN, 0.3, 10);
-  // Each wind street has its own population and spacing, rather than repeating
-  // the same fourteen-bead cadence across the sky. The roll between lumps keeps 15 %.
-  for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) {
-    if (x === 0) yield;
-    const i = y * N + x;
-    const v = (y + 0.5) / N * rows + wobble[i] * 0.8;
-    const row = Math.round(v);
-    const wr = ((row % rows) + rows) % rows;
-    const d = v - row;
-    const strength = 0.7 + 0.3 * hash3(wr, 0, 7, seed + 4);
-    const width = 0.13 + 0.12 * clamp01(0.5 + widthN[i]);
-    const ridge = Math.exp(-(d * d) / (2 * width * width));
-    const lumps = 9 + Math.floor(hash3(wr, 0, 15, seed + 12) * 10);
-    const u = (x + 0.5) / N * lumps + hash3(wr, 1, 9, seed + 8) * lumps;
-    const k0 = Math.floor(u);
-    let best = 0;
-    for (let k = k0 - 1; k <= k0 + 1; k++) {
-      const wk = ((k % lumps) + lumps) % lumps;
-      // a fifth of the lumps are missing and the rest vary in size and spacing (a regular chain read as a grid)
-      if (hash3(wk, wr, 13, seed + 11) < 0.2) continue;
-      const centre = k + 0.5 + (hash3(wk, wr, 11, seed + 9) - 0.5) * 1.0;
-      const radius = 0.25 + 0.45 * hash3(wk, wr, 12, seed + 10);
-      const dx = (u - centre) / radius;
-      const lump = Math.max(0, 1 - dx * dx);
-      if (lump > best) best = lump;
+function* windCumulus(N: number, cells: number, seed: number, out: Float32Array): Generator<void, void, void> {
+  const s = cells / N;
+  const warpX = new Float32Array(N * N), warpY = new Float32Array(N * N), gate = new Float32Array(N * N);
+  yield* perlin2(N, 3, seed + 1, warpX, 0.7); yield* perlin2(N, 6, seed + 2, warpX, 0.3);
+  yield* perlin2(N, 3, seed + 3, warpY, 0.7); yield* perlin2(N, 6, seed + 4, warpY, 0.3);
+  yield* perlin2(N, 2, seed + 5, gate, 0.6); yield* perlin2(N, 5, seed + 6, gate, 0.4);
+  const attributes = new Float64Array(cells * cells * 7);
+  for (let y = 0; y < cells; y++) for (let x = 0; x < cells; x++) {
+    const i = (y * cells + x) * 7, yaw = (hash3(x, y, 5, seed) - 0.5) * 1.4;
+    attributes[i] = hash3(x, y, 1, seed);
+    attributes[i + 1] = hash3(x, y, 2, seed);
+    attributes[i + 2] = 0.45 + 0.4 * hash3(x, y, 3, seed);
+    attributes[i + 3] = hash3(x, y, 4, seed) < 1 / 5 ? 0 : 0.75 + 0.25 * hash3(x, y, 8, seed);
+    attributes[i + 4] = Math.cos(yaw);
+    attributes[i + 5] = Math.sin(yaw);
+    attributes[i + 6] = 1 + 0.15 * hash3(x, y, 6, seed);
+  }
+  for (let y = 0; y < N; y++) {
+    yield;
+    for (let x = 0; x < N; x++) {
+      const i = y * N + x;
+      const px = (x + 0.5) * s + warpX[i] * 0.5, py = (y + 0.5) * s + warpY[i] * 0.5;
+      const cx = Math.floor(px), cy = Math.floor(py);
+      // a lobe is on where the gate exceeds its own hashed threshold: groups of cumulus with clear sky between
+      const g = clamp01(0.5 + gate[i] * 1.1);
+      let union = 1;
+      for (let oy = -2; oy <= 2; oy++) {
+        const gy = cy + oy, wy = ((gy % cells) + cells) % cells;
+        for (let ox = -2; ox <= 2; ox++) {
+          const gx = cx + ox, wx = ((gx % cells) + cells) % cells;
+          const a = (wy * cells + wx) * 7, strength = attributes[a + 3];
+          if (strength <= 0) continue;
+          const dx = gx + attributes[a] - px, dy = gy + attributes[a + 1] - py;
+          const along = (dx * attributes[a + 4] + dy * attributes[a + 5]) / attributes[a + 6];
+          const across = -dx * attributes[a + 5] + dy * attributes[a + 4];
+          const radius = attributes[a + 2], d = Math.sqrt(along * along + across * across);
+          if (d >= radius) continue;
+          const q = d / radius;
+          const on = clamp01((g - hash3(wx, wy, 9, seed) * 0.8 + 0.1) / 0.1);
+          union *= 1 - (1 - q * q) * strength * on;
+        }
+      }
+      out[i] = 1 - union;
     }
-    out[i] = ridge * (0.15 + 0.85 * best) * strength * clamp01(0.55 + amp[i] * 0.9);
   }
 }
 
@@ -282,9 +297,8 @@ function* bakeCloudWeatherMapSteps(size = CLOUD_WEATHER_SIZE, seed = CLOUD_NOISE
 
 /**
  * The companion weather field in the WIND FRAME (the layer rotates its lookup so x runs along the wind):
- *   R  cumuliform coverage in cloud streets — seven rolls per tile (1.7 km apart on 12 km) along the wind, their
- *      width and amplitude varying along the roll, a chain of rounded lumps 860 m apart riding on each (aligned
- *      cumulus with soft gaps, the roll between them at 15 %), equalised
+ *   R  cumuliform coverage in the wind frame — separate cumulus lobes of every size on a bent, jittered lattice, drawn
+ *      out along the wind and gathered into groups (windCumulus; clouds-269 retired round 71's ruled rolls), equalised
  *   G  the anvil / precipitation field — a broad, stretched field (equalised): its top share marks where a
  *      cumulonimbus spreads an anvil
  *   B  cirrus streaks — gradient fbm stretched 6:1 along x (equalised, so a cirrus coverage c admits c)
@@ -296,11 +310,11 @@ export function bakeCloudWeatherStreets(size = CLOUD_WEATHER_SIZE, seed = CLOUD_
 
 function* bakeCloudWeatherStreetsSteps(size = CLOUD_WEATHER_SIZE, seed = CLOUD_NOISE_SEED): Generator<void, Uint8Array, void> {
   const N = size, count = N * N;
-  const rolls = new Float32Array(count);
-  yield* streetRolls(N, 7, seed + 141, rolls);
-  // the lumps along a roll: 750 m and 375 m along the wind, a little shorter across
-  const lumps = new Float32Array(count);
-  yield* perlin2(N, 16, seed + 151, lumps, 0.6, 24); yield* perlin2(N, 32, seed + 152, lumps, 0.4, 48);
+  // (clouds-269) separate cumulus on an 18-cell lattice: about 1 km apart on the medium's 18 km read (CLOUD2_PERIODS.streets)
+  // (the first GPU preview's 15 cells, 1.2 km, with an along-wind aspect to 1.6, merged Steppe's cumulus into flat 2-3 km
+  // pancakes; 20 cells left Verdant's sky "scattered and less voluminous")
+  const cumulus = new Float32Array(count);
+  yield* windCumulus(N, 18, seed + 141, cumulus);
   const fine = new Float32Array(count);
   yield* perlin2(N, 24, seed + 161, fine, 0.6); yield* perlin2(N, 48, seed + 162, fine, 0.4);
   const anvil = new Float32Array(count);
@@ -310,11 +324,8 @@ function* bakeCloudWeatherStreetsSteps(size = CLOUD_WEATHER_SIZE, seed = CLOUD_N
   const fibres = new Float32Array(count);
   yield* perlin2(N, 6, seed + 191, fibres, 0.6, 96); yield* perlin2(N, 12, seed + 192, fibres, 0.4, 160);
   const streets = new Float32Array(count);
-  for (let i = 0; i < count; i++) {
-    // the chain's lumps carry the roll (depth 0.85 in streetRolls); the finer lump noise varies them a little
-    const modulation = 1 - 0.2 * clamp01(0.5 - lumps[i] * 0.9);
-    streets[i] = rolls[i] * modulation + fine[i] * 0.04;
-  }
+  // (the fine noise breaks the clear sky's ties, so the equalised field has no index-ordered ramp there)
+  for (let i = 0; i < count; i++) streets[i] = cumulus[i] + fine[i] * 0.04;
   const eqStreets = yield* equalise(streets), eqAnvil = yield* equalise(anvil), eqStreaks = yield* equalise(streaks);
   const out = new Uint8Array(count * 4);
   for (let i = 0; i < count; i++) {

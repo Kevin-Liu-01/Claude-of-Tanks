@@ -35,6 +35,7 @@ import { collapseLattice, latticeOf, noLatticeDamage } from './latticeFall.ts';
 import { authoredCollapse, authoredOf } from './navajoFall.ts';
 import type { LatticeReading } from './lattice.ts';
 import { breachSheet, collapseSheet, damagedSheet, isSheetBody, isSheetFace, roofDownSheet, sectionDownSheet } from './sheet.ts';
+import { climateOf } from '../buildingStyleTable.ts';
 
 const FACE_ORDER: readonly SeamFace[] = ['front', 'right', 'back', 'left'];
 const WHITE: Rgb = [1, 1, 1];
@@ -288,7 +289,7 @@ function houseBody(style: ArchitectureStyle, input: StructureDescribeInput, plan
   const tints = plan.tints;
   // the intact walls' own uv and weathering by section, for the builders' seamless redraws (fracture.ts FaceSurface)
   const surfaces = new Map<number, FaceSurface>();
-  const relief = style.surfaces.relief?.plasterUv ?? 1, damp = style.weather?.damp ?? 0.8, [ou, ov] = house.uvOffset;
+  const relief = style.surfaces.relief?.plasterUv ?? 1, damp = climateOf(input.mapId, style.id).damp, [ou, ov] = house.uvOffset;
   const surfaceOf = (face: Face, floorY: number, profile: WallProfile | null): FaceSurface => {
     const axis = Math.abs(face.out[2]) > 0.5 ? 0 : 2;
     return {
@@ -623,7 +624,7 @@ function describeShellBody(style: ArchitectureStyle, input: StructureDescribeInp
   const has = (b: string): boolean => !!input.parts[b]?.length;
   const coreBucket = has('regionalStone') ? 'regionalStone' : has('stone') ? 'stone' : '';
   const surfaces = new Map<number, FaceSurface>();
-  const damp = style.weather?.damp ?? 0.8, relief = style.surfaces.relief?.plasterUv ?? 1;
+  const damp = climateOf(input.mapId, style.id).damp, relief = style.surfaces.relief?.plasterUv ?? 1;
   const storeys: DamageStorey[] = [];
   for (let i = 0; i < count; i++) {
     const y0 = r.base + i * storeyH, y1 = y0 + storeyH;
@@ -926,7 +927,7 @@ function describeShaft(style: ArchitectureStyle, input: StructureDescribeInput):
   const has = (b: string): boolean => !!input.parts[b]?.length;
   const coreBucket = has('regionalStone') ? 'regionalStone' : has('stone') ? 'stone' : '';
   const surfaces = new Map<number, FaceSurface>();
-  const damp = style.weather?.damp ?? 0.8, relief = style.surfaces.relief?.plasterUv ?? 1;
+  const damp = climateOf(input.mapId, style.id).damp, relief = style.surfaces.relief?.plasterUv ?? 1;
   const SIDE: ReadonlyArray<{ name: SeamFace; u: Vec3; out: Vec3 }> = [
     { name: 'front', u: [1, 0, 0], out: [0, 0, 1] }, { name: 'right', u: [0, 0, -1], out: [1, 0, 0] },
     { name: 'back', u: [-1, 0, 0], out: [0, 0, -1] }, { name: 'left', u: [0, 0, 1], out: [-1, 0, 0] },

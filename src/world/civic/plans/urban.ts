@@ -33,7 +33,7 @@
 //
 // The column's seat (review R2): the incentre of the south triangle of the planner cell x -75..-50, z -25..0, 5.18 m
 // from its six lattice segments and 13.5 m from the nearest node, in front of the oak rows, facing the crossing.
-import type { CivicPlan } from '../types.ts';
+import type { CivicPlanSource } from '../types.ts';
 
 import * as detMath from '../../../sim/detMath.ts';
 const ROOM = { x0: -92.4, x1: -8.7, z0: -40.3, z1: 40.2 } as const;
@@ -80,9 +80,8 @@ const ARM_WALKS = [
 const OAK_X = [-79.9, -67.5];
 const OAK_N = 27.5, OAK_S = 13.0;
 
-export const URBAN_CIVIC_PLAN: CivicPlan = {
+export const URBAN_CIVIC_PLAN: CivicPlanSource = {
   mapId: 'urban',
-  style: 'franconian',
   // (229, the owner: "add a lot of cars in civic areas") the town's own saloons, estates and pickups (the map's pools:
   // no new kind, so no new draw) at the kerbs of the streets round the Marktplatz and on the square's west and south
   // edges, parked with the traffic a little off true, each a seat no base battle's hull touched in twelve (probes/pace

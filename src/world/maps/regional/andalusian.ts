@@ -22,7 +22,7 @@ import {
 import { doorUnit, gateUnit, windowUnit, type WindowStyle } from './openings.ts';
 import { wallLantern } from './dressing.ts';
 import { coursedRound, openShed, recordMasonry } from './outbuildings.ts';
-import type { ArchitectureStyle, RegionalBuildContext, RegionalBuilder } from './types.ts';
+import { dressOf, type ArchitectureStyle, type RegionalBuildContext, type RegionalBuilder } from './types.ts';
 
 const IRON = rgb(0x1d1e20);
 const FRAME_WHITE = rgb(0xe4e0d6);
@@ -66,11 +66,19 @@ interface AndalusianState {
   longBalcony?: { face: string; storey: number; u0: number; u1: number };
 }
 
+/** (buildings-270) the dress the Serranía's photos show house to house (the building-style table's cliffbridge axes) */
+const JOINERY_DRESS: Readonly<Record<string, Rgb>> = { green: rgb(0x2e4a32), brown: rgb(0x4c3c33), white: rgb(0xe8e6e0) };
+const BAND_DRESS: Readonly<Record<string, RegionalBucket | null>> = { ochre: 'plaster2', grey: 'plaster3', none: null };
+
 function stateFor(ctx: RegionalBuildContext): AndalusianState {
   const rng = ctx.rng;
-  const joinery = pick(rng, JOINERY);
+  // (buildings-270) the draws stay (the build stream reads as before); the map's dress paints the joinery and the bands
+  const drawnJoinery = pick(rng, JOINERY);
+  const joinery = JOINERY_DRESS[dressOf(ctx, 'joinery', '')] ?? drawnJoinery;
   const bandRoll = rng();
-  const band: RegionalBucket | null = bandRoll < 0.45 ? 'plaster2' : bandRoll < 0.7 ? 'plaster3' : null;
+  const drawnBand: RegionalBucket | null = bandRoll < 0.45 ? 'plaster2' : bandRoll < 0.7 ? 'plaster3' : null;
+  const bandDress = dressOf(ctx, 'band', '');
+  const band: RegionalBucket | null = bandDress in BAND_DRESS ? BAND_DRESS[bandDress] : drawnBand;
   const shutters = rng() < 0.35;
   return {
     rng, joinery, door: pick(rng, DOOR_WOOD), band,
@@ -409,7 +417,9 @@ function casa(ctx: RegionalBuildContext, opts: { two?: boolean } = {}): Regional
   const W = clamp(fit.w, 4.8, 10), D = clamp(fit.d, 6.0, 12);
   const two = opts.two ?? rng() < 0.5;
   const camara = !two && rng() < 0.55;
-  const wall: RegionalBucket = ctx.wallBucket === 'plaster2' && look() < 0.45 ? 'plaster2' : 'plaster';
+  // (buildings-270, the census: whole fronts in albero ochre read as mustard boxes; the Serranía's photos whitewash the
+  // walls and paint only the dados and the bands) a washed front is the rare house
+  const wall: RegionalBucket = ctx.wallBucket === 'plaster2' && look() < 0.12 ? 'plaster2' : 'plaster';
   const sts: StoreySpec[] = [{ h: 2.85 + rng() * 0.2, wall }];
   if (two) sts.push({ h: 2.55 + rng() * 0.2, wall });
   else if (camara) sts.push({ h: 1.2, wall });
@@ -1399,9 +1409,8 @@ export const ANDALUSIAN_STYLE: ArchitectureStyle = Object.freeze<ArchitectureSty
     plaster: [[1, 1, 1], [1, 0.985, 0.96], [0.97, 0.965, 0.955], [1.0, 0.97, 0.93]],
     stone: [[1, 1, 1], [0.95, 0.93, 0.88], [1.04, 1.0, 0.93], [0.9, 0.88, 0.84]],
     roof: [[1, 1, 1], [0.9, 0.83, 0.76], [1.06, 0.95, 0.86], [0.84, 0.79, 0.74]],
-    damp: 0.35, moss: 0.3, mossTint: [0.97, 0.93, 0.74],
+    mossTint: [0.97, 0.93, 0.74],
   },
-  wear: 0.18,
   // the yards: stone garden walls round a kitchen garden and the bread oven, a gate (yards.ts)
   yard: { kinds: ['cottage', 'farmhouse'], fence: 'wallstone', gate: 'gatestone', shed: 'woodshed', shedSize: [3.2, 2.8], garden: true },
 });

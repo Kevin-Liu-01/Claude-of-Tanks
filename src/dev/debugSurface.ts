@@ -15,6 +15,7 @@ import { inspectNightHeadlight, inspectNightShtora, inspectNightWindow } from '.
 import { inspectNightWorldFixture, type NightWorldFixtureKind } from './nightWorldFixtureInspection.ts';
 import type { ColliderOverlayHandle, ColliderOverlayOptions } from './colliderOverlay.ts';
 import type { FrameStageRecorder } from './frameStageRecorder.ts';
+import { createBattleHold } from './battleHold.ts';
 
 type UnknownAction = CallableFunction;
 
@@ -28,7 +29,7 @@ export interface DebugSurfaceDependencies {
   renderer: RuntimeValue;
   post: RuntimeValue;
   lighting: RuntimeValue;
-  game: { spotting?: RuntimeValue };
+  game: { spotting?: RuntimeValue; devBattleHold?: boolean };
   rig: RuntimeValue;
   bus: RuntimeValue;
   input: RuntimeValue;
@@ -87,6 +88,8 @@ export interface DebugSurfaceDependencies {
   getDamagePanel(): RuntimeValue;
   devTrace: RuntimeValue;
   getNetworkDiagnostics(): RuntimeValue;
+  /** Whether a network battle runs (the battle hold refuses one). */
+  isNetworkBattle(): boolean;
   collectTelemetry(): RuntimeValue;
   sampleShadowContribution(): RuntimeValue;
 }
@@ -202,6 +205,8 @@ export function installDebugSurface(
     aimState: deps.aimState,
     fastForward: deps.fastForward,
     slayEnemies: deps.slayEnemies,
+    /** The dev battle hold (battleHold.ts): `set(true)` keeps the solo battle alive and still for a check. */
+    battleHold: createBattleHold({ getGame: () => deps.game, isNetworkBattle: deps.isNetworkBattle }),
     startBattle: deps.startBattle,
     bakeMinimapForMap: deps.bakeMinimapForMap,
     beginBattleEntry: deps.beginBattleEntry,

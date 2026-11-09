@@ -12,7 +12,7 @@
 
 /** Every action the battle shows a cap for. */
 export const CAP_ACTIONS = Object.freeze(['selfRight', 'specialAction', 'atgm', 'reloadMagazine', 'drone', 'smoke', 'lights',
-  'roofGun', 'aerialVision', 'supplyAmmo', 'supplyHeal', 'rangeReset', 'rangeMoving', 'minimapZoom', 'settingsMenu',
+  'roofGun', 'aerialVision', 'supplyAmmo', 'supplyHeal', 'strikeView', 'rangeReset', 'rangeMoving', 'minimapZoom', 'settingsMenu',
   'shell1', 'shell2', 'shell3', 'consumable1', 'consumable2', 'consumable3'] as const);
 export type CapAction = typeof CAP_ACTIONS[number];
 

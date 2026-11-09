@@ -80,8 +80,13 @@ export const NATIVE_FAMILY_ORDER = Object.freeze({
   // 266: the Brazilian Army line
   brazil: Object.freeze(['x1_pioneiro', 'x1a2_carcara', 'tamoyo1', 'tamoyo3', 'osorio_p1', 'osorio_p2', 'ee_t3_osorio',
     'ee_t4_osorio']),
+  // 269: the South African Army line
+  southAfrica: Object.freeze(['semel', 'olifant_mk1', 'olifant_mk1a', 'olifant_mk1b', 'olifant_mk2', 'ttd']),
   // 265: the M41 Walker Bulldog family
   m41: Object.freeze(['m41a3', 'm41_bw', 'm41_jgsdf', 'm41dk1', 't49']),
+  // 269: the Australian Army line
+  australia: Object.freeze(['m113a1_fsv', 'm113a1_mrv', 'leopard_as1', 'm113as4', 'm1a1_aim_sa_aus', 'm1a2_sepv3_aus',
+    'redback', 'm113a3']),
   suppliedBritish: Object.freeze(['fv510', 'fv510_milan', 'warrior_tes_h', 'ajax', 'ares_apc']),
   suppliedRussian: Object.freeze(['bmp3', 'bmp3m_dragun125', 'kurganets25', 'tos1a_tagil']),
   // 268: the twin-cannon air defence, each pair in service order

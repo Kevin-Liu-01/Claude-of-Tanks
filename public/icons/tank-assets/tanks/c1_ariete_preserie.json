@@ -547,15 +547,15 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 22990,
-      "sha256": "b4bc9bbdaa4ce85ee371cda69b80979ddaebe787817c075dd6fd040cc5077f45",
+      "bytes": 23002,
+      "sha256": "39307edeb102813e2af81cd484355651c85a5b9a9eb292a15f98f2622f6ef3c9",
       "thumbnail": {
         "file": "thumbs/c1_ariete_preserie_angle.webp",
         "width": 256,
         "height": 256,
         "mime": "image/webp",
-        "bytes": 9626,
-        "sha256": "18a5d8cb9785164b5f87180307fb86be41d63ae8bd767f564acf72f84144d152"
+        "bytes": 9622,
+        "sha256": "81d6ce6aa6e07d52f231c8c14431f9436931f9164a23d78f32734e5ea3f296b9"
       }
     },
     "top": {
@@ -563,16 +563,16 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 11206,
-      "sha256": "dee0266ee21b35d19f5f835d4972c4c19ce8607a27ea94965050f18abe6f78b0"
+      "bytes": 11222,
+      "sha256": "1ac5862c6609e1f934a72baed9345a819aad3c893af24e3f3137678d51fca416"
     },
     "side": {
       "file": "c1_ariete_preserie_side.webp",
       "width": 512,
       "height": 256,
       "mime": "image/webp",
-      "bytes": 10682,
-      "sha256": "e27ef96959558c6f822b015bafc29b2d63fbb2efe56e9bdc2a36f249c4b9e420"
+      "bytes": 10686,
+      "sha256": "6be85e4f93dd909d25610b1085f5d0074d7ed0dd01ace99dd7f991ff0188efce"
     },
     "topSilhouette": {
       "file": "c1_ariete_preserie_top_silhouette.png",
@@ -595,32 +595,32 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 24324,
-      "sha256": "393e1b7c07b27d821b2485d069ea391a39b383bc5674c8427158d3dc621d60d3"
+      "bytes": 24414,
+      "sha256": "0f16e71ad794a36ff24062e18826dbc963e844a6b5799c4af0b121bbde52122d"
     },
     "modulesSide": {
       "file": "c1_ariete_preserie_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 25926,
-      "sha256": "31322131e8c5e97178842146f55588ca9587cdd63a28a5037913ab0dface55fe"
+      "bytes": 25900,
+      "sha256": "804ef236d3f774d1a6c3df97822ecc1466c61c1f6ff21edd06fb1b29530983df"
     },
     "crewSide": {
       "file": "c1_ariete_preserie_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 23570,
-      "sha256": "ea3159ae3e8f0046a074fe30580d81f6bc3c57d1f6b3bafe23ea52c0ae567042"
+      "bytes": 23576,
+      "sha256": "89b3eb409b04b18e6fdbe84b3410b649bf3652efa0218b60c43aa1ac89b7a1ce"
     },
     "markings": {
       "file": "c1_ariete_preserie_markings.png",
       "width": 256,
       "height": 128,
       "mime": "image/png",
-      "bytes": 33186,
-      "sha256": "856322f228ddffbe9646f904f802212c771d64bbf3c88b9e8038fd408cee0313"
+      "bytes": 31095,
+      "sha256": "b216f365b604ee3a5494ef55b5ce0ecb617fb8fa3f74caceb1e7735fed08ffcc"
     },
     "technicalLabels": {
       "file": "c1_ariete_preserie_technical.json",

@@ -775,9 +775,7 @@ export const NAVAJO_STYLE: ArchitectureStyle = Object.freeze<ArchitectureStyle>(
     plaster: [[1, 1, 1], [1.04, 1.0, 0.95], [0.95, 0.92, 0.87], [1.02, 0.98, 0.94]],
     stone: [[1, 1, 1], [0.94, 0.9, 0.87], [1.05, 1.0, 0.95], [0.9, 0.87, 0.85]],
     roof: [[1, 1, 1], [0.9, 0.84, 0.78], [1.04, 1.0, 0.96], [0.84, 0.78, 0.72]],
-    damp: 0.4, moss: 0.03,
   },
-  wear: 0.15,
   // the hogans' yards: a brush corral round the camp's ground, a gate, the shade house in a corner
   yard: { kinds: ['adobe'], fence: 'fencewattle', gate: 'gatewattle', shed: 'ramada', shedSize: [4.0, 3.2], garden: false },
 });

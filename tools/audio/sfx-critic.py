@@ -40,6 +40,20 @@ The rule's history, kept because each step was forced by evidence rather than by
   rocket-gun       a missile fired through a gun: the cannon rule, and its motor (Whoosh / Hiss / Jet engine) at least
                    0.05.
 
+Air Support's call-ins (air-support-270, 2026-11-05; written before the first take was generated):
+  jet              a strike jet's engine loop heard from the ground: Jet engine / Aircraft / Aircraft engine / Fixed-wing
+                   aircraft at least 0.1 and above every noise it could be mistaken for (Vacuum cleaner / Hair dryer /
+                   Wind / Rain / Steam / White noise / Helicopter).
+  gau8             the A-10's 30 mm rotary cannon burst: a gun (Machine gun / Fusillade / Gunshot / Artillery fire /
+                   Explosion) at least 0.1 and above every motor or tool its buzz could be heard as (Chainsaw / Power tool /
+                   Drill / Jackhammer / Motorcycle / Engine / Race car / Lawn mower / Buzz / Vacuum cleaner / Fart).
+  incoming         a falling shell's or bomb's whistle: Whistle / Whistling / Whoosh at least 0.05 and above the blast it
+                   must not yet be (Explosion / Boom / Artillery fire) and every toy or tune it could be (Music / Musical
+                   instrument / Flute / Bird / Train whistle / Steam whistle / Siren).
+  alarm            the targeted crew's warning in the hull: Alarm / Beep / Buzzer / Siren / Smoke detector / Car alarm /
+                   Fire alarm / Civil defense siren at least 0.1 and above Music / Musical instrument / Speech / Bird /
+                   Video game music.
+
 Raw takes (.pcm) are the cache's 48 kHz stereo s16le; anything else is decoded by ffmpeg. A --burst N:GAP option
 renders N copies GAP seconds apart (the engine's cyclic rate) before scoring.
 """
@@ -66,6 +80,10 @@ POSITIVE = {
     'mg-burst': ['Machine gun'],
     'rocket': ['Whoosh, swoosh, swish', 'Hiss', 'Jet engine'],
     'rocket-salvo': ['Whoosh, swoosh, swish', 'Hiss', 'Jet engine', 'Artillery fire'],
+    'jet': ['Jet engine', 'Aircraft', 'Aircraft engine', 'Fixed-wing aircraft, airplane'],
+    'gau8': ['Machine gun', 'Fusillade', 'Gunshot, gunfire', 'Artillery fire', 'Explosion'],
+    'incoming': ['Whistle', 'Whistling', 'Whoosh, swoosh, swish'],
+    'alarm': ['Alarm', 'Beep, bleep', 'Buzzer', 'Siren', 'Smoke detector, smoke alarm', 'Car alarm', 'Fire alarm', 'Civil defense siren'],
 }
 NEGATIVE = {
     'cannon': ['Gunshot, gunfire', 'Cap gun'],
@@ -79,10 +97,16 @@ NEGATIVE = {
     'mg-burst': ['Gunshot, gunfire', 'Cap gun'],
     'rocket': ['Gunshot, gunfire', 'Cap gun', 'Machine gun'],
     'rocket-salvo': ['Gunshot, gunfire', 'Cap gun', 'Machine gun'],
+    'jet': ['Vacuum cleaner', 'Hair dryer', 'Wind', 'Wind noise (microphone)', 'Rain', 'Steam', 'White noise', 'Helicopter'],
+    'gau8': ['Chainsaw', 'Power tool', 'Drill', 'Jackhammer', 'Motorcycle', 'Engine', 'Race car, auto racing', 'Lawn mower', 'Buzz',
+             'Vacuum cleaner', 'Fart'],
+    'incoming': ['Explosion', 'Boom', 'Artillery fire', 'Music', 'Musical instrument', 'Flute', 'Bird', 'Train whistle', 'Steam whistle',
+                 'Siren'],
+    'alarm': ['Music', 'Musical instrument', 'Speech', 'Bird', 'Video game music'],
 }
 # The least score at which a class is heard at all, and how many times the gun-like class it must outrank.
 FLOOR = {'cannon': 0.1, 'explosion': 0.1, 'cannon-far': 0.02, 'interior': 0.02, 'autocannon': 0.1, 'mg-burst': 0.25, 'rocket': 0.05, 'rocket-salvo': 0.05,
-         'rocket-gun': 0.1}
+         'rocket-gun': 0.1, 'jet': 0.1, 'gau8': 0.1, 'incoming': 0.05, 'alarm': 0.1}
 MARGIN = {'cannon': 2, 'explosion': 2, 'cannon-far': 2, 'interior': 2, 'autocannon': 1.2, 'mg-burst': 0.95, 'rocket-gun': 2}
 # The event frames: within 10 dB of the loudest (a long echo must not dilute the blast), 20 dB for a rocket's motor.
 WINDOW = {'rocket': 0.1, 'rocket-salvo': 0.1, 'rocket-gun': 0.1}

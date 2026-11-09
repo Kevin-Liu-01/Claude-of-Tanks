@@ -6,7 +6,7 @@ import { dirname, resolve } from 'node:path';
 import { createReceipt, signReceipt, verifyReceipt } from './asset-provenance-core.mjs';
 const arg = name => process.argv.find(value => value.startsWith(`--${name}=`))?.slice(name.length + 3);
 const root = resolve(arg('root') || '.');
-const git = (...args) => execFileSync('git', ['-C', root, ...args], { encoding: 'utf8', maxBuffer: 16 * 1024 * 1024 });
+const git = (...args) => execFileSync('git', ['-C', root, ...args], { encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 });
 const paths = git('ls-files', '-z').split('\0').filter(Boolean);
 const check = arg('check'), output = arg('write');
 assert.ok(Boolean(check) !== Boolean(output), 'Choose --write=<receipt.json> or --check=<receipt.json>');

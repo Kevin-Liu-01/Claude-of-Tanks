@@ -19,6 +19,7 @@ import type { RuntimeValue } from '../runtimeTypes.ts';
  *  - trauma-based rotational shake (graphics-aaa.md §11), ×0.3 in sniper;
  *  - deterministic screenshot hooks: setExternalPose / snapArcade / snapSniper.
  */
+import { strikeView } from '../game/strikeViewState.ts';
 import * as THREE from 'three';
 import { ImprovedNoise } from 'three/examples/jsm/math/ImprovedNoise.js';
 import { createAerialCamera } from './aerialCamera.ts';
@@ -1014,7 +1015,15 @@ export function createCameraRig(
     return camInput.shiftPressed && cine === null;
   }
 
+  let prevStrikeView = false, strikeViewScoped = false;
   function updateScopeActions(camInput: CameraInputFrame): void {
+    // Air Support (air-support-270): the strike view's binoculars ride the scope's camera; going up it enters the scope
+    // (and owns that entry), coming down it leaves only a scope it entered itself
+    if (strikeView.open !== prevStrikeView) {
+      prevStrikeView = strikeView.open;
+      if (strikeView.open && rig.mode === 'ARCADE') { strikeViewScoped = true; rig.enterSniper(); }
+      else if (!strikeView.open && strikeViewScoped) { strikeViewScoped = false; if (rig.mode === 'SNIPER') rig.exitSniper(true); }
+    }
     if (camInput.shiftPressed && !prevShift) {
       if (rig.mode === 'ARCADE') rig.enterSniper();
       else rig.exitSniper(true);

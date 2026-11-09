@@ -18,7 +18,7 @@
 //
 // Pathways: none. The village-rue's usoirs, the beaten fore-yards between the fronts and the carriageway, are authored;
 // kerbs would erase them.
-import type { CivicPlan, CivicRect } from '../types.ts';
+import type { CivicPlanSource, CivicRect } from '../types.ts';
 
 import * as detMath from '../../../sim/detMath.ts';
 const ROOM = { x0: -127, x1: -84, z0: 74, z1: 119.5 } as const;
@@ -28,9 +28,8 @@ const BED: CivicRect = { x0: -97, x1: -84, z0: 82, z1: 99 };
 const MONUMENT = { x: -87.5, z: 94.6 } as const;
 const facing = (x: number, z: number, tx: number, tz: number): number => +(detMath.atan2(tx - x, tz - z) * 180 / Math.PI).toFixed(2);
 
-export const AUTUMN_CIVIC_PLAN: CivicPlan = {
+export const AUTUMN_CIVIC_PLAN: CivicPlanSource = {
   mapId: 'autumn',
-  style: 'lorrain',
   overlay: { monumentKind: 'monument' },
   pathways: null,
   areas: [{

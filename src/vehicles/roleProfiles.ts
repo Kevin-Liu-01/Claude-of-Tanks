@@ -195,10 +195,29 @@ export const VEHICLE_ROLE_PROFILES: Readonly<Record<string, VehicleRoleProfile>>
   strv105: { doctrine: 'flexible', viewM: 430, still: 0.198, moving: 0.138 },
   // the Olifant Mk 2: a stabilised commander's thermal sight high on its post; the tall box turret shows
   olifant_mk2: { doctrine: 'flexible', viewM: 450, still: 0.205, moving: 0.140 },
+  // release 269: the South African Centurions, the Mk 2's doctrine at their marks' optics
+  semel: { doctrine: 'flexible', viewM: 405, still: 0.200, moving: 0.138 },
+  olifant_mk1: { doctrine: 'flexible', viewM: 415, still: 0.200, moving: 0.138 },
+  olifant_mk1a: { doctrine: 'flexible', viewM: 430, still: 0.202, moving: 0.139 },
+  olifant_mk1b: { doctrine: 'flexible', viewM: 440, still: 0.203, moving: 0.139 },
+  // the TTD: the stabilised CS60N and GS60 with thermal, the 1,234 hp at 58 t
+  ttd: { doctrine: 'flexible', viewM: 455, still: 0.208, moving: 0.150 },
   // the AVRE: a close-assault engineer tank; its blade and demolition gun make it the easiest Centurion to spot
   centurion5_avre: { doctrine: 'assault', viewM: 380, still: 0.210, moving: 0.150 },
   // the Australian Mk 5/1: the Mk 3's flexible 20-pdr tank, its night sights and baskets
   centurion5_1_aus: { doctrine: 'flexible', viewM: 405, still: 0.200, moving: 0.138 },
+  // release 269: the Australian M113s (scouts and fire support; the AS4 a carrier)
+  // (the IFV's armoured support as vehicleFacets.ts files it)
+  redback: { doctrine: 'armored-support', viewM: 470, still: 0.240, moving: 0.190 },
+  // (a flanker as the Danish 1A3 DK it builds on: vehicleFacets.ts names it one)
+  leopard_as1: { doctrine: 'flanker', viewM: 425, still: 0.200, moving: 0.140 },
+  m1a1_aim_sa_aus: { doctrine: 'flexible', viewM: 405, still: 0.175, moving: 0.115 },
+  m1a2_sepv3_aus: { doctrine: 'flexible', viewM: 430, still: 0.173, moving: 0.113 },
+  m113a1_fsv: { doctrine: 'support', viewM: 420, still: 0.250, moving: 0.200 },
+  m113a1_mrv: { doctrine: 'scout', viewM: 460, still: 0.280, moving: 0.240 },
+  m113as4: { doctrine: 'recon', viewM: 440, still: 0.280, moving: 0.240 },
+  // 269: the US M113A3 plays as the Ares APC (its scout optics a step under the Ares's mast)
+  m113a3: { doctrine: 'recon', viewM: 450, still: 0.284, moving: 0.244 },
   m46_patton: { doctrine: 'flexible', viewM: 375, still: 0.196, moving: 0.136 },
   m47_patton: { doctrine: 'flexible', viewM: 380, still: 0.194, moving: 0.134 },
   m60a3: { doctrine: 'flexible', viewM: 410, still: 0.187, moving: 0.127 },

@@ -46,6 +46,7 @@ import { SKYBRIDGE_ARM } from './skybridgeArm.generated.ts';
 import { TOWN_LIGHT_PLANS, TOWN_PLANS } from './townPlans.generated.ts';
 
 import * as detMath from '../../sim/detMath.ts';
+import { BUILDING_STYLES } from './buildingStyleTable.ts';
 const clamp01 = (x: number) => Math.max(0, Math.min(1, x));
 
 /** The five roads (their junction nodes below, in the terrain's `roads`). */
@@ -215,7 +216,7 @@ export default {
   },
   props: {
     // the map-revival lane (2026-10-05): Glen Canyon Dam and Page, Arizona (maps/regional/glencanyon.ts)
-    architecture: 'glencanyon',
+    architecture: BUILDING_STYLES.skybridge.kit,
     plan: [
       'arcology', 'factory', 'gantry', 'parkingdeck', 'ruin', 'foundryoffice',
       'warehouse', 'needletower', 'containerRow', 'depot', 'ruin', 'civichall',

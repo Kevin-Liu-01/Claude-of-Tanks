@@ -620,8 +620,8 @@
       "width": 256,
       "height": 128,
       "mime": "image/png",
-      "bytes": 37352,
-      "sha256": "a2e5ec54e89a1d261589784c22382cfd2006043ebb58250567ca043c07b0114a"
+      "bytes": 34400,
+      "sha256": "5194895dece82e9ba7813543094cda3fcb8d5490bd288f1752e3c8d004939908"
     },
     "technicalLabels": {
       "file": "m47_patton_technical.json",

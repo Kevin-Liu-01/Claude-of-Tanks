@@ -1,0 +1,30 @@
+{
+  "schemaVersion": 1,
+  "tankIdSchema": 3,
+  "comparisonPurpose": "photographic-reference",
+  "numerical3DComparison": "unverified",
+  "dimensionToleranceFraction": 0.03,
+  "targets": {
+    "redback": {
+      "name": "AS21 Redback",
+      "authority": "Main ruled the Australia line on 2026-11-02 (DECISIONS) on the owner's request the same day (\"flesh out south african and australian tank trees\", \"no senntinnel please\"). The AS21 Redback (129 ordered December 2023, deliveries from 2027) as a photo-class first-party build (profiles/redback.ts): seven 0.53 m road wheels on rubber band track, the bolted side courses with the raked lower front edge, the T2000 turret's two halves, the 30 mm Mk44S, the Spike launcher and the Iron Fist launchers, the remote station of the trial vehicles. No registered 3D comparison exists. Numerical 3D comparison remains unverified.",
+      "sources": [
+        "https://hanwha-defence.com.au/redback-ifv",
+        "https://www.army-technology.com/projects/as21-redback-infantry-fighting-vehicle/",
+        "https://www.janes.com/defence-news/australia-signs-usd24-billion-contract-with-hanwha-for-ifv-requirement",
+        "https://commons.wikimedia.org/wiki/File:Hanwha_AS21_Redback_Australian_IFV.png",
+        "https://images.defence.gov.au/S20210601"
+      ],
+      "widthM": 3.641,
+      "overallLengthM": 8.365,
+      "tallestM": 4.48,
+      "envelopeBasis": "The as-built envelope: the 7.9 m hull (Janes) 8.37 m over its rear step frames and lamp guards, the 30 mm muzzle 0.8 m inside the nose as the 2021 live-fire profile shows (Hanwha's 8.8 m is not reached), 3.64 m over the appliqué ledges (Janes 3.64 m); the tallest point is the whip, the remote station's gun 3.52 m.",
+      "caliberMm": 30,
+      "launcherTubes": 2,
+      "roofMachineGuns": 0,
+      "crew": 3,
+      "unmannedTurret": false,
+      "test": "src/vehicles/profiles/australia.selftest.mjs"
+    }
+  }
+}

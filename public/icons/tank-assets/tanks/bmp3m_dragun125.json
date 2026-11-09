@@ -558,24 +558,24 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 31552,
-      "sha256": "2ed21b6f5f9108b971fdd4feff210eef773e2037281b6bc7bce24901b39babd2"
+      "bytes": 31584,
+      "sha256": "f2fa28c0f1613a2a473a22fa2ce5a8d9f43000a223ac6422769b08f89b4f0f3a"
     },
     "modulesSide": {
       "file": "bmp3m_dragun125_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 36328,
-      "sha256": "88d69952b78a027ee30610e2b40a5d2cfbb2ce00986cf787d102be08b7164e31"
+      "bytes": 36370,
+      "sha256": "216ccec1e3e21735a28baecb538455b2c49bb9169059f19de9362bfa8c6c3897"
     },
     "crewSide": {
       "file": "bmp3m_dragun125_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 31978,
-      "sha256": "328761abb2302f3019405e45a163998da6e83692f0b2700ff78d23bf0c121623"
+      "bytes": 31998,
+      "sha256": "b94209f1ede87534a4272d94ec00830982ee5595d6331f9b9523853ca25f5a33"
     },
     "angle": {
       "file": "bmp3m_dragun125_angle.webp",
@@ -598,16 +598,16 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 18306,
-      "sha256": "146bac22f423c9ba7ad8fe8c4748887756d7bc2f008bd1c55cf0b4c7b4b90b3a"
+      "bytes": 18336,
+      "sha256": "f413e3da456885db6bd9b484ec10afd72c5e1af06818254f8b7f81e8650dd9fb"
     },
     "side": {
       "file": "bmp3m_dragun125_side.webp",
       "width": 512,
       "height": 256,
       "mime": "image/webp",
-      "bytes": 15762,
-      "sha256": "654a0e4ae77c32bbb56c64affaf7e51d6ef5253526d7ac0c2f18742d96c22763"
+      "bytes": 15790,
+      "sha256": "3945112cd61d98efc1823d0c69c16f77c9feb040eac3eb020e4384828e32d3a1"
     },
     "topSilhouette": {
       "file": "bmp3m_dragun125_top_silhouette.png",
@@ -630,8 +630,8 @@
       "width": 256,
       "height": 128,
       "mime": "image/png",
-      "bytes": 36187,
-      "sha256": "db88b875f96c88fa15bed1addbc191b7e857416cb23aab5b48cccee2c89f95da"
+      "bytes": 32925,
+      "sha256": "f34940961a9c3040e64cd57bda7afd2a61a53fb9955830baa751220772a0fe4e"
     },
     "technicalLabels": {
       "file": "bmp3m_dragun125_technical.json",

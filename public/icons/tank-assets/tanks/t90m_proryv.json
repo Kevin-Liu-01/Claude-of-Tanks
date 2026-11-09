@@ -11201,8 +11201,8 @@
       "width": 256,
       "height": 128,
       "mime": "image/png",
-      "bytes": 36893,
-      "sha256": "6a5dd29f00a5fd6ac13c1fa6d15d1d66bd5a8847b69a844720964c002f22f70a"
+      "bytes": 32605,
+      "sha256": "54962ac8cd7f7a109d8efab8091f34dc0d9560cd95cc5a2802da34c062128ab7"
     },
     "technicalLabels": {
       "file": "t90m_proryv_technical.json",

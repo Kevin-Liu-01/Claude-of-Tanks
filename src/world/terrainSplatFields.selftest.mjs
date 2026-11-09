@@ -8,6 +8,7 @@ import { tileableTorusNoise } from './proceduralTexture.ts';
 // round 73 (2026-09-25): the material resolves its ground-redux profile from the map id (groundRedux.ts, THREE-free);
 // the sandboxed material steps take the real functions
 import { groundReduxUniformValues, resolveGroundReduxProfile } from './groundRedux.ts';
+import { groundSurfaceUniformValues } from './groundSurfaces.ts';
 // ground lane (2026-10-03): and its land use (landUse.ts, THREE-free) — the real functions too; the build wrappers'
 // height-field hook (attachTerrainLandUse) is a no-op here (the fixture's height field grows nothing)
 import { LAND_BAKE_LAYERS, bakeLandUseSteps, landUseTierOf, landUseUniformValues, resolveLandUseProfile } from './landUse.ts';
@@ -77,7 +78,7 @@ function fixture({ closeThrows = false } = {}) {
     ...['createShoreAt', 'foldFieldSteps', 'buildTerrainMeshes', 'buildTerrainMeshesAsync', 'terrainBuildSteps'].map(declaration),
   ].join('\n').replace(/^export /gm, '');
   const compile = new Function('THREE', 'SimplexNoise', 'torusNoise', 'canvasToTexture',
-    'layer', 'own', 'state', 'closeThrows', 'groundReduxUniformValues', 'resolveGroundReduxProfile', 'landUseUniformValues', 'resolveLandUseProfile', 'bakeLandUseSteps', 'landUseTierOf', 'LAND_BAKE_LAYERS', stripTypeScriptTypes(`
+    'layer', 'own', 'state', 'closeThrows', 'groundReduxUniformValues', 'resolveGroundReduxProfile', 'groundSurfaceUniformValues', 'landUseUniformValues', 'resolveLandUseProfile', 'bakeLandUseSteps', 'landUseTierOf', 'LAND_BAKE_LAYERS', stripTypeScriptTypes(`
     const attachTerrainLandUse = () => {};
     const SPLAT_FIELD_S = 256, CHUNKS = 8, CHUNK_SIZE = 128, HALF = 512;
     const LOD_SEGS = [96,48,24], SPLAT_COMMON_FRAG = '', SPLAT_NORMAL_FRAG = '', SNOW_ROCK_HOLD_LINE = '';
@@ -128,7 +129,7 @@ function fixture({ closeThrows = false } = {}) {
     texture.image = { pixels: pixels.slice(), width: size, height: size };
     state.uploads.push({ pixels: texture.image.pixels, size, options });
     return texture;
-  }, layer, own, state, closeThrows, groundReduxUniformValues, resolveGroundReduxProfile, landUseUniformValues, resolveLandUseProfile, bakeLandUseSteps, landUseTierOf, LAND_BAKE_LAYERS);
+  }, layer, own, state, closeThrows, groundReduxUniformValues, resolveGroundReduxProfile, groundSurfaceUniformValues, landUseUniformValues, resolveLandUseProfile, bakeLandUseSteps, landUseTierOf, LAND_BAKE_LAYERS);
   const engine = { anisotropy: 4, setupShadowMaterial() { state.materials++; } };
   const height = { _layout: { spawns: { player: { x: 0, z: 0 } }, terrain: {} } };
   return { api, state, engine, height, dispose(group) {

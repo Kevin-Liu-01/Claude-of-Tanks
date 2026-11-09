@@ -2694,16 +2694,16 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 10466,
-      "sha256": "cd8230256e7928575e1311492168adadd3e156a8f2bdf4f1a2b0e7427c7aabbd"
+      "bytes": 10458,
+      "sha256": "4bb116652ed533ac125be0c3f2ca8bd3d60e77e4259e50d5719857e6c40fa13f"
     },
     "side": {
       "file": "kf51_evo_side.webp",
       "width": 512,
       "height": 256,
       "mime": "image/webp",
-      "bytes": 11200,
-      "sha256": "690c8c987719c2c1fba4f79a072921224edd3194ef6b4b35606de25bc4b56688"
+      "bytes": 11118,
+      "sha256": "990f4f1e60b93fa60d77a62e5e537c986c9f62fadee1f745b2a0fc061a2643ba"
     },
     "topSilhouette": {
       "file": "kf51_evo_top_silhouette.png",
@@ -2726,8 +2726,8 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 24292,
-      "sha256": "035e0224e66f5b0ece7e3d29a81bc43aed0f95bbc8289ecf28866a5edcceec41"
+      "bytes": 24298,
+      "sha256": "17d6c8627c2c4f5ecaf55903df6a80f3c0cef9ca5c78011a4c3affdc82bef256"
     },
     "modulesSide": {
       "file": "kf51_evo_modules_side.webp",
@@ -2735,23 +2735,23 @@
       "height": 512,
       "mime": "image/webp",
       "bytes": 26254,
-      "sha256": "34c7d06428c336f409b33097b0d0c3f27b1d5b160b6444cf03c9f4f4820f34f0"
+      "sha256": "078adc7bb7cd3359938314ad3356cdafc289269953cafbb3a81a6381cb04627b"
     },
     "crewSide": {
       "file": "kf51_evo_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 23196,
-      "sha256": "6cbb93e1ae2d98100aad5d4f8f7e66d5507266572ee97a8e3395b0e41fec42dc"
+      "bytes": 23190,
+      "sha256": "f0ffcc023b9700a8208f8b39d6cf1ee95a813ea2c05f91c42a39f9355f35f889"
     },
     "markings": {
       "file": "kf51_evo_markings.png",
       "width": 256,
       "height": 128,
       "mime": "image/png",
-      "bytes": 32998,
-      "sha256": "74eff430c243193c5526cecdcf6cafeb68fc0f60d3d1221fb3db1e94c7bbc3b7"
+      "bytes": 31276,
+      "sha256": "e19df5e9e9d0b65315be92387110492a03a405909a11d7b9f26b24b5fea91e52"
     },
     "technicalLabels": {
       "file": "kf51_evo_technical.json",

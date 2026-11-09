@@ -7,11 +7,10 @@
 // 72 m off the zones by design. The Settlement's streets take granite kerbstones and concrete flags: the two diagonals,
 // the south tram street and the west road are main streets, Zhabei's north street and the thin east road lanes; the
 // creek's four bridges keep their parapets (the kit stops at a deck). The whole valley floor is the town (no wall).
-import type { CivicPlan } from '../types.ts';
+import type { CivicPlanSource } from '../types.ts';
 
-export const BLACKGLASS_CIVIC_PLAN: CivicPlan = {
+export const BLACKGLASS_CIVIC_PLAN: CivicPlanSource = {
   mapId: 'blackglass',
-  style: 'shanghai',
   overlay: {},
   // (229, the owner: "add a lot of cars in civic areas ... same should apply to ... suzhou") the Settlement's Buicks,
   // Chevrolets, delivery vans and a pickup at the kerbs of its streets (the tram street's west and east blocks, the

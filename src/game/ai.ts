@@ -234,6 +234,8 @@ export interface AiOrder {
   untilS: number;
 }
 
+/** Air Support: the bore within ~1.5 degrees of where its round meets an aircraft fires (a jet's sphere at 300 m). */
+const AIR_SHOT_COS = detMath.cos(0.026);
 const CRITICAL_REPAIR_MODULES = new Set([
   'trackL', 'trackR', 'engine', 'gun', 'turretRing', 'gunMount',
   'ammoRack', 'autoloader', 'feedSystem', 'missileRack',
@@ -398,6 +400,11 @@ interface AiDependencies {
   intel?: {
     freshestContact(): { x: number; z: number } | null;
     enemyDeployment(): { x: number; z: number } | null;
+    /** Air Support (air-support-270): the distance to the nearest enemy aircraft in the air (Infinity: none). */
+    airThreatM?(): number;
+    /** Air Support: where a round at `roundMps` meets the nearest enemy aircraft this gun can elevate to (`maxPitchRad`),
+     *  or null (the gun's answer when it has no ground target). */
+    airShot?(roundMps: number, maxPitchRad: number): { x: number; y: number; z: number } | null;
   };
 }
 
@@ -730,6 +737,8 @@ const PASSIVE_PRESS_FALLBACKS: readonly (readonly [number, number])[] = [
 const PASSIVE_PRESS_BEARINGS = 2 + PASSIVE_PRESS_FALLBACKS.length + 1; // per ring: the two sides, the fallbacks, straight in
 const PASSIVE_PRESS_REPICK_S = 3;
 const PRESS_VETO_SLOTS = 4;                 // press points (and missed-out spots) kept out of the picks at once
+/** (268, Main item 11) A bot with a shot open lays its gun first: its hull turns at most this share of its turret's traverse. */
+const LAY_FIRST_TURN_SHARE = 0.5;
 const PASSIVE_PRESS_LANE_HULL_FRAC = 0.4; // the press point must reach the HULL with the gun, not only the turret top
 const PASSIVE_PRESS_DENIED_S = 6;          // closed penetration gate held at the press point before it is given up
 const PASSIVE_PRESS_ARC_S = 3;             // gun pinned at a pitch stop at the press point before it is given up
@@ -4780,10 +4789,38 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     return true;
   }
 
+  /**
+   * Air Support (air-support-270): a gun with no ground target answers an enemy aircraft it can elevate to — laid on where
+   * its round meets the aircraft (the controller leads it from the aircraft's public flight), fired once the bore bears.
+   */
+  let airShots = 0;
+  function shootAircraft(input: AiInput, timeS: number): boolean {
+    const shell = selectedShell(entity.combat);
+    const airShot = deps.intel?.airShot;
+    if (!shell || !airShot) return false;
+    const aim = airShot(shell.velocityMps || 1000, (spec.gunElevationDeg ?? 15) * Math.PI / 180);
+    if (!aim) return false;
+    const st = entity.state;
+    input.aimPoint.set(aim.x, aim.y, aim.z);
+    input.fire = false;
+    if ((entity.combat?.reload?.t ?? 0) > 1e-3) return true;
+    _hullEuler.set(-(st.visualPitch || 0), st.yaw, st.visualRoll || 0, 'YXZ');
+    _hullQuat.setFromEuler(_hullEuler);
+    _vF.set(detMath.sin(st.turretYaw) * detMath.cos(st.gunPitch), detMath.sin(st.gunPitch), detMath.cos(st.turretYaw) * detMath.cos(st.gunPitch))
+      .applyQuaternion(_hullQuat).normalize();
+    const dx = aim.x - st.pos.x, dy = aim.y - (st.pos.y + selfEyeM), dz = aim.z - st.pos.z, d = detMath.hypot(dx, dy, dz) || 1;
+    if ((_vF.x * dx + _vF.y * dy + _vF.z * dz) / d < AIR_SHOT_COS) return true;
+    input.fire = true;
+    lastFiredAtS = timeS;
+    airShots++;
+    return true;
+  }
+
   function aimAndFire(input: AiInput, dt: number, timeS: number): void {
     if (!target || !enemyAlive(target)) {
       conserving = false;
       if (shootTheBall(input, timeS)) return;
+      if (shootAircraft(input, timeS)) return;
       setIdleScan(input, timeS);
       return;
     }
@@ -6851,6 +6888,7 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
       || (reaction !== null && timeS < reactUntilS) || (orderActive() && order!.posture === 'retreat');
     abilityContext.reloadS = slotReloadS(chosenSlot);
     abilityContext.contactM = target && losClear && isVisibleToTeam(target) ? currentTargetDistance() : Infinity;
+    abilityContext.airThreatM = deps.intel?.airThreatM?.() ?? Infinity;
     abilityContext.safeJump = false;
     abilityContext.offensive = offensiveJumpDue();
     if (abilities.jumpEligible(entity, timeS, abilityContext) && input.throttle > 0.2 && !input.brake) {
@@ -6880,7 +6918,22 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
       input.brake = false;
     }
     aimAndFire(input, dt, timeS);
+    layGunFirst(input);
     controller.state = mode;
+  }
+
+  /**
+   * (268, Main item 11) A bot with a shot open lays its gun first: with its target in sight and range and its gun loaded
+   * but not yet laid, the hull turns no faster than LAY_FIRST_TURN_SHARE of the turret's traverse, so the turret closes on
+   * the target. A hull turning at its own rate took the turret's whole traverse: an M46 swinging onto its route held an open
+   * shot at 104 m for 4 s, 32-36 degrees off. A casemate lays with its hull; a bot escaping, falling back, kiting or
+   * scooting keeps its turn.
+   */
+  function layGunFirst(input: AiInput): void {
+    if (casemate || !target || !losClear || !fireGate.reloadReady || !fireGate.rangeReady || fireGate.aligned) return;
+    if (nowS < scootUntilS || nowS < fallbackUntilS || nowS < kiteUntilS) return;
+    const cap = LAY_FIRST_TURN_SHARE * spec.turretTraverseDegS / Math.max(spec.hullTraverseDegS, 1e-6);
+    if (cap < 1) input.steer = clamp(input.steer, -cap, cap);
   }
 
   // ---- main update ----------------------------------------------------------

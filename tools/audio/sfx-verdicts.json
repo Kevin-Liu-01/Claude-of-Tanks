@@ -1505,6 +1505,322 @@
    }
   ]
  },
+ "air_bomb_blast": {
+  "class": "explosion",
+  "variants": [
+   {
+    "source": "ec1e10a9975440c92c618a41.pcm",
+    "cutS": 6,
+    "sha256": "bad08fbf8f1393b67ab0ac9e8ea945f6b69fc3eb87293d4c32121a385ef6fdcf",
+    "class": "explosion",
+    "pass": true,
+    "single": {
+     "best": "Explosion",
+     "bestScore": 0.7591,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.2852,
+     "top": "Explosion"
+    }
+   },
+   {
+    "source": "8efa972f03156378e5f66011.pcm",
+    "cutS": 6,
+    "sha256": "f078106c0a4f824cbf5a13b084a4b22ee144d9a186021d6ea26966c244f0b0e4",
+    "class": "explosion",
+    "pass": true,
+    "single": {
+     "best": "Explosion",
+     "bestScore": 0.6008,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.1688,
+     "top": "Explosion"
+    }
+   },
+   {
+    "source": "8b73cea1b9c82fb288a6c719.pcm",
+    "cutS": 6,
+    "sha256": "79f2e928ee4b3efb8c4d1f5f515508cb41065a6b3ab50f02a92645bc2060f907",
+    "class": "explosion",
+    "pass": true,
+    "single": {
+     "best": "Explosion",
+     "bestScore": 0.7357,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.1693,
+     "top": "Explosion"
+    }
+   }
+  ]
+ },
+ "air_bomb_fall": {
+  "class": "incoming",
+  "variants": [
+   {
+    "source": "423c3bfafbe4c6f23213811c.pcm",
+    "cutS": 4.48,
+    "sha256": "8b5ab9445759fc73b470322476c3b844cbb25aca264551fbf34c90fc91893872",
+    "class": "incoming",
+    "pass": true,
+    "single": {
+     "best": "Whistling",
+     "bestScore": 0.4395,
+     "against": "Explosion",
+     "againstScore": 0.2139,
+     "top": "Whistling"
+    }
+   },
+   {
+    "source": "69baffad58c51827766a3032.pcm",
+    "cutS": 4.48,
+    "sha256": "9ee5b7c46a67ab9c0cc8a0f1f1ab15a61920893746eec35c5f15c04f7ee24a9c",
+    "class": "incoming",
+    "pass": true,
+    "single": {
+     "best": "Whistling",
+     "bestScore": 0.3531,
+     "against": "Siren",
+     "againstScore": 0.1055,
+     "top": "Whistling"
+    }
+   }
+  ]
+ },
+ "air_crash": {
+  "class": "explosion",
+  "variants": [
+   {
+    "source": "b770c514c5695f8a7cba417b.pcm",
+    "cutS": 5,
+    "sha256": "b487cb3c639ae456402b3f57ed9137bb50b08b6d7117bc4164afd189d52f1ce2",
+    "class": "explosion",
+    "pass": true,
+    "single": {
+     "best": "Explosion",
+     "bestScore": 0.3665,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.1582,
+     "top": "Explosion"
+    }
+   },
+   {
+    "source": "bd89c52380c6b71353f17523.pcm",
+    "cutS": 5,
+    "sha256": "addeb1726c906601245790f90e9d8430f108449a1c73fdb73a16b59d5fd579bf",
+    "class": "explosion",
+    "pass": true,
+    "single": {
+     "best": "Explosion",
+     "bestScore": 0.368,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.0672,
+     "top": "Explosion"
+    }
+   }
+  ]
+ },
+ "air_gau8_close": {
+  "class": "gau8",
+  "variants": [
+   {
+    "source": "b84fd838c342363fd82a11d5.pcm",
+    "cutS": 3,
+    "sha256": "8231fb58420fa4d64eb13fe76e8e24454d0fb6b2dd81bc09d48b28c1a92fe6a9",
+    "class": "gau8",
+    "pass": true,
+    "single": {
+     "best": "Explosion",
+     "bestScore": 0.7188,
+     "against": "Chainsaw",
+     "againstScore": 0,
+     "top": "Explosion"
+    }
+   },
+   {
+    "source": "282eb368b11b056f1471c9fa.pcm",
+    "cutS": 3,
+    "sha256": "efbab76198a58d97b1e8d51122c3c49582a1d6e9362d97b016f3d436643be430",
+    "class": "gau8",
+    "pass": true,
+    "single": {
+     "best": "Explosion",
+     "bestScore": 0.6934,
+     "against": "Motorcycle",
+     "againstScore": 0.002,
+     "top": "Explosion"
+    }
+   },
+   {
+    "source": "03c9e9e4456fce1eeb77a6d7.pcm",
+    "cutS": 3,
+    "sha256": "e4beb5c1cd718bf9131f390a23153b0fce0f2827f5fbb981aacddbdf6ea409f3",
+    "class": "gau8",
+    "pass": true,
+    "single": {
+     "best": "Explosion",
+     "bestScore": 0.457,
+     "against": "Buzz",
+     "againstScore": 0.002,
+     "top": "Explosion"
+    }
+   }
+  ]
+ },
+ "air_gau8_far": {
+  "class": "gau8",
+  "variants": [
+   {
+    "source": "518519b0d56d1a2709d6da32.pcm",
+    "cutS": 3.48,
+    "sha256": "39c9af78cf43d9ee68329ac70df95c6e28a76e3778cce6ba7139d7ee92a5be8c",
+    "class": "gau8",
+    "pass": true,
+    "single": {
+     "best": "Explosion",
+     "bestScore": 0.4766,
+     "against": "Engine",
+     "againstScore": 0.0013,
+     "top": "Explosion"
+    }
+   },
+   {
+    "source": "228bbad8760f8efa256e656a.pcm",
+    "cutS": 3.48,
+    "sha256": "6b3d617a3a92592f605b65d05b99aa3b5ae14afdb998d535c419b58be054c4cb",
+    "class": "gau8",
+    "pass": true,
+    "single": {
+     "best": "Explosion",
+     "bestScore": 0.6621,
+     "against": "Engine",
+     "againstScore": 0.002,
+     "top": "Explosion"
+    }
+   }
+  ]
+ },
+ "air_jet_attack_loop": {
+  "class": "jet",
+  "variants": [
+   {
+    "source": "c4c6c32dd6fab4dc320325ac.pcm",
+    "cutS": 6,
+    "sha256": "1421e5bdb15e2b8db5d3aa5ef3bced0ed6e629ed5a7bcb09df8f37a8dfad89c7",
+    "class": "jet",
+    "pass": true,
+    "single": {
+     "best": "Aircraft",
+     "bestScore": 0.1552,
+     "against": "White noise",
+     "againstScore": 0.1183,
+     "top": "Vehicle"
+    }
+   }
+  ]
+ },
+ "air_jet_fast_loop": {
+  "class": "jet",
+  "variants": [
+   {
+    "source": "81266e116f84f792a7e219fc.pcm",
+    "cutS": 6,
+    "sha256": "28ea783ea56cc8241daee86737c56ea266bd5b12e06601575af96f88bd00e907",
+    "class": "jet",
+    "pass": true,
+    "single": {
+     "best": "Aircraft",
+     "bestScore": 0.2798,
+     "against": "White noise",
+     "againstScore": 0.0419,
+     "top": "Aircraft"
+    }
+   }
+  ]
+ },
+ "air_jet_recon_loop": {
+  "class": "jet",
+  "variants": [
+   {
+    "source": "883ffc8874e482af4491ef5f.pcm",
+    "cutS": 6,
+    "sha256": "a934de2b7c846ab7149ccc0528f6fc32a80ac02ef1033db853a42191bddcc127",
+    "class": "jet",
+    "pass": true,
+    "single": {
+     "best": "Aircraft",
+     "bestScore": 0.1854,
+     "against": "Wind",
+     "againstScore": 0.0316,
+     "top": "Aircraft"
+    }
+   }
+  ]
+ },
+ "air_shell_incoming": {
+  "class": "incoming",
+  "variants": [
+   {
+    "source": "3e2f624142e965aa81ea5b1f.pcm",
+    "cutS": 3,
+    "sha256": "25032542fb35046fb6e46e985e519544692514da5acfdaee80f71929e84d3f41",
+    "class": "incoming",
+    "pass": true,
+    "single": {
+     "best": "Whistle",
+     "bestScore": 0.3841,
+     "against": "Explosion",
+     "againstScore": 0.1576,
+     "top": "Whistle"
+    }
+   },
+   {
+    "source": "6ae908d73f364b2d43a9748e.pcm",
+    "cutS": 3,
+    "sha256": "a28982f2472d9f2cfdb6f6b27ff458e4be88aa5f3376926d01419276973e0e93",
+    "class": "incoming",
+    "pass": true,
+    "single": {
+     "best": "Whoosh, swoosh, swish",
+     "bestScore": 0.082,
+     "against": "Explosion",
+     "againstScore": 0.0234,
+     "top": "Sound effect"
+    }
+   },
+   {
+    "source": "821be8ba0cbe0a7be6ffb360.pcm",
+    "cutS": 3,
+    "sha256": "5ac77b85c110427a1306c5a68a5f0af586f7814bef926f20e1d691d2e8c602a6",
+    "class": "incoming",
+    "pass": true,
+    "single": {
+     "best": "Whistle",
+     "bestScore": 0.6016,
+     "against": "Steam whistle",
+     "againstScore": 0.1035,
+     "top": "Whistle"
+    }
+   }
+  ]
+ },
+ "air_strike_warning": {
+  "class": "alarm",
+  "variants": [
+   {
+    "source": "a31784188b7974e534adc480.pcm",
+    "cutS": 2,
+    "sha256": "6d4bb73835f31b2c3da1a869a9bcda2f8364341491db41023d9de88a769ecb1b",
+    "class": "alarm",
+    "pass": true,
+    "single": {
+     "best": "Alarm",
+     "bestScore": 0.3926,
+     "against": "Music",
+     "againstScore": 0.0254,
+     "top": "Alarm"
+    }
+   }
+  ]
+ },
  "aps_intercept": {
   "class": "explosion",
   "variants": [

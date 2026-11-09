@@ -1818,15 +1818,15 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 26844,
-      "sha256": "dcfef98015e4c321a07e3408a5efe4f44052f5c7a55dcf092eeef6d1f069f2bb",
+      "bytes": 26830,
+      "sha256": "66f89396ec0427ac8248f877b028b9bb88e36131de4dfec9cf60c0dbb1dd4d88",
       "thumbnail": {
         "file": "thumbs/amx30b2_angle.webp",
         "width": 256,
         "height": 256,
         "mime": "image/webp",
-        "bytes": 10786,
-        "sha256": "bff605a665d0bc48585b774cfa94ce98b458df6122c81d8e3c4d6fb22f6f2832"
+        "bytes": 10778,
+        "sha256": "d16cf1afedab9e536fe7a44e56f15b62186f2a0e39d5e98974f63612f8412198"
       }
     },
     "top": {
@@ -1842,8 +1842,8 @@
       "width": 512,
       "height": 256,
       "mime": "image/webp",
-      "bytes": 9738,
-      "sha256": "58ae5876244a04b24a689a924d5d8650a0b175dad5b9906e062f89c1c07686f6"
+      "bytes": 9736,
+      "sha256": "212b1ca98f40d4ed8d7f50a434d23a0921ea9c5b752d28db7ea2b1e71a1b2ec6"
     },
     "topSilhouette": {
       "file": "amx30b2_top_silhouette.png",
@@ -1866,32 +1866,32 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 27142,
-      "sha256": "909bb6391773e57742dd767c21fd4cb47db5e95070eacab12b3c6196edd62939"
+      "bytes": 27150,
+      "sha256": "1edb3bd6eb80878a07bc1b2297323cbdde1336ad2abee70e18f4912edf262ddf"
     },
     "modulesSide": {
       "file": "amx30b2_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 23394,
-      "sha256": "e6527210b08b433d066732742b8f26e923e4b7857de25720e872c9287ad37c89"
+      "bytes": 23422,
+      "sha256": "3762c27298b2ed138cddbc3a363003acaf3378af14b1a1c8f210c95d1b48888a"
     },
     "crewSide": {
       "file": "amx30b2_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 21588,
-      "sha256": "bc2517743744faf87cda149e14a3f7676a8300e4b5c03b25819835fe02ce20a6"
+      "bytes": 21584,
+      "sha256": "aaa76f0bb8cc2f655f06a4218778e79b6f9f0bf27cfea5f8c8e771350e5aab14"
     },
     "markings": {
       "file": "amx30b2_markings.png",
       "width": 256,
       "height": 128,
       "mime": "image/png",
-      "bytes": 35967,
-      "sha256": "dda8efc2e314d642d6389b02df8e0285b7004bf57b2ec27472bd475e00d1dd53"
+      "bytes": 32725,
+      "sha256": "8319406a4838a64d03ac814d24857b4826c94f57a4908e60053c452e5f557b05"
     },
     "technicalLabels": {
       "file": "amx30b2_technical.json",
