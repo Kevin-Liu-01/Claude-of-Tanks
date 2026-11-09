@@ -51,7 +51,7 @@
 import { spawn } from 'node:child_process';
 import { mkdirSync, readdirSync, readFileSync, writeFileSync, existsSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
-import { createPlant, createStand } from './mode-aggression-stand.mjs';
+import { createPlant, createStand, plantOptionsError } from './mode-aggression-stand.mjs';
 
 const SELF = fileURLToPath(import.meta.url);
 const ROOT = new URL('../', import.meta.url);
@@ -84,6 +84,12 @@ const SPAWN_SETTLE_S = 1;
  * the receipt re-derives the 59 ticks from movement.ts.
  */
 const STAND_MIN_TICKS = 59 + SAMPLE_TICKS;
+// (round 8 Y10 s6-07) A run's stand options are judged before anything loads: the planted control measures the stand,
+// so --plantStand with --standMinS=0 (no stand) is refused (it held its hull to the clock cap and printed no PLANT line).
+if (command === 'run' || command === 'batch') {
+  const refusal = plantOptionsError({ plantStandS: Number(arg('plantStand', 0)), standMinS: Number(arg('standMinS', NaN)) });
+  if (refusal) { console.error(`mode-aggression-harness: ${refusal}`); process.exit(2); }
+}
 
 function parseSeeds(text) {
   const out = [];
@@ -625,9 +631,12 @@ const capS = Number(arg('capS', (rules.timeLimitS ?? 900) + 5));
 const STAND_MIN_S = Number(arg('standMinS', STAND_MIN_TICKS * SIM_DT));
 // --plantStand=<s> (a control of the stand measure, never a deal): from --plantFromS (default 20 s) the bravo bot engaged
 // and under way (over 2 m/s) farthest from any alpha hull (the least likely to die in its stand) is held at zero
-// throttle, brakes on, until it has stood <s> seconds, then driven at full throttle until the stand ends; the harness
-// prints that stand's slow engaged samples and how many the measure counted (a PLANT line on stderr) and ends the run.
-// A held hull destroyed before its stand ends is replaced by the next one (three tries).
+// throttle, brakes on, until it has stood <s> seconds, then driven at full throttle until the stand ends; after the
+// first sample past the stand's end the harness prints the stand's engaged samples and how many the measure counted (a
+// PLANT line on stderr) and ends the run. A held hull destroyed before its stand ends is replaced by the next one (three
+// tries). (round 8 Y10 s6-07) The control is tools/mode-aggression-stand.mjs createPlant: a stand that never begins or
+// never ends inside its deadline (a hull driven into an obstacle), a hull destroyed on every try, or a run that ends
+// first, ends it 'unproven' with a PLANT line naming why. Refused with --standMinS=0.
 const PLANT_STAND_S = Number(arg('plantStand', 0));
 const PLANT_FROM_S = Number(arg('plantFromS', 20));
 // --pinRoster=FILE (268, item 10; Main: the receipt's Horde deals are pinned): the battle fields FILE's deal for its seed
@@ -846,7 +855,7 @@ const recOf = (e) => {
     r = { id: e.id, specId: e.specId, nation: nationKey(e.spec?.nation), team0: normTeam(e.team), human: adapter.isHuman(e), hull0: e.combat?.maxHp ?? null,
       shots: 0, hits: 0, damagingHits: 0, damageDealt: 0, damageTaken: 0, kills: 0, deaths: 0, aliveS: 0,
       move: { advance: 0, hold: 0, retreat: 0, lateral: 0 }, ai: {}, engage: { samples: 0, still: 0, settled: 0, settledStill: 0 }, liveT: null, spawnT: null,
-      stand: createStand({ minS: STAND_MIN_S, windowS: SAMPLE_TICKS * SIM_DT }),
+      stand: createStand({ minS: STAND_MIN_S }),
       flags: { fallingBack: 0, kiting: 0, scooting: 0, relocating: 0, escaping: 0, settling: 0, reacting: 0, searching: 0, pressing: 0, passivePress: 0, missionReleased: 0, ramming: 0, samples: 0 },
       engageDistSum: 0, engageDistN: 0,
       // guards: slow-while-free time (stuck), moving samples and the ones with a friendly inside 10 m (bunching)
@@ -1112,14 +1121,14 @@ function sample(t) {
       r.move[cls]++;
       if (!r.human) bk[cls]++;
       if (e.aiCtl?.state === 'engage') {
-        // a slow sample counts when it is part of a stand (STAND_MIN_S): at once inside one, held while the slow stretch is
-        // younger than that, and dropped if the stretch ends first (a reversal, a jolt)
+        // a sample counts when its tick lies in a stand (STAND_MIN_S, its hull's stand owner: tools/mode-aggression-stand.mjs):
+        // at once inside one, held while the stand is younger than that, and dropped if the stand ends first (a
+        // reversal, a jolt); with --standMinS=0, when it moved under MOVE_EPS_MPS (the old per-sample measure)
         const settled = t - r.spawnT >= SPAWN_SETTLE_S;
         r.engage.samples++;
         if (settled) r.engage.settled++;
-        const slowSample = speed < MOVE_EPS_MPS;
-        if (e.id === plant.id) plant.noteSample({ t, slowSample });
-        if (r.stand.sample(t, { settled, slowSample }) === 'still') {
+        if (e.id === plant.id) plant.noteSample({ t });
+        if (r.stand.sample(t, { settled, slowSample: speed < MOVE_EPS_MPS }) === 'still') {
           r.engage.still++;
           if (settled) r.engage.settledStill++;
         }
@@ -1410,9 +1419,13 @@ function plantStep(t) {
     plant.pick(id, t);
     return;
   }
-  const e = ents.find((x) => x.id === plant.id), r = recs.get(plant.id);
-  const report = plant.tick({ t, alive: alive(e), standFromT: r.stand.fromT, still: r.engage.still });
+  const report = plant.tick(plantView(t));
   if (report) console.error(report.line);
+}
+/** The picked hull as the control reads it: its life, its stand's start and its engaged-still count. */
+function plantView(t) {
+  const e = ents.find((x) => x.id === plant.id), r = recs.get(plant.id);
+  return { t, alive: alive(e), standFromT: r.stand.fromT, still: r.engage.still };
 }
 for (; tick < ticks; tick++) {
   adapter.step();
@@ -1425,7 +1438,7 @@ for (; tick < ticks; tick++) {
   if (front.pendingPlacements.length) settlePlacements();
   if (tick % SAMPLE_TICKS === 0) {
     sample(t);
-    const report = PLANT_STAND_S ? plant.afterSample(t) : null;
+    const report = PLANT_STAND_S && plant.id != null && !plant.ended ? plant.afterSample(plantView(t)) : null;
     if (report) console.error(report.line);
     if (plant.ended) break;
   }
@@ -1439,6 +1452,12 @@ for (; tick < ticks; tick++) {
     spentSamples = ents.some((e) => normTeam(e.team) === 'alpha' && !adapter.isHuman(e) && alive(e)) ? 0 : spentSamples + 1;
     if (spentSamples >= 20) { result = { result: 'bravo', reason: 'attackers_spent', atS: adapter.timeS() }; break; }
   }
+}
+// a control still open when the run ends says so (its PLANT line names the phase), never ends unreported
+if (PLANT_STAND_S && !plant.ended) {
+  const report = plant.finish(result ? `the battle ended: ${result.result ?? 'no winner'} by ${result.reason ?? 'its rules'} at ${(result.atS ?? adapter.timeS()).toFixed(1)} s`
+    : `the clock cap ${capS} s`);
+  if (report) console.error(report.line);
 }
 const endS = result?.atS ?? adapter.timeS();
 const minutes = Math.max(1e-6, endS / 60);

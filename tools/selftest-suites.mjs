@@ -2181,6 +2181,9 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/sim/nationIndex.selftest.mjs',
     'src/mp/room/roomBots.selftest.mjs',
     'tools/mode-aggression-harness.selftest.mjs',
+    // round 8 Y10 s6-07: the aggression harness's stand read at each sample's tick from one speed (no edge sample gained
+    // or dropped), and a planted control that ends done after the sample past its stand or unproven with its cause
+    'tools/mode-aggression-stand.selftest.mjs',
     'src/sim/matchRuleset.selftest.mjs',
     // 2026-10-17 (v2 progression): the proving ground's ruleset row, practice partition, range layout, card and drive.
     'src/sim/provingGround.selftest.mjs',
