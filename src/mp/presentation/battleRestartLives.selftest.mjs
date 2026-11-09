@@ -388,7 +388,12 @@ const wrong = [];
   const probe = probeOf();
   const me = tank('me', { isPlayer: true });
   const foe = tank('foe', { specId: 'leo2a4', nation: 'Germany', z: 200, team: 'enemy' });
-  const frame = (dt = 1 / 30) => { ctx.advance(dt); audio.update(dt, listener, [me, foe]); };
+  // (round 8 Y11) the crew names only what the player sees (round 8 Y3 s1-02: the page's visibility rule,
+  // src/game/playerVisibility.ts, handed to update() as main's listener pose does), so the player's view is this case's
+  // input: the foe is seen from its sighting until the restart, which moves the field and hides it again
+  const seen = new Set();
+  const visibleToUs = (hull) => hull.id === 'me' || seen.has(hull.id);
+  const frame = (dt = 1 / 30) => { ctx.advance(dt); audio.update(dt, listener, [me, foe], [], visibleToUs); };
   bus.emit('phase:change', { phase: 'battle' });
   await audio.warmBattleEvents(['t72b3m_2022', 'leo2a4']);
   await probe.libraryIdle();
@@ -397,7 +402,7 @@ const wrong = [];
   for (let i = 0; i < 5; i++) frame();
   // our side sees the foe (the event's team is the spotting side); its smoke launcher fires beside it, 198 m from us (a
   // screen's source is its launcher: [vehicle, x, y, z]; born is the battle's sim clock), and the crew's call is asked
-  const spot = () => bus.emit('tank:spotted', { id: 'foe', team: 'player', spotterId: 'me' });
+  const spot = () => { seen.add('foe'); bus.emit('tank:spotted', { id: 'foe', team: 'player', spotterId: 'me' }); frame(); };
   const smokeCalls = (born) => {
     const last = probe.sayLog.at(-1);
     bus.emit('auxiliary:smokeScreens', { screens: [{ born, x: 2, y: 2, z: 196, source: ['leo2a4', 1, 2, 198] }] });
@@ -407,12 +412,14 @@ const wrong = [];
   spot();
   assert.equal(smokeCalls(90), 1, 'setup: the abandoned battle\'s enemy smoke, 90 s in beside the spotted foe, is called');
   // the restart: the restarted battle's sim clock starts at 0; our side sees the foe again and it pops smoke 10 s in
+  seen.clear();
   bus.emit('battle:restarted', RESTART);
   for (let i = 0; i < 10; i++) frame();
   spot();
   const earlier = smokeCalls(10);
   if (earlier !== 1) wrong.push(`audio: the crew called the restarted battle's enemy smoke 10 s in ${earlier} times (once; the abandoned battle's screen at 90 s was still its watermark)`);
   // another restart: no one on our side has seen the foe since, so smoke beside it is no enemy the crew can name
+  seen.clear();
   bus.emit('battle:restarted', { battleRestarts: 2 });
   for (let i = 0; i < 10; i++) frame();
   const unseen = smokeCalls(200);
