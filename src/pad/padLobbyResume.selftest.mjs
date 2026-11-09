@@ -5,7 +5,9 @@
 // and the seats are kept (H0's padLobby dropped an ask its socket could not carry, so the window stayed open). No
 // product press reaches setOpen(false) on this branch: Start calls only request.start (couchLobby.ts) and Reopen, the
 // one product caller, is hidden while away; app-couch's Start (s3-09, couchRuntime.startBattle -> lobby.setOpen(false))
-// is the press this queue serves once it lands, and the Y11 merge runs the two together. The reverse order: every phone
+// is the press this queue serves once it lands, and the Y11 merge runs the two together. The queue's own rules: an ask
+// made before the first code is sent with that code, and the newest ask wins (a second waiting ask replaces the first;
+// an ask that goes out drops one still waiting); no product path reaches them today. The reverse order: every phone
 // has left when the TV blinks; the lobby resumes instead of ending (its code was on screen), and a seat that leaves
 // while the TV is away leaves the desktop's grace in force and is let go on the TV once it is back (the resume's roll
 // call), in an emptied lobby and in one whose other phones stay (here or asleep). An ICE ask the lobby socket could
@@ -36,7 +38,8 @@ function memoryHost(code = 'K7Q4MZ') {
   let now = 1_000_000;
   let nextId = 0;
   const clients = new Map();
-  const host = { deadline: null, resumes: 0, desktopId: null, iceGrants: 0 };
+  // onSocket: a case's look at each client socket as it is made (before its owner listens to it)
+  const host = { deadline: null, resumes: 0, desktopId: null, iceGrants: 0, onSocket: null };
   const actor = new PadActor(code, {
     now: () => now,
     randomToken: () => randomBytes(16).toString('base64url'),
@@ -102,7 +105,11 @@ function memoryHost(code = 'K7Q4MZ') {
   };
   return Object.assign(host, {
     actor, phone, dropDesktop,
-    createSocket: (url) => new MemorySocket(url),
+    createSocket: (url) => {
+      const socket = new MemorySocket(url);
+      host.onSocket?.(socket);
+      return socket;
+    },
     advance: (ms) => { now += ms; },
     get now() { return now; },
   });
@@ -265,6 +272,63 @@ function closeWhenAway(lobby, also = () => {}) {
   lobby.end();
 }
 
+// ---- the setOpen queue's rules: the first code sends a waiting ask, and the newest ask wins (residual r1) -----------
+// padLobby keeps one setOpen its socket could not carry (pendingOpen) and sends it once the host holds the lobby: with
+// the first code, or after 'resumed' (the first block). The newest ask wins: a second ask that waits replaces the
+// first, and an ask that goes out drops one still waiting. No product path reaches these rules today. Reopen, the one
+// product caller on this branch, is hidden while the lobby connects or is away. A Start needs a seated phone (so the
+// code has arrived) and closes the lobby's modal before it asks (app-couch's s3-09: Start -> couchRuntime.startBattle
+// -> lobby.setOpen(false)), so one Start makes one ask. These cases hold the rules for that Start and any later caller.
+{
+  // two asks wait while the TV is away (open, then close): the newer one (close) lands after the resume
+  const { host, lobby } = await lobbyWith(1);
+  const seen = closeWhenAway(lobby, () => lobby.setOpen(true));
+  host.dropDesktop();
+  await until(() => seen.pressed, 'the lobby goes away');
+  await until(() => lobby.view.state !== 'away', 'the lobby comes back (or ends)');
+  await settle();
+  assert.ok(host.actor.exportState(), 'the host still holds the lobby');
+  assert.equal(host.actor.exportState().joinUntil, null, 'of two asks that waited while away, the newer one (close) wins after the resume');
+  assert.equal(lobby.view.state, 'closed', 'and the TV shows it closed');
+  lobby.end();
+}
+{
+  // one ask waits (close, while away), then one goes out on the reopened socket before the host says 'resumed' (open):
+  // the one that went out wins, and the one that waited is dropped, not sent after it
+  const { host, lobby } = await lobbyWith(1);
+  const asked = { state: null };
+  host.onSocket = (socket) => {
+    if (!socket.path.startsWith('/pad/resume/')) return;
+    // once the lobby's own open listener has sent its resume frame, in the same turn
+    socket.addEventListener('open', () => queueMicrotask(() => {
+      asked.state = lobby.view.state;
+      lobby.setOpen(true);
+    }));
+  };
+  const seen = closeWhenAway(lobby);
+  host.dropDesktop();
+  await until(() => seen.pressed, 'the lobby goes away');
+  await until(() => asked.state !== null, 'the lobby socket opens again');
+  assert.equal(asked.state, 'away', '(the second ask goes out before the host says resumed)');
+  await until(() => lobby.view.state !== 'away', 'the lobby comes back (or ends)');
+  await settle();
+  assert.ok(host.actor.exportState()?.joinUntil > host.now, 'the ask that went out (open) wins over the older one that waited (close)');
+  assert.equal(lobby.view.state, 'open', 'and the TV shows it open');
+  lobby.end();
+}
+{
+  // an ask made before the first socket opens waits for the first code (a new lobby never hears 'resumed')
+  const host = memoryHost();
+  const lobby = padLobby.startPadLobby('ws://pad.memory', { seat: seatPorts, seatGone: () => {} }, { createSocket: host.createSocket });
+  assert.equal(lobby.view.state, 'connecting', '(the lobby is still connecting)');
+  lobby.setOpen(false);
+  await until(() => lobby.view.code, 'the first code');
+  await settle();
+  assert.equal(host.actor.exportState().joinUntil, null, 'a setOpen(false) asked while connecting closes the window once the first code arrives');
+  assert.equal(lobby.view.state, 'closed', 'and the TV shows it closed');
+  lobby.end();
+}
+
 // ---- the view's machine: its states and moves; `move` is the one writer and asks the rule --------------------------
 // No product path asks for a refused move (once ended, the socket is gone and a stale socket's frames are dropped), so
 // the refusal is proven on the rule move() asks (fix-up r2): every one of the 25 (from, to) pairs against the table, and
@@ -341,5 +405,5 @@ function closeWhenAway(lobby, also = () => {}) {
     'paint runs on the first view and on every view the lobby publishes');
 }
 
-console.log('padLobbyResume.selftest: PASS — a setOpen(false) asked while the TV is away reaches the host after the resume; a lobby whose phones left resumes after a blink; the grace stands when the last seat leaves while away; the roll call keeps the seats the host names; an ICE ask the socket could not carry is asked again; Reopen only on a closed lobby, and the paint hides it and shows Connecting while away; one state writer that asks the move rule');
+console.log('padLobbyResume.selftest: PASS — a setOpen(false) asked while the TV is away reaches the host after the resume; a lobby whose phones left resumes after a blink; the grace stands when the last seat leaves while away; the roll call keeps the seats the host names; an ICE ask the socket could not carry is asked again; the setOpen queue sends a waiting ask with the first code and the newest ask wins; Reopen only on a closed lobby, and the paint hides it and shows Connecting while away; one state writer that asks the move rule');
 process.exit(0);
