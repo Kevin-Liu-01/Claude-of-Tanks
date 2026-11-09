@@ -67,8 +67,10 @@ function addSternKit(P: TankBuilderPort): void {
   // posts (photo 07: eight bays, 0.39 m tall, its top rail level with the deck)
   const bw = 2 * (tubHalfW - 0.02), by0 = deckY - 0.38, by1 = deckY, bh = by1 - by0, back = Z - D;
   P.add('hullDark', box(bw, bh, 0.012), 0, (by0 + by1) / 2, Z - 0.004);
-  for (const y of [by0 + 0.0175, by1 - 0.0175]) P.add('hull', box(bw, 0.035, D + 0.01), 0, y, Z - D / 2 + 0.005);
-  for (let k = 0; k <= 8; k++) P.add('hull', box(0.03, bh - 0.07, 0.03), -bw / 2 + 0.015 + (k * (bw - 0.03)) / 8, (by0 + by1) / 2, back + 0.015);
+  // (270: stowage, as the bins beside it are, out of the armoured hull's bucket, whose measured box it carried basketDepth behind
+  // the stern plate: type87.selftest's stern plates)
+  for (const y of [by0 + 0.0175, by1 - 0.0175]) P.addEquipment('hull', box(bw, 0.035, D + 0.01), 0, y, Z - D / 2 + 0.005);
+  for (let k = 0; k <= 8; k++) P.addEquipment('hull', box(0.03, bh - 0.07, 0.03), -bw / 2 + 0.015 + (k * (bw - 0.03)) / 8, (by0 + by1) / 2, back + 0.015);
   P.add('hullDetail', xform(openRackGrid(bw - 0.03, bh - 0.07, 0.008, 6, 30), 0, 0, 0, Math.PI / 2, 0, 0), 0, (by0 + by1) / 2, back + 0.022);
   for (const s of SIDES) {
     // the lidded bin on each sponson's end, 1 cm into it, its lid seam and two hinges, the tail lamp on its face
@@ -76,7 +78,7 @@ function addSternKit(P: TankBuilderPort): void {
     P.addEquipment('hull', box(binW, binH, D + 0.01), binX, (deckY + floorY) / 2, Z - D / 2 + 0.005);
     P.add('hullDark', box(binW + 0.006, 0.008, D + 0.012), binX, deckY - 0.06, Z - D / 2 + 0.004);
     for (const dx of [-0.16, 0.16]) P.add('hullDark', box(0.06, 0.03, 0.02), binX + dx, deckY - 0.03, back - 0.004);
-    tailLamp(P, s * 1.30, floorY + 0.02, back + 0.01);
+    tailLamp(P, s * 1.30, floorY + 0.02, back + 0.01, 'hullEquipment');
     // the rubber mudflaps behind the sprockets, hung from the sponson's floor (photo 01)
     MUDGUARDS.add(P, { hang: true, label: `type87-mudflap-${s > 0 ? 'left' : 'right'}-rear`,
       x: s * 1.2835, y: floorY - 0.10, z: -3.36, thickness: 0.035, length: 0.52, height: 0.18,
@@ -109,12 +111,14 @@ function addFrontKit(P: TankBuilderPort): void {
     [3.40, 1.02], [3.44, 1.00]];
   for (const s of SIDES) {
     const x0 = s * (tubHalfW + 0.005), x1 = s * (tubHalfW + 0.005 + w), lo = Math.min(x0, x1), hi = Math.max(x0, x1);
-    P.add('hull', sectionSolid(run.map(([z, top]) => ({ z, ring: [[lo, top - t], [hi, top - t], [hi, top], [lo, top]] }))));
+    // (270: thin sheet, out of the armoured hull's bucket, whose measured box its tip carried 9 cm past the glacis' nose:
+    // type87.selftest's hull plates)
+    P.addEquipment('hull', sectionSolid(run.map(([z, top]) => ({ z, ring: [[lo, top - t], [hi, top - t], [hi, top], [lo, top]] }))));
     const end = run[run.length - 1];
-    P.add('hull', box(w, 0.07, 0.02), s * (tubHalfW + 0.005 + w / 2), end[1] - 0.035, end[0] - 0.01);
+    P.addEquipment('hull', box(w, 0.07, 0.02), s * (tubHalfW + 0.005 + w / 2), end[1] - 0.035, end[0] - 0.01);
     MUDGUARDS.add(P, { hang: true, label: `type87-mudflap-${s > 0 ? 'left' : 'right'}-front`,
       x: s * 1.2835, y: end[1] - 0.07 - 0.045, z: end[0] - 0.01, thickness: 0.03, length: 0.46, height: 0.09,
-      material: 'rubber', rotation: [0, Math.PI / 2, 0], crown: 0.006, frontCut: 0.015, rearCut: 0.012 });
+      material: 'rubber', rotation: [0, Math.PI / 2, 0], crown: 0.006, frontCut: 0.015, rearCut: 0.012, supportSlot: 'hullEquipment' });
   }
   // the APU intake: a framed grille laid on the glacis' right, below the turret's sweep
   const tilt = Math.atan2(deckY - 0.99, 3.35 - 1.87), z = 2.12, y = deckY - (z - 1.87) * Math.tan(tilt);
@@ -150,8 +154,10 @@ function addSideKit(P: TankBuilderPort): void {
 // --------------------------------------------------------------------- turret --
 function addTurretBody(P: TankBuilderPort): void {
   const { box, cylX, cylY } = KIT;
-  // the ring collar on the hull's race, 2 cm into the deck and 3 cm into the body's floor
-  P.add('turret', cylY(0.98, 1.02, 0.09, P.q ? 32 : 20), 0, 0.005, 0);
+  // the ring collar on the hull's race, 2 cm into the deck and 3 cm into the body's floor: the race's own steel (as the
+  // BMPT's turntable, bmpt72Station.ts), out of the armoured body's bucket, whose measured box it took 1 cm under the
+  // body's floor (270: type87.selftest's turret plates)
+  P.add('turretTrack', cylY(0.98, 1.02, 0.09, P.q ? 32 : 20), 0, 0.005, 0);
   // the central body: one welded shell, its rear corners chamfered, the roof's edges chamfered, the nose a wedge with its
   // vertical front edges chamfered (photos 01, 04, 06)
   const w = T.bodyHalfW, c = T.roofChamfer, wr = w - T.rearChamfer, wn = T.noseHalfW, edge = T.noseEdgeZ - T.bevelZ;

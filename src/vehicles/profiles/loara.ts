@@ -236,8 +236,10 @@ function addFrontMudguards(P: TankBuilderPort): void {
 // --------------------------------------------------------------- turret --
 function addTurretBody(P: TankBuilderPort): void {
   const { cylY } = KIT;
-  // the ring collar on the raised deck, sunk into it and 1 cm up into the body's floor
-  P.add('turret', cylY(1.00, 1.04, 0.12, P.q ? 32 : 20), 0, -0.02, 0);
+  // the ring collar on the raised deck, sunk into it and 1 cm up into the body's floor: the race's own steel (as the BMPT's
+  // turntable, bmpt72Station.ts), out of the armoured body's bucket, whose measured box it stretched 14 cm behind the
+  // body's rear and under its floor (270: loara.selftest's turret plates)
+  P.add('turretTrack', cylY(1.00, 1.04, 0.12, P.q ? 32 : 20), 0, -0.02, 0);
   // One welded shell (photos 01-03): a vertical upper wall over the lower skirt, the break a horizontal line 57 % of the way
   // up; the skirt flaring out from just ahead of the bearing discs (the wall runs straight down beside them, photo 01);
   // the rear corners chamfered in plan, the long top edges and the front roof edge chamfered.

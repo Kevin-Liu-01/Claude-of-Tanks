@@ -23,7 +23,7 @@ import { GUN_HULL_KEEP_M, SurfaceGrid, densePoints, gunHullProbe, meshTriangles,
 import { minimumMechanicalGunPitch } from '../../sim/gunPitchLimits.ts';
 import { armorVolumeOverflows } from '../armorInterior.ts';
 import { combatAnatomyCalibration } from '../combatAnatomyCalibrationRegistry.ts';
-import { LVKV_MUZZLE_Z, LVKV_RADAR, LVKV_TRUNNION, LVKV_TURRET as T } from './lvkv9040Frame.ts';
+import { LVKV_MUZZLE_Z, LVKV_RADAR, LVKV_SIGHTS, LVKV_TRUNNION, LVKV_TURRET as T } from './lvkv9040Frame.ts';
 
 const DEG = Math.PI / 180;
 const ID = 'lvkv9040';
@@ -155,8 +155,16 @@ const boxOf = (record) => [record.min, record.max];
 const turretCrew = spec.armor.crew.filter((c) => c.turretLocal);
 const turretModules = spec.armor.modules.filter((m) => m.turretLocal && m.module !== 'feedSystem');
 assert.equal(turretCrew.length, 3, 'gunner, commander and radar operator in the turret');
+// 270: the optics are the two sight heads standing on the front roof (addRoofKit, their windows up to the commander's head),
+// held to the body's plan and under the taller head's top, not inside the body's volume
+const sightTopY = T.frontRoofY + Math.max(LVKV_SIGHTS.commander.h, LVKV_SIGHTS.gunner.h);
 for (const record of turretModules) {
   const [min, max] = boxOf(record);
+  if (record.module === 'optics') {
+    assert.ok(min && max && inBody(min, [max[0], Math.min(max[1], T.frontRoofY), max[2]]) && max[1] <= sightTopY + 1e-9,
+      `optics: on the turret's front roof, under the sight heads' top (${min}..${max})`);
+    continue;
+  }
   assert.ok(min && max && inBody(min, max), `${record.module}: inside the turret's body (${min}..${max})`);
 }
 // the crew in the turret's body or the basket under it: the fleet's seat fitter (tools/crew-seat-fit.mjs) seats turret crew
@@ -167,12 +175,16 @@ for (const record of turretCrew) {
   assert.ok(out <= 0.15, `${record.crew}: inside the turret's body or the basket under it (${out.toFixed(3)} m out)`);
 }
 const overlap = (a, b) => [0, 1, 2].every((k) => a[0][k] < b[1][k] - 0.02 && b[0][k] < a[1][k] - 0.02);
+// 270: a module drawn in separate parts is those parts (the optics: the two sight windows and the lamp in the right cheek, as
+// the fleet registers lamps, 1.6 m apart), not the box that spans them
+const partsOf = (record) => (record.parts?.length ? record.parts.map((part) => [part.min, part.max]) : [boxOf(record)]);
+const clear = (a, b) => partsOf(a).every((p) => partsOf(b).every((q) => !overlap(p, q)));
 // (internalPlacement.selftest.mjs's exception: a crew member at the drawn sight he uses)
 for (const c of turretCrew) for (const m of turretModules) {
   if (c.crew === 'gunner' && m.module === 'optics') continue;
-  assert.ok(!overlap(boxOf(c), boxOf(m)), `${c.crew}: clear of the ${m.module} module`);
+  assert.ok(clear(c, m), `${c.crew}: clear of the ${m.module} module`);
 }
 for (const [i, a] of turretModules.entries()) for (const b of turretModules.slice(i + 1)) {
-  assert.ok(!overlap(boxOf(a), boxOf(b)), `${a.module} clear of ${b.module}`);
+  assert.ok(clear(a, b), `${a.module} clear of ${b.module}`);
 }
 console.log('lvkv9040.selftest: OK');
