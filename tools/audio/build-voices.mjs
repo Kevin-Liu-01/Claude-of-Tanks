@@ -29,6 +29,7 @@ import { fileURLToPath } from 'node:url';
 import { speech, speechCached, transcribe, ElevenLabsError } from './elevenlabs.mjs';
 import { s16ToFloat, wavFromS16 } from './pcm.mjs';
 import { masterTake } from './master.mjs';
+import { buildLine, planLine } from './voicePlan.mjs';
 
 /** Exactly one asset's take files (`<id>_<n>.webm|m4a`): never a longer id sharing the prefix. */
 const takeFileOf = (id) => new RegExp(`^${id.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}_\\d+\\.(webm|m4a)$`);
@@ -262,26 +263,29 @@ for (const lang of languages) {
     if (!Array.isArray(takes) || !takes.length) { failures.push(`${lang}/${line.id}: no script`); return; }
     // --append: the shipped takes stay (their files and lengths) when the script still has at least as many
     const previous = state[lang][line.id] ?? [];
-    const kept = append && previous.length <= takes.length && previous.every((_, i) => existsSync(join(dir, `${line.id}_${i}.webm`)))
-      ? previous.length : 0;
+    const plan = planLine({ previous, takes, append, exists: (i) => existsSync(join(dir, `${line.id}_${i}.webm`)) });
     for (const name of readdirSync(dir)) {
       const match = takeFileOf(line.id).test(name) ? Number(name.slice(line.id.length + 1).split('.')[0]) : -1;
-      if (match >= kept) rmSync(join(dir, name));
+      if (match >= plan.kept) rmSync(join(dir, name));
     }
-    const shipped = previous.slice(0, kept);
-    for (let i = kept; i < takes.length && !stop; i++) {
-      try {
+    state[lang][line.id] = await buildLine({
+      previous,
+      plan,
+      stopped: () => stop,
+      take: async (i) => {
         const best = await bestTake(lang, line, takes[i]);
-        if (!best) continue;
-        if (best.sim < 0.34) failures.push(`${lang}/${line.id}#${i}: "${takes[i]}" heard "${best.heard}" (${best.sim.toFixed(2)}${best.repeated ? ', repeats' : ''})`);
-        const facts = masterTake({ channels: [s16ToFloat(best.raw)], sr: 24000, preset: 'voice', outBase: join(dir, `${line.id}_${shipped.length}`) });
-        shipped.push(+facts.dur.toFixed(3));
-      } catch (error) {
+        if (best && best.sim < 0.34) failures.push(`${lang}/${line.id}#${i}: "${takes[i]}" heard "${best.heard}" (${best.sim.toFixed(2)}${best.repeated ? ', repeats' : ''})`);
+        return best;
+      },
+      ship: (index, best) => {
+        const facts = masterTake({ channels: [s16ToFloat(best.raw)], sr: 24000, preset: 'voice', outBase: join(dir, `${line.id}_${index}`) });
+        return +facts.dur.toFixed(3);
+      },
+      onError: (i, error) => {
         failures.push(`${lang}/${line.id}#${i}: ${error.message}`);
         if (error instanceof ElevenLabsError && error.quota) stop = true;
-      }
-    }
-    state[lang][line.id] = shipped;
+      },
+    });
   });
   await Promise.all(jobs);
   console.log(`${lang}: ${Object.values(state[lang]).reduce((a, t) => a + t.length, 0)} takes shipped; spent so far ${spent}`);
