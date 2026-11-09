@@ -635,10 +635,6 @@
             "max": [-0.2985,0.573,-0.0017]
           },
           {
-            "min": [-0.48,0.6,0.149],
-            "max": [-0.36,0.64,0.161]
-          },
-          {
             "min": [0.4654,0.969,0.236],
             "max": [0.5746,1.081,0.244]
           },
@@ -696,27 +692,27 @@
       }
     ]
   },
-  "geometryHash": "c7419c90",
-  "metadataHash": "6474f543",
+  "geometryHash": "dcb33db4",
+  "metadataHash": "5c3f5470",
   "presentationAnchor": {
-    "xM": -0.0043,
-    "zM": -0.1038
+    "xM": -0.0042,
+    "zM": -0.0964
   },
-  "presentationHash": "5b50a1f4",
+  "presentationHash": "59082e1e",
   "presentationProjection": {
     "centerYM": 1.7882,
-    "topHalfM": 4.1665,
-    "sideHalfM": 2.0832
+    "topHalfM": 4.1744,
+    "sideHalfM": 2.0872
   },
   "appearance": {
     "version": 1,
     "issues": [],
     "roles": {
       "gearShadow": 6,
-      "fittingPaint": 7,
+      "fittingPaint": 8,
       "trackSteel": 1,
-      "gunmetal": 12,
-      "opticGlass": 4,
+      "gunmetal": 13,
+      "opticGlass": 5,
       "wheelTire": 2,
       "wheelDish": 6,
       "suspensionLink": 1,
@@ -725,7 +721,7 @@
       "trackBand": 2,
       "trackPad": 1,
       "trackPadSimplified": 1,
-      "armorPaint": 11,
+      "armorPaint": 12,
       "wood": 1,
       "canvas": 2,
       "unclassified": 20
@@ -755,15 +751,15 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 29756,
-      "sha256": "0789c9737ad7e33a16cc091b7d150884df982b4937385af92348f38d6ab8bf1d",
+      "bytes": 29472,
+      "sha256": "6f2a5ed77eb8f47e26722cd63736d717d027e38b13ab964fd82eac3b639e31e1",
       "thumbnail": {
         "file": "thumbs/bmp3_rok_angle.webp",
         "width": 256,
         "height": 256,
         "mime": "image/webp",
-        "bytes": 11716,
-        "sha256": "d416432b84a68e4f409fa3520b443a7a6534cd351dd6d5807c3865db6bd9d870"
+        "bytes": 11682,
+        "sha256": "3bd118b22833ec8524ffd0ce6c282d03ca94e4a99a62f8ccffea36d23c21b884"
       }
     },
     "top": {
@@ -771,56 +767,56 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 20328,
-      "sha256": "0408360d7d81e2e20cb6a711186664c99778ec1fb695e51ea3dcf3c764d76ce1"
+      "bytes": 19742,
+      "sha256": "fee8db24861969bca11b4190a6ba2cf85736a37c2bd5d52c9eba40cfae59459c"
     },
     "side": {
       "file": "bmp3_rok_side.webp",
       "width": 512,
       "height": 256,
       "mime": "image/webp",
-      "bytes": 20076,
-      "sha256": "cb705f0b09712545b53affc3268b5df21dde5a6023435edc73c7b8aa14c25a58"
+      "bytes": 19836,
+      "sha256": "7fd1641c20a42fa2e6186a4e0124bd7ee101380cd95316db338c5f790f9cfa1a"
     },
     "topSilhouette": {
       "file": "bmp3_rok_top_silhouette.png",
       "width": 128,
       "height": 128,
       "mime": "image/png",
-      "bytes": 1346,
-      "sha256": "be2447e68ae2dddfee27b4b1c4c63b359458def8af76059133f15deb8be06f61"
+      "bytes": 1236,
+      "sha256": "d133b61576f12ac791123736b082941af60e5f685f5ff47505eae11275ce9fdc"
     },
     "sideSilhouette": {
       "file": "bmp3_rok_side_silhouette.png",
       "width": 256,
       "height": 128,
       "mime": "image/png",
-      "bytes": 6067,
-      "sha256": "39efd5744a1f4f3ad11f195a803c3d2bde34f66af162992178724e2a6db5d3c1"
+      "bytes": 6126,
+      "sha256": "dac72193d0c89b4946555f274cf8f1dab7618981e5fee6cf3071d2db281531bd"
     },
     "armorSide": {
       "file": "bmp3_rok_armor_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 46172,
-      "sha256": "3ceaff1c18033d9a10f40d1e60b0d10e567bc00da8cc685e8c02ddd8b86ff05f"
+      "bytes": 46420,
+      "sha256": "d9c9f33e390267755278c04915902d51f1bb44c5cc8b698b11a23166633fcf48"
     },
     "modulesSide": {
       "file": "bmp3_rok_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 43932,
-      "sha256": "3bc927631c2cf4c1871106f8d14720041a3697b08b098b9c3ee7da1959edae94"
+      "bytes": 44628,
+      "sha256": "1e3249cec6158deeeae25881e080cb163bffe171689c62144b35e0079dff9178"
     },
     "crewSide": {
       "file": "bmp3_rok_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 40798,
-      "sha256": "03a0912dc6b31fabe247a45e24ec4f603448e0fbaa4acb88c18bcfb5af775a0f"
+      "bytes": 40790,
+      "sha256": "d71348d6dbfa85c6182d3614e7bada727795f7859642bdee60a663b70c4d6762"
     },
     "markings": {
       "file": "bmp3_rok_markings.png",
@@ -833,8 +829,8 @@
     "technicalLabels": {
       "file": "bmp3_rok_technical.json",
       "mime": "application/json",
-      "bytes": 4789,
-      "sha256": "3bc8da30eb2b8420f7833c9f0b9b6945c226cd690823b0d0a9785880e25d9923"
+      "bytes": 4795,
+      "sha256": "6a0df70b77a20966a4a8078809c0dc8e436b0268dbe118b180d18925becdcb6b"
     }
   }
 }

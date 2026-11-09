@@ -1,6 +1,6 @@
 {
  "id": "bmp3",
- "geoMin": 0,
+ "geoMin": 25.7,
  "requiredMinimum": 90,
  "registration": {
   "mode": "legacy-hull-translation"
@@ -9,13 +9,13 @@
  "dimensionTarget": "published specification",
  "qualityBar": "fleet",
  "gatePassed": false,
- "rawGeoMin": 0,
+ "rawGeoMin": 25.709253374120188,
  "rawComponents": {
   "hullCurves": 61.399034787952516,
   "stations": 51.407077022035224,
   "turretCurves": 25.709253374120188,
   "wholeCurves": 42.4485703148232,
-  "dims": 0,
+  "dims": 91.83462778861282,
   "floaters": 100
  },
  "components": {
@@ -23,7 +23,7 @@
   "stations": 51.4,
   "turretCurves": 25.7,
   "wholeCurves": 42.4,
-  "dims": 0,
+  "dims": 91.8,
   "floaters": 100
  },
  "wholeShapeMetric": "metric-curves",
@@ -1027,11 +1027,11 @@
  "dimRows": [
   {
    "name": "heightM",
-   "actual": 2.7253578683383775,
+   "actual": 2.4484961166341614,
    "roofFittingsTop": 2.7859213765236746,
    "published": 2.4,
    "method": "interval: body top to roof-fittings top",
-   "pct": 13.556577847432399
+   "pct": 2.0206715264233974
   },
   {
    "name": "hullLengthM",
@@ -1063,14 +1063,18 @@
   "len": 7.384
  },
  "proceduralBodyExtent": {
-  "h": 2.725,
+  "h": 2.448,
   "len": 7.198,
   "roofFittingsTop": 2.786
  },
  "roofFittingsExcluded": {
   "procedural": [
    "antennaWhip:fitting_antennaWhip_dark",
-   "antennaWhip:fitting_antennaWhip_detail"
+   "antennaWhip:fitting_antennaWhip_detail",
+   "roofSight:fitting_roofSight_dark",
+   "roofSight:fitting_roofSight_detail",
+   "roofSight:fitting_roofSight_glass",
+   "roofSight:fitting_roofSight_hull"
   ],
   "reference": [
    "node:mount2_bmp3-hull_0_0",
@@ -1089,7 +1093,7 @@
    "islandCount": 1,
    "regions": [
     {
-     "area": 199923,
+     "area": 199930,
      "minX": 140,
      "minY": 294,
      "maxX": 977,
@@ -1103,7 +1107,7 @@
    "islandCount": 1,
    "regions": [
     {
-     "area": 198219,
+     "area": 198261,
      "minX": 140,
      "minY": 294,
      "maxX": 977,
@@ -1117,7 +1121,7 @@
    "islandCount": 1,
    "regions": [
     {
-     "area": 200019,
+     "area": 200058,
      "minX": 140,
      "minY": 294,
      "maxX": 977,
@@ -1131,7 +1135,7 @@
    "islandCount": 1,
    "regions": [
     {
-     "area": 198103,
+     "area": 198110,
      "minX": 140,
      "minY": 294,
      "maxX": 977,
@@ -1145,7 +1149,7 @@
    "islandCount": 1,
    "regions": [
     {
-     "area": 203333,
+     "area": 203375,
      "minX": 140,
      "minY": 294,
      "maxX": 977,
