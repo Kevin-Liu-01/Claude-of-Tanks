@@ -20,7 +20,7 @@ import { createOpaqueLoadingYielder } from '../../engine/frameScheduler.ts';
 import type { FrameSchedulerOptions, WorkYielder } from '../../engine/frameScheduler.ts';
 import { createCombatState, mainWeaponModuleState } from '../../sim/damage.ts';
 import type { CombatState } from '../../sim/damage.ts';
-import { isUnguidedRocket, usesLauncherMuzzles } from '../../sim/launcherPolicy.ts';
+import { cannonMuzzleIndex, isUnguidedRocket, usesLauncherMuzzles, type CannonMuzzleCursor } from '../../sim/launcherPolicy.ts';
 import { createTankState, shotRecoilScale } from '../../sim/movement.ts';
 import type { TankState } from '../../sim/movement.ts';
 import { SPECIAL_ACTION_KINDS, createSpecialActionState } from '../../sim/specialActionPolicy.ts';
@@ -106,7 +106,8 @@ export interface MatchActor {
   isPlayer: boolean;
   bot: boolean;
   state: TankState;
-  combat: CombatState;
+  /** Its muzzleCursor mirrors the authority's for the own seat (shell_fired), so a predicted shot kicks the next barrel. */
+  combat: CombatState & CannonMuzzleCursor;
   specialAction: SpecialActionState;
   input: MatchActorInput;
   visual: TankVisual;
@@ -1347,12 +1348,18 @@ export function createBattlePresentation({
 
   // ------------------------------------------------------------ events
 
-  function launcherIndex(shooter: MatchActor, payload: Record<string, RuntimeValue>): number | null {
-    const count = shooter.spec.gun.launcherMuzzles?.length ?? 0;
+  /**
+   * The mouth the authority says a round left (shell_fired.muzzleIndex): a launcher's tube for a launcher round, or (round
+   * 8 Y1 s5-01) one of the gun's own mouths for any other round of a gun with two or more (sim/launcherPolicy.ts
+   * cannonMuzzleIndex, the barrel owner both drivers share); null when it names none (a single bore, an older host).
+   */
+  function muzzleIndexOf(shooter: MatchActor, payload: Record<string, RuntimeValue>): number | null {
     const round = shooter.spec.gun.shells.find((shell) => shell.name === payload.shellName);
+    const launcher = usesLauncherMuzzles(shooter.spec.gun, round);
+    const count = launcher ? shooter.spec.gun.launcherMuzzles?.length ?? 0
+      : cannonMuzzleIndex(shooter.spec.gun, round) >= 0 && Array.isArray(shooter.spec.gun.muzzles) ? shooter.spec.gun.muzzles.length : 0;
     const index = payload.muzzleIndex;
-    return count > 0 && usesLauncherMuzzles(shooter.spec.gun, round) && typeof index === 'number' && Number.isInteger(index) &&
-      index >= 0 && index < count ? index : null;
+    return count > 0 && typeof index === 'number' && Number.isInteger(index) && index >= 0 && index < count ? index : null;
   }
 
   function emitPredictedShot(own: MatchActor, slot: number): void {
@@ -1360,7 +1367,10 @@ export function createBattlePresentation({
         !own.visual.gunMuzzleWorld || !own.visual.gunDirWorld || mainWeaponModuleState(own.combat) === 'red') return;
     const shell = own.spec.gun.shells[slot];
     if (!shell) return;
-    const launcher = usesLauncherMuzzles(own.spec.gun, shell) ? own.combat.launcherCursor ?? 0 : undefined;
+    // the barrel the authority will name: its cursor as the last shell_fired left it (a launcher's tube, or the gun's own
+    // mouth: round 8 Y1 s5-01; a single bore names none, and the visual keeps its one barrel)
+    const cannon = cannonMuzzleIndex(own.spec.gun, shell, own.combat.muzzleCursor ?? 0);
+    const launcher = usesLauncherMuzzles(own.spec.gun, shell) ? own.combat.launcherCursor ?? 0 : cannon >= 0 ? cannon : undefined;
     const muzzleIndex = own.visual.recoilKick?.(0, shotRecoilScale(own.spec, shell), launcher, usesLauncherMuzzles(own.spec.gun, shell)) ?? -1;
     own.visual.gunMuzzleWorld(muzzleTip, muzzleIndex, usesLauncherMuzzles(own.spec.gun, shell));
     own.visual.gunDirWorld(shotDirection);
@@ -1376,8 +1386,12 @@ export function createBattlePresentation({
   function emitShellFired(payload: Record<string, RuntimeValue>, feedbackPredicted: boolean): void {
     const shooter = actors.get(String(payload.shooterId ?? ''));
     if (shooter && payload.shooterId === ownActor()?.id) {
-      const index = launcherIndex(shooter, payload);
-      if (index !== null) shooter.combat.launcherCursor = (index + 1) % shooter.spec.gun.launcherMuzzles!.length;
+      // the own seat's cursors follow the authority's (the next predicted shot kicks the barrel it will name)
+      const index = muzzleIndexOf(shooter, payload);
+      const round = shooter.spec.gun.shells.find((shell) => shell.name === payload.shellName);
+      if (index !== null && usesLauncherMuzzles(shooter.spec.gun, round)) {
+        shooter.combat.launcherCursor = (index + 1) % shooter.spec.gun.launcherMuzzles!.length;
+      } else if (index !== null) shooter.combat.muzzleCursor = index + 1;
     }
     let muzzlePos: RuntimeValue[] = [payload.x, payload.y, payload.z];
     let shellSpec: FleetTankSpec['gun']['shells'][number] | null = null;
@@ -1385,7 +1399,7 @@ export function createBattlePresentation({
     if (shooter?.visual.recoilKick) {
       const shells = shooter.spec.gun.shells;
       shellSpec = shells.find((shell) => shell.name === payload.shellName) || shells.find((shell) => shell.type === payload.shellType) || null;
-      const authoritative = launcherIndex(shooter, payload);
+      const authoritative = muzzleIndexOf(shooter, payload);
       const launcher = usesLauncherMuzzles(shooter.spec.gun, shellSpec);
       muzzleIndex = feedbackPredicted ? authoritative ?? -1
         : shooter.visual.recoilKick(0, shotRecoilScale(shooter.spec, shellSpec), authoritative ?? undefined, launcher);

@@ -5,7 +5,7 @@ import { setModeWeapon } from '../sim/modeLoadout.ts';
 import { requestAuxiliary, stepRoofGun, stepRoofStation, roofStationCount, auxiliaryShot, smokeBlocks, smokeWindForMap, type SmokeScreen } from '../sim/auxiliarySystems.ts';
 import { bridgeBallFloor } from '../sim/bridgeBallSupport.ts';
 import { sweepLightCover } from '../sim/shellLightCover.ts';
-import { usesLauncherMuzzles, isUnguidedRocket, launcherMuzzleIndex } from '../sim/launcherPolicy.ts';
+import { usesLauncherMuzzles, isUnguidedRocket, launcherMuzzleIndex, nextCannonMuzzle, type CannonMuzzleCursor } from '../sim/launcherPolicy.ts';
 /**
  * state.ts — legacy solo battle setup and fixed-step combat integration
  * (ARCHITECTURE.md §1.5, §2.4, §4 step 2). The typed session shell/event bus
@@ -214,9 +214,7 @@ type SoloSpec = FleetTankSpec & Omit<MovementSpec, 'gun' | 'armor'> &
     armor: SoloArmorSpec;
   };
 
-interface SoloCombatState extends CombatState {
-  muzzleCursor?: number;
-}
+interface SoloCombatState extends CombatState, CannonMuzzleCursor {}
 
 interface SoloInput extends MovementInput {
   throttle: number;
@@ -1778,14 +1776,13 @@ function prepareMuzzleDirection(entity: SoloEntity, shell: DamageShellSpec): num
   if (!visual) return null;
   const launchers = usesLauncherMuzzles(entity.spec.gun, shell)
     ? entity.spec.gun.launcherMuzzles : null;
-  const muzzles = launchers ?? entity.spec.gun.muzzles;
   let muzzleIndex = -1;
   if (launchers) {
     muzzleIndex = launcherMuzzleIndex(entity.spec.gun, shell, entity.combat.launcherCursor ?? 0);
     entity.combat.launcherCursor = (muzzleIndex + 1) % launchers.length;
-  } else if (Array.isArray(muzzles) && muzzles.length > 1) {
-    muzzleIndex = (entity.combat.muzzleCursor || 0) % muzzles.length;
-    entity.combat.muzzleCursor = muzzleIndex + 1;
+  } else {
+    // the gun's own mouths (a twin cannon, fixed canisters): the barrel owner both drivers share (sim/launcherPolicy.ts)
+    muzzleIndex = nextCannonMuzzle(entity.spec.gun, shell, entity.combat);
   }
   const selectedMuzzle = muzzleIndex >= 0 ? muzzleIndex : undefined;
   visual.gunMuzzleWorld(_muzzle, selectedMuzzle, usesLauncherMuzzles(entity.spec.gun, shell));

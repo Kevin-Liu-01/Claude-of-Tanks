@@ -251,6 +251,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/vehicles/externalWeapons.selftest.mjs',
     'src/vehicles/missileConceptMarkings.selftest.mjs',
     'src/game/missilePresentation.selftest.mjs',
+    // round 8 Y1 s5-01: one barrel owner for twin cannons: the authority names and fires each mouth, solo and the screens agree
+    'src/sim/twinMuzzleParity.selftest.mjs',
     'tools/first-party-concept-policy.selftest.mjs',
     'src/vehicles/arieteModernSpecs.selftest.mjs',
     'src/vehicles/suppliedSourceArmorRegistration.selftest.mjs',

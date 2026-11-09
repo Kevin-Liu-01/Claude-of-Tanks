@@ -4,7 +4,9 @@ import { setModeWeapon } from './modeLoadout.ts';
 import { packSmokeScreen, restoreSmokeScreen } from './smokeReceipt.ts';
 import { auxiliaryCapabilities, stepRoofGun, stepRoofStation, roofStationCount, auxiliaryShot, smokeBlocks, smokeWindForMap, SMOKE_DURATION_S, type SmokeScreen } from './auxiliarySystems.ts';
 import { bridgeBallFloor } from './bridgeBallSupport.ts';
-import { usesLauncherMuzzles, isUnguidedRocket, launcherMuzzleIndex } from './launcherPolicy.ts';
+import {
+  usesLauncherMuzzles, isUnguidedRocket, launcherMuzzleIndex, nextCannonMuzzle, cannonMouth, type CannonMouth, type CannonMuzzleCursor,
+} from './launcherPolicy.ts';
 import type { RuntimeValue } from '../runtimeTypes.ts';
 /**
  * Headless authoritative battle simulation.
@@ -201,7 +203,7 @@ interface AuthoritativeInput {
 type AuthoritativeSpec = FleetTankSpec;
 
 type AuthoritativeCombatState = CombatState & EquipmentCombatState &
-  MovementCombatState & MatchModeEntity['combat'];
+  MovementCombatState & MatchModeEntity['combat'] & CannonMuzzleCursor;
 
 interface AIFriendlyRisk {
   allyId: string;
@@ -617,7 +619,15 @@ function spawnFor(
   return { x: slot.x, z: slot.z, yaw: slot.yaw };
 }
 
-function gunWorldPose(entity: AuthoritativeEntity, shellSpec?: DamageShellSpec): { muzzle: Vector3; direction: Vector3 } {
+const _mouth: CannonMouth = { x: 0, y: 0 };
+/**
+ * The round's origin and bore. `cannonMuzzle` (round 8 Y1 s5-01) is the gun's own mouth the round leaves
+ * (launcherPolicy.ts nextCannonMuzzle; -1 for a single bore): the origin moves to that mouth in the pitching gun frame
+ * (its x and y about the bore, the barrel's length along it), the bore stays the gun's, as the solo step takes the
+ * visual's tip of the same mouth and the gun's direction.
+ */
+function gunWorldPose(entity: AuthoritativeEntity, shellSpec?: DamageShellSpec,
+  cannonMuzzle = -1): { muzzle: Vector3; direction: Vector3 } {
   const state = entity.state;
   const armor = entity.spec.armor || {};
   const turretPivot = armor.turretPivot || [0, entity.spec.dims.heightM * 0.7, 0];
@@ -635,9 +645,14 @@ function gunWorldPose(entity: AuthoritativeEntity, shellSpec?: DamageShellSpec):
   const sinPitch = detMath.sin(state.gunPitch);
   const cosPitch = detMath.cos(state.gunPitch);
   _gunDir.set(0, sinPitch, cosPitch).transformDirection(_turretMatrix).normalize();
-  _muzzle.set(gunPivot[0], gunPivot[1], gunPivot[2])
-    .applyMatrix4(_turretMatrix)
-    .addScaledVector(_gunDir, barrelM*(state.modeScale??1));
+  if (cannonMouth(entity.spec.gun, cannonMuzzle, _mouth)) {
+    _muzzle.set(gunPivot[0] + _mouth.x, gunPivot[1] + _mouth.y * cosPitch + barrelM * sinPitch,
+      gunPivot[2] - _mouth.y * sinPitch + barrelM * cosPitch).applyMatrix4(_turretMatrix);
+  } else {
+    _muzzle.set(gunPivot[0], gunPivot[1], gunPivot[2])
+      .applyMatrix4(_turretMatrix)
+      .addScaledVector(_gunDir, barrelM*(state.modeScale??1));
+  }
   const launchers = usesLauncherMuzzles(entity.spec.gun, shellSpec) ? entity.spec.gun.launcherMuzzles : undefined;
   if (launchers?.length) {
     const index = launcherMuzzleIndex(entity.spec.gun, shellSpec, entity.combat.launcherCursor ?? 0);
@@ -1712,6 +1727,7 @@ export function createAuthoritativeMatch({
     muzzle: Vector3,
     direction: Vector3,
     firedSlot: number,
+    cannonMuzzle: number,
   ): void {
     emit('shell_fired', {
       shellId: shell.id,
@@ -1720,8 +1736,9 @@ export function createAuthoritativeMatch({
       shellSlot: firedSlot,
       shellType: shellSpec.type,
       shellName: shellSpec.name,
+      // the mouth it left: a launcher's tube, or (round 8 Y1 s5-01) one of the gun's own mouths; -1 for a single bore
       muzzleIndex: usesLauncherMuzzles(entity.spec.gun, shellSpec)
-        ? ((entity.combat.launcherCursor ?? 1) - 1) % entity.spec.gun.launcherMuzzles!.length : -1,
+        ? ((entity.combat.launcherCursor ?? 1) - 1) % entity.spec.gun.launcherMuzzles!.length : cannonMuzzle,
       weaponSound: shellSpec.soundProfile || entity.spec.gun.soundProfile || null,
       caliberMm: shellSpec.caliberMm,
       velocityMps: shellSpec.velocityMps,
@@ -1739,7 +1756,9 @@ export function createAuthoritativeMatch({
     // a brain's shot a teammate drove into since its update holds, and tells it (sim/botEvents.ts, the solo step's gate too)
     if (!shellSpec || !botShotClear(entity, entity.input.aimPoint, shellSpec, entities)) return;
     const combat = entity.combat;
-    const gun = gunWorldPose(entity, shellSpec);
+    // the gun's own mouth this round leaves, as the solo step chooses it (sim/launcherPolicy.ts; a gunship fires from its hull)
+    const cannonMuzzle = isGunship(entity) ? -1 : nextCannonMuzzle(entity.spec.gun, shellSpec, combat);
+    const gun = gunWorldPose(entity, shellSpec, cannonMuzzle);
     if (isGunship(entity)) { gun.muzzle.copy(entity.state.pos); gun.direction.copy(entity.input.aimPoint).sub(gun.muzzle).normalize(); }
     _gunDir.copy(gun.direction);
     const sigma = computeDispersionRadM(entity.spec, entity.state, 100) / 200;
@@ -1763,7 +1782,7 @@ export function createAuthoritativeMatch({
     spotting.notifyFired(entity.id, timeS, shellSpec.caliberMm);
     // the other side's brains within earshot hear it (sim/botEvents.ts, the solo step's delivery)
     deliverShotFired(entities, entity);
-    emitShellFired(entity, shell, shellSpec, gun.muzzle, _gunDir, firedSlot);
+    emitShellFired(entity, shell, shellSpec, gun.muzzle, _gunDir, firedSlot, cannonMuzzle);
   }
 
   function notifyShellHitAI(
