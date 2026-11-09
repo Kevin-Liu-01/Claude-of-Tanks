@@ -606,9 +606,6 @@ export function createAudio({
   let thoughtThisBattle = false;
   let firstShotHeard = false;
   let lastSpots: number[] = [];
-  let lastSpotCallAt = -99;
-  // "We're spotted" once per exposure, not every time an enemy's view flickers back onto a still tank.
-  let lastSixthSenseAt = -99;
   let lastSixthAlertAt = -99;
   // Enemy drones already called out (each drone once).
   const droneWarned = new Set<number>();
@@ -2963,9 +2960,8 @@ export function createAudio({
       const now = ctx?.currentTime ?? 0;
       lastSpots = lastSpots.filter((t) => now - t < 2.5);
       lastSpots.push(now);
-      if (lastSpots.length >= 3) { say('spotted_multiple', { delayS: 0.1 }); lastSpotCallAt = now; return; }
-      if (now - lastSpotCallAt < 5) return;
-      lastSpotCallAt = now;
+      // (one spot call in 5 s is the spot lines' groupCdS, kept by the radio when a call plays)
+      if (lastSpots.length >= 3) { say('spotted_multiple', { delayS: 0.1 }); return; }
       const me = playerId ? tanks.get(playerId) : null;
       if (me && random() < 0.65) {
         const dx = info.pos.x - me.pos.x;
@@ -2982,15 +2978,12 @@ export function createAudio({
       const now = ctx?.currentTime ?? 0;
       if (phase !== 'battle' || battleOver) return;
       // The lamp lights 3 s after we are seen and burns for 8: its alert sounds each time it lights, the crew's
-      // call once per exposure.
+      // call once per exposure (sixth_sense's 20 s cooldown, kept by the radio when the call plays).
       if (now - lastSixthAlertAt > 12) {
         lastSixthAlertAt = now;
         play('ui_alert', { delayS: 3.0, gainDb: -6 });
       }
-      if (now - lastSixthSenseAt > 20) {
-        lastSixthSenseAt = now;
-        say('sixth_sense', { delayS: 3.0 });
-      }
+      say('sixth_sense', { delayS: 3.0 });
     });
     on<{ slot?: number }>('ui:consumableUsed', (e) => {
       if (!e || phase !== 'battle' || battleOver) return;

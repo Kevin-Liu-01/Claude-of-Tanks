@@ -1,7 +1,8 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { getLocale, setLocale, t } from './i18n.ts';
-import { battleControlHintGroups } from './settings.ts';
+import { battleControlHintGroups, crewVoiceItems } from './settings.ts';
+import { CREW_LANGUAGES } from '../audio/vehicleAudioProfiles.ts';
 import { SETTINGS_ACTION_ICONS, SETTINGS_OPTION_ICONS } from './settingsIcons.ts';
 import { uiIconIds, uiIconSVG } from './uiIcons.ts';
 import { FLIGHT_ACTIONS, VEHICLE_ACTIONS } from '../game/vehicleActions.ts';
@@ -129,5 +130,27 @@ assert.doesNotMatch(armorSvg, /#[0-9a-f]{6}/i, 'the armour overlay glyph carries
     'the scope, the strike view, a flight, Watch and spectating hide the strip');
 }
 
-console.log('settingsControls.selftest: controls references and exhaustive setting icons passed');
+// crew-languages-270 (owner 2026-11-06: "also that selection should be in languages"): Crew voices lists National crews,
+// then every pack as a language named in the interface's language (its own name beside it where that differs), sorted
+// by that name, with no flags; the stored value stays the pack's tag
+for (const locale of ['en-US', 'zh-CN']) {
+  setLocale(locale);
+  const items = crewVoiceItems();
+  assert.equal(items[0].id, 'national', `${locale}: National crews comes first`);
+  const languages = items.slice(1);
+  assert.deepEqual(languages.map((item) => item.id).sort(), [...CREW_LANGUAGES].sort(), `${locale}: every pack is listed once, by its tag`);
+  for (const item of languages) {
+    assert.ok(item.name.trim() && item.name !== item.id, `${locale}: ${item.id} renders a name`);
+    assert.ok(!item.chip, `${locale}: ${item.id} carries no flag: a language is not a country`);
+    if (item.facts) assert.ok(item.facts.length === 1 && item.facts[0].trim() && item.facts[0] !== item.name, `${locale}: ${item.id}'s own name`);
+  }
+  assert.equal(new Set(languages.map((item) => item.name)).size, languages.length, `${locale}: no two packs share a name`);
+  const collator = new Intl.Collator(locale);
+  assert.deepEqual(languages.map((item) => item.name), languages.map((item) => item.name).sort(collator.compare), `${locale}: sorted by name`);
+}
+setLocale('en-US');
+assert.deepEqual(['de', 'en-AU', 'ar'].map((id) => crewVoiceItems().find((item) => item.id === id)).map((item) => [item.name, item.facts?.[0] ?? null]),
+  [['German', 'Deutsch'], ['English (Australia)', null], ['Arabic', 'العربية']], 'German · Deutsch; English (Australia)');
+
+console.log('settingsControls.selftest: controls references, exhaustive setting icons and the crew voice languages passed');
 setLocale(originalLocale);

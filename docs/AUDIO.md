@@ -1,7 +1,7 @@
 # Audio: the sound engine and how its sounds were made
 
 Claude of Tanks' sound is a sample-driven engine (`src/audio/`) playing
-first-party sound effects and national crew radio packs that were generated
+first-party sound effects and crew radio packs that were generated
 offline with ElevenLabs and then measured, selected and mastered by the tools
 in `tools/audio/`. Nothing calls ElevenLabs at runtime: only the mastered
 WebM/Opus files and two generated manifests ship.
@@ -16,7 +16,7 @@ and the voice cast are in [ATTRIBUTION.md](ATTRIBUTION.md#audio-publicaudio--gen
 | Payload | Where | Size | Loaded |
 |---|---|---|---|
 | 566 sound-effect assets, 1065 variant files | `public/audio/sfx/<group>/<id>_<n>.webm` | 28.1 MB | per battle: the battle set at the battle phase edge, the aircraft set on first sight of an aircraft, everything else on first use |
-| 17 crew radio packs × 190 lines × 1–4 takes | `public/audio/voice/<lang>/<line>_<n>.webm` | 2.69–3.45 MB per language (52.45 MB in all) | only the crew's pack (every pack carries every line; nothing stands in for a missing take) |
+| 38 crew radio packs (17 national, 21 for languages with no country in the game) × 190 lines × 1–4 takes | `public/audio/voice/<lang>/<line>_<n>.webm` | 2.69–3.64 MB per language (122.04 MB in all) | only the crew's pack, one at a time: switching crews releases the pack left (every pack carries every line; nothing stands in for a missing take) |
 | SFX manifest | `src/audio/sfxManifest.generated.ts` | | bundled in the lazy audio chunk |
 | Voice manifest | `src/audio/voiceManifest.generated.ts` | | bundled in the lazy audio chunk |
 
@@ -683,9 +683,23 @@ through one exhaustive `Record<CountryId, CrewLanguage>` in
 crew. The Leopard 2A4M CAN's spec names its German design, but its crew is
 Canada's (American English until Canada has a pack of its own); a hull with
 no country (dev, community) keeps American English. **Settings → Sound →
-Crew voices** offers **National crews**, or one nation's existing pack for
-every tank. The shared nation dropdown shows flags and localized nation
-names. Choosing a crew applies immediately and persists in the `crewVoice`
+Crew voices** offers **National crews** or one language's crew for every tank:
+the 17 national packs and 21 crews in languages with no country in the game (es-ES, es-419,
+pt-PT, nl, no, fi, el, cs, hu, ro, tr, ar, fa, hi, ur, bn, id-ID, ms, vi, th,
+fil: `WORLD_CREW_LANGUAGES`, crew-languages-270). No hull speaks one of those by
+default: `COUNTRY_CREW` maps only to `NationalCrewLanguage`, so adding a
+language can never change a nation's crew. Each speaks as one real army's
+armoured crews (Spain's Leopardo 2E crews, the Turkish Land Forces, the Indian
+Army's Armoured Corps, the Royal Thai Army's cavalry, …; the script's
+`$comment` and the round below name them). The dropdown lists languages, never
+nations or flags (owner, 2026-11-06: "also that selection should be in
+languages"): National crews first, then every pack named in the interface's
+language with its own name beside it ("German · Deutsch", "English (Australia)",
+"Arabic · العربية"), sorted by that name, with search (`settings.ts`
+`crewVoiceItems`). `crewVoice.ts` `crewLanguageLabel` takes both names from
+`Intl.DisplayNames`, keeping a region only where two packs share a language, so a
+new pack needs no catalog string. Indonesian's id is `id-ID` because `id` is the
+crew script's line-id key. Choosing a crew applies immediately and persists in the `crewVoice`
 field of `cot.settings.v1` as `national` or a pack ID; resetting Sound restores
 `national`. `crewVoice.ts` owns validation, resolution and legacy migration:
 `english` becomes `en-US`, and `interface` becomes the currently resolved
@@ -711,7 +725,7 @@ band, adds drive and drops syllables.
 ### Settings and debugging
 
 The Sound tab (`src/ui/settings.ts`) has the six volume sliders, the crew
-voices (National crews / one nation's pack), the concussion toggle and the
+voices (National crews / any of the 38 packs), the concussion toggle and the
 critical-damage heartbeat. After resume, `window.__COT_AUDIO` exposes the
 context, a master PCM tap (`startTap` / `stopTap` / `readTapB64`), the sound-route
 log, the sfx log (asset, start, gain, rate, distance, bus), the voice log,
@@ -836,7 +850,7 @@ squaring the peak. Now:
 ```
 crew-lines.json ─┐                    crew-voices.json
  190 lines,      ├──→ build-voices.mjs ──→ eleven_v4 TTS ──→ scribe_v2 STT check ──→ master 'voice' ──→ public/audio/voice + manifest
- 17 languages,   │    (per language,       [delivery] text,     best of up to 3        −18 LUFS, 24 kHz
+ 38 languages,   │    (per language,       [delivery] text,     best of up to 3        −18 LUFS, 24 kHz
  deliveries ─────┘     per line, per take) stability 0.6        attempts               mono Opus
 ```
 
@@ -848,7 +862,25 @@ crew-lines.json ─┐                    crew-voices.json
    because "Feuer" is the firing order, British "Contact, wait out", Russian
    nominative ammunition calls ("Бронебойный"), IDF clock-position contact calls,
    spelled-out numbers and no Latin acronyms where a speech engine would misread
-   them.
+   them. Take n is the same call in every language, because the captions show
+   the en-US or zh-CN text of take n whichever crew speaks. The 21 languages
+   with no country (crew-languages-270) were written the same way, each for
+   one army: es-ES the Ejército de Tierra ("flecha", "rompedora"), es-419 the
+   Argentine, Chilean and Mexican armour in neutral Latin American Spanish,
+   pt-PT the Exército Português ("apontador", "perfurante"), nl the Koninklijke
+   Landmacht ("pijl", "brisant"), no the Hæren ("Stans ild"), fi the
+   Maavoimat ("nuoli", "Tulitauko"), el the Hellenic Army, cs the Czech Army
+   ("Střelče, podkaliberním"), hu the Honvédség ("nyíl", "Tüzet szüntess"), ro
+   the Forțele Terestre ("Ochitor, subcalibru"), tr the Kara Kuvvetleri
+   ("Nişancı, okçuk"), ar the Modern Standard Arabic of the Egyptian, Jordanian
+   and Saudi armour, fa the Artesh ground force ("زره‌شکاف"), hi, ur and bn the
+   Indian, Pakistani and Bangladeshi armoured corps with the English procedure
+   words those armies really use, written in their own scripts, id-ID the TNI
+   AD cavalry ("Siap"), ms the Kor Armor DiRaja, vi the Vietnam People's
+   Army ("Pháo thủ, đạn xuyên"), th the Royal Thai Army cavalry, and fil the
+   Philippine Army's Tagalog with its English procedure words. A homophone a
+   transcriber would mishear went (Norwegian "mil" is ten kilometres, the
+   Hungarian "a cél" is heard as "acél", steel).
 2. **Casting** (`voice-casting.mjs`, `voice-audition.mjs`). The Voice Library is
    searched per language for native male voices without live moderation or a
    credit multiplier, and candidates are ranked toward serious, mature profiles
@@ -857,7 +889,10 @@ crew-lines.json ─┐                    crew-voices.json
    calls; takes are round-tripped through speech-to-text and measured for pitch
    and spectral centroid. The cast (`tools/audio/crew-voices.json`) takes the
    deepest, most authoritative clean voice as commander and a distinct, equally
-   serious voice as crew.
+   serious voice as crew. For the 21 languages with no country, a candidate's
+   own library language had to be the crew's (a multilingual English voice
+   reads Finnish with an accent), and the audition forced the language code
+   on the transcriber: auto-detection reads spoken Urdu as Hindi.
 3. **Synthesis** (`build-voices.mjs`). Every take is `eleven_v4` speech in the
    crew language with the line's delivery as a bracketed audio tag (e.g.
    `[calm, clipped] Contact front.`), stability 0.6, similarity 0.8.
@@ -879,7 +914,11 @@ crew-lines.json ─┐                    crew-voices.json
    longer call never passes). Takes still under 0.34 are reported for review; most
    are exact homophones the transcriber spells differently (Japanese
    装填 / 争点, 徹甲弾 / 鉄鋼弾, 奪取 / ダッシュ), which no text comparison can
-   separate.
+   separate. Hindi, Urdu, Bengali, Persian and Arabic takes are also compared
+   by their consonants, both texts reduced to one Latin skeleton: their crews'
+   English procedure words are written in the script ("फ़ायर", "لوڈڈ") and the
+   transcriber writes them in Latin as often as not ("Fire", "Load"), which
+   by characters alone scores a correct take near 0.
 5. **Mastering**. The `voice` preset: trim, fades, −18 LUFS integrated, 24 kHz
    mono Opus at 32 kbps. The radio character is not baked in: it is the live
    intercom chain, so it can degrade with the radio module.
@@ -1222,6 +1261,41 @@ already approved (the Afrikaans "Laai nou." came back a different attempt).
   decodes at 16 kHz (the radio passes nothing above 4.6 kHz), about 40 MB
   where 24 kHz would have been 60. The lane cost 128,897 credits (119,731
   speech, 9,166 transcription) against its 3M cap.
+- **2026-11-04, crews in languages with no country in the game (lane
+  crew-languages-270).** The owner: "add a bunch more crew radio lines for
+  languages that might not have a country in the game but still can be applied
+  as crew voices for international gamers! itd be a great feature and def one
+  wed want to "flex" about." Twenty-one packs, each all 190 lines and 371
+  takes, which no hull speaks by default and any player can choose
+  (`WORLD_CREW_LANGUAGES`; the runtime section above). One writer per language
+  worked from the en-US master, each line's moment and two or three shipped
+  packs of nearby armies, take n the same call as en-US take n; a validator
+  held the ids, take counts, script, digits and doubled phrases. Indonesian is
+  `id-ID`: `id` is the script's line-id key and overwrote every line's id.
+  Casting kept Voice Library voices whose own language is the crew's (a
+  multilingual English voice lists Finnish or Greek as verified) and forced
+  the language on the transcriber (auto-detection reads spoken Urdu as Hindi).
+  One build process was ffmpeg-bound (`masterTake` runs five synchronous
+  ffmpeg a take; about 14 takes a minute at a load of 700), so six builds ran
+  side by side, each with its own state file (`COT_VOICE_STATE`), and their
+  rows were merged. An independent transcript of all 7,791 takes flagged 59;
+  three fresh transcripts each then sorted them. 21 takes were reworded and
+  rebuilt, and each now reads as written: a Spanish "Motor dañado" said twice,
+  a laugh before the Persian "نزدیک بود" and a groan before "Paso a través",
+  the Greek "Έβαλαν γκολ" heard as a name, the Hungarian "Töltök" as
+  "Csütörtök" (Thursday), the Czech "Za cílem" as "Za týden" (in a week) and
+  seven Vietnamese calls ("Xe bị lật" came back as the English "Save me
+  luck"). The rest stand: numbers the transcriber writes as digits, the exhale
+  the armour-held lines direct ("steady, exhale"), and sound-alikes a fresh
+  pass hears right. The 21 packs are 2.92–3.64 MB (69.6 MB; all 38 are
+  122.04 MB) and decode at 16 kHz to 38.6–49.0 MB, Urdu (802 s) the longest of
+  the 38. The radio now releases the pack it leaves (`assetLibrary.dropVoice`),
+  so a phone holds one pack however many crews a player tries. The tree's
+  `git ls-files` passed execFileSync's 1 MB default, so the five whole-tree
+  listings (attribution audit, native-playables audit, public-repo hygiene,
+  QA evidence manifest, asset provenance) read up to 64 MB. The lane cost
+  372,951 credits (345,823 speech, 27,128 transcription; 10,368 of it the
+  audition) against its 500k cap.
 - **2026-11-03, the world, the vehicles and the modes (world-sfx-269).** The
   owner: "make a lot better sounds for everything ... all the special
   moodes". The audit (`~/cot-launch-state/streams/world-sfx-269/AUDIT.md`)
@@ -1448,6 +1522,11 @@ crew-lines-269 (69 lines and 20 takes in all 17 packs, 2,652 takes) cost
 its second transcript for repeats and the independent sweep); about 7,600 a
 pack.
 
+crew-languages-270 (21 whole packs, 7,791 takes) cost 372,951 credits: 345,823
+of speech, 27,128 of transcription (the audition 10,368, the six builds, three
+rounds of rewritten takes and the independent sweep); about 17,300 a whole
+pack.
+
 ## Changing or extending it
 
 Start from the [audio-generation skill](audio-generation/SKILL.md); the table
@@ -1457,7 +1536,7 @@ below is the short form.
 |---|---|
 | Add a sound | Add a catalog entry → `npm run audio:sfx:generate -- --ids <id>` → `npm run audio:sfx:build -- --ids <id>` → play it from the engine (and add a cue override if its group default does not fit) → `node src/audio/soundAssets.selftest.mjs` (it checks every engine reference exists in the manifest) |
 | Replace a weak take | Re-run `build-sfx --ids <id>` after adjusting the prompt or `takes`, or pin takes in `tools/audio/sfx-picks.json` |
-| Add or change a voice line | Edit `crew-lines.json` (all 17 languages, same number of variants) and its `VOICE_LINES` entry in `voiceLines.ts` → `npm run audio:voices:build -- --lines <id>` |
+| Add or change a voice line | Edit `crew-lines.json` (all 38 languages, same number of variants) and its `VOICE_LINES` entry in `voiceLines.ts` → `npm run audio:voices:build -- --lines <id>` |
 | Rebuild one language | `npm run audio:voices:build -- --langs de` |
 | Re-roll flagged takes | `npm run audio:voices:build -- --langs ja --lines firing --attempts 10` (earlier attempts come from the cache; the shipped packs used this on their flagged lines, so rebuild those lines with the same flag to reproduce them) |
 | Remove a sound | Delete its catalog entry and run `build-sfx`: assets dropped from the catalog leave the manifest and the disk |
@@ -1482,7 +1561,7 @@ Headless selftests (all in `npm test`):
 | `src/audio/vehicleAudioModel.selftest.mjs` | idle, gearboxes, no gear hunting, turbine spool, braking, scrub, landings, stalls |
 | `src/audio/soundAssets.selftest.mjs` | manifests against files, every engine reference, families, tracks, scenes, packs, payload budgets, and no oscillator anywhere in the sound engine or the HUD |
 | `src/audio/assetLibrary.selftest.mjs` | pinning, eviction and reload, voice bytes, the mobile variant cap |
-| `src/audio/crewVoice.selftest.mjs` | all 13 selectable packs, national/fixed resolution, flags and localized labels, legacy migration, invalid stored values |
+| `src/audio/crewVoice.selftest.mjs` | all 38 selectable packs (21 with no country: never a nation's default, each overriding every nation), national/fixed resolution, flags, own-language names and localized labels, legacy migration, invalid stored values |
 | `src/audio/crewRadio.selftest.mjs` | radio discipline, interrupts (a report cuts flavour), stale drops, every pack carrying every line and a missing take staying silent, damage, live switching and cold-pack behavior, the recorded key-up, release and net static (and silence, never a tone, while they decode) |
 | `src/audio/voiceTriggers.selftest.mjs` | all 109 crew lines from their game moments through the real engine (shot results back to back, the reasoning exchange after a Chain of Thought, our systems, the drone, the gunship, supply drops, objectives, hits, mobility, the count, results), a second battle's smoke, and no sound or crew chained in for another |
 | `src/audio/audioEngine.selftest.mjs` | the engine against the shipped manifests: rigs, crews, scenes, weapon layering and delay, HDR trim, the punch and low layers, reloads, hits, edge cases, destruction, concussion, our hits (distant bank, own-hit law, no marker), the gunner's calls and misses, our own report and recoil, the drum refill, the turret start, kill-cam, panning, scope, aircraft (gunship, enemy and own drones), mode events, interface sounds and their dedupe, the cabin alarms, the sixth-sense lamp and the loading bed, no oscillator in a whole session, rig ownership near our hull, late adoption, pause, garage |
@@ -1494,16 +1573,16 @@ Headless selftests (all in `npm test`):
 | `src/audio/interfaceSounds.selftest.mjs` | the control classifier (tabs, tank cards, options, toggles, back, primary, sliders, opt-outs, menus) and the delegated listeners |
 
 Browser probes use the machine-wide GPU capture lock; set
-`COT_SHOTS_LOCK_TIMEOUT_MS=10800000` on a busy machine. The lightweight
-`crew-voice.browser.mjs` fixture expects its caller to hold the capture lease
-and supply a running Vite server, like `custom-select.browser.mjs`.
+`COT_SHOTS_LOCK_TIMEOUT_MS=10800000` on a busy machine.
+`crew-voice-picker.browser.selftest.mjs` takes the capture lease and starts its
+own Vite server.
 
 | Probe | Checks |
 |---|---|
 | `node tools/audio-mix-balance.mjs` | garage audibility; gunfire at 15/150/400 m and our own gun over the idle battle bed on their loudest 100 ms (14/10/4 and 16 dB), and a near crack's peak (22 dB); each shot's anatomy from its arrival (a near cannon must crack: rise ≤ 15 ms, ≤ 50 % low body) and soft-clip hits; the radio at least 12 dB over the bed and at most 4 dB over a near cannon; sound starts and radio lines per second in live combat; the drone in flight (the listener rides it, its motors lead, the feed brightens); an AC-130 battle (the opener, the cabin, the howitzer and its case) |
 | `node tools/sfx-smoke.mjs` | every scene's assets, the calibre ladder, the distance crossfade and propagation delay, routing, jitter, volley headroom (battle held frozen) |
 | `node tools/voice-smoke.mjs` | the national crew, live language switching through the bus and the Sound tab, every pack through the radio chain |
-| `node tools/crew-voice.browser.mjs --url=http://127.0.0.1:5173` | real Settings and persistence in English/Chinese on desktop, phone and landscape; flags, keyboard focus, dismissal, reset, reload, and every pack decoded and played through Web Audio |
+| `node tools/crew-voice-picker.browser.selftest.mjs` | the crew voice picker on the real Settings, on a touch phone and a desktop: National crews first, every pack a language row with no flag, the phone sheet inside the viewport, and a real touch drag (the wheel on desktop) reaching, choosing and storing the last row and an RTL row |
 | `node tools/audio-probe.mjs` | the full event, voice and bus matrix with recordings |
 | `node tools/audio-spatial-killcam-probe.mjs` | arcade/sniper perspective, cannon and engine distance falloff, rams, the kill-cam replay |
 | `node tools/pause-probe.mjs` | the pause duck and resume |

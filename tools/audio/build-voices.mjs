@@ -37,7 +37,8 @@ const HERE = dirname(fileURLToPath(import.meta.url));
 const ROOT = join(HERE, '..', '..');
 const OUT = join(ROOT, 'public', 'audio', 'voice');
 const MANIFEST = join(ROOT, 'src', 'audio', 'voiceManifest.generated.ts');
-const STATE = join(HERE, '.voice-manifest.json');
+// COT_VOICE_STATE: a build of some languages beside another (each its own state file, rows merged after).
+const STATE = process.env.COT_VOICE_STATE || join(HERE, '.voice-manifest.json');
 
 const args = process.argv.slice(2);
 const opt = (name) => (args.includes(`--${name}`) ? args[args.indexOf(`--${name}`) + 1] : null);
@@ -51,7 +52,7 @@ const append = args.includes('--append');
 
 const script = JSON.parse(readFileSync(join(HERE, 'crew-lines.json'), 'utf8'));
 const { cast } = JSON.parse(readFileSync(join(HERE, 'crew-voices.json'), 'utf8'));
-const LANG_CODE = { 'en-US': 'en', 'en-GB': 'en', 'en-AU': 'en', 'pt-BR': 'pt' };
+const LANG_CODE = { 'en-US': 'en', 'en-GB': 'en', 'en-AU': 'en', 'pt-BR': 'pt', 'es-ES': 'es', 'es-419': 'es', 'pt-PT': 'pt', 'id-ID': 'id' };
 
 function normalize(text) {
   return String(text).toLowerCase().normalize('NFKC').replace(/[\s\p{P}\p{S}]+/gu, '');
@@ -72,6 +73,44 @@ function similarity(a, b) {
     }
   }
   return 1 - prev[y.length] / Math.max(x.length, y.length);
+}
+
+/**
+ * Hindi, Urdu, Bengali, Persian and Arabic crews carry English procedure words, written in their own script ("फ़ायर",
+ * "لوڈڈ"), and scribe_v2 writes them in Latin as often as not ("Fire", "Load"): there a take is also compared by its
+ * consonants, both sides reduced to one Latin skeleton (vowels, semivowels and h dropped, the sound classes merged).
+ */
+const SKELETON_LANGS = new Set(['hi', 'ur', 'bn', 'fa', 'ar']);
+const SKELETON = new Map(Object.entries({
+  // Latin
+  b: 'b', c: 'k', d: 'd', f: 'f', g: 'g', j: 'j', k: 'k', l: 'l', m: 'm', n: 'n', p: 'p', q: 'k', r: 'r', s: 's', t: 't', x: 'ks', z: 'j', C: 'c',
+  // Devanagari (precomposed nukta letters included)
+  क: 'k', ख: 'k', क़: 'k', ख़: 'k', ग: 'g', घ: 'g', ग़: 'g', ङ: 'n', च: 'c', छ: 'c', ज: 'j', झ: 'j', ज़: 'j', ञ: 'n',
+  ट: 't', ठ: 't', ड: 'd', ढ: 'd', ड़: 'r', ढ़: 'r', ण: 'n', त: 't', थ: 't', द: 'd', ध: 'd', न: 'n', प: 'p', फ: 'f', फ़: 'f',
+  ब: 'b', भ: 'b', म: 'm', र: 'r', ल: 'l', श: 's', ष: 's', स: 's', 'ं': 'n',
+  // Bengali
+  ক: 'k', খ: 'k', গ: 'g', ঘ: 'g', ঙ: 'n', চ: 'c', ছ: 'c', জ: 'j', ঝ: 'j', য: 'j', ঞ: 'n', ট: 't', ঠ: 't', ড: 'd', ঢ: 'd',
+  ড়: 'r', ঢ়: 'r', ণ: 'n', ত: 't', থ: 't', ৎ: 't', দ: 'd', ধ: 'd', ন: 'n', প: 'p', ফ: 'f', ব: 'b', ভ: 'b', ম: 'm', র: 'r',
+  ল: 'l', শ: 's', ষ: 's', স: 's', 'ং': 'n',
+  // Arabic, Persian and Urdu
+  ب: 'b', پ: 'p', ت: 't', ٹ: 't', ط: 't', ث: 's', س: 's', ص: 's', ش: 's', ج: 'j', چ: 'c', خ: 'k', ق: 'k', ک: 'k', ك: 'k',
+  د: 'd', ڈ: 'd', ذ: 'j', ز: 'j', ژ: 'j', ض: 'j', ظ: 'j', ر: 'r', ڑ: 'r', غ: 'g', گ: 'g', ف: 'f', ل: 'l', م: 'm', ن: 'n', ں: 'n',
+}));
+
+function skeleton(text) {
+  // NFC splits the nukta letters (क़, য়) into base and nukta: Bengali য় is a semivowel, not য (j).
+  const latin = String(text).normalize('NFC').toLowerCase().replace(/\u09AF\u09BC/g, '').replace(/ch/g, 'C').replace(/ph/g, 'f').replace(/ck/g, 'k');
+  let out = '';
+  for (const ch of latin) out += SKELETON.get(ch) ?? '';
+  return out;
+}
+
+/** How closely a transcript reads as the script: by characters, and for the scripts above by consonants too. */
+function score(lang, heard, text) {
+  const sim = similarity(heard, text);
+  if (!SKELETON_LANGS.has(lang)) return sim;
+  const [a, b] = [skeleton(heard), skeleton(text)];
+  return a && b ? Math.max(sim, similarity(a, b)) : sim;
 }
 
 /** The longest unit repeated back to back, in characters ("abab" → 2). */
@@ -129,7 +168,8 @@ async function check(lang, line, text, raw, name) {
     const again = await transcribe({ file: lead, languageCode: LANG_CODE[lang] || lang });
     spent += (stt.cost || 0) + (again.cost || 0);
     const repeated = repeatsCall(stt.text, text) || repeatsCall(again.text, text);
-    return { heard: stt.text, repeated, sim: repeated ? Math.min(similarity(stt.text, text), 0.2) : similarity(stt.text, text) };
+    const sim = score(lang, stt.text, text);
+    return { heard: stt.text, repeated, sim: repeated ? Math.min(sim, 0.2) : sim };
   } catch (error) {
     return { heard: `stt error: ${error.message}`, repeated: false, sim: 0 };
   }
