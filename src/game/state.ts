@@ -1781,7 +1781,8 @@ function prepareMuzzleDirection(entity: SoloEntity, shell: DamageShellSpec): num
     muzzleIndex = launcherMuzzleIndex(entity.spec.gun, shell, entity.combat.launcherCursor ?? 0);
     entity.combat.launcherCursor = (muzzleIndex + 1) % launchers.length;
   } else {
-    // the gun's own mouths (a twin cannon, fixed canisters): the barrel owner both drivers share (sim/launcherPolicy.ts)
+    // the gun's own mouths (a twin cannon's bores): the barrel owner both drivers share (sim/launcherPolicy.ts); launcher
+    // tubes, aft10's canisters among them, took the branch above
     muzzleIndex = nextCannonMuzzle(entity.spec.gun, shell, entity.combat);
   }
   const selectedMuzzle = muzzleIndex >= 0 ? muzzleIndex : undefined;

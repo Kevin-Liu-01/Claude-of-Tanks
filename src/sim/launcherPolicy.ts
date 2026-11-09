@@ -52,7 +52,8 @@ export function isUnguidedRocket(
   return usesLauncherMuzzles(gun, round) && round?.guided !== true;
 }
 
-/** A gun's own mouths (gun.muzzles: the twin cannons, aft10's fixed canisters), gun-local x and y about its bore. */
+/** A gun's own mouths (gun.muzzles: the twin cannons' bores), gun-local x and y about its bore. Launcher tubes are
+ *  gun.launcherMuzzles (launcherMuzzleIndex's), aft10's fixed canisters among them. */
 interface CannonGun extends LauncherGun {
   muzzles?: unknown;
 }
@@ -65,9 +66,9 @@ const mouthCount = (gun: CannonGun | null | undefined): number => (Array.isArray
 
 /**
  * Which of the gun's own mouths a round leaves (round 8 Y1 s5-01): every round that is not a launcher round
- * (usesLauncherMuzzles) on a gun with two or more mouths, the 268 twin air-defence cannons (gepard_1a2, tunguska_m,
- * pantsir_s1, pgz95, pgz09, the 0.15-0.20 m twin plants) and aft10's fixed canisters. -1 for a single bore or a launcher
- * round (launcherMuzzleIndex owns those). Pure: `cursor` is the hull's combat.muzzleCursor.
+ * (usesLauncherMuzzles) on a gun with two or more mouths: the 268 twin air-defence cannons (gepard_1a2, tunguska_m,
+ * pantsir_s1, pgz95, pgz09) and the BMPTs' twin 30 mm plants. -1 for a single bore or a launcher round: launcher tubes,
+ * aft10's fixed canisters among them, stay launcherMuzzleIndex's. Pure: `cursor` is the hull's combat.muzzleCursor.
  */
 export function cannonMuzzleIndex(gun: CannonGun | null | undefined, round: LauncherRound | null | undefined, cursor = 0): number {
   const count = mouthCount(gun);
