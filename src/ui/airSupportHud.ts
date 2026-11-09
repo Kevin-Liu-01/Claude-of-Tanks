@@ -12,7 +12,7 @@
  *   left, the price top right, the sprite glyph, the short name along the floor, the consumables' conic cooldown shade,
  *   the tray's one selected state); its hover tip names it in full.
  * - The strike view: the binoculars come up over the scope's camera (game/strikeViewState.ts; the camera rig enters the
- *   scope), a two-lens vignette, one readout plate (the call-in's glyph and name, its price and warning, the range and
+ *   scope), a two-lens vignette, one readout plate (the call-in's glyph and name, its warning, the range and
  *   bearing to the reticle, its state as a chip), the keys as key caps, and on a phone the kit's CALL and close buttons.
  *   The reticle itself is on the ground (engine/strikeMarks.ts).
  * - The warning: a strike whose footprint covers the crew raises an INCOMING plate (the HUD alert's form: the alert
@@ -127,7 +127,6 @@ export function createAirSupportHud(parent: HTMLElement, bus: EventBus) {
   const kindGlyph = node('span', 'glyph', readout);
   const kindName = node('strong', 'binocular-kind', readout);
   const facts = node('span', 'binocular-group binocular-facts', readout);
-  const price = stat(facts, t('airSupport.points'));
   const warn = stat(facts, `s ${t('airSupport.warning')}`);
   const where = node('span', 'binocular-group', readout);
   const range = stat(where, 'm');
@@ -230,7 +229,6 @@ export function createAirSupportHud(parent: HTMLElement, bus: EventBus) {
       const kind = strikeView.kind;
       if (glyphKind !== kind) { kindGlyph.innerHTML = icon(STRIKE_ICON[kind], { size: 20 }); glyphKind = kind; }
       setText(kindName, t(`airSupport.kind.${kind}`));
-      setText(price, String(R[kind].cost));
       setText(warn, String(R[kind].warningS));
       setText(range, String(Math.round(rangeM)));
       setText(bearing, `${String(Math.round(((strikeView.heading * 180 / Math.PI) + 360) % 360)).padStart(3, '0')}°`);
