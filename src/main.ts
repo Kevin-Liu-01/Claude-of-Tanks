@@ -4091,10 +4091,11 @@ const mainFrame = createMainFrameRuntime({
   // while every compositor frame, the boot card's tank included, waited). The warm now links them between frames first.
   isBootCovering: () => !bootComplete,
   isTransitionHoldingSceneForFadeIn: () => transition.holdingSceneForFadeIn,
-  // (269, the second solo battle at 97%) a Garage restore covers Garage frames only: a battle that took the screen from a
-  // Leave's restore still running owns its frames by its own cover, and its reveal waits for one of them. The return's
-  // own suppression is its declared state (2026-11-02 audit F3), never the diagnostic trace fields.
-  isPresentationRestoreCovering: () => game.phase === 'garage' && (garagePhasePresentation.restoringGpu || garageReturn.current?.framesSuppressed === true),
+  // (269, the second solo battle at 97%) a Garage GPU restore covers no battle frame: a battle that took the screen from a
+  // Leave's restore still running owns its frames by its own cover, and its reveal waits for one of them. (round 8 Y4
+  // s3-01) It still covers the shot runtime's own Garage restore, which runs in the phase 'shot'. The return's own
+  // suppression is its declared state (2026-11-02 audit F3), never the diagnostic trace fields, and covers Garage frames.
+  isPresentationRestoreCovering: () => (game.phase !== 'battle' && garagePhasePresentation.restoringGpu) || (game.phase === 'garage' && garageReturn.current?.framesSuppressed === true),
   cameraInput: camInput,
   getMobileAutoAim: mobileBattleInput.getAutoAim,
   rig,

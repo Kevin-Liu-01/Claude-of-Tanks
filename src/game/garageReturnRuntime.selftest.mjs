@@ -408,6 +408,28 @@ assert.equal(isCovered(direct, true), true, 'the existing active GPU restore gua
   assert.equal(fixture.runtime.transitioning, false, 'the abandoned Leave releases its latch');
 }
 
+// (round 8 Y4 s3-01) main's one gate, by phase: the GPU restore covers every phase but a battle's (269 gated it on
+// 'garage' alone, so the shot runtime's Garage restore, restoreGarageGpuIfSuspended with the phase 'shot', ran uncovered;
+// b03868e697 covered every phase, a battle's included), and the return's declared state (framesSuppressed) covers the
+// Garage's frames alone. Never the return's trace: it is diagnostics (2026-11-02 audit F3).
+{
+  const idle = { current: null };
+  const suppressed = { current: { framesSuppressed: true } };
+  assert.equal(restoreCover({ phase: 'battle' }, { restoringGpu: true }, idle), false,
+    'a restore still running covers no battle frame (a guard: every start waits for the return, whenGarageSettled)');
+  assert.equal(restoreCover({ phase: 'shot' }, { restoringGpu: true }, idle), true,
+    "the shot runtime's Garage restore covers the still's frames (before: uncovered)");
+  assert.equal(restoreCover({ phase: 'studio' }, { restoringGpu: true }, idle), true, 'and any Studio frame it overlaps');
+  assert.equal(restoreCover({ phase: 'garage' }, { restoringGpu: true }, idle), true);
+  assert.equal(restoreCover({ phase: 'garage' }, { restoringGpu: false }, suppressed), true,
+    "a return that owes its Garage covers the Garage's frames");
+  for (const phase of ['battle', 'shot', 'studio']) {
+    assert.equal(restoreCover({ phase }, { restoringGpu: false }, suppressed), false, `${phase}: a return's state covers no other phase`);
+  }
+  assert.doesNotMatch(restoreCoverExpression, /lastTrace|presentationUnready|awaitingHandoff/,
+    "the gate reads the return's state, never its trace");
+}
+
 {
   let finishPlacement;
   let reentered;
