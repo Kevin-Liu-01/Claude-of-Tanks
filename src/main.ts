@@ -257,6 +257,7 @@ import {
   planBattleCamoOverrides, type BattleVisual,
 } from './game/rosterState.ts';
 import { clearMatchSession, createBus, createGameState, watchRevealsAll } from './game/stateCore.ts';
+import { isPlayerVisible } from './game/playerVisibility.ts';
 import { AppPhaseTransitionError, canTransitionAppPhase, createAppLifecycle, GarageScreenUnsettledError } from './game/appLifecycle.ts';
 import { bootReadiness } from './app/bootReadiness.ts';
 import { createBattleEntryIntent, replayBattleEntry, type BattleTerrainVariant } from './game/battleEntryIntent.ts';
@@ -909,9 +910,8 @@ const fxRuntimeAccess = createFxRuntimeAccess<MainFxModule, MainFxRuntime>({
       seed: 5000,
       auxiliaryEntities: () => onlineMatchActive() ? game.tankById.values() : game.tanks, // v2 is the only multiplayer (cutover)
       auxiliaryTime: () => game.timeS,
-      auxiliaryVisible: entity => entity.networkVisible !== undefined ? entity.networkVisible
-        : watchRevealsAll(game) || entity.team === (game.player?.team ?? 'player')
-          || game.spotting?.isSpotted(entity.id, game.player?.team ?? 'player', game.player) === true,
+      // (round 8 Y3/Y4) the one visibility rule (src/game/playerVisibility.ts), as the night lighting and the crew read it
+      auxiliaryVisible: entity => isPlayerVisible(game, entity),
       auxiliaryReport: (id,p,caliberMm) => bus.emit('auxiliary:fired',{id,x:p.x,y:p.y,z:p.z,caliberMm}),
       // Decals must resolve every live struck entity in production. The old
       // window.__DEBUG lookup silently dropped all marks whenever diagnostics
@@ -2041,9 +2041,8 @@ const nightLighting = createNightLightingAccess({
   getCameraForward: () => camera.getWorldDirection(_nightCameraForward),
   isNight: () => battleAtmosphere.current?.weather?.timeOfDay === 'night',
   isBattlePresentation: () => game.phase !== 'garage' && !studio.active,
-  isEntityVisible: (entity) => entity.networkVisible !== undefined ? entity.networkVisible
-    : watchRevealsAll(game) || entity.team === (game.player?.team ?? 'player')
-      || game.spotting?.isSpotted(entity.id, game.player?.team ?? 'player', game.player) === true,
+  // (round 8 Y3/Y4) the one visibility rule (src/game/playerVisibility.ts), as the auxiliary effects and the crew read it
+  isEntityVisible: (entity) => isPlayerVisible(game, entity),
   // (local-fps-266) a battle's lit set is fixed with the night pool's: the hemisphere and the anti-sun fill leave it where
   // they hold 0 (the Garage's switch, setGarageSpots, takes them back)
   fixLitSet: () => lighting.setBattleLitSet(true),
