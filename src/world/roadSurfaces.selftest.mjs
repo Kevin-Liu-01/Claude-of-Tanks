@@ -166,7 +166,7 @@ assert.ok(source.includes('if (uLandTier < 0.5) pCls = gRoadClass > 0.5 && gRoad
   const lowAt = main.indexOf('} else if (uLandTier < 0.5) {');
   assert.ok(lowAt > 0, 'the Low branch of the paved surfaces');
   const lowBlock = main.slice(lowAt, main.indexOf('\n      } else {\n', lowAt));
-  for (const line of ["float course = rq.x / 0.16, ci = floor(course);", "vec3 asph = vec3(0.068, 0.068, 0.072) * (0.92 + 0.16 * agg);",
+  for (const line of ["float course = rq.x / 0.16, ci = floor(course);", "vec3 asph = (uPaveLow > 0.5 ? vec3(0.118, 0.116, 0.111) * uPaveExtra.x : vec3(0.068, 0.068, 0.072)) * (0.92 + 0.16 * agg);",
     "vec2 pc = vec2(rq.x / 4.2, rq.y / 2.4), pcI = floor(pc), pcF = fract(pc);"]) {
     assert.ok(lowBlock.includes(line), `the Low branch keeps the old styled law: ${line}`);
   }

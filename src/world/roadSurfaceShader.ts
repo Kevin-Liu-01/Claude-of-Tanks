@@ -206,9 +206,14 @@ export const ROAD_PAVING_GLSL = /* glsl */`      // roads lane R1c (2026-10-09; 
         // (2026-10-05) a styled path's own surface (terrain.ts RoadPathStyle), in the road's frame: setts in courses
         // across it, or asphalt — dark and even, the wheel paths polished paler, oil down the lanes' middles — and, patched,
         // its repairs (newer darker, older paler and greyer, their seams sealed) and the old surface's cracks
-        if (gRoadClass > 0.5 && gRoadClass < 3.5) {
+        // (built-env-270 hotfix: the class is pCls — a styled path's own, or the street's where the row paves Low streets
+        // (uPaveLow); this branch tested gRoadClass, so a Low street drew no paving: a zero albedo, the phones' "near-black
+        // flat band". A street off any styled path has no heading of its own: the world's axes, no lanes drawn.)
+        float lCls = pCls;
+        float lDir = step(0.5, gRoadClass);
+        if (lCls > 0.5 && lCls < 3.5) {
           vec2 rq = vec2(dot(wp.xz, gRoadDir), dot(wp.xz, vec2(-gRoadDir.y, gRoadDir.x)));
-          if (gRoadClass > 1.5 && gRoadClass < 2.5) {
+          if (lCls > 1.5 && lCls < 2.5) {
             // setts: courses 0.16 m along the road, setts 0.18–0.26 m across, the joints staggered course to course
             float course = rq.x / 0.16, ci = floor(course);
             vec2 cr = cellHash2(vec2(ci, 17.0));
@@ -228,17 +233,18 @@ export const ROAD_PAVING_GLSL = /* glsl */`      // roads lane R1c (2026-10-09; 
             pnn = vec4(vec2(0.5) + (st2.x * gRoadDir + st2.y * vec2(-gRoadDir.y, gRoadDir.x)) * 0.45 * settVis * (1.0 - jointS), 0.5, 1.0);
           } else {
             float agg = nz(uv, 1.9, vec2(0.31, 0.57)).r;
-            vec3 asph = vec3(0.068, 0.068, 0.072) * (0.92 + 0.16 * agg);
+            // (a row that paves Low streets: the desktop's binder at the row's tone; every other map the old dark styled path)
+            vec3 asph = (uPaveLow > 0.5 ? vec3(0.118, 0.116, 0.111) * uPaveExtra.x : vec3(0.068, 0.068, 0.072)) * (0.92 + 0.16 * agg);
             float laneP = abs(fract(rq.y / 3.5) - 0.5) * 3.5; // metres from a 3.5 m lane's middle
             float wheelP = (laneP - 0.95) / 0.35;
-            asph *= 1.0 + 0.10 * exp(-wheelP * wheelP) * tileVis(1.0);
-            asph *= 1.0 - 0.18 * (1.0 - smoothstep(0.0, 0.45, laneP)) * smoothstep(0.55, 0.80, nz(uv, 0.21, vec2(0.13, 0.71)).g);
+            asph *= 1.0 + 0.10 * exp(-wheelP * wheelP) * tileVis(1.0) * lDir;
+            asph *= 1.0 - 0.18 * (1.0 - smoothstep(0.0, 0.45, laneP)) * smoothstep(0.55, 0.80, nz(uv, 0.21, vec2(0.13, 0.71)).g) * lDir;
             // (ground-269, c5, Ruinspires on the phone: "large plain alternating slabs … a checker of flat tones" — the aggregate
             // gone past a metre, the repairs a tone apart) by the table, the binder's 1–2 m mottle, which the phone resolves,
             // and the repairs a shade off the old surface (one noise read)
             float gsPv = step(0.001, uGsNear.z);
             if (gsPv > 0.5) asph *= mix(0.88, 1.12, smoothstep(0.30, 0.70, mix(0.5, nz(uv, 0.11, vec2(0.23, 0.61)).g, tileVis(9.0))));
-            if (gRoadClass > 2.5) {
+            if (lCls > 2.5) {
               vec2 pc = vec2(rq.x / 4.2, rq.y / 2.4), pcI = floor(pc), pcF = fract(pc);
               vec2 ph = cellHash2(pcI + vec2(53.0, 7.0));
               float inPatch = step(ph.x, 0.38);
