@@ -4,7 +4,8 @@
 // critic that threw left the bank deleted, its manifest entry and verdict of record gone, and the records of the assets
 // committed before it written over files they no longer described. Now tools/audio/sfxBank.mjs commitBank stages and
 // judges every candidate outside public/, swaps the bank in only when one ships, and otherwise refuses: the files,
-// manifest[id] and the verdict of record stay as they were. A swap that does not finish (its undo or the records' write fails)
+// manifest[id] and the verdict of record stay as they were, a failed swap included, in either of its loops (moving the old
+// files aside, review r3, or placing the new ones, review r2). A swap that does not finish (its undo or the records' write fails)
 // leaves the old files in the stage's prev/, which the next run's sweep keeps and names (review r1), whatever the stage's
 // pid, and a rebuild never removes a stage it did not create (review r2). Driven here on the real commitBank and
 // sweepStages in a temp directory with an injected master, judge and rename (no ffmpeg, no ear proxy).
@@ -188,6 +189,42 @@ const run = (seeded, opts) => {
   assert.match(result.reason, /rolled back.*EIO on the third file/, 'the refusal says it rolled back');
 }
 
+// 7e. the swap's first loop fails (review r3): moving the old take files aside into prev/ meets an EXDEV (a stage on
+// another volume) on its second file. That loop is inside the rollback, and the file already moved aside goes back, so
+// the bank is whole and the stage (prev/ included) is removed with nothing of the bank in it
+const exdev = (failAt) => {
+  const state = { aside: 0 };
+  state.rename = (from, to) => {
+    if (from.startsWith(dir) && to.includes('/prev/') && ++state.aside === failAt) {
+      throw Object.assign(new Error(`EXDEV: cross-device link not permitted, rename '${from}' -> '${to}'`), { code: 'EXDEV' });
+    }
+    renameSync(from, to);
+  };
+  return state;
+};
+{
+  const seeded = seed();
+  const t = tools({ pass: [0, 1, 2, 3] });
+  const flaky = exdev(2);
+  const result = run(seeded, { candidates: RAW, master: t.master, judge: t.judge, rename: flaky.rename });
+  assert.equal(flaky.aside, 2, 'one old file was moved aside before the second failed');
+  untouched(seeded, seeded.records, 'the swap fails moving its second old file aside');
+  assert.equal(result.outcome, 'refused', 'a swap that fails moving the old files aside is rolled back and refused');
+  assert.match(result.reason, /rolled back.*EXDEV/, 'the refusal says it rolled back and names the EXDEV');
+}
+
+// 7f. the same EXDEV on the very first old file (decisions[1], risks[3]): nothing moved yet, still refused, not a throw
+{
+  const seeded = seed();
+  const t = tools({ pass: [0, 1, 2, 3] });
+  const flaky = exdev(1);
+  const result = run(seeded, { candidates: RAW, master: t.master, judge: t.judge, rename: flaky.rename });
+  assert.equal(flaky.aside, 1, 'the first move aside failed');
+  untouched(seeded, seeded.records, 'the swap fails moving its first old file aside');
+  assert.equal(result.outcome, 'refused', 'an EXDEV on the first move aside is refused, not a crash');
+  assert.match(result.reason, /rolled back.*EXDEV/, 'the refusal says it rolled back and names the EXDEV');
+}
+
 /** The stage a run of this process left, renamed as a killed run's (a pid that is gone), and what its prev/ holds. */
 const asKilled = (id) => {
   const own = readdirSync(stageRoot).filter((name) => new RegExp(`^${id}-${process.pid}(-[A-Za-z0-9]{6})?$`).test(name));
@@ -314,4 +351,4 @@ for (const [from, to] of [['staging', 'replaced'], ['replaced', 'staging'], ['re
   assert.deepEqual(own.match(/rmSync\(stage\b/g), ['rmSync(stage'], 'and removes its stage in one place (its finally), never before it is made');
 }
 
-console.log('sfxBank.selftest: a refused, thrown or empty rebuild keeps the shipped bank and its records, a failed swap rolls back every file it placed; a commit stages in a new folder, swaps, drops stale indices and persists the new records; the stage of an unfinished swap is kept and named whatever its pid, and no rebuild removes it; moves declared');
+console.log('sfxBank.selftest: a refused, thrown or empty rebuild keeps the shipped bank and its records, a failed swap rolls back every file it placed and every old file it moved aside; a commit stages in a new folder, swaps, drops stale indices and persists the new records; the stage of an unfinished swap is kept and named whatever its pid, and no rebuild removes it; moves declared');
