@@ -297,7 +297,6 @@ async function shootGauntlet(page, tag) {
   const spot = await page.evaluate(stage);
   await page.evaluate(() => {
     const D = window.__DEBUG, game = D.game, air = game.matchModeController.airSupport;
-    const enemy = () => game.tanks.find((t) => t.team !== game.player.team && !t.combat.destroyed);
     window.__gx = {
       reset(points, cooling) {
         const s = air.capture();
@@ -309,9 +308,11 @@ async function shootGauntlet(page, tag) {
         const c = game.player.combat;
         if (!c.destroyed) c.hp = c.maxHp;
       },
+      // (g5: the first live foe could stand out of its call-in's range; every live foe is asked in turn)
       incoming() {
-        const foe = enemy();
-        if (!foe) return false;
+        return game.tanks.filter((t) => t.team !== game.player.team && !t.combat.destroyed).some((foe) => this.ask(foe));
+      },
+      ask(foe) {
         const s = air.capture();
         s.points = s.points.filter(([id]) => id !== foe.id).concat([[foe.id, air.rules.points.cap]]);
         // (g1: the first size's call left the foe's bomb cooling, so every later size had nothing incoming)

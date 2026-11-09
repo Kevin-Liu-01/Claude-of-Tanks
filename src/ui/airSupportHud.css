@@ -144,7 +144,9 @@ html[data-cot-strike-view] body[data-cot-battle-layout][data-cot-width][data-cot
 @media(pointer:coarse) and (orientation:portrait){
  .cot-strike-rack{top:calc(var(--hud-systems-top,50%) + 54px)}
  .cot-binoculars .binocular-readout{top:calc(var(--hud-systems-top,50%) + 108px);left:calc(var(--hud-systems-left,50%) - 47px);right:auto;transform:none}
- .cot-binoculars .binocular-kind{display:none}
+ /* (gauntlet g5: with the glyph, a refusal's chip ran to 5 px of the edge; the lit slot names the call-in) */
+ .cot-binoculars :is(.binocular-kind,.binocular-readout>.glyph){display:none}
+ .cot-binoculars .binocular-group{border-left:0;padding-left:0}
  .binocular-call{right:auto;left:calc(50% - 24px);bottom:252px}
  .binocular-close{right:auto;left:calc(50% - 88px);bottom:252px}
  .cot-hud .cot-strike-warning{top:calc(var(--hud-systems-top,50%) - 48px)}
