@@ -12,7 +12,7 @@
 //   - OWN STREAMS. Nothing here draws from a building's build stream: per-building choices draw from the facade stream
 //     (index.ts forks it from the wear seed), per-element variation hashes the element's own position (hash01).
 import {
-  LocalFrame, faceBox, facePoint, normalize3, type EmitOptions, type Face, type PartSink, type RegionalBucket, type Rgb, type UvMode, type Vec3,
+  LocalFrame, faceBox, facePoint, normalize3, type EmitOptions, type Face, type PartSink, type RegionalBucket, type Rgb, type Vec3,
 } from './geometry.ts';
 import { masonryLayout } from '../../regionalSurfaces.ts';
 import type { RegionalGround, StoneSurfaceKind } from './types.ts';
@@ -312,60 +312,6 @@ export function thatchCourses(sink: PartSink, bucket: RegionalBucket, eave0: Vec
       orientedTri(sink, bucket, lo0, add(lo0, lifts[0]), hi0, [-alongN[0], -alongN[1], -alongN[2]], cutOpts);
       orientedTri(sink, bucket, lo1, add(lo1, lifts[cells]), hi1, alongN, cutOpts);
     }
-  }
-}
-
-/**
- * A tiled slope's courses as relief (buildings-271; the owner, 2026-11-08: "we neeed to make buildings much much more
- * realistic annd high quality annd detaileed"). Past 25 m the covering's normal map is gone and a clay roof read as one
- * flat slab. Each course here is a shallow sawtooth on the slope's top surface: its tiles' butt ends stand `lift` proud at
- * the course's lower line, their lip in shadow (the butt face's occlusion `shade`), and its back runs into the slope at
- * the course above. The course lines sit where the covering's own print puts them: `v0` is the print's distance down the
- * slope (its plane uv's v) at `top0`/`top1`, and a course falls every `gauge` metres of v, so a painted tile butt and a
- * geometric one coincide. Each course's lift wanders a little along it and from course to course (hash01 of its place:
- * no rng draw, so the kit's variant stream is untouched). Fine dressing (decor, the fine-detail distance; a phone builds
- * none). `eave0`, `eave1`, `top0`, `top1`, `n` as thatchCourses; `uv` the slope slab's own plane frame.
- */
-export function tileCourses(sink: PartSink, bucket: RegionalBucket, eave0: Vec3, eave1: Vec3, top0: Vec3, top1: Vec3, n: Vec3,
-  uv: UvMode, v0: number, gauge: number, lift: number): void {
-  const lerp = (a: Vec3, b: Vec3, t: number): Vec3 => [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t];
-  const add = (a: Vec3, k: number): Vec3 => [a[0] + n[0] * k, a[1] + n[1] * k, a[2] + n[2] * k];
-  const mid = (a: Vec3, b: Vec3): Vec3 => [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2, (a[2] + b[2]) / 2];
-  const em = mid(eave0, eave1), tm = mid(top0, top1);
-  const slopeLen = Math.hypot(em[0] - tm[0], em[1] - tm[1], em[2] - tm[2]);
-  if (slopeLen < 0.8 || gauge < 0.2) return;
-  const down = normalize3([em[0] - tm[0], em[1] - tm[1], em[2] - tm[2]]);
-  const ramp: EmitOptions = { ...DECOR, fine: true, uv };
-  const butt: EmitOptions = { ...DECOR, fine: true, uv, shade: 0.5 };
-  // the first course line below the top edge, on the print's grid
-  const first = Math.ceil((v0 + 0.06) / gauge) * gauge - v0;
-  let prev = 0;
-  for (let d = first; d < slopeLen - 0.12; d += gauge) {
-    const ta = d / slopeLen, tb = prev / slopeLen;
-    const lo0 = lerp(top0, eave0, ta), lo1 = lerp(top1, eave1, ta);
-    const hi0 = lerp(top0, eave0, tb), hi1 = lerp(top1, eave1, tb);
-    prev = d;
-    const span = Math.hypot(lo1[0] - lo0[0], lo1[1] - lo0[1], lo1[2] - lo0[2]);
-    if (span < 0.3) continue;
-    const alongN = normalize3([lo1[0] - lo0[0], lo1[1] - lo0[1], lo1[2] - lo0[2]]);
-    const cells = Math.max(1, Math.round(span / 2.4));
-    const course = 0.85 + 0.3 * hash01(lo0[0], lo0[1], lo0[2], 3.7);
-    const lifts: number[] = [];
-    for (let k = 0; k <= cells; k++) {
-      const p = lerp(lo0, lo1, k / cells);
-      lifts.push(lift * course * (0.8 + 0.4 * hash01(p[0], p[1], p[2], 5.3)));
-    }
-    for (let k = 0; k < cells; k++) {
-      const t0 = k / cells, t1 = (k + 1) / cells;
-      const a0 = lerp(lo0, lo1, t0), a1 = lerp(lo0, lo1, t1), b0 = lerp(hi0, hi1, t0), b1 = lerp(hi0, hi1, t1);
-      const la = add(a0, lifts[k]), lb = add(a1, lifts[k + 1]);
-      orientedTri(sink, bucket, la, lb, b1, n, ramp);
-      orientedTri(sink, bucket, la, b1, b0, n, ramp);
-      sink.quad(bucket, ...orient4(a0, a1, lb, la, down), butt);
-    }
-    // the course's ends at a verge or a hip: the wedge closed
-    orientedTri(sink, bucket, lo0, add(lo0, lifts[0]), hi0, [-alongN[0], -alongN[1], -alongN[2]], butt);
-    orientedTri(sink, bucket, lo1, add(lo1, lifts[cells]), hi1, alongN, butt);
   }
 }
 

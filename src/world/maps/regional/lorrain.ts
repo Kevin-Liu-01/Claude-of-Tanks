@@ -14,7 +14,7 @@ import {
 import { buildHouse, emitRoof, holedFace, recordBody, roofGeometry, storeyFaces, wallPolygon, windowRhythm, type HouseDialect, type Opening, type RoofSpec } from './house.ts';
 import { archHead } from './sarajevoParts.ts';
 import { doorUnit, windowUnit, type WindowStyle } from './openings.ts';
-import { bench, cellarVent, dungHeap, wallLantern, woodpile } from './dressing.ts';
+import { bench, wallLantern, woodpile } from './dressing.ts';
 import { openShed } from './outbuildings.ts';
 import type { ArchitectureStyle, RegionalBuildContext, RegionalBuilder } from './types.ts';
 import { hallStalls, timberHalle, type HalleSpec } from './marketHall.ts';
@@ -211,12 +211,9 @@ function dialect(st: LorrainState): HouseDialect {
   };
 }
 
-/**
- * The canal-tile roof of the Lorraine plain: low, its eaves barely past the wall, the round ridge of tiles, and its
- * courses in relief (buildings-271: the print's five rows a 2 m tile, 0.4 m; a tuile canal's butt 4 cm proud).
- */
+/** The canal-tile roof of the Lorraine plain: low, its eaves barely past the wall, the round ridge of tiles. */
 const canal = (pitch: number, eave = 0.32, verge = 0.18): RoofSpec =>
-  ({ kind: 'gable', pitchDeg: pitch, eave, verge, thickness: 0.16, bucket: 'roof', ridge: 'round', courses: { gauge: 0.4, lift: 0.04 } });
+  ({ kind: 'gable', pitchDeg: pitch, eave, verge, thickness: 0.16, bucket: 'roof', ridge: 'round' });
 
 /** The dressed stone quoins at a body's four corners, long and short stones in turn (dressing). */
 function quoins(sink: PartSink, b: { x0: number; x1: number; z0: number; z1: number }, y0: number, y1: number): void {
@@ -258,9 +255,7 @@ function maison(ctx: RegionalBuildContext, opts: HouseOpts): RegionalParts {
   // than its frontage, its low roof spanning the whole depth; walls and plinth fill the base footprint
   const fp = footprint(ctx);
   const F = Math.max(4.4, fp.w - 0.1), Dp = Math.max(4.4, fp.d - 0.1);
-  // (buildings-271, the 3D census: "no farmhouse model twice in one view", the rue's eaves and ridges stepping 0.5-1.5 m
-  // from house to house) the floor heights over a wider band, so neighbours' eaves differ by up to a metre
-  const floorH = [2.7 + rng() * 0.55, 2.45 + rng() * 0.45, 2.5];
+  const floorH = [2.85 + rng() * 0.2, 2.6 + rng() * 0.15, 2.5];
   const storeys = Array.from({ length: opts.storeys }, (_, i) => ({ h: floorH[Math.min(i, 2)], wall: st.wall }));
   // bay widths along the front: a dwelling bay 3.6–4.4 m, a cart bay 3.8–4.4, a stable bay 2.6, a shop 4.4; scaled to F
   const want = opts.bays.map((b) => (b === 'logis' ? 4.0 : b === 'cart' ? 4.2 : b === 'shop' ? 4.4 : 2.6));
@@ -325,25 +320,7 @@ function maison(ctx: RegionalBuildContext, opts: HouseOpts): RegionalParts {
         const ws = want.slice(0, cart).reduce((a, w) => a + w * scale, -F / 2) + want[cart] * scale;
         if (ws + 1.9 < F / 2 - 0.3) woodpile(sink, f, ws + 0.2, ws + 1.9, 1.1 + look() * 0.4, look);
       }
-      // (buildings-271, the owner's ask for more realistic, detailed buildings) the dressed Jaumont cornice under the front
-      // eave, the cellar vents in the plinth under the dwelling's windows, the manure heap on the usoir before the stable
-      // (clear of the woodpile, 0.58 m off the wall)
-      const jaumont = rgb(0xc9b07a);
-      faceBox(sink, 'stone', f, 0, frame.eaveY - 0.11, 0.06, F - 0.1, 0.16, 0.12, { decor: true, colour: jaumont });
-      for (const o of openings) {
-        if (o.face === 'left' && o.storey === 0 && o.kind === 'window' && Math.abs(o.u) < F / 2 - 0.6) cellarVent(sink, f, o.u, 0.19, Math.min(0.62, o.w * 0.6), 0.16, jaumont);
-      }
-      const stable = opts.bays.indexOf('stable');
-      if (stable >= 0 && look() < 0.7) {
-        const su = want.slice(0, stable).reduce((a, w) => a + w * scale, -F / 2) + want[stable] * scale / 2;
-        dungHeap(sink, f, clamp(su, -F / 2 + 1.3, F / 2 - 1.3), 2.2 + look() * 0.6, 1.5 + look() * 0.5, 0.75 + look() * 0.35, look);
-      }
-      // (buildings-271: a mirrored front keeps its bench under the dwelling's window, at whichever end the dwelling is)
-      const last = opts.bays.length - 1;
-      if (look() < 0.6) {
-        if (opts.bays[0] === 'logis') bench(sink, f, -F / 2 + want[0] * scale * 0.7, 1.3, shade(PLANK, 0.9));
-        else if (opts.bays[last] === 'logis') bench(sink, f, F / 2 - want[last] * scale * 0.3, 1.3, shade(PLANK, 0.9));
-      }
+      if (opts.bays[0] === 'logis' && look() < 0.6) bench(sink, f, -F / 2 + want[0] * scale * 0.7, 1.3, shade(PLANK, 0.9));
     });
   }
   return sink.finish();
@@ -921,22 +898,9 @@ const ruine: RegionalBuilder = (ctx) => {
   return sink.finish();
 };
 
-/**
- * (buildings-271, the 3D census: one farmhouse three times in a view) the long farmhouse's bays from its frontage — the
- * dwelling, the barn's cart bay and the stable in the plain's orders (a second dwelling bay for a wider logis, a second
- * cart bay or a second stable on the widest plots) — and half of them mirrored along the street (the barn uphill or down).
- */
-function farmBays(ctx: RegionalBuildContext): HouseOpts['bays'] {
-  const F = Math.max(ctx.info.w, ctx.info.d), u = ctx.variant();
-  const bays: Array<HouseOpts['bays'][number]> = F >= 15.5 && u < 0.3 ? ['logis', 'cart', 'stable', 'stable']
-    : F >= 15 && u < 0.5 ? ['logis', 'cart', 'cart']
-    : u < 0.75 ? ['logis', 'cart', 'stable'] : ['logis', 'logis', 'cart'];
-  return ctx.variant() < 0.5 ? bays.reverse() : bays;
-}
-
 const LORRAIN_BUILDERS: Readonly<Record<string, RegionalBuilder>> = Object.freeze({
   cottage: (ctx) => maison(ctx, { bays: ctx.info.w * ctx.info.d > 52 ? ['logis', 'stable'] : ['logis'], storeys: 2 }),
-  farmhouse: (ctx) => maison(ctx, { bays: farmBays(ctx), storeys: 2 }),
+  farmhouse: (ctx) => maison(ctx, { bays: ['logis', 'cart', 'stable'], storeys: 2 }),
   tavern: (ctx) => maison(ctx, { bays: ['shop', 'logis'], storeys: 3, fascia: rgb(0x3f5a46) }),
   cornershop: (ctx) => maison(ctx, { bays: ['shop', 'logis'], storeys: 2, fascia: rgb(0x7a3a2c) }),
   // (the r2 sweep, 2026-10-16: the town's sixteen row houses stood in the generic props.ts row house, its windows dark
@@ -947,9 +911,7 @@ const LORRAIN_BUILDERS: Readonly<Record<string, RegionalBuilder>> = Object.freez
   // of its barn beside the dwelling on the usoir) every row house two storeys, half of them a farm with its cart door
   rowhouse: (ctx) => {
     const shop = ctx.variant() < 0.35, farm = !shop && ctx.variant() < 0.5;
-    // (buildings-271) the farm's cart bay and the shop on either hand of the dwelling, as the street gives them
-    const bays: HouseOpts['bays'] = shop ? ['shop', 'logis'] : farm ? ['logis', 'cart'] : ['logis', 'logis'];
-    return maison(ctx, { bays: ctx.variant() < 0.5 ? [...bays].reverse() : bays, storeys: 2, ...(shop ? { fascia: rgb(0x5a4a3a) } : {}) });
+    return maison(ctx, { bays: shop ? ['shop', 'logis'] : farm ? ['logis', 'cart'] : ['logis', 'logis'], storeys: 2, ...(shop ? { fascia: rgb(0x5a4a3a) } : {}) });
   },
   barn: grange,
   church,

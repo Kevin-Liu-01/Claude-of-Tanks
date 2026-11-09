@@ -8,7 +8,7 @@ import {
   type Face, type RegionalBucket, type Rgb, type Vec3, type EmitOptions,
 } from './geometry.ts';
 import {
-  carvedVerge, eaveStreaks, facadeGrime, facadeGround, facadeGroundCraft, facadeLegacy, facadeOn, facadeSurfaced, sillStreaks, styleGroundCraft, thatchCourses, tileCourses, withFacade,
+  carvedVerge, eaveStreaks, facadeGrime, facadeGround, facadeGroundCraft, facadeLegacy, facadeOn, facadeSurfaced, sillStreaks, styleGroundCraft, thatchCourses, withFacade,
   type FacadeContext,
 } from './facade.ts';
 import { withSillShadow } from './openings.ts';
@@ -52,12 +52,6 @@ export interface RoofSpec {
    * eave course alone ('nipa': an atap of nipa leaf, whose fine rows are the print's), or none
    */
   thatch?: 'stepped' | 'rows' | 'nipa' | 'none';
-  /**
-   * a tiled covering's courses as relief (facade.ts tileCourses; buildings-271): `gauge` the course spacing down the
-   * slope, the covering's print's own (a canal tile 0.4 m at BUCKET_UV_DENSITY 0.5 and five rows a tile, a pantile
-   * 2/7 m), `lift` the butt ends' stand (m). Opt-in per kit; absent, none (a landmark's measured roof stays as built)
-   */
-  courses?: { gauge: number; lift: number } | null;
 }
 
 export interface StoreySpec {
@@ -778,16 +772,9 @@ export function emitRoof(sink: PartSink, rg: RoofGeometry, roof: RoofSpec, colou
     const n = normalize3([side * sinP, cosP, 0]);
     // thatch combs down the slope: the straw tile's stalks run along its u, so a straw roof swaps the axes
     const along: Vec3 = [0, 0, side], down = normalize3([side * cosP, -sinP, 0]);
-    const slabUv = { kind: 'plane' as const, origin: [0, ridgeY + t / cosP, 0] as Vec3, u: bucket === 'straw' ? down : along, v: bucket === 'straw' ? along : down };
-    sink.prism(bucket, pts, n, t, dec, slabUv);
-    // a tiled slope's courses (opt-in, RoofSpec.courses), on the print's own course lines: v from the slab's uv origin
-    if (roof.courses && bucket !== 'straw' && !roof.decor && facadeOn()) {
-      const top = (p: Vec3): Vec3 => [p[0] + n[0] * t, p[1] + n[1] * t, p[2] + n[2] * t];
-      const t0 = top([0, ridgeY, side * ridgeHalf]), t1 = top([0, ridgeY, -side * ridgeHalf]);
-      const v0 = (t0[0] - slabUv.origin[0]) * down[0] + (t0[1] - slabUv.origin[1]) * down[1] + (t0[2] - slabUv.origin[2]) * down[2];
-      tileCourses(sink, bucket, top([side * (s + e), lo, side * zEave]), top([side * (s + e), lo, -side * zEave]), t0, t1, n,
-        slabUv, v0, roof.courses.gauge, roof.courses.lift);
-    }
+    sink.prism(bucket, pts, n, t, dec, {
+      kind: 'plane', origin: [0, ridgeY + t / cosP, 0], u: bucket === 'straw' ? down : along, v: bucket === 'straw' ? along : down,
+    });
     // a thatched slope's eave course and course lines (facade.ts), on its top surface from the eave to the ridge
     if (bucket === 'straw' && !roof.decor && roof.thatch !== 'none' && facadeOn()) {
       const top = (p: Vec3): Vec3 => [p[0] + n[0] * t, p[1] + n[1] * t, p[2] + n[2] * t];
