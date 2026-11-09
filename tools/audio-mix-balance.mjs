@@ -50,13 +50,15 @@ import { mkdirSync, writeFileSync, rmSync } from 'node:fs';
 import { resolve, join } from 'node:path';
 import { bandEnergy, transientAnatomy } from './audio/pcm.mjs';
 import { readinessExpression, waitForBootLoaded } from './game-readiness.mjs';
+import { pageLoadBudget } from './tool-page-load.mjs';
 import { loudestTakes } from './audio/held-takes.mjs';
 
 const outDir = resolve('shots/audio-mix-balance');
 mkdirSync(outDir, { recursive: true });
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
-// The page's first load (a cold private dep cache under a busy machine's load can take minutes): COT_PAGE_TIMEOUT_MS.
-const PAGE_MS = Number(process.env.COT_PAGE_TIMEOUT_MS) || 120000;
+// The page's first load (a cold private dep cache under a busy machine's load can take minutes): the tools' page budget
+// (tool-page-load.mjs: 180 s navigation, COT_NAV_TIMEOUT_MS; this tool's ready wait 120 s, COT_READY_TIMEOUT_MS)
+const { navTimeoutMs: NAV_MS, readyTimeoutMs: READY_MS } = pageLoadBudget({ readyTimeoutMs: 120000 });
 
 function writeWav(path, i16, sampleRate) {
   const dataBytes = i16.length * 2;
@@ -171,8 +173,8 @@ try {
   await page.setViewport({ width: 1280, height: 720 });
   page.on('console', (m) => { if (m.type() === 'error' && !m.text().includes('favicon')) consoleErrors.push(m.text()); });
   page.on('pageerror', (e) => consoleErrors.push(String(e)));
-  await page.goto(url, { waitUntil: 'domcontentloaded', timeout: PAGE_MS });
-  await waitForBootLoaded(page, { timeout: PAGE_MS });
+  await page.goto(url, { waitUntil: 'domcontentloaded', timeout: NAV_MS });
+  await waitForBootLoaded(page, { timeout: READY_MS });
   await page.mouse.click(640, 360);
   await page.waitForFunction('window.__COT_AUDIO && window.__COT_AUDIO.ctx && window.__COT_AUDIO.ctx.currentTime > 0.3', { timeout: 30000 });
   // Default mix, as a fresh player has it.

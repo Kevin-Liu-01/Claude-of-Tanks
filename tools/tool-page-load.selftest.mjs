@@ -9,6 +9,7 @@ import { createServer as createNetServer } from 'node:net';
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { createServer } from 'vite';
 import { boundOrigin, isTimeoutError, loadReadyPage, NAV_RETRIES, NAV_TIMEOUT_MS, pageLoadBudget, READY_TIMEOUT_MS,
   toolServerOptions } from './tool-page-load.mjs';
@@ -22,6 +23,11 @@ assert.deepEqual(pageLoadBudget({ env: { COT_NAV_TIMEOUT_MS: '240000', COT_READY
 assert.equal(pageLoadBudget({ env: { COT_NAV_RETRIES: '0' } }).retries, 0, 'COT_NAV_RETRIES=0 disables the retry');
 assert.equal(pageLoadBudget({ env: { COT_NAV_RETRIES: 'x' } }).retries, 1);
 assert.equal(pageLoadBudget({ env: { COT_NAV_TIMEOUT_MS: '0' } }).navTimeoutMs, 180_000, 'a non-positive timeout keeps the default');
+// (round 8 Y8, sweep s1-13) a tool's own defaults (weapon-readout's fixture: 30 s, 30 s, no retry) under the same overrides
+assert.deepEqual(pageLoadBudget({ env: {}, navTimeoutMs: 30_000, readyTimeoutMs: 30_000, retries: 0 }),
+  { navTimeoutMs: 30_000, readyTimeoutMs: 30_000, retries: 0 });
+assert.deepEqual(pageLoadBudget({ env: { COT_NAV_TIMEOUT_MS: '240000', COT_READY_TIMEOUT_MS: '-1', COT_NAV_RETRIES: '2' }, navTimeoutMs: 30_000,
+  readyTimeoutMs: 30_000, retries: 0 }), { navTimeoutMs: 240_000, readyTimeoutMs: 30_000, retries: 2 }, 'the overrides over a tool\'s defaults');
 
 // (2) retry policy, against a scripted page
 const timeout = () => Object.assign(new Error('Navigation timeout of 180000 ms exceeded'), { name: 'TimeoutError' });
@@ -123,4 +129,49 @@ for (const tool of [...ICONS_LOADERS, 'module-visual-align-probe', 'geometry-gat
   assert.match(source, /loadReadyPage\(page, /, `${tool}: its first page load retries a timeout`);
   assert.doesNotMatch(source, /Number\(process\.env\.COT_NAV_(TIMEOUT_MS|RETRIES)\)/, `${tool}: no private navigation budget`);
 }
-console.log(`tool-page-load: 180 s navigation, 60 s ready, one timeout retry; a busy port moves on and the bound origin reaches our server; ${SERVED.length} fleet browser tools wired`);
+
+// (5) (round 8 Y8, sweep s1-13) One page budget: tools/tool-page-load.mjs reads COT_NAV_TIMEOUT_MS, COT_READY_TIMEOUT_MS
+// and COT_NAV_RETRIES, and no tool reads them itself or keeps a knob of its own for the same budget. sfx-smoke and
+// audio-mix-balance read COT_PAGE_TIMEOUT_MS (one name for their navigation and their ready wait, which nothing set: an
+// operator raising COT_NAV_TIMEOUT_MS under load never reached them) and weapon-readout read the three itself (a
+// negative value was its timeout). Read as code (comments blanked) over every tool and every selftest that drives a page.
+const { codeText, toolCensusFiles } = await import('./code-text.mjs');
+const ROOT = fileURLToPath(new URL('..', import.meta.url));
+const BUDGET_NAMES = 'COT_(?:NAV_TIMEOUT_MS|READY_TIMEOUT_MS|NAV_RETRIES|PAGE_TIMEOUT_MS)';
+const RETIRED_KNOB = /\bCOT_PAGE_TIMEOUT_MS\b/;
+const ENV_READ = new RegExp(`\\bprocess\\.env(?:\\.|\\[\\s*['"\`])${BUDGET_NAMES}\\b|\\{[^}]*\\b${BUDGET_NAMES}\\b[^}]*\\}\\s*=\\s*process\\.env\\b`);
+const budgetReads = (text, file = 'tools/a.mjs') => {
+  const code = codeText(text, file);
+  return { knob: RETIRED_KNOB.test(code), reads: ENV_READ.test(code) };
+};
+assert.deepEqual(budgetReads('const PAGE_MS = Number(process.env.COT_PAGE_TIMEOUT_MS) || 90000;'), { knob: true, reads: true }, 'a knob of its own (sfx-smoke)');
+assert.deepEqual(budgetReads('const NAV = Number(process.env.COT_NAV_TIMEOUT_MS) || 30000;'), { knob: false, reads: true }, 'a private read (weapon-readout)');
+assert.deepEqual(budgetReads("const ready = process.env['COT_READY_TIMEOUT_MS'];"), { knob: false, reads: true }, 'a bracket read');
+assert.deepEqual(budgetReads('const { COT_NAV_RETRIES: tries } = process.env;'), { knob: false, reads: true }, 'a destructured read');
+assert.deepEqual(budgetReads('// COT_PAGE_TIMEOUT_MS, then process.env.COT_NAV_TIMEOUT_MS\nconst x = 1;'), { knob: false, reads: false }, 'a comment');
+assert.deepEqual(budgetReads('const { navTimeoutMs } = pageLoadBudget({ readyTimeoutMs: 90000 });'), { knob: false, reads: false }, 'through the budget');
+assert.deepEqual(budgetReads("export const SCHEDULING_ENV = { COT_NAV_TIMEOUT_MS: 'how long a page may navigate' };"), { knob: false, reads: false },
+  'a name in a registry (tools/changed-only/steps.mjs) is no read');
+{
+  const knobs = [], reads = [];
+  const census = toolCensusFiles(ROOT);
+  assert.ok(census.includes('tools/sfx-smoke.mjs') && census.includes('tools/weapon-readout.browser.mjs'), 'the census reads the browser tools');
+  for (const file of census) {
+    if (file === 'tools/tool-page-load.mjs') continue;
+    const raw = readFileSync(join(ROOT, file), 'utf8');
+    if (!/COT_(?:NAV|READY|PAGE)_/.test(raw)) continue;
+    const found = budgetReads(raw, file);
+    if (found.knob) knobs.push(file);
+    if (found.reads) reads.push(file);
+  }
+  assert.deepEqual(knobs, [], 'no tool keeps COT_PAGE_TIMEOUT_MS (its page budget is pageLoadBudget\'s: COT_NAV_TIMEOUT_MS, COT_READY_TIMEOUT_MS)');
+  assert.deepEqual(reads, [], 'a tool takes COT_NAV_TIMEOUT_MS, COT_READY_TIMEOUT_MS and COT_NAV_RETRIES through tool-page-load.mjs pageLoadBudget, '
+    + 'with its own defaults, never from the environment itself');
+  // each audio harness keeps its own ready wait (269 raised them for a cold private cache under load)
+  for (const [tool, readyMs] of [['sfx-smoke', 90000], ['audio-mix-balance', 120000], ['voice-smoke', 90000]]) {
+    assert.match(codeText(readFileSync(join(ROOT, `tools/${tool}.mjs`), 'utf8')), new RegExp(`pageLoadBudget\\(\\{ readyTimeoutMs: ${readyMs} \\}\\)`),
+      `${tool}: its page budget with its own ${readyMs / 1000} s ready wait`);
+  }
+}
+console.log(`tool-page-load: 180 s navigation, 60 s ready, one timeout retry; a busy port moves on and the bound origin reaches our server; ${SERVED.length} fleet browser tools wired; `
+  + 'no tool reads the page budget\'s variables itself');
