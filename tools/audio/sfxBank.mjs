@@ -7,9 +7,10 @@
 // f0cb4f92bb's verdict-as-shipped moved the refusal after the delete). Now each rebuild moves through declared states,
 // owned here alone (sfxBank.selftest.mjs censuses build-sfx.mjs for any other bank write):
 //
-//   staging ──→ committing ──→ replaced     every candidate mastered and judged in <stageRoot>/<id>-<pid>; at least
-//      │             │                       one shipped: the old take files move aside, the staged ones move in, the
-//      │             │                       records are replaced and persisted (fewer than wanted is a warning)
+//   staging ──→ committing ──→ replaced     every candidate mastered and judged in a new stage folder of this run's
+//      │             │                       (<stageRoot>/<id>-<pid>-<6 random>); at least one shipped: the old take
+//      │             │                       files move aside, the staged ones move in, the records are replaced and
+//      │             │                       persisted (fewer than wanted is a warning)
 //      └──→ refused ←┘                       nothing shipped, the chosen list was empty, a step threw, or the swap
 //                                            failed (rolled back): the files, manifest[id] and the verdict stay as they
 //                                            were; build-sfx fails the run
@@ -18,10 +19,12 @@
 // swap is renames). The critic matches verdicts by the exact path it was given, and a file's SHA-256 survives the
 // rename, so judging in the stage is judging the shipped bytes. The one window this does not close is the swap itself:
 // a kill inside it, or an undo or a persist that fails, leaves the old take files in the stage's prev/ and the bank or
-// its records part way. The run throws naming prev/ (or is gone), and sweepStages keeps any such stage, which
-// build-sfx names at every start until the operator restores the bank (it is git-tracked) and deletes the stage.
+// its records part way. The run throws naming prev/ (or is gone), and sweepStages keeps any stage whose prev/ holds files,
+// whatever its pid, which build-sfx names at every start until the operator restores the bank (it is git-tracked) and
+// deletes the stage. A rebuild never removes a stage it did not create (each run's stage name is new), so a later run
+// with a reused pid cannot delete one either (review r2).
 
-import { existsSync, mkdirSync, readdirSync, readFileSync, renameSync, rmSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, renameSync, rmSync } from 'node:fs';
 import { basename, join } from 'node:path';
 import { createHash } from 'node:crypto';
 import { verdictRecord } from './critic.mjs';
@@ -42,25 +45,30 @@ export function bankMove(from, to) {
   return to;
 }
 
+/** A stage's name: `<id>-<pid>-<6 random>` (mkdtempSync), so the pid of the run that made it is the middle part. */
+const STAGE_NAME = /-(\d+)-[A-Za-z0-9]{6}$/;
+
 /**
- * Sweep the stages a killed run left (`<id>-<pid>` of a pid that is gone). A stage whose prev/ still holds files is a
- * swap that did not finish (a kill inside it, or an undo or persist that failed): its prev/ may hold the old bank's only
- * copy, so it is kept for the operator, never removed. Returns { removed, kept }: stage names.
+ * Sweep the stages killed runs left. A stage whose prev/ still holds files is a swap that did not finish (a kill inside
+ * it, or an undo or persist that failed): its prev/ may hold the old bank's only copy, so it is kept for the operator
+ * and named, whatever its name or pid (a pid is reused: the process that has it now, EPERM included, or this one, says
+ * nothing about the stage). Any other stage is removed when the run that made it is gone; a folder whose name names no
+ * run is left alone. Returns { removed, kept }: stage names, sorted.
  */
 export function sweepStages(stageRoot) {
   let names;
-  try { names = readdirSync(stageRoot); } catch { return { removed: [], kept: [] }; }
+  try { names = readdirSync(stageRoot).sort(); } catch { return { removed: [], kept: [] }; }
   const removed = [];
   const kept = [];
   for (const name of names) {
-    const pid = Number(/-(\d+)$/.exec(name)?.[1]);
+    let held = [];
+    try { held = readdirSync(join(stageRoot, name, 'prev')); } catch { /* no swap began */ }
+    if (held.length) { kept.push(name); continue; }
+    const pid = Number(STAGE_NAME.exec(name)?.[1]);
     if (!pid) continue;
     let live = pid === process.pid;
     if (!live) try { process.kill(pid, 0); live = true; } catch (error) { live = error.code === 'EPERM'; }
     if (live) continue;
-    let held = [];
-    try { held = readdirSync(join(stageRoot, name, 'prev')); } catch { /* no swap began */ }
-    if (held.length) { kept.push(name); continue; }
     rmSync(join(stageRoot, name), { recursive: true, force: true });
     removed.push(name);
   }
@@ -77,15 +85,16 @@ export function sweepStages(stageRoot) {
 export function commitBank({ entry, dir, candidates, want, floor = null, master, judge, records, stageRoot, persist = () => {},
   rename = renameSync, log = console }) {
   const { id } = entry;
-  const stage = join(stageRoot, `${id}-${process.pid}`);
+  // A new folder every run: never one a killed run (or an earlier run with this pid) left, whose prev/ may be the old
+  // bank's only copy.
+  mkdirSync(stageRoot, { recursive: true });
+  const stage = mkdtempSync(join(stageRoot, `${id}-${process.pid}-`));
   let state = 'staging';
   let keepStage = false;
   const refuse = (reason) => {
     state = bankMove(state, 'refused');
     return { outcome: state, files: [], reason };
   };
-  rmSync(stage, { recursive: true, force: true });
-  mkdirSync(stage, { recursive: true });
   try {
     if (!candidates.length) return refuse('no candidate to master (a pin names no take that exists)');
     const files = [];

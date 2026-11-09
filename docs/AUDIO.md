@@ -762,20 +762,22 @@ sfx-catalog.mjs ──→ generate-sfx.mjs ──→ sfx-qa.mjs (measure) ──
    (group, variant count, durations, channels, rate, loop points, size) and the
    incremental state `tools/audio/.sfx-manifest.json`.
 7. **Commit** (`sfxBank.mjs`, 2026-11-08). Each asset's rebuild is one
-   transaction: its candidates master and are judged in the ignored
-   `.qa-dev/sfx-stage/`, and only when at least one ships does the bank move
-   in (the old take files aside, the new ones in, stale indices gone) and its
-   manifest entry and verdict of record change. A rebuild that ships nothing
-   (every candidate refused by the ear proxy or under the loudness floor, a pin
-   that names no take, a step that throws, a swap that fails and is rolled
-   back) is refused: the shipped files and both records stay as they were and
-   the run exits 1. A bank that ships fewer than its `variants` is a warning.
-   The three records are written after every committed asset, so a run that
-   crashes between assets leaves them true to the disk. A swap that does not
-   finish (a kill inside it, or its undo or the records' write failing) leaves
-   the old take files in its stage's `prev/`: the run throws naming it, and
-   every later run keeps that stage and names it at start until it is deleted
-   (restore the bank from `prev/` or git first if `sfxVerdicts` disagrees).
+   transaction: its candidates master and are judged in a new folder of the
+   ignored `.qa-dev/sfx-stage/`, and only when at least one ships does the bank
+   move in (the old take files aside, the new ones in, stale indices gone) and
+   its manifest entry and verdict of record change. A rebuild that ships
+   nothing (every candidate refused by the ear proxy or under the loudness
+   floor, a pin that names no take, a step that throws, a swap that fails and
+   is rolled back) is refused: the shipped files and both records stay as they
+   were and the run exits 1. A bank that ships fewer than its `variants` is a
+   warning. The three records are written after every committed asset, so a run
+   that crashes between assets leaves them true to the disk. A swap that does
+   not finish (a kill inside it, or its undo or the records' write failing)
+   leaves the old take files in its stage's `prev/`: the run throws naming it,
+   and every later run keeps that stage and names it at start until it is
+   deleted (restore the bank from `prev/` or git first if `sfxVerdicts`
+   disagrees), whatever its pid: a rebuild never removes a stage folder it did
+   not make.
 
 **Gun reports** (2026-10-02). The owner heard firing as old film or gamey
 blasts, and the files agreed: the cannon reports swelled to their loudest

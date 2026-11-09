@@ -11,11 +11,12 @@
 // tools/audio/sfx-picks.json overrides the ranking for an asset.
 //
 // Each asset's rebuild is one transaction (tools/audio/sfxBank.mjs, round 8 Y9 s1-11): its candidates master and
-// are judged in .qa-dev/sfx-stage/, and the shipped bank is replaced only when one ships. An asset that ships
+// are judged in a new folder of .qa-dev/sfx-stage/, and the shipped bank is replaced only when one ships. An asset that ships
 // nothing is refused: its files, manifest entry and verdict of record are kept, and the run exits 1. The three
 // records are written after every committed asset, so a run that crashes or is killed between assets leaves them
 // true to the disk. A swap that does not finish (a kill inside one asset's swap, or its undo or the records' write
-// failing) leaves the old take files in its stage's prev/: the next run keeps that stage and names it at start.
+// failing) leaves the old take files in its stage's prev/: every later run keeps that stage and names it at start,
+// whatever its pid, until it is deleted.
 
 import { readFileSync, existsSync, writeFileSync, mkdirSync } from 'node:fs';
 import { join, dirname, basename } from 'node:path';
