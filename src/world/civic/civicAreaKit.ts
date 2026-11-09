@@ -180,9 +180,22 @@ function tileRect(m: CivicMesh, r: CivicRect, style: RegionalCivicStyle, tier: '
   m.skinRect(r.x0, r.z0, r.x1, r.z1, lift - 0.003, joint, 3.0);
   const nx = Math.max(1, Math.round((r.x1 - r.x0) / u)), nz = Math.max(1, Math.round((r.z1 - r.z0) / u));
   const ux = (r.x1 - r.x0) / nx, uz = (r.z1 - r.z0) / nz;
+  // (built-env-270b) a patterned plaza: the tile's stone by its world cell (so abutting rects carry one pattern): a band
+  // course every `bandEvery` cells each way, else a diamond of the alt stone centred between the bands
+  const pat = style.pavement.pattern;
+  const alt = pat ? hexRgb(pat.alt) : base, band = pat ? hexRgb(pat.band) : base;
+  const stoneAt = (x: number, z: number): Rgb => {
+    if (!pat) return base;
+    const k = pat.bandEvery, ci = Math.floor(x / u), cj = Math.floor(z / u);
+    const mi = ((ci % k) + k) % k, mj = ((cj % k) + k) % k;
+    if (mi === 0 || mj === 0) return band;
+    const h = k / 2;
+    return Math.abs(mi - h) + Math.abs(mj - h) <= h - 1 ? alt : base;
+  };
   for (let i = 0; i < nx; i++) for (let j = 0; j < nz; j++) {
     const x0 = r.x0 + i * ux + gap / 2, z0 = r.z0 + j * uz + gap / 2;
-    m.skinRect(x0, z0, x0 + ux - gap, z0 + uz - gap, lift, toned(base, Math.floor(x0 * 4), Math.floor(z0 * 4), style.pavement.tone * 1.4, 71), 4);
+    const stone = stoneAt(x0 + ux / 2, z0 + uz / 2);
+    m.skinRect(x0, z0, x0 + ux - gap, z0 + uz - gap, lift, toned(stone, Math.floor(x0 * 4), Math.floor(z0 * 4), style.pavement.tone * 1.4, 71), 4);
   }
   return nx * nz;
 }

@@ -27,6 +27,9 @@ export interface RegionalCivicStyle {
     /** each flag's tone spread (±) */
     readonly tone: number;
     readonly joint: number;
+    /** (built-env-270b) a plaza's tiles laid in a pattern, not one tone: a granite band every `bandEvery` tiles each way and,
+     *  between the bands, diamonds of the `alt` stone (Ronda's plazas: grey and ochre stone in rombos framed in granite) */
+    readonly pattern?: { readonly alt: number; readonly band: number; readonly bandEvery: number };
   };
   readonly gutter: { readonly rows: number; readonly width: number; readonly dish: number; readonly hex: number };
   readonly bands: { readonly granite: number; readonly basalt: number; readonly sett: number; readonly bay: number };
@@ -100,7 +103,10 @@ export const CIVIC_STYLES = Object.freeze({
   andalusian: Object.freeze<RegionalCivicStyle>({
     id: 'andalusian',
     kerb: { width: 0.20, face: 0.12, unit: [0.8, 1.2], hex: 0xa8a49a },
-    pavement: { course: 0.2, length: [0.2, 0.2], hex: 0x9a958a, tone: 0.06, joint: 0x6a665e, step: 1.5, maxCourses: 2 },
+    // (built-env-270b, the census: "the plaza paving is a uniform grey tile slab") Ronda's plazas in grey and ochre stone
+    // in rombos, framed in granite bands
+    pavement: { course: 0.2, length: [0.2, 0.2], hex: 0x9a958a, tone: 0.06, joint: 0x6a665e, step: 1.5, maxCourses: 2,
+      pattern: { alt: 0xb5a37f, band: 0x7f7b72, bandEvery: 8 } },
     gutter: { rows: 2, width: 0.30, dish: 0.03, hex: 0x8a8270 },
     bands: { granite: 0x9a968c, basalt: 0x5a554c, sett: 0xb5a98f, bay: 0xc8bca2 },
     edging: {

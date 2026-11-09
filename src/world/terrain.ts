@@ -46,7 +46,7 @@ import {
   ROAD_SURFACE_CODE, pavedSurfaceUniforms, roadSurfaceUniforms,
   type PavedSurfaceConfig, type RoadSurface, type RoadSurfaceWork,
 } from './roadSurfaces.ts';
-import { BANK_KIND_CODE, builtEnvironmentFor } from './maps/builtEnvironmentTable.ts';
+import { BANK_KIND_CODE, PAVED_GROUND_MAX, builtEnvironmentFor, pavedGroundLocal, type PavedGround } from './maps/builtEnvironmentTable.ts';
 import { trackSurfaceAt, trackSurfacePolicy, type TrackSurface } from './trackSurface.ts';
 import { roadPaveSampler } from './roadPave.ts';
 import { completeRoadEndpoints, gradeRoadPortals, alignHardstandRoadPortals,
@@ -4054,9 +4054,10 @@ export function makeMaskTexture(
   viaductCut = false,
   lawns: readonly CivicRect[] = [],
   pavedRooms: readonly CivicRect[] = [],
+  grounds: readonly PavedGround[] = [],
 ): THREE.DataTexture {
   const steps = makeMaskTextureSteps(seedNoi, layout, landformW, waterWetnessAt, shoreDirtStart, sorWetnessAt, viaductCut,
-    lawns, pavedRooms);
+    lawns, pavedRooms, grounds);
   for (;;) {
     const next = steps.next();
     if (next.done) return next.value;
@@ -4081,6 +4082,7 @@ function* makeMaskTextureSteps(
   viaductCut: boolean,
   lawns: readonly CivicRect[],
   pavedRooms: readonly CivicRect[],
+  grounds: readonly PavedGround[] = [],
 ): Generator<void, THREE.DataTexture, void> {
   const _VILLAGE = layout.village;
   const activityWear = layout.terrain.villageWear === 'activity-patches';
@@ -4285,6 +4287,21 @@ function* makeMaskTextureSteps(
     for (let tz = j0; tz <= j1; tz++) for (let tx = i0; tx <= i1; tx++) {
       const x = (tx + 0.5) / T - HALF, z = (tz + 0.5) / T - HALF;
       const depth = Math.min(x - r.x0, r.x1 - x, z - r.z0, r.z1 - z) + 1.0;
+      const pave = Math.max(0, Math.min(1, depth / 1.6 + 0.5));
+      if (pave <= 0) continue;
+      const j = (tz * s + tx) * 4;
+      px[j] = Math.max(px[j], pave * 255); px[j + 1] *= 1 - pave; px[j + 3] *= 1 - pave;
+    }
+  }
+  // (built-env-270b) the row's open built ground (maps/builtEnvironmentTable.ts roads.ground): a place, a forecourt, an
+  // approach, a quay — stamped as a paved room is, in its own heading
+  for (const g of grounds) {
+    const ext = Math.hypot(g.hw, g.hl) + 2;
+    const i0 = Math.max(0, Math.floor((g.x - ext + HALF) * T)), i1 = Math.min(s - 1, Math.ceil((g.x + ext + HALF) * T));
+    const j0 = Math.max(0, Math.floor((g.z - ext + HALF) * T)), j1 = Math.min(s - 1, Math.ceil((g.z + ext + HALF) * T));
+    for (let tz = j0; tz <= j1; tz++) for (let tx = i0; tx <= i1; tx++) {
+      const [lx, lz] = pavedGroundLocal(g, (tx + 0.5) / T - HALF, (tz + 0.5) / T - HALF);
+      const depth = Math.min(g.hw - Math.abs(lx), g.hl - Math.abs(lz)) + 1.0;
       const pave = Math.max(0, Math.min(1, depth / 1.6 + 0.5));
       if (pave <= 0) continue;
       const j = (tz * s + tx) * 4;
@@ -4532,6 +4549,7 @@ uniform vec4 uMaskStack;
 uniform vec4 uRoadClass;
 float gRoadTex = 0.0;        // the road's paved share here: the map's uRoadTex, 1 inside a paved town rect (SplatConfig
                              // townPaving, map revival lane 2), or a styled path's own surface (asphalt, setts) over both
+float gGroundCls = 0.0;      // (built-env-270b) the row's open ground's own surface here (ROAD_SURFACE_CODE), 0 none
 float gRoadClass = 0.0;      // a styled path's surface (terrain.ts ROAD_SURFACE_CODE): 0 the map's own road
 // roads lane (2026-10-09): the road frame (uRoadFrame, the stack's frame layer): the nearest line's heading, the running
 // length along it at this pixel (m, wrapping at 1024 m) and 1 where the frame holds (inside the square, on a road's ramp)
@@ -4578,8 +4596,14 @@ uniform vec4 uRoadSurf, uRoadSurfB;
 // arcs, the gutter's width) by ROAD_SURFACE_CODE (0: the R layer's print), (patches, cracks, iron covers, —), and the
 // kerbed town rect (centre xz, half-size xz; z 0 = no kerbs)
 uniform vec4 uPaveClass, uPaveWear, uPaveTown;
-// built-env-270: 1 where the Low tier paves the streets in their own class (roadSurfaces.ts PavedSurfaceConfig.low)
+// built-env-270: 1 where the Low tier paves the streets in their own class (roadSurfaces.ts PavedSurfaceConfig.low);
+// built-env-270b: + 2 where it paves the catalogue's paths in theirs (PavedSurfaceConfig.lowPaths)
 uniform float uPaveLow;
+// built-env-270b: the row's open built ground that names a surface (maps/builtEnvironmentTable.ts roads.ground): each its
+// centre and half extents (x, z, hw, hl) and (cos yaw, sin yaw, ROAD_SURFACE_CODE, 0); uPaveGroundN how many
+uniform vec4 uPaveGround[${PAVED_GROUND_MAX}];
+uniform vec4 uPaveGroundB[${PAVED_GROUND_MAX}];
+uniform float uPaveGroundN;
 // (R2) the procedural paving's (stone tone, a kerbed town's street class, centre lines, shell-hole fills)
 uniform vec4 uPaveExtra;
 // (the maps lane, 228) a square's setts' tone over the streets' (x; 1 on every map that names none)
@@ -5273,11 +5297,25 @@ void splatCompute() {
     vec4 rc = texelFetch(uMask, rt + ivec2(0, int(uRoadClass.y + 0.5)), 0);
     gRoadClass = floor(rc.r * 255.0 + 0.5);
     // (roads lane: a class the period catalogue gave a path carries bit 7 — the Low tier draws that path as the map's own)
-    if (gRoadClass > 127.5) gRoadClass = uLandTier > 0.5 ? gRoadClass - 128.0 : 0.0;
+    // (built-env-270b: a row whose paths pave on Low too — uPaveLow's 2 bit — keeps them in their class there)
+    if (gRoadClass > 127.5) gRoadClass = uLandTier > 0.5 || uPaveLow > 1.5 ? gRoadClass - 128.0 : 0.0;
     roadHalfW = floor(rc.g * 255.0 + 0.5) * 0.1;
     float rTurn = (rc.b * 65280.0 + rc.a * 255.0) * (6.2831853 / 65536.0);
     gRoadDir = vec2(cos(rTurn), sin(rTurn));
     if (gRoadClass > 0.5) gRoadTex = abs(gRoadClass - 4.0) < 0.5 ? 0.0 : 1.0; // (4 dirt; 5–7 clinker, concrete, brick)
+  }
+  // (built-env-270b) the row's open built ground: paved in its own surface whatever the map's streets are (a place on an
+  // unpaved map, a shrine's approach, a quay); tested only on the mask's room texels (a core off any centreline)
+  if (uPaveGroundN > 0.5 && mk.r > 0.4 && dRoad > 10.0) {
+    for (int gi = 0; gi < ${PAVED_GROUND_MAX}; gi++) {
+      if (float(gi) >= uPaveGroundN) break;
+      vec4 pg = uPaveGround[gi], pgB = uPaveGroundB[gi];
+      vec2 pd = wp.xz - pg.xy;
+      vec2 pl = vec2(pd.x * pgB.x - pd.y * pgB.y, pd.x * pgB.y + pd.y * pgB.x);
+      vec2 pq = abs(pl) - pg.zw;
+      float pw = 1.0 - smoothstep(-0.5, 1.5, max(pq.x, pq.y));
+      if (pw > 0.0) { gRoadTex = max(gRoadTex, pw); gGroundCls = pgB.z; }
+    }
   }
   // roads lane (2026-10-09): the road frame from the stack's frame layer — one exact texel a mask texel: the nearest line's
   // heading and its running length at the texel's centre, the pixel's own offset added along the heading (exact on a bend,
@@ -5837,6 +5875,9 @@ void splatCompute() {
   if (uSea > 0.5 && uBank.x > 0.5 && uBank.x < 5.5 && vShore < 31.0) {
     float bEdge = vShore + (n1h - 0.5) * 1.6 + (n1 - 0.5) * 0.9;
     float bankW = (1.0 - fMs) * (1.0 - roadCore) * (1.0 - smoothstep(uBank.y - 0.9, uBank.y + 0.9, bEdge)) * uBank.z;
+    // (built-env-270b, the phones' frontier pond, reservoir and fjord: "pale sand" — the shoreline apron ran on past the
+    // facing's width in the worn layer's raw sand) where the row names a facing, the apron is that facing
+    bankW = max(bankW, seaSand * (1.0 - fMs) * (1.0 - roadCore) * uBank.z);
     if (bankW > 0.003) {
       const vec3 bL = vec3(0.34, 0.45, 0.21);
       bool bRock = uBank.x > 2.5 && uBank.x < 3.5;
@@ -5878,7 +5919,14 @@ void splatCompute() {
         }
         float bStone = 1.0 - smoothstep(0.36, 0.48, bShape);
         float bVis = tileVis(sz);
-        float bTone = mix(1.0, (0.74 + 0.5 * bh) * mix(0.42, 1.0 + 0.10 * (0.4 - bShape), bStone), bVis);
+        // (built-env-270b, fjord: "beige sand" — past the stones' resolution the facing went to 1.0, a sixth over the
+        // stones' own mean; it fades to that mean, ~0.86) and shingle carries a coarser course of larger stones, 6 cells
+        // a side, that the far view still resolves
+        float bTone = mix(0.86, (0.74 + 0.5 * bh) * mix(0.42, 1.0 + 0.10 * (0.4 - bShape), bStone), bVis);
+        if (uBank.x < 2.5) {
+          float bBig = fract(sin(dot(floor(wp.xz / (sz * 6.0)), vec2(41.3, 289.1))) * 43758.5453);
+          bTone *= mix(1.0, 0.86 + 0.28 * bBig, tileVis(sz * 6.0));
+        }
         bCol *= bTone;
         if (nrmOn) n.xy = mix(n.xy, vec2(0.5) + bf * 0.55 * bStone, bankW * bVis * 0.8);
       }
@@ -8526,7 +8574,7 @@ function* createSplatMaterialSteps(
   const maskNoi = new SimplexNoise({ random: mulberry32(3010) });
   const mask = yield* makeMaskTextureSteps(maskNoi, layout, rockMask, waterWetnessAt,
     S.shoreDirt ? (S.seaRamp?.[0] ?? 0.40) : null, sorWetnessAt, !!S.townPaving, layout.civicGround?.lawns ?? [],
-    layout.civicGround?.paved ?? []);
+    layout.civicGround?.paved ?? [], builtEnvironmentFor(mapId)?.roads.ground ?? []);
   yield;
   if (!_splatFields) yield* splatFieldSteps();
   const noiseTex = makeShaderNoiseTexture(3011);
@@ -8669,7 +8717,18 @@ function* createSplatMaterialSteps(
     shader.uniforms.uPaveTown = { value: new THREE.Vector4(...paved.town) };
     shader.uniforms.uPaveExtra = { value: new THREE.Vector4(...paved.extra) };
     shader.uniforms.uPaveSquare = { value: new THREE.Vector4(...paved.square) };
-    shader.uniforms.uPaveLow = { value: pavedCfg?.low ? 1 : 0 };
+    shader.uniforms.uPaveLow = { value: (pavedCfg?.low ? 1 : 0) + (pavedCfg?.lowPaths ? 2 : 0) };
+    // (built-env-270b) the row's open ground that names a surface (the rest is stamped into the mask only)
+    const surfacedGround = (builtEnvironmentFor(mapId)?.roads.ground ?? []).filter((g) => g.surface).slice(0, PAVED_GROUND_MAX);
+    shader.uniforms.uPaveGround = { value: Array.from({ length: PAVED_GROUND_MAX }, (_, i) => {
+      const g = surfacedGround[i];
+      return g ? new THREE.Vector4(g.x, g.z, g.hw, g.hl) : new THREE.Vector4(0, 0, 0, 0);
+    }) };
+    shader.uniforms.uPaveGroundB = { value: Array.from({ length: PAVED_GROUND_MAX }, (_, i) => {
+      const g = surfacedGround[i], yaw = ((g?.yawDeg ?? 0) * Math.PI) / 180;
+      return g ? new THREE.Vector4(Math.cos(yaw), Math.sin(yaw), ROAD_SURFACE_CODE[g.surface!], 0) : new THREE.Vector4(1, 0, 0, 0);
+    }) };
+    shader.uniforms.uPaveGroundN = { value: surfacedGround.length };
     shader.uniforms.uTownWear = { value: S.townWear ?? 1 };
     shader.uniforms.uYardCinder = { value: yardCinder };
     shader.uniforms.uThatch = { value: thatchV };

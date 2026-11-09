@@ -149,7 +149,8 @@ for (const line of [
   "const roadWork = roadSurfaceUniforms(builtEnvironmentFor(mapId)?.roads.work ?? 'climate', groundProfile.climate, S.roadSurface);",
   'const pavedCfg: PavedSurfaceConfig | undefined = S.pavedSurface ?? builtEnvironmentFor(mapId)?.roads.paved ?? undefined;',
   'if (gRoadClass > 0.5) gRoadTex = abs(gRoadClass - 4.0) < 0.5 ? 0.0 : 1.0;',
-  'if (gRoadClass > 127.5) gRoadClass = uLandTier > 0.5 ? gRoadClass - 128.0 : 0.0;',
+  // (built-env-270b: a row whose paths pave on Low too keeps their class there: uPaveLow's 2 bit)
+  'if (gRoadClass > 127.5) gRoadClass = uLandTier > 0.5 || uPaveLow > 1.5 ? gRoadClass - 128.0 : 0.0;',
   'float roadFloorL = floorK * dot(a.rgb, vec3(0.34, 0.45, 0.21));',
   'a.rgb *= 1.0 - min(mix(rut * rutShade, trodMid * 0.55, laneFar), 1.0) * mix(0.34, 0.26, gRoadTex);',
 ]) assert.ok(source.includes(line.replace(/\s+/g, ' ')), `the material: ${line}`);
@@ -157,16 +158,20 @@ for (const line of [
 // grey pull holds and the lanes keep their whole darkening)
 assert.ok(source.includes('if (dW > 0.002 && wR > 0.002 && uRoadSurf.x + uRoadSurf.y + uRoadSurf.z + uRoadSurfB.x > 0.0 && uLandTier > 0.5) {'),
   'the worked carriageway runs only where a gain is set, and never on the Low tier (the phones keep the old law)');
-assert.ok(source.includes('if (uLandTier < 0.5) pCls = gRoadClass > 0.5 && gRoadClass < 3.5 ? gRoadClass : (uPaveLow > 0.5 && onStreet > 0.5 && streetCls > 0.5 && streetCls < 3.5 ? streetCls : 0.0);'.replace(/\s+/g, ' ')),
-  'Low paves by the old law, and a map whose row asks for it its streets in their class (built-env-270)');
+assert.ok(source.includes(('if (uLandTier < 0.5) pCls = gRoadClass > 0.5 && (gRoadClass < 3.5 || (uPaveLow > 1.5 && abs(gRoadClass - 6.0) < 0.5)) ? gRoadClass'
+  + ' : (mod(uPaveLow, 2.0) > 0.5 && onStreet > 0.5 && streetCls > 0.5 && streetCls < 3.5 ? streetCls'
+  + ' : (onStreet < 0.5 && gGroundCls > 0.5 && (gGroundCls < 3.5 || abs(gGroundCls - 6.0) < 0.5) ? gGroundCls : 0.0));').replace(/\s+/g, ' ')),
+  'Low paves by the old law; a row that asks paves its streets (1 bit) and its catalogue paths (2 bit, concrete too) in their '
+  + 'class, and its open ground in its own surface (built-env-270, 270b)');
 // the Low tier (the phones' default) keeps every old road term: the styled paths' old code verbatim, no kerbed pave-out, no
-// square wear, the old tone and lane swing (the phone pair checks the frames)
+// square wear, the old tone and lane swing (the phone pair checks the frames); (built-env-270b) a row that paves on Low
+// takes the desktop's binder at its own tone, every other map the old dark styled path
 {
   const main = terrainSourceText();
   const lowAt = main.indexOf('} else if (uLandTier < 0.5) {');
   assert.ok(lowAt > 0, 'the Low branch of the paved surfaces');
   const lowBlock = main.slice(lowAt, main.indexOf('\n      } else {\n', lowAt));
-  for (const line of ["float course = rq.x / 0.16, ci = floor(course);", "vec3 asph = vec3(0.068, 0.068, 0.072) * (0.92 + 0.16 * agg);",
+  for (const line of ["float course = rq.x / 0.16, ci = floor(course);", "vec3 asph = (uPaveLow > 0.5 ? vec3(0.118, 0.116, 0.111) * uPaveExtra.x : vec3(0.068, 0.068, 0.072)) * (0.92 + 0.16 * agg);",
     "vec2 pc = vec2(rq.x / 4.2, rq.y / 2.4), pcI = floor(pc), pcF = fract(pc);"]) {
     assert.ok(lowBlock.includes(line), `the Low branch keeps the old styled law: ${line}`);
   }

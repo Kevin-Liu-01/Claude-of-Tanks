@@ -31,6 +31,9 @@ export interface BuiltEnvironmentRow {
     readonly paths: readonly (RoadSurface | null)[] | null;
     /** the worked unpaved carriageway: 'climate' its climate's gains, 'off' the old road law, or the climate's under these */
     readonly work: 'climate' | 'off' | Partial<RoadSurfaceWork>;
+    /** (built-env-270b) open built ground off the road net — a place, a forecourt, an approach, a quay — painted into the
+     *  road mask as a civic room is; absent: none */
+    readonly ground?: readonly PavedGround[];
   };
   readonly civic: CivicStyleId | null;
   /** the waterside's craft and works: the boats (boatHulls.ts), the jetties (jettyKit.ts), the reeds (reedBeds.ts), the
@@ -46,6 +49,40 @@ export interface BuiltEnvironmentRow {
      *  pitching); null keeps the old apron (the worn ground's layer) */
     readonly bank: BankFacing | null;
   };
+}
+
+/** (built-env-270b) A piece of open built ground off the road net: a rectangle centred at (x, z), `hw` metres across and
+ *  `hl` along its heading `yawDeg` (0: along +z; a landmark's own heading names its approach), laid in `surface` (its own
+ *  paving class, drawn whatever the map's streets are) or, absent, in the map's own road (its streets' paving where the map
+ *  paves them, else the worn carriageway: a desert track). Paint only: no height, ground type or placement reads it.
+ *  At most PAVED_GROUND_MAX of a map's grounds carry a surface (the terrain material's uniforms). */
+export interface PavedGround {
+  readonly x: number;
+  readonly z: number;
+  readonly hw: number;
+  readonly hl: number;
+  readonly yawDeg?: number;
+  readonly surface?: RoadSurface;
+  /** what the place is (the census line it answers) */
+  readonly what: string;
+}
+export const PAVED_GROUND_MAX = 8;
+
+/** (x, z) in the ground's own frame: across (x) and along (z) its heading. */
+export function pavedGroundLocal(g: PavedGround, x: number, z: number): [number, number] {
+  const yaw = ((g.yawDeg ?? 0) * Math.PI) / 180, c = Math.cos(yaw), s = Math.sin(yaw);
+  const dx = x - g.x, dz = z - g.z;
+  return [dx * c - dz * s, dx * s + dz * c];
+}
+
+/** Whether (x, z) lies on one of a map's paved grounds (a margin out from its edges), or null where it has none. */
+export function pavedGroundTest(mapId: string | null | undefined, margin = 0): ((x: number, z: number) => boolean) | null {
+  const grounds = builtEnvironmentFor(mapId)?.roads.ground ?? [];
+  if (!grounds.length) return null;
+  return (x, z) => grounds.some((g) => {
+    const [lx, lz] = pavedGroundLocal(g, x, z);
+    return Math.abs(lx) < g.hw + margin && Math.abs(lz) < g.hl + margin;
+  });
 }
 
 /** A bank's facing: sand (the worn ground's layer), shingle (rounded stones), rock (the rock layer), pitched (dressed
@@ -74,6 +111,14 @@ const row = (roads: BuiltEnvironmentRow['roads'], civic: CivicStyleId | null, sh
 const UNPAVED = Object.freeze({ paved: null, paths: null, work: 'climate' } as const);
 const PROTECTED = Object.freeze({ paved: null, paths: null, work: 'off' } as const);
 
+/** (built-env-270b, Suzhou Creek: "unpaved lanes" — the lilong blocks' 4 m lanes between their terraces drew the lots'
+ *  village wear) each block (maps/blackglass.ts LILONG_BLOCKS: three rows of six or eight 4.9 m gate houses, 12 m deep, 4 m
+ *  lanes) paved over in the street's setts, 3 m past its ends to the lane mouths. */
+const LILONG_GROUND: readonly PavedGround[] = Object.freeze([
+  [-36, -68, 95.3, 6], [-120, 94, 48.7, 6], [6, -140, 95.3, 6], [-60, -134, 95.3, 6], [72, -134, 83.3, 6], [6, 184, 190.3, 6],
+  [-60, 196, 190.3, 6], [84, 196, 78.7, 6], [168, 130, 98.8, 6], [-180, 106, -8.9, 6], [-24, -194, 95.3, 6], [42, -194, 173.3, 8],
+].map(([x, z, yawDeg, n]) => Object.freeze({ x, z, yawDeg, hw: n * 4.9 / 2 + 3, hl: 22 + 1, what: 'a lilong block’s lanes in setts' })));
+
 export const BUILT_ENVIRONMENT = Object.freeze({
   // Prokhorovka, 1943: the kolkhoz's dirt roads (the owner's light-touch rule: the old road law)
   verdant: row(PROTECTED, null),
@@ -100,7 +145,7 @@ export const BUILT_ENVIRONMENT = Object.freeze({
   coastal: row({ paved: { street: 'asphalt', patches: 0.5, cracks: 0.5, covers: 0.3, puddles: 0.3, tone: 0.62, low: true }, paths: null, work: 'off' }, null),
   // Lorraine (the Moselle), 1944 (built-env-270, the photos: the Moselle's banks low grey-brown silt with reeds and willows;
   // r1's blind critics read the macadam through the village as wrong for its muddy 1944 rue, so the roads stay earth)
-  autumn: row(UNPAVED, 'lorrain', banked({ kind: 'mud', widthM: 4, hex: 0x5a5142 })),
+  autumn: row({ ...UNPAVED, ground: [{ x: -105.5, z: 96.75, hw: 21.5, hl: 22.75, surface: 'cobble', what: 'the place: setts out to its houses round the limes, the cross and the well (census: "a bare dirt field")' }] }, 'lorrain', banked({ kind: 'mud', widthM: 4, hex: 0x5a5142 })),
   // the Virgin Lands, 1958
   steppe: row(UNPAVED, null),
   // the Ruhr, 1962
@@ -108,18 +153,18 @@ export const BUILT_ENVIRONMENT = Object.freeze({
   // the Fulda Gap, 1984 (built-env-270, the photos: the Kreisstraßen and the village's through road a patched dark asphalt
   // with white edge lines, the farm roads asphalt too (r1: their concrete slabs at the map's gauge read as a pale runway with
   // a sawtooth edge); the ridge lanes earth; the ponds' edges mud under rushes)
-  frontier: row({ paved: { tone: 0.82, patches: 0.8, cracks: 0.6, covers: 0.4, markings: 1 }, paths: ['patched', 'patched', 'patched', 'patched', null, null], work: 'off' },
+  frontier: row({ paved: { tone: 0.82, patches: 0.8, cracks: 0.6, covers: 0.4, markings: 1 }, paths: ['patched', 'patched', 'patched', 'patched', null, null], work: 'off', ground: [{ x: 0, z: 0, hw: 42, hl: 42, surface: 'cobble', what: 'the Dorfplatz in basalt setts out to the houses’ fronts (census: the square 10 m off them)' }] },
     'hessian', banked({ kind: 'mud', widthM: 2.5, hex: 0x5e5444 })),
   // Bjerkvik on the Herjangsfjord, May 1940 (built-env-270, the photos: the gravel roads stay; the shore shingle and cobbles
   // of grey granite and gneiss between smooth slabs, no sand beach; r4: 16 cm stones read as street cobbles — Dalmatia's 7 cm)
   fjord: row(PROTECTED, null, { boats: 'faering', jetty: 'brygge', reeds: 'phragmites', drift: 'nordland', ford: 'gauge',
-    bank: { kind: 'shingle', widthM: 7, hex: 0x8a8680, stoneM: 0.07 } }),
+    bank: { kind: 'shingle', widthM: 7, hex: 0x787b7b, stoneM: 0.07 } }),
   // the Jamuna's chars, 2010: the village roads brick soling (the embankment roads past the villages stay earth)
   // (built-env-270, the photos: the chars' banks pale grey silt and sand, not the fields' dark soil)
   delta: row({ paved: null, paths: ['brick', 'brick', null, null, 'brick'], work: 'climate' }, 'bengal',
     { boats: 'nouka', jetty: 'stilts', reeds: 'kash', drift: 'breton', ford: 'bamboo', bank: { kind: 'sand', widthM: 9, hex: 0xb8b0a0 } }),
   // Wadi Rum, 2008
-  badlands: row(UNPAVED, 'wadirum'),
+  badlands: row({ ...UNPAVED, ground: [{ x: 82.45, z: -61.65, hw: 2.5, hl: 52.5, yawDeg: 126.7, what: 'the track from the plaza to the Desert Patrol fort’s west gate, worn sand' }] }, 'wadirum'),
   // Kohima, 1944: the metalled Dimapur–Imphal road (path 1, south to north over the ridge), a dark tar macadam with few
   // cracks and no covers (R2, the first frames: a pale modern grey band); the jeep tracks earth
   // (built-env-270 r4: the shingle bank read as dry cracked mud in the rains and lost the blind A/B 0 of 8 — the old wet
@@ -129,7 +174,7 @@ export const BUILT_ENVIRONMENT = Object.freeze({
   alpine: row(UNPAVED, null, { boats: 'lakeboat', jetty: 'stage', reeds: 'phragmites', drift: 'breton', ford: 'gauge', bank: null }),
   // the Aso caldera, 2015 (built-env-270, the photos: the prefectural and municipal roads a smooth dark asphalt with white
   // edge and centre lines, the farm roads (nōdō) concrete)
-  caldera: row({ paved: { tone: 0.80, patches: 0.3, cracks: 0.3, covers: 0.5, markings: 1 }, paths: ['asphalt', 'asphalt', 'asphalt', 'concrete', 'concrete'], work: 'climate' }, null),
+  caldera: row({ paved: { tone: 0.80, patches: 0.3, cracks: 0.3, covers: 0.5, markings: 1, lowPaths: true }, paths: ['asphalt', 'asphalt', 'asphalt', 'concrete', 'concrete'], work: 'climate', ground: [{ x: 60, z: 106.25, hw: 2.5, hl: 39.75, surface: 'concrete', what: 'the shrine’s sandō from path 4 to its reserved forecourt (landmarks-271 site, its apron kept)' }] }, null),
   // Völklingen, 1945: the works town's streets in setts, the roads beyond it cinder and earth, the sooty basalt's 0.62
   // (ground lane, 2026-10-15: the setts read with darker grit joints, wider, held further out)
   foundry: row({ paved: { street: 'cobble', square: 'cobble', townOnly: true, tone: 0.62 }, paths: null, work: 'climate' }, null),
@@ -146,7 +191,7 @@ export const BUILT_ENVIRONMENT = Object.freeze({
   // (built-env-270, the photos: the creek between granite-block embankment walls, darkened at the waterline)
   blackglass: row({
     paved: { street: 'asphalt', square: 'cobble', kerbs: true, gutterM: 0.24, patches: 0.6, cracks: 0.8, covers: 0.6, puddles: 0.5, tone: 0.85 },
-    paths: [null, null, null, 'cobble', null, null], work: 'climate',
+    paths: [null, null, null, 'cobble', null, null], work: 'climate', ground: LILONG_GROUND,
   }, 'shanghai', banked({ kind: 'pitched', widthM: 4, hex: 0x8c877d, stoneM: 0.55 })),
   // Monument Valley, 1965
   titan_gorge: row(UNPAVED, null),
@@ -164,7 +209,7 @@ export const BUILT_ENVIRONMENT = Object.freeze({
   airfield: row(UNPAVED, null),
   // Siwa, 2010 (built-env-270, the photos: the main road a thin grey asphalt drifted over with sand; the lake's margins
   // salt-crusted mud plates, white where the salt is thick)
-  oasis: row({ paved: { tone: 0.95, patches: 0.6, cracks: 0.8, covers: 0 }, paths: ['asphalt', null, null, null, null], work: 'climate' }, null,
+  oasis: row({ paved: { tone: 0.95, patches: 0.6, cracks: 0.8, covers: 0 }, paths: ['asphalt', null, null, null, null], work: 'climate', ground: [{ x: 64, z: 34, hw: 2.5, hl: 17.4, yawDeg: -26.6, surface: 'asphalt', what: 'the lane from path 0’s bend to the old mosque’s market side' }, { x: 50, z: 57.25, hw: 12, hl: 7.25, what: 'the market ground before the mosque’s south doors, trodden earth' }] }, null,
     banked({ kind: 'sand', widthM: 8, hex: 0xe2d9c8 })),
   // DYE-M at Cape Dyer, 1985 (its frozen lakes' craft the Alpine lake's, should one ever be launched)
   whiteout: row(UNPAVED, null, { boats: 'lakeboat', jetty: 'stage', reeds: 'frost', drift: 'nordland', ford: 'gauge', bank: null }),
@@ -175,7 +220,7 @@ export const BUILT_ENVIRONMENT = Object.freeze({
   // Cà Mau, 2012
   // (built-env-270, the photos: the levee lanes concrete, 2-3 m; the creeks' banks grey tidal mud — r3: the first mud
   // rendered paler than the wet strand it replaced, read as beach sand; a shade under the photos' #5a5348)
-  mangrove: row({ paved: { tone: 0.95, patches: 0.6, cracks: 0.8, covers: 0 }, paths: ['concrete', 'concrete', 'concrete', 'concrete', 'concrete'], work: 'climate' }, null,
+  mangrove: row({ paved: { tone: 0.95, patches: 0.6, cracks: 0.8, covers: 0 }, paths: ['concrete', 'concrete', 'concrete', 'concrete', 'concrete'], work: 'climate', ground: [{ x: -60, z: 141, hw: 1.5, hl: 54.5, surface: 'concrete', what: 'the concrete lane from path 4 to the canal market’s reserved bank' }] }, null,
     { boats: 'xuong', jetty: 'stilts', reeds: 'nipa', drift: 'breton', ford: 'gauge', bank: { kind: 'mud', widthM: 6, hex: 0x4a443a } }),
   // the Dalmatian bay, 1992
   // (built-env-270, the photos: the coast road and the village streets a patched asphalt — r1: every street, the cameras'
@@ -190,7 +235,7 @@ export const BUILT_ENVIRONMENT = Object.freeze({
   // Taurus–Littrow, 1972: the regolith has no potholes or washboard
   moon: row({ paved: null, paths: null, work: { potholes: 0, washboard: 0 } }, null),
   // Ronda, 1972: the old towns' streets and squares in setts
-  cliffbridge: row({ paved: { street: 'cobble', square: 'cobble', townOnly: true, tone: 1.1 }, paths: null, work: 'climate' }, 'andalusian'),
+  cliffbridge: row({ paved: { street: 'cobble', square: 'cobble', townOnly: true, tone: 1.1 }, paths: null, work: 'climate', ground: [{ x: 57, z: 192, hw: 14, hl: 20, surface: 'cobble', what: 'the plaza before the bullring, setts from the plaza norte to its reserved apron' }] }, 'andalusian'),
 } satisfies Record<MapId, BuiltEnvironmentRow>);
 
 /** A map's waterside (an id that is not a battlefield: the European default). */
