@@ -1,4 +1,5 @@
 import './ui/richTooltip.css';
+import { installAirSupportBridge } from './game/airSupportBridge.ts';
 import { createVehicleGroundSampler } from './world/vehicleGroundSampler.ts';
 import './ui/battleUiVisibility.css';
 import './ui/hudCustomization.css';
@@ -254,7 +255,8 @@ import { clearMatchSession, createBus, createGameState, watchRevealsAll } from '
 import { campaignOperationById } from './game/campaignOperations.ts';
 // Pure roster planning: the solo battle authority stays behind soloBattleAccess (boot-static-closure receipt).
 import { soloRosterPlan } from './game/soloRosterPlan.ts';
-import { deathsAreFinal, matchRulesetFor, terrainVariantFor } from './sim/matchRuleset.ts';
+import { AIR_STRIKE_KINDS, deathsAreFinal, matchRulesetFor, terrainVariantFor } from './sim/matchRuleset.ts';
+import { AIR_STRIKE_BITS } from './sim/playerActions.ts';
 import { normalizeGameMode } from './sim/gameModeCatalog.ts';
 import { teamNationsFlags } from './sim/teamNations.ts';
 import { SHOT_VIEWS, type ShotViewName } from './dev/shotContract.ts';
@@ -705,6 +707,8 @@ const devTrace = traceRequested
   })
   : null;
 const bus = createBus(devTrace ? (ev, payload) => devTrace.event(ev, payload) : null);
+// Air Support (air-support-270): the strafing jet's and the AC-130's rounds fire from the aircraft (airSupportBridge.ts)
+installAirSupportBridge(bus);
 installBattleRecords(bus);
 installCampaignProgress(bus); // campaign slice 4 (2026-09-12): Frontline Assault sorties persist locally
 const game: MainGameState = createGameState<
@@ -1777,7 +1781,9 @@ const audio = await bootStage('audio', () => {
     return deathsAreFinal(game.ruleset?.mode === mode ? game.ruleset : matchRulesetFor(mode)) ? game.rosterTanks : null;
   },
   // Each warmed hull's powertrain from its whole spec, as its rig will resolve it (an IFV's diesel turns on its role).
-  getVehicleSpec: getSpec });
+  getVehicleSpec: getSpec,
+  // The battle's time of day (the ambience's night life: owls and crickets, no songbirds after dark).
+  getTimeOfDay: () => battleAtmosphere.current?.weather?.timeOfDay ?? null });
   a.bindBus(bus);
   return a;
 });
@@ -2377,6 +2383,7 @@ playerBattleActions = createPlayerBattleActions({
     queueConsumable: (slot) => { onlineMatch.current?.queueConsumable(slot); },
     queueAction: (action) => { onlineMatch.current?.queueAction(action); },
   },
+  strikes: { kinds: AIR_STRIKE_KINDS, bit: (kind) => AIR_STRIKE_BITS[kind] },
   rules: {
     selectShell: battleClientAccess.selectShell,
     repairAllModules: battleClientAccess.repairAllModules,
@@ -3849,7 +3856,9 @@ const mainFrame = createMainFrameRuntime({
   // while every compositor frame, the boot card's tank included, waited). The warm now links them between frames first.
   isBootCovering: () => !bootComplete,
   isTransitionHoldingSceneForFadeIn: () => transition.holdingSceneForFadeIn,
-  isPresentationRestoreCovering: () => garagePhasePresentation.restoringGpu || (game.phase === 'garage' && (garageReturn.current?.lastTrace?.presentationUnready === true || garageReturn.current?.lastTrace?.awaitingHandoff === true)),
+  // (269, the second solo battle at 97%) a Garage restore covers Garage frames only: a battle that took the screen from a
+  // Leave's restore still running owns its frames by its own cover, and its reveal waits for one of them
+  isPresentationRestoreCovering: () => game.phase === 'garage' && (garagePhasePresentation.restoringGpu || garageReturn.current?.lastTrace?.presentationUnready === true || garageReturn.current?.lastTrace?.awaitingHandoff === true),
   cameraInput: camInput,
   getMobileAutoAim: mobileBattleInput.getAutoAim,
   rig,
@@ -4370,6 +4379,7 @@ if (diagnosticsRequested) {
       },
       getDamagePanel: currentDamagePanel,
       getNetworkDiagnostics: () => onlineMatch.current?.stats() ?? null,
+      isNetworkBattle: onlineMatchActive,
       collectTelemetry: () => perfHud.collectTelemetry(),
       sampleShadowContribution: () => perfHud.sampleShadowContribution(),
     } satisfies DebugSurfaceDependencies,

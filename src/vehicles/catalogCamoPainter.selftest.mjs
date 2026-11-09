@@ -1,7 +1,9 @@
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { createCanvas, Path2D, DOMMatrix, ImageData } from '@napi-rs/canvas';
-import { CATALOG_CAMO_ART_IDS, createCatalogCamoPainter } from './catalogCamoPainter.ts';
+import { CATALOG_CAMO_ART_IDS, createCatalogCamoPainter, fleetCamoArtId } from './catalogCamoPainter.ts';
+import { TANK_SPECS } from './specs.ts';
+import { AUTHORED_PAINT_ENTRIES } from './authoredPaintCatalog.ts';
 import { createMaterialPainter } from './materialPainter.ts';
 import { paintMaterialBase } from './materialPainterWorker.ts';
 import { resolveCamoVisual, camoPatternIdHash, camoPatternStreamSeed } from './materials.ts';
@@ -59,6 +61,18 @@ for (const id of ['summer', 'desert', 'winter', 'merdc', 'tropic', 'digital', 'd
     for (let x = 1; x < 192; x++) interior += delta(y * 192 + x, y * 192 + x - 1);
   }
   assert.ok(seam / 384 < interior / (192 * 191) * 3 + 3, `${id}: periodic boundaries stay within local edge contrast`);
+}
+// Every scheme a spec, an authored paint or a shared preset paints with has an art family, so a missing family fails by
+// its scheme's name and its users' ids (269: 'merdc' resolved to nothing for the Mk 5/1's and the Carcara's paints)
+{
+  const users = new Map();
+  const use = (scheme, who) => { if (scheme) users.set(scheme, [...(users.get(scheme) ?? []), who]); };
+  for (const s of Object.values(TANK_SPECS)) use(s.visual?.scheme, s.id);
+  for (const e of AUTHORED_PAINT_ENTRIES) use(e.visual?.scheme, e.id);
+  for (const p of SHARED_CAMO_PRESETS) use(p.visual?.scheme, p.id);
+  for (const [scheme, who] of users) {
+    assert.ok(fleetCamoArtId(scheme), `scheme '${scheme}' has no fleet art family (fleetCamoArtId), used by ${[...new Set(who)].slice(0, 8).join(', ')}`);
+  }
 }
 // Every fleet recipe uses an explicit art family and retains its source palette.
 for (const preset of SHARED_CAMO_PRESETS) {

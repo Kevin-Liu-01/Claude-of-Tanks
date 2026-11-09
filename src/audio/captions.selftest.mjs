@@ -102,7 +102,7 @@ for (const [id, cue] of Object.entries(CAPTION_SOUNDS)) {
     },
     voiceTake: (lang, line) => takes.get(`${lang}/${line}`) ?? -1,
     has: () => false, pick: () => null, variant: () => null, record: () => undefined,
-    load: () => Promise.resolve(), loadVoice: () => Promise.resolve(), voiceReady: () => true,
+    load: () => Promise.resolve(), loadVoice: () => Promise.resolve(), dropVoice: () => {}, voiceReady: () => true,
   };
   const heard = [];
   const radio = createCrewRadio({ mixer, library, random: mulberry32(3), initialLanguage: 'de',

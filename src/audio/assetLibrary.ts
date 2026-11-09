@@ -52,6 +52,11 @@ export interface AssetLibrary {
   /** A decoded variant, avoiding an immediate repeat; asked for before it has decoded, the asset joins the front lane. */
   pick(id: string, random: () => number): AudioBuffer | null;
   variant(id: string, index: number): AudioBuffer | null;
+  /**
+   * Hold each named asset's picks on one variant (a receipt's capture: tools/audio-mix-balance.mjs judges every moment
+   * at its loudest take, so a gate never rides on the take the seeded stream drew); null lets the stream choose again.
+   */
+  holdVariants(held: Readonly<Record<string, number>> | null): void;
   /** Decode assets (deduplicated); `front` puts them in the front lane, ahead of every bulk load queued before or after. */
   load(ids: Iterable<string>, options?: { front?: boolean }): Promise<void>;
   /**
@@ -63,6 +68,11 @@ export interface AssetLibrary {
   /** Mark assets as in use (LRU eviction never drops what played recently). */
   touch(id: string): void;
   loadVoice(language: string): Promise<void>;
+  /**
+   * Forget a crew pack and stop its load (crew-languages-270): the radio speaks one language at a time, so a phone holds
+   * one pack's ~40 MB decoded however many of the 38 crews a player tries. A later loadVoice fetches it again.
+   */
+  dropVoice(language: string): void;
   voiceReady(language: string): boolean;
   /** A decoded take of a crew line: the given take when it exists, else a random one (no immediate repeat). */
   voice(language: string, line: string, random: () => number, take?: number): AudioBuffer | null;
@@ -98,6 +108,14 @@ function defaultDecoder(sampleRate: number): DecodeContext | null {
   if (!scope.OfflineAudioContext) return null;
   try { return new scope.OfflineAudioContext(1, 1, sampleRate); } catch { return null; }
 }
+
+/**
+ * Crew speech decode rate. Every take plays through the radio's 320 Hz–3.4 kHz
+ * band and a headset speaker rolling off from 4.6 kHz, so 16 kHz (8 kHz
+ * Nyquist) keeps all of it at two thirds of a 24 kHz decode's memory: a
+ * 371-take pack is about 40 MB decoded (crew-lines-269).
+ */
+const VOICE_DECODE_HZ = 16000;
 
 function bufferBytes(buffer: AudioBuffer): number {
   return buffer.length * buffer.numberOfChannels * 4;
@@ -280,6 +298,9 @@ export function createAssetLibrary({
     return target.promise;
   }
 
+  /** Variants a receipt holds its picks on (holdVariants), by asset id. */
+  let held: Record<string, number> | null = null;
+
   function choose(entry: Entry, random: () => number): AudioBuffer | null {
     const n = entry.buffers.length;
     if (!n) return null;
@@ -316,7 +337,12 @@ export function createAssetLibrary({
         if (!entry || entry.state === 'idle') void loadOne(id);
         return null;
       }
+      const hold = held?.[id];
+      if (hold != null && entry.buffers[hold]) return entry.buffers[hold];
       return choose(entry, random);
+    },
+    holdVariants(next) {
+      held = next ? { ...next } : null;
     },
     variant(id, index) {
       const entry = entries.get(id);
@@ -341,27 +367,29 @@ export function createAssetLibrary({
       if (!pack) return Promise.resolve();
       let promise = voiceLanguages.get(language);
       if (promise) return promise;
+      const current = (): boolean => voiceLanguages.get(language) === promise;
       promise = (async () => {
-        if (!(await ready)) return;
+        if (!(await ready) || !current()) return;
         await Promise.all(Object.entries(pack).map(async ([line, takes]) => {
           const entry: Entry = { buffers: [], state: 'loading', promise: null, last: 0, bytes: 0, lastVariant: -1 };
           voiceEntries.set(voiceKey(language, line), entry);
           entry.buffers = await Promise.all(takes.map((_, i) => voiceSlot(async () => {
+            if (!current()) return null;
             try {
               const res = await fetchImpl(`${root}audio/voice/${language}/${line}_${i}.webm`);
               if (!res.ok) throw new Error(`HTTP ${res.status}`);
-              // Speech is band-limited by the radio chain anyway: 24 kHz decode.
-              return await decode(await res.arrayBuffer(), 24000);
+              return await decode(await res.arrayBuffer(), VOICE_DECODE_HZ);
             } catch {
               failed++;
               return null;
             }
           })));
+          if (!current()) return;
           entry.bytes = entry.buffers.reduce((sum, b) => sum + (b ? bufferBytes(b) : 0), 0);
           voiceBytes += entry.bytes;
           entry.state = entry.buffers.some(Boolean) ? 'ready' : 'failed';
         }));
-        readyVoices.add(language);
+        if (current()) readyVoices.add(language);
       })();
       voiceLanguages.set(language, promise);
       return promise;
@@ -374,6 +402,15 @@ export function createAssetLibrary({
         for (const promise of voiceLanguages.values()) if (!settledLoads.has(promise)) inFlight.push(promise);
         if (!inFlight.length) return;
         await Promise.all(inFlight.map((promise) => promise.then(() => { settledLoads.add(promise); }, () => { settledLoads.add(promise); })));
+      }
+    },
+    dropVoice(language) {
+      if (!voiceLanguages.delete(language)) return;
+      readyVoices.delete(language);
+      for (const line of Object.keys(VOICE_PACKS[language] ?? {})) {
+        const key = voiceKey(language, line);
+        voiceBytes -= voiceEntries.get(key)?.bytes ?? 0;
+        voiceEntries.delete(key);
       }
     },
     voiceReady: (language) => readyVoices.has(language),

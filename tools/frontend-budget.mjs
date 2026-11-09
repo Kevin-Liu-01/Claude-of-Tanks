@@ -264,12 +264,35 @@ export const BUNDLE_BUDGETS = Object.freeze({
   //   matchRuleset +103, camoPolicy +93 (the Kaitaku coat, the AA paints), crewVoice +68 (da, pt-BR, en-AU, af),
   //   roleProfiles +66; materials -185. Home +9 B, docs +11 B, 404 -5 B stay inside their slack; pad's 14th request
   //   (padProtocol) is phone-feel-269's own pin in tools/bundle-budget.json.
-  game: { brotliBytes: 1176116, requests: 127, entryBrotliBytes: 249894 },
-  cn: { brotliBytes: 1220822, requests: 128, entryBrotliBytes: 249894 },
-  gallery: { brotliBytes: 744685, requests: 73 },
-  home: { brotliBytes: 28617, requests: 8 },
-  docs: { brotliBytes: 36911, requests: 12 },
-  notFound: { brotliBytes: 18355, requests: 7 },
+  // 2026-11-07 (integrator 269, the single end re-pin at integ/269's build; Node 24.22.1; Main's brief: one bundle re-pin
+  //   with attribution): game +13,296 B brotli over 268's measured build (1,176,116 B, its pin), cn +13,318 B, Gallery
+  //   +11,949 B; requests held at 127 / 128 / 73 (the Redback's datums, redbackDatums.ts, fold into fleetLayouts; alone
+  //   they were one more boot request); the entry +1,212 B (main) is re-pinned. By chunk and lane: vehicleMarkings +4,716
+  //   (glacis-269's Glacis 1.100 outlines; the new ids' marking rows), fleetFactory +3,630 (the thirteen new ids
+  //   registered at boot: the M113A3 and the M113A1 FSV, MRV and AS4, the Leopard AS1, the M1A1 AIM SA and M1A2 SEPv3
+  //   (Aus), the Redback, the Olifant Mk 1, 1A and 1B, the Semel, the TTD; kf51u-r17's KF51-U), main +1,212
+  //   (dev-battle-freeze, impact-materials' audio stack, second-battle-reveal), wreckDents +866 and tankFactoryCore +117
+  //   (wreck-barrels' bent-barrel cut), specs +754, camoPolicy +630 (plain-coats, the Australian three-tone, the South
+  //   African coats), decorations +583 (the M113 kit's manifests), fleetLayouts +229 (the Redback's datums), presentation
+  //   anchors +214, the en-US catalog +134, structureGroundOcclusion +129, roleProfiles +109, turretSeatPlane +98,
+  //   garageStage +66; materials -158, crewVoice -121. Gallery adds vehicleFacets +105. Home +8 B, docs -10 B and 404 +5 B
+  //   stay inside their slack; pad's row is phone-feel-269's in tools/bundle-budget.json, held.
+  // 2026-11-09 (integrator 270, the single end re-pin at integ/270's build; Node 24.22.1): game +5,200 B brotli over 269's
+  //   measured build (21d5c7fd30, equal to main 72addd0635 for the bundle; 1,189,441 B), cn +5,651 B, Gallery +273 B;
+  //   requests held at 127 / 128 / 73 (Air Support's three boot leaves, sim/playerActions, game/strikeViewState and
+  //   engine/strikeMarks, fold into vehicleActions; alone they were three more game and cn boot requests); the entry
+  //   +886 B (main) is re-pinned. By chunk and lane: vehicleActions +2,612 (air-support-270's action bits, strike view
+  //   and the terrain's strike marks), main +886 (the five merged lanes' boot wiring),
+  //   matchRuleset +611 (the Air Support mode's rules), the en-US catalog +350 and zh-CN +451 (cn; the mode, pad and
+  //   strike strings), crewVoice +222 (the 21 world packs), gameModeCatalog +109 (the fourteenth mode), battleLoad +93,
+  //   icons +87, icon +70 and the design tokens +68 (on every page). Home +143 B, docs
+  //   +123 B and 404 +57 B (the same shared chunks) are re-pinned at their measures; pad's row is held.
+  game: { brotliBytes: 1194641, requests: 127, entryBrotliBytes: 251574 },
+  cn: { brotliBytes: 1239820, requests: 128, entryBrotliBytes: 251574 },
+  gallery: { brotliBytes: 756907, requests: 73 },
+  home: { brotliBytes: 28785, requests: 8 },
+  docs: { brotliBytes: 37100, requests: 12 },
+  notFound: { brotliBytes: 18531, requests: 7 },
 });
 /** Byte noise between two builds of the same code (chunk hashes in import specifiers); requests have none. */
 const BUNDLE_SLACK = { brotliBytes: 160, entryBrotliBytes: 96, requests: 0 };

@@ -10,6 +10,7 @@ import {
   totalAmmunitionCapacity,
 } from './ammunition.ts';
 import { createGunshipEscort, ESCORT_RULES, type EscortState } from './gunshipEscort.ts';
+import { createAirSupport, type AirSupport, type AirSupportCheckpoint, type AirSupportView } from './airSupport.ts';
 import { applyJuggernautScale } from './juggernautScale.ts';
 import { botDriven } from './botDriven.ts';
 import type { MatchPlacement } from './matchPlacement.ts';
@@ -167,7 +168,7 @@ interface MatchModeControllerOptions<Entity extends MatchModeEntity>
 }
 
 export type BotMission = 'carrier' | 'recover' | 'escort' | 'raid' | 'defend' | 'striker' | 'screen' | 'capture' | 'assault'
-  | 'hunt' | 'counter' | 'keeper';
+  | 'hunt' | 'counter' | 'keeper' | 'evade';
 interface BotDestination {
   x: number; z: number; mission?: BotMission;
   /** Turbo Ball: the ball (public), whether a shot at it may go toward the opponent goal now, and whether that shot comes
@@ -270,6 +271,8 @@ export interface MatchModePresentationState {
   playerAmmoCapacity: number | null;
   aerial?: AerialView;
   escort?: EscortState;
+  /** Air Support: the viewer's ledger and cooldowns, and every strike's public record (sim/airSupport.ts). */
+  air?: AirSupportView;
   support?: {ammoReadyInS:number;healReadyInS:number};
   factions?: { id: string; team: ObjectiveTeam }[];
   boss?: { id: string; team: ObjectiveTeam; hp: number; maxHp: number };
@@ -381,6 +384,8 @@ export interface ModeCheckpoint {
   elapsedS: number; score: TeamScore; weaponKills: [string, number][];
   teams: [string, ObjectiveTeam][]; respawns: [string, { atS: number; healthScale: number }][];
   destroyed: [string, boolean][]; scored: string[]; escortRescued?: string[]; support?:{ammoAt:number;healAt:number;sequence:number;pickups:PickupState[]};
+  /** Air Support's ledger, cooldowns and strikes in the air. */
+  air?: AirSupportCheckpoint;
   /** The wave modes' own state (round 2, the critic's E12: a migrated host restarted Endless Horde at wave 1 and Frontline
    *  at its first sector, every hostile revived). Mode time throughout (the elapsedS base). */
   waves?: WaveCheckpoint;
@@ -410,8 +415,11 @@ export interface MatchModeController<
   readonly ruleset: MatchRuleset;
   readonly state: MatchModePresentationState;
   readonly usesElimination: boolean;
-  /** Confirmed enemy destruction; ignored for goals/captures and duplicate receipts. */
-  recordDestruction(victimId: string, killerId: string | null): void;
+  /** Confirmed enemy destruction; ignored for goals/captures and duplicate receipts. `supportKill`: an airstrike's. */
+  recordDestruction(victimId: string, killerId: string | null, supportKill?: boolean): void;
+  /** Air Support's ledger and strikes (null in every other mode): the authorities call it, fire its rounds and test
+   *  their rounds against its aircraft. */
+  readonly airSupport: AirSupport | null;
   step(dt: number, timeS: number): MatchModeResult | null;
   requestSupply(entityId:string,kind:'ammo'|'heal',timeS:number):boolean;
   tryHitBall(shell: { dead?: boolean; prevPos: Vec3Like; pos: Vec3Like; vel: Vec3Like;
@@ -426,6 +434,11 @@ export interface MatchModeController<
   enemyDeployment(entity: Entity): { x: number; z: number } | null;
   /** Frontline's latest line placements the guard could not clear (at most LINE_GUARD_FALLBACK_LOG), oldest first. */
   lineGuardFallbacks(): readonly LineGuardFallback[];
+  /** Air Support: the distance from `entity` to the nearest enemy aircraft in the air (Infinity outside the mode). */
+  airThreatM(entity: Entity): number;
+  /** Air Support: where a round at `roundMps` from `entity` meets the nearest enemy aircraft within AIR_SHOT_RANGE_M that
+   *  the gun can elevate to (`maxPitchRad`), led twice along the aircraft's public flight; null when none. */
+  airShot(entity: Entity, roundMps: number, maxPitchRad: number): { x: number; y: number; z: number } | null;
   serialize(viewerId?: string | null): MatchModePresentationState;
   /** Every vehicle back on its spawn at full health at once (the proving ground's quick reset). */
   reviveAll(): void;
@@ -490,10 +503,11 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
     throw new TypeError('match mode controller requires entities and a revive hook');
   }
   const id = normalizeGameMode(mode);
-  // Mars mode plays the zone-control objective (three station sectors) on its own physics
-  const objective = id === 'mars' ? 'zone_control' : id;
   const definition = GAME_MODE_DEFINITIONS[id];
   const ruleset: MatchRuleset = rulesetOption && rulesetOption.mode === id ? rulesetOption : matchRulesetFor(id);
+  // Mars mode plays the zone-control objective (three station sectors) on its own physics; Air Support plays it with the
+  // support ledger and the airstrikes (the ruleset's airSupport)
+  const objective = id === 'mars' || ruleset.airSupport ? 'zone_control' : id;
   const baseSpeed = ruleset.speedMultiplier;
   // the wave law: the Horde's own, and Frontline's wave pressure reads the Horde's speed ramp
   const hordeRules = ruleset.horde ?? matchRulesetFor('endless_horde').horde!;
@@ -646,6 +660,21 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
   const escortPoint=placement?.zones[1] ?? {x:midX,z:midZ};
   const escort=id==='ac130'?createGunshipEscort(entities,{...escortPoint,y:terrainHeight(escortPoint.x,escortPoint.z)+.12},setActive):null;
   if(escort)zones.push({id:'extraction',x:escortPoint.x,y:escort.state.y,z:escortPoint.z,control:1,owner:'alpha',contested:false});
+  // a bot with nobody spotted in reach scouts the nearest sector its side does not hold, else the enemy's deployment
+  const scoutPoint = (entity: Entity): { x: number; z: number } | null => {
+    const team = teamOf(entity);
+    let best: { x: number; z: number } | null = null, bestD = Infinity;
+    for (const zone of zones) {
+      if (zone.owner === team) continue;
+      const d = squaredDistance(entity, zone.x, zone.z);
+      if (d < bestD) { bestD = d; best = zone; }
+    }
+    return best ?? centers[otherTeam(team)];
+  };
+  const air: AirSupport | null = ruleset.airSupport ? createAirSupport({
+    rules: ruleset.airSupport, entities, teamOf, terrainHeight, emit, seed, scoutPoint,
+    ...(spotting ? { isSpotted: (entityId: string, side: ObjectiveTeam) => spotting.isSpotted(entityId, side) } : {}),
+  }) : null;
   const ball: BallState | null = id === 'turbo_ball' ? {
     x: midX, y: ballFloorHeight(midX, midZ, Infinity) + BALL_RADIUS_M, z: midZ,
     vx: 0, vy: 0, vz: 0, lastTouchId: null,
@@ -1625,6 +1654,7 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
     const previousOwner = zone.owner;
     zone.owner = zone.control >= 0.999 ? 'alpha' : zone.control <= -0.999 ? 'bravo' : null;
     if (zone.owner && zone.owner !== previousOwner) {
+      air?.recordCapture(zone.owner, zone.x, zone.z, ZONE_RADIUS_M);
       emit('mode_zone_captured', { zoneId: zone.id, team: zone.owner });
     }
   };
@@ -1673,7 +1703,8 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
     ball.vy = Math.max(ball.vy, 2.5 + closing * 0.12);
     ball.lastTouchId = entity.id;
     lastBallTouchS = timeS;
-    emit('mode_ball_hit', { by: entity.id, team: teamOf(entity), kind: 'ram' });
+    // where the ball was struck (presentation: the strike is heard there; no outcome reads it)
+    emit('mode_ball_hit', { by: entity.id, team: teamOf(entity), kind: 'ram', x: ball.x, y: ball.y, z: ball.z });
   };
 
   let previousBallBottom = 0;
@@ -1948,6 +1979,7 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
       ...(viewer?.aerial ? { aerial: { ...viewer.aerial } } : {}),
       ...(ruleset.infection ? { factions: entities.map(entity => ({ id: entity.id, team: teamOf(entity) })) } : {}),
       ...(escort ? { escort:{...escort.state} } : {}),
+      ...(air ? { air: air.view(viewerId) } : {}),
       ...(state.boss ? { boss: { ...state.boss } } : {}),
       ...(state.support ? {support:{...state.support}} : {}),
       ...(state.infection ? { infection: { ...state.infection } } : {}),
@@ -2462,7 +2494,7 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
   const botObjective = (entity: Entity): { x: number; z: number; radiusM: number; mission?: BotMission } | null => {
     const point = botTarget(entity);
     if (!point) return null;
-    const radiusM = point.mission === 'recover' ? 3 : objective === 'zone_control' || id === 'frontline_assault' ? ZONE_RADIUS_M
+    const radiusM = point.mission === 'recover' || point.mission === 'evade' ? 3 : objective === 'zone_control' || id === 'frontline_assault' ? ZONE_RADIUS_M
       : id === 'capture_the_flag' ? 20 : id === 'turbo_ball' ? 15 : point.mission === 'hunt' ? 12 : 25;
     return { ...point, radiusM };
   };
@@ -2470,6 +2502,9 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
     if (entity.modeActive === false || entity.combat.destroyed) return null;
     const team = teamOf(entity);
     if (escort) return supplyTarget(entity)??escort.target(entity);
+    // Air Support: a bot inside a strike's footprint drives out of it first (sim/airSupport.ts evadeTarget)
+    const evade = air?.evadeTarget(entity, placementTimeS);
+    if (evade) return { x: evade.x, z: evade.z, mission: 'evade' };
     if (id === 'capture_the_flag') return flagBotTarget(entity, team);
     if (objective === 'zone_control') {
       const point = zoneBotTarget(entity, team);
@@ -2496,6 +2531,10 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
   };
 
   const sightingOut = { x: 0, z: 0 }, deploymentOut = { x: 0, z: 0 };
+  // Air Support: the reach a bot looks for enemy aircraft in (its roof gun's counter-air reach and a margin)
+  const AIR_THREAT_SCAN_M = 600, airThreatPose = { x: 0, y: 0, z: 0, yaw: 0, bank: 0 };
+  // and the reach a gun with no ground target takes an aircraft at (a tank gun's practical anti-aircraft range)
+  const AIR_SHOT_RANGE_M = 900, airShotPose = { x: 0, y: 0, z: 0, yaw: 0, bank: 0 }, airShotOut = { x: 0, y: 0, z: 0 };
   /** A migrated host takes the wave modes up where the old one left them (the counters, the line, who rests). */
   function restoreWaves(saved: WaveCheckpoint): void {
     wave = saved.wave;
@@ -2545,12 +2584,14 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
     ruleset,
     state,
     usesElimination: id === 'standard' || id === 'realistic',
-    recordDestruction(victimId, killerId) {
+    airSupport: air,
+    recordDestruction(victimId, killerId, supportKill = false) {
       if (result || (objective !== 'zone_control' && !['drone', 'gun_game', 'juggernaut', 'realistic', 'ac130'].includes(id)) || !killerId || killerId === victimId || scoredDeaths.has(victimId)) return;
       const victim=entities.find(entity=>entity.id===victimId);
       const killer=entities.find(entity=>entity.id===killerId);
       if (!victim?.combat.destroyed || !killer || victim.modeActive===false || teamOf(victim)===teamOf(killer)) return;
       scoredDeaths.add(victimId);
+      air?.recordKill(victimId, killerId, supportKill);
       const team=teamOf(killer);
       const points = objective === 'zone_control' ? ZONE_DESTRUCTION_POINTS : 1;
       score[team] += points;
@@ -2573,6 +2614,7 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
       refreshIntel(timeS);
       handleDeathsAndRespawns(timeS);
       stepSupport(timeS);
+      air?.step(timeS);
       if(escort){const outcome=escort.step(timeS,ruleset.timeLimitS??480);if(outcome)return finish(outcome.result,outcome.reason);}
       if (boss && state.boss) {
         state.boss.hp = boss.combat.hp;
@@ -2605,7 +2647,7 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
       ball.lastTouchId = shell.shooterId || null;
       ballActiveAtS = placementTimeS;
       shell.dead = true;
-      emit('mode_ball_hit', { by: shell.shooterId || null, kind: 'shot' });
+      emit('mode_ball_hit', { by: shell.shooterId || null, kind: 'shot', x: ball.x, y: ball.y, z: ball.z });
       return true;
     },
     botTarget,
@@ -2620,6 +2662,29 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
       if (!seen) return null;
       sightingOut.x = seen.x; sightingOut.z = seen.z;
       return sightingOut;
+    },
+    airThreatM(entity) {
+      if (!air) return Infinity;
+      const pos = entity.state.pos;
+      const strike = air.aircraftWithin(teamOf(entity), pos.x, pos.y, pos.z, AIR_THREAT_SCAN_M, placementTimeS);
+      if (!strike) return Infinity;
+      air.aircraftPoseOf(strike, placementTimeS, airThreatPose);
+      return detMath.hypot(airThreatPose.x - pos.x, airThreatPose.y - pos.y, airThreatPose.z - pos.z);
+    },
+    airShot(entity, roundMps, maxPitchRad) {
+      if (!air) return null;
+      const pos = entity.state.pos;
+      const strike = air.aircraftWithin(teamOf(entity), pos.x, pos.y, pos.z, AIR_SHOT_RANGE_M, placementTimeS);
+      if (!strike) return null;
+      let leadS = 0;
+      for (let i = 0; i < 2; i++) {
+        air.aircraftPoseOf(strike, placementTimeS + leadS, airShotPose);
+        leadS = detMath.hypot(airShotPose.x - pos.x, airShotPose.y - pos.y, airShotPose.z - pos.z) / Math.max(1, roundMps);
+      }
+      const rise = airShotPose.y - pos.y - 2.5, run = detMath.hypot(airShotPose.x - pos.x, airShotPose.z - pos.z);
+      if (detMath.atan2(rise, Math.max(1, run)) > maxPitchRad - 0.02) return null;
+      airShotOut.x = airShotPose.x; airShotOut.y = airShotPose.y; airShotOut.z = airShotPose.z;
+      return airShotOut;
     },
     enemyDeployment(entity) {
       const at = centers[otherTeam(teamOf(entity))];
@@ -2645,7 +2710,7 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
       } : null;
       return { elapsedS, score: { ...score }, weaponKills: [...weaponKills], teams: entities.map(entity => [entity.id, teamOf(entity)]),
         respawns: [...respawnAt].map(([key, value]) => [key, { ...value }]), destroyed: [...destroyed], scored: [...scoredDeaths], ...(escort?{escortRescued:escort.capture(),support:{ammoAt,healAt,sequence:pickupSequence,pickups:pickups.map(p=>({...p}))}}:{}),
-        ...(waves ? { waves } : {}) };
+        ...(waves ? { waves } : {}), ...(air ? { air: air.capture() } : {}) };
     },
     restoreCheckpoint(checkpoint) {
       score.alpha = checkpoint.score.alpha; score.bravo = checkpoint.score.bravo;
@@ -2664,6 +2729,7 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
       escort?.restore(checkpoint.escortRescued??[]);
       if(checkpoint.support){ammoAt=checkpoint.support.ammoAt;healAt=checkpoint.support.healAt;pickupSequence=checkpoint.support.sequence;pickups.length=0;pickups.push(...checkpoint.support.pickups.map(p=>({...p})));}
       if (checkpoint.waves) restoreWaves(checkpoint.waves);
+      if (air && checkpoint.air) air.restore(checkpoint.air);
     },
     serialize,
   };

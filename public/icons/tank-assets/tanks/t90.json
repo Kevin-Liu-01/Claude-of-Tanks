@@ -10210,8 +10210,8 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 12776,
-      "sha256": "43b8d911a8c566e613163bc5b2b2d60261109bb4125639d9422a95a151f23fa6"
+      "bytes": 12774,
+      "sha256": "31bdfbdedbac0b768df4b776309d681796940fab695298fb4f4d8df7b1c48321"
     },
     "side": {
       "file": "t90_side.webp",
@@ -10242,8 +10242,8 @@
       "width": 256,
       "height": 128,
       "mime": "image/png",
-      "bytes": 34385,
-      "sha256": "a63e1ac168e71e6b58e6b36e5cdfaa403f3dd381787563765c27eb30df4960de"
+      "bytes": 32838,
+      "sha256": "3520bb30065aee629331c8b2a39baf2dc99e0054996b40e861fc2d1ea8dab8c5"
     },
     "technicalLabels": {
       "file": "t90_technical.json",

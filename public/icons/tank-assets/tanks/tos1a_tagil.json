@@ -16447,24 +16447,24 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 48490,
-      "sha256": "d6fb5650039fdd506ace6ca05ade851a7a60059b0ba414e36f11cfdde6f51ea7"
+      "bytes": 48470,
+      "sha256": "d486ed8306425b8a08cb39099ce9ca6cbea792967734baa94da2aea8b02e0d62"
     },
     "modulesSide": {
       "file": "tos1a_tagil_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 42246,
-      "sha256": "d37125367338d9a9cdc97dce7f96397d256fd20fa6c4d5bd187754bca30b0868"
+      "bytes": 42264,
+      "sha256": "7e24e16236943bd24c76844e17b266f9b47f74f0a7e65692752b5d79e14b41d0"
     },
     "crewSide": {
       "file": "tos1a_tagil_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 38192,
-      "sha256": "f8ee338a77d4f9f82825ac91981ad88f008f0af7560491545975d214da7d7b60"
+      "bytes": 38240,
+      "sha256": "bb7862fabe3190caf49ac384e821c33d7b320c73e587580c1abb6560d01a5f6b"
     },
     "angle": {
       "file": "tos1a_tagil_angle.webp",
@@ -16495,8 +16495,8 @@
       "width": 512,
       "height": 256,
       "mime": "image/webp",
-      "bytes": 18312,
-      "sha256": "77426a85fff8f3557ca86bf6a295b034f5223116b328114ea10bde5b420d65aa"
+      "bytes": 18300,
+      "sha256": "fd0b8200a4e9c2afa48462945e006817e8d5a560803f686deed1db9541b23b20"
     },
     "topSilhouette": {
       "file": "tos1a_tagil_top_silhouette.png",
@@ -16519,8 +16519,8 @@
       "width": 256,
       "height": 128,
       "mime": "image/png",
-      "bytes": 35764,
-      "sha256": "ca041057e66128691ef232e29d5e7fe311775e20b4b1ba7c301ec7573b0174f5"
+      "bytes": 32488,
+      "sha256": "53bed7b6eb36ef233b3ba9c6ee3c95bf5b9c0d77288b338e57c09ce16a2724dc"
     },
     "technicalLabels": {
       "file": "tos1a_tagil_technical.json",

@@ -125,6 +125,7 @@ const VERT_UNBORN = /* glsl */ `
 const FRAG_PARS = /* glsl */ `
 uniform float uTime;
 uniform float uHeatView;  // (ac130-fx-228 follow-up) 1 under a heat-imaging lens (infrared, thermal), else 0
+uniform float uGsCrater;  // (ground-269) 1: a crater weathers on past its fresh look; 0 the old law (the A/B's before)
 varying vec2 vDisc;
 varying vec4 vInfo;
 varying vec4 vShape;
@@ -231,6 +232,11 @@ void cotCraterMark( out vec3 col, out float a, out vec3 n, out float gloss, out 
     vec3 wet = soil * ( 0.85 + 0.3 * fine ), dry = soil * 1.35 + vec3( 0.012, 0.01, 0.006 );
     vec3 thrown = mix( dry, wet, 0.35 + 0.65 * fresh );
     vec3 pitC = soil * ( 0.55 + 0.2 * fine );
+    // (ground-269, ab7 Cinder Junction: the map's old craters read as "black-centred crater pits" — a pre-placed crater is
+    // laid an hour old, past the fresh look's 300 s, and kept its soot heart and its pit's wet dark soil for ever) a crater
+    // weathers on: from 5 to 50 min its soot washes out and its pit dries toward the thrown soil's tone
+    float weathered = uGsCrater * smoothstep( 300.0, 3000.0, age );
+    pitC = mix( pitC, thrown * ( 0.86 + 0.12 * fine ), 0.8 * weathered );
     vec3 rimC = thrown * ( 0.95 + 0.25 * lumps );
     if ( surf == 2 ) {
       // snow: dark soil in the pit and on the rim; on the apron soil sprayed over dirty snow lumps (no pale ring)
@@ -261,7 +267,7 @@ void cotCraterMark( out vec3 col, out float a, out vec3 n, out float gloss, out 
     // the scorch: the blast's black heart and a halo of soot streaked out over the rim, weathering
     float halo = ( 1.0 - smoothstep( 0.75, 1.45 + 0.25 * lumps, qw ) ) * smoothstep( 0.35, 0.62, fbm( vec2( ang * 5.0, 2.7 ) + so ) );
     float soot = explosive * ( ( 1.0 - smoothstep( 0.0, 0.6, qw ) ) * 0.7 + halo * ( hesh ? 0.75 : 0.55 ) )
-      * ( 0.75 + 0.25 * fine ) * ( 0.35 + 0.65 * fresh );
+      * ( 0.75 + 0.25 * fine ) * ( 0.35 + 0.65 * fresh ) * ( 1.0 - 0.85 * weathered );
     col = mix( col, vec3( 0.016, 0.014, 0.012 ), clamp( soot, 0.0, 0.85 ) );
     // (FX-05) a heavy shell's rays: the soil it threw out low in streaks, long and dark out past the apron to the disc's
     // edge, thinning and breaking up as they go, and a wider scorch over the rim
@@ -340,6 +346,7 @@ function craterMarksCompileHook(uniforms: { uTime: { value: number }; uHeatView:
   return (shader: { uniforms: Record<string, unknown>; vertexShader: string; fragmentShader: string }): void => {
     shader.uniforms.uTime = uniforms.uTime;
     shader.uniforms.uHeatView = uniforms.uHeatView;
+    shader.uniforms.uGsCrater = { value: 1 }; // (ground-269: the craters weather on; 0 = the old law)
     shader.vertexShader = patchProgram(shader.vertexShader, [
       ['void main() {', VERT_PARS, 'before'],
       ['#include <begin_vertex>', VERT_MAIN, 'after'],

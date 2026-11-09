@@ -27,6 +27,12 @@ const flown = runDeterminismAudit({ mapId: 'verdant', ticks: 1800, seed: 7, dron
 assert.ok(flown.countsA.drones >= 2, `the drone run flew drones to compare (${flown.countsA.drones})`);
 assert.equal(flown.identical, true, `two drone runs diverged at tick ${flown.firstDiffTick} (${flown.finalA} vs ${flown.finalB})`);
 console.log(`sim determinism: drone mode identical (${flown.countsA.drones} drones flown; ${flown.wallMs} ms)`);
+// Air Support (air-support-270): both humans call the call-ins on a schedule and the bots call theirs; the ledger, the
+// strikes and every strike round are in the hash
+const struck = runDeterminismAudit({ mapId: 'verdant', ticks: 1500, seed: 7, air: true });
+assert.ok(struck.countsA.strikes >= 3 && struck.countsA.strikeRounds > 0, `the air run called strikes and fired their rounds (${struck.countsA.strikes}, ${struck.countsA.strikeRounds})`);
+assert.equal(struck.identical, true, `two Air Support runs diverged at tick ${struck.firstDiffTick} (${struck.finalA} vs ${struck.finalB})`);
+console.log(`sim determinism: Air Support identical (${struck.countsA.strikes} strikes, ${struck.countsA.strikeRounds} rounds; ${struck.wallMs} ms)`);
 // the WebAssembly kernels (docs/RUST-KERNELS.md, 2026-10-25): run B on them plays run A's match — the contact surface, the
 // grids, the dug ground mirrored onto the kernel and the support solve's samples — through h2's craters, bit for bit
 const onKernels = runDeterminismAudit({ mapId: 'verdant', ticks: 1800, seed: 7, craters: true, kernels: await serverWorldKernels('wasm') });

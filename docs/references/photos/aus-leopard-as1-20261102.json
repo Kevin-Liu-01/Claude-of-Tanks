@@ -1,0 +1,30 @@
+{
+  "schemaVersion": 1,
+  "tankIdSchema": 3,
+  "comparisonPurpose": "photographic-reference",
+  "numerical3DComparison": "unverified",
+  "dimensionToleranceFraction": 0.03,
+  "targets": {
+    "leopard_as1": {
+      "name": "Leopard AS1",
+      "authority": "Main ruled the Australia line on 2026-11-02 (DECISIONS) on the owner's request the same day (\"flesh out south african and australian tank trees\", \"no senntinnel please\"). The Leopard AS1 (90 gun tanks, 1976-2007) as the 'as1' mark of the Danish line's welded-turret Leopard 1A3 builder (profiles/leopard1Dk.ts): the SABCA laser drum in the left rangefinder port and the right blanked, the crosswind mast, the commander's M2 and the loader's MAG 58 (front34_service_1armd) and the Australian basket. No registered 3D comparison exists. Numerical 3D comparison remains unverified.",
+      "sources": [
+        "https://www.armedconflicts.com/-t30969",
+        "https://en.wikipedia.org/wiki/Leopard_1",
+        "https://commons.wikimedia.org/wiki/File:Australian_Leopard_AS1_tank_forest.jpg",
+        "https://commons.wikimedia.org/wiki/File:1ARMD_Leopard_AS1.jpeg",
+        "https://commons.wikimedia.org/wiki/File:Leopard_AS1_in_RSL_Memorial_Park,_Esperance,_January_2024_01.jpg"
+      ],
+      "widthM": 3.424,
+      "overallLengthM": 9.672,
+      "tallestM": 4.51,
+      "envelopeBasis": "The as-built envelope of the fleet's Leopard 1A3 DK under the AS1's fit: 9.67 m over the L7A3 forward (armedconflicts 9.543 m, 1 %), 3.42 m over the skirts (3.37 m published, 2 %); the tallest point is the whip.",
+      "caliberMm": 105,
+      "launcherTubes": 0,
+      "roofMachineGuns": 2,
+      "crew": 4,
+      "unmannedTurret": false,
+      "test": "src/vehicles/profiles/australia.selftest.mjs"
+    }
+  }
+}

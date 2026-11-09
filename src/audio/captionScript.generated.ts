@@ -4,6 +4,30 @@
 // for the caption renderer, which loads this with its own chunk.
 
 export const CAPTION_SCRIPT: Readonly<Record<string, Readonly<Record<"en-US" | "zh-CN", readonly string[]>>>> = {
+  air_call_artillery: {
+    "en-US": ["Fire mission. Ten rounds, on my mark.", "Requesting artillery. Target marked."],
+    "zh-CN": ["火力任务，十发，按标记。", "请求炮火支援，目标已标定。"],
+  },
+  air_call_bomb: {
+    "en-US": ["Lasing. Requesting bomb on target.", "Target marked. Send the bomb."],
+    "zh-CN": ["激光照射中，请求投弹。", "目标已标定，请求炸弹。"],
+  },
+  air_call_recon: {
+    "en-US": ["Requesting recon pass. Area marked.", "Recon pass, on my mark."],
+    "zh-CN": ["请求侦察飞越，区域已标定。", "侦察机，按我的标记。"],
+  },
+  air_call_strafe: {
+    "en-US": ["Requesting gun run, on my mark.", "Gun run, target marked."],
+    "zh-CN": ["请求机炮扫射，按标记。", "机炮扫射，目标已标定。"],
+  },
+  air_incoming: {
+    "en-US": ["Air strike on us! Move, move!", "Enemy aircraft inbound, get clear!"],
+    "zh-CN": ["空袭来了！快撤！", "敌机来袭，快离开！"],
+  },
+  aircraft_downed: {
+    "en-US": ["Aircraft down.", "Got the jet. It's going down."],
+    "zh-CN": ["敌机击落。", "打中飞机了，正在坠落。"],
+  },
   aircraft_overhead: {
     "en-US": ["Aircraft overhead.", "Planes passing over."],
     "zh-CN": ["头顶有飞机。", "飞机通过上空。"],
@@ -11,6 +35,10 @@ export const CAPTION_SCRIPT: Readonly<Record<string, Readonly<Record<"en-US" | "
   ally_destroyed: {
     "en-US": ["We lost one.", "Friendly tank down."],
     "zh-CN": ["我们损失一辆。", "我方坦克被击毁。"],
+  },
+  ally_infected: {
+    "en-US": ["They got one of ours. He's turned.", "Another survivor's turned."],
+    "zh-CN": ["我方一辆被击毁，已感染。", "又一个幸存者被感染了。"],
   },
   ally_kill: {
     "en-US": ["One down.", "Enemy knocked out."],
@@ -21,8 +49,8 @@ export const CAPTION_SCRIPT: Readonly<Record<string, Readonly<Record<"en-US" | "
     "zh-CN": ["这种弹打完了。", "该弹种已用完。"],
   },
   ammo_low: {
-    "en-US": ["Ammo's running low."],
-    "zh-CN": ["弹药不足。"],
+    "en-US": ["Ammo's running low.", "Rounds low. Make them count."],
+    "zh-CN": ["弹药不足。", "炮弹不多，打准点。"],
   },
   ammo_out_all: {
     "en-US": ["We're out of ammunition."],
@@ -32,9 +60,21 @@ export const CAPTION_SCRIPT: Readonly<Record<string, Readonly<Record<"en-US" | "
     "en-US": ["Ammo rack hit!", "Ammunition damaged!"],
     "zh-CN": ["弹药舱中弹！", "弹药受损！"],
   },
+  aps_intercept_them: {
+    "en-US": ["Their A-P-S took it.", "Intercepted. Active protection."],
+    "zh-CN": ["被敌主动防护拦截了。", "被拦截了，是主动防护。"],
+  },
+  aps_intercept_us: {
+    "en-US": ["A-P-S fired. Round defeated.", "Hard kill. Round stopped."],
+    "zh-CN": ["主动防护启动，来弹已拦截。", "硬杀拦截，来弹已摧毁。"],
+  },
   artillery_far: {
     "en-US": ["Artillery, far off.", "Heavy guns in the distance."],
     "zh-CN": ["远处有炮兵射击。", "远方重炮。"],
+  },
+  artillery_incoming: {
+    "en-US": ["Incoming artillery! Move!", "Shells inbound on us, get clear!"],
+    "zh-CN": ["炮击来袭！快撤！", "炮弹落向我们，快离开！"],
   },
   autoloader_damaged: {
     "en-US": ["Autoloader's damaged."],
@@ -43,6 +83,10 @@ export const CAPTION_SCRIPT: Readonly<Record<string, Readonly<Record<"en-US" | "
   back_on_tracks: {
     "en-US": ["Back on our tracks."],
     "zh-CN": ["车辆已扶正。"],
+  },
+  ball_reset: {
+    "en-US": ["Ball's reset.", "Reset. Back to the middle."],
+    "zh-CN": ["球已复位。", "复位，回到中场。"],
   },
   battle_start: {
     "en-US": ["All crews, advance.", "Driver, move out.", "Crew, combat stations."],
@@ -56,17 +100,37 @@ export const CAPTION_SCRIPT: Readonly<Record<string, Readonly<Record<"en-US" | "
     "en-US": ["Building down.", "That house just came down."],
     "zh-CN": ["建筑倒塌。", "那栋房子塌了。"],
   },
+  cease_fire: {
+    "en-US": ["Target. Cease fire.", "Cease fire. Scan your sector."],
+    "zh-CN": ["目标击毁，停止射击。", "停止射击，观察责任区。"],
+  },
   commander_down: {
     "en-US": ["Commander's hit.", "Commander's down. I have command."],
     "zh-CN": ["车长中弹。", "车长负伤。由我指挥。"],
+  },
+  counter_attack: {
+    "en-US": ["Counter-attack!", "Enemy counter-attack. Hold the line."],
+    "zh-CN": ["敌人反冲击！", "敌方反冲击，守住防线。"],
+  },
+  crew_ready: {
+    "en-US": ["Gunner ready. Loader up. Driver ready.", "All stations up."],
+    "zh-CN": ["炮长好。装填手好。驾驶员好。", "全车准备完毕。"],
   },
   crew_recovered: {
     "en-US": ["Crew's back on station."],
     "zh-CN": ["乘员已归位。"],
   },
+  crew_report: {
+    "en-US": ["Crew, report.", "Stand by. Crew report."],
+    "zh-CN": ["车组，报告。", "注意，各乘员报告。"],
+  },
   defeat: {
     "en-US": ["Battle's lost. Fall back.", "We're finished. Withdraw."],
     "zh-CN": ["战斗失利，后撤。", "我们败了。撤出战斗。"],
+  },
+  defeat_overrun: {
+    "en-US": ["We're overrun.", "Overrun. Fall back."],
+    "zh-CN": ["我们被冲垮了。", "阵地被突破，后撤。"],
   },
   double_kill: {
     "en-US": ["Another one down.", "Second target destroyed."],
@@ -80,45 +144,85 @@ export const CAPTION_SCRIPT: Readonly<Record<string, Readonly<Record<"en-US" | "
     "en-US": ["Driver's down.", "Driver's hit."],
     "zh-CN": ["驾驶员负伤。", "驾驶员中弹。"],
   },
+  drone_battery_low: {
+    "en-US": ["Drone battery low.", "Drone's low on battery."],
+    "zh-CN": ["无人机电量不足。", "无人机快没电了。"],
+  },
   drone_incoming: {
     "en-US": ["Drone inbound!", "Drone on us, overhead!"],
     "zh-CN": ["无人机来袭！", "头顶无人机，抓紧！"],
+  },
+  drone_kill: {
+    "en-US": ["Drone strike. Target destroyed.", "Drone hit him. Target down."],
+    "zh-CN": ["无人机命中，目标击毁。", "无人机打中了，目标消灭。"],
   },
   drone_launch: {
     "en-US": ["Drone up.", "Launching drone."],
     "zh-CN": ["无人机起飞。", "放出无人机。"],
   },
+  drone_link_weak: {
+    "en-US": ["Drone link's weak.", "Signal's breaking up. Too far out."],
+    "zh-CN": ["无人机信号弱。", "信号断续，飞太远了。"],
+  },
   drone_lost: {
     "en-US": ["Lost the drone.", "Drone's down, no feed."],
     "zh-CN": ["无人机失联。", "无人机坠毁，没有画面。"],
   },
+  drone_recovered: {
+    "en-US": ["Drone recovered.", "Drone's back aboard."],
+    "zh-CN": ["无人机已回收。", "无人机已返回车上。"],
+  },
+  drone_shot_down: {
+    "en-US": ["Drone's shot down.", "They hit the drone. Feed's gone."],
+    "zh-CN": ["无人机被击落。", "无人机被打中，画面没了。"],
+  },
   enemy_ammo_rack: {
-    "en-US": ["Ammo rack hit. He's cooking off."],
-    "zh-CN": ["命中弹药舱，正在殉爆。"],
+    "en-US": ["Ammo rack hit. He's cooking off.", "Hit his ammo. He's done."],
+    "zh-CN": ["命中弹药舱，正在殉爆。", "打中他弹药了，他完了。"],
   },
   enemy_crew_hit: {
-    "en-US": ["Their crew's hit."],
-    "zh-CN": ["敌车乘员中弹。"],
+    "en-US": ["Their crew's hit.", "Crew hit inside."],
+    "zh-CN": ["敌车乘员中弹。", "车内乘员中弹。"],
   },
   enemy_crit: {
     "en-US": ["Good hit. Something's damaged.", "Critical hit."],
     "zh-CN": ["有效命中，目标受损。", "击中要害。"],
   },
+  enemy_drone_down: {
+    "en-US": ["Drone down.", "Got the drone."],
+    "zh-CN": ["敌无人机击落。", "打下无人机了。"],
+  },
   enemy_engine_hit: {
-    "en-US": ["Hit his engine."],
-    "zh-CN": ["命中敌车发动机。"],
+    "en-US": ["Hit his engine.", "Engine hit. He's slowing."],
+    "zh-CN": ["命中敌车发动机。", "发动机中弹，他减速了。"],
+  },
+  enemy_era: {
+    "en-US": ["Hit his reactive armor.", "His blocks took it."],
+    "zh-CN": ["命中敌反应装甲。", "被他的反应装甲挡住了。"],
+  },
+  enemy_final_weapon: {
+    "en-US": ["Enemy's on the last weapon.", "One of them's on the final gun. Stop him."],
+    "zh-CN": ["敌人已到最后一件武器。", "有个敌人拿到最后一门炮，拦住他。"],
   },
   enemy_fire: {
-    "en-US": ["Target's burning."],
-    "zh-CN": ["目标起火。"],
+    "en-US": ["Target's burning.", "He's on fire."],
+    "zh-CN": ["目标起火。", "敌车着火了。"],
+  },
+  enemy_flag_returned: {
+    "en-US": ["They've recovered their flag."],
+    "zh-CN": ["敌方旗帜已被收回。"],
   },
   enemy_gun_damaged: {
-    "en-US": ["His gun's knocked out."],
-    "zh-CN": ["敌车火炮被打坏。"],
+    "en-US": ["His gun's knocked out.", "Hit his gun."],
+    "zh-CN": ["敌车火炮被打坏。", "命中敌车火炮。"],
   },
   enemy_immobilized: {
-    "en-US": ["His track's off. He's immobilized."],
-    "zh-CN": ["敌车掉履带了，已无法机动。"],
+    "en-US": ["His track's off. He's immobilized.", "Tracked him. He's not moving."],
+    "zh-CN": ["敌车掉履带了，已无法机动。", "打断他履带，他动不了了。"],
+  },
+  enemy_smoke: {
+    "en-US": ["Enemy's popping smoke.", "Smoke on the target. Watch the edges."],
+    "zh-CN": ["敌车在放烟幕。", "目标施放烟幕，注意边缘。"],
   },
   enemy_spotted: {
     "en-US": ["Contact. Enemy armor.", "Tank spotted.", "Enemy vehicle, contact."],
@@ -136,6 +240,10 @@ export const CAPTION_SCRIPT: Readonly<Record<string, Readonly<Record<"en-US" | "
     "en-US": ["Engine's running.", "Power's back."],
     "zh-CN": ["发动机运转正常。", "动力恢复。"],
   },
+  era_us: {
+    "en-US": ["Reactive armor took it.", "Blocks went off. Armor held."],
+    "zh-CN": ["反应装甲挡住了。", "反应装甲起爆，装甲顶住了。"],
+  },
   extinguishing: {
     "en-US": ["Extinguisher.", "Putting it out."],
     "zh-CN": ["启动灭火器。", "正在灭火。"],
@@ -144,9 +252,29 @@ export const CAPTION_SCRIPT: Readonly<Record<string, Readonly<Record<"en-US" | "
     "en-US": ["Feed's jammed."],
     "zh-CN": ["供弹机构卡住了。"],
   },
+  final_line: {
+    "en-US": ["Last line. Take it.", "Final line ahead. Push."],
+    "zh-CN": ["最后一道防线，拿下它。", "前方最后防线，推进。"],
+  },
   fire: {
     "en-US": ["Fire! Engine compartment!", "Fire in the hull!"],
     "zh-CN": ["起火！动力舱起火！", "车内起火！"],
+  },
+  fire_command_he: {
+    "en-US": ["Gunner, H-E, vehicle.", "Gunner. H-E. Vehicle."],
+    "zh-CN": ["炮长，榴弹，车辆。", "炮长。榴弹。车辆。"],
+  },
+  fire_command_heat: {
+    "en-US": ["Gunner, HEAT, tank.", "Gunner. HEAT. Tank."],
+    "zh-CN": ["炮长，破甲弹，坦克。", "炮长。破甲弹。坦克。"],
+  },
+  fire_command_kinetic: {
+    "en-US": ["Gunner, sabot, tank.", "Gunner. Sabot. Tank."],
+    "zh-CN": ["炮长，穿甲弹，坦克。", "炮长。穿甲弹。坦克。"],
+  },
+  fire_command_missile: {
+    "en-US": ["Gunner, missile, tank.", "Gunner. Missile. Tank."],
+    "zh-CN": ["炮长，导弹，坦克。", "炮长。导弹。坦克。"],
   },
   fire_out: {
     "en-US": ["Fire's out.", "Fire suppressed."],
@@ -157,20 +285,32 @@ export const CAPTION_SCRIPT: Readonly<Record<string, Readonly<Record<"en-US" | "
     "zh-CN": ["发射。", "射击。", "放。"],
   },
   flag_captured: {
-    "en-US": ["Flag captured."],
-    "zh-CN": ["夺旗完成。"],
+    "en-US": ["Flag captured.", "Capture. That's a point."],
+    "zh-CN": ["夺旗完成。", "夺旗成功，得一分。"],
+  },
+  flag_dropped_ours: {
+    "en-US": ["They dropped our flag. Recover it.", "Our flag's down in the field."],
+    "zh-CN": ["敌人丢了我方旗帜，夺回来。", "我方旗帜掉在场地上。"],
+  },
+  flag_dropped_theirs: {
+    "en-US": ["We dropped their flag.", "Carrier down. Their flag is loose."],
+    "zh-CN": ["我们把敌旗丢了。", "扛旗车被毁，敌旗掉落。"],
+  },
+  flag_lost: {
+    "en-US": ["They captured our flag.", "Enemy capture. Our flag is gone."],
+    "zh-CN": ["敌人完成夺旗。", "敌方夺旗得分，我旗丢了。"],
   },
   flag_returned: {
-    "en-US": ["Our flag's back."],
-    "zh-CN": ["我方旗帜已归位。"],
+    "en-US": ["Our flag's back.", "Flag's home."],
+    "zh-CN": ["我方旗帜已归位。", "我旗已回基地。"],
   },
   flag_taken_ours: {
-    "en-US": ["We have their flag."],
-    "zh-CN": ["敌方旗帜已到手。"],
+    "en-US": ["We have their flag.", "Their flag's ours. Get it home."],
+    "zh-CN": ["敌方旗帜已到手。", "敌旗到手，带回去。"],
   },
   flag_taken_theirs: {
-    "en-US": ["They have our flag."],
-    "zh-CN": ["我方旗帜被夺。"],
+    "en-US": ["They have our flag.", "Enemy has our flag. Stop the carrier."],
+    "zh-CN": ["我方旗帜被夺。", "敌人夺了我旗，拦住扛旗车。"],
   },
   flipped: {
     "en-US": ["We're on our side!", "We've rolled over!"],
@@ -188,6 +328,10 @@ export const CAPTION_SCRIPT: Readonly<Record<string, Readonly<Record<"en-US" | "
     "en-US": ["Fuel tank hit.", "We're leaking fuel."],
     "zh-CN": ["油箱中弹。", "正在漏油。"],
   },
+  goal_conceded: {
+    "en-US": ["They scored.", "Goal against. Reset."],
+    "zh-CN": ["对方进球了。", "失球，重新开球。"],
+  },
   goal_scored: {
     "en-US": ["Goal.", "That's a score."],
     "zh-CN": ["进球。", "得分。"],
@@ -195,6 +339,10 @@ export const CAPTION_SCRIPT: Readonly<Record<string, Readonly<Record<"en-US" | "
   gun_damaged: {
     "en-US": ["Main gun's damaged.", "Gun's hit."],
     "zh-CN": ["主炮受损。", "火炮中弹。"],
+  },
+  gun_game_final: {
+    "en-US": ["Last weapon. Finish it.", "Final gun. Two more and we win."],
+    "zh-CN": ["最后一件武器，了结它。", "最后一门炮，再击毁两辆就赢。"],
   },
   gun_mount_damaged: {
     "en-US": ["Gun mount's damaged."],
@@ -212,9 +360,33 @@ export const CAPTION_SCRIPT: Readonly<Record<string, Readonly<Record<"en-US" | "
     "en-US": ["Thirty mike-mike.", "Thirty mil, up."],
     "zh-CN": ["三十毫米炮。", "三十毫米机炮就绪。"],
   },
+  gunship_cleared_hot: {
+    "en-US": ["In orbit. Cleared hot.", "Gunship on station. Cleared to engage."],
+    "zh-CN": ["进入盘旋，允许攻击。", "炮艇机到位，可以开火。"],
+  },
+  gunship_danger_close: {
+    "en-US": ["Danger close.", "Danger close. Friendlies at the impact."],
+    "zh-CN": ["离友军太近。", "注意，友军就在着弹点。"],
+  },
+  gunship_defeat: {
+    "en-US": ["We lost the convoy. Breaking off.", "Mission failed. R-T-B."],
+    "zh-CN": ["车队全损，脱离战斗。", "任务失败，返航。"],
+  },
   gunship_double: {
     "en-US": ["Second target destroyed.", "Another one down. Good effect."],
     "zh-CN": ["第二个目标已摧毁。", "又一个。效果良好。"],
+  },
+  gunship_friendly_down: {
+    "en-US": ["Friendly armor down.", "We lost a friendly on the ground."],
+    "zh-CN": ["友军装甲被击毁。", "地面友军损失一辆。"],
+  },
+  gunship_friendly_extracted: {
+    "en-US": ["Friendly extracted.", "Another one's through."],
+    "zh-CN": ["友军已撤出。", "又一辆通过了。"],
+  },
+  gunship_good_hits: {
+    "en-US": ["Good hits.", "Good hits. Target still moving."],
+    "zh-CN": ["有效命中。", "有效命中，目标还在动。"],
   },
   gunship_howitzer: {
     "en-US": ["Howitzer.", "One-five-two, up."],
@@ -228,29 +400,77 @@ export const CAPTION_SCRIPT: Readonly<Record<string, Readonly<Record<"en-US" | "
     "en-US": ["Missile selected.", "Missiles, up."],
     "zh-CN": ["导弹。", "导弹就绪。"],
   },
+  gunship_rifle: {
+    "en-US": ["Rifle.", "Rifle. Missile tracking."],
+    "zh-CN": ["导弹发射。", "导弹发射，跟踪中。"],
+  },
+  gunship_rounds_complete: {
+    "en-US": ["Rounds complete.", "Rounds complete. Assessing."],
+    "zh-CN": ["射击完毕。", "射击完毕，观察效果。"],
+  },
+  gunship_shift_fire: {
+    "en-US": ["Shifting fire.", "Shift fire. New target."],
+    "zh-CN": ["转移火力。", "转移射击，打新目标。"],
+  },
+  gunship_splash: {
+    "en-US": ["Splash.", "Splash. No effect."],
+    "zh-CN": ["炮弹着地。", "着弹，未见效果。"],
+  },
+  gunship_tally: {
+    "en-US": ["Tally. Armor moving.", "Sensor's captured. Vehicle."],
+    "zh-CN": ["发现目标，装甲在动。", "传感器捕获，车辆。"],
+  },
+  gunship_victory: {
+    "en-US": ["Friendlies extracted. Mission complete.", "Convoy is through. R-T-B."],
+    "zh-CN": ["友军全部撤出，任务完成。", "车队已通过，返航。"],
+  },
   hit_by_friendly: {
-    "en-US": ["Check fire! We're friendly!"],
-    "zh-CN": ["停止射击！我们是自己人！"],
+    "en-US": ["Check fire! We're friendly!", "Cease fire! Friendly armor here!"],
+    "zh-CN": ["停止射击！我们是自己人！", "停火！这里是友军坦克！"],
   },
   hull_status: {
     "en-US": ["Hull's holding. We keep fighting.", "Damage is light. Carry on."],
     "zh-CN": ["车体还顶得住，继续战斗。", "损伤轻微，继续执行。"],
   },
+  identified: {
+    "en-US": ["Identified.", "Identified. Tank."],
+    "zh-CN": ["发现目标。", "发现目标，坦克。"],
+  },
   in_cover: {
     "en-US": ["In cover. Hold here.", "Hull down. Holding."],
     "zh-CN": ["已进入掩体，就地坚守。", "车体隐蔽，坚守。"],
   },
+  infected_turned: {
+    "en-US": ["We've turned. Hunt the survivors.", "We're with them now. Find the survivors."],
+    "zh-CN": ["我们被感染了，猎杀幸存者。", "已成感染者，搜寻幸存者。"],
+  },
+  juggernaut_down: {
+    "en-US": ["Juggernaut's down.", "The big one's finished."],
+    "zh-CN": ["巨兽被击毁。", "大家伙解决了。"],
+  },
+  juggernaut_spotted: {
+    "en-US": ["Juggernaut spotted!", "Eyes on the Juggernaut."],
+    "zh-CN": ["发现巨兽！", "看到巨兽了。"],
+  },
+  jump_brace: {
+    "en-US": ["Hold on.", "Brace for landing."],
+    "zh-CN": ["抓稳了。", "抓紧，准备落地。"],
+  },
   last_enemy: {
     "en-US": ["One enemy left. Finish it."],
     "zh-CN": ["敌人只剩一辆，消灭它。"],
+  },
+  last_survivor: {
+    "en-US": ["We're the last survivor. Hold on."],
+    "zh-CN": ["我们是最后的幸存者，坚持住。"],
   },
   last_tank: {
     "en-US": ["We're the last tank. Make every shot count."],
     "zh-CN": ["只剩我车了。务必弹无虚发。"],
   },
   line_advanced: {
-    "en-US": ["The line's moving up."],
-    "zh-CN": ["战线向前推进。"],
+    "en-US": ["The line's moving up.", "Line taken. Move up."],
+    "zh-CN": ["战线向前推进。", "防线拿下，向前推进。"],
   },
   load_he: {
     "en-US": ["H-E.", "Loading H-E."],
@@ -273,12 +493,12 @@ export const CAPTION_SCRIPT: Readonly<Record<string, Readonly<Record<"en-US" | "
     "zh-CN": ["装填手负伤。", "装填手中弹。"],
   },
   low_hp: {
-    "en-US": ["Armor's failing. Can't take much more."],
-    "zh-CN": ["车体损伤严重，撑不了多久。"],
+    "en-US": ["Armor's failing. Can't take much more.", "We're badly hit. Keep moving."],
+    "zh-CN": ["车体损伤严重，撑不了多久。", "我车受损严重，继续机动。"],
   },
   miss: {
-    "en-US": ["Miss.", "Short. Adjusting."],
-    "zh-CN": ["未命中。", "近弹，修正。"],
+    "en-US": ["Miss.", "Short. Adjusting.", "Over."],
+    "zh-CN": ["未命中。", "近弹，修正。", "打远了。"],
   },
   missile_away: {
     "en-US": ["Missile away.", "Missile out, guiding."],
@@ -305,16 +525,24 @@ export const CAPTION_SCRIPT: Readonly<Record<string, Readonly<Record<"en-US" | "
     "zh-CN": ["要点已占领。", "要点已被我控制。"],
   },
   objective_contested: {
-    "en-US": ["They're contesting the point."],
-    "zh-CN": ["敌人正在争夺要点。"],
+    "en-US": ["They're contesting the point.", "Enemy on our point."],
+    "zh-CN": ["敌人正在争夺要点。", "敌人进入我方要点。"],
+  },
+  objective_contesting: {
+    "en-US": ["We're contesting their point.", "On their objective. Hold it."],
+    "zh-CN": ["我们正在争夺敌方要点。", "在敌方要点上，顶住。"],
   },
   objective_lost: {
-    "en-US": ["We've lost the objective."],
-    "zh-CN": ["要点失守。"],
+    "en-US": ["We've lost the objective.", "They've taken the point."],
+    "zh-CN": ["要点失守。", "要点被敌人占了。"],
   },
   objective_push: {
     "en-US": ["Push to the objective.", "Move on the objective."],
     "zh-CN": ["向目标推进。", "向目标区域前进。"],
+  },
+  obstacle_through: {
+    "en-US": ["Going through.", "Obstacle. Pushing through."],
+    "zh-CN": ["直接冲过去。", "前方障碍，冲过去。"],
   },
   on_the_move: {
     "en-US": ["Moving.", "Driver moving."],
@@ -357,8 +585,12 @@ export const CAPTION_SCRIPT: Readonly<Record<string, Readonly<Record<"en-US" | "
     "zh-CN": ["电台受损。", "通信中断。"],
   },
   rammed: {
-    "en-US": ["We're being rammed!"],
-    "zh-CN": ["敌车在撞我们！"],
+    "en-US": ["We're being rammed!", "He's ramming us!"],
+    "zh-CN": ["敌车在撞我们！", "他冲过来撞我们！"],
+  },
+  re_engage: {
+    "en-US": ["Re-engage.", "Target still up. Re-engage."],
+    "zh-CN": ["立即补射。", "目标未毁，补射。"],
   },
   reloaded: {
     "en-US": ["Gun up.", "Loaded.", "Ready."],
@@ -373,8 +605,12 @@ export const CAPTION_SCRIPT: Readonly<Record<string, Readonly<Record<"en-US" | "
     "zh-CN": ["抢修完毕。", "系统恢复。"],
   },
   respawn: {
-    "en-US": ["Back in the fight."],
-    "zh-CN": ["重返战斗。"],
+    "en-US": ["Back in the fight.", "Fresh tank. Back in it."],
+    "zh-CN": ["重返战斗。", "新车到位，重返战斗。"],
+  },
+  reversing: {
+    "en-US": ["Backing up.", "Reversing."],
+    "zh-CN": ["倒车后撤。", "正在倒车。"],
   },
   ricochet: {
     "en-US": ["Ricochet.", "Bounced."],
@@ -415,6 +651,58 @@ export const CAPTION_SCRIPT: Readonly<Record<string, Readonly<Record<"en-US" | "
   spotted_right: {
     "en-US": ["Contact right.", "Tank, right."],
     "zh-CN": ["右侧发现目标。", "坦克，右侧。"],
+  },
+  start_air_support: {
+    "en-US": ["Take the sectors. Air support standing by.", "Seize the points. We have air on call."],
+    "zh-CN": ["夺取要点，空中支援待命。", "占领要点，空援随时可以呼叫。"],
+  },
+  start_assault: {
+    "en-US": ["Assault. Take the first line.", "Attack. Advance on the line."],
+    "zh-CN": ["发起进攻，拿下第一道防线。", "冲击，向防线推进。"],
+  },
+  start_ball: {
+    "en-US": ["Kick-off. Go for the ball.", "Ball's live. Drive."],
+    "zh-CN": ["开球，去抢球。", "球开了，冲上去。"],
+  },
+  start_drone: {
+    "en-US": ["Advance. Drone's ready when you need it.", "Move out. Drones on call."],
+    "zh-CN": ["前进，无人机随时可用。", "出发，无人机待命。"],
+  },
+  start_flag: {
+    "en-US": ["Get their flag. Guard ours.", "Flag run. Move out."],
+    "zh-CN": ["夺取敌旗，守住我旗。", "去夺旗，前进。"],
+  },
+  start_gun_game: {
+    "en-US": ["First weapon. Get your kills.", "Weapon ladder. Two kills a gun."],
+    "zh-CN": ["第一件武器，打出战果。", "武器进阶，两杀换一门。"],
+  },
+  start_horde: {
+    "en-US": ["Defensive positions. Hold this ground.", "Dig in. Hold the perimeter."],
+    "zh-CN": ["进入防御阵地，守住这里。", "就地构工，环形防御。"],
+  },
+  start_hunt: {
+    "en-US": ["Find the Juggernaut. All crews converge.", "Hunt the big one. Move out."],
+    "zh-CN": ["找到巨兽，各车合围。", "去打那个大家伙，出发。"],
+  },
+  start_juggernaut: {
+    "en-US": ["We're the Juggernaut. Everything's coming for us.", "They all want us. Hold nothing back."],
+    "zh-CN": ["我们是巨兽，敌人全冲我们来。", "都想干掉我们，全力开火。"],
+  },
+  start_mars: {
+    "en-US": ["Low gravity. Easy on the throttle.", "Advance. Watch your landings."],
+    "zh-CN": ["低重力，油门轻点。", "前进，注意落地。"],
+  },
+  start_range: {
+    "en-US": ["Range is hot.", "Range is open. Engage at will."],
+    "zh-CN": ["靶场，开始射击。", "靶场开放，自由射击。"],
+  },
+  start_survivors: {
+    "en-US": ["Survivors, stay together. Don't let them close.", "Stay tight. Hold them off."],
+    "zh-CN": ["幸存者集中，别让敌人靠近。", "保持队形，顶住他们。"],
+  },
+  start_zones: {
+    "en-US": ["Take the objectives. Move out.", "Seize the points. Advance."],
+    "zh-CN": ["夺取要点，前进。", "占领要点，推进。"],
   },
   step_by_step_reply: {
     "en-US": ["Step one: aim. Step two: fire."],
@@ -465,8 +753,8 @@ export const CAPTION_SCRIPT: Readonly<Record<string, Readonly<Record<"en-US" | "
     "zh-CN": ["履带修复，可以机动。", "履带接上了。"],
   },
   transmission_damaged: {
-    "en-US": ["Transmission's hit."],
-    "zh-CN": ["变速箱中弹。"],
+    "en-US": ["Transmission's hit.", "Gearbox is hit. Losing gears."],
+    "zh-CN": ["变速箱中弹。", "变速箱中弹，挂不上挡了。"],
   },
   turret_jammed: {
     "en-US": ["Turret ring's jammed.", "Turret won't traverse."],
@@ -476,6 +764,18 @@ export const CAPTION_SCRIPT: Readonly<Record<string, Readonly<Record<"en-US" | "
     "en-US": ["Engagement over. Area secure.", "Enemy force destroyed. Good work."],
     "zh-CN": ["战斗结束。区域安全。", "敌军全部歼灭。打得好。"],
   },
+  victory_assault: {
+    "en-US": ["Last line's ours. The front is taken.", "Objective taken. The line is ours."],
+    "zh-CN": ["最后防线到手，前线拿下了。", "目标已夺取，防线归我。"],
+  },
+  victory_juggernaut: {
+    "en-US": ["Time. We're still standing.", "They never brought us down."],
+    "zh-CN": ["时间到，我们还在。", "他们始终没能打垮我们。"],
+  },
+  victory_survivors: {
+    "en-US": ["Time. We held out.", "That's time. Survivors made it."],
+    "zh-CN": ["时间到，我们顶住了。", "时间到，幸存者撑下来了。"],
+  },
   wave_cleared: {
     "en-US": ["Wave cleared.", "That's the last of them. For now."],
     "zh-CN": ["本波敌人已击退。", "全部肃清了。暂时而已。"],
@@ -483,6 +783,14 @@ export const CAPTION_SCRIPT: Readonly<Record<string, Readonly<Record<"en-US" | "
   wave_incoming: {
     "en-US": ["Here they come.", "Enemy wave inbound."],
     "zh-CN": ["敌人来了。", "新一波敌人正在接近。"],
+  },
+  wave_runners: {
+    "en-US": ["Fast movers this wave.", "Runners. Light armor, coming quick."],
+    "zh-CN": ["本波是快速目标。", "轻型装甲，快速接近。"],
+  },
+  wave_swarm: {
+    "en-US": ["Big wave. Lots of them.", "Swarm. They're everywhere."],
+    "zh-CN": ["这波敌人很多。", "敌群，到处都是。"],
   },
   were_hit: {
     "en-US": ["We're hit.", "Taking hits."],

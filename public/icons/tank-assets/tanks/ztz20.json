@@ -795,8 +795,8 @@
       "width": 512,
       "height": 256,
       "mime": "image/webp",
-      "bytes": 13158,
-      "sha256": "9f542097aa772b4ede5ef0a8c99a79223247c4d93ef6b0050e566b0702ac2bfc"
+      "bytes": 13166,
+      "sha256": "684b9b205a4c224384985ae236e853c3f7f215cf841bc4c5b01f0e354e539da0"
     },
     "topSilhouette": {
       "file": "ztz20_top_silhouette.png",
@@ -819,32 +819,32 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 30656,
-      "sha256": "f83ddc59cb000f20c57ed9578a2e82894c85a1f6fabe6c08a0f87def4b4cba51"
+      "bytes": 30686,
+      "sha256": "16a6f61afd3c967a1e565e42b9ffdb71ca6a051ed458d653f5d3fc924e632c79"
     },
     "modulesSide": {
       "file": "ztz20_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 28028,
-      "sha256": "4c87c306194e0283ebeac2a4f568c70750df026a09c6a70ddf381dd182f27ebf"
+      "bytes": 28050,
+      "sha256": "8f1bcf854de2c708544e39a1a7de3c6094f2649647fa223f7b70f819a8afaf6a"
     },
     "crewSide": {
       "file": "ztz20_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 26046,
-      "sha256": "2c7ae78c9a899b50c2a34eb2b9043f239cb815f1c6c0a5d2c9e0dc89f29141a1"
+      "bytes": 26062,
+      "sha256": "1cbf19f9959696ca08967f6001e8cb46be1bd1599f009e8dcf09eacce4da242c"
     },
     "markings": {
       "file": "ztz20_markings.png",
       "width": 256,
       "height": 128,
       "mime": "image/png",
-      "bytes": 35400,
-      "sha256": "39f69e0097d17ffab612b8178b741ecbf218226d7fac4c0ff428a258c40a3da8"
+      "bytes": 32446,
+      "sha256": "69fdd729468c6af854482c994504e5d0d999a400bfeb20e8f71441e7f33b7975"
     },
     "technicalLabels": {
       "file": "ztz20_technical.json",

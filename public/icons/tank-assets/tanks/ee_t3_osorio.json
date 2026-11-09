@@ -811,15 +811,15 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 23650,
-      "sha256": "bb0c3eb61e93d1d44c3f91c0bae7c5de7f582f9d608c53c8849356ff07527c5c",
+      "bytes": 23666,
+      "sha256": "cdb3098c17d74866bde9e95ea772a758dc0aa8d42a3164a64390b51ee9bc54be",
       "thumbnail": {
         "file": "thumbs/ee_t3_osorio_angle.webp",
         "width": 256,
         "height": 256,
         "mime": "image/webp",
-        "bytes": 10098,
-        "sha256": "bfcbf900e72f894ae72a88996d8160e37c17d3744ba77a4f584414e6dffe2c87"
+        "bytes": 10100,
+        "sha256": "3e34128715cfc9311b0054b4a88f670d2d8561eeec8d67d0d74b0ed0ace27967"
       }
     },
     "top": {
@@ -835,8 +835,8 @@
       "width": 512,
       "height": 256,
       "mime": "image/webp",
-      "bytes": 8270,
-      "sha256": "ef622099e71b17e4998d55822a5c2b01e20f1b55292243f3109cd1e80ea38aa3"
+      "bytes": 8284,
+      "sha256": "ac4e893db8ef2eade159d10e6ac397b309a4048d408f45bd755fde202f0a72e3"
     },
     "topSilhouette": {
       "file": "ee_t3_osorio_top_silhouette.png",
@@ -859,32 +859,32 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 19314,
-      "sha256": "aec64f3ac695e0f97ac03668ca5eeb6bd3eef39bff63afa97e460ef53ccf5dae"
+      "bytes": 19342,
+      "sha256": "9d73347224e58c9a71db3fcb58384519dce257cd75d3e4c3b19de0ce69d8558b"
     },
     "modulesSide": {
       "file": "ee_t3_osorio_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 19380,
-      "sha256": "b37a3d16f9a26d453bd875f099681e9a0cc82b8cff657f6caf58b396c299b88d"
+      "bytes": 19386,
+      "sha256": "56ef7e7cebf63d11785ddd75f703f9dd8740035bd540200103b04bc5d6487e9a"
     },
     "crewSide": {
       "file": "ee_t3_osorio_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 17450,
-      "sha256": "a0622723d23bf9ed279c4a5fb2b4729bac3776aab2f95566b32aa7d508e6846f"
+      "bytes": 17462,
+      "sha256": "2daf87e8b94b14b9bd6240fa3ea89ca070515c5fdabcfb521284cfa1852a607c"
     },
     "markings": {
       "file": "ee_t3_osorio_markings.png",
       "width": 256,
       "height": 128,
       "mime": "image/png",
-      "bytes": 35127,
-      "sha256": "d28e46e012eb2806ff454350bb3266720b350adf16aa7be915127df4f34e2a2b"
+      "bytes": 33307,
+      "sha256": "1f33c25ba95b4581891e145e0f84fa753f1550c4c7b0d8468c7244ea1283596c"
     },
     "technicalLabels": {
       "file": "ee_t3_osorio_technical.json",

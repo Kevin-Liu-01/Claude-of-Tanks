@@ -13,7 +13,7 @@
 // Pathways: the map never laid the legacy kerbs (no curbs), so the kit lays its own on the towns' streets (no draws to
 // spend): the road through each town is a main street, the four ford roads lanes, each town its own polygon (the
 // viaduct between them keeps its parapets).
-import type { CivicAreaPlan, CivicBed, CivicFurniture, CivicPlan, CivicRect } from '../types.ts';
+import type { CivicAreaPlan, CivicBed, CivicFurniture, CivicPlanSource, CivicRect } from '../types.ts';
 
 import * as detMath from '../../../sim/detMath.ts';
 /** A rect's, a piece's and a bed's mirror twin across z = 0. */
@@ -126,9 +126,8 @@ function plaza(id: string, pad: number, mirror: boolean): CivicAreaPlan {
 
 const TOWN_SOUTH: ReadonlyArray<readonly [number, number]> = [[-140, -282], [140, -282], [140, -106], [-140, -106]];
 
-export const CLIFFBRIDGE_CIVIC_PLAN: CivicPlan = {
+export const CLIFFBRIDGE_CIVIC_PLAN: CivicPlanSource = {
   mapId: 'cliffbridge',
-  style: 'andalusian',
   // (229, the owner: "add a lot of cars in civic areas") the town's SEAT 600s and estates on the verges of the high
   // street where it enters each plaza and at the kerbs of the street below it, each with its mirror twin across z = 0,
   // every seat one the base battles' hulls touched at most once (front) and twice (zone) in six (probes/pace

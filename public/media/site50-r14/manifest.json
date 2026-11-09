@@ -7220,6 +7220,20 @@
    "home": "modes/ac130"
   },
   {
+   "path": "media/site50-r14/home/modes/air_support-640.webp",
+   "bytes": 55968,
+   "sha256": "ca5c0841be9761dd63f6b0838b0f343e360c9bf3495789d2b1606bc03e2a3061",
+   "source": "shots/media-r5/home-r2/deliver/modes/air_support.png",
+   "home": "modes/air_support"
+  },
+  {
+   "path": "media/site50-r14/home/modes/air_support.webp",
+   "bytes": 208092,
+   "sha256": "8f0f4bd655376779c52cedc447aee6a46cbd18cce9361373e2dc348ec91f2a2e",
+   "source": "shots/media-r5/home-r2/deliver/modes/air_support.png",
+   "home": "modes/air_support"
+  },
+  {
    "path": "media/site50-r14/home/modes/capture_the_flag-640.webp",
    "bytes": 35872,
    "sha256": "3f1fba64acce5db6c1880678c4701db67a1393706880dc21c1a4bb87b0153360",

@@ -1,52 +1,52 @@
 {
-  "note": "Static bundle budget (tools/bundle-budget.mjs): the bytes and requests each page loads before its entry runs. Generated at +3 % over a reviewed build; npm run check:bundle enforces it after npm run build. 266 (integrator, the single end re-pin over integ/266 0df7b32811's build; Node 24.22.1): bytes at +3 % over the build; request pins held at the exact counts (game 128, Gallery 75, cn 129, home 8, docs 12, 404 7, pad 14) after the Leopard 2 wedge leaf joined fleetLayouts. 269 (phone-feel-269, the owner 2026-11-03 \"it should buzz and vibrate and do everything\", the aim made more intuitive, the first-pairing controls guide): pad.html bytes only, at +3 % over its build after the desktop-only code left the phone (padDesk.ts, padCues.ts; src/pad/padPhoneHalf.selftest.mjs): the buzz engine, the aim curve and the guide are 2,546 B brotli over main and couch-mode-268; its 14 requests and every other page held.",
+  "note": "Static bundle budget (tools/bundle-budget.mjs): the bytes and requests each page loads before its entry runs. Generated at +3 % over a reviewed build; npm run check:bundle enforces it after npm run build. 266 (integrator, the single end re-pin over integ/266 0df7b32811's build; Node 24.22.1): bytes at +3 % over the build; request pins held at the exact counts (game 128, Gallery 75, cn 129, home 8, docs 12, 404 7, pad 14) after the Leopard 2 wedge leaf joined fleetLayouts. 269 (phone-feel-269, the owner 2026-11-03 \"it should buzz and vibrate and do everything\", the aim made more intuitive, the first-pairing controls guide): pad.html bytes only, at +3 % over its build after the desktop-only code left the phone (padDesk.ts, padCues.ts; src/pad/padPhoneHalf.selftest.mjs): the buzz engine, the aim curve and the guide are 2,546 B brotli over main and couch-mode-268; its 14 requests and every other page held. 269 (integrator, the single end re-pin over integ/269's build; Node 24.22.1): bytes at +3 % over the build; request pins at the exact counts (game 127, Gallery 73, cn 128, home 8, docs 12, 404 7, pad 14) after the Redback's datums joined fleetLayouts; pad's row is phone-feel-269's, held.",
   "headroom": 0.03,
   "pages": {
     "game": {
-      "requests": 128,
-      "raw": 4634084,
-      "gzip": 1422322,
-      "brotli": 1197469,
+      "requests": 127,
+      "raw": 4758214,
+      "gzip": 1457502,
+      "brotli": 1225095,
       "inlineCss": 5174,
-      "entryRaw": 925630,
-      "entryBrotli": 256325
+      "entryRaw": 931777,
+      "entryBrotli": 258179
     },
     "home": {
       "requests": 8,
-      "raw": 112620,
-      "gzip": 33031,
-      "brotli": 29448,
+      "raw": 112770,
+      "gzip": 33087,
+      "brotli": 29502,
       "inlineCss": 976
     },
     "docs": {
       "requests": 12,
-      "raw": 150645,
-      "gzip": 43319,
-      "brotli": 38052,
+      "raw": 150796,
+      "gzip": 43359,
+      "brotli": 38087,
       "inlineCss": 954
     },
     "gallery": {
-      "requests": 75,
-      "raw": 2989908,
-      "gzip": 899789,
-      "brotli": 754933,
+      "requests": 73,
+      "raw": 3103970,
+      "gzip": 931127,
+      "brotli": 779334,
       "inlineCss": 980
     },
     "notFound": {
       "requests": 7,
-      "raw": 68490,
-      "gzip": 21385,
-      "brotli": 18975,
+      "raw": 68646,
+      "gzip": 21444,
+      "brotli": 19029,
       "inlineCss": 803
     },
     "cn": {
-      "requests": 129,
-      "raw": 4796972,
-      "gzip": 1479178,
-      "brotli": 1243225,
+      "requests": 128,
+      "raw": 4923156,
+      "gzip": 1514893,
+      "brotli": 1271165,
       "inlineCss": 5534,
-      "entryRaw": 925630,
-      "entryBrotli": 256325
+      "entryRaw": 931777,
+      "entryBrotli": 258179
     },
     "pad": {
       "requests": 14,

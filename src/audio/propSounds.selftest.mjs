@@ -62,8 +62,11 @@ assert.equal(first('guardpost'), 'container_crush');
 assert.equal(first('barrel'), 'crate_break', 'bBarrel is a coopered wooden barrel, not a steel drum');
 assert.equal(first('pot'), 'pottery_smash', 'clay jars shatter as terracotta');
 assert.ok(ids('drumred').includes('fuel_drum_blast'), 'the red fuel drum explodes');
-for (const kind of ['barrier', 'tomb', 'bildstock', 'wallstone']) assert.equal(first(kind), 'rubble_crunch', `${kind} is stone or concrete`);
-assert.equal(first('bunker'), 'building_collapse');
+for (const kind of ['tomb', 'bildstock', 'wallstone']) assert.equal(first(kind), 'rubble_crunch', `${kind} is stone`);
+// world-sfx-269 (2026-11-03): concrete cracks as concrete (a pillbox fell as a timber hut, a barrier crunched as rubble)
+assert.equal(first('barrier'), 'wall_break_concrete', 'a concrete road barrier cracks');
+assert.equal(first('bunker'), 'wall_break_concrete', 'a pillbox breaks as concrete');
+for (const kind of ['walladobe', 'gateadobe']) assert.equal(first(kind), 'wall_break_plaster', `${kind} crumbles as mud brick`);
 assert.equal(first('transformer'), 'container_crush');
 assert.deepEqual(ids('stall'), ['crate_break', 'tent_collapse'], 'a market stall: its wooden frame and its awning');
 

@@ -31,6 +31,8 @@ import { crewArmour, crewFallbackLadders, crewPostureLadders, crewShell, shapeSu
 // driver and radio operator (11, 9 mm) trim slightly. 268: the IFV head's KF51 rebuilds (kf51_evo 17 mm, kf51_u
 // untrimmed) and the Abrams/Bradley head's Ukrainian M2A3 (commander 61 mm, gunner 60 mm under the low Bradley turret;
 // pinned in 268 by Main's ruling, rechecked with the 269 Bradley follow-up). Read from the 268 regen f25c0e7960.
+// 269 integration: + the Olifant Mk 1B's commander (9 mm), trimmed by olifant-mk1b-tells-269's own regen 9bafdc391c
+// under the sharpened turret (untrimmed before it; the Mk 2's commander already 6 mm). Read from the 269 regen 933f8820bf.
 const TRIMMED = Object.freeze({
   'm46_patton/driver': 0.016,
   'leclerc_xlr/driver': 0.013,
@@ -46,6 +48,7 @@ const TRIMMED = Object.freeze({
   't72b3m_kunlun/gunner': 0.109,
   'kf41_lynx/gunner': 0.047,
   't72b3_qilin/gunner': 0.206,
+  'olifant_mk1b/commander': 0.009,
   'olifant_mk2/commander': 0.006,
   'ua_m2a3_bradley/commander': 0.061,
   'ua_m2a3_bradley/gunner': 0.06,

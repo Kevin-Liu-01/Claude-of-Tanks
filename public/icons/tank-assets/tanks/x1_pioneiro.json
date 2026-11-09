@@ -761,15 +761,15 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 26280,
-      "sha256": "36e2c6aeb1c5ea77cc152a2ff7121eb726c9a70f306f93b9af839e8af6cda1a3",
+      "bytes": 28096,
+      "sha256": "86faafb279078acbeab45067a48adaf34d601ed7410ca05187e45b79968713da",
       "thumbnail": {
         "file": "thumbs/x1_pioneiro_angle.webp",
         "width": 256,
         "height": 256,
         "mime": "image/webp",
-        "bytes": 11254,
-        "sha256": "67fe5ac844b3563e0806c1c6d47a44d0ae4be11dc0d063b4d7329ddd98c3c1a0"
+        "bytes": 11768,
+        "sha256": "2ec6a51aaed2e464e56210c3d0929fc1e228602ad9c7a3f28dc900da9af37f82"
       }
     },
     "top": {
@@ -777,16 +777,16 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 6712,
-      "sha256": "f8decb3b477d435b56f707b82c047735693f40184b4868f396e0ff4f1b7113ec"
+      "bytes": 9918,
+      "sha256": "09150631a9a005281b48704b27204a667bff568601dc2136d3c6161a270daecf"
     },
     "side": {
       "file": "x1_pioneiro_side.webp",
       "width": 512,
       "height": 256,
       "mime": "image/webp",
-      "bytes": 10354,
-      "sha256": "833c923a427e7f69a3b4e842ba6949c47164fb226ad2e3f804454daca225cd23"
+      "bytes": 11126,
+      "sha256": "df0d4daa4e028a49605c55373724a22bce5be2746a2c1f59f87956923ac26e22"
     },
     "topSilhouette": {
       "file": "x1_pioneiro_top_silhouette.png",
@@ -809,32 +809,32 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 24306,
-      "sha256": "5ede45ad01c602a0ba6b8e410d1bffe9a700e85689819381000625d5158e3f32"
+      "bytes": 25652,
+      "sha256": "f618f28514608c84952b0dfc6e8684d7c33de818423832526d8c30c27dfdd3b9"
     },
     "modulesSide": {
       "file": "x1_pioneiro_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 26156,
-      "sha256": "dd9673cc186b496774544c153d76328dd724e9f347c94e938fa9e0c2dcd82a4c"
+      "bytes": 27082,
+      "sha256": "cd6c1f690d38579853be1e7913e2dc7d4dda5c6ab140892f65bb84b0039dcbcd"
     },
     "crewSide": {
       "file": "x1_pioneiro_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 24278,
-      "sha256": "ed9a6be58ac31978ba160341c2d97180fb6b3bcfae4b1bfb06373183362a80ca"
+      "bytes": 25540,
+      "sha256": "81e2188a21320fb2e01edb5040e4c70cdd171d94e78be7dbe05141e4129262f0"
     },
     "markings": {
       "file": "x1_pioneiro_markings.png",
       "width": 256,
       "height": 128,
       "mime": "image/png",
-      "bytes": 36298,
-      "sha256": "66f8c206d1d32daf64a4d5629900fe04f3c4f34cbec1c8c54e0f36e2e33b5f78"
+      "bytes": 34459,
+      "sha256": "71c1ddf41179442db64336aece31fab82f13ad5e5393e8a11d536261fb83e8cd"
     },
     "technicalLabels": {
       "file": "x1_pioneiro_technical.json",

@@ -17,6 +17,7 @@ import { cacheHealChance, matchRulesetFor, refillUnlimitedAmmunition, rulesetLin
 const AMMO = {
   standard: 'spec', capture_the_flag: 'spec', zone_control: 'spec', realistic: 'spec',
   drone: 'spec', // owner 2026-11-02: "drone mode shouldnt have infinite ammo"
+  air_support: 'spec', // air-support-270: the call-ins are the mode's firepower, the guns keep their own loadout
   turbo_ball: 'unlimited', gun_game: 'unlimited', ac130: 'unlimited',
   juggernaut: 'unlimited', infected: 'unlimited', endless_horde: 'unlimited', mars: 'unlimited', frontline_assault: 'unlimited',
   proving_ground: 'unlimited', // 230: the test drive's range (matchRuleset.ts PROVING_GROUND ammo: 'unlimited')
