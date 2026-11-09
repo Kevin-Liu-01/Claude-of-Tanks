@@ -319,8 +319,9 @@ export function buildCv90RunningGear(P: CvBuilderPort, o: { readonly trackShoe?:
 
 /** The 40 mm Bofors L/70 mount: a raked rocking mask running into the turret front, the long tapered cradle cover, the finned
  * barrel jacket and the barrel with its flared flash hider. Nothing on the moving gun reaches behind the trunnion far
- * enough to meet the hull roof at full elevation. */
-export function buildCv90Gun(P: CvBuilderPort): void {
+ * enough to meet the hull roof at full elevation. `len` is the trunnion-to-muzzle length: the cv90
+ * authoring 3.12, the CV9040C its published 7.0 m overall (ifvReplicaSpecs.ts). */
+export function buildCv90Gun(P: CvBuilderPort, len = 3.12): void {
   const { cylX, cylZ } = KIT;
   // rocking mask between the cheeks: its raked back runs into the turret front at every pitch, its foot stays clear
   // of the hull roof at full elevation
@@ -335,14 +336,14 @@ export function buildCv90Gun(P: CvBuilderPort): void {
   P.addGunExtra(chamferedBox([[0.22, 0.21, -0.18, 0.19, 0.05], [0.70, 0.18, -0.15, 0.17, 0.045],
     [1.04, 0.13, -0.11, 0.12, 0.035]]));
   P.addGunExtraDark(cylZ(0.098, 0.08, P.q ? 20 : 12), 0, 0, 1.08);
-  KIT.buildGun(P, { len: 3.12, r: 0.060, sleeve: false, collar: false, baseR: 0.095 });
+  KIT.buildGun(P, { len, r: 0.060, sleeve: false, collar: false, baseR: 0.095 });
   // finned barrel jacket ahead of the cradle and the flared flash hider (they recoil with the barrel)
   const seg = P.q ? 20 : 10;
   P.add('gun', cylZ(0.080, 0.40, seg), 0, 0, 1.32);
   for (let i = 0; i < 5; i++) P.add('gun', cylZ(0.094, 0.026, seg), 0, 0, 1.16 + i * 0.08);
-  P.add('gun', cylZ(0.084, 0.17, seg, 0.062), 0, 0, 3.025);
-  muzzleBore(P, { len: 3.12, r: 0.060, seg: 18 });
-  P.muzzleZ = 3.12;
+  P.add('gun', cylZ(0.084, 0.17, seg, 0.062), 0, 0, len - 0.095);
+  muzzleBore(P, { len, r: 0.060, seg: 18 });
+  P.muzzleZ = len;
 }
 
 /** The smoke-grenade banks on the rear of the turret's upper side panels (the CV9040C seats its Galix there). */

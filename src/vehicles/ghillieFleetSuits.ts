@@ -190,10 +190,11 @@ export const FLEET_GHILLIE_SUITS: Readonly<Record<string, GhillieConfig>> = Obje
   // CV9040C: the turret roof netted round the commander's hatch, the cupola and its periscope ring, both sight boxes and
   // the whip bases; flank drapes over the turret's side bins, behind the front smoke banks; a rear drape. The troop roof
   // netted behind the turret round its four hatches (the builder opens them); the skirts hung in three drapes a side,
-  // the right flank's exhaust outlet (z -0.5 to 0.6) left bare.
+  // the right flank's exhaust outlet (z -0.5 to 0.6) left bare. 271 (Main 2026-11-08, the photo packet's 3.38 m with the
+  // add-on armour): the spray certified inside the side fittings' 1.73 m (it reached 1.81 m, 3.58 m overall, 6 % wide)
   cv9040c: {
     id: 'cv9040c', seed: 9041, style: 'leafy', ...FULL, leafScale: 0.92, foliageKind: 'spruce', ...WOODLAND,
-    fieldClearanceM: 0.03, maxHalfWidth: 1.9, hemFloorM: 0.65,
+    fieldClearanceM: 0.03, maxHalfWidth: 1.73, hemFloorM: 0.65,
     turret: {
       top: [laid({
         x0: -1.24, x1: 1.24, z0: -1.44, z1: 1.20, nx: 31, nz: 33, y: 0.78,

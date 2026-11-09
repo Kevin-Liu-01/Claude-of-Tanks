@@ -194,7 +194,10 @@ export function buildCv9040CX(P: TankBuilderPort & CvBuilderPort, kit: { readonl
   // the Strf 9040's run, laid with the fleet's shared shoe (the C's own before 269: its quality-aware LOW tread)
   buildCv90RunningGear(P, { trackShoe: buildFleetTrackShoe });
   cv90TurretShell(P, { smoke: GALIX_BANKS });
-  buildCv90Gun(P);
+  // 271 (Main 2026-11-08, the photo packet's 7.0 m overall with the gun): the Bofors at 3.00 m from the trunnion, its
+  // muzzle 0.37 m ahead of the nose plate over the published 6.55 m hull (the cv90 authoring 3.12 read 7.27 m, 4 % long);
+  // the spec's barrelLenM (ifvReplicaSpecs.ts) carries the same length
+  buildCv90Gun(P, 3.00);
   // the coaxial Ksp 58C beside the cannon, out of the cradle cover's right front
   P.addGunExtraDark(KIT.cylZ(0.020, 0.36, 10), -0.15, 0.07, 1.02);
   cv90TurretRoof(P);
