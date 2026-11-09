@@ -41,8 +41,12 @@ const LOBBY_CSS = `
 export interface CouchLobbyRequest {
   /** The Deploy screen's mode (its sides follow it). */
   gameMode: string;
-  /** Deploy the seats (the Deploy screen's vehicle and map). */
-  start(couch: CouchBattle): void;
+  /** The Garage open span the press began in (src/app/couchOpener.ts opens the lobby only while it holds). */
+  ticket: { current(): boolean };
+  /** The Couch button: the modal's trigger (its focus comes back there, and the Garage's hide takes the modal with it). */
+  trigger: HTMLElement | null;
+  /** Deploy the seats (the Deploy screen's vehicle and map): false when the Garage refused the start. */
+  start(couch: CouchBattle): boolean;
 }
 
 let modal: ModalController | null = null;
@@ -71,7 +75,7 @@ export function openCouchLobby(runtime: CouchRuntime, request: CouchLobbyRequest
     const note = body.appendChild(document.createElement('p'));
     note.className = 'cot-couch-note';
     note.textContent = t('couch.unavailable');
-    modal.open();
+    modal.open({ trigger: request.trigger });
     return;
   }
 
@@ -113,8 +117,7 @@ export function openCouchLobby(runtime: CouchRuntime, request: CouchLobbyRequest
   start.addEventListener('click', () => {
     runtime.startBattle((inPlay) => {
       modal?.close();
-      request.start({ seats: inPlay, sides, names: inPlay.map((n) => t('pad.seat', { n })) });
-      return true;
+      return request.start({ seats: inPlay, sides, names: inPlay.map((n) => t('pad.seat', { n })) });
     });
   });
 
@@ -149,5 +152,5 @@ export function openCouchLobby(runtime: CouchRuntime, request: CouchLobbyRequest
   }
   paint(lobby.view);
   detach = lobby.subscribe(paint);
-  modal.open();
+  modal.open({ trigger: request.trigger });
 }

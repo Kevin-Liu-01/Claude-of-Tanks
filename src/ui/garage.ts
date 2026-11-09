@@ -40,7 +40,7 @@ import { EQUIPMENT_EMPTY_ID, createGarageEquipmentPicker } from './garageEquipme
 import { createGarageConsumables, type GarageConsumables } from './garageConsumables.ts';
 import { createPickerMenu, panelRoom, type PickerMenu } from './components/pickerMenu.ts';
 import { closeSurface, closeSurfacesWithin, openSurface, sweepHiddenSurfaces, type TransientSurface } from './components/surfaceStack.ts';
-import { createGarageScreen, createLazyPanelToggle } from './garageScreen.ts';
+import { createGarageScreen, createLazyPanelToggle, type GarageScreenTicket } from './garageScreen.ts';
 // (2026-11-02 audit S3) the product's boot latch, read only through gameReady.ts (never its harness mirror, the flag the
 // tools wait on)
 import { gameReady } from './gameReady.ts';
@@ -217,8 +217,17 @@ interface GarageOptions {
     options: { readonly gameMode: GameModeId; readonly campaignOperationId?: string; readonly watch?: boolean; readonly couch?: CouchBattle },
     announce: () => void,
   ) => void;
-  /** Couch mode (docs/COUCH-MODE.md): open the lobby over the Deploy screen; its Start deploys the seats here. */
-  readonly onCouch?: (request: { readonly gameMode: GameModeId; start(couch: CouchBattle): void }) => void;
+  /**
+   * Couch mode (docs/COUCH-MODE.md): open the lobby over the Deploy screen; its Start deploys the seats here. (round 8 Y4
+   * s3-03) A lazy opener: the lobby opens only while `ticket` holds (the Garage that asked still shows), with `trigger`
+   * as the modal's; the promise rejects when a chunk did not arrive (the press reports it).
+   */
+  readonly onCouch?: (request: {
+    readonly gameMode: GameModeId;
+    readonly ticket: GarageScreenTicket;
+    readonly trigger: HTMLElement;
+    start(couch: CouchBattle): boolean;
+  }) => Promise<unknown>;
   readonly onPlayRequest?: (request: PlayRequest) => void;
   readonly onPlayModeIntent?: (mode: BattleMode) => void;
   readonly onBattleIntent?: (request: { readonly specId: string; readonly mapId: string }) => void;
@@ -3765,7 +3774,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
       watch?: boolean;
       couch?: CouchBattle;
     } = {},
-  ): void {
+  ): boolean {
     // Battle entry must be unstoppable: a listener throwing in an exotic environment must never block onBattle — a
     // BATTLE button that does nothing is the worst failure mode. The press's one emit before onBattle is its click
     // (ui:click), contained here. (round 4 F1) Its ui:battleStart, whose listeners fan out (the pointer-lock grab,
@@ -3774,12 +3783,12 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     // (soloBattleEntryRuntime.ts run(), which contains a throw the same way).
     // (a battle that could not start because part of the game did not arrive cannot start in this document: the press
     // reloads the page once online, noteBattleLoadFailed)
-    if (pressFailed(battleBtn)) return;
+    if (pressFailed(battleBtn)) return false;
     // (round 3 B2, review r1) a press no battle may follow does nothing: its owner shows the way out instead (a check
     // that throws refuses nothing, and the entry decides again)
     let refused = false;
     try { refused = opts.refusesBattle?.() === true; } catch (err) { console.error('[garage] battle refusal check failed:', err); }
-    if (refused) return;
+    if (refused) return false;
     try {
       if (emitClick) emit('ui:click', {});
     } catch (err) {
@@ -3798,7 +3807,9 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
       }
     };
     const options = campaignOperationId ? { gameMode, campaignOperationId } : watch ? { gameMode, watch } : couch ? { gameMode, couch } : { gameMode };
-    if (onBattle) onBattle(specId, mapId, options, announce); // MAP-CONFIG WIRING
+    if (!onBattle) return false;
+    onBattle(specId, mapId, options, announce); // MAP-CONFIG WIRING
+    return true;
   }
 
   /** The proving ground with this vehicle (the dossier's button, the Gallery's link): never inside a room's lobby. */
@@ -4332,13 +4343,26 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
   const setupWatch = requiredElement<HTMLButtonElement>(battleMenu, '[data-battle-watch]');
   setupWatch.addEventListener('click', () => { if (!setupWatch.disabled) battle(true); });
   const setupCouch = requiredElement<HTMLButtonElement>(battleMenu, '[data-battle-couch]');
-  setupCouch.addEventListener('click', () => {
-    if (setupCouch.disabled || !selectedId || !opts.onCouch) return;
+  // (round 8 Y4 s3-03) the couch lobby is one of the Garage's lazy openers (2026-11-02 audit F5): the press takes the
+  // Garage's ticket (main's onCouch opens the lobby only while it holds, src/app/couchOpener.ts), a repeat press while the
+  // chunks load does nothing, and a chunk that did not arrive is the kit's failure (the button's error state, Reload page)
+  let couchOpening = false;
+  const openCouch = (): boolean => {
+    const onCouch = opts.onCouch;
+    if (couchOpening || setupCouch.disabled || !selectedId || !onCouch) return false;
+    if (reloadsForFailure(setupCouch, 'cot-couch-load', t('loadFailed.generic'))) return false;
     const specId = selectedId;
     const mapId = fieldMapId();
     const gameMode = battleGameMode;
-    opts.onCouch({ gameMode, start: (couch) => { closeBattleMenu(); launchBattle(specId, mapId, { gameMode, couch }); } });
-  });
+    const request = { gameMode, ticket: garageScreen.ticket(), trigger: setupCouch,
+      start: (couch: CouchBattle) => { closeBattleMenu(); return launchBattle(specId, mapId, { gameMode, couch }); } };
+    couchOpening = true;
+    void Promise.resolve().then(() => onCouch(request))
+      .catch(() => reportLoadFailure('cot-couch-load', t('loadFailed.generic'), [setupCouch]))
+      .finally(() => { couchOpening = false; });
+    return true;
+  };
+  setupCouch.addEventListener('click', () => { openCouch(); });
   // The mode settings and the TEAMS switch load with the battle menu's first render (round 2, the critic's E3: the TEAMS
   // control grew the game's entry chunk); MONO's switch leads with the selected vehicle's flag
   let arrangementPanel: { render(mode: GameModeId): void; close(): void } | null = null;

@@ -135,6 +135,19 @@ import { createLazyChunk } from '../app/lazyChunk.ts';
     'and photo mode');
   assert.match(source, /if \(!quickMenus \|\| !ticket\.current\(\)\) return;/, 'and the quick menus');
   assert.match(source, /customCamoStudioAccess\?\.open\(garageScreen\.ticket\(\)\.current\)/, 'and the custom camo studio');
+  // (round 8 Y4 s3-03) and the couch lobby: the press hands the Garage's ticket and its button (the modal's trigger, so
+  // the hide's closeSurfacesWithin takes an in-time lobby), a repeat press while the chunks load does nothing, a failed
+  // chunk is the kit's failure; main's onCouch opens through the one helper (couchOpener.selftest drives it)
+  const couchPress = source.slice(source.indexOf('const openCouch = ('), source.indexOf("setupCouch.addEventListener('click'"));
+  assert.ok(couchPress.length > 0, 'the Couch press is one function (before: an inline handler with no ticket)');
+  assert.match(couchPress, /if \(couchOpening \|\| [^\n]*\) return false;/, 'an in-flight latch');
+  assert.match(couchPress, /reloadsForFailure\(setupCouch, 'cot-couch-load', /, 'a press after a failed chunk reloads the page');
+  assert.match(couchPress, /ticket: garageScreen\.ticket\(\), trigger: setupCouch,/, 'the ticket and the trigger');
+  assert.match(couchPress, /reportLoadFailure\('cot-couch-load', /, 'a failed chunk marks the button');
+  const main = readFileSync(new URL('../main.ts', import.meta.url), 'utf8');
+  const onCouch = main.slice(main.indexOf('\n  onCouch: '), main.indexOf('\n  },', main.indexOf('\n  onCouch: ')));
+  assert.match(onCouch, /openCouchWhenCurrent\(\{ ticket: request\.ticket, load: /, "main's onCouch opens through the helper");
+  assert.doesNotMatch(onCouch, /console\.error/, 'and hands a failure to the press, not the console alone');
   assert.match(source, /const facetPanelToggle = createLazyPanelToggle\(garageScreen, \(\) => \{/,
     'the filter button is the lazy toggle (case 6 drives it)');
   // (integration IR3) loaders-workers' opener chunk sits under the toggle: a press after a failed load reloads the page

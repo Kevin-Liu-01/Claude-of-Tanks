@@ -246,6 +246,7 @@ import { consumableSpecFor, loadConsumables } from './game/consumableLoadout.ts'
 import { createSettingsAccess } from './ui/settingsAccess.ts';
 import { togglePhonePause } from './ui/phonePause.ts';
 import { setBodyFlag } from './ui/bodyFlags.ts';
+import { openCouchWhenCurrent } from './app/couchOpener.ts';
 import { shellTypeCode } from './ui/shellLabels.ts';
 import { createMobileBattleInputAccess } from './game/mobileBattleInputAccess.ts';
 import { installResponsiveLayout } from './ui/responsiveLayout.ts';
@@ -1633,10 +1634,11 @@ const garage: MainGarageRuntime = await bootStage('ui', () => createGarage({
   // (round 3 B2, review r1) the press asks the entry before it announces: a refused one shows the way out, never a
   // battle start that does not follow (the pointer lock grabbed over a failed return's notice)
   refusesBattle: () => soloBattleEntry.refuses(),
+  // (round 8 Y4 s3-03) a lazy Garage opener: the lobby opens only over the Garage that asked (its ticket), and a chunk that
+  // did not arrive rejects to the press, which reports it under the loaders' policy (garage.ts)
   onCouch: (request) => {
-    void Promise.all([couchOwner.preload(), import('./ui/couchLobby.ts')])
-      .then(([runtime, lobby]) => lobby.openCouchLobby(runtime, request))
-      .catch((error) => console.error('[couch] the lobby failed to open', error));
+    return openCouchWhenCurrent({ ticket: request.ticket, load: () => Promise.all([couchOwner.preload(), import('./ui/couchLobby.ts')]),
+      open: ([runtime, lobby]) => lobby.openCouchLobby(runtime, request) });
   },
   onPlayRequest: (request) => playSurface.open(request).catch((error) => {
     console.error('[play-menu] failed to open', error);

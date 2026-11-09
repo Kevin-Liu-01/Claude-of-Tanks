@@ -1897,6 +1897,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/game/couchCamera.selftest.mjs', // couch-mode-268: the shared camera frames every seat
     // round 8 Y4 s3-02/s3-09: the couch view by its own reason in every couch battle; Start closes the join window first
     'src/app/couchRuntime.selftest.mjs',
+    // round 8 Y4 s3-03: the couch lobby opens only over the Garage that asked (its ticket), once; a failed chunk is the press's
+    'src/app/couchOpener.selftest.mjs',
     // round 8 Y4 s3-05: one phone pause rule (open, or close with no relock) for the single pairing and every couch seat
     'src/ui/phonePause.selftest.mjs',
     'src/pad/qr.selftest.mjs',
