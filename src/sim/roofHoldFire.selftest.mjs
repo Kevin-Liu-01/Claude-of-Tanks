@@ -178,9 +178,12 @@ const count = (rounds, f) => rounds.filter(f).length;
     // glacis)
     ['k1e1', 'amx10p_25', 150, 140, 8, 8],
     ['k1e1', 'bmp2', 50, 100, 0, 8], ['k1e1', 'bmp2', 90, 100, 0, 10], ['m551a1_tts', 'bmp2', 130, 100, 0, 10],
-    ['k1e1', 'bmp3m_dragun125', 150, 100, 0, 12], ['m551a1_tts', 'cv9040c', 0, 100, 0, 2], ['m551a1_tts', 'leo1a5', 35, 120, 0, 2],
-    // GUARD: nothing it can hurt (the share rule's own hold)
-    ['k1e1', 'bmp2', 0, 100, 0, 0], ['k1e1', 'leo1a5', 0, 120, 0, 0],
+    ['k1e1', 'bmp3m_dragun125', 150, 100, 0, 12], ['m551a1_tts', 'marder1a3', 0, 100, 0, 6], ['m551a1_tts', 'leo1a5', 35, 120, 0, 2],
+    // GUARD: nothing it can hurt (the share rule's own hold). 270: the CV9040C rebuilt on the measured cv90 hull presents
+    // the cv90's front (17.5 % defeatable by the TTS's 30 mm head-on at 100 m, the cv90 17.7 %; the old build's 25.7 % sat
+    // just over the 25 % engage share), so its row joins the holds and the Marder 1A3 head-on (37 %) keeps a heavy IFV's
+    // front among the hurting rows
+    ['k1e1', 'bmp2', 0, 100, 0, 0], ['k1e1', 'leo1a5', 0, 120, 0, 0], ['m551a1_tts', 'cv9040c', 0, 100, 0, 0],
   ];
   for (const [shooterId, targetId, aspect, range, speed, least] of scenes) {
     const shooter = vehicle('s', shooterId, 'blue', 0, 0), target = vehicle('t', targetId, 'red', 0, range, aspect, speed);

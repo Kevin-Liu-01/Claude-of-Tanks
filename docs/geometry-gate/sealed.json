@@ -1,5 +1,5 @@
 {
- "generatedAt": "2026-11-07T14:52:42.826Z",
+ "generatedAt": "2026-11-09T12:50:28.920Z",
  "res": 256,
  "minArea": 6,
  "note": "Sealed-hull ledger: per-tank open (true opening), inside-out, see-through and netting pixel totals over the 33 census views, one row per playable id, each measured in the census frame recorded on its row (frame: [x, y, z, radius] in the tank root, so an unrelated extremity edit never moves the pixel grid). Gate: a tank may not exceed its ledger open px, nor its see-through px (the world seen through glass, markings or undeclared alpha-cut parts), by more than max(12, 10%), and a sealed tank must stay sealed; its netting px (sky between declared alpha-cut net and leaf dressing, netSeeThroughPx) must stay within max(12, 2%) of the row either way; an open row may not open in a view outside its openViewNames. The frame is fixed: a build whose own frame is within min(0.5 m, 15%) of it is judged in it; past that it fails OUT OF FRAME or FRAME STALE, the only cases --reframe serves (no column may exceed the row in the row's frame; never past half again the row's first frame). A plain update never changes a row; --tighten-ledger lowers one, --accept-see-through=<id>:<reason> raises see-through or netting and --reframe=<id>:<reason> re-frames, each recorded in the row's accepts history. (guards 229, 2026-10-20: every row re-measured in its recorded frame on integ/229 93cfe22c21.)",
@@ -813,14 +813,36 @@
    "openPx": 20,
    "openViews": 0,
    "insideOutPx": 346,
-   "seeThroughPx": 10,
-   "netSeeThroughPx": 3690,
+   "seeThroughPx": 0,
+   "netSeeThroughPx": 3222,
    "tris": 55053,
    "frame": [
     0,
     2.1,
     0.05,
     4.6
+   ],
+   "accepts": [
+    {
+     "kind": "see-through",
+     "reason": "269 cv9040c-269: the pair rebuilt on the measured cv90 builder, the field net re-laid on the new hull and turret (blind A/B 4/4)",
+     "by": "kevinliu",
+     "date": "2026-11-06",
+     "from": {
+      "seeThroughPx": 10,
+      "netSeeThroughPx": 3690
+     }
+    },
+    {
+     "kind": "see-through",
+     "reason": "271 cv9040c-269 photo reconcile: the field net certified inside the side fittings (maxHalfWidth 1.73, it reached 1.81) and the Bofors at 3.00 m from the trunnion (Main 2026-11-08)",
+     "by": "kevinliu",
+     "date": "2026-11-09",
+     "from": {
+      "seeThroughPx": 0,
+      "netSeeThroughPx": 3494
+     }
+    }
    ]
   },
   "cv90_mk4": {
@@ -5104,13 +5126,25 @@
    "openViews": 0,
    "insideOutPx": 338,
    "seeThroughPx": 0,
-   "netSeeThroughPx": 2411,
+   "netSeeThroughPx": 1308,
    "tris": 53148,
    "frame": [
     0,
     2.1,
     0.05,
     4.6
+   ],
+   "accepts": [
+    {
+     "kind": "see-through",
+     "reason": "269 cv9040c-269: the pair rebuilt on the measured cv90 builder, the field net re-laid on the new hull and turret (blind A/B 4/4)",
+     "by": "kevinliu",
+     "date": "2026-11-06",
+     "from": {
+      "seeThroughPx": 0,
+      "netSeeThroughPx": 2411
+     }
+    }
    ]
   },
   "t49": {
