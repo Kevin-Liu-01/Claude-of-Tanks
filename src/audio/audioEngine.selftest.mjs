@@ -795,4 +795,46 @@ else globalThis.localStorage = priorStorage;
   bus.emit('phase:change', { phase: 'garage' });
   gameMode = 'standard';
 }
-console.log(`audioEngine.selftest: rigs by powertrain, national crew, scenes, weapon layering + delay + flyby, reload choreography, hits, edge cases, destruction, concussion, our hits and misses, kill-cam, panning, scope, aircraft, mode events, interface sounds, rig ownership, late adoption and teardown, our own banks' owner passed (${probe.sfxLog.length} voices logged)`);
+{
+  // round 8 Y3 s1-10: the reload mirror's cycle is the reloading mount's. Every channel reloads in parallel and the sim
+  // reports the selected round's, so selecting the launcher's missile while the gun reloads is the launcher's cycle,
+  // joined where it stands: its own plan, and none of the steps it is already past played at once.
+  const { weaponMounts } = await import('./weaponAudio.ts');
+  const gunner = tank('me', { isPlayer: true });
+  gunner.spec = { ...gunner.spec, gun: { caliberMm: 125, reloadS: 7, shells: [{ type: 'APFSDS', name: '3BM60' }, { type: 'HE', name: '3OF26' },
+    { type: 'HEAT', name: 'ATGM', guided: true, caliberMm: 152 }] } };
+  const keys = weaponMounts(gunner.spec.gun).map((m) => m.key);
+  assert.ok(keys.includes('guided/missile') && keys.length >= 2, `the hull carries a launcher beside its gun (${keys})`);
+  bus.emit('phase:change', { phase: 'battle' });
+  audio.update(1 / 60, listener, [gunner]);
+  bus.emit('battle:rollout', {});
+  const starts = () => probe.soundLog.filter((e) => e.type === 'reload:start');
+  const cueNames = (since) => probe.soundLog.slice(since).filter((e) => e.type === 'reload:cue').map((e) => e.cue);
+  const reloadAt = (progress, slot) => {
+    gunner.combat.shellSlot = slot;
+    audio.update(1 / 60, listener, [gunner]);
+    ctx.advance(0.3);
+    bus.emit('player:reload', { total: 7, kind: 'shell', caliberMm: slot === 2 ? 152 : 125, t: 7 * (1 - progress), progress });
+  };
+  // the gun's cycle under way
+  for (const progress of [0, 0.1]) reloadAt(progress, 0);
+  const gunStarts = starts().length;
+  // the same gun's other round, mid-cycle: the gun's cycle goes on
+  reloadAt(0.15, 1);
+  assert.equal(starts().length, gunStarts, 'another round of the same gun keeps its cycle');
+  // the launcher's missile, its tube further along (its channel's fallback total is the gun's: the same kind and total)
+  const at = probe.soundLog.length;
+  reloadAt(0.8, 2);
+  const joined = starts().at(-1);
+  assert.ok(starts().length === gunStarts + 1 && joined.key === 'guided/missile' && joined.joined === true,
+    `the launcher's cycle, joined where it stands (${JSON.stringify(joined)})`);
+  assert.deepEqual(cueNames(at), [], `no burst of cues at the switch (${cueNames(at)})`);
+  // its remaining steps play as it runs on
+  const rest = probe.soundLog.length;
+  for (const progress of [0.9, 0.97]) reloadAt(progress, 2);
+  bus.emit('player:reload', { total: 7, kind: 'shell', caliberMm: 152, t: 0, progress: 1, done: true });
+  // (the launcher plan: the hatch, the canister lift and the tube load are behind it at 0.8; the launcher raises at 0.91)
+  assert.deepEqual(cueNames(rest), ['launcherRaise'], `only the launcher's steps after the join (${cueNames(rest)})`);
+  bus.emit('phase:change', { phase: 'garage' });
+}
+console.log(`audioEngine.selftest: rigs by powertrain, national crew, scenes, weapon layering + delay + flyby, reload choreography, hits, edge cases, destruction, concussion, our hits and misses, kill-cam, panning, scope, aircraft, mode events, interface sounds, rig ownership, late adoption and teardown, our own banks' owner, the reloading mount's cycle passed (${probe.sfxLog.length} voices logged)`);

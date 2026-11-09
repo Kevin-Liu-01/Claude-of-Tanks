@@ -696,8 +696,11 @@ export function createAudio({
   let auxLights: number | null = null;
   // Our drone's last battery and range while it flew: how the flight ended decides the commander's call.
   const ownDroneLast = { batteryS: 0, rangeM: 0 };
-  const reload: { active: boolean; total: number; kind: string; caliber: number; lastT: number; next: number; plan: ReloadCuePlan | null } = {
-    active: false, total: 0, kind: 'shell', caliber: 100, lastT: 0, next: 0, plan: null,
+  // The reload choreography's mirror of our crew's cycle: its plan by the reloading mount (`mountKey`), the round selected
+  // (`slot`) and the gun (`gun`) it was made for (round 8 Y3 s1-10).
+  const reload: { active: boolean; total: number; kind: string; caliber: number; lastT: number; next: number; plan: ReloadCuePlan | null;
+    mountKey: string; slot: number; gun: unknown } = {
+    active: false, total: 0, kind: 'shell', caliber: 100, lastT: 0, next: 0, plan: null, mountKey: '', slot: -1, gun: null,
   };
   let reloadCalled = false;
   const surfaceCache = new Map<string, { surface: SurfaceId; depth: number; occluded: number; at: number }>();
@@ -1863,7 +1866,18 @@ export function createAudio({
     const kind = event.kind || 'shell';
     const caliber = Math.max(12, Number(event.caliberMm) || 100);
     const t = Number(event.t) || 0;
-    if (!reload.active || reload.kind !== kind || Math.abs(reload.total - total) > 0.01 || t > reload.lastT + 0.04) {
+    // The cycle is the reloading mount's (round 8 Y3 s1-10): every channel reloads in parallel (sim/damage.ts) and the
+    // selected round's is the one reported, so another round selected mid-cycle on another mount (a launcher's, a
+    // secondary gun's) is that mount's cycle, joined where it stands (its plan, none of its passed cues at once); another
+    // round of the same mount keeps the cycle; a new gun (a Gun Game step, the AC-130's) is a new cycle. The mount is
+    // resolved only when the selection changes.
+    const slot = latestPlayer?.combat?.shellSlot ?? 0;
+    const gun = latestPlayer?.spec?.gun ?? null;
+    const switched = reload.active && gun === reload.gun && slot !== reload.slot && reloadingMount(caliber).key !== reload.mountKey;
+    reload.slot = slot;
+    const restart = !reload.active || switched || gun !== reload.gun || reload.kind !== kind || Math.abs(reload.total - total) > 0.01
+      || t > reload.lastT + 0.04;
+    if (restart) {
       reload.active = true;
       reload.total = total;
       reload.kind = kind;
@@ -1872,13 +1886,17 @@ export function createAudio({
       reload.next = 0;
       // The loader by the mount's row and the hull's layout (the AC-130's howitzer by hand, its missiles on the pylon).
       const m = reloadingMount(caliber);
+      reload.mountKey = m.key;
+      reload.gun = gun;
       const specId = playerId ? tanks.get(playerId)?.specId ?? null : null;
       const loader = loaderFor(specId, m);
       reload.plan = resolveReloadCuePlan(total, kind, m, loader, { rackDoor: readyRackDoor(specId), magazineRounds: Number(event.magazineCapacity) || 0 });
-      logSound('reload:start', { kind, total, caliberMm: caliber, key: m.key, loader });
+      logSound('reload:start', { kind, total, caliberMm: caliber, key: m.key, loader, ...(switched ? { joined: true } : {}) });
     }
     const progress = Number.isFinite(event.progress) ? clamp(Number(event.progress), 0, 1) : clamp(1 - t / total, 0, 1);
     const cues = reload.plan?.cues || [];
+    // a cycle joined where it stands: the steps the crew is already past happened unheard, never all at once now
+    if (restart && switched) while (reload.next < cues.length && progress + 1e-6 >= cues[reload.next].at) reload.next++;
     while (reload.next < cues.length && progress + 1e-6 >= cues[reload.next].at) {
       const cue = cues[reload.next++];
       reloadCue(cue);
@@ -2826,6 +2844,9 @@ export function createAudio({
       reloadCalled = false;
       reload.active = false;
       reload.plan = null;
+      reload.mountKey = '';
+      reload.slot = -1;
+      reload.gun = null;
     }
     switch (edge) {
       case 'enter-battle':
