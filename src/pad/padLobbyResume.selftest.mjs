@@ -8,10 +8,13 @@
 // is the press this queue serves once it lands, and the Y11 merge runs the two together. The reverse order: every phone
 // has left when the TV blinks; the lobby resumes instead of ending (its code was on screen), and a seat that leaves
 // while the TV is away leaves the desktop's grace in force and is let go on the TV once it is back (the resume's roll
-// call), in an emptied lobby and in one whose other phones stay (here or asleep). Reopen is not offered while the
-// lobby reconnects, and the view's moves follow one rule (padLobbyMoveAllowed).
+// call), in an emptied lobby and in one whose other phones stay (here or asleep). An ICE ask the lobby socket could
+// not carry is asked again once it is back. Reopen is not offered while the lobby reconnects and the lobby's paint
+// applies that (Reopen hidden, the Connecting note shown; pinned in couchLobby.ts's source), and the view's moves
+// follow one rule (padLobbyMoveAllowed).
 import assert from 'node:assert/strict';
 import { createHash, randomBytes } from 'node:crypto';
+import { readFileSync } from 'node:fs';
 import { PadActor } from './padActor.ts';
 import * as padLobby from './padLobby.ts';
 import * as couchLobby from '../ui/couchLobby.ts';
@@ -33,7 +36,7 @@ function memoryHost(code = 'K7Q4MZ') {
   let now = 1_000_000;
   let nextId = 0;
   const clients = new Map();
-  const host = { deadline: null, resumes: 0, desktopId: null };
+  const host = { deadline: null, resumes: 0, desktopId: null, iceGrants: 0 };
   const actor = new PadActor(code, {
     now: () => now,
     randomToken: () => randomBytes(16).toString('base64url'),
@@ -42,7 +45,7 @@ function memoryHost(code = 'K7Q4MZ') {
     close: (id) => { const client = clients.get(id); clients.delete(id); if (client) later(() => client.closedByHost()); },
     schedule: (at) => { host.deadline = at; },
     persist: () => {},
-    iceServers: async () => ({ iceServers: [], relay: false }),
+    iceServers: async () => { host.iceGrants++; return { iceServers: [], relay: false }; },
   });
 
   /** The client half: the WebSocket a link or the lobby drives. */
@@ -234,6 +237,34 @@ function closeWhenAway(lobby, also = () => {}) {
   lobby.end();
 }
 
+// ---- an ICE ask the lobby socket could not carry is asked again once the TV is back (fix-up r3) ----------------------
+// The lobby marks the host asked only when the ask went out (padLobby.ts fromSeat). H0 marked it before sending: an ask
+// that met a closed socket left the lobby "asked" after the resume, and no seat's ask reached the host again until the
+// socket dropped once more, so a seat without a fresh grant went on without ICE servers (no TURN). The harness makes
+// the order: the first phone's seat arrives and the TV's socket drops in the same turn, so the seat's link asks while
+// the socket is closed. A browser delivers the drop as its own task after the seat's ask (the ask is synchronous on a
+// host frame), so no product path reaches this today; the block holds the rule for an ask a later change makes async.
+{
+  const { host, lobby, gone } = await lobbyWith(0);
+  let dropped = false;
+  lobby.subscribe((view) => {
+    if (dropped || view.seats.length !== 1) return;
+    dropped = true;
+    host.dropDesktop();
+  });
+  host.phone(lobby.view.code);
+  await until(() => dropped, 'the first seat arrives and the TV drops');
+  await until(() => lobby.view.state !== 'away', 'the lobby comes back (or ends)');
+  await settle();
+  assert.equal(lobby.view.state, 'open', 'it resumes with its window');
+  assert.deepEqual(lobby.view.seats.map((seat) => [seat.seat, seat.presence]), [[1, 'here']], 'the seat is kept');
+  await until(() => host.iceGrants > 0, 'an ICE ask reaches the host', 3000).catch(() => {});
+  assert.equal(host.iceGrants, 1,
+    'the seat asks for ICE again after the resume and one ask reaches the host (H0: an ask that met the closed socket left the lobby marked asked, and none did)');
+  assert.deepEqual(gone, []);
+  lobby.end();
+}
+
 // ---- the view's machine: its states and moves; `move` is the one writer and asks the rule --------------------------
 // No product path asks for a refused move (once ended, the socket is gone and a stale socket's frames are dropped), so
 // the refusal is proven on the rule move() asks (fix-up r2): every one of the 25 (from, to) pairs against the table, and
@@ -258,7 +289,6 @@ function closeWhenAway(lobby, also = () => {}) {
   for (const state of padLobby.PAD_LOBBY_STATES) {
     assert.equal(couchLobby.reopenOffered({ state }), state === 'closed', `Reopen on a lobby ${state}`);
   }
-  const { readFileSync } = await import('node:fs');
   const source = readFileSync(new URL('./padLobby.ts', import.meta.url), 'utf8');
   const writes = [...source.matchAll(/\bstate: '(connecting|open|closed|away|ended)'|\{ \.\.\.view, state \}/g)].map((match) => match[0]);
   assert.deepEqual(writes, ["state: 'connecting'", '{ ...view, state }'], 'the view starts connecting and only move() changes its state');
@@ -268,5 +298,48 @@ function closeWhenAway(lobby, also = () => {}) {
   assert.equal(source.match(/\bPAD_LOBBY_MOVES\[/g)?.length, 1, 'the table is read in one place (the rule)');
 }
 
-console.log('padLobbyResume.selftest: PASS — a setOpen(false) asked while the TV is away reaches the host after the resume; a lobby whose phones left resumes after a blink; the grace stands when the last seat leaves while away; the roll call keeps the seats the host names; Reopen only on a closed lobby; one state writer that asks the move rule');
+// ---- the lobby's paint applies the rule: Reopen hidden unless offered, the Connecting note while away (fix-up r3) ------
+// reopenOffered (above) is the owner; couchLobby.ts's paint is DOM code (openCouchLobby builds a modal), so its use is
+// pinned in source, as padReadyBuzz.selftest pins the phone page: Reopen's and the note's one writer each is a statement
+// of paint's own (in no branch, before any return), the note reads Connecting, and paint runs on every view the lobby
+// publishes. H0's Reopen expression (offered while away), a note that never shows, or either line in a branch fails.
+{
+  const couch = readFileSync(new URL('../ui/couchLobby.ts', import.meta.url), 'utf8');
+  /** A block's text from the `{` after `head` to its matching `}`. */
+  const block = (head) => {
+    const at = couch.indexOf(head);
+    assert.ok(at >= 0, `couchLobby.ts has ${head}`);
+    const open = couch.indexOf('{', at + head.length - 1);
+    let depth = 0;
+    for (let i = open; i < couch.length; i++) {
+      if (couch[i] === '{') depth++;
+      else if (couch[i] === '}' && --depth === 0) return couch.slice(open + 1, i);
+    }
+    assert.fail(`${head}'s block never closes`);
+  };
+  /** The block's own statements: its lines at its least indent (a branch's or a callback's lines sit deeper). */
+  const topLines = (body) => {
+    const lines = body.split('\n').filter((line) => line.trim());
+    const indent = Math.min(...lines.map((line) => line.length - line.trimStart().length));
+    return lines.filter((line) => line.length - line.trimStart().length === indent).map((line) => line.trim());
+  };
+  const REOPEN = 'reopen.hidden = !reopenOffered(view);';
+  const NOTE = "reconnecting.hidden = view.state !== 'away';";
+  const paint = block('function paint(view: PadLobbyView): void {');
+  for (const [line, what] of [[REOPEN, 'Reopen is hidden unless reopenOffered says so (never while away)'],
+    [NOTE, 'the Connecting note shows exactly while the lobby is away']]) {
+    assert.ok(topLines(paint).includes(line), `paint sets it on every view, as a statement of its own: ${what}`);
+    const returnAt = paint.search(/\breturn\b/);
+    assert.ok(returnAt < 0 || paint.indexOf(line) < returnAt, `paint sets it before any return: ${what}`);
+  }
+  assert.deepEqual([...couch.matchAll(/\breopen\.hidden\s*=[^;]*;/g)].map((match) => match[0]), [REOPEN], "paint is Reopen's one writer");
+  assert.deepEqual([...couch.matchAll(/\breconnecting\.hidden\s*=[^;]*;/g)].map((match) => match[0]), ['reconnecting.hidden = true;', NOTE],
+    "the note starts hidden and paint is its one writer after that");
+  const lobbyLines = topLines(block('export function openCouchLobby('));
+  assert.ok(lobbyLines.includes("reconnecting.textContent = t('pad.state.connecting');"), 'the note reads Connecting');
+  assert.ok(lobbyLines.includes('paint(lobby.view);') && lobbyLines.includes('detach = lobby.subscribe(paint);'),
+    'paint runs on the first view and on every view the lobby publishes');
+}
+
+console.log('padLobbyResume.selftest: PASS — a setOpen(false) asked while the TV is away reaches the host after the resume; a lobby whose phones left resumes after a blink; the grace stands when the last seat leaves while away; the roll call keeps the seats the host names; an ICE ask the socket could not carry is asked again; Reopen only on a closed lobby, and the paint hides it and shows Connecting while away; one state writer that asks the move rule');
 process.exit(0);

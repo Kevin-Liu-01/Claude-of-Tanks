@@ -1894,7 +1894,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/pad/padPhoneHalf.selftest.mjs', // phone-feel-269: no desktop-only export rides to the phone's page
     'src/pad/padLink.selftest.mjs',
     'src/pad/padLobby.selftest.mjs', // 2026-11-01 (couch-mode-268, docs/COUCH-MODE.md): one lobby, a receiver per seat
-    'src/pad/padLobbyResume.selftest.mjs', // round 8 Y5 s3-07/s3-08: the real lobby and actor in memory: a TV blink keeps a joined lobby, a setOpen while away lands (app-couch's Start, s3-09), the roll call lets go of a seat that left
+    'src/pad/padLobbyResume.selftest.mjs', // round 8 Y5 s3-07/s3-08: the real lobby and actor in memory: a TV blink keeps a joined lobby, a setOpen while away lands (app-couch's Start, s3-09), the roll call lets go of a seat that left, an ICE ask a closed socket dropped is asked again, couchLobby's paint while away is pinned
     'src/pad/padTour.selftest.mjs', // round 8 Y5 s6-04: the game screen's guide is a bounded mirror of the phone's (on:false, Skip, the link leaving live, the phone's time left)
     'src/game/couchSeats.selftest.mjs', // couch-mode-268: which roster tank each phone drives, and a seat's controls
     'src/game/couchCamera.selftest.mjs', // couch-mode-268: the shared camera frames every seat
