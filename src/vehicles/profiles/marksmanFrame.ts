@@ -142,6 +142,11 @@ export const MARKSMAN_BARREL = Object.freeze({
   cageHalf: 0.15, plateT: 0.03, barHalf: 0.015, barPos: 0.115, coilR: 0.145, coilL: 0.09, coilZ: [4.30, 4.48],
 });
 export const MARKSMAN_MUZZLE_Z = MARKSMAN_BARREL.cageZ[1];
+/** Each front plate's mouth the fleet carves (tankFactoryCore.ts P.muzzleMouth): the 35 mm bore inside a ring the tube's
+ * own 0.15 m across. Unset, the fallback sized the ring off the nominal tube (0.046 m) on the plate's 0.21 m corner
+ * radius, a lip 0.22 of its support where the muzzle probe asks 0.35 (release 271's check: marksman_t55 and
+ * itpsv_leopard2). The plate keeps its measured 0.30 m. */
+export const MARKSMAN_MUZZLE_MOUTH = Object.freeze({ outerRadiusM: MARKSMAN_BARREL.tubeR, innerRadiusM: 0.0175 });
 
 /**
  * The Marconi 400-series search and tracking radar on the rear roof (photos 02, 03, 04, 07, 10): a base drum under a wide

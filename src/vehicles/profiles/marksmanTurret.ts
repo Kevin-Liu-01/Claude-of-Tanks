@@ -23,7 +23,8 @@ import { antennaPart } from './antennaPart.ts';
 import {
   MARKSMAN_ADAPTERS, MARKSMAN_BARREL as BARREL, MARKSMAN_BODY as BODY, MARKSMAN_BODY_FACES, MARKSMAN_BORE as BORE,
   MARKSMAN_BROW as BROW,
-  MARKSMAN_COLLAR as COLLAR, MARKSMAN_DRUM as DRUM, MARKSMAN_GRILLE as GRILLE, MARKSMAN_MUZZLE_Z, MARKSMAN_POD as POD,
+  MARKSMAN_COLLAR as COLLAR, MARKSMAN_DRUM as DRUM, MARKSMAN_GRILLE as GRILLE, MARKSMAN_MUZZLE_MOUTH, MARKSMAN_MUZZLE_Z,
+  MARKSMAN_POD as POD,
   MARKSMAN_RADAR as RADAR, MARKSMAN_RINGS, MARKSMAN_SIGHTS as SIGHTS, MARKSMAN_SMOKE as SMOKE, MARKSMAN_TRUNNION,
   marksmanBodyPoint,
 } from './marksmanFrame.ts';
@@ -308,6 +309,7 @@ function addGuns(P: TankBuilderPort, seat: MarksmanSeat): void {
     for (const cz of B.coilZ) P.add(dark, cylZ(B.coilR, B.coilL, n), bx, by, cz);
   }
   P.muzzleZ = MARKSMAN_MUZZLE_Z;
+  P.muzzleMouth = { ...MARKSMAN_MUZZLE_MOUTH };
 }
 
 /**

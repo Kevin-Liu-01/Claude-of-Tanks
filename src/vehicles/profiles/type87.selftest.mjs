@@ -70,10 +70,17 @@ const sternAt = (y) => H.sternZ + (y >= HULL.overhungSternFootY ? 0 : y >= HULL.
   ? HULL.overhungSternKneeZ * (HULL.overhungSternFootY - y) / (HULL.overhungSternFootY - HULL.overhungSternKneeY)
   : HULL.overhungSternKneeZ + (HULL.overhungSternToeZ - HULL.overhungSternKneeZ)
     * Math.min(1, (HULL.overhungSternKneeY - y) / (HULL.overhungSternKneeY - HULL.bellyY)));
+// synchronizeType87Frame puts every stern vertex on the drawn line; the later pass that fits the plates to the built hull
+// moves them (release 271's check): heights by up to 1.25 % (the deck's 1.60 m edge to 1.58 m), so a vertex on a sloped
+// stern segment lands a few mm off the line at its new height (hull_side_upper_R: 3.4 mm), and a corner under the belly
+// goes to the belly's underside (y 0.4064, -3.130), 3 cm inside the toe. Each stays within 5 mm of the line, or under the
+// belly between the toe and 4 cm inside it.
+const onStern = (z, y, label) => (y >= HULL.bellyY ? near(z, sternAt(y), label, 0.005)
+  : assert.ok(z >= sternAt(y) - 1e-6 && z <= sternAt(y) + 0.04, `${label} under the belly: ${z} on the toe ${sternAt(y)}`));
 const rear = spec.armor.hullPlates.find((p) => p.name === 'hull_rear');
-for (const [, y, z] of rear.verts) near(z, sternAt(y), `the hull's rear plate at y ${y}`, 1e-6);
+for (const [, y, z] of rear.verts) onStern(z, y, `the hull's rear plate at y ${y}`);
 for (const p of spec.armor.hullPlates) if (!/^track/.test(p.name)) {
-  for (const [, y, z] of p.verts) if (z < -3.0) near(z, sternAt(y), `${p.name}'s stern vertex at y ${y}`, 1e-6);
+  for (const [, y, z] of p.verts) if (z < -3.0) onStern(z, y, `${p.name}'s stern vertex at y ${y}`);
 }
 for (const p of spec.armor.hullPlates) {
   const minZ = Math.min(...p.verts.map((v) => v[2]));

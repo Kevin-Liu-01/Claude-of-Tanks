@@ -185,7 +185,13 @@ function blows(tick, game, world, injected) {
     injected.add(shell.id);
     game.shells.push(shell);
   }
-  if (tick === BURN_AT) Object.assign(player.combat.fire, { burning: true, tickTimer: 0, ticksLeft: 12 });
+  if (tick === BURN_AT) {
+    // the fire burns its twelve ticks: its self-out roll (damage.ts tickFire, still drawn) never wins, so the controls past
+    // the arming tick do not ride the seeded stream that every roster change re-deals (release 271: the lane's seven new
+    // ids put an Lvkv 9040 in this draw and the fire went out at its third tick, before the arming tick)
+    player.combat.equipMults = { ...player.combat.equipMults, extinguish: 0 };
+    Object.assign(player.combat.fire, { burning: true, tickTimer: 0, ticksLeft: 12 });
+  }
 }
 
 /**
