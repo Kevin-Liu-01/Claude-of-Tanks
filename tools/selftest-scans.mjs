@@ -212,6 +212,8 @@ export const SELFTEST_SCANS = Object.freeze({
   'src/audio/battleEntryAmbience.selftest.mjs': lists('src/**/*.ts'),
   // (round 8 Y1 s2-01) nothing under src writes game.couch but couchSeats.ts, the couch session's owner
   'src/game/couchSessionLifecycle.selftest.mjs': lists('src/**/*.ts'),
+  // (round 8 Y1 s5-01) nothing under src moves a hull's barrel cursor but launcherPolicy.ts (a network screen mirrors it)
+  'src/sim/twinMuzzleParity.selftest.mjs': lists('src/**/*.ts'),
 
   // ---- git's index (live receipts: selection only)
   // the scene-link codec round-trips every tracked take; its sink audit reads the Studio's own sources
