@@ -908,24 +908,24 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 36720,
-      "sha256": "d2e48b95481e8ea4c29c6ef606bed29dced76364700b5f2fe6f24506e569168c"
+      "bytes": 36712,
+      "sha256": "c98c26eea47e9372c0d513cb05ed4bfac55f74ab08318487ff11257b17c1f6ad"
     },
     "modulesSide": {
       "file": "marder2_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 34232,
-      "sha256": "510bb010ef092ae254cb984545cbcea80f446c8b219d8e60783c2423d954e706"
+      "bytes": 34272,
+      "sha256": "34fc92379f48916b1faae7ebddc5feee8164027c6ccdd292f068bd31baab7de9"
     },
     "crewSide": {
       "file": "marder2_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 31268,
-      "sha256": "58aff72de092b449f29012c590d0b057b8d26bb6d64f8ce3733f425f7974e1ea"
+      "bytes": 31250,
+      "sha256": "293b5ff5c64bb7beae1efa7bc5ca9f0b4e385200dbeb642ca45e7d7ff81985de"
     },
     "angle": {
       "file": "marder2_angle.webp",
@@ -948,16 +948,16 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 15634,
-      "sha256": "34a4b5a0d528b124f164396481444ae513ee22338f94a2fca6ae58991fc2953d"
+      "bytes": 15636,
+      "sha256": "79be57e5cc5a7290fd76c3a3c5e573dfffd4ba00c2244c93c8025845a2e3e767"
     },
     "side": {
       "file": "marder2_side.webp",
       "width": 512,
       "height": 256,
       "mime": "image/webp",
-      "bytes": 14358,
-      "sha256": "8a4a680ecd6e54173a4ca4537d71036a4b62860443fdaf155c5746936f119888"
+      "bytes": 14352,
+      "sha256": "3ee522e037ed3c0e0882d80b4c7cb7489a4027130670ff1f510e6898911f31ad"
     },
     "topSilhouette": {
       "file": "marder2_top_silhouette.png",
@@ -980,8 +980,8 @@
       "width": 256,
       "height": 128,
       "mime": "image/png",
-      "bytes": 35012,
-      "sha256": "cab31c8ffb34ee562b64d2c9bae4e8af532115f0614b4aa4c8ed70a7b297ef92"
+      "bytes": 33279,
+      "sha256": "8f925ac0cd5f38535abc8934f4c9b1e2eafad630f7cb49c374514b64c028e784"
     },
     "technicalLabels": {
       "file": "marder2_technical.json",

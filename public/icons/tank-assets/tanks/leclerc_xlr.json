@@ -4623,15 +4623,15 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 26306,
-      "sha256": "cf2dc5e42916590ef6e3ffe2b46ab07124d2a4629e2dbfd67470e1ea40a4f6b2",
+      "bytes": 26326,
+      "sha256": "8d9f3707d1d824fa1ccee1fa1fc32aaca4fddf10d7cf28a72e22df708b786891",
       "thumbnail": {
         "file": "thumbs/leclerc_xlr_angle.webp",
         "width": 256,
         "height": 256,
         "mime": "image/webp",
-        "bytes": 10612,
-        "sha256": "707765d2d58c5dde293e0abae28e6533d49d80acec1d2592caf13562da392689"
+        "bytes": 10606,
+        "sha256": "d397b8c72a103f0466d9f290a692c4c26b277b80c4de4cdb7ca76e1b49374907"
       }
     },
     "top": {
@@ -4639,8 +4639,8 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 13802,
-      "sha256": "dd451a7c2a759a4deea15489ed6332c8cceb82a6f852abdc20fb8dd839b2a35a"
+      "bytes": 13814,
+      "sha256": "20151adb1ddc69949a845cc6d4c0d38f7ecdacc63e920e910e0d5a62f521016a"
     },
     "side": {
       "file": "leclerc_xlr_side.webp",
@@ -4671,8 +4671,8 @@
       "width": 256,
       "height": 128,
       "mime": "image/png",
-      "bytes": 35959,
-      "sha256": "1b456bb564f42ce5f774dd9ceb0fa4c026154433ee6414550f6b67481f7f32e2"
+      "bytes": 32945,
+      "sha256": "07979120937289823ecd847ed93cff3a09b78b647853872c3f2c73259daa2c2d"
     },
     "technicalLabels": {
       "file": "leclerc_xlr_technical.json",

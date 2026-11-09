@@ -16,6 +16,12 @@ const ABRAMS_FAMILY_IDS = [
 const EXPECTED_WHEEL_ZS = [2.19, 1.46, 0.73, 0, -0.73, -1.46, -2.19];
 // 2026-09-14 tangent wrap: the flat run ends under the outer axles and the band wraps the wheels
 const EXPECTED_CONTACT_ZS = [2.19, -2.19];
+// Re-pinned 2026-11-02 (release 268, abrams-bradley-268 builder A): the seven M1A1 marks seat their road wheels at the
+// owner's source-model stations (profiles/abrams.ts M1A1_WHEEL_ZS: a 0.75 m pitch centred 5 cm ahead of the hull middle);
+// the skirtless MBT-70 keeps the centred 0.73 m run. The flat run still ends under the outer axles.
+const M1A1_WHEEL_ZS = [2.30, 1.55, 0.80, 0.05, -0.70, -1.45, -2.20];
+const expectedWheelZs = (id) => (id === 'mbt70' ? EXPECTED_WHEEL_ZS : M1A1_WHEEL_ZS);
+const expectedContactZs = (id) => (id === 'mbt70' ? EXPECTED_CONTACT_ZS : [M1A1_WHEEL_ZS[0], M1A1_WHEEL_ZS[6]]);
 const EPSILON = 1e-6;
 const ABRAMS_RETURN_ROLLER_CASES = [
   ['m1a1_abrams_hc', 2],
@@ -69,9 +75,9 @@ for (const id of ABRAMS_FAMILY_IDS) {
 
     assert.ok(receipt && roadWheels?.isInstancedMesh && trackPads?.isInstancedMesh,
       `${id}: exposes the canonical animated wheel and track layers`);
-    assert.deepEqual(receipt.wheelZs, EXPECTED_WHEEL_ZS,
+    assert.deepEqual(receipt.wheelZs, expectedWheelZs(id),
       `${id}: uses the regular seven-station Abrams wheel plan`);
-    assert.deepEqual(uniqueInstanceZs(roadWheels), EXPECTED_WHEEL_ZS,
+    assert.deepEqual(uniqueInstanceZs(roadWheels), expectedWheelZs(id),
       `${id}: visible wheel instances match the running-gear receipt`);
     assert.equal(roadWheels.count, 14, `${id}: keeps seven road wheels per side`);
     assert.equal(receipt.wheelR, 0.31, `${id}: uses the non-overlapping road-wheel radius`);
@@ -93,8 +99,9 @@ for (const id of ABRAMS_FAMILY_IDS) {
     const groundRunZs = receipt.loopPoints
       .filter(([, y]) => Math.abs(y - receipt.botY) <= EPSILON)
       .map(([z]) => z);
-    assert.ok(groundRunZs.some((z) => Math.abs(z - EXPECTED_CONTACT_ZS[0]) <= EPSILON)
-      && groundRunZs.some((z) => Math.abs(z - EXPECTED_CONTACT_ZS[1]) <= EPSILON),
+    const contactZs = expectedContactZs(id);
+    assert.ok(groundRunZs.some((z) => Math.abs(z - contactZs[0]) <= EPSILON)
+      && groundRunZs.some((z) => Math.abs(z - contactZs[1]) <= EPSILON),
     `${id}: flat run spans the outer road-wheel axles after reseating the wheels`);
     assert.ok(Math.max(...receipt.loopPoints.map(([z]) => z)) > receipt.idler.z,
       `${id}: track still wraps the front idler`);

@@ -429,8 +429,10 @@ export function createGarageReturnRuntime<Visual = object>(
       trace.totalMs = Math.round(nowMs() - startedAt);
       return;
     }
+    // (269) the restore is the Garage's only while the Garage is the phase: a battle started from the Garage it already
+    // shows abandons it at its next step, as the dressing before it stops (main.ts finishGarageDressingUnderCover)
     trace.presentationRestore = await restoreGaragePresentation(
-      () => isCurrent() && (!entryScheduler || entryScheduler.isCurrent()),
+      () => isCurrent() && game.phase === 'garage' && (!entryScheduler || entryScheduler.isCurrent()),
     );
     assertOwnedGarage();
     if (!trace.presentationRestore) {

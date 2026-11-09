@@ -11166,15 +11166,15 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 28314,
-      "sha256": "e7637d5b28423e7504fa9a383959710f18fd52e4ad38f0537056edf5e7adf2b4",
+      "bytes": 30158,
+      "sha256": "b49c3b3ad74f6c105d2aebbb7af599c7596167e668d295d8d171f19a1322fce6",
       "thumbnail": {
         "file": "thumbs/strv122_angle.webp",
         "width": 256,
         "height": 256,
         "mime": "image/webp",
-        "bytes": 11426,
-        "sha256": "d4a636e2a0e7921906f854efedea5dc07132c1763564b7352ffba1423bf9506a"
+        "bytes": 12192,
+        "sha256": "d85a1596b1fd10989d75b1735b6867ac4dcd009f89e1c2c7fd00b586b3a906da"
       }
     },
     "top": {
@@ -11214,8 +11214,8 @@
       "width": 256,
       "height": 128,
       "mime": "image/png",
-      "bytes": 35460,
-      "sha256": "0b9230632df738c7b5e56c5929f3bb099ef3dad181b3ece6b21673536577ab2f"
+      "bytes": 32785,
+      "sha256": "d2e4a82735a0e79e3e14a663842f3d2ced4157af1dfbfd19f33242da6ab622da"
     },
     "technicalLabels": {
       "file": "strv122_technical.json",

@@ -1,4 +1,4 @@
-// The deferred assembly (2026-10-16, PERF: the garage's default m1a3 wears a suit and its build ran as one long task
+// The deferred assembly (2026-10-16, PERF: the garage's default m1a3 wore a suit and its build ran as one long task
 // at boot and in the countdown stream). A suit or field net (TankBuilderPort.afterAssemble) is built in its own slices
 // after the core checkpoint, before the decorations, and the visual it returns must be exactly the build that made it
 // inside the core (TankFactoryOptions.assemblyInCore): every object, its order, pose, geometry, materials and userData
@@ -36,9 +36,10 @@ function same(id, name, inCore, deferred) {
   checks++;
 }
 
-// the garage default (a field suit on hull and turret) under the battle and Garage builds, and the fleet's slowest
+// a suited Abrams (the TUSK's field suit on hull and turret; the garage default M1E3 wears none since 2026-11-02) under
+// the battle and Garage builds, and the fleet's slowest
 // slice (a Ukrainian field net with its working clearances) under the battle build
-for (const [id, names] of [['m1a3', ['battleHigh', 'garage']], ['ua_challenger2', ['battleHigh']]]) {
+for (const [id, names] of [['m1a2_abrams_tusk', ['battleHigh', 'garage']], ['ua_challenger2', ['battleHigh']]]) {
   for (const name of names) {
     const options = DEFERRED_ASSEMBLY_BUILDS[name];
     const inCore = drainTimedSteps(createTankSteps(id, null, { ...options, assemblyInCore: true }));
@@ -49,7 +50,7 @@ for (const [id, names] of [['m1a3', ['battleHigh', 'garage']], ['ua_challenger2'
       assert.ok(deferred.slices.length >= inCore.slices.length + 8,
         `${id} ${name}: the suit builds in slices (${inCore.slices.length} -> ${deferred.slices.length} checkpoints)`);
       checks++;
-      if (id === 'm1a3' && name === 'garage') {
+      if (id === 'm1a2_abrams_tusk' && name === 'garage') {
         // a synchronous caller (the covered boot) drains the same order
         const sync = createTank(id, null, options);
         try { same(id, `${name} synchronous`, inCore.visual, sync); } finally { sync.dispose(); }
@@ -74,7 +75,7 @@ try {
       setupShadowMaterial(material) { registered.add(material); return material; },
       releaseShadowMaterial(material) { return registered.delete(material); },
     };
-    const steps = createTankSteps('m1a3', context, DEFERRED_ASSEMBLY_BUILDS.garage);
+    const steps = createTankSteps('m1a2_abrams_tusk', context, DEFERRED_ASSEMBLY_BUILDS.garage);
     // click-perf-244: the core's own stage checkpoints come first; the completed core is the first captured one
     let reached = steps.next();
     while (!reached.done && !capture) reached = steps.next();

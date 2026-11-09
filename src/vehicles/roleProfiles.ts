@@ -72,6 +72,8 @@ export const VEHICLE_ROLE_PROFILES: Readonly<Record<string, VehicleRoleProfile>>
   christian2: { doctrine: 'precision', viewM: 415, still: 0.250, moving: 0.150 },
   type10_dozer: { doctrine: 'assault', viewM: 410, still: 0.205, moving: 0.145 },
   m2a2_bradley: { doctrine: 'support', viewM: 435, still: 0.270, moving: 0.210 },
+  // 268: the M3A2, the M2A2's cavalry scout twin (the same turret sights and size): reconnaissance, like the M3A3
+  m3a2_bradley: { doctrine: 'recon', viewM: 435, still: 0.270, moving: 0.210 },
   bmp2: { doctrine: 'support', viewM: 420, still: 0.285, moving: 0.225 },
   spz_puma: { doctrine: 'support', viewM: 450, still: 0.269, moving: 0.209 },
   spz_wotan: { doctrine: 'support', viewM: 460, still: 0.257, moving: 0.197 },
@@ -193,10 +195,29 @@ export const VEHICLE_ROLE_PROFILES: Readonly<Record<string, VehicleRoleProfile>>
   strv105: { doctrine: 'flexible', viewM: 430, still: 0.198, moving: 0.138 },
   // the Olifant Mk 2: a stabilised commander's thermal sight high on its post; the tall box turret shows
   olifant_mk2: { doctrine: 'flexible', viewM: 450, still: 0.205, moving: 0.140 },
+  // release 269: the South African Centurions, the Mk 2's doctrine at their marks' optics
+  semel: { doctrine: 'flexible', viewM: 405, still: 0.200, moving: 0.138 },
+  olifant_mk1: { doctrine: 'flexible', viewM: 415, still: 0.200, moving: 0.138 },
+  olifant_mk1a: { doctrine: 'flexible', viewM: 430, still: 0.202, moving: 0.139 },
+  olifant_mk1b: { doctrine: 'flexible', viewM: 440, still: 0.203, moving: 0.139 },
+  // the TTD: the stabilised CS60N and GS60 with thermal, the 1,234 hp at 58 t
+  ttd: { doctrine: 'flexible', viewM: 455, still: 0.208, moving: 0.150 },
   // the AVRE: a close-assault engineer tank; its blade and demolition gun make it the easiest Centurion to spot
   centurion5_avre: { doctrine: 'assault', viewM: 380, still: 0.210, moving: 0.150 },
   // the Australian Mk 5/1: the Mk 3's flexible 20-pdr tank, its night sights and baskets
   centurion5_1_aus: { doctrine: 'flexible', viewM: 405, still: 0.200, moving: 0.138 },
+  // release 269: the Australian M113s (scouts and fire support; the AS4 a carrier)
+  // (the IFV's armoured support as vehicleFacets.ts files it)
+  redback: { doctrine: 'armored-support', viewM: 470, still: 0.240, moving: 0.190 },
+  // (a flanker as the Danish 1A3 DK it builds on: vehicleFacets.ts names it one)
+  leopard_as1: { doctrine: 'flanker', viewM: 425, still: 0.200, moving: 0.140 },
+  m1a1_aim_sa_aus: { doctrine: 'flexible', viewM: 405, still: 0.175, moving: 0.115 },
+  m1a2_sepv3_aus: { doctrine: 'flexible', viewM: 430, still: 0.173, moving: 0.113 },
+  m113a1_fsv: { doctrine: 'support', viewM: 420, still: 0.250, moving: 0.200 },
+  m113a1_mrv: { doctrine: 'scout', viewM: 460, still: 0.280, moving: 0.240 },
+  m113as4: { doctrine: 'recon', viewM: 440, still: 0.280, moving: 0.240 },
+  // 269: the US M113A3 plays as the Ares APC (its scout optics a step under the Ares's mast)
+  m113a3: { doctrine: 'recon', viewM: 450, still: 0.284, moving: 0.244 },
   m46_patton: { doctrine: 'flexible', viewM: 375, still: 0.196, moving: 0.136 },
   m47_patton: { doctrine: 'flexible', viewM: 380, still: 0.194, moving: 0.134 },
   m60a3: { doctrine: 'flexible', viewM: 410, still: 0.187, moving: 0.127 },
@@ -238,6 +259,15 @@ export const VEHICLE_ROLE_PROFILES: Readonly<Record<string, VehicleRoleProfile>>
   tos1a_tagil: { doctrine: 'siege', viewM: 345, still: 0.111, moving: 0.061 },
   upior: { doctrine: 'support', viewM: 465, still: 0.270, moving: 0.210 },
   bmpt_t90: { doctrine: 'armored-support', viewM: 415, still: 0.172, moving: 0.112 },
+  // 267: the original Terminator between the BMPT-72 and the BMPT T-90 (its 2009 sight set, the T-72 hull's signature)
+  bmpt_terminator: { doctrine: 'armored-support', viewM: 410, still: 0.174, moving: 0.114 },
+  // 268: the twin-cannon air defence takes the M6 Linebacker's recon doctrine (search radars see far; the tall turrets and
+  // radar masts cost concealment against the Linebacker's 0.25/0.22)
+  tunguska_m: { doctrine: 'recon', viewM: 440, still: 0.230, moving: 0.200 },
+  pantsir_s1: { doctrine: 'recon', viewM: 455, still: 0.215, moving: 0.185 },
+  gepard_1a2: { doctrine: 'recon', viewM: 450, still: 0.225, moving: 0.195 },
+  pgz95: { doctrine: 'recon', viewM: 430, still: 0.240, moving: 0.210 },
+  pgz09: { doctrine: 'recon', viewM: 445, still: 0.230, moving: 0.200 },
   m551_sheridan: { doctrine: 'scout', viewM: 480, still: 0.361, moving: 0.361 },
   // 265: the Danish reconnaissance squadrons' M41 DK-1, its thermal sight seeing far for a light tank
   m41dk1: { doctrine: 'scout', viewM: 470, still: 0.355, moving: 0.340 },

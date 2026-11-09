@@ -174,14 +174,31 @@ assert.deepEqual(guidedRounds.filter(({spec}) => ifvBatchIds.has(spec.id)).map((
 // 266: the T49 fires the M551's MGM-51 Shillelagh through its M81, one guided channel counted beside the established fleet
 assert.deepEqual(guidedRounds.filter(({spec}) => spec.id === 't49').map(({round}) => round.name), ['MGM-51C Shillelagh ATGM'],
   "the T49 carries the M551's one guided channel");
+// 267: the BMPT Terminator (Ob'yekt 199 "Ramka") adds its Ataka channel to the established fleet: 23 -> 24
+// 268: the twin-cannon air defence's three SAM channels (the Tunguska-M's 9M311M, the Pantsir-S1's 57E6, the PGZ-95's
+// QW-2), each from its own tubes on the M6 Linebacker's Stinger handling; the Gepard 1A2 and the PGZ-09 carry none
+const airDefense268Ids = new Set(['tunguska_m', 'pantsir_s1', 'gepard_1a2', 'pgz95', 'pgz09']);
+assert.deepEqual(guidedRounds.filter(({spec}) => airDefense268Ids.has(spec.id)).map(({spec, round}) => `${spec.id}/${round.name}`),
+  ['tunguska_m/9M311M', 'pantsir_s1/57E6', 'pgz95/QW-2'], 'the 268 air defence carries three guided channels');
+// 268: the M3A2 fires the M2A2's TOW (its twelve stowed rounds), one guided channel counted beside the established fleet
+assert.deepEqual(guidedRounds.filter(({spec}) => spec.id === 'm3a2_bradley').map(({round}) => round.name), ['BGM-71 TOW-2A'],
+  "the M3A2 carries the M2A2's one TOW channel");
+// 269: the Redback fires its Spike LR2 from its own launcher, one guided channel counted beside the established fleet; the
+// three M113s their twin TOW (owner 2026-11-03: "more firepoweer/tow missiles"), one channel each
+assert.deepEqual(guidedRounds.filter(({spec}) => spec.id === 'redback').map(({round}) => round.name), ['Spike LR2'],
+  'the Redback carries its one guided channel');
+const m113Tows = ['m113a1_fsv', 'm113a1_mrv', 'm113as4'];
+assert.deepEqual(guidedRounds.filter(({spec}) => m113Tows.includes(spec.id)).map(({spec, round}) => `${spec.id} ${round.name}`),
+  ['m113a1_fsv BGM-71A TOW', 'm113a1_mrv BGM-71A TOW', 'm113as4 BGM-71E TOW-2A'], 'each M113 carries its one TOW channel');
 assert.equal(guidedRounds.filter(({spec}) => !suppliedIds.has(spec.id) && !conceptIds.has(spec.id) && !ifvBatchIds.has(spec.id)
-  && spec.id !== 't49').length, 23,
+  && spec.id !== 't49' && !airDefense268Ids.has(spec.id) && spec.id !== 'm3a2_bradley' && spec.id !== 'redback'
+  && !m113Tows.includes(spec.id)).length, 24,
   'the unchanged established guided-ammunition fleet remains covered');
 assert.deepEqual(guidedRounds.filter(({spec}) => suppliedIds.has(spec.id))
   .map(({spec}) => spec.id).sort(), ['aft10', 'cv90_mk4', 'k21', 'kurganets25', 'kurganets25', 'warrior_tes_h'],
   'five source configurations carry six guided channels, including both Epokha launchers');
-assert.equal(guidedRounds.length, 39, 'the complete guided-ammunition fleet is covered'); // 34 + the three 2026-09-25 IFV racks
-// (+ the T49's Shillelagh, 266)
+assert.equal(guidedRounds.length, 48, 'the complete guided-ammunition fleet is covered'); // 34 + the three 2026-09-25 IFV racks; 267: + the BMPT Terminator's Ataka
+// (+ the T49's Shillelagh, 266; + the 268 air defence's three SAMs; + the M3A2's TOW, 268; 269: + the Redback's Spike LR2 and the M113s' three TOW)
 // Preserve the existing 535 channels, including MBT-70's mixed gun/launcher,
 // separately from the 69 second-wave and 15 retained Abrams X channels.
 // Every new variant is exercised in the fleet loop above, not just its donor.
@@ -244,7 +261,22 @@ const laterChannelCounts = {
   ua_cv9040c: 3,
   // 267: the Leopard 2A7 DK (the 2A7V's three rounds) and the Centurion Mk 5/2 DK (the Mk 5/2's three)
   leo2a7dk: 3, centurion5_2dk: 3,
+  // 267: the BMPT Terminator (Ob'yekt 199 "Ramka"): 3UBR8 APDS, 9M120-1 Ataka-T and 3UOF8 HE-I
+  bmpt_terminator: 3,
+  // 268: the twin-cannon air defence: the SAM carriers' AP, SAM and HE; the Gepard's and the PGZ-09's AP and HE
+  tunguska_m: 3, pantsir_s1: 3, gepard_1a2: 2, pgz95: 3, pgz09: 2,
+  // 268: the M3A2 Bradley, the M2A2's three rounds (the M3's larger stowed loads)
+  m3a2_bradley: 3,
+  // 269: the South African line, three rounds each (the Semel, the Olifant Mk 1, 1A and 1B, the TTD)
+  semel: 3, olifant_mk1: 3, olifant_mk1a: 3, olifant_mk1b: 3, ttd: 3,
+  // 269: the Australian line (the M113A1 FSV's and MRV's two 76 mm rounds; three for the rest)
+  m113a1_fsv: 3, m113a1_mrv: 3, m113as4: 3, leopard_as1: 3,
+  // 269: the US M113A3's three .50 belts (the Ares APC's)
+  m113a3: 3, m1a1_aim_sa_aus: 3, m1a2_sepv3_aus: 3, redback: 3,
 };
+const southAfrica269Channels = ['semel', 'olifant_mk1', 'olifant_mk1a', 'olifant_mk1b', 'ttd'].reduce((n, id) => n + laterChannelCounts[id], 0);
+const australia269Channels = ['m113a1_fsv', 'm113a1_mrv', 'm113as4', 'leopard_as1', 'm1a1_aim_sa_aus', 'm1a2_sepv3_aus', 'redback', 'm113a3']
+  .reduce((n, id) => n + laterChannelCounts[id], 0);
 const pattonM48Channels = ['m48a3_patton', 'magach3', 'm48a2ga2', 'm48_super'].reduce((n, id) => n + laterChannelCounts[id], 0);
 const release263Channels = ['christian2', 'bm_oplot_m', 'bm_oplot_t', 't64bm1m', 't64bv', 't64b1v_2022', 'pt64_tur',
   'challenger3_td', 'challenger3_td_rws', 'challenger1_mk1', 'challenger_x', 'challenger_x_sleek'].reduce((n, id) => n + laterChannelCounts[id], 0);
@@ -257,6 +289,8 @@ const centurionFamilyChannels = ['shot_kal', 'centurion13', 'strv105', 'olifant_
 const pt84Channels = ['pt84_orzel', 'pt84_sokol', 'pt84_zbik'].reduce((n, id) => n + laterChannelCounts[id], 0);
 const release265Channels = ['leo1a3dk', 'leo1a5dk', 'leo1a5dk1', 'leo2a5dk', 'm41a3', 'm41_bw', 'm41_jgsdf', 'm41dk1',
   'cv9035dk', 't49', 'ua_cv9040c'].reduce((n, id) => n + laterChannelCounts[id], 0);
+const airDefense268Channels = [...airDefense268Ids].reduce((n, id) => n + laterChannelCounts[id], 0);
+assert.equal(airDefense268Channels, 13, 'the five 268 air-defence vehicles add thirteen channels');
 const brazil266Channels = ['x1_pioneiro', 'x1a2_carcara', 'tamoyo1', 'tamoyo3', 'osorio_p1', 'osorio_p2', 'ee_t3_osorio',
   'ee_t4_osorio'].reduce((n, id) => n + laterChannelCounts[id], 0);
 const ifvBatchChannels = [...ifvBatchIds].reduce((n, id) => n + laterChannelCounts[id], 0);
@@ -313,12 +347,14 @@ assert.deepEqual(arieteC2Rounds.map(round => [round.name, round.type, round.cali
 // and the Leopard 1A2A1's three (265), and the fourth-batch Leopard 2A3's three (release 265), and the three PT-84s'
 // three each (262, merged in 265), and the Danish Leopards' three each (266), and the Magach 6B's and 7C's three each
 // (266), and the Brazil line's eight, three each (266), and the Leopard 2A7 DK's and Centurion Mk 5/2 DK's three each (267),
-// and the Type 90 (B)'s three (267).
+// and the Type 90 (B)'s three (267), the M3A2's three (268), and the South African line's five and the Australian line's seven (269).
 assert.equal(authoredShellChannels - laterChannelCounts.c2_ariete - laterChannelCounts.griffin_viper - ifvBatchChannels - frenchIfvChannels - laterChannelCounts.marder2 - fleetRenewalChannels - nationalChannels - laterChannelCounts.m6_linebacker - laterChannelCounts.type10_dozer - laterChannelCounts.t55a - laterChannelCounts.ztz20 - laterChannelCounts.ztz20_prototype - release263Channels
   - LONGWEI_FAMILY.reduce((n, m) => n + laterChannelCounts[m.id], 0) - pattonM48Channels - centurionFamilyChannels
   - laterChannelCounts.leo1a2a1 - laterChannelCounts.leo2a3_b4 - pt84Channels - release265Channels
   - laterChannelCounts.magach6b - laterChannelCounts.magach7c - brazil266Channels
-  - laterChannelCounts.leo2a7dk - laterChannelCounts.centurion5_2dk - laterChannelCounts.type90b, 560,
+  - laterChannelCounts.leo2a7dk - laterChannelCounts.centurion5_2dk - laterChannelCounts.type90b - airDefense268Channels
+  - laterChannelCounts.bmpt_terminator - laterChannelCounts.m3a2_bradley - southAfrica269Channels
+  - australia269Channels, 560,
   'all 560 pre-C2 authored channels remain covered separately from its three new channels');
 assert.ok(multiChannelLoadouts > 100,
   `the playable multi-channel fleet is covered (${multiChannelLoadouts})`);

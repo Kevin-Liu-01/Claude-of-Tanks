@@ -1425,15 +1425,15 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 25744,
-      "sha256": "169f49a88fde04865b00439f423f7eae84221d22b1eb8836b0ce0ee697fd2adb",
+      "bytes": 25740,
+      "sha256": "179cd2b82bb92c46f5a7c835629ceb24b82988425fcd942ad9721c7b91696f4c",
       "thumbnail": {
         "file": "thumbs/ztz99a2_angle.webp",
         "width": 256,
         "height": 256,
         "mime": "image/webp",
-        "bytes": 10006,
-        "sha256": "f38bd305bcd53bb49ebe37e0f3993a173975dd18603a89030339f6a40fbed20e"
+        "bytes": 10004,
+        "sha256": "d6c9a322686e68a546365fa34792beb2c6a57579567cfa11f69e3ee14af5a40b"
       }
     },
     "top": {
@@ -1441,8 +1441,8 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 13248,
-      "sha256": "6d218932e96161d3477a7fc123b9277c08f682ff01cfd409798a0a64114efad2"
+      "bytes": 13264,
+      "sha256": "66dacc95b44cff77ba611a24cb48d275f7bd6547207d92e0531f5991a6c1980a"
     },
     "side": {
       "file": "ztz99a2_side.webp",
@@ -1497,8 +1497,8 @@
       "width": 256,
       "height": 128,
       "mime": "image/png",
-      "bytes": 36947,
-      "sha256": "8134eb52823da47cf6c42c07b025a9c2b8ad2c66e33a86e923836ddd52b126f3"
+      "bytes": 33625,
+      "sha256": "9f73a462e55d70eb086638d97b501d2c8bdc13ede8622f700c8efba16c9b7b87"
     },
     "technicalLabels": {
       "file": "ztz99a2_technical.json",

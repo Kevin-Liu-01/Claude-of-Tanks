@@ -714,15 +714,15 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 29134,
-      "sha256": "3e4fdeba181cae8563dee2e0576fb86362f6a57df8ab2703c729639d8a8fdf57",
+      "bytes": 29164,
+      "sha256": "99caafa69adf3db40efbad5e0d9019b3cc669ca00b6d75226636bd2a28c5946b",
       "thumbnail": {
         "file": "thumbs/mbt70_angle.webp",
         "width": 256,
         "height": 256,
         "mime": "image/webp",
-        "bytes": 11044,
-        "sha256": "d376bdd692870316a70071e216fc57467da24264c86378eeebaab6cc7977f8da"
+        "bytes": 11046,
+        "sha256": "7d58479ac4800dd75ea1fd8c74535023bc780f96407a135922ed55d5c820332d"
       }
     },
     "top": {
@@ -730,8 +730,8 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 17338,
-      "sha256": "c6ef0bcc0f524bd244ead4298cdfe7e5c07914e1f19a6031b0707b35562e9084"
+      "bytes": 17344,
+      "sha256": "0e04758997b5905ffc85a8c3f3d91d6306a5b7a3c708d051edb1e98f37c6c9d0"
     },
     "side": {
       "file": "mbt70_side.webp",
@@ -786,8 +786,8 @@
       "width": 256,
       "height": 128,
       "mime": "image/png",
-      "bytes": 33573,
-      "sha256": "ece43861a1ebdd8881890a296c900ad30f4f894e42c9a43455f2605ca4bf2242"
+      "bytes": 31477,
+      "sha256": "8a72d2b41ea825a28cbbac64aae4c29b07e57f64e36acc5af1e9648de9ccbc78"
     },
     "technicalLabels": {
       "file": "mbt70_technical.json",

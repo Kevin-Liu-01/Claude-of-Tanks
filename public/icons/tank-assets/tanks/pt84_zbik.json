@@ -4054,15 +4054,15 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 28600,
-      "sha256": "72e9de6b3c58d217232188ecf4b1e81ea30167a4ce13ce6ef314bc1fef911330",
+      "bytes": 28578,
+      "sha256": "341ad95ad1c651bf0476ed8f86cc30055f359c8a05ddb8744ef774a221dde84e",
       "thumbnail": {
         "file": "thumbs/pt84_zbik_angle.webp",
         "width": 256,
         "height": 256,
         "mime": "image/webp",
         "bytes": 11482,
-        "sha256": "394f061e30b466cd8d96c98e1b0d029da5fcfa46e7f1ace3a893d0978634c6e2"
+        "sha256": "4f595cf45ef1a3e21304e8697e9570d918ff37b0de736dfa442a30e59a0565b0"
       }
     },
     "top": {
@@ -4078,8 +4078,8 @@
       "width": 512,
       "height": 256,
       "mime": "image/webp",
-      "bytes": 10460,
-      "sha256": "d5f974b9b9ae23fb26ba544bde41e218bb252b6119b30929f53facd993a0ec9a"
+      "bytes": 10474,
+      "sha256": "c66a163a480717c0fd535d0afbfe31f071ff12e65b4f02af811ea07412f8700d"
     },
     "topSilhouette": {
       "file": "pt84_zbik_top_silhouette.png",
@@ -4102,32 +4102,32 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 26304,
-      "sha256": "e1bc1f4d804781d2b80ae8423a08de053c1ebea229e71895a0e10c3bc718cac6"
+      "bytes": 26310,
+      "sha256": "d716bfef5ab9eb0ea17cbc0b9eaa2d3d75cb53d3bea79f011fd299f13d122665"
     },
     "modulesSide": {
       "file": "pt84_zbik_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 23382,
-      "sha256": "e75b815dc4f9e476a5e996b44653c415b8eb175fbf07bcdb22ea47d6fdd31b20"
+      "bytes": 23390,
+      "sha256": "5e314e512e7c82f0a068a6a0e280dade9d8be3d99844fb36ae8daf4b802d1719"
     },
     "crewSide": {
       "file": "pt84_zbik_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 21328,
-      "sha256": "f85b1d98a8f380124608ad5a6af8ffd75c26a65d6fb6374fc5d48a83dd5e5568"
+      "bytes": 21294,
+      "sha256": "095c184ef13f23a18e7db6022987bd50344d937c7a619264577f9fe47deab434"
     },
     "markings": {
       "file": "pt84_zbik_markings.png",
       "width": 256,
       "height": 128,
       "mime": "image/png",
-      "bytes": 32396,
-      "sha256": "8926d42e42884ae2641c6d0301dd6ea625b1931fa90b34963c8496b7a78eb442"
+      "bytes": 30453,
+      "sha256": "4c85c60855a9c546ef1df2f437f5e18972fd68ea2a9858e466a574000f332d3f"
     },
     "technicalLabels": {
       "file": "pt84_zbik_technical.json",

@@ -122,7 +122,7 @@ export const WHEEL_DONORS: Readonly<Record<WheelDonorId, NationWheelDonor>> = Ob
     note: 'The source-measured Leopard 2A6 X paired pressed dishes and tire bands define the Leopard 2 wheel (leopardA6XWheels.ts); every other Leopard hull draws it.' }),
   kf41_lynx: Object.freeze({ donor: 'kf41_lynx', self: ['kf41_lynx'], pattern: 'plain-dish-twelve', construction: 'lynx-stamped-web',
     note: 'Source-measured KF41 stamped webs, web and hub fasteners over paired tire bands (kf41LynxWheelStock.ts).' }),
-  m1a1_abrams_hc: Object.freeze({ donor: 'm1a1_abrams_hc', self: ['m1a1', 'm1a1ha', 'm1a1_abrams_hc', 'm1a1_abrams_sa', 'm1a1_abrams_aim', 'm1a1_abrams_fep', 'm1a2_abrams', 'm1a2_abrams_tusk', 'm1a2_abrams_sepv2', 'm1a2_abrams_sepv3', 'ua_m1a1', 'ua_m1a2_abrams'],
+  m1a1_abrams_hc: Object.freeze({ donor: 'm1a1_abrams_hc', self: ['m1a1', 'm1a1ha', 'm1a1_abrams_hc', 'm1a1_abrams_sa', 'm1a1_abrams_aim', 'm1a1_abrams_fep', 'm1a2_abrams', 'm1a2_abrams_tusk', 'm1a2_abrams_sepv2', 'm1a2_abrams_sepv3', 'ua_m1a1', 'ua_m1a2_abrams', 'm1a1_aim_sa_aus', 'm1a2_sepv3_aus'],
     pattern: 'split-rim-ten', construction: 'abrams-hollow-paired',
     note: 'Hollow paired road wheel from the SEP v2 source measurements (hollowRoadWheelStock.ts / abramsSourceXWheels.ts).' }),
   m551a1_tts: Object.freeze({ donor: 'm551a1_tts', self: ['m551a1_tts'], pattern: 'cast-five-spoke', construction: 'sheridan-pressed-rim',
@@ -260,6 +260,12 @@ export const WHEEL_STANDARD_EXCEPTIONS: Readonly<Record<string, WheelStandardExc
   aft10: { donor: 'type100', reason: 'tank destroyer on a ZBD-04-family IFV chassis → China IFV wheel' },
   bmpt_terminator2: { donor: 't90am', reason: 'T-72/T-90 MBT hull under an IFV role → T-90M wheel' },
   bmpt_t90: { donor: 't90am', reason: 'T-90 MBT hull under an IFV role → T-90M wheel' },
+  bmpt_terminator: { donor: 't90am', reason: 'release 267: T-72 MBT hull under an IFV role → T-90M wheel' },
+  // 268: the Gepard is a Leopard 1 hull under an air-defence turret: the Leopard 1A5's wheel, not the Germany IFV's Lynx
+  gepard_1a2: { donor: 'leo2a4', reason: 'Leopard 1 MBT hull under an SPAA role → Germany MBT donor (the Leopard 1A5\'s)' },
+  // 268: the PLA air-defence pair roll on solid dished wheels with a raised hub (photos), China's MBT standard, not the IFV ribs
+  pgz95: { donor: 'ztz100', reason: 'photographs show solid dished road wheels with a raised hub → China MBT standard (ZTZ-100 recessed web)' },
+  pgz09: { donor: 'ztz100', reason: 'photographs show solid dished road wheels with a bolted hub → China MBT standard (ZTZ-100 recessed web)' },
   bmp2: { donor: 'bmp3m_dragun125', reason: 'nation USSR, cold-war IFV → the Russia light set' },
   ua_t80bv: { donor: 't90_1992', reason: 'Ukraine: T-80 base hull → Russia older T-series donor' },
   ua_cv9040c: { donor: 'cv90_mk4', reason: 'Ukraine: the CV9040C base hull keeps its Swedish CV90 wheel' },

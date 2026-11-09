@@ -26,6 +26,8 @@ export function fleetCamoArtId(scheme = 'solid'): CatalogCamoArtId | undefined {
     desert: 'desert', splinter: 'm90', fleck: 'flecktarn', blotch: 'amoeba',
     amoeba: 'amoeba', chip6: 'chocchip', caunter: 'caunter', hexfield: 'hexfield',
     brush: 'dpm', 'russian-digital': 'digital', woodland: 'summer', barracuda: 'barracuda',
+    // 269 (Main's ruling on the twin-aa lane's report): the MERDC scheme keeps its own art and its 5 % accent cut below
+    merdc: 'merdc',
   };
   return families[scheme];
 }

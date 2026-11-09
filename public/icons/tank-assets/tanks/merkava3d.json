@@ -901,24 +901,24 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 23930,
-      "sha256": "15296fca432fd0c7e215a8bbc16c229859bd40891e990049eb8d6c8449a3d256"
+      "bytes": 23942,
+      "sha256": "e3850a2b1d4b35e67013d7111ca87ba4ef0ef8eee0d6ca23ad1460430dea8971"
     },
     "modulesSide": {
       "file": "merkava3d_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 23622,
-      "sha256": "4499daab88d8769c5ae79d0daf033a651e4144e44b554248ac44ad0ce79aec38"
+      "bytes": 23614,
+      "sha256": "11437d7747fcef53cd02fc0c0e57fd902704ebb88dc59d6881233056c97affe4"
     },
     "crewSide": {
       "file": "merkava3d_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 22484,
-      "sha256": "0a8dcc15fa57fbcf10b9d95a4ad79d96e88ef250b0ca82b18cf9034eff12bded"
+      "bytes": 22476,
+      "sha256": "4e8acb50716f6d2da5dda0c65175bfa453e2b4fca9446c59d5a89c47d9614680"
     },
     "angle": {
       "file": "merkava3d_angle.webp",
@@ -949,8 +949,8 @@
       "width": 512,
       "height": 256,
       "mime": "image/webp",
-      "bytes": 16938,
-      "sha256": "7e0429abda3872029923becf9c1e72ccf3a670b2acd4d8bf549af82492491dd7"
+      "bytes": 16934,
+      "sha256": "e45bc102da2ec406152547983f543a48a7ccce6968810fcd78cb25850598a45d"
     },
     "topSilhouette": {
       "file": "merkava3d_top_silhouette.png",
@@ -973,8 +973,8 @@
       "width": 256,
       "height": 128,
       "mime": "image/png",
-      "bytes": 33397,
-      "sha256": "28a1c7147b1bf50fe70a3370138621f413f8be53249ba3a8bc1663cd7de8dad6"
+      "bytes": 33091,
+      "sha256": "9c07853422e957b37884a834a98f7de411a01fa4e27c922cd420beafa0130e55"
     },
     "technicalLabels": {
       "file": "merkava3d_technical.json",

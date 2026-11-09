@@ -566,16 +566,16 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 8194,
-      "sha256": "6ec8297e6b5b4ae14e4871f14579b9a32d9351707615a63af27349aed5bcb0bc"
+      "bytes": 8200,
+      "sha256": "ee0832bc5833f160280e17054069b9d148af066b9affa84bed1836018ff5d6db"
     },
     "side": {
       "file": "carro45t_side.webp",
       "width": 512,
       "height": 256,
       "mime": "image/webp",
-      "bytes": 7598,
-      "sha256": "1cac641ed1c27afe34dcc47a01efa07d6ffcadc024363336ec62fd38d23f2707"
+      "bytes": 7602,
+      "sha256": "8c9660054b2ce647bcd377f6de59ec57ffbb9eb66411393e94ea7c2a56eb4138"
     },
     "topSilhouette": {
       "file": "carro45t_top_silhouette.png",
@@ -599,31 +599,31 @@
       "height": 512,
       "mime": "image/webp",
       "bytes": 18396,
-      "sha256": "ffb86194168f2b1a84fdbe69938ebeb14465e30f97235cc7208e68aae9b4d9eb"
+      "sha256": "5f944eef9eb95ab80d469f5f3331de205246ba0e262a6fb5ebc50899492b2eb8"
     },
     "modulesSide": {
       "file": "carro45t_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 18908,
-      "sha256": "9e4df428d340b19fac93059d1be098c1f73dd33cfe870f2321ab60cd4e6d37b8"
+      "bytes": 18944,
+      "sha256": "e3aad1d9af7d82f4082e1d6aab7312c30b0262b59156a2f3aa762c6022eb6771"
     },
     "crewSide": {
       "file": "carro45t_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 17202,
-      "sha256": "ef60229b5c9e2ed6b9f6411db6353a98f702d499c95d39cc4ea1e66e352955aa"
+      "bytes": 16530,
+      "sha256": "d9dbadc96a7c17d06900e6eca5f93ab6f88f5faa17a05198118c4535e9e8fb23"
     },
     "markings": {
       "file": "carro45t_markings.png",
       "width": 256,
       "height": 128,
       "mime": "image/png",
-      "bytes": 32901,
-      "sha256": "7a3cba436e210bdcb91ca494bbbef7ce6be2e89cbb603301b4a0efbe90d79ea7"
+      "bytes": 30748,
+      "sha256": "4993a7353dd584a5668d674748d56000930bf0949c88d3005f69d15be948c9d6"
     },
     "technicalLabels": {
       "file": "carro45t_technical.json",

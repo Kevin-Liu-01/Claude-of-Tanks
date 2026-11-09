@@ -11,6 +11,9 @@ import { buildType89X } from './profiles/type89SourceX.ts';
 import { XK2_PROFILES } from './profiles/xk2.ts';
 import { GRIFFIN_VIPER_PROFILES } from './profiles/griffinViper.ts';
 import { TOS1A_TAGIL_PROFILES } from './profiles/tos1aTagil.ts';
+import { GM352_AIR_DEFENSE_PROFILES } from './profiles/gm352AirDefense.ts';
+import { GEPARD_PROFILES } from './profiles/gepard.ts';
+import { CHINESE_AIR_DEFENSE_PROFILES } from './profiles/chineseAirDefense.ts';
 import { buildFv510MilanX } from './profiles/fv510MilanX.ts';
 import { buildGriffin50X } from './profiles/griffin50X.ts';
 import { buildAjaxX } from './profiles/ajaxX.ts';
@@ -53,6 +56,7 @@ import { AFV_FAMILY_PROFILES } from './profiles/afvFamily.ts';
 import { SHERIDAN_PROFILES } from './profiles/sheridan.ts';
 import { PUMA_S1_PROFILES } from './profiles/pumaS1.ts';
 import { buildM6Linebacker } from './profiles/m6Linebacker.ts';
+import { buildM3A2Bradley } from './profiles/m3a2Bradley.ts';
 import { buildMarder2 } from './profiles/marder2.ts';
 import { TYPE89_LIGHT_TIGER_PROFILES } from './profiles/type89LightTiger.ts';
 import { LEOPARD_X_PROFILES } from './profiles/leopardX.ts';
@@ -78,6 +82,8 @@ import { LEOPARD2A3B4_PROFILES } from './profiles/leopard2a3B4.ts';
 import { LEOPARD2A4_FAMILY_PROFILES } from './profiles/leopard2A4Family.ts';
 import { DENMARK_PROFILES } from './profiles/denmark.ts';
 import { BRAZIL_PROFILES } from './profiles/brazil.ts';
+import { SOUTH_AFRICA_PROFILES } from './profiles/southAfrica.ts';
+import { AUSTRALIA_PROFILES } from './profiles/australia.ts';
 import { M41_PROFILES } from './profiles/m41.ts';
 import { AMX40_X_PROFILES } from './profiles/amx40X.ts';
 import { ARIETE_X_PROFILES } from './profiles/arieteX.ts';
@@ -165,6 +171,8 @@ export const PROCEDURAL_PROFILES: VehicleProfileRecord = {
   ...LEOPARD2A4_FAMILY_PROFILES,
   ...DENMARK_PROFILES,
   ...BRAZIL_PROFILES,
+  ...SOUTH_AFRICA_PROFILES,
+  ...AUSTRALIA_PROFILES,
   ...M41_PROFILES,
   ...AMX40_X_PROFILES,
   ...ARIETE_X_PROFILES,
@@ -210,6 +218,7 @@ export const PROCEDURAL_PROFILES: VehicleProfileRecord = {
   ...SHERIDAN_PROFILES,
   ...PUMA_S1_PROFILES,
   m6_linebacker: { build: buildM6Linebacker },
+  m3a2_bradley: { build: buildM3A2Bradley },
   marder2: { build: buildMarder2 },
   ...TYPE89_LIGHT_TIGER_PROFILES,
   ...LEOPARD_X_PROFILES,
@@ -219,6 +228,10 @@ export const PROCEDURAL_PROFILES: VehicleProfileRecord = {
   ...KF51_X_PROFILES,
   ...T14_X_PROFILES,
   ...KURGANETS_X_PROFILES,
+  // 268: the twin-cannon air-defence round
+  ...GM352_AIR_DEFENSE_PROFILES,
+  ...GEPARD_PROFILES,
+  ...CHINESE_AIR_DEFENSE_PROFILES,
 };
 
 export const PROFILED_BUILDERS = createProfileBuilders(PROCEDURAL_PROFILES, {

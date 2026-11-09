@@ -851,15 +851,15 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 26216,
-      "sha256": "902a11b8a952637652c88369dd643bcc223211ea79682a5c11b59a70ca8c20f7",
+      "bytes": 29850,
+      "sha256": "2838a27ca20443d4f974b631bb80080f9cbb7bc0c064bb5a090b867be7aaa924",
       "thumbnail": {
         "file": "thumbs/shot_kal_angle.webp",
         "width": 256,
         "height": 256,
         "mime": "image/webp",
-        "bytes": 11054,
-        "sha256": "fe641122c7e017f4bbc06d190f67fa4dee2a0f63e25dcbeef008d10bba2d98fc"
+        "bytes": 12178,
+        "sha256": "a59d595b0da460c02b2c97f4db6f05b9cff5c3e256cf7eb9333456a04c05f650"
       }
     },
     "top": {
@@ -867,16 +867,16 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 10738,
-      "sha256": "2a953f99f4788633c8e6d32b1994958c42bc9792c4977e8ef674c3b9b6d8d772"
+      "bytes": 13138,
+      "sha256": "30907b0c1b92fb9d9946c27157dd8dcf92a5aadbc7f6b36c9e7467f37a1f7159"
     },
     "side": {
       "file": "shot_kal_side.webp",
       "width": 512,
       "height": 256,
       "mime": "image/webp",
-      "bytes": 12406,
-      "sha256": "c1850c977fadd4cd842d828583619679b88c493752b60aa932f700e2d9902f84"
+      "bytes": 14070,
+      "sha256": "738c8d8b5b5bc213e2e6fb0b7d37c0430ab7890b14a6071b5b1370fe5b34ccd2"
     },
     "topSilhouette": {
       "file": "shot_kal_top_silhouette.png",
@@ -899,32 +899,32 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 27548,
-      "sha256": "f3a5f8c1731e436dfc5546a2dba8b8fa2e477e45ce748dd3e35ca6cfdb7641e3"
+      "bytes": 31120,
+      "sha256": "b7c1cd17ac00624ca9dd78fa8763d03f964cebd33d706521af7bf89bde41e94d"
     },
     "modulesSide": {
       "file": "shot_kal_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 25716,
-      "sha256": "199281e31cfa4cbc75742d5a65d0343d7ee05e3f9e4fc70f96d7c1fd676d41d6"
+      "bytes": 28992,
+      "sha256": "6348b5afad8ff4e4c0a7a6064910891fff435a8132bf1ed2a3f78f1f08ad586d"
     },
     "crewSide": {
       "file": "shot_kal_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 23666,
-      "sha256": "5c1aa7ffa7557b1fef149a7986287dff239b42a8175c2f03ce528aa350629da6"
+      "bytes": 28612,
+      "sha256": "02ecd6ea535c399e8d5ec750e12cc188dbb5f1fbf56c80359e2631b195b48253"
     },
     "markings": {
       "file": "shot_kal_markings.png",
       "width": 256,
       "height": 128,
       "mime": "image/png",
-      "bytes": 35155,
-      "sha256": "c36c42dd18bfcab0d86970b5ff557f94af28a4fed46c159dc9c3ae70e70a0aa1"
+      "bytes": 33439,
+      "sha256": "b80ae58fb737d7a7f7cfa7d11dff3bf0152ddd3587cd582826c75b6e3c86d27b"
     },
     "technicalLabels": {
       "file": "shot_kal_technical.json",

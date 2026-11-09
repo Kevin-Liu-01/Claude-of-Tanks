@@ -19,7 +19,7 @@ installCanvasFixture();
 const { createTank, ensureTankBuilder } = await import('./fleetFactory.ts');
 const { interiorFillRecord, interiorFillSpans, interiorFillTriangleCounts } = await import('./interiorFills.ts');
 
-const COMPONENTS = ['hull', 'turret', 'gun'];
+const ALL_COMPONENTS = ['hull', 'turret', 'gun'];
 const RIGS = { hull: 'rig_hull', turret: 'rig_turret', gun: 'rig_gun' };
 
 /** The closed-box mesher as it shipped through 2026-10-15 (interiorFills.ts), positions in the tank frame. */
@@ -59,6 +59,13 @@ const id = 'm1a1';
 await ensureTankBuilder(id);
 const record = interiorFillRecord(id);
 assert.ok(record, `${id}: fill record resident`);
+// 2026-11-04 (release 268, the M1A1's M256 measured from the owner's model, 41cf7c51ec): the measured gun is a closed
+// body round its bore, with no air in it for a fill (the generator finds 0 L in the gun frame), so the M1A1 record
+// carries hull and turret fills only; a tank whose record carries a gun fill is held to its gun's rule below as before
+// (t90am and t90m_proryv carry one)
+assert.equal(interiorFillSpans(record, 'gun').length, 0, `${id}: the measured M256 carries no gun fill`);
+const COMPONENTS = ALL_COMPONENTS.filter((component) => interiorFillSpans(record, component).length > 0);
+assert.deepEqual(COMPONENTS, ['hull', 'turret'], `${id}: hull and turret fills`);
 const visual = createTank(id, null, { camoSeed: 4242, quality: 'high', geometryQuality: 'high', batchStatic: true, battleDetailLod: false, eraVisualBindingReceipt: false });
 visual.root.updateMatrixWorld(true);
 const fills = {}, intact = {}, closedReference = {};
@@ -95,7 +102,7 @@ for (let kill = 0; kill < 2; kill++) {
   for (const component of COMPONENTS) {
     assert.ok(fills[component].geometry === intact[component], `${id} ${component} kill ${kill}: the rematch restores the surface`);
   }
-  assert.equal(disposed.size, 2 * (kill + 1), `kill ${kill}: the swapped-in boxes are disposed at the rematch`);
+  assert.equal(disposed.size, COMPONENTS.filter((c) => c !== 'gun').length * (kill + 1), `kill ${kill}: the swapped-in boxes are disposed at the rematch`);
 }
 visual.dispose();
 

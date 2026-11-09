@@ -122,11 +122,6 @@ export const DECLARED_DYNAMIC = Object.freeze({
     reads: [],
     note: 'reads the ledger step\'s own docs/references/fleet-geometry-ledger.json (partial updates, comparisons)',
   },
-  'src/vehicles/materialPainterWorker.ts': {
-    pin: '02080ee9df202934',
-    reads: [],
-    note: 'a page worker: fetches the painter font its client names (src/vehicles/materialPainterWorkerClient.ts: public/fonts/chakra-petch/ChakraPetch-Bold-Latin.woff2), inside the GPU steps\' public/fonts/** reads (tools/icons-page-public.mjs)',
-  },
   'tools/gen-interior-fills.mjs': {
     pin: '7ad1c72d6da8aede',
     reads: [],

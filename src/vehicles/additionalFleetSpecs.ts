@@ -14,6 +14,7 @@ import { DONOR_SPECS, donorSpec } from './donorSpecs.ts';
 import {
   apfsdsPenetration as apfsdsPens,
   LEOPARD1A5_262_GUN_PITCH_BY_YAW_DEG,
+  modernArmor,
   reactivePlate,
   shell,
   type ArmorEnvelope,
@@ -309,8 +310,20 @@ const SPECS: FleetTankSpec[] = [
   // 25 mm ammo + a TOW rail on a vehicle that mounts neither — and the old
   // gun-level 0.45 s reload applied to that inherited TOW (900 dmg HEAT at
   // 2 rps). Real 30 mm RARDEN belts, per-shell reloads, no missile.
+  // 268: the Warrior keeps the Bradley armour its plates were fitted to (modern3Specs.ts before the M2A2's re-measure
+  // to the owner's model); the Milan, the TES(H) and the Ares clone this row.
   make('m2a2_bradley', 'fv510', 'FV510 Warrior', 'UK',
     { hp: 1400, weightTons: 25.4, topSpeedKmh: 75, hullTraverseDegS: 45,
+      armor: modernArmor({
+        hl: 3.27, hw: 1.635, inW: 0.95, floor: 0.45, trkTop: 0.95, roofY: 1.90,
+        turretPivot: [0, 1.895, -0.45], gunPivot: [-0.075, 0.375, 0.60],
+        barrelLenM: 2.30, barrelRadM: 0.038,
+        glacis: [40, 60, 60], lower: [40, 50, 50], side: [30, 30, 30],
+        skirt: [25, 30, 60], rear: 25, roof: 20,
+        tw: 0.82, tFrontZ: 0.98, tRearZ: -1.05, tH: 0.87,
+        cheek: [35, 60, 60], tSide: [30, 30, 30], tRear: 25, tRoof: 20,
+        mantlet: [40, 60, 60], loader: false,
+      }),
       gun: {
         caliberMm: 30, reloadS: 0.75, soundProfile: 'rarden-l21a1',
         shells: [

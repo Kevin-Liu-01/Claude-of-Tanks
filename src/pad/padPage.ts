@@ -7,6 +7,12 @@
  * actions. The page asks for motion access, the wake lock and full screen from the Start tap (iOS wants a gesture), and
  * keeps its resume token in sessionStorage so a reload or a sleeping phone comes back.
  *
+ * The phone is felt as well as seen (owner 2026-11-03: "it should buzz and vibrate"): every press ticks, and the battle's
+ * cues (padCues.ts: the gun firing, hits given and taken, modules, fire, crashes, kills, death, the sight's lock) each
+ * play their own buzz the moment the desktop sends them. A thumb on the fire button drags to aim, so one thumb aims and
+ * shoots, and the sight's gain follows the finger's speed. The first pairing on a phone shows the controls' names over
+ * the live panel for ten seconds, or until Skip.
+ *
  * The panel is glued to the phone (owner 2026-10-30: "it must be horizontal and just stays that way"). iOS Safari has no
  * orientation lock, so the page locks itself: from the Start tap the controller is laid out once in the landscape the
  * phone is held in, and when the system turns the page (the phone tipped past its threshold, as a wheel turned hard
@@ -16,12 +22,14 @@
 import { createPadLink } from './padLink.ts';
 import type { PadLink, PadLinkState } from './padLink.ts';
 import {
-  DEFAULT_STEERING, frameDelta, frameInsets, frameTurn, leverValue, lockAngle, steerFromAngle, wheelAngleDeg,
+  DEFAULT_STEERING, aimGain, aimSpeed, frameDelta, frameInsets, frameTurn, leverValue, lockAngle, steerFromAngle, wheelAngleDeg,
 } from './padInput.ts';
+import { padBuzzPattern, padBuzzTicks } from './padBuzz.ts';
+import type { PadBuzz } from './padBuzz.ts';
 import {
-  PAD_FLAG_TILT, PAD_HOLD_ACTIONS, encodePadAxes, formatPadCode, normalizePadCode,
+  PAD_FLAG_TILT, PAD_HOLD_ACTIONS, encodePadAxes, encodePadTour, formatPadCode, normalizePadCode,
 } from './padProtocol.ts';
-import type { PadAxes, PadHoldAction, PadStatus, PadTapAction } from './padProtocol.ts';
+import type { PadAxes, PadCue, PadHoldAction, PadStatus, PadTapAction, PadTourLayout, PadTourPart, PadTourStop } from './padProtocol.ts';
 import { padServiceUrl } from './padEndpoint.ts';
 import { t } from '../ui/i18n.ts';
 import { icon } from '../ui/icons/icon.ts';
@@ -32,10 +40,17 @@ import { dialogSurface } from '../ui/components/surfaceStack.ts';
 
 const SETTINGS_KEY = 'cot.pad.v1';
 const RESUME_KEY = 'cot.pad.resume';
+/** Set once this phone has seen the controls' guide (its first pairing). */
+const TOUR_KEY = 'cot.pad.tour';
+const TOUR_MS = 10_000;
 const NO_TILT_MS = 1500;
 const HEARTBEAT_MS = 100;
+/** A thumb that lands on the fire button aims once it has moved this far (a press's wobble never nudges the gun). */
+const FIRE_AIM_DEADZONE_PX = 10;
+/** The gun's loaded buzz plays for a load this long or longer (an autocannon's round-to-round is not announced). */
+const READY_MIN_S = 1.5;
 
-interface PadSettings { tilt: boolean; lockDeg: number; aim: number; hand: 'right' | 'left' }
+interface PadSettings { tilt: boolean; lockDeg: number; aim: number; hand: 'right' | 'left'; buzz: boolean }
 const LOCKS = [25, 35, 45, 60];
 const AIMS = [0.5, 1, 1.5, 2];
 
@@ -43,8 +58,8 @@ function loadSettings(): PadSettings {
   try {
     const raw = JSON.parse(localStorage.getItem(SETTINGS_KEY) || '{}') as Partial<PadSettings>;
     return { tilt: raw.tilt !== false, lockDeg: LOCKS.includes(Number(raw.lockDeg)) ? Number(raw.lockDeg) : DEFAULT_STEERING.maxAngleDeg,
-      aim: AIMS.includes(Number(raw.aim)) ? Number(raw.aim) : 1, hand: raw.hand === 'left' ? 'left' : 'right' };
-  } catch { return { tilt: true, lockDeg: DEFAULT_STEERING.maxAngleDeg, aim: 1, hand: 'right' }; }
+      aim: AIMS.includes(Number(raw.aim)) ? Number(raw.aim) : 1, hand: raw.hand === 'left' ? 'left' : 'right', buzz: raw.buzz !== false };
+  } catch { return { tilt: true, lockDeg: DEFAULT_STEERING.maxAngleDeg, aim: 1, hand: 'right', buzz: true }; }
 }
 const settings = loadSettings();
 const saveSettings = (): void => { try { localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings)); } catch { /* private mode */ } };
@@ -137,6 +152,7 @@ const ctl = html(`<section class="pad-ctl" hidden>
       <button class="pad-key" type="button" data-tap="zoomIn" aria-label="${esc(t('pad.zoomIn'))}">${icon('zoomIn', { size: 20 })}</button>
     </div>
     <button class="pad-key pad-scope" type="button" data-tap="sniperToggle" aria-pressed="false" aria-label="${esc(t('pad.scope'))}">${icon('scope', { size: 22 })}</button>
+    <button class="pad-key pad-lock" type="button" data-tap="autoAim" aria-pressed="false" aria-label="${esc(t('pad.lock'))}" hidden>${icon('autoAim', { size: 22 })}</button>
     <div class="pad-trigger">
       <span class="pad-ring" aria-hidden="true"><span class="pad-ring-half"><i></i></span><span class="pad-ring-half"><i></i></span></span>
       <button class="pad-fire" type="button" data-hold="fire" aria-label="${esc(t('pad.fire'))}">${icon('fireGun', { size: 36 })}</button>
@@ -145,6 +161,8 @@ const ctl = html(`<section class="pad-ctl" hidden>
   <dialog class="pad-opts">
     <div class="row"><span>${esc(t('pad.opt.tilt'))}</span><button class="pad-key" type="button" data-tilt aria-pressed="true"></button></div>
     <div class="row"><span>${esc(t('pad.opt.hand'))}</span><button class="pad-key" type="button" data-hand></button></div>
+    <div class="row"><span>${esc(t('pad.opt.buzz'))}</span><button class="pad-key" type="button" data-buzz aria-pressed="true"></button></div>
+    <div class="row"><span>${esc(t('pad.opt.tour'))}</span><button class="pad-key" type="button" data-tour>${esc(t('pad.opt.show'))}</button></div>
     ${['lockDeg', 'aim'].map((name) => `<div class="row"><span id="pad-opt-${name}">${esc(t(name === 'aim' ? 'pad.opt.aim' : 'pad.opt.lock'))}</span>`
       + `<span class="pad-step" role="group" aria-labelledby="pad-opt-${name}">`
       + `<button class="pad-key" type="button" data-step="${name}" data-dir="-1" aria-label="${esc(t('pad.opt.lower'))}">${icon('chevronLeft', { size: 18 })}</button>`
@@ -156,6 +174,7 @@ const ctl = html(`<section class="pad-ctl" hidden>
       <button class="pad-key" type="button" data-close>${esc(t('pad.opt.close'))}</button>
     </div>
   </dialog>
+  <div class="pad-tour" hidden><button class="pad-key pad-tour-skip" type="button">${esc(t('pad.tour.skip'))}<i class="pad-tour-clock" aria-hidden="true"></i></button></div>
 </section>`);
 const end = html(`<section class="pad-end" hidden>
   <h1 class="pad-title">${icon('phone', { size: 28 })}<span>${esc(t('pad.title'))}</span></h1>
@@ -182,6 +201,9 @@ const ringHalves = [...ctl.querySelectorAll<HTMLElement>('.pad-ring-half i')];
 const zoom = $<HTMLElement>('.pad-zoom');
 const scope = $<HTMLButtonElement>('.pad-scope');
 const aimPad = $<HTMLElement>('.pad-aim');
+const fireButton = $<HTMLButtonElement>('.pad-fire');
+const lockKey = $<HTMLButtonElement>('.pad-lock');
+const tour = $<HTMLElement>('.pad-tour');
 const options = $<HTMLDialogElement>('.pad-opts');
 ctl.dataset.hand = settings.hand;
 
@@ -227,6 +249,7 @@ function layoutFrame(): void {
   root.style.setProperty('--pad-pt', `${Math.max(8, top)}px`);
   root.style.setProperty('--pad-pb', `${Math.max(12, bottom)}px`);
   turnFrame();
+  if (!tour.hidden) placeTour();
 }
 
 /** After every system rotation: turn the frame back onto the phone and fit it, a transform and nothing else. The first
@@ -285,9 +308,11 @@ let reloadKey = '';
 /** Diagnostics for the pad e2e and the owner's real-device check. */
 interface PhoneDebug {
   sent: number; held: number; throttle: number; released: number; rttMs: number | null; applyMs: number; tilt: boolean; state: string; frame: object | null;
+  /** The buzzes played, by name, the guide's last state (shown, skipped, timed out) and how long it last stayed open. */
+  buzz: Record<string, number>; tour: string; tourMs: number;
 }
 const debug: PhoneDebug | null = import.meta.env.DEV || /[?&]padDebug\b/.test(location.search)
-  ? ((globalThis as { __COT_PAD_PHONE?: PhoneDebug }).__COT_PAD_PHONE = { sent: 0, held: 0, throttle: 0, released: 0, rttMs: null, applyMs: 0, tilt: false, state: 'join', frame: null }) : null;
+  ? ((globalThis as { __COT_PAD_PHONE?: PhoneDebug }).__COT_PAD_PHONE = { sent: 0, held: 0, throttle: 0, released: 0, rttMs: null, applyMs: 0, tilt: false, state: 'join', frame: null, buzz: {}, tour: '', tourMs: 0 }) : null;
 
 const steering = (): number => {
   if (settings.tilt && tiltSeen) {
@@ -362,25 +387,48 @@ function applyMode(): void {
 // is down, and the throttle thumb is always down. The finger is captured, so sliding it off keeps a hold and presses
 // nothing else; a lost capture lets go. iOS's own gestures never get a finger: the controller cancels their default
 // (double-tap zoom, the callout, selection, the page's rubber band), and touch-action is none on the whole page.
-let tick: HTMLLabelElement | null = null;
-/** A short tick under the thumb: the Vibration API where there is one; iOS 18 Safari ticks when a switch toggles. */
-function haptic(): void {
+//
+// Every press and every cue is felt (padBuzz.ts names each buzz): the Vibration API plays the pattern where there is one
+// (Android); iOS Safari has none, but ticks once when a switch control toggles (iOS 18), so a hidden switch is toggled
+// for each tick of the pattern. Whether iOS ticks outside a touch's own handler (a cue off the link) is unverified on
+// hardware: the simulator has no haptics.
+let tickHost: HTMLLabelElement | null = null;
+function tickOnce(): void {
   try {
-    if (typeof navigator.vibrate === 'function') { navigator.vibrate(8); return; }
-    if (!tick) {
-      tick = document.createElement('label');
-      tick.hidden = true;
-      tick.innerHTML = '<input type="checkbox" switch tabindex="-1">';
-      document.body.append(tick);
+    if (!tickHost) {
+      tickHost = document.createElement('label');
+      tickHost.hidden = true;
+      tickHost.innerHTML = '<input type="checkbox" switch tabindex="-1">';
+      document.body.append(tickHost);
     }
-    tick.click();
+    tickHost.click();
+  } catch { /* unsupported */ }
+}
+const vibrates = typeof navigator.vibrate === 'function';
+/** When the buzz playing now ends: a press never cuts one short (the Vibration API's next call ends the one before). */
+let buzzingUntil = 0;
+/** The last shot's kick (its gun's weight, from the battle's cue), and when the trigger last kicked for a shot of its
+ *  own (the battle's cue for that one shot then adds none). */
+let shotStrength = 0.6;
+let shotFeltAt = -Infinity;
+function buzz(kind: PadBuzz, strength?: number): void {
+  if (!settings.buzz) return;
+  const now = performance.now();
+  if (kind === 'press' && now < buzzingUntil) return;
+  const pattern = padBuzzPattern(kind, strength);
+  buzzingUntil = now + pattern.reduce((total, ms) => total + ms, 0);
+  if (debug) debug.buzz[kind] = (debug.buzz[kind] ?? 0) + 1;
+  try {
+    if (vibrates) { navigator.vibrate(pattern); return; }
+    for (const at of padBuzzTicks(pattern)) { if (at) setTimeout(tickOnce, at); else tickOnce(); }
   } catch { /* unsupported */ }
 }
 
 /** Each control's way to let go of every finger on it (releaseControls). */
 const letGo: Array<() => void> = [];
-/** A press: the first finger down presses, and the control lets go when the last finger on it lifts. */
-function press(control: HTMLElement, down: () => void, up?: () => void): void {
+/** A press: the first finger down presses (and is felt: a tick, or the buzz `feel` names), and the control lets go when
+ *  the last finger on it lifts. */
+function press(control: HTMLElement, down: () => void, up?: () => void, feel: () => PadBuzz = () => 'press'): void {
   const pointers = new Set<number>();
   control.addEventListener('pointerdown', (event) => {
     event.preventDefault();
@@ -388,7 +436,8 @@ function press(control: HTMLElement, down: () => void, up?: () => void): void {
     pointers.add(event.pointerId);
     if (pointers.size > 1) return;
     control.classList.add('is-down');
-    haptic();
+    const kind = feel();
+    buzz(kind, kind === 'shot' ? shotStrength : undefined);
     down();
   });
   const lift = (): void => {
@@ -479,38 +528,74 @@ lever.addEventListener('keydown', (event) => {
 });
 
 // ---- the sight -------------------------------------------------------------------------------------------------------
+// One finger aims at a time: the sight's, or the trigger's. A thumb on the fire button drags to aim once it has moved
+// past a press's wobble, so one thumb aims and shoots (held, the gun fires again the moment it loads); a finger that
+// lands on the sight takes the aim from it. The gain follows the finger's speed (padInput.ts aimGain): a slow drag is
+// precise, a flick swings the gun round.
 let aimPointer: number | null = null;
-let aimLast = { x: 0, y: 0 };
+let aimLast = { x: 0, y: 0, t: 0 };
 let aimOrigin = { x: 0, y: 0 };
+let aimSpeedNow = 0;
+/** The finger must move this far (frame px) before it aims: 0 on the sight, a press's wobble on the trigger. */
+let aimDeadzone = 0;
+/** The aiming finger is the trigger's (a finger on the sight takes over from it). */
+let aimByTrigger = false;
+/** The scope is in: the gain stays lower, so a flick never throws the sight off a target. */
+let scoped = false;
 /** The reticle leans toward the drag (a third of it, at most 40 px) and settles back on release. */
 const leanReticle = (dx: number, dy: number): void => {
   const reach = Math.hypot(dx, dy) / 3;
   const scale = reach > 40 ? 40 / reach : 1;
   reticle.style.transform = `translate(${Math.round((dx / 3) * scale)}px,${Math.round((dy / 3) * scale)}px)`;
 };
-aimPad.addEventListener('pointerdown', (event) => {
-  if (aimPointer !== null) return;
-  event.preventDefault();
+function aimBegin(event: PointerEvent, deadzone: number, trigger: boolean): void {
+  if (aimPointer !== null && !(aimByTrigger && !trigger)) return;
   aimPointer = event.pointerId;
-  try { aimPad.setPointerCapture(event.pointerId); } catch { /* the pointer is already gone */ }
-  aimLast = { x: event.clientX, y: event.clientY };
+  aimByTrigger = trigger;
+  aimLast = { x: event.clientX, y: event.clientY, t: event.timeStamp };
   aimOrigin = { x: event.clientX, y: event.clientY };
-});
-aimPad.addEventListener('pointermove', (event) => {
+  aimSpeedNow = 0;
+  aimDeadzone = deadzone;
+}
+function aimMove(event: PointerEvent): void {
   if (event.pointerId !== aimPointer) return;
+  const [lx, ly] = inFrame(event.clientX - aimOrigin.x, event.clientY - aimOrigin.y);
+  if (aimDeadzone) {
+    // still inside the press's wobble: nothing moves, and the aim starts from here, without a jump
+    if (Math.hypot(lx, ly) / frame.scale < aimDeadzone) return;
+    aimDeadzone = 0;
+    aimLast = { x: event.clientX, y: event.clientY, t: event.timeStamp };
+    return;
+  }
   // totals, not deltas: a lost frame loses no aim (padProtocol's axes frame); the finger's own distance, in the frame's axes
   const [dx, dy] = inFrame(event.clientX - aimLast.x, event.clientY - aimLast.y);
-  axes.aimX += dx * settings.aim;
-  axes.aimY += dy * settings.aim;
-  aimLast = { x: event.clientX, y: event.clientY };
-  const [lx, ly] = inFrame(event.clientX - aimOrigin.x, event.clientY - aimOrigin.y);
+  aimSpeedNow = aimSpeed(aimSpeedNow, Math.hypot(dx, dy), event.timeStamp - aimLast.t);
+  const gain = settings.aim * aimGain(aimSpeedNow, scoped);
+  axes.aimX += dx * gain;
+  axes.aimY += dy * gain;
+  aimLast = { x: event.clientX, y: event.clientY, t: event.timeStamp };
   leanReticle(lx, ly);
   send();
+}
+function aimEnd(event: PointerEvent): void {
+  if (event.pointerId !== aimPointer) return;
+  aimPointer = null;
+  leanReticle(0, 0);
+}
+aimPad.addEventListener('pointerdown', (event) => {
+  if (aimPointer !== null && !aimByTrigger) return;
+  event.preventDefault();
+  try { aimPad.setPointerCapture(event.pointerId); } catch { /* the pointer is already gone */ }
+  aimBegin(event, 0, false);
 });
-const aimEnd = (event: PointerEvent): void => { if (event.pointerId !== aimPointer) return; aimPointer = null; leanReticle(0, 0); };
-aimPad.addEventListener('pointerup', aimEnd);
-aimPad.addEventListener('pointercancel', aimEnd);
-aimPad.addEventListener('lostpointercapture', aimEnd);
+// the trigger's press (and its capture) is press()'s; the same finger's drag aims
+fireButton.addEventListener('pointerdown', (event) => aimBegin(event, FIRE_AIM_DEADZONE_PX, true));
+for (const host of [aimPad, fireButton]) {
+  host.addEventListener('pointermove', aimMove);
+  host.addEventListener('pointerup', aimEnd);
+  host.addEventListener('pointercancel', aimEnd);
+  host.addEventListener('lostpointercapture', aimEnd);
+}
 
 // ---- letting go -------------------------------------------------------------------------------------------------------
 /** Every control lets go at once when the link drops or the page is hidden or loses focus (a call, the lock button, the
@@ -543,9 +628,15 @@ function hold(action: PadHoldAction, down: boolean): void {
   send(true);
 }
 const tap = (action: PadTapAction): void => { link?.sendCtl({ k: 'tap', a: action }); };
+/** The trigger's feel: the shot's kick at once when the gun is loaded (the battle's cue for that shot then adds none),
+ *  a refusal while it loads, a plain tick outside a battle. */
+const triggerFeel = (): PadBuzz => {
+  if (ctl.dataset.state === 'ready') { shotFeltAt = performance.now(); return 'shot'; }
+  return ctl.dataset.state === 'loading' ? 'unready' : 'press';
+};
 for (const button of ctl.querySelectorAll<HTMLElement>('[data-hold]')) {
   const action = button.dataset.hold as PadHoldAction;
-  press(button, () => hold(action, true), () => hold(action, false));
+  press(button, () => hold(action, true), () => hold(action, false), action === 'fire' ? triggerFeel : undefined);
 }
 for (const button of ctl.querySelectorAll<HTMLElement>('.pad-top [data-tap], .pad-right [data-tap]')) {
   press(button, () => tap(button.dataset.tap as PadTapAction));
@@ -565,9 +656,12 @@ press($<HTMLElement>('[data-centre]'), () => {
 // the surface stack; the modal sits in the top layer, outside the frame, so it turns with the frame's own variables
 const tiltToggle = options.querySelector('[data-tilt]') as HTMLButtonElement;
 const handToggle = options.querySelector('[data-hand]') as HTMLButtonElement;
+const buzzToggle = options.querySelector('[data-buzz]') as HTMLButtonElement;
 function paintOptions(): void {
   tiltToggle.setAttribute('aria-pressed', String(settings.tilt));
   tiltToggle.textContent = t(settings.tilt ? 'pad.opt.on' : 'pad.opt.off');
+  buzzToggle.setAttribute('aria-pressed', String(settings.buzz));
+  buzzToggle.textContent = t(settings.buzz ? 'pad.opt.on' : 'pad.opt.off');
   handToggle.textContent = t(settings.hand === 'left' ? 'pad.opt.left' : 'pad.opt.right');
   ctl.dataset.hand = settings.hand;
   (options.querySelector('[data-value="lockDeg"]') as HTMLElement).textContent = t('pad.opt.lockValue', { deg: settings.lockDeg });
@@ -581,6 +675,8 @@ function changed(): void {
 }
 tiltToggle.addEventListener('click', () => { settings.tilt = !settings.tilt; changed(); });
 handToggle.addEventListener('click', () => { settings.hand = settings.hand === 'left' ? 'right' : 'left'; changed(); });
+buzzToggle.addEventListener('click', () => { settings.buzz = !settings.buzz; changed(); buzz('press'); });
+(options.querySelector('[data-tour]') as HTMLButtonElement).addEventListener('click', () => { options.close(); showTour(); });
 for (const button of options.querySelectorAll<HTMLButtonElement>('[data-step]')) {
   button.addEventListener('click', () => {
     const name = button.dataset.step as 'lockDeg' | 'aim';
@@ -598,6 +694,162 @@ $<HTMLButtonElement>('[data-disconnect]').addEventListener('click', () => {
   forgetResume();
   link?.end();
 });
+
+// ---- the controls' guide ------------------------------------------------------------------------------------------
+// The first pairing on a phone names its controls where they are (owner 2026-11-03: "a tutorial should show up on first
+// phone pairing mode that u can skip and also disappears after like 10 seconds"): a ring on each control and its name
+// beside it, over the live panel, which the thumbs work through; Skip or ten seconds ends it, and Options shows it
+// again. The marks live in the frame, so they turn with it; their places are the controls' layout boxes in the frame.
+// The game screen shows the same guide at the same time (owner 2026-11-03: "the tutorial should open on game screen and
+// the phone"): the phone sends its picture (every control's box, the stops and where their names sit) with the guide,
+// and Skip on either side, or the ten seconds, ends it on both.
+/** A control the guide names: its ring (none for the sight, a surface the others sit on), its ghost stroke, and the
+ *  sides its name may take in order (`over` is on the control itself, `inside` along its top edge). */
+interface TourStop {
+  id: PadTourStop; selector: string; words: string; ring?: 'round' | 'none'; move?: 'x' | 'y';
+  sides: ReadonlyArray<'above' | 'below' | 'left' | 'right' | 'inside' | 'over'>;
+}
+let tourTimer: ReturnType<typeof setTimeout> | undefined;
+let tourShownAt = 0;
+let clockAnimation: Animation | null = null;
+let ghostAnimations: Animation[] = [];
+const toured = (): boolean => { try { return localStorage.getItem(TOUR_KEY) === '1'; } catch { return true; } };
+
+/** A control's box in the frame's own (untransformed) layout. */
+function frameBox(element: HTMLElement): { x: number; y: number; w: number; h: number } {
+  let x = 0;
+  let y = 0;
+  for (let node: HTMLElement | null = element; node && node !== ctl; node = node.offsetParent as HTMLElement | null) {
+    x += node.offsetLeft;
+    y += node.offsetTop;
+  }
+  return { x, y, w: element.offsetWidth, h: element.offsetHeight };
+}
+
+function tourStops(): TourStop[] {
+  const tilt = settings.tilt;
+  return [
+    ...(tilt ? [{ id: 'tilt', selector: '.pad-tank', words: t('pad.tour.tilt'), ring: 'round', sides: ['over'] } as const] : []),
+    { id: tilt ? 'throttle' : 'stick', selector: '.pad-lever', words: t(tilt ? 'pad.tour.throttle' : 'pad.tour.stick'), move: 'y',
+      sides: settings.hand === 'left' ? ['left', 'over'] : ['right', 'over'] },
+    { id: 'aim', selector: '.pad-aim', words: t('pad.tour.aim'), ring: 'none', move: 'x', sides: ['inside'] },
+    { id: 'fire', selector: '.pad-trigger', words: t('pad.tour.fire'), ring: 'round', sides: ['over'] },
+    { id: 'scope', selector: '.pad-scope', words: t('pad.scope'), ring: 'round', sides: ['over', 'above'] },
+    { id: 'lock', selector: '.pad-lock', words: t('pad.lock'), ring: 'round', sides: ['over', 'left'] },
+  ];
+}
+
+/** Every control the game screen's picture of the phone draws, and its kind there. */
+const TOUR_PARTS: ReadonlyArray<readonly [string, PadTourPart]> = [
+  ['.pad-link', 'chip'], ['.pad-shell', 'key'], ['.pad-guard', 'key'], ['[data-pause]', 'key'], ['[data-menu]', 'key'],
+  ['.pad-lever', 'lever'], ['.pad-brake', 'key'], ['.pad-speedo', 'dial'], ['.pad-tank', 'dial'], ['.pad-aim', 'sight'],
+  ['.pad-look', 'key'], ['.pad-zoom', 'key'], ['.pad-scope', 'round'], ['.pad-lock', 'round'], ['.pad-trigger', 'fire'],
+];
+const shown = (element: HTMLElement): boolean => element.offsetWidth > 0 && !element.closest('[hidden]');
+/** The guide's picture as the game screen draws it (placeTour writes it). */
+let tourLayout: PadTourLayout | null = null;
+
+/** Lay the marks on their controls and each name on the first side with room (inside the frame, clear of every other
+ *  control in the guide and of the names already placed), and Skip over the instruments' message line. */
+function placeTour(): void {
+  for (const old of tour.querySelectorAll('.pad-tour-mark,.pad-tour-tip')) old.remove();
+  const width = ctl.clientWidth;
+  const height = ctl.clientHeight;
+  const stops = tourStops().map((stop) => ({ stop, target: ctl.querySelector<HTMLElement>(stop.selector) }))
+    .filter((entry): entry is { stop: TourStop; target: HTMLElement } => !!entry.target && shown(entry.target));
+  const px = Math.round;
+  const layout: PadTourLayout = { w: px(width), h: px(height), parts: [], stops: [] };
+  tourLayout = layout;
+  for (const [selector, kind] of TOUR_PARTS) {
+    for (const part of ctl.querySelectorAll<HTMLElement>(selector)) {
+      if (!shown(part)) continue;
+      const box = frameBox(part);
+      layout.parts.push([kind, px(box.x), px(box.y), px(box.w), px(box.h)]);
+    }
+  }
+  const boxes = stops.map(({ target }) => frameBox(target));
+  type Box = { x: number; y: number; w: number; h: number };
+  const overlaps = (a: Box, b: Box): boolean => a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h;
+  // a surface a control sits on (the sight under the fire button) is no obstacle to that control's name
+  const encloses = (outer: Box, inner: Box): boolean =>
+    outer.x <= inner.x && outer.y <= inner.y && outer.x + outer.w >= inner.x + inner.w && outer.y + outer.h >= inner.y + inner.h;
+  const skip = $<HTMLElement>('.pad-tour-skip', tour);
+  const mid = frameBox($<HTMLElement>('.pad-mid'));
+  const skipBox = { x: Math.round(mid.x + mid.w / 2 - skip.offsetWidth / 2), y: Math.round(mid.y + mid.h - skip.offsetHeight), w: skip.offsetWidth, h: skip.offsetHeight };
+  skip.style.transform = `translate(${skipBox.x}px,${skipBox.y}px)`;
+  const taken: Box[] = [skipBox];
+  stops.forEach(({ stop }, i) => {
+    const box = boxes[i]!;
+    const mark = html(`<span class="pad-tour-mark" aria-hidden="true"${stop.ring ? ` data-ring="${stop.ring}"` : ''}>${stop.move ? `<i class="pad-tour-ghost" data-move="${stop.move}"></i>` : ''}</span>`);
+    mark.style.cssText = `width:${box.w + 8}px;height:${box.h + 8}px;transform:translate(${box.x - 4}px,${box.y - 4}px)`;
+    tour.append(mark);
+    const tip = html(`<span class="pad-tour-tip" aria-hidden="true">${esc(stop.words)}</span>`);
+    tour.append(tip);
+    const w = tip.offsetWidth;
+    const h = tip.offsetHeight;
+    const at = (side: TourStop['sides'][number]): Box => {
+      const cx = box.x + box.w / 2 - w / 2;
+      const cy = box.y + box.h / 2 - h / 2;
+      switch (side) {
+        case 'above': return { x: cx, y: box.y - h - 10, w, h };
+        case 'below': return { x: cx, y: box.y + box.h + 10, w, h };
+        case 'left': return { x: box.x - w - 10, y: cy, w, h };
+        case 'right': return { x: box.x + box.w + 10, y: cy, w, h };
+        case 'over': return { x: cx, y: cy, w, h };
+        default: return { x: cx, y: box.y + 12, w, h };
+      }
+    };
+    const fits = (place: Box): boolean => place.x >= 0 && place.y >= 0 && place.x + w <= width && place.y + h <= height
+      && boxes.every((other, j) => j === i || encloses(other, box) || !overlaps(place, other))
+      && taken.every((other) => !overlaps(place, other));
+    const place = stop.sides.map(at).find(fits) ?? at(stop.sides[0]!);
+    const x = Math.max(0, Math.min(width - w, place.x));
+    const y = Math.max(0, Math.min(height - h, place.y));
+    taken.push({ x, y, w, h });
+    tip.style.transform = `translate(${Math.round(x)}px,${Math.round(y)}px)`;
+    layout.stops.push([stop.id, px(box.x), px(box.y), px(box.w), px(box.h), px(x + w / 2), px(y + h / 2),
+      stop.ring === 'round' ? 1 : stop.ring === 'none' ? 2 : 0, stop.move === 'x' ? 1 : stop.move === 'y' ? 2 : 0]);
+  });
+  // a ghost thumb strokes the throttle and the sight (none under reduced motion)
+  for (const animation of ghostAnimations.splice(0)) animation.cancel();
+  if (prefersReducedMotion()) return;
+  const stroke = tokenMs('--dur-stage') * 2;
+  for (const ghost of tour.querySelectorAll<HTMLElement>('.pad-tour-ghost')) {
+    const along = (at: number): string => ghost.dataset.move === 'y' ? `translateY(${-at}px)` : `translateX(${at}px)`;
+    ghostAnimations.push(ghost.animate([{ transform: along(-36), opacity: 0 }, { transform: along(-30), opacity: 1, offset: 0.15 },
+      { transform: along(36), opacity: 1, offset: 0.8 }, { transform: along(40), opacity: 0 }], { duration: stroke, easing: 'ease-in-out', iterations: Infinity }));
+  }
+}
+
+function showTour(): void {
+  try { localStorage.setItem(TOUR_KEY, '1'); } catch { /* private mode: the guide shows each pairing */ }
+  tour.hidden = false;
+  // Skip takes the status line's place at the foot of the middle column while the guide shows
+  ctl.dataset.tour = '';
+  placeTour();
+  // the ten seconds run out under Skip (a still bar under reduced motion)
+  clockAnimation?.cancel();
+  clockAnimation = prefersReducedMotion() ? null : $<HTMLElement>('.pad-tour-clock', tour)
+    .animate([{ transform: 'scaleX(1)' }, { transform: 'scaleX(0)' }], { duration: TOUR_MS, easing: 'linear', fill: 'forwards' });
+  clearTimeout(tourTimer);
+  tourTimer = setTimeout(() => endTour('timeout'), TOUR_MS);
+  if (tourLayout) link?.sendCtl({ k: 'tour', on: true, l: encodePadTour(tourLayout) });
+  tourShownAt = performance.now();
+  if (debug) debug.tour = 'shown';
+}
+/** End the guide: skipped here, its time up, the pairing ended, or skipped on the game screen (`screen`). Skip and the
+ *  time running out end it on the game screen too. */
+function endTour(how: 'skipped' | 'timeout' | 'ended' | 'screen'): void {
+  if (tour.hidden) return;
+  if (how === 'skipped' || how === 'timeout') link?.sendCtl({ k: 'tour', on: false });
+  clearTimeout(tourTimer);
+  clockAnimation?.cancel();
+  for (const animation of ghostAnimations.splice(0)) animation.cancel();
+  tour.hidden = true;
+  delete ctl.dataset.tour;
+  if (debug) { debug.tour = how; debug.tourMs = Math.round(performance.now() - tourShownAt); }
+}
+press($<HTMLElement>('.pad-tour-skip', tour), () => endTour('skipped'));
 
 // ---- status from the desktop -------------------------------------------------------------------------------------
 /** The reload ring: two half rings turn into view, the right half over the first half of the load and the left over the
@@ -618,6 +870,36 @@ function paintReload(done: number, leftS: number): void {
   } else {
     ringAnimations.push(left.animate([{ transform: turn(done - 0.5) }, { transform: turn(0.5) }], timing));
   }
+}
+
+/** The gun's loaded buzz: at the end of the load the status names (each status re-arms it with the time left), or at the
+ *  first status that says loaded, whichever comes first; never with the trigger held (the shot's own kick follows). */
+let readyTimer: ReturnType<typeof setTimeout> | undefined;
+let loadingLong = false;
+function gunLoaded(): void {
+  if (!loadingLong) return;
+  loadingLong = false;
+  if (!(axes.held & holdBit('fire'))) buzz('ready');
+}
+function armReady(next: PadStatus): void {
+  clearTimeout(readyTimer);
+  const loading = next.battle && next.alive && next.reloadS > 0 && next.reloadTotalS >= READY_MIN_S;
+  if (loading) {
+    loadingLong = true;
+    readyTimer = setTimeout(gunLoaded, next.reloadS * 1000);
+  } else if (next.battle && next.alive && next.reloadS <= 0) gunLoaded();
+  else loadingLong = false;
+}
+
+/** A battle's cue (padCues.ts): its buzz, once. The trigger already kicked for a shot it fired itself. */
+function feelCue(cue: PadCue, strength?: number): void {
+  if (cue === 'shot') {
+    if (strength !== undefined) shotStrength = strength;
+    const kicked = performance.now() - shotFeltAt < 600;
+    shotFeltAt = -Infinity;
+    if (kicked) return;
+  }
+  buzz(cue, strength);
 }
 
 function paintStatus(next: PadStatus): void {
@@ -646,6 +928,10 @@ function paintStatus(next: PadStatus): void {
   });
   zoom.hidden = !next.sniper;
   scope.setAttribute('aria-pressed', String(next.sniper));
+  scoped = next.sniper;
+  // the sight's lock: a key only where there is one to have (a couch seat's sight is its own bearing)
+  lockKey.hidden = next.lock === undefined;
+  lockKey.setAttribute('aria-pressed', String(!!next.lock));
   // the tank in the hand is the one on the field: its plan view, and the gun's bearing on the rim (+ is to the left)
   if (next.spec && plan.dataset.spec !== next.spec) {
     plan.dataset.spec = next.spec;
@@ -662,6 +948,7 @@ function paintStatus(next: PadStatus): void {
   needle.style.transform = `rotate(${Math.round(-1200 + share * 2400) / 10}deg)`;
   if (kmhReadout.textContent !== String(kmh)) kmhReadout.textContent = String(kmh);
   ctl.dataset.state = !next.battle ? 'idle' : !next.alive ? 'down' : next.reloadS > 0 ? 'loading' : 'ready';
+  armReady(next);
   message.textContent = !next.battle ? t('pad.waitingBattle') : next.paused ? t('pad.paused') : !next.alive ? t('pad.destroyed')
     : settings.tilt && tiltSeen && tiltAngle === null ? t('pad.flat') : '';
   const key = `${next.reloadS > 0 ? Math.round(next.reloadTotalS * 10) : 0}|${Math.round((next.reloadTotalS - next.reloadS) * 2)}`;
@@ -669,6 +956,9 @@ function paintStatus(next: PadStatus): void {
   reloadKey = key;
   paintReload(next.reloadTotalS > 0 && next.reloadS > 0 ? 1 - next.reloadS / next.reloadTotalS : 1, next.reloadS);
 }
+
+/** This phone's seat in a couch lobby (docs/COUCH-MODE.md), named before the link's state; 0 in a single pairing. */
+let seatNumber = 0;
 
 function paintLink(state: PadLinkState): void {
   let words = '';
@@ -679,7 +969,7 @@ function paintLink(state: PadLinkState): void {
   } else if (state.kind === 'linking') { words = t('pad.state.linking'); tone = 'warn'; }
   else if (state.kind === 'away') { words = t('pad.state.away'); tone = 'warn'; }
   else words = t('pad.state.connecting');
-  linkChip.textContent = words;
+  linkChip.textContent = seatNumber ? `${t('pad.seat', { n: seatNumber })} · ${words}` : words;
   if (tone) linkChip.dataset.tone = tone; else delete linkChip.dataset.tone;
 }
 
@@ -709,6 +999,7 @@ function storedResume(): { code: string; token: string } | null {
 const ENDED_WORDS: Record<string, string> = {
   unknown: 'pad.ended.unknown', expired: 'pad.ended.unknown', ended: 'pad.ended.ended', desktop_left: 'pad.ended.desktopLeft',
   replaced: 'pad.ended.replaced', unreachable: 'pad.ended.unreachable', relay_spent: 'pad.ended.relaySpent',
+  full: 'pad.ended.full', removed: 'pad.ended.removed',
 };
 
 function connect(route: { code: string } | { resume: { code: string; token: string } }): void {
@@ -724,6 +1015,7 @@ function connect(route: { code: string } | { resume: { code: string; token: stri
     serviceUrl,
     ...('code' in route ? { code: route.code } : { resume: route.resume }),
     onToken(code, token) { try { sessionStorage.setItem(RESUME_KEY, JSON.stringify({ code, token })); } catch { /* private mode */ } },
+    onSeat(seat) { seatNumber = seat; },
     onState(state) {
       if (debug) debug.state = state.kind;
       if (state.kind !== 'live') releaseControls();
@@ -735,6 +1027,7 @@ function connect(route: { code: string } | { resume: { code: string; token: stri
         if (state.reason !== 'replaced' && state.reason !== 'unreachable') forgetResume();
         void wakeLock?.release().catch(() => {});
         wakeLock = null;
+        endTour('ended');
         $<HTMLElement>('.pad-end-msg', end).textContent = t(ENDED_WORDS[state.reason] ?? 'pad.ended.ended');
         show('ended');
         return;
@@ -747,7 +1040,9 @@ function connect(route: { code: string } | { resume: { code: string; token: stri
       paintLink(state);
     },
     onCtl(message) {
-      if (message.k === 'status') paintStatus(message.s);
+      if (message.k === 'cue') feelCue(message.c, message.m);
+      else if (message.k === 'tour') { if (!message.on) endTour('screen'); }
+      else if (message.k === 'status') { paintStatus(message.s); if (!toured()) showTour(); }
       else if (message.k === 'pong') {
         rttMs = Math.max(0, performance.now() - message.t);
         if (debug) { debug.rttMs = rttMs; debug.applyMs = message.apply; }

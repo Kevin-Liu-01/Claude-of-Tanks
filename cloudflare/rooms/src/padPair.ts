@@ -4,8 +4,8 @@
  * attachments, alarms, the keepalive auto-response — and nothing else. It is its own channel beside the rooms: no seat,
  * room, match or report, and no game traffic but the capped relay of last resort.
  *
- * The Worker hands it `/pad/new/<CODE>` (a code it drew), `/pad/join/<CODE>` or `/pad/resume/<CODE>`. A held code
- * answers 409 to `/pad/new` so the Worker draws again. Resume tokens are stored as SHA-256 hashes; SDP is relayed and
+ * The Worker hands it `/pad/new/<CODE>` or `/pad/lobby/<CODE>` (a code it drew), `/pad/join/<CODE>` or
+ * `/pad/resume/<CODE>`. A held code answers 409 to `/pad/new` and `/pad/lobby` so the Worker draws again. Resume tokens are stored as SHA-256 hashes; SDP is relayed and
  * never parsed; ICE servers come from the same issuer as the matches' (`server/relayCredentials.ts`: STUN alone while
  * the relay secrets are unset).
  */
@@ -19,9 +19,6 @@ import { PAD_KEEPALIVE_REQUEST, PAD_KEEPALIVE_RESPONSE, PAD_MAX_MESSAGE_BYTES, n
 import type { PadEndReason, PadHostMessage } from '../../../src/pad/padProtocol.ts';
 import { allowedOrigin, isWebSocketUpgrade, json } from './util.ts';
 
-/** The desktop, one phone, and one socket resuming. */
-const MAX_PAD_SOCKETS = 3;
-
 interface PadAttachment extends PadSocketRecord {
   version: 1;
   code: string;
@@ -31,14 +28,15 @@ function isAttachment(value: unknown): value is PadAttachment {
   if (!value || typeof value !== 'object') return false;
   const record = value as Record<string, unknown>;
   return record.version === 1 && typeof record.code === 'string' && typeof record.id === 'string' &&
-    (record.role === 'desktop' || record.role === 'phone' || record.role === 'pending');
+    (record.role === 'desktop' || record.role === 'phone' || record.role === 'pending') &&
+    (record.seat === undefined || Number.isInteger(record.seat));
 }
 
 /** The internal route the Worker forwards: the kind and the code. */
-function padForward(pathname: string): { kind: 'new' | 'join' | 'resume'; code: string } | null {
-  const match = /^\/pad\/(new|join|resume)\/([A-Za-z0-9]{6})$/.exec(pathname);
+function padForward(pathname: string): { kind: 'new' | 'lobby' | 'join' | 'resume'; code: string } | null {
+  const match = /^\/pad\/(new|lobby|join|resume)\/([A-Za-z0-9]{6})$/.exec(pathname);
   const code = match ? normalizePadCode(match[2]) : null;
-  return match && code ? { kind: match[1] as 'new' | 'join' | 'resume', code } : null;
+  return match && code ? { kind: match[1] as 'new' | 'lobby' | 'join' | 'resume', code } : null;
 }
 
 export class PadPair extends DurableObject<Env> {
@@ -143,8 +141,9 @@ export class PadPair extends DurableObject<Env> {
     if (!allowedOrigin(request, this.env.ALLOWED_ORIGINS)) return json({ error: 'origin_forbidden' }, 403);
     if (!isWebSocketUpgrade(request)) return json({ error: 'websocket_required' }, 426);
     const actor = this.#activate(route.code);
-    if (route.kind === 'new' && !actor.vacant) return json({ error: 'pad_code_held' }, 409);
-    if (this.ctx.getWebSockets().length >= MAX_PAD_SOCKETS) return json({ error: 'pad_full' }, 429);
+    if ((route.kind === 'new' || route.kind === 'lobby') && !actor.vacant) return json({ error: 'pad_code_held' }, 409);
+    // the desktop, its phone or a lobby's phones, and sockets resuming (PadActor.socketCap)
+    if (this.ctx.getWebSockets().length >= actor.socketCap) return json({ error: 'pad_full' }, 429);
     const pair = new WebSocketPair();
     const ws = pair[1];
     const socketId = crypto.randomUUID();
@@ -152,6 +151,7 @@ export class PadPair extends DurableObject<Env> {
     this.#sockets.set(socketId, ws);
     this.#ids.set(ws, socketId);
     if (route.kind === 'new') actor.openDesktop(socketId);
+    else if (route.kind === 'lobby') actor.openLobby(socketId);
     else if (route.kind === 'join') actor.openJoin(socketId);
     else actor.openResume(socketId);
     if (this.#sockets.has(socketId)) this.#attach(ws, socketId, route.code);

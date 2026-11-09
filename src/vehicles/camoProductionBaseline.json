@@ -416,7 +416,7 @@
   "sig_m551_sheridan": "3cc2e46b98490002",
   "sig_leo2a4_otco": "c55855f3b0693b78",
   "sig_mbt70": "cbff2c555134fb25",
-  "sig_kf51b": "1592088bb90a548a",
+  "sig_kf51b": "4617cfd14de22d6d",
   "sig_bmpt_t90": "06c598cd57fde41d",
   "sig_t90": "a4311c6930b549b4",
   "sig_t90sm": "104ea005dee194c8",
@@ -1125,7 +1125,7 @@
   "kf51b": {
    "selection": "factory",
    "stock": "sig_kf51b",
-   "factory": "e90c78e6284e68f5",
+   "factory": "77da4c06a87e3a90",
    "auto": "merdc desert winter urban oakleaf merdc desert berlin urban summer merdc merdc"
   },
   "fv510": {
@@ -1395,7 +1395,7 @@
   "bmpt_terminator2": {
    "selection": "factory",
    "stock": "service_t90m",
-   "factory": "d90451c7ad569e1f",
+   "factory": "fd8e4eb2ec22b153",
    "auto": "flecktarn desert winter urban oakleaf summer digitaldesert berlin urban dpm flecktarn flecktarn"
   },
   "bwp1": {
@@ -1647,7 +1647,7 @@
   "challenger1_x": {
    "selection": "factory",
    "stock": "paint_challenger1_x",
-   "factory": "87eaa3d45551ed6a",
+   "factory": "d78844a80602c170",
    "auto": "dpm desert winter urbanblock oakleaf summer desert urban urban dpm dpm dpm"
   },
   "t72bu_x": {

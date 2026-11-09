@@ -785,16 +785,16 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 18714,
-      "sha256": "312175fad96bfeebb67899ff249b8c0528cff47ddc10eb038052a201eba29186"
+      "bytes": 18724,
+      "sha256": "41919fc2af94841748b05c6a0fabc20c715fb6f58fd76a6d527b44df84fabe01"
     },
     "side": {
       "file": "leo2_revolution_side.webp",
       "width": 512,
       "height": 256,
       "mime": "image/webp",
-      "bytes": 12278,
-      "sha256": "74c3b24536e28c99e67a9bb217454daef13ee665f3b7e674e3cf606f0043938d"
+      "bytes": 12296,
+      "sha256": "db9f274f57ae5b07635dbe827ce868cb28011605a8257d3d89415328b2edca75"
     },
     "topSilhouette": {
       "file": "leo2_revolution_top_silhouette.png",
@@ -817,32 +817,32 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 28580,
-      "sha256": "4b4be9224e678775e67c881a599c3a2e1dded6d5f068dc79fbb8e9457b59279a"
+      "bytes": 28530,
+      "sha256": "73d1c01d67b7db17bd03922f226681dddc751476d9d7bd17bf230c0693667147"
     },
     "modulesSide": {
       "file": "leo2_revolution_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 29404,
-      "sha256": "73f97ce9bfda45149c881849b1c87b4a0dc3c0664a0f86f36568534ccba5a872"
+      "bytes": 29442,
+      "sha256": "681a399588087efa9550a88582ab3159c05e2a8e70d0c88016b314a24a0f3fc4"
     },
     "crewSide": {
       "file": "leo2_revolution_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 28320,
-      "sha256": "e96aa51130de0112805fa1c7252ba02a46813e6b050eb0a62c55b7d5935d6047"
+      "bytes": 28290,
+      "sha256": "aba0f24cb37df514c29db6bf3a8c300f7a0fc35fb22935ebc04733a5a73a618a"
     },
     "markings": {
       "file": "leo2_revolution_markings.png",
       "width": 256,
       "height": 128,
       "mime": "image/png",
-      "bytes": 33007,
-      "sha256": "6109a7dc3aa5aaf0cf4142417945aa3233ac8ecf352f3ec218b5087964d207f1"
+      "bytes": 30893,
+      "sha256": "b1f2bd23497228aafcfaf1d27132bd7bba3fd81140388374a8449e1054b40654"
     },
     "technicalLabels": {
       "file": "leo2_revolution_technical.json",

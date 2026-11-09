@@ -29,7 +29,10 @@ try {
     const i=(c[2]*ny+c[1])*nx+c[0];components[i]=owner;grid.shell[i]=owner;return {i,c};
   }
   const blockedRecoil=put([0,0,-.12],3);
-  const blockedRotor=put([.168,.138,-.232],2);
+  // Re-pinned 2026-11-03 (release 268 builder E): the shield is the owner's model's solid casting (profiles/m1a1GunMount.ts),
+  // its rear a 0.342 m rotor arc; the old fixture (0.27 m behind the trunnion) now lies inside that solid at every pitch,
+  // so the cell is taken on the same bearing where the rotor's faceted arc sweeps, 0.35 m out.
+  const blockedRotor=put([.168,.185,-.300],2);
   const safeTurret=put([.7,.1,-.4],2);
   const safeGun=put([.18,.18,.35],3);
   const hull=put([.01,.01,-.17],1); // even a coincident hull voxel is outside this repair's ownership

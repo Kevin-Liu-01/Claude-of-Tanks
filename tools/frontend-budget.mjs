@@ -251,9 +251,35 @@ export const BUNDLE_BUDGETS = Object.freeze({
   //   plane fit), camoPolicy +190 (paint_leo2a7dk, paint_centurion5_2dk, paint_type90b, paint_type10), franceSpecs +146 (the
   //   AMX-40's depression curve), decorations +137, mapNames +124 (new) against mapPalette -1,276 (main's og-cards), the rest
   //   under 65 B each. Home +8 B, docs +58 B and 404 +120 B stay inside their slack.
-  game: { brotliBytes: 1165736, requests: 127, entryBrotliBytes: 249894 },
-  cn: { brotliBytes: 1210193, requests: 128, entryBrotliBytes: 249894 },
-  gallery: { brotliBytes: 735730, requests: 73 },
+  // 2026-11-06 (integrator 268, the single end re-pin at integ/268 ef6dc8f8bd's build; Node 24.22.1; Main's brief: one
+  //   bundle re-pin with attribution): game +10,487 B brotli over main 2cd74ad446 built here on the same node_modules
+  //   (1,165,629 B, within its pin), cn +10,736 B, Gallery +8,928 B; requests held at 127 / 128 / 73 (17ca8fa2b5 folds
+  //   twin-aa's frames into fleetLayouts and camoPaint into vehicleActions); the entry +657 B stays under its pin. By chunk
+  //   and lane: fleetFactory +5,698 (the seven new ids registered at boot: bmpt_terminator, tunguska_m, pantsir_s1,
+  //   gepard_1a2, pgz95, pgz09, m3a2_bradley; the M1A1s on the owner model, the T-80UK, the KF51 and IFV rebuilds),
+  //   fleetLayouts +1,642 (gepardFrame, gm352Layout, chineseAirDefenseLayout, challenger1XSuppliedFrame), main +657
+  //   (core-parity's shared sim stages and bots' construction, couch mode and phone feel's boot wiring), specs +530,
+  //   vehicleActions +522 (camoPaint, core-parity's hull actions), decorations +462, tankFactoryCore +313, the en-US
+  //   catalog +220 and zh-CN +249 (the new names, couch strings), presentation anchors +140 (portrait envelope),
+  //   matchRuleset +103, camoPolicy +93 (the Kaitaku coat, the AA paints), crewVoice +68 (da, pt-BR, en-AU, af),
+  //   roleProfiles +66; materials -185. Home +9 B, docs +11 B, 404 -5 B stay inside their slack; pad's 14th request
+  //   (padProtocol) is phone-feel-269's own pin in tools/bundle-budget.json.
+  // 2026-11-07 (integrator 269, the single end re-pin at integ/269's build; Node 24.22.1; Main's brief: one bundle re-pin
+  //   with attribution): game +13,296 B brotli over 268's measured build (1,176,116 B, its pin), cn +13,318 B, Gallery
+  //   +11,949 B; requests held at 127 / 128 / 73 (the Redback's datums, redbackDatums.ts, fold into fleetLayouts; alone
+  //   they were one more boot request); the entry +1,212 B (main) is re-pinned. By chunk and lane: vehicleMarkings +4,716
+  //   (glacis-269's Glacis 1.100 outlines; the new ids' marking rows), fleetFactory +3,630 (the thirteen new ids
+  //   registered at boot: the M113A3 and the M113A1 FSV, MRV and AS4, the Leopard AS1, the M1A1 AIM SA and M1A2 SEPv3
+  //   (Aus), the Redback, the Olifant Mk 1, 1A and 1B, the Semel, the TTD; kf51u-r17's KF51-U), main +1,212
+  //   (dev-battle-freeze, impact-materials' audio stack, second-battle-reveal), wreckDents +866 and tankFactoryCore +117
+  //   (wreck-barrels' bent-barrel cut), specs +754, camoPolicy +630 (plain-coats, the Australian three-tone, the South
+  //   African coats), decorations +583 (the M113 kit's manifests), fleetLayouts +229 (the Redback's datums), presentation
+  //   anchors +214, the en-US catalog +134, structureGroundOcclusion +129, roleProfiles +109, turretSeatPlane +98,
+  //   garageStage +66; materials -158, crewVoice -121. Gallery adds vehicleFacets +105. Home +8 B, docs -10 B and 404 +5 B
+  //   stay inside their slack; pad's row is phone-feel-269's in tools/bundle-budget.json, held.
+  game: { brotliBytes: 1189412, requests: 127, entryBrotliBytes: 250659 },
+  cn: { brotliBytes: 1234140, requests: 128, entryBrotliBytes: 250659 },
+  gallery: { brotliBytes: 756634, requests: 73 },
   home: { brotliBytes: 28617, requests: 8 },
   docs: { brotliBytes: 36911, requests: 12 },
   notFound: { brotliBytes: 18355, requests: 7 },

@@ -29,7 +29,8 @@ function isSeat(value: unknown): value is HostBootSeat {
 function isBot(value: unknown): value is HostBootBot {
   if (!value || typeof value !== 'object') return false;
   const bot = value as Record<string, unknown>;
-  return typeof bot.playerId === 'string' && typeof bot.name === 'string' && (bot.team === 'alpha' || bot.team === 'bravo') && typeof bot.specId === 'string';
+  return typeof bot.playerId === 'string' && typeof bot.name === 'string' && (bot.team === 'alpha' || bot.team === 'bravo') && typeof bot.specId === 'string'
+    && (bot.camo === undefined || bot.camo === 'auto' || bot.camo === 'factory');
 }
 
 /** A plan the room attached to the host's match_start, when it did and it is well-formed. */
@@ -61,7 +62,7 @@ export function planFromRoom(
     const specId = player.specId ? tankIds.resolveIncoming(player.specId) : botSpecFallback;
     seats.push({
       seat: player.seat, playerId: player.id, name: player.name, team: player.team, specId, equipment: player.equipment.slice(),
-      consumables: (player.consumables ?? []).slice(),
+      consumables: (player.consumables ?? []).slice(), camo: player.camo,
     });
   }
   const bots: HostBootBot[] = [];
@@ -85,6 +86,8 @@ export interface RosterPlanEntry {
   playerId: string;
   name: string;
   specId: string;
+  /** A bot's paint as the authority rolled it (the WELCOME's roster). */
+  camo?: 'auto' | 'factory';
 }
 
 const TEAM_NAMES = ['alpha', 'bravo', 'spectator'] as const;
@@ -100,13 +103,15 @@ export function planFromRoster(roster: readonly RosterPlanEntry[], room: RoomSna
   for (const entry of roster) {
     const team = TEAM_NAMES[entry.team] ?? 'alpha';
     if (entry.bot) {
-      if (team !== 'spectator') bots.push({ playerId: entry.playerId, name: entry.name, team, specId: entry.specId });
+      // (268, item 6) the bot keeps the paint the old authority rolled: the elected host's actor restores it, not a re-roll
+      if (team !== 'spectator') bots.push({ playerId: entry.playerId, name: entry.name, team, specId: entry.specId, ...(entry.camo ? { camo: entry.camo } : {}) });
       continue;
     }
     const player = room?.players.find((candidate) => candidate.id === entry.playerId) ?? null;
     seats.push({
       seat: entry.seat, playerId: entry.playerId, name: entry.name, team, specId: entry.specId,
       equipment: player ? player.equipment.slice() : [], consumables: player ? (player.consumables ?? []).slice() : [],
+      camo: player ? player.camo : null,
     });
   }
   return { seats, bots };

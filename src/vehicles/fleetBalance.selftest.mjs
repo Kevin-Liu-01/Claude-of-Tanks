@@ -244,6 +244,8 @@ const missileVelocityByVehicle = new Map([
   // Borsuk's Spike LR is authored at 180 m/s in europePhotoIfvSpecs.ts.
   ['puma_s1', 240], ['type89', 210], ['borsuk', 180],
   ['m6_linebacker', 750], // 2026-10-04: the compact-pod M6 Linebacker's FIM-92 Stinger
+  // 268: the twin-cannon air defence's SAMs at their published peak speeds (the 9M311M, the 57E6, the QW-2)
+  ['tunguska_m', 900], ['pantsir_s1', 1300], ['pgz95', 650],
 ]);
 const guided = [];
 const additionalMissileVelocityByWeapon = new Map([

@@ -23,6 +23,7 @@ const BLOOM_MODERN = { move: 0.06, hullRot: 0.08, turret: 0.06, afterShot: 2.2 }
 // KF51 Panther: Rheinmetall's 130 mm Future Gun System demonstrator on a
 // Leopard 2 hull — the harder-hitting, slightly softer sibling of the 2A7 at
 // the top of the German MBT ladder.
+// 267: the KF51 EVO's build is profiles/kf51Evo.ts (the EVO turret with the Rh-130, its planned 130 mm retrofit).
 const KF51_SPEC = {
     id: 'kf51_evo', name: 'KF51 EVO', nation: 'Germany', era: 'modern', role: 'mbt',
     variantOf: 'kf51_evo',      // self-marker (m1a1 rule): stays on the nation tab
@@ -42,10 +43,10 @@ const KF51_SPEC = {
         shell('130mm HE-ABM', 'HE', 130, 50, 50, 660, 1000),
       ],
     },
-    // hullLengthM matches the raw asset's gun-excluded span (7.70) so the
-    // loader normalizes at s=1.0; heightM covers the sensor head (raw 3.58
-    // after the offline antenna compress — under the 1.30x clamp headroom)
-    dims: { hullLengthM: 7.70, overallLengthM: 10.73, widthM: 3.60, heightM: 3.00 },
+    // 267 (profiles/kf51Evo.ts): the build's hull runs -3.868 (the rear tow eyes) to 3.845 (the front mudguard boxes'
+    // faces; the headlight guards reach 3.915), its Rh-130 muzzle to 7.005, the skirt blocks to +-1.807; heightM covers
+    // the SEOSS head (the whips and the drone on its mast rise past it)
+    dims: { hullLengthM: 7.70, overallLengthM: 10.87, widthM: 3.60, heightM: 3.00 },
     armor: communityArmor({
       // The procedural turret rig moves forward 180 mm as one assembly. The
       // authoritative pivot follows it so armor, modules, shot origins, and
@@ -66,7 +67,9 @@ const KF51_SPEC = {
 
 // 266 (FAIRNESS-265 §8): the KF51 EVO's mantlet is the turret's gun face, a main plate on the gun slot's vertical front
 // (measured on the build: x +-0.430 between the cheeks' inner walls, y 0.01-0.79, z 1.088 at its foot to 1.100 at its
-// head), which gunFacePlate and the gun-face split read the faces in front of the gun as. The communityArmor template's
+// head), which gunFacePlate and the gun-face split read the faces in front of the gun as. 267's rebuild
+// (profiles/kf51Evo.ts) keeps that face: vertical at z 1.100 between the cheeks' walls at x +-0.430, y -0.035-0.815,
+// the cheeks' swept ridge at 0.40 by the slot; the plate's numbers stand. The communityArmor template's
 // mantlet was a spaced plate riding the gun, behind the bridged 74-degree face the round met first
 // (gen-combat-anatomy.mjs TURRET_LATERAL_CUTS cuts that face away); `drawn` keeps the envelope calibration from moving
 // this one onto the cheeks' noses, and a variant on its own build (the source-X KF51 Panther) takes the template back.
@@ -76,9 +79,27 @@ if (KF51_MANTLET >= 0) {
   KF51_SPEC.armor.turretPlates[KF51_MANTLET] = { ...frontPlate('mantlet', 500, 0.43, 0.01, 1.088, 0.79, 1.1), drawn: true, template };
 }
 
+// 267 (the rebuild's cheeks, kf51EvoGunFace.selftest.mjs): profiles/kf51Evo.ts's wedge cheeks run their lower facets from
+// the turret floor at the slot face up to the noses' ridge, facing forward and down (normal y -0.95), and the template's
+// front leans back (calibrated, its face looks 19 degrees up), so no front plate met those facets within nearestPlate's
+// 0.12 alignment and the roof hatches' proud front plates (vertical, 1.8 m behind) took the lower cheeks. The front stands
+// vertical on the template's foot: both facets meet it (0.31 and 0.95) and a face looking down meets none, as before. A
+// source-X variant on its own build (fitSourceArmor) takes the template back, as it does the mantlet's.
+const KF51_FRONT = KF51_SPEC.armor.turretPlates.findIndex((plate) => plate.name === 'turret_front');
+if (KF51_FRONT >= 0) {
+  const template = KF51_SPEC.armor.turretPlates[KF51_FRONT];
+  const footZ = template.verts[0][2];
+  KF51_SPEC.armor.turretPlates[KF51_FRONT] = { ...template, verts: template.verts.map(([x, y]) => [x, y, footZ]), template };
+}
+
 // The procedural KF51 now carries a reactive two-row flank jacket. Keep its
 // combat zones in the boot-light spec registry so the visible cassettes are
 // hittable, consumable and depleted by the same ERA path as the KF51B set.
+// 267 (round 2): the jacket is the Eurosatory vehicle's Leopard 2A4 flank (profiles/kf51Evo.ts addLeopard2Flank): the
+// upper row is the band's two panels over the sponson wall with their lids and grille, the lower row the skirt under the
+// hanging rail, three thin panels aft and three heavy blocks forward; together x 1.68-1.807, y 0.88-1.76 (the band
+// follows the deck), z -3.66-2.99 (round 1: six StrikeShield modules, x 1.705-1.80, z -3.12-2.98; the live build:
+// x 1.78-1.80, y 0.88-1.47, z -2.72-2.44); the zones are fitted to the panels at regeneration.
 KF51_SPEC.armor.hullPlates.push(
   reactivePlate('kf51_skirt_era_R', 'right'),
   reactivePlate('kf51_skirt_era_L', 'left'),
@@ -90,6 +111,9 @@ KF51_SPEC.armor.hullPlates.push(
 const KF51B_SPEC = {
   ...KF51_SPEC,
   id: 'kf51_u', name: 'KF51-U', variantOf: 'kf51_u',
+  // 267: its own dims (the spread carried the EVO's): hull and width as before; overall from the installed muzzle
+  // (7.4865) to the stern (-4.011), as built
+  dims: { hullLengthM: 7.70, overallLengthM: 11.50, widthM: 3.60, heightM: 3.00 },
   // §5.299 fleet-integration truth-up (kf51_u row ONLY — kf51_evo's shared armor
   // object is untouched, this is a fresh communityArmor instance). The
   // rebuilt Panther is installed at 1.05x, so these are the final rendered
@@ -107,8 +131,10 @@ const KF51B_SPEC = {
   }),
   visual: {
     ...KF51_SPEC.visual,
-    base: '#56573e', weather: '#51533f', patches: ['#303c30', '#473729'],
-    number: '52', patchK: 1.28, trackWidthM: 0.587,
+    // 269 r16: the Eurosatory 2024 block livery, as its Signature (camoPolicy.ts sig_kf51b), and the 'KF51-U' lettering
+    // it carries on the turret flank (Commons KF-51U_02) for a tactical number it never wore (the national insignia stays)
+    scheme: 'digital', base: '#77746d', weather: '#75726b', patches: ['#5b5a55', '#899a40', '#252729'],
+    marking: 'number', number: 'KF51-U', camoScale: 0.4, patchK: 1, digitalCellK: 10, trackWidthM: 0.587,
   },
 } satisfies FleetTankSpec;
 
