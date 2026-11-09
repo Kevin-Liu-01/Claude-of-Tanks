@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { createInput, DEFAULT_BINDINGS, migrateShiftAimCapsFreeLookBindings } from './input.ts';
 import { CREW_VOICE_NATIONS } from '../audio/crewVoice.ts';
+import { WORLD_CREW_LANGUAGES } from '../audio/vehicleAudioProfiles.ts';
 import { getLocale, setLocale } from '../ui/i18n.ts';
 
 assert.equal(DEFAULT_BINDINGS.sniperToggle, 'ShiftLeft',
@@ -140,7 +141,7 @@ assert.deepEqual(capsCollision,
       return createInput();
     };
     assert.equal(newInput().getSettings().crewVoice, 'national');
-    for (const choice of ['national', ...Object.keys(CREW_VOICE_NATIONS)]) {
+    for (const choice of ['national', ...Object.keys(CREW_VOICE_NATIONS), ...WORLD_CREW_LANGUAGES]) {
       const input = newInput();
       input.setSetting('crewVoice', choice);
       assert.equal(JSON.parse(stored.get('cot.settings.v1')).crewVoice, choice);

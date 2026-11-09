@@ -884,9 +884,7 @@ export const KYUSHU_STYLE: ArchitectureStyle = Object.freeze<ArchitectureStyle>(
     plaster: [[1, 1, 1], [0.97, 0.97, 0.95], [1.02, 1.0, 0.96], [0.94, 0.93, 0.9]],
     stone: [[1, 1, 1], [0.92, 0.93, 0.92], [1.04, 1.03, 1.0]],
     roof: [[1, 1, 1], [0.9, 0.9, 0.92], [1.05, 1.04, 1.02], [0.85, 0.86, 0.84]],
-    damp: 0.7, moss: 0.45,
   },
-  wear: 0.22,
   // (Caldera round 2, wave 114: "buildings sit on bare ground with no yard, wall or hedge"): each farmhouse keeps its
   // yard, a woven bamboo fence (the wattle module) round its freest side and the kitchen garden's beds inside
   yard: { kinds: ['depot'], fence: 'fencewattle', gate: null, shed: null, garden: true },

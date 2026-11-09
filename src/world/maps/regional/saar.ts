@@ -889,8 +889,6 @@ export const SAAR_STYLE: ArchitectureStyle = Object.freeze<ArchitectureStyle>({
     plaster: [[1, 1, 1], [0.92, 0.9, 0.86], [0.84, 0.82, 0.8]],
     stone: [[1, 1, 1], [0.86, 0.82, 0.8], [0.72, 0.68, 0.66], [0.94, 0.9, 0.86]],
     roof: [[1, 1, 1], [0.86, 0.8, 0.76], [1.06, 0.92, 0.82], [0.72, 0.7, 0.7]],
-    damp: 0.6, moss: 0.15,
   },
-  wear: 0.4,
 });
 

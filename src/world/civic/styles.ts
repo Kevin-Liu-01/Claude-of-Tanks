@@ -48,8 +48,8 @@ export interface RegionalCivicStyle {
   readonly steps: number;
 }
 
-/** Each place's civic style, by its map's architecture key. */
-export const CIVIC_STYLES: Readonly<Record<string, RegionalCivicStyle>> = Object.freeze({
+/** Each place's civic style (a map names its row in the built-environment table, maps/builtEnvironmentTable.ts). */
+export const CIVIC_STYLES = Object.freeze({
   franconian: Object.freeze<RegionalCivicStyle>({
     id: 'franconian',
     kerb: { width: 0.25, face: 0.12, unit: [1.0, 1.4], hex: 0xa7a59e },
@@ -231,11 +231,73 @@ export const CIVIC_STYLES: Readonly<Record<string, RegionalCivicStyle>> = Object
     grate: { iron: 0x3a3a38, frame: 0xc8bca4 },
     steps: 0xd0c4aa,
   }),
-});
+  // (built-env-270) a Hessian village on the Fulda Gap (1984; the photos): low precast concrete kerbs, narrow pavements of
+  // grey concrete slabs, a three-row basalt sett gutter
+  hessian: Object.freeze<RegionalCivicStyle>({
+    id: 'hessian',
+    kerb: { width: 0.15, face: 0.10, unit: [1.0, 1.0], hex: 0x9a9892 },
+    pavement: { course: 0.3, length: [0.3, 0.3], step: 1.5, maxCourses: 4, hex: 0x8e8c87, tone: 0.06, joint: 0x67655f },
+    gutter: { rows: 3, width: 0.45, dish: 0.02, hex: 0x5d5f62 },
+    bands: { granite: 0x9a9892, basalt: 0x5d5f62, sett: 0x6e7074, bay: 0x8e8c87 },
+    edging: {
+      kerb: { width: 0.15, face: 0.12, hex: 0x9a9892 },
+      wall: { width: 0.25, height: 0.4, hex: 0x8a8680, coping: 0.02 },
+      pier: { size: 0.35, height: 0.7, hex: 0x8a8680 },
+      railing: null,
+    },
+    path: { hex: 0x8a8272, edgeHex: 0x6e7074, worn: 0x7a705e },
+    lawn: { bare: 0x6e6248, greens: [0x4f6a32, 0x5d7838, 0x667a3c, 0x55703a] },
+    flowers: [0xb82a2a, 0xe8e4dc, 0xc8303a, 0xf2efe6],
+    hedge: 0x2c4a24,
+    grate: { iron: 0x2a2a28, frame: 0x8e8c87 },
+    steps: 0x9a9892,
+  }),
+  // (built-env-270) Queenstown, Tasmania (1976; the photos): the centre's concrete kerb-and-channel, footpaths of asphalt
+  queenstown: Object.freeze<RegionalCivicStyle>({
+    id: 'queenstown',
+    kerb: { width: 0.15, face: 0.15, unit: [1.5, 1.5], hex: 0xa6a29b },
+    pavement: { course: 1.0, length: [2.0, 2.0], step: 2.0, maxCourses: 1, hex: 0x5f5e5b, tone: 0.03, joint: 0x585752 },
+    gutter: { rows: 1, width: 0.35, dish: 0.02, hex: 0x9e9a93 },
+    bands: { granite: 0xa6a29b, basalt: 0x5f5e5b, sett: 0x8d8780, bay: 0x9e9a93 },
+    edging: {
+      kerb: { width: 0.15, face: 0.15, hex: 0xa6a29b },
+      wall: { width: 0.2, height: 0.4, hex: 0x9e9a93, coping: 0.02 },
+      pier: { size: 0.3, height: 0.6, hex: 0x9e9a93 },
+      railing: null,
+    },
+    path: { hex: 0xa99a8e, edgeHex: 0x9e9a93, worn: 0x8d7a68 },
+    lawn: { bare: 0x8a7a66, greens: [0x5a6a3a, 0x627040, 0x6a7444, 0x5e6c3c] },
+    flowers: [0xc8a040, 0xe0d8c8, 0xb84a3a, 0x9a3a32],
+    hedge: 0x34482a,
+    grate: { iron: 0x2c2c2a, frame: 0xa6a29b },
+    steps: 0xa6a29b,
+  }),
+  // (built-env-270) a Dalmatian stone town (1992; the photos): dressed white limestone kerbs, pavements of limestone slabs
+  dalmatian: Object.freeze<RegionalCivicStyle>({
+    id: 'dalmatian',
+    kerb: { width: 0.20, face: 0.12, unit: [0.8, 1.2], hex: 0xcfc9bc },
+    pavement: { course: 0.5, length: [0.6, 0.9], step: 1.5, maxCourses: 3, hex: 0xc9c3b6, tone: 0.07, joint: 0x9a948a },
+    gutter: { rows: 1, width: 0.25, dish: 0.02, hex: 0xb8b2a6 },
+    bands: { granite: 0xcfc9bc, basalt: 0x8a857c, sett: 0xbdb7aa, bay: 0xd4cfc5 },
+    edging: {
+      kerb: { width: 0.20, face: 0.15, hex: 0xcfc9bc },
+      wall: { width: 0.4, height: 0.5, hex: 0xd4cfc5, coping: 0.04 },
+      pier: { size: 0.45, height: 0.9, hex: 0xd4cfc5 },
+      railing: null,
+    },
+    path: { hex: 0xc9c4b8, edgeHex: 0xbdb7aa, worn: 0xb0a890 },
+    lawn: { bare: 0x9a8a6a, greens: [0x5e6a34, 0x66703a, 0x707a40, 0x627038] },
+    flowers: [0xc83050, 0xe86a2a, 0xf2efe6, 0xa0306a],
+    hedge: 0x2e4a26,
+    grate: { iron: 0x262624, frame: 0xcfc9bc },
+    steps: 0xd4cfc5,
+  }),
+} satisfies Record<string, RegionalCivicStyle>);
 
-/** A plan's style row (throws on an unknown key: a plan must name a row that exists). */
-export function civicStyle(id: string): RegionalCivicStyle {
-  const style = CIVIC_STYLES[id];
-  if (!style) throw new Error(`civic: no regional style '${id}'`);
-  return style;
+/** A civic style's key. */
+export type CivicStyleId = keyof typeof CIVIC_STYLES;
+
+/** A plan's style row. */
+export function civicStyle(id: CivicStyleId): RegionalCivicStyle {
+  return CIVIC_STYLES[id];
 }

@@ -55,7 +55,7 @@ for (const mapId of placing('memorialcolumn')) {
   const arch = getMapConfig(mapId).props?.architecture;
   const style = ARCHITECTURE_STYLES?.find((st) => st.id === arch) ?? null;
   assert.ok(style, `${mapId}: its kit ${arch}`);
-  const stone = style ? wellStoneOf(style) : { kind: 'sandstone', dressed: true, tint: [1, 0.9, 0.75], damp: 0.6 };
+  const stone = style ? wellStoneOf(style, mapId) : { kind: 'sandstone', dressed: true, tint: [1, 0.9, 0.75], damp: 0.6 };
   for (const mobile of [false, true]) {
     const ctx = { stone, mobile };
     const r = assertR2({

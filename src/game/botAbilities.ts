@@ -19,6 +19,8 @@ export interface BotAbilityContext {
   reloadS: number;
   /** A personally clear, team-spotted contact, or Infinity. */
   contactM: number;
+  /** Air Support (air-support-270): the nearest enemy aircraft in the air, or Infinity; the roof gun manned for it. */
+  airThreatM?: number;
   /** The caller probes the landing corridor only when jumpEligible returns true. */
   safeJump: boolean;
   /**
@@ -27,6 +29,9 @@ export interface BotAbilityContext {
    */
   offensive?: boolean;
 }
+
+/** An enemy aircraft this close mans the roof gun (the stations' counter-air reach, a 30 mm's 300 m x 1.5). */
+const AIR_THREAT_M = 450;
 
 export function createBotAbilityPlanner(spec: { id: string }) {
   const kit = auxiliaryCapabilities(spec);
@@ -54,7 +59,7 @@ export function createBotAbilityPlanner(spec: { id: string }) {
     // Automatic night lighting reveals a moving hull. Bots explicitly black out
     // their own lights, using the same player control, rather than changing vision.
     if (kit?.lights && aux?.lights !== 0) bits |= PLAYER_ACTION_BITS.LIGHTS_OFF;
-    if (context.contactM <= 240) lastContactS = timeS;
+    if (context.contactM <= 240 || (context.airThreatM ?? Infinity) <= AIR_THREAT_M) lastContactS = timeS;
     const wantsGun = timeS - lastContactS < 3;
     if (kit?.guns.length && wantsGun !== !!aux?.gunOn && timeS >= nextGunToggleS) {
       bits |= PLAYER_ACTION_BITS.ROOF_GUN;

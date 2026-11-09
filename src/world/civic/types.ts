@@ -5,6 +5,7 @@
 // vehicles' era. No kit file names a map; the plans name everything.
 //
 // Leaf module: no three.js, no DOM (the terrain's masks and the receipts read the plans in Node).
+import type { CivicStyleId } from './styles.ts';
 
 /** A point in the world plane (x, z), metres. */
 export type CivicPoint = readonly [number, number];
@@ -191,8 +192,8 @@ export interface CivicAreaPlan {
 /** A map's civic plan: its pathway architecture and its civic areas. */
 export interface CivicPlan {
   readonly mapId: string;
-  /** The regional style row (styles.ts) by its key: the map's props.architecture. */
-  readonly style: string;
+  /** The regional style row (styles.ts): the map's built-environment row's (maps/builtEnvironmentTable.ts civic). */
+  readonly style: CivicStyleId;
   readonly pathways: PathwayPlan | null;
   readonly areas: readonly CivicAreaPlan[];
   /** The props settings the plan sets over the map's own (the overlay): no map config is edited. */
@@ -212,3 +213,6 @@ export interface CivicPlan {
    *  rickshaw at the kerb, a hawker's stall, a basket): authored and checked as the street parking is. */
   readonly streetFurniture?: readonly CivicFurniture[];
 }
+
+/** A plan as its file writes it: the style is the map's built-environment row's. */
+export type CivicPlanSource = Omit<CivicPlan, 'style'>;

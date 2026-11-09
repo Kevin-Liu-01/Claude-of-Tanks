@@ -795,9 +795,7 @@ export const CHOUF_STYLE: ArchitectureStyle = Object.freeze<ArchitectureStyle>({
     plaster: [[1, 1, 1], [1.0, 0.97, 0.92], [0.96, 0.95, 0.92]],
     stone: [[1, 1, 1], [0.96, 0.93, 0.88], [1.02, 0.98, 0.92], [0.92, 0.9, 0.86]],
     roof: [[1, 1, 1], [0.92, 0.88, 0.84], [1.04, 0.98, 0.94], [0.86, 0.82, 0.78]],
-    damp: 0.45, moss: 0.25,
   },
-  wear: 0.3,
   // the terraces' gardens: a dry stone wall round the vegetable plot, a gate, the vine arbor in a corner (yards.ts)
   yard: { kinds: ['cottage', 'farmhouse'], fence: 'wallstone', gate: 'gatestone', shed: 'woodshed', shedSize: [3.4, 3.0], garden: true },
 });

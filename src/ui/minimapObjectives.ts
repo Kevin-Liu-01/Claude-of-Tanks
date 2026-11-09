@@ -10,6 +10,8 @@
  */
 
 import type { ObjectiveSide } from './objectiveGlyphs.ts';
+import { AIR_SUPPORT_RULES, type AirStrikeKind } from '../sim/matchRuleset.ts';
+import { strikeFootprint } from '../sim/airSupport.ts';
 
 type ObjectiveTeamId = 'alpha' | 'bravo';
 
@@ -30,11 +32,14 @@ export interface ObjectiveStateView {
   goals?: ReadonlyArray<{ team: ObjectiveTeamId; x: number; z: number }> | null;
   pickups?: ReadonlyArray<{ kind: string; x: number; z: number; active?: boolean }> | null;
   line?: { index?: number; total?: number; holdS?: number } | null;
+  /** Air Support: every call-in's public record (sim/airSupport.ts AirSupportView). */
+  air?: { nowS: number; strikes: ReadonlyArray<{ kind: AirStrikeKind; team: ObjectiveTeamId; x: number; z: number; heading: number;
+    landsS: number; endS: number; downedS: number | null; mine?: boolean }> } | null;
   /** The proving ground's range (v2 progression, 2026-10-17): a marker on every lane's mark. */
   range?: { lanes: ReadonlyArray<{ index: number; x: number; z: number; rangeM: number }> } | null;
 }
 
-type ObjectiveKind = 'spawn' | 'flagBase' | 'flag' | 'zone' | 'sector' | 'goal' | 'ball' | 'pickup' | 'lane';
+type ObjectiveKind = 'spawn' | 'flagBase' | 'flag' | 'zone' | 'sector' | 'goal' | 'ball' | 'pickup' | 'lane' | 'strike';
 
 export interface ObjectiveMarker {
   kind: ObjectiveKind;
@@ -48,9 +53,17 @@ export interface ObjectiveMarker {
   /**
    * spawn: 'respawn' when the mode revives players there;
    * flag: 'home' | 'carried' | 'dropped'; flagBase: 'home' | 'away';
-   * sector: 'taken' | 'active' | 'holding' | 'locked'; pickup: 'heal' | 'ammo'.
+   * sector: 'taken' | 'active' | 'holding' | 'locked'; pickup: 'heal' | 'ammo'; strike: the call-in's kind.
    */
   status?: string;
+  /** strike: its footprint (a circle's radius, or a lane's half length and half width along `heading`), the seconds
+   *  until it lands (0 once it does) and whether it is the viewer's own call */
+  radiusM?: number;
+  halfLengthM?: number;
+  halfWidthM?: number;
+  heading?: number;
+  countdownS?: number;
+  mine?: boolean;
   /** capture / hold progress 0..1 toward `progressSide` */
   progress?: number;
   progressSide?: 'own' | 'enemy';
@@ -183,6 +196,27 @@ function laneMarkers(state: ObjectiveStateView, out: ObjectiveMarker[]): void {
   }
 }
 
+/**
+ * Air Support's call-ins (air-support-270): every strike in progress is public, the targeted side's warning included — its
+ * footprint, whose it is (own or enemy), and the countdown to its landing; it pulses while the warning runs. A downed
+ * aircraft's strike, and one whose danger is past, leave the map.
+ */
+function strikeMarkers(state: ObjectiveStateView, perspective: ObjectiveTeamId, out: ObjectiveMarker[]): void {
+  const air = state.air;
+  if (!air) return;
+  for (const strike of air.strikes) {
+    if (strike.downedS != null || air.nowS >= strike.endS) continue;
+    const footprint = strikeFootprint(AIR_SUPPORT_RULES, strike.kind);
+    const countdownS = Math.max(0, strike.landsS - air.nowS);
+    out.push({
+      kind: 'strike', x: strike.x, z: strike.z, side: objectiveSide(strike.team, perspective), status: strike.kind,
+      heading: strike.heading, countdownS, mine: !!strike.mine, pulse: countdownS > 0, priority: 3,
+      ...(footprint.shape === 'circle' ? { radiusM: footprint.radiusM }
+        : { halfLengthM: footprint.halfLengthM, halfWidthM: footprint.halfWidthM }),
+    });
+  }
+}
+
 /** Markers for the current mode state, sorted by draw priority (area markers first). */
 export function objectiveMarkers(state: ObjectiveStateView | null | undefined): ObjectiveMarker[] {
   if (!state || !state.id || state.id === 'standard') return [];
@@ -190,11 +224,12 @@ export function objectiveMarkers(state: ObjectiveStateView | null | undefined): 
   const out: ObjectiveMarker[] = [];
   spawnMarkers(state, perspective, out);
   if (state.id === 'capture_the_flag') flagMarkers(state, perspective, out);
-  else if (state.id === 'zone_control' || state.id === 'mars' || state.id === 'ac130') zoneMarkers(state, perspective, out);
+  else if (state.id === 'zone_control' || state.id === 'mars' || state.id === 'ac130' || state.id === 'air_support') zoneMarkers(state, perspective, out);
   else if (state.id === 'frontline_assault') sectorMarkers(state, perspective, out);
   else if (state.id === 'turbo_ball') turboMarkers(state, perspective, out);
   laneMarkers(state, out);
   pickupMarkers(state, out);
+  strikeMarkers(state, perspective, out);
   out.sort((a, b) => a.priority - b.priority);
   return out;
 }

@@ -39,7 +39,7 @@ const roots = requestedRoots.length
   : ['.qa-bots', '.qa-dev', '.qa-loading', '.qa-smoke', 'shots'];
 const outPath = option('--out', 'docs/qa-evidence-manifest.json');
 
-const tracked = new Set(execFileSync('git', ['ls-files', '-z'], { cwd, maxBuffer: 64 * 1024 * 1024 })
+const tracked = new Set(execFileSync('git', ['ls-files', '-z'], { cwd, maxBuffer: 1 << 28 })
   .toString('utf8').split('\0').filter(Boolean));
 const entries = [];
 
