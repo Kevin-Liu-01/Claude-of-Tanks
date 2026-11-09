@@ -161,6 +161,10 @@ export const MANUAL_SUITES = Object.freeze({
     // on Verdant and a room start, about 10 s of user CPU); its listener census and the phone's cue stay default
     // (src/sim/teammateRamListeners.selftest.mjs), the sim halves are ramModuleLaw.selftest's
     'src/sim/teammateRam.selftest.mjs',
+    // round 8 Y4 (2026-11-02 audit, sm-fix, ROUND8 amendment 4): a couch battle's Battle Again through main's intent and
+    // Garage handler, seated twice by the page's setupBattle (a page import, a world and the staged roster's anatomy: about
+    // 4 s of user CPU at load 50-60); the replay rule and main's bindings stay default (battleEntryIntent, mainFlowPorts)
+    'src/game/couchRematch.selftest.mjs',
   ], { hits: true }),
   perf: suite('host-time budgets (tick cost, soaks, heap plateaus, restore timing): they measure the machine as much as the code', [
     'server/collisionRestoreIndex.selftest.mjs',

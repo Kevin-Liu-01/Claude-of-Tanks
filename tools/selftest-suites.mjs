@@ -1899,6 +1899,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/app/couchRuntime.selftest.mjs',
     // round 8 Y4 s3-03: the couch lobby opens only over the Garage that asked (its ticket), once; a failed chunk is the press's
     'src/app/couchOpener.selftest.mjs',
+    // round 8 Y4 (ROUND8 amendment 4): a couch battle's Battle Again on the page's setupBattle is a couch battle (MANUAL 'sims')
+    'src/game/couchRematch.selftest.mjs',
     // round 8 Y4 s3-05: one phone pause rule (open, or close with no relock) for the single pairing and every couch seat
     'src/ui/phonePause.selftest.mjs',
     'src/pad/qr.selftest.mjs',
