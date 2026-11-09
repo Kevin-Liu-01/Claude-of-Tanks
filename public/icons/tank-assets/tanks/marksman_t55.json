@@ -797,7 +797,7 @@
       }
     ]
   },
-  "geometryHash": "c3c36e3d",
+  "geometryHash": "69bcbc1e",
   "metadataHash": "ac0f48d5",
   "presentationAnchor": {
     "xM": -0.0002,
@@ -856,15 +856,15 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 30074,
-      "sha256": "f7fa0b9b68032e728ab29aca7d701ce260025449cbf4f31285e3b364bc2cf59a",
+      "bytes": 30082,
+      "sha256": "6c2f473a1147c68ef19e64fe4dce812ddf97f19dc9fe68ebda31d58e92a92454",
       "thumbnail": {
         "file": "thumbs/marksman_t55_angle.webp",
         "width": 256,
         "height": 256,
         "mime": "image/webp",
-        "bytes": 12424,
-        "sha256": "dcc3698a29db6f2bc57f8bb4dd6e0f9f38c4d5b38fe59730e6933f7812c21f16",
+        "bytes": 12412,
+        "sha256": "321dccacc74bd6a1d4b8cca2db41f481b7de1ea1df2ee737e093b64ce7b51b25",
         "frame": [2,91,226,250]
       }
     },
@@ -873,64 +873,64 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 11960,
-      "sha256": "c180f5f120a8504e630a95cca5dc51a20009358a67ee1b477cbbb2552ecebdab"
+      "bytes": 11948,
+      "sha256": "f1dd3207e2b7d4f47105a1bc9ef147c6a4e201afb42e7fd23329812d6db24828"
     },
     "side": {
       "file": "marksman_t55_side.webp",
       "width": 512,
       "height": 256,
       "mime": "image/webp",
-      "bytes": 11422,
-      "sha256": "dad902f4026c34516f970845ca7577d7fbb50ed0d09e2aa3eaaac2fb3e4d9081"
+      "bytes": 11186,
+      "sha256": "0b4e380ad244f57613b917a469dcfdc50f3ca87b6120200b3f2507ef8d614ee4"
     },
     "topSilhouette": {
       "file": "marksman_t55_top_silhouette.png",
       "width": 128,
       "height": 128,
       "mime": "image/png",
-      "bytes": 1307,
-      "sha256": "3d024c884cd927359f28710556bcf5b8a9fe8a15a59dfa3939b7f002e2026668"
+      "bytes": 1308,
+      "sha256": "7a049564e2a88752d32efce5ea1f017efef7c1faf689eedcb07200dfc8ead91a"
     },
     "sideSilhouette": {
       "file": "marksman_t55_side_silhouette.png",
       "width": 256,
       "height": 128,
       "mime": "image/png",
-      "bytes": 4779,
-      "sha256": "2f3e9bd4ba97e29f6ec633ac8169fda0595aac5df54cac6929192f9f0a5fb3bb"
+      "bytes": 4788,
+      "sha256": "489279f33eb605f272fb81495f159006f03cde0c987f3c1f0d4cc400519fafde"
     },
     "armorSide": {
       "file": "marksman_t55_armor_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 23612,
-      "sha256": "7aafbdc53bf995733e1b055942cad352ed48eb8663fdec084204dcb60f2bc0df"
+      "bytes": 23590,
+      "sha256": "574df6da28cb3b892aee3b29a8249d348b1c09a1464ad00cb37596dec0ce1d9d"
     },
     "modulesSide": {
       "file": "marksman_t55_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 25910,
-      "sha256": "d0bb1a4ac2defcefbf18c87cf6fa055affac73c5eb2eaad01271dca5ae10e539"
+      "bytes": 25888,
+      "sha256": "86f2f0598adc31edc90b011a573717e599c64ee1a456eb49f2302a618e39a395"
     },
     "crewSide": {
       "file": "marksman_t55_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 21360,
-      "sha256": "f54d9bc930034b74d0cd17b328fe88c88610b57036eea07fc599107b06a95d35"
+      "bytes": 21328,
+      "sha256": "6bd327314db0092c2fa30f7775e252fa95b2bdb611a178cc2a0022392c62d4cf"
     },
     "markings": {
       "file": "marksman_t55_markings.png",
       "width": 256,
       "height": 128,
       "mime": "image/png",
-      "bytes": 37438,
-      "sha256": "7a9b5f28197cba8dbf2ed417129819969925df936da2fbb91b9678528f6ee05a"
+      "bytes": 34877,
+      "sha256": "c13add25513423330a12a1ecf16b53824f07958be51e4fca4aaedf36e15b84ca"
     },
     "technicalLabels": {
       "file": "marksman_t55_technical.json",
