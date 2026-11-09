@@ -28,15 +28,15 @@ let warnings = [];
 const CANNON = { id: 'gun_x', group: 'weapons', critic: 'cannon' };
 const RAW = [0, 1, 2, 3].map((take) => ({ take, file: join(root, 'cache', `raw${take}.pcm`) }));
 
-/** A shipped 3-variant cannon bank, a neighbour whose id shares the prefix, and both records. */
-function seed() {
+/** A shipped cannon bank (3 variants unless `old` says), a neighbour whose id shares the prefix, and both records. */
+function seed({ old = [0, 1, 2] } = {}) {
   rmSync(join(root, 'public'), { recursive: true, force: true });
   mkdirSync(dir, { recursive: true });
-  for (const i of [0, 1, 2]) writeFileSync(join(dir, `gun_x_${i}.webm`), `old-${i}`);
+  for (const i of old) writeFileSync(join(dir, `gun_x_${i}.webm`), `old-${i}`);
   writeFileSync(join(dir, 'gun_x_far_0.webm'), 'neighbour');
   const records = {
-    manifest: { gun_x: { g: 'weapons', n: 3, d: [1, 1, 1], c: 1, r: 48000, kb: 3 }, gun_x_far: { g: 'weapons', n: 1, d: [2], c: 1, r: 48000, kb: 1 } },
-    verdicts: { gun_x: { class: 'cannon', variants: [0, 1, 2].map((i) => ({ source: `raw${i}.pcm`, cutS: 1, sha256: sha(`old-${i}`), class: 'cannon', pass: true })) } },
+    manifest: { gun_x: { g: 'weapons', n: old.length, d: old.map(() => 1), c: 1, r: 48000, kb: old.length }, gun_x_far: { g: 'weapons', n: 1, d: [2], c: 1, r: 48000, kb: 1 } },
+    verdicts: { gun_x: { class: 'cannon', variants: old.map((i) => ({ source: `raw${i}.pcm`, cutS: 1, sha256: sha(`old-${i}`), class: 'cannon', pass: true })) } },
   };
   return { records, before: structuredClone(records), files: listing().map((name) => [name, read(name)]) };
 }
@@ -168,6 +168,23 @@ const run = (seeded, opts) => {
   untouched(seeded, seeded.records, 'the swap fails on its second file');
   assert.equal(result.outcome, 'refused', 'a failed swap is rolled back and refused');
   assert.match(result.reason, /rolled back.*EIO/, 'the refusal says it rolled back');
+}
+
+// 7d. the swap fails after placing more files than the old bank had (review r2): the rollback removes every file it
+// placed, so no new take is left in public/ beside records that still describe the one-file bank
+{
+  const seeded = seed({ old: [0] });
+  const t = tools({ pass: [0, 1, 2, 3] });
+  let calls = 0;
+  const flaky = (from, to) => {
+    if (from.startsWith(stageRoot) && to.startsWith(dir) && !from.includes('/prev/') && ++calls === 3) throw new Error('EIO on the third file');
+    renameSync(from, to);
+  };
+  const result = run(seeded, { candidates: RAW, master: t.master, judge: t.judge, rename: flaky });
+  assert.equal(calls, 3, 'two new files were placed before the third failed');
+  untouched(seeded, seeded.records, 'the swap fails on its third file over a one-file bank');
+  assert.equal(result.outcome, 'refused', 'a failed swap over a smaller bank is rolled back and refused');
+  assert.match(result.reason, /rolled back.*EIO on the third file/, 'the refusal says it rolled back');
 }
 
 /** The stage a run of this process left, renamed as a killed run's (a pid that is gone), and what its prev/ holds. */
