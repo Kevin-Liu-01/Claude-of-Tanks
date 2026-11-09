@@ -17,6 +17,7 @@ import { stripTypeScriptTypes } from 'node:module';
 import * as THREE from 'three';
 import { ARCHITECTURE_STYLES, ARCHITECTURE_STYLE_IDS, buildRegionalParts, rebuildRegionalStructure, resolveRegionalArchitecture } from './index.ts';
 import { paintRatio } from './weather.ts';
+import { AppearanceLedger } from './appearance.ts';
 import { streamFrom } from './geometry.ts';
 import { auditStructureAssembly } from '../structureAssemblyAudit.ts';
 import { deriveRuntimeStructureCollisionProfile, appendStructureCollisionBand } from '../../structureCollision.ts';
@@ -291,6 +292,8 @@ const dependencies = { roadSettlementJunction, buildingRoadStationIndices, THREE
   makeTimberBathhouse, addCatalogExterior, attachStructureBuildContext, carryExteriorChimneyTops, exteriorChimneyTops, jitterUV,
   sampleObbGround, deriveRuntimeStructureCollisionProfile, appendStructureCollisionBand,
   rebuildRegionalStructure: recordingRebuild, resolveRegionalArchitecture,
+  // (buildings-270) the build's appearance ledger, as props.ts makes one per world build: no two neighbours alike
+  lookLedger: new AppearanceLedger(),
   // (260) the props build's paced rebuild: the same recording, drained at once
   // oxlint-disable-next-line require-yield -- the recording rebuild returns at once
   rebuildRegionalStructureSteps: function* (...args) { return recordingRebuild(...args); },
@@ -387,7 +390,9 @@ for (const [kit, table] of Object.entries(REGIONAL_DESTRUCTIBLE_TYPES)) {
   const ctx = () => ({ structureId: 'cottage', info: { w: 7, d: 9, h: 6 }, bounds: { minX: -3.5, maxX: 3.5, minZ: -4.5, maxZ: 4.5, maxY: 6 },
     wallBucket: 'plaster3', rng: streamFrom(29), variant: streamFrom(29 * 7 + 3), mapId: 'selftest', snowCap: false, tier: 'desktop' });
   const ratio = paintRatio(lorrain.surfaces.tones.plaster2, lorrain.surfaces.tones.plaster3);
-  assert.ok(ratio.every((v) => v > 0.5 && v < 2) && Math.abs(ratio[2] - ratio[0]) > 0.2, `the grey lime over the rose-beige: ${ratio.map((v) => v.toFixed(3))}`);
+  // (buildings-270: the tones from the place's photos, Main 11-06: the lime greyer and bluer, its blue 2.12x the rose-beige's;
+  // the fold's colour is the vertex's times the ratio, unclamped, and the folded-against-plain checks below hold it)
+  assert.ok(ratio.every((v) => v > 0.5 && v < 2.5) && Math.abs(ratio[2] - ratio[0]) > 0.2, `the grey lime over the rose-beige: ${ratio.map((v) => v.toFixed(3))}`);
   const plain = buildRegionalParts(unfoldedKit, ctx(), streamFrom(29 * 3 + 5));
   const folded = buildRegionalParts(lorrain, ctx(), streamFrom(29 * 3 + 5));
   const flat = (parts, bucket, attr) => parts[bucket].flatMap((g) => Array.from(g.getAttribute(attr).array));
