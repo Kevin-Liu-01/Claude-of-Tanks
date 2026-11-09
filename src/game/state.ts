@@ -3115,12 +3115,13 @@ export function simStep(
   // Past the ruleset's post-verdict hold the field stands still under the report (matchRuleset.endingHoldS).
   if (endingHoldExpired(game.ruleset, game.resultTimeS, game.timeS)) return;
   game.timeS += SIM_DT;
-  // the bots' opening routes are whole before any live step reads them (drainOpeningRoutes; empty after the first step)
-  if (game.openingRouteJobs.length) drainOpeningRoutes(game);
   // the battle's ground on the battle's clock, as the authority's (sim/authoritativeMatch.ts stepPlaying): a collapsed
   // structure's heap rises over RUBBLE_GROW_S with its fall (terrainDeformation). With no clock set, every heap of the
   // page's own battle stood up whole the instant its building came down, under the falling pieces (2026-10-29)
   groundFor(world).overlay.setTime(game.timeS);
+  // the bots' opening routes are whole before any live step reads them (drainOpeningRoutes; empty after the first step),
+  // planned on the clocked ground, as the authority refreshes its routes after its ground.setTime
+  if (game.openingRouteJobs.length) drainOpeningRoutes(game);
   // the stage marks (game/frameStages.ts) only name the stage: null in a player's session, never a clock here
   const stages = frameStages;
   // (268) the mode route push, one for both drivers (sim/modeRoutePush.ts)
