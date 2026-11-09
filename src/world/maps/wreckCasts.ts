@@ -76,8 +76,10 @@ export const WRECK_CASTS = {
     'cold-war', ['Australia'], 9, ['centurion5_1_aus', 'centurion5_2', 'leo1a5', 'leo1a2a1', 'm41a3']),
   delta: cast('the braided Jamuna, Bangladesh, December 1971', 'cold-war', ['India', 'Pakistan'], 10,
     ['type59', 't55a', 'vickers_mk1', 'm48a3_patton', 'centurion5_2', 'm41a3']),
-  desert: cast('the Dahar edge, southern Tunisia: the Tunisian and Libyan armour of the 1980s', 'cold-war',
-    ['Tunisia', 'Libya'], 11, ['m60a3', 'm48a5_patton', 'm41a3', 't55a', 't62_1975', 'type59'], DESERT),
+  // (Main, 2026-11-09) the desert ruling: its judged pairs had to differ by 0 px over 8/255 outside the hulk silhouettes;
+  // they differ by 4 to 23 px, all within 12 px of a hulk's edge, so the map reverts unjudged, whole to base, as verdant did
+  desert: baseCast('the Dahar edge, southern Tunisia: the Tunisian and Libyan armour of the 1980s', 'cold-war',
+    ['Tunisia', 'Libya'], ['m60a3', 'type59', 'm48a5_patton', 't62_1975']),
   fjord: cast('the Ofotfjord and Bjerkvik, Nordland (May 1940): today\'s armour of the Narvik campaign\'s nations', 'modern',
     ['Norway', 'France', 'Poland', 'UK', 'Germany'], 10, ['leo2a7v', 'cv90', 'leclerc_s2', 'pt91a_twardy', 'challenger2', 'warrior_tes_h']),
   foundry: cast('the Völklingen ironworks on the Saar (March 1945): today\'s US and German armour', 'modern', ['USA', 'Germany'], 10,
