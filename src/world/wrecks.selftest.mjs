@@ -1,21 +1,24 @@
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { ensureTankBuilder } from '../vehicles/fleetFactory.ts';
-import { bakeTankWreck, bakeTankWreckSteps, bakeWreckDebris, wreckPool } from './wrecks.ts';
+import { bakeTankWreck, bakeTankWreckSteps, bakeWreckDebris } from './wrecks.ts';
+import { WRECK_DONOR_IDS, wreckDonorsFor } from './wreckRoster.ts';
 import { buildWreckDebris } from './wreckDebris.ts';
 
-assert.ok(wreckPool('modern').length >= 14, 'modern wreck pool spans the first-party fleet');
-assert.deepEqual(wreckPool('ww2'), ['kv2', 'jpz_e100'],
-  'historical wrecks use the retained public vehicles, never retired donors');
-assert.ok(wreckPool('cold-war').includes('m60a1'), 'Cold War wreck pool uses period vehicles');
-assert.ok(wreckPool('next-generation').includes('kf51_evo'), 'next-generation maps retain current wreck language');
+// (wrecks-270) each map's cast (maps/wreckCasts.ts): its place's and year's armour, from the public fleet
+assert.ok(WRECK_DONOR_IDS.length >= 60, 'the casts span the first-party fleet');
+assert.equal(wreckDonorsFor('verdant')[0], 'kv2', 'Kursk keeps its KV-2, never a retired donor');
+assert.ok(wreckDonorsFor('winter').includes('pt91a_twardy'), 'a Second World War front takes today\'s armour of its nations');
+assert.deepEqual(wreckDonorsFor('moon'), [], 'the Moon carries none');
+assert.ok(wreckDonorsFor('skybridge').includes('m60a1'), 'Cold War maps use period vehicles');
+assert.ok(wreckDonorsFor('mars').includes('kf51_evo'), 'the next-generation map retains its prototypes');
 
 // Static wreck construction must remain browser-independent. A rendered tank
 // needs Canvas2D to paint its PBR maps; this exact production wreck bake runs
 // with no document at all, proving the discarded texture pipeline is absent.
 assert.equal(typeof globalThis.document, 'undefined', 'test begins without a DOM/canvas surface');
 await ensureTankBuilder('m1a1_abrams_hc');
-const tankWreck = bakeTankWreck(null, 'm1a1_abrams_hc', { seed: 91234, pop: true });
+const tankWreck = bakeTankWreck(null, 'm1a1_abrams_hc', { seed: 91234, state: 'turret_blown_off' });
 assert.ok(tankWreck, 'geometry-only production tank wreck bakes without Canvas2D');
 assert.ok(tankWreck.tris > 30000, 'wreck retains the authored tank silhouette and running gear');
 assert.equal(tankWreck.geo.index?.count ?? tankWreck.geo.attributes.position.count, tankWreck.tris * 3,
@@ -103,8 +106,8 @@ function storageFingerprint(baked) {
 const storageControls = new Map(), streamControls = new Map();
 for (const fixture of bakeFixtures) {
   await ensureTankBuilder(fixture.specId);
-  const baked = bakeTankWreck(null, fixture.specId, { seed: fixture.seed, pop: true });
-  const again = bakeTankWreck(null, fixture.specId, { seed: fixture.seed, pop: true });
+  const baked = bakeTankWreck(null, fixture.specId, { seed: fixture.seed, state: 'turret_blown_off' });
+  const again = bakeTankWreck(null, fixture.specId, { seed: fixture.seed, state: 'turret_blown_off' });
   try {
     assertBakeContract(baked, fixture);
     const hashes = bakeStreams(baked).hashes;
@@ -127,7 +130,7 @@ for (const fixture of bakeFixtures) {
 // Suspend two real production hierarchies simultaneously. The stepped bakes must reproduce the synchronous streams
 // and the exact compact storage/index selection, not merely equivalent expanded triangles.
 const pending = bakeFixtures.map(fixture => ({ fixture,
-  steps: bakeTankWreckSteps(null, fixture.specId, { seed: fixture.seed, pop: true }),
+  steps: bakeTankWreckSteps(null, fixture.specId, { seed: fixture.seed, state: 'turret_blown_off' }),
   result: null, checkpoints: 0,
 }));
 try {

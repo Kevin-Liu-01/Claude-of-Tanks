@@ -242,6 +242,7 @@ import {
 import { createWreckBakeClient } from './wreckBakeClient.ts';
 import type { WreckBakePrefetch } from './wreckBakePrefetch.ts';
 import { resolveWreckRoster } from './wreckRoster.ts';
+import { WRECK_SPAWN_CLEAR_M, WRECK_STATES, WRECK_TRENCH_REACH_M, WRECK_VIEW_M, statesForSite, wreckLook, type WreckSite, type WreckState } from './wreckStates.ts';
 import { mergeWreckGeometries } from './exactWreckGeometry.ts';
 import { fitWallSpan, wallIslandEdges, type WallSpan } from './wallSpanPlacement.ts';
 import { ensureTankBuilder } from '../vehicles/fleetFactory.ts';
@@ -458,7 +459,11 @@ interface TacticalBeatSettings {
 interface TankWreckSettings {
   count?: number;
   era?: string;
-  ids?: string[];
+  ids?: readonly string[];
+  /** (wrecks-270) the damage states this ground shows (maps/wreckCasts.ts); default every state */
+  states?: readonly WreckState[];
+  /** (wrecks-270, Main 2026-11-07) reverted whole to base: main's placement, its hulks burnt out or cooked off */
+  base?: true;
   debris?: boolean;
   maxGroundEmbed?: number;
 }
@@ -1028,7 +1033,7 @@ export interface PropsBuildSlice {
   /** Internal batches pace work without consuming another placement stage. */
   progress?: boolean;
   tankBuilder?: string;
-  wreckBake?: { specId: string; options: { seed: number; pop: boolean }; result: WreckBake | null };
+  wreckBake?: { specId: string; options: { seed: number; state: WreckState; remnant?: number }; result: WreckBake | null };
   /** (the time-to-battle lane) a fixed-input print the async build may hand in painted ahead (surfacePaintPrefetch.ts) */
   surfacePaint?: { key: string; result: Record<string, unknown> | null };
   /** (the perf stream, Plan W) the structures' shells still in the pool's workers: the async build waits for them here */
@@ -1085,6 +1090,8 @@ interface PropsBuildDetail {
 
 interface TankWreckSpot {
   specId: string;
+  /** (wrecks-270) how it died and what has happened to it since (wreckStates.ts) */
+  state: WreckState;
   x: number;
   y: number;
   z: number;
@@ -3631,7 +3638,7 @@ export function createProps(
 }
 
 /** One wreck bake a map's props build asks the worker for: the donor and its seeded options. */
-interface WreckBakeRequestRecord { specId: string; seed: number; pop: boolean }
+interface WreckBakeRequestRecord { specId: string; seed: number; state: WreckState }
 
 /**
  * The wreck bakes a map's props build requests of the worker, in order (the time-to-battle lane, 2026-10-07): the
@@ -3646,7 +3653,7 @@ export async function recordWreckBakeRequests(
   seed: number,
   cfg: PropsMapConfig | null,
   vegetation: FisheryVegetation | null,
-  bake: (specId: string, options: { seed: number; pop: boolean }) => Promise<WreckBake | null>,
+  bake: (specId: string, options: { seed: number; state: WreckState }) => Promise<WreckBake | null>,
 ): Promise<WreckBakeRequestRecord[]> {
   const requests: WreckBakeRequestRecord[] = [];
   const g = propsBuildSteps(heightField, engineCtx, seed, cfg, vegetation, true);
@@ -3655,7 +3662,7 @@ export async function recordWreckBakeRequests(
     while (!r.done) {
       const request = r.value?.wreckBake;
       if (request) {
-        requests.push({ specId: request.specId, seed: request.options.seed, pop: request.options.pop });
+        requests.push({ specId: request.specId, seed: request.options.seed, state: request.options.state });
         request.result = await bake(request.specId, request.options);
       }
       if (r.value?.stage === 'wrecks-finalized') break;
@@ -9114,9 +9121,16 @@ ${snowCap ? `
     if (wreckCount > 0) {
       const wrng = mulberry32(seed + 909);
       const era = (wCfg && wCfg.era) || 'ww2';
-      const pool = resolveWreckRoster(era, wCfg?.ids);
+      const pool = resolveWreckRoster(wCfg?.ids);
       if (pool.length === 0) return;
-      const bakeCache = new Map<string, WreckBake | null>(); // specId|pop -> bake result
+      // (wrecks-270) the states this ground shows (maps/wreckCasts.ts), and the bakes placed so far: no two hulks of one
+      // bake (a donor in one state: one mesh, turned) within a view of each other
+      const castStates: readonly WreckState[] = wCfg?.states?.length ? wCfg.states : WRECK_STATES;
+      // (Main, 2026-11-07) a map reverted whole to base places main's hulks as main did: its donors in turn, cooked off
+      // on main's draw, on its beats and roads, under main's budget, without the lane's spawn floor and view rules
+      const baseWrecks = wCfg?.base === true;
+      const placedBakes: Array<{ key: string; specId: string; state: WreckState; x: number; z: number }> = [];
+      const bakeCache = new Map<string, WreckBake | null>(); // specId|state -> bake result
       // maps lane B (2026-10-03, the physics lane's road-crossing sweep): a hulk keeps 10 m off a road's sharp bends
       // (turns over 40 degrees), the ground a hull that misses the turn runs straight on to. Copper Mesa's haul road
       // met a BMP-3 4.8 m past its 73-degree corner on the causeway; no other map had a hulk within 10 m of one.
@@ -9128,14 +9142,15 @@ ${snowCap ? `
       // destruction core with the coordinator's approval: 260k -> 300k, since the wreck crumple bisects a hulk's dented
       // plates (wreckCrumple.ts refineForCrumple, about a sixth more triangles a hulk) and 260k had begun to stop one
       // hulk sooner on urban, frontier, badlands, caldera and titan_gorge: every map places the hulks it did before)
-      const WRECK_TRIS_BUDGET = 300000;
+      // (wrecks-270: twice the hulks a map, 5-9 -> 9-12; the budget follows them, measured in the lane's cost run)
+      const WRECK_TRIS_BUDGET = baseWrecks ? 300000 : 640000;
       let wreckSerial = 0;
       let wreckPickSerial = 0;
-      function* bakeFor(specId: string, pop: boolean): Generator<PropsBuildSlice, WreckBake | null, void> {
-        const key = specId + (pop ? '|p' : '');
+      function* bakeFor(specId: string, state: WreckState): Generator<PropsBuildSlice, WreckBake | null, void> {
+        const key = `${specId}|${state}`;
         if (bakeCache.has(key)) return bakeCache.get(key) ?? null;
         // the map-vehicles lane (P4): the paint this map's tanks wore survives in patches on the burnt hull
-        const options = { seed: seed + bakeCache.size * 131, pop, remnant: wreckRemnantPaint(mapId) };
+        const options = { seed: seed + bakeCache.size * 131, state, remnant: wreckRemnantPaint(mapId) };
         let baked: WreckBake | null;
         if (workerWrecks) {
           const request: NonNullable<PropsBuildSlice['wreckBake']> = { specId, options, result: null };
@@ -9156,27 +9171,60 @@ ${snowCap ? `
         bakeCache.set(key, baked);
         return baked;
       }
+      /**
+       * (wrecks-270) The donor and state for a hulk at (x, z) on `site`: the cast's donors in turn from the pick serial,
+       * each with a state its site shows drawn from the stream; never a bake already standing within WRECK_VIEW_M, a
+       * state already standing in view only when the site shows no other (the repeat critic: an overturned T-55 and an
+       * overturned BMP-2 in one Ruinspires street read as one hulk twice, the map's paint and the state's rust shared),
+       * of the states not in view one with a look not in view first (11-06: a burnt-out and a track-thrown hulk, turrets
+       * on and hulls level, read alike at 40-100 m), and a donor already in view only when every other is too. Null
+       * when every bake the site shows is in view.
+       */
+      function chooseWreckBake(site: WreckSite, x: number, z: number, tries: number):
+        { specId: string; state: WreckState } | null {
+        if (baseWrecks) return { specId: pool[(wreckPickSerial + tries) % pool.length], state: wrng() < 0.45 ? 'turret_blown_off' : 'burnt_out' };
+        const states = statesForSite(site, castStates);
+        if (!states.length) return null;
+        const start = (wrng() * states.length) | 0;
+        const inView = placedBakes.filter((b) => Math.hypot(b.x - x, b.z - z) < WRECK_VIEW_M);
+        const looksInView = new Set(inView.map((b) => wreckLook(b.state)));
+        // rank: 0 a new donor in a new look; +1 its look in view, +2 its state in view; +3 its donor in view
+        let best: { specId: string; state: WreckState } | null = null;
+        let bestRank = Infinity;
+        for (let d = 0; d < pool.length; d++) {
+          const specId = pool[(wreckPickSerial + tries + d) % pool.length];
+          const donorRank = inView.some((b) => b.specId === specId) ? 3 : 0;
+          for (let k = 0; k < states.length; k++) {
+            const state = states[(start + k) % states.length];
+            const key = `${specId}|${state}`;
+            if (inView.some((b) => b.key === key)) continue;
+            const rank = donorRank + (inView.some((b) => b.state === state) ? 2 : looksInView.has(wreckLook(state)) ? 1 : 0);
+            if (rank === 0) return { specId, state };
+            if (rank < bestRank) { best = { specId, state }; bestRank = rank; }
+          }
+        }
+        return best;
+      }
       function* placeWreck(
         x: number,
         z: number,
         yaw: number,
+        site: WreckSite,
       ): Generator<PropsBuildSlice, boolean, void> {
         // Explicit map pools are deliberate story casts: consume them in
-        // order so new silhouettes are used across the battlefield roster,
-        // including the two-wreck mobile cap. Unauthored pools stay seeded.
-        const specId = wCfg?.ids?.length
-          ? pool[wreckPickSerial % pool.length]
-          : pool[(wrng() * pool.length) | 0];
-        const pop = wrng() < 0.45; // mix ammo-rack tosses with unseated kills
+        // order so new silhouettes are used across the battlefield roster.
+        const pick = chooseWreckBake(site, x, z, 0);
+        if (!pick) return false;
+        const { specId, state } = pick;
         // The async world builder resolves only the selected wreck's authored
         // family before this cooperative bake resumes. No full-fleet barrier,
         // speculative preload, or legacy fallback is involved.
         yield { fine: true, tankBuilder: specId };
-        const baked = yield* bakeFor(specId, pop);
+        const baked = yield* bakeFor(specId, state);
         if (!baked) return false;
         const seat = seatWreck(baked, x, z, yaw, false);
         if (!seat) return false;
-        yield* commitWreck(specId, baked, seat);
+        yield* commitWreck(specId, state, baked, seat);
         // A rejected slope/bake is not a placed wreck. Retry this donor on the
         // next supported site instead of skipping it and later repeating one.
         wreckPickSerial++;
@@ -9231,9 +9279,10 @@ ${snowCap ? `
        * applyMatrix4 recomputes them from the moved positions, so the same bytes). Its own quaternion: a step lets another
        * world build (the Garage's background build beside a deploy's) use the module's.
        */
-      function* commitWreck(specId: string, baked: WreckBake,
+      function* commitWreck(specId: string, state: WreckState, baked: WreckBake,
         { x, z, yaw, support }: { x: number; z: number; yaw: number; support: WreckSupport }): Generator<PropsBuildSlice, void, void> {
         bakedTris += baked.budgetTris ?? baked.tris; // budget counts PLACED tris (clones render too; wrecks.ts budgetTris)
+        placedBakes.push({ key: `${specId}|${state}`, specId, state, x, z });
         const y = support.y;
         const quat = new THREE.Quaternion().setFromUnitVectors(_upAxis,
           _posv.set(support.normalX, support.normalY, support.normalZ));
@@ -9259,7 +9308,7 @@ ${snowCap ? `
           // (Lane C, #8 r2) built from a tank's own kinds of parts and seated piece by piece on the terrain under each
           // (wreckDebris.ts), not boxes laid in the hulk's sunk plane (two thirds of them were wholly underground)
           const debris = buildWreckDebris(seed + 17001 + wreckSerial * 97, {
-            modern: isPostwarVehicleEra(era), contact: baked.contact,
+            modern: isPostwarVehicleEra(era), contact: baked.contact, state, thrownSide: baked.thrownSide,
           });
           wreckSerial++;
           for (const piece of seatWreckDebris(debris, heightField, x, z, yaw)) {
@@ -9294,7 +9343,7 @@ ${snowCap ? `
         colliders.push(placeWreckShellCollision(baked.shellSolids ?? baked.solids, placement));
         wreckScorch.push([x, z]);
         tankWreckSpots.push({
-          specId, x, y, z, yaw, hx, hz, h: baked.h, debrisTris,
+          specId, state, x, y, z, yaw, hx, hz, h: baked.h, debrisTris,
           supportMin: support.min, supportMax: support.max, supportSpread: support.spread,
           supportMaxEmbed: support.maxEmbed, supportMaxFloat: support.maxFloat,
         });
@@ -9308,24 +9357,27 @@ ${snowCap ? `
       // centre: the same donor and pop, the twin at exactly the first's seat turned (a twin the road core would move is
       // no twin), both tested before either is placed; 2 placed, or 0
       const twinCentre = P.rotationalCentre ?? null;
-      function* placeWreckPair(x: number, z: number, yaw: number, donors = 1): Generator<PropsBuildSlice, number, void> {
+      function* placeWreckPair(x: number, z: number, yaw: number, site: WreckSite, donors = 1): Generator<PropsBuildSlice, number, void> {
         const [cx, cz] = twinCentre!;
+        // (wrecks-270) a twin is the same bake turned about the centre (the fairness ask's twin law), so the pair stands
+        // out of one view of each other or not at all
+        if (!baseWrecks && Math.hypot(2 * (x - cx), 2 * (z - cz)) < WRECK_VIEW_M) return 0;
         for (let tries = 0; tries < donors; tries++) {
-          const specId = wCfg?.ids?.length
-            ? pool[(wreckPickSerial + tries) % pool.length]
-            : pool[(wrng() * pool.length) | 0];
-          const pop = wrng() < 0.45;
+          const pick = chooseWreckBake(site, x, z, tries);
+          if (!pick) return 0;
+          const { specId, state } = pick;
+          if (!baseWrecks && placedBakes.some((b) => b.key === `${specId}|${state}` && Math.hypot(b.x - (2 * cx - x), b.z - (2 * cz - z)) < WRECK_VIEW_M)) continue;
           yield { fine: true, tankBuilder: specId };
-          const baked = yield* bakeFor(specId, pop);
+          const baked = yield* bakeFor(specId, state);
           if (!baked) continue;
           const seat = seatWreck(baked, x, z, yaw, false);
           if (!seat) continue;
           // (260, the rooms census: a pair's two seat tests, each a scan of every solid and tree, were one 242 ms step)
           yield { fine: true, progress: false, stage: 'wreck-seats' };
           const twin = seatWreck(baked, 2 * cx - seat.x, 2 * cz - seat.z, seat.yaw + Math.PI, true);
-          if (!twin || Math.hypot(seat.x - twin.x, seat.z - twin.z) < 2 * Math.hypot(baked.hx, baked.hz) + 2) continue;
-          yield* commitWreck(specId, baked, seat);
-          yield* commitWreck(specId, baked, twin);
+          if (!twin || Math.hypot(seat.x - twin.x, seat.z - twin.z) < Math.max(baseWrecks ? 0 : WRECK_VIEW_M, 2 * Math.hypot(baked.hx, baked.hz) + 2)) continue;
+          yield* commitWreck(specId, state, baked, seat);
+          yield* commitWreck(specId, state, baked, twin);
           wreckPickSerial += tries + 1;
           return 2;
         }
@@ -9339,7 +9391,11 @@ ${snowCap ? `
         // destructible keeps (addDestructible's veto: DEPLOYMENT_CLEAR_M and its radius); Delta's Type 59 stood 2.75 m in one
         ...deploymentSlots.map((slot) => [slot.x, slot.z, DEPLOYMENT_CLEAR_M] as const),
       ];
+      // (wrecks-270, Main's ruling 2026-11-05) and never nearer a spawn than the hulks before the lane stood (36 m), on any
+      // pass: the spawn probe's protected ground is the floor
+      const spawnPoints = [L.spawns.player, ...L.spawns.enemies];
       function hulkOnObjective(x: number, z: number, r: number): boolean {
+        if (!baseWrecks && spawnPoints.some((spawn) => Math.hypot(x - spawn.x, z - spawn.z) < WRECK_SPAWN_CLEAR_M)) return true;
         return objectiveDiscs.some(([cx, cz, radius]) => Math.hypot(x - cx, z - cz) < radius + r);
       }
       function hulkMeetsTallSolid(x: number, z: number, hx: number, hz: number, yaw: number): boolean {
@@ -9375,19 +9431,18 @@ ${snowCap ? `
           if (done.has(k) || !beat.wreck || placedW >= wreckCount || bakedTris > WRECK_TRIS_BUDGET) continue;
           const yawW = THREE.MathUtils.degToRad(beat.wreckYawDeg ?? beat.yawDeg ?? 0);
           const pair = pairOf(k);
+          const bx = beat.x + (beat.wreckOffsetX || 0), bz = beat.z + (beat.wreckOffsetZ || 0);
           if (pair >= 0) {
-            const placed = yield* placeWreckPair(beat.x + (beat.wreckOffsetX || 0), beat.z + (beat.wreckOffsetZ || 0), yawW,
-              Math.max(1, pool.length));
+            const placed = yield* placeWreckPair(bx, bz, yawW, siteAt(bx, bz), Math.max(1, pool.length));
             if (placed) { done.add(pair); placedW += placed; yield { fine: true }; continue; }
           }
-          if (yield* placeWreck(beat.x + (beat.wreckOffsetX || 0),
-            beat.z + (beat.wreckOffsetZ || 0), yawW)) {
+          if (yield* placeWreck(bx, bz, yawW, siteAt(bx, bz))) {
             placedW++;
             yield { fine: true };
           }
         }
       }
-      function wreckSpotIsClear(px: number, pz: number): boolean {
+      function wreckSpotIsClear(px: number, pz: number, squareKeep = 20): boolean {
         if (Math.max(Math.abs(px), Math.abs(pz)) > 440) return false;
         if (heightField._roadDist(px, pz) < 5.2) return false;
         if (heightField.getGroundType(px, pz) === 'soft' || noVeg(px, pz)) return false;
@@ -9397,7 +9452,7 @@ ${snowCap ? `
         if (nearSpawn) return false;
         const nearBuilding = placedB
           .some((building) => Math.hypot(px - building.x, pz - building.z) < building.rr + 4);
-        return !nearBuilding && Math.hypot(px - junction.x, pz - junction.z) >= 20;
+        return !nearBuilding && Math.hypot(px - junction.x, pz - junction.z) >= squareKeep;
       }
       function duelSpotIsClear(qx: number, qz: number): boolean {
         return Math.max(Math.abs(qx), Math.abs(qz)) <= 440
@@ -9415,11 +9470,11 @@ ${snowCap ? `
         if (twinCentre && !duelSpotIsClear(2 * twinCentre[0] - qx, 2 * twinCentre[1] - qz)) return;
         const yaw = Math.atan2(px - qx, pz - qz) + (wrng() - 0.5) * 0.3;
         if (twinCentre) {
-          const placed = yield* placeWreckPair(qx, qz, yaw);
+          const placed = yield* placeWreckPair(qx, qz, yaw, 'roadside');
           if (placed) { placedW += placed; yield { fine: true }; }
           return;
         }
-        if (yield* placeWreck(qx, qz, yaw)) {
+        if (yield* placeWreck(qx, qz, yaw, 'roadside')) {
           placedW++;
           yield { fine: true };
         }
@@ -9441,25 +9496,104 @@ ${snowCap ? `
         if (twinCentre && !wreckSpotIsClear(2 * twinCentre[0] - px, 2 * twinCentre[1] - pz)) return;
         const yaw = Math.atan2(bx - ax, bz - az) + (wrng() - 0.5) * 0.9;
         if (twinCentre) {
-          const placed = yield* placeWreckPair(px, pz, yaw);
+          const placed = yield* placeWreckPair(px, pz, yaw, 'roadside');
           if (!placed) return;
           placedW += placed;
         } else {
-          if (!(yield* placeWreck(px, pz, yaw))) return;
+          if (!(yield* placeWreck(px, pz, yaw, 'roadside'))) return;
           placedW++;
         }
         yield { fine: true };
         yield* placePairedWreck(px, pz);
       }
-      function* placeRoadWrecks(): Generator<PropsBuildSlice, void, void> {
-        for (let ri = 0; ri < roads.length && placedW < wreckCount; ri++) {
+      function* placeRoadWrecks(quota: number): Generator<PropsBuildSlice, void, void> {
+        for (let ri = 0; ri < roads.length && placedW < quota; ri++) {
           const count = authoredRoadStationCount(L, ri);
-          for (let i = 5; i < count - 1 && placedW < wreckCount;
+          for (let i = 5; i < count - 1 && placedW < quota;
             i += 3 + ((wrng() * 2) | 0)) {
             if (bakedTris > WRECK_TRIS_BUDGET) break;
             yield* tryPlaceRoadWreck(ri, i);
           }
         }
+      }
+      // (wrecks-270) the other grounds a hulk stands on: the site of an authored beat, a field's edge under its tree line
+      // or hedge, a trench line, the town's square
+      const trenchLines = [...(heightField.assaultTrenchLines?.lines ?? []), ...(heightField.fieldTrenchLines?.lines ?? [])];
+      function trenchDistance(x: number, z: number): number {
+        let best = Infinity;
+        for (const line of trenchLines) {
+          const along = Math.max(-line.halfLengthM, Math.min(line.halfLengthM, (x - line.x) * line.lx + (z - line.z) * line.lz));
+          best = Math.min(best, Math.hypot(x - line.x - line.lx * along, z - line.z - line.lz * along));
+        }
+        return best;
+      }
+      function siteAt(x: number, z: number): WreckSite {
+        if (trenchDistance(x, z) < WRECK_TRENCH_REACH_M) return 'trench_line';
+        if (heightField._roadDist(x, z) < 14) return 'roadside';
+        if (Math.hypot(x - junction.x, z - junction.z) < 30) return 'town_square';
+        return 'field_edge';
+      }
+      /** A free spot near (x, z) facing `yaw`, on `site`: one hulk or a twin pair; true when placed. */
+      function* placeAt(x: number, z: number, yaw: number, site: WreckSite): Generator<PropsBuildSlice, boolean, void> {
+        if (twinCentre) {
+          if (!wreckSpotIsClear(2 * twinCentre[0] - x, 2 * twinCentre[1] - z, 0)) return false;
+          const placed = yield* placeWreckPair(x, z, yaw, site);
+          placedW += placed;
+          return placed > 0;
+        }
+        if (!(yield* placeWreck(x, z, yaw, site))) return false;
+        placedW++;
+        return true;
+      }
+      /** Along each trench line, a hulk short of its lip, turned to it (a nose-down hulk's nose toward the trench). */
+      function* placeTrenchWrecks(quota: number): Generator<PropsBuildSlice, void, void> {
+        for (const line of trenchLines) {
+          for (let along = -line.halfLengthM + 10; along < line.halfLengthM - 10 && placedW < quota; along += 24 + wrng() * 18) {
+            if (bakedTris > WRECK_TRIS_BUDGET) return;
+            // short of the works on either lip: a hull length out from the trench's centre, its nose to it
+            const side = wrng() < 0.5 ? -1 : 1, off = 10 + wrng() * 4;
+            const px = line.x + line.lx * along + line.ax * off * side, pz = line.z + line.lz * along + line.az * off * side;
+            if (!wreckSpotIsClear(px, pz, 0)) continue;
+            if (yield* placeAt(px, pz, Math.atan2(-line.ax * side, -line.az * side) + (wrng() - 0.5) * 0.5, 'trench_line')) yield { fine: true };
+          }
+        }
+      }
+      /** On the town's square, off its open middle and the carriageway. */
+      function* placeSquareWrecks(quota: number): Generator<PropsBuildSlice, void, void> {
+        for (let k = 0; k < 6 && placedW < quota; k++) {
+          if (bakedTris > WRECK_TRIS_BUDGET) return;
+          const a = wrng() * Math.PI * 2, r = 16 + wrng() * 12;
+          const px = junction.x + Math.cos(a) * r, pz = junction.z + Math.sin(a) * r;
+          if (!wreckSpotIsClear(px, pz, 14)) continue;
+          if (yield* placeAt(px, pz, wrng() * Math.PI * 2, 'town_square')) yield { fine: true };
+        }
+      }
+      /** At a field's edge: off a road into the fields, where a tree line or hedge stands a few metres beyond. */
+      function* placeFieldEdgeWrecks(quota: number): Generator<PropsBuildSlice, void, void> {
+        for (let ri = 0; ri < roads.length && placedW < quota; ri++) {
+          const count = authoredRoadStationCount(L, ri);
+          for (let i = 4; i < count - 1 && placedW < quota; i += 4 + ((wrng() * 3) | 0)) {
+            if (bakedTris > WRECK_TRIS_BUDGET) return;
+            const at = authoredRoadStationIndex(L, ri, i);
+            if (at < 0) continue;
+            const [ax, az] = roads[ri][at], [bx, bz] = roads[ri][at + 1];
+            const l = Math.hypot(bx - ax, bz - az) || 1, side = wrng() < 0.5 ? -1 : 1, off = 22 + wrng() * 30;
+            const px = ax - (bz - az) / l * off * side, pz = az + (bx - ax) / l * off * side;
+            if (!wreckSpotIsClear(px, pz, 0)) continue;
+            const edge = nearestTreeGap(px, pz);
+            if (edge < 4 || edge > 16) continue;
+            if (yield* placeAt(px, pz, Math.atan2(bx - ax, bz - az) + (wrng() - 0.5) * 1.6, 'field_edge')) yield { fine: true };
+          }
+        }
+      }
+      function nearestTreeGap(x: number, z: number): number {
+        let best = Infinity;
+        for (const tree of sceneryTrees) {
+          const cx = (tree.min[0] + tree.max[0]) / 2, cz = (tree.min[2] + tree.max[2]) / 2;
+          if (Math.abs(cx - x) > 20 || Math.abs(cz - z) > 20) continue;
+          best = Math.min(best, Math.hypot(cx - x, cz - z));
+        }
+        return best;
       }
       function finalizeWreckMeshes(): void {
         if (wreckGeos.length === 0) return;
@@ -9504,7 +9638,16 @@ ${snowCap ? `
       }
       try {
         yield* placeAuthoredWrecks();
-        yield* placeRoadWrecks();
+        if (baseWrecks) yield* placeRoadWrecks(wreckCount);
+        // (wrecks-270) the roads take about half, then the trench lines, the square and the field edges their shares, and
+        // the roads whatever those grounds could not seat
+        else {
+          yield* placeRoadWrecks(Math.min(wreckCount, placedW + Math.ceil(wreckCount * 0.45)));
+          yield* placeTrenchWrecks(Math.min(wreckCount, placedW + Math.max(1, Math.round(wreckCount * 0.15))));
+          yield* placeSquareWrecks(Math.min(wreckCount, placedW + (wreckCount >= 9 ? 2 : 1)));
+          yield* placeFieldEdgeWrecks(wreckCount);
+          yield* placeRoadWrecks(wreckCount);
+        }
         finalizeWreckMeshes();
       } finally {
         // A rejected loading tick closes all delegated work. Cached bakes and

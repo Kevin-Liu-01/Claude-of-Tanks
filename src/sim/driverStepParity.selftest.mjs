@@ -327,7 +327,11 @@ assert.ok(real.exercised.movedM > 200, `the bot drove its opening route and the 
 assert.ok(real.exercised.sightedAt !== null, 'the bot sighted the own hull');
 assert.ok(real.exercised.pulls >= 1, `the bot fired (${real.exercised.pulls} trigger pulls)`);
 assert.ok(real.exercised.closestM < 10, `the two hulls met (${real.exercised.closestM.toFixed(1)} m apart at the closest)`);
-assert.equal(real.exercised.botHp, 0, `the own hull destroyed the bot (${(real.exercised.botHp * 100).toFixed(1)} % hp)`);
+// (wrecks-270, 11-07) the engagement ends in a destruction, either way round: verdant's ten hulks (five before) turn the
+// meeting so the bot now kills the own hull at 20.9 % hp of its own, and 3000 to 4800 ticks end alike; the two drivers stay
+// byte-identical through it, which is what this run pins
+const destroyed = real.exercised.botHp === 0 ? 'the bot' : real.exercised.ownHp === 0 ? 'the own hull' : null;
+assert.ok(destroyed, `one hull destroyed the other (bot ${(real.exercised.botHp * 100).toFixed(1)} %, own ${(real.exercised.ownHp * 100).toFixed(1)} % hp)`);
 // (268, item 6) one bot paint rule: both drivers rolled the bot's paint from the match seed at its roster index (1), and an
 // index slip would show (the seed rolls another paint at 0); a paint the authority is handed instead parts them at tick 0
 assert.deepEqual(real.exercised.paint, { page: botCamoRoll(SEED, 1, MAP), authority: botCamoRoll(SEED, 1, MAP) },
@@ -493,7 +497,7 @@ console.log(`driverStepParity.selftest: ${MAP} 1v1, ${TICKS} ticks, both hulls b
   + `${four.exercised.shots[1][0]} on both; a throttle a billionth off seeded at tick ${SEEDED} caught at tick `
   + `${nudged.divergence.tick} (${nudged.divergence.field}), the page's switch a tick late caught at tick ${late.divergence.tick} (${late.divergence.field}); `
   + `the real AI on both drivers ${REAL_AI_TICKS} ticks byte-identical (a ${AI_FOE_SPEC} bot drove ${real.exercised.movedM.toFixed(0)} m, sighted the own hull `
-  + `at tick ${real.exercised.sightedAt}, fired ${real.exercised.pulls} times, met the own hull ${real.exercised.closestM.toFixed(1)} m apart and was destroyed; `
+  + `at tick ${real.exercised.sightedAt}, fired ${real.exercised.pulls} times, met the own hull ${real.exercised.closestM.toFixed(1)} m apart, and ${destroyed} was destroyed; `
   + `its paint '${real.exercised.paint.page}' rolled alike, a handed paint caught at tick 0), `
   + `its heading a billionth off at tick ${BOT_NUDGE} caught at tick ${botNudged.divergence.tick} (${botNudged.divergence.field}); `
   + `Mars on both drivers byte-identical (hulls, mode state, destruction logs, turret bodies, every live round): ${mars.exercised.cachesDropped} caches `

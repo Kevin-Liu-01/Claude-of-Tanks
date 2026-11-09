@@ -805,8 +805,8 @@ function liveProbe(id, buildName, camoSeed) {
 
 // ------------------------------------------------------------------------------------------------ the map hulk
 function hulkProbe(id, seed) {
-  const r1 = bakeTankWreck(null, id, { seed, pop: true });
-  const r0 = bakeTankWreck(null, id, { seed, pop: true, ring: false });
+  const r1 = bakeTankWreck(null, id, { seed, state: 'turret_blown_off' });
+  const r0 = bakeTankWreck(null, id, { seed, state: 'turret_blown_off', ring: false });
   const row = { id, seed };
   if (!r1 || !r0) { row.error = 'bake failed'; return row; }
   row.tris = [r0.tris, r1.tris];

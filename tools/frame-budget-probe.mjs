@@ -164,6 +164,11 @@ const FRAME_PROBE_TOGGLES = Object.freeze({
   'pylon-wires': Object.freeze({
     on: `window.__DEBUG.scene.traverse((o) => { if (o.name === 'props-pylon-wires') o.visible = true; })`,
     off: `window.__DEBUG.scene.traverse((o) => { if (o.name === 'props-pylon-wires') o.visible = false; })` }),
+  // the wrecks lane (wrecks-270): the battlefield's static tank hulks, the merged wreck mesh and its shadow proxy
+  // (props.ts finalizeWreckMeshes); off hides both, so the delta is the wrecks' whole frame cost on either build
+  'tank-wrecks': Object.freeze({
+    on: `window.__DEBUG.scene.traverse((o) => { if (o.name === 'tank-wrecks' || o.name === 'tank-wrecks-shadow') o.visible = true; })`,
+    off: `window.__DEBUG.scene.traverse((o) => { if (o.name === 'tank-wrecks' || o.name === 'tank-wrecks-shadow') o.visible = false; })` }),
   // the scenery lane (wave 52): the boulders (props.ts rock-variant-0..2, and since the wave-74 cascade trim each one's
   // -far pool and its -shadow pool for the far cascades); off hides them, so the delta is their whole frame cost. Both
   // sides run without the static shadow cache, so every cascade redraws every boulder every frame, as it does while the

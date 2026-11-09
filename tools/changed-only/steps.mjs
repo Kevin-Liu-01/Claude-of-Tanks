@@ -702,7 +702,7 @@ export const FLEET_API_USERS = Object.freeze({
     pin: '66cf7cb4dfa326ac', note: 'ensureTankBuilder for the wreck bakes it requests (the plan\'s donors, from resolveWreckRoster)',
   },
   'src/world/wrecks.ts': {
-    pin: 'ab764aa7907f5207', note: 'createTank(specId) for a requested wreck bake; resolveWreckRoster(era) is the era cast',
+    pin: 'ab764aa7907f5207', note: 'createTank(specId) for a requested wreck bake; the casts are maps/wreckCasts.ts (resolveWreckRoster)',
   },
   'src/world/wreckRoster.ts': {
     pin: '73d4ac94e11adcd2', note: 'PRODUCTION_TANK_IDS filters the casts: spec data, in every map\'s key through the fleet core',
@@ -715,7 +715,7 @@ const maps = (list) => `--maps=${list.join(',')}`;
  * The world steps, in chain order, run after the tank steps (a wreck donor's build reads the fleet's generated rows).
  * The wreck plan comes first: its rows name the donors the collision builds bake. `donors` is the step's donor rule:
  * 'plan' = the map's wreck plan rows (every variant) plus the roster ids its config names; a map that asks for wrecks but
- * has no plan rows takes its whole wreck cast (resolveWreckRoster).
+ * has no plan rows takes its whole wreck cast (maps/wreckCasts.ts through resolveWreckRoster).
  */
 export const WORLD_STEPS = Object.freeze([
   {

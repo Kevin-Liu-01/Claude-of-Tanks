@@ -2,6 +2,7 @@ import { WORN_YARD_PAINT } from '../hardstandSurface.ts';
 import { OLYMPUS_SETTLEMENT } from './marsSettlement.ts';
 import { TOWN_LIGHT_PLANS, TOWN_PLANS } from './townPlans.generated.ts';
 import { MARS_SKY_PRESET } from '../../engine/marsAtmosphere.ts';
+import { WRECK_CASTS } from './wreckCasts.ts';
 import { BUILDING_STYLES } from './buildingStyleTable.ts';
 // src/world/maps/mars.ts — Olympus Basin: a rust-red impact basin under a galaxy sky, its research
 // station scattered across the floor (owner 2026-09-18: "add mars map mode (called mars mode), make it have
@@ -195,7 +196,7 @@ export default {
     rubblePiles: 10,
     // the map-vehicles lane (2026-10-06, the period ruling): Olympus Basin: the next generation's hulls
     // (2026-10-28, the world-reds lane: the PL-01 in the Challenger 3 prototype's slot, modern since vehicle-eras-254)
-    tankWrecks: { era: 'next-generation', count: 5, debris: true, ids: ['abramsx', 'object148_proto', 'pl01', 'm1a3', 'kf51_evo'] },
+    tankWrecks: WRECK_CASTS.mars,
     // 2026-09-19: the station perimeter keeps a ring of steel anti-tank
     // hedgehogs (every map fields complete three-beam compounds).
     sandbagLines: 0,

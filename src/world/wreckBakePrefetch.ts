@@ -6,7 +6,7 @@
  * after the terrain and the vegetation. The bakes a map asks for are fixed by its seed and config, so
  * tools/wreck-bake-plan.mjs records them per map (maps/wreckBakePlan.ts) and the world build starts them here, in a
  * worker of their own, when it starts — beside the terrain and vegetation on the main thread. The props build takes a
- * planned bake when it asks for it (the same donor, seed and pop through the same worker code: the same wreck); a
+ * planned bake when it asks for it (the same donor, seed and damage state through the same worker code: the same wreck); a
  * request the plan does not hold is baked on demand as before, so a stale plan costs time, never a different wreck.
  *
  * The plan holds every map's desktop requests on the standard terrain, and the phone tier's and the assault terrain's
@@ -19,8 +19,9 @@ import { getDeviceTier } from '../engine/quality.ts';
 import { WRECK_BAKE_PLAN, WRECK_BAKE_PLAN_VARIANTS } from './maps/wreckBakePlan.ts';
 import { createWreckBakeClient } from './wreckBakeClient.ts';
 import type { WreckBake, WreckOptions } from './wrecks.ts';
+import type { WreckState } from './wreckStates.ts';
 
-type WreckBakePlanRow = readonly [string, number, 0 | 1];
+type WreckBakePlanRow = readonly [string, number, WreckState];
 
 interface PrefetchClient {
   prepare(): void;
@@ -40,14 +41,14 @@ export interface WreckBakePrefetchStats {
 
 export interface WreckBakePrefetch {
   /** The planned bake for this donor and options, or null when the plan holds none (bake it on demand). */
-  take(specId: string, options: { seed: number; pop: boolean }): Promise<WreckBake | null> | null;
+  take(specId: string, options: { seed: number; state: WreckState }): Promise<WreckBake | null> | null;
   /** Stop the worker and release every planned bake nobody took. */
   dispose(): void;
   readonly stats: WreckBakePrefetchStats;
 }
 
-export function wreckBakeKey(specId: string, seed: number, pop: boolean | 0 | 1): string {
-  return `${specId}|${seed}|${pop ? 1 : 0}`;
+export function wreckBakeKey(specId: string, seed: number, state: WreckState): string {
+  return `${specId}|${seed}|${state}`;
 }
 
 function releaseBake(baked: WreckBake | null): void {
@@ -72,14 +73,14 @@ export function startWreckBakePrefetch(
   let stopped = false;
   let chain: Promise<unknown> = Promise.resolve();
   client.prepare();
-  for (const [specId, seed, pop] of rows) {
-    const key = wreckBakeKey(specId, seed, pop);
+  for (const [specId, seed, state] of rows) {
+    const key = wreckBakeKey(specId, seed, state);
     if (pending.has(key)) continue;
     stats.planned++;
     const job = chain.then(() => {
       if (disposed) throw new Error('Wreck prefetch disposed');
       if (stopped) throw new Error('Wreck prefetch stopped after a failed bake');
-      return client.bake(specId, { seed, pop: !!pop }, () => undefined);
+      return client.bake(specId, { seed, state }, () => undefined);
     }).finally(() => {
       stats.settled++;
       stats.doneMs = Math.round(now() - startedAt);
@@ -90,7 +91,7 @@ export function startWreckBakePrefetch(
   }
   return {
     take(specId, options) {
-      const key = wreckBakeKey(specId, options.seed, options.pop);
+      const key = wreckBakeKey(specId, options.seed, options.state);
       const job = pending.get(key);
       if (!job) { stats.missed++; return null; }
       pending.delete(key);
