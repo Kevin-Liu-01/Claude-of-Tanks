@@ -9,7 +9,6 @@ import { GROUP_PROFILES } from './soundCues.ts';
 import { impactAssetIds } from './impactMaterials.ts';
 import { MAP_IDS } from '../world/maps/mapIds.ts';
 import { LAUNCH_ASSET, WEAPON_ROWS, eventMount, reloadAssets } from './weaponAudio.ts';
-import { isCrewLineGap } from './crewLineGaps.test-support.mjs';
 
 const root = new URL('../../public/audio/', import.meta.url);
 
@@ -125,12 +124,7 @@ for (const lang of CREW_LANGUAGES) {
   let langBytes = 0;
   for (const line of script.lines) {
     const takes = pack[line.id];
-    // the one listed gap (crewLineGaps.test-support.mjs): no take shipped yet; a take that lands must leave the list
-    if (isCrewLineGap(lang, line.id)) {
-      assert.ok(!(takes?.length > 0), `${lang}/${line.id} shipped ${takes?.length} takes: remove it from crewLineGaps.test-support.mjs`);
-      continue;
-    }
-    assert.ok(takes && line[lang] && takes.length === line[lang].length, `${lang}/${line.id}: ${takes?.length} of ${line[lang]?.length} takes shipped`);
+    assert.ok(takes && takes.length === line[lang].length, `${lang}/${line.id}: ${takes?.length} of ${line[lang].length} takes shipped`);
     takes.forEach((dur, i) => {
       const file = new URL(`voice/${lang}/${line.id}_${i}.webm`, root);
       assert.ok(existsSync(file), `${lang}/${line.id}_${i}.webm`);
@@ -140,8 +134,10 @@ for (const lang of CREW_LANGUAGES) {
   }
   // 2.5 MB until 2026-11-03; the owner asked for "more and better voice lines … all the special modes, in all the
   // languages", so crew-lines-269 made a pack 190 lines and 371 takes (up to 3.29 MB) and the cap rose to 3.5 MB. Only
-  // the crew's own pack loads, and it decodes at 16 kHz (assetLibrary VOICE_DECODE_HZ).
-  assert.ok(langBytes < 3.5 * 1024 * 1024, `${lang} pack ${(langBytes / 1048576).toFixed(2)} MB`);
+  // the crew's own pack loads, and it decodes at 16 kHz (assetLibrary VOICE_DECODE_HZ). air-support-270's 8 lines made
+  // every pack 198 lines and 387 takes; the longest world languages measure up to 3.66 MB (fa; 52.0 MB decoded, from
+  // 48.9), so the cap is that rounded up to the next MiB: 4 MiB (crew-languages-270).
+  assert.ok(langBytes < 4 * 1024 * 1024, `${lang} pack ${(langBytes / 1048576).toFixed(2)} MB`);
 }
 
 console.log(`soundAssets.selftest: ${Object.keys(SFX_ASSETS).length} assets (${(bytes / 1048576).toFixed(1)} MB), ${referenced.size} engine references, ${MAP_IDS.length} scenes, ${CREW_LANGUAGES.length} crew packs × ${scriptIds.size} lines passed`);
