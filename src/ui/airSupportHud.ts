@@ -137,10 +137,12 @@ export function createAirSupportHud(parent: HTMLElement, bus: EventBus) {
     const item = node('span', '', hint);
     const cap = node('kbd', 'cot-c-kbd', item);
     cap.textContent = key;
+    // (a zh cap, 左键, is set in the UI face, as the controls card's: settings.ts CJK_CAP)
+    cap.classList.toggle('cjk', /[\u3400-\u9fff]/.test(key));
     node('span', '', item).textContent = label;
     return cap;
   };
-  hintKey(t('airSupport.key.fire'), t('airSupport.hint.call'));
+  hintKey(t('input.mouse.left'), t('airSupport.hint.call'));
   hintKey('1–5', t('airSupport.hint.pick'));
   const lowerKey = hintKey('', t('airSupport.hint.lower'));
   const call = node('button', 'binocular-call cot-c-btn cot-c-btn--primary cot-c-btn--56', binoculars);

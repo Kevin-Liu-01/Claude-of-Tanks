@@ -22,7 +22,9 @@ body[data-cot-battle-layout]:not(.cot-touch-layout):is([data-cot-width='phone'],
    1024 px the slots narrow to 54 px, 4 px apart, so the centred row clears the dial) */
 @media(max-width:1023px){.cot-strike-rack{--strike-rack-half:143px;gap:4px}.strike-slot{width:54px}}
 /* Support's count: the points, in the corner every count of the tray takes, and their fill toward the cap on its floor */
-.strike-support .strike-points{position:absolute;top:2px;right:3px;font:700 var(--battle-fs-fig-11)/1 var(--hud-font);line-height:13px;color:var(--ink-1)}
+/* (gauntlet g6: set a step under the ammo's counts; a count of three figures or more takes the tray's .wide size) */
+.strike-support .strike-points{position:absolute;top:2px;right:3px;font:700 var(--battle-fs-12)/1 var(--hud-font);line-height:13px;color:var(--ink-1)}
+body[data-cot-battle-layout]:not(.cot-touch-layout)[data-hud-tray='stacked'] .strike-support .strike-points{font-size:var(--battle-fs-11)}
 .strike-points-fill{position:absolute;left:0;right:0;bottom:-2px;height:2px;background:var(--mode-air-support);transform-origin:left;transform:scaleX(var(--strike-fill,0))}
 /* a slot: the key, the price, the glyph, the short name, the cooldown shade and its seconds */
 .strike-slot{font:inherit;cursor:pointer;appearance:none;-webkit-tap-highlight-color:transparent;transition:transform var(--dur-instant) ease-out}
@@ -33,7 +35,8 @@ body[data-cot-battle-layout]:not(.cot-touch-layout):is([data-cot-width='phone'],
 .strike-slot .price{position:absolute;top:2px;right:3px;font:700 var(--battle-fs-fig-11)/1 var(--hud-font);line-height:13px;color:var(--ink-2)}
 .strike-slot .glyph{position:absolute;left:50%;top:calc(50% - 3px);display:block;width:26px;height:26px;transform:translate(-50%,-50%);color:var(--ink-1)}
 .strike-slot .glyph svg{display:block;width:100%;height:100%}
-.strike-slot .label{position:absolute;left:2px;right:2px;bottom:2px;font:700 var(--battle-fs-fig-11)/1 var(--font-display);line-height:12px;letter-spacing:0;text-align:center;text-transform:uppercase;white-space:nowrap;color:var(--ink-2)}
+/* (gauntlet g6: a 12 px line set the label 2 px under the tray's type labels, which keep the face's own line) */
+.strike-slot .label{position:absolute;left:2px;right:2px;bottom:2px;font:700 var(--battle-fs-fig-11)/normal var(--font-display);letter-spacing:0;text-align:center;text-transform:uppercase;white-space:nowrap;color:var(--ink-2)}
 .strike-slot .cool{position:absolute;inset:0;pointer-events:none;background:conic-gradient(var(--battle-veil) var(--strike-cool,0%),var(--battle-strike-lens-clear) 0)}
 .strike-slot .left{position:absolute;left:50%;top:calc(50% - 3px);transform:translate(-50%,-50%);font:700 var(--battle-fs-15)/1 var(--font-mono);color:var(--ink-1)}
 .strike-slot .left:empty{display:none}
@@ -85,9 +88,11 @@ body[data-cot-battle-layout]:not(.cot-touch-layout):is([data-cot-width='phone'],
 /* (gauntlet g1 at 900x700: the readout ran over the allies' roster; under 1024 px it keeps its name, place and state) */
 @media(max-width:1023px){.cot-binoculars .binocular-facts{display:none}}
 /* the keys, as the kit's key caps, over the tray */
-.cot-binoculars .binocular-hint{position:absolute;left:50%;width:max-content;bottom:calc(max(16px,env(safe-area-inset-bottom)) + 226px);transform:translateX(-50%);display:flex;align-items:center;gap:18px;padding:6px 12px;white-space:nowrap;background:var(--hud-plate);border-radius:var(--r1);box-shadow:var(--hud-plate-ring);font-size:var(--battle-fs-13);color:var(--ink-2)}
-.binocular-hint>span{display:inline-flex;align-items:center;gap:6px}
-.cot-binoculars .binocular-hint .cot-c-kbd{padding:0 6px}
+/* (gauntlet g6: the controls card's type and caps, settings.ts .cot-hints, which it stands in for) */
+.cot-binoculars .binocular-hint{position:absolute;left:50%;width:max-content;bottom:calc(max(16px,env(safe-area-inset-bottom)) + 226px);transform:translateX(-50%);display:flex;align-items:center;gap:var(--s5);padding:var(--s2) var(--s4);white-space:nowrap;background:var(--hud-plate);border-radius:var(--r1);box-shadow:var(--hud-plate-ring);font:600 var(--battle-fs-12)/1 var(--font-display);letter-spacing:var(--track-label-s);text-transform:uppercase;color:var(--ink-2)}
+.binocular-hint>span{display:inline-flex;align-items:center;gap:var(--s2)}
+.cot-binoculars .binocular-hint .cot-c-kbd{min-width:20px;height:20px;padding:0 var(--s1);box-sizing:border-box;border:0;border-radius:var(--control-radius);background:none;box-shadow:var(--ring-3);font:500 var(--battle-fs-fig-11)/1 var(--font-data);letter-spacing:0;text-transform:none;color:var(--ink-2)}
+.cot-binoculars .binocular-hint .cot-c-kbd.cjk{font:500 var(--battle-fs-12)/1 var(--font-ui)}
 .binocular-hint .cot-c-kbd:empty{display:none}
 .binocular-call,.binocular-close{display:none;pointer-events:auto}
 /* the raise: the lenses close in from the full frame and the frame settles (a cut under reduced motion: --dur-stage
@@ -100,17 +105,17 @@ body[data-cot-battle-layout]:not(.cot-touch-layout):is([data-cot-width='phone'],
 
 /* INCOMING: a strike whose footprint covers the crew (the HUD alert's form: the glyph carries the tone); never above
    the readout's foot, 8 px under it (gauntlet g2 at 1024x600: 18 % laid it over the readout; g4: the readout steps under
-   the sectors' badges, 116 px) */
-.cot-hud .cot-strike-warning{position:absolute;left:50%;width:max-content;top:max(18%,164px);transform:translateX(-50%);display:flex;align-items:center;gap:8px;height:40px;box-sizing:border-box;padding:0 14px 0 12px;white-space:nowrap;background:var(--hud-plate-strong);border:1px solid var(--line-2);border-radius:var(--r1);box-shadow:var(--hud-plate-ring);color:var(--ink-1);font:700 var(--battle-fs-13)/1 var(--font-display);letter-spacing:var(--track-label-s);text-transform:uppercase;pointer-events:none;z-index:var(--z-hud-status)}
+   the sectors' badges, 116 px; g6: 18 % drifted 105 px off it at 2560) */
+.cot-hud .cot-strike-warning{position:absolute;left:50%;width:max-content;top:164px;transform:translateX(-50%);display:flex;align-items:center;gap:8px;height:40px;box-sizing:border-box;padding:0 14px 0 12px;white-space:nowrap;background:var(--hud-plate-strong);border:1px solid var(--line-2);border-radius:var(--r1);box-shadow:var(--hud-plate-ring);color:var(--ink-1);font:700 var(--battle-fs-13)/1 var(--font-display);letter-spacing:var(--track-label-s);text-transform:uppercase;pointer-events:none;z-index:var(--z-hud-status)}
 .cot-strike-warning .glyph{display:block;width:16px;height:16px;color:var(--hud-danger)}
 .cot-strike-warning .glyph svg{display:block;width:100%;height:100%}
 .cot-strike-warning[data-side=own] .glyph{color:var(--accent)}
-.cot-strike-warning .num{min-width:44px;font:700 var(--battle-fs-15)/1 var(--font-mono);letter-spacing:0;text-align:right;color:var(--hud-danger)}
+.cot-strike-warning .num{min-width:44px;font:700 var(--battle-fs-15)/1 var(--font-mono);letter-spacing:0;text-transform:none;text-align:right;color:var(--hud-danger)}
 .cot-strike-warning[data-side=own] .num{color:var(--accent)}
 
 /* (gauntlet g4 at 900x700 and 1024x600: the centre alert's lane is the readout's and the call-ins'; under the binoculars a
    mouse window seats it under INCOMING's place, which mouseNoticePlan.ts cannot see) */
-html[data-cot-strike-view] body[data-cot-battle-layout][data-cot-width][data-cot-height][data-cot-orientation][data-hud-notices]:not(.cot-touch-layout) .cot-alert{top:calc(max(18%,164px) + 48px)}
+html[data-cot-strike-view] body[data-cot-battle-layout][data-cot-width][data-cot-height][data-cot-orientation][data-hud-notices]:not(.cot-touch-layout) .cot-alert{top:212px}
 /* (gauntlet g4: on a phone, close and a refused CALL were outlines on the scene; under the binoculars they stand on the plate) */
 .cot-binoculars :is(.binocular-close,.binocular-call:disabled){background:var(--hud-plate-strong)}
 
@@ -130,12 +135,13 @@ html[data-cot-strike-view] body[data-cot-battle-layout][data-cot-width][data-cot
  .strike-slot .glyph,.strike-slot .left{top:calc(50% + 3px)}
  .strike-slot .glyph{width:20px;height:20px}
  .cot-binoculars .binocular-hint{display:none}
- .binocular-call{display:inline-flex;position:absolute;right:max(18px,env(safe-area-inset-right));bottom:calc(max(10px,env(safe-area-inset-bottom)) + 222px);min-width:112px}
- .binocular-close{display:inline-flex;position:absolute;right:calc(max(18px,env(safe-area-inset-right)) + 120px);bottom:calc(max(10px,env(safe-area-inset-bottom)) + 222px)}
+ .binocular-call{display:inline-flex;position:absolute;right:max(12px,env(safe-area-inset-right));bottom:calc(max(10px,env(safe-area-inset-bottom)) + 222px);min-width:112px}
+ .binocular-close{display:inline-flex;position:absolute;right:calc(max(12px,env(safe-area-inset-right)) + 120px);bottom:calc(max(10px,env(safe-area-inset-bottom)) + 222px)}
  /* (the phone capture: the readout under the mode banner) the readout below the sectors' badges; (u2: a box centred from
     left:50% shrinks to the half it has left, which clipped READY) every centred plate is max-content wide; (g3: centred,
-    its chip ran under close) its right edge 8 px short of close's left; INCOMING 6 px above CALL */
- .cot-binoculars .binocular-readout{top:calc(max(10px,env(safe-area-inset-top)) + 112px);gap:10px;left:auto;right:calc(max(18px,env(safe-area-inset-right)) + 184px);transform:none}
+    its chip ran under close) its right edge 8 px short of close's left; INCOMING 6 px above CALL; (g6) the right column
+    (INCOMING, CALL, the consumables) on one 12 px edge, the readout on CALL's foot */
+ .cot-binoculars .binocular-readout{top:auto;bottom:calc(max(10px,env(safe-area-inset-bottom)) + 222px);gap:10px;left:auto;right:calc(max(12px,env(safe-area-inset-right)) + 184px);transform:none}
  .cot-binoculars .binocular-facts{display:none}
  .cot-hud .cot-strike-warning{left:auto;right:max(12px,env(safe-area-inset-right));transform:none;top:calc(max(10px,env(safe-area-inset-top)) + 46px)}
 }
@@ -143,7 +149,7 @@ html[data-cot-strike-view] body[data-cot-battle-layout][data-cot-width][data-cot
    shows (its 390 px held no more); CALL and close on the centre line over the second FIRE; INCOMING over the row */
 @media(pointer:coarse) and (orientation:portrait){
  .cot-strike-rack{top:calc(var(--hud-systems-top,50%) + 54px)}
- .cot-binoculars .binocular-readout{top:calc(var(--hud-systems-top,50%) + 108px);left:calc(var(--hud-systems-left,50%) - 47px);right:auto;transform:none}
+ .cot-binoculars .binocular-readout{top:calc(var(--hud-systems-top,50%) + 108px);bottom:auto;left:calc(var(--hud-systems-left,50%) - 47px);right:auto;transform:none}
  /* (gauntlet g5: with the glyph, a refusal's chip ran to 5 px of the edge; the lit slot names the call-in) */
  .cot-binoculars :is(.binocular-kind,.binocular-readout>.glyph){display:none}
  .cot-binoculars .binocular-group{border-left:0;padding-left:0}
