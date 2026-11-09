@@ -566,7 +566,7 @@
       }
     ]
   },
-  "geometryHash": "5084318b",
+  "geometryHash": "576cb2af",
   "metadataHash": "04493ef8",
   "presentationAnchor": {
     "xM": 0.0003,
@@ -594,7 +594,7 @@
       "trackPad": 1,
       "trackPadSimplified": 1,
       "armorPaint": 7,
-      "gunmetal": 12,
+      "gunmetal": 13,
       "opticGlass": 2,
       "canvas": 2,
       "hullRubber": 1,
@@ -627,15 +627,15 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 25658,
-      "sha256": "d759068891d2b05edd84cb2c7fd67520e1f5c142594297f66e2c765a45b5618f",
+      "bytes": 25654,
+      "sha256": "7ed1f4c267cec5cd4fa6ad2c4040e46258829ad36042859c3c3ad4d57a820aa9",
       "thumbnail": {
         "file": "thumbs/m2a2_bradley_angle.webp",
         "width": 256,
         "height": 256,
         "mime": "image/webp",
-        "bytes": 10524,
-        "sha256": "e248f11c3ac40f6a79e1b8d842f579d1c127cb7e177ae2446db21472ddc5079d"
+        "bytes": 10512,
+        "sha256": "0e08ebaddf65d7b71d67877672d81a571d6cc4eef4e04b6573034e0ea6457a5a"
       }
     },
     "top": {
@@ -643,8 +643,8 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 18014,
-      "sha256": "28f65104dad0766648cf9ac283b62d0e26948f6a7a224bc99ba49251d72685f1"
+      "bytes": 18010,
+      "sha256": "a5df031ebd682a7d00f688cb650ecdeb34ff65b27cdd5de879987dbe0e0de5f7"
     },
     "side": {
       "file": "m2a2_bradley_side.webp",

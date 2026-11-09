@@ -138,7 +138,7 @@
   "m1a2_abrams_sepv3": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"ffd0edebbafd7694","gun":"0e6ed51a166560a4"}},
   "m1a2_abrams_tusk": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"b8dbac7549b6e15a","gun":"e0262515a0616178"}},
   "m1a3": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"9dc9a86c3654483b","gun":"d73227dbbed426e6"}},
-  "m2a2_bradley": {"status":"gap","kind":"turret","mouths":1,"worstMm":80,"openings":3,"geometry":{"turret":"099074a2a4639036","gun":"9088157140516030"}},
+  "m2a2_bradley": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"099074a2a4639036","gun":"72017d3abf9f5977"}},
   "m3a2_bradley": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"03930b0cccd00f14","gun":"ef3619d7d4ae1d36"}},
   "m3a3_bradley": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"77eb7de7815eb05f","gun":"da33ff0955528fc9"}},
   "m41_bw": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"ecf125d14cbf03bf","gun":"7d595516c72a0757"}},
