@@ -886,7 +886,7 @@
       }
     ]
   },
-  "geometryHash": "0f3671b8",
+  "geometryHash": "a4ca38b3",
   "metadataHash": "12fc7a6e",
   "presentationAnchor": {
     "xM": 0,
@@ -936,7 +936,7 @@
     "designation": 1,
     "verifiedInsignia": 1,
     "verifiedDesignation": 1,
-    "minimumVisibilityRatio": 0.6666667,
+    "minimumVisibilityRatio": 1,
     "codes": ["DE:de-cross:OTCO"]
   },
   "assets": {
@@ -969,8 +969,8 @@
       "width": 512,
       "height": 256,
       "mime": "image/webp",
-      "bytes": 12610,
-      "sha256": "787c4ea33026a203852e4ca9a7fdf00c0859b57d52fe05a95f750369944beb20"
+      "bytes": 12702,
+      "sha256": "336de95e935ed0aa026ea4b2782bbff04d0401121d01c354b3544309f758bf5b"
     },
     "topSilhouette": {
       "file": "leo2a3_top_silhouette.png",
@@ -993,32 +993,32 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 25856,
-      "sha256": "e7eabdbb0d38748016f27edb30c8f6943ef395af8e4afe7405853c31539da7f4"
+      "bytes": 26068,
+      "sha256": "93df1d89e57fa0d5b1e20ebf7c391a1c159deeb6d7888fe500d862c3d9684dcf"
     },
     "modulesSide": {
       "file": "leo2a3_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 27790,
-      "sha256": "553adee196501fc62eaab19d5c2dae28a978eef38a42b9c84c72ef99e60d483e"
+      "bytes": 27960,
+      "sha256": "7d8591cc556508b7cb7cc7b77caadbe3733532d1eadd1487488b98df2fb2a077"
     },
     "crewSide": {
       "file": "leo2a3_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 25888,
-      "sha256": "c12017d62238a0ba97cecf821af8d95332772c03181bb3ba41c6e89bc2d76c38"
+      "bytes": 26062,
+      "sha256": "a3c38c6dd88fbd34507b3a55002bd07e86edc7a9e1dc506805714e1ab1e9ba0e"
     },
     "markings": {
       "file": "leo2a3_markings.png",
       "width": 256,
       "height": 128,
       "mime": "image/png",
-      "bytes": 35012,
-      "sha256": "272d586d1982ba09c1daf5de9876c71973fc73d5b8aa8d646f9e26412ac1c543"
+      "bytes": 31786,
+      "sha256": "b0f49e3e0db803bfd092ef2a82e0070e0c4213e21f54290b85a05e6df0e60ac5"
     },
     "technicalLabels": {
       "file": "leo2a3_technical.json",

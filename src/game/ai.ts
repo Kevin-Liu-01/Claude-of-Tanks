@@ -730,6 +730,8 @@ const PASSIVE_PRESS_FALLBACKS: readonly (readonly [number, number])[] = [
 const PASSIVE_PRESS_BEARINGS = 2 + PASSIVE_PRESS_FALLBACKS.length + 1; // per ring: the two sides, the fallbacks, straight in
 const PASSIVE_PRESS_REPICK_S = 3;
 const PRESS_VETO_SLOTS = 4;                 // press points (and missed-out spots) kept out of the picks at once
+/** (268, Main item 11) A bot with a shot open lays its gun first: its hull turns at most this share of its turret's traverse. */
+const LAY_FIRST_TURN_SHARE = 0.5;
 const PASSIVE_PRESS_LANE_HULL_FRAC = 0.4; // the press point must reach the HULL with the gun, not only the turret top
 const PASSIVE_PRESS_DENIED_S = 6;          // closed penetration gate held at the press point before it is given up
 const PASSIVE_PRESS_ARC_S = 3;             // gun pinned at a pitch stop at the press point before it is given up
@@ -6880,7 +6882,22 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
       input.brake = false;
     }
     aimAndFire(input, dt, timeS);
+    layGunFirst(input);
     controller.state = mode;
+  }
+
+  /**
+   * (268, Main item 11) A bot with a shot open lays its gun first: with its target in sight and range and its gun loaded
+   * but not yet laid, the hull turns no faster than LAY_FIRST_TURN_SHARE of the turret's traverse, so the turret closes on
+   * the target. A hull turning at its own rate took the turret's whole traverse: an M46 swinging onto its route held an open
+   * shot at 104 m for 4 s, 32-36 degrees off. A casemate lays with its hull; a bot escaping, falling back, kiting or
+   * scooting keeps its turn.
+   */
+  function layGunFirst(input: AiInput): void {
+    if (casemate || !target || !losClear || !fireGate.reloadReady || !fireGate.rangeReady || fireGate.aligned) return;
+    if (nowS < scootUntilS || nowS < fallbackUntilS || nowS < kiteUntilS) return;
+    const cap = LAY_FIRST_TURN_SHARE * spec.turretTraverseDegS / Math.max(spec.hullTraverseDegS, 1e-6);
+    if (cap < 1) input.steer = clamp(input.steer, -cap, cap);
   }
 
   // ---- main update ----------------------------------------------------------

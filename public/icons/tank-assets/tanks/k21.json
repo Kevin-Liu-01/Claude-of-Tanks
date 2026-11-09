@@ -567,24 +567,24 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 42970,
-      "sha256": "c1dab6f7e3b51f8e22d322c834ea7a31ca1633b7b96e492b78cc16552d15dd1a"
+      "bytes": 42954,
+      "sha256": "46c2ce7ffdad947747a21cce1891ea43e34e07ffd5de6469e98342b04ad2d8a8"
     },
     "modulesSide": {
       "file": "k21_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 43134,
-      "sha256": "5d8a6b0bff2c76a871fd12f011dbc61be5da317452f2e0daa73b1e3e5a7b306e"
+      "bytes": 43082,
+      "sha256": "6196ad64afca9c5d07a50e94156636cb20e6f3034709013305c60a3513ee3d25"
     },
     "crewSide": {
       "file": "k21_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 38756,
-      "sha256": "79bbd35a23a598cdcd37385f42582f52e574f10c67adfdc9150941930e64ba28"
+      "bytes": 38684,
+      "sha256": "7c17b15ea8c1d7603cf46f608eb5bae91d778a45248fc68c4f1b745011920f52"
     },
     "angle": {
       "file": "k21_angle.webp",
@@ -607,16 +607,16 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 20688,
-      "sha256": "d5cf4b682da4d9165059e3d1970af4592531bdc17af477cda31539c762ddf813"
+      "bytes": 20538,
+      "sha256": "e59323621456948dac6c474a3ae9b767442c608ab8e660da02f9146c68298107"
     },
     "side": {
       "file": "k21_side.webp",
       "width": 512,
       "height": 256,
       "mime": "image/webp",
-      "bytes": 17272,
-      "sha256": "93d09935f306c2d70f8fea087fd1198e507fe51703f2e2ee04b3ce728b508df0"
+      "bytes": 17232,
+      "sha256": "bb57bea004a3dc2d228e7b5259ba811c34fc85a6bcb9d6ca0ac0c6712060e687"
     },
     "topSilhouette": {
       "file": "k21_top_silhouette.png",
@@ -639,8 +639,8 @@
       "width": 256,
       "height": 128,
       "mime": "image/png",
-      "bytes": 37548,
-      "sha256": "cc2f8631e1ec77fa9d2afc63b2f85cd6e6af00bc7d1fae795b55a9f776603612"
+      "bytes": 34254,
+      "sha256": "1badb90617c85c8fe867bf369f02e7b756bd1d4c705de6be462dca0441d4c3cb"
     },
     "technicalLabels": {
       "file": "k21_technical.json",

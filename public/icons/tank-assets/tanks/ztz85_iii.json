@@ -1098,8 +1098,8 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 25740,
-      "sha256": "90bcecbb1015779f9bd4e4c24b2057de11f2a7c53c61b6bbb1de2b3f21fa3ecf",
+      "bytes": 25920,
+      "sha256": "cbf4ce8ab233d24ca9c750cf8f70fe9413af2ff4fdf38eeb8682fc33519adf38",
       "thumbnail": {
         "file": "thumbs/ztz85_iii_angle.webp",
         "width": 256,
@@ -1122,8 +1122,8 @@
       "width": 512,
       "height": 256,
       "mime": "image/webp",
-      "bytes": 8410,
-      "sha256": "41b2512a123696311212336e4b71ef5b6afc4a7db2f2fa96253c64c9ddd64566"
+      "bytes": 8408,
+      "sha256": "bf0d28f89fe9506ffc60e540984b9d32887079ab7e7986dd4ce60ef29c404e65"
     },
     "topSilhouette": {
       "file": "ztz85_iii_top_silhouette.png",
@@ -1146,32 +1146,32 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 19060,
-      "sha256": "0173899b5657e63c8a6e217c0d0c89e2b9b680d5b0ef764ef1e7dc618b796a46"
+      "bytes": 19062,
+      "sha256": "36b82581c2aca3cf213599e60c7d7b4ac5da5a71ee36000f1a09da51ca5695e6"
     },
     "modulesSide": {
       "file": "ztz85_iii_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 18730,
-      "sha256": "8550ead0dec87af643520776d72e395097822211102f8102f42c6531fde2161b"
+      "bytes": 18776,
+      "sha256": "3bca44d2ea6e8587a4ca971a8650a926056dd0e81c1b2a2123678f4e0f370bec"
     },
     "crewSide": {
       "file": "ztz85_iii_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 17330,
-      "sha256": "68249fca8ce0805a9b394628e34d18f1a1ad9241e8cd0d6bb5f42be6c8c8914b"
+      "bytes": 17318,
+      "sha256": "511693dfaee6698b57061da3a59a49d54314dac7ac2a43b0fcd823d093c3daf5"
     },
     "markings": {
       "file": "ztz85_iii_markings.png",
       "width": 256,
       "height": 128,
       "mime": "image/png",
-      "bytes": 35216,
-      "sha256": "108f7f92a15d4610b39a05e78f5558d97545d77cae301374a77c11bfe421d4b7"
+      "bytes": 33621,
+      "sha256": "8ff6c3223c66741d823148f7bb4619be7aec2dec81a85b7aef9fde74d5c28743"
     },
     "technicalLabels": {
       "file": "ztz85_iii_technical.json",

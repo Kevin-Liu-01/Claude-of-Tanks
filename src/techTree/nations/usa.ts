@@ -65,8 +65,11 @@ export const USA_TREE: NationTree = Object.freeze({
     // Special
     // release 270: the T95 superheavy tank destroyer with its fictional 152 mm (owner 2026-11-05), at tier II beside the
     // M60A2 (Main's ruling from the head-on duels: tier II mean 0.31, tier I 0.87 over the band; real armour, no nerf)
-    node({ id: 't95', tier: 2, line: 'special', lane: 1, parents: [], slot: 'special' }),
+    node({ id: 't95', tier: 2, line: 'special', lane: 2, parents: [], slot: 'special' }),
     node({ id: 'm60a2', tier: 2, line: 'special', lane: 0, parents: [], slot: 'special' }),
+    // 269 (the owner, 2026-11-03: "make a USA m113 variant, that plays similar to the ares apc"): the M113A3 at II, the
+    // Ares APC's tier in the UK tree's special lane
+    node({ id: 'm113a3', tier: 2, line: 'special', lane: 1, parents: [], slot: 'special' }),
     node({ id: 'm1a2_abrams_tusk', tier: 9, line: 'special', lane: 0, parents: [], slot: 'special' }),
   ]),
 });

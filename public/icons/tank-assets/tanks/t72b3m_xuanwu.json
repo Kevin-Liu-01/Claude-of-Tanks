@@ -10732,8 +10732,8 @@
       "width": 512,
       "height": 256,
       "mime": "image/webp",
-      "bytes": 9610,
-      "sha256": "86b4704a49c31f8230a0a72c29eea25fc786ba3c86dc6214d1919cfa806d3bf2"
+      "bytes": 9608,
+      "sha256": "ce83d3c3a56722108d334e472011a05ecf18b36ea5b33465e47d3eaf9863ef33"
     },
     "topSilhouette": {
       "file": "t72b3m_xuanwu_top_silhouette.png",
@@ -10756,32 +10756,32 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 24122,
-      "sha256": "5d768775c94d1fe5e2029bebbe9411c0cb6d7d100491ed795feb64d0c3c28610"
+      "bytes": 24180,
+      "sha256": "ec0daf90f66b41ea11e9f4e4e99ec69a535330ec0f5c6264a765775a6fc4192c"
     },
     "modulesSide": {
       "file": "t72b3m_xuanwu_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 21204,
-      "sha256": "4dacd255d8fd4b930195fb3c4be993e18432d9fca9b2c55aed3c41245f37a0b9"
+      "bytes": 21160,
+      "sha256": "e8f1df4b782818db2cc4af225e68316f35deae306a562f527bec0e090a5f1d07"
     },
     "crewSide": {
       "file": "t72b3m_xuanwu_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 18104,
-      "sha256": "7a42daac39cf23539343829db76b89e77da0b2de677ce53a95e2005a6c7b3153"
+      "bytes": 18078,
+      "sha256": "fe37036948b2ace58a3b0cb6d41e8c779ac8ea0eb52e984513a08f6e4c0a8b5a"
     },
     "markings": {
       "file": "t72b3m_xuanwu_markings.png",
       "width": 256,
       "height": 128,
       "mime": "image/png",
-      "bytes": 35990,
-      "sha256": "3bccbcf49491c288258d7bf9b933241771a25e3116e154698618dda830bcf7c9"
+      "bytes": 32483,
+      "sha256": "08d4c6d81e308f86df1651c1414d234e86c6811fe521f14ff2394b1bbd5caf4e"
     },
     "technicalLabels": {
       "file": "t72b3m_xuanwu_technical.json",

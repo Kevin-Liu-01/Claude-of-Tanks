@@ -82,6 +82,8 @@ import { LEOPARD2A3B4_PROFILES } from './profiles/leopard2a3B4.ts';
 import { LEOPARD2A4_FAMILY_PROFILES } from './profiles/leopard2A4Family.ts';
 import { DENMARK_PROFILES } from './profiles/denmark.ts';
 import { BRAZIL_PROFILES } from './profiles/brazil.ts';
+import { SOUTH_AFRICA_PROFILES } from './profiles/southAfrica.ts';
+import { AUSTRALIA_PROFILES } from './profiles/australia.ts';
 import { M41_PROFILES } from './profiles/m41.ts';
 import { T95_PROFILES } from './profiles/t95.ts';
 import { AMX40_X_PROFILES } from './profiles/amx40X.ts';
@@ -170,6 +172,8 @@ export const PROCEDURAL_PROFILES: VehicleProfileRecord = {
   ...LEOPARD2A4_FAMILY_PROFILES,
   ...DENMARK_PROFILES,
   ...BRAZIL_PROFILES,
+  ...SOUTH_AFRICA_PROFILES,
+  ...AUSTRALIA_PROFILES,
   ...M41_PROFILES,
   ...T95_PROFILES,
   ...AMX40_X_PROFILES,

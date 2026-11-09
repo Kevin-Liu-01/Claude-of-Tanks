@@ -6,7 +6,7 @@ import {
   canPaintMaterialBaseInWorker, tryPaintMaterialBase, createMaterialPainterClient, disposeMaterialPainterWorker,
 } from './materialPainterWorkerClient.ts';
 import {
-  createMaterialPainterWorkerHandler, loadMaterialPainterFont, paintMaterialBase,
+  createMaterialPainterWorkerHandler, paintMaterialBase,
 } from './materialPainterWorker.ts';
 
 let cases = 0;
@@ -31,7 +31,7 @@ class FakeWorker {
 function fixture(options = {}, changes = {}) {
   const workers = [], timers = [];
   const ports = {
-    fontUrl: 'https://example.test/fonts/actual.woff2', clone: value => structuredClone(value),
+    clone: value => structuredClone(value),
     createWorker: () => { const worker = new FakeWorker(); workers.push(worker); return worker; },
     schedule: (callback, delay) => {
       const timer = { callback, delay, cancelled: false }; timers.push(timer);
@@ -53,12 +53,12 @@ await test('unsupported Node is synchronous capability false, no eager worker', 
   assert.equal(canPaintMaterialBaseInWorker(), false);
   assert.equal(await tryPaintMaterialBase(request()), null);
 });
-await test('public client malformed base URL chooses fallback without synchronous throw', async () => {
-  const names = ['Worker', 'OffscreenCanvas', 'FontFace', 'Path2D', 'DOMMatrix', 'document'];
+await test('public client whose worker cannot take a message chooses fallback without synchronous throw', async () => {
+  const names = ['Worker', 'OffscreenCanvas', 'Path2D', 'DOMMatrix', 'document'];
   const saved = names.map(name => [name, Object.getOwnPropertyDescriptor(globalThis, name)]);
   try {
     for (const name of names) Object.defineProperty(globalThis, name, { configurable: true, writable: true,
-      value: name === 'document' ? { baseURI: 'not a valid URL' } : class {} });
+      value: name === 'document' ? {} : class {} });
     assert.equal(canPaintMaterialBaseInWorker(), true);
     assert.equal(await tryPaintMaterialBase(request()), null);
   } finally {
@@ -154,50 +154,30 @@ await test('explicit dispose settles every queued promise exactly once', async (
   released(f.workers[0]); assert.equal(await f.client.paint(request()), null);
 });
 
-function fontFixture(mode) {
-  const foreign = {}, members = new Set([foreign]); let loaded = 0;
-  const font = { status: 'unloaded', load: async () => { loaded++; if (mode === 'load') throw Error('font'); font.status = 'loaded'; return font; } };
-  const fonts = { add: f => members.add(f), delete: f => members.delete(f), has: f => members.has(f), check: () => mode !== 'check' };
-  Object.defineProperty(fonts, 'ready', { get: () => { throw Error('Never await set lifecycle'); } });
-  return { font, members, foreign, loaded: () => loaded, ports: {
-    fonts, createFont: () => font, readBytes: async () => new ArrayBuffer(4),
-  } };
-}
-await test('individual font load/check only, successful registration stays worker-owned', async () => {
-  const f = fontFixture(); assert.equal(await loadMaterialPainterFont('font', f.ports), true);
-  assert.equal(f.loaded(), 1); assert.ok(f.members.has(f.font)); assert.ok(f.members.has(f.foreign));
-});
-await test('font load/check failure removes only owned registration', async () => {
-  for (const mode of ['load', 'check']) {
-    const f = fontFixture(mode); assert.equal(await loadMaterialPainterFont('font', f.ports), false);
-    assert.deepEqual([...f.members], [f.foreign]);
-  }
-});
 await test('worker posts complete independently-owned transfer buffers', async () => {
   const messages = [], transfers = [];
-  const handle = createMaterialPainterWorkerHandler({ initialize: async () => true, paint: result,
+  const handle = createMaterialPainterWorkerHandler({ supported: () => true, paint: result,
     post: (reply, transfer) => { transfers.push(transfer.length); messages.push(structuredClone(reply, { transfer })); } });
-  await handle({ requestId: 3, fontUrl: 'font', request: request() });
+  handle({ requestId: 3, request: request() });
   assert.deepEqual(transfers, [3]); assert.equal(messages[0].ok, true);
   assert.ok(isMaterialPainterResult(messages[0].result, request()));
 });
-await test('worker initialization/paint/post failures settle without unhandled rejection', async () => {
-  for (const failure of ['init', 'paint', 'post']) {
+await test('worker support/paint/post failures settle with a failure reply', async () => {
+  for (const failure of ['unsupported', 'paint', 'post']) {
     const messages = []; let posts = 0;
-    const handle = createMaterialPainterWorkerHandler({ initialize: async () => failure !== 'init',
+    const handle = createMaterialPainterWorkerHandler({ supported: () => failure !== 'unsupported',
       paint: value => { if (failure === 'paint') throw Error('paint'); return result(value); },
       post: reply => { if (failure === 'post' && posts++ === 0) throw Error('post'); messages.push(reply); } });
-    await handle({ requestId: 1, fontUrl: 'font', request: request() });
+    handle({ requestId: 1, request: request() });
     assert.deepEqual(messages, [{ requestId: 1, ok: false }]);
   }
 });
-await test('worker rejects overlap and invalid results without publishing arrays', async () => {
-  let release; const pending = new Promise(resolve => { release = resolve; }); const messages = [];
-  const handle = createMaterialPainterWorkerHandler({ initialize: () => pending, paint: () => ({ ...result(request()), features: null }),
+await test('worker rejects invalid results without publishing arrays', async () => {
+  const messages = [];
+  const handle = createMaterialPainterWorkerHandler({ supported: () => true, paint: () => ({ ...result(request()), features: null }),
     post: reply => messages.push(reply) });
-  const first = handle({ requestId: 1, fontUrl: 'font', request: request() });
-  await handle({ requestId: 2, fontUrl: 'font', request: request() }); release(true); await first;
-  assert.deepEqual(messages, [{ requestId: 2, ok: false }, { requestId: 1, ok: false }]);
+  handle({ requestId: 1, request: request() });
+  assert.deepEqual(messages, [{ requestId: 1, ok: false }]);
 });
 await test('actual painter wrapper disposes partial allocations and raster failures', () => {
   for (const failAt of [2, Infinity]) {

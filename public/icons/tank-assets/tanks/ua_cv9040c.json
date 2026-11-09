@@ -1315,16 +1315,16 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 20970,
-      "sha256": "fec7f2685b07d919f79534ede7a461070252f8c3ff0dcfca54787f3be4825609"
+      "bytes": 20958,
+      "sha256": "2f5fcf0c401ec2ea01ed875590080005bd39dae90fa3e7159593480e94bb8591"
     },
     "side": {
       "file": "ua_cv9040c_side.webp",
       "width": 512,
       "height": 256,
       "mime": "image/webp",
-      "bytes": 15222,
-      "sha256": "7ecb90948421a81aea91c780333d259724bb596adc580df5beac4ad69b12ba30"
+      "bytes": 15224,
+      "sha256": "a5229cf93ade161fdf6d1f8b614548e01956754e6685b07f249c602baa6758fd"
     },
     "topSilhouette": {
       "file": "ua_cv9040c_top_silhouette.png",
@@ -1347,32 +1347,32 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 39890,
-      "sha256": "23143c67d9923a08c4dbd5f63badf18991a32b960d4bd408b7195929d7ca92eb"
+      "bytes": 39982,
+      "sha256": "e056f7f22c220016a81de1da3167bfdda701dfe675241bf06b31b0b4450df8af"
     },
     "modulesSide": {
       "file": "ua_cv9040c_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 40476,
-      "sha256": "6a98bd58dac73d2a0baba6d31b977eb2aa2cc7e8cd05292df1a5fb386a85c208"
+      "bytes": 40464,
+      "sha256": "07c57738e74db40d7f0e1547e36030db66317cfdb922547699dc4c532e595ea7"
     },
     "crewSide": {
       "file": "ua_cv9040c_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 35630,
-      "sha256": "f1f7629de41ec6621e21c4fbc3c96fc0501d45456e14b3c81b3967e438abd0bf"
+      "bytes": 35662,
+      "sha256": "9fb405bf530a41bd6c5f8676decb24748cf4246ba63e066bd5c453c1ff23812f"
     },
     "markings": {
       "file": "ua_cv9040c_markings.png",
       "width": 256,
       "height": 128,
       "mime": "image/png",
-      "bytes": 35592,
-      "sha256": "f9c4e3234a78efa5f47e872be30a8c3ac03d421005d095af8c0f10ebaf70f937"
+      "bytes": 33744,
+      "sha256": "78b66f905c63425fcd64f7c5e796e151f0c599ff61483038789cdd488a1a0681"
     },
     "technicalLabels": {
       "file": "ua_cv9040c_technical.json",

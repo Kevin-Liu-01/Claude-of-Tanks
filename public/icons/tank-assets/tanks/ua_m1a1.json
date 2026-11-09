@@ -676,15 +676,15 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 44286,
-      "sha256": "2c9fa6975e40d0c242e9c201194353083b6570f8bd38e23949dcdde0e6bf7da7",
+      "bytes": 44308,
+      "sha256": "3ff1dd0896eb1601225242ab5bb925f4949803d22349a77999efd48f5ceea60e",
       "thumbnail": {
         "file": "thumbs/ua_m1a1_angle.webp",
         "width": 256,
         "height": 256,
         "mime": "image/webp",
-        "bytes": 15188,
-        "sha256": "68ebfe213d8ebcfecacb9ef76b7bd82d8a891d97b5de13e3338d073e2da8f0d3"
+        "bytes": 15182,
+        "sha256": "9bf1e8389594b0b588250042920e621f9d3d024a0f5ef2b1d6b4e7f374050d97"
       }
     },
     "top": {
@@ -748,8 +748,8 @@
       "width": 256,
       "height": 128,
       "mime": "image/png",
-      "bytes": 35317,
-      "sha256": "b4f5f6d2069765bef544cd5f2c74274d37b58dfdcdc2afcef3f5315a12c9b237"
+      "bytes": 33637,
+      "sha256": "4f5a19e5dbdec171eb5f30422c7cecd83c4dc02baea65e8e82cdb8f73d176c60"
     },
     "technicalLabels": {
       "file": "ua_m1a1_technical.json",

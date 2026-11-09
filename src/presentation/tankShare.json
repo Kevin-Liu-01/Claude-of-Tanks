@@ -433,9 +433,29 @@
    "name": "Leopard 2 Prototype",
    "card": null
   },
+  "leopard_as1": {
+   "name": "Leopard AS1",
+   "card": null
+  },
   "lrmv_lynx": {
    "name": "LRMV Lynx",
    "card": "/brand/og-r2/tanks/lrmv_lynx-card.jpg"
+  },
+  "m113a1_fsv": {
+   "name": "M113A1 FSV",
+   "card": null
+  },
+  "m113a1_mrv": {
+   "name": "M113A1 MRV",
+   "card": null
+  },
+  "m113a3": {
+   "name": "M113A3",
+   "card": null
+  },
+  "m113as4": {
+   "name": "M113AS4",
+   "card": null
   },
   "m1a1": {
    "name": "M1A1 Abrams",
@@ -457,6 +477,10 @@
    "name": "M1A1 Abrams SA",
    "card": "/brand/og-r2/tanks/m1a1_abrams_sa-card.jpg"
   },
+  "m1a1_aim_sa_aus": {
+   "name": "M1A1 AIM SA",
+   "card": null
+  },
   "m1a1ha": {
    "name": "M1A1 Abrams HA",
    "card": "/brand/og-r2/tanks/m1a1ha-card.jpg"
@@ -476,6 +500,10 @@
   "m1a2_abrams_tusk": {
    "name": "M1A2 Abrams TUSK",
    "card": "/brand/og-r2/tanks/m1a2_abrams_tusk-card.jpg"
+  },
+  "m1a2_sepv3_aus": {
+   "name": "M1A2 SEPv3 (Aus)",
+   "card": null
   },
   "m1a3": {
    "name": "M1E3 Abrams",
@@ -633,6 +661,18 @@
    "name": "Object 695",
    "card": "/brand/og-r2/tanks/object695-card.jpg"
   },
+  "olifant_mk1": {
+   "name": "Olifant Mk 1",
+   "card": null
+  },
+  "olifant_mk1a": {
+   "name": "Olifant Mk 1A",
+   "card": null
+  },
+  "olifant_mk1b": {
+   "name": "Olifant Mk 1B",
+   "card": null
+  },
   "olifant_mk2": {
    "name": "Olifant Mk 2",
    "card": null
@@ -697,9 +737,17 @@
    "name": "Raijū IFV",
    "card": "/brand/og-r2/tanks/raiju_ifv-card.jpg"
   },
+  "redback": {
+   "name": "AS21 Redback",
+   "card": null
+  },
   "sabra_mk2": {
    "name": "Sabra Mk 2",
    "card": "/brand/og-r2/tanks/sabra_mk2-card.jpg"
+  },
+  "semel": {
+   "name": "Semel",
+   "card": null
   },
   "shot_kal": {
    "name": "Sho't Kal",
@@ -984,6 +1032,10 @@
   "tos1a_tagil": {
    "name": "TOS-1A Tagil",
    "card": "/brand/og-r2/tanks/tos1a_tagil-card.jpg"
+  },
+  "ttd": {
+   "name": "Olifant TTD",
+   "card": null
   },
   "tunguska_m": {
    "name": "2K22M Tunguska-M",

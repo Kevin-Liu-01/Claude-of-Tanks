@@ -655,8 +655,8 @@
       "width": 256,
       "height": 128,
       "mime": "image/png",
-      "bytes": 32401,
-      "sha256": "94510e36f02e20576f13831f72835fc3b2861a95df946f90b3eac955cd9f2cc4"
+      "bytes": 30935,
+      "sha256": "9ffe80adc555cd71180629749a3ef10478aeeb2080ed4037c7e55fca8db4e3b6"
     },
     "technicalLabels": {
       "file": "leopard2_proto_technical.json",

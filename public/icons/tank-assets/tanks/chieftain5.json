@@ -543,24 +543,24 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 19012,
-      "sha256": "b17b52df8b8ec52165fb9baf0903b4b4e3bf6b8019883b53805a23a9ace4859f"
+      "bytes": 19014,
+      "sha256": "982da636f39892bd9d289f76f7f9fd221aa27f4f7d763c7499e275017543790a"
     },
     "modulesSide": {
       "file": "chieftain5_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 18732,
-      "sha256": "d58e67a45b180d067faf555b997a0eb536acbb912c69344980971b0b51a0772f"
+      "bytes": 18694,
+      "sha256": "5a359629b90ae7db762bdd0dc6bfdac07cb9ad760942dcb25243e7f040b50c6c"
     },
     "crewSide": {
       "file": "chieftain5_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 17068,
-      "sha256": "573416484496e9460d0dd9ef99e5d02d10250beafd2a57f79c29432edfd44b5f"
+      "bytes": 17070,
+      "sha256": "f518a7fb1cf8bd9ddea33db7a702d1d9fcda3f90587993a78c86e1e99b6cf275"
     },
     "angle": {
       "file": "chieftain5_angle.webp",
@@ -583,16 +583,16 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 8334,
-      "sha256": "b93269c21d0a868fe018478c4e92bed6d9b99d8e62a1b9930e6a6ea28cf113f1"
+      "bytes": 8332,
+      "sha256": "7d4abc4e78df29c374e53c81a50cccbb9572e98faef48e35a0ff33e778cf4ef8"
     },
     "side": {
       "file": "chieftain5_side.webp",
       "width": 512,
       "height": 256,
       "mime": "image/webp",
-      "bytes": 8454,
-      "sha256": "fb8ad95fff253355a4a464858be6c2b2e702ab51c742b98d1d38854e36a0a74a"
+      "bytes": 8478,
+      "sha256": "3eb02b125cd7ccff6abcc5985af9c7e4a7b2c06498df1c32ba5d0c0dad55d76c"
     },
     "topSilhouette": {
       "file": "chieftain5_top_silhouette.png",
@@ -615,8 +615,8 @@
       "width": 256,
       "height": 128,
       "mime": "image/png",
-      "bytes": 35710,
-      "sha256": "1c6243fce3687bbdbd955b6812b8c8948fe9db2ff5304cba873d7fa57e5693aa"
+      "bytes": 33253,
+      "sha256": "01b45a6217627452b8f1fccecb3868bdea89c751b6752e6596a9836681008bf5"
     },
     "technicalLabels": {
       "file": "chieftain5_technical.json",

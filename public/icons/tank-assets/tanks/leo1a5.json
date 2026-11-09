@@ -905,16 +905,16 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 11250,
-      "sha256": "c7d4e51b6e7e4e1e29d2958eb5e6cc139ea87dcca5f95e5d732817231597b029"
+      "bytes": 11230,
+      "sha256": "f44c4d3041bb3426b88a10332e89ebf5312e8e33f21776db84d1946e6f5a3c0c"
     },
     "side": {
       "file": "leo1a5_side.webp",
       "width": 512,
       "height": 256,
       "mime": "image/webp",
-      "bytes": 11370,
-      "sha256": "999dec3a25bf67ca54045a267b0352c48780e20ef51206015ed7f59a03ffb2a8"
+      "bytes": 11372,
+      "sha256": "cc89695034dcf0753d70e172f698873a4c90a8cf28b911305042c04da7574161"
     },
     "topSilhouette": {
       "file": "leo1a5_top_silhouette.png",
@@ -937,32 +937,32 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 22250,
-      "sha256": "84cb112187dda06427baa594c456afc8443b3435d2ae4ec85495852c4fa26340"
+      "bytes": 22232,
+      "sha256": "8b7a2b7a884f1e472a069ce3b236233b1a9fbd141d9fcec67bd893ed190919b0"
     },
     "modulesSide": {
       "file": "leo1a5_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 25070,
-      "sha256": "0506e7221323d415303cafdb6c44c3a5add563443356a81f52e3f7b01e0ff106"
+      "bytes": 25086,
+      "sha256": "4cf07d0080763ae1a952551f3812689017900ebea931f2361ea0bae6f11f59ec"
     },
     "crewSide": {
       "file": "leo1a5_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 23088,
-      "sha256": "64d7ae6031f9d294c4d9fc2c36e6ff92d7f182fc7361ebe3dfa1b77aa698f8f3"
+      "bytes": 23094,
+      "sha256": "b3a1e8671ab8547e64538714601e84575707e42b962ad392cd9eda031c7d8fb2"
     },
     "markings": {
       "file": "leo1a5_markings.png",
       "width": 256,
       "height": 128,
       "mime": "image/png",
-      "bytes": 33947,
-      "sha256": "6517ac35b90aa6416d926668c05c5efee05a9743d01b10c6bd5f156522fe017d"
+      "bytes": 30964,
+      "sha256": "925d0e98cf2f23fd70f835a95f50ddc729b55d1e13c8bbae82ade262444b2b5f"
     },
     "technicalLabels": {
       "file": "leo1a5_technical.json",

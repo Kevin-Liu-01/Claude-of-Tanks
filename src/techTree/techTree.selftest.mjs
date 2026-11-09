@@ -15,7 +15,7 @@ import { TECH_TREES, childrenOf, nodeForVehicle, rootOf, validateTree, vehiclesO
 const tree = (id) => TECH_TREES.find((entry) => entry.id === id);
 
 // ------------------------------------------------------------------------------------------------ shape and layout
-assert.equal(TECH_TREES.length, 15, 'fifteen national trees'); // 266: Denmark, Brazil
+assert.equal(TECH_TREES.length, 17, 'seventeen national trees'); // 266: Denmark, Brazil; 269: South Africa, Australia
 for (const entry of TECH_TREES) {
   assert.deepEqual(validateTree(entry), [], `${entry.id} breaks a shape rule`);
   assert.deepEqual(layoutProblems(entry), [], `${entry.id} draws a connector badly`);
@@ -231,6 +231,18 @@ const digest = createHash('sha256').update(JSON.stringify(TECH_TREES)).digest('h
 // Bradley line (lane 10, off the M2A2); the T49 one lane down to 11 so that connector runs clear.
 // 268 integration (2026-11-04): both 268 trees together, the twin-cannon air defence's lanes and the M3A2 on the
 // Bradley line; neither moves the other's nodes (Russia/Germany/China vs USA).
-// 270 (the owner 2026-11-05; Main's tier ruling the same day): the T95 with its fictional 152 mm on the US special lane at II. Merged onto 268 (2026-11-08): re-pinned with the 268 trees; the T95 stays on the US special line, lane 1.
-assert.equal(digest, '87f87524bd78724a', `tree content changed: re-pin to ${digest} if deliberate`);
+// 2026-11-02 re-pin (269, Main's ruling on the South Africa tree, head A): the South Africa tree, its root the Olifant Mk 1
+// (II) with the Semel as its twin, the Mk 1A and Mk 1B (III) and the Olifant Mk 2 (III) moved here from the UK tree's
+// special lane; the TTD the special (III by its same-tier duels; IV ruled). The UK tree's nations drop South Africa.
+// 2026-11-02 re-pin (269, Main's ruling on the Australia tree, head B): the Australia tree, its root the Leopard AS1 (I),
+// the M1A1 AIM SA (VIII) and the M1A2 SEPv3 (IX) after it, the Centurion Mk 5/1 (II) moved here from the UK tree's special
+// lane, the M113A1 FSV and MRV (I), the M113AS4 (II, with the Ares APC) and the AS21 Redback (VI). The UK tree's nations
+// drop Australia. 2026-11-03 re-pin (Main's ruling on the M113s' TOW): the M113AS4 from II to III.
+// 269 integration (2026-11-06): 268's trees, the South Africa tree and the Australia tree together; the UK tree's
+// nations drop both.
+// 2026-11-03 re-pin (the owner: "make a USA m113 variant, that plays similar to the ares apc"): the US M113A3 in the US
+// tree's special lane at II.
+// 269 integration (2026-11-06): + the US M113A3 at II in the US special lane.
+// 270 (the owner 2026-11-05; Main's tier ruling the same day): the T95 with its fictional 152 mm on the US special lane at II. Merged onto 269 (2026-11-08): re-pinned with the 268 and 269 trees; the T95 moves to the US special line's lane 2 (the M113A3 holds lane 1 at II).
+assert.equal(digest, 'd321a538ffbb129c', `tree content changed: re-pin to ${digest} if deliberate`);
 console.log(`techTree: ${TECH_TREES.length} trees, ${drawn.length} vehicles, pin ${digest}`);
