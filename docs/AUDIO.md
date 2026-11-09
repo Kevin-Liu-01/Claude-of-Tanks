@@ -770,8 +770,12 @@ sfx-catalog.mjs ──→ generate-sfx.mjs ──→ sfx-qa.mjs (measure) ──
    that names no take, a step that throws, a swap that fails and is rolled
    back) is refused: the shipped files and both records stay as they were and
    the run exits 1. A bank that ships fewer than its `variants` is a warning.
-   The three records are written after every committed asset, so a crashed run
-   leaves them true to the disk.
+   The three records are written after every committed asset, so a run that
+   crashes between assets leaves them true to the disk. A swap that does not
+   finish (a kill inside it, or its undo or the records' write failing) leaves
+   the old take files in its stage's `prev/`: the run throws naming it, and
+   every later run keeps that stage and names it at start until it is deleted
+   (restore the bank from `prev/` or git first if `sfxVerdicts` disagrees).
 
 **Gun reports** (2026-10-02). The owner heard firing as old film or gamey
 blasts, and the files agreed: the cannon reports swelled to their loudest

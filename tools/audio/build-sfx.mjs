@@ -13,7 +13,9 @@
 // Each asset's rebuild is one transaction (tools/audio/sfxBank.mjs, round 8 Y9 s1-11): its candidates master and
 // are judged in .qa-dev/sfx-stage/, and the shipped bank is replaced only when one ships. An asset that ships
 // nothing is refused: its files, manifest entry and verdict of record are kept, and the run exits 1. The three
-// records are written after every committed asset, so a run that crashes or is killed leaves them true to the disk.
+// records are written after every committed asset, so a run that crashes or is killed between assets leaves them
+// true to the disk. A swap that does not finish (a kill inside one asset's swap, or its undo or the records' write
+// failing) leaves the old take files in its stage's prev/: the next run keeps that stage and names it at start.
 
 import { readFileSync, existsSync, writeFileSync, mkdirSync } from 'node:fs';
 import { join, dirname, basename } from 'node:path';
@@ -172,7 +174,10 @@ if (!criticReady() && SFX_CATALOG.some((e) => e.critic && (!ids || ids.includes(
   process.exit(1);
 }
 const report = {};
-for (const name of sweepStages(STAGE)) console.warn(`removed a killed run's stage .qa-dev/sfx-stage/${name}`);
+const stages = sweepStages(STAGE);
+for (const name of stages.removed) console.warn(`removed a killed run's stage .qa-dev/sfx-stage/${name}`);
+for (const name of stages.kept) console.warn(`kept .qa-dev/sfx-stage/${name}: a swap that did not finish left the old take files in its prev/. `
+  + 'If the bank and its records disagree (node src/audio/sfxVerdicts.selftest.mjs), move them back or git checkout the bank; then delete the stage.');
 
 for (const entry of SFX_CATALOG) {
   if (ids && !ids.includes(entry.id)) continue;

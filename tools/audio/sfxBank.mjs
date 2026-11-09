@@ -16,7 +16,10 @@
 //
 // The stage is outside public/ (a killed run never leaves a stray file to publish) and on the repository's volume (the
 // swap is renames). The critic matches verdicts by the exact path it was given, and a file's SHA-256 survives the
-// rename, so judging in the stage is judging the shipped bytes.
+// rename, so judging in the stage is judging the shipped bytes. The one window this does not close is the swap itself:
+// a kill inside it, or an undo or a persist that fails, leaves the old take files in the stage's prev/ and the bank or
+// its records part way. The run throws naming prev/ (or is gone), and sweepStages keeps any such stage, which
+// build-sfx names at every start until the operator restores the bank (it is git-tracked) and deletes the stage.
 
 import { existsSync, mkdirSync, readdirSync, readFileSync, renameSync, rmSync } from 'node:fs';
 import { basename, join } from 'node:path';
@@ -39,21 +42,29 @@ export function bankMove(from, to) {
   return to;
 }
 
-/** Remove the stages a killed run left (`<id>-<pid>` of a pid that is gone): returns their names. */
+/**
+ * Sweep the stages a killed run left (`<id>-<pid>` of a pid that is gone). A stage whose prev/ still holds files is a
+ * swap that did not finish (a kill inside it, or an undo or persist that failed): its prev/ may hold the old bank's only
+ * copy, so it is kept for the operator, never removed. Returns { removed, kept }: stage names.
+ */
 export function sweepStages(stageRoot) {
   let names;
-  try { names = readdirSync(stageRoot); } catch { return []; }
+  try { names = readdirSync(stageRoot); } catch { return { removed: [], kept: [] }; }
   const removed = [];
+  const kept = [];
   for (const name of names) {
     const pid = Number(/-(\d+)$/.exec(name)?.[1]);
     if (!pid) continue;
     let live = pid === process.pid;
     if (!live) try { process.kill(pid, 0); live = true; } catch (error) { live = error.code === 'EPERM'; }
     if (live) continue;
+    let held = [];
+    try { held = readdirSync(join(stageRoot, name, 'prev')); } catch { /* no swap began */ }
+    if (held.length) { kept.push(name); continue; }
     rmSync(join(stageRoot, name), { recursive: true, force: true });
     removed.push(name);
   }
-  return removed;
+  return { removed, kept };
 }
 
 /**
@@ -121,7 +132,8 @@ export function commitBank({ entry, dir, candidates, want, floor = null, master,
         for (const name of moved) rename(join(prev, name), join(dir, name));
       } catch (undo) {
         keepStage = true;
-        throw new Error(`${id}: the swap failed (${error.message}) and so did its undo (${undo.message}); the old files are in ${prev}`);
+        throw new Error(`${id}: the swap failed (${error.message}) and so did its undo (${undo.message}); the old files are in ${prev} `
+          + '(the next build-sfx run keeps this stage and names it until you delete it)');
       }
       return refuse(`the swap failed and was rolled back: ${error.message}`);
     }
@@ -141,7 +153,14 @@ export function commitBank({ entry, dir, candidates, want, floor = null, master,
       kb: Math.round(files.reduce((a, f) => a + f.bytes, 0) / 1024),
     };
     state = bankMove(state, 'replaced');
-    persist();
+    try {
+      persist();
+    } catch (error) {
+      // the new bank is in, but the records on disk may still describe the old one: keep the old files for the operator
+      keepStage = true;
+      throw new Error(`${id}: the bank was swapped in but its records were not written (${error.message}); the old files are in ${prev} `
+        + '(the next build-sfx run keeps this stage and names it until you delete it)');
+    }
     // Fewer variants rather than a click or a refused take is policy (gun-reports-269), said out loud.
     if (files.length < want) log.warn(`${id}: ships ${files.length} of ${want} variants`);
     return { outcome: state, files };

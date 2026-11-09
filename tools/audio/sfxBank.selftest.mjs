@@ -4,8 +4,9 @@
 // critic that threw left the bank deleted, its manifest entry and verdict of record gone, and the records of the assets
 // committed before it written over files they no longer described. Now tools/audio/sfxBank.mjs commitBank stages and
 // judges every candidate outside public/, swaps the bank in only when one ships, and otherwise refuses: the files,
-// manifest[id] and the verdict of record stay as they were. Driven here on the real commitBank in a temp directory with
-// an injected master and judge (no ffmpeg, no ear proxy).
+// manifest[id] and the verdict of record stay as they were. A swap that does not finish (its undo or the records' write fails)
+// leaves the old files in the stage's prev/, which the next run's sweep keeps and names (review r1). Driven here on the
+// real commitBank and sweepStages in a temp directory with an injected master, judge and rename (no ffmpeg, no ear proxy).
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, renameSync, rmSync, writeFileSync } from 'node:fs';
@@ -113,7 +114,8 @@ const run = (seeded, opts) => {
   const t = tools({ pass: [0, 2] });
   let persisted = null;
   warnings = [];
-  const result = run(seeded, { candidates: RAW, master: t.master, judge: t.judge, persist: () => { persisted = listing().map((name) => [name, read(name)]); } });
+  const persist = () => { persisted = { files: listing().map((name) => [name, read(name)]), records: structuredClone(seeded.records) }; };
+  const result = run(seeded, { candidates: RAW, master: t.master, judge: t.judge, persist });
   assert.equal(result.outcome, 'replaced', 'two of four candidates pass: replaced');
   assert.deepEqual(listing(), ['gun_x_0.webm', 'gun_x_1.webm', 'gun_x_far_0.webm'], 'the stale index 2 is removed; the neighbour stays');
   assert.deepEqual([read('gun_x_0.webm'), read('gun_x_1.webm'), read('gun_x_far_0.webm')], ['new-0', 'new-2', 'neighbour'], 'index = shipped order');
@@ -124,7 +126,11 @@ const run = (seeded, opts) => {
   assert.deepEqual(verdicts.gun_x.variants.map((v) => v.sha256), [sha('new-0'), sha('new-2')], 'each verdict binds the shipped bytes');
   assert.deepEqual(verdicts.gun_x.variants.map((v) => v.source), ['raw0.pcm', 'raw2.pcm']);
   assert.ok(persisted, 'the records are persisted after the commit');
-  assert.deepEqual(persisted.map(([name]) => name), listing(), 'persist runs once the bank is swapped in');
+  assert.deepEqual(persisted.files.map(([name]) => name), listing(), 'persist runs once the bank is swapped in');
+  // what persist writes (build-sfx writeRecords) is the new bank's records, never the old n, d or sha256 (review r1)
+  assert.equal(persisted.records.manifest.gun_x.n, 2, 'at persist time manifest[id] already describes the new bank');
+  assert.deepEqual(persisted.records.verdicts.gun_x.variants.map((v) => v.sha256), [sha('new-0'), sha('new-2')],
+    'at persist time the verdict of record already binds the new bytes');
   assert.ok(warnings.some((line) => /gun_x: ships 2 of 3 variants/.test(line)), 'fewer variants than wanted is a warning');
   assert.deepEqual(staged(), [], 'the stage directory is removed');
 }
@@ -164,6 +170,53 @@ const run = (seeded, opts) => {
   assert.match(result.reason, /rolled back.*EIO/, 'the refusal says it rolled back');
 }
 
+/** The stage a run of this process left, renamed as a killed run's (a pid that is gone), and what its prev/ holds. */
+const asKilled = (id) => {
+  const dead = join(stageRoot, `${id}-999998`);
+  const own = join(stageRoot, `${id}-${process.pid}`);
+  assert.ok(existsSync(join(own, 'prev')), 'the run keeps its stage, prev/ included');
+  renameSync(own, dead);
+  return { dead, prev: () => readdirSync(join(dead, 'prev')).sort() };
+};
+
+// 7b. the swap fails and so does its undo (review r1): the old files' only copy is the stage's prev/, so the throw names
+// it, the stage stays, and the next run's sweep keeps and names it instead of deleting it
+{
+  const seeded = seed();
+  const t = tools({ pass: [0, 1, 2, 3] });
+  let calls = 0;
+  const broken = (from, to) => {
+    if (from.startsWith(stageRoot) && to.startsWith(dir) && !from.includes('/prev/') && ++calls === 2) throw new Error('EIO on the second file');
+    if (from.includes('/prev/')) throw new Error('EIO on the undo');
+    renameSync(from, to);
+  };
+  const result = run(seeded, { candidates: RAW, master: t.master, judge: t.judge, rename: broken });
+  assert.equal(result.outcome, 'threw', 'a swap whose undo fails cannot be refused cleanly: it throws');
+  assert.match(result.error.message, /the old files are in .*gun_x-\d+\/prev.*the next build-sfx run keeps/, 'the throw names prev/ and says it is kept');
+  assert.deepEqual(seeded.records, seeded.before, 'the records are not replaced');
+  const stage = asKilled('gun_x');
+  assert.deepEqual(stage.prev(), ['gun_x_0.webm', 'gun_x_1.webm', 'gun_x_2.webm'], 'the old bank sits in prev/');
+  assert.deepEqual(bank.sweepStages(stageRoot), { removed: [], kept: ['gun_x-999998'] }, 'the next run keeps the stage and names it');
+  assert.deepEqual(stage.prev(), ['gun_x_0.webm', 'gun_x_1.webm', 'gun_x_2.webm'], 'and its old files');
+  assert.equal(readFileSync(join(stage.dead, 'prev', 'gun_x_1.webm'), 'utf8'), 'old-1');
+  rmSync(stage.dead, { recursive: true });
+}
+
+// 7c. persist throws after the swap (a full disk writing the records): the new bank is in, the throw names the stage
+// whose prev/ holds the old files, and the stage stays for the sweep to keep and name
+{
+  const seeded = seed();
+  const t = tools({ pass: [0, 1, 2, 3] });
+  const result = run(seeded, { candidates: RAW, master: t.master, judge: t.judge, persist: () => { throw new Error('ENOSPC writing the records'); } });
+  assert.equal(result.outcome, 'threw', 'a failed persist throws');
+  assert.match(result.error.message, /ENOSPC.*the old files are in .*gun_x-\d+\/prev.*the next build-sfx run keeps/, 'it names the stage it keeps');
+  assert.deepEqual(['gun_x_0.webm', 'gun_x_1.webm', 'gun_x_2.webm'].map(read), ['new-0', 'new-1', 'new-2'], 'the new bank is in place');
+  const stage = asKilled('gun_x');
+  assert.deepEqual(bank.sweepStages(stageRoot), { removed: [], kept: ['gun_x-999998'] }, 'kept, never deleted');
+  assert.deepEqual(stage.prev().map((name) => readFileSync(join(stage.dead, 'prev', name), 'utf8')), ['old-0', 'old-1', 'old-2'], 'the old bank is in prev/');
+  rmSync(stage.dead, { recursive: true });
+}
+
 // 8. removeBank: an asset dropped from the catalog leaves the disk and both records; the neighbour stays
 {
   const seeded = seed();
@@ -184,11 +237,12 @@ for (const [from, to] of [['staging', 'replaced'], ['replaced', 'staging'], ['re
   assert.throws(() => bank.bankMove(from, to), /no move/, `${from} -> ${to} is refused`);
 }
 
-// 10. a killed run's stage is swept by the next run; a live run's is not
+// 10. a killed run's stage is swept by the next run (an empty prev/ too: no swap left files there); a live run's is not
 {
   mkdirSync(join(stageRoot, 'gun_q-999999'), { recursive: true });
+  mkdirSync(join(stageRoot, 'gun_r-999997', 'prev'), { recursive: true });
   mkdirSync(join(stageRoot, `gun_q-${process.pid}`), { recursive: true });
-  assert.deepEqual(bank.sweepStages(stageRoot), ['gun_q-999999'], 'the dead pid\'s stage goes');
+  assert.deepEqual(bank.sweepStages(stageRoot), { removed: ['gun_q-999999', 'gun_r-999997'], kept: [] }, 'the dead pids\' stages go');
   assert.deepEqual(staged(), [`gun_q-${process.pid}`], 'a live pid\'s stage stays');
   rmSync(join(stageRoot, `gun_q-${process.pid}`), { recursive: true });
 }
@@ -202,6 +256,8 @@ for (const [from, to] of [['staging', 'replaced'], ['replaced', 'staging'], ['re
   assert.match(source, /commitBank\(\{[\s\S]*?persist: writeRecords[\s\S]*?\}\)/, 'build-sfx.mjs persists the three records after each committed asset');
   assert.match(source, /stageRoot: STAGE/, 'build-sfx.mjs stages candidates');
   assert.match(source, /const STAGE = join\(ROOT, '\.qa-dev', 'sfx-stage'\)/, 'the stage is the ignored .qa-dev/sfx-stage, on the repo\'s volume, outside public/');
+  assert.match(source, /= sweepStages\(STAGE\);/, 'build-sfx.mjs sweeps killed runs\' stages at start');
+  assert.match(source, /for \(const name of stages\.kept\) console\.warn\(/, 'and names every stage it keeps');
 }
 
-console.log('sfxBank.selftest: a refused, thrown or empty rebuild keeps the shipped bank and its records; a commit stages, swaps, drops stale indices and persists; moves declared');
+console.log('sfxBank.selftest: a refused, thrown or empty rebuild keeps the shipped bank and its records; a commit stages, swaps, drops stale indices and persists the new records; the stage of an unfinished swap is kept and named; moves declared');
