@@ -1,6 +1,7 @@
 import type { RuntimeValue } from '../../runtimeTypes.ts';
 import { assertAppPhaseTransition, transitionAppPhase, type AppPhase } from '../../game/appLifecycle.ts';
 import { resetWorldForBattle, type BattleResetWorld } from '../../world/battleWorldReset.ts';
+import { endCouchSession, type CouchSessionHost } from '../../game/couchSeats.ts';
 interface NetworkPlayerSelection {
   id: string;
   specId: string;
@@ -14,7 +15,7 @@ interface NetworkBattleEntity {
   state?: { yaw?: number } | null;
 }
 
-interface NetworkBattleGame {
+interface NetworkBattleGame extends CouchSessionHost<unknown> {
   mapId?: string;
   phase?: AppPhase;
   player?: NetworkBattleEntity | null;
@@ -149,6 +150,9 @@ export function createActivationRuntime({
       // 2) The round decided its hand-over before its cover (browserComposition: the room's takeSceneForRound, main.ts),
       // so this is the last guard, for a Studio entered under the round's cover by a tool's hook (Window.__STUDIO.load).
       assertAppPhaseTransition(game as { phase: AppPhase }, 'battle', 'network-activation');
+      // (round 8 Y1 s2-01) a room's round is no couch battle: a couch session still open (a round taken straight from a
+      // couch battle's result screen) ends here, so the keyboard drives this round's own vehicle (game/couchSeats.ts)
+      endCouchSession(game);
       const hud = getHud();
       const damagePanel = getDamagePanel();
       if (typeof hud?.shotInfo?.setPlayer !== 'function'

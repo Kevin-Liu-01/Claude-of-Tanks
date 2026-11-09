@@ -1,5 +1,5 @@
 import type { RuntimeValue } from '../runtimeTypes.ts';
-import type { EventBus } from './stateCore.ts';
+import { couchSeatsActive, type EventBus } from './stateCore.ts';
 import type { BattleClientAccess } from './battleClientAccess.ts';
 import type { ActionId } from './input.ts';
 import {
@@ -68,8 +68,9 @@ interface BattleActionGame<TEntity extends BattleActionEntity> {
   timeS: number;
   player: TEntity | null;
   /** The ruleset in force (sim/matchRuleset.ts); Turbo Ball switches consumables off. */
-  ruleset?: { consumables: boolean; ammo?: string; aerial?: string | null } | null;
-  /** A couch battle (game/couchSeats.ts): phones drive every seat through the input stage, the page's keys no tank. */
+  ruleset?: { consumables: boolean; ammo?: string; aerial?: string | null; couch?: object | null } | null;
+  /** A couch battle (game/couchSeats.ts): phones drive every seat through the input stage, the page's keys no tank, while
+   *  that battle runs (stateCore.ts couchSeatsActive). */
   couch?: object | null;
 }
 
@@ -153,10 +154,10 @@ export function createPlayerBattleActions<TEntity extends BattleActionEntity>({
   const requestedShellSlot = (player: { combat: ActionCombat; input?: { shellSlot?: number } | null }): number =>
     player.input?.shellSlot ?? player.combat.shellSlot;
   const battleInputAllowed = (): boolean =>
-    game.phase === 'battle' && !game.couch && !isSettingsOpen();
+    game.phase === 'battle' && !couchSeatsActive(game) && !isSettingsOpen();
   const livePlayer = (): (TEntity & { combat: ActionCombat }) | null => {
     // a couch battle's player is seat 1's tank: its phone acts for it, never a key or a HUD button on the shared screen
-    if (game.couch) return null;
+    if (couchSeatsActive(game)) return null;
     const player = game.player;
     return hasLiveCombat(player) ? player : null;
   };

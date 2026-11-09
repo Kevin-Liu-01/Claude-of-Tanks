@@ -30,6 +30,54 @@ export interface CouchSession<T> {
   seats: CouchSeatAssignment<T>[];
 }
 
+/** Where the session lives (the page's game state): written only by beginCouchSession and endCouchSession below. */
+export interface CouchSessionHost<T> {
+  couch?: CouchSession<T> | null;
+}
+
+/** A tank a seat's name is written over (its HUD and battle labels read displayName). */
+interface CouchNamedHull {
+  displayName?: string | null;
+}
+
+/** The tanks the host's live session named after their seats (they get their own names back when it ends). */
+const namedHulls = new WeakMap<object, Set<CouchNamedHull>>();
+
+/**
+ * The couch session's one owner (round 8 Y1 s2-01). States: none (game.couch null) -> seated (this call, from setupBattle
+ * with the lobby's phones) -> none (endCouchSession). A session belongs to its battle: setupBattle ends the last one
+ * before it seats the next, the Garage return's clearMatchSession ends it, and a network round's activation ends it, so
+ * no other kind of battle runs under a stale session (one kept the keyboard and every action off a network round). Each
+ * seat's tank wears its seat's name (`battle.names`, seat order) while the session lasts. Readers ask stateCore.ts
+ * couchSeatsActive, never game.couch alone.
+ */
+export function beginCouchSession<T extends object>(host: CouchSessionHost<T>, battle: CouchBattle, tanks: readonly T[],
+  allies: ReadonlySet<T>, sides: readonly boolean[]): CouchSession<T> {
+  endCouchSession(host);
+  const session: CouchSession<T> = { sides: battle.sides, seats: assignCouchSeats(tanks, allies, battle.seats, sides) };
+  const ordered = [...battle.seats].sort((a, b) => a - b);
+  const named = new Set<CouchNamedHull>();
+  for (const { seat, entity } of session.seats) {
+    const name = battle.names?.[ordered.indexOf(seat)];
+    if (!name) continue;
+    (entity as CouchNamedHull).displayName = name;
+    named.add(entity as CouchNamedHull);
+  }
+  if (named.size) namedHulls.set(host, named);
+  host.couch = session;
+  return session;
+}
+
+/** End the host's couch session, if any (seated -> none): its tanks have their own names back. Idempotent. */
+export function endCouchSession(host: CouchSessionHost<unknown>): void {
+  const named = namedHulls.get(host);
+  if (named) {
+    for (const hull of named) hull.displayName = null;
+    namedHulls.delete(host);
+  }
+  host.couch = null;
+}
+
 /**
  * Seat the phones on the roster. `seats` are the lobby's seat numbers in play, `sides` each one's side (true: the first
  * tank's side, sim/matchRuleset.ts couchSeatSides), `allies` the tanks on the first tank's side.

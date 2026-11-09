@@ -173,7 +173,7 @@ import {
 import {
   createSoloConsumables, soloApsIntercepts, soloGuidanceJammed, 
 } from './soloConsumables.ts';
-import { assignCouchSeats, type CouchBattle, type CouchSession } from './couchSeats.ts';
+import { beginCouchSession, endCouchSession, type CouchBattle, type CouchSession } from './couchSeats.ts';
 import { FRAME_STAGE, frameStages } from './stateCore.ts';
 import {
   soloBotCamo,
@@ -498,9 +498,6 @@ interface SoloWorld {
   ): boolean;
 }
 
-/** The tanks a couch battle named after their seats (setupBattle gives them their own names back next battle). */
-const couchNamed = new Set<SoloEntity>();
-
 interface SetupBattleOptions {
   random?: boolean;
   gameMode?: GameModeId | string | null;
@@ -765,7 +762,8 @@ function resetBattleSession(game: SoloGameState, options: SetupBattleOptions): v
   if (options.watch) game.ruleset = watchRulesetFor(game.ruleset);
   else if (options.couch) game.ruleset = couchRulesetFor(game.ruleset);
   game.watch = null;
-  game.couch = null;
+  // the last battle's couch session ends here if nothing ended it before (game/couchSeats.ts, its one owner)
+  endCouchSession(game);
   game.matchModeState = null;
   game.matchModeController = null;
   game.modeEvents.length = 0;
@@ -992,7 +990,8 @@ function spawnBattleEntities(context: BattleSpawnContext): void {
     const spawn: SpawnPoint = { pos: [safe.x, context.world.heightField.getHeightAt(safe.x, safe.z), safe.z], yaw: safe.yaw };
     initializeBattleEntity(context, entity, spawn, isPlayer, isAlly);
     if (!isPlayer && context.provingLayout) seatProvingTarget(context, entity, spawn);
-    // a couch seat (docs/COUCH-MODE.md): a phone drives this tank through the player input stage, no bot
+    // a couch seat (docs/COUCH-MODE.md): a phone drives this tank through the player input stage, no bot. The session's
+    // own read, not couchSeatsActive: this setup began it a moment ago, and the phase is still the Garage's
     else if (!isPlayer && game.couch?.seats.some((seat) => seat.entity === entity)) { entity.aiCtl = null; entity.ai = null; }
     else if (!isPlayer) createBattleBot(context, entity, index, spawn);
     else if (game.ruleset.watch) {
@@ -1245,20 +1244,10 @@ export function setupBattle(
     world.getConcealment?.() || [],
   );
 
-  // couch mode: the phones take tanks of this roster, side by side as the lobby asked (game/couchSeats.ts); each seat's
-  // tank wears its seat's name, and a tank that wore one last battle goes back to its own
-  for (const entity of couchNamed) (entity as { displayName?: string | null }).displayName = null;
-  couchNamed.clear();
+  // couch mode: the phones take tanks of this roster, side by side as the lobby asked; each seat's tank wears its seat's
+  // name while the session lasts (game/couchSeats.ts beginCouchSession, the session's one owner, which ends the last one)
   if (game.ruleset.couch && opts.couch) {
-    const sides = couchSeatSides(game.gameMode, opts.couch.sides, opts.couch.seats.length);
-    game.couch = { sides: opts.couch.sides, seats: assignCouchSeats(game.tanks, allySet, opts.couch.seats, sides) };
-    const ordered = [...opts.couch.seats].sort((a, b) => a - b);
-    for (const { seat, entity } of game.couch.seats) {
-      const name = opts.couch.names?.[ordered.indexOf(seat)];
-      if (!name) continue;
-      (entity as { displayName?: string | null }).displayName = name;
-      couchNamed.add(entity);
-    }
+    beginCouchSession(game, opts.couch, game.tanks, allySet, couchSeatSides(game.gameMode, opts.couch.sides, opts.couch.seats.length));
   }
   const spawnContext: BattleSpawnContext = {
     game,
