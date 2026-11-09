@@ -2933,7 +2933,7 @@ export function createAudio({
   /** Every frame of a battle: the strikes' clock, their aircraft, and a footprint our hull drives into. */
   function updateAir(dt: number): void {
     if (!airStrikes.size || !mixer || !library) return;
-    if (!paused) airClock += dt;
+    if (!battleMode.paused) airClock += dt;
     for (const [id, heard] of airStrikes) {
       const strike = heard.strike;
       const t = strikeNow(heard);
@@ -3099,8 +3099,6 @@ export function createAudio({
     thoughtThisBattle = false;
     firstShotHeard = false;
     lastSpots = [];
-    lastSpotCallAt = -99;
-    lastSixthSenseAt = -99;
     lastSixthAlertAt = -99;
     heartbeatBelow = 0;
     wasOverturned = false;
