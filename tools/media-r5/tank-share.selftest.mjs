@@ -58,6 +58,20 @@ const tableOf = (records, cardFrame = CARD_FRAME) => share.tankShareTable({ root
   assert.deepEqual(share.staleCards({ root: fixture, records: { [id]: { source: 'still' } }, cardFrame: framed }),
     [{ id, due: 'source', want: { source: 'film', frame: 2.25 } }], 'the stale card is listed with its reason');
   assert.deepEqual(share.staleCards({ root: fixture, records: { [id]: { source: 'still' } } }), [], 'a published card is not');
+  // --check (checkShare) fails while a card on disk is stale, though a table write already took it out of the table;
+  // it passes once the card is rendered and the table written (review r1: it compared only the table text)
+  const tableFile = join(fixture, 'src/presentation/tankShare.json');
+  mkdirSync(dirname(tableFile), { recursive: true });
+  const writeTable = (records, cardFrame) => writeFileSync(tableFile, `${JSON.stringify(share.tankShareTable({ root: fixture, records, cardFrame }), null, 1)}\n`);
+  const check = (records, cardFrame) => {
+    const out = share.checkShare({ root: fixture, records, cardFrame });
+    return [out.current, out.stale.map((card) => card.id), out.code];
+  };
+  writeTable({ [id]: { source: 'still' } }, framed);
+  assert.deepEqual(check({ [id]: { source: 'still' } }, framed), [true, [id], 1], 'a CARD_FRAME edit fails --check until the card is rendered, table rewritten or not');
+  assert.deepEqual(check({ [id]: { source: 'still' } }, CARD_FRAME), [false, [], 1], 'a stale table fails --check');
+  writeTable({ [id]: { source: 'film', frame: 2.25 } }, framed);
+  assert.deepEqual(check({ [id]: { source: 'film', frame: 2.25 } }, framed), [true, [], 0], 'rendered from its film, the table written: --check passes');
 }
 
 // The renderer (renderDue with an injected render, frame grab and still reader: no browser, ffmpeg or master filter)
@@ -72,10 +86,10 @@ const tableOf = (records, cardFrame = CARD_FRAME) => share.tankShareTable({ root
   const frames = join(fixture, 'frames');
   mkdirSync(frames, { recursive: true });
   const cards = dirname(cardFile);
-  const run = async ({ records, cardFrame = framed, luma = 0.5, grab = true, force = false }) => {
+  const run = async ({ records, cardFrame = framed, luma = 0.5, grab = true, force = false, stills = { [id]: still } }) => {
     const lines = [], rendered = [], saved = [];
     const result = await share.renderDue({
-      stills: { [id]: still }, root: fixture, records, cardFrame, schema, force, frameDir: frames, log: (line) => lines.push(line),
+      stills, root: fixture, records, cardFrame, schema, force, frameDir: frames, log: (line) => lines.push(line),
       readSource: async (source) => ({ luma, tl: 1, tr: 0, source }),
       frameAt: (from, seconds, out) => { assert.equal(from, film, 'the frame comes from the take\'s film'); if (grab) writeFileSync(out, `frame-${seconds}`); },
       render: async (tank, source) => { rendered.push(readFileSync(source, 'utf8')); return Buffer.from(`card-from-${readFileSync(source, 'utf8')}`); },
@@ -117,6 +131,23 @@ const tableOf = (records, cardFrame = CARD_FRAME) => share.tankShareTable({ root
   assert.deepEqual(darkKept.rendered, [], 'a re-delivered still too dark to use');
   assert.ok(darkKept.lines.some((line) => line.includes('kept the older card, from the source wanted')), darkKept.lines.join(' | '));
   assert.equal(tableOf({ [id]: { source: 'still', digest: '0000000000000000' } }), `/brand/og-r2/tanks/${id}-card.jpg`, 'still published');
+  // a source that cannot be used leaves a published card published, said apart from the tanks with no card (review r1)
+  const keptLine = (out) => out.lines.find((line) => line.startsWith('kept published, its source unusable ('));
+  assert.ok(keptLine(darkKept)?.includes(`${id}: source too dark`), darkKept.lines.join(' | '));
+  const sourceless = await run({ records: { [id]: { source: 'still' } }, cardFrame: CARD_FRAME, stills: { [id]: join(take, 'no-such-still.png') } });
+  assert.deepEqual(sourceless.rendered, []);
+  assert.ok(keptLine(sourceless)?.includes(`${id}: no still`), `a published card whose still is not delivered is kept, not "no card": ${sourceless.lines.join(' | ')}`);
+  assert.ok(!sourceless.lines.some((line) => line.startsWith('no card:')), 'a published card is never listed under "no card"');
+  const staleSourceless = await run({ records: { [id]: { source: 'still' } }, stills: { [id]: join(take, 'no-such-still.png') } });
+  assert.ok(staleSourceless.lines.includes(`no card: ${id}: no still`), `a stale card with no still has no card: ${staleSourceless.lines.join(' | ')}`);
+  // a recorded card whose file is gone (deleting a card was the old way to render it again): rendered, said, recorded
+  rmSync(cardFile);
+  const gone = { [id]: { source: 'still' } };
+  const missing = await run({ records: gone, cardFrame: CARD_FRAME });
+  assert.deepEqual(missing.rendered, ['still-bytes'], 'a recorded card with no file is rendered again from its still');
+  assert.equal(readFileSync(cardFile, 'utf8'), 'card-from-still-bytes');
+  assert.ok(missing.lines.some((line) => line.includes(`wrote brand/og-r2/tanks/${id}-card.jpg from its still (no card yet`)), missing.lines.join(' | '));
+  assert.deepEqual([gone[id].source, /^[0-9a-f]{16}$/.test(gone[id].digest ?? '')], ['still', true], 'and its record is rewritten with its digest');
 }
 
 // The seeded records: every card on disk has one (the 14 CARD_FRAME tanks from their film at its second, the others from
@@ -135,6 +166,7 @@ const tableOf = (records, cardFrame = CARD_FRAME) => share.tankShareTable({ root
   assert.ok(!/card: existsSync\(/.test(source), 'no table entry decided by the file\'s existence alone');
   assert.ok(!source.includes('writeFileSync('), 'every write is whole or not at all (writeFileAtomic)');
   assert.equal(source.match(/writeFileAtomic\(target/g)?.length, 1, 'one card writer (renderDue)');
+  assert.match(source, /const check = checkShare\(\);[\s\S]*?process\.exit\(check\.code\)/, '--check exits with checkShare\'s code (the table and every card on disk)');
 }
 
 // every card: the share cards' size and weight, the lockup in one of its two top corners

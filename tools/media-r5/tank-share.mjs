@@ -10,7 +10,8 @@
 //   node tools/media-r5/tank-share.mjs --cards=<stills.json> [--only=a,b] [--force]
 //        render the cards that are due (all of them with --force) from the take stills (<stills.json>: { <vehicle>: <4K still path> }, the media lane's
 //        deliveries), then write the table
-//   node tools/media-r5/tank-share.mjs --check                  exit 1 when the table is stale
+//   node tools/media-r5/tank-share.mjs --check                  exit 1 when the table is stale or a card on disk is
+//        unpublished (stale: it stays out of the table until it is rendered again), listing each with its command
 //
 // A card's state is its file plus its provenance (round 8 Y9 s6-08, 2026-11-08): tools/media-r5/tank-cards.json records
 // what each card was rendered from ({ source: 'still' } or { source: 'film', frame }, and the source file's digest).
@@ -18,8 +19,9 @@
 // and frame) is 'published'; any other file, or one with no record, is 'stale' and stays out of the table. renderDue is
 // the one writer: it renders a card that is missing, stale, forced, or whose source file changed (cardDue), prints every
 // card it renders and every one it leaves, writes the card whole or not at all, then its record. So a CARD_FRAME edit
-// fails --check until the card is rendered again, instead of passing with the old card published (268 dropped REFILM's
-// gate, and the renderer kept any existing file).
+// fails --check (checkShare) and tank-share.selftest until the card is rendered again, whether or not the table was
+// rewritten meanwhile (the write takes the old card out of the table), instead of passing with the old card published
+// (268 dropped REFILM's gate, and the renderer kept any existing file).
 // Copyright © 2026 Kevin B. Liu.
 import { createHash } from 'node:crypto';
 import { execFileSync } from 'node:child_process';
@@ -34,7 +36,8 @@ import { tankDisplayName } from '../../src/vehicles/tankLabels.ts';
 import { resolveTankId } from '../../src/vehicles/tankIdAliases.ts';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
-const TABLE = join(ROOT, 'src/presentation/tankShare.json');
+const TABLE_PATH = 'src/presentation/tankShare.json';
+const TABLE = join(ROOT, TABLE_PATH);
 export const TANK_CARD_DIR = 'brand/og-r2/tanks';
 /** Each rendered card's provenance, tool-side (tankShare.json ships to the site, and middleware reads it per request). */
 export const CARD_RECORDS = 'tools/media-r5/tank-cards.json';
@@ -94,7 +97,7 @@ export function tankShareTable({ root = ROOT, records = readCardRecords(root), c
   }
   return { schemaVersion: 1, tanks };
 }
-const tableText = () => `${JSON.stringify(tankShareTable(), null, 1)}\n`;
+const tableText = (options) => `${JSON.stringify(tankShareTable(options), null, 1)}\n`;
 
 /** Visible tanks whose card file is stale (on disk, out of the table), with why. */
 export function staleCards({ root = ROOT, records = readCardRecords(root), cardFrame = CARD_FRAME } = {}) {
@@ -103,6 +106,18 @@ export function staleCards({ root = ROOT, records = readCardRecords(root), cardF
     const exists = existsSync(join(root, 'public', TANK_CARD_DIR, `${id}-card.jpg`));
     return cardState(records[id], want, exists) === 'stale' ? [{ id, due: cardDue(records[id], want, { exists }), want }] : [];
   });
+}
+
+/**
+ * --check: whether the committed table is the one the fleet gives (`current`), the cards on disk it leaves out until
+ * they are rendered again (`stale`), and the exit code: 0 only when the table is current and no card is stale, so a
+ * CARD_FRAME edit fails until the card is rendered, whether or not the table was rewritten meanwhile.
+ */
+export function checkShare({ root = ROOT, records = readCardRecords(root), cardFrame = CARD_FRAME } = {}) {
+  const file = join(root, TABLE_PATH);
+  const current = existsSync(file) && readFileSync(file, 'utf8') === tableText({ root, records, cardFrame });
+  const stale = staleCards({ root, records, cardFrame });
+  return { current, stale, code: current && !stale.length ? 0 : 1 };
 }
 
 /** A still's mean luma (0-1) and, for each top corner's text box, its busyness (mean absolute luma gradient). */
@@ -142,9 +157,10 @@ const DUE_TEXT = {
 /**
  * Render the due cards of `stills` ({ <vehicle>: <4K still path> }): for each, the wanted card (cardDue against its
  * record), its source (the still, or the film's frame at CARD_FRAME[id] s), and `render(id, source, read)`'s JPEG bytes,
- * written whole or not at all, then its record (saveRecords). A source too dark to be a card (a broken delivery) leaves
- * any older card as it is: still published when it is the card wanted, else still stale. Every card rendered and every
- * one left is printed. Returns { wrote, upToDate, skipped }.
+ * written whole or not at all, then its record (saveRecords). A source that is missing or too dark to be a card (a
+ * broken delivery) leaves any older card as it is: still published when it is the card wanted ('kept published', said
+ * apart from the tanks with no card), else still stale ('no card'). Every card rendered and every one left is printed.
+ * Returns { wrote, upToDate, kept, skipped }.
  */
 export async function renderDue({ stills, only = null, force = false, root = ROOT, records = readCardRecords(root), cardFrame = CARD_FRAME,
   schema, render, readSource = readStill, frameAt = filmFrame, digestOf = sourceDigest, frameDir = tmpdir(),
@@ -152,17 +168,20 @@ export async function renderDue({ stills, only = null, force = false, root = ROO
   const dir = join(root, 'public', TANK_CARD_DIR);
   mkdirSync(dir, { recursive: true });
   for (const name of sweepPartials(dir)) log(`removed a killed run's partial ${TANK_CARD_DIR}/${name}`);
-  const wrote = [], upToDate = [], skipped = [];
+  const wrote = [], upToDate = [], kept = [], skipped = [];
   for (const [key, still] of Object.entries(stills)) {
     const id = resolveTankId(key, schema);
     if (only && !only.includes(id)) continue;
-    if (!TANK_SPECS[id] || !still || !existsSync(still)) { skipped.push(`${id}: no still`); continue; }
     const want = wantedCard(id, cardFrame);
-    const film = join(dirname(still), `${basename(dirname(still))}.mp4`);
-    const from = want.source === 'film' ? film : still;
-    if (!existsSync(from)) { skipped.push(`${id}: no film for its frame at ${want.frame} s`); continue; }
     const target = join(dir, `${id}-card.jpg`);
     const exists = existsSync(target);
+    const state = cardState(records[id], want, exists);
+    /** This run leaves the card as it is: a published one stays published, listed apart from the tanks with no card. */
+    const leave = (why) => (state === 'published' ? kept : skipped).push(`${id}: ${why}`);
+    if (!TANK_SPECS[id] || !still || !existsSync(still)) { leave('no still'); continue; }
+    const film = join(dirname(still), `${basename(dirname(still))}.mp4`);
+    const from = want.source === 'film' ? film : still;
+    if (!existsSync(from)) { leave(`no film for its frame at ${want.frame} s`); continue; }
     const digest = digestOf(from);
     const due = cardDue(records[id], { ...want, digest }, { force, exists });
     if (!due) { upToDate.push(id); continue; }
@@ -172,12 +191,11 @@ export async function renderDue({ stills, only = null, force = false, root = ROO
       // never read a frame an earlier run left: a seek past the film's end writes nothing
       rmSync(source, { force: true });
       frameAt(film, want.frame, source);
-      if (!existsSync(source)) { skipped.push(`${id}: its film has no frame at ${want.frame} s (${DUE_TEXT[due]})`); continue; }
+      if (!existsSync(source)) { leave(`its film has no frame at ${want.frame} s (${DUE_TEXT[due]})`); continue; }
     }
     const read = await readSource(source);
     if (read.luma < 0.12) {
-      const state = cardState(records[id], want, exists);
-      skipped.push(`${id}: source too dark (${read.luma.toFixed(2)}); ${state === 'published' ? 'kept the older card, from the source wanted'
+      leave(`source too dark (${read.luma.toFixed(2)}); ${state === 'published' ? 'kept the older card, from the source wanted'
         : state === 'stale' ? 'its older card stays unpublished (not from the source wanted)' : 'the link keeps the Gallery\'s card'}`);
       continue;
     }
@@ -189,8 +207,9 @@ export async function renderDue({ stills, only = null, force = false, root = ROO
     log(`wrote ${TANK_CARD_DIR}/${id}-card.jpg from its ${want.source}${want.source === 'film' ? ` at ${want.frame} s` : ''} (${DUE_TEXT[due]}; ${read.tr < read.tl ? 'tr' : 'tl'})`);
   }
   if (upToDate.length) log(`up to date (${upToDate.length}): ${upToDate.join(', ')}`);
+  if (kept.length) log(`kept published, its source unusable (${kept.length}): ${kept.join('; ')}`);
   if (skipped.length) log(`no card: ${skipped.join('; ')}`);
-  return { wrote, upToDate, skipped };
+  return { wrote, upToDate, kept, skipped };
 }
 
 /** renderDue with the real card design and master filter; the browser starts at the first due card. */
@@ -227,17 +246,18 @@ async function renderCards(stills, only) {
 }
 
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
-  const reportStale = () => {
-    for (const { id, due, want } of staleCards()) {
+  const reportStale = (stale = staleCards()) => {
+    for (const { id, due, want } of stale) {
       console.log(`tank-share: ${id}'s card is unpublished: ${DUE_TEXT[due]} (wanted from its ${want.source}${want.source === 'film' ? ` at ${want.frame} s` : ''}; `
         + `node tools/media-r5/tank-share.mjs --cards=<stills.json> --only=${id})`);
     }
   };
   if (process.argv.includes('--check')) {
-    reportStale();
-    const current = existsSync(TABLE) && readFileSync(TABLE, 'utf8') === tableText();
-    console.log(current ? 'tank-share: the table is current' : 'tank-share: src/presentation/tankShare.json is stale (node tools/media-r5/tank-share.mjs)');
-    process.exit(current ? 0 : 1);
+    const check = checkShare();
+    reportStale(check.stale);
+    console.log(check.current ? 'tank-share: the table is current' : 'tank-share: src/presentation/tankShare.json is stale (node tools/media-r5/tank-share.mjs)');
+    if (check.stale.length) console.log(`tank-share: ${check.stale.length} card(s) on disk stay unpublished until rendered again (above)`);
+    process.exit(check.code);
   }
   const stills = arg('cards');
   if (stills) await renderCards(JSON.parse(readFileSync(stills, 'utf8')), arg('only')?.split(','));
