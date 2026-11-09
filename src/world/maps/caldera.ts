@@ -41,6 +41,7 @@
 import { WORN_YARD_PAINT } from '../hardstandSurface.ts';
 import { makeRealisticCityBuildingTones } from './buildingTonePresets.ts';
 import { WRECK_CASTS } from './wreckCasts.ts';
+import { BUILDING_STYLES } from './buildingStyleTable.ts';
 
 const clamp01 = (x: number) => Math.max(0, Math.min(1, x));
 // Caldera round 3 (the map-revival lane, 2026-10-07; gauntlet wave 131: "a sparse scatter of white box barns with grey
@@ -264,7 +265,7 @@ export default {
     ],
     // the village in Aso's architecture (the kyushu kit); the kit owns the renders' tones, the field walls keep the
     // city preset's stone
-    architecture: 'kyushu',
+    architecture: BUILDING_STYLES.caldera.kit,
     tones: { stone: makeRealisticCityBuildingTones({ value: 0.70, saturation: 0.88, soot: 0.055, roofValue: 0.68 }).stone },
     // (round 3: no rail yard — its seven sidings were Cinder Junction's, laid across the paddies)
     wallStyle: 'fieldstone', wallStoneChance: 0.72,

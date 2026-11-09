@@ -37,6 +37,7 @@
 import verdant from './verdant.ts';
 import type { MapCompositionConfig } from './contracts.ts';
 import { WRECK_CASTS } from './wreckCasts.ts';
+import { BUILDING_STYLES } from './buildingStyleTable.ts';
 
 /** A point's mirror across the gorge's axis (z = 0), with the yaw that faces the same way across it. */
 const mirrorSite = <T extends { z: number; yawDeg: number }>(site: T): T => ({ ...site, z: -site.z, yawDeg: 180 - site.yawDeg });
@@ -295,7 +296,7 @@ export default {
     // meets a building's plot is left out (props.ts dressingRules.fencesClearBuildings; no stub rule)
     dressingRules: { fencesClearBuildings: true },
     // map revival lane 2 (2026-10-05): the Andalusian kit (maps/regional/andalusian.ts)
-    architecture: 'andalusian',
+    architecture: BUILDING_STYLES.cliffbridge.kit,
     // Every building is an authored site (the towns are mirror images), so the roadside builder places none.
     plan: [],
     plannedSites: [...SOUTH_TOWN, ...SOUTH_TOWN.map(mirrorSite), ...MILLS, ...SOUTH_FARMS,

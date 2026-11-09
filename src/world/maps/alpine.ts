@@ -30,6 +30,7 @@
 
 import { WORN_YARD_PAINT } from '../hardstandSurface.ts';
 import { WRECK_CASTS } from './wreckCasts.ts';
+import { BUILDING_STYLES } from './buildingStyleTable.ts';
 
 const clamp01 = (x: number) => Math.max(0, Math.min(1, x));
 
@@ -132,7 +133,7 @@ export default {
   },
   props: {
     // map revival lane 2 (2026-10-05): the Savoyard kit (maps/regional/savoyard.ts)
-    architecture: 'savoyard',
+    architecture: BUILDING_STYLES.alpine.kit,
     plan: [],
     destructibleBuildings: ['alpinerefuge', 'saunahut', 'huntingblind', 'fieldhospital'],
     // the Hospice beside the north-shore road, and the Grande Croix chapel at the foot of the southern climb

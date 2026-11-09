@@ -17,6 +17,7 @@
 // strongpoint, floor track and objective has its counterpart. The canyon walls and their ravines keep their own shapes.
 import * as detMath from '../../sim/detMath.ts';
 import { WRECK_CASTS } from './wreckCasts.ts';
+import { BUILDING_STYLES } from './buildingStyleTable.ts';
 
 const clamp01 = (x: number) => Math.max(0, Math.min(1, x));
 
@@ -305,7 +306,7 @@ export default {
   },
   props: {
     // regional-buildings lane: the Wadi Rum outpost kit (maps/regional/wadirum.ts)
-    architecture: 'wadirum',
+    architecture: BUILDING_STYLES.badlands.kit,
     // (round 10, the gauntlet's wave 270: "a handful of flat-textured boxes, sheds and a scaffold tower over an open sand
     // lot ... no street, square or stone houses" — four steel stores, lock-ups, a lorry shelter, a water tower on its legs
     // and a second fort stood where the village should: the outpost is Rum village's, the patrol's fort and its store,

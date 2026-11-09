@@ -42,7 +42,10 @@ import { CAPTION_EVENT, createCaptionStream, type CaptionSoundId } from './capti
 import { createAmbienceDirector, sceneAssets, type AmbienceDirector, type BellTower } from './ambienceDirector.ts';
 import { BELL_TOWERS, FLYOVER_BY_AIRCRAFT, GARAGE_SCENE, sceneForMap, type EnvironmentScene } from './environmentScenes.ts';
 import { propSoundAssets, propSoundRecipe } from './propSounds.ts';
-import { FLAG_CUE, MODE_EVENT_TYPES, hordeWaveSiren, modeOpener, type ModeEventType } from './modeSounds.ts';
+import {
+  AIR_EVENT_TYPES, AIR_STRIKE_SOUND, FLAG_CUE, MODE_EVENT_TYPES, STRIKE_OWNED_REPORTS, airSupportAssets, hordeWaveSiren, modeOpener,
+  type AirEventType, type ModeEventType,
+} from './modeSounds.ts';
 import {
   DESTRUCTION_SOUND_IDS, STRUCTURE_FAR, blastSoundCaliberMm, munitionExplodes, munitionFromType, sectionFallSounds, structureHitAsset,
   structureSoundOf, structureStageSounds, type RubbleShareLike, type StructureSound, type StructureSoundMaterial,
@@ -55,7 +58,8 @@ import { streetGritShare } from '../world/roadPave.ts';
 import { createAerialRig, type AerialFrame, type AerialRig } from './aerialRig.ts';
 import { cueProfile } from './soundCues.ts';
 import { onDebrisLanding, onTurretLanding } from '../fx/clock.ts';
-import { AERIAL_RULES, matchRulesetFor, rulesetUnlimitedFor } from '../sim/matchRuleset.ts';
+import { AERIAL_RULES, AIR_STRIKE_KINDS, AIR_SUPPORT_RULES, matchRulesetFor, rulesetUnlimitedFor, type AirStrikeKind } from '../sim/matchRuleset.ts';
+import { aircraftPose, strikeCovers, strikeDangerS, type PublicStrike } from '../sim/airSupport.ts';
 import { bindInterfaceSounds, type InterfaceSound } from './interfaceSounds.ts';
 import {
   resolveVehicleAudioIdentity, CREW_LANGUAGES, ENGINE_FAMILY_IDS, type CrewLanguage, type TrackClass, type VehicleAudioIdentity,
@@ -439,6 +443,9 @@ const START_WAIT_S = 1;
 /** The countdown ticks its last whole seconds (3, 2, 1); the horn is the rollout's. */
 const COUNTDOWN_TICK_S = 3;
 
+/** Air Support's GBU-12 (a Mk 82's 273 mm body, 87 kg of Tritonal): the concussion it rings our ears with is its size. */
+const AIR_BOMB_CALIBRE_MM = 273;
+
 /** A crash by the material of what the hull struck (world-sfx-269): exhaustive, so a new material needs its recording. */
 type HullStrikeMaterial = 'rock' | 'steel' | 'masonry' | 'timber' | 'earth';
 const STRUCK_SOUND: Readonly<Record<HullStrikeMaterial, string>> = Object.freeze({
@@ -599,9 +606,6 @@ export function createAudio({
   let thoughtThisBattle = false;
   let firstShotHeard = false;
   let lastSpots: number[] = [];
-  let lastSpotCallAt = -99;
-  // "We're spotted" once per exposure, not every time an enemy's view flickers back onto a still tank.
-  let lastSixthSenseAt = -99;
   let lastSixthAlertAt = -99;
   // Enemy drones already called out (each drone once).
   const droneWarned = new Set<number>();
@@ -1048,7 +1052,9 @@ export function createAudio({
   function onShellFired(event: ShellFiredEvent): void {
     const ownShot = listenerOwnerId != null ? event.shooterId === listenerOwnerId : !!event.isPlayer;
     const shotOf = shotMount(event.shooterId ?? null, event.shellName ?? null, event.caliberMm, event.weaponSound);
-    if (!event.feedbackPredicted) fireWeapon(event.muzzlePos, shotOf, event.weaponSound, ownShot, event.muzzleIndex, false, event.shooterId ?? null, event.shellName ?? null, event.dir);
+    // an airstrike's rounds are heard as the strike's own (Air Support: the A-10's one burst a run, onStrikeRound)
+    const strikeOwned = STRIKE_OWNED_REPORTS.has(String(event.weaponSound || ''));
+    if (!event.feedbackPredicted && !strikeOwned) fireWeapon(event.muzzlePos, shotOf, event.weaponSound, ownShot, event.muzzleIndex, false, event.shooterId ?? null, event.shellName ?? null, event.dir);
     if (!ownShot) shellFlyby(event);
     if (!ownShot && event.caliberMm >= 20 && !sameTeam(event.shooterId, playerId) && listenerValid) {
       const [gx, gy, gz] = event.muzzlePos;
@@ -1398,7 +1404,10 @@ export function createAudio({
       ? blastSoundCaliberMm(Number.isFinite(event.chargeKg) ? event.chargeKg as number : 1.8 * (caliber / 100) ** 3) : 0;
     // (2026-10-10, the owner: "proper audio like all things that can be destroyed") a burst on a wall or a prop detonates
     // as one on the ground does — it played the prop's impact thud alone
-    if (blastCal > 0) explosion(x, y, z, blastCal, undefined, focus);
+    // (air-support-270) a 500 lb bomb lands on its own blast, far past any shell's bank (AIR_STRIKE_SOUND)
+    const strikeBlast = event.shellId != null ? strikeLandingBlast(event.shellId) : null;
+    if (strikeBlast) strikeBlastAt(strikeBlast, x, y, z, focus);
+    else if (blastCal > 0) explosion(x, y, z, blastCal, undefined, focus);
     const band = calibreBand(caliber);
     const structure = event.hitKind === 'prop' && (typeof event.structureId === 'number' || event.surfaceKind === 'structure');
     if (small && structure) {
@@ -2451,6 +2460,264 @@ export function createAudio({
     ownDroneFlying = false;
     aerialWarmed = false;
     droneWarned.clear();
+    stopAir();
+  }
+
+  // ----------------------------------------------------------- air support ---
+
+  /**
+   * Air Support's call-ins (air-support-270; modeSounds.ts AIR_STRIKE_SOUND), heard from each strike's public record as its
+   * events announce it (sim/airSupport.ts; the same events solo and in a network battle). The call: the targeted side's
+   * hull warns it, its crew is called out of a footprint that covers it (strikeCovers), ours reads its own call back. The
+   * aircraft: its engines flown along the strike's path (aircraftPose; the rig's distance law, air, pan and Doppler make
+   * the pass), and once brought down along the fall the world draws, to its crash. The rounds: the A-10's one burst a run,
+   * each falling shell's and the bomb's whistle ending at its landing, the bomb's own blast; the AC-130's guns are fired
+   * reports (game/airSupportBridge.ts). A strike heard at mode time `calledS` runs on by the frames the battle advances
+   * (a pause stops it), so a late or doubled event never moves an aircraft.
+   */
+  interface HeardStrike {
+    readonly strike: PublicStrike;
+    /** The strikes' clock when its call was heard: the record's calledS then. */
+    readonly heardAt: number;
+    readonly ours: boolean;
+    rig: AerialRig | null;
+    /** Our crew has been called out of its footprint. */
+    covered: boolean;
+    /** Mode time it was brought down (it falls from there), and whether it has struck the ground. */
+    downedS: number | null;
+    crashed: boolean;
+  }
+  const AIR = AIR_SUPPORT_RULES;
+  /** An aircraft flies on this long after its danger (the jets climb away, the gunship spirals out), fading. */
+  const AIR_TAIL_S = 8;
+  /** Our crew is called out of a footprint its hull is this close to. */
+  const AIR_COVER_MARGIN_M = 12;
+  /** A downed aircraft falls as the world draws it (game/airSupportWorld.ts fallPose): gravity, a sink, 9 s at most. */
+  const AIR_FALL = Object.freeze({ g: 9.81, sinkMps: 6, maxS: 9 });
+  /** The A-10's burst: its close bank fades out and its distant one in across these ranges (m). */
+  const BURST_CLOSE_FADE_M = [450, 1400] as const;
+  const BURST_FAR_FADE_M = [300, 1100] as const;
+  const airStrikes = new Map<number, HeardStrike>();
+  /** Runs whose burst is heard (by strike id: a late joiner may hear a run whose call it never saw). */
+  const airBursts = new Set<number>();
+  /** A falling bomb's shell id and the blast it lands on. */
+  const airBlasts = new Map<number, string>();
+  let airClock = 0;
+  // the strikes draw their own stream: their loops and whistles never move the shared one (the crew radio's takes)
+  const airRandom = mulberry32(0x41a5c);
+  const airPose = { x: 0, y: 0, z: 0, yaw: 0, bank: 0 };
+  const airAhead = { x: 0, y: 0, z: 0, yaw: 0, bank: 0 };
+
+  function airTeam(): 'alpha' | 'bravo' {
+    const perspective = getObjectiveTeam?.();
+    return perspective === 'alpha' || perspective === 'bravo' ? perspective : objectiveTeam(playerTeam);
+  }
+
+  const strikeNow = (heard: HeardStrike): number => heard.strike.calledS + (airClock - heard.heardAt);
+
+  function groundY(x: number, z: number, fallback: number): number {
+    try { return getTerrain?.()?.getHeightAt(x, z) ?? fallback; } catch { return fallback; }
+  }
+
+  /** Where a strike's aircraft is at mode time t: on its path, or falling once brought down (false once it is down). */
+  function airAircraftAt(heard: HeardStrike, t: number, out: typeof airPose): boolean {
+    const strike = heard.strike;
+    if (heard.downedS == null) { aircraftPose(AIR, strike, t, out); return true; }
+    aircraftPose(AIR, strike, heard.downedS, out);
+    const dt = Math.max(0, t - heard.downedS);
+    const speed = strike.kind === 'gunship' ? AIR.gunship.speedMps : AIR[strike.kind].speedMps;
+    out.x += Math.sin(out.yaw) * speed * dt;
+    out.z += Math.cos(out.yaw) * speed * dt;
+    out.y -= 0.5 * AIR_FALL.g * dt * dt + AIR_FALL.sinkMps * dt;
+    return out.y > strike.y - 2 && dt < AIR_FALL.maxS;
+  }
+
+  /** Whether an enemy strike's footprint covers our living hull. */
+  function airCovers(heard: HeardStrike): boolean {
+    const me = playerEntityInfo();
+    return !!me && me.alive !== false && strikeCovers(AIR, heard.strike, me.pos.x, me.pos.z, AIR_COVER_MARGIN_M);
+  }
+
+  /** The footprint has reached our hull: the alarm at full and the commander's call to get clear. */
+  function airIncoming(heard: HeardStrike): void {
+    heard.covered = true;
+    const line = AIR_STRIKE_SOUND[heard.strike.kind].incoming;
+    if (line) say(line, { delayS: 0.35 });
+  }
+
+  function onAir(type: AirEventType, payload: Record<string, unknown>): void {
+    if (phase !== 'battle') return;
+    switch (type) {
+      case 'strike_called': onStrikeCalled(payload); break;
+      case 'strike_round': onStrikeRound(payload); break;
+      case 'aircraft_down': onAircraftDown(payload); break;
+      case 'strike_denied':
+        // our own call refused by the authority
+        if (payload.id != null && payload.id === playerId) play('ui_error');
+        break;
+      case 'aircraft_hit':
+      case 'recon_pass':
+        // heard as nothing (modeSounds.ts AIR_EVENT_SOUND says why)
+        return;
+      default: {
+        const unnamed: never = type;
+        return unnamed;
+      }
+    }
+  }
+
+  function onStrikeCalled(payload: Record<string, unknown>): void {
+    const kind = payload.kind as AirStrikeKind;
+    const id = Number(payload.strikeId), landsS = Number(payload.landsS), warningS = Number(payload.warningS);
+    const mark = modeEventAt(payload);
+    if (!AIR_STRIKE_KINDS.includes(kind) || !Number.isFinite(id) || !Number.isFinite(landsS) || !mark || airStrikes.has(id)) return;
+    const team = payload.team === 'bravo' ? 'bravo' : 'alpha';
+    const rules = AIR[kind];
+    const strike: PublicStrike = {
+      id, kind, team, x: mark.x, y: mark.y, z: mark.z, heading: Number(payload.heading) || 0,
+      calledS: landsS - (Number.isFinite(warningS) ? warningS : rules.warningS), landsS,
+      endS: landsS + strikeDangerS(AIR, kind) + AIR_TAIL_S, hp: rules.hp, maxHp: rules.hp, downedS: null, downedBy: null,
+    };
+    const heard: HeardStrike = { strike, heardAt: airClock, ours: team === airTeam(), rig: null, covered: false, downedS: null, crashed: false };
+    airStrikes.set(id, heard);
+    const sound = AIR_STRIKE_SOUND[kind];
+    if (payload.callerId != null && payload.callerId === playerId) say(sound.readback, { delayS: 0.2 });
+    // the targeted side hears its hull's warning before anything lands, loudest where the footprint covers our hull
+    if (!heard.ours) {
+      const covered = airCovers(heard);
+      play('air_strike_warning', { gainDb: covered ? 0 : -9 });
+      if (covered) airIncoming(heard);
+    }
+    logSound('mode:strike_called', { id, kind, team, ours: heard.ours, covered: heard.covered });
+  }
+
+  function onStrikeRound(payload: Record<string, unknown>): void {
+    const kind = payload.kind as AirStrikeKind;
+    const x = Number(payload.x), y = Number(payload.y), z = Number(payload.z);
+    if (!AIR_STRIKE_KINDS.includes(kind) || !Number.isFinite(x) || !Number.isFinite(y) || !Number.isFinite(z)) return;
+    const sound = AIR_STRIKE_SOUND[kind];
+    const strikeId = Number(payload.strikeId);
+    const heard = airStrikes.get(strikeId);
+    if (sound.burst && !airBursts.has(strikeId)) {
+      // the run's one burst, from where the jet is halfway down the lane: its rounds strike before its report arrives
+      airBursts.add(strikeId);
+      if (heard) airAircraftAt(heard, heard.strike.landsS + AIR.strafe.fireS * 0.5, airPose);
+      const at = heard ? airPose : { x, y, z };
+      const d = distanceTo(at.x, at.y, at.z);
+      const closeK = 1 - rampBetween(d, BURST_CLOSE_FADE_M[0], BURST_CLOSE_FADE_M[1]);
+      const farK = rampBetween(d, BURST_FAR_FADE_M[0], BURST_FAR_FADE_M[1]);
+      if (closeK > 0.03) play(sound.burst.close, { x: at.x, y: at.y, z: at.z, gainDb: gainToDb(closeK) });
+      if (farK > 0.03) play(sound.burst.far, { x: at.x, y: at.y, z: at.z, gainDb: gainToDb(farK) - 2 });
+      logSound('air:burst', { id: strikeId, dist: +d.toFixed(1) });
+    }
+    if (sound.fall && library) {
+      // the round falls on its solved arc onto its landing (sim/airSupportFire.ts): its whistle ends as it lands there
+      const flightS = (kind === 'bomb' ? AIR.bomb.fallS : AIR.artillery.flightS) + 0.05;
+      const speed = Number(payload.velocityMps) || 0;
+      const lx = x + (Number(payload.dx) || 0) * speed * flightS, lz = z + (Number(payload.dz) || 0) * speed * flightS;
+      const ly = groundY(lx, lz, heard?.strike.y ?? y);
+      const buffer = library.pick(sound.fall, airRandom);
+      if (buffer) {
+        play(sound.fall, { x: lx, y: ly + 20, z: lz, buffer, delayS: Math.max(0, flightS - buffer.duration), offsetS: Math.max(0, buffer.duration - flightS) });
+      }
+      if (sound.blast && Number.isFinite(Number(payload.shellId))) {
+        if (airBlasts.size >= 16) airBlasts.delete(airBlasts.keys().next().value as number);
+        airBlasts.set(Number(payload.shellId), sound.blast);
+      }
+    }
+  }
+
+  /** The blast a strike's round lands on in place of the HE bank's (the bomb's), once. */
+  function strikeLandingBlast(shellId: number): string | null {
+    const id = airBlasts.get(shellId);
+    if (id == null) return null;
+    airBlasts.delete(shellId);
+    return id;
+  }
+
+  /** A 500 lb bomb's landing: its own blast over the ground shock, the far rumble, the earth it throws. */
+  function strikeBlastAt(id: string, x: number, y: number, z: number, focus: boolean): void {
+    const distance = distanceTo(x, y, z);
+    if (distance < 1500) play('blast_sub', { x, y, z, rate: 0.8, gainDb: 2, focus });
+    blastNearHull(distance, AIR_BOMB_CALIBRE_MM);
+    play(id, { x, y, z, focus });
+    if (distance > 700) play('expl_far', { x, y, z, gainDb: -2, focus });
+    const debris = distance < 60 ? GROUND_DEBRIS[groundAt(x, z)].ground : null;
+    if (debris) play(debris, { x, y, z, delayS: 0.45, gainDb: -2 });
+    logSound('air:blast', { id, dist: +distance.toFixed(1) });
+  }
+
+  function onAircraftDown(payload: Record<string, unknown>): void {
+    const heard = airStrikes.get(Number(payload.strikeId));
+    if (heard && heard.downedS == null) heard.downedS = strikeNow(heard);
+    else if (!heard) {
+      // a strike whose call we never saw (a late join): it falls from where it was struck
+      const at = modeEventAt(payload);
+      if (at) {
+        const ground = groundY(at.x, at.z, at.y);
+        const fallS = Math.min(AIR_FALL.maxS, Math.sqrt(Math.max(0, 2 * (at.y - ground) / AIR_FALL.g)));
+        play('air_crash', { x: at.x, y: ground, z: at.z, delayS: fallS });
+      }
+    }
+    if (payload.by != null && payload.by === playerId) say('aircraft_downed', { delayS: 0.4 });
+    logSound('mode:aircraft_down', { id: payload.strikeId, kind: payload.kind, byMe: payload.by === playerId });
+  }
+
+  /** A downed aircraft meets the ground. */
+  function airCrash(heard: HeardStrike): void {
+    heard.crashed = true;
+    const { x, z } = airPose;
+    const y = heard.strike.y;
+    play('air_crash', { x, y, z });
+    if (listenerValid && playerEntityInfo()?.alive && distanceTo(x, y, z) < 25) hullPatter(x, z, 0.3, -3);
+    logSound('air:crash', { id: heard.strike.id, kind: heard.strike.kind });
+  }
+
+  /** Every frame of a battle: the strikes' clock, their aircraft, and a footprint our hull drives into. */
+  function updateAir(dt: number): void {
+    if (!airStrikes.size || !mixer || !library) return;
+    if (!paused) airClock += dt;
+    for (const [id, heard] of airStrikes) {
+      const strike = heard.strike;
+      const t = strikeNow(heard);
+      if (!heard.ours && !heard.covered && heard.downedS == null && t < strike.landsS + strikeDangerS(AIR, strike.kind) && airCovers(heard)) {
+        play('air_strike_warning');
+        airIncoming(heard);
+      }
+      const aircraft = AIR_STRIKE_SOUND[strike.kind].aircraft;
+      let flying = false;
+      if (aircraft && !heard.crashed && t >= strike.calledS) {
+        if (heard.downedS != null) {
+          flying = airAircraftAt(heard, t, airPose);
+          if (!flying) airCrash(heard);
+        } else flying = t < strike.endS && airAircraftAt(heard, t, airPose);
+      }
+      if (flying && aircraft) {
+        if (!heard.rig) {
+          heard.rig = createAerialRig({ mixer, library, random: airRandom, reverb: budget.reverb }, aircraft, 'world');
+          logSound('aerial:start', { id: `strike-${id}`, kind: aircraft });
+        }
+        airAircraftAt(heard, t + 0.1, airAhead);
+        toListenerFrame(frame, airPose.x, airPose.y, airPose.z, aerialFrame.rel);
+        aerialFrame.atmosphere = atmosphere;
+        aerialFrame.doppler = radialDoppler(airPose, (airAhead.x - airPose.x) * 10, (airAhead.y - airPose.y) * 10, (airAhead.z - airPose.z) * 10, aerialFrame.rel.distance);
+        aerialFrame.speedK = 1;
+        aerialFrame.strain = 0;
+        heard.rig.update(aerialFrame);
+      } else if (heard.rig) {
+        heard.rig.kill(heard.crashed ? 0.08 : 1.5);
+        heard.rig = null;
+      }
+      if (t > strike.endS + 2 && !heard.rig && (heard.downedS == null || heard.crashed)) airStrikes.delete(id);
+    }
+  }
+
+  function stopAir(): void {
+    for (const heard of airStrikes.values()) heard.rig?.kill(0.3);
+    airStrikes.clear();
+    airBursts.clear();
+    airBlasts.clear();
+    airClock = 0;
   }
 
   function stopWorld(reason: string): void {
@@ -2693,9 +2960,8 @@ export function createAudio({
       const now = ctx?.currentTime ?? 0;
       lastSpots = lastSpots.filter((t) => now - t < 2.5);
       lastSpots.push(now);
-      if (lastSpots.length >= 3) { say('spotted_multiple', { delayS: 0.1 }); lastSpotCallAt = now; return; }
-      if (now - lastSpotCallAt < 5) return;
-      lastSpotCallAt = now;
+      // (one spot call in 5 s is the spot lines' groupCdS, kept by the radio when a call plays)
+      if (lastSpots.length >= 3) { say('spotted_multiple', { delayS: 0.1 }); return; }
       const me = playerId ? tanks.get(playerId) : null;
       if (me && random() < 0.65) {
         const dx = info.pos.x - me.pos.x;
@@ -2712,15 +2978,12 @@ export function createAudio({
       const now = ctx?.currentTime ?? 0;
       if (phase !== 'battle' || battleOver) return;
       // The lamp lights 3 s after we are seen and burns for 8: its alert sounds each time it lights, the crew's
-      // call once per exposure.
+      // call once per exposure (sixth_sense's 20 s cooldown, kept by the radio when the call plays).
       if (now - lastSixthAlertAt > 12) {
         lastSixthAlertAt = now;
         play('ui_alert', { delayS: 3.0, gainDb: -6 });
       }
-      if (now - lastSixthSenseAt > 20) {
-        lastSixthSenseAt = now;
-        say('sixth_sense', { delayS: 3.0 });
-      }
+      say('sixth_sense', { delayS: 3.0 });
     });
     on<{ slot?: number }>('ui:consumableUsed', (e) => {
       if (!e || phase !== 'battle' || battleOver) return;
@@ -2951,6 +3214,9 @@ export function createAudio({
       volumeEvents++;
     });
     for (const type of MODE_EVENT_TYPES) on<Record<string, unknown>>(`mode:${type}`, (payload) => onMode(type, payload || {}));
+    // Air Support's call-ins (modeSounds.ts AIR_EVENT_SOUND); a call our own strike view refuses before it is sent
+    for (const type of AIR_EVENT_TYPES) on<Record<string, unknown>>(`mode:${type}`, (payload) => onAir(type, payload || {}));
+    on<unknown>('ui:strikeDenied', () => { if (phase === 'battle' && !battleOver) play('ui_error'); });
     crew.bind(on);
   }
 
@@ -3023,6 +3289,7 @@ export function createAudio({
       if (phase === 'battle') {
         updateRigs(list, dt);
         updateAerial(list, shells, dt);
+        updateAir(dt);
         trackOwnSystems();
         if (startEngineSoon && playerId) {
           // The starter fires with our rig's first frame, the countdown's; on a cold first battle its recording may still
@@ -3128,7 +3395,7 @@ export function createAudio({
       for (const m of weaponMounts(gun)) if (m.row) rows.add(m.row);
     }
     if (!known) for (const row of Object.values(WEAPON_ROWS)) rows.add(row);
-    if (mode === 'ac130') for (const row of Object.values(WEAPON_ROWS)) if (row.key.startsWith('ac130')) rows.add(row);
+    if (mode === 'ac130' || mode === 'air_support') for (const row of Object.values(WEAPON_ROWS)) if (row.key.startsWith('ac130')) rows.add(row);
     const ids = new Set<string>();
     for (const row of rows) {
       ids.add(row.close);
@@ -3158,6 +3425,9 @@ export function createAudio({
     // material from the first shot.
     for (const id of impactAssetIds()) ids.add(id);
     for (const id of sceneAssets(sceneForMap(mapId), true)) ids.add(id);
+    // Air Support's call-ins: their aircraft, bursts, whistles, blasts and the warning (the first can be called within the
+    // battle's first minute, never at its first frame)
+    if (mode === 'air_support') for (const id of airSupportAssets()) ids.add(id);
     // The mode's opener plays at rollout, decoded by then (presence); the aircraft modes fly from their first second.
     if (mode === 'drone' || mode === 'ac130') aerialWarmed = true;
     // The battle set stays decoded for the whole battle (rigs and scenes pin their own loops).

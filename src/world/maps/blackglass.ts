@@ -8,6 +8,7 @@ import { TOWN_LIGHT_PLANS, TOWN_PLANS, TOWN_ROW_PLANS } from './townPlans.genera
 
 import * as detMath from '../../sim/detMath.ts';
 import { WRECK_CASTS } from './wreckCasts.ts';
+import { BUILDING_STYLES } from './buildingStyleTable.ts';
 const clamp01 = (x: number) => Math.max(0, Math.min(1, x));
 
 // The map-revival lane (2026-10-05): Suzhou Creek (Wusong River) runs west to east through the district, the
@@ -170,7 +171,7 @@ export default {
     townRowPlanAdditions: LILONG_ROWS,
     // Shanghai in 1937 (maps/regional/shanghai*.ts): the Settlement's lanes, blocks and godowns, Zhabei's shophouses, the
     // Bund's banks and the Art Deco towers in the landmarks' footprints
-    architecture: 'shanghai',
+    architecture: BUILDING_STYLES.blackglass.kit,
     // the creek's bridges (maps/mapKits.ts)
     extraKits: ['shanghai'],
     // the district's massive blocks keep their footprints off every carriageway, not only their own street's

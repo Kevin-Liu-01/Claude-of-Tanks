@@ -11,6 +11,7 @@ import winter from './winter.ts';
 const clamp01 = (x: number) => (x < 0 ? 0 : x > 1 ? 1 : x);
 import { roundRoadBends } from './roadBends.ts';
 import { WRECK_CASTS } from './wreckCasts.ts';
+import { BUILDING_STYLES } from './buildingStyleTable.ts';
 // (the map-content lane's R6; gauntlet wave 358a: "flat orange-brown boulder blobs", "the cairn's warm brown should be
 // desaturated to frost-shattered grey") the plateau's granite as Baffin's is under the frost: cool grey, lichen-dark
 const FROST_GRANITE: readonly [number, number, number] = [0.58, 0.05, 0.42];
@@ -95,7 +96,7 @@ export default {
     // the map-content lane, 2026-10-09): DYE-M's own buildings — the module trains on their piles under the radome, the
     // tropo billboards, the radar on its lattice tower, the steel garages, the Jamesway huts, the plywood sheds, a
     // stripped module — on the plan's seats; the kit paints its own panels (the map's tones only tone the old halls)
-    architecture: 'arctic',
+    architecture: BUILDING_STYLES.whiteout.kit,
     sourcedPalette: 'winter',
     plan: ['depot', 'warehouse', 'watertower', 'foundryoffice', 'containerRow', 'depot', 'warehouse', 'ruin', 'firestation', 'depot', 'containerRow', 'woodshed', 'warehouse', 'ruin', 'depot', 'foundryoffice'],
     // Lane B's Whiteout pass (2026-10-17, MAP-01: a town plan with plots and yards): the plan above strings the station

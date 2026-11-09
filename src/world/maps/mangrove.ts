@@ -21,6 +21,7 @@
 import delta from './delta.ts';
 import { createLakeChannel } from './marshChannel.ts';
 import { WRECK_CASTS } from './wreckCasts.ts';
+import { BUILDING_STYLES } from './buildingStyleTable.ts';
 
 /** The tidal waterline (-2.3 m) less the creek's water depth (waterContact.ts TANNIN_CREEK: 0.43 m): the lakes' floor. */
 const MANGROVE_TIDAL_FLOOR = -2.73;
@@ -144,7 +145,7 @@ export default {
   },
   props: {
     // regional-buildings lane: the Ca Mau stilt-house kit (maps/regional/mekong.ts)
-    architecture: 'mekong',
+    architecture: BUILDING_STYLES.mangrove.kit,
     riverLandings: [
       { lakeIndex: 20, shoreAngleDeg: 285 }, // village-facing creek landing
       { lakeIndex: 10, shoreAngleDeg: 0 }, // relief-island net yard

@@ -13,6 +13,7 @@ import { normalTextureFromHeight, textureFromRgbaPixels, tileableTorusNoise } fr
 // round 73 (2026-09-25): the material resolves its ground-redux profile from the map id (groundRedux.ts, THREE-free);
 // the sandboxed material steps take the real functions
 import { groundReduxUniformValues, resolveGroundReduxProfile } from './groundRedux.ts';
+import { groundSurfaceUniformValues } from './groundSurfaces.ts';
 // ground lane (2026-10-03): and its land use (landUse.ts, THREE-free) — the real functions too; the build wrappers'
 // height-field hook (attachTerrainLandUse) is a no-op here (the fixture's height field grows nothing)
 import { LAND_BAKE_LAYERS, bakeLandUseSteps, landUseTierOf, landUseUniformValues, resolveLandUseProfile } from './landUse.ts';
@@ -58,7 +59,7 @@ function fixture({ text = source, observe = null } = {}) {
   // consumer run together. Unrelated horizon/geometry/source I/O is peripheral;
   // real Three objects retain the material/texture identity boundary.
   const create = new Function('THREE', 'SimplexNoise', 'texSize', 'torusNoise',
-    'canvasToTexture', 'normalFromHeight', 'layer', 'own', 'state', 'groundReduxUniformValues', 'resolveGroundReduxProfile', 'landUseUniformValues', 'resolveLandUseProfile', 'bakeLandUseSteps', 'landUseTierOf', 'LAND_BAKE_LAYERS', stripTypeScriptTypes(`
+    'canvasToTexture', 'normalFromHeight', 'layer', 'own', 'state', 'groundReduxUniformValues', 'resolveGroundReduxProfile', 'groundSurfaceUniformValues', 'landUseUniformValues', 'resolveLandUseProfile', 'bakeLandUseSteps', 'landUseTierOf', 'LAND_BAKE_LAYERS', stripTypeScriptTypes(`
     const attachTerrainLandUse = () => {};
     const _col = new THREE.Color(), _toneCol = new THREE.Color();
     const _toneHsl = { h: 0, s: 0, l: 0 };
@@ -102,7 +103,7 @@ function fixture({ text = source, observe = null } = {}) {
   }, (...args) => own(textureFromRgbaPixels(...args)), (height, ...args) => {
     state.heights.push(height.slice());
     return own(normalTextureFromHeight(height, ...args));
-  }, layer, own, state, groundReduxUniformValues, resolveGroundReduxProfile, landUseUniformValues, resolveLandUseProfile, bakeLandUseSteps, landUseTierOf, LAND_BAKE_LAYERS);
+  }, layer, own, state, groundReduxUniformValues, resolveGroundReduxProfile, groundSurfaceUniformValues, landUseUniformValues, resolveLandUseProfile, bakeLandUseSteps, landUseTierOf, LAND_BAKE_LAYERS);
   const sourcePreparation = { tryCreateLayer: layer, apply: () => Promise.resolve([]),
     cancel() { state.sourceCancels++; } };
   const engine = { anisotropy: 4, setupShadowMaterial() { state.materials++; } };

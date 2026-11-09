@@ -32,19 +32,6 @@ type Local = [number, number, number];
 
 export type JettyForm = 'estacade' | 'stage' | 'brygge' | 'riva' | 'stilts';
 
-/** The jetty form of a coast, by its boats (boatHulls.ts boatFamilyForMap: the map's Reference): the Nordland
- *  færing's fjord builds cribs, the Dalmatian gajeta's bay a riva, the Mekong xuồng's and the Bengal nouka's banks pole
- *  landings, an Alpine lake boat's lake a stage, the Breton canot's (and every other) coast an estacade. */
-export function jettyFormForCoast(boatType: string): JettyForm {
-  switch (boatType) {
-    case 'faering': return 'brygge';
-    case 'gajeta': return 'riva';
-    case 'xuong': case 'nouka': return 'stilts';
-    case 'lakeboat': return 'stage';
-    default: return 'estacade';
-  }
-}
-
 const JETTY_STATION_M = 1.9;
 const JETTY_SUPPORT_S_M = 0.65;
 export const JETTY_HALF_WIDTH_M = 0.75;

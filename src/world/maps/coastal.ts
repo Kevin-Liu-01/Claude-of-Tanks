@@ -26,6 +26,7 @@ import { TRODDEN_GREEN_PAINT } from '../hardstandSurface.ts';
 
 import * as detMath from '../../sim/detMath.ts';
 import { WRECK_CASTS } from './wreckCasts.ts';
+import { BUILDING_STYLES } from './buildingStyleTable.ts';
 const clamp01 = (x: number) => (x < 0 ? 0 : x > 1 ? 1 : x);
 // The inland road is grid road 0 (x = -90, the village's west lane): its vertex at z, by the grid's own jitter law
 // (terrain.ts buildGridRoads, jitter 2.2, index 0), so a border stub can start exactly on its end.
@@ -265,7 +266,7 @@ export default {
     // meets a building's plot is left out (props.ts dressingRules.fencesClearBuildings; no stub rule)
     dressingRules: { fencesClearBuildings: true },
     // regional-buildings lane: the Breton granite kit (maps/regional/breton.ts)
-    architecture: 'breton',
+    architecture: BUILDING_STYLES.coastal.kit,
     // The landmarks lane (round 3, 2026-10-07; src/world/landmarks/harbour.ts harbour; the plan agreed with the map-revival
     // lane on its identity round; gauntlet wave 202: "the mole rooted in the shore with its road, the quay with coping and
     // steps round a basin, boats and nets, the light at the mole head"): the bourg's fishing harbour as one structure. The

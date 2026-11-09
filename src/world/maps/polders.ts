@@ -24,6 +24,7 @@ import { POLDERS_VILLAGE } from './poldersVillage.ts'; // the maps lane, 2026-10
 /** The farm court's settlement rect (terrain.village below). */
 const VILLAGE = { x0: -178, x1: 68, z0: -96, z1: 122, cx: -64, cz: 12, feather: 42, flatten: 0.88, relief: 0.12 };
 import { WRECK_CASTS } from './wreckCasts.ts';
+import { BUILDING_STYLES } from './buildingStyleTable.ts';
 
 /** The polder's dykes (step 1): embankments with level crests (landformGeology.ts profile 'dyke'). */
 const DYKE = { profile: 'dyke' as const, crest: 0.25 };
@@ -310,7 +311,7 @@ export default {
   },
   props: {
     // regional-buildings lane: the Zeeland polder kit (maps/regional/polder.ts)
-    architecture: 'polder',
+    architecture: BUILDING_STYLES.polders.kit,
     sourcedPalette: 'coastal',
     // The landmarks lane (2026-10-05; src/world/landmarks/): the old land in the west keeps its brick tower mills, the new
     // polders in the east were drained by the steel windmotors — one stellingmolen on the field drain's east bank, one at

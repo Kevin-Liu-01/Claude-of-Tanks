@@ -33,6 +33,7 @@ import { createMarshChannel } from './marshChannel.ts';
 
 import * as detMath from '../../sim/detMath.ts';
 import { WRECK_CASTS } from './wreckCasts.ts';
+import { BUILDING_STYLES } from './buildingStyleTable.ts';
 const clamp01 = (x: number) => (x < 0 ? 0 : x > 1 ? 1 : x);
 
 // The river: SW -> NE. Stations follow the low ground of the seed-1337 field
@@ -425,7 +426,7 @@ export default {
     dressingRules: { fencesClearBuildings: true },
     // the map-revival lane (2026-10-05): the Lorraine kit (maps/regional/lorrain.ts) builds the plan in the Moselle
     // valley's construction, every building where it stood
-    architecture: 'lorrain',
+    architecture: BUILDING_STYLES.autumn.kit,
     // round 48: a market town's plan — the church and the inn on the square,
     // a Norman tower keep, the market hall and rows, shops, granaries and
     // cottages; consumed along the town's three streets, the remainder fills
@@ -455,7 +456,7 @@ export default {
         structure: 'commandtent', redoubt: true, outcrop: { count: 5, radius: 9 }, wreck: true, wreckOffsetZ: -16 },
     ],
     tones: {
-      plaster: (h: number, s: number, l: number) => [0.085, clamp01(s * 0.75 + 0.05), clamp01(l * 1.02 + 0.02)],
+      plaster: (h: number, s: number, l: number) => [0.11, clamp01(s * 0.4 + 0.3), clamp01(l + 0.24)], // the crépi's grey-beige on the kit's lime render (buildings-270)
       roof: (h: number, s: number, l: number) => [0.045, clamp01(s * 0.85), clamp01(l * 0.92)], // weathered red-brown tile
       stone: (h: number, s: number, l: number) => [0.09, clamp01(s * 0.6), clamp01(l * 0.98)],
       wood: (h: number, s: number, l: number) => [0.075, clamp01(s * 0.85), clamp01(l * 0.92)],

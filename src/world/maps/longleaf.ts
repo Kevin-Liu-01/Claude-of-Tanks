@@ -14,6 +14,7 @@
 import frontier from './frontier.ts';
 import { roundRoadBends } from './roadBends.ts';
 import { WRECK_CASTS } from './wreckCasts.ts';
+import { BUILDING_STYLES } from './buildingStyleTable.ts';
 export default {
   id: 'longleaf', name: 'Longleaf Crossing',
   blurb: 'Pine clearcuts, timber yards and a winding logging spur around a wooded creek hollow',
@@ -107,7 +108,7 @@ export default {
     sourcedPalette: 'frontier',
     // the map-revival lane (2026-10-05): the mill-town kit (maps/regional/longleaf.ts) builds the plan in the company
     // town's construction, every building where it stood
-    architecture: 'longleaf',
+    architecture: BUILDING_STYLES.longleaf.kit,
     // The landmarks lane (2026-10-06; src/world/landmarks/towers.ts fireLookout): the forest's fire lookout on the western
     // ridge's crest, the highest open ground of the pine country — a steel lattice tower 26 m to its glazed cab, the
     // zig-zag stair inside its frame, seen over the canopy from both deployments.

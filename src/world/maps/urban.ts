@@ -33,6 +33,7 @@
 import { WORN_YARD_PAINT } from '../hardstandSurface.ts';
 import { STEINBURG_ROWS } from './steinburgRows.ts';
 import { WRECK_CASTS } from './wreckCasts.ts';
+import { BUILDING_STYLES } from './buildingStyleTable.ts';
 
 const clamp01 = (x: number) => (x < 0 ? 0 : x > 1 ? 1 : x);
 
@@ -204,7 +205,7 @@ export default {
 
   props: {
     // regional-buildings lane: the Franconian town kit (maps/regional/franconian.ts)
-    architecture: 'franconian',
+    architecture: BUILDING_STYLES.urban.kit,
     // The landmarks lane (2026-10-05; src/world/landmarks/): the old town's two gate towers where the trade road passes
     // the town wall, north and south (Kronach's Tore: a square tower over the vaulted passage, its clock to the road
     // outside, a steep hipped roof, a stub of crenellated wall each side). Round 2 (2026-10-06; gauntlet wave 155: "the
