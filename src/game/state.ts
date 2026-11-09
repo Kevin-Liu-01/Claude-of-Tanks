@@ -57,7 +57,7 @@ import {
 // The roster plan is pure and shared with the garage boot (main.ts), which must not import this module.
 import { battleRosterPlan } from './soloRosterPlan.ts';
 // the dev battle hold (src/dev/battleHold.ts, __DEBUG.battleHold): bots stand, the player takes no damage, no verdict
-import { battleHeld, holdBattleStep, undoHeldDamage } from './devBattleHold.ts';
+import { battleHeld, stepBattleHold, undoHeldDamage } from './devBattleHold.ts';
 import { createJevCommander, createJevFetchTransport, createJevSession, type JevBattleView, type JevCommander } from './jevCommander.ts';
 import type { SpecialActionSpec, SpecialActionState } from '../sim/specialActionPolicy.ts';
 import type { ConcealerDisc, SpottingSystem, SpottingTank } from '../sim/spotting.ts';
@@ -2292,9 +2292,9 @@ function stepSpotting(game: SoloGameState, bus: EventBus): void {
  * player's presses go through its UI (game/playerBattleActions.ts).
  */
 function stepHullControls(game: SoloGameState, bus: EventBus, world: SoloWorld): void {
-  // a held battle's bots stand in place of their controllers, and the player's damage state is pinned (devBattleHold.ts)
-  const held = battleHeld(game);
-  if (held) holdBattleStep(game);
+  // a held battle's bots stand in place of their controllers, and the player's damage state is pinned; the hold's edges
+  // park and resume the bots' brains (devBattleHold.ts stepBattleHold, the held step's one owner)
+  const held = stepBattleHold(game);
   // what reached the bots since the last flush (the commander's orders) lands before the first of them thinks (audit M7);
   // the flush writes brain state only (never entity.input), and it drains while the battle is held too
   applyPendingBotNews(game.tanks);
@@ -2875,7 +2875,7 @@ function stepFireDamage(game: SoloGameState, bus: EventBus): void {
 
 function stepMatchMode(game: SoloGameState, bus: EventBus): MatchModeResult | null {
   // a held step's losses to the player are undone before the mode and the verdict read them (devBattleHold.ts)
-  if (battleHeld(game)) undoHeldDamage(game);
+  if (battleHeld(game)) undoHeldDamage(game, bus);
   const outcome = game.matchModeController?.step(SIM_DT, game.timeS) || null;
   // a watched battle with no driver reads the mode from the battle's side (watchSeat.ts watchViewer)
   const perspective = game.player ?? (game.watch ? watchViewer(game) : null);
