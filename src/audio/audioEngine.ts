@@ -24,6 +24,7 @@
 
 import type { RuntimeValue } from '../runtimeTypes.ts';
 import type { EventBus } from '../game/stateCore.ts';
+import type { VisibilityHull } from '../game/playerVisibility.ts';
 import type { AudioListenerPose } from './listenerPoseRuntime.ts';
 import { getLocale } from '../ui/i18n.ts';
 import { isEraActivation } from '../game/eraActivation.ts';
@@ -162,7 +163,11 @@ export interface AudioLandmark {
 export interface AudioMixer {
   resume(): void;
   bindBus(bus: EventBus): void;
-  update(dtSeconds: number, listener: AudioListenerPose, tanks: readonly RuntimeValue[], shells?: readonly RuntimeValue[]): void;
+  /** `visible`: whether the player sees a hull of `tanks` (src/game/playerVisibility.ts, handed in by the listener's
+   *  runtime). Without it the player sees no hull: the crew names nothing (a tool or a receipt that wants its fire
+   *  commands hands the rule in), never every hull. */
+  update(dtSeconds: number, listener: AudioListenerPose, tanks: readonly RuntimeValue[], shells?: readonly RuntimeValue[],
+    visible?: (hull: VisibilityHull) => boolean): void;
   setMasterVolume(value: number): void;
   mute(muted: boolean): void;
   playGarageSting(): void;
@@ -230,6 +235,8 @@ interface AudioEntity {
     auxiliary?: { gunOn?: boolean; lights?: number };
   };
   modeActive?: boolean;
+  /** A network battle's actor: whether the authority sent it this frame (the player's visibility rule reads it). */
+  networkVisible?: boolean;
 }
 
 interface TankInfo {
@@ -247,7 +254,10 @@ interface TankInfo {
   specId: string;
   nation: string;
   alive: boolean;
-  spotted: boolean;
+  /** Whether the player saw it in the frame `seenAt` names (the frame index's serial): a hull missing from this frame's
+   *  list (a network actor the authority stopped sending) is not seen, whatever it last was (round 8 Y3 s1-02). */
+  visible: boolean;
+  seenAt: number;
   /** Wears a field net and garnish (its visual's userData.fieldSuit; null until a visual has been seen). */
   suited: boolean | null;
   /** Its gun and the gun's mounts (rebuilt when the gun changes: a Gun Game step or the AC-130 swaps the gun object); the
@@ -852,6 +862,7 @@ export function createAudio({
     playerId: () => playerId,
     player: () => (latestPlayer && latestPlayer.id === playerId ? latestPlayer : null),
     tanks: () => tanks,
+    visible: seenNow,
     sameTeam,
     objectiveTeam: () => {
       const perspective = getObjectiveTeam?.();
@@ -2210,7 +2221,17 @@ export function createAudio({
     return suited;
   }
 
-  function indexTanks(list: readonly RuntimeValue[], dt: number): void {
+  /** The frame index's serial: a hull indexed in this frame carries it (TankInfo.seenAt). */
+  let indexFrame = 0;
+  /** Whether the player sees the hull now: indexed in the last frame, and seen there (round 8 Y3 s1-02: the crew names only
+   *  what the player can see, never a hull it has once heard spotted). */
+  function seenNow(id: string): boolean {
+    const info = tanks.get(id);
+    return !!info && info.seenAt === indexFrame && info.visible;
+  }
+
+  function indexTanks(list: readonly RuntimeValue[], dt: number, visible?: (hull: VisibilityHull) => boolean): void {
+    indexFrame++;
     for (let i = 0; i < list.length; i++) {
       const entity = toEntity(list[i]);
       if (!entity) continue;
@@ -2221,7 +2242,7 @@ export function createAudio({
       if (!info) {
         info = {
           team: String(entity.team ?? ''), isPlayer: !!entity.isPlayer, pos: p, lastX: p.x, lastY: p.y, lastZ: p.z,
-          vx: 0, vy: 0, vz: 0, identity: identityFor(entity), specId: String(entity.specId ?? entity.spec?.id ?? ''), nation: String(entity.spec?.nation ?? ''), alive: !entity.combat?.destroyed, spotted: false, suited: null,
+          vx: 0, vy: 0, vz: 0, identity: identityFor(entity), specId: String(entity.specId ?? entity.spec?.id ?? ''), nation: String(entity.spec?.nation ?? ''), alive: !entity.combat?.destroyed, visible: false, seenAt: -1, suited: null,
           gun: null, mounts: [],
         };
         tanks.set(entity.id, info);
@@ -2250,6 +2271,8 @@ export function createAudio({
       }
       info.lastX = p.x; info.lastY = p.y; info.lastZ = p.z;
       info.alive = !entity.combat?.destroyed;
+      info.visible = !!visible && visible(entity);
+      info.seenAt = indexFrame;
       if (deathLatch.size) {
         // a latched death re-arms once its hull has been seen destroyed and then alive again (a respawn)
         const seenDead = deathLatch.get(entity.id);
@@ -3288,7 +3311,8 @@ export function createAudio({
     say(id, { delayS: 0.12 });
   }
 
-  function update(dt: number, listener: AudioListenerPose, list: readonly RuntimeValue[], shells: readonly RuntimeValue[] = []): void {
+  function update(dt: number, listener: AudioListenerPose, list: readonly RuntimeValue[], shells: readonly RuntimeValue[] = [],
+    visible?: (hull: VisibilityHull) => boolean): void {
     syncKillcam();
     if (!ready() || !mixer || !pool || !ctx) return;
     // Keep the last finite pose: one NaN camera frame would otherwise poison every cue that frame.
@@ -3321,7 +3345,7 @@ export function createAudio({
     }
     updateQuietRadio(now);
     if (list) {
-      indexTanks(list, dt);
+      indexTanks(list, dt, visible);
       if (playerId) {
         for (let i = 0; i < list.length; i++) {
           const entity = toEntity(list[i]);

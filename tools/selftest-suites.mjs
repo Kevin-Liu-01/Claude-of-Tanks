@@ -1783,6 +1783,9 @@ export const SELFTEST_SUITES = Object.freeze({
     // round 8 Y3 (the 269 crew procedure's machines): the crew's battle and life on the engine's edges (the pause silences
     // the net; a fresh gun is loaded; a kill's cease fire and a drone's recovery die with our tank), what the player sees
     'src/audio/crewProcedure.selftest.mjs',
+    // round 8 Y3 s1-02: what the player sees is one rule (the seat's eyes and the radio share on the real spotting, the
+    // network's word, the watch and couch reveals), and the audio listener hands it to the engine
+    'src/game/playerVisibility.selftest.mjs',
     // (crew-lines-269) every mode's crew calls, the AC-130 crew's, the team counts by deathsAreFinal
     'src/audio/voiceLines.selftest.mjs',
     'src/audio/interfaceSounds.selftest.mjs',

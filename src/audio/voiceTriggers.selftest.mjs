@@ -9,6 +9,7 @@ import { readFileSync, readdirSync } from 'node:fs';
 import { createFakeContext, fakeBuffer } from './fakeAudioContext.test-support.mjs';
 import { createBus } from '../game/stateCore.ts';
 import { VOICE_LINES } from './voiceLines.ts';
+import { matchRulesetFor } from '../sim/matchRuleset.ts';
 
 // Shipped files from disk, "decoded" at their real lengths where timing matters: a crew take is about a second and a
 // half, the net's key-up and release clicks a tenth of a second (a 1.5 s click would hold every call a second late).
@@ -62,14 +63,21 @@ const layOn = (foe) => {
   listener.forward = { x: d[0] / n, y: d[1] / n, z: d[2] / n };
 };
 let me, allies, foes, tanks, shells = [];
+// What the player sees (the game's rule, src/game/playerVisibility.ts, handed to audio.update as listenerPoseRuntime does):
+// our side, every hull in a mode that lights them all (spotting.ts isSpotted under alwaysVisible), and an enemy once our
+// side has spotted it this battle.
+const seen = new Set();
+bus.on('tank:spotted', (e) => { if (e?.team === 'player') seen.add(e.id); });
+const visibleToUs = (hull) => hull.team === 'player' || !!matchRulesetFor(gameMode).alwaysVisible || seen.has(hull.id);
 function roster() {
+  seen.clear();
   me = tank('me', { isPlayer: true });
   allies = [tank('a1', { x: 20, z: 40 }), tank('a2', { x: -20, z: 40 })];
   foes = [tank('f1', { x: 0, z: 200, team: 'enemy' }), tank('f2', { x: 120, z: 120, team: 'enemy' }), tank('f3', { x: -120, z: 120, team: 'enemy' }),
     tank('f4', { x: 0, z: -150, team: 'enemy' }), tank('f5', { x: 60, z: 260, team: 'enemy' })];
   tanks = [me, ...allies, ...foes];
 }
-const frame = (dt = 0.25) => { ctx.advance(dt); audio.update(dt, listener, tanks, shells); };
+const frame = (dt = 0.25) => { ctx.advance(dt); audio.update(dt, listener, tanks, shells, visibleToUs); };
 const settle = (seconds = 6) => { for (let t = 0; t < seconds; t += 0.25) frame(0.25); };
 const flush = async () => { for (let i = 0; i < 6; i++) await new Promise((resolve) => setTimeout(resolve, 0)); };
 

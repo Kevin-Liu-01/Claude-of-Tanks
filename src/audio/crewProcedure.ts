@@ -26,10 +26,11 @@
  * (a cease fire, a drone's recovery, a fire mission) is called in the next. The pause edge (`pause`) cancels every call
  * armed so far; the engine runs no crew frame while paused and its radio takes no line (the crew is silent behind the
  * pause menu, a network battle's included, as the engine's quiet-radio rule always was). Where the game holds a fact the
- * crew reads it rather than keeping its own copy: the gun is loaded while our reload channel is ready (`combat.reload.t`).
+ * crew reads it rather than keeping its own copy: the gun is loaded while our reload channel is ready (`combat.reload.t`),
+ * an enemy is named only while the player sees it (the engine's frame index, src/game/playerVisibility.ts).
  */
 
-import { AERIAL_RULES, GUN_GAME_WEAPONS, matchRulesetFor } from '../sim/matchRuleset.ts';
+import { AERIAL_RULES, GUN_GAME_WEAPONS } from '../sim/matchRuleset.ts';
 import type { GameModeId } from '../sim/gameModeCatalog.ts';
 import type { CrewLineContext, CrewSeat } from './voiceLines.ts';
 
@@ -75,6 +76,9 @@ export interface CrewProcedureHost {
   playerId(): string | null;
   player(): CrewPlayer | null;
   tanks(): ReadonlyMap<string, CrewTank>;
+  /** Whether the player sees the hull now (src/game/playerVisibility.ts, as this frame's index read it): the crew names
+   *  only what the player can see. */
+  visible(id: string): boolean;
   sameTeam(a: string | null | undefined, b: string | null | undefined): boolean;
   /** Our side in the mode's objective events. */
   objectiveTeam(): 'alpha' | 'bravo';
@@ -97,7 +101,7 @@ const IDENTIFY_S = 3;
 const COMMANDED_SHOT_S = 10;
 /** "Re-engage": a round that left its target alive, the gun loaded again within this long. */
 const REENGAGE_S = 14;
-/** "Cease fire" after a kill when no spotted enemy stands within this range, this long after the kill call. */
+/** "Cease fire" after a kill when no enemy the player sees stands within this range, this long after the kill call. */
 export const CEASE = Object.freeze({ rangeM: 1500, afterS: 2.4 });
 const DRONE = AERIAL_RULES.drone;
 /** Gun Game's last weapon on the ladder. */
@@ -151,8 +155,6 @@ export interface CrewFrameEntity {
 
 /** The battle's calls: one battle (`startBattle`). */
 interface CrewBattle {
-  /** The enemies our side has spotted. */
-  spotted: Set<string>;
   /** Infected: our crew has turned. */
   turned: boolean;
   /** Turbo Ball: the last goal's kick-off, which revives every tank. */
@@ -205,7 +207,7 @@ interface CrewLife {
 
 function freshBattle(): CrewBattle {
   return {
-    spotted: new Set(), turned: false, kickoffAt: -1e9, endReason: null, reported: false, readyUntil: -1,
+    turned: false, kickoffAt: -1e9, endReason: null, reported: false, readyUntil: -1,
     commandedAt: new Map(), smokeBorn: -1, extracted: new Map(),
   };
 }
@@ -258,16 +260,9 @@ export function createCrewProcedure(host: CrewProcedureHost): CrewProcedure {
   const mine = (id: string | null | undefined): boolean => id != null && id === host.playerId();
   const enemyOf = (id: string | null | undefined): boolean => id != null && !mine(id) && !host.sameTeam(id, host.playerId());
 
-  // whether the mode lights every hull (read once per mode, not per frame)
-  let visibleMode: string | null = null;
-  let visibleAll = false;
-
-  /** An enemy our crew can name: alive, and seen by our side (or every hull shows, as the mode lights them). */
+  /** An enemy our crew can name: alive, and seen by the player now (a mode that lights every hull is the rule's too). */
   function identifiable(id: string, tank: CrewTank): boolean {
-    if (!tank.alive || !enemyOf(id)) return false;
-    const mode = host.mode();
-    if (mode !== visibleMode) { visibleMode = mode; visibleAll = !!matchRulesetFor(mode).alwaysVisible; }
-    return visibleAll || battle.spotted.has(id);
+    return tank.alive && enemyOf(id) && host.visible(id);
   }
 
   // ------------------------------------------------------------ the lay ---
@@ -385,7 +380,7 @@ export function createCrewProcedure(host: CrewProcedureHost): CrewProcedure {
     }
   }
 
-  /** "Cease fire": the kill call has been made and no spotted enemy stands near. */
+  /** "Cease fire": the kill call has been made and no enemy the player sees stands near. */
   function updateCease(now: number, me: CrewPlayer): void {
     if (life.ceaseAt < 0 || now < life.ceaseAt) return;
     life.ceaseAt = -1;
@@ -492,9 +487,8 @@ export function createCrewProcedure(host: CrewProcedureHost): CrewProcedure {
       if (e.seconds >= 4 && host.say('crew_report')) battle.readyUntil = host.now() + 3;
     });
     cue<{ id: string; team?: string; spotterId?: string | null }>('tank:spotted', (e) => {
-      // seen by our side (the event's team is the spotting side)
+      // the Juggernaut sighted by our side (the event's team is the spotting side): the spot's edge is the call's moment
       if (!e?.id || !enemyOf(e.id) || e.team == null || e.team !== host.player()?.team) return;
-      battle.spotted.add(e.id);
       const boss = host.bossId();
       if (boss != null && e.id === boss && !mine(boss) && host.live()) host.say('juggernaut_spotted', { delayS: 0.1 });
     });

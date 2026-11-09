@@ -15,6 +15,7 @@ import type { RuntimeValue } from '../runtimeTypes.ts';
 import type { AudioListenerPose } from './listenerPoseRuntime.ts';
 import type { AudioLandmark, AudioMixer, AudioStructureMakeup, AudioTerrainProbe, AudioWorld } from './audioEngine.ts';
 import type { EventBus } from '../game/stateCore.ts';
+import type { VisibilityHull } from '../game/playerVisibility.ts';
 import { nextPaintFrame } from '../engine/frameScheduler.ts';
 import {
   AUDIO_BATTLE_FACT_EVENTS, audioBattleFact, copyAudioBattleMode, createAudioBattleMode, stepAudioBattleMode,
@@ -78,7 +79,9 @@ export interface LazyAudio {
   /** Explicit Battle intent only; preserves legacy gesture-time unlocking. */
   startLoadingAfterPaint(yieldForPaint?: () => Promise<void>): Promise<void>;
   bindBus(bus: EventBus): void;
-  update(dtSeconds: number, listener: AudioListenerPose, tanks: readonly RuntimeValue[], shells?: readonly RuntimeValue[]): void;
+  /** `visible`: whether the player sees a hull of `tanks` (src/game/playerVisibility.ts; none when absent). */
+  update(dtSeconds: number, listener: AudioListenerPose, tanks: readonly RuntimeValue[], shells?: readonly RuntimeValue[],
+    visible?: (hull: VisibilityHull) => boolean): void;
   setMasterVolume(value: number): void;
   mute(muted: boolean): void;
   playGarageSting(): void;
@@ -349,8 +352,9 @@ export function createLazyAudio({
         void nextPaintFrame().then(() => (globalThis.requestIdleCallback ?? setTimeout)(() => void preload().then((module) => module?.prepareInterfaceSounds?.())));
       }
     },
-    update(dt: number, listener: AudioListenerPose, tanks: readonly RuntimeValue[], shells?: readonly RuntimeValue[]) {
-      real?.update(dt, listener, tanks, shells);
+    update(dt: number, listener: AudioListenerPose, tanks: readonly RuntimeValue[], shells?: readonly RuntimeValue[],
+      visible?: (hull: VisibilityHull) => boolean) {
+      real?.update(dt, listener, tanks, shells, visible);
     },
     setMasterVolume(value: number) {
       latchMasterVolume(value);

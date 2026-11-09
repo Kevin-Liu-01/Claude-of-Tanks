@@ -6,6 +6,10 @@
 //   - s1-01, the life scope: the gun is loaded while our reload channel is ready, so a Gun Game step's fresh weapon gets its
 //     fire command at once (no reload ever finished for it); a kill's cease fire and a recalling drone's recovery die with
 //     our tank, so neither is said at the respawn.
+//   - s1-02, one visibility truth: the crew names only what the player sees (src/game/playerVisibility.ts, handed to
+//     audio.update as the listener's runtime does): no fire command on an enemy whose spot lingered out, one a far ally
+//     lit, one revived at its spawn, or a network hull the authority stopped sending; a hidden enemy near does not hold
+//     the cease fire; an enemy the player sees is still commanded.
 // Each case runs on its own battle; a case that fails is reported with the rest, so one run shows every red.
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
@@ -34,7 +38,10 @@ const layOn = (hull) => {
   listener.forward = { x: d[0] / n, y: d[1] / n, z: d[2] / n };
 };
 let field = [];
-const frames = (seconds) => { for (let t = 0; t < seconds - 1e-9; t += 1 / 30) { ctx.advance(1 / 30); audio.update(1 / 30, listener, field, []); } };
+// what the player sees (the game's rule is src/game/playerVisibility.ts): every hull unless a case says
+const EVERY_HULL = () => true;
+let sees = EVERY_HULL;
+const frames = (seconds) => { for (let t = 0; t < seconds - 1e-9; t += 1 / 30) { ctx.advance(1 / 30); audio.update(1 / 30, listener, field, [], sees); } };
 const now = () => +ctx.currentTime.toFixed(3);
 const asked = (id, since) => probe.sayLog.some((e) => e.t >= since && e.id === id);
 const spoken = (id, since) => probe.voiceLog.some((e) => e.t >= since && e.id === id);
@@ -43,9 +50,10 @@ const foe = (id, z, x = 0) => tank(id, { team: 'enemy', x, z });
 const spot = (id) => bus.emit('tank:spotted', { id, team: 'player', spotterId: 'me', timeS: 0 });
 
 /** A battle of `mode` with this field, rolled out and quiet. */
-async function battle(mode, roster) {
+async function battle(mode, roster, visible = EVERY_HULL) {
   gameMode = mode;
   field = roster;
+  sees = visible;
   listener.forward = AWAY;
   bus.emit('phase:change', { phase: 'garage' });
   bus.emit('phase:change', { phase: 'battle' });
@@ -177,5 +185,96 @@ await check('s1-01 a recalling drone is not recovered by our next life', async (
   assert.ok(!asked('drone_recovered', since), `the last life's drone is not "recovered" at the respawn (asked ${said(since)})`);
 });
 
+// ---- s1-02: the crew names only what the player sees.
+/** A battle where the player sees our side and the enemies in `shown` (a case takes one out as the game would hide it). */
+async function seenBattle(roster, shown) {
+  await battle('standard', roster, (hull) => hull.team === 'player' || shown.has(hull.id));
+}
+const fireCommanded = (since) => probe.sayLog.some((e) => e.t >= since && e.id.startsWith('fire_command_'));
+async function laidFor(hull, seconds = 1) {
+  const since = now();
+  layOn(hull);
+  frames(seconds);
+  listener.forward = AWAY;
+  return since;
+}
+
+await check('s1-02 an enemy whose spot lingered out is not commanded', async () => {
+  const shown = new Set(['f1']);
+  const target = foe('f1', 800);
+  await seenBattle([tank('me', { isPlayer: true }), target], shown);
+  spot('f1');
+  frames(1);
+  shown.delete('f1'); // behind the ridge: the spot lingers out (spotting.ts emits nothing), the hull stays where it is
+  const since = await laidFor(target);
+  assert.ok(!fireCommanded(since), `no fire command on a hull the player no longer sees (asked ${said(since)})`);
+});
+
+await check('s1-02 an enemy a far ally lit is not commanded', async () => {
+  const target = foe('f2', 700);
+  await seenBattle([tank('me', { isPlayer: true }), target], new Set());
+  // the team's spot (the event ignores the receiver): beyond the radio share, the player's seat never sees it
+  bus.emit('tank:spotted', { id: 'f2', team: 'player', spotterId: 'a9', timeS: 0 });
+  frames(1);
+  const since = await laidFor(target);
+  assert.ok(!fireCommanded(since), `no fire command on a hull only a far ally sees (asked ${said(since)})`);
+});
+
+await check('s1-02 an enemy revived at its spawn is not commanded', async () => {
+  const shown = new Set(['f3']);
+  const target = foe('f3', 500);
+  await seenBattle([tank('me', { isPlayer: true }), target], shown);
+  spot('f3');
+  frames(1);
+  target.combat.destroyed = true;
+  bus.emit('tank:destroyed', { id: 'f3', killerId: 'a9', pos: [0, 0, 500], cause: 'shot' });
+  frames(1);
+  // its contact retired with its death (spotting.ts retireContact): back at its spawn, unseen
+  shown.delete('f3');
+  target.combat.destroyed = false;
+  target.state.pos.x = 30;
+  target.state.pos.z = 900;
+  bus.emit('mode:respawn', { id: 'f3', team: 'bravo' });
+  frames(1);
+  const since = await laidFor(target);
+  assert.ok(!fireCommanded(since), `no fire command on a revived hull the player has not seen (asked ${said(since)})`);
+});
+
+await check('s1-02 a network hull the authority stopped sending is not commanded', async () => {
+  const target = foe('f4', 650);
+  const me = tank('me', { isPlayer: true });
+  await seenBattle([me, target], new Set(['f4']));
+  spot('f4');
+  frames(1);
+  // hidden now: the actor leaves the seat's list (battlePresentation keeps its last pose), the sight on that pose
+  field = [me];
+  const since = await laidFor(target);
+  assert.ok(!fireCommanded(since), `no fire command on a hull missing from this frame (asked ${said(since)})`);
+});
+
+await check('s1-02 a hidden enemy near does not hold the cease fire', async () => {
+  const shown = new Set(['f5', 'f6']);
+  const hidden = foe('f5', 800, 200), victim = foe('f6', 600);
+  await seenBattle([tank('me', { isPlayer: true }), hidden, victim], shown);
+  spot('f5');
+  spot('f6');
+  frames(8);
+  shown.delete('f5');
+  const since = now();
+  victim.combat.destroyed = true;
+  bus.emit('tank:destroyed', { id: 'f6', killerId: 'me', pos: [0, 0, 600], cause: 'shot' });
+  frames(4);
+  assert.ok(asked('cease_fire', since), `the cease fire: no enemy the player sees stands near (asked ${said(since)})`);
+});
+
+await check('s1-02 an enemy the player sees is commanded', async () => {
+  const target = foe('f7', 600);
+  await seenBattle([tank('me', { isPlayer: true }), target], new Set(['f7']));
+  spot('f7');
+  frames(1);
+  const since = await laidFor(target);
+  assert.ok(asked('fire_command_kinetic', since), `the fire command on a hull the player sees (asked ${said(since)})`);
+});
+
 assert.deepEqual(failures, [], `crewProcedure.selftest:\n  ${failures.join('\n  ')}`);
-console.log('crewProcedure.selftest: the pause silences the net and cancels armed calls, the crew\'s battle is the engine\'s, a fresh weapon is loaded, a kill\'s cease fire and a drone\'s recovery die with our tank passed');
+console.log('crewProcedure.selftest: the pause silences the net and cancels armed calls, the crew\'s battle is the engine\'s, a fresh weapon is loaded, a kill\'s cease fire and a drone\'s recovery die with our tank, the crew names only what the player sees passed');
