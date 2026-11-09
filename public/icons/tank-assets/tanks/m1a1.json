@@ -599,7 +599,7 @@
       }
     ]
   },
-  "geometryHash": "040f96d9",
+  "geometryHash": "004ad5a2",
   "metadataHash": "936012ee",
   "presentationAnchor": {
     "xM": 0.0001,
@@ -623,8 +623,8 @@
       "trackBand": 2,
       "trackPad": 1,
       "trackPadSimplified": 1,
-      "gunmetal": 9,
-      "fittingPaint": 3,
+      "gunmetal": 12,
+      "fittingPaint": 6,
       "armorPaint": 9,
       "gearShadow": 3,
       "opticGlass": 2,
@@ -684,7 +684,7 @@
       "height": 256,
       "mime": "image/webp",
       "bytes": 13304,
-      "sha256": "0741c9ce8ed6cbd2450cf73d5cfaa4aa38584047f3cc4a765a0fc85505e09f70"
+      "sha256": "0248cebdfdc2d1919f782828bfeaaf46a4959d123a1307f805c987daa0c96b48"
     },
     "topSilhouette": {
       "file": "m1a1_top_silhouette.png",
@@ -716,15 +716,15 @@
       "height": 512,
       "mime": "image/webp",
       "bytes": 28488,
-      "sha256": "f64b9c4b4c464903c785cb4b9b3eba1d776a8cba008dbc3b985b82238fdfd3c5"
+      "sha256": "da708d4b29ef27197a2ce93ff7fda65cff4590fb2535e6a233f1c703ead8141d"
     },
     "crewSide": {
       "file": "m1a1_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 26538,
-      "sha256": "42a336d35e246c12938fb9edd98460a6e6abff373a4994349d838e1c0eed7f2c"
+      "bytes": 26536,
+      "sha256": "d87d96673b52d5e23ed21f7bd42ac23b9a6f803fbe5fc1213f84e908bb3198e5"
     },
     "markings": {
       "file": "m1a1_markings.png",

@@ -1571,7 +1571,7 @@
       }
     ]
   },
-  "geometryHash": "c9cb1f7c",
+  "geometryHash": "b3880ef3",
   "metadataHash": "c6df3b46",
   "presentationAnchor": {
     "xM": 0,
@@ -1595,8 +1595,8 @@
       "trackBand": 2,
       "trackPad": 1,
       "trackPadSimplified": 1,
-      "gunmetal": 10,
-      "fittingPaint": 3,
+      "gunmetal": 13,
+      "fittingPaint": 6,
       "armorPaint": 12,
       "gearShadow": 3,
       "opticGlass": 3,
@@ -1656,8 +1656,8 @@
       "width": 512,
       "height": 256,
       "mime": "image/webp",
-      "bytes": 13868,
-      "sha256": "4e1fdab85790bb4237752ae0a59ddcc5996c4835dccc8c27f4879535bf2adf88"
+      "bytes": 13872,
+      "sha256": "75bbb7f8d1fdd98f3b32e26806c7dee41a5d27a11c84af1892377cafcce138b5"
     },
     "topSilhouette": {
       "file": "m1a1_abrams_aim_top_silhouette.png",
@@ -1680,8 +1680,8 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 29500,
-      "sha256": "4dea2d0b5caccc436137db8b93aad548f07e98519517e8ecb884a8b8a13e1df9"
+      "bytes": 29498,
+      "sha256": "986b701035df216b2ae95bf68b643c8999eadf7f70e561433bf357793a555e20"
     },
     "modulesSide": {
       "file": "m1a1_abrams_aim_modules_side.webp",
@@ -1696,8 +1696,8 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 28478,
-      "sha256": "4ed729cba919d594c67e4c4ff6dc02e20b401bd028a5656a7c56a78e44c6821d"
+      "bytes": 28470,
+      "sha256": "85770d03b67ab29e6b0b8bd29c47c7289cdaf5ba1f7fad88045eda2a27c76277"
     },
     "markings": {
       "file": "m1a1_abrams_aim_markings.png",

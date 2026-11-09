@@ -20,11 +20,12 @@ import { appendFileSync, readdirSync, readFileSync, writeFileSync } from 'node:f
 import { dirname, join } from 'node:path';
 import * as THREE from 'three';
 import './tank-surface-collect.mjs'; // node canvas shim
+import { uniqueIds } from './id-list.mjs';
 const { createTank } = await import('../src/vehicles/tankFactory.ts');
 const { ALL_TANK_IDS } = await import('../src/vehicles/specs.ts');
 const args = process.argv.slice(2);
 const opt = (name, fallback) => args.find((a) => a.startsWith(`--${name}=`))?.slice(name.length + 3) ?? fallback;
-let ids = args.includes('--all') ? [...ALL_TANK_IDS] : opt('ids', 'challenger2,m48a5_patton,m1a1').split(',').filter(Boolean);
+let ids = args.includes('--all') ? [...ALL_TANK_IDS] : uniqueIds(opt('ids', 'challenger2,m48a5_patton,m1a1').split(',').filter(Boolean));
 const shard = opt('shard', null);
 if (shard) { const [i, n] = shard.split('/').map(Number); ids = ids.filter((_, k) => k % n === i); }
 const lines = opt('lines', null);

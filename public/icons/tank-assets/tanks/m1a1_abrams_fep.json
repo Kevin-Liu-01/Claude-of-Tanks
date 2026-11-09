@@ -2081,7 +2081,7 @@
       }
     ]
   },
-  "geometryHash": "db082745",
+  "geometryHash": "04182482",
   "metadataHash": "d18d09a1",
   "presentationAnchor": {
     "xM": 0.0001,
@@ -2105,8 +2105,8 @@
       "trackBand": 2,
       "trackPad": 1,
       "trackPadSimplified": 1,
-      "gunmetal": 13,
-      "fittingPaint": 3,
+      "gunmetal": 16,
+      "fittingPaint": 6,
       "armorPaint": 12,
       "gearShadow": 3,
       "opticGlass": 4,
@@ -2165,8 +2165,8 @@
       "width": 512,
       "height": 256,
       "mime": "image/webp",
-      "bytes": 14956,
-      "sha256": "1f78f29ff135ce3124909ee958bf68cc88fa06cc7f1e39eeea0d4de45b7be2a8"
+      "bytes": 14954,
+      "sha256": "6947e08f12e27378158433ffb2f1edd2fdd32f25922458b82ec1f468e08ec740"
     },
     "topSilhouette": {
       "file": "m1a1_abrams_fep_top_silhouette.png",
@@ -2197,8 +2197,8 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 37830,
-      "sha256": "750762a518b1a7fba6dc93c8144fd6424201f07fce7259045104ecd949dfcf81"
+      "bytes": 37838,
+      "sha256": "1df633d08f28c9f33885531c3af02ca0870ab742641bb89b587d0000b7091067"
     },
     "crewSide": {
       "file": "m1a1_abrams_fep_crew_side.webp",
@@ -2206,7 +2206,7 @@
       "height": 512,
       "mime": "image/webp",
       "bytes": 36350,
-      "sha256": "7268f52fdd9ef8ee4e9554dd4cbad0df62ae11a05de552959744fe5803505d83"
+      "sha256": "fd56a53d035db8a743c423343c4a961a5f846efd51263515233b13e47b52fc53"
     },
     "markings": {
       "file": "m1a1_abrams_fep_markings.png",

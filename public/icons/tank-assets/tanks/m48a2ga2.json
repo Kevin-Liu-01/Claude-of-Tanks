@@ -481,7 +481,7 @@
       }
     ]
   },
-  "geometryHash": "7dfd2747",
+  "geometryHash": "ccba4e30",
   "metadataHash": "d51819a3",
   "presentationAnchor": {
     "xM": -0.0001,
@@ -499,7 +499,7 @@
     "roles": {
       "fittingPaint": 6,
       "opticGlass": 4,
-      "gunmetal": 15,
+      "gunmetal": 17,
       "wheelTire": 2,
       "wheelDish": 7,
       "wheelInset": 1,
@@ -540,15 +540,15 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 25934,
-      "sha256": "4874c1630b1832e4b4f6f245eb949d335b77a16d5105f91abc446a2e06960b3b",
+      "bytes": 25920,
+      "sha256": "e3e6cf20325727e9cd23cc3eaf33a4fb9107382802bc43f7b4386d68af193cf9",
       "thumbnail": {
         "file": "thumbs/m48a2ga2_angle.webp",
         "width": 256,
         "height": 256,
         "mime": "image/webp",
         "bytes": 10540,
-        "sha256": "2a3e6b55937a8a54487210356e8cb5708ef687706b2a53db468cf086f166de43"
+        "sha256": "59d1b95c52c956dca39218751fcf9ee132a0fd49ee4b511882244b5e800f7704"
       }
     },
     "top": {
@@ -564,8 +564,8 @@
       "width": 512,
       "height": 256,
       "mime": "image/webp",
-      "bytes": 11914,
-      "sha256": "8f2a6ed008f85e0ec9ad51a072cadf6bce7572f708204e1258b07674037d8047"
+      "bytes": 11926,
+      "sha256": "4cca711f5466f1db66e0be34e597c0bb00bb258abcff23fa25bdb060ad370b04"
     },
     "topSilhouette": {
       "file": "m48a2ga2_top_silhouette.png",
@@ -588,24 +588,24 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 27548,
-      "sha256": "9541e7ecf5d789f803f5b6a0dc6badd37f954a38535387319934021f2d219025"
+      "bytes": 27584,
+      "sha256": "017c844dac7b94c411ccb907ef0ea3f3db64db422afd3da33f89d954a2d5f6df"
     },
     "modulesSide": {
       "file": "m48a2ga2_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 28354,
-      "sha256": "9d22e7359c7ab5cf41fbc12eb74bbd4d95d5dcb485380eca4dc138f0b3df6029"
+      "bytes": 28408,
+      "sha256": "13c8e1acfbc3e2f9aebb835bf4333be09b4cb323e280c5b69581854bb13119bd"
     },
     "crewSide": {
       "file": "m48a2ga2_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 27372,
-      "sha256": "1ba32a04cf99a3b5fb3cf3f25efa96831adc127a760c5f992ca2bfa867b4405f"
+      "bytes": 27368,
+      "sha256": "0d62e64970fdaa242d808ca8008cf73e398667be6a26f477f88f3d0cb2fc7d20"
     },
     "markings": {
       "file": "m48a2ga2_markings.png",
