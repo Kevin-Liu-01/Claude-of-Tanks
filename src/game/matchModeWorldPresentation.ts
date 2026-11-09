@@ -14,6 +14,7 @@ import {
   laneLetter, OBJECTIVE_PALETTE, sideColor, sideFill, type GlyphLetter, type ObjectiveSide,
 } from '../ui/objectiveGlyphs.ts';
 import { drawGlyphLetter } from '../ui/objectiveGlyphLetters.ts';
+import { createAirSupportWorld } from './airSupportWorld.ts';
 
 /** The sprite letters' placement (one scratch: a sprite's texture paints at once). */
 const spriteLetter: GlyphLetter = { x: 0, y: 0, px: 0, color: '', halo: 0 };
@@ -310,6 +311,7 @@ export function createMatchModeWorldPresentation(
   let laneTether: THREE.CylinderGeometry | null = null;
   /** the proving ground's furniture: the plate rack, the range boards, the drive course's boards and poles */
   let rangeDressing: ProvingRangeDressing | null = null;
+  let airWorld: ReturnType<typeof createAirSupportWorld> | null = null;
 
   // tactical map 2026-09-15: the same glyphs the minimap paints, rasterised
   // once per (kind, side, label, status) into sprite textures that float
@@ -1018,7 +1020,7 @@ export function createMatchModeWorldPresentation(
     // zone letters / sector numbers and statuses, spawn marks per mode
     const marks = objectiveMarkers(state);
     if (state.id === 'capture_the_flag') updateFlags(state, timeS);
-    else if (state.id === 'zone_control' || state.id === 'mars' || state.id === 'ac130') updateZones(state, marks);
+    else if (state.id === 'zone_control' || state.id === 'mars' || state.id === 'ac130' || state.id === 'air_support') updateZones(state, marks);
     else if (state.id === 'frontline_assault') {
       updateZones(state, marks);
       updateLineWorks(state);
@@ -1035,12 +1037,19 @@ export function createMatchModeWorldPresentation(
     // (the proving ground's firing line has its start board and the map's mark: no revive beacon round the player's own
     // hull, whose full-strength team ring flooded the tarmac at every start and reset)
     if (!state.range) updateSpawns(state, marks);
+    // Air Support (air-support-270): the call-ins' aircraft and their marks on the ground (airSupportWorld.ts)
+    if (state.air) {
+      airWorld ??= createAirSupportWorld(root, options);
+      airWorld.update(state.air, state.perspectiveTeam, timeS);
+    } else airWorld?.update(null, 'alpha', timeS);
   };
 
   const dispose = (): void => {
     disposeLineWorks();
     rangeDressing?.dispose();
     rangeDressing = null;
+    airWorld?.dispose();
+    airWorld = null;
     const geometries = new Set<THREE.BufferGeometry>();
     const materials = new Set<THREE.Material>();
     root.traverse((object) => {

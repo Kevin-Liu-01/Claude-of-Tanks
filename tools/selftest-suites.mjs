@@ -85,6 +85,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/fx/killGlow.selftest.mjs',
     'src/fx/strikeSignatures.selftest.mjs',
     'src/sim/gunshipEscort.selftest.mjs',
+    'src/sim/airSupport.selftest.mjs',
+    'src/sim/airSupportSolo.selftest.mjs',
     'src/sim/gunshipSupplyDrive.selftest.mjs',
     'src/sim/gunshipEscortMaps.selftest.mjs',
     'src/fx/droneMotion.selftest.mjs',
@@ -2173,6 +2175,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/groundLitter.selftest.mjs',
     // round 73 (2026-09-25): the ground redux — the profile table and material contract, the pressure field, the tall-grass tier
     'src/world/groundRedux.selftest.mjs',
+    // ground-269 (2026-11-04): the ground-surface table — a row per class and map, the plan's sets, the sim column's law
+    'src/world/groundSurfaces.selftest.mjs',
     // 2026-10-14 (the engine-cs lane; media wave f1 "concentric contour rings on snow"): the snow maps' drift and sastrugi
     // phases monotone along the wind over the whole square (no rings), the sunset terminator kept, the GLSL's law
     'src/world/snowDrifts.selftest.mjs',
@@ -2425,6 +2429,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/maps/shoreJetty.selftest.mjs',
     // #16 r2 (Lane C, 2026-10-14): the waterside family in its members (jetty forms, gangway, driftwood, buoys, fords, reeds)
     'src/world/maps/waterside.selftest.mjs',
+    // built-env-270 (2026-11-05): the built-environment table, a row per battlefield (roads, civic style, waterside)
+    'src/world/maps/builtEnvironmentTable.selftest.mjs',
     'src/world/maps/mooredHullMotion.selftest.mjs',
     'src/world/maps/railWashout.selftest.mjs',
     'src/world/maps/railCoalStockpiles.selftest.mjs',
@@ -2469,6 +2475,10 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/maps/regional/facade.selftest.mjs', // 2026-10-05: the facade craft adds dressing only, on desktop, from its own streams
     'src/world/maps/regional/phoneIdentity.selftest.mjs', // 2026-10-08: a phone's kit builds draw the desktop's streams and solids (DESTRUCTION.md §8.4)
     'src/world/maps/regional/skyline.selftest.mjs', // 2026-10-05: the tall- and big-building kit, every builder and damage state sound
+    // buildings-270 (2026-11-05): the building-style table — one row per battlefield, its map's kit, measured against the
+    // kit's houses, with its photographs; and each building's look from its row's variation, no two neighbours alike
+    'src/world/maps/buildingStyleTable.selftest.mjs',
+    'src/world/maps/regional/appearance.selftest.mjs',
     'src/world/maps/northStation.selftest.mjs', // 2026-10-07: Suzhou's North Station a terminus on its own ground (mullions, pointed shed, forecourt, tracks)
     'src/world/maps/regional/yards.selftest.mjs', // 2026-10-03: the yards round a kit's houses, clear of roads, plots, objectives and pads
     'src/world/maps/regional/fineDetailLod.selftest.mjs', // 2026-10-03: a kit's fine joinery drawn near the camera only
@@ -2737,6 +2747,9 @@ export const SELFTEST_SUITES = Object.freeze({
     'tools/vehicle-ground-occlusion.browser.selftest.mjs',
     'tools/articulated-shadow-batch.browser.selftest.mjs',
     'tools/battle-geometry-sharing.browser.selftest.mjs',
+    // 2026-11-06 (crew-languages-270): the crew voice picker lists languages, and a real touch drag (wheel on desktop)
+    // reaches and chooses its last row and an RTL row on a phone sheet
+    'tools/crew-voice-picker.browser.selftest.mjs',
     'tools/track-texture-source.browser.selftest.mjs',
     'tools/sourced-building-source.browser.selftest.mjs',
     'tools/horizon-panorama-bake.browser.selftest.mjs',

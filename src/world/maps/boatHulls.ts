@@ -17,7 +17,8 @@ import * as THREE from 'three';
 import { VehicleMesh, linearHex, material, vehicleWeathering, type Vec3, type VehicleMaterial } from './vehicleMesh.ts';
 import { keepStreams } from '../geometryStreams.ts';
 
-type BoatType = 'faering' | 'canot' | 'gajeta' | 'xuong' | 'lakeboat' | 'nouka';
+/** A boat family's key (a map names its own in its built-environment row, builtEnvironmentTable.ts). */
+export type BoatType = 'faering' | 'canot' | 'gajeta' | 'xuong' | 'lakeboat' | 'nouka';
 
 interface BoatSpec {
   type: BoatType;
@@ -407,7 +408,7 @@ export interface BoatFamily {
   schemes: readonly Pick<BoatSpec, 'topside' | 'sheerStrake' | 'bottom' | 'inside' | 'trim' | 'band'>[];
 }
 
-export const BOAT_FAMILIES: Readonly<Record<string, BoatFamily>> = {
+export const BOAT_FAMILIES: Readonly<Record<BoatType, BoatFamily>> = {
   // Nordland: the færing / åttring of the Lofoten and Ofoten fjords, double-ended clinker with tall stems, tarred
   faering: {
     hull: { type: 'faering', length: 5.6, beam: 1.5, depth: 0.62, sheerAft: 0.34, sheerFwd: 0.42, rocker: 0.16, deadrise: 0.7,
@@ -469,19 +470,6 @@ export const BOAT_FAMILIES: Readonly<Record<string, BoatFamily>> = {
     ],
   },
 };
-
-/** The boat family of a map's coast (by the map's Reference). */
-export function boatFamilyForMap(mapId: string): BoatFamily {
-  switch (mapId) {
-    case 'fjord': return BOAT_FAMILIES.faering;
-    case 'coastal': return BOAT_FAMILIES.canot;
-    case 'saltwind': return BOAT_FAMILIES.gajeta;
-    case 'mangrove': return BOAT_FAMILIES.xuong;
-    case 'delta': return BOAT_FAMILIES.nouka;
-    case 'alpine': return BOAT_FAMILIES.lakeboat;
-    default: return BOAT_FAMILIES.canot;
-  }
-}
 
 /** One boat of a family: its hull scaled to a length, a scheme and a mast picked by the kit's draws. */
 export function familyBoat(family: BoatFamily, length: number, scheme: number, mast: boolean, coarse = false,

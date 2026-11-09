@@ -28,6 +28,7 @@
 import { WORN_YARD_PAINT } from '../hardstandSurface.ts';
 
 import * as detMath from '../../sim/detMath.ts';
+import { BUILDING_STYLES } from './buildingStyleTable.ts';
 const clamp01 = (x: number) => (x < 0 ? 0 : x > 1 ? 1 : x);
 
 // The main line's centre: a straight chord through the station square, rising 6.6 m per 100 m of easting.
@@ -361,7 +362,7 @@ export default {
 
   props: {
     // regional-buildings lane: the Ruhr colliery-junction kit (maps/regional/ruhr.ts)
-    architecture: 'ruhr',
+    architecture: BUILDING_STYLES.railyard.kit,
     plan: PLAN,
     // round 2: the settlement the props dress reaches the colonies' back streets (the graded yard stays as it was), and
     // every street in it has its kerbs and pavements
@@ -450,11 +451,12 @@ export default {
     sideSkip: 0.08, spacingPad: 6,
     buildingLat: [12, 5], maxSpread: 2.4,
     tones: {
-      plaster: (h: number, s: number, l: number) => [0.09, clamp01(s * 0.30), clamp01(l * 0.88)], // sooty render
+      plaster: (h: number, s: number, l: number) => [0.08, clamp01(s * 0.3 + 0.04), clamp01(l * 0.95 + 0.06)], // sooty render (the kit's lime render: #877e75; buildings-270)
       plaster2: (h: number, s: number, l: number) => [0.075, clamp01(s * 0.35 + 0.06), clamp01(l * 0.80)],
       plaster3: (h: number, s: number, l: number) => [0.55, clamp01(s * 0.15 + 0.03), clamp01(l * 0.78)],
       roof: (h: number, s: number, l: number) => [0.58, clamp01(s * 0.18), clamp01(l * 0.80 + 0.04)], // weathered sheet grey (r2: lifted — read near-black under the deck)
-      stone: (h: number, s: number, l: number) => [0.05, clamp01(s * 0.55 + 0.08), clamp01(l * 0.98 + 0.03)], // smoke-stained brick (r2: lifted)
+      // (buildings-270) the props' plain stone (the yard's walls) soot-darkened as the kit's brick is (regional/ruhr.ts)
+      stone: (h: number, s: number, l: number) => [0.035, clamp01(s * 0.42 + 0.05), clamp01(l * 0.74 + 0.02)], // smoke-stained brick
       wood: (h: number, s: number, l: number) => [0.08, clamp01(s * 0.55), clamp01(l * 0.85)], // creosoted timber
       straw: null,
     },

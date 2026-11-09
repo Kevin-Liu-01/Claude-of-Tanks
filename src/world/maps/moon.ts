@@ -21,6 +21,7 @@ import type { MapCompositionConfig } from './contracts.ts';
 import { APOLLO_SITE, EARTHRISE_STATION, EARTH_SKY, EXCAVATION_FRONT, ISRU_PLANT, RELAY_REPEATERS, STATION_DOMES, SUN_SKY, roverTrack, stationTracks } from './earthriseStation.ts';
 import { LUNAR_STRUCTURE_VARIANTS } from './lunarWorksPlan.ts';
 import * as detMath from '../../sim/detMath.ts';
+import { BUILDING_STYLES } from './buildingStyleTable.ts';
 // (2026-10-10, the map-revival lane; wave 346: "icy-blue crater-free regolith") the regolith a neutral, faintly warm grey,
 // not a blue one: hue 0.60 -> 0.09, saturation 0.025 -> 0.012
 const grey = (_h: number, _s: number, l: number): [number, number, number] => [0.09, .012, .30 + l * .35];
@@ -191,7 +192,7 @@ export default {
   // form dressed in the station's stock
   props: {
     // the station: Taurus-Littrow Station's plan (maps/earthriseStation.ts), built by its own kit (maps/regional/littrow.ts)
-    architecture: 'littrow',
+    architecture: BUILDING_STYLES.moon.kit,
     plannedSites: EARTHRISE_STATION,
     // the landing field's paint (LANDING_FIELD_PAINT, above)
     groundMarkings: { ...LANDING_FIELD_PAINT, lines: [...LANDING_FIELD_PAINT.lines, ...ROVER_TRACKS] },

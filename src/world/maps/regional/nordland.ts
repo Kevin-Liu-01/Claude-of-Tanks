@@ -1055,9 +1055,8 @@ export const NORDLAND_STYLE: ArchitectureStyle = Object.freeze<ArchitectureStyle
     plaster: [[1, 1, 1], [0.98, 0.97, 0.95], [0.95, 0.95, 0.94], [1.0, 0.98, 0.95]],
     stone: [[1, 1, 1], [0.95, 0.95, 0.94], [1.02, 1.01, 0.99], [0.9, 0.91, 0.91]],
     roof: [[1, 1, 1], [0.9, 0.9, 0.88], [1.06, 1.05, 1.02], [0.84, 0.86, 0.86]],
-    damp: 0.7, moss: 0.45, mossTint: [0.92, 0.96, 0.84],
+    mossTint: [0.92, 0.96, 0.84],
   },
-  wear: 0.3,
   // the yards: white picket fences round the potato beds and the woodshed (yards.ts)
   // round 4 (no white pickets off the American maps): the yards fenced in split rails, the skigard's nearest
   yard: { kinds: ['cottage', 'logcabin', 'alpine'], fence: 'fencerail', gate: 'gate', shed: 'woodshed', shedSize: [3.2, 2.8], garden: true },

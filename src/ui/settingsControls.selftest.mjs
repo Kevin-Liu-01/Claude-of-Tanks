@@ -1,7 +1,8 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { getLocale, setLocale, t } from './i18n.ts';
-import { battleControlHintGroups } from './settings.ts';
+import { battleControlHintGroups, crewVoiceItems } from './settings.ts';
+import { CREW_LANGUAGES } from '../audio/vehicleAudioProfiles.ts';
 import { SETTINGS_ACTION_ICONS, SETTINGS_OPTION_ICONS } from './settingsIcons.ts';
 import { uiIconIds, uiIconSVG } from './uiIcons.ts';
 import { FLIGHT_ACTIONS, VEHICLE_ACTIONS } from '../game/vehicleActions.ts';
@@ -34,7 +35,8 @@ for (const action of ['smoke', 'lights', 'roofGun', 'drone', 'aerialVision']) as
 for (const action of ['rangeReset', 'rangeMoving']) assert.ok(iconIds.has(SETTINGS_ACTION_ICONS[action].id), `${action} wears an icon of the shared set`);
 // the vehicle-action table (owner 2026-10-25, src/game/vehicleActions.ts): the ATGM (Q) joins them, and every vehicle and
 // flight action wears the table's glyph, as the HUD's controls row and the Garage do
-assert.equal(Object.keys(SETTINGS_ACTION_ICONS).length, 38,
+// Air Support (air-support-270): the strike view's binoculars (X) join them
+assert.equal(Object.keys(SETTINGS_ACTION_ICONS).length, 39,
   'every remappable action has a settings icon');
 for (const def of [...VEHICLE_ACTIONS, ...FLIGHT_ACTIONS].filter((entry) => entry.binding !== 'selfRight')) {
   assert.equal(SETTINGS_ACTION_ICONS[def.binding].id, def.glyph, `${def.binding} wears the table's ${def.glyph}`);
@@ -124,9 +126,31 @@ assert.doesNotMatch(armorSvg, /#[0-9a-f]{6}/i, 'the armour overlay glyph carries
   // its seat: over the vehicle-controls row (battleHudLayout.ts); never over the scope, a flight, Watch or a spectated battle
   // (gauntlet r3: the planner's place, over the rack's centre or beside the speedometer, battleHudLayout.ts hintsPlace)
   assert.match(source, /\.cot-hints\{position:fixed;left:var\(--hud-hints-x,50%\);top:var\(--hud-hints-bottom,calc\(var\(--hud-systems-top,/, 'the strip seats over the controls row');
-  assert.match(source, /body\.cot-hud-aerial \.cot-hints,html\[data-cot-scoped\] \.cot-hints,html\[data-watch\] \.cot-hints,body\.cot-spectating \.cot-hints\{display:none;\}/,
-    'the scope, a flight, Watch and spectating hide the strip');
+  assert.match(source, /body\.cot-hud-aerial \.cot-hints,html\[data-cot-scoped\] \.cot-hints,html\[data-cot-strike-view\] \.cot-hints,html\[data-watch\] \.cot-hints,body\.cot-spectating \.cot-hints\{display:none;\}/,
+    'the scope, the strike view, a flight, Watch and spectating hide the strip');
 }
 
-console.log('settingsControls.selftest: controls references and exhaustive setting icons passed');
+// crew-languages-270 (owner 2026-11-06: "also that selection should be in languages"): Crew voices lists National crews,
+// then every pack as a language named in the interface's language (its own name beside it where that differs), sorted
+// by that name, with no flags; the stored value stays the pack's tag
+for (const locale of ['en-US', 'zh-CN']) {
+  setLocale(locale);
+  const items = crewVoiceItems();
+  assert.equal(items[0].id, 'national', `${locale}: National crews comes first`);
+  const languages = items.slice(1);
+  assert.deepEqual(languages.map((item) => item.id).sort(), [...CREW_LANGUAGES].sort(), `${locale}: every pack is listed once, by its tag`);
+  for (const item of languages) {
+    assert.ok(item.name.trim() && item.name !== item.id, `${locale}: ${item.id} renders a name`);
+    assert.ok(!item.chip, `${locale}: ${item.id} carries no flag: a language is not a country`);
+    if (item.facts) assert.ok(item.facts.length === 1 && item.facts[0].trim() && item.facts[0] !== item.name, `${locale}: ${item.id}'s own name`);
+  }
+  assert.equal(new Set(languages.map((item) => item.name)).size, languages.length, `${locale}: no two packs share a name`);
+  const collator = new Intl.Collator(locale);
+  assert.deepEqual(languages.map((item) => item.name), languages.map((item) => item.name).sort(collator.compare), `${locale}: sorted by name`);
+}
+setLocale('en-US');
+assert.deepEqual(['de', 'en-AU', 'ar'].map((id) => crewVoiceItems().find((item) => item.id === id)).map((item) => [item.name, item.facts?.[0] ?? null]),
+  [['German', 'Deutsch'], ['English (Australia)', null], ['Arabic', 'العربية']], 'German · Deutsch; English (Australia)');
+
+console.log('settingsControls.selftest: controls references, exhaustive setting icons and the crew voice languages passed');
 setLocale(originalLocale);

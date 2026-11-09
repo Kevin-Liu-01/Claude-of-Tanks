@@ -3,10 +3,8 @@ import { ROAD_FRAME_ARC_UNITS, createHeightField, makeMaskTexture, mulberry32, s
 import { SimplexNoise } from '../engine/simplexFast.ts';
 import { getMapConfig } from './maps/index.ts';
 import { MAP_IDS } from './maps/mapIds.ts';
-import {
-  MAP_PATH_SURFACES, MAP_PAVED_SURFACES, ROAD_SURFACE_BY_CLIMATE, ROAD_SURFACE_CODE, ROAD_SURFACE_MAP_OVERRIDES,
-  pavedSurfaceUniforms, roadSurfaceUniforms,
-} from './roadSurfaces.ts';
+import { ROAD_SURFACE_BY_CLIMATE, ROAD_SURFACE_CODE, pavedSurfaceUniforms, roadSurfaceUniforms } from './roadSurfaces.ts';
+import { BUILT_ENVIRONMENT } from './maps/builtEnvironmentTable.ts';
 import { terrainSourceText } from './terrainSourceText.mjs';
 
 // Roads lane (2026-10-09; owner: "make sure roads and stuff are really good", then: the roads "need to look a lot better,
@@ -15,11 +13,13 @@ import { terrainSourceText } from './terrainSourceText.mjs';
 // ramp, and the stack addresses it after the road layer; the material reads it with one exact fetch and draws the paved
 // classes and the worked carriageway from the uniforms. No GPU or art claim.
 
-// the catalogue: real maps, real classes, no dirt as a paved class, no protected map paved
+// the catalogue (the built-environment rows): real classes, no dirt as a paved class, no protected map paved
 const PROTECTED = ['verdant', 'frontier', 'winter', 'saltwind', 'reservoir', 'railyard', 'coastal', 'desert', 'fjord'];
+const MAP_PAVED_SURFACES = Object.fromEntries(MAP_IDS.filter((id) => BUILT_ENVIRONMENT[id].roads.paved).map((id) => [id, BUILT_ENVIRONMENT[id].roads.paved]));
+const MAP_PATH_SURFACES = Object.fromEntries(MAP_IDS.filter((id) => BUILT_ENVIRONMENT[id].roads.paths).map((id) => [id, BUILT_ENVIRONMENT[id].roads.paths]));
+// (built-env-270, the owner 2026-11-05: "update roads ... have to be fully updated": the protected maps' paving is the
+// per-map A/B's to judge; their worked carriageway keeps the old law below)
 for (const [id, paved] of Object.entries(MAP_PAVED_SURFACES)) {
-  assert.ok(MAP_IDS.includes(id), `${id} is a map`);
-  assert.ok(!PROTECTED.includes(id), `${id} is not one of the owner's protected maps`);
   for (const key of ['street', 'square']) {
     if (paved[key] === undefined) continue;
     if (key === 'square' && paved[key] === 'print') continue; // (the squares' own print or slabs)
@@ -27,7 +27,7 @@ for (const [id, paved] of Object.entries(MAP_PAVED_SURFACES)) {
   }
 }
 for (const [id, list] of Object.entries(MAP_PATH_SURFACES)) {
-  assert.ok(MAP_IDS.includes(id) && !PROTECTED.includes(id), `${id} is an unprotected map`);
+  assert.ok(MAP_IDS.includes(id), `${id} is a map`);
   const paths = getMapConfig(id).terrain.roads.paths;
   assert.ok(list.length <= paths.length, `${id}: no surface past its ${paths.length} paths`);
   for (const surface of list) assert.ok(surface === null || ROAD_SURFACE_CODE[surface] > 0, `${id}: ${surface} is a class`);
@@ -36,13 +36,13 @@ for (const [id, list] of Object.entries(MAP_PATH_SURFACES)) {
 // lanes' whole albedo darkening (laneTone 1), whatever their climate or splat
 for (const id of PROTECTED) {
   for (const climate of ['vegetated', 'arid', 'snow']) {
-    const { a, b } = roadSurfaceUniforms(id, climate, { relief: 2, stones: 2 });
+    const { a, b } = roadSurfaceUniforms(BUILT_ENVIRONMENT[id].roads.work, climate, { relief: 2, stones: 2 });
     assert.deepEqual([...a, b[0], b[1], b[2], b[3]], [0, 0, 0, 0, 0, 0, 1, 0], `${id} (${climate}): the old road law`);
   }
 }
-assert.ok(PROTECTED.every((id) => ROAD_SURFACE_MAP_OVERRIDES[id]), 'every protected map has its override');
+assert.ok(PROTECTED.every((id) => BUILT_ENVIRONMENT[id].roads.work === 'off'), 'every protected map keeps the old law');
 // an unprotected map takes its climate's row under its splat's own fields
-assert.deepEqual(roadSurfaceUniforms('badlands', 'arid', { stones: 0.5 }).a,
+assert.deepEqual(roadSurfaceUniforms(BUILT_ENVIRONMENT.badlands.roads.work, 'arid', { stones: 0.5 }).a,
   [ROAD_SURFACE_BY_CLIMATE.arid.relief, 0.5, ROAD_SURFACE_BY_CLIMATE.arid.potholes, ROAD_SURFACE_BY_CLIMATE.arid.treads],
   'Redrock: the arid row, its own stones');
 // the paved uniforms: classes by code, the town rect only with kerbs, the old print without a config
@@ -146,8 +146,8 @@ for (const line of [
   'uniform vec4 uRoadSurf, uRoadSurfB;',
   'uniform vec4 uPaveClass, uPaveWear, uPaveTown;',
   'shader.uniforms.uRoadFrame = { value: maskStack.frame };',
-  'const roadWork = roadSurfaceUniforms(mapId, groundProfile.climate, S.roadSurface);',
-  'const pavedCfg: PavedSurfaceConfig | undefined = S.pavedSurface ?? MAP_PAVED_SURFACES[mapId];',
+  "const roadWork = roadSurfaceUniforms(builtEnvironmentFor(mapId)?.roads.work ?? 'climate', groundProfile.climate, S.roadSurface);",
+  'const pavedCfg: PavedSurfaceConfig | undefined = S.pavedSurface ?? builtEnvironmentFor(mapId)?.roads.paved ?? undefined;',
   'if (gRoadClass > 0.5) gRoadTex = abs(gRoadClass - 4.0) < 0.5 ? 0.0 : 1.0;',
   'if (gRoadClass > 127.5) gRoadClass = uLandTier > 0.5 ? gRoadClass - 128.0 : 0.0;',
   'float roadFloorL = floorK * dot(a.rgb, vec3(0.34, 0.45, 0.21));',
@@ -157,7 +157,8 @@ for (const line of [
 // grey pull holds and the lanes keep their whole darkening)
 assert.ok(source.includes('if (dW > 0.002 && wR > 0.002 && uRoadSurf.x + uRoadSurf.y + uRoadSurf.z + uRoadSurfB.x > 0.0 && uLandTier > 0.5) {'),
   'the worked carriageway runs only where a gain is set, and never on the Low tier (the phones keep the old law)');
-assert.ok(source.includes('if (uLandTier < 0.5) pCls = gRoadClass > 0.5 && gRoadClass < 3.5 ? gRoadClass : 0.0;'), 'Low paves by the old law');
+assert.ok(source.includes('if (uLandTier < 0.5) pCls = gRoadClass > 0.5 && gRoadClass < 3.5 ? gRoadClass : (uPaveLow > 0.5 && onStreet > 0.5 && streetCls > 0.5 && streetCls < 3.5 ? streetCls : 0.0);'.replace(/\s+/g, ' ')),
+  'Low paves by the old law, and a map whose row asks for it its streets in their class (built-env-270)');
 // the Low tier (the phones' default) keeps every old road term: the styled paths' old code verbatim, no kerbed pave-out, no
 // square wear, the old tone and lane swing (the phone pair checks the frames)
 {
@@ -165,7 +166,7 @@ assert.ok(source.includes('if (uLandTier < 0.5) pCls = gRoadClass > 0.5 && gRoad
   const lowAt = main.indexOf('} else if (uLandTier < 0.5) {');
   assert.ok(lowAt > 0, 'the Low branch of the paved surfaces');
   const lowBlock = main.slice(lowAt, main.indexOf('\n      } else {\n', lowAt));
-  for (const line of ["float course = rq.x / 0.16, ci = floor(course);", "vec3 asph = vec3(0.068, 0.068, 0.072) * (0.92 + 0.16 * agg);",
+  for (const line of ["float course = rq.x / 0.16, ci = floor(course);", "vec3 asph = (uPaveLow > 0.5 ? vec3(0.118, 0.116, 0.111) * uPaveExtra.x : vec3(0.068, 0.068, 0.072)) * (0.92 + 0.16 * agg);",
     "vec2 pc = vec2(rq.x / 4.2, rq.y / 2.4), pcI = floor(pc), pcF = fract(pc);"]) {
     assert.ok(lowBlock.includes(line), `the Low branch keeps the old styled law: ${line}`);
   }

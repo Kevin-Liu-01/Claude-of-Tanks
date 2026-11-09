@@ -141,6 +141,9 @@
 .dm-bar::after{content:'';position:absolute;inset:0 auto 0 0;width:calc(var(--dm-bar) * 100%);border-radius:inherit;background:var(--ink-2)}
 .dm-nations{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:6px;margin:0;padding:0;list-style:none}
 .dm-nations li{display:flex;align-items:center;gap:8px;padding:7px 10px;border-radius:var(--r1);background:var(--chip-fill);font:500 max(var(--fs-floor-12),var(--fs-14))/1.2 var(--font-body);color:var(--ink-2)}
+.dm-nations+p{margin-top:var(--s4)}
+.dm-languages{grid-template-columns:repeat(auto-fill,minmax(300px,1fr))}
+.dm-nations .dm-endonym{margin-left:auto;font:500 max(var(--fs-floor-12),var(--fs-14))/1.2 var(--font-body);color:var(--ink-1);unicode-bidi:isolate}
 .dm-nations b{margin-left:auto;font:600 max(var(--fs-floor-12),var(--fs-14))/1 var(--font-data);color:var(--ink-1)}
 .dm-equips{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:0 var(--s5)}
 .dm-equip ul{display:grid;gap:10px;margin:0;padding:0;list-style:none}
