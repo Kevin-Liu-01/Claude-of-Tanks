@@ -2529,8 +2529,9 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
    * The search's one transition (round 8 Y2, s2-06): where `hunter` goes this plan (huntTarget) and the phase that sends
    * it there. A spotted quarry takes it. Else the search (268, item 10; Main): a hunter never stands on a spent lead. A
    * sighting it has reached with nobody in sight is spent for it, and it hunts on past it: its sweep starts out round the
-   * spent point. A search point it reaches (within lead.arriveM) is spent too, and the next one is drawn at once, never at
-   * the next sweep epoch. A hunter with no record yet (one that never revived through reviveAtSpawn) anchors where it is.
+   * spent point. A search point it reaches (within lead.arriveM) is spent too, and the next one is drawn at once, never
+   * at the next sweep epoch. A hunter with no record yet (one that never revived through reviveAtSpawn) anchors where it
+   * is.
    */
   const huntTarget = { x: 0, z: 0 };
   function stepHunterSearch(hunter: Entity, rank: number, side: ObjectiveTeam, plan: { x: number; z: number }, quarry: Entity | null): void {

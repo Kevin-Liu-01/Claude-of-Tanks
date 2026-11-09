@@ -3,7 +3,8 @@
 // off, and on standard seeds 1-16 the hull's turn held off 7.0 % of the bots' clear-shot samples. While a bot's shot is
 // open (its target in sight and range, its gun loaded, not yet laid) and no scoot, fallback or kite owns its hull, its
 // steer is held to LAY_FIRST_TURN_SHARE of its turret's traverse over its hull's, so the turret closes on the target.
-// [1] The scene: an M46 bound for a point due east (a hard turn off its heading) with a visible enemy 100 m off its left bow.
+// [1] The scene: an M46 bound for a point due east (a hard turn off its heading) with a visible enemy 100 m off its
+// left bow.
 //
 // Round 8 Y2 (s2-04): the clamp is its own declared layer ('layFirst', after 'finish' in AI_DRIVE_LAYERS), and a tick
 // whose turn a recovery wrote (AI_RECOVERY_TURNS) keeps it whole. The clamp cut the low-speed watchdog's contact release

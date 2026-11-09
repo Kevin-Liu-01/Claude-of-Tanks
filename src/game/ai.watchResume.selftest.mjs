@@ -819,14 +819,15 @@ console.log('[12] the elevation lock\'s dwell counts the bot\'s own ticks: it ho
   // (floorReached: terrainTravelCostFactor of driveGroundTypeAt and state._debuff, as hullReaches reads a step). A top
   // rising 0.7 per metre from its edge, the hull left 2.1 m up it: the walk's points read it at about 0.68 per metre,
   // a rise well past the step at each. Whole on the fixture's firm ground (which the M1A1 reads as medium: it climbs
-  // 0.89 per metre there) this hand-back keeps the dwell (upSteepFirm, the control both restarts rest on: round 8 Y2, from
-  // round seven's completeness review); over soft ground (a marsh's: 0.52), or with the hull's transmission knocked out
-  // in the park (red: 0.3 of its power and 0.45 of its acceleration, so 0.21), it restarts. A walk that read the ground
-  // there as firm, or the hull as whole, climbed the top and kept the dwell. The marsh lies over the top's way up only
-  // (z 23.5-26), short of the spot the hull is left on (z 23) and of the spot it was taken on: the walk's decisive point
-  // (z 24.3-24.6, a 1 m rise over its 1.46 m step from the soft floor; any spacing the walk takes) is soft, the hand-back
-  // spot firm. A slope law that read the ground at the hull's spot (one lookup hoisted out of the walk) or at the park's
-  // spot found firm ground and kept the dwell (round 8 Y2, from both round-seven reviews: the marsh had covered the spot)
+  // 0.89 per metre there) this hand-back keeps the dwell (upSteepFirm, the control both restarts rest on: round 8 Y2,
+  // from round seven's completeness review); over soft ground (a marsh's: 0.52), or with the hull's transmission knocked
+  // out in the park (red: 0.3 of its power and 0.45 of its acceleration, so 0.21), it restarts. A walk that read the
+  // ground there as firm, or the hull as whole, climbed the top and kept the dwell. The marsh lies over the top's way up
+  // only (z 23.5-26), short of the spot the hull is left on (z 23) and of the spot it was taken on: the walk's decisive
+  // point (z 24.3-24.6, a 1 m rise over its 1.46 m step from the soft floor; any spacing the walk takes) is soft, the
+  // hand-back spot firm. A slope law that read the ground at the hull's spot (one lookup hoisted out of the walk) or at
+  // the park's spot found firm ground and kept the dwell (round 8 Y2, from both round-seven reviews: the marsh had
+  // covered the spot)
   const steepRamp = setConvexTopShape({ min: [-40, -0.5, 10], max: [-10, 3, 26] }, [-40, 10, -10, 10, -10, 26, -40, 26], [0, 26, 0, -0.7, 0], -0.5, 3);
   const upSteepFirm = await dwellHandBack((at) => [at[0], 23], [-16, 31], steepRamp, { onY: null, awayY: 2.1 });
   ok(setupOk(upSteepFirm, 0, 2.1), `setup: the floor bot dwells on the ground; the watcher leaves it 2.1 m up a drawn top that rises 0.7 per metre on firm ground (${where(upSteepFirm)})`);

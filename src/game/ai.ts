@@ -7113,10 +7113,11 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
   /**
    * The tick's turn (round 8 Y2, s2-04): which recovery (AI_RECOVERY_TURNS) wrote the hull's steer this tick, null while
    * the turn is the drive owner's (or its detour's or jockey's). States per tick: open with no claim -> open with a
-   * recovery's claim (the last writer holds it) -> decided by the lay-first clamp ('layFirst', the last layer). One owner:
-   * resetStepIntent opens the tick (openTickTurn), the recovery layers claim (claimRecoveryTurn) and layGunFirst decides;
-   * a claim after the decision is refused and counted (lateRecoveryTurns: a layer ordered after 'layFirst' wrote a turn
-   * the clamp never saw). layFirstClamped: the clamp cut this tick's turn (receipts charge the held turn to it).
+   * recovery's claim (the last writer holds it) -> decided by the lay-first clamp ('layFirst', the last layer). One
+   * owner: resetStepIntent opens the tick (openTickTurn), the recovery layers claim (claimRecoveryTurn) and layGunFirst
+   * decides; a claim after the decision is refused and counted (lateRecoveryTurns: a layer ordered after 'layFirst'
+   * wrote a turn the clamp never saw). layFirstClamped: the clamp cut this tick's turn (receipts charge the held turn
+   * to it).
    */
   let recoveryTurn: AiRecoveryTurn | null = null;
   let tickTurnDecided = false;

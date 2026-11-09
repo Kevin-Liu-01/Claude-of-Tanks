@@ -190,8 +190,8 @@ export function createMatchHostCore({
   // the authority's mode events the newest sealed keyframe holds (modeEventSerial at its capture)
   let keyframedModeEvents = 0;
   let lastConfigMs = -Infinity;
-  // the boot configuration's sealed chunks (round 8 Y2, s4-04): sealed once at the boot, as the configuration never changes
-  // for an actor; null before the seal, or when it failed (logged: the seats then hold none, as before)
+  // the boot configuration's sealed chunks (round 8 Y2, s4-04): sealed once at the boot, as the configuration never
+  // changes for an actor; null before the seal, or when it failed (logged: the seats then hold none, as before)
   let configChunks: WireEvent[] | null = null;
   let keyframeSeq = 0;
   let configSeq = 0;
@@ -312,8 +312,9 @@ export function createMatchHostCore({
         gate.state = 'attached';
         const attached = live.attach(link, hello, verified.claims);
         if (!attached) { gates.delete(peer); return; }
-        // the seat holds the sealed configuration from its WELCOME on (round 8 Y2, s4-04): it followed within a housekeeping
-        // beat, sealed afresh, and a seat whose host went in that beat booted from the room's snapshot (planFromRoster)
+        // the seat holds the sealed configuration from its WELCOME on (round 8 Y2, s4-04): it followed within a
+        // housekeeping beat, sealed afresh, and a seat whose host went in that beat booted from the room's snapshot
+        // (planFromRoster)
         deliverConfig(live);
         for (const queued of gate.queue.splice(0)) link.deliver(queued);
       };

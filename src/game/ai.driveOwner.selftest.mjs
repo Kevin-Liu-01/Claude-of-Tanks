@@ -6,8 +6,8 @@
 // debugInfo().driveOwner names the owner that drove the last tick. Pins: the tables hold the orders the statements had
 // (a reorder is a reviewed edit of these lines, never a side effect of moving code); a free bot's mode drives it; a
 // live hit reaction takes the hull; a mission keeps it over that reaction; a wreck has no owner.
-// Round 8 Y2 (s2-04): the lay-first clamp is the last layer ('layFirst', after 'finish'), and the recovery turns it leaves
-// whole are a declared table (AI_RECOVERY_TURNS) with one owner: each turn has its claim site, and only
+// Round 8 Y2 (s2-04): the lay-first clamp is the last layer ('layFirst', after 'finish'), and the recovery turns it
+// leaves whole are a declared table (AI_RECOVERY_TURNS) with one owner: each turn has its claim site, and only
 // resetStepIntent's openTickTurn and claimRecoveryTurn write the tick's recoveryTurn (ai.layGunFirst.selftest drives
 // the claims).
 import { readFileSync } from 'node:fs';

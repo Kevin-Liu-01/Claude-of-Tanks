@@ -6,10 +6,10 @@
 // Now the core seals its configuration once at boot and sends its chunks right after each WELCOME (then on the cadence),
 // and planFromRoster gives a departed player's hull null loadouts, which the authority turns into the vehicle's defaults.
 // [1] A seat welcomed after the boot, its host stopped as the WELCOME arrives: the seat's own MigrationStore holds a
-// complete mp:config that opens, with the match's derived key, to the boot configuration. [2] A second seat welcomed later
-// holds it too. [3] An elected host booted from planFromRoster (no resume extras, the countdown restart's path): the
-// present player keeps the room's loadout and paint, the departed player's hull gets the vehicle's default loadout and
-// items. Driven through the core's port exactly as the browser host is (hostStopRace.selftest's harness).
+// complete mp:config that opens, with the match's derived key, to the boot configuration. [2] A second seat welcomed
+// later holds it too. [3] An elected host booted from planFromRoster (no resume extras, the countdown restart's path):
+// the present player keeps the room's loadout and paint, the departed player's hull gets the vehicle's default loadout
+// and items. Driven through the core's port exactly as the browser host is (hostStopRace.selftest's harness).
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { createHostPortPair, HOST_LOOPBACK_PEER, MIGRATION_EVENT_KIND } from './hostProtocol.ts';
@@ -48,7 +48,8 @@ const helloFor = (playerId) => {
 };
 const bootConfig = (seats) => ({ roomId: 'CFGWEL', matchId, generation: 1, mapId: 'verdant', mode: 'standard', seed: 7, seats, bots: [], countdownS: 1, hostSecret: secret, manifestBase: null, resume: null });
 
-/** A booted core; each link's frames feed that seat's own MigrationStore (beginLink at its WELCOME, as matchClient does). */
+/** A booted core; each link's frames feed that seat's own MigrationStore (beginLink at its WELCOME, as matchClient
+ * does). */
 async function bootedHost(seats) {
   const pair = createHostPortPair();
   const core = createMatchHostCore({ port: pair.worker, buildWorld: async () => 'terrain', reportIntervalMs: 500 });
