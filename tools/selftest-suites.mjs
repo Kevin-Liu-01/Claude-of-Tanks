@@ -985,6 +985,12 @@ export const SELFTEST_SUITES = Object.freeze({
     // lock and browser (mock clock), yield at the cap inside their graces, keep what finished past a stop (exit 3) and exit
     // 128 + n on a signal
     'tools/long-hold-users.selftest.mjs',
+    // round 8 Y8 (sweep s6-01): cloud-sky-shots on the hold wrapper, one owner per unit, on a stand-in browser and a private
+    // lock: browsers closed before the release (way out, a failure, a cap yield, SIGTERM), a first unit failed while queued
+    // opened again, a launch past its unit's budget closed as it comes back; the cap on a mock clock (a unit in flight shot
+    // inside its grace, stopped past it; a refused re-queue counted), a unit past its budget never recorded, a first unit
+    // queued past its budget shot warm
+    'tools/cloud-sky-shots.selftest.mjs',
     'tools/battle-spike-analysis.selftest.mjs', // battle-spikes-253: the spike census's attribution on a synthetic battle of known causes
     'tools/battle-spike-census.selftest.mjs', // battle-spikes-253: the streamed trace's splitter, the census's arguments
     'tools/battle-spike-budget.selftest.mjs', // battle-spikes-253: the spike-budget receipt's judge and the shipped budget

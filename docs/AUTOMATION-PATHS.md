@@ -227,7 +227,6 @@ Waits and polls built by hand:
 - `tools/battle-spike-census.mjs`: its trace starts at the phase edge itself (the covered load is the recorder's, the countdown and the fight are the trace's)
 - `tools/black-world-repro.mjs`: the black-world hunt: it watches the cover lift and the HUD show (the visual edge it hunts at) and samples the loader in its monitor
 - `tools/click-timeline.mjs`: measures the Garage's paint, the entry gate and the reveal latch (visual edges), not readiness
-- `tools/cloud-sky-shots.mjs`: a 269 tool merged in round 8 Y0 with its own `__GAME_READY` boot wait; the tools-capture cluster (round 8 Y8, sweep s6-01) moves it onto the probe
 - `tools/controls-probe.mjs`: times the loading cover's show from the click (a mutation observer on the loader)
 - `tools/garage-action-timing.mjs`: times the Garage's and the battle's visual edges (painted, the loader's classes), its subject
 - `tools/interaction-steps.mjs`: click-timeline's steps: the cover's show and the reveal latch are what it times
@@ -242,13 +241,15 @@ Waits and polls built by hand:
 - `tools/nav-timeline.mjs`: measures the cover's and the HUD's visual edges, its subject
 - `tools/pinch-zoom-probe.mjs`: measures box positions, so past the controls' release it waits for the loading veil out of layout (its leaving fade moves boxes)
 - `tools/render-stability-audit.mjs`: an agent-browser session: it waits on its own entry promise, and the phase confirms the battle
-- `tools/second-solo-battle.browser.selftest.mjs`: a 269 receipt merged in round 8 Y0: it times a second solo start against a running Garage restore, reading the boot mirror, the phase, the loader and the countdown itself; the tools-capture cluster (round 8 Y8, sweep s6-02) moves its waits onto the probe
 - `tools/solo-cold-import-cover-probe.mjs`: the cold entry's cover is its subject: it judges the battle from its own cover observer's samples
 - `tools/solo-kernels-probe.mjs`: after `__DEBUG.startBattle` (no cover, no countdown) the phase alone confirms the battle
 - `tools/track-system-audit.mjs`: a page function closed over the tank id with its own conditions; the tool sets the countdown itself
 <!-- /census -->
 
-Checks and receipt fields that are not waits (a precondition, a loop guard, a branch, a recorded value):
+Checks and receipt fields that are not waits (a precondition, a loop guard, a branch, a recorded value). No
+`waitForFunction` of a tool listed here reads one of these facts: the readiness selftest refuses one (such a tool is a
+hand-built wait, listed above). An `evaluate` that a loop polls until a fact holds is a hand-built wait as well; the
+census cannot tell it from a loop guard, so the row's reason says what each loop's read is for:
 
 <!-- census:stateReads -->
 - `tools/bot-combat-probe.mjs`: a loop guard: it stops stepping when the battle ends
@@ -271,6 +272,7 @@ Checks and receipt fields that are not waits (a precondition, a loop guard, a br
 - `tools/perfprobe-roster.mjs`: receipt checks: each snapshot in a battle with released controls
 - `tools/perfprobe.mjs`: a precondition in its early window (the controls released) and a receipt label
 - `tools/reviveprobe.mjs`: records the HUD's display as a receipt field
+- `tools/second-solo-battle.browser.selftest.mjs`: receipt fields: each sample's loading card (shown, its stage and percentage), a hang's diagnostics, the Leave's outcome (its `[garage return]` log lines: the debug Leave resolves on every outcome), and the next announcement and scene take (`ui:battleStart` and `phase:change` listeners: the second battle is announced, before its cover, and takes the scene after the Leave's return settled); it times a second solo start against a running Garage restore and waits through the probe
 - `tools/six-modes.browser.mjs`: stages the loading screen by hand (listed under loaderClasses) to read its rows
 - `tools/solo-cold-import-cover.mjs`: the cold-cover observer and its receipt checks (the cover is its subject)
 - `tools/sourced-texture-readiness.mjs`: an observer's sample: the first uncovered battle frame

@@ -107,7 +107,14 @@ name before any server, browser or capture hold (`id-list.selftest` scans
 (127.0.0.1, strictPort false), build URLs with `boundOrigin(server)` (never
 `localhost`), and load their first page with `loadReadyPage` (180 s navigation,
 one retry of a timeout; `COT_NAV_TIMEOUT_MS`, `COT_READY_TIMEOUT_MS`,
-`COT_NAV_RETRIES`) from `tool-page-load.mjs`. `gen-interior-fills.mjs`
+`COT_NAV_RETRIES`) from `tool-page-load.mjs`. Those three variables are read
+there only: a tool that keeps its own wait passes its defaults to
+`pageLoadBudget` (`sfx-smoke.mjs` and `voice-smoke.mjs` 90 s ready and one
+retry of any failed load, `audio-mix-balance.mjs` 120 s ready and a single
+load, `weapon-readout.browser.mjs` 30 s each and no retry), so the two
+timeouts govern all four and `COT_NAV_RETRIES` every one that retries;
+`COT_PAGE_TIMEOUT_MS` is retired (`tool-page-load.selftest` checks all
+three). `gen-interior-fills.mjs`
 generates at the shipped records' flags by default (`--rounds=8 --min-fine=1`,
 also spelled `--release`); exploration passes its own rounds explicitly.
 

@@ -31,6 +31,7 @@ import { createServer } from 'vite';
 import puppeteer from 'puppeteer';
 import { bandEnergy } from './audio/pcm.mjs';
 import { waitForBootLoaded } from './game-readiness.mjs';
+import { pageLoadBudget } from './tool-page-load.mjs';
 import { GUN_LADDER, LADDER_BANKS, LADDER_HZ } from './audio/gun-ladder.mjs';
 import { loudestTakes } from './audio/held-takes.mjs';
 import { mkdirSync, readFileSync, writeFileSync, rmSync } from 'node:fs';
@@ -40,8 +41,10 @@ const outDir = resolve('shots/sfx-smoke');
 mkdirSync(outDir, { recursive: true });
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
-// The page's first load (a cold private dep cache under a busy machine's load can take minutes): COT_PAGE_TIMEOUT_MS.
-const PAGE_MS = Number(process.env.COT_PAGE_TIMEOUT_MS) || 90000;
+// The page's first load (a cold private dep cache under a busy machine's load can take minutes): the tools' page budget
+// (tool-page-load.mjs: 180 s navigation, COT_NAV_TIMEOUT_MS; this tool's ready wait 90 s, COT_READY_TIMEOUT_MS; one retry
+// of a failed load, COT_NAV_RETRIES)
+const { navTimeoutMs: NAV_MS, readyTimeoutMs: READY_MS, retries: LOAD_RETRIES } = pageLoadBudget({ readyTimeoutMs: 90000 });
 
 /** Write interleaved stereo Int16 PCM as a RIFF/WAVE file. */
 function writeWav(path, i16, sampleRate) {
@@ -121,11 +124,11 @@ async function openPage() {
   page.on('pageerror', (err) => consoleErrors.push(String(err)));
   for (let attempt = 0; ; attempt++) {
     try {
-      await page.goto(url, { waitUntil: 'domcontentloaded', timeout: PAGE_MS });
-      await waitForBootLoaded(page, { timeout: PAGE_MS });
+      await page.goto(url, { waitUntil: 'domcontentloaded', timeout: NAV_MS });
+      await waitForBootLoaded(page, { timeout: READY_MS });
       break;
     } catch (err) {
-      if (attempt >= 1) throw err;
+      if (attempt >= LOAD_RETRIES) throw err;
       console.warn(`[sfx-smoke] load attempt failed (${err.message}) — retrying`);
       consoleErrors.length = 0;
     }
