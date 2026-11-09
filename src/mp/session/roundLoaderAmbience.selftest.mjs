@@ -1,11 +1,12 @@
 // Receipt (round 8 Y1 s1-04, review r2): every round's loader starts in silence, a rematch from the result screen
-// included. A rematch stays in the battle phase, so before s1-04 the last battlefield's scene played under the whole
-// loader until the activation edge and, since 269's battle -> battle reset, the new map's scene from that edge to the
-// reveal. browserComposition.selftest pins the calls the composition sends (ambientOn(false) just before
+// included. A rematch stays in the battle phase, so before s1-04 the last battlefield's scene played under the loader
+// up to the round's activation edge, where the engine's battle edge ends the intent (audioEngine.ts modeEdge).
+// browserComposition.selftest pins the calls the composition sends (ambientOn(false) just before
 // loadingOn(true) at every round's loader start, loadingOn(false) then ambientOn(true) at its reveal). This receipt is
 // the engine half: it reads the loader start's engine calls from browserComposition.ts as written, plays them on the
-// real audio engine at a rematch, and holds no scene under the loader, none from the activation edge to the reveal, and
-// the battlefield's own scene at the reveal.
+// real audio engine at a rematch, and holds no scene under the loader (the s1-04 red on H0), none from the activation
+// edge to the reveal, and the battlefield's own scene at the reveal. The edge-to-reveal silence is a regression guard,
+// green on H0: on 269 alone the new map's scene started at that edge, and H0's engine edge (F11) already prevents it.
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { readFileSync } from 'node:fs';
@@ -82,6 +83,7 @@ await step(5);
 assert.equal(scene(), false, `a rematch: no battlefield scene under the next round's loader (the loader start: ${said})`);
 bus.emit('phase:change', { phase: 'battle' });
 await step(10);
+// a regression guard, green on H0 (the engine's battle edge ends the intent): on 269 alone the new map's scene began here
 assert.equal(scene(), false, 'a rematch: no scene from the activation edge to the reveal');
 await reveal('a rematch');
 
