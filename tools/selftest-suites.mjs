@@ -2198,6 +2198,9 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/maps/wellKit.selftest.mjs', // 2026-10-13 the looks lane: each place's village well and square monument
     'src/world/propsTextureRows.selftest.mjs',
     'src/world/yardDressing.selftest.mjs',
+    // buildings-271 (Main 2026-11-08, for the ground lane): each regional building's plinth, eave, apron and doors in world
+    // metres from the live plans, deterministic, its doors on their plinths facing out; counts pinned on Autumn and Caldera
+    'src/world/buildingContacts.selftest.mjs',
     'src/world/rockDressing.selftest.mjs',
     'src/world/rockCollision.selftest.mjs', // 2026-10-07 the hitbox lane: a stone's colliders from its own mesh
     'src/world/crushedStones.selftest.mjs', // 2026-10-10 the hitbox lane, round 3: a crushed stone splits and presses into its ground

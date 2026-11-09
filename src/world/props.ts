@@ -59,6 +59,7 @@ import { URBAN_BUILDERS } from './maps/urbanKit.ts';
 import { dressMapExtrasSteps, railBedSpans, type AnimatedDressing } from './maps/mapKits.ts'; // content_breadth r2
 import { STEEL_ATLAS_SIZE, STEEL_ATLAS_SIZE_MOBILE, makeSteelAtlas, steelAtlasNeeded, type SteelAtlasTextures } from './propsSteelAtlas.ts'; // round 75
 import { planYardDressing, yardStructureKinds, type YardFamily, type YardStructure } from './yardDressing.ts'; // round 75
+import { contactReader, type BuildingGroundContact } from './buildingContacts.ts'; // buildings-271: the ground lane's contacts
 import { buildYardFamily, yardInstanceLivery, type YardMaterial } from './maps/yardClutterKit.ts'; // round 75
 import {
   applyRockShaderHook, boulderSectionRadius, boulderSections, boulderVariantFormSteps, createRockDepthMaterial, legacyRockVariant, makeRockDetail,
@@ -789,6 +790,12 @@ interface PlacedBuilding {
   kind?: string;
   /** The landmarks lane (2026-10-05): a set piece's kind (landmarks/plan.ts) — a footprint, not a planned building. */
   landmark?: string;
+  /**
+   * (buildings-271, for the ground lane) a regional building's ground contacts at its pose now: plinth outlines, eave,
+   * the apron its facade craft lays, the ground-floor doors (buildingContacts.ts); a building without a regional plan has
+   * none. A function, so a building moved out of a carriageway after it was placed reads its final pose.
+   */
+  contacts?: () => BuildingGroundContact[];
 }
 
 interface TacticalBeatFeature {
@@ -5151,6 +5158,12 @@ ${snowCap ? `
   }
 
   const buildingFeatures: PlacedBuilding[] = [];
+  // (buildings-271) a regional build's ground contacts, read at the feature's pose whenever asked (buildingContacts.ts)
+  const withContacts = (feature: PlacedBuilding, parts: object): PlacedBuilding => {
+    const read = contactReader(parts, !mobileProps);
+    if (read) feature.contacts = () => read(feature.x, feature.z, feature.rot);
+    return feature;
+  };
   let wharfFishery: FisheryPacket | null = null;
   const foundryDonors: FoundryDonor[] | null = mapId === 'foundry' && P.foundryServiceCourt ? [] : null;
   let reconformFoundryFoundations: (() => void) | null = null;
@@ -5733,7 +5746,7 @@ ${snowCap ? `
     _quat.setFromAxisAngle(_upAxis, rot);
     _mat4.compose(_posv.set(px, fit.y + 0.05, pz), _quat, _one);
     mergeInto(buckets, tmp, _mat4);
-    buildingFeatures.push({ x: px, z: pz, w: info.w, d: info.d, rot, kind: structureId });
+    buildingFeatures.push(withContacts({ x: px, z: pz, w: info.w, d: info.d, rot, kind: structureId }, tmp));
     linkStructureFeature();
     if (body) regionalBodies.set(buildingFeatures[buildingFeatures.length - 1], body);
     if (mapId === 'mangrove' && structureId === 'fishery' && !wharfFishery) {
@@ -5823,7 +5836,7 @@ ${snowCap ? `
     _quat.setFromAxisAngle(_upAxis, entry.rot);
     _mat4.compose(_posv.set(entry.x, fit.y + 0.05, entry.z), _quat, _one);
     mergeInto(buckets, tmp, _mat4);
-    buildingFeatures.push({ x: entry.x, z: entry.z, w: info.w, d: info.d, rot: entry.rot, kind: entry.structure });
+    buildingFeatures.push(withContacts({ x: entry.x, z: entry.z, w: info.w, d: info.d, rot: entry.rot, kind: entry.structure }, tmp));
     linkStructureFeature();
     placedB.push({ x: entry.x, z: entry.z, rr: Math.max(info.w, info.d) * 0.75 });
     if (carriageway) {
@@ -5966,7 +5979,7 @@ ${snowCap ? `
         _quat.setFromAxisAngle(_upAxis, entry.rot);
         _mat4.compose(_posv.set(entry.x, fit.y + 0.05, entry.z), _quat, _one);
         mergeInto(buckets, tmp, _mat4);
-        buildingFeatures.push({ x: entry.x, z: entry.z, w: info.w, d: info.d, rot: entry.rot });
+        buildingFeatures.push(withContacts({ x: entry.x, z: entry.z, w: info.w, d: info.d, rot: entry.rot }, tmp));
         placedB.push({ x: entry.x, z: entry.z, rr: Math.max(info.w, info.d) * 0.75 });
         if (entry.rubbleRng !== undefined && entry.rubbleX !== undefined && entry.rubbleZ !== undefined && entry.rubbleR !== undefined) {
           addRubblePile(entry.rubbleX, entry.rubbleZ, entry.rubbleR, mulberry32(entry.rubbleRng));
@@ -6089,7 +6102,7 @@ ${snowCap ? `
       _quat.setFromAxisAngle(_upAxis, rot);
       _mat4.compose(_posv.set(x, fit.y + 0.05, z), _quat, _one);
       mergeInto(buckets, tmp, _mat4);
-      buildingFeatures.push({ x, z, w: info.w, d: info.d, rot });
+      buildingFeatures.push(withContacts({ x, z, w: info.w, d: info.d, rot }, tmp));
       placedB.push({ x, z, rr: Math.max(info.w, info.d) * 0.75 });
       stripAABBs.push({ x, z, hx, hz });
       addStreetRubble(ruined, rx, rz, nx, nz, offset, depth);
