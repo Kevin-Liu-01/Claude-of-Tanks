@@ -60,6 +60,7 @@ function parse(argv) {
   for (const job of out.jobs) {
     job.dist = path.resolve(job.dist);
     job.poses ??= [...POSES];
+    if (job.posesFrom) job.pinned = JSON.parse(readFileSync(path.resolve(job.posesFrom), 'utf8'));
     if (!DEVICES[job.device]) throw new Error(`${job.name}: unknown device ${job.device}`);
     for (const id of job.maps) if (!MAP_IDS.includes(id)) throw new Error(`${job.name}: unknown map ${id}`);
     for (const p of job.poses) if (!POSES.includes(p)) throw new Error(`${job.name}: unknown pose ${p}`);
@@ -123,6 +124,8 @@ const CLOUD_TIME_S = 0, CLOUD_FRAMES = 48;
 // (ground-269's ab23, 5815c5b1bc: foundry at load 300 drew 36 of the 48 frames in 180 s) the hold's wait, longer where
 // the machine is busy
 const CLOUD_HOLD_S = Number(process.env.BUILDING_SHOTS_CLOUD_HOLD_S) || 180;
+// the ground settle's wait (s): 90 by default; a loaded machine's desktop Autumn needed more (four of 24 frames shot unsettled)
+const SETTLE_S = Number(process.env.BUILDING_SHOTS_SETTLE_S) || 90;
 
 /**
  * The cloud layer pinned (page side): at CLOUD_TIME_S, a fresh trace sequence, its drift held (the frame's dt 0) while
@@ -283,12 +286,16 @@ async function shootMap(entry, options, frames) {
   const plan = await page.evaluate(pagePlan, { buildings: stage.buildings, range: 36, longRange: 230 });
   const receipt = { buildings: stage.buildings.length, clusters: plan.clusters, poses: {} };
   for (const name of options.poses) {
-    const p = plan[name];
+    // (buildings-271) a job's `posesFrom` manifest: the other arm's cameras, so a pair frames one place even where the arm's
+    // own footprints moved its densest cluster (Amberford's square frontage moved the cluster 40 m: the pairs set a farmhouse
+    // street against a market green, and the votes judged the framing)
+    const pinned = options.pinned?.maps?.[mapId]?.poses?.[name];
+    const p = pinned ? (pinned.skipped ? null : { cam: pinned.cam, at: pinned.at, heading: pinned.heading, hitM: pinned.hitM }) : plan[name];
     if (!p) { receipt.poses[name] = { skipped: true }; continue; }
     const resolved = await page.evaluate(externalPoseScript({ ...p, fov: name === 'long' ? 50 : 60 }));
     await sleep(900);
     await page.evaluate(() => { window.__gsSettle = null; });
-    const settled = await page.waitForFunction(groundSettled, { timeout: 90_000, polling: 250 }).then(() => true, () => false);
+    const settled = await page.waitForFunction(groundSettled, { timeout: SETTLE_S * 1000, polling: 250 }).then(() => true, () => false);
     const grassAtSettle = await page.evaluate(pageFreezeGround, true);
     await page.evaluate(pinClouds());
     // (48 frames: the long view of a big town under a loaded machine draws a few a second)
@@ -361,7 +368,8 @@ async function main(argv) {
         const shooting = (async () => {
           const live = await entry.page.evaluate(() => window.__DEBUG?.world?.mapId ?? null).catch(() => null);
           if (live !== mapId) await stageMap(entry, mapId);
-          const receipt = await shootMap({ ...entry, mapId }, { poses: job.poses }, job.frames);
+          const receipt = await shootMap({ ...entry, mapId }, { poses: job.poses, pinned: job.pinned }, job.frames);
+          if (job.pinned) receipt.posesFrom = job.posesFrom;
           receipt.ms = Date.now() - started;
           job.manifest.maps[mapId] = receipt;
           writeFileSync(job.manifestFile, `${JSON.stringify(job.manifest, null, 2)}\n`);
