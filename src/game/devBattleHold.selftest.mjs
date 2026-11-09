@@ -1,6 +1,7 @@
 // The dev battle hold (game/devBattleHold.ts; its switch dev/battleHold.ts, `__DEBUG.battleHold`): a held solo battle stays
 // alive and still for a check (track-system-audit's inspection camera, voice-smoke's minutes on the radio).
-// Held here, on a seeded 7v7 Verdant battle seated by the page's own setupBattle with two hostiles on the player's flank:
+// Held here, on a seeded 7v7 Verdant battle seated by the page's own setupBattle with a named line-up (LINE_UP, not a draw
+// from the roster) and two hostiles on the player's flank:
 // - off is the step: armed false, the battle is the battle the field was never written in, every tick's hash the same;
 // - the window fights: unheld, the bots fire, and a round into the player's flank and a fire in its hull hurt it;
 // - held from its first step, the bots stand and never fire, the player's hit points, modules and crew never fall and
@@ -189,6 +190,21 @@ function blows(tick, game, world, injected) {
 }
 
 /**
+ * The battle's line-up, named (271): a battle drawn from the roster moved whenever a lane added tanks (the 152 mm line's
+ * four turned seed 3's draw to a line-up whose fire went out before the arming tick). These are the 13 seed 3 drew for the
+ * Leopard 2A4 on main 1b10803a6b's 299, seated through the debug roster (rosterState.forcedBattleCandidates, exact) with
+ * their allied seats, so the roster's size never moves the battle.
+ */
+const LINE_UP = ['cv90_mk4_concept', 'strv122', 'cv9040c', 'cv90', 'strv121', 'cv90_mk4', 'strv105', 'leo2a6m', 'leo2a3_b4',
+  'gepard_1a2', 'leo2a5m', 'leo2_improved', 'leo2_revolution'];
+const ALLIES = ['leo2a6m', 'leo2a3_b4', 'gepard_1a2', 'leo2a5m', 'leo2_improved', 'leo2_revolution'];
+function seatNamed(seat) {
+  const debug = globalThis.__DEBUG;
+  globalThis.__DEBUG = { ...debug, flags: { ...debug?.flags, forceRoster: LINE_UP, rosterExact: true, forceAllies: ALLIES } };
+  try { seat(); } finally { if (debug === undefined) delete globalThis.__DEBUG; else globalThis.__DEBUG = debug; }
+}
+
+/**
  * The battle stepped `ticks` ticks. `hold(tick)` returns what the field is set to before that tick's step (undefined leaves
  * it alone; the field is never written when it always does); `onTick(tick, game)` runs after the hold, before the step.
  */
@@ -202,7 +218,9 @@ function battle(ticks, { hold = () => undefined, onTick = null } = {}) {
   spawnTanks(game, { scene: { remove() {} } });
   for (const e of game.allTanks) e.visual = visualFor(e);
   game.battleCount = 1;
-  setupBattle(game, 'leo2a4', world, { gameMode: 'standard', random: true, brain: null, deferVisuals: true, deferCamoRepaint: true });
+  seatNamed(() => setupBattle(game, 'leo2a4', world, { gameMode: 'standard', random: true, brain: null, deferVisuals: true, deferCamoRepaint: true }));
+  assert.deepEqual(game.tanks.map((e) => e.id), ['leo2a4', ...LINE_UP], 'the named line-up is the battle');
+  assert.deepEqual(game.tanks.filter((e) => e.team !== 'enemy' && e !== game.player).map((e) => e.id), ALLIES, 'its allied seats too');
   for (const e of game.allTanks) e.visual = visualFor(e);
   game.preBattleS = 0;
   const player = game.player;
