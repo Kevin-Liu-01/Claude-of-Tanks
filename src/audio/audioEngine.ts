@@ -224,6 +224,8 @@ interface AudioEntity {
     ammo?: readonly number[];
     ammoCapacity?: readonly number[];
     shellSlot?: number;
+    /** The selected round's reload channel (sim/damage.ts; a network seat's mirrors the row's): t 0 is a round in the breech. */
+    reload?: { t?: number };
     /** The roof gun and the lights (sim/auxiliarySystems): the same object solo and in a network battle. */
     auxiliary?: { gunOn?: boolean; lights?: number };
   };
@@ -829,6 +831,8 @@ export function createAudio({
     if (id !== asked && options?.take != null) options = { ...options, take: undefined };
     let why: string | undefined;
     if (!radio || battleMode.phase !== 'battle') why = 'phase';
+    // behind the pause menu the net is silent (round 8 Y3 s1-03): a solo battle's sim stops, a network battle's goes on
+    else if (battleMode.paused) why = 'paused';
     else if (playerId != null && tanks.get(playerId)?.alive === false && id !== 'victory' && id !== 'defeat' && id !== 'draw') why = 'dead';
     const ok = why == null && !!radio?.say(id, options);
     sayLog.push({ id, t: ctx ? +ctx.currentTime.toFixed(3) : 0, ok, ...(why ? { why } : !ok ? { why: 'net' } : {}) });
@@ -840,8 +844,10 @@ export function createAudio({
   const crew = createCrewProcedure({
     say,
     now: () => ctx?.currentTime ?? 0,
-    // the battle mode's own facts (2026-11-02 audit F11: battleMode.ts), never flags of the crew's or the engine's
-    live: () => battleMode.phase === 'battle' && battleMode.rolledOut && !battleMode.over && playerId != null && tanks.get(playerId)?.alive !== false,
+    // the battle mode's own facts (2026-11-02 audit F11: battleMode.ts), never flags of the crew's or the engine's; the
+    // crew's battle and life start on the engine's edges (resetBattlePlay, the respawn branch, the death latch)
+    live: () => battleMode.phase === 'battle' && battleMode.rolledOut && !battleMode.over && !battleMode.paused
+      && playerId != null && tanks.get(playerId)?.alive !== false,
     inBattle: () => battleMode.phase === 'battle' && !battleMode.over,
     playerId: () => playerId,
     player: () => (latestPlayer && latestPlayer.id === playerId ? latestPlayer : null),
@@ -1994,6 +2000,8 @@ export function createAudio({
           ammoLowCalled = false;
           heartbeatBelow = 0;
           radio?.setRadioDamage(0);
+          // the crew's life too: nothing the last life armed (a cease fire, a drone's recovery) is called in this one
+          crew.startLife();
           play('ui_respawn');
           say('respawn', { delayS: 0.5 });
         }
@@ -2731,6 +2739,9 @@ export function createAudio({
     auxGunOn = null;
     auxLights = null;
     resetQuietRadio();
+    // the crew's procedure starts its battle here too, its one per-battle edge (round 8 Y3 s1-03): a battle edge, a
+    // network restart
+    crew.startBattle();
   }
 
   /**
@@ -2828,6 +2839,9 @@ export function createAudio({
         if (ready()) play(battleMode.killcam ? 'killcam_in' : 'killcam_out');
         break;
       case 'pause':
+        // (round 8 Y3 s1-03) the pause menu silences the net: the line on the air and the queued ones go, and every call the
+        // crew had armed is cancelled (update runs neither the radio nor the crew while paused, say() takes no line)
+        if (battleMode.paused) { radio?.silence(); crew.pause(); }
         break;
     }
     chooseSnapshot();
@@ -2951,6 +2965,10 @@ export function createAudio({
     const on = <T>(event: string, listener: (payload: T) => void): void => {
       listen(event, (payload) => { if (ready()) listener(payload as T); });
     };
+    // A fact is state: taken whether or not the graph exists yet.
+    const fact = <T>(event: string, listener: (payload: T) => void): void => {
+      listen(event, (payload) => listener(payload as T));
+    };
     // physics lane (2026-10-10): a popped turret lands where its rigid body hits, heard there (a hard landing, louder)
     detachTurretLanding?.();
     detachTurretLanding = onTurretLanding((x, y, z, speed) => {
@@ -2993,6 +3011,8 @@ export function createAudio({
       deathLatch.set(e.id, false);
       onTankDestroyed(e);
       updateTeamCounts();
+      // the crew hears each death once a life too (round 8 Y3 s1-01): ours ends our life's calls, one we made is a kill
+      crew.onDestroyed(e);
     });
     // a network battle restarted under this seat: a new life for every hull (state, taken whether or not the graph
     // exists: restartLives)
@@ -3234,7 +3254,7 @@ export function createAudio({
       volumeEvents++;
     });
     for (const type of MODE_EVENT_TYPES) on<Record<string, unknown>>(`mode:${type}`, (payload) => onMode(type, payload || {}));
-    crew.bind(on);
+    crew.bind(on, fact);
   }
 
   let volumeEvents = 0;
@@ -3295,8 +3315,10 @@ export function createAudio({
     if (pendingCaptions.length) flushCaptions(now);
     sweepWaitingLoops(now);
     mixer.update(dt);
-    radio?.update();
-    updateThink(now);
+    if (!battleMode.paused) {
+      radio?.update();
+      updateThink(now);
+    }
     updateQuietRadio(now);
     if (list) {
       indexTanks(list, dt);
@@ -3323,7 +3345,7 @@ export function createAudio({
           }
         }
         updateTeamCounts();
-        crew.frame(dt, listener, list as readonly CrewFrameEntity[]);
+        if (!battleMode.paused) crew.frame(dt, listener, list as readonly CrewFrameEntity[]);
       }
     }
     updateWrecks(now);
