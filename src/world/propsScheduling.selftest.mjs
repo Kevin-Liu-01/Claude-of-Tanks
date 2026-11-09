@@ -493,6 +493,8 @@ function placementFixture({ authored = true, random = () => 0.25, code = placeme
     pushWreckDrawnFootprint() {},
     // nor is it built as a 180-degree pair (2026-10-11, PropsMapConfig.rotationalCentre: no twin hulks)
     P: {},
+    // (wrecks-270, Main 11-07) the fixture's map is the lane's own cast, not one reverted whole to base
+    baseWrecks: false,
   };
   const api = new Function('dependencies', `
     const { ${Object.keys(dependencies).join(', ')} } = dependencies;
