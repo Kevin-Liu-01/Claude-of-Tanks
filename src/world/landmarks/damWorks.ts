@@ -20,7 +20,7 @@ import type { LandmarkBuilder, LandmarkBuildContext } from './types.ts';
 
 const STEEL = rgb(0x5a5f62), RED_OXIDE = rgb(0x8a3a2a), CABLE = rgb(0x2a2a2a), CAB = rgb(0xd2c8a8), BUCKET = rgb(0x5e5e5a);
 const PAD = rgb(0x6a4a3c), MARK = rgb(0xd8d2c4), BERM = rgb(0x8a5a42), HULL = rgb(0xc9ccd0), HULL_DARK = rgb(0x3a3c40), LAMP = rgb(0xf2d27a);
-const TILE = rgb(0x1e1f22), SEAM = rgb(0x4a3328), SCORCH = rgb(0x2a1e1a);
+const TILE = rgb(0x3b3d42), TILE_JOINT = rgb(0x5c5f65), SEAM = rgb(0x4a3328), SCORCH = rgb(0x2a1e1a);
 
 const uvOffset = (rng: () => number): [number, number] => [rng() * 7.31, rng() * 5.17];
 const num = (ctx: LandmarkBuildContext, key: string, min: number, max = Infinity): number => Math.min(max, Math.max(min, Number(ctx.params[key])));
@@ -138,6 +138,8 @@ function lander(sink: PartSink): void {
   for (let y = base + 1.9; y < base + 11.2; y += 1.85) revolve(sink, 'structureMetal', 0, 0, [[R, y], [R + 0.035, y], [R + 0.035, y + 0.07], [R, y + 0.07]], n, { colour: shade(HULL, 0.78), decor: true });
   // the heat shield's tiles down the windward half, its edge at the flaps' hinge line
   sink.cylinder('structureMetal', [0, base + 0.6, 0], 'y', 10.8, R + 0.045, 12, { colour: TILE, decor: true }, R + 0.045, false, Math.PI / 2, Math.PI);
+  // (the tiles' courses: a lighter joint every 0.9 m up the shield, so it reads as tiled and not as a hole in the hull)
+  for (let y = base + 1.2; y < base + 11.2; y += 0.9) sink.cylinder('structureMetal', [0, y, 0], 'y', 0.05, R + 0.06, 12, { colour: TILE_JOINT, decor: true, fine: 'near' }, R + 0.06, false, Math.PI / 2, Math.PI);
   // the flaps on the flanks (±z), set a little to windward: the aft pair long and deep, the canards high and short
   for (const s of [-1, 1]) {
     const flap = (y0: number, y1: number, y2: number, r0: number, out: number): void => {
