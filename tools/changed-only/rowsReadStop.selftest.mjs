@@ -13,7 +13,8 @@
 //      long the stop takes under load (red before: the stop waited through every read the chain had left);
 //   3. the groups' phase: 'running' -> 'stopping' once (beginStop), a spawn refused with a stop marker while stopping, and
 //      only stopOnSignal makes that move (a census of the tools); the chain starts no synchronous child of its own
-//      (execFileSync, execSync, spawnSync, budgetedSync: its headroom probe too goes through its groups);
+//      (execFileSync, execSync, spawnSync, budgetedSync, or fingerprint's synchronous rows read: readRows, or a
+//      computeState given no rows or rows: null; its headroom probe too goes through its groups);
 //   4. a caller outside a chain (budgetedSync, as changed-ids and the receipts read rows): its runner and child sit in the
 //      caller's process group; when the caller is killed (SIGKILL by its exact pid) the runner stops the child inside 15 s
 //      (red before: the child ran on, unowned, to its end), and a SIGTERM to the runner reaches the child, the runner
@@ -206,13 +207,22 @@ try {
     const lifecycle = readFileSync(join(repo, 'tools/chain-lifecycle.mjs'), 'utf8');
     assert.equal((lifecycle.match(/\.beginStop\(/g) ?? []).length, 1, 'stopOnSignal\'s one call');
     const chain = readFileSync(join(repo, 'tools/tank-regen-changed.mjs'), 'utf8');
-    assert.match(chain, /readRowsAsync\(root, childEnv, table\.path, \{ groups: children \}\)/, 'the chain reads its rows through its groups');
-    assert.doesNotMatch(chain, /computeState\(\{(?![^}]*\brows\b)[^}]*\}\)/, 'every state the chain computes is on rows it read that way');
-    // any synchronous child holds the loop the stop handler runs on: a step, a rows read, a headroom probe (the lock
-    // modules it calls, capture-lock, read `ps` synchronously: milliseconds, and not the chain's children)
-    const syncChild = /\b(?:execFileSync|execSync|spawnSync|budgetedSync)\b/.exec(chain);
-    assert.equal(syncChild, null, `and it starts no synchronous child of its own (${syncChild?.[0]} at line `
-      + `${syncChild ? chain.slice(0, syncChild.index).split('\n').length : 0})`);
+    // (round 8 Y10 fix-up r2) a red names the hit and its line, never the whole chain source (the `actual` of an
+    // assert.match on it, or the `input` of a match array, prints the file)
+    const hitIn = (pattern) => {
+      const hit = pattern.exec(chain);
+      return hit ? `${hit[0].replace(/\s+/g, ' ')} at line ${chain.slice(0, hit.index).split('\n').length}` : null;
+    };
+    assert.ok(/readRowsAsync\(root, childEnv, table\.path, \{ groups: children \}\)/.test(chain), 'the chain reads its rows through its groups');
+    // a computeState with no rows, or rows: null or undefined, reads them itself, synchronously (fingerprint readRows)
+    assert.equal(hitIn(/computeState\(\{(?![^}]*\brows\b(?!\s*:\s*(?:null|undefined)\b))[^}]*\}\)/), null,
+      'every state the chain computes is on rows it read that way');
+    // any synchronous child holds the loop the stop handler runs on: a step, a rows read (budgetedSync, or fingerprint's
+    // readRows, which runs it), a headroom probe (the lock modules it calls, capture-lock, read `ps` synchronously:
+    // milliseconds, and not the chain's children)
+    assert.equal(hitIn(/\b(?:execFileSync|execSync|spawnSync|budgetedSync|readRows)\b/), null,
+      'and it starts no synchronous child of its own (execFileSync, execSync, spawnSync, budgetedSync, or readRows: '
+      + 'fingerprint\'s synchronous rows read)');
   }
 
   // ---- 4. outside a chain: the runner owns its child ------------------------------------------------------------------
