@@ -652,7 +652,7 @@ assert.ok(harness.menu.updates >= 1, 'later room states update the attached lobb
   assert.equal(harness.presentations[0].disposed, true);
   // (round 8 Y1 s1-04) every round's loader starts silent: the battlefield scene's intent ends as its loading bed starts
   // (a rematch from the result screen is still the battle phase, where ambientOn(false) stops the last battle's scene),
-  // and comes back only with the reveal
+  // and comes back only with the reveal (the engine half, these calls on the real audio engine: roundLoaderAmbience.selftest)
   const audio = calls.filter((call) => typeof call === 'string' && call.startsWith('audio.') && call !== 'audio.resume');
   const starts = audio.flatMap((call, index) => (call === 'audio.loading:true' ? [index] : []));
   assert.equal(starts.length, 2, `two rounds, two loaders (${audio})`);

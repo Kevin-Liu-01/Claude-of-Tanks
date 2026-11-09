@@ -1927,6 +1927,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'tools/mp-room-lifecycle.selftest.mjs',
     'tools/mp-states.selftest.mjs', // 2026-11-02 audit S3: the MP harnesses take the protocol's state words from their owners
     'src/mp/session/browserComposition.selftest.mjs',
+    // round 8 Y1 s1-04 (review r2): the composition's loader start, played on the real audio engine: a rematch loads in silence
+    'src/mp/session/roundLoaderAmbience.selftest.mjs',
     'src/mp/session/lobbyIntent.selftest.mjs',
     'src/mp/session/playMenuAdapter.selftest.mjs',
     'src/mp/session/playMenuAdapterSeat.selftest.mjs', // 2026-11-02 audit F6: a close during the limit check cancels the attempt; a released seat's round names its owner
