@@ -105,11 +105,11 @@ export type PadClientMessage =
   | { t: 'end' };
 
 /** Host → client. A lobby's desktop hears each phone as a numbered seat (`seat`), and its `signal`, `relay` and
- *  `relay_spent` name the seat; a phone in a lobby learns its seat number when it joins. */
+ *  `relay_spent` name the seat; a phone in a lobby learns its seat number when it joins and when it resumes. */
 export type PadHostMessage =
   | { t: 'code'; code: string; expiresAt: number; token: string }
   | { t: 'joined'; token: string; seat?: number }
-  | { t: 'resumed' }
+  | { t: 'resumed'; seat?: number }
   | { t: 'peer'; state: 'here' | 'away' }
   | { t: 'seat'; seat: number; state: PadSeatState }
   | { t: 'lobby'; open: boolean; until: number | null; seats: number }
@@ -173,7 +173,7 @@ export function readPadHostMessage(text: string): PadHostMessage | null {
       const seat = seatOf(record.seat);
       return { t: 'joined', token: record.token, ...(seat !== undefined ? { seat } : {}) };
     }
-    case 'resumed': return { t: 'resumed' };
+    case 'resumed': { const seat = seatOf(record.seat); return { t: 'resumed', ...(seat !== undefined ? { seat } : {}) }; }
     case 'peer': return record.state === 'here' || record.state === 'away' ? { t: 'peer', state: record.state } : null;
     case 'seat': {
       const seat = seatOf(record.seat);

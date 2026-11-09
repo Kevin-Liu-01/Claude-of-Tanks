@@ -37,7 +37,7 @@ export interface PadLinkOptions {
   onCtl?(message: PadCtlMessage): void;
   /** The resume token for this pairing (the phone keeps it in sessionStorage). */
   onToken?(code: string, token: string): void;
-  /** The phone's seat in a couch lobby (docs/COUCH-MODE.md), told once when it joins. */
+  /** The phone's seat in a couch lobby (docs/COUCH-MODE.md), told when it joins and again when it resumes. */
   onSeat?(seat: number): void;
   createSocket?: (url: string) => WebSocket;
   createPeer?: (config: RTCConfiguration) => RTCPeerConnection;
@@ -53,6 +53,9 @@ export interface PadLink {
   sendCtl(message: PadCtlMessage): boolean;
   /** True while a data channel carries the frames (not the relay). */
   readonly direct: boolean;
+  /** The phone's seat in a couch lobby, as the pairing named it on the join or the resume; 0 in a single pairing. The
+   *  seat is this link's: a new pairing on the same page starts without one (round 8 Y5 s3-06). */
+  readonly seat: number;
   /** End the pairing for both sides. */
   end(): void;
   /** Close this side only (the page is leaving); the other side sees it away. */
@@ -78,6 +81,7 @@ export function createPadLink(options: PadLinkOptions): PadLink {
   let reconnectSince = 0;
   let reconnectDelay = 500;
   let paired = false;
+  let seat = 0;
   let peerHere = false;
   let ended = false;
   let relaySpent = false;
@@ -147,10 +151,12 @@ export function createPadLink(options: PadLinkOptions): PadLink {
       case 'joined':
         token = message.token; paired = true;
         options.onToken?.(code, token);
-        if (message.seat !== undefined) options.onSeat?.(message.seat);
+        if (message.seat !== undefined) { seat = message.seat; options.onSeat?.(seat); }
         return;
       case 'resumed':
         paired = true;
+        // a lobby phone's resume names its seat again (a reloaded page knew none)
+        if (message.seat !== undefined) { seat = message.seat; options.onSeat?.(seat); }
         return;
       case 'peer':
         peerHere = message.state === 'here';
@@ -341,6 +347,7 @@ export function createPadLink(options: PadLinkOptions): PadLink {
   return {
     get state() { return state; },
     get direct() { return channelsOpen(); },
+    get seat() { return seat; },
     sendAxes(bytes, changed) {
       if (axes?.readyState === 'open') { try { axes.send(bytes as Uint8Array<ArrayBuffer>); } catch { /* closing */ } return; }
       if (!paired || !peerHere || relaySpent) return;

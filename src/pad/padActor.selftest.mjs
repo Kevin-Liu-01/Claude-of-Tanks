@@ -272,12 +272,13 @@ function harness(code = 'K7Q4MZ') {
   h.msg('d1', { t: 'relay', data: 'c', seat: 2 });
   assert.deepEqual(h.last('p2'), { t: 'relay', data: 'c' });
 
-  // a phone sleeps and resumes into its own seat
+  // a phone sleeps and resumes into its own seat, and hears its number again (round 8 Y5 s3-06: a reloaded phone's page
+  // knew no seat, so its link chip lost "Seat 5")
   h.actor.handleClose('p5');
   assert.deepEqual(h.last('d1'), { t: 'seat', seat: 5, state: 'away' });
   h.actor.openResume('p5b');
   h.msg('p5b', { t: 'resume', token: tokens[4] });
-  assert.deepEqual(h.to('p5b').slice(0, 2), [{ t: 'resumed' }, { t: 'peer', state: 'here' }]);
+  assert.deepEqual(h.to('p5b').slice(0, 2), [{ t: 'resumed', seat: 5 }, { t: 'peer', state: 'here' }], "a lobby phone's resume names its seat");
   assert.deepEqual(h.last('d1'), { t: 'seat', seat: 5, state: 'here' });
 
   // a phone that leaves frees only its seat, and the next phone takes that number

@@ -395,7 +395,8 @@ export class PadActor {
     record.role = 'phone';
     record.seat = seat.seat;
     seat.socket = socketId;
-    this.#ports.send(socketId, { t: 'resumed' });
+    // a lobby phone hears its seat again, as on its join (a reloaded page knew none)
+    this.#ports.send(socketId, state.kind === 'lobby' ? { t: 'resumed', seat: seat.seat } : { t: 'resumed' });
     this.#ports.send(socketId, { t: 'peer', state: state.desktopSocket ? 'here' : 'away' });
     this.#tellDesktop(seat.seat, 'here');
     this.#changed();

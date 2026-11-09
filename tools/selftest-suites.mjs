@@ -1890,6 +1890,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/pad/padActor.selftest.mjs',
     'src/pad/padInput.selftest.mjs',
     'src/pad/padCues.selftest.mjs', // phone-feel-269: what a paired phone feels, the wire, the buzzes
+    'src/pad/padReadyBuzz.selftest.mjs', // round 8 Y5 s3-06: no loaded buzz through a pause or after the link leaves live; the seat is the link's
     'src/pad/padPhoneHalf.selftest.mjs', // phone-feel-269: no desktop-only export rides to the phone's page
     'src/pad/padLink.selftest.mjs',
     'src/pad/padLobby.selftest.mjs', // 2026-11-01 (couch-mode-268, docs/COUCH-MODE.md): one lobby, a receiver per seat

@@ -945,9 +945,6 @@ function paintStatus(next: PadStatus): void {
   paintReload(next.reloadTotalS > 0 && next.reloadS > 0 ? 1 - next.reloadS / next.reloadTotalS : 1, next.reloadS);
 }
 
-/** This phone's seat in a couch lobby (docs/COUCH-MODE.md), named before the link's state; 0 in a single pairing. */
-let seatNumber = 0;
-
 function paintLink(state: PadLinkState): void {
   let words = '';
   let tone = '';
@@ -957,7 +954,10 @@ function paintLink(state: PadLinkState): void {
   } else if (state.kind === 'linking') { words = t('pad.state.linking'); tone = 'warn'; }
   else if (state.kind === 'away') { words = t('pad.state.away'); tone = 'warn'; }
   else words = t('pad.state.connecting');
-  linkChip.textContent = seatNumber ? `${t('pad.seat', { n: seatNumber })} · ${words}` : words;
+  // this phone's seat in a couch lobby (docs/COUCH-MODE.md), named before the link's state: the link's own, so a new
+  // pairing never shows the last one's
+  const seat = link?.seat ?? 0;
+  linkChip.textContent = seat ? `${t('pad.seat', { n: seat })} · ${words}` : words;
   if (tone) linkChip.dataset.tone = tone; else delete linkChip.dataset.tone;
 }
 
@@ -1003,9 +1003,9 @@ function connect(route: { code: string } | { resume: { code: string; token: stri
     serviceUrl,
     ...('code' in route ? { code: route.code } : { resume: route.resume }),
     onToken(code, token) { try { sessionStorage.setItem(RESUME_KEY, JSON.stringify({ code, token })); } catch { /* private mode */ } },
-    onSeat(seat) { seatNumber = seat; },
     onState(state) {
       if (debug) debug.state = state.kind;
+      readyBuzz.link(state.kind);
       if (state.kind !== 'live') releaseControls();
       if (state.kind === 'ended') {
         clearInterval(pinged!);
