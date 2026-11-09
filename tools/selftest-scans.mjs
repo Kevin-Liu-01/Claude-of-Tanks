@@ -248,6 +248,9 @@ export const SELFTEST_SCANS = Object.freeze({
   'tools/changed-only/fresh.selftest.mjs': lists('src/**/*.{ts,mts,mjs,js,json}', 'tools/**/*.{ts,mts,mjs,js,json}'),
   // 266: a copy of this checkout's src and tools (git ls-files) where a one-id balance lever is resolved by computeState
   'tools/changed-only/balance-keys.selftest.mjs': lists('src/**', 'tools/**', 'package.json', 'package-lock.json'),
+  // round 8 Y10 s6-06: every tools module, for a second mover of a chain's stop (groups.beginStop); and its fixture's
+  // .qa-dev/changed-only summaries under tmpdir
+  'tools/changed-only/rowsReadStop.selftest.mjs': lists('tools/**/*.{ts,mts,mjs,js}'),
 
   // this table's census: every module a registered receipt runs (and the fixture repository it writes under tmpdir)
   'tools/selftest-scans.selftest.mjs': lists('src/**/*.{ts,mts,mjs,js,cjs}', 'tools/**/*.{ts,mts,mjs,js,cjs}',

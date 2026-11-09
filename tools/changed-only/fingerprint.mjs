@@ -22,7 +22,7 @@ import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from '
 import { dirname, join, relative, resolve } from 'node:path';
 import ts from 'typescript-compiler-api';
 import { accessorPin, createGraph, h16, sha256 } from './graph.mjs';
-import { budgetedSync } from './childBudget.mjs';
+import { budgetedSync, watchChild } from './childBudget.mjs';
 import { AGGREGATES, BALANCE, DECLARED_DYNAMIC, FLEET_API_TOKENS, FLEET_API_USERS, FLEET_ENTRIES, GROUP_LOADERS_FILE, LOADER_FILES,
   CATALOG_FILES, MAP_REGISTRY_FILE, PER_ID_ACCESSORS, SCHEDULING_ENV, SPEC_COMBAT, SPEC_REST, STEPS, TABLES, WORLD_OUTPUTS, WORLD_STEPS,
   stepDefinition } from './steps.mjs';
@@ -78,16 +78,63 @@ export function parseGroupLoaders(text, filename = GROUP_LOADERS_FILE) {
 
 /** The rows child's CPU budget: about 60 s of CPU warm. Its limit is the CPU its tree spends, never wall: at load ~500
  *  (2026-10-20) a healthy read overran a 5-minute wall limit and failed the chain, and 30 minutes only moved the load
- *  where it fails (268). Watched like the chain's own children (childBudget.mjs budgetedSync), with its hang cap. */
+ *  where it fails (268). Watched like the chain's own children (childBudget.mjs watchChild), with its hang cap. */
 const ROWS_CPU_S = 1800;
+/** The rows JSON's ceiling (the whole fleet's rows are about 30 MB). */
+const ROWS_MAX_BYTES = 256 * 1024 * 1024;
 
+/** The rows child's command line and options, one shape for both reads. */
+export function rowsChildArgv(root, tableModule = null) {
+  return ['--max-old-space-size=4096', join(import.meta.dirname, 'rows-child.mjs'), root, ...(tableModule ? [tableModule] : [])];
+}
+const rowsChildEnv = (env) => ({ ...env, NODE_OPTIONS: '' });
+
+/** The rows, read synchronously for a caller outside a chain (computeState without `rows`): the runner and its child stay
+ *  in the caller's process group, so a terminal's ^C reaches them, and the runner stops the child's tree when it is
+ *  signalled or its caller dies (childBudget.mjs budgetedSync). */
 function readRows(root, env, tableModule = null) {
-  const out = budgetedSync(process.execPath, ['--max-old-space-size=4096', join(import.meta.dirname, 'rows-child.mjs'), root,
-    ...(tableModule ? [tableModule] : [])], {
-    budgetS: ROWS_CPU_S, cwd: root, encoding: 'utf8', maxBuffer: 256 * 1024 * 1024,
-    env: { ...env, NODE_OPTIONS: '' }, stdio: ['ignore', 'pipe', 'pipe'],
+  const out = budgetedSync(process.execPath, rowsChildArgv(root, tableModule), {
+    budgetS: ROWS_CPU_S, cwd: root, encoding: 'utf8', maxBuffer: ROWS_MAX_BYTES,
+    env: rowsChildEnv(env), stdio: ['ignore', 'pipe', 'pipe'],
   });
   return JSON.parse(out);
+}
+
+/**
+ * (round 8 Y10 s6-06) The rows, read by a chain: rows-child starts through the chain's own child groups (chain-lifecycle
+ * createChildGroups: its own process group, which the chain's stop signals, waits for and sweeps) and is awaited, watched
+ * by the same CPU budget and hang cap as the synchronous read. The synchronous read held the chain's event loop, so its
+ * stop handler waited for the whole read (minutes under load), and a run of zero-change steps chained their reads through
+ * microtasks without ever letting it run. Resolves with the rows; rejects on a budget or hang verdict, a failed child or
+ * output past ROWS_MAX_BYTES, and with a stop marker (chain-lifecycle isChainStop) when the chain's stop ended the read or
+ * refused to start it. `watch`: watchChild's hangS, pollMs and graceMs (the selftests shorten them).
+ */
+export function readRowsAsync(root, env, tableModule = null, { groups, watch: watchOptions = {} } = {}) {
+  if (typeof groups?.spawn !== 'function') throw new TypeError('readRowsAsync reads through the chain\'s child groups (chain-lifecycle createChildGroups)');
+  return new Promise((resolveRows, rejectRows) => {
+    const child = groups.spawn(process.execPath, rowsChildArgv(root, tableModule),
+      { cwd: root, env: rowsChildEnv(env), stdio: ['ignore', 'pipe', 'pipe'] });
+    const out = [], err = [];
+    let bytes = 0, errBytes = 0, overflow = false, failed = null;
+    const watch = watchChild(child.pid, { budgetS: ROWS_CPU_S, ...watchOptions });
+    child.stdout.on('data', (chunk) => {
+      if (overflow) return;
+      bytes += chunk.length;
+      if (bytes > ROWS_MAX_BYTES) { overflow = true; try { child.kill('SIGTERM'); } catch { /* gone */ } return; }
+      out.push(chunk);
+    });
+    child.stderr.on('data', (chunk) => { err.push(chunk); errBytes += chunk.length; while (errBytes > 65_536 && err.length > 1) errBytes -= err.shift().length; });
+    child.once('error', (error) => { failed = error; });
+    child.once('close', (code, signal) => {
+      watch.stop();
+      const stderr = Buffer.concat(err).toString('utf8').trim().split('\n').slice(-8).join('\n');
+      if (groups.stopping) { rejectRows(groups.stopMarker(`the rows read ended (${signal ?? `exit ${code}`})`)); return; }
+      if (watch.verdict) { rejectRows(new Error(`rows-child stopped: ${watch.verdict.message}`)); return; }
+      if (overflow) { rejectRows(new Error(`rows-child wrote more than ${ROWS_MAX_BYTES} bytes`)); return; }
+      if (failed || code !== 0) { rejectRows(new Error(`rows-child ${failed ? `failed: ${failed.message}` : `exited ${code ?? signal}`}${stderr ? `: ${stderr}` : ''}`)); return; }
+      try { resolveRows(JSON.parse(Buffer.concat(out).toString('utf8'))); } catch (error) { rejectRows(new Error(`rows-child wrote no rows JSON: ${error.message}`)); }
+    });
+  });
 }
 
 /**

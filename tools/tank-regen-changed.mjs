@@ -41,8 +41,8 @@ import { spawnSync } from 'node:child_process';
 import { appendFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
-import { emptyManifest, computeState, installDrift, MANIFEST_PATH, readManifest, recordStep, refreshComponents, resolveChanged,
-  stampedInKeys, toolchainChange, toolchainOf, writeManifest } from './changed-only/fingerprint.mjs';
+import { emptyManifest, computeState, installDrift, MANIFEST_PATH, readManifest, readRowsAsync, recordStep, refreshComponents,
+  resolveChanged, stampedInKeys, toolchainChange, toolchainOf, writeManifest } from './changed-only/fingerprint.mjs';
 import { loadTable } from './changed-only/table.mjs';
 import { cpuChildCommand } from './changed-only/childPriority.mjs';
 import { watchChild } from './changed-only/childBudget.mjs';
@@ -51,7 +51,7 @@ import { expandGlobs } from './changed-only/globs.mjs';
 import { movedShared, sharedDigests, sharedOutputs } from './changed-only/parts.mjs';
 import { browserIdCap } from './browser-id-chunks.mjs';
 import { uniqueIds } from './id-list.mjs';
-import { createChildGroups, runInCaptureHold, stopOnSignal, takeChainLock } from './chain-lifecycle.mjs';
+import { createChildGroups, isChainStop, runInCaptureHold, stopOnSignal, takeChainLock } from './chain-lifecycle.mjs';
 import { releaseAllCaptureHolds } from './capture-lock.mjs';
 
 const args = process.argv.slice(2);
@@ -124,11 +124,16 @@ const chainLock = takeChainLock(lockPath, { legacyFile: join(qaDir, 'chain.lock'
 if (!chainLock.held) { console.error(`[regen] another chain (pid ${chainLock.owner.pid ?? 'unknown'}) holds ${lockPath}`); process.exit(2); }
 const unlock = () => chainLock.release();
 process.on('exit', unlock);
-// Every step child leads its own process group: a stop signals them all, waits for them, SIGKILLs what is left, then
-// releases the GPU step's capture hold and the chain lock, so nothing of this chain writes once the lock is free.
+// Every child of the chain (its steps and its rows reads) leads its own process group: a stop signals them all, waits
+// for them, SIGKILLs what is left, then releases the GPU step's capture hold and the chain lock, so nothing of this chain
+// writes once the lock is free. From the signal on the groups refuse to start a child (chain-lifecycle 'stopping').
 const children = createChildGroups();
 stopOnSignal(children, { log: (line) => console.error(`[regen] ${line}`),
-  cleanup: (signal) => { releaseAllCaptureHolds(`regen chain stopped by ${signal}`); unlock(); } });
+  cleanup: (signal) => {
+    summary.ok = false; summary.stopped = signal;
+    try { saveSummary(); } catch { /* the stop goes on */ }
+    releaseAllCaptureHolds(`regen chain stopped by ${signal}`); unlock();
+  } });
 
 const childEnv = { ...process.env, NODE_OPTIONS: '--max-old-space-size=4096' };
 
@@ -286,9 +291,14 @@ let manifest = readManifest(root) ?? emptyManifest();
 /** Write the table after a step ran (268): that step's own component lines move; the shared ones only in a chain that
  *  selects every step, so a partial chain leaves every step it did not run as its keys were taken. */
 const persist = (state, ran) => { refreshComponents(manifest, state, { ran, shared: !PARTIAL }); writeManifest(root, manifest); };
-const fresh = () => {
+/** The tree's fingerprint state. (round 8 Y10 s6-06) Its rows are read by a child of the chain's groups, awaited
+ *  (readRowsAsync): the synchronous read held the event loop, so a stop waited for the whole read, and zero-change steps
+ *  chained their reads through microtasks without a turn of the loop between them. Every call is a real yield now; a
+ *  stop during the read rejects with a stop marker. The rest (the graph, the keys) is still synchronous. */
+const fresh = async () => {
   const started = Date.now();
-  const state = computeState({ root, steps: STEPS, worldSteps: WORLD_STEPS, env: childEnv, config: table.config, tableModule: table.path });
+  const rows = await readRowsAsync(root, childEnv, table.path, { groups: children });
+  const state = computeState({ root, steps: STEPS, worldSteps: WORLD_STEPS, env: childEnv, config: table.config, tableModule: table.path, rows });
   summary.resolveSeconds.push(Math.round((Date.now() - started) / 100) / 10);
   return state;
 };
@@ -315,7 +325,7 @@ function idsResolve(definition, fullState, state) {
  */
 async function step(name, { forceFull = false, restrict = false } = {}) {
   const definition = stepByName(name);
-  const fullState = fresh();
+  const fullState = await fresh();
   const state = viewOf(definition, fullState);
   if (!state) throw new Error(`${name}: this tree has no world rows (${fullState.errors.join('; ') || 'no map registry'})`);
   const resolved = IDS ? (restrict && TABLE_CURRENT ? idsResolve(definition, fullState, state) : idsScope(definition, fullState, state))
@@ -352,7 +362,7 @@ async function step(name, { forceFull = false, restrict = false } = {}) {
   if (run.code !== 0) throw new Error(`${name} failed (exit ${run.code}); output in ${run.out ?? qaDir}`);
   // --ids with no table: the rows are not recorded (a partial table would mark every other id unrecorded)
   if (IDS && !TABLE_CURRENT) { log(`[regen] ${name}: done in ${seconds} s (rows not recorded: ${UNRECORDED})`); return true; }
-  const after = fresh();
+  const after = await fresh();
   manifest = readManifest(root) ?? manifest;
   const afterView = viewOf(definition, after);
   if (!afterView) throw new Error(`${name}: the world rows no longer read after the run (${after.errors.join('; ')})`);
@@ -428,7 +438,7 @@ async function cpuFixpoint(firstPassFull) {
     }
     if (!moved) return;
   }
-  const state = fresh();
+  const state = await fresh();
   const left = resolveChanged(state, readManifest(root), { steps: CPU_FIXPOINT_STEPS.filter(selected) });
   const moving = Object.entries(left).filter(([, entry]) => entry.mode !== 'none');
   if (moving.length && !DRY) {
@@ -485,7 +495,7 @@ async function checkAll() {
     summary.dependents.push({ step: dependent.name, check: run.code === 0 ? 'pass' : 'fail', code: run.code });
     log(`[regen] ${dependent.name} check: ${run.code === 0 ? 'PASS' : `FAIL (${run.out})`}`);
   }
-  const state = fresh();
+  const state = await fresh();
   summary.final = { ...resolveChanged(state, readManifest(root)),
     ...(state.world && !NO_WORLD ? resolveChanged(state.world, readManifest(root), { steps: WORLD_NAMES.filter(selected) }) : {}) };
   const failed = [...summary.runs, ...summary.dependents].filter((run) => run.check === 'fail');
@@ -502,7 +512,8 @@ async function afterSteps(forceFull) {
 const started = Date.now();
 try {
   if (IDS) {
-    const unknown = IDS.filter((id) => !fresh().ids.includes(id));
+    const roster = (await fresh()).ids; // one read, not one per id
+    const unknown = IDS.filter((id) => !roster.includes(id));
     if (unknown.length) throw Object.assign(new Error(`--ids names ids the roster does not hold: ${unknown.join(', ')}`), { refusal: true });
     if (TABLE_PRESENT && !TABLE_CURRENT) log(`[regen] --ids: ${UNRECORDED}; these ids run and no rows are recorded`);
   }
@@ -527,8 +538,12 @@ try {
       for (const name of GPU_STEPS.filter(selected)) {
         if (!await step(name, { forceFull: ALL && round === 1, restrict: round > 1 })) continue;
         ran = true;
-        // --ids: the CPU steps run again only after a GPU step whose tables a build reads (centering's anchors)
-        if (IDS && !stepByName(name).outputs.some((output) => fresh().buildReadTables.includes(output))) continue;
+        // --ids: the CPU steps run again only after a GPU step whose tables a build reads (centering's anchors); one read
+        // per GPU step that ran, not one per output
+        if (IDS) {
+          const { buildReadTables } = await fresh();
+          if (!stepByName(name).outputs.some((output) => buildReadTables.includes(output))) continue;
+        }
         await cpuFixpoint(false);
         await afterSteps(false);
       }
@@ -542,7 +557,7 @@ try {
       for (const name of WORLD_NAMES.filter(selected)) if (await step(name, { forceFull: ALL && pass === 1, restrict: pass > 1 })) moved = true;
       if (!moved || DRY || IDS) break;
     }
-    const state = fresh();
+    const state = await fresh();
     const names = STEPS.filter((entry) => selected(entry.name) && (!NO_GPU || entry.device !== 'gpu')).map((entry) => entry.name);
     const worldNames = NO_WORLD ? [] : WORLD_NAMES.filter(selected);
     if (worldNames.length && !state.world) throw new Error(`this tree has no world rows (${state.errors.join('; ') || 'no map registry'})`);
@@ -591,8 +606,15 @@ try {
 } catch (error) {
   summary.seconds = Math.round((Date.now() - started) / 1000);
   summary.ok = false; summary.error = String(error.message ?? error);
-  log(`[regen] FAILED: ${summary.error}`);
-  process.exitCode = error.refusal ? 2 : 1; // a refusal ran nothing
+  if (children.stopping || isChainStop(error)) {
+    // (round 8 Y10 s6-06) the stop ended what was in flight (a step's child, a rows read) or refused what came next: no
+    // failure; stopOnSignal exits 128 + the signal's number once the child groups have closed
+    summary.stopped = children.stopping ?? error.signal;
+    log(`[regen] stopped by ${summary.stopped}: ${summary.error}`);
+  } else {
+    log(`[regen] FAILED: ${summary.error}`);
+    process.exitCode = error.refusal ? 2 : 1; // a refusal ran nothing
+  }
 } finally {
   saveSummary();
 }
