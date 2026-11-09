@@ -191,7 +191,9 @@ export function createMatchHostCore({
   let keyframedModeEvents = 0;
   let lastConfigMs = -Infinity;
   // the boot configuration's sealed chunks (round 8 Y2, s4-04): sealed once at the boot, as the configuration never
-  // changes for an actor; null before the seal, or when it failed (logged: the seats then hold none, as before)
+  // changes for an actor; null before the seal, or when it failed (logged once: the seats then hold none for the actor's
+  // life; before, each attach and each cadence beat re-sealed, so retried, a seal WebCrypto refuses for the same key and
+  // payload every time)
   let configChunks: WireEvent[] | null = null;
   let keyframeSeq = 0;
   let configSeq = 0;
@@ -314,8 +316,8 @@ export function createMatchHostCore({
         if (!attached) { gates.delete(peer); return; }
         // the seat holds the sealed configuration from its WELCOME on (round 8 Y2, s4-04): it followed within a
         // housekeeping beat, sealed afresh, and a seat whose host went in that beat booted from the room's snapshot
-        // (planFromRoster)
-        deliverConfig(live);
+        // (planFromRoster). To this seat alone (fix-up r1): the seats welcomed before it hold it already
+        deliverConfigTo(link, live);
         for (const queued of gate.queue.splice(0)) link.deliver(queued);
       };
       // during the resume hold the seat waits, its frames queued, and is welcomed with the others when the world moves;
@@ -458,12 +460,28 @@ export function createMatchHostCore({
   }
 
   /**
-   * The one delivery of the boot configuration (round 8 Y2, s4-04): its sealed chunks to every seat, at once, right after
-   * each WELCOME and on the CONFIG_INTERVAL_MS cadence. Every welcomed seat holds it, so an elected host boots from it.
+   * The delivery of the boot configuration (round 8 Y2, s4-04): its sealed chunks to the seat just welcomed, right after
+   * its WELCOME (deliverConfigTo), and to every seat on the CONFIG_INTERVAL_MS cadence (deliverConfig). Every welcomed
+   * seat holds it, so an elected host boots from it. Fix-up r1 (both review lenses): the WELCOME's delivery was a
+   * broadcast, so seats welcomed together (a resume hold's release attaches its seats in one loop, a match start's HELLOs
+   * verify together) took N(N+1)/2 copies of it, the first seat N, ahead of its first snapshots; now each takes one.
    */
   function deliverConfig(live: MatchActor): void {
     if (!configChunks || live.stopped) return;
     for (const event of configChunks) live.broadcastEvent(event);
+  }
+  /**
+   * One seat's copy on its own link, each chunk an EVENT stamped with the actor's tick as the actor's own events are
+   * (the actor has no per-seat event send; noticeHeld writes to one seat's link the same way). An encode that throws is
+   * logged and leaves the attach whole: the cadence delivers the configuration again.
+   */
+  function deliverConfigTo(link: PortLink, live: MatchActor): void {
+    if (!configChunks || live.stopped || link.closed) return;
+    try {
+      for (const event of configChunks) link.send(encodeMessage({ type: MESSAGE_TYPE.EVENT, tick: live.tick, events: [event] }));
+    } catch (error) {
+      log('warn', 'migration config to a seat failed', { peer: link.peer, error: error instanceof Error ? error.message : String(error) });
+    }
   }
 
   function housekeep(): void {
@@ -566,6 +584,10 @@ export function createMatchHostCore({
       if (applied.destroyedUnknown) log('warn', 'resume destroyed props this world does not have', { unknown: applied.destroyedUnknown });
     }
     configChunks = configBlob ? chunkMigrationBlob(MIGRATION_EVENT_KIND.CONFIG, ++configSeq, created.tick, configBlob) : null;
+    // the cadence counts from the seal (fix-up r1): no seat is attached yet, and each takes its copy at its WELCOME. Its
+    // first beat re-sent the configuration to every seat welcomed by then, at once: those of a match start, and those a
+    // resume hold released (the hold, RESUME_HOLD_MS, ends inside CONFIG_INTERVAL_MS of the seal)
+    lastConfigMs = now();
     actor = created;
     booted = true;
     endedReported = false;
