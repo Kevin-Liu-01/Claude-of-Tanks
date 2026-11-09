@@ -170,6 +170,8 @@ interface PuffScratch {
   alpha: number;
   grav: number;
   birthOffset: number;
+  /** the emitter's world velocity the puff is born with (particles.ts PuffOptions.carry) */
+  carry?: MutableVec3;
 }
 
 interface StreakScratch {
@@ -900,12 +902,14 @@ const _mfPos = new THREE.Vector3(); // spawnMuzzleFlash-private origin copy
 const _mfDir = new THREE.Vector3(); // spawnMuzzleFlash-private direction copy
 const _mfVel: MutableVec3 = [0, 0, 0]; // spawnMuzzleFlash-private copy of the firing muzzle's world velocity
 const _mfCarry: MutableVec3 = [0, 0, 0]; // what its bright parts carry: _mfVel x the policy's muzzleFlash gain
+const _mfSmokeCarry: MutableVec3 = [0, 0, 0]; // what its propellant and smoke are born with: _mfVel x the muzzleSmoke gain
 const _shotVel: MutableVec3 = [0, 0, 0]; // muzzleFlash(): the shooter's muzzle velocity, resolved per shot
 const ZERO_VEL: Readonly<MutableVec3> = [0, 0, 0];
 // (fleet review 2026-11-03) EFFECT_ATTACHMENT_POLICY is the one statement of which muzzle parts ride the bore
 const MUZZLE_FLASH_CARRY = shooterVelocityGain('muzzleFlash');
 const MUZZLE_RING_CARRY = shooterVelocityGain('muzzleRing');
 const MUZZLE_LIGHT_CARRY = shooterVelocityGain('muzzleLight');
+const MUZZLE_SMOKE_CARRY = shooterVelocityGain('muzzleSmoke');
 const _gpPos = new THREE.Vector3(); // gunshipMuzzleFx's gun port
 const _gpSide = new THREE.Vector3(); // gunshipMuzzleFx's level heading toward the guns' target
 const _sv = new THREE.Vector3();     // recipe-internal scratch (never an argument carrier)
@@ -1052,6 +1056,9 @@ const _debO: DebrisScratch = { pos: [0, 0, 0], vel: [0, 0, 0], life: 4, axis: [0
 const _jetO: JetScratch = { pos: [0, 0, 0], axis: [0, 0, 1], life: 0.1, width: 0.4, len0: 0.4, len1: 2.5, seed: 0, col: [0, 0, 0], alpha: 1, birthOffset: 0 };
 // the cannon flash's own jets: their carry is the flash's, so no other jet ever inherits a shooter's motion
 const _mJetO: JetScratch = { pos: [0, 0, 0], axis: [0, 0, 1], life: 0.1, width: 0.4, len0: 0.4, len1: 2.5, seed: 0, col: [0, 0, 0], alpha: 1, birthOffset: 0, carry: _mfCarry };
+// the cannon's propellant and smoke: born with the muzzle's motion, which the propellant pool sheds (policy: muzzleSmoke);
+// their own scratch, so no other puff ever inherits a shooter's motion
+const _mSmokeO: PuffScratch = { pos: [0, 0, 0], vel: [0, 0, 0], life: 1, size0: 1, size1: 2, rot: 0, rotVel: 0, col0: [0, 0, 0], col1: [0, 0, 0], alpha: 1, grav: 0, birthOffset: 0, carry: _mfSmokeCarry };
 
 // ---------------------------------------------------------------------------
 // Factory
@@ -2441,6 +2448,8 @@ function* createFxSteps(
     /** the firing muzzle's world velocity (m/s), and what the bright parts carry of it (policy: muzzleFlash) */
     vel: MutableVec3;
     carry: MutableVec3;
+    /** what the propellant and smoke are born with (policy: muzzleSmoke; the propellant pool sheds it) */
+    smokeCarry: MutableVec3;
   }
 
   const muzzleFlashState: MuzzleFlashState = {
@@ -2448,6 +2457,7 @@ function* createFxSteps(
     dir: _mfDir,
     vel: _mfVel,
     carry: _mfCarry,
+    smokeCarry: _mfSmokeCarry,
     caliberMm: 0,
     birthOffset: 0,
     reach: 1,
@@ -2640,35 +2650,35 @@ function* createFxSteps(
       const along = 0.3 + (i / 6) * 1.9 + rng() * 0.35;
       const la = rng() * Math.PI * 2;
       const lr = rng() * 0.30 * s;
-      _puffO.pos[0] = pos.x + dir.x * along + (_v1.x * Math.cos(la) + _v2.x * Math.sin(la)) * lr;
-      _puffO.pos[1] = pos.y + dir.y * along + (_v1.y * Math.cos(la) + _v2.y * Math.sin(la)) * lr;
-      _puffO.pos[2] = pos.z + dir.z * along + (_v1.z * Math.cos(la) + _v2.z * Math.sin(la)) * lr;
-      _puffO.vel[0] = dir.x * (1.8 + rng() * 1.6) + (rng() - 0.5) * 0.8 + 0.3;
-      _puffO.vel[1] = dir.y * (1.8 + rng() * 1.6) + 0.5 + rng() * 0.5;
-      _puffO.vel[2] = dir.z * (1.8 + rng() * 1.6) + (rng() - 0.5) * 0.8;
-      _puffO.life = 1.5 + rng() * 1.3;
-      _puffO.size0 = (1.6 + rng() * 0.7) * s; _puffO.size1 = (3.0 + rng() * 1.4) * s;
-      _puffO.rot = rng() * Math.PI * 2; _puffO.rotVel = (rng() - 0.5) * 2.2;
-      col3(0xaba79f, _puffO.col0); col3(0x8f8c86, _puffO.col1);
-      _puffO.alpha = 0.16 + rng() * 0.07; _puffO.grav = 0.4;
-      _puffO.birthOffset = birthOffset - 0.09 - rng() * 0.06;
-      particles.emit('psmoke', _puffO);
+      _mSmokeO.pos[0] = pos.x + dir.x * along + (_v1.x * Math.cos(la) + _v2.x * Math.sin(la)) * lr;
+      _mSmokeO.pos[1] = pos.y + dir.y * along + (_v1.y * Math.cos(la) + _v2.y * Math.sin(la)) * lr;
+      _mSmokeO.pos[2] = pos.z + dir.z * along + (_v1.z * Math.cos(la) + _v2.z * Math.sin(la)) * lr;
+      _mSmokeO.vel[0] = dir.x * (1.8 + rng() * 1.6) + (rng() - 0.5) * 0.8 + 0.3;
+      _mSmokeO.vel[1] = dir.y * (1.8 + rng() * 1.6) + 0.5 + rng() * 0.5;
+      _mSmokeO.vel[2] = dir.z * (1.8 + rng() * 1.6) + (rng() - 0.5) * 0.8;
+      _mSmokeO.life = 1.5 + rng() * 1.3;
+      _mSmokeO.size0 = (1.6 + rng() * 0.7) * s; _mSmokeO.size1 = (3.0 + rng() * 1.4) * s;
+      _mSmokeO.rot = rng() * Math.PI * 2; _mSmokeO.rotVel = (rng() - 0.5) * 2.2;
+      col3(0xaba79f, _mSmokeO.col0); col3(0x8f8c86, _mSmokeO.col1);
+      _mSmokeO.alpha = 0.16 + rng() * 0.07; _mSmokeO.grav = 0.4;
+      _mSmokeO.birthOffset = birthOffset - 0.09 - rng() * 0.06;
+      particles.emit('psmoke', _mSmokeO);
     }
     for (let i = 0; i < 3; i++) {
       const la = rng() * Math.PI * 2;
-      _puffO.pos[0] = pos.x - dir.x * 0.25 + (_v1.x * Math.cos(la) + _v2.x * Math.sin(la)) * 0.2;
-      _puffO.pos[1] = pos.y - dir.y * 0.25 + (_v1.y * Math.cos(la) + _v2.y * Math.sin(la)) * 0.2;
-      _puffO.pos[2] = pos.z - dir.z * 0.25 + (_v1.z * Math.cos(la) + _v2.z * Math.sin(la)) * 0.2;
-      _puffO.vel[0] = -dir.x * (0.9 + rng() * 0.7) + (rng() - 0.5) * 0.7 + 0.3;
-      _puffO.vel[1] = 0.7 + rng() * 0.6;
-      _puffO.vel[2] = -dir.z * (0.9 + rng() * 0.7) + (rng() - 0.5) * 0.7;
-      _puffO.life = 1.4 + rng() * 0.9;
-      _puffO.size0 = 0.9 * s; _puffO.size1 = (2.1 + rng() * 1.0) * s;
-      _puffO.rot = rng() * Math.PI * 2; _puffO.rotVel = (rng() - 0.5) * 2;
-      col3(0xaea99f, _puffO.col0); col3(0x928f88, _puffO.col1);
-      _puffO.alpha = 0.18 + rng() * 0.07; _puffO.grav = 0.4;
-      _puffO.birthOffset = birthOffset - 0.08;
-      particles.emit('psmoke', _puffO);
+      _mSmokeO.pos[0] = pos.x - dir.x * 0.25 + (_v1.x * Math.cos(la) + _v2.x * Math.sin(la)) * 0.2;
+      _mSmokeO.pos[1] = pos.y - dir.y * 0.25 + (_v1.y * Math.cos(la) + _v2.y * Math.sin(la)) * 0.2;
+      _mSmokeO.pos[2] = pos.z - dir.z * 0.25 + (_v1.z * Math.cos(la) + _v2.z * Math.sin(la)) * 0.2;
+      _mSmokeO.vel[0] = -dir.x * (0.9 + rng() * 0.7) + (rng() - 0.5) * 0.7 + 0.3;
+      _mSmokeO.vel[1] = 0.7 + rng() * 0.6;
+      _mSmokeO.vel[2] = -dir.z * (0.9 + rng() * 0.7) + (rng() - 0.5) * 0.7;
+      _mSmokeO.life = 1.4 + rng() * 0.9;
+      _mSmokeO.size0 = 0.9 * s; _mSmokeO.size1 = (2.1 + rng() * 1.0) * s;
+      _mSmokeO.rot = rng() * Math.PI * 2; _mSmokeO.rotVel = (rng() - 0.5) * 2;
+      col3(0xaea99f, _mSmokeO.col0); col3(0x928f88, _mSmokeO.col1);
+      _mSmokeO.alpha = 0.18 + rng() * 0.07; _mSmokeO.grav = 0.4;
+      _mSmokeO.birthOffset = birthOffset - 0.08;
+      particles.emit('psmoke', _mSmokeO);
     }
   }
 
@@ -2685,19 +2695,19 @@ function* createFxSteps(
       const ry = _v1.y * Math.cos(a) + _v2.y * Math.sin(a);
       const rz = _v1.z * Math.cos(a) + _v2.z * Math.sin(a);
       const along = 0.4 + rng() * 0.5;
-      _puffO.pos[0] = pos.x + dir.x * along + rx * r;
-      _puffO.pos[1] = pos.y + dir.y * along + ry * r;
-      _puffO.pos[2] = pos.z + dir.z * along + rz * r;
+      _mSmokeO.pos[0] = pos.x + dir.x * along + rx * r;
+      _mSmokeO.pos[1] = pos.y + dir.y * along + ry * r;
+      _mSmokeO.pos[2] = pos.z + dir.z * along + rz * r;
       const v = 2.4 + rng() * 2.6;
       const fwd = 2.2 + rng() * 2.4;
-      _puffO.vel[0] = rx * v + dir.x * fwd; _puffO.vel[1] = ry * v + dir.y * fwd; _puffO.vel[2] = rz * v + dir.z * fwd;
-      _puffO.life = (1.6 + rng() * 1.2) * lifeK;
-      _puffO.size0 = (0.9 + rng() * 0.45) * s; _puffO.size1 = (2.3 + rng() * 1.7) * s;
-      _puffO.rot = rng() * Math.PI * 2; _puffO.rotVel = (rng() - 0.5) * 3;
-      col3(0xb1ada4, _puffO.col0); col3(0x94918b, _puffO.col1);
-      _puffO.alpha = (0.19 + rng() * 0.13) * smokeA; _puffO.grav = 0.6;
-      _puffO.birthOffset = smokeBirth - rng() * 0.30;
-      particles.emit('psmoke', _puffO);
+      _mSmokeO.vel[0] = rx * v + dir.x * fwd; _mSmokeO.vel[1] = ry * v + dir.y * fwd; _mSmokeO.vel[2] = rz * v + dir.z * fwd;
+      _mSmokeO.life = (1.6 + rng() * 1.2) * lifeK;
+      _mSmokeO.size0 = (0.9 + rng() * 0.45) * s; _mSmokeO.size1 = (2.3 + rng() * 1.7) * s;
+      _mSmokeO.rot = rng() * Math.PI * 2; _mSmokeO.rotVel = (rng() - 0.5) * 3;
+      col3(0xb1ada4, _mSmokeO.col0); col3(0x94918b, _mSmokeO.col1);
+      _mSmokeO.alpha = (0.19 + rng() * 0.13) * smokeA; _mSmokeO.grav = 0.6;
+      _mSmokeO.birthOffset = smokeBirth - rng() * 0.30;
+      particles.emit('psmoke', _mSmokeO);
     }
     const plumeCount = scoped ? 4 : 10;
     for (let i = 0; i < plumeCount; i++) {
@@ -2707,20 +2717,20 @@ function* createFxSteps(
       const lx = _v1.x * Math.cos(la) + _v2.x * Math.sin(la);
       const ly = _v1.y * Math.cos(la) + _v2.y * Math.sin(la);
       const lz = _v1.z * Math.cos(la) + _v2.z * Math.sin(la);
-      _puffO.pos[0] = pos.x + dir.x * along + lx * lat;
-      _puffO.pos[1] = pos.y + dir.y * along + ly * lat;
-      _puffO.pos[2] = pos.z + dir.z * along + lz * lat;
+      _mSmokeO.pos[0] = pos.x + dir.x * along + lx * lat;
+      _mSmokeO.pos[1] = pos.y + dir.y * along + ly * lat;
+      _mSmokeO.pos[2] = pos.z + dir.z * along + lz * lat;
       const v = 4 + rng() * 5;
-      _puffO.vel[0] = dir.x * v + lx * 1.1 + 0.4 + (rng() - 0.5) * 0.6;
-      _puffO.vel[1] = dir.y * v + ly * 1.1 + 0.7 + rng() * 0.7;
-      _puffO.vel[2] = dir.z * v + lz * 1.1 + (rng() - 0.5) * 0.6;
-      _puffO.life = (1.7 + rng() * 1.5) * lifeK;
-      _puffO.size0 = (0.6 + rng() * 0.35) * s; _puffO.size1 = (1.7 + rng() * 1.5) * s;
-      _puffO.rot = rng() * Math.PI * 2; _puffO.rotVel = (rng() - 0.5) * 2;
-      col3(0xbdb9b1, _puffO.col0); col3(0x94928c, _puffO.col1);
-      _puffO.alpha = (0.10 + rng() * 0.11) * smokeA; _puffO.grav = 0.5;
-      _puffO.birthOffset = smokeBirth - rng() * 0.35 - (along / (3.2 * s + 0.8)) * 0.25;
-      particles.emit('psmoke', _puffO);
+      _mSmokeO.vel[0] = dir.x * v + lx * 1.1 + 0.4 + (rng() - 0.5) * 0.6;
+      _mSmokeO.vel[1] = dir.y * v + ly * 1.1 + 0.7 + rng() * 0.7;
+      _mSmokeO.vel[2] = dir.z * v + lz * 1.1 + (rng() - 0.5) * 0.6;
+      _mSmokeO.life = (1.7 + rng() * 1.5) * lifeK;
+      _mSmokeO.size0 = (0.6 + rng() * 0.35) * s; _mSmokeO.size1 = (1.7 + rng() * 1.5) * s;
+      _mSmokeO.rot = rng() * Math.PI * 2; _mSmokeO.rotVel = (rng() - 0.5) * 2;
+      col3(0xbdb9b1, _mSmokeO.col0); col3(0x94928c, _mSmokeO.col1);
+      _mSmokeO.alpha = (0.10 + rng() * 0.11) * smokeA; _mSmokeO.grav = 0.5;
+      _mSmokeO.birthOffset = smokeBirth - rng() * 0.35 - (along / (3.2 * s + 0.8)) * 0.25;
+      particles.emit('psmoke', _mSmokeO);
     }
   }
 
@@ -2729,17 +2739,17 @@ function* createFxSteps(
     const smokeBirth = birthOffset - 0.2;
     for (let i = 0; i < (wisps ? 8 : 0); i++) {
       const along = 0.15 + rng() * 0.45;
-      _puffO.pos[0] = pos.x + dir.x * along; _puffO.pos[1] = pos.y + dir.y * along; _puffO.pos[2] = pos.z + dir.z * along;
-      _puffO.vel[0] = dir.x * 0.3 + (rng() - 0.5) * 0.4 + 0.35;
-      _puffO.vel[1] = 0.55 + rng() * 0.55;
-      _puffO.vel[2] = dir.z * 0.3 + (rng() - 0.5) * 0.4 + 0.12;
-      _puffO.life = 2.3 + rng() * 1.4;
-      _puffO.size0 = 0.5 * s; _puffO.size1 = (2.0 + rng() * 0.9) * s;
-      _puffO.rot = rng() * Math.PI * 2; _puffO.rotVel = (rng() - 0.5) * 1.5;
-      col3(0xc6c2ba, _puffO.col0); col3(0x9a9791, _puffO.col1);
-      _puffO.alpha = 0.20 + rng() * 0.10; _puffO.grav = 0.4;
-      _puffO.birthOffset = smokeBirth - rng() * 0.4;
-      particles.emit('psmoke', _puffO);
+      _mSmokeO.pos[0] = pos.x + dir.x * along; _mSmokeO.pos[1] = pos.y + dir.y * along; _mSmokeO.pos[2] = pos.z + dir.z * along;
+      _mSmokeO.vel[0] = dir.x * 0.3 + (rng() - 0.5) * 0.4 + 0.35;
+      _mSmokeO.vel[1] = 0.55 + rng() * 0.55;
+      _mSmokeO.vel[2] = dir.z * 0.3 + (rng() - 0.5) * 0.4 + 0.12;
+      _mSmokeO.life = 2.3 + rng() * 1.4;
+      _mSmokeO.size0 = 0.5 * s; _mSmokeO.size1 = (2.0 + rng() * 0.9) * s;
+      _mSmokeO.rot = rng() * Math.PI * 2; _mSmokeO.rotVel = (rng() - 0.5) * 1.5;
+      col3(0xc6c2ba, _mSmokeO.col0); col3(0x9a9791, _mSmokeO.col1);
+      _mSmokeO.alpha = 0.20 + rng() * 0.10; _mSmokeO.grav = 0.4;
+      _mSmokeO.birthOffset = smokeBirth - rng() * 0.4;
+      particles.emit('psmoke', _mSmokeO);
     }
     _sv.set(pos.x + dir.x * 0.6, pos.y + dir.y * 0.6, pos.z + dir.z * 0.6);
     sparkFan(_sv, dir, Math.round(9 * (0.4 + 0.6 * axAtt)), 14 * s * reach, 0.22, 0xffd58a, 0.11, 0.018, 0.03, birthOffset, 0,
@@ -2849,7 +2859,7 @@ function* createFxSteps(
     col3(0xffefa0, puff.col0); col3(0xff8b30, puff.col1);
     puff.alpha = 0.65; puff.grav = 0; puff.birthOffset = birthOffset;
     particles.emit('flash', puff);
-    // its smoke stays where it was thrown (policy: muzzleSmoke)
+    // its smoke stays where it was thrown (policy: rocketIgnitionSmoke)
     puff.vel[0] = dir.x * 2; puff.vel[1] = dir.y * 2; puff.vel[2] = dir.z * 2;
     puff.life = 0.65; puff.size0 = 0.25 * scale; puff.size1 = 1.05 * scale;
     col3(0xb0aca0, puff.col0); col3(0x7b7b73, puff.col1);
@@ -2950,6 +2960,7 @@ function* createFxSteps(
     for (let i = 0; i < 3; i++) {
       state.vel[i] = vel[i];
       state.carry[i] = vel[i] * MUZZLE_FLASH_CARRY;
+      state.smokeCarry[i] = vel[i] * MUZZLE_SMOKE_CARRY;
     }
     basisFrom(dir, _v1, _v2);
     if (!scoped) {
@@ -2962,7 +2973,7 @@ function* createFxSteps(
     if (blast) {
       mediaMuzzleBlast(blast, { x: pos.x, y: pos.y, z: pos.z, dx: dir.x, dy: dir.y, dz: dir.z, caliberMm,
         surface: scoped ? null : classifyTerrain(heightField, pos.x, pos.z), birthOffset,
-        nearAtt: scoped ? 0.35 : 0.55 + 0.45 * nearAtt });
+        nearAtt: scoped ? 0.35 : 0.55 + 0.45 * nearAtt, carry: state.smokeCarry });
       basisFrom(dir, _v1, _v2);
     } else {
       emitMuzzleSmoke(state);
