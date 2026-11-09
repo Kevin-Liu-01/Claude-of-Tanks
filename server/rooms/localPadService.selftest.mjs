@@ -6,6 +6,7 @@ import http from 'node:http';
 import { WebSocket } from 'ws';
 import { createLocalPadService } from './localPadService.ts';
 import { createRoomsServer } from './serve.ts';
+import { PAD_DESKTOP_GRACE_MS } from '../../src/pad/padProtocol.ts';
 
 const server = http.createServer();
 const draws = ['AAAAAA', 'AAAAAA', 'BBBBBB', 'CCCCCC', 'DDDDDD', 'EEEEEE', 'FFFFFF', 'GGGGGG'];
@@ -137,6 +138,39 @@ await new Promise((resolve) => server.close(resolve));
   assert.deepEqual(await phones[0].next(), { t: 'end', reason: 'ended' });
   await lobbies.close();
   await new Promise((resolve) => lobbyServer.close(resolve));
+}
+
+// round 8 Y5 s3-07 (the reverse order, on the LAN host): a lobby's desktop goes away while a phone sits, then the last
+// seat leaves. The host's timer must still fire at the desktop's grace: the actor's deadline fell back to the join
+// window (ten minutes) once the seats were empty, so the lobby outlived its desktop with no one to tell.
+{
+  let offset = 0;
+  const graceServer = http.createServer();
+  const graceLobbies = createLocalPadService({ connectLimit: 30, drawCode: () => 'MMMMMM', wallClock: () => Date.now() + offset });
+  graceServer.on('upgrade', (request, socket, head) => {
+    if (!graceLobbies.handleUpgrade(request, socket, head)) { socket.write('HTTP/1.1 404 Not Found\r\n\r\n'); socket.destroy(); }
+  });
+  await new Promise((resolve) => graceServer.listen(0, '127.0.0.1', resolve));
+  const at = `ws://127.0.0.1:${graceServer.address().port}`;
+  const host = open('/pad/lobby', at);
+  await host.opened;
+  assert.equal((await host.next()).code, 'MMMMMM');
+  assert.equal((await host.next()).t, 'lobby');
+  const seated = open('/pad/join/MMMMMM', at);
+  await seated.opened;
+  assert.equal((await seated.next()).seat, 1);
+  assert.deepEqual(await seated.next(), { t: 'peer', state: 'here' });
+  host.ws.close();
+  assert.deepEqual(await seated.next(), { t: 'peer', state: 'away' }, 'the phone hears the desktop go');
+  // the host's clock runs to just short of the grace (the join window still open), and the last seat leaves
+  offset += PAD_DESKTOP_GRACE_MS - 400;
+  seated.send({ t: 'end' });
+  assert.deepEqual(await seated.next(), { t: 'end', reason: 'ended' });
+  const by = Date.now() + 5000;
+  while (graceLobbies.pairs && Date.now() < by) await new Promise((resolve) => setTimeout(resolve, 25));
+  assert.equal(graceLobbies.pairs, 0, "the lobby ends at its desktop's grace after its last seat left, not at its join window");
+  await graceLobbies.close();
+  await new Promise((resolve) => graceServer.close(resolve));
 }
 
 // the LAN helper mounts it beside the rooms on one port

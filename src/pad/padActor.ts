@@ -42,12 +42,18 @@ export interface PadSeat {
   relayUsed: number;
 }
 
+/** A pairing's phase: `waiting` until a phone joins, then `paired` for the rest of its life. It never goes back (round 8
+ *  Y5 s3-07): a lobby whose phones all left is still a code someone saw, so its desktop keeps PAD_DESKTOP_GRACE_MS; only
+ *  a code nobody joined dies with its desktop. `#joined` is its one writer. */
+export const PAD_ACTOR_PHASES = ['waiting', 'paired'] as const;
+export type PadActorPhase = (typeof PAD_ACTOR_PHASES)[number];
+
 export interface PadActorState {
   version: 2;
   code: string;
   /** `pair`: one desktop and one phone; `lobby`: one desktop and up to PAD_LOBBY_SEATS phones. */
   kind: 'pair' | 'lobby';
-  phase: 'waiting' | 'paired';
+  phase: PadActorPhase;
   createdAt: number;
   /** pair waiting: the code's expiry; otherwise the pairing's longest life. */
   expiresAt: number;
@@ -132,7 +138,7 @@ export class PadActor {
 
   /** True when a desktop may take this code (`/pad/new`, `/pad/lobby`): nothing is held here. */
   get vacant(): boolean { return this.#state === null; }
-  get phase(): 'vacant' | 'waiting' | 'paired' { return this.#state?.phase ?? 'vacant'; }
+  get phase(): 'vacant' | PadActorPhase { return this.#state?.phase ?? 'vacant'; }
   get liveSockets(): number { return this.#sockets.size; }
   /** The most sockets this code holds at once (the host refuses an upgrade past it). */
   get socketCap(): number { return this.#state?.kind === 'lobby' ? LOBBY_SOCKETS : PAIR_SOCKETS; }
@@ -143,7 +149,8 @@ export class PadActor {
     if (!state) return null;
     let next = state.expiresAt;
     if (state.joinUntil !== null) next = Math.min(next, state.joinUntil);
-    if (state.phase === 'paired' && state.desktopAwaySince !== null) next = Math.min(next, state.desktopAwaySince + PAD_DESKTOP_GRACE_MS);
+    // a desktop away has its grace whatever its seats do meanwhile (a code nobody joined never gets here: it ends at once)
+    if (state.desktopAwaySince !== null) next = Math.min(next, state.desktopAwaySince + PAD_DESKTOP_GRACE_MS);
     return next;
   }
 
@@ -159,6 +166,8 @@ export class PadActor {
     const state = this.#state;
     const now = this.#ports.now();
     if (!state) { this.#refuse(socketId, 'unknown'); return; }
+    // a desktop away past its grace is gone, however late its alarm runs: no phone is seated to be dropped at once
+    if (state.desktopAwaySince !== null && now >= state.desktopAwaySince + PAD_DESKTOP_GRACE_MS) { this.#refuse(socketId, 'unknown'); return; }
     if (state.kind === 'pair' && (state.phase !== 'waiting' || now >= state.expiresAt || state.seats.length)) {
       this.#refuse(socketId, 'unknown');
       return;
@@ -172,10 +181,7 @@ export class PadActor {
     while (state.seats.some((seat) => seat.seat === seatNumber)) seatNumber++;
     state.seats.push({ seat: seatNumber, token: this.#ports.sha256Hex(token), socket: socketId, relayUsed: 0 });
     state.seats.sort((a, b) => a.seat - b.seat);
-    if (state.phase === 'waiting') {
-      state.phase = 'paired';
-      if (state.kind === 'pair') state.expiresAt = state.createdAt + PAD_PAIR_MAX_MS;
-    }
+    this.#joined(state);
     this.#sockets.set(socketId, { id: socketId, role: 'phone', seat: seatNumber });
     this.#ports.send(socketId, state.kind === 'lobby' ? { t: 'joined', token, seat: seatNumber } : { t: 'joined', token });
     this.#ports.send(socketId, { t: 'peer', state: state.desktopSocket ? 'here' : 'away' });
@@ -280,7 +286,7 @@ export class PadActor {
     if (!record || !state) return;
     if (record.role === 'desktop' && state.desktopSocket === socketId) {
       state.desktopSocket = null;
-      // nobody can use an unseen code
+      // nobody can use an unseen code (one no phone ever joined); a code a phone joined keeps its desktop's grace
       if (state.phase === 'waiting') { this.#end('desktop_left'); return; }
       state.desktopAwaySince = this.#ports.now();
       for (const seat of state.seats) if (seat.socket) this.#ports.send(seat.socket, { t: 'peer', state: 'away' });
@@ -301,14 +307,15 @@ export class PadActor {
     const now = this.#ports.now();
     if (state.kind === 'pair' && state.phase === 'waiting' && now >= state.expiresAt) { this.#end('expired'); return; }
     if (state.kind === 'lobby' && state.joinUntil !== null && now >= state.joinUntil) {
-      // a lobby nobody joined expires; one with seats only stops admitting
+      // a lobby with no seat when its window lapses (nobody joined, or everyone left) expires; one with seats only stops
+      // admitting
       if (!state.seats.length) { this.#end('expired'); return; }
       state.joinUntil = null;
       if (state.desktopSocket) this.#ports.send(state.desktopSocket, { t: 'lobby', open: false, until: null, seats: state.seats.length });
       this.#changed();
     }
     if ((state.phase === 'paired' || state.kind === 'lobby') && now >= state.expiresAt) { this.#end('too_long'); return; }
-    if (state.phase === 'paired' && state.desktopAwaySince !== null && now >= state.desktopAwaySince + PAD_DESKTOP_GRACE_MS) {
+    if (state.desktopAwaySince !== null && now >= state.desktopAwaySince + PAD_DESKTOP_GRACE_MS) {
       this.#end('desktop_left');
       return;
     }
@@ -332,6 +339,14 @@ export class PadActor {
     return true;
   }
 
+  /** The phase's one move: the first phone that joins makes the code `paired` (a pairing's code then lives its longest
+   *  life). Nothing moves it back. */
+  #joined(state: PadActorState): void {
+    if (state.phase !== 'waiting') return;
+    state.phase = 'paired';
+    if (state.kind === 'pair') state.expiresAt = state.createdAt + PAD_PAIR_MAX_MS;
+  }
+
   /** The seat a desktop's message names: a lobby's by number, a pairing's only phone. */
   #seatFor(seatNumber: number | undefined): PadSeat | null {
     const state = this.#state!;
@@ -353,7 +368,7 @@ export class PadActor {
   }
 
   /** A lobby seat leaves (the phone's own end, or the desktop let it go): its socket is told and closed, its token
-   *  forgotten, its number free again. */
+   *  forgotten, its number free again. The lobby stays `paired` with no seat (round 8 Y5 s3-07): its code was seen. */
   #release(seat: PadSeat, reason: 'ended' | 'removed'): void {
     const state = this.#state!;
     state.seats = state.seats.filter((entry) => entry !== seat);
@@ -363,7 +378,6 @@ export class PadActor {
       this.#ports.send(seat.socket, { t: 'end', reason });
       this.#ports.close(seat.socket, reason);
     }
-    if (!state.seats.length) state.phase = 'waiting';
     this.#tellDesktop(seat.seat, 'gone');
     this.#changed();
   }
