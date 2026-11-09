@@ -34,7 +34,7 @@ unvoiced: the fire command and its answers, APS/ERA, the drone's flight, the
 modes' own moments, the gunship's fire control; its state is two declared
 scopes, the battle's, started by the engine's `resetBattlePlay`, and our
 tank's life's, started by the engine's `startOwnLife` at each revive of our
-hull it notices). Web Audio owners: `mixer.ts`, `assetLibrary.ts`,
+hull and each seat the player takes, as it notices them). Web Audio owners: `mixer.ts`, `assetLibrary.ts`,
 `voicePool.ts`, `vehicleRig.ts`, `ambienceDirector.ts`, `crewRadio.ts`.
 `captions.ts` owns the caption stream (BUI-F9): every keyed transmission
 (`crewRadio.ts` `onTransmit`, with the take spoken and the speaking role from
@@ -64,11 +64,17 @@ loops, the alarm, the heartbeat, the listener, burning), and the new battle
 The crew's procedure hangs off the same edges (round 8 Y3): its battle starts
 in `resetBattlePlay` (a battle edge, a network restart), its life at each
 revive of our hull (`startOwnLife`: the respawn event, or with none the frame
-that shows our hull standing again after its death), so nothing a dead crew's
-rounds arm is said in the next life; the pause menu silences the net (the line
-on the air and the queue go as it opens, each edge cancels the crew's armed
-calls, `say()` refuses 'paused', no radio or crew frame runs behind the menu, a
-network battle's included). It names only what the
+that shows our hull standing again after its death) and at each seat the player
+takes in a watched battle (the frame's `isPlayer` on another hull, or back on
+one its brain drove: no revive, no event), so nothing a dead crew's rounds arm
+is said in the next life; a seat its brain drives is nobody's crew (`live()`
+reads the frame's `isPlayer`). The pause menu silences the net (the line on
+the air and the queue go as it opens, each edge cancels the crew's armed calls,
+a recalled drone's recovery included, `say()` refuses 'paused', no radio or
+crew frame runs behind the menu, a network battle's included). Our drone is
+read as the authority flies it: its feed live while `active`, a recall
+accepted as `returnS` (the flight home, "recovered" once it is parked), never
+`recallS` (the recall's gate at launch). It names only what the
 player sees: `src/game/playerVisibility.ts` is the one rule (the network's
 word, the watch and couch reveals, our side, the seat's own spot), handed to
 `audio.update` by `listenerPoseRuntime.ts` and stamped per frame on each

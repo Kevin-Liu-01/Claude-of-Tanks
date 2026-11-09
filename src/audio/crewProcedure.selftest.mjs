@@ -2,14 +2,20 @@
 // declared battle mode and its edges, driven through the real engine (bus events and frames in, its say log out).
 //   - s1-03, the battle scope: the pause menu silences the net (the line queued before the pause is dropped, the crew's
 //     armed calls are cancelled, nothing is said behind it or late on the resume); a kill heard behind the menu (a network
-//     battle goes on there) arms no cease fire for the resume; the crew keeps no battle edge of its own (it subscribes to
-//     no phase change and no raw death: the engine's resetBattlePlay and death latch are its edges).
+//     battle goes on there) arms no cease fire for the resume, and neither a recalled drone that docks behind it nor an
+//     enemy's smoke popped behind it is called at the resume (review r2); the crew keeps no battle edge of its own (it
+//     subscribes to no phase change and no raw death: the engine's resetBattlePlay and death latch are its edges).
 //   - s1-01, the life scope: the gun is loaded while our reload channel is ready, so a Gun Game step's fresh weapon gets its
-//     fire command at once (no reload ever finished for it); a kill's cease fire and a recalling drone's recovery die with
+//     fire command at once (no reload ever finished for it); a kill's cease fire and a recalled drone's recovery die with
 //     our tank, so neither is said at the respawn; the life starts at each revive the engine notices, so what a dead
 //     crew's round arms (a posthumous kill's cease fire) is not said at the respawn either, nor at a revive no event
 //     announces (a migrated host's adoptLiveCombat: the frame shows our hull standing again), whose new life also has its
-//     low-hull call armed again.
+//     low-hull call armed again; and at each seat the player takes in a watched battle (review r2: game/watchSeat.ts
+//     takeWatchSeat moves the player to a living bot, no revive, no event), so the last seat's cease fire, posthumous kill
+//     or recalled drone is not called for the next, nor for the same hull taken back from its brain.
+//   - review r2, our drone as the authority flies it (sim/aerialCombat.ts stepAerial, the real fixed-step flight): a flight
+//     lost to its battery or its link gets its low-battery and weak-link calls and is never "recovered"; a recall is
+//     recovered when the airframe is parked on its dock, not when the recall is accepted.
 //   - round 8 amendment 6, the escort's life: an AC-130 crew calls a friendly extracted when its mode life is 'rescued'
 //     (sim/matchModes.ts setLife, the hull's one life writer, driven here through the real AC-130 controller), never a
 //     benched or downed one, and reads no flags of its own for it (a network seat sees no rescue: the authority stops
@@ -17,12 +23,20 @@
 //   - s1-02, one visibility truth: the crew names only what the player sees (src/game/playerVisibility.ts, handed to
 //     audio.update as the listener's runtime does): no fire command on an enemy whose spot lingered out, one a far ally
 //     lit, one revived at its spawn, or a network hull the authority stopped sending; a hidden enemy near does not hold
-//     the cease fire; an enemy the player sees is still commanded.
+//     the cease fire; an enemy the player sees is still commanded; a watched battle's seat its brain drives is nobody's
+//     crew, so the drone camera laid on an enemy the watch reveals commands nothing (review r2).
 // Each case runs on its own battle; a case that fails is reported with the rest, so one run shows every red.
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { createBus } from '../game/stateCore.ts';
+import { Vector3 } from 'three';
+import { createBus, watchRevealsAll } from '../game/stateCore.ts';
+import { prepareWatchSeat, openWatchSeats, takeWatchSeat, leaveWatchSeat } from '../game/watchSeat.ts';
 import { createMatchModeController } from '../sim/matchModes.ts';
+import { initializeAerial, stepAerial } from '../sim/aerialCombat.ts';
+import { matchRulesetFor } from '../sim/matchRuleset.ts';
+import { PLAYER_ACTION_BITS } from '../sim/playerActions.ts';
+import { stepShell } from '../sim/ballistics.ts';
+import { getSpec } from '../vehicles/specs.ts';
 import { installFetch, namedContext, terrain, tank, probeOf } from './engineHarness.test-support.mjs';
 
 globalThis.window = {};
@@ -50,7 +64,22 @@ let field = [];
 // what the player sees (the game's rule is src/game/playerVisibility.ts): every hull unless a case says
 const EVERY_HULL = () => true;
 let sees = EVERY_HULL;
-const frames = (seconds) => { for (let t = 0; t < seconds - 1e-9; t += 1 / 30) { ctx.advance(1 / 30); audio.update(1 / 30, listener, field, [], sees); } };
+// drones on the authority's own flight (droneFlight), stepped at the sim's 60 Hz before each frame
+const flights = [];
+const frames = (seconds) => {
+  for (let t = 0; t < seconds - 1e-9; t += 1 / 30) {
+    for (const flight of flights) { flight.step(); flight.step(); }
+    ctx.advance(1 / 30);
+    audio.update(1 / 30, listener, field, [], sees);
+  }
+};
+/** Frames until `done()`, at most `capS` (a case that never gets there fails with its count, never loops). */
+function framesUntil(done, capS, what) {
+  for (let s = 0; !done(); s += 0.1) {
+    if (s >= capS) throw new Error(`${what}: not within ${capS} s`);
+    frames(0.1);
+  }
+}
 const now = () => +ctx.currentTime.toFixed(3);
 const asked = (id, since) => probe.sayLog.some((e) => e.t >= since && e.id === id);
 const spoken = (id, since) => probe.voiceLog.some((e) => e.t >= since && e.id === id);
@@ -63,7 +92,11 @@ async function battle(mode, roster, visible = EVERY_HULL) {
   gameMode = mode;
   field = roster;
   sees = visible;
+  flights.length = 0;
+  listener.pos = { x: 0, y: 2, z: 0 };
   listener.forward = AWAY;
+  listener.kind = 'player-tank';
+  listener.ownerId = 'me';
   bus.emit('phase:change', { phase: 'garage' });
   bus.emit('phase:change', { phase: 'battle' });
   await audio.warmBattleEvents([...new Set(roster.map((t) => t.specId))]);
@@ -71,6 +104,55 @@ async function battle(mode, roster, visible = EVERY_HULL) {
   await probe.libraryIdle();
   bus.emit('battle:rollout', {});
   frames(4);
+}
+
+/**
+ * Our drone on the authority's own flight (sim/aerialCombat.ts stepAerial, flown as sim/droneRecall.selftest.mjs flies it
+ * from the M1A2's certified dock): its view is the object the frames hand the engine (`hull.aerial`), and its carrier's
+ * combat is the hull's, so our death grounds it as the sim does.
+ */
+function droneFlight(hull) {
+  const pilot = { id: hull.id, team: hull.team, spec: getSpec('m1a1_abrams_hc'), bot: false, isPlayer: true,
+    state: { pos: new Vector3(hull.state.pos.x, 0, hull.state.pos.z), yaw: 0, turretYaw: 0, speed: 0 }, combat: hull.combat,
+    input: { throttle: 0, steer: 0, brake: false, fire: false, aimPoint: new Vector3(140, 22, 400), auxiliaryBits: 0 } };
+  initializeAerial(pilot, matchRulesetFor('drone'));
+  hull.aerial = pilot.aerial;
+  const shells = [];
+  let tick = 0, nextId = 1;
+  const flight = {
+    pilot,
+    /** The drone key: a launch, or once the feed is live a recall (the authority refuses an earlier one). */
+    press() { pilot.input.auxiliaryBits |= PLAYER_ACTION_BITS.DRONE; },
+    step() {
+      tick++;
+      stepAerial(pilot, tick / 60, 1 / 60, () => nextId++, (shell) => shells.push(shell));
+      const live = shells.at(-1);
+      if (live && !live.dead) stepShell(live, 1 / 60);
+    },
+  };
+  flights.push(flight);
+  return flight;
+}
+
+/**
+ * A watched battle (sim/matchRuleset.ts WATCH_RULES: take control, reveal all) driven through the real seat ledger
+ * (game/watchSeat.ts). What the player sees is src/game/playerVisibility.ts's rule over it (pinned by its own selftest),
+ * composed here from the same parts so the case also runs on a tree without that module: the watch reveals every hull
+ * while nobody drives (stateCore.ts watchRevealsAll), our side shows, and an enemy shows once our side spots it (`spot`,
+ * which also tells the spot's event as spotting.ts does). `seat` is the human seat; every other hull is a bot.
+ */
+function watchedBattle(roster, seat) {
+  const brain = () => ({ park() {}, resume() {} });
+  for (const hull of roster) hull.aiCtl = brain();
+  const spotted = new Set();
+  const game = { tanks: roster, player: seat, timeS: 0, nextShellId: 1, watch: null,
+    ruleset: { watch: { takeControl: true, revealAll: true } } };
+  prepareWatchSeat(game, seat);
+  return {
+    game, spotted,
+    sees: (hull) => watchRevealsAll(game) || hull.team === seat.team || spotted.has(hull.id),
+    spot(id, spotterId) { spotted.add(id); bus.emit('tank:spotted', { id, team: seat.team, spotterId, timeS: 0 }); },
+  };
 }
 
 const failures = [];
@@ -138,6 +220,70 @@ await check('s1-03 a kill heard behind the pause menu arms no cease fire for the
   bus.emit('ui:pause', { on: false });
   frames(4);
   assert.ok(!asked('cease_fire', killed), `no cease fire behind the menu, nor at the resume for a kill heard 20 s before it (asked ${said(killed)})`);
+});
+
+await check('s1-03 an enemy\'s smoke popped behind the pause menu is not called at the resume', async () => {
+  const me = tank('me', { isPlayer: true });
+  const smoker = foe('f1', 400);
+  await battle('standard', [me, smoker, foe('f2', 2500, 300)]);
+  spot('f1');
+  frames(2);
+  // behind the menu (a network battle goes on there) f1 pops smoke; the screens change again after the resume (another
+  // hull's launch out of our range, or a screen expiring: the presentation tells every change)
+  const paused = now();
+  bus.emit('ui:pause', { on: true });
+  frames(1);
+  const behind = { born: 50, source: ['t72b3m_2022', 0, 2, 400] };
+  bus.emit('auxiliary:smokeScreens', { screens: [behind] });
+  frames(6);
+  bus.emit('ui:pause', { on: false });
+  frames(1);
+  const far = { born: 58, source: ['t72b3m_2022', 300, 2, 2500] };
+  bus.emit('auxiliary:smokeScreens', { screens: [behind, far] });
+  frames(2);
+  assert.ok(!asked('enemy_smoke', paused), `no call at the resume for smoke popped behind the menu (asked ${said(paused)})`);
+  // the control: f1's next screen, popped now, is called
+  const popped = now();
+  bus.emit('auxiliary:smokeScreens', { screens: [behind, far, { born: 70, source: ['t72b3m_2022', 0, 2, 400] }] });
+  frames(1);
+  assert.ok(asked('enemy_smoke', popped), `smoke popped in play is called (asked ${said(popped)})`);
+});
+
+await check('s1-03 a recalled drone that docks behind the pause menu is not called recovered at the resume', async () => {
+  const me = tank('me', { isPlayer: true });
+  await battle('drone', [me, foe('f1', 3000)]);
+  const drone = droneFlight(me);
+  // the control: a short menu while the recalled drone flies home; it is still flying home at the resume, so its
+  // recovery is armed again and called at the dock
+  drone.press();
+  frames(4);
+  const first = now();
+  drone.press();
+  frames(0.2);
+  assert.ok(!me.aerial.active && me.aerial.returnS > 1, `the recall is accepted, the airframe flies home (returnS ${me.aerial.returnS})`);
+  bus.emit('ui:pause', { on: true });
+  frames(0.5);
+  bus.emit('ui:pause', { on: false });
+  framesUntil(() => !(me.aerial.returnS > 0), 60, 'the first recall parked');
+  const docked = now();
+  frames(1);
+  const calls = probe.sayLog.filter((e) => e.t >= first && e.id === 'drone_recovered').map((e) => +(e.t - first).toFixed(2));
+  assert.ok(calls.length === 1 && calls[0] >= docked - first - 0.15,
+    `a recall still flying home at the resume is recovered once, at its dock ${(docked - first).toFixed(2)} s after the recall (asked at ${calls.join(', ') || 'never'} s)`);
+  // a network battle goes on behind the menu: recalled as the menu opens, the drone docks behind it; 20 s on, the resume
+  framesUntil(() => !(me.aerial.cooldownS > 0), 60, 'the next launch ready');
+  drone.press();
+  frames(4);
+  const recalled = now();
+  drone.press();
+  frames(0.2);
+  assert.ok(!me.aerial.active && me.aerial.returnS > 1, 'the second recall is accepted');
+  bus.emit('ui:pause', { on: true });
+  frames(20);
+  assert.ok(!(me.aerial.returnS > 0), 'the drone docked behind the menu');
+  bus.emit('ui:pause', { on: false });
+  frames(3);
+  assert.ok(!asked('drone_recovered', recalled), `no recovery called behind the menu or at the resume for a drone that docked behind it (asked ${said(recalled)})`);
 });
 
 // ---- s1-01: the life scope is our tank's life.
@@ -238,29 +384,183 @@ await check('s1-01 a revive no event announces starts the next life', async () =
   assert.ok(asked('low_hp', again), `the new life's low-hull call is armed again (asked ${said(again)})`);
 });
 
-await check('s1-01 a recalling drone is not recovered by our next life', async () => {
+await check('s1-01 a recalled drone flying home when our tank dies is not recovered by our next life', async () => {
   const me = tank('me', { isPlayer: true });
   await battle('drone', [me, foe('f1', 3000)]);
-  // the control: a recall that lands while we live is recovered
-  me.aerial = { kind: 'drone', active: true, x: 0, y: 30, z: 60, batteryS: 40, recallS: 2 };
-  frames(1);
-  const landed = now();
-  me.aerial = { kind: 'drone', active: false };
-  frames(2);
-  assert.ok(asked('drone_recovered', landed), `a recall that lands is recovered (asked ${said(landed)})`);
+  const drone = droneFlight(me);
+  // the control: a recall the authority accepts, flown home and parked while we live, is recovered at its dock (review
+  // r2: not when the recall is accepted, seconds before it is back aboard)
+  drone.press();
   frames(4);
-  // recalling again when our tank dies; the next life starts with the drone docked
-  me.aerial = { kind: 'drone', active: true, x: 0, y: 30, z: 60, batteryS: 40, recallS: 2 };
+  assert.ok(me.aerial.active, 'the drone flies');
+  const recalled = now();
+  drone.press();
+  frames(0.2);
+  assert.ok(!me.aerial.active && me.aerial.returnS > 1, `the recall is accepted, the airframe flies home (returnS ${me.aerial.returnS})`);
+  framesUntil(() => !(me.aerial.returnS > 0), 60, 'the recall parked');
+  const docked = now();
   frames(1);
+  const calls = probe.sayLog.filter((e) => e.t >= recalled && e.id === 'drone_recovered').map((e) => +(e.t - recalled).toFixed(2));
+  assert.ok(calls.length === 1 && calls[0] >= docked - recalled - 0.15,
+    `recovered once, at the dock ${(docked - recalled).toFixed(2)} s after the recall (asked at ${calls.join(', ') || 'never'} s)`);
+  // recalled again, and our tank dies while it flies home (the sim grounds a dead carrier's drone); the next life starts
+  // with the drone docked
+  framesUntil(() => !(me.aerial.cooldownS > 0), 60, 'the next launch ready');
+  drone.press();
+  frames(4);
+  drone.press();
+  frames(0.5);
+  assert.ok(!me.aerial.active && me.aerial.returnS > 0, 'recalled again, flying home');
   const since = now();
   me.combat.destroyed = true;
-  me.aerial = { kind: 'drone', active: false };
   bus.emit('tank:destroyed', { id: 'me', killerId: 'f1', pos: [0, 0, 0], cause: 'shot' });
   frames(3);
   me.combat.destroyed = false;
   bus.emit('mode:respawn', { id: 'me', team: 'alpha' });
+  frames(2);
+  assert.ok(!asked('drone_recovered', since), `the last life's drone is not "recovered" in the next (asked ${said(since)})`);
+});
+
+// ---- review r2: our drone as the authority flies it. `recallS` is the recall's gate at launch (every flight starts
+// with it), never a recall: read as one, no flight's battery or link was ever called and every loss was "recovered".
+await check('review r2 a drone lost to its battery or its link is called low and weak, never recovered', async () => {
+  const me = tank('me', { isPlayer: true });
+  await battle('drone', [me, foe('f1', 3000)]);
+  const drone = droneFlight(me);
+  const since = now();
+  drone.press();
   frames(1);
-  assert.ok(!asked('drone_recovered', since), `the last life's drone is not "recovered" at the respawn (asked ${said(since)})`);
+  assert.ok(me.aerial.active && me.aerial.recallS > 0, 'launched, inside the recall\'s gate');
+  // it hovers by its dock until the battery is spent (sim: lost at 40 s)
+  framesUntil(() => !me.aerial.active, 60, 'the battery spent');
+  frames(2);
+  assert.ok(asked('drone_battery_low', since), `the battery's warning on a flight that runs it down (asked ${said(since)})`);
+  assert.ok(!asked('drone_recovered', since), `a drone lost to its battery is not "recovered" (asked ${said(since)})`);
+  // a fresh battle's flight, flown straight out until the link is lost
+  const me2 = tank('me', { isPlayer: true });
+  await battle('drone', [me2, foe('f1', 3000)]);
+  const out = droneFlight(me2);
+  const away = now();
+  out.press();
+  frames(1);
+  out.pilot.input.throttle = 1;
+  out.pilot.input.aimPoint = new Vector3(0, 30, 1e5);
+  framesUntil(() => !me2.aerial.active, 60, 'the link lost');
+  frames(2);
+  assert.ok(asked('drone_link_weak', away), `the link's warning on a flight that runs out to its edge (asked ${said(away)})`);
+  assert.ok(!asked('drone_recovered', away), `a drone lost past its link is not "recovered" (asked ${said(away)})`);
+});
+
+// ---- review r2: a seat the player takes in a watched battle is a new life.
+/** A watched battle: the human seat `seat` drives through the reveal, then the battle opens (nobody drives) and the
+ *  watcher takes `first`; the listener is the driven hull's. */
+async function watchedTake(mode, roster, seat, first) {
+  const watch = watchedBattle(roster, seat);
+  await battle(mode, roster, watch.sees);
+  openWatchSeats(watch.game);
+  listener.kind = 'camera';
+  listener.ownerId = null;
+  frames(1);
+  assert.ok(takeWatchSeat(watch.game, first), `the watcher takes ${first.id}`);
+  listener.kind = 'player-tank';
+  listener.ownerId = first.id;
+  frames(1);
+  return watch;
+}
+/** The seat dies and the death flow hands it back (watchController drivenHandoff: takenDeathS 3.5 s), the drone camera
+ *  flies a while, and the watcher takes `next`, a living bot (no revive, no event). */
+function nextSeat(watch, next) {
+  frames(3.6);
+  leaveWatchSeat(watch.game);
+  listener.kind = 'camera';
+  listener.ownerId = null;
+  frames(5);
+  assert.ok(takeWatchSeat(watch.game, next), `the watcher takes ${next.id}`);
+  listener.kind = 'player-tank';
+  listener.ownerId = next.id;
+  return now();
+}
+
+await check('s1-01 a kill\'s cease fire is not called for the next seat the watcher takes', async () => {
+  const seat = tank('me', { isPlayer: true }), w1 = tank('w1', { x: 40 }), w2 = tank('w2', { x: 80 });
+  const near = foe('f1', 600), far = foe('f9', 4000);
+  const watch = await watchedTake('standard', [seat, w1, w2, near, far], seat, w1);
+  watch.spot('f1', 'w1');
+  frames(2);
+  // w1 kills the only near enemy, and is killed inside the cease fire's 2.4 s
+  near.combat.destroyed = true;
+  bus.emit('tank:destroyed', { id: 'f1', killerId: 'w1', pos: [0, 0, 600], cause: 'shot' });
+  frames(0.5);
+  w1.combat.destroyed = true;
+  bus.emit('tank:destroyed', { id: 'w1', killerId: 'f9', pos: [40, 0, 0], cause: 'shot' });
+  const taken = nextSeat(watch, w2);
+  frames(3);
+  assert.ok(!asked('cease_fire', taken), `no cease fire on the next seat for the last seat's kill (asked ${said(taken)})`);
+});
+
+await check('s1-01 the last seat\'s posthumous kill arms nothing for the next seat', async () => {
+  const seat = tank('me', { isPlayer: true }), w1 = tank('w1', { x: 40 }), w2 = tank('w2', { x: 80 });
+  const near = foe('f1', 600), far = foe('f9', 4000);
+  const watch = await watchedTake('standard', [seat, w1, w2, near, far], seat, w1);
+  watch.spot('f1', 'w1');
+  frames(2);
+  w1.combat.destroyed = true;
+  bus.emit('tank:destroyed', { id: 'w1', killerId: 'f1', pos: [40, 0, 0], cause: 'shot' });
+  frames(0.5);
+  // w1's round still in flight kills the only near enemy (state.ts credits a shell's kill to its shooter)
+  near.combat.destroyed = true;
+  bus.emit('tank:destroyed', { id: 'f1', killerId: 'w1', pos: [0, 0, 600], cause: 'shot' });
+  const taken = nextSeat(watch, w2);
+  frames(3);
+  assert.ok(!asked('cease_fire', taken), `no cease fire on the next seat for a kill the last seat made dead (asked ${said(taken)})`);
+});
+
+await check('s1-01 the last seat\'s recalled drone is not recovered by the next', async () => {
+  const seat = tank('me', { isPlayer: true }), w1 = tank('w1', { x: 40 }), w2 = tank('w2', { x: 80 });
+  const roster = [seat, w1, w2, foe('f9', 4000)];
+  // in Drone every hull carries a drone (each its own flight); w2's stays docked
+  const watch = watchedBattle(roster, seat);
+  await battle('drone', roster, watch.sees);
+  const drone = droneFlight(w1);
+  droneFlight(w2);
+  openWatchSeats(watch.game);
+  frames(1);
+  assert.ok(takeWatchSeat(watch.game, w1), 'the watcher takes w1');
+  listener.ownerId = 'w1';
+  drone.press();
+  frames(4);
+  drone.press();
+  frames(0.5);
+  assert.ok(!w1.aerial.active && w1.aerial.returnS > 0, 'w1\'s drone recalled, flying home');
+  const since = now();
+  w1.combat.destroyed = true;
+  bus.emit('tank:destroyed', { id: 'w1', killerId: 'f9', pos: [40, 0, 0], cause: 'shot' });
+  nextSeat(watch, w2);
+  frames(3);
+  assert.ok(!asked('drone_recovered', since), `w1's drone is not "recovered" for w2 (asked ${said(since)})`);
+});
+
+await check('s1-01 a seat taken back from its brain is a new life', async () => {
+  const seat = tank('me', { isPlayer: true }), w1 = tank('w1', { x: 40 });
+  const near = foe('f1', 600), far = foe('f9', 4000);
+  const watch = await watchedTake('standard', [seat, w1, near, far], seat, w1);
+  watch.spot('f1', 'w1');
+  frames(2);
+  // w1's kill arms the cease fire; the watcher leaves the seat at once (w1 lives on, its brain drives it) and takes it
+  // back 5 s later
+  const killed = now();
+  near.combat.destroyed = true;
+  bus.emit('tank:destroyed', { id: 'f1', killerId: 'w1', pos: [0, 0, 600], cause: 'shot' });
+  frames(0.2);
+  leaveWatchSeat(watch.game);
+  listener.kind = 'camera';
+  listener.ownerId = null;
+  frames(5);
+  assert.ok(takeWatchSeat(watch.game, w1), 'the watcher takes w1 back');
+  listener.kind = 'player-tank';
+  listener.ownerId = 'w1';
+  frames(3);
+  assert.ok(!asked('cease_fire', killed), `no cease fire for a seat its brain drove, nor at the take back (asked ${said(killed)})`);
 });
 
 // ---- amendment 6: the escort's life is the mode's.
@@ -384,5 +684,31 @@ await check('s1-02 an enemy the player sees is commanded', async () => {
   assert.ok(asked('fire_command_kinetic', since), `the fire command on a hull the player sees (asked ${said(since)})`);
 });
 
+await check('s1-02 a watched battle\'s seat its brain drives is nobody\'s crew', async () => {
+  const seat = tank('me', { isPlayer: true }), w2 = tank('w2', { x: 80 });
+  const target = foe('f1', 600);
+  const watch = watchedBattle([seat, w2, target], seat);
+  await battle('standard', [seat, w2, target], watch.sees);
+  // the battle opens: the human seat's brain drives it and nobody is the player; the watch reveals every hull
+  openWatchSeats(watch.game);
+  assert.ok(!seat.isPlayer && watch.sees(target) && !watch.spotted.has('f1'), 'nobody drives, the enemy shows though no side spotted it');
+  listener.kind = 'camera';
+  listener.ownerId = null;
+  listener.pos = { x: 0, y: 30, z: -100 };
+  frames(2);
+  // the drone camera holds on the enemy, the seat's gun loaded
+  const since = await laidFor(target, 1.5);
+  assert.ok(!fireCommanded(since), `no fire command for a seat nobody drives (asked ${said(since)})`);
+  // the control: the watcher takes a bot whose side has the enemy spotted; its crew commands it
+  assert.ok(takeWatchSeat(watch.game, w2), 'the watcher takes w2');
+  watch.spot('f1', 'w2');
+  listener.kind = 'player-tank';
+  listener.ownerId = 'w2';
+  listener.pos = { x: 80, y: 2, z: 0 };
+  frames(1);
+  const driven = await laidFor(target);
+  assert.ok(asked('fire_command_kinetic', driven), `the seat the watcher drives commands the enemy it sees (asked ${said(driven)})`);
+});
+
 assert.deepEqual(failures, [], `crewProcedure.selftest:\n  ${failures.join('\n  ')}`);
-console.log('crewProcedure.selftest: the pause silences the net and cancels armed calls on both edges, the crew\'s battle is the engine\'s, a fresh weapon is loaded, a kill\'s cease fire and a drone\'s recovery die with our tank, each revive starts a life (a posthumous kill arms nothing for it), an escort the controller rescues is extracted, the crew names only what the player sees passed');
+console.log('crewProcedure.selftest: the pause silences the net and cancels armed calls on both edges (a recalled drone docked behind it too), the crew\'s battle is the engine\'s, a fresh weapon is loaded, a kill\'s cease fire and a drone\'s recovery die with our tank, each revive and each seat the watcher takes starts a life (a posthumous kill arms nothing for it), our drone is called as the authority flies it, an escort the controller rescues is extracted, the crew names only what the player sees and speaks only for the seat the player drives passed');

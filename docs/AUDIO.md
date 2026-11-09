@@ -606,7 +606,7 @@ its army's register. Two parts:
 | A miss that came down beyond the hull it was laid on | "Over." (the miss's third take; "Short." the second) |
 | Our APS stopped their round / theirs stopped ours (no miss is called for it) | "A-P-S fired. Round defeated." / "Their A-P-S took it." |
 | ERA stopped their round / ours | "Reactive armor took it." / "Hit his reactive armor." |
-| Our drone: under 10 s of battery, 85 % of its link, recalled home, shot down; our roof gun downs theirs; our drone's kill | "Drone battery low.", "Drone link's weak.", "Drone recovered.", "Drone's shot down.", "Drone down.", "Drone strike. Target destroyed." |
+| Our drone: under 10 s of battery, 85 % of its link, recalled and parked on its dock, shot down; our roof gun downs theirs; our drone's kill | "Drone battery low.", "Drone link's weak.", "Drone recovered.", "Drone's shot down.", "Drone down.", "Drone strike. Target destroyed." |
 | An enemy hull's smoke launcher fires (matched by the launcher's position) | "Enemy's popping smoke." |
 | Reversing within 6 s of a hit or of being seen | "Backing up." |
 | Our tank drives through a wall, fence or tree (half the time, flavour) | "Going through." |
@@ -635,8 +635,15 @@ rule (`src/game/playerVisibility.ts`, as the HUD draws it), not the team's
 spot. The crew is silent behind the pause menu, a network battle's included:
 its opening cuts the line on the air and the queue, each of its edges cancels
 the calls the crew had armed (a kill heard behind it arms no cease fire for
-the resume), and the radio takes no line while it is open
-(`crewProcedure.selftest.mjs`).
+the resume; a recalled drone that docks behind it is not called recovered,
+nor an enemy's smoke popped behind it called, at the resume), and the radio
+takes no line while it is open
+(`crewProcedure.selftest.mjs`). The crew is our tank's only while the player
+drives it: a watched battle's seat its brain drives calls nothing, and each
+seat the watcher takes starts a new life, as a respawn does. The drone's calls
+follow the authority's flight view: "Drone recovered." when a recalled
+airframe is parked on its dock (`returnS` run out), never at the loss of one
+(`recallS` is only the recall's gate at launch).
 
 The reasoning exchange (2026-10-05, the Claude of Tanks / chain-of-thought
 joke) is once a battle and never costs a real call. Both lines are priority-0

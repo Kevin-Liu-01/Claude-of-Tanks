@@ -859,9 +859,11 @@ export function createAudio({
     say,
     now: () => ctx?.currentTime ?? 0,
     // the battle mode's own facts (2026-11-02 audit F11: battleMode.ts), never flags of the crew's or the engine's; the
-    // crew's battle and life start on the engine's edges (resetBattlePlay; startOwnLife at each revive of our hull)
+    // crew's battle and life start on the engine's edges (resetBattlePlay; startOwnLife at each revive of our hull and
+    // each seat the player takes). Our tank is the one the frame shows the player driving: a watched battle's seat its
+    // brain drives (openWatchSeats, leaveWatchSeat) is nobody's crew, so it calls nothing (round 8 Y3 review r2)
     live: () => battleMode.phase === 'battle' && battleMode.rolledOut && !battleMode.over && !battleMode.paused
-      && playerId != null && tanks.get(playerId)?.alive !== false,
+      && playerId != null && tanks.get(playerId)?.alive !== false && tanks.get(playerId)?.isPlayer === true,
     inBattle: () => battleMode.phase === 'battle' && !battleMode.over,
     playerId: () => playerId,
     player: () => (latestPlayer && latestPlayer.id === playerId ? latestPlayer : null),
@@ -2245,11 +2247,13 @@ export function createAudio({
   }
 
   /**
-   * Our hull's new life, at each revive the engine notices (round 8 Y3 s1-01, review r1): its respawn event, or with no
-   * event the frame that shows it standing again after its death (indexTanks; sim/matchModes.ts adoptLiveCombat, a
-   * migrated host's revive, emits no mode_respawn). The life's one-shot calls (low hull, low ammunition) arm again, the
-   * heartbeat and the radio damage go with the old hull, and the crew's life starts afresh: nothing the last life armed,
-   * or its rounds armed after our death (a posthumous kill's cease fire), is called in this one.
+   * Our new life, at each one the engine notices (round 8 Y3 s1-01, reviews r1 and r2): our hull's respawn event, or with
+   * no event the frame that shows it standing again after its death (indexTanks; sim/matchModes.ts adoptLiveCombat, a
+   * migrated host's revive, emits no mode_respawn), and each seat the player takes in the battle (indexTanks: a watched
+   * battle's takeWatchSeat moves isPlayer to another hull, or back to one its brain drove meanwhile, with no revive and no
+   * event). The life's one-shot calls (low hull, low ammunition) arm again, the heartbeat and the radio damage go with the
+   * old life, and the crew's life starts afresh: nothing the last life armed, or its rounds armed after our death (a
+   * posthumous kill's cease fire), is called in this one.
    */
   function startOwnLife(): void {
     lowHpCalled = false;
@@ -2277,6 +2281,8 @@ export function createAudio({
         tanks.set(entity.id, info);
       }
       info.team = String(entity.team ?? info.team);
+      // whether the player drove this hull at its last look (a watched battle hands a seat to its brain and back)
+      const drivenBefore = info.isPlayer;
       info.isPlayer = !!entity.isPlayer;
       const specId = String(entity.specId ?? entity.spec?.id ?? '');
       const nation = String(entity.spec?.nation ?? '');
@@ -2316,12 +2322,20 @@ export function createAudio({
       }
       if (info.suited == null) info.suited = fieldSuitOf(list[i]);
       if (entity.isPlayer && playerId !== entity.id) {
+        // a seat the player takes in the battle (a watched battle's takeWatchSeat moves isPlayer to a living bot: no
+        // revive, no event) is a new life, as a revive is; the battle's first seat starts with the battle (resetBattlePlay)
+        const taken = playerId != null;
         playerId = entity.id;
         playerTeam = info.team;
         applyCrewLanguage();
         preloadVehicle(info.identity);
         preloadOwnWeapons(info);
-      } else if (entity.isPlayer && vehicleChanged) applyCrewLanguage();
+        if (taken) startOwnLife();
+      } else if (entity.isPlayer) {
+        if (vehicleChanged) applyCrewLanguage();
+        // our hull taken again after a look that showed its brain driving it (the watch's leave, then a take): a new life
+        if (!drivenBefore) startOwnLife();
+      }
     }
     if (listenerOwnerId == null && listenerKind === 'player-tank') listenerOwnerId = playerId;
     if (!bossChecked && getGameMode?.() === 'juggernaut') markJuggernaut(list);

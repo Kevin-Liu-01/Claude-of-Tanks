@@ -21,17 +21,20 @@
  *
  * Two declared scopes, each with one owner (round 8 Y3, s1-01 and s1-03). The battle's calls (CrewBattle) start afresh
  * through `startBattle`, from the engine's one per-battle reset (audioEngine.ts resetBattlePlay: a battle edge, a network
- * restart). Our tank's life's calls (CrewLife) start afresh through `startLife`, at each revive of our hull the engine
- * notices (audioEngine.ts startOwnLife: its respawn event, or with no event the frame that shows our hull standing again
- * after its death, a migrated host's adoptLiveCombat). While our tank is dead the crew is silent (`live()` reads it), so
- * nothing the last life armed (a cease fire, a drone's recovery, a fire mission), nor anything its rounds arm after our
- * death (a posthumous kill's cease fire, a miss's re-engage), is called in the next. Each pause edge (`cancelArmed`: the
- * menu opening and closing) cancels every call armed so far; the engine runs no crew frame while paused and its radio
- * takes no line (the crew is silent behind the pause menu, a network battle's included, as the engine's quiet-radio rule
- * always was). Where the game holds a fact the crew reads it rather than keeping its own copy: the gun is loaded while
- * our reload channel is ready (`combat.reload.t`), an enemy is named only while the player sees it (the engine's frame
- * index, src/game/playerVisibility.ts), an escort has been extracted when its mode life is 'rescued' (sim/matchModes.ts
- * setLife).
+ * restart). Our tank's life's calls (CrewLife) start afresh through `startLife`, at each new life the engine notices
+ * (audioEngine.ts startOwnLife: our hull's respawn event, or with no event the frame that shows it standing again after
+ * its death, a migrated host's adoptLiveCombat; and each seat the player takes in the battle, a watched battle's
+ * takeWatchSeat, which revives nothing and announces nothing). While our tank is dead, or driven by its brain rather than
+ * the player (a watched battle's seat), the crew is silent (`live()` reads both), so nothing the last life armed (a cease
+ * fire, a drone's recovery, a fire mission), nor anything its rounds arm after our death or our leaving (a posthumous
+ * kill's cease fire, a miss's re-engage), is called in the next. Each pause edge (`cancelArmed`: the menu opening and
+ * closing) cancels every call armed so far, a recalled drone's recovery included; the engine runs no crew frame while
+ * paused and its radio takes no line (the crew is silent behind the pause menu, a network battle's included, as the
+ * engine's quiet-radio rule always was). Where the game holds a fact the crew reads it rather than keeping its own copy:
+ * the gun is loaded while our reload channel is ready (`combat.reload.t`), an enemy is named only while the player sees
+ * it (the engine's frame index, src/game/playerVisibility.ts), an escort has been extracted when its mode life is
+ * 'rescued' (sim/matchModes.ts setLife), our drone is flying home when the authority has accepted its recall (the flight
+ * view's `returnS`, sim/aerialCombat.ts; `recallS` is only the recall's gate at launch).
  */
 
 import { AERIAL_RULES, GUN_GAME_WEAPONS } from '../sim/matchRuleset.ts';
@@ -74,7 +77,8 @@ export interface CrewProcedureHost {
   say(id: string, options?: SayOptions): boolean;
   /** The audio clock (s). */
   now(): number;
-  /** In a battle that has rolled out, not ended and not paused, our tank alive (the engine's battle mode, battleMode.ts). */
+  /** In a battle that has rolled out, not ended and not paused (the engine's battle mode, battleMode.ts), our tank alive
+   *  and the player driving it (a watched battle's seat its brain drives has no crew of ours). */
   live(): boolean;
   /** In a battle's countdown (rolled out or not), not ended. */
   inBattle(): boolean;
@@ -143,13 +147,14 @@ export interface CrewProcedure {
   context(): CrewLineContext;
   /** A new battle (the engine's per-battle reset: a battle edge, a network restart): the battle's calls and our life's. */
   startBattle(): void;
-  /** Our tank's new life (each revive of our hull the engine notices, audioEngine.ts startOwnLife): the life's calls
-   *  start afresh. */
+  /** Our tank's new life (each revive of our hull and each seat the player takes, as the engine notices them:
+   *  audioEngine.ts startOwnLife): the life's calls start afresh. */
   startLife(): void;
-  /** A hull's death, heard once a life: one we made is a kill (ours silences the crew until the revive starts a life). */
+  /** A hull's death, heard once a life: one we made is a kill (ours silences the crew until a new life starts). */
   onDestroyed(event: CrewDeath): void;
   /** Each pause edge (the menu opening, and closing): every call armed so far is cancelled, so none is said behind the
-   *  menu or late on the resume, a kill heard behind it (a network battle goes on there) included. */
+   *  menu or late on the resume, a kill heard behind it (a network battle goes on there) and a recalled drone that
+   *  docks behind it included. */
   cancelArmed(): void;
 }
 
@@ -180,7 +185,7 @@ interface CrewBattle {
   extracted: Map<string, boolean>;
 }
 
-/** Our tank's life's calls: one life (`startLife`; our death ends them). */
+/** Our tank's life's calls: one life (`startLife`; our death or our leaving the seat silences them). */
 interface CrewLife {
   /** The lay: the enemy under our sight and since when; the last fire command, its target and the answer's window. */
   layId: string | null;
@@ -202,7 +207,8 @@ interface CrewLife {
   reverseCalled: boolean;
   airS: number;
   jumped: boolean;
-  /** Our drone's flight. */
+  /** Our drone's flight (its feed live), and a recalled one flying home to its dock (the recovery armed: called when it
+   *  is parked). */
   droneFlying: boolean;
   batteryCalled: boolean;
   linkCalled: boolean;
@@ -338,24 +344,35 @@ export function createCrewProcedure(host: CrewProcedureHost): CrewProcedure {
 
   // ------------------------------------------------------- per frame ---
 
+  /** Our drone as the authority's flight view tells it (sim/aerialCombat.ts stepAerial, mirrored to a network seat): its
+   *  feed is live while `active`; a recall the authority accepts ends the feed at once and leaves `returnS`, the flight
+   *  home and the landing, until the airframe is parked on its dock ("drone recovered" then); a flight lost to its battery,
+   *  its link or a hit ends with no return (the engine's "lost" or the gunner's "shot down"). `recallS` is the recall's
+   *  gate counting down at launch, never a recall (round 8 Y3 review r2: read as one, every flight was "recovering", so its
+   *  battery and link calls never came and its loss was called recovered). */
   function updateDrone(me: CrewPlayer): void {
     const view = me.aerial;
-    const flying = view?.kind === 'drone' && !!view.active;
+    const drone = view?.kind === 'drone';
+    const flying = drone && !!view.active;
     if (flying && !life.droneFlying) { life.batteryCalled = life.linkCalled = life.recalling = false; }
-    if (flying && view) {
-      if ((view.recallS ?? 0) > 0 || (view.returnS ?? 0) > 0) life.recalling = true;
+    if (flying) {
       const battery = view.batteryS ?? DRONE.batteryS;
       // (a drone with a second or two left is about to be lost: that is the call then)
-      if (!life.recalling && !life.batteryCalled && battery < DRONE_WARN.batteryS && battery >= DRONE_WARN.lastS) {
+      if (!life.batteryCalled && battery < DRONE_WARN.batteryS && battery >= DRONE_WARN.lastS) {
         life.batteryCalled = true;
         host.say('drone_battery_low', { delayS: 0.1 });
       }
       const range = Math.hypot((view.x ?? me.state.pos.x) - me.state.pos.x, (view.z ?? me.state.pos.z) - me.state.pos.z);
-      if (!life.recalling && !life.linkCalled && range >= DRONE.rangeM * DRONE_WARN.linkShare) {
+      if (!life.linkCalled && range >= DRONE.rangeM * DRONE_WARN.linkShare) {
         life.linkCalled = true;
         host.say('drone_link_weak', { delayS: 0.1 });
       }
-    } else if (life.droneFlying && life.recalling && !me.combat?.destroyed) host.say('drone_recovered', { delayS: 0.4 });
+    } else if (drone && (view.returnS ?? 0) > 0) life.recalling = true;
+    else if (drone && life.recalling) {
+      // parked (a carrier destroyed under it clears the return too, but a dead crew runs no frame: live())
+      life.recalling = false;
+      if (!me.combat?.destroyed) host.say('drone_recovered', { delayS: 0.4 });
+    }
     life.droneFlying = flying;
   }
 
@@ -468,7 +485,7 @@ export function createCrewProcedure(host: CrewProcedureHost): CrewProcedure {
   }
 
   /** A hull's death, heard once a life: one we made is a kill. Ours is none (a suicide arms no cease fire); the crew is
-   *  silent until a revive starts the next life (startLife), which drops what this one armed. */
+   *  silent until a new life starts (startLife: a revive, or another seat taken), which drops what this one armed. */
   function onDestroyed(e: CrewDeath): void {
     if (!e || mine(e.id) || !mine(e.killerId)) return;
     if (e.source === 'ac130' && e.pos) life.lastKill = { x: e.pos[0], z: e.pos[2], at: host.now() };
@@ -477,9 +494,11 @@ export function createCrewProcedure(host: CrewProcedureHost): CrewProcedure {
   }
 
   /** Each pause edge: the calls armed so far die with it (a cease fire, the gunner's answer, a lay's hold, a fire mission's
-   *  end, the countdown report's answer, a jump's airtime, a re-engage, a shift of fire from the last kill). The opening
-   *  edge drops what the battle armed before the menu; the closing edge what a network battle armed behind it (its kill
-   *  call refused 'paused', its cease fire is not said on the resume). */
+   *  end, the countdown report's answer, a jump's airtime, a re-engage, a shift of fire from the last kill, a recalled
+   *  drone's recovery). The opening edge drops what the battle armed before the menu; the closing edge what a network
+   *  battle armed behind it (its kill call refused 'paused', its cease fire is not said on the resume; a recalled drone
+   *  that docked behind the menu is not called recovered at the resume, while one still flying home is armed again by
+   *  the next frame's `returnS`). */
   function cancelArmed(): void {
     life.ceaseAt = -1;
     life.identifyUntil = -1;
@@ -488,6 +507,7 @@ export function createCrewProcedure(host: CrewProcedureHost): CrewProcedure {
     life.airS = 0;
     life.reengage = null;
     life.lastKill = null;
+    life.recalling = false;
     battle.readyUntil = -1;
   }
 
@@ -573,15 +593,17 @@ export function createCrewProcedure(host: CrewProcedureHost): CrewProcedure {
     });
     // a screen's source is its launcher: [vehicle, x, y, z]
     cue<{ screens?: readonly { born?: number; source?: readonly unknown[] }[] }>('auxiliary:smokeScreens', (e) => {
-      const me = host.player();
-      if (!e?.screens || !me || !host.live()) return;
+      if (!e?.screens) return;
+      // every screen heard is marked heard, whether or not the crew can call it then (behind the pause menu, dead, a seat
+      // nobody drives): one popped then is not called at the next change of the screens (round 8 Y3 review r2)
+      const me = host.live() ? host.player() : null;
       let newest = battle.smokeBorn;
       for (const screen of e.screens) {
         const born = Number(screen.born);
         const x = Number(screen.source?.[1]), z = Number(screen.source?.[3]);
         if (!(born > battle.smokeBorn) || !Number.isFinite(x) || !Number.isFinite(z)) continue;
         newest = Math.max(newest, born);
-        if (Math.hypot(x - me.state.pos.x, z - me.state.pos.z) > SMOKE.rangeM) continue;
+        if (!me || Math.hypot(x - me.state.pos.x, z - me.state.pos.z) > SMOKE.rangeM) continue;
         for (const [id, tank] of host.tanks()) {
           if (!identifiable(id, tank) || Math.hypot(tank.pos.x - x, tank.pos.z - z) > SMOKE.hullM) continue;
           host.say('enemy_smoke', { delayS: 0.3 });

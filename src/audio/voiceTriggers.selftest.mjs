@@ -330,7 +330,14 @@ for (const [module, id] of [['trackL', 'track_repaired'], ['gun', 'gun_repaired'
   // a flight that runs its battery low and its link thin, recalled home to its dock
   moment('drone_battery_low', () => { me.aerial = { kind: 'drone', active: true, x: 0, y: 14, z: 6, batteryS: 9, cooldownS: 0 }; frame(); }, { quiet: 30 });
   moment('drone_link_weak', () => { me.aerial = { ...me.aerial, z: 760, batteryS: 8 }; frame(); });
-  moment('drone_recovered', () => { me.aerial = { ...me.aerial, recallS: 2 }; frame(); me.aerial = { kind: 'drone', active: false, batteryS: 0, cooldownS: 4 }; frame(); });
+  // the authority's recall (sim/aerialCombat.ts recallDrone): the feed ends at once, the airframe flies home (returnS)
+  // and is parked on its dock; `recallS` is only the recall's gate at launch (round 8 Y3 review r2)
+  moment('drone_recovered', () => {
+    me.aerial = { kind: 'drone', active: false, x: 0, y: 14, z: 760, batteryS: 8, cooldownS: 9, returnS: 5 };
+    frame();
+    me.aerial = { ...me.aerial, cooldownS: 4, returnS: 0 };
+    frame();
+  });
   delete me.aerial;
   // the counter-drone fight: ours shot down, theirs brought down by our roof gun
   moment('drone_shot_down', () => bus.emit('drone:down', { id: 'me', killerId: 'f1' }));
