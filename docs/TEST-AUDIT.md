@@ -15,15 +15,15 @@ Run times: `tools/selftest-durations.json`, else this machine's latest observati
 
 | Decision | Receipts | CPU-min |
 |---|---:|---:|
-| KEEP | 1753 | 225.1 |
+| KEEP | 1754 | 225.1 |
 | MERGE | 0 | 0.0 |
-| MANUAL | 663 | 1167.4 |
+| MANUAL | 664 | 1167.4 |
 | RETIRE | 2 | 0.7 |
 
 | Suite run | Receipts | CPU-min | Simulated wall (min) |
 |---|---:|---:|---:|
-| Before: every receipt (npm test without the tiers) | 2417 | 1392.9 | 242.1 |
-| After: the default tier | 1753 | 225.1 | 59.7 |
+| Before: every receipt (npm test without the tiers) | 2419 | 1392.9 | 242.1 |
+| After: the default tier | 1754 | 225.1 | 59.7 |
 
 Default tier: 16.2 % of the whole registry's CPU; 24.6 % of the 916 CPU-min the snapshot gave for the 1,863 receipts it timed. Its wall: 0.2 min exclusive receipts, 40.9 min pool, 18.6 min browser receipts.
 
@@ -33,7 +33,7 @@ Default tier: 16.2 % of the whole registry's CPU; 24.6 % of the 916 CPU-min the 
 |---|---:|---:|---|
 | `balance` | 3 | 1.1 | fleet round-robin duels on the authoritative battle path and the balance tables they hold; then `node tools/balance-matchups.mjs --check` |
 | `pacing` | 14 | 93.9 | whole-match pacing (the 132 default lobbies in eight shards and their judge), placement and deployment on every map |
-| `bots` | 8 | 40.4 | bot behaviour played out on the authority (every mode, objectives, levels, approaches) |
+| `bots` | 9 | 40.4 | bot behaviour played out on the authority (every mode, objectives, levels, approaches) |
 | `sims` | 8 | 5.0 | drone, missile, escort and counter-drone scenario runs |
 | `perf` | 4 | 2.5 | host-time budgets (tick cost, soaks, heap plateaus, restore timing): they measure the machine as much as the code |
 | `fleet` | 62 | 282.3 | fleet-wide vehicle sweeps: every playable tank built (the HIGH, LOW and default fleet passes, the lazy facade, floor clearance, vertex colours, national and fleet-wide fitting sweeps) and the whole-fleet anatomy check (tank:anatomy:check); then `node tools/gen-combat-anatomy.mjs --check --jobs=4`, `node tools/gen-vehicle-marking-seats.mjs --check`, `node tools/module-hit-probe.mjs`, `node tools/tank-assets-check.mjs --views armorSide,modulesSide,crewSide --skip-bore`, `node tools/spare-track-placement-check.mjs --ids=all --ledger=docs/geometry-gate/spare-track.json --check --quiet`, `node tools/interior-fill-exposure.mjs --all --check --jobs=4` |
@@ -143,7 +143,7 @@ Sim determinism and driver boundaries, the authority rules, armour/ballistics/da
 
 None. Folding receipts saves only process starts (about a second each) and would need a per-assertion coverage review; the CPU is in the receipts that build tanks and maps, which moved to manual suites instead.
 
-## MANUAL (663)
+## MANUAL (664)
 
 | Receipt | Run (s) | Decision | Reason | Coverage now |
 |---|---:|---|---|---|
@@ -802,6 +802,7 @@ None. Folding receipts saves only process starts (about a second each) and would
 | `src/vehicles/internalLayoutRegistry.selftest.mjs` | 5.0 | MANUAL (tanks) | per-tank pin (griffin50mm, kurganets25, aft10, bmp3m_dragun125, ...), 5.0 s | test:heavy -- tanks; lane mode and tank:release:check run it for its ids |
 | `src/vehicles/trackContactDerivationAudit.selftest.mjs` | 5.0 | MANUAL (tanks) | per-tank pin (m1a1_abrams_hc), 5.0 s: 2026-10-05: the contact audit's rules, the run within 5 mm and the belly pan 5 mm below to 1 cm above (the K2 | test:heavy -- tanks; lane mode and tank:release:check run it for its ids |
 | `src/fx/fxClockStampCensusFull.selftest.mjs` | n/a | MANUAL (fx) | fx: the fx-clock stamp census whole, n/a s: 2026-11-02 audit U12 (round 5): the census whole, with the two houses' destruction the default receipt leaves | test:heavy -- fx; test:recommend flags it when its inputs change |
+| `src/game/ai.watchResumeLevels.selftest.mjs` | n/a | MANUAL (bots) | bots: bot behaviour played out on the authority (every mode, objectives, levels, approaches), n/a s: 2026-11-02 audit M7 (round 6 V4): the hand-back's cases that repeat ai.watchResume's, split off it, and the wa | test:heavy -- bots; test:recommend flags it when its inputs change |
 | `src/sim/frontlineLineGuard.selftest.mjs` | n/a | MANUAL (pacing) | pacing: whole-match pacing (the 132 default lobbies in eight shards and their judge), placement and deployment on every map, n/a s: 268 (Main item 9): Frontline's opening line out of the attack's reach and sight on 64 seeds (manual: pacing). | test:heavy -- pacing; test:recommend flags it when its inputs change |
 | `src/sim/teammateRam.selftest.mjs` | n/a | MANUAL (sims) | sims: drone, missile, escort and counter-drone scenario runs, n/a s: 2026-11-06 round 5 S2 (audit M6 ram rule after the 268 merge): a teammate ram deals nothing on the solo step o | test:heavy -- sims; test:recommend flags it when its inputs change |
 | `src/vehicles/vehicleMarkingSuitBacking.selftest.mjs` | n/a | MANUAL (tanks) | per-tank pin (m1a1_abrams_fep), n/a s: release 268 (Main): a suit-painted marking is backed by its suit within the armour's 5 cm, and by nothing fart | test:heavy -- tanks; lane mode and tank:release:check run it for its ids |
@@ -811,7 +812,7 @@ None. Folding receipts saves only process starts (about a second each) and would
 | `tools/media-r5/fleet-coverage.selftest.mjs` | n/a | MANUAL (media) | media: the media lane's fleet backlog, n/a s: 267: the fleet's media backlog (every vehicle leads a take, the survey bars): the manual media suite | test:heavy -- media; test:recommend flags it when its inputs change |
 | `tools/mp-rooms-entry.browser.selftest.mjs` | n/a | MANUAL (ui) | ui: heavy interface paint and layout sweeps, n/a s: 268 (the 267 production smoke): the multiplayer end-to-end opens the rooms panel the way the Garage's layout o | test:heavy -- ui; test:recommend flags it when its inputs change |
 
-## KEEP (1753)
+## KEEP (1754)
 
 | Receipt | Run (s) | Decision | Reason | Coverage now |
 |---|---:|---|---|---|
@@ -2417,6 +2418,7 @@ None. Folding receipts saves only process starts (about a second each) and would
 | `src/game/battleEntryReveal.selftest.mjs` | n/a | KEEP | game flow, n/a s: 2026-11-02 audit F2: the reveal has exits; entry edges and serial (F3 waits) | default tier (npm test, the release gate; lane mode by its closure) |
 | `src/game/battleExitLedgers.selftest.mjs` | n/a | KEEP | game flow, n/a s: 2026-11-04 round 2 U13: the crush press and ram cooldowns leave with their battle at the Garage return | default tier (npm test, the release gate; lane mode by its closure) |
 | `src/game/battleResultBeatClock.selftest.mjs` | n/a | KEEP | game flow, n/a s: 2026-11-02 audit F4: death and ending beats hold through a pause | default tier (npm test, the release gate; lane mode by its closure) |
+| `src/game/battleResultPointerRelease.selftest.mjs` | n/a | KEEP | game flow, n/a s: 2026-11-02 audit round 6 V6: the verdict gives the cursor back through input.releaseLock, so a canvas recaptur | default tier (npm test, the release gate; lane mode by its closure) |
 | `src/game/battleWarmHold.selftest.mjs` | n/a | KEEP | game flow, n/a s: 2026-11-02 audit F2: one warm-hold owner; a successor never inherits a stale warm | default tier (npm test, the release gate; lane mode by its closure) |
 | `src/game/deathFlowExits.selftest.mjs` | n/a | KEEP | game flow, n/a s: 2026-11-02 audit round 5 U4: every exit that ends the player's death flow (a teardown, a fresh or left Watch s | default tier (npm test, the release gate; lane mode by its closure) |
 | `src/game/deferredWarmReceipt.selftest.mjs` | n/a | KEEP | game flow, n/a s: 2026-11-02 audit S3: the deferred warm receipt declares running/finished/failed/cancelled | default tier (npm test, the release gate; lane mode by its closure) |

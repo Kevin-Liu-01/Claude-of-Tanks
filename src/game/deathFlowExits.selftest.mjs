@@ -49,8 +49,13 @@
 //      started the flow, does not start it again (the destruction listener reads only a standing debt).
 //   9. The revive's most frequent timing in a network Horde room (review r2): after the death replay ended on its own
 //      (the killcam's phases run out under update(), then its exit's wall-clock fade, killcam.ts beginExit/
-//      completeExit; afterDeath ran and the death orbit circles the wreck). The orbit ends with the player's camera and
-//      nothing else is asked (no veil, no release), and the next death gets its own death cam and replay.
+//      completeExit; afterDeath ran). (Round 6 V5) With the room's other human alive, as a room goes on only while one
+//      is, the killcam's ally chase holds the camera then (it starts at a death replay's end whenever an ally lives),
+//      and the revive leaves the screen to the player (the killcam's listener ends the chase; the runtime's orbit
+//      hand-back leaves another owner as it is). With no ally to chase the death orbit holds, and the revive ends it.
+//      Nothing else is asked (no veil, no release), and the next death gets its own death cam and replay, and with an
+//      ally its ally chase after that replay (the killcam starts it only from a death flow). Before, the revived
+//      hull's later deaths got none of it (deathCamShown stayed set): the chase view over the wreck until the next wave.
 //  10. A Watch seat left (review r2): the real watch controller (createWatchController, createWatchCamera, the seat
 //      ledger) on the same bus, rig and killcam, its frame asked only while no replay is on screen, as
 //      app/mainFrameRuntime.ts updateCombatCamera does. The watcher takes an allied bot in a watched Standard battle
@@ -59,7 +64,10 @@
 //      fired the left hull's replay over the drone up to 1.6 s later, veiled the HUD and took the camera for up to
 //      15 s: watchController.ts leave told the runtime nothing). Leave while its replay is on screen: the replay plays
 //      out and its own end hands back, then the drone (as on f60d0aa200; the contract the runtime's leaveSeat states).
-// On f60d0aa200 (no revive or destruction listener, no leaveSeat) 1-4, 7-9 and 10's beat leave fail (48 checks); 5, 6
+//      After either Leave, the battle's defeat (round 6 fix-up r1) shows its report over the drone and replays no
+//      death of the left hull as the watcher's own: its death cam ran, and that stands at a Leave (leaveSeat's
+//      contract; a leaveSeat that re-armed it played the left hull's death over the drone at the verdict).
+// On f60d0aa200 (no revive or destruction listener, no leaveSeat) 1-4, 7-9 and 10's beat leave fail (56 checks); 5, 6
 // and 10's replay leave pass there (5 and 6 are mutation controls: 5 fails with the revive's id gate taken out, 6 with
 // the endShown guard; 10's replay leave pins the contract leaveSeat states). 8 and 10's beat leave fail on the
 // round-five r1 head too (ab43905660: no destruction listener, no leaveSeat), and 7 on the r0 head (8a8907c9c0: the
@@ -67,8 +75,8 @@
 // newSeat's drop (2), the revive's listener (3, 4, 7, 8, 9), its re-arm at the event (3's and 9's next death), the
 // re-arm at the alive edge (7's next death on its row), its hand-back (3, 4, 7, 8, 9), the destruction listener (8's
 // next death), its debt gate (8's first death), its id gate (7), leaveSeat's drop and the controller's call to it
-// (10's beat leave). The browser half (the camera's motion, the replay's WebGL frames, the HUD's paint) is not
-// reproduced here.
+// (10's beat leave, and its verdict); a leaveSeat that also re-arms the death cam fails 10's verdict after either
+// Leave. The browser half (the camera's motion, the replay's WebGL frames, the HUD's paint) is not reproduced here.
 import { StubElement, windowStub } from '../ui/hudDomHarness.test-support.mjs';
 import assert from 'node:assert/strict';
 import { setMaxListeners } from 'node:events';
@@ -187,13 +195,18 @@ function presentation(game, { killcamFirst }) {
   return { bus, calls, clock, hud, camera, rig, killcam, runtime, lethalHit, told, endReplay };
 }
 
-/** One seat's result flow (its hull 'me', no Watch), with no respawn timer (Horde's: fallen Alpha hulls stand up). */
-function seat({ killcamFirst = false } = {}) {
+/**
+ * One seat's result flow (its hull 'me', no Watch), with no respawn timer (Horde's: fallen Alpha hulls stand up).
+ * `ally` (round 6 V5): the room's other human lives, so a death replay's end hands the camera to the killcam's ally chase.
+ */
+function seat({ killcamFirst = false, ally = false } = {}) {
   const player = hull('me', 'player', { bot: false });
   player.isPlayer = true;
+  const tanks = ally ? [player, hull('other', 'player', { x: 20, bot: false })] : [player];
   const game = {
     result: null, resultReason: null, gameMode: 'endless_horde', timeS: 10, player,
-    ruleset: { respawnS: null }, matchModeState: null, phase: 'battle', tanks: [player], tankById: new Map([['me', player]]),
+    ruleset: { respawnS: null }, matchModeState: null, phase: 'battle', tanks,
+    tankById: new Map(tanks.map((tank) => [tank.id, tank])),
   };
   const p = presentation(game, { killcamFirst });
   const { calls, clock, hud, rig, killcam, runtime } = p;
@@ -457,26 +470,49 @@ for (const killcamFirst of [false, true]) {
   }
 }
 
-// ---- 9. the revive after the death replay ended on its own (the death orbit holds)
+// ---- 9. the revive after the death replay ended on its own: the room's other human alive (the killcam's ally chase
+// holds the camera), or no ally to chase (the death orbit holds)
 for (const killcamFirst of [false, true]) {
-  const label = `a revive after the death replay ended (${killcamFirst ? 'killcam first' : 'runtime first'})`;
-  const s = seat({ killcamFirst });
-  s.die(label);
-  s.toReplay(label);
-  s.calls.length = 0;
-  await s.endReplay(label);
-  s.step(16);
-  assert.deepEqual(s.calls, ['veil:false', 'release', 'deathCam'], `setup: ${label}: the replay's end ran afterDeath`);
-  assert.ok(s.rig.cameraOwner === 'death' && !s.hud.veiled, `setup: ${label}: the death orbit holds, the HUD is back`);
-  s.calls.length = 0;
-  s.player.combat.destroyed = false;
-  s.bus.emit('mode:respawn', { id: 'me', team: 'player' });
-  for (let i = 0; i < 8; i++) s.step(250);
-  if (s.calls.join() !== 'endDeathCam' || s.rig.cameraOwner !== 'player') {
-    wrong.push(`${label}: the revive did not end the orbit alone (camera ${s.rig.cameraOwner}; `
-      + `${s.calls.join(', ') || 'no call'})`);
+  for (const ally of [true, false]) {
+    const label = `a revive after the death replay ended, ${ally ? 'the ally chase on' : 'the orbit holding'} `
+      + `(${killcamFirst ? 'killcam first' : 'runtime first'})`;
+    const s = seat({ killcamFirst, ally });
+    s.die(label);
+    s.toReplay(label);
+    s.calls.length = 0;
+    await s.endReplay(label);
+    s.step(16);
+    assert.deepEqual(s.calls, ['veil:false', 'release', 'deathCam'], `setup: ${label}: the replay's end ran afterDeath`);
+    const holds = ally ? 'spectate' : 'death';
+    assert.ok(s.rig.cameraOwner === holds && !s.hud.veiled,
+      `setup: ${label}: the ${ally ? 'ally chase' : 'death orbit'} holds, the HUD is back (camera ${s.rig.cameraOwner})`);
+    s.calls.length = 0;
+    s.player.combat.destroyed = false;
+    s.bus.emit('mode:respawn', { id: 'me', team: 'player' });
+    for (let i = 0; i < 8; i++) s.step(250);
+    if (ally) {
+      // the killcam's listener ends its chase; the runtime's orbit hand-back leaves another owner as it is
+      const asked = s.calls.filter((call) => call !== 'endDeathCam');
+      if (asked.length || s.rig.cameraOwner !== 'player') {
+        wrong.push(`${label}: the revive did not leave the screen to the player alone (camera ${s.rig.cameraOwner}; `
+          + `${s.calls.join(', ') || 'no call'})`);
+      }
+    } else if (s.calls.join() !== 'endDeathCam' || s.rig.cameraOwner !== 'player') {
+      wrong.push(`${label}: the revive did not end the orbit alone (camera ${s.rig.cameraOwner}; `
+        + `${s.calls.join(', ') || 'no call'})`);
+    }
+    nextDeathRuns(s, label);
+    if (ally) {
+      // that death's replay ends on its own: the ally chase again (the killcam starts it only from a death flow)
+      await s.endReplay(label);
+      s.step(16);
+      if (s.rig.cameraOwner !== 'spectate') {
+        wrong.push(`${label}: the revived hull's next death got no ally chase after its replay (camera `
+          + `${s.rig.cameraOwner})`);
+      }
+      s.killcam.spectate.stop(false); // the chase's poll timer would hold the process open
+    }
   }
-  nextDeathRuns(s, label);
 }
 
 // ---- 10. a Watch seat left inside its death beat or replay
@@ -566,6 +602,20 @@ for (const killcamFirst of [false, true]) {
           + `${frames.drone + frames.other} frames elsewhere, view ${controller.view})`);
       }
     }
+    // (round 6 V5 fix-up r1) the battle's verdict after the Leave: the left hull's death cam ran, which stands at the
+    // Leave (leaveSeat's contract), so the verdict replays no death of it as the watcher's own over the drone (the
+    // final kill is past its window): its report, no veil, no replay
+    p.calls.length = 0;
+    game.result = 'defeat';
+    game.resultReason = 'elimination';
+    for (let i = 0; i < 8; i++) step(250);
+    if (p.calls.includes('veil:true') || p.killcam.isActive() || !p.calls.includes('presented:defeat')
+      || !p.runtime.snapshot().deathCamShown) {
+      wrong.push(`${label}: at the verdict after the Leave the left hull's death replays over the drone, its report `
+        + `waits or the death cam re-armed (${p.calls.join(', ') || 'no call'}; replay ${p.killcam.isActive()}, death `
+        + `cam shown ${p.runtime.snapshot().deathCamShown})`);
+    }
+    p.killcam.cancel(); // a replay the verdict started would hold its wall-clock timers
     controller.stop();
   }
 }
@@ -578,4 +628,4 @@ console.log('deathFlowExits: a teardown, a fresh seat, a mode\'s revive and a Wa
   + 'flow (no stale hand-back at a later restart; the revive hands the HUD and the camera back, in the beat, in the '
   + 'replay or after it, and the next death has its own; another hull\'s revive and a revive after the verdict leave it '
   + 'alone; a revive ahead of its row re-arms the death cam once the hull reads alive, one under the row of its next '
-  + 'death at that death\'s event; no replay follows a Leave) PASS');
+  + 'death at that death\'s event; no replay follows a Leave, nor its verdict) PASS');

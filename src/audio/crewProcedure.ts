@@ -109,7 +109,8 @@ export interface CrewProcedure {
   frame(dt: number, listener: CrewListener | null, entities: readonly CrewFrameEntity[]): void;
   /** The context the engine resolves each line in (voiceLines.ts resolveCrewLine). */
   context(): CrewLineContext;
-  /** The rollout's start, a new battle's reset. */
+  /** A new battle's reset. Its one caller is the engine's battle reset (audioEngine.ts resetBattlePlay): at every battle's
+   *  start (the battle mode's enter-battle edge) and at a network battle's restart, which opens a new battle. */
   reset(): void;
 }
 
@@ -418,7 +419,7 @@ export function createCrewProcedure(host: CrewProcedureHost): CrewProcedure {
   }
 
   function bind(on: On): void {
-    on<{ phase?: string }>('phase:change', (e) => { if (e?.phase === 'battle') reset(); });
+    // (round 7 merge review r1) no battle reset of its own here: the engine's battle reset calls reset() (see the interface)
     on<{ reason?: string }>('battle:ended', (e) => { if (typeof e?.reason === 'string') endReason = e.reason; });
     on<{ seconds?: number }>('battle:countdown', (e) => {
       if (reported || !host.inBattle() || typeof e?.seconds !== 'number') return;

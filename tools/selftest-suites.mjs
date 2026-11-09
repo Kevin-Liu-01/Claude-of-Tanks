@@ -2230,6 +2230,9 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/game/ai.eventOrder.selftest.mjs',
     // 2026-11-02 audit M7: a brain Watch mode hands back resumes from the hull as it stands (no burst, shot or spike)
     'src/game/ai.watchResume.selftest.mjs',
+    // 2026-11-02 audit M7 (round 6 V4): the hand-back's cases that repeat ai.watchResume's, split off it, and the walk's
+    // last point under a deck the field publishes (MANUAL bots)
+    'src/game/ai.watchResumeLevels.selftest.mjs',
     // 2026-11-02 audit M7: both drivers apply the bots' news at the end of the fire-and-shells phase; teammates read it
     'src/game/ai.newsFlush.selftest.mjs',
     // 2026-11-02 audit M7 (round 2 U18): the authority's revive hands the bot's brain back (no progress spike on the new
@@ -2308,6 +2311,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/game/battleResultPresentationRuntime.selftest.mjs',
     'src/game/battleResultBeatClock.selftest.mjs', // 2026-11-02 audit F4: death and ending beats hold through a pause
     'src/game/deathFlowExits.selftest.mjs', // 2026-11-02 audit round 5 U4: every exit that ends the player's death flow (a teardown, a fresh or left Watch seat, a mode's revive) leaves the result runtime owing no hand-back and no late replay; a revive hands the HUD and camera back and re-arms the death flow, at its row or its next death's event (real runtime, rig, killcam and watch controller)
+    'src/game/battleResultPointerRelease.selftest.mjs', // 2026-11-02 audit round 6 V6: the verdict gives the cursor back through input.releaseLock, so a canvas recapture still in flight cannot land over the result (main.ts's own binding, the real input layer on the Chrome pointer-lock page model)
     'src/game/battleEnding.selftest.mjs',
     'src/game/battleEndingHold.selftest.mjs',
     'src/game/killcamSelection.selftest.mjs',

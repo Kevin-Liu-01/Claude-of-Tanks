@@ -41,7 +41,9 @@
 //            calls node) runs it as its last command (the flags after `npm run <script> --` reach the tool, not a
 //            command after an &&), and reels:render's baked flags hold under a typed selection and the appended one
 //            (the last --only wins), take 3 of the battle-reel pool (loaded with the run) rendered; a duels run's takes
-//            are the duel pool's.
+//            are the duel pool's. (round 6 V10) A script that names a tool fails where the check cannot read the call,
+//            where it calls the tool through another script, or where it holds a quote, backtick, parenthesis, $ or
+//            backslash (a nested call); the tool's first read must be the script's last command.
 // No real browser, server or lock starts; the real Chrome runs stay the owner's (manualRecommended).
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
@@ -550,21 +552,59 @@ if (process.argv[2] === '--signal-child') {
     });
     // (round 5 U9 review) A finishing run through an npm script: `npm run <script> -- --only <left>` adds the flags to
     // the end of the script's command, so they reach the tool only when it is the script's last command (after an &&,
-    // ;, ||, | or a background & they go to the next one; a redirect's 2>&1 splits nothing). A script names the tool by
-    // its path, however node is called (`node ./tools/…`, `node --max-old-space-size=… tools/…`, an absolute path);
-    // round 5's first form matched only `node tools/<file>`, and a script spelt another way went unchecked. A baked
-    // selection is harmless: the last --only / --match wins, and what a stop leaves is inside it. Then reels:render's
-    // baked flags (its --out set aside: this receipt writes to a scratch folder), a selection typed after them and the
+    // ;, ||, |, a newline or a background & they go to the next one, after a # comment they are lost; a redirect's 2>&1
+    // splits nothing). A script names the tool by its path, however node is called (`node ./tools/…`,
+    // `node --max-old-space-size=… tools/…`, an absolute path, a redirect right after it); round 5's first form matched
+    // only `node tools/<file>`, and a script spelt another way went unchecked. (round 6 V10) A script that names the
+    // tool's file more often than that match reads it (a quoted path, a cd into tools/, a backtick, a variable holding
+    // the file name; a name is read with the shell's quoting taken out, so `studio\-example…`, or a line continuation
+    // or an empty $'' or $"" inside it, names it too, while an expansion inside it is not read) fails here; so does
+    // one that calls a script that runs a tool (`npm run <it> -- …` or concurrently's `npm:<it>` hands the flags to
+    // npm, or to that script's last command, which this check never reads), and one of either kind that holds a
+    // quote, a backtick, a parenthesis, a $ or a backslash (`sh -c '…'`, `$(…)`, `bash -c node\ tools/…`: the outer
+    // command takes the flags). A new spelling is read or the match widened. The tool's first read is the one that
+    // must come last, so a later mention of its path (`&& echo tools/<file>`) cannot stand in for the call, and an
+    // earlier one (a `test -f tools/<file>` guard, an echo) is taken as the call and fails closed. A baked selection
+    // is harmless: the last --only / --match wins, and what a stop leaves is inside it. Then reels:render's baked
+    // flags (its --out set aside: this receipt writes to a scratch folder), a selection typed after them and the
     // finishing run's appended one: the baked collection and size hold, the appended --only selects, and the take is
     // the battle-reel pool's (round 5 U6: the pool loads with the run)
     await check('npm finishing run', async () => {
       const finishing = ['tools/studio-example-videos.mjs', 'tools/marketing-shots/shoot.mjs'];
-      const toolAt = (file) => new RegExp(String.raw`(?:^|\s)(?:\S*/)?${file.replaceAll('.', '\\.')}(?=$|[\s;&|])`);
+      const escaped = (text) => text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const toolAt = (file, flags) => new RegExp(String.raw`(?:^|\s)(?:\S*/)?${escaped(file)}(?=$|[\s;&|<>])`, flags);
+      // a name, not a spelling: each mention of a tool's file name whatever stands beside it, and of a script's name
+      const count = (pattern, command) => command.match(pattern)?.length ?? 0;
+      const fileIn = (file) => new RegExp(String.raw`(?<![\w.-])${escaped(file.split('/').at(-1))}(?![\w.-])`, 'g');
+      // a runner's prefix still names the script (concurrently's npm:<it>, yarn:<it>); a longer name after it does not
+      const scriptIn = (name) => new RegExp(String.raw`(?<![\w.-])${escaped(name)}(?![\w:.-])`, 'g');
+      // the shell's quoting taken out (studio\-example…, stu"di"o-…, reels\:render; a line continuation and an empty
+      // $'' or $"" go whole, the $ too where a continuation stands between it and its quote), and a caller that holds
+      // any of that quoting (a quote or a backslash) is refused; its expansions (a variable, a glob, a \x escape) are
+      // not read
+      const unquoted = (command) => command.replace(/\\(?:\n|(.))|\$(?:\\\n)*['"]|['"]/gs, '$1');
+      const unread = (scripts) => {
+        const callers = new Set(); // the scripts that name a tool, then (to a fixed point) the ones that name one of those
+        for (let grew = true; grew;) {
+          grew = false;
+          for (const [name, command] of Object.entries(scripts)) {
+            const text = unquoted(command); // a quote or a backslash inside a name cannot hide it
+            if (callers.has(name) || !(finishing.some((file) => count(fileIn(file), text))
+              || [...callers].some((caller) => count(scriptIn(caller), text)))) continue;
+            callers.add(name);
+            grew = true;
+          }
+        }
+        return Object.keys(scripts).filter((name) => callers.has(name)
+          && (/['"`()$\\]/.test(scripts[name]) // a nested call (sh -c '…', $(…), `…`, bash -c node\ …) reads as last
+            || finishing.some((file) => count(fileIn(file), scripts[name]) > count(toolAt(file, 'g'), scripts[name]))
+            || [...callers].some((caller) => caller !== name && count(scriptIn(caller), scripts[name]))));
+      };
       const runners = (scripts) => Object.entries(scripts).flatMap(([name, command]) => finishing
         .filter((file) => toolAt(file).test(command))
         .map((file) => {
-          const commands = command.split(/&&|\|\||[;|]|(?<![<>])&(?!>)/).map((part) => part.trim());
-          const at = commands.findLastIndex((part) => toolAt(file).test(part));
+          const commands = command.split(/&&|\|\||[;|\n]|(?<![<>])&(?!>)|(?<!\S)#/).map((part) => part.trim());
+          const at = commands.findIndex((part) => toolAt(file).test(part)); // the first read: a later mention is no call
           const call = toolAt(file).exec(commands[at]);
           return { name, last: at === commands.length - 1,
             args: commands[at].slice(call.index + call[0].length).trim().split(/\s+/).filter(Boolean) };
@@ -574,7 +614,42 @@ if (process.argv[2] === '--signal-child') {
       const reels = found.find(({ name }) => name === 'reels:render');
       assert.ok(reels && ['studio:features:render', 'studio:examples'].every((script) => found.some(({ name }) => name === script)),
         `the scripts that run the tools are found (${found.map(({ name }) => name)})`);
-      assert.deepEqual(found.filter(({ last }) => !last).map(({ name }) => name), [], 'each script runs its tool last, so the flags after -- reach it');
+      assert.deepEqual(found.filter(({ last }) => !last).map(({ name }) => name), [],
+        'each script runs its tool last, so the flags after -- reach it (the first mention of its path is the call)');
+      assert.deepEqual(unread(scripts), [], 'every script that names a tool, or a script that runs one, is one the check '
+        + 'reads (a new spelling: read it in toolAt; a call through another script, or one holding a quote, backtick, '
+        + 'parenthesis, $ or backslash: call the tool directly, or change the refusal in unread())');
+      // outer before inner: the callers are found to a fixed point, not in one pass
+      assert.deepEqual(unread({ ...scripts, 'planted:quoted': 'node "tools/studio-example-videos.mjs" --only 2 && echo done',
+        'planted:cd': 'cd tools/marketing-shots && node shoot.mjs --match 01 && echo done',
+        'planted:backtick': 'node `echo tools/studio-example-videos.mjs` && echo done',
+        'planted:variable': 'T=studio-example-videos.mjs; node tools/$T --only 2 && echo done',
+        'planted:echo': 'cd tools && node studio-example-videos.mjs --only 2 && echo tools/studio-example-videos.mjs',
+        'planted:cd-tight': 'cd tools && node studio-example-videos.mjs>render.log',
+        'planted:sh': "sh -c 'node tools/studio-example-videos.mjs --collection battle-reels'",
+        'planted:substitution': 'echo $(node tools/studio-example-videos.mjs --only 2)',
+        'planted:backslash': 'bash -c node\\ tools/studio-example-videos.mjs',
+        'planted:escaped-name': 'node tools/studio\\-example-videos.mjs --only 2 && echo done',
+        'planted:split-name': 'node tools/studio"-"example-videos.mjs --only 2 && echo done',
+        'planted:escaped-runner': 'npm run reels\\:render && echo done',
+        'planted:continued-name': 'node tools/studio-example-\\\nvideos.mjs --only 2 && echo done',
+        'planted:continued-runner': 'npm run reels:\\\nrender && echo done',
+        'planted:ansi-c-name': "node tools/studio-example-$''videos.mjs --only 2 && echo done",
+        'planted:locale-runner': 'npm run reels:$""render && echo done',
+        'planted:continued-ansi-c': "node tools/studio-example-$\\\n''videos.mjs --only 2 && echo done",
+        'planted:continued-locale-runner': 'npm run reels:$\\\n""render && echo done',
+        'planted:outer': 'npm run planted:inner -- --only 2',
+        'planted:inner': 'npm run -s reels:render && echo done',
+        'planted:concurrently': 'concurrently "npm:reels:render" "npm:reels:publish"',
+        'planted:read': 'node ./tools/studio-example-videos.mjs && echo done',
+        'planted:tight': 'node tools/studio-example-videos.mjs>render.log && echo done' }),
+        ['planted:quoted', 'planted:cd', 'planted:backtick', 'planted:variable', 'planted:echo', 'planted:cd-tight', 'planted:sh',
+          'planted:substitution', 'planted:backslash', 'planted:escaped-name', 'planted:split-name',
+          'planted:escaped-runner', 'planted:continued-name', 'planted:continued-runner', 'planted:ansi-c-name',
+          'planted:locale-runner', 'planted:continued-ansi-c', 'planted:continued-locale-runner', 'planted:outer',
+          'planted:inner', 'planted:concurrently'],
+        'a script naming a tool in a spelling the check cannot read, calling a script that runs one, or nesting the call is '
+        + 'refused, not skipped');
       // the check reads planted scripts: a tool that is not its script's last command, in each spelling, is found
       const planted = runners({ ...scripts, 'reels:render': `${scripts['reels:render']} && echo rendered`,
         'planted:dot': 'node ./tools/studio-example-videos.mjs --collection duels && echo done',
@@ -583,9 +658,13 @@ if (process.argv[2] === '--signal-child') {
         'planted:background': 'node tools/studio-example-videos.mjs --only 2 & wait',
         'planted:last': 'npm run -s prepare && node ./tools/marketing-shots/shoot.mjs --match 01',
         'planted:redirect': 'node tools/studio-example-videos.mjs --only 2 2>&1',
-        'planted:other': 'node tools/studio-example-videos.mjs.bak && node tools/studio-example-videos-x.mjs && echo done' });
+        'planted:other': 'node tools/studio-example-videos.mjs.bak && node tools/studio-example-videos-x.mjs && echo done',
+        'planted:newline': 'node tools/studio-example-videos.mjs --only 2\necho done',
+        'planted:tight': 'node tools/studio-example-videos.mjs>render.log && echo done',
+        'planted:comment': 'node tools/marketing-shots/shoot.mjs --match 01 # the flags land here',
+        'planted:mention': 'node tools/studio-example-videos.mjs --only 2 && echo tools/studio-example-videos.mjs' });
       assert.deepEqual(planted.filter(({ last }) => !last).map(({ name }) => name), ['reels:render', 'planted:dot', 'planted:flag', 'planted:pipe',
-        'planted:background'],
+        'planted:background', 'planted:newline', 'planted:tight', 'planted:comment', 'planted:mention'],
         `a planted command after the tool is found in each spelling (${JSON.stringify(planted)})`);
       assert.deepEqual(planted.find(({ name }) => name === 'planted:last')?.args, ['--match', '01'], 'a tool run last is read with its flags');
       assert.equal(planted.find(({ name }) => name === 'planted:redirect')?.last, true, 'a redirect after the tool keeps it last');

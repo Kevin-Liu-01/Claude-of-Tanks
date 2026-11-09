@@ -304,8 +304,28 @@ export const BUNDLE_BUDGETS = Object.freeze({
   //   both sides edit the same chunks (main, the audio engine, the fleet), and brotli does not add across them.
   //   Requests unchanged at 127 / 128 / 73 / 8 / 12 / 7 (check:bundle PASS, tools/bundle-budget.json untouched). Home
   //   28,756, docs 37,096 and 404 18,677 measure within the larger of the two pins (ours), which they keep.
-  game: { brotliBytes: 1204277, requests: 127, entryBrotliBytes: 257684 },
-  cn: { brotliBytes: 1249096, requests: 128, entryBrotliBytes: 257684 },
+  // 2026-11-08 (the implicit state machine fixes' round seven merge, item V11, after origin/main 21d5c7fd30 (269) merged in;
+  //   Kevin: "id like you to resolve all of them"): both re-pins above kept; the byte rows re-pinned at item/sm-fix7-merge
+  //   e71b3e5ee9's build (Node 24.22.1, vite 8.3.5, rolldown 1.2.15). The local build and the release way (the build with
+  //   VERCEL_GIT_COMMIT_SHA set, as vercel build sets it for tools/appVersion.ts) are byte-identical: a clean worktree
+  //   stamps the same commit from git, and the stamp (__COT_MATCH_BUILD__) rides only in browserComposition (lazy) and the
+  //   host Worker, 0 B on every row here. Over main 21d5c7fd30 built beside it on the same node_modules (game 1,189,441 B,
+  //   entry 250,688 B, within 269's pins): game +14,685 B brotli, entry +6,845 B, cn +14,776 B, Gallery +3,193 B, docs
+  //   +119 B, 404 +203 B; home +114 B stays inside its slack (its row held). Requests unchanged at 127 / 128 / 73 / 8 / 12
+  //   / 7, and no page's boot files changed. By boot chunk, brotli [raw]: main +6,845 [+22,093] (the entry), playMode
+  //   +2,474 [+7,398], turretSeatPlane +1,323 [+3,259], tankFactoryCore +1,024 [+2,896], garageStage +605 [+1,632],
+  //   vehicleActions +457 [+1,387], materials +439 [+1,306], collision +324 [+1,229], brandMark +216, terrainDeformation
+  //   +212, programWarm +178, quality +131, i18n +120 (with publicPages -11 and notFound +78, the whole of home's, docs'
+  //   and 404's growth), medalArt +94, rosterState +81, the rest under 70 B each; the Gallery's gallery.js +223. It is the
+  //   branch's share named in round five's re-pin above (rounds one to six; round six's own +4 B: main.ts's result
+  //   presentation releasing through input.releaseLock), now over 269's code. The stamp reaches these rows one way: the
+  //   entry names the stamped chunks (browserComposition, browserHostPort, matchHostWorker) by their hashes, which move
+  //   with every commit (32 bytes of main.js, raw equal). Three commits of the same code read the entry at 257,533 B
+  //   (e71b3e5ee9), 257,562 B (99e46f93c9) and 257,710 B (e09e561ed2): a 177 B spread, past BUNDLE_SLACK's 96 B on the
+  //   entry (264c's "+170 B" was this). The game, cn and entry rows take the largest build's (e09e561ed2: game
+  //   1,204,303 B, cn 1,249,122 B, entry 257,710 B), as 264c took the larger.
+  game: { brotliBytes: 1204303, requests: 127, entryBrotliBytes: 257710 },
+  cn: { brotliBytes: 1249122, requests: 128, entryBrotliBytes: 257710 },
   gallery: { brotliBytes: 759827, requests: 73 },
   home: { brotliBytes: 28778, requests: 8 },
   docs: { brotliBytes: 37139, requests: 12 },

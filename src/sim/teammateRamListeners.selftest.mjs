@@ -33,15 +33,21 @@ const me = { id: 'me', player: true };
 // the solo step's soft contact as game/state.ts emits it for each hull of the pair (the ram itself prices nothing)
 const contact = (id) => ({ id, specId: 'm1a1_abrams_hc', isPlayer: id === 'me', speedMps: 8.2, pos: [0, 1, 0],
   cause: 'contact', hard: false, damage: 0 });
-assert.deepEqual(padCueOf('tank:impact', contact('me'), me), { c: 'impact', m: Math.min(1, 0.15 + 8.2 / 12) },
-  'the own hull\'s contact is the impact buzz, by its closing speed');
+const ownCue = padCueOf('tank:impact', contact('me'), me);
+assert.equal(ownCue?.c, 'impact', `the own hull's contact is the impact buzz (${JSON.stringify(ownCue)})`);
 assert.equal(padCueOf('tank:impact', contact('mate'), me), null, 'the teammate\'s contact is its own business');
 assert.ok(!PAD_CUE_EVENTS.includes('tank:ram'), 'the ram\'s report is no cue event: the phone feels the contact once, as its thud');
 assert.equal(padCueOf('tank:ram', { aId: 'me', bId: 'mate', dmgA: 0, dmgB: 0, closingMps: 8.2, aIsPlayer: true }, me), null,
   'and maps to nothing');
+// the class at every speed (the hazard), and the strength only as the cue's contract has it: absent, or a number in
+// [0, 1] (padProtocol.ts's cue `m`; m 0 still plays a short buzz, padBuzz.ts). How the strength follows the closing speed
+// is the pad's own rule, which src/pad/padCues.selftest.mjs pins ('a harder crash, a harder jolt'), so a retune of the
+// buzz (its floor, a dead zone, its full-jolt speed, a flat buzz) is no red here (round 6 V9)
 for (const speedMps of [0.5, 4, 12, 30]) {
   const cue = padCueOf('tank:impact', { ...contact('me'), speedMps }, me);
   assert.equal(cue?.c, 'impact', `a contact at ${speedMps} m/s buzzes as a contact, never as damage (${JSON.stringify(cue)})`);
+  assert.ok(cue.m === undefined || (Number.isFinite(cue.m) && cue.m >= 0 && cue.m <= 1),
+    `a contact at ${speedMps} m/s keeps the cue's contract, a strength in [0, 1] (${JSON.stringify(cue)})`);
 }
 
 console.log('teammateRamListeners.selftest: tank:ram has one listener in src (audioEngine.ts), tank:impact two (audioEngine.ts, '

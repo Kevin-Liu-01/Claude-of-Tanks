@@ -829,7 +829,9 @@ export function createAudio({
     if (id !== asked && options?.take != null) options = { ...options, take: undefined };
     let why: string | undefined;
     if (!radio || battleMode.phase !== 'battle') why = 'phase';
-    else if (playerId != null && tanks.get(playerId)?.alive === false && id !== 'victory' && id !== 'defeat' && id !== 'draw') why = 'dead';
+    // a result is heard whether the player's hull stands or not: the asked moment decides, so a mode's own result line
+    // (resolveCrewLine: defeat_overrun, gunship_victory, ...) is exempt as the plain verdict is
+    else if (playerId != null && tanks.get(playerId)?.alive === false && asked !== 'victory' && asked !== 'defeat' && asked !== 'draw') why = 'dead';
     const ok = why == null && !!radio?.say(id, options);
     sayLog.push({ id, t: ctx ? +ctx.currentTime.toFixed(3) : 0, ok, ...(why ? { why } : !ok ? { why: 'net' } : {}) });
     if (sayLog.length > 160) sayLog.shift();
@@ -2695,6 +2697,9 @@ export function createAudio({
    * of the abandoned battle's last was a double kill, and the once-a-battle think line and first-shot cue stayed spent.
    * Where each carrier's drone was last heard is the play's too (droneLastAt, round 8 Y0 review r2): kept at a restart, a
    * drone shot down before the restarted battle heard it fly broke up at the abandoned battle's spot.
+   * (round 7 merge review r1) The crew's procedure (crewProcedure.ts, 269) keeps its own battle state and is reset here,
+   * its one battle reset: before, it reset only on its own phase edge, which a restart does not take, so the restarted
+   * battle's crew kept the abandoned battle's smoke watermark (sim clock), spotted set, spent countdown report and rounds.
    */
   function resetBattlePlay(): void {
     deathLatch.clear();
@@ -2731,6 +2736,7 @@ export function createAudio({
     auxGunOn = null;
     auxLights = null;
     resetQuietRadio();
+    crew.reset();
   }
 
   /**
@@ -2821,6 +2827,7 @@ export function createAudio({
         if (!ready()) break;
         const result = battleMode.result ?? 'draw';
         play(result === 'victory' ? 'sting_victory' : result === 'defeat' ? 'sting_defeat' : 'sting_draw');
+        // the crew's own result line (269: say() resolves it, voiceLines.ts resolveCrewLine) through the radio gate
         say(result, { delayS: 0.4 });
         break;
       }

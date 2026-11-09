@@ -482,7 +482,9 @@ and 20 s after a death too (`allyReviveS`, behind the last sector taken)). Endle
 when its next wave starts, humans too, so in a network room a fallen human comes back while another human holds. The
 killcam cancels its spectate and any pending ghost replay on the local player's revive so the
 camera returns to the tank instead of holding the wreck view (batch 27); where the revived hull ran the full death flow
-(a network Horde room, a Watch seat's allied bot), the result runtime hands its HUD and camera back too (round 5 U4). Since
+(a network Horde room, a Watch seat's allied bot), the result runtime hands its HUD and camera back too (round 5 U4), and
+the revived hull's later deaths run that flow again: the death camera, the replay and the ally chase, or at a verdict the
+kill cam of that death (before, only a hull's first death got it; round 5 U4, kept in round 6 V5, Kevin may overrule). Since
 2026-09-15 the death hand-off to the ally chase and its garage bar never starts while the
 ruleset revives the player; the HUD counts the revive down ("BACK IN n", from the death
 event or the frame-observed destroyed state) until the revive lands.
