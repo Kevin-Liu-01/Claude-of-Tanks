@@ -2647,16 +2647,33 @@ function* createFxSteps(
   }
 
   /**
+   * (round 8 Y6, s4-01) How a round's end on the ground is drawn beyond its munition class, by name: round 2's noBurst
+   * and 269's graze first met as two positional booleans in one slot, where a merge could pass either in the other's
+   * place and still compile (an HE round whose hull burst first drew a second burst on the ground, or a grazing round
+   * drew no strike at all).
+   */
+  interface GroundEndOptions {
+    /** backdates the spawns (s; the screenshot composers) */
+    birthOffset?: number;
+    /** (round 2 U31) the round's burst was drawn already (at a hull, its wait over before this expiry): the ground keeps
+     *  its own marks, the crater mark of a burst that dug none, the cover it clears and the water's ring, and draws no
+     *  second burst (nor, for a solid round, a strike) */
+    noBurst?: boolean;
+    /** (impact-materials-269) a solid round's glancing strike sprays forward and low (kineticStrike's graze look); a
+     *  charged round's burst never reads it */
+    graze?: boolean;
+  }
+  const GROUND_END_DEFAULT: Readonly<GroundEndOptions> = {};
+  /**
    * A shell ending on the ground or the water, by its munition class: explosives burst (flash, fireball, ejecta, the
    * dust cloud, surge, residue), kinetic rounds and bullets strike (a spurt of the ground along the shot, chunks).
-   * Returns false when the media layer is off (the phone tier keeps the pooled plume). `noBurst` (round 2 U31): the round's
-   * burst was drawn already (at a hull, its wait over before this expiry): the ground keeps its own marks, the crater mark
-   * of a burst that dug none, the cover it clears and the water's ring, and draws no second burst. `graze`
-   * (impact-materials-269): a solid round's glancing strike sprays forward and low (kineticStrike's graze look).
+   * Returns false when the media layer is off (the phone tier keeps the pooled plume). `end` names the round's own end
+   * (GroundEndOptions: a burst drawn already, a graze); a direct impact passes none.
    */
   function mediaGroundHit(pos: THREE.Vector3, info: ShellMunition, water: boolean, dir: THREE.Vector3 | null,
-    birthOffset = 0, noBurst = false, graze = false): boolean {
+    end: Readonly<GroundEndOptions> = GROUND_END_DEFAULT): boolean {
     if (!blast) return false;
+    const birthOffset = end.birthOffset ?? 0, noBurst = end.noBurst === true, graze = end.graze === true;
     const surface = water ? 'water' : classifyTerrain(heightField, pos.x, pos.z);
     if (isExplosive(info.munition) && info.chargeKg > 0) {
       const y = water
@@ -7396,11 +7413,12 @@ function* createFxSteps(
           // (impact-materials-269) a solid round meeting the ground at a glancing angle skips on: its ground sprays forward
           // and low along its path (sim/shellSurface.ts grazes, the angle the audio plays as a graze too)
           const graze = grazes(e.impactAngleDeg) && !charged;
-          if (mediaGroundHit(_v3, m, water, arrival, 0, burstDrawn, graze)) {
+          if (mediaGroundHit(_v3, m, water, arrival, { noBurst: burstDrawn, graze })) {
             if (recorded) noteBurst(e.shellId);
             return;
           }
-          if (burstDrawn) return;
+          // (round 8 Y6, s4-01) the phone tier: no media layer, so no burst is ever recorded (burstAt is written only where
+          // a blast context exists) and burstDrawn is false here; the pooled plume stands for every round
           if (graze && arrival) grazeSprayLow(_v3, arrival, e.caliberMm || 76, water);
           else if (water) waterSplash(_v3, e.caliberMm || 76, false);
           else dirtPlume(_v3, e.caliberMm || 76, false);

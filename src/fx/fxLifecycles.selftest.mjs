@@ -15,7 +15,9 @@
 //    it went unseen), while an unspotted solo hull's hit stays on the hull;
 //  - one HE round, one burst: its hull event and its expiry split across frames (a network peer's queue) drew two; a
 //    direct hull hit (no expiry ever follows it) bursts on the next update, and a late wall expiry still strikes its
-//    building;
+//    building; (round 8 Y6, s4-01: regression guards for the ground hit's named options) a late ground expiry keeps its
+//    marks and draws no second burst, and a solid round grazing the ground sprays forward and low where a plunge stands
+//    its spurt up;
 //  - under the killcam's suppression the runtime keeps its scene graph hidden whatever its subsystems write each frame
 //    (they re-showed themselves), hides a child added meanwhile, and the release restores what each owner asked for
 //    (round 2 U31: by the veil its visuals are made under, never their own flags: replayVeil.selftest);
@@ -294,6 +296,8 @@ function fakeVisual() {
   fx.resetAll();
 }
 
+/** (round 8 Y6, s4-01) the ground-end guards' readings, for the log */
+const groundEnds = {};
 // ---- one burst per HE round, whatever frames its events land on ----
 {
   // the building a wall expiry consults (its look, its strike's seam): counted, so a skipped strike shows
@@ -312,8 +316,8 @@ function fakeVisual() {
     surface: 'tank' });
   const hit = (shellId, kind = 'he_splash', extra = {}) => bus.emit('shell:hit', { shellId, attackerId: 'g', targetId: 't', kind,
     damage: 40, pos: [1, 0.8, 0], normal: [0, 1, 0], caliberMm: 125, shellType: 'HE', destroyed: false, ...extra });
-  const expired = (shellId) => bus.emit('shell:expired', { shellId, pos: [0, 0, 0], hitTerrain: true, munition: 'he', chargeKg: 3.4,
-    caliberMm: 125, shellType: 'HE' });
+  const expired = (shellId, impactAngleDeg) => bus.emit('shell:expired', { shellId, pos: [0, 0, 0], hitTerrain: true, munition: 'he',
+    chargeKg: 3.4, caliberMm: 125, shellType: 'HE', ...(impactAngleDeg === undefined ? {} : { impactAngleDeg }) });
   const wallExpired = (shellId) => bus.emit('shell:expired', { shellId, pos: [0, 1.5, 3], hitTerrain: false, hitKind: 'prop',
     structureId: 7, normal: [0, 0, -1], munition: 'he', chargeKg: 3.4, caliberMm: 125, shellType: 'HE' });
   const run = (script) => { fx.resetAll(); frames(2); const shellId = id++; fired(shellId); script(shellId); frames(12); return bodies(); };
@@ -348,6 +352,42 @@ function fakeVisual() {
   assert.ok(askedInTime > 0 && asked === askedInTime, `a late wall expiry still strikes its building (${asked} vs ${askedInTime})`);
   // (the wall's own burst is ~19 bodies: on top of the hull's it would read ~44)
   assert.ok(near(wallLate, hullOnly), `and draws no second burst (${wallLate} vs the hull's ${hullOnly}; the wall's own ${wallInTime})`);
+  // (round 8 Y6, s4-01; a regression guard, ROUND8 amendment 7) the same on open ground: a terrain expiry later than the
+  // hull's wait (HE_WAIT_S 0.1 s) and inside its burst's keep (HE_BURST_KEEP_S 0.5 s) keeps its ground marks and draws no
+  // second burst. Its glancing angle (86 deg) never reaches a charged round's burst. Red on 269's own effects.ts (its
+  // per-frame records) and on a merge that passes the hull's burstDrawn in 269's graze slot (the round 8 sweep, s4-01)
+  const groundLate = run((s) => { hit(s); frames(10); expired(s, 86); });
+  assert.ok(near(groundLate, hullOnly), `a late ground expiry draws no second burst (${groundLate} vs the hull's ${hullOnly}; both ${sameFrame})`);
+  // a solid round's end on the ground by its angle, on the media layer: a graze (86 deg incidence, sim/shellSurface.ts
+  // grazes) sprays its ground forward and low along its path, a plunge (20 deg) stands its spurt up. Its arrival is the
+  // sweep from its muzzle (shell:fired, then the expiry with no frame between: a frame without the round in its shells
+  // drops the sweep). Red on a merge that passes graze in the noBurst slot (no strike at all)
+  const kineticEnd = (impactAngleDeg) => {
+    fx.resetAll(); frames(2);
+    const shellId = id++;
+    bus.emit('shell:fired', { shellId, shooterId: 'g', pos: [0, 1.2, -60], muzzlePos: [0, 1.2, -60], dir: [0, -0.02, 1],
+      shellType: 'APFSDS', caliberMm: 120, shellName: '120 mm APFSDS', munition: 'kinetic', chargeKg: 0 });
+    bus.emit('shell:expired', { shellId, pos: [0, 0, 0], hitTerrain: true, munition: 'kinetic', chargeKg: 0, caliberMm: 120,
+      shellType: 'APFSDS', impactAngleDeg });
+    frames(5); // (a graze lays its bodies 12 ms apart along its furrow)
+    // the bodies thrown round the strike (the muzzle's own gas and dust lie 60 m back): how far forward they were born
+    // (along +z, the round's path) and how steeply they leave (rise over run, as strikeLooks.selftest reads it)
+    const mesh = fx.group.getObjectByName('fx-volume-media').children[0];
+    const { aPB, aVL } = mesh.geometry.attributes;
+    let n = 0, ahead = -Infinity, steep = 0;
+    for (let i = 0; i < mesh.geometry.instanceCount; i++) {
+      const [x, , z] = aPB.array.subarray(i * 4, i * 4 + 3), [vx, vy, vz] = aVL.array.subarray(i * 4, i * 4 + 3);
+      if (Math.hypot(x, z) > 15 || Math.hypot(vx, vz) + Math.abs(vy) <= 4) continue;
+      n++; ahead = Math.max(ahead, z); steep += vy / Math.max(1e-6, Math.hypot(vx, vz));
+    }
+    return { n, ahead, steep: n ? steep / n : NaN };
+  };
+  const skip = kineticEnd(86), plunge = kineticEnd(20);
+  assert.ok(skip.n > 0 && plunge.n > 0, `a solid round strikes the ground at either angle (${skip.n}, ${plunge.n} sprayed bodies)`);
+  assert.ok(skip.steep < 0.5 && skip.ahead > 1, `a graze sprays forward and low (rise/run ${skip.steep.toFixed(2)}, ${skip.ahead.toFixed(2)} m on)`);
+  assert.ok(plunge.steep > 1 && plunge.ahead < skip.ahead, `a plunge stands its spurt up (rise/run ${plunge.steep.toFixed(2)}, ${plunge.ahead.toFixed(2)} m on)`);
+  Object.assign(groundEnds, { groundLate, hullOnly, sameFrame, grazeRiseRun: +skip.steep.toFixed(2), grazeAheadM: +skip.ahead.toFixed(2),
+    plungeRiseRun: +plunge.steep.toFixed(2), plungeAheadM: +plunge.ahead.toFixed(2) });
   fx.resetAll();
 }
 
@@ -429,4 +469,4 @@ function fakeVisual() {
   for (const r of [once, twice, first, second, page]) r.fx.resetAll();
 }
 
-console.log('fxLifecycles.selftest: deferred beats fire under suppression and never outlive their visual\'s life; a building\'s stages are laid once; smoke columns follow the fire; a hull\'s event point is on the hull where it stands now, never measured from an unseen hull\'s last sample; one burst per HE round; the scene graph stays hidden under the suppression; a bus takes one runtime');
+console.log(`fxLifecycles.selftest: deferred beats fire under suppression and never outlive their visual's life; a building's stages are laid once; smoke columns follow the fire; a hull's event point is on the hull where it stands now, never measured from an unseen hull's last sample; one burst per HE round (ground ends ${JSON.stringify(groundEnds)}); the scene graph stays hidden under the suppression; a bus takes one runtime`);
