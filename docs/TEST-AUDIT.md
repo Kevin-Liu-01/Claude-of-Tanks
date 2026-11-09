@@ -15,17 +15,17 @@ Run times: `tools/selftest-durations.json`, else this machine's latest observati
 
 | Decision | Receipts | CPU-min |
 |---|---:|---:|
-| KEEP | 1754 | 221.7 |
+| KEEP | 1754 | 225.1 |
 | MERGE | 0 | 0.0 |
 | MANUAL | 664 | 1167.4 |
 | RETIRE | 2 | 0.7 |
 
 | Suite run | Receipts | CPU-min | Simulated wall (min) |
 |---|---:|---:|---:|
-| Before: every receipt (npm test without the tiers) | 2419 | 1389.5 | 241.7 |
-| After: the default tier | 1754 | 221.7 | 59.7 |
+| Before: every receipt (npm test without the tiers) | 2419 | 1392.9 | 242.1 |
+| After: the default tier | 1754 | 225.1 | 59.7 |
 
-Default tier: 16.0 % of the whole registry's CPU; 24.2 % of the 916 CPU-min the snapshot gave for the 1,863 receipts it timed. Its wall: 0.2 min exclusive receipts, 40.9 min pool, 18.6 min browser receipts.
+Default tier: 16.2 % of the whole registry's CPU; 24.6 % of the 916 CPU-min the snapshot gave for the 1,863 receipts it timed. Its wall: 0.2 min exclusive receipts, 40.9 min pool, 18.6 min browser receipts.
 
 ## Manual suites
 
@@ -826,8 +826,10 @@ None. Folding receipts saves only process starts (about a second each) and would
 | `tools/i18n-page-catalogs.selftest.mjs` | 156 | KEEP | every public page loads exactly its catalog keys (must-keep: i18n) | default tier (npm test, the release gate; lane mode by its closure) |
 | `src/vehicles/tankVisualClone.selftest.mjs` | 135 | KEEP | a battle clone equals a pristine build (vehicle core) | default tier (npm test, the release gate; lane mode by its closure) |
 | `src/vehicles/profiles/leopard2A4Family.selftest.mjs` | 127 | KEEP | vehicle rule, 127 s: release 264: the 2A4-era Leopards on the same hull (the photo packets' native fixture): the owner's square/wed | default tier (npm test, the release gate; lane mode by its closure) |
+| `src/mp/host/objectiveModesMigration.selftest.mjs` | 105 | KEEP | multiplayer wire, session or host, 105 s: 2026-11-02 audit M1: Zone Control, Mars, CTF and Turbo Ball survive a host handoff | default tier (npm test, the release gate; lane mode by its closure) |
 | `src/vehicles/profiles/merkavaFamily.selftest.mjs` | 103 | KEEP | vehicle rule, 103 s: 262 (the Merkava family builder): the six marks' structure, guns and packages, and their guns over their hulls | default tier (npm test, the release gate; lane mode by its closure) |
 | `src/vehicles/tankFactoryStaging.selftest.mjs` | 103 | KEEP | staged construction publishes exactly the synchronous build (vehicle core: build-path parity) | default tier (npm test, the release gate; lane mode by its closure) |
+| `src/mp/session/matchSessionRematchHost.selftest.mjs` | 100 | KEEP | multiplayer wire, session or host, 100 s: 2026-11-02 audit M2: a host's in-place rematch never declines its own next round | default tier (npm test, the release gate; lane mode by its closure) |
 | `src/vehicles/profiles/m3a2Bradley.selftest.mjs` | 84 | KEEP | vehicle rule, 84 s: 268: the M3A2 under the classic turret (its photo packet fixture) | default tier (npm test, the release gate; lane mode by its closure) |
 | `src/vehicles/profiles/australia.selftest.mjs` | 83 | KEEP | vehicle rule, 83 s: release 269 (owner: "flesh out south african and australian tank trees"): the Australian line's M113s, Leopard | default tier (npm test, the release gate; lane mode by its closure) |
 | `server/collisionManifestCodec.selftest.mjs` | 82 | KEEP | the committed collision shards decode bit for bit (generated-output guard, ~82 s) | default tier (npm test, the release gate; lane mode by its closure) |
@@ -2449,7 +2451,6 @@ None. Folding receipts saves only process starts (about a second each) and would
 | `src/mp/host/migrationExtrasSize.selftest.mjs` | n/a | KEEP | multiplayer wire, session or host, n/a s: 2026-11-02 audit U2 (round 2): keyframe extras carry only what differs from a fresh host's state; the restore | default tier (npm test, the release gate; lane mode by its closure) |
 | `src/mp/host/modeEventKeyframe.selftest.mjs` | n/a | KEEP | multiplayer wire, session or host, n/a s: 2026-11-02 audit U2 (round 2): a migration keyframe follows a mode event within a housekeeping beat, not the 2 | default tier (npm test, the release gate; lane mode by its closure) |
 | `src/mp/host/modeFrameReconcile.selftest.mjs` | n/a | KEEP | multiplayer wire, session or host, n/a s: 2026-11-02 audit U2 (round 2): a migrated host resumes the score, zones, flags and ball as the seat's newest f | default tier (npm test, the release gate; lane mode by its closure) |
-| `src/mp/host/objectiveModesMigration.selftest.mjs` | n/a | KEEP | multiplayer wire, session or host, n/a s: 2026-11-02 audit M1: Zone Control, Mars, CTF and Turbo Ball survive a host handoff | default tier (npm test, the release gate; lane mode by its closure) |
 | `src/mp/host/resumeAging.selftest.mjs` | n/a | KEEP | multiplayer wire, session or host, n/a s: 2026-11-02 audit U2 (round 2): resumed extras age by the sim time between the battle clocks, an untouched row' | default tier (npm test, the release gate; lane mode by its closure) |
 | `src/mp/host/resumeHoldClocks.selftest.mjs` | n/a | KEEP | multiplayer wire, session or host, n/a s: 2026-11-02 audit M1: a held seat's stall clock allows the resume hold; a seat whose link closed is not counted | default tier (npm test, the release gate; lane mode by its closure) |
 | `src/mp/host/resumeHullBody.selftest.mjs` | n/a | KEEP | multiplayer wire, session or host, n/a s: 2026-11-02 audit U2 (round 2): a migrated host restores each hull's ground contact, body mode, spring and ride | default tier (npm test, the release gate; lane mode by its closure) |
@@ -2473,7 +2474,6 @@ None. Folding receipts saves only process starts (about a second each) and would
 | `src/mp/session/matchSessionFallbackDecline.selftest.mjs` | n/a | KEEP | multiplayer wire, session or host, n/a s: 2026-11-03 integration IR11 (audit M1 x M2): an elected seat with no state of a running battle declines throug | default tier (npm test, the release gate; lane mode by its closure) |
 | `src/mp/session/matchSessionLiveHostFailure.selftest.mjs` | n/a | KEEP | multiplayer wire, session or host, n/a s: 2026-11-02 audit Q2 (round 2): a live host whose thread fails hands the match on at once (an unable decline, t | default tier (npm test, the release gate; lane mode by its closure) |
 | `src/mp/session/matchSessionLoadingElection.selftest.mjs` | n/a | KEEP | multiplayer wire, session or host, n/a s: 2026-11-02 audit M2: a seat elected while it loads keeps the election and hosts | default tier (npm test, the release gate; lane mode by its closure) |
-| `src/mp/session/matchSessionRematchHost.selftest.mjs` | n/a | KEEP | multiplayer wire, session or host, n/a s: 2026-11-02 audit M2: a host's in-place rematch never declines its own next round | default tier (npm test, the release gate; lane mode by its closure) |
 | `src/mp/session/matchSessionRole.selftest.mjs` | n/a | KEEP | multiplayer wire, session or host, n/a s: 2026-11-02 audit M2: the session's p2p role is one declared state; a finished host hands nothing on | default tier (npm test, the release gate; lane mode by its closure) |
 | `src/mp/session/matchSessionTimers.selftest.mjs` | n/a | KEEP | multiplayer wire, session or host, n/a s: 2026-11-02 audit M2: the re-entry fallback at the room's generation; the standby on injected timers | default tier (npm test, the release gate; lane mode by its closure) |
 | `src/mp/session/playMenuAdapterSeat.selftest.mjs` | n/a | KEEP | multiplayer wire, session or host, n/a s: 2026-11-02 audit F6: a close during the limit check cancels the attempt; a released seat's round names its own | default tier (npm test, the release gate; lane mode by its closure) |
