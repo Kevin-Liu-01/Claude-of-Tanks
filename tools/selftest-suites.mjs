@@ -225,6 +225,9 @@ export const SELFTEST_SUITES = Object.freeze({
     // release 269 (owner: "flesh out south african and australian tank trees"): the Australian line's M113s, Leopard AS1,
     // Abrams pair and Redback in their tree, tiers and photo packets at both qualities, each one's own kit
     'src/vehicles/profiles/australia.selftest.mjs',
+    // 2026-11-08 round 8 s5-05: a variant built on a donor's build (the Australian and Ukrainian M1A1s, donorBuild.ts)
+    // wears its own suit whatever row the donor has; its id is its own again after the donor build
+    'src/vehicles/variantIdentity.selftest.mjs',
     // 265: the M41 family on its supplied print's datums, each mark's kit and tree
     'src/vehicles/profiles/m41.selftest.mjs',
     'src/vehicles/ztz20GunClearance.selftest.mjs',
