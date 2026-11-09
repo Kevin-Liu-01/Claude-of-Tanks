@@ -41,8 +41,12 @@ const LOBBY_CSS = `
 export interface CouchLobbyRequest {
   /** The Deploy screen's mode (its sides follow it). */
   gameMode: string;
-  /** Deploy the seats (the Deploy screen's vehicle and map). */
-  start(couch: CouchBattle): void;
+  /** The Garage open span the press began in (src/app/couchOpener.ts opens the lobby only while it holds). */
+  ticket: { current(): boolean };
+  /** The Couch button: the modal's trigger (its focus comes back there, and the Garage's hide takes the modal with it). */
+  trigger: HTMLElement | null;
+  /** Deploy the seats (the Deploy screen's vehicle and map): false when the Garage refused the start. */
+  start(couch: CouchBattle): boolean;
 }
 
 let modal: ModalController | null = null;
@@ -71,7 +75,7 @@ export function openCouchLobby(runtime: CouchRuntime, request: CouchLobbyRequest
     const note = body.appendChild(document.createElement('p'));
     note.className = 'cot-couch-note';
     note.textContent = t('couch.unavailable');
-    modal.open();
+    modal.open({ trigger: request.trigger });
     return;
   }
 
@@ -109,11 +113,12 @@ export function openCouchLobby(runtime: CouchRuntime, request: CouchLobbyRequest
   const start = button(footer, 'primary', t('couch.start'));
   end.addEventListener('click', () => { runtime.close(); modal?.close(); });
   reopen.addEventListener('click', () => lobby.setOpen(true));
+  // (round 8 Y4 s3-09) the runtime's start edge: the join window closes, then the seats here deploy
   start.addEventListener('click', () => {
-    const inPlay = runtime.seatsInPlay();
-    if (!inPlay.length) return;
-    modal?.close();
-    request.start({ seats: inPlay, sides, names: inPlay.map((n) => t('pad.seat', { n })) });
+    runtime.startBattle((inPlay) => {
+      modal?.close();
+      return request.start({ seats: inPlay, sides, names: inPlay.map((n) => t('pad.seat', { n })) });
+    });
   });
 
   let shownCode = '';
@@ -147,5 +152,5 @@ export function openCouchLobby(runtime: CouchRuntime, request: CouchLobbyRequest
   }
   paint(lobby.view);
   detach = lobby.subscribe(paint);
-  modal.open();
+  modal.open({ trigger: request.trigger });
 }

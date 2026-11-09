@@ -229,7 +229,8 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
     ['src/ui/garage.ts', 'the custom camo studio', /reloadsForFailure\(option, /, /customCamoStudioFailed = true;\s+reportLoadFailure\(/],
     ['src/ui/garage.ts', 'the tech tree', /reloadsForFailure\(techTreeTrigger, /, /reportLoadFailure\('cot-techtree-load'/],
     ['src/ui/garage.ts', 'the Service Record', /reloadsForFailure\(recordTrigger, /, /reportLoadFailure\('cot-record-load'/],
-    ['src/ui/garage.ts', 'a battle (every launch)', /if \(pressFailed\(battleBtn\)\) return;/, /markLoadFailed\(\[battleBtn\]/],
+    // (round 8 Y4 s3-04) launchBattle reports whether it handed a start on: a failed press starts nothing (false)
+    ['src/ui/garage.ts', 'a battle (every launch)', /if \(pressFailed\(battleBtn\)\) return false;/, /markLoadFailed\(\[battleBtn\]/],
     ['src/main.ts', "a battle's entry", /if \(reload\) garage\.noteBattleLoadFailed\(\);/, /showSoloEntryFailure\(error, reload \? null : retry\)/],
     // (round 2 U35) the gear reloads unless a later load (a battle entry's preload) built the panel, which it then opens
     ['src/ui/settingsAccess.ts', 'Settings', /if \(\(!current && pressFailed\(gear\)\) \|\| !canOpen\(\)\) return;/, /markLoadFailed\(\[gear\]\)/],

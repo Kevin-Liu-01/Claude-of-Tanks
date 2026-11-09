@@ -1,5 +1,6 @@
 import type { RuntimeValue } from '../runtimeTypes.ts';
 import type { PadStatusSource } from '../pad/padReceiver.ts';
+import { togglePhonePause } from './phonePause.ts';
 // src/ui/settings.ts — in-game settings panel (Esc in battle, gear in garage).
 //
 // CONTROLS tab: every action from src/game/input.ts with three binding chips —
@@ -945,8 +946,9 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
     input,
     source: () => opts.phoneSource?.() ?? null,
     ...(opts.phoneEvents ? { listen: opts.phoneEvents } : {}),
-    // the phone's pause is Escape's: in a battle only, and its resume never asks for the pointer without a gesture
-    togglePause: () => { if (!isBattleActive()) return; if (open) closePanel({ noRelock: true }); else openPanel(); },
+    // the phone's pause is Escape's: in a battle only, and its resume never asks for the pointer without a gesture (the
+    // one phone pause rule, src/ui/phonePause.ts; the couch seats' port in main.ts runs it too)
+    togglePause: () => togglePhonePause({ isOpen: () => open, open: openPanel, close: closePanel }, isBattleActive),
   });
   function phoneCard(parent: HTMLElement): void {
     const host = el('div', '', groupCard(parent, t('settings.phone.title')));

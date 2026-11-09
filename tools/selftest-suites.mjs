@@ -1915,6 +1915,14 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/pad/padLobby.selftest.mjs', // 2026-11-01 (couch-mode-268, docs/COUCH-MODE.md): one lobby, a receiver per seat
     'src/game/couchSeats.selftest.mjs', // couch-mode-268: which roster tank each phone drives, and a seat's controls
     'src/game/couchCamera.selftest.mjs', // couch-mode-268: the shared camera frames every seat
+    // round 8 Y4 s3-02/s3-09: the couch view by its own reason in every couch battle; Start closes the join window first
+    'src/app/couchRuntime.selftest.mjs',
+    // round 8 Y4 s3-03: the couch lobby opens only over the Garage that asked (its ticket), once; a failed chunk is the press's
+    'src/app/couchOpener.selftest.mjs',
+    // round 8 Y4 (ROUND8 amendment 4): a couch battle's Battle Again on the page's setupBattle is a couch battle (MANUAL 'sims')
+    'src/game/couchRematch.selftest.mjs',
+    // round 8 Y4 s3-05: one phone pause rule (open, or close with no relock) for the single pairing and every couch seat
+    'src/ui/phonePause.selftest.mjs',
     'src/pad/qr.selftest.mjs',
     'server/rooms/localPadService.selftest.mjs',
     'server/rooms/roomEvents.selftest.mjs', // 2026-11-02 audit S1: Room and PadPair end every event through one end and deallocate by one rule

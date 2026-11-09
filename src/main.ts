@@ -244,6 +244,9 @@ import { createIntentCover } from './mp/session/intentCover.ts';
 import { loadEquipment as loadSelectedEquipment } from './game/equipment.ts';
 import { consumableSpecFor, loadConsumables } from './game/consumableLoadout.ts';
 import { createSettingsAccess } from './ui/settingsAccess.ts';
+import { togglePhonePause } from './ui/phonePause.ts';
+import { setBodyFlag } from './ui/bodyFlags.ts';
+import { openCouchWhenCurrent } from './app/couchOpener.ts';
 import { shellTypeCode } from './ui/shellLabels.ts';
 import { createMobileBattleInputAccess } from './game/mobileBattleInputAccess.ts';
 import { installResponsiveLayout } from './ui/responsiveLayout.ts';
@@ -254,9 +257,10 @@ import {
   planBattleCamoOverrides, type BattleVisual,
 } from './game/rosterState.ts';
 import { clearMatchSession, createBus, createGameState, watchRevealsAll } from './game/stateCore.ts';
+import { isPlayerVisible } from './game/playerVisibility.ts';
 import { AppPhaseTransitionError, canTransitionAppPhase, createAppLifecycle, GarageScreenUnsettledError } from './game/appLifecycle.ts';
 import { bootReadiness } from './app/bootReadiness.ts';
-import { createBattleEntryIntent, type BattleTerrainVariant } from './game/battleEntryIntent.ts';
+import { createBattleEntryIntent, replayBattleEntry, type BattleTerrainVariant } from './game/battleEntryIntent.ts';
 import { createBattleWarmHold } from './game/battleWarmHold.ts';
 import { campaignOperationById } from './game/campaignOperations.ts';
 // Pure roster planning: the solo battle authority stays behind soloBattleAccess (boot-static-closure receipt).
@@ -906,9 +910,8 @@ const fxRuntimeAccess = createFxRuntimeAccess<MainFxModule, MainFxRuntime>({
       seed: 5000,
       auxiliaryEntities: () => onlineMatchActive() ? game.tankById.values() : game.tanks, // v2 is the only multiplayer (cutover)
       auxiliaryTime: () => game.timeS,
-      auxiliaryVisible: entity => entity.networkVisible !== undefined ? entity.networkVisible
-        : watchRevealsAll(game) || entity.team === (game.player?.team ?? 'player')
-          || game.spotting?.isSpotted(entity.id, game.player?.team ?? 'player', game.player) === true,
+      // (round 8 Y3/Y4) the one visibility rule (src/game/playerVisibility.ts), as the night lighting and the crew read it
+      auxiliaryVisible: entity => isPlayerVisible(game, entity),
       auxiliaryReport: (id,p,caliberMm) => bus.emit('auxiliary:fired',{id,x:p.x,y:p.y,z:p.z,caliberMm}),
       // Decals must resolve every live struck entity in production. The old
       // window.__DEBUG lookup silently dropped all marks whenever diagnostics
@@ -1631,10 +1634,11 @@ const garage: MainGarageRuntime = await bootStage('ui', () => createGarage({
   // (round 3 B2, review r1) the press asks the entry before it announces: a refused one shows the way out, never a
   // battle start that does not follow (the pointer lock grabbed over a failed return's notice)
   refusesBattle: () => soloBattleEntry.refuses(),
+  // (round 8 Y4 s3-03) a lazy Garage opener: the lobby opens only over the Garage that asked (its ticket), and a chunk that
+  // did not arrive rejects to the press, which reports it under the loaders' policy (garage.ts)
   onCouch: (request) => {
-    void Promise.all([couchOwner.preload(), import('./ui/couchLobby.ts')])
-      .then(([runtime, lobby]) => lobby.openCouchLobby(runtime, request))
-      .catch((error) => console.error('[couch] the lobby failed to open', error));
+    return openCouchWhenCurrent({ ticket: request.ticket, load: () => Promise.all([couchOwner.preload(), import('./ui/couchLobby.ts')]),
+      open: ([runtime, lobby]) => lobby.openCouchLobby(runtime, request) });
   },
   onPlayRequest: (request) => playSurface.open(request).catch((error) => {
     console.error('[play-menu] failed to open', error);
@@ -2037,9 +2041,8 @@ const nightLighting = createNightLightingAccess({
   getCameraForward: () => camera.getWorldDirection(_nightCameraForward),
   isNight: () => battleAtmosphere.current?.weather?.timeOfDay === 'night',
   isBattlePresentation: () => game.phase !== 'garage' && !studio.active,
-  isEntityVisible: (entity) => entity.networkVisible !== undefined ? entity.networkVisible
-    : watchRevealsAll(game) || entity.team === (game.player?.team ?? 'player')
-      || game.spotting?.isSpotted(entity.id, game.player?.team ?? 'player', game.player) === true,
+  // (round 8 Y3/Y4) the one visibility rule (src/game/playerVisibility.ts), as the auxiliary effects and the crew read it
+  isEntityVisible: (entity) => isPlayerVisible(game, entity),
   // (local-fps-266) a battle's lit set is fixed with the night pool's: the hemisphere and the anti-sun fill leave it where
   // they hold 0 (the Garage's switch, setGarageSpots, takes them back)
   fixLitSet: () => lighting.setBattleLitSet(true),
@@ -3540,13 +3543,15 @@ const garageReturn = createGarageReturnAccess<BattleVisual>({
     showGarage: (specId: string) => garage.show(specId),
     poseGarageCamera: garageEnvironmentPresentation.poseCamera,
     startShowroom: () => showroom.start(),
-    triggerBattle: () => {
-      // Battle Again replays the entry it follows: a watched battle is watched again (the Deploy foot's Watch)
-      const button = document.querySelector<HTMLButtonElement>(battleEntryIntent.watched ? '[data-battle-watch]' : '.cot-battle');
-      if (!button || button.disabled) return false;
-      button.click();
-      return true;
-    },
+    // Battle Again replays the entry it follows through the Garage's own press, never a click on a button (round 8 Y4
+    // s3-04): a watched battle is watched again, a couch battle starts again with the phones here (or, with none, opens
+    // the couch lobby), any other entry is the BATTLE press (src/game/battleEntryIntent.ts replayBattleEntry)
+    triggerBattle: () => replayBattleEntry(battleEntryIntent, {
+      replay: (entry) => garage.replayEntry(entry),
+      couch: () => couchOwner.current,
+      openCouchLobby: () => garage.openCouch(),
+      seatName: (n) => t('pad.seat', { n }),
+    }),
   },
   audio,
   transition,
@@ -3737,6 +3742,8 @@ const soloBattleEntry = createSoloBattleEntryRuntime({
     campaignOperationId: options?.gameMode === 'frontline_assault' ? options.campaignOperationId ?? null : null,
     // a watched battle (the Deploy foot's Watch): Battle Again watches again
     watched: options?.watch === true,
+    // (round 8 Y4 s3-04) a couch battle (the Couch lobby's Start): Battle Again starts a couch battle again
+    couch: options?.couch ? { sides: options.couch.sides } : null,
   }),
   nextFrame: nextPaintFrame,
   isVisibleSpecId: (specId: string) => VISIBLE_TANK_IDS.includes(specId),
@@ -3824,7 +3831,7 @@ bus.on('ui:campaignNext', (payload) => {
   if (!operationId || !mapId) return;
   void battleAgainAction.run(() => {
     void beginLocalBattle({ specId: selectedVehicle.id, mapId, gameMode: 'frontline_assault', campaignOperationId: operationId });
-    return true;
+    return 'started';
   });
 });
 
@@ -3902,10 +3909,14 @@ const couchOwner = createLazyRuntimeOwner(
     camera,
     paused: () => settings.isOpen(),
     shellCode: shellTypeCode,
-    togglePause: () => { if (battlePhase.isBattle()) settings.toggle(); },
+    // (round 8 Y4 s3-05) the one phone pause rule (its resume never relocks the pointer), in a couch battle's phase: a dead
+    // seat 1 must not take Pause from the other seats (isBattleActive is seat 1's own battle settings)
+    togglePause: () => togglePhonePause(settings, () => battlePhase.isBattle()),
     emit: (type, payload) => bus.emit(type, payload),
     on: (type, listener) => bus.on(type, listener),
-    setSpectating: (on) => { document.body.classList.toggle('cot-spectating', on); currentHud()?.setCouchView(on); },
+    // (round 8 Y4 s3-02) the couch view by its own reason of the body class's owner (2026-11-02 audit F8), so no other
+    // owner's reason strips it; both writes happen only on a change (the runtime asks every frame)
+    setSpectating: (on) => { setBodyFlag('cot-spectating', 'couch', on); currentHud()?.setCouchView(on); },
   }),
 );
 // the HUD's shells and the damage panel name the tank a watcher rides or drives (read-only while riding)
@@ -4091,10 +4102,11 @@ const mainFrame = createMainFrameRuntime({
   // while every compositor frame, the boot card's tank included, waited). The warm now links them between frames first.
   isBootCovering: () => !bootComplete,
   isTransitionHoldingSceneForFadeIn: () => transition.holdingSceneForFadeIn,
-  // (269, the second solo battle at 97%) a Garage restore covers Garage frames only: a battle that took the screen from a
-  // Leave's restore still running owns its frames by its own cover, and its reveal waits for one of them. The return's
-  // own suppression is its declared state (2026-11-02 audit F3), never the diagnostic trace fields.
-  isPresentationRestoreCovering: () => game.phase === 'garage' && (garagePhasePresentation.restoringGpu || garageReturn.current?.framesSuppressed === true),
+  // (269, the second solo battle at 97%) a Garage GPU restore covers no battle frame: a battle that took the screen from a
+  // Leave's restore still running owns its frames by its own cover, and its reveal waits for one of them. (round 8 Y4
+  // s3-01) It still covers the shot runtime's own Garage restore, which runs in the phase 'shot'. The return's own
+  // suppression is its declared state (2026-11-02 audit F3), never the diagnostic trace fields, and covers Garage frames.
+  isPresentationRestoreCovering: () => (game.phase !== 'battle' && garagePhasePresentation.restoringGpu) || (game.phase === 'garage' && garageReturn.current?.framesSuppressed === true),
   cameraInput: camInput,
   getMobileAutoAim: mobileBattleInput.getAutoAim,
   rig,
@@ -4162,8 +4174,10 @@ onPresetChange(() => { invalidateGaragePresentation(); mapAmbience.refreshTier()
 bus.on('phase:change', () => {
   if (game.phase === 'garage') {
     // batch 19: the finished match's objective state, ruleset and operation never outlive the return
-    // (audit F2: the solo intent's watched flag stays for Battle Again, which replays the entry it follows)
-    battleEntryIntent.begin({ terrainVariant: null, campaignOperationId: null, watched: battleEntryIntent.watched });
+    // (audit F2: the solo intent's watched flag stays for Battle Again, which replays the entry it follows; round 8 Y4
+    // s3-04: and its couch, so a couch battle's Battle Again stays a couch battle)
+    battleEntryIntent.begin({ terrainVariant: null, campaignOperationId: null, watched: battleEntryIntent.watched,
+      couch: battleEntryIntent.couch });
     clearMatchSession(game);
   }
   frameLoop.restart();

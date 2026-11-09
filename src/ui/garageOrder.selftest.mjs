@@ -488,8 +488,8 @@ assert.match(garageSource, /const reportLoadFailure = [^]{0,200}?markLoadFailed\
   'a failed surface marks its triggers (the kit\'s markLoadFailed) and offers Reload page');
 assert.match(garageSource, /const reloadsForFailure = [^]{0,200}?if \(!pressFailed\(trigger\)\) return false;/,
   'a marked trigger\'s press reloads the page once it is online (the kit\'s pressFailed)');
-assert.match(garageSource, /if \(recordOpening \|\| reloadsForFailure\(recordTrigger, 'cot-record-load'/, 'the Service Record\'s open reads its trigger\'s failure');
-assert.match(garageSource, /if \(techTreeOpening \|\| reloadsForFailure\(techTreeTrigger, 'cot-techtree-load'/, 'the tech tree\'s open reads its trigger\'s failure');
+assert.match(garageSource, /if \(reloadsForFailure\(recordTrigger, 'cot-record-load'/, 'the Service Record\'s open reads its trigger\'s failure');
+assert.match(garageSource, /if \(reloadsForFailure\(techTreeTrigger, 'cot-techtree-load'/, 'the tech tree\'s open reads its trigger\'s failure');
 assert.match(garageSource, /reportLoadFailure\('cot-techtree-load', t\('garage\.techTree\.loadError'\),\s*\[techTreeTrigger, root\.querySelector<HTMLElement>\('\[data-mobile-nav="techTree"\]'\)\]\)/,
   'the tech tree\'s failure marks the bar\'s trigger and the phone menu\'s');
 assert.match(await readFile(new URL('./components/components.css', import.meta.url), 'utf8'),

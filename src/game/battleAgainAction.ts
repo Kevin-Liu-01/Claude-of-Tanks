@@ -1,11 +1,12 @@
 import type { RuntimeValue } from '../runtimeTypes.ts';
+import type { BattleAgainOutcome } from './battleEntryIntent.ts';
 
 interface FailureNotice {
   showGarageReturnFailure(error: RuntimeValue, retry?: (() => void) | null): void;
   hideGarageReturnFailure(): void;
 }
 interface BattleAgainActionOptions {
-  action(trigger?: () => boolean): Promise<void>;
+  action(trigger?: () => BattleAgainOutcome): Promise<void>;
   loadFailure(): Promise<FailureNotice>;
   getPhase(): string;
   getEntryGeneration(): number;
@@ -60,7 +61,7 @@ export function createBattleAgainAction({
       reportError('Battle Again failure notice unavailable', noticeError);
     }
   };
-  const run = (trigger?: () => boolean): Promise<void> => {
+  const run = (trigger?: () => BattleAgainOutcome): Promise<void> => {
     if (pendingAction) return pendingAction;
     const revision = ++actionRevision;
     invalidate();

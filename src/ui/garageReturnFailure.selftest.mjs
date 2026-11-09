@@ -177,7 +177,13 @@ assert.match(main, /void battleAgainAction\.run\(\)/,
   'the bus must use the action-scoped failure owner');
 assert.match(main, /loadFailure: \(\) => import\('\.\/ui\/garageReturnFailure\.ts'\)/,
   'the failure notice must remain outside successful boot and return acquisition');
-assert.match(main, /if \(!button \|\| button\.disabled\) return false;\s*button\.click\(\);\s*return true;/,
+// (round 8 Y4 s3-04) Battle Again replays the entry through the Garage's own press (garage.replayEntry), never a click on
+// a button (battleEntryIntent.selftest and mainFlowPorts.selftest drive it): a disabled control still starts nothing
+assert.match(main, /triggerBattle: \(\) => replayBattleEntry\(battleEntryIntent, \{\s*replay: \(entry\) => garage\.replayEntry\(entry\),/,
+  "Battle Again replays through the Garage's own press");
+assert.doesNotMatch(main, /button\.click\(\)/, 'no battle trigger clicks a button');
+const garageSource = await readFile(new URL('./garage.ts', import.meta.url), 'utf8');
+assert.match(garageSource, /const control = watch \? setupWatch : battleBtn;\s*if \(control\.disabled\) return false;/,
   'only the real enabled Garage control acknowledges a battle trigger');
 
 const endScreen = await readFile(new URL('./endScreen.ts', import.meta.url), 'utf8');
