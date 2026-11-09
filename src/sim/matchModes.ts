@@ -460,7 +460,13 @@ interface ObjectiveCheckpoint {
   flags: { team: ObjectiveTeam; x: number; y: number; z: number; status: FlagState['status']; carrierId: string | null; returnAtS: number | null }[];
   zones: { id: string; control: number; owner: ObjectiveTeam | null; contested: boolean }[];
   ball: BallState | null; ballActiveAtS: number; lastBallTouchS: number | null;
+  /** The CTF raid's stages (round 8 Y2 fix-up r3: a migrated host staged every raider afresh); absent when none. */
+  raids?: [string, RaidStage][];
 }
+/** One raider's stage (flagBots.raidStageM): when it reached it, and whether it has gone in. */
+interface RaidStage { atS: number; go: boolean }
+/** One attacker's plan (assaultBots): its point, when it reached the stage (null: not at it), and whether it pushes. */
+interface AttackStage { x: number; z: number; stagedAtS: number | null; pushing: boolean }
 /** Endless Horde's wave and queue, Frontline's line, counter-attack and trickle, and which pool identities rest. */
 interface WaveCheckpoint {
   wave: number; inactive: string[]; restedAt: [string, number][]; lastWaveIds: string[];
@@ -469,7 +475,9 @@ interface WaveCheckpoint {
   line?: { index: number; holdUntilS: number | null; regroup: { x: number; z: number; untilS: number; checkedS: number } | null;
     counter: { x: number; z: number; atS: number; untilS: number; ids: string[]; line: number } | null; fresh: string[];
     nextReinforceAtS: number | null; allyDownAt: [string, number][];
-    zones: { id: string; control: number; owner: ObjectiveTeam | null; contested: boolean }[] };
+    zones: { id: string; control: number; owner: ObjectiveTeam | null; contested: boolean }[];
+    /** The attack's plan per bot (round 8 Y2 fix-up r3: a migrated host staged every attacker afresh); absent if none. */
+    attack?: [string, AttackStage][] };
 }
 
 export interface MatchModeResult {
@@ -1527,7 +1535,8 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
   /**
    * The attack's plan per bot (assaultBots, gameplay-modes-228), rebuilt once a second in id order: flank lanes for
    * `flankShare` of the attackers (odd ranks) until `flankConvergeM` from the zone; at the zone's edge a push waits for
-   * `pushMinGroup` attackers within `pushGroupM` (the anti-suicide rule) or `pushAfterS` there, then drives in.
+   * `pushMinGroup` attackers within `pushGroupM` (the anti-suicide rule) or `pushAfterS` there, then drives in. The mode
+   * checkpoint carries it (waves.line.attack), so a migrated host's attackers wait or push as the old host's did.
    */
   const assaultBots = ruleset.assaultBots ?? null;
   const attackPlan = new Map<string, { x: number; z: number; stagedAtS: number; pushing: boolean }>();
@@ -2150,7 +2159,8 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
   type FlagRole = 'recover' | 'escort' | 'defend' | 'raid';
   const flagRoles = new Map<string, { role: FlagRole; rank: number }>();
   let flagRolesAt = -Infinity;
-  /** The raid's stage per raider (flagBots.raidStageM): when it reached the stage, and whether it has gone in. */
+  /** The raid's stage per raider (flagBots.raidStageM): when it reached the stage, and whether it has gone in. The mode
+   *  checkpoint carries it (objectives.raids), so a migrated host sends a raider in when the old host would have. */
   const raidStaged = new Map<string, { atS: number; go: boolean }>();
   // the flags' state the roles were dealt for (status and carrier per flag), compared in place: no key is built per call
   const flagRolesSeen: { status: FlagState['status'] | null; carrierId: string | null }[] = [];
@@ -2767,7 +2777,12 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
         const live = zones.find((candidate) => candidate.id === zone.id);
         if (live) { live.control = zone.control; live.owner = zone.owner; live.contested = zone.contested; }
       }
+      // the attack's plan as the old host had it (round 8 Y2 fix-up r3): who stands at the stage since when, who pushes
       attackPlan.clear();
+      for (const [key, plan] of saved.line.attack ?? []) {
+        if (!finite(plan?.x) || !finite(plan?.z)) continue;
+        attackPlan.set(key, { x: plan.x, z: plan.z, stagedAtS: finite(plan.stagedAtS) ? plan.stagedAtS : Infinity, pushing: plan.pushing === true });
+      }
       if (state.line) state.line.index = lineIndex;
       if (state.horde) { state.horde.wave = wave; state.horde.total = lineCount(); }
     }
@@ -2880,7 +2895,9 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
         ...(ruleset.assault ? { line: { index: lineIndex, holdUntilS, regroup: regroup ? { ...regroup } : null,
           counter: counter ? { ...counter, ids: [...counter.ids] } : null, fresh: [...freshDefenders],
           nextReinforceAtS: Number.isFinite(nextReinforceAtS) ? nextReinforceAtS : null, allyDownAt: [...allyDownAt],
-          zones: zones.map((zone) => ({ id: zone.id, control: zone.control, owner: zone.owner, contested: zone.contested })) } } : {}),
+          zones: zones.map((zone) => ({ id: zone.id, control: zone.control, owner: zone.owner, contested: zone.contested })),
+          ...(attackPlan.size ? { attack: [...attackPlan].map(([key, plan]): [string, AttackStage] => [key,
+            { x: plan.x, z: plan.z, stagedAtS: Number.isFinite(plan.stagedAtS) ? plan.stagedAtS : null, pushing: plan.pushing }]) } : {}) } } : {}),
       } : null;
       return { elapsedS, score: { ...score }, weaponKills: [...weaponKills], teams: entities.map(entity => [entity.id, teamOf(entity)]),
         respawns: [...respawnAt].map(([key, value]) => [key, { ...value }]),
@@ -2891,13 +2908,16 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
           flags: flags.map((flag) => ({ team: flag.team, x: flag.x, y: flag.y, z: flag.z, status: flag.status, carrierId: flag.carrierId, returnAtS: flag.returnAtS })),
           zones: ruleset.assault ? [] : zones.map((zone) => ({ id: zone.id, control: zone.control, owner: zone.owner, contested: zone.contested })),
           ball: ball ? { ...ball } : null, ballActiveAtS, lastBallTouchS: Number.isFinite(lastBallTouchS) ? lastBallTouchS : null,
+          ...(raidStaged.size ? { raids: [...raidStaged].map(([key, staged]): [string, RaidStage] => [key, { atS: staged.atS, go: staged.go }]) } : {}),
         } } : {}),
         ...(huntSearch.size || huntPlan.size ? { hunt: captureHunt() } : {}) };
     },
     restoreCheckpoint(checkpoint) {
       // the mode clock the checkpoint was taken on (round 8 Y2 fix-up r2): a restored host's first route push asks for
-      // destinations before its first step sets the clock, and a hunter with no plan (one that arrived after the
-      // keyframe) re-planned every hunter on clock 0, its search and the plans' clock dated 0
+      // destinations before its first step sets the clock. On clock 0 a hunter with no plan (one that arrived after the
+      // keyframe) re-planned every hunter, its search and the plans' clock dated 0, and a stage that push opened read
+      // as waited out. The stages it reads are carried (fix-up r3: the CTF raid's, Frontline's attack plan), so on the
+      // mode's clock a raider or attacker goes in when the old host would have sent it (huntSearchMigration [6])
       if (Number.isFinite(checkpoint.elapsedS)) placementTimeS = checkpoint.elapsedS;
       score.alpha = checkpoint.score.alpha; score.bravo = checkpoint.score.bravo;
       weaponKills.clear(); for (const [key, value] of checkpoint.weaponKills) weaponKills.set(key, value);
@@ -2935,6 +2955,9 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
         if (ball && saved.ball) Object.assign(ball, saved.ball);
         ballActiveAtS = saved.ballActiveAtS;
         lastBallTouchS = saved.lastBallTouchS ?? -Infinity;
+        // each raider's stage as the old host had it (round 8 Y2 fix-up r3): when it reached it, whether it went in
+        raidStaged.clear();
+        for (const [key, staged] of saved.raids ?? []) if (finite(staged?.atS)) raidStaged.set(key, { atS: staged.atS, go: staged.go === true });
       }
       if (checkpoint.hunt) restoreHunt(checkpoint.hunt);
     },
