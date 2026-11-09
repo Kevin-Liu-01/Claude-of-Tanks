@@ -41,11 +41,11 @@ function node<K extends keyof HTMLElementTagNameMap>(tag: K, cls: string, parent
   const element = document.createElement(tag); element.className = cls; parent.append(element); return element;
 }
 
-/** A readout's figure and its unit (the unit in the label ink). */
-function stat(parent: HTMLElement, unit: string): HTMLElement {
+/** A readout's figure, its unit with it, and its label (in the label ink). */
+function stat(parent: HTMLElement, label: string): HTMLElement {
   const box = node('span', 'binocular-stat', parent);
   const value = node('b', 'num', box);
-  if (unit) node('small', '', box).textContent = unit;
+  if (label) node('small', '', box).textContent = label;
   return value;
 }
 
@@ -127,9 +127,9 @@ export function createAirSupportHud(parent: HTMLElement, bus: EventBus) {
   const kindGlyph = node('span', 'glyph', readout);
   const kindName = node('strong', 'binocular-kind', readout);
   const facts = node('span', 'binocular-group binocular-facts', readout);
-  const warn = stat(facts, `s ${t('airSupport.warning')}`);
+  const warn = stat(facts, t('airSupport.warning'));
   const where = node('span', 'binocular-group', readout);
-  const range = stat(where, 'm');
+  const range = stat(where, '');
   const bearing = stat(where, '');
   const state = node('span', 'binocular-state', readout);
   const hint = node('div', 'binocular-hint', binoculars);
@@ -231,8 +231,8 @@ export function createAirSupportHud(parent: HTMLElement, bus: EventBus) {
       const kind = strikeView.kind;
       if (glyphKind !== kind) { kindGlyph.innerHTML = icon(STRIKE_ICON[kind], { size: 20 }); glyphKind = kind; }
       setText(kindName, t(`airSupport.kind.${kind}`));
-      setText(warn, String(R[kind].warningS));
-      setText(range, String(Math.round(rangeM)));
+      setText(warn, `${R[kind].warningS} s`);
+      setText(range, `${Math.round(rangeM)} m`);
       setText(bearing, `${String(Math.round(((strikeView.heading * 180 / Math.PI) + 360) % 360)).padStart(3, '0')}°`);
       const locked = timeS < strikeView.lockedUntilS;
       setText(state, locked ? t('airSupport.state.called') : why ? t(`airSupport.state.${why}`) : t('airSupport.state.ready'));

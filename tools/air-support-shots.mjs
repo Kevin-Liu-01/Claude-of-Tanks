@@ -4,6 +4,7 @@
 // on Verdant (a desktop page, and a phone-tier page at a phone's landscape viewport); the hold only stages and shoots.
 //
 //   node tools/air-support-shots.mjs --out=DIR [--map=verdant] [--only=desktop|phone] [--no-perf] [--aircraft]
+//     [--gauntlet --locale=en-US [--sizes=WxH,WxH]]
 //     [--gauntlet] [--locale=en-US|zh-CN]
 //
 // Shots (DIR/*.png): the strip in third person; the strike view's binoculars with each call-in's reticle on the ground;
@@ -35,6 +36,12 @@ const GAUNTLET_SIZES = {
   desktop: [[2560, 1440], [1920, 1080], [1440, 900], [1280, 800], [1024, 600], [900, 700]],
   phone: [[844, 390], [390, 844]],
 };
+// --sizes=1920x1080,900x700: a re-capture of only the frames a change touches
+const sizesArg = arg('sizes');
+if (sizesArg) {
+  const keep = new Set(sizesArg.split(','));
+  for (const page of Object.keys(GAUNTLET_SIZES)) GAUNTLET_SIZES[page] = GAUNTLET_SIZES[page].filter(([w, h]) => keep.has(`${w}x${h}`));
+}
 mkdirSync(out, { recursive: true });
 const root = process.cwd();
 const receipt = { map: mapId, locale, shots: [], calls: [], errors: {}, perf: {}, gauntlet: {} };
