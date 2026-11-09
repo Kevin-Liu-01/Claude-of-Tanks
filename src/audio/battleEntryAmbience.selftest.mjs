@@ -14,16 +14,31 @@ import { createFakeContext, fakeBuffer } from './fakeAudioContext.test-support.m
 import { createBus } from '../game/stateCore.ts';
 import { GARAGE_SCENE, sceneForMap } from './environmentScenes.ts';
 
-// ---- one edge: every assignment of the battle phase emits it, so no entry path reaches a battle the engine missed.
+// ---- one edge: every write of the battle phase emits it, so no entry path reaches a battle the engine missed. (round 7
+// merge of 269 into the state machine fixes) The phase has one writer, the app lifecycle's transitionAppPhase
+// (game/appLifecycle.ts, 2026-11-02 audit F1), which announces phase:change; so each entry's write goes through it with
+// its announcement on (no `announce: false`), and nothing assigns the battle phase by hand.
 const root = fileURLToPath(new URL('../../', import.meta.url));
-const sites = execFileSync('git', ['-C', root, 'grep', '-n', '-F', "phase = 'battle'", '--', 'src/*.ts', ':!*.selftest.*'], { encoding: 'utf8' })
-  .trim().split('\n').filter(Boolean);
+const gitGrep = (...args) => {
+  try {
+    return execFileSync('git', ['-C', root, 'grep', '-n', ...args, '--', 'src/*.ts', ':!*.selftest.*'], { encoding: 'utf8' })
+      .trim().split('\n').filter(Boolean);
+  } catch (error) {
+    if (error.status === 1) return []; // git grep: no match
+    throw error;
+  }
+};
+const sites = gitGrep('-E', "transitionAppPhase\\([^,]+, 'battle'");
 assert.ok(sites.length >= 2, `the solo start and the online activation set the battle phase (${sites.length})`);
 for (const site of sites) {
   const [file, line] = site.split(':');
-  const after = readFileSync(new URL(`../../${file}`, import.meta.url), 'utf8').split('\n').slice(Number(line), Number(line) + 6).join('\n');
-  assert.ok(/emitPhaseChange\('battle'\)|emit\('phase:change', \{ phase: 'battle' \}\)/.test(after), `${file}:${line} emits the battle phase it sets`);
+  const call = readFileSync(new URL(`../../${file}`, import.meta.url), 'utf8').split('\n').slice(Number(line) - 1, Number(line) + 5).join('\n');
+  assert.ok(!/announce:\s*false/.test(call), `${file}:${line} announces the battle phase it sets`);
 }
+assert.deepEqual(gitGrep('-F', "phase = 'battle'"), [], 'no site assigns the battle phase past its one writer');
+const owner = readFileSync(new URL('../game/appLifecycle.ts', import.meta.url), 'utf8');
+assert.match(owner, /transition\(next, \{ reason, announce: shouldAnnounce = true, beforeAnnounce \}\) \{[\s\S]{0,600}?game\.phase = next;[\s\S]{0,400}?queued\.push\(/,
+  'the one writer announces each phase it writes (phase:change, unless a caller turns it off)');
 
 // ---- the engine down each path.
 const publicRoot = new URL('../../public/', import.meta.url);
