@@ -22,7 +22,7 @@
 // folds over ~23 % of the ground and stretches it past 8:1 over a fifth (measured on the noise's own bake, diag2), which
 // is harmless to the 80 m macro thresholds it was made for and smears any metre-scale field into long parallel strands —
 // Blackglass's "combed strokes" (c6), through the mosaic's patches.
-// Cost: six noise reads for the mosaic and the swaths, two for the worn ground, one for the stones' lag patches, seven for the town, two for the works floor, and one hash cell per stone layer
+// Cost: six noise reads for the mosaic and the swaths, two for the worn ground, one for the bare grounds' lag and crust, seven for the town, two for the works floor, and one hash cell per stone layer
 // (no loop, no neighbour search, no texture fetch of a layer). uLandTier sets the phones' share: 0 (Low and the phones' lower tiers) the
 // mosaic and the town's tones only, 1 adds the stones, 2 the full block.
 export const GROUND_SURFACE_GLSL = /* glsl */`  // ground-269 (groundSurfaceShader.ts): the ground-surface table's laws — the open ground's mosaic, the close stones and
@@ -91,7 +91,8 @@ export const GROUND_SURFACE_GLSL = /* glsl */`  // ground-269 (groundSurfaceShad
       vec3 gsA = a.rgb;
       gsA = mix(gsA, gsA * vec3(0.80, 0.92, 0.82), lush * 0.85);
       gsA = mix(gsA, strawC, cured * 0.55);
-      gsA = mix(gsA, soilC, gsThin * 0.60);
+      // (c11, Amberford's chase: "A shows more bare uniform ground between the tufts") the bare soil a little under half
+      gsA = mix(gsA, soilC, gsThin * 0.45);
       a.rgb = mix(a.rgb, gsA, min(1.0, gsSwardW));
       gsThin *= gsSwardW;
     }
@@ -132,6 +133,9 @@ export const GROUND_SURFACE_GLSL = /* glsl */`  // ground-269 (groundSurfaceShad
           // eased by the noise's own filtering past a few metres
           float yg = nz(uv, 1.7, vec2(0.19, 0.53)).r;
           floorC = grey * vec3(1.04, 1.02, 0.97) * (0.84 + 0.32 * tf) * (0.86 + 0.28 * yg);
+          // (c11, Amberford's yards: "B's yard dirt has more yellow straw variation; A flatter grey-brown") the floor carries
+          // half the drawn ground's own hue, strand by strand, against its mean's
+          floorC *= clamp(mix(vec3(1.0), (a.rgb / max(gL, 0.02)) / max(uMeanD.rgb / dL, vec3(0.02)), 0.5), vec3(0.6), vec3(1.6));
           floorC *= mix(1.0, 1.14, path) * mix(1.0, 0.80, hollow);
           floorC = mix(floorC, uMeanG.rgb * gMeadowTint * (0.85 + 0.30 * tf), weeds * 0.80);
           a.a = mix(a.a, mix(0.95, 0.80, hollow), gsTownW);
@@ -179,15 +183,29 @@ export const GROUND_SURFACE_GLSL = /* glsl */`  // ground-269 (groundSurfaceShad
       a.rgb = mix(a.rgb, wD, min(1.0, gsWornM));
       a.a = mix(a.a, a.a * 0.86, damp * min(1.0, gsWornM));
     }
+    // (c8 and c11, the Sahel 0-0-14 "identical": sand, snow, hardpan and regolith one even tone near and far, a class with
+    // no mosaic of the table's drawing only its close stones) the bare grounds' own mosaic, ~6 m over about a quarter of
+    // the open ground, gone by ~300 m: on sand, hardpan and regolith a lag of coarser stone, darker and warmer (a desert
+    // pavement), on snow a wind crust, greyer and glazed; the close stones lie in it
+    // (c12: the old ground's switch, open code 0, left this law on in both arms of every pair) it runs where the table does
+    float gsLag = 1.0;
+    if (uGsOpen.x < 0.5 && uGsNear.w > 0.0) {
+      float lagW = meadowG * (1.0 - fR) * gsOff * (1.0 - smoothstep(150.0, 300.0, camDist));
+      gsLag = smoothstep(0.54, 0.68, mix(0.5, nzq(uv, 0.05, vec2(0.83, 0.37)).x, tileVis(6.0)));
+      if (lagW * gsLag > 0.003) {
+        float lL = reduxLuma(a.rgb);
+        float lSat = smoothstep(0.15, 0.35, (max(a.r, max(a.g, a.b)) - min(a.r, min(a.g, a.b))) / max(lL, 0.02));
+        a.rgb = mix(a.rgb, a.rgb * mix(vec3(0.95, 0.97, 1.02), vec3(0.87, 0.82, 0.77), lSat), lagW * gsLag);
+        a.a = mix(a.a, a.a * 0.85, lagW * gsLag * (1.0 - lSat));
+      }
+    }
     // the close stones: one per hash cell, on the worn soil, the sward's thin patches and the town floor
     if (uLandTier > 0.5) {
       // (on a sward the stones lie where it thins over its soil; a class with no mosaic of the table's — sand, snow, the
       // canyons' hardpan, regolith, gravel — carries them over its open ground)
       // (c8, Redrock, Olympus and Whiteout near the camera: "an evenly spaced grid of pale grey dots", "pale disc spots that
-      // read stamped" — one stone a cell over all the open ground is the cells' own lattice) there they lie in lag patches,
-      // ~6 m, over about a quarter of it, the ground between bare
-      float gsLag = uGsOpen.x < 0.5 && (uGsOpen.z > 0.5 || uGsWorn.z > 0.5)
-        ? smoothstep(0.54, 0.68, nzq(uv, 0.05, vec2(0.83, 0.37)).x) : 1.0;
+      // read stamped" — one stone a cell over all the open ground is the cells' own lattice) there they lie in the lag
+      // patches (gsLag), the ground between bare
       float gsOpenS = uGsOpen.z > 0.5 ? (uGsOpen.x > 0.5 && uGsOpen.x < 2.5 ? gsThin : meadowG * (1.0 - fR) * gsOff * gsLag) * uGsOpen.w : 0.0;
       float gsWornS = uGsWorn.z > 0.5 ? fD * (1.0 - gsTownW) * keepM * gsOff * gsLag * uGsWorn.w : 0.0;
       float gsTownS = uGsTown.y > 0.5 ? gsTownW * uGsTown.z : 0.0;
@@ -233,7 +251,9 @@ export const GROUND_SURFACE_GLSL = /* glsl */`  // ground-269 (groundSurfaceShad
  * streets (yardW): Low and the phones' lower tiers draw its tones only. */
 export const GROUND_SURFACE_WORKS_GLSL = /* glsl */`  // ground-269 (groundSurfaceShader.ts): the works floor — a slag or cinder town floor over the lots, roads and hardstands
   // (ab7, Cinder Junction on the phone: the yard's coal-dust floor "near-black and featureless" beside the brick paths)
-  float wkF = uGsTown.x > 5.5 ? max(gWorksFloor, yardW * (1.0 - roadCore) * keepM) : 0.0;
+  // (c14, Ironworks' town pose: ash, rust and clinker laid half over a works street's setts read as tread plate) a works'
+  // paved street keeps its setts; its pads and its unpaved roads carry the floor
+  float wkF = uGsTown.x > 5.5 ? max(gWorksFloor * (1.0 - gPaveStreet), yardW * (1.0 - roadCore) * keepM) : 0.0;
   if (wkF > 0.003) {
     // (ab7, Ironworks: the slag lots, the works roads and the hardstands one black-grey tone from the chase camera to the
     // horizon — "dark asphalt with only track prints", flat on every view) ash blown into drifts, rust-stained ground,

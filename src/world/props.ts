@@ -298,6 +298,8 @@ import { MATCH_OBJECTIVE_LAYOUTS } from '../sim/matchObjectiveLayouts.ts';
 import { geologyBoulderSite, restsOnTalus, TALUS_DEG } from './landformGeology.ts';
 import { createPropCrushPresentation } from './propCrushPresentation.ts';
 import { installPaneStackDepth } from './paneStack.ts';
+import { climateOf, surfaceOf } from './maps/buildingStyleTable.ts';
+import { AppearanceLedger } from './maps/regional/appearance.ts';
 
 /** A seated hulk's ground support: its track runs' plane (wrecks.ts seatHulk) or the footprint's grounded pose. */
 type WreckSupport = ReturnType<typeof planGroundedObbPose> | ReturnType<typeof seatHulk>;
@@ -4028,6 +4030,8 @@ function* propsBuildSteps(
 
   // regional-buildings lane: the map's architecture kit (maps/regional/index.ts) — its default tones sit under the map's
   const regionalArchitecture = resolveRegionalArchitecture(P.architecture);
+  // (buildings-270) this build's look ledger: no two neighbouring buildings share every feature (regional/appearance.ts)
+  const lookLedger = new AppearanceLedger();
   if (regionalArchitecture?.surfaces.tones) P.tones = { ...regionalArchitecture.surfaces.tones, ...(P.tones || {}) };
   // the facades lane (2026-10-08): a kit's render painter (surfaces.render) paints each render family the map tones, under
   // that tone — the primary on its seed, plaster2 and plaster3 on the next (plaster3 borrows plaster2's relief below)
@@ -4325,6 +4329,9 @@ function* propsBuildSteps(
       'straw', 'hay', 'structureWood', 'structureCanvas', 'burlap', 'structureMetal', 'steel', 'regionalPlaster', 'regionalPlaster2', 'regionalPlaster3', 'regionalStone', 'regionalRoof', 'bridgeStone']) {
       if (mats[key]) mats[key].aoMapIntensity = 0.82;
     }
+    // (buildings-270) the roof covering's relief as the place's photos show it (its row's surface.tileRelief): the same
+    // texture, its normal map's scale
+    if (mats.regionalRoof && regionalArchitecture) mats.regionalRoof.normalScale.multiplyScalar(surfaceOf(mapId, regionalArchitecture.id)?.tileRelief ?? 1);
     // the scenery lane (wave 52, Verdant's village wall: its face in shade "a flat extruded slab with a near-black blocky
     // texture"): the field print's occlusion takes half the skylight in a joint, not four fifths, so a wall's shaded face
     // keeps its stones (the sunlit face, lit directly, hardly changes)
@@ -4658,7 +4665,7 @@ ${snowCap ? `
   /** The gate kinds this map can hang (gateKit.ts): the timber families everywhere, the stone and mud walls' on a kit. */
   function gateTypes(): Record<string, PropsDestructibleMeta> {
     const style = gateStyleFor(regionalArchitecture?.id, mapId);
-    const ctx = { style, stone: gateStoneOf(regionalArchitecture), render: { damp: regionalArchitecture?.weather?.damp ?? 0.3 } };
+    const ctx = { style, stone: gateStoneOf(regionalArchitecture, mapId), render: { damp: climateOf(mapId, regionalArchitecture?.id).damp } };
     const out: Record<string, PropsDestructibleMeta> = {};
     for (const kind of GATE_KINDS) {
       const mat = kind === 'gatestone' ? 'regionalStone' : kind === 'gateadobe' ? 'regionalPlaster' : 'structureWood';
@@ -4675,7 +4682,7 @@ ${snowCap ? `
    *  kit's vertex-coloured stone; a map whose place builds neither keeps the destruction stream's. */
   function wellTypes(): Record<string, PropsDestructibleMeta> {
     const out: Record<string, PropsDestructibleMeta> = {};
-    const ctx = { stone: wellStoneOf(regionalArchitecture) };
+    const ctx = { stone: wellStoneOf(regionalArchitecture, mapId) };
     const wf = wellFormFor(regionalArchitecture?.id, mapId);
     if (wf) {
       const timber = TIMBER_WELLS.has(wf), mat = timber ? 'structureWood' : 'regionalStone';
@@ -4702,7 +4709,7 @@ ${snowCap ? `
    *  column wellKit's 'saeule' on the kit's stone), on a map whose civic plan places them. */
   function civicTypes(): Record<string, PropsDestructibleMeta> {
     const out = { ...civicFurnitureTypes() } as Record<string, PropsDestructibleMeta>;
-    const ctx = { stone: wellStoneOf(regionalArchitecture), mobile: mobileProps };
+    const ctx = { stone: wellStoneOf(regionalArchitecture, mapId), mobile: mobileProps };
     out.memorialcolumn = {
       ...(CIVIC_RECORDS.memorialcolumn as unknown as PropsDestructibleMeta), mat: mats.regionalStone ? 'regionalStone' : 'stone',
       build: () => buildMonument('saeule', ctx, false), broken: () => buildMonument('saeule', ctx, true),
@@ -5709,7 +5716,7 @@ ${snowCap ? `
       // (a building a carriageway may still move takes no ground: its strip lies level)
       // (props.plannedSiteTwins: a twin is built from its partner's pose — its hashes and form choices — on its own ground)
       const rebuilt = yield* rebuildRegionalStructureSteps(regionalArchitecture, structureId, tmp, info, wallBucket,
-        { mapId, snowCap: structureContext.snowCap, seed, ...regionalSun,
+        { mapId, snowCap: structureContext.snowCap, seed, ...regionalSun, ...(kitPose ? {} : { ledger: lookLedger }),
           ground: fromRoad && P.roadBuildingClearance ? undefined : regionalGround(px, pz, rot, fit.y + 0.05) },
         kitPose?.x ?? px, kitPose?.z ?? pz, kitPose?.rot ?? rot);
       if (rebuilt) {
@@ -5822,7 +5829,7 @@ ${snowCap ? `
       ?? (footprintWet(entry.x, entry.z, info.w, info.d, entry.rot) ? footprintOf(tmp, info) : null);
     if (regionalArchitecture && !regionalDonor) {
       tmp = rebuildRegionalStructure(regionalArchitecture, entry.structure, tmp, info, entry.wall,
-        { mapId, snowCap: structureContext.snowCap, seed, ...regionalSun,
+        { mapId, snowCap: structureContext.snowCap, seed, ...regionalSun, ledger: lookLedger,
           ground: P.roadBuildingClearance ? undefined : regionalGround(entry.x, entry.z, entry.rot, fit.y + 0.05) },
         entry.x, entry.z, entry.rot) ?? tmp;
     }
@@ -5972,7 +5979,7 @@ ${snowCap ? `
         if (footprintWet(entry.x, entry.z, info.w, info.d, entry.rot)) continue;
         if (regionalArchitecture) {
           tmp = (yield* rebuildRegionalStructureSteps(regionalArchitecture, entry.ruined ? 'ruin' : 'rowhouse', tmp, info, entry.wall,
-            { mapId, snowCap: structureContext.snowCap, seed, ...regionalSun }, entry.x, entry.z, entry.rot)) ?? tmp;
+            { mapId, snowCap: structureContext.snowCap, seed, ...regionalSun, ledger: lookLedger }, entry.x, entry.z, entry.rot)) ?? tmp;
         }
         addStructureCollision(entry.ruined ? 'ruin' : 'rowhouse', tmp, entry.x, fit.y + 0.05, entry.z, entry.rot);
         _quat.setFromAxisAngle(_upAxis, entry.rot);
@@ -6095,7 +6102,7 @@ ${snowCap ? `
       // regional-buildings lane: the street row's draws and pose are settled; the map's kit swaps in its row house
       if (regionalArchitecture) {
         tmp = rebuildRegionalStructure(regionalArchitecture, ruined ? 'ruin' : 'rowhouse', tmp, info, rowWall,
-          { mapId, snowCap: structureContext.snowCap, seed, ...regionalSun, ground: regionalGround(x, z, rot, fit.y + 0.05) }, x, z, rot) ?? tmp;
+          { mapId, snowCap: structureContext.snowCap, seed, ...regionalSun, ledger: lookLedger, ground: regionalGround(x, z, rot, fit.y + 0.05) }, x, z, rot) ?? tmp;
       }
       addStructureCollision(ruined ? 'ruin' : 'rowhouse', tmp, x, fit.y + 0.05, z, rot);
       _quat.setFromAxisAngle(_upAxis, rot);
@@ -11620,7 +11627,7 @@ ${snowCap ? `
   // fine dressing on the kit's stone, the painted riser their far form (maps/terraceRisers.ts)
   const riserZones = (cfg as { terrain?: { terraces?: TerraceRiserZone[] } } | null)?.terrain?.terraces;
   if (riserZones?.length && !mobileProps && regionalArchitecture) {
-    const risers = yield* traceTerraceRisers(riserZones, { ground: (x, z) => heightField.getHeightAt(x, z), tint: gateStoneOf(regionalArchitecture)?.tint ?? [1, 1, 1],
+    const risers = yield* traceTerraceRisers(riserZones, { ground: (x, z) => heightField.getHeightAt(x, z), tint: gateStoneOf(regionalArchitecture, mapId)?.tint ?? [1, 1, 1],
       clear: (x, z) => heightField._roadDist(x, z) > 1.4 && !placedB.some((b) => Math.hypot(x - b.x, z - b.z) < b.rr + 0.5) });
     if (risers) buckets.regionalStone.push(...risers.parts.regionalStone);
   }

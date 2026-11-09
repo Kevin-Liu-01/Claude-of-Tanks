@@ -5,6 +5,12 @@
 export type CaptionSpeaker = "commander" | "gunner" | "loader" | "driver";
 
 export const CAPTION_SPEAKERS: Readonly<Record<string, CaptionSpeaker>> = {
+  air_call_artillery: "commander",
+  air_call_bomb: "commander",
+  air_call_recon: "commander",
+  air_call_strafe: "commander",
+  air_incoming: "commander",
+  aircraft_downed: "gunner",
   aircraft_overhead: "driver",
   ally_destroyed: "commander",
   ally_infected: "commander",
@@ -16,6 +22,7 @@ export const CAPTION_SPEAKERS: Readonly<Record<string, CaptionSpeaker>> = {
   aps_intercept_them: "gunner",
   aps_intercept_us: "commander",
   artillery_far: "loader",
+  artillery_incoming: "commander",
   autoloader_damaged: "loader",
   back_on_tracks: "driver",
   ball_reset: "commander",
@@ -160,6 +167,7 @@ export const CAPTION_SPEAKERS: Readonly<Record<string, CaptionSpeaker>> = {
   spotted_multiple: "commander",
   spotted_rear: "commander",
   spotted_right: "commander",
+  start_air_support: "commander",
   start_assault: "commander",
   start_ball: "commander",
   start_drone: "commander",

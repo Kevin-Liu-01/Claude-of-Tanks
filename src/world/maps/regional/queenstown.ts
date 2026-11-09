@@ -791,7 +791,5 @@ export const QUEENSTOWN_STYLE: ArchitectureStyle = Object.freeze<ArchitectureSty
     // (round 2: the cottages' and the hotel's roofs moved onto the weathered sheet: galvanised, red oxide, Brunswick green,
     // galvanised going to rust, each house its own, the moss and lichen of the wettest town in Australia toward the eaves)
     roof: [[1, 1, 1], [1.28, 0.82, 0.7], [0.84, 1.02, 0.88], [1.12, 0.94, 0.82], [0.86, 0.8, 0.74], [0.78, 0.74, 0.7]],
-    damp: 0.6, moss: 0.3,
   },
-  wear: 0.25,
 });

@@ -677,10 +677,8 @@ export const HOSTOMEL_STYLE: ArchitectureStyle = Object.freeze<ArchitectureStyle
     plaster: [[1, 1, 1], [0.96, 0.95, 0.92], [0.9, 0.9, 0.88], [1.0, 0.97, 0.92]],
     stone: [[1, 1, 1], [0.93, 0.93, 0.91], [0.86, 0.86, 0.85], [0.97, 0.95, 0.92]],
     roof: [[1, 1, 1], [0.9, 0.9, 0.88], [0.82, 0.8, 0.76], [1.05, 1.04, 1.02]],
-    damp: 0.55, moss: 0.25,
   },
   // shellfire and the fires of February 2022: more of the airfield's windows burnt out or boarded than a village's
-  wear: 0.45,
   // (the maps lane's Kestrel rebuild, 2026-10-15) the dachas' garden plots: a picket fence and gate round the yard, the
   // garden shed at its back, the kitchen-garden beds
   yard: DACHA_YARD,
