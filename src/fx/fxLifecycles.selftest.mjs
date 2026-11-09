@@ -18,6 +18,8 @@
 //    building; (round 8 Y6, s4-01: regression guards for the ground hit's named options) a late ground expiry keeps its
 //    marks and draws no second burst, and a solid round grazing the ground sprays forward and low where a plunge stands
 //    its spurt up;
+//  - (round 8 Y6, s4-02) a drone shot down (drone:down for its carrier, no shell event) never flies home and breaks up
+//    where it was; one lost in the air still flies home;
 //  - under the killcam's suppression the runtime keeps its scene graph hidden whatever its subsystems write each frame
 //    (they re-showed themselves), hides a child added meanwhile, and the release restores what each owner asked for
 //    (round 2 U31: by the veil its visuals are made under, never their own flags: replayVeil.selftest);
@@ -296,7 +298,7 @@ function fakeVisual() {
   fx.resetAll();
 }
 
-/** (round 8 Y6, s4-01) the ground-end guards' readings, for the log */
+/** (round 8 Y6, s4-01, s4-02) the ground-end guards' and the downed drone's readings, for the log */
 const groundEnds = {};
 // ---- one burst per HE round, whatever frames its events land on ----
 {
@@ -391,6 +393,52 @@ const groundEnds = {};
   fx.resetAll();
 }
 
+// ---- (round 8 Y6, s4-02) a drone shot down never flies home ----
+// Counter-drone fire kills the drone's shell with no shell event (sim/aerialCombat.ts strikeDrone); the bus's drone:down
+// names the carrier (both drivers). The runtime heard nothing of it, so the frame without the shell read as a recall: the
+// airframe flew home and landed on its dock while the crew called it down. The carrier's dock is the production mount
+// (missionAttachmentVisual, synced before each frame as the battle does), so a flight home here really starts.
+{
+  const { syncMissionAttachment } = await import('../game/missionAttachmentVisual.ts');
+  const { missionAttachmentTurretPivot } = await import('../sim/missionAttachment.ts');
+  const { getSpec } = await import('../vehicles/specs.ts');
+  const { AERIAL_RULES } = await import('../sim/matchRuleset.ts');
+  const spec = getSpec('m1a1_abrams_hc');
+  /** One carrier flying drone 77 over the battlefield for 20 frames; then the sim drops the shell (and, when `down`,
+   *  raises drone:down for the carrier in the same step), and 40 frames run (past the flight home's grace). */
+  const shotDown = (down) => {
+    const root = new THREE.Group(), turret = new THREE.Group();
+    turret.name = 'rig_turret'; turret.position.set(...missionAttachmentTurretPivot(spec)); root.add(turret);
+    root.position.set(10, 0, 0); root.updateMatrixWorld(true);
+    const view = { kind: 'drone', active: true, cooldownS: 0 };
+    const carrier = { id: 'p1', team: 'player', spec: { nation: 'USA' }, visual: { root }, state: { pos: new THREE.Vector3(10, 0, 0), yaw: 0 },
+      combat: { destroyed: false }, aerial: view };
+    const entities = new Map([['p1', carrier]]);
+    const { fx, bus } = runtime(entities);
+    const drone = { id: 77, pos: new THREE.Vector3(60, 25, 40), vel: new THREE.Vector3(0, 0, 14), spec: { tracer: 'DRONE' }, shooterId: 'p1',
+      ageS: AERIAL_RULES.drone.launchS + 2, distM: 80 };
+    const frames = (n, shells = []) => {
+      for (let i = 0; i < n; i++) { syncMissionAttachment(root, spec, view, false, 1 / 60); fx.update(1 / 60, shells, camera, (id) => entities.get(id) ?? null); }
+    };
+    const debris = () => fx.group.getObjectByName('fx-particles').children[9].geometry.instanceCount;
+    frames(20, [drone]);
+    const debrisBefore = debris();
+    if (down) bus.emit('drone:down', { id: 'p1', killerId: 'foe' });
+    view.active = false; view.cooldownS = AERIAL_RULES.drone.cooldownS;
+    frames(40);
+    const log = (fx.group.userData.droneFlightsHomeLog ?? []).map((e) => `${e.id}:${e.event}:${e.reason.split(' (')[0]}`);
+    const result = { home: fx.group.userData.droneFlightsHome().size, log, debris: debris() - debrisBefore };
+    fx.resetAll();
+    scene.remove(fx.group);
+    return result;
+  };
+  const control = shotDown(false), downed = shotDown(true);
+  assert.deepEqual([control.home, control.log], [1, ['77:start:owner p1']], `a drone lost in the air flies home (${control.log})`);
+  assert.deepEqual([downed.home, downed.log], [0, ['77:skip:downed']], `a drone shot down never flies home (${downed.log})`);
+  assert.ok(downed.debris > control.debris, `it breaks up where it was (${downed.debris} fragments thrown, ${control.debris} without)`);
+  Object.assign(groundEnds, { downedDebris: downed.debris, lostDebris: control.debris });
+}
+
 // ---- the scene graph stays hidden under the suppression ----
 {
   const { fx, frames } = runtime();
@@ -469,4 +517,4 @@ const groundEnds = {};
   for (const r of [once, twice, first, second, page]) r.fx.resetAll();
 }
 
-console.log(`fxLifecycles.selftest: deferred beats fire under suppression and never outlive their visual's life; a building's stages are laid once; smoke columns follow the fire; a hull's event point is on the hull where it stands now, never measured from an unseen hull's last sample; one burst per HE round (ground ends ${JSON.stringify(groundEnds)}); the scene graph stays hidden under the suppression; a bus takes one runtime`);
+console.log(`fxLifecycles.selftest: deferred beats fire under suppression and never outlive their visual's life; a building's stages are laid once; smoke columns follow the fire; a hull's event point is on the hull where it stands now, never measured from an unseen hull's last sample; one burst per HE round (ground ends ${JSON.stringify(groundEnds)}); a drone shot down never flies home; the scene graph stays hidden under the suppression; a bus takes one runtime`);

@@ -2,6 +2,8 @@
 // 2026-10-10). Presentation only: the sim's cooldown and every gameplay timing are untouched; the airframe is drawn by
 // exactly one owner every frame (the flight pool until the dock takes the landing over); an airframe that struck
 // something never returns; a destroyed or relaunched carrier, a blocked column or the time bound ends the flight home.
+// (round 8 Y6, s4-02) A drone shot down never flies home: the bus's drone:down names its carrier (markDowned), whichever
+// arrives first, the event or the frame that drops its shell, and however many lagging frames still list it.
 import assert from 'node:assert/strict';
 import { Group, Vector3 } from 'three';
 import { createDronePresentation } from './dronePresentation.ts';
@@ -21,7 +23,7 @@ function carrier() {
   syncMissionAttachment(root, spec, view, false, dt);
   return { root, view, destroyed: false };
 }
-function scene({ blockColumn = false } = {}) {
+function scene({ blockColumn = false, owner = 'p1' } = {}) {
   const tank = carrier(), group = new Group();
   let rays = 0, columnRays = 0;
   const world = { raycast(origin, direction, maxDist) {
@@ -35,11 +37,13 @@ function scene({ blockColumn = false } = {}) {
     }
     return null;
   } };
-  const events = [];
+  const events = [], downs = [];
   const pool = createDronePresentation(group, {
     onReturnEvent: (id, event, reason) => events.push(`${id}:${event}:${reason.split(' (')[0]}`),
+    // (round 8 Y6, s4-02) where a drone shot down breaks up
+    onDowned: (id, at) => downs.push({ id, at: at.clone() }),
     world: () => world,
-    resolveCarrier: (ownerId) => ownerId === 'p1'
+    resolveCarrier: (ownerId) => ownerId === owner
       ? { frame: missionAttachmentVisualFrame(tank.root), destroyed: tank.destroyed, flying: tank.view.active } : null,
   });
   const drawn = () => group.children.filter((m) => m.name.includes('airframes')).reduce((sum, m) => sum + m.count, 0);
@@ -52,7 +56,7 @@ function scene({ blockColumn = false } = {}) {
     for (const w of writes) pool.write(w.pos, w.vel, w.id, undefined, w.ageS, 'USA', undefined, w.owner);
     pool.end();
   };
-  return { tank, group, pool, drawn, frame, events, rays: () => rays, columnRays: () => columnRays, now: () => time };
+  return { tank, group, pool, drawn, frame, events, downs, rays: () => rays, columnRays: () => columnRays, now: () => time };
 }
 
 // 1. Recall over the battlefield: the airframe flies home at cruise height, descends the dock's column, hands over to
@@ -154,7 +158,104 @@ function scene({ blockColumn = false } = {}) {
   clearMissionAttachment(tank.root);
 }
 
+// 6. (round 8 Y6, s4-02) A drone shot down never flies home. Counter-drone fire kills its shell with no shell event
+//    (sim/aerialCombat.ts strikeDrone); the bus's drone:down names its carrier, and nothing in FX heard it, so the frame
+//    without the shell read as a recall: the airframe flew home and landed on its dock while the crew called it down
+//    and its break-up played. Each case flies free (past the launch) over the battlefield, owner 'p1'.
+{
+  const free = AERIAL_RULES.drone.launchS + 2, at = new Vector3(120, 30, -25), vel = new Vector3(-12, 0, 4);
+  const flight = (id, owner = 'p1') => ({ pos: at, vel, id, ageS: free, owner });
+  /** A carrier flying drone `id` for 20 frames, then the sim's loss (the dock's cooldown runs). */
+  const launched = (id, options) => {
+    const s = scene(options);
+    s.tank.view.active = true;
+    for (let i = 0; i < 20; i++) s.frame([flight(id, options?.owner)]);
+    assert.equal(s.drawn(), 1, `drone ${id} is drawn in flight`);
+    return s;
+  };
+  const lost = (s) => { s.tank.view.active = false; s.tank.view.cooldownS = AERIAL_RULES.drone.cooldownS; };
+  const afterGrace = Math.ceil((DRONE_RETURN.graceS + 0.5) / dt);
+  // (a) the solo order: drone:down comes in the step that kills the shell, before the frame that drops it
+  {
+    const s = launched(31);
+    assert.equal(typeof s.pool.markDowned, 'function', 'the presentation hears a drone shot down (markDowned)');
+    assert.equal(s.pool.markDowned('p1'), true, 'the carrier\'s live drone takes the mark');
+    lost(s);
+    for (let i = 0; i < afterGrace; i++) s.frame();
+    assert.equal(s.pool.returning().size, 0, 'a drone shot down never flies home');
+    assert.deepEqual(s.events, ['31:skip:downed'], 'the diagnostics name the downing, and no flight home starts');
+    assert.equal(s.drawn(), 0, 'its airframe is gone');
+    assert.equal(s.downs.length, 1, 'it breaks up once');
+    assert.ok(s.downs[0].id === 31 && s.downs[0].at.distanceTo(at) < 1e-9, 'where it was last drawn (the audio\'s break-up spot)');
+    clearMissionAttachment(s.tank.root);
+  }
+  // (b) a network seat: the event comes while lagging frames still list the shell (2 frames), then it is omitted
+  {
+    const s = launched(32);
+    s.pool.markDowned('p1'); lost(s);
+    for (let i = 0; i < 2; i++) { s.frame([flight(32)]); assert.equal(s.drawn(), 0, 'a lagging frame that still lists it never draws it again'); }
+    for (let i = 0; i < afterGrace; i++) s.frame();
+    assert.equal(s.pool.returning().size, 0, 'and it never flies home');
+    assert.deepEqual(s.events, ['32:skip:downed'], 'one end, the downing');
+    assert.equal(s.downs.length, 1, 'one break-up');
+    clearMissionAttachment(s.tank.root);
+  }
+  // (c) the frame that drops the shell first: its flight home's grace has begun when the event comes
+  {
+    const s = launched(33);
+    lost(s); s.frame();
+    assert.equal(s.pool.returning().get(33)?.phase, 'grace', 'the missing drone is in its flight home\'s grace');
+    s.pool.markDowned('p1');
+    for (let i = 0; i < afterGrace; i++) s.frame();
+    assert.equal(s.pool.returning().size, 0, 'the downing inside the grace ends it there: no flight home');
+    assert.deepEqual(s.events, ['33:start:owner p1', '33:skip:downed'], 'the grace never became a flight home');
+    assert.equal(s.downs.length, 1, 'one break-up, where the grace drew it');
+    clearMissionAttachment(s.tank.root);
+  }
+  // (d) an event later still (a network seat's lag past the grace): the flight home in transit ends where it is
+  {
+    const s = launched(34);
+    lost(s);
+    for (let i = 0; i < afterGrace; i++) s.frame();
+    const r = s.pool.returning().get(34);
+    assert.equal(r?.phase, 'transit', 'flying home');
+    const there = r.pos.clone();
+    s.pool.markDowned('p1'); s.frame();
+    assert.equal(s.pool.returning().size, 0, 'the downing ends the flight home where it is');
+    assert.equal(s.drawn(), 0, 'and never lands');
+    assert.deepEqual(s.events, ['34:start:owner p1', '34:end:downed'], 'the diagnostics name the end');
+    assert.ok(s.downs.length === 1 && s.downs[0].at.distanceTo(there) < 1e-9, 'it breaks up where it flew');
+    clearMissionAttachment(s.tank.root);
+  }
+  // (e) the control: the same flight, lost with no drone:down (a recall, its battery, the link's range), flies home
+  {
+    const s = launched(35);
+    lost(s);
+    for (let i = 0; i < afterGrace; i++) s.frame();
+    assert.equal(s.pool.returning().get(35)?.phase, 'transit', 'a drone lost in the air still flies home');
+    assert.equal(s.downs.length, 0, 'and breaks up nowhere');
+    clearMissionAttachment(s.tank.root);
+  }
+  // (f) the mark is the downed shell's, never a later launch's: the carrier's next drone flies and is drawn; a carrier
+  //     with no flight takes no mark; a numeric shooter id matches its string (the event's id)
+  {
+    const s = launched(36, { owner: 7 });
+    assert.equal(s.pool.markDowned('7'), true, 'a number-keyed carrier takes its string id\'s mark');
+    lost(s);
+    for (let i = 0; i < 3; i++) s.frame();
+    assert.equal(s.pool.markDowned('7'), false, 'a carrier with no flight takes no mark');
+    s.tank.view.active = true;
+    for (let i = 0; i < 5; i++) s.frame([flight(37, 7)]);
+    assert.equal(s.drawn(), 1, 'its next drone flies, drawn');
+    assert.deepEqual(s.events, ['36:skip:downed'], 'only the downed one ended');
+    // a reset forgets the marks: the same shell id written in the next battle draws
+    s.pool.markDowned('7'); s.pool.reset(); s.frame([flight(37, 7)]);
+    assert.equal(s.drawn(), 1, 'a reset forgets the marks');
+    clearMissionAttachment(s.tank.root);
+  }
+}
+
 // 5. The landing it hands over to is the dock's own law: from heightM straight down the certified column.
 assert.ok(DRONE_ARRIVAL.heightM > 1 && droneDockS(AERIAL_RULES.drone.rangeM, DRONE_RETURN.cruiseAboveDockM) < AERIAL_RULES.drone.cooldownS,
   'a lost or spent airframe at the link\'s edge is home before the next airframe is due');
-console.log(`droneReturn (${JSON.stringify(measured)}): recall flies home at cruise height, descends the column, one drawer through the hand-over, lands inside the unchanged cooldown, clamps close; impacts, unflown launches, lost or relaunched carriers and blocked columns never fly home`);
+console.log(`droneReturn (${JSON.stringify(measured)}): recall flies home at cruise height, descends the column, one drawer through the hand-over, lands inside the unchanged cooldown, clamps close; impacts, drones shot down (whichever comes first, however late), unflown launches, lost or relaunched carriers and blocked columns never fly home`);

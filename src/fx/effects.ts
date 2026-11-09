@@ -549,6 +549,9 @@ interface FxEventMap {
   'shell:unseen': { shellId: ShellId; shooterId?: ShellId | null };
   /** a mode revived a hull (both drivers: state.ts's mode events, battlePresentation mode_respawn) */
   'mode:respawn': { id?: unknown };
+  /** (round 8 Y6, s4-02) counter-drone fire shot down the drone of the carrier `id` (both drivers: state.ts droneHit,
+   *  battlePresentation's drone_down relay) */
+  'drone:down': { id?: unknown; killerId?: unknown };
 }
 
 /**
@@ -1265,6 +1268,9 @@ function* createFxSteps(
       const log = (root.userData.droneFlightsHomeLog ??= []) as { id: string | number; event: string; reason: string }[];
       log.push({ id, event, reason }); if (log.length > 32) log.shift();
     },
+    // (round 8 Y6, s4-02) a drone shot down breaks up where it was last drawn (the audio's break-up plays there): the
+    // interceptor's short burst, a flash, a spray of fragments and grey steel falling, and a small puff; nothing longer
+    onDowned: (_id, at) => apsIntercept(at, _UP, false),
   });
   // Diagnostics (films and probes): the flights home in progress, read off the FX group.
   root.userData.droneFlightsHome = () => drones.returning();
@@ -7427,6 +7433,12 @@ function* createFxSteps(
           else if (water) waterSplash(_v3, e.caliberMm || 76, false);
           else dirtPlume(_v3, e.caliberMm || 76, false);
         }
+      });
+      // (round 8 Y6, s4-02) a drone shot down raises no shell event (the sim kills its shell silently: aerialCombat.ts
+      // strikeDrone); drone:down names its carrier, so the presentation ends that carrier's flight as downed: no flight
+      // home while the crew calls it down and its break-up plays
+      onFxEvent(bus, 'drone:down', (e) => {
+        if (typeof e.id === 'string' || typeof e.id === 'number') drones.markDowned(e.id);
       });
       onFxEvent(bus, 'tank:destroyed', (e) => {
         // Transition from a moving live-tank emitter to one world-fixed wreck
