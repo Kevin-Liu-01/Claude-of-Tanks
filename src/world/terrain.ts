@@ -4601,8 +4601,8 @@ uniform vec4 uPaveClass, uPaveWear, uPaveTown;
 uniform float uPaveLow;
 // built-env-270b: the row's open built ground that names a surface (maps/builtEnvironmentTable.ts roads.ground): each its
 // centre and half extents (x, z, hw, hl) and (cos yaw, sin yaw, ROAD_SURFACE_CODE, 0); uPaveGroundN how many
-uniform vec4 uPaveGround[${PAVED_GROUND_MAX}];
-uniform vec4 uPaveGroundB[${PAVED_GROUND_MAX}];
+uniform vec4 uPaveGround[8]; // (PAVED_GROUND_MAX: builtEnvironmentTable.selftest pins the two)
+uniform vec4 uPaveGroundB[8];
 uniform float uPaveGroundN;
 // (R2) the procedural paving's (stone tone, a kerbed town's street class, centre lines, shell-hole fills)
 uniform vec4 uPaveExtra;
@@ -5307,7 +5307,7 @@ void splatCompute() {
   // (built-env-270b) the row's open built ground: paved in its own surface whatever the map's streets are (a place on an
   // unpaved map, a shrine's approach, a quay); tested only on the mask's room texels (a core off any centreline)
   if (uPaveGroundN > 0.5 && mk.r > 0.4 && dRoad > 10.0) {
-    for (int gi = 0; gi < ${PAVED_GROUND_MAX}; gi++) {
+    for (int gi = 0; gi < 8; gi++) {
       if (float(gi) >= uPaveGroundN) break;
       vec4 pg = uPaveGround[gi], pgB = uPaveGroundB[gi];
       vec2 pd = wp.xz - pg.xy;

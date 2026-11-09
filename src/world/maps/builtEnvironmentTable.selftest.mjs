@@ -93,6 +93,13 @@ for (const id of MAP_IDS) {
   }
 }
 assert.ok(groundPieces > 0, 'some rows lay open ground');
+{
+  // the material's arrays are sized 8 in its source (the ownership receipt reads literal declarations)
+  const terrainSrc = (await import('node:fs')).readFileSync(new URL('../terrain.ts', import.meta.url), 'utf8');
+  assert.equal(PAVED_GROUND_MAX, 8, 'the table and the material agree on 8 surfaced grounds');
+  assert.ok(terrainSrc.includes('uniform vec4 uPaveGround[8];') && terrainSrc.includes('uniform vec4 uPaveGroundB[8];')
+    && terrainSrc.includes('for (int gi = 0; gi < 8; gi++) {'), 'the material declares and loops over 8 grounds');
+}
 assert.equal(builtEnvironmentFor('studio-probe'), null);
 
 console.log(`builtEnvironmentTable.selftest: ${MAP_IDS.length} rows, ${MAP_IDS.filter((id) => BUILT_ENVIRONMENT[id].civic).length} civic styles, `
