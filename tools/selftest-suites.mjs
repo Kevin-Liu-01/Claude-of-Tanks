@@ -1835,6 +1835,9 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/mp/host/migrationState.selftest.mjs',
     'src/mp/host/matchHost.selftest.mjs',
     'src/mp/host/hostStopRace.selftest.mjs', // 2026-10-13 the MP stream: a core stopped during its world load starts no actor
+    // round 8 Y2 (s4-04): each seat holds the sealed boot configuration from its WELCOME on (sealed once, sent with the
+    // WELCOME); a roster fallback keeps a present player's room loadout and gives a departed one's hull the defaults
+    'src/mp/host/matchHostCore.selftest.mjs',
     'src/mp/host/hostRuntimeStates.selftest.mjs', // 2026-11-02 audit M1/M3: a stopped or failed host stays so on a late ready; a core whose actor ended is stopped
     'src/mp/host/hostStandby.selftest.mjs', // 2026-10-14 the MP stream: a standby host thread boots on the world it prepared (§13.21)
     // 2026-11-02 audit round 5 Q1 (review r2): the host's fetch of the world kernels has a bound (HOST_KERNELS_FETCH_MS): a

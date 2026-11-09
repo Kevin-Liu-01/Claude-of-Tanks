@@ -21,7 +21,7 @@ import type { EraIndexer } from '../../../server/match/entityRows.ts';
 import { CLOSE_REASON, INPUT_MARGIN_UNKNOWN, MAX_CLIENT_MESSAGE_BYTES, MESSAGE_TYPE, NO_TICK, TICK_MS } from '../wire/constants.ts';
 import type { CloseReasonId } from '../wire/constants.ts';
 import { decodeMessage, encodeMessage } from '../wire/codec.ts';
-import type { EntityRow, SnapshotFrame } from '../wire/messages.ts';
+import type { EntityRow, SnapshotFrame, WireEvent } from '../wire/messages.ts';
 import { ROOM_MATCH_KEYFRAME_INTERVAL_MS, ROOM_MATCH_POLL_MS } from '../room/protocol.ts';
 import { verifySeatTokenWeb } from './seatTokenWeb.ts';
 import {
@@ -190,6 +190,9 @@ export function createMatchHostCore({
   // the authority's mode events the newest sealed keyframe holds (modeEventSerial at its capture)
   let keyframedModeEvents = 0;
   let lastConfigMs = -Infinity;
+  // the boot configuration's sealed chunks (round 8 Y2, s4-04): sealed once at the boot, as the configuration never changes
+  // for an actor; null before the seal, or when it failed (logged: the seats then hold none, as before)
+  let configChunks: WireEvent[] | null = null;
   let keyframeSeq = 0;
   let configSeq = 0;
   let migrationKeyframes = 0;
@@ -309,10 +312,10 @@ export function createMatchHostCore({
         gate.state = 'attached';
         const attached = live.attach(link, hello, verified.claims);
         if (!attached) { gates.delete(peer); return; }
+        // the seat holds the sealed configuration from its WELCOME on (round 8 Y2, s4-04): it followed within a housekeeping
+        // beat, sealed afresh, and a seat whose host went in that beat booted from the room's snapshot (planFromRoster)
+        deliverConfig(live);
         for (const queued of gate.queue.splice(0)) link.deliver(queued);
-        // a seat welcomed after the boot (late, re-HELLOed, or back after a reconnect) holds the sealed configuration
-        // within a housekeeping beat, not at the next CONFIG_INTERVAL_MS: elected inside that window, it could not resume
-        lastConfigMs = -Infinity;
       };
       // during the resume hold the seat waits, its frames queued, and is welcomed with the others when the world moves;
       // it hears how long the hold may still last (round 3 B1/X6)
@@ -453,14 +456,13 @@ export function createMatchHostCore({
     }
   }
 
-  async function broadcastConfig(): Promise<void> {
-    const live = actor;
-    if (!live || live.stopped || !config) return;
-    try {
-      await broadcastSealed(MIGRATION_EVENT_KIND.CONFIG, ++configSeq, live.tick, encodeBootConfig(config));
-    } catch (error) {
-      log('warn', 'migration config failed', { error: error instanceof Error ? error.message : String(error) });
-    }
+  /**
+   * The one delivery of the boot configuration (round 8 Y2, s4-04): its sealed chunks to every seat, at once, right after
+   * each WELCOME and on the CONFIG_INTERVAL_MS cadence. Every welcomed seat holds it, so an elected host boots from it.
+   */
+  function deliverConfig(live: MatchActor): void {
+    if (!configChunks || live.stopped) return;
+    for (const event of configChunks) live.broadcastEvent(event);
   }
 
   function housekeep(): void {
@@ -475,7 +477,7 @@ export function createMatchHostCore({
       // gap was replayed or lost by a resume from a keyframe dated before it); a keyframe still sealing defers it a beat
       const modeEventsSince = live.authority.modeEventSerial !== keyframedModeEvents && nowMs - lastKeyframeMs >= MODE_KEYFRAME_SPACING_MS;
       if (!sealing && (nowMs - lastKeyframeMs >= keyframeIntervalMs || modeEventsSince)) { lastKeyframeMs = nowMs; void broadcastKeyframe(); }
-      if (nowMs - lastConfigMs >= configIntervalMs) { lastConfigMs = nowMs; void broadcastConfig(); }
+      if (nowMs - lastConfigMs >= configIntervalMs) { lastConfigMs = nowMs; deliverConfig(live); }
     }
     if (live.stopped) {
       post({ type: 'stats', stats: stats()! });
@@ -526,7 +528,12 @@ export function createMatchHostCore({
     // (it starts beside the migration key now: a failure is the Promise.all's below, never an unhandled rejection meanwhile)
     fleetTimed.catch(() => {});
     migrationKey = await deriveMigrationKey(next.hostSecret);
-    const [world] = await Promise.all([worldTimed, fleetTimed]);
+    // the boot configuration, sealed once beside the world load (round 8 Y2, s4-04)
+    const sealedConfig = sealMigrationBlob(migrationKey, encodeBootConfig(next)).catch((error: unknown) => {
+      log('warn', 'migration config failed', { error: error instanceof Error ? error.message : String(error) });
+      return null;
+    });
+    const [world, , configBlob] = await Promise.all([worldTimed, fleetTimed, sealedConfig]);
     // a core stopped while its world loaded (the seat left the battle mid-entry) never starts an actor: its stop found none to stop
     if (bootGeneration !== generation || disposed || stopped) return;
     const resume = next.resume;
@@ -557,6 +564,7 @@ export function createMatchHostCore({
       if (applied.skipped) log('warn', 'resume rows without an entity', { skipped: applied.skipped });
       if (applied.destroyedUnknown) log('warn', 'resume destroyed props this world does not have', { unknown: applied.destroyedUnknown });
     }
+    configChunks = configBlob ? chunkMigrationBlob(MIGRATION_EVENT_KIND.CONFIG, ++configSeq, created.tick, configBlob) : null;
     actor = created;
     booted = true;
     endedReported = false;
