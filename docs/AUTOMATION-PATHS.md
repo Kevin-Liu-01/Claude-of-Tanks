@@ -246,7 +246,9 @@ Waits and polls built by hand:
 - `tools/track-system-audit.mjs`: a page function closed over the tank id with its own conditions; the tool sets the countdown itself
 <!-- /census -->
 
-Checks and receipt fields that are not waits (a precondition, a loop guard, a branch, a recorded value):
+Checks and receipt fields that are not waits (a precondition, a loop guard, a branch, a recorded value). A tool listed
+here waits only through the probe: the readiness selftest refuses a `waitForFunction` of its own that reads one of
+these facts (such a tool is a hand-built wait, listed above):
 
 <!-- census:stateReads -->
 - `tools/bot-combat-probe.mjs`: a loop guard: it stops stepping when the battle ends
