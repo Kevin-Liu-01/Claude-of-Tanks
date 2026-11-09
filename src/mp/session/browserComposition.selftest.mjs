@@ -650,6 +650,16 @@ assert.ok(harness.menu.updates >= 1, 'later room states update the attached lobb
   assert.equal(composition.stats().rounds, 2);
   assert.equal(harness.presentations.length, 2);
   assert.equal(harness.presentations[0].disposed, true);
+  // (round 8 Y1 s1-04) every round's loader starts silent: the battlefield scene's intent ends as its loading bed starts
+  // (a rematch from the result screen is still the battle phase, where ambientOn(false) stops the last battle's scene),
+  // and comes back only with the reveal
+  const audio = calls.filter((call) => typeof call === 'string' && call.startsWith('audio.') && call !== 'audio.resume');
+  const starts = audio.flatMap((call, index) => (call === 'audio.loading:true' ? [index] : []));
+  assert.equal(starts.length, 2, `two rounds, two loaders (${audio})`);
+  for (const index of starts) {
+    assert.equal(audio[index - 1], 'audio.ambient:false', `each round's loader starts with the battlefield scene off (${audio})`);
+    assert.deepEqual(audio.slice(index + 1, index + 3), ['audio.loading:false', 'audio.ambient:true'], 'and the scene returns with the reveal');
+  }
 }
 
 // ------------------------------------------------------------ a lost match link in a live round ends it as a disconnect once

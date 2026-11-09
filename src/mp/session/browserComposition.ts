@@ -1207,6 +1207,10 @@ export function createBrowserComposition({
       roster.emitBattleStart({ playerId: viewerId, specId: active.ownSpecId, mapId: active.mapId });
       showRoundLoad(viewerId, lobbyPlayers(sessionRound.room.players), ownPlayer, active.mapId, sessionRound.room.mode, active.round, 'Battle', sessionRound.room.settings.gameMode);
       load.audio.resume();
+      // (round 8 Y1 s1-04) every round loads in silence, as every other entry does: a rematch from the result screen is
+      // still the battle phase, so the last battlefield's scene played under the whole loader until this round's reveal
+      // (ambientOn(true) below). The intent ends with the loader's start: in a battle it stops the scene
+      load.audio.ambientOn(false);
       load.audio.loadingOn(true);
       // the lobby's vehicles (ours first): their engines, with the map's beds and the running gear, decode ahead of the
       // combat banks while the round loads, so its countdown sounds (2026-10-14)
