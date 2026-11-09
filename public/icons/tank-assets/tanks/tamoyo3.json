@@ -694,7 +694,7 @@
       }
     ]
   },
-  "geometryHash": "eb0715ec",
+  "geometryHash": "7f812979",
   "metadataHash": "9336f897",
   "presentationAnchor": {
     "xM": 0,
@@ -711,14 +711,14 @@
     "issues": [],
     "roles": {
       "wheelTire": 2,
-      "wheelDish": 9,
+      "wheelDish": 35,
       "suspensionLink": 1,
       "suspensionJoint": 1,
       "trackHardware": 4,
       "trackBand": 2,
       "trackPad": 1,
       "trackPadSimplified": 1,
-      "armorPaint": 13,
+      "armorPaint": 11,
       "gunmetal": 7,
       "opticGlass": 2,
       "trackSteel": 1,
@@ -753,15 +753,15 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 26092,
-      "sha256": "09a66b4d5c43e582cc60acdfcb0f2f9a166880a22afbf6f227b41333c6463421",
+      "bytes": 26120,
+      "sha256": "ae2b27aac3b682ec63308c401bd8bc1dc94ccc048edb3cd84e35bd95592d2018",
       "thumbnail": {
         "file": "thumbs/tamoyo3_angle.webp",
         "width": 256,
         "height": 256,
         "mime": "image/webp",
-        "bytes": 10888,
-        "sha256": "71d59a9a1ae8495e4775ef24e0045ad352776b554f3bfdc9db4f6a565f49489c"
+        "bytes": 10908,
+        "sha256": "c3e7fe05c6bc6f2dd4e9df45ace04a2ab9f8777624f07a92b4266555e7a491de"
       }
     },
     "top": {
@@ -777,8 +777,8 @@
       "width": 512,
       "height": 256,
       "mime": "image/webp",
-      "bytes": 10370,
-      "sha256": "4d468cc3c38ed606a3abca3d365567b5000bc4479b9149ec174d2140d06b45a1"
+      "bytes": 10630,
+      "sha256": "5c24e8d3befcb67f76f76b1a17020e95d0d0b2059f14495605ffde5bbe45d355"
     },
     "topSilhouette": {
       "file": "tamoyo3_top_silhouette.png",
@@ -801,24 +801,24 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 23250,
-      "sha256": "7671ceaa0ecf33ef237ff362ca0cc35eabbe8ae932468657aa2fe7b129dc8187"
+      "bytes": 23316,
+      "sha256": "188b8a91ffbc23af235ff924362a97f3c15a0170dfe79a7f3004ca63a0be6c0c"
     },
     "modulesSide": {
       "file": "tamoyo3_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 23350,
-      "sha256": "72bad101c240e2157858841fc04ef76f6ac594a6ed0776753019d6abbc023a15"
+      "bytes": 23372,
+      "sha256": "de755b9d6da5111ec1d053dcf297f590a3cc29c97ac3efb583ae812aeb6f53da"
     },
     "crewSide": {
       "file": "tamoyo3_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 21242,
-      "sha256": "08e320f6ca2078e764c7b763043843fd32febdac4c6c5c83b1fc4e8e6ac6e5d5"
+      "bytes": 21340,
+      "sha256": "2cecf2584d84edaf36df525b39924914fcb93af312274d66034c5f6ca7743f44"
     },
     "markings": {
       "file": "tamoyo3_markings.png",

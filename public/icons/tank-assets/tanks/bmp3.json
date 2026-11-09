@@ -435,7 +435,7 @@
       }
     ]
   },
-  "geometryHash": "9cc0fb22",
+  "geometryHash": "f14b4010",
   "metadataHash": "9e1826fb",
   "presentationAnchor": {
     "xM": 0.0051,
@@ -457,7 +457,7 @@
       "gunmetal": 16,
       "trackSteel": 1,
       "wheelTire": 2,
-      "wheelDish": 6,
+      "wheelDish": 8,
       "suspensionLink": 1,
       "suspensionJoint": 1,
       "trackHardware": 4,
