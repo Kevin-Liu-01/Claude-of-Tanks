@@ -14,9 +14,10 @@
  * while the lobby socket reconnects, and ended for good. `move` is its one writer and refuses what padLobbyMoveAllowed
  * refuses (a move PAD_LOBBY_MOVES does not list: nothing leaves `ended`). No product path asks for a refused move today
  * (once ended, the socket is gone and a stale socket's frames are dropped), so the refusal is a guard, proven on the
- * rule itself (padLobbyResume.selftest.mjs). A setOpen asked while the socket cannot carry it (away, or the reconnect
- * still opening) is kept, the last one asked, and sent once the host holds the lobby again ('resumed'); a remembered
- * open flag is never replayed, so the host's own reply stays the truth (a window that lapsed meanwhile stays closed).
+ * rule itself (padLobbyResume.selftest.mjs). A setOpen asked while the socket cannot carry it (the first socket still
+ * connecting, the socket closing, away, or the reconnect still opening) is kept, the last one asked, and sent when the
+ * host holds the lobby (its first code, or 'resumed'). A sent ask is never sent again and no open flag is remembered
+ * across a drop, so the host's own reply stays the truth (a window that lapsed meanwhile stays closed).
  * The resume's roll call (the host's `lobby` names how many seats it holds, a `seat` follows for each) lets go of a
  * seat whose phone left while the socket was away: the host could not tell this side then.
  *

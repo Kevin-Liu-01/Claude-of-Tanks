@@ -4,16 +4,19 @@
 // to close (setOpen(false)) during the blink: after the resume inside the desktop's grace the actor's window is closed
 // and the seats are kept (H0's padLobby dropped an ask its socket could not carry, so the window stayed open). No
 // product press reaches setOpen(false) on this branch: Start calls only request.start (couchLobby.ts) and Reopen, the
-// one product caller, is hidden while away; app-couch's Start (s3-09, couchRuntime.startBattle -> lobby.setOpen(false))
-// is the press this queue serves once it lands, and the Y11 merge runs the two together. The queue's own rules: an ask
-// made before the first code is sent with that code, and the newest ask wins (a second waiting ask replaces the first;
-// an ask that goes out drops one still waiting); no product path reaches them today. The reverse order: every phone
-// has left when the TV blinks; the lobby resumes instead of ending (its code was on screen), and a seat that leaves
-// while the TV is away leaves the desktop's grace in force and is let go on the TV once it is back (the resume's roll
-// call), in an emptied lobby and in one whose other phones stay (here or asleep). An ICE ask the lobby socket could
-// not carry is asked again once it is back. Reopen is not offered while the lobby reconnects and the lobby's paint
-// applies that (Reopen hidden, the Connecting note shown; pinned in couchLobby.ts's source), and the view's moves
-// follow one rule (padLobbyMoveAllowed).
+// one product caller, asks to open; app-couch's Start (s3-09, couchRuntime.startBattle -> lobby.setOpen(false)) is the
+// close this queue serves once it lands, and the Y11 merge runs the two together. Reopen reaches the queue in one gap:
+// a click while the host closes the lobby socket (closing, before its close event, so the view still says closed) waits
+// and goes out after the resume, once (H0 dropped it). The queue's own rules: an ask made before the first code is sent
+// with that code; the newest ask wins (a second waiting ask replaces the first; an ask that goes out drops one still
+// waiting); a sent ask is never sent again, and no open flag is remembered across a drop, so a window that lapsed stays
+// closed. No product path reaches the first-code send or the newest-ask rule on this branch. The reverse order: every
+// phone has left when the TV blinks; the lobby resumes instead of ending (its code was on screen), and a seat that
+// leaves while the TV is away leaves the desktop's grace in force and is let go on the TV once it is back (the resume's
+// roll call), in an emptied lobby and in one whose other phones stay (here or asleep). An ICE ask the lobby socket
+// could not carry is asked again once it is back. Reopen is not offered while the lobby reconnects and the lobby's
+// paint applies that (Reopen hidden, the Connecting note shown; pinned in couchLobby.ts's source), and the view's
+// moves follow one rule (padLobbyMoveAllowed).
 import assert from 'node:assert/strict';
 import { createHash, randomBytes } from 'node:crypto';
 import { readFileSync } from 'node:fs';
@@ -103,8 +106,18 @@ function memoryHost(code = 'K7Q4MZ') {
     actor.handleClose(host.desktopId);
     client.closedByHost();
   };
+  /** The host closes the TV's lobby socket cleanly (a restart that keeps the lobby): the TV's socket is CLOSING at once
+   *  (the close frame) and CLOSED, with its close event, a turn later. Browsers and ws keep that order (WHATWG), so a
+   *  click can land in between while the view still shows the host's last word. */
+  const closeDesktop = () => {
+    const client = clients.get(host.desktopId);
+    clients.delete(host.desktopId);
+    actor.handleClose(host.desktopId);
+    client.readyState = 2;
+    later(() => client.closedByHost());
+  };
   return Object.assign(host, {
-    actor, phone, dropDesktop,
+    actor, phone, dropDesktop, closeDesktop,
     createSocket: (url) => {
       const socket = new MemorySocket(url);
       host.onSocket?.(socket);
@@ -272,15 +285,19 @@ function closeWhenAway(lobby, also = () => {}) {
   lobby.end();
 }
 
-// ---- the setOpen queue's rules: the first code sends a waiting ask, and the newest ask wins (residual r1) -----------
+// ---- the setOpen queue's rules (residual r1, r2) ------------------------------------------------------------------
 // padLobby keeps one setOpen its socket could not carry (pendingOpen) and sends it once the host holds the lobby: with
 // the first code, or after 'resumed' (the first block). The newest ask wins: a second ask that waits replaces the
-// first, and an ask that goes out drops one still waiting. No product path reaches these rules today. Reopen, the one
-// product caller on this branch, is hidden while the lobby connects or is away. A Start needs a seated phone (so the
-// code has arrived) and closes the lobby's modal before it asks (app-couch's s3-09: Start -> couchRuntime.startBattle
-// -> lobby.setOpen(false)), so one Start makes one ask. These cases hold the rules for that Start and any later caller.
+// first, and an ask that goes out drops one still waiting. A sent ask is never sent again, and no open flag is
+// remembered across a drop, so a window that lapses stays closed. Reopen, the one product caller on this branch, reaches
+// the queue in one gap only: the host closes the lobby socket cleanly (a restart) and the socket is closing before its
+// close event, so the view still says closed and Reopen is offered (block (d); H0 dropped that click). Reopen is hidden
+// while the lobby connects or is away, so no product path reaches the first-code send or a second, different ask while
+// one waits on this branch. A Start needs a seated phone (so the code has arrived) and closes the lobby's modal before
+// it asks (app-couch's s3-09: Start -> couchRuntime.startBattle -> lobby.setOpen(false)), so one Start makes one ask.
+// These cases hold the rules for that Start and any later caller.
 {
-  // two asks wait while the TV is away (open, then close): the newer one (close) lands after the resume
+  // (a) two asks wait while the TV is away (open, then close): the newer one (close) lands after the resume
   const { host, lobby } = await lobbyWith(1);
   const seen = closeWhenAway(lobby, () => lobby.setOpen(true));
   host.dropDesktop();
@@ -293,7 +310,7 @@ function closeWhenAway(lobby, also = () => {}) {
   lobby.end();
 }
 {
-  // one ask waits (close, while away), then one goes out on the reopened socket before the host says 'resumed' (open):
+  // (c) one ask waits (close, while away), then one goes out on the reopened socket before the host says 'resumed' (open):
   // the one that went out wins, and the one that waited is dropped, not sent after it
   const { host, lobby } = await lobbyWith(1);
   const asked = { state: null };
@@ -317,7 +334,7 @@ function closeWhenAway(lobby, also = () => {}) {
   lobby.end();
 }
 {
-  // an ask made before the first socket opens waits for the first code (a new lobby never hears 'resumed')
+  // (b) an ask made before the first socket opens waits for the first code (a new lobby never hears 'resumed')
   const host = memoryHost();
   const lobby = padLobby.startPadLobby('ws://pad.memory', { seat: seatPorts, seatGone: () => {} }, { createSocket: host.createSocket });
   assert.equal(lobby.view.state, 'connecting', '(the lobby is still connecting)');
@@ -325,6 +342,61 @@ function closeWhenAway(lobby, also = () => {}) {
   await until(() => lobby.view.code, 'the first code');
   await settle();
   assert.equal(host.actor.exportState().joinUntil, null, 'a setOpen(false) asked while connecting closes the window once the first code arrives');
+  assert.equal(lobby.view.state, 'closed', 'and the TV shows it closed');
+  lobby.end();
+}
+{
+  // (d) a sent ask is never sent again. Its product path: Reopen on a closed lobby while the host closes the lobby socket
+  // (a restart). The socket is closing but its close event has not come, so the view still says closed and Reopen is
+  // offered; the click cannot go out and waits for the resume (H0 dropped it: the window stayed closed). The window it
+  // opened then lapses on the host, and a second blink with no ask leaves the window closed.
+  const { host, lobby } = await lobbyWith(1);
+  lobby.setOpen(false);
+  await until(() => lobby.view.state === 'closed', 'the lobby closes');
+  host.closeDesktop();
+  assert.equal(lobby.view.state, 'closed', '(the socket is closing; its close event has not come)');
+  assert.equal(couchLobby.reopenOffered(lobby.view), true, 'Reopen is offered while the socket closes');
+  lobby.setOpen(true); // the Reopen click (couchLobby.ts: reopen's click handler)
+  await settle();
+  assert.equal(lobby.view.state, 'away', '(the close event came)');
+  assert.equal(host.actor.exportState().joinUntil, null, '(the click could not go out on the closing socket)');
+  await until(() => lobby.view.state !== 'away', 'the lobby comes back (or ends)');
+  await settle();
+  assert.ok(host.actor.exportState()?.joinUntil > host.now, 'a Reopen click that met the closing socket opens the window after the resume');
+  assert.equal(lobby.view.state, 'open', 'and the TV shows it open');
+  // the window lapses on the host (its alarm; the seat is kept, so the lobby stays)
+  host.advance(PAD_LOBBY_JOIN_MS + 1);
+  host.actor.tick();
+  await until(() => lobby.view.state === 'closed', 'the window lapses');
+  assert.equal(host.actor.exportState().joinUntil, null);
+  host.dropDesktop();
+  assert.equal(lobby.view.state, 'away', '(a second blink, with no new ask)');
+  await until(() => lobby.view.state !== 'away', 'the lobby comes back again (or ends)');
+  await settle();
+  assert.equal(host.actor.exportState().joinUntil, null, 'a sent ask is not sent again: the window that lapsed stays closed after a second blink');
+  assert.equal(lobby.view.state, 'closed', 'and the TV shows it closed');
+  lobby.end();
+}
+{
+  // (e) no open flag is remembered across a drop: a window that lapses while the TV is away stays closed after the
+  // resume, as the host says (a guard: H0 remembered none either)
+  const { host, lobby } = await lobbyWith(1);
+  // the window has a minute left when the TV drops (the desktop's grace is five)
+  host.advance(PAD_LOBBY_JOIN_MS - 60_000);
+  let lapsed = false;
+  lobby.subscribe((view) => {
+    if (view.state !== 'away' || lapsed) return;
+    lapsed = true;
+    // the window lapses on the host while the TV is away (its alarm; the seat is kept, so the lobby stays)
+    host.advance(60_001);
+    host.actor.tick();
+  });
+  host.dropDesktop();
+  await until(() => lapsed, 'the lobby goes away');
+  await until(() => lobby.view.state !== 'away', 'the lobby comes back (or ends)');
+  await settle();
+  assert.ok(host.actor.exportState(), 'the host still holds the lobby');
+  assert.equal(host.actor.exportState().joinUntil, null, 'a window that lapsed while the TV was away stays closed after the resume');
   assert.equal(lobby.view.state, 'closed', 'and the TV shows it closed');
   lobby.end();
 }
@@ -405,5 +477,5 @@ function closeWhenAway(lobby, also = () => {}) {
     'paint runs on the first view and on every view the lobby publishes');
 }
 
-console.log('padLobbyResume.selftest: PASS — a setOpen(false) asked while the TV is away reaches the host after the resume; a lobby whose phones left resumes after a blink; the grace stands when the last seat leaves while away; the roll call keeps the seats the host names; an ICE ask the socket could not carry is asked again; the setOpen queue sends a waiting ask with the first code and the newest ask wins; Reopen only on a closed lobby, and the paint hides it and shows Connecting while away; one state writer that asks the move rule');
+console.log('padLobbyResume.selftest: PASS — a setOpen(false) asked while the TV is away reaches the host after the resume; a lobby whose phones left resumes after a blink; the grace stands when the last seat leaves while away; the roll call keeps the seats the host names; an ICE ask the socket could not carry is asked again; the setOpen queue sends a waiting ask with the first code, the newest ask wins, a sent ask is never sent again (a Reopen that met a closing socket goes out once) and a window that lapsed while away stays closed; Reopen only on a closed lobby, and the paint hides it and shows Connecting while away; one state writer that asks the move rule');
 process.exit(0);
