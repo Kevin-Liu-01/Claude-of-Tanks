@@ -127,7 +127,7 @@ const twin = await plainWreckDisposed('merkava4', true);
   const disposed = new Map();
   const copies = bentCopies(gunG, alive, disposed);
   visual.resetDestroyed();
-  for (const [mesh, live] of alive) assert.equal(mesh.geometry, live, `merkava4: the rematch puts ${mesh.name} back`);
+  for (const [mesh, live] of alive) assert.ok(mesh.geometry === live, `merkava4: the rematch puts ${mesh.name} back`);
   visual.dispose();
   assertUndone('merkava4 reset then disposed', gunG, copies, disposed);
 }
