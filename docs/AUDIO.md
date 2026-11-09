@@ -868,11 +868,19 @@ crew-lines.json ─┐                    crew-voices.json
    intercom chain, so it can degrade with the radio module.
 
 `--dry` counts the takes whose first attempt is not cached and their
-characters (speech bills a credit per character) without calling the API.
+characters (speech bills a credit per character) without calling the API,
+planned exactly as the build plans them (`voicePlan.mjs` planLine).
 `--append` keeps every line's shipped takes and builds only the takes the
 script added after them: a rebuild re-picks among a take's cached attempts and
 re-encodes it, so a line that gains a take would otherwise churn the ones
 already approved (the Afrikaans "Laai nou." came back a different attempt).
+File `<line>_<n>` is always the script's take n, the take its caption shows
+(2026-11-08): a take whose request or master fails, that comes back empty, or
+whose attempts the budget stop cut short before one passed ends its line
+there, so the pack stays an aligned prefix (the soundAssets and captions
+receipts fail on the short pack) and an `--append` rerun resumes at that take.
+`--append` keeps by count, not by words: a take whose words change is rebuilt
+without it (`--lines <id>`).
 
 ### Rounds
 

@@ -17,10 +17,14 @@
 // Writes public/audio/voice/<lang>/<line>_<n>.webm and
 // src/audio/voiceManifest.generated.ts. `--dry` writes nothing and calls no
 // API: it counts the takes whose first attempt is not cached yet and their
-// characters (speech bills one credit per character). `--append` keeps each
-// line's shipped takes as they are and builds only the takes the script added
-// after them (a line that gains a take keeps the ones already approved; a
-// rebuild of a take re-picks among its cached attempts and re-encodes it).
+// characters (speech bills one credit per character), planned as the build
+// plans them. `--append` keeps each line's shipped takes as they are and builds
+// only the takes after them (a line that gains a take keeps the ones already
+// approved; a rebuild of a take re-picks among its cached attempts and
+// re-encodes it). File <line>_<n> is always script take n (voicePlan.mjs): a
+// take that fails, comes back empty or meets the budget stop before it passes
+// ends its line there, and --append resumes at it. --append keeps by count, so
+// a take whose words change is rebuilt without --append (--lines <id>).
 
 import { readFileSync, writeFileSync, existsSync, mkdirSync, rmSync, readdirSync, mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -228,6 +232,9 @@ async function bestTake(lang, line, text) {
       return cut;
     }
   }
+  // The budget or a quota stop cut this take's attempts (or its cuts) short before one passed: it is not built, so
+  // its line ends here and --append tries it again in full, never freezing an under-the-bar take by count.
+  if (best && best.sim < bar && stop) return null;
   return best;
 }
 
@@ -239,10 +246,12 @@ if (dry) {
   for (const lang of languages) {
     if (!cast[lang]) continue;
     for (const line of script.lines.filter((l) => !linesArg || linesArg.includes(l.id))) {
-      const kept = append ? (state[lang]?.[line.id]?.length ?? 0) : 0;
-      for (const text of (line[lang] || []).slice(kept)) {
+      const takesOf = line[lang] || [];
+      const plan = planLine({ previous: state[lang]?.[line.id] ?? [], takes: takesOf, append,
+        exists: (i) => existsSync(join(OUT, lang, `${line.id}_${i}.webm`)) });
+      for (const i of plan.build) {
         takes++;
-        const params = speechParams(lang, line, text, 0);
+        const params = speechParams(lang, line, takesOf[i], 0);
         if (speechCached(params)) continue;
         uncached++;
         chars += params.text.length;
@@ -268,7 +277,7 @@ for (const lang of languages) {
       const match = takeFileOf(line.id).test(name) ? Number(name.slice(line.id.length + 1).split('.')[0]) : -1;
       if (match >= plan.kept) rmSync(join(dir, name));
     }
-    state[lang][line.id] = await buildLine({
+    const { shipped } = await buildLine({
       previous,
       plan,
       stopped: () => stop,
@@ -282,10 +291,11 @@ for (const lang of languages) {
         return +facts.dur.toFixed(3);
       },
       onError: (i, error) => {
-        failures.push(`${lang}/${line.id}#${i}: ${error.message}`);
+        failures.push(`${lang}/${line.id}#${i}: ${error ? error.message : 'no take built'}; the line stops at take ${i} (--append resumes there)`);
         if (error instanceof ElevenLabsError && error.quota) stop = true;
       },
     });
+    state[lang][line.id] = shipped;
   });
   await Promise.all(jobs);
   console.log(`${lang}: ${Object.values(state[lang]).reduce((a, t) => a + t.length, 0)} takes shipped; spent so far ${spent}`);
