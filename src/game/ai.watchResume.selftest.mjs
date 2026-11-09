@@ -82,7 +82,10 @@
 // walk that read a record's footprint as its box passed, and every hull was whole on firm ground, so a slope law that
 // read neither the ground nor the hull's damage passed; the rock-to-rock park passes a stone and a tiered stone whose
 // boxes span its gap, a steep drawn top over soft ground and the same top with a red transmission came in, and the line
-// is laid a third time as a convex outline (the game's sandbag lines are crushable props: [12]'s comment on it). The
+// is laid a third time as a convex outline (the game's sandbag lines are crushable props: [12]'s comment on it). Round 8
+// Y2 (round seven's two open minors): the steep top's marsh covered the hand-back spot, so a slope law that read the
+// ground at the hull's spot passed; it lies over the top's way up only now, and a third hand-back on that top pins the
+// control both restarts rest on (whole, on firm ground, the dwell holds): twenty-five hand-backs in [12]. The
 // fixtures the two files share are ai.watchResume.test-support.mjs, on the authority's fleet (the two specs' combat
 // anatomy) for the player's fleet factory, with one navigation grid for every deck scene; [5], [6] and the search
 // scenes' waits no longer read the controller's snapshot (debugInfo, the costliest call) on ticks whose answer nothing
@@ -816,15 +819,25 @@ console.log('[12] the elevation lock\'s dwell counts the bot\'s own ticks: it ho
   // (floorReached: terrainTravelCostFactor of driveGroundTypeAt and state._debuff, as hullReaches reads a step). A top
   // rising 0.7 per metre from its edge, the hull left 2.1 m up it: the walk's points read it at about 0.68 per metre,
   // a rise well past the step at each. Whole on the fixture's firm ground (which the M1A1 reads as medium: it climbs
-  // 0.89 per metre there) this hand-back keeps the dwell; over soft ground (a marsh's: 0.52), or with the hull's
-  // transmission knocked out in the park (red: 0.3 of its power and 0.45 of its acceleration, so 0.21), it restarts. A
-  // walk that read the ground there as firm, or the hull as whole, climbed the top and kept the dwell
+  // 0.89 per metre there) this hand-back keeps the dwell (upSteepFirm, the control both restarts rest on: round 8 Y2, from
+  // round seven's completeness review); over soft ground (a marsh's: 0.52), or with the hull's transmission knocked out
+  // in the park (red: 0.3 of its power and 0.45 of its acceleration, so 0.21), it restarts. A walk that read the ground
+  // there as firm, or the hull as whole, climbed the top and kept the dwell. The marsh lies over the top's way up only
+  // (z 23.5-26), short of the spot the hull is left on (z 23) and of the spot it was taken on: the walk's decisive point
+  // (z 24.3-24.6, a 1 m rise over its 1.46 m step from the soft floor; any spacing the walk takes) is soft, the hand-back
+  // spot firm. A slope law that read the ground at the hull's spot (one lookup hoisted out of the walk) or at the park's
+  // spot found firm ground and kept the dwell (round 8 Y2, from both round-seven reviews: the marsh had covered the spot)
   const steepRamp = setConvexTopShape({ min: [-40, -0.5, 10], max: [-10, 3, 26] }, [-40, 10, -10, 10, -10, 26, -40, 26], [0, 26, 0, -0.7, 0], -0.5, 3);
-  const marsh = (x, z) => (x >= -40 && x <= -10 && z >= 10 && z <= 26 ? 'soft' : 'firm');
+  const upSteepFirm = await dwellHandBack((at) => [at[0], 23], [-16, 31], steepRamp, { onY: null, awayY: 2.1 });
+  ok(setupOk(upSteepFirm, 0, 2.1), `setup: the floor bot dwells on the ground; the watcher leaves it 2.1 m up a drawn top that rises 0.7 per metre on firm ground (${where(upSteepFirm)})`);
+  ok(kept(upSteepFirm),
+    `a 0.5 s park that left a whole hull up a drawn top it climbs on firm ground: the dwell holds (${label(upSteepFirm)})`);
+  const marsh = (x, z) => (x >= -40 && x <= -10 && z >= 23.5 && z <= 26 ? 'soft' : 'firm');
   const upMarshRamp = await dwellHandBack((at) => [at[0], 23], [-16, 31], steepRamp, { onY: null, awayY: 2.1, ground: marsh });
-  ok(setupOk(upMarshRamp, 0, 2.1), `setup: the floor bot dwells on the ground; the watcher leaves it 2.1 m up a drawn top that rises 0.7 per metre over soft ground (${where(upMarshRamp)})`);
+  ok(setupOk(upMarshRamp, 0, 2.1) && marsh(upMarshRamp.handedBackAt[0], upMarshRamp.handedBackAt[2]) === 'firm',
+    `setup: the floor bot dwells on the ground; the watcher leaves it 2.1 m up a drawn top that rises 0.7 per metre over soft ground, on a firm spot (${where(upMarshRamp)})`);
   ok(restarted(upMarshRamp),
-    `a 0.5 s park that left the hull up a drawn top too steep for it on soft ground: the dwell restarts (${label(upMarshRamp)})`);
+    `a 0.5 s park that left the hull up a drawn top too steep for it on the soft ground of its way up: the dwell restarts (${label(upMarshRamp)})`);
   const upSteepDamaged = await dwellHandBack((at) => [at[0], 23], [-16, 31], steepRamp,
     { onY: null, awayY: 2.1, damage: { transmission: { state: 'red' } } });
   ok(setupOk(upSteepDamaged, 0, 2.1), `setup: as upMarshRamp on firm ground, the hull's transmission knocked out in the park (${where(upSteepDamaged)})`);
