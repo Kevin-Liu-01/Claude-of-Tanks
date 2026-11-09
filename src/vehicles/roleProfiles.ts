@@ -195,6 +195,13 @@ export const VEHICLE_ROLE_PROFILES: Readonly<Record<string, VehicleRoleProfile>>
   strv105: { doctrine: 'flexible', viewM: 430, still: 0.198, moving: 0.138 },
   // the Olifant Mk 2: a stabilised commander's thermal sight high on its post; the tall box turret shows
   olifant_mk2: { doctrine: 'flexible', viewM: 450, still: 0.205, moving: 0.140 },
+  // release 269: the South African Centurions, the Mk 2's doctrine at their marks' optics
+  semel: { doctrine: 'flexible', viewM: 405, still: 0.200, moving: 0.138 },
+  olifant_mk1: { doctrine: 'flexible', viewM: 415, still: 0.200, moving: 0.138 },
+  olifant_mk1a: { doctrine: 'flexible', viewM: 430, still: 0.202, moving: 0.139 },
+  olifant_mk1b: { doctrine: 'flexible', viewM: 440, still: 0.203, moving: 0.139 },
+  // the TTD: the stabilised CS60N and GS60 with thermal, the 1,234 hp at 58 t
+  ttd: { doctrine: 'flexible', viewM: 455, still: 0.208, moving: 0.150 },
   // the AVRE: a close-assault engineer tank; its blade and demolition gun make it the easiest Centurion to spot
   centurion5_avre: { doctrine: 'assault', viewM: 380, still: 0.210, moving: 0.150 },
   // the Australian Mk 5/1: the Mk 3's flexible 20-pdr tank, its night sights and baskets

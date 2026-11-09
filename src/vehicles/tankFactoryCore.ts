@@ -53,7 +53,7 @@ import {
   setVehicleGroundFromRoot, resetVehicleGround, cloneVehicleMaterial, tagUnlitVehicleMaterials, LIVE_HULL_DENTS,
   LIVE_TURRET_DENTS, ARMOR_PAINT_ZONE_ATTRIBUTE, armorPaintMode,
 } from './materials.ts';
-import { bendGeometry, dentSamples, planBend, planDents, wreckBarrelSpan, wreckRandom, type WreckDent } from './wreckDents.ts';
+import { bendGeometry, cutAtKink, dentSamples, planBend, planDents, wreckBarrelSpan, wreckRandom, type WreckDent } from './wreckDents.ts';
 import type { TurretRingSeat, createTurretRingPresentation } from './turretRingWell.ts';
 import { loadTurretRingModule, turretRingModule } from './turretRingLoader.ts';
 import { normalizeTankAppearance, tagVehicleMaterial } from './appearanceAudit.ts';
@@ -10833,13 +10833,16 @@ export function* createTankRuntimeSteps(
     if (!span) return;
     const bend = planBend(span.zMin, span.zMax, rng, pop);
     if (!bend) return;
+    // the plan the gun took, in its frame (wreckGunBend.selftest holds every drawn piece to it)
+    gunG.userData.wreckBend = bend;
     gunG.traverse((object) => {
       if (!(object instanceof THREE.Mesh) || object instanceof THREE.InstancedMesh || !object.geometry?.attributes?.position) return;
       // (f17, 218: articulatedShadowBatchIntegration) the authored shadow proxies are never mutated: the articulated
       // shadow batch holds their packed copies, so the bend stays on the drawn gun
       if (object.userData.authoredShadowProxy) return;
       toGun.multiplyMatrices(gunInv, object.matrixWorld);
-      const bent = object.geometry.clone();
+      // cut along the crease first: a long tube with corners only at its ends bends as a straight chord beside the rest
+      const bent = cutAtKink(object.geometry, bend, toGun);
       bendGeometry(bent, bend, toGun, toGun.clone().invert());
       bent.computeBoundingBox();
       bent.computeBoundingSphere();
@@ -10873,6 +10876,7 @@ export function* createTankRuntimeSteps(
       if (bent !== original) bent.dispose();
     }
     liveBentGun.length = 0;
+    delete gunG.userData.wreckBend;
   }
 
   function startWreckPresentation(ageS: number): void {

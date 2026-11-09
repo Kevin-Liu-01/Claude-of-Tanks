@@ -6225,16 +6225,16 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 17850,
-      "sha256": "e4d74edf6ff2d3c1641761d9d375d402bdb411c5f5d00c8c19366de4c8f3b337"
+      "bytes": 17856,
+      "sha256": "1be64d4348e286175f686c5f357ece960eec888b2a9e56d8c23147a251a28aa0"
     },
     "modulesSide": {
       "file": "t90a_vladimir_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 16968,
-      "sha256": "0e2838b9f4fadc015ddac4124f97e367b05b17e067a784256bccf6180da407b9"
+      "bytes": 16924,
+      "sha256": "755e3b98440bea4cbdd739dd9b8ffc44710a5ae3393ef6a69dbbf44706e879bb"
     },
     "crewSide": {
       "file": "t90a_vladimir_crew_side.webp",
@@ -6242,7 +6242,7 @@
       "height": 512,
       "mime": "image/webp",
       "bytes": 14850,
-      "sha256": "e0d6c027f348a08c36c6ce03688aeee618817b78780aa91dee6f2d94a0227025"
+      "sha256": "463bb9e6fdec19fec50278f6425003ce743f8a9a64e35018167514a52c7b200c"
     },
     "angle": {
       "file": "t90a_vladimir_angle.webp",
@@ -6274,8 +6274,8 @@
       "width": 512,
       "height": 256,
       "mime": "image/webp",
-      "bytes": 10160,
-      "sha256": "6778c60922735cc5d654697f484e0d639eaf1a6f9bb16b6b9f26f8e636d031aa"
+      "bytes": 10150,
+      "sha256": "9be3155356c8efb0d508d2eea0c05cbb056cbdfa78bb66932fc1f456cf8f4994"
     },
     "topSilhouette": {
       "file": "t90a_vladimir_top_silhouette.png",
@@ -6298,8 +6298,8 @@
       "width": 256,
       "height": 128,
       "mime": "image/png",
-      "bytes": 34322,
-      "sha256": "85d5bac40b6996ce7d9e30a542c7e59a4bcf8c3f0f1b1ba673449d2d6bc8a4c1"
+      "bytes": 32679,
+      "sha256": "23f781492163efb67f56329166feed9e34111c8becda94c9031167668eee7ea4"
     },
     "technicalLabels": {
       "file": "t90a_vladimir_technical.json",

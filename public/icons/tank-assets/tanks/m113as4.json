@@ -738,16 +738,16 @@
       }
     ]
   },
-  "geometryHash": "c0cfcd96",
+  "geometryHash": "ea9b5f57",
   "metadataHash": "9afb7583",
   "presentationAnchor": {
-    "xM": -0.0001,
-    "zM": -0.0197
+    "xM": -0.0063,
+    "zM": -0.0276
   },
-  "presentationHash": "7e601f39",
+  "presentationHash": "b0d8e751",
   "presentationProjection": {
     "centerYM": 2.0649,
-    "topHalfM": 3.4933,
+    "topHalfM": 3.4849,
     "sideHalfM": 2.2095
   },
   "appearance": {
@@ -765,7 +765,8 @@
       "armorPaint": 12,
       "gunmetal": 7,
       "opticGlass": 2,
-      "unclassified": 6,
+      "wood": 1,
+      "unclassified": 14,
       "gearShadow": 2,
       "fittingPaint": 1
     }
@@ -794,16 +795,15 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 28162,
-      "sha256": "a084aa55a1b8ab2617be8437c3ddb5114153be09682664d8348f0456d4d36129",
+      "bytes": 29650,
+      "sha256": "7a47a50633ab2ee32897a462125d84abcb9f0bc185af8afe3b8f1481363ab30b",
       "thumbnail": {
         "file": "thumbs/m113as4_angle.webp",
         "width": 256,
         "height": 256,
         "mime": "image/webp",
-        "bytes": 11906,
-        "sha256": "297ae2c85ab7a863423e35a19ffed432bfefe62ea48283fe2c3d669b58497433",
-        "frame": [28,105,225,250]
+        "bytes": 12240,
+        "sha256": "4cc2c641387a43d91ece2771d58cb30f8f5b8b74b0d2e38a3b05457e0608c49c"
       }
     },
     "top": {
@@ -811,70 +811,70 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 14930,
-      "sha256": "5b3a5ddd57679da0678cefaa7b482b2e5a6329a35eccbd0fe8859d4efb6887b1"
+      "bytes": 18020,
+      "sha256": "dac0bb6865a8fb3ed71e4ce10f853eacd115ad6d1ebf61095d46248df7fbde89"
     },
     "side": {
       "file": "m113as4_side.webp",
       "width": 512,
       "height": 256,
       "mime": "image/webp",
-      "bytes": 13740,
-      "sha256": "190cefeae517d4d3a996d55a4b85737eb485e777c3cbcf43edcf30b8383dd8ce"
+      "bytes": 14356,
+      "sha256": "4e243ae8773877b5ce26882ce96c3410f613314c1e6dca99637aadb6eac4a1c3"
     },
     "topSilhouette": {
       "file": "m113as4_top_silhouette.png",
       "width": 128,
       "height": 128,
       "mime": "image/png",
-      "bytes": 1221,
-      "sha256": "34a411bd83ff4a580b13b6c9ef52545169576e3a353224b6b8c4d5b873356021"
+      "bytes": 1262,
+      "sha256": "8cb289febd45d4b5f60726d04ab412f5d9f65c0ad7c010807e5c2c99681859f6"
     },
     "sideSilhouette": {
       "file": "m113as4_side_silhouette.png",
       "width": 256,
       "height": 128,
       "mime": "image/png",
-      "bytes": 4438,
-      "sha256": "a91a9fdd25e6de8687b23ab69499bae184e38b93edeb1723a93d65c5095fdb78"
+      "bytes": 4580,
+      "sha256": "d9ae47650f76159f949d079da2b84ac700a2bfa01faeecc77a998d00c2a225d3"
     },
     "armorSide": {
       "file": "m113as4_armor_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 29610,
-      "sha256": "0857314e6f02cb5b79b60df3d62f2f81be546b3f367badcc506c1d95e8689313"
+      "bytes": 31528,
+      "sha256": "f184bf52a910b97ab5cf012a07e777f0116272bb301a239d74dcbbe1cd9ecbe8"
     },
     "modulesSide": {
       "file": "m113as4_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 31324,
-      "sha256": "95e31dd33aa5e0c36074dccf8de0ecfe6eb545670ec99af41a55d5aefcd34241"
+      "bytes": 32254,
+      "sha256": "cc17a3deae445a15cdef1abf3646df10b3bb94100a027bdc47fd9b7a19bd8cf5"
     },
     "crewSide": {
       "file": "m113as4_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 28816,
-      "sha256": "e24f26dd26a5bef77fad55d8d72cb3c2259daece5e3df2c5478d12b638321884"
+      "bytes": 30180,
+      "sha256": "66a2bc3a19bb09d0377515d7ed6d906c145979d69e6b5dbdeba18f72b9d96be9"
     },
     "markings": {
       "file": "m113as4_markings.png",
       "width": 256,
       "height": 128,
       "mime": "image/png",
-      "bytes": 36183,
-      "sha256": "afc6bf6e267204c91495acd9048f07064bc0ac2cca00a57b8d40eed45d18d68f"
+      "bytes": 33034,
+      "sha256": "2983c6b27d50197379799017b2b3c2be778dd77f5caa36096a6830f05c61f400"
     },
     "technicalLabels": {
       "file": "m113as4_technical.json",
       "mime": "application/json",
-      "bytes": 5537,
-      "sha256": "52ad3c8464a4bf0040bea9f843032b947c8274e98bd341db85f5441f760d36b9"
+      "bytes": 5548,
+      "sha256": "b95256aaa80e3d6b807e32506af178c1f2f171916cb384503367319766342e0a"
     }
   }
 }

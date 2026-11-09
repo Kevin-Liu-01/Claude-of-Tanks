@@ -959,16 +959,15 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 29886,
-      "sha256": "0d9975b330f11bba4f0da7bc618d0be3e5bbb9ec3738aaf15767a63bac2dfd5e",
+      "bytes": 29894,
+      "sha256": "9279766ef1a51ceaea28307578294cdcbd98a564b0a4b7064217b9aecfb20ed9",
       "thumbnail": {
         "file": "thumbs/redback_angle.webp",
         "width": 256,
         "height": 256,
         "mime": "image/webp",
-        "bytes": 12234,
-        "sha256": "31ef178d6c0a049732a0fe4775ee742c20e54bf15b36cc16330fd4f00c626037",
-        "frame": [26,110,226,249]
+        "bytes": 12236,
+        "sha256": "ca183be562597b78cb75eca5e7339fbe92280c115ccf03892ba17f672c639486"
       }
     },
     "top": {
@@ -1032,8 +1031,8 @@
       "width": 256,
       "height": 128,
       "mime": "image/png",
-      "bytes": 35899,
-      "sha256": "4b7163fe3cf0b3be40395c18b9cbaede71bfdf150fb3aa65c69a53afe7d42627"
+      "bytes": 33351,
+      "sha256": "0f1d3d7f8126b832408bd3df2ba5f86462c98f18562aad69e40af9fce1dd358a"
     },
     "technicalLabels": {
       "file": "redback_technical.json",

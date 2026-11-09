@@ -545,24 +545,24 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 25814,
-      "sha256": "5390fff37d135dd78e6fe7572575f72ea7c97f2d3f5a178bb93cf648c0ddb4b7"
+      "bytes": 25768,
+      "sha256": "cdcaaf219548a935f87bd9f1eace1ef3e8d7b628461a1bdd5913e5fd25dd6202"
     },
     "modulesSide": {
       "file": "amx30b_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 24600,
-      "sha256": "a3da09780e0a8ac991a7a9cef280510056c2097e92a20c12310534749d7784ef"
+      "bytes": 24614,
+      "sha256": "3ddb235d6a986be8827bf3dc478eae5f6f7472f2cd1f39b0531f2d937e4541a2"
     },
     "crewSide": {
       "file": "amx30b_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 22324,
-      "sha256": "bc9c805367516e8dfa1399c10074721eae8e029e7f3889f3abd94b19a4fe7f84"
+      "bytes": 22340,
+      "sha256": "788098abf1426d2216e20cd562a47df8da70c97c138dbb2bf4d14ef036afe6e3"
     },
     "angle": {
       "file": "amx30b_angle.webp",
@@ -585,16 +585,16 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 9274,
-      "sha256": "61f24440fe1892645cdaa643b50aae68c5cfb810fd5473f135cb4ddac4e125bb"
+      "bytes": 9264,
+      "sha256": "9fac0d7561ea77b793a11e7b6eee6322e89dcfa9fa2b24f12568636ecc0bc924"
     },
     "side": {
       "file": "amx30b_side.webp",
       "width": 512,
       "height": 256,
       "mime": "image/webp",
-      "bytes": 10698,
-      "sha256": "0ee1fb1df4814f18a9a66a5cee5c7e9145bd95821c7e026a240ea4811e092bae"
+      "bytes": 10706,
+      "sha256": "54dd53ad2d00c366693a146e8d797f54814879f96ef18524660a87d62c0a7ece"
     },
     "topSilhouette": {
       "file": "amx30b_top_silhouette.png",
@@ -617,8 +617,8 @@
       "width": 256,
       "height": 128,
       "mime": "image/png",
-      "bytes": 35682,
-      "sha256": "5516d1680bae7a4bc58b5e0ed302154763ca28586801dcd7b62972a32f8fafff"
+      "bytes": 32742,
+      "sha256": "7627ef203416443fc5eb300b1546307d24b5866d3a09b56246bc8d99d0f30ee2"
     },
     "technicalLabels": {
       "file": "amx30b_technical.json",

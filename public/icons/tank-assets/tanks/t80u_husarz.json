@@ -52278,7 +52278,7 @@
       "height": 512,
       "mime": "image/webp",
       "bytes": 19992,
-      "sha256": "902df25d480f78d71115b93102a8e3771d7a29b5d085834c98c3859976e3e143"
+      "sha256": "9b58f7679fc0380e2114cf5900cb802c55c947f728158cae3c3da8bf644cc236"
     },
     "side": {
       "file": "t80u_husarz_side.webp",
@@ -52309,8 +52309,8 @@
       "width": 256,
       "height": 128,
       "mime": "image/png",
-      "bytes": 33745,
-      "sha256": "61b47b7256916d0918e1002d59f41c92ad20a95653321991927695601d0a55cb"
+      "bytes": 30276,
+      "sha256": "fef9fe4e63e4e3824c3d4ead51178edf52a70f79f191af300e99ec76f81d1ac5"
     },
     "technicalLabels": {
       "file": "t80u_husarz_technical.json",

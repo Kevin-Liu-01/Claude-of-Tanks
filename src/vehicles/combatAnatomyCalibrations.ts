@@ -72,6 +72,7 @@ import { COMBAT_ANATOMY_CALIBRATIONS as CALIBRATIONS_RUSSIA } from './combatAnat
 import { COMBAT_ANATOMY_CALIBRATIONS as CALIBRATIONS_SABRAMK2SOURCEX } from './combatAnatomyGroups/sabraMk2SourceX.generated.ts';
 import { COMBAT_ANATOMY_CALIBRATIONS as CALIBRATIONS_SHERIDAN } from './combatAnatomyGroups/sheridan.generated.ts';
 import { COMBAT_ANATOMY_CALIBRATIONS as CALIBRATIONS_SINOSOVIETCONCEPTS } from './combatAnatomyGroups/sinoSovietConcepts.generated.ts';
+import { COMBAT_ANATOMY_CALIBRATIONS as CALIBRATIONS_SOUTHAFRICA } from './combatAnatomyGroups/southAfrica.generated.ts';
 import { COMBAT_ANATOMY_CALIBRATIONS as CALIBRATIONS_SOVIETHEAVY } from './combatAnatomyGroups/sovietHeavy.generated.ts';
 import { COMBAT_ANATOMY_CALIBRATIONS as CALIBRATIONS_STRV122X } from './combatAnatomyGroups/strv122X.generated.ts';
 import { COMBAT_ANATOMY_CALIBRATIONS as CALIBRATIONS_SWEDEN } from './combatAnatomyGroups/sweden.generated.ts';
@@ -172,6 +173,7 @@ export const COMBAT_ANATOMY_CALIBRATIONS: Readonly<Record<string, CombatAnatomyC
   CALIBRATIONS_SABRAMK2SOURCEX,
   CALIBRATIONS_SHERIDAN,
   CALIBRATIONS_SINOSOVIETCONCEPTS,
+  CALIBRATIONS_SOUTHAFRICA,
   CALIBRATIONS_SOVIETHEAVY,
   CALIBRATIONS_STRV122X,
   CALIBRATIONS_SWEDEN,

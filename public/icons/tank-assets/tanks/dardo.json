@@ -1289,24 +1289,24 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 31886,
-      "sha256": "68f9071db3549d1813c1063efa55633b04209dee4c913a45da87d64487d4b6c7"
+      "bytes": 31914,
+      "sha256": "2565b6b7e6b97a4b1b6356867cbb60045bd90afce17d97db61667ca0abe8f05b"
     },
     "modulesSide": {
       "file": "dardo_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 30832,
-      "sha256": "15f2409c1f0a1921af4e17d1dc222741ef82eb5872a2c53b8d421d35d8dc0c73"
+      "bytes": 30810,
+      "sha256": "3a9dbfa33460a7650c02c3a9e13baa6fc5e7969579da6d0c7d896fc71424fe1a"
     },
     "crewSide": {
       "file": "dardo_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 28072,
-      "sha256": "2c8ede1e1b0a1c2f6f7bf41cd9faf0950f8a0e76d99bf1805e4b6022c987c1b6"
+      "bytes": 28062,
+      "sha256": "bb8020d54982ceaadab7a807e90d19584056822b73992cdaff4ba7355aade3ee"
     },
     "angle": {
       "file": "dardo_angle.webp",
@@ -1329,16 +1329,16 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 14640,
-      "sha256": "14c1165e5ad0521f9383fe45de5a293880ee9c40fa84842bfeb3714caaabe537"
+      "bytes": 14636,
+      "sha256": "bb5294701b606d2b671272367ba2ac71dd39995f0522b5c8ee4b7349a994d931"
     },
     "side": {
       "file": "dardo_side.webp",
       "width": 512,
       "height": 256,
       "mime": "image/webp",
-      "bytes": 11788,
-      "sha256": "05b35f2e280e34541fe3de7f8e6c59fad12631a5a67855f645217b0c580d0ea9"
+      "bytes": 11774,
+      "sha256": "3df5de740de294c3a54922d831d5ac6f43a91f9c1722d1b84801e5ed9a0984ed"
     },
     "topSilhouette": {
       "file": "dardo_top_silhouette.png",
@@ -1361,8 +1361,8 @@
       "width": 256,
       "height": 128,
       "mime": "image/png",
-      "bytes": 34837,
-      "sha256": "4d52e031b935e37f7165843998ed89f3c72b3ecc11b09dedccfda0d7899a9bef"
+      "bytes": 32634,
+      "sha256": "e871f8383d246dc03cdea00aa6324d814a514a2c08ba7f918e66ddd757dabc2b"
     },
     "technicalLabels": {
       "file": "dardo_technical.json",

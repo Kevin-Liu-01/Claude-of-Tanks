@@ -617,8 +617,8 @@
       "width": 256,
       "height": 128,
       "mime": "image/png",
-      "bytes": 35435,
-      "sha256": "a9282189f73d40f100c33c7aa302ae0a226ef0ac995929e7fe59d9cd8159258b"
+      "bytes": 32768,
+      "sha256": "da6afe3ac39893fbcdff89d6136d8be0ae54d4d2d83463922724e21eef7a85d6"
     },
     "technicalLabels": {
       "file": "amx40_proto_technical.json",

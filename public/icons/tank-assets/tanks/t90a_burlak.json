@@ -5757,24 +5757,24 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 30842,
-      "sha256": "5f951aed9ab640c0b48a55e4f96531a9fc099638c3758900dcc0bcdb7178db63"
+      "bytes": 30760,
+      "sha256": "94b6fca9c77e9a77a5a883a9a7052f90bd045e81e98dbdb5c4e3c47977843e6a"
     },
     "modulesSide": {
       "file": "t90a_burlak_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 29436,
-      "sha256": "25bce96436fe6fdd375add3f4db227b700201ca9e291f47efb97bc2fffc9f243"
+      "bytes": 29400,
+      "sha256": "55c7570092900eecd78dc7eee88392e2a6cf16816a116d98aa5a2df56140d6fb"
     },
     "crewSide": {
       "file": "t90a_burlak_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 26716,
-      "sha256": "a66529231079dec8e40abf8d5338e3aecde55b769276534e100ab9a693d5aa78"
+      "bytes": 26692,
+      "sha256": "fd77d724e61dfb8e1a9641fc26f632fec3c6fc90a99462f3969d5eb01b7a803c"
     },
     "angle": {
       "file": "t90a_burlak_angle.webp",
@@ -5806,7 +5806,7 @@
       "height": 256,
       "mime": "image/webp",
       "bytes": 12308,
-      "sha256": "f5eaf38cd5ae5358356a224f0531b7af70f704a5291cf7add9552e8d927f2f30"
+      "sha256": "49c3c5c3f2b35c2da3db53f42e2218ffe8ed74ef325b22bfcaeec045a1b30f0f"
     },
     "topSilhouette": {
       "file": "t90a_burlak_top_silhouette.png",
@@ -5829,8 +5829,8 @@
       "width": 256,
       "height": 128,
       "mime": "image/png",
-      "bytes": 36858,
-      "sha256": "6ddd31699f56f5c18478318bb87d04f99ad3ee5e551d6c77f3c902c834cdabde"
+      "bytes": 32511,
+      "sha256": "7affcd6d0d20754d0631dfdde037751157697a62ccc7e1dcd39a406cf0c015a5"
     },
     "technicalLabels": {
       "file": "t90a_burlak_technical.json",

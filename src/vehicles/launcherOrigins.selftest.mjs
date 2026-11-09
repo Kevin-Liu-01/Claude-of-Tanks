@@ -141,9 +141,9 @@ for (const id of ids) {
 // 36 since main's compact-pod M6 Linebacker (FIM-92 Stinger tubes) joined the PR's 35; 37 at 266 (the roster's later
 // guided ids, among them the BMPT T-90, the TOS-1A Tagil, the T49 and the Griffin Viper); 38 with the original BMPT
 // Terminator's open Ataka tube pairs (bmpt_terminator, 267); 41 with 268's three SAM vehicles (the Tunguska-M's eight
-// 9M311M, the Pantsir-S1's twelve 57E6 and the PGZ-95's four QW-2, all from their own tubes); 45 with 269's Australian
-// line (the m113-hull-269 merge): the AS21 Redback's twin Spike LR2 and the M113A1 FSV's, MRV's and M113AS4's twin TOW
-assert.equal(ids.length, 45, 'review every missile/rocket vehicle when the roster changes');
+// 9M311M, the Pantsir-S1's twelve 57E6 and the PGZ-95's four QW-2, all from their own tubes); 42 at 268 with the M3A2's
+// TOW; 46 with 269's Australians (the Redback's Spike LR2 pair, the twin TOW on the M113A1 FSV, MRV and AS4)
+assert.equal(ids.length, 46, 'review every missile/rocket vehicle when the roster changes');
 // 8 since the T49's MGM-51C Shillelagh (266) joined the Sheridans', the MBT-70's, the M60A2's, the BMP-3s' and the M1A3's
 assert.equal(throughGun, 8, 'gun-launched exceptions remain explicit');
 assert(external >= 25 && stockProbes >= 100 && launches >= 200);

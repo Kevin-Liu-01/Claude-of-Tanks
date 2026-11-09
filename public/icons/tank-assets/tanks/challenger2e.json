@@ -2124,8 +2124,8 @@
       "width": 512,
       "height": 256,
       "mime": "image/webp",
-      "bytes": 8640,
-      "sha256": "d9c09770b24e88076f490a965d51c65d6ad146684e04e7495b9c5605dbc9ddf3"
+      "bytes": 8626,
+      "sha256": "ca396569bb62b8db504ac5fd63fd16bf3d3286b61006e29187bb2e5638a01a0c"
     },
     "topSilhouette": {
       "file": "challenger2e_top_silhouette.png",
@@ -2148,32 +2148,32 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 21786,
-      "sha256": "c647a733a32c3582c1f4a3a53293b9bc34a4aa22ef97be228b68d4d70ebf40ec"
+      "bytes": 21838,
+      "sha256": "fc42df51768821fd922cedeb09cceb890dded8cbbcb2041039e0d7615e5eaf37"
     },
     "modulesSide": {
       "file": "challenger2e_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 21098,
-      "sha256": "2ffbe9006512371f2174571a5c198223f63378ca93c2ef0757a12f17e0dcb420"
+      "bytes": 21106,
+      "sha256": "69fe451e210aec35d605fe9349165a8671b52ab9a1fbb33feb779013c60cf9f5"
     },
     "crewSide": {
       "file": "challenger2e_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 16816,
-      "sha256": "615fe1f714be331e2fb7ac7882ab695da13b11e947d123ad3d8cce99f78c6b17"
+      "bytes": 16848,
+      "sha256": "12d62d27f4d20970be3cd0b2cceff926ab4f1090cade94d2773a9460b591f9b5"
     },
     "markings": {
       "file": "challenger2e_markings.png",
       "width": 256,
       "height": 128,
       "mime": "image/png",
-      "bytes": 34372,
-      "sha256": "36a7d065f29015126c065a4a559e55c0c64f71544d769d7cc83a58c3c431b620"
+      "bytes": 33158,
+      "sha256": "35def910ef8ff9cd78f5aa49d147d66f7cf05b77d2207963768eb1a65dd2547c"
     },
     "technicalLabels": {
       "file": "challenger2e_technical.json",

@@ -66,6 +66,8 @@ import './shotKalSpecs.ts';
 import './centurion13Specs.ts';
 import './strv105Specs.ts';
 import './olifantMk2Specs.ts';
+// release 269: the South African line's Centurions (the Semel, the Olifant Mk 1, Mk 1A and Mk 1B)
+import './southAfricaSpecs.ts';
 import './centurionAvreSpecs.ts';
 import './centurionAusSpecs.ts';
 // release 269: the Australian line (the M113s, the Redback, the Leopard AS1 and the Abrams pair)

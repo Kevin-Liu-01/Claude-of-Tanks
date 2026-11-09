@@ -245,9 +245,12 @@ for (const [id, donorId, name] of entries) {
   // 267: the AMX-40 prototype's measured gun stops are its own build's (franceSpecs.ts); the X build is another hull
   if (id === 'amx40') delete spec.gunPitchByYawDeg;
   if (PRODUCTION_NUMBERS[id]) spec.visual.number = PRODUCTION_NUMBERS[id];
-  // 266 (owner 2026-10-31, the Challenger 1 camo sheet): the Op Granby Mk 3 in plain light stone, as the Bovington Gulf
-  // tanks; its Mk 2 donor wears the 1980s BAOR green and black (additionalFleetSpecs.ts)
-  if (id === 'challenger1_mk3') Object.assign(spec.visual, { scheme: 'solid', base: '#b59a70', weather: '#c7a97b', patches: [] });
+  // 266 (owner 2026-10-31, the Challenger 1 camo sheet): the Op Granby Mk 3 in light stone, as the Bovington Gulf tanks;
+  // its Mk 2 donor wears the 1980s BAOR green and black (additionalFleetSpecs.ts). 2026-11-03 (owner: "any tank without a
+  // proper camo need a proper camoo"; Main: no Caunter, a 1940-41 pattern on a 1980s hull): the 10-31 stone stays the
+  // base under a darker sand-brown disruptive with pale and dark bars, so it stays the stone mark beside the BAOR marks
+  if (id === 'challenger1_mk3') Object.assign(spec.visual, { scheme: 'merdc', base: '#b59a70', weather: '#c7a97b',
+    patches: ['#8a7050', '#d0b98f', '#4a3f30'], camoScale: 0.55, patchK: 1.3 });
   spec.balancePeerOf = donorId;
   stripSilhouetteDimensions(spec.dims);
   const previous = { ...spec.dims };

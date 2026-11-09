@@ -33958,16 +33958,15 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 33732,
-      "sha256": "6d666e762b3f728255625bab42fcf49d2da77de60764ed901b68fa28c02c9103",
+      "bytes": 33726,
+      "sha256": "7d0b3d51b537b82eac13c4764448a867e41b26e3032ff0591cfa47a0a8d30632",
       "thumbnail": {
         "file": "thumbs/m1a2_sepv3_aus_angle.webp",
         "width": 256,
         "height": 256,
         "mime": "image/webp",
-        "bytes": 12972,
-        "sha256": "2754f564eb05e51a83e826c982376b21b759b05d5abe30773fe2dca074d1ce85",
-        "frame": [22,77,227,249]
+        "bytes": 12974,
+        "sha256": "411210a85f26dbe1e042afbe10370589e09e7f8358b6a187745289cfccfbe08e"
       }
     },
     "top": {
@@ -33975,8 +33974,8 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 22630,
-      "sha256": "dabe14ef1dfe3a1cbe34d405c74a65ff177cd5b24b875c55bcdf652596be84d7"
+      "bytes": 22652,
+      "sha256": "88656399b9ae68ee1c7551117c6317dd74e1c40670ab052b211c67614946402b"
     },
     "side": {
       "file": "m1a2_sepv3_aus_side.webp",
@@ -34031,8 +34030,8 @@
       "width": 256,
       "height": 128,
       "mime": "image/png",
-      "bytes": 35642,
-      "sha256": "a7a683da4732f0dbb44da347cd0ff0c1e6501d536ba307d3b8fd997262e6e79a"
+      "bytes": 33069,
+      "sha256": "079ef479fa7dc2705e9ffc09e885efd4838a684f616d44017cbda25c84199c51"
     },
     "technicalLabels": {
       "file": "m1a2_sepv3_aus_technical.json",

@@ -659,15 +659,15 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 32502,
-      "sha256": "b87f0df9a973c0f3d1058557ab7d0eb979ecca171ddbff3c77aa27e2a4f8c6ae",
+      "bytes": 32522,
+      "sha256": "d2decf23d171ef21371aac89f6f3a50344cbebeb2eaf4499d8603e3176c65b5b",
       "thumbnail": {
         "file": "thumbs/m1a1_aim_sa_aus_angle.webp",
         "width": 256,
         "height": 256,
         "mime": "image/webp",
         "bytes": 12204,
-        "sha256": "16171ed18ba2f96a7d3ed02319ce330f27c52057bde793e4376a59e218a0a1ad"
+        "sha256": "2f423c4d1cf20b8b8d4d88270fe4c6d2af47744238a819939ff78dbb7b134abe"
       }
     },
     "top": {
@@ -675,8 +675,8 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 21710,
-      "sha256": "4015f5dc7c3e4c5e562d7903d1c758803847a0e39d458179237b24f2d893cc9f"
+      "bytes": 21706,
+      "sha256": "bfbd1af25f019a2268460a4a238e571c16ad0293d48fa08e5e34aee010ff1890"
     },
     "side": {
       "file": "m1a1_aim_sa_aus_side.webp",
@@ -731,8 +731,8 @@
       "width": 256,
       "height": 128,
       "mime": "image/png",
-      "bytes": 35243,
-      "sha256": "862b6b8ebd542d6848bc5d0c01468856c7413c6b07e42b02dab7b6acf47b68ad"
+      "bytes": 32759,
+      "sha256": "211569ecfbb15afad1d3b0d847d2c4f015482f3ef5f9681d4e00fbca850b8cd2"
     },
     "technicalLabels": {
       "file": "m1a1_aim_sa_aus_technical.json",

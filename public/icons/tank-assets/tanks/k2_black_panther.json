@@ -732,24 +732,24 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 17182,
-      "sha256": "59d4b33fbfedc75133f1169e0678210eacc74b9319dc20fb93be29d31689e983"
+      "bytes": 17128,
+      "sha256": "97ff0eb605faae23b8ed24e655f843c8924480c0d989da9392ab8966a8a605f8"
     },
     "modulesSide": {
       "file": "k2_black_panther_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 18852,
-      "sha256": "24959532693c9fdc34adb0ff5a5bb95d168f48d2901dd392cf64bdbb76915d15"
+      "bytes": 18848,
+      "sha256": "9569a4668d5764bfc3f600db745a0122116fb555287250c13050cdeeb03cbefa"
     },
     "crewSide": {
       "file": "k2_black_panther_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 16592,
-      "sha256": "027b956291236f79a34f6dc323382c9e441dd32da3b5b3cb8b75dc87ef7f5612"
+      "bytes": 16684,
+      "sha256": "4e0e8b808219d095e0ecba708b0016bdcd806524b046a1399f922f25bde514ce"
     },
     "angle": {
       "file": "k2_black_panther_angle.webp",
@@ -780,8 +780,8 @@
       "width": 512,
       "height": 256,
       "mime": "image/webp",
-      "bytes": 10962,
-      "sha256": "832a806f117e3bd78ca1b48efeab478e8e5964ba7047c05292ce0718d6c08b16"
+      "bytes": 10966,
+      "sha256": "9223f70cdbebd7c8cdc70a982f6dcb090ddfa1b1a3afd0fc61c3d018ae8d7608"
     },
     "topSilhouette": {
       "file": "k2_black_panther_top_silhouette.png",
@@ -804,8 +804,8 @@
       "width": 256,
       "height": 128,
       "mime": "image/png",
-      "bytes": 37335,
-      "sha256": "6b85839db6c620edc1d44d631f3b6b275e1de49e89478bccdc36074fe0159e54"
+      "bytes": 33358,
+      "sha256": "ddef4b32ed8328a1431602cc6fa26f866be3d0c968cdb856673226602c70c750"
     },
     "technicalLabels": {
       "file": "k2_black_panther_technical.json",

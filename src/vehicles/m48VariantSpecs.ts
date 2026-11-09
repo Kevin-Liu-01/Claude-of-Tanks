@@ -57,7 +57,9 @@ magach3.armor.turretPlates.push(
   reactivePlate('magach3_turret_era_L', 'left', BLAZER),
   reactivePlate('magach3_turret_era_R', 'right', BLAZER),
 );
-magach3.visual = { ...magach3.visual, marking: 'number', number: '3' };
+// the IDF's Sinai grey under field three-tone, sand-grey and dark slate patches (plain Sinai grey before; (owner 2026-11-03: "any tank without a proper camo need a proper camoo"))
+magach3.visual = { ...magach3.visual, scheme: 'nato', base: '#6f7566', weather: '#7b8172', patches: ['#8c8670', '#3c3f37'],
+  camoScale: 0.5, patchK: 1.4, marking: 'number', number: '3' };
 // measured by tools/gun-depression-sweep.mjs on the release-266 build (the Blazer on the glacis and the deck, the pleated
 // boot)
 magach3.gunPitchByYawDeg = [

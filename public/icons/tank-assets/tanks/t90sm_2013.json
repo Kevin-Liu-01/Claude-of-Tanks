@@ -4251,15 +4251,15 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 29542,
-      "sha256": "1c9dfcb5551fca08a9b1b634d62b1ee62a93293b9afff24ad300e87f2658d75e",
+      "bytes": 29560,
+      "sha256": "30d2fee9d13f3c62c1f826e0a885e7a82d893cf6033dd6000384df6606ae64eb",
       "thumbnail": {
         "file": "thumbs/t90sm_2013_angle.webp",
         "width": 256,
         "height": 256,
         "mime": "image/webp",
-        "bytes": 11566,
-        "sha256": "112e95c169c576f50998b1ee6a7531749f2d1d8ec992818792d61714d9188885"
+        "bytes": 11542,
+        "sha256": "1fd7500e22d7b78ae5e2f80dbf6f0faedb12a9caeef110fcf372475a0df8fc66"
       }
     },
     "top": {
@@ -4267,8 +4267,8 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 12778,
-      "sha256": "3bf8aca59f5e8c72a27b10e2bebf401596683015d432bb2914281b948c4184b7"
+      "bytes": 12770,
+      "sha256": "cbfec29c1d5bbab7aac58490297096a2a014a7429a518807d5339b9467f2cb06"
     },
     "side": {
       "file": "t90sm_2013_side.webp",
@@ -4323,8 +4323,8 @@
       "width": 256,
       "height": 128,
       "mime": "image/png",
-      "bytes": 35762,
-      "sha256": "ac81aadb198cadb244c0495dc9056c758d2596b924bf27dcb3f5d87f2bfba9c4"
+      "bytes": 32556,
+      "sha256": "842f5ac151babd3cdc41decd5b4c266193e7ce5e0268a2bbb6ffde90457bd74a"
     },
     "technicalLabels": {
       "file": "t90sm_2013_technical.json",

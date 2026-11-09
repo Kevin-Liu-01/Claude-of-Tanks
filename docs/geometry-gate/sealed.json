@@ -1,5 +1,5 @@
 {
- "generatedAt": "2026-11-08T19:10:11.802Z",
+ "generatedAt": "2026-11-07T14:52:42.826Z",
  "res": 256,
  "minArea": 6,
  "note": "Sealed-hull ledger: per-tank open (true opening), inside-out, see-through and netting pixel totals over the 33 census views, one row per playable id, each measured in the census frame recorded on its row (frame: [x, y, z, radius] in the tank root, so an unrelated extremity edit never moves the pixel grid). Gate: a tank may not exceed its ledger open px, nor its see-through px (the world seen through glass, markings or undeclared alpha-cut parts), by more than max(12, 10%), and a sealed tank must stay sealed; its netting px (sky between declared alpha-cut net and leaf dressing, netSeeThroughPx) must stay within max(12, 2%) of the row either way; an open row may not open in a view outside its openViewNames. The frame is fixed: a build whose own frame is within min(0.5 m, 15%) of it is judged in it; past that it fails OUT OF FRAME or FRAME STALE, the only cases --reframe serves (no column may exceed the row in the row's frame; never past half again the row's first frame). A plain update never changes a row; --tighten-ledger lowers one, --accept-see-through=<id>:<reason> raises see-through or netting and --reframe=<id>:<reason> re-frames, each recorded in the row's accepts history. (guards 229, 2026-10-20: every row re-measured in its recorded frame on integ/229 93cfe22c21.)",
@@ -1108,7 +1108,7 @@
    "openViews": 0,
    "insideOutPx": 228,
    "seeThroughPx": 0,
-   "netSeeThroughPx": 3960,
+   "netSeeThroughPx": 3731,
    "tris": 123430,
    "frame": [
     0,
@@ -1155,6 +1155,26 @@
      "from": {
       "seeThroughPx": 0,
       "netSeeThroughPx": 3266
+     }
+    },
+    {
+     "kind": "see-through",
+     "reason": "269 r16b the owner's 11-03 hull and turret rework (fender boxes, turret walls 7 cm taller, roof kit), so the woodland suit net re-drapes over the new turret and see-through stays 0",
+     "by": "kf51u-r16-269",
+     "date": "2026-11-04",
+     "from": {
+      "seeThroughPx": 0,
+      "netSeeThroughPx": 3960
+     }
+    },
+    {
+     "kind": "see-through",
+     "reason": "269 r17 the r16b critics' notes (upright rear drop blocks, keeled skirts, cut-back fender faces, coax jacket), so the woodland suit net reads through the new hull openings differently and see-through stays 0",
+     "by": "kf51u-r17-269",
+     "date": "2026-11-04",
+     "from": {
+      "seeThroughPx": 0,
+      "netSeeThroughPx": 3602
      }
     }
    ]
@@ -5435,111 +5455,6 @@
     5.5
    ]
   },
-  "m3a2_bradley": {
-   "sealed": true,
-   "openPx": 0,
-   "openViews": 0,
-   "insideOutPx": 298,
-   "seeThroughPx": 0,
-   "netSeeThroughPx": 0,
-   "tris": 82095,
-   "frame": [
-    0,
-    1.55,
-    -0.05,
-    4.2
-   ]
-  },
-  "tunguska_m": {
-   "sealed": true,
-   "openPx": 0,
-   "openViews": 0,
-   "insideOutPx": 174,
-   "seeThroughPx": 0,
-   "netSeeThroughPx": 0,
-   "tris": 90240,
-   "frame": [
-    0,
-    2.15,
-    -0.05,
-    5
-   ]
-  },
-  "pantsir_s1": {
-   "sealed": true,
-   "openPx": 0,
-   "openViews": 0,
-   "insideOutPx": 174,
-   "seeThroughPx": 0,
-   "netSeeThroughPx": 0,
-   "tris": 94124,
-   "frame": [
-    0,
-    2.15,
-    -0.05,
-    5
-   ]
-  },
-  "gepard_1a2": {
-   "sealed": true,
-   "openPx": 0,
-   "openViews": 0,
-   "insideOutPx": 376,
-   "seeThroughPx": 0,
-   "netSeeThroughPx": 0,
-   "tris": 103219,
-   "frame": [
-    0,
-    2.5,
-    0.3,
-    5.1
-   ]
-  },
-  "pgz95": {
-   "sealed": true,
-   "openPx": 5,
-   "openViews": 0,
-   "insideOutPx": 422,
-   "seeThroughPx": 0,
-   "netSeeThroughPx": 0,
-   "tris": 86997,
-   "frame": [
-    0,
-    1.95,
-    -0.05,
-    4.4
-   ]
-  },
-  "pgz09": {
-   "sealed": true,
-   "openPx": 0,
-   "openViews": 0,
-   "insideOutPx": 314,
-   "seeThroughPx": 0,
-   "netSeeThroughPx": 0,
-   "tris": 87068,
-   "frame": [
-    0,
-    1.7,
-    -0.05,
-    4.5
-   ]
-  },
-  "bmpt_terminator": {
-   "sealed": true,
-   "openPx": 0,
-   "openViews": 0,
-   "insideOutPx": 107,
-   "seeThroughPx": 0,
-   "netSeeThroughPx": 0,
-   "tris": 134854,
-   "frame": [
-    0,
-    1.95,
-    -0.05,
-    4.9
-   ]
-  },
   "m113a1_fsv": {
    "sealed": true,
    "openPx": 0,
@@ -5606,13 +5521,25 @@
    "openViews": 0,
    "insideOutPx": 40,
    "seeThroughPx": 0,
-   "netSeeThroughPx": 7669,
+   "netSeeThroughPx": 7983,
    "tris": 122352,
    "frame": [
     0,
     1.4,
     0.9,
     5.6
+   ],
+   "accepts": [
+    {
+     "kind": "see-through",
+     "reason": "268 M1A1 shell (shared parts updated in place) - netting measured on the pre-268 shell - rebuild rides 270 (aus-m1a1-268-269)",
+     "by": "kevinliu",
+     "date": "2026-11-07",
+     "from": {
+      "seeThroughPx": 0,
+      "netSeeThroughPx": 7669
+     }
+    }
    ]
   },
   "m1a2_sepv3_aus": {
@@ -5763,6 +5690,210 @@
     2.55,
     -0.2,
     4.1
+   ]
+  },
+  "semel": {
+   "sealed": true,
+   "openPx": 0,
+   "openViews": 0,
+   "insideOutPx": 302,
+   "seeThroughPx": 0,
+   "netSeeThroughPx": 0,
+   "tris": 96251,
+   "frame": [
+    0,
+    2.45,
+    1.1,
+    5.9
+   ]
+  },
+  "olifant_mk1": {
+   "sealed": true,
+   "openPx": 0,
+   "openViews": 0,
+   "insideOutPx": 420,
+   "seeThroughPx": 0,
+   "netSeeThroughPx": 1376,
+   "tris": 98400,
+   "frame": [
+    0,
+    2.45,
+    1.1,
+    5.9
+   ],
+   "accepts": [
+    {
+     "kind": "see-through",
+     "reason": "owner 2026-11-03 heavy field nets on the Mk 1 and the Mk 1A, sky between the alpha-cut garnish",
+     "by": "kevinliu",
+     "date": "2026-11-03",
+     "from": {
+      "seeThroughPx": 0,
+      "netSeeThroughPx": 0
+     }
+    }
+   ]
+  },
+  "olifant_mk1a": {
+   "sealed": true,
+   "openPx": 0,
+   "openViews": 0,
+   "insideOutPx": 434,
+   "seeThroughPx": 0,
+   "netSeeThroughPx": 5610,
+   "tris": 97606,
+   "frame": [
+    0,
+    2.45,
+    1,
+    5.8
+   ],
+   "accepts": [
+    {
+     "kind": "see-through",
+     "reason": "owner 2026-11-03 heavy field nets on the Mk 1 and the Mk 1A, sky between the alpha-cut garnish",
+     "by": "kevinliu",
+     "date": "2026-11-03",
+     "from": {
+      "seeThroughPx": 0,
+      "netSeeThroughPx": 0
+     }
+    }
+   ]
+  },
+  "olifant_mk1b": {
+   "sealed": true,
+   "openPx": 0,
+   "openViews": 0,
+   "insideOutPx": 266,
+   "seeThroughPx": 0,
+   "netSeeThroughPx": 0,
+   "tris": 99802,
+   "frame": [
+    0,
+    2.6,
+    1,
+    5.9
+   ]
+  },
+  "ttd": {
+   "sealed": true,
+   "openPx": 2,
+   "openViews": 0,
+   "insideOutPx": 402,
+   "seeThroughPx": 0,
+   "netSeeThroughPx": 0,
+   "tris": 98674,
+   "frame": [
+    0,
+    2.1,
+    0.85,
+    5.9
+   ]
+  },
+  "m3a2_bradley": {
+   "sealed": true,
+   "openPx": 0,
+   "openViews": 0,
+   "insideOutPx": 298,
+   "seeThroughPx": 0,
+   "netSeeThroughPx": 0,
+   "tris": 82095,
+   "frame": [
+    0,
+    1.55,
+    -0.05,
+    4.2
+   ]
+  },
+  "tunguska_m": {
+   "sealed": true,
+   "openPx": 0,
+   "openViews": 0,
+   "insideOutPx": 174,
+   "seeThroughPx": 0,
+   "netSeeThroughPx": 0,
+   "tris": 90240,
+   "frame": [
+    0,
+    2.15,
+    -0.05,
+    5
+   ]
+  },
+  "pantsir_s1": {
+   "sealed": true,
+   "openPx": 0,
+   "openViews": 0,
+   "insideOutPx": 174,
+   "seeThroughPx": 0,
+   "netSeeThroughPx": 0,
+   "tris": 94124,
+   "frame": [
+    0,
+    2.15,
+    -0.05,
+    5
+   ]
+  },
+  "gepard_1a2": {
+   "sealed": true,
+   "openPx": 0,
+   "openViews": 0,
+   "insideOutPx": 376,
+   "seeThroughPx": 0,
+   "netSeeThroughPx": 0,
+   "tris": 103219,
+   "frame": [
+    0,
+    2.5,
+    0.3,
+    5.1
+   ]
+  },
+  "pgz95": {
+   "sealed": true,
+   "openPx": 5,
+   "openViews": 0,
+   "insideOutPx": 422,
+   "seeThroughPx": 0,
+   "netSeeThroughPx": 0,
+   "tris": 86997,
+   "frame": [
+    0,
+    1.95,
+    -0.05,
+    4.4
+   ]
+  },
+  "pgz09": {
+   "sealed": true,
+   "openPx": 0,
+   "openViews": 0,
+   "insideOutPx": 314,
+   "seeThroughPx": 0,
+   "netSeeThroughPx": 0,
+   "tris": 87068,
+   "frame": [
+    0,
+    1.7,
+    -0.05,
+    4.5
+   ]
+  },
+  "bmpt_terminator": {
+   "sealed": true,
+   "openPx": 0,
+   "openViews": 0,
+   "insideOutPx": 107,
+   "seeThroughPx": 0,
+   "netSeeThroughPx": 0,
+   "tris": 134854,
+   "frame": [
+    0,
+    1.95,
+    -0.05,
+    4.9
    ]
   }
  }

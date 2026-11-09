@@ -1,5 +1,12 @@
 import assert from 'node:assert/strict';
-import { drawNationalInsignia, drawTacticalNumber } from './vehicleMarkings.ts';
+import { createHash } from 'node:crypto';
+import { readFileSync } from 'node:fs';
+import {
+  drawNationalInsignia, drawTacticalNumber, GLACIS_MARKING_OUTLINE, GLACIS_MARKING_OUTLINE_FLOOR, GLACIS_MARKING_TRACKING,
+  glacisMarkingOutline, SHELL_MIDDLE_CAP_LIFT,
+} from './vehicleMarkings.ts';
+import { CMAP, GLYPHS } from '../ui/glacis.js';
+import { traceGlacis } from '../ui/glacisText.ts';
 
 function createRecordingContext() {
   const operations = [];
@@ -47,9 +54,62 @@ assert.equal(
   'nested shield clipping and outer painter state remain balanced',
 );
 
-// 264: a tactical number fits its bounds once measured. A measuring context (bold capitals ~0.72 em, digits ~0.56 em, a space ~0.28,
-// as the Cot UI face sets them): a digit number keeps the 1.75-per-character size it always had; the Leopard 2A3's
-// letter code OTCO, which ran past both ends of its 252 px designation decal, comes down until it and its outline fit.
+// 264 / glacis-269: a tactical number fits its bounds once measured. Numbers Glacis sets are its outlines (one path,
+// stroked under its fill): a digit number keeps the 1.75-per-character size it always had (its caps 0.7 of the size),
+// and a letter code that would pass its bounds (OTCO, KURSK, 99A2 ran 5-8 px past a 252 px decal) comes down until it
+// and its outline fit, centred across the bounds, its caps standing where Chrome set the shell face's: 0.087 of the
+// size above the middle (centred caps cut the BMPT-90's bottoms off at the end of its side face).
+function tracingContext() {
+  const drawn = { xs: [], ys: [], lineWidth: 0, strokes: 0, fills: 0, texts: [] };
+  return { drawn, canvas: { width: 256, height: 256 }, save() {}, restore() {}, beginPath() {},
+    moveTo(x, y) { drawn.xs.push(x); drawn.ys.push(y); }, lineTo(x, y) { drawn.xs.push(x); drawn.ys.push(y); }, closePath() {},
+    stroke() { drawn.strokes++; }, fill() { drawn.fills++; },
+    set lineWidth(value) { drawn.lineWidth = value; }, set lineJoin(_) {}, set miterLimit(_) {}, set strokeStyle(_) {}, set fillStyle(_) {},
+    set font(_) {}, set textAlign(_) {}, set textBaseline(_) {},
+    strokeText(text) { drawn.texts.push(text); }, fillText(text) { drawn.texts.push(text); } };
+}
+const bounds = { x: 2, y: 34, width: 252, height: 188 };
+for (const [number, fits] of [['32', true], ['732', true], ['OTCO', false], ['KURSK', false], ['99A2', false]]) {
+  const ctx = tracingContext();
+  drawTacticalNumber(ctx, { tacticalNumber: number }, bounds);
+  const { xs, ys, lineWidth } = ctx.drawn;
+  assert.equal(ctx.drawn.texts.length, 0, `${number}: drawn as Glacis outlines, never canvas text`);
+  assert.deepEqual([ctx.drawn.strokes, ctx.drawn.fills], [1, 1], `${number}: one path, its outline stroked under its fill`);
+  const rule = Math.min(bounds.height * 0.68, bounds.width / number.length * 1.75);
+  const capHeight = Math.max(...ys) - Math.min(...ys);
+  const width = Math.max(...xs) - Math.min(...xs) + lineWidth;
+  if (fits) assert.ok(Math.abs(capHeight - 0.7 * rule) < 0.01, `${number}: a number that fits keeps the per-character size (caps ${capHeight.toFixed(2)})`);
+  else assert.ok(capHeight < 0.7 * rule - 0.5, `${number}: a number wider than its bounds comes down (caps ${capHeight.toFixed(1)} < ${(0.7 * rule).toFixed(1)})`);
+  assert.ok(width <= bounds.width * 0.94 + 1e-9, `${number}: ${width.toFixed(1)} px with its outline fits ${bounds.width} px`);
+  const mid = (Math.max(...ys) + Math.min(...ys)) / 2;
+  assert.ok(Math.abs(mid - (bounds.y + bounds.height / 2 - capHeight / 0.7 * SHELL_MIDDLE_CAP_LIFT)) < 0.01,
+    `${number}: its caps stand where the shell face's did (centre ${mid.toFixed(2)})`);
+  assert.ok(Math.abs(SHELL_MIDDLE_CAP_LIFT - 0.0869) < 1e-4, 'Chakra Petch Bold\'s caps stood 0.087 em above Chrome\'s middle');
+  const size = capHeight / 0.7;
+  assert.ok(Math.abs(lineWidth - glacisMarkingOutline(size, Math.max(2, size * 0.08))) < 0.01,
+    `${number}: its outline is ${GLACIS_MARKING_OUTLINE * 100} % of its size, at least ${GLACIS_MARKING_OUTLINE_FLOOR} texels, at most the shell face's 8 %`);
+}
+// One outline rule (Main, 2026-11-05): 6 % of the size, at least the floor, never wider than the old face's halo on the
+// same marking. A stencil's halo was 6 texels (the 150 px "O" and "UN" keep it), a text decal's 10, a tactical number's
+// 8 % of its size (the BMPT-90's 53.5 px designation takes 4.28, not the floor's 6).
+for (const [size, halo, outline] of [[150, 6, 6], [33, 6, 6], [120, 10, 7.2], [53.5, 4.28, 4.28], [90, 7.2, 6], [128, 10.24, 7.68]]) {
+  assert.ok(Math.abs(glacisMarkingOutline(size, halo) - outline) < 1e-9, `${size} px under a ${halo}-texel halo: ${outline} texels`);
+}
+// glacis-269 blind critics: at Glacis's own spacing (side bearings 28 + 28 of 1000) an 8 % outline merged neighbours
+// and clogged counters. Markings space wide: any two glyphs keep 6 % of the em of paint clear between their outlines
+// (Q's tail runs to its advance by design and is left out). That holds from 100 px up; under it a stencil's outline is
+// the floor's 6-texel halo, and small stencils' outlines meet as the old face's did (glacis-269 round 2).
+const bearings = [...'0123456789ABCDEFGHIJKLMNOPRSTUVWXYZ-./'].map((ch) => {
+  const name = CMAP[ch.codePointAt(0)];
+  const glyph = GLYPHS[`${name}.ss01`] ?? GLYPHS[name]; // the markings set ss01 (glacisText.ts)
+  const xs = glyph.d.match(/-?\d+(?:\.\d+)?/g).map(Number).filter((_, index) => index % 2 === 0);
+  return [Math.min(...xs), glyph.advance - Math.max(...xs)];
+});
+const tightest = Math.min(...bearings.map(([left]) => left)) + Math.min(...bearings.map(([, right]) => right));
+assert.ok(tightest + GLACIS_MARKING_TRACKING - GLACIS_MARKING_OUTLINE * 1000 >= 60,
+  `the tightest pair keeps ${tightest + GLACIS_MARKING_TRACKING - GLACIS_MARKING_OUTLINE * 1000}/1000 of paint clear between outlines`);
+// Text Glacis cannot set as written keeps the shell face, measured into its bounds (a measuring context: bold capitals
+// ~0.72 em, lowercase ~0.56, a space ~0.28, as the Cot UI face sets them).
 function measuringContext() {
   const drawn = { font: '', lineWidth: 0, texts: [] };
   const size = () => Number(/(\d+(?:\.\d+)?)px/.exec(drawn.font)[1]);
@@ -57,19 +117,32 @@ function measuringContext() {
     set font(value) { drawn.font = value; }, get font() { return drawn.font; },
     set lineWidth(value) { drawn.lineWidth = value; }, set strokeStyle(_) {}, set fillStyle(_) {},
     set textAlign(_) {}, set textBaseline(_) {},
-    measureText: (text) => ({ width: [...text].reduce((sum, c) => sum + (c === ' ' ? 0.28 : /[0-9-]/.test(c) ? 0.56 : 0.72), 0) * size() }),
+    measureText: (text) => ({ width: [...text].reduce((sum, c) => sum + (c === ' ' ? 0.28 : /[a-z0-9-]/.test(c) ? 0.56 : 0.72), 0) * size() }),
     strokeText(text) { drawn.texts.push(text); }, fillText() {} };
 }
-const bounds = { x: 2, y: 34, width: 252, height: 188 };
-for (const [number, fits] of [['32', true], ['732', true], ['OTCO', false]]) {
+for (const number of ['Kp 12', 'ПТ-76']) {
   const ctx = measuringContext();
   drawTacticalNumber(ctx, { tacticalNumber: number }, bounds);
-  const rule = Math.min(bounds.height * 0.68, bounds.width / number.length * 1.75);
-  const drawnSize = Number(/(\d+(?:\.\d+)?)px/.exec(ctx.drawn.font)[1]);
-  const width = ctx.measureText(number).width + ctx.drawn.lineWidth;
-  if (fits) assert.equal(drawnSize, Math.max(16, rule), `${number}: a number that fits keeps the per-character size`);
-  else assert.ok(drawnSize < rule, `${number}: a number wider than its bounds comes down (${drawnSize} < ${rule})`);
-  assert.ok(width <= bounds.width * 0.94 + 1e-9, `${number}: ${width.toFixed(1)} px with its outline fits ${bounds.width} px`);
+  assert.deepEqual(ctx.drawn.texts, [number], `${number}: Glacis cannot set it as written, so the shell face does`);
+  assert.ok(ctx.measureText(number).width + ctx.drawn.lineWidth <= bounds.width * 0.94 + 1e-9, `${number}: fits its bounds`);
 }
 
-console.log('vehicleMarkingsCanvas.selftest: all insignia painters and fallback pass; tactical numbers fit their bounds');
+// Glacis (DECISIONS 2026-11-03; owner 2026-11-04: the tanks' markings only, never the HUD, so no font file ships): the
+// outline module vendored byte for byte from Princeton-Powerlifting 64cd265103 (Glacis 1.100), its licence and attribution
+// beside it, and the markings set its ss01 alternates (Main's ruling 2026-11-04): a closed 4 and a pointed A.
+{
+  const read = (path) => readFileSync(new URL(`../../${path}`, import.meta.url));
+  assert.equal(createHash('sha256').update(read('src/ui/glacis.js')).digest('hex'),
+    'f1e65de08e42aba0ba4e6593cb15a170b927c21e4b64c30708877b5ae3fed140', 'src/ui/glacis.js is the 64cd265103 module, byte for byte');
+  const set = traceGlacis({ moveTo() {}, lineTo() {}, closePath() {} }, 'A4', 0, 0, { size: 100 }).glyphs.map((glyph) => glyph.name);
+  assert.deepEqual(set, ['A.ss01', 'four.ss01'], 'markings set the closed 4 and the pointed A');
+  const ofl = read('public/fonts/glacis/OFL.txt').toString('utf8');
+  assert.match(ofl, /SIL Open Font License, Version 1\.1/, 'Glacis ships its OFL text');
+  assert.match(ofl, /^Copyright 2026 Kevin Liu/, 'Glacis keeps its copyright line');
+  const row = read('docs/ATTRIBUTION.md').toString('utf8').split('\n').find((line) => line.startsWith('| Glacis '));
+  assert.ok(row && /SIL Open Font License 1\.1/.test(row) && row.includes('src/ui/glacis.js')
+    && row.includes('public/fonts/glacis/OFL.txt'), 'docs/ATTRIBUTION.md has the Glacis row (the module and its licence)');
+  assert.ok(read('NOTICE.md').toString('utf8').includes('Glacis'), 'NOTICE.md names Glacis');
+}
+
+console.log('vehicleMarkingsCanvas.selftest: all insignia painters and fallback pass; tactical numbers are Glacis outlines that fit their bounds');

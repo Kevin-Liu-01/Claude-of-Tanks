@@ -78,6 +78,8 @@ export const NATIVE_FAMILY_ORDER = Object.freeze({
   // 266: the Brazilian Army line
   brazil: Object.freeze(['x1_pioneiro', 'x1a2_carcara', 'tamoyo1', 'tamoyo3', 'osorio_p1', 'osorio_p2', 'ee_t3_osorio',
     'ee_t4_osorio']),
+  // 269: the South African Army line
+  southAfrica: Object.freeze(['semel', 'olifant_mk1', 'olifant_mk1a', 'olifant_mk1b', 'olifant_mk2', 'ttd']),
   // 265: the M41 Walker Bulldog family
   m41: Object.freeze(['m41a3', 'm41_bw', 'm41_jgsdf', 'm41dk1', 't49']),
   // 269: the Australian Army line
