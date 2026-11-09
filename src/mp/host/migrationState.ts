@@ -303,10 +303,11 @@ function revivedSinceKeyframe(actor: MatchActor, state: HostResumeState, extrasT
  * every hunter at once, off the old host's clock). Not replayed: the lead the arrival drew and the arrivals' lead seed
  * it advanced, which need the old host's sightings and arrival point at the revive. huntSearchMigration.selftest [5].
  * The CTF raid's stage too (round 8 Y2 residual): the old host drops a fallen raider's stage at its next role deal
- * (matchModes.ts assignFlagRoles), so a keyframe sealed before that deal holds the dead life's stage, often going in, and
- * the revived raider stages afresh and waits raidWaitS for its group; the keyframe's entry is dropped, every other
- * raider's kept. Frontline's attack plan is kept: the old host keeps a fallen attacker's plan through the allied revive
- * (planAttack deals the live squad only; only a line advance clears it). huntSearchMigration.selftest [6] window revive.
+ * (matchModes.ts assignFlagRoles), so a keyframe sealed before that deal holds the dead life's stage (going in, or still
+ * waiting), and the revived raider stages afresh and waits raidWaitS for its group; the keyframe's entry is dropped
+ * whatever its go, every other raider's kept, a waiting one's too. Frontline's attack plan is kept: the old host keeps a
+ * fallen attacker's plan through the allied revive (planAttack deals the live squad only; only a line advance clears
+ * it). huntSearchMigration.selftest [6] window revive.
  */
 function checkpointAfterRevives(checkpoint: NewModeCheckpoint, revived: ReadonlySet<string>): NewModeCheckpoint {
   if (!revived.size || !checkpoint.mode) return checkpoint;

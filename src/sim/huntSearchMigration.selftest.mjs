@@ -33,7 +33,8 @@
 // last push (staged on the mode's clock) go in within one route push of when the old host sends them. (Residual round,
 // the r4 reviews: a raider revived between the keyframe and the newest frame came back with its dead life's stage and
 // went in alone.) [6] window revive: a revived CTF raider stages afresh on the new host as on the old (its keyframe stage
-// dropped, every other raider's kept); a revived Frontline attacker keeps its plan, as the old host keeps it.
+// dropped, whether it fell going in or still waiting, and every other raider's kept, a waiting one's included); a revived
+// Frontline attacker keeps its plan, as the old host keeps it.
 import { Vector3 } from 'three';
 import { createMatchActor } from '../../server/match/matchActor.ts';
 import { captureEntityRow, captureMeta, createEraIndexer } from '../../server/match/entityRows.ts';
@@ -447,21 +448,26 @@ console.log('[6] the objective modes\' stages across a migration: a lone raider 
   // [6] window revive (residual round, the r4 reviews: fix-up r3 carried the stages, and migrationState.ts
   // checkpointAfterRevives dropped only a window-revived hunter's search): a hull revived between the keyframe and the
   // elected seat's newest frame. CTF: the old host drops a fallen raider's stage at its next role deal (assignFlagRoles),
-  // so a keyframe sealed before that deal holds the dead life's stage, going in, while the revived raider stages afresh
-  // and waits raidWaitS for its group; the new host drops it too and keeps every other raider's. Frontline: the old host
+  // so a keyframe sealed before that deal holds the dead life's stage, going in or still waiting, while the revived raider
+  // stages afresh and waits raidWaitS for its group; the new host drops it too, whatever its go, and keeps every other
+  // raider's, a waiting one's included (fix-up r1 of the residual, both reviews: the case had only a raider that fell
+  // going in and a second raider that was going, so a drop of the going stages alone, or of every waiting stage, passed;
+  // CTF now runs a raider that falls going in and one that falls waiting, beside a-1 waiting). Frontline: the old host
   // keeps a fallen attacker's plan through the allied revive (planAttack deals the live squad only, and only a line
   // advance clears the plan), so an attacker that was pushing comes back pushing on both hosts: its plan rides as sealed.
   const stageText = (entry) => (!entry ? 'none' : 'go' in entry ? `staged at ${entry.atS.toFixed(2)}, ${entry.go ? 'going in' : 'waiting'}`
     : entry.pushing ? 'pushing' : entry.stagedAtS === null ? 'not staged' : `staged at ${entry.stagedAtS.toFixed(2)}, waiting`);
   /**
-   * The lone hull going in at its stage, killed, the keyframe sealed (CTF: on the next tick, before the old host's next
-   * role deal, under an arranged 2 s respawn, the shortest a room can set; Frontline: every 0.25 s until the allied
-   * revive, allyReviveS 20 s, is told after one), the old host run until that revive is told, and the elected seat
-   * resumed from the keyframe, the newest frame and the told respawn. Both hosts then drive the revived hull 2 s, it is
-   * put inside the stage on both at one moment, and each host's hold of it there is timed. CTF also pins a second raider
-   * (a-1) inside the stage across the line, never in a-0's group, whose stage must ride the migration untouched.
+   * The lone hull at its stage `fallS` seconds, then killed (past the wait: going in, or CTF 5 s: still waiting), the
+   * keyframe sealed (CTF: on the next tick, before the old host's next role deal, under an arranged 2 s respawn, the
+   * shortest a room can set; Frontline: every 0.25 s until the allied revive, allyReviveS 20 s, is told after one), the
+   * old host run until that revive is told, and the elected seat resumed from the keyframe, the newest frame and the told
+   * respawn. Both hosts then drive the revived hull 2 s, it is put inside the stage on both at one moment, and each host's
+   * hold of it there is timed. CTF also pins a second raider (a-1) across the line, never in a-0's group: outside the
+   * stage until waitS - 4 s before the kill, then inside it, so it is waiting at the keyframe and at the revive; its
+   * stage must ride the migration untouched.
    */
-  function migrateRevive({ mode, insideM, band, waitS }) {
+  function migrateRevive({ mode, insideM, band, waitS }, fallS) {
     const ctf = mode === 'capture_the_flag';
     const reviveBots = ctf ? [bots[0], { playerId: 'a-1', name: 'A1', team: 'alpha', specId: spec }, bots[1]] : bots;
     const ruleset = ctf ? { ...matchRulesetFor(mode), respawnS: 2 } : matchRulesetFor(mode);
@@ -478,9 +484,11 @@ console.log('[6] the objective modes\' stages across a migration: a lone raider 
     const hold = (e, out) => { e.state.pos.set(goal.x + dx / length * out, 0, goal.z + dz / length * out); e.state.speed = 0; };
     if (own) pilot.state.pos.set(own.x, 0, own.z); else hold(pilot, 300);
     const enemyAt = { x: enemy.state.pos.x, z: enemy.state.pos.z };
-    // a-1 115 m out across the line: inside the stage, farther out than a-0 (a-0 is dealt the lead raid), and over 140 m
-    // from a-0 and its hold point (never one of its group)
-    const pinAt = { x: goal.x - dz / length * 115, z: goal.z + dx / length * 115 };
+    // a-1 across the line, farther out than a-0 (a-0 is dealt the lead raid) and over 140 m from a-0 and its hold point
+    // (never one of its group): 160 m out (outside raidStageM 120) until waitS - 4 s before the kill, then 115 m out
+    // (inside it), so it stages then and still waits at the revive (2 s after the kill)
+    const across = (out) => ({ x: goal.x - dz / length * out, z: goal.z + dx / length * out });
+    const pinOut = across(160), pinIn = across(115), pinInTick = Math.max(0, fallS - (waitS - 4)) * 60;
     let tick = 0;
     const told = new Map(); // the mode_respawn the old host tells every seat, with the tick it is told at
     const step = (actor) => {
@@ -491,7 +499,7 @@ console.log('[6] the objective modes\' stages across a migration: a lone raider 
       s.entityById.get('pilot').state.speed = 0;
       const b = s.entityById.get('b-0'); b.state.pos.set(enemyAt.x, 0, enemyAt.z); b.state.speed = 0;
       const pinned = s.entityById.get('a-1');
-      if (pinned) { pinned.state.pos.set(pinAt.x, 0, pinAt.z); pinned.state.speed = 0; }
+      if (pinned) { const at = tick >= pinInTick ? pinIn : pinOut; pinned.state.pos.set(at.x, 0, at.z); pinned.state.speed = 0; }
       if (actor === old) tick++;
     };
     const era = createEraIndexer();
@@ -507,9 +515,9 @@ console.log('[6] the objective modes\' stages across a migration: a lone raider 
     const stagesOf = (m) => (ctf ? m?.objectives?.raids : m?.waves?.line?.attack) ?? [];
     const stageIn = (m, id) => stagesOf(m).find(([key]) => key === id)?.[1] ?? null;
     const othersOf = (m) => JSON.stringify(stagesOf(m).filter(([key]) => key !== 'a-0'));
-    // going in: inside the stage past the wait (as the going staging above), then killed
+    // inside the stage fallS seconds (past the wait: going in, as the going staging above; else still waiting), then killed
     hold(hull, insideM);
-    for (let s = 0; s < waitS + 2; s++) {
+    for (let s = 0; s < fallS; s++) {
       for (let k = 0; k < 60; k++) step(old);
       const d = Math.hypot(hull.state.pos.x - goal.x, hull.state.pos.z - goal.z);
       if (d < band[0] || d > band[1]) hold(hull, insideM);
@@ -544,33 +552,42 @@ console.log('[6] the objective modes\' stages across a migration: a lone raider 
     old.stop(); fresh.stop();
     return { keyTick: keyframe.tick, revivedAt: told.get('a-0') ?? null, beforeKill: stageText(beforeKill), sealed: stageIn(sealed, 'a-0'),
       atRevive: stageIn(atRevive, 'a-0'), restored: stageIn(restored, 'a-0'), deadInKeyframe: new Map(sealed.destroyed).get('a-0') === true,
-      others: { sealed: othersOf(sealed), atRevive: othersOf(atRevive), restored: othersOf(restored) }, oldHeldS: oldHeld / 60, newHeldS: newHeld / 60 };
+      second: stageIn(sealed, 'a-1'), others: { sealed: othersOf(sealed), atRevive: othersOf(atRevive), restored: othersOf(restored) },
+      oldHeldS: oldHeld / 60, newHeldS: newHeld / 60 };
   }
-  for (const c of modes) {
+  // CTF twice: a raider that falls going in (past the wait) and one that falls still waiting (5 s in); Frontline's
+  // attacker falls pushing
+  const reviveRuns = [{ c: modes[0], fell: 'going in', fallS: modes[0].waitS + 2 }, { c: modes[0], fell: 'waiting', fallS: 5 },
+    { c: modes[1], fell: 'pushing', fallS: modes[1].waitS + 2 }];
+  for (const { c, fell, fallS } of reviveRuns) {
     const { mode, what } = c;
     const ctf = mode === 'capture_the_flag';
-    const run = migrateRevive(c);
-    ok(run.revivedAt !== null && run.revivedAt > run.keyTick && run.deadInKeyframe && (ctf ? /going in$/ : /^pushing$/).test(run.beforeKill),
-      `${mode}: the case is built: the lone ${what} was ${run.beforeKill} when it fell; the keyframe (tick ${run.keyTick}) holds it down `
+    const run = migrateRevive(c, fallS);
+    const name = `${mode} (fell ${fell})`;
+    ok(run.revivedAt !== null && run.revivedAt > run.keyTick && run.deadInKeyframe && run.beforeKill.endsWith(fell),
+      `${name}: the case is built: the lone ${what} was ${run.beforeKill} when it fell; the keyframe (tick ${run.keyTick}) holds it down `
       + `and the old host revives it after (tick ${run.revivedAt})`);
     if (ctf) {
-      ok(run.sealed?.go === true && run.atRevive === null, `${mode}: the case is built: the keyframe holds the dead life's stage `
-        + `(${stageText(run.sealed)}), and the old host dropped it at its next role deal (at the revive: ${stageText(run.atRevive)})`);
-      ok(run.restored === null, `${mode}: the window-revived ${what}'s dead-life stage does not come back on the new host (restored: `
+      ok(run.sealed?.go === (fell === 'going in') && run.atRevive === null, `${name}: the case is built: the keyframe holds the dead life's `
+        + `stage (${stageText(run.sealed)}), and the old host dropped it at its next role deal (at the revive: ${stageText(run.atRevive)})`);
+      ok(run.restored === null, `${name}: the window-revived ${what}'s dead-life stage does not come back on the new host (restored: `
         + `${stageText(run.restored)})`);
-      ok(run.others.sealed !== '[]' && run.others.restored === run.others.sealed && run.others.atRevive === run.others.sealed,
-        `${mode}: every other raider keeps the keyframe's stage, as on the old host (sealed ${run.others.sealed}, restored ${run.others.restored})`);
-      ok(run.oldHeldS > PUSH_S, `${mode}: the case is built: put back inside the stage, the old host stages its revived ${what} afresh and `
+      ok(run.second?.go === false, `${name}: the case is built: the second raider a-1 is waiting at its stage in the keyframe `
+        + `(${stageText(run.second)})`);
+      ok(run.others.restored === run.others.sealed && run.others.atRevive === run.others.sealed,
+        `${name}: every other raider keeps the keyframe's stage, a waiting one's included, as on the old host (sealed ${run.others.sealed}, `
+        + `at the revive ${run.others.atRevive}, restored ${run.others.restored})`);
+      ok(run.oldHeldS > PUSH_S, `${name}: the case is built: put back inside the stage, the old host stages its revived ${what} afresh and `
         + `holds it ${run.oldHeldS.toFixed(2)} s for its group`);
     } else {
-      ok(run.sealed?.pushing === true && JSON.stringify(run.atRevive) === JSON.stringify(run.sealed), `${mode}: the case is built: the old host `
+      ok(run.sealed?.pushing === true && JSON.stringify(run.atRevive) === JSON.stringify(run.sealed), `${name}: the case is built: the old host `
         + `keeps the fallen ${what}'s plan through its revive (sealed ${stageText(run.sealed)}, at the revive ${stageText(run.atRevive)})`);
-      ok(JSON.stringify(run.restored) === JSON.stringify(run.sealed), `${mode}: the window-revived ${what}'s plan rides the migration as `
+      ok(JSON.stringify(run.restored) === JSON.stringify(run.sealed), `${name}: the window-revived ${what}'s plan rides the migration as `
         + `sealed (restored: ${stageText(run.restored)})`);
-      ok(run.oldHeldS < PUSH_S, `${mode}: the case is built: put back inside the stage, the old host sends its revived ${what} straight in `
+      ok(run.oldHeldS < PUSH_S, `${name}: the case is built: put back inside the stage, the old host sends its revived ${what} straight in `
         + `(held ${run.oldHeldS.toFixed(2)} s)`);
     }
-    ok(Math.abs(run.newHeldS - run.oldHeldS) <= PUSH_S + 1 / 60, `${mode}: window revive: the new host holds its revived ${what} at the stage `
+    ok(Math.abs(run.newHeldS - run.oldHeldS) <= PUSH_S + 1 / 60, `${name}: window revive: the new host holds its revived ${what} at the stage `
       + `within one route push of the old host (${run.newHeldS.toFixed(2)} s against ${run.oldHeldS.toFixed(2)} s)`);
   }
 }
