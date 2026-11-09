@@ -169,7 +169,8 @@ for (const mapId of MAP_IDS) {
   for (const state of cast.states ?? []) assert.ok(WRECK_STATES.includes(state), `${mapId}/${state}: a damage state of the table`);
   assert.ok(noHulks ? cast.ids.length === 0 : cast.ids.length >= 1 && cast.ids.length <= cast.count,
     `${mapId}: an authored period cast within the slots`);
-  if (warYears) assert.equal(cast.era, 'modern', `${mapId}: a war-years map takes today's armour of its nations`);
+  // (a map reverted whole to base keeps main's row, its era with it)
+  if (warYears && !cast.base) assert.equal(cast.era, 'modern', `${mapId}: a war-years map takes today's armour of its nations`);
   assert.equal(new Set(cast.ids).size, cast.ids.length, `${mapId}: no repeated donor in a map cast`);
   for (const id of cast.ids) {
     assert.ok(isPublicWreckDonor(id), `${mapId}/${id}: wreck donor is actually publicly playable`);
@@ -239,8 +240,8 @@ assert.deepEqual(getMapConfig('frontier').props.tankWrecks.ids, ['m60a3', 'm1a1'
 assert.deepEqual(getMapConfig('ruinspires').props.tankWrecks.ids, ['t72m1_jaguar', 't55a', 'bmp2', 'bwp1', 'm47_patton'], 'Sarajevo, 1992-96');
 assert.deepEqual(getMapConfig('airfield').props.tankWrecks.ids, ['t72b3', 't80bv', 'bmp2', 't64bv_donbas', 't90a', 'bmp3', 't72b_1987'],
   'Hostomel, 2022');
-assert.deepEqual(getMapConfig('verdant').props.tankWrecks.ids, ['kv2', 't90m', 't72b3m_2022', 't64bm1m', 'ua_m2a3_bradley', 'ua_cv9040c'],
-  'Kursk: the KV-2 of 1943 and the armour of 2024');
+// (Main, 2026-11-07) Kursk reverted whole to base after round 6 (its after-shot failed the cloud check three times): main's KV-2
+assert.deepEqual(getMapConfig('verdant').props.tankWrecks.ids, ['kv2'], 'Kursk, 1943: the KV-2 (reverted to base)');
 assert.ok(battlefieldWrecks.size >= 60, `the period casts bring a broad variety of hulks (${battlefieldWrecks.size} types)`);
 
 const cityMaterialMaps = ['urban', 'foundry', 'ruinspires', 'blackglass', 'skybridge', 'caldera'];

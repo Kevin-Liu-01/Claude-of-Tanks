@@ -117,9 +117,9 @@ export const WRECK_CASTS = {
   urban: cast('the walled hill towns of Franconia and Saxony, the 1980s inner-German border', 'cold-war',
     ['West Germany', 'USA', 'East Germany', 'USSR'], 10,
     ['leo2a2', 't72m1_jaguar', 'marder1a3', 'bmp2', 'leo1a5', 'm1a1', 't80b', 'm2a2_bradley'], STREETS),
-  verdant: cast('the Kursk salient around Prokhorovka (July 1943): the KV-2 of the battle, and the Russian and Ukrainian '
-    + 'armour of the 2024 fighting in Kursk oblast', 'modern', ['USSR', 'Russia', 'Ukraine'], 10,
-    ['kv2', 't90m', 't72b3m_2022', 't64bm1m', 'ua_m2a3_bradley', 'ua_cv9040c']),
+  // (Main, 2026-11-07) round 6: the after-shot failed its cloud check three times, so the map reverts unjudged, whole to
+  // base for this release
+  verdant: baseCast('the Kursk salient around Prokhorovka (July 1943): the KV-2 of the battle', 'ww2', ['USSR'], ['kv2']),
   whiteout: cast('DYE-M on Cape Dyer, Baffin Island, the 1980s', 'cold-war', ['Canada', 'USA', 'Sweden', 'USSR'], 10,
     ['leo1a5', 'leo1a2a1', 'm48a5_patton', 'strv103b', 't80b', 'bmp2']),
   winter: cast('the Podhale under the Tatra (January 1945): today\'s Russian, Polish and German armour', 'modern',
