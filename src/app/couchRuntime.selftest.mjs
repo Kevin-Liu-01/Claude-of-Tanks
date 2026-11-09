@@ -10,9 +10,19 @@
 // Driven over the real bodyFlags.ts (a recording body) and main.ts's own setSpectating binding, with a lobby double through
 // the runtime's startLobby port (padLobby.selftest drives the real lobby; the actor's refusal of a closed window is
 // padActor.selftest's).
+// Round 8 merge review r1, the seams of the couch session's end (battle-core s2-01) with the runtime's ports:
+// - a seat's Pause asks the couch session (stateCore couchSeatsActive), not any battle: the lobby outlives its battles and
+//   padReceiver.ts applies a seated phone's 'pause' whether or not the seat drives, so a seat that drove nothing (the
+//   session ended at a network round's activation or by clearMatchSession; a keyboard battle begun with the lobby's phones
+//   still seated) opened and closed the desktop's menu over a battle that was no couch battle, and the open menu then
+//   refused every key (playerBattleActions battleInputAllowed). main.ts's own togglePause port, over the real
+//   phonePause.ts, stateCore.ts and couchSeats.ts.
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { COUCH_RULES } from '../sim/matchRuleset.ts';
+import { togglePhonePause } from '../ui/phonePause.ts';
+import { couchSeatsActive } from '../game/stateCore.ts';
+import { beginCouchSession, endCouchSession } from '../game/couchSeats.ts';
 
 const bodyClasses = new Set();
 globalThis.document = { body: { classList: {
@@ -128,4 +138,77 @@ function createHarness() {
   assert.equal(h.runtime.startBattle(() => false), false, 'a launch the Garage refused is not a start');
 }
 
-console.log('couchRuntime.selftest: the couch view by its own reason in every couch battle of a session, dropped as the battle and the lobby end, and Start closing the join window before it deploys passed');
+/** A seat's tank as the runtime and the input stage read it: `ammo` per slot (AP, HE, ATGM). */
+function seatTank(id, x, ammo = [10, 4, 2]) {
+  const point = () => ({ x: 0, y: 0, z: 0, set(px, py, pz) { this.x = px; this.y = py; this.z = pz; return this; } });
+  return {
+    id,
+    spec: { id: 'm1a1_abrams_hc', era: 'modern', hp: 100,
+      gun: { reloadS: 6, shells: [{ type: 'apfsds', name: 'AP' }, { type: 'he', name: 'HE' }, { type: 'atgm', name: 'ATGM', guided: true }] } },
+    combat: { destroyed: false, shellSlot: 0, ammo: [...ammo], ammoCapacity: [10, 4, 2], reload: { t: 0, totalS: 6 } },
+    state: { pos: { x, y: 0, z: 0 }, yaw: 0, turretYaw: 0, speed: 0 },
+    input: { throttle: 0, steer: 0, brake: false, fire: false, fireIntentSeq: null, aimLocked: false, actionBits: 0, shellSlot: 0, aimPoint: point() },
+  };
+}
+const testCamera = () => ({ fov: 55, aspect: 16 / 9, position: { x: 0, y: 0, z: 0, set(x, y, z) { this.x = x; this.y = y; this.z = z; } }, lookAt() {} });
+/** A lobby double whose seats are the runtime's own seat ports (padLobby hands each receiver `ports.seat(n)`). */
+function portLobby() {
+  const lobby = { ports: null, setOpen() {}, remove() {}, end() {},
+    subscribe(listener) { listener({ state: 'open', code: 'ABCD', until: null, seats: [], reason: null }); return () => {}; } };
+  return { lobby, start: (ports) => { lobby.ports = ports; return lobby; } };
+}
+
+// (round 8 merge review r1) a seat's Pause opens the desktop's menu only while a couch battle's phones drive
+{
+  const pauseSource = mainSource.match(/\n {4}togglePause: (\(\) => togglePhonePause\([^\n]*\)),\n/)?.[1];
+  assert.ok(pauseSource, "main.ts binds the couch runtime's togglePause port on one line");
+  let open = false;
+  const closes = [];
+  const settings = { isOpen: () => open, open: () => { open = true; }, close: (options) => { open = false; closes.push(options); } };
+  const game = { phase: 'garage', couch: null, ruleset: { couch: undefined }, player: null };
+  // the names main.ts's port may read: the settings menu, the phase policy (battlePhase.isBattle(): phase 'battle') and the
+  // session's own reader
+  const battlePhase = { isBattle: () => game.phase === 'battle' };
+  const togglePause = new Function('togglePhonePause', 'settings', 'battlePhase', 'couchSeatsActive', 'game',
+    `return ${pauseSource};`)(togglePhonePause, settings, battlePhase, couchSeatsActive, game);
+  const { lobby, start } = portLobby();
+  const runtime = createCouchRuntime({ game, camera: testCamera(), paused: () => open, shellCode: (type) => type, togglePause,
+    emit() {}, on: () => () => {}, setSpectating() {}, startLobby: start });
+  assert.equal(runtime.open(), lobby);
+  const seat2 = lobby.ports.seat(2);
+  const seat1Tank = seatTank('seat-1', 0), seat2Tank = seatTank('seat-2', 20);
+  // a couch battle: the session, its couch rules, the battle phase
+  beginCouchSession(game, { seats: [1, 2], sides: 'together' }, [seat1Tank, seat2Tank], new Set([seat1Tank, seat2Tank]), [true, true]);
+  game.ruleset = { couch: COUCH_RULES };
+  game.phase = 'battle';
+  game.player = seat1Tank;
+  seat2.togglePause();
+  assert.equal(open, true, "in a couch battle a seat's Pause opens the menu");
+  seat2.togglePause();
+  assert.deepEqual([open, closes], [false, [{ noRelock: true }]], 'and closes it with no pointer relock');
+  seat1Tank.combat.destroyed = true;
+  seat2.togglePause();
+  assert.equal(open, true, "a dead seat 1 takes Pause from no other seat (isBattleActive is seat 1's own)");
+  seat2.togglePause();
+  // the session ends while the phase is a battle's: a network round's activation (activationRuntime endCouchSession), and
+  // the round's rules carry no couch
+  endCouchSession(game);
+  game.ruleset = { couch: undefined };
+  seat2.togglePause();
+  assert.equal(open, false,
+    "after the couch session ended, a seated phone's Pause leaves the network round's menu closed (before: any battle phase opened it)");
+  // a keyboard battle begun with the lobby's phones still seated: no session, no couch rules
+  game.player = seatTank('keyboard', 0);
+  seat2.togglePause();
+  assert.equal(open, false, "a keyboard battle is no couch battle: the seated phones' Pause opens nothing");
+  // the couch session with a ruleset that has no couch rules (a stale session over another battle) is no couch battle either
+  beginCouchSession(game, { seats: [1, 2], sides: 'together' }, [seat1Tank, seat2Tank], new Set([seat1Tank, seat2Tank]), [true, true]);
+  seat2.togglePause();
+  assert.equal(open, false, 'a session under rules with no couch is no couch battle');
+  game.ruleset = { couch: COUCH_RULES };
+  game.phase = 'garage';
+  seat2.togglePause();
+  assert.equal(open, false, 'between battles the seats pause nothing');
+}
+
+console.log('couchRuntime.selftest: the couch view by its own reason in every couch battle of a session, dropped as the battle and the lobby end, Start closing the join window before it deploys, and a seat\'s Pause only in a couch battle passed');

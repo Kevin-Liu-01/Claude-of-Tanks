@@ -257,7 +257,7 @@ import {
   spawnTanks, ensureStagedVisuals, ensureStagedVisualsSteps, nextStagedBake, planBattleParticipantIds, planBattleSeats,
   planBattleCamoOverrides, type BattleVisual,
 } from './game/rosterState.ts';
-import { clearMatchSession, createBus, createGameState, watchRevealsAll } from './game/stateCore.ts';
+import { clearMatchSession, couchSeatsActive, createBus, createGameState, watchRevealsAll } from './game/stateCore.ts';
 import { isPlayerVisible } from './game/playerVisibility.ts';
 import { AppPhaseTransitionError, canTransitionAppPhase, createAppLifecycle, GarageScreenUnsettledError } from './game/appLifecycle.ts';
 import { bootReadiness } from './app/bootReadiness.ts';
@@ -3914,9 +3914,11 @@ const couchOwner = createLazyRuntimeOwner(
     camera,
     paused: () => settings.isOpen(),
     shellCode: shellTypeCode,
-    // (round 8 Y4 s3-05) the one phone pause rule (its resume never relocks the pointer), in a couch battle's phase: a dead
-    // seat 1 must not take Pause from the other seats (isBattleActive is seat 1's own battle settings)
-    togglePause: () => togglePhonePause(settings, () => battlePhase.isBattle()),
+    // (round 8 Y4 s3-05) the one phone pause rule (its resume never relocks the pointer), while the couch battle's phones
+    // drive (round 8 merge review r1: the session, its couch rules and the battle phase; the lobby outlives its battles, so
+    // a seated phone pauses no network round after the session ended and no keyboard battle): a dead seat 1 must not take
+    // Pause from the other seats (isBattleActive is seat 1's own battle settings)
+    togglePause: () => togglePhonePause(settings, () => couchSeatsActive(game)),
     emit: (type, payload) => bus.emit(type, payload),
     on: (type, listener) => bus.on(type, listener),
     // (round 8 Y4 s3-02) the couch view by its own reason of the body class's owner (2026-11-02 audit F8), so no other

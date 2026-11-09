@@ -83,6 +83,10 @@ graph). Its edges, round 8 (2026-11-09):
   latched, under its own reason of `src/ui/bodyFlags.ts` ('couch'), so the spectate bar dropping its reason never strips
   it; it drops the reason when the phase leaves the battle and when the lobby closes, and the HUD's battle end clears its
   couch view, so a Watch battle after a couch one rides its own tank.
+- **A seat's Pause** opens and closes the desktop's menu (with no pointer relock) only while a couch battle's phones drive
+  (`src/game/stateCore.ts` `couchSeatsActive`: the session, its couch rules, the battle phase; a dead seat 1 takes it
+  from no one). The lobby outlives its battles, so a phone still seated over a network round (the session ended at its
+  activation) or a keyboard battle pauses nothing (round 8 merge review, 2026-11-09).
 - **Battle Again** after a couch battle starts a couch battle again: the entry's intent records the couch and its sides
   (`src/game/battleEntryIntent.ts`), the Garage return keeps them, and the replay re-reads the seats with a phone here
   now through the same start edge (the join window closes first). With no phone here it opens the lobby over the Garage

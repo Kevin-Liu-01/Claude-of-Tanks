@@ -73,8 +73,9 @@ export interface GameState<Entity = RuntimeValue, Spotting = RuntimeValue, Match
 /**
  * Whether a couch battle's phones drive its seats now (round 8 Y1 s2-01): a session (couchSeats.ts, its one owner), the
  * ruleset's couch rules and the battle phase. The page's gates on whether the phones drive ask this: the keyboard's frame
- * input (battleFrameRuntime), the HUD's and the keys' actions (playerBattleActions) and the shared screen's reveal
- * (watchRevealsAll). setupBattle's own seating reads the session it just began (the phase is still the Garage's there).
+ * input (battleFrameRuntime), the HUD's and the keys' actions (playerBattleActions), the shared screen's reveal
+ * (watchRevealsAll) and the seats' Pause (main.ts's couch togglePause port; round 8 merge review r1). setupBattle's own
+ * seating reads the session it just began (the phase is still the Garage's there).
  * src/app/couchRuntime.ts (app-couch's) still reads game.couch with gates of its own until it asks this one: frame() checks
  * all three terms inline, source() the phase and the couch rules for a seat's tank, and beforeStep() only the session and
  * the couch rules, which holds because main.ts calls it only from the local battle step (stepSimulation, which
