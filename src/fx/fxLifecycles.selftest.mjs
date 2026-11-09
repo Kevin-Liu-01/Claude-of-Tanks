@@ -15,7 +15,11 @@
 //    it went unseen), while an unspotted solo hull's hit stays on the hull;
 //  - one HE round, one burst: its hull event and its expiry split across frames (a network peer's queue) drew two; a
 //    direct hull hit (no expiry ever follows it) bursts on the next update, and a late wall expiry still strikes its
-//    building;
+//    building; (round 8 Y6, s4-01: regression guards for the ground hit's named options) a late ground expiry keeps its
+//    marks and draws no second burst, and a solid round grazing the ground sprays forward and low where a plunge stands
+//    its spurt up;
+//  - (round 8 Y6, s4-02) a drone shot down (drone:down for its carrier, no shell event) never flies home and breaks up
+//    where it was; one lost in the air still flies home;
 //  - under the killcam's suppression the runtime keeps its scene graph hidden whatever its subsystems write each frame
 //    (they re-showed themselves), hides a child added meanwhile, and the release restores what each owner asked for
 //    (round 2 U31: by the veil its visuals are made under, never their own flags: replayVeil.selftest);
@@ -294,6 +298,8 @@ function fakeVisual() {
   fx.resetAll();
 }
 
+/** (round 8 Y6, s4-01, s4-02) the ground-end guards' and the downed drone's readings, for the log */
+const groundEnds = {};
 // ---- one burst per HE round, whatever frames its events land on ----
 {
   // the building a wall expiry consults (its look, its strike's seam): counted, so a skipped strike shows
@@ -312,8 +318,8 @@ function fakeVisual() {
     surface: 'tank' });
   const hit = (shellId, kind = 'he_splash', extra = {}) => bus.emit('shell:hit', { shellId, attackerId: 'g', targetId: 't', kind,
     damage: 40, pos: [1, 0.8, 0], normal: [0, 1, 0], caliberMm: 125, shellType: 'HE', destroyed: false, ...extra });
-  const expired = (shellId) => bus.emit('shell:expired', { shellId, pos: [0, 0, 0], hitTerrain: true, munition: 'he', chargeKg: 3.4,
-    caliberMm: 125, shellType: 'HE' });
+  const expired = (shellId, impactAngleDeg) => bus.emit('shell:expired', { shellId, pos: [0, 0, 0], hitTerrain: true, munition: 'he',
+    chargeKg: 3.4, caliberMm: 125, shellType: 'HE', ...(impactAngleDeg === undefined ? {} : { impactAngleDeg }) });
   const wallExpired = (shellId) => bus.emit('shell:expired', { shellId, pos: [0, 1.5, 3], hitTerrain: false, hitKind: 'prop',
     structureId: 7, normal: [0, 0, -1], munition: 'he', chargeKg: 3.4, caliberMm: 125, shellType: 'HE' });
   const run = (script) => { fx.resetAll(); frames(2); const shellId = id++; fired(shellId); script(shellId); frames(12); return bodies(); };
@@ -348,7 +354,89 @@ function fakeVisual() {
   assert.ok(askedInTime > 0 && asked === askedInTime, `a late wall expiry still strikes its building (${asked} vs ${askedInTime})`);
   // (the wall's own burst is ~19 bodies: on top of the hull's it would read ~44)
   assert.ok(near(wallLate, hullOnly), `and draws no second burst (${wallLate} vs the hull's ${hullOnly}; the wall's own ${wallInTime})`);
+  // (round 8 Y6, s4-01; a regression guard, ROUND8 amendment 7) the same on open ground: a terrain expiry later than the
+  // hull's wait (HE_WAIT_S 0.1 s) and inside its burst's keep (HE_BURST_KEEP_S 0.5 s) keeps its ground marks and draws no
+  // second burst. Its glancing angle (86 deg) never reaches a charged round's burst. Red on 269's own effects.ts (its
+  // per-frame records) and on a merge that passes the hull's burstDrawn in 269's graze slot (the round 8 sweep, s4-01)
+  const groundLate = run((s) => { hit(s); frames(10); expired(s, 86); });
+  assert.ok(near(groundLate, hullOnly), `a late ground expiry draws no second burst (${groundLate} vs the hull's ${hullOnly}; both ${sameFrame})`);
+  // a solid round's end on the ground by its angle, on the media layer: a graze (86 deg incidence, sim/shellSurface.ts
+  // grazes) sprays its ground forward and low along its path, a plunge (20 deg) stands its spurt up. Its arrival is the
+  // sweep from its muzzle (shell:fired, then the expiry with no frame between: a frame without the round in its shells
+  // drops the sweep). Red on a merge that passes graze in the noBurst slot (no strike at all)
+  const kineticEnd = (impactAngleDeg) => {
+    fx.resetAll(); frames(2);
+    const shellId = id++;
+    bus.emit('shell:fired', { shellId, shooterId: 'g', pos: [0, 1.2, -60], muzzlePos: [0, 1.2, -60], dir: [0, -0.02, 1],
+      shellType: 'APFSDS', caliberMm: 120, shellName: '120 mm APFSDS', munition: 'kinetic', chargeKg: 0 });
+    bus.emit('shell:expired', { shellId, pos: [0, 0, 0], hitTerrain: true, munition: 'kinetic', chargeKg: 0, caliberMm: 120,
+      shellType: 'APFSDS', impactAngleDeg });
+    frames(5); // (a graze lays its bodies 12 ms apart along its furrow)
+    // the bodies thrown round the strike (the muzzle's own gas and dust lie 60 m back): how far forward they were born
+    // (along +z, the round's path) and how steeply they leave (rise over run, as strikeLooks.selftest reads it)
+    const mesh = fx.group.getObjectByName('fx-volume-media').children[0];
+    const { aPB, aVL } = mesh.geometry.attributes;
+    let n = 0, ahead = -Infinity, steep = 0;
+    for (let i = 0; i < mesh.geometry.instanceCount; i++) {
+      const [x, , z] = aPB.array.subarray(i * 4, i * 4 + 3), [vx, vy, vz] = aVL.array.subarray(i * 4, i * 4 + 3);
+      if (Math.hypot(x, z) > 15 || Math.hypot(vx, vz) + Math.abs(vy) <= 4) continue;
+      n++; ahead = Math.max(ahead, z); steep += vy / Math.max(1e-6, Math.hypot(vx, vz));
+    }
+    return { n, ahead, steep: n ? steep / n : NaN };
+  };
+  const skip = kineticEnd(86), plunge = kineticEnd(20);
+  assert.ok(skip.n > 0 && plunge.n > 0, `a solid round strikes the ground at either angle (${skip.n}, ${plunge.n} sprayed bodies)`);
+  assert.ok(skip.steep < 0.5 && skip.ahead > 1, `a graze sprays forward and low (rise/run ${skip.steep.toFixed(2)}, ${skip.ahead.toFixed(2)} m on)`);
+  assert.ok(plunge.steep > 1 && plunge.ahead < skip.ahead, `a plunge stands its spurt up (rise/run ${plunge.steep.toFixed(2)}, ${plunge.ahead.toFixed(2)} m on)`);
+  Object.assign(groundEnds, { groundLate, hullOnly, sameFrame, grazeRiseRun: +skip.steep.toFixed(2), grazeAheadM: +skip.ahead.toFixed(2),
+    plungeRiseRun: +plunge.steep.toFixed(2), plungeAheadM: +plunge.ahead.toFixed(2) });
   fx.resetAll();
+}
+
+// ---- (round 8 Y6, s4-02) a drone shot down never flies home ----
+// Counter-drone fire kills the drone's shell with no shell event (sim/aerialCombat.ts strikeDrone); the bus's drone:down
+// names the carrier (both drivers). The runtime heard nothing of it, so the frame without the shell read as a recall: the
+// airframe flew home and landed on its dock while the crew called it down. The carrier's dock is the production mount
+// (missionAttachmentVisual, synced before each frame as the battle does), so a flight home here really starts.
+{
+  const { syncMissionAttachment } = await import('../game/missionAttachmentVisual.ts');
+  const { missionAttachmentTurretPivot } = await import('../sim/missionAttachment.ts');
+  const { getSpec } = await import('../vehicles/specs.ts');
+  const { AERIAL_RULES } = await import('../sim/matchRuleset.ts');
+  const spec = getSpec('m1a1_abrams_hc');
+  /** One carrier flying drone 77 over the battlefield for 20 frames; then the sim drops the shell (and, when `down`,
+   *  raises drone:down for the carrier in the same step), and 40 frames run (past the flight home's grace). */
+  const shotDown = (down) => {
+    const root = new THREE.Group(), turret = new THREE.Group();
+    turret.name = 'rig_turret'; turret.position.set(...missionAttachmentTurretPivot(spec)); root.add(turret);
+    root.position.set(10, 0, 0); root.updateMatrixWorld(true);
+    const view = { kind: 'drone', active: true, cooldownS: 0 };
+    const carrier = { id: 'p1', team: 'player', spec: { nation: 'USA' }, visual: { root }, state: { pos: new THREE.Vector3(10, 0, 0), yaw: 0 },
+      combat: { destroyed: false }, aerial: view };
+    const entities = new Map([['p1', carrier]]);
+    const { fx, bus } = runtime(entities);
+    const drone = { id: 77, pos: new THREE.Vector3(60, 25, 40), vel: new THREE.Vector3(0, 0, 14), spec: { tracer: 'DRONE' }, shooterId: 'p1',
+      ageS: AERIAL_RULES.drone.launchS + 2, distM: 80 };
+    const frames = (n, shells = []) => {
+      for (let i = 0; i < n; i++) { syncMissionAttachment(root, spec, view, false, 1 / 60); fx.update(1 / 60, shells, camera, (id) => entities.get(id) ?? null); }
+    };
+    const debris = () => fx.group.getObjectByName('fx-particles').children[9].geometry.instanceCount;
+    frames(20, [drone]);
+    const debrisBefore = debris();
+    if (down) bus.emit('drone:down', { id: 'p1', killerId: 'foe' });
+    view.active = false; view.cooldownS = AERIAL_RULES.drone.cooldownS;
+    frames(40);
+    const log = (fx.group.userData.droneFlightsHomeLog ?? []).map((e) => `${e.id}:${e.event}:${e.reason.split(' (')[0]}`);
+    const result = { home: fx.group.userData.droneFlightsHome().size, log, debris: debris() - debrisBefore };
+    fx.resetAll();
+    scene.remove(fx.group);
+    return result;
+  };
+  const control = shotDown(false), downed = shotDown(true);
+  assert.deepEqual([control.home, control.log], [1, ['77:start:owner p1']], `a drone lost in the air flies home (${control.log})`);
+  assert.deepEqual([downed.home, downed.log], [0, ['77:skip:downed']], `a drone shot down never flies home (${downed.log})`);
+  assert.ok(downed.debris > control.debris, `it breaks up where it was (${downed.debris} fragments thrown, ${control.debris} without)`);
+  Object.assign(groundEnds, { downedDebris: downed.debris, lostDebris: control.debris });
 }
 
 // ---- the scene graph stays hidden under the suppression ----
@@ -429,4 +517,4 @@ function fakeVisual() {
   for (const r of [once, twice, first, second, page]) r.fx.resetAll();
 }
 
-console.log('fxLifecycles.selftest: deferred beats fire under suppression and never outlive their visual\'s life; a building\'s stages are laid once; smoke columns follow the fire; a hull\'s event point is on the hull where it stands now, never measured from an unseen hull\'s last sample; one burst per HE round; the scene graph stays hidden under the suppression; a bus takes one runtime');
+console.log(`fxLifecycles.selftest: deferred beats fire under suppression and never outlive their visual's life; a building's stages are laid once; smoke columns follow the fire; a hull's event point is on the hull where it stands now, never measured from an unseen hull's last sample; one burst per HE round (ground ends ${JSON.stringify(groundEnds)}); a drone shot down never flies home; the scene graph stays hidden under the suppression; a bus takes one runtime`);

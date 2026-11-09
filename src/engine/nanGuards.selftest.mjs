@@ -97,6 +97,22 @@ const SEMANTICS = {
   const apply = effects.slice(effects.indexOf('  function applyLight('), effects.indexOf('  function flashLight('));
   assert.match(apply, /state\.light\.intensity = Number\.isFinite\(v\) \? v : 0;/, 'the light intensity stays finite');
   assert.ok(Number.isNaN(Math.max(1, NaN)), 'the trap the guard closes: Math.max(1, NaN) is NaN');
+  // (round 8 Y6, s4-05) the pulse's carry (the light's motion while it burns, applyLight) has one writer: flashLight, after
+  // the guard above, and finite itself. carryLight, a second writer its callers ran even when the guard refused the pulse,
+  // left another gun's burning pulse sliding along the new shooter's motion, or at a NaN place from a turning shooter's NaN
+  // swing, every frame after and past a battle reset (effectAttachments.selftest drives both on the real runtime)
+  const flashBody = flash.slice(0, flash.indexOf('\n  }\n'));
+  const guardAt = flashBody.indexOf('if (!(Number.isFinite(pos.x)');
+  for (const write of ['state.origin.copy(pos);', 'state.carry.set(', 'state.bornAt = ']) {
+    assert.ok(guardAt > 0 && flashBody.indexOf(write) > guardAt, `flashLight writes ${write} only after the finite guard`);
+  }
+  assert.match(flashBody, /state\.carry\.set\(Number\.isFinite\(vel\[0\]\) \? vel\[0\] \* MUZZLE_LIGHT_CARRY : 0, Number\.isFinite\(vel\[1\]\) \? vel\[1\] \* MUZZLE_LIGHT_CARRY : 0,\s*Number\.isFinite\(vel\[2\]\) \? vel\[2\] \* MUZZLE_LIGHT_CARRY : 0\);/,
+    'a non-finite velocity carries nothing');
+  assert.doesNotMatch(effects, /carryLight\(/, 'no second writer of the carry');
+  assert.equal((effects.match(/\bstate\.carry\.set\(/g) ?? []).length, 1, 'flashLight is the only pulse that sets a light state\'s carry');
+  assert.match(effects, /for \(const st of lightStates\) \{ st\.bornAt = -1e9; st\.light\.intensity = 0; st\.carry\.set\(0, 0, 0\); \}/,
+    'a battle reset ends every pulse and its carry');
+  assert.match(apply, /if \(age < state\.dur && \(c\.x !== 0 \|\| c\.y !== 0 \|\| c\.z !== 0\)\) \{/, 'only a burning pulse moves its light');
 }
 
-console.log('nanGuards.selftest: the cloud resolve and dome read, the AO EMA (input, history, seed, output) and the flash light carry finite values only');
+console.log('nanGuards.selftest: the cloud resolve and dome read, the AO EMA (input, history, seed, output) and the flash light (its one pulse writer) carry finite values only');

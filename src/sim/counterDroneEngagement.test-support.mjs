@@ -12,7 +12,8 @@
 //
 // Callers: src/sim/counterDroneEngagement.selftest.mjs (the owner's outcome band and the pinned hovers),
 // src/sim/weaponReload.selftest.mjs (the solo battle's hover, through soloHoverCounterDrone: that receipt already loads
-// game/state.ts) and tools/counter-drone-engage.mjs (the --ids entry point the 227 turret work calls for new stations).
+// game/state.ts), src/fx/droneDownedSolo.selftest.mjs (the same solo hover with the FX runtime on its bus: a drone shot
+// down never flies home) and tools/counter-drone-engage.mjs (the --ids entry point the 227 turret work calls for new stations).
 // The tuning workflow's original harness
 // (~/cot-launch-state/streams/counter-drone/harness/cdh.mjs) composed the same modules outside the authority and agreed
 // with it on 160 of 160 runs; this one is the authority itself.

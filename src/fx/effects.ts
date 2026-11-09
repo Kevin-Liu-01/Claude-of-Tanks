@@ -549,6 +549,9 @@ interface FxEventMap {
   'shell:unseen': { shellId: ShellId; shooterId?: ShellId | null };
   /** a mode revived a hull (both drivers: state.ts's mode events, battlePresentation mode_respawn) */
   'mode:respawn': { id?: unknown };
+  /** (round 8 Y6, s4-02) counter-drone fire shot down the drone of the carrier `id` (both drivers: state.ts droneHit,
+   *  battlePresentation's drone_down relay) */
+  'drone:down': { id?: unknown; killerId?: unknown };
 }
 
 /**
@@ -1265,6 +1268,9 @@ function* createFxSteps(
       const log = (root.userData.droneFlightsHomeLog ??= []) as { id: string | number; event: string; reason: string }[];
       log.push({ id, event, reason }); if (log.length > 32) log.shift();
     },
+    // (round 8 Y6, s4-02) a drone shot down breaks up where it was last drawn (the audio's break-up plays there): the
+    // interceptor's short burst, a flash, a spray of fragments and grey steel falling, and a small puff; nothing longer
+    onDowned: (_id, at) => apsIntercept(at, _UP, false),
   });
   // Diagnostics (films and probes): the flights home in progress, read off the FX group.
   root.userData.droneFlightsHome = () => drones.returning();
@@ -1533,10 +1539,11 @@ function* createFxSteps(
     }
     const age = lightAge(state);
     const k = Math.max(0, 1 - age / state.dur);
-    // a moving muzzle's light rides the bore with the flash (policy: muzzleLight); every other pulse keeps its place
+    // a moving muzzle's light rides the bore with the flash (policy: muzzleLight) while its pulse burns; every other pulse,
+    // and a spent one, keeps its place
     const c = state.carry;
-    if (c.x !== 0 || c.y !== 0 || c.z !== 0) {
-      state.light.position.copy(state.origin).addScaledVector(c, Math.min(Math.max(0, age), state.dur));
+    if (age < state.dur && (c.x !== 0 || c.y !== 0 || c.z !== 0)) {
+      state.light.position.copy(state.origin).addScaledVector(c, Math.max(0, age));
     }
     // the Accessibility flash intensity (A11Y.flash, 0-1) scales every pulse of the muzzle and blast lights
     let v = state.peak * Math.pow(k, state.pow || 2) * A11Y.flash;
@@ -1562,11 +1569,13 @@ function* createFxSteps(
     state.light.intensity = Number.isFinite(v) ? v : 0;
   }
 
-  /** The pulse just lit rides a moving muzzle (m/s, the policy's muzzleLight gain applied). */
-  function carryLight(state: LightState, vel: Readonly<MutableVec3>): void {
-    state.carry.set(vel[0] * MUZZLE_LIGHT_CARRY, vel[1] * MUZZLE_LIGHT_CARRY, vel[2] * MUZZLE_LIGHT_CARRY);
-  }
-
+  /**
+   * Lights a pulse: its one writer (round 8 Y6, s4-05) of the place, the carry and the birth, all after the finite guard.
+   * `vel` is the firing muzzle's world velocity (m/s; subjectPointVelocity): a muzzle light's pulse rides it at the
+   * policy's muzzleLight gain; every other pulse passes none and keeps its place. A second writer (carryLight) once set the
+   * carry after this call even when the guard refused the pulse, so the pulse still burning (another gun's, maybe) slid
+   * along the new shooter's motion, or, from a turning shooter's NaN velocity, sat at a NaN place every frame after.
+   */
   function flashLight(
     state: LightState,
     pos: THREE.Vector3,
@@ -1576,12 +1585,15 @@ function* createFxSteps(
     pow?: number,
     hex?: number,
     range?: number,
+    vel: Readonly<MutableVec3> = ZERO_VEL,
   ): void {
     // (black-screen-228 RC6) a pulse with a non-finite place never moves a light there
     if (!(Number.isFinite(pos.x) && Number.isFinite(pos.y) && Number.isFinite(pos.z))) return;
     state.light.position.copy(pos);
     state.origin.copy(pos);
-    state.carry.set(0, 0, 0);
+    // a non-finite component carries nothing (a finite place keeps a finite light, by construction)
+    state.carry.set(Number.isFinite(vel[0]) ? vel[0] * MUZZLE_LIGHT_CARRY : 0, Number.isFinite(vel[1]) ? vel[1] * MUZZLE_LIGHT_CARRY : 0,
+      Number.isFinite(vel[2]) ? vel[2] * MUZZLE_LIGHT_CARRY : 0);
     // (233) the muzzle light's reach: its gun's (muzzleLightPulse), the 12 m default for every other muzzle-light pulse
     if (state.light === muzzleLight) state.light.distance = range && range > 0 ? range : MUZZLE_LIGHT_RANGE;
     // (fx 9: 8t) the pulse's own reach (the pooled explosion light: 13 m unless the pulse asks less)
@@ -2647,16 +2659,33 @@ function* createFxSteps(
   }
 
   /**
+   * (round 8 Y6, s4-01) How a round's end on the ground is drawn beyond its munition class, by name: round 2's noBurst
+   * and 269's graze first met as two positional booleans in one slot, where a merge could pass either in the other's
+   * place and still compile (an HE round whose hull burst first drew a second burst on the ground, or a grazing round
+   * drew no strike at all).
+   */
+  interface GroundEndOptions {
+    /** backdates the spawns (s; the screenshot composers) */
+    birthOffset?: number;
+    /** (round 2 U31) the round's burst was drawn already (at a hull, its wait over before this expiry): the ground keeps
+     *  its own marks, the crater mark of a burst that dug none, the cover it clears and the water's ring, and draws no
+     *  second burst (nor, for a solid round, a strike) */
+    noBurst?: boolean;
+    /** (impact-materials-269) a solid round's glancing strike sprays forward and low (kineticStrike's graze look); a
+     *  charged round's burst never reads it */
+    graze?: boolean;
+  }
+  const GROUND_END_DEFAULT: Readonly<GroundEndOptions> = {};
+  /**
    * A shell ending on the ground or the water, by its munition class: explosives burst (flash, fireball, ejecta, the
    * dust cloud, surge, residue), kinetic rounds and bullets strike (a spurt of the ground along the shot, chunks).
-   * Returns false when the media layer is off (the phone tier keeps the pooled plume). `noBurst` (round 2 U31): the round's
-   * burst was drawn already (at a hull, its wait over before this expiry): the ground keeps its own marks, the crater mark
-   * of a burst that dug none, the cover it clears and the water's ring, and draws no second burst. `graze`
-   * (impact-materials-269): a solid round's glancing strike sprays forward and low (kineticStrike's graze look).
+   * Returns false when the media layer is off (the phone tier keeps the pooled plume). `end` names the round's own end
+   * (GroundEndOptions: a burst drawn already, a graze); a direct impact passes none.
    */
   function mediaGroundHit(pos: THREE.Vector3, info: ShellMunition, water: boolean, dir: THREE.Vector3 | null,
-    birthOffset = 0, noBurst = false, graze = false): boolean {
+    end: Readonly<GroundEndOptions> = GROUND_END_DEFAULT): boolean {
     if (!blast) return false;
+    const birthOffset = end.birthOffset ?? 0, noBurst = end.noBurst === true, graze = end.graze === true;
     const surface = water ? 'water' : classifyTerrain(heightField, pos.x, pos.z);
     if (isExplosive(info.munition) && info.chargeKg > 0) {
       const y = water
@@ -3148,8 +3177,7 @@ function* createFxSteps(
     // 0.3 of a gun's peak it always took: one flat 138 cd for a 57 mm rocket and a 220 mm one alike before
     const pulse = muzzleLightPulse(caliberMm, pos.x, pos.z);
     flashLight(lightStates[0], pos, MUZZLE_LIGHT_PEAK * 0.3 * pulse.peakK, -birthOffset, undefined, undefined, undefined,
-      pulse.range);
-    carryLight(lightStates[0], vel);
+      pulse.range, vel);
   }
 
   /**
@@ -6810,8 +6838,7 @@ function* createFxSteps(
       const pulse = muzzleLightPulse(caliber, p.x, p.z);
       const peak = MUZZLE_LIGHT_PEAK * pulse.peakK * lightK * muzzleLightScale;
       if (!(muzzleLight.intensity > peak)) {
-        flashLight(lightStates[0], p, peak, 0, undefined, undefined, undefined, pulse.range);
-        carryLight(lightStates[0], _shotVel);
+        flashLight(lightStates[0], p, peak, 0, undefined, undefined, undefined, pulse.range, _shotVel);
       }
     },
     smoke: (p,scale,density=1,life=2.4,wind=null) => {
@@ -7396,15 +7423,22 @@ function* createFxSteps(
           // (impact-materials-269) a solid round meeting the ground at a glancing angle skips on: its ground sprays forward
           // and low along its path (sim/shellSurface.ts grazes, the angle the audio plays as a graze too)
           const graze = grazes(e.impactAngleDeg) && !charged;
-          if (mediaGroundHit(_v3, m, water, arrival, 0, burstDrawn, graze)) {
+          if (mediaGroundHit(_v3, m, water, arrival, { noBurst: burstDrawn, graze })) {
             if (recorded) noteBurst(e.shellId);
             return;
           }
-          if (burstDrawn) return;
+          // (round 8 Y6, s4-01) the phone tier: no media layer, so no burst is ever recorded (burstAt is written only where
+          // a blast context exists) and burstDrawn is false here; the pooled plume stands for every round
           if (graze && arrival) grazeSprayLow(_v3, arrival, e.caliberMm || 76, water);
           else if (water) waterSplash(_v3, e.caliberMm || 76, false);
           else dirtPlume(_v3, e.caliberMm || 76, false);
         }
+      });
+      // (round 8 Y6, s4-02) a drone shot down raises no shell event (the sim kills its shell silently: aerialCombat.ts
+      // strikeDrone); drone:down names its carrier, so the presentation ends that carrier's flight as downed: no flight
+      // home while the crew calls it down and its break-up plays
+      onFxEvent(bus, 'drone:down', (e) => {
+        if (typeof e.id === 'string' || typeof e.id === 'number') drones.markDowned(e.id);
       });
       onFxEvent(bus, 'tank:destroyed', (e) => {
         // Transition from a moving live-tank emitter to one world-fixed wreck
@@ -7508,8 +7542,7 @@ function* createFxSteps(
       // (233) by the bore and the ground under the muzzle (muzzleLightPulse)
       const pulse = muzzleLightPulse(caliberMm, _sv.x, _sv.z);
       flashLight(lightStates[0], _sv, MUZZLE_LIGHT_PEAK * pulse.peakK * lightK * muzzleLightScale, 0,
-        undefined, undefined, undefined, pulse.range);
-      carryLight(lightStates[0], _shotVel);
+        undefined, undefined, undefined, pulse.range, _shotVel);
     },
 
     /** Tank-on-tank metal contact: lateral sparks, track debris and a low
@@ -8313,7 +8346,8 @@ function* createFxSteps(
       muzzleRingCursor = 0;
       impactDecals.clearAll();
       resetEquipmentDamage();
-      for (const st of lightStates) { st.bornAt = -1e9; st.light.intensity = 0; }
+      // (round 8 Y6, s4-05) a battle reset ends every pulse: no carry outlives it
+      for (const st of lightStates) { st.bornAt = -1e9; st.light.intensity = 0; st.carry.set(0, 0, 0); }
     },
 
     setAuxiliaryClock(clock: (() => number) | null): boolean {
