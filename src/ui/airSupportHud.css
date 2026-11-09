@@ -12,7 +12,11 @@
 /* (gauntlet g1 at 900x700: centred, the row ran 14 px over the speedometer; it starts no further left than the band the
    controls card, which stands down under the binoculars, keeps between the lower corners' instruments: battleHudLayout.ts
    hintsPlace. 172 px: half the five 64 px slots and their gaps) */
-.cot-strike-rack{position:absolute;left:max(calc(50% - var(--strike-rack-half,172px)),calc(var(--hud-hints-x,50%) - var(--hud-hints-width,0px) / 2));width:max-content;bottom:calc(max(16px,env(safe-area-inset-bottom)) + 150px);display:flex;gap:6px;pointer-events:auto;color:var(--ink-1);z-index:var(--z-hud-controls)}
+/* (gauntlet g7 at 1024x600: centred on the window, the row stood off the keys and the tray below it; it stands on the
+   ammo rack's centre line (battleHudLayout.ts --hud-tray-x), no further left than the band, 37 px over the keys at every
+   size) */
+body{--strike-rack-w:344px;--strike-rack-x:max(calc(var(--hud-tray-x,50%) - var(--strike-rack-w) / 2),calc(var(--hud-hints-x,50%) - var(--hud-hints-width,0px) / 2));--strike-rack-top:calc(var(--hud-systems-top,calc(100% - 214px)) - 101px)}
+.cot-strike-rack{position:absolute;left:var(--strike-rack-x);width:max-content;top:var(--strike-rack-top);display:flex;gap:6px;pointer-events:auto;color:var(--ink-1);z-index:var(--z-hud-controls)}
 .strike-slot{position:relative;box-sizing:border-box;width:64px;height:64px;padding:0;background:var(--hud-plate);border:1px solid var(--line-2);border-bottom-width:2px;border-radius:var(--r1);box-shadow:var(--hud-plate-ring);color:var(--ink-1)}
 /* the tray's other sizes (battleHudLayout.css: the stacked tray, a phone- or compact-width window) */
 /* (gauntlet g4 at 900x700: the cap's four figures ran into the key cap, "X1000"; the slot is a figure wider than the tray's) */
@@ -20,10 +24,10 @@ body[data-cot-battle-layout]:not(.cot-touch-layout)[data-hud-tray='stacked']:not
 body[data-cot-battle-layout]:not(.cot-touch-layout):is([data-cot-width='phone'],[data-cot-width='compact']) .cot-shells .strike-support{width:52px;height:52px}
 /* (gauntlet g4 at 900x700: the row held to the band's left edge sat 32 px off the keys and the readout above it; under
    1024 px the slots narrow to 54 px, 4 px apart, so the centred row clears the dial) */
-@media(max-width:1023px){.cot-strike-rack{--strike-rack-half:143px;gap:4px}.strike-slot{width:54px}}
+@media(max-width:1023px){body{--strike-rack-w:286px}.cot-strike-rack{gap:4px}.strike-slot{width:54px}}
 /* Support's count: the points, in the corner every count of the tray takes, and their fill toward the cap on its floor */
 /* (gauntlet g6: set a step under the ammo's counts; a count of three figures or more takes the tray's .wide size) */
-.strike-support .strike-points{position:absolute;top:2px;right:3px;font:700 var(--battle-fs-12)/1 var(--hud-font);line-height:13px;color:var(--ink-1)}
+.strike-support .strike-points{position:absolute;top:2px;right:3px;font:700 var(--battle-fs-12)/1 var(--font-mono);letter-spacing:0;line-height:13px;color:var(--ink-1)}
 body[data-cot-battle-layout]:not(.cot-touch-layout)[data-hud-tray='stacked'] .strike-support .strike-points{font-size:var(--battle-fs-11)}
 .strike-points-fill{position:absolute;left:0;right:0;bottom:-2px;height:2px;background:var(--mode-air-support);transform-origin:left;transform:scaleX(var(--strike-fill,0))}
 /* a slot: the key, the price, the glyph, the short name, the cooldown shade and its seconds */
@@ -32,7 +36,8 @@ body[data-cot-battle-layout]:not(.cot-touch-layout)[data-hud-tray='stacked'] .st
 .strike-slot:focus-visible{outline:2px solid var(--focus-ink);outline-offset:2px}
 .strike-slot .key{position:absolute;top:2px;left:2px;padding:0 3px;border-radius:var(--control-radius);box-shadow:var(--ring-3);background:var(--hud-plate);font:500 var(--battle-fs-fig-11)/1 var(--font-data);line-height:13px;color:var(--ink-2)}
 .strike-slot .key:empty{display:none}
-.strike-slot .price{position:absolute;top:2px;right:3px;font:700 var(--battle-fs-fig-11)/1 var(--hud-font);line-height:13px;color:var(--ink-2)}
+/* (gauntlet g7: a price, a count and a ticking timer are data, in the mono face the tray's counts take) */
+.strike-slot .price{position:absolute;top:2px;right:3px;font:700 var(--battle-fs-fig-11)/1 var(--font-mono);letter-spacing:0;line-height:13px;color:var(--ink-2)}
 .strike-slot .glyph{position:absolute;left:50%;top:calc(50% - 3px);display:block;width:26px;height:26px;transform:translate(-50%,-50%);color:var(--ink-1)}
 .strike-slot .glyph svg{display:block;width:100%;height:100%}
 /* (gauntlet g6: a 12 px line set the label 2 px under the tray's type labels, which keep the face's own line) */
@@ -89,7 +94,7 @@ body[data-cot-battle-layout]:not(.cot-touch-layout)[data-hud-tray='stacked'] .st
 @media(max-width:1023px){.cot-binoculars .binocular-facts{display:none}}
 /* the keys, as the kit's key caps, over the tray */
 /* (gauntlet g6: the controls card's type and caps, settings.ts .cot-hints, which it stands in for) */
-.cot-binoculars .binocular-hint{position:absolute;left:50%;width:max-content;bottom:calc(max(16px,env(safe-area-inset-bottom)) + 226px);transform:translateX(-50%);display:flex;align-items:center;gap:var(--s5);padding:var(--s2) var(--s4);white-space:nowrap;background:var(--hud-plate);border-radius:var(--r1);box-shadow:var(--hud-plate-ring);font:600 var(--battle-fs-12)/1 var(--font-display);letter-spacing:var(--track-label-s);text-transform:uppercase;color:var(--ink-2)}
+.cot-binoculars .binocular-hint{position:absolute;left:calc(var(--strike-rack-x) + var(--strike-rack-w) / 2);width:max-content;top:calc(var(--strike-rack-top) - 12px);transform:translate(-50%,-100%);display:flex;align-items:center;gap:var(--s5);padding:var(--s2) var(--s4);white-space:nowrap;background:var(--hud-plate);border-radius:var(--r1);box-shadow:var(--hud-plate-ring);font:600 var(--battle-fs-12)/1 var(--font-display);letter-spacing:var(--track-label-s);text-transform:uppercase;color:var(--ink-2)}
 .binocular-hint>span{display:inline-flex;align-items:center;gap:var(--s2)}
 .cot-binoculars .binocular-hint .cot-c-kbd{min-width:20px;height:20px;padding:0 var(--s1);box-sizing:border-box;border:0;border-radius:var(--control-radius);background:none;box-shadow:var(--ring-3);font:500 var(--battle-fs-fig-11)/1 var(--font-data);letter-spacing:0;text-transform:none;color:var(--ink-2)}
 .cot-binoculars .binocular-hint .cot-c-kbd.cjk{font:500 var(--battle-fs-12)/1 var(--font-ui)}
