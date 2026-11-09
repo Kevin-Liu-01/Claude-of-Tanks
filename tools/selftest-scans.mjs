@@ -210,6 +210,8 @@ export const SELFTEST_SCANS = Object.freeze({
   // (269, round 8 Y0) the battle phase's one writer announces it and each battle entry goes through it, so the audio
   // engine sees every entry (a walk of src, as appLifecycle's census)
   'src/audio/battleEntryAmbience.selftest.mjs': lists('src/**/*.ts'),
+  // (round 8 Y1 s2-01) nothing under src writes game.couch but couchSeats.ts, the couch session's owner
+  'src/game/couchSessionLifecycle.selftest.mjs': lists('src/**/*.ts'),
 
   // ---- git's index (live receipts: selection only)
   // the scene-link codec round-trips every tracked take; its sink audit reads the Studio's own sources
