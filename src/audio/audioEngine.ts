@@ -829,7 +829,9 @@ export function createAudio({
     if (id !== asked && options?.take != null) options = { ...options, take: undefined };
     let why: string | undefined;
     if (!radio || battleMode.phase !== 'battle') why = 'phase';
-    else if (playerId != null && tanks.get(playerId)?.alive === false && id !== 'victory' && id !== 'defeat' && id !== 'draw') why = 'dead';
+    // a result is heard whether the player's hull stands or not: the asked moment decides, so a mode's own result line
+    // (resolveCrewLine: defeat_overrun, gunship_victory, ...) is exempt as the plain verdict is
+    else if (playerId != null && tanks.get(playerId)?.alive === false && asked !== 'victory' && asked !== 'defeat' && asked !== 'draw') why = 'dead';
     const ok = why == null && !!radio?.say(id, options);
     sayLog.push({ id, t: ctx ? +ctx.currentTime.toFixed(3) : 0, ok, ...(why ? { why } : !ok ? { why: 'net' } : {}) });
     if (sayLog.length > 160) sayLog.shift();
@@ -2817,10 +2819,8 @@ export function createAudio({
         if (!ready()) break;
         const result = battleMode.result ?? 'draw';
         play(result === 'victory' ? 'sting_victory' : result === 'defeat' ? 'sting_defeat' : 'sting_draw');
-        // (269) the crew's own result line (voiceLines.ts resolveCrewLine: a mode's end reason, a gunship's crew), said
-        // whether the player's hull stands or not, as the plain verdict was
-        const line = resolveCrewLine(result, crew.context());
-        if (radio && line) radio.say(line, { delayS: 0.4 });
+        // the crew's own result line (269: say() resolves it, voiceLines.ts resolveCrewLine) through the radio gate
+        say(result, { delayS: 0.4 });
         break;
       }
       case 'killcam':
