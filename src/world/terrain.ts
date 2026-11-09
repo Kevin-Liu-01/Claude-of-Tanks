@@ -4296,7 +4296,7 @@ function* makeMaskTextureSteps(
   // (built-env-270b) the row's open built ground (maps/builtEnvironmentTable.ts roads.ground): a place, a forecourt, an
   // approach, a quay — stamped as a paved room is, in its own heading
   for (const g of grounds) {
-    const ext = Math.hypot(g.hw, g.hl) + 2;
+    const ext = detMath.hypot(g.hw, g.hl) + 2;
     const i0 = Math.max(0, Math.floor((g.x - ext + HALF) * T)), i1 = Math.min(s - 1, Math.ceil((g.x + ext + HALF) * T));
     const j0 = Math.max(0, Math.floor((g.z - ext + HALF) * T)), j1 = Math.min(s - 1, Math.ceil((g.z + ext + HALF) * T));
     for (let tz = j0; tz <= j1; tz++) for (let tx = i0; tx <= i1; tx++) {
@@ -8720,7 +8720,7 @@ function* createSplatMaterialSteps(
     }) };
     shader.uniforms.uPaveGroundB = { value: Array.from({ length: PAVED_GROUND_MAX }, (_, i) => {
       const g = surfacedGround[i], yaw = ((g?.yawDeg ?? 0) * Math.PI) / 180;
-      return g ? new THREE.Vector4(Math.cos(yaw), Math.sin(yaw), ROAD_SURFACE_CODE[g.surface!], 0) : new THREE.Vector4(1, 0, 0, 0);
+      return g ? new THREE.Vector4(detMath.cos(yaw), detMath.sin(yaw), ROAD_SURFACE_CODE[g.surface!], 0) : new THREE.Vector4(1, 0, 0, 0);
     }) };
     shader.uniforms.uPaveGroundN = { value: surfacedGround.length };
     shader.uniforms.uTownWear = { value: S.townWear ?? 1 };

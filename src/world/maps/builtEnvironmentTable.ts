@@ -16,6 +16,7 @@
 // Presentation only: no row reaches the height field, the ground type, the collision or the sim.
 // THREE-free (the terrain's layout and the receipts read it in Node).
 import type { MapId } from './mapIds.ts';
+import * as detMath from '../../sim/detMath.ts';
 import type { PavedSurfaceConfig, RoadSurface, RoadSurfaceWork } from '../roadSurfaces.ts';
 import type { CivicStyleId } from '../civic/styles.ts';
 import type { BoatType } from './boatHulls.ts';
@@ -70,7 +71,7 @@ export const PAVED_GROUND_MAX = 8;
 
 /** (x, z) in the ground's own frame: across (x) and along (z) its heading. */
 export function pavedGroundLocal(g: PavedGround, x: number, z: number): [number, number] {
-  const yaw = ((g.yawDeg ?? 0) * Math.PI) / 180, c = Math.cos(yaw), s = Math.sin(yaw);
+  const yaw = ((g.yawDeg ?? 0) * Math.PI) / 180, c = detMath.cos(yaw), s = detMath.sin(yaw);
   const dx = x - g.x, dz = z - g.z;
   return [dx * c - dz * s, dx * s + dz * c];
 }
