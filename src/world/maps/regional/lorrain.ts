@@ -70,8 +70,10 @@ function stateFor(ctx: RegionalBuildContext): LorrainState {
     rng, look: ctx.variant, shutter, door: pick(rng, DOORS), wall,
     window: {
       frame: FRAME, frameWidth: 0.06, frameOut: 0.05, bars: 'six',
-      // the dressed Jaumont surround: jambs, a deeper lintel, the sill
-      surround: { bucket: 'stone', width: 0.17, out: 0.05, lintel: 0.24 }, sill: { bucket: 'stone', out: 0.1 },
+      // the dressed Jaumont surround: jambs, a deeper lintel, the sill (buildings-271 R2: the dressed stones as the
+      // place's photos show them, a hand's width and nearly a hand proud, so their shadow line reads at 35 m; at 17 x 5
+      // cm they were a pixel)
+      surround: { bucket: 'stone', width: 0.22, out: 0.09, lintel: 0.3 }, sill: { bucket: 'stone', out: 0.14 },
       shutters: { colour: shade(shutter, 0.86 + rng() * 0.26), kind: rng() < 0.7 ? 'plank' : 'louvred', closed: 0.22 },
     },
     litShare: 0.4,
@@ -221,8 +223,9 @@ function quoins(sink: PartSink, b: { x0: number; x1: number; z0: number; z1: num
     const x = sx > 0 ? b.x1 : b.x0, z = sz > 0 ? b.z1 : b.z0;
     let k = 0;
     for (let y = y0; y < y1 - 0.2; y += 0.42, k++) {
-      const lx = k % 2 ? 0.28 : 0.52, lz = k % 2 ? 0.52 : 0.28, top = Math.min(y1, y + 0.4);
-      sink.quoin('stone', x - sx * lx, y, z - sz * lz, x + sx * 0.04, top, z + sz * 0.04, sx, sz, { decor: true });
+      // (R2: the long and short stones a size up and 7 cm proud, the corner's chain reading from the street)
+      const lx = k % 2 ? 0.32 : 0.6, lz = k % 2 ? 0.6 : 0.32, top = Math.min(y1, y + 0.4);
+      sink.quoin('stone', x - sx * lx, y, z - sz * lz, x + sx * 0.07, top, z + sz * 0.07, sx, sz, { decor: true });
     }
   }
 }
