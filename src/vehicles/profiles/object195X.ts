@@ -428,9 +428,8 @@ function coreRing(half: number, low: number, top: number, shoulder: number, roof
   return [[-half + .05, low], [half - .05, low], [half, low + .05], [half, shoulder], [roofHalf + .04, top - .04],
     [roofHalf, top], [-roofHalf, top], [-roofHalf - .04, top - .04], [-half, shoulder], [-half, low + .05]];
 }
-/** The core's shoulder and roof edge, and its wall's distance out at height y. */
+/** The core's shoulder and roof edge. */
 const SHOULDER = 1.02, ROOF_HALF = .82;
-const coreX = (y: number) => y <= SHOULDER ? HC : HC - (y - SHOULDER) * (HC - ROOF_HALF - .04) / (TOP - .04 - SHOULDER);
 
 /** A bar between two corners, axis-aligned (frames, rails, posts, brackets). */
 function bar(P: TankBuilderPort, slot: string, x0: number, y0: number, z0: number, x1: number, y1: number, z1: number): void {
