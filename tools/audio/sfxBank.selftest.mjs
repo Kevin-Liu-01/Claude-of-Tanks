@@ -189,9 +189,10 @@ const run = (seeded, opts) => {
   assert.match(result.reason, /rolled back.*EIO on the third file/, 'the refusal says it rolled back');
 }
 
-// 7e. the swap's first loop fails (review r3): moving the old take files aside into prev/ meets an EXDEV (a stage on
-// another volume) on its second file. That loop is inside the rollback, and the file already moved aside goes back, so
-// the bank is whole and the stage (prev/ included) is removed with nothing of the bank in it
+// 7e. the swap's first loop fails (review r3): moving the old take files aside into prev/ fails on its second file (an
+// injected EXDEV; a real stage on another volume fails on the first move, case 7f). That loop is inside the rollback, and
+// the file already moved aside goes back, so the bank is whole and the stage (prev/ included) is removed with nothing of
+// the bank in it
 const exdev = (failAt) => {
   const state = { aside: 0 };
   state.rename = (from, to) => {
