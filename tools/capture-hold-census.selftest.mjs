@@ -293,7 +293,6 @@ const DIRECT_ACQUIRER_RECEIPTS = Object.freeze({
   'tools/capture-lock.selftest.mjs': 'the lock\'s own receipt',
   'tools/chain-lifecycle.selftest.mjs': 'a child under runInCaptureHold takes a private lock to prove it nests',
   'tools/media-r5/priority-yield.selftest.mjs': 'pins lock.held on a private hold',
-  'tools/second-solo-battle.browser.selftest.mjs': 'a 269 receipt merged in round 8 Y0 holding the shared lock (timing class) through acquire, released after its browser closes; the tools-capture cluster (round 8 Y8, sweep s6-02) moves it onto openCaptureHold',
   'tools/session-mutex.selftest.mjs': 'the polite lock on private directories',
   'tools/standard-check-stages.selftest.mjs': 'a fixture repository\'s stand-in lock',
   'tools/visual-census-lock.selftest.mjs': 'the polite lock\'s own receipt',

@@ -356,6 +356,31 @@ const listed = (key) => {
   assert.deepEqual([...waits, ...reads].sort(), found.sort(), 'docs/AUTOMATION-PATHS.md handBuiltWaits + stateReads: the tools as they are');
 }
 
+// (round 8 Y8, sweep s6-02) A tool listed under stateReads reads those facts for checks and receipt fields, never to wait:
+// no waitForFunction predicate of its own reads one (second-solo-battle read the boot mirror and the phase in its
+// waits and was a hand-built wait until they moved to the probe). The predicate is the call's text to its closing
+// parenthesis, read as code.
+{
+  const waitsOnRead = (text, file = 'tools/a.mjs') => {
+    const code = codeText(text, file), lines = [];
+    for (const call of code.matchAll(/\bwaitForFunction\(/g)) {
+      let depth = 0, end = call.index + call[0].length - 1;
+      for (const stop = Math.min(code.length, end + 800); end < stop; end++) {
+        if (code[end] === '(') depth++;
+        else if (code[end] === ')' && --depth === 0) break;
+      }
+      if (ANY_READ.test(code.slice(call.index, end + 1))) lines.push(code.slice(0, call.index).split('\n').length);
+    }
+    return lines;
+  };
+  assert.deepEqual(waitsOnRead("await page.waitForFunction(() => window.__DEBUG.game.phase === 'garage', { timeout: 1 });"), [1], 'a hand-built wait');
+  assert.deepEqual(waitsOnRead("await page.waitForFunction('window.__GAME_READY === true', {});"), [1], 'the boot mirror by hand');
+  assert.deepEqual(waitsOnRead("await page.waitForFunction(scenePhaseExpression('garage'), { timeout: 1 });\n"
+    + "const card = !!document.querySelector('.cot-bl.on');"), [], 'the probe\'s waits and a receipt field');
+  const offenders = listed('stateReads').flatMap((file) => waitsOnRead(read(file), file).map((line) => `${file}:${line}`));
+  assert.deepEqual(offenders, [], 'a stateReads tool waits through the probe (a tool that waits on a fact itself is a handBuiltWaits row)');
+}
+
 // A Garage return is awaited before anything else happens to the page: a page function that fires enterGarage() or
 // leaveBattleToGarage() as a bare statement and goes on (mobilelap's map cycle started the next battle in the same
 // breath) measures a race no player can make. The one exception times the exit with its own poll in that function.

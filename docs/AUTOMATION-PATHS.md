@@ -241,7 +241,6 @@ Waits and polls built by hand:
 - `tools/nav-timeline.mjs`: measures the cover's and the HUD's visual edges, its subject
 - `tools/pinch-zoom-probe.mjs`: measures box positions, so past the controls' release it waits for the loading veil out of layout (its leaving fade moves boxes)
 - `tools/render-stability-audit.mjs`: an agent-browser session: it waits on its own entry promise, and the phase confirms the battle
-- `tools/second-solo-battle.browser.selftest.mjs`: a 269 receipt merged in round 8 Y0: it times a second solo start against a running Garage restore, reading the boot mirror, the phase, the loader and the countdown itself; the tools-capture cluster (round 8 Y8, sweep s6-02) moves its waits onto the probe
 - `tools/solo-cold-import-cover-probe.mjs`: the cold entry's cover is its subject: it judges the battle from its own cover observer's samples
 - `tools/solo-kernels-probe.mjs`: after `__DEBUG.startBattle` (no cover, no countdown) the phase alone confirms the battle
 - `tools/track-system-audit.mjs`: a page function closed over the tank id with its own conditions; the tool sets the countdown itself
@@ -270,6 +269,7 @@ Checks and receipt fields that are not waits (a precondition, a loop guard, a br
 - `tools/perfprobe-roster.mjs`: receipt checks: each snapshot in a battle with released controls
 - `tools/perfprobe.mjs`: a precondition in its early window (the controls released) and a receipt label
 - `tools/reviveprobe.mjs`: records the HUD's display as a receipt field
+- `tools/second-solo-battle.browser.selftest.mjs`: receipt fields: each sample's loading card (shown, its stage and percentage), a hang's diagnostics; it times a second solo start against a running Garage restore and waits through the probe
 - `tools/six-modes.browser.mjs`: stages the loading screen by hand (listed under loaderClasses) to read its rows
 - `tools/solo-cold-import-cover.mjs`: the cold-cover observer and its receipt checks (the cover is its subject)
 - `tools/sourced-texture-readiness.mjs`: an observer's sample: the first uncovered battle frame
