@@ -264,10 +264,12 @@ async function main(argv) {
     entry = await bootPage(browser, servers.get(job.dist).url, job.device, unit.kind === 'garage' ? unit.id : null, job.query ?? '', job.tune ?? null, job.cloudTime ?? 0);
     await stageUnit(entry, unit);
   };
+  // (round 7 merge, tools/capture-hold-census.selftest.mjs) the browser closes before the hold goes: the next holder's GPU
+  // work never overlaps this one's
   const close = async () => {
+    if (browser) await browser.close().catch(() => {});
     if (held) lock.release();
     held = false;
-    if (browser) await browser.close().catch(() => {});
     for (const server of servers.values()) await server.close().catch(() => {});
   };
   for (const signal of ['SIGTERM', 'SIGINT', 'SIGHUP']) {
