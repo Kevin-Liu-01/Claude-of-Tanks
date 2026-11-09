@@ -2696,12 +2696,11 @@ export function createAudio({
       // the battle's room from its edge (U34, round 2): the loader's bed and the battle's vehicle rigs, heard under the
       // loader, never ring in the Garage hangar's reverb; the reveal's ambientOn brings the world's loops (the director's
       // play sets the same room again).
-      // The battle's scene waits for the reveal or the rollout (ambientOn); until then nothing of the hangar's plays. Every
-      // entry reaches this on its battle phase edge (a solo start, an online activation, a rematch), and the garage scene's
-      // bed and workshop spots ran on under the loading screen while the director kept it.
+      // The battle's scene waits for the reveal or the rollout (ambientOn). The hangar is gone by then: every battle edge
+      // tears the old world down first, and stopWorld stops the director with it, its one owner (round 8 Y3 s1-06: 269's
+      // second stop here is gone; ambienceTeardown.selftest drives every entry path).
       mixer.setReverb(scene.reverb);
       if (ambientWanted) ambience.play(scene, true);
-      else ambience.stop(0.3);
     } else {
       scene = GARAGE_SCENE;
       atmosphere = atmosphereForMap(null);

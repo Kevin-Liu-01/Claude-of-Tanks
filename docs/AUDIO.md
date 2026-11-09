@@ -1245,9 +1245,10 @@ already approved (the Afrikaans "Laai nou." came back a different attempt).
   Leaving the garage ends its scene on the battle phase edge: the battle's
   scene waits for the reveal or the rollout, and until then the hangar's bed
   and workshop spots ran on under the loading screen
-  (`battleEntryAmbience.selftest.mjs` drives a solo start, an online
-  activation and a rematch, and holds every battle-phase assignment to its
-  edge). The explosions carry the ear proxy's `explosion` class and sit on the
+  (`ambienceTeardown.selftest.mjs` drives a solo start, an online
+  activation, a rematch and a cold boot's online battle down the app
+  lifecycle's one phase writer; round 8 Y3 folded 269's
+  `battleEntryAmbience.selftest.mjs` into it). The explosions carry the ear proxy's `explosion` class and sit on the
   verdict of record; `tools/audio-mix-balance.mjs` holds every asset on its
   loudest take (the loudness receipt's momentary maximum), so a gate no longer
   rides on the take the seeded stream drew. The first `sfx-smoke` on the boom

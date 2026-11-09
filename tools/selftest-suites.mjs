@@ -1765,8 +1765,6 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/audio/worldSounds.selftest.mjs',
     // 2026-11-04 (world-sfx-269, crew-lines' finding 11): a settings channel at 0 sends nothing to the reverb
     'src/audio/reverbSends.selftest.mjs',
-    // 2026-11-04 (world-sfx-269): nothing of the hangar after the battle phase edge, on every entry path
-    'src/audio/battleEntryAmbience.selftest.mjs',
     'src/audio/assetLibrary.selftest.mjs',
     // 2026-11-02 audit F11: failed assets retried after a backoff, owned pins (the battle warm replaces its own only)
     'src/audio/assetLibraryRetry.selftest.mjs',
@@ -1802,7 +1800,8 @@ export const SELFTEST_SUITES = Object.freeze({
     // (round 3 B9: the tool's own scene loop and volley run on the real engine, cut from its source)
     'src/audio/sfxSmokeDeaths.selftest.mjs',
     // 2026-11-02 audit F11: under the battle loader only its bed (the director's scene goes with the teardown's loops; the
-    // battle's ambience intent is per battle)
+    // battle's ambience intent is per battle); round 8 Y3 s1-06: nothing of the hangar after the battle edge on every
+    // entry path (269's world-sfx receipt, battleEntryAmbience, folded in)
     'src/audio/ambienceTeardown.selftest.mjs',
     // 2026-11-02 audit F11: wanted loops (loader, fire alarm, cook-off, heartbeat) start once decoded, never after their battle
     'src/audio/wantedLoops.selftest.mjs',
