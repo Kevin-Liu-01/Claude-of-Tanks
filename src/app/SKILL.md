@@ -24,10 +24,9 @@ reasons in `lazyChunkSites.selftest.mjs` KNOWN: stylesheets kept for the
 document, memos asked once per lifecycle edge or open, the docs pages that do
 not boot the policy and the icon sprite every page's boot holds, the unused HDRI
 experiment, initializations and joins over chunks the policy holds (the Studio's
-module memo over its opener chunk among them), data fetches (the painter
-worker's font among them) and a warm task. KNOWN fails a new hand-made memo,
-facade or latch in the spellings it reads, so a new lazy load starts from
-`createLazyChunk`.
+module memo over its opener chunk among them), data fetches and a warm task.
+KNOWN fails a new hand-made memo, facade or latch in the spellings it reads, so
+a new lazy load starts from `createLazyChunk`.
 A caller that asks once per lifecycle edge (a battle's covered entry) may ask
 past the backoff with `load({ backoff: false })`; `failures` tells a first ask
 from a re-ask. `lazyChunkSites.selftest.mjs` EDGE_ASKS lists the files that may

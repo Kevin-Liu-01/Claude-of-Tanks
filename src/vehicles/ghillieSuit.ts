@@ -6224,11 +6224,26 @@ function freezeConfig(cfg: GhillieConfig): GhillieConfig {
   return { ...cfg, ...owners };
 }
 
-/** The builds already dressed (a family builder and a variant step may both ask; one suit per build). */
+/** The builds already dressed (a family builder and a variant step may both ask; one suit per build: the first claim
+ *  wins, so a variant built on a donor's build claims its own before the donor's runs, profiles/donorBuild.ts). */
 const SUITED = new WeakSet<GhillieBuilderPort>();
 
+/** Rows a selftest stands in front of the authored tables (empty in every product build). */
+const TEST_ROWS = new Map<string, GhillieConfig>();
+
+/**
+ * Test seam (2026-11-08 round 8 s5-05; variantIdentity.selftest): give an id a suit row the frozen tables do not have
+ * (a donor mark's, to prove a variant built on it still wears its own), and clear them again. Product code never calls it.
+ */
+export function ghillieSuitTestHooks(): { setRow(id: string, config: GhillieConfig): void; reset(): void } {
+  return {
+    setRow(id, config) { TEST_ROWS.set(id, config); },
+    reset() { TEST_ROWS.clear(); },
+  };
+}
+
 export function addVehicleGhillieSuit(P: GhillieBuilderPort, config?: GhillieConfig): boolean {
-  const authored = config ?? GHILLIE_CONFIG_INDEX[P.spec.id];
+  const authored = config ?? TEST_ROWS.get(P.spec.id) ?? GHILLIE_CONFIG_INDEX[P.spec.id];
   if (!authored || authored.disabled) return false;
   if (SUITED.has(P)) return false;
   SUITED.add(P);

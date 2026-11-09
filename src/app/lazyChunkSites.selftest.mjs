@@ -216,9 +216,6 @@ const KNOWN = new Set([
   // takes index, the ICE configuration; and a warm task, not a load (the Studio effects' warm)
   'src/world/propsModelStore.ts loadPromise', 'src/ui/fleetTakes.ts request', 'src/mp/transport/iceConfig.ts inFlight',
   'src/game/battleWarmRuntime.ts studioEffectsWarmPromise',
-  // the material painter worker's font, a fetch held for that worker's realm: a failed font answers false, the client ends
-  // that worker, and the next bake starts a fresh realm that fetches it again (materialPainterWorkerClient.ts)
-  'src/vehicles/materialPainterWorker.ts ready',
 ]);
 const found = new Set();
 const multipart = [];

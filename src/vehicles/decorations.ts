@@ -64,6 +64,7 @@ import {
 } from './materials.ts';
 import { LONGWEI_FAMILY_IDS } from './longweiFamilyConfig.ts';
 import { garnishedNetTextures, NET_TILE_M, theatreOfHex, type SuitTheatre } from './camoNetTexture.ts';
+import { createPaintAttempts } from './alphaCutTexture.ts';
 import { VEHICLE_ERAS, decorEraOverrideForId, isContemporaryVehicleEra } from './taxonomy.ts';
 import {
   buildBranchBundle, buildCargoVariant, buildCupola, buildExhaust, buildHatch, buildLog, buildNetDrape, buildNetRoll,
@@ -1190,24 +1191,37 @@ function surfaceMountPosition(
 // material instances).
 // ---------------------------------------------------------------------------
 
+// (2026-11-08 round 8 s5-06) One failure rule with the other vehicle paint caches (alphaCutTexture.ts
+// createPaintAttempts): a key holds a painted texture for good, or a null only once its third paint in a row has failed.
+// A refused 2D context, or a canvas or paint that threw, was cached as the same null as "no DOM here", so one refusal
+// (a phone past its canvas memory) left every later tank's crates, cloth, cans and wire-grid baskets (whose only alpha
+// is this map) without it for the session, and a throw escaped into the decoration build. Without a DOM nothing is
+// painted and nothing is remembered: a later build with a canvas paints it.
 const _texCache = new Map<string, THREE.CanvasTexture | null>();
+const settlesDecor = createPaintAttempts();
 function canvasTex(
   key: string,
   size: number,
   paint: (context: CanvasRenderingContext2D, size: number) => void,
 ): THREE.CanvasTexture | null {
   if (_texCache.has(key)) return _texCache.get(key)!;
-  if (typeof document === 'undefined') { _texCache.set(key, null); return null; } // node safety
-  const c = document.createElement('canvas');
-  c.width = c.height = size;
-  const context = c.getContext('2d');
-  if (!context) { _texCache.set(key, null); return null; }
-  paint(context, size);
-  const t = new THREE.CanvasTexture(c);
-  t.colorSpace = THREE.SRGBColorSpace;
-  t.wrapS = t.wrapT = THREE.RepeatWrapping;
-  t.anisotropy = 4;
-  _texCache.set(key, t);
+  if (typeof document === 'undefined') return null; // node safety
+  let t: THREE.CanvasTexture | null = null;
+  try {
+    const c = document.createElement('canvas');
+    c.width = c.height = size;
+    const context = c.getContext('2d');
+    if (context) {
+      paint(context, size);
+      t = new THREE.CanvasTexture(c);
+      t.colorSpace = THREE.SRGBColorSpace;
+      t.wrapS = t.wrapT = THREE.RepeatWrapping;
+      t.anisotropy = 4;
+    }
+  } catch {
+    t = null;
+  }
+  if (settlesDecor(key, !!t)) _texCache.set(key, t);
   return t;
 }
 

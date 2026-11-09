@@ -72,6 +72,24 @@ for(const [id,donor,name,nation,caliber,era] of entries) {
   spec.balancePeerOf=donor;
   applyReplicaFrame(spec);applyReplicaArmament(spec,caliber);newSpecs[id]=spec;
 }
+
+function freezeDeep<T>(value: T): T {
+  if (value && typeof value === 'object') {
+    for (const child of Object.values(value)) freezeDeep(child);
+    Object.freeze(value);
+  }
+  return value;
+}
+
+/**
+ * (2026-11-08 round 8 s5-04) The Puma S1's gun as it registers: its donor's registration-time gun under the replica's
+ * armament, taken before synchronizeIfvReplicaCombatMetadata (fleetRegistration.ts) copies the rebalanced SPz Wotan's
+ * over it. The AS21 Redback is built on this record (australiaSpecs.ts), so the gun it chose does not depend on whether
+ * its pack evaluates before the registration's passes or after them (a pack made lazy, a facade importing it late).
+ * Frozen through: a derivative copies it.
+ */
+export const PUMA_S1_REGISTRATION_GUN: Readonly<FleetTankSpec['gun']> = freezeDeep(structuredClone(newSpecs.puma_s1.gun));
+
 registerFleetSpecs(registries,IFV_REPLICA_IDS,newSpecs);
 
 /** Synchronize combat tuning without borrowing the donor's physical assembly. */

@@ -232,9 +232,28 @@ function paintTrack(rng: Rng): HTMLCanvasElement {
 
 // Lettering Glacis cannot set as written (a stencil's CTEx) keeps 'Cot UI': it bakes once in the face at hand and again
 // when the bold face arrives. Glacis lettering is outlines and never waits for a face.
-function redrawWhenMarkingFontReady(text: string, draw: () => void): void {
-  if (glacisSetsMarking(text) || !document.fonts || document.fonts.check("bold 16px 'Cot UI'")) return;
-  document.fonts.load("bold 16px 'Cot UI'").then(faces => { if (faces.length) draw(); }).catch(() => {});
+const MARKING_UI_FACE = "bold 16px 'Cot UI'";
+
+/** What a lettering painter drew: the string it lettered and how to draw its canvas again. */
+interface DecalLettering {
+  readonly text: string;
+  readonly redraw: () => void;
+}
+
+/**
+ * A decal's canvas and its bake (2026-11-08 round 8 s5-09). A decal is final at once (Glacis outlines, or a drawn mark
+ * that letters nothing) or provisional: lettered in the face at hand, then redrawn and uploaded once 'Cot UI' loads
+ * (final), or dropped when the load brings no face. Its material set's dispose does not end it: a copied material
+ * (cloneTankVisual) still draws the texture. paintDecal answers for its own lettering; createTankMaterials' decal()
+ * owns the one wait (one predicate, one waiter). Before, the painter redrew on its own waiter and decal() uploaded on a
+ * second one under its own guess at what the painter lettered.
+ */
+interface PaintedDecal {
+  readonly canvas: HTMLCanvasElement;
+  /** The lettering is provisional: Glacis cannot set it as written, so it bakes again in 'Cot UI'. */
+  readonly needsUiFace: boolean;
+  /** Draws the canvas again in the face now at hand (null: the decal letters nothing). */
+  readonly redraw: (() => void) | null;
 }
 
 /** The share of a 256 px text decal its lettering may span, outline included (8 px margins). */
@@ -280,13 +299,13 @@ function letterMarking(
 function paintDesignationDecal(
   ctx: CanvasRenderingContext2D,
   marking: VehicleMarkingRecord,
-): void {
+): DecalLettering {
   const draw = (): void => {
     ctx.clearRect(0, 0, 256, 256);
     drawTacticalNumber(ctx, marking, { x: 2, y: 34, width: 252, height: 188 });
   };
   draw();
-  redrawWhenMarkingFontReady(marking.tacticalNumber, draw);
+  return { text: marking.tacticalNumber, redraw: draw };
 }
 
 function paintStarDecal(ctx: CanvasRenderingContext2D): void {
@@ -366,18 +385,18 @@ function paintGreyCrossDecal(ctx: CanvasRenderingContext2D): void {
   ctx.strokeRect(108, 48, 40, 160);
 }
 
-function paintTextDecal(ctx: CanvasRenderingContext2D, text: string): void {
+function paintTextDecal(ctx: CanvasRenderingContext2D, text: string): DecalLettering {
   const length = Math.max(1, text.length);
   const draw = (): void => {
     ctx.clearRect(0, 0, 256, 256);
     letterMarking(ctx, text, 128, 128, Math.min(120, Math.floor(380 / length)), 'rgba(174,172,162,0.92)', 10, 'rgba(20,20,20,0.55)');
   };
   draw();
-  redrawWhenMarkingFontReady(text, draw);
+  return { text, redraw: draw };
 }
 
 /** Stencilled black lettering with a thin pale edge (the United Nations' "UN" on white vehicles). */
-function paintMlcDecal(ctx: CanvasRenderingContext2D, text: string): void {
+function paintMlcDecal(ctx: CanvasRenderingContext2D, text: string): DecalLettering {
   const draw = (): void => {
     ctx.clearRect(0, 0, 256, 256);
     ctx.beginPath();
@@ -390,10 +409,10 @@ function paintMlcDecal(ctx: CanvasRenderingContext2D, text: string): void {
     letterMarking(ctx, text, 128, 128, text.length > 2 ? 100 : 130, 'rgba(18,18,18,0.95)', 0, '', 'plate');
   };
   draw();
-  redrawWhenMarkingFontReady(text, draw);
+  return { text, redraw: draw };
 }
 
-function paintStencilDecal(ctx: CanvasRenderingContext2D, text: string, white = false): void {
+function paintStencilDecal(ctx: CanvasRenderingContext2D, text: string, white = false): DecalLettering {
   const length = Math.max(1, text.length);
   const draw = (): void => {
     ctx.clearRect(0, 0, 256, 256);
@@ -401,12 +420,12 @@ function paintStencilDecal(ctx: CanvasRenderingContext2D, text: string, white = 
       white ? 'rgba(236,234,226,0.95)' : 'rgba(18,18,18,0.94)', 6, white ? 'rgba(24,24,22,0.45)' : 'rgba(232,230,222,0.55)');
   };
   draw();
-  redrawWhenMarkingFontReady(text, draw);
+  return { text, redraw: draw };
 }
 
 // A registration plate: black lettering on a white plate with a thin black border, the plate a strip across the square
 // canvas (the Bundeswehr's "Y" plates)
-function paintPlateDecal(ctx: CanvasRenderingContext2D, text: string): void {
+function paintPlateDecal(ctx: CanvasRenderingContext2D, text: string): DecalLettering {
   const length = Math.max(1, text.length);
   const draw = (): void => {
     ctx.clearRect(0, 0, 256, 256);
@@ -417,40 +436,35 @@ function paintPlateDecal(ctx: CanvasRenderingContext2D, text: string): void {
     letterMarking(ctx, text, 128, 128, Math.min(46, Math.floor(330 / length)), 'rgba(18,18,18,0.96)', 0, '', 'plate');
   };
   draw();
-  redrawWhenMarkingFontReady(text, draw);
+  return { text, redraw: draw };
 }
 
-/** The lettering a decal kind bakes ('' for the drawn marks: insignia, flags, crosses, the star, soot). */
-function decalLettering(kind: string, text: string | null | undefined, marking: VehicleMarkingRecord): string {
-  if (kind === 'designation') return marking.tacticalNumber;
-  return ['insignia', 'star', 'cross', 'soot', 'crossgrey', 'flag'].includes(kind) ? '' : text ?? '';
-}
-
-// Transparent marking decal canvases.
+// Transparent marking decal canvases: the drawn marks letter nothing; the rest say what they lettered.
 function paintDecal(
   kind: string,
   text: string | null | undefined,
   marking: VehicleMarkingRecord,
-): HTMLCanvasElement {
+): PaintedDecal {
   const canvas = makeCanvas(256, 256);
   const ctx = canvas2d(canvas);
   ctx.clearRect(0, 0, 256, 256);
+  let lettering: DecalLettering | null = null;
   if (kind === 'insignia') drawNationalInsignia(ctx, marking.insignia, 128, 128, 210);
-  else if (kind === 'designation') paintDesignationDecal(ctx, marking);
+  else if (kind === 'designation') lettering = paintDesignationDecal(ctx, marking);
   else if (kind === 'star') paintStarDecal(ctx);
   else if (kind === 'cross') paintCrossDecal(ctx);
   else if (kind === 'soot') paintSootDecal(ctx);
   else if (kind === 'crossgrey') paintGreyCrossDecal(ctx);
-  else if (kind === 'stencil') paintStencilDecal(ctx, text ?? '');
-  else if (kind === 'stencilWhite') paintStencilDecal(ctx, text ?? '', true);
-  else if (kind === 'plate') paintPlateDecal(ctx, text ?? '');
+  else if (kind === 'stencil') lettering = paintStencilDecal(ctx, text ?? '');
+  else if (kind === 'stencilWhite') lettering = paintStencilDecal(ctx, text ?? '', true);
+  else if (kind === 'plate') lettering = paintPlateDecal(ctx, text ?? '');
   // a NATO bridge-classification disc: black number on a yellow disc
-  else if (kind === 'mlc') paintMlcDecal(ctx, text ?? '');
+  else if (kind === 'mlc') lettering = paintMlcDecal(ctx, text ?? '');
   // a flag on its pole (the text names the insignia painter, e.g. 'dk-dannebrog'): drawn as itself, never re-seated as
   // the vehicle's national insignia
   else if (kind === 'flag') drawNationalInsignia(ctx, text ?? '', 128, 128, 250);
-  else paintTextDecal(ctx, text ?? '');
-  return canvas;
+  else lettering = paintTextDecal(ctx, text ?? '');
+  return { canvas, needsUiFace: !!lettering && !glacisSetsMarking(lettering.text), redraw: lettering?.redraw ?? null };
 }
 
 /**
@@ -3855,18 +3869,34 @@ vec4 burntTri( sampler2D m, vec3 p, vec3 n, float sc ) {
   const marking = vehicleMarkingRecord(spec);
   const decalCache = new Map<string, THREE.MeshStandardMaterial>();
   const decalTextureLeases: SootTextureLease[] = [];
+  /** A provisional decal's one wait (PaintedDecal): when 'Cot UI' loads, redraw its canvas and upload it in the same
+   *  callback; a load that brings no face drops it. A final decal waits for nothing. The set's dispose does not drop it
+   *  (fix-up r1): a copy of the decal's material (cloneTankVisual) draws this texture after the set is gone, and a
+   *  texture nothing draws is never uploaded, so the re-bake costs it one canvas redraw. */
+  const rebakeWhenUiFaceLoads = (painted: PaintedDecal, texture: THREE.CanvasTexture): void => {
+    const redraw = painted.redraw;
+    if (!painted.needsUiFace || !redraw || !document.fonts || document.fonts.check(MARKING_UI_FACE)) return;
+    document.fonts.load(MARKING_UI_FACE).then((faces) => {
+      if (!faces.length) return;
+      redraw();
+      texture.needsUpdate = true;
+    }).catch(() => {});
+  };
   const decal = (kind: string, text?: string | null): THREE.MeshStandardMaterial => {
     const key = `${marking.markingCode}:${kind}:${text || ''}`;
     if (!decalCache.has(key)) {
+      // (the soot is drawn, never lettered: its shared texture is final at once)
       const lease = kind === 'soot' && engineCtx
-        ? acquireSootTexture(engineCtx, aniso, () => canvasTex(paintDecal(kind, text, marking), { aniso }))
+        ? acquireSootTexture(engineCtx, aniso, () => canvasTex(paintDecal(kind, text, marking).canvas, { aniso }))
         : null;
-      if (lease) decalTextureLeases.push(lease);
-      const t = lease?.texture ?? track(canvasTex(paintDecal(kind, text, marking), { aniso }));
-      // lettering Glacis cannot set re-bakes when its face loads (paintDecal registered first, so its redraw runs
-      // before this): push the fresh canvas to the GPU. Glacis lettering is final on the first bake.
-      if (!glacisSetsMarking(decalLettering(kind, text, marking)) && document.fonts && !document.fonts.check("bold 16px 'Cot UI'")) {
-        document.fonts.load("bold 16px 'Cot UI'").then(faces => { if (faces.length) t.needsUpdate = true; }).catch(() => {});
+      let t: THREE.CanvasTexture;
+      if (lease) {
+        decalTextureLeases.push(lease);
+        t = lease.texture;
+      } else {
+        const painted = paintDecal(kind, text, marking);
+        t = track(canvasTex(painted.canvas, { aniso }));
+        rebakeWhenUiFaceLoads(painted, t);
       }
       const m = track(setup(new THREE.MeshStandardMaterial({
         map: t, transparent: true, roughness: 0.8, metalness: 0.1,

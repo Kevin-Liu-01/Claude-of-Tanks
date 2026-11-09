@@ -12007,6 +12007,10 @@ export function* createTankRuntimeSteps(
       if (moveWreck({ kind: 'dispose' }) !== 'dispose') return;
       turretDriver?.reset();
       reopenInteriorFills();
+      // (2026-11-08 round 8 s5-02) the dispose move undoes the gun's crumple as reset does: its bent copies die here and
+      // the originals are back on their meshes before the battle pool's release compares them (a wreck disposed with no
+      // reset, an MP match's end or a Studio removal, leaked every copy; wreckDispose.selftest)
+      resetLiveCrumple();
       releaseBattleGeometry?.();
       releaseBattleGeometry=undefined;
       // Detached detail is intentionally outside root traversal while far.
