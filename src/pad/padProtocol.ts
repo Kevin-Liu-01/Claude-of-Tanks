@@ -86,7 +86,8 @@ export type PadSignalKind = 'offer' | 'answer' | 'candidate';
  *  closed lobby); `full` is a lobby with every seat taken; `removed` is a seat the desktop let go. */
 export type PadEndReason = 'unknown' | 'expired' | 'ended' | 'replaced' | 'desktop_left' | 'too_long' | 'limit' | 'invalid' | 'full' | 'removed';
 /** A lobby seat's presence, as the desktop hears it. */
-export type PadSeatState = 'here' | 'away' | 'gone';
+export const PAD_SEAT_STATES = ['here', 'away', 'gone'] as const;
+export type PadSeatState = (typeof PAD_SEAT_STATES)[number];
 
 export interface PadIceServer {
   urls: string | string[];
@@ -121,7 +122,7 @@ export type PadHostMessage =
   | { t: 'end'; reason: PadEndReason };
 
 const SIGNAL_KINDS = new Set<string>(['offer', 'answer', 'candidate']);
-const SEAT_STATES = new Set<string>(['here', 'away', 'gone']);
+const SEAT_STATES = new Set<string>(PAD_SEAT_STATES);
 
 /** A lobby seat number, or undefined (absent or not a seat). */
 function seatOf(value: unknown): number | undefined {
@@ -238,6 +239,16 @@ export const PAD_TOUR_PARTS = ['chip', 'key', 'round', 'dial', 'lever', 'sight',
 export const PAD_TOUR_STOPS = ['tilt', 'throttle', 'stick', 'aim', 'fire', 'scope', 'lock'] as const;
 export type PadTourPart = (typeof PAD_TOUR_PARTS)[number];
 export type PadTourStop = (typeof PAD_TOUR_STOPS)[number];
+/** The guide on the phone, as its diagnostics name it: hidden, shown, or how it last ended (Skip on the phone, its time
+ *  running out, the pairing's end, Skip on the game screen). */
+export const PAD_TOUR_STATES = ['hidden', 'shown', 'skipped', 'timeout', 'ended', 'screen'] as const;
+export type PadTourState = (typeof PAD_TOUR_STATES)[number];
+export type PadTourEnd = Exclude<PadTourState, 'hidden' | 'shown'>;
+/** The guide's life on the phone. Its on:true tells the game screen the time it has left (`ms`), so the screen's copy
+ *  never outlives the phone's (round 8 Y5 s6-04); an on:true without it is given this. */
+export const PAD_TOUR_MS = 10_000;
+/** The longest time left an on:true may carry. */
+const TOUR_MS_MAX = 60_000;
 export interface PadTourLayout {
   w: number;
   h: number;
@@ -292,9 +303,9 @@ export type PadCtlMessage =
   | { k: 'status'; s: PadStatus }
   /** `m`: the cue's strength, 0..1 (a heavier gun, a deeper hit, a harder crash). */
   | { k: 'cue'; c: PadCue; m?: number }
-  /** The controls guide opened (with the phone's picture, `l`, encodePadTour's) or ended, on either side: Skip on one
-   *  ends it on both. */
-  | { k: 'tour'; on: boolean; l?: string };
+  /** The controls guide opened (with the phone's picture, `l`, encodePadTour's, and its time left on the phone, `ms`) or
+   *  ended, on either side: Skip on one ends it on both. */
+  | { k: 'tour'; on: boolean; l?: string; ms?: number };
 
 const HOLDS = new Set<string>(PAD_HOLD_ACTIONS);
 const TAPS = new Set<string>(PAD_TAP_ACTIONS);
@@ -376,10 +387,12 @@ export function readPadCtl(text: string): PadCtlMessage | null {
       if (typeof record.c !== 'string' || !CUES.has(record.c)) return null;
       return Number.isFinite(record.m) ? { k: 'cue', c: record.c as PadCue, m: Math.max(0, Math.min(1, Number(record.m))) }
         : { k: 'cue', c: record.c as PadCue };
-    case 'tour':
+    case 'tour': {
       if (typeof record.on !== 'boolean') return null;
-      if (record.l === undefined) return { k: 'tour', on: record.on };
-      return record.on && typeof record.l === 'string' && TOUR_TEXT.test(record.l) ? { k: 'tour', on: true, l: record.l } : null;
+      const time = record.on && Number.isFinite(record.ms) ? { ms: Math.max(0, Math.min(TOUR_MS_MAX, Number(record.ms))) } : {};
+      if (record.l === undefined) return { k: 'tour', on: record.on, ...time };
+      return record.on && typeof record.l === 'string' && TOUR_TEXT.test(record.l) ? { k: 'tour', on: true, l: record.l, ...time } : null;
+    }
     default: return null;
   }
 }

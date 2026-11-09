@@ -8,7 +8,8 @@ import { createPadLink } from './padLink.ts';
 import type { PadLink, PadLinkState } from './padLink.ts';
 import { PAD_STALE_MS, createPadInputMapper, decodePadAxes, decodePadTour } from './padDesk.ts';
 import type { PadInputPort } from './padDesk.ts';
-import type { PadAxes, PadStatus } from './padProtocol.ts';
+import { PAD_TOUR_MS } from './padProtocol.ts';
+import type { PadAxes, PadStatus, PadTourLayout } from './padProtocol.ts';
 import { PAD_CUE_EVENTS, padCueOf } from './padCues.ts';
 import { showPadTour } from './padTourScreen.ts';
 import { shellIconId } from '../ui/shellIcons.ts';
@@ -83,6 +84,8 @@ export interface PadReceiverView {
 
 export interface PadReceiver {
   readonly view: PadReceiverView;
+  /** The controls guide's copy on the game screen (PAD_TOUR_MIRROR_STATES). */
+  readonly tour: PadTourMirrorState;
   subscribe(listener: (view: PadReceiverView) => void): () => void;
   /** End the pairing for both sides. */
   disconnect(): void;
@@ -128,6 +131,12 @@ export interface PadReceiverOptions {
   debugSeat?: number;
 }
 
+/** The game screen's copy of the phone's controls guide (round 8 Y5 s6-04): the phone owns the guide; the copy here is
+ *  `open` from the phone's on:true until its on:false, Skip here, this link leaving live, or the time the phone's guide
+ *  had left (its on:true's `ms`), whichever comes first; then `closed`. */
+export const PAD_TOUR_MIRROR_STATES = ['closed', 'open'] as const;
+export type PadTourMirrorState = (typeof PAD_TOUR_MIRROR_STATES)[number];
+
 export function startPadReceiver(serviceUrl: string, ports: PadReceiverPorts, resume?: { code: string; token: string },
   options: PadReceiverOptions = {}): PadReceiver {
   const remember = options.remember !== false;
@@ -141,8 +150,10 @@ export function startPadReceiver(serviceUrl: string, ports: PadReceiverPorts, re
   let applyMs = 0;
   let pendingApplyAt = -1;
   let frames = 0;
-  /** The phone's controls guide on the game screen, while it shows (padTourScreen.ts). */
+  /** The phone's controls guide on the game screen (padTourScreen.ts): its state, its drawing's hide, its deadline. */
+  let tourState: PadTourMirrorState = 'closed';
   let hideTour: (() => void) | null = null;
+  let tourDeadline: ReturnType<typeof setTimeout> | undefined;
   /** The phone drives only in a battle, unpaused, with this tab shown: anywhere else its holds are let go and its
    *  frames and presses wait (its pause button still works, to close the menu it opened). */
   let driving = false;
@@ -180,6 +191,8 @@ export function startPadReceiver(serviceUrl: string, ports: PadReceiverPorts, re
       if (remember) try { sessionStorage.setItem(DESK_RESUME_KEY, JSON.stringify({ code, token })); } catch { /* storage blocked */ }
     },
     onState(state) {
+      // the guide's copy here never outlives this link's live state (the phone's on:false may never come)
+      if (state.kind !== 'live') setTour(null);
       if (state.kind === 'away' || state.kind === 'ended') mapper.releaseAll();
       if (state.kind === 'ended') { if (remember) forgetDeskResume(); stop(); }
       publish({ state, ...(state.kind === 'live' ? {} : { rttMs: null }) });
@@ -204,8 +217,7 @@ export function startPadReceiver(serviceUrl: string, ports: PadReceiverPorts, re
         const layout = message.on && message.l ? decodePadTour(message.l) : null;
         // a picture that does not decode is refused whole (the reader checked only its shape)
         if (message.l && !layout) return;
-        hideTour?.();
-        hideTour = layout ? showPadTour(layout, () => { hideTour = null; link.sendCtl({ k: 'tour', on: false }); }) : null;
+        setTour(layout ? { layout, ms: message.ms ?? PAD_TOUR_MS } : null);
       }
       else if (message.k === 'pause' || (driving && message.k !== 'status')) mapper.applyCtl(message);
     },
@@ -251,16 +263,35 @@ export function startPadReceiver(serviceUrl: string, ports: PadReceiverPorts, re
     if (now - lastPingAt >= (relay ? 5000 : 1000)) { lastPingAt = now; link.sendCtl({ k: 'ping', t: now }); }
   }, 100);
 
+  /** The guide's copy's one writer: open with the phone's picture until `ms` from now, or closed (drawing and deadline
+   *  gone). Another phone's showing may replace the drawing meanwhile (a couch lobby); this copy's hide is then a no-op. */
+  function setTour(next: { layout: PadTourLayout; ms: number } | null): void {
+    clearTimeout(tourDeadline);
+    tourDeadline = undefined;
+    hideTour?.();
+    hideTour = null;
+    tourState = 'closed';
+    if (!next) return;
+    tourState = 'open';
+    hideTour = showPadTour(next.layout, () => {
+      // Skip here: the screen already closed its drawing; the phone hears it
+      hideTour = null;
+      setTour(null);
+      link.sendCtl({ k: 'tour', on: false });
+    }, next.ms);
+    tourDeadline = setTimeout(() => setTour(null), next.ms);
+  }
+
   function stop(): void {
     clearInterval(timer);
     for (const off of unlisten.splice(0)) off();
-    hideTour?.();
-    hideTour = null;
+    setTour(null);
     mapper.releaseAll();
   }
 
   return {
     get view() { return view; },
+    get tour() { return tourState; },
     subscribe(listener) {
       listeners.add(listener);
       return () => listeners.delete(listener);

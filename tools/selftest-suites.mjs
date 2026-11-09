@@ -1895,6 +1895,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/pad/padLink.selftest.mjs',
     'src/pad/padLobby.selftest.mjs', // 2026-11-01 (couch-mode-268, docs/COUCH-MODE.md): one lobby, a receiver per seat
     'src/pad/padLobbyResume.selftest.mjs', // round 8 Y5 s3-07/s3-08: the real lobby and actor in memory: a TV blink keeps a joined lobby, a Start while away lands, the roll call lets go of a seat that left
+    'src/pad/padTour.selftest.mjs', // round 8 Y5 s6-04: the game screen's guide is a bounded mirror of the phone's (on:false, Skip, the link leaving live, the phone's time left)
     'src/game/couchSeats.selftest.mjs', // couch-mode-268: which roster tank each phone drives, and a seat's controls
     'src/game/couchCamera.selftest.mjs', // couch-mode-268: the shared camera frames every seat
     'src/pad/qr.selftest.mjs',
@@ -1916,6 +1917,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'tools/mp-p2p-early-link.selftest.mjs', // 2026-10-20 item/mp-rejoin-229: a running match's re-entry links beside its load
     'tools/mp-room-lifecycle.selftest.mjs',
     'tools/mp-states.selftest.mjs', // 2026-11-02 audit S3: the MP harnesses take the protocol's state words from their owners
+    'tools/pad-states.selftest.mjs', // round 8 Y5 s6-04: the pad harnesses take the pad's state words from their owners
     'src/mp/session/browserComposition.selftest.mjs',
     'src/mp/session/lobbyIntent.selftest.mjs',
     'src/mp/session/playMenuAdapter.selftest.mjs',

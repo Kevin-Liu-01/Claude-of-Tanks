@@ -21,16 +21,19 @@
  * Lazy, as the receiver is: loaded when the host opens couch mode. Browser-only (WebSocket), injectable for tests.
  */
 import { PAD_KEEPALIVE_REQUEST, readPadHostMessage } from './padProtocol.ts';
-import type { PadEndReason, PadHostMessage, PadIceServer } from './padProtocol.ts';
+import type { PadEndReason, PadHostMessage, PadIceServer, PadSeatState } from './padProtocol.ts';
 import { startPadReceiver } from './padReceiver.ts';
 import type { PadReceiver, PadReceiverPorts, PadReceiverView } from './padReceiver.ts';
 
 export interface PadLobbySeat {
   seat: number;
   /** The phone's socket to the lobby: here, or away (asleep, changing network) and holding its seat. */
-  presence: 'here' | 'away';
+  presence: PadLobbyPresence;
   view: PadReceiverView;
 }
+
+/** A held seat's presence (a seat `gone` is no longer held). */
+export type PadLobbyPresence = Exclude<PadSeatState, 'gone'>;
 
 /** The lobby as the host's screen shows it: `away` while its socket reconnects (the host's last word stands meanwhile). */
 export const PAD_LOBBY_STATES = ['connecting', 'open', 'closed', 'away', 'ended'] as const;
@@ -131,7 +134,7 @@ class SeatSocket {
 
 interface SeatEntry {
   seat: number;
-  presence: 'here' | 'away';
+  presence: PadLobbyPresence;
   socket: SeatSocket;
   receiver: PadReceiver;
   view: PadReceiverView;
@@ -285,7 +288,7 @@ export function startPadLobby(serviceUrl: string, ports: PadLobbyPorts, options:
   }
 
   // ---- the seats ------------------------------------------------------------------------------------------------
-  function onSeat(seat: number, presence: 'here' | 'away' | 'gone'): void {
+  function onSeat(seat: number, presence: PadSeatState): void {
     let entry = seats.get(seat);
     if (presence === 'gone') {
       if (entry) release(entry, 'ended');

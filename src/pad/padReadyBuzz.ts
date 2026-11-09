@@ -13,13 +13,20 @@
  * a move out of `loading` or `paused` may announce.
  */
 import type { PadStatus } from './padProtocol.ts';
-import type { PadLinkState } from './padLink.ts';
+import type { PadLinkKind } from './padLink.ts';
 
 /** The gun's loaded buzz plays for a load this long or longer (an autocannon's round-to-round is not announced). */
 export const READY_MIN_S = 1.5;
 
 export const PAD_READY_STATES = ['idle', 'loading', 'paused'] as const;
 export type PadReadyState = (typeof PAD_READY_STATES)[number];
+
+/** The gun as the phone's panel shows it (`.pad-ctl[data-state]`): no battle, the tank down, loading, ready. */
+export const PAD_GUN_STATES = ['idle', 'down', 'loading', 'ready'] as const;
+export type PadGunState = (typeof PAD_GUN_STATES)[number];
+export function padGunState(status: PadStatus): PadGunState {
+  return !status.battle ? 'idle' : !status.alive ? 'down' : status.reloadS > 0 ? 'loading' : 'ready';
+}
 
 export interface PadReadyBuzzPorts {
   /** Play the `ready` buzz. */
@@ -35,7 +42,7 @@ export interface PadReadyBuzz {
   /** A status from the desktop. */
   status(next: PadStatus): void;
   /** The link's state changed: anything but `live` drops the load. */
-  link(kind: PadLinkState['kind']): void;
+  link(kind: PadLinkKind): void;
 }
 
 export function createPadReadyBuzz(ports: PadReadyBuzzPorts): PadReadyBuzz {

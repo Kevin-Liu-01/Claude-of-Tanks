@@ -20,17 +20,20 @@
  * own axes in that locked frame, so the system's rotation never reaches the steering.
  */
 import { createPadLink } from './padLink.ts';
-import type { PadLink, PadLinkState } from './padLink.ts';
+import type { PadLink, PadLinkState, PadPhoneState } from './padLink.ts';
 import {
   DEFAULT_STEERING, aimGain, aimSpeed, frameDelta, frameInsets, frameTurn, leverValue, lockAngle, steerFromAngle, wheelAngleDeg,
 } from './padInput.ts';
 import { padBuzzPattern, padBuzzTicks } from './padBuzz.ts';
-import { createPadReadyBuzz } from './padReadyBuzz.ts';
+import { createPadReadyBuzz, padGunState } from './padReadyBuzz.ts';
+import type { PadGunState } from './padReadyBuzz.ts';
 import type { PadBuzz } from './padBuzz.ts';
 import {
-  PAD_FLAG_TILT, PAD_HOLD_ACTIONS, encodePadAxes, encodePadTour, formatPadCode, normalizePadCode,
+  PAD_FLAG_TILT, PAD_HOLD_ACTIONS, PAD_TOUR_MS, encodePadAxes, encodePadTour, formatPadCode, normalizePadCode,
 } from './padProtocol.ts';
-import type { PadAxes, PadCue, PadHoldAction, PadStatus, PadTapAction, PadTourLayout, PadTourPart, PadTourStop } from './padProtocol.ts';
+import type {
+  PadAxes, PadCue, PadHoldAction, PadStatus, PadTapAction, PadTourEnd, PadTourLayout, PadTourPart, PadTourState, PadTourStop,
+} from './padProtocol.ts';
 import { padServiceUrl } from './padEndpoint.ts';
 import { t } from '../ui/i18n.ts';
 import { icon } from '../ui/icons/icon.ts';
@@ -43,7 +46,7 @@ const SETTINGS_KEY = 'cot.pad.v1';
 const RESUME_KEY = 'cot.pad.resume';
 /** Set once this phone has seen the controls' guide (its first pairing). */
 const TOUR_KEY = 'cot.pad.tour';
-const TOUR_MS = 10_000;
+const TOUR_MS = PAD_TOUR_MS;
 const NO_TILT_MS = 1500;
 const HEARTBEAT_MS = 100;
 /** A thumb that lands on the fire button aims once it has moved this far (a press's wobble never nudges the gun). */
@@ -306,12 +309,13 @@ let ringAnimations: Animation[] = [];
 let reloadKey = '';
 /** Diagnostics for the pad e2e and the owner's real-device check. */
 interface PhoneDebug {
-  sent: number; held: number; throttle: number; released: number; rttMs: number | null; applyMs: number; tilt: boolean; state: string; frame: object | null;
+  sent: number; held: number; throttle: number; released: number; rttMs: number | null; applyMs: number; tilt: boolean; state: PadPhoneState;
+  frame: object | null;
   /** The buzzes played, by name, the guide's last state (shown, skipped, timed out) and how long it last stayed open. */
-  buzz: Record<string, number>; tour: string; tourMs: number;
+  buzz: Record<string, number>; tour: PadTourState; tourMs: number;
 }
 const debug: PhoneDebug | null = import.meta.env.DEV || /[?&]padDebug\b/.test(location.search)
-  ? ((globalThis as { __COT_PAD_PHONE?: PhoneDebug }).__COT_PAD_PHONE = { sent: 0, held: 0, throttle: 0, released: 0, rttMs: null, applyMs: 0, tilt: false, state: 'join', frame: null, buzz: {}, tour: '', tourMs: 0 }) : null;
+  ? ((globalThis as { __COT_PAD_PHONE?: PhoneDebug }).__COT_PAD_PHONE = { sent: 0, held: 0, throttle: 0, released: 0, rttMs: null, applyMs: 0, tilt: false, state: 'join', frame: null, buzz: {}, tour: 'hidden', tourMs: 0 }) : null;
 
 const steering = (): number => {
   if (settings.tilt && tiltSeen) {
@@ -630,8 +634,9 @@ const tap = (action: PadTapAction): void => { link?.sendCtl({ k: 'tap', a: actio
 /** The trigger's feel: the shot's kick at once when the gun is loaded (the battle's cue for that shot then adds none),
  *  a refusal while it loads, a plain tick outside a battle. */
 const triggerFeel = (): PadBuzz => {
-  if (ctl.dataset.state === 'ready') { shotFeltAt = performance.now(); return 'shot'; }
-  return ctl.dataset.state === 'loading' ? 'unready' : 'press';
+  const gun = ctl.dataset.state as PadGunState | undefined;
+  if (gun === 'ready') { shotFeltAt = performance.now(); return 'shot'; }
+  return gun === 'loading' ? 'unready' : 'press';
 };
 for (const button of ctl.querySelectorAll<HTMLElement>('[data-hold]')) {
   const action = button.dataset.hold as PadHoldAction;
@@ -832,13 +837,14 @@ function showTour(): void {
     .animate([{ transform: 'scaleX(1)' }, { transform: 'scaleX(0)' }], { duration: TOUR_MS, easing: 'linear', fill: 'forwards' });
   clearTimeout(tourTimer);
   tourTimer = setTimeout(() => endTour('timeout'), TOUR_MS);
-  if (tourLayout) link?.sendCtl({ k: 'tour', on: true, l: encodePadTour(tourLayout) });
+  // the game screen's copy closes by this time at the latest, whatever becomes of this phone (padReceiver.ts)
+  if (tourLayout) link?.sendCtl({ k: 'tour', on: true, l: encodePadTour(tourLayout), ms: TOUR_MS });
   tourShownAt = performance.now();
   if (debug) debug.tour = 'shown';
 }
 /** End the guide: skipped here, its time up, the pairing ended, or skipped on the game screen (`screen`). Skip and the
  *  time running out end it on the game screen too. */
-function endTour(how: 'skipped' | 'timeout' | 'ended' | 'screen'): void {
+function endTour(how: PadTourEnd): void {
   if (tour.hidden) return;
   if (how === 'skipped' || how === 'timeout') link?.sendCtl({ k: 'tour', on: false });
   clearTimeout(tourTimer);
@@ -935,7 +941,7 @@ function paintStatus(next: PadStatus): void {
   const share = next.topKmh ? Math.min(1, kmh / next.topKmh) : 0;
   needle.style.transform = `rotate(${Math.round(-1200 + share * 2400) / 10}deg)`;
   if (kmhReadout.textContent !== String(kmh)) kmhReadout.textContent = String(kmh);
-  ctl.dataset.state = !next.battle ? 'idle' : !next.alive ? 'down' : next.reloadS > 0 ? 'loading' : 'ready';
+  ctl.dataset.state = padGunState(next);
   readyBuzz.status(next);
   message.textContent = !next.battle ? t('pad.waitingBattle') : next.paused ? t('pad.paused') : !next.alive ? t('pad.destroyed')
     : settings.tilt && tiltSeen && tiltAngle === null ? t('pad.flat') : '';

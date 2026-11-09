@@ -5,13 +5,14 @@
  * stop with its name in this screen's language, and the ghost strokes. It takes no input but Skip, which ends it on the
  * phone too; the phone's Skip or its ten seconds end it here. It stands in the top layer (a manual popover, as the kit's
  * hover tip does) so it shows over Settings, where a phone pairs, and over the couch lobby; it loads with the receiver.
+ * It keeps no clock of its own (round 8 Y5 s6-04): the receiver closes it when the phone's guide ends (its on:false),
+ * when the link leaves live, or when the time the phone's guide had left runs out; its bar counts that time down.
  */
 import type { PadTourLayout, PadTourStop } from './padProtocol.ts';
 import { t } from '../ui/i18n.ts';
 import { ensureStyle } from '../ui/styleLayers.ts';
 import { prefersReducedMotion } from '../ui/accessibilityPreferences.ts';
 
-const TOUR_MS = 10_000;
 /** The phone drawn this wide at most (its frame scaled to fit), and never wider than this share of the window. */
 const PHONE_MAX_PX = 720;
 const PHONE_MAX_SHARE = 0.84;
@@ -46,7 +47,6 @@ const CSS = `
 `;
 
 let host: HTMLElement | null = null;
-let timer: ReturnType<typeof setTimeout> | undefined;
 let animations: Animation[] = [];
 /** The showing's owner: a newer showing (another phone in a couch lobby) replaces it, and only its owner may hide it. */
 let current: object | null = null;
@@ -63,7 +63,6 @@ function hostElement(): HTMLElement {
 }
 
 function close(): void {
-  clearTimeout(timer);
   for (const animation of animations.splice(0)) animation.cancel();
   current = null;
   skipCurrent = null;
@@ -73,9 +72,9 @@ function close(): void {
   host.textContent = '';
 }
 
-/** Show the phone's guide; `onSkip` tells that phone when Skip is pressed here. Returns its hide (a no-op once another
- *  showing replaced it). */
-export function showPadTour(layout: PadTourLayout, onSkip: () => void): () => void {
+/** Show the phone's guide, its bar counting down `ms` (the time the phone's guide has left); `onSkip` tells that phone
+ *  when Skip is pressed here. Returns its hide (a no-op once another showing replaced it). */
+export function showPadTour(layout: PadTourLayout, onSkip: () => void, ms: number): () => void {
   close();
   const root = hostElement();
   const owner = {};
@@ -119,7 +118,7 @@ export function showPadTour(layout: PadTourLayout, onSkip: () => void): () => vo
   }
   if (!prefersReducedMotion()) {
     animations.push((root.querySelector('.cot-pad-tour-clock') as HTMLElement)
-      .animate([{ transform: 'scaleX(1)' }, { transform: 'scaleX(0)' }], { duration: TOUR_MS, easing: 'linear', fill: 'forwards' }));
+      .animate([{ transform: 'scaleX(1)' }, { transform: 'scaleX(0)' }], { duration: ms, easing: 'linear', fill: 'forwards' }));
     const reach = Math.round(36 * scale);
     // the phone's own stroke: two of the stage motion token
     const stroke = (parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--dur-stage')) || 700) * 2;
@@ -130,6 +129,5 @@ export function showPadTour(layout: PadTourLayout, onSkip: () => void): () => vo
       { duration: stroke, easing: 'ease-in-out', iterations: Infinity }));
     }
   }
-  timer = setTimeout(close, TOUR_MS);
   return () => { if (current === owner) close(); };
 }

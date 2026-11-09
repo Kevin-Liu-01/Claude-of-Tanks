@@ -15,12 +15,23 @@ import {
 } from './padProtocol.ts';
 import type { PadCtlMessage, PadEndReason, PadHostMessage, PadIceServer, PadRole } from './padProtocol.ts';
 
-/** Where the link is. `live` names its path: a direct or TURN data channel, or the relay. */
+/** The link's states, as runtime words (the harnesses read them through tools/pad-states.mjs; round 8 Y5 s6-04). Each is
+ *  a kind of PadLinkState (the typecheck holds that; tools/pad-states.selftest.mjs holds the converse). */
+export const PAD_LINK_KINDS = ['connecting', 'waiting', 'linking', 'live', 'away', 'ended'] as const satisfies readonly PadLinkState['kind'][];
+export type PadLinkKind = (typeof PAD_LINK_KINDS)[number];
+/** The paths a live link carries frames over: a direct or TURN data channel, or the relay. */
+export const PAD_LINK_PATHS = ['direct', 'turn', 'relay'] as const;
+export type PadLinkPath = (typeof PAD_LINK_PATHS)[number];
+/** The phone page's diagnostics state: its join screen before it has a link, then its link's kind. */
+export const PAD_PHONE_STATES = ['join', ...PAD_LINK_KINDS] as const;
+export type PadPhoneState = (typeof PAD_PHONE_STATES)[number];
+
+/** Where the link is. `live` names its path. */
 export type PadLinkState =
   | { kind: 'connecting' }
   | { kind: 'waiting'; code: string; expiresAt: number }
   | { kind: 'linking' }
-  | { kind: 'live'; path: 'direct' | 'turn' | 'relay' }
+  | { kind: 'live'; path: PadLinkPath }
   | { kind: 'away' }
   | { kind: 'ended'; reason: PadEndReason | 'unreachable' | 'relay_spent' };
 
@@ -94,7 +105,7 @@ export function createPadLink(options: PadLinkOptions): PadLink {
   let pendingCandidates: RTCIceCandidateInit[] = [];
   let rtcTimer: ReturnType<typeof setTimeout> | null = null;
   let offered = false;
-  let livePath: 'direct' | 'turn' | 'relay' = 'relay';
+  let livePath: PadLinkPath = 'relay';
 
   const setState = (next: PadLinkState): void => {
     if (ended && next.kind !== 'ended') return;
