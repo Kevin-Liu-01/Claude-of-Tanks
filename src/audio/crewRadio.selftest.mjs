@@ -6,6 +6,7 @@ import { mulberry32 } from './audioMath.ts';
 import { VOICE_LINES } from './voiceLines.ts';
 import { VOICE_PACKS } from './voiceManifest.generated.ts';
 import { CREW_LANGUAGES } from './vehicleAudioProfiles.ts';
+import { CREW_LINE_GAP_LINES, CREW_LINE_GAP_PACKS, isCrewLineGap } from './crewLineGaps.test-support.mjs';
 
 function harness({ languages = ['en-US', 'de'], missing = [], loading = [], radioAssets = true } = {}) {
   const ctx = createFakeContext();
@@ -141,15 +142,23 @@ function harness({ languages = ['en-US', 'de'], missing = [], loading = [], radi
   assert.deepEqual(loaded, ['de'], 'and never loads the US crew to cover it');
 }
 
-// So every shipped pack carries every line in the catalog (and nothing the catalog lacks).
+// So every shipped pack carries every line in the catalog (and nothing the catalog lacks), bar the one listed gap
+// (crewLineGaps.test-support.mjs): a listed line missing from a listed pack is excused; a listed take that now exists fails
+// so the list shrinks as takes land.
 for (const lang of CREW_LANGUAGES) {
   const pack = VOICE_PACKS[lang];
   assert.ok(pack, `${lang} ships a pack`);
   const missing = Object.keys(VOICE_LINES).filter((id) => !(pack[id]?.length > 0));
-  assert.deepEqual(missing, [], `${lang} carries every crew line`);
+  const expected = Object.keys(VOICE_LINES).filter((id) => isCrewLineGap(lang, id));
+  assert.deepEqual(missing, expected, expected.length
+    ? `${lang} lacks exactly the listed gap (a take that landed leaves crewLineGaps.test-support.mjs)`
+    : `${lang} carries every crew line`);
   const unknown = Object.keys(pack).filter((id) => !VOICE_LINES[id]);
   assert.deepEqual(unknown, [], `${lang} ships no line the catalog lacks`);
 }
+// …and the gap names only real lines and packs (a renamed line or pack cannot hide behind it)
+for (const id of CREW_LINE_GAP_LINES) assert.ok(VOICE_LINES[id], `gap line ${id} is in the catalog`);
+for (const lang of CREW_LINE_GAP_PACKS) assert.ok(CREW_LANGUAGES.includes(lang), `gap pack ${lang} is a crew language`);
 
 // Radio damage narrows the band and grows the static bed.
 {
