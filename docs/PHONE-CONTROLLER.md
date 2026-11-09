@@ -149,9 +149,10 @@ hands the moment they happen:
   pairing and by the couch runtime for each seat) and sends a `cue` on `ctl` for its own tank's events
   (`src/pad/padCues.ts` `padCueOf`): `shot` (its gun, harder for a heavier gun), `hit` and `deflect` (a hit it gave that
   hurt or glanced off), `hurt` (stronger for more damage) and `glance` (a hit taken), `module` (a module knocked out,
-  never a repair's report), `burning`, `impact` (a crash or a ram, by the closing speed), `kill`, `dead`; and for the
-  page's player alone, the events that name no tank: `spotted` (the sixth sense), `denied` (a consumable or a shell the
-  battle refused) and `lock` / `unlock`. A paused battle or a hidden tab sends none. On the relay, where each message is
+  never a repair's report), `burning`, `impact` (a crash or a ram, by the closing speed), `kill`, `dead`, and `denied`
+  for a couch seat's shell pick the core's input stage refused (its event names the tank); and for the page's player
+  alone, the events that name no tank: `spotted` (the sixth sense), `denied` (a consumable or a shell the battle
+  refused) and `lock` / `unlock`. A paused battle or a hidden tab sends none. On the relay, where each message is
   a billed request and counts against the pairing's relay budget, a cue waits 500 ms after the last (a kill and a
   death never wait). No Worker change: the relay carries `ctl` text without reading it.
 - The phone plays each one's pattern (`padBuzz.ts` `padBuzzPattern`) with `navigator.vibrate` (Android). iOS Safari has no Vibration

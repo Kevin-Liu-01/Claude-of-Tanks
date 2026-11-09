@@ -122,8 +122,10 @@ checks it).
   A trigger tapped down and up inside one tick still fires once (the seat latches the pull until the tick carries it).
 - Each seat's phone feels its own tank (`docs/PHONE-CONTROLLER.md` "Haptics"): the couch runtime hands every seat's
   receiver the battle's bus, and the receiver sends the cues for that seat's tank only. The events that name no tank
-  (the sixth sense, the refusals, the sight's lock) are the page's player's, so no seat gets them, and a seat has no
-  lock key (its sight is its own bearing).
+  (the sixth sense, the page's refusals, the sight's lock) are the page's player's, so no seat gets them, and a seat has
+  no lock key (its sight is its own bearing). A seat's own refused shell pick names its tank (the input stage's
+  `ammo_selection_denied`), so that seat's phone feels `denied`; the shared screen shows no alert for it (round 8 merge
+  review, 2026-11-09).
 - Phase 1 seats take the mode's own roster (`assignCouchSeats`): the first seat present drives the battle's first tank,
   every other seat the next tank on its side in roster order, and the rest stay bots, so a seat's tank has no bot
   (`spawnBattleEntities`). The roster holds one tank per vehicle, so no two seats share an id; the phone's own vehicle

@@ -16,13 +16,18 @@
 //   session ended at a network round's activation or by clearMatchSession; a keyboard battle begun with the lobby's phones
 //   still seated) opened and closed the desktop's menu over a battle that was no couch battle, and the open menu then
 //   refused every key (playerBattleActions battleInputAllowed). main.ts's own togglePause port, over the real
-//   phonePause.ts, stateCore.ts and couchSeats.ts.
+//   phonePause.ts, stateCore.ts and couchSeats.ts;
+// - a seat's refused shell pick reaches its own phone (battle-core s2-10): the input stage names the tank it refused
+//   ('ammo_selection_denied' { id }) and main.ts's emit port puts it on the page bus, where no cue listened for it.
+//   The real beforeStep, stage and bus (stateCore createBus) with main.ts's own emit port, and each seat's receiver's cue
+//   mapping as padReceiver.ts runs it (padCues.ts over the seat's listen and source ports).
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { COUCH_RULES } from '../sim/matchRuleset.ts';
 import { togglePhonePause } from '../ui/phonePause.ts';
-import { couchSeatsActive } from '../game/stateCore.ts';
+import { couchSeatsActive, createBus } from '../game/stateCore.ts';
 import { beginCouchSession, endCouchSession } from '../game/couchSeats.ts';
+import { PAD_CUE_EVENTS, padCueOf } from '../pad/padCues.ts';
 
 const bodyClasses = new Set();
 globalThis.document = { body: { classList: {
@@ -211,4 +216,59 @@ function portLobby() {
   assert.equal(open, false, 'between battles the seats pause nothing');
 }
 
-console.log('couchRuntime.selftest: the couch view by its own reason in every couch battle of a session, dropped as the battle and the lobby end, Start closing the join window before it deploys, and a seat\'s Pause only in a couch battle passed');
+// (round 8 merge review r1; battle-core s2-10) a seat's refused shell pick: its own phone feels 'denied', no other seat's,
+// and the page player's refusal event (the HUD's alert, the crew's line) is not raised for it
+{
+  const emitSource = mainSource.match(/\n {4}emit: (\(type, payload\) => bus\.emit\(type, payload\)),\n/)?.[1];
+  assert.ok(emitSource, "main.ts binds the couch runtime's emit port on one line");
+  const pageEvents = [];
+  const bus = createBus((event) => pageEvents.push(event));
+  const emit = new Function('bus', `return ${emitSource};`)(bus);
+  const game = { phase: 'garage', couch: null, ruleset: { couch: undefined } };
+  const { lobby, start } = portLobby();
+  const runtime = createCouchRuntime({ game, camera: testCamera(), paused: () => false, shellCode: (type) => type, togglePause() {},
+    emit, on: (type, listener) => bus.on(type, listener), setSpectating() {}, startLobby: start });
+  runtime.open();
+  // each seat's receiver: its tank's cues from the bus (padReceiver.ts: owner.id from the seat's source, padCueOf per event)
+  const felt = new Map();
+  for (const seat of [1, 2]) {
+    const ports = lobby.ports.seat(seat);
+    const cues = [];
+    felt.set(seat, cues);
+    const owner = { id: null, player: ports.ownsPlayer !== false };
+    for (const type of PAD_CUE_EVENTS) {
+      ports.listen(type, (payload) => {
+        owner.id = ports.source()?.player?.id ?? null;
+        const cue = padCueOf(type, payload, owner);
+        if (cue) cues.push(cue.c);
+      });
+    }
+  }
+  const seat1Tank = seatTank('seat-1', 0), seat2Tank = seatTank('seat-2', 20, [10, 0, 2]);
+  beginCouchSession(game, { seats: [1, 2], sides: 'together' }, [seat1Tank, seat2Tank], new Set([seat1Tank, seat2Tank]), [true, true]);
+  game.ruleset = { couch: COUCH_RULES };
+  game.phase = 'battle';
+  // seat 2's phone taps its second slot, which is empty; held over three ticks
+  lobby.ports.seat(2).input.tapVirtual('shell2');
+  for (let tick = 0; tick < 3; tick++) runtime.beforeStep();
+  assert.equal(seat2Tank.combat.shellSlot, 0, 'the stage refused the empty slot');
+  assert.ok(pageEvents.includes('ammo_selection_denied'), "the stage's refusal reached the page bus through main.ts's emit port");
+  assert.deepEqual(felt.get(2), ['denied'],
+    "seat 2's phone feels its refused shell pick once while it is asked for (before: no cue listened for the stage's refusal)");
+  assert.deepEqual(felt.get(1), [], "seat 1's phone feels nothing of seat 2's refusal");
+  assert.equal(pageEvents.includes('ui:ammoSelectionDenied'), false,
+    "the page player's refusal (the HUD's alert, the crew's line) is not raised for a seat's: the shared screen is unchanged");
+  // back to the round it holds, then the empty slot again: a new request, felt again
+  lobby.ports.seat(2).input.tapVirtual('shell1');
+  runtime.beforeStep();
+  lobby.ports.seat(2).input.tapVirtual('shell2');
+  runtime.beforeStep();
+  assert.deepEqual(felt.get(2), ['denied', 'denied'], 'a new request of the empty slot is felt again');
+  // seat 1's own refusal is seat 1's
+  seat1Tank.combat.ammo[2] = 0;
+  lobby.ports.seat(1).input.tapVirtual('shell3');
+  runtime.beforeStep();
+  assert.deepEqual([felt.get(1), felt.get(2).length], [['denied'], 2], "seat 1's refusal is felt on seat 1's phone alone");
+}
+
+console.log('couchRuntime.selftest: the couch view by its own reason in every couch battle of a session, dropped as the battle and the lobby end, Start closing the join window before it deploys, a seat\'s Pause only in a couch battle, and a seat\'s refused shell pick on its own phone passed');
