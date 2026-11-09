@@ -1550,6 +1550,14 @@
           "zh": "夜晚的红隼机场，AC-130：炮艇机的红外视角俯视撤离圈旁的车队（一辆 M6 Linebacker、一辆 M1A2 艾布拉姆斯 SEPv2、一辆 T-90M Proryv 和一辆 T-72 Ryś），一发 152 毫米高爆弹在其中炸开，画面中有对 Leopard 2A5 的命中卡片，以及 30 毫米、152 毫米与制导导弹的武器选择。"
         },
         "standIn": null
+      },
+      {
+        "id": "air_support",
+        "alt": {
+          "en": "Air Support at Verdant Fields from overhead: a strafing run's lane laid across the woods in the side's blue, its chevrons pointing the A-10's run, with the five call-ins in the strip below",
+          "zh": "翠野原的空中支援俯瞰：一条扫射航道以己方蓝色横贯林地，箭头指向 A-10 的进袭方向，下方是五种呼叫支援"
+        },
+        "standIn": null
       }
     ],
     "versus": [
@@ -1750,13 +1758,13 @@
   },
   "featured": [
     {
-      "id": "s21-fields-assault",
-      "still": "close",
+      "versus": "f6-leo2a6-steinburg-r7",
+      "bootVersus": "f6-leo2a6-steinburg-r7-boot",
       "maps": [
-        "verdant"
+        "urban"
       ],
       "boot": true,
-      "focal": "45% 62%"
+      "focal": "46% 60%"
     },
     {
       "id": "s07-lake-shellfire",

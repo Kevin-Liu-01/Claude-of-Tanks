@@ -45,8 +45,6 @@ function merged(parts: BG[]): BG {
 
 // ------------------------------------------------------------------------------------------------------ driftwood
 export type DriftCoast = 'breton' | 'nordland';
-/** The driftwood of a coast, by its boats (the færing's fjord: Nordland spruce; every other strand: Breton). */
-export function driftCoastForBoat(boatType: string): DriftCoast { return boatType === 'faering' ? 'nordland' : 'breton'; }
 
 const BLEACHED = rgb(0xa29c90), BLEACHED_DARK = rgb(0x6d675d), HEART = rgb(0x7a6a55), TAR = rgb(0x2b2621), TAR_WORN = rgb(0x4a4037);
 
@@ -215,8 +213,6 @@ export function ropeGeometry(from: readonly [number, number, number], to: readon
 
 // -------------------------------------------------------------------------------------------------- ford markers
 export type FordStyle = 'gauge' | 'bamboo';
-/** The ford marker of a river, by its boats (the Bengal nouka's chars: bamboo; every other river: a depth gauge). */
-export function fordStyleForBoat(boatType: string): FordStyle { return boatType === 'nouka' ? 'bamboo' : 'gauge'; }
 
 const BAMBOO = rgb(0xb5a26a),
   BAMBOO_NODE = rgb(0x7d6b40), RAG = rgb(0xb3321f);

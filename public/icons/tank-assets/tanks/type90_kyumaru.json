@@ -558,15 +558,15 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 22554,
-      "sha256": "22e2e7aed94118a00ff907393f8a0347268ff27951df41361618e6e9b0884d6e",
+      "bytes": 22546,
+      "sha256": "9996c7bf08d8b4e968407f74c0e6dd76b21430f1e51c113a3b58f6a00a3b9cc4",
       "thumbnail": {
         "file": "thumbs/type90_kyumaru_angle.webp",
         "width": 256,
         "height": 256,
         "mime": "image/webp",
-        "bytes": 9602,
-        "sha256": "e93df4719cd5a9df97b7b2da85320d0f98942e846b0db113b90193d3bd5e2016"
+        "bytes": 9598,
+        "sha256": "6e45ec50908e5f8c634f6c38c3b0a1500eaff93e5287b1053f535aec885ebe82"
       }
     },
     "top": {
@@ -630,8 +630,8 @@
       "width": 256,
       "height": 128,
       "mime": "image/png",
-      "bytes": 35390,
-      "sha256": "fdb9aca200613cea2c887c05c836f1bdc24d1595b1298c0ca03da97394230e72"
+      "bytes": 33043,
+      "sha256": "fd7ba11680fb6e433fd6845cfd784daf0b303668685b9bfcc141de5e87709cd6"
     },
     "technicalLabels": {
       "file": "type90_kyumaru_technical.json",

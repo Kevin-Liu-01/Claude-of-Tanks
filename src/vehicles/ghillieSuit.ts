@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import {drapeSuitOverSpentEra, type EraDrapePort} from './eraSpentDrape.ts';
 import { KIT } from './profiles/kit.ts';
+import { m1a1FenderTopAt } from './profiles/m1a1Skirts.ts';
 import { cloneVehicleMaterial, followVehicleScheme, resolveCamoVisual, type MaterialTankSpec } from './materials.ts';
 import type { MaterialVisual } from './materialPainter.ts';
 import { oplotFlankOuterX } from './oplotFlankLayout.ts';
@@ -13,7 +14,7 @@ import { GHILLIE_FIELD_OK, GHILLIE_TOP_CARDS, GHILLIE_TOP_VERTICES } from './ghi
 import { auxiliaryWeaponProfile } from './auxiliaryWeapons.ts';
 import { tankSeedId } from './tankIdAliases.ts';
 import {
-  FIELD_NET_PALETTES, garnishedNetTextures, NET_ALPHA_CUT, NET_PALETTES, NET_TEXTURE_PX, NET_TILE_M, suitTheatreOf, theatreOfHex,
+  FIELD_NET_PALETTES, STRAW_FIELD_NET_PALETTE, garnishedNetTextures, NET_ALPHA_CUT, NET_PALETTES, NET_TEXTURE_PX, NET_TILE_M, suitTheatreOf, theatreOfHex,
   type NetPalette, type SuitTheatre,
 } from './camoNetTexture.ts';
 import { castThroughAlphaCut, floodClearTexels, shadeFromHeight, straightAlphaTexture } from './alphaCutTexture.ts';
@@ -59,6 +60,24 @@ interface TopPanel {
   garnishDensity?: number;
   /** Clear margin around every opening (hatches, sights; default 0.09 m). */
   garnishOpeningMarginM?: number;
+  /**
+   * Release 268 builder E (m1a1_abrams_fep's gun wrap): no point of a garnish card stands further than this from the
+   * owner's x = 0 plane (a barrel's bore line), so a spray laid on a tube hugs it instead of jutting off its side.
+   */
+  garnishHalfWidthM?: number;
+  /**
+   * Release 268 builder E (m1a1_abrams_fep's roof net): straight edges [a, b] the net is cut along exactly (a cell crossing
+   * one is clipped to it, its cut corners at the height of the cell's corner inside), on the side holding the panel's
+   * origin, instead of ending in the grid's staircase where a diagonal edge (a cheek's top edge) crosses the cells.
+   */
+  clipEdges?: readonly (readonly [Point2, Point2])[];
+  /**
+   * Release 268 builder E (m1a1_abrams_fep, the critics: "rigid flat boards ... like paint, with no volume"): a fitted
+   * cover's lumps, the most it rises over its seat (m): a slow swell and smaller bunches, never into the armour.
+   */
+  lumpM?: number;
+  /** Release 268 builder E: no torn cells along the grid's border (a sleeve's edges meet its side drapes edge to edge). */
+  cleanEdge?: boolean;
   /** Scales an unseated carrier's billow and gathered folds (default 1; a hull deck under the turret's sweep keeps it low). */
   reliefScale?: number;
   /** Scales the roll bunched round each opening of an unseated carrier (default 1; low under a roof gun's sweep). */
@@ -158,6 +177,72 @@ interface SidePanel {
    * roof line. They hang down the drape like its other boughs, under the main gun's low sweep over that stretch.
    */
   boughsHangAt?: readonly (readonly [number, number])[];
+  /**
+   * Release 268 builder E (m1a1_abrams_fep, blind A/B: "crumpled net facets on skirts and fenders look crude"): a calm
+   * cover hung flat along the skirt line. Each column falls straight from its level top line (topAt) to a clean hem
+   * (bottomAt, neither scalloped nor torn), standing FITTED_GAP_M off the outermost armour within 0.24 m of it along the
+   * flank (so it spans the tile seams instead of pleating into them), never inside outAt; no roll over the deck's edge,
+   * no folds.
+   */
+  flat?: boolean;
+  /**
+   * Release 268 builder E (m1a1_abrams_fep, the owner 2026-11-03: "cover the roof turret cheeks and cannon with ghillie
+   * and net"): a calm cover hung taut down a leaning wall. Each column is one straight line from its top (topAt) to a
+   * clean hem (bottomAt), leaning with the wall: it stands FITTED_GAP_M off the outermost armour of its drop within 6 cm
+   * of it along the flank (an applique cassette, a bracket), above any cut's top over that column; no roll, no folds.
+   */
+  taut?: boolean;
+  /** Release 268 builder E: scales this drape's garnish count (default 1), as TopPanel.garnishDensity. */
+  garnishDensity?: number;
+  /** Release 268 builder E: garnish only over this span [z0, z1] of the drape (clear of an end that meets a corner). */
+  garnishZ?: readonly [number, number];
+  /** Release 268 builder E: no tuft point stands further than this off the axis (|x|): tufts lie on a skirt cover. */
+  garnishMaxX?: number;
+  /** Release 268 builder E: the cover lies on its wall and what it carries (HugSpec), from topAt to a clean hem. */
+  hug?: HugSpec;
+}
+
+/**
+ * Release 268 builder E (m1a1_abrams_fep, the critics: "flat boards", "a tall flat-sided box", "a loose plank", "flat
+ * cards standing off the faces"): a cover laid ON what it covers. Each point lies on the outermost armour within reach of
+ * it, the cloth sagging between its supports (the armour's dilation by a sag paraboloid, HUG_SAG_K), with lumps up to
+ * lumpM over that; where it leaves its last support it hangs plumb (it never tucks in under an overhang faster than a
+ * slow drift). Its top row is tied to the surface under it, the seat gap off it, so the cover hangs from where it is
+ * fastened. reachA / reachB: the reach along the drape and up it (m).
+ */
+interface HugSpec {
+  readonly lumpM: number;
+  readonly reachA?: number;
+  readonly reachB?: number;
+}
+/** The sag of a hugging cover between its supports: 2 cm at 10 cm from the nearest. */
+const HUG_SAG_K = 2.0;
+/** How fast a hugging cover may drift in under an overhang as it falls (m per 2 cm row). */
+const HUG_DRIFT_M = 0.004;
+/** One hugging section: from yTop down to hemY in 2 cm rows; `wall(dA, y)` is the outermost armour dA along the drape. */
+function hugSection(wall: (dA: number, y: number) => number | null, hug: HugSpec, yTop: number, hemY: number, gap: number,
+  lump: (y: number) => number, maxOut = Infinity): { pts: Array<[number, number]>; corner: number } | null {
+  const ra = hug.reachA ?? 0.12, rb = hug.reachB ?? 0.10;
+  const pts: Array<[number, number]> = [];
+  let prev: number | null = null;
+  for (let yy = yTop; yy >= hemY - 1e-6; yy -= 0.02) {
+    if (!pts.length) {
+      // the tie: the top row on the surface under it
+      const w = wall(0, yy);
+      if (w !== null) { prev = w; pts.push([Math.min(maxOut, w + gap), yy]); continue; }
+    }
+    let best = -Infinity;
+    for (let da = -ra; da <= ra + 1e-9; da += ra / 3) for (let db = -rb; db <= rb + 1e-9; db += 0.02) {
+      if (yy + db > yTop + 0.02) continue;
+      const w = wall(da, yy + db);
+      if (w !== null) best = Math.max(best, w - HUG_SAG_K * (da * da + db * db));
+    }
+    if (prev !== null) best = Math.max(best, prev - HUG_DRIFT_M);
+    if (best === -Infinity) continue;
+    prev = best;
+    pts.push([Math.min(maxOut, best + gap + lump(yy)), yy]);
+  }
+  return pts.length > 1 ? { pts, corner: 0 } : null;
 }
 
 interface FacePanel {
@@ -175,6 +260,17 @@ interface FacePanel {
   seatGapM?: number;
   seat?: string;
   seed?: number;
+  /**
+   * Release 268 builder E (m1a1_abrams_fep, the owner's cover request): a calm cover laid taut over a plate and what it
+   * carries (an ERA field on a cheek): each column is one straight line from y1 to a clean hem at y0, parallel to the
+   * authored plane (zAt) and standing the seat gap over the furthest-out armour within 6 cm of it and TIED_REACH_M of that
+   * plane, so it spans the modules' seams instead of stepping into them; no folds, no scalloped or torn hem.
+   */
+  taut?: boolean;
+  /** Release 268 builder E: scales this face's garnish count (default 1), as TopPanel.garnishDensity. */
+  garnishDensity?: number;
+  /** Release 268 builder E: the cover lies on the face and what it carries (HugSpec), from y1 to a clean hem at y0. */
+  hug?: HugSpec;
 }
 
 interface GhilliePanels {
@@ -200,6 +296,11 @@ export interface GhillieConfig {
   hemFloorM?: number;
   /** The share of the garnish's bunches that are cut boughs rather than strips (default: the theatre palette's). */
   boughShare?: number;
+  /**
+   * Release 269 (the Olifant Mk 1A): a field net's palette set by the row rather than the hull's theatre: 'straw', the
+   * dry-season cover (STRAW_FIELD_NET_PALETTE, bare-branch boughs). Needs a field net (fieldClearanceM on a leafy suit).
+   */
+  fieldNetPalette?: 'straw';
   /**
    * The garnish tucked into the net: a species spray atlas of the trees lane (src/world/treeSprayAtlas.ts) for
    * leafy suits, or a painted multispectral cut garnish. Defaults by style (leafy: oak; ulcans / nakidka: woodland).
@@ -1215,7 +1316,10 @@ function topCloth(panel: TopPanel, cfg: GhillieConfig, support: OwnerSupport, uv
           if (d < 0.05) seam = Math.max(seam, 0.009 * (1 - d / 0.05));
         }
       }
-      y[k] = base[k] + 0.001 + 0.0015 * (1 + clothNoise(xs[i], zs[j], 0.4, s + 3)) + seam;
+      // (release 268 builder E, TopPanel.lumpM: a slow swell and smaller bunches over the seat, never into the armour)
+      const lumps = panel.lumpM ? panel.lumpM * (0.62 * (0.5 + 0.5 * clothNoise(xs[i], zs[j], 0.34, s + 61))
+        + 0.38 * (0.5 + 0.5 * clothNoise(xs[i], zs[j], 0.13, s + 67))) : 0;
+      y[k] = base[k] + 0.001 + 0.0015 * (1 + clothNoise(xs[i], zs[j], 0.4, s + 3)) + seam + lumps;
     }
   } else {
     // supports: the sticks and boughs pushed under the net (they hold it up; it sags away from them); the roll
@@ -1412,6 +1516,27 @@ function topCloth(panel: TopPanel, cfg: GhillieConfig, support: OwnerSupport, uv
   const tri = (a: Point3, b: Point3, c: Point3): void => {
     for (const p of [a, b, c]) { positions.push(p[0], p[1], p[2]); uvs.push(p[0] * uvk + ou, p[2] * uvk + ov); }
   };
+  const cutLines = panel.clipEdges ?? [];
+  const sideOf = (l: readonly [Point2, Point2], x: number, z: number): number =>
+    (l[1][0] - l[0][0]) * (z - l[0][1]) - (l[1][1] - l[0][1]) * (x - l[0][0]);
+  const keepSign = cutLines.map((l) => Math.sign(sideOf(l, 0, 0)) || 1);
+  const clipCell = (poly: Point3[]): Point3[] => {
+    let out = poly;
+    cutLines.forEach((l, k) => {
+      const ins = (p: Point3): boolean => keepSign[k] * sideOf(l, p[0], p[2]) >= 0;
+      const next: Point3[] = [];
+      for (let q = 0; q < out.length; q++) {
+        const P = out[q], Q = out[(q + 1) % out.length], pi = ins(P), qi = ins(Q);
+        if (pi) next.push(P);
+        if (pi !== qi) {
+          const sp = sideOf(l, P[0], P[2]), sq = sideOf(l, Q[0], Q[2]), t = sp / (sp - sq);
+          next.push([P[0] + (Q[0] - P[0]) * t, pi ? P[1] : Q[1], P[2] + (Q[2] - P[2]) * t]);
+        }
+      }
+      out = next;
+    });
+    return out;
+  };
   for (let j = 0; j < nz; j++) for (let i = 0; i < nx; i++) {
     const cx = (xs[i] + xs[i + 1]) / 2, cz = (zs[j] + zs[j + 1]) / 2;
     if (outline && !insidePoly(cx, cz, outline)) continue;
@@ -1420,8 +1545,13 @@ function topCloth(panel: TopPanel, cfg: GhillieConfig, support: OwnerSupport, uv
       .some(([px, pz]) => insideAny(px, pz, holeSet))) continue;
     if (clipped(i, j)) continue;
     const edge = i === 0 || j === 0 || i === nx - 1 || j === nz - 1;
-    if (edge && noise01(i + j * nx + (panel.seed ?? 0), cfg.seed) < 0.23) continue;
+    if (edge && !panel.cleanEdge && noise01(i + j * nx + (panel.seed ?? 0), cfg.seed) < 0.23) continue;
     const a = vtx(i, j), b = vtx(i + 1, j), c = vtx(i + 1, j + 1), d = vtx(i, j + 1);
+    if (cutLines.length) {
+      const poly = clipCell([a, b, c, d]);
+      for (let k = 1; k + 1 < poly.length; k++) tri(poly[0], poly[k + 1], poly[k]);
+      continue;
+    }
     tri(a, c, b); tri(a, d, c);
   }
   dropIslands(positions, uvs, panel.minPieceTris ?? 8);
@@ -1445,6 +1575,7 @@ function topCloth(panel: TopPanel, cfg: GhillieConfig, support: OwnerSupport, uv
     edge: (u, v) => edgeDistance(u, v, ring),
     holeAt: (x, z) => nearAny(x, z, holeSet, 0.02),
     cardOk(p) {
+      if (panel.garnishHalfWidthM !== undefined && Math.abs(p[0]) > panel.garnishHalfWidthM) return false;
       if (nearAny(p[0], p[2], garnishHoleSet, (panel.garnishOpeningMarginM ?? 0.09) * 0.5)) return false;
       const h = heightAt(p[0], p[2]);
       // over the deck the spray stays above its own net (a field card's foot and edges may tuck under its folds); past the
@@ -1651,6 +1782,8 @@ interface CurtainSpec {
   orphan?(a: number): boolean;
   /** The netting lane: a field suit's drape keeps no scrap (a piece under 24 cells or an eighth of the drape). */
   readonly field?: boolean;
+  /** Release 268 (SidePanel.flat): the hem row is kept whole (no torn cells). */
+  readonly cleanHem?: boolean;
   readonly maxOut: number;
   readonly seed: number;
   /** Fold depth multiplier (a tied-down face drape folds little). */
@@ -1797,7 +1930,7 @@ function buildCurtain(spec: CurtainSpec, uvk: number, uvOffset: [number, number]
       const upMid = (sections[c].up[r] + sections[c].up[r + 1] + sections[c + 1].up[r] + sections[c + 1].up[r + 1]) / 4;
       if (spec.keep && !spec.keep((aA + aB) / 2, upMid, aA, aB)) continue;
       // the hem row tears here and there
-      if (r === rows - 1 && noise01(c + spec.seed, spec.seed + 7) < 0.17) continue;
+      if (r === rows - 1 && !spec.cleanHem && noise01(c + spec.seed, spec.seed + 7) < 0.17) continue;
       const A = vertex[c][r], B = vertex[c + 1][r], C = vertex[c + 1][r + 1], D = vertex[c][r + 1];
       const uv = (cc: number, rr: number, a: number): [number, number] => [a * uvk + uvOffset[0], vlen[cc][rr] * uvk + uvOffset[1]];
       const quad: Array<[Point3, [number, number]]> = [[A, uv(c, r, aA)], [B, uv(c + 1, r, aB)], [C, uv(c + 1, r + 1, aB)], [D, uv(c, r + 1, aA)]];
@@ -1923,6 +2056,7 @@ function sideCloth(panel: SidePanel, cfg: GhillieConfig, support: OwnerSupport, 
   const maxOut = (cfg.maxHalfWidth ?? Infinity) - 0.002;
   const probe = support.probe;
   const hem = (z: number): number => {
+    if (panel.flat || panel.taut || panel.hug) return bottomAt(z);
     const authored = bottomAt(z + side * HEM_PHASE_M);
     const h = hemAt(ties, z);
     // a ragged hem: scalloped between the ties, torn short and long from one column to the next
@@ -1952,10 +2086,53 @@ function sideCloth(panel: SidePanel, cfg: GhillieConfig, support: OwnerSupport, 
     return null;
   };
   const spec: CurtainSpec = {
-    a0: z0, a1: z1, seed: s, foldK: support.fitted ? 0.18 : 1, maxOut,
+    a0: z0, a1: z1, seed: s, foldK: panel.flat || panel.taut || panel.hug ? 0 : support.fitted ? 0.18 : 1, maxOut,
+    ...(panel.flat || panel.taut || panel.hug ? { cleanHem: true } : {}),
     hem,
     section(z, hemY) {
       if (!probe) return null;
+      if (panel.flat) {
+        const yTop = topAt(z);
+        let wall = -Infinity;
+        for (const dz of [-0.24, -0.12, 0, 0.12, 0.24]) for (let yy = yTop; yy >= hemY - 1e-6; yy -= 0.02) {
+          const w = probe.side(yy, z + dz, side);
+          if (w !== null) wall = Math.max(wall, w);
+        }
+        const x = Math.min(maxOut, Math.max(wall + FITTED_GAP_M, outAt(z, 1)));
+        return { pts: [[x, yTop], [x, hemY]], corner: 0 };
+      }
+      if (panel.hug) {
+        // armour under a cut (a discharger bank the cloth is cut away over) does not hold the cloth out
+        const held = (zz: number, yy: number): boolean => !cuts.some(([c0, c1, , hi]) => zz > c0 && zz < c1 && yy < hi);
+        return hugSection((dz, yy) => (held(z + dz, yy) ? probe.side(yy, z + dz, side) : null), panel.hug, topAt(z), hemY,
+          FITTED_GAP_M, (yy) => panel.hug!.lumpM * (0.5 + 0.5 * clothNoise(yy, z, 0.26, s + 71)), maxOut);
+      }
+      if (panel.taut) {
+        const yTop = topAt(z);
+        // armour under a cut (a discharger bank the cloth is cut away over) does not hold the cloth out
+        let yLow = hemY;
+        for (const [c0, c1, , hi] of cuts) if (z > c0 - 0.06 && z < c1 + 0.06) yLow = Math.max(yLow, hi);
+        const wall: Array<[number, number]> = [];
+        for (let yy = yTop; yy >= yLow - 1e-6; yy -= 0.02) {
+          let w = -Infinity;
+          for (const dz of [-0.06, 0, 0.06]) { const v = probe.side(yy, z + dz, side); if (v !== null) w = Math.max(w, v); }
+          if (Number.isFinite(w)) wall.push([yy, w + FITTED_GAP_M]);
+        }
+        if (wall.length < 2) return null;
+        const span = Math.max(1e-6, yTop - hemY);
+        const quarter = (lo: number, hi: number): number => {
+          let m = -Infinity;
+          for (const [yy, x] of wall) if (yy >= lo && yy <= hi) m = Math.max(m, x);
+          return m;
+        };
+        let xt = quarter(yTop - span * 0.25, yTop), xh = quarter(hemY, hemY + span * 0.25);
+        if (!Number.isFinite(xt)) xt = wall[0][1];
+        if (!Number.isFinite(xh)) xh = wall[wall.length - 1][1];
+        const line = (yy: number): number => xh + (xt - xh) * (yy - hemY) / span;
+        let push = 0;
+        for (const [yy, x] of wall) push = Math.max(push, x - line(yy));
+        return { pts: [[Math.min(maxOut, xt + push), yTop], [Math.min(maxOut, xh + push), hemY]], corner: 0 };
+      }
       const start = roofEdge(z);
       const yFrom = start ? start.up : topAt(z) + 0.05;
       if (support.fitted) return fittedSection((yy) => probe.side(yy, z, side), start, yFrom, hemY);
@@ -2007,6 +2184,10 @@ function sideCloth(panel: SidePanel, cfg: GhillieConfig, support: OwnerSupport, 
     sample: curtainSampler(columns, (n) => { const l = Math.hypot(n[0], n[1]) || 1; return [side * n[0] / l, n[1] / l, 0]; }),
     allowed: () => true,
     cardOk: (p) => p[2] >= z0 - 0.05 && p[2] <= z1 + 0.05 && (!underTurret || p[1] <= topRow(p[2]) + 0.005)
+      // (release 268, SidePanel.flat / taut: the hem is clean, no spray hangs below it)
+      && (!(panel.flat || panel.taut || panel.hug) || p[1] >= bottomAt(p[2]) + 0.01)
+      && (!panel.garnishZ || (p[2] >= panel.garnishZ[0] && p[2] <= panel.garnishZ[1]))
+      && (panel.garnishMaxX === undefined || Math.abs(p[0]) <= panel.garnishMaxX)
       && !cuts.some(([c0, c1, , hi]) => p[2] > c0 - 0.04 && p[2] < c1 + 0.04 && p[1] < hi + 0.04),
   };
 }
@@ -2021,16 +2202,59 @@ function faceCloth(panel: FacePanel, cfg: GhillieConfig, support: OwnerSupport, 
   const tied = panel.seatGapM !== undefined || support.fitted;
   const gap = tied && probe ? Math.min(panel.seatGapM ?? FITTED_GAP_M, DRAPE_GAP_M - 0.002) : panel.seatGapM ?? DRAPE_GAP_M;
   const hem = (x: number): number => {
+    if (panel.taut || panel.hug) return y0;
     const jag = (hash01(Math.round(x * 41), s, 0x5d) - 0.5) * 0.04;
     const scallop = 0.035 * Math.max(0, Math.sin(x * 7.3 + s * 0.01)) ** 2;
     const raised = support.hemFloorAt ? support.hemFloorAt(x, facing * authoredZ(x, y0)) : -Infinity;
     return Math.max(y0 - scallop + jag, support.hull ? Math.min(y0, support.hemFloor) : y0 - 0.06, raised);
   };
   const spec: CurtainSpec = {
-    a0: x0, a1: x1, seed: s, foldK: tied ? 0.25 : 0.8, maxOut: Infinity,
+    a0: x0, a1: x1, seed: s, foldK: panel.taut || panel.hug ? 0 : tied ? 0.25 : 0.8, maxOut: Infinity,
+    ...(panel.taut || panel.hug ? { cleanHem: true } : {}),
     hem,
     section(x, hemY) {
       if (!probe) return null;
+      if (panel.hug) {
+        // the face and what it carries (within TIED_REACH_M of the authored plane), or the plane itself where neither is;
+        // each column starts on the outline's top edge (a slanted edge is the cloth's, not the grid's staircase)
+        let yTop = y1;
+        if (outline) {
+          let top = -Infinity;
+          for (let k = 0; k < outline.length; k++) {
+            const [ax, ay] = outline[k], [bx, by] = outline[(k + 1) % outline.length];
+            if ((x - ax) * (x - bx) > 0 || ax === bx) continue;
+            top = Math.max(top, ay + (by - ay) * (x - ax) / (bx - ax));
+          }
+          if (!Number.isFinite(top)) return null;
+          yTop = Math.min(y1, top - 0.004);
+        }
+        // (only the panel's own span holds it: past its ends stand the mantlet's shield and the flank's cassettes)
+        return hugSection((dx, yy) => {
+          if (x + dx < x0 || x + dx > x1) return null;
+          const plane = facing * authoredZ(x + dx, yy), f = probe.face(x + dx, yy, facing);
+          return f !== null && Math.abs(f - plane) <= TIED_REACH_M ? f : plane;
+        }, panel.hug, yTop, hemY, gap, (yy) => panel.hug!.lumpM * (0.5 + 0.5 * clothNoise(x, yy, 0.26, s + 73)));
+      }
+      if (panel.taut) {
+        // each height's furthest-out armour (within 6 cm across), as a lift off the authored plane; bridged 10 cm up and
+        // down at 8 mm per 2 cm, so the cloth spans the modules' seams and comes down to the plate past their ends
+        const ys: number[] = [], lift: number[] = [];
+        for (let yy = y1; yy >= hemY - 1e-6; yy -= 0.02) {
+          let l = 0;
+          for (const dx of [-0.06, 0, 0.06]) {
+            const plane = facing * authoredZ(x + dx, yy), f = probe.face(x + dx, yy, facing);
+            if (f !== null && Math.abs(f - plane) <= TIED_REACH_M) l = Math.max(l, f - plane);
+          }
+          ys.push(yy); lift.push(l);
+        }
+        if (ys.length < 2) return null;
+        const pts: Array<[number, number]> = ys.map((yy, k) => {
+          let l = lift[k];
+          for (let q = Math.max(0, k - 5); q <= Math.min(ys.length - 1, k + 5); q++) l = Math.max(l, lift[q] - Math.abs(q - k) * 0.008);
+          return [facing * authoredZ(x, yy) + l + gap, yy];
+        });
+        return { pts, corner: 0 };
+      }
       if (tied) {
         // tied to the plate: the cloth follows the face at its seat gap, no roll and no free fall. Only a face within
         // TIED_REACH_M of the authored plane is its plate: through the gaps of an open screen (push 3's Ukrainian bustle
@@ -2356,7 +2580,7 @@ function addTufts(out: FoliageCardBuffer, surface: ClothSurface, ctx: TuftContex
     area = Math.abs(u1 - u0) * (lo && hi ? Math.max(0.2, Math.hypot(hi.p[0] - lo.p[0], hi.p[1] - lo.p[1], hi.p[2] - lo.p[2])) : 0.6);
   }
   // a fitted cover carries a few tufts of its own cut flaps; a draped net its bunches and boughs
-  const perM2 = (top ? 4.4 : 4.9) * cfg.density * (top ? (panel.garnishDensity ?? 1) : 1) * (cfg.style === 'leafy' ? 1 : 0.55);
+  const perM2 = (top ? 4.4 : 4.9) * cfg.density * (panel.garnishDensity ?? 1) * (cfg.style === 'leafy' ? 1 : 0.55);
   // drapes take more of their bunches high, under the top cord, and along the hem; a fleet field net (fieldClearanceM)
   // spreads them down the drape, clear of the turret's swing over its top
   const bias = top ? undefined : cfg.fieldClearanceM !== undefined ? (r: () => number): [number, number] => {
@@ -3365,7 +3589,8 @@ function makeNet(
   // shared per theatre or palette and seed (never disposed with a visual); the height map takes the cloth's bump slot
   // (the cloned canvas already samples one), so neither adds a shader variant
   const leafy = cfg.style === 'leafy';
-  const shared = leafy ? garnishedNetTextures(theatre, cfg.netTextureSeed ?? cfg.seed, isFieldNet(cfg), cfg.netStripDensity ?? 1)
+  const shared = leafy ? garnishedNetTextures(theatre, cfg.netTextureSeed ?? cfg.seed, isFieldNet(cfg), cfg.netStripDensity ?? 1,
+    isStrawNet(cfg))
     : cutLeafCoverTextures(cover, cfg.seed);
   return makeCloth(P, (m) => {
     m.color.setHex(0xffffff);
@@ -3461,8 +3686,32 @@ const abramsHullY = (x: number, z: number): number => {
 // the armour ahead of the driver and the tiles stood through it; the cover now rides over the tiles to the bow edge.
 const sepv3HullY = (x: number, z: number): number => Math.max(abramsHullY(x, z),
   (Math.abs(x) > 1.04 ? 1.58 : 1.56) - THREE.MathUtils.smoothstep(z, 3.2, 3.5) * 0.16);
-/** The SEPv3 turret roof net's outer edge (its outline), for the flank drapes' roll-over. */
-const sepv3TurretRoofEdge = (z: number): number => profileY([[-3.35, 1.05], [-2.32, 1.42], [0.38, 1.36], [1.12, 0.86]], z);
+/**
+ * Release 268 builder E (blind A/B fix round: "FEP net sheets bulge at the hull nose"): the M1A1's front fenders are the
+ * owner's model's (profiles/m1a1Skirts.ts): level at 1.339 with a low arch over the idler (1.42 at z 3.02) and a straight
+ * chamfer to the nose (1.324 at 3.62, 1.173 at 3.872, 1.06 at the 3.944 front face). Over them (outboard of x 1.04, ahead
+ * of z 2.45) a net lies 3 cm over the fender instead of the old 1.42-1.67 m carrier that stood up to 30 cm proud of it.
+ */
+// (release 268 builder E: the cover follows the fender's own top, flat to the nose since the arch went;
+// profiles/m1a1Skirts.ts)
+const m1a1FenderNetY = (z: number): number => m1a1FenderTopAt(Math.min(z, 3.944)) + 0.03;
+const m1a1HullNetY = (deck: (x: number, z: number) => number) => (x: number, z: number): number =>
+  (Math.abs(x) > 1.04 && z > 2.45 ? m1a1FenderNetY(z) : deck(x, z));
+/**
+ * Release 268 round 3 (abrams-bradley-268, blind A/B m1r2: "a large triangular sheet rises from the front-left turret
+ * corner over the turret roof"): the M1A1 family's roof runs level at 0.79 back of z -0.75 and falls to the cheek
+ * corner's 0.65 at z 0.90 (profiles/abrams.ts, the release-268 source-measured shell). The FEP cover's carrier levels
+ * follow that fall instead of holding the level roof's height out over the falling front, where the flank roll stood
+ * 18 cm over the roof's edge and the drape rose to it as a free triangle.
+ */
+/** Release 268 builder E: the M256's outer radius along the bore (gun frame, profiles/m1a1GunMount.ts): the 0.150 fixed
+ * sleeve, the 0.146 thermal sleeve, the 0.158 band, the eccentric 0.183 bore evacuator (its top 0.201), its 0.145 collar
+ * and the 0.110 barrel. */
+const m1a1GunSleeveR = (z: number): number => profileY([[0.55, 0.150], [0.84, 0.150], [0.86, 0.165], [0.89, 0.165],
+  [0.90, 0.146], [1.16, 0.146], [1.165, 0.158], [1.255, 0.158], [1.28, 0.201], [1.78, 0.201], [1.80, 0.145], [1.885, 0.145],
+  [1.915, 0.110], [3.80, 0.110]], z);
+// Release 268 builder E: the owner's model's roof, level at 0.709 to the knee at z 0.41, then its 8-degree forward course.
+const sepv3TurretRoofY = (z: number): number => Math.min(0.709, 0.7671 - 0.1418 * z);
 /** The Leopard 2A4 turret roof net's outer edge (LEO2A4_TURRET_ROOF_OUTLINE), for the flank drapes' roll-over. */
 const leo2A4TurretRoofEdge = (z: number): number => profileY([[-2.28, 0.91], [-1.58, 0.99], [-0.72, 1.06], [0.69, 1.09]], z);
 
@@ -3706,58 +3955,137 @@ export const GHILLIE_SUIT_CONFIGS = Object.freeze({
       // round 3: the cover rides the measured front deck (sepv3HullY), opens the driver's periscopes with his hatch, keeps
       // the view over the glacis clear, and carries its garnish low along the deck edges under the turret's sweep
       top: [{ x0: -1.66, x1: 1.66, z0: -3.62, z1: 3.62, nx: 26, nz: 54,
-        yAt: sepv3HullY,
+        yAt: m1a1HullNetY(sepv3HullY),
         outline: [[-1.22, -3.62], [1.22, -3.62], [1.66, -3.12], [1.66, 2.65], [1.04, 3.62], [-1.04, 3.62], [-1.66, 2.65], [-1.66, -3.12]],
         holes: [rect(-1.57, 1.57, -2.85, 1.72), rect(-0.30, 0.30, 0.92, 2.25), rect(-1.52, -0.65, -3.58, -2.15)],
-        foliageExclude: [[[-0.8, 1.6], [0.8, 1.6], [0.95, 3.7], [-0.95, 3.7]]],
-        garnishEdgeBandM: 0.4, garnishRiseM: 0.08, reliefScale: 0.6, seed: 9 }],
-      side: [-1, 1].map((side) => ({ side, z0: -3.08, z1: 3.04, nz: 42, ny: 9,
-        topAt: (z) => abramsHullY(0, z), bottomAt: (z) => 0.72 + Math.sin(z * 2.5) * 0.030,
+        foliageExclude: [[[-0.8, 1.6], [0.8, 1.6], [0.95, 3.7], [-0.95, 3.7]],
+          // (the A/B polish: no spray on the front fenders, where it billowed into a dark lump over the idler's arch)
+          [[1.04, 2.45], [1.70, 2.45], [1.70, 3.70], [1.04, 3.70]], [[-1.04, 2.45], [-1.70, 2.45], [-1.70, 3.70], [-1.04, 3.70]]],
+        garnishEdgeBandM: 0.4, garnishRiseM: 0.06, reliefScale: 0.3, seed: 9 }],
+      // (the A/B fix round: each drape ends at z 2.40, behind the bow's ARAT tiles, where its front end crumpled over
+      // them into the bulge at the nose. Release 268 builder E, the FEP round: "crumpled net facets on skirts and
+      // fenders": the cover hangs flat (SidePanel.flat) over the ARAT tiles from a level line 2 cm over the skirt's
+      // 1.339 top to a clean hem at 0.72, rising over the sprocket notch to the stern strip; no roll over the deck edge)
+      side: [-1, 1].map((side) => ({ side, z0: -3.08, z1: 2.40, nz: 38, ny: 9, flat: true,
+        topAt: () => 1.36,
+        bottomAt: (z) => (z < -2.60 ? Math.min(1.20, 0.72 + (-2.60 - z) * 1.4) : 0.72),
         // ULCANS hangs from stand-off battens outside the skirt rather than
         // lying in the live SEPv3 shoe/pin envelope (outer x ~= 1.72 m).
         // Keep the lower hem farther out so suspension travel cannot pull a
         // shoe through the cloth while the upper edge still reads attached.
-        outAt: (_z, t) => 1.92 + (1 - t) * 0.090, seed: 21 + side,
-        // round 3: the drape rolls over the fender edge into the deck cover instead of standing as a free edge
-        shoulder: { z0: -3.08, z1: 2.62, inAt: () => 1.6, yAt: (z: number) => sepv3HullY(1.6, z) - 0.004 } })),
-      face: [{ z: 3.93, x0: -1.10, x1: 1.10, y0: 0.96, y1: 1.31, nx: 14, ny: 5,
-        outline: [[-0.88, 0.96], [0.88, 0.96], [1.10, 1.12], [0.72, 1.31], [-0.72, 1.31], [-1.10, 1.12]],
+        // (release 268 builder E: the flat cover stands at least 1.92 off the axis, the stand-off that keeps the gun clear,
+        // and just outside the tiles' faces where they stand further out)
+        // (the A/B craft fix: a tuft bunch stood 7 cm proud of the right cover, outside the skirt line in plan and off
+        // the drape's front seen from the bow: the tufts lie within 2.3 cm of the cloth)
+        outAt: () => 1.92, garnishMaxX: 2.02, seed: 21 + side })),
+      // (release 268: the bow net stops at the source-measured bow's 1.21 m top edge, as on ua_m1a1)
+      face: [{ z: 3.93, x0: -1.10, x1: 1.10, y0: 0.96, y1: 1.21, nx: 14, ny: 4,
+        outline: [[-0.88, 0.96], [0.88, 0.96], [1.10, 1.08], [0.72, 1.21], [-0.72, 1.21], [-1.10, 1.08]],
         holes: [rect(-0.78, -0.42, 1.04, 1.29), rect(0.42, 0.78, 1.04, 1.29)], seed: 29 }],
     },
     turret: {
-      top: [{ x0: -1.42, x1: 1.42, z0: -3.35, z1: 1.12, nx: 24, nz: 38,
-        yAt: () => 0.88,
-        outline: [[-1.05, -3.35], [1.05, -3.35], [1.42, -2.32], [1.36, 0.38], [0.86, 1.12], [-0.86, 1.12], [-1.36, 0.38], [-1.42, -2.32]],
-        // release 233: the gunner's primary sight and its FEP FLIR head (0.55..1.03 x, 0.62..1.30 z) stand clear of the net
-        holes: [rect(-1.26, -0.48, -0.86, 0.02), rect(-0.52, 0.05, 0.06, 0.55), rect(0.16, 0.83, -0.64, 0.06), rect(-1.28, -0.70, -2.92, -1.70), rect(0.68, 1.30, -2.84, -1.62), rect(0.50, 1.08, 0.60, 1.30)], seed: 37 }],
+      // Release 268 builder E (the owner, 2026-11-03: "for the fep cover the roof turret cheeks and cannonn with gfhillie
+      // and nett too"): one net laid on the owner's model's roof, its bustle and both cheeks (tops and front faces, over
+      // the spec's ERA modules: envelopeM lays it on their tops), seated on the armour (yFromArmour, clipToArmour) and cut
+      // round every lens, hatch lid and cupola (autoOpeningsM). Open only what must work: the commander's station and its
+      // weapon (x -0.92..0.07, z -1.38..0.10), the loader's hatch and M240 (0.10..0.98, -1.08..-0.16), the gunner's sight
+      // window and FLIR head (-1.10..-0.50, 0.46..1.10), the antenna bases, and the mantlet slot (|x| < 0.38 ahead of
+      // z 1.22), where the gun's shield and collar pitch through their full arc.
+      // (the cheeks' top edges, where the face plane meets the roof's 8-degree course, z = 1.969 - 0.8077|x|, cut the net
+      // exactly, 1 cm short of them: clipEdges, in place of the grid's staircase)
+      top: [{ x0: -1.26, x1: 1.26, z0: -2.62, z1: 1.80, nx: 50, nz: 88,
+        yAt: (_x: number, z: number) => sepv3TurretRoofY(z) + 0.02,
+        yFromArmour: true, clipToArmour: true, autoOpeningsM: 0.07, riseLimitM: 0.35,
+        outline: [[-1.05, -2.62], [1.05, -2.62], [1.24, -2.40], [1.24, 1.02], [0.38, 1.80], [0.38, 1.22], [-0.38, 1.22],
+          [-0.38, 1.80], [-1.24, 1.02], [-1.24, -2.40]],
+        clipEdges: [[[1.259, 0.942], [0.319, 1.701]], [[-1.259, 0.942], [-0.319, 1.701]]],
+        holes: [rect(-0.92, 0.07, -1.38, 0.10), rect(0.10, 0.98, -1.08, -0.16), rect(-1.10, -0.50, 0.46, 1.10),
+          rect(-1.22, -0.98, -2.48, -2.22), rect(0.98, 1.22, -2.48, -2.22)],
+        // (the A/B polish: a little relief so the cloth reads as net, not paint; no spray standing at the cheeks' front
+        // corners or over the mantlet slot)
+        foliageExclude: [rect(0.95, 1.30, -0.10, 1.20), rect(-1.30, -0.95, -0.10, 1.20), rect(-0.55, 0.55, 1.15, 1.85)],
+        // (the A/B net-volume round, the critics: "rigid flat boards and stair-stepped flat patches, like paint": the
+        // cover swells up to 2.4 cm over its seat in slow lumps and smaller bunches, its tufts standing a little higher)
+        lumpM: 0.024, reliefScale: 0.6, rimScale: 0.5, garnishRiseM: 0.07, seed: 37 }],
       // 2026-10-22 (lane 240; critic: "crumpled mesh at the turret's right rear"): both flank covers were fitted round
       // the bustle, each column stepping out and back as the wall did, and creased into a crumpled lump at the rear
       // corner: on the -X flank over the bustle-side stowage drum and its boxes (x -1.70..-1.47, z -3.17..-2.08), on the
       // +X (hero) flank round the bustle's taper from z -2.32 aft (its walls stepping between x 1.25 and 1.56). Each
       // cover now ends where the plain turret wall does (-X at z -2.02, ahead of the stowage; +X at -2.32), and the
       // bustle and its stowage ride bare.
-      side: [-1, 1].map((side) => {
-        const z0 = side < 0 ? -2.02 : -2.32;
-        return { side, z0, z1: 0.80, nz: side < 0 ? 24 : 26, ny: 8,
-          topAt: () => 0.80, bottomAt: (z: number) => 0.02 + Math.sin(z * 3.2) * 0.024,
-          outAt: (z: number, t: number) => (z < -1.65 ? 1.52 : 1.68) + (1 - t) * 0.028, seed: 51 + side,
-          // 2026-10-23 (the owner: "Paint it on the drape"): no window for the markings; the star and the "34" are painted
-          // on these drapes (vehicleMarkings.ts vehicleMarkingPaintsOnSuit), where the windows read as black squares
-          // round 3 ("along both turret sides the net rises as vertical free-standing fence panels"): the flank drape
-          // rolls over the roof edge and tucks under the roof net
-          shoulder: { z0, z1: 0.40, inAt: (z: number) => sepv3TurretRoofEdge(z) - 0.06, yAt: () => 0.874 } };
-      }),
-      face: [{ z: 1.38, x0: -1.36, x1: 1.36, y0: -0.02, y1: 0.76, nx: 20, ny: 8,
-        outline: [[-1.00, -0.02], [1.00, -0.02], [1.36, 0.40], [0.96, 0.76], [-0.96, 0.76], [-1.36, 0.40]],
-        holes: [rect(-0.52, 0.52, -0.06, 0.68), rect(-1.22, -0.78, 0.44, 0.78), rect(0.55, 1.22, 0.44, 0.78)], seed: 61 }],
+      // Release 268 builder E (the owner's cover request): each flank cover hangs taut down the 26-degree wall
+      // (SidePanel.taut) from the roof edge to a clean hem, forward over the cheek's side face and its ERA cassettes to
+      // the cheek corner (z 0.94), and is cut away over the M250 bank (z 0.36..0.76, from 0.50 down) so its mouths stay
+      // open; the star and the "34" stay painted on it (vehicleMarkings.ts vehicleMarkingPaintsOnSuit).
+      // (ahead of the corner's top, z 0.94, the cloth's top follows the corner edge down to its foot at z 1.18, so the
+      // cassettes in the wedge under the cheek's front edge are covered too)
+      // (the A/B polish: "a sheet sticks out at an angle on the rear turret flank": each cover stopped short of the
+      // flank cassettes' last column, its end standing off the wall at their face. On the owner's model's shell the
+      // bustle wall runs on the same 26-degree plane to the rear face, so both covers run back to the cassettes' rear
+      // ends, z -2.43; their tufts stay clear of both ends, behind the smoke launchers and ahead of that last column.
+      // "Sheets stand up at the turret's front corners": the strip left over the M250 bank above its cut wrapped the
+      // launchers' tops and stood above the corner seen from across the roof, so the cut now runs the drape's full
+      // height there, and the cheek's side face ahead of the bank carries its own short length of the cover)
+      // (each keeps its columns' spacing, so they fall at the smoke launchers' cut as before)
+      // (the A/B net-volume round, the critics: "a tall flat-sided box that hides the sloped front face", "one sheet stands
+      // off the turret wall like a loose plank": each cover lies ON the wall and its cassettes (SidePanel.hug), sagging
+      // between them and lumpy, the 26-degree wall reading through it, and hangs plumb below the last cassette)
+      // (and they end at the M250 bank: their short lengths over the cheek's side face ahead of it read as cards standing
+      // off the corner)
+      side: [-1, 1].map((side) => ({ side, z0: -2.43, z1: 0.34, nz: 28, ny: 18, hug: { lumpM: 0.012 },
+        topAt: (z: number) => Math.min(sepv3TurretRoofY(z) - 0.01, 0.632 - (z - 0.94) * 2.758), bottomAt: () => 0.04,
+        outAt: (z: number, t: number) => (z < -1.65 ? 1.60 : 1.72) + (1 - t) * 0.028, seed: 51 + side,
+        garnishDensity: 0.7, garnishZ: [-1.95, 0.0] as const })),
+      // The cheeks' front faces under the same net (SidePanel's taut rule for a face, FacePanel.taut), laid over the
+      // spec's eight ERA modules on each (they stay as built), from the cheek's top edge to its toe, outboard of the
+      // mantlet slot by 6 cm (|x| >= 0.38).
+      // (the cloth follows the face over the modules, bridging their seams, and comes down to the plate past their ends;
+      // its top edge is the cheek's, y = 0.4879 + 0.1145|x|, where the roof net's clipped edge meets it)
+      // (the A/B net-volume round, the critics: "the cheek covers are flat cards standing off the faces": each lies on its
+      // modules and the face between and past them, sagging into their seams, lumpy (FacePanel.hug))
+      face: [1, -1].map((s) => ({ z: 1.4, x0: s > 0 ? 0.385 : -1.565, x1: s > 0 ? 1.565 : -0.385, y0: -0.02, y1: 0.64, nx: 22, ny: 14,
+        zAt: (x: number, y: number) => 2.3131 - 0.7269 * Math.abs(x) - 0.7053 * y + 0.12,
+        hug: { lumpM: 0.01, reachA: 0.10, reachB: 0.08 },
+        // (the A/B polish: the net lies on the cheeks with its relief alone, no sheets standing at their front corners
+        // or a flap over the mantlet slot)
+        outline: [[s * 0.38, -0.03], [s * 1.575, -0.03], [s * 1.259, 0.632], [s * 0.38, 0.531]], garnishDensity: 0, seed: 61 + s })),
+    },
+    // The M256 under the same net (the owner's cover request, 2026-11-03: "cover ... cannonn with gfhillie and nett"): a
+    // sleeve from the shield's collar to 0.35 m short of the muzzle (gun frame, z along the bore), pitching with the gun:
+    // the cloth laid 2 cm over the tube's top (seatGapM) and hung taut down both sides 2 cm off it to 9 cm under the bore
+    // line (above the tube's underside, which the depression stops are measured on), the muzzle end and bore bare.
+    // envelopeM holds the top over the steps for the 0.13 m recoil stroke; the cord ties round it are the gun mount's
+    // (profiles/abrams.ts); sparse low tufts stay within 0.24 m of the bore line (garnishHalfWidthM).
+    gun: {
+      // (the A/B polish: thinner and on the tube, so the thermal sleeve's and the evacuator's steps show; started 0.20 m
+      // clear of the shield's face; the tufts low along it, none within 0.25 m of the shield or on the last 1.1 m)
+      // (the A/B net-volume round, the critics: "banded sleeves" blurring the evacuator, tube and sleeve into one thick
+      // section: no cord ties round it any more, and both halves lie on each step of the tube, 3 cm columns)
+      top: [{ x0: -0.085, x1: 0.085, z0: 0.62, z1: 3.77, nx: 6, nz: 104,
+        yAt: (_x: number, z: number) => m1a1GunSleeveR(z) + 0.01, lumpM: 0.003, cleanEdge: true,
+        yFromArmour: true, clipToArmour: true, seatGapM: 0.008, riseLimitM: 0.12, envelopeM: 0.03,
+        foliageExclude: [rect(-0.3, 0.3, 0.55, 0.85), rect(-0.3, 0.3, 3.05, 3.85)],
+        garnishDensity: 20, garnishRiseM: 0.03, garnishHalfWidthM: 0.22, reliefScale: 0.15, rimScale: 0.3, seed: 41 }],
+      // (each side from the top's 0.085 edge, where the tube's surface stands 8.5 cm off the bore line, edge to edge, down
+      // round the tube to 9 cm under it)
+      side: [-1, 1].map((side) => ({ side, z0: 0.62, z1: 3.77, nz: 104, ny: 8,
+        hug: { lumpM: 0.003, reachA: 0.02, reachB: 0.02 },
+        topAt: (z: number) => Math.sqrt(Math.max(0, m1a1GunSleeveR(z) ** 2 - 0.085 ** 2)), bottomAt: () => -0.09,
+        outAt: (z: number) => m1a1GunSleeveR(z) + 0.008, garnishZ: [0.85, 3.05] as const, seed: 43 + side })),
     },
   },
   ua_m1a1: {
     id: 'ua_m1a1', seed: 1101, style: 'leafy', density: 0.94, leafScale: 1.02,
     light: 0x737b4d, dark: 0x35472f, netColor: 'rgba(39,54,32,0.84)',
+    // Release 268 builder E: the M256 on the owner's model's 1.875 m axis with its 0.182 m bore evacuator passes 7-8 cm
+    // lower over the glacis, where the net lay flat under it (tools/gun-depression-sweep.mjs: -7.1 dead ahead at its -10
+    // stop); what the gun's sweep reaches at its published stops is cut, 3 cm clear of it (the receipt keeps 25 mm)
+    gunStopTrimM: 0.03,
+    // (the A/B fix round: no spray reaches past the drapes, 2 cm outside the skirts' 1.853 faces and the cage's roof edge)
+    maxHalfWidth: 1.95,
     hull: {
       top: [{ x0: -1.68, x1: 1.68, z0: -3.62, z1: 3.62, nx: 28, nz: 56,
-        yAt: abramsHullY,
+        yAt: m1a1HullNetY(abramsHullY),
         outline: [[-1.22, -3.62], [1.22, -3.62], [1.68, -3.12], [1.68, 2.65], [1.04, 3.62], [-1.04, 3.62], [-1.68, 2.65], [-1.68, -3.12]],
         holes: [rect(-1.58, 1.58, -2.88, 1.72), rect(-0.30, 0.30, 0.86, 1.70)], seed: 221,
         // release 230 (the gun-hull lane; nationalGunClearance.selftest: its deck leaves touching the mantlet at -10
@@ -3768,23 +4096,35 @@ export const GHILLIE_SUIT_CONFIGS = Object.freeze({
           [[-1.12, 2.92], [1.12, 2.92], [1.12, 3.64], [-1.12, 3.64]]],
         reliefScale: 0.35, rimScale: 0.5 }],
       side: [-1, 1].map((side) => ({ side, z0: -3.18, z1: 3.08, nz: 44, ny: 10,
-        topAt: (z) => abramsHullY(0, z), bottomAt: (z) => 0.72 + Math.sin(z * 2.6) * 0.034,
-        outAt: (_z, t) => 1.94 + (1 - t) * 0.10, seed: 229 + side,
+        topAt: (z) => (z > 2.45 ? m1a1FenderNetY(z) - 0.01 : abramsHullY(0, z)),
+        bottomAt: (z) => 0.72 + Math.sin(z * 2.6) * 0.034,
+        // (release 268 builder E, the A/B fix round: 3-9 cm off the owner's model's 1.853 skirt face, not 9-19 cm)
+        outAt: (_z, t) => 1.88 + (1 - t) * 0.06, seed: 229 + side,
         // release 230: over the rear quarters the gun sweeps level across the drapes' top cords (yaw 140-148, its stop
         // -2..+1 there): the boughs tucked under the cord hang there instead of standing up into the barrel
         boughsHangAt: [[-2.95, -2.25]] })),
-      face: [{ z: 3.94, x0: -1.12, x1: 1.12, y0: 0.96, y1: 1.33, nx: 16, ny: 6,
-        outline: [[-0.90, 0.96], [0.90, 0.96], [1.12, 1.12], [0.74, 1.33], [-0.74, 1.33], [-1.12, 1.12]],
+      // Release 268 (abrams-bradley-268, the M1A1's source-measured bow: its top now 1.205-1.21 m, was 1.31-1.34): the
+      // bow net stops at the bow's top edge; its upper 12 cm hung in front of nothing (ghillieSuit.selftest, 2.3 cm)
+      face: [{ z: 3.94, x0: -1.12, x1: 1.12, y0: 0.96, y1: 1.21, nx: 16, ny: 5,
+        outline: [[-0.90, 0.96], [0.90, 0.96], [1.12, 1.08], [0.74, 1.21], [-0.74, 1.21], [-1.12, 1.08]],
         holes: [rect(-0.80, -0.40, 1.03, 1.31), rect(0.40, 0.80, 1.03, 1.31)], seed: 237 }],
     },
     // A second carrier drapes over the full field-cage envelope rather than
     // clipping into the Abrams cheeks. It follows the turret rig and keeps a
     // generous center opening for gun elevation and recoil.
     turret: {
-      top: [{ x0: -2.10, x1: 2.10, z0: -3.42, z1: 2.66, nx: 34, nz: 48,
-        yAt: (x, z) => 1.38 + Math.cos(x * 1.2) * 0.012 - Math.max(0, z - 1.5) * 0.10,
-        outline: [[-1.72, -3.42], [1.72, -3.42], [2.10, -2.82], [2.02, 1.80], [1.58, 2.66], [0.54, 2.66], [0.54, 1.82], [-0.54, 1.82], [-0.54, 2.66], [-1.58, 2.66], [-2.02, 1.80], [-2.10, -2.82]],
-        holes: [rect(-0.54, 0.54, 1.62, 2.74), rect(-0.48, 0.48, 0.80, 1.70)], seed: 245 }],
+      // Release 268 builder E (blind A/B fix round: "net sheets float above the cage frame as flat shards and spill past
+      // the hull outline in the top view"): the roof net lies on the cage's roof lattice (ukrainianDroneCage.ts
+      // UA_CAGE_STATIONS: 1.28 m at the rear frame, 1.34, 1.30, 1.16 at the front frame; its rods 18 mm over the frames),
+      // 3.5 cm over the frames instead of a level sheet 4-11 cm over them, and inside the hull's 1.85 m half-width
+      // instead of out to 2.10 m.
+      top: [{ x0: -1.80, x1: 1.80, z0: -3.30, z1: 2.58, nx: 30, nz: 46,
+        yAt: (_x, z) => profileY([[-3.34, 1.28], [-1.28, 1.34], [0.28, 1.30], [2.62, 1.16]], z) + 0.035,
+        outline: [[-1.66, -3.30], [1.66, -3.30], [1.80, -2.82], [1.80, 1.80], [1.50, 2.58], [0.54, 2.58], [0.54, 1.82], [-0.54, 1.82], [-0.54, 2.58], [-1.50, 2.58], [-1.80, 1.80], [-1.80, -2.82]],
+        holes: [rect(-0.54, 0.54, 1.62, 2.74), rect(-0.48, 0.48, 0.80, 1.70)],
+        // (the A/B critics: "flat net petals stand up above the cage roof": no humps pushed up under it, and its sprays lie
+        // back on it, 3 cm high at most)
+        tents: [], garnishRiseM: 0.03, seed: 245 }],
       // owner 2026-09-15 (evening): the net walls that hung on the cage's sides and front read as
       // grey panels covering the cage; only the roof drape remains (the cage bars stay visible).
     },
@@ -5342,6 +5682,11 @@ function turretPivotZ(P: GhillieBuilderPort): number {
 
 /** A fleet field net (the netting lane: fieldClearanceM on a leafy suit) takes the fix round's garnish and palette. */
 const isFieldNet = (cfg: GhillieConfig): boolean => cfg.fieldClearanceM !== undefined && cfg.style === 'leafy';
+/** A row's straw field net (fieldNetPalette 'straw' on a field net). */
+const isStrawNet = (cfg: GhillieConfig): boolean => isFieldNet(cfg) && cfg.fieldNetPalette === 'straw';
+/** A suit's garnish palette: the row's straw, a field net's theatre palette or the issue net's. */
+const suitNetPalette = (cfg: GhillieConfig, theatre: SuitTheatre): NetPalette => (isStrawNet(cfg) ? STRAW_FIELD_NET_PALETTE
+  : (isFieldNet(cfg) ? FIELD_NET_PALETTES : NET_PALETTES)[theatre]);
 
 function buildTheatre(P: GhillieBuilderPort): SuitTheatre {
   const wheels = P.mats.wheels;
@@ -5383,6 +5728,8 @@ function fieldSpecies(cfg: GhillieConfig, theatre: SuitTheatre): readonly [Spray
   // 2026-10-12 (cam-netting; the wave builder's read of the sand hulls: "the garnish reads as sparse olive patches at
   // hero distance"): pine needles and olive sprigs are too fine to read as cover on sand paint; a crew in dry country
   // cuts the dense evergreen scrub there, holm oak, with the olive
+  // (269) a straw net's crew cut dry bush: bare branches, its own species first where the row names one
+  if (cfg.fieldNetPalette === 'straw') return [own ?? 'birch-bare', 'birch-bare'];
   if (theatre === 'desert') return [own ?? 'holmOak', 'olive'];
   if (theatre === 'snow') return [own ?? 'spruce', 'birch-bare'];
   return [own ?? 'spruce', 'beech'];
@@ -5573,7 +5920,7 @@ function* addGhillieOwner(
   const surfacesAt = probe?.surfacesAt ? probe.surfacesAt.bind(probe) : null;
   if (cfg.foliage !== false) {
     const ctx: FieldTuftContext = {
-      cfg, pal: (field ? FIELD_NET_PALETTES : NET_PALETTES)[theatre], q: P.q !== false, maxHalfWidth: cfg.maxHalfWidth ?? Infinity,
+      cfg, pal: suitNetPalette(cfg, theatre), q: P.q !== false, maxHalfWidth: cfg.maxHalfWidth ?? Infinity,
       hemFloor: support.hemFloor, theatre, owner,
       floorAt: owner === 'turret' && clearance ? (x, z) => clearance.turretHemFloor(x, z) - 0.02 : undefined,
       envOk, columns: clearance ? clearance.keepColumns(owner) : undefined,
@@ -5637,7 +5984,7 @@ function* addGhillieOwner(
   if (netMesh && !netShared && P.mats.wheels) {
     followVehicleScheme(P.mats.wheels, netMat, (vis) => {
       const t = theatreOfHex(vis.base);
-      const next = leafy ? garnishedNetTextures(t, cfg.netTextureSeed ?? cfg.seed, field, cfg.netStripDensity ?? 1)
+      const next = leafy ? garnishedNetTextures(t, cfg.netTextureSeed ?? cfg.seed, field, cfg.netStripDensity ?? 1, isStrawNet(cfg))
         : cutLeafCoverTextures(coverPaletteOf(vis, t), cfg.seed);
       if (next) { netMat.map = next.map; netMat.bumpMap = next.bump; }
     });
@@ -5672,14 +6019,14 @@ function* addGhillieOwner(
     parent.add(mesh);
     // the garnish was tinted for the build's theatre; on a pattern switch its colour shifts to the new theatre's
     if (P.mats.wheels && !leavesShared) {
-      const built = meanStrip(theatre, field);
+      const built = meanStrip(suitNetPalette(cfg, theatre));
       followVehicleScheme(P.mats.wheels, mat, (vis) => {
         const t = theatreOfHex(vis.base);
         if (!leafy) {
           mat.map = drainSteps(coverGarnishAtlasSteps(cfg, t));
           return;
         }
-        const now = meanStrip(t, field);
+        const now = meanStrip(suitNetPalette(cfg, t));
         mat.color.setRGB(now[0] / built[0], now[1] / built[1], now[2] / built[2]);
       });
     }
@@ -5717,9 +6064,9 @@ function buildCoverPalette(P: GhillieBuilderPort, theatre: SuitTheatre): CoverPa
 }
 
 /** A theatre's garnish strips, their share-weighted mean in linear RGB (the garnish follows a scheme switch by it). */
-function meanStrip(theatre: SuitTheatre, field = false): [number, number, number] {
+function meanStrip(pal: NetPalette): [number, number, number] {
   const out: [number, number, number] = [0, 0, 0];
-  for (const [c, w] of (field ? FIELD_NET_PALETTES : NET_PALETTES)[theatre].strips) for (let k = 0; k < 3; k++) out[k] += srgbLin(c[k]) * w;
+  for (const [c, w] of pal.strips) for (let k = 0; k < 3; k++) out[k] += srgbLin(c[k]) * w;
   return out;
 }
 

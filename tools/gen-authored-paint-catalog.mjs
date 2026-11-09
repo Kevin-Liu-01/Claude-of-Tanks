@@ -160,11 +160,19 @@ const entries = [...groups.values()].map(({ recipe, ids }) => {
   return { id: `${PAINT_ID_PREFIX}${tankSeedId(lead)}`, lead, sourceTankIds: ids, nation: spec.nation || null, label: labelEn(parts), labelZh: labelZh(parts), tags, visual: recipe };
 }).sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
 // two paints of one nation with the same words: the paint worn by the most hulls keeps the bare name, the others
-// take numerals (ties in id order), so a one-off concept never displaces a fleet-wide coat's name
+// take numerals, so a one-off concept never displaces a fleet-wide coat's name. On a tie the paint already published
+// under the bare name keeps it (a saved selection shows its label), then id order: a new coat never renames a saved
+// one (2026-11-02: the Type 10 Kaitaku's bands beside the Type 74's).
+const target = fileURLToPath(new URL('../src/vehicles/authoredPaintCatalog.ts', import.meta.url));
+let published = '';
+try { published = readFileSync(target, 'utf8'); } catch { /* the first run writes it */ }
+const publishedLabel = new Map([...published.matchAll(/\{id: '([^']+)',[^\n]*?label: '([^']*)'/g)].map((m) => [m[1], m[2]]));
+const holdsName = (e) => (publishedLabel.get(e.id) === e.label ? 1 : 0);
 const seen = new Map();
 for (const e of entries) { const k = e.label; seen.set(k, (seen.get(k) || 0) + 1); }
 const counters = new Map();
-const byFamily = entries.slice().sort((a, b) => (b.sourceTankIds.length - a.sourceTankIds.length) || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
+const byFamily = entries.slice().sort((a, b) => (b.sourceTankIds.length - a.sourceTankIds.length) || (holdsName(b) - holdsName(a))
+  || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
 for (const e of byFamily) {
   if ((seen.get(e.label) || 0) > 1) {
     const n = (counters.get(e.label) || 0) + 1; counters.set(e.label, n);
@@ -201,7 +209,6 @@ ${entries.map(({ labelZh: _zh, ...e }) => `  ${JSON.stringify(e).replace(/"([a-z
 ]);
 `;
 const out = header + '\n' + body;
-const target = fileURLToPath(new URL('../src/vehicles/authoredPaintCatalog.ts', import.meta.url));
 // i18n: the garage reads labels through t('camoPattern.<id>'); every paint carries one key per language, kept as a
 // block after the national colours, and stale paint_* keys from an earlier fleet are dropped on regeneration
 const PAINT_KEY_LINE = /^[ \t]*"camoPattern\.paint_[a-z0-9_]+": .*\n/gm;

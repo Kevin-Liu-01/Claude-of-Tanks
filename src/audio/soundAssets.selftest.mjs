@@ -134,8 +134,10 @@ for (const lang of CREW_LANGUAGES) {
   }
   // 2.5 MB until 2026-11-03; the owner asked for "more and better voice lines … all the special modes, in all the
   // languages", so crew-lines-269 made a pack 190 lines and 371 takes (up to 3.29 MB) and the cap rose to 3.5 MB. Only
-  // the crew's own pack loads, and it decodes at 16 kHz (assetLibrary VOICE_DECODE_HZ).
-  assert.ok(langBytes < 3.5 * 1024 * 1024, `${lang} pack ${(langBytes / 1048576).toFixed(2)} MB`);
+  // the crew's own pack loads, and it decodes at 16 kHz (assetLibrary VOICE_DECODE_HZ). air-support-270's 8 lines made
+  // every pack 198 lines and 387 takes; the longest world languages measure up to 3.66 MB (fa; 52.0 MB decoded, from
+  // 48.9), so the cap is that rounded up to the next MiB: 4 MiB (crew-languages-270).
+  assert.ok(langBytes < 4 * 1024 * 1024, `${lang} pack ${(langBytes / 1048576).toFixed(2)} MB`);
 }
 
 console.log(`soundAssets.selftest: ${Object.keys(SFX_ASSETS).length} assets (${(bytes / 1048576).toFixed(1)} MB), ${referenced.size} engine references, ${MAP_IDS.length} scenes, ${CREW_LANGUAGES.length} crew packs × ${scriptIds.size} lines passed`);

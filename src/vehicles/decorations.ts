@@ -479,8 +479,10 @@ function fnv1a(str: string): number {
  * Vehicles that dress exactly as another: the Type 10 Kaitaku is the modern Type 10 with a bow kit (owner 2026-10-22),
  * so it takes the Type 10's manifest and seed; its kit reserves the bow (profiles/jgsdfDozer.ts), which keeps the bow
  * shackles and chain off the blade. The Type 90 (B) is the Type 90 with the same kit and a roof station (267).
+ * The M3A2 is the M2A2 under main's classic turret (268, profiles/m3a2Bradley.ts): it draws the M2A2's kit and seed.
  */
-const DECOR_TWIN: ReadonlyMap<string, string> = new Map([['type10_dozer', 'type10'], ['type90b', 'type90']]);
+const DECOR_TWIN: ReadonlyMap<string, string> = new Map([['type10_dozer', 'type10'], ['type90b', 'type90'],
+  ['m3a2_bradley', 'm2a2_bradley']]);
 
 function decorIdentityFor(specId: string): string {
   // The kit is seeded from the id's schema-1 spelling, so an id rename never
@@ -2605,6 +2607,13 @@ function appendEraHullKit(
   }
 }
 
+/** Release 268 builder E: a fleet-cargo row with the named routes left out (the M1A1 and HA, decorManifestFor below). */
+function m1a1CargoRoutes(row: DecorManifestRow, skip: readonly string[]): DecorManifestRow {
+  if (row.slot[0] !== 'fleetCargo') return row;
+  const args = row.slot[1];
+  return { ...row, slot: ['fleetCargo', { ...args, routes: (args.routes ?? []).filter((r) => !skip.includes(r[0])) }] };
+}
+
 function defaultManifest(spec: FleetTankSpec, rng: Rng): DecorManifestRow[] {
   const context: DefaultManifestContext = {
     era: decorEra(spec),
@@ -2671,6 +2680,57 @@ const BRAZIL_MANIFESTS: Readonly<Record<string, () => DecorManifestRow[]>> = Obj
   osorio_p2: brazilSmallKit, osorio_p1: brazilSmallKit, tamoyo1: brazilSmallKit, tamoyo3: brazilSmallKit,
   ee_t3_osorio: brazilSmallKit, ee_t4_osorio: brazilSmallKit,
   x1_pioneiro: brazilBowKit, x1a2_carcara: brazilBowKit,
+});
+// Release 269 (the owner 2026-11-05: "make the m113s have a lot more personal equipment annd decorations and tank
+// gear"; Main: the crew kit through the decor layer): the four M113s' crew and field kit where the Australian service
+// photographs (aus-m113-20261102: the AS4's heaped roof in the field and ashore, the MRVs on the range) and the M113A3's
+// blind critics put it: packs, duffels and bedrolls on the rear roof behind each gun's reach, the net rolled across the
+// trim vane, cans beside the A1 hulls' ramps (the A3's and AS4's armoured tanks hold the plate) and the cable on the side.
+// The hull's own fittings (the pioneer tools, the A3's launchers and mirrors, the ramp's hinges) are
+// profiles/m113Fittings.ts's.
+const m113Net = (): DecorManifestRow[] => [
+  { kit: 'camonet', p: 1, v: { v: 'roll', len: 1.25 }, slot: ['glacis', { side: -1 }] },
+];
+// (each row's seat measured in Node against the decor's own checks: loads stand behind the guns' reach, clear of the
+// mission attachment's dock and of each other; the pioneer tools are the hull's fittings, inside the track width)
+const M113_MANIFESTS: Readonly<Record<string, () => DecorManifestRow[]>> = Object.freeze({
+  m113a3: (): DecorManifestRow[] => [
+    { kit: 'tarp', p: 1, v: { v: 'fat', len: 1.30 }, slot: ['hullRoof', { x: 0, z: -2.21 }] },
+    { kit: 'cargo', p: 1, v: { v: 'large-rucksack' }, slot: ['hullRoof', { x: -0.80, z: -1.78 }] },
+    { kit: 'cargo', p: 1, v: { v: 'large-rucksack' }, slot: ['hullRoof', { x: -0.14, z: -1.78 }] },
+    { kit: 'cargo', p: 1, v: { v: 'blue-water-can' }, slot: ['hullRoof', { x: 0.40, z: -1.80 }] },
+    { kit: 'cargo', p: 1, v: { v: 'twin-can-cradle' }, slot: ['hullRoof', { x: -1.02, z: -1.30 }] },
+    { kit: 'cargo', p: 1, v: { v: 'fifty-cal-ammo-can' }, slot: ['hullRoof', { x: -0.45, z: -1.31 }] },
+    { kit: 'cargo', p: 1, v: { v: 'ration-case' }, slot: ['hullRoof', { x: -0.05, z: -1.31 }] },
+    { kit: 'cargo', p: 1, v: { v: 'fifty-cal-ammo-can' }, slot: ['hullRoof', { x: 0.36, z: -1.31 }] },
+    ...m113Net(),
+    { kit: 'cable', p: 1, v: { len: 2.4 }, slot: ['hullSideCable', { side: -1 }] },
+  ],
+  // the FSV's blind A/B (2026-11-06) chose the plain stern: cans hung off the plate's corners broke its side silhouette and
+  // no FSV photograph shows the net across its nose; its 76 mm sweeps the rear roof (each roof seat ahead of the bedroll
+  // is the gun's) and holds the ramp's rack below its floor, so the FSV carries the bedroll and the cable
+  m113a1_fsv: (): DecorManifestRow[] => [
+    // the bedroll across the roof's rear left (the right rear is the mission attachment's dock)
+    { kit: 'tarp', p: 1, v: { v: 'fat', len: 0.74 }, slot: ['hullRoof', { x: 0.43, z: -2.28 }] },
+    { kit: 'cable', p: 1, v: { len: 2.4 }, slot: ['hullSideCable', { side: -1 }] },
+  ],
+  // the MRV's sides are its buoyancy pods (no cable)
+  m113a1_mrv: (): DecorManifestRow[] => [
+    { kit: 'jerry', p: 1, v: { n: 2 }, slot: ['hullRearRack', { x: 0.39 }] },
+    { kit: 'jerry', p: 1, v: { n: 2 }, slot: ['hullRearRack', { x: -0.39 }] },
+    { kit: 'tarp', p: 1, v: { v: 'fat', len: 0.74 }, slot: ['hullRoof', { x: 0.43, z: -2.28 }] },
+    ...m113Net(),
+  ],
+  // the AS4's heaped roof between its bins, a swag on each bin's lid
+  m113as4: (): DecorManifestRow[] => [
+    { kit: 'cargo', p: 1, v: { v: 'large-rucksack' }, slot: ['hullRoof', { x: -0.38, z: -2.42 }] },
+    { kit: 'cargo', p: 1, v: { v: 'large-rucksack' }, slot: ['hullRoof', { x: 0.38, z: -2.42 }] },
+    { kit: 'cargo', p: 1, v: { v: 'bedroll-pair' }, slot: ['hullRoof', { x: -0.30, z: -1.95 }] },
+    { kit: 'cargo', p: 1, v: { v: 'camo-net-bag' }, slot: ['hullRoof', { x: 0.28, z: -1.95 }] },
+    { kit: 'tarp', p: 1, v: { v: 'thin', len: 0.6 }, slot: ['hullRoof', { x: 0.90, z: -2.27 }] },
+    { kit: 'tarp', p: 1, v: { v: 'thin', len: 0.6 }, slot: ['hullRoof', { x: -0.90, z: -2.27 }] },
+    ...m113Net(),
+  ],
 });
 const TANK_MANIFESTS: Record<string, DecorManifestBuilder> = {
   // --- WW2 ---
@@ -2872,8 +2932,18 @@ const TANK_MANIFESTS: Record<string, DecorManifestBuilder> = {
   ],
   // Release 233: the M1A1HA carries a track-width mine plow on its bow (profiles/abramsM1A1Identity.ts), so the default
   // draw keeps everything but its bow hardware (the shackle pair and the tow chain), which would hang on the raised plow.
+  // Release 268 (abrams-bradley-268): its tarp roll hangs on the left turret side. With the invented add-on
+  // cassettes gone from the Desert Storm walls, a roll drawn for the right side put one arm through the right stowage
+  // bay; the side draw stays consumed and every other row is unchanged (the namer_ifv precedent below).
+  // Release 268 builder E: on the owner's model's turret the bustle rack's side rails run along both walls of the bare
+  // M1A1 and HA (profiles/abrams.ts), so the turret-side and side-plate draws stay consumed and hang nothing there.
+  // The fleet cargo keeps its draws and routes but skips the turret sides (and on the HA the roof, where its loads
+  // straddled the model's raised blow-off panels).
+  m1a1: (spec, rng) => defaultManifest(spec, rng)
+    .map((row) => (row.slot[0] === 'turretSide' || row.slot[0] === 'turretSidePlate' ? { ...row, p: 0 } : row)),
   m1a1ha: (spec, rng) => defaultManifest(spec, rng)
-    .map((row) => (row.slot[0] === 'bowPair' || row.slot[0] === 'bowChain' ? { ...row, p: 0 } : row)),
+    .map((row) => (row.slot[0] === 'bowPair' || row.slot[0] === 'bowChain'
+      || row.slot[0] === 'turretSide' || row.slot[0] === 'turretSidePlate' ? { ...row, p: 0 } : row)),
   m1a1_abrams_hc: () => [
     { kit: 'basket', p: 1, v: { w: 1.4, d: 0.42, h: 0.32 }, slot: ['turretRearFrame', {}] },
     { kit: 'packs', p: 1, v: { n: 4 }, slot: ['turretRear', { onBasket: true }] },
@@ -3022,14 +3092,15 @@ const TANK_MANIFESTS: Record<string, DecorManifestBuilder> = {
     { kit: 'jerry', p: 1, v: { n: 2, water: true }, slot: ['hullRearRack', { x: 0.18 }] },
     { kit: 'shackles', p: 1, v: { v: 'shackle' }, slot: ['bowPair', {}] },
   ],
+  // 2026-11-03 (268 r16): the KF51-U's antennas are its build's own (two whips and the data link's rod, profiles/
+  // leopard.ts); the decor whips, which the r16 suit's new roof openings let stand (one through the SATCOM radome), are
+  // gone
   kf51_u: () => [
     { kit: 'basket', p: 1, v: { w: 1.5, d: 0.4, h: 0.3 }, slot: ['turretRearFrame', {}] },
     { kit: 'packs', p: 1, v: { n: 3 }, slot: ['turretRear', { onBasket: true }] },
     { kit: 'camonet', p: 1, v: { v: 'drape', len: 1.1, w: 0.9 }, slot: ['rearDeck', { center: true }] },
     { kit: 'bin', p: 1, v: { v: 'steel', w: 0.6, h: 0.3, d: 0.4 }, slot: ['turretSide', { side: -1 }] },
     { kit: 'cable', p: 1, v: { len: 2.4 }, slot: ['hullSideTop', { side: 1 }] },
-    { kit: 'antenna', p: 1, v: { v: 'whip_long' }, slot: ['turretRoof', { rear: true, side: -1 }] },
-    { kit: 'antenna', p: 1, v: { v: 'whip_short' }, slot: ['turretRoof', { rear: true, side: 1 }] },
     { kit: 'tracks', p: 1, v: { n: 4, linkW: 0.46 }, slot: ['turretSidePlate', { side: 1 }] },
     { kit: 'jerry', p: 1, v: { n: 2, water: true }, slot: ['hullRearRack', { x: 0.18 }] },
     { kit: 'shackles', p: 1, v: { v: 'shackle' }, slot: ['bowPair', {}] },
@@ -3156,10 +3227,26 @@ export function decorManifestFor(spec: FleetTankSpec, rng: Rng): DecorManifestRo
   // The pitching battery and retained Tagil chassis already own their fittings.
   // Turret-roof hatches/whips would be mounted on the moving launcher instead.
   if (spec.id === 'tos1a_tagil') return [];
+  // 267: the original BMPT Terminator (bmptTerminator.ts) is authored complete from its photographs, whose vehicles (the
+  // 2009 and 2012 show vehicles, Kazakhstan's parade vehicles) carry no field cargo: its side boxes are its stowage, and
+  // the generic aft cargo found no seat on the frame's narrow turntable deck.
+  if (spec.id === 'bmpt_terminator') return [];
+  // 268: the twin-cannon air defence: the turret-side guns, radars and launchers sweep the deck and roof at every
+  // bearing and elevation, so no random stowage; the builders author each vehicle's own fittings
+  if (['tunguska_m', 'pantsir_s1', 'gepard_1a2', 'pgz95', 'pgz09'].includes(spec.id)) return [];
+  // Release 269 (the Australian line): every Australian build authors its own dischargers and roof guns (the M113s'
+  // Saladin, Scorpion and Tenix turrets, the Leopard AS1 on the Danish build, the Abrams pair on the M1A1 and the SEPv3
+  // study with the TMAPU, racks and kit, the Redback's T2000 and Iron Fist). The era field load doubled them (a second
+  // discharger pair, a roof gun) and heaped cargo where the Abrams' field nets lie (the decor raises field nets), as on
+  // the Danish Leopards it was cloned beside and the South African Centurions' blind critics (269).
+  // The M113s take their own crew kit instead (M113_MANIFESTS).
+  const m113 = M113_MANIFESTS[spec.id];
+  if (m113) return m113();
+  if (['leopard_as1', 'm1a1_aim_sa_aus', 'm1a2_sepv3_aus', 'redback'].includes(spec.id)) return [];
   // These source-study profiles already own their complete equipment and
   // open racks. Preserve their authored cargo without a random overlay.
   // Originals and unrelated X studies keep their existing loadouts.
-  if (['m1a2_abrams', 'm1a2_abrams_tusk', 'm1a2_abrams_sepv2', 'm1a2_abrams_sepv3', 'ua_m1a2_abrams'].includes(spec.id)) return [];
+  if (['m1a2_abrams', 'm1a2_abrams_tusk', 'm1a2_abrams_sepv2', 'm1a2_abrams_sepv3', 'ua_m1a2_abrams', 'm1a2_sepv3_aus'].includes(spec.id)) return [];
   // The Type 100 is authored complete from the owner's reference renders (2026-09-16): pods, weapon
   // station, whips, sensor cubes, hatches and grilles, with a clean deck. The generic field load hung a
   // steel bin and jerrycans behind the stern and a canvas roll on the deck, which the renders never show.
@@ -3238,6 +3325,18 @@ export function decorManifestFor(spec: FleetTankSpec, rng: Rng): DecorManifestRo
   // Holstebro photograph shows it (r3 critics: a navy bag, a crate of bottles). All build their own dischargers.
   // (r7 critics: on the 1A3 DK and 1A5 DK the field load's grey and beige cases read as modern and perched on the rear)
   if (spec.id === 'leo1a3dk' || spec.id === 'leo1a5dk' || spec.id === 'leo1a5dk1' || spec.id === 'leo2a5dk' || spec.id === 'leo2a7dk' || spec.id === 'cv9035dk') return [];
+  // Release 269 (the South African line's blind critics, 2026-11-03): the Semel and the Olifants author their own
+  // dischargers and bustle kit (profiles/centurionFamily.ts: the Mk 1's net rack, the Mk 1A's long box, the Mk 1B's can
+  // rack). The era field load seated a second bank mid-side (read as the Mk 1's), a roof gun and a lamp, and packs and a
+  // net roll over the Mk 1A's box (read as the Mk 1's rack): they carry the Mk 2's deck load only. The TTD, one
+  // demonstrator, carries none (the field load's bank on its turret wall read as the 2A4's Wegmann launchers).
+  // The netted Mk 1 and Mk 1A (2026-11-03) carry none: roof and deck loads under a field net draw it into a hoop.
+  if (spec.id === 'olifant_mk1' || spec.id === 'olifant_mk1a') return [];
+  if (['semel', 'olifant_mk1b'].includes(spec.id)) return [
+    { kit: 'jerry', p: 1, v: { n: 2 }, slot: ['rearDeck', { corner: 1 }] },
+    { kit: 'tarp', p: 1, v: { v: 'fat', len: 1.0 }, slot: ['rearDeck', { corner: -1 }] },
+  ];
+  if (spec.id === 'ttd') return [];
   // (release 266: the Magachs on the M60A1's castings, the same way)
   if (['magach6b', 'magach7c'].includes(spec.id)) return [];
   // (267, the Japan line's photo critics) the TK-X on its trials as TRDI's photographs show the prototypes, a clean roof,
@@ -3495,6 +3594,14 @@ export function decorManifestFor(spec: FleetTankSpec, rng: Rng): DecorManifestRo
   // can frame on the rack's rear corner, leaning out over its edge (two blind critics: "looks like it is falling off").
   // Its cargo keeps the deck and the fenders, off the turret (the release hull's hullRearRack slot resolves under the
   // bustle too).
+  // Release 268 builder E: the M1A1's turret walls are the owner's model's 26-degree planes, and the HA's roof and bustle
+  // top carry the model's blow-off panels and stations: a load hung on a turret flank stood its wall feet inside the wall,
+  // and on the HA a can cradle laid on the bustle top stood across a panel's edge. Those routes are off; the hull's rear
+  // rack, the deck and the fenders keep theirs. (The A/B fix round: the SA's and the AIM's flanks carry the side-rail
+  // frames now, which a hung load crossed.)
+  if (spec.id === 'm1a1' || spec.id === 'm1a1ha' || spec.id === 'm1a1_abrams_sa' || spec.id === 'm1a1_abrams_aim') {
+    return manifest.map((row) => m1a1CargoRoutes(row, spec.id === 'm1a1ha' ? ['turretSide', 'turretRoof', 'turretRear'] : ['turretSide']));
+  }
   if (spec.id === 'leo2a4') {
     const aloft = new Set(['hullRearRack', 'turretRear', 'turretRoof', 'turretSide']);
     return manifest.flatMap((row) => {
@@ -4064,8 +4171,10 @@ const LEDGE_WALK_M = [0.08, 0.16, 0.24, 0.32];
  */
 const LEDGE_RESEAT_HELD: ReadonlySet<string> = new Set<string>([
   // the held ids whose hung loads the re-seat moves (decor census, base 058ccfa242 vs this re-seat, 93 held ids)
-  'amx30b', 'hayate_ifv', 'm2a2_bradley', 'puma_s1', 't64bv_donbas', 't72b_1987', 't72bu',
-  't72bu_1989', 't90a', 't90a_vladimir', 't90am', 't90m', 't90m_proryv', 't90sm_2013', 'ua_m2a3_bradley',
+  // (268, lane abrams-bradley-268: m2a2_bradley and ua_m2a3_bradley adopt the re-seat with their source-measured
+  // turret, whose left wall moved in under the hung load's old foot)
+  'amx30b', 'hayate_ifv', 'puma_s1', 't64bv_donbas', 't72b_1987', 't72bu',
+  't72bu_1989', 't90a', 't90a_vladimir', 't90am', 't90m', 't90m_proryv', 't90sm_2013',
 ]);
 /**
  * 267 (lane t90-family-267, the accessory-contact receipt on the T-90 family): three seat fixes, adopted per id as 240's
@@ -4078,6 +4187,9 @@ const LEDGE_RESEAT_HELD: ReadonlySet<string> = new Set<string>([
  */
 const CONTACT_SEAT_267: ReadonlySet<string> = new Set<string>([
   't90', 't90a_2006', 't90ms_2011', 't90ms_tagil', 't90m', 'type96_72m_lei',
+  // 268 (lane abrams-bradley-268, re-rendered on the source-measured shell: the M2A2's hung load's arm crossed its own
+  // strap, the M3A3's rear rack bracket the stern's falling corner)
+  'm2a2_bradley', 'm3a3_bradley',
 ]);
 
 /**
@@ -5758,11 +5870,14 @@ function* decorationSteps(
           const alongX = cw >= cd;
           const footY = c.footY;
           const shift = new THREE.Matrix4().makeTranslation(0, -footY, 0);
+          // (release 268 builder E, decorationsStaging: the placement clones are kept to be released; the shift below
+          // replaced them on their meshes, and the release then freed the shifted copies twice and these never)
+          const placedClones = placed.map((mesh) => mesh.geometry);
           for (const mesh of meshes) mesh.geometry = mesh.geometry.clone().applyMatrix4(shift);
           const path = hullTiePath(meshes, alongX ? 'z' : 'x', alongX ? ccx : ccz, alongX ? c.lid.min.z : c.lid.min.x,
             alongX ? c.lid.max.z : c.lid.max.x, y + h - footY);
           for (const mesh of meshes) mesh.geometry.dispose();
-          for (const mesh of placed) mesh.geometry.dispose();
+          for (const geometry of placedClones) geometry.dispose();
           if (!path) continue;
           const tie = withBoxUV(tieBand(path, alongX ? 'z' : 'x', alongX ? ccx : ccz, 0.038))
             .applyMatrix4(new THREE.Matrix4().makeTranslation(0, footY, 0))

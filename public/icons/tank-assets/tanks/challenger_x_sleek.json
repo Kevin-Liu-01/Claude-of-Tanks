@@ -666,16 +666,16 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 7622,
-      "sha256": "4c9d0cf831c5f6f9e0fe90d500edd058cd13d7c6f127820dfcce2bda6015ff31"
+      "bytes": 7616,
+      "sha256": "d95464b28f3fd19b71fb467a3832829d21bf2bf974c634fb3f1fa7a6339e80d8"
     },
     "side": {
       "file": "challenger_x_sleek_side.webp",
       "width": 512,
       "height": 256,
       "mime": "image/webp",
-      "bytes": 8106,
-      "sha256": "930c8dbb8d443fc710c08f6a81d2ca76acdd837e4dc698e6bef6511ac73258b7"
+      "bytes": 8026,
+      "sha256": "a61e7c505db231a4953c1fa198d2adfd84a0c36f5d946142df2aa1dcdfb8ce94"
     },
     "topSilhouette": {
       "file": "challenger_x_sleek_top_silhouette.png",
@@ -698,32 +698,32 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 19474,
-      "sha256": "5097859136f5e231e2b881956f0b94cc1735e64224ba3f4731a3a48d8cb37ac1"
+      "bytes": 19466,
+      "sha256": "5076d201eea00846e2dbcf51a6c29b8400180fa28134f3a0a1c457533f55f9a9"
     },
     "modulesSide": {
       "file": "challenger_x_sleek_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 20818,
-      "sha256": "902985981eb23200da33ecc312854aac2aa2d703420c399661d96b528d103160"
+      "bytes": 20800,
+      "sha256": "9db71598b6058246f9a6c3e0cac1b7ead64bc26d217c1f9d30128f46ac298554"
     },
     "crewSide": {
       "file": "challenger_x_sleek_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 16392,
-      "sha256": "4e8dfcbbdca16bc566f5008ca47c9c84ce539981ec405c9ca3b7ae34d546bd94"
+      "bytes": 16396,
+      "sha256": "0c1b315028a5279f41c0c32fecfe03514ac293a0cb162608da656a6943dcf731"
     },
     "markings": {
       "file": "challenger_x_sleek_markings.png",
       "width": 256,
       "height": 128,
       "mime": "image/png",
-      "bytes": 35710,
-      "sha256": "1c6243fce3687bbdbd955b6812b8c8948fe9db2ff5304cba873d7fa57e5693aa"
+      "bytes": 33253,
+      "sha256": "01b45a6217627452b8f1fccecb3868bdea89c751b6752e6596a9836681008bf5"
     },
     "technicalLabels": {
       "file": "challenger_x_sleek_technical.json",

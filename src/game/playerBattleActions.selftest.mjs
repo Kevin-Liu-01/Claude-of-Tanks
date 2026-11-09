@@ -345,6 +345,24 @@ input.press('aerialVision');assert.equal(viewEvents(),beforeViews+1,'sensor shor
 assert.equal(networkCalls.length,beforeNetwork,'sensor choice is local presentation');
 settingsOpen=true;input.press('aerialVision');assert.equal(viewEvents(),beforeViews+1,'settings capture cannot cycle the sensor');
 settingsOpen=false;
+
+// couch mode (docs/COUCH-MODE.md): seat 1's phone drives the tank the battle names its player, through the input stage;
+// the shared screen's keys and HUD buttons act on no tank, so a press never lands twice or on the wrong seat
+{
+  game.couch = { sides: 'together', seats: [{ seat: 1, entity: player }] };
+  player.input.auxiliaryBits = 0;
+  const routed = () => events.filter((e) => e.event.startsWith('ui:')).length;
+  const beforeRouted = routed(), beforeLocal = localCalls.length, beforeNetwork = networkCalls.length;
+  const slot = player.combat.shellSlot;
+  for (const action of ['shell2', 'consumable1', 'reloadMagazine', 'specialAction', 'smoke', 'roofGun', 'lights', 'selfRight', 'aerialVision']) input.press(action);
+  assert.equal(routed(), beforeRouted, 'no key routes an action in a couch battle');
+  bus.emit('ui:shellSelect', { slot: 1 });
+  bus.emit('ui:consumable', { slot: 0 });
+  bus.emit('ui:magazineReload', {});
+  assert.deepEqual([localCalls.length, networkCalls.length, player.combat.shellSlot, player.input.auxiliaryBits],
+    [beforeLocal, beforeNetwork, slot, 0], 'a HUD button acts on no seat\'s tank');
+  game.couch = null;
+}
 actions.dispose();
 const eventCount = events.length;
 input.press('shell1');

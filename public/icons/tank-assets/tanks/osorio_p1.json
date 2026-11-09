@@ -740,7 +740,7 @@
       }
     ]
   },
-  "geometryHash": "97094e37",
+  "geometryHash": "552b4452",
   "metadataHash": "1abe91cc",
   "presentationAnchor": {
     "xM": -0.0005,
@@ -799,14 +799,14 @@
       "height": 512,
       "mime": "image/webp",
       "bytes": 23702,
-      "sha256": "f8862ad340d28a2ca9af5a703ebcbb5753c93d8e05023fafb12d511fc9c62385",
+      "sha256": "5a59b938364ba2a6f82852fbb34604527f140be6f04e9dc34c5dd7ff6ff0b611",
       "thumbnail": {
         "file": "thumbs/osorio_p1_angle.webp",
         "width": 256,
         "height": 256,
         "mime": "image/webp",
-        "bytes": 10164,
-        "sha256": "ce9a3d581ff4f5602d3c179392eb23c36949cecbbb13f1baf4dda65ff74af560"
+        "bytes": 10166,
+        "sha256": "57560bdf97d925779804f62535fb4ee9e5bcc8e0440f09650a7f412130bdc829"
       }
     },
     "top": {
@@ -822,8 +822,8 @@
       "width": 512,
       "height": 256,
       "mime": "image/webp",
-      "bytes": 10752,
-      "sha256": "6d6762b53af935438073fce1df97db42dd361e4b180c8604f9dae55c45634a35"
+      "bytes": 10784,
+      "sha256": "fb740a1bf19f27d031f0d16fb1b7b0acae9ca7d2c9da889c0485b48017a1986b"
     },
     "topSilhouette": {
       "file": "osorio_p1_top_silhouette.png",
@@ -846,32 +846,32 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 23210,
-      "sha256": "8095cb086131aa71772e0deccc8411a21a026f130f7115506655be00215c58ce"
+      "bytes": 23172,
+      "sha256": "3b95b7b0ef909a6cc5a9e1b24fc974cef6413d01e7add4fd2fb9fcc4cb906c0f"
     },
     "modulesSide": {
       "file": "osorio_p1_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 23410,
-      "sha256": "870018c7f5ee26d6208a11344685611f636e87d8247720b5bd1394e003e7ed15"
+      "bytes": 24076,
+      "sha256": "dbc344ecf6690483e0dca92cb8d593fd087f2e68df3ea80cf5542f4e5033099c"
     },
     "crewSide": {
       "file": "osorio_p1_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 20756,
-      "sha256": "e8e48e745d7494449f1789d92d98fa0bdc601f7806d34101d71549feafe1da54"
+      "bytes": 20782,
+      "sha256": "2c02556e876003116f8692ac5fcf4105dcc0da31077a1ace3b2c92ac8efaa99c"
     },
     "markings": {
       "file": "osorio_p1_markings.png",
       "width": 256,
       "height": 128,
       "mime": "image/png",
-      "bytes": 36127,
-      "sha256": "8b8df593a8257fddac00497c5566ad1b24befb30138faf29b509f29ad5c3e184"
+      "bytes": 34398,
+      "sha256": "ad00430f4aa7568670f23da742e3a5338f486a25074ff23c25951ef0fb777dfb"
     },
     "technicalLabels": {
       "file": "osorio_p1_technical.json",

@@ -49,6 +49,8 @@ const ERA_VEHICLE_IDS: Readonly<Record<VehicleEra, readonly string[]>> = Object.
     't80uk', 'strv81', 'strv105', 'udes03', 'strv103a', 'strv103b',
     'chieftain3', 'chieftain_mk9', 'challenger1_mk1', 'challenger1_mk2', 'challenger_x', 'challenger_x_sleek', 'fv4034', 'stb1', 'type74', 'type90_kyumaru',
     'type90a', 'm2a2_bradley', 'bmp2', 'bmp3', 'hayate_ifv', 'carro45t',
+    // release 268: the M3A2 (1988), the M2A2's cavalry twin under the classic turret
+    'm3a2_bradley',
     'amx40_proto', 'leo1a5', 'leo1a2a1', 'leo1a3dk', 'leo1a5dk', 'leo1a5dk1', 'leopard2_proto', 'leo2a2', 'mbt70', 'm1a1',
     'fv510',
     'm1a1ha', 'm60a1', 'merkava1b', 'merkava2b', 'merkava2d', 'fv510_milan',
@@ -56,6 +58,10 @@ const ERA_VEHICLE_IDS: Readonly<Record<VehicleEra, readonly string[]>> = Object.
     'magach6b', 'magach7c',
     'vickers_mk1',
     'centurion3', 'centurion5_2', 'centurion5_2dk', 'shot_kal', 'centurion13', 'centurion5_avre', 'centurion5_1_aus', 'm46_patton', 'm47_patton',
+    // release 269: the South African Centurions, 1974-91
+    'semel', 'olifant_mk1', 'olifant_mk1a', 'olifant_mk1b',
+    // release 269: the Australian M113A1 FSV and MRV (1970-96) and the Leopard AS1 (1976-2007)
+    'm113a1_fsv', 'm113a1_mrv', 'leopard_as1',
     'type59', 'ztz85_iii', 'bwp1', 'marder1a3', 'm551_sheridan', 'm41a3', 'm41_bw', 'm41_jgsdf', 'm41dk1', 't49',
   ]),
   [VEHICLE_ERAS.MODERN]: Object.freeze([
@@ -63,6 +69,13 @@ const ERA_VEHICLE_IDS: Readonly<Record<VehicleEra, readonly string[]>> = Object.
     'warrior_tes_h',
     // release 262: the Olifant Mk 2 (2007)
     'olifant_mk2',
+    // release 269: the TTD (1992)
+    'ttd',
+    // release 269: the Australian M113AS4 (2007), the AS21 Redback (2027) and the Abrams (the M1A1 AIM SA 2007, the M1A2
+    // SEPv3 2024)
+    'm113as4', 'redback', 'm1a1_aim_sa_aus', 'm1a2_sepv3_aus',
+    // and the US Army's M113A3 (1987)
+    'm113a3',
     'type96_72_long', 'type96_80_feng', 'type96_72m_lei', 't72_rys',
     'tos1a_tagil', 'griffin_viper', 'ares_apc',
     'leo2a6', 'c1_ariete', 'c2_ariete', 'strv122', 't72b3m_2016',
@@ -83,7 +96,7 @@ const ERA_VEHICLE_IDS: Readonly<Record<VehicleEra, readonly string[]>> = Object.
     'm1a1_abrams_fep', 'merkava3c', 'merkava3_baz', 'merkava4b', 't72m1_jaguar',
     'pt91a_twardy', 'k2b', 'bmp3_rok', 't64bv_donbas', 't64bm1m', 't64b1v_2022', 'pt64_tur', 'ua_t80bv', 't80u_kursk', 't84bm_oplot_m', 'bm_oplot_m', 'bm_oplot_t',
     'pt84_orzel', 'pt84_sokol', 'pt84_zbik', 'ua_m1a1', 'ua_m2a3_bradley', 'ua_cv9040c', 'bmpt_terminator2',
-    'm3a3_bradley', 'bmpt_t90', 'cv90', 'cv9035dk',
+    'm3a3_bradley', 'bmpt_t90', 'bmpt_terminator', 'cv90', 'cv9035dk',
     'ajax', 'aft10', 'k21', 'type96b', 'cv90105_tml', 'sabra_mk2',
     // 2026-10-25 (owner: "properly label next gen vs modern"): upgrades and new builds of in-service families are
     // modern however recent. The T-72B3 and T-80U national modernizations, the Challenger 3 (a rebuilt Challenger 2),
@@ -95,6 +108,9 @@ const ERA_VEHICLE_IDS: Readonly<Record<VehicleEra, readonly string[]>> = Object.
     'lrmv_lynx', 'borsuk', 'type89', 'm551a1_tts',
     // release 264: the Longwei family, fleet hulls under a modernized Longwei turret
     'ztz99a2_qinglong', 'vt4a1_baihu', 't72b3_zhuque', 't72b3m_xuanwu',
+    // release 268: the twin-cannon air defence: the 2K22M (1990) and the Pantsir-S1 (2012 tracked option), the Gepard 1A2
+    // (the 1996-2000 service-life extension), the PGZ-95 (1999) and the PGZ-09 (2009)
+    'tunguska_m', 'pantsir_s1', 'gepard_1a2', 'pgz95', 'pgz09',
   ]),
   // A new generation: clean-sheet architectures past the third-generation tank (uncrewed turrets and crew capsules,
   // 130 mm-class guns, hybrid drives), whether fielded, prototypes or concepts. The T-14 Armata is the yardstick.

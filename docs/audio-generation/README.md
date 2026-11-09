@@ -50,7 +50,7 @@ re-mastering cost nothing.
 | `tools/audio/sheet.mjs` | Spectrogram and waveform sheet for shipped files |
 | `tools/audio/loudness-receipt.mjs` | Measures shipped files as they ship (decoded WebM/Opus, the same R128 meter) into `tools/audio/sfx-loudness.json`: loudness, true peak, duration, channels and SHA-256 per variant; `--ids` records, `--check` re-measures every recorded asset |
 | `tools/audio/elevenlabs.mjs` | The API client: sound generation, text-to-speech, speech-to-text, Voice Library; a content-addressed cache and a credit ledger |
-| `tools/audio/crew-lines.json` | The crew script: 17 languages, one entry per line with role, delivery, context and the takes in every language |
+| `tools/audio/crew-lines.json` | The crew script: 38 languages (17 national, 21 with no country in the game), one entry per line with role, delivery, context and the takes in every language |
 | `tools/audio/crew-voices.json` | The cast: a commander voice and a crew voice per language, with their audition measurements |
 | `tools/audio/voice-casting.mjs`, `voice-audition.mjs` | Search the Voice Library and audition candidates on working-register calls |
 | `tools/audio/build-voices.mjs` | Speaks, verifies, trims and masters the crew packs; `--langs`, `--lines`, `--attempts`, `--budget`, `--no-verify` |
@@ -191,7 +191,7 @@ or a pin in `sfx-picks.json`. Regenerate only when every cached take has the
 defect, and then change the prompt rather than just adding takes.
 
 **Add a crew line.**
-1. Add it to `crew-lines.json` in all 17 languages with the same number of takes,
+1. Add it to `crew-lines.json` in all 38 languages with the same number of takes,
    a role, a delivery and a context (see [prompts.md](prompts.md#crew-scripts)).
 2. Add its `VOICE_LINES` entry in `src/audio/voiceLines.ts` (priority,
    cooldown, group, staleness).

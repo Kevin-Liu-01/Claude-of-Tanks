@@ -15,7 +15,7 @@
 // stay empty, which leaves the square's east and west edges and its north and south bands.
 //
 // Pathways: none (sand lanes).
-import type { CivicBed, CivicFurniture, CivicPlan, CivicPoint, CivicRect } from '../types.ts';
+import type { CivicBed, CivicFurniture, CivicPlanSource, CivicPoint, CivicRect } from '../types.ts';
 
 const CX = 8, CZ = 0;
 const rot = (x: number, z: number): [number, number] => [+(2 * CX - x).toFixed(2), +(2 * CZ - z).toFixed(2)];
@@ -51,9 +51,8 @@ const planter = (x: number, z: number, id: string, size = 2.6): CivicBed => {
   return { id, rect: r, mouths: [], paths: [], feature: null };
 };
 
-export const BADLANDS_CIVIC_PLAN: CivicPlan = {
+export const BADLANDS_CIVIC_PLAN: CivicPlanSource = {
   mapId: 'badlands',
-  style: 'wadirum',
   overlay: {},
   pathways: null,
   areas: [{

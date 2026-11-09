@@ -13343,5 +13343,16490 @@
    2.494,
    1.838
   ]
+ },
+ "es-ES": {
+  "draw": [
+   3.034
+  ],
+  "gun_mount_damaged": [
+   1.406
+  ],
+  "feed_damaged": [
+   1.608
+  ],
+  "roof_gun_damaged": [
+   2.036
+  ],
+  "missile_rack_damaged": [
+   1.532
+  ],
+  "crew_recovered": [
+   2.02
+  ],
+  "last_tank": [
+   3.652
+  ],
+  "pickup_collected": [
+   1.326
+  ],
+  "last_enemy": [
+   2.136
+  ],
+  "outnumbered": [
+   2.124
+  ],
+  "back_on_tracks": [
+   1.914
+  ],
+  "taking_water": [
+   1.46
+  ],
+  "ammo_out_all": [
+   1.978
+  ],
+  "think_step_by_step": [
+   2.618
+  ],
+  "step_by_step_reply": [
+   3.498
+  ],
+  "double_kill": [
+   1.06,
+   2.054
+  ],
+  "autoloader_damaged": [
+   1.692
+  ],
+  "enemy_flag_returned": [
+   1.666
+  ],
+  "last_survivor": [
+   3.058
+  ],
+  "spotted_front": [
+   0.958,
+   1.152
+  ],
+  "spotted_left": [
+   1.028,
+   1.184
+  ],
+  "spotted_rear": [
+   1.208,
+   0.928
+  ],
+  "spotted_right": [
+   1.014,
+   1.478
+  ],
+  "victory": [
+   2.458,
+   3.012
+  ],
+  "sixth_sense": [
+   1.486,
+   1.538
+  ],
+  "penetration": [
+   0.936,
+   2.144
+  ],
+  "missile_away": [
+   1.208,
+   1.962
+  ],
+  "ricochet": [
+   0.744,
+   0.83
+  ],
+  "nonpen": [
+   1.056,
+   0.936
+  ],
+  "enemy_crit": [
+   2.074,
+   1.304
+  ],
+  "enemy_fire": [
+   1.422,
+   1.246
+  ],
+  "enemy_ammo_rack": [
+   2.792,
+   2.648
+  ],
+  "load_kinetic": [
+   1.32,
+   1.12
+  ],
+  "load_heat": [
+   0.972,
+   1.588
+  ],
+  "load_missile": [
+   1.056,
+   1.358
+  ],
+  "gunship_cannon": [
+   1.512,
+   1.826
+  ],
+  "load_he": [
+   1.086,
+   1.366
+  ],
+  "gunship_kill": [
+   2.61,
+   2.29
+  ],
+  "gunship_howitzer": [
+   1.48,
+   2.08
+  ],
+  "gunship_missile": [
+   1.402,
+   1.594
+  ],
+  "gunship_double": [
+   2.054,
+   2.08
+  ],
+  "were_hit": [
+   0.886,
+   1.57
+  ],
+  "ammo_low": [
+   1.762,
+   2.964
+  ],
+  "bounced_us": [
+   2.578,
+   2.282
+  ],
+  "ammo_empty": [
+   1.526,
+   1.476
+  ],
+  "fuel_tank": [
+   1.936,
+   1.672
+  ],
+  "low_hp": [
+   3.818,
+   3.482
+  ],
+  "ammo_rack": [
+   1.376,
+   1.132
+  ],
+  "engine_destroyed": [
+   1.54,
+   1.366
+  ],
+  "fire": [
+   1.916,
+   1.22
+  ],
+  "fire_out": [
+   1.356,
+   1.338
+  ],
+  "track_gone": [
+   2.246,
+   1.406
+  ],
+  "transmission_damaged": [
+   1.46,
+   2.426
+  ],
+  "turret_jammed": [
+   1.904,
+   2.072
+  ],
+  "gun_damaged": [
+   1.518,
+   1.266
+  ],
+  "radio_damaged": [
+   1.334,
+   1.39
+  ],
+  "optics_damaged": [
+   1.364,
+   1.104
+  ],
+  "gunner_down": [
+   1.746,
+   1.428
+  ],
+  "commander_down": [
+   1.93,
+   2.726
+  ],
+  "driver_down": [
+   1.88,
+   1.598
+  ],
+  "track_repaired": [
+   2.33,
+   1.224
+  ],
+  "loader_down": [
+   1.728,
+   1.874
+  ],
+  "repairs": [
+   1.744,
+   1.79
+  ],
+  "engine_repaired": [
+   1.212,
+   1.476
+  ],
+  "gun_repaired": [
+   1.358,
+   2.344
+  ],
+  "roof_gun_on": [
+   1.718,
+   1.434
+  ],
+  "suspension_set": [
+   1.66,
+   1.794
+  ],
+  "smoke_out": [
+   0.936,
+   0.986
+  ],
+  "ally_destroyed": [
+   1.39,
+   1.93
+  ],
+  "extinguishing": [
+   0.734,
+   1.052
+  ],
+  "objective_captured": [
+   1.544,
+   1.622
+  ],
+  "flag_taken_ours": [
+   1.122,
+   2.74
+  ],
+  "objective_lost": [
+   1.372,
+   1.152
+  ],
+  "flag_taken_theirs": [
+   1.222,
+   2.896
+  ],
+  "wave_cleared": [
+   1.84,
+   2.658
+  ],
+  "goal_scored": [
+   1.02,
+   0.96
+  ],
+  "wave_incoming": [
+   1.21,
+   2.068
+  ],
+  "respawn": [
+   1.324,
+   2.29
+  ],
+  "flag_returned": [
+   1.908,
+   1.256
+  ],
+  "line_advanced": [
+   1.49,
+   1.684
+  ],
+  "supply_ammo": [
+   1.552,
+   1.97
+  ],
+  "friendly_fire": [
+   2.372,
+   1.668
+  ],
+  "hit_by_friendly": [
+   2.704,
+   2.432
+  ],
+  "supply_repair": [
+   1.75,
+   1.738
+  ],
+  "friendly_ram": [
+   2.042,
+   2.014
+  ],
+  "drone_incoming": [
+   0.964,
+   2.222
+  ],
+  "rammed": [
+   1.386,
+   1.016
+  ],
+  "ally_kill": [
+   0.88,
+   1.714
+  ],
+  "spotted_multiple": [
+   1.576,
+   1.838
+  ],
+  "drone_launch": [
+   1.092,
+   1.008
+  ],
+  "missile_incoming": [
+   1.078,
+   2.096
+  ],
+  "near_miss": [
+   1.59,
+   1.79
+  ],
+  "flipped": [
+   1.614,
+   1.408
+  ],
+  "enemy_immobilized": [
+   2.638,
+   2.622
+  ],
+  "target_lost": [
+   1.114,
+   1.224
+  ],
+  "stuck": [
+   1.866,
+   1.484
+  ],
+  "drone_lost": [
+   1.282,
+   1.848
+  ],
+  "enemy_gun_damaged": [
+   1.918,
+   1.69
+  ],
+  "enemy_crew_hit": [
+   2.052,
+   1.432
+  ],
+  "objective_contested": [
+   1.23,
+   1.21
+  ],
+  "quiet_move": [
+   3.172,
+   2.57
+  ],
+  "quiet_hold": [
+   2.408,
+   2.844
+  ],
+  "identified": [
+   0.886,
+   1.556
+  ],
+  "defeat": [
+   2.54,
+   2.922
+  ],
+  "building_down": [
+   1.256,
+   1.718
+  ],
+  "re_engage": [
+   1.148,
+   2.3
+  ],
+  "on_the_move": [
+   0.784,
+   1.368
+  ],
+  "target_locked": [
+   1.462,
+   1.22
+  ],
+  "hull_status": [
+   2.84,
+   2.542
+  ],
+  "artillery_far": [
+   2.134,
+   2.098
+  ],
+  "aircraft_overhead": [
+   1.8,
+   2.062
+  ],
+  "enemy_engine_hit": [
+   1.378,
+   2.402
+  ],
+  "in_cover": [
+   1.888,
+   1.892
+  ],
+  "objective_push": [
+   1.688,
+   1.64
+  ],
+  "fire_command_he": [
+   2.57,
+   2.942
+  ],
+  "cease_fire": [
+   1.796,
+   2.32
+  ],
+  "fire_command_kinetic": [
+   2.108,
+   2.52
+  ],
+  "fire_command_heat": [
+   2.35,
+   2.692
+  ],
+  "enemy_era": [
+   1.838,
+   1.438
+  ],
+  "aps_intercept_us": [
+   3.426,
+   2.192
+  ],
+  "fire_command_missile": [
+   2.18,
+   2.576
+  ],
+  "aps_intercept_them": [
+   1.924,
+   2.222
+  ],
+  "drone_battery_low": [
+   1.744,
+   1.986
+  ],
+  "era_us": [
+   3.032,
+   4.036
+  ],
+  "enemy_drone_down": [
+   1.558,
+   1.258
+  ],
+  "drone_link_weak": [
+   1.702,
+   2.516
+  ],
+  "drone_kill": [
+   2.352,
+   2.704
+  ],
+  "drone_shot_down": [
+   1.634,
+   2.268
+  ],
+  "drone_recovered": [
+   1.356,
+   1.606
+  ],
+  "reversing": [
+   1.178,
+   1.36
+  ],
+  "enemy_smoke": [
+   1.29,
+   2.342
+  ],
+  "obstacle_through": [
+   2.002,
+   2.672
+  ],
+  "crew_report": [
+   1.906,
+   2.516
+  ],
+  "crew_ready": [
+   3.622,
+   1.812
+  ],
+  "gunship_cleared_hot": [
+   1.918,
+   2.92
+  ],
+  "jump_brace": [
+   1.244,
+   1.48
+  ],
+  "gunship_splash": [
+   0.774,
+   1.864
+  ],
+  "gunship_rifle": [
+   1.096,
+   2.02
+  ],
+  "gunship_friendly_extracted": [
+   1.666,
+   1.358
+  ],
+  "gunship_good_hits": [
+   1.752,
+   2.982
+  ],
+  "gunship_danger_close": [
+   1.006,
+   2.666
+  ],
+  "gunship_friendly_down": [
+   2.24,
+   2.314
+  ],
+  "gunship_shift_fire": [
+   1.366,
+   2.324
+  ],
+  "gunship_tally": [
+   2.562,
+   2.282
+  ],
+  "gunship_defeat": [
+   3.152,
+   2.86
+  ],
+  "gunship_victory": [
+   2.816,
+   2.67
+  ],
+  "start_flag": [
+   2.684,
+   2.018
+  ],
+  "start_zones": [
+   2.13,
+   2.13
+  ],
+  "start_juggernaut": [
+   3.638,
+   2.326
+  ],
+  "start_horde": [
+   2.858,
+   2.486
+  ],
+  "start_ball": [
+   2.168,
+   1.966
+  ],
+  "start_assault": [
+   2.176,
+   2.132
+  ],
+  "start_mars": [
+   2.824,
+   2.224
+  ],
+  "start_survivors": [
+   3.366,
+   2.704
+  ],
+  "start_hunt": [
+   3.414,
+   2.224
+  ],
+  "start_drone": [
+   3.076,
+   2.16
+  ],
+  "start_range": [
+   1.216,
+   2.434
+  ],
+  "flag_dropped_ours": [
+   2.332,
+   1.622
+  ],
+  "start_gun_game": [
+   2.366,
+   2.722
+  ],
+  "flag_dropped_theirs": [
+   1.618,
+   2.402
+  ],
+  "goal_conceded": [
+   1.056,
+   2.068
+  ],
+  "flag_lost": [
+   2.04,
+   3.484
+  ],
+  "objective_contesting": [
+   1.464,
+   2.092
+  ],
+  "wave_runners": [
+   2.254,
+   3.578
+  ],
+  "ball_reset": [
+   1.3,
+   2.114
+  ],
+  "wave_swarm": [
+   2.702,
+   2.946
+  ],
+  "final_line": [
+   2.05,
+   2.434
+  ],
+  "counter_attack": [
+   0.88,
+   2.276
+  ],
+  "ally_infected": [
+   3.624,
+   2.188
+  ],
+  "victory_survivors": [
+   2.186,
+   3.444
+  ],
+  "infected_turned": [
+   3.526,
+   3.892
+  ],
+  "victory_juggernaut": [
+   2.084,
+   2.072
+  ],
+  "juggernaut_down": [
+   1.602,
+   1.938
+  ],
+  "juggernaut_spotted": [
+   1.342,
+   1.446
+  ],
+  "gun_game_final": [
+   2.076,
+   2.522
+  ],
+  "victory_assault": [
+   3.402,
+   2.642
+  ],
+  "enemy_final_weapon": [
+   2.226,
+   2.988
+  ],
+  "defeat_overrun": [
+   1.812,
+   2.802
+  ],
+  "firing": [
+   0.974,
+   0.816,
+   0.674
+  ],
+  "engine_damaged": [
+   1.248,
+   2.382
+  ],
+  "miss": [
+   0.83,
+   1.314,
+   0.692
+  ],
+  "reloaded": [
+   1.036,
+   0.69,
+   1.066
+  ],
+  "target_destroyed": [
+   1.518,
+   1.508,
+   1.572
+  ],
+  "flag_captured": [
+   1.302,
+   2.214
+  ],
+  "battle_start": [
+   2.044,
+   1.502,
+   2.402
+  ],
+  "gunship_rounds_complete": [
+   1.066,
+   2.524
+  ],
+  "enemy_spotted": [
+   1.868,
+   0.854,
+   1.718
+  ],
+  "quiet_scan": [
+   1.384,
+   1.782,
+   2.524,
+   1.658
+  ],
+  "quiet_crew": [
+   1.992,
+   2.14,
+   1.11
+  ],
+  "reloading": [
+   0.702,
+   0.814
+  ],
+  "start_air_support": [
+   2.92,
+   3.152
+  ],
+  "air_call_recon": [
+   2.85,
+   2.376
+  ],
+  "air_incoming": [
+   2.726,
+   2.47
+  ],
+  "air_call_artillery": [
+   2.952,
+   2.268
+  ],
+  "air_call_strafe": [
+   2.56,
+   1.894
+  ],
+  "air_call_bomb": [
+   3.104,
+   2.056
+  ],
+  "aircraft_downed": [
+   1.226,
+   2.338
+  ],
+  "artillery_incoming": [
+   1.966,
+   2.14
+  ]
+ },
+ "es-419": {
+  "draw": [
+   3.128
+  ],
+  "gun_mount_damaged": [
+   1.546
+  ],
+  "autoloader_damaged": [
+   1.656
+  ],
+  "feed_damaged": [
+   1.35
+  ],
+  "roof_gun_damaged": [
+   2.558
+  ],
+  "missile_rack_damaged": [
+   1.822
+  ],
+  "crew_recovered": [
+   2.324
+  ],
+  "last_tank": [
+   4.032
+  ],
+  "pickup_collected": [
+   1.288
+  ],
+  "last_enemy": [
+   2.724
+  ],
+  "double_kill": [
+   1.146,
+   2.034
+  ],
+  "outnumbered": [
+   2.234
+  ],
+  "back_on_tracks": [
+   2.124
+  ],
+  "taking_water": [
+   1.446
+  ],
+  "think_step_by_step": [
+   2.584
+  ],
+  "ammo_out_all": [
+   1.71
+  ],
+  "step_by_step_reply": [
+   3.616
+  ],
+  "enemy_flag_returned": [
+   1.574
+  ],
+  "last_survivor": [
+   3.316
+  ],
+  "on_the_move": [
+   0.94,
+   1.408
+  ],
+  "spotted_left": [
+   1.186,
+   1.388
+  ],
+  "spotted_front": [
+   1.072,
+   1.446
+  ],
+  "spotted_rear": [
+   1.262,
+   1.36
+  ],
+  "victory": [
+   2.684,
+   3.28
+  ],
+  "defeat": [
+   2.798,
+   2.23
+  ],
+  "spotted_right": [
+   1.188,
+   1.582
+  ],
+  "nonpen": [
+   1.012,
+   0.918
+  ],
+  "sixth_sense": [
+   1.4,
+   1.664
+  ],
+  "missile_away": [
+   1.32,
+   1.926
+  ],
+  "penetration": [
+   0.902,
+   2.392
+  ],
+  "enemy_fire": [
+   1.398,
+   1.304
+  ],
+  "enemy_crit": [
+   1.984,
+   1.31
+  ],
+  "ricochet": [
+   0.84,
+   0.792
+  ],
+  "enemy_ammo_rack": [
+   2.486,
+   2.522
+  ],
+  "reloading": [
+   1.182,
+   1.398
+  ],
+  "load_kinetic": [
+   1.488,
+   1.084
+  ],
+  "gunship_cannon": [
+   1.294,
+   1.74
+  ],
+  "load_missile": [
+   1.194,
+   1.344
+  ],
+  "load_heat": [
+   1.078,
+   1.688
+  ],
+  "load_he": [
+   1.668,
+   1.82
+  ],
+  "gunship_double": [
+   2.034,
+   2.142
+  ],
+  "gunship_howitzer": [
+   1.45,
+   2.148
+  ],
+  "gunship_kill": [
+   2.588,
+   2.234
+  ],
+  "ammo_low": [
+   1.416,
+   3.022
+  ],
+  "gunship_missile": [
+   1.572,
+   1.21
+  ],
+  "ammo_empty": [
+   1.382,
+   1.484
+  ],
+  "were_hit": [
+   0.976,
+   1.38
+  ],
+  "ammo_rack": [
+   1.846,
+   1.076
+  ],
+  "low_hp": [
+   3.752,
+   3.148
+  ],
+  "fuel_tank": [
+   1.94,
+   1.622
+  ],
+  "fire_out": [
+   1.898,
+   1.656
+  ],
+  "fire": [
+   2.184,
+   1.328
+  ],
+  "engine_destroyed": [
+   1.468,
+   1.12
+  ],
+  "transmission_damaged": [
+   1.342,
+   2.396
+  ],
+  "track_gone": [
+   2.618,
+   1.25
+  ],
+  "engine_damaged": [
+   1.106,
+   2.304
+  ],
+  "gun_damaged": [
+   1.508,
+   1.186
+  ],
+  "turret_jammed": [
+   2.282,
+   1.924
+  ],
+  "radio_damaged": [
+   1.648,
+   1.524
+  ],
+  "optics_damaged": [
+   1.286,
+   1.09
+  ],
+  "commander_down": [
+   1.742,
+   2.718
+  ],
+  "repairs": [
+   1.78,
+   1.892
+  ],
+  "gunner_down": [
+   1.916,
+   1.292
+  ],
+  "driver_down": [
+   1.956,
+   1.414
+  ],
+  "loader_down": [
+   2.032,
+   1.296
+  ],
+  "gun_repaired": [
+   1.57,
+   1.77
+  ],
+  "engine_repaired": [
+   1.256,
+   1.592
+  ],
+  "extinguishing": [
+   0.792,
+   1.228
+  ],
+  "track_repaired": [
+   2.512,
+   1.836
+  ],
+  "ally_destroyed": [
+   1.28,
+   2.132
+  ],
+  "smoke_out": [
+   1.414,
+   1.08
+  ],
+  "suspension_set": [
+   1.822,
+   1.852
+  ],
+  "roof_gun_on": [
+   1.742,
+   1.66
+  ],
+  "objective_captured": [
+   1.606,
+   1.808
+  ],
+  "flag_taken_ours": [
+   1.258,
+   2.952
+  ],
+  "flag_returned": [
+   1.654,
+   1.404
+  ],
+  "flag_captured": [
+   1.492,
+   2.612
+  ],
+  "objective_lost": [
+   1.398,
+   1.244
+  ],
+  "line_advanced": [
+   1.56,
+   1.912
+  ],
+  "flag_taken_theirs": [
+   1.296,
+   3.222
+  ],
+  "wave_cleared": [
+   1.874,
+   2.61
+  ],
+  "goal_scored": [
+   1.07,
+   1.604
+  ],
+  "wave_incoming": [
+   1.184,
+   2.094
+  ],
+  "supply_ammo": [
+   1.728,
+   2.128
+  ],
+  "respawn": [
+   1.664,
+   2.642
+  ],
+  "friendly_fire": [
+   1.77,
+   1.772
+  ],
+  "supply_repair": [
+   1.914,
+   2.014
+  ],
+  "hit_by_friendly": [
+   2.25,
+   2.596
+  ],
+  "friendly_ram": [
+   1.692,
+   2.154
+  ],
+  "ally_kill": [
+   1.084,
+   1.95
+  ],
+  "drone_incoming": [
+   1.402,
+   1.544
+  ],
+  "spotted_multiple": [
+   1.728,
+   2.06
+  ],
+  "rammed": [
+   1.338,
+   1.512
+  ],
+  "drone_launch": [
+   1.142,
+   1.032
+  ],
+  "near_miss": [
+   1.78,
+   1.386
+  ],
+  "missile_incoming": [
+   1.16,
+   2.3
+  ],
+  "drone_lost": [
+   1.182,
+   2.02
+  ],
+  "stuck": [
+   1.9,
+   1.612
+  ],
+  "flipped": [
+   1.452,
+   1.108
+  ],
+  "target_lost": [
+   0.976,
+   1.186
+  ],
+  "target_locked": [
+   1.206,
+   0.852
+  ],
+  "enemy_crew_hit": [
+   1.824,
+   1.698
+  ],
+  "enemy_gun_damaged": [
+   1.944,
+   1.022
+  ],
+  "enemy_engine_hit": [
+   1.032,
+   2.484
+  ],
+  "objective_contested": [
+   1.568,
+   1.526
+  ],
+  "enemy_immobilized": [
+   2.726,
+   2.36
+  ],
+  "quiet_hold": [
+   2.71,
+   2.87
+  ],
+  "quiet_move": [
+   2.98,
+   2.824
+  ],
+  "building_down": [
+   1.194,
+   1.858
+  ],
+  "artillery_far": [
+   2.09,
+   2.132
+  ],
+  "aircraft_overhead": [
+   1.84,
+   1.244
+  ],
+  "hull_status": [
+   3.076,
+   2.402
+  ],
+  "fire_command_kinetic": [
+   2.23,
+   2.572
+  ],
+  "in_cover": [
+   1.944,
+   2.244
+  ],
+  "objective_push": [
+   1.582,
+   1.776
+  ],
+  "fire_command_heat": [
+   2.42,
+   2.786
+  ],
+  "fire_command_missile": [
+   2.346,
+   2.556
+  ],
+  "fire_command_he": [
+   2.734,
+   3.138
+  ],
+  "cease_fire": [
+   2.258,
+   2.77
+  ],
+  "identified": [
+   0.91,
+   1.788
+  ],
+  "re_engage": [
+   1.03,
+   2.502
+  ],
+  "enemy_era": [
+   1.704,
+   1.422
+  ],
+  "aps_intercept_us": [
+   3.372,
+   2.446
+  ],
+  "era_us": [
+   3.014,
+   3.812
+  ],
+  "aps_intercept_them": [
+   1.958,
+   2.168
+  ],
+  "drone_link_weak": [
+   1.73,
+   2.834
+  ],
+  "drone_battery_low": [
+   1.808,
+   2.228
+  ],
+  "enemy_drone_down": [
+   1.082,
+   0.956
+  ],
+  "drone_shot_down": [
+   1.47,
+   2.378
+  ],
+  "drone_recovered": [
+   1.376,
+   1.8
+  ],
+  "drone_kill": [
+   2.642,
+   2.76
+  ],
+  "enemy_smoke": [
+   1.466,
+   2.54
+  ],
+  "reversing": [
+   1.106,
+   0.958
+  ],
+  "jump_brace": [
+   0.984,
+   1.734
+  ],
+  "crew_report": [
+   2.118,
+   2.92
+  ],
+  "obstacle_through": [
+   1.642,
+   2.458
+  ],
+  "gunship_rifle": [
+   1.05,
+   2.146
+  ],
+  "gunship_cleared_hot": [
+   2.17,
+   3.22
+  ],
+  "crew_ready": [
+   3.568,
+   1.934
+  ],
+  "gunship_splash": [
+   1.232,
+   1.86
+  ],
+  "gunship_good_hits": [
+   1.68,
+   2.88
+  ],
+  "gunship_danger_close": [
+   1.144,
+   2.95
+  ],
+  "gunship_friendly_extracted": [
+   1.956,
+   1.48
+  ],
+  "gunship_rounds_complete": [
+   1.054,
+   2.664
+  ],
+  "gunship_tally": [
+   2.71,
+   2.098
+  ],
+  "gunship_shift_fire": [
+   1.542,
+   2.884
+  ],
+  "gunship_victory": [
+   3.178,
+   3.026
+  ],
+  "gunship_friendly_down": [
+   2.262,
+   1.862
+  ],
+  "start_ball": [
+   2.608,
+   2.1
+  ],
+  "start_zones": [
+   2.428,
+   2.352
+  ],
+  "gunship_defeat": [
+   2.78,
+   2.948
+  ],
+  "start_flag": [
+   3.032,
+   2.4
+  ],
+  "start_mars": [
+   3.228,
+   2.734
+  ],
+  "start_horde": [
+   3.126,
+   3.094
+  ],
+  "start_hunt": [
+   3.78,
+   2.106
+  ],
+  "start_assault": [
+   2.316,
+   2.554
+  ],
+  "start_juggernaut": [
+   3.938,
+   2.836
+  ],
+  "flag_dropped_ours": [
+   2.488,
+   1.69
+  ],
+  "start_survivors": [
+   4.56,
+   2.592
+  ],
+  "start_gun_game": [
+   2.866,
+   3.006
+  ],
+  "flag_dropped_theirs": [
+   1.416,
+   2.862
+  ],
+  "objective_contesting": [
+   1.65,
+   2.178
+  ],
+  "start_range": [
+   1.558,
+   2.714
+  ],
+  "ball_reset": [
+   1.85,
+   2.58
+  ],
+  "start_drone": [
+   3.358,
+   2.402
+  ],
+  "goal_conceded": [
+   1.262,
+   2.448
+  ],
+  "counter_attack": [
+   0.92,
+   2.67
+  ],
+  "ally_infected": [
+   3.194,
+   2.3
+  ],
+  "wave_swarm": [
+   2.704,
+   3.264
+  ],
+  "final_line": [
+   1.846,
+   2.582
+  ],
+  "flag_lost": [
+   1.858,
+   2.954
+  ],
+  "wave_runners": [
+   2.066,
+   3.776
+  ],
+  "juggernaut_spotted": [
+   1.542,
+   1.588
+  ],
+  "juggernaut_down": [
+   1.802,
+   1.652
+  ],
+  "infected_turned": [
+   3.57,
+   4.132
+  ],
+  "victory_juggernaut": [
+   2.184,
+   2.336
+  ],
+  "enemy_final_weapon": [
+   2.458,
+   3.362
+  ],
+  "victory_survivors": [
+   2.176,
+   3.87
+  ],
+  "gun_game_final": [
+   2.072,
+   2.704
+  ],
+  "defeat_overrun": [
+   1.6,
+   2.568
+  ],
+  "victory_assault": [
+   3.88,
+   3.028
+  ],
+  "battle_start": [
+   2.088,
+   1.836,
+   2.67
+  ],
+  "miss": [
+   0.784,
+   1.406,
+   0.7
+  ],
+  "reloaded": [
+   1.244,
+   0.726,
+   1.102
+  ],
+  "enemy_spotted": [
+   2.006,
+   1.018,
+   1.876
+  ],
+  "firing": [
+   1.018,
+   0.806,
+   0.618
+  ],
+  "target_destroyed": [
+   1.654,
+   1.504,
+   1.548
+  ],
+  "quiet_crew": [
+   1.99,
+   2.002,
+   1.124
+  ],
+  "quiet_scan": [
+   1.49,
+   1.918,
+   2.278,
+   1.614
+  ],
+  "bounced_us": [
+   2.506,
+   1.01
+  ],
+  "start_air_support": [
+   2.978,
+   3.72
+  ],
+  "air_call_strafe": [
+   2.49,
+   2.134
+  ],
+  "air_call_recon": [
+   3.3,
+   2.34
+  ],
+  "air_call_artillery": [
+   3.15,
+   2.408
+  ],
+  "air_call_bomb": [
+   2.99,
+   2.236
+  ],
+  "artillery_incoming": [
+   2.022,
+   2.268
+  ],
+  "aircraft_downed": [
+   1.318,
+   2.274
+  ],
+  "air_incoming": [
+   2.982,
+   2.812
+  ]
+ },
+ "pt-PT": {
+  "draw": [
+   3.312
+  ],
+  "autoloader_damaged": [
+   1.908
+  ],
+  "gun_mount_damaged": [
+   1.71
+  ],
+  "feed_damaged": [
+   1.758
+  ],
+  "missile_rack_damaged": [
+   1.466
+  ],
+  "roof_gun_damaged": [
+   2.16
+  ],
+  "crew_recovered": [
+   2.174
+  ],
+  "last_tank": [
+   3.888
+  ],
+  "pickup_collected": [
+   1.68
+  ],
+  "double_kill": [
+   1.794,
+   1.886
+  ],
+  "last_enemy": [
+   2.468
+  ],
+  "outnumbered": [
+   1.66
+  ],
+  "taking_water": [
+   1.252
+  ],
+  "back_on_tracks": [
+   1.992
+  ],
+  "think_step_by_step": [
+   2.872
+  ],
+  "ammo_out_all": [
+   1.75
+  ],
+  "step_by_step_reply": [
+   3.516
+  ],
+  "enemy_flag_returned": [
+   1.762
+  ],
+  "last_survivor": [
+   3.306
+  ],
+  "on_the_move": [
+   0.986,
+   1.422
+  ],
+  "victory": [
+   2.426,
+   3.516
+  ],
+  "spotted_left": [
+   1.096,
+   1.3
+  ],
+  "defeat": [
+   2.258,
+   2.618
+  ],
+  "sixth_sense": [
+   1.866,
+   1.38
+  ],
+  "spotted_rear": [
+   1.32,
+   1.104
+  ],
+  "missile_away": [
+   1.496,
+   1.924
+  ],
+  "spotted_right": [
+   1.322,
+   1.236
+  ],
+  "nonpen": [
+   1.116,
+   1.236
+  ],
+  "enemy_fire": [
+   1.576,
+   1.25
+  ],
+  "ricochet": [
+   0.814,
+   1.148
+  ],
+  "penetration": [
+   1.458,
+   2.672
+  ],
+  "enemy_crit": [
+   2.086,
+   1.406
+  ],
+  "load_kinetic": [
+   1.786,
+   1.632
+  ],
+  "enemy_ammo_rack": [
+   3.27,
+   2.468
+  ],
+  "reloading": [
+   1.71,
+   1.872
+  ],
+  "load_heat": [
+   1.146,
+   2.1
+  ],
+  "load_missile": [
+   1.404,
+   1.972
+  ],
+  "load_he": [
+   1.69,
+   1.714
+  ],
+  "gunship_howitzer": [
+   1.544,
+   2.428
+  ],
+  "gunship_double": [
+   1.886,
+   2.964
+  ],
+  "gunship_missile": [
+   1.76,
+   1.856
+  ],
+  "ammo_empty": [
+   1.228,
+   1.348
+  ],
+  "were_hit": [
+   1.31,
+   1.7
+  ],
+  "gunship_kill": [
+   2.452,
+   2.364
+  ],
+  "bounced_us": [
+   2.45,
+   2.738
+  ],
+  "ammo_rack": [
+   1.556,
+   1.412
+  ],
+  "fuel_tank": [
+   2.01,
+   1.62
+  ],
+  "fire": [
+   1.98,
+   1.236
+  ],
+  "fire_out": [
+   1.566,
+   1.74
+  ],
+  "low_hp": [
+   4.164,
+   3.108
+  ],
+  "ammo_low": [
+   1.714,
+   2.886
+  ],
+  "engine_damaged": [
+   1.342,
+   2.256
+  ],
+  "engine_destroyed": [
+   1.516,
+   1.288
+  ],
+  "track_gone": [
+   2.472,
+   1.26
+  ],
+  "gun_damaged": [
+   1.32,
+   1.462
+  ],
+  "commander_down": [
+   1.936,
+   2.83
+  ],
+  "transmission_damaged": [
+   1.412,
+   3.044
+  ],
+  "radio_damaged": [
+   1.566,
+   1.524
+  ],
+  "turret_jammed": [
+   2.278,
+   1.888
+  ],
+  "optics_damaged": [
+   1.546,
+   1.838
+  ],
+  "driver_down": [
+   2.124,
+   1.522
+  ],
+  "track_repaired": [
+   2.568,
+   2.24
+  ],
+  "gun_repaired": [
+   1.53,
+   1.86
+  ],
+  "engine_repaired": [
+   1.586,
+   1.456
+  ],
+  "gunner_down": [
+   2.16,
+   1.686
+  ],
+  "smoke_out": [
+   0.88,
+   1.556
+  ],
+  "repairs": [
+   2.072,
+   1.852
+  ],
+  "roof_gun_on": [
+   1.562,
+   1.922
+  ],
+  "objective_lost": [
+   1.31,
+   1.326
+  ],
+  "extinguishing": [
+   1.31,
+   1.134
+  ],
+  "ally_destroyed": [
+   1.744,
+   1.952
+  ],
+  "objective_captured": [
+   1.698,
+   1.626
+  ],
+  "suspension_set": [
+   1.746,
+   1.94
+  ],
+  "flag_captured": [
+   1.614,
+   2.028
+  ],
+  "flag_taken_ours": [
+   1.488,
+   2.932
+  ],
+  "flag_returned": [
+   1.902,
+   1.772
+  ],
+  "line_advanced": [
+   1.606,
+   2.296
+  ],
+  "flag_taken_theirs": [
+   1.27,
+   2.784
+  ],
+  "supply_ammo": [
+   1.776,
+   2.212
+  ],
+  "supply_repair": [
+   1.902,
+   2.088
+  ],
+  "goal_scored": [
+   1.082,
+   1.752
+  ],
+  "friendly_fire": [
+   1.904,
+   1.714
+  ],
+  "friendly_ram": [
+   1.86,
+   2.174
+  ],
+  "respawn": [
+   1.622,
+   2.49
+  ],
+  "rammed": [
+   1.422,
+   1.542
+  ],
+  "hit_by_friendly": [
+   2.546,
+   2.178
+  ],
+  "ally_kill": [
+   1.48,
+   1.974
+  ],
+  "drone_incoming": [
+   1.39,
+   1.58
+  ],
+  "spotted_multiple": [
+   1.678,
+   2.152
+  ],
+  "drone_lost": [
+   1.328,
+   2.29
+  ],
+  "flipped": [
+   1.354,
+   1.14
+  ],
+  "missile_incoming": [
+   1.56,
+   1.862
+  ],
+  "near_miss": [
+   1.74,
+   1.796
+  ],
+  "target_lost": [
+   1.152,
+   1.192
+  ],
+  "target_locked": [
+   1.364,
+   1.18
+  ],
+  "stuck": [
+   1.98,
+   1.904
+  ],
+  "enemy_crew_hit": [
+   2.136,
+   2.06
+  ],
+  "enemy_gun_damaged": [
+   1.892,
+   1.4
+  ],
+  "enemy_engine_hit": [
+   1.306,
+   2.384
+  ],
+  "enemy_immobilized": [
+   2.772,
+   2.216
+  ],
+  "objective_contested": [
+   1.584,
+   1.438
+  ],
+  "quiet_hold": [
+   2.316,
+   3.272
+  ],
+  "artillery_far": [
+   1.66,
+   2.596
+  ],
+  "quiet_move": [
+   3.112,
+   2.038
+  ],
+  "aircraft_overhead": [
+   1.71,
+   1.456
+  ],
+  "hull_status": [
+   2.93,
+   2.494
+  ],
+  "in_cover": [
+   2.218,
+   2.52
+  ],
+  "building_down": [
+   1.294,
+   1.902
+  ],
+  "fire_command_heat": [
+   2.732,
+   3.056
+  ],
+  "objective_push": [
+   1.672,
+   2.372
+  ],
+  "fire_command_kinetic": [
+   2.556,
+   3.014
+  ],
+  "fire_command_he": [
+   2.672,
+   3.2
+  ],
+  "fire_command_missile": [
+   2.496,
+   2.834
+  ],
+  "identified": [
+   1.266,
+   1.57
+  ],
+  "cease_fire": [
+   2.458,
+   2.514
+  ],
+  "aps_intercept_us": [
+   3.42,
+   2.402
+  ],
+  "re_engage": [
+   1.102,
+   2.322
+  ],
+  "aps_intercept_them": [
+   2.026,
+   1.976
+  ],
+  "drone_battery_low": [
+   1.828,
+   1.894
+  ],
+  "enemy_era": [
+   1.848,
+   1.68
+  ],
+  "enemy_drone_down": [
+   1.238,
+   1.062
+  ],
+  "drone_shot_down": [
+   1.734,
+   2.456
+  ],
+  "drone_link_weak": [
+   1.912,
+   2.748
+  ],
+  "reversing": [
+   0.764,
+   0.97
+  ],
+  "drone_kill": [
+   2.514,
+   2.718
+  ],
+  "drone_recovered": [
+   1.482,
+   1.57
+  ],
+  "obstacle_through": [
+   1.992,
+   2.826
+  ],
+  "era_us": [
+   3.212,
+   4.086
+  ],
+  "crew_ready": [
+   4.26,
+   1.7
+  ],
+  "crew_report": [
+   2.358,
+   3.038
+  ],
+  "gunship_good_hits": [
+   1.306,
+   3.022
+  ],
+  "gunship_rifle": [
+   1.13,
+   2.39
+  ],
+  "gunship_cleared_hot": [
+   2.038,
+   2.718
+  ],
+  "gunship_danger_close": [
+   1.08,
+   3.012
+  ],
+  "gunship_splash": [
+   1.366,
+   2.25
+  ],
+  "gunship_rounds_complete": [
+   0.994,
+   2.48
+  ],
+  "gunship_friendly_down": [
+   2.306,
+   2.22
+  ],
+  "gunship_shift_fire": [
+   1.2,
+   2.15
+  ],
+  "gunship_friendly_extracted": [
+   1.936,
+   1.708
+  ],
+  "start_zones": [
+   2.742,
+   2.446
+  ],
+  "gunship_victory": [
+   3.296,
+   2.438
+  ],
+  "gunship_tally": [
+   2.516,
+   2.342
+  ],
+  "start_assault": [
+   2.532,
+   2.306
+  ],
+  "gunship_defeat": [
+   2.888,
+   2.548
+  ],
+  "start_flag": [
+   2.888,
+   2.066
+  ],
+  "start_horde": [
+   3.21,
+   2.938
+  ],
+  "start_mars": [
+   3.622,
+   2.814
+  ],
+  "start_ball": [
+   2.222,
+   2.154
+  ],
+  "start_hunt": [
+   3.53,
+   2.088
+  ],
+  "start_juggernaut": [
+   3.71,
+   3.218
+  ],
+  "start_drone": [
+   2.872,
+   2.664
+  ],
+  "start_survivors": [
+   4.39,
+   3.196
+  ],
+  "start_range": [
+   1.604,
+   2.766
+  ],
+  "start_gun_game": [
+   2.684,
+   3.402
+  ],
+  "flag_dropped_ours": [
+   2.382,
+   1.752
+  ],
+  "flag_dropped_theirs": [
+   1.622,
+   3.108
+  ],
+  "flag_lost": [
+   1.938,
+   3.084
+  ],
+  "ball_reset": [
+   1.18,
+   2.304
+  ],
+  "objective_contesting": [
+   2.25,
+   2.456
+  ],
+  "wave_swarm": [
+   2.662,
+   2.854
+  ],
+  "goal_conceded": [
+   0.98,
+   2.582
+  ],
+  "final_line": [
+   2.092,
+   2.334
+  ],
+  "counter_attack": [
+   0.872,
+   2.31
+  ],
+  "juggernaut_spotted": [
+   1.58,
+   1.622
+  ],
+  "wave_runners": [
+   2.2,
+   3.79
+  ],
+  "ally_infected": [
+   3.234,
+   2.894
+  ],
+  "infected_turned": [
+   3.576,
+   3.592
+  ],
+  "victory_juggernaut": [
+   2.14,
+   2.056
+  ],
+  "juggernaut_down": [
+   1.85,
+   1.47
+  ],
+  "defeat_overrun": [
+   1.816,
+   2.568
+  ],
+  "gun_game_final": [
+   2.49,
+   3.388
+  ],
+  "enemy_final_weapon": [
+   2.158,
+   2.74
+  ],
+  "victory_assault": [
+   3.33,
+   2.782
+  ],
+  "battle_start": [
+   2.14,
+   1.856,
+   2.436
+  ],
+  "reloaded": [
+   1.198,
+   0.844,
+   1.274
+  ],
+  "enemy_spotted": [
+   1.974,
+   1.276,
+   1.746
+  ],
+  "spotted_front": [
+   1.038,
+   1.218
+  ],
+  "miss": [
+   0.942,
+   1.498,
+   1.086
+  ],
+  "firing": [
+   1.028,
+   0.814,
+   0.862
+  ],
+  "target_destroyed": [
+   1.344,
+   1.754,
+   1.954
+  ],
+  "wave_cleared": [
+   1.812,
+   2.494
+  ],
+  "quiet_crew": [
+   2.002,
+   2.122,
+   1.32
+  ],
+  "drone_launch": [
+   1.03,
+   1.048
+  ],
+  "wave_incoming": [
+   1.532,
+   2.146
+  ],
+  "enemy_smoke": [
+   1.252,
+   2.26
+  ],
+  "victory_survivors": [
+   1.98,
+   3.22
+  ],
+  "loader_down": [
+   2.194,
+   1.928
+  ],
+  "jump_brace": [
+   1.388,
+   1.402
+  ],
+  "quiet_scan": [
+   1.536,
+   2.212,
+   2.496,
+   1.908
+  ],
+  "gunship_cannon": [
+   1.37,
+   2.24
+  ],
+  "start_air_support": [
+   3.42,
+   3.332
+  ],
+  "air_call_artillery": [
+   2.97,
+   2.37
+  ],
+  "air_call_recon": [
+   3.142,
+   2.078
+  ],
+  "air_call_bomb": [
+   3.158,
+   1.982
+  ],
+  "aircraft_downed": [
+   1.372,
+   2.362
+  ],
+  "air_incoming": [
+   2.668,
+   2.86
+  ],
+  "air_call_strafe": [
+   2.286,
+   2.138
+  ],
+  "artillery_incoming": [
+   1.92,
+   2.524
+  ]
+ },
+ "nl": {
+  "draw": [
+   3.334
+  ],
+  "gun_mount_damaged": [
+   1.662
+  ],
+  "autoloader_damaged": [
+   1.83
+  ],
+  "roof_gun_damaged": [
+   1.634
+  ],
+  "feed_damaged": [
+   1.272
+  ],
+  "missile_rack_damaged": [
+   1.566
+  ],
+  "crew_recovered": [
+   1.378
+  ],
+  "last_tank": [
+   3.236
+  ],
+  "pickup_collected": [
+   1.436
+  ],
+  "double_kill": [
+   1.81,
+   1.838
+  ],
+  "outnumbered": [
+   1.78
+  ],
+  "last_enemy": [
+   2.188
+  ],
+  "taking_water": [
+   1.3
+  ],
+  "back_on_tracks": [
+   1.522
+  ],
+  "ammo_out_all": [
+   1.636
+  ],
+  "think_step_by_step": [
+   2.82
+  ],
+  "step_by_step_reply": [
+   3.712
+  ],
+  "enemy_flag_returned": [
+   1.734
+  ],
+  "last_survivor": [
+   3.016
+  ],
+  "on_the_move": [
+   0.758,
+   1.268
+  ],
+  "spotted_left": [
+   0.85,
+   1.274
+  ],
+  "defeat": [
+   2.392,
+   2.526
+  ],
+  "spotted_rear": [
+   0.908,
+   1.202
+  ],
+  "spotted_right": [
+   0.85,
+   1.26
+  ],
+  "victory": [
+   2.918,
+   2.8
+  ],
+  "missile_away": [
+   1.454,
+   2.046
+  ],
+  "sixth_sense": [
+   1.104,
+   1.624
+  ],
+  "enemy_fire": [
+   1.23,
+   1.136
+  ],
+  "nonpen": [
+   1.012,
+   1.01
+  ],
+  "ricochet": [
+   0.906,
+   0.906
+  ],
+  "penetration": [
+   0.886,
+   1.886
+  ],
+  "enemy_ammo_rack": [
+   2.274,
+   2.6
+  ],
+  "enemy_crit": [
+   2.53,
+   1.416
+  ],
+  "load_kinetic": [
+   0.928,
+   1.346
+  ],
+  "load_heat": [
+   1.088,
+   1.75
+  ],
+  "reloading": [
+   1.63,
+   1.672
+  ],
+  "load_missile": [
+   1.178,
+   1.508
+  ],
+  "gunship_cannon": [
+   1.354,
+   2.204
+  ],
+  "load_he": [
+   1.364,
+   1.63
+  ],
+  "gunship_missile": [
+   1.554,
+   1.506
+  ],
+  "ammo_empty": [
+   1.078,
+   1.278
+  ],
+  "ammo_low": [
+   1.338,
+   3.35
+  ],
+  "gunship_kill": [
+   2.456,
+   2.514
+  ],
+  "gunship_howitzer": [
+   0.878,
+   2.156
+  ],
+  "gunship_double": [
+   1.838,
+   2.69
+  ],
+  "were_hit": [
+   0.99,
+   1.236
+  ],
+  "ammo_rack": [
+   1.29,
+   1.616
+  ],
+  "bounced_us": [
+   2.282,
+   2.356
+  ],
+  "fire_out": [
+   1.6,
+   1.302
+  ],
+  "fire": [
+   1.682,
+   1.132
+  ],
+  "engine_damaged": [
+   1.266,
+   2.41
+  ],
+  "transmission_damaged": [
+   1.192,
+   2.856
+  ],
+  "low_hp": [
+   3.346,
+   2.5
+  ],
+  "gun_damaged": [
+   1.448,
+   1.12
+  ],
+  "engine_destroyed": [
+   1.306,
+   1.346
+  ],
+  "track_gone": [
+   2.494,
+   1.03
+  ],
+  "fuel_tank": [
+   1.416,
+   1.264
+  ],
+  "radio_damaged": [
+   1.416,
+   1.208
+  ],
+  "turret_jammed": [
+   2.17,
+   2.004
+  ],
+  "optics_damaged": [
+   1.15,
+   1.734
+  ],
+  "driver_down": [
+   1.672,
+   1.272
+  ],
+  "gunner_down": [
+   1.574,
+   1.196
+  ],
+  "commander_down": [
+   1.384,
+   2.972
+  ],
+  "loader_down": [
+   1.552,
+   1.7
+  ],
+  "track_repaired": [
+   2.272,
+   1.668
+  ],
+  "engine_repaired": [
+   1.416,
+   1.718
+  ],
+  "smoke_out": [
+   0.96,
+   0.84
+  ],
+  "repairs": [
+   1.758,
+   1.586
+  ],
+  "extinguishing": [
+   1.064,
+   0.828
+  ],
+  "roof_gun_on": [
+   1.652,
+   1.274
+  ],
+  "gun_repaired": [
+   1.596,
+   1.812
+  ],
+  "suspension_set": [
+   1.624,
+   2.188
+  ],
+  "objective_captured": [
+   1.53,
+   1.618
+  ],
+  "ally_destroyed": [
+   1.738,
+   1.9
+  ],
+  "objective_lost": [
+   1.35,
+   1.344
+  ],
+  "flag_taken_ours": [
+   1.186,
+   2.626
+  ],
+  "flag_taken_theirs": [
+   1.106,
+   2.612
+  ],
+  "flag_returned": [
+   1.392,
+   1.672
+  ],
+  "flag_captured": [
+   1.2,
+   2.256
+  ],
+  "line_advanced": [
+   1.64,
+   1.952
+  ],
+  "wave_incoming": [
+   1.03,
+   1.888
+  ],
+  "wave_cleared": [
+   2.228,
+   2.912
+  ],
+  "goal_scored": [
+   0.77,
+   0.986
+  ],
+  "respawn": [
+   1.224,
+   2.302
+  ],
+  "friendly_ram": [
+   2.316,
+   2.42
+  ],
+  "supply_repair": [
+   1.878,
+   1.568
+  ],
+  "hit_by_friendly": [
+   2.626,
+   2.396
+  ],
+  "supply_ammo": [
+   1.554,
+   1.42
+  ],
+  "friendly_fire": [
+   2.646,
+   1.824
+  ],
+  "rammed": [
+   1.242,
+   1.166
+  ],
+  "drone_launch": [
+   0.94,
+   1.23
+  ],
+  "ally_kill": [
+   1.106,
+   1.474
+  ],
+  "spotted_multiple": [
+   1.532,
+   1.968
+  ],
+  "drone_incoming": [
+   1.35,
+   1.906
+  ],
+  "target_locked": [
+   1.386,
+   0.948
+  ],
+  "near_miss": [
+   1.78,
+   1.636
+  ],
+  "flipped": [
+   1.718,
+   1.526
+  ],
+  "target_lost": [
+   1.428,
+   1.186
+  ],
+  "enemy_engine_hit": [
+   1.548,
+   2.366
+  ],
+  "enemy_gun_damaged": [
+   2.036,
+   1.256
+  ],
+  "enemy_immobilized": [
+   2.6,
+   2.114
+  ],
+  "stuck": [
+   1.566,
+   2.108
+  ],
+  "quiet_move": [
+   2.424,
+   1.732
+  ],
+  "enemy_crew_hit": [
+   1.556,
+   1.652
+  ],
+  "objective_contested": [
+   1.412,
+   1.17
+  ],
+  "quiet_hold": [
+   2.078,
+   2.602
+  ],
+  "aircraft_overhead": [
+   1.596,
+   1.8
+  ],
+  "building_down": [
+   0.974,
+   1.526
+  ],
+  "in_cover": [
+   1.646,
+   1.864
+  ],
+  "hull_status": [
+   2.502,
+   1.99
+  ],
+  "objective_push": [
+   1.392,
+   1.368
+  ],
+  "artillery_far": [
+   2.062,
+   1.962
+  ],
+  "fire_command_kinetic": [
+   1.948,
+   2.11
+  ],
+  "fire_command_heat": [
+   2.262,
+   2.486
+  ],
+  "cease_fire": [
+   2.016,
+   2.382
+  ],
+  "identified": [
+   1.024,
+   1.342
+  ],
+  "re_engage": [
+   1.18,
+   2.004
+  ],
+  "fire_command_missile": [
+   2.188,
+   2.386
+  ],
+  "fire_command_he": [
+   2.242,
+   2.644
+  ],
+  "drone_battery_low": [
+   1.926,
+   1.788
+  ],
+  "aps_intercept_them": [
+   2.178,
+   2.272
+  ],
+  "aps_intercept_us": [
+   3.32,
+   2
+  ],
+  "enemy_era": [
+   1.866,
+   1.618
+  ],
+  "era_us": [
+   2.944,
+   3.366
+  ],
+  "drone_link_weak": [
+   1.876,
+   2.28
+  ],
+  "reversing": [
+   1.096,
+   1.214
+  ],
+  "enemy_smoke": [
+   1.08,
+   1.886
+  ],
+  "drone_shot_down": [
+   1.508,
+   2.138
+  ],
+  "jump_brace": [
+   0.922,
+   1.588
+  ],
+  "drone_kill": [
+   2.402,
+   2.342
+  ],
+  "enemy_drone_down": [
+   1.512,
+   1.108
+  ],
+  "obstacle_through": [
+   2.036,
+   2.472
+  ],
+  "crew_report": [
+   1.456,
+   2.538
+  ],
+  "gunship_rifle": [
+   0.644,
+   2.468
+  ],
+  "gunship_splash": [
+   0.782,
+   1.772
+  ],
+  "crew_ready": [
+   3.724,
+   1.356
+  ],
+  "drone_recovered": [
+   1.35,
+   1.37
+  ],
+  "gunship_cleared_hot": [
+   1.59,
+   2.456
+  ],
+  "gunship_good_hits": [
+   1.252,
+   2.452
+  ],
+  "gunship_danger_close": [
+   1.02,
+   2.464
+  ],
+  "gunship_friendly_extracted": [
+   2.014,
+   1.624
+  ],
+  "gunship_shift_fire": [
+   1.302,
+   1.834
+  ],
+  "gunship_tally": [
+   2.256,
+   2.378
+  ],
+  "gunship_friendly_down": [
+   1.806,
+   2.108
+  ],
+  "gunship_victory": [
+   2.784,
+   2.304
+  ],
+  "gunship_rounds_complete": [
+   1.638,
+   3.138
+  ],
+  "start_flag": [
+   2.308,
+   2.058
+  ],
+  "gunship_defeat": [
+   2.388,
+   2.636
+  ],
+  "start_zones": [
+   2.236,
+   1.956
+  ],
+  "start_horde": [
+   2.87,
+   2.582
+  ],
+  "start_juggernaut": [
+   3.216,
+   2.788
+  ],
+  "start_hunt": [
+   3.228,
+   2.042
+  ],
+  "start_mars": [
+   2.758,
+   1.994
+  ],
+  "start_assault": [
+   1.974,
+   2.016
+  ],
+  "start_survivors": [
+   3.636,
+   2.876
+  ],
+  "start_range": [
+   1.22,
+   1.694
+  ],
+  "flag_dropped_theirs": [
+   1.438,
+   2.396
+  ],
+  "objective_contesting": [
+   1.424,
+   1.954
+  ],
+  "start_drone": [
+   3.132,
+   2.156
+  ],
+  "start_gun_game": [
+   2.112,
+   2.494
+  ],
+  "ball_reset": [
+   1.146,
+   2.072
+  ],
+  "flag_dropped_ours": [
+   2.252,
+   1.482
+  ],
+  "flag_lost": [
+   2.016,
+   2.88
+  ],
+  "ally_infected": [
+   2.768,
+   2.06
+  ],
+  "wave_runners": [
+   1.936,
+   2.924
+  ],
+  "counter_attack": [
+   0.846,
+   2.348
+  ],
+  "infected_turned": [
+   2.96,
+   3.126
+  ],
+  "wave_swarm": [
+   2.584,
+   2.68
+  ],
+  "final_line": [
+   1.702,
+   2.238
+  ],
+  "victory_juggernaut": [
+   1.826,
+   2.188
+  ],
+  "juggernaut_down": [
+   1.628,
+   1.882
+  ],
+  "goal_conceded": [
+   1.92,
+   1.974
+  ],
+  "victory_survivors": [
+   2.166,
+   2.59
+  ],
+  "juggernaut_spotted": [
+   1.44,
+   1.276
+  ],
+  "enemy_final_weapon": [
+   2.024,
+   3.096
+  ],
+  "defeat_overrun": [
+   2.048,
+   2.578
+  ],
+  "victory_assault": [
+   3.192,
+   2.862
+  ],
+  "gun_game_final": [
+   1.848,
+   2.59
+  ],
+  "battle_start": [
+   1.82,
+   1.356,
+   1.586
+  ],
+  "firing": [
+   1.302,
+   0.786,
+   0.884
+  ],
+  "reloaded": [
+   1.13,
+   0.936,
+   1.234
+  ],
+  "enemy_spotted": [
+   1.738,
+   0.982,
+   1.648
+  ],
+  "target_destroyed": [
+   1.54,
+   1.63,
+   1.746
+  ],
+  "quiet_crew": [
+   1.98,
+   2.32,
+   1.336
+  ],
+  "start_ball": [
+   1.568,
+   2.032
+  ],
+  "quiet_scan": [
+   1.662,
+   1.482,
+   2.02,
+   1.558
+  ],
+  "miss": [
+   1.008,
+   1.694,
+   0.842
+  ],
+  "drone_lost": [
+   0.812,
+   1.858
+  ],
+  "missile_incoming": [
+   1.124,
+   2.208
+  ],
+  "spotted_front": [
+   0.826,
+   1.192
+  ],
+  "start_air_support": [
+   2.796,
+   2.728
+  ],
+  "air_call_recon": [
+   2.388,
+   1.948
+  ],
+  "artillery_incoming": [
+   1.9,
+   2.262
+  ],
+  "air_call_artillery": [
+   2.974,
+   2.248
+  ],
+  "air_call_strafe": [
+   2.384,
+   2.27
+  ],
+  "air_call_bomb": [
+   2.228,
+   2.018
+  ],
+  "aircraft_downed": [
+   1.268,
+   1.974
+  ],
+  "air_incoming": [
+   2.26,
+   2.106
+  ]
+ },
+ "no": {
+  "draw": [
+   3.476
+  ],
+  "autoloader_damaged": [
+   1.912
+  ],
+  "feed_damaged": [
+   1.714
+  ],
+  "missile_rack_damaged": [
+   1.76
+  ],
+  "gun_mount_damaged": [
+   1.718
+  ],
+  "roof_gun_damaged": [
+   1.962
+  ],
+  "crew_recovered": [
+   1.88
+  ],
+  "last_tank": [
+   3.192
+  ],
+  "pickup_collected": [
+   1.54
+  ],
+  "double_kill": [
+   1.274,
+   2.188
+  ],
+  "outnumbered": [
+   1.482
+  ],
+  "last_enemy": [
+   2.44
+  ],
+  "back_on_tracks": [
+   1.62
+  ],
+  "taking_water": [
+   1.258
+  ],
+  "think_step_by_step": [
+   2.858
+  ],
+  "ammo_out_all": [
+   1.702
+  ],
+  "step_by_step_reply": [
+   3.576
+  ],
+  "enemy_flag_returned": [
+   1.764
+  ],
+  "last_survivor": [
+   2.876
+  ],
+  "on_the_move": [
+   1.026,
+   1.546
+  ],
+  "spotted_left": [
+   1.11,
+   1.54
+  ],
+  "spotted_front": [
+   0.988,
+   1.58
+  ],
+  "victory": [
+   2.934,
+   2.636
+  ],
+  "spotted_right": [
+   0.952,
+   1.478
+  ],
+  "defeat": [
+   2.6,
+   2.388
+  ],
+  "nonpen": [
+   1.072,
+   1.2
+  ],
+  "spotted_rear": [
+   0.978,
+   1.642
+  ],
+  "sixth_sense": [
+   1.42,
+   1.506
+  ],
+  "ricochet": [
+   0.978,
+   0.936
+  ],
+  "penetration": [
+   0.928,
+   1.78
+  ],
+  "enemy_fire": [
+   1.156,
+   1.202
+  ],
+  "missile_away": [
+   1.752,
+   2.12
+  ],
+  "enemy_crit": [
+   2.45,
+   1.382
+  ],
+  "enemy_ammo_rack": [
+   2.516,
+   2.384
+  ],
+  "reloading": [
+   1.7,
+   1.606
+  ],
+  "load_kinetic": [
+   1.312,
+   1.174
+  ],
+  "load_he": [
+   1.178,
+   1.238
+  ],
+  "load_heat": [
+   1.104,
+   1.636
+  ],
+  "load_missile": [
+   1.19,
+   1.836
+  ],
+  "gunship_missile": [
+   1.474,
+   1.168
+  ],
+  "gunship_cannon": [
+   1.254,
+   1.544
+  ],
+  "gunship_howitzer": [
+   0.778,
+   1.73
+  ],
+  "gunship_kill": [
+   2.462,
+   2.828
+  ],
+  "gunship_double": [
+   2.188,
+   2.266
+  ],
+  "ammo_low": [
+   2.004,
+   2.964
+  ],
+  "fuel_tank": [
+   2.092,
+   1.28
+  ],
+  "bounced_us": [
+   2.28,
+   2.518
+  ],
+  "fire_out": [
+   1.716,
+   2.014
+  ],
+  "ammo_rack": [
+   1.702,
+   1.632
+  ],
+  "engine_destroyed": [
+   1.244,
+   1.308
+  ],
+  "low_hp": [
+   3.47,
+   2.628
+  ],
+  "fire": [
+   1.606,
+   1.286
+  ],
+  "transmission_damaged": [
+   1.692,
+   2.336
+  ],
+  "optics_damaged": [
+   1.472,
+   1.444
+  ],
+  "gun_damaged": [
+   1.758,
+   1.408
+  ],
+  "loader_down": [
+   1.71,
+   1.794
+  ],
+  "radio_damaged": [
+   2.146,
+   1.494
+  ],
+  "turret_jammed": [
+   2.354,
+   2.196
+  ],
+  "commander_down": [
+   1.958,
+   2.768
+  ],
+  "repairs": [
+   1.8,
+   2.184
+  ],
+  "engine_repaired": [
+   1.318,
+   1.644
+  ],
+  "driver_down": [
+   1.774,
+   1.778
+  ],
+  "gun_repaired": [
+   1.652,
+   2.152
+  ],
+  "extinguishing": [
+   0.972,
+   1.092
+  ],
+  "track_repaired": [
+   2.37,
+   1.912
+  ],
+  "smoke_out": [
+   1.278,
+   1.088
+  ],
+  "objective_captured": [
+   1.658,
+   1.438
+  ],
+  "suspension_set": [
+   2.008,
+   2.146
+  ],
+  "roof_gun_on": [
+   1.482,
+   1.478
+  ],
+  "ally_destroyed": [
+   1.56,
+   2.216
+  ],
+  "objective_lost": [
+   1.444,
+   1.24
+  ],
+  "flag_taken_ours": [
+   1.466,
+   2.58
+  ],
+  "flag_returned": [
+   1.818,
+   1.788
+  ],
+  "goal_scored": [
+   1.156,
+   1.552
+  ],
+  "wave_incoming": [
+   1.012,
+   1.882
+  ],
+  "flag_taken_theirs": [
+   1.18,
+   2.544
+  ],
+  "flag_captured": [
+   1.974,
+   2.388
+  ],
+  "line_advanced": [
+   1.592,
+   1.888
+  ],
+  "respawn": [
+   1.522,
+   2.258
+  ],
+  "supply_repair": [
+   1.978,
+   1.636
+  ],
+  "wave_cleared": [
+   2.204,
+   2.866
+  ],
+  "friendly_ram": [
+   2.354,
+   2.196
+  ],
+  "supply_ammo": [
+   2.112,
+   1.712
+  ],
+  "rammed": [
+   1.11,
+   1.394
+  ],
+  "ally_kill": [
+   1.068,
+   1.512
+  ],
+  "friendly_fire": [
+   1.72,
+   1.884
+  ],
+  "hit_by_friendly": [
+   2.252,
+   2.828
+  ],
+  "missile_incoming": [
+   1.108,
+   1.93
+  ],
+  "drone_incoming": [
+   1.18,
+   1.65
+  ],
+  "spotted_multiple": [
+   1.588,
+   2.318
+  ],
+  "near_miss": [
+   1.51,
+   1.828
+  ],
+  "drone_launch": [
+   1.068,
+   1.032
+  ],
+  "flipped": [
+   1.47,
+   1.68
+  ],
+  "drone_lost": [
+   1.114,
+   2.37
+  ],
+  "target_lost": [
+   1.14,
+   1.448
+  ],
+  "stuck": [
+   2.042,
+   2.202
+  ],
+  "target_locked": [
+   1.484,
+   1.53
+  ],
+  "enemy_gun_damaged": [
+   1.714,
+   1.494
+  ],
+  "objective_contested": [
+   1.76,
+   1.424
+  ],
+  "enemy_crew_hit": [
+   2.044,
+   2.06
+  ],
+  "enemy_immobilized": [
+   2.928,
+   2.124
+  ],
+  "enemy_engine_hit": [
+   1.274,
+   2.258
+  ],
+  "building_down": [
+   1.218,
+   2.088
+  ],
+  "quiet_hold": [
+   2.232,
+   2.954
+  ],
+  "hull_status": [
+   2.898,
+   2.228
+  ],
+  "quiet_move": [
+   2.93,
+   2.5
+  ],
+  "aircraft_overhead": [
+   1.566,
+   1.906
+  ],
+  "objective_push": [
+   1.684,
+   1.88
+  ],
+  "artillery_far": [
+   2.25,
+   2.04
+  ],
+  "in_cover": [
+   1.904,
+   1.974
+  ],
+  "fire_command_kinetic": [
+   2.464,
+   2.846
+  ],
+  "fire_command_he": [
+   2.342,
+   2.824
+  ],
+  "identified": [
+   1.136,
+   1.822
+  ],
+  "aps_intercept_them": [
+   2.274,
+   2.37
+  ],
+  "re_engage": [
+   1.298,
+   2.37
+  ],
+  "cease_fire": [
+   2.83,
+   2.568
+  ],
+  "fire_command_missile": [
+   2.57,
+   2.94
+  ],
+  "fire_command_heat": [
+   2.744,
+   3.182
+  ],
+  "enemy_era": [
+   1.924,
+   1.292
+  ],
+  "aps_intercept_us": [
+   3.41,
+   2.826
+  ],
+  "drone_battery_low": [
+   1.886,
+   2.066
+  ],
+  "drone_shot_down": [
+   1.624,
+   2.244
+  ],
+  "drone_link_weak": [
+   1.946,
+   2.664
+  ],
+  "era_us": [
+   2.72,
+   3.67
+  ],
+  "reversing": [
+   0.98,
+   1.126
+  ],
+  "enemy_drone_down": [
+   1.65,
+   1.144
+  ],
+  "drone_recovered": [
+   1.704,
+   1.96
+  ],
+  "jump_brace": [
+   1.262,
+   1.322
+  ],
+  "drone_kill": [
+   2.546,
+   2.888
+  ],
+  "enemy_smoke": [
+   1.312,
+   2.2
+  ],
+  "gunship_rifle": [
+   0.72,
+   2.416
+  ],
+  "crew_report": [
+   1.796,
+   2.5
+  ],
+  "gunship_cleared_hot": [
+   1.65,
+   2.852
+  ],
+  "crew_ready": [
+   3.208,
+   1.672
+  ],
+  "gunship_splash": [
+   0.966,
+   2.026
+  ],
+  "gunship_good_hits": [
+   1.31,
+   3.12
+  ],
+  "gunship_danger_close": [
+   1.112,
+   2.578
+  ],
+  "gunship_rounds_complete": [
+   1.492,
+   2.83
+  ],
+  "gunship_shift_fire": [
+   1.452,
+   1.84
+  ],
+  "gunship_friendly_extracted": [
+   1.896,
+   1.712
+  ],
+  "gunship_friendly_down": [
+   2.21,
+   2.082
+  ],
+  "gunship_tally": [
+   2.516,
+   2.604
+  ],
+  "start_flag": [
+   2.464,
+   1.866
+  ],
+  "gunship_defeat": [
+   2.538,
+   3.29
+  ],
+  "start_zones": [
+   2.064,
+   2.07
+  ],
+  "gunship_victory": [
+   2.984,
+   2.724
+  ],
+  "start_mars": [
+   3.042,
+   2.45
+  ],
+  "start_juggernaut": [
+   3.276,
+   3.134
+  ],
+  "start_horde": [
+   2.468,
+   2.628
+  ],
+  "obstacle_through": [
+   1.902,
+   2.842
+  ],
+  "start_assault": [
+   2.122,
+   2.31
+  ],
+  "start_range": [
+   1.87,
+   1.908
+  ],
+  "start_survivors": [
+   3.592,
+   2.086
+  ],
+  "flag_dropped_theirs": [
+   1.538,
+   2.784
+  ],
+  "start_hunt": [
+   3.126,
+   2.27
+  ],
+  "start_gun_game": [
+   2.054,
+   2.97
+  ],
+  "flag_dropped_ours": [
+   1.888,
+   1.756
+  ],
+  "start_drone": [
+   3.276,
+   2.772
+  ],
+  "goal_conceded": [
+   0.916,
+   2.078
+  ],
+  "flag_lost": [
+   2.038,
+   3.46
+  ],
+  "ball_reset": [
+   1.744,
+   2.736
+  ],
+  "objective_contesting": [
+   1.918,
+   2.018
+  ],
+  "final_line": [
+   1.968,
+   2.158
+  ],
+  "counter_attack": [
+   0.976,
+   2.326
+  ],
+  "wave_swarm": [
+   2.424,
+   2.864
+  ],
+  "victory_survivors": [
+   2.102,
+   3.126
+  ],
+  "ally_infected": [
+   2.858,
+   2.378
+  ],
+  "wave_runners": [
+   2.296,
+   2.872
+  ],
+  "juggernaut_spotted": [
+   1.582,
+   1.3
+  ],
+  "infected_turned": [
+   3.402,
+   3.376
+  ],
+  "juggernaut_down": [
+   1.694,
+   1.724
+  ],
+  "victory_juggernaut": [
+   2.28,
+   1.722
+  ],
+  "gun_game_final": [
+   2.078,
+   2.858
+  ],
+  "defeat_overrun": [
+   1.676,
+   2.422
+  ],
+  "enemy_final_weapon": [
+   2.136,
+   2.592
+  ],
+  "victory_assault": [
+   2.978,
+   2.644
+  ],
+  "battle_start": [
+   1.8,
+   1.932,
+   2.124
+  ],
+  "enemy_spotted": [
+   2.092,
+   1.598,
+   1.738
+  ],
+  "miss": [
+   1.136,
+   1.484,
+   0.982
+  ],
+  "were_hit": [
+   1.074,
+   1.12
+  ],
+  "target_destroyed": [
+   1.568,
+   1.838,
+   1.992
+  ],
+  "track_gone": [
+   2.462,
+   1.49
+  ],
+  "ammo_empty": [
+   1.67,
+   1.182
+  ],
+  "reloaded": [
+   1.132,
+   1.466,
+   1.152
+  ],
+  "gunner_down": [
+   1.608,
+   1.648
+  ],
+  "quiet_crew": [
+   2.1,
+   2.016,
+   1.404
+  ],
+  "engine_damaged": [
+   1.598,
+   2.26
+  ],
+  "start_ball": [
+   1.934,
+   2.036
+  ],
+  "quiet_scan": [
+   1.512,
+   1.646,
+   2.82,
+   2.114
+  ],
+  "firing": [
+   1.034,
+   0.98,
+   1.61
+  ],
+  "start_air_support": [
+   2.98,
+   2.776
+  ],
+  "air_call_recon": [
+   3.034,
+   1.92
+  ],
+  "air_incoming": [
+   2.388,
+   2.41
+  ],
+  "air_call_artillery": [
+   3.014,
+   2.39
+  ],
+  "air_call_strafe": [
+   2.61,
+   2.516
+  ],
+  "artillery_incoming": [
+   1.988,
+   2.062
+  ],
+  "aircraft_downed": [
+   1.086,
+   1.936
+  ],
+  "air_call_bomb": [
+   2.632,
+   2.072
+  ]
+ },
+ "fi": {
+  "draw": [
+   2.82
+  ],
+  "autoloader_damaged": [
+   2.086
+  ],
+  "feed_damaged": [
+   1.316
+  ],
+  "gun_mount_damaged": [
+   1.728
+  ],
+  "missile_rack_damaged": [
+   1.784
+  ],
+  "roof_gun_damaged": [
+   2.02
+  ],
+  "crew_recovered": [
+   1.694
+  ],
+  "last_tank": [
+   3.552
+  ],
+  "pickup_collected": [
+   1.768
+  ],
+  "double_kill": [
+   1.814,
+   1.844
+  ],
+  "outnumbered": [
+   1.752
+  ],
+  "last_enemy": [
+   2.522
+  ],
+  "back_on_tracks": [
+   1.342
+  ],
+  "taking_water": [
+   1.406
+  ],
+  "ammo_out_all": [
+   1.634
+  ],
+  "think_step_by_step": [
+   2.444
+  ],
+  "step_by_step_reply": [
+   3.994
+  ],
+  "enemy_flag_returned": [
+   1.962
+  ],
+  "last_survivor": [
+   2.938
+  ],
+  "on_the_move": [
+   0.94,
+   1.25
+  ],
+  "defeat": [
+   2.382,
+   2.47
+  ],
+  "spotted_front": [
+   1.13,
+   1.638
+  ],
+  "victory": [
+   2.522,
+   2.278
+  ],
+  "spotted_right": [
+   1.126,
+   1.45
+  ],
+  "spotted_left": [
+   1.146,
+   1.634
+  ],
+  "spotted_rear": [
+   1.012,
+   1.428
+  ],
+  "sixth_sense": [
+   1.606,
+   1.834
+  ],
+  "enemy_fire": [
+   1.056,
+   1.23
+  ],
+  "ricochet": [
+   0.79,
+   0.726
+  ],
+  "penetration": [
+   0.914,
+   1.756
+  ],
+  "nonpen": [
+   1.266,
+   1.122
+  ],
+  "missile_away": [
+   1.306,
+   2.4
+  ],
+  "reloading": [
+   1.102,
+   1.814
+  ],
+  "enemy_ammo_rack": [
+   2.89,
+   2.546
+  ],
+  "load_he": [
+   1.5,
+   1.31
+  ],
+  "enemy_crit": [
+   2.478,
+   1.496
+  ],
+  "load_kinetic": [
+   1.118,
+   1.21
+  ],
+  "load_missile": [
+   1.032,
+   1.356
+  ],
+  "load_heat": [
+   1.142,
+   1.336
+  ],
+  "gunship_double": [
+   1.844,
+   2.456
+  ],
+  "gunship_cannon": [
+   1.362,
+   1.488
+  ],
+  "gunship_howitzer": [
+   1.078,
+   2.54
+  ],
+  "bounced_us": [
+   2.416,
+   1.92
+  ],
+  "gunship_missile": [
+   1.252,
+   1.272
+  ],
+  "gunship_kill": [
+   2.62,
+   2.544
+  ],
+  "were_hit": [
+   1.02,
+   1.29
+  ],
+  "ammo_empty": [
+   1.53,
+   1.718
+  ],
+  "ammo_low": [
+   1.384,
+   2.582
+  ],
+  "fire_out": [
+   1.326,
+   1.482
+  ],
+  "ammo_rack": [
+   1.686,
+   1.48
+  ],
+  "fuel_tank": [
+   1.698,
+   1.458
+  ],
+  "engine_destroyed": [
+   1.298,
+   1.44
+  ],
+  "fire": [
+   1.676,
+   1.13
+  ],
+  "low_hp": [
+   3.324,
+   2.758
+  ],
+  "gun_damaged": [
+   1.652,
+   1.208
+  ],
+  "turret_jammed": [
+   1.96,
+   1.76
+  ],
+  "engine_damaged": [
+   1.59,
+   2.216
+  ],
+  "track_gone": [
+   2.294,
+   1.252
+  ],
+  "gunner_down": [
+   1.522,
+   1.344
+  ],
+  "transmission_damaged": [
+   1.528,
+   3.042
+  ],
+  "radio_damaged": [
+   1.452,
+   1.166
+  ],
+  "driver_down": [
+   1.732,
+   1.682
+  ],
+  "optics_damaged": [
+   1.566,
+   1.736
+  ],
+  "loader_down": [
+   1.936,
+   1.662
+  ],
+  "repairs": [
+   1.378,
+   1.788
+  ],
+  "commander_down": [
+   1.796,
+   3.056
+  ],
+  "smoke_out": [
+   1.046,
+   0.928
+  ],
+  "engine_repaired": [
+   1.384,
+   1.296
+  ],
+  "gun_repaired": [
+   1.794,
+   1.806
+  ],
+  "ally_destroyed": [
+   1.564,
+   1.702
+  ],
+  "extinguishing": [
+   1.202,
+   1.024
+  ],
+  "track_repaired": [
+   2.4,
+   1.67
+  ],
+  "roof_gun_on": [
+   1.832,
+   1.27
+  ],
+  "objective_lost": [
+   1.328,
+   1.864
+  ],
+  "suspension_set": [
+   1.65,
+   2.376
+  ],
+  "objective_captured": [
+   1.074,
+   1.362
+  ],
+  "flag_captured": [
+   1.394,
+   2.288
+  ],
+  "flag_taken_ours": [
+   1.84,
+   2.124
+  ],
+  "flag_taken_theirs": [
+   1.498,
+   2.702
+  ],
+  "line_advanced": [
+   1.234,
+   1.89
+  ],
+  "flag_returned": [
+   1.402,
+   1.58
+  ],
+  "goal_scored": [
+   1.356,
+   1.358
+  ],
+  "respawn": [
+   1.508,
+   2.42
+  ],
+  "wave_cleared": [
+   1.91,
+   3.356
+  ],
+  "friendly_ram": [
+   1.858,
+   2.49
+  ],
+  "supply_ammo": [
+   1.586,
+   1.474
+  ],
+  "wave_incoming": [
+   1.674,
+   1.958
+  ],
+  "rammed": [
+   1.334,
+   1.374
+  ],
+  "supply_repair": [
+   1.84,
+   1.906
+  ],
+  "ally_kill": [
+   1.274,
+   1.394
+  ],
+  "friendly_fire": [
+   1.912,
+   1.718
+  ],
+  "drone_launch": [
+   1.208,
+   0.986
+  ],
+  "hit_by_friendly": [
+   2.174,
+   3.004
+  ],
+  "drone_incoming": [
+   1.196,
+   1.834
+  ],
+  "spotted_multiple": [
+   1.52,
+   1.79
+  ],
+  "stuck": [
+   1.588,
+   1.65
+  ],
+  "target_lost": [
+   1.156,
+   1.544
+  ],
+  "drone_lost": [
+   1.332,
+   2.054
+  ],
+  "target_locked": [
+   1.59,
+   1.028
+  ],
+  "enemy_engine_hit": [
+   1.398,
+   2.438
+  ],
+  "flipped": [
+   1.93,
+   1.514
+  ],
+  "missile_incoming": [
+   1.082,
+   2.232
+  ],
+  "enemy_immobilized": [
+   2.534,
+   2.12
+  ],
+  "enemy_crew_hit": [
+   1.846,
+   2.218
+  ],
+  "building_down": [
+   1.168,
+   1.218
+  ],
+  "objective_contested": [
+   1.508,
+   1.468
+  ],
+  "enemy_gun_damaged": [
+   1.556,
+   1.574
+  ],
+  "hull_status": [
+   3.014,
+   2.432
+  ],
+  "objective_push": [
+   1.182,
+   1.362
+  ],
+  "aircraft_overhead": [
+   1.912,
+   1.608
+  ],
+  "quiet_move": [
+   3.062,
+   2.31
+  ],
+  "quiet_hold": [
+   2.546,
+   2.508
+  ],
+  "artillery_far": [
+   1.696,
+   2.134
+  ],
+  "fire_command_kinetic": [
+   2.242,
+   2.506
+  ],
+  "fire_command_he": [
+   2.486,
+   2.718
+  ],
+  "in_cover": [
+   1.95,
+   1.836
+  ],
+  "fire_command_heat": [
+   2.302,
+   2.476
+  ],
+  "identified": [
+   0.992,
+   1.448
+  ],
+  "cease_fire": [
+   2.48,
+   2.264
+  ],
+  "fire_command_missile": [
+   2.166,
+   2.476
+  ],
+  "re_engage": [
+   1.498,
+   2.092
+  ],
+  "enemy_era": [
+   1.896,
+   2.094
+  ],
+  "aps_intercept_them": [
+   2.236,
+   2.012
+  ],
+  "aps_intercept_us": [
+   3.102,
+   2.632
+  ],
+  "drone_battery_low": [
+   1.912,
+   1.702
+  ],
+  "drone_link_weak": [
+   1.994,
+   2.614
+  ],
+  "drone_recovered": [
+   1.418,
+   1.858
+  ],
+  "era_us": [
+   2.724,
+   4.146
+  ],
+  "enemy_drone_down": [
+   1.51,
+   1.244
+  ],
+  "enemy_smoke": [
+   1.218,
+   2.206
+  ],
+  "drone_shot_down": [
+   1.668,
+   2.152
+  ],
+  "reversing": [
+   0.67,
+   1.17
+  ],
+  "jump_brace": [
+   1.14,
+   1.83
+  ],
+  "drone_kill": [
+   2.406,
+   2.738
+  ],
+  "gunship_rifle": [
+   0.916,
+   2.408
+  ],
+  "crew_report": [
+   1.804,
+   3.06
+  ],
+  "gunship_cleared_hot": [
+   1.77,
+   2.662
+  ],
+  "crew_ready": [
+   3.618,
+   1.472
+  ],
+  "gunship_good_hits": [
+   1.46,
+   2.876
+  ],
+  "gunship_danger_close": [
+   1.036,
+   2.592
+  ],
+  "gunship_tally": [
+   2.444,
+   2.422
+  ],
+  "gunship_splash": [
+   0.664,
+   1.91
+  ],
+  "gunship_shift_fire": [
+   1.096,
+   2.052
+  ],
+  "gunship_friendly_extracted": [
+   1.764,
+   1.48
+  ],
+  "gunship_rounds_complete": [
+   1.116,
+   2.366
+  ],
+  "gunship_friendly_down": [
+   2.106,
+   2.222
+  ],
+  "gunship_victory": [
+   2.934,
+   2.696
+  ],
+  "start_zones": [
+   2.192,
+   2.164
+  ],
+  "start_flag": [
+   2.926,
+   2.198
+  ],
+  "start_ball": [
+   2.264,
+   1.978
+  ],
+  "gunship_defeat": [
+   2.794,
+   3.106
+  ],
+  "start_juggernaut": [
+   3.324,
+   2.83
+  ],
+  "start_horde": [
+   2.732,
+   2.232
+  ],
+  "start_gun_game": [
+   2.656,
+   2.998
+  ],
+  "start_range": [
+   1.344,
+   1.912
+  ],
+  "start_survivors": [
+   4.09,
+   2.428
+  ],
+  "flag_dropped_ours": [
+   2.256,
+   1.552
+  ],
+  "flag_dropped_theirs": [
+   1.742,
+   2.766
+  ],
+  "start_hunt": [
+   2.73,
+   2.276
+  ],
+  "start_drone": [
+   2.666,
+   2.334
+  ],
+  "objective_contesting": [
+   1.816,
+   2.148
+  ],
+  "flag_lost": [
+   1.772,
+   3.492
+  ],
+  "ball_reset": [
+   1.292,
+   2.408
+  ],
+  "wave_swarm": [
+   2.462,
+   2.72
+  ],
+  "goal_conceded": [
+   1.604,
+   2.512
+  ],
+  "wave_runners": [
+   2.054,
+   3.502
+  ],
+  "final_line": [
+   2.378,
+   2.636
+  ],
+  "counter_attack": [
+   1.116,
+   2.562
+  ],
+  "ally_infected": [
+   2.13,
+   2.402
+  ],
+  "juggernaut_down": [
+   1.748,
+   1.17
+  ],
+  "victory_survivors": [
+   2.022,
+   3.37
+  ],
+  "juggernaut_spotted": [
+   1.626,
+   1.502
+  ],
+  "victory_juggernaut": [
+   2.564,
+   1.968
+  ],
+  "enemy_final_weapon": [
+   2.46,
+   3.404
+  ],
+  "gun_game_final": [
+   2.434,
+   3.16
+  ],
+  "defeat_overrun": [
+   1.778,
+   2.48
+  ],
+  "infected_turned": [
+   3.486,
+   3.524
+  ],
+  "victory_assault": [
+   3.32,
+   2.418
+  ],
+  "battle_start": [
+   1.978,
+   1.694,
+   2.054
+  ],
+  "enemy_spotted": [
+   1.602,
+   1.266,
+   1.71
+  ],
+  "miss": [
+   1.18,
+   1.652,
+   1.308
+  ],
+  "firing": [
+   1.07,
+   0.612,
+   0.718
+  ],
+  "reloaded": [
+   0.996,
+   0.808,
+   1.216
+  ],
+  "target_destroyed": [
+   1.618,
+   1.736,
+   1.752
+  ],
+  "near_miss": [
+   1.53,
+   2.034
+  ],
+  "start_assault": [
+   2.66,
+   2.282
+  ],
+  "start_mars": [
+   2.88,
+   2.8
+  ],
+  "quiet_crew": [
+   2.144,
+   2.208,
+   1.85
+  ],
+  "quiet_scan": [
+   1.292,
+   1.916,
+   2.354,
+   1.464
+  ],
+  "obstacle_through": [
+   1.788,
+   2.082
+  ],
+  "start_air_support": [
+   2.662,
+   2.792
+  ],
+  "air_call_strafe": [
+   2.094,
+   2.032
+  ],
+  "air_call_recon": [
+   2.432,
+   1.778
+  ],
+  "aircraft_downed": [
+   0.852,
+   2.594
+  ],
+  "air_call_artillery": [
+   2.888,
+   2.206
+  ],
+  "air_call_bomb": [
+   2.38,
+   2.06
+  ],
+  "air_incoming": [
+   2.472,
+   2.224
+  ],
+  "artillery_incoming": [
+   1.784,
+   2.23
+  ]
+ },
+ "el": {
+  "draw": [
+   2.798
+  ],
+  "gun_mount_damaged": [
+   1.974
+  ],
+  "autoloader_damaged": [
+   1.84
+  ],
+  "feed_damaged": [
+   1.586
+  ],
+  "missile_rack_damaged": [
+   2.048
+  ],
+  "roof_gun_damaged": [
+   2.476
+  ],
+  "crew_recovered": [
+   2.146
+  ],
+  "last_tank": [
+   3.412
+  ],
+  "pickup_collected": [
+   1.664
+  ],
+  "double_kill": [
+   2.368,
+   2.512
+  ],
+  "last_enemy": [
+   2.772
+  ],
+  "outnumbered": [
+   2.064
+  ],
+  "taking_water": [
+   1.386
+  ],
+  "back_on_tracks": [
+   1.872
+  ],
+  "think_step_by_step": [
+   2.628
+  ],
+  "ammo_out_all": [
+   1.608
+  ],
+  "step_by_step_reply": [
+   3.736
+  ],
+  "enemy_flag_returned": [
+   1.64
+  ],
+  "last_survivor": [
+   2.94
+  ],
+  "spotted_front": [
+   1.128,
+   1.056
+  ],
+  "on_the_move": [
+   0.9,
+   1.388
+  ],
+  "defeat": [
+   2.824,
+   2.216
+  ],
+  "victory": [
+   2.756,
+   3.358
+  ],
+  "spotted_rear": [
+   0.95,
+   1.082
+  ],
+  "spotted_left": [
+   1.052,
+   0.948
+  ],
+  "spotted_right": [
+   1.11,
+   0.988
+  ],
+  "nonpen": [
+   1.046,
+   1.09
+  ],
+  "sixth_sense": [
+   1.37,
+   1.688
+  ],
+  "ricochet": [
+   1.006,
+   1.108
+  ],
+  "enemy_crit": [
+   1.756,
+   1.19
+  ],
+  "enemy_fire": [
+   1.59,
+   1.116
+  ],
+  "missile_away": [
+   1.572,
+   2.17
+  ],
+  "penetration": [
+   1.602,
+   2.616
+  ],
+  "reloading": [
+   1.146,
+   1.59
+  ],
+  "enemy_ammo_rack": [
+   3.014,
+   2.554
+  ],
+  "load_heat": [
+   1.61,
+   2.496
+  ],
+  "load_he": [
+   1.31,
+   1.814
+  ],
+  "load_missile": [
+   1.388,
+   1.956
+  ],
+  "load_kinetic": [
+   1.448,
+   2.414
+  ],
+  "gunship_double": [
+   2.512,
+   2.39
+  ],
+  "gunship_missile": [
+   1.68,
+   1.428
+  ],
+  "gunship_howitzer": [
+   1.094,
+   1.964
+  ],
+  "bounced_us": [
+   2.692,
+   2.3
+  ],
+  "gunship_cannon": [
+   1.4,
+   1.95
+  ],
+  "gunship_kill": [
+   2.794,
+   2.964
+  ],
+  "were_hit": [
+   1.052,
+   1.374
+  ],
+  "ammo_empty": [
+   1.6,
+   1.556
+  ],
+  "ammo_low": [
+   1.644,
+   2.768
+  ],
+  "ammo_rack": [
+   1.816,
+   1.416
+  ],
+  "fire": [
+   1.916,
+   1.238
+  ],
+  "low_hp": [
+   3.852,
+   3.56
+  ],
+  "fuel_tank": [
+   1.884,
+   1.192
+  ],
+  "engine_destroyed": [
+   1.522,
+   1.44
+  ],
+  "engine_damaged": [
+   1.374,
+   2.446
+  ],
+  "track_gone": [
+   2.638,
+   1.302
+  ],
+  "transmission_damaged": [
+   2.012,
+   2.648
+  ],
+  "fire_out": [
+   1.492,
+   1.73
+  ],
+  "optics_damaged": [
+   1.486,
+   1.494
+  ],
+  "radio_damaged": [
+   1.492,
+   1.548
+  ],
+  "gun_damaged": [
+   1.704,
+   1.506
+  ],
+  "gunner_down": [
+   2.204,
+   1.946
+  ],
+  "turret_jammed": [
+   2.356,
+   2.312
+  ],
+  "loader_down": [
+   2.24,
+   1.974
+  ],
+  "driver_down": [
+   2.084,
+   1.76
+  ],
+  "repairs": [
+   2.084,
+   2.224
+  ],
+  "commander_down": [
+   1.744,
+   3.334
+  ],
+  "extinguishing": [
+   1.492,
+   1.144
+  ],
+  "smoke_out": [
+   1.102,
+   1.108
+  ],
+  "gun_repaired": [
+   1.74,
+   2.216
+  ],
+  "engine_repaired": [
+   1.46,
+   1.798
+  ],
+  "roof_gun_on": [
+   1.87,
+   1.912
+  ],
+  "track_repaired": [
+   2.98,
+   1.784
+  ],
+  "objective_lost": [
+   1.98,
+   1.224
+  ],
+  "ally_destroyed": [
+   1.726,
+   2.516
+  ],
+  "suspension_set": [
+   1.93,
+   2.276
+  ],
+  "objective_captured": [
+   2.472,
+   2.07
+  ],
+  "flag_captured": [
+   1.91,
+   2.782
+  ],
+  "flag_taken_theirs": [
+   1.158,
+   3.644
+  ],
+  "wave_incoming": [
+   1.856,
+   1.98
+  ],
+  "flag_taken_ours": [
+   1.368,
+   3.174
+  ],
+  "flag_returned": [
+   1.848,
+   1.964
+  ],
+  "goal_scored": [
+   1.154,
+   1.214
+  ],
+  "wave_cleared": [
+   2.04,
+   3.142
+  ],
+  "respawn": [
+   1.336,
+   2.646
+  ],
+  "supply_repair": [
+   2.068,
+   1.938
+  ],
+  "supply_ammo": [
+   2.226,
+   1.416
+  ],
+  "line_advanced": [
+   1.48,
+   2.318
+  ],
+  "rammed": [
+   1.092,
+   1.144
+  ],
+  "friendly_fire": [
+   1.962,
+   1.814
+  ],
+  "friendly_ram": [
+   1.872,
+   2.276
+  ],
+  "ally_kill": [
+   1.316,
+   2.214
+  ],
+  "hit_by_friendly": [
+   2.486,
+   2.31
+  ],
+  "drone_launch": [
+   1.566,
+   1.646
+  ],
+  "missile_incoming": [
+   1.168,
+   2.178
+  ],
+  "flipped": [
+   1.272,
+   1.254
+  ],
+  "target_locked": [
+   1.886,
+   0.906
+  ],
+  "drone_lost": [
+   1.742,
+   2.888
+  ],
+  "drone_incoming": [
+   2.378,
+   2.07
+  ],
+  "target_lost": [
+   1.34,
+   1.364
+  ],
+  "enemy_immobilized": [
+   2.99,
+   2.432
+  ],
+  "stuck": [
+   1.246,
+   1.974
+  ],
+  "enemy_crew_hit": [
+   1.712,
+   2.072
+  ],
+  "objective_contested": [
+   1.424,
+   1.456
+  ],
+  "enemy_gun_damaged": [
+   1.752,
+   1.516
+  ],
+  "quiet_move": [
+   3.11,
+   2.77
+  ],
+  "enemy_engine_hit": [
+   1.676,
+   2.26
+  ],
+  "aircraft_overhead": [
+   1.74,
+   1.598
+  ],
+  "quiet_hold": [
+   3.03,
+   3.108
+  ],
+  "artillery_far": [
+   1.862,
+   2.392
+  ],
+  "hull_status": [
+   2.938,
+   2.536
+  ],
+  "building_down": [
+   1.112,
+   1.932
+  ],
+  "identified": [
+   1.014,
+   1.668
+  ],
+  "fire_command_he": [
+   2.682,
+   3.006
+  ],
+  "in_cover": [
+   1.956,
+   2.222
+  ],
+  "objective_push": [
+   2.392,
+   1.994
+  ],
+  "fire_command_missile": [
+   2.54,
+   2.818
+  ],
+  "fire_command_kinetic": [
+   2.94,
+   3.282
+  ],
+  "aps_intercept_them": [
+   2.28,
+   2.758
+  ],
+  "fire_command_heat": [
+   2.906,
+   3.38
+  ],
+  "re_engage": [
+   1.23,
+   3.206
+  ],
+  "aps_intercept_us": [
+   3.206,
+   2.672
+  ],
+  "cease_fire": [
+   2.17,
+   3.16
+  ],
+  "drone_link_weak": [
+   2.77,
+   2.362
+  ],
+  "enemy_era": [
+   2.222,
+   1.762
+  ],
+  "drone_battery_low": [
+   2.514,
+   2.806
+  ],
+  "era_us": [
+   3.664,
+   4.84
+  ],
+  "reversing": [
+   1.002,
+   0.924
+  ],
+  "enemy_drone_down": [
+   2.464,
+   2.012
+  ],
+  "drone_recovered": [
+   2.396,
+   2.632
+  ],
+  "obstacle_through": [
+   2.182,
+   2.796
+  ],
+  "jump_brace": [
+   1.118,
+   1.66
+  ],
+  "drone_shot_down": [
+   1.95,
+   3.176
+  ],
+  "gunship_splash": [
+   1.658,
+   2.156
+  ],
+  "enemy_smoke": [
+   1.686,
+   2.436
+  ],
+  "gunship_rifle": [
+   1.444,
+   2.32
+  ],
+  "crew_report": [
+   1.536,
+   2.496
+  ],
+  "gunship_cleared_hot": [
+   1.942,
+   2.748
+  ],
+  "drone_kill": [
+   3.874,
+   4.086
+  ],
+  "gunship_good_hits": [
+   1.574,
+   3.418
+  ],
+  "crew_ready": [
+   4.786,
+   1.79
+  ],
+  "gunship_rounds_complete": [
+   0.924,
+   2.95
+  ],
+  "gunship_friendly_extracted": [
+   2.15,
+   1.634
+  ],
+  "gunship_shift_fire": [
+   1.146,
+   2.466
+  ],
+  "gunship_tally": [
+   2.914,
+   2.402
+  ],
+  "start_flag": [
+   2.934,
+   2.248
+  ],
+  "gunship_friendly_down": [
+   2.842,
+   2.404
+  ],
+  "gunship_danger_close": [
+   1.478,
+   3.736
+  ],
+  "start_horde": [
+   3.012,
+   2.634
+  ],
+  "gunship_defeat": [
+   3,
+   3.164
+  ],
+  "gunship_victory": [
+   4.554,
+   2.766
+  ],
+  "start_assault": [
+   2.844,
+   2.266
+  ],
+  "start_mars": [
+   3.198,
+   2.624
+  ],
+  "start_ball": [
+   2.298,
+   2.278
+  ],
+  "start_survivors": [
+   4.28,
+   2.81
+  ],
+  "start_hunt": [
+   3.414,
+   2.178
+  ],
+  "start_zones": [
+   3.178,
+   2.5
+  ],
+  "start_juggernaut": [
+   3.428,
+   2.788
+  ],
+  "flag_dropped_ours": [
+   2.452,
+   1.774
+  ],
+  "start_gun_game": [
+   2.676,
+   3.414
+  ],
+  "start_range": [
+   1.898,
+   3.104
+  ],
+  "objective_contesting": [
+   1.84,
+   2.94
+  ],
+  "start_drone": [
+   4.046,
+   2.868
+  ],
+  "counter_attack": [
+   0.894,
+   2.608
+  ],
+  "flag_lost": [
+   1.95,
+   3.4
+  ],
+  "ball_reset": [
+   1.592,
+   2.376
+  ],
+  "wave_swarm": [
+   2.6,
+   2.214
+  ],
+  "ally_infected": [
+   2.826,
+   2.088
+  ],
+  "wave_runners": [
+   2.172,
+   3.858
+  ],
+  "juggernaut_spotted": [
+   1.476,
+   2.376
+  ],
+  "final_line": [
+   2.412,
+   2.398
+  ],
+  "gun_game_final": [
+   2.1,
+   2.828
+  ],
+  "juggernaut_down": [
+   2.14,
+   1.848
+  ],
+  "infected_turned": [
+   3.294,
+   3.364
+  ],
+  "victory_survivors": [
+   2.31,
+   3.554
+  ],
+  "victory_juggernaut": [
+   2.702,
+   1.63
+  ],
+  "defeat_overrun": [
+   1.576,
+   2.566
+  ],
+  "enemy_final_weapon": [
+   2.804,
+   3.584
+  ],
+  "victory_assault": [
+   4.082,
+   4.138
+  ],
+  "enemy_spotted": [
+   2.508,
+   1.126,
+   1.672
+  ],
+  "firing": [
+   1.138,
+   0.618,
+   1.254
+  ],
+  "battle_start": [
+   1.78,
+   1.828,
+   1.884
+  ],
+  "miss": [
+   0.936,
+   1.776,
+   0.832
+  ],
+  "reloaded": [
+   1.432,
+   1.052,
+   1.224
+  ],
+  "target_destroyed": [
+   2.076,
+   2.122,
+   1.822
+  ],
+  "near_miss": [
+   1.154,
+   1.368
+  ],
+  "quiet_crew": [
+   2.46,
+   2.322,
+   1.514
+  ],
+  "spotted_multiple": [
+   1.676,
+   1.926
+  ],
+  "quiet_scan": [
+   1.594,
+   2.234,
+   2.764,
+   1.686
+  ],
+  "goal_conceded": [
+   1.522,
+   2.5
+  ],
+  "flag_dropped_theirs": [
+   1.7,
+   3.156
+  ],
+  "artillery_incoming": [
+   2.048,
+   2.506
+  ],
+  "air_call_artillery": [
+   2.992,
+   3.506
+  ],
+  "air_call_strafe": [
+   2.006,
+   3.044
+  ],
+  "air_call_recon": [
+   3.612,
+   1.704
+  ],
+  "start_air_support": [
+   4.06,
+   3.766
+  ],
+  "air_incoming": [
+   2.814,
+   2.96
+  ],
+  "aircraft_downed": [
+   1.734,
+   2.37
+  ],
+  "air_call_bomb": [
+   2.97,
+   2.804
+  ]
+ },
+ "cs": {
+  "draw": [
+   3.244
+  ],
+  "autoloader_damaged": [
+   1.874
+  ],
+  "feed_damaged": [
+   1.426
+  ],
+  "gun_mount_damaged": [
+   1.72
+  ],
+  "roof_gun_damaged": [
+   2.26
+  ],
+  "missile_rack_damaged": [
+   1.962
+  ],
+  "crew_recovered": [
+   1.754
+  ],
+  "last_tank": [
+   3.996
+  ],
+  "pickup_collected": [
+   1.47
+  ],
+  "double_kill": [
+   1.464,
+   2.074
+  ],
+  "last_enemy": [
+   2.366
+  ],
+  "outnumbered": [
+   1.832
+  ],
+  "taking_water": [
+   1.284
+  ],
+  "back_on_tracks": [
+   1.72
+  ],
+  "ammo_out_all": [
+   1.494
+  ],
+  "step_by_step_reply": [
+   3.3
+  ],
+  "think_step_by_step": [
+   2.766
+  ],
+  "enemy_flag_returned": [
+   2.032
+  ],
+  "last_survivor": [
+   2.93
+  ],
+  "on_the_move": [
+   1.01,
+   0.982
+  ],
+  "defeat": [
+   2.6,
+   2.376
+  ],
+  "victory": [
+   2.712,
+   2.424
+  ],
+  "spotted_right": [
+   1.118,
+   1.088
+  ],
+  "spotted_left": [
+   0.854,
+   0.944
+  ],
+  "spotted_front": [
+   1.018,
+   1.088
+  ],
+  "spotted_rear": [
+   1.038,
+   0.984
+  ],
+  "ricochet": [
+   0.72,
+   0.9
+  ],
+  "sixth_sense": [
+   1.436,
+   1.6
+  ],
+  "missile_away": [
+   1.62,
+   2.306
+  ],
+  "enemy_fire": [
+   1.132,
+   0.904
+  ],
+  "nonpen": [
+   0.89,
+   1.06
+  ],
+  "penetration": [
+   1.22,
+   2.314
+  ],
+  "enemy_ammo_rack": [
+   2.276,
+   2.392
+  ],
+  "enemy_crit": [
+   2.644,
+   1.19
+  ],
+  "reloading": [
+   1.302,
+   1.356
+  ],
+  "load_he": [
+   1.308,
+   1.904
+  ],
+  "load_heat": [
+   0.976,
+   1.63
+  ],
+  "load_kinetic": [
+   0.946,
+   1.614
+  ],
+  "gunship_kill": [
+   2.452,
+   2.31
+  ],
+  "load_missile": [
+   1.758,
+   2.008
+  ],
+  "gunship_howitzer": [
+   1.362,
+   2.122
+  ],
+  "ammo_empty": [
+   1.17,
+   1.04
+  ],
+  "gunship_missile": [
+   1.758,
+   1.296
+  ],
+  "were_hit": [
+   1.04,
+   1.404
+  ],
+  "gunship_double": [
+   2.074,
+   2.418
+  ],
+  "ammo_low": [
+   1.332,
+   3.238
+  ],
+  "fuel_tank": [
+   1.72,
+   1.33
+  ],
+  "fire": [
+   1.86,
+   1.05
+  ],
+  "low_hp": [
+   3.256,
+   3.332
+  ],
+  "ammo_rack": [
+   1.736,
+   1.332
+  ],
+  "engine_destroyed": [
+   1.186,
+   1.34
+  ],
+  "engine_damaged": [
+   1.276,
+   2.364
+  ],
+  "track_gone": [
+   2.558,
+   1.23
+  ],
+  "transmission_damaged": [
+   1.394,
+   2.33
+  ],
+  "gun_damaged": [
+   1.652,
+   1.246
+  ],
+  "turret_jammed": [
+   2.324,
+   2.072
+  ],
+  "optics_damaged": [
+   1.238,
+   1.53
+  ],
+  "commander_down": [
+   1.444,
+   2.534
+  ],
+  "radio_damaged": [
+   1.53,
+   1.214
+  ],
+  "repairs": [
+   1.416,
+   1.952
+  ],
+  "gunner_down": [
+   2.22,
+   1.884
+  ],
+  "driver_down": [
+   2.136,
+   1.904
+  ],
+  "gun_repaired": [
+   1.83,
+   1.782
+  ],
+  "loader_down": [
+   1.542,
+   1.658
+  ],
+  "track_repaired": [
+   2.146,
+   1.818
+  ],
+  "engine_repaired": [
+   1.178,
+   1.698
+  ],
+  "smoke_out": [
+   1.06,
+   1.608
+  ],
+  "objective_captured": [
+   1.354,
+   1.36
+  ],
+  "suspension_set": [
+   1.704,
+   2.376
+  ],
+  "roof_gun_on": [
+   1.508,
+   1.654
+  ],
+  "ally_destroyed": [
+   1.724,
+   1.834
+  ],
+  "objective_lost": [
+   1.374,
+   1.544
+  ],
+  "flag_taken_ours": [
+   1.386,
+   2.744
+  ],
+  "flag_returned": [
+   2.166,
+   1.614
+  ],
+  "extinguishing": [
+   1.326,
+   1.07
+  ],
+  "flag_captured": [
+   1.57,
+   2.324
+  ],
+  "goal_scored": [
+   1.076,
+   0.982
+  ],
+  "line_advanced": [
+   1.978,
+   2.042
+  ],
+  "flag_taken_theirs": [
+   1.372,
+   2.662
+  ],
+  "supply_ammo": [
+   1.876,
+   1.53
+  ],
+  "wave_cleared": [
+   1.818,
+   2.6
+  ],
+  "rammed": [
+   1.42,
+   1.038
+  ],
+  "respawn": [
+   1.302,
+   2.198
+  ],
+  "supply_repair": [
+   2.112,
+   2.434
+  ],
+  "hit_by_friendly": [
+   2.08,
+   2.6
+  ],
+  "friendly_fire": [
+   1.842,
+   1.894
+  ],
+  "ally_kill": [
+   1.482,
+   1.664
+  ],
+  "drone_incoming": [
+   1.132,
+   1.638
+  ],
+  "spotted_multiple": [
+   1.954,
+   2.32
+  ],
+  "friendly_ram": [
+   1.672,
+   2.09
+  ],
+  "drone_launch": [
+   1.14,
+   1.12
+  ],
+  "drone_lost": [
+   1.52,
+   2.022
+  ],
+  "flipped": [
+   1.324,
+   1.328
+  ],
+  "missile_incoming": [
+   1.874,
+   1.778
+  ],
+  "stuck": [
+   1.3,
+   1.982
+  ],
+  "near_miss": [
+   1.482,
+   1.162
+  ],
+  "enemy_engine_hit": [
+   1.388,
+   2.192
+  ],
+  "target_locked": [
+   1.628,
+   1.11
+  ],
+  "target_lost": [
+   1.264,
+   1.182
+  ],
+  "enemy_immobilized": [
+   2.528,
+   2.206
+  ],
+  "enemy_crew_hit": [
+   1.83,
+   1.942
+  ],
+  "enemy_gun_damaged": [
+   1.826,
+   1.414
+  ],
+  "objective_contested": [
+   1.384,
+   1.594
+  ],
+  "quiet_hold": [
+   2.936,
+   2.908
+  ],
+  "quiet_move": [
+   2.492,
+   2.434
+  ],
+  "hull_status": [
+   2.464,
+   2.706
+  ],
+  "objective_push": [
+   1.236,
+   1.192
+  ],
+  "building_down": [
+   1.008,
+   1.746
+  ],
+  "aircraft_overhead": [
+   1.366,
+   1.456
+  ],
+  "artillery_far": [
+   2.48,
+   1.586
+  ],
+  "identified": [
+   0.962,
+   1.272
+  ],
+  "in_cover": [
+   2.038,
+   1.926
+  ],
+  "fire_command_heat": [
+   2.4,
+   2.834
+  ],
+  "re_engage": [
+   1.116,
+   2.024
+  ],
+  "fire_command_kinetic": [
+   2.692,
+   2.862
+  ],
+  "aps_intercept_them": [
+   1.914,
+   1.934
+  ],
+  "fire_command_missile": [
+   2.856,
+   3.092
+  ],
+  "fire_command_he": [
+   2.852,
+   3.53
+  ],
+  "drone_shot_down": [
+   1.302,
+   2.222
+  ],
+  "cease_fire": [
+   2.388,
+   2.62
+  ],
+  "aps_intercept_us": [
+   2.89,
+   2.162
+  ],
+  "era_us": [
+   2.95,
+   4.162
+  ],
+  "enemy_era": [
+   1.94,
+   1.496
+  ],
+  "drone_battery_low": [
+   1.936,
+   1.864
+  ],
+  "drone_recovered": [
+   1.442,
+   1.866
+  ],
+  "drone_link_weak": [
+   1.87,
+   2.602
+  ],
+  "enemy_smoke": [
+   1.914,
+   1.948
+  ],
+  "jump_brace": [
+   0.898,
+   1.176
+  ],
+  "enemy_drone_down": [
+   1.808,
+   1.068
+  ],
+  "reversing": [
+   0.888,
+   1.016
+  ],
+  "drone_kill": [
+   2.358,
+   2.594
+  ],
+  "obstacle_through": [
+   1.682,
+   2.618
+  ],
+  "gunship_cleared_hot": [
+   2.44,
+   2.496
+  ],
+  "gunship_rifle": [
+   1.032,
+   2.312
+  ],
+  "crew_report": [
+   2.254,
+   2.524
+  ],
+  "crew_ready": [
+   3.996,
+   1.682
+  ],
+  "gunship_danger_close": [
+   1.52,
+   2.948
+  ],
+  "gunship_splash": [
+   1.14,
+   1.894
+  ],
+  "gunship_good_hits": [
+   1.52,
+   3.264
+  ],
+  "gunship_rounds_complete": [
+   1.078,
+   2.442
+  ],
+  "gunship_shift_fire": [
+   1.18,
+   2.114
+  ],
+  "gunship_friendly_down": [
+   2.234,
+   2.072
+  ],
+  "gunship_tally": [
+   2.844,
+   2.538
+  ],
+  "gunship_friendly_extracted": [
+   2.044,
+   1.368
+  ],
+  "start_flag": [
+   2.854,
+   1.788
+  ],
+  "start_assault": [
+   2.078,
+   2.184
+  ],
+  "gunship_defeat": [
+   3.314,
+   3
+  ],
+  "start_zones": [
+   2,
+   2.424
+  ],
+  "start_ball": [
+   1.814,
+   1.926
+  ],
+  "gunship_victory": [
+   2.714,
+   2.324
+  ],
+  "start_horde": [
+   2.964,
+   2.82
+  ],
+  "start_mars": [
+   2.81,
+   2.076
+  ],
+  "start_juggernaut": [
+   2.918,
+   3.196
+  ],
+  "start_gun_game": [
+   2.204,
+   3.526
+  ],
+  "start_survivors": [
+   4.028,
+   2.59
+  ],
+  "start_drone": [
+   3.154,
+   2.214
+  ],
+  "start_range": [
+   1.182,
+   2.672
+  ],
+  "flag_dropped_ours": [
+   2.686,
+   1.788
+  ],
+  "flag_dropped_theirs": [
+   1.744,
+   2.896
+  ],
+  "start_hunt": [
+   3.078,
+   2.326
+  ],
+  "goal_conceded": [
+   1.518,
+   2.08
+  ],
+  "flag_lost": [
+   1.748,
+   3.246
+  ],
+  "wave_runners": [
+   2.032,
+   2.692
+  ],
+  "wave_swarm": [
+   2.904,
+   2.362
+  ],
+  "objective_contesting": [
+   1.752,
+   2.084
+  ],
+  "counter_attack": [
+   1.03,
+   2.45
+  ],
+  "juggernaut_spotted": [
+   1.442,
+   1.306
+  ],
+  "ball_reset": [
+   1.998,
+   2.916
+  ],
+  "final_line": [
+   2.014,
+   2.39
+  ],
+  "ally_infected": [
+   3.104,
+   2.42
+  ],
+  "infected_turned": [
+   3.046,
+   2.6
+  ],
+  "juggernaut_down": [
+   1.81,
+   2.246
+  ],
+  "victory_juggernaut": [
+   2.306,
+   1.332
+  ],
+  "enemy_final_weapon": [
+   2.048,
+   3.378
+  ],
+  "victory_survivors": [
+   2.052,
+   2.666
+  ],
+  "defeat_overrun": [
+   1.42,
+   2.502
+  ],
+  "gun_game_final": [
+   2.158,
+   3.002
+  ],
+  "victory_assault": [
+   3.042,
+   2.31
+  ],
+  "battle_start": [
+   1.956,
+   1.71,
+   1.686
+  ],
+  "enemy_spotted": [
+   2.498,
+   1.03,
+   1.754
+  ],
+  "miss": [
+   0.902,
+   1.648,
+   1.048
+  ],
+  "reloaded": [
+   1.14,
+   0.734,
+   1.142
+  ],
+  "gunship_cannon": [
+   1.322,
+   1.294
+  ],
+  "target_destroyed": [
+   1.55,
+   1.53,
+   1.574
+  ],
+  "fire_out": [
+   1.456,
+   1.65
+  ],
+  "quiet_crew": [
+   2.4,
+   1.898,
+   1.582
+  ],
+  "quiet_scan": [
+   1.356,
+   1.956,
+   2.49,
+   1.454
+  ],
+  "firing": [
+   0.934,
+   0.846,
+   0.68
+  ],
+  "wave_incoming": [
+   1.2,
+   2.226
+  ],
+  "bounced_us": [
+   2.344,
+   2.14
+  ],
+  "air_call_recon": [
+   2.73,
+   1.92
+  ],
+  "air_call_bomb": [
+   2.68,
+   2.088
+  ],
+  "air_call_strafe": [
+   2.594,
+   1.928
+  ],
+  "start_air_support": [
+   3.282,
+   3.482
+  ],
+  "air_call_artillery": [
+   2.662,
+   2.452
+  ],
+  "aircraft_downed": [
+   1.274,
+   1.784
+  ],
+  "air_incoming": [
+   2.548,
+   2.492
+  ],
+  "artillery_incoming": [
+   2.242,
+   1.976
+  ]
+ },
+ "hu": {
+  "draw": [
+   2.96
+  ],
+  "gun_mount_damaged": [
+   1.59
+  ],
+  "autoloader_damaged": [
+   1.768
+  ],
+  "feed_damaged": [
+   1.602
+  ],
+  "roof_gun_damaged": [
+   2.142
+  ],
+  "missile_rack_damaged": [
+   1.602
+  ],
+  "crew_recovered": [
+   1.864
+  ],
+  "last_tank": [
+   3.852
+  ],
+  "pickup_collected": [
+   1.664
+  ],
+  "double_kill": [
+   1.856,
+   2.288
+  ],
+  "outnumbered": [
+   1.992
+  ],
+  "last_enemy": [
+   2.998
+  ],
+  "taking_water": [
+   1.17
+  ],
+  "back_on_tracks": [
+   1.742
+  ],
+  "ammo_out_all": [
+   1.766
+  ],
+  "think_step_by_step": [
+   3.29
+  ],
+  "step_by_step_reply": [
+   3.988
+  ],
+  "enemy_flag_returned": [
+   2.08
+  ],
+  "last_survivor": [
+   3.228
+  ],
+  "on_the_move": [
+   1.456,
+   1.81
+  ],
+  "spotted_left": [
+   1.064,
+   1.302
+  ],
+  "defeat": [
+   2.82,
+   2.594
+  ],
+  "victory": [
+   2.678,
+   3.258
+  ],
+  "missile_away": [
+   1.492,
+   2.118
+  ],
+  "spotted_front": [
+   0.974,
+   1.354
+  ],
+  "nonpen": [
+   1.13,
+   0.934
+  ],
+  "spotted_rear": [
+   1.12,
+   1.4
+  ],
+  "sixth_sense": [
+   1.482,
+   1.892
+  ],
+  "spotted_right": [
+   1.058,
+   1.222
+  ],
+  "ricochet": [
+   1.152,
+   0.956
+  ],
+  "enemy_ammo_rack": [
+   2.21,
+   2.42
+  ],
+  "enemy_fire": [
+   1.342,
+   1.196
+  ],
+  "penetration": [
+   1.182,
+   2.056
+  ],
+  "enemy_crit": [
+   2.338,
+   1.556
+  ],
+  "load_kinetic": [
+   1.32,
+   1.11
+  ],
+  "load_heat": [
+   0.91,
+   1.482
+  ],
+  "load_he": [
+   1.194,
+   1.71
+  ],
+  "gunship_missile": [
+   1.546,
+   1.322
+  ],
+  "load_missile": [
+   1.112,
+   1.584
+  ],
+  "ammo_low": [
+   1.28,
+   2.848
+  ],
+  "gunship_kill": [
+   2.606,
+   2.742
+  ],
+  "gunship_double": [
+   2.288,
+   2.268
+  ],
+  "ammo_empty": [
+   1.618,
+   1.324
+  ],
+  "were_hit": [
+   1.33,
+   1.374
+  ],
+  "bounced_us": [
+   2.312,
+   2.51
+  ],
+  "low_hp": [
+   3.168,
+   3.244
+  ],
+  "engine_damaged": [
+   1.366,
+   2.42
+  ],
+  "fire_out": [
+   1.534,
+   1.454
+  ],
+  "fuel_tank": [
+   1.794,
+   1.662
+  ],
+  "fire": [
+   1.47,
+   1.406
+  ],
+  "transmission_damaged": [
+   1.556,
+   2.728
+  ],
+  "turret_jammed": [
+   2.36,
+   1.98
+  ],
+  "track_gone": [
+   2.742,
+   1.436
+  ],
+  "radio_damaged": [
+   1.37,
+   1.638
+  ],
+  "optics_damaged": [
+   1.314,
+   1.764
+  ],
+  "driver_down": [
+   2.412,
+   1.86
+  ],
+  "gunner_down": [
+   2.04,
+   1.878
+  ],
+  "gun_damaged": [
+   1.382,
+   1.488
+  ],
+  "commander_down": [
+   1.896,
+   3.392
+  ],
+  "gun_repaired": [
+   1.818,
+   2
+  ],
+  "loader_down": [
+   1.948,
+   1.826
+  ],
+  "engine_repaired": [
+   1.246,
+   1.716
+  ],
+  "repairs": [
+   1.642,
+   1.83
+  ],
+  "track_repaired": [
+   2.342,
+   1.75
+  ],
+  "extinguishing": [
+   1.248,
+   0.984
+  ],
+  "smoke_out": [
+   1.292,
+   1.094
+  ],
+  "roof_gun_on": [
+   1.726,
+   1.814
+  ],
+  "objective_captured": [
+   2.058,
+   1.352
+  ],
+  "objective_lost": [
+   1.588,
+   1.45
+  ],
+  "ally_destroyed": [
+   1.864,
+   2.098
+  ],
+  "flag_returned": [
+   1.748,
+   1.942
+  ],
+  "wave_incoming": [
+   1.488,
+   2.074
+  ],
+  "flag_taken_ours": [
+   1.366,
+   2.322
+  ],
+  "flag_captured": [
+   1.708,
+   2.144
+  ],
+  "line_advanced": [
+   1.584,
+   2.44
+  ],
+  "flag_taken_theirs": [
+   1.36,
+   3.302
+  ],
+  "goal_scored": [
+   1.43,
+   1.194
+  ],
+  "respawn": [
+   1.26,
+   2.48
+  ],
+  "supply_ammo": [
+   1.728,
+   1.9
+  ],
+  "supply_repair": [
+   1.908,
+   1.708
+  ],
+  "wave_cleared": [
+   1.974,
+   2.94
+  ],
+  "ally_kill": [
+   1.326,
+   1.712
+  ],
+  "friendly_fire": [
+   1.93,
+   1.708
+  ],
+  "rammed": [
+   1.352,
+   1.06
+  ],
+  "hit_by_friendly": [
+   2.354,
+   2.476
+  ],
+  "drone_incoming": [
+   1.136,
+   1.816
+  ],
+  "friendly_ram": [
+   2.168,
+   2.294
+  ],
+  "drone_launch": [
+   1.502,
+   1.178
+  ],
+  "missile_incoming": [
+   1.412,
+   1.682
+  ],
+  "near_miss": [
+   1.94,
+   1.664
+  ],
+  "flipped": [
+   1.718,
+   1.368
+  ],
+  "stuck": [
+   1.774,
+   1.87
+  ],
+  "drone_lost": [
+   1.514,
+   2.09
+  ],
+  "target_lost": [
+   1.37,
+   1.34
+  ],
+  "target_locked": [
+   1.312,
+   1.796
+  ],
+  "enemy_gun_damaged": [
+   1.63,
+   1.528
+  ],
+  "enemy_crew_hit": [
+   2.286,
+   1.722
+  ],
+  "enemy_engine_hit": [
+   1.49,
+   2.03
+  ],
+  "enemy_immobilized": [
+   2.498,
+   2.318
+  ],
+  "objective_contested": [
+   1.382,
+   1.496
+  ],
+  "quiet_hold": [
+   2.302,
+   2.782
+  ],
+  "building_down": [
+   1.168,
+   1.504
+  ],
+  "quiet_move": [
+   3.474,
+   2.668
+  ],
+  "objective_push": [
+   1.408,
+   1.36
+  ],
+  "aircraft_overhead": [
+   1.68,
+   2.062
+  ],
+  "hull_status": [
+   3.07,
+   2.574
+  ],
+  "fire_command_heat": [
+   2.562,
+   3.084
+  ],
+  "artillery_far": [
+   1.688,
+   2.12
+  ],
+  "in_cover": [
+   2.004,
+   2.182
+  ],
+  "identified": [
+   0.964,
+   1.732
+  ],
+  "spotted_multiple": [
+   1.44,
+   1.982
+  ],
+  "re_engage": [
+   1.342,
+   2.27
+  ],
+  "fire_command_kinetic": [
+   2.272,
+   3.104
+  ],
+  "cease_fire": [
+   2.68,
+   2.626
+  ],
+  "fire_command_he": [
+   2.856,
+   3.49
+  ],
+  "fire_command_missile": [
+   2.616,
+   3.008
+  ],
+  "aps_intercept_us": [
+   2.606,
+   2.332
+  ],
+  "era_us": [
+   2.85,
+   4.376
+  ],
+  "drone_link_weak": [
+   1.952,
+   2.652
+  ],
+  "enemy_era": [
+   1.758,
+   1.786
+  ],
+  "aps_intercept_them": [
+   1.696,
+   1.956
+  ],
+  "reversing": [
+   0.842,
+   0.996
+  ],
+  "drone_shot_down": [
+   1.576,
+   2.4
+  ],
+  "drone_battery_low": [
+   2.16,
+   1.836
+  ],
+  "enemy_drone_down": [
+   1.246,
+   1.238
+  ],
+  "enemy_smoke": [
+   1.432,
+   2.436
+  ],
+  "drone_recovered": [
+   1.588,
+   2.026
+  ],
+  "drone_kill": [
+   3.012,
+   2.918
+  ],
+  "crew_report": [
+   1.64,
+   3.024
+  ],
+  "jump_brace": [
+   1.158,
+   2.076
+  ],
+  "obstacle_through": [
+   2.228,
+   2.49
+  ],
+  "gunship_cleared_hot": [
+   1.594,
+   2.7
+  ],
+  "gunship_splash": [
+   1.052,
+   2.102
+  ],
+  "crew_ready": [
+   3.678,
+   1.58
+  ],
+  "gunship_good_hits": [
+   1.352,
+   2.532
+  ],
+  "gunship_rounds_complete": [
+   1.81,
+   2.616
+  ],
+  "gunship_shift_fire": [
+   1.186,
+   2.128
+  ],
+  "gunship_danger_close": [
+   1.04,
+   2.946
+  ],
+  "gunship_friendly_down": [
+   2.106,
+   2.698
+  ],
+  "gunship_tally": [
+   2.518,
+   2.38
+  ],
+  "gunship_friendly_extracted": [
+   2.414,
+   1.712
+  ],
+  "gunship_victory": [
+   3.532,
+   2.644
+  ],
+  "gunship_defeat": [
+   2.864,
+   2.932
+  ],
+  "start_flag": [
+   3.002,
+   2.1
+  ],
+  "start_assault": [
+   2.852,
+   2.09
+  ],
+  "start_juggernaut": [
+   3.446,
+   3.016
+  ],
+  "start_ball": [
+   2.314,
+   2.454
+  ],
+  "start_horde": [
+   2.58,
+   2.738
+  ],
+  "start_zones": [
+   2.802,
+   2.096
+  ],
+  "start_survivors": [
+   3.954,
+   2.85
+  ],
+  "start_drone": [
+   2.922,
+   2.38
+  ],
+  "start_hunt": [
+   3.386,
+   2.626
+  ],
+  "start_mars": [
+   2.89,
+   2.594
+  ],
+  "start_range": [
+   1.376,
+   2.282
+  ],
+  "flag_dropped_ours": [
+   2.308,
+   1.832
+  ],
+  "start_gun_game": [
+   2.84,
+   3.27
+  ],
+  "goal_conceded": [
+   1.356,
+   2.224
+  ],
+  "flag_lost": [
+   1.958,
+   3.09
+  ],
+  "objective_contesting": [
+   1.44,
+   2.526
+  ],
+  "flag_dropped_theirs": [
+   1.698,
+   3.048
+  ],
+  "ball_reset": [
+   1.446,
+   2.636
+  ],
+  "counter_attack": [
+   1.262,
+   2.634
+  ],
+  "juggernaut_spotted": [
+   1.566,
+   1.382
+  ],
+  "wave_runners": [
+   2.362,
+   3.004
+  ],
+  "wave_swarm": [
+   2.684,
+   2.824
+  ],
+  "final_line": [
+   2.152,
+   2.4
+  ],
+  "ally_infected": [
+   3.1,
+   2.652
+  ],
+  "juggernaut_down": [
+   1.628,
+   1.854
+  ],
+  "victory_juggernaut": [
+   2.012,
+   1.462
+  ],
+  "victory_survivors": [
+   2.194,
+   3.152
+  ],
+  "infected_turned": [
+   4.042,
+   3.278
+  ],
+  "victory_assault": [
+   3.716,
+   2.964
+  ],
+  "defeat_overrun": [
+   1.742,
+   2.508
+  ],
+  "gun_game_final": [
+   2.368,
+   3.17
+  ],
+  "enemy_final_weapon": [
+   2.936,
+   3.028
+  ],
+  "battle_start": [
+   1.768,
+   1.524,
+   1.632
+  ],
+  "enemy_spotted": [
+   2.05,
+   1.254,
+   2.266
+  ],
+  "miss": [
+   0.976,
+   1.582,
+   0.906
+  ],
+  "firing": [
+   1.094,
+   0.64,
+   0.692
+  ],
+  "reloaded": [
+   1.066,
+   0.612,
+   1.16
+  ],
+  "reloading": [
+   1.732,
+   1.302
+  ],
+  "target_destroyed": [
+   1.702,
+   1.61,
+   1.446
+  ],
+  "engine_destroyed": [
+   1.082,
+   1.18
+  ],
+  "ammo_rack": [
+   1.522,
+   1.246
+  ],
+  "gunship_howitzer": [
+   1.092,
+   1.886
+  ],
+  "gunship_cannon": [
+   1.278,
+   1.604
+  ],
+  "suspension_set": [
+   1.822,
+   2.084
+  ],
+  "quiet_crew": [
+   1.93,
+   1.86,
+   1.612
+  ],
+  "gunship_rifle": [
+   1.984,
+   2.13
+  ],
+  "quiet_scan": [
+   1.726,
+   2.014,
+   3.104,
+   2.04
+  ],
+  "air_call_bomb": [
+   2.95,
+   2.192
+  ],
+  "air_call_recon": [
+   3.1,
+   2.244
+  ],
+  "start_air_support": [
+   3.908,
+   3.436
+  ],
+  "artillery_incoming": [
+   2.002,
+   2.148
+  ],
+  "air_call_artillery": [
+   2.65,
+   2.394
+  ],
+  "aircraft_downed": [
+   1.374,
+   2.224
+  ],
+  "air_call_strafe": [
+   2.446,
+   2.654
+  ],
+  "air_incoming": [
+   2.434,
+   2.588
+  ]
+ },
+ "ro": {
+  "draw": [
+   3.468
+  ],
+  "gun_mount_damaged": [
+   1.77
+  ],
+  "feed_damaged": [
+   1.456
+  ],
+  "autoloader_damaged": [
+   1.914
+  ],
+  "roof_gun_damaged": [
+   2.868
+  ],
+  "missile_rack_damaged": [
+   1.884
+  ],
+  "crew_recovered": [
+   2.224
+  ],
+  "last_tank": [
+   3.926
+  ],
+  "pickup_collected": [
+   1.372
+  ],
+  "outnumbered": [
+   2.126
+  ],
+  "last_enemy": [
+   3.17
+  ],
+  "double_kill": [
+   1.768,
+   1.842
+  ],
+  "back_on_tracks": [
+   2.116
+  ],
+  "taking_water": [
+   1.524
+  ],
+  "ammo_out_all": [
+   1.894
+  ],
+  "step_by_step_reply": [
+   3.54
+  ],
+  "think_step_by_step": [
+   3.402
+  ],
+  "enemy_flag_returned": [
+   1.604
+  ],
+  "last_survivor": [
+   3.594
+  ],
+  "on_the_move": [
+   0.886,
+   2.174
+  ],
+  "spotted_left": [
+   1.108,
+   1.42
+  ],
+  "spotted_rear": [
+   1.17,
+   1.32
+  ],
+  "victory": [
+   2.822,
+   3.328
+  ],
+  "sixth_sense": [
+   1.782,
+   1.67
+  ],
+  "defeat": [
+   2.786,
+   2.654
+  ],
+  "ricochet": [
+   0.87,
+   0.908
+  ],
+  "nonpen": [
+   1.198,
+   1.092
+  ],
+  "penetration": [
+   0.882,
+   2.464
+  ],
+  "enemy_crit": [
+   2.146,
+   1.41
+  ],
+  "enemy_fire": [
+   1.086,
+   0.962
+  ],
+  "missile_away": [
+   1.334,
+   2.194
+  ],
+  "enemy_ammo_rack": [
+   2.402,
+   2.464
+  ],
+  "load_he": [
+   1.078,
+   1.552
+  ],
+  "load_kinetic": [
+   1.048,
+   1.396
+  ],
+  "gunship_howitzer": [
+   0.95,
+   2.062
+  ],
+  "load_heat": [
+   0.996,
+   1.504
+  ],
+  "load_missile": [
+   1.788,
+   1.386
+  ],
+  "gunship_missile": [
+   1.512,
+   1.57
+  ],
+  "reloading": [
+   2.078,
+   1.79
+  ],
+  "gunship_kill": [
+   2.64,
+   2.316
+  ],
+  "were_hit": [
+   1.206,
+   1.416
+  ],
+  "ammo_low": [
+   1.7,
+   2.418
+  ],
+  "ammo_empty": [
+   1.75,
+   1.486
+  ],
+  "bounced_us": [
+   2.958,
+   2.102
+  ],
+  "gunship_double": [
+   1.842,
+   3.316
+  ],
+  "ammo_rack": [
+   1.786,
+   1.21
+  ],
+  "fire": [
+   2.176,
+   1.706
+  ],
+  "low_hp": [
+   3.65,
+   3.486
+  ],
+  "fuel_tank": [
+   2.11,
+   1.298
+  ],
+  "engine_destroyed": [
+   1.768,
+   1.346
+  ],
+  "engine_damaged": [
+   1.246,
+   2.116
+  ],
+  "fire_out": [
+   1.586,
+   1.584
+  ],
+  "gun_damaged": [
+   1.588,
+   1.244
+  ],
+  "transmission_damaged": [
+   1.4,
+   2.586
+  ],
+  "turret_jammed": [
+   2.438,
+   2.216
+  ],
+  "optics_damaged": [
+   1.13,
+   1.68
+  ],
+  "track_gone": [
+   2.42,
+   1.406
+  ],
+  "radio_damaged": [
+   2.036,
+   1.446
+  ],
+  "commander_down": [
+   1.558,
+   2.64
+  ],
+  "driver_down": [
+   2.504,
+   2.35
+  ],
+  "gunner_down": [
+   2.054,
+   2.182
+  ],
+  "repairs": [
+   1.778,
+   2.032
+  ],
+  "loader_down": [
+   2.03,
+   2.296
+  ],
+  "gun_repaired": [
+   1.584,
+   1.75
+  ],
+  "track_repaired": [
+   2.498,
+   1.898
+  ],
+  "smoke_out": [
+   1.166,
+   1.046
+  ],
+  "engine_repaired": [
+   1.496,
+   1.684
+  ],
+  "extinguishing": [
+   1.404,
+   1.178
+  ],
+  "roof_gun_on": [
+   2.146,
+   2.054
+  ],
+  "ally_destroyed": [
+   1.432,
+   2.144
+  ],
+  "suspension_set": [
+   1.738,
+   2.162
+  ],
+  "objective_lost": [
+   1.614,
+   1.766
+  ],
+  "flag_taken_theirs": [
+   1.138,
+   3.022
+  ],
+  "objective_captured": [
+   1.986,
+   1.848
+  ],
+  "flag_taken_ours": [
+   1.44,
+   3.008
+  ],
+  "flag_returned": [
+   2.364,
+   1.902
+  ],
+  "wave_incoming": [
+   1.492,
+   2.252
+  ],
+  "flag_captured": [
+   1.476,
+   2.384
+  ],
+  "goal_scored": [
+   1.442,
+   1.02
+  ],
+  "line_advanced": [
+   1.514,
+   2.166
+  ],
+  "respawn": [
+   1.628,
+   2.28
+  ],
+  "supply_repair": [
+   2.144,
+   2.206
+  ],
+  "supply_ammo": [
+   1.9,
+   2.028
+  ],
+  "wave_cleared": [
+   2.464,
+   2.816
+  ],
+  "rammed": [
+   1.312,
+   1.452
+  ],
+  "friendly_fire": [
+   2.08,
+   1.972
+  ],
+  "ally_kill": [
+   1.424,
+   2.08
+  ],
+  "spotted_multiple": [
+   1.544,
+   2.062
+  ],
+  "friendly_ram": [
+   2.058,
+   2.096
+  ],
+  "hit_by_friendly": [
+   2.382,
+   2.8
+  ],
+  "drone_lost": [
+   1.456,
+   2.428
+  ],
+  "drone_incoming": [
+   1.222,
+   1.516
+  ],
+  "missile_incoming": [
+   1.256,
+   2.2
+  ],
+  "near_miss": [
+   1.536,
+   1.502
+  ],
+  "drone_launch": [
+   1.204,
+   1.008
+  ],
+  "target_locked": [
+   1.494,
+   1.418
+  ],
+  "stuck": [
+   1.784,
+   2.212
+  ],
+  "flipped": [
+   1.876,
+   1.348
+  ],
+  "enemy_crew_hit": [
+   1.87,
+   2.042
+  ],
+  "enemy_engine_hit": [
+   1.232,
+   1.988
+  ],
+  "target_lost": [
+   1.346,
+   1.196
+  ],
+  "enemy_gun_damaged": [
+   2.014,
+   1.194
+  ],
+  "objective_contested": [
+   1.572,
+   1.542
+  ],
+  "enemy_immobilized": [
+   2.328,
+   2.276
+  ],
+  "quiet_move": [
+   3.212,
+   2.92
+  ],
+  "quiet_hold": [
+   2.468,
+   3.132
+  ],
+  "objective_push": [
+   1.656,
+   1.684
+  ],
+  "building_down": [
+   1.21,
+   1.888
+  ],
+  "hull_status": [
+   2.876,
+   2.46
+  ],
+  "fire_command_kinetic": [
+   2.416,
+   2.794
+  ],
+  "artillery_far": [
+   2.038,
+   1.788
+  ],
+  "in_cover": [
+   2.034,
+   2.304
+  ],
+  "aircraft_overhead": [
+   1.378,
+   1.92
+  ],
+  "fire_command_missile": [
+   2.44,
+   2.72
+  ],
+  "fire_command_he": [
+   2.832,
+   3.074
+  ],
+  "identified": [
+   1.062,
+   1.532
+  ],
+  "fire_command_heat": [
+   2.562,
+   2.81
+  ],
+  "cease_fire": [
+   2.838,
+   2.782
+  ],
+  "aps_intercept_them": [
+   1.972,
+   2.132
+  ],
+  "re_engage": [
+   1.134,
+   2.942
+  ],
+  "aps_intercept_us": [
+   3.878,
+   2.878
+  ],
+  "drone_battery_low": [
+   2.176,
+   2.152
+  ],
+  "era_us": [
+   3.492,
+   5.378
+  ],
+  "enemy_era": [
+   1.87,
+   2.15
+  ],
+  "drone_link_weak": [
+   2.004,
+   2.768
+  ],
+  "drone_recovered": [
+   1.646,
+   2.084
+  ],
+  "drone_shot_down": [
+   2.132,
+   2.902
+  ],
+  "reversing": [
+   0.87,
+   1.16
+  ],
+  "enemy_drone_down": [
+   1.256,
+   1.284
+  ],
+  "enemy_smoke": [
+   1.694,
+   2.254
+  ],
+  "jump_brace": [
+   1.158,
+   1.496
+  ],
+  "drone_kill": [
+   2.848,
+   2.872
+  ],
+  "obstacle_through": [
+   2.2,
+   2.666
+  ],
+  "gunship_splash": [
+   1.284,
+   2.004
+  ],
+  "gunship_cleared_hot": [
+   1.656,
+   3.244
+  ],
+  "gunship_danger_close": [
+   1.122,
+   2.876
+  ],
+  "gunship_good_hits": [
+   1.816,
+   3.274
+  ],
+  "crew_report": [
+   1.676,
+   2.428
+  ],
+  "crew_ready": [
+   4.224,
+   1.658
+  ],
+  "gunship_shift_fire": [
+   1.03,
+   2.446
+  ],
+  "gunship_rounds_complete": [
+   1.166,
+   2.71
+  ],
+  "gunship_tally": [
+   2.54,
+   2.876
+  ],
+  "gunship_friendly_extracted": [
+   2.146,
+   1.798
+  ],
+  "gunship_friendly_down": [
+   2.438,
+   2.224
+  ],
+  "gunship_defeat": [
+   2.922,
+   3.152
+  ],
+  "gunship_victory": [
+   3.858,
+   2.55
+  ],
+  "start_ball": [
+   2.612,
+   2.666
+  ],
+  "start_flag": [
+   3.336,
+   2.446
+  ],
+  "start_horde": [
+   2.96,
+   2.502
+  ],
+  "start_zones": [
+   2.618,
+   2.45
+  ],
+  "start_juggernaut": [
+   3.592,
+   2.968
+  ],
+  "start_assault": [
+   2.304,
+   2.462
+  ],
+  "start_mars": [
+   3.492,
+   2.588
+  ],
+  "start_hunt": [
+   3.854,
+   2.51
+  ],
+  "start_gun_game": [
+   2.378,
+   3.304
+  ],
+  "start_range": [
+   1.324,
+   2.522
+  ],
+  "flag_dropped_ours": [
+   2.466,
+   2.004
+  ],
+  "start_drone": [
+   2.636,
+   2.716
+  ],
+  "flag_dropped_theirs": [
+   1.638,
+   3.056
+  ],
+  "objective_contesting": [
+   1.534,
+   2.528
+  ],
+  "goal_conceded": [
+   1.1,
+   1.976
+  ],
+  "start_survivors": [
+   4.118,
+   2.996
+  ],
+  "flag_lost": [
+   1.778,
+   3.432
+  ],
+  "ball_reset": [
+   1.898,
+   2.436
+  ],
+  "wave_runners": [
+   1.872,
+   3.836
+  ],
+  "counter_attack": [
+   0.916,
+   2.46
+  ],
+  "wave_swarm": [
+   2.47,
+   2.564
+  ],
+  "final_line": [
+   2.09,
+   2.648
+  ],
+  "juggernaut_spotted": [
+   1.674,
+   1.426
+  ],
+  "ally_infected": [
+   3.268,
+   2.48
+  ],
+  "juggernaut_down": [
+   2.078,
+   1.786
+  ],
+  "victory_juggernaut": [
+   3.316,
+   1.716
+  ],
+  "gun_game_final": [
+   2.206,
+   2.848
+  ],
+  "infected_turned": [
+   3.724,
+   4.024
+  ],
+  "defeat_overrun": [
+   2.012,
+   2.292
+  ],
+  "victory_survivors": [
+   2.532,
+   3.486
+  ],
+  "enemy_final_weapon": [
+   2.434,
+   3.482
+  ],
+  "victory_assault": [
+   3.81,
+   3.094
+  ],
+  "enemy_spotted": [
+   2.064,
+   1.082,
+   1.696
+  ],
+  "firing": [
+   1.082,
+   0.98,
+   0.704
+  ],
+  "battle_start": [
+   1.888,
+   2.554,
+   2.22
+  ],
+  "reloaded": [
+   1.382,
+   0.944,
+   1.264
+  ],
+  "target_destroyed": [
+   1.372,
+   1.604,
+   1.674
+  ],
+  "miss": [
+   1.234,
+   1.498,
+   1.45
+  ],
+  "gunship_rifle": [
+   1.75,
+   2.53
+  ],
+  "gunship_cannon": [
+   1.456,
+   2.04
+  ],
+  "quiet_scan": [
+   1.378,
+   1.746,
+   2.476,
+   2.268
+  ],
+  "quiet_crew": [
+   2.146,
+   2.062,
+   1.05
+  ],
+  "spotted_front": [
+   1.044,
+   1.91
+  ],
+  "spotted_right": [
+   1.098,
+   1.392
+  ],
+  "start_air_support": [
+   3.268,
+   3.194
+  ],
+  "air_call_strafe": [
+   2.676,
+   2.098
+  ],
+  "air_call_artillery": [
+   3.2,
+   2.512
+  ],
+  "aircraft_downed": [
+   1.142,
+   2.376
+  ],
+  "air_call_recon": [
+   3.134,
+   2.454
+  ],
+  "air_incoming": [
+   2.524,
+   2.336
+  ],
+  "artillery_incoming": [
+   2.024,
+   2.102
+  ],
+  "air_call_bomb": [
+   2.848,
+   2.124
+  ]
+ },
+ "tr": {
+  "draw": [
+   2.754
+  ],
+  "gun_mount_damaged": [
+   1.29
+  ],
+  "feed_damaged": [
+   1.56
+  ],
+  "autoloader_damaged": [
+   1.63
+  ],
+  "missile_rack_damaged": [
+   1.392
+  ],
+  "roof_gun_damaged": [
+   1.932
+  ],
+  "crew_recovered": [
+   1.704
+  ],
+  "last_tank": [
+   3.184
+  ],
+  "pickup_collected": [
+   1.126
+  ],
+  "double_kill": [
+   1.502,
+   2.042
+  ],
+  "last_enemy": [
+   2.222
+  ],
+  "outnumbered": [
+   1.766
+  ],
+  "taking_water": [
+   1.252
+  ],
+  "back_on_tracks": [
+   1.986
+  ],
+  "ammo_out_all": [
+   1.884
+  ],
+  "think_step_by_step": [
+   2.416
+  ],
+  "step_by_step_reply": [
+   3.668
+  ],
+  "enemy_flag_returned": [
+   1.694
+  ],
+  "last_survivor": [
+   2.81
+  ],
+  "on_the_move": [
+   0.976,
+   1.452
+  ],
+  "defeat": [
+   2.664,
+   2.094
+  ],
+  "victory": [
+   2.396,
+   3.54
+  ],
+  "spotted_front": [
+   1.138,
+   1.44
+  ],
+  "spotted_rear": [
+   1.146,
+   1.06
+  ],
+  "sixth_sense": [
+   1.26,
+   1.23
+  ],
+  "missile_away": [
+   1.056,
+   2.03
+  ],
+  "spotted_right": [
+   1.192,
+   1.436
+  ],
+  "enemy_fire": [
+   1.048,
+   0.878
+  ],
+  "penetration": [
+   1.274,
+   1.908
+  ],
+  "nonpen": [
+   1.108,
+   1.018
+  ],
+  "enemy_crit": [
+   2.138,
+   1.268
+  ],
+  "ricochet": [
+   0.974,
+   1.166
+  ],
+  "load_kinetic": [
+   1.124,
+   1.158
+  ],
+  "enemy_ammo_rack": [
+   2.55,
+   2.544
+  ],
+  "reloading": [
+   1.238,
+   1.576
+  ],
+  "load_heat": [
+   1.286,
+   1.344
+  ],
+  "load_missile": [
+   1.016,
+   1.328
+  ],
+  "gunship_cannon": [
+   1.094,
+   1.378
+  ],
+  "gunship_double": [
+   2.042,
+   2.464
+  ],
+  "gunship_missile": [
+   1.06,
+   1.088
+  ],
+  "load_he": [
+   1.406,
+   1.272
+  ],
+  "were_hit": [
+   0.92,
+   1.144
+  ],
+  "gunship_kill": [
+   2.546,
+   2.404
+  ],
+  "ammo_low": [
+   1.458,
+   2.898
+  ],
+  "fuel_tank": [
+   1.368,
+   1.288
+  ],
+  "ammo_empty": [
+   0.986,
+   1.196
+  ],
+  "ammo_rack": [
+   1.49,
+   1.306
+  ],
+  "fire_out": [
+   1.352,
+   1.32
+  ],
+  "engine_damaged": [
+   1.048,
+   2.126
+  ],
+  "low_hp": [
+   2.948,
+   2.472
+  ],
+  "transmission_damaged": [
+   1.302,
+   2.502
+  ],
+  "engine_destroyed": [
+   0.94,
+   1.144
+  ],
+  "gun_damaged": [
+   1.268,
+   0.938
+  ],
+  "turret_jammed": [
+   1.764,
+   1.752
+  ],
+  "track_gone": [
+   2.136,
+   1.438
+  ],
+  "optics_damaged": [
+   1.018,
+   1.202
+  ],
+  "radio_damaged": [
+   1.196,
+   1.24
+  ],
+  "loader_down": [
+   1.536,
+   1.572
+  ],
+  "gunner_down": [
+   1.554,
+   1.398
+  ],
+  "commander_down": [
+   1.324,
+   2.4
+  ],
+  "driver_down": [
+   1.702,
+   1.45
+  ],
+  "gun_repaired": [
+   1.542,
+   1.324
+  ],
+  "repairs": [
+   1.378,
+   2.074
+  ],
+  "engine_repaired": [
+   1.31,
+   1.778
+  ],
+  "extinguishing": [
+   1.15,
+   0.968
+  ],
+  "track_repaired": [
+   2.426,
+   1.12
+  ],
+  "smoke_out": [
+   0.816,
+   1.188
+  ],
+  "roof_gun_on": [
+   1.424,
+   1.688
+  ],
+  "ally_destroyed": [
+   1.482,
+   1.892
+  ],
+  "objective_captured": [
+   1.786,
+   1.794
+  ],
+  "suspension_set": [
+   1.8,
+   1.944
+  ],
+  "flag_taken_ours": [
+   1.332,
+   2.248
+  ],
+  "flag_returned": [
+   1.906,
+   1.294
+  ],
+  "line_advanced": [
+   1.158,
+   1.398
+  ],
+  "objective_lost": [
+   1.584,
+   1.21
+  ],
+  "flag_taken_theirs": [
+   1.386,
+   2.598
+  ],
+  "goal_scored": [
+   0.95,
+   1.288
+  ],
+  "flag_captured": [
+   1.836,
+   2.228
+  ],
+  "wave_incoming": [
+   1.528,
+   1.564
+  ],
+  "supply_ammo": [
+   1.68,
+   1.734
+  ],
+  "wave_cleared": [
+   1.744,
+   2.76
+  ],
+  "respawn": [
+   1.65,
+   2.314
+  ],
+  "supply_repair": [
+   1.526,
+   1.528
+  ],
+  "friendly_fire": [
+   2.104,
+   1.612
+  ],
+  "friendly_ram": [
+   1.904,
+   1.918
+  ],
+  "drone_incoming": [
+   0.974,
+   1.15
+  ],
+  "hit_by_friendly": [
+   2.172,
+   2.238
+  ],
+  "ally_kill": [
+   1.322,
+   1.654
+  ],
+  "drone_launch": [
+   0.948,
+   1.072
+  ],
+  "rammed": [
+   1.152,
+   1.128
+  ],
+  "near_miss": [
+   1.136,
+   1.842
+  ],
+  "spotted_multiple": [
+   1.52,
+   2.018
+  ],
+  "missile_incoming": [
+   0.942,
+   1.756
+  ],
+  "stuck": [
+   1.486,
+   1.788
+  ],
+  "drone_lost": [
+   1.368,
+   1.944
+  ],
+  "enemy_gun_damaged": [
+   1.346,
+   1.084
+  ],
+  "target_locked": [
+   1.334,
+   1.106
+  ],
+  "target_lost": [
+   1.116,
+   1.182
+  ],
+  "enemy_crew_hit": [
+   1.466,
+   1.742
+  ],
+  "enemy_immobilized": [
+   2.182,
+   2.1
+  ],
+  "enemy_engine_hit": [
+   1.074,
+   1.968
+  ],
+  "objective_contested": [
+   1.556,
+   1.478
+  ],
+  "quiet_hold": [
+   2.354,
+   2.518
+  ],
+  "building_down": [
+   0.878,
+   1.126
+  ],
+  "quiet_move": [
+   2.872,
+   2.544
+  ],
+  "aircraft_overhead": [
+   1.652,
+   2.064
+  ],
+  "artillery_far": [
+   1.852,
+   1.982
+  ],
+  "hull_status": [
+   2.47,
+   1.988
+  ],
+  "objective_push": [
+   1.49,
+   1.356
+  ],
+  "fire_command_kinetic": [
+   2.308,
+   2.738
+  ],
+  "fire_command_heat": [
+   2.578,
+   2.902
+  ],
+  "fire_command_he": [
+   2.302,
+   2.696
+  ],
+  "in_cover": [
+   1.744,
+   2.268
+  ],
+  "identified": [
+   0.92,
+   1.394
+  ],
+  "fire_command_missile": [
+   2.496,
+   2.71
+  ],
+  "aps_intercept_us": [
+   2.816,
+   2.648
+  ],
+  "cease_fire": [
+   2.026,
+   2.22
+  ],
+  "aps_intercept_them": [
+   1.94,
+   2.192
+  ],
+  "re_engage": [
+   0.936,
+   2.184
+  ],
+  "drone_recovered": [
+   1.408,
+   1.454
+  ],
+  "drone_link_weak": [
+   1.818,
+   2.508
+  ],
+  "era_us": [
+   2.46,
+   3.898
+  ],
+  "enemy_drone_down": [
+   1.262,
+   1.026
+  ],
+  "drone_battery_low": [
+   1.67,
+   1.6
+  ],
+  "enemy_era": [
+   1.64,
+   1.248
+  ],
+  "enemy_smoke": [
+   1.214,
+   2.286
+  ],
+  "drone_kill": [
+   2.786,
+   2.394
+  ],
+  "reversing": [
+   0.956,
+   0.978
+  ],
+  "jump_brace": [
+   1.128,
+   1.062
+  ],
+  "obstacle_through": [
+   2.252,
+   2.408
+  ],
+  "crew_report": [
+   1.698,
+   2.554
+  ],
+  "gunship_danger_close": [
+   0.988,
+   2.538
+  ],
+  "crew_ready": [
+   3.344,
+   1.094
+  ],
+  "gunship_cleared_hot": [
+   2.422,
+   2.644
+  ],
+  "gunship_rounds_complete": [
+   1.032,
+   2.72
+  ],
+  "gunship_splash": [
+   0.906,
+   1.53
+  ],
+  "gunship_rifle": [
+   1.138,
+   1.826
+  ],
+  "gunship_friendly_down": [
+   1.822,
+   2.394
+  ],
+  "gunship_good_hits": [
+   1.346,
+   2.82
+  ],
+  "gunship_shift_fire": [
+   1.184,
+   1.866
+  ],
+  "gunship_friendly_extracted": [
+   2.154,
+   1.612
+  ],
+  "gunship_tally": [
+   2.618,
+   1.99
+  ],
+  "gunship_victory": [
+   2.834,
+   2.296
+  ],
+  "start_zones": [
+   2.378,
+   2.146
+  ],
+  "start_flag": [
+   2.466,
+   2.408
+  ],
+  "gunship_defeat": [
+   2.47,
+   2.56
+  ],
+  "start_hunt": [
+   2.704,
+   2.304
+  ],
+  "start_ball": [
+   2.028,
+   1.81
+  ],
+  "start_horde": [
+   2.602,
+   2.068
+  ],
+  "start_mars": [
+   2.926,
+   1.978
+  ],
+  "start_assault": [
+   1.978,
+   2.396
+  ],
+  "start_juggernaut": [
+   3.266,
+   2.668
+  ],
+  "start_range": [
+   1.364,
+   2.186
+  ],
+  "start_survivors": [
+   3.61,
+   2.408
+  ],
+  "start_drone": [
+   2.394,
+   2.312
+  ],
+  "flag_dropped_ours": [
+   2.158,
+   1.624
+  ],
+  "flag_dropped_theirs": [
+   1.364,
+   2.306
+  ],
+  "start_gun_game": [
+   2.158,
+   3.048
+  ],
+  "objective_contesting": [
+   1.61,
+   1.946
+  ],
+  "goal_conceded": [
+   1.018,
+   2.23
+  ],
+  "flag_lost": [
+   1.764,
+   2.944
+  ],
+  "wave_runners": [
+   1.682,
+   2.352
+  ],
+  "wave_swarm": [
+   2.316,
+   2.63
+  ],
+  "ball_reset": [
+   1.692,
+   2.356
+  ],
+  "ally_infected": [
+   2.582,
+   2.434
+  ],
+  "final_line": [
+   1.664,
+   2.082
+  ],
+  "counter_attack": [
+   1.044,
+   2.392
+  ],
+  "juggernaut_down": [
+   1.92,
+   1.486
+  ],
+  "infected_turned": [
+   3.322,
+   3.284
+  ],
+  "juggernaut_spotted": [
+   1.178,
+   1.272
+  ],
+  "victory_juggernaut": [
+   2.6,
+   1.664
+  ],
+  "victory_assault": [
+   2.336,
+   1.872
+  ],
+  "victory_survivors": [
+   2.226,
+   3.054
+  ],
+  "defeat_overrun": [
+   1.692,
+   2.348
+  ],
+  "enemy_final_weapon": [
+   1.684,
+   2.376
+  ],
+  "gun_game_final": [
+   1.678,
+   3.024
+  ],
+  "battle_start": [
+   1.52,
+   1.622,
+   1.768
+  ],
+  "enemy_spotted": [
+   1.816,
+   0.992,
+   1.432
+  ],
+  "reloaded": [
+   0.728,
+   1.014,
+   1.03
+  ],
+  "miss": [
+   0.958,
+   1.474,
+   0.896
+  ],
+  "target_destroyed": [
+   1.642,
+   1.43,
+   1.258
+  ],
+  "fire": [
+   1.698,
+   1.05
+  ],
+  "flipped": [
+   1.172,
+   1.092
+  ],
+  "quiet_crew": [
+   1.742,
+   1.786,
+   1.284
+  ],
+  "drone_shot_down": [
+   1.128,
+   2.486
+  ],
+  "spotted_left": [
+   1.134,
+   1.434
+  ],
+  "quiet_scan": [
+   1.358,
+   1.86,
+   2.6,
+   1.804
+  ],
+  "firing": [
+   0.872,
+   0.748,
+   1.016
+  ],
+  "gunship_howitzer": [
+   0.952,
+   1.552
+  ],
+  "bounced_us": [
+   1.07,
+   1.19
+  ],
+  "air_call_artillery": [
+   2.534,
+   2.622
+  ],
+  "start_air_support": [
+   2.478,
+   3.05
+  ],
+  "air_call_strafe": [
+   2.238,
+   1.994
+  ],
+  "air_call_recon": [
+   2.614,
+   1.846
+  ],
+  "air_incoming": [
+   2.488,
+   2.056
+  ],
+  "air_call_bomb": [
+   3.04,
+   2.08
+  ],
+  "aircraft_downed": [
+   0.944,
+   1.688
+  ],
+  "artillery_incoming": [
+   1.938,
+   1.912
+  ]
+ },
+ "ar": {
+  "draw": [
+   3.234
+  ],
+  "gun_mount_damaged": [
+   1.696
+  ],
+  "autoloader_damaged": [
+   1.848
+  ],
+  "feed_damaged": [
+   1.458
+  ],
+  "roof_gun_damaged": [
+   1.724
+  ],
+  "missile_rack_damaged": [
+   1.838
+  ],
+  "crew_recovered": [
+   2.324
+  ],
+  "last_tank": [
+   4.132
+  ],
+  "pickup_collected": [
+   1.44
+  ],
+  "double_kill": [
+   1.706,
+   1.858
+  ],
+  "outnumbered": [
+   2.204
+  ],
+  "last_enemy": [
+   2.74
+  ],
+  "back_on_tracks": [
+   1.756
+  ],
+  "taking_water": [
+   1.868
+  ],
+  "ammo_out_all": [
+   1.828
+  ],
+  "think_step_by_step": [
+   2.992
+  ],
+  "step_by_step_reply": [
+   4.194
+  ],
+  "enemy_flag_returned": [
+   1.564
+  ],
+  "last_survivor": [
+   2.852
+  ],
+  "on_the_move": [
+   1.076,
+   1.434
+  ],
+  "defeat": [
+   2.644,
+   2.06
+  ],
+  "spotted_front": [
+   1.136,
+   1.258
+  ],
+  "spotted_rear": [
+   1.188,
+   1.252
+  ],
+  "victory": [
+   3.132,
+   3.06
+  ],
+  "spotted_left": [
+   1.232,
+   1.298
+  ],
+  "spotted_right": [
+   1.42,
+   1.432
+  ],
+  "sixth_sense": [
+   1.18,
+   1.576
+  ],
+  "nonpen": [
+   0.966,
+   0.97
+  ],
+  "ricochet": [
+   1.21,
+   1.306
+  ],
+  "missile_away": [
+   1.336,
+   2.482
+  ],
+  "enemy_crit": [
+   2.292,
+   1.346
+  ],
+  "enemy_fire": [
+   1.346,
+   1.708
+  ],
+  "penetration": [
+   1.04,
+   2.124
+  ],
+  "reloading": [
+   1.732,
+   1.356
+  ],
+  "load_kinetic": [
+   1.532,
+   1.48
+  ],
+  "enemy_ammo_rack": [
+   3.078,
+   2.528
+  ],
+  "load_missile": [
+   1.256,
+   1.504
+  ],
+  "load_heat": [
+   1.612,
+   1.844
+  ],
+  "load_he": [
+   1.534,
+   1.904
+  ],
+  "gunship_missile": [
+   1.408,
+   1.336
+  ],
+  "ammo_low": [
+   1.62,
+   2.776
+  ],
+  "were_hit": [
+   1.406,
+   1.548
+  ],
+  "gunship_double": [
+   1.858,
+   2.53
+  ],
+  "gunship_kill": [
+   2.87,
+   2.862
+  ],
+  "ammo_empty": [
+   1.536,
+   1.408
+  ],
+  "fuel_tank": [
+   1.756,
+   1.358
+  ],
+  "ammo_rack": [
+   1.692,
+   1.45
+  ],
+  "low_hp": [
+   3.848,
+   3.078
+  ],
+  "bounced_us": [
+   2.518,
+   2.38
+  ],
+  "fire": [
+   2.02,
+   1.398
+  ],
+  "transmission_damaged": [
+   1.786,
+   2.81
+  ],
+  "gun_damaged": [
+   1.774,
+   1.388
+  ],
+  "fire_out": [
+   1.462,
+   1.568
+  ],
+  "engine_destroyed": [
+   1.854,
+   1.174
+  ],
+  "engine_damaged": [
+   1.492,
+   2.51
+  ],
+  "track_gone": [
+   2.436,
+   1.308
+  ],
+  "radio_damaged": [
+   2.058,
+   1.372
+  ],
+  "optics_damaged": [
+   1.746,
+   1.368
+  ],
+  "commander_down": [
+   1.422,
+   3.346
+  ],
+  "loader_down": [
+   2.106,
+   1.722
+  ],
+  "turret_jammed": [
+   2.516,
+   2.522
+  ],
+  "gunner_down": [
+   2.072,
+   2.156
+  ],
+  "driver_down": [
+   1.924,
+   1.64
+  ],
+  "extinguishing": [
+   1.468,
+   1.25
+  ],
+  "track_repaired": [
+   2.77,
+   1.678
+  ],
+  "gun_repaired": [
+   1.324,
+   1.66
+  ],
+  "roof_gun_on": [
+   1.76,
+   2.376
+  ],
+  "repairs": [
+   1.442,
+   1.958
+  ],
+  "smoke_out": [
+   0.946,
+   1.512
+  ],
+  "suspension_set": [
+   1.69,
+   2.186
+  ],
+  "ally_destroyed": [
+   1.678,
+   2.44
+  ],
+  "engine_repaired": [
+   1.65,
+   1.248
+  ],
+  "objective_captured": [
+   1.782,
+   1.246
+  ],
+  "objective_lost": [
+   1.292,
+   1.228
+  ],
+  "flag_taken_ours": [
+   1.266,
+   3.12
+  ],
+  "flag_captured": [
+   1.86,
+   2.158
+  ],
+  "wave_incoming": [
+   1.656,
+   2.28
+  ],
+  "flag_returned": [
+   1.332,
+   1.714
+  ],
+  "wave_cleared": [
+   2.174,
+   2.878
+  ],
+  "flag_taken_theirs": [
+   1.5,
+   2.672
+  ],
+  "line_advanced": [
+   1.406,
+   2.328
+  ],
+  "goal_scored": [
+   1.024,
+   1.426
+  ],
+  "respawn": [
+   1.398,
+   2.996
+  ],
+  "supply_ammo": [
+   1.976,
+   2.056
+  ],
+  "friendly_fire": [
+   2.8,
+   2.07
+  ],
+  "supply_repair": [
+   2.256,
+   2.646
+  ],
+  "friendly_ram": [
+   2.48,
+   1.92
+  ],
+  "rammed": [
+   1.352,
+   1.29
+  ],
+  "hit_by_friendly": [
+   2.618,
+   3.008
+  ],
+  "ally_kill": [
+   1.11,
+   2.454
+  ],
+  "drone_launch": [
+   1.178,
+   1.016
+  ],
+  "spotted_multiple": [
+   1.662,
+   2.138
+  ],
+  "missile_incoming": [
+   1.458,
+   2.684
+  ],
+  "drone_lost": [
+   1.302,
+   2.454
+  ],
+  "near_miss": [
+   1.292,
+   1.722
+  ],
+  "drone_incoming": [
+   1.188,
+   1.938
+  ],
+  "target_locked": [
+   1.386,
+   1.138
+  ],
+  "flipped": [
+   1.652,
+   1.396
+  ],
+  "stuck": [
+   1.426,
+   1.868
+  ],
+  "enemy_gun_damaged": [
+   1.278,
+   1.208
+  ],
+  "target_lost": [
+   1.342,
+   1.188
+  ],
+  "objective_contested": [
+   1.848,
+   1.452
+  ],
+  "enemy_immobilized": [
+   2.608,
+   2.348
+  ],
+  "enemy_crew_hit": [
+   1.534,
+   2.116
+  ],
+  "quiet_hold": [
+   2.406,
+   2.702
+  ],
+  "enemy_engine_hit": [
+   1.226,
+   2.612
+  ],
+  "hull_status": [
+   2.664,
+   2.222
+  ],
+  "building_down": [
+   0.972,
+   1.866
+  ],
+  "aircraft_overhead": [
+   1.48,
+   2.312
+  ],
+  "objective_push": [
+   1.418,
+   1.474
+  ],
+  "quiet_move": [
+   2.592,
+   2.84
+  ],
+  "identified": [
+   1.208,
+   1.504
+  ],
+  "fire_command_kinetic": [
+   2.518,
+   2.786
+  ],
+  "artillery_far": [
+   2.078,
+   2.14
+  ],
+  "in_cover": [
+   2.28,
+   2.656
+  ],
+  "re_engage": [
+   0.808,
+   2.254
+  ],
+  "fire_command_he": [
+   2.742,
+   3.174
+  ],
+  "fire_command_heat": [
+   2.832,
+   3.134
+  ],
+  "cease_fire": [
+   1.808,
+   2.474
+  ],
+  "fire_command_missile": [
+   2.354,
+   2.724
+  ],
+  "drone_battery_low": [
+   2.034,
+   1.932
+  ],
+  "aps_intercept_us": [
+   3.116,
+   3.118
+  ],
+  "aps_intercept_them": [
+   2.272,
+   2.322
+  ],
+  "enemy_drone_down": [
+   2.064,
+   1.25
+  ],
+  "drone_link_weak": [
+   2.032,
+   3.062
+  ],
+  "era_us": [
+   3.168,
+   4.158
+  ],
+  "drone_shot_down": [
+   1.566,
+   2.46
+  ],
+  "drone_recovered": [
+   1.712,
+   2.168
+  ],
+  "enemy_era": [
+   1.616,
+   1.648
+  ],
+  "reversing": [
+   1.474,
+   1.248
+  ],
+  "obstacle_through": [
+   1.5,
+   2.402
+  ],
+  "drone_kill": [
+   3.278,
+   2.926
+  ],
+  "jump_brace": [
+   1.34,
+   1.39
+  ],
+  "enemy_smoke": [
+   1.542,
+   2.362
+  ],
+  "crew_ready": [
+   4.248,
+   1.662
+  ],
+  "crew_report": [
+   1.702,
+   2.42
+  ],
+  "gunship_rifle": [
+   1.008,
+   2.436
+  ],
+  "gunship_cleared_hot": [
+   2.45,
+   3.59
+  ],
+  "gunship_good_hits": [
+   1.422,
+   3.318
+  ],
+  "gunship_danger_close": [
+   1.18,
+   2.966
+  ],
+  "gunship_splash": [
+   1.278,
+   2.006
+  ],
+  "gunship_shift_fire": [
+   1.662,
+   2.452
+  ],
+  "gunship_rounds_complete": [
+   1.01,
+   2.308
+  ],
+  "gunship_tally": [
+   2.824,
+   3.164
+  ],
+  "gunship_friendly_down": [
+   2.196,
+   2.908
+  ],
+  "gunship_defeat": [
+   2.794,
+   3.278
+  ],
+  "gunship_friendly_extracted": [
+   2.008,
+   1.894
+  ],
+  "start_mars": [
+   3.912,
+   2.564
+  ],
+  "start_horde": [
+   3.252,
+   2.428
+  ],
+  "start_zones": [
+   2.476,
+   2.366
+  ],
+  "start_flag": [
+   2.854,
+   2.268
+  ],
+  "gunship_victory": [
+   3.566,
+   3.274
+  ],
+  "start_assault": [
+   2.26,
+   2.26
+  ],
+  "start_hunt": [
+   3.232,
+   1.964
+  ],
+  "start_ball": [
+   2.35,
+   2.152
+  ],
+  "start_drone": [
+   3.078,
+   2.64
+  ],
+  "flag_dropped_theirs": [
+   1.438,
+   2.858
+  ],
+  "start_gun_game": [
+   2.8,
+   3.144
+  ],
+  "start_survivors": [
+   4.234,
+   2.526
+  ],
+  "start_range": [
+   1.708,
+   2.146
+  ],
+  "start_juggernaut": [
+   3.716,
+   3.894
+  ],
+  "flag_dropped_ours": [
+   2.474,
+   1.856
+  ],
+  "flag_lost": [
+   1.892,
+   2.974
+  ],
+  "objective_contesting": [
+   1.97,
+   2.226
+  ],
+  "goal_conceded": [
+   1.352,
+   2.174
+  ],
+  "infected_turned": [
+   2.918,
+   2.956
+  ],
+  "ball_reset": [
+   1.53,
+   2.578
+  ],
+  "wave_runners": [
+   2.098,
+   3.9
+  ],
+  "wave_swarm": [
+   2.958,
+   2.944
+  ],
+  "final_line": [
+   1.822,
+   2.722
+  ],
+  "juggernaut_down": [
+   1.434,
+   1.464
+  ],
+  "ally_infected": [
+   2.978,
+   2.188
+  ],
+  "juggernaut_spotted": [
+   1.43,
+   1.476
+  ],
+  "victory_survivors": [
+   2.172,
+   2.936
+  ],
+  "victory_juggernaut": [
+   2.762,
+   2.054
+  ],
+  "enemy_final_weapon": [
+   2.208,
+   2.698
+  ],
+  "gun_game_final": [
+   2.078,
+   2.828
+  ],
+  "victory_assault": [
+   3.146,
+   2.766
+  ],
+  "defeat_overrun": [
+   1.87,
+   2.378
+  ],
+  "battle_start": [
+   1.826,
+   1.808,
+   2.41
+  ],
+  "enemy_spotted": [
+   2.136,
+   1.334,
+   2.616
+  ],
+  "target_destroyed": [
+   1.398,
+   1.142,
+   2.212
+  ],
+  "firing": [
+   1.264,
+   1.378,
+   1.198
+  ],
+  "reloaded": [
+   1.312,
+   1.026,
+   1.408
+  ],
+  "miss": [
+   1.036,
+   1.53,
+   0.908
+  ],
+  "quiet_crew": [
+   2.17,
+   2.51,
+   1.364
+  ],
+  "counter_attack": [
+   1.042,
+   3.226
+  ],
+  "quiet_scan": [
+   1.386,
+   2.13,
+   3.152,
+   1.816
+  ],
+  "gunship_cannon": [
+   1.49,
+   1.856
+  ],
+  "gunship_howitzer": [
+   1.252,
+   2.782
+  ],
+  "air_call_recon": [
+   2.988,
+   2.326
+  ],
+  "start_air_support": [
+   3.476,
+   3.566
+  ],
+  "air_call_artillery": [
+   3.304,
+   2.422
+  ],
+  "air_incoming": [
+   3.21,
+   2.246
+  ],
+  "air_call_strafe": [
+   2.78,
+   2.522
+  ],
+  "aircraft_downed": [
+   1.838,
+   2.206
+  ],
+  "air_call_bomb": [
+   2.876,
+   2.282
+  ],
+  "artillery_incoming": [
+   2.032,
+   2.438
+  ]
+ },
+ "fa": {
+  "draw": [
+   3.314
+  ],
+  "gun_mount_damaged": [
+   1.55
+  ],
+  "autoloader_damaged": [
+   1.958
+  ],
+  "missile_rack_damaged": [
+   1.706
+  ],
+  "feed_damaged": [
+   1.736
+  ],
+  "roof_gun_damaged": [
+   2.164
+  ],
+  "crew_recovered": [
+   2.428
+  ],
+  "last_tank": [
+   4.44
+  ],
+  "pickup_collected": [
+   1.474
+  ],
+  "double_kill": [
+   1.818,
+   2.14
+  ],
+  "outnumbered": [
+   2.032
+  ],
+  "last_enemy": [
+   2.812
+  ],
+  "taking_water": [
+   1.992
+  ],
+  "back_on_tracks": [
+   2.166
+  ],
+  "think_step_by_step": [
+   2.628
+  ],
+  "step_by_step_reply": [
+   4.484
+  ],
+  "enemy_flag_returned": [
+   2.178
+  ],
+  "last_survivor": [
+   3.344
+  ],
+  "on_the_move": [
+   0.978,
+   1.964
+  ],
+  "victory": [
+   2.9,
+   3.378
+  ],
+  "defeat": [
+   2.76,
+   2.712
+  ],
+  "spotted_front": [
+   1.392,
+   0.976
+  ],
+  "spotted_right": [
+   1.38,
+   1.236
+  ],
+  "spotted_rear": [
+   1.204,
+   1.212
+  ],
+  "spotted_left": [
+   1.46,
+   1.158
+  ],
+  "sixth_sense": [
+   1.366,
+   1.656
+  ],
+  "missile_away": [
+   1.496,
+   2.756
+  ],
+  "penetration": [
+   1.11,
+   2.536
+  ],
+  "nonpen": [
+   1.062,
+   1.24
+  ],
+  "enemy_crit": [
+   2.876,
+   1.09
+  ],
+  "enemy_fire": [
+   1.52,
+   1.108
+  ],
+  "ricochet": [
+   0.912,
+   1.078
+  ],
+  "load_heat": [
+   0.996,
+   1.554
+  ],
+  "enemy_ammo_rack": [
+   3.78,
+   2.626
+  ],
+  "load_he": [
+   0.946,
+   1.648
+  ],
+  "load_kinetic": [
+   1.266,
+   1.568
+  ],
+  "load_missile": [
+   1.194,
+   1.876
+  ],
+  "gunship_missile": [
+   1.576,
+   1.328
+  ],
+  "gunship_cannon": [
+   1.388,
+   1.364
+  ],
+  "ammo_low": [
+   1.676,
+   2.608
+  ],
+  "ammo_empty": [
+   1.488,
+   1.12
+  ],
+  "gunship_double": [
+   2.14,
+   2.738
+  ],
+  "were_hit": [
+   1.23,
+   1.416
+  ],
+  "fire_out": [
+   1.448,
+   1.748
+  ],
+  "bounced_us": [
+   2.744,
+   2.55
+  ],
+  "gunship_kill": [
+   2.922,
+   2.438
+  ],
+  "ammo_rack": [
+   1.966,
+   1.3
+  ],
+  "fuel_tank": [
+   1.678,
+   1.67
+  ],
+  "low_hp": [
+   3.524,
+   3.586
+  ],
+  "gun_damaged": [
+   1.58,
+   1.18
+  ],
+  "engine_destroyed": [
+   1.458,
+   1.622
+  ],
+  "transmission_damaged": [
+   1.818,
+   2.88
+  ],
+  "radio_damaged": [
+   1.52,
+   1.464
+  ],
+  "fire": [
+   1.688,
+   1.384
+  ],
+  "track_gone": [
+   2.432,
+   1.176
+  ],
+  "driver_down": [
+   1.702,
+   1.602
+  ],
+  "optics_damaged": [
+   1.222,
+   2.274
+  ],
+  "gunner_down": [
+   1.596,
+   1.75
+  ],
+  "loader_down": [
+   1.57,
+   1.882
+  ],
+  "repairs": [
+   1.672,
+   2.204
+  ],
+  "commander_down": [
+   1.894,
+   3.076
+  ],
+  "gun_repaired": [
+   1.59,
+   2.438
+  ],
+  "extinguishing": [
+   0.984,
+   1.616
+  ],
+  "track_repaired": [
+   2.572,
+   1.77
+  ],
+  "roof_gun_on": [
+   1.86,
+   2.174
+  ],
+  "engine_repaired": [
+   1.522,
+   1.544
+  ],
+  "smoke_out": [
+   1.14,
+   1.874
+  ],
+  "objective_captured": [
+   1.63,
+   1.89
+  ],
+  "suspension_set": [
+   1.834,
+   2.788
+  ],
+  "objective_lost": [
+   1.708,
+   1.544
+  ],
+  "ally_destroyed": [
+   2.024,
+   2.16
+  ],
+  "flag_taken_ours": [
+   1.818,
+   3.024
+  ],
+  "flag_returned": [
+   1.836,
+   1.852
+  ],
+  "goal_scored": [
+   0.922,
+   1.574
+  ],
+  "wave_incoming": [
+   1.262,
+   2.062
+  ],
+  "flag_taken_theirs": [
+   2.1,
+   3.83
+  ],
+  "line_advanced": [
+   1.548,
+   2.376
+  ],
+  "flag_captured": [
+   1.834,
+   2.69
+  ],
+  "respawn": [
+   1.59,
+   3.132
+  ],
+  "supply_ammo": [
+   2.124,
+   2.234
+  ],
+  "friendly_fire": [
+   2.108,
+   2.024
+  ],
+  "hit_by_friendly": [
+   2.508,
+   3.082
+  ],
+  "supply_repair": [
+   2.152,
+   2.68
+  ],
+  "drone_incoming": [
+   1.316,
+   1.796
+  ],
+  "spotted_multiple": [
+   1.854,
+   1.59
+  ],
+  "ally_kill": [
+   1.764,
+   1.778
+  ],
+  "missile_incoming": [
+   1.646,
+   2.69
+  ],
+  "rammed": [
+   1.576,
+   1.642
+  ],
+  "drone_launch": [
+   1.156,
+   1.47
+  ],
+  "near_miss": [
+   1.874,
+   1.502
+  ],
+  "flipped": [
+   1.316,
+   1.52
+  ],
+  "drone_lost": [
+   1.716,
+   2.362
+  ],
+  "target_lost": [
+   1.412,
+   1.376
+  ],
+  "target_locked": [
+   1.334,
+   0.972
+  ],
+  "stuck": [
+   1.532,
+   2.48
+  ],
+  "enemy_crew_hit": [
+   1.88,
+   2.2
+  ],
+  "enemy_engine_hit": [
+   1.254,
+   2.548
+  ],
+  "enemy_gun_damaged": [
+   1.452,
+   1.226
+  ],
+  "ammo_out_all": [
+   1.912
+  ],
+  "enemy_immobilized": [
+   2.612,
+   2.718
+  ],
+  "objective_contested": [
+   1.696,
+   1.802
+  ],
+  "building_down": [
+   1.664,
+   2.254
+  ],
+  "quiet_hold": [
+   2.484,
+   3.68
+  ],
+  "hull_status": [
+   3.998,
+   2.784
+  ],
+  "quiet_move": [
+   2.982,
+   3.052
+  ],
+  "fire_command_heat": [
+   2.668,
+   2.756
+  ],
+  "objective_push": [
+   2.094,
+   1.876
+  ],
+  "aircraft_overhead": [
+   1.768,
+   2.096
+  ],
+  "artillery_far": [
+   2.106,
+   2.062
+  ],
+  "fire_command_missile": [
+   2.628,
+   2.742
+  ],
+  "in_cover": [
+   2.204,
+   2.864
+  ],
+  "re_engage": [
+   1.516,
+   3.668
+  ],
+  "cease_fire": [
+   2.318,
+   2.878
+  ],
+  "fire_command_kinetic": [
+   2.972,
+   3.214
+  ],
+  "identified": [
+   1.374,
+   1.31
+  ],
+  "fire_command_he": [
+   2.78,
+   2.668
+  ],
+  "aps_intercept_them": [
+   1.96,
+   2.126
+  ],
+  "aps_intercept_us": [
+   3.486,
+   3.198
+  ],
+  "drone_link_weak": [
+   2.148,
+   3.512
+  ],
+  "drone_battery_low": [
+   1.972,
+   2.236
+  ],
+  "enemy_era": [
+   1.66,
+   1.764
+  ],
+  "enemy_drone_down": [
+   1.668,
+   1.14
+  ],
+  "era_us": [
+   2.816,
+   4.49
+  ],
+  "drone_shot_down": [
+   1.648,
+   2.934
+  ],
+  "drone_recovered": [
+   1.762,
+   1.99
+  ],
+  "reversing": [
+   0.864,
+   0.866
+  ],
+  "jump_brace": [
+   1.35,
+   1.442
+  ],
+  "drone_kill": [
+   3.214,
+   2.78
+  ],
+  "enemy_smoke": [
+   1.482,
+   3.146
+  ],
+  "crew_report": [
+   2.142,
+   2.35
+  ],
+  "gunship_rifle": [
+   0.996,
+   2.498
+  ],
+  "obstacle_through": [
+   1.678,
+   3.16
+  ],
+  "gunship_splash": [
+   1.156,
+   2.386
+  ],
+  "gunship_good_hits": [
+   1.82,
+   3.374
+  ],
+  "gunship_cleared_hot": [
+   2.204,
+   3.988
+  ],
+  "gunship_tally": [
+   2.96,
+   2.418
+  ],
+  "crew_ready": [
+   4.048,
+   1.646
+  ],
+  "gunship_rounds_complete": [
+   1.31,
+   3.174
+  ],
+  "gunship_friendly_extracted": [
+   2.038,
+   1.57
+  ],
+  "gunship_shift_fire": [
+   1.728,
+   2.524
+  ],
+  "gunship_danger_close": [
+   1.124,
+   3.842
+  ],
+  "gunship_defeat": [
+   2.682,
+   3.702
+  ],
+  "gunship_victory": [
+   4.008,
+   3.116
+  ],
+  "gunship_friendly_down": [
+   2.148,
+   3.056
+  ],
+  "start_assault": [
+   2.442,
+   2.716
+  ],
+  "start_flag": [
+   4.26,
+   2.232
+  ],
+  "start_zones": [
+   2.5,
+   2.242
+  ],
+  "start_hunt": [
+   3.386,
+   2.014
+  ],
+  "start_horde": [
+   3.134,
+   2.708
+  ],
+  "start_ball": [
+   2.53,
+   2.498
+  ],
+  "start_mars": [
+   3.246,
+   2.562
+  ],
+  "start_drone": [
+   3.736,
+   2.696
+  ],
+  "start_juggernaut": [
+   3.76,
+   3.986
+  ],
+  "start_range": [
+   1.734,
+   3.468
+  ],
+  "flag_dropped_ours": [
+   2.888,
+   2.198
+  ],
+  "start_gun_game": [
+   2.848,
+   3.384
+  ],
+  "flag_dropped_theirs": [
+   1.882,
+   3.39
+  ],
+  "start_survivors": [
+   4.116,
+   3.048
+  ],
+  "flag_lost": [
+   1.722,
+   3.514
+  ],
+  "goal_conceded": [
+   1.408,
+   2.432
+  ],
+  "objective_contesting": [
+   2.374,
+   3.1
+  ],
+  "wave_runners": [
+   1.636,
+   4.3
+  ],
+  "ball_reset": [
+   2.062,
+   2.442
+  ],
+  "counter_attack": [
+   1.356,
+   2.87
+  ],
+  "final_line": [
+   2.068,
+   3.176
+  ],
+  "juggernaut_spotted": [
+   1.572,
+   1.75
+  ],
+  "ally_infected": [
+   3.156,
+   2.396
+  ],
+  "wave_swarm": [
+   3.206,
+   3.044
+  ],
+  "juggernaut_down": [
+   1.482,
+   2.386
+  ],
+  "victory_juggernaut": [
+   2.752,
+   2.504
+  ],
+  "infected_turned": [
+   3.43,
+   4.286
+  ],
+  "enemy_final_weapon": [
+   2.308,
+   3.432
+  ],
+  "gun_game_final": [
+   2.368,
+   3.582
+  ],
+  "victory_survivors": [
+   2.836,
+   4.558
+  ],
+  "defeat_overrun": [
+   1.928,
+   2.972
+  ],
+  "victory_assault": [
+   3.954,
+   3.382
+  ],
+  "battle_start": [
+   1.954,
+   1.67,
+   2.094
+  ],
+  "enemy_spotted": [
+   1.902,
+   1.36,
+   1.898
+  ],
+  "reloaded": [
+   1.076,
+   0.742,
+   1.08
+  ],
+  "miss": [
+   1.032,
+   1.67,
+   0.946
+  ],
+  "reloading": [
+   1.506,
+   1.846
+  ],
+  "target_destroyed": [
+   1.584,
+   1.252,
+   1.724
+  ],
+  "gunship_howitzer": [
+   1.126,
+   1.968
+  ],
+  "turret_jammed": [
+   2.596,
+   2.094
+  ],
+  "quiet_crew": [
+   2.218,
+   2.302,
+   1.69
+  ],
+  "engine_damaged": [
+   1.37,
+   2.476
+  ],
+  "quiet_scan": [
+   1.654,
+   1.876,
+   2.81,
+   1.826
+  ],
+  "firing": [
+   1.338,
+   0.898,
+   1.16
+  ],
+  "wave_cleared": [
+   2.172,
+   2.582
+  ],
+  "friendly_ram": [
+   2.166,
+   1.58
+  ],
+  "air_call_artillery": [
+   3.336,
+   3.062
+  ],
+  "start_air_support": [
+   3.892,
+   3.282
+  ],
+  "air_incoming": [
+   2.924,
+   3.166
+  ],
+  "air_call_strafe": [
+   3.06,
+   3.306
+  ],
+  "aircraft_downed": [
+   1.762,
+   2.66
+  ],
+  "air_call_recon": [
+   3.702,
+   2.77
+  ],
+  "artillery_incoming": [
+   2.568,
+   3.262
+  ],
+  "air_call_bomb": [
+   4.228,
+   3.152
+  ]
+ },
+ "hi": {
+  "draw": [
+   3.122
+  ],
+  "feed_damaged": [
+   1.356
+  ],
+  "autoloader_damaged": [
+   1.362
+  ],
+  "gun_mount_damaged": [
+   1.474
+  ],
+  "roof_gun_damaged": [
+   2.044
+  ],
+  "missile_rack_damaged": [
+   1.346
+  ],
+  "crew_recovered": [
+   1.808
+  ],
+  "last_tank": [
+   3.464
+  ],
+  "pickup_collected": [
+   1.646
+  ],
+  "double_kill": [
+   1.434,
+   2.226
+  ],
+  "last_enemy": [
+   2.63
+  ],
+  "outnumbered": [
+   2.664
+  ],
+  "back_on_tracks": [
+   1.92
+  ],
+  "taking_water": [
+   1.534
+  ],
+  "ammo_out_all": [
+   2.154
+  ],
+  "think_step_by_step": [
+   3.396
+  ],
+  "step_by_step_reply": [
+   3.548
+  ],
+  "enemy_flag_returned": [
+   2.182
+  ],
+  "last_survivor": [
+   2.83
+  ],
+  "on_the_move": [
+   0.946,
+   1.648
+  ],
+  "defeat": [
+   2.544,
+   3.14
+  ],
+  "spotted_right": [
+   1.11,
+   1.44
+  ],
+  "spotted_front": [
+   1.294,
+   1.458
+  ],
+  "sixth_sense": [
+   1.808,
+   2.4
+  ],
+  "spotted_left": [
+   1.192,
+   1.516
+  ],
+  "victory": [
+   2.884,
+   3.042
+  ],
+  "spotted_rear": [
+   1.206,
+   1.172
+  ],
+  "penetration": [
+   1.188,
+   2.444
+  ],
+  "missile_away": [
+   1.432,
+   2.188
+  ],
+  "enemy_crit": [
+   2.308,
+   1.68
+  ],
+  "ricochet": [
+   1.166,
+   1.486
+  ],
+  "enemy_fire": [
+   1.382,
+   1.23
+  ],
+  "reloading": [
+   1.96,
+   1.728
+  ],
+  "load_kinetic": [
+   0.964,
+   1.598
+  ],
+  "load_missile": [
+   1.114,
+   1.186
+  ],
+  "enemy_ammo_rack": [
+   3.032,
+   2.698
+  ],
+  "gunship_cannon": [
+   1.422,
+   1.788
+  ],
+  "load_he": [
+   1.124,
+   1.792
+  ],
+  "load_heat": [
+   0.806,
+   1.216
+  ],
+  "gunship_howitzer": [
+   0.91,
+   2.014
+  ],
+  "gunship_double": [
+   2.226,
+   2.616
+  ],
+  "gunship_missile": [
+   0.822,
+   1.11
+  ],
+  "were_hit": [
+   1.156,
+   1.468
+  ],
+  "ammo_empty": [
+   0.96,
+   1.368
+  ],
+  "ammo_low": [
+   1.704,
+   3.508
+  ],
+  "fuel_tank": [
+   1.208,
+   1.37
+  ],
+  "ammo_rack": [
+   1.358,
+   1.308
+  ],
+  "gunship_kill": [
+   2.912,
+   2.37
+  ],
+  "bounced_us": [
+   2.382,
+   2.702
+  ],
+  "low_hp": [
+   4.496,
+   3.108
+  ],
+  "fire": [
+   2.056,
+   1.208
+  ],
+  "engine_damaged": [
+   1.164,
+   2.12
+  ],
+  "gun_damaged": [
+   1.406,
+   1.07
+  ],
+  "fire_out": [
+   2.018,
+   1.976
+  ],
+  "track_gone": [
+   2.236,
+   1.06
+  ],
+  "engine_destroyed": [
+   1.208,
+   1.362
+  ],
+  "radio_damaged": [
+   1.664,
+   1.424
+  ],
+  "transmission_damaged": [
+   1.198,
+   2.562
+  ],
+  "optics_damaged": [
+   1.038,
+   1.462
+  ],
+  "turret_jammed": [
+   2.16,
+   1.738
+  ],
+  "repairs": [
+   1.258,
+   1.54
+  ],
+  "commander_down": [
+   1.784,
+   3.188
+  ],
+  "driver_down": [
+   2.77,
+   2.5
+  ],
+  "track_repaired": [
+   2.358,
+   1.742
+  ],
+  "gun_repaired": [
+   1.32,
+   1.884
+  ],
+  "extinguishing": [
+   1.096,
+   1.294
+  ],
+  "smoke_out": [
+   0.898,
+   1.77
+  ],
+  "roof_gun_on": [
+   1.616,
+   1.48
+  ],
+  "engine_repaired": [
+   0.936,
+   1.572
+  ],
+  "suspension_set": [
+   1.682,
+   2.166
+  ],
+  "ally_destroyed": [
+   2.274,
+   2.462
+  ],
+  "objective_captured": [
+   1.4,
+   1.632
+  ],
+  "flag_taken_ours": [
+   1.936,
+   2.556
+  ],
+  "flag_captured": [
+   1.492,
+   2.134
+  ],
+  "flag_returned": [
+   2.064,
+   1.774
+  ],
+  "objective_lost": [
+   1.488,
+   1.52
+  ],
+  "flag_taken_theirs": [
+   1.824,
+   2.798
+  ],
+  "wave_cleared": [
+   1.58,
+   3.01
+  ],
+  "wave_incoming": [
+   1.786,
+   2.356
+  ],
+  "line_advanced": [
+   1.878,
+   2.026
+  ],
+  "respawn": [
+   1.224,
+   2.448
+  ],
+  "goal_scored": [
+   0.97,
+   1.44
+  ],
+  "friendly_fire": [
+   2.166,
+   1.742
+  ],
+  "supply_repair": [
+   1.948,
+   1.802
+  ],
+  "supply_ammo": [
+   1.54,
+   1.936
+  ],
+  "hit_by_friendly": [
+   2.348,
+   2.484
+  ],
+  "rammed": [
+   1.64,
+   1.354
+  ],
+  "friendly_ram": [
+   2.06,
+   2.012
+  ],
+  "spotted_multiple": [
+   1.738,
+   2.012
+  ],
+  "ally_kill": [
+   1.34,
+   1.928
+  ],
+  "drone_lost": [
+   1.48,
+   2.174
+  ],
+  "near_miss": [
+   1.658,
+   1.826
+  ],
+  "drone_incoming": [
+   1.25,
+   1.412
+  ],
+  "missile_incoming": [
+   1.204,
+   1.728
+  ],
+  "drone_launch": [
+   1.266,
+   1.604
+  ],
+  "stuck": [
+   1.73,
+   1.882
+  ],
+  "enemy_gun_damaged": [
+   1.54,
+   1.18
+  ],
+  "target_locked": [
+   1.166,
+   1.188
+  ],
+  "target_lost": [
+   1.608,
+   1.26
+  ],
+  "enemy_crew_hit": [
+   1.696,
+   1.298
+  ],
+  "enemy_engine_hit": [
+   1.476,
+   2.714
+  ],
+  "enemy_immobilized": [
+   2.082,
+   2.222
+  ],
+  "objective_contested": [
+   2,
+   1.946
+  ],
+  "quiet_hold": [
+   2.81,
+   3.372
+  ],
+  "quiet_move": [
+   2.974,
+   2.58
+  ],
+  "building_down": [
+   0.82,
+   1.564
+  ],
+  "hull_status": [
+   2.798,
+   2.778
+  ],
+  "artillery_far": [
+   2.118,
+   2.718
+  ],
+  "aircraft_overhead": [
+   1.894,
+   2.088
+  ],
+  "objective_push": [
+   1.414,
+   1.134
+  ],
+  "fire_command_heat": [
+   2.136,
+   2.356
+  ],
+  "identified": [
+   1.068,
+   1.528
+  ],
+  "in_cover": [
+   1.578,
+   2.268
+  ],
+  "fire_command_kinetic": [
+   2.338,
+   2.49
+  ],
+  "fire_command_missile": [
+   2.358,
+   2.71
+  ],
+  "aps_intercept_them": [
+   1.54,
+   2.136
+  ],
+  "re_engage": [
+   1.128,
+   2.636
+  ],
+  "fire_command_he": [
+   2.484,
+   2.808
+  ],
+  "cease_fire": [
+   2.526,
+   2.436
+  ],
+  "enemy_era": [
+   1.666,
+   1.312
+  ],
+  "drone_battery_low": [
+   1.73,
+   2.23
+  ],
+  "drone_recovered": [
+   1.362,
+   2.054
+  ],
+  "drone_shot_down": [
+   1.696,
+   2.258
+  ],
+  "aps_intercept_us": [
+   2.52,
+   2.724
+  ],
+  "drone_link_weak": [
+   1.854,
+   2.784
+  ],
+  "era_us": [
+   3.082,
+   3.816
+  ],
+  "enemy_drone_down": [
+   1.4,
+   1.242
+  ],
+  "jump_brace": [
+   1.002,
+   1.436
+  ],
+  "drone_kill": [
+   2.84,
+   2.57
+  ],
+  "enemy_smoke": [
+   1.58,
+   2.096
+  ],
+  "reversing": [
+   0.944,
+   1.052
+  ],
+  "obstacle_through": [
+   2.118,
+   3.034
+  ],
+  "gunship_cleared_hot": [
+   1.642,
+   2.842
+  ],
+  "crew_ready": [
+   4.34,
+   1.672
+  ],
+  "crew_report": [
+   1.496,
+   1.94
+  ],
+  "gunship_rifle": [
+   2.232,
+   2.226
+  ],
+  "gunship_splash": [
+   2.312,
+   2.09
+  ],
+  "gunship_danger_close": [
+   1.358,
+   2.83
+  ],
+  "gunship_good_hits": [
+   1.658,
+   2.85
+  ],
+  "gunship_shift_fire": [
+   1.456,
+   2.002
+  ],
+  "gunship_rounds_complete": [
+   1.168,
+   2.426
+  ],
+  "gunship_tally": [
+   2.14,
+   2.112
+  ],
+  "gunship_friendly_down": [
+   1.788,
+   2.36
+  ],
+  "start_flag": [
+   2.468,
+   2.422
+  ],
+  "gunship_victory": [
+   3.146,
+   2.848
+  ],
+  "gunship_friendly_extracted": [
+   1.958,
+   1.512
+  ],
+  "start_zones": [
+   2.7,
+   2.598
+  ],
+  "gunship_defeat": [
+   2.996,
+   2.6
+  ],
+  "start_assault": [
+   1.856,
+   2.626
+  ],
+  "start_mars": [
+   2.648,
+   2.496
+  ],
+  "start_hunt": [
+   3.132,
+   2.748
+  ],
+  "start_juggernaut": [
+   3.356,
+   2.932
+  ],
+  "start_horde": [
+   3.424,
+   2.78
+  ],
+  "start_gun_game": [
+   2.578,
+   3.168
+  ],
+  "start_survivors": [
+   3.972,
+   2.868
+  ],
+  "start_range": [
+   1.494,
+   2.432
+  ],
+  "flag_dropped_ours": [
+   2.364,
+   2.024
+  ],
+  "objective_contesting": [
+   1.818,
+   2.394
+  ],
+  "start_drone": [
+   2.774,
+   2.276
+  ],
+  "ball_reset": [
+   1.702,
+   2.584
+  ],
+  "flag_lost": [
+   2.168,
+   3.482
+  ],
+  "flag_dropped_theirs": [
+   1.83,
+   2.9
+  ],
+  "wave_swarm": [
+   2.8,
+   2.56
+  ],
+  "counter_attack": [
+   1.136,
+   2.382
+  ],
+  "goal_conceded": [
+   1.182,
+   2.066
+  ],
+  "infected_turned": [
+   4.408,
+   3.32
+  ],
+  "wave_runners": [
+   2.348,
+   3.42
+  ],
+  "ally_infected": [
+   3.412,
+   2.124
+  ],
+  "juggernaut_spotted": [
+   1.09,
+   1.57
+  ],
+  "final_line": [
+   2.024,
+   2.504
+  ],
+  "juggernaut_down": [
+   1.87,
+   2.006
+  ],
+  "gun_game_final": [
+   2.43,
+   2.972
+  ],
+  "victory_survivors": [
+   2.718,
+   3.164
+  ],
+  "defeat_overrun": [
+   2.33,
+   2.202
+  ],
+  "victory_juggernaut": [
+   3.076,
+   1.962
+  ],
+  "enemy_final_weapon": [
+   2.44,
+   3.116
+  ],
+  "victory_assault": [
+   2.626,
+   3.034
+  ],
+  "battle_start": [
+   1.856,
+   2.062,
+   1.648
+  ],
+  "firing": [
+   0.99,
+   1.228,
+   0.996
+  ],
+  "enemy_spotted": [
+   1.794,
+   0.676,
+   1.568
+  ],
+  "miss": [
+   0.954,
+   1.922,
+   0.964
+  ],
+  "nonpen": [
+   1.086,
+   1.12
+  ],
+  "reloaded": [
+   1.404,
+   1.236,
+   1.384
+  ],
+  "target_destroyed": [
+   1.476,
+   1.2,
+   1.872
+  ],
+  "quiet_crew": [
+   2.382,
+   2.496,
+   1.468
+  ],
+  "flipped": [
+   1.34,
+   1.74
+  ],
+  "start_ball": [
+   1.882,
+   2.472
+  ],
+  "loader_down": [
+   2.66,
+   2.674
+  ],
+  "quiet_scan": [
+   1.646,
+   1.916,
+   2.706,
+   2.134
+  ],
+  "gunner_down": [
+   1.002,
+   2.118
+  ],
+  "air_call_recon": [
+   2.71,
+   1.79
+  ],
+  "air_call_strafe": [
+   2.2,
+   1.766
+  ],
+  "air_call_artillery": [
+   2.69,
+   2.29
+  ],
+  "air_call_bomb": [
+   2.828,
+   1.698
+  ],
+  "air_incoming": [
+   2.164,
+   2.214
+  ],
+  "start_air_support": [
+   3.364,
+   3.158
+  ],
+  "aircraft_downed": [
+   1.452,
+   2.754
+  ],
+  "artillery_incoming": [
+   1.77,
+   2.226
+  ]
+ },
+ "ur": {
+  "draw": [
+   3.51
+  ],
+  "gun_mount_damaged": [
+   1.86
+  ],
+  "autoloader_damaged": [
+   1.614
+  ],
+  "feed_damaged": [
+   1.436
+  ],
+  "missile_rack_damaged": [
+   1.77
+  ],
+  "roof_gun_damaged": [
+   2.006
+  ],
+  "crew_recovered": [
+   2.212
+  ],
+  "last_tank": [
+   3.774
+  ],
+  "pickup_collected": [
+   1.698
+  ],
+  "double_kill": [
+   1.57,
+   2.232
+  ],
+  "outnumbered": [
+   2.38
+  ],
+  "last_enemy": [
+   3.006
+  ],
+  "back_on_tracks": [
+   1.906
+  ],
+  "taking_water": [
+   1.974
+  ],
+  "ammo_out_all": [
+   2.596
+  ],
+  "think_step_by_step": [
+   2.922
+  ],
+  "step_by_step_reply": [
+   4.012
+  ],
+  "enemy_flag_returned": [
+   2.266
+  ],
+  "last_survivor": [
+   2.94
+  ],
+  "on_the_move": [
+   1.288,
+   1.364
+  ],
+  "spotted_left": [
+   1.292,
+   1.286
+  ],
+  "victory": [
+   2.746,
+   3.326
+  ],
+  "spotted_front": [
+   1.294,
+   1.304
+  ],
+  "spotted_right": [
+   1.352,
+   1.262
+  ],
+  "spotted_rear": [
+   1.226,
+   1.22
+  ],
+  "defeat": [
+   2.662,
+   3.48
+  ],
+  "penetration": [
+   1.334,
+   2.814
+  ],
+  "nonpen": [
+   1.634,
+   1.222
+  ],
+  "sixth_sense": [
+   2.02,
+   2.1
+  ],
+  "ricochet": [
+   1.334,
+   1.376
+  ],
+  "enemy_fire": [
+   1.536,
+   1.556
+  ],
+  "enemy_crit": [
+   2.638,
+   1.006
+  ],
+  "missile_away": [
+   1.428,
+   2.876
+  ],
+  "reloading": [
+   1.498,
+   1.968
+  ],
+  "load_he": [
+   1.894,
+   1.758
+  ],
+  "enemy_ammo_rack": [
+   3.518,
+   3.108
+  ],
+  "load_kinetic": [
+   1.93,
+   1.584
+  ],
+  "load_heat": [
+   0.968,
+   1.624
+  ],
+  "gunship_missile": [
+   1.454,
+   1.598
+  ],
+  "load_missile": [
+   1.55,
+   1.438
+  ],
+  "gunship_double": [
+   2.232,
+   2.668
+  ],
+  "gunship_howitzer": [
+   0.886,
+   1.772
+  ],
+  "gunship_cannon": [
+   1.306,
+   2.146
+  ],
+  "ammo_empty": [
+   1.302,
+   1.874
+  ],
+  "fuel_tank": [
+   1.862,
+   1.83
+  ],
+  "gunship_kill": [
+   2.988,
+   2.444
+  ],
+  "were_hit": [
+   1.356,
+   1.594
+  ],
+  "engine_damaged": [
+   1.564,
+   2.52
+  ],
+  "bounced_us": [
+   2.478,
+   2.942
+  ],
+  "ammo_low": [
+   2.18,
+   3.344
+  ],
+  "ammo_rack": [
+   1.434,
+   2.104
+  ],
+  "low_hp": [
+   4.216,
+   3.686
+  ],
+  "engine_destroyed": [
+   1.334,
+   1.278
+  ],
+  "track_gone": [
+   3.014,
+   1.46
+  ],
+  "fire": [
+   1.824,
+   1.826
+  ],
+  "transmission_damaged": [
+   1.72,
+   2.94
+  ],
+  "optics_damaged": [
+   1.594,
+   1.896
+  ],
+  "fire_out": [
+   2.002,
+   1.748
+  ],
+  "repairs": [
+   1.56,
+   1.842
+  ],
+  "gun_damaged": [
+   1.818,
+   1.45
+  ],
+  "gunner_down": [
+   2.132,
+   2.064
+  ],
+  "radio_damaged": [
+   1.73,
+   1.64
+  ],
+  "commander_down": [
+   2.552,
+   3.76
+  ],
+  "gun_repaired": [
+   1.816,
+   1.838
+  ],
+  "loader_down": [
+   2.214,
+   2.02
+  ],
+  "driver_down": [
+   2.148,
+   2.12
+  ],
+  "track_repaired": [
+   2.86,
+   1.818
+  ],
+  "extinguishing": [
+   1.134,
+   1.216
+  ],
+  "engine_repaired": [
+   1.676,
+   1.696
+  ],
+  "smoke_out": [
+   0.83,
+   1.942
+  ],
+  "roof_gun_on": [
+   1.816,
+   1.448
+  ],
+  "objective_lost": [
+   1.814,
+   1.738
+  ],
+  "objective_captured": [
+   1.716,
+   1.244
+  ],
+  "suspension_set": [
+   1.65,
+   2.47
+  ],
+  "ally_destroyed": [
+   1.988,
+   2.514
+  ],
+  "goal_scored": [
+   1.336,
+   1.342
+  ],
+  "flag_captured": [
+   1.296,
+   2.174
+  ],
+  "flag_taken_ours": [
+   2.312,
+   3.012
+  ],
+  "flag_returned": [
+   2.228,
+   1.802
+  ],
+  "wave_incoming": [
+   1.176,
+   2.56
+  ],
+  "flag_taken_theirs": [
+   1.996,
+   2.98
+  ],
+  "respawn": [
+   1.736,
+   2.48
+  ],
+  "line_advanced": [
+   2.05,
+   2.288
+  ],
+  "wave_cleared": [
+   2.062,
+   2.904
+  ],
+  "friendly_fire": [
+   2.36,
+   1.746
+  ],
+  "supply_ammo": [
+   1.84,
+   1.616
+  ],
+  "supply_repair": [
+   1.724,
+   1.946
+  ],
+  "friendly_ram": [
+   2.902,
+   2.144
+  ],
+  "ally_kill": [
+   1.644,
+   1.598
+  ],
+  "rammed": [
+   1.726,
+   1.68
+  ],
+  "drone_incoming": [
+   1.254,
+   1.536
+  ],
+  "hit_by_friendly": [
+   2.308,
+   2.744
+  ],
+  "drone_launch": [
+   1.34,
+   1.546
+  ],
+  "spotted_multiple": [
+   1.798,
+   1.974
+  ],
+  "drone_lost": [
+   1.678,
+   2.246
+  ],
+  "stuck": [
+   2.372,
+   2.4
+  ],
+  "enemy_gun_damaged": [
+   1.934,
+   1.338
+  ],
+  "flipped": [
+   1.898,
+   2.168
+  ],
+  "target_locked": [
+   1.398,
+   1.672
+  ],
+  "target_lost": [
+   2.064,
+   1.84
+  ],
+  "enemy_crew_hit": [
+   2.14,
+   1.42
+  ],
+  "enemy_immobilized": [
+   3.468,
+   2.422
+  ],
+  "enemy_engine_hit": [
+   1.528,
+   2.736
+  ],
+  "objective_contested": [
+   2.326,
+   1.646
+  ],
+  "building_down": [
+   1.034,
+   1.684
+  ],
+  "quiet_hold": [
+   2.516,
+   2.936
+  ],
+  "quiet_move": [
+   3.17,
+   2.662
+  ],
+  "hull_status": [
+   3.12,
+   2.628
+  ],
+  "artillery_far": [
+   2.346,
+   2.64
+  ],
+  "in_cover": [
+   1.618,
+   2.402
+  ],
+  "aircraft_overhead": [
+   1.812,
+   2.472
+  ],
+  "objective_push": [
+   1.538,
+   1.996
+  ],
+  "fire_command_kinetic": [
+   2.252,
+   2.072
+  ],
+  "fire_command_heat": [
+   2.292,
+   2.49
+  ],
+  "identified": [
+   1.402,
+   2.648
+  ],
+  "fire_command_missile": [
+   2.552,
+   2.726
+  ],
+  "fire_command_he": [
+   2.432,
+   2.748
+  ],
+  "aps_intercept_us": [
+   2.862,
+   2.85
+  ],
+  "aps_intercept_them": [
+   1.802,
+   2.778
+  ],
+  "cease_fire": [
+   2.468,
+   2.858
+  ],
+  "re_engage": [
+   1.232,
+   2.538
+  ],
+  "drone_battery_low": [
+   1.97,
+   2.556
+  ],
+  "drone_link_weak": [
+   2.178,
+   3.264
+  ],
+  "enemy_era": [
+   1.852,
+   1.556
+  ],
+  "drone_recovered": [
+   1.554,
+   1.724
+  ],
+  "era_us": [
+   2.938,
+   3.78
+  ],
+  "drone_shot_down": [
+   1.686,
+   2.696
+  ],
+  "enemy_drone_down": [
+   2.072,
+   1.576
+  ],
+  "reversing": [
+   1.428,
+   1.3
+  ],
+  "drone_kill": [
+   2.928,
+   2.988
+  ],
+  "crew_ready": [
+   4.344,
+   1.524
+  ],
+  "crew_report": [
+   1.682,
+   2.142
+  ],
+  "enemy_smoke": [
+   1.514,
+   2.476
+  ],
+  "gunship_rifle": [
+   2.196,
+   2.454
+  ],
+  "jump_brace": [
+   1.63,
+   1.7
+  ],
+  "obstacle_through": [
+   2.824,
+   3.056
+  ],
+  "gunship_splash": [
+   1.132,
+   2.338
+  ],
+  "gunship_rounds_complete": [
+   1.256,
+   2.662
+  ],
+  "gunship_danger_close": [
+   1.364,
+   2.838
+  ],
+  "gunship_shift_fire": [
+   1.976,
+   2.062
+  ],
+  "gunship_good_hits": [
+   2.076,
+   3.224
+  ],
+  "gunship_cleared_hot": [
+   1.74,
+   3.064
+  ],
+  "gunship_tally": [
+   2.498,
+   1.952
+  ],
+  "gunship_friendly_extracted": [
+   1.92,
+   1.762
+  ],
+  "gunship_friendly_down": [
+   1.8,
+   2.798
+  ],
+  "gunship_defeat": [
+   3.584,
+   2.96
+  ],
+  "start_flag": [
+   3.014,
+   2.062
+  ],
+  "gunship_victory": [
+   3.886,
+   2.12
+  ],
+  "start_zones": [
+   2.77,
+   2.304
+  ],
+  "start_assault": [
+   2.192,
+   2.752
+  ],
+  "start_ball": [
+   2.302,
+   2.392
+  ],
+  "start_horde": [
+   3.298,
+   3.292
+  ],
+  "start_survivors": [
+   3.842,
+   2.83
+  ],
+  "start_mars": [
+   3.024,
+   2.658
+  ],
+  "start_hunt": [
+   4.15,
+   2.624
+  ],
+  "start_drone": [
+   2.952,
+   2.618
+  ],
+  "start_juggernaut": [
+   3.1,
+   3.258
+  ],
+  "start_range": [
+   1.278,
+   2.532
+  ],
+  "flag_dropped_theirs": [
+   1.81,
+   2.808
+  ],
+  "start_gun_game": [
+   2.768,
+   3.332
+  ],
+  "flag_lost": [
+   2.678,
+   3.36
+  ],
+  "flag_dropped_ours": [
+   2.82,
+   2.176
+  ],
+  "goal_conceded": [
+   1.738,
+   2.7
+  ],
+  "ball_reset": [
+   1.45,
+   2.264
+  ],
+  "objective_contesting": [
+   2.174,
+   2.694
+  ],
+  "wave_swarm": [
+   2.844,
+   2.74
+  ],
+  "wave_runners": [
+   2.09,
+   3.752
+  ],
+  "counter_attack": [
+   0.93,
+   3.262
+  ],
+  "final_line": [
+   1.974,
+   2.294
+  ],
+  "juggernaut_down": [
+   2.052,
+   2.1
+  ],
+  "infected_turned": [
+   4.268,
+   3.64
+  ],
+  "juggernaut_spotted": [
+   1.604,
+   1.712
+  ],
+  "ally_infected": [
+   3.802,
+   2.578
+  ],
+  "victory_juggernaut": [
+   2.462,
+   1.594
+  ],
+  "victory_survivors": [
+   2.412,
+   2.896
+  ],
+  "victory_assault": [
+   2.962,
+   2.876
+  ],
+  "enemy_final_weapon": [
+   2.318,
+   3.032
+  ],
+  "gun_game_final": [
+   2.552,
+   4.018
+  ],
+  "defeat_overrun": [
+   2.532,
+   2.238
+  ],
+  "firing": [
+   1.346,
+   1.152,
+   1.116
+  ],
+  "battle_start": [
+   2.198,
+   1.592,
+   1.704
+  ],
+  "enemy_spotted": [
+   2.09,
+   1.094,
+   1.65
+  ],
+  "target_destroyed": [
+   1.796,
+   1.498,
+   1.7
+  ],
+  "miss": [
+   0.882,
+   2.242,
+   0.804
+  ],
+  "reloaded": [
+   1.254,
+   1.892,
+   1.064
+  ],
+  "near_miss": [
+   2.31,
+   1.544
+  ],
+  "quiet_crew": [
+   2.66,
+   2.774,
+   1.724
+  ],
+  "turret_jammed": [
+   2.746,
+   2.744
+  ],
+  "quiet_scan": [
+   2.032,
+   2.158,
+   2.676,
+   1.44
+  ],
+  "missile_incoming": [
+   1.314,
+   2.47
+  ],
+  "air_call_artillery": [
+   2.81,
+   2.3
+  ],
+  "air_call_strafe": [
+   2.302,
+   1.828
+  ],
+  "air_call_recon": [
+   2.85,
+   1.83
+  ],
+  "air_call_bomb": [
+   2.986,
+   1.88
+  ],
+  "artillery_incoming": [
+   1.684,
+   2.442
+  ],
+  "start_air_support": [
+   4.086,
+   3.206
+  ],
+  "air_incoming": [
+   2.376,
+   2.32
+  ],
+  "aircraft_downed": [
+   2.044,
+   2.83
+  ]
+ },
+ "bn": {
+  "draw": [
+   3.028
+  ],
+  "gun_mount_damaged": [
+   1.644
+  ],
+  "roof_gun_damaged": [
+   1.92
+  ],
+  "feed_damaged": [
+   1.468
+  ],
+  "autoloader_damaged": [
+   1.262
+  ],
+  "missile_rack_damaged": [
+   1.512
+  ],
+  "crew_recovered": [
+   1.55
+  ],
+  "last_tank": [
+   3.018
+  ],
+  "pickup_collected": [
+   1.492
+  ],
+  "last_enemy": [
+   1.588
+  ],
+  "double_kill": [
+   1.222,
+   2.14
+  ],
+  "outnumbered": [
+   1.692
+  ],
+  "back_on_tracks": [
+   1.486
+  ],
+  "taking_water": [
+   1.6
+  ],
+  "ammo_out_all": [
+   2.332
+  ],
+  "think_step_by_step": [
+   3.372
+  ],
+  "step_by_step_reply": [
+   4.036
+  ],
+  "enemy_flag_returned": [
+   2.014
+  ],
+  "last_survivor": [
+   2.422
+  ],
+  "on_the_move": [
+   0.97,
+   1.396
+  ],
+  "victory": [
+   2.614,
+   2.956
+  ],
+  "spotted_left": [
+   1.152,
+   1.18
+  ],
+  "defeat": [
+   2.672,
+   2.764
+  ],
+  "spotted_front": [
+   1.176,
+   1.142
+  ],
+  "spotted_rear": [
+   1.412,
+   1.066
+  ],
+  "missile_away": [
+   1.318,
+   1.96
+  ],
+  "spotted_right": [
+   1.13,
+   1.198
+  ],
+  "sixth_sense": [
+   1.782,
+   2.252
+  ],
+  "penetration": [
+   0.828,
+   2.286
+  ],
+  "ricochet": [
+   0.79,
+   0.974
+  ],
+  "nonpen": [
+   0.986,
+   1.33
+  ],
+  "enemy_fire": [
+   1.08,
+   1.398
+  ],
+  "enemy_crit": [
+   2.88,
+   1.19
+  ],
+  "load_heat": [
+   0.854,
+   1.178
+  ],
+  "enemy_ammo_rack": [
+   2.768,
+   2.59
+  ],
+  "gunship_howitzer": [
+   0.874,
+   1.816
+  ],
+  "load_missile": [
+   1.148,
+   1.306
+  ],
+  "load_kinetic": [
+   1.08,
+   1.296
+  ],
+  "gunship_missile": [
+   1.446,
+   1.276
+  ],
+  "ammo_low": [
+   1.492,
+   2.294
+  ],
+  "load_he": [
+   1.59,
+   1.568
+  ],
+  "gunship_kill": [
+   2.216,
+   2.164
+  ],
+  "were_hit": [
+   1.39,
+   1.13
+  ],
+  "gunship_double": [
+   2.14,
+   2.626
+  ],
+  "ammo_empty": [
+   1.132,
+   1.356
+  ],
+  "bounced_us": [
+   2.532,
+   2.6
+  ],
+  "low_hp": [
+   3.476,
+   2.18
+  ],
+  "ammo_rack": [
+   1.402,
+   1.462
+  ],
+  "fire": [
+   2.296,
+   1.504
+  ],
+  "engine_damaged": [
+   1.386,
+   2.454
+  ],
+  "fuel_tank": [
+   1.502,
+   1.364
+  ],
+  "track_gone": [
+   2.024,
+   1.27
+  ],
+  "fire_out": [
+   1.924,
+   1.314
+  ],
+  "engine_destroyed": [
+   1.6,
+   1.82
+  ],
+  "gun_damaged": [
+   1.618,
+   1.078
+  ],
+  "turret_jammed": [
+   2.126,
+   1.782
+  ],
+  "transmission_damaged": [
+   1.352,
+   2.58
+  ],
+  "optics_damaged": [
+   1.184,
+   1.606
+  ],
+  "radio_damaged": [
+   1.58,
+   1.346
+  ],
+  "loader_down": [
+   2.148,
+   1.868
+  ],
+  "gunner_down": [
+   1.886,
+   2.04
+  ],
+  "driver_down": [
+   1.836,
+   2.074
+  ],
+  "track_repaired": [
+   2.344,
+   1.87
+  ],
+  "repairs": [
+   1.332,
+   1.572
+  ],
+  "commander_down": [
+   1.686,
+   2.826
+  ],
+  "engine_repaired": [
+   1.198,
+   1.146
+  ],
+  "gun_repaired": [
+   1.554,
+   1.588
+  ],
+  "extinguishing": [
+   1.378,
+   0.968
+  ],
+  "roof_gun_on": [
+   1.412,
+   1.23
+  ],
+  "suspension_set": [
+   1.704,
+   2.42
+  ],
+  "ally_destroyed": [
+   1.928,
+   2.136
+  ],
+  "objective_lost": [
+   1.432,
+   1.634
+  ],
+  "flag_taken_ours": [
+   1.726,
+   2.172
+  ],
+  "smoke_out": [
+   0.832,
+   1.032
+  ],
+  "flag_returned": [
+   1.964,
+   1.654
+  ],
+  "objective_captured": [
+   1.606,
+   1.614
+  ],
+  "line_advanced": [
+   1.486,
+   1.868
+  ],
+  "flag_captured": [
+   1.642,
+   2.092
+  ],
+  "respawn": [
+   1.27,
+   2.08
+  ],
+  "flag_taken_theirs": [
+   1.828,
+   3.3
+  ],
+  "wave_cleared": [
+   1.204,
+   2.842
+  ],
+  "wave_incoming": [
+   1.35,
+   1.526
+  ],
+  "goal_scored": [
+   1.15,
+   1.31
+  ],
+  "hit_by_friendly": [
+   2.138,
+   2.638
+  ],
+  "supply_ammo": [
+   1.522,
+   1.938
+  ],
+  "supply_repair": [
+   1.676,
+   2.082
+  ],
+  "rammed": [
+   1.342,
+   1.654
+  ],
+  "friendly_ram": [
+   1.996,
+   1.97
+  ],
+  "friendly_fire": [
+   1.908,
+   2.488
+  ],
+  "ally_kill": [
+   1.092,
+   1.648
+  ],
+  "spotted_multiple": [
+   1.76,
+   1.628
+  ],
+  "drone_incoming": [
+   0.974,
+   1.56
+  ],
+  "drone_launch": [
+   1.338,
+   1.292
+  ],
+  "drone_lost": [
+   1.642,
+   1.988
+  ],
+  "flipped": [
+   1.53,
+   1.266
+  ],
+  "target_locked": [
+   1.484,
+   0.942
+  ],
+  "stuck": [
+   1.852,
+   1.992
+  ],
+  "missile_incoming": [
+   1.024,
+   2.402
+  ],
+  "near_miss": [
+   1.316,
+   1.486
+  ],
+  "enemy_crew_hit": [
+   1.534,
+   1.922
+  ],
+  "enemy_gun_damaged": [
+   1.356,
+   1.216
+  ],
+  "enemy_immobilized": [
+   2.572,
+   2.246
+  ],
+  "target_lost": [
+   1.516,
+   1.364
+  ],
+  "objective_contested": [
+   1.612,
+   1.444
+  ],
+  "enemy_engine_hit": [
+   1.292,
+   1.948
+  ],
+  "quiet_move": [
+   3.088,
+   2.576
+  ],
+  "building_down": [
+   1.406,
+   1.966
+  ],
+  "hull_status": [
+   2.43,
+   2.1
+  ],
+  "aircraft_overhead": [
+   1.462,
+   1.506
+  ],
+  "in_cover": [
+   2.136,
+   2.06
+  ],
+  "artillery_far": [
+   2.002,
+   2.09
+  ],
+  "fire_command_heat": [
+   2.374,
+   2.578
+  ],
+  "objective_push": [
+   1.53,
+   0.964
+  ],
+  "identified": [
+   1.086,
+   1.992
+  ],
+  "quiet_hold": [
+   2.5,
+   2.312
+  ],
+  "fire_command_missile": [
+   2.43,
+   2.788
+  ],
+  "fire_command_he": [
+   2.814,
+   2.992
+  ],
+  "re_engage": [
+   1.228,
+   2.298
+  ],
+  "aps_intercept_us": [
+   3.16,
+   2.21
+  ],
+  "era_us": [
+   2.868,
+   3.518
+  ],
+  "enemy_era": [
+   1.94,
+   1.408
+  ],
+  "cease_fire": [
+   2.314,
+   2.534
+  ],
+  "enemy_drone_down": [
+   1.242,
+   1.202
+  ],
+  "drone_battery_low": [
+   1.714,
+   2.108
+  ],
+  "aps_intercept_them": [
+   1.692,
+   2.336
+  ],
+  "reversing": [
+   0.926,
+   1.132
+  ],
+  "drone_recovered": [
+   1.61,
+   1.736
+  ],
+  "drone_link_weak": [
+   1.792,
+   3.226
+  ],
+  "jump_brace": [
+   1.234,
+   1.816
+  ],
+  "drone_shot_down": [
+   1.438,
+   2.606
+  ],
+  "drone_kill": [
+   2.482,
+   2.582
+  ],
+  "crew_report": [
+   1.588,
+   1.95
+  ],
+  "gunship_good_hits": [
+   1.584,
+   2.416
+  ],
+  "obstacle_through": [
+   2.278,
+   2.226
+  ],
+  "crew_ready": [
+   3.694,
+   1.296
+  ],
+  "enemy_smoke": [
+   1.324,
+   2.71
+  ],
+  "gunship_rifle": [
+   1.984,
+   2.418
+  ],
+  "gunship_shift_fire": [
+   1.252,
+   2.374
+  ],
+  "gunship_cleared_hot": [
+   1.986,
+   3.526
+  ],
+  "gunship_splash": [
+   2.228,
+   2.386
+  ],
+  "gunship_rounds_complete": [
+   1.544,
+   2.362
+  ],
+  "gunship_friendly_extracted": [
+   2.642,
+   1.766
+  ],
+  "gunship_danger_close": [
+   1.32,
+   3.58
+  ],
+  "gunship_defeat": [
+   2.35,
+   2.576
+  ],
+  "gunship_friendly_down": [
+   2.26,
+   2.59
+  ],
+  "gunship_tally": [
+   2.844,
+   2.522
+  ],
+  "start_zones": [
+   2.672,
+   2.434
+  ],
+  "start_horde": [
+   2.998,
+   3.14
+  ],
+  "gunship_victory": [
+   3.364,
+   2.33
+  ],
+  "start_assault": [
+   2.27,
+   2.21
+  ],
+  "start_juggernaut": [
+   3.254,
+   3.456
+  ],
+  "start_flag": [
+   2.906,
+   2.236
+  ],
+  "start_survivors": [
+   3.698,
+   2.806
+  ],
+  "start_gun_game": [
+   2.594,
+   3.24
+  ],
+  "start_mars": [
+   2.862,
+   2.398
+  ],
+  "start_drone": [
+   2.584,
+   2.278
+  ],
+  "start_ball": [
+   1.962,
+   2.256
+  ],
+  "start_hunt": [
+   3.158,
+   2.296
+  ],
+  "flag_dropped_ours": [
+   2.692,
+   2.156
+  ],
+  "goal_conceded": [
+   1.36,
+   2.216
+  ],
+  "start_range": [
+   1.55,
+   2.552
+  ],
+  "ball_reset": [
+   1.758,
+   2.508
+  ],
+  "flag_dropped_theirs": [
+   2.398,
+   2.68
+  ],
+  "flag_lost": [
+   2.406,
+   2.826
+  ],
+  "final_line": [
+   1.858,
+   2.21
+  ],
+  "objective_contesting": [
+   1.588,
+   2.342
+  ],
+  "wave_runners": [
+   2.6,
+   3.144
+  ],
+  "wave_swarm": [
+   2.042,
+   2.292
+  ],
+  "counter_attack": [
+   1.154,
+   2.744
+  ],
+  "infected_turned": [
+   3.584,
+   3.884
+  ],
+  "ally_infected": [
+   3.17,
+   2.178
+  ],
+  "victory_survivors": [
+   2.918,
+   3.676
+  ],
+  "juggernaut_down": [
+   1.796,
+   1.528
+  ],
+  "gun_game_final": [
+   2.226,
+   3.11
+  ],
+  "juggernaut_spotted": [
+   1.428,
+   1.598
+  ],
+  "victory_juggernaut": [
+   3.292,
+   2.052
+  ],
+  "victory_assault": [
+   2.284,
+   2.838
+  ],
+  "enemy_final_weapon": [
+   2.068,
+   2.694
+  ],
+  "defeat_overrun": [
+   2.292,
+   2.502
+  ],
+  "battle_start": [
+   1.866,
+   1.628,
+   1.546
+  ],
+  "firing": [
+   1.06,
+   0.7,
+   0.854
+  ],
+  "reloaded": [
+   1.082,
+   0.734,
+   1.106
+  ],
+  "miss": [
+   0.914,
+   1.624,
+   1.034
+  ],
+  "enemy_spotted": [
+   1.98,
+   1.046,
+   2.062
+  ],
+  "target_destroyed": [
+   1.46,
+   1.546,
+   1.246
+  ],
+  "reloading": [
+   1.396,
+   1.968
+  ],
+  "quiet_crew": [
+   1.924,
+   2.478,
+   0.988
+  ],
+  "fire_command_kinetic": [
+   2.42,
+   2.734
+  ],
+  "quiet_scan": [
+   1.574,
+   1.98,
+   2.512,
+   1.938
+  ],
+  "gunship_cannon": [
+   1.12,
+   1.752
+  ],
+  "air_call_artillery": [
+   3.052,
+   2.318
+  ],
+  "air_call_strafe": [
+   2.528,
+   2.302
+  ],
+  "air_call_recon": [
+   2.7,
+   1.856
+  ],
+  "air_incoming": [
+   2.636,
+   1.942
+  ],
+  "air_call_bomb": [
+   2.866,
+   1.746
+  ],
+  "start_air_support": [
+   3.292,
+   3.254
+  ],
+  "artillery_incoming": [
+   1.618,
+   2.248
+  ],
+  "aircraft_downed": [
+   1.514,
+   2.158
+  ]
+ },
+ "id-ID": {
+  "draw": [
+   3.308
+  ],
+  "gun_mount_damaged": [
+   1.416
+  ],
+  "roof_gun_damaged": [
+   1.802
+  ],
+  "feed_damaged": [
+   1.416
+  ],
+  "autoloader_damaged": [
+   1.712
+  ],
+  "missile_rack_damaged": [
+   1.226
+  ],
+  "crew_recovered": [
+   1.6
+  ],
+  "last_tank": [
+   3.556
+  ],
+  "pickup_collected": [
+   1.526
+  ],
+  "double_kill": [
+   1.832,
+   2.148
+  ],
+  "outnumbered": [
+   1.47
+  ],
+  "last_enemy": [
+   2.226
+  ],
+  "back_on_tracks": [
+   2.304
+  ],
+  "taking_water": [
+   1.364
+  ],
+  "ammo_out_all": [
+   1.85
+  ],
+  "think_step_by_step": [
+   3.112
+  ],
+  "step_by_step_reply": [
+   3.78
+  ],
+  "enemy_flag_returned": [
+   2.22
+  ],
+  "last_survivor": [
+   2.702
+  ],
+  "on_the_move": [
+   0.904,
+   1.224
+  ],
+  "victory": [
+   2.398,
+   2.648
+  ],
+  "spotted_left": [
+   0.686,
+   1.056
+  ],
+  "spotted_front": [
+   0.704,
+   1.1
+  ],
+  "spotted_rear": [
+   0.824,
+   1.144
+  ],
+  "defeat": [
+   2.122,
+   2.48
+  ],
+  "sixth_sense": [
+   1.688,
+   1.72
+  ],
+  "nonpen": [
+   0.962,
+   0.938
+  ],
+  "spotted_right": [
+   0.71,
+   1.056
+  ],
+  "penetration": [
+   0.986,
+   2.048
+  ],
+  "enemy_fire": [
+   1.336,
+   1.306
+  ],
+  "ricochet": [
+   1.014,
+   0.672
+  ],
+  "missile_away": [
+   1.452,
+   2.018
+  ],
+  "enemy_crit": [
+   2.144,
+   1.302
+  ],
+  "enemy_ammo_rack": [
+   2.946,
+   2.846
+  ],
+  "reloading": [
+   1.18,
+   1.458
+  ],
+  "load_kinetic": [
+   1.204,
+   1.166
+  ],
+  "load_heat": [
+   1.472,
+   1.45
+  ],
+  "load_missile": [
+   1.262,
+   1.26
+  ],
+  "load_he": [
+   1.574,
+   1.538
+  ],
+  "gunship_howitzer": [
+   1.294,
+   1.488
+  ],
+  "gunship_missile": [
+   1.584,
+   1.428
+  ],
+  "gunship_kill": [
+   2.672,
+   2.206
+  ],
+  "were_hit": [
+   0.956,
+   1.118
+  ],
+  "gunship_double": [
+   2.148,
+   2.586
+  ],
+  "ammo_empty": [
+   1.182,
+   1.188
+  ],
+  "bounced_us": [
+   2.64,
+   2.388
+  ],
+  "engine_damaged": [
+   1.058,
+   1.806
+  ],
+  "ammo_low": [
+   1.614,
+   2.656
+  ],
+  "low_hp": [
+   3.782,
+   2.866
+  ],
+  "fire_out": [
+   1.628,
+   1.764
+  ],
+  "ammo_rack": [
+   1.204,
+   1.006
+  ],
+  "transmission_damaged": [
+   1.012,
+   2.412
+  ],
+  "fire": [
+   1.596,
+   1.33
+  ],
+  "engine_destroyed": [
+   0.748,
+   1.444
+  ],
+  "track_gone": [
+   2.34,
+   0.928
+  ],
+  "optics_damaged": [
+   0.87,
+   1.472
+  ],
+  "gun_damaged": [
+   1.442,
+   1.03
+  ],
+  "turret_jammed": [
+   2.192,
+   2.51
+  ],
+  "loader_down": [
+   1.408,
+   1.446
+  ],
+  "commander_down": [
+   1.498,
+   3.082
+  ],
+  "gun_repaired": [
+   1.454,
+   1.75
+  ],
+  "repairs": [
+   1.474,
+   1.368
+  ],
+  "driver_down": [
+   1.51,
+   1.322
+  ],
+  "engine_repaired": [
+   1.392,
+   1.5
+  ],
+  "smoke_out": [
+   1.404,
+   0.908
+  ],
+  "extinguishing": [
+   0.882,
+   1.062
+  ],
+  "track_repaired": [
+   2.82,
+   1.736
+  ],
+  "suspension_set": [
+   1.988,
+   2.136
+  ],
+  "roof_gun_on": [
+   1.604,
+   1.842
+  ],
+  "objective_lost": [
+   1.284,
+   1.592
+  ],
+  "ally_destroyed": [
+   1.968,
+   1.854
+  ],
+  "flag_taken_ours": [
+   2.066,
+   2.644
+  ],
+  "objective_captured": [
+   1.61,
+   1.924
+  ],
+  "flag_captured": [
+   1.968,
+   1.778
+  ],
+  "flag_taken_theirs": [
+   1.356,
+   2.638
+  ],
+  "wave_cleared": [
+   2.456,
+   2.506
+  ],
+  "wave_incoming": [
+   1.492,
+   1.926
+  ],
+  "flag_returned": [
+   1.922,
+   1.724
+  ],
+  "line_advanced": [
+   2.01,
+   2.12
+  ],
+  "goal_scored": [
+   1.122,
+   1.69
+  ],
+  "supply_repair": [
+   1.884,
+   2.172
+  ],
+  "respawn": [
+   1.256,
+   2.128
+  ],
+  "hit_by_friendly": [
+   1.786,
+   2.562
+  ],
+  "supply_ammo": [
+   1.714,
+   1.52
+  ],
+  "friendly_fire": [
+   1.788,
+   1.494
+  ],
+  "ally_kill": [
+   1.318,
+   1.54
+  ],
+  "rammed": [
+   1.016,
+   1.198
+  ],
+  "friendly_ram": [
+   2.216,
+   2.162
+  ],
+  "drone_incoming": [
+   0.896,
+   1.584
+  ],
+  "drone_launch": [
+   1.144,
+   1.024
+  ],
+  "spotted_multiple": [
+   1.378,
+   1.448
+  ],
+  "flipped": [
+   1.544,
+   1.286
+  ],
+  "missile_incoming": [
+   1.112,
+   1.532
+  ],
+  "near_miss": [
+   1.452,
+   1.52
+  ],
+  "target_locked": [
+   1.628,
+   1.046
+  ],
+  "drone_lost": [
+   1.354,
+   1.966
+  ],
+  "target_lost": [
+   1.018,
+   1.224
+  ],
+  "enemy_immobilized": [
+   2.834,
+   2.556
+  ],
+  "stuck": [
+   1.848,
+   1.836
+  ],
+  "enemy_gun_damaged": [
+   1.508,
+   1.122
+  ],
+  "enemy_crew_hit": [
+   1.316,
+   1.786
+  ],
+  "enemy_engine_hit": [
+   1.076,
+   1.948
+  ],
+  "objective_contested": [
+   1.558,
+   1.354
+  ],
+  "quiet_hold": [
+   2.006,
+   2.422
+  ],
+  "artillery_far": [
+   2.122,
+   1.97
+  ],
+  "quiet_move": [
+   3.066,
+   2.196
+  ],
+  "building_down": [
+   0.996,
+   1.97
+  ],
+  "hull_status": [
+   3.376,
+   2.182
+  ],
+  "aircraft_overhead": [
+   1.488,
+   1.384
+  ],
+  "fire_command_kinetic": [
+   2.074,
+   2.414
+  ],
+  "in_cover": [
+   1.9,
+   1.918
+  ],
+  "fire_command_heat": [
+   2.116,
+   2.5
+  ],
+  "objective_push": [
+   1.326,
+   1.742
+  ],
+  "fire_command_he": [
+   2.492,
+   2.776
+  ],
+  "identified": [
+   1.1,
+   1.322
+  ],
+  "fire_command_missile": [
+   2.066,
+   2.35
+  ],
+  "cease_fire": [
+   2.294,
+   2.222
+  ],
+  "re_engage": [
+   0.696,
+   1.912
+  ],
+  "aps_intercept_us": [
+   2.724,
+   2.234
+  ],
+  "era_us": [
+   2.856,
+   4.022
+  ],
+  "aps_intercept_them": [
+   2.21,
+   2.032
+  ],
+  "drone_battery_low": [
+   1.336,
+   1.808
+  ],
+  "enemy_era": [
+   1.664,
+   0.94
+  ],
+  "enemy_drone_down": [
+   1.318,
+   1.154
+  ],
+  "drone_link_weak": [
+   1.446,
+   2.906
+  ],
+  "jump_brace": [
+   1.064,
+   1.172
+  ],
+  "drone_shot_down": [
+   1.628,
+   1.95
+  ],
+  "drone_recovered": [
+   1.292,
+   1.772
+  ],
+  "reversing": [
+   0.97,
+   0.86
+  ],
+  "enemy_smoke": [
+   1.206,
+   2.292
+  ],
+  "obstacle_through": [
+   1.706,
+   2.672
+  ],
+  "gunship_splash": [
+   1.044,
+   2.064
+  ],
+  "crew_ready": [
+   3.606,
+   2.376
+  ],
+  "drone_kill": [
+   2.518,
+   2.854
+  ],
+  "gunship_cleared_hot": [
+   2.244,
+   2.536
+  ],
+  "gunship_good_hits": [
+   1.126,
+   2.676
+  ],
+  "gunship_danger_close": [
+   1.03,
+   2.592
+  ],
+  "gunship_shift_fire": [
+   0.81,
+   2.062
+  ],
+  "crew_report": [
+   1.24,
+   2
+  ],
+  "gunship_rifle": [
+   0.898,
+   1.97
+  ],
+  "gunship_friendly_extracted": [
+   1.952,
+   1.758
+  ],
+  "gunship_tally": [
+   3.01,
+   2.612
+  ],
+  "gunship_rounds_complete": [
+   1.346,
+   2.136
+  ],
+  "start_flag": [
+   3.07,
+   1.844
+  ],
+  "gunship_friendly_down": [
+   2.16,
+   2.18
+  ],
+  "start_ball": [
+   2.068,
+   2.278
+  ],
+  "gunship_defeat": [
+   2.584,
+   2.664
+  ],
+  "gunship_victory": [
+   2.77,
+   2.188
+  ],
+  "start_horde": [
+   3.014,
+   2.54
+  ],
+  "start_zones": [
+   2.066,
+   2.34
+  ],
+  "start_juggernaut": [
+   3.43,
+   3.16
+  ],
+  "start_mars": [
+   2.944,
+   2.284
+  ],
+  "start_hunt": [
+   2.936,
+   2.052
+  ],
+  "start_range": [
+   1.318,
+   2.504
+  ],
+  "start_survivors": [
+   3.524,
+   2.3
+  ],
+  "start_gun_game": [
+   2.594,
+   3.41
+  ],
+  "start_assault": [
+   2.314,
+   2.002
+  ],
+  "flag_dropped_ours": [
+   2.772,
+   2.044
+  ],
+  "objective_contesting": [
+   1.94,
+   2.366
+  ],
+  "start_drone": [
+   3.006,
+   1.934
+  ],
+  "flag_dropped_theirs": [
+   1.548,
+   2.162
+  ],
+  "goal_conceded": [
+   1.732,
+   1.772
+  ],
+  "wave_runners": [
+   2.342,
+   2.274
+  ],
+  "flag_lost": [
+   2.144,
+   3.292
+  ],
+  "ball_reset": [
+   1.482,
+   1.816
+  ],
+  "infected_turned": [
+   3.084,
+   3.178
+  ],
+  "wave_swarm": [
+   2.59,
+   2.688
+  ],
+  "final_line": [
+   1.934,
+   2.566
+  ],
+  "ally_infected": [
+   3.772,
+   2.154
+  ],
+  "counter_attack": [
+   0.934,
+   2.362
+  ],
+  "juggernaut_spotted": [
+   1.368,
+   1.886
+  ],
+  "victory_juggernaut": [
+   2.656,
+   2.352
+  ],
+  "victory_survivors": [
+   2.396,
+   2.178
+  ],
+  "gun_game_final": [
+   2.028,
+   2.992
+  ],
+  "juggernaut_down": [
+   1.654,
+   1.898
+  ],
+  "defeat_overrun": [
+   1.602,
+   2.304
+  ],
+  "enemy_final_weapon": [
+   1.864,
+   3.2
+  ],
+  "victory_assault": [
+   3.402,
+   3.24
+  ],
+  "firing": [
+   0.952,
+   0.7,
+   0.958
+  ],
+  "enemy_spotted": [
+   1.614,
+   1.148,
+   1.488
+  ],
+  "miss": [
+   0.84,
+   1.578,
+   1.318
+  ],
+  "battle_start": [
+   1.806,
+   1.654,
+   1.556
+  ],
+  "reloaded": [
+   1.126,
+   0.986,
+   1.008
+  ],
+  "target_destroyed": [
+   1.668,
+   1.826,
+   1.622
+  ],
+  "radio_damaged": [
+   1.36,
+   1.178
+  ],
+  "quiet_crew": [
+   2.124,
+   1.894,
+   1.586
+  ],
+  "fuel_tank": [
+   1.356,
+   1.232
+  ],
+  "gunner_down": [
+   1.432,
+   1.264
+  ],
+  "quiet_scan": [
+   1.254,
+   1.422,
+   2.258,
+   1.456
+  ],
+  "gunship_cannon": [
+   1.336,
+   1.72
+  ],
+  "start_air_support": [
+   2.72,
+   3.504
+  ],
+  "air_call_recon": [
+   2.674,
+   1.932
+  ],
+  "air_call_bomb": [
+   2.232,
+   1.992
+  ],
+  "air_call_strafe": [
+   2.516,
+   2.166
+  ],
+  "air_incoming": [
+   2.24,
+   1.874
+  ],
+  "air_call_artillery": [
+   2.972,
+   2.614
+  ],
+  "aircraft_downed": [
+   1.38,
+   2.244
+  ],
+  "artillery_incoming": [
+   1.618,
+   2.078
+  ]
+ },
+ "ms": {
+  "draw": [
+   2.848
+  ],
+  "gun_mount_damaged": [
+   1.732
+  ],
+  "autoloader_damaged": [
+   2.104
+  ],
+  "feed_damaged": [
+   1.696
+  ],
+  "missile_rack_damaged": [
+   1.844
+  ],
+  "roof_gun_damaged": [
+   1.816
+  ],
+  "crew_recovered": [
+   1.676
+  ],
+  "last_tank": [
+   4.194
+  ],
+  "pickup_collected": [
+   1.652
+  ],
+  "outnumbered": [
+   2.282
+  ],
+  "double_kill": [
+   1.9,
+   2.326
+  ],
+  "last_enemy": [
+   2.458
+  ],
+  "taking_water": [
+   1.388
+  ],
+  "back_on_tracks": [
+   1.484
+  ],
+  "ammo_out_all": [
+   1.756
+  ],
+  "step_by_step_reply": [
+   3.64
+  ],
+  "think_step_by_step": [
+   3.286
+  ],
+  "enemy_flag_returned": [
+   2.368
+  ],
+  "last_survivor": [
+   3.122
+  ],
+  "on_the_move": [
+   0.984,
+   1.294
+  ],
+  "defeat": [
+   2.392,
+   2.08
+  ],
+  "spotted_front": [
+   0.712,
+   1.262
+  ],
+  "victory": [
+   2.366,
+   3.074
+  ],
+  "spotted_rear": [
+   0.756,
+   1.168
+  ],
+  "spotted_left": [
+   0.678,
+   1.336
+  ],
+  "sixth_sense": [
+   1.306,
+   1.718
+  ],
+  "spotted_right": [
+   0.734,
+   1.298
+  ],
+  "nonpen": [
+   0.902,
+   1.376
+  ],
+  "penetration": [
+   0.958,
+   2.268
+  ],
+  "ricochet": [
+   1.046,
+   0.816
+  ],
+  "missile_away": [
+   1.862,
+   2.74
+  ],
+  "enemy_fire": [
+   1.428,
+   1.118
+  ],
+  "enemy_ammo_rack": [
+   2.598,
+   2.324
+  ],
+  "enemy_crit": [
+   1.818,
+   1.45
+  ],
+  "load_heat": [
+   1.156,
+   1.208
+  ],
+  "reloading": [
+   1.692,
+   1.544
+  ],
+  "load_missile": [
+   1.554,
+   1.71
+  ],
+  "load_kinetic": [
+   1.178,
+   1.092
+  ],
+  "gunship_howitzer": [
+   1.562,
+   1.856
+  ],
+  "load_he": [
+   1.43,
+   1.656
+  ],
+  "gunship_double": [
+   2.326,
+   2.708
+  ],
+  "gunship_missile": [
+   1.992,
+   1.662
+  ],
+  "gunship_kill": [
+   2.492,
+   2.666
+  ],
+  "ammo_empty": [
+   1.458,
+   1.376
+  ],
+  "were_hit": [
+   1.05,
+   1.382
+  ],
+  "ammo_low": [
+   1.806,
+   2.86
+  ],
+  "fuel_tank": [
+   1.46,
+   1.326
+  ],
+  "ammo_rack": [
+   1.172,
+   1.516
+  ],
+  "engine_destroyed": [
+   0.888,
+   1.712
+  ],
+  "fire": [
+   1.332,
+   1.76
+  ],
+  "bounced_us": [
+   2.73,
+   2.684
+  ],
+  "engine_damaged": [
+   1.082,
+   2.102
+  ],
+  "low_hp": [
+   3.334,
+   2.814
+  ],
+  "fire_out": [
+   1.902,
+   1.736
+  ],
+  "turret_jammed": [
+   2.384,
+   2.242
+  ],
+  "gun_damaged": [
+   1.514,
+   1.268
+  ],
+  "transmission_damaged": [
+   1.068,
+   2.328
+  ],
+  "track_gone": [
+   2.48,
+   1.446
+  ],
+  "radio_damaged": [
+   1.29,
+   1.506
+  ],
+  "gunner_down": [
+   1.55,
+   1.234
+  ],
+  "commander_down": [
+   1.336,
+   2.308
+  ],
+  "loader_down": [
+   1.63,
+   1.628
+  ],
+  "driver_down": [
+   1.528,
+   1.218
+  ],
+  "optics_damaged": [
+   1.094,
+   1.28
+  ],
+  "repairs": [
+   1.708,
+   1.91
+  ],
+  "engine_repaired": [
+   1.726,
+   1.364
+  ],
+  "gun_repaired": [
+   1.568,
+   1.928
+  ],
+  "smoke_out": [
+   1.064,
+   1.104
+  ],
+  "extinguishing": [
+   0.834,
+   1.098
+  ],
+  "track_repaired": [
+   2.706,
+   2.218
+  ],
+  "suspension_set": [
+   1.996,
+   2.62
+  ],
+  "roof_gun_on": [
+   1.532,
+   1.788
+  ],
+  "objective_captured": [
+   1.75,
+   2.226
+  ],
+  "objective_lost": [
+   1.498,
+   1.85
+  ],
+  "flag_taken_ours": [
+   2.18,
+   2.27
+  ],
+  "ally_destroyed": [
+   1.62,
+   2.848
+  ],
+  "flag_returned": [
+   1.966,
+   1.534
+  ],
+  "wave_incoming": [
+   1.374,
+   2.086
+  ],
+  "flag_taken_theirs": [
+   1.828,
+   2.698
+  ],
+  "goal_scored": [
+   1.56,
+   1.666
+  ],
+  "flag_captured": [
+   1.604,
+   2.276
+  ],
+  "line_advanced": [
+   1.636,
+   2.376
+  ],
+  "wave_cleared": [
+   2.18,
+   2.55
+  ],
+  "supply_ammo": [
+   1.728,
+   1.874
+  ],
+  "respawn": [
+   1.446,
+   2.766
+  ],
+  "friendly_fire": [
+   1.87,
+   2.122
+  ],
+  "supply_repair": [
+   1.972,
+   1.992
+  ],
+  "hit_by_friendly": [
+   2.058,
+   2.434
+  ],
+  "friendly_ram": [
+   2.296,
+   2.608
+  ],
+  "ally_kill": [
+   1.256,
+   1.806
+  ],
+  "rammed": [
+   1.076,
+   1.2
+  ],
+  "spotted_multiple": [
+   1.52,
+   2.14
+  ],
+  "drone_incoming": [
+   0.956,
+   1.318
+  ],
+  "drone_launch": [
+   1.206,
+   1.32
+  ],
+  "flipped": [
+   1.558,
+   1.232
+  ],
+  "drone_lost": [
+   1.338,
+   2.228
+  ],
+  "near_miss": [
+   1.502,
+   1.7
+  ],
+  "target_lost": [
+   1.376,
+   1.234
+  ],
+  "missile_incoming": [
+   1.352,
+   1.942
+  ],
+  "target_locked": [
+   1.588,
+   1.432
+  ],
+  "enemy_engine_hit": [
+   1.33,
+   2.374
+  ],
+  "enemy_crew_hit": [
+   1.504,
+   1.78
+  ],
+  "stuck": [
+   1.798,
+   1.896
+  ],
+  "enemy_immobilized": [
+   2.572,
+   2.26
+  ],
+  "enemy_gun_damaged": [
+   1.38,
+   1.136
+  ],
+  "quiet_hold": [
+   2.46,
+   2.874
+  ],
+  "objective_contested": [
+   1.876,
+   1.64
+  ],
+  "quiet_move": [
+   2.964,
+   2.306
+  ],
+  "aircraft_overhead": [
+   1.354,
+   1.822
+  ],
+  "building_down": [
+   1.076,
+   1.488
+  ],
+  "artillery_far": [
+   2.246,
+   2.022
+  ],
+  "hull_status": [
+   3.448,
+   2.246
+  ],
+  "in_cover": [
+   2.076,
+   2.156
+  ],
+  "fire_command_heat": [
+   2.192,
+   2.386
+  ],
+  "objective_push": [
+   1.498,
+   1.544
+  ],
+  "fire_command_kinetic": [
+   2.418,
+   2.708
+  ],
+  "re_engage": [
+   0.864,
+   2.232
+  ],
+  "identified": [
+   1.03,
+   2.03
+  ],
+  "fire_command_he": [
+   2.782,
+   2.938
+  ],
+  "cease_fire": [
+   2.356,
+   2.092
+  ],
+  "fire_command_missile": [
+   2.854,
+   3.038
+  ],
+  "aps_intercept_us": [
+   3.044,
+   2.724
+  ],
+  "era_us": [
+   3.178,
+   3.414
+  ],
+  "drone_link_weak": [
+   1.608,
+   3.204
+  ],
+  "aps_intercept_them": [
+   2.098,
+   2.602
+  ],
+  "drone_shot_down": [
+   1.634,
+   2.38
+  ],
+  "enemy_era": [
+   1.686,
+   1.562
+  ],
+  "drone_battery_low": [
+   1.638,
+   2.036
+  ],
+  "drone_recovered": [
+   1.742,
+   1.878
+  ],
+  "enemy_drone_down": [
+   1.24,
+   1.258
+  ],
+  "drone_kill": [
+   2.596,
+   2.924
+  ],
+  "reversing": [
+   0.988,
+   0.728
+  ],
+  "obstacle_through": [
+   1.804,
+   2.384
+  ],
+  "gunship_rifle": [
+   1.922,
+   2.422
+  ],
+  "gunship_cleared_hot": [
+   2.04,
+   2.472
+  ],
+  "crew_ready": [
+   3.724,
+   1.746
+  ],
+  "gunship_danger_close": [
+   0.95,
+   3.024
+  ],
+  "enemy_smoke": [
+   1.292,
+   2.278
+  ],
+  "gunship_good_hits": [
+   1.2,
+   2.896
+  ],
+  "gunship_rounds_complete": [
+   1.18,
+   2.382
+  ],
+  "gunship_splash": [
+   1.91,
+   1.86
+  ],
+  "gunship_shift_fire": [
+   1.068,
+   2.018
+  ],
+  "gunship_friendly_extracted": [
+   1.796,
+   2.378
+  ],
+  "gunship_friendly_down": [
+   2.444,
+   1.902
+  ],
+  "gunship_tally": [
+   2.654,
+   2.348
+  ],
+  "start_flag": [
+   3.006,
+   2.234
+  ],
+  "gunship_defeat": [
+   2.688,
+   2.452
+  ],
+  "gunship_victory": [
+   3.284,
+   2.562
+  ],
+  "start_ball": [
+   2.362,
+   2.76
+  ],
+  "start_zones": [
+   2.108,
+   2.528
+  ],
+  "start_horde": [
+   3.44,
+   2.85
+  ],
+  "start_assault": [
+   2.852,
+   2.108
+  ],
+  "start_survivors": [
+   3.902,
+   2.516
+  ],
+  "start_mars": [
+   3.142,
+   2.096
+  ],
+  "start_juggernaut": [
+   4.2,
+   3.142
+  ],
+  "flag_dropped_theirs": [
+   1.772,
+   2.634
+  ],
+  "start_hunt": [
+   3.346,
+   2.632
+  ],
+  "flag_dropped_ours": [
+   2.606,
+   1.66
+  ],
+  "start_gun_game": [
+   2.774,
+   3.522
+  ],
+  "start_drone": [
+   2.64,
+   2.45
+  ],
+  "goal_conceded": [
+   1.444,
+   2.204
+  ],
+  "start_range": [
+   1.442,
+   2.646
+  ],
+  "flag_lost": [
+   2.16,
+   3.528
+  ],
+  "objective_contesting": [
+   1.794,
+   2.224
+  ],
+  "wave_swarm": [
+   2.558,
+   3.006
+  ],
+  "ball_reset": [
+   1.574,
+   2.244
+  ],
+  "wave_runners": [
+   1.988,
+   3.016
+  ],
+  "infected_turned": [
+   3.124,
+   3.43
+  ],
+  "counter_attack": [
+   1.006,
+   2.48
+  ],
+  "juggernaut_spotted": [
+   1.324,
+   1.968
+  ],
+  "final_line": [
+   2.15,
+   2.62
+  ],
+  "victory_survivors": [
+   2.33,
+   2.942
+  ],
+  "gun_game_final": [
+   1.934,
+   2.756
+  ],
+  "victory_juggernaut": [
+   2.41,
+   2.216
+  ],
+  "juggernaut_down": [
+   1.678,
+   2.082
+  ],
+  "defeat_overrun": [
+   1.798,
+   2.552
+  ],
+  "enemy_final_weapon": [
+   2.06,
+   3.2
+  ],
+  "victory_assault": [
+   3.992,
+   3.062
+  ],
+  "enemy_spotted": [
+   2.066,
+   1.326,
+   1.576
+  ],
+  "firing": [
+   0.87,
+   0.554,
+   1.116
+  ],
+  "battle_start": [
+   1.772,
+   1.562,
+   1.904
+  ],
+  "target_destroyed": [
+   1.648,
+   1.912,
+   1.986
+  ],
+  "miss": [
+   1.11,
+   1.598,
+   1.344
+  ],
+  "reloaded": [
+   1.138,
+   1.336,
+   1.066
+  ],
+  "gunship_cannon": [
+   1.562,
+   1.792
+  ],
+  "quiet_crew": [
+   2.012,
+   2.23,
+   1.92
+  ],
+  "crew_report": [
+   1.478,
+   1.776
+  ],
+  "jump_brace": [
+   0.84,
+   1.516
+  ],
+  "quiet_scan": [
+   1.336,
+   1.698,
+   2.85,
+   1.674
+  ],
+  "ally_infected": [
+   3.522,
+   2.83
+  ],
+  "start_air_support": [
+   2.802,
+   3.736
+  ],
+  "air_call_artillery": [
+   3.06,
+   2.744
+  ],
+  "air_call_bomb": [
+   2.718,
+   2.028
+  ],
+  "air_incoming": [
+   2.414,
+   2.394
+  ],
+  "aircraft_downed": [
+   1.354,
+   2.39
+  ],
+  "air_call_strafe": [
+   2.7,
+   2.556
+  ],
+  "air_call_recon": [
+   2.498,
+   2.158
+  ],
+  "artillery_incoming": [
+   1.456,
+   2.108
+  ]
+ },
+ "vi": {
+  "draw": [
+   2.77
+  ],
+  "gun_mount_damaged": [
+   1.266
+  ],
+  "autoloader_damaged": [
+   1.51
+  ],
+  "feed_damaged": [
+   1.444
+  ],
+  "roof_gun_damaged": [
+   1.518
+  ],
+  "missile_rack_damaged": [
+   1.462
+  ],
+  "crew_recovered": [
+   1.432
+  ],
+  "last_tank": [
+   3.042
+  ],
+  "pickup_collected": [
+   1.28
+  ],
+  "outnumbered": [
+   1.64
+  ],
+  "last_enemy": [
+   2.106
+  ],
+  "back_on_tracks": [
+   1.986
+  ],
+  "taking_water": [
+   1
+  ],
+  "ammo_out_all": [
+   1.454
+  ],
+  "think_step_by_step": [
+   2.272
+  ],
+  "step_by_step_reply": [
+   2.874
+  ],
+  "enemy_flag_returned": [
+   1.702
+  ],
+  "last_survivor": [
+   2.8
+  ],
+  "on_the_move": [
+   0.772,
+   1.316
+  ],
+  "defeat": [
+   2.176,
+   2.834
+  ],
+  "spotted_rear": [
+   0.908,
+   1.21
+  ],
+  "victory": [
+   2.434,
+   3.512
+  ],
+  "spotted_left": [
+   0.788,
+   1.186
+  ],
+  "spotted_right": [
+   0.788,
+   1.212
+  ],
+  "missile_away": [
+   1.114,
+   1.528
+  ],
+  "sixth_sense": [
+   1.628,
+   1.652
+  ],
+  "enemy_fire": [
+   1.154,
+   1.348
+  ],
+  "penetration": [
+   1.062,
+   1.744
+  ],
+  "ricochet": [
+   0.974,
+   0.878
+  ],
+  "enemy_crit": [
+   1.806,
+   1.008
+  ],
+  "nonpen": [
+   1.032,
+   1.15
+  ],
+  "load_kinetic": [
+   0.976,
+   0.902
+  ],
+  "load_he": [
+   0.766,
+   1.22
+  ],
+  "enemy_ammo_rack": [
+   2.104,
+   1.974
+  ],
+  "load_missile": [
+   1.002,
+   1.404
+  ],
+  "load_heat": [
+   0.884,
+   1.034
+  ],
+  "gunship_cannon": [
+   1.092,
+   1.434
+  ],
+  "gunship_missile": [
+   1.172,
+   1.25
+  ],
+  "ammo_low": [
+   1.246,
+   1.846
+  ],
+  "gunship_howitzer": [
+   0.89,
+   1.974
+  ],
+  "ammo_empty": [
+   1.538,
+   1.168
+  ],
+  "gunship_double": [
+   2.048,
+   2.044
+  ],
+  "gunship_kill": [
+   2.526,
+   2.378
+  ],
+  "fire": [
+   1.29,
+   0.77
+  ],
+  "were_hit": [
+   1.158,
+   1.236
+  ],
+  "fuel_tank": [
+   1.288,
+   1.29
+  ],
+  "ammo_rack": [
+   1.388,
+   1.304
+  ],
+  "low_hp": [
+   3.13,
+   2.45
+  ],
+  "gun_damaged": [
+   1.15,
+   1.018
+  ],
+  "engine_destroyed": [
+   0.796,
+   1.152
+  ],
+  "track_gone": [
+   1.926,
+   0.762
+  ],
+  "turret_jammed": [
+   2.222,
+   2.738
+  ],
+  "engine_damaged": [
+   1.072,
+   2.048
+  ],
+  "radio_damaged": [
+   1.078,
+   0.928
+  ],
+  "optics_damaged": [
+   1.322,
+   1.06
+  ],
+  "driver_down": [
+   2.204,
+   2.172
+  ],
+  "commander_down": [
+   1.458,
+   2.344
+  ],
+  "gunner_down": [
+   1.41,
+   1.44
+  ],
+  "gun_repaired": [
+   1.532,
+   1.634
+  ],
+  "repairs": [
+   1.108,
+   1.876
+  ],
+  "loader_down": [
+   1.612,
+   1.852
+  ],
+  "engine_repaired": [
+   1.354,
+   1.622
+  ],
+  "extinguishing": [
+   0.794,
+   0.83
+  ],
+  "track_repaired": [
+   2.324,
+   1.298
+  ],
+  "smoke_out": [
+   0.872,
+   0.776
+  ],
+  "objective_captured": [
+   1.362,
+   1.336
+  ],
+  "roof_gun_on": [
+   1.374,
+   1.694
+  ],
+  "objective_lost": [
+   1.088,
+   1.262
+  ],
+  "suspension_set": [
+   1.664,
+   2.052
+  ],
+  "ally_destroyed": [
+   1.54,
+   2.03
+  ],
+  "flag_returned": [
+   1.66,
+   1.364
+  ],
+  "flag_taken_ours": [
+   1.296,
+   2.126
+  ],
+  "flag_taken_theirs": [
+   1.134,
+   2.132
+  ],
+  "flag_captured": [
+   1.59,
+   1.95
+  ],
+  "goal_scored": [
+   0.878,
+   1.216
+  ],
+  "wave_incoming": [
+   1.092,
+   2.148
+  ],
+  "respawn": [
+   1.118,
+   1.892
+  ],
+  "line_advanced": [
+   1.144,
+   1.588
+  ],
+  "wave_cleared": [
+   1.772,
+   2.674
+  ],
+  "hit_by_friendly": [
+   1.93,
+   1.904
+  ],
+  "supply_repair": [
+   1.526,
+   1.626
+  ],
+  "supply_ammo": [
+   1.182,
+   1.522
+  ],
+  "friendly_fire": [
+   1.428,
+   1.316
+  ],
+  "friendly_ram": [
+   1.784,
+   1.978
+  ],
+  "rammed": [
+   0.982,
+   1.294
+  ],
+  "ally_kill": [
+   1.06,
+   1.412
+  ],
+  "double_kill": [
+   1.062,
+   2.102
+  ],
+  "missile_incoming": [
+   0.968,
+   1.624
+  ],
+  "drone_incoming": [
+   1.552,
+   1.67
+  ],
+  "spotted_multiple": [
+   1.558,
+   1.324
+  ],
+  "target_locked": [
+   1.316,
+   0.94
+  ],
+  "drone_lost": [
+   1.6,
+   2.558
+  ],
+  "drone_launch": [
+   1.664,
+   1.334
+  ],
+  "target_lost": [
+   0.966,
+   0.952
+  ],
+  "objective_contested": [
+   1.374,
+   1.182
+  ],
+  "enemy_engine_hit": [
+   1.226,
+   2.358
+  ],
+  "enemy_crew_hit": [
+   1.396,
+   1.398
+  ],
+  "enemy_immobilized": [
+   2.13,
+   1.788
+  ],
+  "enemy_gun_damaged": [
+   1.508,
+   1.006
+  ],
+  "quiet_hold": [
+   2.12,
+   2.298
+  ],
+  "aircraft_overhead": [
+   1.132,
+   1.746
+  ],
+  "quiet_move": [
+   3.298,
+   2.138
+  ],
+  "objective_push": [
+   0.978,
+   1.39
+  ],
+  "identified": [
+   0.916,
+   1.292
+  ],
+  "hull_status": [
+   2.702,
+   2.17
+  ],
+  "fire_command_heat": [
+   2.108,
+   2.394
+  ],
+  "in_cover": [
+   2.512,
+   1.816
+  ],
+  "fire_command_kinetic": [
+   2.058,
+   2.406
+  ],
+  "fire_command_missile": [
+   2.058,
+   2.358
+  ],
+  "fire_command_he": [
+   2.24,
+   2.52
+  ],
+  "re_engage": [
+   0.626,
+   1.64
+  ],
+  "drone_battery_low": [
+   2.064,
+   2.004
+  ],
+  "aps_intercept_them": [
+   1.506,
+   1.924
+  ],
+  "cease_fire": [
+   1.91,
+   2.132
+  ],
+  "enemy_era": [
+   1.45,
+   1.834
+  ],
+  "era_us": [
+   2.48,
+   3.59
+  ],
+  "aps_intercept_us": [
+   2.626,
+   2.376
+  ],
+  "drone_link_weak": [
+   1.83,
+   2.688
+  ],
+  "enemy_drone_down": [
+   1.852,
+   1.864
+  ],
+  "drone_shot_down": [
+   1.978,
+   2.544
+  ],
+  "drone_recovered": [
+   1.992,
+   2.3
+  ],
+  "enemy_smoke": [
+   0.99,
+   1.99
+  ],
+  "jump_brace": [
+   1.038,
+   1.026
+  ],
+  "drone_kill": [
+   3.172,
+   2.846
+  ],
+  "gunship_splash": [
+   0.812,
+   2.166
+  ],
+  "crew_report": [
+   1.26,
+   1.798
+  ],
+  "gunship_rifle": [
+   0.804,
+   1.976
+  ],
+  "gunship_good_hits": [
+   0.772,
+   2.35
+  ],
+  "gunship_shift_fire": [
+   0.914,
+   1.61
+  ],
+  "crew_ready": [
+   3.342,
+   1.47
+  ],
+  "gunship_rounds_complete": [
+   1.242,
+   1.92
+  ],
+  "gunship_cleared_hot": [
+   1.964,
+   2.49
+  ],
+  "gunship_friendly_extracted": [
+   1.838,
+   1.284
+  ],
+  "gunship_friendly_down": [
+   1.798,
+   2.252
+  ],
+  "gunship_tally": [
+   2.266,
+   2.158
+  ],
+  "gunship_defeat": [
+   3.298,
+   2.824
+  ],
+  "start_flag": [
+   1.96,
+   1.568
+  ],
+  "gunship_victory": [
+   2.464,
+   2.29
+  ],
+  "start_ball": [
+   1.61,
+   2.186
+  ],
+  "start_assault": [
+   1.728,
+   1.916
+  ],
+  "start_zones": [
+   1.822,
+   1.79
+  ],
+  "start_mars": [
+   1.984,
+   1.97
+  ],
+  "start_juggernaut": [
+   3.37,
+   2.78
+  ],
+  "start_hunt": [
+   2.624,
+   2.304
+  ],
+  "start_survivors": [
+   3.468,
+   2.194
+  ],
+  "start_gun_game": [
+   2.166,
+   2.642
+  ],
+  "start_horde": [
+   2.362,
+   2.746
+  ],
+  "start_drone": [
+   2.81,
+   2.476
+  ],
+  "start_range": [
+   1.516,
+   1.904
+  ],
+  "flag_dropped_theirs": [
+   1.166,
+   2.318
+  ],
+  "goal_conceded": [
+   0.866,
+   2.26
+  ],
+  "objective_contesting": [
+   1.44,
+   1.906
+  ],
+  "flag_dropped_ours": [
+   2.054,
+   1.8
+  ],
+  "flag_lost": [
+   1.762,
+   2.506
+  ],
+  "wave_runners": [
+   1.758,
+   2.146
+  ],
+  "ball_reset": [
+   1.464,
+   2.178
+  ],
+  "wave_swarm": [
+   2.064,
+   2.562
+  ],
+  "counter_attack": [
+   0.892,
+   2.098
+  ],
+  "final_line": [
+   1.81,
+   1.818
+  ],
+  "juggernaut_spotted": [
+   1.244,
+   1.3
+  ],
+  "ally_infected": [
+   3.278,
+   2.07
+  ],
+  "victory_survivors": [
+   2.162,
+   2.92
+  ],
+  "infected_turned": [
+   2.654,
+   2.756
+  ],
+  "juggernaut_down": [
+   2.146,
+   1.644
+  ],
+  "victory_juggernaut": [
+   2.11,
+   1.634
+  ],
+  "gun_game_final": [
+   2.064,
+   2.124
+  ],
+  "victory_assault": [
+   2.888,
+   2.872
+  ],
+  "enemy_final_weapon": [
+   1.716,
+   2.492
+  ],
+  "battle_start": [
+   1.478,
+   1.38,
+   2.074
+  ],
+  "spotted_front": [
+   1.068,
+   1.15
+  ],
+  "firing": [
+   0.906,
+   0.768,
+   0.628
+  ],
+  "enemy_spotted": [
+   1.492,
+   0.924,
+   1.64
+  ],
+  "reloaded": [
+   0.896,
+   0.618,
+   0.96
+  ],
+  "target_destroyed": [
+   1.892,
+   1.468,
+   1.804
+  ],
+  "transmission_damaged": [
+   1.062,
+   2.242
+  ],
+  "miss": [
+   0.696,
+   1.454,
+   0.938
+  ],
+  "near_miss": [
+   1.208,
+   2.066
+  ],
+  "stuck": [
+   1.9,
+   2.726
+  ],
+  "obstacle_through": [
+   1.474,
+   2.276
+  ],
+  "reversing": [
+   0.696,
+   0.908
+  ],
+  "gunship_danger_close": [
+   1.546,
+   2.248
+  ],
+  "quiet_crew": [
+   2.112,
+   1.812,
+   1.742
+  ],
+  "defeat_overrun": [
+   1.402,
+   2.696
+  ],
+  "flipped": [
+   1.372,
+   1.446
+  ],
+  "building_down": [
+   1.272,
+   1.228
+  ],
+  "quiet_scan": [
+   1.494,
+   1.26,
+   1.832,
+   1.858
+  ],
+  "artillery_far": [
+   1.912,
+   1.762
+  ],
+  "reloading": [
+   1.376,
+   1.24
+  ],
+  "bounced_us": [
+   2.184,
+   0.948
+  ],
+  "fire_out": [
+   1.58,
+   0.908
+  ],
+  "start_air_support": [
+   2.764,
+   2.314
+  ],
+  "air_call_artillery": [
+   2.594,
+   2.282
+  ],
+  "air_call_recon": [
+   2.548,
+   1.892
+  ],
+  "air_call_bomb": [
+   2.384,
+   1.778
+  ],
+  "air_incoming": [
+   2.01,
+   1.906
+  ],
+  "air_call_strafe": [
+   2.2,
+   2.082
+  ],
+  "aircraft_downed": [
+   1.104,
+   1.792
+  ],
+  "artillery_incoming": [
+   1.49,
+   1.99
+  ]
+ },
+ "th": {
+  "draw": [
+   2.774
+  ],
+  "gun_mount_damaged": [
+   1.278
+  ],
+  "feed_damaged": [
+   1.526
+  ],
+  "autoloader_damaged": [
+   2.236
+  ],
+  "missile_rack_damaged": [
+   1.47
+  ],
+  "roof_gun_damaged": [
+   1.938
+  ],
+  "crew_recovered": [
+   2.228
+  ],
+  "last_tank": [
+   3.376
+  ],
+  "pickup_collected": [
+   1.748
+  ],
+  "double_kill": [
+   1.596,
+   2.236
+  ],
+  "outnumbered": [
+   2.136
+  ],
+  "last_enemy": [
+   2.614
+  ],
+  "taking_water": [
+   1.184
+  ],
+  "back_on_tracks": [
+   2.06
+  ],
+  "ammo_out_all": [
+   1.806
+  ],
+  "think_step_by_step": [
+   1.698
+  ],
+  "step_by_step_reply": [
+   2.928
+  ],
+  "enemy_flag_returned": [
+   1.824
+  ],
+  "last_survivor": [
+   3.456
+  ],
+  "on_the_move": [
+   0.93,
+   1.576
+  ],
+  "defeat": [
+   2.216,
+   2.328
+  ],
+  "spotted_left": [
+   1.556,
+   1.344
+  ],
+  "spotted_front": [
+   1.492,
+   1.424
+  ],
+  "spotted_rear": [
+   1.556,
+   1.428
+  ],
+  "victory": [
+   2.794,
+   2.72
+  ],
+  "spotted_right": [
+   1.744,
+   1.334
+  ],
+  "nonpen": [
+   0.936,
+   0.886
+  ],
+  "missile_away": [
+   1.34,
+   2.196
+  ],
+  "enemy_crit": [
+   2.268,
+   1.27
+  ],
+  "ricochet": [
+   0.764,
+   0.738
+  ],
+  "sixth_sense": [
+   1.364,
+   1.634
+  ],
+  "penetration": [
+   1.002,
+   1.6
+  ],
+  "enemy_fire": [
+   1.07,
+   1.656
+  ],
+  "load_heat": [
+   1.25,
+   1.406
+  ],
+  "enemy_ammo_rack": [
+   2.61,
+   2.22
+  ],
+  "load_missile": [
+   1.606,
+   1.306
+  ],
+  "gunship_howitzer": [
+   1.458,
+   1.814
+  ],
+  "load_kinetic": [
+   1.182,
+   1.214
+  ],
+  "load_he": [
+   1.644,
+   1.674
+  ],
+  "gunship_missile": [
+   1.572,
+   1.048
+  ],
+  "were_hit": [
+   0.884,
+   1.17
+  ],
+  "gunship_cannon": [
+   1.452,
+   1.778
+  ],
+  "ammo_empty": [
+   1.406,
+   1.108
+  ],
+  "ammo_low": [
+   1.412,
+   2.406
+  ],
+  "bounced_us": [
+   2.438,
+   2.574
+  ],
+  "ammo_rack": [
+   1.274,
+   1.32
+  ],
+  "fuel_tank": [
+   1.13,
+   1.31
+  ],
+  "gunship_double": [
+   2.236,
+   2.6
+  ],
+  "engine_damaged": [
+   1.332,
+   1.81
+  ],
+  "fire_out": [
+   1.832,
+   2.06
+  ],
+  "radio_damaged": [
+   1.346,
+   1.568
+  ],
+  "transmission_damaged": [
+   1.45,
+   2.194
+  ],
+  "turret_jammed": [
+   2.036,
+   1.552
+  ],
+  "gun_damaged": [
+   1.154,
+   0.912
+  ],
+  "optics_damaged": [
+   1.09,
+   1.256
+  ],
+  "driver_down": [
+   1.388,
+   1.612
+  ],
+  "gunner_down": [
+   1.272,
+   1.768
+  ],
+  "loader_down": [
+   2.158,
+   1.594
+  ],
+  "repairs": [
+   1.31,
+   1.832
+  ],
+  "track_repaired": [
+   2.232,
+   1.956
+  ],
+  "commander_down": [
+   1.636,
+   2.608
+  ],
+  "engine_repaired": [
+   1.368,
+   1.64
+  ],
+  "smoke_out": [
+   0.666,
+   1.028
+  ],
+  "extinguishing": [
+   1.046,
+   0.842
+  ],
+  "objective_captured": [
+   1.506,
+   1.718
+  ],
+  "gun_repaired": [
+   1.35,
+   1.326
+  ],
+  "roof_gun_on": [
+   1.334,
+   1.812
+  ],
+  "suspension_set": [
+   1.85,
+   2.352
+  ],
+  "ally_destroyed": [
+   1.44,
+   1.928
+  ],
+  "objective_lost": [
+   1.29,
+   1.454
+  ],
+  "flag_returned": [
+   1.688,
+   1.368
+  ],
+  "goal_scored": [
+   0.914,
+   1.104
+  ],
+  "flag_taken_ours": [
+   1.562,
+   2.37
+  ],
+  "wave_cleared": [
+   3.076,
+   3.038
+  ],
+  "flag_captured": [
+   1,
+   2.346
+  ],
+  "flag_taken_theirs": [
+   1.348,
+   2.664
+  ],
+  "line_advanced": [
+   1.546,
+   1.712
+  ],
+  "supply_ammo": [
+   1.23,
+   1.4
+  ],
+  "wave_incoming": [
+   1.236,
+   2.416
+  ],
+  "respawn": [
+   1.198,
+   2.244
+  ],
+  "ally_kill": [
+   1.572,
+   1.392
+  ],
+  "friendly_fire": [
+   1.956,
+   1.608
+  ],
+  "drone_launch": [
+   1.084,
+   0.782
+  ],
+  "supply_repair": [
+   1.676,
+   1.496
+  ],
+  "hit_by_friendly": [
+   2.456,
+   2.336
+  ],
+  "friendly_ram": [
+   2.118,
+   2.112
+  ],
+  "drone_incoming": [
+   1.462,
+   1.35
+  ],
+  "rammed": [
+   1.408,
+   1.322
+  ],
+  "flipped": [
+   1.75,
+   1.236
+  ],
+  "missile_incoming": [
+   1.108,
+   2.234
+  ],
+  "drone_lost": [
+   1.226,
+   1.872
+  ],
+  "target_locked": [
+   1.344,
+   1.414
+  ],
+  "spotted_multiple": [
+   1.62,
+   1.814
+  ],
+  "enemy_gun_damaged": [
+   1.682,
+   1.316
+  ],
+  "target_lost": [
+   1.282,
+   1.142
+  ],
+  "stuck": [
+   1.32,
+   1.86
+  ],
+  "enemy_crew_hit": [
+   1.94,
+   1.512
+  ],
+  "objective_contested": [
+   1.57,
+   1.798
+  ],
+  "enemy_immobilized": [
+   2.47,
+   2.318
+  ],
+  "enemy_engine_hit": [
+   1.524,
+   2.22
+  ],
+  "quiet_hold": [
+   2.666,
+   2.364
+  ],
+  "objective_push": [
+   1.238,
+   1.582
+  ],
+  "building_down": [
+   0.912,
+   1.906
+  ],
+  "aircraft_overhead": [
+   1.74,
+   1.822
+  ],
+  "quiet_move": [
+   3.166,
+   2.928
+  ],
+  "hull_status": [
+   2.494,
+   2.604
+  ],
+  "identified": [
+   0.902,
+   1.236
+  ],
+  "in_cover": [
+   2.016,
+   1.95
+  ],
+  "fire_command_missile": [
+   2.728,
+   2.092
+  ],
+  "fire_command_heat": [
+   2.288,
+   2.654
+  ],
+  "re_engage": [
+   1.188,
+   1.864
+  ],
+  "cease_fire": [
+   1.424,
+   2.402
+  ],
+  "fire_command_kinetic": [
+   2.246,
+   2.652
+  ],
+  "aps_intercept_us": [
+   2.936,
+   2.45
+  ],
+  "era_us": [
+   3.026,
+   3.608
+  ],
+  "fire_command_he": [
+   3.016,
+   3.268
+  ],
+  "drone_link_weak": [
+   1.44,
+   2.52
+  ],
+  "aps_intercept_them": [
+   1.94,
+   2.118
+  ],
+  "drone_recovered": [
+   1.074,
+   1.68
+  ],
+  "enemy_era": [
+   1.89,
+   1.554
+  ],
+  "drone_battery_low": [
+   1.368,
+   1.694
+  ],
+  "enemy_drone_down": [
+   1.19,
+   1.06
+  ],
+  "reversing": [
+   0.876,
+   1.176
+  ],
+  "enemy_smoke": [
+   1.03,
+   2.32
+  ],
+  "crew_report": [
+   1.556,
+   2.542
+  ],
+  "drone_kill": [
+   2.612,
+   2.73
+  ],
+  "obstacle_through": [
+   1.854,
+   2.49
+  ],
+  "gunship_cleared_hot": [
+   2.522,
+   3.184
+  ],
+  "gunship_rifle": [
+   1.196,
+   1.896
+  ],
+  "jump_brace": [
+   1.14,
+   1.898
+  ],
+  "crew_ready": [
+   3.622,
+   1.01
+  ],
+  "gunship_splash": [
+   0.984,
+   1.48
+  ],
+  "gunship_shift_fire": [
+   0.992,
+   1.51
+  ],
+  "gunship_good_hits": [
+   1.488,
+   2.538
+  ],
+  "gunship_danger_close": [
+   1.564,
+   2.526
+  ],
+  "gunship_victory": [
+   2.632,
+   2.182
+  ],
+  "gunship_tally": [
+   2.214,
+   2.334
+  ],
+  "gunship_friendly_extracted": [
+   1.832,
+   1.328
+  ],
+  "gunship_defeat": [
+   3.028,
+   2.538
+  ],
+  "gunship_friendly_down": [
+   2.408,
+   2.252
+  ],
+  "start_zones": [
+   2.08,
+   2.34
+  ],
+  "start_ball": [
+   2.152,
+   2.276
+  ],
+  "start_assault": [
+   1.572,
+   2.6
+  ],
+  "start_flag": [
+   2.58,
+   2.148
+  ],
+  "start_juggernaut": [
+   3.748,
+   2.91
+  ],
+  "start_survivors": [
+   3.498,
+   2.208
+  ],
+  "start_mars": [
+   2.598,
+   2.116
+  ],
+  "start_horde": [
+   3.26,
+   2.796
+  ],
+  "start_gun_game": [
+   2.314,
+   2.854
+  ],
+  "start_range": [
+   1.39,
+   2.08
+  ],
+  "start_drone": [
+   2.98,
+   2.62
+  ],
+  "start_hunt": [
+   3.7,
+   1.942
+  ],
+  "flag_dropped_theirs": [
+   1.64,
+   2.696
+  ],
+  "ball_reset": [
+   1.532,
+   2.126
+  ],
+  "flag_dropped_ours": [
+   2.254,
+   1.872
+  ],
+  "flag_lost": [
+   1.89,
+   3.026
+  ],
+  "goal_conceded": [
+   1.362,
+   1.974
+  ],
+  "wave_swarm": [
+   2.674,
+   2.028
+  ],
+  "objective_contesting": [
+   1.764,
+   2.184
+  ],
+  "counter_attack": [
+   1.198,
+   2.286
+  ],
+  "ally_infected": [
+   2.55,
+   2.608
+  ],
+  "wave_runners": [
+   2.116,
+   3.47
+  ],
+  "final_line": [
+   2.06,
+   2.09
+  ],
+  "infected_turned": [
+   2.71,
+   3.766
+  ],
+  "victory_survivors": [
+   2.204,
+   2.488
+  ],
+  "juggernaut_spotted": [
+   1.096,
+   1.334
+  ],
+  "victory_juggernaut": [
+   2.046,
+   1.786
+  ],
+  "juggernaut_down": [
+   1.72,
+   1.626
+  ],
+  "gun_game_final": [
+   2.108,
+   2.494
+  ],
+  "enemy_final_weapon": [
+   1.916,
+   3.326
+  ],
+  "defeat_overrun": [
+   1.766,
+   1.866
+  ],
+  "victory_assault": [
+   3.004,
+   2.952
+  ],
+  "battle_start": [
+   2.236,
+   1.454,
+   2.05
+  ],
+  "firing": [
+   0.964,
+   0.766,
+   0.76
+  ],
+  "reloaded": [
+   0.986,
+   0.928,
+   0.66
+  ],
+  "miss": [
+   0.832,
+   1.44,
+   0.814
+  ],
+  "reloading": [
+   1.224,
+   1.948
+  ],
+  "enemy_spotted": [
+   1.546,
+   0.73,
+   1.808
+  ],
+  "fire": [
+   1.612,
+   1.256
+  ],
+  "target_destroyed": [
+   1.542,
+   1.546,
+   2.004
+  ],
+  "gunship_kill": [
+   2.558,
+   2.23
+  ],
+  "engine_destroyed": [
+   0.92,
+   1.4
+  ],
+  "track_gone": [
+   2.166,
+   0.966
+  ],
+  "low_hp": [
+   3.132,
+   2.738
+  ],
+  "quiet_crew": [
+   1.854,
+   2.038,
+   1.098
+  ],
+  "artillery_far": [
+   1.784,
+   1.922
+  ],
+  "near_miss": [
+   1.82,
+   1.692
+  ],
+  "drone_shot_down": [
+   1.436,
+   2.104
+  ],
+  "quiet_scan": [
+   1.396,
+   1.518,
+   2.398,
+   1.936
+  ],
+  "gunship_rounds_complete": [
+   0.52,
+   2.122
+  ],
+  "start_air_support": [
+   3.418,
+   3.222
+  ],
+  "air_call_artillery": [
+   2.878,
+   2.072
+  ],
+  "air_incoming": [
+   2.108,
+   2.328
+  ],
+  "air_call_strafe": [
+   2.47,
+   2.03
+  ],
+  "artillery_incoming": [
+   1.804,
+   2.52
+  ],
+  "aircraft_downed": [
+   1.324,
+   2.402
+  ],
+  "air_call_recon": [
+   2.898,
+   2.176
+  ],
+  "air_call_bomb": [
+   2.454,
+   1.942
+  ]
+ },
+ "fil": {
+  "draw": [
+   2.568
+  ],
+  "gun_mount_damaged": [
+   1.722
+  ],
+  "roof_gun_damaged": [
+   1.622
+  ],
+  "feed_damaged": [
+   1.31
+  ],
+  "autoloader_damaged": [
+   1.644
+  ],
+  "missile_rack_damaged": [
+   1.532
+  ],
+  "crew_recovered": [
+   1.718
+  ],
+  "last_tank": [
+   4.258
+  ],
+  "pickup_collected": [
+   1.436
+  ],
+  "last_enemy": [
+   2.622
+  ],
+  "outnumbered": [
+   1.88
+  ],
+  "back_on_tracks": [
+   1.632
+  ],
+  "taking_water": [
+   1.584
+  ],
+  "think_step_by_step": [
+   2.774
+  ],
+  "ammo_out_all": [
+   1.838
+  ],
+  "step_by_step_reply": [
+   3.844
+  ],
+  "enemy_flag_returned": [
+   2.098
+  ],
+  "last_survivor": [
+   2.69
+  ],
+  "on_the_move": [
+   0.928,
+   1.62
+  ],
+  "victory": [
+   2.866,
+   3.11
+  ],
+  "spotted_front": [
+   0.92,
+   1.176
+  ],
+  "spotted_left": [
+   1.032,
+   1.29
+  ],
+  "spotted_right": [
+   0.878,
+   1.166
+  ],
+  "defeat": [
+   2.484,
+   2.588
+  ],
+  "spotted_rear": [
+   0.95,
+   1.646
+  ],
+  "nonpen": [
+   1.064,
+   1.362
+  ],
+  "enemy_crit": [
+   2.288,
+   1.314
+  ],
+  "sixth_sense": [
+   1.508,
+   1.944
+  ],
+  "missile_away": [
+   1.624,
+   2.478
+  ],
+  "enemy_fire": [
+   1.628,
+   1.298
+  ],
+  "reloading": [
+   1.856,
+   1.526
+  ],
+  "ricochet": [
+   1.036,
+   1.514
+  ],
+  "penetration": [
+   1.108,
+   1.99
+  ],
+  "load_kinetic": [
+   1.7,
+   1.632
+  ],
+  "load_he": [
+   1.838,
+   1.912
+  ],
+  "enemy_ammo_rack": [
+   2.532,
+   2.62
+  ],
+  "load_heat": [
+   1.502,
+   1.534
+  ],
+  "gunship_cannon": [
+   1.518,
+   2.188
+  ],
+  "load_missile": [
+   1.554,
+   1.532
+  ],
+  "gunship_missile": [
+   1.39,
+   1.666
+  ],
+  "gunship_double": [
+   2.3,
+   2.602
+  ],
+  "gunship_howitzer": [
+   1.316,
+   1.606
+  ],
+  "were_hit": [
+   1.24,
+   1.724
+  ],
+  "ammo_low": [
+   1.344,
+   2.644
+  ],
+  "ammo_empty": [
+   1.382,
+   1.144
+  ],
+  "ammo_rack": [
+   1.394,
+   1.528
+  ],
+  "gunship_kill": [
+   2.896,
+   2.396
+  ],
+  "fire_out": [
+   1.514,
+   1.966
+  ],
+  "fire": [
+   1.596,
+   1.642
+  ],
+  "fuel_tank": [
+   1.71,
+   1.428
+  ],
+  "transmission_damaged": [
+   1.546,
+   2.59
+  ],
+  "engine_damaged": [
+   1.656,
+   2.79
+  ],
+  "low_hp": [
+   3.626,
+   3.214
+  ],
+  "turret_jammed": [
+   2.21,
+   2.082
+  ],
+  "engine_destroyed": [
+   1.024,
+   1.304
+  ],
+  "gun_damaged": [
+   1.43,
+   1.424
+  ],
+  "radio_damaged": [
+   1.482,
+   1.52
+  ],
+  "optics_damaged": [
+   1.666,
+   1.584
+  ],
+  "track_gone": [
+   2.064,
+   1.46
+  ],
+  "driver_down": [
+   1.75,
+   1.602
+  ],
+  "gunner_down": [
+   1.554,
+   1.424
+  ],
+  "repairs": [
+   1.84,
+   2.192
+  ],
+  "engine_repaired": [
+   1.772,
+   1.794
+  ],
+  "commander_down": [
+   1.576,
+   2.89
+  ],
+  "loader_down": [
+   1.792,
+   1.68
+  ],
+  "gun_repaired": [
+   1.746,
+   1.61
+  ],
+  "roof_gun_on": [
+   1.398,
+   1.258
+  ],
+  "track_repaired": [
+   2.368,
+   1.612
+  ],
+  "extinguishing": [
+   1.456,
+   1.218
+  ],
+  "objective_captured": [
+   1.912,
+   1.492
+  ],
+  "smoke_out": [
+   1.192,
+   0.996
+  ],
+  "objective_lost": [
+   1.932,
+   1.53
+  ],
+  "suspension_set": [
+   1.89,
+   2.298
+  ],
+  "ally_destroyed": [
+   1.802,
+   2.244
+  ],
+  "flag_returned": [
+   1.9,
+   2
+  ],
+  "flag_taken_ours": [
+   2.006,
+   2.8
+  ],
+  "flag_taken_theirs": [
+   2.292,
+   3.016
+  ],
+  "goal_scored": [
+   1.556,
+   1.358
+  ],
+  "flag_captured": [
+   2.096,
+   2.548
+  ],
+  "wave_cleared": [
+   1.752,
+   2.496
+  ],
+  "supply_repair": [
+   1.854,
+   2.062
+  ],
+  "respawn": [
+   1.39,
+   2.292
+  ],
+  "wave_incoming": [
+   1.36,
+   2.044
+  ],
+  "ally_kill": [
+   1.648,
+   1.63
+  ],
+  "hit_by_friendly": [
+   1.796,
+   2.524
+  ],
+  "line_advanced": [
+   1.526,
+   2.022
+  ],
+  "friendly_fire": [
+   1.752,
+   1.492
+  ],
+  "supply_ammo": [
+   1.796,
+   2.13
+  ],
+  "double_kill": [
+   1.544,
+   2.264
+  ],
+  "missile_incoming": [
+   1.426,
+   1.928
+  ],
+  "rammed": [
+   1.292,
+   1.406
+  ],
+  "spotted_multiple": [
+   1.92,
+   2.06
+  ],
+  "drone_launch": [
+   1.13,
+   1.314
+  ],
+  "drone_lost": [
+   1.502,
+   2.46
+  ],
+  "flipped": [
+   1.412,
+   1.104
+  ],
+  "drone_incoming": [
+   1.344,
+   1.524
+  ],
+  "near_miss": [
+   1.624,
+   1.436
+  ],
+  "enemy_gun_damaged": [
+   1.272,
+   1.412
+  ],
+  "target_lost": [
+   0.98,
+   1.414
+  ],
+  "enemy_crew_hit": [
+   1.8,
+   1.986
+  ],
+  "enemy_engine_hit": [
+   1.494,
+   2.384
+  ],
+  "objective_contested": [
+   1.674,
+   1.6
+  ],
+  "enemy_immobilized": [
+   2.564,
+   2.79
+  ],
+  "quiet_hold": [
+   2.56,
+   2.806
+  ],
+  "quiet_move": [
+   2.882,
+   2.98
+  ],
+  "building_down": [
+   1.38,
+   1.588
+  ],
+  "hull_status": [
+   2.642,
+   2.522
+  ],
+  "objective_push": [
+   1.72,
+   1.598
+  ],
+  "aircraft_overhead": [
+   1.554,
+   1.908
+  ],
+  "artillery_far": [
+   2.004,
+   2.178
+  ],
+  "fire_command_kinetic": [
+   2.164,
+   2.422
+  ],
+  "fire_command_heat": [
+   1.822,
+   2.16
+  ],
+  "in_cover": [
+   2.152,
+   1.998
+  ],
+  "aps_intercept_them": [
+   1.802,
+   2.114
+  ],
+  "fire_command_missile": [
+   2.146,
+   2.484
+  ],
+  "fire_command_he": [
+   2.728,
+   3.128
+  ],
+  "cease_fire": [
+   1.852,
+   2.432
+  ],
+  "re_engage": [
+   1.016,
+   2.218
+  ],
+  "identified": [
+   0.758,
+   1.76
+  ],
+  "enemy_era": [
+   1.686,
+   1.384
+  ],
+  "drone_link_weak": [
+   2.04,
+   2.98
+  ],
+  "drone_recovered": [
+   1.646,
+   1.626
+  ],
+  "aps_intercept_us": [
+   2.714,
+   2.476
+  ],
+  "drone_battery_low": [
+   2.294,
+   2.124
+  ],
+  "enemy_drone_down": [
+   1.51,
+   1.424
+  ],
+  "reversing": [
+   0.808,
+   0.978
+  ],
+  "drone_kill": [
+   2.722,
+   3.1
+  ],
+  "drone_shot_down": [
+   1.638,
+   2.8
+  ],
+  "jump_brace": [
+   0.872,
+   1.316
+  ],
+  "enemy_smoke": [
+   1.62,
+   2.07
+  ],
+  "crew_report": [
+   1.59,
+   2.362
+  ],
+  "gunship_cleared_hot": [
+   1.808,
+   2.58
+  ],
+  "obstacle_through": [
+   1.602,
+   2.454
+  ],
+  "gunship_rifle": [
+   2.06,
+   2.138
+  ],
+  "gunship_splash": [
+   0.908,
+   2.128
+  ],
+  "crew_ready": [
+   4.112,
+   1.79
+  ],
+  "gunship_rounds_complete": [
+   1.316,
+   2.87
+  ],
+  "gunship_danger_close": [
+   1.04,
+   2.486
+  ],
+  "gunship_good_hits": [
+   1.496,
+   2.678
+  ],
+  "gunship_friendly_down": [
+   2.254,
+   2.506
+  ],
+  "gunship_friendly_extracted": [
+   1.834,
+   1.578
+  ],
+  "gunship_shift_fire": [
+   1.308,
+   1.956
+  ],
+  "gunship_defeat": [
+   2.952,
+   2.878
+  ],
+  "start_flag": [
+   3.212,
+   2.172
+  ],
+  "start_zones": [
+   2.512,
+   2.476
+  ],
+  "gunship_tally": [
+   2.466,
+   2.448
+  ],
+  "gunship_victory": [
+   3.548,
+   3.708
+  ],
+  "start_ball": [
+   2.264,
+   2.22
+  ],
+  "start_mars": [
+   3.662,
+   2.014
+  ],
+  "start_assault": [
+   2.552,
+   1.986
+  ],
+  "start_hunt": [
+   3.59,
+   2.288
+  ],
+  "start_horde": [
+   2.884,
+   2.82
+  ],
+  "start_gun_game": [
+   2.816,
+   3.358
+  ],
+  "start_survivors": [
+   4.388,
+   2.266
+  ],
+  "start_drone": [
+   2.786,
+   2.622
+  ],
+  "start_range": [
+   1.314,
+   2.644
+  ],
+  "flag_dropped_ours": [
+   2.72,
+   2.052
+  ],
+  "goal_conceded": [
+   1.362,
+   2.362
+  ],
+  "start_juggernaut": [
+   4.01,
+   3.296
+  ],
+  "flag_dropped_theirs": [
+   1.872,
+   3.36
+  ],
+  "ball_reset": [
+   1.638,
+   2.242
+  ],
+  "flag_lost": [
+   2.62,
+   3.428
+  ],
+  "objective_contesting": [
+   1.812,
+   2.39
+  ],
+  "wave_runners": [
+   2.24,
+   3.818
+  ],
+  "counter_attack": [
+   1.17,
+   2.61
+  ],
+  "wave_swarm": [
+   3.09,
+   2.814
+  ],
+  "final_line": [
+   2.05,
+   2.692
+  ],
+  "victory_survivors": [
+   2.346,
+   3.452
+  ],
+  "infected_turned": [
+   3.484,
+   3.568
+  ],
+  "juggernaut_down": [
+   1.928,
+   1.962
+  ],
+  "ally_infected": [
+   3.428,
+   2.128
+  ],
+  "gun_game_final": [
+   2.062,
+   2.826
+  ],
+  "juggernaut_spotted": [
+   1.43,
+   1.624
+  ],
+  "enemy_final_weapon": [
+   2.28,
+   3.146
+  ],
+  "victory_juggernaut": [
+   2.42,
+   2.09
+  ],
+  "victory_assault": [
+   2.916,
+   2.93
+  ],
+  "defeat_overrun": [
+   1.696,
+   2.286
+  ],
+  "firing": [
+   1.222,
+   1.052,
+   0.708
+  ],
+  "enemy_spotted": [
+   1.824,
+   1.23,
+   1.814
+  ],
+  "battle_start": [
+   1.744,
+   1.798,
+   1.698
+  ],
+  "target_destroyed": [
+   1.758,
+   1.406,
+   1.36
+  ],
+  "miss": [
+   1.058,
+   1.92,
+   1.404
+  ],
+  "reloaded": [
+   1.238,
+   0.99,
+   0.744
+  ],
+  "target_locked": [
+   1.484,
+   1.156
+  ],
+  "friendly_ram": [
+   1.756,
+   2.354
+  ],
+  "quiet_scan": [
+   1.748,
+   2.312,
+   2.506,
+   1.792
+  ],
+  "stuck": [
+   1.74,
+   2.068
+  ],
+  "quiet_crew": [
+   2.398,
+   2.138,
+   1.144
+  ],
+  "bounced_us": [
+   1.366,
+   0.974
+  ],
+  "era_us": [
+   1.84,
+   2.778
+  ],
+  "air_call_recon": [
+   2.974,
+   1.818
+  ],
+  "air_call_artillery": [
+   2.942,
+   2.818
+  ],
+  "air_call_strafe": [
+   1.916,
+   2.064
+  ],
+  "start_air_support": [
+   3.282,
+   3.644
+  ],
+  "air_call_bomb": [
+   2.678,
+   2.602
+  ],
+  "air_incoming": [
+   2.238,
+   2.542
+  ],
+  "artillery_incoming": [
+   2.228,
+   2.296
+  ],
+  "aircraft_downed": [
+   1.418,
+   2.414
+  ]
  }
 }

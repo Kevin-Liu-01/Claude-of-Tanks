@@ -60,6 +60,16 @@ export interface RegionalBuildContext {
    * slopes turned from the sun grow their moss and lichen (weather.ts). Absent (a bare build), no slope is favoured.
    */
   sunAzimuthDeg?: number;
+  /**
+   * (buildings-270) the building's dress: its option on each axis of its map's variation (appearance.ts pickLook; the
+   * building-style table's `variation.axes`), for decor-only choices — read it with dressOf. Absent outside a kit build.
+   */
+  dress?: Readonly<Record<string, string>>;
+}
+
+/** The building's option on a dress axis, or `fallback` where its map names no such axis. */
+export function dressOf(ctx: RegionalBuildContext, axis: string, fallback: string): string {
+  return ctx.dress?.[axis] ?? fallback;
 }
 
 export type RegionalBuilder = (ctx: RegionalBuildContext) => RegionalParts;
@@ -132,10 +142,9 @@ export interface ArchitectureStyle {
    * Skybridge's depot and container-row plots. The census reads the kit's dwellings over them; nothing in a build reads it.
    */
   dwellings?: readonly string[];
-  /** per-building tint palettes and weathering strengths (weather.ts DEFAULT_WEATHER when absent) */
+  /** per-building tint palettes (weather.ts DEFAULT_WEATHER when absent); the weathering's strengths and the war wear are
+   *  the map's row of the building-style table (buildingStyleTable.ts climateOf, wearOf) */
   weather?: WeatherPalette;
-  /** share of houses showing war damage: burnt or boarded windows, a stripped roof patch (house.ts; default 0.2) */
-  wear?: number;
   /**
    * The map-revival lane (2026-10-07): draw the third plaster paint from the second's bucket under a colour ratio
    * (weather.ts WeatherOptions.plaster3Fold; the two procedural renders share one relief): one draw and one shadow caster

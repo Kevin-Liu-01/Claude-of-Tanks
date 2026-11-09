@@ -15,7 +15,7 @@ import { TECH_TREES, childrenOf, nodeForVehicle, rootOf, validateTree, vehiclesO
 const tree = (id) => TECH_TREES.find((entry) => entry.id === id);
 
 // ------------------------------------------------------------------------------------------------ shape and layout
-assert.equal(TECH_TREES.length, 15, 'fifteen national trees'); // 266: Denmark, Brazil
+assert.equal(TECH_TREES.length, 17, 'seventeen national trees'); // 266: Denmark, Brazil; 269: South Africa, Australia
 for (const entry of TECH_TREES) {
   assert.deepEqual(validateTree(entry), [], `${entry.id} breaks a shape rule`);
   assert.deepEqual(layoutProblems(entry), [], `${entry.id} draws a connector badly`);
@@ -221,5 +221,27 @@ const digest = createHash('sha256').update(JSON.stringify(TECH_TREES)).digest('h
 // 267 (the owner 2026-11-01, "finish it"): the Leopard 2A7 DK, held since 2026-10-30, at X after the 2A5 DK; the
 // Centurion Mk 5/2 DK (the owner, the same day) at III after the M41 DK-1, the CV9035 DK after it again.
 // 267 (the Japan line): the Type 90 (B) built on the Type 90's node (builds: type90_kyumaru, type90b), its tier 8.
-assert.equal(digest, '46b1a3a9307d8466', `tree content changed: re-pin to ${digest} if deliberate`);
+// 267 re-pin (lane bmpt-family-267, the owner's "make a BMPT Terminator"): the original Ob'yekt 199 Terminator at VI on
+// the support line (lane 13) off the BMPT-72, beside the BMPT T-90.
+// 268 (the twin-cannon air defence; tiers by capability on the coordinator's suggestion): Russia's Tunguska and Pantsir
+// line (the 2K22M Tunguska-M at V off the BMP-3, lane 14 under the BMPTs, the tracked Pantsir-S1 at VI after it); the
+// Flakpanzer Gepard 1A2 at V on Germany's Leopard 1 row after the MBT-70 (lane 5); China's PGZ-95 and PGZ-09 line (the
+// PGZ-95 at V off the AFT-10, lane 4, the PGZ-09 at VI after it).
+// 2026-11-02 re-pin (268, lane abrams-bradley-268, the owner's ask): the M3A2 Bradley at II beside the M2A2 on the
+// Bradley line (lane 10, off the M2A2); the T49 one lane down to 11 so that connector runs clear.
+// 268 integration (2026-11-04): both 268 trees together, the twin-cannon air defence's lanes and the M3A2 on the
+// Bradley line; neither moves the other's nodes (Russia/Germany/China vs USA).
+// 2026-11-02 re-pin (269, Main's ruling on the South Africa tree, head A): the South Africa tree, its root the Olifant Mk 1
+// (II) with the Semel as its twin, the Mk 1A and Mk 1B (III) and the Olifant Mk 2 (III) moved here from the UK tree's
+// special lane; the TTD the special (III by its same-tier duels; IV ruled). The UK tree's nations drop South Africa.
+// 2026-11-02 re-pin (269, Main's ruling on the Australia tree, head B): the Australia tree, its root the Leopard AS1 (I),
+// the M1A1 AIM SA (VIII) and the M1A2 SEPv3 (IX) after it, the Centurion Mk 5/1 (II) moved here from the UK tree's special
+// lane, the M113A1 FSV and MRV (I), the M113AS4 (II, with the Ares APC) and the AS21 Redback (VI). The UK tree's nations
+// drop Australia. 2026-11-03 re-pin (Main's ruling on the M113s' TOW): the M113AS4 from II to III.
+// 269 integration (2026-11-06): 268's trees, the South Africa tree and the Australia tree together; the UK tree's
+// nations drop both.
+// 2026-11-03 re-pin (the owner: "make a USA m113 variant, that plays similar to the ares apc"): the US M113A3 in the US
+// tree's special lane at II.
+// 269 integration (2026-11-06): + the US M113A3 at II in the US special lane.
+assert.equal(digest, 'adc19a052d506677', `tree content changed: re-pin to ${digest} if deliberate`);
 console.log(`techTree: ${TECH_TREES.length} trees, ${drawn.length} vehicles, pin ${digest}`);

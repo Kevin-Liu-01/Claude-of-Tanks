@@ -4180,39 +4180,39 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 21160,
-      "sha256": "0ad869ea55204f96613d6ba808ae1ff6758ba37cd39313e9b1b385f7041b8024"
+      "bytes": 21156,
+      "sha256": "d64d20f87631694dadc5ee6e3a0265b4b59cb5d07633f447a7e83d81ae0142a8"
     },
     "modulesSide": {
       "file": "kf51_panther_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 19894,
-      "sha256": "e7793bcbcbdce7313b6daf193d241067da47329f9c9c83260a228eedc7967d5d"
+      "bytes": 19896,
+      "sha256": "412b851ce149c845a8ea5bb44a97bedabaa37e5ba19f558bf82939b9f7e7d044"
     },
     "crewSide": {
       "file": "kf51_panther_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 17172,
-      "sha256": "1a113f8cddf30465626012f7ab232f6169990f81e5803e87ff4a4ed74e8e81b3"
+      "bytes": 17180,
+      "sha256": "eaf7c68a9ba7d5dcbe3bed966977d60291c0c0cc2e78a19af60a573dc5ae7658"
     },
     "angle": {
       "file": "kf51_panther_angle.webp",
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 28344,
-      "sha256": "0b292bba812b5b9a44abb75381d188346de682f98197e76a29d0ba1abd7491f7",
+      "bytes": 28612,
+      "sha256": "e941ff3e68f7bb435b2d3767ca29324e591900af8b643ea841000dd2572068cf",
       "thumbnail": {
         "file": "thumbs/kf51_panther_angle.webp",
         "width": 256,
         "height": 256,
         "mime": "image/webp",
-        "bytes": 11570,
-        "sha256": "1e570b276507d4a500d2035aa9d2eda60f46f5d6bef954edfe71138fc01e5c63"
+        "bytes": 11610,
+        "sha256": "d3070c567150fcf1f2724848b65b0071d9f7acfa38bbc6826f9bccf2df899f80"
       }
     },
     "top": {
@@ -4220,16 +4220,16 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 9644,
-      "sha256": "0dd43e2448350414b275982b79bc04a05e1cd9a5523c5929117fa7c6134d5c61"
+      "bytes": 9648,
+      "sha256": "8b65251e76c09acc75eca554ee33aed3eb81eb857a980ec3999ebb6e6499a46b"
     },
     "side": {
       "file": "kf51_panther_side.webp",
       "width": 512,
       "height": 256,
       "mime": "image/webp",
-      "bytes": 11500,
-      "sha256": "1395c43409f23e874f5ab82dc27105a8fb4fe98e62698ea92e0efc3d203b60f2"
+      "bytes": 11516,
+      "sha256": "2f9a928d7a659f830003db1319a02927a1714753ad32f7b14e9c1028342f6a2a"
     },
     "topSilhouette": {
       "file": "kf51_panther_top_silhouette.png",
@@ -4252,8 +4252,8 @@
       "width": 256,
       "height": 128,
       "mime": "image/png",
-      "bytes": 32998,
-      "sha256": "74eff430c243193c5526cecdcf6cafeb68fc0f60d3d1221fb3db1e94c7bbc3b7"
+      "bytes": 31276,
+      "sha256": "e19df5e9e9d0b65315be92387110492a03a405909a11d7b9f26b24b5fea91e52"
     },
     "technicalLabels": {
       "file": "kf51_panther_technical.json",

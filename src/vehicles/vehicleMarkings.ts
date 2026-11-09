@@ -1,5 +1,6 @@
 import { flagIconCode } from '../ui/flagCodes.ts';
 import { tankSeedId } from './tankIdAliases.ts';
+import { glacisSetsMarking, glacisWidth, traceGlacis } from '../ui/glacisText.ts';
 import * as detMath from '../sim/detMath.ts';
 export { vehicleMarkingSeats } from './vehicleMarkingSeatRegistry.ts';
 
@@ -137,8 +138,10 @@ export const VEHICLE_MARKING_ANCHORS: Readonly<Record<string, VehicleMarkingAnch
   // release 262: the Christian II's Dannebrog and number on its middle side module, painted on the drape over it
   christian2: anchor('turret', 'left', .42, .50, .24, 1),
   amx40: anchor('turret', 'right', .34, .40, .24, -1),
-  // 266: the Army plaque on the Vickers turret's bustle flank, behind the bins and ahead of the dischargers
-  osorio_p1: anchor('turret', 'left', .22, .45, .30, 1),
+  // 266: the Army plaque on the Vickers turret's flank. glacis-269 (Main, 2026-11-04): forward of the slat cage, which
+  // stood over the plaque and the number at .22 (the "01" read "U1" from eye height; the nine-ray receipt passed between
+  // the slats), both clear from eye height here
+  osorio_p1: anchor('turret', 'left', .68, .45, .30, 1),
   // (low on the wall aft of the basket, its number further aft: the dischargers and the basket's rail covered them in the
   // rear three-quarter view; blind critics, rounds 9 and 10)
   osorio_p2: anchor('turret', 'left', .17, .30, .22, -1),
@@ -301,6 +304,7 @@ export const VEHICLE_MARKING_ANCHORS: Readonly<Record<string, VehicleMarkingAnch
   type10b: anchor('hull', 'left', 0.39, 0.61, 0.23, 1),
   type10_dozer: anchor('turret', 'right', .30, .44, .24, 1), // the modern Type 10's turret seat (type10)
   m2a2_bradley: anchor('hull', 'left', 0.43, 0.64, 0.25, 1),
+  m3a2_bradley: anchor('hull', 'left', 0.43, 0.64, 0.25, 1), // the M2A2's hull seat (268: the shared hull)
   bmp2: anchor('hull', 'right', 0.45, 0.65, 0.23, -1),
   spz_puma: anchor('hull', 'left', 0.40, 0.62, 0.25, 1),
   marder2: anchor('hull', 'left', .38, .60, .24, 1),
@@ -316,6 +320,20 @@ export const VEHICLE_MARKING_ANCHORS: Readonly<Record<string, VehicleMarkingAnch
   leo1a2a1: anchor('turret', 'left', 0.43, 0.47, 0.24, 1),
   // 265: the Danish flag on the welded turret's flank, ahead of the tactical number
   leo1a3dk: anchor('turret', 'left', 0.50, 0.40, 0.20, 1),
+  // release 269: the AS1's kangaroo on the right (its left cheek carries the SABCA laser's drum)
+  leopard_as1: anchor('turret', 'right', 0.50, 0.40, 0.20, -1),
+  redback: anchor('hull', 'right', 0.62, 0.55, 0.30, -1),
+  // the M113s (2026-11-03: the release check found no seat on their small turrets): the FSV's on the bare left hull side
+  // above the track; the MRV's buoyancy pods and the AS4's appliqué hold their hull sides, so theirs go on the turret's
+  // left flank (the TOW launcher is on the right)
+  m113a1_fsv: anchor('hull', 'left', 0.40, 0.70, 0.30, 1),
+  // (269: the US M113A3's star and number on its bare left hull side, as the FSV's)
+  m113a3: anchor('hull', 'left', 0.40, 0.70, 0.30, 1),
+  m113a1_mrv: anchor('turret', 'left', 0.35, 0.45, 0.22, 1),
+  m113as4: anchor('turret', 'left', 0.30, 0.50, 0.20, 1),
+  // the kangaroo on the turret's forward flank, as on the 2024-26 photographs
+  m1a1_aim_sa_aus: anchor('turret', 'right', 0.40, 0.44, 0.27, -1),
+  m1a2_sepv3_aus: anchor('turret', 'right', .25, .70, .24, -1),
   m41dk1: anchor('turret', 'left', 0.62, 0.40, 0.18, 1),
   t49: anchor('turret', 'right', 0.62, 0.46, 0.24, 1),
   m41a3: anchor('turret', 'left', 0.62, 0.40, 0.24, 1),
@@ -330,7 +348,10 @@ export const VEHICLE_MARKING_ANCHORS: Readonly<Record<string, VehicleMarkingAnch
   leo2a4: anchor('turret', 'left', 0.37, 0.45, 0.25, 1),
   // German derivatives use separate, surface-seated stations so their
   // markings remain readable around each distinct applique/slat package.
-  leo2a3: anchor('turret', 'right', 0.36, 0.44, 0.24, -1),
+  // glacis-269 (Main, 2026-11-04): the 2A3's turret flanks are its stowage boxes (turretEquipment, not armour), so the
+  // turret seats sat on the strip of armour under them, their tops cut by the boxes' lower edge from eye height; the
+  // hull side under the turret reads clear (as the 2A4M CAN's)
+  leo2a3: anchor('hull', 'left', 0.45, 0.62, 0.24, -1),
   leo2a3_b4: anchor('turret', 'right', 0.40, 0.42, 0.24, -1),
   leo2a4m_can: anchor('hull', 'left', 0.40, 0.62, 0.24, 1),
   leo2a4_otco: anchor('turret', 'left', 0.32, 0.43, 0.24, 1),
@@ -413,6 +434,12 @@ export const VEHICLE_MARKING_ANCHORS: Readonly<Record<string, VehicleMarkingAnch
   centurion13: anchor('turret', 'right', 0.42, 0.49, 0.25, -1),
   strv105: anchor('turret', 'right', 0.42, 0.49, 0.25, -1),
   olifant_mk2: anchor('turret', 'right', 0.42, 0.55, 0.25, -1),
+  // release 269: the South African Centurions (the skirtless Mk 1 and Mk 1A carry the castle on the turret's side bin)
+  semel: anchor('turret', 'right', 0.42, 0.49, 0.25, -1),
+  olifant_mk1: anchor('turret', 'right', 0.42, 0.49, 0.25, -1),
+  olifant_mk1a: anchor('turret', 'right', 0.42, 0.49, 0.25, -1),
+  olifant_mk1b: anchor('turret', 'right', 0.42, 0.55, 0.25, -1),
+  ttd: anchor('turret', 'right', 0.30, 0.62, 0.22, -1),
   centurion5_avre: anchor('hull', 'right', 0.62, 0.55, 0.30, -1),
   centurion5_1_aus: anchor('turret', 'left', 0.47, 0.49, 0.25, 1),
   m46_patton: anchor('turret', 'left', 0.43, 0.48, 0.25, 1),
@@ -442,9 +469,20 @@ export const VEHICLE_MARKING_ANCHORS: Readonly<Record<string, VehicleMarkingAnch
   // §5.363 bmpt_t90: the station walls sit behind the quad Ataka columns —
   // the broad §5.350 skirt-ERA panel field carries the painted designation.
   bmpt_t90: anchor('hull', 'left', 0.44, 0.60, 0.22, 1),
+  // 267 bmpt_terminator: the Kazakh vehicles' place for it (photos 13-15), the side boxes' face over the skirt rows
+  bmpt_terminator: anchor('hull', 'right', 0.46, 0.82, 0.22, -1),
   bwp1: anchor('hull', 'right', 0.41, 0.64, 0.24, -1),
   marder1a3: anchor('hull', 'left', 0.46, 0.62, 0.23, 1),
   m6_linebacker: anchor('hull', 'left', 0.39, 0.45, 0.23, 1),
+  // 268: the twin-cannon air defence. The photographs carry the Russian pair's numbers and the PLA star on the hull side
+  // and the Bundeswehr cross on the Gepard's turret side (its number on the turret, "422", Munster); the guns, radars
+  // and launchers ride the turret sides of the others
+  tunguska_m: anchor('hull', 'left', 0.52, 0.58, 0.22, 1),
+  pantsir_s1: anchor('hull', 'left', 0.52, 0.58, 0.22, 1),
+  // the cross high on the upper body's flank ahead of the gun bay's cover (photos 08, 11, 12; builder G)
+  gepard_1a2: anchor('turret', 'left', 0.78, 0.75, 0.24, 1),
+  pgz95: anchor('hull', 'left', 0.52, 0.58, 0.22, 1),
+  pgz09: anchor('hull', 'left', 0.52, 0.58, 0.22, 1),
   m3a3_bradley: anchor('turret', 'left', 0.39, 0.45, 0.23, 1),
   // §5.248 ground-up wave: flat authored faces per build — bmp3 turret dome
   // flank, upiór skirt panel field (bmpt removed by §5.304 owner order).
@@ -989,6 +1027,23 @@ function drawAustraliaKangaroo({ ctx, cx, cy, radius }: InsigniaPainterArgs): vo
   ctx.fill();
 }
 
+// Release 269: the Australian Army's own mark, a black kangaroo in mid-hop on the forward turret side and no roundel (the
+// 2017 Talisman Sabre and 2024-26 photographs of the M1A1 and M1A2; the red kangaroo in the ring is the RAAF's roundel)
+function drawAustralianArmyKangaroo({ ctx, cx, cy, radius }: InsigniaPainterArgs): void {
+  // facing forward along the left of the field: ears up, the forearms tucked, the hind foot and the long tail level
+  const pts: readonly (readonly [number, number])[] = [
+    [-0.92, -0.22], [-0.80, -0.30], [-0.79, -0.46], [-0.72, -0.31], [-0.68, -0.44], [-0.63, -0.29], [-0.52, -0.25],
+    [-0.30, -0.27], [-0.06, -0.21], [0.14, -0.09], [0.24, 0.03], [0.50, 0.07], [0.96, 0.09], [0.98, 0.14], [0.52, 0.18],
+    [0.24, 0.21], [0.14, 0.30], [-0.04, 0.46], [-0.36, 0.52], [-0.38, 0.47], [-0.10, 0.36], [-0.04, 0.22], [-0.24, 0.12],
+    [-0.44, 0.06], [-0.56, 0.16], [-0.60, 0.13], [-0.50, 0.00], [-0.62, -0.10], [-0.84, -0.14],
+  ];
+  ctx.fillStyle = '#212428';
+  ctx.beginPath();
+  pts.forEach(([x, y], k) => (k === 0 ? ctx.moveTo(cx + x * radius, cy + y * radius) : ctx.lineTo(cx + x * radius, cy + y * radius)));
+  ctx.closePath();
+  ctx.fill();
+}
+
 function drawFallbackShield({ ctx, cx, cy, radius }: InsigniaPainterArgs): void {
   ctx.fillStyle = '#d6a74f';
   ctx.beginPath();
@@ -1026,6 +1081,7 @@ const NATIONAL_INSIGNIA_PAINTERS: Readonly<Record<string, InsigniaPainter>> = Ob
   'th-flag': drawThaiFlag,
   'za-castle': drawSouthAfricaCastle,
   'au-kangaroo': drawAustraliaKangaroo,
+  'au-army-kangaroo': drawAustralianArmyKangaroo,
   'br-eb-arms': drawBrazilArmyArms,
   'br-cruzeiro': drawBrazilSouthernCross,
   'br-ring': drawBrazilTurretRing,
@@ -1051,26 +1107,85 @@ export function drawNationalInsignia(
 /** The share of its bounds' width a tactical number may fill, outline included (drawTacticalNumber). */
 const TACTICAL_NUMBER_FILL = 0.94;
 
+/**
+ * Glacis marking spacing, in thousandths of the em between glyphs. Its side bearings leave 5.6 % of the em between
+ * glyphs, less than an 8 % outline: neighbours' outlines merged and counters clogged (blind critics, glacis-269).
+ * Painted markings space wide, and a code that runs to its bounds comes down to them instead of standing taller.
+ */
+export const GLACIS_MARKING_TRACKING = 80;
+/** A Glacis marking's outline as a share of its size (the shell face's 8 % fills Glacis's small counters). */
+export const GLACIS_MARKING_OUTLINE = 0.06;
+/**
+ * The thinnest outline a Glacis marking takes, in texels of its 256 px decal: the old face's halo on a stencil
+ * (glacis-269 round 2, Main's ruling 2026-11-04). 6 % of a small stencil's size left 1.5 to 3 texels and its pale edge
+ * vanished on the camouflage (the Tamoyo's BERNARDINI and TAMOYO, blind critics); under 100 px a stencil's outline is
+ * this halo, its neighbours' outlines meeting as the old face's did.
+ */
+export const GLACIS_MARKING_OUTLINE_FLOOR = 6;
+/**
+ * The outline under a Glacis marking's lettering at `size`: one rule for every marking that has one. 6 % of the size,
+ * at least the floor, and never wider than `halo`, the old face's outline on the same marking (Main, 2026-11-05: without
+ * that cap the floor took the 150 px "O" and "UN" stencils from 6 texels to 9).
+ */
+export function glacisMarkingOutline(size: number, halo: number): number {
+  return Math.min(halo, Math.max(size * GLACIS_MARKING_OUTLINE, GLACIS_MARKING_OUTLINE_FLOOR));
+}
+/** The shell face's outline on a tactical number at `size`. */
+function shellNumberOutline(size: number): number {
+  return Math.max(2, size * 0.08);
+}
+/**
+ * How far above its anchor the shell face's capitals stood, as a share of the size. Chrome sets canvas textBaseline
+ * 'middle' halfway between the face's typo ascender and descender normalised to one em (Chakra Petch Bold: 992 and 308
+ * of 1000, so 0.263 em above the baseline), and its capitals (700) centre 0.35 em up. Hull lettering was seated against
+ * those capitals (the BMPT-90's side face ends just under them), so Glacis's stand where theirs did; a plate or a disc
+ * centres its lettering instead.
+ */
+export const SHELL_MIDDLE_CAP_LIFT = 0.35 - (992 - 308) / (992 + 308) / 2;
+
 export function drawTacticalNumber(
   ctx: CanvasRenderingContext2D,
   record: VehicleMarkingRecord,
   bounds: CanvasBounds = {},
 ): void {
   const x = bounds.x ?? 0, y = bounds.y ?? 0, width = bounds.width ?? ctx.canvas.width, height = bounds.height ?? ctx.canvas.height;
-  ctx.save();
-  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
   const text = record.tacticalNumber;
+  ctx.save();
+  if (glacisSetsMarking(text)) {
+    // Glacis outlines (DECISIONS 2026-11-03), sized by the measured run: the per-character rule, brought down where the
+    // spaced number and its outline (glacisMarkingOutline, never wider than 6 % or the floor) would pass
+    // TACTICAL_NUMBER_FILL of the bounds (the length rule alone ran 5-8 px past a 252 px decal for OTCO, KURSK and 99A2),
+    // its caps where the shell face's stood. One path, stroked under its fill, corners mitred short.
+    const run = glacisWidth(text, { size: 1, tracking: GLACIS_MARKING_TRACKING });
+    const fill = width * TACTICAL_NUMBER_FILL;
+    const fontSize = Math.max(16, Math.min(height * 0.68, width / Math.max(1, text.length) * 1.75,
+      fill / (run + GLACIS_MARKING_OUTLINE), (fill - GLACIS_MARKING_OUTLINE_FLOOR) / run));
+    ctx.beginPath();
+    traceGlacis(ctx, text, x + width / 2, y + height / 2 - fontSize * SHELL_MIDDLE_CAP_LIFT,
+      { size: fontSize, tracking: GLACIS_MARKING_TRACKING, align: 'center', baseline: 'middle' });
+    ctx.lineWidth = glacisMarkingOutline(fontSize, shellNumberOutline(fontSize));
+    ctx.lineJoin = 'miter';
+    ctx.miterLimit = 2;
+    ctx.strokeStyle = SURFACE_MARKING_STYLE.markingOutline;
+    ctx.fillStyle = SURFACE_MARKING_STYLE.markingPigment;
+    ctx.stroke();
+    ctx.fill();
+    ctx.restore();
+    return;
+  }
+  // Text Glacis cannot set as written keeps the shell face, measured into its bounds the same way.
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
   let fontSize = Math.min(height * 0.68, width / Math.max(1, text.length) * 1.75);
   ctx.font = `700 ${Math.max(16, fontSize)}px 'Cot UI', sans-serif`;
   // 264: the 1.75-per-character rule sizes digits; a letter code's bold capitals run wider (the Leopard 2A3's OTCO
   // clipped at both ends of its 252 px designation decal), so a number that measures wider than its bounds, outline
   // included, comes down to fit them. One that fits keeps its size.
   const measured = ctx.measureText?.(text)?.width;
-  if (measured && measured + Math.max(2, fontSize * 0.08) > width * TACTICAL_NUMBER_FILL) {
-    fontSize *= width * TACTICAL_NUMBER_FILL / (measured + Math.max(2, fontSize * 0.08));
+  if (measured && measured + shellNumberOutline(fontSize) > width * TACTICAL_NUMBER_FILL) {
+    fontSize *= width * TACTICAL_NUMBER_FILL / (measured + shellNumberOutline(fontSize));
     ctx.font = `700 ${Math.max(16, fontSize)}px 'Cot UI', sans-serif`;
   }
-  ctx.lineWidth = Math.max(2, fontSize * 0.08);
+  ctx.lineWidth = shellNumberOutline(fontSize);
   ctx.strokeStyle = SURFACE_MARKING_STYLE.markingOutline;
   ctx.fillStyle = SURFACE_MARKING_STYLE.markingPigment;
   ctx.strokeText(text, x + width / 2, y + height / 2);

@@ -13,7 +13,7 @@ let builds = 0, maxTris = 0;
 for (const [id, style] of Object.entries(GATE_STYLES)) {
   let arch = null;
   try { arch = resolveRegionalArchitecture(id); } catch { arch = null; }
-  const ctx = { style, stone: gateStoneOf(arch) ?? { kind: 'sandstone', dressed: false, tint: [0.6, 0.5, 0.4], damp: 0.8 }, render: { damp: 0.3 } };
+  const ctx = { style, stone: gateStoneOf(arch, 'selftest') ?? { kind: 'sandstone', dressed: false, tint: [0.6, 0.5, 0.4], damp: 0.8 }, render: { damp: 0.3 } };
   for (const kind of GATE_KINDS) {
     const W = GATE_WIDTH[kind];
     let intactTop = 0;

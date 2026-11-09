@@ -9,6 +9,8 @@ const EXPECTED = Object.freeze({
   amx10p: { hp: 2000, speed: 65, reverse: 22, traverse: 53.8, damage: 44, pen: [190, 170, 150], reload: .22, sound: 'rh202', missile: null },
   amx10p_25: { hp: 2300, speed: 65, reverse: 22, traverse: 53.8, damage: 70, pen: [225, 205, 185], reload: .30, sound: 'm242-bushmaster', missile: null },
   m2a2_bradley:       { hp: 1650, speed: 61, reverse: 20, traverse: 44.5, damage: 58, pen: [130, 118, 106], reload: 0.42, sound: 'm242-bushmaster', missile: [540, 'tow-launch'] },
+  // 268: the M3A2 (m3a2BradleySpecs.ts), the M2A2's vehicle and rounds under the classic turret; its recon doctrine (roleProfiles.ts) turns the hull faster
+  m3a2_bradley:       { hp: 1650, speed: 61, reverse: 20, traverse: 47, damage: 58, pen: [130, 118, 106], reload: 0.42, sound: 'm242-bushmaster', missile: [540, 'tow-launch'] },
   bmp2:               { hp: 1050, speed: 65, reverse: 12, traverse: 53, damage: 42, pen: [74, 66, 58], reload: 0.28, sound: '2a42', missile: [430, 'konkurs-launch'] },
   spz_puma:           { hp: 2000, speed: 70, reverse: 30, traverse: 48.8, damage: 64, pen: [165, 150, 135], reload: 0.40, sound: 'mk30-2', missile: [520, 'spike-launch'] },
   marder2: { hp:2750,speed:60,reverse:27,traverse:44.5,damage:135,pen:[185,170,155],reload:.55,sound:'xm913-50',missile:null },
@@ -35,6 +37,8 @@ const EXPECTED = Object.freeze({
   bmp3:               { hp: 1450, speed: 70, reverse: 20, traverse: 50.9, damage: 55, pen: [112, 102, 92], reload: 0.34, sound: '2a72', missile: [500, 'arkan-launch'] },
   upior:              { hp: 1820, speed: 75, reverse: 30, traverse: 55.1, damage: 58, pen: [158, 143, 128], reload: 0.30, sound: '2a72', missile: [550, 'spike-launch'] },
   bmpt_t90:           { hp: 2950, speed: 60, reverse: 18, traverse: 30.1, damage: 50, pen: [122, 110, 98], reload: 0.28, sound: 'twin-2a42', missile: [500, 'ataka-launch'] },
+  // 267: the original Terminator between the BMPT-72 and the BMPT T-90
+  bmpt_terminator:    { hp: 2820, speed: 60, reverse: 18, traverse: 31, damage: 51, pen: [123, 111, 99], reload: 0.29, sound: 'twin-2a42', missile: [520, 'ataka-launch'] },
   // 2026-09-17 owner: the Type 100 becomes a Chinese IFV (30 mm belt, HJ-10 guided HEAT)
   type100:            { hp: 2700, speed: 76, reverse: 32, traverse: 57.2, damage: 92, pen: [235, 215, 195], reload: 0.40, sound: 'mk30-2', missile: [700, 'spike-launch'] },
   kurganets25:      { hp: 2750, speed: 70, reverse: 30, traverse: 53, damage: 82, pen: [210, 192, 174], reload: 0.38, sound: 'mk30-2', missile: [720, 'spike-launch'] },
@@ -60,10 +64,17 @@ const EXPECTED = Object.freeze({
   dardo:               { hp: 2150, speed: 70, reverse: 25, traverse: 48.8, damage: 68, pen: [185, 167, 149], reload: 0.42, sound: 'm242-bushmaster', missile: null },
   lrmv_lynx:           { hp: 2900, speed: 70, reverse: 30, traverse: 44.8, damage: 90, pen: [185, 170, 155], reload: 0.38, sound: 'kde-35', missile: null },
   borsuk:              { hp: 2650, speed: 65, reverse: 30, traverse: 51.5, damage: 84, pen: [185, 170, 155], reload: 0.38, sound: 'mk30-2', missile: [650, 'spike-launch'] },
+  // 268: the twin-cannon air defence on the BMPT twin 2A42 rows (30 mm), scaled by calibre for 25 and 35 mm; their SAMs on
+  // the M6 Linebacker's Stinger handling (gm352AirDefenseSpecs.ts, gepardSpecs.ts, chineseAirDefenseSpecs.ts)
+  tunguska_m:          { hp: 2300, speed: 65, reverse: 18, traverse: 44.8, damage: 52, pen: [125, 112, 100], reload: 0.30, sound: 'twin-2a42', missile: [360, 'tow-launch'] },
+  pantsir_s1:          { hp: 2450, speed: 65, reverse: 18, traverse: 43.7, damage: 50, pen: [122, 110, 98], reload: 0.28, sound: 'twin-2a42', missile: [380, 'tow-launch'] },
+  gepard_1a2:          { hp: 2500, speed: 65, reverse: 25, traverse: 42.6, damage: 61, pen: [146, 131, 117], reload: 0.35, sound: 'kde-35', missile: null },
+  pgz95:               { hp: 2000, speed: 53, reverse: 16, traverse: 49.3, damage: 43, pen: [125, 112, 100], reload: 0.25, sound: 'm242-bushmaster', missile: [300, 'tow-launch'] },
+  pgz09:               { hp: 2400, speed: 55, reverse: 18, traverse: 44.8, damage: 58, pen: [142, 128, 114], reload: 0.33, sound: 'kde-35', missile: null },
 });
 
 const ifvIds = ALL_TANK_IDS.filter((id) => TANK_SPECS[id]?.role === 'ifv');
-assert.equal(ifvIds.length, 43, 'complete selectable IFV fleet'); // Includes independent Marder 2 and M6; SPz Wotan remains selectable; 265: the CV9035 DK; 266: the Ukrainian CV9040C.
+assert.equal(ifvIds.length, 50, 'complete selectable IFV fleet'); // Includes independent Marder 2 and M6; SPz Wotan remains selectable; 265: the CV9035 DK; 266: the Ukrainian CV9040C; 267: the BMPT Terminator; 268: the five twin-cannon air-defence vehicles and the M3A2.
 assert.deepEqual([...ifvIds].sort(), Object.keys(EXPECTED).sort(),
   'the explicit stat table covers exactly the selectable IFVs');
 
@@ -132,9 +143,10 @@ assert.equal(getSpec('bmp3').gun.shells[2].soundProfile, 'bmp3-100mm',
   'BMP-3 100 mm report does not masquerade as its 30 mm autocannon');
 // The authored axes are source-frame stations; the installed spec carries the owner's whole-vehicle size
 // (bmpt_t90 at 1.05 with the T-90 family, 2026-10-02 main 245aa4e4e) exactly once.
-for (const id of ['bmpt_terminator2', 'bmpt_t90']) {
+for (const id of ['bmpt_terminator2', 'bmpt_t90', 'bmpt_terminator']) {
   assert.deepEqual(getSpec(id).gun.muzzles.map((muzzle) => muzzle.x),
-    (id === 'bmpt_t90' ? [-0.20, 0.20] : [-0.16, 0.16]).map((x) => x * (VEHICLE_SIZE_FACTORS[id] ?? 1)),
+    (id === 'bmpt_t90' ? [-0.20, 0.20] : id === 'bmpt_terminator' ? [-0.15, 0.15] : [-0.16, 0.16])
+      .map((x) => x * (VEHICLE_SIZE_FACTORS[id] ?? 1)),
     `${id}: authentic twin-barrel fire axes`);
 }
 

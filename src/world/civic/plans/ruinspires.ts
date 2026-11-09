@@ -17,7 +17,7 @@
 // Pathways: the city's streets are kerbed by the kit in place of the legacy strips (1,376 pieces, 84 % of them under
 // houses, without frontage or on the squares): the boulevard, the trunk roads and the terrace streets are main streets,
 // the cross streets lanes; there is no wall, so the town's inside is the valley floor's rectangle.
-import type { CivicAreaPlan, CivicBed, CivicFurniture, CivicPlan, CivicRect } from '../types.ts';
+import type { CivicAreaPlan, CivicBed, CivicFurniture, CivicPlanSource, CivicRect } from '../types.ts';
 
 import * as detMath from '../../../sim/detMath.ts';
 /** A point's rotation twin about the centre (the map's symmetry). */
@@ -129,9 +129,8 @@ function sideSquare(id: string, pad: number, twin: boolean): CivicAreaPlan {
   };
 }
 
-export const RUINSPIRES_CIVIC_PLAN: CivicPlan = {
+export const RUINSPIRES_CIVIC_PLAN: CivicPlanSource = {
   mapId: 'ruinspires',
-  style: 'sarajevo',
   // (229, the owner: "add a lot of cars in civic areas ... same should apply to the ruinspires") the city's Zastavas,
   // Yugos, vans and pickups at the kerbs of the streets round the side squares' outer mouths, each a seat no base battle's
   // hull touched in twelve (probes/pace carseats.mjs: six zone, six Frontline) and its rotation twin's as quiet

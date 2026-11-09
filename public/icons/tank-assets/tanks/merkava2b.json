@@ -5506,8 +5506,8 @@
       "width": 256,
       "height": 128,
       "mime": "image/png",
-      "bytes": 33397,
-      "sha256": "28a1c7147b1bf50fe70a3370138621f413f8be53249ba3a8bc1663cd7de8dad6"
+      "bytes": 33091,
+      "sha256": "9c07853422e957b37884a834a98f7de411a01fa4e27c922cd420beafa0130e55"
     },
     "technicalLabels": {
       "file": "merkava2b_technical.json",

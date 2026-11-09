@@ -2,6 +2,7 @@ import type { RuntimeValue } from '../runtimeTypes.ts';
 import type * as THREE from 'three';
 import type { EventBus, GameState } from '../game/stateCore.ts';
 import type { RosterEntity, RosterGameState } from '../game/rosterState.ts';
+import type { CouchSession } from '../game/couchSeats.ts';
 import type { MobileAutoAimRuntime } from '../game/mobileAutoAimRuntime.ts';
 import type { CombatState } from '../sim/damage.ts';
 import type { TankState } from '../sim/movement.ts';
@@ -55,7 +56,7 @@ interface MainSpottingRuntime {
 
 export type MainGameState = Omit<
   GameState,
-  'tanks' | 'rosterTanks' | 'allTanks' | 'tankById' | 'player' | 'spotting' | 'matchModeState'
+  'tanks' | 'rosterTanks' | 'allTanks' | 'tankById' | 'player' | 'spotting' | 'matchModeState' | 'couch'
 > & Omit<RosterGameState, 'tanks' | 'allTanks' | 'tankById'> & {
   tanks: MainEntity[];
   rosterTanks?: MainEntity[];
@@ -65,6 +66,7 @@ export type MainGameState = Omit<
   spotting: MainSpottingRuntime | null;
   matchModeState: HudMatchModeState | null;
   killcam?: RuntimeValue;
+  couch?: CouchSession<MainEntity> | null;
 };
 
 export type MainWorld = WorldRuntime;

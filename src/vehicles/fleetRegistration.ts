@@ -66,8 +66,14 @@ import './shotKalSpecs.ts';
 import './centurion13Specs.ts';
 import './strv105Specs.ts';
 import './olifantMk2Specs.ts';
+// release 269: the South African line's Centurions (the Semel, the Olifant Mk 1, Mk 1A and Mk 1B)
+import './southAfricaSpecs.ts';
 import './centurionAvreSpecs.ts';
 import './centurionAusSpecs.ts';
+// release 269: the Australian line (the M113s, the Redback, the Leopard AS1 and the Abrams pair)
+import './australiaSpecs.ts';
+// 269: the US Army's M113A3 on the Australian line's M113 build (usaM113Specs.ts)
+import './usaM113Specs.ts';
 import './leopard2a3B4Specs.ts';
 import { applyLeopard2A4FamilyEnvelopes } from './leopard2A4FamilySpecs.ts';
 import './denmarkSpecs.ts';
@@ -82,10 +88,16 @@ import './ukraineCv90Specs.ts';
 import './amx10pSpecs.ts';
 import './marder2Specs.ts';
 import './m6LinebackerSpecs.ts';
+// release 268: the M3A2 clones the M2A2 row (modern3Specs.ts) under the classic turret
+import './m3a2BradleySpecs.ts';
 import { synchronizeFleetRenewalMetadata } from './fleetRenewalSpecs.ts';
 import { synchronizeNationalModernizationMetadata } from './nationalModernizationSpecs.ts';
 // release 264: the Longwei family clones the national concepts' hulls, so it registers and synchronizes after them
 import { synchronizeLongweiFamilyMetadata } from './longweiFamilySpecs.ts';
+// 268: the twin-cannon air-defence round registers last, so every earlier id keeps its roster place
+import './gm352AirDefenseSpecs.ts';
+import './gepardSpecs.ts';
+import './chineseAirDefenseSpecs.ts';
 
 import { TANK_SPECS, finalizeFirstPartyRoster } from './specs.ts';
 import { applyNativeFamilyOrderToCatalogs } from './fleetOrder.ts';

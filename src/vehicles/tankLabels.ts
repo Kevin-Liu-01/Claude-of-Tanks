@@ -247,6 +247,11 @@ const LABEL_OVERRIDES: Readonly<Record<string, TankLabelOverride>> = Object.free
     displayName: 'BMPT T-90', shortName: 'BMPT T-90',
     searchAliases: ['Terminator 3', 'BMPT-90', 'T-90 Terminator'],
   },
+  // 267: the original Ob'yekt 199 "Ramka" (2009-2013, Kazakhstan's)
+  bmpt_terminator: {
+    displayName: 'BMPT Terminator', shortName: 'Terminator',
+    searchAliases: ['BMPT', 'Object 199', "Ob'yekt 199", 'Ramka', 'Ramka-99', 'Terminator 1'],
+  },
   bwp1: {
     displayName: 'BWP-1 (Bojowy Wóz Piechoty 1)', shortName: 'BWP-1',
     searchAliases: ['Bojowy Wóz Piechoty 1', 'BWP 1', 'Polish BMP-1', 'BMP-1 Poland'],
@@ -272,6 +277,31 @@ const LABEL_OVERRIDES: Readonly<Record<string, TankLabelOverride>> = Object.free
     searchAliases: ['SPz Puma', 'Puma IFV'],
   },
   m6_linebacker: {displayName:'M6 Linebacker',shortName:'M6 Linebacker',searchAliases:['Linebacker modernization','Bradley air defense concept']},
+  // 268: the twin-cannon air-defence round
+  tunguska_m: {
+    displayName: '2K22M Tunguska-M', shortName: 'Tunguska-M',
+    searchAliases: ['Tunguska', '2S6M', '2K22M', '2K22 Tunguska', 'SA-19 Grison', 'Тунгуска-М'],
+  },
+  pantsir_s1: {
+    displayName: 'Pantsir-S1 (tracked)', shortName: 'Pantsir-S1',
+    searchAliases: ['Pantsir', 'Pantsir S1', '96K6', 'Pantsir-S1 GM-352M1E', 'tracked Pantsir', 'SA-22 Greyhound', 'Панцирь-С1'],
+  },
+  gepard_1a2: {
+    displayName: 'Flakpanzer Gepard 1A2', shortName: 'Gepard 1A2',
+    searchAliases: ['Gepard', 'Flakpanzer Gepard', 'Flugabwehrkanonenpanzer Gepard', 'FlakPz Gepard', 'Gepard SPAAG'],
+  },
+  pgz95: {
+    displayName: 'PGZ-95', shortName: 'PGZ-95',
+    searchAliases: ['PGZ95', 'Type 95 SPAAA', 'Type 95 SPAAG', 'Type 95 self-propelled anti-aircraft gun', '95式自行高炮'],
+  },
+  pgz09: {
+    displayName: 'PGZ-09', shortName: 'PGZ-09',
+    searchAliases: ['PGZ09', 'Type 09 SPAAA', 'Type 09 SPAAG', 'Type 09 self-propelled anti-aircraft gun', '09式自行高炮'],
+  },
+  m3a2_bradley: {
+    displayName: 'M3A2 Bradley', shortName: 'M3A2 Bradley',
+    searchAliases: ['M3A2 ODS', 'M3A2 Cavalry Fighting Vehicle', 'Bradley CFV'],
+  },
   marder2: {displayName:'Marder 2',shortName:'Marder 2',searchAliases:['Marder 2 VT 001','TS503']},
   spz_wotan: {
     displayName: 'SPz Wotan', shortName: 'SPz Wotan',
@@ -376,7 +406,20 @@ const LABEL_OVERRIDES: Readonly<Record<string, TankLabelOverride>> = Object.free
   centurion13: { displayName: 'Centurion Mk 13', searchAliases: ['Centurion Mk.13', 'Centurion searchlight', 'Centurion IR'] },
   shot_kal: { displayName: "Sho't Kal", searchAliases: ['Shot Kal', "Sho't", 'Shot', "Centurion Sho't", 'IDF Centurion'] },
   strv105: { displayName: 'Strv 105', searchAliases: ['Stridsvagn 105', 'Strv 104', 'Swedish Centurion'] },
+  semel: { displayName: 'Semel', searchAliases: ['Centurion Semel', 'Centurion Mk 5A', 'Skokiaan', 'South African Centurion', 'SADF'] },
+  olifant_mk1: { displayName: 'Olifant Mk 1', searchAliases: ['Olifant', 'Olifant Mk1', 'Olifant Mk.1', 'South African Centurion', 'SADF'] },
+  olifant_mk1a: { displayName: 'Olifant Mk 1A', searchAliases: ['Olifant', 'Olifant Mk1A', 'Olifant Mk.1A', 'Olifant GT3', 'SADF'] },
+  olifant_mk1b: { displayName: 'Olifant Mk 1B', searchAliases: ['Olifant', 'Olifant Mk1B', 'Olifant Mk.1B', 'Olifant GT3B', 'SADF'] },
+  ttd: { displayName: 'Olifant TTD', shortName: 'TTD', searchAliases: ['TTD', 'Tank Technology Demonstrator', 'Project Loggim', 'Loggim', 'South African MBT prototype'] },
   olifant_mk2: { displayName: 'Olifant Mk 2', searchAliases: ['Olifant', 'Olifant Mk2', 'Olifant Mk.2', 'South African Centurion', 'SANDF'] },
+  redback: { displayName: 'AS21 Redback', shortName: 'Redback', searchAliases: ['Redback', 'AS21', 'Hanwha Redback', 'LAND 400 IFV', 'K21 Redback'] },
+  m1a1_aim_sa_aus: { displayName: 'M1A1 AIM SA', shortName: 'M1A1 SA', searchAliases: ['Australian Abrams', 'M1A1 AIM SA', 'M1A1 SA', 'Abrams Australia'] },
+  m1a2_sepv3_aus: { displayName: 'M1A2 SEPv3 (Aus)', shortName: 'M1A2 SEPv3', searchAliases: ['Australian M1A2', 'M1A2C Australia', 'Abrams SEPv3 Australia', 'LAND 907'] },
+  leopard_as1: { displayName: 'Leopard AS1', searchAliases: ['Leopard 1 AS1', 'Australian Leopard', 'Leopard AS-1', 'RAAC Leopard'] },
+  m113a1_fsv: { displayName: 'M113A1 FSV', searchAliases: ['M113 FSV', 'Fire Support Vehicle', 'M113 Saladin', 'Saladin turret M113', 'RAAC'] },
+  m113a1_mrv: { displayName: 'M113A1 MRV', searchAliases: ['M113 MRV', 'Medium Reconnaissance Vehicle', 'M113 Scorpion', 'Scorpion turret M113', 'RAAC'] },
+  m113as4: { displayName: 'M113AS4', searchAliases: ['M113 AS4', 'M113AS4 APC', 'Australian M113', 'Tenix turret'] },
+  m113a3: { displayName: 'M113A3', searchAliases: ['M113 A3', 'M113A3 APC', 'US M113', 'ACAV shield'] },
   centurion5_1_aus: { displayName: 'Centurion Mk 5/1 (Aust)', searchAliases: ['Centurion Mk 5/1', 'Centurion Mk 5/1 RAAC', 'Australian Centurion', 'RAAC Centurion', 'Centurion Vietnam'] },
   centurion5_avre: { displayName: 'Centurion Mk 5 AVRE', searchAliases: ['Centurion AVRE', 'AVRE 165', 'FV4003', 'Centurion dozer'] },
   cv9035dk: { displayName: 'CV9035 DK', searchAliases: ['CV9035DK', 'CV90 Denmark', 'Danish CV90', 'CV90 MkIII DK'] },

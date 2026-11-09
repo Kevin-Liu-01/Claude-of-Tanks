@@ -10754,8 +10754,8 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 9554,
-      "sha256": "14297b6c472dbcd38b9e7d67b685e8d912025b512c65e06f0bbb59a9236ca56c"
+      "bytes": 9550,
+      "sha256": "80c80d4899325c8e7874925d5eef7adcc07bd53eef6d3ef3b710fc4a092b33b1"
     },
     "sideSilhouette": {
       "file": "t62mv1_side_silhouette.png",
@@ -10778,8 +10778,8 @@
       "width": 256,
       "height": 128,
       "mime": "image/png",
-      "bytes": 35666,
-      "sha256": "6f058aa037880c9a9cdb37f04ab02fd3224b02943f728b42236bbfed5b2965fd"
+      "bytes": 32663,
+      "sha256": "2835661d8d8bc3c096b010028bafb1e7663de7ba9e112470ab57cedde797c867"
     },
     "side": {
       "file": "t62mv1_side.webp",

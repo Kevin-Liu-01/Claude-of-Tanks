@@ -31,6 +31,7 @@ import { WORN_YARD_PAINT } from '../hardstandSurface.ts';
 import { gully } from './geology.ts';
 
 import * as detMath from '../../sim/detMath.ts';
+import { BUILDING_STYLES } from './buildingStyleTable.ts';
 const clamp01 = (x: number) => (x < 0 ? 0 : x > 1 ? 1 : x);
 
 // The wadi centreline (metres): z per x, a gentle meander from the west edge to
@@ -350,7 +351,7 @@ export default {
     // sovkhoz's own: the widest warehouse lot is the grain elevator, the gantry the conveyor gallery to the wagon bin, the
     // depot the MTS garage, the sheds its implement sheds, the corner shop the club, the farmhouse a two-family house, the
     // cottages settlers' houses, the container rows the fuel store or the brigade wagons, the barn a sheep barn
-    architecture: 'tselina',
+    architecture: BUILDING_STYLES.steppe.kit,
     // The landmarks lane (2026-10-06; src/world/landmarks/): the grain station's concrete elevator — the Virgin Lands'
     // standard battery of silos with its work tower — north of the siding across the track from the long grain store,
     // the buffer stop at its west end; and the collective farm's entrance arch over the station road where it reaches
@@ -393,7 +394,7 @@ export default {
         structure: 'motorpool', redoubt: true, outcrop: false, wreck: true, wreckOffsetZ: 16 },
     ],
     tones: {
-      plaster: (h: number, s: number, l: number) => [0.10, clamp01(s * 0.4), clamp01(l * 1.08 + 0.06)], // sun-baked lime wash
+      plaster: (h: number, s: number, l: number) => [0.12, clamp01(s * 0.1 + 0.2), clamp01(l * 0.55 + 0.57)], // sun-baked lime wash (the kit's lime-wash canvas: #e0dbcf; buildings-270)
       // (2026-10-07, wave 204: "terracotta roofs") corrugated asbestos-cement, a pale cool grey (the kit's own sheet)
       roof: (h: number, s: number, l: number) => [0.1, clamp01(s * 0.1), clamp01(l * 0.9 + 0.1)],
       stone: (h: number, s: number, l: number) => [0.09, clamp01(s * 0.45), clamp01(l * 1.0)],

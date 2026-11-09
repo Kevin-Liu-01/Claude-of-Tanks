@@ -464,8 +464,13 @@ export const RUHR_STYLE: ArchitectureStyle = Object.freeze<ArchitectureStyle>({
   region: 'Ruhr and Upper Silesian coalfield junctions: soot-dark brick with yellow-brick bands under slate',
   surfaces: {
     roof: { kind: 'slate', tint: [0.25, 0.26, 0.28] },
-    stone: { kind: 'brick', tint: [0.50, 0.26, 0.20] },
-    sourced: { plaster: true, wood: true },
+    // (buildings-270, the census and round 2: the brick lit fresh orange-red; the junctions' photos show it soot-darkened to
+    // purple-brown, #5a3b33-#6e4a3e) the brick #58403b (was #76483b) and soiled as a coal town's is, soot down every course
+    stone: { kind: 'brick', tint: [0.34, 0.22, 0.2], weathered: true },
+    // (buildings-270, the sourced-plaster class: under the photo set none of the map's render tones showed) the walls the
+    // procedural limeRender canvas, the primary family's tone measured on it against the reference photos (the sooty render: the map's tone, #877e75)
+    sourced: { plaster: false, wood: true },
+    render: { kind: 'limeRender', seed: 0x3e56 },
     tones: { plaster2: (_h, s, l) => [0.11, Math.min(1, s * 0.6 + 0.2), Math.min(1, l * 1.1 + 0.08)] },
   },
   builders: RUHR_BUILDERS,
@@ -476,7 +481,6 @@ export const RUHR_STYLE: ArchitectureStyle = Object.freeze<ArchitectureStyle>({
     plaster: [[0.9, 0.88, 0.84], [0.82, 0.8, 0.77], [0.74, 0.72, 0.7]],
     stone: [[0.8, 0.76, 0.74], [0.7, 0.66, 0.64], [0.6, 0.57, 0.56], [0.75, 0.71, 0.68]],
     roof: [[0.92, 0.92, 0.92], [0.8, 0.79, 0.79], [0.7, 0.69, 0.7]],
-    damp: 0.7, moss: 0.1,
   },
   // the colliery cottages' gardens: a board fence round the vegetable plot behind the pair, a gate (yards.ts; the
   // facades lane, 2026-10-06, after waves 182-184 read the white picket as American: a Ruhr colony fenced its gardens in

@@ -1624,11 +1624,9 @@ export function createSky(scene: THREE.Scene, renderer: THREE.WebGLRenderer): Sk
     uniform float uShadeW; // deck-level directional mass shading strength
     uniform float uEdgeDetail; // round 22: fringe erosion strength (0 = the bake's ramp only)
     varying vec3 vWPos;
-    void main() {
-      vec3 d = normalize( vWPos - cameraPosition );
-      float dy = max( d.y, 1e-4 );
-      float t = max( uAlt - cameraPosition.y, 1.0 ) / dy; // slant range to the deck (m)
-      vec2 p = cameraPosition.xz + d.xz * t;
+    // the deck at a point of its plane: the bake's colour and alpha under the mass shading, the macro mask and the edge
+    // erosion below
+    vec4 deckAt( vec2 p ) {
       vec2 uv = vec2( p.x * uRot.x - p.y * uRot.y, p.x * uRot.y + p.y * uRot.x ) / uScale + uOff;
       vec4 c = texture2D( uMap, uv );
       // r2 directional mass shading: the rotated uv frame puts the sun at -v,
@@ -1650,6 +1648,29 @@ export function createSky(scene: THREE.Scene, renderer: THREE.WebGLRenderer): Sk
       float det = texture2D( uMap, uv * 5.7 + vec2( 0.29, 0.61 ) ).a;
       float edgeW = ( 1.0 - smoothstep( 0.12, 0.70, c.a ) ) * uEdgeDetail;
       c.a *= mix( 1.0, smoothstep( 0.10, 0.60, det ), edgeW );
+      return c;
+    }
+    void main() {
+      vec3 d = normalize( vWPos - cameraPosition );
+      float dy = max( d.y, 1e-4 );
+      float t = max( uAlt - cameraPosition.y, 1.0 ) / dy; // slant range to the deck (m)
+      vec2 p = cameraPosition.xz + d.xz * t;
+      // clouds-269 (the owner, 2026-11-04: "many clouds i see are in perfect lines or grrid"): the bake tiles every uScale
+      // metres over an endless plane, so toward the horizon the same masses stood in rows and columns. A second copy of the
+      // deck — turned 30° (its baked lit side stays near the sun), at 0.73 of the scale, offset — is chosen region by region
+      // (one to two tiles each) by a quasi-periodic selector (three sines on incommensurate wavevectors): no tile's repeat
+      // runs on into its neighbours'. The bands between regions blend the two (premultiplied), and each copy is read only
+      // where it shows, so most of the sky pays for one.
+      float n = sin( dot( p, vec2( 0.00135, 0.00055 ) ) + 1.3 ) + sin( dot( p, vec2( -0.00063, 0.0012 ) ) + 4.1 )
+        + 0.6 * sin( dot( p, vec2( 0.00215, -0.00165 ) ) + 0.4 );
+      float sel = smoothstep( -0.2, 0.2, n );
+      vec4 c = vec4( 0.0 );
+      if ( sel < 0.999 ) { vec4 a = deckAt( p ); c += vec4( a.rgb * a.a, a.a ) * ( 1.0 - sel ); }
+      if ( sel > 0.001 ) {
+        vec4 b = deckAt( mat2( 0.8678, 0.4969, -0.4969, 0.8678 ) * p * 1.37 + vec2( 913.0, 2711.0 ) );
+        c += vec4( b.rgb * b.a, b.a ) * sel;
+      }
+      c.rgb /= max( c.a, 1e-4 );
       // aerial perspective: slant distance pulls cloud bodies toward the
       // horizon haze color; deep in the haze they thin but never fully vanish
       // (hazy silhouettes keep texturing the low sky, WoT-style).

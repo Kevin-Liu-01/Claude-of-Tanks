@@ -123,6 +123,8 @@ export const INTERACTION_SITES = Object.freeze({
   // the counts and the winning score (up to 14 values) on the picker menu; the settings of two to five on the segmented control
   'deploy-arrangement': { chooses: 'setting', options: 14, screen: 'deploy', owner: 'src/ui/battleArrangementPanel.ts', build: 'picker', marks: ['picker:deploy-arrangement', 'segmented:.cot-arrange-seg'], lane: 'premiere-site' },
   'deploy-team-nations': { chooses: 'team', options: 2, screen: 'deploy', owner: 'src/ui/teamNationsControl.ts', build: 'segmented', marks: ['segmented:.cot-teams-seg'], lane: 'premiere-site' },
+  // couch mode's lobby (docs/COUCH-MODE.md): how the seats take sides, Together or Teams
+  'couch-sides': { chooses: 'sides', options: 2, screen: 'deploy', owner: 'src/ui/couchLobby.ts', build: 'segmented', marks: ['segmented:.cot-couch-sides'], lane: 'premiere-site' },
   'nation-dropdown': { chooses: 'nation', options: 15, screen: 'deploy', owner: 'src/ui/nationSelect.ts', build: 'picker', marks: ['picker:nation-dropdown'], lane: 'premiere-site' },
 
   // ---- Settings and the HUD editor (premiere-site)

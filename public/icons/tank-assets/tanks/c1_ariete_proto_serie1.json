@@ -1185,15 +1185,15 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 24432,
-      "sha256": "8be22f5577503ed89d2832c8d7e2839ab2c69954d2e86ebadcc72579afeaa703",
+      "bytes": 24434,
+      "sha256": "a8cae1a5d24b427b527c53278b7610519e169e0de81626ea629e5cd9b472b0b8",
       "thumbnail": {
         "file": "thumbs/c1_ariete_proto_serie1_angle.webp",
         "width": 256,
         "height": 256,
         "mime": "image/webp",
         "bytes": 10072,
-        "sha256": "5d40d581b5b158466289f43dba57eee4e8a0623c4b4094d56dff21800956ea78"
+        "sha256": "e596e5e5acf571d1e17975da405d2bf77e082021175c20bc8e891804e2c6f57f"
       }
     },
     "top": {
@@ -1257,8 +1257,8 @@
       "width": 256,
       "height": 128,
       "mime": "image/png",
-      "bytes": 35212,
-      "sha256": "b23f42dcecfe07f93141d01dd3a39eb6723a2b07fc0818f038b38c145fd453e5"
+      "bytes": 32293,
+      "sha256": "32ef77ea330ff7524bcf7503028aaf6c0cf445ee15e6fe75006f8e2d42884705"
     },
     "technicalLabels": {
       "file": "c1_ariete_proto_serie1_technical.json",

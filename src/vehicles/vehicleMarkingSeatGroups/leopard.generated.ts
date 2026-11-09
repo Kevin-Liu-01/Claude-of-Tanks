@@ -254,15 +254,15 @@ export const VEHICLE_MARKING_SEATS: Readonly<Record<string, VehicleMarkingSeatRe
         "parent": "turret",
         "size": 0.25,
         "pos": [
-          -1.3466138,
-          0.5582833,
-          -1.3952
+          -1.4059191,
+          0.5614688,
+          -1.0972
         ],
         "quaternion": [
-          -0.0863967,
-          -0.7018088,
-          -0.0863967,
-          0.7018088
+          -0.1953047,
+          -0.6795999,
+          -0.1953047,
+          0.6795999
         ],
         "surfaceMesh": "turret",
         "anchorProfile": "kf51_evo",
@@ -276,15 +276,15 @@ export const VEHICLE_MARKING_SEATS: Readonly<Record<string, VehicleMarkingSeatRe
         "parent": "turret",
         "size": 0.25,
         "pos": [
-          -1.3710437,
-          0.5587559,
+          -1.405623,
+          0.5619414,
           -0.72915
         ],
         "quaternion": [
-          -0.1151318,
-          -0.6976709,
-          -0.1151318,
-          0.6976709
+          -0.1953047,
+          -0.6795999,
+          -0.1953047,
+          0.6795999
         ],
         "surfaceMesh": "turret",
         "anchorProfile": "kf51_evo",
@@ -303,15 +303,15 @@ export const VEHICLE_MARKING_SEATS: Readonly<Record<string, VehicleMarkingSeatRe
         "parent": "turret",
         "size": 0.24,
         "pos": [
-          -1.4626059,
-          0.1012577,
-          -0.4288919
+          -1.5183442,
+          0.4335804,
+          -0.2065125
         ],
         "quaternion": [
-          0.1447271,
-          -0.7109613,
-          0.1372737,
-          0.6743471
+          -0.0191251,
+          -0.7268308,
+          -0.0180589,
+          0.6863127
         ],
         "surfaceMesh": "turret",
         "anchorProfile": "kf51_u",
@@ -325,22 +325,22 @@ export const VEHICLE_MARKING_SEATS: Readonly<Record<string, VehicleMarkingSeatRe
         "parent": "turret",
         "size": 0.24,
         "pos": [
-          -1.4791912,
-          0.4168,
-          -0.5265962
+          -1.500755,
+          0.4175133,
+          -0.5272866
         ],
         "quaternion": [
-          0,
-          -0.7449088,
-          0,
-          0.6671663
+          -0.0191251,
+          -0.7268308,
+          -0.0180589,
+          0.6863127
         ],
         "surfaceMesh": "turret",
         "anchorProfile": "kf51_u",
         "visibilitySamples": 9,
         "visibilityClearSamples": 9,
         "visibilityRatio": 1,
-        "maximumSurfaceErrorM": 0.0003
+        "maximumSurfaceErrorM": 0.0003998
       }
     ]
   },

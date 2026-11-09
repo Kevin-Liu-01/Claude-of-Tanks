@@ -29,14 +29,32 @@ export const ENGINE_FAMILY_IDS: readonly EngineFamilyId[] = Object.freeze([
   'diesel_v12_modern', 'diesel_v12_coldwar', 'diesel_aircooled', 'diesel_ifv', 'gasoline_v12',
 ]);
 
-export type CrewLanguage =
+/** The packs the game's countries speak (COUNTRY_CREW). */
+export type NationalCrewLanguage =
   | 'en-US' | 'en-GB' | 'de' | 'ru' | 'uk' | 'zh' | 'fr'
   | 'sv' | 'ja' | 'ko' | 'it' | 'pl' | 'he'
   | 'da' | 'pt-BR' | 'en-AU' | 'af';
 
+/**
+ * Packs for languages with no country in the game (crew-languages-270): no hull speaks one by default; a player chooses
+ * it in Settings. Each speaks as one real army's armoured crews (docs/AUDIO.md). Indonesian is `id-ID` because `id` is
+ * the crew script's line-id key.
+ */
+export type WorldCrewLanguage =
+  | 'es-ES' | 'es-419' | 'pt-PT' | 'nl' | 'no' | 'fi' | 'el' | 'cs' | 'hu' | 'ro' | 'tr'
+  | 'ar' | 'fa' | 'hi' | 'ur' | 'bn' | 'id-ID' | 'ms' | 'vi' | 'th' | 'fil';
+
+export type CrewLanguage = NationalCrewLanguage | WorldCrewLanguage;
+
+export const WORLD_CREW_LANGUAGES: readonly WorldCrewLanguage[] = Object.freeze([
+  'es-ES', 'es-419', 'pt-PT', 'nl', 'no', 'fi', 'el', 'cs', 'hu', 'ro', 'tr',
+  'ar', 'fa', 'hi', 'ur', 'bn', 'id-ID', 'ms', 'vi', 'th', 'fil',
+]);
+
 export const CREW_LANGUAGES: readonly CrewLanguage[] = Object.freeze([
   'en-US', 'en-GB', 'de', 'ru', 'uk', 'zh', 'fr', 'sv', 'ja', 'ko', 'it', 'pl', 'he',
   'da', 'pt-BR', 'en-AU', 'af',
+  ...WORLD_CREW_LANGUAGES,
 ]);
 
 export type TrackClass = 'light' | 'heavy';
@@ -105,7 +123,7 @@ interface VehicleAudioSpecInput {
  * The crew each country's hulls carry: the operating army's own (crew voices 269). Exhaustive, so a new CountryId fails
  * typecheck until it names a crew. Canada has no pack of its own yet: its crews speak American English.
  */
-const COUNTRY_CREW: Readonly<Record<CountryId, CrewLanguage>> = Object.freeze({
+const COUNTRY_CREW: Readonly<Record<CountryId, NationalCrewLanguage>> = Object.freeze({
   usa: 'en-US', uk: 'en-GB', germany: 'de', russia: 'ru', ukraine: 'uk', china: 'zh', france: 'fr', sweden: 'sv',
   japan: 'ja', south_korea: 'ko', italy: 'it', poland: 'pl', israel: 'he',
   canada: 'en-US', denmark: 'da', brazil: 'pt-BR', australia: 'en-AU', south_africa: 'af',
@@ -153,6 +171,9 @@ export function resolveEngineFamily(spec: VehicleAudioSpecInput): EngineFamilyId
   if (/^centurion|^strv81|^jpz_e100/.test(id)) return 'gasoline_v12';
   if (/kv2/.test(id)) return 'diesel_v12_soviet';
   if (/namer|bmpt|tos1a/.test(id)) return /namer/.test(id) ? 'diesel_v12_modern' : 'diesel_v12_soviet';
+  // 268: the GM-352 pair's V-46 is the T-72 family's V12; the Gepard runs the Leopard 1's MTU MB 838
+  if (/tunguska|pantsir/.test(id)) return 'diesel_v12_soviet';
+  if (/gepard/.test(id)) return 'diesel_v12_modern';
   if (role === 'ifv' || role === 'light' || mass < 30) return 'diesel_ifv';
   if (/t72|t90|t62|t55|t14|type59|ztz85|type96_72|pt91|jaguar|t72_rys|zubr/.test(id)) return 'diesel_v12_soviet';
   if (era === 'ww2') return 'gasoline_v12';

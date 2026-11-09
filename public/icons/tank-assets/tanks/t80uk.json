@@ -1337,7 +1337,7 @@
       }
     ]
   },
-  "geometryHash": "24bb5e10",
+  "geometryHash": "36fa9292",
   "metadataHash": "f8649590",
   "presentationAnchor": {
     "xM": 0.0014,
@@ -1345,7 +1345,7 @@
   },
   "presentationHash": "b13daf42",
   "presentationProjection": {
-    "centerYM": 2.6349,
+    "centerYM": 2.7014,
     "topHalfM": 6.5096,
     "sideHalfM": 3.2548
   },
@@ -1362,7 +1362,7 @@
       "trackBand": 2,
       "trackPad": 1,
       "trackPadSimplified": 1,
-      "armorPaint": 14,
+      "armorPaint": 13,
       "hullRubber": 1,
       "gunmetal": 5,
       "unclassified": 16,
@@ -1395,15 +1395,15 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 25682,
-      "sha256": "8b3e90e59765db0cd7595b2a14f54eb4eee5f236a1a4be4c089232b655e54286",
+      "bytes": 27130,
+      "sha256": "6efc2e78a31c281f76ca5c56649c7ceb75b98813b80096a96d7d089eff690641",
       "thumbnail": {
         "file": "thumbs/t80uk_angle.webp",
         "width": 256,
         "height": 256,
         "mime": "image/webp",
-        "bytes": 10724,
-        "sha256": "75f909c01182815532231424d937543938d2433187c2b94fea0e79e2209ec508"
+        "bytes": 11024,
+        "sha256": "3643574f875119256a56266e534884e791c570769f0af4320638c357582ef9cc"
       }
     },
     "top": {
@@ -1411,16 +1411,16 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 9754,
-      "sha256": "0eb3c52541caa32ee7b906fad88d730614cbb6b7236fcdda321694b5a4d1d8a6"
+      "bytes": 9916,
+      "sha256": "aa6b9190c48df3f9f00edb3ae50cc97a12e9514d8edd80c2228d85da4e54e4cf"
     },
     "side": {
       "file": "t80uk_side.webp",
       "width": 512,
       "height": 256,
       "mime": "image/webp",
-      "bytes": 10908,
-      "sha256": "5ccda56bb12bcf0c63154fa9ff1ea16d872f26c27c461d1f51ed2636428d9d98"
+      "bytes": 10778,
+      "sha256": "cd143e75d84e1d2e52d19ebfd52851babae9809665cfd67bf685799a5aaebecc"
     },
     "topSilhouette": {
       "file": "t80uk_top_silhouette.png",
@@ -1435,46 +1435,46 @@
       "width": 256,
       "height": 128,
       "mime": "image/png",
-      "bytes": 4664,
-      "sha256": "337c8ac5e8756a615e82b65f228ae2391d732b3455d17d3b369d6912cca11d8a"
+      "bytes": 4844,
+      "sha256": "114992e0565dc201a281d757ee9e398c16977737cac4373d88794c1826f81f2d"
     },
     "armorSide": {
       "file": "t80uk_armor_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 24524,
-      "sha256": "a2d3344288789fe6b9a367c7ce13c9acb32123c67df7773a84c4204d1975d849"
+      "bytes": 24796,
+      "sha256": "6f51a0aa7458891e135006933ad4f1fd495ae2fb2366aecf75138b0a1ba9abac"
     },
     "modulesSide": {
       "file": "t80uk_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 23458,
-      "sha256": "e58ee831b17761af4a68963fbf892cc2e0d9e66286776a5ee2e45438cce9ab07"
+      "bytes": 23826,
+      "sha256": "1484a7f8a39c35d314c2079f5c5c9e6d389c4767f91c047f5bca0b4b4a8c6051"
     },
     "crewSide": {
       "file": "t80uk_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 20028,
-      "sha256": "dd7b17d4828705e30ac2d996f5fdecce4901cb8edcbe466de670089fc7f9455d"
+      "bytes": 21102,
+      "sha256": "86e42e8edb642be9dc23418973a019dc4d21841ae5a4adbbdff3bb2d8ee75b45"
     },
     "markings": {
       "file": "t80uk_markings.png",
       "width": 256,
       "height": 128,
       "mime": "image/png",
-      "bytes": 35922,
-      "sha256": "307b90eaa9513c86e3e8df627959bf0da1b34a3ad1098f59c14e0e67e24812ff"
+      "bytes": 32570,
+      "sha256": "b3601defbc24f3e12bfa873b11a44c906face0763ec79083657ec5a504a67681"
     },
     "technicalLabels": {
       "file": "t80uk_technical.json",
       "mime": "application/json",
-      "bytes": 4693,
-      "sha256": "1d32b424d7a2b7f9988622efb9cb31639c431ad53e47d5c01629e3dfc7be4850"
+      "bytes": 4692,
+      "sha256": "13b2aa8b5db36db8cc8380c7e4373e9ad96afbdc9ea0039c5e7c1baf79466b1e"
     }
   }
 }

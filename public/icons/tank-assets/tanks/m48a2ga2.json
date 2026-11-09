@@ -556,16 +556,16 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 11116,
-      "sha256": "fdfe69fbd95bcd1300355cfdb58bcc7db7f09a570b21bdef7be8be7c0b33dbb0"
+      "bytes": 11092,
+      "sha256": "56bed7e9647babad5c29806ee5be1181039db1295dc344036f2805ff4815acb9"
     },
     "side": {
       "file": "m48a2ga2_side.webp",
       "width": 512,
       "height": 256,
       "mime": "image/webp",
-      "bytes": 11910,
-      "sha256": "2e1d5f7cc04b50d15e2a04079ec45dc4fbd7935a82c9687c51c352f19fa1fc7c"
+      "bytes": 11914,
+      "sha256": "8f2a6ed008f85e0ec9ad51a072cadf6bce7572f708204e1258b07674037d8047"
     },
     "topSilhouette": {
       "file": "m48a2ga2_top_silhouette.png",
@@ -588,32 +588,32 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 27620,
-      "sha256": "66c9ffec5263f58ef611db064757fb3bda6d559fbdba40127cd29a7413d9734a"
+      "bytes": 27548,
+      "sha256": "9541e7ecf5d789f803f5b6a0dc6badd37f954a38535387319934021f2d219025"
     },
     "modulesSide": {
       "file": "m48a2ga2_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 28372,
-      "sha256": "bbce8e9d7189590144f745e2f3db03b3ef8d40ff3deb91770df7741358ff49c0"
+      "bytes": 28354,
+      "sha256": "9d22e7359c7ab5cf41fbc12eb74bbd4d95d5dcb485380eca4dc138f0b3df6029"
     },
     "crewSide": {
       "file": "m48a2ga2_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 27366,
-      "sha256": "a92cf372b9f3e98266acdf7df8255485bd8ae7089e3c947af62dc8317e111fb3"
+      "bytes": 27372,
+      "sha256": "1ba32a04cf99a3b5fb3cf3f25efa96831adc127a760c5f992ca2bfa867b4405f"
     },
     "markings": {
       "file": "m48a2ga2_markings.png",
       "width": 256,
       "height": 128,
       "mime": "image/png",
-      "bytes": 32695,
-      "sha256": "458b094001b55bc3a086ac2e90b866d894a86deccec73d0fdff1b66c1f298b0c"
+      "bytes": 31061,
+      "sha256": "195868493ff25a439c5442b6075f01b33917089783489b10e671a7e2eb01cc03"
     },
     "technicalLabels": {
       "file": "m48a2ga2_technical.json",

@@ -17,6 +17,7 @@ export const CHINA_TREE: NationTree = Object.freeze({
     { id: 'ztz', name: 'Type 59 to ZTZ-20' },
     { id: 'type96', name: 'Type 96' },
     { id: 'support', name: 'AFT-10 and Type 100' },
+    { id: 'air_defence', name: 'PGZ-95 and PGZ-09' },
     { id: 'special', name: 'Special' },
   ].map((line) => Object.freeze(line))),
   nodes: Object.freeze([
@@ -42,6 +43,10 @@ export const CHINA_TREE: NationTree = Object.freeze({
     node({ id: 'aft10', tier: 3, line: 'support', lane: 3, parents: ['ztz85_iii'], slot: 'line' }),
     node({ id: 'ztz100_prototype', tier: 10, line: 'support', lane: 5, parents: ['aft10'], slot: 'line' }),
     node({ id: 'type100', tier: 10, line: 'support', lane: 4, parents: ['ztz100_prototype'], slot: 'line' }),
+    // PGZ-95 and PGZ-09 (268, the twin-cannon air defence): off the AFT-10 on lane 4 (lane 3 lies under the AFT-10's run
+    // to the ZTZ-100 Prototype)
+    node({ id: 'pgz95', tier: 5, line: 'air_defence', lane: 4, parents: ['aft10'], slot: 'line' }),
+    node({ id: 'pgz09', tier: 6, line: 'air_defence', lane: 4, parents: ['pgz95'], slot: 'line' }),
     // Special
     node({ id: 't72b3m_kunlun', tier: 7, line: 'special', lane: 1, parents: [], slot: 'special' }),
     node({ id: 't72b3_qilin', tier: 7, line: 'special', lane: 2, parents: [], slot: 'special' }),
