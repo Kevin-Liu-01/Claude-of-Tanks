@@ -1036,8 +1036,8 @@
       "width": 256,
       "height": 128,
       "mime": "image/png",
-      "bytes": 35460,
-      "sha256": "0b9230632df738c7b5e56c5929f3bb099ef3dad181b3ece6b21673536577ab2f"
+      "bytes": 32785,
+      "sha256": "d2e4a82735a0e79e3e14a663842f3d2ced4157af1dfbfd19f33242da6ab622da"
     },
     "technicalLabels": {
       "file": "strv121_technical.json",

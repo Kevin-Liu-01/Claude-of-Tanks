@@ -589,15 +589,15 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 25390,
-      "sha256": "4fa1a617ae528a022abf3e36f4e8253f20dd72b1e6fd85d0ca0222bbe9a86c73",
+      "bytes": 25394,
+      "sha256": "8c81829eebe0bcced68a5efa136c616af677b4c67c48a71c523e9d0b5635baf6",
       "thumbnail": {
         "file": "thumbs/amx30_angle.webp",
         "width": 256,
         "height": 256,
         "mime": "image/webp",
-        "bytes": 10262,
-        "sha256": "84c7c941c55b6f445fec5707b87c60ea7def5ef62a52f60603ce335bb01a72d8"
+        "bytes": 10274,
+        "sha256": "2ed4b8f734cae72d3e649ccb8a2b01861a11dcc367635fd4e6cfe1fa52cd841d"
       }
     },
     "top": {
@@ -605,16 +605,16 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 9474,
-      "sha256": "5f3fe7583d57f2d8d8fd0fe3b6cd330031c611686c9038c516edec6ffca529f1"
+      "bytes": 9452,
+      "sha256": "5488985e984165c81ba2072aeda8dc344a2b4e38d504365a7043c7e87658f86e"
     },
     "side": {
       "file": "amx30_side.webp",
       "width": 512,
       "height": 256,
       "mime": "image/webp",
-      "bytes": 9792,
-      "sha256": "ec4ac91896fe166c5b25e32e2e6617e8942a99e7b7a3bd4c7925085da75d15e7"
+      "bytes": 9786,
+      "sha256": "7878430ad004d3bb04c4515c63c6c5f345583615a7fba6766453f169e1fce0f4"
     },
     "topSilhouette": {
       "file": "amx30_top_silhouette.png",
@@ -638,31 +638,31 @@
       "height": 512,
       "mime": "image/webp",
       "bytes": 26450,
-      "sha256": "df63e5cd314a849b45abba81e2a143e665b1a8ce590ecfb4092d53f431fbbc10"
+      "sha256": "48f720ef1cc152df39f0ae33029b3f71e34d87f310d09a44bddf99ec9455c72b"
     },
     "modulesSide": {
       "file": "amx30_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 24048,
-      "sha256": "dee5f73b37f16709fcc72a829101d32499014fda372c425382dd7ebcd48c16e5"
+      "bytes": 24044,
+      "sha256": "be1378edd08a19705524d4ad0a343b518ac23e82855bc255a1dc1bb481f0715a"
     },
     "crewSide": {
       "file": "amx30_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 21502,
-      "sha256": "bc33b1b7ce86379a2f6c1fa47ffeb3167e1316764d115c61085479fa8261ab7c"
+      "bytes": 21482,
+      "sha256": "7835aac42fd1f1d07335a9192e4791c5a849e59fae9e88a1e1f44ca841c919d0"
     },
     "markings": {
       "file": "amx30_markings.png",
       "width": 256,
       "height": 128,
       "mime": "image/png",
-      "bytes": 35682,
-      "sha256": "5516d1680bae7a4bc58b5e0ed302154763ca28586801dcd7b62972a32f8fafff"
+      "bytes": 32742,
+      "sha256": "7627ef203416443fc5eb300b1546307d24b5866d3a09b56246bc8d99d0f30ee2"
     },
     "technicalLabels": {
       "file": "amx30_technical.json",

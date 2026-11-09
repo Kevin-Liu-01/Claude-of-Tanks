@@ -8,7 +8,7 @@ import type { TankBuilderPort } from '../tankFactoryCore.ts';
 import { planeBoundedArmor, type ArmorPlane, type XYZ } from './abramsSourceXGeometry.ts';
 import { bindAbramsSourceXStockEra } from './abramsSourceXEra.ts';
 import { buildAbramsSourceXUkraineKit } from './abramsSourceXUkraineKit.ts';
-import { buildAbramsSourceXSepv3Kit } from './abramsSourceXSepv3Kit.ts';
+import { buildAbramsSourceXSepv3Kit, type Sepv3TrophyFit } from './abramsSourceXSepv3Kit.ts';
 import { ABRAMS_SOURCE_X_FRAME } from '../abramsSourceXDatums.ts';
 import { addVehicleGhillieSuit } from '../ghillieSuit.ts';
 import { addTrackWidthMinePlow } from './abramsMinePlow.ts';
@@ -20,11 +20,16 @@ export { ABRAMS_SOURCE_X_FRAME } from '../abramsSourceXDatums.ts';
 function abramsSourceXConfiguration(id: string) {
   // 2026-09-15: the M1A1 X and M1A1 HA X studies were retired; the Ukrainian M1A1 keeps the A1 kit
   const a1 = id === 'ua_m1a2_abrams';
-  const sepv3 = id === 'm1a2_abrams_sepv3';
+  // release 269: Australia's M1A2 SEPv3 (2024) is the SEPv3 turret, CROWS-LP and hull kit with Trophy "fitted for future
+  // installation" (the brackets, no launcher) and no ARAT: the stock skirts and turret flanks
+  const australian = id === 'm1a2_sepv3_aus';
+  const sepv3 = id === 'm1a2_abrams_sepv3' || australian;
   const curvedArat = id === 'm1a2_abrams_sepv2';
   // owner 2026-09-16: the SEPv3 carries all the side turret and skirt armour and attachments — the
   // rectangular ARAT set with the Trophy launchers taking three stations of each rear course
-  return { a1, sepv3, curvedArat, urbanArmor: curvedArat || id === 'm1a2_abrams_tusk' || sepv3,
+  return { a1, sepv3, curvedArat,
+    urbanArmor: curvedArat || id === 'm1a2_abrams_tusk' || id === 'm1a2_abrams_sepv3',
+    trophy: (australian ? 'mounts' : 'fitted') as Sepv3TrophyFit,
     ukrainian: id === 'ua_m1a2_abrams',
     // owner 2026-10-22: the UA M1A2 and the SEPv2 carry the track-width mine plow, as the M1A1 HA (and the UA M1A1 on it)
     minePlow: id === 'ua_m1a2_abrams' || curvedArat };
@@ -137,7 +142,7 @@ function* buildAbramsXCooperativeSteps(P: TankBuilderPort, cooperative = true): 
   }
   if (options.sepv3) {
     // owner 2026-09-15 (evening): the SEPv3 carries Trophy, the UAAPU and the fielded M1A2C detail
-    buildAbramsSourceXSepv3Kit(P);
+    buildAbramsSourceXSepv3Kit(P, options.trophy);
     if (cooperative) yield "buildAbramsX:buildAbramsSourceXSepv3Kit(P);";
   }
   // 2026-10-10 (owner): the TUSK's field net and garnish (ghillieFleetSuits.ts Group C); a hull without a row has none

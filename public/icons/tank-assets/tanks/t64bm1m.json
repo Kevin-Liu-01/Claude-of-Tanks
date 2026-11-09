@@ -2233,8 +2233,8 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 11168,
-      "sha256": "e98a7e6499fba3f6221fb54a8e3b58ccc8a03c7c17532416b884d8fcb1bf2a69"
+      "bytes": 11156,
+      "sha256": "1af894b38700344c1f56b9395f497138fd598747808ffc215d4d7733ed32b506"
     },
     "side": {
       "file": "t64bm1m_side.webp",
@@ -2289,8 +2289,8 @@
       "width": 256,
       "height": 128,
       "mime": "image/png",
-      "bytes": 35199,
-      "sha256": "a195c9200a4441cc3d31f22f80f2f46f29be9a136a4514f4feca1bab1fa72cbc"
+      "bytes": 32559,
+      "sha256": "cc9e006e1284b7cb4ec33ca22fa8a49fbc9bfadad8661346ea018e6bcbe6da5c"
     },
     "technicalLabels": {
       "file": "t64bm1m_technical.json",

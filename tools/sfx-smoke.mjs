@@ -9,9 +9,12 @@ import { acquireCaptureLock as acquireLock, refreshCaptureLock, releaseCaptureLo
 // bus events (window.__DEBUG.bus — the object the engine bound via bindBus)
 // and records the master output through the __COT_AUDIO PCM tap. Asserts:
 //   - every scene plays its intended assets (sfxLog names), audibly, unclipped
-//   - calibre ladder: rifle MG → heavy MG → 30 mm → 90 → 120 → 152 mm; the low
-//     band (<150 Hz) share of the capture rises from MG to the 152 mm and the
-//     cannon tail pitch falls with bore
+//   - calibre ladder: rifle MG → heavy MG → 30 mm → 76 → 90 → 105 → 120 (and rifled) → 125 → 130 → 152 → 170 mm; the low
+//     band (<150 Hz) share of the capture, over every variant of each pair's bank, holds each pair of
+//     tools/audio/gun-ladder.mjs (the files' own low shares are held in Node by sfxLoudness.selftest) and the cannon
+//     tail pitch falls with bore
+//   - a popped turret's landing plays where its body hits (the fx clock's landing, as the turret's rigid body reports it)
+//   Every asset is held on its loudest take, as in tools/audio-mix-balance.mjs.
 //   - distance model: a 15 m cannon plays its close report only, a ~210 m one
 //     both layers, a ~420 m one its distant report only, and the distant report
 //     arrives at the speed of sound
@@ -27,13 +30,17 @@ import { acquireCaptureLock as acquireLock, refreshCaptureLock, releaseCaptureLo
 import { createServer } from 'vite';
 import puppeteer from 'puppeteer';
 import { bandEnergy } from './audio/pcm.mjs';
-import { mkdirSync, writeFileSync, rmSync } from 'node:fs';
+import { GUN_LADDER, LADDER_BANKS, LADDER_HZ } from './audio/gun-ladder.mjs';
+import { loudestTakes } from './audio/held-takes.mjs';
+import { mkdirSync, readFileSync, writeFileSync, rmSync } from 'node:fs';
 import { resolve, join } from 'node:path';
 
 const outDir = resolve('shots/sfx-smoke');
 mkdirSync(outDir, { recursive: true });
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+// The page's first load (a cold private dep cache under a busy machine's load can take minutes): COT_PAGE_TIMEOUT_MS.
+const PAGE_MS = Number(process.env.COT_PAGE_TIMEOUT_MS) || 90000;
 
 /** Write interleaved stereo Int16 PCM as a RIFF/WAVE file. */
 function writeWav(path, i16, sampleRate) {
@@ -60,7 +67,7 @@ function analyze(i16, sampleRate) {
     sum2 += x * x;
   }
   const rms = Math.sqrt(sum2 / Math.max(1, mono.length));
-  const [lowShare] = mono.length >= 4096 ? bandEnergy(mono, sampleRate, [[0, 150]]) : [0];
+  const [lowShare] = mono.length >= 4096 ? bandEnergy(mono, sampleRate, [[0, LADDER_HZ]]) : [0];
   return {
     peak,
     peakDb: peak > 0 ? 20 * Math.log10(peak) : -Infinity,
@@ -116,8 +123,8 @@ async function openPage() {
   page.on('pageerror', (err) => consoleErrors.push(String(err)));
   for (let attempt = 0; ; attempt++) {
     try {
-      await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 90000 });
-      await page.waitForFunction('window.__GAME_READY === true', { timeout: 90000 });
+      await page.goto(url, { waitUntil: 'domcontentloaded', timeout: PAGE_MS });
+      await page.waitForFunction('window.__GAME_READY === true', { timeout: PAGE_MS });
       break;
     } catch (err) {
       if (attempt >= 1) throw err;
@@ -138,7 +145,10 @@ async function bootIntoBattle() {
 await openPage();
 
 let failed = false;
-const report = { scenes: {}, ladder: {}, distance: {}, errors: [] };
+const report = { scenes: {}, ladder: {}, ladderBanks: {}, distance: {}, errors: [] };
+// each shipped asset's variant count (the ladder captures a bank on every one)
+const SFX_ASSETS_N = Object.fromEntries(Object.entries(JSON.parse(readFileSync(new URL('./audio/.sfx-manifest.json', import.meta.url), 'utf8')))
+  .map(([id, rec]) => [id, rec.n]));
 const fail = (msg) => { failed = true; report.errors.push(msg); console.error('[sfx-smoke] FAIL: ' + msg); };
 
 try {
@@ -166,9 +176,10 @@ try {
 
   // Decode every bank the scenes use before the first capture.
   const PRELOAD = [
-    'mg_rifle_close', 'mg_heavy_close', 'mg_far', 'ac_30_close', 'ac_feed', 'ac_far_light',
-    'gun_90_close', 'gun_120_close', 'gun_152_close', 'gun_far_light', 'gun_far_medium', 'gun_far_heavy',
-    'atgm_launch', 'tail_open', 'tail_forest', 'tail_urban', 'tail_mountain',
+    'mg_rifle_close', 'mg_heavy_close', 'mg_rifle_far', 'mg_heavy_far', 'ac_30_close', 'ac_feed', 'ac_30_far',
+    // gun-reports-269: the per-bore banks (weaponAudio.ts WEAPON_ROWS), the ladder's every high-velocity bore and the short guns
+    ...['76', '90', '105', '120', '120r', '125', '130', '152h', '170'].flatMap((b) => [`gun_${b}_close`, `gun_${b}_far`]), 'gun_120_own',
+    'launch_tube', 'launch_far', 'tail_open', 'tail_forest', 'tail_urban', 'tail_mountain',
     'pen_heavy', 'pen_interior', 'ricochet_heavy', 'nonpen_heavy', 'nonpen_interior', 'era_det', 'he_armor',
     'expl_he_medium', 'ground_sand', 'ground_dirt', 'ground_rock', 'bullet_dirt', 'tank_explode', 'tank_explode_ammo',
     'debris_metal', 'turret_land', 'cookoff_loop', 'burnout_blast', 'tree_snap', 'tree_fall', 'ram_heavy',
@@ -178,6 +189,8 @@ try {
   const lib = await page.evaluate(() => window.__COT_AUDIO.library());
   console.log(`[sfx-smoke] context up (sr=${sampleRate}), decoded ${lib.assets} assets (${lib.decodedMb} MB, ${lib.failed} failed)`);
   if (lib.failed) fail(`${lib.failed} SFX assets failed to decode`);
+  // Every asset on its loudest take (tools/audio/held-takes.mjs): no check rides on the stream's draw.
+  await page.evaluate((h) => window.__COT_AUDIO.holdVariants(h), loudestTakes());
   // Freeze the battle (the pre-battle hold) so bots neither drive nor fire into
   // the captures, quiet the beds, and let earlier chatter drain.
   await page.evaluate(() => {
@@ -219,9 +232,9 @@ try {
 
   // ---- scene table -----------------------------------------------------------
   let shellId = 9000;
-  const fire = (cal, dx, dz, { player = false, sound = null } = {}) =>
+  const fire = (cal, dx, dz, { player = false, sound = null, name = 'p' } = {}) =>
     `{shellId:${++shellId}, shooterId:${player ? 'window.__P.playerId' : 'window.__P.enemyId'}, isPlayer:${player}, ` +
-    `shellType:'APFSDS', shellName:'p', caliberMm:${cal}, weaponSound:${sound ? `'${sound}'` : 'null'}, ` +
+    `shellType:'APFSDS', shellName:'${name}', caliberMm:${cal}, weaponSound:${sound ? `'${sound}'` : 'null'}, ` +
     `muzzlePos:window.__P.pos(${dx},0,${dz}), dir:[0,0,1]}`;
   const hit = (kind, own, dmg, cal = 105) =>
     `{kind:'${kind}', pos:window.__P.pos(${own ? '0,0,1.5' : '10,0,12'}), targetId:window.__P.${own ? 'playerId' : 'enemyId'}, ` +
@@ -233,14 +246,20 @@ try {
     { name: 'mg_rifle', ev: 'shell:fired', p: fire(7.62, 12, 9), holdMs: 900, expect: ['mg_rifle_close'], ladder: true },
     { name: 'mg_heavy', ev: 'shell:fired', p: fire(12.7, 12, 9, { sound: 'heavy-machine-gun' }), holdMs: 1000, expect: ['mg_heavy_close'], ladder: true },
     { name: 'ac_30', ev: 'shell:fired', p: fire(30, 12, 9, { sound: '2a42' }), holdMs: 1400, expect: ['ac_30_close', 'ac_feed'], ladder: true },
+    { name: 'gun_76', ev: 'shell:fired', p: fire(76, 12, 9), holdMs: 2400, expect: ['gun_76_close', 'tail_'], ladder: true },
     { name: 'gun_90', ev: 'shell:fired', p: fire(90, 12, 9), holdMs: 2600, expect: ['gun_90_close', 'tail_'], ladder: true },
+    { name: 'gun_105', ev: 'shell:fired', p: fire(105, 12, 9), holdMs: 2700, expect: ['gun_105_close', 'tail_'], ladder: true },
     { name: 'gun_120', ev: 'shell:fired', p: fire(120, 12, 9), holdMs: 2800, expect: ['gun_120_close', 'tail_'], ladder: true },
-    { name: 'gun_152', ev: 'shell:fired', p: fire(152, 12, 9), holdMs: 3200, expect: ['gun_152_close', 'tail_'], ladder: true },
+    { name: 'gun_120r', ev: 'shell:fired', p: fire(120, 12, 9, { name: 'L27A1 CHARM-3' }), holdMs: 2800, expect: ['gun_120r_close', 'tail_'], ladder: true },
+    { name: 'gun_125', ev: 'shell:fired', p: fire(125, 12, 9), holdMs: 2900, expect: ['gun_125_close', 'tail_'], ladder: true },
+    { name: 'gun_130', ev: 'shell:fired', p: fire(130, 12, 9), holdMs: 3000, expect: ['gun_130_close', 'tail_'], ladder: true },
+    { name: 'gun_152', ev: 'shell:fired', p: fire(152, 12, 9), holdMs: 3200, expect: ['gun_152h_close', 'tail_'], ladder: true },
+    { name: 'gun_170', ev: 'shell:fired', p: fire(170, 12, 9), holdMs: 3200, expect: ['gun_170_close', 'tail_'], ladder: true },
     // the occupied gun and the distance model
-    { name: 'gun_120_own', ev: 'shell:fired', p: fire(120, 0, 3, { player: true }), holdMs: 2800, expect: ['gun_120_close', 'gun_far_medium'] },
-    { name: 'gun_120_mid', ev: 'shell:fired', p: fire(120, 150, 150), holdMs: 3400, minRms: 1e-4, expect: ['gun_120_close', 'gun_far_medium'] },
-    { name: 'gun_120_distant', ev: 'shell:fired', p: fire(120, 300, 300), holdMs: 4400, minRms: 3e-5, expect: ['gun_far_medium'], forbid: ['gun_120_close'], forbidBeyondM: 300 },
-    { name: 'atgm', ev: 'shell:fired', p: fire(130, 14, 9, { sound: 'konkurs-launch' }), holdMs: 2400, expect: ['atgm_launch'] },
+    { name: 'gun_120_own', ev: 'shell:fired', p: fire(120, 0, 3, { player: true }), holdMs: 2800, expect: ['gun_120_own', 'gun_120_far'] },
+    { name: 'gun_120_mid', ev: 'shell:fired', p: fire(120, 150, 150), holdMs: 3400, minRms: 1e-4, expect: ['gun_120_close', 'gun_120_far'] },
+    { name: 'gun_120_distant', ev: 'shell:fired', p: fire(120, 300, 300), holdMs: 4400, minRms: 3e-5, expect: ['gun_120_far'], forbid: ['gun_120_close'], forbidBeyondM: 300 },
+    { name: 'atgm', ev: 'shell:fired', p: fire(130, 14, 9, { sound: 'konkurs-launch' }), holdMs: 2400, expect: ['launch_tube'] },
     // impacts
     { name: 'impact_pen', ev: 'shell:hit', p: hit('pen', false, 180), holdMs: 1600, expect: ['pen_heavy'] },
     { name: 'hit_received_pen', ev: 'shell:hit', p: hit('pen', true, 150), holdMs: 1800, expect: ['pen_heavy', 'pen_interior'] },
@@ -253,7 +272,11 @@ try {
     // destruction and contact
     { name: 'tank_explosion', ev: 'tank:destroyed', holdMs: 5200,
       p: `{id:window.__P.enemyId, specId:'t90am', pos:window.__P.pos(0,-1.5,30), killerId:window.__P.playerId, cause:'ammorack'}`,
-      expect: ['tank_explode_ammo', 'debris_metal', 'turret_land', 'cookoff_loop'] },
+      expect: ['tank_explode_ammo', 'debris_metal', 'cookoff_loop'] },
+    // the popped turret's landing (physics lane, 2026-10-10): its rigid body reports the hit through the fx clock and the
+    // engine plays it there; a bus event pops no turret, so the scene lands one through the same report
+    { name: 'turret_landing', holdMs: 2200, expect: ['turret_land'],
+      call: `import('/src/fx/clock.ts').then((m) => m.emitTurretLanding(...window.__P.pos(4,-1.5,30), 11))` },
     { name: 'tank_burnout', ev: 'tank:destroyed', holdMs: 3600,
       p: `{id:window.__P.enemyId, specId:'t90am', pos:window.__P.pos(14,-1.5,26), killerId:null, cause:'fire'}`,
       expect: ['burnout_blast'] },
@@ -275,7 +298,8 @@ try {
     await tapStart();
     await sleep(250);
     const emittedAt = await page.evaluate(() => window.__P.now());
-    await emit(sc.ev, sc.p);
+    if (sc.call) await page.evaluate(sc.call);
+    else await emit(sc.ev, sc.p);
     await sleep(sc.holdMs);
     const i16 = await tapStopAndFetch();
     const a = analyze(i16, sampleRate);
@@ -307,11 +331,36 @@ try {
   // ---- calibre ladder ---------------------------------------------------------
   const ladder = SCENES.filter((s) => s.ladder).map((s) => s.name);
   for (const name of ladder) report.ladder[name] = +sceneAudio[name].lowShare.toFixed(3);
-  if (!(sceneAudio.gun_152.lowShare > sceneAudio.mg_rifle.lowShare * 1.5)) {
-    fail(`152 mm is not bassier than the rifle MG (low share ${sceneAudio.gun_152.lowShare.toFixed(3)} vs ${sceneAudio.mg_rifle.lowShare.toFixed(3)})`);
+  // gun-reports-269: every bore its own report, and the big guns sit lower than the light ones. The ladder is a bank's
+  // property (world-sfx-269): a pair's scene (the ladder scene whose first expected sample is its bank) is captured on
+  // every variant of that bank, held in turn, and compared on the mean, as sfxLoudness.selftest compares the files — one
+  // held take compares two takes (the 17 cm's loudest is its brightest). Each capture starts in silence: a cannon's boom
+  // rings 5.5 s, and one still rolling under a rifle MG's capture read as its bass (0.68 against its files' 0.1).
+  const ladderScene = (bank) => SCENES.find((s) => s.ladder && s.expect[0] === bank);
+  const held = loudestTakes();
+  const bankLow = {};
+  const RING_MS = 6500;
+  for (const bank of LADDER_BANKS) {
+    const sc = ladderScene(bank);
+    const lows = [];
+    for (let v = 0; v < SFX_ASSETS_N[bank]; v++) {
+      await page.evaluate((h) => window.__COT_AUDIO.holdVariants(h), { ...held, [bank]: v });
+      await sleep(RING_MS);
+      await tapStart();
+      await sleep(250);
+      await emit(sc.ev, sc.p.replace(/shellId:\d+/, `shellId:${++shellId}`));
+      await sleep(sc.holdMs);
+      lows.push(analyze(await tapStopAndFetch(), sampleRate).lowShare);
+    }
+    bankLow[bank] = lows.reduce((sum, x) => sum + x, 0) / lows.length;
+    report.ladderBanks[bank] = lows.map((x) => +x.toFixed(3));
   }
-  if (!(sceneAudio.gun_120.lowShare > sceneAudio.ac_30.lowShare)) {
-    fail(`120 mm is not bassier than the 30 mm (low share ${sceneAudio.gun_120.lowShare.toFixed(3)} vs ${sceneAudio.ac_30.lowShare.toFixed(3)})`);
+  await page.evaluate((h) => window.__COT_AUDIO.holdVariants(h), held);
+  for (const [heavier, lighter, factor] of GUN_LADDER) {
+    const [h, l] = [ladderScene(heavier).name, ladderScene(lighter).name];
+    if (!(bankLow[heavier] > bankLow[lighter] * factor)) {
+      fail(`${h} is not bassier than ${l}${factor !== 1 ? ` x${factor}` : ''} (mean low share over its takes ${bankLow[heavier].toFixed(3)} vs ${bankLow[lighter].toFixed(3)})`);
+    }
   }
   const tail90 = entry('gun_90', 'tail_');
   const tail152 = entry('gun_152', 'tail_');
@@ -320,8 +369,8 @@ try {
   // ---- distance model ---------------------------------------------------------
   const near = entry('gun_120', 'gun_120_close');
   const mid = entry('gun_120_mid', 'gun_120_close');
-  const midFar = entry('gun_120_mid', 'gun_far_medium');
-  const distant = entry('gun_120_distant', 'gun_far_medium');
+  const midFar = entry('gun_120_mid', 'gun_120_far');
+  const distant = entry('gun_120_distant', 'gun_120_far');
   report.distance = { near, mid, midFar, distant };
   if (near && mid && !(mid.g < near.g * 0.5)) fail(`close report not attenuated at ~210 m (${mid.g} vs ${near.g})`);
   if (distant) {
@@ -331,7 +380,7 @@ try {
     report.distance.expectedDelayS = +expected.toFixed(3);
     if (Math.abs(delay - expected) > 0.25) fail(`distant report delay ${delay.toFixed(2)} s, expected ~${expected.toFixed(2)} s at ${distant.d} m`);
   }
-  const own = entry('gun_120_own', 'gun_120_close');
+  const own = entry('gun_120_own', 'gun_120_own');
   if (own && near && !(own.g > near.g)) fail(`occupied gun not hotter than an enemy gun at 15 m (${own.g} vs ${near.g})`);
   if (own && own.b !== 'ownCombat') fail(`occupied gun routed to ${own.b}, expected the hull's gunfire bus`);
 

@@ -15,7 +15,8 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { SFX_CATALOG } from './sfx-catalog.mjs';
 import { measureLoudness } from './master.mjs';
-import { decodeMono } from './pcm.mjs';
+import { bandEnergy, decodeMono } from './pcm.mjs';
+import { LADDER_BANKS, LADDER_HZ } from './gun-ladder.mjs';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const ROOT = join(HERE, '..', '..');
@@ -35,16 +36,19 @@ if (!ids.length) {
 
 const round1 = (v) => (v == null ? null : Math.round(v * 10) / 10);
 
-function measureFile(file) {
+/** A calibre-ladder bank (gun-ladder.mjs) also records its share of energy under the ladder's cutoff. */
+function measureFile(file, ladder) {
   const bytes = readFileSync(file);
   const loud = measureLoudness(file);
+  const mono = decodeMono(file, 48000);
   return {
     sha256: createHash('sha256').update(bytes).digest('hex'),
     bytes: bytes.length,
-    durS: +(decodeMono(file, 48000).length / 48000).toFixed(3),
+    durS: +(mono.length / 48000).toFixed(3),
     mMax: round1(loud.mMax),
     integrated: round1(loud.integrated),
     truePeak: round1(loud.truePeak),
+    ...(ladder ? { low150: +bandEnergy(mono, 48000, [[0, LADDER_HZ]])[0].toFixed(3) } : {}),
   };
 }
 
@@ -54,7 +58,8 @@ for (const id of ids) {
   const rec = manifest[id];
   if (!entry || !rec) throw new Error(`${id}: not in the catalog and the manifest`);
   const variants = [];
-  for (let i = 0; i < rec.n; i++) variants.push(measureFile(join(ROOT, 'public', 'audio', 'sfx', rec.g, `${id}_${i}.webm`)));
+  const ladder = LADDER_BANKS.includes(id);
+  for (let i = 0; i < rec.n; i++) variants.push(measureFile(join(ROOT, 'public', 'audio', 'sfx', rec.g, `${id}_${i}.webm`), ladder));
   const next = { group: rec.g, preset: entry.proc, channels: rec.c, variants };
   if (check) {
     const prev = record[id];

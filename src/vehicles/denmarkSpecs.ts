@@ -42,10 +42,10 @@ leo1a3dk.gun = {
 };
 leo1a3dk.visual = {
   ...leo1a3dk.visual,
-  // the 1970s Danish Army's plain olive drab (r2: the Krigsmuseet tank's darker, greyer olive; r7 critics: a saturated green
-  // under cloudy mottling: flatter and greyer, the mottle light)
-  scheme: 'solid', base: '#484a3b', weather: '#55574a', patches: [], marking: 'number', number: '43', camoScale: 0.5,
-  solidWeatheringIntensity: 0.35,
+  // the 1970s Danish Army's olive drab (r2: the Krigsmuseet tank's darker, greyer olive; r7 critics: a saturated green
+  // under cloudy mottling: flatter and greyer), under broad black and earth field bands (owner 2026-11-03: "any tank without a proper camo need a proper camoo")
+  scheme: 'stripes', base: '#484a3b', weather: '#55574a', patches: ['#23251f', '#5a4a36'], marking: 'number', number: '43',
+  camoScale: 0.5,
 };
 
 // The Leopard 1A5 DK: EMES 18 thermal fire control on the welded turret, the 1990s 105 mm APFSDS at the 1A5's footing.
@@ -76,7 +76,9 @@ Object.assign(leo1a5dk1, { weightTons: 43.0 });
 leo1a5dk1.gun = { ...leo1a5dk.gun };
 leo1a5dk1.visual = {
   ...leo1a5dk1.visual,
-  scheme: 'solid', base: '#d9d8cf', weather: '#c9c8bd', patches: [], marking: 'number', number: '22', camoScale: 0.5,
+  // the United Nations white kept dominant, broken by pale-grey fields with bright and dark bars (owner 2026-11-03: "any tank without a proper camo need a proper camoo")
+  scheme: 'merdc', base: '#d9d8cf', weather: '#c9c8bd', patches: ['#b3b2a8', '#efeee7', '#5d6052'], marking: 'number', number: '22',
+  camoScale: 0.55, patchK: 1.2,
 };
 
 // The Leopard 1 DKs' measured gun stops (tools/gun-depression-sweep.mjs at 26 mm on the welded turret and its gun; 266:

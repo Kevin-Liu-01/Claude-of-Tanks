@@ -38,7 +38,7 @@ Magach 3. The fit drawn is the photographed tank's.)
 | Stowage | the large IDF bustle basket (photos) | the A5's rack taller and wider, with a heavier load; no flank racks (the boxes cover the flanks) |
 | Power | AVDS-1790-2A, 750 hp (Kubinka) | the A5's diesel deck and air cleaners |
 | Weight | 49.1 t (Kubinka) | spec |
-| Coat | IDF sand-grey | the IDF service coat (camo stock `service_merkava2d`) |
+| Coat | IDF sand-grey | the IDF's Sinai grey under sand-grey and dark-slate field three-tone, `paint_magach3` (was the Merkava 2D's plain service grey, `service_merkava2d`; (owner 2026-11-03: "any tank without a proper camo need a proper camoo")) |
 
 ### Not drawn
 

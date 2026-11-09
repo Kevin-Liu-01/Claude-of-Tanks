@@ -11,6 +11,7 @@ import { readFileSync } from 'node:fs';
 import { SFX_ASSETS } from './sfxManifest.generated.ts';
 import { PRESETS } from '../../tools/audio/master.mjs';
 import { SFX_CATALOG } from '../../tools/audio/sfx-catalog.mjs';
+import { GUN_LADDER, LADDER_HZ } from '../../tools/audio/gun-ladder.mjs';
 
 const record = JSON.parse(readFileSync(new URL('../../tools/audio/sfx-loudness.json', import.meta.url), 'utf8'));
 
@@ -77,4 +78,16 @@ for (const [id, rec] of Object.entries(record)) {
     files++;
   });
 }
-console.log(`sfxLoudness.selftest: ${Object.keys(record).length} assets, ${files} files measured as they ship, bound by hash, on their presets`);
+// The calibre ladder (world-sfx-269, 2026-11-04; tools/audio/gun-ladder.mjs): each pair's heavier bank, measured as it
+// ships, carries more of its energy under the cutoff than the lighter one's on the mean of its variants. sfx-smoke
+// checked it only on the take a browser run drew, so a 17 cm boom shipped under the 76 mm on every take.
+const lowMean = (id) => {
+  const rec = record[id];
+  assert.ok(rec?.variants.every((v) => typeof v.low150 === 'number'), `${id}: measured with its low share (node tools/audio/loudness-receipt.mjs --ids ${id})`);
+  return rec.variants.reduce((sum, v) => sum + v.low150, 0) / rec.variants.length;
+};
+for (const [heavier, lighter, factor] of GUN_LADDER) {
+  const [h, l] = [lowMean(heavier), lowMean(lighter)];
+  assert.ok(h > l * factor, `${heavier} sits lower than ${lighter}${factor !== 1 ? ` x${factor}` : ''}: mean low share ${h.toFixed(3)} vs ${l.toFixed(3)} under ${LADDER_HZ} Hz`);
+}
+console.log(`sfxLoudness.selftest: ${Object.keys(record).length} assets, ${files} files measured as they ship, bound by hash, on their presets; the ${GUN_LADDER.length} calibre-ladder pairs hold`);

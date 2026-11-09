@@ -21,7 +21,6 @@ export interface MaterialPainterResult {
 }
 export interface MaterialPainterMessage {
   requestId: number;
-  fontUrl: string;
   request: MaterialPainterRequest;
 }
 export type MaterialPainterReply =
@@ -59,7 +58,6 @@ export function isMaterialPainterRequest(value: RuntimeValue): value is Material
 }
 export function isMaterialPainterMessage(value: RuntimeValue): value is MaterialPainterMessage {
   return record(value) && Number.isSafeInteger(value.requestId) && Number(value.requestId) > 0
-    && typeof value.fontUrl === 'string' && value.fontUrl.length <= 4096
     && isMaterialPainterRequest(value.request);
 }
 

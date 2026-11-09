@@ -2213,8 +2213,8 @@
       "width": 256,
       "height": 128,
       "mime": "image/png",
-      "bytes": 36994,
-      "sha256": "5b265bdfe443734ecc8181432699d3e6589108daae2b56c71992bbc2e3b832ac"
+      "bytes": 34801,
+      "sha256": "994d105e514e0c771aac4c1dc32ad9858e51a875c1d7e2394025deae84dc3bf5"
     },
     "technicalLabels": {
       "file": "m1a1_abrams_fep_technical.json",

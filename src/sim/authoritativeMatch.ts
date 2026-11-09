@@ -140,7 +140,7 @@ import { createFortifiedCoverLedger, isFortifiedCoverRecord } from './fortifiedC
 import type {
   DestructionLogEntry, StructureBreachEvent, StructureStageEvent, TerrainCraterEvent,
 } from './destructionEvents.ts';
-import { shellHitsWater } from './shellSurface.ts';
+import { shellHitsWater, shellIncidenceDeg } from './shellSurface.ts';
 import { architectureStyleOf, wallMaterialForStyle } from './structureMaterial.ts';
 import { PROP_FELL_PER_BLAST, PROP_FELL_PER_TICK, munitionChargeKg, munitionClassForShell, propFellRadiusM } from './munitionBlast.ts';
 import { createDeformedHeightField, createTerrainDeformation, rubbleFalloffM, type TerrainDeformation } from './terrainDeformation.ts';
@@ -1957,6 +1957,8 @@ export function createAuthoritativeMatch({
       nx: worldHit.normal?.x || 0,
       ny: worldHit.normal?.y || 1,
       nz: worldHit.normal?.z || 0,
+      // (impact-materials-269, presentation) the round's incidence, as the solo step raises it: the wire's one-byte key
+      impactAngleDeg: shellIncidenceDeg(shell.vel, worldHit.normal),
       shellType: shell.spec.type,
       caliberMm: shell.spec.caliberMm,
     });

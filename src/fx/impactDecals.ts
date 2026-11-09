@@ -20,7 +20,13 @@
  *           heat tint at the entry end — NO hole
  *  - scorch HE splash (and ERA pops at reduced size): wide shallow ragged
  *           soot blot, low alpha at the edge, no hole
- *  - scuff  blunt non-penetration: small chipped-paint dish, no hole
+ *  - scuff  blunt non-penetration: a scorched dish, a broken ring of bare
+ *           steel and the paint blasted off round it, no hole
+ *
+ * What was struck (HitEvent.material) decides whether a mark is left and its
+ * colour (impact-materials-269, UNMARKED_MATERIALS and TORN_TINT), and every
+ * family is sized to read from the third-person camera and through a scope
+ * (IMPACT_MARK_SIZE_M).
  *
  * Placement: uses the exact articulation-local contact emitted by armor.ts
  * (HitEvent.impactFrame / impactLocal*) so a hull, traversed turret, or
@@ -123,11 +129,17 @@ interface ImpactEvent {
   localDir?: Vec3Tuple;
   pos?: Vec3Tuple;
   normal?: Vec3Tuple;
+  /** (impact-materials-269) what the round struck (sim/plateMaterial.ts PlateMaterial) */
+  material?: string;
 }
+
+/** A mark's colour multiplier: a torn face that shows no bare steel. */
+type MarkTint = readonly [number, number, number];
 
 interface ClassifiedMark {
   fam: ImpactFamily;
   sizeK: number;
+  tint: MarkTint | null;
 }
 
 export interface ImpactDecalDescriptor {
@@ -135,13 +147,38 @@ export interface ImpactDecalDescriptor {
   sizeK: number;
   hasHole: boolean;
   variants: number;
+  tint: MarkTint | null;
 }
+
+/**
+ * (impact-materials-269, the owner 2026-11-04: "check for hit marks ON TANKS as they should appear, very visible") what
+ * was struck decides whether a mark is left and its colour. A mark is a fixed quad on the hull, turret or gun, so the
+ * turning running gear (track links, road wheels) and a cage's open lattice take none: it would slide over the wheels
+ * or hang in the gaps, and their sparks and the ground they throw carry the strike. Rubber and canvas tear dark, with no
+ * bare steel. Every steel face keeps the steel marks.
+ */
+const UNMARKED_MATERIALS: ReadonlySet<string> = new Set(['trackLinks', 'roadWheel', 'cage']);
+const TORN_TINT: Readonly<Record<string, MarkTint>> = Object.freeze({
+  rubberSkirt: Object.freeze([0.2, 0.19, 0.18] as const),
+  stowage: Object.freeze([0.52, 0.47, 0.34] as const),
+});
+/** A round under this leaves no mark: a bullet's chip is not seen at range, and it would push a cannon's mark out of the
+ *  vehicle's ring. */
+export const IMPACT_MARK_MIN_CALIBER_MM = 20;
+/**
+ * Each family's quad side at 100 mm, metres (a gouge: its length, and its height as a share of that), sized with the
+ * cells' solid share so a 120 mm mark reads from the third-person camera and through a scope (impactDecals.selftest
+ * measures it). The old sides (pen 0.34, crit 0.40, gouge 0.74, scuff 0.26) left a scuff at 1 px² from 9 m.
+ */
+export const IMPACT_MARK_SIZE_M = Object.freeze({ pen: 0.52, crit: 0.6, gouge: 1.1, gougeH: 0.42, scuff: 0.5, scorch: 0.95 });
 
 /** Stable visual contract between authoritative armor outcomes and scars. */
 export function impactDecalDescriptor(
   kind: string | null | undefined,
   critical = false,
+  material: string | null = null,
 ): ImpactDecalDescriptor | null {
+  if (material && UNMARKED_MATERIALS.has(material)) return null;
   let fam: ImpactFamily;
   let sizeK = 1;
   let hasHole = false;
@@ -161,10 +198,15 @@ export function impactDecalDescriptor(
     sizeK = 0.55;
   } else if (kind === 'he_splash') {
     fam = 'scorch';
+  } else if (kind === 'screen_pierce') {
+    // a round through a skirt, a rack or a sheet on its way in: the screen keeps the hole (it drew nothing before)
+    fam = 'pen';
+    sizeK = 0.75;
+    hasHole = true;
   } else {
     return null;
   }
-  return { family: fam, sizeK, hasHole, variants: FAMILY_CELLS[fam].length };
+  return { family: fam, sizeK, hasHole, variants: FAMILY_CELLS[fam].length, tint: (material && TORN_TINT[material]) || null };
 }
 
 interface MarkSize {
@@ -356,7 +398,7 @@ function raggedPath(ctx: CanvasRenderingContext2D, rng: Rng, cx: number, cy: num
 function drawPen(ctx: CanvasRenderingContext2D, rng: Rng, crit: boolean): void {
   const c = CELL / 2;
   const R = c;
-  sootHalo(ctx, rng, c, c, R * (crit ? 0.95 : 0.8), crit ? 0.78 : 0.6);
+  sootHalo(ctx, rng, c, c, R * (crit ? 0.95 : 0.82), crit ? 0.98 : 0.9);
   // radial soot rays flung from the hole
   const nStreak = 4 + Math.floor(rng() * 4);
   for (let i = 0; i < nStreak; i++) {
@@ -368,7 +410,7 @@ function drawPen(ctx: CanvasRenderingContext2D, rng: Rng, crit: boolean): void {
     ctx.translate(c, c);
     ctx.rotate(a);
     const g = ctx.createLinearGradient(r0, 0, r0 + len, 0);
-    g.addColorStop(0, `rgba(12,10,8,${0.55 + rng() * 0.25})`);
+    g.addColorStop(0, `rgba(12,10,8,${0.8 + rng() * 0.15})`);
     g.addColorStop(1, 'rgba(0,0,0,0)');
     ctx.fillStyle = g;
     ctx.beginPath();
@@ -376,11 +418,11 @@ function drawPen(ctx: CanvasRenderingContext2D, rng: Rng, crit: boolean): void {
     ctx.fill();
     ctx.restore();
   }
-  const holeR = R * (crit ? 0.15 : 0.135);
+  const holeR = R * (crit ? 0.19 : 0.17);
   // the paint burned off round the hole: a ragged ring of bare, heat-darkened primer and steel
   ctx.save();
   raggedPath(ctx, rng, c, c, holeR * (crit ? 3.0 : 2.6), 18, 0.35);
-  ctx.fillStyle = `rgba(80,76,70,${crit ? 0.3 : 0.25})`;
+  ctx.fillStyle = `rgba(80,76,70,${crit ? 0.6 : 0.55})`;
   ctx.fill();
   ctx.restore();
   // the plate heat-tempered round the hole: straw to bronze to blue oxide, faint
@@ -397,8 +439,8 @@ function drawPen(ctx: CanvasRenderingContext2D, rng: Rng, crit: boolean): void {
   const nArc = 5 + Math.floor(rng() * 3);
   for (let i = 0; i < nArc; i++) {
     const a0 = rng() * Math.PI * 2;
-    ctx.strokeStyle = `rgba(158,160,162,${(0.45 + rng() * 0.25).toFixed(3)})`;
-    ctx.lineWidth = 1.2 + rng() * 1.6;
+    ctx.strokeStyle = `rgba(158,160,162,${(0.7 + rng() * 0.2).toFixed(3)})`;
+    ctx.lineWidth = 3 + rng() * 3;
     ctx.beginPath();
     ctx.arc(c, c, holeR * (1.12 + rng() * 0.18), a0, a0 + 0.35 + rng() * 0.8);
     ctx.stroke();
@@ -422,7 +464,7 @@ function drawPen(ctx: CanvasRenderingContext2D, rng: Rng, crit: boolean): void {
     g4.addColorStop(0, `rgba(168,170,172,${(0.4 + rng() * 0.25).toFixed(3)})`);
     g4.addColorStop(1, 'rgba(168,170,172,0)');
     ctx.fillStyle = g4;
-    ctx.fillRect(r0, -(0.5 + rng() * 0.7), len, 1 + rng() * 1.4);
+    ctx.fillRect(r0, -(1 + rng() * 1), len, 2 + rng() * 2);
     ctx.restore();
   }
 }
@@ -435,14 +477,14 @@ function drawGouge(ctx: CanvasRenderingContext2D, rng: Rng): void {
   const cy = CELL / 2 + (rng() - 0.5) * 10;
   const x0 = CELL * 0.08;
   // brushed-metal body: many thin horizontal sub-streaks
-  const nS = 16 + Math.floor(rng() * 6);
+  const nS = 18 + Math.floor(rng() * 6);
   for (let i = 0; i < nS; i++) {
-    const yy = cy + (rng() - 0.5) * CELL * 0.17;
-    const sx = x0 + rng() * CELL * 0.20;
-    const len = CELL * (0.30 + rng() * 0.52);
-    const w = 1 + rng() * 2.6;
-    const b = 132 + rng() * 52;
-    const a0 = 0.28 + rng() * 0.45;
+    const yy = cy + (rng() - 0.5) * CELL * 0.2;
+    const sx = x0 + rng() * CELL * 0.16;
+    const len = CELL * (0.4 + rng() * 0.46);
+    const w = 3 + rng() * 4;
+    const b = 132 + rng() * 40;
+    const a0 = 0.6 + rng() * 0.3;
     const g = ctx.createLinearGradient(sx, 0, sx + len, 0);
     g.addColorStop(0, `rgba(${(b * 0.92) | 0},${(b * 0.95) | 0},${b | 0},0)`);
     g.addColorStop(0.22, `rgba(${(b * 0.92) | 0},${(b * 0.95) | 0},${b | 0},${a0})`);
@@ -457,34 +499,34 @@ function drawGouge(ctx: CanvasRenderingContext2D, rng: Rng): void {
     const len = CELL * (0.26 + rng() * 0.2);
     const g = ctx.createLinearGradient(sx, 0, sx + len, 0);
     g.addColorStop(0, 'rgba(188,192,198,0)');
-    g.addColorStop(0.3, `rgba(188,192,198,${0.5 + rng() * 0.25})`);
-    g.addColorStop(1, 'rgba(188,192,198,0)');
+    g.addColorStop(0.3, `rgba(176,180,186,${0.8 + rng() * 0.15})`);
+    g.addColorStop(1, 'rgba(176,180,186,0)');
     ctx.fillStyle = g;
-    ctx.fillRect(sx, yy - 1.1, len, 2.2);
+    ctx.fillRect(sx, yy - 2.5, len, 5);
   }
   // dark displaced-paint burrs above/below the scrape
   for (const s of [-1, 1]) {
-    const yy = cy + s * CELL * (0.085 + rng() * 0.03);
-    const sx = x0 + rng() * CELL * 0.1;
-    const len = CELL * (0.4 + rng() * 0.3);
+    const yy = cy + s * CELL * (0.115 + rng() * 0.025);
+    const sx = x0 + rng() * CELL * 0.08;
+    const len = CELL * (0.5 + rng() * 0.25);
     const g = ctx.createLinearGradient(sx, 0, sx + len, 0);
     g.addColorStop(0, 'rgba(24,21,18,0)');
-    g.addColorStop(0.3, `rgba(24,21,18,${0.3 + rng() * 0.2})`);
+    g.addColorStop(0.3, `rgba(24,21,18,${0.75 + rng() * 0.2})`);
     g.addColorStop(1, 'rgba(24,21,18,0)');
     ctx.fillStyle = g;
-    ctx.fillRect(sx, yy - 2, len, 4);
+    ctx.fillRect(sx, yy - 5, len, 10);
   }
   // (fx 9c) the groove's floor: a dark line down the scrape's middle where the round ploughed the plate (the bare
   // edges catch the light, the floor does not), deepest at the entry
   {
     const g = ctx.createLinearGradient(CELL * 0.14, 0, CELL * 0.74, 0);
     g.addColorStop(0, 'rgba(30,30,32,0)');
-    g.addColorStop(0.12, 'rgba(30,30,32,0.62)');
-    g.addColorStop(0.7, 'rgba(34,34,36,0.3)');
+    g.addColorStop(0.12, 'rgba(30,30,32,0.9)');
+    g.addColorStop(0.7, 'rgba(34,34,36,0.6)');
     g.addColorStop(1, 'rgba(34,34,36,0)');
     ctx.fillStyle = g;
     ctx.beginPath();
-    ctx.ellipse(CELL * 0.44, cy, CELL * 0.3, 2.2 + rng() * 1.2, 0, 0, Math.PI * 2);
+    ctx.ellipse(CELL * 0.44, cy, CELL * 0.3, 5 + rng() * 2, 0, 0, Math.PI * 2);
     ctx.fill();
   }
   // paint flakes torn up along the groove's edges
@@ -508,9 +550,9 @@ function drawGouge(ctx: CanvasRenderingContext2D, rng: Rng): void {
   ctx.save();
   ctx.translate(CELL * 0.40, cy);
   ctx.scale(2.7, 1);
-  const eg = ctx.createRadialGradient(0, 0, 0, 0, 0, CELL * 0.235);
+  const eg = ctx.createRadialGradient(0, 0, 0, 0, 0, CELL * 0.25);
   eg.addColorStop(0, 'rgba(255,255,255,1)');
-  eg.addColorStop(0.62, 'rgba(255,255,255,0.92)');
+  eg.addColorStop(0.72, 'rgba(255,255,255,0.95)');
   eg.addColorStop(1, 'rgba(255,255,255,0)');
   ctx.fillStyle = eg;
   ctx.fillRect(-CELL, -CELL, CELL * 2.5, CELL * 2);
@@ -566,58 +608,71 @@ function drawScorch(ctx: CanvasRenderingContext2D, rng: Rng): void {
   }
 }
 
-/** Blunt non-pen scuff: chipped-paint dish with a bare-metal ring. */
+/**
+ * Blunt non-pen scuff (fx 9c; impact-materials-269: the owner, "hit marks ON TANKS ... very visible"; the old dish was a
+ * 9 cm smudge at a third of an alpha, 1 px² from the third-person camera): the paint blasted off in a ragged halo of
+ * primer, soot flung outward, a dark scorched dish where the shell slammed, a broken ring of bare steel round it (grey,
+ * never lamp-bright: the decal is unlit) and a few spall pocks.
+ */
 function drawScuff(ctx: CanvasRenderingContext2D, rng: Rng): void {
   const c = CELL / 2;
   const R = c;
-  // shallow dark smudge where the shell slammed
-  const g0 = ctx.createRadialGradient(c, c, 0, c, c, R * 0.34);
-  g0.addColorStop(0, 'rgba(26,22,19,0.4)');
-  g0.addColorStop(1, 'rgba(0,0,0,0)');
-  ctx.fillStyle = g0;
-  ctx.fillRect(0, 0, CELL, CELL);
-  // (fx 9c) the dent itself: a dark crescent on one side, a lighter one opposite (a shallow dish in the plate)
-  {
-    const dr = R * 0.26, off = R * 0.05, a = rng() * Math.PI * 2;
-    const g1 = ctx.createRadialGradient(c + Math.cos(a) * off, c + Math.sin(a) * off, dr * 0.2, c, c, dr);
-    g1.addColorStop(0, 'rgba(18,16,14,0.32)');
-    g1.addColorStop(1, 'rgba(0,0,0,0)');
-    ctx.fillStyle = g1;
-    ctx.fillRect(0, 0, CELL, CELL);
-    const g2 = ctx.createRadialGradient(c - Math.cos(a) * off, c - Math.sin(a) * off, dr * 0.5, c, c, dr * 1.05);
-    g2.addColorStop(0.6, 'rgba(0,0,0,0)');
-    g2.addColorStop(0.85, 'rgba(136,134,128,0.18)');
-    g2.addColorStop(1, 'rgba(0,0,0,0)');
-    ctx.fillStyle = g2;
-    ctx.fillRect(0, 0, CELL, CELL);
-  }
-  // chipped ring: broken arcs of exposed metal
-  const ringR = R * (0.30 + rng() * 0.05);
-  const nArc = 5 + Math.floor(rng() * 4);
-  for (let i = 0; i < nArc; i++) {
-    const a0 = rng() * Math.PI * 2;
-    const span = 0.4 + rng() * 0.9;
-    ctx.strokeStyle = `rgba(150,154,158,${0.35 + rng() * 0.3})`;
-    ctx.lineWidth = 2 + rng() * 4;
-    ctx.beginPath();
-    ctx.arc(c, c, ringR * (0.9 + rng() * 0.25), a0, a0 + span);
-    ctx.stroke();
-  }
-  // paint-chip scratches flung off the ring
-  for (let i = 0; i < 4; i++) {
+  // the paint blasted off round the strike: bare primer, ragged
+  ctx.save();
+  raggedPath(ctx, rng, c, c, R * (0.58 + rng() * 0.08), 16, 0.4);
+  ctx.fillStyle = `rgba(98,94,86,${(0.55 + rng() * 0.15).toFixed(3)})`;
+  ctx.fill();
+  ctx.restore();
+  // soot flung outward from the dish
+  const nRay = 6 + Math.floor(rng() * 4);
+  for (let i = 0; i < nRay; i++) {
     const a = rng() * Math.PI * 2;
-    const r0 = ringR * (0.9 + rng() * 0.3);
-    const len = R * (0.1 + rng() * 0.16);
+    const len = R * (0.32 + rng() * 0.3);
+    const w = R * (0.04 + rng() * 0.04);
+    const r0 = R * 0.2;
     ctx.save();
     ctx.translate(c, c);
     ctx.rotate(a);
     const g = ctx.createLinearGradient(r0, 0, r0 + len, 0);
-    g.addColorStop(0, `rgba(160,163,167,${0.4 + rng() * 0.3})`);
-    g.addColorStop(1, 'rgba(160,163,167,0)');
+    g.addColorStop(0, `rgba(14,12,10,${(0.75 + rng() * 0.2).toFixed(3)})`);
+    g.addColorStop(1, 'rgba(0,0,0,0)');
     ctx.fillStyle = g;
-    ctx.fillRect(r0, -0.9, len, 1.8);
+    ctx.beginPath();
+    ctx.ellipse(r0 + len * 0.45, 0, len * 0.6, w, 0, 0, Math.PI * 2);
+    ctx.fill();
     ctx.restore();
   }
+  // the scorched dish
+  const g0 = ctx.createRadialGradient(c, c, 0, c, c, R * 0.36);
+  g0.addColorStop(0, 'rgba(14,12,10,0.97)');
+  g0.addColorStop(0.7, 'rgba(22,19,16,0.9)');
+  g0.addColorStop(1, 'rgba(22,19,16,0)');
+  ctx.fillStyle = g0;
+  ctx.fillRect(0, 0, CELL, CELL);
+  // the dish's lit far side (a shallow dent in the plate)
+  {
+    const dr = R * 0.26, off = R * 0.06, a = rng() * Math.PI * 2;
+    const g2 = ctx.createRadialGradient(c - Math.cos(a) * off, c - Math.sin(a) * off, dr * 0.5, c, c, dr * 1.05);
+    g2.addColorStop(0.6, 'rgba(0,0,0,0)');
+    g2.addColorStop(0.85, 'rgba(120,118,112,0.45)');
+    g2.addColorStop(1, 'rgba(0,0,0,0)');
+    ctx.fillStyle = g2;
+    ctx.fillRect(0, 0, CELL, CELL);
+  }
+  // the broken ring of bare steel round the dish
+  const ringR = R * (0.38 + rng() * 0.04);
+  const nArc = 6 + Math.floor(rng() * 4);
+  for (let i = 0; i < nArc; i++) {
+    const a0 = rng() * Math.PI * 2;
+    const span = 0.5 + rng() * 0.9;
+    ctx.strokeStyle = `rgba(${150 + ((rng() * 20) | 0)},${152 + ((rng() * 20) | 0)},${156 + ((rng() * 20) | 0)},${(0.75 + rng() * 0.2).toFixed(3)})`;
+    ctx.lineWidth = R * (0.05 + rng() * 0.04);
+    ctx.beginPath();
+    ctx.arc(c, c, ringR * (0.94 + rng() * 0.14), a0, a0 + span);
+    ctx.stroke();
+  }
+  // spall pocks thrown off the ring
+  pocks(ctx, rng, c, c, ringR * 1.1, R * 0.7, 9 + Math.floor(rng() * 5), R * 0.03, 0.9);
 }
 
 /** Bake the full atlas. @returns {THREE.CanvasTexture} */
@@ -637,10 +692,11 @@ function* bakeAtlasSteps(rng: Rng, anisotropy: number): Generator<void, THREE.Ca
   // Yield only after a complete cell, with the canvas state restored. Until
   // the final resume this iterator owns CPU pixels only, so closing it cannot
   // leave a partial texture, material, scene attachment or clock registration.
-  for (const i of FAMILY_CELLS.pen) { bake(i, () => drawPen(ctx, rng, false), 0.30, 3.4); yield; }
-  for (const i of FAMILY_CELLS.crit) { bake(i, () => drawPen(ctx, rng, true), 0.30, 3.4); yield; }
-  for (const i of FAMILY_CELLS.scuff) { bake(i, () => drawScuff(ctx, rng), 0.34, 4.0); yield; }
-  for (const i of FAMILY_CELLS.gouge) { bake(i, () => drawGouge(ctx, rng), 0.26, 5.2); yield; }
+  // (impact-materials-269) the erosion breaks a mark's edge, not its body: at 0.26-0.34 it ate the thin marks away
+  for (const i of FAMILY_CELLS.pen) { bake(i, () => drawPen(ctx, rng, false), 0.18, 3.4); yield; }
+  for (const i of FAMILY_CELLS.crit) { bake(i, () => drawPen(ctx, rng, true), 0.18, 3.4); yield; }
+  for (const i of FAMILY_CELLS.scuff) { bake(i, () => drawScuff(ctx, rng), 0.16, 4.0); yield; }
+  for (const i of FAMILY_CELLS.gouge) { bake(i, () => drawGouge(ctx, rng), 0.14, 5.2); yield; }
   for (const i of FAMILY_CELLS.scorch) { bake(i, () => drawScorch(ctx, rng), 0.62, 2.6); yield; }
   const tex = new THREE.CanvasTexture(cv);
   tex.colorSpace = THREE.SRGBColorSpace;
@@ -927,11 +983,12 @@ export function* createImpactDecalsSteps(
       // overpressure (no zone/localPos from the nearest-plate trace) skips
       if (!ev.zone || !ev.localPos) return null;
     }
+    if (typeof ev.caliberMm === 'number' && ev.caliberMm > 0 && ev.caliberMm < IMPACT_MARK_MIN_CALIBER_MM) return null;
     const critical = !!((ev.modulesHit && ev.modulesHit.length > 0) ||
       (ev.crewHit && ev.crewHit.length > 0) || ev.ammoRacked || ev.fireStarted);
-    const descriptor = impactDecalDescriptor(kind, critical);
+    const descriptor = impactDecalDescriptor(kind, critical, ev.material ?? null);
     return descriptor
-      ? { fam: descriptor.family, sizeK: descriptor.sizeK }
+      ? { fam: descriptor.family, sizeK: descriptor.sizeK, tint: descriptor.tint }
       : null;
   }
 
@@ -939,27 +996,33 @@ export function* createImpactDecalsSteps(
   function sizeFor(fam: ImpactFamily, caliberMm: number | undefined, sizeK: number): MarkSize {
     const calK = THREE.MathUtils.clamp((caliberMm || 90) / 100, 0.5, 1.7);
     switch (fam) {
-      case 'crit': return { w: 0.40 * calK * (0.85 + rng() * 0.35) * sizeK, h: 0 };
-      case 'pen': return { w: 0.34 * calK * (0.85 + rng() * 0.35) * sizeK, h: 0 };
+      case 'crit': return { w: IMPACT_MARK_SIZE_M.crit * calK * (0.85 + rng() * 0.35) * sizeK, h: 0 };
+      case 'pen': return { w: IMPACT_MARK_SIZE_M.pen * calK * (0.85 + rng() * 0.35) * sizeK, h: 0 };
       case 'gouge': {
-        const L = 0.74 * calK * (0.85 + rng() * 0.45) * sizeK;
-        return { w: L, h: L * (0.30 + rng() * 0.10) };
+        const L = IMPACT_MARK_SIZE_M.gouge * calK * (0.85 + rng() * 0.45) * sizeK;
+        return { w: L, h: L * (IMPACT_MARK_SIZE_M.gougeH + rng() * 0.10) };
       }
-      case 'scorch': return { w: 0.95 * calK * (0.75 + rng() * 0.5) * sizeK, h: 0 };
-      case 'scuff': return { w: 0.26 * calK * (0.8 + rng() * 0.4) * sizeK, h: 0 };
+      case 'scorch': return { w: IMPACT_MARK_SIZE_M.scorch * calK * (0.75 + rng() * 0.5) * sizeK, h: 0 };
+      case 'scuff': return { w: IMPACT_MARK_SIZE_M.scuff * calK * (0.8 + rng() * 0.4) * sizeK, h: 0 };
       default: return { w: 0.3 * calK, h: 0 };
     }
   }
 
   /** Per-family tint (grime jitter) + alpha. */
-  function shadeFor(fam: ImpactFamily): MarkShade {
+  function shadeFor(fam: ImpactFamily, tint: MarkTint | null = null): MarkShade {
+    const shade = familyShade(fam);
+    if (tint) { shade.r *= tint[0]; shade.g *= tint[1]; shade.b *= tint[2]; }
+    return shade;
+  }
+
+  function familyShade(fam: ImpactFamily): MarkShade {
     const j = 0.9 + rng() * 0.1;
     switch (fam) {
       case 'crit': return { r: 0.82 * j, g: 0.82 * j, b: 0.82 * j, a: 1 };
       case 'pen': return { r: j, g: j, b: j, a: 1 };
-      case 'gouge': return { r: j, g: j, b: j, a: 0.95 };
+      case 'gouge': return { r: j, g: j, b: j, a: 1 };
       case 'scorch': return { r: 0.95 * j, g: 0.95 * j, b: 0.95 * j, a: 0.82 + rng() * 0.13 };
-      case 'scuff': return { r: j, g: j, b: j, a: 0.82 };
+      case 'scuff': return { r: j, g: j, b: j, a: 1 };
       default: return { r: 1, g: 1, b: 1, a: 1 };
     }
   }
@@ -1227,6 +1290,7 @@ export function* createImpactDecalsSteps(
     sizeK: number,
     caliberMm: number | undefined,
     pos: THREE.Vector3,
+    tint: MarkTint | null,
   ): void {
     const { w, h } = sizeFor(fam, caliberMm, sizeK);
     const lift = IMPACT_DECAL_LIFT_M + rng() * 0.002;
@@ -1234,7 +1298,7 @@ export function* createImpactDecalsSteps(
     const cells = FAMILY_CELLS[fam];
     const cell = cells[(rng() * cells.length) | 0];
     const { nm, slot } = allocEntry(rec, stampRoute.nodeKey, stampRoute.node);
-    writeQuad(nm, slot, _c0, _t, _b, w / 2, (h || w) / 2, cell, shadeFor(fam));
+    writeQuad(nm, slot, _c0, _t, _b, w / 2, (h || w) / 2, cell, shadeFor(fam, tint));
   }
 
   /**
@@ -1255,6 +1319,7 @@ export function* createImpactDecalsSteps(
     env: TurretEnvelope | null,
     impactFrame: DecalNodeKey | null = null,
     gunPivot: Vec3Tuple | null = null,
+    tint: MarkTint | null = null,
   ): boolean {
     const rec = recFor(key, visual);
     rec.lastStampT = (typeof performance !== 'undefined' ? performance.now() : Date.now());
@@ -1263,7 +1328,7 @@ export function* createImpactDecalsSteps(
     adoptVisualOwner(rec, visual, pos, normal);
     clampToSkin(stampRoute.node, pos, normal);
     orientStampTangent(fam, normal, dir);
-    writeStamp(rec, fam, sizeK, caliberMm, pos);
+    writeStamp(rec, fam, sizeK, caliberMm, pos, tint);
     return true;
   }
 
@@ -1354,7 +1419,7 @@ export function* createImpactDecalsSteps(
       return stampLocal(String(ev.targetId), visual, cls.fam, cls.sizeK,
         ev.caliberMm, _p, _n, dir, st.turretYaw || 0,
         armor?.turretPivot ?? null,
-        turretEnvelope(ent.spec), exactFrame, armor?.gunPivot ?? null);
+        turretEnvelope(ent.spec), exactFrame, armor?.gunPivot ?? null, cls.tint);
     },
 
     /**
@@ -1371,7 +1436,7 @@ export function* createImpactDecalsSteps(
       if (!visual || !visual.root) return false;
       if (visual.isDestroyed && visual.isDestroyed()) return false;
       const cls = classify({ kind, zone: 'x', localPos: [0, 0, 0] })
-        || { fam: 'pen', sizeK: 1 };
+        || { fam: 'pen' as const, sizeK: 1, tint: null };
       let key = legacyKeys.get(visual);
       if (!key) { key = `v${legacySeq++}`; legacyKeys.set(visual, key); }
       visual.root.updateMatrixWorld(true);

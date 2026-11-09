@@ -566,24 +566,24 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 39782,
-      "sha256": "ccefb7430af2480c863443d9eb958e1a136cbadb194a7e86b6d624b3eda503c6"
+      "bytes": 39806,
+      "sha256": "937eb561cc3a94701c06dd88ec944b8eaca83b800befab60a2f0f14875a6df81"
     },
     "modulesSide": {
       "file": "namer_ifv_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 41994,
-      "sha256": "4ab05020e51ded9df31bedd28a73c58d43b90ce238c9eb67f8d92d5ae517a10e"
+      "bytes": 42040,
+      "sha256": "3550bc9c6b3a078240d18115e35be9012d3b766b44fc0cb73e8f22d0c3b71dd5"
     },
     "crewSide": {
       "file": "namer_ifv_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 40476,
-      "sha256": "9b798a7bf1dce0a7152823706fd91fdfac932c79f556bb918dd547c9b806e902"
+      "bytes": 40472,
+      "sha256": "57ff549fb96fed44a8bf9977cb90131872b789527259df801655b2ca11a62125"
     },
     "angle": {
       "file": "namer_ifv_angle.webp",
@@ -606,16 +606,16 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 17264,
-      "sha256": "bc81e51e77af9d50a4bd0c233f90b5d87035de070b8e0fd22590d4644736a93b"
+      "bytes": 17276,
+      "sha256": "65bfb6583fc9d4619a177c6e4d9c50cdc9d99fb064d5e5225630189fbde171ae"
     },
     "side": {
       "file": "namer_ifv_side.webp",
       "width": 512,
       "height": 256,
       "mime": "image/webp",
-      "bytes": 17570,
-      "sha256": "eb0615b091c1f3a5f41892c4f0e5cfbd6a90b8e0508feb77533277f0332c5fe7"
+      "bytes": 17568,
+      "sha256": "1448cf800ece2dfab6734470a19cddb9128739cf7d2742d3dbf2badd0904121c"
     },
     "topSilhouette": {
       "file": "namer_ifv_top_silhouette.png",
@@ -638,8 +638,8 @@
       "width": 256,
       "height": 128,
       "mime": "image/png",
-      "bytes": 35569,
-      "sha256": "a685e7ba4fac805b5d39e4c6af24bdcd713fda7d951c9f0b7167c430a603ef77"
+      "bytes": 33986,
+      "sha256": "c1bd3b5f3ce80649c4aef56ee727d21488ccf257a38a9edef1056952c368fb5f"
     },
     "technicalLabels": {
       "file": "namer_ifv_technical.json",

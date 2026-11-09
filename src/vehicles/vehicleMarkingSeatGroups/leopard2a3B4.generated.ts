@@ -82,34 +82,12 @@ export const VEHICLE_MARKING_SEATS: Readonly<Record<string, VehicleMarkingSeatRe
     "seats": [
       {
         "kind": "insignia",
-        "parent": "turret",
-        "size": 0.2112,
+        "parent": "hull",
+        "size": 0.24,
         "pos": [
-          1.276,
-          0.11704,
-          -0.2169
-        ],
-        "quaternion": [
-          0,
-          0.7071068,
-          0,
-          0.7071068
-        ],
-        "surfaceMesh": "turret",
-        "anchorProfile": "leo2a3",
-        "visibilitySamples": 9,
-        "visibilityClearSamples": 6,
-        "visibilityRatio": 0.6666667,
-        "maximumSurfaceErrorM": 0.1800001
-      },
-      {
-        "kind": "designation",
-        "parent": "turret",
-        "size": 0.2,
-        "pos": [
-          -1.276,
-          0.11704,
-          0.4
+          -1.726,
+          1.2456,
+          -0.425
         ],
         "quaternion": [
           0,
@@ -117,12 +95,34 @@ export const VEHICLE_MARKING_SEATS: Readonly<Record<string, VehicleMarkingSeatRe
           0,
           0.7071068
         ],
-        "surfaceMesh": "turret",
+        "surfaceMesh": "hull",
         "anchorProfile": "leo2a3",
         "visibilitySamples": 9,
-        "visibilityClearSamples": 6,
-        "visibilityRatio": 0.6666667,
-        "maximumSurfaceErrorM": 0.1800001
+        "visibilityClearSamples": 9,
+        "visibilityRatio": 1,
+        "maximumSurfaceErrorM": 0
+      },
+      {
+        "kind": "designation",
+        "parent": "hull",
+        "size": 0.24,
+        "pos": [
+          -1.726,
+          1.2456,
+          -1.25
+        ],
+        "quaternion": [
+          0,
+          -0.7071068,
+          0,
+          0.7071068
+        ],
+        "surfaceMesh": "hull",
+        "anchorProfile": "leo2a3",
+        "visibilitySamples": 9,
+        "visibilityClearSamples": 9,
+        "visibilityRatio": 1,
+        "maximumSurfaceErrorM": 0
       }
     ]
   },

@@ -87,12 +87,12 @@ const player = tanks[0];
 // ?state=markers: the in-world markers over the tanks in view (the hull bars over allies and enemies, the target plate
 // over the enemy under the gun), a camera at the player's roof looking down the field where the other states have none
 const homes = tanks.map((tank) => tank.state.pos.clone());
-// (the other enemies wide of the plate over the one under the gun: the bars decluttered, a bar crossing it waits hidden)
+// (the other enemies wide of the plate over the one under the gun: a bar crossing the plate slides off it or waits hidden)
 const MARKER_SEATS = [[8, 0, 150], [9, -95, 200], [10, 110, 240], [2, -26, 80], [3, 30, 104]];
 const markerCamera = new PerspectiveCamera(60, 1, 0.5, 4000);
 // (the two enemies wide of the plate stand whole on the window, and beside the plate where the window leaves the room: a
 // phone's narrow view put the desktop's seats out of view, and a short window's put their bars across the plate, which
-// the declutter holds back, so no bar showed; a desktop keeps its seats)
+// holds them back, so no bar showed; a desktop keeps its seats)
 const MARKER_BAR_EDGE = 96, MARKER_PLATE_ROOM = 196;
 function markerSeats() {
   const spread = Math.tan(markerCamera.fov * Math.PI / 360) * innerWidth / innerHeight, cx = innerWidth / 2;
