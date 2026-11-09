@@ -375,12 +375,22 @@ export interface RosterPrebuildSeat extends RosterPrewarmSeat {
   playerId: string;
 }
 
+/** A seat's vehicle as the roster asks for it: what RosterPrebuild's take() and has() compare a prebuilt vehicle with. */
+export interface RosterPrebuildWanted {
+  specId: string;
+  options: TankVisualOptions;
+}
+
 /** The roster's vehicles built ahead: each handed over once to its seat; whatever is not taken goes with dispose(). */
 export interface RosterPrebuild {
   /** The seat's vehicle if it was built as these options name it (once); null otherwise, and a mismatch is disposed. */
   take(playerId: string, specId: string, options: TankVisualOptions): TankVisual | null;
-  /** Whether it holds the seat's vehicle (in `camo`'s paint, where named: a guess the roster's paint overrules is not held). */
-  has(playerId: string, camo?: string): boolean;
+  /**
+   * Whether take() would hand the seat its vehicle: built as `wanted` names it (its vehicle and every option, its paint
+   * included; round 8 Y1 s4-06: one predicate with take(), so a guess take() refuses is warmed and grouped like any seat).
+   * With no `wanted`, whether it holds a vehicle for the seat at all.
+   */
+  has(playerId: string, wanted?: RosterPrebuildWanted): boolean;
   /** Settles when every build has finished or stopped. */
   readonly settled: Promise<void>;
   dispose(): void;
@@ -483,22 +493,26 @@ export function prebuildRosterVisuals(
     built.clear();
   };
   signal?.addEventListener('abort', dispose, { once: true });
+  /** The one confirm rule (take and has): the vehicle the roster would build, with every option, never yet placed. */
+  const matches = (entry: { specId: string; options: TankVisualOptions; visual: TankVisual }, specId: string,
+    options: TankVisualOptions): boolean =>
+    entry.specId === getSpec(specId).id && entry.options.camoSeed === options.camoSeed
+    && entry.options.camoPattern === options.camoPattern && entry.options.quality === options.quality
+    && entry.options.geometryQuality === options.geometryQuality && entry.options.batchStatic === options.batchStatic
+    && entry.options.battleDetailLod === options.battleDetailLod && entry.options.staticDrawMerge === options.staticDrawMerge
+    && !entry.visual.root.parent;
   return {
     take(playerId, specId, options) {
       const entry = built.get(playerId);
       if (!entry) return null;
       built.delete(playerId);
-      if (entry.specId === getSpec(specId).id && entry.options.camoSeed === options.camoSeed
-        && entry.options.camoPattern === options.camoPattern && entry.options.quality === options.quality
-        && entry.options.geometryQuality === options.geometryQuality && entry.options.batchStatic === options.batchStatic
-        && entry.options.battleDetailLod === options.battleDetailLod && entry.options.staticDrawMerge === options.staticDrawMerge
-        && !entry.visual.root.parent) return entry.visual;
+      if (matches(entry, specId, options)) return entry.visual;
       entry.visual.dispose();
       return null;
     },
-    has: (playerId, camo) => {
+    has: (playerId, wanted) => {
       const entry = built.get(playerId);
-      return !!entry && (camo === undefined || entry.options.camoPattern === camo);
+      return !!entry && (!wanted || matches(entry, wanted.specId, wanted.options));
     },
     settled,
     dispose,
@@ -674,16 +688,20 @@ export function createBattlePresentation({
     const yieldWork = async (force = false) => { await schedule(force); assertActive(); };
     const textureTick = async () => { await schedule(); };
     if (active.some((entry) => !actors.has(entry.playerId))) await yieldWork(true);
-    // the vehicles built beside the world (prebuildRosterVisuals) first: a seat it holds in the roster's paint is neither
-    // grouped nor built here (268, item 6: a bot's guessed paint the roster overrules is built here as if never guessed)
+    // the vehicles built beside the world (prebuildRosterVisuals) first: a seat it holds as the roster would build it is
+    // neither grouped nor built here (268, item 6; round 8 Y1 s4-06: a guess the roster overrules, its paint or its
+    // vehicle, is grouped, warmed and built here as if never guessed: the one rule take() hands a vehicle over by)
     if (prebuilt) { await prebuilt.settled; assertActive(); }
+    const prebuiltFor = (entry: RosterEntry, isViewer: boolean): boolean =>
+      !!prebuilt?.has(entry.playerId, { specId: entry.specId, options: visualOptions(entry, isViewer) });
     // the seats still to paint that share a vehicle and a paint (prepareSharedVisuals)
     const shared = new Map<string, RosterEntry[]>();
     for (const entry of active) {
       if (actors.has(entry.playerId) || (game.gameMode === 'ac130' && entry.team === TEAM.ALPHA && !entry.bot)) continue;
       const camo = camoFor(entry);
-      if (prebuilt?.has(entry.playerId, camo)) continue;
-      const vehicle = seatBuildKey(entry.specId, camo, !spectator && entry.entityId === rosterContext.ownEntityId);
+      const isViewer = !spectator && entry.entityId === rosterContext.ownEntityId;
+      if (prebuiltFor(entry, isViewer)) continue;
+      const vehicle = seatBuildKey(entry.specId, camo, isViewer);
       let group = shared.get(vehicle);
       if (!group) shared.set(vehicle, group = []);
       group.push(entry);
@@ -704,7 +722,7 @@ export function createBattlePresentation({
         shared.delete(vehicle);
         await prepareSharedVisuals(group, rosterContext, textureTick, assertActive);
       }
-      if (!gunship && !warmed.has(key) && !preparedVisuals.has(entry.playerId) && !prebuilt?.has(entry.playerId, camo)) {
+      if (!gunship && !warmed.has(key) && !preparedVisuals.has(entry.playerId) && !prebuiltFor(entry, isViewer)) {
         warmed.add(key);
         try { await prepareVisualTextures(getSpec(entry.specId), engineCtx.anisotropy ?? 4, quality, textureTick, camo); }
         catch { /* createTank keeps its synchronous compatibility path */ }

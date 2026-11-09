@@ -12,6 +12,10 @@ import { createLoopbackLink } from './link.ts';
 import { KEYFRAME_INTERVAL_TICKS, keyframeSlotFor } from './publisher.ts';
 import { ENTRY_BACKPRESSURE_GRACE_MS, ENTRY_BACKPRESSURE_HARD_BYTES, ENTRY_BACKPRESSURE_SUSTAINED_MS, SNAPSHOT_SKIP_BYTES, createMatchActor } from './matchActor.ts';
 import { ensureAuthorityFleet } from '../../src/vehicles/authorityFleet.ts';
+import * as camoPaint from '../../src/sim/camoPaint.ts';
+import { createAuthoritativeMatch } from '../../src/sim/authoritativeMatch.ts';
+import { createRoom, joinRoom, setPlayerConnected } from '../../src/mp/room/roomPolicy.ts';
+import { planFromRoom } from '../../src/mp/host/hostPlan.ts';
 
 // The actor reads finalized combat anatomy; production hosts load their roster's groups first (Node: all).
 await ensureAuthorityFleet();
@@ -404,6 +408,59 @@ assert.ok(p1.closed && p1.closed.reason === CLOSE_REASON.ROOM_CLOSED, 'stop clos
   graceActor.stop();
   await flush();
   console.log('matchActor.selftest: in the entry grace soft pressure is a loading client (stale snapshots dropped, 4 s busy runs kept, a never-draining link closed at the long limit, a burst dropped and the entry hard bound at once); after it the steady 2 s rule and hard bound');
+}
+
+// ---------------------------------------------------------------- one bot paint rule (round 8 Y1 s4-06)
+// The paint a client guesses for each bot before the WELCOME (session/browserComposition.ts, its roster prebuild) and the
+// paint the actor stamps are one rule, sim/camoPaint.ts planBotPaints: every seated hull, then the bots in plan order, each
+// rolled at its index, as the authority's own roll would. A room planned as the host plans it (host/hostPlan.ts
+// planFromRoom: a spectator, a seat without a vehicle), and its rejoin after a seated human dropped (the bots' ids keep
+// their places, their vehicles move): each match's WELCOME names, and its authority wears, the helper's paints, which equal
+// the authority's own roll for that roster (no stamp) and the index rule written out here.
+{
+  const { planBotPaints } = camoPaint;
+  assert.equal(typeof planBotPaints, 'function', 'sim/camoPaint.ts plans every bot\'s paint');
+  const room = createRoom({ roomCode: 'PAINT1', mode: 'private', creator: { id: 'alice', name: 'Alice' }, selection: { specId: 'm1a1_abrams_hc' },
+    settings: { teamSize: 4, mapId: 'verdant' }, now: 1000 });
+  joinRoom(room, { player: { id: 'bob', name: 'Bob' }, selection: { specId: 't90am' }, team: null, now: 1001 });
+  joinRoom(room, { player: { id: 'carol', name: 'Carol' }, selection: { specId: 'leo2_improved' }, team: 'alpha', now: 1002 });
+  joinRoom(room, { player: { id: 'dave', name: 'Dave' }, selection: null, team: null, now: 1003 });
+  joinRoom(room, { player: { id: 'spec', name: 'Spec' }, selection: null, team: 'spectator', now: 1004 });
+  for (const player of room.players) player.ready = true;
+  const rejoin = structuredClone(room);
+  setPlayerConnected(rejoin, 'carol', false, 1005);
+  const seed = 31;
+  const ids = [];
+  for (const [label, snapshot] of [['the start', room], ['a rejoin with Carol gone', rejoin]]) {
+    const plan = planFromRoom(snapshot, { seed });
+    const seated = plan.seats.filter((seat) => seat.team !== 'spectator').length;
+    assert.ok(plan.seats.some((seat) => seat.team === 'spectator') && plan.bots.length >= 2, `${label}: a spectator and bots`);
+    const paints = planBotPaints(plan.seats, plan.bots, seed, 'verdant');
+    assert.deepEqual(paints, plan.bots.map((_bot, ordinal) => botCamoRoll(seed, seated + ordinal, 'verdant')),
+      `${label}: every seated hull first, then the bots in plan order`);
+    assert.ok(new Set(paints).size === 2, `${label}: the roll varies on Verdant (${paints})`);
+    const own = createAuthoritativeMatch({ mapId: 'verdant', seed, countdownS: 0, players: [
+      ...plan.seats.filter((seat) => seat.team !== 'spectator').map((seat) => ({ id: seat.playerId, specId: seat.specId, team: seat.team })),
+      ...plan.bots.map((bot) => ({ id: bot.playerId, specId: bot.specId, team: bot.team, bot: true })),
+    ] });
+    assert.deepEqual(plan.bots.map((bot) => own.entityById.get(bot.playerId).camo), paints, `${label}: the authority's own roll, unstamped`);
+    const paintActor = createMatchActor({ roomId: `room-paint-${ids.length}`, mapId: 'verdant', seed, countdownS: 0.5, world: 'terrain', now, schedule,
+      seats: plan.seats, bots: plan.bots });
+    const host = plan.seats.find((seat) => seat.team !== 'spectator');
+    const client = createHeadlessClient(paintActor, host.seat, host.playerId);
+    await flush();
+    assert.deepEqual(client.welcome.roster.filter((row) => row.bot).map((row) => [row.playerId, row.camo]),
+      plan.bots.map((bot, ordinal) => [bot.playerId, paints[ordinal]]), `${label}: the WELCOME names the planned paints`);
+    assert.deepEqual(plan.bots.map((bot) => paintActor.authority.entityById.get(bot.playerId).camo), paints, `${label}: the authority wears them`);
+    paintActor.stop();
+    ids.push(plan.bots.map((bot) => bot.playerId));
+  }
+  // a resumed bot keeps the paint its roster carried
+  assert.deepEqual(planBotPaints([{ team: 'alpha' }], [{ camo: 'factory' }, { camo: null }], seed, 'verdant'),
+    ['factory', botCamoRoll(seed, 2, 'verdant')], 'a carried paint stands; the rest roll at their index');
+  assert.deepEqual(planBotPaints([], [{}], seed, 'winter'), ['auto'], 'Winter rolls auto');
+  console.log(`matchActor.selftest: one bot paint rule: the planned room and its rejoin (${ids.map((list) => list.length).join(' and ')} bots) `
+    + 'paint as the authority rolls, in every WELCOME');
 }
 
 // ---------------------------------------------------------------- verdict: the clock ends the match, the callback fires, the actor lingers then stops

@@ -48,7 +48,7 @@ import type { RoomMatchStartPayload, RoomSnapshot } from '../room/protocol.ts';
 import { getSpec } from '../../vehicles/specs.ts';
 import { programReceipt, type ProgramOriginWatch, type ProgramReceipt, type ReceiptProgram } from '../../engine/programReceipt.ts';
 import { planFromRoom } from '../host/hostPlan.ts';
-import { botCamoRoll } from '../../sim/camoPaint.ts';
+import { planBotPaints } from '../../sim/camoPaint.ts';
 import { sideFlags } from '../../sim/countries.ts';
 import type { SerializedLobby } from '../room/lobbyShape.ts';
 import { MATCH_BUILD, matchRefusalCodeOf, matchRefusalMessage, type MatchRefusalCode } from '../wire/matchBuild.ts';
@@ -1228,15 +1228,14 @@ export function createBrowserComposition({
       // after it) held the 231 rejoins' roster stage about 2 s. The host plans them from this room and seed (host/hostPlan.ts
       // planFromRoom, the real room's match_start carries no plan), so the same plan names them here and their bakes join
       // the world load; a wrong guess is a spare bake, never a different roster.
-      // (268, item 6) each with the paint the authority will roll at its roster index (every seated hull first, then the
-      // bots in the plan's order: server/match/matchActor.ts), so its bake is the one the WELCOME's roster names
+      // (268, item 6) each with the paint the authority will roll at its roster index: the match actor's own rule
+      // (sim/camoPaint.ts planBotPaints, round 8 Y1 s4-06), so its bake is the one the WELCOME's roster names
       try {
         const plan = planFromRoom(sessionRound.room, { seed: matchStart.seed });
-        let index = plan.seats.filter((seat) => seat.team !== 'spectator').length;
-        for (const bot of plan.bots) {
-          const camo = botCamoRoll(matchStart.seed, index++, matchStart.mapId);
-          if (bot.specId) seats.push({ playerId: bot.playerId, specId: bot.specId, camo, isViewer: false });
-        }
+        const paints = planBotPaints(plan.seats, plan.bots, matchStart.seed, matchStart.mapId);
+        plan.bots.forEach((bot, ordinal) => {
+          if (bot.specId) seats.push({ playerId: bot.playerId, specId: bot.specId, camo: paints[ordinal]!, isViewer: false });
+        });
       } catch { /* no plan from this snapshot: the WELCOME paints them */ }
       // 2026-10-23 (item/mp-rejoin-levers-242): where the app can, the seats' vehicles themselves are built beside the world
       // (prebuildRoster; the roster takes them after the WELCOME), else their builders and textures are warmed
