@@ -5797,6 +5797,27 @@
       "suspension": false
     },
     {
+      "id": "t95",
+      "name": "T95 (152 mm)",
+      "nation": "USA",
+      "role": "td",
+      "tier": 2,
+      "hp": 1900,
+      "speed": 13,
+      "reverse": 5,
+      "hull": 10.8,
+      "turret": 9.2,
+      "dispersion": 0.38,
+      "reload": 24,
+      "aim": 3.15,
+      "view": 365,
+      "smoke": 0,
+      "lights": true,
+      "roofGun": true,
+      "missile": false,
+      "suspension": false
+    },
+    {
       "id": "griffin_viper",
       "name": "Griffin Viper",
       "nation": "USA",

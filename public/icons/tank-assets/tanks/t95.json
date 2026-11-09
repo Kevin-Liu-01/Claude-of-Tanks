@@ -550,15 +550,15 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 26036,
-      "sha256": "fad71322981500c3372b4ef88ac5dcf56a15698ac7a348e9c6fe9c7e0dec57f8",
+      "bytes": 26044,
+      "sha256": "b9c5c842347ee20f9e4e0d4bf9dfdfcf20080dc0c4d8ea1eb8c185322f568525",
       "thumbnail": {
         "file": "thumbs/t95_angle.webp",
         "width": 256,
         "height": 256,
         "mime": "image/webp",
         "bytes": 10824,
-        "sha256": "f04864b7ca73a9e8a7d8c4fab4ac9a57011376518568d273a76e5662bb7a3ada"
+        "sha256": "435ba6bf3d68063a7654bb28df59b74a9f0f05126970dcdcffad6228155e21fd"
       }
     },
     "top": {
@@ -574,8 +574,8 @@
       "width": 512,
       "height": 256,
       "mime": "image/webp",
-      "bytes": 10398,
-      "sha256": "05c05d264a7460d61db12e37eb54768e4d08bd81b53c31f388be7a0bfb2656f6"
+      "bytes": 10404,
+      "sha256": "cdb145e3f1a6997f5ae5fa0d9ad365c962b5e8c18146cd196759ae2cd09b5b07"
     },
     "topSilhouette": {
       "file": "t95_top_silhouette.png",
@@ -598,32 +598,32 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 20414,
-      "sha256": "7fdef10981208db7ac32de31313d0490a8d284f1c72cbaae1816b70c1a499d5e"
+      "bytes": 20420,
+      "sha256": "dd9a3b54a488dea00a7e35d774d20fdf9a6d4ffa63174ae7c6325c035d861aff"
     },
     "modulesSide": {
       "file": "t95_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 22438,
-      "sha256": "60493c0dec7e5fa7193fd982698493b9a61dd8cfd2673daa4f86279235a949cc"
+      "bytes": 22432,
+      "sha256": "cb56e338a4715cff1a4985177166446a69170c10de4a61e6ae9ceeee258ad046"
     },
     "crewSide": {
       "file": "t95_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 21380,
-      "sha256": "a3f58bf018734b0ade3b0f31838713a5c2da7f0eb71b359674e12131af71f1b6"
+      "bytes": 21352,
+      "sha256": "7e02770b996135d90babbddc6f893a965e9fe0e317ca85023513bbfb766f0c40"
     },
     "markings": {
       "file": "t95_markings.png",
       "width": 256,
       "height": 128,
       "mime": "image/png",
-      "bytes": 37619,
-      "sha256": "7daf9fd21ecbf33450946f505e4870217a64b8a1cf473f147ea50374f4c36e1d"
+      "bytes": 34576,
+      "sha256": "f466b3887279e6c5417362400ea2518c16c34f8d4593a98f5297587a15476edd"
     },
     "technicalLabels": {
       "file": "t95_technical.json",
