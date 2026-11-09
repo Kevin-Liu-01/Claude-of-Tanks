@@ -4,8 +4,10 @@
  * handler plays them (audioEngine.ts onMode).
  *
  * Both tables are exhaustive. MODE_OPENER names every mode id (typecheck fails on a new mode); MODE_EVENT_SOUND names
- * every `mode_*` event (modeSounds.selftest.mjs scans matchModes.ts and fails on an event it does not name), with the
- * recordings the handler chooses among, or why it is heard as nothing. Until this a Frontline counter-attack, a Turbo
+ * every `mode_*` event (worldSounds.selftest.mjs scans matchModes.ts and fails on an event it does not name), with the
+ * recordings the handler chooses among, or why it is heard as nothing. MODE_EVENT_TYPES is the one list of the events:
+ * the engine's handler and the crew's (crewProcedure.ts) are typed by it, so a renamed or retired event fails the
+ * typecheck in both (round 8 Y3 s1-14). Until this a Frontline counter-attack, a Turbo
  * Ball reset, the Horde's special waves and an ally turned in Infected played nothing; the ball was heard only by the
  * tank that struck it, as a flat interface sound; a flag taken sounded the same whichever side lost it; and capture the
  * flag, zone control, the gravity mode, the drones and the proving ground opened on the standard battle's horn.

@@ -53,6 +53,15 @@ assert.match(modesSource, /emit\('mode_ball_hit', \{[^}]*x: ball\.x, y: ball\.y,
 assert.equal([...modesSource.matchAll(/emit\('mode_ball_hit', \{[^}]*x: ball\.x/g)].length, 2, 'a ram and a shot both say where');
 const engineSource = readFileSync(new URL('./audioEngine.ts', import.meta.url), 'utf8');
 assert.match(engineSource, /for \(const type of MODE_EVENT_TYPES\) on</, 'the engine listens to every mode event');
+// (round 8 Y3 s1-14) the crew's own mode events are typed by the same list, its handler exhaustive: a renamed or retired
+// event fails the typecheck there as in the engine (src/audio/audioOwners.typecheck.ts keeps the refusal honest)
+const crewSource = readFileSync(new URL('./crewProcedure.ts', import.meta.url), 'utf8');
+const crewList = /CREW_MODE_EVENTS = Object\.freeze\(\[([^\]]*)\] as const satisfies readonly ModeEventType\[\]\)/.exec(crewSource);
+assert.ok(crewList, "the crew's mode events are typed by modeSounds.ts MODE_EVENT_TYPES");
+const crewEvents = [...crewList[1].matchAll(/'([a-z_]+)'/g)].map((m) => m[1]);
+assert.ok(crewEvents.length >= 10, `the crew's mode events read (${crewEvents})`);
+assert.deepEqual(crewEvents.filter((type) => !MODE_EVENT_TYPES.includes(type)), [], 'every crew mode event is one the controller emits');
+assert.match(crewSource, /function onMode\(type: CrewModeEvent,[\s\S]*?const unheard: never = type;/, "the crew's mode handler names every one of its events");
 
 // ---- the running gear: by ground, gearbox, turret drive and hull class; water under any hull.
 for (const surface of ['earth', 'hard', 'sand', 'snow', 'mud', 'water']) {

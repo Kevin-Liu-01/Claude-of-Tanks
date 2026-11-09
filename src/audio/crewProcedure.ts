@@ -32,6 +32,7 @@
 
 import { AERIAL_RULES, GUN_GAME_WEAPONS } from '../sim/matchRuleset.ts';
 import type { GameModeId } from '../sim/gameModeCatalog.ts';
+import type { ModeEventType } from './modeSounds.ts';
 import type { CrewLineContext, CrewSeat } from './voiceLines.ts';
 
 type Vec3 = readonly [number, number, number];
@@ -404,7 +405,7 @@ export function createCrewProcedure(host: CrewProcedureHost): CrewProcedure {
 
   // ------------------------------------------------------------ events ---
 
-  function onMode(type: string, payload: Record<string, unknown>): void {
+  function onMode(type: CrewModeEvent, payload: Record<string, unknown>): void {
     const ours = host.objectiveTeam();
     const team = payload.team === 'alpha' || payload.team === 'bravo' ? payload.team : null;
     switch (type) {
@@ -452,8 +453,10 @@ export function createCrewProcedure(host: CrewProcedureHost): CrewProcedure {
         else if (enemyOf(payload.id as string)) host.say('enemy_final_weapon', { delayS: 0.3 });
         break;
       }
-      default:
-        break;
+      default: {
+        const unheard: never = type;
+        return unheard;
+      }
     }
   }
 
@@ -581,7 +584,7 @@ export function createCrewProcedure(host: CrewProcedureHost): CrewProcedure {
       if (!e || !(mine(e.id) || (e.id == null && e.isPlayer)) || !host.live()) return;
       if ((e.h ?? 0) >= 1.2 && (e.speedMps ?? 0) >= 2) host.say('obstacle_through', { prob: 0.5, delayS: 0.2 });
     });
-    for (const type of MODE_EVENTS) cue<Record<string, unknown>>(`mode:${type}`, (payload) => { if (host.inBattle()) onMode(type, payload || {}); });
+    for (const type of CREW_MODE_EVENTS) cue<Record<string, unknown>>(`mode:${type}`, (payload) => { if (host.inBattle()) onMode(type, payload || {}); });
   }
 
   /** Our heavy gunship round landing by a friendly tank (not the one it hit). */
@@ -618,7 +621,9 @@ export function createCrewProcedure(host: CrewProcedureHost): CrewProcedure {
   };
 }
 
-/** The mode events whose crew calls live here (the engine's own handler voices the rest; why a battle ended,
- *  mode:completed, is a fact `bind` keeps). */
-const MODE_EVENTS = Object.freeze(['flag_dropped', 'flag_returned', 'flag_captured', 'zone_contested', 'goal_scored', 'ball_reset',
-  'wave_started', 'counter_attack', 'line_advanced', 'infected', 'weapon_advanced']);
+/** The mode events whose crew calls live here (the engine's own handler voices the rest). Each is one the controller
+ *  emits (modeSounds.ts MODE_EVENT_TYPES), so a renamed or retired event fails the typecheck here as it does in the
+ *  engine's handler (round 8 Y3 s1-14); why a battle ended (mode:completed) is a fact `bind` keeps, not a call. */
+const CREW_MODE_EVENTS = Object.freeze(['flag_dropped', 'flag_returned', 'flag_captured', 'zone_contested', 'goal_scored',
+  'ball_reset', 'wave_started', 'counter_attack', 'line_advanced', 'infected', 'weapon_advanced'] as const satisfies readonly ModeEventType[]);
+type CrewModeEvent = typeof CREW_MODE_EVENTS[number];
