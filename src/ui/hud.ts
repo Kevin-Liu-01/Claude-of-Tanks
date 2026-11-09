@@ -2068,8 +2068,8 @@ body.cot-spectating .cot-ret-text,body.cot-spectating .cot-ret,body.cot-spectati
 .cot-shell.sel .key{color:var(--accent-hi);border-color:var(--accent);}
 /* the count takes the top-right corner, 3 px in from the slot's edge */
 .cot-shell .cnt{position:absolute;top:2px;right:3px;font-size:var(--battle-fs-15);line-height:13px;font-weight:700;
-  font-family:var(--hud-font);
-  color:var(--ink-1);letter-spacing:.02em;z-index:4;}
+  font-family:var(--font-mono);
+  color:var(--ink-1);letter-spacing:0;z-index:4;}
 /* Owner 2026-10-17 (endless ammo): the ammo ∞ reads as a count — the glyph draws small, so it is set larger, in the
    numeral ink, above the reload shade like every count. */
 .cot-shell.unlimited .cnt{font-size:19px;line-height:13px;color:var(--hud-text);z-index:4;}
