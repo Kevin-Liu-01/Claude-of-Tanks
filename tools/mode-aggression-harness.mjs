@@ -74,8 +74,9 @@ const MOVE_EPS_MPS = 0.75;
 const SPAWN_SETTLE_S = 1;
 /**
  * (268, item 10; Main) Standing still is a stand, not a sample: a hull is standing when it has been under MOVE_EPS_MPS
- * continuously for longer than T_REV, and every engaged slow sample of that stand counts (the ones it held while younger
- * than T_REV once it outlasts it). A reversal is no stand: every hull passes through zero speed between going back and
+ * continuously for longer than T_REV, and every engaged sample whose tick lies in that stand counts (read at the sample's
+ * tick by its stand owner, tools/mode-aggression-stand.mjs; the ones it held while younger than T_REV once it outlasts
+ * it). A reversal is no stand: every hull passes through zero speed between going back and
  * going on. T_REV is physics: the longest stretch under MOVE_EPS_MPS of a full-throttle reversal from -2 m/s to under way
  * forward (flat ground, steer 0) of the slowest-reversing hull the 24-deal Horde sweep fields (74 hulls, seeds 1-24,
  * 2026-11-02), plus one sample period. That is the Chieftain Mk 3 (and Mk 5, 750 hp on 55 t): 59 ticks on medium ground

@@ -129,9 +129,9 @@ const battles = SWEEPS.flatMap((sweep) => sweep.seeds.map((seed) => ({ ...sweep,
 // ticks are the Chieftain Mk 3's on medium ground, and T_REV covers its soft-ground reversal too. Two planted stands are
 // the positive controls (a standard battle, seed 1 from 30 s: the engaged bravo bot farthest from the alpha side held at
 // zero throttle, then driven off; a Horde zombie, 0.15 of its hull, dies braking before its stand begins): 3 s and
-// 1.5 x T_REV each count every engaged sample of the stand, (round 8 Y10 s6-07) the one whose window holds its end
-// included (the control reports after that sample; a control that cannot finish prints a PLANT 'unproven' line naming
-// why, a miss here). The negative controls are deals of the sweep:
+// 1.5 x T_REV each count every engaged sample whose tick lies in the stand; (round 8 Y10 s6-07) the first sample past its
+// end (the pull-away) is a moving sample and is not counted, the control reports after that sample, and a control that
+// cannot finish prints a PLANT 'unproven' line naming why, a miss here. The negative controls are deals of the sweep:
 // seed 19's Puma reversals and seed 18's one-sample jolt read clean in the still asks.
 const harnessSource = readFileSync(HARNESS, 'utf8');
 const pinned = /const STAND_MIN_TICKS = (\d+) \+ SAMPLE_TICKS;/.exec(harnessSource);
