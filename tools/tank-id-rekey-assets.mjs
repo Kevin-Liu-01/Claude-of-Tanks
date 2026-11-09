@@ -81,6 +81,10 @@ for (const id of ids ?? []) {
     const record = view === 'technicalLabels' ? technicalLabelsRecord(technicalLabelsFile(id)) : assetRecord(files[view], view);
     if (record) assets[view] = record;
   }
+  // 270: a whip-equipped card's whip-free frame (genIcons, beside its thumbnail for tank-assets-check) is a rendered
+  // receipt like the anchor: it rides along while the thumbnail's bytes are the ones it was measured on
+  const previousThumb = previous.assets?.angle?.thumbnail, thumb = assets.angle?.thumbnail;
+  if (previousThumb?.frame && thumb && thumb.sha256 === previousThumb.sha256) thumb.frame = [...previousThumb.frame];
   // The same key order as genIcons: the page's record, then the assets.
   tanks[id] = {
     ...metadata,
