@@ -324,7 +324,10 @@ assertEqualised(streets, 0, 'street coverage');
 assertEqualised(streets, 1, 'anvil field');
 assertEqualised(streets, 2, 'cirrus streaks');
 {
-  // the street field is anisotropic: its rows run along x, so the correlation along x outlasts the one along y
+  // the street field leans along x (the wind): its correlation along x outlasts the one along y, a little — clouds-269
+  // re-pinned it from round 71's 1.5 (seven ruled rolls a tile, the owner's "perfect lines") to separate cumulus drawn out
+  // 1-1.15 along the wind (cloudNoise.ts windCumulus; a street sky's further stretch is the medium's, cloudShaders.ts
+  // cl2Weather), with a ceiling so no roll returns (cloudField.selftest holds the rows)
   const N = 256;
   const corr = (bytes, channel, dx, dy) => {
     let sum = 0, n = 0;
@@ -335,7 +338,7 @@ assertEqualised(streets, 2, 'cirrus streaks');
     return sum / n;
   };
   const alongX = corr(streets, 0, 12, 0), acrossY = corr(streets, 0, 0, 12);
-  assert.ok(alongX > acrossY * 1.5, `streets run along x (corr along ${alongX.toFixed(0)} vs across ${acrossY.toFixed(0)})`);
+  assert.ok(alongX > acrossY * 1.1 && alongX < acrossY * 1.6, `the street field leans along x, no rolls (corr along ${alongX.toFixed(0)} vs across ${acrossY.toFixed(0)})`);
   const cAlong = corr(streets, 2, 24, 0), cAcross = corr(streets, 2, 0, 24);
   assert.ok(cAlong > cAcross * 2, `cirrus streaks run along x (${cAlong.toFixed(0)} vs ${cAcross.toFixed(0)})`);
   const wAlong = corr(weather, 0, 12, 0), wAcross = corr(weather, 0, 0, 12);

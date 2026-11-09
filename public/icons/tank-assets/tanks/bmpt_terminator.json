@@ -11107,15 +11107,15 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 29904,
-      "sha256": "9a06335e6380bbac13a8c70a78a935f86a028b6827a8a1d658dbe7c935692cd5",
+      "bytes": 29920,
+      "sha256": "9f5f960ff12166740a85b37867e54f20c93956359636f766671d18e58e709581",
       "thumbnail": {
         "file": "thumbs/bmpt_terminator_angle.webp",
         "width": 256,
         "height": 256,
         "mime": "image/webp",
         "bytes": 11966,
-        "sha256": "fedc7e9988f42d56fe12e8bae06fbee1576f653d03c4c6c81639329c8d87abc4"
+        "sha256": "6e6f29251bf6d85ac5c410919a9684d2cf1f315ccdda957a1648dbd299cfb879"
       }
     },
     "top": {
@@ -11179,8 +11179,8 @@
       "width": 256,
       "height": 128,
       "mime": "image/png",
-      "bytes": 34905,
-      "sha256": "a11b02fbf8c13214b24608ee5128c5bd48edb7d955327dfbba904e666c28b3a3"
+      "bytes": 33119,
+      "sha256": "da6bfe73f40de3dbf7f92d7d6b868eefc76ee766eb781902e6525a7305e292db"
     },
     "technicalLabels": {
       "file": "bmpt_terminator_technical.json",

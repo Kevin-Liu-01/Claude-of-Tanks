@@ -853,8 +853,8 @@
       "width": 512,
       "height": 256,
       "mime": "image/webp",
-      "bytes": 9244,
-      "sha256": "0503562bbfac3c7990b949822252c7944a2e49faf1e1515f02b1d82add932d95"
+      "bytes": 9258,
+      "sha256": "bfa2ba0e692935e35de470dc8aadc3604aede1b538c765d23aeab22415c4dd88"
     },
     "topSilhouette": {
       "file": "centurion3_top_silhouette.png",
@@ -877,32 +877,32 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 24102,
-      "sha256": "edf5996e4c1028ae4a4125dadb605b8e21161859c6b2e71f9d47b2e1705fab41"
+      "bytes": 24114,
+      "sha256": "4bbb3721c21e02843d651931cb189b2e94ed062c22403a228dc7e92da60a6906"
     },
     "modulesSide": {
       "file": "centurion3_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 22112,
-      "sha256": "087d5ca9ec6380f77cd789c65e55f91f7b5265f5d18d018f2d39fc76befebafd"
+      "bytes": 22060,
+      "sha256": "61d8b11fb9188f6269c2dace448b55cefd06cd1e8e7407f9fb37c299663ccee6"
     },
     "crewSide": {
       "file": "centurion3_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 19418,
-      "sha256": "5ddb895eb0518fa9dcf9fdf0963852668a6f41a37b35c56f2f1c9b91a720d158"
+      "bytes": 19428,
+      "sha256": "e72b7c2b6999b1e0f3dfb731aa3b292280a713b30fce86f2da1bba133f5fa585"
     },
     "markings": {
       "file": "centurion3_markings.png",
       "width": 256,
       "height": 128,
       "mime": "image/png",
-      "bytes": 35710,
-      "sha256": "1c6243fce3687bbdbd955b6812b8c8948fe9db2ff5304cba873d7fa57e5693aa"
+      "bytes": 33253,
+      "sha256": "01b45a6217627452b8f1fccecb3868bdea89c751b6752e6596a9836681008bf5"
     },
     "technicalLabels": {
       "file": "centurion3_technical.json",

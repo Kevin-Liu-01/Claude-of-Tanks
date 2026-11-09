@@ -534,14 +534,14 @@
       "height": 512,
       "mime": "image/webp",
       "bytes": 31530,
-      "sha256": "7cd165215c07ec3fa87a09c933ecbdd680047da029d05bb5f52ebf7a06e20ac9",
+      "sha256": "1ca7892528e223550e0b8201e07eea007d5164a9d59e485d3ebfe0b849608404",
       "thumbnail": {
         "file": "thumbs/m60a3_angle.webp",
         "width": 256,
         "height": 256,
         "mime": "image/webp",
-        "bytes": 12642,
-        "sha256": "fe42fb978def869518b34e8484b01775dcf4bb916b2b749f848cddb171a8571d"
+        "bytes": 12638,
+        "sha256": "fc2f16cd792f213a085d36243c46f3d86f9c8fce443872e75f012146e3ad2c9d"
       }
     },
     "top": {
@@ -549,8 +549,8 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 15282,
-      "sha256": "b20331582db1054230232cbc70fe9820f50dce0e104cef9b3f651bbed9c03179"
+      "bytes": 15276,
+      "sha256": "f2b0610a638dbc4c26f88356746fcfc8a1543d333434be80decea985948123c6"
     },
     "side": {
       "file": "m60a3_side.webp",
@@ -605,8 +605,8 @@
       "width": 256,
       "height": 128,
       "mime": "image/png",
-      "bytes": 37352,
-      "sha256": "a2e5ec54e89a1d261589784c22382cfd2006043ebb58250567ca043c07b0114a"
+      "bytes": 34400,
+      "sha256": "5194895dece82e9ba7813543094cda3fcb8d5490bd288f1752e3c8d004939908"
     },
     "technicalLabels": {
       "file": "m60a3_technical.json",

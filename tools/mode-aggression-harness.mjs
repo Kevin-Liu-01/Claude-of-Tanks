@@ -891,6 +891,7 @@ const horde = { waves: [], humanHpSamples: [], maxWave: 0, peakAlive: 0, spawnCh
   pendingArrivals: [] };
 // rams: bot-on-bot ram deaths and the hunter rams (a Horde / Infected hostile in a ram contact with an alpha hull)
 const ramStats = { botOnBotDeaths: 0, hunterRams: 0, hunterContacts: 0 };
+const killTimes = []; // (268, item 11) every kill of an enemy hull, by sim time
 const destroyedAtS = new Map(); // entity id -> the time of its last 'destroyed' event
 const wreckBefore = (e, t) => !!e.combat?.destroyed && (destroyedAtS.get(e.id) ?? Infinity) < t;
 const sector1 = { kills: 0, done: false };
@@ -942,6 +943,7 @@ function onEvent(ev, t) {
     const killer = ev.killerId && ev.killerId !== ev.id ? byId.get(ev.killerId) : null;
     if (killer && normTeam(killer.team) !== victimTeam) {
       recOf(killer).kills++; kills[normTeam(killer.team)]++;
+      killTimes.push(t);
       if (first.killS == null) first.killS = t;
       if (mode === 'frontline_assault' && !sector1.done) sector1.kills++;
     } else kills.self++;
@@ -1018,11 +1020,35 @@ function normFlagTeam(team) { return team === 'bravo' || team === 'enemy' ? 'bra
 /** A flag event names the flag's own team; the actor is the other side. */
 function otherSide(team) { return normFlagTeam(team) === 'alpha' ? 'bravo' : 'alpha'; }
 
+/**
+ * (268, Main item 11) The lay: a bot with a clear shot at its target (its controller's hasClearShot) whose gun is more than
+ * LAY_OFF_RAD off the aim point is off its lay; it is the hull's turn that holds it off when the hull yaws faster than
+ * LAY_TURN_SHARE of the turret's traverse (the turret's whole traverse then goes to undoing the hull's turn). Both sides.
+ */
+const LAY_OFF_RAD = 0.1, LAY_TURN_SHARE = 0.6;
+const layLoss = { clearShot: 0, offAim: 0, turnBlocked: 0 };
+function sampleLay() {
+  for (const e of ents) {
+    if (!alive(e) || adapter.isHuman(e) || !e.aiCtl) continue;
+    const targetId = e.aiCtl.targetId;
+    if (!targetId || !e.aiCtl.hasClearShot(targetId)) continue;
+    layLoss.clearShot++;
+    const aim = e.input?.aimPoint;
+    if (!aim) continue;
+    let off = Math.atan2(aim.x - e.state.pos.x, aim.z - e.state.pos.z) - (e.state.yaw + (e.state.turretYaw ?? 0));
+    off = Math.atan2(Math.sin(off), Math.cos(off));
+    if (Math.abs(off) <= LAY_OFF_RAD) continue;
+    layLoss.offAim++;
+    if (Math.abs(e.state.yawRate ?? 0) > LAY_TURN_SHARE * (e.spec?.turretTraverseDegS ?? 30) * Math.PI / 180) layLoss.turnBlocked++;
+  }
+}
+
 function sample(t) {
   const ctl = adapter.controller();
   const mstate = ctl?.state;
   const living = [];
   for (const e of ents) if (alive(e)) living.push(e);
+  sampleLay();
   // Frontline: the live sector and its reach
   let zone = null, zoneR = null;
   if (mode === 'frontline_assault' && mstate?.zones?.length) {
@@ -1474,6 +1500,9 @@ const summary = {
   alpha: sideSummary(bots('alpha')), bravo: sideSummary(bots('bravo')),
   kills, deathCauses, killsPerMin: { alpha: round(kills.alpha / minutes, 2), bravo: round(kills.bravo / minutes, 2) }, damageBy: { alpha: Math.round(damageBy.alpha), bravo: Math.round(damageBy.bravo) }, rams,
   ramStats: { ...ramStats },
+  // (268, item 11) the lay and the kills' timing: lost lays over clear-shot samples; the first, median and last kill
+  layLoss: { ...layLoss, share: layLoss.clearShot ? round(layLoss.turnBlocked / layLoss.clearShot, 3) : null },
+  killTiming: killTimes.length ? { first: round(killTimes[0], 1), median: round(killTimes[Math.floor(killTimes.length / 2)], 1), last: round(killTimes[killTimes.length - 1], 1) } : null,
   player: human ? { specId: human.specId, nation: human.nation, shots: human.shots, kills: human.kills, deaths: human.deaths, aliveS: round(human.aliveS, 0), ranDry: human.ranDry, move: human.move } : null,
   overTime: minuteBuckets.map((m, i) => ({ min: i,
     alphaObjM: m.alpha.objN ? Math.round(m.alpha.objSum / m.alpha.objN) : null, bravoObjM: m.bravo.objN ? Math.round(m.bravo.objSum / m.bravo.objN) : null,

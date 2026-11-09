@@ -665,24 +665,24 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 31788,
-      "sha256": "721b735c24b4baf2b7abfdd512f4df5b2c1d1cccc3b41a772f447066f56a93c0"
+      "bytes": 31804,
+      "sha256": "9f6e099b6cd2c88a384093c707fe16249a07cfa289b4aa7c3babd257239479c4"
     },
     "modulesSide": {
       "file": "merkava4_barak_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 31128,
-      "sha256": "b60af34b025168e74259f4c44b8a15865f67a9488ebac110583490b2f8155c3e"
+      "bytes": 31130,
+      "sha256": "0a2560f627de0c329e864e97d991c3e1a9343fd149c4c094c80c51b8d04ba885"
     },
     "crewSide": {
       "file": "merkava4_barak_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 29604,
-      "sha256": "d38a6348602e3403948060ee1b4fc964819b6e91d8bb0d78a2ab48f1765d0a51"
+      "bytes": 29610,
+      "sha256": "fa63f1e10e94b809ea85761638958aa915f1c3762d80bf0754c69c8ea9efa197"
     },
     "angle": {
       "file": "merkava4_barak_angle.webp",
@@ -713,8 +713,8 @@
       "width": 512,
       "height": 256,
       "mime": "image/webp",
-      "bytes": 15374,
-      "sha256": "cfa5927f84e2e1e8d34c0ba286b6ee01abb1560bff0c431832fa2722c4cd1630"
+      "bytes": 15390,
+      "sha256": "222713ce1bd2d24aa949fb18e40b6752d2b85d451e6be128b2d9ccf4385cf083"
     },
     "topSilhouette": {
       "file": "merkava4_barak_top_silhouette.png",
@@ -737,8 +737,8 @@
       "width": 256,
       "height": 128,
       "mime": "image/png",
-      "bytes": 35962,
-      "sha256": "3f308706ca1739892f243513976588cedaf10210ea73a894ab7f33651168bf1a"
+      "bytes": 34292,
+      "sha256": "f1c344e8aa8eff70f4bdc52e7d1f4fd73aae463c2f6f598718d4e979d74db917"
     },
     "technicalLabels": {
       "file": "merkava4_barak_technical.json",

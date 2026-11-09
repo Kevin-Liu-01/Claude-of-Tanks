@@ -1092,24 +1092,24 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 48942,
-      "sha256": "cb0c58280c2fc40d5b0714d4b52342c927434bd39878272826eb0f5485c7016c"
+      "bytes": 48930,
+      "sha256": "e61db84570d98daa2d529ac2cb0e559513feb3861b61b8c864adc9fb60f65b8c"
     },
     "modulesSide": {
       "file": "m6_linebacker_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 55690,
-      "sha256": "7723ef9b3d3d1310280f6ee88268e06b23a32c26acc144b286363404ad5ffd62"
+      "bytes": 55618,
+      "sha256": "b63fdea5d12eb96a3de8813eca77aa04033299ea9ce13f901322ad912080887b"
     },
     "crewSide": {
       "file": "m6_linebacker_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 52828,
-      "sha256": "8ee147319100bc1e8506b69a5d53d1bf74e642fa781c0f2b2090713ccb88242c"
+      "bytes": 52776,
+      "sha256": "d8c47d7354cde4da342e7500b82006ae49c525f40a7d36f48e55b8ce0d29ed5a"
     },
     "angle": {
       "file": "m6_linebacker_angle.webp",
@@ -1140,8 +1140,8 @@
       "width": 512,
       "height": 256,
       "mime": "image/webp",
-      "bytes": 25832,
-      "sha256": "fb06bbab1870c38bbefa92d92df8b612063e197816bd1fb9f58d849860b543e3"
+      "bytes": 25852,
+      "sha256": "b95140aae51fc290d4a4cdd8a0375328bcc9c27d81d076bacb15c2c601a337ef"
     },
     "topSilhouette": {
       "file": "m6_linebacker_top_silhouette.png",
@@ -1164,8 +1164,8 @@
       "width": 256,
       "height": 128,
       "mime": "image/png",
-      "bytes": 37714,
-      "sha256": "0d3cfa62ad6bfaa301720390cd3294ff394869d6e95fcde1cb4699d4a4f4a2c6"
+      "bytes": 35458,
+      "sha256": "f4532c20bd1f541a09c7147ce0bd1934810f823317726965c8ab73252e6fce9f"
     },
     "technicalLabels": {
       "file": "m6_linebacker_technical.json",

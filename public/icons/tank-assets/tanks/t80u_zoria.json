@@ -23657,8 +23657,8 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 17282,
-      "sha256": "f1e8545c69d6452415625cb84a9fdf2e5acf329e0e1d2d5a066fed09ef15d197"
+      "bytes": 17314,
+      "sha256": "de2533db9a14f02ac15f38bdf6a9a4b270634ba16bc090c4b9051ab313b32ffd"
     },
     "side": {
       "file": "t80u_zoria_side.webp",
@@ -23689,8 +23689,8 @@
       "width": 256,
       "height": 128,
       "mime": "image/png",
-      "bytes": 36000,
-      "sha256": "e91197c044e35727ada6435a779b2aacdf7e9841e03bc87cf365846c718aed2f"
+      "bytes": 32580,
+      "sha256": "8032f10f1c0e3620e6fcdd825d894f76df82c2b2fda4b034dd16632eaf33015c"
     },
     "technicalLabels": {
       "file": "t80u_zoria_technical.json",

@@ -1076,16 +1076,16 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 17768,
-      "sha256": "1b58d81067c654032adf4b1f067b25a335adf1f3baf801e91d5823d7d4203f38"
+      "bytes": 17760,
+      "sha256": "02898f2aa11039cae38d3402232979183f3713ba1c2b40fdfaf5ec174b0e90c7"
     },
     "side": {
       "file": "pgz95_side.webp",
       "width": 512,
       "height": 256,
       "mime": "image/webp",
-      "bytes": 16158,
-      "sha256": "40973b0ff885ec7d47dbe16746054e6c48ddb1f7af8930ada4c3f630d96366bf"
+      "bytes": 16168,
+      "sha256": "85256f6cb42b6ed5a3a803c9d54b889201132203d662b8efdf1fc79c71ba56d7"
     },
     "topSilhouette": {
       "file": "pgz95_top_silhouette.png",
@@ -1108,32 +1108,32 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 35344,
-      "sha256": "9c02393b3238c8615f2f70504f14355c341b6b57ed4073ad16d8d6a281915230"
+      "bytes": 35468,
+      "sha256": "0c4d98785134c98877c966878a4ae29d43646cb48d21817bdd87e91f4967d1a7"
     },
     "modulesSide": {
       "file": "pgz95_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 38838,
-      "sha256": "29d3d293c77193dcd68d6a77cab0f1a664d38c3b58bef66d7721c34c383ef85e"
+      "bytes": 38724,
+      "sha256": "a8c3651145f93638f2c097cd279f683b76c2daaf236d1abf49e8d8c89bd9d665"
     },
     "crewSide": {
       "file": "pgz95_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 35086,
-      "sha256": "a102a56a057f319d2d9024f0262e83114e04c5e7cdf275768cd1303d671a4061"
+      "bytes": 35092,
+      "sha256": "cd88b0610a79ac00535e579abe427c1491a495d7ad914ed514781df9bfd6f5a0"
     },
     "markings": {
       "file": "pgz95_markings.png",
       "width": 256,
       "height": 128,
       "mime": "image/png",
-      "bytes": 35680,
-      "sha256": "e9c3ad2cd464c6f31a48523e15f3201cf8e5e0d0985fdff66445d195db963c9b"
+      "bytes": 32253,
+      "sha256": "6d4d7095b2c0ad516e704cc36ce65e6cb1c6cc28f0141079be2c96ffb3f8d639"
     },
     "technicalLabels": {
       "file": "pgz95_technical.json",
