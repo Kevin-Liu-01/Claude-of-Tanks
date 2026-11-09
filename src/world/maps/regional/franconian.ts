@@ -253,9 +253,7 @@ export const FRANCONIAN_STYLE: ArchitectureStyle = Object.freeze<ArchitectureSty
     // no longer the blue-greys that turned the town's tiles brown; the render's damp stains lighter (the critics: "frame-
     // filling blotch-stained walls")
     roof: [[1.08, 0.97, 0.9], [1, 1, 1], [1.04, 0.92, 0.84], [0.92, 0.88, 0.86], [0.84, 0.8, 0.8], [0.96, 0.9, 0.86]],
-    damp: 0.5, moss: 0.4,
   },
-  wear: 0.25,
   // the yards of the outlying farms: sandstone walls round a kitchen garden, a gate (yards.ts)
   yard: { kinds: ['cottage', 'farmhouse'], fence: 'wallstone', gate: 'gatestone', shed: null, garden: true },
 });

@@ -929,9 +929,7 @@ export const LONGLEAF_STYLE: ArchitectureStyle = Object.freeze<ArchitectureStyle
     plaster: [[1, 1, 1], [0.97, 0.96, 0.93], [0.93, 0.92, 0.9]],
     stone: [[1, 1, 1], [0.94, 0.92, 0.9], [1.03, 0.98, 0.95]],
     roof: [[1, 1, 1], [0.92, 0.9, 0.86], [1.04, 1.02, 1.0], [0.86, 0.8, 0.74]],
-    damp: 0.65, moss: 0.35,
   },
-  wear: 0.3,
   // the houses' yards: a plank fence and gate, the privy or woodshed at the back, the kitchen garden (yards.ts)
   yard: { kinds: ['logcabin', 'farmhouse'], fence: 'fenceplank', gate: 'gate', shed: 'woodshed', shedSize: [2.4, 2.0], garden: true },
 });

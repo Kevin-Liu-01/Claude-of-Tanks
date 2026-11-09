@@ -28,6 +28,7 @@
 import { WORN_YARD_PAINT } from '../hardstandSurface.ts';
 
 import * as detMath from '../../sim/detMath.ts';
+import { BUILDING_STYLES } from './buildingStyleTable.ts';
 const clamp01 = (x: number) => (x < 0 ? 0 : x > 1 ? 1 : x);
 
 // The scenery's sandstone in the Dahar's own colour: the dusty buff-red of the boulders (props rockTone), not the
@@ -393,7 +394,7 @@ export default {
     // meets a building's plot is left out (props.ts dressingRules.fencesClearBuildings; no stub rule)
     dressingRules: { fencesClearBuildings: true },
     // regional-buildings lane: the Tunisian ksar kit (maps/regional/ksar.ts)
-    architecture: 'ksar',
+    architecture: BUILDING_STYLES.desert.kit,
     // r2 (content_breadth): plan 10 -> 18 slots — three more adobe clusters
     // plus a souk ('market'/'marketRow' builders, maps/mapKits.ts via the
     // urbanKit registry) so the crossroads reads as a lived-in bazaar town
@@ -462,7 +463,10 @@ export default {
     // to a diagonal frontage reached the carriageway at the old [11.5, 4.5]
     buildingLat: [14, 4], maxSpread: 2.2,
     tones: {
-      plaster: (h: number, s: number, l: number) => [0.068, 0.52, clamp01(l * 0.98 + 0.02)], // warm sand-plaster adobe
+      // (buildings-270, the census: the houses' render was the sand's own orange, and they sank into the ground; the Dahar
+      // photos' mud-lime render is a greyer buff ochre over the rubble)
+      // (the round-2 critics, 0/3: the buff read washed-out grey beside the before's ochre; the photos' render #c79a5a-#d8b47a)
+      plaster: (h: number, s: number, l: number) => [0.092, clamp01(s * 0.4 + 0.46), clamp01(l + 0.13)], // ochre mud-lime render (the kit's lime-wash canvas: #d0a671)
       roof: (h: number, s: number, l: number) => [0.065, clamp01(s * 0.8), clamp01(l * 1.1)],
       stone: (h: number, s: number, l: number) => [0.07, clamp01(s * 2 + 0.1), clamp01(l * 1.18 + 0.03)], // sandstone
       wood: (h: number, s: number, l: number) => [0.08, clamp01(s * 0.9), clamp01(l * 1.15)],

@@ -40,6 +40,7 @@ import { TOWN_LIGHT_PLANS, TOWN_PLANS } from './townPlans.generated.ts';
 import { TITAN_HOMESITES } from './titanHomesites.ts'; // the maps lane, 2026-10-15: the valley's homesites
 
 const clamp01 = (x: number) => Math.max(0, Math.min(1, x));
+import { BUILDING_STYLES } from './buildingStyleTable.ts';
 
 export default {
   id: 'titan_gorge',
@@ -165,7 +166,7 @@ export default {
   },
   props: {
     // the map-revival lane (2026-10-05): the Navajo Nation's Monument Valley kit (maps/regional/navajo.ts)
-    architecture: 'navajo',
+    architecture: BUILDING_STYLES.titan_gorge.kit,
     plan: [
       'caravanserai', 'compound', 'depot', 'ruin', 'marketRow', 'watertower',
       'adobe', 'compoundSouk', 'factory', 'ruin', 'containerRow', 'minaret',

@@ -39,6 +39,7 @@ import { wallWeather } from './regional/weather.ts';
 import {
   Mesh, STONE_FLAT_TEXEL, STONE_UV_PER_M, X, Y, Z, hexLin, lin, member, mix, mul, mulc, norm, pole, stream, type Rgb, type UvMode, type V3,
 } from './craftMesh.ts';
+import { climateOf } from './buildingStyleTable.ts';
 
 export { STONE_FLAT_TEXEL };
 
@@ -721,8 +722,8 @@ export function buildGate(kind: GateKind, ctx: GateBuildContext, broken = false)
 }
 
 /** The surface context a map's stone gate reads from its kit (props.ts). */
-export function gateStoneOf(style: ArchitectureStyle | null | undefined): GateBuildContext['stone'] {
+export function gateStoneOf(style: ArchitectureStyle | null | undefined, mapId: string): GateBuildContext['stone'] {
   if (!style) return undefined;
   const s = style.surfaces.stone;
-  return { kind: s.kind, dressed: !!s.dressed, tint: s.tint, damp: style.weather?.damp ?? 0.8 };
+  return { kind: s.kind, dressed: !!s.dressed, tint: s.tint, damp: climateOf(mapId, style.id).damp };
 }

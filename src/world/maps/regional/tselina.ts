@@ -985,7 +985,10 @@ export const TSELINA_STYLE: ArchitectureStyle = Object.freeze<ArchitectureStyle>
   surfaces: {
     roof: { kind: 'asbestos', tint: [0.63, 0.63, 0.6] },
     stone: { kind: 'brick', tint: [0.76, 0.73, 0.66] },
-    sourced: { plaster: true, wood: true },
+    // (buildings-270, the sourced-plaster class: under the photo set none of the map's render tones showed) the walls the
+    // procedural limewash canvas, the primary family's tone measured on it against the reference photos (the whitewash: the map's tone, #e0dbcf against #e6e4dc)
+    sourced: { plaster: false, wood: true },
+    render: { kind: 'limewash', seed: 0x3e57 },
     tones: {
       plaster: whitewash,
       // slip-formed concrete: a warm light grey
@@ -1001,9 +1004,8 @@ export const TSELINA_STYLE: ArchitectureStyle = Object.freeze<ArchitectureStyle>
     stone: [[1, 1, 1], [0.95, 0.94, 0.9], [1.0, 0.98, 0.94], [0.9, 0.89, 0.86]],
     roof: [[1, 1, 1], [0.92, 0.9, 0.86], [0.84, 0.83, 0.8], [1.04, 1.02, 0.98]],
     // a dry continental climate: little rising damp, lichen rather than moss
-    damp: 0.4, moss: 0.15, mossTint: [1.0, 0.92, 0.7],
+    mossTint: [1.0, 0.92, 0.7],
   },
-  wear: 0.25,
   // the settlers' yards: a picket fence round the kitchen garden (ogorod), a gate, the shed in its corner (yards.ts)
   // (gauntlet wave 106, round 2: "Western cottages") wattle fences (pleten) round the settlers' yards, not white pickets;
   // (board fences turned the bots' battles a minute shorter on the pacing receipt's seeds — the wattle holds the band)

@@ -525,6 +525,7 @@ export const DALMATIAN_STYLE: ArchitectureStyle = Object.freeze<ArchitectureStyl
     roof: { kind: 'canal', tint: [0.70, 0.42, 0.29] },
     // Brac stone: near-white dressed limestone (2026-10-03 w2 review; was [0.8, 0.75, 0.64])
     stone: { kind: 'limestone', tint: [0.83, 0.79, 0.70] },
+    // (buildings-270: Saltwind reverted to its base look, Main 11-06, the round-4 pairs 1–6)
     sourced: { plaster: true, wood: true },
   },
   builders: DALMATIAN_BUILDERS,
@@ -533,9 +534,8 @@ export const DALMATIAN_STYLE: ArchitectureStyle = Object.freeze<ArchitectureStyl
     plaster: [[1, 1, 1], [1, 0.97, 0.92], [0.98, 0.95, 0.88], [1, 0.96, 0.94]],
     stone: [[1, 1, 1], [0.95, 0.94, 0.9], [1.03, 1.01, 0.96], [0.9, 0.89, 0.86]],
     roof: [[1, 1, 1], [0.9, 0.82, 0.74], [1.05, 0.95, 0.88], [0.84, 0.8, 0.76]],
-    damp: 0.45, moss: 0.25, mossTint: [0.9, 0.88, 0.76],
+    mossTint: [0.9, 0.88, 0.76],
   },
-  wear: 0.3,
   // the yards: dry-stone walls round a kitchen garden and the stone hut (kazun), a gate (yards.ts)
   yard: { kinds: ['cottage', 'farmhouse'], fence: 'wallstone', gate: 'gatestone', shed: 'woodshed', shedSize: [3.8, 3.4], garden: true },
 });
