@@ -166,6 +166,10 @@ const { CouchChunkError } = await import('../app/couchOpener.ts').catch(() => ({
     'and photo mode');
   assert.match(source, /if \(!quickMenus \|\| !ticket\.current\(\)\) return;/, 'and the quick menus');
   assert.match(source, /customCamoStudioAccess\?\.open\(garageScreen\.ticket\(\)\.current\)/, 'and the custom camo studio');
+  // (round 8 Y4 fix-up r3) and the Service Record (case 8 drives it)
+  assert.match(source, /const ticket = garageScreen\.ticket\(\);\n[^\n]*\n    recordOpening = true;/, 'the record press takes the ticket');
+  assert.match(source, /if \(revision !== recordOpenRevision \|\| !ticket\.current\(\)\) return;\n      serviceRecord \?\?= createServiceRecordDialog/,
+    'and the Service Record');
   // (round 8 Y4 s3-03) and the couch lobby: the press hands the Garage's ticket and its button (the modal's trigger, so
   // the hide's closeSurfacesWithin takes an in-time lobby), a repeat press while the chunks load does nothing, a failed
   // chunk is the kit's failure; main's onCouch opens through the one helper (couchOpener.selftest drives it)
@@ -362,4 +366,72 @@ const { CouchChunkError } = await import('../app/couchOpener.ts').catch(() => ({
   assert.equal(open.logged[0][2], broken, 'and its cause reaches the console');
 }
 
-console.log('garageOpenState.selftest: one open state, lapsing tickets, the hand-off, one ready wait, the consumables wait, the filter lazy toggle, the Garage wiring, the Couch press PASS');
+// 8. (round 8 Y4 fix-up r3) The Service Record as garage.ts writes it (openServiceRecord and closeServiceRecord, types
+//    stripped, its chunk imports a deferred stand-in), over the real screen owner: a lazy opener like the others. Its own
+//    revision lapsed only at a close, so a record press, then BATTLE (the hand-off) inside the record chunk's download,
+//    opened the record's modal (z-index 10050) over the battle's loader (150) until the activation's hide closed it.
+{
+  const source = readFileSync(new URL('./garage.ts', import.meta.url), 'utf8');
+  const head = '  const isRecordOpen = () => ';
+  const recordCode = stripTypeScriptTypes(source.slice(source.indexOf(head), source.indexOf('  const isMobileNavigationOpen = ')))
+    .replace(/\bimport\(/g, '__load(');
+  assert.ok(source.indexOf(head) > 0 && recordCode.includes('const openServiceRecord = async'), 'garage.ts holds the Service Record opener');
+  const flush = () => new Promise((resolve) => setImmediate(resolve));
+  function recordPress(screen) {
+    const opened = [];
+    const marks = [];
+    let release;
+    const chunk = new Promise((resolve) => { release = resolve; });
+    const dialog = { open: (trigger) => opened.push(trigger), close: () => {}, isOpen: () => opened.length > 0 };
+    const record = new Function('garageScreen', '__load', 'reloadsForFailure', 'recordTrigger', 't', 'closeGarageVariantMenu',
+      'setGaragePanel', 'document', 'HTMLElement', 'recordNames', 'refreshServiceRecord', 'reportLoadFailure',
+      `let serviceRecord = null; let recordOpening = false; let recordOpenRevision = 0;\n${recordCode}\n`
+      + 'return { openServiceRecord, closeServiceRecord, isRecordOpen };')(
+      screen, (specifier) => (specifier === './serviceRecordDialog.ts' ? chunk : Promise.resolve({})), () => false,
+      { setAttribute() {} }, (key) => key, () => {}, () => {}, { activeElement: null }, class {}, {}, () => {},
+      (id) => marks.push(id));
+    const pressed = record.openServiceRecord('record-trigger');
+    return { record, opened, marks, pressed, land: () => release({ createServiceRecordDialog: () => dialog }) };
+  }
+  {
+    const screen = createGarageScreen();
+    screen.show();
+    const press = recordPress(screen);
+    assert.equal(press.record.isRecordOpen(), true, 'the press is in flight');
+    screen.handOff(); // BATTLE, Watch, a campaign or room press, or a start launchBattle hands on
+    press.land();
+    await press.pressed;
+    await flush();
+    assert.deepEqual(press.opened, [], 'a record press handed on opens nothing over the loader (before: the record modal)');
+    assert.deepEqual(press.marks, [], 'and is no failed chunk');
+    assert.equal(press.record.isRecordOpen(), false, 'the press settled');
+  }
+  {
+    const screen = createGarageScreen();
+    screen.show();
+    const press = recordPress(screen);
+    screen.hide();
+    press.land();
+    await press.pressed;
+    assert.deepEqual(press.opened, [], 'nor over a hidden Garage');
+  }
+  {
+    const screen = createGarageScreen();
+    screen.show();
+    const press = recordPress(screen);
+    press.record.closeServiceRecord();
+    press.land();
+    await press.pressed;
+    assert.deepEqual(press.opened, [], 'a second press on the trigger while it loads still closes it (its own revision)');
+  }
+  {
+    const screen = createGarageScreen();
+    screen.show();
+    const press = recordPress(screen);
+    press.land();
+    await press.pressed;
+    assert.deepEqual(press.opened, ['record-trigger'], 'a record landing over the Garage that asked opens once, on its trigger');
+  }
+}
+
+console.log('garageOpenState.selftest: one open state, lapsing tickets, the hand-off, one ready wait, the consumables wait, the filter lazy toggle, the Garage wiring, the Couch press, the Service Record PASS');

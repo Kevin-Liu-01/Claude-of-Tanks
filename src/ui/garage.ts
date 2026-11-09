@@ -1511,13 +1511,16 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     if (recordOpening || reloadsForFailure(recordTrigger, 'cot-record-load', t('garage.record.loadError'))) return;
     closeGarageVariantMenu(); setGaragePanel('');
     const revision = ++recordOpenRevision;
+    // (round 8 Y4 fix-up r3) a lazy opener like the others (audit F5): its revision lapses at a close, the Garage's ticket
+    // at a hide or a hand-off, so a record landing after BATTLE opens nothing over the loader
+    const ticket = garageScreen.ticket();
     const trigger = opener ?? (document.activeElement instanceof HTMLElement ? document.activeElement : recordTrigger);
     recordOpening = true;
     try {
       const [{ createServiceRecordDialog }] = await Promise.all([
         import('./serviceRecordDialog.ts'), import('./serviceRecord.css'), import('./richTooltip.css'),
       ]);
-      if (revision !== recordOpenRevision) return;
+      if (revision !== recordOpenRevision || !ticket.current()) return;
       serviceRecord ??= createServiceRecordDialog(recordNames, () => {
         recordTrigger.setAttribute('aria-expanded', 'false'); refreshServiceRecord();
       });
