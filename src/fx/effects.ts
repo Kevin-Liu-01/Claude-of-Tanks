@@ -1533,10 +1533,11 @@ function* createFxSteps(
     }
     const age = lightAge(state);
     const k = Math.max(0, 1 - age / state.dur);
-    // a moving muzzle's light rides the bore with the flash (policy: muzzleLight); every other pulse keeps its place
+    // a moving muzzle's light rides the bore with the flash (policy: muzzleLight) while its pulse burns; every other pulse,
+    // and a spent one, keeps its place
     const c = state.carry;
-    if (c.x !== 0 || c.y !== 0 || c.z !== 0) {
-      state.light.position.copy(state.origin).addScaledVector(c, Math.min(Math.max(0, age), state.dur));
+    if (age < state.dur && (c.x !== 0 || c.y !== 0 || c.z !== 0)) {
+      state.light.position.copy(state.origin).addScaledVector(c, Math.max(0, age));
     }
     // the Accessibility flash intensity (A11Y.flash, 0-1) scales every pulse of the muzzle and blast lights
     let v = state.peak * Math.pow(k, state.pow || 2) * A11Y.flash;
@@ -1562,11 +1563,13 @@ function* createFxSteps(
     state.light.intensity = Number.isFinite(v) ? v : 0;
   }
 
-  /** The pulse just lit rides a moving muzzle (m/s, the policy's muzzleLight gain applied). */
-  function carryLight(state: LightState, vel: Readonly<MutableVec3>): void {
-    state.carry.set(vel[0] * MUZZLE_LIGHT_CARRY, vel[1] * MUZZLE_LIGHT_CARRY, vel[2] * MUZZLE_LIGHT_CARRY);
-  }
-
+  /**
+   * Lights a pulse: its one writer (round 8 Y6, s4-05) of the place, the carry and the birth, all after the finite guard.
+   * `vel` is the firing muzzle's world velocity (m/s; subjectPointVelocity): a muzzle light's pulse rides it at the
+   * policy's muzzleLight gain; every other pulse passes none and keeps its place. A second writer (carryLight) once set the
+   * carry after this call even when the guard refused the pulse, so the pulse still burning (another gun's, maybe) slid
+   * along the new shooter's motion, or, from a turning shooter's NaN velocity, sat at a NaN place every frame after.
+   */
   function flashLight(
     state: LightState,
     pos: THREE.Vector3,
@@ -1576,12 +1579,15 @@ function* createFxSteps(
     pow?: number,
     hex?: number,
     range?: number,
+    vel: Readonly<MutableVec3> = ZERO_VEL,
   ): void {
     // (black-screen-228 RC6) a pulse with a non-finite place never moves a light there
     if (!(Number.isFinite(pos.x) && Number.isFinite(pos.y) && Number.isFinite(pos.z))) return;
     state.light.position.copy(pos);
     state.origin.copy(pos);
-    state.carry.set(0, 0, 0);
+    // a non-finite component carries nothing (a finite place keeps a finite light, by construction)
+    state.carry.set(Number.isFinite(vel[0]) ? vel[0] * MUZZLE_LIGHT_CARRY : 0, Number.isFinite(vel[1]) ? vel[1] * MUZZLE_LIGHT_CARRY : 0,
+      Number.isFinite(vel[2]) ? vel[2] * MUZZLE_LIGHT_CARRY : 0);
     // (233) the muzzle light's reach: its gun's (muzzleLightPulse), the 12 m default for every other muzzle-light pulse
     if (state.light === muzzleLight) state.light.distance = range && range > 0 ? range : MUZZLE_LIGHT_RANGE;
     // (fx 9: 8t) the pulse's own reach (the pooled explosion light: 13 m unless the pulse asks less)
@@ -3165,8 +3171,7 @@ function* createFxSteps(
     // 0.3 of a gun's peak it always took: one flat 138 cd for a 57 mm rocket and a 220 mm one alike before
     const pulse = muzzleLightPulse(caliberMm, pos.x, pos.z);
     flashLight(lightStates[0], pos, MUZZLE_LIGHT_PEAK * 0.3 * pulse.peakK, -birthOffset, undefined, undefined, undefined,
-      pulse.range);
-    carryLight(lightStates[0], vel);
+      pulse.range, vel);
   }
 
   /**
@@ -6827,8 +6832,7 @@ function* createFxSteps(
       const pulse = muzzleLightPulse(caliber, p.x, p.z);
       const peak = MUZZLE_LIGHT_PEAK * pulse.peakK * lightK * muzzleLightScale;
       if (!(muzzleLight.intensity > peak)) {
-        flashLight(lightStates[0], p, peak, 0, undefined, undefined, undefined, pulse.range);
-        carryLight(lightStates[0], _shotVel);
+        flashLight(lightStates[0], p, peak, 0, undefined, undefined, undefined, pulse.range, _shotVel);
       }
     },
     smoke: (p,scale,density=1,life=2.4,wind=null) => {
@@ -7526,8 +7530,7 @@ function* createFxSteps(
       // (233) by the bore and the ground under the muzzle (muzzleLightPulse)
       const pulse = muzzleLightPulse(caliberMm, _sv.x, _sv.z);
       flashLight(lightStates[0], _sv, MUZZLE_LIGHT_PEAK * pulse.peakK * lightK * muzzleLightScale, 0,
-        undefined, undefined, undefined, pulse.range);
-      carryLight(lightStates[0], _shotVel);
+        undefined, undefined, undefined, pulse.range, _shotVel);
     },
 
     /** Tank-on-tank metal contact: lateral sparks, track debris and a low
@@ -8331,7 +8334,8 @@ function* createFxSteps(
       muzzleRingCursor = 0;
       impactDecals.clearAll();
       resetEquipmentDamage();
-      for (const st of lightStates) { st.bornAt = -1e9; st.light.intensity = 0; }
+      // (round 8 Y6, s4-05) a battle reset ends every pulse: no carry outlives it
+      for (const st of lightStates) { st.bornAt = -1e9; st.light.intensity = 0; st.carry.set(0, 0, 0); }
     },
 
     setAuxiliaryClock(clock: (() => number) | null): boolean {
