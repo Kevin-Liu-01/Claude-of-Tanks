@@ -6,11 +6,16 @@
 // debugInfo().driveOwner names the owner that drove the last tick. Pins: the tables hold the orders the statements had
 // (a reorder is a reviewed edit of these lines, never a side effect of moving code); a free bot's mode drives it; a
 // live hit reaction takes the hull; a mission keeps it over that reaction; a wreck has no owner.
+// Round 8 Y2 (s2-04): the lay-first clamp is the last layer ('layFirst', after 'finish'), and the recovery turns it leaves
+// whole are a declared table (AI_RECOVERY_TURNS) with one owner: each turn has its claim site, and only
+// resetStepIntent's openTickTurn and claimRecoveryTurn write the tick's recoveryTurn (ai.layGunFirst.selftest drives
+// the claims).
+import { readFileSync } from 'node:fs';
 import { Vector3 } from 'three';
 import '../vehicles/fleetFactory.ts';
 import { getSpec } from '../vehicles/specs.ts';
 import { createTankState, updateTank, SIM_DT } from '../sim/movement.ts';
-import { AI_DOCTRINE_STARTS, AI_DRIVE_LAYERS, AI_DRIVE_OWNERS, createAI, mulberry32 } from './ai.ts';
+import { AI_DOCTRINE_STARTS, AI_DRIVE_LAYERS, AI_DRIVE_OWNERS, AI_RECOVERY_TURNS, createAI, mulberry32 } from './ai.ts';
 
 let failures = 0;
 const ok = (cond, label) => { if (cond) console.log(`  ok  ${label}`); else { failures++; console.error(`FAIL  ${label}`); } };
@@ -46,10 +51,21 @@ ok(AI_DRIVE_OWNERS.join() === 'mission,reaction,levelRoute,arcScoot,passivePress
   `drive owners, highest first (${AI_DRIVE_OWNERS.join(' > ')})`);
 ok(AI_DOCTRINE_STARTS.join() === 'elevationLock,emptyRack,objectiveShift,passivePress,shotRelocation,probeRelocation,'
   + 'penDeniedFlank,fallback,squadManeuver', 'doctrine starts in their tick order');
-ok(AI_DRIVE_LAYERS.join() === 'trafficDetour,jockey,progress,slopeRecovery,colliderRecovery,lowSpeedRecovery,orbitRecovery,finish',
-  'the layers after the owner in their tick order');
-for (const table of [AI_DRIVE_OWNERS, AI_DOCTRINE_STARTS, AI_DRIVE_LAYERS]) {
+ok(AI_DRIVE_LAYERS.join() === 'trafficDetour,jockey,progress,slopeRecovery,colliderRecovery,lowSpeedRecovery,orbitRecovery,finish,'
+  + 'layFirst', 'the layers after the owner in their tick order, the lay-first clamp last');
+ok(AI_RECOVERY_TURNS.join() === 'unstick,terrainEscape,allyEscape,allySwerve,hullBackOff', 'the recovery turns the clamp keeps');
+for (const table of [AI_DRIVE_OWNERS, AI_DOCTRINE_STARTS, AI_DRIVE_LAYERS, AI_RECOVERY_TURNS]) {
   ok(Object.isFrozen(table) && new Set(table).size === table.length, `frozen, no name twice (${table[0]}…)`);
+}
+{
+  // the census: every declared recovery turn is claimed somewhere, nothing else claims, and the tick's recoveryTurn has
+  // two writers only (the tick's open and the claim)
+  const source = readFileSync(new URL('./ai.ts', import.meta.url), 'utf8');
+  const claimed = new Set([...source.matchAll(/claimRecoveryTurn\('(\w+)'\)/g)].map((m) => m[1]));
+  ok(AI_RECOVERY_TURNS.every((turn) => claimed.has(turn)) && [...claimed].every((turn) => AI_RECOVERY_TURNS.includes(turn)),
+    `each recovery turn has a claim site (${[...claimed].join(', ')})`);
+  const writers = [...source.matchAll(/\brecoveryTurn = /g)].length;
+  ok(writers === 2, `recoveryTurn is written by openTickTurn and claimRecoveryTurn only (${writers} writes)`);
 }
 
 console.log('[2] a free bot\'s own mode drives it');
