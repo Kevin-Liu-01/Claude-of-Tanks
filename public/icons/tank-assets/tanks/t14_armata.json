@@ -3667,24 +3667,24 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 23110,
-      "sha256": "7ab64429c98dc4ac7316c313c3ad0009adad0f6cadd7e3d1ae8cadb2fd8f8208"
+      "bytes": 23130,
+      "sha256": "d186a0fa26ca7bd52748bde9ee07766f83673b30edaa26eecfe19203679a2e7f"
     },
     "modulesSide": {
       "file": "t14_armata_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 20992,
-      "sha256": "b61bed117d91faa8027a5c7d5f04350765d2d261b499d8c6e54c294cf94ef43d"
+      "bytes": 20968,
+      "sha256": "aac0cefdfea4b9c8a2a1cb936f1e96df7c62db324ee8123d9acc1aa03bc593e6"
     },
     "crewSide": {
       "file": "t14_armata_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 18448,
-      "sha256": "edac1be69f8033a1189a13682ee717c49173eee7d52a3fccc789095e000c8cd5"
+      "bytes": 18404,
+      "sha256": "5199d44811cb1c16594ecb0ac34297f498b64ef91c2a700f60c8babc7041fc59"
     },
     "angle": {
       "file": "t14_armata_angle.webp",
@@ -3715,8 +3715,8 @@
       "width": 512,
       "height": 256,
       "mime": "image/webp",
-      "bytes": 13764,
-      "sha256": "8c283a8c5361fcaa3e3c719f49ce837444adb442a652c5f6c71434a5d0b7440f"
+      "bytes": 13772,
+      "sha256": "22b81751d11ce06cd6461c16523c1e0f5008f2ef7470c1befe33fa268f33be1e"
     },
     "topSilhouette": {
       "file": "t14_armata_top_silhouette.png",
@@ -3739,8 +3739,8 @@
       "width": 256,
       "height": 128,
       "mime": "image/png",
-      "bytes": 35517,
-      "sha256": "3c6ed4d783de686d6fa1f7162392bb5f2bec8a54c4a2feecbe047029e78a876e"
+      "bytes": 32554,
+      "sha256": "0a155385569056ecac99f86c53c824e5454f13bc2d9b909b5ec91e30806e9b88"
     },
     "technicalLabels": {
       "file": "t14_armata_technical.json",

@@ -18,6 +18,14 @@ installs telemetry and the `debugSurface.ts` live-access facade.
 `perfDiagnosticsAccess.ts` and `driveTestAccess.ts` keep heavy implementations
 lazy. `shotContract.ts`, `shotViews.ts`, and `shotRuntime.ts` define staged
 captures; `mapCaptureReadiness.ts` verifies actual sourced-texture completion.
+`battleHold.ts` is `__DEBUG.battleHold`, the one control for a check that needs
+a stable battle: `set(true)` (before `beginSoloBattle`/`startBattle`, armed until
+`set(false)`) makes the page's solo battle hold still and alive; its bots stand
+and never fire, the player takes no damage, and no verdict comes. The step's side
+is `game/devBattleHold.ts`: absent from a public build (`VITE_PUBLIC_BUILD=1`, even
+with `?debug=1`), refused in a network battle, and off it leaves the step byte for
+byte (`devBattleHold.selftest.mjs`). `__DEBUG.flags` carries no `godMode` or
+`freezeBots`; nothing ever read them.
 
 ## Patterns to follow / invariants
 <!-- agent-docs:fill:patterns -->

@@ -196,8 +196,9 @@ const collisionWorld = {
     if (distance < 0 || distance > maxDist) return null;
     const x = origin.x + dir.x * distance;
     const y = origin.y + dir.y * distance;
+    // the wall's face, toward the tank that drives at it (the game's collider returns its surface normal)
     return Math.abs(x) <= 12 && y >= -100 && y <= 100
-      ? { dist: distance, kind: 'prop' } : null;
+      ? { dist: distance, kind: 'prop', normal: { x: 0, y: 0, z: -1 } } : null;
   },
 };
 const collisionMatch = createAuthoritativeMatch({
@@ -226,6 +227,11 @@ assert.equal(structureImpact.shellType, 'APFSDS',
   'authoritative structure impacts preserve their shell presentation class');
 assert.ok(structureImpact.caliberMm > 0 && Number.isFinite(structureImpact.ny),
   'authoritative structure impacts carry caliber and a usable surface normal');
+// (impact-materials-269) and the round's incidence off that face, whole degrees, as the solo step raises it: the audio
+// plays a ground graze as a skip; presentation only, so nothing the authority decides reads it. The gun fires level
+// at the wall square on, so the round meets it within a few degrees of its normal.
+assert.ok(Number.isInteger(structureImpact.impactAngleDeg) && structureImpact.impactAngleDeg >= 0 && structureImpact.impactAngleDeg <= 15,
+  `authoritative world impacts carry the round's incidence (${structureImpact.impactAngleDeg})`);
 
 const shellTree = {
   min: [-1, -100, -35.5],

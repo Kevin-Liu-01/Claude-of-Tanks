@@ -32,7 +32,7 @@ Configuration: the Sho't Kal Alef of the 1973 war, before Blazer armour. Impleme
 | Stowage | the IDF bustle basket, jerrycans, bedrolls (EN, CM) | the open bustle basket with its load, a jerrycan cage at the right rear, curated soft stowage (decorations.ts) |
 | Antennas | two whips | two 2.6-2.9 m whips at the bustle corners |
 | Glacis | spare links on the upper glacis in 1973 (forum); Mk 5 front bins reused (CM) | the Mk 5 bin and link run |
-| Paint | IDF sand / Sinai grey, conflicting (CM: 1973 kits all IDF sand; modellers: grey-tan) | its own plain grey-sand `#8c8670` (`paint_shot_kal`, appended after the 233 paints) |
+| Paint | IDF sand / Sinai grey, conflicting (CM: 1973 kits all IDF sand; modellers: grey-tan) | its own grey-sand `#8c8670` under interlocking olive-grey fields and sand and black bars (`paint_shot_kal`, appended after the 233 paints; plain until (owner 2026-11-03: "any tank without a proper camo need a proper camoo")) |
 | Markings | white company chevron on the side plates and turret (KM) | a "V" chevron on both middle side plates |
 | Searchlight | Alefs commonly carried a searchlight over the mantlet: a Luna L-2 or a canvas-covered xenon (EN) | a canvas-covered searchlight on a bracket over the mantlet, moving with the gun |
 | Lights | US-pattern lights (CM) | US-pattern headlight pairs in bent guards; tail lights in round guards; the convoy light box |

@@ -2121,6 +2121,11 @@ export const UK_PROFILES = {
   centurion5_avre: { build: steppedBuilder((P: TankBuilderPort) => centurionUkSteps(P, 'avre')) },
   // the Australian Mk 5/1 of Vietnam (2026-10-28)
   centurion5_1_aus: { build: steppedBuilder((P: TankBuilderPort) => centurionUkSteps(P, 'mk5_1_aus')) },
+  // release 269: the South African line's Centurions beside the Olifant Mk 2 (southAfricaSpecs.ts)
+  semel: { build: steppedBuilder((P: TankBuilderPort) => centurionUkSteps(P, 'semel')) },
+  olifant_mk1: { build: steppedBuilder((P: TankBuilderPort) => centurionUkSteps(P, 'olifant_mk1')) },
+  olifant_mk1a: { build: steppedBuilder((P: TankBuilderPort) => centurionUkSteps(P, 'olifant_mk1a')) },
+  olifant_mk1b: { build: steppedBuilder((P: TankBuilderPort) => centurionUkSteps(P, 'olifant_mk1b')) },
   // FV510 Warrior — photo-class full build (owner order 2026-08-06 "made
   // actual"): published dims 6.34 x 3.03 x 2.80 authored as world coords in
   // fv510Build; the recovered oracle is certified -10.9% short (curve rows

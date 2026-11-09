@@ -53,6 +53,14 @@ const KNOCK = recipe(layer('can_knock', 0, -3));
 const TRUCK = recipe(layer('truck_crush'));
 /** Heavy plant and rolling stock wrecked (the set pieces, PR.01): the frame buckles, hydraulics burst, steel comes down. */
 const MACHINE = recipe(layer('machine_wreck'), layer('debris_metal', 0.4, -6, 0.2));
+/**
+ * (world-sfx-269, 2026-11-03) Concrete and adobe break as the building banks record them: a pillbox's board-formed
+ * concrete cracking open with its chunks landing (it collapsed as a timber field hut), a concrete road barrier cracking
+ * (it crunched as loose rubble), a mud-brick wall crumbling (it fell as brick).
+ */
+const PILLBOX = recipe(layer('wall_break_concrete', 0, -3), layer('rubble_chunk_land', 0.35, -6, 0.15));
+const CONCRETE_BLOCK = recipe(layer('wall_break_concrete', 0, -7));
+const ADOBE = recipe(layer('wall_break_plaster', 0, -6));
 /** A stone shaft (the square's monument): it cracks at its base, then lands on the topple's beat. */
 const STONE_TOPPLE = recipe(layer('stone_crack', 0, -2), layer('stone_fall', TOPPLE_LAND_S, 0, 0.06));
 
@@ -73,7 +81,7 @@ const KIND_SOUNDS: Readonly<Record<string, PropSoundRecipe>> = Object.freeze({
   // (props lane A, E12) a set piece's wrought-iron ground railing bends and tears off its post
   fenceiron: recipe(layer('fence_metal')),
   // (the looks lane: each fence family's own gate, maps/gateKit.ts; the stone and mud walls' gates go as their piers)
-  gatepicket: WOOD_FENCE, gatewattle: WOOD_FENCE, gatestone: STONE, gateadobe: MASONRY,
+  gatepicket: WOOD_FENCE, gatewattle: WOOD_FENCE, gatestone: STONE, gateadobe: ADOBE,
   // straw
   bale: STRAW, stook: STRAW, haystack: STRAW, strawstack: STRAW, strawrick: STRAW,
   // carts: the haycart's load goes down under its wheels
@@ -88,7 +96,7 @@ const KIND_SOUNDS: Readonly<Record<string, PropSoundRecipe>> = Object.freeze({
   // the red fuel drum bursts into a fireball (its blast then breaks what stands round it)
   drumred: recipe(layer('fuel_drum_blast'), layer('container_crush', 0, -8)),
   // masonry and concrete
-  walladobe: MASONRY, wallstone: STONE, barrier: STONE, tomb: STONE, bildstock: STONE, bunker: HUT,
+  walladobe: ADOBE, wallstone: STONE, barrier: CONCRETE_BLOCK, tomb: STONE, bildstock: STONE, bunker: PILLBOX,
   // vehicles of every era (the map-vehicles lane's fleets keep these eight roles)
   jeep: CAR, sedan: CAR, wagon: CAR, pickup: CAR, van: CAR,
   // the lorries: a heavy cab and frame (2026-10-13)

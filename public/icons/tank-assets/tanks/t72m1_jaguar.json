@@ -3636,15 +3636,15 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 27736,
-      "sha256": "daffdd7a12aa0ba4b34899bf1faaef35fd5c9063c7c4e940138c124ebdcf3d6f",
+      "bytes": 27726,
+      "sha256": "6b4bcc2ca899a1a222d19870c0bcc797c0a47ed5b8026a1afe4d08f98969d5cb",
       "thumbnail": {
         "file": "thumbs/t72m1_jaguar_angle.webp",
         "width": 256,
         "height": 256,
         "mime": "image/webp",
-        "bytes": 11120,
-        "sha256": "e2ec4fb64c08f3feb232688d51310fb6026c5550f90ef465cf1d1e8c73d225d3"
+        "bytes": 11104,
+        "sha256": "1ce742b761b8df7be2499428b0afab5bc6d3e57a58cabad0564b08150e6fcda2"
       }
     },
     "top": {
@@ -3652,8 +3652,8 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 10562,
-      "sha256": "1f43c6e6e25261e1090e88dc711cd373bf3abc7f511d4563a6615e43b14e8f7a"
+      "bytes": 10570,
+      "sha256": "2f5b6af162272a753d199fbe9608db3106a59b140b53703639040e657137ce6d"
     },
     "side": {
       "file": "t72m1_jaguar_side.webp",
@@ -3708,8 +3708,8 @@
       "width": 256,
       "height": 128,
       "mime": "image/png",
-      "bytes": 33141,
-      "sha256": "b9b0ed578cf9e590475db3ec78acac2cececa2388ca7e0176681890f48463b09"
+      "bytes": 31701,
+      "sha256": "39f00e7bb292d3b06c1d4b01fd09c46cc4f7712a3a8ddb92fa5cc6b4c73aec4d"
     },
     "technicalLabels": {
       "file": "t72m1_jaguar_technical.json",

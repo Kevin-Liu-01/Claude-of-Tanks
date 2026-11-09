@@ -205,6 +205,8 @@ export const SELFTEST_SCANS = Object.freeze({
   'tools/worker-generated-types.selftest.mjs': tracked('cloudflare/*/worker-configuration.d.ts'),
   // every release handler in the shell is a hold action or a named non-hold (git grep)
   'src/game/inputHoldToggle.selftest.mjs': tracked('src/ui/**', 'src/game/**', 'src/app/**', 'src/main.ts'),
+  // every assignment of the battle phase emits its phase:change (git grep), so the audio engine sees every entry
+  'src/audio/battleEntryAmbience.selftest.mjs': tracked('src/**/*.ts'),
   // element colour resets outside @layer base (git ls-files of the tracked sheets)
   'tools/surface-element-resets.selftest.mjs': tracked('src/**/*.css'),
 

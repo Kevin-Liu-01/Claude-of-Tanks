@@ -3507,16 +3507,16 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 15226,
-      "sha256": "4992c5823fb70778197a38e4a47195bea28e5cb88ebdd7c08af0c04f6e3de51c"
+      "bytes": 15228,
+      "sha256": "5c20d6529efc804ca565d7ccbef9a3d423a0a936699b2c8f1b9dfe58d4a7463f"
     },
     "side": {
       "file": "leo2a6_ua_side.webp",
       "width": 512,
       "height": 256,
       "mime": "image/webp",
-      "bytes": 11918,
-      "sha256": "dc92c6eb797a0083b7e4996824b823aeb954ca8866ae54310df5c68a47028e81"
+      "bytes": 11942,
+      "sha256": "d6aa5a671b360a6fe13f84a1d178760b0c32988d398e2e1e0a639f2d993c8588"
     },
     "topSilhouette": {
       "file": "leo2a6_ua_top_silhouette.png",
@@ -3539,32 +3539,32 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 30710,
-      "sha256": "882f68fbcee2200aeb7527d1ee626b6688bb5ef3dc1d1686d227c9cfce653a0f"
+      "bytes": 30728,
+      "sha256": "e0e6decd0ce0259a08a04c297b787a8d5f747c4f31ce69f550d523659d7e9be3"
     },
     "modulesSide": {
       "file": "leo2a6_ua_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 26780,
-      "sha256": "c3b6932f34fe2c5a38184eb6958c2b76d3016a49f02f07e5b1484ab21cc29371"
+      "bytes": 26782,
+      "sha256": "5e7d025262ed5080e84e6aaffed50611453361d2080b039441e982469039b39d"
     },
     "crewSide": {
       "file": "leo2a6_ua_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 25636,
-      "sha256": "c347c092db6049a2d55be58647d7c21222478e8252298b03e8d87f22226a8eaf"
+      "bytes": 25646,
+      "sha256": "1fba7f779d20bc6708b7a8c8cebe2d4f66bde9c6ca1c8c34f72c26d441931c13"
     },
     "markings": {
       "file": "leo2a6_ua_markings.png",
       "width": 256,
       "height": 128,
       "mime": "image/png",
-      "bytes": 36435,
-      "sha256": "d9acc24797548c6ee98332674d000af6c6f160bf0324916bc383169f01df7dcf"
+      "bytes": 34005,
+      "sha256": "b10157560340f184df4117a7840893514394197103649646318472eb4a784b13"
     },
     "technicalLabels": {
       "file": "leo2a6_ua_technical.json",

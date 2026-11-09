@@ -1673,7 +1673,8 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
     ball.vy = Math.max(ball.vy, 2.5 + closing * 0.12);
     ball.lastTouchId = entity.id;
     lastBallTouchS = timeS;
-    emit('mode_ball_hit', { by: entity.id, team: teamOf(entity), kind: 'ram' });
+    // where the ball was struck (presentation: the strike is heard there; no outcome reads it)
+    emit('mode_ball_hit', { by: entity.id, team: teamOf(entity), kind: 'ram', x: ball.x, y: ball.y, z: ball.z });
   };
 
   let previousBallBottom = 0;
@@ -2605,7 +2606,7 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
       ball.lastTouchId = shell.shooterId || null;
       ballActiveAtS = placementTimeS;
       shell.dead = true;
-      emit('mode_ball_hit', { by: shell.shooterId || null, kind: 'shot' });
+      emit('mode_ball_hit', { by: shell.shooterId || null, kind: 'shot', x: ball.x, y: ball.y, z: ball.z });
       return true;
     },
     botTarget,

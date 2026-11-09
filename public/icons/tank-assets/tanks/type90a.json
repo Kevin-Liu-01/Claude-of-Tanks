@@ -583,15 +583,15 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 26428,
-      "sha256": "2884dc1a341514c3fbcf3d3720cd32e514a953c4d21b71b206b0c0657803486c",
+      "bytes": 26456,
+      "sha256": "95bdb6c359cfbc97b5e8b773bd40fae207d2fd1ff6ad1649dd806d7cd05a8845",
       "thumbnail": {
         "file": "thumbs/type90a_angle.webp",
         "width": 256,
         "height": 256,
         "mime": "image/webp",
-        "bytes": 10442,
-        "sha256": "5f6cd2e389840173bf5510bf80185d0b7d1455dede3f040b281bd8e767df6f99"
+        "bytes": 10432,
+        "sha256": "a49d29806104e169cb8db6e56fcf7e9566acd59c88db2bcaa213f789b07ab9f4"
       }
     },
     "top": {
@@ -655,8 +655,8 @@
       "width": 256,
       "height": 128,
       "mime": "image/png",
-      "bytes": 35982,
-      "sha256": "d393d03532ec49ce404be41058577cb04e410793aa657ad74b5169ff82e10138"
+      "bytes": 33269,
+      "sha256": "7476f6939acc21e71f3f07063c89ad8f6a5dcc22056e3356c4c9a91870e0dca8"
     },
     "technicalLabels": {
       "file": "type90a_technical.json",

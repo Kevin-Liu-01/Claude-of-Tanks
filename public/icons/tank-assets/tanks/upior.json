@@ -3640,15 +3640,15 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 31244,
-      "sha256": "105268bcbff169cc1ae4f13f1599212318ee7c1cf42a160650fac93ce8e9d114",
+      "bytes": 31238,
+      "sha256": "6da89baaaf918e1e24c8a208f151de56c9bee8a64b616155115ae86deb1e426b",
       "thumbnail": {
         "file": "thumbs/upior_angle.webp",
         "width": 256,
         "height": 256,
         "mime": "image/webp",
-        "bytes": 11946,
-        "sha256": "0fed7e505977e25bee51033bea60cfac8687632484490538cb65c1a3b9bf3cd6"
+        "bytes": 11982,
+        "sha256": "80510e7146f83b9e47947e92778cd5c8dc7918d48035c277995fc9ea51c252a3"
       }
     },
     "top": {
@@ -3656,8 +3656,8 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 24436,
-      "sha256": "f66744b95f2c93a039b97ba4e0701e6fa80cf64f2d99244e57fd1620209b5762"
+      "bytes": 24372,
+      "sha256": "8ae1ce95e263bb13eaa51b1cca3a9c26db918a5a6d7f38453ee16e2ed98eb62f"
     },
     "side": {
       "file": "upior_side.webp",
@@ -3712,8 +3712,8 @@
       "width": 256,
       "height": 128,
       "mime": "image/png",
-      "bytes": 33561,
-      "sha256": "4e322d5c541863c2b28e010d40634c6555949693a8cdc26ae76c021f3c25adf1"
+      "bytes": 30959,
+      "sha256": "a11ee12755624390fa080826fc590bb425083505a2900c96377b8cd493551d50"
     },
     "technicalLabels": {
       "file": "upior_technical.json",

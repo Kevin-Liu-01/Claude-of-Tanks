@@ -32,43 +32,20 @@ export function paintMaterialBase<C extends MaterialCanvas>(
   }
 }
 
-interface MaterialPainterFontPorts {
-  fonts: Pick<FontFaceSet, 'add' | 'delete' | 'has' | 'check'>;
-  readBytes(url: string): Promise<ArrayBuffer>;
-  createFont(bytes: ArrayBuffer): FontFace;
-}
-/** Individual loaded font readiness; FontFaceSet.ready may wait on rendering. */
-export async function loadMaterialPainterFont(url: string, ports: MaterialPainterFontPorts): Promise<boolean> {
-  let font: FontFace | null = null;
-  try {
-    font = ports.createFont(await ports.readBytes(url));
-    ports.fonts.add(font);
-    await font.load();
-    if (font.status !== 'loaded' || !ports.fonts.has(font)
-      || !ports.fonts.check("700 16px 'Cot UI'", '0123456789')) throw new Error('Material font unavailable');
-    return true;
-  } catch {
-    if (font) { try { ports.fonts.delete(font); } catch { /* failed realm will be terminated */ } }
-    return false;
-  }
-}
-
 interface MaterialPainterWorkerPorts {
-  initialize(fontUrl: string): Promise<boolean>;
+  /** The worker's realm can paint (the base material draws no text since glacis-269, so no font loads). */
+  supported(): boolean;
   paint(request: MaterialPainterRequest): MaterialPainterResult;
   post(reply: MaterialPainterReply, transfer: ArrayBuffer[]): void;
 }
-export function createMaterialPainterWorkerHandler(ports: MaterialPainterWorkerPorts): (data: RuntimeValue) => Promise<void> {
-  let busy = false;
+export function createMaterialPainterWorkerHandler(ports: MaterialPainterWorkerPorts): (data: RuntimeValue) => void {
   const reject = (requestId: number): void => {
     try { ports.post({ requestId, ok: false }, []); } catch { /* lost owner; client deadline handles it */ }
   };
-  return async data => {
+  return data => {
     if (!isMaterialPainterMessage(data)) return;
-    if (busy) { reject(data.requestId); return; }
-    busy = true;
     try {
-      if (!await ports.initialize(data.fontUrl)) throw new Error('Material worker unavailable');
+      if (!ports.supported()) throw new Error('Material worker unavailable');
       const result = ports.paint(data.request);
       if (!isMaterialPainterResult(result, data.request)) throw new Error('Material worker result invalid');
       const transfer: ArrayBuffer[] = [];
@@ -78,46 +55,27 @@ export function createMaterialPainterWorkerHandler(ports: MaterialPainterWorkerP
       }
       ports.post({ requestId: data.requestId, ok: true, result }, transfer);
     } catch { reject(data.requestId); }
-    finally { busy = false; }
   };
 }
 
 interface PainterWorkerScope {
-  fonts: FontFaceSet;
   onmessage: ((event: MessageEvent<RuntimeValue>) => void) | null;
   postMessage(reply: MaterialPainterReply, transfer: ArrayBuffer[]): void;
 }
 function isPainterWorkerScope(value: RuntimeValue): value is PainterWorkerScope {
   return value !== null && typeof value === 'object' && 'postMessage' in value
-    && typeof value.postMessage === 'function' && 'onmessage' in value && 'fonts' in value;
+    && typeof value.postMessage === 'function' && 'onmessage' in value;
 }
 function nativeWorkerSupported(): boolean {
-  return typeof OffscreenCanvas === 'function' && typeof FontFace === 'function'
-    && typeof Path2D === 'function' && typeof DOMMatrix === 'function' && typeof fetch === 'function';
+  return typeof OffscreenCanvas === 'function' && typeof Path2D === 'function' && typeof DOMMatrix === 'function';
 }
 function startNativeWorker(scope: PainterWorkerScope): void {
-  let ready: Promise<boolean> | null = null;
-  let fontOwner: string | null = null;
   const handler = createMaterialPainterWorkerHandler({
-    initialize: fontUrl => {
-      if (!nativeWorkerSupported() || (fontOwner !== null && fontOwner !== fontUrl)) return Promise.resolve(false);
-      fontOwner = fontUrl;
-      ready ??= loadMaterialPainterFont(fontUrl, {
-        fonts: scope.fonts,
-        readBytes: async url => {
-          const response = await fetch(url);
-          if (!response.ok) throw new Error('Material font download failed');
-          return response.arrayBuffer();
-        },
-        createFont: bytes => new FontFace('Cot UI', bytes,
-          { weight: '700 900', style: 'normal', display: 'optional' }),
-      });
-      return ready;
-    },
+    supported: nativeWorkerSupported,
     paint: request => paintMaterialBase(request, (width, height) => new OffscreenCanvas(width, height)),
     post: (reply, transfer) => scope.postMessage(reply, transfer),
   });
-  scope.onmessage = event => { void handler(event.data); };
+  scope.onmessage = event => { handler(event.data); };
 }
 
 const workerScope = globalThis;

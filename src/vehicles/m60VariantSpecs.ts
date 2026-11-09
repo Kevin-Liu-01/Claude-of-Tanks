@@ -36,11 +36,15 @@ m6b.armor.turretPlates.push(
   reactivePlate('magach6b_turret_era_L', 'left', BLAZER),
   reactivePlate('magach6b_turret_era_R', 'right', BLAZER),
 );
-m6b.visual = { ...m6b.visual, marking: 'number', number: '6' };
+// the IDF's Sinai grey broken by hard-edged olive-grey, sand and slate splinters (plain Sinai grey before; (owner 2026-11-03: "any tank without a proper camo need a proper camoo"))
+m6b.visual = { ...m6b.visual, scheme: 'splinter', base: '#7b7a66', weather: '#878571', patches: ['#5d6052', '#9c977d', '#3b3c34'],
+  camoScale: 0.55, marking: 'number', number: '6' };
 
 const m7c = magach('magach7c', 'Magach 7C');
 Object.assign(m7c.dims, { hullLengthM: 6.95, overallLengthM: 9.44, widthM: 3.80, heightM: 3.05 });
 Object.assign(m7c, { weightTons: 55, topSpeedKmh: 48 });
-m7c.visual = { ...m7c.visual, marking: 'number', number: '7' };
+// the IDF's Sinai sand-grey under soft olive-grey and slate masses (plain Sinai grey before; (owner 2026-11-03: "any tank without a proper camo need a proper camoo"))
+m7c.visual = { ...m7c.visual, scheme: 'blotch', base: '#8a856e', weather: '#96917a', patches: ['#5f6150', '#3a3a32'],
+  camoScale: 0.6, patchK: 1.8, marking: 'number', number: '7' };
 
 registerFleetSpecs(registries, ['magach6b', 'magach7c'], { magach6b: m6b, magach7c: m7c });
