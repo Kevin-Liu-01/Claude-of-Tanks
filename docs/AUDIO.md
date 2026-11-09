@@ -761,6 +761,17 @@ sfx-catalog.mjs ──→ generate-sfx.mjs ──→ sfx-qa.mjs (measure) ──
 6. **Manifest**. `build-sfx.mjs` writes `src/audio/sfxManifest.generated.ts`
    (group, variant count, durations, channels, rate, loop points, size) and the
    incremental state `tools/audio/.sfx-manifest.json`.
+7. **Commit** (`sfxBank.mjs`, 2026-11-08). Each asset's rebuild is one
+   transaction: its candidates master and are judged in the ignored
+   `.qa-dev/sfx-stage/`, and only when at least one ships does the bank move
+   in (the old take files aside, the new ones in, stale indices gone) and its
+   manifest entry and verdict of record change. A rebuild that ships nothing
+   (every candidate refused by the ear proxy or under the loudness floor, a pin
+   that names no take, a step that throws, a swap that fails and is rolled
+   back) is refused: the shipped files and both records stay as they were and
+   the run exits 1. A bank that ships fewer than its `variants` is a warning.
+   The three records are written after every committed asset, so a crashed run
+   leaves them true to the disk.
 
 **Gun reports** (2026-10-02). The owner heard firing as old film or gamey
 blasts, and the files agreed: the cannon reports swelled to their loudest
@@ -1406,7 +1417,7 @@ below is the short form.
 | Task | Steps |
 |---|---|
 | Add a sound | Add a catalog entry → `npm run audio:sfx:generate -- --ids <id>` → `npm run audio:sfx:build -- --ids <id>` → play it from the engine (and add a cue override if its group default does not fit) → `node src/audio/soundAssets.selftest.mjs` (it checks every engine reference exists in the manifest) |
-| Replace a weak take | Re-run `build-sfx --ids <id>` after adjusting the prompt or `takes`, or pin takes in `tools/audio/sfx-picks.json` |
+| Replace a weak take | Re-run `build-sfx --ids <id>` after adjusting the prompt or `takes`, or pin takes in `tools/audio/sfx-picks.json` (a rebuild that ships nothing keeps the old bank and exits 1) |
 | Add or change a voice line | Edit `crew-lines.json` (all 17 languages, same number of variants) and its `VOICE_LINES` entry in `voiceLines.ts` → `npm run audio:voices:build -- --lines <id>` |
 | Rebuild one language | `npm run audio:voices:build -- --langs de` |
 | Re-roll flagged takes | `npm run audio:voices:build -- --langs ja --lines firing --attempts 10` (earlier attempts come from the cache; the shipped packs used this on their flagged lines, so rebuild those lines with the same flag to reproduce them) |

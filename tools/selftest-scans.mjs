@@ -267,6 +267,8 @@ export const SELFTEST_SCANS = Object.freeze({
     'and the patterns of this table, under the root its caller gives'),
   'tools/shared-main-preflight.mjs': caller('git diff --name-only between the two commits its caller names'),
   'tools/media-r5/atomic-output.mjs': caller('sweepPartials(dir): the output folder its caller passes'),
+  // round 8 Y9 s1-11: the sound-effect bank transaction
+  'tools/audio/sfxBank.mjs': caller('commitBank/removeBank({ dir, stageRoot }) and sweepStages(stageRoot): the bank and stage folders its caller passes'),
   // round 4 F12: the marketing pass as a function, run by its receipt on a fixture scene folder
   'tools/marketing-shots/shoot.mjs': caller('shootMarketing(args): the scene folder its --scenes names ' +
     '(tools/marketing-shots/scenes by default)'),
@@ -290,6 +292,7 @@ export const SELFTEST_SCANS = Object.freeze({
   'tools/vercel-output-immutable.mjs': outside('the .vercel/output tree (or a tmpdir fixture) its caller names'),
   'tools/visual-census-lock.mjs': outside('the visual-census queue directory its caller names'),
   'tools/visual-census.selftest.mjs': outside('its own queue directories under tmpdir'),
+  'tools/audio/sfxBank.selftest.mjs': outside('its own bank and stage fixture under tmpdir (round 8 Y9 s1-11)'),
   'tools/viteSharedWorkers.selftest.mjs': outside('the build it writes into its tmpdir fixture'),
   'tools/contentSecurityPolicy.selftest.mjs': outside('dist/, a finished build, when this checkout has one'),
   'tools/mode-aggression-harness.mjs': outside('the run directories its report and compare commands name (--dir, --base): ' +
