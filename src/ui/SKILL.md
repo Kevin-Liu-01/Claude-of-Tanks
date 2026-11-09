@@ -108,10 +108,10 @@ per lifecycle edge or open, never per frame, tick, pointer move or focus move;
 stylesheets kept for the document; the docs pages that do not boot the policy
 and the icon sprite every page's boot holds; the unused HDRI experiment;
 initializations and joins over loads the policy holds, the Studio's module memo
-over its opener chunk among them; data fetches, the painter worker's font among
-them; and a warm task). The selftest fails a new hand-made memo, facade or latch
-in the spellings it reads (its comments list them); another spelling goes
-unseen, so a new lazy load starts from `createLazyChunk`.
+over its opener chunk among them; data fetches; and a warm task). The selftest
+fails a new hand-made memo, facade or latch in the spellings it reads (its
+comments list them); another spelling goes unseen, so a new lazy load starts
+from `createLazyChunk`.
 A kit facade is a chunk too: the custom camouflage studio's is an opener's (its
 intent preload marks the swatch and never asks offline), the settings panel's is
 a default-policy chunk because every battle entry awaits it. A failed stylesheet
