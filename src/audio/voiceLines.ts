@@ -360,6 +360,12 @@ export interface CrewLineContext {
 
 const RESULT_IDS: ReadonlySet<string> = new Set(['victory', 'defeat', 'draw']);
 
+/** A battle's result call (the verdict's own line, a mode's, the AC-130 crew's): the result screen's, said whatever
+ *  became of our tank (round 8 Y3 s1-05: the Horde's overrun ends only when no defender stands). */
+export function isResultLine(id: string): boolean {
+  return VOICE_LINES[id]?.group === 'result';
+}
+
 /** What this crew says for the moment `id` asks for: its own line, or null where it says nothing. */
 export function resolveCrewLine(id: string, context: CrewLineContext): string | null {
   const crew = MODE_CREW[context.mode] ?? MODE_CREW.standard;

@@ -159,8 +159,10 @@ interface CrewBattle {
   turned: boolean;
   /** Turbo Ball: the last goal's kick-off, which revives every tank. */
   kickoffAt: number;
-  /** Why the battle ended (mode:completed, battle:ended: the last to say). */
-  endReason: string | null;
+  /** Why the battle ended: the mode's own reason (mode:completed) names it before the battle's (battle:ended, the first
+   *  a battle), whichever arrives first (a network seat hears a generic 'elimination' after the mode's own). */
+  modeReason: string | null;
+  battleReason: string | null;
   /** The countdown's crew report (once a battle) and the window for its answer. */
   reported: boolean;
   readyUntil: number;
@@ -207,7 +209,7 @@ interface CrewLife {
 
 function freshBattle(): CrewBattle {
   return {
-    turned: false, kickoffAt: -1e9, endReason: null, reported: false, readyUntil: -1,
+    turned: false, kickoffAt: -1e9, modeReason: null, battleReason: null, reported: false, readyUntil: -1,
     commandedAt: new Map(), smokeBorn: -1, extracted: new Map(),
   };
 }
@@ -253,7 +255,7 @@ export function createCrewProcedure(host: CrewProcedureHost): CrewProcedure {
       juggernaut: host.mode() === 'juggernaut' && boss != null && me != null ? (boss === me ? 'boss' : 'hunter') : null,
       turned: battle.turned,
       kickoff: host.now() - battle.kickoffAt < 3,
-      endReason: battle.endReason,
+      endReason: battle.modeReason ?? battle.battleReason,
     };
   }
 
@@ -477,9 +479,9 @@ export function createCrewProcedure(host: CrewProcedureHost): CrewProcedure {
   }
 
   function bind(cue: On, fact: On): void {
-    // why the battle ended, kept whether or not the graph exists yet
-    fact<{ reason?: string }>('mode:completed', (e) => { if (typeof e?.reason === 'string') battle.endReason = e.reason; });
-    fact<{ reason?: string }>('battle:ended', (e) => { if (typeof e?.reason === 'string') battle.endReason = e.reason; });
+    // why the battle ended, kept whether or not the graph exists yet: the mode's own reason before the battle's
+    fact<{ reason?: string }>('mode:completed', (e) => { if (typeof e?.reason === 'string') battle.modeReason = e.reason; });
+    fact<{ reason?: string }>('battle:ended', (e) => { if (battle.battleReason == null && typeof e?.reason === 'string') battle.battleReason = e.reason; });
     cue<{ seconds?: number }>('battle:countdown', (e) => {
       if (battle.reported || !host.inBattle() || typeof e?.seconds !== 'number') return;
       battle.reported = true;

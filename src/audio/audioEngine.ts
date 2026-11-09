@@ -38,7 +38,7 @@ import { createMixer, type Mixer } from './mixer.ts';
 import { createVoicePool, type ActiveVoice, type PlayOptions, type VoicePool } from './voicePool.ts';
 import { createCrewRadio, type CrewRadio } from './crewRadio.ts';
 import { createCrewProcedure, type CrewFrameEntity } from './crewProcedure.ts';
-import { resolveCrewLine } from './voiceLines.ts';
+import { isResultLine, resolveCrewLine } from './voiceLines.ts';
 import { CAPTION_EVENT, createCaptionStream, type CaptionSoundId } from './captions.ts';
 import { createAmbienceDirector, sceneAssets, type AmbienceDirector, type BellTower } from './ambienceDirector.ts';
 import { BELL_TOWERS, FLYOVER_BY_AIRCRAFT, GARAGE_SCENE, sceneForMap, type EnvironmentScene } from './environmentScenes.ts';
@@ -843,7 +843,8 @@ export function createAudio({
     if (!radio || battleMode.phase !== 'battle') why = 'phase';
     // behind the pause menu the net is silent (round 8 Y3 s1-03): a solo battle's sim stops, a network battle's goes on
     else if (battleMode.paused) why = 'paused';
-    else if (playerId != null && tanks.get(playerId)?.alive === false && id !== 'victory' && id !== 'defeat' && id !== 'draw') why = 'dead';
+    // a dead crew says nothing but the battle's result (the resolved line's class: a mode's own result call too)
+    else if (playerId != null && tanks.get(playerId)?.alive === false && !isResultLine(id)) why = 'dead';
     const ok = why == null && !!radio?.say(id, options);
     sayLog.push({ id, t: ctx ? +ctx.currentTime.toFixed(3) : 0, ok, ...(why ? { why } : !ok ? { why: 'net' } : {}) });
     if (sayLog.length > 160) sayLog.shift();
