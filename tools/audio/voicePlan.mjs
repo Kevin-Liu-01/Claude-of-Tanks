@@ -44,10 +44,23 @@ export function planLine({ previous = [], takes, append, exists }) {
 }
 
 /**
+ * Whether a take's best attempt is built (verifier edge 6): one under the bar whose attempts or cut pass a budget or
+ * quota stop cut short (`cutShort`) is not, so its line ends there and --append tries it again in full instead of
+ * freezing it by count. One under the bar whose attempts and cuts all ran ships, flagged by the caller, as it always
+ * did. Returns the take or null.
+ */
+export function acceptTake({ best, bar, cutShort }) {
+  return best && !(best.sim < bar && cutShort) ? best : null;
+}
+
+/**
  * One take's pick (build-voices.mjs bestTake): attempt n (`attempt(n)`, scored { sim, repeated, durS, ... }) in order
  * until one passes the bar under 6 s, `attempts` have run, or `stopped()`; `better(a, b)` says a beats b. With none
  * passed and `verify`, each attempt's cut (`trim(candidate)`: a cut that reads as the script, or null) until one is
- * found. Returns the take to build, or null.
+ * found; the cut pass, once started, runs in full. The run's stop flag never clears, so a stop that ended the attempts
+ * early, or landed during the last one, is still set when the cut pass would start: that take is cut short (no cut
+ * pass, acceptTake drops it under the bar). A stop that lands during the cut pass does not cut it short. Returns the
+ * take to build, or null.
  */
 export async function pickTake({ attempts, bar, verify, attempt, better, trim, stopped = () => false }) {
   let best = null;
@@ -58,16 +71,17 @@ export async function pickTake({ attempts, bar, verify, attempt, better, trim, s
     if (!best || better(candidate, best)) best = candidate;
     if (candidate.sim >= bar && candidate.durS < 6) break;
   }
-  if (verify && best && best.sim < bar && !stopped()) {
-    for (const candidate of tried) {
-      const cut = await trim(candidate);
-      if (cut) return cut;
+  let cutShort = false;
+  if (verify && best && best.sim < bar) {
+    if (stopped()) cutShort = true;
+    else {
+      for (const candidate of tried) {
+        const cut = await trim(candidate);
+        if (cut) return cut;
+      }
     }
   }
-  // The budget or a quota stop cut this take's attempts (or its cuts) short before one passed: it is not built, so
-  // its line ends here and --append tries it again in full, never freezing an under-the-bar take by count.
-  if (best && best.sim < bar && stopped()) return null;
-  return best;
+  return acceptTake({ best, bar, cutShort });
 }
 
 /**

@@ -3,8 +3,9 @@
 // script [A, B, C] with B failing shipped [A, C], so take 1 played C under caption B; a later --append saw two takes
 // shipped, kept both and built index 2 only, giving [A, C, C], with B never attempted again and nothing flagged. Now
 // tools/audio/voicePlan.mjs buildLine stops a line at its aligned prefix ([A]) and --append's count rule resumes it at the
-// failed take; --dry counts with the same planner. Driven here on the real planLine and buildLine with an injected take
-// and master (no API, no ffmpeg), and a census of build-voices.mjs.
+// failed take; --dry counts with the same planner. A take under the bar is dropped only when a budget or quota stop cut it
+// short (pickTake, review r1). Driven here on the real planLine, pickTake and buildLine with an injected attempt, cut,
+// take and master (no API, no ffmpeg), and a census of build-voices.mjs.
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 
@@ -119,7 +120,71 @@ for (const [states, i, to, why] of [
   assert.deepEqual(out.takes, ['built', 'missing', 'missing'], 'buildLine reports each take\'s state');
 }
 
-// 8. census: build-voices.mjs plans with planLine in both --dry and the build, and builds through buildLine only
+// 8. one take's pick (pickTake, verifier edge 6; review r1): a take under the bar is dropped only when a budget or
+// quota stop cut it short (its attempts ended before all ran, or its cut pass never ran). A take whose attempts and cut
+// pass all ran ships its best attempt, flagged as before, even when another line's stop lands while it is being cut.
+{
+  const BAR = 0.62;
+  /** One take's attempts scored `sims`; the stop flag flips during attempt `stopAt`, or inside the cut pass. */
+  const picker = ({ sims, stopAt = null, stopInCut = false, stopBefore = false, cutOf = null } = {}) => {
+    let stop = stopBefore;
+    const p = { ran: [], cut: [] };
+    p.pick = () => voice.pickTake({
+      attempts: 3, bar: BAR, verify: true, stopped: () => stop, better: (a, b) => a.sim > b.sim,
+      attempt: async (n) => { p.ran.push(n); if (n === stopAt) stop = true; return { sim: sims[n], repeated: false, durS: 1, attempt: n }; },
+      trim: async (candidate) => {
+        p.cut.push(candidate.attempt);
+        if (stopInCut) stop = true;
+        return candidate.attempt === cutOf ? { sim: 0.8, repeated: false, durS: 0.5, attempt: cutOf, trimmed: true } : null;
+      },
+    });
+    return p;
+  };
+  const under = [0.3, 0.4, 0.35];
+  // every attempt and every cut ran, none passed, no stop: the best attempt ships (build-voices flags it under 0.34)
+  {
+    const p = picker({ sims: under });
+    assert.equal((await p.pick())?.attempt, 1, 'no stop: the best attempt under the bar ships, as before');
+    assert.deepEqual([p.ran, p.cut], [[0, 1, 2], [0, 1, 2]], 'every attempt ran, then every cut');
+  }
+  // another line's stop lands while this take is being cut (trimmedTake runs every cut): its pass ran in full, it ships
+  {
+    const p = picker({ sims: under, stopInCut: true });
+    assert.equal((await p.pick())?.attempt, 1, 'attempts and cuts ran in full, a stop set afterwards: the take ships');
+    assert.deepEqual([p.ran, p.cut], [[0, 1, 2], [0, 1, 2]]);
+  }
+  // the stop ends the attempts after the first: cut short under the bar, no take
+  {
+    const p = picker({ sims: under, stopAt: 0 });
+    assert.equal(await p.pick(), null, 'attempts cut short under the bar: no take');
+    assert.deepEqual([p.ran, p.cut], [[0], []]);
+  }
+  // the stop lands during the last attempt: every attempt ran, but the cut pass never did
+  {
+    const p = picker({ sims: under, stopAt: 2 });
+    assert.equal(await p.pick(), null, 'the cut pass skipped by a stop: no take');
+    assert.deepEqual([p.ran, p.cut], [[0, 1, 2], []]);
+  }
+  // a stop before any attempt: no take; an attempt that passes ships whatever the stop; a cut that reads ships
+  assert.equal(await picker({ sims: under, stopBefore: true }).pick(), null, 'no attempt ran: no take');
+  assert.equal((await picker({ sims: [0.7], stopAt: 0 }).pick())?.attempt, 0, 'an attempt at the bar ships though the stop came with it');
+  assert.equal((await picker({ sims: under, cutOf: 1 }).pick())?.trimmed, true, 'a cut that reads as the script ships');
+  assert.deepEqual([[0.5, true], [0.5, false], [0.7, true]].map(([sim, cutShort]) => voice.acceptTake({ best: { sim }, bar: BAR, cutShort })?.sim ?? null),
+    [null, 0.5, 0.7], 'acceptTake: under the bar and cut short is dropped; under the bar in full, or at the bar, ships');
+  assert.equal(voice.acceptTake({ best: null, bar: BAR, cutShort: false }), null);
+  // a cut-short take in a line: the line ends at its aligned prefix, and the following --append plans that take
+  const h = harness();
+  const take = (i) => (i === 1 ? picker({ sims: under, stopAt: 0 }).pick() : h.take(i));
+  const plan = voice.planLine({ previous: [], takes: SCRIPT, append: false, exists: exists(h) });
+  const out = await voice.buildLine({ previous: [], plan, take, ship: h.ship, stopped: h.stopped, onError: h.onError });
+  assert.deepEqual([h.written, out.shipped, out.takes], [[[0, 'A']], [1], ['built', 'missing', 'missing']], 'the line stops at [A]');
+  assert.deepEqual(h.errors, [[1, null]], 'the cut-short take is reported at its index');
+  assert.deepEqual(voice.planLine({ previous: out.shipped, takes: SCRIPT, append: true, exists: exists(h) }), { kept: 1, build: [1, 2] },
+    '--append tries the cut-short take again in full');
+}
+
+// 9. census: build-voices.mjs plans with planLine in both --dry and the build, builds through buildLine only, and picks a
+// take through pickTake only (no second attempt loop or stop rule)
 {
   const source = readFileSync(new URL('./build-voices.mjs', import.meta.url), 'utf8');
   assert.equal(source.match(/planLine\(/g)?.length, 2, 'build-voices.mjs plans every line with planLine, --dry included');
@@ -127,6 +192,11 @@ for (const [states, i, to, why] of [
   for (const rule of ['shipped.length', 'previous.length', '.slice(kept)', '?.length ?? 0']) {
     assert.ok(!source.includes(rule), `build-voices.mjs keeps no second keep or index rule (${rule})`);
   }
+  assert.equal(source.match(/pickTake\(/g)?.length, 1, 'build-voices.mjs bestTake picks through pickTake');
+  assert.match(source, /pickTake\(\{[^}]*stopped: \(\) => stop,/, 'pickTake reads the run\'s stop flag');
+  for (const rule of ['< attempts', 'stop) return null', 'tried.push(']) {
+    assert.ok(!source.includes(rule), `build-voices.mjs keeps no second attempt loop or stop rule (${rule})`);
+  }
 }
 
-console.log('voicePlan.selftest: file n is script take n; a failed, empty or stopped take ends its line at the aligned prefix and --append resumes there; --dry plans alike; moves declared');
+console.log('voicePlan.selftest: file n is script take n; a failed, empty or stopped take ends its line at the aligned prefix and --append resumes there; a take under the bar is dropped only when a stop cut it short; --dry plans alike; moves declared');

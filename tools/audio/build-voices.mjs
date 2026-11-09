@@ -22,9 +22,12 @@
 // only the takes after them (a line that gains a take keeps the ones already
 // approved; a rebuild of a take re-picks among its cached attempts and
 // re-encodes it). File <line>_<n> is always script take n (voicePlan.mjs): a
-// take that fails, comes back empty or meets the budget stop before it passes
-// ends its line there, and --append resumes at it. --append keeps by count, so
-// a take whose words change is rebuilt without --append (--lines <id>).
+// take that fails or comes back empty ends its line there, and --append
+// resumes at it. So does a take under the bar that a budget or quota stop cut
+// short (its attempts ended before all ran, or its cut pass never started;
+// pickTake); one whose attempts and cuts all ran ships its best attempt, under
+// the bar or not, flagged below 0.34. --append keeps by count, so a take whose
+// words change is rebuilt without --append (--lines <id>).
 
 import { readFileSync, writeFileSync, existsSync, mkdirSync, rmSync, readdirSync, mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -282,7 +285,7 @@ for (const lang of languages) {
         return +facts.dur.toFixed(3);
       },
       onError: (i, error) => {
-        failures.push(`${lang}/${line.id}#${i}: ${error ? error.message : 'no take built'}; the line stops at take ${i} (--append resumes there)`);
+        failures.push(`${lang}/${line.id}#${i}: ${error ? error.message : 'a budget or quota stop cut its attempts short under the bar, so no take was built'}; the line stops at take ${i} (--append resumes there)`);
         if (error instanceof ElevenLabsError && error.quota) stop = true;
       },
     });

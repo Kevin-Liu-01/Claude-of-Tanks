@@ -876,9 +876,13 @@ re-encodes it, so a line that gains a take would otherwise churn the ones
 already approved (the Afrikaans "Laai nou." came back a different attempt).
 File `<line>_<n>` is always the script's take n, the take its caption shows
 (2026-11-08): a take whose request or master fails, that comes back empty, or
-whose attempts the budget stop cut short before one passed ends its line
-there, so the pack stays an aligned prefix (the soundAssets and captions
-receipts fail on the short pack) and an `--append` rerun resumes at that take.
+that a budget or quota stop cut short under the bar (its attempts ended before
+all of them ran, or its cut pass never started) ends its line there, so the
+pack stays an aligned prefix (the soundAssets and captions receipts fail on the
+short pack) and an `--append` rerun resumes at that take. A take whose attempts
+and cuts all ran ships its best attempt, under the bar or not (flagged below
+0.34), even when another line's stop lands while it is being cut
+(`voicePlan.mjs` pickTake).
 `--append` keeps by count, not by words: a take whose words change is rebuilt
 without it (`--lines <id>`).
 
