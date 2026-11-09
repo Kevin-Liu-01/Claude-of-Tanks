@@ -20,7 +20,7 @@ const trackedFiles = execFileSync(
   'git',
   ['ls-files', '--cached', '--others', '--exclude-standard', '-z'],
   // 269: 24,939 tracked paths (the crew voice packs) are 1.06 MB of names, past execFileSync's 1 MiB default buffer
-  { cwd: root, maxBuffer: 64 * 1024 * 1024 },
+  { cwd: root, maxBuffer: 1 << 28 },
 )
   .toString('utf8')
   .split('\0')

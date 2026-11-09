@@ -283,7 +283,7 @@ export function analyzeSourceText(
 }
 
 function trackedRuntimeFiles(root: string): string[] {
-  const output = execFileSync('git', ['ls-files', '-z'], { cwd: root, encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 });
+  const output = execFileSync('git', ['ls-files', '-z'], { cwd: root, encoding: 'utf8', maxBuffer: 1 << 28 });
   return output.split('\0').filter((file) => {
     if (!/^(?:src|server|api|tools)\//.test(file)) return false;
     if (!/\.(?:ts|tsx|js|mjs)$/.test(file)) return false;

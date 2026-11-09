@@ -488,9 +488,9 @@ body[data-cot-input='coarse'] .cot-set-info::after{inset:calc((16px - var(--cot-
 /* (its caps are the battle's key caps, the vehicle-controls row's: battleHudLayout.css .sk) */
 .cot-hints .hk .cot-c-kbd{min-width:20px;height:20px;padding:0 var(--s1);box-sizing:border-box;border:0;border-radius:var(--control-radius);background:none;box-shadow:var(--ring-3);font:500 var(--battle-fs-fig-11)/1 var(--font-data);letter-spacing:0;color:var(--ink-2);}
 .cot-hints .hk .cot-c-kbd.cjk{font:500 var(--battle-fs-12)/1 var(--font-ui);}
-/* never over the scope, a flight (a drone, the gunship flies on other keys: the class is hud.ts's), Watch or a
-   spectated battle (owner 2026-10-25) */
-body.cot-hud-aerial .cot-hints,html[data-cot-scoped] .cot-hints,html[data-watch] .cot-hints,body.cot-spectating .cot-hints{display:none;}
+/* never over the scope, the strike view's binoculars (airSupportHud.ts), a flight (a drone, the gunship flies on other
+   keys: the class is hud.ts's), Watch or a spectated battle (owner 2026-10-25) */
+body.cot-hud-aerial .cot-hints,html[data-cot-scoped] .cot-hints,html[data-cot-strike-view] .cot-hints,html[data-watch] .cot-hints,body.cot-spectating .cot-hints{display:none;}
 /* The pause veil (247): one plate over a dimmed battle. The whole veil resumes (a click inside the gesture relocks);
    Settings, the Esc menu, is its one other way out. */
 .cot-resume{position:fixed;inset:0;z-index:79;display:none;place-items:center;cursor:pointer;

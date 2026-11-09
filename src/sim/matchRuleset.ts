@@ -81,6 +81,125 @@ export const GUNSHIP_WEAPONS = Object.freeze([
 // and penetration rules as other shaped charges, rather than an artillery blast.
 export const DRONE_WARHEAD = shell('FPV shaped charge', 'HEAT', 90, 350, 350, 1400, 42, { tracer: 'DRONE', gravityScale: 0, maxLifetimeS: AERIAL_RULES.drone.batteryS });
 
+/**
+ * Air Support (air-support-270; owner 2026-11-05: "a new game mode where you can call in airstrikes and jet strikes and so
+ * on and we already have that model of the ac 130", and in the lane: "a giant aiming reticle on the ground … 3 differennt
+ * kinnds of airstrikes with their own special effects annd sounnt", then "keep and add artillery annd recon with the 3
+ * airstrikes"). Every number the mode plays by: the points a crew earns, what each call-in costs, its cooldown, the warning
+ * the targeted side gets before anything of it arrives, its footprint, its rounds and its aircraft's hit points.
+ * sim/airSupport.ts runs the ledger and the strikes; sim/airSupportFire.ts fires their rounds in both authorities.
+ */
+export type AirStrikeKind = 'recon' | 'artillery' | 'strafe' | 'bomb' | 'gunship';
+/** The call-ins in the strip's order (the strike view's keys 1-5): the cheapest first. */
+export const AIR_STRIKE_KINDS: readonly AirStrikeKind[] = Object.freeze(['recon', 'artillery', 'strafe', 'bomb', 'gunship'] as const);
+/** The call-ins an aircraft flies (artillery is a battery off the map: nothing to shoot down). */
+export function airStrikeFlies(kind: AirStrikeKind): boolean { return kind !== 'artillery'; }
+/** The strike rounds: real references, in the shared shell builder (fictional numbers only where a game needs one). */
+export const AIR_STRIKE_WEAPONS = Object.freeze({
+  // M795 155 mm HE from a battery firing for effect: a plunging round with an 18 m blast.
+  artillery: shell('M795 155 mm HE', 'HE', 155, 110, 110, 1200, 820, { reloadGroup: 'strike-artillery', soundProfile: 'strike-artillery', blastRadiusM: 18 }),
+  // A-10 GAU-8/A Avenger, PGU-14/B API: a depleted-uranium core good for ~69 mm at 500 m, through any tank's roof.
+  strafe: shell('GAU-8 30 mm API', 'AP', 30, 75, 55, 110, 1010, { reloadGroup: 'strike-strafe', soundProfile: 'strike-strafe' }),
+  // GBU-12 Paveway II: a laser-guided Mk 82 (500 lb, 87 kg of Tritonal, 273 mm body), falling free onto the spot.
+  bomb: shell('GBU-12 Paveway II', 'HE', 273, 140, 140, 1700, 260, { reloadGroup: 'strike-bomb', soundProfile: 'strike-bomb', blastRadiusM: 22 }),
+});
+export interface AirStrikeRules {
+  /** Support points the call costs, the caller's own wait before calling this kind again, and the warning (s): the
+   *  targeted side's alert and footprint go up at the call, and nothing of the strike arrives before it has run. */
+  readonly cost: number;
+  readonly cooldownS: number;
+  readonly warningS: number;
+  /** The aircraft (none for artillery: hp 0): its hit points, the sphere a round must pass through to strike it, its
+   *  height over the mark and its speed. */
+  readonly hp: number;
+  readonly hitRadiusM: number;
+  readonly altitudeM: number;
+  readonly speedMps: number;
+}
+export interface AirSupportRules {
+  readonly points: {
+    /** Points per hit point of damage a crew's own guns deal to an enemy hull. */
+    readonly perDamageHp: number;
+    readonly kill: number;
+    /** A kill a call-in made (its caller's). */
+    readonly supportKill: number;
+    /** Each crew inside a sector when its side takes it. */
+    readonly capture: number;
+    /** The crew whose eyes first spot an enemy, at most once per enemy per `spotRepeatS` for its side. */
+    readonly spot: number;
+    readonly spotRepeatS: number;
+    /** A support aircraft brought down (its last strike's shooter). */
+    readonly downed: number;
+    /** One point every `trickleS` to every living crew, the ledger's cap and its opening balance. */
+    readonly trickleS: number;
+    readonly cap: number;
+    readonly start: number;
+  };
+  /** Call-ins one side may have under way at once, and AC-130 orbits at once. */
+  readonly teamAirCap: number;
+  readonly teamGunshipCap: number;
+  /** The furthest a crew may mark from its own hull (the strike view's reach). */
+  readonly callRangeM: number;
+  /** A falling round (the barrage's, the bomb) is laid to reach the mark's ground this long after the warning has run,
+   *  so a crown or a roof on its last, steep stretch still meets it after the warning (the seeded runs: at 0.05 s a
+   *  round struck before it, once in 31 strikes). */
+  readonly fallMarginS: number;
+  /** Counter-air: roof stations engage enemy aircraft within their counter-drone range × `rangeScale`; each round lands
+   *  the drone share × `hitScale` (an aircraft is a far larger target) of `damagePerHit`. A roof station's round itself
+   *  never strikes an aircraft's sphere (its share is its hit); a main gun's does, for its damage. */
+  readonly counterAir: { readonly rangeScale: number; readonly hitScale: number; readonly damagePerHit: number };
+  /** The recon pass: a jet along the heading through the mark; every enemy within `revealM` of its track as it passes is
+   *  spotted for its side for `revealS` (through the spotting system). */
+  readonly recon: AirStrikeRules & { readonly trackM: number; readonly revealM: number; readonly revealS: number };
+  /** The barrage: `rounds` over `fireS`, each falling `flightS` from its last visible point, seeded within `radiusM`. */
+  readonly artillery: AirStrikeRules & { readonly radiusM: number; readonly rounds: number; readonly fireS: number; readonly flightS: number };
+  /** The strafing run: the lane it walks along the heading from the caller to the mark, its rounds and their spread. */
+  readonly strafe: AirStrikeRules & { readonly lengthM: number; readonly halfWidthM: number; readonly rounds: number; readonly fireS: number;
+    readonly spreadM: number; readonly pullUpM: number };
+  /** The precision bomb: released `fallS` before it lands, `releaseBackM` short of the mark (nearly overhead: a steep fall
+   *  a ridge or a crown on the way cannot meet before the warning has run); it lands within `missM` of the mark. */
+  readonly bomb: AirStrikeRules & { readonly radiusM: number; readonly fallS: number; readonly releaseBackM: number; readonly missM: number };
+  /** The AC-130 orbit: its ring, its time on station, the reach it engages spotted enemies in and its guns' cadence. */
+  readonly gunship: AirStrikeRules & { readonly radiusM: number; readonly orbitS: number; readonly engageM: number;
+    readonly cannonEveryS: number; readonly howitzerEveryS: number; readonly cannonSpreadM: number; readonly howitzerSpreadM: number };
+  /** Bots: how often a bot weighs a call, the friendly clearance it keeps, the targets each strike needs, the margin
+   *  a bot drives clear of a footprint by, the side's air slots bots leave free (the crews' own calls are never crowded
+   *  out) and the gap between one side's bot recon passes. */
+  readonly bots: { readonly decideEveryS: number; readonly friendlyClearM: number;
+    readonly minTargets: Readonly<Record<AirStrikeKind, number>>; readonly evadeMarginM: number; readonly leaveSlots: number;
+    readonly reconGapS: number };
+}
+export const AIR_SUPPORT_RULES: AirSupportRules = Object.freeze({
+  points: Object.freeze({ perDamageHp: 0.1, kill: 60, supportKill: 30, capture: 50, spot: 10, spotRepeatS: 30, downed: 80,
+    trickleS: 4, cap: 1000, start: 0 }),
+  teamAirCap: 2,
+  teamGunshipCap: 1,
+  callRangeM: 700,
+  fallMarginS: 0.4,
+  counterAir: Object.freeze({ rangeScale: 1.5, hitScale: 4, damagePerHit: 150 }),
+  // the photo pass: 3 s of warning, then a jet at 250 m along a 600 m track through the mark; 12 s of spotting within 160 m
+  recon: Object.freeze({ cost: 120, cooldownS: 40, warningS: 3, hp: 400, hitRadiusM: 8, altitudeM: 250, speedMps: 200,
+    trackM: 600, revealM: 160, revealS: 12 }),
+  // the battery: a 6 s warning, then ten 155 mm rounds over 5 s inside a 35 m circle, each seen falling its last 2.5 s
+  artillery: Object.freeze({ cost: 300, cooldownS: 60, warningS: 6, hp: 0, hitRadiusM: 0, altitudeM: 420, speedMps: 0,
+    radiusM: 35, rounds: 10, fireS: 5, flightS: 2.5 }),
+  // the A-10's run: 5 s of warning while it comes in low from behind the caller, then 28 rounds walked down a 140 m lane
+  // in 1.6 s at 150 m/s (a 30 m dive), and the pull-up; the rounds spread 5 m either side of the lane's line
+  strafe: Object.freeze({ cost: 400, cooldownS: 75, warningS: 5, hp: 600, hitRadiusM: 8, altitudeM: 90, speedMps: 150,
+    lengthM: 140, halfWidthM: 12, rounds: 28, fireS: 1.6, spreadM: 5, pullUpM: 140 }),
+  // the GBU-12: a 7 s laser warning; the jet runs in at 350 m and releases 60 m short of the spot, 4 s before it lands
+  // (from 720 m out, a shallow glide that a ridge on the way could meet early); it lands within 2 m of the spot
+  bomb: Object.freeze({ cost: 450, cooldownS: 90, warningS: 7, hp: 600, hitRadiusM: 8, altitudeM: 350, speedMps: 180,
+    radiusM: 22, fallS: 4, releaseBackM: 60, missM: 2 }),
+  // the AC-130: 8 s inbound, then 30 s on a 120 m pylon turn 180 m over the mark at 42 m/s, engaging only the enemies its
+  // side has spotted within 140 m with the gunship's own 30 mm and 152 mm
+  gunship: Object.freeze({ cost: 800, cooldownS: 150, warningS: 8, hp: 1400, hitRadiusM: 16, altitudeM: 180, speedMps: 42,
+    radiusM: 120, orbitS: 30, engageM: 140, cannonEveryS: 0.5, howitzerEveryS: 4, cannonSpreadM: 4, howitzerSpreadM: 3 }),
+  bots: Object.freeze({ decideEveryS: 2, friendlyClearM: 45,
+    minTargets: Object.freeze({ recon: 0, artillery: 2, strafe: 2, bomb: 1, gunship: 2 }), evadeMarginM: 15, leaveSlots: 1,
+    reconGapS: 30 }),
+});
+
 type RulesetAmmo = 'spec' | 'he_only' | 'unlimited';
 type RulesetTimeout = 'draw' | 'defeat';
 
@@ -754,6 +873,7 @@ export const TEAM_NATIONS_MODE_SCOPE: Readonly<Record<GameModeId, { readonly not
   juggernaut: { note: 'juggernaut' },
   // the escorts are the player's country, the ground force one enemy country
   ac130: { note: 'ac130' },
+  air_support: { note: null },
   // the proving ground is a solo range against static target hulls: no team fiction applies (230 x gameplay-modes union)
   proving_ground: { note: null },
 });
@@ -976,13 +1096,13 @@ export const TEAM_ARRANGEMENT_LIMITS: {
   allies: Object.freeze({
     standard: SYMMETRIC_ALLIES, capture_the_flag: SYMMETRIC_ALLIES, zone_control: SYMMETRIC_ALLIES, turbo_ball: SYMMETRIC_ALLIES,
     endless_horde: COOP_ALLIES, frontline_assault: COOP_ALLIES, mars: SYMMETRIC_ALLIES,
-    juggernaut: SYMMETRIC_ALLIES, infected: SYMMETRIC_ALLIES, realistic: SYMMETRIC_ALLIES, gun_game: SYMMETRIC_ALLIES, drone: SYMMETRIC_ALLIES, ac130: range(2, 8),
+    juggernaut: SYMMETRIC_ALLIES, infected: SYMMETRIC_ALLIES, realistic: SYMMETRIC_ALLIES, gun_game: SYMMETRIC_ALLIES, drone: SYMMETRIC_ALLIES, ac130: range(2, 8), air_support: SYMMETRIC_ALLIES,
     proving_ground: PROVING_ALLIES,
   }),
   enemies: Object.freeze({
     standard: SYMMETRIC_ENEMIES, capture_the_flag: SYMMETRIC_ENEMIES, zone_control: SYMMETRIC_ENEMIES, turbo_ball: SYMMETRIC_ENEMIES,
     endless_horde: range(6, 20), frontline_assault: range(4, 14), mars: SYMMETRIC_ENEMIES,
-    juggernaut: SYMMETRIC_ENEMIES, infected: SYMMETRIC_ENEMIES, realistic: SYMMETRIC_ENEMIES, gun_game: SYMMETRIC_ENEMIES, drone: SYMMETRIC_ENEMIES, ac130: range(4, 24),
+    juggernaut: SYMMETRIC_ENEMIES, infected: SYMMETRIC_ENEMIES, realistic: SYMMETRIC_ENEMIES, gun_game: SYMMETRIC_ENEMIES, drone: SYMMETRIC_ENEMIES, ac130: range(4, 24), air_support: SYMMETRIC_ENEMIES,
     proving_ground: PROVING_TARGETS,
   }),
   waveSize: range(2, 12),
@@ -1058,6 +1178,8 @@ export interface MatchRuleset {
   readonly infection?: { readonly infectedSpeed: number; readonly survivorHpScale: number; readonly infectedHpScale: number; readonly infectedReloadScale: number; readonly hunt: boolean };
   readonly gunGame?: { readonly killsPerWeapon: number };
   readonly aerial?: 'drone' | 'gunship';
+  /** Air Support: the support points and the airstrikes (AIR_SUPPORT_RULES; sim/airSupport.ts). */
+  readonly airSupport?: AirSupportRules;
   /** VH.15: the roof stations engage enemy drones in flight (sim/auxiliarySystems.ts; the drone mode). */
   readonly counterDrone?: boolean;
   readonly scoreTarget?: number | null;
@@ -1192,7 +1314,7 @@ export interface WatchRules {
 }
 export const WATCH_RULES: WatchRules = Object.freeze({
   modes: Object.freeze(['standard', 'capture_the_flag', 'zone_control', 'turbo_ball', 'endless_horde', 'frontline_assault',
-    'mars', 'juggernaut', 'infected', 'realistic', 'gun_game', 'drone'] as const),
+    'mars', 'juggernaut', 'infected', 'realistic', 'gun_game', 'drone', 'air_support'] as const),
   takeControl: true,
   deathHoldS: 1.6,
   takenDeathS: 3.5,
@@ -1550,6 +1672,9 @@ const BASE_RULESETS: Readonly<Record<GameModeId, MatchRuleset>> = Object.freeze(
   ac130: Object.freeze({ ...STANDARD, mode: 'ac130', aerial: 'gunship', allies: 4, enemies: 12, alwaysVisible: true, equipmentBan: SCOUTING_OFF,
     ammo: 'unlimited', consumables: false, timeLimitS: 480, timeout: 'defeat',
     destruction: Object.freeze({ ...DESTRUCTION_ON, craterScale: 1.25 }) }),
+  // Air Support (air-support-270): Zone Control's three sectors, 8 s respawns and a twelve-minute clock, with the support
+  // ledger and the three airstrikes; the vehicle's own loadout (the strikes are the mode's firepower, not the guns)
+  air_support: Object.freeze({ ...STANDARD, mode: 'air_support', respawnS: 8, timeLimitS: 720, airSupport: AIR_SUPPORT_RULES }),
   // Proving ground (v2 progression, 2026-10-17): the player alone on the firing line, one target hull per lane (no allied
   // bots, no AI on the targets), every target always in sight, unlimited rounds of the tank's own loadout, a destroyed hull
   // back on its mark in 3 s, no clock and no record. The standard physics, damage and destruction apply unchanged, so every
@@ -1573,6 +1698,9 @@ export function rulesetObjectiveAxisM(ruleset: Pick<MatchRuleset, 'flagPitch' | 
 /** Score targets the modes play to (kept here so rule cards and controller agree). */
 export const RULESET_SCORE_TARGETS: Readonly<Record<string, number>> = Object.freeze({
   capture_the_flag: 3, zone_control: 750, turbo_ball: 5, mars: 750, drone: 20,
+  // Air Support plays to 2000 (air-support-270's first seeded run: at 750 the side that took the sectors first won in under
+  // three minutes, before a crew had earned a call-in); about six to eight minutes at the usual two-to-one sector split
+  air_support: 2000,
 });
 /** A flag carrier drives at this share of the mode speed (Capture the Flag). */
 export const FLAG_CARRIER_SPEED_SCALE = 0.85;
@@ -2054,6 +2182,13 @@ export function rulesetLines(ruleset: MatchRuleset): RulesetLine[] {
       value: String(ruleset.assault.initialActive + ruleset.assault.extraDefenders),
       hp: percent(1 + ruleset.assault.difficultyHp),
     });
+  }
+  if (ruleset.airSupport) {
+    // the three airstrikes, each with its price and the warning the targeted side gets (the cards and the manual)
+    for (const kind of AIR_STRIKE_KINDS) {
+      const strike = ruleset.airSupport[kind];
+      line(`airStrike.${kind}`, { cost: String(strike.cost), warning: String(strike.warningS) });
+    }
   }
   if (!ruleset.records) line('noRecords');
   return lines;

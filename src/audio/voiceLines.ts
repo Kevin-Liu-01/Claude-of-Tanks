@@ -217,6 +217,7 @@ export const VOICE_LINES: Readonly<Record<string, VoiceLineMeta>> = Object.freez
   start_gun_game: V(2, 8, 'flow', 1.4),
   start_drone: V(2, 8, 'flow', 1.4),
   start_range: V(2, 8, 'flow', 1.4),
+  start_air_support: V(2, 8, 'flow', 1.4),
   gunship_cleared_hot: V(2, 8, 'flow', 1.4),
   // the AC-130 crew's fire control and close-air-support brevity
   gunship_rifle: V(1, 6, 'gun_cycle', 0.5),
@@ -255,6 +256,15 @@ export const VOICE_LINES: Readonly<Record<string, VoiceLineMeta>> = Object.freez
   defeat_overrun: V(4, 10, 'result', 8),
   gunship_victory: V(4, 10, 'result', 8),
   gunship_defeat: V(4, 10, 'result', 8),
+  // ---- air-support-270: Air Support's call-ins. Our call read back on the net as the authority takes it; the targeted
+  // crew called out of a footprint before anything lands (a survival call, as a missile's); an aircraft our guns bring down
+  air_call_recon: V(2, 4, 'support', 1.5),
+  air_call_artillery: V(2, 4, 'support', 1.5),
+  air_call_strafe: V(2, 4, 'support', 1.5),
+  air_call_bomb: V(2, 4, 'support', 1.5),
+  air_incoming: V(4, 6, 'incoming', 1.2),
+  artillery_incoming: V(4, 6, 'incoming', 1.2),
+  aircraft_downed: V(3, 4, 'shot_result', 1.6),
 });
 
 /** A tank crew's line and this crew's own call for it, or null where it has no such moment. */
@@ -306,6 +316,8 @@ export const MODE_CREW: Readonly<Record<GameModeId, ModeCrew>> = Object.freeze({
   drone: { swap: { battle_start: 'start_drone', ...NO_TEAM_COUNTS } },
   // the tank seats under the gunship speak as any tank crew; the gunship's own crew is GUNSHIP_CREW
   ac130: { swap: {} },
+  // Air Support: the sectors and the call-ins (air-support-270; the calls are the engine's own, AIR_STRIKE_SOUND)
+  air_support: { swap: { battle_start: 'start_air_support', ...NO_TEAM_COUNTS } },
   // a practice range: targets in lanes, reset at will, no verdict
   proving_ground: { swap: { battle_start: 'start_range', respawn: null, ...NO_TEAM_COUNTS } },
 });

@@ -39,6 +39,9 @@ export interface BotMatch {
     botObjective(entity: BotEntity): ReturnType<NonNullable<AiDeps['getObjective']>>;
     freshestSighting(entity: BotEntity): ReturnType<NonNullable<NonNullable<AiDeps['intel']>['freshestContact']>>;
     enemyDeployment(entity: BotEntity): ReturnType<NonNullable<NonNullable<AiDeps['intel']>['enemyDeployment']>>;
+    /** Air Support: the nearest enemy aircraft in the air (Infinity outside the mode), and a led shot at it. */
+    airThreatM(entity: BotEntity): number;
+    airShot(entity: BotEntity, roundMps: number, maxPitchRad: number): { x: number; y: number; z: number } | null;
   } | null;
   heightField: AiDeps['heightField'];
   raycast: AiDeps['raycast'];
@@ -100,6 +103,9 @@ export function createBotController(entity: BotEntity, index: number, difficulty
       intel: {
         freshestContact: () => match.mode()?.freshestSighting(entity) ?? null,
         enemyDeployment: () => match.mode()?.enemyDeployment(entity) ?? null,
+        // Air Support (air-support-270): the aircraft a bot answers with its guns
+        airThreatM: () => match.mode()?.airThreatM(entity) ?? Infinity,
+        airShot: (roundMps, maxPitchRad) => match.mode()?.airShot(entity, roundMps, maxPitchRad) ?? null,
       },
       // round 62 pacing: the no-contact search plans its legs over the shared navigation grid (its own seeded stream)
       ...(navigation ? {

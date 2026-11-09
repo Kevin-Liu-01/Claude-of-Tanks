@@ -28,6 +28,8 @@ export function createMatchSpotting(match: {
   concealers: ConcealerDisc[];
   /** The driver's own team names (the authority's alpha and bravo); the solo battle's are spotting's default. */
   teams?: readonly string[];
+  /** Air Support's recon pass (sim/airSupport.ts): `team` holds tank `id` revealed now, whatever its eyes see. */
+  revealed?: (id: string, team: string) => boolean;
 }): SpottingSystem {
   return createSpottingSystem({
     getTanks: match.getTanks,
@@ -39,5 +41,6 @@ export function createMatchSpotting(match: {
     getEquipment: (tank) => consumableSpottingIds((tank as SpottingHull).consumables, (tank as SpottingHull).equip, match.timeS()),
     rng: mulberry32(match.seed + 31000),
     ...(match.teams ? { teams: match.teams } : {}),
+    ...(match.revealed ? { revealed: match.revealed } : {}),
   });
 }
