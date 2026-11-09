@@ -244,6 +244,7 @@ import { createIntentCover } from './mp/session/intentCover.ts';
 import { loadEquipment as loadSelectedEquipment } from './game/equipment.ts';
 import { consumableSpecFor, loadConsumables } from './game/consumableLoadout.ts';
 import { createSettingsAccess } from './ui/settingsAccess.ts';
+import { togglePhonePause } from './ui/phonePause.ts';
 import { shellTypeCode } from './ui/shellLabels.ts';
 import { createMobileBattleInputAccess } from './game/mobileBattleInputAccess.ts';
 import { installResponsiveLayout } from './ui/responsiveLayout.ts';
@@ -3902,7 +3903,9 @@ const couchOwner = createLazyRuntimeOwner(
     camera,
     paused: () => settings.isOpen(),
     shellCode: shellTypeCode,
-    togglePause: () => { if (battlePhase.isBattle()) settings.toggle(); },
+    // (round 8 Y4 s3-05) the one phone pause rule (its resume never relocks the pointer), in a couch battle's phase: a dead
+    // seat 1 must not take Pause from the other seats (isBattleActive is seat 1's own battle settings)
+    togglePause: () => togglePhonePause(settings, () => battlePhase.isBattle()),
     emit: (type, payload) => bus.emit(type, payload),
     on: (type, listener) => bus.on(type, listener),
     setSpectating: (on) => { document.body.classList.toggle('cot-spectating', on); currentHud()?.setCouchView(on); },
