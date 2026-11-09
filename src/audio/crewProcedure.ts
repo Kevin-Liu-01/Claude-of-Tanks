@@ -27,7 +27,8 @@
  * armed so far; the engine runs no crew frame while paused and its radio takes no line (the crew is silent behind the
  * pause menu, a network battle's included, as the engine's quiet-radio rule always was). Where the game holds a fact the
  * crew reads it rather than keeping its own copy: the gun is loaded while our reload channel is ready (`combat.reload.t`),
- * an enemy is named only while the player sees it (the engine's frame index, src/game/playerVisibility.ts).
+ * an enemy is named only while the player sees it (the engine's frame index, src/game/playerVisibility.ts), an escort has
+ * been extracted when its mode life is 'rescued' (sim/matchModes.ts setLife).
  */
 
 import { AERIAL_RULES, GUN_GAME_WEAPONS } from '../sim/matchRuleset.ts';
@@ -147,11 +148,10 @@ export interface CrewProcedure {
   pause(): void;
 }
 
-/** A hull of the frame's list, for the AC-130's extraction (mode-active hulls leave the field when extracted). */
+/** A hull of the frame's list, for the AC-130's extraction: an escort extracted has its mode life 'rescued'. */
 export interface CrewFrameEntity {
   readonly id: string;
-  readonly modeActive?: boolean;
-  readonly combat?: { readonly destroyed?: boolean };
+  readonly modeLife?: string;
 }
 
 /** The battle's calls: one battle (`startBattle`). */
@@ -373,10 +373,11 @@ export function createCrewProcedure(host: CrewProcedureHost): CrewProcedure {
       life.heavyRounds = 0;
       host.say('gunship_rounds_complete');
     }
-    // a friendly that leaves the field alive has reached the extraction point
+    // a friendly the mode has rescued has reached the extraction point (its life, sim/matchModes.ts setLife; a network
+    // seat sees no rescue: the authority stops sending a hull that leaves the field, so the call is the solo seat's)
     for (const entity of entities) {
       if (!entity || mine(entity.id) || !host.sameTeam(entity.id, host.playerId())) continue;
-      const out = entity.modeActive === false && !entity.combat?.destroyed;
+      const out = entity.modeLife === 'rescued';
       const was = battle.extracted.get(entity.id);
       battle.extracted.set(entity.id, out);
       if (out && was === false) host.say('gunship_friendly_extracted', { delayS: 0.3 });

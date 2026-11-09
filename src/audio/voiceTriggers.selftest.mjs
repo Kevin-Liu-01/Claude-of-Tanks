@@ -705,7 +705,8 @@ moment('gunship_rounds_complete', () => {
 }, { wait: 12, heard: false });
 // a friendly lost on the ground (wherever it was), one extracted
 moment('gunship_friendly_down', () => { allies[0].combat.destroyed = true; bus.emit('tank:destroyed', { id: 'a1', killerId: 'f1', pos: [20, 0, 40], cause: 'shot' }); });
-moment('gunship_friendly_extracted', () => { allies[1].modeActive = false; frame(); });
+// (the mode's rescue: sim/matchModes.ts setLife 'rescued' takes the hull off the field, alive)
+moment('gunship_friendly_extracted', () => { allies[1].modeLife = 'rescued'; allies[1].modeActive = false; frame(); });
 {
   settle(6);
   const since = +ctx.currentTime.toFixed(3);

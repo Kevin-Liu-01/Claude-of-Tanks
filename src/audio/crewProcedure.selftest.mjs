@@ -6,6 +6,9 @@
 //   - s1-01, the life scope: the gun is loaded while our reload channel is ready, so a Gun Game step's fresh weapon gets its
 //     fire command at once (no reload ever finished for it); a kill's cease fire and a recalling drone's recovery die with
 //     our tank, so neither is said at the respawn.
+//   - round 8 amendment 6, the escort's life: an AC-130 crew calls a friendly extracted when its mode life is 'rescued'
+//     (sim/matchModes.ts setLife, the hull's one life writer), never a benched or downed one, and reads no flags of its
+//     own for it (a network seat sees no rescue: the authority stops sending a hull that leaves the field).
 //   - s1-02, one visibility truth: the crew names only what the player sees (src/game/playerVisibility.ts, handed to
 //     audio.update as the listener's runtime does): no fire command on an enemy whose spot lingered out, one a far ally
 //     lit, one revived at its spawn, or a network hull the authority stopped sending; a hidden enemy near does not hold
@@ -183,6 +186,26 @@ await check('s1-01 a recalling drone is not recovered by our next life', async (
   bus.emit('mode:respawn', { id: 'me', team: 'alpha' });
   frames(1);
   assert.ok(!asked('drone_recovered', since), `the last life's drone is not "recovered" at the respawn (asked ${said(since)})`);
+});
+
+// ---- amendment 6: the escort's life is the mode's.
+await check('amendment 6 an escort extracted is the mode\'s rescued life', async () => {
+  const source = readFileSync(new URL('./crewProcedure.ts', import.meta.url), 'utf8');
+  assert.doesNotMatch(source, /modeActive/, 'the crew reads the mode life, never re-derives it from the field flags');
+  const me = tank('me', { isPlayer: true, aerial: { kind: 'gunship', active: true, x: 0, y: 240, z: 90 } });
+  const rescued = tank('a1', { x: 40, z: 300 }), benched = tank('a2', { x: -40, z: 300 }), downed = tank('a3', { x: 0, z: 320 });
+  for (const ally of [rescued, benched, downed]) { ally.modeLife = 'alive'; ally.modeActive = true; }
+  await battle('ac130', [me, rescued, benched, downed, foe('f1', 3000)]);
+  const since = now();
+  // as setLife leaves each: rescued (off the field, alive), benched (off the field, destroyed), down (on it, destroyed)
+  Object.assign(rescued, { modeLife: 'rescued', modeActive: false });
+  Object.assign(benched, { modeLife: 'benched', modeActive: false });
+  benched.combat.destroyed = true;
+  downed.modeLife = 'down';
+  downed.combat.destroyed = true;
+  frames(3);
+  const calls = probe.sayLog.filter((e) => e.t >= since && e.id === 'gunship_friendly_extracted').length;
+  assert.equal(calls, 1, `one extraction call, for the rescued escort alone (asked ${said(since)})`);
 });
 
 // ---- s1-02: the crew names only what the player sees.
