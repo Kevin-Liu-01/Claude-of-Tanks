@@ -34,9 +34,14 @@
 //   late     a yard's last page call answers five seconds past its budget, while its page (closed at the budget) still
 //            detaches: the yard is not recorded, and the next yard is shot;
 //   stall    a launch that stalls past its unit's budget: the unit times out, the next yard launches its own browser, and
-//            the late browser is closed when it comes back, so one browser is open when that yard is shot.
+//            the late browser is closed when it comes back, so one browser is open when that yard is shot;
+//   queued   (fix-up r2) the hold is held 15 minutes after the prepare staged the first yard: its budget is paused while
+//            it waits frozen, so it is shot from its warm page (not timed out and staged again on a second page while the
+//            frozen one stays open), one page open at a time (exit 0).
 // And without a clock:
-//   pool     the browser pool itself: an aborted unit's take launches nothing; the teardown (closeAll) closes a launch that
+//   pool     the browser pool itself: an aborted unit's take launches nothing; (fix-up r2) a unit that ends while its
+//            launch is pending, with no shared browser, has its take rejected with its end and the late browser closed as
+//            it comes back, never shared (the next take launches its own); the teardown (closeAll) closes a launch that
 //            comes back after it (for a unit still live) and refuses every later take;
 //   signal   SIGTERM while a yard is shooting (a child process, the real private lock): the browser closes, then the
 //            release, then the exit 143 (the shared signal owner's code for SIGINT and SIGHUP is capture-hold-phases'
@@ -75,8 +80,9 @@ function privateLock(root, record) {
 /** The capture lock as a hold sees it (capture-lock.mjs createCaptureLock), for the mock clock: `prepare` runs while
  *  queued and its result is the acquire's; held, its cap is `capMs`; checkpoint() past the cap with anyone waiting runs
  *  beforeYield (still held), releases, waits its turn in the queue (REQUEUE_MS; `requeue: 'refuse'`: that wait runs out
- *  and the checkpoint rejects), holds again and runs afterResume. */
-function standInLock({ record, waiters = 0, capMs = CAP_MS, requeue = 'resume' }) {
+ *  and the checkpoint rejects), holds again and runs afterResume. `queueMs`: the ticket waits that long in the queue after
+ *  the prepare before it is held. */
+function standInLock({ record, waiters = 0, capMs = CAP_MS, requeue = 'resume', queueMs = 0 }) {
   let held = false, since = 0;
   const lock = {
     get nested() { return false; },
@@ -84,6 +90,7 @@ function standInLock({ record, waiters = 0, capMs = CAP_MS, requeue = 'resume' }
     get heldCapMs() { return held ? capMs : null; },
     async acquire(_timeoutMs, { prepare = null } = {}) {
       const prepared = prepare ? await prepare() : undefined;
+      if (queueMs) await sleep(queueMs);
       held = true;
       since = Date.now();
       record('hold');
@@ -275,6 +282,16 @@ function closedBeforeRelease({ events, chrome }) {
     assert.ok(closed >= 0 && closed < release, `${name} closed before the release (${events.join(', ')})`);
   }
 }
+/** Each page closes before the next opens (a shot or abandoned unit's page is never left on its browser), and every page
+ *  closes. */
+function onePageAtATime(events) {
+  let pagesOpen = 0;
+  for (const event of events) {
+    if (/^page p\d+ open$/.test(event)) assert.equal(++pagesOpen, 1, `one page open at a time (${events.join(', ')})`);
+    if (/^page p\d+ close /.test(event)) pagesOpen--;
+  }
+  assert.equal(pagesOpen, 0, 'every page closed');
+}
 /** The event that began closing `unit`'s page. */
 const pageClose = (events, unit) => events.find((event) => /^page p\d+ close /.test(event) && event.endsWith(` ${unit}`)) ?? null;
 const garagePredicate = ({ method, name }) => method === 'waitForFunction' && name === 'fn'; // stageUnit's yard wait
@@ -325,12 +342,7 @@ if (process.argv[2] === '--signal-child') {
       closedBeforeRelease(result);
       assert.ok(result.events.indexOf('launch b1') < result.events.indexOf('hold'), 'the first yard staged while queued');
       // each yard's page closes before the next yard's opens (a shot unit's page is closed by the loop, not left on its browser)
-      let pagesOpen = 0;
-      for (const event of result.events) {
-        if (/^page p\d+ open$/.test(event)) assert.equal(++pagesOpen, 1, `one page open at a time (${result.events.join(', ')})`);
-        if (/^page p\d+ close /.test(event)) pagesOpen--;
-      }
-      assert.equal(pagesOpen, 0, 'every page closed');
+      onePageAtATime(result.events);
       assert.equal(result.timersAfter, result.timersBefore, 'no timer of the run outlives it (the old ten-minute race kept the process alive)');
     }
 
@@ -451,6 +463,20 @@ if (process.argv[2] === '--signal-child') {
       closedBeforeRelease(result);
     }
 
+    // ---- queued: the first yard waits out a long queue frozen, its budget paused ---------------------------------------------
+    {
+      // held 15 min after the prepare staged g0 (real holds queue for hours: --wait-hours defaults to 16): past g0's 600-s
+      // budget, which a warm unit does not spend while it waits
+      const result = await clockRun({ yards: ['g0', 'g1'], lock: { queueMs: 15 * MINUTE } });
+      assert.equal(result.code, 0, `${result.said}\n${result.trail()}`);
+      assert.deepEqual(result.shot, ['garage-g0', 'garage-g1']);
+      assert.ok(result.second('hold') >= 15 * 60, `held after the queue (${result.trail()})`);
+      assert.doesNotMatch(result.said, /opening it again/, 'the warm yard is shot from its frozen page, not staged again');
+      assert.equal(result.events.filter((event) => /^page p\d+ open$/.test(event)).length, 2, `two pages for two yards (${result.trail()})`);
+      onePageAtATime(result.events);
+      closedBeforeRelease(result);
+    }
+
     // ---- pool: the browser pool's own rules ----------------------------------------------------------------------------------
     {
       const closed = [];
@@ -461,6 +487,19 @@ if (process.argv[2] === '--signal-child') {
       ended.abort(new Error('g1 timeout'));
       await assert.rejects(pool.take(ended.signal), /g1 timeout/, 'an aborted unit\'s take rejects with its end');
       assert.equal(launches, 0, 'and launches nothing');
+      // a unit that ends while its launch is pending, with no shared browser (the stall case had one: b3)
+      let arrive = null, slowLaunches = 0;
+      const slow = createBrowserPool(() => (++slowLaunches === 1 ? new Promise((done) => { arrive = () => done(browser('slow')); })
+        : Promise.resolve(browser(`fresh${slowLaunches}`))));
+      const unit = new AbortController();
+      const pending = slow.take(unit.signal);
+      unit.abort(new Error('g2 timeout'));
+      arrive();
+      await assert.rejects(pending, /g2 timeout/, 'a take whose unit ended while it launched rejects with that end');
+      assert.deepEqual(closed, ['slow'], 'its late browser is closed as it comes back');
+      const next = await slow.take(new AbortController().signal);
+      assert.equal(next.name, 'fresh2', 'never shared: the next unit launches its own');
+      closed.length = 0;
       let comeBack = null, lateLaunches = 0;
       // the first launch waits for comeBack(); any later one answers at once (a take that launched after the teardown fails
       // its count, not a hang)
@@ -499,6 +538,6 @@ if (process.argv[2] === '--signal-child') {
   }
   console.log('cloud-sky-shots.selftest: one hold through withCaptureHold, each unit one owner: browsers closed before the release on '
     + 'the way out, after a failure, at a cap yield and on SIGTERM; a yard in flight at the cap is shot inside its grace, and one '
-    + 'past it is stopped; a first unit that fails while queued is opened again; a unit past its budget never records; a launch '
-    + 'past its budget closes as it comes back');
+    + 'past it is stopped; a first unit that fails while queued is opened again, and one that waits out a long queue is shot '
+    + 'warm; a unit past its budget never records; a launch past its budget closes as it comes back');
 }
