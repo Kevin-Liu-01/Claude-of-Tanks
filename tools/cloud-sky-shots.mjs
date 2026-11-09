@@ -32,7 +32,8 @@
 // queued is the unit's failure, not the run's: the hold opens that unit again (a throwing prepare ended the whole run
 // with nothing shot, and a resumed run put the same unit first again). Each unit has one owner (createUnitRun below):
 // its states, its budget and its abort, its browser and page its own; the boot waits on the readiness probe
-// (tools/game-readiness.mjs). tools/cloud-sky-shots.selftest.mjs drives the run on a stand-in browser and a private lock.
+// (tools/game-readiness.mjs). tools/cloud-sky-shots.selftest.mjs drives the run on a stand-in browser and a private lock,
+// and the cap (its yield, its grace, its stop) on a mock clock.
 import { launchGuardedBrowser, setBrowserGuardContext } from './browser-launch.mjs';
 import { existsSync, mkdirSync, readFileSync, statfsSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
@@ -247,11 +248,12 @@ async function shootUnit(entry, options, frames, pause) {
 // The loop raced each unit against a ten-minute sleep and never stopped the loser, which ran on against the run's shared
 // `browser` and `entry`: past its budget it could launch a second guarded Chrome beside the loop's (`browser ??= await
 // launch()` assigns after its await, over the browser the next unit launched) or stage over the next unit's page. Now each
-// unit's run owns its state, its budget and its abort: the budget (or its hold's stop) ends it, aborts its signal and
-// closes its page, so every wait on that page rejects; its page is its own; it takes its browser from the run's pool,
-// which launches nothing for an aborted unit and closes a launch that comes back after the abort; and a unit past its
-// budget never records. The first end stands: a later move (the stopped work's own failure) is ignored, and a move the
-// table does not list throws by name.
+// unit's run owns its state, its budget and its abort: the budget (or its hold's stop) ends it and aborts its signal, and
+// whoever runs it (the loop, the prepare) closes its page at once, so every wait on that page rejects; its page is its
+// own; it takes its browser from the run's pool, which launches nothing for an aborted unit and closes a launch that
+// comes back after the abort; and a unit past its budget never records (a page call can still answer while its page
+// closes). The first end stands: a later move (the stopped work's own failure) is ignored, and a move the table does not
+// list throws by name.
 //   staging  → warm (staged and frozen while the hold is queued: the prepare) | shooting
 //   warm     → shooting | staging (its frozen page lost its game: staged afresh on a fresh page)
 //   shooting → shot
@@ -282,7 +284,7 @@ export function nextUnitState(from, to) {
  * with its signal: refused once that aborted, and a launch that comes back after it is closed at once, never shared.
  * Closed (the teardown), the pool launches nothing and closes what still comes back.
  */
-function createBrowserPool(launch) {
+export function createBrowserPool(launch) {
   const open = new Set();
   let current = null, pages = 0, closed = false;
   const shut = async (browser) => {
@@ -330,10 +332,7 @@ function createUnitRun({ job, unit }, { pool, servers, budgetMs }) {
   const end = (to, error) => {
     if (!move(to)) return false;
     failure = error ?? null;
-    if (to !== 'shot') {
-      controller.abort(error ?? new Error(`${unit.key} ${to}`));
-      entry?.page.close().catch(() => {}); // every wait on the page rejects
-    }
+    if (to !== 'shot') controller.abort(error ?? new Error(`${unit.key} ${to}`));
     return true;
   };
   return {
@@ -377,7 +376,9 @@ function createUnitRun({ job, unit }, { pool, servers, budgetMs }) {
 }
 
 /** Run `work` as `run`'s part; resolves with the state it left the run in: the work's own (warm, shot), its failure, or
- *  the budget's or the hold's end, whichever comes first (a failure after that end is the stop's echo: ignored). */
+ *  the budget's or the hold's end, whichever comes first (a failure after that end is the stop's echo: ignored). The
+ *  caller closes the run's page as soon as it resolves (the one page close: every wait the stopped work still has on it
+ *  rejects). */
 function settleRun(run, work) {
   const done = work().then(() => run.state, (error) => { run.end('failed', error); return run.state; });
   return Promise.race([done, run.ended]);
