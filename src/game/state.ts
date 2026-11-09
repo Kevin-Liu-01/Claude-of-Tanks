@@ -1359,6 +1359,21 @@ export function prepareNextOpeningRoute(game: SoloGameState): boolean {
   return true;
 }
 
+/**
+ * Every opening route still pending, planned now (round 8 Y1 s2-02). The queue's states per bot: pending (its legs in
+ * game.openingRouteJobs) -> whole (the last leg sets its waypoints). The warm advances it a leg a step during the
+ * countdown; the first live step drains the rest here (simStep), as the authority plans every leg at its creation
+ * (authoritativeMatch initializeBot), so no route lands on a live bot on a tick the frame rate chose (a bot whose route
+ * was pending drove an auto-patrol from its controller's stream until then) and a warm that stopped before its route stage
+ * leaves no bot without one. A device whose warm kept up pays nothing; one that fell behind pays the rest once, here.
+ * @returns the legs it planned
+ */
+export function drainOpeningRoutes(game: SoloGameState): number {
+  let legs = 0;
+  while (prepareNextOpeningRoute(game)) legs++;
+  return legs;
+}
+
 // ---------------------------------------------------------------------------
 // Fixed-step simulation
 // ---------------------------------------------------------------------------
@@ -3037,6 +3052,8 @@ export function simStep(
 ): void {
   // Past the ruleset's post-verdict hold the field stands still under the report (matchRuleset.endingHoldS).
   if (endingHoldExpired(game.ruleset, game.resultTimeS, game.timeS)) return;
+  // the bots' opening routes are whole before any live step reads them (drainOpeningRoutes; empty after the first step)
+  if (game.openingRouteJobs.length) drainOpeningRoutes(game);
   game.timeS += SIM_DT;
   // the battle's ground on the battle's clock, as the authority's (sim/authoritativeMatch.ts stepPlaying): a collapsed
   // structure's heap rises over RUBBLE_GROW_S with its fall (terrainDeformation). With no clock set, every heap of the

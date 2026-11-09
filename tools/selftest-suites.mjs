@@ -1249,6 +1249,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/game/soloModeVerdict.selftest.mjs', // 2026-11-02 audit M3: a solo verdict the mode did not reach latches its controller (Zone Control scores no more in the hold)
     'src/game/battleSeatPlan.selftest.mjs', // the load card's teams before the world are the seated battle's (2026-10-26)
     'src/game/openingRouteLegs.selftest.mjs', // battle-spikes-253: the bots' opening routes a leg a step, each the eager route
+    // round 8 Y1 s2-02: the first live step plans every route still pending (a slow warm drives as the eager battle)
+    'src/game/openingRouteRollout.selftest.mjs',
     // 2026-10-17 (v2 progression): the proving ground run for real on its range, and the test drive's entry points.
     'src/game/provingSession.selftest.mjs',
     // 2026-10-20: the range's furniture — plates on the simulation's faces, boards, the course, the draw budget.
