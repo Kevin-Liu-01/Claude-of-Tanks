@@ -11,11 +11,15 @@
 // (round 8 Y8, sweep s6-02) A solo start waits for a Garage return in flight to settle (src/game/soloBattleEntryRuntime.ts
 // whenGarageSettled: garageReturn.whenSettled, the Leave's restore included), so the second start queues behind the
 // Leave rather than racing its restore. The receipt holds that contract: the Leave resolves (a start never supersedes
-// it), no scene hand-over comes between the second start and the Leave's end (the second battle covers after the return
-// settled), the second battle reveals (its controls released) within its budget, and its reveal waited for one battle
-// frame, not for a restore that suppressed every frame while it ran (482aa753b9's symptom; the cover rule for a
-// scene-taker that does not wait, a network round, is src/game/garageReturnRuntime.selftest.mjs's). Every wait is the
-// readiness probe's (tools/game-readiness.mjs); the samples (the card's stage and percentage, the warm and return
+// it); the second battle takes the scene (its 'battle' phase:change) only once the Leave's return has settled (the trace
+// it publishes, window.__GARAGE_ENTRY, complete: its restore done); the second battle reveals (its controls released)
+// within its budget, and its reveal waited for one battle frame, not for a restore that suppressed every frame while it
+// ran (482aa753b9's symptom; the cover rule for a scene-taker that does not wait, a network round, is
+// src/game/garageReturnRuntime.selftest.mjs's). The take is judged when it happens, not from counts or the Leave's own
+// end: a Leave writes the phase twice (its scene, then its screen, garageReturnRuntime.ts performReturn and
+// showGarageScreen), and its promise ends after the veil's fade-out, which a start that waited correctly can beat
+// (whenSettled resolves at the Leave's entry, before that fade). Every wait is the readiness probe's
+// (tools/game-readiness.mjs), one boot wait included; the samples (the card's stage and percentage, the warm and return
 // traces) are a hang's diagnostics. It holds the capture lock through the open hold (a timing hold, released after its
 // browser closes). On a hang it prints the deployment warm's stages, the Garage return's trace and the card's last stage.
 //   node tools/second-solo-battle.browser.selftest.mjs [--throttle=2] [--gpu-lag-ms=750] [--map=urban] [--first=t90am]
@@ -26,7 +30,7 @@ import puppeteer from 'puppeteer';
 import { createServer } from 'vite';
 import { launchGuardedBrowser } from './browser-launch.mjs';
 import { openCaptureHold } from './capture-hold.mjs';
-import { readGameReadiness, readinessExpression, scenePhaseExpression, waitForBootLoaded } from './game-readiness.mjs';
+import { readGameReadiness, readinessExpression, scenePhaseExpression } from './game-readiness.mjs';
 import { nativeBrowserLaunchOptions, verifyNativeBrowserLaunch } from './native-browser-launch.mjs';
 
 const arg = (name, fallback) => process.argv.find((a) => a.startsWith(`--${name}=`))?.slice(name.length + 3) ?? fallback;
@@ -84,7 +88,7 @@ try {
   }, GPU_LAG_MS);
   const port = server.httpServer.address().port;
   await page.goto(`http://127.0.0.1:${port}/?nosplash=1&debug=1&telemetry=off&tier=desktop`, { waitUntil: 'domcontentloaded', timeout: 240_000 });
-  await waitForBootLoaded(page, { timeout: 420_000, polling: 250 });
+  // one boot wait: the settled Garage implies the boot (the probe's expression reads `booted` first)
   await page.waitForFunction(`${readinessExpression('garage')} && !!window.__DEBUG`, { timeout: 420_000, polling: 250 });
   // the loaded machine: the page's main thread at 1/THROTTLE speed from the first battle on
   const cdp = await page.createCDPSession();
@@ -128,13 +132,24 @@ try {
   report.firstBattle = await battle('first', FIRST, Math.max(BUDGET_MS, 300_000));
   assert.ok(report.firstBattle.revealed, `the first battle revealed (${JSON.stringify(report.firstBattle.last)})`);
   await sleep(2000);
-  // Leave, fired and not awaited (the smoke's order): its outcome, and the lifecycle's transitions count when it settled,
-  // are kept in the page; then the second battle the moment the Garage takes the scene (the hand-over's timing edge)
+  // Leave, fired and not awaited (the smoke's order): its outcome and the lifecycle when it settled are kept in the page,
+  // and so is the next scene take as it happens (the first 'battle' phase:change: who took it, and whether the Garage
+  // return trace the Leave published was complete then); then the second battle the moment the Garage takes the scene
+  // (the hand-over's timing edge)
   await page.evaluate(() => {
     const settled = (outcome) => {
-      window.__ssbLeaveSettled = { outcome, transitions: window.__APP_LIFECYCLE?.transitions ?? null };
+      const life = window.__APP_LIFECYCLE;
+      window.__ssbLeaveSettled = { outcome, phase: life?.phase ?? null, lastReason: life?.lastReason ?? null, transitions: life?.transitions ?? null };
       return outcome;
     };
+    const stop = window.__DEBUG.bus.on('phase:change', (change) => {
+      if (change?.phase !== 'battle') return;
+      stop();
+      const trace = window.__GARAGE_ENTRY;
+      window.__ssbSceneTake = { reason: change.reason ?? null, from: change.from ?? null,
+        returnSettled: !!trace && trace.presentationUnready === false && Number.isFinite(trace.totalMs),
+        returnStages: trace ? Object.keys(trace.stages ?? {}) : null };
+    });
     setTimeout(() => {
       window.__ssbLeave = Promise.resolve(window.__DEBUG.leaveBattleToGarage()).then(() => settled('resolved'), (e) => settled(String(e?.message ?? e)));
     }, 0);
@@ -144,17 +159,19 @@ try {
   report.secondBattle = await battle('second', SECOND, BUDGET_MS);
   report.leave = await page.evaluate(() => Promise.race([window.__ssbLeave, new Promise((done) => setTimeout(() => done('pending'), 1000))]));
   report.leaveSettled = await page.evaluate(() => window.__ssbLeaveSettled ?? null);
+  report.sceneTake = await page.evaluate(() => window.__ssbSceneTake ?? null);
   const s = report.secondBattle;
   console.log(`second-solo-battle: throttle ${THROTTLE}x, GPU lag ${GPU_LAG_MS} ms, ${MAP}: first ${report.firstBattle.ms} ms, second `
     + `${s.revealed ? `revealed in ${s.ms} ms` : `NOT revealed after ${s.ms} ms`} (reveal wait ${s.last?.warm?.stages?.openingFrame ?? '-'} ms); `
     + `the Leave ${report.leave}`);
   if (!s.revealed) console.log(JSON.stringify({ atSecondStart: report.atSecondStart, last: s.last }, null, 2));
   assert.ok(s.revealed, `the second battle revealed within ${BUDGET_MS / 1000} s (card at ${s.last?.pct} "${s.last?.stage}")`);
-  // the second start waited for the Leave: it resolved (never superseded), and no hand-over came between the second start
-  // and the Leave's end, so the second battle covered the screen after the return had settled
+  // the second start waited for the Leave: it resolved (never superseded), and the second battle took the scene only after
+  // the Leave's return, its restore included, had settled
   assert.equal(report.leave, 'resolved', `the Leave a second start waits for resolves (${JSON.stringify(report.leaveSettled)})`);
-  assert.equal(report.leaveSettled?.transitions, s.since,
-    `the second battle covered after the Leave settled (transitions at its start ${s.since}, at the Leave's end ${report.leaveSettled?.transitions})`);
+  assert.equal(report.sceneTake?.reason, 'solo-start', `the next scene take is the second battle's (${JSON.stringify(report.sceneTake)})`);
+  assert.equal(report.sceneTake.returnSettled, true,
+    `the second battle took the scene after the Leave's return settled (${JSON.stringify(report.sceneTake)})`);
   // the reveal waits for one presented battle frame (primeReveal): never for the Leave's Garage restore, which suppressed
   // every frame while it ran (unfixed at 750 ms of GPU lag: 21 s here, the 268 smoke's 240 s+ on a loaded machine)
   const revealWaitMs = s.last?.warm?.stages?.openingFrame;

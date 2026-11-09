@@ -246,9 +246,10 @@ Waits and polls built by hand:
 - `tools/track-system-audit.mjs`: a page function closed over the tank id with its own conditions; the tool sets the countdown itself
 <!-- /census -->
 
-Checks and receipt fields that are not waits (a precondition, a loop guard, a branch, a recorded value). A tool listed
-here waits only through the probe: the readiness selftest refuses a `waitForFunction` of its own that reads one of
-these facts (such a tool is a hand-built wait, listed above):
+Checks and receipt fields that are not waits (a precondition, a loop guard, a branch, a recorded value). No
+`waitForFunction` of a tool listed here reads one of these facts: the readiness selftest refuses one (such a tool is a
+hand-built wait, listed above). An `evaluate` that a loop polls until a fact holds is a hand-built wait as well; the
+census cannot tell it from a loop guard, so the row's reason says what each loop's read is for:
 
 <!-- census:stateReads -->
 - `tools/bot-combat-probe.mjs`: a loop guard: it stops stepping when the battle ends
@@ -271,7 +272,7 @@ these facts (such a tool is a hand-built wait, listed above):
 - `tools/perfprobe-roster.mjs`: receipt checks: each snapshot in a battle with released controls
 - `tools/perfprobe.mjs`: a precondition in its early window (the controls released) and a receipt label
 - `tools/reviveprobe.mjs`: records the HUD's display as a receipt field
-- `tools/second-solo-battle.browser.selftest.mjs`: receipt fields: each sample's loading card (shown, its stage and percentage), a hang's diagnostics; it times a second solo start against a running Garage restore and waits through the probe
+- `tools/second-solo-battle.browser.selftest.mjs`: receipt fields: each sample's loading card (shown, its stage and percentage), a hang's diagnostics, and the next scene take's phase (a `phase:change` listener: the second battle takes the scene after the Leave's return settled); it times a second solo start against a running Garage restore and waits through the probe
 - `tools/six-modes.browser.mjs`: stages the loading screen by hand (listed under loaderClasses) to read its rows
 - `tools/solo-cold-import-cover.mjs`: the cold-cover observer and its receipt checks (the cover is its subject)
 - `tools/sourced-texture-readiness.mjs`: an observer's sample: the first uncovered battle frame
