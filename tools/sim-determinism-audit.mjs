@@ -11,6 +11,8 @@
  *   node tools/sim-determinism-audit.mjs --map=alpine --ticks=7200 --seed=11
  *   node tools/sim-determinism-audit.mjs --craters      # craters on, h2 firing HE at the ground (crater-render-spec §F)
  *   node tools/sim-determinism-audit.mjs --drone        # drone mode: both humans launch, fly and recall FPV drones
+ *   node tools/sim-determinism-audit.mjs --air          # Air Support: both humans call every call-in on a schedule, the bots
+ *                                                        # call theirs; the ledger, the strikes and their rounds are hashed
  *   node tools/sim-determinism-audit.mjs --kernels      # run B on the WebAssembly kernels (docs/RUST-KERNELS.md): the
  *                                                        # kernels must play the TypeScript's match, bit for bit
  */
@@ -24,7 +26,8 @@ import { getSpec } from '../src/vehicles/specs.ts';
 import { isHeClass } from '../src/sim/damage.ts';
 import { serverWorldKernels } from '../server/match/simKernels.ts';
 import { createDedicatedWorldCollision } from '../server/dedicatedWorldCollision.ts';
-import { PLAYER_ACTION_BITS } from '../src/sim/playerActions.ts';
+import { PLAYER_ACTION_BITS, AIR_STRIKE_BITS } from '../src/sim/playerActions.ts';
+import { AIR_STRIKE_KINDS } from '../src/sim/matchRuleset.ts';
 
 const arg = (name, fallback) => { const hit = process.argv.find((a) => a.startsWith(`--${name}=`)); return hit ? hit.slice(name.length + 3) : fallback; };
 
@@ -61,6 +64,8 @@ function stateDigest(match, events) {
   hash.update(`destruction ${JSON.stringify(snapshot.meta.destructionLog ?? [])}\n`);
   // physics lane (2026-10-10): the wrecks' turret bodies are authoritative state too (their rows, their shell collision)
   hash.update(`turrets ${match.wreckTurretDigest ? match.wreckTurretDigest() : ''}\n`);
+  // Air Support (air-support-270): the ledger, the cooldowns, the strikes and their aircraft' hit points
+  if (match.modeController.airSupport) hash.update(`air ${JSON.stringify(match.modeController.airSupport.capture())}\n`);
   hash.update(`events ${events.length} ${events.map((e) => `${e.type}:${JSON.stringify(e).length}`).join(',')}\n`);
   return hash.digest('hex').slice(0, 16);
 }
@@ -77,10 +82,12 @@ function stateDigest(match, events) {
  * drone on a fixed schedule (launch, seven seconds of flight on its scripted inputs, recall), the bots launch their own,
  * and the drones' launch climbs, flights and recalls are in the hash with every other shell.
  */
-export function runDeterminismAudit({ mapId = 'verdant', ticks = 3600, seed = 7, every = 60, log = () => {}, craters = false, kills = false, drone = false, kernels = null } = {}) {
+export function runDeterminismAudit({ mapId = 'verdant', ticks = 3600, seed = 7, every = 60, log = () => {}, craters = false, kills = false, drone = false, air = false, kernels = null } = {}) {
   const standard = matchRulesetFor('standard');
   const ruleset = craters ? { ...standard, destruction: { ...standard.destruction, craters: true } } : undefined;
-  const gameMode = drone ? 'drone' : 'standard';
+  const gameMode = drone ? 'drone' : air ? 'air_support' : 'standard';
+  // Air Support: each human calls the next call-in every 420 ticks (staggered), at its aim point
+  const airCall = (index, tick) => { const t = tick + index * 210; return t % 420 === 0 && t > 300 ? AIR_STRIKE_BITS[AIR_STRIKE_KINDS[(Math.floor(t / 420) + index) % AIR_STRIKE_KINDS.length]] : 0; };
   const droneToggle = (index, tick) => { const t = (tick + index * 131) % 900; return t === 300 || t === 720 ? PLAYER_ACTION_BITS.DRONE : 0; };
   const heSlot = (specId) => Math.max(0, getSpec(specId).gun.shells.findIndex((shell) => isHeClass(shell?.type)));
   const players = [
@@ -96,7 +103,14 @@ export function runDeterminismAudit({ mapId = 'verdant', ticks = 3600, seed = 7,
     const match = createAuthoritativeMatch({ players: players.map((p) => ({ ...p })), mapId, seed, countdownS: 0, gameMode, worldCollision: world,
       ...(ruleset ? { ruleset } : {}) });
     match.onMatchReady();
+    if (air) {
+      // both humans start with the ledger's cap so every scheduled call can be paid (the bots earn their own)
+      const support = match.modeController.airSupport, saved = support.capture();
+      saved.points = saved.points.map(([id, value]) => [id, id === 'h1' || id === 'h2' ? support.rules.points.cap : value]);
+      support.restore(saved);
+    }
     const digests = [];
+    let strikes = 0, strikeRounds = 0;
     const events = [];
     let crushes = 0;
     let impacts = 0;
@@ -120,6 +134,7 @@ export function runDeterminismAudit({ mapId = 'verdant', ticks = 3600, seed = 7,
       inputs.set('h1', scriptedInput(0, tick));
       inputs.set('h2', craters ? scriptedInput(1, tick, h2Slot, -0.03) : scriptedInput(1, tick));
       if (drone) for (const [index, id] of ['h1', 'h2'].entries()) inputs.get(id).actionBits = droneToggle(index, tick);
+      if (air) for (const [index, id] of ['h1', 'h2'].entries()) inputs.get(id).actionBits = airCall(index, tick);
       match.step({ dt: SIM_DT, inputs });
       if (drone && tick % 30 === 0) for (const shell of match.snapshot({ tick, serverTimeMs: 0, viewerId: '__audit__', ackInputSeq: null }).shells) if (shell.type === 'DRONE' || shell.tracer === 'DRONE' || shell.drone) drones.add(shell.id);
       const pending = match.eventsForViewer('__audit__');
@@ -131,13 +146,16 @@ export function runDeterminismAudit({ mapId = 'verdant', ticks = 3600, seed = 7,
         else if (event.type === 'structure_stage') stages++;
         else if (event.type === 'terrain_crater') dug++;
         else if (event.type === 'tank_destroyed') turretKills++;
+        else if (event.type === 'mode_strike_called') strikes++;
+        else if (event.type === 'mode_strike_round') strikeRounds++;
       }
       match.afterEventBroadcast();
       if (tick % every === 0) digests.push([tick, stateDigest(match, events)]);
     }
     world.release?.();
     return { digests, counts: { events: events.length, crushes, impacts, hits, stages, craters: dug, kills: turretKills,
-      turretBodies: match.wreckTurretDigest ? match.wreckTurretDigest().split('\n').filter(Boolean).length : 0, drones: drones.size }, final: stateDigest(match, events) };
+      turretBodies: match.wreckTurretDigest ? match.wreckTurretDigest().split('\n').filter(Boolean).length : 0, drones: drones.size,
+      ...(air ? { strikes, strikeRounds } : {}) }, final: stateDigest(match, events) };
   };
   const started = performance.now();
   const a = run();
@@ -156,7 +174,7 @@ export function runDeterminismAudit({ mapId = 'verdant', ticks = 3600, seed = 7,
 if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
   const kernels = process.argv.includes('--kernels') ? await serverWorldKernels('wasm') : null;
   const report = runDeterminismAudit({ mapId: arg('map', 'verdant'), ticks: Number(arg('ticks', 3600)), seed: Number(arg('seed', 7)),
-    craters: process.argv.includes('--craters'), kills: process.argv.includes('--kills'), drone: process.argv.includes('--drone'), kernels });
+    craters: process.argv.includes('--craters'), kills: process.argv.includes('--kills'), drone: process.argv.includes('--drone'), air: process.argv.includes('--air'), kernels });
   console.log(`sim determinism: ${report.mapId} seed ${report.seed}, ${report.ticks} ticks × 2 runs in ${report.wallMs} ms — ${report.identical ? 'IDENTICAL' : `DIVERGED at tick ${report.firstDiffTick}`}; run A ${JSON.stringify(report.countsA)}, run B ${JSON.stringify(report.countsB)}; final ${report.finalA} / ${report.finalB}`);
   process.exitCode = report.identical ? 0 : 1;
 }

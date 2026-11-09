@@ -43,9 +43,10 @@ import {
 } from './railSpurs.ts';
 import { roadCoreMask, roadLaneSharpness } from './roadMaskProfile.ts';
 import {
-  MAP_PATH_SURFACES, MAP_PAVED_SURFACES, ROAD_SURFACE_CODE, pavedSurfaceUniforms, roadSurfaceUniforms,
+  ROAD_SURFACE_CODE, pavedSurfaceUniforms, roadSurfaceUniforms,
   type PavedSurfaceConfig, type RoadSurface, type RoadSurfaceWork,
 } from './roadSurfaces.ts';
+import { BANK_KIND_CODE, builtEnvironmentFor } from './maps/builtEnvironmentTable.ts';
 import { trackSurfaceAt, trackSurfacePolicy, type TrackSurface } from './trackSurface.ts';
 import { roadPaveSampler } from './roadPave.ts';
 import { completeRoadEndpoints, gradeRoadPortals, alignHardstandRoadPortals,
@@ -78,6 +79,9 @@ import { buildOutlandWaterGeometrySteps, resolveSeaOpenings, seaOpeningUniforms,
 // Round 73 (2026-09-25): the ground redux profile — transitions, folds, snow, glint and the shoreline clock (no sampler)
 import { cinderYardWeedsAt, groundReduxUniformValues, resolveGroundReduxProfile } from './groundRedux.ts';
 import { ROAD_CARRIAGEWAY_GLSL, ROAD_PAVING_GLSL } from './roadSurfaceShader.ts';
+// ground-269 (2026-11-04): the ground-surface table (groundSurfaces.ts) and its laws in the splat (groundSurfaceShader.ts)
+import { GROUND_SURFACE_GLSL, GROUND_SURFACE_WORKS_GLSL } from './groundSurfaceShader.ts';
+import { groundSurfaceUniformValues } from './groundSurfaces.ts';
 import { LAND_BAKE_LAYERS, LAND_USE_GLSL, bakeLandUseSteps, landUseAt, landUseTierOf, landUseUniformValues, resolveLandUseProfile, withLevelPaddies, type LandFieldSample, type LandUseProfile } from './landUse.ts';
 import { drawIceCracks } from './iceCracks.ts';
 import { civicLawns, civicPavedRooms } from './civic/plans/index.ts';
@@ -138,7 +142,7 @@ export interface RoadPathStyle {
   surface?: RoadSurface;
   /** The carriageway's full width (m), 4–18; absent: the map's ~7.7 m gauge. */
   widthM?: number;
-  /** Roads lane (2026-10-09): set on a style the period catalogue gave (roadSurfaces.ts MAP_PATH_SURFACES), never
+  /** Roads lane (2026-10-09): set on a style the period catalogue gave (the built-environment row's paths), never
    * authored — the road layer marks it so the Low tier draws the path as the map's own road. */
   catalogue?: boolean;
   /**
@@ -1193,10 +1197,10 @@ export function createLayout(cfg: TerrainMapConfig | null = null, completeRoads 
     const gridCount = roads.length;
     if (t.roads.paths) roads.push(...buildPathRoads(t.roads.paths));
     // (buildPathRoads keeps every path of two or more points, in order: a style follows its path)
-    // (roads lane, 2026-10-09: a path the catalogue surfaces — roadSurfaces.ts MAP_PATH_SURFACES, by the map's year — is
+    // (roads lane, 2026-10-09: a path the catalogue surfaces — the built-environment row's paths, by the map's year — is
     // styled with that surface where the map's own pathStyles leave it unstyled; 2026-10-11: and where the map's own style
     // sets only its width or its crown — Tidegate's dyke lanes — the catalogue's surface joins it)
-    const catalogue = (cfg?.id && MAP_PATH_SURFACES[cfg.id]) || null;
+    const catalogue = builtEnvironmentFor(cfg?.id)?.roads.paths ?? null;
     if (t.roads.paths && (t.roads.pathStyles?.some((st) => !!st) || catalogue?.some((sf) => !!sf))) {
       roadStyles = new Array<RoadPathStyle | null>(gridCount).fill(null);
       t.roads.paths.forEach((path, i) => {
@@ -3083,7 +3087,14 @@ function* heightFieldBuildSteps(
     if (compiledCanals !== null && canalWetness(compiledCanals, x, z) > 0.5) return T.softLakes ? 'soft' : 'hard';
     return 'medium';
   }
-  const roadPaveAt = roadPaveSampler(cfg?.splat, layout.village); // the FX lane's street dust (roadPave.ts)
+  // the FX lane's street dust (roadPave.ts), with the catalogue's paving as the material paints it (built-env-270): the
+  // splat's own paved surface or the row's, and each road line's own surface
+  const pavedCatalogue = cfg?.splat?.pavedSurface ?? builtEnvironmentFor(cfg?.id)?.roads.paved ?? null;
+  const roadPaveAt = roadPaveSampler(cfg?.splat, layout.village, {
+    streets: pavedCatalogue?.street ? (pavedCatalogue.townOnly ? 'town' : 'all') : null,
+    lines: layout.roadStyles?.map((style) => !!style?.surface && style.surface !== 'dirt') ?? null,
+    roads: layout.roads,
+  });
 
   function getDriveGroundType(x: number, z: number): GroundType {
     const ground = getGroundType(x, z);
@@ -4567,6 +4578,8 @@ uniform vec4 uRoadSurf, uRoadSurfB;
 // arcs, the gutter's width) by ROAD_SURFACE_CODE (0: the R layer's print), (patches, cracks, iron covers, —), and the
 // kerbed town rect (centre xz, half-size xz; z 0 = no kerbs)
 uniform vec4 uPaveClass, uPaveWear, uPaveTown;
+// built-env-270: 1 where the Low tier paves the streets in their own class (roadSurfaces.ts PavedSurfaceConfig.low)
+uniform float uPaveLow;
 // (R2) the procedural paving's (stone tone, a kerbed town's street class, centre lines, shell-hole fills)
 uniform vec4 uPaveExtra;
 // (the maps lane, 228) a square's setts' tone over the streets' (x; 1 on every map that names none)
@@ -4580,6 +4593,15 @@ uniform vec4 uTownPave;   // map revival lane 2 (2026-10-05): the paved town rec
 uniform float uYardCinder;
 // ground lane (2026-10-08, wave 274): the thatch and soil under a thick sward near the camera (groundRedux.ts thatch); 0 = off
 uniform float uThatch;
+// ground-269: the ground-surface table's classes as codes (groundSurfaces.ts groundSurfaceUniformValues): the open ground's
+// (macro, strength, close, strength), the worn ground's, and the town floor's (macro, close, strength, on)
+uniform vec4 uGsOpen, uGsWorn, uGsTown;
+// ground-269: the share of the smooth ground's direct light a detail facet may lose, on the open ground's class and on
+// the rest (x, y; 0 = no cap; z the setts' joints' floor), and the share the splat's normal pass applies here (set in
+// splatCompute)
+uniform vec4 uGsNear;
+float gGsTilt = 0.0;
+float gGsGain = 0.0;      // ground-269: the share a detail facet may gain (the cap's other side; set in splatCompute)
 uniform vec4 uSaltCrust;  // maps lane B (2026-10-03): a sor's salt crust (on, polygon cell m, damp margin, unused)
 uniform vec4 uRipple; // xy = wind dir, z = ripple amplitude, w = shore-only
 uniform float uSandMacro; // r3: desert macro variation (gravel basins / scour sheets)
@@ -4625,6 +4647,11 @@ float terraceZoneW(vec2 p) {
 uniform float uSea;       // maps r1: 1 = M layer is OPEN WATER (sea/river), 0 = legacy mud/ice
 uniform float uSeaFoam;   // maps r1: surf/whitecap strength (0 disables)
 uniform vec2 uSeaRamp;    // maps r1: fM band that ramps to open water (sea wide, river tight)
+// built-env-270 (2026-11-05): the bank's facing (maps/builtEnvironmentTable.ts shore.bank): (kind — 0 the old apron, 1 sand,
+// 2 shingle, 3 rock, 4 pitched stone, 5 mud, 6 turf to the water —, its width landward of the waterline (m), strength, the
+// stones' size (m)); uBankTint the facing's own colour (linear), its layer's grain kept over it
+uniform vec4 uBank;
+uniform vec3 uBankTint;
 uniform vec4 uSeaOpenings[4]; // round 40: sea openings past the square (direction angle, half-width, shoulder, 0)
 uniform vec4 uSeaBanks[4];
 uniform float uSeaOpeningCount;
@@ -4663,6 +4690,7 @@ float gPaddyWater = 0.0;     // (Caldera round 4) a flooded paddy's alone: its p
 float gCropW = 0.0;          // ground lane: a sown field's weight (not pasture or hay): the sward's own relief stands down there
 float gCropReliefW = 0.0;    // ground lane (wave 274): gCropW for the sward's relief — none on a young green crop (a short sward)
 float gSoilW = 0.0;          // ground lane: a bare field's weight (plough, terra rossa, a vineyard's earth, slag, ballast, gravel)
+float gParcelW = 0.0;        // ground-269: an urban land use's parcel weight, any crop (the town floor lies over it at the old wear's share)
 float gJebelMatte = 0.0;     // the Redrock lane, round 11b: a jebel face's weight (its sheen cut in the aomap stage)
 float gLaneSheen = 0.0;      // ground lane (wave 86): a field track's pressed lane floor (its faint satin in the roughness stage)
 float gYardOil = 0.0;        // ground lane (2026-10-08): a cinder yard's oil stains (a satin in the roughness stage)
@@ -5073,6 +5101,9 @@ void splatCompute() {
   // under every texel of it — its lots, its roads, its pads and its banks alike (the bake's crop, read once; the village
   // mask's alpha is the wear, patchy, not the floor); 0 on every other map
   float gWorksFloor = 0.0;
+  // ground-269 (c14, Ironworks' town pose: the works floor's ash, rust and clinker over a works street's setts, "tread-plate
+  // repeat") a works' paved street, set in the paving below; its setts stay as laid
+  float gPaveStreet = 0.0;
   if (uLandE.w > 1.5) {
     int kc = int(luA.r * 255.0 + 0.5) & 31;
     gWorksFloor = (kc >= 15 && kc <= 16) || (kc >= 18 && kc <= 19) ? 1.0 : 0.0;
@@ -5788,9 +5819,75 @@ void splatCompute() {
   if (gWorksFloor > 0.5 && fD < 0.998) {
     a.rgb = mix(a.rgb, worksSlag(n1h, n2, 0.5) * 1.15 * (0.86 + 0.28 * nz(uv, 0.31, vec2(0.71, 0.13)).r), 0.85 * (1.0 - fD));
   }
+  if (uBank.x > 5.5) seaSand = 0.0; // built-env-270: a turf bank keeps its meadow to the water
   if (seaSand > 0.003) { // maps r1: bare shoreline apron under the surf line
     a = mix(a, groundSamp(uAlbD, uMeanD, uv * 0.210, df, mipB), seaSand);
     if (nrmOn) n = mix(n, groundNrm(uNrmD, uv * 0.210, df, mipB), seaSand);
+  }
+  // built-env-270 (2026-11-05; the owner: "beach areas annd areas around water ... have to be fully updated"): the bank's
+  // facing in METRES from the waterline (the shore byte), each its place's own — a Dalmatian shingle beach, a Nordland
+  // rock shore, a Zeeland dyke's basalt pitching, a Shanghai creek's stone embankment, a drawn-down reservoir's mud. The
+  // facing takes its layer's grain over its own colour (uBankTint), so a sand set reads as limestone grit where the photos
+  // show it; the stones (shingle, pitching) are cells in world metres, faded to their mean past the pixel's footprint.
+  // (the courses' direction from the shore distance's world gradient, taken in uniform control flow: a pitched bank only)
+  vec2 bAlong = vec2(1.0, 0.0);
+  if (uBank.x > 3.5 && uBank.x < 4.5) {
+    vec2 dx = dFdx(wp.xz), dy = dFdy(wp.xz);
+    float sx = dFdx(vShore), sy = dFdy(vShore), det = dx.x * dy.y - dx.y * dy.x;
+    vec2 g = abs(det) > 1e-8 ? vec2(sx * dy.y - sy * dx.y, sy * dx.x - sx * dy.x) / det : vec2(1.0, 0.0);
+    bAlong = normalize(vec2(-g.y, g.x) + vec2(1e-5, 0.0));
+  }
+  if (uSea > 0.5 && uBank.x > 0.5 && uBank.x < 5.5 && vShore < 31.0) {
+    float bEdge = vShore + (n1h - 0.5) * 1.6 + (n1 - 0.5) * 0.9;
+    float bankW = (1.0 - fMs) * (1.0 - roadCore) * (1.0 - smoothstep(uBank.y - 0.9, uBank.y + 0.9, bEdge)) * uBank.z;
+    if (bankW > 0.003) {
+      const vec3 bL = vec3(0.34, 0.45, 0.21);
+      bool bRock = uBank.x > 2.5 && uBank.x < 3.5;
+      vec4 bs = bRock ? groundSamp(uAlbR, uMeanR, uv * 0.330, df, mipB) : groundSamp(uAlbD, uMeanD, uv * 0.210, df, mipB);
+      vec4 bm = bRock ? uMeanR : uMeanD;
+      float bGrain = clamp(dot(bs.rgb - bm.rgb, bL) / max(dot(bm.rgb, bL), 1e-3), -0.6, 0.6);
+      vec3 bCol = uBankTint * (1.0 + bGrain * 0.85);
+      if (uBank.x > 1.5 && uBank.x < 2.5 || uBank.x > 3.5 && uBank.x < 4.5) {
+        // the stones: shingle as rounded cells of their own tone; pitching as blocks in courses along the waterline
+        float sz = max(uBank.w, 0.05);
+        vec2 bq;
+        if (uBank.x > 3.5) {
+          // the courses follow the shore: across them the shore distance, along them the world axis across its gradient
+          float row = vShore / (sz * 0.62);
+          bq = vec2(dot(wp.xz, bAlong) / sz + 0.5 * mod(floor(row), 2.0), row);
+        } else {
+          bq = wp.xz / sz;
+        }
+        vec2 bc = floor(bq), bf = fract(bq) - 0.5;
+        float bh = fract(sin(dot(bc, vec2(127.1, 311.7))) * 43758.5453);
+        float bShape;
+        if (uBank.x > 3.5) {
+          bShape = max(abs(bf.x), abs(bf.y));
+        } else {
+          // (r3, the fjord's frames: equal stones on a square grid read as a cobbled path) shingle as a jittered cellular
+          // field: the nearest centre and the second nearest give each stone its own irregular outline and size
+          float f1 = 8.0, f2 = 8.0;
+          vec2 bn = vec2(0.0), bo = vec2(0.0);
+          for (int j = -1; j <= 1; j++) for (int i = -1; i <= 1; i++) {
+            vec2 cc = bc + vec2(float(i), float(j));
+            float hh = fract(sin(dot(cc, vec2(127.1, 311.7))) * 43758.5453);
+            vec2 o = vec2(float(i), float(j)) + vec2(hh, fract(hh * 7.13)) * 0.84 + 0.08 - (fract(bq));
+            float dd = dot(o, o) * (0.75 + 0.5 * fract(hh * 3.7));
+            if (dd < f1) { f2 = f1; f1 = dd; bn = cc; bo = o; } else if (dd < f2) { f2 = dd; }
+          }
+          bh = fract(sin(dot(bn, vec2(127.1, 311.7))) * 43758.5453);
+          bf = -bo * 0.5;
+          bShape = 0.48 - clamp((sqrt(f2) - sqrt(f1)) * 0.9, 0.0, 0.48);
+        }
+        float bStone = 1.0 - smoothstep(0.36, 0.48, bShape);
+        float bVis = tileVis(sz);
+        float bTone = mix(1.0, (0.74 + 0.5 * bh) * mix(0.42, 1.0 + 0.10 * (0.4 - bShape), bStone), bVis);
+        bCol *= bTone;
+        if (nrmOn) n.xy = mix(n.xy, vec2(0.5) + bf * 0.55 * bStone, bankW * bVis * 0.8);
+      }
+      a.rgb = mix(a.rgb, max(bCol, 0.0), bankW);
+      if (bRock && nrmOn) n = mix(n, groundNrm(uNrmR, uv * 0.330, df, mipB), bankW);
+    }
   }
   if (fMs > 0.002 && keepR > 0.002) {
     a = mix(a, groundSamp(uAlbM, uMeanM, uv * 0.190, df, mipB), fMs);
@@ -6229,6 +6326,14 @@ void splatCompute() {
       // share while the ground under it was the yard's paler worn soil: the growing rice there lit up as a lime glow. The
       // sward's luminance is held to 1.2 times the calibrated one (0.075), as a crop's own albedo never runs above it
       float baseL = min(reduxLuma(aF), 0.09);
+      // (ground-269, the owner's "flat … black spaces" on Steinburg's and Verdant's fields: the clamp cut the sward's grain
+      // to a flat ceiling at 0.09 and left only its dark pockets, a lawn with near-black blotches) where the table runs
+      // (uGsNear.w) a crop takes its level from the sward's tile mean, capped as before, and carries the local grain both
+      // ways round it (±28 %), so the field keeps its texture and loses the holes
+      if (uGsNear.w > 0.0) {
+        float gsML = max(reduxLuma(uMeanG.rgb), 1e-3);
+        baseL = min(gsML, 0.09) * clamp(reduxLuma(aF) / gsML, 0.72, 1.28);
+      }
       float sw = baseL / 0.075; // the local sward against the calibrated one: a crop's albedo keeps the photo's grain
       float bright = 0.90 + 0.20 * jit;
       // pasture: a grazed field paler and yellower, a shut-up one lusher, by the field
@@ -6604,17 +6709,23 @@ void splatCompute() {
           hard *= 1.0 - 0.45 * (1.0 - smoothstep(0.02, 0.05 + gFootM, min(sd.x, sd.y))) * tileVis(4.0);
           float slabV = hFast ? tileVis(4.0) : 1.0;
           float slabH = slabV > 0.004 ? cellHash2(floor(hq / 4.0) + vec2(jit * 97.0, 3.0)).x : 0.5;
-          hard *= 0.92 + 0.16 * mix(0.5, slabH, slabV);
+          hard *= 0.92 + (uGsNear.w > 0.0 ? 0.10 : 0.16) * mix(0.5, slabH, slabV);
         }
-        vec2 hp = hq / vec2(5.2, 3.1), hpI = floor(hp), hpF = fract(hp);
+        // (ground-269: the phone's Ruinspires read the repairs on their aligned 5.2 x 3.1 m grid as a light-and-dark
+        // checkerboard) where the table runs (uGsNear.w) the repair courses are staggered row by row and their tones nearer
+        // the pour's own, so a repaired surface reads as patched asphalt, not a board
+        vec2 hp = hq / vec2(5.2, 3.1);
+        if (uGsNear.w > 0.0) hp.x += 0.5 * mod(floor(hp.y), 2.0) + 0.23 * fract(floor(hp.y) * 0.618);
+        vec2 hpI = floor(hp), hpF = fract(hp);
         // (past its cells' visibility a repaired surface is its mean: three tenths repaired, half of them darker, half paler)
         float repV = hFast ? tileVis(3.1) : 1.0;
         vec2 hh = repV > 0.004 ? cellHash2(hpI + vec2(91.0 + jit * 53.0, 13.0)) : vec2(1.0, 0.0);
         float repair = step(hh.x, 0.30);
         vec2 he = min(hpF, 1.0 - hpF) * vec2(5.2, 3.1);
         float seamH = (1.0 - smoothstep(0.03, 0.06 + gFootM, min(he.x, he.y))) * repair * tileVis(0.6);
-        vec3 hardMean = hard * (0.70 + 0.30 * 0.5 * (0.78 + 0.5)) + 0.30 * 0.5 * 0.5 * vec3(0.13, 0.128, 0.122);
-        hard = mix(hardMean, mix(hard, hh.y > 0.5 ? hard * 0.78 : mix(hard, vec3(0.13, 0.128, 0.122), 0.5), repair), repV);
+        float repD = uGsNear.w > 0.0 ? 0.88 : 0.78, repP = uGsNear.w > 0.0 ? 0.30 : 0.5; // (ground-269: the repairs' tones)
+        vec3 hardMean = hard * (0.70 + 0.15 * repD + 0.15 * (1.0 - repP)) + 0.15 * repP * vec3(0.13, 0.128, 0.122);
+        hard = mix(hardMean, mix(hard, hh.y > 0.5 ? hard * repD : mix(hard, vec3(0.13, 0.128, 0.122), repP), repair), repV);
         hard *= 1.0 - 0.45 * seamH;
         float crackV = tileVis(0.5);
         float crackH = uLandTier > 1.5 && (!hFast || crackV > 0.004) ? (1.0 - smoothstep(0.0, 0.02 + gFootM, abs(nz(uv, 0.9, vec2(0.71, 0.29)).r - 0.5) * 0.12))
@@ -6658,6 +6769,7 @@ void splatCompute() {
       // (2026-10-07, Ironworks round 4: a works' wear is its cinder — toward the map's pale dirt it lifted every lot)
       if (uLandE.w > 0.5) a.rgb = mix(a.rgb, uLandE.w > 1.5 ? worksSlag(n1h, n2, 0.5) * 1.12 : uMeanD.rgb * vec3(1.02, 0.98, 0.92),
         clamp(mk.a * uTownWear * (0.35 + 0.65 * n1), 0.0, 1.0) * 0.40 * inField * landW);
+      gParcelW = inField * landW * step(0.5, uLandE.w);
       // (wave 21, the Verdant boundary at tank eye: "a dead-straight, unblended seam between the green grass field and the
       // golden wheat field") a worked field's edge is a feature: inside its grass margin lies the headland, 3–5.5 m where
       // the drill turned — the crop pressed flat and thinner with the soil showing in it, and the turning wheels' two arcs
@@ -6869,6 +6981,7 @@ void splatCompute() {
       a.rgb *= 1.0 + hp.y * 0.12 * patchW;
     }
   }
+${GROUND_SURFACE_GLSL}
   // Round 73b (2026-09-26): the borders themselves. Round 73 broke the transition's LINE (a height-and-noise mix) but
   // left both sides their own tone, so at 40–120 m — where the normals have mipped flat — a dirt patch met its turf
   // with nothing to see. A worn patch's edge is where the sod is torn and the soil lies open, darker and damper than
@@ -7727,6 +7840,7 @@ ${ROAD_PAVING_GLSL}
         pav.a = mix(pav.a, 0.95, worksPad);
         pnn = mix(pnn, NRM_MEAN, worksPad * 0.7);
       }
+      gPaveStreet = paveCore * (1.0 - worksPad);
       if (uLandE.w > 1.5 && paveCore > 0.003) {
         vec2 sq = nzq(uv, 0.071, vec2(0.53, 0.21));
         float soot = smoothstep(0.38, 0.78, sq.x);
@@ -7744,6 +7858,7 @@ ${ROAD_PAVING_GLSL}
       a.rgb *= 1.0 - gutter * 0.18 * gRoadTex;
     }
   }
+${GROUND_SURFACE_WORKS_GLSL}
   // r4: 0.09 -> 0.16 + a dusty desaturation pull — road shoulders must read
   // as worn verge (tracked dirt spilling off the carriageway), not clean lawn
   // running flush to the wheel ruts (critique: "no decals along road edges")
@@ -8247,6 +8362,23 @@ const SPLAT_NORMAL_FRAG = /* glsl */`
   }
   vec3 wN = normalize(vec3(gN.x + pN.x, max(gN.y, 0.02) + pN.y, gN.z + pN.z));
   normal = normalize((viewMatrix * vec4(wN, 0.0)).xyz);
+  // ground-269 (groundSurfaces.ts relief): no detail facet loses more than its ground class's share of the direct light the
+  // smooth ground there receives from the key light. The stacked octaves (the soil's clods on turf, the blades, the mid
+  // tussocks, the dapple, x2 by the range gain) turned facets from a low sun until they lost most of it, and the turf
+  // drew soft near-black blotches a metre or two across — the owner's "black spaces". A facet past the share is eased
+  // back toward the smooth normal just far enough; every facet that keeps its light keeps its relief (0 = no cap)
+  // (ab9, Blackglass's long view: with the dark facets held, the lit ones alone drew the relief, and at range the blades'
+  // sun sides laid pale combed arcs across the hill — "directional stroke texture", "banding") nor gains more than
+  // gGsGain of it
+  #if NUM_DIR_LIGHTS > 0
+  if (gGsTilt > 0.0) {
+    vec3 gsL = directionalLights[0].direction;
+    vec3 gsG = normalize((viewMatrix * vec4(gN, 0.0)).xyz);
+    float gsGL = dot(gsG, gsL), gsD = dot(normal, gsL) - gsGL;
+    float gsB = gsGL * (gsD < 0.0 ? gGsTilt : gGsGain);
+    if (gsGL > 0.02 && abs(gsD) > gsB) normal = normalize(mix(gsG, normal, clamp(gsB / max(abs(gsD), 1e-4), 0.0, 1.0)));
+  }
+  #endif
 }
 `;
 
@@ -8422,6 +8554,8 @@ function* createSplatMaterialSteps(
   let yardCinder = Math.min(1, Math.max(0, groundProfile.cinderYard ?? 0));
   // ground lane (2026-10-08, wave 274): the thatch under a thick sward (groundRedux.ts thatch)
   let thatchV = Math.min(1, Math.max(0, groundProfile.thatch ?? 0));
+  // ground-269: the map's grounds as the table's codes (groundSurfaces.ts)
+  const groundSurface = groundSurfaceUniformValues(mapId);
   // `?ground=legacy`: every redux term at zero on the same build — the round's before / after captures A/B against it
   if (typeof location !== 'undefined' && /[?&]ground=legacy(&|$)/.test(location.search ?? '')) {
     thatchV = 0;
@@ -8429,6 +8563,7 @@ function* createSplatMaterialSteps(
     redux.reduxB.fill(0); redux.reduxC.fill(0); // round 73b
     redux.reduxD.fill(0); // terrain v2
     landUse.landA[0] = 0; // ground lane: no fields
+    groundSurface.open.fill(0); groundSurface.worn.fill(0); groundSurface.town.fill(0); groundSurface.near.fill(0); // ground-269
     yardCinder = 0;
   }
   // ground lane (2026-10-03, the GPU fix): the land use baked once from its CPU twin at the interior mask's texel scale
@@ -8526,7 +8661,7 @@ function* createSplatMaterialSteps(
     shader.uniforms.uFormationLow = formationLowUniform; // the Redrock lane
     shader.uniforms.uFormationUp = formationUpUniform;
     // (roads lane R1c: a map's paved surfaces — its splat's, else the catalogue's — take its roads whole, or its town's)
-    const pavedCfg: PavedSurfaceConfig | undefined = S.pavedSurface ?? MAP_PAVED_SURFACES[mapId];
+    const pavedCfg: PavedSurfaceConfig | undefined = S.pavedSurface ?? builtEnvironmentFor(mapId)?.roads.paved ?? undefined;
     shader.uniforms.uRoadTex = { value: S.pavedRoads || (pavedCfg?.street && !pavedCfg.townOnly) ? 1 : clamp(S.roadTexMix ?? 0, 0, 1) };
     const town = layout.village; // map revival lane 2: the paved town rect (townPaving), off unless the map authors it
     shader.uniforms.uTownPave = { value: S.townPaving || pavedCfg?.townOnly ? new THREE.Vector4((town.x0 + town.x1) / 2, (town.z0 + town.z1) / 2,
@@ -8538,9 +8673,14 @@ function* createSplatMaterialSteps(
     shader.uniforms.uPaveTown = { value: new THREE.Vector4(...paved.town) };
     shader.uniforms.uPaveExtra = { value: new THREE.Vector4(...paved.extra) };
     shader.uniforms.uPaveSquare = { value: new THREE.Vector4(...paved.square) };
+    shader.uniforms.uPaveLow = { value: pavedCfg?.low ? 1 : 0 };
     shader.uniforms.uTownWear = { value: S.townWear ?? 1 };
     shader.uniforms.uYardCinder = { value: yardCinder };
     shader.uniforms.uThatch = { value: thatchV };
+    shader.uniforms.uGsOpen = { value: new THREE.Vector4(...groundSurface.open) };
+    shader.uniforms.uGsWorn = { value: new THREE.Vector4(...groundSurface.worn) };
+    shader.uniforms.uGsTown = { value: new THREE.Vector4(...groundSurface.town) };
+    shader.uniforms.uGsNear = { value: new THREE.Vector4(...groundSurface.near) };
     shader.uniforms.uWornDirtStrength = { value: clamp(S.wornDirtStrength ?? 0.84, 0, 1) };
     shader.uniforms.uShoulderDirt = { value: clamp(S.shoulderDirt ?? 1, 0, 1) };
     shader.uniforms.uLaneK = { value: roadLaneSharpness(mask.image.width) }; // road pass 2026-09-12
@@ -8609,6 +8749,11 @@ function* createSplatMaterialSteps(
     shader.uniforms.uSeaOpeningCount = { value: Math.min(4, seaOpenings.length) };
     shader.uniforms.uSeaFoam = { value: S.seaLake ? (S.seaFoam ?? 0.8) : 0 };
     shader.uniforms.uSeaRamp = { value: new THREE.Vector2(...(S.seaRamp || [0.40, 0.78])) };
+    // built-env-270: the bank's facing (its built-environment row; none: the old apron)
+    const bank = builtEnvironmentFor(mapId)?.shore.bank ?? null;
+    shader.uniforms.uBank = { value: bank ? new THREE.Vector4(BANK_KIND_CODE[bank.kind], bank.widthM, bank.strength ?? 1, bank.stoneM ?? 0.12)
+      : new THREE.Vector4(0, 0, 0, 0) };
+    shader.uniforms.uBankTint = { value: new THREE.Color(bank?.hex ?? 0x808080) }; // (THREE.Color takes sRGB hex to linear)
     shader.uniforms.uMidRelief = { value: S.midRelief ?? 1 };
     shader.uniforms.uSlopeGrassHold = { value: S.slopeGrassHold ?? 0 }; // round 45
     shader.uniforms.uRingRock = { value: new THREE.Vector2(...(S.ringRockSlope ?? [0.22, 0.48])) }; // round 49
@@ -8652,7 +8797,7 @@ function* createSplatMaterialSteps(
     shader.uniforms.uRoadRuts = { value: new THREE.Vector3(...(S.roadRuts ?? [1, 0, 0])) };
     // roads lane (2026-10-09): the worked carriageway (relief, stones, potholes, treads) and (washboard, tone floor, lanes'
     // albedo share, windrow) — the map's override, else its climate's row under its splat.roadSurface
-    const roadWork = roadSurfaceUniforms(mapId, groundProfile.climate, S.roadSurface);
+    const roadWork = roadSurfaceUniforms(builtEnvironmentFor(mapId)?.roads.work ?? 'climate', groundProfile.climate, S.roadSurface);
     shader.uniforms.uRoadSurf = { value: new THREE.Vector4(...roadWork.a) };
     shader.uniforms.uRoadSurfB = { value: new THREE.Vector4(...roadWork.b) };
     // round 42: the sun the vista ring shades with, and the sky-light weight for steep faces turned from it

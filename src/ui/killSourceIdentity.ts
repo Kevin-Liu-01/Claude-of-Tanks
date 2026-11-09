@@ -11,17 +11,20 @@
 // once per locale and reused (no allocation per call).
 import { getLocale, t } from './i18n.ts';
 
+type StrikeSource = 'strafe' | 'bomb' | 'artillery';
 interface SourceIdentity {
-  readonly source: 'ac130' | 'drone';
-  /** the platform's name as the surfaces show it ("AC-130", "FPV drone") */
+  readonly source: 'ac130' | 'drone' | StrikeSource;
+  /** the platform's name as the surfaces show it ("AC-130", "FPV drone", Air Support's "Strafing run") */
   readonly label: string;
   /** its ui icon (uiIcons.ts) in the silhouette's place */
-  readonly icon: 'modeAc130' | 'modeDrone';
+  readonly icon: 'modeAc130' | 'modeDrone' | 'modeAirSupport';
 }
 
 let identityLocale = '';
 let ac130: SourceIdentity | null = null;
 let drone: SourceIdentity | null = null;
+/** Air Support's call-ins that kill (air-support-270; the AC-130 orbit's kills are the gunship's own source above). */
+const strikes: Partial<Record<StrikeSource, SourceIdentity>> = {};
 
 function identities(): void {
   const locale = getLocale();
@@ -29,11 +32,15 @@ function identities(): void {
   identityLocale = locale;
   ac130 = Object.freeze({ source: 'ac130', label: t('flight.gunship'), icon: 'modeAc130' });
   drone = Object.freeze({ source: 'drone', label: t('hud.source.drone'), icon: 'modeDrone' });
+  for (const kind of ['strafe', 'bomb', 'artillery'] as const) {
+    strikes[kind] = Object.freeze({ source: kind, label: t(`airSupport.kind.${kind}`), icon: 'modeAirSupport' });
+  }
 }
 
 /** The identity a kill or hit source shows, or null for the firing vehicle's own weapons. */
 export function killSourceIdentity(source: unknown): SourceIdentity | null {
   // the authority's sources (sim/aerialCombat.ts killSourceOf); any other wire value is the vehicle itself
+  if (source === 'strafe' || source === 'bomb' || source === 'artillery') { identities(); return strikes[source] ?? null; }
   if (source !== 'ac130' && source !== 'drone') return null;
   identities();
   return source === 'ac130' ? ac130 : drone;

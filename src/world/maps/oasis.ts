@@ -13,6 +13,7 @@ import { roundRoadBends } from './roadBends.ts';
 import { talusFan } from './geology.ts';
 
 import * as detMath from '../../sim/detMath.ts';
+import { BUILDING_STYLES } from './buildingStyleTable.ts';
 // Oasis round 3 (the map-revival lane, 2026-10-07; gauntlet wave 135: "a sparse scatter of small white boxes isolated on
 // open dune sand along wide empty roads, with no dense heaped Shali core, no mud-walled garden plots and no palm
 // groves"): Siwa authored lot by lot — old Shali heaped north of the caravan street (its blocks packed a metre apart,
@@ -129,7 +130,7 @@ export default {
     // meets a building's plot is left out (props.ts dressingRules.fencesClearBuildings; no stub rule)
     dressingRules: { fencesClearBuildings: true },
     // the map-revival lane (2026-10-05): the town is Siwa's, in the siwa variant of the ksar kit (maps/regional/ksar.ts)
-    architecture: 'siwa',
+    architecture: BUILDING_STYLES.oasis.kit,
     sourcedPalette: 'desert',
     // (round 3: the town authored, SIWA_TOWN above; no roadside plan)
     plan: [],

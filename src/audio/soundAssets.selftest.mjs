@@ -38,8 +38,11 @@ for (const [id, rec] of Object.entries(SFX_ASSETS)) {
 // our own hull's banks. 34 MB from 2026-11-04 (Main's ruling for the 269 audio stack): the three sound lanes measured
 // over main's 23.45 MB — gun-reports-269 +7.13 (every bore's reports, reloads and the ear proxy's full slots),
 // world-sfx-269 +1.86 (running gear, crashes, roofs, the modes, night life), impact-materials-269 +1.21 (struck parts,
-// grazes, near misses) — 33.65 MB. What a player pays is the battle's set, not this sum.
-assert.ok(bytes < 34 * 1024 * 1024, `sound-effect payload ${(bytes / 1048576).toFixed(1)} MB within 34 MB`);
+// grazes, near misses) — 33.65 MB. What a player pays is the battle's set, not this sum. 35 MB from 2026-11-05
+// (air-support-270: Air Support's call-ins +0.66 MB, decoded only in an Air Support battle; the measured 34.3 MB). The
+// rule (DECISIONS 2026-11-05, the russia-152 entry): the cap is the measured sum rounded up to the next MiB, re-derived
+// once on each integration tip, never by adding the heads' deltas.
+assert.ok(bytes < 35 * 1024 * 1024, `sound-effect payload ${(bytes / 1048576).toFixed(1)} MB within 35 MB`);
 
 // ---- every asset the engine and its rigs ask for exists.
 const engine = readFileSync(new URL('./audioEngine.ts', import.meta.url), 'utf8');
@@ -131,8 +134,10 @@ for (const lang of CREW_LANGUAGES) {
   }
   // 2.5 MB until 2026-11-03; the owner asked for "more and better voice lines … all the special modes, in all the
   // languages", so crew-lines-269 made a pack 190 lines and 371 takes (up to 3.29 MB) and the cap rose to 3.5 MB. Only
-  // the crew's own pack loads, and it decodes at 16 kHz (assetLibrary VOICE_DECODE_HZ).
-  assert.ok(langBytes < 3.5 * 1024 * 1024, `${lang} pack ${(langBytes / 1048576).toFixed(2)} MB`);
+  // the crew's own pack loads, and it decodes at 16 kHz (assetLibrary VOICE_DECODE_HZ). air-support-270's 8 lines made
+  // every pack 198 lines and 387 takes; the longest world languages measure up to 3.66 MB (fa; 52.0 MB decoded, from
+  // 48.9), so the cap is that rounded up to the next MiB: 4 MiB (crew-languages-270).
+  assert.ok(langBytes < 4 * 1024 * 1024, `${lang} pack ${(langBytes / 1048576).toFixed(2)} MB`);
 }
 
 console.log(`soundAssets.selftest: ${Object.keys(SFX_ASSETS).length} assets (${(bytes / 1048576).toFixed(1)} MB), ${referenced.size} engine references, ${MAP_IDS.length} scenes, ${CREW_LANGUAGES.length} crew packs × ${scriptIds.size} lines passed`);

@@ -743,6 +743,28 @@ for (const result of ['victory', 'defeat', 'draw']) {
 await ending('ac130', 'victory', 'escort_extracted', 'gunship_victory', gunship);
 await ending('ac130', 'defeat', 'escort_lost', 'gunship_defeat', gunship);
 
+// Air Support (air-support-270): the mode opens with its own call; our crew reads back each call-in the authority takes,
+// is called out of an enemy strike's footprint before anything lands (an air strike, a barrage), and calls an aircraft
+// our guns bring down. Another crew's call is not ours to read back, and a strike far off calls nobody out.
+await opening('air_support', 'start_air_support');
+{
+  let strikeId = 800;
+  const call = (kind, team, x, z, callerId) => bus.emit('mode:strike_called', { strikeId: strikeId++, kind, team, x, y: 0, z, heading: 0,
+    landsS: 1000 + strikeId, warningS: 6, callerId });
+  for (const [kind, id] of [['recon', 'air_call_recon'], ['artillery', 'air_call_artillery'], ['strafe', 'air_call_strafe'], ['bomb', 'air_call_bomb']]) {
+    moment(id, () => call(kind, 'alpha', 0, 300, 'me'));
+  }
+  settle(8);
+  const quiet = +ctx.currentTime.toFixed(3);
+  call('bomb', 'alpha', 0, 300, 'a1');
+  call('strafe', 'bravo', 600, 600, 'f1');
+  settle(4);
+  assert.ok(!probe.sayLog.some((e) => e.t >= quiet && /^(air_|artillery_incoming)/.test(e.id)), `an ally's call and a strike far off are not ours (${probe.sayLog.filter((e) => e.t >= quiet).map((e) => e.id)})`);
+  moment('air_incoming', () => call('strafe', 'bravo', 0, 10, 'f1'));
+  moment('artillery_incoming', () => call('artillery', 'bravo', 6, 6, 'f1'));
+  moment('aircraft_downed', () => bus.emit('mode:aircraft_down', { strikeId: 990, kind: 'bomb', team: 'bravo', by: 'me', x: 0, y: 350, z: 200 }));
+}
+
 // Every crew line in the catalog has its moment.
 const untested = Object.keys(VOICE_LINES).filter((id) => !covered.has(id));
 assert.deepEqual(untested, [], 'every crew line is driven by a game moment in this matrix');
@@ -759,4 +781,4 @@ for (const file of readdirSync(new URL('.', import.meta.url)).filter((f) => f.en
   assert.ok(!/fallbackLanguage/.test(source), `${file} keeps a stand-in crew`);
 }
 
-console.log(`voiceTriggers.selftest: ${covered.size} crew lines driven by their game moments (fire commands, shot results, protection, our systems, drone, gunship fire control, supply drops, every mode's opening, moments and results) and no stand-in sounds passed`);
+console.log(`voiceTriggers.selftest: ${covered.size} crew lines driven by their game moments (fire commands, shot results, protection, our systems, drone, gunship fire control, supply drops, every mode's opening, moments and results, Air Support's call-ins) and no stand-in sounds passed`);

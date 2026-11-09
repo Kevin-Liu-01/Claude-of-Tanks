@@ -41,6 +41,7 @@ import { wallWeather } from './regional/weather.ts';
 import {
   Mesh, STONE_FLAT_TEXEL, X, Y, Z, add, hash, hexLin, lin, member, mix, mul, pole, scl, stream, type Rgb, type UvMode, type V3,
 } from './craftMesh.ts';
+import { climateOf } from './buildingStyleTable.ts';
 
 export type WellForm = 'zhuravel' | 'logwell' | 'drawwell' | 'pump' | 'granite' | 'desert' | 'tubewell' | 'ringwell' | 'trough' | 'windlass';
 export type MonumentForm = 'krieger' | 'lorraine' | 'stele' | 'saeule';
@@ -75,10 +76,10 @@ export interface WellBuildContext {
   /** a phone's build (the column's shaft a plain 12-gon, not fluted) */
   mobile?: boolean;
 }
-export function wellStoneOf(style: ArchitectureStyle | null | undefined): WellBuildContext['stone'] {
+export function wellStoneOf(style: ArchitectureStyle | null | undefined, mapId: string): WellBuildContext['stone'] {
   if (!style) return null;
   const s = style.surfaces.stone;
-  return { kind: s.kind, dressed: !!s.dressed, tint: s.tint, damp: style.weather?.damp ?? 0.8 };
+  return { kind: s.kind, dressed: !!s.dressed, tint: s.tint, damp: climateOf(mapId, style.id).damp };
 }
 
 // colours (sRGB hex → linear)

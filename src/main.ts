@@ -1,4 +1,5 @@
 import './ui/richTooltip.css';
+import { installAirSupportBridge } from './game/airSupportBridge.ts';
 import { createVehicleGroundSampler } from './world/vehicleGroundSampler.ts';
 import './ui/battleUiVisibility.css';
 import './ui/hudCustomization.css';
@@ -254,7 +255,8 @@ import { clearMatchSession, createBus, createGameState, watchRevealsAll } from '
 import { campaignOperationById } from './game/campaignOperations.ts';
 // Pure roster planning: the solo battle authority stays behind soloBattleAccess (boot-static-closure receipt).
 import { soloRosterPlan } from './game/soloRosterPlan.ts';
-import { deathsAreFinal, matchRulesetFor, terrainVariantFor } from './sim/matchRuleset.ts';
+import { AIR_STRIKE_KINDS, deathsAreFinal, matchRulesetFor, terrainVariantFor } from './sim/matchRuleset.ts';
+import { AIR_STRIKE_BITS } from './sim/playerActions.ts';
 import { normalizeGameMode } from './sim/gameModeCatalog.ts';
 import { teamNationsFlags } from './sim/teamNations.ts';
 import { SHOT_VIEWS, type ShotViewName } from './dev/shotContract.ts';
@@ -705,6 +707,8 @@ const devTrace = traceRequested
   })
   : null;
 const bus = createBus(devTrace ? (ev, payload) => devTrace.event(ev, payload) : null);
+// Air Support (air-support-270): the strafing jet's and the AC-130's rounds fire from the aircraft (airSupportBridge.ts)
+installAirSupportBridge(bus);
 installBattleRecords(bus);
 installCampaignProgress(bus); // campaign slice 4 (2026-09-12): Frontline Assault sorties persist locally
 const game: MainGameState = createGameState<
@@ -2379,6 +2383,7 @@ playerBattleActions = createPlayerBattleActions({
     queueConsumable: (slot) => { onlineMatch.current?.queueConsumable(slot); },
     queueAction: (action) => { onlineMatch.current?.queueAction(action); },
   },
+  strikes: { kinds: AIR_STRIKE_KINDS, bit: (kind) => AIR_STRIKE_BITS[kind] },
   rules: {
     selectShell: battleClientAccess.selectShell,
     repairAllModules: battleClientAccess.repairAllModules,

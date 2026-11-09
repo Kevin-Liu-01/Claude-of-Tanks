@@ -985,6 +985,29 @@ const modeSounds = [
   // capture the flag by perspective (FLAG_CUE): their flag in our hands is not our flag lost
   sfx('ui_flag_seized', 'ui', `One-shot ${UI_BRASS}: the enemy flag seized, a firm rising low two-note brass call over one deep drum hit.`, 1.4, { variants: 1, takes: 4, proc: 'ui' }),
 ];
+// Air Support's call-ins (air-support-270, 2026-11-05; the owner: "call in 3 differennt kinnds of airstrikes with their own
+// special effects annd sounnt", "keep and add artillery annd recon"). The strike jets are engine loops the aircraft rig
+// flies along each call-in's path (src/audio/airSupportAudio.ts: its distance law, air, pan and Doppler give the pass);
+// the A-10's GAU-8 is one burst per run, heard before the jet's roar arrives; a falling round or bomb whistles down to its
+// landing; the GBU-12 lands on its own blast; the targeted crew's hull warns it; a downed aircraft crashes where it falls.
+// Each names its ear-proxy class (tools/audio/sfx-critic.py: jet, gau8, incoming, alarm, explosion).
+const AIR_LOOP = `Continuous at an even level from start to end. ${FIELD}, ${NO_MUSIC}.`;
+const airSupport = [
+  sfx('air_jet_attack_loop', 'aerial', `Seamless loop of a twin-engine military ground-attack jet flying low and fast past the listener, heard from the ground: the steady high whine of its turbofan engines over a deep roaring rush of air. ${AIR_LOOP}`, 6, { loop: true, variants: 1, takes: 4, proc: 'loop', critic: 'jet' }),
+  // (a "deep jet engine roar with a tearing rumble" was heard as wind, 0 of 4 as shipped: the engine's own whine is named)
+  sfx('air_jet_fast_loop', 'aerial', `Seamless loop of a single-engine military fighter jet flying fast a few hundred metres up, heard from the ground: the loud, high whine of its jet engine over a powerful deep roar. ${AIR_LOOP}`, 6, { loop: true, variants: 1, takes: 6, proc: 'loop', critic: 'jet' }),
+  sfx('air_jet_recon_loop', 'aerial', `Seamless loop of a military reconnaissance jet flying fast and high overhead, heard from the ground: a distant, rushing jet engine roar with a thin hiss and a low rumble. ${AIR_LOOP}`, 6, { loop: true, variants: 1, takes: 4, proc: 'loop', critic: 'jet' }),
+  sfx('air_gau8_close', 'weapons', `Field recording of an A-10 attack jet firing its 30 mm rotary cannon in one long burst while diving low overhead: a deep, ripping, tearing BRRRT, the rounds firing so fast they blur into one continuous roar, the burst stopping sharply. ${DOCUMENTARY}`, 3, { inf: 0.6, variants: 3, takes: 8, proc: 'cannon', critic: 'gau8' }),
+  sfx('air_gau8_far', 'weapons', `Field recording of an A-10 attack jet firing its 30 mm rotary cannon in one long burst about two kilometres away, heard on the ground: a deep, growling, ripping BRRRT, the rounds blurring into one low continuous tearing burst, echoing off the hills. ${DOCUMENTARY}`, 3.5, { inf: 0.6, variants: 2, takes: 6, proc: 'weapon-far', critic: 'gau8' }),
+  // (the first prompts, "falling … toward the listener … cut off suddenly at the end", came back with their landing:
+  // 1 of 8 shells and 1 of 6 bombs passed, the rest heard as an explosion or as music; the flight alone is asked for. A
+  // shell's "scream" was heard as a siren, 1 of 8; the bomb's own wording, a whistle and a rush of air, is the shell's too)
+  sfx('air_shell_incoming', 'flyby', `Sound effect: the whistle of a heavy artillery shell falling through the air: one falling whistle and a fast, tearing rush of air, getting louder and louder. Only the shell's whistle in the air. ${DOCUMENTARY}`, 3, { inf: 0.55, variants: 3, takes: 10, proc: 'oneshot', critic: 'incoming' }),
+  sfx('air_bomb_fall', 'flyby', `Sound effect: the whistle of a heavy bomb falling through the air from a great height: one long, deep, falling whistle and a rushing roar of air, getting louder and louder. Only the bomb's whistle in the air. ${DOCUMENTARY}`, 4.5, { inf: 0.55, variants: 2, takes: 8, proc: 'oneshot', critic: 'incoming' }),
+  sfx('air_bomb_blast', 'destruction', `One-shot of a 500-pound aircraft bomb exploding on open ground about a hundred metres away: one enormous, deep, concussive blast, a shock wave that shakes the ground, earth and debris raining down, deep thunder rolling away. ${FIELD}, ${NO_MUSIC}.`, 6, { variants: 3, takes: 8, proc: 'impact', critic: 'explosion' }),
+  sfx('air_crash', 'destruction', `One-shot of a military jet aircraft crashing into the ground at high speed a few hundred metres away: a violent impact of tearing metal and a huge explosion, burning wreckage tumbling and scattering. ${FIELD}, ${NO_MUSIC}.`, 5, { variants: 2, takes: 6, proc: 'impact', critic: 'explosion' }),
+  sfx('air_strike_warning', 'edge', `One-shot inside a tank's steel crew compartment: the vehicle's laser warning receiver alarm going off, a fast repeated two-tone electronic warble, urgent and insistent, muffled by the hull. ${NO_MUSIC}.`, 2, { variants: 1, takes: 6, proc: 'ui', critic: 'alarm' }),
+];
 // The night's own life (SPOT_HOURS in environmentScenes.ts): a night battle no longer hears songbirds, larks and roosters.
 const SPOTS_NIGHT = [
   ['owl', 'a tawny owl hooting twice in the dark', 2.5, 2],
@@ -1054,7 +1077,7 @@ export const SFX_CATALOG = Object.freeze([
   ...impacts, ...destruction, ...props, ...collisions, ...foley, ...engines, ...tracks,
   ...equipment, ...ambience, ...spots, ...edgeCases, ...radio, ...ui, ...aerial, ...stingers,
   ...structures, ...breakables, ...hullEvents, ...missileLaunches, ...bulletStrikes, ...netting, ...impactMaterials,
-  ...runningGear, ...hullStrikes, ...worldBreaks, ...modeSounds, ...nightSpots,
+  ...runningGear, ...hullStrikes, ...worldBreaks, ...modeSounds, ...nightSpots, ...airSupport,
 ]);
 
 /** Generated seconds (credits ≈ 10 per second on the sound-effects model). */

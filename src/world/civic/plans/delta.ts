@@ -18,7 +18,7 @@
 // The char is rotationally symmetric about (-4, 14): every piece has its twin at (-8 - x, 28 - z).
 //
 // Pathways: none (the char's lanes are earth or brick soling without kerbs).
-import type { CivicFurniture, CivicPlan, CivicPoint } from '../types.ts';
+import type { CivicFurniture, CivicPlanSource, CivicPoint } from '../types.ts';
 
 import * as detMath from '../../../sim/detMath.ts';
 const CX = -4, CZ = 14;
@@ -55,9 +55,8 @@ function walkRuns(a: CivicPoint, b: CivicPoint, clearM = 1.3): Array<[CivicPoint
   return runs;
 }
 
-export const DELTA_CIVIC_PLAN: CivicPlan = {
+export const DELTA_CIVIC_PLAN: CivicPlanSource = {
   mapId: 'delta',
-  style: 'bengal',
   overlay: {},
   pathways: null,
   areas: [{
