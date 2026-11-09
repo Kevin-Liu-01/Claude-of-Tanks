@@ -5875,9 +5875,6 @@ void splatCompute() {
   if (uSea > 0.5 && uBank.x > 0.5 && uBank.x < 5.5 && vShore < 31.0) {
     float bEdge = vShore + (n1h - 0.5) * 1.6 + (n1 - 0.5) * 0.9;
     float bankW = (1.0 - fMs) * (1.0 - roadCore) * (1.0 - smoothstep(uBank.y - 0.9, uBank.y + 0.9, bEdge)) * uBank.z;
-    // (built-env-270b, the phones' frontier pond, reservoir and fjord: "pale sand" — the shoreline apron ran on past the
-    // facing's width in the worn layer's raw sand) where the row names a facing, the apron is that facing
-    bankW = max(bankW, seaSand * (1.0 - fMs) * (1.0 - roadCore) * uBank.z);
     if (bankW > 0.003) {
       const vec3 bL = vec3(0.34, 0.45, 0.21);
       bool bRock = uBank.x > 2.5 && uBank.x < 3.5;
@@ -5919,14 +5916,7 @@ void splatCompute() {
         }
         float bStone = 1.0 - smoothstep(0.36, 0.48, bShape);
         float bVis = tileVis(sz);
-        // (built-env-270b, fjord: "beige sand" — past the stones' resolution the facing went to 1.0, a sixth over the
-        // stones' own mean; it fades to that mean, ~0.86) and shingle carries a coarser course of larger stones, 6 cells
-        // a side, that the far view still resolves
-        float bTone = mix(0.86, (0.74 + 0.5 * bh) * mix(0.42, 1.0 + 0.10 * (0.4 - bShape), bStone), bVis);
-        if (uBank.x < 2.5) {
-          float bBig = fract(sin(dot(floor(wp.xz / (sz * 6.0)), vec2(41.3, 289.1))) * 43758.5453);
-          bTone *= mix(1.0, 0.86 + 0.28 * bBig, tileVis(sz * 6.0));
-        }
+        float bTone = mix(1.0, (0.74 + 0.5 * bh) * mix(0.42, 1.0 + 0.10 * (0.4 - bShape), bStone), bVis);
         bCol *= bTone;
         if (nrmOn) n.xy = mix(n.xy, vec2(0.5) + bf * 0.55 * bStone, bankW * bVis * 0.8);
       }

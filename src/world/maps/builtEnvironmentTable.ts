@@ -144,8 +144,10 @@ export const BUILT_ENVIRONMENT = Object.freeze({
   // (r1: the chip-seal a shade pale against the photos' #4d4c4a)
   coastal: row({ paved: { street: 'asphalt', patches: 0.5, cracks: 0.5, covers: 0.3, puddles: 0.3, tone: 0.62, low: true }, paths: null, work: 'off' }, null),
   // Lorraine (the Moselle), 1944 (built-env-270, the photos: the Moselle's banks low grey-brown silt with reeds and willows;
-  // r1's blind critics read the macadam through the village as wrong for its muddy 1944 rue, so the roads stay earth)
-  autumn: row({ ...UNPAVED, ground: [{ x: -105.5, z: 96.75, hw: 21.5, hl: 22.75, surface: 'cobble', what: 'the place: setts out to its houses round the limes, the cross and the well (census: "a bare dirt field")' }] }, 'lorrain', banked({ kind: 'mud', widthM: 4, hex: 0x5a5142 })),
+  // r1's blind critics read the macadam through the village as wrong for its muddy 1944 rue, so the roads stay earth;
+  // 270b: setts laid over the place lost its blind A/B 3 of 12 — a uniform carpet against the rutted earth place — so it
+  // stays earth too)
+  autumn: row(UNPAVED, 'lorrain', banked({ kind: 'mud', widthM: 4, hex: 0x5a5142 })),
   // the Virgin Lands, 1958
   steppe: row(UNPAVED, null),
   // the Ruhr, 1962
@@ -158,7 +160,7 @@ export const BUILT_ENVIRONMENT = Object.freeze({
   // Bjerkvik on the Herjangsfjord, May 1940 (built-env-270, the photos: the gravel roads stay; the shore shingle and cobbles
   // of grey granite and gneiss between smooth slabs, no sand beach; r4: 16 cm stones read as street cobbles — Dalmatia's 7 cm)
   fjord: row(PROTECTED, null, { boats: 'faering', jetty: 'brygge', reeds: 'phragmites', drift: 'nordland', ford: 'gauge',
-    bank: { kind: 'shingle', widthM: 7, hex: 0x787b7b, stoneM: 0.07 } }),
+    bank: { kind: 'shingle', widthM: 7, hex: 0x8a8680, stoneM: 0.07 } }),
   // the Jamuna's chars, 2010: the village roads brick soling (the embankment roads past the villages stay earth)
   // (built-env-270, the photos: the chars' banks pale grey silt and sand, not the fields' dark soil)
   delta: row({ paved: null, paths: ['brick', 'brick', null, null, 'brick'], work: 'climate' }, 'bengal',
