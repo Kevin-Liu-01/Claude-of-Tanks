@@ -1217,9 +1217,10 @@ export type AiDriveLayer = (typeof AI_DRIVE_LAYERS)[number];
  * the low-speed watchdog's reverse (a contact release, a stuck strike, the collider's and the orbit watchdog's legs),
  * 'terrainEscape' the escape turn off an unsafe corridor, 'allyEscape' the reverse out of an ally deadlock, 'allySwerve'
  * the swerve off an ally on a collision course, 'hullBackOff' the back-off from an enemy hull (the rush's held back-off,
- * the no-ram lane's). The layer that writes the tick's steer claims it (claimRecoveryTurn: the last writer holds it),
- * and the lay-first clamp leaves a claimed turn whole: it cut the contact release and the terrain escape to the
- * turret's share, so an engaged bot pressed into a solid or turning off a drop swung at half rate.
+ * the no-ram lane's). The layer that writes the tick's steer claims it (claimRecoveryTurn: the last writer holds it;
+ * a later write that is no recovery's takes it back), and the lay-first clamp leaves a claimed turn whole: it cut the
+ * contact release and the terrain escape to the turret's share, so an engaged bot pressed into a solid or turning off a
+ * drop swung at half rate.
  */
 export const AI_RECOVERY_TURNS = Object.freeze([
   'unstick', 'terrainEscape', 'allyEscape', 'allySwerve', 'hullBackOff',
@@ -2734,7 +2735,7 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
         ? -allyRisk.predictedCross : -allyRisk.cross) ||
       (hasPriority ? -1 : 1));
     input.steer = clamp(input.steer + side * (headOn ? 1.0 : 0.9), -1, 1);
-    claimRecoveryTurn('allySwerve');
+    claimRecoveryTurn('allySwerve', input.steer);
     return mustYield;
   }
 
@@ -2800,7 +2801,7 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
       input.throttle = -0.42;
       input.steer = allyEscapeSteer;
       input.brake = false;
-      claimRecoveryTurn('allyEscape');
+      claimRecoveryTurn('allyEscape', input.steer);
       allyReverseEscapes++;
       allyDeadlockT = 0;
     }
@@ -2973,7 +2974,7 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
         input.throttle = -0.42;
         input.steer = allyEscapeSteer;
         input.brake = false;
-        claimRecoveryTurn('allyEscape');
+        claimRecoveryTurn('allyEscape', input.steer);
         allyYielding = true;
         return;
       }
@@ -6821,7 +6822,7 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     input.throttle = -0.7;
     input.steer = unstickSteer;
     input.brake = false;
-    claimRecoveryTurn('unstick');
+    claimRecoveryTurn('unstick', input.steer);
     lowSpeedT = 0;
     navNoProgressT = 0;
     navBestD = Infinity;
@@ -6914,7 +6915,7 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
       input.throttle = -RUSH_DRIVE.backOffThrottle;
       input.brake = false;
       input.steer = entity.state.speed < 0 ? -rushBackOffTurn : rushBackOffTurn;
-      claimRecoveryTurn('hullBackOff');
+      claimRecoveryTurn('hullBackOff', input.steer);
       return;
     }
     // the Turbo Ball is played for: a hull contesting it is no ram to avoid
@@ -6944,6 +6945,7 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     // seeds 1 and 13: every engaged still). Off any other hull (a neighbour of its quarry on the ring) it turns away.
     const driveSide = doctrine.rush && ramHull === target && Math.abs(input.steer) > 0.2 ? Math.sign(input.steer) : 0;
     input.steer = (driveSide || Math.sign(-ramCross) || orbitSide) * sign;
+    releaseRecoveryTurn(); // this turn off the line is the drive's, not a recovery's: only the back-off below claims
     // and it rolls on round the hull at swerveThrottle while it can still stop short of the back-off gap: stopping
     // stood it pivoting on the spot until the orbit drove it back onto the line
     if (doctrine.rush && sign > 0 && ramGap <= stopM + RUSH_DRIVE.brakeGapM && ramGap > stopM + RUSH_DRIVE.backOffGapM) {
@@ -6956,7 +6958,7 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
       if (ramGap <= (doctrine.rush ? RUSH_DRIVE.backOffGapM : RUSH_DRIVE.laneBackOffGapM) && Math.abs(speed) <= 1) {
         input.throttle = -sign * RUSH_DRIVE.backOffThrottle;
         input.brake = false;
-        claimRecoveryTurn('hullBackOff');
+        claimRecoveryTurn('hullBackOff', input.steer);
         if (doctrine.rush && sign > 0) {
           rushBackOffUntilS = nowS + RUSH_DRIVE.backOffHoldS;
           rushBackOffTurn = Math.sign(input.steer) || orbitSide;
@@ -7042,7 +7044,6 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
         input.throttle = speed <= 3 && Math.abs(error) < .2 && terrainSafety.corridorSafe(entity, st.yaw, 8) ? .4 : 0;
         input.brake = speed > 3;
         input.steer = clamp(error * 2, -1, 1);
-        claimRecoveryTurn('terrainEscape');
         // a side that rolls its escapes (doctrine rollingEscapes) drives the escape turn round while the stop corridor
         // ahead, read here every tick at the speed the hull has, is clear, and brakes the moment it is not (263: the
         // infected stood in 12 % of their settled engaged samples, a third of them a pivot or a wait in this window with
@@ -7058,6 +7059,7 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
             input.brake = speed > .5;
           }
         }
+        claimRecoveryTurn('terrainEscape', input.steer); // after the rolling escape's steer limit: the turn it leaves
       }
     } else if (!entity.state.grounded) {
       terrainBlocked = false;
@@ -7115,22 +7117,45 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
    * the turn is the drive owner's (or its detour's or jockey's). States per tick: open with no claim -> open with a
    * recovery's claim (the last writer holds it) -> decided by the lay-first clamp ('layFirst', the last layer). One
    * owner: resetStepIntent opens the tick (openTickTurn), the recovery layers claim (claimRecoveryTurn) and layGunFirst
-   * decides; a claim after the decision is refused and counted (lateRecoveryTurns: a layer ordered after 'layFirst'
-   * wrote a turn the clamp never saw). layFirstClamped: the clamp cut this tick's turn (receipts charge the held turn
-   * to it).
+   * decides (settleTickTurn); a claim after the decision is refused and counted (lateRecoveryTurns: a layer ordered
+   * after 'layFirst' wrote a turn the clamp never saw). A claim stands only while the turn is still its recovery's
+   * (fix-up r1, the correctness review's minor: a claim outlived a later write): the no-ram lane's swerve, brake and
+   * throttle-cap turn after an escape, an ally swerve or a contact release is the drive's (releaseRecoveryTurn), and any
+   * other later write is caught at the decision, which keeps a claim only while the steer is the value its recovery
+   * wrote (claimedSteer). Either way the clamp cuts that turn as it did before round 8; overriddenRecoveryTurns counts
+   * the claims taken back. layFirstClamped: the clamp cut this tick's turn (receipts charge the held turn to it).
    */
   let recoveryTurn: AiRecoveryTurn | null = null;
+  let claimedSteer = 0;
   let tickTurnDecided = false;
   let layFirstClamped = false;
   let lateRecoveryTurns = 0;
+  let overriddenRecoveryTurns = 0;
   function openTickTurn(): void {
     recoveryTurn = null;
     tickTurnDecided = false;
     layFirstClamped = false;
   }
-  function claimRecoveryTurn(turn: AiRecoveryTurn): void {
+  function claimRecoveryTurn(turn: AiRecoveryTurn, steer: number): void {
     if (tickTurnDecided) { lateRecoveryTurns++; return; }
     recoveryTurn = turn;
+    claimedSteer = steer;
+  }
+  /** A layer that is no recovery wrote the tick's turn after a claim: the turn is the drive's again. */
+  function releaseRecoveryTurn(): void {
+    if (tickTurnDecided) { lateRecoveryTurns++; return; }
+    dropRecoveryClaim();
+  }
+  function dropRecoveryClaim(): void {
+    if (recoveryTurn === null) return;
+    recoveryTurn = null;
+    overriddenRecoveryTurns++;
+  }
+  /** The decision: the recovery whose turn stands at the clamp, or null (none claimed, or a later write took it). */
+  function settleTickTurn(input: AiInput): AiRecoveryTurn | null {
+    tickTurnDecided = true;
+    if (input.steer !== claimedSteer) dropRecoveryClaim();
+    return recoveryTurn;
   }
 
   /**
@@ -7142,8 +7167,7 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
    * escape or swerve, a back-off from a hull; AI_RECOVERY_TURNS). The drive layer 'layFirst', after 'finish'.
    */
   function layGunFirst(input: AiInput): void {
-    tickTurnDecided = true;
-    if (recoveryTurn !== null) return;
+    if (settleTickTurn(input) !== null) return;
     if (casemate || !target || !losClear || !fireGate.reloadReady || !fireGate.rangeReady || fireGate.aligned) return;
     if (nowS < scootUntilS || nowS < fallbackUntilS || nowS < kiteUntilS) return;
     const cap = LAY_FIRST_TURN_SHARE * spec.turretTraverseDegS / Math.max(spec.hullTraverseDegS, 1e-6);
@@ -8045,8 +8069,10 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
       mode, targetId: target ? target.id : null,
       driveOwner, // audit M7: who drove the hull last tick (AI_DRIVE_OWNERS)
       // round 8 Y2: the recovery that owned last tick's turn (AI_RECOVERY_TURNS), whether the lay-first clamp cut the
-      // turn, and claims refused after the clamp decided
-      recoveryTurn, layFirstClamped, lateRecoveryTurns,
+      // turn, claims refused after the clamp decided and claims a later steer write took back; the parked ally a
+      // committed passing path goes round (its ally avoidance writes no swerve)
+      recoveryTurn, layFirstClamped, lateRecoveryTurns, overriddenRecoveryTurns,
+      passingAllyId: nowS < trafficDetourUntilS ? trafficDetourAllyId : null,
       targetIsPlayer: !!(target && target.isPlayer),
       // BATTLE-AI r7 doctrine surface: class role + measurable signals
       // (sniper relocations, live scoot/kite/fallback windows) for probes.

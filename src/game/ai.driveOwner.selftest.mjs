@@ -7,9 +7,10 @@
 // (a reorder is a reviewed edit of these lines, never a side effect of moving code); a free bot's mode drives it; a
 // live hit reaction takes the hull; a mission keeps it over that reaction; a wreck has no owner.
 // Round 8 Y2 (s2-04): the lay-first clamp is the last layer ('layFirst', after 'finish'), and the recovery turns it
-// leaves whole are a declared table (AI_RECOVERY_TURNS) with one owner: each turn has its claim site, and only
-// resetStepIntent's openTickTurn and claimRecoveryTurn write the tick's recoveryTurn (ai.layGunFirst.selftest drives
-// the claims).
+// leaves whole are a declared table (AI_RECOVERY_TURNS) with one owner: each turn has its claim sites (fix-up r1: counted
+// per turn, so losing one of a turn's two sites fails here too), each claim names the steer it wrote, the no-ram lane's
+// turn releases a claim at its one site, and only openTickTurn, claimRecoveryTurn and dropRecoveryClaim write the tick's
+// recoveryTurn (ai.layGunFirst.selftest drives every site).
 import { readFileSync } from 'node:fs';
 import { Vector3 } from 'three';
 import '../vehicles/fleetFactory.ts';
@@ -58,14 +59,22 @@ for (const table of [AI_DRIVE_OWNERS, AI_DOCTRINE_STARTS, AI_DRIVE_LAYERS, AI_RE
   ok(Object.isFrozen(table) && new Set(table).size === table.length, `frozen, no name twice (${table[0]}…)`);
 }
 {
-  // the census: every declared recovery turn is claimed somewhere, nothing else claims, and the tick's recoveryTurn has
-  // two writers only (the tick's open and the claim)
+  // the census: each declared recovery turn is claimed at its sites (the ally reverse's start and hold, the rush's held
+  // back-off and the back-off branch: two each; the others one), every claim names the steer its recovery wrote, nothing
+  // else claims, the no-ram lane's turn releases at one site, and the tick's recoveryTurn has three writers (the tick's
+  // open, the claim and the drop of a claim taken back)
   const source = readFileSync(new URL('./ai.ts', import.meta.url), 'utf8');
-  const claimed = new Set([...source.matchAll(/claimRecoveryTurn\('(\w+)'\)/g)].map((m) => m[1]));
-  ok(AI_RECOVERY_TURNS.every((turn) => claimed.has(turn)) && [...claimed].every((turn) => AI_RECOVERY_TURNS.includes(turn)),
-    `each recovery turn has a claim site (${[...claimed].join(', ')})`);
+  const sites = { unstick: 1, terrainEscape: 1, allyEscape: 2, allySwerve: 1, hullBackOff: 2 };
+  const claims = [...source.matchAll(/claimRecoveryTurn\('(\w+)', input\.steer\)/g)].map((m) => m[1]);
+  const count = (turn) => claims.filter((name) => name === turn).length;
+  ok(AI_RECOVERY_TURNS.every((turn) => count(turn) === sites[turn]) && claims.every((turn) => AI_RECOVERY_TURNS.includes(turn)),
+    `each recovery turn has its claim sites (${AI_RECOVERY_TURNS.map((turn) => `${turn} ${count(turn)} of ${sites[turn]}`).join(', ')})`);
+  const calls = [...source.matchAll(/\bclaimRecoveryTurn\(/g)].length - 1; // less the definition
+  ok(calls === claims.length, `every claim names the steer it wrote (${claims.length} of ${calls} calls)`);
+  const releases = [...source.matchAll(/\breleaseRecoveryTurn\(\)/g)].length - 1;
+  ok(releases === 1, `the no-ram lane's turn releases a claim at its one site (${releases})`);
   const writers = [...source.matchAll(/\brecoveryTurn = /g)].length;
-  ok(writers === 2, `recoveryTurn is written by openTickTurn and claimRecoveryTurn only (${writers} writes)`);
+  ok(writers === 3, `recoveryTurn is written by openTickTurn, claimRecoveryTurn and dropRecoveryClaim only (${writers} writes)`);
 }
 
 console.log('[2] a free bot\'s own mode drives it');
