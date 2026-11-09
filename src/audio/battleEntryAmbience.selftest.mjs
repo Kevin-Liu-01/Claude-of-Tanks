@@ -21,8 +21,25 @@ import { GARAGE_SCENE, sceneForMap } from './environmentScenes.ts';
 // phase writer (it checks the edge, writes the phase and announces it); this scan used to look for scattered
 // `phase = 'battle'` writes each followed by its own emit, the pattern that owner replaced. It now pins the owner: no phase
 // write outside it, each entry path asking it for the battle phase, and its announcement bound to the bus's phase:change.
+// (round 8 Y0b review r1) And no entry turns that announcement off: the owner announces unless a caller passes
+// `announce`, and a battle entered unannounced is the bug this receipt is for (the hangar's bed plays on under the
+// loader). Round seven's scan (40c6c92fde) pinned it; the Y0b merge first kept only the walk above and dropped it.
 const srcRoot = fileURLToPath(new URL('../', import.meta.url));
-const writes = [], entries = [];
+const writes = [], entries = [], unannounced = [];
+// The whole call, from its open paren to the one that closes it (quoted text skipped), so an option on any line counts.
+const callAt = (text, start) => {
+  let depth = 0, quote = null;
+  for (let i = text.indexOf('(', start); i < text.length; i++) {
+    const ch = text[i];
+    if (quote) {
+      if (ch === '\\') i++;
+      else if (ch === quote) quote = null;
+    } else if (ch === "'" || ch === '"' || ch === '`') quote = ch;
+    else if (ch === '(') depth++;
+    else if (ch === ')' && --depth === 0) return text.slice(start, i + 1);
+  }
+  return text.slice(start);
+};
 const walk = (dir) => {
   for (const name of readdirSync(dir)) {
     const path = join(dir, name);
@@ -31,7 +48,10 @@ const walk = (dir) => {
     const text = readFileSync(path, 'utf8');
     const at = (index) => `${relative(srcRoot, path)}:${text.slice(0, index).split('\n').length}`;
     for (const match of text.matchAll(/\bgame\.phase\s*=(?!=)|\bphase\s*=\s*'battle'/g)) writes.push(at(match.index));
-    for (const match of text.matchAll(/\btransitionAppPhase\([^;]*?,\s*'battle'\s*,/g)) entries.push(at(match.index));
+    for (const match of text.matchAll(/\btransitionAppPhase\([^;]*?,\s*'battle'\s*,/g)) {
+      entries.push(at(match.index));
+      if (/\bannounce\b/.test(callAt(text, match.index))) unannounced.push(at(match.index));
+    }
   }
 };
 walk(srcRoot);
@@ -41,6 +61,8 @@ const entryFiles = new Set(entries.map((site) => site.split(':')[0]));
 for (const file of ['game/soloBattleStartRuntime.ts', 'mp/session/activationRuntime.ts']) {
   assert.ok(entryFiles.has(file), `${file} enters the battle through transitionAppPhase (${entries})`);
 }
+assert.deepEqual(unannounced, [],
+  'each battle entry leaves its announcement to the one writer (no `announce` option), so the engine hears the battle');
 const main = readFileSync(new URL('../main.ts', import.meta.url), 'utf8');
 assert.match(main, /createAppLifecycle\(\{\s*game,\s*announce: \(announcement\) => bus\.emit\('phase:change', announcement\),/,
   "the page's lifecycle announces every phase it writes on the bus's phase:change");
