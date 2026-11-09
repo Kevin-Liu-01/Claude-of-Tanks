@@ -44,6 +44,33 @@ export function planLine({ previous = [], takes, append, exists }) {
 }
 
 /**
+ * One take's pick (build-voices.mjs bestTake): attempt n (`attempt(n)`, scored { sim, repeated, durS, ... }) in order
+ * until one passes the bar under 6 s, `attempts` have run, or `stopped()`; `better(a, b)` says a beats b. With none
+ * passed and `verify`, each attempt's cut (`trim(candidate)`: a cut that reads as the script, or null) until one is
+ * found. Returns the take to build, or null.
+ */
+export async function pickTake({ attempts, bar, verify, attempt, better, trim, stopped = () => false }) {
+  let best = null;
+  const tried = [];
+  for (let n = 0; n < attempts && !stopped(); n++) {
+    const candidate = await attempt(n);
+    tried.push(candidate);
+    if (!best || better(candidate, best)) best = candidate;
+    if (candidate.sim >= bar && candidate.durS < 6) break;
+  }
+  if (verify && best && best.sim < bar && !stopped()) {
+    for (const candidate of tried) {
+      const cut = await trim(candidate);
+      if (cut) return cut;
+    }
+  }
+  // The budget or a quota stop cut this take's attempts (or its cuts) short before one passed: it is not built, so
+  // its line ends here and --append tries it again in full, never freezing an under-the-bar take by count.
+  if (best && best.sim < bar && stopped()) return null;
+  return best;
+}
+
+/**
  * Build one line's due takes in script order: `take(i)` picks the best attempt of script take i (null when none was
  * built), and `ship(i, best)` masters it as file `<line>_<i>` and returns its duration. A take that throws, comes back
  * empty, or meets a stop (`stopped()`) ends the line there (`onError(i, error | null)` reports the first two). Returns

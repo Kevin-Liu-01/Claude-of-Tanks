@@ -33,7 +33,7 @@ import { fileURLToPath } from 'node:url';
 import { speech, speechCached, transcribe, ElevenLabsError } from './elevenlabs.mjs';
 import { s16ToFloat, wavFromS16 } from './pcm.mjs';
 import { masterTake } from './master.mjs';
-import { buildLine, planLine } from './voicePlan.mjs';
+import { buildLine, pickTake, planLine } from './voicePlan.mjs';
 
 /** Exactly one asset's take files (`<id>_<n>.webm|m4a`): never a longer id sharing the prefix. */
 const takeFileOf = (id) => new RegExp(`^${id.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}_\\d+\\.(webm|m4a)$`);
@@ -208,34 +208,24 @@ function speechParams(lang, line, text, attempt) {
 async function bestTake(lang, line, text) {
   // Very short calls ("Up!", "HE!") transcribe loosely; accept a lower bar.
   const bar = normalize(text).length <= 4 ? 0.34 : 0.62;
-  let best = null;
-  const tried = [];
-  for (let attempt = 0; attempt < attempts && !stop; attempt++) {
-    const { file, cost } = await speech(speechParams(lang, line, text, attempt));
-    spent += cost;
-    if (spent >= budget) stop = true;
-    const raw = readFileSync(file);
-    const result = verify ? await check(lang, line, text, raw, `${attempt}`) : { heard: '', repeated: false, sim: 1 };
-    const durS = raw.length / 2 / 24000;
-    const candidate = { ...result, raw, durS, attempt };
-    tried.push(candidate);
-    if (!best || betterTake(candidate, best)) best = candidate;
-    if (candidate.sim >= bar && durS < 6) break;
-  }
-  // No attempt passed: cut each at its pauses until one reads as the script
-  // (a short cut can transcribe as a near-homophone, so one attempt is not enough).
-  if (verify && best && best.sim < bar && !stop) {
-    for (const candidate of tried) {
+  return pickTake({
+    attempts, bar, verify, better: betterTake, stopped: () => stop,
+    attempt: async (attempt) => {
+      const { file, cost } = await speech(speechParams(lang, line, text, attempt));
+      spent += cost;
+      if (spent >= budget) stop = true;
+      const raw = readFileSync(file);
+      const result = verify ? await check(lang, line, text, raw, `${attempt}`) : { heard: '', repeated: false, sim: 1 };
+      return { ...result, raw, durS: raw.length / 2 / 24000, attempt };
+    },
+    // No attempt passed: cut each at its pauses until one reads as the script
+    // (a short cut can transcribe as a near-homophone, so one attempt is not enough).
+    trim: async (candidate) => {
       const cut = await trimmedTake(lang, line, text, candidate);
-      if (!cut) continue;
-      trims.push(`${lang}/${line.id}: "${candidate.heard}" → "${cut.heard}"`);
+      if (cut) trims.push(`${lang}/${line.id}: "${candidate.heard}" → "${cut.heard}"`);
       return cut;
-    }
-  }
-  // The budget or a quota stop cut this take's attempts (or its cuts) short before one passed: it is not built, so
-  // its line ends here and --append tries it again in full, never freezing an under-the-bar take by count.
-  if (best && best.sim < bar && stop) return null;
-  return best;
+    },
+  });
 }
 
 const languages = (langsArg || script.languages);
