@@ -212,6 +212,9 @@ function checkSourceContract(text) {
     // the maps lane (228, the civic kit): a square's setts' tone over the streets' (vec4, x; 1 on every map naming none;
     // no sampler)
     'uPaveSquare',
+    // ground-269 (2026-11-04): the ground-surface table's four packed vectors — the open and worn grounds' macro and close
+    // codes, the town floor's, the relief cap and repair switches (groundSurfaces.ts; vec4, no sampler)
+    'uGsOpen', 'uGsWorn', 'uGsTown', 'uGsNear',
   ].sort();
   assert.deepEqual(uniforms, expected, 'all declared uniforms are owned; the sampler budget is unchanged');
   assert.deepEqual([...text.matchAll(/shader\.uniforms\.(\w+)\s*=/g)].map(m => m[1]).sort(), expected);

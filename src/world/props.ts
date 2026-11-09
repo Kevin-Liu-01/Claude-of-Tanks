@@ -2895,16 +2895,35 @@ function contactDarkeningMaterial(tex: THREE.Texture): THREE.MeshBasicMaterial {
   mat.onBeforeCompile = (shader) => {
     shader.vertexShader = _mustReplace(shader.vertexShader, '#include <common>', '#include <common>\nvarying float vCotContactDist;');
     shader.vertexShader = _mustReplace(shader.vertexShader, '#include <project_vertex>', '#include <project_vertex>\nvCotContactDist = -mvPosition.z;');
-    shader.fragmentShader = _mustReplace(shader.fragmentShader, '#include <common>', '#include <common>\nvarying float vCotContactDist;');
+    // (ground-269, groundSurfaces.ts: the critics' first round flagged a dark strip at every wall's foot on Suzhou Creek, in
+    // the old ground and the new) a foundation's ring — the faintest kind, strength 0.45 — keeps two fifths of its
+    // darkening where the ground-surface table runs (uGsContact 1; 0 = the old law); the boulders', the crushables' and the
+    // stacks' patches as they were
+    shader.uniforms.uGsContact = { value: 1 };
+    shader.fragmentShader = _mustReplace(shader.fragmentShader, '#include <common>', '#include <common>\nvarying float vCotContactDist;\nuniform float uGsContact;');
     // (MultiplyBlending: the target × (rgb·a + 1 − a) of the premultiplied output — the ground × mix(1, the grey, a))
     shader.fragmentShader = _mustReplace(shader.fragmentShader, '#include <premultiplied_alpha_fragment>', /* glsl */`{
+  if (vColor.r < 0.5) diffuseColor.a *= mix(1.0, 0.4, uGsContact);
   float cotContactA = clamp(diffuseColor.a * 2.5 * vColor.r, 0.0, 0.8) * (1.0 - smoothstep(80.0, 160.0, vCotContactDist));
   gl_FragColor = vec4(0.56, 0.53, 0.49, cotContactA);
 }
 #include <premultiplied_alpha_fragment>`);
   };
-  mat.customProgramCacheKey = () => 'props-contact-darkening-v1';
+  mat.customProgramCacheKey = () => 'props-contact-darkening-v2';
   return mat;
+}
+
+/**
+ * (ground-269, groundSurfaces.ts town floors; the critics' second round on Suzhou Creek: "a dark band along the foot of
+ * the wall", "a flat rectangle of a different ground laid round the buildings") the street-row towns' building aprons
+ * and courtyard discs were the old town floor — a flat grit decal laid over the ground round every building and in the
+ * yards, hiding the table's town floor there. Where the table runs (uGsApron 1) they draw nothing and the floor shows;
+ * 0 = the old decal (the A/B's legacy view).
+ */
+function apronGroundTableHook(shader: MaterialShader): void {
+  shader.uniforms.uGsApron = { value: 1 };
+  shader.fragmentShader = _mustReplace(shader.fragmentShader, '#include <common>', '#include <common>\nuniform float uGsApron;');
+  shader.fragmentShader = _mustReplace(shader.fragmentShader, '#include <alphatest_fragment>', 'diffuseColor.a *= 1.0 - uGsApron;\n#include <alphatest_fragment>');
 }
 
 function makeGroundDecalTexture(
@@ -10232,7 +10251,9 @@ ${snowCap ? `
         roughness: 0.97, metalness: 0,
         polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2,
       });
-      if (receiveShadow && !groundContact) engineCtx.setupShadowMaterial(mat as THREE.MeshStandardMaterial);
+      // (ground-269) the street-row towns' aprons give way to the ground-surface table's town floor (apronGroundTableHook)
+      if (decalKind === 'apron') (mat.defines ??= {}).COT_GS_APRON = '';
+      if (receiveShadow && !groundContact) engineCtx.setupShadowMaterial(mat as THREE.MeshStandardMaterial, decalKind === 'apron' ? apronGroundTableHook : null);
       // (the contact layer's per-ring shares ride its vertex alpha)
       if (geos[0].getAttribute('color')) mat.vertexColors = true;
       const mesh = new THREE.Mesh(mergeGeometries(geos, false), mat);
