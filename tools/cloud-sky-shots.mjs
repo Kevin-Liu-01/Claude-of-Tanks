@@ -26,7 +26,7 @@
 //
 // (round 8 Y8, sweep s6-01) The hold is the one wrapper's (tools/capture-hold.mjs withCaptureHold): it queues with the
 // first unit staging (`prepare`), refreshes, owns the cap's yield (checkpoint() between units, a grace of one unit's
-// budget so a unit in flight at the cap finishes), answers SIGTERM, SIGINT and SIGHUP (128 + n), and runs the teardown
+// budget and a minute so a unit in flight at the cap finishes), answers SIGTERM, SIGINT and SIGHUP (128 + n), and runs the teardown
 // (every browser of the run closed) before the release on every way out. The tool's own acquire, signal handlers and
 // close() helper are gone: the census (tools/capture-hold-census.selftest.mjs) refuses them. A staging failure while
 // queued is the unit's failure, not the run's: the hold opens that unit again (a throwing prepare ended the whole run
@@ -486,8 +486,8 @@ export async function main(argv, { launcher = puppeteer, startServer = startVite
       }
     }, {
       label, lockClass: 'render', timeoutMs: options.waitHours * 3600 * 1000,
-      // a unit in flight at the cap is given its whole budget to finish before the stop
-      graceSeconds: unitBudgetMs / 1000,
+      // a unit in flight at the cap is given its whole budget, and a minute to close its page and browser, before the stop
+      graceSeconds: unitBudgetMs / 1000 + 60,
       // the first unit stages while the ticket waits; its failure is the unit's (the hold opens it again), never the run's
       prepare: async () => {
         const run = createUnitRun(units[0], context);
