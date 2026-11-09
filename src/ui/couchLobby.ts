@@ -52,6 +52,12 @@ export interface CouchLobbyRequest {
 let modal: ModalController | null = null;
 let detach: (() => void) | null = null;
 
+/** Reopen (Let Phones Join) is offered only on a closed lobby: not while it opens, is open, has ended, or is away
+ *  reconnecting (round 8 Y5 s3-08: away looked closed, and a press then reached no host). */
+export function reopenOffered(view: Pick<PadLobbyView, 'state'>): boolean {
+  return view.state === 'closed';
+}
+
 function button(parent: HTMLElement, variant: 'primary' | 'secondary' | 'quiet', label: string): HTMLButtonElement {
   const control = parent.appendChild(document.createElement('button'));
   control.type = 'button';
@@ -95,6 +101,12 @@ export function openCouchLobby(runtime: CouchRuntime, request: CouchLobbyRequest
   const seats = side.appendChild(document.createElement('ol'));
   seats.className = 'cot-couch-seats';
   seats.setAttribute('aria-label', t('couch.seats'));
+  // while the lobby's link reconnects it says so (its QR dims as a closed lobby's does, and Reopen waits)
+  const reconnecting = side.appendChild(document.createElement('p'));
+  reconnecting.className = 'cot-couch-note';
+  reconnecting.setAttribute('role', 'status');
+  reconnecting.textContent = t('pad.state.connecting');
+  reconnecting.hidden = true;
   const seatCells: HTMLLIElement[] = [];
   for (let seat = 1; seat <= PAD_LOBBY_SEATS; seat++) {
     const cell = seats.appendChild(document.createElement('li'));
@@ -138,7 +150,8 @@ export function openCouchLobby(runtime: CouchRuntime, request: CouchLobbyRequest
     }
     const open = view.state === 'open';
     qr.dataset.state = open ? 'on' : 'off';
-    reopen.hidden = open || view.state === 'ended' || view.state === 'connecting';
+    reopen.hidden = !reopenOffered(view);
+    reconnecting.hidden = view.state !== 'away';
     const inPlay = view.seats.filter((seat) => seat.presence === 'here').map((seat) => seat.seat);
     const sideOf = new Map(inPlay.map((seat, index) => [seat, (sides === 'teams' && !togetherOnly && index % 2 === 1) ? 'bravo' : 'alpha']));
     for (const cell of seatCells) {

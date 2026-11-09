@@ -1910,9 +1910,12 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/pad/padActor.selftest.mjs',
     'src/pad/padInput.selftest.mjs',
     'src/pad/padCues.selftest.mjs', // phone-feel-269: what a paired phone feels, the wire, the buzzes
+    'src/pad/padReadyBuzz.selftest.mjs', // round 8 Y5 s3-06: no loaded buzz through a pause or after the link leaves live; the seat is the link's
     'src/pad/padPhoneHalf.selftest.mjs', // phone-feel-269: no desktop-only export rides to the phone's page
     'src/pad/padLink.selftest.mjs',
     'src/pad/padLobby.selftest.mjs', // 2026-11-01 (couch-mode-268, docs/COUCH-MODE.md): one lobby, a receiver per seat
+    'src/pad/padLobbyResume.selftest.mjs', // round 8 Y5 s3-07/s3-08: the real lobby and actor in memory: a TV blink keeps a joined lobby, a setOpen while away lands (app-couch's Start, s3-09), the roll call lets go of a seat that left, an ICE ask a closed socket dropped is asked again, couchLobby's paint while away is pinned, the setOpen queue sends a waiting ask with the first code, the newest ask wins, a sent ask (a Reopen that met a closing socket) is never sent again and a window that lapsed while away stays closed
+    'src/pad/padTour.selftest.mjs', // round 8 Y5 s6-04: the game screen's guide is a bounded mirror of the phone's (on:false, Skip, the link leaving live, the phone's time left)
     'src/game/couchSeats.selftest.mjs', // couch-mode-268: which roster tank each phone drives, and a seat's controls
     'src/game/couchCamera.selftest.mjs', // couch-mode-268: the shared camera frames every seat
     // round 8 Y4 s3-02/s3-09: the couch view by its own reason in every couch battle; Start closes the join window first
@@ -1942,6 +1945,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'tools/mp-p2p-early-link.selftest.mjs', // 2026-10-20 item/mp-rejoin-229: a running match's re-entry links beside its load
     'tools/mp-room-lifecycle.selftest.mjs',
     'tools/mp-states.selftest.mjs', // 2026-11-02 audit S3: the MP harnesses take the protocol's state words from their owners
+    'tools/pad-states.selftest.mjs', // round 8 Y5 s6-04: the pad harnesses take the pad's state words from their owners
     'src/mp/session/browserComposition.selftest.mjs',
     // round 8 Y1 s1-04 (review r2): the composition's loader start, played on the real audio engine: a rematch loads in silence
     'src/mp/session/roundLoaderAmbience.selftest.mjs',

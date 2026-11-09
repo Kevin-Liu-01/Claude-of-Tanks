@@ -15,6 +15,8 @@ import { createServer } from 'vite';
 import { launchGuardedBrowser } from './browser-launch.mjs';
 import { openCaptureHold } from './capture-hold.mjs';
 import { readinessExpression } from './game-readiness.mjs';
+// (round 8 Y5 s6-04) the pad's state words from their owners; page functions get them as arguments
+import { PAD_PHONE_STATE, PAD_SEAT_STATE } from './pad-states.mjs';
 import { createLocalPadService } from '../server/rooms/localPadService.ts';
 
 const root = resolve(new URL('..', import.meta.url).pathname);
@@ -113,7 +115,7 @@ try {
     await page.waitForSelector('.pad-form button[type="submit"]', { timeout: 240_000 });
     await page.tap('.pad-form button[type="submit"]');
     await page.evaluate((o) => window.dispatchEvent(new DeviceOrientationEvent('deviceorientation', { alpha: 0, beta: o.beta, gamma: o.gamma })), orientation(0));
-    await page.waitForFunction(() => window.__COT_PAD_PHONE?.state === 'live', { timeout: 60_000 });
+    await page.waitForFunction((live) => window.__COT_PAD_PHONE?.state === live, { timeout: 60_000 }, PAD_PHONE_STATE.live);
     report.joinMs.push(Date.now() - opened);
     const seat = Number(/(\d+)/.exec(await page.$eval('.pad-link', (el) => el.textContent))?.[1] ?? 0);
     pages.push({ page, seat });
@@ -121,7 +123,8 @@ try {
   check('every phone joins with one Start tap and names its seat', pages.every((p, i) => p.seat === i + 1), pages.map((p) => p.seat).join(','));
   check('the first four phones each join in under 20 s', report.joinMs.slice(0, 4).every((ms) => ms < 20_000), report.joinMs.map((ms) => `${(ms / 1000).toFixed(1)} s`).join(', '));
   await desktop.bringToFront();
-  await desktop.waitForFunction((n) => document.querySelectorAll('.cot-couch-seat[data-state="here"]').length === n, { timeout: 30_000 }, phones);
+  await desktop.waitForFunction((n, here) => document.querySelectorAll(`.cot-couch-seat[data-state="${here}"]`).length === n, { timeout: 30_000 },
+    phones, PAD_SEAT_STATE.here);
   check('the lobby lights every seat', true, `${phones} seats`);
   await (await desktop.$('.cot-couch-modal'))?.screenshot({ path: resolve(outDir, 'desktop-lobby.png') });
 
