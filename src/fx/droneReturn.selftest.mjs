@@ -3,8 +3,11 @@
 // exactly one owner every frame (the flight pool until the dock takes the landing over); an airframe that struck
 // something never returns; a destroyed or relaunched carrier, a blocked column or the time bound ends the flight home.
 // (round 8 Y6, s4-02) A drone shot down never flies home: the bus's drone:down names its carrier (markDowned), whichever
-// arrives first, the event or the frame that drops its shell, and however many lagging frames still list it.
+// arrives first, the event or the frame that drops its shell, and however many lagging frames still list it; held out
+// of view when it is shot down, it breaks up nowhere (its last place is stale). (fix-up r1) An impact or an unseen end
+// inside a flight home's grace drops the grace too; every end goes through one owner (endFlight: the source census, 8).
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import { Group, Vector3 } from 'three';
 import { createDronePresentation } from './dronePresentation.ts';
 import { DRONE_ARRIVAL, DRONE_RETURN } from './droneArrival.ts';
@@ -38,10 +41,13 @@ function scene({ blockColumn = false, owner = 'p1' } = {}) {
     return null;
   } };
   const events = [], downs = [];
+  // (round 8 Y6 fix-up r1) the drones the network view holds out of view (effects.ts unseenRounds through `held`)
+  const holding = new Set();
   const pool = createDronePresentation(group, {
     onReturnEvent: (id, event, reason) => events.push(`${id}:${event}:${reason.split(' (')[0]}`),
     // (round 8 Y6, s4-02) where a drone shot down breaks up
     onDowned: (id, at) => downs.push({ id, at: at.clone() }),
+    held: (id) => holding.has(id),
     world: () => world,
     resolveCarrier: (ownerId) => ownerId === owner
       ? { frame: missionAttachmentVisualFrame(tank.root), destroyed: tank.destroyed, flying: tank.view.active } : null,
@@ -56,7 +62,7 @@ function scene({ blockColumn = false, owner = 'p1' } = {}) {
     for (const w of writes) pool.write(w.pos, w.vel, w.id, undefined, w.ageS, 'USA', undefined, w.owner);
     pool.end();
   };
-  return { tank, group, pool, drawn, frame, events, downs, rays: () => rays, columnRays: () => columnRays, now: () => time };
+  return { tank, group, pool, drawn, frame, events, downs, holding, rays: () => rays, columnRays: () => columnRays, now: () => time };
 }
 
 // 1. Recall over the battlefield: the airframe flies home at cruise height, descends the dock's column, hands over to
@@ -113,6 +119,21 @@ function scene({ blockColumn = false, owner = 'p1' } = {}) {
   s.frame(); s.frame();
   assert.equal(pool.returning().size, 0, 'an impact claims the airframe');
   assert.deepEqual(s.events, ['9:skip:impact'], 'the diagnostics name the impact');
+  assert.equal(s.drawn(), 0);
+  clearMissionAttachment(tank.root);
+}
+// 2b. (round 8 Y6 fix-up r1) The impact heard after the frame that dropped the shell, its flight home in its grace:
+//     markImpact only marks, and the next end() ends the grace through endFlight ('impact'): it never flies home.
+{
+  const s = scene(), { tank, pool } = s, at = new Vector3(100, 30, 0), vel = new Vector3(0, 0, 30);
+  tank.view.active = true;
+  for (let i = 0; i < 10; i++) s.frame([{ pos: at, vel, id: 10, ageS: 10, owner: 'p1' }]);
+  tank.view.active = false; tank.view.cooldownS = 25; s.frame();
+  assert.equal(pool.returning().get(10)?.phase, 'grace', 'the missing drone is in its flight home\'s grace');
+  pool.markImpact(10);
+  for (let i = 0; i < Math.ceil((DRONE_RETURN.graceS + 0.5) / dt); i++) s.frame();
+  assert.equal(pool.returning().size, 0, 'an impact inside the grace claims the airframe');
+  assert.deepEqual(s.events, ['10:start:owner p1', '10:skip:impact'], 'the grace never became a flight home');
   assert.equal(s.drawn(), 0);
   clearMissionAttachment(tank.root);
 }
@@ -253,9 +274,85 @@ function scene({ blockColumn = false, owner = 'p1' } = {}) {
     assert.equal(s.drawn(), 1, 'a reset forgets the marks');
     clearMissionAttachment(s.tank.root);
   }
+  // (g) (fix-up r1) held out of view (the network view's unseen hold, `held`) when it is shot down: its last place is
+  //     stale (drawn the hold's length ago), so it breaks up nowhere; held only from the frame it is marked, it was drawn
+  //     last frame and breaks up there. The marked end wins over the hold either way: one end, no flight home.
+  {
+    const s = launched(38);
+    s.holding.add(38); lost(s);
+    for (let i = 0; i < 30; i++) s.frame();
+    assert.equal(s.pool.returning().size, 0, 'held out of view, no flight home begins');
+    assert.equal(s.pool.markDowned('p1'), true, 'a held drone takes its carrier\'s mark');
+    for (let i = 0; i < afterGrace; i++) s.frame();
+    assert.deepEqual(s.events, ['38:skip:downed'], 'one end, the downing');
+    assert.equal(s.pool.returning().size, 0, 'and it never flies home');
+    assert.equal(s.downs.length, 0, `held 30 frames, it breaks up nowhere (its last place is stale): ${s.downs.length} break-ups`);
+    clearMissionAttachment(s.tank.root);
+    const now = launched(39);
+    now.holding.add(39); now.pool.markDowned('p1'); lost(now);
+    for (let i = 0; i < afterGrace; i++) now.frame();
+    assert.deepEqual(now.events, ['39:skip:downed'], 'held from the frame it is marked: one end, the downing');
+    assert.equal(now.pool.returning().size, 0, 'no flight home');
+    assert.ok(now.downs.length === 1 && now.downs[0].at.distanceTo(at) < 1e-9, 'drawn last frame, it breaks up where it was drawn');
+    clearMissionAttachment(now.tank.root);
+  }
+}
+
+// 7. (round 8 Y6 fix-up r1) An 'unseen' end never leaves a flight home behind. A drone dropped from the frame starts its
+//    flight home's grace; held a frame later and released unseen inside the grace, it ends 'unseen' (round 3 A13: its
+//    end went unseen, so it is dropped where it went). H0 reported that skip and still flew home. The runtime never makes
+//    this order: battlePresentation.ts applyShells drops a round and reports it unseen in one synchronous call, so the
+//    hold begins in the frame that drops it, and effects.ts holds it 3 s (UNSEEN_ROUND_HOLD_S). This pins the end rule.
+{
+  const s = scene(), { tank, pool } = s;
+  tank.view.active = true;
+  for (let i = 0; i < 20; i++) s.frame([{ pos: new Vector3(120, 30, -25), vel: new Vector3(-12, 0, 4), id: 40, ageS: AERIAL_RULES.drone.launchS + 2, owner: 'p1' }]);
+  tank.view.active = false; tank.view.cooldownS = AERIAL_RULES.drone.cooldownS;
+  s.frame();
+  assert.equal(pool.returning().get(40)?.phase, 'grace', 'dropped, not held: the flight home\'s grace begins');
+  s.holding.add(40); s.frame(); s.frame();
+  s.holding.delete(40); s.frame();
+  for (let i = 0; i < Math.ceil((DRONE_RETURN.graceS + 0.5) / dt); i++) s.frame();
+  assert.deepEqual(s.events, ['40:start:owner p1', '40:skip:unseen'], 'the hold ran out unseen: its end is the unseen one');
+  assert.equal(pool.returning().size, 0, 'and the grace it began is dropped with it: no flight home');
+  assert.equal(s.drawn(), 0);
+  clearMissionAttachment(tank.root);
+}
+
+// 8. (round 8 Y6 fix-up r1) The source census of the end-cause machine (DroneEndCause): one owner of a flight's end.
+//    markImpact and markDowned only mark; a flight home is dropped only by endFlight, by its own end (the returns loop,
+//    after stepReturn reported it) or by its shell seen again (write); a flight home starts only in startReturn, which
+//    only endFlight calls; the ends are reported only by startReturn, endFlight and stepReturn; end() calls endFlight.
+{
+  const source = readFileSync(new URL('./dronePresentation.ts', import.meta.url), 'utf8')
+    .replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
+  const once = (marker) => {
+    const at = source.indexOf(marker);
+    assert.ok(at >= 0 && source.indexOf(marker, at + 1) < 0, `dronePresentation.ts has one ${marker}`);
+    return at;
+  };
+  const regions = [
+    ['startReturn', 'function startReturn('], ['endFlight', 'function endFlight('], ['stepReturn', 'function stepReturn('],
+    ['markImpact', 'markImpact(id'], ['markDowned', 'markDowned(ownerId'], ['begin', 'begin(timeS'], ['write', 'write(position'],
+    ['end', 'end(){'], ['reset', 'reset(){'],
+  ].map(([name, marker]) => ({ name, at: once(marker) })).sort((a, b) => a.at - b.at);
+  const owner = (index) => regions.filter((r) => r.at <= index).at(-1)?.name ?? 'top';
+  const owners = (needle) => { const found = []; for (let i = source.indexOf(needle); i >= 0; i = source.indexOf(needle, i + 1)) found.push(owner(i)); return found; };
+  assert.deepEqual(owners('returns.delete('), ['endFlight', 'write', 'end'],
+    'a flight home is dropped by endFlight, by its shell seen again (write) or after its own end (end\'s returns loop)');
+  assert.match(source, /if\(!stepReturn\(r\)\)\{returns\.delete\(id\);/, 'end() drops a flight home only after stepReturn reported its end');
+  assert.deepEqual(owners('returns.set('), ['startReturn'], 'a flight home starts only in startReturn');
+  assert.deepEqual(owners('startReturn('), ['startReturn', 'endFlight'], 'only endFlight starts a flight home');
+  assert.deepEqual([...new Set(owners('onReturnEvent?.('))].sort(), ['endFlight', 'startReturn', 'stepReturn'],
+    'the ends are reported by their owners alone (never end() itself)');
+  assert.deepEqual(owners('endFlight('), ['endFlight', 'end', 'end'], 'end() alone calls endFlight (the drop, then a late downing)');
+  for (const mark of ['markImpact', 'markDowned']) {
+    const from = regions.find((r) => r.name === mark).at, to = regions.find((r) => r.at > from).at, body = source.slice(from, to);
+    assert.doesNotMatch(body, /returns\.(delete|set)\(|attitudes\.delete\(|tracks\.delete\(|onReturnEvent/, `${mark} only marks: the end is end()'s`);
+  }
 }
 
 // 5. The landing it hands over to is the dock's own law: from heightM straight down the certified column.
 assert.ok(DRONE_ARRIVAL.heightM > 1 && droneDockS(AERIAL_RULES.drone.rangeM, DRONE_RETURN.cruiseAboveDockM) < AERIAL_RULES.drone.cooldownS,
   'a lost or spent airframe at the link\'s edge is home before the next airframe is due');
-console.log(`droneReturn (${JSON.stringify(measured)}): recall flies home at cruise height, descends the column, one drawer through the hand-over, lands inside the unchanged cooldown, clamps close; impacts, drones shot down (whichever comes first, however late), unflown launches, lost or relaunched carriers and blocked columns never fly home`);
+console.log(`droneReturn (${JSON.stringify(measured)}): recall flies home at cruise height, descends the column, one drawer through the hand-over, lands inside the unchanged cooldown, clamps close; impacts (inside the grace too), drones shot down (whichever comes first, however late; held ones break up nowhere), unseen ends, unflown launches, lost or relaunched carriers and blocked columns never fly home; one owner of every end`);

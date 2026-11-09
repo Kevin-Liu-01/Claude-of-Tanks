@@ -41,6 +41,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/sim/droneLaunch.selftest.mjs',
     'src/game/missionAttachmentVisual.selftest.mjs',
     'src/fx/droneReturn.selftest.mjs',
+    // round 8 Y6 s4-02 (fix-up r1): the solo step's drone:down reaches the FX runtime keyed to its shell: no flight home
+    'src/fx/droneDownedSolo.selftest.mjs',
     'src/game/missionAttachmentMotion.selftest.mjs',
     'src/game/garageModePreview.selftest.mjs',
     'src/app/garageModePreviewRuntime.selftest.mjs',

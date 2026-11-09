@@ -64,6 +64,8 @@ interface DronePresentationOptions {
  *  - 'unseen': its network hold ran out unseen (round 3, A13): dropped where it went, no flight home;
  *  - 'lost': it has nothing to fly home on, reported by its reason ('no track', 'no owner', 'never flew free' of its dock).
  * A shell id's marked cause (impact, downed) wins over what the frame that drops it shows; 'downed' wins over 'impact'.
+ * markImpact and markDowned only mark; the next end() ends the flight. A flight home it started then ends on its own
+ * terms (stepReturn: handed over, abandoned) or gives way to its shell seen again (write).
  */
 export type DroneEndCause = 'recalled' | 'impact' | 'downed' | 'unseen' | 'lost';
 type ReturnPhase = 'grace' | 'transit' | 'descent' | 'handoff';
@@ -88,7 +90,7 @@ interface Track { pos: THREE.Vector3; vel: THREE.Vector3; ownerId?: string | num
 /** Bounded pools; a quadcopter banks modestly under motion, never points its body vertically. Airframe builds are the
  * shared per-nation kits (lit-material registration rides with them). A flight that ends in the air (recall, battery,
  * signal: no impact, never shot down) flies home and lands on its dock; presentation only, gameplay timing unchanged.
- * Every end has one cause (DroneEndCause) and one owner (endFlight). */
+ * Every flight's end has one cause (DroneEndCause) and one owner (endFlight). */
 export function createDronePresentation(parent: THREE.Group, options: DronePresentationOptions = {}) {
   const variants=new Map<string,{full:DetailPool;lite:DetailPool|null;nation:string}>();
   function buildDetail(nation:string,detail:'full'|'lite'):DetailPool {
@@ -302,10 +304,11 @@ export function createDronePresentation(parent: THREE.Group, options: DronePrese
     return true;
   }
   return {
-    /** An impact for this shell (a tank hit, a world hit): its airframe exploded, so it never flies home. */
+    /** An impact for this shell (a tank hit, a world hit): its airframe exploded, so it never flies home. (round 8 Y6
+     *  fix-up r1) It only marks: the next end() ends the flight through endFlight('impact'), a flight home still in its
+     *  grace included (a grace keeps its airframe, so end() visits it before any flight home is stepped). */
     markImpact(id:string|number){
       impacted.set(id,frame);
-      const r=returns.get(id);if(r&&r.phase==='grace')returns.delete(id);
     },
     /**
      * (round 8 Y6, s4-02) Counter-drone fire shot down this carrier's drone: the bus's drone:down names the carrier (both
