@@ -25,6 +25,7 @@ import {
   DEFAULT_STEERING, aimGain, aimSpeed, frameDelta, frameInsets, frameTurn, leverValue, lockAngle, steerFromAngle, wheelAngleDeg,
 } from './padInput.ts';
 import { padBuzzPattern, padBuzzTicks } from './padBuzz.ts';
+import { createPadReadyBuzz } from './padReadyBuzz.ts';
 import type { PadBuzz } from './padBuzz.ts';
 import {
   PAD_FLAG_TILT, PAD_HOLD_ACTIONS, encodePadAxes, encodePadTour, formatPadCode, normalizePadCode,
@@ -47,8 +48,6 @@ const NO_TILT_MS = 1500;
 const HEARTBEAT_MS = 100;
 /** A thumb that lands on the fire button aims once it has moved this far (a press's wobble never nudges the gun). */
 const FIRE_AIM_DEADZONE_PX = 10;
-/** The gun's loaded buzz plays for a load this long or longer (an autocannon's round-to-round is not announced). */
-const READY_MIN_S = 1.5;
 
 interface PadSettings { tilt: boolean; lockDeg: number; aim: number; hand: 'right' | 'left'; buzz: boolean }
 const LOCKS = [25, 35, 45, 60];
@@ -872,24 +871,13 @@ function paintReload(done: number, leftS: number): void {
   }
 }
 
-/** The gun's loaded buzz: at the end of the load the status names (each status re-arms it with the time left), or at the
- *  first status that says loaded, whichever comes first; never with the trigger held (the shot's own kick follows). */
-let readyTimer: ReturnType<typeof setTimeout> | undefined;
-let loadingLong = false;
-function gunLoaded(): void {
-  if (!loadingLong) return;
-  loadingLong = false;
-  if (!(axes.held & holdBit('fire'))) buzz('ready');
-}
-function armReady(next: PadStatus): void {
-  clearTimeout(readyTimer);
-  const loading = next.battle && next.alive && next.reloadS > 0 && next.reloadTotalS >= READY_MIN_S;
-  if (loading) {
-    loadingLong = true;
-    readyTimer = setTimeout(gunLoaded, next.reloadS * 1000);
-  } else if (next.battle && next.alive && next.reloadS <= 0) gunLoaded();
-  else loadingLong = false;
-}
+/** The gun's loaded buzz (padReadyBuzz.ts): never with the trigger held (the shot's own kick follows). */
+const readyBuzz = createPadReadyBuzz({
+  buzz: () => buzz('ready'),
+  fireHeld: () => !!(axes.held & holdBit('fire')),
+  setTimer: (callback, ms) => setTimeout(callback, ms),
+  clearTimer: (handle) => clearTimeout(handle as ReturnType<typeof setTimeout> | undefined),
+});
 
 /** A battle's cue (padCues.ts): its buzz, once. The trigger already kicked for a shot it fired itself. */
 function feelCue(cue: PadCue, strength?: number): void {
@@ -948,7 +936,7 @@ function paintStatus(next: PadStatus): void {
   needle.style.transform = `rotate(${Math.round(-1200 + share * 2400) / 10}deg)`;
   if (kmhReadout.textContent !== String(kmh)) kmhReadout.textContent = String(kmh);
   ctl.dataset.state = !next.battle ? 'idle' : !next.alive ? 'down' : next.reloadS > 0 ? 'loading' : 'ready';
-  armReady(next);
+  readyBuzz.status(next);
   message.textContent = !next.battle ? t('pad.waitingBattle') : next.paused ? t('pad.paused') : !next.alive ? t('pad.destroyed')
     : settings.tilt && tiltSeen && tiltAngle === null ? t('pad.flat') : '';
   const key = `${next.reloadS > 0 ? Math.round(next.reloadTotalS * 10) : 0}|${Math.round((next.reloadTotalS - next.reloadS) * 2)}`;
