@@ -15,6 +15,10 @@
 // from the pool (the Merkava 4's merged gun stock, shared with a twin build alive beside it) holds its own geometry
 // again after dispose, never the pool's (undone after the release, the pool's copy went back on it and the visual's
 // own source was never handed back for its owned walk).
+//
+// Four builds (fix-up r1 cut twelve to four: each case runs where it can fail): the Gepard's twin guns for the plain
+// kill (red at H0: the leak) and the cook-off upgrade; the Merkava 4 with its twin for the pool's release order (red
+// with the undo after the release), the twin then taking the solo order.
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import { installCanvasFixture } from './canvasFixture.test-support.mjs';
@@ -69,54 +73,62 @@ function assertUndone(label, gunG, copies, disposed) {
   assert.equal(gunG.userData.wreckBend, undefined, `${label}: the bend record goes with the crumple`);
 }
 
-let pooledBent = 0;
-for (const id of ['gepard_1a2', 'm1a1', 'merkava4']) {
-  // ---- a network peer's wreck at match end: setDestroyed, then dispose with no reset (battlePresentation dispose)
-  {
-    const { visual, state, gunG, alive } = await battleVisual(id);
-    // a twin alive beside it: the battle pool's entries are the geometries both draw
-    const twin = await battleVisual(id);
-    const pooled = new Set();
-    twin.gunG.traverse((object) => { if (object.isMesh) pooled.add(object.geometry); });
-    visual.setDestroyed({ pop: false, ageS: 0 });
-    visual.syncFromState(state, 1 / 60, 60);
-    const disposed = new Map();
-    const copies = bentCopies(gunG, alive, disposed);
-    for (const [mesh, live] of alive) if (pooled.has(live) && mesh.geometry !== live) pooledBent++;
-    visual.dispose();
-    assertUndone(`${id} plain wreck, disposed`, gunG, copies, disposed);
+/**
+ * A network peer's wreck at match end: setDestroyed, then dispose with no reset (battlePresentation dispose), then the
+ * owner's dispose latch (a second dispose and a late reset or wreck do nothing more). With a twin alive beside it the
+ * battle pool's entries are the geometries both draw, and every gun piece drawn from the pool holds its own geometry
+ * again after dispose. Returns the twin, alive and unwrecked.
+ */
+async function plainWreckDisposed(id, withTwin) {
+  const { visual, state, gunG, alive } = await battleVisual(id);
+  const twin = withTwin ? await battleVisual(id) : null;
+  const pooled = new Set();
+  twin?.gunG.traverse((object) => { if (object.isMesh) pooled.add(object.geometry); });
+  visual.setDestroyed({ pop: false, ageS: 0 });
+  visual.syncFromState(state, 1 / 60, 60);
+  const disposed = new Map();
+  const copies = bentCopies(gunG, alive, disposed);
+  let pooledBent = 0;
+  for (const [mesh, live] of alive) if (pooled.has(live) && mesh.geometry !== live) pooledBent++;
+  visual.dispose();
+  assertUndone(`${id} plain wreck, disposed`, gunG, copies, disposed);
+  if (twin) {
+    assert.ok(pooledBent > 0, `${id}: a gun piece drawn from the battle pool was bent (the release-order case is live)`);
     assertPoolHandedBack(`${id} plain wreck, disposed`, alive, pooled);
-    twin.visual.dispose();
-    // the owner's dispose latch: a second dispose and a late reset or wreck do nothing more
-    visual.dispose();
-    visual.resetDestroyed();
-    visual.setDestroyed({ pop: true, ageS: 0 });
-    assertUndone(`${id} plain wreck, after a second dispose and late calls`, gunG, copies, disposed);
   }
-  // ---- a plain wreck upgraded by its late cook-off cause (resetLiveCrumple then planLiveCrumple), then disposed
-  {
-    const { visual, state, gunG, alive } = await battleVisual(id);
-    visual.setDestroyed({ pop: false, ageS: 0 });
-    const disposed = new Map();
-    const plainCopies = bentCopies(gunG, alive, disposed);
-    visual.setDestroyed({ pop: true, ageS: 0, lateCause: true });
-    visual.syncFromState(state, 1 / 60, 60);
-    const cookoffCopies = bentCopies(gunG, alive, disposed);
-    visual.dispose();
-    assertUndone(`${id} cook-off upgrade, disposed`, gunG, new Set([...plainCopies, ...cookoffCopies]), disposed);
-  }
-  // ---- the solo order (state.ts releaseParkedTank: reset, then dispose) stays one dispose per copy
-  {
-    const { visual, state, gunG, alive } = await battleVisual(id);
-    visual.setDestroyed({ pop: true, ageS: 0 });
-    visual.syncFromState(state, 1 / 60, 60);
-    const disposed = new Map();
-    const copies = bentCopies(gunG, alive, disposed);
-    visual.resetDestroyed();
-    for (const [mesh, live] of alive) assert.equal(mesh.geometry, live, `${id}: the rematch puts ${mesh.name} back`);
-    visual.dispose();
-    assertUndone(`${id} reset then disposed`, gunG, copies, disposed);
-  }
+  visual.dispose();
+  visual.resetDestroyed();
+  visual.setDestroyed({ pop: true, ageS: 0 });
+  assertUndone(`${id} plain wreck, after a second dispose and late calls`, gunG, copies, disposed);
+  return twin;
 }
-assert.ok(pooledBent > 0, 'a gun piece drawn from the battle pool was bent (the release-order case is live)');
+
+// ---- the Gepard's twin guns: a plain kill disposed with no reset (red at H0: every bent copy leaked)
+await plainWreckDisposed('gepard_1a2', false);
+// ---- the Gepard: a plain wreck upgraded by its late cook-off cause (resetLiveCrumple then planLiveCrumple), then disposed
+{
+  const { visual, state, gunG, alive } = await battleVisual('gepard_1a2');
+  visual.setDestroyed({ pop: false, ageS: 0 });
+  const disposed = new Map();
+  const plainCopies = bentCopies(gunG, alive, disposed);
+  visual.setDestroyed({ pop: true, ageS: 0, lateCause: true });
+  visual.syncFromState(state, 1 / 60, 60);
+  const cookoffCopies = bentCopies(gunG, alive, disposed);
+  visual.dispose();
+  assertUndone('gepard_1a2 cook-off upgrade, disposed', gunG, new Set([...plainCopies, ...cookoffCopies]), disposed);
+}
+// ---- the Merkava 4 beside its twin: the undo runs before the pool's release (red with the undo after it)
+const twin = await plainWreckDisposed('merkava4', true);
+// ---- the solo order (state.ts releaseParkedTank: reset, then dispose) on that twin stays one dispose per copy
+{
+  const { visual, state, gunG, alive } = twin;
+  visual.setDestroyed({ pop: true, ageS: 0 });
+  visual.syncFromState(state, 1 / 60, 60);
+  const disposed = new Map();
+  const copies = bentCopies(gunG, alive, disposed);
+  visual.resetDestroyed();
+  for (const [mesh, live] of alive) assert.equal(mesh.geometry, live, `merkava4: the rematch puts ${mesh.name} back`);
+  visual.dispose();
+  assertUndone('merkava4 reset then disposed', gunG, copies, disposed);
+}
 console.log('wreckDispose.selftest: a wreck disposed without a reset (an MP match end, a Studio removal) disposes its bent gun copies, once each');

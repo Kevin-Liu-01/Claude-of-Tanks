@@ -226,7 +226,8 @@ export const SELFTEST_SUITES = Object.freeze({
     // Abrams pair and Redback in their tree, tiers and photo packets at both qualities, each one's own kit
     'src/vehicles/profiles/australia.selftest.mjs',
     // 2026-11-08 round 8 s5-05: a variant built on a donor's build (the Australian and Ukrainian M1A1s, donorBuild.ts)
-    // wears its own suit whatever row the donor has; its id is its own again after the donor build
+    // wears its own suit whatever row the donor has; its id is its own again after the donor build; two suited low builds
+    // and a plain one, 6.8 s CPU at load 50 (2 s of it the fleet import)
     'src/vehicles/variantIdentity.selftest.mjs',
     // 265: the M41 family on its supplied print's datums, each mark's kit and tree
     'src/vehicles/profiles/m41.selftest.mjs',
@@ -2054,7 +2055,8 @@ export const SELFTEST_SUITES = Object.freeze({
     // 2026-10-11 (218's bundle budget): the tank factory reaches the wreck physics only through its lazy loader.
     'src/vehicles/wreckTurretDriverLoader.selftest.mjs',
     'src/vehicles/wreckLifecycle.selftest.mjs', // 2026-11-02 audit F10: one wreck state per visual: cook-off upgrade, reset cursors, disposed latch
-    // 2026-11-08 round 8 s5-02: the wreck's dispose move undoes the gun's crumple (no bent copy leaks at an MP match's end)
+    // 2026-11-08 round 8 s5-02: the wreck's dispose move undoes the gun's crumple (no bent copy leaks at an MP match's end);
+    // four battle builds, 5.4 s CPU at load 50 (2 s of it the fleet import)
     'src/vehicles/wreckDispose.selftest.mjs',
     'src/vehicles/wreckTurretMode.selftest.mjs', // 2026-11-02 audit F10: one declared turret mode; late physics hands over to the authority
     // 2026-10-09 (vehicle-contact lane, owner: "tracks shouldnt glitch through the bridge"): the drawn tracks rest on the
