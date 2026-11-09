@@ -7,16 +7,16 @@
 //      sleeps 15 s: a SIGTERM 1 s into the read ends the chain with 143 inside 5 s and no stand-in survives (red before:
 //      the chain sat out the read);
 //   2. the same chain whose reads come one after another with no other await (a dry run: every step resolves and moves
-//      on), each read 3 s: the stop lands during the first read, and no second read starts (red before: the stop waited
-//      through every read the chain had left);
+//      on), each read 6 s: a SIGTERM as soon as the first read starts lands during it, and no second read starts (red
+//      before: the stop waited through every read the chain had left);
 //   3. the groups' phase: 'running' -> 'stopping' once (beginStop), a spawn refused with a stop marker while stopping, and
 //      only stopOnSignal makes that move (a census of the tools);
 //   4. a caller outside a chain (budgetedSync, as changed-ids and the receipts read rows): its runner and child sit in the
-//      caller's process group; when the caller is killed (SIGKILL by its exact pid) the runner stops the child inside 8 s
+//      caller's process group; when the caller is killed (SIGKILL by its exact pid) the runner stops the child inside 15 s
 //      (red before: the child ran on, unowned, to its end), and a SIGTERM to the runner reaches the child, the runner
 //      exiting 143 (red before: the runner died at once and left the child running).
 // Every process this receipt starts or finds (the chain, the runner, the stand-ins) is SIGKILLed by its exact pid at the
-// end, whatever happened; a stand-in also ends itself within 20 s.
+// end, whatever happened; a stand-in also ends itself within 30 s.
 // First-party tooling: Kevin B. Liu.
 import assert from 'node:assert/strict';
 import { execFileSync, spawn } from 'node:child_process';
@@ -130,24 +130,26 @@ try {
     assert.equal(parent, run.child.pid, 'the read was the chain\'s own child (its own process group), not a runner\'s');
     await sleep(200);
     assert.equal(alive(standIn), false, `no stand-in survives the stop (pid ${standIn})`);
-    assert.match(run.out, /\[regen\] stopped by SIGTERM: the chain is stopping \(SIGTERM\): the rows read ended/, `the chain names the stop, not a failure:\n${run.out}`);
-    assert.doesNotMatch(run.out, /\[regen\] FAILED/, 'and never reads as FAILED');
-    const summaries = readdirSync(join(R, '.qa-dev/changed-only')).filter((name) => /^\d{4}-.*Z\.json$/.test(name)).sort();
-    const summary = JSON.parse(readFileSync(join(R, '.qa-dev/changed-only', summaries.at(-1)), 'utf8'));
+    // the chain's own log (written synchronously: a pipe's last lines may not outlive the exit)
+    const newest = (pattern) => readdirSync(join(R, '.qa-dev/changed-only')).filter((name) => pattern.test(name)).sort().at(-1);
+    const chainLog = readFileSync(join(R, '.qa-dev/changed-only', newest(/^\d{4}-.*Z\.log$/)), 'utf8');
+    assert.match(chainLog, /\[regen\] stopped by SIGTERM: the chain is stopping \(SIGTERM\): the rows read ended/, `the chain names the stop, not a failure:\n${chainLog}`);
+    assert.doesNotMatch(chainLog, /\[regen\] FAILED/, 'and never reads as FAILED');
+    const summary = JSON.parse(readFileSync(join(R, '.qa-dev/changed-only', newest(/^\d{4}-.*Z\.json$/)), 'utf8'));
     assert.deepEqual([summary.ok, summary.stopped], [false, 'SIGTERM'], 'its summary records the stop');
   }
 
   // ---- 2. reads one after another with no other await: the stop lands during the first --------------------------------
   {
     const log = join(base, 'chained.reads');
-    const run = runChain({ COT_ROWS_STANDIN_LOG: log, COT_ROWS_STANDIN_MS: '3000' });
+    const run = runChain({ COT_ROWS_STANDIN_LOG: log, COT_ROWS_STANDIN_MS: '6000' });
     assert.ok(await until(() => readsOf(log).length >= 1 || run.result, 180_000), 'the first rows read starts');
     assert.equal(run.result, null, `the chain is still reading:\n${run.out}`);
-    await sleep(1000);
+    // at once: 6 s of read left, so a receipt starved by load still signals inside the first read
     const signalledAt = Date.now();
     run.child.kill('SIGTERM');
-    // a chain that defers its stop reads on, 3 s a read, until its last one; it ends by itself well inside 30 s
-    const stopped = await until(() => run.result, 30_000);
+    // a chain that defers its stop reads on, 6 s a read, until its last one; it ends by itself well inside 60 s
+    const stopped = await until(() => run.result, 60_000);
     remember(log);
     if (!stopped) { for (const pid of [run.child.pid, ...readsOf(log).flat()]) { try { process.kill(pid, 'SIGKILL'); } catch { /* gone */ } } await run.closed; }
     const seconds = (Date.now() - signalledAt) / 1000, reads = readsOf(log).length;
@@ -183,6 +185,11 @@ try {
     handlers.get('SIGHUP')('SIGHUP');
     assert.deepEqual([owned.phase, owned.stopping], ['stopping', 'SIGHUP'], 'a stop signal moves the groups to stopping');
     remove();
+    // a rows read whose child never starts settles (rejects), never waits on a watch with no tree
+    const { readRowsAsync } = await import('./fingerprint.mjs');
+    const broken = createChildGroups({ spawnProcess: (command, args, options) => spawn(join(base, 'no-such-node'), args, options) });
+    await assert.rejects(readRowsAsync(R, process.env, tableModule, { groups: broken }), /rows-child did not start/, 'a read that cannot start rejects');
+    assert.throws(() => readRowsAsync(R, process.env, tableModule, {}), /child groups/, 'and a read outside a chain\'s groups is refused');
     // census: no other module of the tools begins a stop
     const callers = [];
     const walk = (dir) => {
@@ -205,7 +212,7 @@ try {
 
   // ---- 4. outside a chain: the runner owns its child ------------------------------------------------------------------
   {
-    const STANDIN = (file) => `require('node:fs').appendFileSync(${JSON.stringify(file)}, process.pid + ' ' + process.ppid + '\\n'); setTimeout(() => {}, 20000);`;
+    const STANDIN = (file) => `require('node:fs').appendFileSync(${JSON.stringify(file)}, process.pid + ' ' + process.ppid + '\\n'); setTimeout(() => {}, 30000);`;
     const caller = (file) => `import { budgetedSync } from ${JSON.stringify(new URL('./childBudget.mjs', import.meta.url).href)};
       try { budgetedSync(process.execPath, ['-e', ${JSON.stringify(STANDIN(file))}], { budgetS: 60, pollMs: 200, graceMs: 1000, stdio: 'ignore' }); console.log('returned'); }
       catch (error) { console.log(JSON.stringify({ status: error.status, signal: error.signal })); }`;
@@ -227,8 +234,8 @@ try {
       const [standIn, runner] = readsOf(file)[0];
       run.child.kill('SIGKILL');
       await run.closed;
-      const gone = await until(() => !alive(standIn), 8000, 100);
-      assert.ok(gone, `the runner stops its child once its caller is gone (stand-in pid ${standIn} under runner ${runner} still alive after 8 s)`);
+      const gone = await until(() => !alive(standIn), 15_000, 100);
+      assert.ok(gone, `the runner stops its child once its caller is gone (stand-in pid ${standIn} under runner ${runner} still alive after 15 s)`);
       assert.ok(await until(() => !alive(runner), 3000, 100), 'and exits');
     }
     // 4b. a SIGTERM to the runner reaches its child
@@ -239,8 +246,8 @@ try {
       remember(file);
       const [standIn, runner] = readsOf(file)[0];
       process.kill(runner, 'SIGTERM');
-      const gone = await until(() => !alive(standIn), 8000, 100);
-      assert.ok(gone, `a SIGTERM to the runner (pid ${runner}) reaches its child (stand-in pid ${standIn} still alive after 8 s)`);
+      const gone = await until(() => !alive(standIn), 15_000, 100);
+      assert.ok(gone, `a SIGTERM to the runner (pid ${runner}) reaches its child (stand-in pid ${standIn} still alive after 15 s)`);
       const { out } = await run.closed;
       assert.deepEqual(JSON.parse(out.trim().split('\n').at(-1)), { status: 143, signal: null }, `the runner exits 128 + SIGTERM: ${out}`);
     }

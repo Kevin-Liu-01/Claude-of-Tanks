@@ -124,7 +124,11 @@ export function readRowsAsync(root, env, tableModule = null, { groups, watch: wa
       out.push(chunk);
     });
     child.stderr.on('data', (chunk) => { err.push(chunk); errBytes += chunk.length; while (errBytes > 65_536 && err.length > 1) errBytes -= err.shift().length; });
-    child.once('error', (error) => { failed = error; });
+    child.once('error', (error) => {
+      failed = error;
+      // a child that never started never closes its watch's tree: settle here (close, if it comes, finds it settled)
+      if (!child.pid) { watch.stop(); rejectRows(new Error(`rows-child did not start: ${error.message}`)); }
+    });
     child.once('close', (code, signal) => {
       watch.stop();
       const stderr = Buffer.concat(err).toString('utf8').trim().split('\n').slice(-8).join('\n');
