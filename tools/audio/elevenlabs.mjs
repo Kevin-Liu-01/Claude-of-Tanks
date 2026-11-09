@@ -154,10 +154,7 @@ export async function soundEffect({ text, durationS = null, promptInfluence = 0.
   return { file, cost: meta.cost, cached: false };
 }
 
-/**
- * One text-to-speech take. Returns { file, cost, cached }.
- */
-export async function speech({ voiceId, text, modelId = 'eleven_v4', languageCode = null, stability = 0.5, similarity = 0.8, seed = null, previousText = null, nextText = null, take = 0, outputFormat = 'pcm_24000' }) {
+function speechRequest({ voiceId, text, modelId = 'eleven_v4', languageCode = null, stability = 0.5, similarity = 0.8, seed = null, previousText = null, nextText = null, take = 0, outputFormat = 'pcm_24000' }) {
   const body = {
     text,
     model_id: modelId,
@@ -167,8 +164,22 @@ export async function speech({ voiceId, text, modelId = 'eleven_v4', languageCod
     ...(previousText ? { previous_text: previousText } : {}),
     ...(nextText ? { next_text: nextText } : {}),
   };
-  const key = digest({ voiceId, body, outputFormat, take });
-  const file = cached('tts', key, extensionFor(outputFormat));
+  return { body, key: digest({ voiceId, body, outputFormat, take }), ext: extensionFor(outputFormat) };
+}
+
+/** Whether this text-to-speech take is already in the cache (a dry run's estimate: a cached take costs nothing). */
+export function speechCached(params) {
+  const { key, ext } = speechRequest(params);
+  return existsSync(join(CACHE_ROOT, 'tts', `${key}.${ext}`));
+}
+
+/**
+ * One text-to-speech take. Returns { file, cost, cached }.
+ */
+export async function speech(params) {
+  const { voiceId, modelId = 'eleven_v4', take = 0, outputFormat = 'pcm_24000', text } = params;
+  const { body, key, ext } = speechRequest(params);
+  const file = cached('tts', key, ext);
   if (existsSync(file)) return { file, cost: 0, cached: true };
   const { data, meta } = await limit(() => request('POST', `/v1/text-to-speech/${voiceId}`, {
     query: { output_format: outputFormat }, json: body, binary: true, label: `tts ${text.slice(0, 30)}`,

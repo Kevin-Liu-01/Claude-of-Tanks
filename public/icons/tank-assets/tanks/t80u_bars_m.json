@@ -9917,8 +9917,8 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 18644,
-      "sha256": "e5467e6ba6e13e8185617362a515a182ef0f013b1a0019c9b39ceb7894624171"
+      "bytes": 18646,
+      "sha256": "07c4f6d1e59ef7e60746cc2efea9bc86dd410a485bca79e9a53df31e60b3973e"
     },
     "side": {
       "file": "t80u_bars_m_side.webp",
@@ -9949,8 +9949,8 @@
       "width": 256,
       "height": 128,
       "mime": "image/png",
-      "bytes": 36270,
-      "sha256": "a0026f12822d0f2c479d544889efeb419d48bd262049d32364c83ec3d4c578cb"
+      "bytes": 32697,
+      "sha256": "d4c5e580631249313372b02b385e1bb1d61dec725862ea5f170a1dc4d8dc2cc1"
     },
     "technicalLabels": {
       "file": "t80u_bars_m_technical.json",

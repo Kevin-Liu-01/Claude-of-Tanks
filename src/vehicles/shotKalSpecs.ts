@@ -21,8 +21,9 @@ Object.assign(spec.dims, { hullLengthM: 7.56, overallLengthM: 9.62, widthM: 3.39
 Object.assign(spec, { weightTons: 51.8, topSpeedKmh: 43, reverseSpeedKmh: 16 });
 spec.visual = {
   ...spec.visual,
-  // IDF "Sinai grey": the grey-sand of 1973, plain, with the white chevron on the side plates
-  scheme: 'solid', base: '#8c8670', weather: '#9a9480', patches: [],
+  // IDF "Sinai grey": the grey-sand of 1973 with the white chevron on the side plates, under interlocking olive-grey fields
+  // and sand and black bars (owner 2026-11-03: "any tank without a proper camo need a proper camoo")
+  scheme: 'merdc', base: '#8c8670', weather: '#9a9480', patches: ['#6a6b55', '#b3ab8e', '#33342d'], patchK: 1.3,
   marking: 'number', number: '3', camoScale: 0.55,
 };
 

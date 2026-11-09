@@ -560,15 +560,15 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 25352,
-      "sha256": "d658abeac46dfa120b778491d0a4cd6be4f065a2912bf003f1311577de65c068",
+      "bytes": 25344,
+      "sha256": "fff07efe6c6d275de2e715a597d4939aac2c0b10f83c46dce27342e667ecc854",
       "thumbnail": {
         "file": "thumbs/k1e1_angle.webp",
         "width": 256,
         "height": 256,
         "mime": "image/webp",
-        "bytes": 10362,
-        "sha256": "7c3327f39d3c622b998f3b6156cd790157b1487dc32eed383336d1c8768888b4"
+        "bytes": 10370,
+        "sha256": "af58ded79f7cca63f5c69cfe453836fce096c54352a2b74897c69aded9ffa15d"
       }
     },
     "top": {
@@ -584,8 +584,8 @@
       "width": 512,
       "height": 256,
       "mime": "image/webp",
-      "bytes": 9974,
-      "sha256": "2369fcc9521332784aee7792c1eb388d7ce458b3fcf804dcd65b70acd39de3c4"
+      "bytes": 9964,
+      "sha256": "1ad157aca3a0eb3b3492a7a877abef2c4c30844e610e0c7d1298e10d45c45506"
     },
     "topSilhouette": {
       "file": "k1e1_top_silhouette.png",
@@ -609,31 +609,31 @@
       "height": 512,
       "mime": "image/webp",
       "bytes": 23420,
-      "sha256": "29a10786cca489e287c56e365823d6343d2c8cb753e12cc3678dac3e9ef39d27"
+      "sha256": "4bea9ff0cd43c20d8994e92fec4f4394ef23597daf6cbfe01358a7bc2e6897f2"
     },
     "modulesSide": {
       "file": "k1e1_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 23864,
-      "sha256": "116b855a74dd8df6d5304edd31451d651b652e1331af0aa2e3e81a48ff596e02"
+      "bytes": 23828,
+      "sha256": "54cf75f7ad67f145748fc1285d6a36690ea99561c835ffe10a582050a788f6de"
     },
     "crewSide": {
       "file": "k1e1_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 21858,
-      "sha256": "7affba2f8a4f59fceb360ce113c78d28d593433395ade21bf41ea582db3f1971"
+      "bytes": 21866,
+      "sha256": "496aaf07fff611395d7c76a12e1c4a262cb8967f336100cfd6d28fc6b3a11be7"
     },
     "markings": {
       "file": "k1e1_markings.png",
       "width": 256,
       "height": 128,
       "mime": "image/png",
-      "bytes": 35434,
-      "sha256": "c358d04cff611359b4b12f039cd43ee7e8805e6afc522be862dac4470cdb498e"
+      "bytes": 33692,
+      "sha256": "495f08dbfaaee0577f9b5718b8fe53cbdb1f385f3caeeaa370596f6f5cdcefd8"
     },
     "technicalLabels": {
       "file": "k1e1_technical.json",

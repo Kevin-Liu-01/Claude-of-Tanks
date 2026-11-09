@@ -7468,16 +7468,16 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 12866,
-      "sha256": "cd6a68f956dffac71a2345733be7bead5accddc20c90786893552093a03aa42a"
+      "bytes": 12880,
+      "sha256": "3a2c9fa29cbdf6c986887dee5cee16541c0440d5fb70e62ba8d6532d2b5e7ba3"
     },
     "side": {
       "file": "t90_1992_side.webp",
       "width": 512,
       "height": 256,
       "mime": "image/webp",
-      "bytes": 10444,
-      "sha256": "c4c600fb0e33c5a2deeded5b48680bb37a1de8b78f1e89eeff1df52cf2e33980"
+      "bytes": 10436,
+      "sha256": "4a2d82094ae76174327b31d8742c9f73c3d1c5c4d6626b9b2f304878d6f66323"
     },
     "topSilhouette": {
       "file": "t90_1992_top_silhouette.png",
@@ -7500,32 +7500,32 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 24024,
-      "sha256": "cc3317a7eed53ec93146bfb79b7ea0e7699cca83753f8c15615e6484945866e6"
+      "bytes": 24036,
+      "sha256": "1cf783071e0d3b293d45b0f1a0ee06122f86f293083b1ca4f2f4d69e45b6ccea"
     },
     "modulesSide": {
       "file": "t90_1992_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 23380,
-      "sha256": "3f16f92b3d219ff884632659b36f8a62358fd57f236b4189380ccd86c9ece459"
+      "bytes": 23338,
+      "sha256": "3824e5a6b1fc0a6138075e1d423704a3b96c5907383ad13759419248b395d04f"
     },
     "crewSide": {
       "file": "t90_1992_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 20590,
-      "sha256": "8ce16c1ba31f3bebf8cda90c378b75b6cbbeeb266e43c2eba3431df4059c27cb"
+      "bytes": 20540,
+      "sha256": "b167c4a0adc3f950af7f70433d6647d9ba6841f4e394da6d77bb96adbefc2a6a"
     },
     "markings": {
       "file": "t90_1992_markings.png",
       "width": 256,
       "height": 128,
       "mime": "image/png",
-      "bytes": 34385,
-      "sha256": "a63e1ac168e71e6b58e6b36e5cdfaa403f3dd381787563765c27eb30df4960de"
+      "bytes": 32838,
+      "sha256": "3520bb30065aee629331c8b2a39baf2dc99e0054996b40e861fc2d1ea8dab8c5"
     },
     "technicalLabels": {
       "file": "t90_1992_technical.json",

@@ -760,8 +760,6 @@ export const SARAJEVO_STYLE: ArchitectureStyle = Object.freeze<ArchitectureStyle
     plaster: [[1, 1, 1], [1.0, 0.95, 0.86], [1.02, 0.88, 0.66], [0.88, 0.96, 0.86], [1.0, 0.87, 0.82], [0.9, 0.93, 0.98], [1.0, 0.92, 0.76]],
     stone: [[1, 1, 1], [0.93, 0.92, 0.9], [0.84, 0.83, 0.81], [1.02, 0.99, 0.94]],
     roof: [[1.08, 0.96, 0.9], [1, 1, 1], [0.86, 0.82, 0.8], [0.7, 0.66, 0.66], [0.6, 0.58, 0.6], [0.94, 0.86, 0.8]],
-    damp: 0.7, moss: 0.3,
   },
   // the shelling: half the city's houses show it at their windows and roofs
-  wear: 0.5,
 });

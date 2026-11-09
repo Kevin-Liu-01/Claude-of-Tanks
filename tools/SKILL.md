@@ -196,6 +196,10 @@ and `npm run test:net:v2:soak` run the client and host without a browser; `npm r
 test:net:v2:rooms` runs the Worker under the Workers runtime. Run every Chrome
 under the probe mutex at nice 19, one at a time. Production health is the Worker's
 `/healthz` plus `npm run test:net:v2:p2p -- --site` (docs/DEVELOPMENT.md).
+A browser check that needs a stable battle (an inspection camera, minutes of radio) arms
+`window.__DEBUG.battleHold.set(true)` before entering it, as `track-system-audit.mjs` and
+`voice-smoke.mjs` do: the bots stand and never fire, the player takes no damage, no verdict
+comes (src/dev/SKILL.md).
 Battle entry is a per-deploy check of its own: `node tools/battle-entry-sweep.mjs
 <url>|--dist=<dir> --tier=mobile|desktop --times=sunset,day,night --force-black` loads
 into every battlefield through the player's covered solo entry with
@@ -334,6 +338,9 @@ the material invariant behind the band. `tank:release:check` runs it on the rele
 qualities) takes about 25 minutes in one process, so split it across processes for a fleet sweep.
 
 Standalone probes run by hand (each is its owning lane's reusable rig; none is in `npm test`):
+- `node tools/building-style-shots.mjs --out=<dir> --jobs=<jobs.json> [--tag=v1]` — every map's buildings at the battle
+  camera (chase, chase2, long; desktop or phone), staged identically per build with the clouds pinned (one capture time,
+  drift held), through the capture lock and resumable: the buildings lane's blind A/B pairs (buildings-270).
 - `node tools/civic-census.mjs [--out=<file.jsonl>] [mapId…]` — read-only, from each map's collision shard and config:
   its town pads, the legacy kerb pass replayed, and whether the map needs the civic-area or pathway kit (maps lane).
 - `node tools/click-timeline.mjs --base=<label>=<url> --out=<dir> [--paths=all|<id>,…] [--profile=desktop|phone]`, then

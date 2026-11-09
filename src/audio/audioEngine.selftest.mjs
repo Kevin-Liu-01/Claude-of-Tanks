@@ -4,9 +4,11 @@ import { readFileSync, readdirSync } from 'node:fs';
 import { createFakeContext, fakeBuffer } from './fakeAudioContext.test-support.mjs';
 import { createBus } from '../game/stateCore.ts';
 import { CREW_VOICE_NATIONS } from './crewVoice.ts';
+import { WORLD_CREW_LANGUAGES } from './vehicleAudioProfiles.ts';
 import { emitDebrisLanding, emitTurretLanding } from '../fx/clock.ts';
 import { GAME_MODE_IDS } from '../sim/matchModes.ts';
-import { matchRulesetFor } from '../sim/matchRuleset.ts';
+import { GUNSHIP_WEAPONS, matchRulesetFor } from '../sim/matchRuleset.ts';
+import { TURRET_DRIVE_SOUND } from './vehicleRig.ts';
 
 // Serve the shipped assets from disk; "decode" them as 1.5 s fake buffers.
 const publicRoot = new URL('../../public/', import.meta.url);
@@ -129,13 +131,13 @@ assert.ok(quietAfter && quietAfter.g < quietAlone.g * 0.5, `small sounds give wa
 since = mark();
 bus.emit('shell:fired', { shellId: 2, shooterId: 'far', muzzlePos: [0, 2, 700], dir: [1, 0, 0], caliberMm: 30, shellType: 'APFSDS', weaponSound: '2a42' });
 names = logSince(since).map((e) => e.n);
-assert.ok(names.includes('ac_far_light'), `700 m autocannon is a distant report (${names})`);
+assert.ok(names.includes('ac_30_far'), `700 m autocannon is its bore's distant report (${names})`);
 assert.ok(!names.includes('ac_30_close'), 'no close report at 700 m');
 
 // A volley that overflows the voice budget steals one-shots, never the ambience bed.
 // Every bore at 60 m, so distinct report assets (not per-asset instance caps) fill the pool.
 let volleyId = 100;
-for (const caliberMm of [7.62, 12.7, 20, 25, 30, 40, 57, 90, 105, 120, 125, 130, 152]) {
+for (const caliberMm of [7.62, 12.7, 20, 25, 30, 35, 40, 50, 76, 90, 105, 120, 125, 130, 152]) {
   for (let k = 0; k < 4; k++) {
     bus.emit('shell:fired', { shellId: volleyId++, shooterId: 'foe', muzzlePos: [-30 + k * 20, 2, 60], dir: [0, 0, 1], caliberMm, shellType: 'HE' });
   }
@@ -150,23 +152,24 @@ audio.update(1 / 60, listener, tanks);
 since = mark();
 bus.emit('shell:fired', { shellId: 3, shooterId: 'me', isPlayer: true, muzzlePos: [0, 2, 3], dir: [0, 0, 1], caliberMm: 125, shellType: 'APFSDS' });
 names = logSince(since).map((e) => e.n);
-assert.equal(logSince(since).find((e) => e.n === 'gun_own_large')?.b, 'ownCombat', `our own gun has its own report, on the gunfire channel (${names})`);
+assert.equal(logSince(since).find((e) => e.n === 'gun_125_own')?.b, 'ownCombat', `our own gun has its bore's own report, on the gunfire channel (${names})`);
 assert.ok(!names.includes('gun_125_close'), 'our report replaces the close bank everyone else hears');
 assert.ok(names.includes('gun_recoil_mech'), 'the breech recoils and runs back into battery');
 assert.equal(probe.busGains().concussion, 0, 'our own gun never concusses its crew');
 since = mark();
-for (const progress of [0, 0.1, 0.5, 0.7, 0.8, 0.95]) bus.emit('player:reload', { total: 7, kind: 'shell', caliberMm: 125, t: 7 * (1 - progress), progress });
+for (const progress of [0, 0.1, 0.5, 0.7, 0.8, 0.95]) { ctx.advance(0.6); bus.emit('player:reload', { total: 7, kind: 'shell', caliberMm: 125, t: 7 * (1 - progress), progress }); }
 bus.emit('player:reload', { total: 7, kind: 'shell', caliberMm: 125, t: 0, progress: 1, done: true });
 names = logSince(since).map((e) => e.n);
-for (const id of ['case_eject_stub', 'autoloader_carousel', 'autoloader_lift', 'autoloader_chain_ram', 'breech_close', 'latch_ready']) {
-  assert.ok(names.includes(id), `carousel reload plays ${id} (${names})`);
+for (const id of ['stub_port_eject', 'autoloader_carousel', 'autoloader_lift', 'autoloader_chain_ram', 'breech_close', 'latch_ready']) {
+  assert.ok(names.includes(id), `the T-72's AZ carousel reload plays ${id} (${names})`);
 }
+assert.equal(names.filter((n) => n === 'autoloader_chain_ram').length, 2, `the chain rammer drives the projectile, then the charge (${names})`);
 since = mark();
-for (const progress of [0, 0.1, 0.2, 0.35, 0.5, 0.65, 0.8, 0.95]) { ctx.advance(0.6); bus.emit('player:reload', { total: 6, kind: 'magazine', caliberMm: 120, t: 6 * (1 - progress), progress }); }
-bus.emit('player:reload', { total: 6, kind: 'magazine', caliberMm: 120, t: 0, progress: 1, done: true });
+for (const progress of [0, 0.1, 0.2, 0.35, 0.5, 0.65, 0.8, 0.95]) { ctx.advance(0.6); bus.emit('player:reload', { total: 6, kind: 'magazine', caliberMm: 120, t: 6 * (1 - progress), progress, magazineCapacity: 4 }); }
+bus.emit('player:reload', { total: 6, kind: 'magazine', caliberMm: 120, t: 0, progress: 1, done: true, magazineCapacity: 4 });
 names = logSince(since).map((e) => e.n);
-assert.equal(names.filter((n) => n === 'drum_load_round').length, 4, `a drum refill feeds its rounds in one by one (${names})`);
-assert.ok(names.includes('drum_rotate') && names.at(-1) === 'latch_ready', 'the drum indexes and the gun locks ready');
+assert.equal(names.filter((n) => n === 'shell_grab').length, 4, `a bustle magazine is refilled round by round (${names})`);
+assert.ok(names.includes('bustle_index') && names.includes('bustle_ram') && names.at(-1) === 'latch_ready', 'the magazine indexes, rams and the gun locks ready');
 // Owner 2026-10-17 (out of ammo): the post-shot cycle of an empty gun loads nothing — no cue, no latch, no call.
 {
   const stowed = me.combat.ammo.slice();
@@ -257,15 +260,18 @@ for (let i = 0; i < 180; i++) {
 }
 names = logSince(since).map((e) => e.n);
 assert.ok(names.filter((n) => n === 'gun_limit').length <= 2, `a flickering gun stop clunks at most twice in 3 s (${names.filter((n) => n === 'gun_limit').length})`);
-assert.equal(names.filter((n) => n === 'turret_stop').length, 0, 'a hunting servo never clunks');
-assert.equal(names.filter((n) => n === 'turret_start').length, 0, 'nor starts the drive');
+// our T-72's turret runs on a hydraulic drive, which starts and stops as itself (world-sfx-269)
+const drive = TURRET_DRIVE_SOUND.hydraulic;
+assert.equal(names.filter((n) => n === drive.stop).length, 0, 'a hunting servo never clunks');
+assert.equal(names.filter((n) => n === drive.start).length, 0, 'nor starts the drive');
 since = mark();
 for (let i = 0; i < 30; i++) { me.state.turretYawRate = 0.4; ctx.advance(1 / 60); audio.update(1 / 60, listener, tanks); }
 me.state.turretYawRate = 0;
 ctx.advance(1 / 60);
 audio.update(1 / 60, listener, tanks);
-assert.equal(logSince(since).filter((e) => e.n === 'turret_stop').length, 1, 'a half-second slew ends in one stop clunk');
-assert.equal(logSince(since).filter((e) => e.n === 'turret_start').length, 1, 'and began with one drive start');
+assert.equal(logSince(since).filter((e) => e.n === drive.stop).length, 1, 'a half-second slew ends in one stop clunk');
+assert.equal(logSince(since).filter((e) => e.n === 'turret_stop').length, 0, 'not the electric drive\'s');
+assert.equal(logSince(since).filter((e) => e.n === drive.start).length, 1, 'and began with one drive start');
 me.state.atGunLimit = false;
 
 // Destruction: an ammo-rack kill by us → blast, turret, cook-off, kill confirm.
@@ -359,17 +365,19 @@ for (let i = 0; i < 4; i++) { ctx.advance(0.25); audio.update(0.25, listener, ta
 assert.equal(probe.voiceLog.at(-1)?.id, 'penetration', 'the gunner calls the penetration');
 
 // A main-gun miss is called too: "short" when the round came down before the enemy it was laid
-// on (the line's second take), a plain "miss" when it went over.
-const miss = (shellId, landedZ) => {
+// on (the line's second take), "over" when it came down beyond it (the third, crew-lines-269), a
+// plain "miss" when it went wide.
+const miss = (shellId, landedZ, landedX = 0) => {
   settle(9);
   bus.emit('shell:fired', { shellId, shooterId: 'me', muzzlePos: [0, 2, 3], dir: [0, 0, 1], caliberMm: 125, shellType: 'APFSDS' });
   ctx.advance(0.3);
-  bus.emit('shell:expired', { shellId, shooterId: 'me', pos: [0, 0, landedZ], hitTerrain: true, caliberMm: 125 });
+  bus.emit('shell:expired', { shellId, shooterId: 'me', pos: [landedX, 0, landedZ], hitTerrain: true, caliberMm: 125 });
   for (let i = 0; i < 4; i++) { ctx.advance(0.25); audio.update(0.25, listener, tanks); }
   return [probe.voiceLog.at(-1)?.id, probe.voiceLog.at(-1)?.take];
 };
 assert.deepEqual(miss(9, 400), ['miss', 1], 'a round short of the target is called short');
-assert.deepEqual(miss(10, 900), ['miss', 0], 'a round over the target is a plain miss');
+assert.deepEqual(miss(10, 900), ['miss', 2], 'a round over the target is called over');
+assert.deepEqual(miss(11, 700, 30), ['miss', 0], 'a round wide of the target is a plain miss');
 
 // Kill-cam replay: a crisp blast, then debris stretched to the 0.55x replay, all on the cinematic bus.
 since = mark();
@@ -469,6 +477,10 @@ delete me.aerial;
 // gunship's howitzer from the sky.
 settle(4);
 me.aerial = { kind: 'gunship', active: true, x: 0, y: 240, z: 0 };
+// the AC-130's guns replace the hull's (sim/modeLoadout.ts setModeWeapon), its howitzer the selected weapon for the reload
+const hullSpec = me.spec;
+me.spec = { ...hullSpec, gun: { caliberMm: GUNSHIP_WEAPONS[0].caliberMm, shells: GUNSHIP_WEAPONS } };
+me.combat.shellSlot = 1;
 ctx.advance(0.2);
 audio.update(1 / 60, listener, tanks);
 // The aircraft set (the gunship's reports among it) decodes on first sight of one.
@@ -493,11 +505,13 @@ since = mark();
 bus.emit('ui:shellSelectionChanged', { slot: 1 });
 assert.ok(logSince(since).some((e) => e.n === 'gunship_weapon_select'), 'the selector arms the next gun');
 delete me.aerial;
+me.spec = hullSpec;
+me.combat.shellSlot = 0;
 ctx.advance(0.6);
 since = mark();
 bus.emit('shell:fired', { shellId: volleyId++, shooterId: 'foe', muzzlePos: [40, 240, 120], dir: [0, -0.8, -0.6], caliberMm: 152, shellType: 'HE', weaponSound: 'gunship-howitzer' });
 names = logSince(since).map((e) => e.n);
-assert.ok(names.includes('gunship_howitzer_far') && !names.includes('gun_152_close'), `a gunship's howitzer is heard from the sky (${names})`);
+assert.ok(names.includes('gunship_howitzer_far') && !names.includes('gun_152_close') && !names.includes('gun_152h_close'), `a gunship's howitzer is heard from the sky (${names})`);
 
 // Modes: each opens on its own sound and marks its own events.
 settle(2);
@@ -626,15 +640,19 @@ ctx.advance(13);
 since = mark();
 bus.emit('player:spotted', { timeS: 13 });
 assert.ok(logSince(since).some((e) => e.n === 'ui_alert'), 'the lamp sounds each time it lights');
+assert.equal(probe.sayLog.at(-1)?.id, 'sixth_sense',
+  'and each exposure asks the radio: "once per exposure" is sixth_sense\'s cooldown, armed only when the call plays');
 since = mark();
 audio.loadingOn(true);
 assert.ok(logSince(since).some((e) => e.n === 'loading_bed_loop'), 'the loading screen has its recorded bed');
 audio.loadingOn(false);
 assert.equal(ctx.nodes.filter((n) => n.kind === 'oscillator').length, 0, 'a whole session synthesizes nothing');
 
-// The real settings event reaches every radio call, across every shipped pack.
-const lastPack = Object.keys(CREW_VOICE_NATIONS).at(-1);
-for (const language of Object.keys(CREW_VOICE_NATIONS)) {
+// The real settings event reaches every radio call, across every shipped pack: the national ones and the languages with no
+// country in the game.
+const shippedPacks = [...Object.keys(CREW_VOICE_NATIONS), ...WORLD_CREW_LANGUAGES];
+const lastPack = shippedPacks.at(-1);
+for (const language of shippedPacks) {
   bus.emit('ui:volumes', { crewVoice: language });
   assert.equal(probe.crewLanguage, language);
   await probe.libraryIdle();
@@ -695,4 +713,31 @@ assert.equal(window.__COT_AUDIO.crewLanguage, 'fr', 'pre-resume events retain th
 if (priorStorage === undefined) delete globalThis.localStorage;
 else globalThis.localStorage = priorStorage;
 
+{
+  // Our own roof machine gun (gun-reports-269): its own bank from the hatch, only its closed turret's in the sight.
+  since = mark();
+  bus.emit('auxiliary:fired', { id: 'me', x: 0, y: 2.5, z: 0, caliberMm: 12.7 });
+  names = logSince(since).map((e) => e.n);
+  assert.ok(names.includes('mg_heavy_own') && !names.includes('mg_heavy_close'), `our roof gun plays its own report (${names})`);
+  ctx.advance(0.3);
+  since = mark();
+  audio.update(1 / 60, { ...listener, scoped: true }, tanks);
+  bus.emit('auxiliary:fired', { id: 'me', x: 0, y: 2.5, z: 0, caliberMm: 12.7 });
+  names = logSince(since).map((e) => e.n);
+  assert.ok(names.includes('mg_heavy_interior') && !names.includes('mg_heavy_own') && !names.includes('mg_heavy_far'), `in the sight it is heard through the roof (${names})`);
+  audio.update(1 / 60, listener, tanks);
+  ctx.advance(0.3);
+}
+{
+  // A change of hull under the same entity (gun-reports-269): our own banks follow the new hull's loaders and stations,
+  // read from its spec (the T-72B3M's roof carries a 12.7 mm, the AbramsX's a 30 mm cannon).
+  const swapped = { ...tank('me', { isPlayer: true, specId: 'abramsx', nation: 'USA' }), state: me.state };
+  audio.update(1 / 60, listener, [swapped, ally, foe, farFoe]);
+  await probe.libraryIdle();
+  ctx.advance(0.3);
+  since = mark();
+  bus.emit('auxiliary:fired', { id: 'me', x: 0, y: 2.5, z: 0, caliberMm: 30 });
+  names = logSince(since).map((e) => e.n);
+  assert.ok(names.includes('ac_30_own'), `after a change of hull our new roof cannon plays its own report (${names})`);
+}
 console.log(`audioEngine.selftest: rigs by powertrain, national crew, scenes, weapon layering + delay + flyby, reload choreography, hits, edge cases, destruction, concussion, our hits and misses, kill-cam, panning, scope, aircraft, mode events, interface sounds, rig ownership, late adoption and teardown passed (${probe.sfxLog.length} voices logged)`);

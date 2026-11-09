@@ -10,7 +10,7 @@
 
 import { clamp, dbToGain } from './audioMath.ts';
 import type { AssetLibrary } from './assetLibrary.ts';
-import { BELL_ASSET, BELL_POLICY, type EnvironmentScene } from './environmentScenes.ts';
+import { BELL_ASSET, BELL_POLICY, spotHeardAt, type EnvironmentScene } from './environmentScenes.ts';
 import type { Mixer } from './mixer.ts';
 import type { ActiveVoice, VoicePool } from './voicePool.ts';
 
@@ -42,10 +42,12 @@ interface AmbienceOptions {
   getBellTowers?: () => readonly BellTower[];
   /** Whether the bells may ring now (the engine: once the battle has rolled out, so a frozen pre-battle never tolls). */
   bellsAllowed?: () => boolean;
+  /** Whether it is night (the battle's time of day): the scene's day spots give way to its night's (SPOT_HOURS). */
+  isNight?: () => boolean;
 }
 
 export function sceneAssets(scene: EnvironmentScene, battle: boolean): string[] {
-  const ids = [scene.bed, ...scene.spots.map(([id]) => id)];
+  const ids = [scene.bed, ...scene.spots.map(([id]) => id), ...scene.night.map(([id]) => id)];
   if (scene.layer) ids.push(scene.layer.asset);
   if (scene.bells) ids.push(BELL_ASSET[scene.bells]);
   if (battle && scene.war > 0) ids.push('amb_distant_battle');
@@ -53,13 +55,16 @@ export function sceneAssets(scene: EnvironmentScene, battle: boolean): string[] 
   return ids;
 }
 
-export function createAmbienceDirector({ mixer, library, pool, random, getBellTowers, bellsAllowed }: AmbienceOptions): AmbienceDirector {
+export function createAmbienceDirector({ mixer, library, pool, random, getBellTowers, bellsAllowed, isNight }: AmbienceOptions): AmbienceDirector {
   let scene: EnvironmentScene | null = null;
   let loops: { voice: ActiveVoice | null; asset: string; gainDb: number }[] = [];
   let nextSpotAt = 0;
   let lastSpot = '';
   let battleMode = false;
   let spotsPlayed = 0;
+  // The spots heard at this hour (world-sfx-269): the scene's day or night set, rebuilt when the hour turns, never per pick.
+  let heard: readonly (readonly [string, number])[] = [];
+  let heardNight: boolean | null = null;
   // Bells: when the next toll falls due, when the fighting was last loud enough to hold it, what has rung.
   let nextBellAt = Infinity;
   let lastLoudAt = -Infinity;
@@ -83,17 +88,28 @@ export function createAmbienceDirector({ mixer, library, pool, random, getBellTo
     }
   }
 
+  /** The scene's spots for the hour: indoors all of them; outdoors the day's, or after dark the night's own beside those heard at any hour. */
+  function spotsNow(): readonly (readonly [string, number])[] {
+    if (!scene) return heard;
+    const night = !scene.indoor && (isNight?.() ?? false);
+    if (night === heardNight) return heard;
+    heardNight = night;
+    heard = scene.indoor ? scene.spots : [...scene.spots.filter(([id]) => spotHeardAt(id, night)), ...(night ? scene.night : [])];
+    return heard;
+  }
+
   function pickSpot(): string | null {
-    if (!scene || !scene.spots.length) return null;
+    const list = spotsNow();
+    if (!scene || !list.length) return null;
     let total = 0;
-    for (const [id, w] of scene.spots) total += id === lastSpot && scene.spots.length > 1 ? 0 : w;
+    for (const [id, w] of list) total += id === lastSpot && list.length > 1 ? 0 : w;
     let roll = random() * total;
-    for (const [id, w] of scene.spots) {
-      const weight = id === lastSpot && scene.spots.length > 1 ? 0 : w;
+    for (const [id, w] of list) {
+      const weight = id === lastSpot && list.length > 1 ? 0 : w;
       if (roll < weight) return id;
       roll -= weight;
     }
-    return scene.spots[0][0];
+    return list[0][0];
   }
 
   const between = ([lo, hi]: readonly [number, number]) => lo + random() * (hi - lo);
@@ -133,6 +149,7 @@ export function createAmbienceDirector({ mixer, library, pool, random, getBellTo
       if (scene === next && battleMode === battle && loops.length) return;
       stopLoops(1.2);
       scene = next;
+      heardNight = null;
       battleMode = battle;
       const ids = sceneAssets(next, battle);
       library.pin(ids);
@@ -181,7 +198,7 @@ export function createAmbienceDirector({ mixer, library, pool, random, getBellTo
       return {
         active: !!scene, bed: scene?.bed ?? null, layer: scene?.layer?.asset ?? null,
         loops: loops.map((l) => ({ asset: l.asset, playing: !!l.voice && !l.voice.dead, gain: +dbToGain(l.gainDb).toFixed(3) })),
-        spotsPlayed, battle: battleMode, reverb: scene?.reverb ?? null,
+        spotsPlayed, battle: battleMode, reverb: scene?.reverb ?? null, night: heardNight,
         bells: scene?.bells ?? null, tolls, lastToll,
         nextTollInS: Number.isFinite(nextBellAt) ? +(nextBellAt - mixer.ctx.currentTime).toFixed(1) : null,
       };

@@ -11127,24 +11127,24 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 20872,
-      "sha256": "ef842ad622af3dd5b6f3fe7aad60bcd38e09c8aa26ed25523f3a8abf101dd72d"
+      "bytes": 20838,
+      "sha256": "95264bfea36e0a14498fe8315ab0446e88305ebe5f2736e6959743d0e13e4516"
     },
     "modulesSide": {
       "file": "t90m_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 17724,
-      "sha256": "bb903bdee9323a134b9b60f261155aabf25be33727059d5a7e20d79bf85b1398"
+      "bytes": 17732,
+      "sha256": "f24f498ea6e06e55a5729e73730ac907b5310ed06b63e6a6c493bbcaf74a9f79"
     },
     "crewSide": {
       "file": "t90m_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 15940,
-      "sha256": "6ac61c65ca7dffb9107747654545f21f63304459781063f378412d3be2e8d66a"
+      "bytes": 15942,
+      "sha256": "0fe1df515e77a31510e7dc99ee7165b9cb5cb995a4065c1b49a771587c4ef8cc"
     },
     "angle": {
       "file": "t90m_angle.webp",
@@ -11167,16 +11167,16 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 11786,
-      "sha256": "db9562fc962143dddd9ca1f1cdb7567d0bbd0ef4d5479c1ccf9918e96f0ed4fe"
+      "bytes": 11776,
+      "sha256": "114e83a60f279a6db75cf038d5387cb7c0f945d6f55184cad8027a66a74246d0"
     },
     "side": {
       "file": "t90m_side.webp",
       "width": 512,
       "height": 256,
       "mime": "image/webp",
-      "bytes": 10288,
-      "sha256": "060f8c495a4ca28c4fd3e8356a4fcf541daa4a504c0307ee684cc8ed857aff24"
+      "bytes": 10266,
+      "sha256": "403d2327f7708b5accdda2f7e54cd518ff034fe4bf3973ad31b542d4f9c13ab7"
     },
     "topSilhouette": {
       "file": "t90m_top_silhouette.png",
@@ -11199,8 +11199,8 @@
       "width": 256,
       "height": 128,
       "mime": "image/png",
-      "bytes": 35762,
-      "sha256": "ac81aadb198cadb244c0495dc9056c758d2596b924bf27dcb3f5d87f2bfba9c4"
+      "bytes": 32556,
+      "sha256": "842f5ac151babd3cdc41decd5b4c266193e7ce5e0268a2bbb6ffde90457bd74a"
     },
     "technicalLabels": {
       "file": "t90m_technical.json",

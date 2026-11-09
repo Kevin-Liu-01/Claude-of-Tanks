@@ -1,5 +1,5 @@
 import {
-  IMPACT_DECAL_CAP, IMPACT_DECAL_LIFT_M, impactDecalDescriptor,
+  IMPACT_DECAL_CAP, IMPACT_DECAL_LIFT_M, IMPACT_MARK_MIN_CALIBER_MM, IMPACT_MARK_SIZE_M, impactDecalDescriptor,
 } from './impactDecals.ts';
 import { SURFACE_MARKING_STYLE } from '../vehicles/vehicleMarkings.ts';
 import { readFile } from 'node:fs/promises';
@@ -98,6 +98,26 @@ if (pen.variants < 4 || ricochet.variants < 4 || nonpen.variants < 3) {
   throw new Error('impact decal atlas no longer provides enough per-outcome variation');
 }
 
+// (impact-materials-269) what was struck decides the mark: the turning running gear and a cage's lattice take none (a
+// fixed quad would slide over the wheels or hang in the gaps), a round through a screen leaves its hole, rubber and canvas
+// tear dark, steel keeps the steel marks
+for (const material of ['trackLinks', 'roadWheel', 'cage']) {
+  for (const kind of ['pen', 'nonpen', 'ricochet', 'spaced_absorb', 'screen_pierce']) {
+    if (impactDecalDescriptor(kind, false, material) !== null) throw new Error(`${kind} on ${material} must leave no fixed mark`);
+  }
+}
+const pierced = impactDecalDescriptor('screen_pierce', false, 'thinSteel');
+if (!pierced?.hasHole || pierced.family !== 'pen' || !(pierced.sizeK < 1)) {
+  throw new Error('a round through a screen must leave a hole, smaller than a penetration of the hull');
+}
+for (const material of ['rubberSkirt', 'stowage']) {
+  const torn = impactDecalDescriptor('ricochet', false, material);
+  if (!torn?.tint || Math.max(...torn.tint) > 0.6) throw new Error(`a ${material} strike must tear dark, with no bare steel`);
+}
+for (const material of [null, 'armour', 'thinSteel', 'era']) {
+  if (impactDecalDescriptor('ricochet', false, material)?.tint !== null) throw new Error(`${material ?? 'an unnamed plate'} keeps the steel marks`);
+}
+
 console.log('impactDecals.selftest: production ownership and outcome-specific scars passed');
 
 // owner r1 (owner 2026-09-17: "hit marks registered to hull when on turret →
@@ -143,6 +163,32 @@ console.log('impactDecals.selftest: production ownership and outcome-specific sc
     parents = parentsOfMarks();
     if (parents.length !== 3 || !parents.includes(gun)) throw new Error('a hull-frame contact on gun skin must be stamped into rig_gun');
     console.log('impactDecals.selftest: visual-owner routing (turret, hull, gun) passed');
+    // (impact-materials-269) a bullet leaves no mark (it would push a cannon's out of the ring); neither does a strike on
+    // the running gear
+    const marksBefore = decals.stats().decals;
+    if (decals.stampFromEvent({ ...hit([1.5, 0.5, 1.0], [1, 0, 0], 'hull_side'), kind: 'nonpen', caliberMm: IMPACT_MARK_MIN_CALIBER_MM - 7.3 }, ent)
+      || decals.stampFromEvent({ ...hit([1.5, 0.3, 0.5], [1, 0, 0], 'hull_side'), kind: 'nonpen', material: 'roadWheel' }, ent)
+      || decals.stats().decals !== marksBefore) throw new Error('a bullet or a road-wheel strike must leave no mark');
+    if (!decals.stampFromEvent({ ...hit([1.5, 0.5, 1.5], [1, 0, 0], 'hull_side'), kind: 'nonpen', caliberMm: 30 }, ent)) {
+      throw new Error('an autocannon round leaves its mark');
+    }
+    // (impact-materials-269, the owner 2026-11-04: "check for hit marks ON TANKS as they should appear, very visible") the
+    // solid share of each family's cells (texels at half alpha or more) at its quad size: a 120 mm mark holds 0.06 m² or
+    // more of solid mark, ~440 px² from the third-person camera (9 m, 50°, 720 px tall) and ~33 px² through a scope at
+    // 250 m (7°). Before: the scuff (every non-penetrating hit) held 0.0001 m², 1 px² at 9 m; the gouge 0.004.
+    const atlas = decals.material.map.image.getContext('2d');
+    for (const [family, cells] of [['pen', [0, 1, 2, 3]], ['scuff', [6, 7, 15]], ['gouge', [8, 9, 10, 11]]]) {
+      let solid = 0, texels = 0;
+      for (const cell of cells) {
+        const data = atlas.getImageData((cell % 4) * 256, Math.floor(cell / 4) * 256, 256, 256).data;
+        for (let k = 3; k < data.length; k += 4) { texels++; if (data[k] >= 128) solid++; }
+      }
+      const w = IMPACT_MARK_SIZE_M[family] * 1.2;
+      const h = family === 'gouge' ? w * (IMPACT_MARK_SIZE_M.gougeH + 0.05) : w;
+      const area = (solid / texels) * w * h;
+      if (area < 0.06) throw new Error(`a 120 mm ${family} holds ${area.toFixed(4)} m² of solid mark; it needs 0.06 to read at range`);
+    }
+    console.log('impactDecals.selftest: material routing, the calibre floor and marks that read at range passed');
   } finally {
     if (documentBefore) Object.defineProperty(globalThis, 'document', documentBefore); else delete globalThis.document;
   }

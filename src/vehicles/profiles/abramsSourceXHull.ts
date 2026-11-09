@@ -432,7 +432,8 @@ export function* buildAbramsSourceXHullCooperativeSteps(P: TankBuilderPort, opti
   if (cooperative) yield "buildAbramsSourceXHull:for (const side of [-1, 1]) skirtStock(P, side);";
   addAbramsSourceXShoulderClosure(P);
   if (cooperative) yield "buildAbramsSourceXHull:addAbramsSourceXShoulderClosure(P);";
-  if (options.sepv3) buildSepv3HeavySkirts(P);
+  // the heavy skirts are the SEPv3's ARAT banks: a SEPv3 without ARAT keeps the stock skirts (release 269)
+  if (options.sepv3 && options.urbanArmor) buildSepv3HeavySkirts(P);
   else if (options.urbanArmor) reactiveSkirts(P, options.curvedArat);
   if (cooperative) yield "buildAbramsSourceXHull:if (options.urbanArmor) reactiveSkirts(P, options.curvedArat);";
   if (options.curvedArat) addAbramsSourceXSkirtReturns(P);

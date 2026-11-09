@@ -734,15 +734,15 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 30538,
-      "sha256": "c7744a6b8be0013d9707e7569b020d84727be1624725ae58143cd58a6bf65c7a",
+      "bytes": 29792,
+      "sha256": "fa8a69bb7fd1892a91013334271c163bdec3068138ee791ef4293be56394b7c1",
       "thumbnail": {
         "file": "thumbs/x1a2_carcara_angle.webp",
         "width": 256,
         "height": 256,
         "mime": "image/webp",
-        "bytes": 12152,
-        "sha256": "64e8b93020bd7190fbcd031edf164064a5a3f35156d91ca7e754e77eb632fc90"
+        "bytes": 12086,
+        "sha256": "c033a5971e823a46c640caa1d961b518f6158e8195754b05457d710d611af5ea"
       }
     },
     "top": {
@@ -750,16 +750,16 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 12368,
-      "sha256": "17d7f453c788e5107cc8c5d8bfe19ae13025b6d6887a5375144dd933b1842f8a"
+      "bytes": 11596,
+      "sha256": "56efeb803353fc8821d0b76b21eca6a8bf6ea84cc6b90e34b4bd8c79c44e1a56"
     },
     "side": {
       "file": "x1a2_carcara_side.webp",
       "width": 512,
       "height": 256,
       "mime": "image/webp",
-      "bytes": 14478,
-      "sha256": "1685138132019248dac59ef70e9417e045e694b1cb063c70ddbc7c1e644ee2b5"
+      "bytes": 14528,
+      "sha256": "3fe6d434f4da84bafb2339ff010863ad4582c2c68fd67f11dd1fdb5c2111516a"
     },
     "topSilhouette": {
       "file": "x1a2_carcara_top_silhouette.png",
@@ -782,32 +782,32 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 31432,
-      "sha256": "bf83d23a73ea4d690e4d9f168c1cf77935dfec8dfc055c69841611baf7e03373"
+      "bytes": 31286,
+      "sha256": "f21509ea62dff00e81e202e9b237c26faac12df7d78ee3db235bda440084a45f"
     },
     "modulesSide": {
       "file": "x1a2_carcara_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 33102,
-      "sha256": "a5860fcbf99301cf4248cfc2f6cb5ec6e085b8254bb8c4158a57159f94a48d27"
+      "bytes": 32772,
+      "sha256": "409856de2213ad7d9622861703b7f7723940efb445624fca0e0d684201725f4d"
     },
     "crewSide": {
       "file": "x1a2_carcara_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 28820,
-      "sha256": "8c01b7576dde35b58b26233133ea0f30d160c19cdc88129597250bb0b12e202b"
+      "bytes": 28074,
+      "sha256": "a8e025e7560a147ad2caf7131ea79044d432c406e4f551fc0ff3251ddec2e449"
     },
     "markings": {
       "file": "x1a2_carcara_markings.png",
       "width": 256,
       "height": 128,
       "mime": "image/png",
-      "bytes": 35864,
-      "sha256": "74e6603583786979afe81debe479658cd5d72da75728a1a79a001b95a4828786"
+      "bytes": 34379,
+      "sha256": "cc48f8ca990fb466af46bda715e7bbeee969407243be74f12ecdb23c72129379"
     },
     "technicalLabels": {
       "file": "x1a2_carcara_technical.json",

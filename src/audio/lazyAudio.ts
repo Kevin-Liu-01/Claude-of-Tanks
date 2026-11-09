@@ -34,6 +34,7 @@ interface AudioMixerModule {
     getWorld?: () => AudioWorld | null;
     getTeamRoster?: () => readonly RuntimeValue[] | null;
     getVehicleSpec?: (specId: string) => RuntimeValue;
+    getTimeOfDay?: () => string | null;
     initialPhase?: string;
   }): AudioMixer;
 }
@@ -55,6 +56,8 @@ interface LazyAudioOptions {
   getTeamRoster?(): readonly RuntimeValue[] | null;
   /** A vehicle's whole spec by id: the battle warm resolves each roster hull's powertrain as its rig will. */
   getVehicleSpec?(specId: string): RuntimeValue;
+  /** The battle's time of day: the night's ambience has its own life (no songbirds after dark). */
+  getTimeOfDay?(): string | null;
   hasStickyActivation?(): boolean;
 }
 

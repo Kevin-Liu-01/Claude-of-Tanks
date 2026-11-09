@@ -21,6 +21,7 @@
 // the Square of the Republic (also the turbo-ball kickoff) and the east square — so both teams fight down into the
 // valley; the trunk roads reach the boulevard 50 m apart, so neither runs straight on into the other.
 import { makeRealisticCityBuildingTones } from './buildingTonePresets.ts';
+import { BUILDING_STYLES } from './buildingStyleTable.ts';
 
 const clamp01 = (x: number) => Math.max(0, Math.min(1, x));
 
@@ -162,7 +163,7 @@ export default {
     // Austro-Hungarian blocks and Yugoslav towers, the slopes' mahala houses, the mosques and churches, the siege on
     // every one — in place of the megacity kit; the render takes Steinburg's lime-render photo tint, warm enough for
     // the kit's ochre, cream, green and pink washes
-    architecture: 'sarajevo', sourcedPalette: 'urban',
+    architecture: BUILDING_STYLES.ruinspires.kit, sourcedPalette: 'urban',
     // the boulevard's tram line, catenary, burnt trams and the container screens at its crossings, the white stones of the
     // cemeteries on the slopes below the ridges (maps/sarajevoStreets.ts)
     extraKits: ['sarajevo'],

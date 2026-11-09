@@ -514,15 +514,15 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 22164,
-      "sha256": "02a6f040c7fabfbf9fed4c5d18f2676155f659271b089450d038b44189d3d362",
+      "bytes": 22172,
+      "sha256": "fbdee4440404041ebd8fe5975267d14f25641183b1de2e1768eda35bfb9d536b",
       "thumbnail": {
         "file": "thumbs/chieftain_mk9_angle.webp",
         "width": 256,
         "height": 256,
         "mime": "image/webp",
-        "bytes": 9548,
-        "sha256": "aee7cc232f8951140d4625f297406184ae7d7488cd4713917b6f43fbcd00cc38"
+        "bytes": 9544,
+        "sha256": "42c38a6f417113b23b8f3e3419a87c964584b62a1706e48e93bb46ab6e0e0334"
       }
     },
     "top": {
@@ -538,8 +538,8 @@
       "width": 512,
       "height": 256,
       "mime": "image/webp",
-      "bytes": 8066,
-      "sha256": "a127bac7a8e40d6cdb4892277ca35c8ee15d8babc81f0ad02f8811ede17c2b0a"
+      "bytes": 8056,
+      "sha256": "021ee7d674a6fbb4403e819b405c2f56cd404ba955f7e4b23331d35c858a2be9"
     },
     "topSilhouette": {
       "file": "chieftain_mk9_top_silhouette.png",
@@ -562,32 +562,32 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 18810,
-      "sha256": "8b95a55afc317734bba5038d844622ab9bfc5f73258ae258518f449f6cf749fb"
+      "bytes": 18806,
+      "sha256": "d19ad640f69548b0f4ac7329c13bd54f032be3f1b066f1d87208c898d7eac498"
     },
     "modulesSide": {
       "file": "chieftain_mk9_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 20528,
-      "sha256": "3b6751b7c3d8240e92b61105ecf822f06e2831c7a96b70d703ed64e1d805e5b5"
+      "bytes": 20516,
+      "sha256": "2f8329868c07935e217280c43e4d7b7972635a2fe9ec4562d35c20f9d975a943"
     },
     "crewSide": {
       "file": "chieftain_mk9_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 16520,
-      "sha256": "c501ad95f609a650896128c529f413a9610556a12a727d4c521c6b548f1620f5"
+      "bytes": 16508,
+      "sha256": "34f5b028b641971b503ac79c128a9c1cc017da5397a596317b4fd4c1fe3934be"
     },
     "markings": {
       "file": "chieftain_mk9_markings.png",
       "width": 256,
       "height": 128,
       "mime": "image/png",
-      "bytes": 35710,
-      "sha256": "1c6243fce3687bbdbd955b6812b8c8948fe9db2ff5304cba873d7fa57e5693aa"
+      "bytes": 33253,
+      "sha256": "01b45a6217627452b8f1fccecb3868bdea89c751b6752e6596a9836681008bf5"
     },
     "technicalLabels": {
       "file": "chieftain_mk9_technical.json",

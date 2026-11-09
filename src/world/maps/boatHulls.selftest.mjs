@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
-import { BOAT_FAMILIES, boatFamilyForMap, buildBoat, familyBoat } from './boatHulls.ts';
+import { BOAT_FAMILIES, buildBoat, familyBoat } from './boatHulls.ts';
 
 // The map-vehicles lane (P2, 2026-10-05): every coast's boat is a lofted hull — one indexed geometry in the baked
 // bucket's four streams, its keel on y = 0, its length on +Z, inside its family's dimensions, its triangles bounded,
@@ -74,12 +74,6 @@ a.dispose(); b.dispose();
 const bare = buildBoat({ ...BOAT_FAMILIES.lakeboat.hull, ...BOAT_FAMILIES.lakeboat.schemes[0] }, { scheme: 0, mast: false });
 assert.ok(bare.index.count > 0);
 bare.dispose();
-// each coast its own boat
-assert.equal(boatFamilyForMap('fjord'), BOAT_FAMILIES.faering, 'Narvik: the Nordland færing');
-assert.equal(boatFamilyForMap('coastal'), BOAT_FAMILIES.canot, 'the Léon coast: the canot');
-assert.equal(boatFamilyForMap('saltwind'), BOAT_FAMILIES.gajeta, 'Dalmatia: the gajeta');
-assert.equal(boatFamilyForMap('mangrove'), BOAT_FAMILIES.xuong, 'Ca Mau: the xuồng');
-assert.equal(boatFamilyForMap('delta'), BOAT_FAMILIES.nouka, 'the Jamuna: a nouka');
-assert.equal(boatFamilyForMap('alpine'), BOAT_FAMILIES.lakeboat, 'the Mont-Cenis lake: a plank rowing boat');
+// (each coast's own boat: its built-environment row, builtEnvironmentTable.selftest.mjs)
 console.log(`boatHulls.selftest: ${hulls} hulls over ${Object.keys(BOAT_FAMILIES).length} families, keels on the ground, `
   + `dimensions, budgets (worst ${worst} triangles) and byte-identical rebuilds`);

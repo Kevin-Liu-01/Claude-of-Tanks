@@ -1358,24 +1358,24 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 22552,
-      "sha256": "5cbceba352860e8ae1711fc2b6814b4ca6df034551d6859782bef7779e77886e"
+      "bytes": 22532,
+      "sha256": "80511a2b29605c27efc9a54c11faaae40c69136021d2d123a589df1c3f8c4881"
     },
     "modulesSide": {
       "file": "ztz99a_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 21590,
-      "sha256": "700e669fb4ac9c1dddd26ce4f34b940d09ea6ec53c3c5b10379353aae75533f9"
+      "bytes": 21542,
+      "sha256": "741588b2e0ba35afdcf169b6c65e8dc542115b96b31246347773148d7d4435c3"
     },
     "crewSide": {
       "file": "ztz99a_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 18506,
-      "sha256": "400ed93cee26cdc75dd77413f05e32f72319da48246e577a7f7d4d37aa57537b"
+      "bytes": 18544,
+      "sha256": "aff7dbe3311e51240905b444d49ffd3abcbe1f675e629efe5891a63bcf4c203a"
     },
     "angle": {
       "file": "ztz99a_angle.webp",
@@ -1398,16 +1398,16 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 10934,
-      "sha256": "672a31b9c291e0bc9719c19a3b23c23a16f33b61aa4d33fe8dc89e7118fcda76"
+      "bytes": 10918,
+      "sha256": "fc256355d63ad678d1cba796a817f6692892341bfc9e1a309f41c9a4a0e948b6"
     },
     "side": {
       "file": "ztz99a_side.webp",
       "width": 512,
       "height": 256,
       "mime": "image/webp",
-      "bytes": 9088,
-      "sha256": "b5c77d18cdc585981a1d661f67b761c7290ad759ecae6c7dc0a3c0cc3df7aee8"
+      "bytes": 9086,
+      "sha256": "5119981dcb76612f3db9ef2c3a0d48e9daad4ca9251aa42b182ed9d9e7cfd535"
     },
     "topSilhouette": {
       "file": "ztz99a_top_silhouette.png",
@@ -1430,8 +1430,8 @@
       "width": 256,
       "height": 128,
       "mime": "image/png",
-      "bytes": 36461,
-      "sha256": "c9a4470287d7b1f9fddf97911ad715a418cb9340d671c0a3a21d83a52404f2fe"
+      "bytes": 32467,
+      "sha256": "ee6c8990c1294e87bef4acb6d12328e060f48d08ab518272f4b6736cf9956f94"
     },
     "technicalLabels": {
       "file": "ztz99a_technical.json",

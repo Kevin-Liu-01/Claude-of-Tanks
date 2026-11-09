@@ -39,7 +39,7 @@ assert.deepEqual(writeTeamArrangement('standard', { allies: 0 }, storage), { all
 // The six battle modes (2026-10-02) take the sides setting too: Realistic, Gun Game and Drone are team
 // against team, and Juggernaut's hunters, Infected's survivors and the AC-130's ground force are sized from it.
 assert.deepEqual([...SIDES_MODES],
-  ['standard', 'capture_the_flag', 'zone_control', 'turbo_ball', 'mars', 'juggernaut', 'infected', 'realistic', 'gun_game', 'drone', 'ac130'],
+  ['standard', 'capture_the_flag', 'zone_control', 'turbo_ball', 'mars', 'juggernaut', 'infected', 'realistic', 'gun_game', 'drone', 'ac130', 'air_support'],
   'Mars mode (2026-09-18) and every non-wave mode take the sides switch');
 writeTeamArrangement('turbo_ball', { enemyNation: 'japan' }, storage);
 // the garage's sides switch writes the mode it shows, keeping that mode's other fields (garage.ts battle menu; the retired

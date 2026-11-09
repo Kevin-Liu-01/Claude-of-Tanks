@@ -1394,24 +1394,24 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 23532,
-      "sha256": "afd3fc530839e57b2e8e1ea1a781c56d472d0ebea155a5c1d0265bf56292e2be"
+      "bytes": 23566,
+      "sha256": "984f3ede0e5c08d335fa8c0071e68deb268fbc826dc22d5122100aa5f30ef7c2"
     },
     "modulesSide": {
       "file": "t80u_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 22536,
-      "sha256": "185c900cdfb675b12a36f15454d0aec4c94bdebe7a66d1e42eb159d61ee22248"
+      "bytes": 22498,
+      "sha256": "2b2357a282e192cfb985366b4f808e2113d80c9a3cb47cbb12b03790564b6450"
     },
     "crewSide": {
       "file": "t80u_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 20580,
-      "sha256": "b9cc9b7688550b8dd8fbc5f3cad28258c8ac0a1c5609ede38bb99f7dc746cf0e"
+      "bytes": 20558,
+      "sha256": "f768d101533046f6058ce3efb346d856c9022d26dab37e97fb42932ef26d00e9"
     },
     "angle": {
       "file": "t80u_angle.webp",
@@ -1434,16 +1434,16 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 10582,
-      "sha256": "385f3173c4109bace8db7e74b8c93f28756affd97a0bf2cfa9d2ed62d6a1551e"
+      "bytes": 10572,
+      "sha256": "6139487c1e0c32be8303b173e89deda3818fe9f9b0f92003072f40bf4d7105a3"
     },
     "side": {
       "file": "t80u_side.webp",
       "width": 512,
       "height": 256,
       "mime": "image/webp",
-      "bytes": 10064,
-      "sha256": "ff5787364aa2100566d33ea23cb57f86272d540d4bfe81caab64eba5ce59e0ba"
+      "bytes": 10058,
+      "sha256": "21b51746e6fc474840c7b9b1598326724e2afd525da733ec27e07d42d0d4a897"
     },
     "topSilhouette": {
       "file": "t80u_top_silhouette.png",
@@ -1466,8 +1466,8 @@
       "width": 256,
       "height": 128,
       "mime": "image/png",
-      "bytes": 35922,
-      "sha256": "307b90eaa9513c86e3e8df627959bf0da1b34a3ad1098f59c14e0e67e24812ff"
+      "bytes": 32570,
+      "sha256": "b3601defbc24f3e12bfa873b11a44c906face0763ec79083657ec5a504a67681"
     },
     "technicalLabels": {
       "file": "t80u_technical.json",

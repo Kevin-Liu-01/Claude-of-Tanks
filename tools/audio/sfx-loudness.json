@@ -1,4 +1,1022 @@
 {
+ "ac_20_close": {
+  "group": "weapons",
+  "preset": "autocannon",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "f39115a051f9788cbf67224c3f2feb04b3ca8c879f499bb1319c77b67fd2019f",
+    "bytes": 13585,
+    "durS": 1.06,
+    "mMax": -13.5,
+    "integrated": -17.3,
+    "truePeak": -0.7
+   },
+   {
+    "sha256": "2efd10145e8fe15d50a3c3d72e2f583ee6ac504d69ae677cfe873ceca48c0a3d",
+    "bytes": 30115,
+    "durS": 2.2,
+    "mMax": -15.7,
+    "integrated": -19.7,
+    "truePeak": -0.4
+   },
+   {
+    "sha256": "03babf107765f5ca22777a376463573239ebb35a3beef71e6cd86c79f1e290c4",
+    "bytes": 15204,
+    "durS": 1.14,
+    "mMax": -13.6,
+    "integrated": -17.1,
+    "truePeak": -0.7
+   },
+   {
+    "sha256": "1eae829f1b2b8de92526c15f17874a60ba7d90f594372fed2fcf97ec8fdbbe9b",
+    "bytes": 26320,
+    "durS": 2.2,
+    "mMax": -14,
+    "integrated": -17.3,
+    "truePeak": -0.3
+   }
+  ]
+ },
+ "ac_20_far": {
+  "group": "weapons",
+  "preset": "weapon-far",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "d0ad74c3f716ffef20da0cdeee57ac2dcb417380139b52a5882bdaa7d4d933ed",
+    "bytes": 13004,
+    "durS": 1.956,
+    "mMax": -19.5,
+    "integrated": -26.4,
+    "truePeak": -1.4
+   },
+   {
+    "sha256": "e19461e21087e2fa6b48de577b4ea606f68d1b965eafb64f7c33ef3bad62117f",
+    "bytes": 16843,
+    "durS": 2.4,
+    "mMax": -15.2,
+    "integrated": -21.6,
+    "truePeak": -0.7
+   },
+   {
+    "sha256": "f6dfdc68c96f62eac9d5f2f61871aab132c680ab85558f45cda2c3b1b6214471",
+    "bytes": 17839,
+    "durS": 2.4,
+    "mMax": -14.5,
+    "integrated": -21.6,
+    "truePeak": -1
+   }
+  ]
+ },
+ "ac_20_interior": {
+  "group": "weapons",
+  "preset": "autocannon",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "13e27347a5392c99acfc4e98baa91f857925270f51328882b805245fe258812c",
+    "bytes": 24330,
+    "durS": 1.76,
+    "mMax": -12.5,
+    "integrated": -17.4,
+    "truePeak": -0.8
+   },
+   {
+    "sha256": "5c5182f61c8973badf671d170a49be26a3b1f484a7a91e7f9c6957b17edb053b",
+    "bytes": 22817,
+    "durS": 1.76,
+    "mMax": -13.8,
+    "integrated": -19.8,
+    "truePeak": -0.7
+   },
+   {
+    "sha256": "b2016c53f3def3faf36e16725a1cc8d87672da9132127036cbd365dc0abb37bb",
+    "bytes": 23821,
+    "durS": 1.76,
+    "mMax": -13.1,
+    "integrated": -18.8,
+    "truePeak": -0.8
+   }
+  ]
+ },
+ "ac_20_own": {
+  "group": "weapons",
+  "preset": "autocannon",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "0e35aeeef74640381a8abec42733deea15607cd08294e292901d000f4251aa46",
+    "bytes": 13045,
+    "durS": 1,
+    "mMax": -14.7,
+    "integrated": -17.8,
+    "truePeak": -0.7
+   },
+   {
+    "sha256": "3d94016c9e1337ea9a519323c931644138d09915f2b1cb3a959dc894763be493",
+    "bytes": 15595,
+    "durS": 1.198,
+    "mMax": -13.6,
+    "integrated": -16.3,
+    "truePeak": -0.4
+   },
+   {
+    "sha256": "b85f954de73f8617dc5e42f06ee98739c9fc9a39349c8676c1503192d6d50043",
+    "bytes": 27872,
+    "durS": 2.2,
+    "mMax": -14.6,
+    "integrated": -18.2,
+    "truePeak": -0.6
+   }
+  ]
+ },
+ "ac_25_close": {
+  "group": "weapons",
+  "preset": "autocannon",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "19a233d42c41e08702783674f78dc7e26d3b645af816ecf36ea10ac9d9c58086",
+    "bytes": 28146,
+    "durS": 2.2,
+    "mMax": -15,
+    "integrated": -20.3,
+    "truePeak": -0.3
+   },
+   {
+    "sha256": "b64de4b71863ee6cf60c18362474262265166e7a11d2c060840ad614447cd0f8",
+    "bytes": 29205,
+    "durS": 2.2,
+    "mMax": -13.2,
+    "integrated": -16.6,
+    "truePeak": -0.5
+   },
+   {
+    "sha256": "f9c27bf142c26f38353d78d3fa02f3cd26bece8643ad4b7fd472ee0beab2054a",
+    "bytes": 29585,
+    "durS": 2.056,
+    "mMax": -12.3,
+    "integrated": -15.8,
+    "truePeak": -0.9
+   },
+   {
+    "sha256": "9bd2130eb04337ab2791a7a510c6bcba13130517202806d84fb47cb71e2acd2d",
+    "bytes": 26881,
+    "durS": 2.2,
+    "mMax": -14.2,
+    "integrated": -19,
+    "truePeak": -0.8
+   }
+  ]
+ },
+ "ac_25_far": {
+  "group": "weapons",
+  "preset": "weapon-far",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "568b10865cf1fb811f224fa4a2530b7941b771850df79d9cf56e303c0d4968c8",
+    "bytes": 16170,
+    "durS": 2.4,
+    "mMax": -15.5,
+    "integrated": -20.8,
+    "truePeak": -0.8
+   },
+   {
+    "sha256": "4cac0ea64540f8105d6fcd91ebf8f5416200f7b616b34c8a9524efd2d30ba226",
+    "bytes": 13502,
+    "durS": 2.24,
+    "mMax": -15.1,
+    "integrated": -21.4,
+    "truePeak": -0.6
+   },
+   {
+    "sha256": "34019e4df95c0b2c1cf1c5311bb08065c132167bdd6c15f31f61b45b4f7cb2f7",
+    "bytes": 15220,
+    "durS": 2.4,
+    "mMax": -18.7,
+    "integrated": -25.8,
+    "truePeak": -0.8
+   }
+  ]
+ },
+ "ac_25_interior": {
+  "group": "weapons",
+  "preset": "autocannon",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "c6a2f7145bd25e0a9727d1b4a9a8ccd6f5d456ed5dcf61ce773e8c4786fc93e1",
+    "bytes": 19509,
+    "durS": 1.76,
+    "mMax": -13.4,
+    "integrated": -19.7,
+    "truePeak": -0.5
+   },
+   {
+    "sha256": "14ac159168ccba5791bc8733254f19118a108cbef4e8021cf954c59898073ff7",
+    "bytes": 20245,
+    "durS": 1.76,
+    "mMax": -13,
+    "integrated": -17.8,
+    "truePeak": -0.4
+   },
+   {
+    "sha256": "63561d92cf0b973bc6cbfc845413931705e851fde556ff20e51dd1d3bbc03595",
+    "bytes": 20929,
+    "durS": 1.76,
+    "mMax": -13.8,
+    "integrated": -19.9,
+    "truePeak": -0.6
+   }
+  ]
+ },
+ "ac_25_own": {
+  "group": "weapons",
+  "preset": "autocannon",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "41e0dc18e09393acb4da1f392b183065bf2b6f469a387d2b16d59ec917df53b6",
+    "bytes": 23724,
+    "durS": 2,
+    "mMax": -13.6,
+    "integrated": -18.5,
+    "truePeak": -0.5
+   },
+   {
+    "sha256": "82be5c65185db205f337cba188465d811113211546dd8b046caa65713069f965",
+    "bytes": 27753,
+    "durS": 2.2,
+    "mMax": -14,
+    "integrated": -19.6,
+    "truePeak": -0.7
+   },
+   {
+    "sha256": "a8df8b708dfa49eefd20f3e175dab26579f4f6797d7923b48f6c330ed6904dd0",
+    "bytes": 22428,
+    "durS": 1.736,
+    "mMax": -13.1,
+    "integrated": -17.2,
+    "truePeak": -0.8
+   }
+  ]
+ },
+ "ac_30_close": {
+  "group": "weapons",
+  "preset": "autocannon",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "5b934db506e95473d2850c4a48b3d1f89646a50d1debf3ec38f1b7bfa6aa5d8e",
+    "bytes": 27075,
+    "durS": 2.2,
+    "mMax": -15.9,
+    "integrated": -20.8,
+    "truePeak": -0.2,
+    "low150": 0.988
+   },
+   {
+    "sha256": "b7cf2edc442fb79c009efc3718d9641c7b2906592d61c7c51e3b5f7bf9143f72",
+    "bytes": 28148,
+    "durS": 2.2,
+    "mMax": -13.7,
+    "integrated": -16.8,
+    "truePeak": -1.2,
+    "low150": 0.83
+   },
+   {
+    "sha256": "e2cc27785d330282afc0ab6d9bae0fbeac8c35acdab0c0a0d74d6ac27b22816a",
+    "bytes": 27209,
+    "durS": 2.2,
+    "mMax": -13.4,
+    "integrated": -19.3,
+    "truePeak": -0.9,
+    "low150": 0.741
+   },
+   {
+    "sha256": "fdff4b007abd999bb40cde8638ddb2be5df4018541154fe0293c5cf3e35ad4f0",
+    "bytes": 27743,
+    "durS": 2.2,
+    "mMax": -17.5,
+    "integrated": -22.3,
+    "truePeak": -0.7,
+    "low150": 0.892
+   }
+  ]
+ },
+ "ac_30_far": {
+  "group": "weapons",
+  "preset": "weapon-far",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "3d3557a03d1c732edc6114af046d2d138af5f8eff313247590004130391b451e",
+    "bytes": 17680,
+    "durS": 2.4,
+    "mMax": -15.3,
+    "integrated": -23,
+    "truePeak": -0.9
+   },
+   {
+    "sha256": "e316d5fda41dbb554c655784d3d78bcfe483b22413bc587f5aba4c809d2d8820",
+    "bytes": 17472,
+    "durS": 2.4,
+    "mMax": -17.3,
+    "integrated": -23.7,
+    "truePeak": -0.9
+   },
+   {
+    "sha256": "b5426da394d4860ab5a3f986948b4471d6196b6dce5df0ea383c066add01a784",
+    "bytes": 17775,
+    "durS": 2.4,
+    "mMax": -15.5,
+    "integrated": -22.7,
+    "truePeak": -0.7
+   }
+  ]
+ },
+ "ac_30_interior": {
+  "group": "weapons",
+  "preset": "autocannon",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "c114f78e0b881fbec277f833c0a903b0b0a764521b1366c36de7428744739721",
+    "bytes": 23982,
+    "durS": 1.76,
+    "mMax": -13.4,
+    "integrated": -19,
+    "truePeak": -0.7
+   },
+   {
+    "sha256": "e9818bcee73f3e309b8f8b97cf84fb3418ef9ec1f351b6328a82cbe50e7d972e",
+    "bytes": 4949,
+    "durS": 0.372,
+    "mMax": -12.8,
+    "integrated": -15.3,
+    "truePeak": -0.8
+   },
+   {
+    "sha256": "8ef12b9c38181cab7e517fe902ba98b6fee16c09fa14554d1110fbd144e4eb57",
+    "bytes": 22665,
+    "durS": 1.76,
+    "mMax": -13.9,
+    "integrated": -20.5,
+    "truePeak": -0.7
+   }
+  ]
+ },
+ "ac_30_own": {
+  "group": "weapons",
+  "preset": "autocannon",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "f571965677dc1075854791df03956675e6ff81054ec3f2ea1982f773e5072ecf",
+    "bytes": 26817,
+    "durS": 2.2,
+    "mMax": -14.2,
+    "integrated": -18.6,
+    "truePeak": -0.9
+   },
+   {
+    "sha256": "8dcbb4ec0249b42c825cf6ea4eda4c00bff106363464115c4488ca384d0656ff",
+    "bytes": 10856,
+    "durS": 0.932,
+    "mMax": -18.3,
+    "integrated": -23.2,
+    "truePeak": -0.7
+   },
+   {
+    "sha256": "a5779c4a6973aeb9014e113ee7ac2b990d72c7ba75cd98f1cf4e3909861ab6bd",
+    "bytes": 16415,
+    "durS": 1.268,
+    "mMax": -17.1,
+    "integrated": -22.1,
+    "truePeak": -0.9
+   }
+  ]
+ },
+ "ac_35_close": {
+  "group": "weapons",
+  "preset": "autocannon",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "5d54717f69807980a04962a574ce6a8d3d31bd40589ce0a8df32d6690dd0d533",
+    "bytes": 27899,
+    "durS": 2.2,
+    "mMax": -14.8,
+    "integrated": -19.8,
+    "truePeak": -0.8
+   },
+   {
+    "sha256": "d3b66061b60c815415c4e38088c4133d428baec7a885dbafb14be61be4b5f97e",
+    "bytes": 28869,
+    "durS": 2.2,
+    "mMax": -13.6,
+    "integrated": -17.3,
+    "truePeak": -0.8
+   },
+   {
+    "sha256": "001a219dbe26f4116b300aea76be386698ede079e2309d35a3f34c78004532dc",
+    "bytes": 26342,
+    "durS": 2.12,
+    "mMax": -14.4,
+    "integrated": -19.7,
+    "truePeak": -0.9
+   },
+   {
+    "sha256": "00372817c57bab0c000abbd9d9c616ffc53e6f00fcddcb22d8615cd81df42197",
+    "bytes": 29300,
+    "durS": 2.2,
+    "mMax": -16,
+    "integrated": -20.4,
+    "truePeak": -0.5
+   }
+  ]
+ },
+ "ac_35_far": {
+  "group": "weapons",
+  "preset": "weapon-far",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "3dfe9af01add22175d9cd67060e65e668c5ed372fea44d96ba7308287b8be7fb",
+    "bytes": 13337,
+    "durS": 2.02,
+    "mMax": -17.6,
+    "integrated": -23.7,
+    "truePeak": -1
+   },
+   {
+    "sha256": "110e7fdd578873fcd40f675b7b0948de8692a02e3798c83a1c1bd14d5e5e9762",
+    "bytes": 14318,
+    "durS": 2.18,
+    "mMax": -16.3,
+    "integrated": -24.2,
+    "truePeak": -0.9
+   },
+   {
+    "sha256": "7549a5c5daa90ebf408186f33179b9be860c62c9cefb6f526b279fd467536cf0",
+    "bytes": 16297,
+    "durS": 2.4,
+    "mMax": -17.7,
+    "integrated": -26.3,
+    "truePeak": -2.1
+   }
+  ]
+ },
+ "ac_35_interior": {
+  "group": "weapons",
+  "preset": "autocannon",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "1b6468d8c5ff10f3c729107fd55a98bacc8abbc3a6b473eeb43d08458c4a0bb6",
+    "bytes": 22104,
+    "durS": 1.76,
+    "mMax": -13.6,
+    "integrated": -19.9,
+    "truePeak": -0.6
+   },
+   {
+    "sha256": "3d91d1aa65892860a0140a2137b3a0108ed2d5f790607a69f7f4a0d9953083a2",
+    "bytes": 23638,
+    "durS": 1.76,
+    "mMax": -13.6,
+    "integrated": -19.6,
+    "truePeak": -0.9
+   },
+   {
+    "sha256": "83702e594c6946a80654a74bf7154557cc79db69b0769f061c2ce42c61f19e1d",
+    "bytes": 22951,
+    "durS": 1.76,
+    "mMax": -13.1,
+    "integrated": -18.5,
+    "truePeak": -0.4
+   }
+  ]
+ },
+ "ac_35_own": {
+  "group": "weapons",
+  "preset": "autocannon",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "54ac12055e797d4e2cb3989f01d23499f44a3db9c6276a506fc9466ecbe5c535",
+    "bytes": 27257,
+    "durS": 2.2,
+    "mMax": -12.4,
+    "integrated": -15.5,
+    "truePeak": -0.6
+   },
+   {
+    "sha256": "9f3dcfed6484c2793f5ca8e37f5277dce5403b77121b7bde515d41bd1f007ddd",
+    "bytes": 26489,
+    "durS": 2.2,
+    "mMax": -12.7,
+    "integrated": -16.1,
+    "truePeak": -0.6
+   },
+   {
+    "sha256": "0d1dff477021dcfe5368b9e3f35e01b4ef2e140ab08f54f5cd503b05af7981f0",
+    "bytes": 16053,
+    "durS": 1.3,
+    "mMax": -13.9,
+    "integrated": -18.7,
+    "truePeak": -0.7
+   }
+  ]
+ },
+ "ac_40_close": {
+  "group": "weapons",
+  "preset": "autocannon",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "93c197016af3885a8b5a438221726bf4e35e9625535d9c46bdc7e0fa0a4910f0",
+    "bytes": 28662,
+    "durS": 2.2,
+    "mMax": -13.8,
+    "integrated": -18.6,
+    "truePeak": -0.6
+   },
+   {
+    "sha256": "ede3a9cea6730878bcf0d00326e6b35377e12db42e1633f3511148fa873700f0",
+    "bytes": 29048,
+    "durS": 2.2,
+    "mMax": -13.3,
+    "integrated": -15.9,
+    "truePeak": -0.8
+   },
+   {
+    "sha256": "6adef791caeda54b9636f9ee295639487e6c112c65fca228bac8c1969c2f9d34",
+    "bytes": 26990,
+    "durS": 2.2,
+    "mMax": -13.4,
+    "integrated": -18.4,
+    "truePeak": -0.8
+   },
+   {
+    "sha256": "2f081e3a41f2fe3d3a8b5204da84b0a413fb54ee615809bdc2f4908de8503af2",
+    "bytes": 29343,
+    "durS": 2.2,
+    "mMax": -13.5,
+    "integrated": -18.2,
+    "truePeak": -0.5
+   }
+  ]
+ },
+ "ac_40_far": {
+  "group": "weapons",
+  "preset": "weapon-far",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "dd3ede0f078b7e9225de5a21433f6a6ba5cf3854f5063347631b87a1d81b070b",
+    "bytes": 16648,
+    "durS": 2.4,
+    "mMax": -15.5,
+    "integrated": -22.3,
+    "truePeak": -0.5
+   },
+   {
+    "sha256": "eb2c097cee88e0f0e82836a5157f5627e3b3ac8d590b81de6b90df07ae17f753",
+    "bytes": 15756,
+    "durS": 2.4,
+    "mMax": -14.1,
+    "integrated": -20.8,
+    "truePeak": -0.9
+   },
+   {
+    "sha256": "975a9bf555d4980b88591fcf59db9c44a28a4ed9e61d2873743f64e8a920a6d8",
+    "bytes": 17733,
+    "durS": 2.4,
+    "mMax": -14.5,
+    "integrated": -22.3,
+    "truePeak": -0.7
+   }
+  ]
+ },
+ "ac_40_interior": {
+  "group": "weapons",
+  "preset": "autocannon",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "86515d8f20b76152848aa54b4b3b70a44043a2c26c6e1c626a012ec7b106da72",
+    "bytes": 23344,
+    "durS": 1.76,
+    "mMax": -15.4,
+    "integrated": -20,
+    "truePeak": -0.8
+   },
+   {
+    "sha256": "12f52e14c42d18905b3d7ed3e69e7f793b99e9ee19266727d97ff65bf6cdd5e0",
+    "bytes": 22357,
+    "durS": 1.76,
+    "mMax": -13.3,
+    "integrated": -18.6,
+    "truePeak": -0.7
+   },
+   {
+    "sha256": "715b419bac147444035958d83ab7506b44ab1a06f31a75ec51590aa29325e6ba",
+    "bytes": 21290,
+    "durS": 1.76,
+    "mMax": -12.9,
+    "integrated": -18.3,
+    "truePeak": -0.5
+   }
+  ]
+ },
+ "ac_40_own": {
+  "group": "weapons",
+  "preset": "autocannon",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "f761f571de7291f2e1ab0fa1d11c89d1c526bd97dfca51369eec9d212dcb1343",
+    "bytes": 18153,
+    "durS": 1.42,
+    "mMax": -14.9,
+    "integrated": -19.8,
+    "truePeak": -0.6
+   },
+   {
+    "sha256": "43105b4539e48e1005c558a2a34a0c0a2d5a0342b7f4e64e6275b640b24cfc5a",
+    "bytes": 16104,
+    "durS": 1.26,
+    "mMax": -15.1,
+    "integrated": -20.3,
+    "truePeak": -0.7
+   },
+   {
+    "sha256": "5648807aa4ebfe7b6284721b46b74ea682fb5dcce5f21ccec7e467c32abc763d",
+    "bytes": 28285,
+    "durS": 2.2,
+    "mMax": -15.5,
+    "integrated": -21,
+    "truePeak": -0.3
+   }
+  ]
+ },
+ "ac_50_close": {
+  "group": "weapons",
+  "preset": "autocannon",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "0a0d424d8cf8eb2456fc6a75462435c3949400fcee6649217e78ee82d54d0f0b",
+    "bytes": 23118,
+    "durS": 2.04,
+    "mMax": -15.1,
+    "integrated": -23,
+    "truePeak": -0.7
+   },
+   {
+    "sha256": "e1dc996158d2ad8b44771201ba8b4296f3b8cfd77d8ae420a36b83aa92947915",
+    "bytes": 26489,
+    "durS": 2.2,
+    "mMax": -17,
+    "integrated": -21.4,
+    "truePeak": 0.2
+   },
+   {
+    "sha256": "39b791e6af47a061cbe5cbf41b00261c387d498a9a8b1184d293e44484ce5b9a",
+    "bytes": 27786,
+    "durS": 2.2,
+    "mMax": -14.8,
+    "integrated": -21.6,
+    "truePeak": -0.7
+   },
+   {
+    "sha256": "428e6aa716e335a0b684628160ca4a7ec605fe386d3eb51eb7b6200a3df89be6",
+    "bytes": 26706,
+    "durS": 2.2,
+    "mMax": -15.1,
+    "integrated": -22.8,
+    "truePeak": -0.3
+   }
+  ]
+ },
+ "ac_50_far": {
+  "group": "weapons",
+  "preset": "weapon-far",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "9eca8cae8f69607ac3e276357abc8f5cabd8e74eaaa25ca1fe7d96084d085af4",
+    "bytes": 13922,
+    "durS": 2.26,
+    "mMax": -15.5,
+    "integrated": -21.4,
+    "truePeak": -0.8
+   },
+   {
+    "sha256": "f3b57cd649dc9e2e82676931f5397ae8dfdd6a82da108751f2eb65143152507d",
+    "bytes": 4135,
+    "durS": 0.552,
+    "mMax": -19.2,
+    "integrated": -23.2,
+    "truePeak": -3.5
+   },
+   {
+    "sha256": "678ed540eddc8fa24aac15faca12f0ee78c46efae9ad49ca9e142db7158d1436",
+    "bytes": 17415,
+    "durS": 2.4,
+    "mMax": -15.4,
+    "integrated": -23,
+    "truePeak": -0.7
+   }
+  ]
+ },
+ "ac_50_interior": {
+  "group": "weapons",
+  "preset": "autocannon",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "7b0955d9f74c7d6aa344d1e7659861802a6fdb23bbcf9ee3c2734808236d1e7b",
+    "bytes": 23032,
+    "durS": 1.76,
+    "mMax": -13.2,
+    "integrated": -18.6,
+    "truePeak": -0.7
+   },
+   {
+    "sha256": "a1b52dc7be885a8a2b72aa3ccf1b0318a0c5b43f7e77a52a3df46330577dc707",
+    "bytes": 22238,
+    "durS": 1.72,
+    "mMax": -13.7,
+    "integrated": -19,
+    "truePeak": -0.6
+   },
+   {
+    "sha256": "9f9485e56d84f3811e61e2e016f72d54481265e9530b06fafc24d427a962e7ce",
+    "bytes": 21388,
+    "durS": 1.76,
+    "mMax": -13.2,
+    "integrated": -18.2,
+    "truePeak": -0.4
+   }
+  ]
+ },
+ "ac_50_own": {
+  "group": "weapons",
+  "preset": "autocannon",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "b412bc4941852d9eb23355adfc537914972537a194c6ea1c5a47be66c5721cfd",
+    "bytes": 26105,
+    "durS": 2.2,
+    "mMax": -13.9,
+    "integrated": -18.8,
+    "truePeak": -0.3
+   },
+   {
+    "sha256": "32042a0875f81237872218cb3b7c893ec3665e5bb45d32066eefc19829c2880b",
+    "bytes": 26825,
+    "durS": 2.2,
+    "mMax": -16,
+    "integrated": -23.2,
+    "truePeak": -0.8
+   },
+   {
+    "sha256": "d1d2bad4c5c2790e1940d583deff907f9ed7d2c7e48973b4f8ac9b8f4f2300d2",
+    "bytes": 27899,
+    "durS": 2.2,
+    "mMax": -14.4,
+    "integrated": -19.9,
+    "truePeak": -0.4
+   }
+  ]
+ },
+ "air_bomb_blast": {
+  "group": "destruction",
+  "preset": "impact",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "bad08fbf8f1393b67ab0ac9e8ea945f6b69fc3eb87293d4c32121a385ef6fdcf",
+    "bytes": 55497,
+    "durS": 6,
+    "mMax": -10.6,
+    "integrated": -15.7,
+    "truePeak": -0.7
+   },
+   {
+    "sha256": "f078106c0a4f824cbf5a13b084a4b22ee144d9a186021d6ea26966c244f0b0e4",
+    "bytes": 49604,
+    "durS": 5.374,
+    "mMax": -10.3,
+    "integrated": -14,
+    "truePeak": -0.4
+   },
+   {
+    "sha256": "79f2e928ee4b3efb8c4d1f5f515508cb41065a6b3ab50f02a92645bc2060f907",
+    "bytes": 57629,
+    "durS": 6,
+    "mMax": -10.2,
+    "integrated": -14.6,
+    "truePeak": -0.4
+   }
+  ]
+ },
+ "air_bomb_fall": {
+  "group": "flyby",
+  "preset": "oneshot",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "8b5ab9445759fc73b470322476c3b844cbb25aca264551fbf34c90fc91893872",
+    "bytes": 35075,
+    "durS": 4.48,
+    "mMax": -12,
+    "integrated": -14.2,
+    "truePeak": -6.3
+   },
+   {
+    "sha256": "9ee5b7c46a67ab9c0cc8a0f1f1ab15a61920893746eec35c5f15c04f7ee24a9c",
+    "bytes": 37581,
+    "durS": 4.48,
+    "mMax": -12,
+    "integrated": -14.3,
+    "truePeak": -6.8
+   }
+  ]
+ },
+ "air_crash": {
+  "group": "destruction",
+  "preset": "impact",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "b487cb3c639ae456402b3f57ed9137bb50b08b6d7117bc4164afd189d52f1ce2",
+    "bytes": 43980,
+    "durS": 4.7,
+    "mMax": -10,
+    "integrated": -12.9,
+    "truePeak": -2.4
+   },
+   {
+    "sha256": "addeb1726c906601245790f90e9d8430f108449a1c73fdb73a16b59d5fd579bf",
+    "bytes": 43688,
+    "durS": 5,
+    "mMax": -10,
+    "integrated": -13.4,
+    "truePeak": -1.9
+   }
+  ]
+ },
+ "air_gau8_close": {
+  "group": "weapons",
+  "preset": "cannon",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "8231fb58420fa4d64eb13fe76e8e24454d0fb6b2dd81bc09d48b28c1a92fe6a9",
+    "bytes": 33886,
+    "durS": 3,
+    "mMax": -11,
+    "integrated": -14.2,
+    "truePeak": -1.8
+   },
+   {
+    "sha256": "efbab76198a58d97b1e8d51122c3c49582a1d6e9362d97b016f3d436643be430",
+    "bytes": 32956,
+    "durS": 2.976,
+    "mMax": -11,
+    "integrated": -14.4,
+    "truePeak": -1.1
+   },
+   {
+    "sha256": "e4beb5c1cd718bf9131f390a23153b0fce0f2827f5fbb981aacddbdf6ea409f3",
+    "bytes": 32462,
+    "durS": 3,
+    "mMax": -11,
+    "integrated": -14.5,
+    "truePeak": -2
+   }
+  ]
+ },
+ "air_gau8_far": {
+  "group": "weapons",
+  "preset": "weapon-far",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "39c9af78cf43d9ee68329ac70df95c6e28a76e3778cce6ba7139d7ee92a5be8c",
+    "bytes": 21361,
+    "durS": 3.48,
+    "mMax": -14,
+    "integrated": -15.8,
+    "truePeak": -4.6
+   },
+   {
+    "sha256": "6b3d617a3a92592f605b65d05b99aa3b5ae14afdb998d535c419b58be054c4cb",
+    "bytes": 20279,
+    "durS": 3.48,
+    "mMax": -13.9,
+    "integrated": -16.7,
+    "truePeak": -3.6
+   }
+  ]
+ },
+ "air_jet_attack_loop": {
+  "group": "aerial",
+  "preset": "loop",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "1421e5bdb15e2b8db5d3aa5ef3bced0ed6e629ed5a7bcb09df8f37a8dfad89c7",
+    "bytes": 46021,
+    "durS": 6.091,
+    "mMax": -17.4,
+    "integrated": -18,
+    "truePeak": -7.8
+   }
+  ]
+ },
+ "air_jet_fast_loop": {
+  "group": "aerial",
+  "preset": "loop",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "28ea783ea56cc8241daee86737c56ea266bd5b12e06601575af96f88bd00e907",
+    "bytes": 44572,
+    "durS": 6.091,
+    "mMax": -11.8,
+    "integrated": -18,
+    "truePeak": -1.1
+   }
+  ]
+ },
+ "air_jet_recon_loop": {
+  "group": "aerial",
+  "preset": "loop",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "a934de2b7c846ab7149ccc0528f6fc32a80ac02ef1033db853a42191bddcc127",
+    "bytes": 45172,
+    "durS": 6.091,
+    "mMax": -13.2,
+    "integrated": -18,
+    "truePeak": -1.3
+   }
+  ]
+ },
+ "air_shell_incoming": {
+  "group": "flyby",
+  "preset": "oneshot",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "25032542fb35046fb6e46e985e519544692514da5acfdaee80f71929e84d3f41",
+    "bytes": 23522,
+    "durS": 3,
+    "mMax": -12.1,
+    "integrated": -14,
+    "truePeak": -6.3
+   },
+   {
+    "sha256": "a28982f2472d9f2cfdb6f6b27ff458e4be88aa5f3376926d01419276973e0e93",
+    "bytes": 22984,
+    "durS": 3,
+    "mMax": -12,
+    "integrated": -16,
+    "truePeak": -5.6
+   },
+   {
+    "sha256": "5ac77b85c110427a1306c5a68a5f0af586f7814bef926f20e1d691d2e8c602a6",
+    "bytes": 23851,
+    "durS": 3,
+    "mMax": -12,
+    "integrated": -13.3,
+    "truePeak": -5.3
+   }
+  ]
+ },
+ "air_strike_warning": {
+  "group": "edge",
+  "preset": "ui",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "6d4bb73835f31b2c3da1a869a9bcda2f8364341491db41023d9de88a769ecb1b",
+    "bytes": 16133,
+    "durS": 2,
+    "mMax": -16,
+    "integrated": -17.2,
+    "truePeak": -8.9
+   }
+  ]
+ },
  "aircraft_crush": {
   "group": "props",
   "preset": "impact",
@@ -120,6 +1138,153 @@
    }
   ]
  },
+ "aps_intercept": {
+  "group": "destruction",
+  "preset": "impact",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "526784e330d77fe353ff3772888b5a5d9754798b3aecef2195b6ea03abddd9f6",
+    "bytes": 18435,
+    "durS": 2,
+    "mMax": -10.5,
+    "integrated": -13.6,
+    "truePeak": -0.3
+   },
+   {
+    "sha256": "8ef106b6b76ef759ba4ffedb5d82f9538b62d7fb1903f84c49f83d22cadd2136",
+    "bytes": 16128,
+    "durS": 1.74,
+    "mMax": -10,
+    "integrated": -13.3,
+    "truePeak": -0.3
+   },
+   {
+    "sha256": "609fddb8e6eee0bf52bdfcb309e6234224c60f63a989ea93f1be525d8aca9604",
+    "bytes": 18273,
+    "durS": 2,
+    "mMax": -10,
+    "integrated": -13.8,
+    "truePeak": -0.8
+   }
+  ]
+ },
+ "atgm_launch": {
+  "group": "weapons",
+  "preset": "weapon-close",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "e957575331f2bd9526d1ba3868e6fd0e3b917357db26f4288fc9d1f06123ce2c",
+    "bytes": 30922,
+    "durS": 3.34,
+    "mMax": -9,
+    "integrated": -11.4,
+    "truePeak": -2.4
+   },
+   {
+    "sha256": "09a4ee56069737a5f2906596ccbb46e1c7c2e06579ad4d025d92c4616dbe190b",
+    "bytes": 35562,
+    "durS": 4,
+    "mMax": -9,
+    "integrated": -13.1,
+    "truePeak": -2
+   },
+   {
+    "sha256": "22825715ed89f49cf3766acd1f3d49dc4fab7ebcfc0cfc9afc247b2c6b487e94",
+    "bytes": 35587,
+    "durS": 4,
+    "mMax": -9,
+    "integrated": -11.3,
+    "truePeak": -1.7
+   }
+  ]
+ },
+ "bag_charge_load": {
+  "group": "mechanism",
+  "preset": "foley",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "7c3c99370c5c37135c686eb5131abd20624b701bf0701788198acda030215c75",
+    "bytes": 8690,
+    "durS": 0.98,
+    "mMax": -16.2,
+    "integrated": -19,
+    "truePeak": -0.9
+   },
+   {
+    "sha256": "c44d6ea0b173ae6e0ef419a8ab75b48ea901698546bad77ff9e8d621ac90ccbf",
+    "bytes": 8745,
+    "durS": 1.08,
+    "mMax": -16.2,
+    "integrated": -18.3,
+    "truePeak": -0.7
+   }
+  ]
+ },
+ "ball_strike": {
+  "group": "props",
+  "preset": "impact",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "ce9c68ea2cde011ddeae7dc32cdf6f6363f10fe23c4982fa64b7254fa8b79f32",
+    "bytes": 15170,
+    "durS": 1.48,
+    "mMax": -10.8,
+    "integrated": -14.9,
+    "truePeak": -0.7
+   },
+   {
+    "sha256": "abbda6c33220e7f4defac4862589ff1d0f8450bd6d219d4f9843e5196079e96b",
+    "bytes": 15209,
+    "durS": 1.48,
+    "mMax": -10.5,
+    "integrated": -15,
+    "truePeak": -0.8
+   },
+   {
+    "sha256": "c4cf82b82032068d564669f528bd056253e56b0ab81047788463e7802bfe4727",
+    "bytes": 15141,
+    "durS": 1.48,
+    "mMax": -10.7,
+    "integrated": -15.2,
+    "truePeak": -0.8
+   },
+   {
+    "sha256": "6ad7172526b38ffbe117ededfc1d8dbc8ec64dc379effdae3eca294a043e851f",
+    "bytes": 16475,
+    "durS": 1.48,
+    "mMax": -12.3,
+    "integrated": -17,
+    "truePeak": -0.9
+   }
+  ]
+ },
+ "basket_turn": {
+  "group": "mechanism",
+  "preset": "foley",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "176e7f9b6aab3f39880ac1000e22cb067d562b27d2edbe39c7d1b58bc3fd9fd7",
+    "bytes": 25066,
+    "durS": 1.98,
+    "mMax": -14.2,
+    "integrated": -14.9,
+    "truePeak": -0.7
+   },
+   {
+    "sha256": "500214431961a23ea633a7d3c0af2403b66359c921b44c9421c4863b178728f9",
+    "bytes": 20004,
+    "durS": 1.96,
+    "mMax": -14.1,
+    "integrated": -15.1,
+    "truePeak": -0.1
+   }
+  ]
+ },
  "bell_orthodox": {
   "group": "spots",
   "preset": "spot",
@@ -186,6 +1351,83 @@
     "mMax": -10.4,
     "integrated": -18.5,
     "truePeak": -0.4
+   }
+  ]
+ },
+ "brake_hiss": {
+  "group": "vehicle",
+  "preset": "foley",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "1affffd1baf0fa313f4efe0674e4c813a707db6add1abc78c2fd1751ca2448b9",
+    "bytes": 6967,
+    "durS": 0.75,
+    "mMax": -13.9,
+    "integrated": -15.8,
+    "truePeak": -4.5
+   },
+   {
+    "sha256": "d18604ec0290105e40544de027f7e6a072c31a6979198c783cfff96c6c41407c",
+    "bytes": 7430,
+    "durS": 0.8,
+    "mMax": -13.9,
+    "integrated": -15.5,
+    "truePeak": -4.2
+   },
+   {
+    "sha256": "2a25f6ac52cd7dd27d9d40011fe15f365132a521a7af5f584a7b12ec13c17fdc",
+    "bytes": 7044,
+    "durS": 0.8,
+    "mMax": -14,
+    "integrated": -16,
+    "truePeak": -4.3
+   }
+  ]
+ },
+ "breech_close_heavy": {
+  "group": "mechanism",
+  "preset": "foley",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "6b17c87511b333579cc13b17af21ac1bc450230632559e8e1f1935ca891a3d14",
+    "bytes": 8682,
+    "durS": 1.104,
+    "mMax": -15.6,
+    "integrated": -18.2,
+    "truePeak": -0.9
+   },
+   {
+    "sha256": "cf129fb522bfd19599a8eaadad9cbd3f98d16a9ed09997e6afefcacb9d102511",
+    "bytes": 10849,
+    "durS": 1.36,
+    "mMax": -15.2,
+    "integrated": -16.8,
+    "truePeak": -0.6
+   }
+  ]
+ },
+ "breech_open_heavy": {
+  "group": "mechanism",
+  "preset": "foley",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "8fcbca825c852be7cb7a942967b323c9f21ccb367df11229ad94738f3e570a21",
+    "bytes": 11126,
+    "durS": 1.36,
+    "mMax": -21,
+    "integrated": -21,
+    "truePeak": -0.4
+   },
+   {
+    "sha256": "f0c668effd88b6a06ffb64ebd644fc9710daa276be056915fe017df12a6cda74",
+    "bytes": 4169,
+    "durS": 0.34,
+    "mMax": -20.1,
+    "integrated": -20.1,
+    "truePeak": -0.3
    }
   ]
  },
@@ -267,6 +1509,216 @@
    }
   ]
  },
+ "bullet_mud": {
+  "group": "impacts",
+  "preset": "impact",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "0738663d1b3b4fa75ed354ae76520f208fc74d3446d5a2b63008f94771496e3d",
+    "bytes": 10188,
+    "durS": 1,
+    "mMax": -12.2,
+    "integrated": -15.6,
+    "truePeak": 0
+   },
+   {
+    "sha256": "8aa70ae501108eb722a8a3b301e0fe4073e64be70417f5a68aebfaf3e2a2bd5b",
+    "bytes": 9834,
+    "durS": 1,
+    "mMax": -14,
+    "integrated": -16.3,
+    "truePeak": -0.2
+   },
+   {
+    "sha256": "57cf044673802349b6f16e302416251cc6334d18d1ea067bdf0ec6f133818e54",
+    "bytes": 12063,
+    "durS": 1,
+    "mMax": -15.2,
+    "integrated": -17.8,
+    "truePeak": 0.6
+   },
+   {
+    "sha256": "aa7604a19b39fe146fc96da799baf872d33b32d332ab947a9d1a804db988b36f",
+    "bytes": 11478,
+    "durS": 1,
+    "mMax": -12.1,
+    "integrated": -14.2,
+    "truePeak": 0.6
+   }
+  ]
+ },
+ "bullet_paved": {
+  "group": "impacts",
+  "preset": "impact",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "fae1cee56b3629e7cf7e89eb2a74a611518fc190d503b2d11f9cc86f4afe4508",
+    "bytes": 8330,
+    "durS": 0.78,
+    "mMax": -12.5,
+    "integrated": -15.3,
+    "truePeak": 0
+   },
+   {
+    "sha256": "5a281323bd929d0ae7f305df44591fa576b2d11fc83f800754bd630cd36a8663",
+    "bytes": 10523,
+    "durS": 1,
+    "mMax": -12.4,
+    "integrated": -14.1,
+    "truePeak": 0.2
+   },
+   {
+    "sha256": "0c7545af9409582ca2d8f10b7cedf69a83bdb35856240fc346f128e74554888a",
+    "bytes": 10648,
+    "durS": 1,
+    "mMax": -15,
+    "integrated": -15,
+    "truePeak": -0.2
+   }
+  ]
+ },
+ "bullet_rubber": {
+  "group": "impacts",
+  "preset": "impact",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "07844ab9115106fc848d5e6b3c10f7e5237b4d90f35d4b31028abd4f5843a54c",
+    "bytes": 10111,
+    "durS": 1,
+    "mMax": -14.9,
+    "integrated": -17.4,
+    "truePeak": -0.5
+   },
+   {
+    "sha256": "ce136dd83469d2f8cd78a19764879cce0f5aaa567e371f22c97af68e2048c061",
+    "bytes": 10649,
+    "durS": 1,
+    "mMax": -13.8,
+    "integrated": -16.3,
+    "truePeak": 0
+   },
+   {
+    "sha256": "a712b85ad625779aa345ae8f39a70156807a8c85ce38eca697e0304d25bd5287",
+    "bytes": 10267,
+    "durS": 1,
+    "mMax": -13.2,
+    "integrated": -15.6,
+    "truePeak": -0.4
+   },
+   {
+    "sha256": "1b764b68c285b9535d7e84cdf49c480ba6ac83df85346cf6177a98d278e1fc70",
+    "bytes": 9782,
+    "durS": 1,
+    "mMax": -12.7,
+    "integrated": -15.2,
+    "truePeak": 0
+   }
+  ]
+ },
+ "bullet_sand": {
+  "group": "impacts",
+  "preset": "impact",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "c79cc0a611502157e6b073d6d7b8cad16406d3cfbabf26b555556e45dd290ff2",
+    "bytes": 10053,
+    "durS": 1,
+    "mMax": -16,
+    "integrated": -18.4,
+    "truePeak": -0.2
+   },
+   {
+    "sha256": "46967a5e3ec639d3d4b4c3a0cf63cd8de6030d9af2ed83045b55886ca72b5ce1",
+    "bytes": 10052,
+    "durS": 1,
+    "mMax": -12.1,
+    "integrated": -15.6,
+    "truePeak": 0.1
+   },
+   {
+    "sha256": "25f6af1f4f3001749648f1e44ff5cb25d4959b4179dc1e7740eb77706a48f957",
+    "bytes": 9906,
+    "durS": 1,
+    "mMax": -11.4,
+    "integrated": -12.6,
+    "truePeak": 0.7
+   },
+   {
+    "sha256": "3780417615143f9d924a596bf9c4a64ee64c118d96222ac0b8f24342a5d41d7a",
+    "bytes": 10459,
+    "durS": 1,
+    "mMax": -11.3,
+    "integrated": -14.3,
+    "truePeak": 0.1
+   }
+  ]
+ },
+ "bullet_snow": {
+  "group": "impacts",
+  "preset": "impact",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "7d44992bb4021d851f0ec251b1e79bd97c650a122f1162bcc6d272662fa888b0",
+    "bytes": 5685,
+    "durS": 0.447,
+    "mMax": -12,
+    "integrated": -14,
+    "truePeak": -0.3
+   },
+   {
+    "sha256": "33da66c16a0336073c775278460abffca3abf0c9e35cf59759527fa5a88b8ba5",
+    "bytes": 10148,
+    "durS": 1,
+    "mMax": -14.5,
+    "integrated": -19,
+    "truePeak": -0.2
+   },
+   {
+    "sha256": "22477c8a1baeddfd8210a71dff9bd73161f9dafb967e71ce86f3cac9f8291366",
+    "bytes": 3905,
+    "durS": 0.287,
+    "mMax": -12.5,
+    "integrated": -15.2,
+    "truePeak": -0.3
+   }
+  ]
+ },
+ "bullet_stowage": {
+  "group": "impacts",
+  "preset": "impact",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "d107d409998bb1ce17a1f74f63c4fbbcd3ac412df6dca4f3277b20f160b29121",
+    "bytes": 9670,
+    "durS": 1,
+    "mMax": -14.4,
+    "integrated": -18.1,
+    "truePeak": -0.4
+   },
+   {
+    "sha256": "688ca380e642f3ecd2aafbca7f2006d4eb1ad2bf4ebe130e670b9566951d82e8",
+    "bytes": 10654,
+    "durS": 1,
+    "mMax": -11.8,
+    "integrated": -14.8,
+    "truePeak": -0.1
+   },
+   {
+    "sha256": "db0a71561c802990c288c4c620cf88005836ad840a8becc2c09bcf24d8f6fa52",
+    "bytes": 9952,
+    "durS": 1,
+    "mMax": -13.5,
+    "integrated": -16.7,
+    "truePeak": -0.3
+   }
+  ]
+ },
  "bullet_wood": {
   "group": "impacts",
   "preset": "impact",
@@ -312,20 +1764,43 @@
   "channels": 1,
   "variants": [
    {
-    "sha256": "b3af7b06f0852d2b05a86870181cececd07c26ce08bdf5b9e8dded8174a6312e",
-    "bytes": 33168,
+    "sha256": "29c481ef39b2ca9fc3825a4b03c64fc3d4817483fd1e9156551967f227dacfa5",
+    "bytes": 31043,
     "durS": 3.48,
-    "mMax": -10.4,
-    "integrated": -13.9,
-    "truePeak": -0.7
+    "mMax": -10.5,
+    "integrated": -15.2,
+    "truePeak": -0.4
    },
    {
-    "sha256": "83404df226913c85b42b969805597891e2c660db34a27e76467f6ffadca82364",
-    "bytes": 32686,
+    "sha256": "6bd98cd1f4c38442f31b2055921004a3264c1d4bc241746e88df342534874e33",
+    "bytes": 32052,
     "durS": 3.48,
-    "mMax": -10.6,
-    "integrated": -14.1,
-    "truePeak": -0.8
+    "mMax": -10.1,
+    "integrated": -12.8,
+    "truePeak": -0.6
+   }
+  ]
+ },
+ "bustle_ram": {
+  "group": "mechanism",
+  "preset": "foley",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "dfbea5579d106f256fa2c413a9dac3a245790e998936e4ced4d668a32014d48d",
+    "bytes": 11335,
+    "durS": 1.08,
+    "mMax": -14.1,
+    "integrated": -16.4,
+    "truePeak": -0.9
+   },
+   {
+    "sha256": "618b5f0c68bf20ce82b4ca15788ff3e89d852b42216b8b3c2e0d40a9ca20ef0a",
+    "bytes": 9316,
+    "durS": 1.08,
+    "mMax": -14.8,
+    "integrated": -16.3,
+    "truePeak": -1
    }
   ]
  },
@@ -335,7 +1810,7 @@
   "channels": 1,
   "variants": [
    {
-    "sha256": "91d62c4a347533d69cbd5a09134b159ee397186314ba773f64b89a9686fbba98",
+    "sha256": "85031fe405bc606c031264c9112aa571b41beaf4b76e853798c02baac6ea0a64",
     "bytes": 13749,
     "durS": 1.2,
     "mMax": -13.5,
@@ -343,11 +1818,27 @@
     "truePeak": -0.8
    },
    {
-    "sha256": "b799f3292ae362696ec591dd6a1bd64a8ad5f7ec5c437f5ab636f64f0810ab2f",
+    "sha256": "d4a478416c50ff92e60aef7bf00bfcd4159bd97455e75346137a28b0857ead8e",
     "bytes": 12299,
     "durS": 1.2,
     "mMax": -12.9,
     "integrated": -17,
+    "truePeak": -0.9
+   },
+   {
+    "sha256": "d625a6abc0cd87edea27277b6fb709c852bc32920dcafaafd580168115cc9670",
+    "bytes": 13766,
+    "durS": 1.2,
+    "mMax": -12.5,
+    "integrated": -15.6,
+    "truePeak": -0.9
+   },
+   {
+    "sha256": "ee7fbcaa15c8477ee916496c5f416145164169c7ed92512f8022cbd36c317745",
+    "bytes": 12803,
+    "durS": 1.2,
+    "mMax": -11.6,
+    "integrated": -16.7,
     "truePeak": -0.9
    }
   ]
@@ -403,6 +1894,121 @@
     "mMax": -12.1,
     "integrated": -14.1,
     "truePeak": -0.4
+   }
+  ]
+ },
+ "case_eject_brass_heavy": {
+  "group": "mechanism",
+  "preset": "foley",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "eb8be956d219ee0944d7bf3fca10a81aeb17ce7b79ef244613f392442232ea28",
+    "bytes": 15018,
+    "durS": 2.2,
+    "mMax": -14.5,
+    "integrated": -18.9,
+    "truePeak": -0.7
+   },
+   {
+    "sha256": "19a976dbb574f70b64703382bcd19f92c6b141915deca584550d79d9b2ff5c50",
+    "bytes": 16638,
+    "durS": 2.2,
+    "mMax": -14.9,
+    "integrated": -20.5,
+    "truePeak": -0.6
+   }
+  ]
+ },
+ "case_eject_brass_light": {
+  "group": "mechanism",
+  "preset": "foley",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "af8371df1d304bf9d02fcc3b9d2b2c38ade0d8f4a1def92a1c345328a2248b2f",
+    "bytes": 15592,
+    "durS": 1.6,
+    "mMax": -14,
+    "integrated": -19.1,
+    "truePeak": -1
+   },
+   {
+    "sha256": "4deb67f5762562845d9f57f555fc6daf6cdbc099f66ab517a842020a5d912c51",
+    "bytes": 13078,
+    "durS": 1.6,
+    "mMax": -14.5,
+    "integrated": -18.4,
+    "truePeak": -0.5
+   }
+  ]
+ },
+ "case_eject_outside": {
+  "group": "mechanism",
+  "preset": "foley",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "07953d6e214975809bd076f14423484b07d4308b3f1d2cd6927d683d2ae81348",
+    "bytes": 10425,
+    "durS": 1.2,
+    "mMax": -15.3,
+    "integrated": -20,
+    "truePeak": -0.8
+   },
+   {
+    "sha256": "2f84ead6433cc1073e192ebe79597250a3e15986a50e8bc880ad5b7879f124f0",
+    "bytes": 10106,
+    "durS": 1.2,
+    "mMax": -16.3,
+    "integrated": -19.5,
+    "truePeak": -0.8
+   }
+  ]
+ },
+ "case_eject_steel": {
+  "group": "mechanism",
+  "preset": "foley",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "17bcb95cd07f5900403720d9034a3545ece4e78b4fcbf3d6f5398601c4b374a3",
+    "bytes": 13234,
+    "durS": 1.6,
+    "mMax": -16.7,
+    "integrated": -21,
+    "truePeak": -0.4
+   },
+   {
+    "sha256": "a02251f7587f61de23316dd03b274081a2f637aeea5a93e81185e4f1117f5921",
+    "bytes": 13120,
+    "durS": 1.6,
+    "mMax": -16.2,
+    "integrated": -20.4,
+    "truePeak": -0.6
+   }
+  ]
+ },
+ "charge_case_load": {
+  "group": "mechanism",
+  "preset": "foley",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "56a151532a7b6314dc901e9ce40bf034511b2d3ca952d30b1ecf70cd7f90c788",
+    "bytes": 10639,
+    "durS": 1.34,
+    "mMax": -14,
+    "integrated": -15.8,
+    "truePeak": -1.1
+   },
+   {
+    "sha256": "0e938a19d808f3c5755048598de504143ba523982ede245bed44a1160a78520e",
+    "bytes": 11200,
+    "durS": 1.26,
+    "mMax": -14.1,
+    "integrated": -15.4,
+    "truePeak": -0.8
    }
   ]
  },
@@ -621,6 +2227,21 @@
    }
   ]
  },
+ "cookoff_loop": {
+  "group": "destruction",
+  "preset": "loop",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "374241b683be0e3a7d3935119432b7357bb751b53b2b50c441b824fa7fc638fd",
+    "bytes": 79822,
+    "durS": 8.091,
+    "mMax": -17.2,
+    "integrated": -19,
+    "truePeak": -0.3
+   }
+  ]
+ },
  "crate_break": {
   "group": "props",
   "preset": "impact",
@@ -680,6 +2301,317 @@
     "mMax": -14.4,
     "integrated": -17.2,
     "truePeak": 0.7
+   }
+  ]
+ },
+ "debris_grit": {
+  "group": "impacts",
+  "preset": "debris",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "1347626938f9b239a4e2a4686964aab7eb67af0eb38a88c1994ca67f031ec7ff",
+    "bytes": 29428,
+    "durS": 2.97,
+    "mMax": -14.6,
+    "integrated": -19.3,
+    "truePeak": -0.2
+   },
+   {
+    "sha256": "cc3b0022ca17f6cd38db63361a78dc9f132a2a32babaac038f35feb6fd9bc500",
+    "bytes": 28564,
+    "durS": 2.896,
+    "mMax": -15.4,
+    "integrated": -19.5,
+    "truePeak": 0.2
+   }
+  ]
+ },
+ "debris_mud": {
+  "group": "impacts",
+  "preset": "debris",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "d8bfc8e7fb0f3a26120d4505a7d20c29167d0ba4ae8778775050cd3cb6257fcc",
+    "bytes": 18893,
+    "durS": 3,
+    "mMax": -16,
+    "integrated": -22,
+    "truePeak": -0.2
+   },
+   {
+    "sha256": "41b7afe3a34f1a1b7cbca2c777c7559f718d42e1f633ae8895c5a6673111e94e",
+    "bytes": 23844,
+    "durS": 3,
+    "mMax": -13.2,
+    "integrated": -17.4,
+    "truePeak": -0.2
+   }
+  ]
+ },
+ "debris_sand": {
+  "group": "impacts",
+  "preset": "debris",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "d639c6c98bb8aae3088bdc1e06b8dc6e852e6ffc6e95db6840cb851da0fcd712",
+    "bytes": 19998,
+    "durS": 2.96,
+    "mMax": -11,
+    "integrated": -14.1,
+    "truePeak": -1.5
+   },
+   {
+    "sha256": "e424103788cb6d8b358f24281136a2be6ed6f0f585c84a4f80a34377d6de5cf9",
+    "bytes": 19948,
+    "durS": 3,
+    "mMax": -11.1,
+    "integrated": -13.6,
+    "truePeak": -1.4
+   }
+  ]
+ },
+ "debris_snow": {
+  "group": "impacts",
+  "preset": "debris",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "121ef6097c42db1e8609ca6cdbd0b6943355b7c933efaa094a41ee6d2458f7de",
+    "bytes": 18975,
+    "durS": 2.806,
+    "mMax": -12.6,
+    "integrated": -15.8,
+    "truePeak": 0.1
+   },
+   {
+    "sha256": "083fc7bf699755bcc1312a5a80a96d2948fbd0301e4fa14fc9983be93d6f97e4",
+    "bytes": 20578,
+    "durS": 3,
+    "mMax": -12.3,
+    "integrated": -14.5,
+    "truePeak": 1
+   }
+  ]
+ },
+ "drone_shot_down": {
+  "group": "aerial",
+  "preset": "impact",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "5e416c7c656cdaa9d94482eb82d45619b31b520abd7c1ce2990084cb5dc15e95",
+    "bytes": 22043,
+    "durS": 2,
+    "mMax": -10,
+    "integrated": -11.3,
+    "truePeak": -4.6
+   },
+   {
+    "sha256": "3f877ab6e4ef6110ef506d2677b96ce29ab92c46137444aae67fe58061a471f3",
+    "bytes": 9279,
+    "durS": 0.828,
+    "mMax": -12.3,
+    "integrated": -16.4,
+    "truePeak": 0.9
+   },
+   {
+    "sha256": "24e87402364f6cb6b96bc1f721ba2a9264f8b10c9bf389039fb795d5fe9d18c8",
+    "bytes": 18207,
+    "durS": 1.846,
+    "mMax": -10.3,
+    "integrated": -13.6,
+    "truePeak": -0.5
+   }
+  ]
+ },
+ "dual_feed_switch": {
+  "group": "mechanism",
+  "preset": "foley",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "45cb7304888c106a04b4cd4a759f3f6934f4d13e062984e7f49370d864abb1fd",
+    "bytes": 5500,
+    "durS": 0.43,
+    "mMax": -19.7,
+    "integrated": -21.2,
+    "truePeak": -0.5
+   },
+   {
+    "sha256": "9bea0f15458a15c6a57939a63680c0bb5776b5a7cb244e8bd99d12180eeffcb5",
+    "bytes": 3940,
+    "durS": 0.32,
+    "mMax": -21,
+    "integrated": -23.1,
+    "truePeak": 0.2
+   }
+  ]
+ },
+ "engine_diesel_ifv_mid": {
+  "group": "engines",
+  "preset": "loop",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "0b99055114752c217b11f23390af36a0ffb821b0f637925019df12e22c4b3f1a",
+    "bytes": 49691,
+    "durS": 6.091,
+    "mMax": -17.2,
+    "integrated": -18,
+    "truePeak": -5.3
+   }
+  ]
+ },
+ "engine_diesel_v12_coldwar_high": {
+  "group": "engines",
+  "preset": "loop",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "fbc8df3dcfe14133b65b8cc88a29cad48abee4aa870d52ad5b4074834d5e8583",
+    "bytes": 51065,
+    "durS": 6.091,
+    "mMax": -17.2,
+    "integrated": -18,
+    "truePeak": -5.1
+   }
+  ]
+ },
+ "engine_diesel_v12_coldwar_idle": {
+  "group": "engines",
+  "preset": "loop",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "d03223408343a8363f72fd58a4adcccb2f91ea28628d833bf3d1469b10544361",
+    "bytes": 47358,
+    "durS": 6.091,
+    "mMax": -17.3,
+    "integrated": -18,
+    "truePeak": -5.4
+   }
+  ]
+ },
+ "engine_diesel_v12_coldwar_low": {
+  "group": "engines",
+  "preset": "loop",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "684d87ddc53e8a8541e5f6c713808b2a7420f7e538e4cc0ba699fb2f74991197",
+    "bytes": 47097,
+    "durS": 6.091,
+    "mMax": -17.4,
+    "integrated": -18,
+    "truePeak": -4.4
+   }
+  ]
+ },
+ "engine_diesel_v12_coldwar_mid": {
+  "group": "engines",
+  "preset": "loop",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "c47d682d44e5e99860508f6fc13008009500701e893b5e0eda226a1de2c5da8e",
+    "bytes": 47276,
+    "durS": 6.091,
+    "mMax": -17.3,
+    "integrated": -18,
+    "truePeak": -4.8
+   }
+  ]
+ },
+ "engine_diesel_v12_coldwar_start": {
+  "group": "engines",
+  "preset": "foley",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "c92812192dd9930e5de9dd21bc8f560435ce624705c26237ad861b9dae71f48a",
+    "bytes": 37716,
+    "durS": 4.84,
+    "mMax": -14.1,
+    "integrated": -15.9,
+    "truePeak": -0.9
+   }
+  ]
+ },
+ "engine_diesel_v12_coldwar_stop": {
+  "group": "engines",
+  "preset": "foley",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "47c633f3e757c40529cb666a0144c98f5aa90842d687a6eeb08be079b7182306",
+    "bytes": 29259,
+    "durS": 3.98,
+    "mMax": -14.1,
+    "integrated": -17.4,
+    "truePeak": -3.4
+   }
+  ]
+ },
+ "engine_diesel_v12_modern_low": {
+  "group": "engines",
+  "preset": "loop",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "29ab2ad94e5a56df42c3218e20417eef2698e2f45aa8a0977fd9224d0ed9b256",
+    "bytes": 53643,
+    "durS": 6.091,
+    "mMax": -17.4,
+    "integrated": -18,
+    "truePeak": -5.3
+   }
+  ]
+ },
+ "engine_diesel_v12_soviet_idle": {
+  "group": "engines",
+  "preset": "loop",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "7fef054a0c638196797a29726c276b209b4a1b658a71432d6b32e3c213fcae6f",
+    "bytes": 49775,
+    "durS": 6.091,
+    "mMax": -17.5,
+    "integrated": -18,
+    "truePeak": -5.2
+   }
+  ]
+ },
+ "engine_gasoline_v12_idle": {
+  "group": "engines",
+  "preset": "loop",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "19bdad069258044bd84956e1f69d01a2210d7382c9c58807de3875bbad45c1e0",
+    "bytes": 47711,
+    "durS": 6.091,
+    "mMax": -17.5,
+    "integrated": -18,
+    "truePeak": -3.2
+   }
+  ]
+ },
+ "engine_gasoline_v12_low": {
+  "group": "engines",
+  "preset": "loop",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "4f5358abef134f7888c0e276c6386b362d4eec25dc77b8b06ca97c4f98e9654a",
+    "bytes": 52182,
+    "durS": 6.091,
+    "mMax": -17.1,
+    "integrated": -17.9,
+    "truePeak": -2.7
    }
   ]
  },
@@ -861,6 +2793,68 @@
    }
   ]
  },
+ "flyby_autocannon": {
+  "group": "flyby",
+  "preset": "oneshot",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "c8889519e4917b3035053855fe9a7eee2b8a2ee3911c6bdc86f888fb3d4ce80d",
+    "bytes": 7453,
+    "durS": 1,
+    "mMax": -15.3,
+    "integrated": -18.1,
+    "truePeak": 0.9
+   },
+   {
+    "sha256": "f012dd78a13611035231620a1514766756eb809ac72427566e9ee84729dc2d16",
+    "bytes": 4925,
+    "durS": 0.58,
+    "mMax": -13.6,
+    "integrated": -13.6,
+    "truePeak": 0.4
+   },
+   {
+    "sha256": "83040ceacc354552ceb8b030a0f3fd6013e0ce859ec585995a5339b6fdbf0b71",
+    "bytes": 8482,
+    "durS": 1,
+    "mMax": -16.1,
+    "integrated": -18.8,
+    "truePeak": 0.1
+   }
+  ]
+ },
+ "flyby_shell_crack": {
+  "group": "flyby",
+  "preset": "oneshot",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "ecfaaaddbb9064fc936fe426d13636fdd95b2e1f4bee3068ee901ddb4890a9c8",
+    "bytes": 10667,
+    "durS": 1.36,
+    "mMax": -15.3,
+    "integrated": -18,
+    "truePeak": -0.4
+   },
+   {
+    "sha256": "ec421b87a223ce95db00dca2729614dba24a8f5b4f906704c654840946dc9546",
+    "bytes": 10892,
+    "durS": 1.36,
+    "mMax": -14.1,
+    "integrated": -16.8,
+    "truePeak": 0.7
+   },
+   {
+    "sha256": "8a8d9367143791b76e65fd408efd223695da9369049467892ab161dc0673eff8",
+    "bytes": 5804,
+    "durS": 0.66,
+    "mMax": -14.8,
+    "integrated": -17.6,
+    "truePeak": -0.2
+   }
+  ]
+ },
  "flyover_bomber": {
   "group": "ambience",
   "preset": "oneshot",
@@ -922,6 +2916,37 @@
    }
   ]
  },
+ "gear_shift_auto": {
+  "group": "vehicle",
+  "preset": "foley",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "8a032ce090228a4ea14a134297d5ef9b5d565997949bce5f51c0f29e0ca9b679",
+    "bytes": 7362,
+    "durS": 0.8,
+    "mMax": -15.1,
+    "integrated": -19.2,
+    "truePeak": -1
+   },
+   {
+    "sha256": "637fdf578de1586e4fa9e350e5d619ef50a0f1bb349291cd250b8dfc3ffa9a68",
+    "bytes": 6561,
+    "durS": 0.8,
+    "mMax": -14.7,
+    "integrated": -18.3,
+    "truePeak": -0.9
+   },
+   {
+    "sha256": "97786679b07c876525676d953ec61c9527c1f40ec0461e465e7e7c8d689a86f5",
+    "bytes": 7123,
+    "durS": 0.8,
+    "mMax": -14.1,
+    "integrated": -17.1,
+    "truePeak": -0.9
+   }
+  ]
+ },
  "glass_cascade": {
   "group": "buildings",
   "preset": "impact",
@@ -973,6 +2998,192 @@
     "mMax": -10,
     "integrated": -12.2,
     "truePeak": -2.3
+   }
+  ]
+ },
+ "graze_earth": {
+  "group": "impacts",
+  "preset": "impact",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "f6c94e2ff445628756335a3bb532579fda8263d39dbece14cc9af114d9b7ed2d",
+    "bytes": 17661,
+    "durS": 1.414,
+    "mMax": -11.8,
+    "integrated": -13.8,
+    "truePeak": 0.2
+   },
+   {
+    "sha256": "e8d4a095f0999d84312d5ae5be81bc6b6e8465fb5ebd9122528a68f763a1de07",
+    "bytes": 18468,
+    "durS": 1.6,
+    "mMax": -12.6,
+    "integrated": -16.5,
+    "truePeak": 0.1
+   },
+   {
+    "sha256": "c6cbaa09fa6805bbed4dacb491f3c6caf1b17d32d997b5eff2cc2706e86f71a7",
+    "bytes": 17142,
+    "durS": 1.6,
+    "mMax": -11.6,
+    "integrated": -14.8,
+    "truePeak": -0.1
+   }
+  ]
+ },
+ "graze_mud": {
+  "group": "impacts",
+  "preset": "impact",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "7f3dd3445a499c88968edd780665d62a01b5890c343f3318c24e0914de8f3d1a",
+    "bytes": 19479,
+    "durS": 1.6,
+    "mMax": -12.4,
+    "integrated": -17.9,
+    "truePeak": -0.2
+   },
+   {
+    "sha256": "971ab498be2b2a9cc99de583b6bc0d074ff28fb844de8ec836af1d348d41735a",
+    "bytes": 17030,
+    "durS": 1.6,
+    "mMax": -12.2,
+    "integrated": -16,
+    "truePeak": -0.2
+   },
+   {
+    "sha256": "6069bf01fc943bae950edeaa14bc048ab91b85c19889bafd6c9b2d66d9777088",
+    "bytes": 12947,
+    "durS": 1.3,
+    "mMax": -13.3,
+    "integrated": -16.1,
+    "truePeak": -0.8
+   }
+  ]
+ },
+ "graze_paved": {
+  "group": "impacts",
+  "preset": "impact",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "679e2ad91dd41ba8debf7f731d2aa7c518bc8bcf778c082282a886a533d4df5f",
+    "bytes": 19721,
+    "durS": 1.6,
+    "mMax": -16.1,
+    "integrated": -20.1,
+    "truePeak": -0.4
+   },
+   {
+    "sha256": "99593fa62b95a098475c588726c222799063542734fb05ddf6e66a6b6477c91a",
+    "bytes": 15203,
+    "durS": 1.02,
+    "mMax": -13.7,
+    "integrated": -16,
+    "truePeak": -0.4
+   },
+   {
+    "sha256": "4637932610f6d4904c4925a42bb6989d0d6dabb7525c0550f9a2f05076056079",
+    "bytes": 13780,
+    "durS": 1.04,
+    "mMax": -12.3,
+    "integrated": -16,
+    "truePeak": 0
+   }
+  ]
+ },
+ "graze_sand": {
+  "group": "impacts",
+  "preset": "impact",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "e92df0195a94f6c9f52bab280afa2068bbdea3b2d2c09063d5bca6d53bee1ddb",
+    "bytes": 14855,
+    "durS": 1.6,
+    "mMax": -10,
+    "integrated": -13.4,
+    "truePeak": -0.7
+   },
+   {
+    "sha256": "9b887c55a67e91cc7b72ffb99fb4a02b6aab7f2a26d46ea134b8e06879db9cce",
+    "bytes": 15043,
+    "durS": 1.6,
+    "mMax": -10.1,
+    "integrated": -12.4,
+    "truePeak": -0.4
+   },
+   {
+    "sha256": "b1196f5ab1af6c4b22a7e93a99332989e5291684630e26be8bd9a857c9c15da8",
+    "bytes": 15131,
+    "durS": 1.6,
+    "mMax": -10.5,
+    "integrated": -12.8,
+    "truePeak": -0.1
+   }
+  ]
+ },
+ "graze_snow": {
+  "group": "impacts",
+  "preset": "impact",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "1e09ee68cb0823988e523e9190bdf7d1523d4355e1b454981b0ade893918c783",
+    "bytes": 15157,
+    "durS": 1.3,
+    "mMax": -10.7,
+    "integrated": -12.5,
+    "truePeak": 0
+   },
+   {
+    "sha256": "9a8bfc1d68aa2923fe9b2376964c236f412eb57b4d38344a825c43a495fa5c0c",
+    "bytes": 19008,
+    "durS": 1.52,
+    "mMax": -11.3,
+    "integrated": -14.5,
+    "truePeak": 0.5
+   },
+   {
+    "sha256": "a51ae995ba94d26405699d6478f548efdbc6861360e1f252ce5cc79f7fa8f12f",
+    "bytes": 17538,
+    "durS": 1.6,
+    "mMax": -10.8,
+    "integrated": -12.8,
+    "truePeak": 0.4
+   }
+  ]
+ },
+ "graze_water": {
+  "group": "impacts",
+  "preset": "impact",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "8771cdb17284570cf1164083e8e3ba09ccd56a7e57fbafcce11630c58a842c84",
+    "bytes": 19614,
+    "durS": 1.76,
+    "mMax": -12.4,
+    "integrated": -17.9,
+    "truePeak": 0
+   },
+   {
+    "sha256": "9949dfc25b0928208cdba334d23ae320283fe80539b2a62b1d3f1c9155707dc7",
+    "bytes": 15731,
+    "durS": 1.56,
+    "mMax": -14.1,
+    "integrated": -18,
+    "truePeak": 0.1
+   },
+   {
+    "sha256": "6a2d464eb34afc45f485df1da0d2edbfab669d83cde36e969af3c84cc62928d3",
+    "bytes": 17275,
+    "durS": 1.76,
+    "mMax": -12.4,
+    "integrated": -16.5,
+    "truePeak": -0.2
    }
   ]
  },
@@ -1100,13 +3311,1726 @@
    }
   ]
  },
+ "gun_100_close": {
+  "group": "weapons",
+  "preset": "cannon",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "fe96ae4c9fcf8820ef9059b39cd4b73127ab44bc605c34c7bf3aba668d659b00",
+    "bytes": 46774,
+    "durS": 4.34,
+    "mMax": -11.2,
+    "integrated": -15.1,
+    "truePeak": -0.7
+   },
+   {
+    "sha256": "33bfb436b3f65fe24b29bd9d5ccd3064dfb166dc9cc48d8537dbd07c4dac5d13",
+    "bytes": 56901,
+    "durS": 5,
+    "mMax": -11.7,
+    "integrated": -16.9,
+    "truePeak": -0.6
+   },
+   {
+    "sha256": "b8fcd49cfe79f9d13129b4034a69a3332867965042a61420c1ed45fce3c8891e",
+    "bytes": 43322,
+    "durS": 4.08,
+    "mMax": -11.4,
+    "integrated": -14.3,
+    "truePeak": -0.6
+   }
+  ]
+ },
+ "gun_100_far": {
+  "group": "weapons",
+  "preset": "weapon-far",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "7f0716534fd3f535b638bff64cda770ffcd42f6af4c2baf5fe602b775d2248ec",
+    "bytes": 34452,
+    "durS": 5.1,
+    "mMax": -14.3,
+    "integrated": -20,
+    "truePeak": -0.7
+   },
+   {
+    "sha256": "eb7a8c1507aa86febc3c4244e459e34c33aca5c9bfb90df93da7527b4b390b51",
+    "bytes": 36415,
+    "durS": 4.7,
+    "mMax": -14,
+    "integrated": -19.4,
+    "truePeak": -1.5
+   }
+  ]
+ },
+ "gun_100_interior": {
+  "group": "weapons",
+  "preset": "weapon-close",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "70d4570d20bb4f965beab25701b9565520d0ba3bcfc61e1f9f7f99e180a706a9",
+    "bytes": 32320,
+    "durS": 3,
+    "mMax": -10.8,
+    "integrated": -17,
+    "truePeak": -0.4
+   },
+   {
+    "sha256": "a0de7d37af5354828e373528e64850fb34c3103df5a30dbb741d4e97c95ed870",
+    "bytes": 32492,
+    "durS": 3,
+    "mMax": -10.3,
+    "integrated": -16.8,
+    "truePeak": -0.8
+   }
+  ]
+ },
+ "gun_100_own": {
+  "group": "weapons",
+  "preset": "cannon",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "244c7fe3aec25ae2a367b01709408c1cdbbf9ce114713b1281afcdff086eefce",
+    "bytes": 51397,
+    "durS": 4.556,
+    "mMax": -11.2,
+    "integrated": -16.4,
+    "truePeak": -0.7
+   },
+   {
+    "sha256": "c03a636bea9148b46237fef50c5e45ed200922b46b0bc779418cbf4e80aa097d",
+    "bytes": 56142,
+    "durS": 5,
+    "mMax": -11.2,
+    "integrated": -15.2,
+    "truePeak": -0.6
+   },
+   {
+    "sha256": "a2f25a9b1fe694690a27646bf668fee8cdc8a8832028d20a18486eb9331008ed",
+    "bytes": 56865,
+    "durS": 5,
+    "mMax": -11.3,
+    "integrated": -15.7,
+    "truePeak": -0.8
+   }
+  ]
+ },
+ "gun_100lp_close": {
+  "group": "weapons",
+  "preset": "cannon",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "3b4427fd15b08db26f794b131cf5bb343962c962f46d681d5022275fcfd95798",
+    "bytes": 55412,
+    "durS": 5,
+    "mMax": -11.2,
+    "integrated": -16.1,
+    "truePeak": -1
+   },
+   {
+    "sha256": "b1102e722c284fc214e1a11eab0562df578007eddb2358527985fa55e6afe8f4",
+    "bytes": 59442,
+    "durS": 5,
+    "mMax": -11.8,
+    "integrated": -16.3,
+    "truePeak": -0.7
+   },
+   {
+    "sha256": "23fc4e4148eabe005e770bdb6300d7bb553d9be1993c6259c870bff80dc9fda5",
+    "bytes": 52094,
+    "durS": 5,
+    "mMax": -11,
+    "integrated": -14.8,
+    "truePeak": -1.1
+   }
+  ]
+ },
+ "gun_100lp_far": {
+  "group": "weapons",
+  "preset": "weapon-far",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "59228c38ac8ee1f06f469007f1fc934ab52df62356caa08c13d51dcfa18cf8ad",
+    "bytes": 38627,
+    "durS": 5.48,
+    "mMax": -14.4,
+    "integrated": -20.2,
+    "truePeak": -0.7
+   },
+   {
+    "sha256": "2b0e6b3441e8a9af6e7bde7fae0299b30fb93bc07ee2c1b75586ff8bd82eab30",
+    "bytes": 40797,
+    "durS": 5.48,
+    "mMax": -14,
+    "integrated": -21.2,
+    "truePeak": -1.9
+   }
+  ]
+ },
+ "gun_100lp_interior": {
+  "group": "weapons",
+  "preset": "weapon-close",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "8e8f83c756c4cb14aff4c2323ed62328df88824ceccb976d300c433fcd9ac651",
+    "bytes": 33052,
+    "durS": 3,
+    "mMax": -11.1,
+    "integrated": -17.4,
+    "truePeak": -0.4
+   },
+   {
+    "sha256": "0a03e358e80c4fd68f7eb9d212d9b596295cd565492fd9e4f960efb29e4b1db5",
+    "bytes": 31741,
+    "durS": 3,
+    "mMax": -11.5,
+    "integrated": -16.9,
+    "truePeak": -0.4
+   }
+  ]
+ },
+ "gun_100lp_own": {
+  "group": "weapons",
+  "preset": "cannon",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "4e389668ad8a64c79811f1066f21890c2f952def808d9f51061297a6a4c141f4",
+    "bytes": 62431,
+    "durS": 5,
+    "mMax": -12.3,
+    "integrated": -18.8,
+    "truePeak": -0.7
+   },
+   {
+    "sha256": "5f08daf4059128301a54ea21cc124061a99c7066ce8ef632bdd514b6ede3a0e6",
+    "bytes": 52529,
+    "durS": 4.392,
+    "mMax": -11.9,
+    "integrated": -17.4,
+    "truePeak": -0.3
+   },
+   {
+    "sha256": "c8ebc5d1035a8d2c0b0f8417b859e681d7bc93a5a02f192653823a522c4eb360",
+    "bytes": 58926,
+    "durS": 5,
+    "mMax": -11,
+    "integrated": -15.2,
+    "truePeak": -0.5
+   }
+  ]
+ },
+ "gun_105_close": {
+  "group": "weapons",
+  "preset": "cannon",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "ea1e5644cb31c5954433733f1516bb135c44d13c6684093573b1bae0015aea69",
+    "bytes": 39690,
+    "durS": 3.54,
+    "mMax": -11.8,
+    "integrated": -16.5,
+    "truePeak": -0.7
+   },
+   {
+    "sha256": "84870cdbe47543c3e836d896ec7c20cf7381687deccb502874bff674428a7748",
+    "bytes": 52520,
+    "durS": 5,
+    "mMax": -11,
+    "integrated": -16.1,
+    "truePeak": -1.1
+   },
+   {
+    "sha256": "9fbf4a913342442c2ecb47d459516c7b8009d15788c0f1061a73c10daf96666d",
+    "bytes": 56774,
+    "durS": 5,
+    "mMax": -11.2,
+    "integrated": -16.3,
+    "truePeak": -0.7
+   }
+  ]
+ },
+ "gun_105_far": {
+  "group": "weapons",
+  "preset": "weapon-far",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "70182b405d301839da2c0bca6f784ddd57c69474fd465d81ef9fe6d9c2243675",
+    "bytes": 37849,
+    "durS": 5.48,
+    "mMax": -14.1,
+    "integrated": -18.4,
+    "truePeak": -1.2
+   },
+   {
+    "sha256": "50054ee9b0c7cde3f10a2590f480282ee676d2dd8e8f4311aa061387400764c1",
+    "bytes": 33510,
+    "durS": 5,
+    "mMax": -13.9,
+    "integrated": -18.8,
+    "truePeak": -1.2
+   }
+  ]
+ },
+ "gun_105_interior": {
+  "group": "weapons",
+  "preset": "weapon-close",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "033ae68aa0649b046c0ba43ab899832b2daa300869c91d58dae839dae65682e3",
+    "bytes": 33169,
+    "durS": 3,
+    "mMax": -10.9,
+    "integrated": -16.6,
+    "truePeak": -0.6
+   },
+   {
+    "sha256": "9499023e49707c223d67fc4e40ac3b1e10839acb7eb2296c69bb1d3cad4b16ef",
+    "bytes": 32506,
+    "durS": 3,
+    "mMax": -11.3,
+    "integrated": -16.1,
+    "truePeak": -0.2
+   }
+  ]
+ },
+ "gun_105_own": {
+  "group": "weapons",
+  "preset": "cannon",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "6059010e45d1fe781a3aade01b04d2a6480197c9a8144378517623a35ca6db8d",
+    "bytes": 55816,
+    "durS": 5,
+    "mMax": -11,
+    "integrated": -14.5,
+    "truePeak": -0.9
+   },
+   {
+    "sha256": "f484090233a3b82e75b2d2fc3a0c6e803a4db221cd63990843ed778e32b8186e",
+    "bytes": 39621,
+    "durS": 3.62,
+    "mMax": -11.3,
+    "integrated": -15.5,
+    "truePeak": -0.8
+   },
+   {
+    "sha256": "f68c39d593280cd5536381bf3adb65819d5f7ad2946314e8193754db12a68752",
+    "bytes": 60318,
+    "durS": 5,
+    "mMax": -11.7,
+    "integrated": -18,
+    "truePeak": -0.9
+   }
+  ]
+ },
+ "gun_120_close": {
+  "group": "weapons",
+  "preset": "cannon",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "756e58f70dc9b78603340eeaa28c9355cac829295669c911c6e787e34317f0d2",
+    "bytes": 60694,
+    "durS": 5,
+    "mMax": -11.4,
+    "integrated": -16.1,
+    "truePeak": -0.9,
+    "low150": 0.902
+   },
+   {
+    "sha256": "2bcb5860e02cd44a78bc53d83c659d937d7aedda5d71b3ce35c30fcf5df25261",
+    "bytes": 61316,
+    "durS": 5,
+    "mMax": -12.4,
+    "integrated": -17.4,
+    "truePeak": -0.6,
+    "low150": 0.967
+   },
+   {
+    "sha256": "951ca108a405f815b20c91816b01f1e1dc9379a71d79c35329406cfcb0b9fe5f",
+    "bytes": 60587,
+    "durS": 5,
+    "mMax": -12,
+    "integrated": -15.7,
+    "truePeak": -0.6,
+    "low150": 0.956
+   }
+  ]
+ },
+ "gun_120_far": {
+  "group": "weapons",
+  "preset": "weapon-far",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "0d2f493a9024de7ec2bc7e08b56e9b076757e27ebb00096d1451873d536b6bde",
+    "bytes": 36210,
+    "durS": 4.8,
+    "mMax": -14.1,
+    "integrated": -19.9,
+    "truePeak": -1
+   },
+   {
+    "sha256": "10c9107ef0273e2f9a975a5a8186eac194d204fe6fb422021cb71ce147c41dd8",
+    "bytes": 32122,
+    "durS": 4.58,
+    "mMax": -14,
+    "integrated": -19.3,
+    "truePeak": -2.9
+   }
+  ]
+ },
+ "gun_120_interior": {
+  "group": "weapons",
+  "preset": "weapon-close",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "4da0b3e34abcb2cce7a02bcb548783d675e28f40a406ee645644ec6de1442086",
+    "bytes": 32622,
+    "durS": 3,
+    "mMax": -10.8,
+    "integrated": -15.9,
+    "truePeak": -0.5
+   },
+   {
+    "sha256": "2e9985e2d39bcf202520f87a65fa1cc3038a0d1613e4cca3608f15bc65a1f835",
+    "bytes": 33309,
+    "durS": 3,
+    "mMax": -10.3,
+    "integrated": -15.9,
+    "truePeak": -0.6
+   }
+  ]
+ },
+ "gun_120_own": {
+  "group": "weapons",
+  "preset": "cannon",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "a64ac34311175eb41abb92f0c6a7162ff89b37f6762cb2c2d438caaf9b648199",
+    "bytes": 61014,
+    "durS": 5,
+    "mMax": -11.5,
+    "integrated": -17.7,
+    "truePeak": -0.7
+   },
+   {
+    "sha256": "d3c50c5f1744641a936085d77c09b1b685642bccd86fcb786bc10bcd409b9f01",
+    "bytes": 61453,
+    "durS": 5,
+    "mMax": -11.4,
+    "integrated": -15.8,
+    "truePeak": -0.7
+   },
+   {
+    "sha256": "90bd385fa21c6ead386f864db4bd4c391602f30f52a5a579f2455234dabef46e",
+    "bytes": 56582,
+    "durS": 4.72,
+    "mMax": -11.7,
+    "integrated": -16.8,
+    "truePeak": -0.6
+   }
+  ]
+ },
+ "gun_120r_close": {
+  "group": "weapons",
+  "preset": "cannon",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "f452d9f0f237c585354a20347dbbf925ad6e78cf88d3181cf4dc7f2c0228fc29",
+    "bytes": 60069,
+    "durS": 5,
+    "mMax": -12.1,
+    "integrated": -16.7,
+    "truePeak": -0.4
+   },
+   {
+    "sha256": "179a59cbf2a9013fbf7b69698fe972c2114be6365306670fe746ee261b950a56",
+    "bytes": 65841,
+    "durS": 5,
+    "mMax": -11.4,
+    "integrated": -16.7,
+    "truePeak": -0.7
+   },
+   {
+    "sha256": "7a494f44455ae6498c2e23bef92485375a6b640cbf8e382d8b59cff0c55804f2",
+    "bytes": 62015,
+    "durS": 5,
+    "mMax": -12.1,
+    "integrated": -18.2,
+    "truePeak": -0.5
+   }
+  ]
+ },
+ "gun_120r_far": {
+  "group": "weapons",
+  "preset": "weapon-far",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "8ec8da8b58088288dc9a08828d8cfc8ab09f9c8e44c867c78f29a2740461cfe3",
+    "bytes": 34030,
+    "durS": 4.96,
+    "mMax": -14,
+    "integrated": -21,
+    "truePeak": -0.8
+   },
+   {
+    "sha256": "aa8c9929e6f154d32506ccdc0a4fd6aca4a82120fa5800ca9cbe3b160298d9db",
+    "bytes": 25011,
+    "durS": 3.84,
+    "mMax": -14.1,
+    "integrated": -20.8,
+    "truePeak": -1.1
+   }
+  ]
+ },
+ "gun_120r_interior": {
+  "group": "weapons",
+  "preset": "weapon-close",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "98373077181f92413837b860572b33447141aea008ae76291eac78dab8f7aa48",
+    "bytes": 31053,
+    "durS": 3,
+    "mMax": -10.9,
+    "integrated": -16.3,
+    "truePeak": -0.6
+   },
+   {
+    "sha256": "c49395b8bcc412fe1986ea646255b3e35b54f4bbdebccab15679db2ed55731c7",
+    "bytes": 32060,
+    "durS": 3,
+    "mMax": -11.7,
+    "integrated": -16.7,
+    "truePeak": -0.3
+   }
+  ]
+ },
+ "gun_120r_own": {
+  "group": "weapons",
+  "preset": "cannon",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "a8fbe2e583f960a95d12b8cd145a92ca9dd7b1676ba0d93cf03491761e250d90",
+    "bytes": 60996,
+    "durS": 5,
+    "mMax": -11.3,
+    "integrated": -15.9,
+    "truePeak": -0.7
+   },
+   {
+    "sha256": "f844681ae65c7d521fd1469e719f1f8bac7af55b3eae2fd87beecf0cc4174abf",
+    "bytes": 62090,
+    "durS": 5,
+    "mMax": -11.5,
+    "integrated": -15.7,
+    "truePeak": -0.8
+   },
+   {
+    "sha256": "1d3716fbb5c4dfca451d40aca099123878eb38827e955a9c031bde225b5d3668",
+    "bytes": 55095,
+    "durS": 4.54,
+    "mMax": -12.1,
+    "integrated": -18.1,
+    "truePeak": -0.6
+   }
+  ]
+ },
+ "gun_125_close": {
+  "group": "weapons",
+  "preset": "cannon",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "80cac43608b4e5d2cd4eb45d910e55af5d284444f47933ce20a614016654259f",
+    "bytes": 60442,
+    "durS": 5,
+    "mMax": -12.1,
+    "integrated": -18,
+    "truePeak": -0.4
+   },
+   {
+    "sha256": "2a3d7b610628eaeaf96f412b8219566c3c60f85d4868929f55cd2c4610ab4255",
+    "bytes": 61788,
+    "durS": 5,
+    "mMax": -11,
+    "integrated": -15.3,
+    "truePeak": -1
+   },
+   {
+    "sha256": "b644291315f3523994048a28a9db2916c038d27e5f85e899d08c3d50cff07ad3",
+    "bytes": 61899,
+    "durS": 5,
+    "mMax": -11.5,
+    "integrated": -16,
+    "truePeak": -0.3
+   }
+  ]
+ },
+ "gun_125_far": {
+  "group": "weapons",
+  "preset": "weapon-far",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "94b3f48fe31bcb32997c5c7fbe9f8df45e8685bbb211c44c1644d23a9519743f",
+    "bytes": 31237,
+    "durS": 4.52,
+    "mMax": -14.1,
+    "integrated": -18.9,
+    "truePeak": -1.1
+   },
+   {
+    "sha256": "0fb0a1d4c0d0fd5090b003719c58e9f9699ba858e13cfe17b3d672b784c843e2",
+    "bytes": 38572,
+    "durS": 5.48,
+    "mMax": -14.1,
+    "integrated": -20.3,
+    "truePeak": -1.1
+   }
+  ]
+ },
+ "gun_125_interior": {
+  "group": "weapons",
+  "preset": "weapon-close",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "8b21d30776e4d2cd1c7692bd4df542e4642da7428d24de1f53d882b51bdbf6bf",
+    "bytes": 31884,
+    "durS": 3,
+    "mMax": -11.5,
+    "integrated": -17.5,
+    "truePeak": -0.5
+   },
+   {
+    "sha256": "75af2ebb86d6c19f722ccf40be43709c041a8a432e4675b61341634b28278d96",
+    "bytes": 32606,
+    "durS": 3,
+    "mMax": -10.8,
+    "integrated": -16.6,
+    "truePeak": -0.5
+   }
+  ]
+ },
+ "gun_125_own": {
+  "group": "weapons",
+  "preset": "cannon",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "c15332076acbd5a11cd3de653a0732c1c7e9069f9bb5052232e7a16546cf1d8d",
+    "bytes": 61911,
+    "durS": 5,
+    "mMax": -11.4,
+    "integrated": -17.3,
+    "truePeak": -0.6
+   },
+   {
+    "sha256": "c170561317fe13a60d810382f625e62e9936bd1f795bdf80415537d27ff7a713",
+    "bytes": 59008,
+    "durS": 4.66,
+    "mMax": -11.7,
+    "integrated": -17.8,
+    "truePeak": -0.5
+   },
+   {
+    "sha256": "06dd5322006259b48961a3017cabf63d6f57c9bdf807f486e3b1514c4dd3e245",
+    "bytes": 61462,
+    "durS": 5,
+    "mMax": -11.3,
+    "integrated": -15.5,
+    "truePeak": -0.7
+   }
+  ]
+ },
+ "gun_130_close": {
+  "group": "weapons",
+  "preset": "cannon",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "a500725bd23fab7905cec94d02238f15216941c1964e04071eba4210eb84d9ec",
+    "bytes": 61951,
+    "durS": 5,
+    "mMax": -11.8,
+    "integrated": -16.2,
+    "truePeak": -0.8
+   },
+   {
+    "sha256": "b25bab416d699f258a97f635aa4a3dcc80268ebea606fa6daf22aacf78df0184",
+    "bytes": 62167,
+    "durS": 5,
+    "mMax": -12.1,
+    "integrated": -17.5,
+    "truePeak": -0.6
+   },
+   {
+    "sha256": "3ba98615419368611ae868da0803f3d57d5d03ceaf298548192a328f30a4dc37",
+    "bytes": 61999,
+    "durS": 5,
+    "mMax": -12.4,
+    "integrated": -18.7,
+    "truePeak": -0.5
+   }
+  ]
+ },
+ "gun_130_far": {
+  "group": "weapons",
+  "preset": "weapon-far",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "a7c294d56066a301b99655af0dd350d77a3142039ec257574fc2a2994c301206",
+    "bytes": 39343,
+    "durS": 5.48,
+    "mMax": -14,
+    "integrated": -20.1,
+    "truePeak": -0.9
+   },
+   {
+    "sha256": "475a40154acab97769734edeca46a419d73846e45a75e69b24a758509f2e9673",
+    "bytes": 39196,
+    "durS": 5.48,
+    "mMax": -14.1,
+    "integrated": -20,
+    "truePeak": -1
+   }
+  ]
+ },
+ "gun_130_interior": {
+  "group": "weapons",
+  "preset": "weapon-close",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "7d499061a1ea1a4a990f1c6892615de965c52bb5721e98280adfb1af05bb1aaa",
+    "bytes": 31995,
+    "durS": 3,
+    "mMax": -10.6,
+    "integrated": -16,
+    "truePeak": -0.7
+   },
+   {
+    "sha256": "b774eee3d426245a82c9a747e857d18277a85a6a468adc7acd098f2ed83d216f",
+    "bytes": 31657,
+    "durS": 2.98,
+    "mMax": -11.5,
+    "integrated": -16.9,
+    "truePeak": -0.7
+   }
+  ]
+ },
+ "gun_130_own": {
+  "group": "weapons",
+  "preset": "cannon",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "1d38487bc390cda44ef562895fca6dd279773d02d63c00658907d7fe487e938f",
+    "bytes": 61732,
+    "durS": 5,
+    "mMax": -11.1,
+    "integrated": -14.6,
+    "truePeak": -0.8
+   },
+   {
+    "sha256": "457dfcefab1b00b60dd05e03d91d5108a8f6c4542d171035b3e67123d9ce48f3",
+    "bytes": 60909,
+    "durS": 5,
+    "mMax": -11.6,
+    "integrated": -16,
+    "truePeak": -0.7
+   },
+   {
+    "sha256": "7845c8efc865596a3318f8ae9d6dd50ee613e0853fee409ecec582f9aff41f5e",
+    "bytes": 60189,
+    "durS": 5,
+    "mMax": -11.2,
+    "integrated": -15.9,
+    "truePeak": -0.8
+   }
+  ]
+ },
+ "gun_152gl_close": {
+  "group": "weapons",
+  "preset": "cannon",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "02354cd4ed0a5290c0044ee1126b0575a3cd32d94ac53e0dfadace3ca9142185",
+    "bytes": 70151,
+    "durS": 5.48,
+    "mMax": -13.6,
+    "integrated": -19,
+    "truePeak": -0.8
+   },
+   {
+    "sha256": "d5060cd01a0b342a9a1627a8af056662cf415a9e64def5bd37d65fbfab8f5ff4",
+    "bytes": 67273,
+    "durS": 5.48,
+    "mMax": -11,
+    "integrated": -14.9,
+    "truePeak": -0.7
+   },
+   {
+    "sha256": "10c46c3c88a67e1e83b696c8486069143354117a86dee4b94f670d806ba5f790",
+    "bytes": 37833,
+    "durS": 3.056,
+    "mMax": -11.4,
+    "integrated": -15.6,
+    "truePeak": -0.8
+   }
+  ]
+ },
+ "gun_152gl_far": {
+  "group": "weapons",
+  "preset": "weapon-far",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "7db6b573c843220143deed72b3b69f5ff83711f5c2c62eb3a50b4e20cb03af08",
+    "bytes": 32856,
+    "durS": 4.84,
+    "mMax": -14.2,
+    "integrated": -18.1,
+    "truePeak": -1.1
+   },
+   {
+    "sha256": "9287af76eab135293800b234168c5e8330e8b37b89b460d29c7de56cb956d86b",
+    "bytes": 30620,
+    "durS": 4.6,
+    "mMax": -14,
+    "integrated": -17.7,
+    "truePeak": -2.5
+   }
+  ]
+ },
+ "gun_152gl_interior": {
+  "group": "weapons",
+  "preset": "weapon-close",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "f8fb812c30cef01563d2ec03854fa8fc1e2c19d15f36a362925f8a4830da07cd",
+    "bytes": 32214,
+    "durS": 3,
+    "mMax": -10.3,
+    "integrated": -16.5,
+    "truePeak": -0.8
+   },
+   {
+    "sha256": "3d35e64a39ba2ca0814b40af2dcc99baf90205a963cd35138e4a995fcda8456d",
+    "bytes": 31715,
+    "durS": 3,
+    "mMax": -10.9,
+    "integrated": -16.3,
+    "truePeak": -0.4
+   }
+  ]
+ },
+ "gun_152gl_own": {
+  "group": "weapons",
+  "preset": "cannon",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "464ec1dca4f1e0b75f4ac727cef8a8411659d06ae10f035d3f646ba43ea9d337",
+    "bytes": 69108,
+    "durS": 5.48,
+    "mMax": -11.5,
+    "integrated": -16,
+    "truePeak": -0.8
+   },
+   {
+    "sha256": "cdb46c4be61bfc45ed5b1841f673e98c9acceae00136a787f9b1eb69e8e1b887",
+    "bytes": 69794,
+    "durS": 5.48,
+    "mMax": -11.2,
+    "integrated": -15,
+    "truePeak": -0.8
+   },
+   {
+    "sha256": "e561da4d8a4bf3b7a3d20f6c1d8a49736fd3767c6ec2c0e591c5d357a290fe88",
+    "bytes": 50145,
+    "durS": 4.058,
+    "mMax": -11.2,
+    "integrated": -15.6,
+    "truePeak": -0.6
+   }
+  ]
+ },
+ "gun_152h_close": {
+  "group": "weapons",
+  "preset": "cannon",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "0f95b50452f602942a0a8bc257a2b1d726b30c8baa3cb79c297503d5e4c23e1c",
+    "bytes": 67403,
+    "durS": 5.48,
+    "mMax": -11.2,
+    "integrated": -15.2,
+    "truePeak": -0.8,
+    "low150": 0.76
+   },
+   {
+    "sha256": "bb14874250d7b657379f525100fbde34617372746d1e9da17ebd8b252c31f9c0",
+    "bytes": 57426,
+    "durS": 5.48,
+    "mMax": -11.1,
+    "integrated": -16.5,
+    "truePeak": -0.7,
+    "low150": 0.657
+   },
+   {
+    "sha256": "b282c76b1684929ddc02c05f119da5b4acd5cff46bb288f62486f90e72c5beda",
+    "bytes": 58513,
+    "durS": 4.98,
+    "mMax": -11.4,
+    "integrated": -17.7,
+    "truePeak": -0.6,
+    "low150": 0.627
+   }
+  ]
+ },
+ "gun_152h_far": {
+  "group": "weapons",
+  "preset": "weapon-far",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "fcd7f1e169c18fc0cfcd89b19fba0b33b9f3b3a2cb558661375a2316d86ba105",
+    "bytes": 41725,
+    "durS": 5.48,
+    "mMax": -14,
+    "integrated": -19.7,
+    "truePeak": -1.9
+   },
+   {
+    "sha256": "44227064407b974f11c5ff656a2109f161f02b46db34c344b6cbc45ca8e1ad61",
+    "bytes": 37279,
+    "durS": 5.12,
+    "mMax": -14.1,
+    "integrated": -21.9,
+    "truePeak": -1.2
+   }
+  ]
+ },
+ "gun_152h_interior": {
+  "group": "weapons",
+  "preset": "weapon-close",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "53c02728658a8b36c0613e86ddcc36c37f4200ab0fac88df0a06ffe035d1393f",
+    "bytes": 32782,
+    "durS": 3,
+    "mMax": -11.2,
+    "integrated": -17.6,
+    "truePeak": -0.6
+   },
+   {
+    "sha256": "ed70763f703d94b6dbe6f2f43cf0a6c890b8e8645b1ba618d6ed172a1b1ce8fd",
+    "bytes": 33363,
+    "durS": 3,
+    "mMax": -10.5,
+    "integrated": -16.2,
+    "truePeak": -0.6
+   }
+  ]
+ },
+ "gun_152h_own": {
+  "group": "weapons",
+  "preset": "cannon",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "75242b889c94b6a8319e3d78350f74222453857ed0837f8e4905cf991df5c0ab",
+    "bytes": 60013,
+    "durS": 5.078,
+    "mMax": -11.6,
+    "integrated": -18.7,
+    "truePeak": -0.7
+   },
+   {
+    "sha256": "81fbe813d3aecc70eadfab084e76bbf12561fc5c9d1f7a8564a5bbe33dd31576",
+    "bytes": 63172,
+    "durS": 5.48,
+    "mMax": -11.8,
+    "integrated": -16.3,
+    "truePeak": -0.7
+   },
+   {
+    "sha256": "6cfcc09c41960a3432db8a0c492a76d1ec2fa92c58e84f3f7ec8da0fab802d45",
+    "bytes": 64760,
+    "durS": 5.48,
+    "mMax": -11.6,
+    "integrated": -17.5,
+    "truePeak": -0.7
+   }
+  ]
+ },
+ "gun_165_close": {
+  "group": "weapons",
+  "preset": "cannon",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "e4be97d00676f363756654e8fa20a0f15990cac0bf7e5bff53ff19c2b5eec330",
+    "bytes": 64115,
+    "durS": 5.48,
+    "mMax": -11.3,
+    "integrated": -14.9,
+    "truePeak": -0.1
+   },
+   {
+    "sha256": "2a265ca233679f9c51e50022eb103773d6d1af5ebbf14a1481b9eb55cab639db",
+    "bytes": 60240,
+    "durS": 5.48,
+    "mMax": -11.1,
+    "integrated": -15.7,
+    "truePeak": -0.6
+   },
+   {
+    "sha256": "d1fdd1e17daa3fb44dfc8df15b6e8584c37054da365d48a73c17d24ad8f39771",
+    "bytes": 61443,
+    "durS": 5.48,
+    "mMax": -11,
+    "integrated": -16.3,
+    "truePeak": -2.1
+   }
+  ]
+ },
+ "gun_165_far": {
+  "group": "weapons",
+  "preset": "weapon-far",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "c30af4e9e52a766ad0176b4266b873804accf97b729de994a11393b4dfd31368",
+    "bytes": 33279,
+    "durS": 4.76,
+    "mMax": -14,
+    "integrated": -18.7,
+    "truePeak": -1
+   },
+   {
+    "sha256": "e66db1d434f943c608586959097f3e87728ba4f860e3178f72cb888c0bc382c9",
+    "bytes": 37301,
+    "durS": 5.48,
+    "mMax": -14,
+    "integrated": -17.8,
+    "truePeak": -4.9
+   }
+  ]
+ },
+ "gun_165_interior": {
+  "group": "weapons",
+  "preset": "weapon-close",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "05bd3587727fd0b5f83cc33758c42658687c585a26272e1e1bdd41d1ded5225e",
+    "bytes": 30002,
+    "durS": 2.88,
+    "mMax": -11,
+    "integrated": -16.5,
+    "truePeak": -0.6
+   },
+   {
+    "sha256": "29d738e12c4e55a9a6e299a8912d7801c3dac23debe76e28e4665228dd98b0f2",
+    "bytes": 32034,
+    "durS": 3,
+    "mMax": -12.3,
+    "integrated": -18.7,
+    "truePeak": -0.5
+   }
+  ]
+ },
+ "gun_165_own": {
+  "group": "weapons",
+  "preset": "cannon",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "689a3a2c6acd7030bd476f5402f90b986dff677a49a165911c09ee44e4bec727",
+    "bytes": 65702,
+    "durS": 5.48,
+    "mMax": -11.5,
+    "integrated": -15.8,
+    "truePeak": -0.8
+   },
+   {
+    "sha256": "4db1f65d84e75e538ed5a9a10ce8fca6876a2a15f1ba4a001ccaa88147839c26",
+    "bytes": 64025,
+    "durS": 5.48,
+    "mMax": -11,
+    "integrated": -17.4,
+    "truePeak": -1.3
+   },
+   {
+    "sha256": "c000f6b676e766664ed6ac0694b706b3a21a697ad1516636f04fd87ac1526b52",
+    "bytes": 66315,
+    "durS": 5.48,
+    "mMax": -11.9,
+    "integrated": -17.4,
+    "truePeak": -0.4
+   }
+  ]
+ },
+ "gun_170_close": {
+  "group": "weapons",
+  "preset": "cannon",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "841a43ec8741e8c761fa6264b448d226dc2399249cb27249ef0fa172fcf8b080",
+    "bytes": 57529,
+    "durS": 5.48,
+    "mMax": -11.4,
+    "integrated": -16.7,
+    "truePeak": -0.7,
+    "low150": 0.858
+   },
+   {
+    "sha256": "b0ab4f2b516303f060dbc6806ad38138a58d9943017040dfb21037df53cb928d",
+    "bytes": 70953,
+    "durS": 5.48,
+    "mMax": -12.2,
+    "integrated": -19.6,
+    "truePeak": -0.7,
+    "low150": 0.921
+   },
+   {
+    "sha256": "0e850f377f70044654161c1c9b042e7efc4197742ca4beed3370a4f304a8a8ae",
+    "bytes": 61713,
+    "durS": 5.48,
+    "mMax": -11.3,
+    "integrated": -16.6,
+    "truePeak": -0.5,
+    "low150": 0.683
+   }
+  ]
+ },
+ "gun_170_far": {
+  "group": "weapons",
+  "preset": "weapon-far",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "ac955daf005a4b2ba8f1566a340d93e7dc5f348afbf90ad17e104c4ae54b4cb0",
+    "bytes": 37977,
+    "durS": 5.48,
+    "mMax": -14,
+    "integrated": -18.7,
+    "truePeak": -0.8
+   },
+   {
+    "sha256": "79e55ac715bdf1dd859f99d51cbf5cda3789350153b24b5dde54adf558a7b00b",
+    "bytes": 41002,
+    "durS": 5.48,
+    "mMax": -14.4,
+    "integrated": -21.3,
+    "truePeak": -0.3
+   }
+  ]
+ },
+ "gun_170_interior": {
+  "group": "weapons",
+  "preset": "weapon-close",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "d3db075537ddc29c4ed4067fcf3b0f707e160347fed58ecf5c049c8fd575da1e",
+    "bytes": 32249,
+    "durS": 3,
+    "mMax": -10.7,
+    "integrated": -16.4,
+    "truePeak": -0.6
+   },
+   {
+    "sha256": "9816ca22c2a4ed646fea0d20393ae0842d026d4cbe80f7f7e383292c2fdbfc05",
+    "bytes": 31076,
+    "durS": 3,
+    "mMax": -11.1,
+    "integrated": -16.6,
+    "truePeak": -0.5
+   }
+  ]
+ },
+ "gun_170_own": {
+  "group": "weapons",
+  "preset": "cannon",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "c8ba9b9352d06d570598cedbe473d5cf8df0f970ff42960f1224a5315b165213",
+    "bytes": 57376,
+    "durS": 4.972,
+    "mMax": -11.5,
+    "integrated": -16,
+    "truePeak": -0.5
+   },
+   {
+    "sha256": "6d220cfa6a994be08270dea7b7af18abd5e37d44d764a123449592ccdafff1dc",
+    "bytes": 65087,
+    "durS": 5.48,
+    "mMax": -12.1,
+    "integrated": -15.7,
+    "truePeak": -0.4
+   },
+   {
+    "sha256": "8f2f52bd15b6b26b8a1de639581ae087d15c898df42115a30264405d0f06e507",
+    "bytes": 65679,
+    "durS": 5.48,
+    "mMax": -11.5,
+    "integrated": -17.2,
+    "truePeak": -0.6
+   }
+  ]
+ },
+ "gun_76_close": {
+  "group": "weapons",
+  "preset": "cannon",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "e5a13b4259739289d15db0b35c33d5a715f4269a807af017f4d21818ae29766c",
+    "bytes": 46527,
+    "durS": 4.338,
+    "mMax": -11.3,
+    "integrated": -15.4,
+    "truePeak": -0.9,
+    "low150": 0.77
+   },
+   {
+    "sha256": "d408128a83a51497830f9c8904a8695acc8eecbfc575d4de52349698c3a271cf",
+    "bytes": 47503,
+    "durS": 4.48,
+    "mMax": -12.7,
+    "integrated": -19,
+    "truePeak": -0.5,
+    "low150": 0.737
+   },
+   {
+    "sha256": "52d0db09015255918c49c6bba8609fbd5a8d28f794a2c687a695e1e0de20a3ad",
+    "bytes": 44846,
+    "durS": 4.144,
+    "mMax": -11.3,
+    "integrated": -15.9,
+    "truePeak": -0.7,
+    "low150": 0.699
+   }
+  ]
+ },
+ "gun_76_far": {
+  "group": "weapons",
+  "preset": "weapon-far",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "6548d963e25dab7645c527bf19de9c800fce6f77f7a6692240e7ad32cea73837",
+    "bytes": 32485,
+    "durS": 4.406,
+    "mMax": -15.4,
+    "integrated": -23,
+    "truePeak": -0.7
+   },
+   {
+    "sha256": "b29219b4d9bc7b84aecc0bd5160437b486d4521a8cdfc6eed8f496bac4711254",
+    "bytes": 41699,
+    "durS": 5.48,
+    "mMax": -14.2,
+    "integrated": -21.1,
+    "truePeak": -1.3
+   }
+  ]
+ },
+ "gun_76_interior": {
+  "group": "weapons",
+  "preset": "weapon-close",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "8a4d30c0817b1b0d3615f00b888d4931f812fc57e868684fac436acf80f84648",
+    "bytes": 32745,
+    "durS": 3,
+    "mMax": -10.1,
+    "integrated": -16,
+    "truePeak": -0.6
+   },
+   {
+    "sha256": "e944292693f07a256ded433d39c69b03655fdb7420ea61175d9825efd5cc5237",
+    "bytes": 31529,
+    "durS": 3,
+    "mMax": -10.8,
+    "integrated": -16.4,
+    "truePeak": -0.5
+   }
+  ]
+ },
+ "gun_76_own": {
+  "group": "weapons",
+  "preset": "cannon",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "c559ad660bbbc256ad35e21288e117f9a98f197a6ce4047a1190c7dcca24aa3a",
+    "bytes": 48217,
+    "durS": 3.816,
+    "mMax": -11.3,
+    "integrated": -14.7,
+    "truePeak": -0.6
+   },
+   {
+    "sha256": "a81af79f24ce106f176a40da1acb78a8fc1be2d30751bc4d61e1ad5af5eb81cb",
+    "bytes": 45555,
+    "durS": 4.308,
+    "mMax": -11.2,
+    "integrated": -15.5,
+    "truePeak": -1
+   },
+   {
+    "sha256": "f4c5c624113a6319de1193298e846a8250c05f2be40d833fc3d345e1695bc361",
+    "bytes": 40802,
+    "durS": 3.774,
+    "mMax": -11.5,
+    "integrated": -16.4,
+    "truePeak": -0.5
+   }
+  ]
+ },
+ "gun_84_close": {
+  "group": "weapons",
+  "preset": "cannon",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "a30c07f7af43f9bb495345856e9b429f2963c3a71c6e8cb27a0e0d43e9ae63ff",
+    "bytes": 47880,
+    "durS": 4.48,
+    "mMax": -11.2,
+    "integrated": -16,
+    "truePeak": -0.9
+   },
+   {
+    "sha256": "7733bdf907c51773aadf7ef9f214edec106c36fbe47233fac2cd1fb28b710765",
+    "bytes": 47101,
+    "durS": 4.358,
+    "mMax": -11,
+    "integrated": -16.3,
+    "truePeak": -0.7
+   },
+   {
+    "sha256": "d927581185f4dfbf57a2644df456a20c69e50a1f2d18d6d6f251cf433729a8d9",
+    "bytes": 46177,
+    "durS": 4.4,
+    "mMax": -11,
+    "integrated": -16.4,
+    "truePeak": -0.7
+   }
+  ]
+ },
+ "gun_84_far": {
+  "group": "weapons",
+  "preset": "weapon-far",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "535e2e0ec9e1e1b97d9c6c97b97ea2e17324dc1e433d516a576300dcb266b009",
+    "bytes": 43451,
+    "durS": 5.48,
+    "mMax": -14,
+    "integrated": -21.4,
+    "truePeak": -0.9
+   },
+   {
+    "sha256": "2dd164e9c0e7e05367f4c771ebd36ea7ff73c109f14b8135bc3be474a54f8060",
+    "bytes": 40011,
+    "durS": 5.48,
+    "mMax": -14.1,
+    "integrated": -21.1,
+    "truePeak": -1.6
+   }
+  ]
+ },
+ "gun_84_interior": {
+  "group": "weapons",
+  "preset": "weapon-close",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "f2830530ae591e3941d63fc60abaa4d71a79db18496df14528b81b8f937f3bb0",
+    "bytes": 33878,
+    "durS": 3,
+    "mMax": -10.9,
+    "integrated": -16.5,
+    "truePeak": -0.4
+   },
+   {
+    "sha256": "e08b9ab169da0a41b29e37ceb5f3aa87ed66712359c822761741e41ddfdd6234",
+    "bytes": 32946,
+    "durS": 3,
+    "mMax": -10.7,
+    "integrated": -17.1,
+    "truePeak": -0.4
+   }
+  ]
+ },
+ "gun_84_own": {
+  "group": "weapons",
+  "preset": "cannon",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "f8166df2656881d21253b28e6174a1b112d9d983b9b721e64fb9546747c37d09",
+    "bytes": 47005,
+    "durS": 4.38,
+    "mMax": -11.4,
+    "integrated": -14.7,
+    "truePeak": -0.7
+   },
+   {
+    "sha256": "94ff4d51dd794e823b45e831219ee6e6522722b80c41b953ad7a818ffb20f22f",
+    "bytes": 47559,
+    "durS": 4.48,
+    "mMax": -11.2,
+    "integrated": -15.7,
+    "truePeak": -0.7
+   },
+   {
+    "sha256": "35485a937798009a8dca1f2aa57d66b947f249fbd19b4eea20d1457d7f9b815f",
+    "bytes": 46898,
+    "durS": 4.48,
+    "mMax": -11.5,
+    "integrated": -17.8,
+    "truePeak": -0.8
+   }
+  ]
+ },
+ "gun_90_close": {
+  "group": "weapons",
+  "preset": "cannon",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "539424e7e0d7aadc565190ef76c1e9509e8e179a84f666f21e4bee692b2c2fde",
+    "bytes": 50949,
+    "durS": 4.48,
+    "mMax": -11.5,
+    "integrated": -16.4,
+    "truePeak": -0.6,
+    "low150": 0.569
+   },
+   {
+    "sha256": "c1f7eb7dc5111b8c7420da926f5a9eeb37d7c6dbd9c7a395c7134c7ca72a9e63",
+    "bytes": 47648,
+    "durS": 4.48,
+    "mMax": -10.9,
+    "integrated": -15.1,
+    "truePeak": -0.8,
+    "low150": 0.635
+   },
+   {
+    "sha256": "d5c81c0b824221f385102e6e1a8ee0ccb821003fd6639e6ece3109a9667bfc61",
+    "bytes": 46623,
+    "durS": 4.48,
+    "mMax": -11.3,
+    "integrated": -16.2,
+    "truePeak": -0.7,
+    "low150": 0.417
+   }
+  ]
+ },
+ "gun_90_far": {
+  "group": "weapons",
+  "preset": "weapon-far",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "b87327760e50735737b54effbb4b83b6d5823001d8f488180e835e901f779444",
+    "bytes": 38368,
+    "durS": 5.08,
+    "mMax": -14.8,
+    "integrated": -21.9,
+    "truePeak": -0.8
+   },
+   {
+    "sha256": "8492a5021d9aac0c7cdbad44cd93ba7609526888f2cf8f018f2dbad176a18265",
+    "bytes": 41703,
+    "durS": 5.48,
+    "mMax": -14,
+    "integrated": -20.3,
+    "truePeak": -0.9
+   }
+  ]
+ },
+ "gun_90_interior": {
+  "group": "weapons",
+  "preset": "weapon-close",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "0172d8fbd05f120cab62f94c2ff104ca53d9ff604e0faf05d378b29cdcec2932",
+    "bytes": 32816,
+    "durS": 3,
+    "mMax": -10.5,
+    "integrated": -16.3,
+    "truePeak": -0.8
+   },
+   {
+    "sha256": "afa7a7fe3bdc9bc5307281b39f591ccb1d08730dd278a75192d6da4ae25ac959",
+    "bytes": 33919,
+    "durS": 3,
+    "mMax": -10.3,
+    "integrated": -16.2,
+    "truePeak": -0.8
+   }
+  ]
+ },
+ "gun_90_own": {
+  "group": "weapons",
+  "preset": "cannon",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "8c04736addd34d2accdf6803408dc982c058ff7c4f778dcb2739be54a9787e44",
+    "bytes": 47333,
+    "durS": 4.36,
+    "mMax": -11.4,
+    "integrated": -15.8,
+    "truePeak": -0.4
+   },
+   {
+    "sha256": "94dae7390525111191cf4f7f27b562087ca26c2ffc44bf552ab1489b34bcdbc9",
+    "bytes": 46028,
+    "durS": 4.3,
+    "mMax": -11.1,
+    "integrated": -14.5,
+    "truePeak": -0.7
+   },
+   {
+    "sha256": "5b98f72270aab0df9e16a9325c89e069d767f643a237089207caf2caa08c913d",
+    "bytes": 54870,
+    "durS": 4.42,
+    "mMax": -11.4,
+    "integrated": -16.1,
+    "truePeak": 0
+   }
+  ]
+ },
+ "gunship_30mm_far": {
+  "group": "weapons",
+  "preset": "weapon-far",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "8d09a2bd0382e7035364b6c12ec5aeb7954aa6c22d934741653ce65937611aa3",
+    "bytes": 16693,
+    "durS": 2.2,
+    "mMax": -14.4,
+    "integrated": -19.6,
+    "truePeak": -0.9
+   },
+   {
+    "sha256": "dd78a87aa83b76e45a3c4dd5f5c6ae76cf3f694348b210b80926a18e71282cbf",
+    "bytes": 15036,
+    "durS": 2.2,
+    "mMax": -14,
+    "integrated": -19.2,
+    "truePeak": -1
+   },
+   {
+    "sha256": "1902b4303998ec4c8979f70bab4c7bbd139e157349e0dc3545256921d756cbaa",
+    "bytes": 16744,
+    "durS": 2.2,
+    "mMax": -14,
+    "integrated": -19.9,
+    "truePeak": -2.2
+   }
+  ]
+ },
+ "gunship_30mm_own": {
+  "group": "weapons",
+  "preset": "autocannon",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "3747e6218d5511e19603b70885cde67745c9aafad3cf8ff8dc9815bb6bab1026",
+    "bytes": 28197,
+    "durS": 2.2,
+    "mMax": -13.3,
+    "integrated": -19.1,
+    "truePeak": -0.6
+   },
+   {
+    "sha256": "a4c3fb061f183a96be50d77b740c4d7e8f8fd32ca658331dfd60c0d84a9a52db",
+    "bytes": 27042,
+    "durS": 2.2,
+    "mMax": -14.5,
+    "integrated": -20.7,
+    "truePeak": -0.8
+   },
+   {
+    "sha256": "bd43131cae5d7e974e71816f717989dfc9ef51187a085978b7855c93069dcd31",
+    "bytes": 23914,
+    "durS": 1.838,
+    "mMax": -13.8,
+    "integrated": -17.9,
+    "truePeak": -0.7
+   },
+   {
+    "sha256": "d6d8ba001488be4ad2235a65e034a90653705a839becfd77355863ac51955fbf",
+    "bytes": 27935,
+    "durS": 2.2,
+    "mMax": -13.9,
+    "integrated": -18.2,
+    "truePeak": -0.4
+   }
+  ]
+ },
+ "gunship_howitzer_far": {
+  "group": "weapons",
+  "preset": "weapon-far",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "e8ea5b01857413150ea32c57b63636109cf6c60ae0279d6b162de76270f0a455",
+    "bytes": 32511,
+    "durS": 5,
+    "mMax": -14,
+    "integrated": -18.6,
+    "truePeak": -1.6
+   },
+   {
+    "sha256": "2aa9b7ef3ce1db006db7085ef12911ca829096c21473e8e8f2619a71be4f8834",
+    "bytes": 32549,
+    "durS": 5,
+    "mMax": -13.9,
+    "integrated": -16.8,
+    "truePeak": -4.5
+   }
+  ]
+ },
+ "gunship_howitzer_own": {
+  "group": "weapons",
+  "preset": "cannon",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "3f1da8e8bf982169159e14a0440df4a91266ae197150025e0ef4e2296ebee00a",
+    "bytes": 48714,
+    "durS": 4,
+    "mMax": -12.2,
+    "integrated": -18.7,
+    "truePeak": -0.5
+   },
+   {
+    "sha256": "47aa7b1dacae98f0726f9710b32f2fb5becd66d59759e91d1b685c3e0005c162",
+    "bytes": 47829,
+    "durS": 3.956,
+    "mMax": -11.6,
+    "integrated": -17.4,
+    "truePeak": -0.6
+   },
+   {
+    "sha256": "589afc129f508869593d6ae9ed49ffdf12746c917b6ec43fafcba6a2e768a609",
+    "bytes": 47736,
+    "durS": 4,
+    "mMax": -11.3,
+    "integrated": -15.8,
+    "truePeak": -0.2
+   }
+  ]
+ },
+ "gunship_missile_own": {
+  "group": "weapons",
+  "preset": "weapon-close",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "b7af52e0eaf31d2a0b32663195494bfecf8a9db5a7bee39ebe3028e5dc4c68e8",
+    "bytes": 26706,
+    "durS": 3,
+    "mMax": -9,
+    "integrated": -12,
+    "truePeak": -0.9
+   },
+   {
+    "sha256": "8b97e137669bbc5a2984b04498cd3e292bd36b18a2ee30650197035d1335c79f",
+    "bytes": 26520,
+    "durS": 3,
+    "mMax": -9,
+    "integrated": -12.6,
+    "truePeak": -1.5
+   }
+  ]
+ },
+ "hatch": {
+  "group": "vehicle",
+  "preset": "foley",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "8a9752ec503c2fe3898f7030061ce9a336a7d550cdcad757389d570d052091b1",
+    "bytes": 9887,
+    "durS": 1.2,
+    "mMax": -15,
+    "integrated": -19,
+    "truePeak": -0.7
+   },
+   {
+    "sha256": "aca47a49bf95c4afafdd195675c2e2c0e15d1e91ef397c99829f4dfd9da40287",
+    "bytes": 9871,
+    "durS": 1.2,
+    "mMax": -16.1,
+    "integrated": -21.4,
+    "truePeak": -0.6
+   },
+   {
+    "sha256": "6351f1dc862a867009a17ceed53ca5dd8d26280f74c463599c541118d070c284",
+    "bytes": 10439,
+    "durS": 1.2,
+    "mMax": -16,
+    "integrated": -20.1,
+    "truePeak": -0.8
+   },
+   {
+    "sha256": "acef3b42f8e65854eb7e99f62dcbfc8dfad54e8edbf2fcc781c9c027cdc1802c",
+    "bytes": 9821,
+    "durS": 1.2,
+    "mMax": -15.7,
+    "integrated": -19.9,
+    "truePeak": -0.4
+   }
+  ]
+ },
  "hedgehog_clang": {
   "group": "props",
   "preset": "impact",
   "channels": 1,
   "variants": [
    {
-    "sha256": "7a103f8c7e733f3d80312359cc593a371814abc50fa9db3de1cc8c1c08184297",
+    "sha256": "5bdd6dea4064b098792aa7dd003a781a350d1ebb50f21bb4fa15e15895b2f882",
     "bytes": 14630,
     "durS": 1.48,
     "mMax": -14.8,
@@ -1114,12 +5038,51 @@
     "truePeak": -0.9
    },
    {
-    "sha256": "809351f6b60f8bdbcae3bd9343e458d43f01453b9a2caaa75b5aba27986b839a",
+    "sha256": "269155266306dd955cbc90ef199a996209b2dc42013d3960da8703fc4a582194",
     "bytes": 16098,
     "durS": 1.48,
     "mMax": -13.9,
     "integrated": -19.1,
     "truePeak": -0.8
+   },
+   {
+    "sha256": "ec0ccf1c8032336f5cafc191a3f969d8969866d6d7b70a9252ace09f73c8d530",
+    "bytes": 15151,
+    "durS": 1.48,
+    "mMax": -13.6,
+    "integrated": -17.6,
+    "truePeak": -0.6
+   }
+  ]
+ },
+ "hit_earth": {
+  "group": "collisions",
+  "preset": "impact",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "b4287a5a1a2d3a0e6111aff7bf7e63693c825c9127fce9eb2c605592dea050c5",
+    "bytes": 11887,
+    "durS": 1.18,
+    "mMax": -11.8,
+    "integrated": -15,
+    "truePeak": -0.4
+   },
+   {
+    "sha256": "21329ffc497e95c715479857920208cf871692ada3344649db05f15e4b064660",
+    "bytes": 14305,
+    "durS": 1.28,
+    "mMax": -14.3,
+    "integrated": -19.5,
+    "truePeak": -0.5
+   },
+   {
+    "sha256": "79c82d1855b0afedbf963d4a16b6071e8a16018bfd0d6a98f1a4d021e010fe57",
+    "bytes": 12575,
+    "durS": 1.28,
+    "mMax": -13.1,
+    "integrated": -17.5,
+    "truePeak": -0.5
    }
   ]
  },
@@ -1129,7 +5092,15 @@
   "channels": 1,
   "variants": [
    {
-    "sha256": "0d5761753b25ee2ed0083b20d590020e5213528f39e1fa3b037311fd43fe1f52",
+    "sha256": "694cd9eda7946eb9d7b4827b30c04b8e382bae618080dc40da66671bdec2c883",
+    "bytes": 14376,
+    "durS": 1.48,
+    "mMax": -11.3,
+    "integrated": -15.7,
+    "truePeak": 0.2
+   },
+   {
+    "sha256": "8d4f22c73597192aba3b99a84573ce41992fde168f292170ba8f482d218e58e5",
     "bytes": 14299,
     "durS": 1.48,
     "mMax": -12.3,
@@ -1137,7 +5108,15 @@
     "truePeak": -0.2
    },
    {
-    "sha256": "8efde229c2d69a7df55ecba63dc4f0b04290b71c30efb4e8a5b74d6892b3786d",
+    "sha256": "5515e7ba91d74ed555c6f0ecf2681bb34c4e3cee516ba124023dfb8162ec5570",
+    "bytes": 15044,
+    "durS": 1.48,
+    "mMax": -10.6,
+    "integrated": -13.8,
+    "truePeak": -0.2
+   },
+   {
+    "sha256": "d0581aa153ca15369e4ad46b985ac84871e8aa419687986355c3e7c28d866e5a",
     "bytes": 14528,
     "durS": 1.48,
     "mMax": -10.6,
@@ -1174,6 +5153,37 @@
     "mMax": -10.9,
     "integrated": -14.8,
     "truePeak": -0.5
+   }
+  ]
+ },
+ "hit_timber": {
+  "group": "collisions",
+  "preset": "impact",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "72d84a07f513776186c3efa737eaa36c202597fba5e9d1a6e146562d8f5570a7",
+    "bytes": 11674,
+    "durS": 1.28,
+    "mMax": -12,
+    "integrated": -15.8,
+    "truePeak": -0.6
+   },
+   {
+    "sha256": "b2cf86e935e84227a8a0149d4c7aa340313e8f597498aacbc17765c5f79b0be9",
+    "bytes": 13575,
+    "durS": 1.28,
+    "mMax": -12.5,
+    "integrated": -16.3,
+    "truePeak": -0.7
+   },
+   {
+    "sha256": "6536250658f1f9be35be219fd4ac5f56d9a6d9108be488bf64ccf6e71ae8cd25",
+    "bytes": 11663,
+    "durS": 1.28,
+    "mMax": -12.1,
+    "integrated": -15.8,
+    "truePeak": -0.4
    }
   ]
  },
@@ -1239,6 +5249,144 @@
    }
   ]
  },
+ "hull_patter_grit": {
+  "group": "edge",
+  "preset": "foley",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "e42bd7249b23efac68877dca0ad1f650b632a0a8c1605805554af849eaf1c800",
+    "bytes": 17289,
+    "durS": 2,
+    "mMax": -14,
+    "integrated": -17,
+    "truePeak": -1.6
+   },
+   {
+    "sha256": "a6df6d4b5304986cf387b0798da39b04dd6deae1cdeea3b244ddce88150af4fe",
+    "bytes": 19577,
+    "durS": 2,
+    "mMax": -14.1,
+    "integrated": -17.4,
+    "truePeak": -0.7
+   }
+  ]
+ },
+ "hull_patter_mud": {
+  "group": "edge",
+  "preset": "foley",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "91b551560f9a1774352db52c5bdf4bd11acab6f3f88d871aa00251865ab94d99",
+    "bytes": 17378,
+    "durS": 2,
+    "mMax": -14.8,
+    "integrated": -19.2,
+    "truePeak": -0.6
+   },
+   {
+    "sha256": "db9a0d726bb161a70708a2b3addc4918faa5afb8c9647611aaa709ca0be3bddd",
+    "bytes": 15800,
+    "durS": 2,
+    "mMax": -15.1,
+    "integrated": -19,
+    "truePeak": -0.4
+   }
+  ]
+ },
+ "hull_patter_sand": {
+  "group": "edge",
+  "preset": "foley",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "7d866e934332bb995bd2d313f1ed7647d8f9b19ac18b5da88b7931273ea2ee6f",
+    "bytes": 14437,
+    "durS": 2,
+    "mMax": -14,
+    "integrated": -19.1,
+    "truePeak": -0.4
+   },
+   {
+    "sha256": "7245c3b4802c014f692de2927807db4cf1879274f17ed1c6ce53523edec4ec60",
+    "bytes": 14156,
+    "durS": 2,
+    "mMax": -14,
+    "integrated": -18.9,
+    "truePeak": -3.9
+   }
+  ]
+ },
+ "hull_patter_snow": {
+  "group": "edge",
+  "preset": "foley",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "4c0b5558bdbe2dc6a218918824bece9a2b6394f10f2d54a7593ea80654fc7bf0",
+    "bytes": 14451,
+    "durS": 1.856,
+    "mMax": -15.2,
+    "integrated": -21.4,
+    "truePeak": -0.5
+   },
+   {
+    "sha256": "4fef40675d808871d1d7ea3724b620dfc3a3e0c705686aef4913929857f9884f",
+    "bytes": 16646,
+    "durS": 2,
+    "mMax": -15.1,
+    "integrated": -20.7,
+    "truePeak": -1.1
+   }
+  ]
+ },
+ "hull_patter_water": {
+  "group": "edge",
+  "preset": "foley",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "f8222ce6f53bd9016b77ba2119955bb9fe45f8bd1b2b41042ff6a1aefc63497f",
+    "bytes": 11455,
+    "durS": 1.56,
+    "mMax": -15.2,
+    "integrated": -19,
+    "truePeak": -1
+   },
+   {
+    "sha256": "61814a4547a5ac57bd557a84f36ee756081ee7efdeb5e03905c5838320ce77b6",
+    "bytes": 14359,
+    "durS": 2,
+    "mMax": -14.3,
+    "integrated": -19,
+    "truePeak": -0.5
+   }
+  ]
+ },
+ "ifv_autoloader": {
+  "group": "mechanism",
+  "preset": "foley",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "c6766886eef01b70a2f29dea0751f1582a7ee99b7a8df595cbcfd1a43bdb6617",
+    "bytes": 14009,
+    "durS": 1.76,
+    "mMax": -16,
+    "integrated": -18.4,
+    "truePeak": -0.4
+   },
+   {
+    "sha256": "5c958f16de138e8d93e23a140ac9b7350808987d6e3620de2219aeeabe942e9b",
+    "bytes": 13382,
+    "durS": 1.76,
+    "mMax": -14.3,
+    "integrated": -18,
+    "truePeak": -0.6
+   }
+  ]
+ },
  "impact_far_building": {
   "group": "impacts",
   "preset": "weapon-far",
@@ -1285,26 +5433,49 @@
    }
   ]
  },
+ "jump_launch": {
+  "group": "vehicle",
+  "preset": "foley",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "eb398ac01a763c9c2b39b03715094866c91ca17f6938119d1f88af4009330d99",
+    "bytes": 11793,
+    "durS": 1.48,
+    "mMax": -14.1,
+    "integrated": -15.9,
+    "truePeak": -1
+   },
+   {
+    "sha256": "1131058c143c74dbdcf065a4657cc8e71f087d8b748042efb524da1329923449",
+    "bytes": 12237,
+    "durS": 1.48,
+    "mMax": -14,
+    "integrated": -15.6,
+    "truePeak": -3.9
+   }
+  ]
+ },
  "launch_far": {
   "group": "weapons",
   "preset": "weapon-far",
   "channels": 1,
   "variants": [
    {
-    "sha256": "88e398a557642128c595dd813cd004feb95b189fc22fa7c16468c024c8a68cdd",
-    "bytes": 16019,
-    "durS": 2.38,
-    "mMax": -14.3,
-    "integrated": -20.1,
-    "truePeak": -0.9
+    "sha256": "76eb0c30d8cab35a59cfcaaea05764e6c33f33f2dd9d8e8fd7867eb28d07f8c6",
+    "bytes": 19160,
+    "durS": 3.2,
+    "mMax": -14,
+    "integrated": -17.6,
+    "truePeak": -1.4
    },
    {
-    "sha256": "271d576c9e2dd3aad9fe946aa9dce5c1b673f9932b86d0f02c551759482b11e8",
-    "bytes": 15787,
-    "durS": 2.62,
-    "mMax": -14,
-    "integrated": -16.6,
-    "truePeak": -2.7
+    "sha256": "aacca4c872a2eb99716d9a1f17657611e2ab0584ec35ba0a0b9833cdca9d0ead",
+    "bytes": 21528,
+    "durS": 3.48,
+    "mMax": -14.1,
+    "integrated": -16.8,
+    "truePeak": -2.5
    }
   ]
  },
@@ -1314,28 +5485,28 @@
   "channels": 1,
   "variants": [
    {
-    "sha256": "8ff0ee7f96eafe2ebd955c75a2f75aeda20d16bfcbb1a3589788cc5c03ac8e0f",
-    "bytes": 28148,
-    "durS": 3,
-    "mMax": -10,
-    "integrated": -14.3,
-    "truePeak": -0.7
+    "sha256": "060faab44e581fff49412b26f53388bc1584aced1e3e3944c0b5cbe9a9cf24d2",
+    "bytes": 30398,
+    "durS": 3.48,
+    "mMax": -11.6,
+    "integrated": -16,
+    "truePeak": -0.4
    },
    {
-    "sha256": "4caa454b6d0a6bca83ad486e1752d64d044dece25ee5cf8515a7ee759a4ec399",
-    "bytes": 25774,
-    "durS": 3,
-    "mMax": -9,
-    "integrated": -14.2,
-    "truePeak": -0.7
+    "sha256": "fa4f6758d00c3a65e79890bd68fd65284db711cb76b52dc03a292bd9cf739f30",
+    "bytes": 29505,
+    "durS": 3.48,
+    "mMax": -10.1,
+    "integrated": -14.8,
+    "truePeak": -0.3
    },
    {
-    "sha256": "950b1acaadc4733e1e79d463ac63e2ff33fb9cf13afd6cd2e1042f9ad4db712e",
-    "bytes": 25817,
-    "durS": 3,
-    "mMax": -9.5,
-    "integrated": -14.3,
-    "truePeak": -0.6
+    "sha256": "f48bbd77ac6f9ce0ff4df18338af07443ce3520626bee40750aeaea01b23bdee",
+    "bytes": 29396,
+    "durS": 3.48,
+    "mMax": -10.5,
+    "integrated": -14.5,
+    "truePeak": -0.5
    }
   ]
  },
@@ -1345,28 +5516,28 @@
   "channels": 1,
   "variants": [
    {
-    "sha256": "3b9696eb6b9d5a1b4e65f7b5a76ad40f4a53ef732f463d1f48b8f415e02a0232",
-    "bytes": 27053,
-    "durS": 3,
+    "sha256": "a914aa90575d4a5d355b8b556dd6e5e302e4c90d426f13c02173d1aad4f0b666",
+    "bytes": 30725,
+    "durS": 3.48,
     "mMax": -9,
-    "integrated": -12.3,
-    "truePeak": -2.3
+    "integrated": -14.2,
+    "truePeak": -0.8
    },
    {
-    "sha256": "d831279daafeffe53e2c563ccd12a9c82a5bdadc5c8e14f0b33951e5f49c5afd",
-    "bytes": 27376,
-    "durS": 3,
+    "sha256": "01e61974383903e4c0d1cebe7a0821b34ea8509d2fe65eec4901410f2d6072a6",
+    "bytes": 30420,
+    "durS": 3.48,
     "mMax": -9,
-    "integrated": -11.5,
-    "truePeak": -1.7
+    "integrated": -12.1,
+    "truePeak": -0.4
    },
    {
-    "sha256": "2641ac070ae54257c90ac822991696daf0d6b5c6a3cfc56e4cf5548bca14e401",
-    "bytes": 27631,
-    "durS": 3,
+    "sha256": "ca04b531675f779a7c862eb613cb183225718f3e9cbe92625d29acabce71eb66",
+    "bytes": 31450,
+    "durS": 3.48,
     "mMax": -9,
-    "integrated": -12.3,
-    "truePeak": -1.5
+    "integrated": -12.8,
+    "truePeak": -0.6
    }
   ]
  },
@@ -1376,28 +5547,28 @@
   "channels": 1,
   "variants": [
    {
-    "sha256": "b09a346277ec8c53635f71ad30385c4ec4910e24ec3edb54495d251663e9a808",
-    "bytes": 28122,
-    "durS": 3,
-    "mMax": -10.7,
-    "integrated": -14.5,
+    "sha256": "db3a813d3fa0311956acd7f4fae835d3c69b8d479ccc3df9317dd3011f2df453",
+    "bytes": 30200,
+    "durS": 3.48,
+    "mMax": -10.1,
+    "integrated": -15.2,
     "truePeak": 0
    },
    {
-    "sha256": "a13f822610b4088a3fae666fd8d985d5bbb1b6a951f2877e3c981a236bf74b24",
-    "bytes": 26381,
-    "durS": 2.9,
-    "mMax": -9.7,
-    "integrated": -13,
-    "truePeak": 0
+    "sha256": "4cb465d37c2142d1bf553f9badee0e092417764b70a0fb00153e77626f31af28",
+    "bytes": 30157,
+    "durS": 3.48,
+    "mMax": -9,
+    "integrated": -13.6,
+    "truePeak": -0.5
    },
    {
-    "sha256": "69e926f1a0cfbc5e9d6c6301d4d4884b5647079b5127fe46821febef9dd54a72",
-    "bytes": 27970,
-    "durS": 3,
-    "mMax": -10.6,
-    "integrated": -16.1,
-    "truePeak": 0.6
+    "sha256": "47b73ee9ae276ed8062450eab504eda4af0e275103c8c8fd6c23c8b3b9f9c26c",
+    "bytes": 23858,
+    "durS": 2.678,
+    "mMax": -11.6,
+    "integrated": -17.2,
+    "truePeak": 0
    }
   ]
  },
@@ -1407,27 +5578,27 @@
   "channels": 1,
   "variants": [
    {
-    "sha256": "8b6037095bfedc3e4f96b5b71165e897a09f4ea28f847ed315edab1e8add4374",
-    "bytes": 27235,
-    "durS": 3,
-    "mMax": -10,
-    "integrated": -14.4,
-    "truePeak": -0.2
+    "sha256": "9b2d0de37930db777079183f378644fce5adef71dd083538b92d1fbfafb9d7fc",
+    "bytes": 30177,
+    "durS": 3.48,
+    "mMax": -9.6,
+    "integrated": -15.9,
+    "truePeak": -0.4
    },
    {
-    "sha256": "b48e09f80fcd4f440e8fc4f197cb1aa3f3b00ce13567b911df7d7ebea20a929c",
-    "bytes": 28067,
-    "durS": 3,
+    "sha256": "33e7c2dc5824840f57b0549cd0349754cde74c24e2076943e15fc6d71a0994ee",
+    "bytes": 30653,
+    "durS": 3.48,
+    "mMax": -9.6,
+    "integrated": -13.7,
+    "truePeak": -0.4
+   },
+   {
+    "sha256": "fc9388c782d144ee2ff430668d89277f8613c2fb664c0d2510f0602ba3b65e0d",
+    "bytes": 31689,
+    "durS": 3.48,
     "mMax": -9,
-    "integrated": -13.4,
-    "truePeak": -1
-   },
-   {
-    "sha256": "b0fdf2bb7389627e2e32eb602e188d2c2c162ca8ab195c25f882e4b0f3a280f7",
-    "bytes": 26988,
-    "durS": 3,
-    "mMax": -9.1,
-    "integrated": -12.8,
+    "integrated": -12.6,
     "truePeak": -0.4
    }
   ]
@@ -1493,6 +5664,29 @@
    }
   ]
  },
+ "magazine_drop": {
+  "group": "mechanism",
+  "preset": "foley",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "c8bfc71722a2af05d1cd04509aeea3f54646316e5ec8f6bf410d47fe130f17dd",
+    "bytes": 8705,
+    "durS": 1,
+    "mMax": -14.3,
+    "integrated": -17.8,
+    "truePeak": -0.8
+   },
+   {
+    "sha256": "8e611a39c720d18a0353ad29a8fbc39681c478252240450fcdd3e331c6e36df7",
+    "bytes": 5383,
+    "durS": 0.48,
+    "mMax": -16,
+    "integrated": -18.5,
+    "truePeak": -0.3
+   }
+  ]
+ },
  "metal_creak": {
   "group": "destruction",
   "preset": "foley",
@@ -1547,6 +5741,502 @@
    }
   ]
  },
+ "mg_heavy_close": {
+  "group": "weapons",
+  "preset": "gunshot",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "98ec6cb669171556a369a5b80a70aa3dd8fb92bd153718132d92e06fb1cd8ba7",
+    "bytes": 11038,
+    "durS": 0.94,
+    "mMax": -17,
+    "integrated": -20.6,
+    "truePeak": -1.8
+   },
+   {
+    "sha256": "4b6f97bc6165e6146bb1d4c230b973af8f832cc158ea1c5af1d4a11c9836c78a",
+    "bytes": 11871,
+    "durS": 1,
+    "mMax": -20.4,
+    "integrated": -24.4,
+    "truePeak": -1.5
+   },
+   {
+    "sha256": "73026600c9200a98b6f406f4730d98fdf362653ced7480376747e3e33e2c1c26",
+    "bytes": 12911,
+    "durS": 1,
+    "mMax": -20.5,
+    "integrated": -22.7,
+    "truePeak": -1.4
+   },
+   {
+    "sha256": "020c322774d51f9e23036d0bb5392742b3962e8ecf42f8364a5b2e07d5c85c4a",
+    "bytes": 12166,
+    "durS": 1,
+    "mMax": -21.1,
+    "integrated": -25.1,
+    "truePeak": -2
+   }
+  ]
+ },
+ "mg_heavy_far": {
+  "group": "weapons",
+  "preset": "weapon-far",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "c4118c6343cb0c2eb90b83d874f3f99a14859d08cc58884ffa8fa6812d11f6df",
+    "bytes": 6802,
+    "durS": 1,
+    "mMax": -14.2,
+    "integrated": -17.9,
+    "truePeak": -0.9
+   },
+   {
+    "sha256": "a250c2682d9005e510e585e9bab6795d9faf6ff6bbec8351ca38ceb644d372c2",
+    "bytes": 6855,
+    "durS": 1,
+    "mMax": -14.6,
+    "integrated": -18.9,
+    "truePeak": -0.7
+   },
+   {
+    "sha256": "8251b62de27974d9a1aa96266eabaf1ae9dbb1ab1396dd1487962c888ab22235",
+    "bytes": 7132,
+    "durS": 1,
+    "mMax": -15.5,
+    "integrated": -19.5,
+    "truePeak": -1.1
+   }
+  ]
+ },
+ "mg_heavy_interior": {
+  "group": "weapons",
+  "preset": "gunshot",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "dc416135f7e8061fcc079e1fe909a596a513db47fb8dbf520e63876db66cd348",
+    "bytes": 18531,
+    "durS": 1.36,
+    "mMax": -16.2,
+    "integrated": -20.5,
+    "truePeak": -1.6
+   },
+   {
+    "sha256": "44d3deec3e8f69741203bf9f2ddc026fe336caa96080bf2dd6cb9666e260ae04",
+    "bytes": 18681,
+    "durS": 1.36,
+    "mMax": -17.9,
+    "integrated": -23.6,
+    "truePeak": -1.3
+   },
+   {
+    "sha256": "7378afa39e66a74d3132337849594a6983056b21c05789978d5e304ba87e086d",
+    "bytes": 4537,
+    "durS": 0.272,
+    "mMax": -16.6,
+    "integrated": -18.3,
+    "truePeak": -1.2
+   }
+  ]
+ },
+ "mg_heavy_own": {
+  "group": "weapons",
+  "preset": "gunshot",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "41bfdb4bdb742ce223ca8dbe848ea1549ef930baf168a01645283e863346dc4a",
+    "bytes": 14214,
+    "durS": 1,
+    "mMax": -20.7,
+    "integrated": -20.7,
+    "truePeak": -1.7
+   },
+   {
+    "sha256": "50de56236515f383f9e5261c4da101b5eb72e5b3f480fb93b7d59c6bf47e08f2",
+    "bytes": 12019,
+    "durS": 1,
+    "mMax": -18.4,
+    "integrated": -20.9,
+    "truePeak": -1.6
+   },
+   {
+    "sha256": "8e3c8dfae1753b6a654a03399e6373c0ca46f908d623a66190c4e2226c76e0e7",
+    "bytes": 5179,
+    "durS": 0.38,
+    "mMax": -20.5,
+    "integrated": -23.4,
+    "truePeak": -1.4
+   }
+  ]
+ },
+ "mg_rifle_close": {
+  "group": "weapons",
+  "preset": "gunshot",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "7083f27cae60a587a25496718e14145f120b3a825676bdd44124d92a94b8ef98",
+    "bytes": 12092,
+    "durS": 1,
+    "mMax": -22.4,
+    "integrated": -24.7,
+    "truePeak": -1.5,
+    "low150": 0.08
+   },
+   {
+    "sha256": "fa34603539026ed3832de2aadd39a043e0f3de7230f715c20ff5a23158432b6b",
+    "bytes": 12476,
+    "durS": 1,
+    "mMax": -20.7,
+    "integrated": -23.5,
+    "truePeak": -1.6,
+    "low150": 0.116
+   },
+   {
+    "sha256": "5ae556bdc72d50d403b33ec86dbd08fdb227655f609f1fa2f35157bbc5efe45b",
+    "bytes": 11621,
+    "durS": 1,
+    "mMax": -14.4,
+    "integrated": -18,
+    "truePeak": -1.1,
+    "low150": 0.106
+   },
+   {
+    "sha256": "0c260cd9175d65003345df4332270c4bd6da00c0afba1c533245ea193ed0c1c6",
+    "bytes": 13545,
+    "durS": 1,
+    "mMax": -20.6,
+    "integrated": -24.3,
+    "truePeak": -3.1,
+    "low150": 0.039
+   }
+  ]
+ },
+ "mg_rifle_far": {
+  "group": "weapons",
+  "preset": "weapon-far",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "313275082f2b08def30ffa535ee53d806206264baa1fd6d519a11b2c83a77dc0",
+    "bytes": 6970,
+    "durS": 1,
+    "mMax": -14,
+    "integrated": -17,
+    "truePeak": -2.5
+   },
+   {
+    "sha256": "85c95ebc1505415538e77f30b2f6565bcc4a528feedc995338122ca4669dbc72",
+    "bytes": 6834,
+    "durS": 1,
+    "mMax": -14,
+    "integrated": -17.3,
+    "truePeak": -3.1
+   },
+   {
+    "sha256": "8dccb8758b12f9eb35ce6bed6dab6c9e9beb28cbe53a0057c8eec681d412857d",
+    "bytes": 6746,
+    "durS": 1,
+    "mMax": -15.2,
+    "integrated": -19,
+    "truePeak": -0.6
+   }
+  ]
+ },
+ "mg_rifle_interior": {
+  "group": "weapons",
+  "preset": "gunshot",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "fd40351d7b0a4e04af8ba6dc4812885600a9e2af89a52530cf7d82518b13592a",
+    "bytes": 13047,
+    "durS": 1.04,
+    "mMax": -23.5,
+    "integrated": -26.3,
+    "truePeak": -1.6
+   },
+   {
+    "sha256": "871effa98a45e64d36f2edd1f37cf161327747e3e83a5acb397b7ea3dce2400d",
+    "bytes": 13599,
+    "durS": 1.08,
+    "mMax": -19.1,
+    "integrated": -23.2,
+    "truePeak": -1.5
+   },
+   {
+    "sha256": "d335af9fca9a0a6536fbc6dfeea39bc0c2777f0100abbf2472a8f69a2317123e",
+    "bytes": 13700,
+    "durS": 1.08,
+    "mMax": -20.1,
+    "integrated": -24.2,
+    "truePeak": -1.6
+   }
+  ]
+ },
+ "mg_rifle_own": {
+  "group": "weapons",
+  "preset": "gunshot",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "943093b98dace77058ef24ab77f3e5e8dd2b1f52d8f463ed5cac2df745a62a9b",
+    "bytes": 6219,
+    "durS": 0.48,
+    "mMax": -18.1,
+    "integrated": -20.4,
+    "truePeak": -1.1
+   },
+   {
+    "sha256": "815f862291f2e71a877d98e3d1f599501e3b64711b5c5fda1fa3e7c8bf679761",
+    "bytes": 12109,
+    "durS": 1,
+    "mMax": -19.3,
+    "integrated": -23.4,
+    "truePeak": -1.6
+   },
+   {
+    "sha256": "2b412d90d146caf35f1f4213c3195ad63887d8093e693388850fc9aaee9f031f",
+    "bytes": 12851,
+    "durS": 1,
+    "mMax": -17.1,
+    "integrated": -20,
+    "truePeak": -1.3
+   }
+  ]
+ },
+ "missile_canister_lift": {
+  "group": "mechanism",
+  "preset": "foley",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "31ec8d893ca6e75a815da088eb5dba9702076794d81b6e1aa3baa6ba2e4aa6ce",
+    "bytes": 12523,
+    "durS": 1.6,
+    "mMax": -14.8,
+    "integrated": -19.6,
+    "truePeak": -0.9
+   },
+   {
+    "sha256": "ebe347b0c11cebcc4dac0a1174029c31d5ff6393a12381856935ab0a88a07ce4",
+    "bytes": 12233,
+    "durS": 1.56,
+    "mMax": -14,
+    "integrated": -17.3,
+    "truePeak": -1.2
+   }
+  ]
+ },
+ "missile_launch_own": {
+  "group": "weapons",
+  "preset": "weapon-close",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "6f827dd78dc71ff07bb5e0b012484f6126de0b3fdff4307086473cf961b5e853",
+    "bytes": 30119,
+    "durS": 3.48,
+    "mMax": -9,
+    "integrated": -12.1,
+    "truePeak": -2.1
+   },
+   {
+    "sha256": "02ec104d05b23992c60f3fe68ec93ff4ec2cf21d52a6185376fd0b560b4a97ae",
+    "bytes": 29263,
+    "durS": 3.28,
+    "mMax": -9,
+    "integrated": -11.9,
+    "truePeak": -0.9
+   }
+  ]
+ },
+ "missile_round_load": {
+  "group": "mechanism",
+  "preset": "foley",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "d0e0b0f60f4139e79ca4474aff8154e4bd32c0d81ea72b2b63a5309d651909ab",
+    "bytes": 9511,
+    "durS": 1.2,
+    "mMax": -13.9,
+    "integrated": -17.5,
+    "truePeak": -1.3
+   },
+   {
+    "sha256": "7a42303d3db5057e4e6ee341caa512963dbe7bc2624a37ed36e69ced7e33df03",
+    "bytes": 10368,
+    "durS": 1.2,
+    "mMax": -13.9,
+    "integrated": -17.3,
+    "truePeak": -3.1
+   }
+  ]
+ },
+ "mode_counter_attack": {
+  "group": "stingers",
+  "preset": "oneshot",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "7612ccd3efd5b29e526b7ca846f152c93c42c0f922b63beacaf2dbadc19dd5a5",
+    "bytes": 26086,
+    "durS": 4,
+    "mMax": -12,
+    "integrated": -17.1,
+    "truePeak": -2.1
+   },
+   {
+    "sha256": "b938250a59180f1e9b8c98e78e792fca1285e5181f0c1dc5fb7c3ee49eba457a",
+    "bytes": 25268,
+    "durS": 4,
+    "mMax": -12,
+    "integrated": -15.5,
+    "truePeak": -3.5
+   }
+  ]
+ },
+ "mode_ctf_opener": {
+  "group": "stingers",
+  "preset": "sting",
+  "channels": 2,
+  "variants": [
+   {
+    "sha256": "59a5054e44dfdd80968acee70c858802873e061de9ee614c830d3247d784ce90",
+    "bytes": 30165,
+    "durS": 3.48,
+    "mMax": -17,
+    "integrated": -22.4,
+    "truePeak": -1.1
+   }
+  ]
+ },
+ "mode_drone_opener": {
+  "group": "stingers",
+  "preset": "sting",
+  "channels": 2,
+  "variants": [
+   {
+    "sha256": "6abd324fb16165a93fab66f5286efeb366d57e29ebaacf9db3fbc03e464e710d",
+    "bytes": 46091,
+    "durS": 3.78,
+    "mMax": -14,
+    "integrated": -18.3,
+    "truePeak": -9.9
+   }
+  ]
+ },
+ "mode_frontline_barrage": {
+  "group": "stingers",
+  "preset": "sting",
+  "channels": 2,
+  "variants": [
+   {
+    "sha256": "8d10c2cc6269acad8484a27f96c066f3de4eaf7fdddc6e0ebce7aa3c97214e2c",
+    "bytes": 68109,
+    "durS": 6,
+    "mMax": -14,
+    "integrated": -17.8,
+    "truePeak": -6
+   }
+  ]
+ },
+ "mode_horde_swarm": {
+  "group": "stingers",
+  "preset": "sting",
+  "channels": 2,
+  "variants": [
+   {
+    "sha256": "0a9375b12d0154dc76fe1a94f2cc4637fb23ed76cee7b6f38e8ac70c94a8dc2b",
+    "bytes": 58032,
+    "durS": 5,
+    "mMax": -14,
+    "integrated": -15.5,
+    "truePeak": -7.5
+   }
+  ]
+ },
+ "mode_mars_opener": {
+  "group": "stingers",
+  "preset": "sting",
+  "channels": 2,
+  "variants": [
+   {
+    "sha256": "afdcdb9e0bbf45fcfe6b8e2bc052e36ecfc29c9202ba47d1990a0f706684ebf5",
+    "bytes": 46889,
+    "durS": 4,
+    "mMax": -14,
+    "integrated": -16.8,
+    "truePeak": -6
+   }
+  ]
+ },
+ "mode_range_opener": {
+  "group": "stingers",
+  "preset": "sting",
+  "channels": 2,
+  "variants": [
+   {
+    "sha256": "d6b21a664586bd948152319d375bdbe67d648865e04c74cc665fe6b976aff15d",
+    "bytes": 47507,
+    "durS": 4,
+    "mMax": -14,
+    "integrated": -14.9,
+    "truePeak": -9.1
+   }
+  ]
+ },
+ "mode_zone_opener": {
+  "group": "stingers",
+  "preset": "sting",
+  "channels": 2,
+  "variants": [
+   {
+    "sha256": "b6676e11fc3ee97f39921894f1b1d782b916a3ea79e10f8811ef2935d84b6bd2",
+    "bytes": 30528,
+    "durS": 2.534,
+    "mMax": -16.1,
+    "integrated": -17.1,
+    "truePeak": -0.8
+   }
+  ]
+ },
+ "mud_suck": {
+  "group": "vehicle",
+  "preset": "foley",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "385fad0d182373ab30b4fc836861f3236197fa6ddd3d517a44bf6a9283f2697f",
+    "bytes": 12570,
+    "durS": 1.48,
+    "mMax": -13.9,
+    "integrated": -17,
+    "truePeak": -2.2
+   },
+   {
+    "sha256": "6b234b34a3374c055cea96080b5acb6653691aab2e0f07b1bf36504087132525",
+    "bytes": 14016,
+    "durS": 1.48,
+    "mMax": -14.1,
+    "integrated": -15.9,
+    "truePeak": -1.1
+   },
+   {
+    "sha256": "5f532293158dbd231790af7bfd4774e70fc880ef4bff090e3b9a4b67fd9888d3",
+    "bytes": 13394,
+    "durS": 1.48,
+    "mMax": -14,
+    "integrated": -16.8,
+    "truePeak": -0.5
+   }
+  ]
+ },
  "net_rustle_loop": {
   "group": "vehicle",
   "preset": "loop",
@@ -1559,6 +6249,29 @@
     "mMax": -15.5,
     "integrated": -18.5,
     "truePeak": -0.5
+   }
+  ]
+ },
+ "overturned_groan": {
+  "group": "edge",
+  "preset": "foley",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "78700b22d220dac9a0f447005c6bd9d5ae3899078b2f3fa92a7dc144977ec471",
+    "bytes": 23171,
+    "durS": 3,
+    "mMax": -13.9,
+    "integrated": -18.3,
+    "truePeak": -2.4
+   },
+   {
+    "sha256": "e04d61327347a3670a00f5c7e411f8919e2791313544c6377a44959941b68356",
+    "bytes": 22967,
+    "durS": 3,
+    "mMax": -14.1,
+    "integrated": -16.8,
+    "truePeak": -7.1
    }
   ]
  },
@@ -1685,6 +6398,106 @@
    }
   ]
  },
+ "ricochet_whine": {
+  "group": "impacts",
+  "preset": "oneshot",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "024d199b173bcde77e0d6d5f2be2f07715c033049cda3fd27117d80bf15e3c5b",
+    "bytes": 10545,
+    "durS": 1.36,
+    "mMax": -12,
+    "integrated": -14.9,
+    "truePeak": -1.5
+   },
+   {
+    "sha256": "6be3129dc89172dbfa76530850e7fc9d3e52838d33f4b275bcdcf0c4f27b6a7d",
+    "bytes": 11115,
+    "durS": 1.36,
+    "mMax": -12.2,
+    "integrated": -15.5,
+    "truePeak": -1.1
+   },
+   {
+    "sha256": "19511f9309c60eee7b11b18cfed4e32db3706f724167c12b86dd0df9e7a4a59f",
+    "bytes": 10454,
+    "durS": 1.36,
+    "mMax": -13.6,
+    "integrated": -17.9,
+    "truePeak": -0.2
+   }
+  ]
+ },
+ "rocket_crane_load": {
+  "group": "mechanism",
+  "preset": "foley",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "0f28db48ea22fb5e836a3c261662a4fc88f09085e9915050688d58a86a23076b",
+    "bytes": 19657,
+    "durS": 2.28,
+    "mMax": -14,
+    "integrated": -15.3,
+    "truePeak": -2.5
+   },
+   {
+    "sha256": "4454c46de22c96b856bee2ed7cf1538d306ce8f7e316017d9bbaad4d9594086e",
+    "bytes": 21659,
+    "durS": 2.28,
+    "mMax": -14,
+    "integrated": -15.9,
+    "truePeak": -4.3
+   }
+  ]
+ },
+ "rocket_salvo": {
+  "group": "weapons",
+  "preset": "weapon-close",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "37fe596e4757d1378cc09c8ca1c6559ba1627a9b6715af116bbed7d4a06037e3",
+    "bytes": 40913,
+    "durS": 4.5,
+    "mMax": -9.1,
+    "integrated": -12.1,
+    "truePeak": -0.4
+   },
+   {
+    "sha256": "dd52eb85b7b354aea9497f0744d54cdc834db7389fdeed5e98e902c8c8ee353c",
+    "bytes": 42324,
+    "durS": 4.5,
+    "mMax": -9,
+    "integrated": -11.5,
+    "truePeak": -1
+   }
+  ]
+ },
+ "rocket_salvo_far": {
+  "group": "weapons",
+  "preset": "weapon-far",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "664bf4d6fba74f09f1e9589a32ced94c404d2d6af00772c046683339fd552fc4",
+    "bytes": 32419,
+    "durS": 5.5,
+    "mMax": -14,
+    "integrated": -17.2,
+    "truePeak": -6.1
+   },
+   {
+    "sha256": "760a7822a511edc7944885ae90bf75605bfb5a0ef569d89cd3c56e94d314da6b",
+    "bytes": 28682,
+    "durS": 5.5,
+    "mMax": -14.1,
+    "integrated": -19.8,
+    "truePeak": -6.1
+   }
+  ]
+ },
  "roof_fall": {
   "group": "buildings",
   "preset": "debris",
@@ -1708,6 +6521,75 @@
    }
   ]
  },
+ "roof_fall_concrete": {
+  "group": "buildings",
+  "preset": "debris",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "704cdd749a065cc8b0739790869fa6c970bea309c055281ecec4a1a41157b5eb",
+    "bytes": 20122,
+    "durS": 2.98,
+    "mMax": -13.7,
+    "integrated": -18.6,
+    "truePeak": -0.6
+   },
+   {
+    "sha256": "2e9556590465144093803ebfe27c46c41291d96312ef1f944810d031a2a44450",
+    "bytes": 22734,
+    "durS": 3.48,
+    "mMax": -12.3,
+    "integrated": -16,
+    "truePeak": 0.2
+   }
+  ]
+ },
+ "roof_fall_earth": {
+  "group": "buildings",
+  "preset": "debris",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "78ebb2fa3c16b940fe76ecaed43aab2954ed53e535d7591391a020fcdc0fe945",
+    "bytes": 24322,
+    "durS": 3.412,
+    "mMax": -15.5,
+    "integrated": -20.8,
+    "truePeak": 0.7
+   },
+   {
+    "sha256": "e2f23c2b7e738f8bcf11206b7eae2c48323f608a773d0623a1dd8a03d9ac3845",
+    "bytes": 27906,
+    "durS": 3.344,
+    "mMax": -13.9,
+    "integrated": -19.6,
+    "truePeak": -0.3
+   }
+  ]
+ },
+ "roof_fall_timber": {
+  "group": "buildings",
+  "preset": "debris",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "5f76496c1c6737eb75e19b8cb36ab6e28bae1572c3737cacb43fa6b1edd6eaf1",
+    "bytes": 23184,
+    "durS": 3.28,
+    "mMax": -14.8,
+    "integrated": -19.6,
+    "truePeak": -0.3
+   },
+   {
+    "sha256": "a02106ff528fae97e8bb7f337d3cfe0d6afb0f000f5e1fcff8e03c4c59f4d751",
+    "bytes": 22367,
+    "durS": 3.208,
+    "mMax": -15.6,
+    "integrated": -20.3,
+    "truePeak": -0.7
+   }
+  ]
+ },
  "rubble_chunk_land": {
   "group": "buildings",
   "preset": "impact",
@@ -1728,6 +6610,45 @@
     "mMax": -16.4,
     "integrated": -21.7,
     "truePeak": 0.4
+   }
+  ]
+ },
+ "rubble_crunch": {
+  "group": "props",
+  "preset": "impact",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "20017026641cb3d4ccec0d57f1e492b22a13540198d3c20a25371d5bbb4d8234",
+    "bytes": 20462,
+    "durS": 1.44,
+    "mMax": -16.7,
+    "integrated": -19.4,
+    "truePeak": -0.6
+   },
+   {
+    "sha256": "f00a9ebcb702aab8d172586d665ea4d085b992f1029d94811e1080972aefcdb9",
+    "bytes": 18394,
+    "durS": 1.46,
+    "mMax": -15.6,
+    "integrated": -20.6,
+    "truePeak": 0.1
+   },
+   {
+    "sha256": "5a20a551dea1fa13132fa859fd810b50f3c3126bee744b91fda6921f63b595e4",
+    "bytes": 18748,
+    "durS": 1.48,
+    "mMax": -16.4,
+    "integrated": -20.1,
+    "truePeak": -0.3
+   },
+   {
+    "sha256": "76a78895809420f2b0aadde09929a08f9f95fbacca3fc5911d86ed7702df7678",
+    "bytes": 17474,
+    "durS": 1.48,
+    "mMax": -14.2,
+    "integrated": -16.7,
+    "truePeak": -0.2
    }
   ]
  },
@@ -1759,6 +6680,129 @@
     "mMax": -15.6,
     "integrated": -19.4,
     "truePeak": -0.2
+   }
+  ]
+ },
+ "scavenger_blast": {
+  "group": "mechanism",
+  "preset": "foley",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "04865951d2d76e532b0ce841a65a46ff0e0b1f15d1b04536f19b1bf240588561",
+    "bytes": 9309,
+    "durS": 1.2,
+    "mMax": -14,
+    "integrated": -16.2,
+    "truePeak": -3.6
+   },
+   {
+    "sha256": "f51e7c5ddd7d10daaa5ae2d3ce15c8d614d1d2243d84603d0e9d48083ba2cb3b",
+    "bytes": 9400,
+    "durS": 1.2,
+    "mMax": -14,
+    "integrated": -18.3,
+    "truePeak": -2.1
+   }
+  ]
+ },
+ "self_right": {
+  "group": "vehicle",
+  "preset": "impact",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "341e171c4502e91c6cf60146372244507a9d4251d03d3ee281e9d909232003ed",
+    "bytes": 22241,
+    "durS": 2.24,
+    "mMax": -10.9,
+    "integrated": -15.1,
+    "truePeak": -0.1
+   },
+   {
+    "sha256": "e2e4cb8883a0696dc0de4bdbee0c0067f7df39f0ecda341fb3470f887f6227a9",
+    "bytes": 25301,
+    "durS": 2.48,
+    "mMax": -12.3,
+    "integrated": -17.6,
+    "truePeak": 0
+   },
+   {
+    "sha256": "d73e8fe4b0bdb09bd0bc94720496cc6e0b4a1ea011ab0d57c78349c9067bf163",
+    "bytes": 21170,
+    "durS": 2.036,
+    "mMax": -11.9,
+    "integrated": -16,
+    "truePeak": 0
+   }
+  ]
+ },
+ "shell_grab_light": {
+  "group": "mechanism",
+  "preset": "foley",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "a400057f6a81e4e1e58d3cb61d9c61669dfa0883c4e155bdc8c2757725d10613",
+    "bytes": 6515,
+    "durS": 0.746,
+    "mMax": -15,
+    "integrated": -16.7,
+    "truePeak": -0.1
+   },
+   {
+    "sha256": "86990a5e397f86c0b5ef6441aa1e14429123625b179d4ae9e3b52444f95b4795",
+    "bytes": 9842,
+    "durS": 1.05,
+    "mMax": -19.8,
+    "integrated": -22.5,
+    "truePeak": -0.7
+   }
+  ]
+ },
+ "shell_grab_medium": {
+  "group": "mechanism",
+  "preset": "foley",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "517fd6801d1394eee7c580c34b91f1108df3cf852ba0523e02cad585967ffe77",
+    "bytes": 11453,
+    "durS": 1.36,
+    "mMax": -14,
+    "integrated": -16.4,
+    "truePeak": -0.4
+   },
+   {
+    "sha256": "753b900b2a143474ef07a8715dc88a18e0a551d69563bcdeafa55ab94cbd6698",
+    "bytes": 10508,
+    "durS": 1.36,
+    "mMax": -14.1,
+    "integrated": -16.5,
+    "truePeak": -0.6
+   }
+  ]
+ },
+ "shell_grab_superheavy": {
+  "group": "mechanism",
+  "preset": "foley",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "874e9dcb43bdd2669edd3b622f9397a5ce0f2454c8c69886465fb18f5d495d41",
+    "bytes": 14359,
+    "durS": 1.76,
+    "mMax": -14.8,
+    "integrated": -20.1,
+    "truePeak": -0.9
+   },
+   {
+    "sha256": "bce5f642e6180711b381ebb6577d4d37fba53961831f61071dbd16050757ed7f",
+    "bytes": 13717,
+    "durS": 1.76,
+    "mMax": -16.6,
+    "integrated": -21.5,
+    "truePeak": -0.7
    }
   ]
  },
@@ -1813,6 +6857,98 @@
     "mMax": -14.3,
     "integrated": -18.5,
     "truePeak": -0.1
+   }
+  ]
+ },
+ "shell_ram_light": {
+  "group": "mechanism",
+  "preset": "foley",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "01bec6749ad72cfc95895f9c3e73ff549e49bddbbb6cf252f5cd8b4e354c6202",
+    "bytes": 5565,
+    "durS": 0.48,
+    "mMax": -16.6,
+    "integrated": -20.1,
+    "truePeak": -0.3
+   },
+   {
+    "sha256": "6bc7362699a42ca078e714bdd01633b50edcc5d289d41ccccdc8c8f93894ec03",
+    "bytes": 8078,
+    "durS": 0.8,
+    "mMax": -14.9,
+    "integrated": -15.9,
+    "truePeak": -0.7
+   }
+  ]
+ },
+ "shell_ram_staff": {
+  "group": "mechanism",
+  "preset": "foley",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "63870d3b06dfafc8b08528a983743f4cd73abd26373315e650a8dcf46bf9409e",
+    "bytes": 6792,
+    "durS": 0.76,
+    "mMax": -14.9,
+    "integrated": -17.5,
+    "truePeak": -1
+   },
+   {
+    "sha256": "f743c29547027186e406c20fba3334bd78c335ac82f27c7868d4b50fe2dd56cd",
+    "bytes": 7099,
+    "durS": 0.78,
+    "mMax": -14.8,
+    "integrated": -16.5,
+    "truePeak": -0.6
+   }
+  ]
+ },
+ "spall_driver": {
+  "group": "impacts",
+  "preset": "impact",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "7f45cdcb392a666698c962ed426b1ae1790a8db3beecc978fa000b6fd80ec764",
+    "bytes": 11092,
+    "durS": 0.924,
+    "mMax": -11.4,
+    "integrated": -14.7,
+    "truePeak": -0.2
+   },
+   {
+    "sha256": "5c41de387ac3f1145884dea9229a943a0004b7a1467233965e3ce7c6a089e249",
+    "bytes": 21055,
+    "durS": 2.2,
+    "mMax": -10.5,
+    "integrated": -15.2,
+    "truePeak": 0.3
+   }
+  ]
+ },
+ "spall_engine": {
+  "group": "impacts",
+  "preset": "impact",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "0ce2e3af8b32bb84fef6588207bae4842a531e81ab684f3984ff634c0dff3722",
+    "bytes": 15751,
+    "durS": 1.48,
+    "mMax": -14.1,
+    "integrated": -20.6,
+    "truePeak": -0.3
+   },
+   {
+    "sha256": "3caef9a443c7de65da214e9685c8d6d259fe9fb927e9484ad4ea2c383c2dd6cf",
+    "bytes": 19700,
+    "durS": 1.88,
+    "mMax": -14.3,
+    "integrated": -15.8,
+    "truePeak": -0.6
    }
   ]
  },
@@ -1897,6 +7033,29 @@
     "mMax": -18,
     "integrated": -19.9,
     "truePeak": -8.6
+   }
+  ]
+ },
+ "spot_crickets": {
+  "group": "spots",
+  "preset": "spot",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "42ae88a28e14299114d13fa689db15a1869a762638a4e52682e9f6a941323ba0",
+    "bytes": 35232,
+    "durS": 3.982,
+    "mMax": -18,
+    "integrated": -21.6,
+    "truePeak": -6
+   },
+   {
+    "sha256": "5bba00f4b2f1f5e965fc0fbf66daa173bbc9caa0867fc775aaffd33a91b8cf42",
+    "bytes": 37592,
+    "durS": 4,
+    "mMax": -18,
+    "integrated": -21.4,
+    "truePeak": -4.8
    }
   ]
  },
@@ -2030,6 +7189,29 @@
    }
   ]
  },
+ "spot_fox": {
+  "group": "spots",
+  "preset": "spot",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "64ed43bd64fa25b4f68edb8551f778366ca3aab3217028178c707843857a5a7d",
+    "bytes": 9371,
+    "durS": 1.716,
+    "mMax": -18.5,
+    "integrated": -21.6,
+    "truePeak": -7.1
+   },
+   {
+    "sha256": "c275bb1a20cc0a1364e65a4f335a2a0de07310e5ae722132663b33b6524123ee",
+    "bytes": 15707,
+    "durS": 1.954,
+    "mMax": -18.2,
+    "integrated": -26.9,
+    "truePeak": -5.4
+   }
+  ]
+ },
  "spot_goats": {
   "group": "spots",
   "preset": "spot",
@@ -2087,6 +7269,75 @@
     "mMax": -18,
     "integrated": -22.6,
     "truePeak": -8.7
+   }
+  ]
+ },
+ "spot_night_insects": {
+  "group": "spots",
+  "preset": "spot",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "836c4dbc427e85b4111edcfd8beea7e7b632299a091ae7939560540cbd9aa38e",
+    "bytes": 31140,
+    "durS": 4,
+    "mMax": -18.1,
+    "integrated": -20.7,
+    "truePeak": -6.2
+   },
+   {
+    "sha256": "3ab44e70944e27932bd2dfe75164915225348d335453d5135421423ecb888ee1",
+    "bytes": 30716,
+    "durS": 4,
+    "mMax": -18,
+    "integrated": -19.2,
+    "truePeak": -9.8
+   }
+  ]
+ },
+ "spot_nightjar": {
+  "group": "spots",
+  "preset": "spot",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "3da2356207bbd880d017dc7c423f11e25687d3a75be0d44c8786476899140190",
+    "bytes": 25632,
+    "durS": 4,
+    "mMax": -18.4,
+    "integrated": -19.5,
+    "truePeak": -3.6
+   },
+   {
+    "sha256": "9070385ce855b6ea7ef5b9bcbe38c991d037be1fc1e4843fc085010a88f5b9c0",
+    "bytes": 33849,
+    "durS": 4,
+    "mMax": -18.1,
+    "integrated": -19.4,
+    "truePeak": -5.1
+   }
+  ]
+ },
+ "spot_owl": {
+  "group": "spots",
+  "preset": "spot",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "95b641b626db2e303b876d7de986e1cd1d89fd03cb5df7aaa07ec6e6fd5731bf",
+    "bytes": 16426,
+    "durS": 2.3,
+    "mMax": -18,
+    "integrated": -20.4,
+    "truePeak": -6.8
+   },
+   {
+    "sha256": "d8b8f64317f39b40f9e4425501b737dc8cc0dc1585594e5fce248382f4a5ed30",
+    "bytes": 8013,
+    "durS": 1.18,
+    "mMax": -18,
+    "integrated": -20.7,
+    "truePeak": -9.6
    }
   ]
  },
@@ -2304,13 +7555,338 @@
    }
   ]
  },
+ "strike_cage": {
+  "group": "impacts",
+  "preset": "impact",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "6af56a01b37834dcdec795bd8c21c7717f78f6f6d92b62e6fbe54fb9abde48da",
+    "bytes": 16135,
+    "durS": 1.6,
+    "mMax": -11.1,
+    "integrated": -14.6,
+    "truePeak": 0.5
+   },
+   {
+    "sha256": "58fbb6702159a8e50a85c9a433917938786f4b916b87e99947da4e2791fe6bb7",
+    "bytes": 15255,
+    "durS": 1.6,
+    "mMax": -11.1,
+    "integrated": -16.2,
+    "truePeak": 0.1
+   },
+   {
+    "sha256": "3a2cd440bb11a93018459157248a9949313aeaf5fc56604481c846b1f7dfab8a",
+    "bytes": 12399,
+    "durS": 1.18,
+    "mMax": -10,
+    "integrated": -13.1,
+    "truePeak": -0.1
+   }
+  ]
+ },
+ "strike_rubber": {
+  "group": "impacts",
+  "preset": "impact",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "2d3538f864009ec1c004e64ff1d6ba07ccd7576f80ed68ce827abe74051652ae",
+    "bytes": 15751,
+    "durS": 1.36,
+    "mMax": -10.1,
+    "integrated": -12.2,
+    "truePeak": 0.5
+   },
+   {
+    "sha256": "d26337e1b4fffa3d3a11a76a1e64b4951f40652bc4918441318376f3fcf9a6b1",
+    "bytes": 16005,
+    "durS": 1.136,
+    "mMax": -10.2,
+    "integrated": -12.4,
+    "truePeak": 0.2
+   },
+   {
+    "sha256": "7b0bb193487ecce1228f8a8ddb30ce8b4823d049728243cf1fb935a71bf04b40",
+    "bytes": 14422,
+    "durS": 1.36,
+    "mMax": -10,
+    "integrated": -11.9,
+    "truePeak": -1.3
+   }
+  ]
+ },
+ "strike_stowage": {
+  "group": "impacts",
+  "preset": "impact",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "f97507c605431ae1ffded401e9e2dc7aa45ec5af08998746ec519c64ca0931a5",
+    "bytes": 15433,
+    "durS": 1.44,
+    "mMax": -11.1,
+    "integrated": -13.4,
+    "truePeak": 0
+   },
+   {
+    "sha256": "07b328dea17db7defd39e6792fd5c99d335f49543496d8f51c406a60bd78a7bb",
+    "bytes": 14131,
+    "durS": 1.32,
+    "mMax": -11,
+    "integrated": -13.1,
+    "truePeak": -0.1
+   },
+   {
+    "sha256": "266bf5ea4306b2926743d7e2a9b415e790836a7dfbfedb2dbbe18484b303d76d",
+    "bytes": 14348,
+    "durS": 1.36,
+    "mMax": -10.7,
+    "integrated": -12.5,
+    "truePeak": -0.5
+   }
+  ]
+ },
+ "strike_track": {
+  "group": "impacts",
+  "preset": "impact",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "ade3359c30c7982ac94b6270f09f33aa384ccd29c645c9bfe834d41abb4fb2db",
+    "bytes": 16070,
+    "durS": 1.6,
+    "mMax": -12.8,
+    "integrated": -17.9,
+    "truePeak": -0.2
+   },
+   {
+    "sha256": "918f1339959ff4180c5242833d9ec5e39553926594bd3776fcb28807a595f839",
+    "bytes": 16490,
+    "durS": 1.6,
+    "mMax": -11.9,
+    "integrated": -16.5,
+    "truePeak": 0
+   },
+   {
+    "sha256": "49d30ebdff8f582112451fd8e203446e4d3b75c62296f330cd9546e2f48bb660",
+    "bytes": 17166,
+    "durS": 1.6,
+    "mMax": -11.2,
+    "integrated": -14.6,
+    "truePeak": -0.4
+   }
+  ]
+ },
+ "strike_wheel": {
+  "group": "impacts",
+  "preset": "impact",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "e811c686de6da355b9728784f1e516aa3978869cbb55589fb382974758242c15",
+    "bytes": 16447,
+    "durS": 1.6,
+    "mMax": -12,
+    "integrated": -16.8,
+    "truePeak": -0.4
+   },
+   {
+    "sha256": "b00f946d01c883a2cbd895f57cb8d93fbac642008122dc08dd0b06edd9fb90f1",
+    "bytes": 16602,
+    "durS": 1.5,
+    "mMax": -10.5,
+    "integrated": -13,
+    "truePeak": 0
+   },
+   {
+    "sha256": "e5c649eb0b3ba8d726e1738cf9e9b5f6644eb3540bdcf21bc083d50638ba7593",
+    "bytes": 15803,
+    "durS": 1.44,
+    "mMax": -11.7,
+    "integrated": -16,
+    "truePeak": -0.7
+   }
+  ]
+ },
+ "strike_wreck": {
+  "group": "impacts",
+  "preset": "impact",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "7be9d38cd07a6d5a7eecad9ac0f9c3acdb9c1544d5c8c1cd7a1d2bd7359035de",
+    "bytes": 12691,
+    "durS": 1.2,
+    "mMax": -12,
+    "integrated": -14.3,
+    "truePeak": -0.4
+   },
+   {
+    "sha256": "22e842fc2b803d0d06ae23038472061c8f48ae3542c66d684e07a9f638e761b8",
+    "bytes": 16295,
+    "durS": 1.6,
+    "mMax": -12.5,
+    "integrated": -15.7,
+    "truePeak": -0.8
+   },
+   {
+    "sha256": "8e023bff80942601eb26ddf3a9a6cc8b95612fbe03f4ff06b9fb5ee489ee82fc",
+    "bytes": 16775,
+    "durS": 1.6,
+    "mMax": -13.2,
+    "integrated": -17.3,
+    "truePeak": 0
+   }
+  ]
+ },
+ "stub_catch": {
+  "group": "mechanism",
+  "preset": "foley",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "d3ad44fef1bcc032070d8ef52a10a981d1bf8b2ba99cd047795a00c8d8aa86f7",
+    "bytes": 9392,
+    "durS": 1.08,
+    "mMax": -18.9,
+    "integrated": -21.8,
+    "truePeak": -0.9
+   },
+   {
+    "sha256": "6ffb4f2750598da336a2a08a62e85c2377166df5849e7727960e425d9b2e369c",
+    "bytes": 7620,
+    "durS": 0.78,
+    "mMax": -15.6,
+    "integrated": -17.7,
+    "truePeak": -0.4
+   }
+  ]
+ },
+ "stub_port_eject": {
+  "group": "mechanism",
+  "preset": "foley",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "c59b2c756a3f9ddcb18cd052491aeab5a8898345be348aa72417ca7f164aaa2b",
+    "bytes": 9817,
+    "durS": 1.2,
+    "mMax": -17.7,
+    "integrated": -19.6,
+    "truePeak": -0.8
+   },
+   {
+    "sha256": "1bdf0b8aa847d3c407736a40ae12902abe235933350a2013fa92b992bb422ab8",
+    "bytes": 6591,
+    "durS": 0.76,
+    "mMax": -16.7,
+    "integrated": -18.8,
+    "truePeak": -0.8
+   }
+  ]
+ },
+ "susp_bump_light": {
+  "group": "vehicle",
+  "preset": "foley",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "ad174e7e8392bfd449314ecc3c67803092f73992aa348fd014862e0ee80cba1a",
+    "bytes": 6747,
+    "durS": 0.684,
+    "mMax": -17.7,
+    "integrated": -20.6,
+    "truePeak": -0.9
+   },
+   {
+    "sha256": "adc8cb74aaa04dcc057d7c989875b9603716ff9dde897a2268a558f7d77fb87b",
+    "bytes": 6471,
+    "durS": 0.72,
+    "mMax": -18.1,
+    "integrated": -20.6,
+    "truePeak": -0.9
+   },
+   {
+    "sha256": "9931dfbe5ec9437b64a50d74fc9505a25c8c6fdb53a55b941b147a7a177d53d3",
+    "bytes": 5913,
+    "durS": 0.66,
+    "mMax": -17.3,
+    "integrated": -20.9,
+    "truePeak": -0.4
+   }
+  ]
+ },
+ "susp_creak": {
+  "group": "vehicle",
+  "preset": "foley",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "6a3a8117405b3f946bc791e2794e9572e53d73e7d8a7d0ae1feae83bdce86c75",
+    "bytes": 10083,
+    "durS": 1.18,
+    "mMax": -13.9,
+    "integrated": -16.3,
+    "truePeak": -1.5
+   },
+   {
+    "sha256": "1d0e55dcc6c45d9ec938b83a88b83bbed629ec3b3cb1b201f10963720717f2c0",
+    "bytes": 10181,
+    "durS": 1.2,
+    "mMax": -14,
+    "integrated": -15.6,
+    "truePeak": -1.9
+   },
+   {
+    "sha256": "53fed485beebcffcb54b18b573408b3f1de3c1039fbe64a07dc502979ac1d68e",
+    "bytes": 10407,
+    "durS": 1.2,
+    "mMax": -14,
+    "integrated": -16.8,
+    "truePeak": -1.4
+   }
+  ]
+ },
+ "susp_land_light": {
+  "group": "vehicle",
+  "preset": "impact",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "77a46d1677a07892315ec3ca6a96f763384d30214198d529ac6de221ba9bf290",
+    "bytes": 11894,
+    "durS": 1.28,
+    "mMax": -15.3,
+    "integrated": -18,
+    "truePeak": -0.9
+   },
+   {
+    "sha256": "0dae630ae4ee81ec5d27b91d27a12333846ba6810131c9a0b68132c81a85c20d",
+    "bytes": 7196,
+    "durS": 0.618,
+    "mMax": -14.9,
+    "integrated": -17.8,
+    "truePeak": -0.6
+   },
+   {
+    "sha256": "b2f3e99f9ce4ed5b45e176f3d9bbe75d4c116dfc6d9492f7c7dc9730e1baa2c8",
+    "bytes": 13236,
+    "durS": 1.28,
+    "mMax": -11.5,
+    "integrated": -16.1,
+    "truePeak": -0.6
+   }
+  ]
+ },
  "tank_explode": {
   "group": "destruction",
   "preset": "impact",
   "channels": 1,
   "variants": [
    {
-    "sha256": "e13fd801307929033a9a5f6a471bc715b8e3250703e093a2bd705fd4f1a483d9",
+    "sha256": "aea1721e044dfe341ca9d9963b2bd92721cf16e295004470aac18e6d29783feb",
     "bytes": 45356,
     "durS": 5,
     "mMax": -10.2,
@@ -2318,7 +7894,7 @@
     "truePeak": -0.5
    },
    {
-    "sha256": "2ccd85bbd91e775b673986cd6d0f8f7fc131d956d7704d8ef244dcd13a360efc",
+    "sha256": "e69280b8a9ff9f1a95038c8926f4a087e22c278a66a42b3b512afd09f0dc3a7f",
     "bytes": 46368,
     "durS": 5,
     "mMax": -10,
@@ -2326,7 +7902,7 @@
     "truePeak": -0.3
    },
    {
-    "sha256": "aef90ffe0f1d659c515327b24e0d2ccaae3181cbdfc8a9d754d05c3c25d84fb5",
+    "sha256": "79da6467d758887b5e648d357651e6d93a9a3a11ed34cd348e5dff46453719b3",
     "bytes": 51071,
     "durS": 5,
     "mMax": -10.1,
@@ -2341,7 +7917,7 @@
   "channels": 1,
   "variants": [
    {
-    "sha256": "8fa7b275d0bbc90558aa9214a210d53c56a1c533edbe6abfa7aed620e1542ab6",
+    "sha256": "47142df818d2eaf638a7af451bae1a8a344ec716185b50eefaacddfea749e30b",
     "bytes": 51209,
     "durS": 6,
     "mMax": -10.1,
@@ -2349,7 +7925,7 @@
     "truePeak": -0.3
    },
    {
-    "sha256": "cddb7fcfacc1536a6cb173455a07603c9a9a922495734f84d3fb45eac2f16419",
+    "sha256": "c40a4fbf1fd4972241301958819cfea801d3a65377f835161c219b7293f98f8d",
     "bytes": 53316,
     "durS": 6,
     "mMax": -10.6,
@@ -2357,7 +7933,7 @@
     "truePeak": -0.5
    },
    {
-    "sha256": "30ac56f5725542955826d15551abda77952f076269e3fd33aa1c7ac7fd8e315e",
+    "sha256": "5f07e60ec9dfee9fc8d89373b42dc5f7afcaee3ea2c416166510fefc81568fba",
     "bytes": 54481,
     "durS": 6,
     "mMax": -10.4,
@@ -2389,13 +7965,359 @@
    }
   ]
  },
+ "track_break": {
+  "group": "vehicle",
+  "preset": "impact",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "a8b23c79b59f8fd94b69e56d48e8415578b53f237204e5b8a2b150e3867d22b8",
+    "bytes": 18531,
+    "durS": 1.8,
+    "mMax": -10.9,
+    "integrated": -13.4,
+    "truePeak": -0.3
+   },
+   {
+    "sha256": "477fe9831f95fb660acf0760caa5edba364a2d8393b567c22a4106236f3f11ed",
+    "bytes": 21959,
+    "durS": 2,
+    "mMax": -11.6,
+    "integrated": -16.2,
+    "truePeak": 0
+   },
+   {
+    "sha256": "7402181f82234527b4b6b697b6c2d4ec6f0152e4117c91ae9aeba261ec36590b",
+    "bytes": 17641,
+    "durS": 1.46,
+    "mMax": -11.3,
+    "integrated": -16.2,
+    "truePeak": 0.4
+   }
+  ]
+ },
+ "track_scrub_soft_loop": {
+  "group": "vehicle",
+  "preset": "loop",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "c5f807f0847223d687efcf430427aef8c6ef17841995841d2d9b96cc86679f3b",
+    "bytes": 41526,
+    "durS": 5.091,
+    "mMax": -15.7,
+    "integrated": -18,
+    "truePeak": -2.4
+   }
+  ]
+ },
+ "tracks_heavy_earth_fast": {
+  "group": "tracks",
+  "preset": "loop",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "37d1e4fb413704fadded79ea23a6aad1a7d8532181a633072342d7a7eb156f65",
+    "bytes": 42048,
+    "durS": 5.091,
+    "mMax": -15.4,
+    "integrated": -18,
+    "truePeak": -1.9
+   }
+  ]
+ },
+ "tracks_heavy_earth_slow": {
+  "group": "tracks",
+  "preset": "loop",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "bf42635658f2bf61a062b0a310c18c107125775a4d4888e72c2f118fc1350b59",
+    "bytes": 41978,
+    "durS": 5.091,
+    "mMax": -11.8,
+    "integrated": -18,
+    "truePeak": -1
+   }
+  ]
+ },
+ "tracks_heavy_hard_fast": {
+  "group": "tracks",
+  "preset": "loop",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "641ac48b4d497a89b0102b5a3237a6d6f8ff0e2257af1cf922cd77f914746a65",
+    "bytes": 44275,
+    "durS": 5.091,
+    "mMax": -13.6,
+    "integrated": -18.2,
+    "truePeak": -0.6
+   }
+  ]
+ },
+ "tracks_heavy_hard_slow": {
+  "group": "tracks",
+  "preset": "loop",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "0b2698952c0a6b43f44a5846483c81c2036df43481c050577877695561f25e54",
+    "bytes": 40285,
+    "durS": 5.091,
+    "mMax": -14.6,
+    "integrated": -18,
+    "truePeak": -2
+   }
+  ]
+ },
+ "tracks_heavy_mud_fast": {
+  "group": "tracks",
+  "preset": "loop",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "f7c46f7b746dd239ac7ab12d6830a3f80ac0200405e7ad44574bffe05806beba",
+    "bytes": 41623,
+    "durS": 5.091,
+    "mMax": -14.9,
+    "integrated": -18,
+    "truePeak": -2.5
+   }
+  ]
+ },
+ "tracks_heavy_mud_slow": {
+  "group": "tracks",
+  "preset": "loop",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "08ede6acce6148f76da03ce73235b056f0632abbf4f6d866161a59364a2781c3",
+    "bytes": 41186,
+    "durS": 5.091,
+    "mMax": -12.1,
+    "integrated": -18.1,
+    "truePeak": -0.7
+   }
+  ]
+ },
+ "tracks_heavy_sand_fast": {
+  "group": "tracks",
+  "preset": "loop",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "4ed06dcbe00328045e6265ab8c476d2173261f35f4229d101a74fafeafa4e55d",
+    "bytes": 40656,
+    "durS": 5.091,
+    "mMax": -11.6,
+    "integrated": -18,
+    "truePeak": -1.2
+   }
+  ]
+ },
+ "tracks_heavy_sand_slow": {
+  "group": "tracks",
+  "preset": "loop",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "ada8573fb4edc0552ddc1ef9c93c19f7958726400ac318b6ca12a6d539055622",
+    "bytes": 40805,
+    "durS": 5.091,
+    "mMax": -12.7,
+    "integrated": -18,
+    "truePeak": -1.6
+   }
+  ]
+ },
+ "tracks_heavy_snow_fast": {
+  "group": "tracks",
+  "preset": "loop",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "b79abcea0176c570ec0496ba96063fc5070877a0b40fe9553245964fa4c1e0c1",
+    "bytes": 45288,
+    "durS": 5.091,
+    "mMax": -16,
+    "integrated": -18,
+    "truePeak": -1.3
+   }
+  ]
+ },
+ "tracks_heavy_snow_slow": {
+  "group": "tracks",
+  "preset": "loop",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "5ca39a4dd40eec568fc8e88dcf35845ce9f688d635b3fd1159bdf415bdc30693",
+    "bytes": 41383,
+    "durS": 5.091,
+    "mMax": -14.2,
+    "integrated": -18.1,
+    "truePeak": -1.1
+   }
+  ]
+ },
+ "tracks_light_earth_fast": {
+  "group": "tracks",
+  "preset": "loop",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "4570de6f544961e59f806864c99299ed8ebeb4f2343b35a88ef690513b00d70e",
+    "bytes": 44161,
+    "durS": 5.091,
+    "mMax": -16,
+    "integrated": -18.1,
+    "truePeak": -1.2
+   }
+  ]
+ },
+ "tracks_light_earth_slow": {
+  "group": "tracks",
+  "preset": "loop",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "2b9c25f48b9d7e2e4b4f0d467a82b7c3cbd2ac249d7b556a7c8c85892f628170",
+    "bytes": 48374,
+    "durS": 5.091,
+    "mMax": -15.5,
+    "integrated": -18.6,
+    "truePeak": -0.8
+   }
+  ]
+ },
+ "tracks_light_hard_fast": {
+  "group": "tracks",
+  "preset": "loop",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "dc9591794d6f6e01f145ac4a1794b59a4ea70f3701c2e85b54c0edfaeb31aec9",
+    "bytes": 46654,
+    "durS": 5.091,
+    "mMax": -12.5,
+    "integrated": -17.9,
+    "truePeak": -0.9
+   }
+  ]
+ },
+ "tracks_light_hard_slow": {
+  "group": "tracks",
+  "preset": "loop",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "9e9dbbdaa285be6ab11d371aa18e303a3a39c5ea3519f7c52eb5ac0c1cf76503",
+    "bytes": 46013,
+    "durS": 5.091,
+    "mMax": -14,
+    "integrated": -18.5,
+    "truePeak": -1
+   }
+  ]
+ },
+ "tracks_light_mud_fast": {
+  "group": "tracks",
+  "preset": "loop",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "f2947f38d4389414946dae3ba9dfef06b1f5a1b5b1c94bd69ca9141513241e17",
+    "bytes": 42416,
+    "durS": 5.091,
+    "mMax": -14,
+    "integrated": -18.2,
+    "truePeak": -0.5
+   }
+  ]
+ },
+ "tracks_light_mud_slow": {
+  "group": "tracks",
+  "preset": "loop",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "c29ab477f8b4fc509de079da008edaa07a4b8fd9166e0b5a8bf798163878a2c8",
+    "bytes": 41953,
+    "durS": 5.091,
+    "mMax": -14.1,
+    "integrated": -18.2,
+    "truePeak": -0.9
+   }
+  ]
+ },
+ "tracks_light_sand_fast": {
+  "group": "tracks",
+  "preset": "loop",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "26bc929fbb75371ffd4a671de18ac27bb2eafdbebff63a9c839f6b077538bbec",
+    "bytes": 40843,
+    "durS": 5.091,
+    "mMax": -10.4,
+    "integrated": -18.1,
+    "truePeak": -1
+   }
+  ]
+ },
+ "tracks_light_sand_slow": {
+  "group": "tracks",
+  "preset": "loop",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "387c0183f5f3c2fced95f76b3f124f2c7f257b5cacf1cdbec1f48607f31cbd39",
+    "bytes": 40317,
+    "durS": 5.091,
+    "mMax": -15.1,
+    "integrated": -18,
+    "truePeak": -3.8
+   }
+  ]
+ },
+ "tracks_light_snow_fast": {
+  "group": "tracks",
+  "preset": "loop",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "e66f5d1f2091e99ef66a9e7d249aab39d4a9550b052e16c65127142098d67205",
+    "bytes": 40175,
+    "durS": 5.091,
+    "mMax": -14.9,
+    "integrated": -18.2,
+    "truePeak": -1.1
+   }
+  ]
+ },
+ "tracks_light_snow_slow": {
+  "group": "tracks",
+  "preset": "loop",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "f58775f3ab64dfea9260112b336e322bb778befc4eedb8695abe34307226f064",
+    "bytes": 42814,
+    "durS": 5.091,
+    "mMax": -15.4,
+    "integrated": -18.8,
+    "truePeak": -0.8
+   }
+  ]
+ },
  "tree_fall": {
   "group": "props",
   "preset": "impact",
   "channels": 1,
   "variants": [
    {
-    "sha256": "049279f58a8427ffe5f5fa83c43061f119d5906c8f80abd3e9bb8d1fe890fd56",
+    "sha256": "bdea2c4b2d62117c9e07e7667381c2cd01e81e9f4188558ed8b02a4cff5c3a98",
     "bytes": 29291,
     "durS": 2.944,
     "mMax": -13.5,
@@ -2403,7 +8325,7 @@
     "truePeak": -0.1
    },
    {
-    "sha256": "f86b6b50346757c81ed27ebd3a657d4cd75d92dd88fb261effd607ab75ca4a29",
+    "sha256": "5ec146518936e8c475d6da1df6c1e3f26e05199888d9fc3255cc068e42fc4274",
     "bytes": 29208,
     "durS": 2.92,
     "mMax": -13.9,
@@ -2411,12 +8333,67 @@
     "truePeak": -0.1
    },
    {
-    "sha256": "a3fdc8195df33c5b2f3c9add127e8b48c792382b91572cff13474e0b562d10c7",
+    "sha256": "b98788cdc38350d39142b05adc17d259ee6ee4697b9e13f0b6127ea59d435116",
     "bytes": 25271,
     "durS": 2.63,
     "mMax": -15.7,
     "integrated": -19.9,
     "truePeak": -0.5
+   },
+   {
+    "sha256": "dd4511626028b560c82bb736fc5ec43878eea1ad94ffcd671b4ef2c5a3818f0c",
+    "bytes": 30357,
+    "durS": 2.92,
+    "mMax": -14.5,
+    "integrated": -18.4,
+    "truePeak": 0.3
+   }
+  ]
+ },
+ "tree_snap": {
+  "group": "props",
+  "preset": "impact",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "541062039d978a1c2cc047843e746379904b7b30d796129bfd3d86676cfa44a3",
+    "bytes": 13401,
+    "durS": 1.168,
+    "mMax": -14,
+    "integrated": -15,
+    "truePeak": 0.2
+   },
+   {
+    "sha256": "f154075296280523517ed22f50b75d9ad7905549f6fefc2bdfa1139dc76e64db",
+    "bytes": 14228,
+    "durS": 1.32,
+    "mMax": -12.7,
+    "integrated": -13.1,
+    "truePeak": 0.1
+   },
+   {
+    "sha256": "0086a7460b2e81e52ae77d00241c5fa4920f0c8952a5a0b56a63b25c1db4ed7e",
+    "bytes": 12494,
+    "durS": 1.1,
+    "mMax": -14.4,
+    "integrated": -19,
+    "truePeak": -0.1
+   },
+   {
+    "sha256": "ddb38b12db6d158cff37ea448ee4b4924ba5bef5625806ebe602d393fca13f69",
+    "bytes": 15649,
+    "durS": 1.32,
+    "mMax": -15.2,
+    "integrated": -16.6,
+    "truePeak": -0.1
+   },
+   {
+    "sha256": "593ee87b2fa84400142fee269dcb101ac037bafb56cc644a1b7915e429355717",
+    "bytes": 15732,
+    "durS": 1.48,
+    "mMax": -12.1,
+    "integrated": -12.9,
+    "truePeak": 0.5
    }
   ]
  },
@@ -2487,6 +8464,254 @@
     "mMax": -10.6,
     "integrated": -14.1,
     "truePeak": -0.5
+   }
+  ]
+ },
+ "turret_start": {
+  "group": "vehicle",
+  "preset": "foley",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "1edcb97ec7f2535e05ef07908867de30a49bb7935b0cb0afbbc9ccf795d96c24",
+    "bytes": 11252,
+    "durS": 1.2,
+    "mMax": -14,
+    "integrated": -16.4,
+    "truePeak": -3.7
+   },
+   {
+    "sha256": "d916d43d500ea3955dce4f9773b46623da59cacad20dc84e1daf8fe3ae24f31d",
+    "bytes": 11392,
+    "durS": 1.2,
+    "mMax": -14,
+    "integrated": -16.2,
+    "truePeak": -3.4
+   },
+   {
+    "sha256": "377c96a9155cb935a8ebedc2e46d473feb08b187d528816ceb1466e34207f5ce",
+    "bytes": 7998,
+    "durS": 0.92,
+    "mMax": -14,
+    "integrated": -15.9,
+    "truePeak": -6.5
+   },
+   {
+    "sha256": "0a362294ddbe245b1b68c4e8c26c9e5b19645782516ca45c33e9a1e223637c48",
+    "bytes": 9837,
+    "durS": 1.2,
+    "mMax": -14,
+    "integrated": -16.4,
+    "truePeak": -2.8
+   }
+  ]
+ },
+ "turret_start_hydraulic": {
+  "group": "vehicle",
+  "preset": "foley",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "7f41529c421c576d8279d2f0b891d240ef7194c5e0c4aba989b84a6c3683ecac",
+    "bytes": 10466,
+    "durS": 1.2,
+    "mMax": -14,
+    "integrated": -15.7,
+    "truePeak": -4
+   },
+   {
+    "sha256": "82a99589698c39eb85765d269ee003c0507a33220c3cad4bc4aa6e00d7ccccc6",
+    "bytes": 10557,
+    "durS": 1.2,
+    "mMax": -14,
+    "integrated": -15.5,
+    "truePeak": -3.6
+   },
+   {
+    "sha256": "071955be36f6c340614fc77a15095fddd61798ccf6176d8be8e4f73974300941",
+    "bytes": 10076,
+    "durS": 1.2,
+    "mMax": -13.9,
+    "integrated": -15.8,
+    "truePeak": -4.6
+   },
+   {
+    "sha256": "ccd9d8a319abc74754731414fb49882c92ea605977e9bf1fd2abbd298c9269f4",
+    "bytes": 11554,
+    "durS": 1.2,
+    "mMax": -14,
+    "integrated": -15.7,
+    "truePeak": -4.7
+   }
+  ]
+ },
+ "turret_stop": {
+  "group": "vehicle",
+  "preset": "foley",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "2b715718b7903d26b40e57bd325f11374a0f424344b8bdc0831c75cfc01bae22",
+    "bytes": 7029,
+    "durS": 0.74,
+    "mMax": -14.2,
+    "integrated": -16.4,
+    "truePeak": -0.4
+   },
+   {
+    "sha256": "bcca861f28fa99ee07ca278c544a56080c1ec00415e36d182abe62c2f5b264d1",
+    "bytes": 8873,
+    "durS": 1,
+    "mMax": -14,
+    "integrated": -17.2,
+    "truePeak": -1.8
+   },
+   {
+    "sha256": "2271d6d2e4ec1baf0b4361a972b397b17c4a316ca7431be3621d519dbcc5884c",
+    "bytes": 10048,
+    "durS": 1,
+    "mMax": -14,
+    "integrated": -15.5,
+    "truePeak": -1
+   },
+   {
+    "sha256": "b98fce8f0be193091a5d8532aeb86dd44680af1f3c5eccd773316c5990d2880e",
+    "bytes": 7347,
+    "durS": 0.84,
+    "mMax": -14.1,
+    "integrated": -15.4,
+    "truePeak": -0.9
+   }
+  ]
+ },
+ "turret_stop_hydraulic": {
+  "group": "vehicle",
+  "preset": "foley",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "bf3505dc76507062d2abc8c0df1da52e215e4d3bc68245f4a59b1755fca7d43e",
+    "bytes": 10536,
+    "durS": 1.2,
+    "mMax": -14,
+    "integrated": -15.2,
+    "truePeak": -3
+   },
+   {
+    "sha256": "41e6c454528467b964c20266f76b3ea54190ee6cb7b2eee9f00eb115c936a84e",
+    "bytes": 9291,
+    "durS": 1.2,
+    "mMax": -14.1,
+    "integrated": -18.6,
+    "truePeak": -2.7
+   },
+   {
+    "sha256": "243c4751eb1d88fd82f7d737a203588955008a980fe33e0d0b9689bbeeae1ae6",
+    "bytes": 10654,
+    "durS": 1.2,
+    "mMax": -14,
+    "integrated": -15,
+    "truePeak": -3.7
+   },
+   {
+    "sha256": "1374a83ab94aceff8950cb5fa74c8f533db5bcfdf6ce8b2f7dc18df11305a568",
+    "bytes": 10126,
+    "durS": 1.2,
+    "mMax": -14,
+    "integrated": -15.8,
+    "truePeak": -3.6
+   }
+  ]
+ },
+ "ui_flag_seized": {
+  "group": "ui",
+  "preset": "ui",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "56cbd9fd2a0c6467b121ed5bb5971075e0b859d55de849a243b14137b480fd55",
+    "bytes": 11662,
+    "durS": 1.36,
+    "mMax": -16,
+    "integrated": -21.3,
+    "truePeak": -4.2
+   }
+  ]
+ },
+ "vehicle_explode_light": {
+  "group": "destruction",
+  "preset": "impact",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "340920bdc16aff3be503079f2b6c9780736e6f977da5c107976b717bed22e1a5",
+    "bytes": 28693,
+    "durS": 3.018,
+    "mMax": -10,
+    "integrated": -12.8,
+    "truePeak": -0.4
+   },
+   {
+    "sha256": "433928fab3f3a10aa487bb21e8f3d22d60e49144a3dad47cacb16a773e406179",
+    "bytes": 30132,
+    "durS": 3.24,
+    "mMax": -10.2,
+    "integrated": -13.8,
+    "truePeak": -0.5
+   },
+   {
+    "sha256": "e7ab20bb919ae28c7c49adff0934d6dfc7d0553fe4126904f311b4fa9eae257a",
+    "bytes": 30089,
+    "durS": 3.224,
+    "mMax": -10,
+    "integrated": -12.7,
+    "truePeak": -0.4
+   }
+  ]
+ },
+ "vent_tube_eject": {
+  "group": "mechanism",
+  "preset": "foley",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "137fc31cb5671237eef7425f0be322ab224fdb3d4d28ebd5880bd96a9151053a",
+    "bytes": 7860,
+    "durS": 0.8,
+    "mMax": -14.2,
+    "integrated": -17.6,
+    "truePeak": 0.5
+   },
+   {
+    "sha256": "d8273d3c3f47ad8ae87bbe0f5828bf6177cbe7d6014b40b2dec4e8c14e2f7e08",
+    "bytes": 7864,
+    "durS": 0.8,
+    "mMax": -16.2,
+    "integrated": -18.7,
+    "truePeak": 0.3
+   }
+  ]
+ },
+ "vent_tube_load": {
+  "group": "mechanism",
+  "preset": "foley",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "58271f9e5c37f4482712c6bced69c08c65a6d81673a1e95d90ed150e6b782b1f",
+    "bytes": 8591,
+    "durS": 0.8,
+    "mMax": -20,
+    "integrated": -21.9,
+    "truePeak": 0.5
+   },
+   {
+    "sha256": "e15c8d720c7a24630c9a36de4a138b1a9b9280441d0e8a380686220c34fccbc5",
+    "bytes": 9883,
+    "durS": 0.778,
+    "mMax": -18.6,
+    "integrated": -20.3,
+    "truePeak": 0.8
    }
   ]
  },
@@ -2699,6 +8924,37 @@
    }
   ]
  },
+ "wall_brick": {
+  "group": "props",
+  "preset": "impact",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "fb77f69dcd5feb1236e8a957e08500525b4c85f736415867ad6c80b625d7d9fb",
+    "bytes": 41000,
+    "durS": 3,
+    "mMax": -12.7,
+    "integrated": -18.7,
+    "truePeak": -0.1
+   },
+   {
+    "sha256": "51ca38f9a93feb9492cda1133ae1b2e2cc9d30957505654c706000bd7669ce4c",
+    "bytes": 39352,
+    "durS": 2.84,
+    "mMax": -15.1,
+    "integrated": -19.3,
+    "truePeak": 0.4
+   },
+   {
+    "sha256": "df3a37ef03131cf47105a6b7ef10e01b52faa662515c00b8f8f52b212843014a",
+    "bytes": 35123,
+    "durS": 3,
+    "mMax": -12.8,
+    "integrated": -19.3,
+    "truePeak": 0
+   }
+  ]
+ },
  "water_big": {
   "group": "impacts",
   "preset": "impact",
@@ -2727,6 +8983,68 @@
     "mMax": -12.4,
     "integrated": -14,
     "truePeak": -0.6
+   }
+  ]
+ },
+ "water_enter": {
+  "group": "vehicle",
+  "preset": "impact",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "406d50ff8bed5ac77b21da4531722ec99b998a45495a4657024d3bc3788ee52b",
+    "bytes": 23074,
+    "durS": 2.38,
+    "mMax": -12.2,
+    "integrated": -15.9,
+    "truePeak": -0.4
+   },
+   {
+    "sha256": "33e17a4d41cf104a067ddd8049f01039f6ece9226e8fd61998b9f72f8c0ceb2b",
+    "bytes": 21758,
+    "durS": 2.26,
+    "mMax": -10.5,
+    "integrated": -14.3,
+    "truePeak": -0.5
+   },
+   {
+    "sha256": "4bd00098c4fd8e807e8ed3431018d5aa69b2b354613ef70bd80029e39cc75de7",
+    "bytes": 22540,
+    "durS": 2.4,
+    "mMax": -10.7,
+    "integrated": -14,
+    "truePeak": -0.6
+   }
+  ]
+ },
+ "water_exit": {
+  "group": "vehicle",
+  "preset": "foley",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "f49a169886663d8e8eebeb067dea731dff3cfc9a8b469ea09cc2e7c74342e1b8",
+    "bytes": 24262,
+    "durS": 3,
+    "mMax": -14,
+    "integrated": -16.9,
+    "truePeak": 0.2
+   },
+   {
+    "sha256": "5dd5bacbcfab7827c56e7cb4dd86a90655d9a2da10fc0733c7dcc6c4128fe16e",
+    "bytes": 22689,
+    "durS": 2.86,
+    "mMax": -14.4,
+    "integrated": -16.9,
+    "truePeak": -0.8
+   },
+   {
+    "sha256": "81bd53fbe08ae62eefee8c567c9421013aa24e621c0512ad8bfdb4a6d369f153",
+    "bytes": 24124,
+    "durS": 2.904,
+    "mMax": -14.4,
+    "integrated": -18.8,
+    "truePeak": -0.4
    }
   ]
  },
@@ -2761,6 +9079,37 @@
    }
   ]
  },
+ "water_splash_in": {
+  "group": "vehicle",
+  "preset": "impact",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "13ec329dddc3bdff9af5dd151e9629d5a3b2ac235b6432480e1c1417f7706e09",
+    "bytes": 21306,
+    "durS": 2.2,
+    "mMax": -11.3,
+    "integrated": -13.4,
+    "truePeak": 0.1
+   },
+   {
+    "sha256": "8505bdb8b3fd85ba67ad6fc09454d0b9e39b3ee3dc28ae890bfc153e94f89097",
+    "bytes": 21330,
+    "durS": 2.2,
+    "mMax": -10.7,
+    "integrated": -13.2,
+    "truePeak": -0.3
+   },
+   {
+    "sha256": "725fe1098443a7d8c2a8a2aeb0681c69c2d5206f986795d5602e4f8a4466fcfb",
+    "bytes": 21183,
+    "durS": 2.2,
+    "mMax": -10.9,
+    "integrated": -12.3,
+    "truePeak": -0.6
+   }
+  ]
+ },
  "well_break": {
   "group": "props",
   "preset": "impact",
@@ -2781,6 +9130,52 @@
     "mMax": -10.4,
     "integrated": -13.8,
     "truePeak": 0
+   }
+  ]
+ },
+ "wire_snag": {
+  "group": "props",
+  "preset": "impact",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "c1e54f50681ab3027da7fc3eaed6df8855e70e0b35862f315b13a4f6175fce86",
+    "bytes": 14815,
+    "durS": 1.48,
+    "mMax": -11.7,
+    "integrated": -14.2,
+    "truePeak": -0.2
+   },
+   {
+    "sha256": "f0bc47a83c43154bd38f7d6b874bbd014949e5d7fbb6b8256d33c79ecf182eb4",
+    "bytes": 14392,
+    "durS": 1.48,
+    "mMax": -10.8,
+    "integrated": -14.5,
+    "truePeak": -0.2
+   },
+   {
+    "sha256": "4b46d9af54a3844eaa54b0480004b0a74fde1648cfc8eedae42055c31e79c352",
+    "bytes": 14690,
+    "durS": 1.48,
+    "mMax": -11.5,
+    "integrated": -15.7,
+    "truePeak": 0.1
+   }
+  ]
+ },
+ "wreck_fire_loop": {
+  "group": "destruction",
+  "preset": "loop",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "86560ebf63d6be3c16d01744a183f9fb6029f653e0b8cc7cc47b4d1864e468cf",
+    "bytes": 70656,
+    "durS": 8.091,
+    "mMax": -17,
+    "integrated": -18.4,
+    "truePeak": -0.8
    }
   ]
  }

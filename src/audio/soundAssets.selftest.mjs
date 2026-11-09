@@ -6,8 +6,9 @@ import { VOICE_LINES } from './voiceLines.ts';
 import { MAP_SCENES, GARAGE_SCENE, BELL_ASSET } from './environmentScenes.ts';
 import { ENGINE_FAMILY_IDS, CREW_LANGUAGES } from './vehicleAudioProfiles.ts';
 import { GROUP_PROFILES } from './soundCues.ts';
+import { impactAssetIds } from './impactMaterials.ts';
 import { MAP_IDS } from '../world/maps/mapIds.ts';
-import { LAUNCH_ASSET, OWN_REPORT, WEAPON_CLOSE, WEAPON_FAR } from './weaponAudio.ts';
+import { LAUNCH_ASSET, WEAPON_ROWS, eventMount, reloadAssets } from './weaponAudio.ts';
 
 const root = new URL('../../public/audio/', import.meta.url);
 
@@ -31,8 +32,17 @@ for (const [id, rec] of Object.entries(SFX_ASSETS)) {
 }
 // 20 MB until 2026-10-13; the owner asked for many more sounds (AUD-25, "the more the better"), so the cap rose to
 // 28 MB for the destruction, ambience and impact rounds. Files load per battle (the battle set) or on first use, never
-// at boot; the long debris and spot sounds ship at 48-56 kbps mono to keep the rise small.
-assert.ok(bytes < 28 * 1024 * 1024, `sound-effect payload ${(bytes / 1048576).toFixed(1)} MB within 28 MB`);
+// at boot; the long debris and spot sounds ship at 48-56 kbps mono to keep the rise small. 32 MB from 2026-11-03
+// (gun-reports-269, the owner: "better cannonn sounds for all calibers"): every bore's close, own, closed-turret and
+// distant reports and the weighted reload machinery (+4.4 MB), of which a battle decodes only its roster's bores and
+// our own hull's banks. 34 MB from 2026-11-04 (Main's ruling for the 269 audio stack): the three sound lanes measured
+// over main's 23.45 MB — gun-reports-269 +7.13 (every bore's reports, reloads and the ear proxy's full slots),
+// world-sfx-269 +1.86 (running gear, crashes, roofs, the modes, night life), impact-materials-269 +1.21 (struck parts,
+// grazes, near misses) — 33.65 MB. What a player pays is the battle's set, not this sum. 35 MB from 2026-11-05
+// (air-support-270: Air Support's call-ins +0.66 MB, decoded only in an Air Support battle; the measured 34.3 MB). The
+// rule (DECISIONS 2026-11-05, the russia-152 entry): the cap is the measured sum rounded up to the next MiB, re-derived
+// once on each integration tip, never by adding the heads' deltas.
+assert.ok(bytes < 35 * 1024 * 1024, `sound-effect payload ${(bytes / 1048576).toFixed(1)} MB within 35 MB`);
 
 // ---- every asset the engine and its rigs ask for exists.
 const engine = readFileSync(new URL('./audioEngine.ts', import.meta.url), 'utf8');
@@ -44,12 +54,24 @@ for (const source of [engine, rig, radio]) for (const m of source.matchAll(liter
 for (const block of engine.matchAll(/const (?:CORE_BATTLE|PLAYER_HULL|UI_SET|MODE_SET|RADIO_SET) = \[([\s\S]*?)\];/g)) {
   for (const m of block[1].matchAll(/'([a-z0-9_]+)'/g)) referenced.add(m[1]);
 }
-// the report banks (weaponAudio.ts since 2026-10-13) and every missile family's launch
-for (const bank of [WEAPON_CLOSE, WEAPON_FAR, OWN_REPORT, LAUNCH_ASSET]) for (const id of Object.values(bank)) referenced.add(id);
+// every row's report banks (weaponAudio.ts WEAPON_ROWS, gun-reports-269), every missile family's launch, and every
+// recording a row's reload can play by any loader make
+for (const row of Object.values(WEAPON_ROWS)) for (const id of [row.close, row.far, row.own, row.interior]) if (id) referenced.add(id);
+for (const id of Object.values(LAUNCH_ASSET)) referenced.add(id);
+for (const row of Object.values(WEAPON_ROWS)) {
+  const m = { key: row.key, row, rounds: [], throughGun: false, loadRow: row };
+  for (const loader of ['manual', 'carousel_az', 'basket_mz', 'carousel_unmanned', 'bustle', 'fixed_ram', 'ifv_autoloader', 'launcher', 'rocket_rack', 'gunship', 'pylon']) {
+    for (const id of reloadAssets(m, loader)) referenced.add(id);
+  }
+}
+assert.ok(eventMount(120, null).row, 'a 120 mm shot keys a row');
 for (const m of rig.matchAll(/'((?:track|water|engine|turret|elevation|interior|fire|gear|electric|turbo|net)_[a-z0-9_]+_loop)'/g)) referenced.add(m[1]);
+// every impact by material, near miss, spall and debris the engine resolves (impactMaterials.ts, impact-materials-269)
+for (const id of impactAssetIds()) referenced.add(id);
 for (const id of ['blast_punch_light', 'blast_punch_medium', 'blast_punch_heavy', 'blast_sub', 'hull_thud_sub', 'gear_whine_loop',
   'electric_drive_loop', 'turbo_whistle_loop', 'alarm_fire_loop', 'alarm_ammo', 'heartbeat_loop', 'loading_bed_loop',
-  'radio_key_in', 'radio_key_out', 'radio_static_loop']) assert.ok(referenced.has(id), `the scan sees ${id}`);
+  'radio_key_in', 'radio_key_out', 'radio_static_loop', 'strike_track', 'graze_earth', 'ricochet_whine', 'spall_engine',
+  'hull_patter_water', 'flyby_shell_crack']) assert.ok(referenced.has(id), `the scan sees ${id}`);
 for (const id of referenced) assert.ok(SFX_ASSETS[id], `engine references a shipped asset: ${id}`);
 // Every sound is a recording (2026-10-03): no oscillator, synthesized fallback or rendered buffer anywhere in the
 // sound engine or the interface, so a missing asset is silent rather than replaced by a tone.
@@ -64,7 +86,7 @@ for (const id of referenced) assert.ok(SFX_ASSETS[id], `engine references a ship
 }
 assert.ok(referenced.size > 120, `engine reference scan found ${referenced.size} assets`);
 for (const tail of ['open', 'forest', 'urban', 'mountain']) assert.ok(SFX_ASSETS[`tail_${tail}`], `tail_${tail}`);
-for (const kind of ['interior_medium', 'interior_large', 'interior_heavy']) assert.ok(SFX_ASSETS[`gun_${kind}`]);
+for (const row of Object.values(WEAPON_ROWS)) if (row.interior) assert.ok(SFX_ASSETS[row.interior], `${row.key}: its closed turret's report ${row.interior}`);
 
 // ---- every powertrain has its full bank, every hull its running gear.
 for (const family of ENGINE_FAMILY_IDS) {
@@ -90,7 +112,7 @@ for (const mapId of MAP_IDS) {
 assert.ok(SFX_ASSETS[GARAGE_SCENE.bed]?.l);
 for (const [spot] of GARAGE_SCENE.spots) assert.ok(SFX_ASSETS[spot], `garage spot ${spot}`);
 
-// ---- crew radio: script, catalog and the thirteen national packs agree.
+// ---- crew radio: script, catalog and the national packs agree.
 const script = JSON.parse(readFileSync(new URL('../../tools/audio/crew-lines.json', import.meta.url), 'utf8'));
 const scriptIds = new Set(script.lines.map((line) => line.id));
 for (const id of Object.keys(VOICE_LINES)) assert.ok(scriptIds.has(id), `catalog line ${id} is scripted`);
@@ -110,7 +132,12 @@ for (const lang of CREW_LANGUAGES) {
       assert.ok(dur > 0.15 && dur < 6, `${lang}/${line.id}_${i} duration ${dur}`);
     });
   }
-  assert.ok(langBytes < 2.5 * 1024 * 1024, `${lang} pack ${(langBytes / 1048576).toFixed(2)} MB`);
+  // 2.5 MB until 2026-11-03; the owner asked for "more and better voice lines … all the special modes, in all the
+  // languages", so crew-lines-269 made a pack 190 lines and 371 takes (up to 3.29 MB) and the cap rose to 3.5 MB. Only
+  // the crew's own pack loads, and it decodes at 16 kHz (assetLibrary VOICE_DECODE_HZ). air-support-270's 8 lines made
+  // every pack 198 lines and 387 takes; the longest world languages measure up to 3.66 MB (fa; 52.0 MB decoded, from
+  // 48.9), so the cap is that rounded up to the next MiB: 4 MiB (crew-languages-270).
+  assert.ok(langBytes < 4 * 1024 * 1024, `${lang} pack ${(langBytes / 1048576).toFixed(2)} MB`);
 }
 
 console.log(`soundAssets.selftest: ${Object.keys(SFX_ASSETS).length} assets (${(bytes / 1048576).toFixed(1)} MB), ${referenced.size} engine references, ${MAP_IDS.length} scenes, ${CREW_LANGUAGES.length} crew packs × ${scriptIds.size} lines passed`);
