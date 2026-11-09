@@ -48,8 +48,9 @@ const namedHulls = new WeakMap<object, Set<CouchNamedHull>>();
  * with the lobby's phones) -> none (endCouchSession). A session belongs to its battle: setupBattle ends the last one
  * before it seats the next, the Garage return's clearMatchSession ends it, and a network round's activation ends it, so
  * no other kind of battle runs under a stale session (one kept the keyboard and every action off a network round). Each
- * seat's tank wears its seat's name (`battle.names`, seat order) while the session lasts. Readers ask stateCore.ts
- * couchSeatsActive, never game.couch alone.
+ * seat's tank wears its seat's name (`battle.names`, seat order) while the session lasts. The page's gates on whether the
+ * phones drive ask stateCore.ts couchSeatsActive; src/app/couchRuntime.ts (app-couch's) still reads game.couch with its
+ * own gates (couchSeatsActive's comment says which).
  */
 export function beginCouchSession<T extends object>(host: CouchSessionHost<T>, battle: CouchBattle, tanks: readonly T[],
   allies: ReadonlySet<T>, sides: readonly boolean[]): CouchSession<T> {
