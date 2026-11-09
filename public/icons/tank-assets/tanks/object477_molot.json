@@ -495,17 +495,17 @@
       }
     ]
   },
-  "geometryHash": "cf578b31",
+  "geometryHash": "2c3a703f",
   "metadataHash": "5eb31573",
   "presentationAnchor": {
-    "xM": 0.0004,
-    "zM": 0.0341
+    "xM": 0.0007,
+    "zM": 0.051
   },
-  "presentationHash": "a7983c09",
+  "presentationHash": "6f9b2900",
   "presentationProjection": {
-    "centerYM": 1.7115,
-    "topHalfM": 7.5605,
-    "sideHalfM": 3.7803
+    "centerYM": 1.6,
+    "topHalfM": 7.5424,
+    "sideHalfM": 3.7712
   },
   "appearance": {
     "version": 1,
@@ -520,13 +520,14 @@
       "trackBand": 2,
       "trackPad": 1,
       "trackPadSimplified": 1,
-      "armorPaint": 9,
-      "gunmetal": 9,
+      "armorPaint": 10,
+      "gunmetal": 12,
       "opticGlass": 2,
       "wood": 1,
       "unclassified": 20,
       "gearShadow": 1,
-      "fittingPaint": 2
+      "fittingPaint": 2,
+      "machineGun": 4
     }
   },
   "muzzleBore": {
@@ -553,15 +554,15 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 20398,
-      "sha256": "3cd159aa26251b9d6ff8b8a8bf9e4ac40c17d10c2ced42fdaf9f95a8f6423644",
+      "bytes": 20358,
+      "sha256": "df5d586063849a72424a105a9d83adb2e0c88c4c062652a5a1d4b8823f40e59e",
       "thumbnail": {
         "file": "thumbs/object477_molot_angle.webp",
         "width": 256,
         "height": 256,
         "mime": "image/webp",
-        "bytes": 8770,
-        "sha256": "1b1e71811dcb0b97537154b95d0459eff9dc3c72aeed8d5bee994a7bec7c9730"
+        "bytes": 8818,
+        "sha256": "ce463f359fffded0911449241b54f75de7ad12679bd82c26f0023e31ddb5afde"
       }
     },
     "top": {
@@ -569,56 +570,56 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 7310,
-      "sha256": "06b59e509124bc2e6c46aba733fc9c4b2a44d5550d9913fa8abc4582891a70da"
+      "bytes": 7868,
+      "sha256": "846cbc8bcb7600d1e904c752385718bd4aeba11673a56a30a198d0bad8b1d011"
     },
     "side": {
       "file": "object477_molot_side.webp",
       "width": 512,
       "height": 256,
       "mime": "image/webp",
-      "bytes": 8104,
-      "sha256": "0c51ff8d48af1327bd550361680fe6e4e85d32e701924812b3b12c2cf827cb9c"
+      "bytes": 8732,
+      "sha256": "97df65568f3b4d2b1f6e80f87509e1f526b5dc4e09c53577de7f0fc9282b4c27"
     },
     "topSilhouette": {
       "file": "object477_molot_top_silhouette.png",
       "width": 128,
       "height": 128,
       "mime": "image/png",
-      "bytes": 1073,
-      "sha256": "8accfa0da72de3eac4b210e8c16c28326059f37fc8f23bf3a162b0559356973d"
+      "bytes": 1322,
+      "sha256": "6b11bd61534f9ba63fcfd75b076d6fbae3390407e6395840f6efc004dc39a6df"
     },
     "sideSilhouette": {
       "file": "object477_molot_side_silhouette.png",
       "width": 256,
       "height": 128,
       "mime": "image/png",
-      "bytes": 3918,
-      "sha256": "237567c3dad5dbd5d30851fc431aabdbc7c4f32f85c79fb57aec9a5e67cb754d"
+      "bytes": 4131,
+      "sha256": "07691549d5b0e7ff1255b513076ffaee7ed85c95748e2bf389f869ffd450bcd9"
     },
     "armorSide": {
       "file": "object477_molot_armor_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 19380,
-      "sha256": "957dfb1174de604f0e752c2681a193b4f43b309dca63391f2a675cfcb34e0cc0"
+      "bytes": 19628,
+      "sha256": "c26a4af838bff653a792dfd095a8a525ba36bbb4597ae20b84757c769d18cf0f"
     },
     "modulesSide": {
       "file": "object477_molot_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 18892,
-      "sha256": "b44f2861082652c17fffe8fd32737d0c2c39e6bbfb8e7f9c3a8c0d8a27b52f6e"
+      "bytes": 18730,
+      "sha256": "fb3928ddaad96efc5f89657588a7c2572c537e9d4e30f8ee4c204ae83261cb9d"
     },
     "crewSide": {
       "file": "object477_molot_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 16510,
-      "sha256": "9d09567180e0b2700873648235b50335671f58887642637f29563e5cb2818dc6"
+      "bytes": 16576,
+      "sha256": "2531d034bc13e73c3bf7af40397bebd7e00c3840eeacd0bfe5a0dafd514383c5"
     },
     "markings": {
       "file": "object477_molot_markings.png",
@@ -631,8 +632,8 @@
     "technicalLabels": {
       "file": "object477_molot_technical.json",
       "mime": "application/json",
-      "bytes": 4902,
-      "sha256": "835ed0e89c677a328106ca529a642b8ed0da00fdc0329c740925aaec29f8fbb9"
+      "bytes": 4891,
+      "sha256": "98e4263e4103ecd02069602a77f52c8aece5997e9be0132bb8a6928bd5d11ac5"
     }
   }
 }
