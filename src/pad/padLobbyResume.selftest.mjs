@@ -8,7 +8,8 @@
 // is the press this queue serves once it lands, and the Y11 merge runs the two together. The reverse order: every phone
 // has left when the TV blinks; the lobby resumes instead of ending (its code was on screen), and a seat that leaves
 // while the TV is away leaves the desktop's grace in force and is let go on the TV once it is back (the resume's roll
-// call). Reopen is not offered while the lobby reconnects.
+// call), in an emptied lobby and in one whose other phones stay (here or asleep). Reopen is not offered while the
+// lobby reconnects.
 import assert from 'node:assert/strict';
 import { createHash, randomBytes } from 'node:crypto';
 import { PadActor } from './padActor.ts';
@@ -204,6 +205,35 @@ function closeWhenAway(lobby, also = () => {}) {
   lobby.end();
 }
 
+// ---- the roll call in a lobby that still holds phones: one leaves while the TV is away, one sleeps, one stays ---------
+// The host's resume names two seats (seat 1 here, seat 3 away), so the roll call completes only once both are named:
+// the TV lets seat 2 go and keeps the other two as the host holds them (H0 kept all three lit).
+{
+  const { host, lobby, seated, gone } = await lobbyWith(3);
+  let left = false;
+  lobby.subscribe((view) => {
+    if (view.state !== 'away' || left) return;
+    left = true;
+    // while the TV is away: seat 2's phone leaves for good, seat 3's phone sleeps (its socket drops, its seat is held)
+    seated[1].send({ t: 'end' });
+    seated[2].socket.close();
+  });
+  host.dropDesktop();
+  await until(() => left, 'the lobby goes away');
+  await until(() => {
+    const seats = host.actor.exportState()?.seats ?? [];
+    return seats.length === 2 && seats.every((seat) => (seat.seat === 1 ? seat.socket !== null : seat.socket === null));
+  }, 'seat 2 leaves and seat 3 sleeps on the host');
+  await until(() => lobby.view.state !== 'away', 'the lobby comes back (or ends)');
+  await settle();
+  assert.equal(lobby.view.state, 'open', 'it resumes with its window');
+  assert.deepEqual(host.actor.exportState().seats.map((seat) => seat.seat), [1, 3], 'the host holds seats 1 and 3');
+  assert.deepEqual(lobby.view.seats.map((seat) => [seat.seat, seat.presence]), [[1, 'here'], [3, 'away']],
+    'the TV lets go of the seat whose phone left while it was away and keeps the seats the host named, as the host holds them');
+  assert.deepEqual(gone, [2], 'the game hears seat 2 gone, and only seat 2');
+  lobby.end();
+}
+
 // ---- the view's machine: its states and moves; `move` is the one writer --------------------------------------------
 {
   assert.deepEqual(padLobby.PAD_LOBBY_STATES, ['connecting', 'open', 'closed', 'away', 'ended']);
@@ -221,5 +251,5 @@ function closeWhenAway(lobby, also = () => {}) {
   assert.ok(!/publish\(\{[^}]*\bstate\b/.test(source), 'publish never carries a state');
 }
 
-console.log('padLobbyResume.selftest: PASS — a setOpen(false) asked while the TV is away reaches the host after the resume; a lobby whose phones left resumes after a blink; the grace stands when the last seat leaves while away; Reopen only on a closed lobby; one state writer');
+console.log('padLobbyResume.selftest: PASS — a setOpen(false) asked while the TV is away reaches the host after the resume; a lobby whose phones left resumes after a blink; the grace stands when the last seat leaves while away; the roll call keeps the seats the host names; Reopen only on a closed lobby; one state writer');
 process.exit(0);
