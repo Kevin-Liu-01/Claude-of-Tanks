@@ -181,13 +181,19 @@ assert.deepEqual(budgetReads("export const SCHEDULING_ENV = { COT_NAV_TIMEOUT_MS
   assert.ok(ownRetryCount.test('if (attempt >= 1) throw err;') && ownRetryCount.test('if(attempt>=0)throw error;'), 'a literal count');
   assert.ok(!ownRetryCount.test('if (attempt >= retries) throw err;') && !ownRetryCount.test('for (let i = 0; i < attempts; i++)'),
     'the budget\'s count, and a loop that is not a load retry');
-  const literal = [];
+  const literal = [], read = [];
   for (const file of toolCensusFiles(ROOT)) {
     if (file === 'tools/tool-page-load.mjs') continue;
-    const code = codeText(readFileSync(join(ROOT, file), 'utf8'), file);
+    const raw = readFileSync(join(ROOT, file), 'utf8');
+    // only a file that names the call can be on the budget: parse those few (7 of ~840 files), as (5) prefilters on its
+    // names; parsing every census file made this the receipt's cost (fix-up r2: 9.8 s user)
+    if (!raw.includes('pageLoadBudget(')) continue;
+    read.push(file);
+    const code = codeText(raw, file);
     if (/\bpageLoadBudget\(/.test(code) && ownRetryCount.test(code)) literal.push(file);
   }
-  assert.deepEqual(literal, [], 'a tool on pageLoadBudget counts its load retries against the budget\'s retries (COT_NAV_RETRIES), not a literal');
+  assert.ok(read.includes('tools/sfx-smoke.mjs') && read.includes('tools/voice-smoke.mjs'), 'the prefilter keeps the harnesses that retry a load');
+  assert.deepEqual(literal, [],'a tool on pageLoadBudget counts its load retries against the budget\'s retries (COT_NAV_RETRIES), not a literal');
 }
 console.log(`tool-page-load: 180 s navigation, 60 s ready, one timeout retry; a busy port moves on and the bound origin reaches our server; ${SERVED.length} fleet browser tools wired; `
   + 'no tool reads the page budget\'s variables itself');
