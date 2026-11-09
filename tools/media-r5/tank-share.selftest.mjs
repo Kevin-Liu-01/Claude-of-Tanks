@@ -52,7 +52,10 @@ const tableOf = (records, cardFrame = CARD_FRAME) => share.tankShareTable({ root
   assert.equal(share.cardDue({ source: 'still' }, want(), { force: true }), 'forced');
   assert.equal(share.cardDue({ source: 'still', digest: 'aaaa' }, want(CARD_FRAME, 'bbbb')), 'digest', 'a re-delivered source makes it due');
   assert.equal(tableOf({ [id]: { source: 'still', digest: 'aaaa' } }), `/brand/og-r2/tanks/${id}-card.jpg`, '(still published until then)');
-  assert.equal(share.cardDue({ source: 'still' }, want(CARD_FRAME, 'bbbb')), null, 'a record without a digest (the seed) matches');
+  // a record with no digest (the 184 seeded cards) cannot tell its source as delivered now from a refilm, so a run that
+  // reads the source renders it once to record one; without a source read (the table, --check) it stays up to date
+  assert.equal(share.cardDue({ source: 'still' }, want(CARD_FRAME, 'bbbb')), 'undigested', 'a record without a digest (the seed) is due once its source is read');
+  assert.equal(tableOf({ [id]: { source: 'still' } }), `/brand/og-r2/tanks/${id}-card.jpg`, '(and stays published until then)');
   assert.deepEqual(share.CARD_STATES, ['none', 'stale', 'published']);
   // --check and a table write name each unpublished card and why
   assert.deepEqual(share.staleCards({ root: fixture, records: { [id]: { source: 'still' } }, cardFrame: framed }),
@@ -148,6 +151,32 @@ const tableOf = (records, cardFrame = CARD_FRAME) => share.tankShareTable({ root
   assert.equal(readFileSync(cardFile, 'utf8'), 'card-from-still-bytes');
   assert.ok(missing.lines.some((line) => line.includes(`wrote brand/og-r2/tanks/${id}-card.jpg from its still (no card yet`)), missing.lines.join(' | '));
   assert.deepEqual([gone[id].source, /^[0-9a-f]{16}$/.test(gone[id].digest ?? '')], ['still', true], 'and its record is rewritten with its digest');
+  // a card seeded without a digest (rendered before the records, review r4 completeness #1): a refilm of its take used to
+  // go unseen for good (listed up to date). A plain run renders it once from the take as delivered now and records the
+  // digest, the card published meanwhile; the same take is then up to date, and the next refilm makes it due again.
+  writeFileSync(cardFile, 'seeded-film-card');
+  const seeded = { [id]: { source: 'film', frame: 2.25 } };
+  assert.equal(tableOf(seeded, framed), `/brand/og-r2/tanks/${id}-card.jpg`, 'a seeded film card is published');
+  writeFileSync(film, 'refilmed-take');
+  const refilm = await run({ records: seeded });
+  assert.deepEqual(refilm.rendered, ['frame-2.25'], `a seeded card is rendered from its refilmed take, not listed up to date: ${refilm.lines.join(' | ')}`);
+  assert.ok(refilm.lines.some((line) => line.includes(`wrote brand/og-r2/tanks/${id}-card.jpg from its film at 2.25 s (its card has no digest of its source`)), refilm.lines.join(' | '));
+  assert.match(seeded[id].digest ?? '', /^[0-9a-f]{16}$/, 'and its record now names the take\'s digest');
+  const same = await run({ records: seeded });
+  assert.deepEqual([same.rendered, same.lines.includes(`up to date (1): ${id}`)], [[], true], 'the same take: up to date');
+  writeFileSync(film, 'refilmed-again');
+  const again = await run({ records: seeded });
+  assert.deepEqual(again.rendered, ['frame-2.25'], 'the next refilm: rendered again');
+  assert.ok(again.lines.some((line) => line.includes('(its source file changed')), again.lines.join(' | '));
+  // a seeded still card the same way; one whose source is too dark keeps its card published and stays due
+  const seededStill = { [id]: { source: 'still' } };
+  const darkSeed = await run({ records: seededStill, cardFrame: CARD_FRAME, luma: 0.05 });
+  assert.deepEqual([darkSeed.rendered, seededStill[id].digest], [[], undefined], 'a seeded card whose still is too dark: nothing rendered or recorded');
+  assert.ok(keptLine(darkSeed)?.includes(`${id}: source too dark`), darkSeed.lines.join(' | '));
+  assert.equal(tableOf(seededStill), `/brand/og-r2/tanks/${id}-card.jpg`, 'and it stays published');
+  const fromStill = await run({ records: seededStill, cardFrame: CARD_FRAME });
+  assert.deepEqual(fromStill.rendered, ['still-bytes'], 'a seeded still card is rendered once from its still');
+  assert.match(seededStill[id].digest ?? '', /^[0-9a-f]{16}$/);
 }
 
 // The seeded records: every card on disk has one (the 14 CARD_FRAME tanks from their film at its second, the others from

@@ -8,7 +8,8 @@
 // src/presentation/tankShare.json through src/presentation/tankShareMeta.ts, so a plain Gallery visit loads nothing more.
 //   node tools/media-r5/tank-share.mjs                          write the table: every visible tank's name, and its card
 //   node tools/media-r5/tank-share.mjs --cards=<stills.json> [--only=a,b] [--force]
-//        render the cards that are due (all of them with --force) from the take stills (<stills.json>: { <vehicle>: <4K still path> }, the media lane's
+//        render the cards that are due (all of them with --force; the first run also renders once each card seeded
+//        without a digest, below) from the take stills (<stills.json>: { <vehicle>: <4K still path> }, the media lane's
 //        deliveries), then write the table
 //   node tools/media-r5/tank-share.mjs --check                  exit 1 when the table is stale or a card on disk is
 //        unpublished (stale: it stays out of the table until it is rendered again), listing each with its command
@@ -17,11 +18,15 @@
 // what each card was rendered from ({ source: 'still' } or { source: 'film', frame }, and the source file's digest).
 // cardState is the one classifier: no file is 'none'; a file whose record is the card CARD_FRAME wants (the same source
 // and frame) is 'published'; any other file, or one with no record, is 'stale' and stays out of the table. renderDue is
-// the one writer: it renders a card that is missing, stale, forced, or whose source file changed (cardDue), prints every
-// card it renders and every one it leaves, writes the card whole or not at all, then its record. So a CARD_FRAME edit
-// fails --check (checkShare) and tank-share.selftest until the card is rendered again, whether or not the table was
-// rewritten meanwhile (the write takes the old card out of the table), instead of passing with the old card published
-// (268 dropped REFILM's gate, and the renderer kept any existing file).
+// the one writer: it renders a card that is missing, stale, forced, whose source file changed, or whose record names no
+// digest of its source (cardDue), prints every card it renders and every one it leaves, writes the card whole or not at
+// all, then its record. So a CARD_FRAME edit fails --check (checkShare) and tank-share.selftest until the card is
+// rendered again, whether or not the table was rewritten meanwhile (the write takes the old card out of the table),
+// instead of passing with the old card published (268 dropped REFILM's gate, and the renderer kept any existing file).
+// The 184 cards rendered before the records were seeded without a digest (2026-11-08: their sources are the media lane's
+// deliveries, outside the repository, and nothing records which bytes each card came from), so the first --cards run
+// that reads such a card's source renders it once and records the digest, the card staying published meanwhile; from
+// then on a refilmed or re-delivered take makes its card due (review r4: counted as a match, a refilm went unseen).
 // Copyright © 2026 Kevin B. Liu.
 import { createHash } from 'node:crypto';
 import { execFileSync } from 'node:child_process';
@@ -63,16 +68,17 @@ export function cardState(record, want, exists) {
 }
 
 /**
- * Why a card is due for a render ('missing' | 'unrecorded' | 'source' | 'frame' | 'forced' | 'digest'), or null when it
- * is up to date. A digest counts only when the record and the wanted card both name one (the cards rendered before the
- * records were seeded without one).
+ * Why a card is due for a render ('missing' | 'unrecorded' | 'source' | 'frame' | 'forced' | 'undigested' | 'digest'),
+ * or null when it is up to date. The digests count when the wanted card names one (renderDue read its source): a record
+ * without one (a card seeded before the records) cannot tell that source from a refilm, so it is due once to record it.
  */
 export function cardDue(record, want, { force = false, exists = true } = {}) {
   const state = cardState(record, want, exists);
   if (state === 'none') return 'missing';
   if (state === 'stale') return !record ? 'unrecorded' : record.source !== want.source ? 'source' : 'frame';
   if (force) return 'forced';
-  if (record.digest && want.digest && record.digest !== want.digest) return 'digest';
+  if (want.digest && !record.digest) return 'undigested';
+  if (want.digest && record.digest !== want.digest) return 'digest';
   return null;
 }
 
@@ -152,6 +158,7 @@ const filmFrame = (film, seconds, out) => execFileSync('ffmpeg', ['-v', 'error',
 const DUE_TEXT = {
   missing: 'no card yet', unrecorded: 'its card has no record of its source', source: 'its card is from the other source',
   frame: 'its card is from another second of the film', forced: '--force', digest: 'its source file changed',
+  undigested: 'its card has no digest of its source yet, seeded before the records',
 };
 
 /**
