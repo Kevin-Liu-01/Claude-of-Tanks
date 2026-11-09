@@ -2670,8 +2670,6 @@ export function createAudio({
   function resetBattleFields(): void {
     tanks.clear();
     structureSounds.clear();
-    // (world-sfx-269) where each carrier's drone was last heard belongs to the battle it flew in
-    droneLastAt.clear();
     playerId = null;
     playerTeam = null;
     latestPlayer = null;
@@ -2695,12 +2693,17 @@ export function createAudio({
    * which restarts at 0), a module state the abandoned battle told stood (moduleStates: the restarted battle's same break
    * was no change, so no thrown-track sound, no crew call and no radio damage), a kill in the restarted battle within 12 s
    * of the abandoned battle's last was a double kill, and the once-a-battle think line and first-shot cue stayed spent.
+   * Where each carrier's drone was last heard is the play's too (droneLastAt, round 8 Y0 review r2): kept at a restart, a
+   * drone shot down before the restarted battle heard it fly broke up at the abandoned battle's spot.
    */
   function resetBattlePlay(): void {
     deathLatch.clear();
     moduleStates.clear();
     ownRounds.clear();
     droneWarned.clear();
+    // (world-sfx-269) where each carrier's drone was last heard belongs to the battle it flew in (a restarted one too:
+    // round 8 Y0 review r2)
+    droneLastAt.clear();
     movedOnce = false;
     lowHpCalled = false;
     ammoLowCalled = false;

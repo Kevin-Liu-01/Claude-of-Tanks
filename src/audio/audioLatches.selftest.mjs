@@ -2,7 +2,8 @@
 // pass) is due on the audio clock, not a wall-clock timer, and never lands in the next battle; the caption stream's
 // cooldowns start afresh with each battle (captions.reset was never called); a gunship player, who has no rig of its
 // own, does not keep the engine start-up armed for the whole battle; and a mode respawn starts the hull's audio module
-// states whole, so its new life's first break of a module the last life broke sounds (round 4 merge review r1).
+// states whole, so its new life's first break of a module the last life broke sounds (round 4 merge review r1); a network
+// restart forgets where the abandoned battle's drones were last heard (round 8 Y0 review r2).
 import assert from 'node:assert/strict';
 import { createBus } from '../game/stateCore.ts';
 import { installFetch, namedContext, terrain, tank, listener, probeOf, mark, since, count } from './engineHarness.test-support.mjs';
@@ -100,4 +101,29 @@ for (const id of ['me', 'foe']) {
 }
 bus.emit('phase:change', { phase: 'garage' });
 
-console.log('audioLatches.selftest: captions on the audio clock and per battle, the gunship start-up disarmed, a respawned hull\'s module states whole passed');
+// 6. where each carrier's drone was last heard is the battle's play (round 8 Y0 review r2): a network battle's restart
+// opens a new battle (restartLives runs resetBattlePlay), so a drone shot down before the restarted battle has heard it
+// fly breaks up nowhere, as after a battle edge. droneLastAt was cleared only at a battle edge (resetBattleFields), so
+// after 'battle:restarted' a carrier's drone shot down before its new flight's first audio frame broke up at the
+// abandoned battle's spot.
+bus.emit('phase:change', { phase: 'battle' });
+bus.emit('battle:rollout', {});
+const drone = { id: 7, dead: false, shooterId: 'c1', spec: { tracer: 'DRONE' }, pos: { x: 120, y: 30, z: 80 }, vel: { x: 0, y: 0, z: 0 } };
+const fly = (seconds, shells) => { for (let t = 0; t < seconds - 1e-9; t += 1 / 30) { ctx.advance(1 / 30); audio.update(1 / 30, listener, [me], shells); } };
+const downHeard = () => {
+  const at = probe.soundLog.at(-1)?.seq ?? 0;
+  bus.emit('drone:down', { id: 'c1', killerId: 'me' });
+  return probe.soundLog.filter((e) => e.seq > at && e.type === 'drone:down').map((e) => e.heard);
+};
+fly(0.1, [drone]);
+fly(0.1, []);
+assert.deepEqual(downHeard(), [true], 'a drone shot down in its battle breaks up where it was last heard');
+bus.emit('battle:restarted', {});
+fly(0.1, []);
+assert.deepEqual(downHeard(), [false], 'after a network restart, a drone the restarted battle has not heard fly breaks up nowhere');
+fly(0.1, [drone]);
+fly(0.1, []);
+assert.deepEqual(downHeard(), [true], 'the restarted battle\'s own drone is heard where it flew');
+bus.emit('phase:change', { phase: 'garage' });
+
+console.log('audioLatches.selftest: captions on the audio clock and per battle, the gunship start-up disarmed, a respawned hull\'s module states whole, a restart forgetting the drones\' spots passed');
