@@ -91,7 +91,8 @@ graph). Its edges, round 8 (2026-11-09):
   opens only if that Garage still shows, and no press has handed the player on (a battle start, the play menu), when its
   chunks land (`src/app/couchOpener.ts`, `src/ui/garageScreen.ts` `handOff`). A Couch press while they load asks for
   nothing more: it is the press the lobby opens for (its ticket, its Deploy selection; `createLazyOpener`), so the press
-  after a refused BATTLE or Launch is not lost. A chunk that did not arrive marks the Couch button (its next press
+  after a refused BATTLE or Launch is not lost. While a start the Garage handed on is in flight, or a battle's loader
+  covers it, the Garage is not the player's (`enter`, `covered`): its keys do nothing and a press there opens nothing. A chunk that did not arrive marks the Couch button (its next press
   reloads the page); a lobby that failed to open once loaded is logged and the button stays a press.
 - **End** (`close`): every phone goes, every seat's controls release, the couch view drops.
 

@@ -3,7 +3,8 @@
  * Couch press (src/ui/garage.ts) takes the Garage screen's ticket; the couch runtime and the lobby's chunk load; the
  * lobby opens only if the Garage that asked still shows. Before, a press and then Launch on the same Deploy foot inside a
  * cold download opened the lobby's modal over the loader or the battle, and a pairing lobby nobody wanted. (review r2)
- * The ticket lapses when the Garage hands the player on (Launch: garageScreen.handOff), not only when it hides at the
+ * The ticket lapses when the Garage hands the player on (Launch: garageScreen.handOff; residual fix-up r1: enter() for the
+ * start launchBattle hands on, under whose loader a press takes a ticket that never holds), not only when it hides at the
  * battle's activation after the covered load. A chunk that did not arrive rejects to the press as a CouchChunkError,
  * which the press reports under the loaders' policy (the button's error state, Reload page); an error from the open step
  * (the lobby, its socket) rejects unchanged and is not a failed chunk. Pure: no DOM (couchOpener.selftest drives it with

@@ -32,11 +32,14 @@ const garageFunction = (head) => {
 const launchCode = garageFunction('  function launchBattle(');
 assert.ok(launchCode.includes('onBattle(specId, mapId, options, announce)'), 'garage.ts holds launchBattle');
 const battleCode = garageFunction('  function battle(');
+/** main.ts's onBattle: the solo entry, whose settle comes after the battle's activation (round 8 Y4 residual fix-up r1:
+ *  the Garage waits on it to be the player's again, garageOpenState case 10); here the start stays in flight. */
+const entryInFlight = (started) => (specId) => { started.push(specId); return new Promise(() => {}); };
 function garageLaunch({ garageScreen, failed = false, refused = false, started }) {
   return new Function('garageScreen', 'pressFailed', 'battleBtn', 'opts', 'emit', 'onBattle', 'battleGameMode',
     `${launchCode}; return launchBattle;`)(
     garageScreen, () => failed, {}, { refusesBattle: () => refused }, () => {},
-    (specId) => started.push(specId), 'standard');
+    entryInFlight(started), 'standard');
 }
 /** garage.ts's own battle() (the BATTLE button and the Deploy foot's Launch, [data-battle-launch]) and launchBattle, with
  *  main.ts's onPlayRequest as playSurface.open runs a solo request: request.startSolo after an await (on the play menu's
@@ -45,7 +48,7 @@ function garageBattlePress({ garageScreen, refused = false, started, menu = Prom
   const opts = { refusesBattle: () => refused, onPlayRequest: (request) => { void menu.then(() => request.startSolo()); } };
   return new Function('garageScreen', 'pressFailed', 'battleBtn', 'opts', 'emit', 'onBattle', 'battleGameMode', 'selectedId',
     'fieldMapId', 'closeBattleMenu', 'battleMode', `${launchCode}\n${battleCode}; return battle;`)(
-    garageScreen, () => false, {}, opts, () => {}, (specId) => started.push(specId), 'standard', 'm1a2', () => 'steppe',
+    garageScreen, () => false, {}, opts, () => {}, entryInFlight(started), 'standard', 'm1a2', () => 'steppe',
     () => {}, 'solo');
 }
 
@@ -76,7 +79,8 @@ const show = ([runtime, lobby]) => lobby.openCouchLobby(runtime);
   const opening = openCouchWhenCurrent({ ticket: screen.ticket(), load: () => load.promise, open: show });
   assert.equal(garageLaunch({ garageScreen: screen, started })('m1a2', 'steppe'), true, 'Launch hands the start on');
   assert.deepEqual(started, ['m1a2']);
-  assert.equal(screen.phase, 'open', 'the Garage shows under the loader until the activation hides it');
+  assert.equal(screen.isOpen, true, 'the Garage shows under the loader until the activation hides it');
+  assert.equal(screen.phase, 'entering', '(residual fix-up r1) and is not the player\'s while its start is in flight');
   load.resolve(loadedPair(calls));
   assert.equal(await opening, false, 'a start handed on ends the press: the lobby opens nothing over the loader');
   assert.deepEqual(calls, [], 'no lobby modal and no pairing lobby (before: both, over the loader)');
@@ -119,7 +123,8 @@ for (const { refused, menuWait } of [{ refused: false }, { refused: true }, { re
   menu.resolve();
   await flush();
   assert.equal(started.length, refused ? 0 : 1, refused ? 'a refused start starts nothing' : 'the press starts the battle');
-  assert.equal(screen.phase, 'open', 'the Garage still shows (under the loader, or at the refusal notice)');
+  assert.equal(screen.isOpen, true, 'the Garage still shows (under the loader, or at the refusal notice)');
+  assert.equal(screen.phase, refused ? 'open' : 'entering', refused ? 'the player\'s at the refusal' : 'not the player\'s under the loader');
 }
 
 // (round 8 Y4 residual, review r4) The Couch pressed again while its chunks still load, as garage.ts writes the press (its
@@ -129,7 +134,8 @@ for (const { refused, menuWait } of [{ refused: false }, { refused: true }, { re
 // download returned at the press's in-flight latch with no new ticket: the chunks landed on the lapsed one, opened
 // nothing, and only a third press opened the lobby. Now a press while the chunks load is the press they open for (its
 // ticket and its Deploy selection: garageScreen.ts createLazyOpener, the lazy toggle's rule), and the load still checks
-// that ticket, so nothing opens over the loader or the battle.
+// that ticket, so nothing opens over the loader or the battle (residual fix-up r1: a press under a start's loader takes a
+// ticket that never holds, garageOpenState cases 1d and 10).
 const mainSource = readFileSync(new URL('../main.ts', import.meta.url), 'utf8');
 const onCouchStart = mainSource.indexOf('\n  onCouch: ');
 const onCouchCode = mainSource.slice(onCouchStart, mainSource.indexOf('\n  },', onCouchStart) + 5).replace(/\bimport\(/g, '__load(');

@@ -693,9 +693,11 @@ for (const kind of ['sync', 'async', 'schedule', 'reporter']) {
   bus.on('ui:battleStart', h.battleStart);
   // (264) launchBattle asks the load-failure kit whether the Battle button's chunk failed (pressFailed(battleBtn)): stubbed false
   // (audit F2) onBattle is the entry: its acceptance invalidates, then its start arms. (round 8 Y4 s3-03) The start it
-  // hands on hands the Garage screen on (garageScreen.handOff, couchOpener.selftest drives it): stubbed
+  // hands on hands the Garage screen on (garageScreen.enter since the residual fix-up r1, its give-back run on the entry's
+  // settle; garageOpenState.selftest drives it): stubbed
   const launch = new Function('emit', 'onBattle', `
-    const battleGameMode = 'standard'; const pressFailed = () => false, battleBtn = null; const garageScreen = { handOff() {} };
+    const battleGameMode = 'standard'; const pressFailed = () => false, battleBtn = null;
+    const garageScreen = { handOff() {}, enter: () => () => {} };
     ${launchCode}; return launchBattle;
   `)(bus.emit, () => { h.invalidate(); h.arm(true); });
   launch('m1a1', 'urban');

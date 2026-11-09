@@ -15,11 +15,22 @@
 // entry, the BATTLE, Watch, campaign and room presses) ends the tickets with handOff(), while the Garage still shows.
 // (round 8 Y4 residual) A start refused after its hand-off leaves the Garage the player's: an opener whose load is still
 // in flight takes the next press as the one it opens for (createLazyOpener), so that press is not lost.
+// (round 8 Y4 residual fix-up r1) And the Garage is not the player's while a start it handed on is in flight, nor under a
+// cover main puts over it (the battle loader, a network round's too): it still shows there, but a press under the loader
+// took a live ticket (the T key, a focused trigger) and opened its surface over the loader, and since the residual it
+// also revived a load in flight. Its states and transitions (the one writer of each is this owner):
+//   unpresented --show--> open ('first')          hidden --show--> open ('reopen')
+//   open --show--> open ('already')               entering --show--> open ('already': a return shows it again)
+//   open --handOff--> open (tickets lapse)        open --enter--> entering (tickets lapse; returns the give-back)
+//   entering --give-back--> open (the start ended with the Garage still showing: refused, failed before its activation)
+//   open | entering --hide--> hidden (closers run; the battle's activation)
+// Any other move changes nothing. Every transition but a show over 'open' moves the epoch, so a ticket lapses at each.
+// `interactive` (open, and uncovered) is when the Garage's keys act (garage.ts onKey) and a ticket holds.
 
-export type GarageScreenPhase = 'unpresented' | 'open' | 'hidden';
+export type GarageScreenPhase = 'unpresented' | 'open' | 'entering' | 'hidden';
 
 /** A lazy opener's claim on the open span it started in: `current()` is false once the Garage hid or handed the player
- *  on since. */
+ *  on since, while a cover stands over it, and always for a ticket taken while the Garage was not the player's. */
 export interface GarageScreenTicket {
   readonly epoch: number;
   current(): boolean;
@@ -27,46 +38,67 @@ export interface GarageScreenTicket {
 
 export interface GarageScreen {
   readonly phase: GarageScreenPhase;
+  /** The Garage shows: 'open', or 'entering' (under the loader of a start it handed on). */
   readonly isOpen: boolean;
-  /** The tickets' count: every show from closed, every hide and every hand-off moves it on. */
+  /** The Garage is the player's: 'open' (no start it handed on is in flight) and no cover over it. */
+  readonly interactive: boolean;
+  /** The tickets' count: every show from closed, every hide, hand-off, enter and give-back moves it on. */
   readonly epoch: number;
-  /** 'first' for the first presentation, 'reopen' for a later one, 'already' when it was open. */
+  /** 'first' for the first presentation, 'reopen' for a later one, 'already' when it showed ('open' or 'entering'). */
   show(): 'first' | 'reopen' | 'already';
-  /** Hide and run every registered closer (newest first); false when it was not open. */
+  /** Hide and run every registered closer (newest first); false when it did not show. */
   hide(): boolean;
   /**
-   * The player was handed on from the open Garage (a battle start, the play menu): every ticket taken before lapses, so
-   * a lazy opener still loading opens nothing over what follows. The Garage still shows (under the battle's loader until
-   * the activation hides it; a start refused later leaves it open, and a new press takes a new ticket, a press on an
-   * opener whose load is still in flight included: createLazyOpener). False when it was not open (its tickets had lapsed
-   * already).
+   * The player was handed on from the open Garage to the play menu (the BATTLE, Watch, campaign and room presses, before
+   * their play request): every ticket taken before lapses, so a lazy opener still loading opens nothing over what
+   * follows. The Garage stays open (a menu closed, a start refused leaves it the player's, and a new press takes a new
+   * ticket, a press on an opener whose load is still in flight included: createLazyOpener); the solo start that follows
+   * hands the Garage on with enter(). False when it was not open (its tickets had lapsed already).
    */
   handOff(): boolean;
+  /**
+   * (round 8 Y4 residual fix-up r1) A start the player pressed is handed to its entry and in flight (garage.ts
+   * launchBattle): the hand-off, and until it ends the Garage is not the player's ('entering'). It still shows, under the
+   * battle's loader until the activation hides it, but its keys do nothing and a ticket taken now never holds. Returns
+   * the give-back, which the start's settle runs: a start that ended with the Garage still showing (refused after its
+   * hand-off, or failed before its activation) gives it back to the player; after a hide or a show it changes nothing. A
+   * start entered while one is in flight (the entry refuses it: busy), or with the Garage not open, gets a give-back that
+   * changes nothing.
+   */
+  enter(): () => void;
   ticket(): GarageScreenTicket;
   /** A closer the next hides run (a sub-surface, a timer): the Garage takes everything it opened with it. */
   onHide(closer: () => void): () => void;
 }
 
-export function createGarageScreen({ warn = (message: string, error: unknown) => console.warn(message, error) }: {
+export function createGarageScreen({
+  warn = (message: string, error: unknown) => console.warn(message, error),
+  covered = () => false,
+}: {
   warn?: (message: string, error: unknown) => void;
+  /** (round 8 Y4 residual fix-up r1) A cover main puts over the showing Garage (garage.ts: main's battle-loader gate). */
+  covered?: () => boolean;
 } = {}): GarageScreen {
   let phase: GarageScreenPhase = 'unpresented';
   let epoch = 0;
   const closers = new Set<() => void>();
+  const interactive = (): boolean => phase === 'open' && covered() !== true;
 
   const screen: GarageScreen = {
     get phase() { return phase; },
-    get isOpen() { return phase === 'open'; },
+    get isOpen() { return phase === 'open' || phase === 'entering'; },
+    get interactive() { return interactive(); },
     get epoch() { return epoch; },
     show() {
       if (phase === 'open') return 'already';
+      const showing = phase === 'entering';
       const first = phase === 'unpresented';
       phase = 'open';
       epoch += 1;
-      return first ? 'first' : 'reopen';
+      return showing ? 'already' : first ? 'first' : 'reopen';
     },
     hide() {
-      if (phase !== 'open') return false;
+      if (phase !== 'open' && phase !== 'entering') return false;
       phase = 'hidden';
       epoch += 1;
       // one closer that throws never keeps the others (or the hide) from running
@@ -80,9 +112,22 @@ export function createGarageScreen({ warn = (message: string, error: unknown) =>
       epoch += 1;
       return true;
     },
+    enter() {
+      if (phase !== 'open') return () => {};
+      phase = 'entering';
+      epoch += 1;
+      const span = epoch;
+      return () => {
+        if (phase !== 'entering' || epoch !== span) return;
+        phase = 'open';
+        epoch += 1;
+      };
+    },
     ticket() {
       const issued = epoch;
-      return { epoch: issued, current: () => phase === 'open' && epoch === issued };
+      // a press made while the Garage is not the player's (under a start's loader, under a cover) never holds
+      const held = phase !== 'entering' && covered() !== true;
+      return { epoch: issued, current: () => held && epoch === issued && interactive() };
     },
     onHide(closer) {
       closers.add(closer);
@@ -125,7 +170,9 @@ export interface LazyOpener<P> {
  * load opens for, with its own ticket. The hand-off lapses the tickets taken before it while the Garage still shows (a
  * BATTLE or Launch press whose start was refused, a room menu the player closed); the openers' latches used to drop the
  * player's next press there, the load landed on the first press's lapsed ticket and opened nothing, and only a third
- * press opened the surface. The load still checks the newest press's ticket, so nothing opens over a loader or a battle.
+ * press opened the surface. The load still checks the newest press's ticket, which lapses at a hide or a hand-off, and
+ * (fix-up r1) a press while a start the Garage handed on is in flight or a cover stands (GarageScreen.enter, `covered`)
+ * takes one that never holds: nothing opens over a loader or a battle, whenever the press came.
  */
 export function createLazyOpener<P>(screen: Pick<GarageScreen, 'ticket'>): LazyOpener<P> {
   /** The load in flight: the newest press's values and ticket (null once a close cancelled it). */

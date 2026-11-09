@@ -11,6 +11,10 @@ import { CONSUMABLES_PICKER_CLOSED, nextConsumablesPicker } from './garageConsum
 import { createCustomCamoStudioAccess } from './customCamoStudioAccess.ts';
 import { stripTypeScriptTypes } from 'node:module';
 import { createLazyChunk } from '../app/lazyChunk.ts';
+// (round 8 Y4 residual fix-up r1: case 10 runs garage.ts's own launchBattle and onKey, and hands a start to the real entry)
+import { runMainStatements } from '../app/mainComposition.test-support.mjs';
+import { createSoloBattleEntryRuntime } from '../game/soloBattleEntryRuntime.ts';
+import { createBattleEntryLifecycle } from '../game/battleEntryLifecycle.ts';
 
 // (dynamic: a base without it fails by assertion, case 1b, not at link time)
 const { CouchChunkError } = await import('../app/couchOpener.ts').catch(() => ({}));
@@ -133,6 +137,75 @@ const { createGarageScreen, createLazyPanelToggle, createLazyOpener } = garageSc
   opener.settle(hidden);
 }
 
+// 1d. (round 8 Y4 residual fix-up r1, review res-r1) A start the Garage handed on is in flight (launchBattle: enter()). The
+//     Garage still shows (under the battle's loader until the activation hides it) but is not the player's: a ticket taken
+//     or checked then is not current, and it is not `interactive` (its keys do nothing, case 10), until the start ends with
+//     the Garage still showing (refused, or failed before the activation: the give-back enter() returned), a hide (the
+//     activation) or a show (a return). Before, the hand-off lapsed only the tickets taken before it: a press under the
+//     loader took a live ticket, and since the residual's renewal it also revived a load in flight, so the tree opened over
+//     the loader. A cover main puts over the Garage (the battle loader, a network round's too) holds the same while it stands.
+{
+  const screen = createGarageScreen();
+  assert.equal(typeof screen.enter, 'function',
+    'the screen owns a start in flight (before: the hand-off lapsed only the tickets taken before it)');
+  screen.enter()();
+  assert.equal(screen.phase, 'unpresented', 'nothing to hand on before the first show');
+  screen.show();
+  assert.equal(screen.interactive, true, 'an open Garage is the player\'s');
+  const before = screen.ticket();
+  const giveBack = screen.enter();
+  assert.equal(screen.phase, 'entering');
+  assert.equal(screen.isOpen, true, 'the Garage still shows (under the loader)');
+  assert.equal(screen.interactive, false, 'but is not the player\'s');
+  assert.equal(before.current(), false, 'a press before the start opens nothing over its loader');
+  const under = screen.ticket();
+  assert.equal(under.current(), false, 'a press under the loader takes no live ticket (before: it did, and opened over the loader)');
+  assert.equal(screen.handOff(), false, 'a hand-off under the loader hands nothing more on');
+  assert.equal(screen.show(), 'already', 'a return shows a Garage that still showed');
+  assert.equal(screen.phase, 'open', 'and gives it back to the player (a failed start\'s recovery)');
+  assert.equal(under.current(), false, 'a press made under the loader stays spent');
+  const refused = screen.enter();
+  const nested = screen.enter(); // a second start while one is in flight (the entry refuses it: busy)
+  nested();
+  assert.equal(screen.phase, 'entering', 'a second start\'s give-back does not give back the first start\'s Garage');
+  giveBack();
+  assert.equal(screen.phase, 'entering', 'nor does an earlier start\'s late settle');
+  refused(); // the start was refused: the Garage still shows, and is the player's again
+  assert.equal(screen.phase, 'open');
+  assert.equal(screen.interactive, true);
+  const after = screen.ticket();
+  assert.equal(after.current(), true, 'a press after the refusal takes a live ticket');
+  refused();
+  assert.equal(after.current(), true, 'a second give-back changes nothing');
+  const accepted = screen.enter();
+  const closed = [];
+  screen.onHide(() => closed.push('closer'));
+  assert.equal(screen.hide(), true, 'the activation hides a Garage handed on');
+  assert.deepEqual(closed, ['closer'], 'and runs its closers');
+  assert.equal(screen.isOpen, false);
+  accepted();
+  assert.equal(screen.phase, 'hidden', 'the accepted start\'s settle after its activation gives nothing back');
+  assert.equal(screen.show(), 'reopen');
+  assert.equal(screen.interactive, true);
+}
+{
+  // a cover main puts over the Garage (garage.ts reads main's battle-loader gate, setDecorativeWorkGate: a network
+  // round's loader too, which hides the Garage only at its activation, activationRuntime.ts)
+  let covered = false;
+  const screen = createGarageScreen({ covered: () => covered });
+  screen.show();
+  const before = screen.ticket();
+  covered = true;
+  assert.equal(screen.interactive, false, 'a covered Garage is not the player\'s (before: a cover changed nothing)');
+  assert.equal(screen.isOpen, true, 'though it shows under the cover');
+  assert.equal(before.current(), false, 'a load that lands under the cover opens nothing over it');
+  const under = screen.ticket();
+  covered = false;
+  assert.equal(screen.interactive, true, 'the lifted cover gives the Garage back');
+  assert.equal(before.current(), true, 'a press made on the uncovered Garage holds again once the cover lifts');
+  assert.equal(under.current(), false, 'a press made under the cover stays spent');
+}
+
 // 2. The shared ready wait rides the boot latch's edge (round 2: no poll; gameReady.selftest drives it over garage.ts's
 //    callouts): ready runs each waiter once, a cancelled one never, and a halted boot ends the wait.
 {
@@ -245,9 +318,18 @@ const { createGarageScreen, createLazyPanelToggle, createLazyOpener } = garageSc
   // (review r2) every press that hands the player on from the Garage ends the lazy openers' tickets while it still shows:
   // the start launchBattle hands on, and the BATTLE/Watch, campaign and room presses before their play request
   const launch = source.slice(source.indexOf('  function launchBattle('), source.indexOf('\n  }\n', source.indexOf('  function launchBattle(')));
-  assert.ok(launch.indexOf('if (refused) return false;') < launch.indexOf('garageScreen.handOff();'),
+  // (residual fix-up r1) the start launchBattle hands on: enter() (case 1d), given back on the entry's settle (case 10)
+  assert.ok(launch.indexOf('if (refused) return false;') < launch.indexOf('const giveBack = garageScreen.enter();'),
     'a refused press hands nothing on');
-  assert.match(launch, /garageScreen\.handOff\(\);\n    onBattle\(specId, mapId, options, announce\);/, 'the start handed on hands the Garage on');
+  assert.match(launch, /const giveBack = garageScreen\.enter\(\);\n    let settled[^\n]*\n    try \{\n      settled = onBattle\(specId, mapId, options, announce\);/,
+    'the start handed on hands the Garage on');
+  assert.match(launch, /if \(settled && typeof settled\.then === 'function'\) void Promise\.resolve\(settled\)\.finally\(giveBack\);\n    else giveBack\(\);/,
+    'and gives it back when the entry settles (at once for an entry that returns no settle)');
+  assert.match(source, /const garageScreen = createGarageScreen\(\{ covered: \(\) => garageSwatchCover\(\) \}\);/,
+    'the screen reads main\'s battle-loader cover (a network round\'s loader too)');
+  assert.match(source, /setDecorativeWorkGate\(covered: \(\) => boolean\) \{ garageSwatchCover = covered; \},/, 'which the gate sets');
+  assert.match(source, /function onKey\(e: KeyboardEvent\): void \{\n(?:\s+\/\/[^\n]*\n)*\s+if \(!garageScreen\.interactive\) return;/,
+    'the Garage\'s keys act only while it is the player\'s (case 10 drives them)');
   for (const [name, head] of [['the BATTLE and Watch press', '  function battle('], ['the campaign press', '  function deployCampaign('],
     ['the room press', '  function openMultiplayer(']]) {
     const body = source.slice(source.indexOf(head), source.indexOf('\n  }\n', source.indexOf(head)));
@@ -257,6 +339,11 @@ const { createGarageScreen, createLazyPanelToggle, createLazyOpener } = garageSc
     assert.ok(handOff > 0 && request > handOff, `${name} hands the player on before its play request`);
   }
   const main = readFileSync(new URL('../main.ts', import.meta.url), 'utf8');
+  // (residual fix-up r1) main's onBattle returns the entry's settle (the solo entry's begin), which gives the Garage back
+  assert.match(main, /\n {2}onBattle: \(specId, mapId, options, announce\) => \(\n\s+beginLocalBattleEntry\(specId, mapId, options, announce\)\n\s+\),/,
+    "main's onBattle returns the entry's settle");
+  assert.match(main, /\n {2}return soloBattleEntry\.begin\(specId, mapId, options, announcePress\);\n\}/, 'beginLocalBattleEntry returns it');
+  assert.match(main, /\ngarage\.setDecorativeWorkGate\(\(\) => battleLoad\.covering\);/, "main's cover is the battle loader's");
   const onCouch = main.slice(main.indexOf('\n  onCouch: '), main.indexOf('\n  },', main.indexOf('\n  onCouch: ')));
   assert.match(onCouch, /openCouchWhenCurrent\(\{ ticket: request\.ticket, load: /, "main's onCouch opens through the helper");
   assert.doesNotMatch(onCouch, /console\.error/, 'and hands a failure to the press, not the console alone');
@@ -271,8 +358,8 @@ const { createGarageScreen, createLazyPanelToggle, createLazyOpener } = garageSc
   assert.match(source, /onOpenChange: \(open\) => root\.classList\.toggle\('facets-open', open\),\n\s+\}\)\), \{ opener: true \}\);/,
     'the facet panel is an opener chunk (case 6 drives the toggle over one)');
   assert.match(source, /void loading\.then\(\(\) => \{\}, \(\) => reportLoadFailure\('cot-facets-load', /, 'whose failure marks the button');
-  assert.match(source, /if \(!garageScreen\.isOpen\) return;\n\s+if \(facetVisible\(selectedId\) \|\| vehicleLocked\) return;/,
-    'the filter\'s auto-select never changes the selection after the Garage hid');
+  assert.match(source, /if \(!garageScreen\.interactive\) return;\n\s+if \(facetVisible\(selectedId\) \|\| vehicleLocked\) return;/,
+    'the filter\'s auto-select never changes the selection after the Garage hid, nor under a start\'s loader (fix-up r1)');
   assert.match(source, /if \(battleMode === 'solo' && remembered && normalizeGameMode\(remembered\) !== battleGameMode\) setBattleGameMode\(remembered\);/,
     'a return to the Garage keeps a Private or LAN choice');
   assert.equal((source.match(/\.battle-word'\)\.textContent = battleWord\(\);/g) || []).length, 2,
@@ -494,10 +581,12 @@ const { createGarageScreen, createLazyPanelToggle, createLazyOpener } = garageSc
     const screen = createGarageScreen();
     screen.show();
     const press = recordPress(screen);
-    press.record.closeServiceRecord();
+    press.toggle(); // (residual fix-up r1) the trigger's own second press, as garage.ts wires it: closeServiceRecord()
+    assert.equal(press.record.isRecordOpen(), false, 'the trigger\'s second press reads as a close');
     press.land();
     await press.pressed;
-    assert.deepEqual(press.opened, [], 'a second press on the trigger while it loads still closes it (its own revision)');
+    assert.deepEqual(press.opened, [],
+      'a second press on the trigger while it loads still closes it (its close cancels the opener: recordOpener.cancel())');
   }
   {
     const screen = createGarageScreen();
@@ -606,4 +695,212 @@ const { createGarageScreen, createLazyPanelToggle, createLazyOpener } = garageSc
   }
 }
 
-console.log('garageOpenState.selftest: one open state, lapsing tickets, the hand-off, one ready wait, the consumables wait, the filter lazy toggle, the Garage wiring, the Couch press, the Service Record, the latched openers\' newest press PASS');
+// 10. (round 8 Y4 residual fix-up r1, review res-r1) The Garage's keys and lazy openers under a start it handed on, as
+//     garage.ts writes them (launchBattle, openTechTree and onKey, types stripped, over the real screen owner; the last
+//     sub-cases hand the start to the real solo entry runtime, as main.ts's onBattle does). The hand-off kept the Garage
+//     'open' under the battle's loader until the activation's hide, with onKey still registered: T under the loader took a
+//     live ticket (and, since the residual, revived a tree download in flight), so the tree opened over the loader; B, F,
+//     the arrows and the rest acted on the Garage under it. A held key repeated its action per auto-repeat (a held T
+//     sounded the tree's click per keydown while it loaded; F, I and R flipped their toggles at the repeat rate).
+{
+  const source = readFileSync(new URL('./garage.ts', import.meta.url), 'utf8');
+  const garageFunction = (head) => {
+    const start = source.indexOf(head);
+    assert.ok(start > 0, `garage.ts holds ${head.trim()}`);
+    return source.slice(start, source.indexOf('\n  }\n', start) + 4);
+  };
+  const treeHead = "  const techTreeTrigger = requiredElement<HTMLButtonElement>(root, '.cot-techtree-trigger');\n";
+  const treeStart = source.indexOf(treeHead);
+  const treeCode = source.slice(treeStart + treeHead.length, source.indexOf("  techTreeTrigger.addEventListener('click'", treeStart))
+    .replace(/\bimport\(/g, '__load(');
+  const launchCode = garageFunction('  function launchBattle(');
+  const keyCode = garageFunction('  function onKey(e: KeyboardEvent): void {');
+  const flush = () => new Promise((resolve) => setImmediate(resolve));
+  const deferred = () => { let resolve, reject; const promise = new Promise((ok, no) => { resolve = ok; reject = no; }); return { promise, resolve, reject }; };
+  /** garage.ts's own three over the given screen; `onBattle` is the entry the start is handed to. */
+  function garageKeys({ screen, onBattle }) {
+    const calls = [];
+    const opened = [];
+    const releases = [];
+    const techTreeTrigger = { setAttribute() {} };
+    const tree = { open: (opener) => opened.push(opener), close() {}, dispose() {} };
+    const scope = {
+      garageScreen: screen, api: { get isOpen() { return screen.isOpen; } }, onBattle, opts: { refusesBattle: () => false },
+      pressFailed: () => false, battleBtn: {}, battleGameMode: 'standard', emit: (event) => calls.push(`emit:${event}`),
+      __load: (specifier) => (specifier === './techTree.ts'
+        ? new Promise((resolve) => releases.push(() => resolve({ createTechTreeScreen: () => tree })))
+        : specifier === './techTreeStrings.ts' ? Promise.resolve({ ensureTechTreeStrings: () => {} }) : Promise.resolve({})),
+      reloadsForFailure: () => false, techTreeTrigger, t: (key) => key, closeMobileNavigation: () => calls.push('tree'),
+      setGaragePanel: () => {}, heroCardChunk: { load: () => Promise.resolve() }, specById: new Map(), selectedId: 'm1a2',
+      applySelection: () => true, onSelect: () => {}, reportLoadFailure: (id) => calls.push(`failed:${id}`),
+      root: { querySelector: () => null }, createLazyOpener,
+      eventElement: (event) => event.target ?? null, eqOpenSlot: -1, openGaragePanel: () => '', containModalTab: () => {},
+      battleMenu: { classList: { contains: () => false } }, rosterSearchInput: { focus: () => calls.push('search') },
+      document: { body: { dataset: { cotPanels: 'persistent' } } }, station: 'armor',
+      GARAGE_STATIONS: [['overview'], ['armor'], ['mobility'], ['firepower'], ['camo']],
+      setStation: (id) => calls.push(`station:${id}`), openBattleMenu: () => calls.push('deploy'),
+      openSelectedInGallery: () => calls.push('gallery'), toggleFavourite: () => calls.push('favourite'), photo: {},
+      openPhoto: () => calls.push('photo'), setCallouts: () => calls.push('callouts'), calloutsShown: false,
+      recordTrigger: { click: () => calls.push('record') }, openDocs: () => calls.push('docs'), deployModes: null,
+      step: (dir) => calls.push(`step:${dir}`), stepToEnd: () => calls.push('end'), battle: () => calls.push('battle'),
+    };
+    const garage = runMainStatements([treeCode, launchCode, keyCode], scope, '{ openTechTree, launchBattle, onKey }');
+    const key = (code, { repeat = false } = {}) => {
+      const event = { code, key: code === 'Slash' ? '/' : '', repeat, target: null, metaKey: false, ctrlKey: false,
+        altKey: false, defaultPrevented: false, preventDefault() { this.defaultPrevented = true; } };
+      garage.onKey(event);
+      return event;
+    };
+    const land = async () => { await flush(); for (const release of releases.splice(0)) release(); await flush(); await flush(); };
+    return { ...garage, key, calls, opened, releases, techTreeTrigger, land };
+  }
+  const EVERY_KEY = ['KeyT', 'KeyB', 'KeyV', 'KeyF', 'KeyP', 'KeyI', 'KeyR', 'F1', 'Slash', 'Digit2', 'KeyG', 'ArrowRight', 'Enter'];
+
+  // (a) T pressed (the tree's download in flight), then BATTLE whose start proceeds (the entry loads under its loader),
+  //     then T again under the loader, every other key, and the trigger's own press (a focused trigger's Enter); the
+  //     download lands; the activation hides the Garage and the start settles after it.
+  for (const renew of [true, false]) {
+    const label = renew ? 'pressed before BATTLE and again under the loader' : 'pressed only under the loader';
+    const screen = createGarageScreen();
+    screen.show();
+    const entry = deferred();
+    const garage = garageKeys({ screen, onBattle: () => entry.promise });
+    if (renew) {
+      garage.key('KeyT');
+      await flush();
+      assert.deepEqual(garage.calls, ['emit:ui:click', 'tree'], 'T opens the tree on the open Garage (its download in flight)');
+    }
+    assert.equal(garage.launchBattle('m1a2', 'steppe'), true, 'BATTLE hands the start on');
+    garage.calls.length = 0;
+    garage.key('KeyT');
+    assert.deepEqual(garage.calls, [], `T under the loader does nothing (${label}; before: it reached the tree's opener)`);
+    for (const code of EVERY_KEY) garage.key(code);
+    assert.deepEqual(garage.calls, [], 'no Garage key acts under the loader (before: Deploy, the favourite, the record, a tank step...)');
+    void garage.openTechTree(garage.techTreeTrigger); // the trigger's own press reached under the loader
+    await garage.land();
+    assert.deepEqual(garage.opened, [], `no tree over the loader (${label}; before: it opened when its download landed)`);
+    assert.deepEqual(garage.calls.filter((call) => call.startsWith('failed:')), []);
+    screen.hide(); // the activation (soloBattleStartRuntime.ts ui.hideGarage)
+    entry.resolve();
+    await flush();
+    assert.equal(screen.phase, 'hidden', 'the start settles after its activation: nothing given back');
+  }
+
+  // (b) the start ends with the Garage still showing (refused after its hand-off, or failed before its activation): the
+  //     Garage is the player's again, and T opens the tree. (c) an entry that returns no settle: the player's at once.
+  for (const settles of [true, false]) {
+    const screen = createGarageScreen();
+    screen.show();
+    const entry = deferred();
+    const garage = garageKeys({ screen, onBattle: () => (settles ? entry.promise : undefined) });
+    assert.equal(garage.launchBattle('m1a2', 'steppe'), true);
+    if (settles) {
+      garage.key('KeyT');
+      assert.deepEqual(garage.calls.filter((call) => call === 'tree'), [], 'T waits out the start in flight');
+      entry.resolve();
+      await flush();
+    }
+    assert.equal(screen.phase, 'open', settles ? 'a start refused gives the Garage back' : 'an entry with no settle hands nothing on');
+    garage.key('KeyT');
+    await garage.land();
+    assert.deepEqual(garage.opened, [garage.techTreeTrigger], 'then T opens the tree');
+  }
+
+  // (d) a network round's loader, which the Garage does not raise (the room's match start; activationRuntime.ts hides the
+  //     Garage only at its activation): main's battle-loader gate covers it the same way.
+  {
+    let covered = false;
+    const screen = createGarageScreen({ covered: () => covered });
+    screen.show();
+    const garage = garageKeys({ screen, onBattle: () => undefined });
+    covered = true;
+    for (const code of EVERY_KEY) garage.key(code);
+    void garage.openTechTree(garage.techTreeTrigger);
+    assert.deepEqual(garage.calls.filter((call) => call !== 'tree' && call !== 'emit:ui:click'), [],
+      'no Garage key acts under a network round\'s loader');
+    await garage.land();
+    assert.deepEqual(garage.opened, [], 'and no tree opens over it');
+    covered = false;
+    garage.calls.length = 0;
+    garage.key('KeyT');
+    await garage.land();
+    assert.deepEqual(garage.opened, [garage.techTreeTrigger], 'the lifted cover gives the keys back');
+  }
+
+  // (e) a held key: its auto-repeat is not another press. The arrows still step per repeat (holding one runs the strip).
+  {
+    const screen = createGarageScreen();
+    screen.show();
+    const garage = garageKeys({ screen, onBattle: () => undefined });
+    garage.key('KeyT');
+    for (let i = 0; i < 11; i += 1) garage.key('KeyT', { repeat: true }); // T held through the tree's download
+    await garage.land();
+    assert.equal(garage.calls.filter((call) => call === 'emit:ui:click').length, 1,
+      'a held T sounds one click (before: one per auto-repeat while the tree loaded)');
+    assert.deepEqual(garage.opened, [garage.techTreeTrigger], 'and opens the tree once');
+    for (const [code, action] of [['KeyB', 'deploy'], ['KeyV', 'gallery'], ['KeyF', 'favourite'], ['KeyP', 'photo'],
+      ['KeyI', 'callouts'], ['KeyR', 'record'], ['F1', 'docs'], ['Enter', 'battle']]) {
+      garage.calls.length = 0;
+      const first = garage.key(code);
+      garage.key(code, { repeat: true });
+      const repeat = garage.key(code, { repeat: true });
+      assert.equal(garage.calls.filter((call) => call === action).length, 1, `a held ${code} acts once (before: per auto-repeat)`);
+      assert.equal(repeat.defaultPrevented, first.defaultPrevented, `and its repeat's default stays as the press's (${code})`);
+    }
+    garage.calls.length = 0;
+    garage.key('ArrowRight');
+    garage.key('ArrowRight', { repeat: true });
+    assert.deepEqual(garage.calls, ['step:1', 'step:1'], 'a held arrow still steps per repeat');
+  }
+
+  // (f) the start handed to the real solo entry runtime (main.ts: onBattle -> beginLocalBattleEntry -> soloBattleEntry.begin):
+  //     accepted (the activation hides the Garage mid-load, the entry settles after the reveal), refused after a Garage
+  //     return's wait (a scene no battle may take), and failed before its activation (the recovery's return shows it).
+  for (const outcome of ['accepted', 'refused', 'failed']) {
+    const screen = createGarageScreen();
+    screen.show();
+    const returning = deferred();
+    const load = deferred();
+    const events = [];
+    let refuse = false;
+    const entry = createSoloBattleEntryRuntime({
+      lifecycle: createBattleEntryLifecycle({ nextFrame: async () => {}, now: () => 0 }),
+      loading: { begin: () => { events.push('load'); return load.promise; } },
+      battleLoad: { showPending: () => events.push('cover'), hide: async () => { events.push('uncover'); } },
+      audio: { loadingOn() {} },
+      enterGarage: () => { screen.show(); events.push('garage'); },
+      nextFrame: async () => {},
+      isVisibleSpecId: () => true, getSelectedSpecId: () => 'm1a2', getSelectedMapId: () => 'steppe',
+      reportError: () => {},
+      whenGarageSettled: () => (outcome === 'refused' ? returning.promise : null),
+      canTakeScene: () => !refuse,
+      presentSceneRefusal: () => events.push('refusal notice'),
+      presentFailure: () => events.push('failure notice'),
+    });
+    const garage = garageKeys({ screen, onBattle: (specId, mapId, options, announce) => entry.begin(specId, mapId, options, announce) });
+    assert.equal(garage.launchBattle('m1a2', 'steppe'), true);
+    garage.key('KeyT');
+    assert.deepEqual(garage.calls.filter((call) => call === 'tree'), [], `T does nothing while the entry runs (${outcome})`);
+    if (outcome === 'accepted') {
+      screen.hide(); // soloBattleStartRuntime.ts startBattle: ui.hideGarage(), mid-load
+      load.resolve();
+    } else if (outcome === 'refused') {
+      refuse = true; // a Studio opened meanwhile, a failed return that owes the Garage
+      returning.resolve();
+    } else load.reject(new Error('the battlefield did not load'));
+    await flush();
+    await flush();
+    if (outcome === 'accepted') {
+      assert.equal(screen.phase, 'hidden', 'an accepted start gives nothing back after its activation');
+      continue;
+    }
+    assert.ok(events.includes(outcome === 'refused' ? 'refusal notice' : 'failure notice'), `the entry ${outcome}`);
+    assert.equal(screen.phase, 'open', `the Garage is the player's again once the start ${outcome}`);
+    garage.calls.length = 0;
+    garage.key('KeyT');
+    await garage.land();
+    assert.deepEqual(garage.opened, [garage.techTreeTrigger], `T opens the tree after the start ${outcome}`);
+  }
+}
+
+console.log('garageOpenState.selftest: one open state, lapsing tickets, the hand-off, a start in flight, one ready wait, the consumables wait, the filter lazy toggle, the Garage wiring, the Couch press, the Service Record, the latched openers\' newest press, the keys under a loader PASS');

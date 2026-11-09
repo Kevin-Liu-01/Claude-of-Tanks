@@ -210,14 +210,16 @@ interface GarageOptions {
   /**
    * The BATTLE press's start. `announce` is the press's own `ui:battleStart`, handed to the entry, which runs it once
    * it accepts the start (round 4 F1; main.ts: the solo entry's begin): a press that waits for a Garage return in
-   * flight and is then refused announces nothing.
+   * flight and is then refused announces nothing. (round 8 Y4 residual fix-up r1) Returns the entry's settle, which the
+   * Garage waits on to be the player's again (garageScreen.ts enter): it settles after the activation for a start that
+   * runs, and with the Garage still showing for one refused or failed before it. Nothing returned: the player's at once.
    */
   readonly onBattle?: (
     specId: string,
     mapId: string,
     options: { readonly gameMode: GameModeId; readonly campaignOperationId?: string; readonly watch?: boolean; readonly couch?: CouchBattle },
     announce: () => void,
-  ) => void;
+  ) => PromiseLike<unknown> | undefined;
   /**
    * Couch mode (docs/COUCH-MODE.md): open the lobby over the Deploy screen; its Start deploys the seats here. (round 8 Y4
    * s3-03) A lazy opener: the lobby opens only while `ticket` holds (the Garage that asked still shows, and no press has
@@ -272,6 +274,8 @@ export interface GarageRuntime {
   show(selected?: string): void;
   hide(): void;
   drainThumbs(): void;
+  /** The battle loader's cover (main): decorative work holds under it, and (round 8 Y4 residual fix-up r1) the Garage is
+   *  not the player's there (its keys and lazy openers wait: garageScreen.ts `covered`). */
   setDecorativeWorkGate(covered: () => boolean): void;
   getStageRect(centred?: boolean): { x: number; y: number; w: number; h: number };
   /** The room the turntable keeps whole in, left to right (CSS px): the window's, past the readout column. */
@@ -584,7 +588,8 @@ function camoSwatchSurface(canvas: HTMLCanvasElement): UiCanvas {
 
 // 2026-10-13 (the perf stream): the picker's cold swatches drain only while the Garage is open and uncovered
 // (camoSwatchPainter.ts setCamoSwatchDrainGate); main.ts adds the battle loader's cover through setDecorativeWorkGate.
-// (2026-11-02 audit F5) the open half is the Garage screen's own state (garageScreen.ts), not a second flag
+// (2026-11-02 audit F5) the open half is the Garage screen's own state (garageScreen.ts), not a second flag. (round 8 Y4
+// residual fix-up r1) The cover is the screen's too (createGarageScreen `covered`): the Garage is not the player's under it
 let garageSwatchOpen: () => boolean = () => false;
 let garageSwatchCover: () => boolean = () => false;
 let swatchGateInstalled = false;
@@ -673,8 +678,11 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     ? 'publicNav.language.switchToChinese'
     : 'publicNav.language.switchToEnglish');
   ensureFonts();
-  // the screen's one open-state owner (2026-11-02 audit F5): its epoch is what every lazy opener checks after its load
-  const garageScreen = createGarageScreen();
+  // the screen's one open-state owner (2026-11-02 audit F5): its epoch is what every lazy opener checks after its load.
+  // (round 8 Y4 residual fix-up r1) main's battle-loader gate (setDecorativeWorkGate: battleLoad.covering) is a cover over
+  // it: under a battle's loader (a network round's too, whose activation hides the Garage only after its covered load)
+  // the Garage is not the player's: its keys do nothing and a lazy opener opens nothing
+  const garageScreen = createGarageScreen({ covered: () => garageSwatchCover() });
   garageSwatchOpen = () => garageScreen.isOpen;
   const root = document.createElement('div');
   root.className = 'cot-garage';
@@ -2890,7 +2898,8 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     facetSelectTimer = setTimeout(() => {
       facetSelectTimer = null;
       // (2026-11-02 audit F5) a filter change just before a battle press never changes the selection after the entry
-      if (!garageScreen.isOpen) return;
+      // (round 8 Y4 residual fix-up r1: nor under its loader, before the activation's hide)
+      if (!garageScreen.interactive) return;
       if (facetVisible(selectedId) || vehicleLocked) return;
       const first = (specsByCountry.get(countryFilter) || []).find((spec) => facetVisible(spec.id));
       if (first) api.setSelected(first.id);
@@ -3827,9 +3836,20 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     const options = campaignOperationId ? { gameMode, campaignOperationId } : watch ? { gameMode, watch } : couch ? { gameMode, couch } : { gameMode };
     if (!onBattle) return false;
     // (round 8 Y4 s3-03, review r2) the start is handed on: a lazy opener still loading (the couch lobby, Deploy, the tech
-    // tree…) opens nothing over the loader, though the Garage shows under it until the activation hides it
-    garageScreen.handOff();
-    onBattle(specId, mapId, options, announce); // MAP-CONFIG WIRING
+    // tree…) opens nothing over the loader, though the Garage shows under it until the activation hides it. (residual
+    // fix-up r1) And until the start ends the Garage is not the player's (garageScreen.ts enter): a press under the loader
+    // (the T key, a focused trigger) opens nothing and its keys do nothing. The entry's settle gives it back when the start
+    // ended with the Garage still showing (refused, or failed before its activation); the activation's hide ends it first
+    const giveBack = garageScreen.enter();
+    let settled: PromiseLike<unknown> | undefined;
+    try {
+      settled = onBattle(specId, mapId, options, announce); // MAP-CONFIG WIRING
+    } catch (err) {
+      giveBack();
+      throw err;
+    }
+    if (settled && typeof settled.then === 'function') void Promise.resolve(settled).finally(giveBack);
+    else giveBack();
     return true;
   }
 
@@ -4932,7 +4952,10 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     setGaragePanel('');
   });
   function onKey(e: KeyboardEvent): void {
-    if (!api.isOpen) return;
+    // (round 8 Y4 residual fix-up r1) the Garage's keys are the player's only while it is: not under a start's loader nor
+    // a cover (garageScreen.ts interactive). The listener stays from show() to hide(), and the Garage showed under the
+    // loader, so T opened the tree over it and B, F, the arrows acted on the Garage beneath
+    if (!garageScreen.interactive) return;
     const target = eventElement(e);
     if (target?.closest('.cot-modal')) return;
     // an open picker menu (the compare rival) owns its keys: F, / and the arrows are its own there
@@ -4951,6 +4974,9 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     // The Deploy screen covers the showroom: behind it only Enter (deploy) and Escape (above) act.
     const deployOpen = battleMenu.classList.contains('open');
     if (!typing && !deployOpen && !e.metaKey && !e.ctrlKey && !e.altKey) {
+      // (round 8 Y4 residual fix-up r1) a shortcut that acts is one press: a held key's auto-repeat (e.repeat) does nothing
+      // more and keeps its default prevented (a held T sounded the tree's click per keydown while it loaded; F, I and R
+      // flipped their toggles at the repeat rate). The stations and G only go somewhere, so a repeat changes nothing
       const stationKey = /^Digit([1-5])$/.exec(e.code);
       if (e.key === '/') { rosterSearchInput.focus(); e.preventDefault(); return; }
       if (stationKey && document.body.dataset.cotPanels === 'persistent') {
@@ -4958,25 +4984,27 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
         e.preventDefault();
         return;
       }
-      if (e.code === 'KeyB') { emit('ui:click', {}); openBattleMenu(); e.preventDefault(); return; }
+      if (e.code === 'KeyB') { if (!e.repeat) { emit('ui:click', {}); openBattleMenu(); } e.preventDefault(); return; }
       // the Garage's own key (its nav item advertises G): back to the showroom's overview from any station
       if (e.code === 'KeyG') {
         if (document.body.dataset.cotPanels === 'persistent' && station !== 'overview') setStation('overview');
         e.preventDefault();
         return;
       }
-      if (e.code === 'KeyV') { openSelectedInGallery(); e.preventDefault(); return; }
-      if (e.code === 'KeyT') { void openTechTree(techTreeTrigger); e.preventDefault(); return; }
-      if (e.code === 'KeyF') { toggleFavourite(selectedId); e.preventDefault(); return; }
-      if (e.code === 'KeyP' && photo) { openPhoto(); e.preventDefault(); return; }
+      if (e.code === 'KeyV') { if (!e.repeat) openSelectedInGallery(); e.preventDefault(); return; }
+      if (e.code === 'KeyT') { if (!e.repeat) void openTechTree(techTreeTrigger); e.preventDefault(); return; }
+      if (e.code === 'KeyF') { if (!e.repeat) toggleFavourite(selectedId); e.preventDefault(); return; }
+      if (e.code === 'KeyP' && photo) { if (!e.repeat) openPhoto(); e.preventDefault(); return; }
       if (e.code === 'KeyI' && document.body.dataset.cotPanels === 'persistent') {
-        emit('ui:click', {});
-        setCallouts(!calloutsShown);
+        if (!e.repeat) {
+          emit('ui:click', {});
+          setCallouts(!calloutsShown);
+        }
         e.preventDefault();
         return;
       }
-      if (e.code === 'KeyR') { recordTrigger.click(); e.preventDefault(); return; }
-      if (e.code === 'F1') { openDocs(); e.preventDefault(); return; }
+      if (e.code === 'KeyR') { if (!e.repeat) recordTrigger.click(); e.preventDefault(); return; }
+      if (e.code === 'F1') { if (!e.repeat) openDocs(); e.preventDefault(); return; }
     }
     if (typing) return;
     // the bare screen's arrows go to the mode picker (a dropdown or a segmented control keeps its own)
@@ -4994,9 +5022,9 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     else if (e.code === 'ArrowRight') { step(1); e.preventDefault(); }
     else if ((e.code === 'Home' || e.code === 'End') && target?.closest('.cot-cards')) { stepToEnd(e.code === 'End'); e.preventDefault(); }
     else if (e.code === 'Enter' || e.code === 'NumpadEnter') {
-      // the bare screen's Enter deploys; every control keeps its own
+      // the bare screen's Enter deploys; every control keeps its own (residual fix-up r1: a held Enter deploys once)
       if (target?.closest('button,input,select,a,[role="button"]')) return;
-      battle();
+      if (!e.repeat) battle();
       e.preventDefault();
     }
   }
@@ -5107,7 +5135,8 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     /** Normalize packaged tank portraits (screenshot compatibility). */
     drainThumbs() { drainTankThumbs(); heroCards?.drainHeroCards(cardsEl); },
 
-    /** 2026-10-13: decorative Garage work (the picker's cold swatches) also holds while `covered()` is true. */
+    /** 2026-10-13: decorative Garage work (the picker's cold swatches) also holds while `covered()` is true. (round 8 Y4
+     *  residual fix-up r1) And the Garage is not the player's then (garageScreen.ts `covered`): its keys and openers wait. */
     setDecorativeWorkGate(covered: () => boolean) { garageSwatchCover = covered; },
 
     /** The rect the showroom frames the hero in (CSS pixels, measureStage); `centred: false` is the whole free stage (the
