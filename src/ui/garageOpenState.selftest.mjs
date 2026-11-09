@@ -702,6 +702,9 @@ const { createGarageScreen, createLazyPanelToggle, createLazyOpener } = garageSc
 //     live ticket (and, since the residual, revived a tree download in flight), so the tree opened over the loader; B, F,
 //     the arrows and the rest acted on the Garage under it. A held key repeated its action per auto-repeat (a held T
 //     sounded the tree's click per keydown while it loaded; F, I and R flipped their toggles at the repeat rate).
+//     (residual fix-up r2, review res-r2) (a) and (f) also press ticks later with the entry in flight and no cover over
+//     the Garage (in (f) refused, while the entry waits on a Garage return, before its loader): the Garage stays not the
+//     player's until the entry settles, not for one tick (only case 5's pin caught an early asynchronous give-back).
 {
   const source = readFileSync(new URL('./garage.ts', import.meta.url), 'utf8');
   const garageFunction = (head) => {
@@ -716,6 +719,10 @@ const { createGarageScreen, createLazyPanelToggle, createLazyOpener } = garageSc
   const launchCode = garageFunction('  function launchBattle(');
   const keyCode = garageFunction('  function onKey(e: KeyboardEvent): void {');
   const flush = () => new Promise((resolve) => setImmediate(resolve));
+  // (residual fix-up r2, review res-r2) a key under the loader arrives in the browser tasks after the press: microtasks,
+  // immediates and a timer later (so a give-back that runs a microtask, an immediate or a 0 ms timer after the press,
+  // instead of at the entry's settle, has run by then; timers fire in expiry order, so the 2 ms wait comes after it)
+  const ticksLater = async () => { await flush(); await flush(); await flush(); await new Promise((resolve) => setTimeout(resolve, 2)); };
   const deferred = () => { let resolve, reject; const promise = new Promise((ok, no) => { resolve = ok; reject = no; }); return { promise, resolve, reject }; };
   /** garage.ts's own three over the given screen; `onBattle` is the entry the start is handed to. */
   function garageKeys({ screen, onBattle }) {
@@ -776,6 +783,14 @@ const { createGarageScreen, createLazyPanelToggle, createLazyOpener } = garageSc
     assert.deepEqual(garage.calls, [], `T under the loader does nothing (${label}; before: it reached the tree's opener)`);
     for (const code of EVERY_KEY) garage.key(code);
     assert.deepEqual(garage.calls, [], 'no Garage key acts under the loader (before: Deploy, the favourite, the record, a tank step...)');
+    // (residual fix-up r2, review res-r2) and ticks later, as a key under the loader arrives in the browser, with the
+    // entry still in flight and nothing over the Garage (this screen reads no cover): only the start in flight holds its
+    // keys (a give-back that ran before the entry settled let them act here; the presses above, in the press's own
+    // task, could not see it)
+    await ticksLater();
+    for (const code of EVERY_KEY) garage.key(code);
+    assert.deepEqual(garage.calls, [], `no Garage key acts ticks later while the start is in flight (${label})`);
+    assert.equal(screen.phase, 'entering', `the Garage waits out the start in flight, ticks after its press (${label})`);
     void garage.openTechTree(garage.techTreeTrigger); // the trigger's own press reached under the loader
     await garage.land();
     assert.deepEqual(garage.opened, [], `no tree over the loader (${label}; before: it opened when its download landed)`);
@@ -881,6 +896,22 @@ const { createGarageScreen, createLazyPanelToggle, createLazyOpener } = garageSc
     assert.equal(garage.launchBattle('m1a2', 'steppe'), true);
     garage.key('KeyT');
     assert.deepEqual(garage.calls.filter((call) => call === 'tree'), [], `T does nothing while the entry runs (${outcome})`);
+    // (residual fix-up r2, review res-r2) and ticks later, the entry still in flight. The refused start still waits on
+    // the Garage return, before its cover (showPending): the span only the start in flight guards, since main's battle
+    // loader is not up yet. The others load under their cover (this screen reads none, so the start in flight alone
+    // holds the keys here too). Every key, then the trigger's own press, whose download lands before the start ends.
+    await ticksLater();
+    assert.deepEqual(events, outcome === 'refused' ? [] : ['cover', 'load'],
+      outcome === 'refused' ? 'the entry waits on the Garage return, uncovered' : `the entry loads (${outcome})`);
+    garage.calls.length = 0;
+    for (const code of EVERY_KEY) garage.key(code);
+    assert.deepEqual(garage.calls, [], outcome === 'refused'
+      ? 'no Garage key acts while the entry waits on the Garage return (its start then refused)'
+      : `no Garage key acts ticks later while the entry runs (${outcome})`);
+    void garage.openTechTree(garage.techTreeTrigger);
+    await garage.land();
+    assert.deepEqual(garage.opened, [], `and no tree opens while it runs (${outcome})`);
+    assert.equal(screen.phase, 'entering', `the Garage waits out the entry in flight (${outcome})`);
     if (outcome === 'accepted') {
       screen.hide(); // soloBattleStartRuntime.ts startBattle: ui.hideGarage(), mid-load
       load.resolve();
