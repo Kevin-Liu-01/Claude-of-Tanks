@@ -2288,11 +2288,11 @@ function stepSpotting(game: SoloGameState, bus: EventBus): void {
  * player's presses go through its UI (game/playerBattleActions.ts).
  */
 function stepHullControls(game: SoloGameState, bus: EventBus, world: SoloWorld): void {
-  // what reached the bots since the last flush (the commander's orders) lands before the first of them thinks (audit M7)
-  applyPendingBotNews(game.tanks);
   // a held battle's bots stand in place of their controllers, and the player's damage state is pinned (devBattleHold.ts)
   const held = battleHeld(game);
   if (held) holdBattleStep(game);
+  // what reached the bots since the last flush (the commander's orders) lands before the first of them thinks (audit M7)
+  applyPendingBotNews(game.tanks);
   // wrecks narrow streets: the bots' grid re-tests the edges round them a few times a second (as the authority does)
   if (game._botNavigation && game._navigationWrecks && (game._navigationWreckTicks = (game._navigationWreckTicks ?? 0) + 1) % 15 === 1) {
     syncNavigationWrecks(game._botNavigation, game._navigationWrecks,
