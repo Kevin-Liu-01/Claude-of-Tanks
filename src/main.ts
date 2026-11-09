@@ -245,6 +245,7 @@ import { loadEquipment as loadSelectedEquipment } from './game/equipment.ts';
 import { consumableSpecFor, loadConsumables } from './game/consumableLoadout.ts';
 import { createSettingsAccess } from './ui/settingsAccess.ts';
 import { togglePhonePause } from './ui/phonePause.ts';
+import { setBodyFlag } from './ui/bodyFlags.ts';
 import { shellTypeCode } from './ui/shellLabels.ts';
 import { createMobileBattleInputAccess } from './game/mobileBattleInputAccess.ts';
 import { installResponsiveLayout } from './ui/responsiveLayout.ts';
@@ -3908,7 +3909,9 @@ const couchOwner = createLazyRuntimeOwner(
     togglePause: () => togglePhonePause(settings, () => battlePhase.isBattle()),
     emit: (type, payload) => bus.emit(type, payload),
     on: (type, listener) => bus.on(type, listener),
-    setSpectating: (on) => { document.body.classList.toggle('cot-spectating', on); currentHud()?.setCouchView(on); },
+    // (round 8 Y4 s3-02) the couch view by its own reason of the body class's owner (2026-11-02 audit F8), so no other
+    // owner's reason strips it; both writes happen only on a change (the runtime asks every frame)
+    setSpectating: (on) => { setBodyFlag('cot-spectating', 'couch', on); currentHud()?.setCouchView(on); },
   }),
 );
 // the HUD's shells and the damage panel name the tank a watcher rides or drives (read-only while riding)

@@ -5,7 +5,7 @@
 // attribute outlived a killcam; four writers raced for the root's display (a sniper flip undid the replay veil, a veil
 // lifted after the Garage return showed an empty HUD); the HUD and the Watch HUD both wrote body.cot-spectating; a
 // watcher's side change kept the old spawn flags. Driven through the real HUD (initHud) over the recording DOM.
-import { created, windowStub } from './hudDomHarness.test-support.mjs';
+import { created, resizeObserved, windowStub } from './hudDomHarness.test-support.mjs';
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import { ensureAuthorityFleet } from '../vehicles/authorityFleet.ts';
@@ -186,6 +186,32 @@ assert.equal(body.classes.has('cot-spectating'), true, 'the bar leaving keeps th
 setBodyFlag('cot-spectating', 'watch', false);
 assert.equal(body.classes.has('cot-spectating'), false);
 
+// --- (round 8 Y4 s3-02) the couch view leaves with its battle: the HUD's endBattle clears it, so the next battle's player
+// is its own tank again (the couch runtime asks for the view on every couch frame; a Watch battle after a couch one never
+// runs that frame, and its ridden tank drew as another's: an own-side minimap arrow of its own beside its marker) ---
+{
+  const minimap = created.find((e) => e.tagName === 'CANVAS' && e.parentNode?.classes?.has('cot-minimap'));
+  assert.ok(minimap, 'the minimap canvas');
+  resizeObserved(minimap, 220, 220); // its plate's box after layout (the store is sized from it)
+  const minimapOps = minimap.getContext('2d').ops;
+  /** The tank arrows (a hull's minimap mark, size 5; the player's own marker is its overlay's, size 6.6) at the next paint. */
+  const tankArrows = async () => {
+    await settle(80); // past the map's 15 Hz cadence
+    minimapOps.length = 0;
+    frame();
+    return minimapOps.filter((op) => op.op === 'fill' && op.path?.[0]?.[0] === 'moveTo' && op.path[0][2] === -5).length;
+  };
+  hud.setMode('hidden');
+  hud.setMode('battle');
+  const own = await tankArrows();
+  assert.ok(own >= 1, `the map paints the tanks' arrows (${own})`);
+  hud.setCouchView(true); // a couch battle's shared screen: no tank is the HUD's own
+  assert.equal(await tankArrows(), own + 1, "on the couch's shared screen seat 1's tank is one of the field's");
+  hud.setMode('hidden'); // the couch battle ends (the Garage return)
+  hud.setMode('battle'); // the next battle (a Watch battle rides its tank; no couch frame runs)
+  assert.equal(await tankArrows(), own, "the next battle's player is its own tank again (before: the couch view outlived the battle)");
+}
+
 // --- a watcher who changes side reads the spawn flags from the new side ---
 hud.setMode('hidden');
 hud.setMode('battle');
@@ -233,4 +259,4 @@ for (const leave of ['setMode', 'phase']) {
   assert.equal(body.classes.has('cot-es-armed'), false, `${leave}: and so does the armed suppressor`);
 }
 
-console.log('hudLifecycle.selftest: the frame-mode entry resets, the hidden cleanup (revive count, aerial class, parked aim notice, picker of allies, ready pulse), the revive count on the battle clock, the scope attribute through a killcam, one display owner, the spectating reasons, the re-sided spawn flags, a hidden frame through the lifecycle and the end report\'s freeze bounded by the battle pass');
+console.log('hudLifecycle.selftest: the frame-mode entry resets, the hidden cleanup (revive count, aerial class, parked aim notice, picker of allies, ready pulse), the revive count on the battle clock, the scope attribute through a killcam, one display owner, the spectating reasons, the couch view bounded by its battle, the re-sided spawn flags, a hidden frame through the lifecycle and the end report\'s freeze bounded by the battle pass');

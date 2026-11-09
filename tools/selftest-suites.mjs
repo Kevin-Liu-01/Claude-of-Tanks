@@ -1895,6 +1895,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/pad/padLobby.selftest.mjs', // 2026-11-01 (couch-mode-268, docs/COUCH-MODE.md): one lobby, a receiver per seat
     'src/game/couchSeats.selftest.mjs', // couch-mode-268: which roster tank each phone drives, and a seat's controls
     'src/game/couchCamera.selftest.mjs', // couch-mode-268: the shared camera frames every seat
+    // round 8 Y4 s3-02/s3-09: the couch view by its own reason in every couch battle; Start closes the join window first
+    'src/app/couchRuntime.selftest.mjs',
     // round 8 Y4 s3-05: one phone pause rule (open, or close with no relock) for the single pairing and every couch seat
     'src/ui/phonePause.selftest.mjs',
     'src/pad/qr.selftest.mjs',

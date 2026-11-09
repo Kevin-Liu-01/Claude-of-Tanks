@@ -109,11 +109,13 @@ export function openCouchLobby(runtime: CouchRuntime, request: CouchLobbyRequest
   const start = button(footer, 'primary', t('couch.start'));
   end.addEventListener('click', () => { runtime.close(); modal?.close(); });
   reopen.addEventListener('click', () => lobby.setOpen(true));
+  // (round 8 Y4 s3-09) the runtime's start edge: the join window closes, then the seats here deploy
   start.addEventListener('click', () => {
-    const inPlay = runtime.seatsInPlay();
-    if (!inPlay.length) return;
-    modal?.close();
-    request.start({ seats: inPlay, sides, names: inPlay.map((n) => t('pad.seat', { n })) });
+    runtime.startBattle((inPlay) => {
+      modal?.close();
+      request.start({ seats: inPlay, sides, names: inPlay.map((n) => t('pad.seat', { n })) });
+      return true;
+    });
   });
 
   let shownCode = '';

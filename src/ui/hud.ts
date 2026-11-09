@@ -8441,7 +8441,7 @@ export function initHud(bus: EventBus): HudRuntime {
   let playerRef: HudTank | null = null;
   // watch mode (watch-mode-243): flying the drone, no tank is the HUD's own; riding along, the ridden one is
   let watchDrone: HudWatchDrone | null = null;
-  // couch mode: the shared screen is every seat's (setCouchView)
+  // couch mode: the shared screen is every seat's (setCouchView, asked every couch frame; endBattle clears it)
   let couchView = false;
   /** The HUD's own tank: the player's, or the one a watcher rides (the frame's player), never one while flying, nor on a
    *  couch battle's shared screen. */
@@ -9007,6 +9007,9 @@ export function initHud(bus: EventBus): HudRuntime {
     specBar.classList.remove('in', 'show');
     specAllies.close();
     setBodyFlag('cot-spectating', 'spectate-bar', false);
+    // (round 8 Y4 s3-02) a couch battle's shared view goes with it: the couch runtime asks for it again on every couch
+    // frame, and a battle that never runs one (Watch after a couch battle) rode its tank as another's
+    if (couchView) { couchView = false; mmDirty = true; }
     resetCombatPresentation();
     // the revive count, the parked aim notice (it lives in the page's battle notice region, outside root), the flight's
     // body class and the reload ready pulse were not on the list: each outlived the battle into the Garage
