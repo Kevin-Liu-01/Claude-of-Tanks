@@ -65,8 +65,7 @@ function stateFor(ctx: RegionalBuildContext): ChoufState {
     rng, look: ctx.variant, shutter,
     window: {
       frame: FRAME, frameWidth: 0.06, frameOut: 0.05, bars: 'two',
-      // (buildings-271 R2: the dressed surround a size up and 8 cm proud, its shadow line reading at 35 m)
-      surround: { bucket: 'stone', width: 0.2, out: 0.08, lintel: 0.24 }, sill: { bucket: 'stone', out: 0.12 },
+      surround: { bucket: 'stone', width: 0.14, out: 0.04, lintel: 0.16 }, sill: { bucket: 'stone', out: 0.08 },
       shutters: { colour: shade(shutter, 0.86 + rng() * 0.26), kind: 'louvred', closed: 0.3 },
     },
     litShare: 0.45,
