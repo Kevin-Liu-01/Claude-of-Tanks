@@ -13,6 +13,8 @@
 // A chunk that landed inside that covered load still held a current ticket and opened its surface over the loader (the
 // couch lobby: its modal and a pairing lobby). So the press that hands the player on (garage.ts: a start handed to the
 // entry, the BATTLE, Watch, campaign and room presses) ends the tickets with handOff(), while the Garage still shows.
+// (round 8 Y4 residual) A start refused after its hand-off leaves the Garage the player's: an opener whose load is still
+// in flight takes the next press as the one it opens for (createLazyOpener), so that press is not lost.
 
 export type GarageScreenPhase = 'unpresented' | 'open' | 'hidden';
 
@@ -35,8 +37,9 @@ export interface GarageScreen {
   /**
    * The player was handed on from the open Garage (a battle start, the play menu): every ticket taken before lapses, so
    * a lazy opener still loading opens nothing over what follows. The Garage still shows (under the battle's loader until
-   * the activation hides it; a start refused later leaves it open, and a new press takes a new ticket). False when it
-   * was not open (its tickets had lapsed already).
+   * the activation hides it; a start refused later leaves it open, and a new press takes a new ticket, a press on an
+   * opener whose load is still in flight included: createLazyOpener). False when it was not open (its tickets had lapsed
+   * already).
    */
   handOff(): boolean;
   ticket(): GarageScreenTicket;
@@ -87,6 +90,74 @@ export function createGarageScreen({ warn = (message: string, error: unknown) =>
     },
   };
   return screen;
+}
+
+export type LazyOpenerPhase = 'idle' | 'loading';
+
+/** A lazy opener's load in flight: the newest press it opens for. */
+export interface LazyOpenerLoad<P> {
+  /** The newest press's own values (its trigger, the selection it asked for). */
+  readonly press: P;
+  /** Whether the landed load may open: the newest press's ticket holds (the Garage still shows and handed nobody on
+   *  since), and no close came after it. */
+  current(): boolean;
+}
+
+/** A Garage surface that loads on its press, with one load in flight (the Couch lobby, the tech tree, the Service Record). */
+export interface LazyOpener<P> {
+  readonly phase: LazyOpenerPhase;
+  /** The load in flight would open now (a toggle reads it as open). */
+  readonly wanted: boolean;
+  /**
+   * A press: the load to start (the caller loads, opens only if `current()` once it landed, then settles it), or null
+   * when one is in flight, which now opens for this press instead (its values, a ticket taken now).
+   */
+  press(values: P): LazyOpenerLoad<P> | null;
+  /** A close while the load is in flight: it opens nothing unless a press comes after. */
+  cancel(): void;
+  /** The started load settled (it opened, opened nothing or failed): the next press starts another. */
+  settle(load: LazyOpenerLoad<P>): void;
+}
+
+/**
+ * A lazy opener's press (round 8 Y4 residual, the review's r4 finding on 2026-11-02 audit F5's rule): the lazy toggle's
+ * rule below for a surface opened per press. A press while the load is in flight is not dropped: it becomes the press the
+ * load opens for, with its own ticket. The hand-off lapses the tickets taken before it while the Garage still shows (a
+ * BATTLE or Launch press whose start was refused, a room menu the player closed); the openers' latches used to drop the
+ * player's next press there, the load landed on the first press's lapsed ticket and opened nothing, and only a third
+ * press opened the surface. The load still checks the newest press's ticket, so nothing opens over a loader or a battle.
+ */
+export function createLazyOpener<P>(screen: Pick<GarageScreen, 'ticket'>): LazyOpener<P> {
+  /** The load in flight: the newest press's values and ticket (null once a close cancelled it). */
+  let claim: { press: P; ticket: GarageScreenTicket | null } | null = null;
+  let pending: LazyOpenerLoad<P> | null = null;
+  return {
+    get phase() { return pending ? 'loading' : 'idle'; },
+    get wanted() { return pending?.current() === true; },
+    press(values) {
+      if (claim) {
+        claim.press = values;
+        claim.ticket = screen.ticket();
+        return null;
+      }
+      const own = { press: values, ticket: screen.ticket() as GarageScreenTicket | null };
+      claim = own;
+      const load: LazyOpenerLoad<P> = {
+        get press() { return own.press; },
+        current: () => own.ticket?.current() === true,
+      };
+      pending = load;
+      return load;
+    },
+    cancel() {
+      if (claim) claim.ticket = null;
+    },
+    settle(load) {
+      if (load !== pending) return;
+      pending = null;
+      claim = null;
+    },
+  };
 }
 
 export type LazyPanelPhase = 'idle' | 'loading' | 'mounted';

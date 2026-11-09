@@ -40,7 +40,7 @@ import { EQUIPMENT_EMPTY_ID, createGarageEquipmentPicker } from './garageEquipme
 import { createGarageConsumables, type GarageConsumables } from './garageConsumables.ts';
 import { createPickerMenu, panelRoom, type PickerMenu } from './components/pickerMenu.ts';
 import { closeSurface, closeSurfacesWithin, openSurface, sweepHiddenSurfaces, type TransientSurface } from './components/surfaceStack.ts';
-import { createGarageScreen, createLazyPanelToggle, type GarageScreenTicket } from './garageScreen.ts';
+import { createGarageScreen, createLazyOpener, createLazyPanelToggle, type GarageScreenTicket } from './garageScreen.ts';
 // (2026-11-02 audit S3) the product's boot latch, read only through gameReady.ts (never its harness mirror, the flag the
 // tools wait on)
 import { gameReady } from './gameReady.ts';
@@ -222,11 +222,13 @@ interface GarageOptions {
    * Couch mode (docs/COUCH-MODE.md): open the lobby over the Deploy screen; its Start deploys the seats here. (round 8 Y4
    * s3-03) A lazy opener: the lobby opens only while `ticket` holds (the Garage that asked still shows, and no press has
    * handed the player on since), with `trigger` as the modal's; the promise rejects with a CouchChunkError when a chunk did
-   * not arrive (the press reports it), and with the open step's own error otherwise (the press logs it).
+   * not arrive (the press reports it), and with the open step's own error otherwise (the press logs it). (round 8 Y4
+   * residual) A Couch press while the chunks load is not a second request: this one opens for the newest press (its
+   * ticket, and the mode and Start it reads).
    */
   readonly onCouch?: (request: {
     readonly gameMode: GameModeId;
-    readonly ticket: GarageScreenTicket;
+    readonly ticket: Pick<GarageScreenTicket, 'current'>;
     readonly trigger: HTMLElement;
     start(couch: CouchBattle): boolean;
   }) => Promise<unknown>;
@@ -912,8 +914,9 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
   // The Service Record dialog renders only while open: a garage return after battle
   // refreshes just the button's badges, never a hidden tab of medal artwork.
   let serviceRecord: ReturnType<typeof createServiceRecordDialog> | null = null;
-  let recordOpening = false;
-  let recordOpenRevision = 0;
+  // (round 8 Y4 residual) its press, a lazy opener (garageScreen.ts createLazyOpener): a close while the record loads
+  // cancels it, and a press after that close or after a hand-off is the one it opens for
+  const recordOpener = createLazyOpener<HTMLElement>(garageScreen);
   const recordNames: RecordViewNames = {
     vehicle: (id) => {
       const vehicle = allSpecs.find((spec) => spec.id === id);
@@ -1506,34 +1509,36 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     emit('ui:click', {});
     window.location.href = hrefForLocale(garageGalleryHref(selectedId, layer), getLocale());
   };
-  const isRecordOpen = () => serviceRecord?.isOpen() || recordOpening;
+  // (round 8 Y4 residual) a record still loading counts as open (the trigger's press closes it) only while its newest
+  // press holds: after a hand-off the trigger's press asks for it again
+  const isRecordOpen = () => serviceRecord?.isOpen() || recordOpener.wanted;
   const openServiceRecord = async (opener?: HTMLElement) => {
-    if (recordOpening || reloadsForFailure(recordTrigger, 'cot-record-load', t('garage.record.loadError'))) return;
+    if (reloadsForFailure(recordTrigger, 'cot-record-load', t('garage.record.loadError'))) return;
     closeGarageVariantMenu(); setGaragePanel('');
-    const revision = ++recordOpenRevision;
-    // (round 8 Y4 fix-up r3) a lazy opener like the others (audit F5): its revision lapses at a close, the Garage's ticket
-    // at a hide or a hand-off, so a record landing after BATTLE opens nothing over the loader
-    const ticket = garageScreen.ticket();
     const trigger = opener ?? (document.activeElement instanceof HTMLElement ? document.activeElement : recordTrigger);
-    recordOpening = true;
+    // (round 8 Y4 fix-up r3) a lazy opener like the others (audit F5): a close cancels it, the Garage's ticket lapses at a
+    // hide or a hand-off, so a record landing after BATTLE opens nothing over the loader. (residual) A press while it
+    // loads is the press it opens for: the phone menu's used to return at the latch here
+    const opening = recordOpener.press(trigger);
+    if (!opening) return;
     try {
       const [{ createServiceRecordDialog }] = await Promise.all([
         import('./serviceRecordDialog.ts'), import('./serviceRecord.css'), import('./richTooltip.css'),
       ]);
-      if (revision !== recordOpenRevision || !ticket.current()) return;
+      if (!opening.current()) return;
       serviceRecord ??= createServiceRecordDialog(recordNames, () => {
         recordTrigger.setAttribute('aria-expanded', 'false'); refreshServiceRecord();
       });
-      serviceRecord.open(trigger); recordTrigger.setAttribute('aria-expanded', 'true'); refreshServiceRecord();
+      serviceRecord.open(opening.press); recordTrigger.setAttribute('aria-expanded', 'true'); refreshServiceRecord();
     } catch {
       // a failed chunk fetch says so where the player looks (it was a tip on the trigger only): the trigger's error state
       // and Reload page (the loading census 262: the toast had none)
       reportLoadFailure('cot-record-load', t('garage.record.loadError'), [recordTrigger]);
     }
-    finally { recordOpening = false; }
+    finally { recordOpener.settle(opening); }
   };
   const closeServiceRecord = ({ restoreFocus = true } = {}) => {
-    recordOpenRevision++; serviceRecord?.close({ restoreFocus });
+    recordOpener.cancel(); serviceRecord?.close({ restoreFocus });
   };
   const isMobileNavigationOpen = () => !mobileNavMenu.hidden;
   // the Garage's transient surfaces (components/surfaceStack.ts): the phone's navigation menu, the folded layout's dossier
@@ -4364,28 +4369,33 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
   setupWatch.addEventListener('click', () => { if (!setupWatch.disabled) battle(true); });
   const setupCouch = requiredElement<HTMLButtonElement>(battleMenu, '[data-battle-couch]');
   // (round 8 Y4 s3-03) the couch lobby is one of the Garage's lazy openers (2026-11-02 audit F5): the press takes the
-  // Garage's ticket (main's onCouch opens the lobby only while it holds, src/app/couchOpener.ts), a repeat press while the
-  // chunks load does nothing, and a chunk that did not arrive is the kit's failure (the button's error state, Reload page).
-  // (review r2) A lobby that failed to open once loaded (its socket, a bug) is not a failed chunk: the button stays a
-  // press, and the console keeps the cause either way
-  let couchOpening = false;
+  // Garage's ticket (main's onCouch opens the lobby only while it holds, src/app/couchOpener.ts), and a chunk that did not
+  // arrive is the kit's failure (the button's error state, Reload page). (review r2) A lobby that failed to open once
+  // loaded (its socket, a bug) is not a failed chunk: the button stays a press, and the console keeps the cause either way.
+  // (residual) A press while the chunks load asks for nothing more: it is the press they open the lobby for (its ticket,
+  // its Deploy selection; createLazyOpener), so after a hand-off whose start was refused the next press is not lost
+  const couchOpener = createLazyOpener<{ readonly specId: string; readonly mapId: string; readonly gameMode: GameModeId }>(garageScreen);
   const openCouch = (): boolean => {
     const onCouch = opts.onCouch;
-    if (couchOpening || setupCouch.disabled || !selectedId || !onCouch) return false;
+    if (setupCouch.disabled || !selectedId || !onCouch) return false;
     if (reloadsForFailure(setupCouch, 'cot-couch-load', t('loadFailed.generic'))) return false;
-    const specId = selectedId;
-    const mapId = fieldMapId();
-    const gameMode = battleGameMode;
-    const request = { gameMode, ticket: garageScreen.ticket(), trigger: setupCouch,
-      start: (couch: CouchBattle) => { closeBattleMenu(); return launchBattle(specId, mapId, { gameMode, couch }); } };
-    couchOpening = true;
+    const opening = couchOpener.press({ specId: selectedId, mapId: fieldMapId(), gameMode: battleGameMode });
+    if (!opening) return true;
+    const request = {
+      get gameMode() { return opening.press.gameMode; }, ticket: opening, trigger: setupCouch,
+      start: (couch: CouchBattle) => {
+        const { specId, mapId, gameMode } = opening.press;
+        closeBattleMenu();
+        return launchBattle(specId, mapId, { gameMode, couch });
+      },
+    };
     void Promise.resolve().then(() => onCouch(request))
       .catch((error: unknown) => {
         if (!(error instanceof CouchChunkError)) { console.error('[couch] the lobby failed to open', error); return; }
         reportLoadFailure('cot-couch-load', t('loadFailed.generic'), [setupCouch]);
         console.warn('[couch] a couch chunk did not arrive', error);
       })
-      .finally(() => { couchOpening = false; });
+      .finally(() => { couchOpener.settle(opening); });
     return true;
   };
   setupCouch.addEventListener('click', () => { openCouch(); });
@@ -4853,23 +4863,27 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
   // The tech tree (252): every national tree over the Garage, read-only. The screen, its sheet, its strings and the tree
   // data load on the first open (no boot cost); Select takes the node's build into the Garage.
   const techTreeTrigger = requiredElement<HTMLButtonElement>(root, '.cot-techtree-trigger');
-  let techTreeOpening = false;
+  // (round 8 Y4 residual) its press, a lazy opener (garageScreen.ts createLazyOpener): a press while the tree loads is the
+  // press it opens for (the bar's trigger or the phone menu's), so after a hand-off whose start was refused that press is
+  // not lost (before: it returned at a latch, and the tree landed on the first press's lapsed ticket)
+  const techTreeOpener = createLazyOpener<HTMLElement | null>(garageScreen);
   // the open tech tree (the Garage's hide closes it: it is a body-level modal the Garage root's display never reached)
   let techTreeScreen: { close(options?: { restoreFocus?: boolean }): void } | null = null;
   const openTechTree = async (opener: HTMLElement | null): Promise<void> => {
-    if (techTreeOpening || reloadsForFailure(techTreeTrigger, 'cot-techtree-load', t('garage.techTree.loadError'))) return;
+    if (reloadsForFailure(techTreeTrigger, 'cot-techtree-load', t('garage.techTree.loadError'))) return;
     emit('ui:click', {});
-    techTreeOpening = true;
     closeMobileNavigation();
     setGaragePanel('');
-    const ticket = garageScreen.ticket();
+    const opening = techTreeOpener.press(opener);
+    if (!opening) return;
     try {
       const [{ createTechTreeScreen }] = await Promise.all([
         import('./techTree.ts'), import('./techTree.css'), heroCardChunk.load(),
         import('./techTreeStrings.ts').then((strings) => strings.ensureTechTreeStrings()),
       ]);
-      // (2026-11-02 audit F5) a Garage that hid during the load opens nothing over what replaced it
-      if (!ticket.current()) return;
+      // (2026-11-02 audit F5) a Garage that hid during the load, or handed the player on since its newest press, opens
+      // nothing over what replaced it
+      if (!opening.current()) return;
       const screen = createTechTreeScreen({
         vehicles: specById,
         selectedId,
@@ -4881,7 +4895,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
         },
       });
       techTreeScreen = screen;
-      screen.open(opener);
+      screen.open(opening.press);
       techTreeTrigger.setAttribute('aria-expanded', 'true');
     } catch (err) {
       // a failed chunk fetch says so (it reached the console only), with a Retry that runs the same open; the next press
@@ -4890,7 +4904,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
       reportLoadFailure('cot-techtree-load', t('garage.techTree.loadError'),
         [techTreeTrigger, root.querySelector<HTMLElement>('[data-mobile-nav="techTree"]')]);
     } finally {
-      techTreeOpening = false;
+      techTreeOpener.settle(opening);
     }
   };
   techTreeTrigger.addEventListener('click', () => { void openTechTree(techTreeTrigger); });

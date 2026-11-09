@@ -4,7 +4,7 @@
 // the owners are driven here, and the Garage's wiring is pinned in its source.
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { createGarageScreen, createLazyPanelToggle } from './garageScreen.ts';
+import * as garageScreenModule from './garageScreen.ts';
 import { createGameReadyWaiter } from './gameReady.ts';
 import { createBootReadiness } from '../app/bootReadiness.ts';
 import { CONSUMABLES_PICKER_CLOSED, nextConsumablesPicker } from './garageConsumables.ts';
@@ -14,6 +14,8 @@ import { createLazyChunk } from '../app/lazyChunk.ts';
 
 // (dynamic: a base without it fails by assertion, case 1b, not at link time)
 const { CouchChunkError } = await import('../app/couchOpener.ts').catch(() => ({}));
+// (and the latched openers' owner, round 8 Y4 residual: case 1c)
+const { createGarageScreen, createLazyPanelToggle, createLazyOpener } = garageScreenModule;
 
 // 1. The screen: one state, an epoch per open span, tickets that lapse on hide, closers run once per hide.
 {
@@ -79,6 +81,56 @@ const { CouchChunkError } = await import('../app/couchOpener.ts').catch(() => ({
   const epoch = screen.epoch;
   assert.equal(screen.handOff(), false, 'a hidden Garage hands nothing on');
   assert.equal(screen.epoch, epoch);
+}
+
+// 1c. (round 8 Y4 residual, review r4) A lazy opener with one load in flight (the Couch press, the tech tree, the Service
+//     Record): createLazyOpener. A press while the load is in flight is the press it opens for (its values, a fresh
+//     ticket), the lazy toggle's rule (case 6), instead of being dropped at a latch: after a hand-off lapsed the first
+//     press's ticket while the Garage still shows, the player's next press used to be lost, and only a third one opened.
+{
+  assert.equal(typeof createLazyOpener, 'function',
+    'the latched openers have one owner (before: three latches that dropped a press while their load was in flight)');
+  const screen = createGarageScreen();
+  screen.show();
+  const opener = createLazyOpener(screen);
+  assert.equal(opener.phase, 'idle');
+  assert.equal(opener.wanted, false);
+  const load = opener.press('bar');
+  assert.ok(load, 'the first press starts the load');
+  assert.equal(opener.phase, 'loading');
+  assert.equal(load.current(), true);
+  assert.equal(opener.wanted, true, 'a load the press still holds reads as opening (the Service Record\'s toggle)');
+  assert.equal(screen.handOff(), true);
+  assert.equal(load.current(), false, 'a hand-off ends the press: its load opens nothing over the loader');
+  assert.equal(opener.wanted, false);
+  assert.equal(opener.press('menu'), null, 'a press while it loads starts no second load');
+  assert.equal(load.current(), true, 'it renews the ticket the load checks (before: the load landed on the lapsed one)');
+  assert.equal(load.press, 'menu', 'and the load opens for the newest press');
+  opener.cancel();
+  assert.equal(load.current(), false, 'a close while it loads cancels it');
+  assert.equal(opener.wanted, false);
+  assert.equal(opener.press('bar'), null);
+  assert.equal(load.current(), true, 'a press after the close asks for it again');
+  assert.equal(load.press, 'bar');
+  screen.hide();
+  assert.equal(load.current(), false, 'the hide ends it: nothing opens over a battle');
+  screen.show();
+  assert.equal(load.current(), false, 'nor in the next open span');
+  opener.settle(load);
+  assert.equal(opener.phase, 'idle', 'the load settled');
+  assert.equal(opener.wanted, false);
+  assert.equal(load.press, 'bar', 'its press stays the one it opened for');
+  const next = opener.press('trigger');
+  assert.ok(next && next !== load, 'the next press starts a new load');
+  assert.equal(load.press, 'bar', 'and a settled load is not renewed');
+  opener.settle(load);
+  assert.equal(opener.phase, 'loading', 'a stale settle changes nothing');
+  opener.settle(next);
+  assert.equal(opener.phase, 'idle');
+  screen.hide();
+  const hidden = opener.press('trigger');
+  assert.equal(hidden.current(), false, 'a press over a hidden Garage holds nothing');
+  opener.settle(hidden);
 }
 
 // 2. The shared ready wait rides the boot latch's edge (round 2: no poll; gameReady.selftest drives it over garage.ts's
@@ -161,23 +213,31 @@ const { CouchChunkError } = await import('../app/couchOpener.ts').catch(() => ({
   assert.ok(hide.indexOf('garageScreen.hide()') < hide.indexOf('closeBattleMenu()'), 'the tickets lapse before the closes');
   assert.match(source, /const reopen = \(\): void => \{ if \(ticket\.current\(\)\) openBattleMenu\(\); \};/,
     'a cold Deploy opens only over the Garage that asked for it');
-  assert.match(source, /if \(!ticket\.current\(\)\) return;\n      const screen = createTechTreeScreen/, 'so does the tech tree');
+  // (round 8 Y4 residual) the latched openers check their newest press (createLazyOpener, case 1c; cases 8, 9 and
+  // couchOpener.selftest drive them as garage.ts writes them)
+  assert.match(source, /const techTreeOpener = createLazyOpener<HTMLElement \| null>\(garageScreen\);/, 'the tech tree\'s press is a lazy opener');
+  assert.match(source, /if \(!opening\.current\(\)\) return;\n      const screen = createTechTreeScreen/, 'so does the tech tree');
   assert.match(source, /if \(!ticket\.current\(\) \|\| battleMenu\.classList\.contains\('open'\)\) return;\n      closePhoto = openPhotoMode/,
     'and photo mode');
   assert.match(source, /if \(!quickMenus \|\| !ticket\.current\(\)\) return;/, 'and the quick menus');
   assert.match(source, /customCamoStudioAccess\?\.open\(garageScreen\.ticket\(\)\.current\)/, 'and the custom camo studio');
   // (round 8 Y4 fix-up r3) and the Service Record (case 8 drives it)
-  assert.match(source, /const ticket = garageScreen\.ticket\(\);\n[^\n]*\n    recordOpening = true;/, 'the record press takes the ticket');
-  assert.match(source, /if \(revision !== recordOpenRevision \|\| !ticket\.current\(\)\) return;\n      serviceRecord \?\?= createServiceRecordDialog/,
+  assert.match(source, /const recordOpener = createLazyOpener<HTMLElement>\(garageScreen\);/, 'the record press is a lazy opener');
+  assert.match(source, /const opening = recordOpener\.press\(trigger\);\n    if \(!opening\) return;/, 'the record press takes the ticket');
+  assert.match(source, /if \(!opening\.current\(\)\) return;\n      serviceRecord \?\?= createServiceRecordDialog/,
     'and the Service Record');
+  assert.match(source, /const closeServiceRecord = [^\n]*\n    recordOpener\.cancel\(\);/, 'whose close while it loads cancels it');
   // (round 8 Y4 s3-03) and the couch lobby: the press hands the Garage's ticket and its button (the modal's trigger, so
-  // the hide's closeSurfacesWithin takes an in-time lobby), a repeat press while the chunks load does nothing, a failed
-  // chunk is the kit's failure; main's onCouch opens through the one helper (couchOpener.selftest drives it)
+  // the hide's closeSurfacesWithin takes an in-time lobby), a repeat press while the chunks load is the press they open
+  // for (residual; it used to do nothing), a failed chunk is the kit's failure; main's onCouch opens through the one
+  // helper (couchOpener.selftest drives it)
   const couchPress = source.slice(source.indexOf('const openCouch = ('), source.indexOf("setupCouch.addEventListener('click'"));
   assert.ok(couchPress.length > 0, 'the Couch press is one function (before: an inline handler with no ticket)');
-  assert.match(couchPress, /if \(couchOpening \|\| [^\n]*\) return false;/, 'an in-flight latch');
+  assert.match(source, /const couchOpener = createLazyOpener<[^\n]*>\(garageScreen\);\n  const openCouch = \(/, 'a lazy opener');
+  assert.match(couchPress, /const opening = couchOpener\.press\(\{ specId: selectedId, mapId: fieldMapId\(\), gameMode: battleGameMode \}\);\n    if \(!opening\) return true;/,
+    'one load in flight: a press while it loads renews it');
   assert.match(couchPress, /reloadsForFailure\(setupCouch, 'cot-couch-load', /, 'a press after a failed chunk reloads the page');
-  assert.match(couchPress, /ticket: garageScreen\.ticket\(\), trigger: setupCouch,/, 'the ticket and the trigger');
+  assert.match(couchPress, /ticket: opening, trigger: setupCouch,/, 'the ticket and the trigger');
   assert.match(couchPress, /reportLoadFailure\('cot-couch-load', /, 'a failed chunk marks the button');
   // (review r2) the press's failure policy runs as written (case 7 drives it): only a CouchChunkError marks the button
   assert.match(couchPress, /if \(!\(error instanceof CouchChunkError\)\) \{ console\.error\('\[couch\] the lobby failed to open', error\); return; \}/,
@@ -331,10 +391,12 @@ const { CouchChunkError } = await import('../app/couchOpener.ts').catch(() => ({
 // 7. (round 8 Y4 s3-03, review r2) The Couch press as garage.ts writes it, over stand-ins for its closure: a chunk that did
 //    not arrive is the kit's failure (the button's mark, Reload page); a lobby that failed to open once loaded is logged
 //    and leaves the button a press (before: every rejection marked the button "part of the game did not arrive", and its
-//    next press reloaded the page, with no trace of the cause); a repeat press while one is in flight does nothing.
+//    next press reloaded the page, with no trace of the cause); a repeat press while one is in flight asks for nothing
+//    more (round 8 Y4 residual: it is the press the load opens for; it used to be dropped).
 {
   const source = readFileSync(new URL('./garage.ts', import.meta.url), 'utf8');
-  const pressCode = stripTypeScriptTypes(source.slice(source.indexOf('  let couchOpening = false;'),
+  const couchHead = "  const setupCouch = requiredElement<HTMLButtonElement>(battleMenu, '[data-battle-couch]');\n";
+  const pressCode = stripTypeScriptTypes(source.slice(source.indexOf(couchHead) + couchHead.length,
     source.indexOf("  setupCouch.addEventListener('click'")));
   const flush = () => new Promise((resolve) => setImmediate(resolve));
   async function press(rejection) {
@@ -342,16 +404,19 @@ const { CouchChunkError } = await import('../app/couchOpener.ts').catch(() => ({
     const logged = [];
     const requests = [];
     const press = new Function('opts', 'setupCouch', 'selectedId', 'reloadsForFailure', 'reportLoadFailure', 't', 'fieldMapId',
-      'battleGameMode', 'garageScreen', 'closeBattleMenu', 'launchBattle', 'CouchChunkError', 'console',
+      'battleGameMode', 'garageScreen', 'closeBattleMenu', 'launchBattle', 'CouchChunkError', 'console', 'createLazyOpener',
       `${pressCode}; return openCouch;`)(
       { onCouch: (request) => { requests.push(request); return Promise.reject(rejection); } },
       { disabled: false }, 'm1a2', () => false, (id) => marks.push(id), (key) => key, () => 'steppe', 'standard',
       { ticket: () => ({ epoch: 1, current: () => true }) }, () => {}, () => true, CouchChunkError,
-      { error: (...args) => logged.push(['error', ...args]), warn: (...args) => logged.push(['warn', ...args]) });
+      { error: (...args) => logged.push(['error', ...args]), warn: (...args) => logged.push(['warn', ...args]) },
+      createLazyOpener);
     assert.equal(press(), true);
-    assert.equal(press(), false, 'a repeat press while the chunks load does nothing');
+    // (round 8 Y4 residual) a repeat press while the chunks load is the press they open for (couchOpener.selftest drives
+    // it after a hand-off); it asks for nothing more
+    assert.equal(press(), true, 'a repeat press while the chunks load is taken');
     await flush();
-    assert.equal(requests.length, 1);
+    assert.equal(requests.length, 1, 'one request: the repeat press loads nothing again');
     return { marks, logged };
   }
   const chunk = await press(new CouchChunkError(new Error('offline')));
@@ -376,6 +441,14 @@ const { CouchChunkError } = await import('../app/couchOpener.ts').catch(() => ({
   const recordCode = stripTypeScriptTypes(source.slice(source.indexOf(head), source.indexOf('  const isMobileNavigationOpen = ')))
     .replace(/\bimport\(/g, '__load(');
   assert.ok(source.indexOf(head) > 0 && recordCode.includes('const openServiceRecord = async'), 'garage.ts holds the Service Record opener');
+  // (round 8 Y4 residual) the record's state as garage.ts declares it, and its trigger's press as garage.ts wires it
+  const stateHead = '  let serviceRecord: ';
+  const stateCode = stripTypeScriptTypes(source.slice(source.indexOf(stateHead), source.indexOf('  const recordNames: ')));
+  assert.ok(source.indexOf(stateHead) > 0, 'garage.ts holds the Service Record\'s state');
+  const triggerHead = "  recordTrigger.addEventListener('click', () => {";
+  const triggerCode = source.slice(source.indexOf(triggerHead), source.indexOf('\n  });\n', source.indexOf(triggerHead)) + 6);
+  assert.ok(source.indexOf(triggerHead) > 0 && triggerCode.includes('if (isRecordOpen()) closeServiceRecord();'),
+    'the record trigger toggles the record');
   const flush = () => new Promise((resolve) => setImmediate(resolve));
   function recordPress(screen) {
     const opened = [];
@@ -383,15 +456,17 @@ const { CouchChunkError } = await import('../app/couchOpener.ts').catch(() => ({
     let release;
     const chunk = new Promise((resolve) => { release = resolve; });
     const dialog = { open: (trigger) => opened.push(trigger), close: () => {}, isOpen: () => opened.length > 0 };
+    const recordTrigger = { setAttribute() {}, addEventListener(type, handler) { this.press = handler; } };
     const record = new Function('garageScreen', '__load', 'reloadsForFailure', 'recordTrigger', 't', 'closeGarageVariantMenu',
-      'setGaragePanel', 'document', 'HTMLElement', 'recordNames', 'refreshServiceRecord', 'reportLoadFailure',
-      `let serviceRecord = null; let recordOpening = false; let recordOpenRevision = 0;\n${recordCode}\n`
+      'setGaragePanel', 'document', 'HTMLElement', 'recordNames', 'refreshServiceRecord', 'reportLoadFailure', 'emit',
+      'createLazyOpener', `${stateCode}\n${recordCode}\n${triggerCode}\n`
       + 'return { openServiceRecord, closeServiceRecord, isRecordOpen };')(
       screen, (specifier) => (specifier === './serviceRecordDialog.ts' ? chunk : Promise.resolve({})), () => false,
-      { setAttribute() {} }, (key) => key, () => {}, () => {}, { activeElement: null }, class {}, {}, () => {},
-      (id) => marks.push(id));
+      recordTrigger, (key) => key, () => {}, () => {}, { activeElement: null }, class {}, {}, () => {},
+      (id) => marks.push(id), () => {}, createLazyOpener);
     const pressed = record.openServiceRecord('record-trigger');
-    return { record, opened, marks, pressed, land: () => release({ createServiceRecordDialog: () => dialog }) };
+    return { record, opened, marks, pressed, toggle: () => recordTrigger.press(),
+      land: () => release({ createServiceRecordDialog: () => dialog }) };
   }
   {
     const screen = createGarageScreen();
@@ -432,6 +507,103 @@ const { CouchChunkError } = await import('../app/couchOpener.ts').catch(() => ({
     await press.pressed;
     assert.deepEqual(press.opened, ['record-trigger'], 'a record landing over the Garage that asked opens once, on its trigger');
   }
+  // (round 8 Y4 residual, review r4) pressed again inside the download, after a hand-off whose start did not follow (BATTLE
+  // refused, a room menu closed: the Garage still shows). Before: the phone menu's press returned at the record's latch,
+  // the trigger's closed a load the hand-off had already ended, and the record landed on the lapsed ticket: nothing
+  // opened, and only a third press did. Now that press is the one the load opens for (createLazyOpener, case 1c).
+  for (const again of ['the phone menu', 'the trigger']) {
+    const screen = createGarageScreen();
+    screen.show();
+    const press = recordPress(screen);
+    screen.handOff();
+    if (again === 'the trigger') {
+      assert.equal(press.record.isRecordOpen(), false, 'a press handed on no longer reads as opening: the trigger asks again');
+    }
+    const repeat = again === 'the phone menu' ? press.record.openServiceRecord('menu-trigger') : press.toggle();
+    press.land();
+    await press.pressed;
+    await repeat;
+    await flush();
+    assert.equal(press.opened.length, 1,
+      `the record pressed again from ${again} while it loads opens once it lands (before: nothing, and a third press opened it)`);
+    if (again === 'the phone menu') assert.equal(press.opened[0], 'menu-trigger', 'on the newest press\'s trigger');
+    assert.deepEqual(press.marks, []);
+  }
+  {
+    const screen = createGarageScreen();
+    screen.show();
+    const press = recordPress(screen);
+    screen.handOff();
+    const repeat = press.record.openServiceRecord('menu-trigger');
+    screen.hide(); // the battle's activation
+    press.land();
+    await press.pressed;
+    await repeat;
+    assert.deepEqual(press.opened, [], 'the repeat press lapses at the hide: no record over the battle');
+  }
+  {
+    const screen = createGarageScreen();
+    screen.show();
+    const press = recordPress(screen);
+    press.toggle(); // the trigger's second press while it loads: close
+    press.toggle(); // and its third: open again (before: a second close)
+    press.land();
+    await press.pressed;
+    await flush();
+    assert.equal(press.opened.length, 1, 'the trigger toggles the record while it loads: closed, then wanted again, it opens once');
+  }
 }
 
-console.log('garageOpenState.selftest: one open state, lapsing tickets, the hand-off, one ready wait, the consumables wait, the filter lazy toggle, the Garage wiring, the Couch press, the Service Record PASS');
+// 9. (round 8 Y4 residual, review r4) The tech tree as garage.ts writes it (openTechTree, types stripped, its chunks a
+//    deferred stand-in) over the real screen owner: a press while the tree loads is the press it opens for. Before, its
+//    in-flight latch dropped that press: after a hand-off lapsed the first press's ticket (BATTLE refused, a room menu
+//    closed) the tree landed on the lapsed ticket and opened nothing, and only a third press opened it.
+{
+  const source = readFileSync(new URL('./garage.ts', import.meta.url), 'utf8');
+  const head = "  const techTreeTrigger = requiredElement<HTMLButtonElement>(root, '.cot-techtree-trigger');\n";
+  const start = source.indexOf(head);
+  const treeCode = stripTypeScriptTypes(source.slice(start + head.length,
+    source.indexOf("  techTreeTrigger.addEventListener('click'", start))).replace(/\bimport\(/g, '__load(');
+  assert.ok(start > 0 && treeCode.includes('const openTechTree = async'), 'garage.ts holds the tech tree opener');
+  const flush = () => new Promise((resolve) => setImmediate(resolve));
+  function treePresses(screen) {
+    const releases = [];
+    const opened = [];
+    const marks = [];
+    const tree = { open: (opener) => opened.push(opener), close() {}, dispose() {} };
+    const __load = (specifier) => (specifier === './techTree.ts'
+      ? new Promise((resolve) => releases.push(() => resolve({ createTechTreeScreen: () => tree })))
+      : specifier === './techTreeStrings.ts' ? Promise.resolve({ ensureTechTreeStrings: () => {} }) : Promise.resolve({}));
+    const open = new Function('__load', 'reloadsForFailure', 'techTreeTrigger', 't', 'emit', 'closeMobileNavigation',
+      'setGaragePanel', 'garageScreen', 'heroCardChunk', 'specById', 'selectedId', 'applySelection', 'onSelect',
+      'reportLoadFailure', 'root', 'createLazyOpener', `${treeCode}\nreturn openTechTree;`)(
+      __load, () => false, { setAttribute() {} }, (key) => key, () => {}, () => {}, () => {}, screen,
+      { load: () => Promise.resolve() }, new Map(), 'm1a2', () => true, () => {}, (id) => marks.push(id),
+      { querySelector: () => null }, createLazyOpener);
+    return { open, opened, releases, marks };
+  }
+  for (const variant of ['pressed again', 'handed on', 'pressed again, then hidden', 'pressed twice']) {
+    const screen = createGarageScreen();
+    screen.show();
+    const tree = treePresses(screen);
+    const presses = [tree.open('bar-trigger')];
+    await flush();
+    if (variant !== 'pressed twice') screen.handOff(); // BATTLE refused, or a room menu closed: the Garage still shows
+    if (variant !== 'handed on') presses.push(tree.open('menu-trigger'));
+    await flush();
+    assert.equal(tree.releases.length, 1, `one download however many presses come before it lands (${variant})`);
+    if (variant === 'pressed again, then hidden') screen.hide(); // the battle's activation
+    tree.releases[0]();
+    await Promise.all(presses);
+    await flush();
+    assert.deepEqual(tree.marks, []);
+    if (variant === 'handed on' || variant === 'pressed again, then hidden') {
+      assert.deepEqual(tree.opened, [], `no tree over the loader or the battle (${variant})`);
+      continue;
+    }
+    assert.deepEqual(tree.opened, ['menu-trigger'],
+      `the tree pressed again while it loads opens once it lands, on the newest press's opener (${variant}; before: nothing after a hand-off, and a third press opened it)`);
+  }
+}
+
+console.log('garageOpenState.selftest: one open state, lapsing tickets, the hand-off, one ready wait, the consumables wait, the filter lazy toggle, the Garage wiring, the Couch press, the Service Record, the latched openers\' newest press PASS');

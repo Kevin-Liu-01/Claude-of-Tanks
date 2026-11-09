@@ -13,7 +13,10 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { stripTypeScriptTypes } from 'node:module';
-import { createGarageScreen } from '../ui/garageScreen.ts';
+import * as garageScreenModule from '../ui/garageScreen.ts';
+
+// (dynamic: the press's opener owner, round 8 Y4 residual; a tree without it fails by assertion, not at link time)
+const { createGarageScreen, createLazyOpener } = garageScreenModule;
 
 const { openCouchWhenCurrent, CouchChunkError } = await import('./couchOpener.ts').catch(() => ({}));
 assert.equal(typeof openCouchWhenCurrent, 'function', 'one couch opener checks the Garage that asked (before: none)');
@@ -95,7 +98,8 @@ const show = ([runtime, lobby]) => lobby.openCouchLobby(runtime);
 // A press, then BATTLE or the Deploy foot's Launch: battle() hands the player on before its play request (a solo start
 // can wait there on the play menu's chunk), so the lobby opens nothing whether the start then follows or launchBattle
 // refuses it (a network round entering, a failed return's notice). The newest press wins: a refused one leaves the
-// player at its notice, and a Couch press after it opens the lobby (the hand-off case 1b, garageOpenState).
+// player at its notice, and a Couch press after it opens the lobby (the hand-off case 1b, garageOpenState), also while
+// the first press's chunks still load (the next case; round 8 Y4 residual: before, the press's latch swallowed that one).
 for (const { refused, menuWait } of [{ refused: false }, { refused: true }, { refused: false, menuWait: true }]) {
   const screen = createGarageScreen();
   screen.show();
@@ -116,6 +120,75 @@ for (const { refused, menuWait } of [{ refused: false }, { refused: true }, { re
   await flush();
   assert.equal(started.length, refused ? 0 : 1, refused ? 'a refused start starts nothing' : 'the press starts the battle');
   assert.equal(screen.phase, 'open', 'the Garage still shows (under the loader, or at the refusal notice)');
+}
+
+// (round 8 Y4 residual, review r4) The Couch pressed again while its chunks still load, as garage.ts writes the press (its
+// own openCouch, types stripped) and main.ts its onCouch (its own, the download a deferred stand-in), over the real screen
+// owner. A BATTLE or Launch press whose start was refused (or a room press whose menu the player closed) handed the
+// player on and lapsed the first press's ticket while the Garage still shows. Before, the next Couch press inside that
+// download returned at the press's in-flight latch with no new ticket: the chunks landed on the lapsed one, opened
+// nothing, and only a third press opened the lobby. Now a press while the chunks load is the press they open for (its
+// ticket and its Deploy selection: garageScreen.ts createLazyOpener, the lazy toggle's rule), and the load still checks
+// that ticket, so nothing opens over the loader or the battle.
+const mainSource = readFileSync(new URL('../main.ts', import.meta.url), 'utf8');
+const onCouchStart = mainSource.indexOf('\n  onCouch: ');
+const onCouchCode = mainSource.slice(onCouchStart, mainSource.indexOf('\n  },', onCouchStart) + 5).replace(/\bimport\(/g, '__load(');
+assert.ok(onCouchStart > 0 && onCouchCode.includes('openCouchWhenCurrent({ ticket: request.ticket'), 'main.ts holds onCouch');
+const couchHead = "  const setupCouch = requiredElement<HTMLButtonElement>(battleMenu, '[data-battle-couch]');\n";
+const couchStart = garageSource.indexOf(couchHead);
+const couchCode = stripTypeScriptTypes(garageSource.slice(couchStart + couchHead.length,
+  garageSource.indexOf("  setupCouch.addEventListener('click'", couchStart)));
+assert.ok(couchStart > 0 && couchCode.includes('const openCouch = ('), 'garage.ts holds the Couch press');
+/** main.ts's own onCouch: the couch runtime's preload is the download, the lobby's module opens the request. */
+function mainOnCouch({ preload, lobbies }) {
+  return new Function('openCouchWhenCurrent', 'couchOwner', '__load', `return ({${onCouchCode}\n}).onCouch;`)(
+    openCouchWhenCurrent, { preload }, async (specifier) => {
+      assert.equal(specifier, './ui/couchLobby.ts');
+      return { openCouchLobby: (runtime, request) => lobbies.push(request) };
+    });
+}
+/** garage.ts's own Couch press over stand-ins for its closure; `select` changes the Deploy selection it reads. */
+function garageCouchPress({ garageScreen, onCouch, launches }) {
+  return new Function('opts', 'setupCouch', 'reloadsForFailure', 'reportLoadFailure', 't', 'fieldMapId', 'garageScreen',
+    'closeBattleMenu', 'launchBattle', 'CouchChunkError', 'createLazyOpener',
+    `let selectedId = 'm1a2'; let battleGameMode = 'standard';\n${couchCode}\n`
+    + 'return { openCouch, select(specId, gameMode) { selectedId = specId; battleGameMode = gameMode; } };')(
+    { onCouch }, { disabled: false }, () => false, () => {}, (key) => key, () => 'steppe', garageScreen, () => {},
+    (specId, mapId, options) => { launches.push([specId, mapId, options.gameMode]); return true; }, CouchChunkError,
+    createLazyOpener);
+}
+for (const variant of ['pressed again', 'handed on', 'pressed again, then hidden', 'pressed twice']) {
+  const flush = () => new Promise((resolve) => setImmediate(resolve));
+  const screen = createGarageScreen();
+  screen.show();
+  const downloads = [];
+  const lobbies = [];
+  const launches = [];
+  const onCouch = mainOnCouch({ preload: () => { const download = deferred(); downloads.push(download); return download.promise; }, lobbies });
+  const press = garageCouchPress({ garageScreen: screen, onCouch, launches });
+  assert.equal(press.openCouch(), true, 'the press asks for the chunks');
+  await flush();
+  // BATTLE or Launch whose start was refused, or a room press whose menu the player closed: the Garage still shows
+  if (variant !== 'pressed twice') screen.handOff();
+  if (variant !== 'handed on') {
+    press.select('t90m', 'assault'); // the player changed the Deploy selection meanwhile
+    assert.equal(press.openCouch(), true, `a repeat press while the chunks load is taken (${variant}; before: dropped at the latch)`);
+  }
+  await flush();
+  assert.equal(downloads.length, 1, 'one download however many presses come before it lands');
+  if (variant === 'pressed again, then hidden') screen.hide(); // the battle's activation (ui.hideGarage)
+  downloads[0].resolve({ open() {} });
+  await flush();
+  await flush();
+  if (variant === 'handed on' || variant === 'pressed again, then hidden') {
+    assert.equal(lobbies.length, 0, `nothing opens over the loader or the battle (${variant})`);
+    continue;
+  }
+  assert.equal(lobbies.length, 1, `the repeat press opens the lobby once the chunks land (${variant}; before: none after a hand-off, and a third press opened it)`);
+  assert.equal(lobbies[0].gameMode, 'assault', 'for the newest press\'s Deploy mode');
+  assert.equal(lobbies[0].trigger.disabled, false, 'with the Couch button as its trigger');
+  assert.equal(lobbies[0].start({ seats: [1], sides: null, names: ['Seat 1'] }), true);
+  assert.deepEqual(launches, [['t90m', 'steppe', 'assault']], 'and its Start deploys the newest press\'s vehicle, map and mode');
 }
 
 // A start launchBattle refuses or cannot make (a press after a failed chunk, a refused battle), called directly (Test
@@ -186,4 +259,4 @@ assert.equal(typeof CouchChunkError, 'function', 'a failed chunk is told apart f
     (error) => error === broken && !(error instanceof CouchChunkError));
 }
 
-console.log('couchOpener.selftest: the couch lobby opens only over the Garage that asked, once, never over a start handed on, and only a failed chunk is a load failure passed');
+console.log('couchOpener.selftest: the couch lobby opens only over the Garage that asked, once, never over a start handed on, for the newest press while its chunks load, and only a failed chunk is a load failure passed');
