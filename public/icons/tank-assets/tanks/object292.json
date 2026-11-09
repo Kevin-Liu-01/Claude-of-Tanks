@@ -1127,15 +1127,15 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 23290,
-      "sha256": "5d46cec0f899243cb2db9f454173f04f0e16ac80fae4122003e1c11bf678f3ad",
+      "bytes": 23276,
+      "sha256": "318cb51dfbd469dd4b16ea89a1eeafc1b6f039558a72e128792bb5d8e57a8ea7",
       "thumbnail": {
         "file": "thumbs/object292_angle.webp",
         "width": 256,
         "height": 256,
         "mime": "image/webp",
         "bytes": 9834,
-        "sha256": "0678ac8c3041e15e08518014971984f23503aa2960029d27f49376916b8b9893"
+        "sha256": "4244c483247810042d8347bd8a826d1b7afd9f274cad593f0390427e3946abeb"
       }
     },
     "top": {
@@ -1151,8 +1151,8 @@
       "width": 512,
       "height": 256,
       "mime": "image/webp",
-      "bytes": 7774,
-      "sha256": "f0b74faddc064e13d96c71aa04802e798890781cde714a6d08f0e4dc8bbb7ec1"
+      "bytes": 7788,
+      "sha256": "e430cee217ed792c1b7b80889321ba08bd3a90f3c11bd5583ef3455dcadd86f8"
     },
     "topSilhouette": {
       "file": "object292_top_silhouette.png",
@@ -1175,32 +1175,32 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 21032,
-      "sha256": "69c925db45d88800a02f83e24fb0695fdf6f32452857f5db245e56fd3596ea0e"
+      "bytes": 21040,
+      "sha256": "484fb8b7ebd5ac37cc593fcfafc99ba97ccb99fbdd10531a6a2c3a587ffb182e"
     },
     "modulesSide": {
       "file": "object292_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 18770,
-      "sha256": "528ce8add8e071f96a42552cd83de1ca5023bed076fe5f079f633e029710fa52"
+      "bytes": 18754,
+      "sha256": "56ebb830760565e44f76a2bbfe3abf1a845a8ad9fcc19619e19e11539157236a"
     },
     "crewSide": {
       "file": "object292_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 15690,
-      "sha256": "103645ae309cd0d7ee33a769e7b99ca7deddf1820c2eba94956908e59457fb3e"
+      "bytes": 15746,
+      "sha256": "220f4bd6826fdade0ab67565aefe78b252ddbbda6afa4cf2bd0eb1e4110841e6"
     },
     "markings": {
       "file": "object292_markings.png",
       "width": 256,
       "height": 128,
       "mime": "image/png",
-      "bytes": 36601,
-      "sha256": "8d6472987fb855435d030b568fe93232fe3ea4c40b6ff7ece6deb5b09b702277"
+      "bytes": 32538,
+      "sha256": "aa33c45ebc349a7fbe130f05b8d9f5abc9df868b6ecfc35f0da31176272fddd5"
     },
     "technicalLabels": {
       "file": "object292_technical.json",

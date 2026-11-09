@@ -578,8 +578,8 @@
       "width": 512,
       "height": 256,
       "mime": "image/webp",
-      "bytes": 8732,
-      "sha256": "97df65568f3b4d2b1f6e80f87509e1f526b5dc4e09c53577de7f0fc9282b4c27"
+      "bytes": 8744,
+      "sha256": "abca4be52396bd94be9c50f98f4ed894276171533271bd97554514cdc5f25743"
     },
     "topSilhouette": {
       "file": "object477_molot_top_silhouette.png",
@@ -602,32 +602,32 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 19628,
-      "sha256": "c26a4af838bff653a792dfd095a8a525ba36bbb4597ae20b84757c769d18cf0f"
+      "bytes": 19598,
+      "sha256": "3eb846a39673685058c86783f9a6d41b0b41d6c3f25910ca3231c1e5667793ce"
     },
     "modulesSide": {
       "file": "object477_molot_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 18730,
-      "sha256": "fb3928ddaad96efc5f89657588a7c2572c537e9d4e30f8ee4c204ae83261cb9d"
+      "bytes": 18748,
+      "sha256": "3072488a3c66e678b0b0ee129d405628ac9f12cdbb06799180475e293348f92b"
     },
     "crewSide": {
       "file": "object477_molot_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 16576,
-      "sha256": "2531d034bc13e73c3bf7af40397bebd7e00c3840eeacd0bfe5a0dafd514383c5"
+      "bytes": 16570,
+      "sha256": "813942b55e623c815b0b86ef4f06565a036067f68cb6774106ddd51d53acd183"
     },
     "markings": {
       "file": "object477_molot_markings.png",
       "width": 256,
       "height": 128,
       "mime": "image/png",
-      "bytes": 34717,
-      "sha256": "642ab11d36653c80b5f182a2fb991815ff6d4663f86b6291a12bd46ca990efdb"
+      "bytes": 32993,
+      "sha256": "f6fe061847de592bd11a8235b76ed27e7217de5e0daa50d0bc8dc06b61f3587d"
     },
     "technicalLabels": {
       "file": "object477_molot_technical.json",

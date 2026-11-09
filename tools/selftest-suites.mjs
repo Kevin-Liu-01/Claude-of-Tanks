@@ -212,6 +212,9 @@ export const SELFTEST_SUITES = Object.freeze({
     // release 269 (owner: "flesh out south african and australian tank trees"): the Australian line's M113s, Leopard AS1,
     // Abrams pair and Redback in their tree, tiers and photo packets at both qualities, each one's own kit
     'src/vehicles/profiles/australia.selftest.mjs',
+    // the 152 mm line (owner 2026-11-04: "make a new russian tank called object 195"): the Object 292, the Object 477 Molot,
+    // the Object 195 and the T-14 152 in Russia's tree, tiers and photo packet at both qualities, each one's guns and kit
+    'src/vehicles/profiles/russia152.selftest.mjs',
     // 265: the M41 family on its supplied print's datums, each mark's kit and tree
     'src/vehicles/profiles/m41.selftest.mjs',
     'src/vehicles/ztz20GunClearance.selftest.mjs',
