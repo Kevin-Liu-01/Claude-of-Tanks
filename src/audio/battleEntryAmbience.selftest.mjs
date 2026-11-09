@@ -26,19 +26,30 @@ import { GARAGE_SCENE, sceneForMap } from './environmentScenes.ts';
 // loader). Round seven's scan (40c6c92fde) pinned it; the Y0b merge first kept only the walk above and dropped it.
 const srcRoot = fileURLToPath(new URL('../', import.meta.url));
 const writes = [], entries = [], unannounced = [];
-// The whole call, from its open paren to the one that closes it (quoted text skipped), so an option on any line counts.
+// The whole call's code, from its open paren to the one that closes it, so an option on any line counts. Quoted text is
+// kept but not counted for parens; comments are dropped (a comment's apostrophe opens no string, its words name no option).
 const callAt = (text, start) => {
-  let depth = 0, quote = null;
-  for (let i = text.indexOf('(', start); i < text.length; i++) {
+  const open = text.indexOf('(', start);
+  let depth = 0, quote = null, code = text.slice(start, open);
+  for (let i = open; i < text.length; i++) {
     const ch = text[i];
     if (quote) {
-      if (ch === '\\') i++;
-      else if (ch === quote) quote = null;
+      if (ch === '\\') { code += ch + (text[i + 1] ?? ''); i++; continue; }
+      if (ch === quote) quote = null;
+    } else if (ch === '/' && text[i + 1] === '/') {
+      const end = text.indexOf('\n', i);
+      i = end < 0 ? text.length : end - 1; // the line's newline is kept
+      continue;
+    } else if (ch === '/' && text[i + 1] === '*') {
+      const end = text.indexOf('*/', i + 2);
+      i = end < 0 ? text.length : end + 1;
+      continue;
     } else if (ch === "'" || ch === '"' || ch === '`') quote = ch;
     else if (ch === '(') depth++;
-    else if (ch === ')' && --depth === 0) return text.slice(start, i + 1);
+    else if (ch === ')' && --depth === 0) return code + ch;
+    code += ch;
   }
-  return text.slice(start);
+  return code;
 };
 const walk = (dir) => {
   for (const name of readdirSync(dir)) {
