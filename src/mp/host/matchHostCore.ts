@@ -21,7 +21,7 @@ import type { EraIndexer } from '../../../server/match/entityRows.ts';
 import { CLOSE_REASON, INPUT_MARGIN_UNKNOWN, MAX_CLIENT_MESSAGE_BYTES, MESSAGE_TYPE, NO_TICK, TICK_MS } from '../wire/constants.ts';
 import type { CloseReasonId } from '../wire/constants.ts';
 import { decodeMessage, encodeMessage } from '../wire/codec.ts';
-import type { EntityRow, SnapshotFrame } from '../wire/messages.ts';
+import type { EntityRow, SnapshotFrame, WireEvent } from '../wire/messages.ts';
 import { ROOM_MATCH_KEYFRAME_INTERVAL_MS, ROOM_MATCH_POLL_MS } from '../room/protocol.ts';
 import { verifySeatTokenWeb } from './seatTokenWeb.ts';
 import {
@@ -190,6 +190,11 @@ export function createMatchHostCore({
   // the authority's mode events the newest sealed keyframe holds (modeEventSerial at its capture)
   let keyframedModeEvents = 0;
   let lastConfigMs = -Infinity;
+  // the boot configuration's sealed chunks (round 8 Y2, s4-04): sealed once at the boot, as the configuration never
+  // changes for an actor; null before the seal, or when it failed (logged once: the seats then hold none for the actor's
+  // life; before, each attach and each cadence beat re-sealed, so retried, a seal WebCrypto refuses for the same key and
+  // payload every time)
+  let configChunks: WireEvent[] | null = null;
   let keyframeSeq = 0;
   let configSeq = 0;
   let migrationKeyframes = 0;
@@ -309,10 +314,11 @@ export function createMatchHostCore({
         gate.state = 'attached';
         const attached = live.attach(link, hello, verified.claims);
         if (!attached) { gates.delete(peer); return; }
+        // the seat holds the sealed configuration from its WELCOME on (round 8 Y2, s4-04): it followed within a
+        // housekeeping beat, sealed afresh, and a seat whose host went in that beat booted from the room's snapshot
+        // (planFromRoster). To this seat alone (fix-up r1): the seats welcomed before it hold it already
+        deliverConfigTo(link, live);
         for (const queued of gate.queue.splice(0)) link.deliver(queued);
-        // a seat welcomed after the boot (late, re-HELLOed, or back after a reconnect) holds the sealed configuration
-        // within a housekeeping beat, not at the next CONFIG_INTERVAL_MS: elected inside that window, it could not resume
-        lastConfigMs = -Infinity;
       };
       // during the resume hold the seat waits, its frames queued, and is welcomed with the others when the world moves;
       // it hears how long the hold may still last (round 3 B1/X6)
@@ -453,13 +459,28 @@ export function createMatchHostCore({
     }
   }
 
-  async function broadcastConfig(): Promise<void> {
-    const live = actor;
-    if (!live || live.stopped || !config) return;
+  /**
+   * The delivery of the boot configuration (round 8 Y2, s4-04): its sealed chunks to the seat just welcomed, right after
+   * its WELCOME (deliverConfigTo), and to every seat on the CONFIG_INTERVAL_MS cadence (deliverConfig). Every welcomed
+   * seat holds it, so an elected host boots from it. Fix-up r1 (both review lenses): the WELCOME's delivery was a
+   * broadcast, so seats welcomed together (a resume hold's release attaches its seats in one loop, a match start's HELLOs
+   * verify together) took N(N+1)/2 copies of it, the first seat N, ahead of its first snapshots; now each takes one.
+   */
+  function deliverConfig(live: MatchActor): void {
+    if (!configChunks || live.stopped) return;
+    for (const event of configChunks) live.broadcastEvent(event);
+  }
+  /**
+   * One seat's copy on its own link, each chunk an EVENT stamped with the actor's tick as the actor's own events are
+   * (the actor has no per-seat event send; noticeHeld writes to one seat's link the same way). An encode that throws is
+   * logged and leaves the attach whole: the cadence delivers the configuration again.
+   */
+  function deliverConfigTo(link: PortLink, live: MatchActor): void {
+    if (!configChunks || live.stopped || link.closed) return;
     try {
-      await broadcastSealed(MIGRATION_EVENT_KIND.CONFIG, ++configSeq, live.tick, encodeBootConfig(config));
+      for (const event of configChunks) link.send(encodeMessage({ type: MESSAGE_TYPE.EVENT, tick: live.tick, events: [event] }));
     } catch (error) {
-      log('warn', 'migration config failed', { error: error instanceof Error ? error.message : String(error) });
+      log('warn', 'migration config to a seat failed', { peer: link.peer, error: error instanceof Error ? error.message : String(error) });
     }
   }
 
@@ -475,7 +496,7 @@ export function createMatchHostCore({
       // gap was replayed or lost by a resume from a keyframe dated before it); a keyframe still sealing defers it a beat
       const modeEventsSince = live.authority.modeEventSerial !== keyframedModeEvents && nowMs - lastKeyframeMs >= MODE_KEYFRAME_SPACING_MS;
       if (!sealing && (nowMs - lastKeyframeMs >= keyframeIntervalMs || modeEventsSince)) { lastKeyframeMs = nowMs; void broadcastKeyframe(); }
-      if (nowMs - lastConfigMs >= configIntervalMs) { lastConfigMs = nowMs; void broadcastConfig(); }
+      if (nowMs - lastConfigMs >= configIntervalMs) { lastConfigMs = nowMs; deliverConfig(live); }
     }
     if (live.stopped) {
       post({ type: 'stats', stats: stats()! });
@@ -526,7 +547,12 @@ export function createMatchHostCore({
     // (it starts beside the migration key now: a failure is the Promise.all's below, never an unhandled rejection meanwhile)
     fleetTimed.catch(() => {});
     migrationKey = await deriveMigrationKey(next.hostSecret);
-    const [world] = await Promise.all([worldTimed, fleetTimed]);
+    // the boot configuration, sealed once beside the world load (round 8 Y2, s4-04)
+    const sealedConfig = sealMigrationBlob(migrationKey, encodeBootConfig(next)).catch((error: unknown) => {
+      log('warn', 'migration config failed', { error: error instanceof Error ? error.message : String(error) });
+      return null;
+    });
+    const [world, , configBlob] = await Promise.all([worldTimed, fleetTimed, sealedConfig]);
     // a core stopped while its world loaded (the seat left the battle mid-entry) never starts an actor: its stop found none to stop
     if (bootGeneration !== generation || disposed || stopped) return;
     const resume = next.resume;
@@ -557,6 +583,11 @@ export function createMatchHostCore({
       if (applied.skipped) log('warn', 'resume rows without an entity', { skipped: applied.skipped });
       if (applied.destroyedUnknown) log('warn', 'resume destroyed props this world does not have', { unknown: applied.destroyedUnknown });
     }
+    configChunks = configBlob ? chunkMigrationBlob(MIGRATION_EVENT_KIND.CONFIG, ++configSeq, created.tick, configBlob) : null;
+    // the cadence counts from the seal (fix-up r1): no seat is attached yet, and each takes its copy at its WELCOME. Its
+    // first beat re-sent the configuration to every seat welcomed by then, at once: those of a match start, and those a
+    // resume hold released (the hold, RESUME_HOLD_MS, ends inside CONFIG_INTERVAL_MS of the seal)
+    lastConfigMs = now();
     actor = created;
     booted = true;
     endedReported = false;

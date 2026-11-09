@@ -206,6 +206,30 @@ interface BotDestination {
 /** A side's last sighting of an enemy, refreshed from the spotting hook (`id`: the enemy's, so a scan needs no entry). */
 interface Sighting { id: string; x: number; z: number; atS: number }
 
+/**
+ * A bravo hunter's search phase (round 8 Y2, s2-06): what its last plan sent it to. 'risen' (revived, not planned yet),
+ * 'quarry' (an enemy its side spots), 'sighting' (its side's freshest sighting it has not spent), 'lead' (a director
+ * arrival's lead point), 'sweep' (a spiral round its own anchor), 'ring' (the ring round the side's last contact, else
+ * round the opponents' deployment).
+ */
+export const HUNT_SEARCH_PHASES = Object.freeze(['risen', 'quarry', 'sighting', 'lead', 'sweep', 'ring'] as const);
+export type HuntSearchPhase = (typeof HUNT_SEARCH_PHASES)[number];
+/**
+ * A bravo hunter's search (268 item 10; round 8 Y2, s2-06: one record, carried in the mode checkpoint): its phase; its
+ * anchor (x, z, atS: where it rose, its spent sighting or its reached lead, the sweep's centre, and since when); a
+ * director arrival's lead point (null once reached, or for a hull that rose anywhere else); whether it sweeps round its
+ * own anchor; the newest sighting it has reached (spentAtS, null before any); the search points it has reached since its
+ * last sighting (step). JSON-safe by construction (no NaN or infinities): the migration keyframe carries it as it is.
+ */
+export interface HuntSearch {
+  phase: HuntSearchPhase;
+  x: number; z: number; atS: number;
+  lead: { x: number; z: number } | null;
+  swept: boolean;
+  spentAtS: number | null;
+  step: number;
+}
+
 interface TeamScore { alpha: number; bravo: number }
 
 interface FlagState {
@@ -418,12 +442,31 @@ export interface ModeCheckpoint {
   /** The objective modes' pitch (audit M1, 2026-11-02: a migrated host reset Zone Control, Mars, CTF and Turbo Ball to
    *  kick-off): flags, zones outside Frontline's line, the ball and its clocks. Mode time throughout. */
   objectives?: ObjectiveCheckpoint;
+  /** The honest hunt (round 8 Y2, s2-06: a migrated host's hunters started their search over, back to the deployment
+   *  ring or a lead its own opening drew): each hunter's search, its plan, the sides' sightings and refresh clock, the
+   *  last contact and the arrivals' lead seed. Mode time throughout; null stands for "never". */
+  hunt?: HuntCheckpoint;
+}
+interface HuntCheckpoint {
+  searches: [string, HuntSearch][];
+  plans: [string, { x: number; z: number }][];
+  planAtS: number | null;
+  lastContact: { x: number; z: number; atS: number } | null;
+  sightings: { alpha: Sighting[]; bravo: Sighting[] };
+  intelAtS: number | null;
+  arrivals: number;
 }
 interface ObjectiveCheckpoint {
   flags: { team: ObjectiveTeam; x: number; y: number; z: number; status: FlagState['status']; carrierId: string | null; returnAtS: number | null }[];
   zones: { id: string; control: number; owner: ObjectiveTeam | null; contested: boolean }[];
   ball: BallState | null; ballActiveAtS: number; lastBallTouchS: number | null;
+  /** The CTF raid's stages (round 8 Y2 fix-up r3: a migrated host staged every raider afresh); absent when none. */
+  raids?: [string, RaidStage][];
 }
+/** One raider's stage (flagBots.raidStageM): when it reached it, and whether it has gone in. */
+interface RaidStage { atS: number; go: boolean }
+/** One attacker's plan (assaultBots): its point, when it reached the stage (null: not at it), and whether it pushes. */
+interface AttackStage { x: number; z: number; stagedAtS: number | null; pushing: boolean }
 /** Endless Horde's wave and queue, Frontline's line, counter-attack and trickle, and which pool identities rest. */
 interface WaveCheckpoint {
   wave: number; inactive: string[]; restedAt: [string, number][]; lastWaveIds: string[];
@@ -432,7 +475,9 @@ interface WaveCheckpoint {
   line?: { index: number; holdUntilS: number | null; regroup: { x: number; z: number; untilS: number; checkedS: number } | null;
     counter: { x: number; z: number; atS: number; untilS: number; ids: string[]; line: number } | null; fresh: string[];
     nextReinforceAtS: number | null; allyDownAt: [string, number][];
-    zones: { id: string; control: number; owner: ObjectiveTeam | null; contested: boolean }[] };
+    zones: { id: string; control: number; owner: ObjectiveTeam | null; contested: boolean }[];
+    /** The attack's plan per bot (round 8 Y2 fix-up r3: a migrated host staged every attacker afresh); absent if none. */
+    attack?: [string, AttackStage][] };
 }
 
 export interface MatchModeResult {
@@ -478,6 +523,8 @@ export interface MatchModeController<
   reviveAll(): void;
   captureCheckpoint(elapsedS: number): ModeCheckpoint;
   restoreCheckpoint(checkpoint: ModeCheckpoint): void;
+  /** A bravo hunter's search record (round 8 Y2: receipts and probes read the phase), a copy; null before it has one. */
+  huntSearchOf(entity: Pick<MatchModeEntity, 'id'>): HuntSearch | null;
 }
 
 
@@ -803,14 +850,21 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
   // centre (round 3, the critic's M1: a straggler re-arrived round the humans swept the fight they had left 500 m back)
   // and the arrival's orders (round 3, the critic's M1/M3): a director-placed hunter drives on along the facing the
   // director gave it — at the ring's centre as it stood at the arrival, never updated — to a seeded point HUNT_RULES.lead
-  // gives or takes round it (lx, lz; NaN for a hull that rose anywhere else)
+  // gives or takes round it (its record's lead; null for a hull that rose anywhere else)
   /**
-   * A bravo bot's hunt anchor: where it rose (x, z, atS), its director lead (lx, lz) and whether it sweeps round the
-   * anchor; and its search (268, item 10; Main: a hunter never stands on a spent lead): the newest sighting it has reached
-   * (spentAtS) and how many search points it has reached since its last sighting (step).
+   * Each bravo bot's search (HuntSearch; 268, item 10; Main: a hunter never stands on a spent lead). Written only by
+   * resetHunterSearch (a revive) and stepHunterSearch (the hunt's plan); restoreHunt replaces the whole map from a
+   * checkpoint, refusing a record that is not one.
    */
-  const huntAnchor = new Map<string, { x: number; z: number; atS: number; lx: number; lz: number; swept: boolean; spentAtS: number; step: number }>();
+  const huntSearch = new Map<string, HuntSearch>();
   let arrivals = 0;
+  /** A revived hunter's search starts over where it rose, with its director lead when it has one. */
+  function resetHunterSearch(id: string, x: number, z: number, lead: { x: number; z: number } | null): void {
+    let search = huntSearch.get(id);
+    if (!search) { search = { phase: 'risen', x: 0, z: 0, atS: 0, lead: null, swept: false, spentAtS: null, step: 0 }; huntSearch.set(id, search); }
+    search.phase = 'risen'; search.x = x; search.z = z; search.atS = placementTimeS; search.lead = lead;
+    search.swept = false; search.spentAtS = null; search.step = 0;
+  }
   // the live hulls a placement keeps clear of, each by its own seat radius (a Juggernaut's by its scale; a gunship in
   // its orbit stands on no ground); with `enemyClearM`, every live enemy by that distance (the ruleset's respawnSafeM)
   const occupiedBy = (entity: Entity, enemyClearM: number | null = null): { x: number; z: number; radius: number; clearM?: number }[] =>
@@ -865,23 +919,22 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
     revive(entity, safeSpawn, healthScale);
     restedAt.delete(entity.id);
     if (entity.bot && teamOf(entity) === 'bravo') {
-      let anchor = huntAnchor.get(entity.id);
-      if (!anchor) { anchor = { x: 0, z: 0, atS: 0, lx: NaN, lz: NaN, swept: false, spentAtS: -Infinity, step: 0 }; huntAnchor.set(entity.id, anchor); }
-      anchor.x = safeSpawn.x; anchor.z = safeSpawn.z; anchor.atS = placementTimeS; anchor.lx = NaN; anchor.lz = NaN; anchor.swept = false;
-      anchor.spentAtS = -Infinity; anchor.step = 0;
+      let lead: { x: number; z: number } | null = null;
       // a director arrival (the Horde's ring, the infected's ring) goes in along its facing, on toward what its side knows
       // (268, item 10; Main: everything an arriving hostile acts on comes from its side's knowledge, the freshest sighting,
       // else the humans' public deployment centre; it read the humans' live centroid, an unsighted position, and on the
       // wave's first seconds led zombies onto a human still on its slot)
       if (at && (ruleset.horde || infectionArrival) && teams.alpha.some((human) => human.modeActive !== false && !human.combat.destroyed)) {
         const known = sideKnowledgeOf(teamOf(entity), safeSpawn.x, safeSpawn.z);
-        const lead = HUNT_RULES.lead, k = arrivals++;
+        const rules = HUNT_RULES.lead, k = arrivals++;
         const u1 = (Math.imul(k + 1, 2654435761) >>> 0) / 4294967296, u2 = (Math.imul(k + 7, 2246822519) >>> 0) / 4294967296;
-        const reach = detMath.hypot(known.x - safeSpawn.x, known.z - safeSpawn.z) * (lead.reachMin + (lead.reachMax - lead.reachMin) * u1);
-        const heading = at.yaw + (u2 - 0.5) * 2 * lead.spreadDeg * Math.PI / 180;
-        anchor.lx = Math.max(-WORLD_MARGIN_M, Math.min(WORLD_MARGIN_M, safeSpawn.x + detMath.sin(heading) * reach));
-        anchor.lz = Math.max(-WORLD_MARGIN_M, Math.min(WORLD_MARGIN_M, safeSpawn.z + detMath.cos(heading) * reach));
+        const reach = detMath.hypot(known.x - safeSpawn.x, known.z - safeSpawn.z) * (rules.reachMin + (rules.reachMax - rules.reachMin) * u1);
+        const heading = at.yaw + (u2 - 0.5) * 2 * rules.spreadDeg * Math.PI / 180;
+        const lx = Math.max(-WORLD_MARGIN_M, Math.min(WORLD_MARGIN_M, safeSpawn.x + detMath.sin(heading) * reach));
+        const lz = Math.max(-WORLD_MARGIN_M, Math.min(WORLD_MARGIN_M, safeSpawn.z + detMath.cos(heading) * reach));
+        if (Number.isFinite(lx) && Number.isFinite(lz)) lead = { x: lx, z: lz }; // (a point it cannot drive to is no lead)
       }
+      resetHunterSearch(entity.id, safeSpawn.x, safeSpawn.z, lead);
     }
     stampInfection(entity);
     if (ruleset.gunGame) setWeaponStage(entity, Math.min(GUN_GAME_WEAPONS.length - 1, Math.floor((weaponKills.get(entity.id) ?? 0) / ruleset.gunGame.killsPerWeapon)));
@@ -1482,7 +1535,10 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
   /**
    * The attack's plan per bot (assaultBots, gameplay-modes-228), rebuilt once a second in id order: flank lanes for
    * `flankShare` of the attackers (odd ranks) until `flankConvergeM` from the zone; at the zone's edge a push waits for
-   * `pushMinGroup` attackers within `pushGroupM` (the anti-suicide rule) or `pushAfterS` there, then drives in.
+   * `pushMinGroup` attackers within `pushGroupM` (the anti-suicide rule) or `pushAfterS` there, then drives in. The mode
+   * checkpoint carries it (waves.line.attack), so a migrated host's attackers wait or push as the old host's did. A
+   * fallen attacker keeps its plan through the allied revive (only the line advance clears it), so a migration keeps a
+   * revived one's too (migrationState.ts checkpointAfterRevives leaves it).
    */
   const assaultBots = ruleset.assaultBots ?? null;
   const attackPlan = new Map<string, { x: number; z: number; stagedAtS: number; pushing: boolean }>();
@@ -2105,7 +2161,9 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
   type FlagRole = 'recover' | 'escort' | 'defend' | 'raid';
   const flagRoles = new Map<string, { role: FlagRole; rank: number }>();
   let flagRolesAt = -Infinity;
-  /** The raid's stage per raider (flagBots.raidStageM): when it reached the stage, and whether it has gone in. */
+  /** The raid's stage per raider (flagBots.raidStageM): when it reached the stage, and whether it has gone in. The mode
+   *  checkpoint carries it (objectives.raids), so a migrated host sends a raider in when the old host would have; a
+   *  raider revived after the keyframe leaves its dead life's stage behind (migrationState.ts checkpointAfterRevives). */
   const raidStaged = new Map<string, { atS: number; go: boolean }>();
   // the flags' state the roles were dealt for (status and carrier per flag), compared in place: no key is built per call
   const flagRolesSeen: { status: FlagState['status'] | null; carrierId: string | null }[] = [];
@@ -2457,55 +2515,12 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
           : d + (d > HUNT_RULES.spreadBeyondM ? HUNT_RULES.crowdPenaltyM * Math.max(0, load + 1 - fair) : 0);
         if (cost < bestCost) { bestCost = cost; best = t; }
       }
-      let tx: number, tz: number;
       if (best) {
         huntLoad.set(best.id, (huntLoad.get(best.id) ?? 0) + 1);
-        tx = best.state.pos.x; tz = best.state.pos.z;
-        lastContact.x = tx; lastContact.z = tz; lastContact.set = true; lastContact.atS = placementTimeS;
-      } else {
-        // the search (268, item 10; Main): a hunter never stands on a spent lead. A sighting it has reached with nobody in
-        // sight is spent for it, and it hunts on past it: its sweep starts out round the spent point. A search point it
-        // reaches (within lead.arriveM) is spent too, and the next one is drawn at once, never at the next sweep epoch.
-        let anchor = huntAnchor.get(hunter.id);
-        if (!anchor) {
-          anchor = { x: hunter.state.pos.x, z: hunter.state.pos.z, atS: placementTimeS, lx: NaN, lz: NaN, swept: false, spentAtS: -Infinity, step: 0 };
-          huntAnchor.set(hunter.id, anchor);
-        }
-        const arrive2 = HUNT_RULES.lead.arriveM ** 2;
-        const seen = freshestFor(side, hunter.state.pos.x, hunter.state.pos.z);
-        if (seen && seen.atS > anchor.spentAtS && squaredDistance(hunter, seen.x, seen.z) <= arrive2) {
-          anchor.spentAtS = seen.atS;
-          anchor.x = seen.x; anchor.z = seen.z; anchor.atS = placementTimeS; anchor.lx = NaN; anchor.lz = NaN; anchor.swept = true;
-          anchor.step = 0;
-        }
-        if (seen && seen.atS > anchor.spentAtS) { tx = seen.x; tz = seen.z; anchor.step = 0; } else {
-          // the sweep: a seeded bearing per hunter, sweep epoch and search step round the last contact (the opponents'
-          // deployment before any); a director arrival first drives on to its lead point (HUNT_RULES.lead) and then spirals
-          // out round it; once the side's contact is sweepStaleS old any other hunter spirals out round where it rose instead
-          // (localSweep: firstM, then stepM more each epoch, at most maxM) — its own position and orders, no one else's
-          if (Number.isNaN(anchor.lx) && squaredDistance(hunter, plan.x, plan.z) <= arrive2) anchor.step++;
-          const epoch = Math.floor(placementTimeS / HUNT_RULES.sweepEpochS);
-          // each search point it reaches turns the next a golden angle on round the ring, so successive points never bunch
-          const angle = (Math.imul((rank + 1) * 2654435761, epoch + 7) >>> 0) / 4294967296 * Math.PI * 2 + anchor.step * GOLDEN_ANGLE;
-          const stale = !lastContact.set || placementTimeS - lastContact.atS > HUNT_RULES.sweepStaleS;
-          // the hunter's own lead outranks a side contact older than its arrival (or stale)
-          const own = stale || anchor.atS > lastContact.atS;
-          if (own && Number.isFinite(anchor.lx) && squaredDistance(hunter, anchor.lx, anchor.lz) <= arrive2) {
-            // there: the sweep spirals out round the lead point from now on
-            anchor.x = anchor.lx; anchor.z = anchor.lz; anchor.atS = placementTimeS; anchor.lx = NaN; anchor.lz = NaN; anchor.swept = true;
-          }
-          if (own && Number.isFinite(anchor.lx)) {
-            tx = anchor.lx; tz = anchor.lz;
-          } else if ((own && anchor.swept) || (stale && lastContact.set)) {
-            const local = HUNT_RULES.localSweep;
-            const ring = Math.min(local.maxM, local.firstM + local.stepM * Math.floor((placementTimeS - anchor.atS) / HUNT_RULES.sweepEpochS));
-            tx = anchor.x + detMath.sin(angle) * ring; tz = anchor.z + detMath.cos(angle) * ring;
-          } else {
-            const around = lastContact.set ? lastContact : centers[otherTeam(side)];
-            tx = around.x + detMath.sin(angle) * HUNT_RULES.sweepRingM; tz = around.z + detMath.cos(angle) * HUNT_RULES.sweepRingM;
-          }
-        }
+        lastContact.x = best.state.pos.x; lastContact.z = best.state.pos.z; lastContact.set = true; lastContact.atS = placementTimeS;
       }
+      stepHunterSearch(hunter, rank, side, plan, best);
+      let tx = huntTarget.x, tz = huntTarget.z;
       const dx = hunter.state.pos.x - tx, dz = hunter.state.pos.z - tz, d = detMath.hypot(dx, dz) || 1;
       if (d > HUNT_RULES.laneUntilM) {
         const flank = (rank % 5 === 1 || rank % 5 === 3) && HUNT_RULES.flankShare > 0;
@@ -2522,6 +2537,106 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
       plan.x = Math.max(-WORLD_MARGIN_M, Math.min(WORLD_MARGIN_M, tx));
       plan.z = Math.max(-WORLD_MARGIN_M, Math.min(WORLD_MARGIN_M, tz));
     });
+  }
+  /**
+   * The search's one transition (round 8 Y2, s2-06): where `hunter` goes this plan (huntTarget) and the phase that sends
+   * it there. A spotted quarry takes it. Else the search (268, item 10; Main): a hunter never stands on a spent lead. A
+   * sighting it has reached with nobody in sight is spent for it, and it hunts on past it: its sweep starts out round the
+   * spent point. A search point it reaches (within lead.arriveM) is spent too, and the next one is drawn at once, never
+   * at the next sweep epoch. A hunter with no record yet (one that never revived through reviveAtSpawn, or one revived
+   * after a migrated host's keyframe: migrationState.ts checkpointAfterRevives drops its dead life's) anchors where it is.
+   */
+  const huntTarget = { x: 0, z: 0 };
+  function stepHunterSearch(hunter: Entity, rank: number, side: ObjectiveTeam, plan: { x: number; z: number }, quarry: Entity | null): void {
+    if (quarry) {
+      const record = huntSearch.get(hunter.id);
+      if (record) record.phase = 'quarry';
+      huntTarget.x = quarry.state.pos.x; huntTarget.z = quarry.state.pos.z;
+      return;
+    }
+    let search = huntSearch.get(hunter.id);
+    if (!search) {
+      search = { phase: 'risen', x: hunter.state.pos.x, z: hunter.state.pos.z, atS: placementTimeS, lead: null, swept: false, spentAtS: null, step: 0 };
+      huntSearch.set(hunter.id, search);
+    }
+    const arrive2 = HUNT_RULES.lead.arriveM ** 2;
+    const seen = freshestFor(side, hunter.state.pos.x, hunter.state.pos.z);
+    const unspent = (sighting: Sighting): boolean => search.spentAtS === null || sighting.atS > search.spentAtS;
+    if (seen && unspent(seen) && squaredDistance(hunter, seen.x, seen.z) <= arrive2) {
+      search.spentAtS = seen.atS;
+      search.x = seen.x; search.z = seen.z; search.atS = placementTimeS; search.lead = null; search.swept = true;
+      search.step = 0;
+    }
+    if (seen && unspent(seen)) {
+      search.phase = 'sighting'; huntTarget.x = seen.x; huntTarget.z = seen.z; search.step = 0;
+      return;
+    }
+    // the sweep: a seeded bearing per hunter, sweep epoch and search step round the last contact (the opponents'
+    // deployment before any); a director arrival first drives on to its lead point (HUNT_RULES.lead) and then spirals
+    // out round it; once the side's contact is sweepStaleS old any other hunter spirals out round where it rose instead
+    // (localSweep: firstM, then stepM more each epoch, at most maxM) — its own position and orders, no one else's
+    if (search.lead === null && squaredDistance(hunter, plan.x, plan.z) <= arrive2) search.step++;
+    const epoch = Math.floor(placementTimeS / HUNT_RULES.sweepEpochS);
+    // each search point it reaches turns the next a golden angle on round the ring, so successive points never bunch
+    const angle = (Math.imul((rank + 1) * 2654435761, epoch + 7) >>> 0) / 4294967296 * Math.PI * 2 + search.step * GOLDEN_ANGLE;
+    const stale = !lastContact.set || placementTimeS - lastContact.atS > HUNT_RULES.sweepStaleS;
+    // the hunter's own lead outranks a side contact older than its arrival (or stale)
+    const own = stale || search.atS > lastContact.atS;
+    if (own && search.lead && squaredDistance(hunter, search.lead.x, search.lead.z) <= arrive2) {
+      // there: the sweep spirals out round the lead point from now on
+      search.x = search.lead.x; search.z = search.lead.z; search.atS = placementTimeS; search.lead = null; search.swept = true;
+    }
+    if (own && search.lead) {
+      search.phase = 'lead'; huntTarget.x = search.lead.x; huntTarget.z = search.lead.z;
+    } else if ((own && search.swept) || (stale && lastContact.set)) {
+      const local = HUNT_RULES.localSweep;
+      const ring = Math.min(local.maxM, local.firstM + local.stepM * Math.floor((placementTimeS - search.atS) / HUNT_RULES.sweepEpochS));
+      search.phase = 'sweep'; huntTarget.x = search.x + detMath.sin(angle) * ring; huntTarget.z = search.z + detMath.cos(angle) * ring;
+    } else {
+      const around = lastContact.set ? lastContact : centers[otherTeam(side)];
+      search.phase = 'ring';
+      huntTarget.x = around.x + detMath.sin(angle) * HUNT_RULES.sweepRingM; huntTarget.z = around.z + detMath.cos(angle) * HUNT_RULES.sweepRingM;
+    }
+  }
+  /** The hunt's checkpoint (round 8 Y2): JSON-safe, "never" as null. */
+  function captureHunt(): HuntCheckpoint {
+    return {
+      searches: [...huntSearch].map(([id, search]) => [id, { ...search, lead: search.lead ? { ...search.lead } : null }]),
+      plans: [...huntPlan].map(([id, plan]) => [id, { x: plan.x, z: plan.z }]),
+      planAtS: Number.isFinite(huntPlanAt) ? huntPlanAt : null,
+      lastContact: lastContact.set ? { x: lastContact.x, z: lastContact.z, atS: lastContact.atS } : null,
+      sightings: { alpha: [...sightings.alpha.values()].map((seen) => ({ ...seen })), bravo: [...sightings.bravo.values()].map((seen) => ({ ...seen })) },
+      intelAtS: Number.isFinite(intelAt) ? intelAt : null,
+      arrivals,
+    };
+  }
+  const finite = (value: unknown): value is number => typeof value === 'number' && Number.isFinite(value);
+  /** A checkpoint's search record, or null when it is not one (an unknown phase, a missing or non-finite number). */
+  function decodeHuntSearch(value: unknown): HuntSearch | null {
+    if (!value || typeof value !== 'object') return null;
+    const record = value as Record<string, unknown>, lead = record.lead as Record<string, unknown> | null;
+    if (!HUNT_SEARCH_PHASES.includes(record.phase as HuntSearchPhase) || !finite(record.x) || !finite(record.z) || !finite(record.atS)
+      || typeof record.swept !== 'boolean' || !(record.spentAtS === null || finite(record.spentAtS))
+      || !(Number.isInteger(record.step) && (record.step as number) >= 0)
+      || !(lead === null || (!!lead && typeof lead === 'object' && finite(lead.x) && finite(lead.z)))) return null;
+    return { phase: record.phase as HuntSearchPhase, x: record.x, z: record.z, atS: record.atS, lead: lead ? { x: lead.x as number, z: lead.z as number } : null,
+      swept: record.swept, spentAtS: record.spentAtS as number | null, step: record.step as number };
+  }
+  /** The hunt as the old host had it: replaces what this controller's own opening made (its wave's anchors and leads). */
+  function restoreHunt(saved: HuntCheckpoint): void {
+    huntSearch.clear();
+    for (const [id, record] of saved.searches) { const search = decodeHuntSearch(record); if (search) huntSearch.set(id, search); }
+    huntPlan.clear();
+    for (const [id, plan] of saved.plans) if (finite(plan?.x) && finite(plan?.z)) huntPlan.set(id, { x: plan.x, z: plan.z });
+    huntPlanAt = saved.planAtS ?? -Infinity;
+    lastContact.set = !!saved.lastContact;
+    lastContact.x = saved.lastContact?.x ?? 0; lastContact.z = saved.lastContact?.z ?? 0; lastContact.atS = saved.lastContact?.atS ?? -Infinity;
+    for (const side of ['alpha', 'bravo'] as const) {
+      sightings[side].clear();
+      for (const seen of saved.sightings[side]) sightings[side].set(seen.id, { id: seen.id, x: seen.x, z: seen.z, atS: seen.atS });
+    }
+    intelAt = saved.intelAtS ?? -Infinity;
+    arrivals = saved.arrivals;
   }
   const hunterScratch: Entity[] = [];
   function refreshHunts(): void {
@@ -2665,7 +2780,12 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
         const live = zones.find((candidate) => candidate.id === zone.id);
         if (live) { live.control = zone.control; live.owner = zone.owner; live.contested = zone.contested; }
       }
+      // the attack's plan as the old host had it (round 8 Y2 fix-up r3): who stands at the stage since when, who pushes
       attackPlan.clear();
+      for (const [key, plan] of saved.line.attack ?? []) {
+        if (!finite(plan?.x) || !finite(plan?.z)) continue;
+        attackPlan.set(key, { x: plan.x, z: plan.z, stagedAtS: finite(plan.stagedAtS) ? plan.stagedAtS : Infinity, pushing: plan.pushing === true });
+      }
       if (state.line) state.line.index = lineIndex;
       if (state.horde) { state.horde.wave = wave; state.horde.total = lineCount(); }
     }
@@ -2778,7 +2898,9 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
         ...(ruleset.assault ? { line: { index: lineIndex, holdUntilS, regroup: regroup ? { ...regroup } : null,
           counter: counter ? { ...counter, ids: [...counter.ids] } : null, fresh: [...freshDefenders],
           nextReinforceAtS: Number.isFinite(nextReinforceAtS) ? nextReinforceAtS : null, allyDownAt: [...allyDownAt],
-          zones: zones.map((zone) => ({ id: zone.id, control: zone.control, owner: zone.owner, contested: zone.contested })) } } : {}),
+          zones: zones.map((zone) => ({ id: zone.id, control: zone.control, owner: zone.owner, contested: zone.contested })),
+          ...(attackPlan.size ? { attack: [...attackPlan].map(([key, plan]): [string, AttackStage] => [key,
+            { x: plan.x, z: plan.z, stagedAtS: Number.isFinite(plan.stagedAtS) ? plan.stagedAtS : null, pushing: plan.pushing }]) } : {}) } } : {}),
       } : null;
       return { elapsedS, score: { ...score }, weaponKills: [...weaponKills], teams: entities.map(entity => [entity.id, teamOf(entity)]),
         respawns: [...respawnAt].map(([key, value]) => [key, { ...value }]),
@@ -2789,9 +2911,17 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
           flags: flags.map((flag) => ({ team: flag.team, x: flag.x, y: flag.y, z: flag.z, status: flag.status, carrierId: flag.carrierId, returnAtS: flag.returnAtS })),
           zones: ruleset.assault ? [] : zones.map((zone) => ({ id: zone.id, control: zone.control, owner: zone.owner, contested: zone.contested })),
           ball: ball ? { ...ball } : null, ballActiveAtS, lastBallTouchS: Number.isFinite(lastBallTouchS) ? lastBallTouchS : null,
-        } } : {}) };
+          ...(raidStaged.size ? { raids: [...raidStaged].map(([key, staged]): [string, RaidStage] => [key, { atS: staged.atS, go: staged.go }]) } : {}),
+        } } : {}),
+        ...(huntSearch.size || huntPlan.size ? { hunt: captureHunt() } : {}) };
     },
     restoreCheckpoint(checkpoint) {
+      // the mode clock the checkpoint was taken on (round 8 Y2 fix-up r2): a restored host's first route push asks for
+      // destinations before its first step sets the clock. On clock 0 a hunter with no plan (one that arrived after the
+      // keyframe) re-planned every hunter, its search and the plans' clock dated 0, and a stage that push opened read
+      // as waited out. The stages it reads are carried (fix-up r3: the CTF raid's, Frontline's attack plan), so on the
+      // mode's clock a raider or attacker goes in when the old host would have sent it (huntSearchMigration [6])
+      if (Number.isFinite(checkpoint.elapsedS)) placementTimeS = checkpoint.elapsedS;
       score.alpha = checkpoint.score.alpha; score.bravo = checkpoint.score.bravo;
       weaponKills.clear(); for (const [key, value] of checkpoint.weaponKills) weaponKills.set(key, value);
       teams.alpha.length = teams.bravo.length = 0;
@@ -2828,7 +2958,15 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
         if (ball && saved.ball) Object.assign(ball, saved.ball);
         ballActiveAtS = saved.ballActiveAtS;
         lastBallTouchS = saved.lastBallTouchS ?? -Infinity;
+        // each raider's stage as the old host had it (round 8 Y2 fix-up r3): when it reached it, whether it went in
+        raidStaged.clear();
+        for (const [key, staged] of saved.raids ?? []) if (finite(staged?.atS)) raidStaged.set(key, { atS: staged.atS, go: staged.go === true });
       }
+      if (checkpoint.hunt) restoreHunt(checkpoint.hunt);
+    },
+    huntSearchOf(entity) {
+      const search = huntSearch.get(entity.id);
+      return search ? { ...search, lead: search.lead ? { ...search.lead } : null } : null;
     },
     serialize,
   };

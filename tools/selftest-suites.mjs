@@ -1847,6 +1847,9 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/mp/host/migrationState.selftest.mjs',
     'src/mp/host/matchHost.selftest.mjs',
     'src/mp/host/hostStopRace.selftest.mjs', // 2026-10-13 the MP stream: a core stopped during its world load starts no actor
+    // round 8 Y2 (s4-04): each seat holds the sealed boot configuration from its WELCOME on (sealed once, sent with the
+    // WELCOME); a roster fallback keeps a present player's room loadout and gives a departed one's hull the defaults
+    'src/mp/host/matchHostCore.selftest.mjs',
     'src/mp/host/hostRuntimeStates.selftest.mjs', // 2026-11-02 audit M1/M3: a stopped or failed host stays so on a late ready; a core whose actor ended is stopped
     'src/mp/host/hostStandby.selftest.mjs', // 2026-10-14 the MP stream: a standby host thread boots on the world it prepared (§13.21)
     // 2026-11-02 audit round 5 Q1 (review r2): the host's fetch of the world kernels has a bound (HOST_KERNELS_FETCH_MS): a
@@ -2173,6 +2176,12 @@ export const SELFTEST_SUITES = Object.freeze({
     // fresh route, a mission owns its waypoints, TEAM NATIONS (planner, nation index, room seating) and the harness gate
     'src/sim/botDoctrine.selftest.mjs',
     'src/sim/hordeWaveLaw.selftest.mjs',
+    // round 8 Y2 (s2-06): each hunter's search is one record, carried with the hunt's plans, sightings and last contact
+    // in the mode checkpoint: a migrated host's hunters keep their leads and sweeps (Horde and Infected). It also pins
+    // the CTF raid's and Frontline's attack stages across a migration (fix-up r3 and the residual, [6]): a lone raider
+    // or attacker goes in when the old host sends it, a window-revived raider stages afresh, a revived attacker keeps
+    // its plan
+    'src/sim/huntSearchMigration.selftest.mjs',
     // 2026-11-02 audit M4: one life state per tank (alive/down/benched/rescued) through one transition; a refused Horde
     // arrival retries as an arrival and stays owed, not alive; a restore benches its resting hulls
     'src/sim/modeLife.selftest.mjs',

@@ -296,10 +296,22 @@ function revivedSinceKeyframe(actor: MatchActor, state: HostResumeState, extrasT
  * The life itself too (integration IR2, 2026-11-03): restoreCheckpoint reads `lives` before `destroyed`, so a hull the
  * keyframe had down came back 'down' (set alive later only by the death watch's restore side door) and one it had benched
  * came back benched and stayed off the field. A rescued hull has left for good and is never revived (reviveAtSpawn).
+ * The hunt too (round 8 Y2 fix-up r2): a revive starts a hunter's search over (matchModes.ts resetHunterSearch), so the
+ * keyframe's record is the dead life's (its anchor, director lead and spent sighting) and is dropped; the new host's
+ * first plan that finds the hunter no quarry anchors it where it then stands, with no lead (stepHunterSearch). Its plan
+ * stays, as on the old host, which keeps a revived hunter's plan until the next one (a hunter with no plan re-plans
+ * every hunter at once, off the old host's clock). Not replayed: the lead the arrival drew and the arrivals' lead seed
+ * it advanced, which need the old host's sightings and arrival point at the revive. huntSearchMigration.selftest [5].
+ * The CTF raid's stage too (round 8 Y2 residual): the old host drops a fallen raider's stage at its next role deal
+ * (matchModes.ts assignFlagRoles), so a keyframe sealed before that deal holds the dead life's stage (going in, or still
+ * waiting), and the revived raider stages afresh and waits raidWaitS for its group; the keyframe's entry is dropped
+ * whatever its go, every other raider's kept, a waiting one's too. Frontline's attack plan is kept: the old host keeps a
+ * fallen attacker's plan through the allied revive (planAttack deals the live squad only; only a line advance clears
+ * it). huntSearchMigration.selftest [6] window revive.
  */
 function checkpointAfterRevives(checkpoint: NewModeCheckpoint, revived: ReadonlySet<string>): NewModeCheckpoint {
   if (!revived.size || !checkpoint.mode) return checkpoint;
-  const mode = checkpoint.mode, waves = mode.waves;
+  const mode = checkpoint.mode, waves = mode.waves, hunt = mode.hunt, objectives = mode.objectives;
   return {
     ...checkpoint,
     mode: {
@@ -309,6 +321,8 @@ function checkpointAfterRevives(checkpoint: NewModeCheckpoint, revived: Readonly
       ...(mode.lives ? { lives: mode.lives.map(([id, life]): [string, typeof life] => [id, revived.has(id) && life !== 'rescued' ? 'alive' : life]) } : {}),
       scored: mode.scored.filter((id) => !revived.has(id)),
       ...(waves ? { waves: { ...waves, inactive: waves.inactive.filter((id) => !revived.has(id)), restedAt: waves.restedAt.filter(([id]) => !revived.has(id)) } } : {}),
+      ...(hunt ? { hunt: { ...hunt, searches: hunt.searches.filter(([id]) => !revived.has(id)) } } : {}),
+      ...(objectives?.raids ? { objectives: { ...objectives, raids: objectives.raids.filter(([id]) => !revived.has(id)) } } : {}),
     },
   };
 }
