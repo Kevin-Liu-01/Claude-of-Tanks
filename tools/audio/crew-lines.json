@@ -29791,6 +29791,90 @@
       "af": [
         "Neem die doelwitte. Lugsteun staan gereed.",
         "Beset die posisies. Lugsteun is beskikbaar."
+      ],
+      "es-ES": [
+        "Tomad los sectores. Apoyo aéreo disponible.",
+        "Ocupad los puntos. Tenemos apoyo aéreo en alerta."
+      ],
+      "es-419": [
+        "Tomen los sectores. Apoyo aéreo disponible.",
+        "Capturen los puntos. Tenemos apoyo aéreo en alerta."
+      ],
+      "pt-PT": [
+        "Conquistem os setores. Apoio aéreo em prontidão.",
+        "Ocupem os pontos. Temos apoio aéreo disponível."
+      ],
+      "nl": [
+        "Neem de sectoren in. Luchtsteun staat paraat.",
+        "Bezet de punten. Luchtsteun is oproepbaar."
+      ],
+      "no": [
+        "Ta sektorene. Luftstøtte i beredskap.",
+        "Innta punktene. Flystøtte er klar."
+      ],
+      "fi": [
+        "Vallatkaa sektorit. Ilmatuki valmiina.",
+        "Ottakaa pisteet. Ilmatukea saatavilla."
+      ],
+      "el": [
+        "Καταλάβετε τους τομείς. Αεροπορική υποστήριξη σε ετοιμότητα.",
+        "Κυριεύστε τα σημεία. Έχουμε αεροπορική υποστήριξη."
+      ],
+      "cs": [
+        "Obsadit sektory. Letecká podpora v pohotovosti.",
+        "Zmocnit se bodů. Letectvo máme na zavolání."
+      ],
+      "hu": [
+        "Szektorokat elfoglalni. Légi támogatás készenlétben.",
+        "Pontokat birtokba venni. Légierő hívásra kész."
+      ],
+      "ro": [
+        "Ocupați sectoarele. Sprijin aerian pregătit.",
+        "Cuceriți punctele. Avem aviație la cerere."
+      ],
+      "tr": [
+        "Sektörleri alın. Hava desteği hazır.",
+        "Mevzileri ele geçirin. Hava desteği emrimizde."
+      ],
+      "ar": [
+        "استولوا على القطاعات. الإسناد الجوي جاهز.",
+        "سيطروا على النقاط. الطيران تحت الطلب."
+      ],
+      "fa": [
+        "بخش‌ها را تصرف کنید. پشتیبانی هوایی آماده است.",
+        "نقاط را بگیرید. پوشش هوایی در اختیار داریم."
+      ],
+      "hi": [
+        "सेक्टर क़ब्ज़े में लो। एयर सपोर्ट स्टैंडबाय पर है।",
+        "पॉइंट्स पर क़ब्ज़ा करो। एयर सपोर्ट कॉल पर है।"
+      ],
+      "ur": [
+        "سیکٹرز پر قبضہ کرو۔ ایئر سپورٹ اسٹینڈ بائی پر۔",
+        "پوائنٹس سنبھالو۔ ایئر سپورٹ کال پر موجود ہے۔"
+      ],
+      "bn": [
+        "সেক্টরগুলো দখল করো। এয়ার সাপোর্ট স্ট্যান্ডবাই।",
+        "পয়েন্টগুলো দখলে যাও। ডাকলেই এয়ার সাপোর্ট আসবে।"
+      ],
+      "id-ID": [
+        "Rebut sektor. Bantuan udara siaga.",
+        "Kuasai titik-titik itu. Dukungan udara siap dipanggil."
+      ],
+      "ms": [
+        "Tawan sektor. Bantuan udara bersedia.",
+        "Rampas kedudukan. Bantuan udara sedia dipanggil."
+      ],
+      "vi": [
+        "Đánh chiếm các khu vực. Không quân sẵn sàng chi viện.",
+        "Chiếm các điểm. Có không quân chờ lệnh."
+      ],
+      "th": [
+        "ยึดพื้นที่ทุกส่วน การสนับสนุนทางอากาศพร้อม",
+        "ยึดจุดสำคัญ เรียกกำลังทางอากาศได้ทันที"
+      ],
+      "fil": [
+        "Kunin ang mga sector. Naka-standby ang air support.",
+        "Agawin ang mga point. May air support tayong matatawag."
       ]
     },
     {
@@ -29865,6 +29949,90 @@
       "af": [
         "Versoek verkenningsvlug.",
         "Verkenning, op my merk."
+      ],
+      "es-ES": [
+        "Solicito pasada de reconocimiento. Zona marcada.",
+        "Pasada de reconocimiento, a mi señal."
+      ],
+      "es-419": [
+        "Solicito sobrevuelo de reconocimiento. Zona marcada.",
+        "Pasada de reconocimiento, a mi señal."
+      ],
+      "pt-PT": [
+        "Solicito passagem de reconhecimento. Área marcada.",
+        "Reconhecimento aéreo, à minha ordem."
+      ],
+      "nl": [
+        "Verzoek verkenningsvlucht. Gebied gemarkeerd.",
+        "Verkenningsvlucht, op mijn markering."
+      ],
+      "no": [
+        "Ber om oppklaringsflyging. Område markert.",
+        "Oppklaring, på min markering."
+      ],
+      "fi": [
+        "Pyydän tiedustelulentoa. Alue merkitty.",
+        "Tiedustelulento, merkistäni."
+      ],
+      "el": [
+        "Ζητώ αναγνωριστική διέλευση. Περιοχή επισημασμένη.",
+        "Αναγνώριση, στο σήμα μου."
+      ],
+      "cs": [
+        "Žádám průzkumný přelet. Prostor označen.",
+        "Průzkumný přelet, na moji značku."
+      ],
+      "hu": [
+        "Felderítő átrepülést kérek. Körzet megjelölve.",
+        "Felderítő átrepülés, jelzésemre."
+      ],
+      "ro": [
+        "Solicit trecere de cercetare. Zonă marcată.",
+        "Trecere de cercetare, la semnalul meu."
+      ],
+      "tr": [
+        "Keşif uçuşu talep ediyorum. Bölge işaretli.",
+        "Keşif uçuşu, işaretimde."
+      ],
+      "ar": [
+        "أطلب طلعة استطلاع. المنطقة محددة.",
+        "طلعة استطلاع، على إشارتي."
+      ],
+      "fa": [
+        "درخواست پرواز شناسایی. منطقه علامت‌گذاری شد.",
+        "پرواز شناسایی، روی علامت من."
+      ],
+      "hi": [
+        "रेकी पास की रिक्वेस्ट। एरिया मार्क कर दिया।",
+        "रेकी पास, मेरे मार्क पर।"
+      ],
+      "ur": [
+        "ریکی پاس کی ریکویسٹ۔ ایریا مارکڈ۔",
+        "ریکی پاس، میرے مارک پر۔"
+      ],
+      "bn": [
+        "রেকি পাস রিকোয়েস্ট। এরিয়া মার্কড।",
+        "রেকি পাস, আমার মার্কে।"
+      ],
+      "id-ID": [
+        "Minta lintasan intai. Area sudah ditandai.",
+        "Lintasan intai, pada tanda saya."
+      ],
+      "ms": [
+        "Minta laluan tinjau. Kawasan ditanda.",
+        "Laluan tinjau, atas tanda saya."
+      ],
+      "vi": [
+        "Đề nghị trinh sát đường không. Khu vực đã đánh dấu.",
+        "Máy bay trinh sát, theo dấu của tôi."
+      ],
+      "th": [
+        "ขอเครื่องบินลาดตระเวนบินผ่าน พื้นที่หมายไว้แล้ว",
+        "บินลาดตระเวน ตามที่ผมหมายไว้"
+      ],
+      "fil": [
+        "Request ng recon pass. Naka-mark na ang area.",
+        "Recon pass, sa mark ko."
       ]
     },
     {
@@ -29939,6 +30107,90 @@
       "af": [
         "Vuuropdrag. Tien rondtes op die merk.",
         "Versoek artillerie, teiken gemerk."
+      ],
+      "es-ES": [
+        "Misión de fuego. Diez disparos, a mi señal.",
+        "Solicito artillería. Blanco marcado."
+      ],
+      "es-419": [
+        "Misión de fuego. Diez disparos, a mi señal.",
+        "Solicito artillería. Blanco marcado."
+      ],
+      "pt-PT": [
+        "Missão de tiro. Dez granadas, à minha ordem.",
+        "Solicito artilharia. Alvo marcado."
+      ],
+      "nl": [
+        "Vuuropdracht. Tien schoten, op mijn markering.",
+        "Verzoek artillerie. Doel gemarkeerd."
+      ],
+      "no": [
+        "Ildanmodning. Ti skudd, på min markering.",
+        "Ber om artilleri. Mål markert."
+      ],
+      "fi": [
+        "Tulipyyntö. Kymmenen laukausta, merkistäni.",
+        "Pyydän tykistötulta. Maali merkitty."
+      ],
+      "el": [
+        "Αποστολή πυρός. Δέκα βλήματα, στο σήμα μου.",
+        "Αίτηση πυρών πυροβολικού. Στόχος επισημασμένος."
+      ],
+      "cs": [
+        "Palebný úkol. Deset ran na moji značku.",
+        "Žádám dělostřelectvo. Cíl označen."
+      ],
+      "hu": [
+        "Tűzfeladat. Tíz lövés, jelzésemre.",
+        "Tüzérséget kérek. Célpont megjelölve."
+      ],
+      "ro": [
+        "Misiune de foc. Zece lovituri, la semnalul meu.",
+        "Solicit artilerie. Țintă marcată."
+      ],
+      "tr": [
+        "Atış görevi. On atım, işaretimde.",
+        "Topçu ateşi talep ediyorum. Hedef işaretli."
+      ],
+      "ar": [
+        "مهمة رمي. عشر قذائف، على إشارتي.",
+        "أطلب المدفعية. الهدف محدد."
+      ],
+      "fa": [
+        "مأموریت آتش. ده گلوله، روی علامت من.",
+        "درخواست توپخانه. هدف علامت‌گذاری شد."
+      ],
+      "hi": [
+        "फ़ायर मिशन। दस राउंड, मेरे मार्क पर।",
+        "आर्टिलरी चाहिए। टारगेट मार्क कर दिया।"
+      ],
+      "ur": [
+        "فائر مشن۔ دس راؤنڈ، میرے مارک پر۔",
+        "آرٹلری کی ریکویسٹ۔ ٹارگٹ مارکڈ۔"
+      ],
+      "bn": [
+        "ফায়ার মিশন। দশ রাউন্ড, আমার মার্কে।",
+        "আর্টিলারি রিকোয়েস্ট। টার্গেট মার্কড।"
+      ],
+      "id-ID": [
+        "Misi tembakan. Sepuluh peluru, pada tanda saya.",
+        "Minta tembakan artileri. Sasaran ditandai."
+      ],
+      "ms": [
+        "Misi tembakan. Sepuluh butir, atas tanda saya.",
+        "Minta tembakan artileri. Sasaran ditanda."
+      ],
+      "vi": [
+        "Nhiệm vụ hỏa lực. Mười quả, theo dấu của tôi.",
+        "Đề nghị pháo binh bắn. Mục tiêu đã đánh dấu."
+      ],
+      "th": [
+        "ภารกิจยิง สิบนัด ตามที่ผมหมายไว้",
+        "ขอยิงปืนใหญ่ กำหนดเป้าหมายแล้ว"
+      ],
+      "fil": [
+        "Fire mission. Sampung round, sa mark ko.",
+        "Request ng artilerya. Naka-mark ang target."
       ]
     },
     {
@@ -30013,6 +30265,90 @@
       "af": [
         "Versoek kanonaanval op my merk.",
         "Kanonaanval uit die lug, teiken gemerk."
+      ],
+      "es-ES": [
+        "Solicito pasada de ametrallamiento, a mi señal.",
+        "Pasada de cañón, blanco marcado."
+      ],
+      "es-419": [
+        "Solicito ataque con cañón, a mi señal.",
+        "Pasada de cañón, blanco marcado."
+      ],
+      "pt-PT": [
+        "Solicito metralhamento, à minha ordem.",
+        "Passagem de canhão, alvo marcado."
+      ],
+      "nl": [
+        "Verzoek boordkanonaanval, op mijn markering.",
+        "Beschieting met boordkanon, doel gemarkeerd."
+      ],
+      "no": [
+        "Ber om kanonangrep, på min markering.",
+        "Kanonangrep fra lufta, mål markert."
+      ],
+      "fi": [
+        "Pyydän konetykkitulta, merkistäni.",
+        "Tykkirynnäkkö, maali merkitty."
+      ],
+      "el": [
+        "Ζητώ πολυβολισμό, στο σήμα μου.",
+        "Επίθεση με πυροβόλο, στόχος επισημασμένος."
+      ],
+      "cs": [
+        "Žádám útok palubním kanónem na moji značku.",
+        "Palubní kanón, cíl označen."
+      ],
+      "hu": [
+        "Gépágyús rácsapást kérek, jelzésemre.",
+        "Gépágyús rácsapás, célpont megjelölve."
+      ],
+      "ro": [
+        "Solicit atac cu tunul, la semnalul meu.",
+        "Atac cu tunul, țintă marcată."
+      ],
+      "tr": [
+        "Tarama atışı talep ediyorum, işaretimde.",
+        "Tarama atışı, hedef işaretli."
+      ],
+      "ar": [
+        "أطلب طلعة رماية بالمدفع، على إشارتي.",
+        "رماية بالمدفع، الهدف محدد."
+      ],
+      "fa": [
+        "درخواست شلیک توپ هواپیما، روی علامت من.",
+        "حمله با توپ هواپیما، هدف علامت‌گذاری شد."
+      ],
+      "hi": [
+        "गन रन की रिक्वेस्ट, मेरे मार्क पर।",
+        "गन रन, टारगेट मार्क्ड।"
+      ],
+      "ur": [
+        "گن رن کی ریکویسٹ، میرے مارک پر۔",
+        "گن رن، ٹارگٹ مارکڈ۔"
+      ],
+      "bn": [
+        "গান রান রিকোয়েস্ট, আমার মার্কে।",
+        "গান রান, টার্গেট মার্কড।"
+      ],
+      "id-ID": [
+        "Minta tembakan kanon pesawat, pada tanda saya.",
+        "Serangan kanon, sasaran ditandai."
+      ],
+      "ms": [
+        "Minta serangan meriam udara, atas tanda saya.",
+        "Serangan meriam udara, sasaran ditanda."
+      ],
+      "vi": [
+        "Đề nghị cường kích bắn quét, theo dấu của tôi.",
+        "Bắn quét bằng pháo, mục tiêu đã đánh dấu."
+      ],
+      "th": [
+        "ขอเครื่องบินกราดยิง ตามที่ผมหมายไว้",
+        "กราดยิงทางอากาศ กำหนดเป้าแล้ว"
+      ],
+      "fil": [
+        "Request ng gun run, sa mark ko.",
+        "Gun run, naka-mark ang target."
       ]
     },
     {
@@ -30087,6 +30423,90 @@
       "af": [
         "Laser aan. Versoek bom op die teiken.",
         "Teiken gemerk. Versoek bom."
+      ],
+      "es-ES": [
+        "Designando con láser. Solicito bomba sobre el blanco.",
+        "Blanco marcado. Lanzad la bomba."
+      ],
+      "es-419": [
+        "Iluminando con láser. Solicito bomba al blanco.",
+        "Blanco marcado. Suelten la bomba."
+      ],
+      "pt-PT": [
+        "A designar com laser. Solicito bomba no alvo.",
+        "Alvo marcado. Larguem a bomba."
+      ],
+      "nl": [
+        "Laser aan. Verzoek bom op het doel.",
+        "Doel gemarkeerd. Laat de bom vallen."
+      ],
+      "no": [
+        "Laser på. Ber om bombe på målet.",
+        "Mål markert. Send bomben."
+      ],
+      "fi": [
+        "Laser päällä. Pyydän pommia maaliin.",
+        "Maali merkitty. Pommi matkaan."
+      ],
+      "el": [
+        "Φωτίζω με λέιζερ. Ζητώ βόμβα στον στόχο.",
+        "Στόχος επισημασμένος. Ρίξτε τη βόμβα."
+      ],
+      "cs": [
+        "Ozařuji laserem. Žádám bombu na cíl.",
+        "Cíl označen. Pošlete bombu."
+      ],
+      "hu": [
+        "Lézerrel jelölök. Bombát kérek a célpontra.",
+        "Célpont megjelölve. Jöhet a bomba."
+      ],
+      "ro": [
+        "Iluminez cu laserul. Solicit bombă pe țintă.",
+        "Țintă marcată. Trimiteți bomba."
+      ],
+      "tr": [
+        "Lazerle işaretliyorum. Hedefe bomba talep ediyorum.",
+        "Hedef işaretli. Bombayı gönderin."
+      ],
+      "ar": [
+        "أضيء الهدف بالليزر. أطلب قنبلة عليه.",
+        "الهدف محدد. أرسلوا القنبلة."
+      ],
+      "fa": [
+        "نشانه‌گذاری لیزری. درخواست بمب روی هدف.",
+        "هدف علامت‌گذاری شد. بمب را بفرستید."
+      ],
+      "hi": [
+        "लेज़र ऑन। टारगेट पर बम की रिक्वेस्ट।",
+        "टारगेट मार्क्ड। बम भेजो।"
+      ],
+      "ur": [
+        "لیزر آن۔ ٹارگٹ پر بم کی ریکویسٹ۔",
+        "ٹارگٹ مارکڈ۔ بم بھیجو۔"
+      ],
+      "bn": [
+        "লেজার অন। টার্গেটে বোমা রিকোয়েস্ট।",
+        "টার্গেট মার্কড। বোমা পাঠাও।"
+      ],
+      "id-ID": [
+        "Laser menyorot. Minta bom ke sasaran.",
+        "Sasaran ditandai. Kirim bomnya."
+      ],
+      "ms": [
+        "Laser menanda. Minta bom atas sasaran.",
+        "Sasaran ditanda. Hantar bom."
+      ],
+      "vi": [
+        "Đang chiếu laser. Đề nghị ném bom mục tiêu.",
+        "Mục tiêu đã đánh dấu. Thả bom đi."
+      ],
+      "th": [
+        "ส่องเลเซอร์อยู่ ขอทิ้งระเบิดใส่เป้า",
+        "กำหนดเป้าแล้ว ส่งระเบิดมาเลย"
+      ],
+      "fil": [
+        "Naka-laser na. Request ng bomba sa target.",
+        "Naka-mark ang target. Ipadala ang bomba."
       ]
     },
     {
@@ -30161,6 +30581,90 @@
       "af": [
         "Lugaanval op ons! Ry, ry!",
         "Vyandelike vliegtuig op pad, kom weg!"
+      ],
+      "es-ES": [
+        "¡Ataque aéreo sobre nosotros! ¡Arranca, rápido!",
+        "¡Aviación enemiga entrando, despejad la zona!"
+      ],
+      "es-419": [
+        "¡Ataque aéreo sobre nosotros! ¡Arranca, rápido!",
+        "¡Avión enemigo en aproximación, salgan de la zona!"
+      ],
+      "pt-PT": [
+        "Ataque aéreo sobre nós! Arranca, depressa!",
+        "Aeronave inimiga a aproximar-se, toca a sair daqui!"
+      ],
+      "nl": [
+        "Luchtaanval op ons! Rijden, snel!",
+        "Vijandelijk toestel nadert, wegwezen!"
+      ],
+      "no": [
+        "Luftangrep mot oss! Kjør, fort!",
+        "Fiendtlige fly på vei inn, kom dere unna!"
+      ],
+      "fi": [
+        "Ilmaisku meihin! Aja, nopeasti!",
+        "Vihollisen kone tulossa, pois täältä!"
+      ],
+      "el": [
+        "Αεροπορική επίθεση πάνω μας! Οδηγέ, φύγε!",
+        "Εχθρικό αεροσκάφος εισέρχεται, απομακρυνθείτε!"
+      ],
+      "cs": [
+        "Nálet na nás! Řidiči, pryč odsud!",
+        "Nepřátelská letadla přilétají, uhnout!"
+      ],
+      "hu": [
+        "Légicsapás ránk! Mozgás, gyorsan!",
+        "Ellenséges repülő érkezik, kifelé innen!"
+      ],
+      "ro": [
+        "Atac aerian pe noi! Mișcați, repede!",
+        "Aviație inamică spre noi, degajați!"
+      ],
+      "tr": [
+        "Üstümüze hava saldırısı! Hareket, çabuk!",
+        "Düşman uçağı geliyor, uzaklaşın!"
+      ],
+      "ar": [
+        "ضربة جوية علينا! تحركوا، بسرعة!",
+        "طائرة معادية قادمة، ابتعدوا!"
+      ],
+      "fa": [
+        "حمله‌ی هوایی روی ما! حرکت، سریع!",
+        "هواپیمای دشمن نزدیک می‌شود، دور شوید!"
+      ],
+      "hi": [
+        "हम पर एयर स्ट्राइक! हटो, जल्दी!",
+        "दुश्मन का जहाज़ आ रहा है, निकलो!"
+      ],
+      "ur": [
+        "ہم پر ایئر اسٹرائیک! ہٹو، جلدی!",
+        "دشمن کا جہاز آ رہا ہے، نکلو!"
+      ],
+      "bn": [
+        "আমাদের ওপর এয়ার স্ট্রাইক! সরো, জলদি!",
+        "শত্রু বিমান আসছে, সরে যাও!"
+      ],
+      "id-ID": [
+        "Serangan udara ke kita! Gerak, cepat!",
+        "Pesawat musuh datang, menjauh!"
+      ],
+      "ms": [
+        "Serangan udara atas kita! Gerak, cepat!",
+        "Pesawat musuh menghampiri, beredar dari sini!"
+      ],
+      "vi": [
+        "Không kích vào ta! Chạy, nhanh lên!",
+        "Máy bay địch lao tới, rời khỏi đây!"
+      ],
+      "th": [
+        "โจมตีทางอากาศลงที่เรา ไปเร็ว",
+        "เครื่องบินข้าศึกเข้ามา ออกไปให้พ้น"
+      ],
+      "fil": [
+        "Air strike sa atin! Galaw, bilis!",
+        "Paparating ang eroplano ng kalaban, alis diyan!"
       ]
     },
     {
@@ -30235,6 +30739,90 @@
       "af": [
         "Artillerie inkomend! Ry!",
         "Granate op pad na ons, kom weg!"
+      ],
+      "es-ES": [
+        "¡Artillería entrante! ¡Arranca!",
+        "¡Granadas sobre nosotros, salid de ahí!"
+      ],
+      "es-419": [
+        "¡Artillería entrante! ¡Arranca!",
+        "¡Proyectiles sobre nosotros, muévanse!"
+      ],
+      "pt-PT": [
+        "Artilharia a chegar! Arranca!",
+        "Granadas a cair sobre nós, saiam daí!"
+      ],
+      "nl": [
+        "Inkomende artillerie! Rijden!",
+        "Granaten op komst, maak dat je wegkomt!"
+      ],
+      "no": [
+        "Innkommende artilleri! Kjør!",
+        "Granater mot oss, kom oss unna!"
+      ],
+      "fi": [
+        "Tykistöä tulossa! Aja!",
+        "Kranaatteja meitä kohti, pois alta!"
+      ],
+      "el": [
+        "Εισερχόμενο πυροβολικό! Κίνηση!",
+        "Βλήματα πέφτουν πάνω μας, φύγετε από εδώ!"
+      ],
+      "cs": [
+        "Dělostřelecká palba na nás! Pryč!",
+        "Granáty letí na nás, uhnout!"
+      ],
+      "hu": [
+        "Tüzérségi tűz ránk! Mozgás!",
+        "Gránátok érkeznek ránk, el innen!"
+      ],
+      "ro": [
+        "Artilerie spre noi! Mișcați!",
+        "Proiectile pe noi, degajați zona!"
+      ],
+      "tr": [
+        "Topçu ateşi geliyor! Hareket!",
+        "Top mermileri üstümüze, çekilin!"
+      ],
+      "ar": [
+        "مدفعية قادمة! تحركوا!",
+        "قذائف نحونا، ابتعدوا عن الموقع!"
+      ],
+      "fa": [
+        "آتش توپخانه به سمت ما! حرکت!",
+        "گلوله‌ی توپ روی ما، از منطقه خارج شوید!"
+      ],
+      "hi": [
+        "आर्टिलरी आ रही है! हटो!",
+        "हम पर गोले आ रहे हैं, निकलो यहाँ से!"
+      ],
+      "ur": [
+        "آرٹلری آ رہی ہے! ہٹو!",
+        "ہم پر گولے آ رہے ہیں، یہاں سے نکلو!"
+      ],
+      "bn": [
+        "আর্টিলারি আসছে! সরো!",
+        "আমাদের ওপর গোলা আসছে, সরে যাও!"
+      ],
+      "id-ID": [
+        "Artileri datang! Gerak!",
+        "Peluru meriam ke arah kita, menjauh!"
+      ],
+      "ms": [
+        "Artileri masuk! Gerak!",
+        "Peluru meriam ke arah kita, beredar!"
+      ],
+      "vi": [
+        "Pháo địch bắn tới! Chạy!",
+        "Đạn pháo nhắm vào ta, tránh xa ngay!"
+      ],
+      "th": [
+        "ปืนใหญ่ยิงเข้ามา เคลื่อนที่",
+        "กระสุนปืนใหญ่ตกใส่เรา ออกไปจากตรงนี้"
+      ],
+      "fil": [
+        "Artilerya, paparating! Galaw!",
+        "Mga bala ng kanyon sa atin, alis diyan!"
       ]
     },
     {
@@ -30309,6 +30897,90 @@
       "af": [
         "Vyandelike vliegtuig is afgeskiet.",
         "Ek het die vliegtuig raakgeskiet, dit stort neer."
+      ],
+      "es-ES": [
+        "Aeronave derribada.",
+        "Le he dado al avión. Está cayendo."
+      ],
+      "es-419": [
+        "Aeronave derribada.",
+        "Le di al avión. Se está cayendo."
+      ],
+      "pt-PT": [
+        "Aeronave abatida.",
+        "Apanhei o avião. Vai a cair."
+      ],
+      "nl": [
+        "Toestel neergehaald.",
+        "Jet geraakt. Hij stort neer."
+      ],
+      "no": [
+        "Fly nede.",
+        "Traff jetflyet. Det går ned."
+      ],
+      "fi": [
+        "Kone alas.",
+        "Osuin suihkukoneeseen. Se putoaa."
+      ],
+      "el": [
+        "Αεροσκάφος καταρρίφθηκε.",
+        "Το πέτυχα το αεριωθούμενο. Πέφτει."
+      ],
+      "cs": [
+        "Letadlo sestřeleno.",
+        "Mám ten letoun. Padá."
+      ],
+      "hu": [
+        "Repülő lelőve.",
+        "Eltaláltam a gépet. Lezuhan."
+      ],
+      "ro": [
+        "Avion doborât.",
+        "Am lovit avionul. Se prăbușește."
+      ],
+      "tr": [
+        "Uçak düştü.",
+        "Jeti vurdum. Düşüyor."
+      ],
+      "ar": [
+        "طائرة معادية سقطت.",
+        "أصبت الطائرة. إنها تسقط."
+      ],
+      "fa": [
+        "هواپیما ساقط شد.",
+        "جت را زدم. دارد سقوط می‌کند."
+      ],
+      "hi": [
+        "दुश्मन विमान गिरा।",
+        "जेट को मार गिराया। नीचे जा रहा है।"
+      ],
+      "ur": [
+        "دشمن جہاز ڈاؤن۔",
+        "جیٹ گرا دیا۔ نیچے جا رہا ہے۔"
+      ],
+      "bn": [
+        "শত্রু বিমান ডাউন।",
+        "জেটটা নামিয়েছি। পড়ে যাচ্ছে।"
+      ],
+      "id-ID": [
+        "Pesawat musuh jatuh.",
+        "Jet itu kena. Sedang jatuh."
+      ],
+      "ms": [
+        "Pesawat musuh jatuh.",
+        "Dapat jet itu. Ia sedang jatuh."
+      ],
+      "vi": [
+        "Máy bay địch bị hạ.",
+        "Trúng máy bay rồi. Nó đang rơi."
+      ],
+      "th": [
+        "เครื่องบินข้าศึกตก",
+        "ยิงเครื่องบินไอพ่นโดนแล้ว กำลังร่วง"
+      ],
+      "fil": [
+        "Bagsak ang eroplano.",
+        "Tinamaan ko ang jet. Bumabagsak na."
       ]
     }
   ]
