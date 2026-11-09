@@ -255,7 +255,15 @@ function maison(ctx: RegionalBuildContext, opts: HouseOpts): RegionalParts {
   // than its frontage, its low roof spanning the whole depth; walls and plinth fill the base footprint
   const fp = footprint(ctx);
   const F = Math.max(4.4, fp.w - 0.1), Dp = Math.max(4.4, fp.d - 0.1);
-  const floorH = [2.85 + rng() * 0.2, 2.6 + rng() * 0.15, 2.5];
+  // (buildings-271 R1, the owner 11-08: "much much more realistic"; Main: roof form between neighbours, what reads at 35 m)
+  // the roofline steps from house to house as a Lorraine street's does: a third of the two-storey houses carry the
+  // demi-étage, a low attic storey of small square windows under the eaves, its eave and ridge a metre under its
+  // neighbour's; the pitch runs 20-30 degrees; a house may carry a second stack on its party wall. The form choices draw
+  // from the build's form stream (ctx.variant), the house's own draws stay as they were
+  const form = ctx.variant, demi = opts.storeys === 2 && !opts.fascia && form() < 0.34;
+  const floorH = [2.85 + rng() * 0.2, demi ? 1.7 + rng() * 0.2 : 2.6 + rng() * 0.15, 2.5];
+  // the top storey's windows: the demi-étage's small and square, under its eaves
+  const top = (s: number) => demi && s === opts.storeys - 1;
   const storeys = Array.from({ length: opts.storeys }, (_, i) => ({ h: floorH[Math.min(i, 2)], wall: st.wall }));
   // bay widths along the front: a dwelling bay 3.6–4.4 m, a cart bay 3.8–4.4, a stable bay 2.6, a shop 4.4; scaled to F
   const want = opts.bays.map((b) => (b === 'logis' ? 4.0 : b === 'cart' ? 4.2 : b === 'shop' ? 4.4 : 2.6));
@@ -269,12 +277,14 @@ function maison(ctx: RegionalBuildContext, opts: HouseOpts): RegionalParts {
     if (bay === 'logis') {
       openings.push({ face: front, storey: 0, kind: 'door', u: c - bw * 0.22, w: 0.98, y0: 0, h: 2.15 });
       openings.push({ face: front, storey: 0, kind: 'window', u: c + bw * 0.2, w: 0.95, y0: 0.85, h: 1.4 });
-      for (let s = 1; s < opts.storeys; s++) for (const du of [-bw * 0.22, bw * 0.2]) openings.push({ face: front, storey: s, kind: 'window', u: c + du, w: 0.9, y0: 0.75, h: 1.3 });
+      for (let s = 1; s < opts.storeys; s++) for (const du of [-bw * 0.22, bw * 0.2]) openings.push(top(s)
+        ? { face: front, storey: s, kind: 'window', u: c + du, w: 0.62, y0: 0.5, h: 0.62 }
+        : { face: front, storey: s, kind: 'window', u: c + du, w: 0.9, y0: 0.75, h: 1.3 });
       anchorsAt.push(c);
     } else if (bay === 'cart') {
       openings.push({ face: front, storey: 0, kind: 'gate', u: c, w: Math.min(3.2, bw - 0.9), y0: 0, h: 2.95 });
       // the hay loft's hatch above it (the gerbière)
-      if (opts.storeys > 1) openings.push({ face: front, storey: opts.storeys - 1, kind: 'loft', u: c, w: 1.0, y0: 0.6, h: 1.0 });
+      if (opts.storeys > 1) openings.push({ face: front, storey: opts.storeys - 1, kind: 'loft', u: c, w: 1.0, y0: top(opts.storeys - 1) ? 0.35 : 0.6, h: top(opts.storeys - 1) ? 0.95 : 1.0 });
     } else if (bay === 'stable') {
       openings.push({ face: front, storey: 0, kind: 'door', u: c - 0.35, w: 1.0, y0: 0, h: 2.0 });
       openings.push({ face: front, storey: 0, kind: 'loft', u: c + 0.65, w: 0.55, y0: 1.3, h: 0.6 });
@@ -287,15 +297,20 @@ function maison(ctx: RegionalBuildContext, opts: HouseOpts): RegionalParts {
   // the back to the garden: a door and a few windows; the gables: one window a storey, the attic vent
   openings.push({ face: 'right', storey: 0, kind: 'door', u: -F * 0.25, w: 0.95, y0: 0, h: 2.0 });
   for (const o of windowRhythm('right', 0, F, { w: 0.8, h: 1.1, sill: 1.0, spacing: 3.2, margin: 1.3, avoid: [[-F * 0.25 - 0.8, -F * 0.25 + 0.8]], max: 3 })) openings.push(o);
-  for (let s = 1; s < opts.storeys; s++) for (const o of windowRhythm('right', s, F, { w: 0.8, h: 1.1, sill: 0.8, spacing: 3.2, margin: 1.3, max: 3 })) openings.push(o);
+  for (let s = 1; s < opts.storeys; s++) for (const o of windowRhythm('right', s, F, top(s) ? { w: 0.6, h: 0.6, sill: 0.5, spacing: 3.2, margin: 1.3, max: 3 }
+    : { w: 0.8, h: 1.1, sill: 0.8, spacing: 3.2, margin: 1.3, max: 3 })) openings.push(o);
   for (const face of ['front', 'back'] as const) if (rng() < 0.7) openings.push({ face, storey: 0, kind: 'window', u: (rng() - 0.5) * Dp * 0.4, w: 0.75, y0: 1.0, h: 1.05 });
-  const pitch = 23 + rng() * 5;
+  const pitch = 20 + rng() * 5 + form() * 5;
+  // the stack on the ridge, and on two houses in five a second on the party wall at the other end
+  const stackZ = F * (rng() < 0.5 ? -0.22 : 0.22);
+  const chimneys = [{ x: (rng() - 0.5) * 0.8, z: stackZ, sx: 0.6, sz: 0.6, above: 0.8, bucket: st.wall, cap: 'slab' as const }];
+  if (form() < 0.4) chimneys.push({ x: (form() - 0.5) * 0.6, z: -Math.sign(stackZ) * (F / 2 - 0.45), sx: 0.55, sz: 0.7, above: 0.6 + form() * 0.7, bucket: st.wall, cap: 'slab' });
   {
     // built a quarter turned: the house's ridge (its z) runs along the street, its left face is the front (the lot's +z)
     sink.placed(Math.PI / 2, fp.cx, 0, fp.cz, () => {
       const frame = buildHouse(sink, {
         w: Dp, d: F, plinth: { h: 0.35, out: 0.05, bucket: 'stone' }, storeys, roof: canal(pitch), gableBucket: st.wall, openings,
-        chimneys: [{ x: (rng() - 0.5) * 0.8, z: F * (rng() < 0.5 ? -0.22 : 0.22), sx: 0.6, sz: 0.6, above: 0.8, bucket: st.wall, cap: 'slab' }],
+        chimneys,
         gutters: { colour: rgb(0x6a6e6c) }, verge: null, reveal: 0.26,
       }, dialect(st));
       const b = frame.bodies[0];
