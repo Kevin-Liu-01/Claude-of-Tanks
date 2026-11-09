@@ -2530,8 +2530,8 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
    * it there. A spotted quarry takes it. Else the search (268, item 10; Main): a hunter never stands on a spent lead. A
    * sighting it has reached with nobody in sight is spent for it, and it hunts on past it: its sweep starts out round the
    * spent point. A search point it reaches (within lead.arriveM) is spent too, and the next one is drawn at once, never
-   * at the next sweep epoch. A hunter with no record yet (one that never revived through reviveAtSpawn) anchors where it
-   * is.
+   * at the next sweep epoch. A hunter with no record yet (one that never revived through reviveAtSpawn, or one revived
+   * after a migrated host's keyframe: migrationState.ts checkpointAfterRevives drops its dead life's) anchors where it is.
    */
   const huntTarget = { x: 0, z: 0 };
   function stepHunterSearch(hunter: Entity, rank: number, side: ObjectiveTeam, plan: { x: number; z: number }, quarry: Entity | null): void {
@@ -2895,6 +2895,10 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
         ...(huntSearch.size || huntPlan.size ? { hunt: captureHunt() } : {}) };
     },
     restoreCheckpoint(checkpoint) {
+      // the mode clock the checkpoint was taken on (round 8 Y2 fix-up r2): a restored host's first route push asks for
+      // destinations before its first step sets the clock, and a hunter with no plan (one that arrived after the
+      // keyframe) re-planned every hunter on clock 0, its search and the plans' clock dated 0
+      if (Number.isFinite(checkpoint.elapsedS)) placementTimeS = checkpoint.elapsedS;
       score.alpha = checkpoint.score.alpha; score.bravo = checkpoint.score.bravo;
       weaponKills.clear(); for (const [key, value] of checkpoint.weaponKills) weaponKills.set(key, value);
       teams.alpha.length = teams.bravo.length = 0;
