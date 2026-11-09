@@ -10,7 +10,7 @@
 // shots, loop-seam continuity, no clipping runs. A pinned choice in
 // tools/audio/sfx-picks.json overrides the ranking for an asset.
 
-import { readFileSync, existsSync, writeFileSync, mkdirSync, rmSync, readdirSync } from 'node:fs';
+import { readFileSync, existsSync, writeFileSync, mkdirSync } from 'node:fs';
 import { join, dirname, basename } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { SFX_CATALOG } from './sfx-catalog.mjs';
@@ -18,11 +18,8 @@ import { CACHE_ROOT } from './elevenlabs.mjs';
 import { deinterleave } from './pcm.mjs';
 import { measure, SINGLE_SHOT, SINGLE_FAR, firstShotOnly } from './sfx-qa.mjs';
 import { masterTake, PRESETS } from './master.mjs';
-import { CRITIC_SETUP, criticReady, judgeFiles, verdictRecord } from './critic.mjs';
-import { createHash } from 'node:crypto';
-
-/** Exactly one asset's take files (`<id>_<n>.webm|m4a`): never a longer id sharing the prefix. */
-const takeFileOf = (id) => new RegExp(`^${id.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}_\\d+\\.(webm|m4a)$`);
+import { CRITIC_SETUP, criticReady, judgeFiles } from './critic.mjs';
+import { commitBank, removeBank } from './sfxBank.mjs';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const ROOT = join(HERE, '..', '..');
@@ -135,6 +132,8 @@ const picks = existsSync(PICKS) ? JSON.parse(readFileSync(PICKS, 'utf8')) : {};
 const manifestPrev = existsSync(join(HERE, '.sfx-manifest.json')) ? JSON.parse(readFileSync(join(HERE, '.sfx-manifest.json'), 'utf8')) : {};
 const manifest = { ...manifestPrev };
 const shippedVerdicts = existsSync(VERDICT_RECORD) ? JSON.parse(readFileSync(VERDICT_RECORD, 'utf8')) : {};
+/** The two records commitBank and removeBank keep with the disk: the manifest entry and the verdict of record. */
+const records = { manifest, verdicts: shippedVerdicts };
 if (!criticReady() && SFX_CATALOG.some((e) => e.critic && (!ids || ids.includes(e.id)) && (!groups || groups.includes(e.group)))) {
   console.error(`build-sfx: these assets ship only files the ear proxy passes. ${CRITIC_SETUP}`);
   process.exit(1);
@@ -178,59 +177,25 @@ for (const entry of SFX_CATALOG) {
   const want = pinned ? chosen.length : entry.variants;
   const dir = join(OUT, entry.group);
   mkdirSync(dir, { recursive: true });
-  for (const name of readdirSync(dir)) if (takeFileOf(entry.id).test(name)) rmSync(join(dir, name));
-  const files = [];
   // A take the master cannot bring within UNDER_LU of its preset's momentary target is a spike over near-silence (a
   // 30 mm "boom" mastered to -21.7 LUFS against -12, gun-reports-269): the next ranked take ships in its place.
   const target = PRESETS[entry.proc]?.mMax;
-  for (const pick of chosen) {
-    if (files.length >= want) break;
-    const outBase = join(dir, `${entry.id}_${files.length}`);
-    const drop = () => { for (const ext of ['webm', 'm4a']) rmSync(`${outBase}.${ext}`, { force: true }); };
-    const channels = firstShotOnly(deinterleave(readFileSync(pick.file), 2), SR, entry);
-    const facts = masterTake({ channels, sr: SR, preset: entry.proc, outBase, aac, shape: entry.shape });
-    if (!pinned && target != null && facts.mMax != null && facts.mMax < target - UNDER_LU) {
-      console.warn(`${entry.id}: take ${pick.take} masters to ${facts.mMax} LUFS against ${target}; skipped`);
-      drop();
-      continue;
-    }
-    // The verdict of record (gun-reports-269): a critic bank's file is judged as it ships, the mastered WebM of its
-    // cut; one the critic does not pass is never shipped, pinned or not.
-    let verdict = null;
-    if (entry.critic) {
-      const [v] = judgeFiles(entry, [`${outBase}.webm`]);
-      if (!v.pass) {
-        console.warn(`${entry.id}: take ${pick.take} fails the critic as shipped (${v.single.best} ${v.single.bestScore} vs ${v.single.against} ${v.single.againstScore}${v.burst ? `; burst ${v.burst.best} ${v.burst.bestScore} vs ${v.burst.against} ${v.burst.againstScore}` : ''}); skipped`);
-        drop();
-        continue;
-      }
-      verdict = verdictRecord(v);
-    }
-    files.push({ ...facts, take: pick.take, source: basename(pick.file), cutS: +(channels[0].length / SR).toFixed(4), verdict,
-      sha256: createHash('sha256').update(readFileSync(`${outBase}.webm`)).digest('hex') });
-  }
-  if (!files.length) {
+  // The verdict of record (gun-reports-269): a critic bank's file is judged as it ships, the mastered WebM of its
+  // cut; one the critic does not pass is never shipped, pinned or not (sfxBank.mjs commitBank).
+  const { outcome, files } = commitBank({
+    entry, dir, candidates: chosen, want, records,
+    floor: !pinned && target != null ? { target, under: UNDER_LU } : null,
+    master: (pick, outBase) => {
+      const channels = firstShotOnly(deinterleave(readFileSync(pick.file), 2), SR, entry);
+      return { ...masterTake({ channels, sr: SR, preset: entry.proc, outBase, aac, shape: entry.shape }), cutS: +(channels[0].length / SR).toFixed(4) };
+    },
+    judge: (file) => judgeFiles(entry, [file])[0],
+  });
+  if (outcome !== 'replaced') {
     console.error(`${entry.id}: no take masters within ${UNDER_LU} LU of its target${entry.critic ? ' and passes the critic as shipped' : ''}`);
     failed.push(entry.id);
-    delete manifest[entry.id];
-    delete shippedVerdicts[entry.id];
     continue;
   }
-  if (entry.critic) {
-    shippedVerdicts[entry.id] = {
-      class: entry.critic,
-      variants: files.map((f) => ({ source: f.source, cutS: f.cutS, sha256: f.sha256, ...f.verdict })),
-    };
-  } else delete shippedVerdicts[entry.id];
-  manifest[entry.id] = {
-    g: entry.group,
-    n: files.length,
-    d: files.map((f) => f.dur),
-    c: files[0].ch,
-    r: files.every((f) => f.hf < 0.008) ? 24000 : 48000,
-    ...(files[0].loop ? { l: [files[0].loop.start, +(files[0].loop.end).toFixed(6)] } : {}),
-    kb: Math.round(files.reduce((a, f) => a + f.bytes, 0) / 1024),
-  };
   report[entry.id] = { ranked: ranked.map((r) => ({ take: r.take, s: +r.s.toFixed(2), clip: r.clip, ...r.m })), shipped: files };
   console.log(`${entry.id.padEnd(34)} ${files.length} × [${files.map((f) => `${f.dur}s ${f.mMax ?? f.lufs}LU tp${f.truePeak}`).join(' | ')}] picks ${chosen.map((c) => c.take).join(',')}`);
 }
@@ -239,10 +204,7 @@ for (const entry of SFX_CATALOG) {
 const catalogIds = new Set(SFX_CATALOG.map((entry) => entry.id));
 for (const id of Object.keys(manifest)) {
   if (catalogIds.has(id)) continue;
-  const dir = join(OUT, manifest[id].g);
-  if (existsSync(dir)) for (const name of readdirSync(dir)) if (takeFileOf(id).test(name)) rmSync(join(dir, name));
-  delete manifest[id];
-  delete shippedVerdicts[id];
+  removeBank({ id, dir: join(OUT, manifest[id].g), records });
   console.log(`${id.padEnd(34)} removed (no longer in the catalog)`);
 }
 
