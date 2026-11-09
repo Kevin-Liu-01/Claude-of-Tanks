@@ -14,7 +14,10 @@
 //     takeWatchSeat moves the player to a living bot, no revive, no event), so the last seat's cease fire, posthumous kill
 //     or recalled drone is not called for the next, nor for the same hull taken back from its brain; and the seat taken
 //     keeps its own hull's radio set and fire alarm (review r3): a set broken while its brain drove it sounds broken from
-//     the take, a whole one clean, and the last seat's fire alarm stops while a hull taken burning sounds its own.
+//     the take, a whole one clean, and the last seat's fire alarm stops while a hull taken burning sounds its own. A
+//     living hull's revive (review r4: a Turbo Ball kick-off or the range reset, driven through the real controller's
+//     reviveAll) puts out the fire its last life lit, which no tank:fire tells: our alarm stops with no fire_out, and no
+//     revived hull's engine-deck fire crackles on at its spawn, nor any after a network battle's restart.
 //   - review r2, our drone as the authority flies it (sim/aerialCombat.ts stepAerial, the real fixed-step flight): a flight
 //     lost to its battery or its link gets its low-battery and weak-link calls and is never "recovered"; a recall is
 //     recovered when the airframe is parked on its dock, not when the recall is accepted.
@@ -109,6 +112,8 @@ function radioBand() {
 }
 /** Fire alarms sounding now. */
 const fireAlarms = () => sounding(ctx).filter((n) => n === 'alarm_fire_loop').length;
+/** Engine-deck fires sounding now (vehicleRig.ts: a burning hull's rig plays fire_small_loop). */
+const deckFires = () => sounding(ctx).filter((n) => n === 'fire_small_loop').length;
 
 /** A battle of `mode` with this field, rolled out and quiet. */
 async function battle(mode, roster, visible = EVERY_HULL) {
@@ -649,6 +654,63 @@ await check('review r3 a seat taken sounds its own hull\'s fire alarm, not the l
   assert.ok(asked('fire_out', out), `w3's fire out is called (asked ${said(out)})`);
 });
 
+/** A new life's combat state, as sim/damage.ts createCombatState makes it: whole, its fire out. */
+const freshCombat = (hull) => ({ ...tank(hull.id, { team: hull.team }).combat, fire: { burning: false } });
+
+// ---- review r4: a living hull's revive (sim/matchModes.ts: "alive -> alive is a living hull's revive", a Turbo Ball
+// goal's kick-off or the range reset) puts out the fire its last life lit. The driver's revive writes a fresh combat (fire
+// out) and tells no tank:fire; the controller then tells mode_respawn, which the game relays as mode:respawn (state.ts).
+await check('review r4 a living hull\'s revive puts out its last life\'s fire: our alarm and each hull\'s engine-deck fire', async () => {
+  const me = tank('me', { isPlayer: true }), f1 = foe('f1', 40);
+  const roster = [me, f1];
+  const mode = createMatchModeController({ mode: 'turbo_ball', entities: roster,
+    // the drivers' revive hook (state.ts revive, authoritativeMatch.ts reviveForMode): a fresh combat, its fire out
+    revive(hull) { hull.combat = freshCombat(hull); },
+    emit: (type, payload) => bus.emit(type.replace(/^mode_/, 'mode:'), payload) });
+  await battle('turbo_ball', roster);
+  setFire(me, true);
+  setFire(f1, true);
+  frames(1);
+  await probe.libraryIdle();
+  frames(1);
+  assert.equal(fireAlarms(), 1, 'our hull burning: its fire alarm sounds');
+  assert.equal(deckFires(), 2, 'both hulls burning: each engine deck crackles');
+  const since = now();
+  // every hull back on its spawn, alive -> alive (the controller's revive, as a goal's kick-off line-up revives them)
+  mode.reviveAll();
+  assert.deepEqual([me.modeLife ?? 'alive', f1.modeLife ?? 'alive', me.combat.fire.burning], ['alive', 'alive', false], 'the controller revived both hulls alive, fire out');
+  frames(2);
+  assert.equal(fireAlarms(), 0, 'our revived hull does not burn: its alarm stops (it looped on before fix-up r3)');
+  assert.equal(deckFires(), 0, 'neither revived hull burns: no engine-deck fire crackles on at its spawn');
+  assert.ok(!asked('fire_out', since), `a revive puts no fire out for the crew to call (asked ${said(since)})`);
+  // the new life's own fire is heard as any fire
+  setFire(me, true);
+  frames(1);
+  assert.equal(fireAlarms(), 1, 'the new life\'s fire sounds its alarm');
+  const out = now();
+  setFire(me, false);
+  frames(1);
+  assert.equal(fireAlarms(), 0, 'the new life\'s fire out: its alarm stops');
+  assert.ok(asked('fire_out', out), `the new life's fire out is called (asked ${said(out)})`);
+});
+
+await check('review r4 a network battle\'s restart puts out every hull\'s engine-deck fire', async () => {
+  const me = tank('me', { isPlayer: true }), f1 = foe('f1', 40);
+  await battle('standard', [me, f1]);
+  setFire(me, true);
+  setFire(f1, true);
+  frames(1);
+  await probe.libraryIdle();
+  frames(1);
+  assert.equal(deckFires(), 2, 'both hulls burning: each engine deck crackles');
+  // the presentation's restart (battlePresentation.ts resetSettledWorld): every actor's new life, fire out, then the event
+  for (const hull of [me, f1]) hull.combat = freshCombat(hull);
+  bus.emit('battle:restarted', {});
+  frames(2);
+  assert.equal(fireAlarms(), 0, 'our alarm goes with the old hull');
+  assert.equal(deckFires(), 0, 'no hull of the restarted battle crackles on at its spawn');
+});
+
 // ---- amendment 6: the escort's life is the mode's.
 await check('amendment 6 an escort extracted is the mode\'s rescued life', async () => {
   const source = readFileSync(new URL('./crewProcedure.ts', import.meta.url), 'utf8');
@@ -770,7 +832,7 @@ await check('s1-02 an enemy the player sees is commanded', async () => {
   assert.ok(asked('fire_command_kinetic', since), `the fire command on a hull the player sees (asked ${said(since)})`);
 });
 
-await check('s1-02 a watched battle\'s seat its brain drives is nobody\'s crew', async () => {
+await check('s1-02 a watched battle\'s seat its brain drives makes no sighting call (the drone camera on a revealed enemy)', async () => {
   const seat = tank('me', { isPlayer: true }), w2 = tank('w2', { x: 80 });
   const target = foe('f1', 600);
   const watch = watchedBattle([seat, w2, target], seat);
@@ -816,4 +878,4 @@ await check('s1-02 a watched battle\'s seat its brain drives still hears the bat
 });
 
 assert.deepEqual(failures, [], `crewProcedure.selftest:\n  ${failures.join('\n  ')}`);
-console.log('crewProcedure.selftest: the pause silences the net and cancels armed calls on both edges (a recalled drone docked behind it too), the crew\'s battle is the engine\'s, a fresh weapon is loaded, a kill\'s cease fire and a drone\'s recovery die with our tank, each revive and each seat the watcher takes starts a life (a posthumous kill arms nothing for it) with the taken hull\'s own radio set and fire alarm, our drone is called as the authority flies it, an escort the controller rescues is extracted, the crew names only what the player sees, its per-life calls are the driven seat\'s and the battle\'s mode calls the side\'s passed');
+console.log('crewProcedure.selftest: the pause silences the net and cancels armed calls on both edges (a recalled drone docked behind it too), the crew\'s battle is the engine\'s, a fresh weapon is loaded, a kill\'s cease fire and a drone\'s recovery die with our tank, each revive and each seat the watcher takes starts a life (a posthumous kill arms nothing for it) with the taken hull\'s own radio set and fire alarm, a living hull\'s revive puts its fire out, our drone is called as the authority flies it, an escort the controller rescues is extracted, the crew names only what the player sees, its per-life calls are the driven seat\'s and the battle\'s mode calls the side\'s passed');

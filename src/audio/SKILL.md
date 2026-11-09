@@ -68,7 +68,11 @@ that shows our hull standing again after its death) and at each seat the player
 takes in a watched battle (the frame's `isPlayer` on another hull, or back on
 one its brain drove: no revive, no event), so nothing a dead crew's rounds arm
 is said in the next life; a seat taken keeps its hull's radio set and fire
-alarm as the frame shows them. A seat its brain drives makes none of the crew's
+alarm as the frame shows them, and a revive starts the set whole and the fire
+out, a living hull's revive (a kick-off, the range reset) included: no
+`tank:fire` follows a revive, so the respawn event stops our alarm and the
+hull's engine-deck fire (a network restart, every hull's).
+A seat its brain drives makes none of the crew's
 per-life or sighting calls (`live()` reads the frame's `isPlayer`); the
 battle's mode calls (`onMode`, gated on `inBattle()`) are the side's news and
 still play there, as the engine's own do. The pause menu silences the net (the

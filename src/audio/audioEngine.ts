@@ -2031,10 +2031,16 @@ export function createAudio({
         if (typeof payload.id === 'string') {
           deathLatch.delete(payload.id);
           forgetModuleStates(payload.id);
+          // (round 8 Y3 residual) and with its fire out: both drivers revive a hull with a fresh combat (state.ts revive,
+          // authoritativeMatch.ts reviveForMode; a network actor's beginActorLife) and tell no tank:fire, so a living
+          // hull's revive (a Turbo Ball kick-off, the range reset: sim/matchModes.ts "alive -> alive") puts out the
+          // engine-deck fire its last life lit; before, it crackled on at the spawn until a next fire went out
+          rigs.get(payload.id)?.setBurning(false);
         }
         if (playerId != null && payload.id === playerId) {
           // A fresh hull: alive before the next frame reads it (the event lands inside the sim step), and its new life
-          // (startOwnLife: the one-shot calls armed again, the crew's life afresh).
+          // (startOwnLife: the one-shot calls armed again, the radio set whole and the fire alarm off, the crew's life
+          // afresh).
           const info = tanks.get(playerId);
           if (info) info.alive = true;
           startOwnLife();
@@ -2263,11 +2269,15 @@ export function createAudio({
    * event). The life's one-shot calls (low hull, low ammunition) arm again, the heartbeat goes with the old life, and the
    * crew's life starts afresh: nothing the last life armed, or its rounds armed after our death (a posthumous kill's cease
    * fire), is called in this one. The radio set and the fire alarm are our hull's own (review r3): a revive (`seat`
-   * absent) starts them clean and silent, as it always did (a respawn mends the hull, and the death that came before it
-   * put its fire out); a seat taken (`seat`, the frame's hull) takes that hull's set and fire as the frame shows them (the
-   * sim's own module state and fire; a network actor mirrors both), so a set broken while its brain drove it sounds
-   * broken from the take, and the last seat's fire alarm stops (its fire's end and its death are another hull's events
-   * after the take) while a hull taken burning sounds its own.
+   * absent) starts the set whole and the alarm off, as the revived hull is (the mode's revive writes a fresh combat,
+   * modules whole and fire out, before it tells mode_respawn: state.ts revive, authoritativeMatch.ts reviveForMode; no
+   * tank:fire follows it). After a death that stops nothing (the death stopped the alarm), but a living hull is revived
+   * too (a Turbo Ball kick-off, the range reset: sim/matchModes.ts "alive -> alive"), and its alarm stops here. Before
+   * fix-up r3 a revive left the alarm alone, so a hull burning at a kick-off kept it looping, with no fire, until our
+   * death or the battle's end (round 8 Y3 residual, review correctness r4). A seat taken (`seat`, the frame's hull) takes
+   * that hull's set and fire as the frame shows them (the sim's own module state and fire; a network actor mirrors
+   * both), so a set broken while its brain drove it sounds broken from the take, and the last seat's fire alarm stops
+   * (its fire's end and its death are another hull's events after the take) while a hull taken burning sounds its own.
    */
   function startOwnLife(seat?: AudioEntity): void {
     lowHpCalled = false;
@@ -2849,10 +2859,13 @@ export function createAudio({
    * calls re-arm and its fire alarm, heartbeat and radio damage go with its old hull; and the abandoned battle's wrecks
    * stop burning where no wreck stands now. (round 4 E6b review r2) The restart opens a new battle, so the battle's play
    * starts over as at a battle's start (resetBattlePlay: the death latches and the one-shot calls above among them).
+   * (round 8 Y3 residual) Every hull's engine-deck fire goes out too: each new life is whole (battlePresentation
+   * beginActorLife: fire out), and no tank:fire tells it, so a hull burning at the restart crackled on at its spawn.
    */
   function restartLives(): void {
     resetBattlePlay();
     for (const info of tanks.values()) info.alive = true;
+    for (const rig of rigs.values()) rig.setBurning(false);
     heartbeatRig?.stop(); heartbeatRig = null;
     fireAlarm?.stop(); fireAlarm = null;
     playerBurning = false;
