@@ -1536,7 +1536,9 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
    * The attack's plan per bot (assaultBots, gameplay-modes-228), rebuilt once a second in id order: flank lanes for
    * `flankShare` of the attackers (odd ranks) until `flankConvergeM` from the zone; at the zone's edge a push waits for
    * `pushMinGroup` attackers within `pushGroupM` (the anti-suicide rule) or `pushAfterS` there, then drives in. The mode
-   * checkpoint carries it (waves.line.attack), so a migrated host's attackers wait or push as the old host's did.
+   * checkpoint carries it (waves.line.attack), so a migrated host's attackers wait or push as the old host's did. A
+   * fallen attacker keeps its plan through the allied revive (only the line advance clears it), so a migration keeps a
+   * revived one's too (migrationState.ts checkpointAfterRevives leaves it).
    */
   const assaultBots = ruleset.assaultBots ?? null;
   const attackPlan = new Map<string, { x: number; z: number; stagedAtS: number; pushing: boolean }>();
@@ -2160,7 +2162,8 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
   const flagRoles = new Map<string, { role: FlagRole; rank: number }>();
   let flagRolesAt = -Infinity;
   /** The raid's stage per raider (flagBots.raidStageM): when it reached the stage, and whether it has gone in. The mode
-   *  checkpoint carries it (objectives.raids), so a migrated host sends a raider in when the old host would have. */
+   *  checkpoint carries it (objectives.raids), so a migrated host sends a raider in when the old host would have; a
+   *  raider revived after the keyframe leaves its dead life's stage behind (migrationState.ts checkpointAfterRevives). */
   const raidStaged = new Map<string, { atS: number; go: boolean }>();
   // the flags' state the roles were dealt for (status and carrier per flag), compared in place: no key is built per call
   const flagRolesSeen: { status: FlagState['status'] | null; carrierId: string | null }[] = [];

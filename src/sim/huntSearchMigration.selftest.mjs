@@ -30,7 +30,10 @@
 // or attacker the old host had going in for the whole wait; on clock 0 (H8) it held it one push, then a stage read as
 // waited out and sent a waiting hull in alone up to the wait early. The stages are carried now: through the real resume,
 // a hull going in goes in at the new host's first push, a waiting one and one that reached the stage after the old host's
-// last push (staged on the mode's clock) go in within one route push of when the old host sends them.
+// last push (staged on the mode's clock) go in within one route push of when the old host sends them. (Residual round,
+// the r4 reviews: a raider revived between the keyframe and the newest frame came back with its dead life's stage and
+// went in alone.) [6] window revive: a revived CTF raider stages afresh on the new host as on the old (its keyframe stage
+// dropped, every other raider's kept); a revived Frontline attacker keeps its plan, as the old host keeps it.
 import { Vector3 } from 'three';
 import { createMatchActor } from '../../server/match/matchActor.ts';
 import { captureEntityRow, captureMeta, createEraIndexer } from '../../server/match/entityRows.ts';
@@ -439,6 +442,136 @@ console.log('[6] the objective modes\' stages across a migration: a lone raider 
     ok(fresh.newIn !== null && Math.abs(fresh.newIn - fresh.oldIn) <= PUSH_S + 1 / 60, `${mode}: fresh: the new host's first push stages `
       + `its ${what} on the mode's clock, so it goes in within one route push of the old host (new host ${at(fresh.newIn)}; on clock 0 `
       + 'the stage read waited out)');
+  }
+
+  // [6] window revive (residual round, the r4 reviews: fix-up r3 carried the stages, and migrationState.ts
+  // checkpointAfterRevives dropped only a window-revived hunter's search): a hull revived between the keyframe and the
+  // elected seat's newest frame. CTF: the old host drops a fallen raider's stage at its next role deal (assignFlagRoles),
+  // so a keyframe sealed before that deal holds the dead life's stage, going in, while the revived raider stages afresh
+  // and waits raidWaitS for its group; the new host drops it too and keeps every other raider's. Frontline: the old host
+  // keeps a fallen attacker's plan through the allied revive (planAttack deals the live squad only, and only a line
+  // advance clears the plan), so an attacker that was pushing comes back pushing on both hosts: its plan rides as sealed.
+  const stageText = (entry) => (!entry ? 'none' : 'go' in entry ? `staged at ${entry.atS.toFixed(2)}, ${entry.go ? 'going in' : 'waiting'}`
+    : entry.pushing ? 'pushing' : entry.stagedAtS === null ? 'not staged' : `staged at ${entry.stagedAtS.toFixed(2)}, waiting`);
+  /**
+   * The lone hull going in at its stage, killed, the keyframe sealed (CTF: on the next tick, before the old host's next
+   * role deal, under an arranged 2 s respawn, the shortest a room can set; Frontline: every 0.25 s until the allied
+   * revive, allyReviveS 20 s, is told after one), the old host run until that revive is told, and the elected seat
+   * resumed from the keyframe, the newest frame and the told respawn. Both hosts then drive the revived hull 2 s, it is
+   * put inside the stage on both at one moment, and each host's hold of it there is timed. CTF also pins a second raider
+   * (a-1) inside the stage across the line, never in a-0's group, whose stage must ride the migration untouched.
+   */
+  function migrateRevive({ mode, insideM, band, waitS }) {
+    const ctf = mode === 'capture_the_flag';
+    const reviveBots = ctf ? [bots[0], { playerId: 'a-1', name: 'A1', team: 'alpha', specId: spec }, bots[1]] : bots;
+    const ruleset = ctf ? { ...matchRulesetFor(mode), respawnS: 2 } : matchRulesetFor(mode);
+    const make = (resume) => createMatchActor({ roomId: 'stage-revive', mapId: 'verdant', mode, seed: 33, seats, bots: reviveBots, ruleset,
+      world, countdownS: 0, autoStart: false, now: () => 0, schedule: () => () => {}, resume });
+    const old = make(null), sim = old.authority;
+    sim.onMatchReady();
+    const live = sim.modeController.state;
+    const hull = sim.entityById.get('a-0'), pilot = sim.entityById.get('pilot'), enemy = sim.entityById.get('b-0');
+    const own = ctf ? live.flags.find((f) => f.team === 'alpha') : null;
+    const goal = ctf ? live.flags.find((f) => f.team === 'bravo') : live.zones[live.line?.index ?? 0];
+    const from = own ?? pilot.state.pos;
+    const dx = from.x - goal.x, dz = from.z - goal.z, length = Math.hypot(dx, dz) || 1;
+    const hold = (e, out) => { e.state.pos.set(goal.x + dx / length * out, 0, goal.z + dz / length * out); e.state.speed = 0; };
+    if (own) pilot.state.pos.set(own.x, 0, own.z); else hold(pilot, 300);
+    const enemyAt = { x: enemy.state.pos.x, z: enemy.state.pos.z };
+    // a-1 115 m out across the line: inside the stage, farther out than a-0 (a-0 is dealt the lead raid), and over 140 m
+    // from a-0 and its hold point (never one of its group)
+    const pinAt = { x: goal.x - dz / length * 115, z: goal.z + dx / length * 115 };
+    let tick = 0;
+    const told = new Map(); // the mode_respawn the old host tells every seat, with the tick it is told at
+    const step = (actor) => {
+      const s = actor.authority;
+      s.step({ dt: 1 / 60, inputs });
+      for (const ev of s.eventsForViewer('pilot')) if (actor === old && ev.type === 'mode_respawn') told.set(ev.id, tick + 1);
+      s.afterEventBroadcast();
+      s.entityById.get('pilot').state.speed = 0;
+      const b = s.entityById.get('b-0'); b.state.pos.set(enemyAt.x, 0, enemyAt.z); b.state.speed = 0;
+      const pinned = s.entityById.get('a-1');
+      if (pinned) { pinned.state.pos.set(pinAt.x, 0, pinAt.z); pinned.state.speed = 0; }
+      if (actor === old) tick++;
+    };
+    const era = createEraIndexer();
+    const frameOf = () => {
+      const battleTimeMs = Math.round(sim.timeS * 1000);
+      const snap = sim.snapshot({ tick, serverTimeMs: battleTimeMs, viewerId: 'migration', ackInputSeq: null });
+      return { tick, serverTimeMs: battleTimeMs, ackedInputTick: 0xffffffff, ackedFireSeq: 0, ackedActionSeq: 0, inputMarginTicks: 127,
+        meta: captureMeta({ ...snap.meta, battleTimeMs }, false), destroyed: [], entities: sim.entities.map((e) => captureEntityRow(e, old.wireIdOf(e.id), era, tick)),
+        shells: [], viewer: null, modeStateJson: null };
+    };
+    const seal = () => decodeMigrationKeyframe(encodeMigrationKeyframe({ tick, battleTimeMs: Math.round(sim.timeS * 1000), timeS: sim.timeS,
+      phase: 'playing', modeCheckpoint: sim.captureModeCheckpoint(), entities: captureEntityExtras(old), frame: frameOf() }));
+    const stagesOf = (m) => (ctf ? m?.objectives?.raids : m?.waves?.line?.attack) ?? [];
+    const stageIn = (m, id) => stagesOf(m).find(([key]) => key === id)?.[1] ?? null;
+    const othersOf = (m) => JSON.stringify(stagesOf(m).filter(([key]) => key !== 'a-0'));
+    // going in: inside the stage past the wait (as the going staging above), then killed
+    hold(hull, insideM);
+    for (let s = 0; s < waitS + 2; s++) {
+      for (let k = 0; k < 60; k++) step(old);
+      const d = Math.hypot(hull.state.pos.x - goal.x, hull.state.pos.z - goal.z);
+      if (d < band[0] || d > band[1]) hold(hull, insideM);
+    }
+    const beforeKill = stageIn(sim.captureModeCheckpoint().mode, 'a-0');
+    hull.combat.hp = 0; hull.combat.destroyed = true;
+    step(old);
+    let keyframe = null;
+    for (let guard = 0; guard < 120 && !told.has('a-0'); guard++) {
+      if (!ctf || !keyframe) { keyframe = seal(); told.clear(); }
+      for (let k = 0; k < 15 && !told.has('a-0'); k++) step(old);
+    }
+    const atRevive = sim.captureModeCheckpoint().mode;
+    const { state } = resumeStateFromRetained(keyframe, 0, frameOf(), 1500, [], [], [...told]);
+    const fresh = make({ tick: state.tick, battleTimeMs: state.battleTimeMs });
+    applyResumeState(fresh, state);
+    const restored = fresh.authority.captureModeCheckpoint().mode, sealed = keyframe.modeCheckpoint.mode;
+    fresh.authority.onMatchReady();
+    const moved = fresh.authority.entityById.get('a-0');
+    for (let k = 0; k < 120; k++) { step(fresh); step(old); }
+    hold(hull, insideM); hold(moved, insideM);
+    const fromGoal = (e) => Math.hypot((e._modeTargetX ?? NaN) - goal.x, (e._modeTargetZ ?? NaN) - goal.z);
+    let oldHeld = 0, newHeld = 0;
+    for (let k = 0; k < (waitS + 4) * 60; k++) {
+      step(fresh); step(old);
+      if (k % 60 === 59) {
+        for (const e of [hull, moved]) { const d = Math.hypot(e.state.pos.x - goal.x, e.state.pos.z - goal.z); if (d < band[0] || d > band[1]) hold(e, insideM); }
+      }
+      if (fromGoal(hull) > 1) oldHeld++;
+      if (fromGoal(moved) > 1) newHeld++;
+    }
+    old.stop(); fresh.stop();
+    return { keyTick: keyframe.tick, revivedAt: told.get('a-0') ?? null, beforeKill: stageText(beforeKill), sealed: stageIn(sealed, 'a-0'),
+      atRevive: stageIn(atRevive, 'a-0'), restored: stageIn(restored, 'a-0'), deadInKeyframe: new Map(sealed.destroyed).get('a-0') === true,
+      others: { sealed: othersOf(sealed), atRevive: othersOf(atRevive), restored: othersOf(restored) }, oldHeldS: oldHeld / 60, newHeldS: newHeld / 60 };
+  }
+  for (const c of modes) {
+    const { mode, what } = c;
+    const ctf = mode === 'capture_the_flag';
+    const run = migrateRevive(c);
+    ok(run.revivedAt !== null && run.revivedAt > run.keyTick && run.deadInKeyframe && (ctf ? /going in$/ : /^pushing$/).test(run.beforeKill),
+      `${mode}: the case is built: the lone ${what} was ${run.beforeKill} when it fell; the keyframe (tick ${run.keyTick}) holds it down `
+      + `and the old host revives it after (tick ${run.revivedAt})`);
+    if (ctf) {
+      ok(run.sealed?.go === true && run.atRevive === null, `${mode}: the case is built: the keyframe holds the dead life's stage `
+        + `(${stageText(run.sealed)}), and the old host dropped it at its next role deal (at the revive: ${stageText(run.atRevive)})`);
+      ok(run.restored === null, `${mode}: the window-revived ${what}'s dead-life stage does not come back on the new host (restored: `
+        + `${stageText(run.restored)})`);
+      ok(run.others.sealed !== '[]' && run.others.restored === run.others.sealed && run.others.atRevive === run.others.sealed,
+        `${mode}: every other raider keeps the keyframe's stage, as on the old host (sealed ${run.others.sealed}, restored ${run.others.restored})`);
+      ok(run.oldHeldS > PUSH_S, `${mode}: the case is built: put back inside the stage, the old host stages its revived ${what} afresh and `
+        + `holds it ${run.oldHeldS.toFixed(2)} s for its group`);
+    } else {
+      ok(run.sealed?.pushing === true && JSON.stringify(run.atRevive) === JSON.stringify(run.sealed), `${mode}: the case is built: the old host `
+        + `keeps the fallen ${what}'s plan through its revive (sealed ${stageText(run.sealed)}, at the revive ${stageText(run.atRevive)})`);
+      ok(JSON.stringify(run.restored) === JSON.stringify(run.sealed), `${mode}: the window-revived ${what}'s plan rides the migration as `
+        + `sealed (restored: ${stageText(run.restored)})`);
+      ok(run.oldHeldS < PUSH_S, `${mode}: the case is built: put back inside the stage, the old host sends its revived ${what} straight in `
+        + `(held ${run.oldHeldS.toFixed(2)} s)`);
+    }
+    ok(Math.abs(run.newHeldS - run.oldHeldS) <= PUSH_S + 1 / 60, `${mode}: window revive: the new host holds its revived ${what} at the stage `
+      + `within one route push of the old host (${run.newHeldS.toFixed(2)} s against ${run.oldHeldS.toFixed(2)} s)`);
   }
 }
 
