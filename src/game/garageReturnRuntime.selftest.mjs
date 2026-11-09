@@ -107,9 +107,9 @@ function createFixture({
         triggerCount += 1;
         calls.push(['triggerBattle']);
         if (triggerError) throw triggerError;
-        if (!triggerAccepted) return false;
+        if (!triggerAccepted) return 'unavailable';
         if (battleCoverDelay === 0) setEntryCovering(true);
-        return true;
+        return 'started';
       },
     },
     audio: {

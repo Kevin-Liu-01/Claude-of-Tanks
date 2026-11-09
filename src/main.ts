@@ -259,7 +259,7 @@ import {
 import { clearMatchSession, createBus, createGameState, watchRevealsAll } from './game/stateCore.ts';
 import { AppPhaseTransitionError, canTransitionAppPhase, createAppLifecycle, GarageScreenUnsettledError } from './game/appLifecycle.ts';
 import { bootReadiness } from './app/bootReadiness.ts';
-import { createBattleEntryIntent, type BattleTerrainVariant } from './game/battleEntryIntent.ts';
+import { createBattleEntryIntent, replayBattleEntry, type BattleTerrainVariant } from './game/battleEntryIntent.ts';
 import { createBattleWarmHold } from './game/battleWarmHold.ts';
 import { campaignOperationById } from './game/campaignOperations.ts';
 // Pure roster planning: the solo battle authority stays behind soloBattleAccess (boot-static-closure receipt).
@@ -3544,13 +3544,15 @@ const garageReturn = createGarageReturnAccess<BattleVisual>({
     showGarage: (specId: string) => garage.show(specId),
     poseGarageCamera: garageEnvironmentPresentation.poseCamera,
     startShowroom: () => showroom.start(),
-    triggerBattle: () => {
-      // Battle Again replays the entry it follows: a watched battle is watched again (the Deploy foot's Watch)
-      const button = document.querySelector<HTMLButtonElement>(battleEntryIntent.watched ? '[data-battle-watch]' : '.cot-battle');
-      if (!button || button.disabled) return false;
-      button.click();
-      return true;
-    },
+    // Battle Again replays the entry it follows through the Garage's own press, never a click on a button (round 8 Y4
+    // s3-04): a watched battle is watched again, a couch battle starts again with the phones here (or, with none, opens
+    // the couch lobby), any other entry is the BATTLE press (src/game/battleEntryIntent.ts replayBattleEntry)
+    triggerBattle: () => replayBattleEntry(battleEntryIntent, {
+      replay: (entry) => garage.replayEntry(entry),
+      couch: () => couchOwner.current,
+      openCouchLobby: () => garage.openCouch(),
+      seatName: (n) => t('pad.seat', { n }),
+    }),
   },
   audio,
   transition,
@@ -3741,6 +3743,8 @@ const soloBattleEntry = createSoloBattleEntryRuntime({
     campaignOperationId: options?.gameMode === 'frontline_assault' ? options.campaignOperationId ?? null : null,
     // a watched battle (the Deploy foot's Watch): Battle Again watches again
     watched: options?.watch === true,
+    // (round 8 Y4 s3-04) a couch battle (the Couch lobby's Start): Battle Again starts a couch battle again
+    couch: options?.couch ? { sides: options.couch.sides } : null,
   }),
   nextFrame: nextPaintFrame,
   isVisibleSpecId: (specId: string) => VISIBLE_TANK_IDS.includes(specId),
@@ -3828,7 +3832,7 @@ bus.on('ui:campaignNext', (payload) => {
   if (!operationId || !mapId) return;
   void battleAgainAction.run(() => {
     void beginLocalBattle({ specId: selectedVehicle.id, mapId, gameMode: 'frontline_assault', campaignOperationId: operationId });
-    return true;
+    return 'started';
   });
 });
 
@@ -4171,8 +4175,10 @@ onPresetChange(() => { invalidateGaragePresentation(); mapAmbience.refreshTier()
 bus.on('phase:change', () => {
   if (game.phase === 'garage') {
     // batch 19: the finished match's objective state, ruleset and operation never outlive the return
-    // (audit F2: the solo intent's watched flag stays for Battle Again, which replays the entry it follows)
-    battleEntryIntent.begin({ terrainVariant: null, campaignOperationId: null, watched: battleEntryIntent.watched });
+    // (audit F2: the solo intent's watched flag stays for Battle Again, which replays the entry it follows; round 8 Y4
+    // s3-04: and its couch, so a couch battle's Battle Again stays a couch battle)
+    battleEntryIntent.begin({ terrainVariant: null, campaignOperationId: null, watched: battleEntryIntent.watched,
+      couch: battleEntryIntent.couch });
     clearMatchSession(game);
   }
   frameLoop.restart();

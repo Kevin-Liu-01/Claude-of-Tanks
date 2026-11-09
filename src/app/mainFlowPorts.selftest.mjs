@@ -4,7 +4,7 @@
 // menu's and campaign's battles recorded no profile history without `announce: ... ui:battleStart`.
 import assert from 'node:assert/strict';
 import * as appLifecycleModule from '../game/appLifecycle.ts';
-import { createBattleEntryIntent } from '../game/battleEntryIntent.ts';
+import * as battleEntryIntentModule from '../game/battleEntryIntent.ts';
 import { createBattleEntryLifecycle } from '../game/battleEntryLifecycle.ts';
 import { createBattleFrameRuntime } from '../game/battleFrameRuntime.ts';
 import { advancePreBattleCountdown, PRE_BATTLE_WARM_HOLD_LIMIT_S, transitionBattleCountdown } from '../game/preBattleCountdown.ts';
@@ -14,6 +14,7 @@ import { mainSource, mainStatement, runMainStatements } from './mainComposition.
 
 // (canTransitionAppPhase by name: this file still runs, and fails by assertion, against a main.ts that has none)
 const { createAppLifecycle, canTransitionAppPhase } = appLifecycleModule;
+const { createBattleEntryIntent } = battleEntryIntentModule;
 const flush = async (turns = 12) => { for (let index = 0; index < turns; index += 1) await Promise.resolve(); };
 
 // The solo entry: main's announce, whenGarageSettled and presentReturnFailure bindings.
@@ -211,6 +212,48 @@ function phaseListener(game, battleEntryIntent) {
   assert.equal(busy.intent.campaignOperationId, 'op-3');
   finish();
   await first;
+}
+
+{
+  // (round 8 Y4 s3-04) A couch battle's Battle Again. The entry records the couch, the Garage return's 'garage'
+  // announcement (Battle Again's own enter) keeps it, and main's trigger replays it through the Garage's own press: a couch
+  // battle with the phones here now, its join window closed first, never a click on '.cot-battle' (before: the record had
+  // no couch, and the click started a keyboard battle that dropped the phones). With no phone here: the couch lobby.
+  const solo = soloEntry();
+  const announceGarage = phaseListener({ phase: 'battle' }, solo.intent);
+  await solo.beginLocalBattleEntry('leopard2a4', 'desert',
+    { gameMode: 'standard', couch: { seats: [1, 2], sides: 'teams', names: ['Seat 1', 'Seat 2'] } });
+  assert.deepEqual(solo.intent.couch, { sides: 'teams' }, 'the couch entry records its couch');
+  announceGarage();
+  assert.deepEqual(solo.intent.couch, { sides: 'teams' }, "the return's 'garage' announcement keeps it");
+  const uiSource = mainSource.slice(mainSource.indexOf('\n    triggerBattle: '));
+  const triggerExpression = uiSource.slice('\n    triggerBattle: '.length, uiSource.indexOf('\n  },\n')).replace(/,\s*$/, '');
+  const mainTrigger = ({ seats }) => {
+    const calls = [];
+    const trigger = runMainStatements(`const triggerBattle = ${triggerExpression};`, {
+      replayBattleEntry: battleEntryIntentModule.replayBattleEntry,
+      battleEntryIntent: solo.intent,
+      garage: {
+        replayEntry: (entry) => { calls.push(['replay', entry]); return true; },
+        openCouch: () => { calls.push(['lobby']); return true; },
+      },
+      couchOwner: { current: { seatsInPlay: () => [...seats], startBattle: (launch) => { calls.push(['closeJoins']); return launch(seats); } } },
+      t: (key, values) => `${key}:${values?.n}`,
+      document: { querySelector: (selector) => { calls.push(['querySelector', selector]); return { disabled: false, click: () => calls.push(['click']) }; } },
+    }, 'triggerBattle');
+    return { outcome: trigger(), calls };
+  };
+  const again = mainTrigger({ seats: [2, 5] });
+  assert.equal(again.calls.some(([name]) => name === 'querySelector' || name === 'click'), false, "Battle Again never clicks a button");
+  assert.equal(again.outcome, 'started');
+  assert.deepEqual(again.calls, [['closeJoins'], ['replay', { watch: false,
+    couch: { seats: [2, 5], sides: 'teams', names: ['pad.seat:2', 'pad.seat:5'] } }]], 'a couch battle with the phones here now');
+  const alone = mainTrigger({ seats: [] });
+  assert.deepEqual([alone.outcome, alone.calls], ['lobby', [['lobby']]], 'no phone here: the couch lobby');
+  // a later solo entry clears it: Battle Again is BATTLE again
+  await solo.beginLocalBattleEntry('leopard2a4', 'desert', { gameMode: 'standard' });
+  assert.equal(solo.intent.couch, null, 'a solo entry clears the couch');
+  assert.deepEqual(mainTrigger({ seats: [1] }).calls, [['replay', { watch: false, couch: null }]]);
 }
 
 // The reveal: main's canReveal reads the battle's scene (isPresentable runs over the real scheduler in

@@ -61,7 +61,7 @@ function createFixture({ restore = null, clearBattle = () => {}, phase = 'battle
     // (exitPointerLock: main's own binding, document.exitPointerLock, when a case runs a page's pointer lock)
     ui: { setGarageSpots: noop, setGarageSunTrim: noop, emitGaragePhase: noop, hideEndOverlay: noop, exitPointerLock, hideHud: noop,
       showGarage, poseGarageCamera: noop, startShowroom: noop,
-      triggerBattle: () => { game.phase = 'battle'; setTimeout(() => setCovering(true), 5); return true; } },
+      triggerBattle: () => { game.phase = 'battle'; setTimeout(() => setCovering(true), 5); return 'started'; } },
     audio: { ambientOn: noop, playGarageSting: noop },
     transition: { run: transitionRun ?? (async (work) => { const gate = transitionWork?.(); if (gate) await gate; return work(); }) },
     restoreGaragePresentation: async (isCurrent) => { observe(); if (restore) return restore(isCurrent); return { totalMs: 1 }; },
@@ -162,7 +162,7 @@ function createFixture({ restore = null, clearBattle = () => {}, phase = 'battle
     seen = f.runtime.whenSettled();
     f.game.phase = 'battle';
     setTimeout(() => f.setCovering(true), 5);
-    return true;
+    return 'started';
   });
   assert.equal(seen, null, "Battle Again's trigger is not queued behind Battle Again");
 }
@@ -621,7 +621,7 @@ function mainLeave(runtime) {
     .replace("import('./ui/garageReturnFailure.ts')", 'loadFailure()');
   const action = runMainStatements(wiring, {
     createBattleAgainAction,
-    garageReturn: { battleAgain: () => f.runtime.battleAgain(() => false), get state() { return f.runtime.state; } },
+    garageReturn: { battleAgain: () => f.runtime.battleAgain(() => 'unavailable'), get state() { return f.runtime.state; } },
     retryGarageReturn: main.retryGarageReturn,
     game: f.game,
     battleEntryLifecycle: { entrySerial: 0 },
@@ -640,6 +640,36 @@ function mainLeave(runtime) {
   notices[0].retry();
   for (let index = 0; index < 8 && f.runtime.state !== 'idle'; index += 1) await flush();
   assert.equal(f.runtime.state, 'idle', 'and its retry restores the Garage');
+}
+
+// (round 8 Y4 s3-04) A couch Battle Again with no phone here opens the couch lobby over the Garage ('lobby'): main's
+// Battle Again wiring over the real return settles in a restored Garage, with no failure notice and no 15 s wait for a
+// battle that is not coming (a boolean trigger had only "started", which waited 15 s and failed, or "unavailable",
+// whose notice opened over the lobby).
+{
+  const f = createFixture();
+  const notices = [];
+  const wiring = mainStatement('const battleAgainAction = createBattleAgainAction({')
+    .replace("import('./ui/garageReturnFailure.ts')", 'loadFailure()');
+  let lobbies = 0;
+  const action = runMainStatements(wiring, {
+    createBattleAgainAction,
+    garageReturn: { battleAgain: () => f.runtime.battleAgain(() => { lobbies += 1; return 'lobby'; }), get state() { return f.runtime.state; } },
+    retryGarageReturn: () => {},
+    game: f.game,
+    battleEntryLifecycle: { entrySerial: 0 },
+    onlineMatch: { current: null },
+    console: { error() {}, info() {}, warn() {} },
+    loadFailure: async () => ({ showGarageReturnFailure: (error, retry) => notices.push({ error, retry }), hideGarageReturnFailure() {} }),
+  }, 'battleAgainAction');
+  await action.run();
+  await flush();
+  assert.equal(lobbies, 1, 'the replay opened the couch lobby');
+  assert.equal(f.runtime.state, 'idle', 'the return settles in a restored Garage (its skipped restore paid)');
+  assert.equal(f.lifecycle.screenPhase, 'garage');
+  assert.equal(notices.length, 0, 'no failure notice over the lobby');
+  assert.deepEqual(f.sleeps.filter((ms) => ms >= 1000), [], 'no wait for a battle cover');
+  assert.equal(f.runtime.transitioning, false);
 }
 
 // A Battle Again whose return was cut short opens no notice either.
@@ -663,7 +693,7 @@ function mainLeave(runtime) {
     .replace("import('./ui/garageReturnFailure.ts')", 'loadFailure()');
   const action = runMainStatements(wiring, {
     createBattleAgainAction,
-    garageReturn: { battleAgain: () => f.runtime.battleAgain(() => false), get state() { return f.runtime.state; } },
+    garageReturn: { battleAgain: () => f.runtime.battleAgain(() => 'unavailable'), get state() { return f.runtime.state; } },
     retryGarageReturn: () => {},
     game: f.game,
     battleEntryLifecycle: { entrySerial: 0 },

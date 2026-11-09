@@ -3,6 +3,7 @@ import { t } from '../ui/i18n.ts';
 import { transitionAppPhase, type AppPhase } from './appLifecycle.ts';
 import { transitionBattleCountdown } from './preBattleCountdown.ts';
 import type { GaragePresentationRestoreReceipt } from './garagePhasePresentationRuntime.ts';
+import type { BattleAgainOutcome } from './battleEntryIntent.ts';
 
 /**
  * The Garage return's one state (2026-11-02 audit F3). It is moved only by `moveTo` along RETURN_EDGES, by the
@@ -178,8 +179,12 @@ interface GarageReturnUiPort {
   showGarage(specId: string): void;
   poseGarageCamera(): void;
   startShowroom(): void;
-  /** True only when the canonical, enabled Garage Battle control was invoked. */
-  triggerBattle(): boolean;
+  /**
+   * Battle Again's replay of the entry it follows (round 8 Y4 s3-04, main.ts: battleEntryIntent.ts replayBattleEntry):
+   * 'started' once the Garage's own press for it started, 'lobby' when a couch rematch found no phone here and opened
+   * the couch lobby, 'unavailable' when nothing could start.
+   */
+  triggerBattle(): BattleAgainOutcome;
 }
 
 interface GarageReturnAudioPort {
@@ -265,8 +270,11 @@ export interface GarageReturnRuntime {
   /** Retry an interrupted canonical return under the restored device's cover. */
   recoverAfterContextRestore(isCurrent: () => boolean): Promise<boolean>;
   leave(): Promise<void>;
-  /** Covered return then a new entry; the trigger defaults to the Garage BATTLE click (the campaign ladder passes its own). */
-  battleAgain(trigger?: () => boolean): Promise<void>;
+  /**
+   * Covered return then a new entry; the trigger defaults to the replay of the last entry (ui.triggerBattle; the campaign
+   * ladder passes its own). A trigger that opened the couch lobby ('lobby') settles in the Garage: no failure, no wait.
+   */
+  battleAgain(trigger?: () => BattleAgainOutcome): Promise<void>;
   /**
    * (perf-246) Swap and warm the Garage behind the opaque battle report, so the Return costs only its handoff.
    * Resolves false when refused (a room, a transition, an entry, a Garage already up) or abandoned.
@@ -881,7 +889,7 @@ export function createGarageReturnRuntime<Visual = object>(
     }
   });
 
-  const battleAgain = (trigger: () => boolean = () => ui.triggerBattle()): Promise<void> => (
+  const battleAgain = (trigger: () => BattleAgainOutcome = () => ui.triggerBattle()): Promise<void> => (
     beginTransition('battleAgain', async () => {
       await transition.run(async () => {
         // Cover the whole wait, and never dispose state owned by an entry that
@@ -898,14 +906,20 @@ export function createGarageReturnRuntime<Visual = object>(
           const trace = lastTrace;
           if (trace && state === 'restoreSkipped') await track(() => performSkippedRestore(trace));
         };
-        let triggered: boolean;
+        let outcome: BattleAgainOutcome;
         try {
-          triggered = trigger();
+          outcome = trigger();
         } catch (error) {
           await restoreSkipped();
           throw error;
         }
-        if (!triggered) {
+        // (round 8 Y4 s3-04) a couch rematch with no phone here opened the couch lobby over the Garage: the return
+        // settles there (its skipped restore paid), with no failure notice and no wait for a battle that is not coming
+        if (outcome === 'lobby') {
+          await restoreSkipped();
+          return;
+        }
+        if (outcome !== 'started') {
           await restoreSkipped();
           throw new Error('Battle Again is unavailable. Your Garage is ready; choose a battle from there.');
         }

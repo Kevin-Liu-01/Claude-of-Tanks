@@ -83,6 +83,12 @@ graph). Its edges, round 8 (2026-11-09):
   latched, under its own reason of `src/ui/bodyFlags.ts` ('couch'), so the spectate bar dropping its reason never strips
   it; it drops the reason when the phase leaves the battle and when the lobby closes, and the HUD's battle end clears its
   couch view, so a Watch battle after a couch one rides its own tank.
+- **Battle Again** after a couch battle starts a couch battle again: the entry's intent records the couch and its sides
+  (`src/game/battleEntryIntent.ts`), the Garage return keeps them, and the replay re-reads the seats with a phone here
+  now through the same start edge (the join window closes first). With no phone here it opens the lobby over the Garage
+  instead of a keyboard battle, and the return settles there with no failure notice.
+- **The lobby's opener** is one of the Garage's lazy openers: the Couch press takes the Garage's ticket, and the lobby
+  opens only if that Garage still shows when its chunks land (`src/app/couchOpener.ts`).
 - **End** (`close`): every phone goes, every seat's controls release, the couch view drops.
 
 ## Seats in the battle

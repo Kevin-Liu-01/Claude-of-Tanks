@@ -224,7 +224,7 @@ function createComposition(host, { pendingPreviousEntry = false } = {}) {
         scene.add(newBattle);
         game.phase = 'battle';
         nextEntryCovering = true;
-        return true;
+        return 'started';
       },
     },
     audio: { ambientOn: lifecycle('ambient'), playGarageSting: lifecycle('garage-sting') },

@@ -6,6 +6,7 @@ import type {
   GarageReturnRuntimeOptions,
   GarageReturnTrace,
 } from './garageReturnRuntime.ts';
+import type { BattleAgainOutcome } from './battleEntryIntent.ts';
 
 type GarageReturnModule = Pick<
   typeof import('./garageReturnRuntime.ts'),
@@ -57,7 +58,7 @@ export function createGarageReturnAccess<Visual = RuntimeValue>({
     async leave() {
       return (await owner.preload()).leave();
     },
-    async battleAgain(trigger?: () => boolean) {
+    async battleAgain(trigger?: () => BattleAgainOutcome) {
       return (await owner.preload()).battleAgain(trigger);
     },
     async prepare() {

@@ -452,7 +452,7 @@ function createMainStudioHandOver(harness, { restoreFails = false, restoreGate =
     roster: { adoptBattlePlayer: () => null, clearBattle: noop, repaintHero: noop },
     settings: { isOpen: () => false, close: noop },
     ui: { setGarageSpots: noop, setGarageSunTrim: noop, hideEndOverlay: noop, exitPointerLock: noop, hideHud: noop,
-      showGarage: () => calls.push('return:showGarage'), poseGarageCamera: noop, startShowroom: noop, triggerBattle: () => false },
+      showGarage: () => calls.push('return:showGarage'), poseGarageCamera: noop, startShowroom: noop, triggerBattle: () => 'unavailable' },
     audio: { ambientOn: noop, playGarageSting: noop },
     // (round 3 B2) a case may hold a Leave's veil fading in (transition.ts run(): the fade-in, then the work)
     transition: { run: async (work) => { if (veilGate) await veilGate(); return work(); } },

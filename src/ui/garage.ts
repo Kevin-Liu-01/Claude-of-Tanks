@@ -289,6 +289,14 @@ export interface GarageRuntime {
   /** The battle did not start because part of the game did not arrive (main.ts presentFailure): the Battle button keeps
    *  the kit's error state, and its next press (any launch) reloads the page once online. */
   noteBattleLoadFailed(): void;
+  /**
+   * Battle Again (round 8 Y4 s3-04): the press the last entry came from, replayed through its own handler (never a
+   * click on a button): the Deploy foot's Watch, a couch battle with the seats given (the Couch lobby's Start), or
+   * BATTLE. False when the press could not start (its control is disabled, nothing is selected, the launch refused).
+   */
+  replayEntry(entry: { readonly watch: boolean; readonly couch: CouchBattle | null }): boolean;
+  /** The couch lobby over the Garage through the Couch press (a couch rematch with no phone here); false if it cannot. */
+  openCouch(): boolean;
   /** Test drive a vehicle (default: the selected one) on the proving ground; false when it cannot launch now. */
   testDrive(specId?: string | null): boolean;
   setSelectedMap(mapId: string): void;
@@ -5205,6 +5213,21 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     noteBattleLoadFailed() {
       markLoadFailed([battleBtn], t('battle.entryFailed.reload'));
     },
+
+    replayEntry({ watch, couch }) {
+      if (couch) {
+        if (setupCouch.disabled || !selectedId) return false;
+        closeBattleMenu();
+        return launchBattle(selectedId, fieldMapId(), { gameMode: battleGameMode, couch });
+      }
+      // the Watch and BATTLE presses, as their clicks run them (a disabled control starts nothing)
+      const control = watch ? setupWatch : battleBtn;
+      if (control.disabled) return false;
+      battle(watch);
+      return true;
+    },
+
+    openCouch: () => openCouch(),
 
     testDrive(specId?: string | null) {
       return startTestDrive(specId ?? selectedId);
