@@ -817,7 +817,8 @@ export const MANUAL_SUITES = Object.freeze({
     'tools/source-dimension-frame.browser.selftest.mjs',
   ]),
   // round 5 U12 (2026-11-02 audit, sm-fix): the census's two houses cost about 1.7 s of its 4.1-4.4 s of CPU; the default
-  // receipt (src/fx/fxClockStampCensus.selftest.mjs) runs the rest of it and leaves their sites to this one
+  // receipt (src/fx/fxClockStampCensus.selftest.mjs) runs the rest of it and leaves what only their destruction stamps or
+  // reaches, wherever it lives (the houses' modules, structureMask's crumble fronts, the rubble bodies), to this one
   fx: suite('the fx-clock stamp census whole: two houses brought down (stages, sections, collapse bodies, the hanging sweep) before the rebase, and every fx-clock site\'s reach', [
     'src/fx/fxClockStampCensusFull.selftest.mjs',
   ]),
