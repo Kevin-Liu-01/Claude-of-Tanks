@@ -108,9 +108,10 @@ export interface MatchActor {
   state: TankState;
   /**
    * Its muzzleCursor and launcherCursor mirror the authority's for the own seat (shell_fired), so a predicted shot kicks
-   * the next barrel or tube; each life that follows a death (the own row's wreck) and each restarted battle begins them
-   * as the authority's fresh combat state does (beginWeaponCursors). A living hull's revive (a Turbo Ball goal's kick-off)
-   * does not: no row marks it (see ownMirrorLife).
+   * the next barrel or tube; each life that follows a death this seat's frames show (a presented frame whose own row is the
+   * wreck) and each restarted battle begin them as the authority's fresh combat state does (beginWeaponCursors). A life no
+   * presented frame marks does not: a living hull's revive (a Turbo Ball goal's kick-off), or a death and revive that both
+   * fell in a gap with no presented frame (a reconnect, a page stalled past the respawn delay). See ownMirrorLife.
    */
   combat: CombatState & CannonMuzzleCursor;
   specialAction: SpecialActionState;
@@ -611,8 +612,19 @@ export function createBattlePresentation({
    * ('died' -> 'following'), before any of its rows, predictions or rounds.
    * - 'following': the mirrors follow the authority's shell_fired for the own seat's rounds (followOwnCursors);
    * - 'died': the own row showed the wreck this frame (updateOwn); the next frame begins the mirrors (applyFrame).
-   * A restart begins every hull's (beginActorLife). Known gap: a revive of a living hull (a Turbo Ball goal's kick-off,
-   * sim/matchModes.ts) has no row edge, so its first predicted kick can take the old life's next barrel, as before.
+   * A restart begins every hull's (beginActorLife). Known gaps: a life no presented frame marks. Its first predicted kick
+   * can take the old life's next barrel, as before; its first confirmed round puts the mirror back on the authority's cursor
+   * (followOwnCursors) before the next prediction, which waits for the authority's row to change (mp/match/events.ts
+   * OwnShotPredictor: one per ready epoch): normally the row that shows that round, sent after its event.
+   * - A revive of a living hull (a Turbo Ball goal's kick-off, sim/matchModes.ts) has no row edge.
+   * - The death edge needs a presented frame that shows the own wreck before the new life's first round reaches this seat,
+   *   so a gap with no presented frame from the death through the revive misses it: a reconnect to the same host
+   *   (matchClient.ts resetForNewSocket drops the own row and the samples, so no frame comes until the resumed link's first
+   *   snapshot, which shows the new life; the battle id is unchanged, so no restart), or a page stalled past the respawn
+   *   delay (a frame carries only the newest own row). The host keeps a disconnected hull in the field (authoritativeMatch
+   *   onPeerLeave), where the mode can kill and revive it.
+   * Closing them needs a life count the wire does not carry (on the own viewer row, and on the own rounds for a round that
+   * comes before that row); a tick on the own rounds alone misses the reconnect, whose mode_respawn is not replayed.
    */
   let ownMirrorLife: 'following' | 'died' = 'following';
   let predictionWorldCache: PredictionWorld | null = null;

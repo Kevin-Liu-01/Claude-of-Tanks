@@ -11,15 +11,17 @@
 //   laid steep (round 8 Y1 residual: at the old near-level lay, 0.003 rad, the mouth's pitch terms moved the origin by
 //   0.04 cm, so an unpitched or sign-flipped mouth passed; at ~0.68 rad they move it ~10 cm); its life ends, the mode
 //   revives it, and the new life's rounds name mouths 0, 1, 0 again (a fresh combat state: reviveForMode);
-// - a twin cannon with missiles (tunguska_m): a missile takes its launcher tube and leaves the cannon's alternation alone;
+// - a twin cannon with missiles (tunguska_m): each missile takes the next launcher tube (0, then 1) and leaves the cannons'
+//   alternation alone;
 //   aft10's canisters are launcher tubes (launcherMuzzles), so the launcher rule names them as before;
 // - the solo step (setupBattle, simStep) asks the same selector: the same mouths in the same order (a battle on the page's
 //   step: src/game/twinMuzzleSolo.selftest.mjs, MANUAL 'sims'; this file reads the authority's fleet only, so it costs a
 //   few seconds on every npm test);
 // - the network presentation: the own seat's predicted kick is the mouth the authority names next, a confirmed shot
-//   flashes at the mouth it names, a remote shooter's visual kicks the named barrel; across the own hull's death and
-//   revive and a battle restart, the barrel and launcher mirrors begin each life where the authority's cursors do (round 8
-//   Y1 residual), and a mode_respawn released after the new life's first round leaves the mirror on that round;
+//   flashes at the mouth it names, a remote shooter's visual kicks the named barrel; within a life the barrel and launcher
+//   mirrors follow the authority's cursors (a second missile kicks tube 1), and across the own hull's death and revive and
+//   a battle restart they begin each life where the authority's cursors do (round 8 Y1 residual), and a mode_respawn
+//   released after the new life's first round leaves the mirror on that round;
 // - one writer of a hull's barrel cursor (the selector; the presentation mirrors the authority's): no assignment, compound
 //   assignment, increment or decrement of muzzleCursor, and no object literal naming it, outside those two files.
 import assert from 'node:assert/strict';
@@ -130,11 +132,12 @@ let tunguskaShots;
   const tunguska = getSpec('tunguska_m');
   const missileSlot = tunguska.gun.shells.findIndex((shell) => shell.guided);
   assert.ok(missileSlot > 0, 'tunguska_m carries a guided round');
-  const shots = authorityShots('tunguska_m', 3, { slots: (n) => (n === 1 ? missileSlot : 0) });
+  // cannon, missile, cannon, missile (the second missile waits out the launcher's reload: about 160 ticks)
+  const shots = authorityShots('tunguska_m', 4, { slots: (n) => (n % 2 === 1 ? missileSlot : 0) });
   tunguskaShots = shots;
-  assert.deepEqual(shots.map((shot) => [shot.shellSlot, shot.muzzleIndex]), [[0, 0], [missileSlot, 0], [0, 1]],
-    'cannon round from mouth 0, the missile from tube 0, the next cannon round from mouth 1');
-  assert.deepEqual(shots.map((shot) => shot.cursor), [1, 1, 2], 'the missile left the cannons\' cursor where it was');
+  assert.deepEqual(shots.map((shot) => [shot.shellSlot, shot.muzzleIndex]), [[0, 0], [missileSlot, 0], [0, 1], [missileSlot, 1]],
+    'cannon round from mouth 0, the missile from tube 0, the next cannon round from mouth 1, the next missile from tube 1');
+  assert.deepEqual(shots.map((shot) => shot.cursor), [1, 1, 2, 2], 'the missiles left the cannons\' cursor where it was');
   // aft10's eight canisters are launcher tubes: the launcher rule names them, the cannons' cursor never moves
   const aft10 = authorityShots('aft10', 2);
   assert.ok(getSpec('aft10').gun.launcherMuzzles?.length === 8, 'aft10 seats its canisters as launcher tubes');
@@ -263,21 +266,29 @@ async function presentationOf(specId) {
   presentation.dispose();
 }
 
-// ---- the own seat's launcher mirror across a life and a restart (tunguska_m's missiles) ------------------------------
+// ---- the own seat's launcher mirror within a life, across a life and a restart (tunguska_m's missiles) ----------------
 {
-  const missileSlot = tunguskaShots[1].shellSlot, missile = tunguskaShots[1];
-  assert.equal(missile.muzzleIndex, 0, 'a fresh life\'s first missile leaves tube 0 (the tunguska run above)');
-  assert.ok(getSpec('tunguska_m').gun.launcherMuzzles.length > 1, 'tunguska_m has more than one tube');
+  // the authority's two missiles of one life (the tunguska run above): tube 0, then tube 1
+  const missile = tunguskaShots[1], second = tunguskaShots[3], missileSlot = missile.shellSlot;
+  assert.deepEqual([missile.muzzleIndex, second.muzzleIndex, second.shellSlot], [0, 1, missileSlot],
+    'a fresh life\'s first missile leaves tube 0 and its second tube 1 (the tunguska run above)');
+  assert.ok(getSpec('tunguska_m').gun.launcherMuzzles.length > 2, 'tunguska_m has more than two tubes (tube 2 is not tube 0)');
   const { presentation, predict, confirm, respawn, die } = await presentationOf('tunguska_m');
+  // life 1: two missiles; the mirror follows each (the second kicks tube 1) and stands at tube 2 at the death (review
+  // residual r2: with one missile a life, a mirror that never followed the launcher kicked tube 0 every time and passed)
   const kicked = [predict(missileSlot)];
-  confirm(missile);
+  const flashes = [confirm(missile)];
+  kicked.push(predict(missileSlot));
+  flashes.push(confirm(second));
+  assert.deepEqual(flashes, [[0, 100], [1, 101]], 'the own seat\'s confirmed missiles flash at the tubes the authority names');
   die();
   kicked.push(predict(missileSlot));
   respawn();
   confirm(missile);
   kicked.push(predict(missileSlot, { battleRestarts: 1 }));
-  assert.deepEqual(kicked, [0, 0, 0], 'the own seat\'s predicted missile leaves tube 0 at a fresh life and after a battle restart '
-    + '(its launcher mirror, at tube 1 after a missile, begins each life where the authority\'s cursor does)');
+  assert.deepEqual(kicked, [0, 1, 0, 0], 'the own seat\'s predicted missile kicks the tube the authority names next: tube 1 after '
+    + 'a missile within a life, then tube 0 at a fresh life and after a battle restart (its launcher mirror, at tube 2 after '
+    + 'two missiles and at tube 1 after one, begins each life where the authority\'s cursor does)');
   presentation.dispose();
 }
 
@@ -312,6 +323,7 @@ async function presentationOf(specId) {
 }
 
 console.log('twinMuzzleParity.selftest: the authority names and fires gepard_1a2 mouths 0, 1, 0 from its bores (within 1 cm, the gun '
-  + 'laid steep), and 0, 1, 0 again after a revive; a missile keeps its tube and the cannons\' turn; the network screens kick and '
-  + 'flash the named barrel, the own seat\'s mirrors begin each life and restart where the authority\'s cursors do; one cursor writer PASS');
+  + 'laid steep), and 0, 1, 0 again after a revive; missiles take tubes 0, 1 and keep the cannons\' turn; the network screens kick and '
+  + 'flash the named barrel, the own seat\'s mirrors follow within a life and begin each life and restart where the authority\'s '
+  + 'cursors do; one cursor writer PASS');
 process.exit(0);
