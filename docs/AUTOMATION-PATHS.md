@@ -227,7 +227,6 @@ Waits and polls built by hand:
 - `tools/battle-spike-census.mjs`: its trace starts at the phase edge itself (the covered load is the recorder's, the countdown and the fight are the trace's)
 - `tools/black-world-repro.mjs`: the black-world hunt: it watches the cover lift and the HUD show (the visual edge it hunts at) and samples the loader in its monitor
 - `tools/click-timeline.mjs`: measures the Garage's paint, the entry gate and the reveal latch (visual edges), not readiness
-- `tools/cloud-sky-shots.mjs`: a 269 tool merged in round 8 Y0 with its own `__GAME_READY` boot wait; the tools-capture cluster (round 8 Y8, sweep s6-01) moves it onto the probe
 - `tools/controls-probe.mjs`: times the loading cover's show from the click (a mutation observer on the loader)
 - `tools/garage-action-timing.mjs`: times the Garage's and the battle's visual edges (painted, the loader's classes), its subject
 - `tools/interaction-steps.mjs`: click-timeline's steps: the cover's show and the reveal latch are what it times

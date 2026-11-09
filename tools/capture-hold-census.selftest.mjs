@@ -267,7 +267,6 @@ const acquiresDirectly = (file, text) => !HOLD_OWNERS.has(file)
  *  openCaptureHold). A new direct acquirer fails here; one with no reason, or one that no longer acquires, too. */
 const DIRECT_ACQUIRERS = Object.freeze({
   'tools/anatomy-render-set.mjs': 'loads the lock from the checkout it renders (toolRoot), which may predate the open hold; its own 19.5-min watchdog ends the hold (exit 124) under the cap',
-  'tools/cloud-sky-shots.mjs': 'a 269 tool merged in round 8 Y0 with its own acquire, signal handlers and close (the browser closed before the release); the tools-capture cluster (round 8 Y8, sweep s6-01) moves it onto withCaptureHold',
   'tools/ground-banding-shots.mjs': 'yields at the 20-min cap itself: --band gives the lock up and re-enters the priority band one past its highest live stamp, staging the next pair while it waits (a fresh ticket per yield)',
   'tools/media-r5/lab.mjs': 'the media lease protocol: per-job, per-map and budget leases with paid yields to normal-band holds (priority-yield.mjs), decided on lock.held (priority-yield.selftest pins it)',
   'tools/media-r5/studio-ui.mjs': 'loads the lock from the checkout it serves (cwd), which may predate the open hold; one short hold per script, the browser kept idle between them; a script is one frame-by-frame film, which cannot stop part-way, so its cap is logged by the lock (refresh past the cap), as the film renders\' atCap keep is',
