@@ -39,7 +39,8 @@ const DEVICES = Object.freeze({
   desktop: { width: 1920, height: 1080, deviceScaleFactor: 1, isMobile: false, hasTouch: false, query: 'tier=desktop', preset: 'high' },
   phone: { width: 844, height: 390, deviceScaleFactor: 3, isMobile: true, hasTouch: true, query: 'tier=mobile', preset: null },
 });
-const POSES = Object.freeze(['chase', 'chase2', 'long']);
+// (buildings-271) the street poses come only from a posesFrom manifest (tools/street-poses.mjs): the 12-15 m facade view
+const POSES = Object.freeze(['chase', 'chase2', 'long', 'street1', 'street2', 'street3', 'street4', 'street5', 'street6']);
 
 function parse(argv) {
   const out = { root: process.cwd(), out: null, jobs: null, waitHours: 16, tag: 'v1', pairMinutes: 10 };
