@@ -126,23 +126,64 @@ const game = () => ({ phase: 'garage', preBattleS: 0, result: null, resultTimeS:
 }
 
 // Source contract: nothing else writes game.phase, the dead 'ended' member is gone, and main's readers that the
-// hidden "Garage behind the report" state misled read the screen phase.
+// hidden "Garage behind the report" state misled read the screen phase. (round 8 Y3 review r1) The census also refuses
+// any `phase = 'battle'` assignment outside the owner, and main binds the owner's announcement to the bus's phase:change,
+// the one link from the phase writer to the audio engine's battle mode (269's battleEntryAmbience.selftest held both; it
+// was folded into src/audio/ambienceTeardown.selftest.mjs, which drives the entry paths through this owner).
+// (round 8 Y11, the Y0b seam) battleEntryAmbience.selftest's entry pins moved here with it: each battle entry (the solo
+// start, the network activation) asks this owner for the battle phase, and none turns its announcement off (the owner
+// announces unless a caller passes `announce`; a battle entered unannounced is the bug that receipt was for: the
+// hangar's bed plays on under the loader). Round seven's 40c6c92fde pinned it; Y0b read each entry's whole call.
 const srcRoot = fileURLToPath(new URL('..', import.meta.url));
-const writers = [];
+const writers = [], entries = [], unannounced = [];
+// The whole call's code, from its open paren to the one that closes it, so an option on any line counts. Quoted text is
+// kept but not counted for parens; comments are dropped (a comment's apostrophe opens no string, its words name no option).
+const callAt = (text, start) => {
+  const open = text.indexOf('(', start);
+  let depth = 0, quote = null, code = text.slice(start, open);
+  for (let i = open; i < text.length; i++) {
+    const ch = text[i];
+    if (quote) {
+      if (ch === '\\') { code += ch + (text[i + 1] ?? ''); i++; continue; }
+      if (ch === quote) quote = null;
+    } else if (ch === '/' && text[i + 1] === '/') {
+      const end = text.indexOf('\n', i);
+      i = end < 0 ? text.length : end - 1; // the line's newline is kept
+      continue;
+    } else if (ch === '/' && text[i + 1] === '*') {
+      const end = text.indexOf('*/', i + 2);
+      i = end < 0 ? text.length : end + 1;
+      continue;
+    } else if (ch === "'" || ch === '"' || ch === '`') quote = ch;
+    else if (ch === '(') depth++;
+    else if (ch === ')' && --depth === 0) return code + ch;
+    code += ch;
+  }
+  return code;
+};
 const walk = (dir) => {
   for (const name of readdirSync(dir)) {
     const path = join(dir, name);
     if (statSync(path).isDirectory()) { walk(path); continue; }
     if (!name.endsWith('.ts') || name.endsWith('.d.ts')) continue;
     const text = readFileSync(path, 'utf8');
-    for (const match of text.matchAll(/\bgame\.phase\s*=(?!=)/g)) {
-      writers.push(`${relative(srcRoot, path)}:${text.slice(0, match.index).split('\n').length}`);
+    const at = (index) => `${relative(srcRoot, path)}:${text.slice(0, index).split('\n').length}`;
+    for (const match of text.matchAll(/\bgame\.phase\s*=(?!=)|\bphase\s*=\s*'battle'/g)) writers.push(at(match.index));
+    for (const match of text.matchAll(/\btransitionAppPhase\([^;]*?,\s*'battle'\s*,/g)) {
+      entries.push(at(match.index));
+      if (/\bannounce\b/.test(callAt(text, match.index))) unannounced.push(at(match.index));
     }
   }
 };
 walk(srcRoot);
 assert.deepEqual(writers.filter((at) => !at.startsWith('game/appLifecycle.ts')), [],
-  'every game.phase writer goes through transitionAppPhase');
+  'every game.phase writer (and every battle-phase assignment) goes through transitionAppPhase');
+const entryFiles = new Set(entries.map((site) => site.split(':')[0]));
+for (const file of ['game/soloBattleStartRuntime.ts', 'mp/session/activationRuntime.ts']) {
+  assert.ok(entryFiles.has(file), `${file} enters the battle through transitionAppPhase (${entries})`);
+}
+assert.deepEqual(unannounced, [],
+  'each battle entry leaves its announcement to the one writer (no `announce` option), so the engine hears the battle');
 const stateCore = readFileSync(new URL('./stateCore.ts', import.meta.url), 'utf8');
 assert.doesNotMatch(stateCore, /'ended'/, "the dead 'ended' phase is gone");
 const main = readFileSync(new URL('../main.ts', import.meta.url), 'utf8');
@@ -150,6 +191,8 @@ assert.doesNotMatch(main, /garageAwaitingHandoff/, 'no reader patches the hidden
 assert.match(main, /canLeaveBattle: \(\) => appLifecycle\.screenPhase === 'battle'/);
 assert.match(main, /gearVisible: \(\) => appLifecycle\.screenPhase === 'garage'/);
 assert.match(main, /getPhase: \(\) => appLifecycle\.state,/, 'the Studio key opens over a settled Garage screen only');
+assert.match(main, /createAppLifecycle\(\{\s*game,\s*announce: \(announcement\) => bus\.emit\('phase:change', announcement\),/,
+  "the page's lifecycle announces every phase it writes on the bus's phase:change");
 assert.match(main, /Object\.defineProperty\(window, '__APP_LIFECYCLE', \{ configurable: true, get: \(\) => appLifecycle\.snapshot\(\) \}\)/,
   'tools read the lifecycle read-only');
 

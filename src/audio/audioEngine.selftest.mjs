@@ -741,4 +741,100 @@ else globalThis.localStorage = priorStorage;
   names = logSince(since).map((e) => e.n);
   assert.ok(names.includes('ac_30_own'), `after a change of hull our new roof cannon plays its own report (${names})`);
 }
-console.log(`audioEngine.selftest: rigs by powertrain, national crew, scenes, weapon layering + delay + flyby, reload choreography, hits, edge cases, destruction, concussion, our hits and misses, kill-cam, panning, scope, aircraft, mode events, interface sounds, rig ownership, late adoption and teardown passed (${probe.sfxLog.length} voices logged)`);
+{
+  // round 8 Y3 s1-08: our own weapons' banks have their own owner ('own-weapons'), the hull and gun we have now. They are
+  // pinned at our hull's first frame (in the countdown), replaced at a Gun Game step and released with the battle; the
+  // battle warm (which runs before the index meets the new battle's hull) never pins the last battle's.
+  const { weaponMounts } = await import('./weaponAudio.ts');
+  const ownIds = (gun) => [...new Set(weaponMounts(gun).flatMap((m) => [m.row?.own, m.row?.interior]).filter(Boolean))];
+  const pinnedOf = (ids) => ids.filter((id) => probe.pinned(id));
+  const hullOf = (specId, nation, caliberMm) => {
+    const hull = tank('me', { isPlayer: true, specId, nation });
+    hull.spec = { ...hull.spec, gun: { caliberMm, shells: [{ type: 'APFSDS' }, { type: 'HE' }] } };
+    return hull;
+  };
+  gameMode = 'standard';
+  // battle 1: a 120 mm hull
+  bus.emit('phase:change', { phase: 'garage' });
+  await audio.warmBattleEvents(['leo2a4']);
+  bus.emit('phase:change', { phase: 'battle' });
+  const leo = hullOf('leo2a4', 'Germany', 120);
+  audio.update(1 / 60, listener, [leo]);
+  const leoIds = ownIds(leo.spec.gun);
+  assert.ok(leoIds.length > 0, `our 120 mm gun has its own banks (${leoIds})`);
+  assert.deepEqual(pinnedOf(leoIds), leoIds, 'our hull\'s own banks are pinned at its first frame');
+  bus.emit('phase:change', { phase: 'garage' });
+  assert.deepEqual(pinnedOf(leoIds), [], 'our own banks go with the battle');
+  // battle 2: a 125 mm hull; the loader's warm and the battle edge come before its first frame
+  await audio.warmBattleEvents(['t90am']);
+  bus.emit('phase:change', { phase: 'battle' });
+  const t90 = hullOf('t90am', 'Russia', 125);
+  const t90Ids = ownIds(t90.spec.gun);
+  const stale = leoIds.filter((id) => !t90Ids.includes(id));
+  assert.ok(stale.length > 0, `the two guns' own banks differ (${leoIds} / ${t90Ids})`);
+  assert.deepEqual(pinnedOf(stale), [], 'the battle warm does not pin the last battle\'s hull');
+  audio.update(1 / 60, listener, [t90]);
+  assert.deepEqual(pinnedOf(t90Ids), t90Ids, 'the new hull\'s own banks are pinned');
+  assert.deepEqual(pinnedOf(stale), [], 'nor does anything else hold the last battle\'s');
+  // Gun Game: each step a new gun; only the current step's own banks stay pinned
+  gameMode = 'gun_game';
+  bus.emit('phase:change', { phase: 'battle' });
+  const ladder = hullOf('t90am', 'Russia', 105);
+  const steps = [105, 120, 125];
+  const seen = [];
+  for (const [stage, caliberMm] of steps.entries()) {
+    ladder.spec = { ...ladder.spec, gun: { caliberMm, shells: [{ type: 'APFSDS' }, { type: 'HE' }] } };
+    if (stage > 0) bus.emit('mode:weapon_advanced', { id: 'me', stage, name: `${caliberMm} mm` });
+    audio.update(1 / 60, listener, [ladder]);
+    seen.push(ownIds(ladder.spec.gun));
+  }
+  const current = seen.at(-1);
+  const passed = [...new Set(seen.slice(0, -1).flat())].filter((id) => !current.includes(id));
+  assert.deepEqual(pinnedOf(current), current, 'the current step\'s own banks are pinned');
+  assert.deepEqual(pinnedOf(passed), [], `the ladder's passed weapons are not (${pinnedOf(passed)})`);
+  bus.emit('phase:change', { phase: 'garage' });
+  gameMode = 'standard';
+}
+{
+  // round 8 Y3 s1-10: the reload mirror's cycle is the reloading mount's. Every channel reloads in parallel and the sim
+  // reports the selected round's, so selecting the launcher's missile while the gun reloads is the launcher's cycle,
+  // joined where it stands: its own plan, and none of the steps it is already past played at once.
+  const { weaponMounts } = await import('./weaponAudio.ts');
+  const gunner = tank('me', { isPlayer: true });
+  gunner.spec = { ...gunner.spec, gun: { caliberMm: 125, reloadS: 7, shells: [{ type: 'APFSDS', name: '3BM60' }, { type: 'HE', name: '3OF26' },
+    { type: 'HEAT', name: 'ATGM', guided: true, caliberMm: 152 }] } };
+  const keys = weaponMounts(gunner.spec.gun).map((m) => m.key);
+  assert.ok(keys.includes('guided/missile') && keys.length >= 2, `the hull carries a launcher beside its gun (${keys})`);
+  bus.emit('phase:change', { phase: 'battle' });
+  audio.update(1 / 60, listener, [gunner]);
+  bus.emit('battle:rollout', {});
+  const starts = () => probe.soundLog.filter((e) => e.type === 'reload:start');
+  const cueNames = (since) => probe.soundLog.slice(since).filter((e) => e.type === 'reload:cue').map((e) => e.cue);
+  const reloadAt = (progress, slot) => {
+    gunner.combat.shellSlot = slot;
+    audio.update(1 / 60, listener, [gunner]);
+    ctx.advance(0.3);
+    bus.emit('player:reload', { total: 7, kind: 'shell', caliberMm: slot === 2 ? 152 : 125, t: 7 * (1 - progress), progress });
+  };
+  // the gun's cycle under way
+  for (const progress of [0, 0.1]) reloadAt(progress, 0);
+  const gunStarts = starts().length;
+  // the same gun's other round, mid-cycle: the gun's cycle goes on
+  reloadAt(0.15, 1);
+  assert.equal(starts().length, gunStarts, 'another round of the same gun keeps its cycle');
+  // the launcher's missile, its tube further along (its channel's fallback total is the gun's: the same kind and total)
+  const at = probe.soundLog.length;
+  reloadAt(0.8, 2);
+  const joined = starts().at(-1);
+  assert.ok(starts().length === gunStarts + 1 && joined.key === 'guided/missile' && joined.joined === true,
+    `the launcher's cycle, joined where it stands (${JSON.stringify(joined)})`);
+  assert.deepEqual(cueNames(at), [], `no burst of cues at the switch (${cueNames(at)})`);
+  // its remaining steps play as it runs on
+  const rest = probe.soundLog.length;
+  for (const progress of [0.9, 0.97]) reloadAt(progress, 2);
+  bus.emit('player:reload', { total: 7, kind: 'shell', caliberMm: 152, t: 0, progress: 1, done: true });
+  // (the launcher plan: the hatch, the canister lift and the tube load are behind it at 0.8; the launcher raises at 0.91)
+  assert.deepEqual(cueNames(rest), ['launcherRaise'], `only the launcher's steps after the join (${cueNames(rest)})`);
+  bus.emit('phase:change', { phase: 'garage' });
+}
+console.log(`audioEngine.selftest: rigs by powertrain, national crew, scenes, weapon layering + delay + flyby, reload choreography, hits, edge cases, destruction, concussion, our hits and misses, kill-cam, panning, scope, aircraft, mode events, interface sounds, rig ownership, late adoption and teardown, our own banks' owner, the reloading mount's cycle passed (${probe.sfxLog.length} voices logged)`);

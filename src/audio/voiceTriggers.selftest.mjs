@@ -9,6 +9,7 @@ import { readFileSync, readdirSync } from 'node:fs';
 import { createFakeContext, fakeBuffer } from './fakeAudioContext.test-support.mjs';
 import { createBus } from '../game/stateCore.ts';
 import { VOICE_LINES } from './voiceLines.ts';
+import { matchRulesetFor } from '../sim/matchRuleset.ts';
 
 // Shipped files from disk, "decoded" at their real lengths where timing matters: a crew take is about a second and a
 // half, the net's key-up and release clicks a tenth of a second (a 1.5 s click would hold every call a second late).
@@ -62,14 +63,21 @@ const layOn = (foe) => {
   listener.forward = { x: d[0] / n, y: d[1] / n, z: d[2] / n };
 };
 let me, allies, foes, tanks, shells = [];
+// What the player sees (the game's rule, src/game/playerVisibility.ts, handed to audio.update as listenerPoseRuntime does):
+// our side, every hull in a mode that lights them all (spotting.ts isSpotted under alwaysVisible), and an enemy once our
+// side has spotted it this battle.
+const seen = new Set();
+bus.on('tank:spotted', (e) => { if (e?.team === 'player') seen.add(e.id); });
+const visibleToUs = (hull) => hull.team === 'player' || !!matchRulesetFor(gameMode).alwaysVisible || seen.has(hull.id);
 function roster() {
+  seen.clear();
   me = tank('me', { isPlayer: true });
   allies = [tank('a1', { x: 20, z: 40 }), tank('a2', { x: -20, z: 40 })];
   foes = [tank('f1', { x: 0, z: 200, team: 'enemy' }), tank('f2', { x: 120, z: 120, team: 'enemy' }), tank('f3', { x: -120, z: 120, team: 'enemy' }),
     tank('f4', { x: 0, z: -150, team: 'enemy' }), tank('f5', { x: 60, z: 260, team: 'enemy' })];
   tanks = [me, ...allies, ...foes];
 }
-const frame = (dt = 0.25) => { ctx.advance(dt); audio.update(dt, listener, tanks, shells); };
+const frame = (dt = 0.25) => { ctx.advance(dt); audio.update(dt, listener, tanks, shells, visibleToUs); };
 const settle = (seconds = 6) => { for (let t = 0; t < seconds; t += 0.25) frame(0.25); };
 const flush = async () => { for (let i = 0; i < 6; i++) await new Promise((resolve) => setTimeout(resolve, 0)); };
 
@@ -322,7 +330,14 @@ for (const [module, id] of [['trackL', 'track_repaired'], ['gun', 'gun_repaired'
   // a flight that runs its battery low and its link thin, recalled home to its dock
   moment('drone_battery_low', () => { me.aerial = { kind: 'drone', active: true, x: 0, y: 14, z: 6, batteryS: 9, cooldownS: 0 }; frame(); }, { quiet: 30 });
   moment('drone_link_weak', () => { me.aerial = { ...me.aerial, z: 760, batteryS: 8 }; frame(); });
-  moment('drone_recovered', () => { me.aerial = { ...me.aerial, recallS: 2 }; frame(); me.aerial = { kind: 'drone', active: false, batteryS: 0, cooldownS: 4 }; frame(); });
+  // the authority's recall (sim/aerialCombat.ts recallDrone): the feed ends at once, the airframe flies home (returnS)
+  // and is parked on its dock; `recallS` is only the recall's gate at launch (round 8 Y3 review r2)
+  moment('drone_recovered', () => {
+    me.aerial = { kind: 'drone', active: false, x: 0, y: 14, z: 760, batteryS: 8, cooldownS: 9, returnS: 5 };
+    frame();
+    me.aerial = { ...me.aerial, cooldownS: 4, returnS: 0 };
+    frame();
+  });
   delete me.aerial;
   // the counter-drone fight: ours shot down, theirs brought down by our roof gun
   moment('drone_shot_down', () => bus.emit('drone:down', { id: 'me', killerId: 'f1' }));
@@ -494,11 +509,25 @@ async function opening(mode, id, before) {
   assert.ok(heard.includes(id) && !heard.includes('battle_start'), `${mode} opens with ${id} (heard ${heard})`);
   covered.add(id);
 }
-/** A battle that ends for the mode's own reason, and the crew's call for it. */
-async function ending(mode, result, reason, id, before) {
+/**
+ * A battle that ends for the mode's own reason, and the crew's call for it. `dead`: our tank fell first (the Horde's and
+ * the Frontline's overruns end only when no defender stands, matchModes.ts; a hunter waits to respawn when the team kills
+ * the Juggernaut): the result call is said all the same (round 8 Y3 s1-05). `network`: a network seat's order, the
+ * mode's own completion relayed first, then the authority's verdict with its generic reason (battlePresentation.ts
+ * applyVerdict's 'elimination'): the mode's reason names the ending (round 8 amendment 6).
+ */
+async function ending(mode, result, reason, id, before, { dead = false, network = false } = {}) {
   await startBattle(mode, { before });
+  if (dead) {
+    me.combat.destroyed = true;
+    bus.emit('tank:destroyed', { id: 'me', killerId: 'f1', pos: [0, 0, 0], cause: 'shot' });
+    frame();
+  }
   const since = +ctx.currentTime.toFixed(3);
-  bus.emit('battle:ended', { result, reason });
+  if (network) {
+    bus.emit('mode:completed', { result: result === 'victory' ? 'alpha' : 'bravo', reason });
+    bus.emit('battle:ended', { result, reason: 'elimination', network: true });
+  } else bus.emit('battle:ended', { result, reason });
   bus.emit('battle:presented', { result });
   settle(4);
   assert.ok(spoken(id, since) && !spoken(result, since), `${mode} ${result} by ${reason}: ${id} (heard ${probe.voiceLog.filter((e) => e.t >= since).map((e) => e.id)})`);
@@ -583,12 +612,17 @@ moment('juggernaut_spotted', () => bus.emit('tank:spotted', { id: 'f1', team: 'p
 await opening('infected', 'start_survivors');
 moment('last_survivor', () => { for (const a of allies) a.combat.destroyed = true; frame(); });
 moment('infected_turned', () => bus.emit('mode:infected', { id: 'me', team: 'bravo' }));
-// The modes' own results.
-await ending('endless_horde', 'defeat', 'horde_overrun', 'defeat_overrun');
+// The modes' own results (an overrun with our tank dead, as the game ends one).
+await ending('endless_horde', 'defeat', 'horde_overrun', 'defeat_overrun', undefined, { dead: true });
 await ending('frontline_assault', 'victory', 'line_held', 'victory_assault');
+await ending('frontline_assault', 'defeat', 'assault_overrun', 'defeat_overrun', undefined, { dead: true });
 await ending('infected', 'victory', 'survivors_extracted', 'victory_survivors');
 await ending('juggernaut', 'victory', 'juggernaut_survived', 'victory_juggernaut', () => { me.combat.maxHp = me.combat.hp = 8000; });
 await ending('juggernaut', 'victory', 'juggernaut_destroyed', 'juggernaut_down', () => { foes[0].combat.maxHp = foes[0].combat.hp = 8000; });
+// a network seat's overrun: the mode's completion, then the authority's verdict with its generic reason
+await ending('endless_horde', 'defeat', 'horde_overrun', 'defeat_overrun', undefined, { dead: true, network: true });
+// a hunter dead and waiting to respawn when the team brings the Juggernaut down
+await ending('juggernaut', 'victory', 'juggernaut_destroyed', 'juggernaut_down', () => { foes[0].combat.maxHp = foes[0].combat.hp = 8000; }, { dead: true });
 
 // The reasoning exchange: a Chain of Thought (the Service Record's medal, announced inside the kill's own dispatch)
 // has the commander think step by step once the kill call is done, and the gunner answer with the drill; once a battle.
@@ -678,7 +712,8 @@ moment('gunship_rounds_complete', () => {
 }, { wait: 12, heard: false });
 // a friendly lost on the ground (wherever it was), one extracted
 moment('gunship_friendly_down', () => { allies[0].combat.destroyed = true; bus.emit('tank:destroyed', { id: 'a1', killerId: 'f1', pos: [20, 0, 40], cause: 'shot' }); });
-moment('gunship_friendly_extracted', () => { allies[1].modeActive = false; frame(); });
+// (the mode's rescue: sim/matchModes.ts setLife 'rescued' takes the hull off the field, alive)
+moment('gunship_friendly_extracted', () => { allies[1].modeLife = 'rescued'; allies[1].modeActive = false; frame(); });
 {
   settle(6);
   const since = +ctx.currentTime.toFixed(3);

@@ -24,6 +24,7 @@
 
 import type { RuntimeValue } from '../runtimeTypes.ts';
 import type { EventBus } from '../game/stateCore.ts';
+import type { VisibilityHull } from '../game/playerVisibility.ts';
 import type { AudioListenerPose } from './listenerPoseRuntime.ts';
 import { getLocale } from '../ui/i18n.ts';
 import { isEraActivation } from '../game/eraActivation.ts';
@@ -37,7 +38,7 @@ import { createMixer, type Mixer } from './mixer.ts';
 import { createVoicePool, type ActiveVoice, type PlayOptions, type VoicePool } from './voicePool.ts';
 import { createCrewRadio, type CrewRadio } from './crewRadio.ts';
 import { createCrewProcedure, type CrewFrameEntity } from './crewProcedure.ts';
-import { resolveCrewLine } from './voiceLines.ts';
+import { isResultLine, resolveCrewLine } from './voiceLines.ts';
 import { CAPTION_EVENT, createCaptionStream, type CaptionSoundId } from './captions.ts';
 import { createAmbienceDirector, sceneAssets, type AmbienceDirector, type BellTower } from './ambienceDirector.ts';
 import { BELL_TOWERS, FLYOVER_BY_AIRCRAFT, GARAGE_SCENE, sceneForMap, type EnvironmentScene } from './environmentScenes.ts';
@@ -162,7 +163,11 @@ export interface AudioLandmark {
 export interface AudioMixer {
   resume(): void;
   bindBus(bus: EventBus): void;
-  update(dtSeconds: number, listener: AudioListenerPose, tanks: readonly RuntimeValue[], shells?: readonly RuntimeValue[]): void;
+  /** `visible`: whether the player sees a hull of `tanks` (src/game/playerVisibility.ts, handed in by the listener's
+   *  runtime). Without it the player sees no hull: the crew names nothing (a tool or a receipt that wants its fire
+   *  commands hands the rule in), never every hull. */
+  update(dtSeconds: number, listener: AudioListenerPose, tanks: readonly RuntimeValue[], shells?: readonly RuntimeValue[],
+    visible?: (hull: VisibilityHull) => boolean): void;
   setMasterVolume(value: number): void;
   mute(muted: boolean): void;
   playGarageSting(): void;
@@ -224,10 +229,16 @@ interface AudioEntity {
     ammo?: readonly number[];
     ammoCapacity?: readonly number[];
     shellSlot?: number;
+    /** The selected round's reload channel (sim/damage.ts; a network seat's mirrors the row's): t 0 is a round in the breech. */
+    reload?: { t?: number };
     /** The roof gun and the lights (sim/auxiliarySystems): the same object solo and in a network battle. */
     auxiliary?: { gunOn?: boolean; lights?: number };
+    /** The hull's fire (sim/damage.ts combat.fire; a network actor's mirrors the row's BURNING flag). */
+    fire?: { burning?: boolean };
   };
   modeActive?: boolean;
+  /** A network battle's actor: whether the authority sent it this frame (the player's visibility rule reads it). */
+  networkVisible?: boolean;
 }
 
 interface TankInfo {
@@ -245,7 +256,10 @@ interface TankInfo {
   specId: string;
   nation: string;
   alive: boolean;
-  spotted: boolean;
+  /** Whether the player saw it in the frame `seenAt` names (the frame index's serial): a hull missing from this frame's
+   *  list (a network actor the authority stopped sending) is not seen, whatever it last was (round 8 Y3 s1-02). */
+  visible: boolean;
+  seenAt: number;
   /** Wears a field net and garnish (its visual's userData.fieldSuit; null until a visual has been seen). */
   suited: boolean | null;
   /** Its gun and the gun's mounts (rebuilt when the gun changes: a Gun Game step or the AC-130 swaps the gun object); the
@@ -684,8 +698,11 @@ export function createAudio({
   let auxLights: number | null = null;
   // Our drone's last battery and range while it flew: how the flight ended decides the commander's call.
   const ownDroneLast = { batteryS: 0, rangeM: 0 };
-  const reload: { active: boolean; total: number; kind: string; caliber: number; lastT: number; next: number; plan: ReloadCuePlan | null } = {
-    active: false, total: 0, kind: 'shell', caliber: 100, lastT: 0, next: 0, plan: null,
+  // The reload choreography's mirror of our crew's cycle: its plan by the reloading mount (`mountKey`), the round selected
+  // (`slot`) and the gun (`gun`) it was made for (round 8 Y3 s1-10).
+  const reload: { active: boolean; total: number; kind: string; caliber: number; lastT: number; next: number; plan: ReloadCuePlan | null;
+    mountKey: string; slot: number; gun: unknown } = {
+    active: false, total: 0, kind: 'shell', caliber: 100, lastT: 0, next: 0, plan: null, mountKey: '', slot: -1, gun: null,
   };
   let reloadCalled = false;
   const surfaceCache = new Map<string, { surface: SurfaceId; depth: number; occluded: number; at: number }>();
@@ -829,9 +846,10 @@ export function createAudio({
     if (id !== asked && options?.take != null) options = { ...options, take: undefined };
     let why: string | undefined;
     if (!radio || battleMode.phase !== 'battle') why = 'phase';
-    // a result is heard whether the player's hull stands or not: the asked moment decides, so a mode's own result line
-    // (resolveCrewLine: defeat_overrun, gunship_victory, ...) is exempt as the plain verdict is
-    else if (playerId != null && tanks.get(playerId)?.alive === false && asked !== 'victory' && asked !== 'defeat' && asked !== 'draw') why = 'dead';
+    // behind the pause menu the net is silent (round 8 Y3 s1-03): a solo battle's sim stops, a network battle's goes on
+    else if (battleMode.paused) why = 'paused';
+    // a dead crew says nothing but the battle's result (the resolved line's class: a mode's own result call too)
+    else if (playerId != null && tanks.get(playerId)?.alive === false && !isResultLine(id)) why = 'dead';
     const ok = why == null && !!radio?.say(id, options);
     sayLog.push({ id, t: ctx ? +ctx.currentTime.toFixed(3) : 0, ok, ...(why ? { why } : !ok ? { why: 'net' } : {}) });
     if (sayLog.length > 160) sayLog.shift();
@@ -842,12 +860,20 @@ export function createAudio({
   const crew = createCrewProcedure({
     say,
     now: () => ctx?.currentTime ?? 0,
-    // the battle mode's own facts (2026-11-02 audit F11: battleMode.ts), never flags of the crew's or the engine's
-    live: () => battleMode.phase === 'battle' && battleMode.rolledOut && !battleMode.over && playerId != null && tanks.get(playerId)?.alive !== false,
+    // the battle mode's own facts (2026-11-02 audit F11: battleMode.ts), never flags of the crew's or the engine's; the
+    // crew's battle and life start on the engine's edges (resetBattlePlay; startOwnLife at each revive of our hull and
+    // each seat the player takes). Our tank is the one the frame shows the player driving: a watched battle's seat its
+    // brain drives (openWatchSeats, leaveWatchSeat) makes none of the crew's per-life or sighting calls (the lay and fire
+    // commands, cease fire, re-engage, the drone, APS, crushes, the Juggernaut sighted: round 8 Y3 review r2); the
+    // battle's mode calls (onMode) are the side's news and gate on inBattle, so they still play, as do the engine's own
+    // (review r3)
+    live: () => battleMode.phase === 'battle' && battleMode.rolledOut && !battleMode.over && !battleMode.paused
+      && playerId != null && tanks.get(playerId)?.alive !== false && tanks.get(playerId)?.isPlayer === true,
     inBattle: () => battleMode.phase === 'battle' && !battleMode.over,
     playerId: () => playerId,
     player: () => (latestPlayer && latestPlayer.id === playerId ? latestPlayer : null),
     tanks: () => tanks,
+    visible: seenNow,
     sameTeam,
     objectiveTeam: () => {
       const perspective = getObjectiveTeam?.();
@@ -1786,18 +1812,22 @@ export function createAudio({
     }
   }
 
+  /** A module state's severity: 0 whole (or unknown), 1 damaged, 2 destroyed; a radio's is its set's damage level. */
+  function moduleRank(state: string | undefined): 0 | 1 | 2 {
+    return state === 'red' ? 2 : state === 'yellow' ? 1 : 0;
+  }
+
   function onModuleState(event: ModuleStateEvent): void {
     const key = `${event.id}:${event.module}`;
     const prev = moduleStates.get(key) || 'ok';
     moduleStates.set(key, event.state);
     if (event.state === prev) return;
-    const rank = (s: string) => (s === 'red' ? 2 : s === 'yellow' ? 1 : 0);
-    const worse = rank(event.state) > rank(prev);
+    const worse = moduleRank(event.state) > moduleRank(prev);
     const info = tanks.get(event.id);
     if (worse && event.state === 'red' && (event.module === 'trackL' || event.module === 'trackR') && info) {
       play('track_break', at(info.pos));
     }
-    if (event.id === playerId && event.module === 'radio') radio?.setRadioDamage(rank(event.state) as 0 | 1 | 2);
+    if (event.id === playerId && event.module === 'radio') radio?.setRadioDamage(moduleRank(event.state));
     if (playerId == null || event.id !== playerId || battleMode.phase !== 'battle') return;
     if (event.source === 'hit') {
       if (worse && event.module === 'ammoRack') { play('alarm_ammo', { delayS: 0.01 }); caption('ammoRack'); }
@@ -1847,7 +1877,18 @@ export function createAudio({
     const kind = event.kind || 'shell';
     const caliber = Math.max(12, Number(event.caliberMm) || 100);
     const t = Number(event.t) || 0;
-    if (!reload.active || reload.kind !== kind || Math.abs(reload.total - total) > 0.01 || t > reload.lastT + 0.04) {
+    // The cycle is the reloading mount's (round 8 Y3 s1-10): every channel reloads in parallel (sim/damage.ts) and the
+    // selected round's is the one reported, so another round selected mid-cycle on another mount (a launcher's, a
+    // secondary gun's) is that mount's cycle, joined where it stands (its plan, none of its passed cues at once); another
+    // round of the same mount keeps the cycle; a new gun (a Gun Game step, the AC-130's) is a new cycle. The mount is
+    // resolved only when the selection changes.
+    const slot = latestPlayer?.combat?.shellSlot ?? 0;
+    const gun = latestPlayer?.spec?.gun ?? null;
+    const switched = reload.active && gun === reload.gun && slot !== reload.slot && reloadingMount(caliber).key !== reload.mountKey;
+    reload.slot = slot;
+    const restart = !reload.active || switched || gun !== reload.gun || reload.kind !== kind || Math.abs(reload.total - total) > 0.01
+      || t > reload.lastT + 0.04;
+    if (restart) {
       reload.active = true;
       reload.total = total;
       reload.kind = kind;
@@ -1856,13 +1897,17 @@ export function createAudio({
       reload.next = 0;
       // The loader by the mount's row and the hull's layout (the AC-130's howitzer by hand, its missiles on the pylon).
       const m = reloadingMount(caliber);
+      reload.mountKey = m.key;
+      reload.gun = gun;
       const specId = playerId ? tanks.get(playerId)?.specId ?? null : null;
       const loader = loaderFor(specId, m);
       reload.plan = resolveReloadCuePlan(total, kind, m, loader, { rackDoor: readyRackDoor(specId), magazineRounds: Number(event.magazineCapacity) || 0 });
-      logSound('reload:start', { kind, total, caliberMm: caliber, key: m.key, loader });
+      logSound('reload:start', { kind, total, caliberMm: caliber, key: m.key, loader, ...(switched ? { joined: true } : {}) });
     }
     const progress = Number.isFinite(event.progress) ? clamp(Number(event.progress), 0, 1) : clamp(1 - t / total, 0, 1);
     const cues = reload.plan?.cues || [];
+    // a cycle joined where it stands: the steps the crew is already past happened unheard, never all at once now
+    if (restart && switched) while (reload.next < cues.length && progress + 1e-6 >= cues[reload.next].at) reload.next++;
     while (reload.next < cues.length && progress + 1e-6 >= cues[reload.next].at) {
       const cue = cues[reload.next++];
       reloadCue(cue);
@@ -1986,16 +2031,22 @@ export function createAudio({
         if (typeof payload.id === 'string') {
           deathLatch.delete(payload.id);
           forgetModuleStates(payload.id);
+          // (round 8 Y3 residual) and with its fire out: both drivers revive a hull with a fresh combat (state.ts revive,
+          // authoritativeMatch.ts reviveForMode, whose fresh row a network seat mirrors) and tell no tank:fire, so a
+          // living hull's revive (a Turbo Ball kick-off, the range reset: sim/matchModes.ts "alive -> alive") puts out
+          // the engine-deck fire its last life lit; before, it crackled on at the spawn until a next fire went out. Put
+          // out at the event, not read from the hull: on a network seat a hull in view can still show its last life's
+          // fire (a held row) until the host's fresh row comes, as battlePresentation reviveAtRespawn mends only its
+          // modules and crew (residual fix-up r1)
+          rigs.get(payload.id)?.setBurning(false);
         }
         if (playerId != null && payload.id === playerId) {
-          // A fresh hull: alive before the next frame reads it (the event lands inside the sim step), and a new life's
-          // one-shot calls (low hull, low ammunition) armed again.
+          // A fresh hull: alive before the next frame reads it (the event lands inside the sim step), and its new life
+          // (startOwnLife: the one-shot calls armed again, the radio set whole and the fire alarm off, the crew's life
+          // afresh).
           const info = tanks.get(playerId);
           if (info) info.alive = true;
-          lowHpCalled = false;
-          ammoLowCalled = false;
-          heartbeatBelow = 0;
-          radio?.setRadioDamage(0);
+          startOwnLife();
           play('ui_respawn');
           say('respawn', { delayS: 0.5 });
         }
@@ -2204,7 +2255,50 @@ export function createAudio({
     return suited;
   }
 
-  function indexTanks(list: readonly RuntimeValue[], dt: number): void {
+  /** The frame index's serial: a hull indexed in this frame carries it (TankInfo.seenAt). */
+  let indexFrame = 0;
+  /** Whether the player sees the hull now: indexed in the last frame, and seen there (round 8 Y3 s1-02: the crew names only
+   *  what the player can see, never a hull it has once heard spotted). */
+  function seenNow(id: string): boolean {
+    const info = tanks.get(id);
+    return !!info && info.seenAt === indexFrame && info.visible;
+  }
+
+  /**
+   * Our new life, at each one the engine notices (round 8 Y3 s1-01, reviews r1 and r2): our hull's respawn event, or with
+   * no event the frame that shows it standing again after its death (indexTanks; sim/matchModes.ts adoptLiveCombat, a
+   * migrated host's revive, emits no mode_respawn), and each seat the player takes in the battle (indexTanks: a watched
+   * battle's takeWatchSeat moves isPlayer to another hull, or back to one its brain drove meanwhile, with no revive and no
+   * event). The life's one-shot calls (low hull, low ammunition) arm again, the heartbeat goes with the old life, and the
+   * crew's life starts afresh: nothing the last life armed, or its rounds armed after our death (a posthumous kill's cease
+   * fire), is called in this one. The radio set and the fire alarm are our hull's own (review r3): a revive (`seat`
+   * absent) starts the set whole and the alarm off, as the revived hull is (the mode's revive writes a fresh combat,
+   * modules whole and fire out, before it tells mode_respawn: state.ts revive, authoritativeMatch.ts reviveForMode; no
+   * tank:fire follows it). After a death that stops nothing (the death stopped the alarm), but a living hull is revived
+   * too (a Turbo Ball kick-off, the range reset: sim/matchModes.ts "alive -> alive"), and its alarm stops here. Before
+   * fix-up r3 a revive left the alarm alone, so a hull burning at a kick-off kept it looping, with no fire, until our
+   * death or the battle's end (round 8 Y3 residual, review correctness r4). A seat taken (`seat`, the frame's hull) takes
+   * that hull's set and fire as the frame shows them (the sim's own module state and fire; a network actor mirrors
+   * both), so a set broken while its brain drove it sounds broken from the take, and the last seat's fire alarm stops
+   * (its fire's end and its death are another hull's events after the take) while a hull taken burning sounds its own.
+   */
+  function startOwnLife(seat?: AudioEntity): void {
+    lowHpCalled = false;
+    ammoLowCalled = false;
+    heartbeatBelow = 0;
+    radio?.setRadioDamage(moduleRank(seat?.combat?.modules?.radio?.state));
+    const burning = !!seat?.combat?.fire?.burning && !seat.combat.destroyed;
+    if (burning !== playerBurning) {
+      playerBurning = burning;
+      fireAlarm?.stop();
+      fireAlarm = burning && mixer ? loopRig('alarm_fire_loop') : null;
+      if (fireAlarm) caption('fire');
+    }
+    crew.startLife();
+  }
+
+  function indexTanks(list: readonly RuntimeValue[], dt: number, visible?: (hull: VisibilityHull) => boolean): void {
+    indexFrame++;
     for (let i = 0; i < list.length; i++) {
       const entity = toEntity(list[i]);
       if (!entity) continue;
@@ -2215,12 +2309,14 @@ export function createAudio({
       if (!info) {
         info = {
           team: String(entity.team ?? ''), isPlayer: !!entity.isPlayer, pos: p, lastX: p.x, lastY: p.y, lastZ: p.z,
-          vx: 0, vy: 0, vz: 0, identity: identityFor(entity), specId: String(entity.specId ?? entity.spec?.id ?? ''), nation: String(entity.spec?.nation ?? ''), alive: !entity.combat?.destroyed, spotted: false, suited: null,
+          vx: 0, vy: 0, vz: 0, identity: identityFor(entity), specId: String(entity.specId ?? entity.spec?.id ?? ''), nation: String(entity.spec?.nation ?? ''), alive: !entity.combat?.destroyed, visible: false, seenAt: -1, suited: null,
           gun: null, mounts: [],
         };
         tanks.set(entity.id, info);
       }
       info.team = String(entity.team ?? info.team);
+      // whether the player drove this hull at its last look (a watched battle hands a seat to its brain and back)
+      const drivenBefore = info.isPlayer;
       info.isPlayer = !!entity.isPlayer;
       const specId = String(entity.specId ?? entity.spec?.id ?? '');
       const nation = String(entity.spec?.nation ?? '');
@@ -2244,22 +2340,37 @@ export function createAudio({
       }
       info.lastX = p.x; info.lastY = p.y; info.lastZ = p.z;
       info.alive = !entity.combat?.destroyed;
+      info.visible = !!visible && visible(entity);
+      info.seenAt = indexFrame;
       if (deathLatch.size) {
         // a latched death re-arms once its hull has been seen destroyed and then alive again (a respawn)
         const seenDead = deathLatch.get(entity.id);
         if (seenDead !== undefined) {
           if (!info.alive) { if (!seenDead) deathLatch.set(entity.id, true); }
-          else if (seenDead) deathLatch.delete(entity.id);
+          else if (seenDead) {
+            deathLatch.delete(entity.id);
+            // our hull standing again with no respawn event (a migrated host's adoptLiveCombat sends none): a new life
+            if (entity.id === playerId) startOwnLife();
+          }
         }
       }
       if (info.suited == null) info.suited = fieldSuitOf(list[i]);
       if (entity.isPlayer && playerId !== entity.id) {
+        // a seat the player takes in the battle (a watched battle's takeWatchSeat moves isPlayer to a living bot: no
+        // revive, no event) is a new life, as a revive is, with the taken hull's own radio set and fire; the battle's first
+        // seat starts with the battle (resetBattlePlay)
+        const taken = playerId != null;
         playerId = entity.id;
         playerTeam = info.team;
         applyCrewLanguage();
         preloadVehicle(info.identity);
         preloadOwnWeapons(info);
-      } else if (entity.isPlayer && vehicleChanged) applyCrewLanguage();
+        if (taken) startOwnLife(entity);
+      } else if (entity.isPlayer) {
+        if (vehicleChanged) applyCrewLanguage();
+        // our hull taken again after a look that showed its brain driving it (the watch's leave, then a take): a new life
+        if (!drivenBefore) startOwnLife(entity);
+      }
     }
     if (listenerOwnerId == null && listenerKind === 'player-tank') listenerOwnerId = playerId;
     if (!bossChecked && getGameMode?.() === 'juggernaut') markJuggernaut(list);
@@ -2298,7 +2409,9 @@ export function createAudio({
 
   /**
    * Our own weapons (gun-reports-269): every mount's own and closed-turret reports and its loader's machinery, decoded
-   * and pinned once our hull is known (long before the rollout lets the guns speak), and again when the gun changes.
+   * and pinned once our hull is known (long before the rollout lets the guns speak), and again when the gun changes. Their
+   * owner is 'own-weapons' (round 8 Y3 s1-08): each pin replaces the last, so only the hull and gun we have now stay
+   * pinned (a Gun Game step's last weapon, the last battle's hull go), and the battle's teardown releases it.
    */
   function ownWeaponAssets(info: TankInfo | null | undefined): string[] {
     const ids = new Set<string>();
@@ -2318,7 +2431,7 @@ export function createAudio({
     if (!library) return;
     const ids = ownWeaponAssets(info);
     if (!ids.length) return;
-    library.pin(ids);
+    library.pin(ids, true, 'own-weapons');
     void library.load(ids);
   }
 
@@ -2646,12 +2759,11 @@ export function createAudio({
       // the battle's room from its edge (U34, round 2): the loader's bed and the battle's vehicle rigs, heard under the
       // loader, never ring in the Garage hangar's reverb; the reveal's ambientOn brings the world's loops (the director's
       // play sets the same room again).
-      // The battle's scene waits for the reveal or the rollout (ambientOn); until then nothing of the hangar's plays. Every
-      // entry reaches this on its battle phase edge (a solo start, an online activation, a rematch), and the garage scene's
-      // bed and workshop spots ran on under the loading screen while the director kept it.
+      // The battle's scene waits for the reveal or the rollout (ambientOn). The hangar is gone by then: every battle edge
+      // tears the old world down first, and stopWorld stops the director with it, its one owner (round 8 Y3 s1-06: 269's
+      // second stop here is gone; ambienceTeardown.selftest drives every entry path and pins this body).
       mixer.setReverb(scene.reverb);
       if (ambientWanted) ambience.play(scene, true);
-      else ambience.stop(0.3);
     } else {
       scene = GARAGE_SCENE;
       atmosphere = atmosphereForMap(null);
@@ -2697,9 +2809,10 @@ export function createAudio({
    * of the abandoned battle's last was a double kill, and the once-a-battle think line and first-shot cue stayed spent.
    * Where each carrier's drone was last heard is the play's too (droneLastAt, round 8 Y0 review r2): kept at a restart, a
    * drone shot down before the restarted battle heard it fly broke up at the abandoned battle's spot.
-   * (round 7 merge review r1) The crew's procedure (crewProcedure.ts, 269) keeps its own battle state and is reset here,
-   * its one battle reset: before, it reset only on its own phase edge, which a restart does not take, so the restarted
-   * battle's crew kept the abandoned battle's smoke watermark (sim clock), spotted set, spent countdown report and rounds.
+   * (round 7 merge review r1) The crew's procedure (crewProcedure.ts, 269) keeps its own battle state and starts its
+   * battle here (crew.startBattle(), round 8 Y3 s1-03), its one battle edge: before, it reset only on its own phase edge,
+   * which a restart does not take, so the restarted battle's crew kept the abandoned battle's smoke watermark (sim
+   * clock), spotted set, spent countdown report and rounds.
    */
   function resetBattlePlay(): void {
     deathLatch.clear();
@@ -2736,7 +2849,9 @@ export function createAudio({
     auxGunOn = null;
     auxLights = null;
     resetQuietRadio();
-    crew.reset();
+    // the crew's procedure starts its battle here too, its one per-battle edge (round 8 Y3 s1-03): a battle edge, a
+    // network restart
+    crew.startBattle();
   }
 
   /**
@@ -2751,10 +2866,13 @@ export function createAudio({
    * calls re-arm and its fire alarm, heartbeat and radio damage go with its old hull; and the abandoned battle's wrecks
    * stop burning where no wreck stands now. (round 4 E6b review r2) The restart opens a new battle, so the battle's play
    * starts over as at a battle's start (resetBattlePlay: the death latches and the one-shot calls above among them).
+   * (round 8 Y3 residual) Every hull's engine-deck fire goes out too: each new life is whole (battlePresentation
+   * beginActorLife: fire out), and no tank:fire tells it, so a hull burning at the restart crackled on at its spawn.
    */
   function restartLives(): void {
     resetBattlePlay();
     for (const info of tanks.values()) info.alive = true;
+    for (const rig of rigs.values()) rig.setBurning(false);
     heartbeatRig?.stop(); heartbeatRig = null;
     fireAlarm?.stop(); fireAlarm = null;
     playerBurning = false;
@@ -2772,6 +2890,8 @@ export function createAudio({
     playerBurning = false;
     listenerOwnerId = null;
     listenerScoped = false;
+    // our own weapons go with the battle (the next battle's hull pins its own at its first frame, in the countdown)
+    library?.pin([], true, 'own-weapons');
   }
 
   /**
@@ -2793,6 +2913,9 @@ export function createAudio({
       reloadCalled = false;
       reload.active = false;
       reload.plan = null;
+      reload.mountKey = '';
+      reload.slot = -1;
+      reload.gun = null;
     }
     switch (edge) {
       case 'enter-battle':
@@ -2835,6 +2958,11 @@ export function createAudio({
         if (ready()) play(battleMode.killcam ? 'killcam_in' : 'killcam_out');
         break;
       case 'pause':
+        // (round 8 Y3 s1-03) the pause menu silences the net: the line on the air and the queued ones go as it opens, and
+        // each edge cancels every call the crew had armed, the closing one what a network battle armed behind the menu
+        // (update runs neither the radio nor the crew while paused, say() takes no line)
+        if (battleMode.paused) radio?.silence();
+        crew.cancelArmed();
         break;
     }
     chooseSnapshot();
@@ -2958,6 +3086,10 @@ export function createAudio({
     const on = <T>(event: string, listener: (payload: T) => void): void => {
       listen(event, (payload) => { if (ready()) listener(payload as T); });
     };
+    // A fact is state: taken whether or not the graph exists yet.
+    const fact = <T>(event: string, listener: (payload: T) => void): void => {
+      listen(event, (payload) => listener(payload as T));
+    };
     // physics lane (2026-10-10): a popped turret lands where its rigid body hits, heard there (a hard landing, louder)
     detachTurretLanding?.();
     detachTurretLanding = onTurretLanding((x, y, z, speed) => {
@@ -3000,6 +3132,9 @@ export function createAudio({
       deathLatch.set(e.id, false);
       onTankDestroyed(e);
       updateTeamCounts();
+      // the crew hears each death once a life too (round 8 Y3 s1-01): one we made is a kill (our next life starts at the
+      // revive, startOwnLife)
+      crew.onDestroyed(e);
     });
     // a network battle restarted under this seat: a new life for every hull (state, taken whether or not the graph
     // exists: restartLives)
@@ -3241,7 +3376,7 @@ export function createAudio({
       volumeEvents++;
     });
     for (const type of MODE_EVENT_TYPES) on<Record<string, unknown>>(`mode:${type}`, (payload) => onMode(type, payload || {}));
-    crew.bind(on);
+    crew.bind(on, fact);
   }
 
   let volumeEvents = 0;
@@ -3275,7 +3410,8 @@ export function createAudio({
     say(id, { delayS: 0.12 });
   }
 
-  function update(dt: number, listener: AudioListenerPose, list: readonly RuntimeValue[], shells: readonly RuntimeValue[] = []): void {
+  function update(dt: number, listener: AudioListenerPose, list: readonly RuntimeValue[], shells: readonly RuntimeValue[] = [],
+    visible?: (hull: VisibilityHull) => boolean): void {
     syncKillcam();
     if (!ready() || !mixer || !pool || !ctx) return;
     // Keep the last finite pose: one NaN camera frame would otherwise poison every cue that frame.
@@ -3302,11 +3438,13 @@ export function createAudio({
     if (pendingCaptions.length) flushCaptions(now);
     sweepWaitingLoops(now);
     mixer.update(dt);
-    radio?.update();
-    updateThink(now);
+    if (!battleMode.paused) {
+      radio?.update();
+      updateThink(now);
+    }
     updateQuietRadio(now);
     if (list) {
-      indexTanks(list, dt);
+      indexTanks(list, dt, visible);
       if (playerId) {
         for (let i = 0; i < list.length; i++) {
           const entity = toEntity(list[i]);
@@ -3330,7 +3468,7 @@ export function createAudio({
           }
         }
         updateTeamCounts();
-        crew.frame(dt, listener, list as readonly CrewFrameEntity[]);
+        if (!battleMode.paused) crew.frame(dt, listener, list as readonly CrewFrameEntity[]);
       }
     }
     updateWrecks(now);
@@ -3444,10 +3582,10 @@ export function createAudio({
     for (const id of UI_SET) ids.add(id);
     for (const id of PLAYER_HULL) ids.add(id);
     for (const id of MODE_SET) ids.add(id);
-    // The report banks the battle can hear: the roster's mounts and the roof stations' (every row when unknown), and
-    // our own hull's reports and loader machinery once it is known (preloadOwnWeapons pins them when it is found).
+    // The report banks the battle can hear: the roster's mounts and the roof stations' (every row when unknown). Our own
+    // hull's reports and loader machinery are their own owner's (preloadOwnWeapons, at our hull's first frame): this warm
+    // runs before the index meets the new battle's hull, and read the last battle's.
     for (const id of battleReportAssets(mode)) ids.add(id);
-    for (const id of ownWeaponAssets(playerEntityInfo())) ids.add(id);
     // Every prop's sound (propSounds.ts): the first pole, cart or drum a hull meets is never silent while it decodes.
     for (const id of propSoundAssets()) ids.add(id);
     // Every impact by material, the near misses, the spall and the debris (impactMaterials.ts): any round may strike any

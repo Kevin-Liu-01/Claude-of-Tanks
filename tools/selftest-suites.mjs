@@ -1777,8 +1777,6 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/audio/worldSounds.selftest.mjs',
     // 2026-11-04 (world-sfx-269, crew-lines' finding 11): a settings channel at 0 sends nothing to the reverb
     'src/audio/reverbSends.selftest.mjs',
-    // 2026-11-04 (world-sfx-269): nothing of the hangar after the battle phase edge, on every entry path
-    'src/audio/battleEntryAmbience.selftest.mjs',
     'src/audio/assetLibrary.selftest.mjs',
     // 2026-11-02 audit F11: failed assets retried after a backoff, owned pins (the battle warm replaces its own only)
     'src/audio/assetLibraryRetry.selftest.mjs',
@@ -1792,6 +1790,12 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/audio/reverbImpulse.selftest.mjs',
     'src/audio/audioRevival.selftest.mjs',
     'src/audio/voiceTriggers.selftest.mjs',
+    // round 8 Y3 (the 269 crew procedure's machines): the crew's battle and life on the engine's edges (the pause silences
+    // the net; a fresh gun is loaded; a kill's cease fire and a drone's recovery die with our tank), what the player sees
+    'src/audio/crewProcedure.selftest.mjs',
+    // round 8 Y3 s1-02: what the player sees is one rule (the seat's eyes and the radio share on the real spotting, the
+    // network's word, the watch and couch reveals), and the audio listener hands it to the engine
+    'src/game/playerVisibility.selftest.mjs',
     // (crew-lines-269) every mode's crew calls, the AC-130 crew's, the team counts by deathsAreFinal
     'src/audio/voiceLines.selftest.mjs',
     'src/audio/interfaceSounds.selftest.mjs',
@@ -1808,7 +1812,8 @@ export const SELFTEST_SUITES = Object.freeze({
     // (round 3 B9: the tool's own scene loop and volley run on the real engine, cut from its source)
     'src/audio/sfxSmokeDeaths.selftest.mjs',
     // 2026-11-02 audit F11: under the battle loader only its bed (the director's scene goes with the teardown's loops; the
-    // battle's ambience intent is per battle)
+    // battle's ambience intent is per battle); round 8 Y3 s1-06: nothing of the hangar after the battle edge on every
+    // entry path (269's world-sfx receipt, battleEntryAmbience, folded in)
     'src/audio/ambienceTeardown.selftest.mjs',
     // 2026-11-02 audit F11: wanted loops (loader, fire alarm, cook-off, heartbeat) start once decoded, never after their battle
     'src/audio/wantedLoops.selftest.mjs',

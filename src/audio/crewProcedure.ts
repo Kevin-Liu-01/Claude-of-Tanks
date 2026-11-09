@@ -4,9 +4,9 @@
  * handlers leave unvoiced, read from the same bus events and frames and spoken through the engine's `say`, which turns a
  * tank crew's line into the mode's and the seat's own (voiceLines.ts resolveCrewLine).
  *
- *   - the fire command when our sight settles on a spotted enemy with the gun loaded (the round's name), the gunner's
- *     "identified" on a quiet net after it, "on the way" on the shot it commanded, "re-engage" when the round left the
- *     target alive and the gun is loaded again, "cease fire" when the kill left no spotted enemy near;
+ *   - the fire command when our sight settles on an enemy the player sees with the gun loaded (the round's name), the
+ *     gunner's "identified" on a quiet net after it, "on the way" on the shot it commanded, "re-engage" when the round left
+ *     the target alive and the gun is loaded again, "cease fire" when the kill left no enemy the player sees near;
  *   - APS and ERA (an intercept of ours or theirs), our drone's battery, link, recovery and loss to enemy fire, an enemy
  *     drone our roof gun brings down, enemy smoke, backing out under fire, driving through an obstacle, a jump, and the
  *     countdown's crew report;
@@ -18,10 +18,31 @@
  *
  * Presentation only, like the rest of src/audio: it reads events and frames and changes no outcome. Its own timing reads
  * the audio clock; nothing here draws from the battle's random streams.
+ *
+ * Two declared scopes, each with one owner (round 8 Y3, s1-01 and s1-03). The battle's calls (CrewBattle) start afresh
+ * through `startBattle`, from the engine's one per-battle reset (audioEngine.ts resetBattlePlay: a battle edge, a
+ * network restart). Our tank's life's calls (CrewLife) start afresh through `startLife`, at each new life the engine
+ * notices (audioEngine.ts startOwnLife: our hull's respawn event, or with no event the frame that shows it standing
+ * again after its death, a migrated host's adoptLiveCombat; and each seat the player takes in the battle, a watched
+ * battle's takeWatchSeat, which revives nothing and announces nothing). While our tank is dead, or driven by its brain
+ * rather than the player (a watched battle's seat), the crew makes none of its per-life or sighting calls (`live()`
+ * reads both), so nothing the last life armed (a cease fire, a drone's recovery, a fire mission), nor anything its
+ * rounds arm after our death or our leaving (a posthumous kill's cease fire, a miss's re-engage), is called in the
+ * next. The battle's mode calls (`onMode`, gated on `inBattle()` alone) are the side's news, not our life's: a seat its
+ * brain drives still hears them, as it hears the engine's own mode calls (with our tank dead the engine's `say` refuses
+ * them, its result calls apart). Each pause edge (`cancelArmed`: the menu opening and closing) cancels every call armed
+ * so far, a recalled drone's recovery included; the engine runs no crew frame while paused and its radio takes no line
+ * (the crew is silent behind the pause menu, a network battle's included, as the engine's quiet-radio rule always was).
+ * Where the game holds a fact the crew reads it rather than keeping its own copy: the gun is loaded while our reload
+ * channel is ready (`combat.reload.t`), an enemy is named only while the player sees it (the engine's frame index,
+ * src/game/playerVisibility.ts), an escort has been extracted when its mode life is 'rescued' (sim/matchModes.ts
+ * setLife), our drone is flying home when the authority has accepted its recall (the flight view's `returnS`,
+ * sim/aerialCombat.ts; `recallS` is only the recall's gate at launch).
  */
 
-import { AERIAL_RULES, GUN_GAME_WEAPONS, matchRulesetFor } from '../sim/matchRuleset.ts';
+import { AERIAL_RULES, GUN_GAME_WEAPONS } from '../sim/matchRuleset.ts';
 import type { GameModeId } from '../sim/gameModeCatalog.ts';
+import type { ModeEventType } from './modeSounds.ts';
 import type { CrewLineContext, CrewSeat } from './voiceLines.ts';
 
 type Vec3 = readonly [number, number, number];
@@ -38,7 +59,9 @@ export interface CrewPlayer {
   spec?: { gun?: { shells?: readonly { type?: unknown; guided?: unknown; soundProfile?: unknown }[] } };
   state: { pos: { x: number; y: number; z: number }; speed: number; grounded?: boolean; overturned?: boolean };
   aerial?: { kind?: string; active?: boolean; x?: number; y?: number; z?: number; batteryS?: number; recallS?: number; returnS?: number };
-  combat?: { destroyed?: boolean; shellSlot?: number };
+  /** `reload` is the selected round's channel (sim/damage.ts combat.reload; a network seat's mirrors the row's): t 0 is a
+   *  round in the breech. */
+  combat?: { destroyed?: boolean; shellSlot?: number; reload?: { readonly t?: number } };
 }
 
 /** Another hull as the engine tracks it. */
@@ -57,13 +80,18 @@ export interface CrewProcedureHost {
   say(id: string, options?: SayOptions): boolean;
   /** The audio clock (s). */
   now(): number;
-  /** In a battle that has rolled out and not ended, our tank alive. */
+  /** In a battle that has rolled out, not ended and not paused (the engine's battle mode, battleMode.ts), our tank alive
+   *  and the player driving it (a watched battle's seat its brain drives makes no per-life or sighting call). */
   live(): boolean;
-  /** In a battle's countdown (rolled out or not), not ended. */
+  /** In a battle's countdown (rolled out or not), not ended: the gate of the battle's own calls (the countdown report,
+   *  the mode calls), which a seat its brain drives still makes. */
   inBattle(): boolean;
   playerId(): string | null;
   player(): CrewPlayer | null;
   tanks(): ReadonlyMap<string, CrewTank>;
+  /** Whether the player sees the hull now (src/game/playerVisibility.ts, as this frame's index read it): the crew names
+   *  only what the player can see. */
+  visible(id: string): boolean;
   sameTeam(a: string | null | undefined, b: string | null | undefined): boolean;
   /** Our side in the mode's objective events. */
   objectiveTeam(): 'alpha' | 'bravo';
@@ -86,7 +114,7 @@ const IDENTIFY_S = 3;
 const COMMANDED_SHOT_S = 10;
 /** "Re-engage": a round that left its target alive, the gun loaded again within this long. */
 const REENGAGE_S = 14;
-/** "Cease fire" after a kill when no spotted enemy stands within this range, this long after the kill call. */
+/** "Cease fire" after a kill when no enemy the player sees stands within this range, this long after the kill call. */
 export const CEASE = Object.freeze({ rangeM: 1500, afterS: 2.4 });
 const DRONE = AERIAL_RULES.drone;
 /** Gun Game's last weapon on the ladder. */
@@ -104,21 +132,112 @@ const JUMP_S = 0.45;
  *  after it, is a shift of fire. */
 export const GUNSHIP = Object.freeze({ dangerM: 35, heavyMm: 100, missionRounds: 3, missionQuietS: 7, shiftM: 150, shiftS: 25 });
 
+/** A hull's death as the engine hears it, once a life (its death latch dedupes a re-sent network event). */
+export interface CrewDeath {
+  readonly id: string;
+  readonly killerId?: string | null;
+  readonly pos?: Vec3;
+  readonly source?: string;
+}
+
 export interface CrewProcedure {
-  bind(on: On): void;
+  /**
+   * Subscribe on the engine's bus: `cue` takes the moments the crew calls (heard once the engine's graph exists), `fact`
+   * what it keeps whether or not the graph exists yet (why the battle ended: the result call reads it).
+   */
+  bind(cue: On, fact: On): void;
   frame(dt: number, listener: CrewListener | null, entities: readonly CrewFrameEntity[]): void;
   /** The context the engine resolves each line in (voiceLines.ts resolveCrewLine). */
   context(): CrewLineContext;
-  /** A new battle's reset. Its one caller is the engine's battle reset (audioEngine.ts resetBattlePlay): at every battle's
-   *  start (the battle mode's enter-battle edge) and at a network battle's restart, which opens a new battle. */
-  reset(): void;
+  /** A new battle (the engine's per-battle reset: a battle edge, a network restart): the battle's calls and our life's.
+   *  Its one caller is that reset (audioEngine.ts resetBattlePlay), so a network battle's restart, which opens a new
+   *  battle without the enter-battle edge, starts one too (round 7 merge review r1). */
+  startBattle(): void;
+  /** Our tank's new life (each revive of our hull and each seat the player takes, as the engine notices them:
+   *  audioEngine.ts startOwnLife): the life's calls start afresh. */
+  startLife(): void;
+  /** A hull's death, heard once a life: one we made is a kill (ours silences the crew until a new life starts). */
+  onDestroyed(event: CrewDeath): void;
+  /** Each pause edge (the menu opening, and closing): every call armed so far is cancelled, so none is said behind the
+   *  menu or late on the resume, a kill heard behind it (a network battle goes on there) and a recalled drone that
+   *  docks behind it included. */
+  cancelArmed(): void;
 }
 
-/** A hull of the frame's list, for the AC-130's extraction (mode-active hulls leave the field when extracted). */
+/** A hull of the frame's list, for the AC-130's extraction: an escort extracted has its mode life 'rescued'. */
 export interface CrewFrameEntity {
   readonly id: string;
-  readonly modeActive?: boolean;
-  readonly combat?: { readonly destroyed?: boolean };
+  readonly modeLife?: string;
+}
+
+/** The battle's calls: one battle (`startBattle`). */
+interface CrewBattle {
+  /** Infected: our crew has turned. */
+  turned: boolean;
+  /** Turbo Ball: the last goal's kick-off, which revives every tank. */
+  kickoffAt: number;
+  /** Why the battle ended: the mode's own reason (mode:completed) names it before the battle's (battle:ended, the first
+   *  a battle), whichever arrives first (a network seat hears a generic 'elimination' after the mode's own). */
+  modeReason: string | null;
+  battleReason: string | null;
+  /** The countdown's crew report (once a battle) and the window for its answer. */
+  reported: boolean;
+  readyUntil: number;
+  /** Each target's last fire command: a target is commanded once in LAY.sameTargetS. */
+  commandedAt: Map<string, number>;
+  /** The newest smoke screen heard (its birth on the battle's sim clock). */
+  smokeBorn: number;
+  /** The AC-130's escorts: whether each was extracted at its last look. */
+  extracted: Map<string, boolean>;
+}
+
+/** Our tank's life's calls: one life (`startLife`; our death or our leaving the seat silences them). */
+interface CrewLife {
+  /** The lay: the enemy under our sight and since when; the last fire command, its target and the answer's window. */
+  layId: string | null;
+  layFrom: number;
+  commandAt: number;
+  commandTarget: string | null;
+  identifyUntil: number;
+  /** Our last shot, and the last the fire command called for. */
+  commandedShotAt: number;
+  ownShotAt: number;
+  /** Our main-gun rounds in flight (shell id -> what the sight was on), and the re-engage a round that left its target
+   *  standing asks for. */
+  ownShots: Map<number, string | null>;
+  reengage: { target: string | null; at: number } | null;
+  /** The cease fire a kill armed. */
+  ceaseAt: number;
+  /** A threat that makes backing out the driver's call; the jump's airtime. */
+  threatAt: number;
+  reverseCalled: boolean;
+  airS: number;
+  jumped: boolean;
+  /** Our drone's flight (its feed live), and a recalled one flying home to its dock (the recovery armed: called when it
+   *  is parked). */
+  droneFlying: boolean;
+  batteryCalled: boolean;
+  linkCalled: boolean;
+  recalling: boolean;
+  /** The AC-130's fire mission, and the last kill a shift of fire is measured from. */
+  heavyRounds: number;
+  lastHeavyAt: number;
+  lastKill: { x: number; z: number; at: number } | null;
+}
+
+function freshBattle(): CrewBattle {
+  return {
+    turned: false, kickoffAt: -1e9, modeReason: null, battleReason: null, reported: false, readyUntil: -1,
+    commandedAt: new Map(), smokeBorn: -1, extracted: new Map(),
+  };
+}
+
+function freshLife(): CrewLife {
+  return {
+    layId: null, layFrom: 0, commandAt: -1e9, commandTarget: null, identifyUntil: -1, commandedShotAt: -1e9, ownShotAt: -1e9,
+    ownShots: new Map(), reengage: null, ceaseAt: -1, threatAt: -1e9, reverseCalled: false, airS: 0, jumped: false,
+    droneFlying: false, batteryCalled: false, linkCalled: false, recalling: false, heavyRounds: 0, lastHeavyAt: -1e9, lastKill: null,
+  };
 }
 
 function ammoCall(shell: { type?: unknown; guided?: unknown } | undefined): string {
@@ -128,77 +247,18 @@ function ammoCall(shell: { type?: unknown; guided?: unknown } | undefined): stri
 }
 
 export function createCrewProcedure(host: CrewProcedureHost): CrewProcedure {
-  // ---- battle state (reset per battle)
-  const spotted = new Set<string>();
-  let turned = false;
-  let kickoffAt = -1e9;
-  let endReason: string | null = null;
-  let loaded = true;
-  // the lay: the enemy under our sight and since when; the last fire command and its target
-  let layId: string | null = null;
-  let layFrom = 0;
-  const commandedAt = new Map<string, number>();
-  let commandAt = -1e9;
-  let commandTarget: string | null = null;
-  let identifyUntil = -1;
-  let commandedShotAt = -1e9;
-  let ownShotAt = -1e9;
-  // a round that left its target alive (shell id → target), the re-engage it asks for
-  const ownShots = new Map<number, string | null>();
-  let reengage: { target: string | null; at: number } | null = null;
-  let ceaseAt = -1;
-  // threats that make backing out the driver's call; the jump's airtime
-  let threatAt = -1e9;
-  let reverseCalled = false;
-  let airS = 0;
-  let jumped = false;
-  // our drone's flight
-  let droneFlying = false;
-  let batteryCalled = false;
-  let linkCalled = false;
-  let recalling = false;
-  let smokeBorn = -1;
-  // the countdown's crew report
-  let reported = false;
-  let readyUntil = -1;
-  // the AC-130's fire mission and extraction
-  let heavyRounds = 0;
-  let lastHeavyAt = -1e9;
-  let lastKill: { x: number; z: number; at: number } | null = null;
-  const extracted = new Map<string, boolean>();
-  // whether the mode lights every hull (read once per mode, not per frame)
-  let visibleMode: string | null = null;
-  let visibleAll = false;
+  const battle = freshBattle();
+  const life = freshLife();
 
-  function reset(): void {
-    spotted.clear();
-    turned = false;
-    kickoffAt = -1e9;
-    endReason = null;
-    loaded = true;
-    layId = null;
-    commandedAt.clear();
-    commandAt = -1e9;
-    commandTarget = null;
-    identifyUntil = -1;
-    commandedShotAt = -1e9;
-    ownShotAt = -1e9;
-    ownShots.clear();
-    reengage = null;
-    ceaseAt = -1;
-    threatAt = -1e9;
-    reverseCalled = false;
-    airS = 0;
-    jumped = false;
-    droneFlying = false;
-    batteryCalled = linkCalled = recalling = false;
-    smokeBorn = -1;
-    reported = false;
-    readyUntil = -1;
-    heavyRounds = 0;
-    lastHeavyAt = -1e9;
-    lastKill = null;
-    extracted.clear();
+  /** Our tank's life starts afresh (a revive): nothing the last life armed, or its rounds armed after our death, carries
+   *  over. */
+  function startLife(): void {
+    Object.assign(life, freshLife());
+  }
+
+  function startBattle(): void {
+    Object.assign(battle, freshBattle());
+    startLife();
   }
 
   function seat(): CrewSeat {
@@ -212,21 +272,18 @@ export function createCrewProcedure(host: CrewProcedureHost): CrewProcedure {
       mode: host.mode(),
       seat: seat(),
       juggernaut: host.mode() === 'juggernaut' && boss != null && me != null ? (boss === me ? 'boss' : 'hunter') : null,
-      turned,
-      kickoff: host.now() - kickoffAt < 3,
-      endReason,
+      turned: battle.turned,
+      kickoff: host.now() - battle.kickoffAt < 3,
+      endReason: battle.modeReason ?? battle.battleReason,
     };
   }
 
   const mine = (id: string | null | undefined): boolean => id != null && id === host.playerId();
   const enemyOf = (id: string | null | undefined): boolean => id != null && !mine(id) && !host.sameTeam(id, host.playerId());
 
-  /** An enemy our crew can name: alive, and seen by our side (or every hull shows, as the mode lights them). */
+  /** An enemy our crew can name: alive, and seen by the player now (a mode that lights every hull is the rule's too). */
   function identifiable(id: string, tank: CrewTank): boolean {
-    if (!tank.alive || !enemyOf(id)) return false;
-    const mode = host.mode();
-    if (mode !== visibleMode) { visibleMode = mode; visibleAll = !!matchRulesetFor(mode).alwaysVisible; }
-    return visibleAll || spotted.has(id);
+    return tank.alive && enemyOf(id) && host.visible(id);
   }
 
   // ------------------------------------------------------------ the lay ---
@@ -253,97 +310,113 @@ export function createCrewProcedure(host: CrewProcedureHost): CrewProcedure {
     const me = host.player();
     const gunship = seat() === 'gunship';
     const flyingDrone = !!me?.aerial?.active && me.aerial.kind === 'drone';
+    // loaded while our reload channel is ready: a fresh hull's gun or a new weapon's (a respawn, a Gun Game step) is
+    // loaded at once, though no reload ever finished for it
+    const loaded = !((me?.combat?.reload?.t ?? 0) > 0);
     const target = listener && me && !flyingDrone && (loaded || gunship) ? laidOn(listener) : null;
-    if (target !== layId) { layId = target; layFrom = now; }
-    if (!target || now - layFrom < LAY.holdS) return;
-    const last = commandedAt.get(target);
+    if (target !== life.layId) { life.layId = target; life.layFrom = now; }
+    if (!target || now - life.layFrom < LAY.holdS) return;
+    const last = battle.commandedAt.get(target);
     if (last != null && now - last < LAY.sameTargetS) return;
     let id: string;
     if (gunship) {
       // the sensor picks up the target; after a kill, a target far from it is a shift of fire
       const t = host.tanks().get(target);
+      const lastKill = life.lastKill;
       id = lastKill && t && now - lastKill.at < GUNSHIP.shiftS && Math.hypot(t.pos.x - lastKill.x, t.pos.z - lastKill.z) > GUNSHIP.shiftM
         ? 'gunship_shift_fire' : 'fire_command_kinetic';
-      if (id === 'gunship_shift_fire') lastKill = null;
+      if (id === 'gunship_shift_fire') life.lastKill = null;
     } else {
       const slot = me?.combat?.shellSlot ?? 0;
       id = ammoCall(me?.spec?.gun?.shells?.[slot]);
     }
-    commandedAt.set(target, now);
+    battle.commandedAt.set(target, now);
     if (!host.say(id, { delayS: 0.05 })) return;
-    commandAt = now;
-    commandTarget = target;
-    identifyUntil = gunship ? -1 : now + IDENTIFY_S + 2;
+    life.commandAt = now;
+    life.commandTarget = target;
+    life.identifyUntil = gunship ? -1 : now + IDENTIFY_S + 2;
   }
 
   /** The gunner's answer, once the commander's command has been spoken and the net is free, still laid on and not yet
    *  fired (after the shot it would follow the result). */
   function updateIdentify(now: number): void {
-    if (identifyUntil < 0) return;
-    if (now > identifyUntil || ownShotAt >= commandAt) { identifyUntil = -1; return; }
+    if (life.identifyUntil < 0) return;
+    if (now > life.identifyUntil || life.ownShotAt >= life.commandAt) { life.identifyUntil = -1; return; }
     if (!host.radioQuiet()) return;
     const last = host.lastTransmission();
-    identifyUntil = -1;
-    if (last && last.id.startsWith('fire_command_') && last.t >= commandAt - 0.01 && layId === commandTarget) host.say('identified');
+    life.identifyUntil = -1;
+    if (last && last.id.startsWith('fire_command_') && last.t >= life.commandAt - 0.01 && life.layId === life.commandTarget) host.say('identified');
   }
 
   // ------------------------------------------------------- per frame ---
 
+  /** Our drone as the authority's flight view tells it (sim/aerialCombat.ts stepAerial, mirrored to a network seat): its
+   *  feed is live while `active`; a recall the authority accepts ends the feed at once and leaves `returnS`, the flight
+   *  home and the landing, until the airframe is parked on its dock ("drone recovered" then); a flight lost to its battery,
+   *  its link or a hit ends with no return (the engine's "lost" or the gunner's "shot down"). `recallS` is the recall's
+   *  gate counting down at launch, never a recall (round 8 Y3 review r2: read as one, every flight was "recovering", so its
+   *  battery and link calls never came and its loss was called recovered). */
   function updateDrone(me: CrewPlayer): void {
     const view = me.aerial;
-    const flying = view?.kind === 'drone' && !!view.active;
-    if (flying && !droneFlying) { batteryCalled = linkCalled = recalling = false; }
-    if (flying && view) {
-      if ((view.recallS ?? 0) > 0 || (view.returnS ?? 0) > 0) recalling = true;
+    const drone = view?.kind === 'drone';
+    const flying = drone && !!view.active;
+    if (flying && !life.droneFlying) { life.batteryCalled = life.linkCalled = life.recalling = false; }
+    if (flying) {
       const battery = view.batteryS ?? DRONE.batteryS;
       // (a drone with a second or two left is about to be lost: that is the call then)
-      if (!recalling && !batteryCalled && battery < DRONE_WARN.batteryS && battery >= DRONE_WARN.lastS) {
-        batteryCalled = true;
+      if (!life.batteryCalled && battery < DRONE_WARN.batteryS && battery >= DRONE_WARN.lastS) {
+        life.batteryCalled = true;
         host.say('drone_battery_low', { delayS: 0.1 });
       }
       const range = Math.hypot((view.x ?? me.state.pos.x) - me.state.pos.x, (view.z ?? me.state.pos.z) - me.state.pos.z);
-      if (!recalling && !linkCalled && range >= DRONE.rangeM * DRONE_WARN.linkShare) {
-        linkCalled = true;
+      if (!life.linkCalled && range >= DRONE.rangeM * DRONE_WARN.linkShare) {
+        life.linkCalled = true;
         host.say('drone_link_weak', { delayS: 0.1 });
       }
-    } else if (droneFlying && recalling && !me.combat?.destroyed) host.say('drone_recovered', { delayS: 0.4 });
-    droneFlying = flying;
+    } else if (drone && (view.returnS ?? 0) > 0) life.recalling = true;
+    else if (drone && life.recalling) {
+      // parked (a carrier destroyed under it clears the return too, but a dead crew runs no frame: live())
+      life.recalling = false;
+      if (!me.combat?.destroyed) host.say('drone_recovered', { delayS: 0.4 });
+    }
+    life.droneFlying = flying;
   }
 
   function updateMobility(dt: number, now: number, me: CrewPlayer): void {
-    if (seat() !== 'tank' || me.aerial?.active) { airS = 0; return; }
+    if (seat() !== 'tank' || me.aerial?.active) { life.airS = 0; return; }
     const speed = Number(me.state.speed) || 0;
-    if (speed < -REVERSE.mps && now - threatAt < REVERSE.afterS && !reverseCalled) {
-      reverseCalled = true;
+    if (speed < -REVERSE.mps && now - life.threatAt < REVERSE.afterS && !life.reverseCalled) {
+      life.reverseCalled = true;
       host.say('reversing', { delayS: 0.1 });
     }
-    if (speed > -0.5) reverseCalled = false;
+    if (speed > -0.5) life.reverseCalled = false;
     if (me.state.grounded === false && !me.state.overturned) {
-      airS += dt;
-      if (airS >= JUMP_S && !jumped) { jumped = true; host.say('jump_brace'); }
-    } else { airS = 0; jumped = false; }
+      life.airS += dt;
+      if (life.airS >= JUMP_S && !life.jumped) { life.jumped = true; host.say('jump_brace'); }
+    } else { life.airS = 0; life.jumped = false; }
   }
 
   function updateGunship(now: number, entities: readonly CrewFrameEntity[]): void {
     if (seat() !== 'gunship') return;
-    if (heavyRounds >= GUNSHIP.missionRounds && now - lastHeavyAt > GUNSHIP.missionQuietS) {
-      heavyRounds = 0;
+    if (life.heavyRounds >= GUNSHIP.missionRounds && now - life.lastHeavyAt > GUNSHIP.missionQuietS) {
+      life.heavyRounds = 0;
       host.say('gunship_rounds_complete');
     }
-    // a friendly that leaves the field alive has reached the extraction point
+    // a friendly the mode has rescued has reached the extraction point (its life, sim/matchModes.ts setLife; a network
+    // seat sees no rescue: the authority stops sending a hull that leaves the field, so the call is the solo seat's)
     for (const entity of entities) {
       if (!entity || mine(entity.id) || !host.sameTeam(entity.id, host.playerId())) continue;
-      const out = entity.modeActive === false && !entity.combat?.destroyed;
-      const was = extracted.get(entity.id);
-      extracted.set(entity.id, out);
+      const out = entity.modeLife === 'rescued';
+      const was = battle.extracted.get(entity.id);
+      battle.extracted.set(entity.id, out);
       if (out && was === false) host.say('gunship_friendly_extracted', { delayS: 0.3 });
     }
   }
 
-  /** "Cease fire": the kill call has been made and no spotted enemy stands near. */
+  /** "Cease fire": the kill call has been made and no enemy the player sees stands near. */
   function updateCease(now: number, me: CrewPlayer): void {
-    if (ceaseAt < 0 || now < ceaseAt) return;
-    ceaseAt = -1;
+    if (life.ceaseAt < 0 || now < life.ceaseAt) return;
+    life.ceaseAt = -1;
     for (const [id, tank] of host.tanks()) {
       if (!identifiable(id, tank)) continue;
       if (Math.hypot(tank.pos.x - me.state.pos.x, tank.pos.z - me.state.pos.z) < CEASE.rangeM) return;
@@ -352,17 +425,17 @@ export function createCrewProcedure(host: CrewProcedureHost): CrewProcedure {
   }
 
   function updateReport(now: number): void {
-    if (readyUntil < 0) return;
-    if (now > readyUntil) { readyUntil = -1; return; }
+    if (battle.readyUntil < 0) return;
+    if (now > battle.readyUntil) { battle.readyUntil = -1; return; }
     if (!host.radioQuiet()) return;
     const last = host.lastTransmission();
-    readyUntil = -1;
+    battle.readyUntil = -1;
     if (last?.id === 'crew_report') host.say('crew_ready');
   }
 
   // ------------------------------------------------------------ events ---
 
-  function onMode(type: string, payload: Record<string, unknown>): void {
+  function onMode(type: CrewModeEvent, payload: Record<string, unknown>): void {
     const ours = host.objectiveTeam();
     const team = payload.team === 'alpha' || payload.team === 'bravo' ? payload.team : null;
     switch (type) {
@@ -380,7 +453,7 @@ export function createCrewProcedure(host: CrewProcedureHost): CrewProcedure {
         if (team && team !== ours) host.say('objective_contesting', { delayS: 0.3 });
         break;
       case 'goal_scored':
-        kickoffAt = host.now();
+        battle.kickoffAt = host.now();
         if (team && team !== ours) host.say('goal_conceded', { delayS: 0.2 });
         break;
       case 'ball_reset':
@@ -400,8 +473,8 @@ export function createCrewProcedure(host: CrewProcedureHost): CrewProcedure {
         break;
       }
       case 'infected':
-        if (mine(payload.id as string)) { turned = true; host.say('infected_turned', { delayS: 0.8 }); }
-        else if (!turned && host.sameTeam(payload.id as string, host.playerId())) host.say('ally_infected', { delayS: 0.3 });
+        if (mine(payload.id as string)) { battle.turned = true; host.say('infected_turned', { delayS: 0.8 }); }
+        else if (!battle.turned && host.sameTeam(payload.id as string, host.playerId())) host.say('ally_infected', { delayS: 0.3 });
         break;
       case 'weapon_advanced': {
         const final = Number(payload.stage) >= LADDER_FINAL;
@@ -410,124 +483,147 @@ export function createCrewProcedure(host: CrewProcedureHost): CrewProcedure {
         else if (enemyOf(payload.id as string)) host.say('enemy_final_weapon', { delayS: 0.3 });
         break;
       }
-      case 'completed':
-        if (typeof payload.reason === 'string') endReason = payload.reason;
-        break;
-      default:
-        break;
+      default: {
+        const unheard: never = type;
+        return unheard;
+      }
     }
   }
 
-  function bind(on: On): void {
-    // (round 7 merge review r1) no battle reset of its own here: the engine's battle reset calls reset() (see the interface)
-    on<{ reason?: string }>('battle:ended', (e) => { if (typeof e?.reason === 'string') endReason = e.reason; });
-    on<{ seconds?: number }>('battle:countdown', (e) => {
-      if (reported || !host.inBattle() || typeof e?.seconds !== 'number') return;
-      reported = true;
+  /** A hull's death, heard once a life: one we made is a kill. Ours is none (a suicide arms no cease fire); the crew is
+   *  silent until a new life starts (startLife: a revive, or another seat taken), which drops what this one armed. */
+  function onDestroyed(e: CrewDeath): void {
+    if (!e || mine(e.id) || !mine(e.killerId)) return;
+    if (e.source === 'ac130' && e.pos) life.lastKill = { x: e.pos[0], z: e.pos[2], at: host.now() };
+    else if (!e.source && seat() === 'tank') life.ceaseAt = host.now() + CEASE.afterS;
+    life.reengage = null;
+  }
+
+  /** Each pause edge: the calls armed so far die with it (a cease fire, the gunner's answer, a lay's hold, a fire mission's
+   *  end, the countdown report's answer, a jump's airtime, a re-engage, a shift of fire from the last kill, a recalled
+   *  drone's recovery). The opening edge drops what the battle armed before the menu; the closing edge what a network
+   *  battle armed behind it (its kill call refused 'paused', its cease fire is not said on the resume; a recalled drone
+   *  that docked behind the menu is not called recovered at the resume, while one still flying home is armed again by
+   *  the next frame's `returnS`). */
+  function cancelArmed(): void {
+    life.ceaseAt = -1;
+    life.identifyUntil = -1;
+    life.layId = null;
+    life.heavyRounds = 0;
+    life.airS = 0;
+    life.reengage = null;
+    life.lastKill = null;
+    life.recalling = false;
+    battle.readyUntil = -1;
+  }
+
+  function bind(cue: On, fact: On): void {
+    // (round 7 merge review r1) no battle start of its own here: the engine's battle reset calls startBattle()
+    // why the battle ended, kept whether or not the graph exists yet: the mode's own reason before the battle's
+    fact<{ reason?: string }>('mode:completed', (e) => { if (typeof e?.reason === 'string') battle.modeReason = e.reason; });
+    fact<{ reason?: string }>('battle:ended', (e) => { if (battle.battleReason == null && typeof e?.reason === 'string') battle.battleReason = e.reason; });
+    cue<{ seconds?: number }>('battle:countdown', (e) => {
+      if (battle.reported || !host.inBattle() || typeof e?.seconds !== 'number') return;
+      battle.reported = true;
       // a count long enough for the report and its answer before the rollout's call
-      if (e.seconds >= 4 && host.say('crew_report')) readyUntil = host.now() + 3;
+      if (e.seconds >= 4 && host.say('crew_report')) battle.readyUntil = host.now() + 3;
     });
-    on<{ id: string; team?: string; spotterId?: string | null }>('tank:spotted', (e) => {
-      // seen by our side (the event's team is the spotting side)
+    cue<{ id: string; team?: string; spotterId?: string | null }>('tank:spotted', (e) => {
+      // the Juggernaut sighted by our side (the event's team is the spotting side): the spot's edge is the call's moment
       if (!e?.id || !enemyOf(e.id) || e.team == null || e.team !== host.player()?.team) return;
-      spotted.add(e.id);
       const boss = host.bossId();
       if (boss != null && e.id === boss && !mine(boss) && host.live()) host.say('juggernaut_spotted', { delayS: 0.1 });
     });
-    on<undefined>('player:spotted', () => { threatAt = host.now() + 3; });
-    on<{ shellId?: number; shooterId?: string; isPlayer?: boolean; caliberMm?: number; weaponSound?: string }>('shell:fired', (e) => {
+    cue<undefined>('player:spotted', () => { life.threatAt = host.now() + 3; });
+    cue<{ shellId?: number; shooterId?: string; isPlayer?: boolean; caliberMm?: number; weaponSound?: string }>('shell:fired', (e) => {
       if (!e?.isPlayer || !host.live()) return;
       const now = host.now();
       const caliber = e.caliberMm || 0;
-      ownShotAt = now;
+      life.ownShotAt = now;
       if (e.weaponSound === 'gunship-missile') host.say('gunship_rifle', { delayS: 0.1 });
-      else if (seat() === 'tank' && caliber >= 60 && now - commandAt < COMMANDED_SHOT_S && now - commandedShotAt > COMMANDED_SHOT_S) {
+      else if (seat() === 'tank' && caliber >= 60 && now - life.commandAt < COMMANDED_SHOT_S && now - life.commandedShotAt > COMMANDED_SHOT_S) {
         // the shot the fire command called for: "on the way"
-        commandedShotAt = now;
+        life.commandedShotAt = now;
         host.say('firing', { delayS: 0.08 });
       }
-      if (seat() === 'gunship' && caliber >= GUNSHIP.heavyMm) { heavyRounds++; lastHeavyAt = now; }
+      if (seat() === 'gunship' && caliber >= GUNSHIP.heavyMm) { life.heavyRounds++; life.lastHeavyAt = now; }
       if (caliber >= 60 && e.shellId != null) {
-        if (ownShots.size >= 12) ownShots.delete(ownShots.keys().next().value as number);
-        ownShots.set(e.shellId, layId);
+        if (life.ownShots.size >= 12) life.ownShots.delete(life.ownShots.keys().next().value as number);
+        life.ownShots.set(e.shellId, life.layId);
       }
     });
-    on<{ total?: number; done?: boolean; progress?: number }>('player:reload', (e) => {
+    cue<{ total?: number; done?: boolean; progress?: number }>('player:reload', (e) => {
+      // the gun loaded again: the re-engage a round that left its target standing asked for (whether the gun is loaded is
+      // read from our reload channel, updateLay)
       if (!e) return;
       const done = !!e.done || (e.progress ?? 0) >= 1;
-      loaded = done;
-      if (!done || !reengage || !host.live() || seat() !== 'tank') return;
-      const { target, at } = reengage;
-      reengage = null;
+      if (!done || !life.reengage || !host.live() || seat() !== 'tank') return;
+      const { target, at } = life.reengage;
+      life.reengage = null;
       if (host.now() - at > REENGAGE_S) return;
       // the round's own target, or what the sight was on when it fired; a miss at nothing is not re-engaged
       const t = target ? host.tanks().get(target) : null;
       if (t?.alive) host.say('re_engage', { delayS: 0.15 });
     });
-    on<undefined>('ui:magazineReloadStarted', () => { loaded = false; });
-    on<{ targetId?: string | null; attackerId?: string | null; damage?: number; destroyed?: boolean; shellId?: number; caliberMm?: number; pos?: Vec3 }>('shell:hit', (e) => {
+    cue<{ targetId?: string | null; attackerId?: string | null; damage?: number; destroyed?: boolean; shellId?: number; caliberMm?: number; pos?: Vec3 }>('shell:hit', (e) => {
       if (!e) return;
-      if (mine(e.targetId) && host.live()) threatAt = host.now();
+      if (mine(e.targetId) && host.live()) life.threatAt = host.now();
       if (!mine(e.attackerId)) return;
-      if (e.shellId != null) ownShots.delete(e.shellId);
+      if (e.shellId != null) life.ownShots.delete(e.shellId);
       // the main gun's round left an enemy standing: the commander will order it again
-      if (!e.destroyed && enemyOf(e.targetId) && (e.caliberMm || 0) >= 60) reengage = (e.damage || 0) > 0 ? null : { target: e.targetId ?? null, at: host.now() };
+      if (!e.destroyed && enemyOf(e.targetId) && (e.caliberMm || 0) >= 60) life.reengage = (e.damage || 0) > 0 ? null : { target: e.targetId ?? null, at: host.now() };
       if (e.pos) dangerClose(e.pos, e.caliberMm || 0, e.targetId ?? null);
     });
-    on<{ shellId?: number; shooterId?: string; caliberMm?: number; pos?: Vec3 }>('shell:expired', (e) => {
+    cue<{ shellId?: number; shooterId?: string; caliberMm?: number; pos?: Vec3 }>('shell:expired', (e) => {
       if (!e || !mine(e.shooterId)) return;
-      if (e.shellId != null && ownShots.has(e.shellId)) {
+      if (e.shellId != null && life.ownShots.has(e.shellId)) {
         // a miss: re-engage what the sight was on when it fired
-        const target = ownShots.get(e.shellId) ?? null;
-        ownShots.delete(e.shellId);
-        reengage = { target, at: host.now() };
+        const target = life.ownShots.get(e.shellId) ?? null;
+        life.ownShots.delete(e.shellId);
+        life.reengage = { target, at: host.now() };
       }
       if (e.pos) dangerClose(e.pos, e.caliberMm || 0, null);
     });
-    on<{ id?: string; shooterId?: string; shellId?: number }>('aps:intercept', (e) => {
+    cue<{ id?: string; shooterId?: string; shellId?: number }>('aps:intercept', (e) => {
       if (!e || !host.live()) return;
       if (mine(e.id)) host.say('aps_intercept_us', { delayS: 0.15 });
       else if (mine(e.shooterId)) {
-        if (e.shellId != null) { host.forgetOwnRound(e.shellId); ownShots.delete(e.shellId); }
-        reengage = { target: e.id ?? null, at: host.now() };
+        if (e.shellId != null) { host.forgetOwnRound(e.shellId); life.ownShots.delete(e.shellId); }
+        life.reengage = { target: e.id ?? null, at: host.now() };
         host.say('aps_intercept_them', { delayS: 0.4 });
       }
     });
-    on<{ id?: string; killerId?: string }>('drone:down', (e) => {
+    cue<{ id?: string; killerId?: string }>('drone:down', (e) => {
       if (!e || !host.live()) return;
       if (mine(e.id)) host.say('drone_shot_down', { delayS: 0.35 });
       else if (mine(e.killerId)) host.say('enemy_drone_down', { delayS: 0.3 });
     });
-    on<{ id: string; killerId?: string | null; pos?: Vec3; source?: string }>('tank:destroyed', (e) => {
-      if (!e || !mine(e.killerId)) return;
-      if (e.source === 'ac130' && e.pos) lastKill = { x: e.pos[0], z: e.pos[2], at: host.now() };
-      else if (!e.source && seat() === 'tank') ceaseAt = host.now() + CEASE.afterS;
-      reengage = null;
-    });
     // a screen's source is its launcher: [vehicle, x, y, z]
-    on<{ screens?: readonly { born?: number; source?: readonly unknown[] }[] }>('auxiliary:smokeScreens', (e) => {
-      const me = host.player();
-      if (!e?.screens || !me || !host.live()) return;
-      let newest = smokeBorn;
+    cue<{ screens?: readonly { born?: number; source?: readonly unknown[] }[] }>('auxiliary:smokeScreens', (e) => {
+      if (!e?.screens) return;
+      // every screen heard is marked heard, whether or not the crew can call it then (behind the pause menu, dead, a seat
+      // nobody drives): one popped then is not called at the next change of the screens (round 8 Y3 review r2)
+      const me = host.live() ? host.player() : null;
+      let newest = battle.smokeBorn;
       for (const screen of e.screens) {
         const born = Number(screen.born);
         const x = Number(screen.source?.[1]), z = Number(screen.source?.[3]);
-        if (!(born > smokeBorn) || !Number.isFinite(x) || !Number.isFinite(z)) continue;
+        if (!(born > battle.smokeBorn) || !Number.isFinite(x) || !Number.isFinite(z)) continue;
         newest = Math.max(newest, born);
-        if (Math.hypot(x - me.state.pos.x, z - me.state.pos.z) > SMOKE.rangeM) continue;
+        if (!me || Math.hypot(x - me.state.pos.x, z - me.state.pos.z) > SMOKE.rangeM) continue;
         for (const [id, tank] of host.tanks()) {
           if (!identifiable(id, tank) || Math.hypot(tank.pos.x - x, tank.pos.z - z) > SMOKE.hullM) continue;
           host.say('enemy_smoke', { delayS: 0.3 });
           break;
         }
       }
-      smokeBorn = newest;
+      battle.smokeBorn = newest;
     });
-    on<{ id?: string; isPlayer?: boolean; h?: number; speedMps?: number }>('prop:crushed', (e) => {
+    cue<{ id?: string; isPlayer?: boolean; h?: number; speedMps?: number }>('prop:crushed', (e) => {
       if (!e || !(mine(e.id) || (e.id == null && e.isPlayer)) || !host.live()) return;
       if ((e.h ?? 0) >= 1.2 && (e.speedMps ?? 0) >= 2) host.say('obstacle_through', { prob: 0.5, delayS: 0.2 });
     });
-    for (const type of MODE_EVENTS) on<Record<string, unknown>>(`mode:${type}`, (payload) => { if (host.inBattle()) onMode(type, payload || {}); });
+    for (const type of CREW_MODE_EVENTS) cue<Record<string, unknown>>(`mode:${type}`, (payload) => { if (host.inBattle()) onMode(type, payload || {}); });
   }
 
   /** Our heavy gunship round landing by a friendly tank (not the one it hit). */
@@ -543,7 +639,10 @@ export function createCrewProcedure(host: CrewProcedureHost): CrewProcedure {
 
   return {
     bind,
-    reset,
+    startBattle,
+    startLife,
+    onDestroyed,
+    cancelArmed,
     context,
     frame(dt, listener, entities) {
       const now = host.now();
@@ -561,6 +660,9 @@ export function createCrewProcedure(host: CrewProcedureHost): CrewProcedure {
   };
 }
 
-/** The mode events whose crew calls live here (the engine's own handler voices the rest). */
-const MODE_EVENTS = Object.freeze(['flag_dropped', 'flag_returned', 'flag_captured', 'zone_contested', 'goal_scored', 'ball_reset',
-  'wave_started', 'counter_attack', 'line_advanced', 'infected', 'weapon_advanced', 'completed']);
+/** The mode events whose crew calls live here (the engine's own handler voices the rest). Each is one the controller
+ *  emits (modeSounds.ts MODE_EVENT_TYPES), so a renamed or retired event fails the typecheck here as it does in the
+ *  engine's handler (round 8 Y3 s1-14); why a battle ended (mode:completed) is a fact `bind` keeps, not a call. */
+const CREW_MODE_EVENTS = Object.freeze(['flag_dropped', 'flag_returned', 'flag_captured', 'zone_contested', 'goal_scored',
+  'ball_reset', 'wave_started', 'counter_attack', 'line_advanced', 'infected', 'weapon_advanced'] as const satisfies readonly ModeEventType[]);
+type CrewModeEvent = typeof CREW_MODE_EVENTS[number];

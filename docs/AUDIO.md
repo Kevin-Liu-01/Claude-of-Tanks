@@ -600,13 +600,13 @@ its army's register. Two parts:
 
 | Moment | Crew |
 |---|---|
-| Our sight settles (0.35 s) on a spotted enemy, gun loaded | the commander's fire command for the round in the breech ("Gunner, sabot, tank."), the gunner's "Identified." on a quiet net, "On the way." on the shot it called for |
+| Our sight settles (0.35 s) on an enemy the player sees, gun loaded | the commander's fire command for the round in the breech ("Gunner, sabot, tank."), the gunner's "Identified." on a quiet net, "On the way." on the shot it called for |
 | Our round left the target standing (no penetration, a ricochet, ERA, their APS, a miss), gun loaded again | "Re-engage." |
-| Our kill left no spotted enemy within 1.5 km | "Target. Cease fire." |
+| Our kill left no enemy the player sees within 1.5 km | "Target. Cease fire." |
 | A miss that came down beyond the hull it was laid on | "Over." (the miss's third take; "Short." the second) |
 | Our APS stopped their round / theirs stopped ours (no miss is called for it) | "A-P-S fired. Round defeated." / "Their A-P-S took it." |
 | ERA stopped their round / ours | "Reactive armor took it." / "Hit his reactive armor." |
-| Our drone: under 10 s of battery, 85 % of its link, recalled home, shot down; our roof gun downs theirs; our drone's kill | "Drone battery low.", "Drone link's weak.", "Drone recovered.", "Drone's shot down.", "Drone down.", "Drone strike. Target destroyed." |
+| Our drone: under 10 s of battery, 85 % of its link, recalled and parked on its dock, shot down; our roof gun downs theirs; our drone's kill | "Drone battery low.", "Drone link's weak.", "Drone recovered.", "Drone's shot down.", "Drone down.", "Drone strike. Target destroyed." |
 | An enemy hull's smoke launcher fires (matched by the launcher's position) | "Enemy's popping smoke." |
 | Reversing within 6 s of a hit or of being seen | "Backing up." |
 | Our tank drives through a wall, fence or tree (half the time, flavour) | "Going through." |
@@ -628,7 +628,27 @@ the engine through each mode's opening and endings too. A network seat hears
 the same calls: the presentation now relays the authority's `drone_down` as
 `drone:down` (it had no case and was dropped), and the jump call reads the
 frame's airborne state rather than `tank:jump`, which a network seat never
-raises.
+raises. "Friendly extracted" alone is the solo seat's call: the authority stops
+sending a hull that leaves the field, so a network seat never sees an escort's
+rescued life. "An enemy the player sees" is the game's one visibility
+rule (`src/game/playerVisibility.ts`, as the HUD draws it), not the team's
+spot. The crew is silent behind the pause menu, a network battle's included:
+its opening cuts the line on the air and the queue, each of its edges cancels
+the calls the crew had armed (a kill heard behind it arms no cease fire for
+the resume; a recalled drone that docks behind it is not called recovered,
+nor an enemy's smoke popped behind it called, at the resume), and the radio
+takes no line while it is open
+(`crewProcedure.selftest.mjs`). The crew's own calls are our tank's only while
+the player drives it: a watched battle's seat its brain drives makes none of
+the per-life or sighting calls (the fire command, cease fire, re-engage, the
+drone, APS, crushes, the Juggernaut sighted), while the mode's calls in the
+table above are the side's news and still play there, as the engine's own
+mode calls do. Each seat the watcher takes starts a new life, as a respawn
+does, with that hull's own radio set (a set broken while its brain drove it
+sounds broken) and its own fire alarm (the last seat's stops). The drone's
+calls follow the authority's flight view: "Drone recovered." when a recalled
+airframe is parked on its dock (`returnS` run out), never at the loss of one
+(`recallS` is only the recall's gate at launch).
 
 The reasoning exchange (2026-10-05, the Claude of Tanks / chain-of-thought
 joke) is once a battle and never costs a real call. Both lines are priority-0
@@ -1245,9 +1265,10 @@ already approved (the Afrikaans "Laai nou." came back a different attempt).
   Leaving the garage ends its scene on the battle phase edge: the battle's
   scene waits for the reveal or the rollout, and until then the hangar's bed
   and workshop spots ran on under the loading screen
-  (`battleEntryAmbience.selftest.mjs` drives a solo start, an online
-  activation and a rematch, and holds every battle-phase assignment to its
-  edge). The explosions carry the ear proxy's `explosion` class and sit on the
+  (`ambienceTeardown.selftest.mjs` drives a solo start, an online
+  activation, a rematch and a cold boot's online battle down the app
+  lifecycle's one phase writer; round 8 Y3 folded 269's
+  `battleEntryAmbience.selftest.mjs` into it). The explosions carry the ear proxy's `explosion` class and sit on the
   verdict of record; `tools/audio-mix-balance.mjs` holds every asset on its
   loudest take (the loudness receipt's momentary maximum), so a gate no longer
   rides on the take the seeded stream drew. The first `sfx-smoke` on the boom

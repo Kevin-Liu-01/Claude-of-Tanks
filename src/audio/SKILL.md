@@ -31,7 +31,10 @@ exhaustive; `worldSounds.selftest.mjs` scans the controller), `voiceLines.ts`
 call for a tank crew's line, from the exhaustive `MODE_CREW` and `GUNSHIP_CREW`),
 `crewProcedure.ts` (the crew's procedure on moments the sound handlers leave
 unvoiced: the fire command and its answers, APS/ERA, the drone's flight, the
-modes' own moments, the gunship's fire control). Web Audio owners: `mixer.ts`, `assetLibrary.ts`,
+modes' own moments, the gunship's fire control; its state is two declared
+scopes, the battle's, started by the engine's `resetBattlePlay`, and our
+tank's life's, started by the engine's `startOwnLife` at each revive of our
+hull and each seat the player takes, as it notices them). Web Audio owners: `mixer.ts`, `assetLibrary.ts`,
 `voicePool.ts`, `vehicleRig.ts`, `ambienceDirector.ts`, `crewRadio.ts`.
 `captions.ts` owns the caption stream (BUI-F9): every keyed transmission
 (`crewRadio.ts` `onTransmit`, with the take spoken and the speaking role from
@@ -58,6 +61,36 @@ engine resets has one of three owners: the phase edge (`modeEdge`: the ambience
 intent and the reload call), the battle world's teardown (`teardownBattle`:
 loops, the alarm, the heartbeat, the listener, burning), and the new battle
 (`resetBattleFields()`: every other per-battle field) (2026-11-02 audit F11).
+The crew's procedure hangs off the same edges (round 8 Y3): its battle starts
+in `resetBattlePlay` (a battle edge, a network restart), its life at each
+revive of our hull (`startOwnLife`: the respawn event, or with none the frame
+that shows our hull standing again after its death) and at each seat the player
+takes in a watched battle (the frame's `isPlayer` on another hull, or back on
+one its brain drove: no revive, no event), so nothing a dead crew's rounds arm
+is said in the next life; a seat taken keeps its hull's radio set and fire
+alarm as the frame shows them, and a revive starts the set whole and the fire
+out, a living hull's revive (a kick-off, the range reset) included: no
+`tank:fire` follows a revive, so the respawn event stops our alarm and the
+hull's engine-deck fire (a network restart, every hull's).
+A seat its brain drives makes none of the crew's
+per-life or sighting calls (`live()` reads the frame's `isPlayer`); the
+battle's mode calls (`onMode`, gated on `inBattle()`) are the side's news and
+still play there, as the engine's own do. The pause menu silences the net (the
+line on the air and the queue go as it opens, each edge cancels the crew's
+armed calls, a recalled drone's recovery included, `say()` refuses 'paused',
+no radio or crew frame runs behind the menu, a network battle's included). Our
+drone is read as the authority flies it: its feed live while `active`, a recall
+accepted as `returnS` (the flight home, "recovered" once it is parked), never
+`recallS` (the recall's gate at launch). It names only what the
+player sees: `src/game/playerVisibility.ts` is the one rule (the network's
+word, the watch and couch reveals, our side, the seat's own spot), handed to
+`audio.update` by `listenerPoseRuntime.ts` and stamped per frame on each
+indexed hull; with no rule handed in (a tool, a receipt) no hull is seen.
+A dead crew says only the battle's result call (`isResultLine`: the resolved
+line's group, every mode's own result call too); the mode's own ending reason
+names the ending before the battle's. The reload mirror's cycle is the
+reloading mount's: another mount selected mid-cycle is that mount's cycle
+joined where it stands, never a burst of its passed cues.
 A wanted loop whose recording failed waits, and the engine's update asks again
 once the library's retry is due. The two `*.generated.ts` manifests are
 written by `tools/audio/build-sfx.mjs` and `tools/audio/build-voices.mjs`.
@@ -101,7 +134,10 @@ screen-right is `forward × up` (a three.js camera looking along +Z has world
 presentation must key/dedupe them (the engine latches a death per life and a
 presentation per battle). A looping cue the engine wants goes through
 `loopRig` (it starts once its recording decodes); a pin names its owner
-group (`library.pin(ids, replace, group)`). Scope is an interior/headset perspective,
+group (`library.pin(ids, replace, group)`, `group` a required `PinGroup`:
+'session', 'battle', 'scene', 'rigs', 'aerial', 'own-weapons'; our own
+hull's banks replace their set at each gun change and go with the battle's
+teardown). Scope is an interior/headset perspective,
 never a mute. Keep the occupied rig regardless of distance, rank remote rigs
 by proximity under the LOD budget, and tear all world loops down when leaving
 battle. Node selftests run under type stripping: no enums or parameter
