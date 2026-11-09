@@ -188,9 +188,14 @@ async function presentationOf(specId) {
   });
   presentation.applyFrame(frame());
   const own = presentation.ownActor;
+  /** A predicted shot of the own seat; returns the barrel or tube its kick took (the call must kick exactly once). */
   const predict = (slot = 0, options = {}) => {
+    // the visual logs a kick only when the prediction reaches recoilKick (a confirmed own round logs none), so a shot that
+    // kicked nothing would read as the previous kick's barrel: count this call's kick (review residual r1)
+    const log = kicks.get(own.visual), before = log.length;
     presentation.applyFrame(frame({ ...options, predictedShot: { fireSeq: ++fireSeq, shellSlot: slot, confirmed: false } }));
-    return kicks.get(own.visual).at(-1);
+    assert.equal(log.length, before + 1, `the own seat's predicted shot ${fireSeq} (slot ${slot}) kicked one barrel or tube`);
+    return log.at(-1);
   };
   /** The authority's shell_fired for an own round; returns the mouth its flash took, or null where it was not presented. */
   const confirm = (shot) => {

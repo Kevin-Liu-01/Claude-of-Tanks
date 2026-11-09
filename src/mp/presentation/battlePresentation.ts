@@ -108,8 +108,9 @@ export interface MatchActor {
   state: TankState;
   /**
    * Its muzzleCursor and launcherCursor mirror the authority's for the own seat (shell_fired), so a predicted shot kicks
-   * the next barrel or tube; each life and each restarted battle begins them as the authority's fresh combat state does
-   * (beginWeaponCursors).
+   * the next barrel or tube; each life that follows a death (the own row's wreck) and each restarted battle begins them
+   * as the authority's fresh combat state does (beginWeaponCursors). A living hull's revive (a Turbo Ball goal's kick-off)
+   * does not: no row marks it (see ownMirrorLife).
    */
   combat: CombatState & CannonMuzzleCursor;
   specialAction: SpecialActionState;
