@@ -159,7 +159,9 @@ hands the moment they happen:
   pattern (`padBuzzTicks`: one tick per pulse, a long pulse ticks on every 50 ms, six at most).
 - The phone's own buzzes: a tick per press; at the trigger, the shot's kick at once when the gun is loaded (the
   battle's cue for that one shot then adds none), a refusal while it loads; and the gun loaded (a load of 1.5 s or
-  more), timed from the status's reload, never with the trigger held (the shot's own kick follows).
+  more), timed from the status's reload, never with the trigger held (the shot's own kick follows). A paused battle or a
+  hidden desktop tab freezes the reload: the load waits (`padReadyBuzz.ts`, idle, loading or paused) and is announced
+  once at the resume or the load's end; a link that leaves live drops it.
 - A press never cuts a buzz still playing short. Options has a Vibration switch.
 - Unverified on hardware: whether iOS ticks outside a touch's own handler (a cue that arrives off the link). The
   simulator has no haptics; the owner's phone settles it.
@@ -187,13 +189,17 @@ the phone"), because the big screen is where the player looks:
   ctl message past that limit, so no message can end a pairing that way again.
 - The receiver draws it (`src/pad/padTourScreen.ts`, in the receiver's lazy chunk): the phone in outline at the foot of
   the screen, up to 720 px wide, each name in the game screen's own language where the phone put its own (kept inside
-  the drawn screen, since its words may run wider than the phone's), the same ghost strokes, and Skip with the ten
-  seconds running out under it. It stands in the top layer (a manual popover, as the kit's hover tip does), so it shows
+  the drawn screen, since its words may run wider than the phone's), the same ghost strokes, and Skip with the
+  phone's time left running out under it. It stands in the top layer (a manual popover, as the kit's hover tip does), so it shows
   over Settings, where a phone pairs, and over the couch lobby. It takes no input but Skip, and it stays off the
   surface stack: opened there it would replace the Settings panel or the couch lobby it stands over
   (`transientSurfaceRegistry.selftest.mjs` names it an exempt).
 - Skip on either side, or the ten seconds, ends it on both (`tour` with `on: false`; an ending is never echoed). A couch
   lobby shows one at a time: a newer phone's guide replaces the one showing.
+- The phone owns the guide; the game screen's copy is a bounded mirror with no clock of its own (round 8). The phone's
+  `tour` with `on: true` carries the time its guide has left (`ms`), and the copy closes on the phone's `on: false`, on
+  its own Skip, when its link leaves live (a closed tab or a dropped link sends no ending), or when that time runs out,
+  whichever comes first (`padReceiver.ts`; `padTour.selftest.mjs`).
 
 ### Locked landscape
 
