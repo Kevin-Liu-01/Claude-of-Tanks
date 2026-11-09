@@ -9,6 +9,11 @@ import { selectShell } from '../sim/damage.ts';
 import { activateSpecialAction, guidedMissileSlot, specialActionKind } from '../sim/specialActions.ts';
 import { createSpecialActionState } from '../sim/specialActionPolicy.ts';
 import { hasAmmunition } from '../sim/ammunition.ts';
+import { AIR_STRIKE_KINDS } from '../sim/matchRuleset.ts';
+import { AIR_STRIKE_BITS } from '../sim/playerActions.ts';
+
+// (round 8 Y11) 270's Air Support port, as main.ts passes it
+const strikes = { kinds: AIR_STRIKE_KINDS, bit: (kind) => AIR_STRIKE_BITS[kind] };
 
 const handlers = new Map();
 const input = {
@@ -50,7 +55,7 @@ const rules = {
 };
 createPlayerBattleActions({
   game, bus, input, rules, isSettingsOpen: () => false,
-  network: { isActive: () => false, queueConsumable() {}, queueAction() {} },
+  network: { isActive: () => false, queueConsumable() {}, queueAction() {} }, strikes,
 });
 
 // no HUD on this bus: Q alone toggles
@@ -129,7 +134,7 @@ assert.equal(player.input.shellSlot, 1, 'Q returns to the round the digit picked
   assert.equal(tank.specialAction.kind, 'guided_missile', 'a launcher with a cannon round: its pad system is the missile');
   createPlayerBattleActions({
     game: { phase: 'battle', timeS: 10, player: tank }, bus: padBus, input: padInput, isSettingsOpen: () => false,
-    network: { isActive: () => false, queueConsumable() {}, queueAction() {} },
+    network: { isActive: () => false, queueConsumable() {}, queueAction() {} }, strikes,
     rules: { ...rules, selectShell, activateSpecialAction, guidedMissileSlot, specialActionKind, hasAmmunition },
   });
   padInput.press('shell1', 'Digit1');
@@ -150,7 +155,7 @@ assert.equal(player.input.shellSlot, 1, 'Q returns to the round the digit picked
   const otherGame = { phase: 'battle', timeS: 0, player: tracked };
   const actions = createPlayerBattleActions({
     game: otherGame, bus: other, input: { onAction: () => () => {} }, rules, isSettingsOpen: () => false,
-    network: { isActive: () => false, queueConsumable() {}, queueAction() {} },
+    network: { isActive: () => false, queueConsumable() {}, queueAction() {} }, strikes,
   });
   other.emit('ui:atgmToggle', {});
   assert.equal(tracked.combat.shellSlot, 2, 'on the missile from HEAT');
