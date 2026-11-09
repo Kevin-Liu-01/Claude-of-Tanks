@@ -20,7 +20,8 @@ import { spawnTanks } from './rosterState.ts';
 import { ensureAuthorityFleet } from '../vehicles/authorityFleet.ts';
 import { TANK_IDS } from '../vehicles/specs.ts';
 import { createDedicatedWorldCollision } from '../../server/dedicatedWorldCollision.ts';
-import { matchRulesetFor } from '../sim/matchRuleset.ts';
+import { AIR_STRIKE_KINDS, matchRulesetFor } from '../sim/matchRuleset.ts';
+import { AIR_STRIKE_BITS } from '../sim/playerActions.ts';
 
 const { clearMatchSession, createBus, watchRevealsAll } = stateCore;
 // the staged roster (random: false) and the player's tank, their combat anatomy only: no vehicle builders
@@ -76,6 +77,8 @@ function onlineControls(game) {
   const actions = createPlayerBattleActions({
     game, bus, input, rules: { hasAmmunition: () => true, rulesetUnlimitedFor: () => false },
     network: { isActive: () => true, queueAction: (action) => queued.push(action), queueConsumable: () => {} },
+    // (round 8 Y11) 270's Air Support port, as main.ts passes it
+    strikes: { kinds: AIR_STRIKE_KINDS, bit: (kind) => AIR_STRIKE_BITS[kind] },
     isSettingsOpen: () => false,
   });
   handlers.get('smoke')?.('KeyG');

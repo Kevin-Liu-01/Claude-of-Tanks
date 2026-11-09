@@ -25,7 +25,8 @@ import { createBattleFrameRuntime } from './battleFrameRuntime.ts';
 import { createPlayerBattleActions } from './playerBattleActions.ts';
 import * as couchSeats from './couchSeats.ts';
 import { createActivationRuntime } from '../mp/session/activationRuntime.ts';
-import { couchRulesetFor, couchSeatSides, matchRulesetFor } from '../sim/matchRuleset.ts';
+import { AIR_STRIKE_KINDS, couchRulesetFor, couchSeatSides, matchRulesetFor } from '../sim/matchRuleset.ts';
+import { AIR_STRIKE_BITS } from '../sim/playerActions.ts';
 
 const { clearMatchSession, createBus, createGameState, watchRevealsAll } = stateCore;
 const { beginCouchSession } = couchSeats;
@@ -77,6 +78,8 @@ function onlineControls(game) {
   const actions = createPlayerBattleActions({
     game, bus, input, rules: { hasAmmunition: () => true, rulesetUnlimitedFor: () => false },
     network: { isActive: () => true, queueAction: (action) => queued.push(action), queueConsumable: () => {} },
+    // (round 8 Y11) 270's Air Support port, as main.ts passes it
+    strikes: { kinds: AIR_STRIKE_KINDS, bit: (kind) => AIR_STRIKE_BITS[kind] },
     isSettingsOpen: () => false,
   });
   handlers.get('smoke')?.('KeyG');
