@@ -173,5 +173,21 @@ assert.deepEqual(budgetReads("export const SCHEDULING_ENV = { COT_NAV_TIMEOUT_MS
       `${tool}: its page budget with its own ${readyMs / 1000} s ready wait`);
   }
 }
+// (6) (round 8 Y8 fix-up r1, s1-13) COT_NAV_RETRIES reaches every tool that retries a load: a tool on pageLoadBudget
+// that keeps its own retry loop counts its attempts against the budget's `retries` (sfx-smoke and voice-smoke stopped
+// after a literal one, so the variable SKILL.md said governs them reached neither). audio-mix-balance loads once.
+{
+  const ownRetryCount = /\battempt\s*>=?\s*\d+/;
+  assert.ok(ownRetryCount.test('if (attempt >= 1) throw err;') && ownRetryCount.test('if(attempt>=0)throw error;'), 'a literal count');
+  assert.ok(!ownRetryCount.test('if (attempt >= retries) throw err;') && !ownRetryCount.test('for (let i = 0; i < attempts; i++)'),
+    'the budget\'s count, and a loop that is not a load retry');
+  const literal = [];
+  for (const file of toolCensusFiles(ROOT)) {
+    if (file === 'tools/tool-page-load.mjs') continue;
+    const code = codeText(readFileSync(join(ROOT, file), 'utf8'), file);
+    if (/\bpageLoadBudget\(/.test(code) && ownRetryCount.test(code)) literal.push(file);
+  }
+  assert.deepEqual(literal, [], 'a tool on pageLoadBudget counts its load retries against the budget\'s retries (COT_NAV_RETRIES), not a literal');
+}
 console.log(`tool-page-load: 180 s navigation, 60 s ready, one timeout retry; a busy port moves on and the bound origin reaches our server; ${SERVED.length} fleet browser tools wired; `
   + 'no tool reads the page budget\'s variables itself');

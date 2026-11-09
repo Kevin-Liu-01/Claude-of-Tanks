@@ -106,16 +106,16 @@ async function openPage() {
     if (msg.type() === 'error' && !msg.text().includes('favicon')) consoleErrors.push(msg.text());
   });
   page.on('pageerror', (err) => consoleErrors.push(String(err)));
-  // the tools' page budget (tool-page-load.mjs: 180 s navigation, COT_NAV_TIMEOUT_MS): its cold private vite cache took
-  // past 90 s on a loaded machine, twice, before any line was heard
-  const { navTimeoutMs, readyTimeoutMs } = pageLoadBudget({ readyTimeoutMs: 90000 });
+  // the tools' page budget (tool-page-load.mjs: 180 s navigation, COT_NAV_TIMEOUT_MS; one retry of a failed load,
+  // COT_NAV_RETRIES): its cold private vite cache took past 90 s on a loaded machine, twice, before any line was heard
+  const { navTimeoutMs, readyTimeoutMs, retries } = pageLoadBudget({ readyTimeoutMs: 90000 });
   for (let attempt = 0; ; attempt++) {
     try {
       await page.goto(url, { waitUntil: 'domcontentloaded', timeout: navTimeoutMs });
       await waitForBootLoaded(page, { timeout: readyTimeoutMs });
       break;
     } catch (err) {
-      if (attempt >= 1) throw err;
+      if (attempt >= retries) throw err;
       console.warn(`[voice-smoke] load attempt failed (${err.message}) — retrying`);
       consoleErrors.length = 0;
     }

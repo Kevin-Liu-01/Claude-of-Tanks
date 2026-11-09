@@ -42,8 +42,9 @@ mkdirSync(outDir, { recursive: true });
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 // The page's first load (a cold private dep cache under a busy machine's load can take minutes): the tools' page budget
-// (tool-page-load.mjs: 180 s navigation, COT_NAV_TIMEOUT_MS; this tool's ready wait 90 s, COT_READY_TIMEOUT_MS)
-const { navTimeoutMs: NAV_MS, readyTimeoutMs: READY_MS } = pageLoadBudget({ readyTimeoutMs: 90000 });
+// (tool-page-load.mjs: 180 s navigation, COT_NAV_TIMEOUT_MS; this tool's ready wait 90 s, COT_READY_TIMEOUT_MS; one retry
+// of a failed load, COT_NAV_RETRIES)
+const { navTimeoutMs: NAV_MS, readyTimeoutMs: READY_MS, retries: LOAD_RETRIES } = pageLoadBudget({ readyTimeoutMs: 90000 });
 
 /** Write interleaved stereo Int16 PCM as a RIFF/WAVE file. */
 function writeWav(path, i16, sampleRate) {
@@ -127,7 +128,7 @@ async function openPage() {
       await waitForBootLoaded(page, { timeout: READY_MS });
       break;
     } catch (err) {
-      if (attempt >= 1) throw err;
+      if (attempt >= LOAD_RETRIES) throw err;
       console.warn(`[sfx-smoke] load attempt failed (${err.message}) — retrying`);
       consoleErrors.length = 0;
     }
