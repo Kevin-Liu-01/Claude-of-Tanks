@@ -42,6 +42,10 @@
 // battle's enemy smoke born earlier than the abandoned battle's last screen was never called, and smoke beside an enemy
 // spotted only in the abandoned battle was called as a named enemy's. The engine's battle reset (resetBattlePlay, at a
 // battle's start and in restartLives) now resets the crew. Case 6 fails on 7740bd2b63.
+// Round 7 merge review r2: 7. 269's droneLastAt (where each carrier's drone was last heard in flight; 'drone:down' plays
+// the drone's breakup there) was merged into the battle's fields, which a restart keeps, so a drone shot down in the
+// restarted battle that this seat never heard fly broke up at the abandoned battle's last drone position. It is the
+// battle's play now (resetBattlePlay, beside moduleStates as 269 had it). Case 7 fails on 791607ac0f.
 import assert from 'node:assert/strict';
 import { Scene, PerspectiveCamera, Vector3 } from 'three';
 import {
@@ -418,8 +422,58 @@ const wrong = [];
   assert.equal(smokeCalls(210), 1, 'control: smoke beside the foe spotted since the restart is called');
 }
 
+// ---- 7. (round 7 merge review r2) where a carrier's drone was last heard is the abandoned battle's too
+{
+  const ctx = namedContext();
+  const audio = createAudio({ context: ctx, getMapId: () => 'verdant', getGameMode: () => 'standard', getTerrain: () => terrain, tier: 'desktop' });
+  const bus = createBus();
+  audio.bindBus(bus);
+  audio.resume();
+  const probe = probeOf();
+  const me = tank('me', { isPlayer: true });
+  const foe = tank('foe', { specId: 'leo2a4', nation: 'Germany', z: 200, team: 'enemy' });
+  // the foe's drone in flight is a shell (tracer 'DRONE', its carrier the shooter), 160 m from us and 40 m up
+  const drone = { id: 901, shooterId: 'foe', pos: { x: 60, y: 40, z: 150 }, vel: { x: 0, y: 0, z: 0 }, spec: { tracer: 'DRONE' }, dead: false };
+  const frame = (shells = []) => { ctx.advance(1 / 30); audio.update(1 / 30, listener, [me, foe], shells); };
+  const frames = (n, shells) => { for (let i = 0; i < n; i++) frame(shells); };
+  // an ally shoots the foe's drone down: 'drone:down' names its carrier, and the engine plays its breakup where that
+  // carrier's drone was last heard in flight (soundLog's 'drone:down' says whether it knew a place)
+  const down = () => {
+    const at = mark(probe);
+    bus.emit('drone:down', { id: 'foe', killerId: 'ally' });
+    frames(3);
+    return { heard: probe.soundLog.filter((entry) => entry.type === 'drone:down').at(-1)?.heard, plays: count(since(at, probe), 'drone_shot_down') };
+  };
+  bus.emit('phase:change', { phase: 'battle' });
+  await audio.warmBattleEvents(['t72b3m_2022', 'leo2a4']);
+  await probe.libraryIdle();
+  frames(10);
+  bus.emit('battle:rollout', {});
+  frames(5);
+  // the abandoned battle: the foe's drone flies in our hearing (its first flight warms the aerial set), then falls
+  frames(10, [drone]);
+  await probe.libraryIdle();
+  frames(10, [drone]);
+  const abandoned = down();
+  assert.ok(abandoned.heard === true && abandoned.plays === 1, `setup: the abandoned battle's drone shot down breaks up where it was heard (${JSON.stringify(abandoned)})`);
+  // the restart: the restarted battle has not heard the foe's drone fly, so its 'drone:down' has nowhere to play
+  bus.emit('battle:restarted', RESTART);
+  frames(60);
+  const stale = down();
+  if (stale.heard !== false || stale.plays !== 0) wrong.push(`audio: a drone shot down in the restarted battle that this seat never heard fly broke up at the abandoned battle's last drone position (${JSON.stringify(stale)}; a new battle plays nothing)`);
+  // control: once the restarted battle's drone is heard in flight, its fall is heard
+  frames(10, [drone]);
+  const heard = down();
+  assert.ok(heard.heard === true && heard.plays === 1, `control: the restarted battle's drone heard in flight breaks up when shot down (${JSON.stringify(heard)})`);
+  // control: a new battle (the phase edge) has heard no drone fly either
+  bus.emit('phase:change', { phase: 'battle' });
+  frames(60);
+  const fresh = down();
+  assert.ok(fresh.heard === false && fresh.plays === 0, `control: a new battle's drone:down for a drone it never heard fly plays nothing (${JSON.stringify(fresh)})`);
+}
+
 if (wrong.length) {
   console.error(`battleRestartLives: a battle restart left per-life state of the abandoned battle:\n  ${wrong.join('\n  ')}`);
   assert.fail('a battle restart is a new life for every hull in every per-life listener');
 }
-console.log('battleRestartLives: a battle restart gives every hull a new life in the killcam (the dead seat\'s chase ends, an observer\'s stays), the audio engine (a hidden hull\'s next death heard, the old alarm and wrecks gone), the service record, the presentation\'s own actors (a hidden hull alive again for the roster, the side counts, the prediction and the end roster), and the crew\'s procedure (its smoke watermark and spotted set start over) PASS');
+console.log('battleRestartLives: a battle restart gives every hull a new life in the killcam (the dead seat\'s chase ends, an observer\'s stays), the audio engine (a hidden hull\'s next death heard, the old alarm and wrecks gone), the service record, the presentation\'s own actors (a hidden hull alive again for the roster, the side counts, the prediction and the end roster), the crew\'s procedure (its smoke watermark and spotted set start over), and where a drone was last heard (the abandoned battle\'s drone breaks up nowhere) PASS');

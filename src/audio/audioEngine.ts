@@ -2672,7 +2672,6 @@ export function createAudio({
   function resetBattleFields(): void {
     tanks.clear();
     structureSounds.clear();
-    droneLastAt.clear();
     playerId = null;
     playerTeam = null;
     latestPlayer = null;
@@ -2699,10 +2698,14 @@ export function createAudio({
    * (round 7 merge review r1) The crew's procedure (crewProcedure.ts, 269) keeps its own battle state and is reset here,
    * its one battle reset: before, it reset only on its own phase edge, which a restart does not take, so the restarted
    * battle's crew kept the abandoned battle's smoke watermark (sim clock), spotted set, spent countdown report and rounds.
+   * (round 7 merge review r2) Where each carrier's drone was last heard in flight (droneLastAt, 269) is the play's too, as
+   * 269 cleared it beside moduleStates: kept at a restart, a 'drone:down' for a carrier whose drone this seat had not heard
+   * fly in the restarted battle broke up at the abandoned battle's last drone position, where a new battle plays nothing.
    */
   function resetBattlePlay(): void {
     deathLatch.clear();
     moduleStates.clear();
+    droneLastAt.clear();
     ownRounds.clear();
     droneWarned.clear();
     movedOnce = false;
