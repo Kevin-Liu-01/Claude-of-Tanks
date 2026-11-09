@@ -2696,6 +2696,9 @@ export function createAudio({
    * which restarts at 0), a module state the abandoned battle told stood (moduleStates: the restarted battle's same break
    * was no change, so no thrown-track sound, no crew call and no radio damage), a kill in the restarted battle within 12 s
    * of the abandoned battle's last was a double kill, and the once-a-battle think line and first-shot cue stayed spent.
+   * (round 7 merge review r1) The crew's procedure (crewProcedure.ts, 269) keeps its own battle state and is reset here,
+   * its one battle reset: before, it reset only on its own phase edge, which a restart does not take, so the restarted
+   * battle's crew kept the abandoned battle's smoke watermark (sim clock), spotted set, spent countdown report and rounds.
    */
   function resetBattlePlay(): void {
     deathLatch.clear();
@@ -2729,6 +2732,7 @@ export function createAudio({
     auxGunOn = null;
     auxLights = null;
     resetQuietRadio();
+    crew.reset();
   }
 
   /**
