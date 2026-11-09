@@ -511,15 +511,15 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 26396,
-      "sha256": "fb904be17b25be74e21cd3533d417b6a20bd770d31b293b31903505695f94e50",
+      "bytes": 26410,
+      "sha256": "0a9036cfb9aa76ff16530e917d19c572ad449a5050c42257aaa20bb3dccf62d2",
       "thumbnail": {
         "file": "thumbs/bwp1_angle.webp",
         "width": 256,
         "height": 256,
         "mime": "image/webp",
-        "bytes": 10550,
-        "sha256": "1173273561a6dd2633f7e5e81fdbf7a907795cf3b7b8371209449577c0979a8b"
+        "bytes": 10546,
+        "sha256": "70a7e72dd4a00bc24a9fdaba989a2d4c8a7d694522cfec85e680d88614523520"
       }
     },
     "top": {
@@ -527,8 +527,8 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 22456,
-      "sha256": "afeecb23b8a89a7ca2d40c248ba0fe2193b56c793473bb7e7256d7eb4ccbd5aa"
+      "bytes": 22452,
+      "sha256": "344ff76ad8c5a0f6c4883b7131ec03dcb896363ba793f7d850d22a7877686e46"
     },
     "side": {
       "file": "bwp1_side.webp",
@@ -583,8 +583,8 @@
       "width": 256,
       "height": 128,
       "mime": "image/png",
-      "bytes": 33425,
-      "sha256": "b87b070a6042c06e5744011ed4fe84a0f8a2f0e28f10a36a503d09ec9b8a1941"
+      "bytes": 31555,
+      "sha256": "838d8c1aae66e35e3230f9cb00304fccb5d9f6fa3222332c51c0952fc4a14bc9"
     },
     "technicalLabels": {
       "file": "bwp1_technical.json",

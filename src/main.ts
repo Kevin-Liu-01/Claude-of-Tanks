@@ -1777,7 +1777,9 @@ const audio = await bootStage('audio', () => {
     return deathsAreFinal(game.ruleset?.mode === mode ? game.ruleset : matchRulesetFor(mode)) ? game.rosterTanks : null;
   },
   // Each warmed hull's powertrain from its whole spec, as its rig will resolve it (an IFV's diesel turns on its role).
-  getVehicleSpec: getSpec });
+  getVehicleSpec: getSpec,
+  // The battle's time of day (the ambience's night life: owls and crickets, no songbirds after dark).
+  getTimeOfDay: () => battleAtmosphere.current?.weather?.timeOfDay ?? null });
   a.bindBus(bus);
   return a;
 });
@@ -3849,7 +3851,9 @@ const mainFrame = createMainFrameRuntime({
   // while every compositor frame, the boot card's tank included, waited). The warm now links them between frames first.
   isBootCovering: () => !bootComplete,
   isTransitionHoldingSceneForFadeIn: () => transition.holdingSceneForFadeIn,
-  isPresentationRestoreCovering: () => garagePhasePresentation.restoringGpu || (game.phase === 'garage' && (garageReturn.current?.lastTrace?.presentationUnready === true || garageReturn.current?.lastTrace?.awaitingHandoff === true)),
+  // (269, the second solo battle at 97%) a Garage restore covers Garage frames only: a battle that took the screen from a
+  // Leave's restore still running owns its frames by its own cover, and its reveal waits for one of them
+  isPresentationRestoreCovering: () => game.phase === 'garage' && (garagePhasePresentation.restoringGpu || garageReturn.current?.lastTrace?.presentationUnready === true || garageReturn.current?.lastTrace?.awaitingHandoff === true),
   cameraInput: camInput,
   getMobileAutoAim: mobileBattleInput.getAutoAim,
   rig,
@@ -4370,6 +4374,7 @@ if (diagnosticsRequested) {
       },
       getDamagePanel: currentDamagePanel,
       getNetworkDiagnostics: () => onlineMatch.current?.stats() ?? null,
+      isNetworkBattle: onlineMatchActive,
       collectTelemetry: () => perfHud.collectTelemetry(),
       sampleShadowContribution: () => perfHud.sampleShadowContribution(),
     } satisfies DebugSurfaceDependencies,

@@ -1918,15 +1918,15 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 26320,
-      "sha256": "b0997afc1be98afe217836527a67b6ef991ceaf9858fa8ea40228fcb3a138257",
+      "bytes": 26322,
+      "sha256": "20eab8406782fdd5542ec2e9449cf6cb2a2e97af9e69aae04513e9062db22435",
       "thumbnail": {
         "file": "thumbs/ztz99_longwei_angle.webp",
         "width": 256,
         "height": 256,
         "mime": "image/webp",
-        "bytes": 10946,
-        "sha256": "2570084d0f4fd0fa8a4e861739af8767469d7a6dcaf322fccbd2a04fcf04fc6d"
+        "bytes": 10948,
+        "sha256": "26ee2cbd9c12f08270f2eaff1d14ffcf80e76c43d5760bebbd4a50cf16786104"
       }
     },
     "top": {
@@ -1942,8 +1942,8 @@
       "width": 512,
       "height": 256,
       "mime": "image/webp",
-      "bytes": 8742,
-      "sha256": "ed356725b0d5389f4ce31423200b0541d1515ba9e5291d32a0e3ee7b38af09e9"
+      "bytes": 8726,
+      "sha256": "f7dc1aa622834a4a880b59b6a96a4069b9ea4dab9bde96545234f53c315579a1"
     },
     "topSilhouette": {
       "file": "ztz99_longwei_top_silhouette.png",
@@ -1966,32 +1966,32 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 21336,
-      "sha256": "7de0da3c6fc79c1d3da6665c1001913c5e95e60f58d71a8a8d2907177917ca7c"
+      "bytes": 21310,
+      "sha256": "97f5207da9371a808b99c8d03a65fbba2ea67914b3fc4a84d7fb655be214d9a1"
     },
     "modulesSide": {
       "file": "ztz99_longwei_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 19258,
-      "sha256": "96a24193d9b1e05b794f0f2d8a090ae3a8e7f502c9728c81e08bd3b2494ce84a"
+      "bytes": 19224,
+      "sha256": "ec5a9e893c0fda3667a6b353c660429bc8ff315668402dc29184d3e32db7db22"
     },
     "crewSide": {
       "file": "ztz99_longwei_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 15810,
-      "sha256": "b8b313976e9eeab8f775230465ee6395f26c56988e253dbdb2de8636c62ffd32"
+      "bytes": 15794,
+      "sha256": "c8917fe7c03ee86be841ad45f7bd5e4631c9b486cb04ac15f52c849244ab63f8"
     },
     "markings": {
       "file": "ztz99_longwei_markings.png",
       "width": 256,
       "height": 128,
       "mime": "image/png",
-      "bytes": 35409,
-      "sha256": "91fd893a60a11c0b07c7f8d49e68bbda37601c4e2dc24ef44c21012561d5728e"
+      "bytes": 32363,
+      "sha256": "f0105ef6dd9f5d0297dbb35710c72d86de76a96c842dc4193eebc0344e797cb1"
     },
     "technicalLabels": {
       "file": "ztz99_longwei_technical.json",

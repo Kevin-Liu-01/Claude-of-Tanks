@@ -710,11 +710,11 @@ for (const path of ['src/docs/docs.css', 'src/gallery/gallery.css']) {
   assert.match(read(path), /--font:var\(--font-ui\)/, `${path}: its --font token reads the UI family`);
 }
 
-// Canvas text that paints the brand face loads the pinned display file (vehicle markings, social cards).
+// Canvas text that paints the brand face loads the pinned display file (social cards). Vehicle markings are Glacis
+// outlines since glacis-269, so the material painter's worker loads no font.
 const display700 = TYPE_FACES.find((face) => face.voice === 'display' && face.weight === 700).file;
-for (const path of ['src/vehicles/materialPainterWorkerClient.ts', 'tools/marketing-shots/generate-og-images.mjs']) {
-  assert.ok(read(path).includes(display700), `${path} loads ${display700}`);
-}
+assert.ok(read('tools/marketing-shots/generate-og-images.mjs').includes(display700), `tools/marketing-shots/generate-og-images.mjs loads ${display700}`);
+assert.ok(!/\.woff2/.test(read('src/vehicles/materialPainterWorkerClient.ts')), 'the material painter worker loads no font file');
 
 console.log(`typeSystem: ${TYPE_FACES.length} pinned OFL faces + ${TYPE_SYMBOLS.faces.length} marks + ${TYPE_ACCENTS.faces.length} accents faces, `
   + `${printed.size} printed characters drawn, ${sources.size} shipped sources (weights, `

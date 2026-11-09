@@ -887,15 +887,15 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 24018,
-      "sha256": "ee5e7f57aa7bffa1e05a1bd28ae2fcfe559d248eb16129102d6f28f13095818a",
+      "bytes": 24010,
+      "sha256": "84b99ca524cbc508efcbb8591fbac9aa6a28f49e36129cea3265966bbd287143",
       "thumbnail": {
         "file": "thumbs/ares_apc_angle.webp",
         "width": 256,
         "height": 256,
         "mime": "image/webp",
-        "bytes": 10036,
-        "sha256": "afb695f60ec0b9d667628ae1eabaf26a127cd18d8cea06093696447a0a40fe98"
+        "bytes": 10050,
+        "sha256": "9e25f561beb21bc305e86cb58fcc6ba0fafe70f333f31e4157d751ba39c218d8"
       }
     },
     "top": {
@@ -935,8 +935,8 @@
       "width": 256,
       "height": 128,
       "mime": "image/png",
-      "bytes": 36510,
-      "sha256": "2a2829cc437fa229931ee9f7012cd9080d1fd4b64644d55dd02fda1ad9579a1d"
+      "bytes": 33465,
+      "sha256": "0caaf98693085ac91ebc01240ce38c86df14f7f3440e9e0ae2431e5c08de3162"
     },
     "technicalLabels": {
       "file": "ares_apc_technical.json",

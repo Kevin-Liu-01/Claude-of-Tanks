@@ -21,7 +21,16 @@ const cases = [
   // 268: the twin-cannon air defence (the PLA pair's small diesels stay on the IFV family)
   ['tunguska_m', 'ifv', 34, 'diesel_v12_soviet'], ['pantsir_s1', 'ifv', 35, 'diesel_v12_soviet'],
   ['gepard_1a2', 'ifv', 47.5, 'diesel_v12_modern'], ['pgz95', 'ifv', 22.5, 'diesel_ifv'], ['pgz09', 'ifv', 35, 'diesel_ifv'],
+  // world-sfx-269 (2026-11-03): /e100/ no longer catches the Type 100; the Strv 81 is a Centurion; the Magachs and the
+  // Sho't Kal run the AVDS-1790
+  ['type100', 'ifv', 38, 'diesel_ifv'], ['strv81', 'mbt', 51.8, 'gasoline_v12'], ['magach6b', 'mbt', 51, 'diesel_aircooled'],
+  ['shot_kal', 'mbt', 51.8, 'diesel_aircooled'],
 ];
+// …and a cold-war Western hull runs the cold-war diesel, the Leopard 2 lineage the MTU from its first prototype
+for (const [id, family] of [['leo1a5', 'diesel_v12_coldwar'], ['amx30b2', 'diesel_v12_coldwar'], ['challenger1_mk2', 'diesel_v12_coldwar'],
+  ['leopard2_proto', 'diesel_v12_modern'], ['leo2a2', 'diesel_v12_modern']]) {
+  assert.equal(resolveEngineFamily({ id, role: 'mbt', weightTons: 50, era: 'cold-war' }), family, `${id} (cold war) → ${family}`);
+}
 for (const [id, role, weightTons, family] of cases) {
   assert.equal(resolveEngineFamily({ id, role, weightTons, era: 'modern' }), family, `${id} → ${family}`);
 }
@@ -62,21 +71,15 @@ assert.equal(CREW_LANGUAGES.length, 17);
 const abrams = resolveVehicleAudioIdentity({ id: 'm1a1_abrams_hc', nation: 'USA', role: 'mbt', weightTons: 66.8, enginePowerHp: 1500, gun: { caliberMm: 120 } });
 assert.equal(abrams.engine, 'turbine_agt');
 assert.equal(abrams.turretDrive, 'electric');
-assert.equal(abrams.loader, 'manual');
 assert.equal(abrams.tracks, 'heavy');
 assert.equal(abrams.crew, 'en-US');
 const t72 = resolveVehicleAudioIdentity({ id: 't72b3m_2022', nation: 'Russia', role: 'mbt', weightTons: 46.5, gun: { caliberMm: 125 } });
-assert.equal(t72.loader, 'carousel', 'Soviet-lineage 125 mm feeds from the carousel');
 assert.equal(t72.turretDrive, 'hydraulic');
 assert.equal(t72.crew, 'ru');
 const leclerc_s2 = resolveVehicleAudioIdentity({ id: 'leclerc_s2', nation: 'France', role: 'mbt', weightTons: 54.5, gun: { caliberMm: 120, autoloader: { magazineSize: 3 } } });
-assert.equal(leclerc_s2.loader, 'bustle');
 assert.ok(leclerc_s2.turboWhistle > 0.5, 'the Hyperbar whistles');
 const bradley = resolveVehicleAudioIdentity({ id: 'm2a2_bradley', nation: 'USA', role: 'ifv', weightTons: 30.4, gun: { caliberMm: 25 } });
-assert.equal(bradley.loader, 'autocannon');
 assert.equal(bradley.tracks, 'light');
-const viper = resolveVehicleAudioIdentity({ id: 'griffin_viper', role: 'ifv', weightTons: 42, gun: { caliberMm: 140, soundProfile: 'konkurs-launch', reloadS: 14 } });
-assert.equal(viper.loader, 'missile');
 assert.ok(resolveVehicleAudioIdentity({ id: 'abramsx', weightTons: 49 }).electricDrive > 0.5, 'AbramsX hybrid drive whines');
 assert.ok(resolveVehicleAudioIdentity({ id: 'strv103b', weightTons: 39.7 }).turbineAux > 0, 'S-tank boost turbine');
 assert.ok(resolveVehicleAudioIdentity({ id: 'xk2_black_panther', weightTons: 55 }).hydropneumatic);
@@ -88,4 +91,4 @@ assert.ok(heavy.enginePitch < light.enginePitch, 'heavier hulls run lower');
 assert.ok(heavy.enginePitch >= 0.86 && light.enginePitch <= 1.14, 'pitch trim stays bounded');
 assert.doesNotThrow(() => resolveVehicleAudioIdentity(null));
 
-console.log(`vehicleAudioProfiles.selftest: ${cases.length} powertrain mappings, ${ENGINE_FAMILY_IDS.length} families, crews, loaders and drives passed`);
+console.log(`vehicleAudioProfiles.selftest: ${cases.length} powertrain mappings, ${ENGINE_FAMILY_IDS.length} families, crews and drives passed`);

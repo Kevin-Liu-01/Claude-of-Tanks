@@ -25804,14 +25804,14 @@
       "height": 512,
       "mime": "image/webp",
       "bytes": 26306,
-      "sha256": "c1515177c0646a41eec02779c62a71f1f61852a047341ab2b0ed0efecb42195d",
+      "sha256": "4b6ea339f30776bc40cdf3191f0f87cb612ce591a35fa5473b3e90825af920d7",
       "thumbnail": {
         "file": "thumbs/type10_dozer_angle.webp",
         "width": 256,
         "height": 256,
         "mime": "image/webp",
-        "bytes": 10596,
-        "sha256": "bc48b2315e79f86b53f488ae8994f1976ea7b860019907caca56200ef714c191"
+        "bytes": 10586,
+        "sha256": "eadaaa634fc7d8b3d77be808b527dd471634fc9a05ee6ac9f7055d11f12b1a8b"
       }
     },
     "top": {
@@ -25875,8 +25875,8 @@
       "width": 256,
       "height": 128,
       "mime": "image/png",
-      "bytes": 34084,
-      "sha256": "3a123ab56d85ac270400856afe74a7060d19e1f87054e86fc6a89cabdaf0066d"
+      "bytes": 32108,
+      "sha256": "741028668e3bb006e598cf9274645b4862d6e6960b28f0e08380b1ffbdd4ef57"
     },
     "technicalLabels": {
       "file": "type10_dozer_technical.json",

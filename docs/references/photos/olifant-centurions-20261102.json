@@ -1,0 +1,91 @@
+{
+  "schemaVersion": 1,
+  "tankIdSchema": 3,
+  "comparisonPurpose": "photographic-reference",
+  "numerical3DComparison": "unverified",
+  "dimensionToleranceFraction": 0.03,
+  "targets": {
+    "semel": {
+      "name": "Semel",
+      "authority": "Main ruled the South Africa line on 2026-11-02 (DECISIONS) on the owner's request the same day (\"lets make a new session to flesh out south african and australian tank trees\"): the Semel of 1974 (35 Centurion Mk 5s under the Skokiaan's Continental AVI-1790-8 and Allison CD-850-5) at tier II, the Olifant Mk 1's twin build, a photo-class first-party build on the Centurion family; no registered 3D comparison exists. Numerical 3D comparison remains unverified.",
+      "sources": [
+        "https://tanks-encyclopedia.com/coldwar/south_africa/olifant_mk.i",
+        "https://www.saarmourmuseum.com/centurion-mk-5-skokiaan-britainrsa",
+        "https://forum.warthunder.com/t/semel/111855",
+        "https://en.wikipedia.org/wiki/Olifant_(tank)"
+      ],
+      "widthM": 3.384,
+      "overallLengthM": 9.912,
+      "tallestM": 4.896,
+      "envelopeBasis": "The as-built envelope of the family's Mk 5 hull (7.557 m, 3.38 m over the side plates) with the 20-pdr Type B 2.3 m past the front guards and the AVDS/AVI-1790 deck; the Skokiaan survivor R90587 at Tempe shows the Mk 5 with its side plates on and the six-tube dischargers; the envelope holds the cupola MAG and the whips.",
+      "caliberMm": 84,
+      "launcherTubes": 0,
+      "roofMachineGuns": 1,
+      "crew": 4,
+      "unmannedTurret": false,
+      "test": "src/vehicles/profiles/southAfrica.selftest.mjs"
+    },
+    "olifant_mk1": {
+      "name": "Olifant Mk 1",
+      "authority": "Main ruled the South Africa line on 2026-11-02 (DECISIONS) on the owner's request the same day (\"lets make a new session to flesh out south african and australian tank trees\"): the Olifant Mk 1 of 1978 (153 Mk 3s converted 1979-84: the AVDS-1790-2A diesel, the 20-pdr kept) at tier II, the root of the South Africa tree, a photo-class first-party build on the Centurion family; no registered 3D comparison exists. Numerical 3D comparison remains unverified.",
+      "sources": [
+        "https://tanks-encyclopedia.com/coldwar/south_africa/olifant_mk.i",
+        "https://forum.warthunder.com/t/216405",
+        "https://forum-en-cdn.warthunder.com/original/3X/f/0/f086afda94733d52e706b18f8756f266862d5f86.jpeg",
+        "https://en.wikipedia.org/wiki/Olifant_(tank)"
+      ],
+      "widthM": 3.352,
+      "overallLengthM": 9.912,
+      "tallestM": 4.896,
+      "envelopeBasis": "The family's hull with the skirts off over the Horstmann bogies (3.28 m over the guards; TE's 7.56 x 3.39 x 2.94 m is over the skirts), the 20-pdr Type B, the AVDS deck, two banks of four 81 mm dischargers on the side bins and the net rack on the bustle, as the 1980 photographs show; the envelope holds the cupola MAG and the whips.",
+      "caliberMm": 84,
+      "launcherTubes": 0,
+      "roofMachineGuns": 1,
+      "crew": 4,
+      "unmannedTurret": false,
+      "test": "src/vehicles/profiles/southAfrica.selftest.mjs"
+    },
+    "olifant_mk1a": {
+      "name": "Olifant Mk 1A",
+      "authority": "Main ruled the South Africa line on 2026-11-02 (DECISIONS) on the owner's request the same day (\"lets make a new session to flesh out south african and australian tank trees\"): the Olifant Mk 1A of 1985 (the stabilised GT3 105 mm, the Eloptro sight and laser rangefinder) at tier III, a photo-class first-party build on the Centurion family; no registered 3D comparison exists. Numerical 3D comparison remains unverified.",
+      "sources": [
+        "https://tanks-encyclopedia.com/coldwar/south_africa/olifant_mk.i",
+        "https://www.saarmourmuseum.com/olifantmk1a",
+        "https://tanks-encyclopedia.com/wp-content/uploads/2017/10/DSCF3909-1.jpg",
+        "https://tanks-encyclopedia.com/wp-content/uploads/2017/11/Tank-1.jpg",
+        "https://en.wikipedia.org/wiki/Olifant_(tank)"
+      ],
+      "widthM": 3.352,
+      "overallLengthM": 9.683,
+      "tallestM": 4.896,
+      "envelopeBasis": "The Mk 1's skirtless hull and AVDS deck with the GT3 (L7 pattern) 2.07 m past the front guards, the long box on the bustle, the net rack on its back and the bush bar ahead of the nose, as the De Brug and live-firing photographs show; the envelope holds the cupola MAG and the whips.",
+      "caliberMm": 105,
+      "launcherTubes": 0,
+      "roofMachineGuns": 1,
+      "crew": 4,
+      "unmannedTurret": false,
+      "test": "src/vehicles/profiles/southAfrica.selftest.mjs"
+    },
+    "olifant_mk1b": {
+      "name": "Olifant Mk 1B",
+      "authority": "Main ruled the South Africa line on 2026-11-02 (DECISIONS) on the owner's request the same day (\"lets make a new session to flesh out south african and australian tank trees\"): the Olifant Mk 1B of 1991 (44 built by OMC: torsion bars, armoured skirts, passive glacis packs, spaced turret armour, the GT3B) at tier III, a photo-class first-party build on the Centurion family; no registered 3D comparison exists. Numerical 3D comparison remains unverified.",
+      "sources": [
+        "https://tanks-encyclopedia.com/coldwar/south_africa/olifant-mk1b-main-battle-tank/",
+        "https://www.army-technology.com/projects/olifant-mk1b-main-battle-tank/",
+        "https://tanks-encyclopedia.com/modern/south-africa/Olifant-mk2-main-battle-tank",
+        "https://tanks-encyclopedia.com/wp-content/uploads/2017/11/DSCF4692-640x360.jpg",
+        "https://tanks-encyclopedia.com/wp-content/uploads/2017/11/DSCF4691-640x360.jpg"
+      ],
+      "widthM": 3.428,
+      "overallLengthM": 9.683,
+      "tallestM": 5.197,
+      "envelopeBasis": "The Olifant Mk 2's hull (the family's 7.557 m with the armoured skirts, 3.43 m over their bolt heads) and its armoured turret without the Mk 2's stabilised sight post, with the searchlight box over the gun and the can rack across the bustle's back, as the Tempe museum tank's left, front and rear photographs show; the envelope holds the loader's 7.62 mm and the whips.",
+      "caliberMm": 105,
+      "launcherTubes": 0,
+      "roofMachineGuns": 1,
+      "crew": 4,
+      "unmannedTurret": false,
+      "test": "src/vehicles/profiles/southAfrica.selftest.mjs"
+    }
+  }
+}

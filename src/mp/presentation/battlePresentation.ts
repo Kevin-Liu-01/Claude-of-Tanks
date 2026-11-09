@@ -1276,6 +1276,8 @@ export function createBattlePresentation({
         bus.emit('shell:expired', {
           shellId: payload.shellId, shooterId: payload.shooterId, hitTerrain: payload.kind === 'terrain', hitKind: payload.kind,
           surfaceKind: payload.surfaceKind || payload.kind, normal: [payload.nx || 0, payload.ny ?? 1, payload.nz || 0],
+          // (impact-materials-269) the round's incidence, for the graze's skip; an older host's payload has none
+          ...(typeof payload.impactAngleDeg === 'number' ? { impactAngleDeg: payload.impactAngleDeg } : {}),
           shellType: payload.shellType, caliberMm: payload.caliberMm, pos: [payload.x, payload.y, payload.z],
           // the building the authority's round struck (any round: its hole, 2026-10-10)
           ...(typeof payload.structureId === 'number' ? { structureId: payload.structureId } : {}),
@@ -1292,6 +1294,11 @@ export function createBattlePresentation({
           shellId: payload.shellId, shooterId: payload.shooterId, pos: [payload.x, payload.y, payload.z], hitTerrain: false,
           shellType: payload.shellType, caliberMm: payload.caliberMm,
         });
+        return;
+      case 'drone_down':
+        // a drone shot down (the authority's counter-drone strike, sim/aerialCombat.ts strikeDrone), as the solo step
+        // raises it: heard breaking up where it flew, and the crew calls its own drone lost to fire or the enemy's our gun downed
+        bus.emit('drone:down', { id: payload.id, killerId: payload.killerId });
         return;
       case 'tank_destroyed': {
         const id = String(payload.id ?? '');

@@ -2848,8 +2848,8 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 9378,
-      "sha256": "359d8c69396b71a92a4e50b8359ed7bb10e15a0b2a824babbba2aa2bd728410b"
+      "bytes": 9380,
+      "sha256": "cb110c9ffb7f9b4090e5ec4557ebb627050e28f8e1aaece65d7a34bd81773f0b"
     },
     "side": {
       "file": "type96_72_long_side.webp",
@@ -2880,8 +2880,8 @@
       "width": 256,
       "height": 128,
       "mime": "image/png",
-      "bytes": 34746,
-      "sha256": "53a7e94e0cbf70e7ed775c79dfca19fb2cad230601c0e27e594de2390d415a49"
+      "bytes": 32664,
+      "sha256": "4f9e86da79bdc0a1394e7923b106bb91885fb93dd0484343d6b3992934f7ef05"
     },
     "technicalLabels": {
       "file": "type96_72_long_technical.json",

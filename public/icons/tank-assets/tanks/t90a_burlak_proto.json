@@ -5721,15 +5721,15 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 30654,
-      "sha256": "004e1f9dc6a4fdfe265864dc43171f64d8cd3d7eed0cd0fcf6730d1100dbc9a2",
+      "bytes": 30644,
+      "sha256": "951a8af9247bc00ebbec760b91f134c94a02fb692056805651f803e4ecb91f11",
       "thumbnail": {
         "file": "thumbs/t90a_burlak_proto_angle.webp",
         "width": 256,
         "height": 256,
         "mime": "image/webp",
-        "bytes": 12096,
-        "sha256": "a8c0750fda99603859575a068d2e17539ead0486cb3c89f599381c89bebf3bc5"
+        "bytes": 12114,
+        "sha256": "3de2b864c555a06fb7d67654f0e3c23bbb20027b6692c425aaab73cbc9feec56"
       }
     },
     "top": {
@@ -5737,8 +5737,8 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 15300,
-      "sha256": "9f29794fb4b7ff441f8e432ac73f0e2c7db368fa8d70a5f25f1b1162165821bf"
+      "bytes": 15294,
+      "sha256": "ca82ac05b6ccab1631258834a98db6c070b0908f8c1f6a6a9e90de63aff5a740"
     },
     "side": {
       "file": "t90a_burlak_proto_side.webp",
@@ -5793,8 +5793,8 @@
       "width": 256,
       "height": 128,
       "mime": "image/png",
-      "bytes": 36858,
-      "sha256": "6ddd31699f56f5c18478318bb87d04f99ad3ee5e551d6c77f3c902c834cdabde"
+      "bytes": 32511,
+      "sha256": "7affcd6d0d20754d0631dfdde037751157697a62ccc7e1dcd39a406cf0c015a5"
     },
     "technicalLabels": {
       "file": "t90a_burlak_proto_technical.json",
