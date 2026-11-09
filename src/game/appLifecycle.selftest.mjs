@@ -126,7 +126,10 @@ const game = () => ({ phase: 'garage', preBattleS: 0, result: null, resultTimeS:
 }
 
 // Source contract: nothing else writes game.phase, the dead 'ended' member is gone, and main's readers that the
-// hidden "Garage behind the report" state misled read the screen phase.
+// hidden "Garage behind the report" state misled read the screen phase. (round 8 Y3 review r1) The census also refuses
+// any `phase = 'battle'` assignment outside the owner, and main binds the owner's announcement to the bus's phase:change,
+// the one link from the phase writer to the audio engine's battle mode (269's battleEntryAmbience.selftest held both; it
+// was folded into src/audio/ambienceTeardown.selftest.mjs, which drives the entry paths through this owner).
 const srcRoot = fileURLToPath(new URL('..', import.meta.url));
 const writers = [];
 const walk = (dir) => {
@@ -135,14 +138,14 @@ const walk = (dir) => {
     if (statSync(path).isDirectory()) { walk(path); continue; }
     if (!name.endsWith('.ts') || name.endsWith('.d.ts')) continue;
     const text = readFileSync(path, 'utf8');
-    for (const match of text.matchAll(/\bgame\.phase\s*=(?!=)/g)) {
+    for (const match of text.matchAll(/\bgame\.phase\s*=(?!=)|\bphase\s*=\s*'battle'/g)) {
       writers.push(`${relative(srcRoot, path)}:${text.slice(0, match.index).split('\n').length}`);
     }
   }
 };
 walk(srcRoot);
 assert.deepEqual(writers.filter((at) => !at.startsWith('game/appLifecycle.ts')), [],
-  'every game.phase writer goes through transitionAppPhase');
+  'every game.phase writer (and every battle-phase assignment) goes through transitionAppPhase');
 const stateCore = readFileSync(new URL('./stateCore.ts', import.meta.url), 'utf8');
 assert.doesNotMatch(stateCore, /'ended'/, "the dead 'ended' phase is gone");
 const main = readFileSync(new URL('../main.ts', import.meta.url), 'utf8');
@@ -150,6 +153,8 @@ assert.doesNotMatch(main, /garageAwaitingHandoff/, 'no reader patches the hidden
 assert.match(main, /canLeaveBattle: \(\) => appLifecycle\.screenPhase === 'battle'/);
 assert.match(main, /gearVisible: \(\) => appLifecycle\.screenPhase === 'garage'/);
 assert.match(main, /getPhase: \(\) => appLifecycle\.state,/, 'the Studio key opens over a settled Garage screen only');
+assert.match(main, /createAppLifecycle\(\{\s*game,\s*announce: \(announcement\) => bus\.emit\('phase:change', announcement\),/,
+  "the page's lifecycle announces every phase it writes on the bus's phase:change");
 assert.match(main, /Object\.defineProperty\(window, '__APP_LIFECYCLE', \{ configurable: true, get: \(\) => appLifecycle\.snapshot\(\) \}\)/,
   'tools read the lifecycle read-only');
 

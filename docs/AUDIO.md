@@ -600,9 +600,9 @@ its army's register. Two parts:
 
 | Moment | Crew |
 |---|---|
-| Our sight settles (0.35 s) on a spotted enemy, gun loaded | the commander's fire command for the round in the breech ("Gunner, sabot, tank."), the gunner's "Identified." on a quiet net, "On the way." on the shot it called for |
+| Our sight settles (0.35 s) on an enemy the player sees, gun loaded | the commander's fire command for the round in the breech ("Gunner, sabot, tank."), the gunner's "Identified." on a quiet net, "On the way." on the shot it called for |
 | Our round left the target standing (no penetration, a ricochet, ERA, their APS, a miss), gun loaded again | "Re-engage." |
-| Our kill left no spotted enemy within 1.5 km | "Target. Cease fire." |
+| Our kill left no enemy the player sees within 1.5 km | "Target. Cease fire." |
 | A miss that came down beyond the hull it was laid on | "Over." (the miss's third take; "Short." the second) |
 | Our APS stopped their round / theirs stopped ours (no miss is called for it) | "A-P-S fired. Round defeated." / "Their A-P-S took it." |
 | ERA stopped their round / ours | "Reactive armor took it." / "Hit his reactive armor." |
@@ -628,7 +628,15 @@ the engine through each mode's opening and endings too. A network seat hears
 the same calls: the presentation now relays the authority's `drone_down` as
 `drone:down` (it had no case and was dropped), and the jump call reads the
 frame's airborne state rather than `tank:jump`, which a network seat never
-raises.
+raises. "Friendly extracted" alone is the solo seat's call: the authority stops
+sending a hull that leaves the field, so a network seat never sees an escort's
+rescued life. "An enemy the player sees" is the game's one visibility
+rule (`src/game/playerVisibility.ts`, as the HUD draws it), not the team's
+spot. The crew is silent behind the pause menu, a network battle's included:
+its opening cuts the line on the air and the queue, each of its edges cancels
+the calls the crew had armed (a kill heard behind it arms no cease fire for
+the resume), and the radio takes no line while it is open
+(`crewProcedure.selftest.mjs`).
 
 The reasoning exchange (2026-10-05, the Claude of Tanks / chain-of-thought
 joke) is once a battle and never costs a real call. Both lines are priority-0
