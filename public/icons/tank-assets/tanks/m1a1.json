@@ -675,16 +675,16 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 14920,
-      "sha256": "ef28eea8f819f7b635c6c5e155d21ff4b49963e29b576a4a6df20c91fb0f2b4a"
+      "bytes": 14912,
+      "sha256": "5db06d6bd2d8054f619168e76e1ec85b89dd54f93483759cf3290408da368d33"
     },
     "side": {
       "file": "m1a1_side.webp",
       "width": 512,
       "height": 256,
       "mime": "image/webp",
-      "bytes": 13764,
-      "sha256": "8d88f1265b8d304a1201e1f5e99350e3c8499be6055dc9f39fd6233224a303ae"
+      "bytes": 13752,
+      "sha256": "626e269c6865f52565797dc5da69f253cb337e2a2e6b061219cbab8c3025b4c0"
     },
     "topSilhouette": {
       "file": "m1a1_top_silhouette.png",
@@ -707,32 +707,32 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 26528,
-      "sha256": "f9484ba688968b906f99a4d38942c97ff5b0611208ba10c5ace35210dbaf437f"
+      "bytes": 26506,
+      "sha256": "28877946c81bc06b133027d91dc193cb0808342806ae9163a8370725c2edb3c8"
     },
     "modulesSide": {
       "file": "m1a1_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 29206,
-      "sha256": "dc58f511d26b021dcf693e44c302b4fb52b86e1d8905e95e035a6ed1798f4b38"
+      "bytes": 29204,
+      "sha256": "4e525bb705c0edd8191d56a58257d8dc5f0fab8df57b49bf5fa2c75de2fc185e"
     },
     "crewSide": {
       "file": "m1a1_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 27234,
-      "sha256": "4b7aced0837db457d3ffe0da9a778078e3fcdcbcca0024d12fb44ad54da1e46e"
+      "bytes": 27276,
+      "sha256": "8b4510b8ec89b74b0f1c21d43d14a903140ff8e46041eb2aeb5dd5deee9be670"
     },
     "markings": {
       "file": "m1a1_markings.png",
       "width": 256,
       "height": 128,
       "mime": "image/png",
-      "bytes": 36276,
-      "sha256": "752b5443f9dbe1d4b0674014c0beffc1dd479ce044edc2672248743efbe9c90e"
+      "bytes": 35105,
+      "sha256": "0d351873ed5dabfb6b68a30302ce9c4dd995e9eef83352ce684186f1f30fd549"
     },
     "technicalLabels": {
       "file": "m1a1_technical.json",

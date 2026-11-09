@@ -1613,16 +1613,16 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 24898,
-      "sha256": "bf8fe664c3375eecaf3c3629244ad548f0c47a6b55aa51c001e6e37637cc7531"
+      "bytes": 24914,
+      "sha256": "1db723595e861de336a710238b548a7a4e1fe82cdc9d153673c5cd02cd3fc7ff"
     },
     "side": {
       "file": "m3a3_bradley_side.webp",
       "width": 512,
       "height": 256,
       "mime": "image/webp",
-      "bytes": 17526,
-      "sha256": "b5ba09cf37f007d94e5ec16656747f7f86dd16801d34fd19c37fb1ddc21e7112"
+      "bytes": 17512,
+      "sha256": "2215aa23583d891d627b7f474a301de436ebcfc810e0f03547037bb65a5ad780"
     },
     "topSilhouette": {
       "file": "m3a3_bradley_top_silhouette.png",
@@ -1645,32 +1645,32 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 35962,
-      "sha256": "779acb738dbc9112cbc4709864ee891c170a3c7a9b18a11a46ee5622165e8ffe"
+      "bytes": 36030,
+      "sha256": "1b1cba9d6542ad5dd1ad3f055b352a51f76f4d1bc7bbabdb8c68216f1dc7e002"
     },
     "modulesSide": {
       "file": "m3a3_bradley_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 40408,
-      "sha256": "1045498d41585a954e5e02f1722642ffd40a90d10bebc51957cba9f82975de8c"
+      "bytes": 40436,
+      "sha256": "4dc585e33a0972e114589aaa62faaa6328b720b9a847a33baa8e53deda1df4f6"
     },
     "crewSide": {
       "file": "m3a3_bradley_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 38542,
-      "sha256": "c39c91dad58dee3fc518b3ca8e010016f282fae4504cd1c28ec9f5d59000be60"
+      "bytes": 38616,
+      "sha256": "125e3dcacecf778c1234cb64f4685d3f7c632c5c9990c9d84e2998ca43ea7fda"
     },
     "markings": {
       "file": "m3a3_bradley_markings.png",
       "width": 256,
       "height": 128,
       "mime": "image/png",
-      "bytes": 38622,
-      "sha256": "cb7cea02b5d296318e8b53cc57b8a81fcf0f040312adafa3624702543571f9d8"
+      "bytes": 35216,
+      "sha256": "0cbfc59ca32063037572aa28aebf2328f80aec082f30a615a227e92dcf17e170"
     },
     "technicalLabels": {
       "file": "m3a3_bradley_technical.json",

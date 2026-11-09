@@ -1632,15 +1632,15 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 31100,
-      "sha256": "4d2aa38c63e6627f689b4196650ebd51a44a83474017a9827040e36814dddf74",
+      "bytes": 31116,
+      "sha256": "977683b669c993d305b9257aedd6a323732c2ebe0cce21c2ec67a4b7cd96b276",
       "thumbnail": {
         "file": "thumbs/m1a1_abrams_aim_angle.webp",
         "width": 256,
         "height": 256,
         "mime": "image/webp",
-        "bytes": 12378,
-        "sha256": "d8aa95d2f39928a6e1268e37aa9e3c98fe80f3d665ec0cc4cb646e27383a0f7a"
+        "bytes": 12386,
+        "sha256": "39fe1a3c303c14db28091adbca488d6004456006933baa7ba16e51ad7d8413ee"
       }
     },
     "top": {
@@ -1648,8 +1648,8 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 17048,
-      "sha256": "a44e154185da977ca35921cdedd5d3cc143e52dc5ef0d91949e1177e5d472f40"
+      "bytes": 17042,
+      "sha256": "78b0ef5669b2e6a9af68aeec2c7e7d7ca84ad7d67be4a4bb468945ba2ac5bc71"
     },
     "side": {
       "file": "m1a1_abrams_aim_side.webp",
@@ -1704,8 +1704,8 @@
       "width": 256,
       "height": 128,
       "mime": "image/png",
-      "bytes": 37387,
-      "sha256": "4bcce071873d395492ee22b98269de052e2da00bb399405cbfdf4fe5ba5d82f8"
+      "bytes": 34686,
+      "sha256": "0cb7c6570b524c4f9b66fe2f18ffee3cf775b31c550af7776c72f6d8f0c35478"
     },
     "technicalLabels": {
       "file": "m1a1_abrams_aim_technical.json",
