@@ -1,11 +1,14 @@
 // The couch lobby's away and resume, end to end in memory (round 8 Y5 s3-07, s3-08; docs/COUCH-MODE.md "The lobby"):
 // the real desktop lobby (padLobby.ts, one receiver per seat) wired to the real pairing actor (padActor.ts) over an
-// in-memory socket pair, on the actor's own clock. The TV's lobby socket blinks while phones sit and the host presses
-// Start (setOpen(false)) during the blink: after the resume inside the desktop's grace the actor's window is closed and
-// the seats are kept (the press used to be dropped, so phones kept joining a lobby the host had closed). The reverse
-// order: every phone has left when the TV blinks; the lobby resumes instead of ending (its code was on screen), and a
-// seat that leaves while the TV is away leaves the desktop's grace in force and is let go on the TV once it is back (the
-// resume's roll call). Reopen is not offered while the lobby reconnects.
+// in-memory socket pair, on the actor's own clock. The TV's lobby socket blinks while phones sit and the lobby is asked
+// to close (setOpen(false)) during the blink: after the resume inside the desktop's grace the actor's window is closed
+// and the seats are kept (H0's padLobby dropped an ask its socket could not carry, so the window stayed open). No
+// product press reaches setOpen(false) on this branch: Start calls only request.start (couchLobby.ts) and Reopen, the
+// one product caller, is hidden while away; app-couch's Start (s3-09, couchRuntime.startBattle -> lobby.setOpen(false))
+// is the press this queue serves once it lands, and the Y11 merge runs the two together. The reverse order: every phone
+// has left when the TV blinks; the lobby resumes instead of ending (its code was on screen), and a seat that leaves
+// while the TV is away leaves the desktop's grace in force and is let go on the TV once it is back (the resume's roll
+// call). Reopen is not offered while the lobby reconnects.
 import assert from 'node:assert/strict';
 import { createHash, randomBytes } from 'node:crypto';
 import { PadActor } from './padActor.ts';
@@ -120,8 +123,9 @@ async function lobbyWith(phones) {
   return { host, lobby, seated, gone };
 }
 
-/** At the 'away' publish, the host presses Start (setOpen(false)) in the same turn, as a click would land. */
-function pressStartWhenAway(lobby, also = () => {}) {
+/** At the 'away' publish, the lobby is asked to close (setOpen(false), app-couch's Start) in the same turn, as a click
+ *  would land. */
+function closeWhenAway(lobby, also = () => {}) {
   const seen = { pressed: false, offered: null };
   lobby.subscribe((view) => {
     if (view.state !== 'away' || seen.pressed) return;
@@ -133,12 +137,12 @@ function pressStartWhenAway(lobby, also = () => {}) {
   return seen;
 }
 
-// ---- seats held: the TV blinks, Start is pressed while away, the lobby resumes inside the grace ----------------------
+// ---- seats held: the TV blinks, the lobby is closed while away, it resumes inside the grace --------------------------
 {
   const { host, lobby } = await lobbyWith(2);
   const resumesBefore = host.resumes;
   // the blink lasts most of the desktop's grace on the host's clock (the join window still open)
-  const seen = pressStartWhenAway(lobby, () => host.advance(PAD_DESKTOP_GRACE_MS - 60_000));
+  const seen = closeWhenAway(lobby, () => host.advance(PAD_DESKTOP_GRACE_MS - 60_000));
   host.dropDesktop();
   await until(() => seen.pressed, 'the lobby goes away');
   await until(() => lobby.view.state !== 'away', 'the lobby comes back (or ends)');
@@ -147,7 +151,7 @@ function pressStartWhenAway(lobby, also = () => {}) {
   const state = host.actor.exportState();
   assert.ok(state, 'the lobby holds through the blink');
   assert.ok(host.now < state.createdAt + PAD_LOBBY_JOIN_MS, '(the window would still be open by itself)');
-  assert.equal(state.joinUntil, null, 'Start pressed while the TV was away closed the join window after the resume');
+  assert.equal(state.joinUntil, null, 'a setOpen(false) asked while the TV was away closed the join window after the resume');
   assert.equal(lobby.view.state, 'closed', 'and the TV shows it closed');
   assert.deepEqual(state.seats.map((seat) => seat.seat), [1, 2], 'the seats are kept');
   assert.deepEqual(lobby.view.seats.map((seat) => seat.seat), [1, 2]);
@@ -166,14 +170,14 @@ function pressStartWhenAway(lobby, also = () => {}) {
   const { host, lobby, seated } = await lobbyWith(1);
   seated[0].send({ t: 'end' });
   await until(() => lobby.view.seats.length === 0, 'the last seat leaves');
-  const seen = pressStartWhenAway(lobby);
+  const seen = closeWhenAway(lobby);
   host.dropDesktop();
   await until(() => seen.pressed, 'the lobby goes away');
   await until(() => lobby.view.state !== 'away', 'the lobby comes back (or ends)');
   await settle();
   assert.notEqual(lobby.view.state, 'ended', `a lobby whose phones all left resumes after a blink (it ended: ${lobby.view.reason})`);
   assert.ok(host.actor.exportState(), 'the host still holds it');
-  assert.equal(host.actor.exportState().joinUntil, null, 'and Start pressed while away closed its window');
+  assert.equal(host.actor.exportState().joinUntil, null, 'and a setOpen(false) asked while away closed its window');
   assert.equal(lobby.view.state, 'closed');
   lobby.end();
 }
@@ -217,5 +221,5 @@ function pressStartWhenAway(lobby, also = () => {}) {
   assert.ok(!/publish\(\{[^}]*\bstate\b/.test(source), 'publish never carries a state');
 }
 
-console.log('padLobbyResume.selftest: PASS — a Start pressed while the TV is away reaches the host after the resume; a lobby whose phones left resumes after a blink; the grace stands when the last seat leaves while away; Reopen only on a closed lobby; one state writer');
+console.log('padLobbyResume.selftest: PASS — a setOpen(false) asked while the TV is away reaches the host after the resume; a lobby whose phones left resumes after a blink; the grace stands when the last seat leaves while away; Reopen only on a closed lobby; one state writer');
 process.exit(0);
