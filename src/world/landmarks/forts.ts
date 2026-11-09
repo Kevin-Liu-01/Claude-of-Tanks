@@ -175,7 +175,7 @@ export const desertFort: LandmarkBuilder = (ctx) => {
   return { parts: sink.finish() };
 };
 
-const TURF = rgb(0x6f7d45), TURF_DRY = rgb(0x8a8456), ARMOUR = rgb(0x3e423f), WIRE = rgb(0x3a3430);
+const TURF = rgb(0x6f7d45), TURF_DRY = rgb(0x8a8456), SNOW = rgb(0xe4e9ee), SNOW_DRY = rgb(0xd3dbe2), ARMOUR = rgb(0x3e423f), WIRE = rgb(0x3a3430);
 
 /**
  * casemateFort: a fortress front of the 1880s-1910s as a set piece, in two styles.
@@ -193,6 +193,8 @@ export const casemateFort: LandmarkBuilder = (ctx) => {
   const sink = new PartSink(uvOffset(ctx.rng));
   const v = ctx.variant;
   const alpine = ctx.params.style === 'alpine';
+  // the cover's earth: turf in Lorraine; on the Alpine spurs the snow that lies on every other slope of the map
+  const EARTH = alpine ? SNOW : TURF, EARTH_DRY = alpine ? SNOW_DRY : TURF_DRY;
   const Lf = num(ctx, 'length', 24, 90), D = num(ctx, 'depth', 10, 30), H = num(ctx, 'height', 3.5, 8);
   const cup = Math.round(num(ctx, 'cupolas', 0, 4)), foot = -0.6 - ctx.groundFall;
   const wall: RegionalBucket = alpine ? 'stone' : 'plaster3', z1 = D / 2 - 6, z0 = -D / 2;
@@ -249,7 +251,7 @@ export const casemateFort: LandmarkBuilder = (ctx) => {
   const shoulder: Vec3[] = [[-Lf / 2 - 0.1, H + (crest - H) * 0.78, z1 - 0.9], [Lf / 2 + 0.1, H + (crest - H) * 0.78, z1 - 0.9]];
   // (the back's foot, in the block's frame: the ground there less the block's seat)
   const back: Vec3[] = [[-Lf / 2 - ex, g(-Lf / 2 - ex, z0) - yb, z0], [Lf / 2 + ex, g(Lf / 2 + ex, z0) - yb, z0]];
-  const turf = (k: number) => (k % 2 ? TURF : TURF_DRY);
+  const turf = (k: number) => (k % 2 ? EARTH : EARTH_DRY);
   const segs = 10;
   for (let i = 0; i < segs; i++) {
     const a = i / segs, b = (i + 1) / segs, lerp = (p: Vec3, q: Vec3, t: number): Vec3 => [p[0] + (q[0] - p[0]) * t, p[1] + (q[1] - p[1]) * t, p[2] + (q[2] - p[2]) * t];
@@ -263,11 +265,11 @@ export const casemateFort: LandmarkBuilder = (ctx) => {
   for (const s of [-1, 1]) {
     const r: Vec3 = [s * Lf / 2, crest, rz], e: Vec3 = [s * (Lf / 2 + 0.3), H + 0.4, z1 + 0.5], b: Vec3 = back[s > 0 ? 1 : 0];
     const gr: Vec3 = [s * (Lf / 2 + ex * 0.6), Math.min(g(s * (Lf / 2 + ex * 0.6), z1 + 0.5) - yb, 0) - 0.6, z1 + 0.5];
-    sink.polygon('structureWood', s > 0 ? [e, gr, b, r] : [r, b, gr, e], { colour: TURF });
+    sink.polygon('structureWood', s > 0 ? [e, gr, b, r] : [r, b, gr, e], { colour: EARTH });
     // the earth banked against the block's end, its wing slope falling from the cornice to the ground beside the front,
     // so the block sits buried in the hill and only its front shows
     const ge = Math.min(g(s * (Lf / 2 + ex), z1) - yb, 0) - 0.4;
-    extrude(sink, 'structureWood', [[s * Lf / 2, blockFoot, z1 + 0.5], [s * (Lf / 2 + ex), ge, z1 + 0.5], [s * Lf / 2, H + 0.4, z1 + 0.5]], [0, 0, -1], z1 + 0.5 - (cz - 1.0), { colour: shade(TURF, 0.96) });
+    extrude(sink, 'structureWood', [[s * Lf / 2, blockFoot, z1 + 0.5], [s * (Lf / 2 + ex), ge, z1 + 0.5], [s * Lf / 2, H + 0.4, z1 + 0.5]], [0, 0, -1], z1 + 0.5 - (cz - 1.0), { colour: shade(EARTH, 0.96) });
   }
   // the cornice's drip edge, a thin slab proud under its lip
   sink.span(wall, -Lf / 2 - 0.4, H - 0.32, z1 + 0.35, Lf / 2 + 0.4, H - 0.1, z1 + 0.62, { decor: true, shade: 0.8 });
@@ -281,12 +283,12 @@ export const casemateFort: LandmarkBuilder = (ctx) => {
       // the parapet's run between two embrasures (or the terrace's ends)
       const x0 = -Lf / 2 + 2 + k * pitch - (k ? pitch / 2 - 0.7 : 0), x1 = Math.min(Lf / 2 - 2, -Lf / 2 + 2 + k * pitch + pitch / 2 - 0.7);
       if (x1 - x0 < 0.5) continue;
-      extrude(sink, 'structureWood', [[x0, py, tz + 1.5], [x0, py + 1.35, tz + 1.5], [x0, py + 1.35, tz + 2.5], [x0, py - 0.2, tz + 4.4]], [1, 0, 0], x1 - x0, { colour: shade(TURF, 0.95 + v() * 0.08) });
+      extrude(sink, 'structureWood', [[x0, py, tz + 1.5], [x0, py + 1.35, tz + 1.5], [x0, py + 1.35, tz + 2.5], [x0, py - 0.2, tz + 4.4]], [1, 0, 0], x1 - x0, { colour: shade(EARTH, 0.95 + v() * 0.08) });
       sink.span('stone', x0, py, tz + 1.36, x1, py + 1.35, tz + 1.5, { decor: true, shade: 0.95 });
       if (k > 0 && k < guns) {
         // the traverse behind the parapet between the guns: an earth wedge, high at the parapet, low at the back
         const xm = -Lf / 2 + 2 + k * pitch - pitch / 2;
-        extrude(sink, 'structureWood', [[xm - 1.1, py, tz + 1.5], [xm + 1.1, py, tz + 1.5], [xm + 0.6, py + 1.7, tz + 1.5], [xm - 0.6, py + 1.7, tz + 1.5]], [0, 0, -1], 4.2, { colour: shade(TURF, 0.9) });
+        extrude(sink, 'structureWood', [[xm - 1.1, py, tz + 1.5], [xm + 1.1, py, tz + 1.5], [xm + 0.6, py + 1.7, tz + 1.5], [xm - 0.6, py + 1.7, tz + 1.5]], [0, 0, -1], 4.2, { colour: shade(EARTH, 0.9) });
       }
     }
   } else {

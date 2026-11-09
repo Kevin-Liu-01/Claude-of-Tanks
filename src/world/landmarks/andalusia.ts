@@ -174,7 +174,7 @@ export const alcazaba: LandmarkBuilder = (ctx) => {
   const sink = new PartSink(uvOffset(ctx.rng));
   const v = ctx.variant;
   const K = num(ctx, 'keep', 8, 16), KH = num(ctx, 'height', 12, 26), WH = num(ctx, 'wall', 5, 12), W = num(ctx, 'ward', 24, 60), D = num(ctx, 'depth', 18, 50);
-  const ruin = num(ctx, 'ruin', 0, 0.6), foot = -0.6 - ctx.groundFall, t = 2.0, earth = 'plaster2' as const;
+  const ruin = num(ctx, 'ruin', 0, 0.6), foot = -0.6 - ctx.groundFall, t = 2.0, earth = 'plaster2' as const, merlonCut = 0.3;
   // the walls: the four sides of the ward between the corner towers, each in runs with breaches; the front's gate gap
   const corners: Array<[number, number]> = [[-W / 2, D / 2], [W / 2, D / 2], [W / 2, -D / 2], [-W / 2, -D / 2]];
   for (let k = 0; k < 4; k++) {
@@ -193,16 +193,22 @@ export const alcazaba: LandmarkBuilder = (ctx) => {
         // (the wall's run along its local z, t thick across x; local -x is the ward's outside)
         const len = s1 - s0, pieces = Math.max(2, Math.round(len / 1.5));
         // its mass, the head eroded block by block
+        // (each block its own lift of the tapia, shaded apart; a standing run's merlon seated on its block's own head, on
+        // the wall's outer half with the wall walk behind it; `merlonCut` of them fallen)
         for (let i = 0; i < pieces; i++) {
-          const z0 = -len / 2 + len * i / pieces - 0.01, z1 = -len / 2 + len * (i + 1) / pieces + 0.01;
-          sink.span(earth, -t / 2, foot, z0, t / 2, h - v() * (fallen ? 0.9 : 0.45), z1, {});
+          const z0 = -len / 2 + len * i / pieces, z1 = -len / 2 + len * (i + 1) / pieces, head = h - v() * (fallen ? 0.9 : 0.45);
+          sink.span(earth, -t / 2, foot, z0, t / 2, head, z1, { shade: 0.9 + v() * 0.14 });
+          if (!fallen && v() >= merlonCut) {
+            const m = (z1 - z0 - 0.9) / 2;
+            sink.span(earth, -t / 2, head - 0.05, z0 + m, -t / 2 + 0.75, head + 1.0 + v() * 0.15, z1 - m, { shade: 0.95 + v() * 0.1 });
+          }
         }
         // the stone plinth's batter at its foot
-        sink.span('stone', -t / 2 - 0.35, foot, -len / 2, t / 2 + 0.35, 1.1, len / 2, { shade: 0.9 });
+        extrude(sink, 'stone', [[-t / 2 - 0.4, foot, -len / 2], [t / 2 + 0.4, foot, -len / 2], [t / 2 + 0.02, 1.1, -len / 2], [-t / 2 - 0.02, 1.1, -len / 2]], [0, 0, 1], len, { shade: 0.9 });
         // the tapia's formwork: the courses' seams on both faces, the putlog holes along them on the outside
         for (let y = 1.75; y < h - 0.55; y += 0.85) {
-          sink.quad('dark', [-t / 2 - 0.006, y, len / 2], [-t / 2 - 0.006, y, -len / 2], [-t / 2 - 0.006, y + 0.045, -len / 2], [-t / 2 - 0.006, y + 0.045, len / 2], { decor: true, shade: 1.6 });
-          sink.quad('dark', [t / 2 + 0.006, y, -len / 2], [t / 2 + 0.006, y, len / 2], [t / 2 + 0.006, y + 0.045, len / 2], [t / 2 + 0.006, y + 0.045, -len / 2], { decor: true, shade: 1.6 });
+          sink.quad('dark', [-t / 2 - 0.03, y, len / 2], [-t / 2 - 0.03, y, -len / 2], [-t / 2 - 0.03, y + 0.05, -len / 2], [-t / 2 - 0.03, y + 0.05, len / 2], { decor: true, shade: 1.6 });
+          sink.quad('dark', [t / 2 + 0.03, y, -len / 2], [t / 2 + 0.03, y, len / 2], [t / 2 + 0.03, y + 0.05, len / 2], [t / 2 + 0.03, y + 0.05, -len / 2], { decor: true, shade: 1.6 });
           for (let z = -len / 2 + 0.6 + v() * 0.4; z < len / 2 - 0.3; z += 1.15) sink.quad('dark', [-t / 2 - 0.008, y + 0.05, z + 0.08], [-t / 2 - 0.008, y + 0.05, z - 0.08], [-t / 2 - 0.008, y + 0.2, z - 0.08], [-t / 2 - 0.008, y + 0.2, z + 0.08], { decor: true, fine: 'near' });
         }
         if (fallen) {
@@ -214,13 +220,15 @@ export const alcazaba: LandmarkBuilder = (ctx) => {
           }
         }
       });
-      if (!fallen) merlons(sink, [a[0] + ux * s0, a[1] + uz * s0], [a[0] + ux * s1, a[1] + uz * s1], WH - 0.6, t * 0.4, v, 0.35);
     }
   }
   // the gate: two flanking towers either side of the front gap, the horseshoe arch over it between them
   const gr = Math.max(2, Math.round(W / 6)), gs0 = W * Math.floor(gr / 2) / gr - W / 2, gs1 = gs0 + W / gr;
   for (const gx of [gs0 - 1.8, gs1 + 1.8]) sink.span(earth, gx - 1.8, foot, D / 2 - 2.0, gx + 1.8, WH + 2.2, D / 2 + 1.6, {});
-  for (const gx of [gs0 - 1.8, gs1 + 1.8]) merlons(sink, [gx - 1.8, D / 2 + 1.6], [gx + 1.8, D / 2 + 1.6], WH + 2.2, 0.5, v, 0.2);
+  for (const gx of [gs0 - 1.8, gs1 + 1.8]) {
+    const x0 = gx - 1.55, x1 = gx + 1.55, z0 = D / 2 - 1.75, z1 = D / 2 + 1.35;
+    for (const [a, b] of [[[x0, z1], [x1, z1]], [[x1, z1], [x1, z0]], [[x1, z0], [x0, z0]], [[x0, z0], [x0, z1]]] as const) merlons(sink, a, b, WH + 2.2, 0.5, v, 0.15);
+  }
   const ga = (gs1 - gs0) / 2, gc = (gs0 + gs1) / 2, spring = 3.6, n = 12, zf = D / 2 + 1.0, zb = D / 2 - 1.0;
   sink.span(earth, gs0, spring + ga * 1.1, zb, gs1, WH + 0.6, zf, {});
   // the horseshoe: the arc runs past the half circle (to 200 degrees) back in toward the jambs; its spandrels, the
@@ -246,17 +254,18 @@ export const alcazaba: LandmarkBuilder = (ctx) => {
   for (const [cx, cz] of corners) {
     const h = WH + 2.5 - (v() < ruin ? 3 + v() * 3 : 0);
     sink.span(earth, cx - 3, foot, cz - 3, cx + 3, h, cz + 3, {});
-    sink.span('stone', cx - 3.35, foot, cz - 3.35, cx + 3.35, 1.3, cz + 3.35, { shade: 0.9 });
+    revolve(sink, 'stone', cx, cz, [[3.45 * Math.SQRT2, foot], [3.02 * Math.SQRT2, 1.3]], 4, { shade: 0.9 }, Math.PI / 4);
     for (const [a, b] of [[[cx - 2.8, cz + 2.8], [cx + 2.8, cz + 2.8]], [[cx + 2.8, cz + 2.8], [cx + 2.8, cz - 2.8]], [[cx + 2.8, cz - 2.8], [cx - 2.8, cz - 2.8]], [[cx - 2.8, cz - 2.8], [cx - 2.8, cz + 2.8]]] as const) merlons(sink, a, b, h, 0.5, v, 0.4);
   }
   // the keep at the ward's back-left, inside the corner tower's line: its tapia courses, the arrow slits, the broken top
   const kx = -W / 2 + K / 2 + 3.5, kz = -D / 2 + K / 2 + 3.5;
-  sink.span('stone', kx - K / 2 - 0.4, foot, kz - K / 2 - 0.4, kx + K / 2 + 0.4, 1.6, kz + K / 2 + 0.4, { shade: 0.9 });
+  revolve(sink, 'stone', kx, kz, [[(K / 2 + 0.5) * Math.SQRT2, foot], [(K / 2 + 0.02) * Math.SQRT2, 1.6], [(K / 2 - 0.2) * Math.SQRT2, 1.6]], 4, { shade: 0.9 }, Math.PI / 4);
   sink.span(earth, kx - K / 2, 1.6, kz - K / 2, kx + K / 2, KH, kz + K / 2, {});
   // the formwork's course lines (tapia) and the putlog holes in rows, the slits, on the keep's faces
   for (let y = 2.4; y < KH - 0.5; y += 0.85) for (const [ox, oz] of [[0, 1], [1, 0], [0, -1], [-1, 0]] as const) {
-    const ax = ox === 0 ? 1 : 0, az = ox === 0 ? 0 : 1, px = kx + ox * (K / 2 + 0.005), pz = kz + oz * (K / 2 + 0.005);
-    sink.span('dark', Math.min(px - ax * K / 2, px + ax * K / 2), y, Math.min(pz - az * K / 2, pz + az * K / 2), Math.max(px - ax * K / 2, px + ax * K / 2) + (ax ? 0 : 0.01), y + 0.045, Math.max(pz - az * K / 2, pz + az * K / 2) + (az ? 0 : 0.01), { decor: true });
+    // (a slab 0.02 thick standing 0.02 clear of the face, along it)
+    const cx0 = kx + ox * (K / 2 + 0.02), cz0 = kz + oz * (K / 2 + 0.02), ex = ox ? 0.01 : K / 2, ez = oz ? 0.01 : K / 2;
+    sink.span('dark', cx0 + ox * 0.01 - ex, y, cz0 + oz * 0.01 - ez, cx0 + ox * 0.01 + ex, y + 0.05, cz0 + oz * 0.01 + ez, { decor: true });
   }
   for (const [ox, oz] of [[0, 1], [1, 0], [0, -1], [-1, 0]] as const) for (const y of [KH * 0.45, KH * 0.75]) {
     sink.span('dark', kx + ox * (K / 2 + 0.01) - (oz ? 0.12 : 0.02), y, kz + oz * (K / 2 + 0.01) - (ox ? 0.12 : 0.02), kx + ox * (K / 2 + 0.01) + (oz ? 0.12 : 0.02), y + 1.3, kz + oz * (K / 2 + 0.01) + (ox ? 0.12 : 0.02), { decor: true });
