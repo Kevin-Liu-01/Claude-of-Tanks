@@ -859,7 +859,7 @@ export function createAudio({
     say,
     now: () => ctx?.currentTime ?? 0,
     // the battle mode's own facts (2026-11-02 audit F11: battleMode.ts), never flags of the crew's or the engine's; the
-    // crew's battle and life start on the engine's edges (resetBattlePlay, the respawn branch, the death latch)
+    // crew's battle and life start on the engine's edges (resetBattlePlay; startOwnLife at each revive of our hull)
     live: () => battleMode.phase === 'battle' && battleMode.rolledOut && !battleMode.over && !battleMode.paused
       && playerId != null && tanks.get(playerId)?.alive !== false,
     inBattle: () => battleMode.phase === 'battle' && !battleMode.over,
@@ -2022,16 +2022,11 @@ export function createAudio({
           forgetModuleStates(payload.id);
         }
         if (playerId != null && payload.id === playerId) {
-          // A fresh hull: alive before the next frame reads it (the event lands inside the sim step), and a new life's
-          // one-shot calls (low hull, low ammunition) armed again.
+          // A fresh hull: alive before the next frame reads it (the event lands inside the sim step), and its new life
+          // (startOwnLife: the one-shot calls armed again, the crew's life afresh).
           const info = tanks.get(playerId);
           if (info) info.alive = true;
-          lowHpCalled = false;
-          ammoLowCalled = false;
-          heartbeatBelow = 0;
-          radio?.setRadioDamage(0);
-          // the crew's life too: nothing the last life armed (a cease fire, a drone's recovery) is called in this one
-          crew.startLife();
+          startOwnLife();
           play('ui_respawn');
           say('respawn', { delayS: 0.5 });
         }
@@ -2249,6 +2244,21 @@ export function createAudio({
     return !!info && info.seenAt === indexFrame && info.visible;
   }
 
+  /**
+   * Our hull's new life, at each revive the engine notices (round 8 Y3 s1-01, review r1): its respawn event, or with no
+   * event the frame that shows it standing again after its death (indexTanks; sim/matchModes.ts adoptLiveCombat, a
+   * migrated host's revive, emits no mode_respawn). The life's one-shot calls (low hull, low ammunition) arm again, the
+   * heartbeat and the radio damage go with the old hull, and the crew's life starts afresh: nothing the last life armed,
+   * or its rounds armed after our death (a posthumous kill's cease fire), is called in this one.
+   */
+  function startOwnLife(): void {
+    lowHpCalled = false;
+    ammoLowCalled = false;
+    heartbeatBelow = 0;
+    radio?.setRadioDamage(0);
+    crew.startLife();
+  }
+
   function indexTanks(list: readonly RuntimeValue[], dt: number, visible?: (hull: VisibilityHull) => boolean): void {
     indexFrame++;
     for (let i = 0; i < list.length; i++) {
@@ -2297,7 +2307,11 @@ export function createAudio({
         const seenDead = deathLatch.get(entity.id);
         if (seenDead !== undefined) {
           if (!info.alive) { if (!seenDead) deathLatch.set(entity.id, true); }
-          else if (seenDead) deathLatch.delete(entity.id);
+          else if (seenDead) {
+            deathLatch.delete(entity.id);
+            // our hull standing again with no respawn event (a migrated host's adoptLiveCombat sends none): a new life
+            if (entity.id === playerId) startOwnLife();
+          }
         }
       }
       if (info.suited == null) info.suited = fieldSuitOf(list[i]);
@@ -2887,9 +2901,11 @@ export function createAudio({
         if (ready()) play(battleMode.killcam ? 'killcam_in' : 'killcam_out');
         break;
       case 'pause':
-        // (round 8 Y3 s1-03) the pause menu silences the net: the line on the air and the queued ones go, and every call the
-        // crew had armed is cancelled (update runs neither the radio nor the crew while paused, say() takes no line)
-        if (battleMode.paused) { radio?.silence(); crew.pause(); }
+        // (round 8 Y3 s1-03) the pause menu silences the net: the line on the air and the queued ones go as it opens, and
+        // each edge cancels every call the crew had armed, the closing one what a network battle armed behind the menu
+        // (update runs neither the radio nor the crew while paused, say() takes no line)
+        if (battleMode.paused) radio?.silence();
+        crew.cancelArmed();
         break;
     }
     chooseSnapshot();
@@ -3059,7 +3075,8 @@ export function createAudio({
       deathLatch.set(e.id, false);
       onTankDestroyed(e);
       updateTeamCounts();
-      // the crew hears each death once a life too (round 8 Y3 s1-01): ours ends our life's calls, one we made is a kill
+      // the crew hears each death once a life too (round 8 Y3 s1-01): one we made is a kill (our next life starts at the
+      // revive, startOwnLife)
       crew.onDestroyed(e);
     });
     // a network battle restarted under this seat: a new life for every hull (state, taken whether or not the graph

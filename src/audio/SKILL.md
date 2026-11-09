@@ -33,8 +33,8 @@ call for a tank crew's line, from the exhaustive `MODE_CREW` and `GUNSHIP_CREW`)
 unvoiced: the fire command and its answers, APS/ERA, the drone's flight, the
 modes' own moments, the gunship's fire control; its state is two declared
 scopes, the battle's, started by the engine's `resetBattlePlay`, and our
-tank's life's, started by the engine's respawn edge and ended by its death
-latch). Web Audio owners: `mixer.ts`, `assetLibrary.ts`,
+tank's life's, started by the engine's `startOwnLife` at each revive of our
+hull it notices). Web Audio owners: `mixer.ts`, `assetLibrary.ts`,
 `voicePool.ts`, `vehicleRig.ts`, `ambienceDirector.ts`, `crewRadio.ts`.
 `captions.ts` owns the caption stream (BUI-F9): every keyed transmission
 (`crewRadio.ts` `onTransmit`, with the take spoken and the speaking role from
@@ -62,11 +62,13 @@ intent and the reload call), the battle world's teardown (`teardownBattle`:
 loops, the alarm, the heartbeat, the listener, burning), and the new battle
 (`resetBattleFields()`: every other per-battle field) (2026-11-02 audit F11).
 The crew's procedure hangs off the same edges (round 8 Y3): its battle starts
-in `resetBattlePlay` (a battle edge, a network restart), its life at our
-hull's respawn and with our death as the death latch hears it once, and the
-pause edge silences the net (the line on the air and the queue go, the crew's
-armed calls are cancelled, `say()` refuses 'paused', no radio or crew frame
-runs behind the menu, a network battle's included). It names only what the
+in `resetBattlePlay` (a battle edge, a network restart), its life at each
+revive of our hull (`startOwnLife`: the respawn event, or with none the frame
+that shows our hull standing again after its death), so nothing a dead crew's
+rounds arm is said in the next life; the pause menu silences the net (the line
+on the air and the queue go as it opens, each edge cancels the crew's armed
+calls, `say()` refuses 'paused', no radio or crew frame runs behind the menu, a
+network battle's included). It names only what the
 player sees: `src/game/playerVisibility.ts` is the one rule (the network's
 word, the watch and couch reveals, our side, the seat's own spot), handed to
 `audio.update` by `listenerPoseRuntime.ts` and stamped per frame on each

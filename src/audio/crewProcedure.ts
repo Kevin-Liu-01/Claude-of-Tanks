@@ -4,9 +4,9 @@
  * handlers leave unvoiced, read from the same bus events and frames and spoken through the engine's `say`, which turns a
  * tank crew's line into the mode's and the seat's own (voiceLines.ts resolveCrewLine).
  *
- *   - the fire command when our sight settles on a spotted enemy with the gun loaded (the round's name), the gunner's
- *     "identified" on a quiet net after it, "on the way" on the shot it commanded, "re-engage" when the round left the
- *     target alive and the gun is loaded again, "cease fire" when the kill left no spotted enemy near;
+ *   - the fire command when our sight settles on an enemy the player sees with the gun loaded (the round's name), the
+ *     gunner's "identified" on a quiet net after it, "on the way" on the shot it commanded, "re-engage" when the round left
+ *     the target alive and the gun is loaded again, "cease fire" when the kill left no enemy the player sees near;
  *   - APS and ERA (an intercept of ours or theirs), our drone's battery, link, recovery and loss to enemy fire, an enemy
  *     drone our roof gun brings down, enemy smoke, backing out under fire, driving through an obstacle, a jump, and the
  *     countdown's crew report;
@@ -21,14 +21,17 @@
  *
  * Two declared scopes, each with one owner (round 8 Y3, s1-01 and s1-03). The battle's calls (CrewBattle) start afresh
  * through `startBattle`, from the engine's one per-battle reset (audioEngine.ts resetBattlePlay: a battle edge, a network
- * restart). Our tank's life's calls (CrewLife) start afresh through `startLife`, from the engine's respawn edge for our
- * hull, and end with our death as the engine hears it once a life (`onDestroyed`, its death latch): nothing a life armed
- * (a cease fire, a drone's recovery, a fire mission) is called in the next. The pause edge (`pause`) cancels every call
- * armed so far; the engine runs no crew frame while paused and its radio takes no line (the crew is silent behind the
- * pause menu, a network battle's included, as the engine's quiet-radio rule always was). Where the game holds a fact the
- * crew reads it rather than keeping its own copy: the gun is loaded while our reload channel is ready (`combat.reload.t`),
- * an enemy is named only while the player sees it (the engine's frame index, src/game/playerVisibility.ts), an escort has
- * been extracted when its mode life is 'rescued' (sim/matchModes.ts setLife).
+ * restart). Our tank's life's calls (CrewLife) start afresh through `startLife`, at each revive of our hull the engine
+ * notices (audioEngine.ts startOwnLife: its respawn event, or with no event the frame that shows our hull standing again
+ * after its death, a migrated host's adoptLiveCombat). While our tank is dead the crew is silent (`live()` reads it), so
+ * nothing the last life armed (a cease fire, a drone's recovery, a fire mission), nor anything its rounds arm after our
+ * death (a posthumous kill's cease fire, a miss's re-engage), is called in the next. Each pause edge (`cancelArmed`: the
+ * menu opening and closing) cancels every call armed so far; the engine runs no crew frame while paused and its radio
+ * takes no line (the crew is silent behind the pause menu, a network battle's included, as the engine's quiet-radio rule
+ * always was). Where the game holds a fact the crew reads it rather than keeping its own copy: the gun is loaded while
+ * our reload channel is ready (`combat.reload.t`), an enemy is named only while the player sees it (the engine's frame
+ * index, src/game/playerVisibility.ts), an escort has been extracted when its mode life is 'rescued' (sim/matchModes.ts
+ * setLife).
  */
 
 import { AERIAL_RULES, GUN_GAME_WEAPONS } from '../sim/matchRuleset.ts';
@@ -140,12 +143,14 @@ export interface CrewProcedure {
   context(): CrewLineContext;
   /** A new battle (the engine's per-battle reset: a battle edge, a network restart): the battle's calls and our life's. */
   startBattle(): void;
-  /** Our tank's new life (the engine's respawn edge for our hull): the life's calls start afresh. */
+  /** Our tank's new life (each revive of our hull the engine notices, audioEngine.ts startOwnLife): the life's calls
+   *  start afresh. */
   startLife(): void;
-  /** A hull's death, heard once a life: ours ends our life's calls, one we made is a kill. */
+  /** A hull's death, heard once a life: one we made is a kill (ours silences the crew until the revive starts a life). */
   onDestroyed(event: CrewDeath): void;
-  /** The pause edge: every call armed so far is cancelled (none fires behind the menu, or late on the resume). */
-  pause(): void;
+  /** Each pause edge (the menu opening, and closing): every call armed so far is cancelled, so none is said behind the
+   *  menu or late on the resume, a kill heard behind it (a network battle goes on there) included. */
+  cancelArmed(): void;
 }
 
 /** A hull of the frame's list, for the AC-130's extraction: an escort extracted has its mode life 'rescued'. */
@@ -233,7 +238,8 @@ export function createCrewProcedure(host: CrewProcedureHost): CrewProcedure {
   const battle = freshBattle();
   const life = freshLife();
 
-  /** Our tank's life starts afresh (its respawn), or ends (its death): nothing the last life armed carries over. */
+  /** Our tank's life starts afresh (a revive): nothing the last life armed, or its rounds armed after our death, carries
+   *  over. */
   function startLife(): void {
     Object.assign(life, freshLife());
   }
@@ -461,24 +467,27 @@ export function createCrewProcedure(host: CrewProcedureHost): CrewProcedure {
     }
   }
 
-  /** A hull's death, heard once a life: ours ends the life, one we made is a kill. */
+  /** A hull's death, heard once a life: one we made is a kill. Ours is none (a suicide arms no cease fire); the crew is
+   *  silent until a revive starts the next life (startLife), which drops what this one armed. */
   function onDestroyed(e: CrewDeath): void {
-    if (!e) return;
-    if (mine(e.id)) { startLife(); return; }
-    if (!mine(e.killerId)) return;
+    if (!e || mine(e.id) || !mine(e.killerId)) return;
     if (e.source === 'ac130' && e.pos) life.lastKill = { x: e.pos[0], z: e.pos[2], at: host.now() };
     else if (!e.source && seat() === 'tank') life.ceaseAt = host.now() + CEASE.afterS;
     life.reengage = null;
   }
 
-  /** The pause edge: the calls armed so far die with it (a cease fire, the gunner's answer, a lay's hold, a fire mission's
-   *  end, the countdown report's answer, a jump's airtime), so none is said behind the menu or minutes late on resume. */
-  function pause(): void {
+  /** Each pause edge: the calls armed so far die with it (a cease fire, the gunner's answer, a lay's hold, a fire mission's
+   *  end, the countdown report's answer, a jump's airtime, a re-engage, a shift of fire from the last kill). The opening
+   *  edge drops what the battle armed before the menu; the closing edge what a network battle armed behind it (its kill
+   *  call refused 'paused', its cease fire is not said on the resume). */
+  function cancelArmed(): void {
     life.ceaseAt = -1;
     life.identifyUntil = -1;
     life.layId = null;
     life.heavyRounds = 0;
     life.airS = 0;
+    life.reengage = null;
+    life.lastKill = null;
     battle.readyUntil = -1;
   }
 
@@ -604,7 +613,7 @@ export function createCrewProcedure(host: CrewProcedureHost): CrewProcedure {
     startBattle,
     startLife,
     onDestroyed,
-    pause,
+    cancelArmed,
     context,
     frame(dt, listener, entities) {
       const now = host.now();
