@@ -211,9 +211,12 @@ function dialect(st: LorrainState): HouseDialect {
   };
 }
 
-/** The canal-tile roof of the Lorraine plain: low, its eaves barely past the wall, the round ridge of tiles. */
+/**
+ * The canal-tile roof of the Lorraine plain: low, its eaves barely past the wall, the round ridge of tiles, and its
+ * courses in relief (buildings-271: the print's five rows a 2 m tile, 0.4 m; a tuile canal's butt 4 cm proud).
+ */
 const canal = (pitch: number, eave = 0.32, verge = 0.18): RoofSpec =>
-  ({ kind: 'gable', pitchDeg: pitch, eave, verge, thickness: 0.16, bucket: 'roof', ridge: 'round' });
+  ({ kind: 'gable', pitchDeg: pitch, eave, verge, thickness: 0.16, bucket: 'roof', ridge: 'round', courses: { gauge: 0.4, lift: 0.04 } });
 
 /** The dressed stone quoins at a body's four corners, long and short stones in turn (dressing). */
 function quoins(sink: PartSink, b: { x0: number; x1: number; z0: number; z1: number }, y0: number, y1: number): void {
