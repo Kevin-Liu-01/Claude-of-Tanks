@@ -42,6 +42,13 @@ function levelLoft(levels: readonly TurretLevel[]): THREE.BufferGeometry {
   return KIT.xform(sectionSolid(sections), 0, 0, 0, -Math.PI / 2, 0, 0);
 }
 
+type SightHousing = NonNullable<NonNullable<Parameters<typeof FITTINGS.roofSight>[0]>['housing']>;
+/** A roof sight drawn in the turret frame as the kit's roofSight fitting (270: the published 2.4 m is taken to the roof
+ * and cupola, so the 1K13-2 box, the TKN-3 head and the searchlight leave the body height, as the AMX-40's tower). */
+function roofSight(P: TankBuilderPort, housing: SightHousing): void {
+  mount(P, 'turret', FITTINGS.roofSight({ mats: P.mats, housing }), 0, 0, 0);
+}
+
 /** Shrink a half outline towards (0, zc) by `inset` metres (approximately: along the radius). */
 function insetHalf(half: TurretLevel['half'], inset: number, zc = -0.05): Array<[number, number]> {
   return half.map(([x, z]) => {
@@ -100,22 +107,22 @@ export function buildBmp3WeldedTurret(P: TankBuilderPort, variant: Bmp3TurretVar
   // 1K13-2: armoured box leaning back at the front, day and guidance windows side by side, its lamp on top (ROK: one
   // long sight housing that carries the 1K13-2 and the Vesna-K module, its new lamp seated on top, bmp3RokTurretFit.ts)
   const sx0 = 0.33, sx1 = 0.62, sz0 = 0.02, sz1 = 0.36, sTop = 0.79;
-  if (!rok) {
-    P.addEquipment('turret', orientedSlab(
+  if (!rok) roofSight(P, (H) => {
+    H.add('hull', orientedSlab(
       [sx0, ROOF_Y - 0.010, sz1], [sx1, ROOF_Y - 0.010, sz1], [sx1, ROOF_Y - 0.010, sz0], [sx0, ROOF_Y - 0.010, sz0],
       [sx0 + 0.02, sTop, sz1 - 0.07], [sx1 - 0.02, sTop, sz1 - 0.07], [sx1 - 0.02, sTop, sz0 + 0.02],
       [sx0 + 0.02, sTop, sz0 + 0.02]));
     const lean = Math.atan2(0.07, sTop - ROOF_Y);
     const faceZ = (y: number): number => sz1 - (y - ROOF_Y) * Math.tan(lean);
     for (const [x, y, r] of [[0.415, 0.66, 0.058], [0.545, 0.67, 0.042]] as Array<[number, number, number]>) {
-      P.add('turretDark', xform(cylZ(r + 0.018, 0.03, 14), 0, 0, 0, -lean, 0, 0), x, y, faceZ(y) + 0.004);
-      P.add('turretGlass', xform(cylZ(r, 0.012, 14), 0, 0, 0, -lean, 0, 0), x, y, faceZ(y) + 0.016);
+      H.add('dark', xform(cylZ(r + 0.018, 0.03, 14), 0, 0, 0, -lean, 0, 0), x, y, faceZ(y) + 0.004);
+      H.add('glass', xform(cylZ(r, 0.012, 14), 0, 0, 0, -lean, 0, 0), x, y, faceZ(y) + 0.016);
     }
-    P.add('turretDetail', xform(box(0.27, 0.02, 0.09), 0, 0, 0, -lean, 0, 0), 0.475, 0.745, faceZ(0.745) + 0.035); // visor
-    P.add('turretDetail', cylY(0.03, 0.035, 0.06, 10), 0.475, sTop + 0.02, 0.17);
-    P.add('turretDetail', cylZ(0.062, 0.11, 14), 0.475, sTop + 0.10, 0.19);
-    P.add('turretGlass', cylZ(0.050, 0.012, 14), 0.475, sTop + 0.10, 0.248);
-  }
+    H.add('detail', xform(box(0.27, 0.02, 0.09), 0, 0, 0, -lean, 0, 0), 0.475, 0.745, faceZ(0.745) + 0.035); // visor
+    H.add('detail', cylY(0.03, 0.035, 0.06, 10), 0.475, sTop + 0.02, 0.17);
+    H.add('detail', cylZ(0.062, 0.11, 14), 0.475, sTop + 0.10, 0.19);
+    H.add('glass', cylZ(0.050, 0.012, 14), 0.475, sTop + 0.10, 0.248);
+  });
 
   // ---- commander (-x, the vehicle's right): cupola with vision blocks, the TKN-3 head ahead, OU-3GA2 searchlight ----
   const cx = -0.44, cz = -0.30;
@@ -129,21 +136,23 @@ export function buildBmp3WeldedTurret(P: TankBuilderPort, variant: Bmp3TurretVar
     P.add('turretDark', box(0.10, 0.05, 0.05), bx, ROOF_Y + 0.040, bz, 0, a, 0);
     P.add('turretGlass', box(0.08, 0.026, 0.012), bx + Math.sin(a) * 0.025, ROOF_Y + 0.045, bz + Math.cos(a) * 0.025, 0, a, 0);
   }
-  P.addEquipment('turret', box(0.20, 0.17, 0.20), cx + 0.02, ROOF_Y + 0.075, 0.04);     // TKN-3 head
-  P.add('turretDark', box(0.15, 0.06, 0.02), cx + 0.02, ROOF_Y + 0.105, 0.145);
-  P.add('turretGlass', box(0.12, 0.04, 0.012), cx + 0.02, ROOF_Y + 0.105, 0.155);
-  P.add('turretDetail', box(0.22, 0.025, 0.06), cx + 0.02, ROOF_Y + 0.170, 0.12);       // rain hood
+  roofSight(P, (H) => {
+    H.add('hull', box(0.20, 0.17, 0.20), cx + 0.02, ROOF_Y + 0.075, 0.04);              // TKN-3 head
+    H.add('dark', box(0.15, 0.06, 0.02), cx + 0.02, ROOF_Y + 0.105, 0.145);
+    H.add('glass', box(0.12, 0.04, 0.012), cx + 0.02, ROOF_Y + 0.105, 0.155);
+    H.add('detail', box(0.22, 0.025, 0.06), cx + 0.02, ROOF_Y + 0.170, 0.12);           // rain hood
+  });
   // searchlight frame: two posts on the roof right of the cupola, a cradle, the drum and lens, a link to the head
   // (ROK: on its tall frame further aft, where the ROK Army photographs show it, bmp3RokTurretFit.ts)
-  if (!rok) {
+  if (!rok) roofSight(P, (H) => {
     const lx = -0.80, lz = -0.06, ly = ROOF_Y + 0.27;
-    for (const dz of [-0.08, 0.08]) P.add('turretDetail', cylY(0.018, 0.022, 0.22, 8), lx, ROOF_Y + 0.10, lz + dz);
-    P.add('turretDetail', box(0.08, 0.04, 0.22), lx, ly - 0.115, lz);
-    P.addEquipment('turret', cylZ(0.105, 0.20, 18, 0.09), lx, ly, lz);
-    P.add('turretDark', xform(torus(0.098, 0.012, 18, 6), 0, 0, 0, Math.PI / 2, 0, 0), lx, ly, lz + 0.10);
-    P.add('turretGlass', cylZ(0.090, 0.012, 18), lx, ly, lz + 0.098);
-    P.add('turretDetail', box(0.36, 0.025, 0.03), (lx + cx) / 2 + 0.02, ly - 0.10, lz + 0.05);
-  }
+    for (const dz of [-0.08, 0.08]) H.add('detail', cylY(0.018, 0.022, 0.22, 8), lx, ROOF_Y + 0.10, lz + dz);
+    H.add('detail', box(0.08, 0.04, 0.22), lx, ly - 0.115, lz);
+    H.add('hull', cylZ(0.105, 0.20, 18, 0.09), lx, ly, lz);
+    H.add('dark', xform(torus(0.098, 0.012, 18, 6), 0, 0, 0, Math.PI / 2, 0, 0), lx, ly, lz + 0.10);
+    H.add('glass', cylZ(0.090, 0.012, 18), lx, ly, lz + 0.098);
+    H.add('detail', box(0.36, 0.025, 0.03), (lx + cx) / 2 + 0.02, ly - 0.10, lz + 0.05);
+  });
 
   // ---- 902V Tucha: 3+3 on the front cheeks, raised forward and out, each bank on a welded shelf ---------------------
   for (const s of [-1, 1]) {
@@ -281,6 +290,9 @@ export function addBmp3HullDetail(P: TankBuilderPort): void {
     for (const dz of [-1, 1]) P.add('hull', box(0.035, h + 0.054, 0.03), x - 0.010, y, z + dz * (len / 2 + 0.015));
     for (let k = 1; k < 4; k++) P.add('hullDetail', box(0.03, h, 0.025), x - 0.008, y, z - len / 2 + k * len / 4);
   }
+  // the fender runs on over the track's front wrap (270, B2: the plan read the ground through the 15 cm between the mid
+  // fender's end, z 3.07, and the front fender, z 3.21, beside the bow; main showed it too)
+  for (const s of [-1, 1]) P.add('hull', box(0.40, 0.03, 0.17), s * 1.365, 1.355, 3.14);
 }
 
 /** Water-jet outlet flaps at the stern corners: painted steel covers hinged to the rear plate's corner, their lower
@@ -304,6 +316,9 @@ export function addBmp3SternWaterJetFlaps(P: TankBuilderPort): void {
       { z: -3.525, ring: ring(1.21, 1.605, 0.88, 1.32) },
       { z: -3.44, ring: ring(1.21, 1.605, 0.88, 1.32) },
     ]));
+    // its top lip runs on under the fender end (270, B2: the plan read sky through the 6 cm between flap and fender);
+    // it stays above the track's top band (1.236 m + the audit's 3.6 cm)
+    P.add('hull', box(0.395, 0.03, 0.09), m(1.4075), 1.305, -3.405);
     P.add('hullDark', box(0.34, 0.016, 0.02), m(1.40), 1.10, -3.567);                  // stiffener seam
     for (const x of [1.30, 1.52]) P.add('hullDetail', cylX(0.022, 0.08, 10), m(x), 1.315, -3.575); // hinge knuckles
   }

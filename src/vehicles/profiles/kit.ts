@@ -320,6 +320,8 @@ interface FittingOptions {
   head?: readonly [number, number, number];
   window?: readonly [number, number];
   roundHead?: boolean;
+  /** roofSight: a sight housing of the vehicle's own shape, drawn in place of the column and head (270, the BMP-3). */
+  housing?: (parts: FittingParts) => void;
 }
 
 interface FittingParts {
@@ -3935,6 +3937,10 @@ function fittingRoofSight(opts: FittingOptions = {}): THREE.Group {
   const [hx, hy, hz] = opts.head ?? [0.34, 0.168, 0.34];
   const [wx, wy] = opts.window ?? [0.24, 0.084];
   const parts = fitParts();
+  if (opts.housing) {
+    opts.housing(parts);
+    return fitAssemble('roofSight', parts, opts);
+  }
   parts.add('detail', cylY(colR, colR2, colH, 20), 0, colH / 2, 0);
   const headY = colH + hy / 2 - 0.006;
   // a round head (the Leclerc's HL-70) or a squared one (the AMX-40's), its window on the front, its lid on top

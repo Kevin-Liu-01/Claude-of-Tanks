@@ -382,11 +382,17 @@ type LauncherSeat = readonly [x: number, y: number, z: number, yaw: number];
 /** The Mk 10's two banks stand on the Stillbrew cheeks. */
 const MK10_LAUNCHER_SEATS: readonly LauncherSeat[] = [[-.1329e1, 1.9685, 1.5298, -.67], [.8578, 1.9951, 2.02245, .67]];
 
+/** Launcher tube section (radius, axial): 18.5 cm long, 7.8 cm over the wall, bore 6.2 cm to the charge at -7.05 cm. */
+const TUBE_PROFILE = [[0, -.0915], [.039, -.0925], [.039, .0925], [.031, .0925], [.031, -.0705], [0, -.0705]]
+  .map(([r, y]) => new THREE.Vector2(r, y));
+
 function launchers(P: TankBuilderPort, seats: readonly LauncherSeat[]): void {
   for (const [x, y, z, yaw] of seats) {
     equipment(P, 'turretDetail', box(.25, .085, .22), x, y - .105, z - .105, -.38, yaw);
     for (let row = 0; row < 2; row++) for (let col = 0; col < 3; col++) {
-      const g = new THREE.CylinderGeometry(.039, .039, .185, 16, 1, true);
+      // One closed lathe per tube (wall, mouth annulus, bore down to the dark charge, domed 1 mm back): the open
+      // cylinder showed its inner wall's back faces through the mouth and the open back (sealed check 270, Mk 9/10).
+      const g = new THREE.LatheGeometry(TUBE_PROFILE, 16);
       markOpenSmokeTube(g.rotateX(Math.PI / 2));
       const dx = (col - 1) * .080 + row * .015, dy = (row - .5) * .079;
       equipment(P, 'turretDetail', g, x + dx, y + dy, z, -.48, yaw);

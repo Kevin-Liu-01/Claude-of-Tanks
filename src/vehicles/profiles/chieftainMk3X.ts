@@ -161,6 +161,14 @@ function glacis(P: TankBuilderPort): void {
     add('hullDetail', cylX(.012, .118, 8), side * .862, .990, 3.218);
   }
   for (const side of [-1, 1]) liftingEye(add, 'hullDetail', side * .86, roof(2.30, .86) - .002, 2.30, Math.PI / 2);
+  // The Mk 5 hull's rear deck leaves slots down to the ground (chieftain5 lists them in contig-hidden.json): 4 cm at
+  // x +-0.93 between the louvre frame and the deck block (z -3.29..-3.57), and 5 cm across x +-0.80..0.92 between the
+  // roof's rear edge and the louvres (z -3.29..-3.34). A gutter floor 2 cm thick closes both under them (270, B2 on
+  // the Mk 3).
+  for (const side of [-1, 1]) {
+    add('hullDetail', box(.07, .02, .28), side * .93, 1.45, -3.43);
+    add('hullDetail', box(.16, .02, .09), side * .85, 1.45, -3.32);
+  }
 }
 
 /**

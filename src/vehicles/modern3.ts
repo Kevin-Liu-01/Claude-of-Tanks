@@ -1346,6 +1346,12 @@ function finishK1A1Hull(P: Modern3BuilderPort) {
     P.add('hull', slab(                                                        // front raked panel (top follows the glacis edge down)
       [s * 1.70, 0.88, 2.72], [s * 1.75, 0.88, 2.72], [s * 1.75, 0.88, 1.45], [s * 1.70, 0.88, 1.45],
       [s * 1.70, 1.29, 2.72], [s * 1.75, 1.29, 2.72], [s * 1.75, 1.475, 1.45], [s * 1.70, 1.475, 1.45]));
+    // 270 (B2): the fender return inboard of that panel's top over the track's outer edge; the plan read the ground
+    // through the 8 cm between track and skirt from z 1.78 to the boxed front fender (main showed it too). Its foot keeps
+    // the clip audit's 3.6 cm over the rising track top (1.18 m at z 2.94).
+    P.add('hull', slab(
+      [s * 1.57, 1.3995, 1.76], [s * 1.705, 1.3995, 1.76], [s * 1.705, 1.2265, 2.95], [s * 1.57, 1.2265, 2.95],
+      [s * 1.57, 1.4245, 1.76], [s * 1.705, 1.4245, 1.76], [s * 1.705, 1.2515, 2.95], [s * 1.57, 1.2515, 2.95]));
     // main run SEGMENTED into 8 real panels (station slice-paint law —
     // the 3.65 m single box was invisible to mid-span station slabs;
     // 2.5 mm face stagger kills z-fighting, width read unchanged)

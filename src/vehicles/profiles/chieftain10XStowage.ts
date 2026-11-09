@@ -68,6 +68,9 @@ function rightCases(P: TankBuilderPort, pivot: Pivot): void {
     part(P, pivot, box(.205, .040, .225), 1.3293, 2.370, -1.42545, .588);
   }, { reachM: .15 });
   part(P, pivot, box(.51, .277, .105), 1.56166, 2.237, -.29086, .035);
+  // 270 (B2 on the Mk 9 and Mk 10): the plan read the ground through the 8 cm between that case's outer end and the
+  // housing's rear face, inside the return; a bracket plate under the case's foot spans case, housing and return
+  part(P, pivot, box(.15, .02, .20), 1.77, 2.10, -.25);
 }
 
 function leftOpenCarrier(P: TankBuilderPort, pivot: Pivot): void {
