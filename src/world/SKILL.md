@@ -38,6 +38,12 @@ world's surface law, and `groundSurfaceShader.ts` draws its laws in the splat by
 close stones, the town floor, the detail facets' cap toward a low sun, and after the roads the works floor of a works'
 or a rail yard's slag and cinder); `tools/ground-surface-shots.mjs` films every map
 at the gameplay cameras (chase, near, long, town, readability at 200 m and 600 m, phone) for the table's blind A/B,
+`maps/builtEnvironmentTable.ts` (THREE-free, built-env-270) the built-environment table — one row per map, typed over
+MapId: its roads (the paved catalogue, each path's surface, the worked carriageway's law), its civic style (the kerbs,
+pavements and squares `civic/` lays) and its waterside (the boats, jetties, reeds, driftwood, ford posts, and the bank's
+facing the terrain material lays in metres from the waterline: uBank / uBankTint); `maps/builtEnvironmentRecords.ts`
+the places' photographs with their sources; `tools/built-env-shots.mjs` films every map's street, road, plaza, shore and
+long view (and phone) for its blind A/B,
 `tallGrass.ts` the instanced blade rings the hulls press flat through `groundPressure.ts` (a world-anchored GPU field,
 null on mobile and in receipts); every terrain chunk vertex carries a `fold` byte (the relief's curvature) and, on the
 sea and lake maps, a `shore` byte (metres landward of the waterline from the shoreline contours, inverted so a geometry

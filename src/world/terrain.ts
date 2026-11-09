@@ -43,9 +43,10 @@ import {
 } from './railSpurs.ts';
 import { roadCoreMask, roadLaneSharpness } from './roadMaskProfile.ts';
 import {
-  MAP_PATH_SURFACES, MAP_PAVED_SURFACES, ROAD_SURFACE_CODE, pavedSurfaceUniforms, roadSurfaceUniforms,
+  ROAD_SURFACE_CODE, pavedSurfaceUniforms, roadSurfaceUniforms,
   type PavedSurfaceConfig, type RoadSurface, type RoadSurfaceWork,
 } from './roadSurfaces.ts';
+import { BANK_KIND_CODE, builtEnvironmentFor } from './maps/builtEnvironmentTable.ts';
 import { trackSurfaceAt, trackSurfacePolicy, type TrackSurface } from './trackSurface.ts';
 import { roadPaveSampler } from './roadPave.ts';
 import { completeRoadEndpoints, gradeRoadPortals, alignHardstandRoadPortals,
@@ -141,7 +142,7 @@ export interface RoadPathStyle {
   surface?: RoadSurface;
   /** The carriageway's full width (m), 4–18; absent: the map's ~7.7 m gauge. */
   widthM?: number;
-  /** Roads lane (2026-10-09): set on a style the period catalogue gave (roadSurfaces.ts MAP_PATH_SURFACES), never
+  /** Roads lane (2026-10-09): set on a style the period catalogue gave (the built-environment row's paths), never
    * authored — the road layer marks it so the Low tier draws the path as the map's own road. */
   catalogue?: boolean;
   /**
@@ -1196,10 +1197,10 @@ export function createLayout(cfg: TerrainMapConfig | null = null, completeRoads 
     const gridCount = roads.length;
     if (t.roads.paths) roads.push(...buildPathRoads(t.roads.paths));
     // (buildPathRoads keeps every path of two or more points, in order: a style follows its path)
-    // (roads lane, 2026-10-09: a path the catalogue surfaces — roadSurfaces.ts MAP_PATH_SURFACES, by the map's year — is
+    // (roads lane, 2026-10-09: a path the catalogue surfaces — the built-environment row's paths, by the map's year — is
     // styled with that surface where the map's own pathStyles leave it unstyled; 2026-10-11: and where the map's own style
     // sets only its width or its crown — Tidegate's dyke lanes — the catalogue's surface joins it)
-    const catalogue = (cfg?.id && MAP_PATH_SURFACES[cfg.id]) || null;
+    const catalogue = builtEnvironmentFor(cfg?.id)?.roads.paths ?? null;
     if (t.roads.paths && (t.roads.pathStyles?.some((st) => !!st) || catalogue?.some((sf) => !!sf))) {
       roadStyles = new Array<RoadPathStyle | null>(gridCount).fill(null);
       t.roads.paths.forEach((path, i) => {
@@ -3086,7 +3087,14 @@ function* heightFieldBuildSteps(
     if (compiledCanals !== null && canalWetness(compiledCanals, x, z) > 0.5) return T.softLakes ? 'soft' : 'hard';
     return 'medium';
   }
-  const roadPaveAt = roadPaveSampler(cfg?.splat, layout.village); // the FX lane's street dust (roadPave.ts)
+  // the FX lane's street dust (roadPave.ts), with the catalogue's paving as the material paints it (built-env-270): the
+  // splat's own paved surface or the row's, and each road line's own surface
+  const pavedCatalogue = cfg?.splat?.pavedSurface ?? builtEnvironmentFor(cfg?.id)?.roads.paved ?? null;
+  const roadPaveAt = roadPaveSampler(cfg?.splat, layout.village, {
+    streets: pavedCatalogue?.street ? (pavedCatalogue.townOnly ? 'town' : 'all') : null,
+    lines: layout.roadStyles?.map((style) => !!style?.surface && style.surface !== 'dirt') ?? null,
+    roads: layout.roads,
+  });
 
   function getDriveGroundType(x: number, z: number): GroundType {
     const ground = getGroundType(x, z);
@@ -4570,6 +4578,8 @@ uniform vec4 uRoadSurf, uRoadSurfB;
 // arcs, the gutter's width) by ROAD_SURFACE_CODE (0: the R layer's print), (patches, cracks, iron covers, —), and the
 // kerbed town rect (centre xz, half-size xz; z 0 = no kerbs)
 uniform vec4 uPaveClass, uPaveWear, uPaveTown;
+// built-env-270: 1 where the Low tier paves the streets in their own class (roadSurfaces.ts PavedSurfaceConfig.low)
+uniform float uPaveLow;
 // (R2) the procedural paving's (stone tone, a kerbed town's street class, centre lines, shell-hole fills)
 uniform vec4 uPaveExtra;
 // (the maps lane, 228) a square's setts' tone over the streets' (x; 1 on every map that names none)
@@ -4637,6 +4647,11 @@ float terraceZoneW(vec2 p) {
 uniform float uSea;       // maps r1: 1 = M layer is OPEN WATER (sea/river), 0 = legacy mud/ice
 uniform float uSeaFoam;   // maps r1: surf/whitecap strength (0 disables)
 uniform vec2 uSeaRamp;    // maps r1: fM band that ramps to open water (sea wide, river tight)
+// built-env-270 (2026-11-05): the bank's facing (maps/builtEnvironmentTable.ts shore.bank): (kind — 0 the old apron, 1 sand,
+// 2 shingle, 3 rock, 4 pitched stone, 5 mud, 6 turf to the water —, its width landward of the waterline (m), strength, the
+// stones' size (m)); uBankTint the facing's own colour (linear), its layer's grain kept over it
+uniform vec4 uBank;
+uniform vec3 uBankTint;
 uniform vec4 uSeaOpenings[4]; // round 40: sea openings past the square (direction angle, half-width, shoulder, 0)
 uniform vec4 uSeaBanks[4];
 uniform float uSeaOpeningCount;
@@ -5804,9 +5819,75 @@ void splatCompute() {
   if (gWorksFloor > 0.5 && fD < 0.998) {
     a.rgb = mix(a.rgb, worksSlag(n1h, n2, 0.5) * 1.15 * (0.86 + 0.28 * nz(uv, 0.31, vec2(0.71, 0.13)).r), 0.85 * (1.0 - fD));
   }
+  if (uBank.x > 5.5) seaSand = 0.0; // built-env-270: a turf bank keeps its meadow to the water
   if (seaSand > 0.003) { // maps r1: bare shoreline apron under the surf line
     a = mix(a, groundSamp(uAlbD, uMeanD, uv * 0.210, df, mipB), seaSand);
     if (nrmOn) n = mix(n, groundNrm(uNrmD, uv * 0.210, df, mipB), seaSand);
+  }
+  // built-env-270 (2026-11-05; the owner: "beach areas annd areas around water ... have to be fully updated"): the bank's
+  // facing in METRES from the waterline (the shore byte), each its place's own — a Dalmatian shingle beach, a Nordland
+  // rock shore, a Zeeland dyke's basalt pitching, a Shanghai creek's stone embankment, a drawn-down reservoir's mud. The
+  // facing takes its layer's grain over its own colour (uBankTint), so a sand set reads as limestone grit where the photos
+  // show it; the stones (shingle, pitching) are cells in world metres, faded to their mean past the pixel's footprint.
+  // (the courses' direction from the shore distance's world gradient, taken in uniform control flow: a pitched bank only)
+  vec2 bAlong = vec2(1.0, 0.0);
+  if (uBank.x > 3.5 && uBank.x < 4.5) {
+    vec2 dx = dFdx(wp.xz), dy = dFdy(wp.xz);
+    float sx = dFdx(vShore), sy = dFdy(vShore), det = dx.x * dy.y - dx.y * dy.x;
+    vec2 g = abs(det) > 1e-8 ? vec2(sx * dy.y - sy * dx.y, sy * dx.x - sx * dy.x) / det : vec2(1.0, 0.0);
+    bAlong = normalize(vec2(-g.y, g.x) + vec2(1e-5, 0.0));
+  }
+  if (uSea > 0.5 && uBank.x > 0.5 && uBank.x < 5.5 && vShore < 31.0) {
+    float bEdge = vShore + (n1h - 0.5) * 1.6 + (n1 - 0.5) * 0.9;
+    float bankW = (1.0 - fMs) * (1.0 - roadCore) * (1.0 - smoothstep(uBank.y - 0.9, uBank.y + 0.9, bEdge)) * uBank.z;
+    if (bankW > 0.003) {
+      const vec3 bL = vec3(0.34, 0.45, 0.21);
+      bool bRock = uBank.x > 2.5 && uBank.x < 3.5;
+      vec4 bs = bRock ? groundSamp(uAlbR, uMeanR, uv * 0.330, df, mipB) : groundSamp(uAlbD, uMeanD, uv * 0.210, df, mipB);
+      vec4 bm = bRock ? uMeanR : uMeanD;
+      float bGrain = clamp(dot(bs.rgb - bm.rgb, bL) / max(dot(bm.rgb, bL), 1e-3), -0.6, 0.6);
+      vec3 bCol = uBankTint * (1.0 + bGrain * 0.85);
+      if (uBank.x > 1.5 && uBank.x < 2.5 || uBank.x > 3.5 && uBank.x < 4.5) {
+        // the stones: shingle as rounded cells of their own tone; pitching as blocks in courses along the waterline
+        float sz = max(uBank.w, 0.05);
+        vec2 bq;
+        if (uBank.x > 3.5) {
+          // the courses follow the shore: across them the shore distance, along them the world axis across its gradient
+          float row = vShore / (sz * 0.62);
+          bq = vec2(dot(wp.xz, bAlong) / sz + 0.5 * mod(floor(row), 2.0), row);
+        } else {
+          bq = wp.xz / sz;
+        }
+        vec2 bc = floor(bq), bf = fract(bq) - 0.5;
+        float bh = fract(sin(dot(bc, vec2(127.1, 311.7))) * 43758.5453);
+        float bShape;
+        if (uBank.x > 3.5) {
+          bShape = max(abs(bf.x), abs(bf.y));
+        } else {
+          // (r3, the fjord's frames: equal stones on a square grid read as a cobbled path) shingle as a jittered cellular
+          // field: the nearest centre and the second nearest give each stone its own irregular outline and size
+          float f1 = 8.0, f2 = 8.0;
+          vec2 bn = vec2(0.0), bo = vec2(0.0);
+          for (int j = -1; j <= 1; j++) for (int i = -1; i <= 1; i++) {
+            vec2 cc = bc + vec2(float(i), float(j));
+            float hh = fract(sin(dot(cc, vec2(127.1, 311.7))) * 43758.5453);
+            vec2 o = vec2(float(i), float(j)) + vec2(hh, fract(hh * 7.13)) * 0.84 + 0.08 - (fract(bq));
+            float dd = dot(o, o) * (0.75 + 0.5 * fract(hh * 3.7));
+            if (dd < f1) { f2 = f1; f1 = dd; bn = cc; bo = o; } else if (dd < f2) { f2 = dd; }
+          }
+          bh = fract(sin(dot(bn, vec2(127.1, 311.7))) * 43758.5453);
+          bf = -bo * 0.5;
+          bShape = 0.48 - clamp((sqrt(f2) - sqrt(f1)) * 0.9, 0.0, 0.48);
+        }
+        float bStone = 1.0 - smoothstep(0.36, 0.48, bShape);
+        float bVis = tileVis(sz);
+        float bTone = mix(1.0, (0.74 + 0.5 * bh) * mix(0.42, 1.0 + 0.10 * (0.4 - bShape), bStone), bVis);
+        bCol *= bTone;
+        if (nrmOn) n.xy = mix(n.xy, vec2(0.5) + bf * 0.55 * bStone, bankW * bVis * 0.8);
+      }
+      a.rgb = mix(a.rgb, max(bCol, 0.0), bankW);
+      if (bRock && nrmOn) n = mix(n, groundNrm(uNrmR, uv * 0.330, df, mipB), bankW);
+    }
   }
   if (fMs > 0.002 && keepR > 0.002) {
     a = mix(a, groundSamp(uAlbM, uMeanM, uv * 0.190, df, mipB), fMs);
@@ -8580,7 +8661,7 @@ function* createSplatMaterialSteps(
     shader.uniforms.uFormationLow = formationLowUniform; // the Redrock lane
     shader.uniforms.uFormationUp = formationUpUniform;
     // (roads lane R1c: a map's paved surfaces — its splat's, else the catalogue's — take its roads whole, or its town's)
-    const pavedCfg: PavedSurfaceConfig | undefined = S.pavedSurface ?? MAP_PAVED_SURFACES[mapId];
+    const pavedCfg: PavedSurfaceConfig | undefined = S.pavedSurface ?? builtEnvironmentFor(mapId)?.roads.paved ?? undefined;
     shader.uniforms.uRoadTex = { value: S.pavedRoads || (pavedCfg?.street && !pavedCfg.townOnly) ? 1 : clamp(S.roadTexMix ?? 0, 0, 1) };
     const town = layout.village; // map revival lane 2: the paved town rect (townPaving), off unless the map authors it
     shader.uniforms.uTownPave = { value: S.townPaving || pavedCfg?.townOnly ? new THREE.Vector4((town.x0 + town.x1) / 2, (town.z0 + town.z1) / 2,
@@ -8592,6 +8673,7 @@ function* createSplatMaterialSteps(
     shader.uniforms.uPaveTown = { value: new THREE.Vector4(...paved.town) };
     shader.uniforms.uPaveExtra = { value: new THREE.Vector4(...paved.extra) };
     shader.uniforms.uPaveSquare = { value: new THREE.Vector4(...paved.square) };
+    shader.uniforms.uPaveLow = { value: pavedCfg?.low ? 1 : 0 };
     shader.uniforms.uTownWear = { value: S.townWear ?? 1 };
     shader.uniforms.uYardCinder = { value: yardCinder };
     shader.uniforms.uThatch = { value: thatchV };
@@ -8667,6 +8749,11 @@ function* createSplatMaterialSteps(
     shader.uniforms.uSeaOpeningCount = { value: Math.min(4, seaOpenings.length) };
     shader.uniforms.uSeaFoam = { value: S.seaLake ? (S.seaFoam ?? 0.8) : 0 };
     shader.uniforms.uSeaRamp = { value: new THREE.Vector2(...(S.seaRamp || [0.40, 0.78])) };
+    // built-env-270: the bank's facing (its built-environment row; none: the old apron)
+    const bank = builtEnvironmentFor(mapId)?.shore.bank ?? null;
+    shader.uniforms.uBank = { value: bank ? new THREE.Vector4(BANK_KIND_CODE[bank.kind], bank.widthM, bank.strength ?? 1, bank.stoneM ?? 0.12)
+      : new THREE.Vector4(0, 0, 0, 0) };
+    shader.uniforms.uBankTint = { value: new THREE.Color(bank?.hex ?? 0x808080) }; // (THREE.Color takes sRGB hex to linear)
     shader.uniforms.uMidRelief = { value: S.midRelief ?? 1 };
     shader.uniforms.uSlopeGrassHold = { value: S.slopeGrassHold ?? 0 }; // round 45
     shader.uniforms.uRingRock = { value: new THREE.Vector2(...(S.ringRockSlope ?? [0.22, 0.48])) }; // round 49
@@ -8710,7 +8797,7 @@ function* createSplatMaterialSteps(
     shader.uniforms.uRoadRuts = { value: new THREE.Vector3(...(S.roadRuts ?? [1, 0, 0])) };
     // roads lane (2026-10-09): the worked carriageway (relief, stones, potholes, treads) and (washboard, tone floor, lanes'
     // albedo share, windrow) — the map's override, else its climate's row under its splat.roadSurface
-    const roadWork = roadSurfaceUniforms(mapId, groundProfile.climate, S.roadSurface);
+    const roadWork = roadSurfaceUniforms(builtEnvironmentFor(mapId)?.roads.work ?? 'climate', groundProfile.climate, S.roadSurface);
     shader.uniforms.uRoadSurf = { value: new THREE.Vector4(...roadWork.a) };
     shader.uniforms.uRoadSurfB = { value: new THREE.Vector4(...roadWork.b) };
     // round 42: the sun the vista ring shades with, and the sky-light weight for steep faces turned from it
