@@ -18,6 +18,7 @@ assert.ok(!/float px = position\.x \* aspect;/.test(vs), 'no card is stretched a
 assert.match(vs, /vec3 bh = fract\( \( aPB\.xyz \+ aVL\.xyz \* 1\.7 \+ vec3\( aVL\.w \* 3\.1 \) \) \* 0\.1031 \);/,
   'the body\'s bearing and shape are seeded by its own birth place, launch and life (never the clock a rebase shifts)');
 assert.match(vs, /vec2 bodyC = mat2\( sxx \+ sDet, sxy, sxy, syy \+ sDet \) \* position\.xy \* sNorm;/, 'the silhouette: the square root of the projected body');
+assert.match(vs, /float bodyThin = clamp\( sqrt\( aspect \/ sDet \), 0\.70, 1\.0 \);/, 'the thinning: the square root of the growth, floored');
 assert.match(vs, /aCA\.w \* fadeIn \* near \* \( 1\.0 - 0\.75 \* big \) \* bodyThin \);/, 'a body seen across its flat side is thinner');
 
 const fract = (x) => x - Math.floor(x);
@@ -43,7 +44,7 @@ function silhouette(p, right, up) {
   // the silhouette's long axis on the card plane (radians, mod pi) and its half-axes
   const ang = 0.5 * Math.atan2(2 * sxy, sxx - syy);
   const tr = sxx + syy, disc = Math.sqrt(Math.max(0, (sxx - syy) ** 2 / 4 + sxy * sxy));
-  return { m, ang, major: Math.sqrt(tr / 2 + disc), minor: Math.sqrt(Math.max(0, tr / 2 - disc)), thin: Math.min(1, Math.max(VOLUME_FLAT_THIN_MIN, aspect / sDet)) };
+  return { m, ang, major: Math.sqrt(tr / 2 + disc), minor: Math.sqrt(Math.max(0, tr / 2 - disc)), thin: Math.min(1, Math.max(VOLUME_FLAT_THIN_MIN, Math.sqrt(aspect / sDet))) };
 }
 const camera = (pitchDeg, yawDeg = 0) => {
   const p = (pitchDeg * Math.PI) / 180, y = (yawDeg * Math.PI) / 180;

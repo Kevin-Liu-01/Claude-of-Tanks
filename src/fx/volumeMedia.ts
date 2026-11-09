@@ -125,7 +125,7 @@ const ATTRS = ['aPB', 'aVL', 'aDY', 'aSZ', 'aCA', 'aCB', 'aFB', 'aHT'] as const;
  *  length (seeded per body, uniform between min and max), so from above no two bodies have one shape or one bearing. */
 export const VOLUME_FLAT_SHORT = Object.freeze({ min: 0.3, max: 0.75 });
 /** (dust-orient-271) the least a body's opacity thins when its silhouette outgrows the old card (seen across its flat side). */
-export const VOLUME_FLAT_THIN_MIN = 0.5;
+export const VOLUME_FLAT_THIN_MIN = 0.7;
 /** Wind shear (1/m): the wind a puff takes grows with its height over its birth (a column leans over as it climbs). */
 export const VOLUME_SHEAR_K = 0.03;
 /** Eddies: a puff wanders by this share of its size per second of age (up to 4 s), on slow seeded cycles. */
@@ -290,9 +290,9 @@ void main() {
   float sNorm = inversesqrt( max( sxx + syy + 2.0 * sDet, 1e-6 ) );
   vec2 bodyC = mat2( sxx + sDet, sxy, sxy, syy + sDet ) * position.xy * sNorm;
   vec2 corner = vec2( bodyC.x * ca - bodyC.y * sa, bodyC.x * sa + bodyC.y * ca ) * size;
-  // the dust's mass held: a silhouette larger than the old card (aspect x 1) is that much thinner — from above a skirt is
-  // a veil over the ground, edge-on a dense band — never thicker, and never under half
-  float bodyThin = clamp( aspect / sDet, ${VOLUME_FLAT_THIN_MIN.toFixed(2)}, 1.0 );
+  // a silhouette larger than the old card (aspect x 1) thins by the square root of its growth — from above a skirt is a
+  // lighter veil than edge-on, still a trail (r2: the whole growth, floored at half, left Oasis a faint haze) — never thicker
+  float bodyThin = clamp( sqrt( aspect / sDet ), ${VOLUME_FLAT_THIN_MIN.toFixed(2)}, 1.0 );
   // (233) the card at the body's near side (VOLUME_FRONT_K), its footprint on the screen kept
   float camD = distance( center, cameraPosition );
   float pull = min( min( ${VOLUME_FRONT_K.toFixed(2)} * size, ${VOLUME_FRONT_MAX_M.toFixed(1)} ), max( 0.0, 0.5 * ( camD - 1.5 ) ) );
