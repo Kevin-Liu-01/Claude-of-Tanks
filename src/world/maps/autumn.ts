@@ -426,6 +426,8 @@ export default {
     // the map-revival lane (2026-10-05): the Lorraine kit (maps/regional/lorrain.ts) builds the plan in the Moselle
     // valley's construction, every building where it stood
     architecture: BUILDING_STYLES.autumn.kit,
+    // buildings-271 R4: the doorsteps (world/doorstepDressing.ts): pots, a bench, casks, logs and a cart by Amberford's 113 doors
+    doorsteps: 150,
     // round 48: a market town's plan — the church and the inn on the square,
     // a Norman tower keep, the market hall and rows, shops, granaries and
     // cottages; consumed along the town's three streets, the remainder fills

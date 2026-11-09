@@ -265,6 +265,8 @@ export default {
     // the village in Aso's architecture (the kyushu kit); the kit owns the renders' tones, the field walls keep the
     // city preset's stone
     architecture: BUILDING_STYLES.caldera.kit,
+    // buildings-271 R4: the doorsteps (world/doorstepDressing.ts): pots, a bench, casks, logs and a cart by the Aso farmsteads' 34 doors
+    doorsteps: 60,
     tones: { stone: makeRealisticCityBuildingTones({ value: 0.70, saturation: 0.88, soot: 0.055, roofValue: 0.68 }).stone },
     // (round 3: no rail yard — its seven sidings were Cinder Junction's, laid across the paddies)
     wallStyle: 'fieldstone', wallStoneChance: 0.72,

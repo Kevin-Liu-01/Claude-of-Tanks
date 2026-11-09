@@ -40,10 +40,10 @@
       "concealers": 3674
     },
     "autumn": {
-      "bytes": 1787885,
-      "sha256": "138fb89a6d7cc9b882cb99ddcf58e7674be29f135d99e972e050287f0f21ec51",
-      "obstacles": 6211,
-      "colliders": 6706,
+      "bytes": 1810014,
+      "sha256": "5c7301015d2ccdea9ab6775668d2f6fc2fd3a81123859dbabae490207205b1fa",
+      "obstacles": 6360,
+      "colliders": 6855,
       "concealers": 5993
     },
     "steppe": {
@@ -103,10 +103,10 @@
       "concealers": 1139
     },
     "caldera": {
-      "bytes": 1667300,
-      "sha256": "282fb4f48d7ca70b9a6203c6ec27be313c7585a7473310fe5c4194911dd671c2",
-      "obstacles": 2923,
-      "colliders": 3086,
+      "bytes": 1675548,
+      "sha256": "f13eedea2042e67ad33145cbdb7ff77e73530ce42774508a477a585fd7a9e2bc",
+      "obstacles": 2976,
+      "colliders": 3139,
       "concealers": 1035
     },
     "foundry": {
