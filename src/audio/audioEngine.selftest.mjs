@@ -741,4 +741,58 @@ else globalThis.localStorage = priorStorage;
   names = logSince(since).map((e) => e.n);
   assert.ok(names.includes('ac_30_own'), `after a change of hull our new roof cannon plays its own report (${names})`);
 }
-console.log(`audioEngine.selftest: rigs by powertrain, national crew, scenes, weapon layering + delay + flyby, reload choreography, hits, edge cases, destruction, concussion, our hits and misses, kill-cam, panning, scope, aircraft, mode events, interface sounds, rig ownership, late adoption and teardown passed (${probe.sfxLog.length} voices logged)`);
+{
+  // round 8 Y3 s1-08: our own weapons' banks have their own owner ('own-weapons'), the hull and gun we have now. They are
+  // pinned at our hull's first frame (in the countdown), replaced at a Gun Game step and released with the battle; the
+  // battle warm (which runs before the index meets the new battle's hull) never pins the last battle's.
+  const { weaponMounts } = await import('./weaponAudio.ts');
+  const ownIds = (gun) => [...new Set(weaponMounts(gun).flatMap((m) => [m.row?.own, m.row?.interior]).filter(Boolean))];
+  const pinnedOf = (ids) => ids.filter((id) => probe.pinned(id));
+  const hullOf = (specId, nation, caliberMm) => {
+    const hull = tank('me', { isPlayer: true, specId, nation });
+    hull.spec = { ...hull.spec, gun: { caliberMm, shells: [{ type: 'APFSDS' }, { type: 'HE' }] } };
+    return hull;
+  };
+  gameMode = 'standard';
+  // battle 1: a 120 mm hull
+  bus.emit('phase:change', { phase: 'garage' });
+  await audio.warmBattleEvents(['leo2a4']);
+  bus.emit('phase:change', { phase: 'battle' });
+  const leo = hullOf('leo2a4', 'Germany', 120);
+  audio.update(1 / 60, listener, [leo]);
+  const leoIds = ownIds(leo.spec.gun);
+  assert.ok(leoIds.length > 0, `our 120 mm gun has its own banks (${leoIds})`);
+  assert.deepEqual(pinnedOf(leoIds), leoIds, 'our hull\'s own banks are pinned at its first frame');
+  bus.emit('phase:change', { phase: 'garage' });
+  assert.deepEqual(pinnedOf(leoIds), [], 'our own banks go with the battle');
+  // battle 2: a 125 mm hull; the loader's warm and the battle edge come before its first frame
+  await audio.warmBattleEvents(['t90am']);
+  bus.emit('phase:change', { phase: 'battle' });
+  const t90 = hullOf('t90am', 'Russia', 125);
+  const t90Ids = ownIds(t90.spec.gun);
+  const stale = leoIds.filter((id) => !t90Ids.includes(id));
+  assert.ok(stale.length > 0, `the two guns' own banks differ (${leoIds} / ${t90Ids})`);
+  assert.deepEqual(pinnedOf(stale), [], 'the battle warm does not pin the last battle\'s hull');
+  audio.update(1 / 60, listener, [t90]);
+  assert.deepEqual(pinnedOf(t90Ids), t90Ids, 'the new hull\'s own banks are pinned');
+  assert.deepEqual(pinnedOf(stale), [], 'nor does anything else hold the last battle\'s');
+  // Gun Game: each step a new gun; only the current step's own banks stay pinned
+  gameMode = 'gun_game';
+  bus.emit('phase:change', { phase: 'battle' });
+  const ladder = hullOf('t90am', 'Russia', 105);
+  const steps = [105, 120, 125];
+  const seen = [];
+  for (const [stage, caliberMm] of steps.entries()) {
+    ladder.spec = { ...ladder.spec, gun: { caliberMm, shells: [{ type: 'APFSDS' }, { type: 'HE' }] } };
+    if (stage > 0) bus.emit('mode:weapon_advanced', { id: 'me', stage, name: `${caliberMm} mm` });
+    audio.update(1 / 60, listener, [ladder]);
+    seen.push(ownIds(ladder.spec.gun));
+  }
+  const current = seen.at(-1);
+  const passed = [...new Set(seen.slice(0, -1).flat())].filter((id) => !current.includes(id));
+  assert.deepEqual(pinnedOf(current), current, 'the current step\'s own banks are pinned');
+  assert.deepEqual(pinnedOf(passed), [], `the ladder's passed weapons are not (${pinnedOf(passed)})`);
+  bus.emit('phase:change', { phase: 'garage' });
+  gameMode = 'standard';
+}
+console.log(`audioEngine.selftest: rigs by powertrain, national crew, scenes, weapon layering + delay + flyby, reload choreography, hits, edge cases, destruction, concussion, our hits and misses, kill-cam, panning, scope, aircraft, mode events, interface sounds, rig ownership, late adoption and teardown, our own banks' owner passed (${probe.sfxLog.length} voices logged)`);

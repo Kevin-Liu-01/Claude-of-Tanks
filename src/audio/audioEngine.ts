@@ -2328,7 +2328,9 @@ export function createAudio({
 
   /**
    * Our own weapons (gun-reports-269): every mount's own and closed-turret reports and its loader's machinery, decoded
-   * and pinned once our hull is known (long before the rollout lets the guns speak), and again when the gun changes.
+   * and pinned once our hull is known (long before the rollout lets the guns speak), and again when the gun changes. Their
+   * owner is 'own-weapons' (round 8 Y3 s1-08): each pin replaces the last, so only the hull and gun we have now stay
+   * pinned (a Gun Game step's last weapon, the last battle's hull go), and the battle's teardown releases it.
    */
   function ownWeaponAssets(info: TankInfo | null | undefined): string[] {
     const ids = new Set<string>();
@@ -2348,7 +2350,7 @@ export function createAudio({
     if (!library) return;
     const ids = ownWeaponAssets(info);
     if (!ids.length) return;
-    library.pin(ids);
+    library.pin(ids, true, 'own-weapons');
     void library.load(ids);
   }
 
@@ -2801,6 +2803,8 @@ export function createAudio({
     playerBurning = false;
     listenerOwnerId = null;
     listenerScoped = false;
+    // our own weapons go with the battle (the next battle's hull pins its own at its first frame, in the countdown)
+    library?.pin([], true, 'own-weapons');
   }
 
   /**
@@ -3484,10 +3488,10 @@ export function createAudio({
     for (const id of UI_SET) ids.add(id);
     for (const id of PLAYER_HULL) ids.add(id);
     for (const id of MODE_SET) ids.add(id);
-    // The report banks the battle can hear: the roster's mounts and the roof stations' (every row when unknown), and
-    // our own hull's reports and loader machinery once it is known (preloadOwnWeapons pins them when it is found).
+    // The report banks the battle can hear: the roster's mounts and the roof stations' (every row when unknown). Our own
+    // hull's reports and loader machinery are their own owner's (preloadOwnWeapons, at our hull's first frame): this warm
+    // runs before the index meets the new battle's hull, and read the last battle's.
     for (const id of battleReportAssets(mode)) ids.add(id);
-    for (const id of ownWeaponAssets(playerEntityInfo())) ids.add(id);
     // Every prop's sound (propSounds.ts): the first pole, cart or drum a hull meets is never silent while it decodes.
     for (const id of propSoundAssets()) ids.add(id);
     // Every impact by material, the near misses, the spall and the debris (impactMaterials.ts): any round may strike any

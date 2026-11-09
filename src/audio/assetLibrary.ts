@@ -47,6 +47,13 @@ interface AssetLibraryOptions {
   seed?: ReadonlyMap<string, readonly AudioBuffer[]> | null;
 }
 
+/**
+ * The owners of pinned assets (each replaces or releases only its own): the session (the interface and the radio net),
+ * the battle warm, the ambience scene, the vehicle and aircraft rigs' loops, the aircraft set, and our own hull's weapons
+ * (its own and closed-turret reports and loader machinery, for the hull and gun we have now).
+ */
+export type PinGroup = 'session' | 'battle' | 'scene' | 'rigs' | 'aerial' | 'own-weapons';
+
 export interface AssetLibrary {
   /** Resolves once the format probe has run; false = samples unavailable. */
   readonly ready: Promise<boolean>;
@@ -69,11 +76,13 @@ export interface AssetLibrary {
   /**
    * Keep assets decoded for the current context (the battle set, the garage
    * set, live loops): eviction never drops a pinned asset, so a sound that
-   * waited minutes for its moment still plays. `replace` starts a new set for
-   * `group` (its owner's pins; 'shared' when none is named), leaving every
-   * other owner's pins as they are.
+   * waited minutes for its moment still plays. `group` names the owner that
+   * holds the pins and alone replaces or releases them; `replace` starts a
+   * new set for it, leaving every other owner's pins as they are. Every pin
+   * names its owner (round 8 Y3 s1-08: a bare pin(ids) went to a group no
+   * owner ever released).
    */
-  pin(ids: Iterable<string>, replace?: boolean, group?: string): void;
+  pin(ids: Iterable<string>, replace: boolean, group: PinGroup): void;
   /** Whether any owner pins the asset (eviction never drops it). */
   isPinned(id: string): boolean;
   /** Mark assets as in use (LRU eviction never drops what played recently). */
@@ -386,7 +395,8 @@ export function createAssetLibrary({
       if (options?.front) for (const id of unique) promote(id);
       await Promise.all(unique.map(loadOne));
     },
-    pin(ids, replace = false, group = 'shared') {
+    // (an untyped receipt's bare pin lands in 'shared'; typed callers must name their owner)
+    pin(ids, replace = false, group: string = 'shared') {
       let owned = pinGroups.get(group);
       if (!owned) { owned = new Set(); pinGroups.set(group, owned); }
       if (replace) owned.clear();
