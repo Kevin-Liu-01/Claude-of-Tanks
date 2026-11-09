@@ -260,6 +260,7 @@ if (dry) {
   }
   console.log(`dry: ${takes} takes, ${uncached} not cached, ${chars} characters on their first attempt `
     + `(~${Math.round(chars * 1.5)} credits with re-rolls; speech-to-text adds about one credit a take)`);
+  rmSync(tmp, { recursive: true, force: true });
   process.exit(0);
 }
 for (const lang of languages) {
