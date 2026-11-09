@@ -344,11 +344,26 @@ export const BUNDLE_BUDGETS = Object.freeze({
   //   strike strings), crewVoice +222 (the 21 world packs), gameModeCatalog +109 (the fourteenth mode), battleLoad +93,
   //   icons +87, icon +70 and the design tokens +68 (on every page). Home +143 B, docs
   //   +123 B and 404 +57 B (the same shared chunks) are re-pinned at their measures; pad's row is held.
-  // (round 8 Y11, merging origin/main 1b10803a6b = 270 into the round-eight merge) both histories above kept; each row
-  //   holds the larger of the two sides' pins until the merged build re-pins it (the entry below).
-  game: { brotliBytes: 1204303, requests: 127, entryBrotliBytes: 257710 },
-  cn: { brotliBytes: 1249122, requests: 128, entryBrotliBytes: 257710 },
-  gallery: { brotliBytes: 759827, requests: 73 },
+  // 2026-11-09 (the implicit state machine fixes' round eight merge, item Y11; Kevin: "id like you to resolve all of
+  //   them"): the ten round-eight clusters over H8 1bf9654a97 (the Y0b entry above) with origin/main 1b10803a6b (270, the
+  //   entry above it) merged in; both histories kept. Re-pinned at item/sm-fix8-merge 4a9a1f14f7's builds (Node 24.22.1,
+  //   vite 8.3.5, rolldown 1.2.15, the same node_modules; package-lock.json unchanged by 270): the local build and the
+  //   release way (VERCEL_GIT_COMMIT_SHA set, stamp v1.0.0+g4a9a1f14f) are byte-identical, so the larger is either: game
+  //   1,210,986 B brotli, cn 1,256,211 B, entry 259,227 B, Gallery 760,044 B (5b1a68e304's build read the entry at
+  //   259,062 B, the commit-hash spread). Over 270's measured build (its pins): game +16,345, cn +16,391, entry +7,653,
+  //   Gallery +3,137. Over H8's (Y0b's 8ef46d8770): game +6,842, cn +7,248, entry +1,676, Gallery +217, of which 270's
+  //   own growth over 269 is game +5,200, cn +5,651, entry +886, Gallery +273, so round eight's clusters add about
+  //   +1,642 / +1,597 / +790 B on game / cn / entry and nothing on the Gallery (brotli does not add across shared
+  //   chunks). By boot chunk, raw over H8's build (vite's report): main +4,840 (270's boot wiring; round eight's couch
+  //   opener, phone pause rule and visibility rule in main), vehicleActions +9,650 (270's three Air Support leaves; the
+  //   couch session owner and the body-class reasons, which joined it to hold the requests), matchRuleset +2,100 and the
+  //   en-US catalog +1,950 (270's mode), crewVoice +470 and gameModeCatalog +350 (270), stateCore +150 (the couch session's
+  //   reads), phonePause +70 (H8's battleTimeChoices chunk, which phonePause.ts joined). Requests held at 127 / 128 / 73
+  //   / 8 / 12 / 7 (pad 14): couchSeats and bodyFlags, alone two more game and cn boot requests, ride vehicleActions
+  //   (vite.config.ts). Home 28,923, docs 37,228 and 404 18,739 measure within their slack over the held pins.
+  game: { brotliBytes: 1210986, requests: 127, entryBrotliBytes: 259227 },
+  cn: { brotliBytes: 1256211, requests: 128, entryBrotliBytes: 259227 },
+  gallery: { brotliBytes: 760044, requests: 73 },
   home: { brotliBytes: 28785, requests: 8 },
   docs: { brotliBytes: 37100, requests: 12 },
   notFound: { brotliBytes: 18677, requests: 7 },

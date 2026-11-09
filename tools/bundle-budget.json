@@ -1,5 +1,5 @@
 {
-  "note": "Static bundle budget (tools/bundle-budget.mjs): the bytes and requests each page loads before its entry runs. Generated at +3 % over a reviewed build; npm run check:bundle enforces it after npm run build. 266 (integrator, the single end re-pin over integ/266 0df7b32811's build; Node 24.22.1): bytes at +3 % over the build; request pins held at the exact counts (game 128, Gallery 75, cn 129, home 8, docs 12, 404 7, pad 14) after the Leopard 2 wedge leaf joined fleetLayouts. 269 (phone-feel-269, the owner 2026-11-03 \"it should buzz and vibrate and do everything\", the aim made more intuitive, the first-pairing controls guide): pad.html bytes only, at +3 % over its build after the desktop-only code left the phone (padDesk.ts, padCues.ts; src/pad/padPhoneHalf.selftest.mjs): the buzz engine, the aim curve and the guide are 2,546 B brotli over main and couch-mode-268; its 14 requests and every other page held. 269 (integrator, the single end re-pin over integ/269's build; Node 24.22.1): bytes at +3 % over the build; request pins at the exact counts (game 127, Gallery 73, cn 128, home 8, docs 12, 404 7, pad 14) after the Redback's datums joined fleetLayouts; pad's row is phone-feel-269's, held.",
+  "note": "Static bundle budget (tools/bundle-budget.mjs): the bytes and requests each page loads before its entry runs. Generated at +3 % over a reviewed build; npm run check:bundle enforces it after npm run build. 266 (integrator, the single end re-pin over integ/266 0df7b32811's build; Node 24.22.1): bytes at +3 % over the build; request pins held at the exact counts (game 128, Gallery 75, cn 129, home 8, docs 12, 404 7, pad 14) after the Leopard 2 wedge leaf joined fleetLayouts. 269 (phone-feel-269, the owner 2026-11-03 \"it should buzz and vibrate and do everything\", the aim made more intuitive, the first-pairing controls guide): pad.html bytes only, at +3 % over its build after the desktop-only code left the phone (padDesk.ts, padCues.ts; src/pad/padPhoneHalf.selftest.mjs): the buzz engine, the aim curve and the guide are 2,546 B brotli over main and couch-mode-268; its 14 requests and every other page held. 269 (integrator, the single end re-pin over integ/269's build; Node 24.22.1): bytes at +3 % over the build; request pins at the exact counts (game 127, Gallery 73, cn 128, home 8, docs 12, 404 7, pad 14) after the Redback's datums joined fleetLayouts; pad's row is phone-feel-269's, held. Round 8 Y11 (the implicit state machine fixes' round-eight merge over 270, item/sm-fix8-merge 4a9a1f14f7; the local build and the release way byte-identical): game's and cn's entryBrotli only, the two rows the merged build read red (259,227 B brotli: main's boot wiring, 270's and the clusters'), at +3 % over it; every other row and every request pin held.",
   "headroom": 0.03,
   "pages": {
     "game": {
@@ -9,7 +9,7 @@
       "brotli": 1225095,
       "inlineCss": 5174,
       "entryRaw": 931777,
-      "entryBrotli": 258179
+      "entryBrotli": 267004
     },
     "home": {
       "requests": 8,
@@ -46,7 +46,7 @@
       "brotli": 1271165,
       "inlineCss": 5534,
       "entryRaw": 931777,
-      "entryBrotli": 258179
+      "entryBrotli": 267004
     },
     "pad": {
       "requests": 14,
