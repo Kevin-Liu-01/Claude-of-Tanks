@@ -842,7 +842,7 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
   // centre (round 3, the critic's M1: a straggler re-arrived round the humans swept the fight they had left 500 m back)
   // and the arrival's orders (round 3, the critic's M1/M3): a director-placed hunter drives on along the facing the
   // director gave it — at the ring's centre as it stood at the arrival, never updated — to a seeded point HUNT_RULES.lead
-  // gives or takes round it (lx, lz; NaN for a hull that rose anywhere else)
+  // gives or takes round it (its record's lead; null for a hull that rose anywhere else)
   /**
    * Each bravo bot's search (HuntSearch; 268, item 10; Main: a hunter never stands on a spent lead). Written only by
    * resetHunterSearch (a revive) and stepHunterSearch (the hunt's plan); restoreHunt replaces the whole map from a

@@ -12,7 +12,9 @@
 // on to its director lead. [2] Endless Horde, spotted, then hidden: one hunter reaches the sighting (spent) and its
 // sweep points, and the host goes as it stands on its next point; the rest still drive to the sighting. [3] Infected,
 // spotted, then hidden: one hunter mid-sweep. Each case also compares the two hosts' whole hunt state after the steps
-// (the plans' clock, the sightings' refresh clock and the arrivals' lead seed included). [4] The record is JSON-safe
+// (the plans' clock, the sightings' refresh clock and the arrivals' lead seed included), and (fix-up r1, the completeness
+// review: a capture that dropped either clock passed, the final compare reading both hosts through it) checks that the
+// keyframe itself names both clocks, within assignEveryS and intelRefreshS of the migration. [4] The record is JSON-safe
 // and the restore refuses a corrupt one. Every bot asks for its destination each step, as the drivers do.
 import { createMatchModeController } from './matchModes.ts';
 import { HUNT_RULES, matchRulesetFor } from './matchRuleset.ts';
@@ -59,6 +61,13 @@ function migrate(label, mode, ruleset, setUp) {
   };
   const picked = setUp({ old, oldHulls, sight, clock, step: (s) => step(old, oldHulls, s) });
   const keyframe = JSON.parse(JSON.stringify(old.captureCheckpoint(clock.t)));
+  // the keyframe carries the plans' clock and the sightings' refresh clock as the old host holds them: every case has
+  // planned and refreshed by now, so each lies within its own interval of the migration
+  const planAtS = keyframe.hunt?.planAtS, intelAtS = keyframe.hunt?.intelAtS;
+  ok(Number.isFinite(planAtS) && planAtS <= clock.t && clock.t - planAtS < HUNT_RULES.assignEveryS,
+    `${label}: the keyframe names the plans' clock (${planAtS} at ${clock.t}, every ${HUNT_RULES.assignEveryS} s)`);
+  ok(Number.isFinite(intelAtS) && intelAtS <= clock.t && clock.t - intelAtS < HUNT_RULES.intelRefreshS,
+    `${label}: the keyframe names the sightings' refresh clock (${intelAtS} at ${clock.t}, every ${HUNT_RULES.intelRefreshS} s)`);
   const newHulls = roster(mode);
   const fresh = host(mode, ruleset, newHulls, sight); // the elected host's controller: its constructor opens a wave
   for (const [i, hull] of oldHulls.entries()) copyHull(hull, newHulls[i]);
