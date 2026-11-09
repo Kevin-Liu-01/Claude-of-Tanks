@@ -495,7 +495,12 @@ export default defineConfig({
             // strike code: the action bits (sim/playerActions.ts, constants), the strike view's state (game/strikeViewState.ts)
             // and the terrain's strike-mark uniforms (engine/strikeMarks.ts; three stays in its own chunk). Alone they were three
             // more boot requests on both pages, on the same two pages this group already loads.
-            { name: 'vehicleActions', test: /[\\/]src[\\/](?:game[\\/](?:vehicleActions|consumableLoadout|strikeViewState)|sim[\\/](?:spottingStats|equipmentRules|consumableRules|camoPaint|playerActions)|ui[\\/](?:minimapAssetUrl|battleSight)|engine[\\/](?:chaseFraming|cameraLens|strikeMarks))\.ts$/, includeDependenciesRecursively: false },
+            // 2026-11-09 (the implicit state machine fixes' round eight merge, Y11, over 270): two leaves the game and cn now load
+            // at boot and lazy code loads too: the couch session's owner (game/couchSeats.ts: stateCore's clearMatchSession ends
+            // a session, round 8 Y1; DOM-free, its one import the action bits above) and the body-class reasons (ui/bodyFlags.ts,
+            // audit F8: main's couch view raises 'cot-spectating' now, round 8 Y4, beside the lazy HUD's). Alone they were two
+            // more boot requests on both pages.
+            { name: 'vehicleActions', test: /[\\/]src[\\/](?:game[\\/](?:vehicleActions|consumableLoadout|strikeViewState|couchSeats)|sim[\\/](?:spottingStats|equipmentRules|consumableRules|camoPaint|playerActions)|ui[\\/](?:minimapAssetUrl|battleSight|bodyFlags)|engine[\\/](?:chaseFraming|cameraLens|strikeMarks))\.ts$/, includeDependenciesRecursively: false },
             // 2026-10-05 (media Studio): three's Pass base and the light-model family (atmosphere, cloudscapes, light
             // model core, haze law, ground bounce) stay the one chunk the game, map, terrain and urban kit share. The
             // Studio's cinema passes and horizon relight import members of it; without the group those split into a
