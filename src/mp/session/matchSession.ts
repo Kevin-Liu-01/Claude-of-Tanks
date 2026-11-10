@@ -212,6 +212,8 @@ export class MatchSession {
   // players this seat's host already revoked this round (a kick or leave seen in room_state)
   private readonly revokedSeats = new Set<string>();
   private generation = 0;
+  /** The entry in flight (from the match_start until its client exists): a re-sent start for the same match joins it. */
+  private entering: { matchId: string; promise: Promise<MatchClient> } | null = null;
   private roundsEntered = 0;
   private verdictsSeen = 0;
   private lastVerdict: { verdict: VerdictId; reason: string; matchId: string } | null = null;
@@ -380,6 +382,18 @@ export class MatchSession {
       }
       return this.matchClient;
     }
+    // The same match re-sent while this seat is still loading (its room socket blipped on the loading screen): the entry in
+    // flight already follows the room's newest election once its world is ready (openPeerToPeer, adoptEarlyPeerLink), so it
+    // is joined rather than left and begun again (improve-271 plan 004).
+    if (this.entering?.matchId === payload.matchId) return this.entering.promise;
+    const entering = { matchId: payload.matchId, promise: this.enterRound(payload) };
+    this.entering = entering;
+    const settled = (): void => { if (this.entering === entering) this.entering = null; };
+    entering.promise.then(settled, settled);
+    return entering.promise;
+  }
+
+  private async enterRound(payload: RoomMatchStartPayload): Promise<MatchClient> {
     await this.leaveMatch('rematch');
     const generation = ++this.generation;
     const room = this.room.room;
@@ -1030,6 +1044,8 @@ export class MatchSession {
     const unowned = client ? null : this.migrating;
     const handedOff = this.handedOff;
     this.handedOff = false;
+    // a left entry is never joined: the next start of the same match enters afresh
+    this.entering = null;
     this.stopEntryReports(`leave: ${reason}`);
     this.closeStandby(`leave: ${reason}`);
     this.matchClient = null;

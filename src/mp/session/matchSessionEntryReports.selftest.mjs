@@ -79,14 +79,18 @@ const snapshotWith = (host) => ({ ...serializeRoom(room), host });
 const world = new RtcWorld();
 const cores = [];
 
-async function seat({ presentationMs = 0, presentationUntil = null, p2p = {} } = {}) {
+async function seat({ presentationMs = 0, presentationUntil = null, presentationGate = null, p2p = {} } = {}) {
   let transport = null;
+  const counts = { presentations: 0 };
   const client = new RoomClient({ endpoint: 'ws://rooms.test', player: { id: 'me', name: 'Me' }, pingIntervalMs: 0, requestTimeoutMs: 2000, createTransport: () => { transport = scriptedTransport(); return transport; } });
   const logs = [];
   const session = new MatchSession({
     room: client, clock: () => performance.now(),
     createPresentation: async () => {
+      counts.presentations++;
       if (presentationMs) await sleep(presentationMs);
+      // a world build held open until the case releases it
+      if (presentationGate) await presentationGate();
       // (267) a world build that lasts until the event it is there for (the entry reports flowing), capped
       if (presentationUntil) await until(() => presentationUntil(transport), 'the presentation\'s event', 20_000);
       const presentation = new RecordingPresentation(64);
@@ -103,12 +107,13 @@ async function seat({ presentationMs = 0, presentationUntil = null, p2p = {} } =
   const request = transport.outbound.find((envelope) => envelope.type === 'room_join');
   transport.deliver({ type: 'room_joined', requestId: request.requestId, payload: { room: snapshotWith({ transport: 'p2p', hostId: null, generation: 0, since: 0 }), playerId: 'me', seat: 0, chat: [] } });
   await joining;
-  return { client, session, transport, logs };
+  return { client, session, transport, logs, counts };
 }
 
 let matchCounter = 0;
-function start(transport, { hostId = 'me', generation = 1 } = {}) {
-  const matchId = `m${++matchCounter}-0000e${matchCounter}e0`;
+function start(transport, { hostId = 'me', generation = 1, matchId: sameMatchId = null } = {}) {
+  // a matchId given is the same match re-sent (the room re-sends match_start to a seat back from a room-socket blip)
+  const matchId = sameMatchId ?? `m${++matchCounter}-0000e${matchCounter}e0`;
   const hostSecret = createHash('sha256').update(`${SEAT_SECRET}:${matchId}`).digest('hex');
   const token = signSeatToken(hostSecret, { v: 1, roomId: roomCode, seat: 0, playerId: 'me', name: 'Me', team: 'alpha', specId: 'm1a1_abrams_hc', iat: Date.now() - 1000, exp: Date.now() + 3_600_000 });
   transport.deliver({ type: 'room_state', payload: { room: snapshotWith({ transport: 'p2p', hostId, generation, since: 2000 }) } });
@@ -269,9 +274,46 @@ stage = 'case 8';
   assert.equal(session.roomSignaler().target(), null, 'no offer to itself: the attempt waits for another host');
   session.dispose(); client.dispose();
 }
+// ---- the room re-sends match_start while this seat is still loading (a room-socket blip on the loading screen): the
+//      entry in flight is joined, not restarted (it used to leave the round and build the world again)
+stage = 'case 9';
+{
+  let release = null;
+  const held = new Promise((resolve) => { release = resolve; });
+  const { transport, session, client, counts } = await seat({ presentationGate: () => held });
+  const { matchId } = start(transport, { hostId: 'other' });
+  await until(() => counts.presentations === 1, 'the entry began');
+  const joined = session.enterMatch(client.matchStart);
+  start(transport, { hostId: 'other', matchId });
+  await sleep(20);
+  assert.equal(session.phase, 'loading');
+  release();
+  await until(() => session.phase === 'match', 'the round entered');
+  assert.equal(counts.presentations, 1, 'one world build for one match, however often the room re-sends its start');
+  assert.equal(await joined, session.match, 'a caller of the re-sent start gets the entry in flight');
+  assert.equal(session.round.matchStart.matchId, matchId);
+  session.dispose(); client.dispose();
+}
+// ---- a match_start for ANOTHER match while loading still supersedes the entry in flight
+stage = 'case 10';
+{
+  let release = null;
+  const held = new Promise((resolve) => { release = resolve; });
+  const { transport, session, client, counts } = await seat({ presentationGate: () => held });
+  start(transport, { hostId: 'other' });
+  await until(() => counts.presentations === 1, 'the first entry began');
+  const first = session.enterMatch(client.matchStart);
+  const { matchId: second } = start(transport, { hostId: 'other' });
+  await until(() => counts.presentations === 2, 'the second entry began');
+  release();
+  await assert.rejects(first, /round superseded/, 'the first round gives way');
+  await until(() => session.phase === 'match', 'the second round entered');
+  assert.equal(session.round.matchStart.matchId, second);
+  session.dispose(); client.dispose();
+}
 for (const core of cores) core.dispose();
 await sleep(50);
 assert.ok(cores.every((core) => !core.actor || core.actor.stopped), 'no actor outlives its core');
 peakRss = Math.max(peakRss, process.memoryUsage().rss);
 assert.ok(peakRss < 1e9, `memory stayed bounded (peak RSS ${(peakRss / 1e6).toFixed(0)} MB)`);
-console.log('matchSessionEntryReports.selftest: the elected host reports loading through a slow entry and stops at its actor\'s first report; the ceiling, host_only and a new election stop them; a peer and a running match send none; a re-entry decline is withdrawn at the welcome; a core stopped during its world load starts no actor');
+console.log('matchSessionEntryReports.selftest: the elected host reports loading through a slow entry and stops at its actor\'s first report; the ceiling, host_only and a new election stop them; a peer and a running match send none; a re-entry decline is withdrawn at the welcome; a core stopped during its world load starts no actor; a match_start re-sent during loading joins the entry in flight, another match supersedes it');
