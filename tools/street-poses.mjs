@@ -11,7 +11,7 @@
 //
 // (amberford-lavoir-272) `--focus=x,z` aims every pose at one place instead (a square's corner, a set piece): the eye on
 // the carriageway band 12-40 m from it, looking at it at door height, the line of sight clear of every building and tall
-// solid but the focus's own (those within 8 m of it), poses 25 m apart; the same cameras whatever stands there.
+// solid but the focus's own (those within 8 m of it), poses 12 m apart; the same cameras whatever stands there.
 //   node tools/street-poses.mjs --maps=autumn --focus=-114,75 --count=6 --out=<poses-place.json>
 
 import { writeFileSync } from 'node:fs';
@@ -92,7 +92,7 @@ function segmentHitsBox(o, px, pz, qx, qz, stop) {
   return true;
 }
 
-const FOCUS_NEAR_M = 12, FOCUS_FAR_M = 40, FOCUS_SPACING_M = 25, FOCUS_OWN_M = 8;
+const FOCUS_NEAR_M = 12, FOCUS_FAR_M = 40, FOCUS_SPACING_M = 12, FOCUS_OWN_M = 8;
 
 async function posesFor(mapId, { count, seed, focus }) {
   let field = null, buildings = [], obstacles = [];
