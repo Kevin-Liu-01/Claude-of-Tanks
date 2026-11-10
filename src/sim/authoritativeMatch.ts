@@ -346,7 +346,13 @@ export interface AuthoritativeMatchOptions {
   players?: AuthoritativePlayerRecord[];
   mapId?: string;
   seed?: number;
+  /** The clock limit in battle seconds (tests, tooling, a room's configured limit); absent = the ruleset's clock. */
   battleLimitS?: number;
+  /**
+   * (272) The battle time a resumed match starts from (a host migration: the newest frame's battle time, the HUD's
+   * clock); 0 for a fresh match. The mode controller and the clock limit both run on `timeS + resumedAtS`.
+   */
+  resumedAtS?: number;
   countdownS?: number;
   gameMode?: GameModeId | string;
   /** Rules the match plays by; derived from gameMode when absent (campaign operations pass theirs). */
@@ -471,7 +477,6 @@ interface PendingRam {
   vertical: boolean;
 }
 
-const BATTLE_LIMIT_S = 15 * 60;
 const FIRE_TICK_S = 0.5;
 const MAX_EVENTS = 128;
 const CRUSH_MIN_MPS = 6 / 3.6;
@@ -792,7 +797,8 @@ export function createAuthoritativeMatch({
   players = [],
   mapId = 'verdant',
   seed = 6000,
-  battleLimitS = BATTLE_LIMIT_S,
+  battleLimitS,
+  resumedAtS = 0,
   countdownS = 5,
   gameMode = 'standard',
   ruleset: rulesetOption,
@@ -855,7 +861,7 @@ export function createAuthoritativeMatch({
     tankAlong: (origin, direction, maxDist, ownerId) => droneTankAlong(entities, origin, direction, maxDist, ownerId),
   };
   let timeS = 0;
-  let modeTimeOffsetS = 0;
+  const modeTimeOffsetS = Math.max(0, finite(resumedAtS, 0));
   let fireTickAcc = 0;
   let result: MatchResult | null = null;
   let resultReason: string | null = null;
@@ -868,8 +874,11 @@ export function createAuthoritativeMatch({
   // damage-taken, reload, ammunition and equipment at spawn / revive, gravity at the muzzle, the clock.
   const ruleset: MatchRuleset = rulesetOption && rulesetOption.mode === normalizedGameMode
     ? rulesetOption : matchRulesetFor(normalizedGameMode);
-  // an explicit battleLimitS (tests, tooling) wins; otherwise the ruleset's clock (null = no clock)
-  const clockLimitS = battleLimitS !== BATTLE_LIMIT_S ? battleLimitS : (ruleset.timeLimitS ?? Infinity);
+  // ONE clock (272, improve-271 plan 010): the limit and the mode controller both read `timeS + modeTimeOffsetS`,
+  // the battle time (a resumed match's offset is the newest frame's battle time, the HUD's clock, never the older
+  // keyframe's), against the FULL limit: an explicit battleLimitS (any value, 900 included), else the ruleset's
+  // (null = no clock). The mode steps first in a tick, so at the limit its own verdict wins over time_limit.
+  const clockLimitS = battleLimitS ?? ruleset.timeLimitS ?? Infinity;
   // the pillboxes' damage (sim/fortifiedCover.ts): every round stops on one, and accumulated heavy blows bring it down;
   // the solo step keeps the same ledger (game/state.ts game._fortified)
   const fortified = createFortifiedCoverLedger();
@@ -2156,7 +2165,7 @@ export function createAuthoritativeMatch({
   }
 
   function determineModeResult(): void {
-    if (timeS < clockLimitS) return;
+    if (timeS + modeTimeOffsetS < clockLimitS) return;
     const score = modeController.state.score;
     const winner = winnerFromScores(score.alpha, score.bravo);
     // a level score resolves by the ruleset: Standard rules draw, a campaign sortie is lost by the attackers
@@ -2177,7 +2186,7 @@ export function createAuthoritativeMatch({
     const alpha = survivingTeams.alpha;
     const bravo = survivingTeams.bravo;
     const eliminated = alpha === 0 || bravo === 0;
-    if (!eliminated && timeS < clockLimitS) return;
+    if (!eliminated && timeS + modeTimeOffsetS < clockLimitS) return;
     finishMatch(
       winnerFromScores(alpha, bravo),
       eliminated ? 'elimination' : 'time_limit',
@@ -2770,7 +2779,8 @@ export function createAuthoritativeMatch({
       return { mode: modeController.captureCheckpoint(timeS + modeTimeOffsetS), flights: flightStates };
     },
     restoreModeCheckpoint(checkpoint) {
-      modeTimeOffsetS = Math.max(0, checkpoint.mode.elapsedS);
+      // the mode clock stays on the battle clock (resumedAtS): the checkpoint's elapsedS is the sealed keyframe's,
+      // up to a keyframe interval older than the newest frame the match resumed from
       modeController.restoreCheckpoint(checkpoint.mode);
       for (const entry of checkpoint.flights) { const entity = entityById.get(entry.id); if (entity) restoreAerial(entity, entry.flight, nextAerialShellId, launchAerialShell); }
     },
