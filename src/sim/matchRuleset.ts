@@ -1405,6 +1405,12 @@ export const TERRAIN_VARIANTS: readonly TerrainVariant[] = Object.freeze(['assau
 export function terrainVariantFor(mode: GameModeId | string | null | undefined): TerrainVariant | null {
   return (BASE_RULESETS as Readonly<Record<string, MatchRuleset>>)[String(mode)]?.terrainVariant ?? null;
 }
+/** The world cache key a battle in `mode` on `mapId` builds: `map#variant` for a mode that plays a variant, else the bare id
+ *  (the world coordinator keys a variant's build and cache by it; a prefetch of the bare id builds a world the battle never uses). */
+export function worldKeyFor(mapId: string, mode: GameModeId | string | null | undefined): string {
+  const variant = terrainVariantFor(mode);
+  return variant ? `${mapId}#${variant}` : mapId;
+}
 
 export interface CampaignRulesetInput {
   /** 1-based ladder difficulty. */

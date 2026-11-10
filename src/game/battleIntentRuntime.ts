@@ -1,4 +1,5 @@
 import type { RuntimeValue } from '../runtimeTypes.ts';
+import { worldKeyFor } from '../sim/matchRuleset.ts';
 type MaybePromise<T = RuntimeValue> = T | PromiseLike<T>;
 type BudgetYield = (force?: boolean) => Promise<void> | undefined;
 
@@ -13,6 +14,8 @@ interface BattleIntentFxRuntime {
 interface BattleIntentOptions {
   specId?: string | null;
   mapId?: string | null;
+  /** The selected rules: a mode that plays a terrain variant prefetches that variant's world (none: the bare map). */
+  gameMode?: string | null;
 }
 
 interface BattleRosterPreparation {
@@ -198,7 +201,7 @@ export function createBattleIntentRuntime({
     return pending;
   };
 
-  const preload = ({ specId, mapId }: BattleIntentOptions = {}) => {
+  const preload = ({ specId, mapId, gameMode }: BattleIntentOptions = {}) => {
     if (disposed) return;
     ignoreFailure(preloadBattleVisuals);
     ignoreFailure(preloadAudio);
@@ -224,7 +227,8 @@ export function createBattleIntentRuntime({
 
     const plannedMapId = specId && mapId ? planMap(specId, mapId) : mapId;
     if (!plannedMapId) return;
-    ignoreFailure(() => prefetchWorld(plannedMapId, { intent: true }));
+    // (improve-271 plan 036) the world the battle plays (a variant mode's own key); the minimap is the bare map's
+    ignoreFailure(() => prefetchWorld(worldKeyFor(plannedMapId, gameMode), { intent: true }));
     ignoreFailure(() => preloadMinimap(plannedMapId));
   };
 

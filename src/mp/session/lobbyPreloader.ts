@@ -1,5 +1,6 @@
 import type { RuntimeValue } from '../../runtimeTypes.ts';
 import type { SerializedLobby } from '../room/lobbyShape.ts';
+import { worldKeyFor } from '../../sim/matchRuleset.ts';
 
 export interface LobbyPreloaderOptions {
   getGamePhase(): string;
@@ -83,7 +84,8 @@ export function createLobbyPreloader({
     }
 
     const mapId = state.mapId;
-    const nextMapId = !mapId || mapId === 'random' ? null : mapId;
+    // (improve-271 plan 036) the world the room's mode plays: a variant mode's own key, never the standard battlefield
+    const nextMapId = !mapId || mapId === 'random' ? null : worldKeyFor(mapId, state.gameMode);
     // Cached and in-flight builds coalesce at the world owner. Reasserting
     // intent also permits a later packet to retry failed/cancelled builds or
     // maps skipped for capacity; merely remembering their ID would lose them.

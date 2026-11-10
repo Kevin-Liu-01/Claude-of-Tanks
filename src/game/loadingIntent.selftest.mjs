@@ -62,14 +62,16 @@ assert.match(battleIntent, /onPlayModeIntent\?\.\(battleMode\)/,
 // (d82a48e34e, Proving Ground is a mode) the warm's map is the field the battle will be fought on: a mode with its own
 // battlefield (rulesetBattlefield) warms that one, any other the selected map (garage.ts fieldMapId)
 assert.match(battleIntent, /mapId: fieldMapId\(\)/, 'the solo warm takes the battle\'s field, not the selected map alone');
+// (improve-271 plan 036) and its rules, so a mode that plays a terrain variant warms that variant's world
+assert.match(battleIntent, /gameMode: battleGameMode/, 'the solo warm names the selected rules');
 class IntentNode {}
 for (const [mode, field] of [['solo', 'coastal'], ['solo', 'proving_ground'], ['private', 'coastal'], ['lan', 'coastal']]) {
   const calls = [], idle = [], multiplayerTarget = new IntentNode();
   // (click-perf-244) the callback queues its warm for an idle slot, once, however many intents arrive first
   const intent = new Function('opts', 'battleMode', 'Node', 'multiplayerEntry', 'selectedId', 'fieldMapId',
-    'battleIntentQueued', 'requestIdleCallback', `return ${stripTypeScriptTypes(battleIntent)};`)(
+    'battleIntentQueued', 'requestIdleCallback', 'battleGameMode', `return ${stripTypeScriptTypes(battleIntent)};`)(
     { onBattleIntent: value => calls.push(['solo', value]), onPlayModeIntent: value => calls.push(['network', value]) },
-    mode, IntentNode, { contains: target => target === multiplayerTarget }, 'm1a1', () => field, false, (run) => idle.push(run));
+    mode, IntentNode, { contains: target => target === multiplayerTarget }, 'm1a1', () => field, false, (run) => idle.push(run), 'zone_control');
   intent({ target: multiplayerTarget });
   assert.deepEqual([calls, idle.length], [[], 0], 'multiplayer configuration must not warm a solo battle');
   intent({ target: new IntentNode() });
@@ -78,7 +80,7 @@ for (const [mode, field] of [['solo', 'coastal'], ['solo', 'proving_ground'], ['
   assert.equal(idle.length, 1, `${mode}: one warm however many intents arrive before it runs`);
   idle.shift()();
   assert.deepEqual(calls, mode === 'solo'
-    ? [['solo', { specId: 'm1a1', mapId: field }]] : [['network', mode]],
+    ? [['solo', { specId: 'm1a1', mapId: field, gameMode: 'zone_control' }]] : [['network', mode]],
   `${mode}: actual callback warms only its selected path (${field})`);
 }
 

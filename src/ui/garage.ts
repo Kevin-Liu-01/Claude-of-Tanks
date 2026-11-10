@@ -209,7 +209,7 @@ interface GarageOptions {
   readonly onCouch?: (request: { readonly gameMode: GameModeId; start(couch: CouchBattle): void }) => void;
   readonly onPlayRequest?: (request: PlayRequest) => void;
   readonly onPlayModeIntent?: (mode: BattleMode) => void;
-  readonly onBattleIntent?: (request: { readonly specId: string; readonly mapId: string }) => void;
+  readonly onBattleIntent?: (request: { readonly specId: string; readonly mapId: string; readonly gameMode: GameModeId }) => void;
   readonly onStudioIntent?: () => void;
   /** Open the Studio (main.ts: its lazy access boundary's own open, the one F8 takes in the Garage). */
   readonly onStudio?: () => void;
@@ -4063,7 +4063,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
       if (!selectedId) return;
       try {
         if (battleMode === 'solo') {
-          opts.onBattleIntent?.({ specId: selectedId, mapId: fieldMapId() });
+          opts.onBattleIntent?.({ specId: selectedId, mapId: fieldMapId(), gameMode: battleGameMode });
         } else {
           // Opening a room is not solo-battle intent. Warming the bot roster and
           // current garage map here made the lobby compete with irrelevant
