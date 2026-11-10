@@ -467,6 +467,9 @@ interface ObjectiveCheckpoint {
   ball: BallState | null; ballActiveAtS: number; lastBallTouchS: number | null;
   /** The CTF raid's stages (round 8 Y2 fix-up r3: a migrated host staged every raider afresh); absent when none. */
   raids?: [string, RaidStage][];
+  /** Gravity Mode's boost caches (improve-271 plan 009: a migrated host dropped every cache on the ground and restarted
+   *  the drop clock): the next drop, the pickup sequence and the pickups. Absent in other modes and older checkpoints. */
+  caches?: { nextAtS: number; sequence: number; pickups: PickupState[] };
 }
 /** One raider's stage (flagBots.raidStageM): when it reached it, and whether it has gone in. */
 interface RaidStage { atS: number; go: boolean }
@@ -2992,6 +2995,7 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
           zones: ruleset.assault ? [] : zones.map((zone) => ({ id: zone.id, control: zone.control, owner: zone.owner, contested: zone.contested })),
           ball: ball ? { ...ball } : null, ballActiveAtS, lastBallTouchS: Number.isFinite(lastBallTouchS) ? lastBallTouchS : null,
           ...(raidStaged.size ? { raids: [...raidStaged].map(([key, staged]): [string, RaidStage] => [key, { atS: staged.atS, go: staged.go }]) } : {}),
+          ...(ruleset.mars ? { caches: { nextAtS: nextMarsCacheAtS, sequence: pickupSequence, pickups: pickups.map((p) => ({ ...p })) } } : {}),
         } } : {}),
         ...(huntSearch.size || huntPlan.size ? { hunt: captureHunt() } : {}), ...(air ? { air: air.capture() } : {}) };
     },
@@ -3042,6 +3046,10 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
         // each raider's stage as the old host had it (round 8 Y2 fix-up r3): when it reached it, whether it went in
         raidStaged.clear();
         for (const [key, staged] of saved.raids ?? []) if (finite(staged?.atS)) raidStaged.set(key, { atS: staged.atS, go: staged.go === true });
+        if (ruleset.mars && saved.caches) {
+          nextMarsCacheAtS = saved.caches.nextAtS; pickupSequence = saved.caches.sequence;
+          pickups.length = 0; pickups.push(...saved.caches.pickups.map((p) => ({ ...p })));
+        }
       }
       if (checkpoint.hunt) restoreHunt(checkpoint.hunt);
     },
