@@ -57,7 +57,9 @@ second service.
 - The host closes the lobby when the battle starts and may reopen it between battles. A phone that drops keeps its
   seat and comes back with its token, as today.
 - Signals carry the seat, so the desktop keeps one `RTCPeerConnection` per phone and phones never talk to each other.
-  The rate limits, the ICE grant and the relay budget become per seat.
+  The rate limits, the ICE grant and the relay budget become per seat. ICE is granted only once a phone has joined:
+  each phone's seat has 3 grants per 10 minutes, and the desktop 3 per joined phone (it needs one per peer
+  connection); each window is kept with its seat or the desktop in the stored lobby, so a resumed socket does not reset it.
 - Socket cap: one desktop, eight phones, two pending. Signalling is about 10 to 20 messages per phone, so a full lobby
   costs about 160 Worker messages; a battle on WebRTC costs nothing more.
 - The host can remove a seat from the big screen. A removed phone's token is forgotten.

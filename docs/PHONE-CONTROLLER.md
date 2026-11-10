@@ -70,8 +70,9 @@ Pass rule:
    at most 6 hours.
 
 Limits: the Worker rate-limits every `/pad` upgrade per client IP (`PAD_CONNECT_LIMITER`, 30 a minute, separate from the
-rooms limiter); signals ≤ 8 KB and ≤ 60 a minute per side; ICE grants ≤ 3 per side per 10 minutes; at most 2 live
-sockets plus 1 pending per pair.
+rooms limiter); signals ≤ 8 KB and ≤ 60 a minute per side; ICE grants only once a phone has joined, ≤ 3 per side per
+10 minutes, counted per side across its sockets and kept in the stored pairing (a resume or a Worker restart does not
+reset it; `src/pad/padActor.ts`); at most 2 live sockets plus 1 pending per pair.
 
 ## Transport: measured, then picked
 

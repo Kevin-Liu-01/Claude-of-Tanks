@@ -34,12 +34,14 @@ export interface PadActorPorts {
   iceServers(): Promise<{ iceServers: PadIceServer[]; relay: boolean }>;
 }
 
-/** One phone's seat: its number (1 in a pairing), its token's hash, its live socket and its share of the relay. */
+/** One phone's seat: its number (1 in a pairing), its token's hash, its live socket, its share of the relay and its ICE
+ *  window (272: kept with the seat, so a resumed socket does not reset it; absent in a state stored before 272). */
 export interface PadSeat {
   seat: number;
   token: string;
   socket: string | null;
   relayUsed: number;
+  ice?: Window;
 }
 
 export interface PadActorState {
@@ -57,6 +59,8 @@ export interface PadActorState {
   desktopSocket: string | null;
   desktopAwaySince: number | null;
   seats: PadSeat[];
+  /** The desktop's ICE window (272; absent in a state stored before it). */
+  desktopIce?: Window;
 }
 
 /** The state before lobbies: one phone's token, socket and the pairing's relay count. */
@@ -87,13 +91,26 @@ interface Window { start: number; count: number }
 const PAIR_SOCKETS = 3;
 const LOBBY_SOCKETS = 1 + PAD_LOBBY_SEATS + 2;
 
+/** A deep copy of the stored state (its seats and ICE windows are objects). */
+function copyState(state: PadActorState): PadActorState {
+  return {
+    ...state, ...(state.desktopIce ? { desktopIce: { ...state.desktopIce } } : {}),
+    seats: state.seats.map((seat) => ({ ...seat, ...(seat.ice ? { ice: { ...seat.ice } } : {}) })),
+  };
+}
+
+/** The window after one more request, or null when it is spent (a window older than windowMs starts again). */
+function admitWindow(window: Window | undefined, now: number, limit: number, windowMs: number): Window | null {
+  const current = !window || now - window.start >= windowMs ? { start: now, count: 0 } : window;
+  return current.count >= limit ? null : { start: current.start, count: current.count + 1 };
+}
+
 export class PadActor {
   readonly code: string;
   #ports: PadActorPorts;
   #state: PadActorState | null = null;
   #sockets = new Map<string, PadSocketRecord>();
   #signals = new Map<string, Window>();
-  #ice = new Map<string, Window>();
   #relaySecond = new Map<string, Window>();
   #relaySpentSent = new Set<number>();
   #relayUnpersisted = 0;
@@ -106,13 +123,13 @@ export class PadActor {
   /** The durable state, or null when this code holds nothing. */
   exportState(): PadActorState | null {
     const state = this.#state;
-    return state ? { ...state, seats: state.seats.map((seat) => ({ ...seat })) } : null;
+    return state ? copyState(state) : null;
   }
 
   /** Restore a stored state (a version-1 pairing becomes the same pairing with one seat). */
   restore(state: PadActorState | PadActorStateV1 | null): void {
     if (!state || state.code !== this.code) { this.#state = null; return; }
-    if (state.version === 2) { this.#state = { ...state, seats: state.seats.map((seat) => ({ ...seat })) }; return; }
+    if (state.version === 2) { this.#state = copyState(state); return; }
     if (state.version !== 1) { this.#state = null; return; }
     this.#state = {
       version: 2, code: state.code, kind: 'pair', phase: state.phase, createdAt: state.createdAt, expiresAt: state.expiresAt,
@@ -235,11 +252,20 @@ export class PadActor {
           ...(lobby && !desktop ? { seat: seat.seat } : {}) });
         return;
       case 'ice': {
-        if (state.phase !== 'paired' && !(desktop && lobby)) { this.#ports.send(socketId, { t: 'error', code: 'not_paired' }); return; }
-        if (!this.#admit(this.#ice, socketId, desktop && lobby ? PAD_ICE_LIMIT + PAD_LOBBY_SEATS : PAD_ICE_LIMIT, PAD_ICE_WINDOW_MS)) {
+        // relay credentials only for a peer connection that can exist: a pairing with its phone, a lobby with at least
+        // one phone joined (an empty lobby is `waiting`). The window is the side's, not the socket's: the desktop's, or
+        // the phone's seat's, kept in the stored state so a resumed socket or a restored host does not reset it. A
+        // lobby's desktop needs one credential per peer connection: PAD_ICE_LIMIT per phone joined.
+        const phoneSeat = desktop ? null : this.#seatOf(record);
+        if (state.phase !== 'paired' || (!desktop && !phoneSeat)) { this.#ports.send(socketId, { t: 'error', code: 'not_paired' }); return; }
+        const limit = desktop && lobby ? PAD_ICE_LIMIT * state.seats.length : PAD_ICE_LIMIT;
+        const window = admitWindow(desktop ? state.desktopIce : phoneSeat!.ice, this.#ports.now(), limit, PAD_ICE_WINDOW_MS);
+        if (!window) {
           this.#ports.send(socketId, { t: 'error', code: 'rate_limit' });
           return;
         }
+        if (desktop) state.desktopIce = window; else phoneSeat!.ice = window;
+        this.#ports.persist();
         const role = record.role;
         void this.#ports.iceServers().then((grant) => {
           // a socket that left or was replaced while the grant was minted receives nothing
@@ -274,7 +300,7 @@ export class PadActor {
   handleClose(socketId: string): void {
     const record = this.#sockets.get(socketId);
     this.#sockets.delete(socketId);
-    this.#signals.delete(socketId); this.#ice.delete(socketId);
+    this.#signals.delete(socketId);
     for (const key of [...this.#relaySecond.keys()]) if (key === socketId || key.startsWith(`${socketId}#`)) this.#relaySecond.delete(key);
     const state = this.#state;
     if (!record || !state) return;
@@ -438,7 +464,7 @@ export class PadActor {
       this.#ports.close(socketId, reason);
     }
     this.#sockets.clear();
-    this.#signals.clear(); this.#ice.clear(); this.#relaySecond.clear(); this.#relaySpentSent.clear();
+    this.#signals.clear(); this.#relaySecond.clear(); this.#relaySpentSent.clear();
     this.#state = null;
     this.#changed();
   }

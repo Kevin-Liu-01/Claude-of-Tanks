@@ -5,7 +5,7 @@ import assert from 'node:assert/strict';
 import { createHash, randomBytes } from 'node:crypto';
 import { PadActor } from './padActor.ts';
 import {
-  PAD_CODE_TTL_MS, PAD_DESKTOP_GRACE_MS, PAD_ICE_LIMIT, PAD_LOBBY_JOIN_MS, PAD_LOBBY_SEATS, PAD_PAIR_MAX_MS, PAD_RELAY_BUDGET,
+  PAD_CODE_TTL_MS, PAD_DESKTOP_GRACE_MS, PAD_ICE_LIMIT, PAD_ICE_WINDOW_MS, PAD_LOBBY_JOIN_MS, PAD_LOBBY_SEATS, PAD_PAIR_MAX_MS, PAD_RELAY_BUDGET,
   PAD_RELAY_HZ, PAD_SIGNAL_LIMIT, drawPadCode, normalizePadCode,
 } from './padProtocol.ts';
 
@@ -364,6 +364,70 @@ function harness(code = 'K7Q4MZ') {
   h.msg('p2', { t: 'kick', seat: 1 });
   assert.deepEqual(h.last('p2'), { t: 'end', reason: 'invalid' }, 'a phone cannot let a seat go');
   assert.equal(h.actor.exportState().seats.length, 2);
+}
+
+// --- ICE grants (272): only to a paired peer, counted per side and seat across sockets ------------------------------
+{
+  const flush = () => new Promise((resolve) => setTimeout(resolve, 0));
+  // (a) a lobby's desktop with no phone joined has no peer to reach: no relay credentials
+  const empty = harness();
+  empty.actor.openLobby('d1');
+  empty.msg('d1', { t: 'ice' });
+  await flush();
+  assert.deepEqual(empty.last('d1'), { t: 'error', code: 'not_paired' }, 'an empty lobby is not granted ICE');
+  assert.equal(empty.iceCalls, 0);
+
+  // (b) a phone's window survives its socket: three grants, a resume on a new socket, and the fourth is refused
+  const h = harness();
+  h.actor.openDesktop('d1');
+  h.actor.openJoin('p1');
+  const { token } = h.to('p1').find((m) => m.t === 'joined');
+  for (let i = 0; i < PAD_ICE_LIMIT; i++) h.msg('p1', { t: 'ice' });
+  await flush();
+  assert.equal(h.iceCalls, PAD_ICE_LIMIT);
+  h.actor.handleClose('p1');
+  h.actor.openResume('p1b');
+  h.msg('p1b', { t: 'resume', token });
+  h.msg('p1b', { t: 'ice' });
+  await flush();
+  assert.deepEqual(h.last('p1b'), { t: 'error', code: 'rate_limit' }, 'a resumed phone keeps its seat\'s ICE window');
+  assert.equal(h.iceCalls, PAD_ICE_LIMIT);
+  // the window is durable: a host that restores the stored state still counts it
+  const stored = h.actor.exportState();
+  const again = harness();
+  again.actor.restore(stored);
+  again.actor.attachSocket({ id: 'p1c', role: 'phone', seat: 1 });
+  again.msg('p1c', { t: 'ice' });
+  await flush();
+  assert.deepEqual(again.last('p1c'), { t: 'error', code: 'rate_limit' }, 'the window survives a restore');
+  // control: the desktop of a paired one-phone session keeps its own three grants
+  for (let i = 0; i < PAD_ICE_LIMIT; i++) h.msg('d1', { t: 'ice' });
+  h.msg('d1', { t: 'ice' });
+  await flush();
+  assert.equal(h.iceCalls, 2 * PAD_ICE_LIMIT, 'each side of a pairing has PAD_ICE_LIMIT grants');
+  assert.ok(h.to('d1').some((m) => m.t === 'error' && m.code === 'rate_limit'));
+  // a new window opens after PAD_ICE_WINDOW_MS
+  h.advance(PAD_ICE_WINDOW_MS);
+  h.msg('p1b', { t: 'ice' });
+  await flush();
+  assert.equal(h.iceCalls, 2 * PAD_ICE_LIMIT + 1, 'the window reopens');
+
+  // (c) a lobby's desktop: PAD_ICE_LIMIT per phone actually joined, not per seat the lobby could hold
+  const lobby = harness();
+  lobby.actor.openLobby('d1');
+  lobby.actor.openJoin('p1');
+  lobby.actor.openJoin('p2');
+  for (let i = 0; i < PAD_ICE_LIMIT * 2 + 1; i++) lobby.msg('d1', { t: 'ice' });
+  await flush();
+  assert.equal(lobby.iceCalls, PAD_ICE_LIMIT * 2, 'two phones joined: twice PAD_ICE_LIMIT grants');
+  assert.ok(lobby.to('d1').some((m) => m.t === 'error' && m.code === 'rate_limit'));
+  // the desktop's window is not reset by its socket either
+  lobby.actor.handleClose('d1');
+  lobby.actor.openResume('d1b');
+  lobby.msg('d1b', { t: 'resume', token: lobby.to('d1').find((m) => m.t === 'code').token });
+  lobby.msg('d1b', { t: 'ice' });
+  await flush();
+  assert.equal(lobby.iceCalls, PAD_ICE_LIMIT * 2, 'a resumed desktop keeps its window');
 }
 
 console.log('padActor: PASS — codes expire, join once, wrong codes refused, resume and replace, limits and relay budget hold; lobbies seat eight, per-seat signals, relay and resume, leave, remove, close and reopen');
