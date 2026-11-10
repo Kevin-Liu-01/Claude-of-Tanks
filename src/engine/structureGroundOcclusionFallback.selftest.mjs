@@ -16,9 +16,11 @@ globalThis.requestIdleCallback = (cb) => setTimeout(() => cb({ timeRemaining: ()
 const settle = () => new Promise((resolve) => setTimeout(resolve, 5));
 
 try {
+  // (improve-271 plan 017: the handle's one-texel start request, src/workerCalls.ts, is not a bake)
   const posts = [];
+  const isStartRequest = (message) => message.packed?.length === 0 && message.rect?.[2] === 1 && message.rect?.[3] === 1;
   const worker = { onmessage: null, onerror: null, terminated: 0,
-    postMessage(message) { if (this.terminated) posts.push({ ...message, afterTerminate: true }); else posts.push(message); },
+    postMessage(message) { if (isStartRequest(message)) return; if (this.terminated) posts.push({ ...message, afterTerminate: true }); else posts.push(message); },
     terminate() { this.terminated += 1; } };
   const group = new THREE.Group();
   new THREE.Scene().add(group);
@@ -33,7 +35,8 @@ try {
   handle.update(SGO_POLL_S + 0.01);
   assert.equal(posts.length, 2, 'the region re-bake is posted');
   // the worker fails with that region bake unanswered
-  worker.onerror(new Event('error'));
+  const onerror = worker.onerror;
+  onerror(new Event('error'));
   assert.equal(handle.stats.worker, false);
   assert.equal(worker.terminated, 1);
   await settle();
@@ -48,7 +51,7 @@ try {
   assert.equal(handle.stats.aureoleBakes, 1, 'the later aureole bake lands');
   const waited = await Promise.race([handle.whenReady(), new Promise((resolve) => setTimeout(() => resolve('hung'), 200))]);
   assert.equal(waited, true, 'a capture\'s wait settles');
-  worker.onerror(new Event('error'));
+  onerror(new Event('error'));
   assert.equal(worker.terminated, 1, 'a second error report changes nothing');
   handle.dispose();
 } finally {
