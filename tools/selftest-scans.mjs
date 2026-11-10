@@ -76,6 +76,8 @@ export const SELFTEST_SCANS = Object.freeze({
     'docs/**/*.{ts,mjs,js,md,json,html,css}'),
   // (264, premiere-battle) every source module, for a function key acted on with no row or a synthetic KeyboardEvent
   'src/game/keybindingCensus.selftest.mjs': lists('src/**/*.{ts,mjs,js}'),
+  // (improve-271 plan 035) every source module, for a browser store keyed by a tank id the rename migration misses
+  'src/game/tankIdBoundaries.selftest.mjs': lists('src/**/*.ts'),
   'src/mp/host/hostStandby.selftest.mjs': lists('server/world-collision-manifests/*.json'),
   // phone-feel-269: every module, for a desktop importer of a pad module the phone's page loads
   'src/pad/padPhoneHalf.selftest.mjs': lists('src/**/*.ts'),
