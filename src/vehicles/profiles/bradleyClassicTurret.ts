@@ -274,7 +274,13 @@ export function buildBradleyClassicTurret(P: TankBuilderPort, ring: ClassicTurre
   P.addGunExtra(convexSlab(
     [-0.22, -0.21, 0.02], [0.18, -0.21, 0.02], [0.18, 0.13, 0.02], [-0.22, 0.13, 0.02],
     [-0.19, -0.18, 0.44], [0.15, -0.18, 0.44], [0.15, 0.08, 0.44], [-0.19, 0.08, 0.44]));
-  P.addGunExtra(box(0.165, 0.07, 0.48), 0.0375, -0.02, 0.68);                       // rotor boot forward of the block
+  // 270 (gun-junction census, 2026-11-08): the block's rear runs on into the face wall (BODY.faceZ 0.45 = pivot -0.15), so
+  // the open-topped bay shows no slot behind it down past the gun line (it read 76-80 mm at rest and -9 deg, from above).
+  // Tapered: at +30 deg its low rear edge keeps ~50 mm over the bay floor; at full elevation its top sinks into the body.
+  P.addGunExtra(convexSlab(
+    [-0.20, -0.17, -0.19], [0.16, -0.17, -0.19], [0.16, 0.10, -0.19], [-0.20, 0.10, -0.19],
+    [-0.22, -0.21, 0.03], [0.18, -0.21, 0.03], [0.18, 0.13, 0.03], [-0.22, 0.13, 0.03]));
+  P.addGunExtra(box(0.165, 0.07, 0.48), 0.0375, -0.02, 0.68);                      // rotor boot forward of the block
   P.addGunExtra(box(0.10, 0.12, 0.42), 0.055, -0.01, 0.62);                         // cradle/gun bar
   buildGun(P, { len: 0.70, r: 0.038, baseR: 0.075 });                               // breech stub
   P.addGunExtra(cylZ(0.038, 1.53, 28), 0, 0, 1.425);                                // tube, 0.66..2.19

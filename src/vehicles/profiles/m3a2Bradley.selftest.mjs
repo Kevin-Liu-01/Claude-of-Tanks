@@ -5,15 +5,17 @@
 // bradley, and our current m2a2 bradley usa should be the m3a2 bradley") swapped the two: the M2A2 carries the classic
 // turret (modern3.ts buildM2A2Bradley) and the M3A2 the turret measured from the owner's source with the crew bags
 // (modern3.ts buildBradleySourceTurretIfv). The M3A2's spec is the M2A2's vehicle with the M3's stowed loads
-// (m3a2BradleySpecs.ts). This receipt is the M3A2's photo packet fixture (docs/references/photos/m3a2-bradley-20261102.json)
-// and the classic turret's (on the M2A2).
+// (m3a2BradleySpecs.ts). This receipt is the classic turret's (on the M2A2) and, since 270 (Main 2026-11-06: "The
+// comparison registration follows the owner's swap"), the M2A2's photo packet fixture
+// (docs/references/photos/m2a2-bradley-20261106.json); the M3A2 is measured against the source turret's model
+// (tools/procedural-fidelity.html) and keeps no packet.
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import * as THREE from 'three';
 import { createTank } from '../tankFactory.ts';
 import { getSpec } from '../specs.ts';
 import { BRADLEY_TURRET_RING } from '../modern3.ts';
-import { CLASSIC_GUN_PIVOT, CLASSIC_TOW_MOUTHS, CLASSIC_BARREL_LENGTH_M, CLASSIC_GUN_PITCH_BY_YAW_DEG } from '../bradleyClassicTurretLayout.ts';
+import { CLASSIC_GUN_PIVOT, CLASSIC_TOW_MOUTHS, CLASSIC_MUZZLE_Z, CLASSIC_GUN_PITCH_BY_YAW_DEG } from '../bradleyClassicTurretLayout.ts';
 import { bradleySourceArmorInput } from '../modern3Specs.ts';
 
 const ID = 'm3a2_bradley', CLASSIC = 'm2a2_bradley';
@@ -41,14 +43,17 @@ assert.equal(m3.gunPitchByYawDeg, undefined, `${ID}'s source turret depresses it
 assert.deepEqual(m3.gun.launcherMuzzles, getSpec('ua_m2a3_bradley').gun.launcherMuzzles,
   `${ID} fires TOW from the source turret's pod, as the Ukrainian M2A3 does`);
 assert.deepEqual(m2.armor.gunPivot, [...CLASSIC_GUN_PIVOT], `${CLASSIC} carries the classic turret's gun pivot`);
-assert.equal(m2.armor.gunBarrel.lengthM, CLASSIC_BARREL_LENGTH_M);
+// 269 (2026-11-06): the combat-rig census (combatGunRigs.generated.ts) seats the combat barrel on the drawn 25 mm, whose
+// suppressor mouth is CLASSIC_MUZZLE_Z (2.23), not the spec's 2.30; the swap had left the source turret's row on the M2A2.
+assert.equal(m2.armor.gunBarrel.lengthM, CLASSIC_MUZZLE_Z, `${CLASSIC}'s combat barrel ends at the drawn muzzle`);
 assert.deepEqual(m2.gunPitchByYawDeg, CLASSIC_GUN_PITCH_BY_YAW_DEG, `${CLASSIC} keeps the classic turret's rear stops`);
 assert.deepEqual(m2.gun.launcherMuzzles.map(({ x, y, z, frame }) => [x, y, z, frame]),
   CLASSIC_TOW_MOUTHS.map(({ x, y, z }) => [x, y, z, 'turret']), `${CLASSIC} fires TOW from the pod's two collar mouths`);
 
-const packet = JSON.parse(readFileSync(new URL('../../../docs/references/photos/m3a2-bradley-20261102.json', import.meta.url), 'utf8'));
-const target = packet.targets[ID];
+const packet = JSON.parse(readFileSync(new URL('../../../docs/references/photos/m2a2-bradley-20261106.json', import.meta.url), 'utf8'));
+const target = packet.targets[CLASSIC];
 assert.equal(target.test, 'src/vehicles/profiles/m3a2Bradley.selftest.mjs');
+assert.deepEqual(Object.keys(packet.targets), [CLASSIC], `the packet holds the ${CLASSIC} only (${ID} has its 3D oracle)`);
 
 for (const quality of ['high', 'low']) {
   const m3a2 = createTank(ID, null, { quality, proceduralOnly: true, geometryReceipt: true, camoSeed: 4242 });
@@ -57,12 +62,6 @@ for (const quality of ['high', 'low']) {
     const turretRig = m3a2.root.getObjectByName('rig_turret');
     assert.ok(turretRig.userData.bradleyA2TurretClosureReceipt, `${quality}: ${ID} carries the source turret`);
     assert.equal(turretRig.userData.bradleyClassicTurretReceipt, undefined, `${quality}: ${ID} carries no classic turret`);
-    // the photo packet's envelope, the photo check's own rule (3 %)
-    const size = new THREE.Box3().setFromObject(m3a2.root).getSize(new THREE.Vector3());
-    for (const [axis, want] of [['x', target.widthM], ['z', target.overallLengthM], ['y', target.tallestM]]) {
-      assert.ok(Math.abs(size[axis] / want - 1) <= packet.dimensionToleranceFraction,
-        `${quality}: ${ID} ${axis} ${size[axis].toFixed(3)} against the packet's ${want}`);
-    }
   } finally { m3a2.dispose(); }
   const tank = createTank(CLASSIC, null, { quality, proceduralOnly: true, geometryReceipt: true, camoSeed: 4242 });
   try {
@@ -71,6 +70,12 @@ for (const quality of ['high', 'low']) {
     const receipt = turretRig.userData.bradleyClassicTurretReceipt;
     assert.ok(receipt?.revision.startsWith('classic-7cc204ab32'), `${quality}: ${CLASSIC} carries the classic turret`);
     assert.equal(turretRig.userData.bradleyA2TurretClosureReceipt, undefined, `${quality}: ${CLASSIC} carries no family turret`);
+    // the photo packet's envelope, the photo check's own rule (3 %)
+    const size = new THREE.Box3().setFromObject(tank.root).getSize(new THREE.Vector3());
+    for (const [axis, want] of [['x', target.widthM], ['z', target.overallLengthM], ['y', target.tallestM]]) {
+      assert.ok(Math.abs(size[axis] / want - 1) <= packet.dimensionToleranceFraction,
+        `${quality}: ${CLASSIC} ${axis} ${size[axis].toFixed(3)} against the packet's ${want}`);
+    }
     // mirrored: the TOW launcher on the left (+X), the bin on the right. 2026-11-05 (269 T2, the ODS rebuild): the
     // receipt carries the stowed launcher's box and the bin in place of the 268 shell's bridges to them
     assert.ok(receipt.towBox.x0 > 0 && receipt.bin.innerX < 0, `${quality}: ${CLASSIC}'s TOW launcher is on the turret's left`);
@@ -103,5 +108,5 @@ for (const quality of ['high', 'low']) {
     }
   } finally { tank.dispose(); }
 }
-console.log(`m3a2Bradley.selftest: the M3A2 is the M2A2 with the M3's loads under the source turret, inside its photo packet `
-  + 'envelope; the M2A2 carries the classic turret, mirrored to the left TOW, turret-fixed, seated on the shared hull');
+console.log(`m3a2Bradley.selftest: the M3A2 is the M2A2 with the M3's loads under the source turret; the M2A2 carries the `
+  + 'classic turret, mirrored to the left TOW, turret-fixed, seated on the shared hull, inside its photo packet envelope');

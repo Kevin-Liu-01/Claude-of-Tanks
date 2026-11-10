@@ -43,8 +43,10 @@ const CURVES = {
   c2_ariete: [],
   m3a3_bradley: [], // 269: the A3 turret on the A2 shell and trunnion (bradleyA3Turret.ts); the sweep finds no mount conflict
   m6_linebacker: [],
-  // 268: the M3A2 under the classic turret, its turret-fixed TOW pod clear of the gun; its measured rear stops (m3a2BradleySpecs.ts)
-  m3a2_bradley: [],
+  // 268: the M3A2 under the classic turret, its turret-fixed TOW pod clear of the gun; its measured rear stops (m3a2BradleySpecs.ts).
+  // 2026-11-08 (270, after the owner's 269 swap): the classic turret and its rear stops are the M2A2's now; the M3A2 carries
+  // the source-measured turret with the full 9 deg of depression at every yaw, so the measured-curve entry follows the turret
+  m2a2_bradley: [],
   // release 230 (the gun-hull lane): the T-72B3's measured stops (t72b3XArmor.ts) and the T-72 Ryś on its raised ring
   // (t80uXArmor.ts T80U_X_RING_RAISE_M; before it, its mount stood in the deck through most of the traverse)
   t72b3: [],

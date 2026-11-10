@@ -54,7 +54,7 @@ import { resolveTankId, tankSeedId } from './tankIdAliases.ts';
 
 import {NATIONAL_MODERNIZATION_IDS} from './nationalModernizationConfig.ts';
 import { MISSION_DOCK_SEATS } from '../sim/missionDockSeats.generated.ts';
-import { missionAirframeVolumes, missionCradleVolumes } from '../sim/missionDockVolumes.ts';
+import { DOCK_KEEP_OUT_CLEAR, LIVED_IN_RACKS, M1A1_BUSTLE_RACK, missionDockKeepOutBoxes, TEJAS_BUSTLE_RACK } from './stowageRacks.ts';
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import type { DecorReservedBox } from './profiles/fieldChest.ts';
@@ -3270,7 +3270,8 @@ const JAPAN_74_DECOR: Readonly<Record<'type74' | 'stb1', () => DecorManifestRow[
 // Each row seats a crew load at stations measured on the vehicle's own geometry (turret- or hull-frame, docs/DECORATIONS.md
 // "Release 269"): an M1A1's bustle rack filled (under a cargo net where it reads as one), packs hung from its turret side
 // rack's top rail and sleeping bags rolled into its trough; a Bradley's side gutters (rolls) and its turret's bustle rack
-// (nothing on its nose, glacis or ramp: the fix round's blind critics). A row lists
+// (nothing on its nose, glacis or ramp: the fix round's blind critics). The bustle racks' footprints are stowageRacks.ts
+// LIVED_IN_RACKS (round 270): the drone-dock seats keep off them and their load (Main, 2026-11-06). A row lists
 // its stations in order of preference and seats at the first every guard passes. The rows come after every other row of
 // the tank (their draws come after the others', and they seat under LIVED_IN_TRIS), so nothing the tank carried before
 // moves.
@@ -3293,7 +3294,8 @@ const crew = (v: string, slot: string, args: DecorSlotArgs): DecorManifestRow =>
  * The rear deck carries nothing: behind the turret it is the gun's own path (gunPitchByYawDeg holds the gun 0-3 degrees
  * up from yaw 142 to 180, its barrel 6 cm over the deck there) and the bustle rack's sweep.
  */
-const M1A1_RACK = Object.freeze({ floor: 0.29, z: -2.77, z0: -2.94, z1: -2.6, rail: 0.66 });
+const M1A1_RACK = Object.freeze({ floor: M1A1_BUSTLE_RACK.floor, z: -2.77, z0: M1A1_BUSTLE_RACK.z0, z1: M1A1_BUSTLE_RACK.z1,
+  rail: M1A1_BUSTLE_RACK.edge });
 /**
  * Phase 2 (the coordinator: "much more volume ... a viewer should see the crew kit immediately"): the rack overflows. A
  * first layer on the floor and the profile's fill (`floor`: [kind, x]), a second piled on it (`piled`), the net over the
@@ -3333,12 +3335,12 @@ function m1a1SideRackPacks(): DecorManifestRow[] {
  * and, with `netX`, a net over the rack.
  */
 function tejasRackLoad(netX: readonly [number, number] | null, rolls: ReadonlyArray<readonly [string, number]>): DecorManifestRow[] {
-  const z = -2.82;
+  const z = -2.82, { floor, edge } = TEJAS_BUSTLE_RACK;
   return [
-    ...rolls.map(([v, x]) => crew(v, 'stowAt', { turret: true, stack: true, floor: 0.32,
+    ...rolls.map(([v, x]) => crew(v, 'stowAt', { turret: true, stack: true, floor,
       at: [[x, z], [x + 0.05, z], [x - 0.05, z], [x + 0.1, z], [x - 0.1, z]] })),
-    ...(netX ? [lived('cargonet', { w: netX[1] - netX[0], len: 0.34 }, ['netOver', { turret: true, floor: 0.32, x0: netX[0],
-      x1: netX[1], z0: -2.95, z1: -2.61, edge: 0.84 }])] : []),
+    ...(netX ? [lived('cargonet', { w: netX[1] - netX[0], len: 0.34 }, ['netOver', { turret: true, floor, x0: netX[0],
+      x1: netX[1], z0: -2.95, z1: -2.61, edge }])] : []),
   ];
 }
 /**
@@ -3420,29 +3422,29 @@ const LIVED_IN_ROWS: Readonly<Record<string, () => DecorManifestRow[]>> = Object
   // the classic turret's bustle rack (x -0.62..0.30, z -1.30..-0.98, its bags to 0.55): one long duffel across it, under
   // the roof's sights, no net and nothing on its flanks (fix round: more pieces there cluttered the turret's shape)
   m2a2_bradley: () => [...bradleyHullLoad(M2A2_GUTTERS),
-    ...bradleyTurretLoad({ x0: -0.62, x1: 0.3, z0: -1.3, z1: -0.98, floor: 0.45, edge: 0.55 }, [['long-duffel', -0.16]], false)],
+    ...bradleyTurretLoad(LIVED_IN_RACKS.m2a2_bradley![0]!, [['long-duffel', -0.16]], false)],
   // the source-measured turret's rack (x -0.40..0.20, z -1.52..-1.28, its bags to 0.66): a foam mat across it (its flanks
   // carry the source's own crew bags)
   m3a2_bradley: () => [...bradleyHullLoad(BRADLEY_GUTTERS),
-    ...bradleyTurretLoad({ x0: -0.4, x1: 0.2, z0: -1.52, z1: -1.28, floor: 0.47, edge: 0.62 }, [['mat-roll', -0.1]])],
+    ...bradleyTurretLoad(LIVED_IN_RACKS.m3a2_bradley![0]!, [['mat-roll', -0.1]])],
   // the 269 M3A3 turret's open rack on its bustle box's lid (bradleyA3Turret.ts BRADLEY_A3_BUSTLE: x -0.66..0.52, z -1.65..
   // -1.21, its floor at 0.55, its rails to 0.83): a sleeping bag and the cans, standing under 0.91 so the rear camera pods
   // (0.905, looking aft and out from the roof's corners) and the commander's viewer (its window at 1.00) see over them;
   // the long-range sensor looks forward. Its flanks are the two launchers and their BRAT tiles: nothing there.
   m3a3_bradley: () => [...bradleyHullLoad(BRADLEY_GUTTERS),
-    ...bradleyTurretLoad({ x0: -0.62, x1: 0.48, z0: -1.62, z1: -1.24, floor: 0.55, edge: 0.83 }, [['sleep-system', -0.36], ['ammo-can-stack', 0.05]])],
+    ...bradleyTurretLoad(LIVED_IN_RACKS.m3a3_bradley![0]!, [['sleep-system', -0.36], ['ammo-can-stack', 0.05]])],
   // its right gutter carries the unditching log (z -1..-2); its turret's railed rack (x -0.40..0.62, z -1.60..-1.28); its flanks are its own bins and tiles
   ua_m2a3_bradley: () => [...bradleyHullLoad([['long-duffel', 1, [-2.62, -2.7, -2.5]], ['mat-roll', 1, [-1.95, -2.05, -1.85]],
     ['mat-roll', 1, [-1.3, -1.4, -1.2]], ['camo-net-bag', 1, [0.45, 0.55, 0.65, 0.75]], ['mat-roll', 1, [1.15, 1.25, 1.05]],
     ['sleep-system', -1, [-2.75, -2.65, -2.85]], ['mat-roll', -1, [-0.5, -0.6, -0.4]], ['mat-roll', -1, [1.7, 1.6, 1.8]]]),
-  ...bradleyTurretLoad({ x0: -0.4, x1: 0.62, z0: -1.6, z1: -1.28, floor: 0.46, edge: 0.6 }, [['sleep-system', -0.14], ['ammo-can-stack', 0.3]])],
+  ...bradleyTurretLoad(LIVED_IN_RACKS.ua_m2a3_bradley![0]!, [['sleep-system', -0.14], ['ammo-can-stack', 0.3]])],
   // its gutters carry boxes at z -2.0..-2.5, and its turret's low overhang leaves the forward gutters to the flat rolls;
   // its turret carries the crew's bags across its rear (x -0.30..0.74, z -1.76..-1.60, to 0.63): a roll and a sleeping bag
   // on them, no net and nothing on its flanks (the Stinger pod and the turret's own bins)
   m6_linebacker: () => [...bradleyHullLoad([['sleep-system', 1, [-2.8, -2.7]], ['mat-roll', 1, [-1.4, -1.5, -1.3]],
     ['folded-tarp-pack', 1, [-0.75, -0.85, -0.65]], ['mat-roll', 1, [0.45, 0.55, 0.35]], ['sleep-system', 1, [1.15, 1.25, 1.05]],
     ['sleep-system', -1, [-2.8, -2.7]], ['mat-roll', -1, [-1.3, -1.4, -1.2]], ['sleep-system', -1, [1.7, 1.6, 1.8]]]),
-  ...bradleyTurretLoad({ x0: -0.3, x1: 0.74, z0: -1.76, z1: -1.6, floor: 0.5, edge: 0.6 }, [['mat-roll', 0.0], ['sleep-system', 0.5]], false)],
+  ...bradleyTurretLoad(LIVED_IN_RACKS.m6_linebacker![0]!, [['mat-roll', 0.0], ['sleep-system', 0.5]], false)],
 });
 
 /** Resolve the manifest rows for one spec: its rows (baseDecorManifest), then its lived-in rows (release 269). */
@@ -4816,8 +4818,8 @@ function connectedPieceBoxes(mesh: THREE.Mesh, toFrame: THREE.Matrix4): THREE.Bo
  * an L-shaped station would also take the turret cheek under its ammunition box). Read off the built tank's own records
  * and geometry; running gear and decor never.
  */
-/** Clearance kept round the drone dock's certified volumes (m). */
-export const DOCK_KEEP_OUT_CLEAR = 0.03;
+/** Clearance kept round the drone dock's certified volumes (m): stowageRacks.ts holds it beside the seats' rack rule. */
+export { DOCK_KEEP_OUT_CLEAR };
 /**
  * The drone dock's keep-out boxes in one decor frame (that frame's own coordinates): the seat record's cradle volumes,
  * its parked-airframe volumes and their launch column, each grown by DOCK_KEEP_OUT_CLEAR. Empty for a vehicle whose
@@ -4826,9 +4828,7 @@ export const DOCK_KEEP_OUT_CLEAR = 0.03;
 export function dockKeepOut(specId: string, frame: DecorFrame): THREE.Box3[] {
   const seat = MISSION_DOCK_SEATS[specId];
   if (!seat || seat.frame !== frame) return [];
-  const at = new THREE.Vector3(seat.x, seat.y, seat.z);
-  return [...missionCradleVolumes(seat), ...missionAirframeVolumes(seat, true)].map((v) =>
-    new THREE.Box3(new THREE.Vector3(...v.min), new THREE.Vector3(...v.max)).translate(at).expandByScalar(DOCK_KEEP_OUT_CLEAR));
+  return missionDockKeepOutBoxes(seat);
 }
 
 /** Clearance kept round a missile launcher's stock (m), and how far its keep-out rises above the stock's top (m). */

@@ -380,3 +380,58 @@ bunch of extra boxes". All on `profiles/bradleyA3Turret.ts`, turret-local:
 
 The traversing turret keeps 47 mm over the hull at its closest, as the M2A2's shell does (`.qa-dev` overhang probe:
 every turret vertex beyond 0.95 m of the ring axis, 360 yaws).
+
+## 270 — what the fidelity 48.6 and the gate's 0s measure (2026-11-06)
+
+Main, 2026-11-06: "m3a3 fidelity 48.6: read what it's measured against." Verdict: a **broken registration**, not a
+geometry gap. The 08-17 note above ("the rigged print does NOT assemble ... a disassembled parts kit") misread it: the
+print (sha256 a5a3a985…, the owner's `low_poly_m3a3_bradley.glb`) loads assembled, turret `bone11_169` (73 meshes) and gun
+`bone28_163` in place. Three loose subtrees lie on the ground beside the hull, two spare TOW rounds and a launch tube
+(`bone52_278`, `bone63_296`, `bone61_298`, raw x 2.13..3.68 against the hull's −1.84..1.22). The loader registers every
+uncertified print on the spec's published width over the WHOLE file (`tools/reference-glb-loader.ts`
+`normalizeReferenceWidth`): 3.61 / 5.525 raw = ×0.653 where the vehicle alone gives ×1.179, so the gate compares the build
+with a Bradley 3.91 m long and 1.75 m tall (its own record's `referenceDimensions` / `referenceBodyExtent`, run
+2026-11-06 at 2c1c5f8198 + this lane's registry commit). Every curve is 0; fidelity 48.6 (H40 T38 G100 R63). The base
+ledger's 0s (11-04, before the 269 turret redesign) are the same defect.
+
+With those three subtrees set aside (lane experiment, nothing registered: the print re-exported untextured with its
+hierarchy, `~/cot-lanes/abrams-bradley-268-evidence/r270/R/m3a3clean.mjs`, sha256 0f92442e…), the same page scores
+**88.4 (H91 T77 G100 R84)**, the class of the M3A2 against its print (89.4, T78). Silhouette IoU (Node raster, the
+loader's width fit; `r270/R/m3a3reg.mjs`): side 0.27 → 0.79, top 0.32 → 0.96, front 0.21 → 0.78. What remains: the
+low-poly print's hull sits about 0.14 m lower with a shorter glacis than the family hull measured from the 42manako
+print, and the turret carries the owner's 2026-11-05 additions the print does not (the right-hand TOW launcher, the
+LRAS3-pattern head, the camera pods, the bustle box), with the 25 mm line about 0.15 m higher than the print's.
+
+Main ruled the same day: "Register and pin the cleaned sipriv print (sha 0f92442e) through the oracle-repair route: a
+BUILD-STANDARD section E excision ... Leave the shared loader as it is." Registered: `m3a3_bradley_sipriv_excised.glb`
+(sha256 0f92442e…, pinned in `tools/oracle-pins.mjs`; built byte-idempotently by `tools/oracle-excision.mjs` from the
+recipe `docs/references/oracle-excisions/m3a3_bradley_sipriv_excised.json`, its provenance row: the pristine source's
+hash, the three removed nodes and why). Same turret and gun nodes and yaw. Scores against it (2026-11-06):
+procedural-fidelity 88.4 (H91 T77 G100 R84); geometry gate 0/90 — hull 55.3, whole 25.0, turret 11.9 (side 51.8, plan
+11.9), stations 47.1, dims 0, floaters 100. Dims is the build against the spec's silhouette rows, not the print: the 269
+turret stands 3.41 m to its body top against `silhouetteHeightM` 3.05 (11.8 % over). `tools/oracle-width-audit.mjs` is
+the class detector (whole-file width against the body's, read-only); the pristine print reads 80.4 % wider than its body.
+
+270, the same day: the gate's turret rows and the dims row.
+- The 0.79 m in the turret plan row's `reg` is not a sideways turret offset. The plan view's columns run across x and its
+  band along z, so the row's `dy` (−0.788) is fore-aft, and it is the HULL registration the turret rows are pinned to:
+  the print stands 0.78 m forward of the build in world (its origin sits 0.66 raw behind its hull centre, ×1.179 after
+  the yaw), and the hull curves' midpoints remove that (the side row's `dAlong` −0.807 is the same shift). Rebuilt in
+  Node from the gate's own transforms (`r270/R/planoverlay.mjs`: plan registration 0.330 / 0.788 against the record's
+  0.340 / −0.788, the sign the camera's), overlay `r270/R/m3a3-plan-overlay-gate.png`: after it the two turrets overlap;
+  the build's ring stands 0.14 m to the right (the family ring, x −0.14) and its turret ends 0.37 m short of the print's
+  rear rack, and the right-hand TOW launcher stands alone at x −1.3.
+- `silhouetteHeightM` 3.05 → 3.41 (`afvFamily.ts`; Main: "The spec describes what we build"): the gate's heightM row
+  measures the build from body top 3.4098 to roof-fittings top 3.4177, so 3.41 reads 0 %. Gate after it: min 11.9/90 —
+  hull 55.3, whole 25.0, turret 11.9, stations 47.1, dims 78.4 (hull length 6.529 against 6.71, 2.7 %; overall 6.565
+  against 6.70, 2.0 %), floaters 100; fidelity 88.4 unchanged.
+- The rear rack (Main 2026-11-06: "first check M3A3 photos, with dated sources, for the rear rack's length ... If the photos
+  show our length is right, leave it and name it"): left as built. In the two side-on photographs with the gun forward
+  (Commons Defense.gov 041117-F-2034C-030 and -033, M3A3s of C/1-4 CAV, 2004-11-17) the turret's rear-most point stands
+  1.77 m and 1.66-1.75 m from the hull's rear (pixel ratios against the 6.618 m hull extreme); the build's rear wall
+  stands 1.75 m from it and its 269 bustle box and rack (0.465 m deep) end at 1.28 m. The print's wall stands at 1.44 m and
+  its 0.40 m rack ends at 1.04 m: its turret sits about 0.3 m further aft on its hull than the photographed vehicles, so
+  the 0.37 m in the gate's plan overlay is the print's turret placement (with the width fit's 6 % oversize), not a short
+  rack. Named: the M3A3 print's turret placement, a policy red beside the ring (a) and the right TOW (c). Evidence:
+  `~/cot-lanes/abrams-bradley-268-evidence/research/m3a3_bradley/` (notes.md, sources.md, photos-270/).
+
