@@ -57,7 +57,7 @@ import {
 // The roster plan is pure and shared with the garage boot (main.ts), which must not import this module.
 import { battleRosterPlan } from './soloRosterPlan.ts';
 // the dev battle hold (src/dev/battleHold.ts, __DEBUG.battleHold): bots stand, the player takes no damage, no verdict
-import { battleHeld, stepBattleHold, undoHeldDamage } from './devBattleHold.ts';
+import { battleHeld, holdRevivedBrain, stepBattleHold, undoHeldDamage } from './devBattleHold.ts';
 import { createJevCommander, createJevFetchTransport, createJevSession, type JevBattleView, type JevCommander } from './jevCommander.ts';
 import type { SpecialActionSpec, SpecialActionState } from '../sim/specialActionPolicy.ts';
 import type { ConcealerDisc, SpottingSystem, SpottingTank } from '../sim/spotting.ts';
@@ -1340,6 +1340,8 @@ export function setupBattle(
       // the same brain drives the new life: what it measures between ticks restarts from the hull at its spawn (ai.ts
       // resume, on the battle's clock; round 2 U18), so the wreck-to-spawn move is no tick of progress
       ent.aiCtl?.resume?.(game.timeS);
+      // a held battle keeps the revived brain parked until the release (devBattleHold.ts; round 8 merge review r1)
+      holdRevivedBrain(game, ent);
     },
   });
   for (const entity of game.tanks) {

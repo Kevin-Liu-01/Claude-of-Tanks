@@ -94,6 +94,20 @@ export function stepBattleHold<Entity extends HeldEntity>(game: HeldGame<Entity>
   return held;
 }
 
+/**
+ * The hold's answer to a revive (round 8 merge review r1), right after the mode's revive hook resumes the revived bot's
+ * brain on the battle's clock (game/state.ts; round 2 U18). While the edge holds (its record says this battle's brains
+ * are parked), that resume ended the park the free -> held edge began, so the release's resume found none and the bot's
+ * record clocks never moved over the held time after the revive (a stalemate push, a search gate and a passive press read
+ * it as the bot's own silence): the brain is parked again at once, on the revive's clock. A free battle's revive, the
+ * player and a seat with no brain are left as they are.
+ */
+export function holdRevivedBrain<Entity extends HeldEntity>(game: HeldGame<Entity>, entity: Entity): void {
+  if (entity === game.player || !entity.aiCtl) return;
+  const edge = holdEdges.get(game);
+  if (edge?.held && edge.battle === (game.battleCount ?? 0)) entity.aiCtl.park?.(game.timeS);
+}
+
 interface ModulePin { hp: number; state: ModuleStateName; repairT: number }
 /** The player's damage state at the start of a held step, reused step to step (no per-step allocation once warm). */
 interface DamagePin {

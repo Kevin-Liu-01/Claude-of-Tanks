@@ -16,8 +16,10 @@
 //   answers (module:state source 'hold', tank:fire burning false) are the unit block's. The same edges and answers on the
 //   page's own battle (a bot hurt while it stood books no burst at the release; a held step's worse module and fire each
 //   answered) are src/game/devBattleHoldEdges.selftest.mjs, MANUAL 'sims': this file's battles were already its cost.
-// - (round 8 merge review r1) a held battle's bots call no airstrikes: the mode controller's own bot calls wait (a flat
-//   Air Support battle through the solo step, as airSupportSolo.selftest steps one).
+// - (round 8 merge review r1) a bot revived while the hold holds its battle stays parked until the release
+//   (holdRevivedBrain, the owner's table on stand-ins; the page's own revive hook is devBattleHoldEdges'), and a held
+//   battle's bots call no airstrikes: the mode controller's own bot calls wait (a flat Air Support battle through the
+//   solo step, as airSupportSolo.selftest steps one).
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
@@ -33,7 +35,7 @@ import { createCombatState } from '../sim/damage.ts';
 import { createTankState } from '../sim/movement.ts';
 import { AIR_SUPPORT_RULES, matchRulesetFor } from '../sim/matchRuleset.ts';
 import { createMatchModeController } from '../sim/matchModes.ts';
-import { DEV_BATTLE_HOLD, battleHeld, holdBattleStep, stepBattleHold, undoHeldDamage } from './devBattleHold.ts';
+import { DEV_BATTLE_HOLD, battleHeld, holdBattleStep, holdRevivedBrain, stepBattleHold, undoHeldDamage } from './devBattleHold.ts';
 import { createBattleHold } from '../dev/battleHold.ts';
 
 const read = (path) => readFileSync(new URL(path, import.meta.url), 'utf8');
@@ -125,6 +127,60 @@ const read = (path) => readFileSync(new URL(path, import.meta.url), 'utf8');
   assert.deepEqual(calls, [], 'so its brains are never parked');
 }
 
+// ---- (round 8 merge review r1) a bot revived while held stays parked until the release --------------------------------
+// The mode's revive hook resumes the revived bot's brain on the battle's clock (game/state.ts, round 2 U18). Under the
+// hold that resume ended the park the free -> held edge began, so the release's resume found no park: the bot's record
+// clocks (its last round, its last penetration) never moved over the held time after the revive, and the stalemate push,
+// the search gate and the passive press read it as the bot's own silence. The hold's answer to a revive parks the brain
+// again at once while the edge holds. The brain books its park as ai.ts does (park sets the clock, resume reads and
+// clears it).
+{
+  const booked = [];
+  const brain = (id) => {
+    let parkedAt = NaN;
+    return {
+      park: (timeS) => { parkedAt = timeS; booked.push(`${id} park ${timeS}`); },
+      resume: (timeS) => {
+        booked.push(`${id} resume ${timeS} from ${Number.isFinite(parkedAt) ? parkedAt : 'none'}`);
+        parkedAt = NaN;
+      },
+    };
+  };
+  const hull = (id, aiCtl) => ({ id, aiCtl,
+    input: { throttle: 0, steer: 0, brake: false, aimLocked: false, fire: false, actionBits: 0 },
+    combat: { hp: 100, maxHp: 100, destroyed: false, modules: {}, crew: {}, fire: { burning: false, tickTimer: 0, ticksLeft: 0 },
+      eraSpent: new Set() } });
+  const player = hull('me', brain('me')), bot = hull('b1', brain('b1')), seat = hull('seat-2', null);
+  const game = { devBattleHold: true, player, tanks: [player, bot, seat], timeS: 10, nextShellId: 5, battleCount: 1 };
+  /** The revive hook's two lines (game/state.ts): the resume every revive makes, then the hold's answer. */
+  const revive = (entity) => { entity.aiCtl?.resume?.(game.timeS); holdRevivedBrain(game, entity); };
+  stepBattleHold(game);
+  game.timeS = 20;
+  revive(bot);
+  for (const timeS of [30, 40, 50]) { game.timeS = timeS; stepBattleHold(game); }
+  game.devBattleHold = false;
+  game.timeS = 60;
+  stepBattleHold(game);
+  assert.deepEqual(booked, ['b1 park 10', 'b1 resume 20 from 10', 'b1 park 20', 'b1 resume 60 from 20'],
+    "revived under the hold, the brain is parked again at once, and the release's resume books the held time after the revive");
+  booked.length = 0;
+  game.timeS = 70;
+  revive(bot);
+  assert.deepEqual(booked, ['b1 resume 70 from none'], 'a revive in a free battle is a revive: no park');
+  booked.length = 0;
+  game.devBattleHold = true;
+  game.timeS = 80;
+  stepBattleHold(game);
+  game.timeS = 90;
+  revive(player);
+  revive(seat);
+  assert.deepEqual(booked, ['b1 park 80', 'me resume 90 from none'], 'the player and a seat with no brain are never parked');
+  booked.length = 0;
+  game.battleCount = 2;
+  revive(bot);
+  assert.deepEqual(booked, ['b1 resume 90 from 80'], "a new battle's first revive before its first step reads no last battle's hold");
+}
+
 // ---- the switch: armed, released, refused in a public build and a network battle ---------------------------------------
 {
   const game = {};
@@ -166,6 +222,8 @@ const read = (path) => readFileSync(new URL(path, import.meta.url), 'utf8');
   // (round 8 merge review r1) the step's held also reaches the mode controller: its own bot calls wait with its bots
   assert.match(state, /function stepMatchMode\(game: SoloGameState, bus: EventBus\): MatchModeResult \| null \{\n(?:\s*\/\/[^\n]*\n)*\s*const held = battleHeld\(game\);\n\s*if \(held\) undoHeldDamage\(game, bus\);\n\s*const outcome = game\.matchModeController\?\.step\(SIM_DT, game\.timeS, held\) \|\| null;/,
     "the player's losses are undone before the mode and the verdict read them, the undo answers on the bus, and the mode's bot calls are held");
+  assert.match(state, /ent\.aiCtl\?\.resume\?\.\(game\.timeS\);\n(?:\s*\/\/[^\n]*\n)*\s*holdRevivedBrain\(game, ent\);/,
+    "the mode's revive hook hands the revived bot's brain to the hold right after its resume (round 8 merge review r1)");
   assert.match(state, /if \(game\.result !== null \|\| !seat \|\| battleHeld\(game\)\) return;/, 'a held battle reaches no verdict');
   assert.match(state, /\): void \{\n(?:\s*\/\/[^\n]*\n)*\s*if \(ent === game\.player && battleHeld\(game\)\) return;\n\s*ent\._destroyedAnnounced = true;/,
     'a held player is never announced destroyed');
@@ -409,6 +467,6 @@ console.log(`devBattleHold selftest passed: off byte-identical over ${TICKS} tic
   + `from tick ${plain.playerDamage[0]}; held 0 bot rounds, no player loss, bots within ${held.maxBotDriftM.toFixed(3)} m, no verdict; `
   + `armed at tick ${AT} the battle parts there, the bots stand (${late.lastSecondDriftM.toFixed(3)} m in the last second) and the `
   + 'fire costs nothing; the verdict waits for the release; the hold\'s edges park and resume the brains once each, per battle; '
-  + `held, no bot calls an airstrike, released ${airCalls.length} call(s) `
+  + `a brain revived while held stays parked until the release; held, no bot calls an airstrike, released ${airCalls.length} call(s) `
   + `from ${airCalls[0]?.callerId} at tick ${airCalls[0]?.tick}; undo, switch and wiring held`);
 process.exit(0);

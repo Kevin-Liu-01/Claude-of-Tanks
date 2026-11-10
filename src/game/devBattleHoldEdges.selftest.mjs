@@ -8,6 +8,9 @@
 // - held throughout, a volley into the player's flank makes a module worse inside one held step (a track goes yellow,
 //   then red) and heavy rounds into its rear light a fire: the undo answers each in the step that made it (module:state
 //   source 'hold', never a repair; tank:fire burning false), so the last word on every module and on the fire is the hull's.
+// - (round 8 merge review r1) a Zone Control battle begun armed: a hostile slain under the hold and revived by the mode's
+//   own revive hook while it still holds keeps its brain parked from the revive (the hook's resume had ended the hold's
+//   park, so the release's resume found none and the bot's record clocks never moved over the held time after it).
 // The owner's edge table and the undo's events on stand-ins stay in devBattleHold.selftest (default tier); these battles
 // cost a page import, a world and a fleet: MANUAL suite 'sims' (tools/selftest-tiers.mjs).
 import assert from 'node:assert/strict';
@@ -36,7 +39,7 @@ function volley(game, world, shooter, target, shell, bearing, count, rangeM = 8,
 }
 
 /** A Verdant battle stepped `ticks` ticks: `hold(tick)` sets the switch before that tick's step (undefined leaves it). */
-function battle(ticks, { hold, onSetup = null, onTick = null, onEvent = null }) {
+function battle(ticks, { hold, gameMode = 'standard', onSetup = null, onTick = null, onEvent = null }) {
   const world = createDedicatedWorldCollision('verdant');
   const authored = world.heightField._layout.spawns;
   const spawnOf = (p) => ({ pos: [p.x, world.heightField.getHeightAt(p.x, p.z), p.z], yaw: p.yaw ?? 0 });
@@ -46,7 +49,7 @@ function battle(ticks, { hold, onSetup = null, onTick = null, onEvent = null }) 
   spawnTanks(game, { scene: { remove() {} } });
   for (const e of game.allTanks) e.visual = visualFor(e);
   game.battleCount = 1;
-  setupBattle(game, 'leo2a4', world, { gameMode: 'standard', random: false, brain: null, deferVisuals: true, deferCamoRepaint: true });
+  setupBattle(game, 'leo2a4', world, { gameMode, random: false, brain: null, deferVisuals: true, deferCamoRepaint: true });
   for (const e of game.allTanks) e.visual = visualFor(e);
   game.preBattleS = 0;
   const player = game.player;
@@ -120,6 +123,47 @@ for (const [id, calls] of edgeCalls) {
 }
 assert.equal(struckBurstAfter, 0, `the hull the bot lost while it stood books no burst at the release (${struckBurstAfter})`);
 
+// ---- (round 8 merge review r1) a bot revived while the hold holds its battle stays parked until the release -------------
+// Zone Control (respawnS 6) begun armed; the nearest hostile slain at tick 30 under the hold, revived at its spawn by the
+// mode's own revive hook (game/state.ts) while the hold still holds, then the release. Its brain books its park as ai.ts
+// does: park sets the clock, resume reads and clears it (the release's resume shifts the record clocks only over a park).
+let reviveLine = '';
+{
+  const SLAY_AT = 30, REVIVE_RELEASE = 480;
+  let revived = null;
+  const booked = [];
+  battle(REVIVE_RELEASE + 2, {
+    gameMode: 'zone_control',
+    hold: (tick) => (tick === 1 ? true : tick === REVIVE_RELEASE ? false : undefined),
+    onTick: (tick, game) => {
+      if (tick !== SLAY_AT) return;
+      const player = game.player;
+      revived = game.tanks.filter((e) => e.team === 'enemy' && e.aiCtl)
+        .sort((a, b) => a.state.pos.distanceTo(player.state.pos) - b.state.pos.distanceTo(player.state.pos))[0];
+      const brain = revived.aiCtl;
+      let parkedAt = null;
+      revived.aiCtl = new Proxy(brain, { get(target, key) {
+        const value = Reflect.get(target, key);
+        if (typeof value !== 'function') return value;
+        if (key === 'park') return (...args) => { parkedAt = Math.round(game.timeS * 60); booked.push(`park@${parkedAt}`); return value.apply(target, args); };
+        if (key === 'resume') return (...args) => { booked.push(`resume@${Math.round(game.timeS * 60)} from ${parkedAt ?? 'none'}`); parkedAt = null; return value.apply(target, args); };
+        return value.bind(target);
+      } });
+      // the brain's park from the battle's first step (the hold's free -> held edge, tick 1) is booked where the wrap began
+      parkedAt = 1;
+      revived.combat.hp = 0;
+      revived.combat.destroyed = true;
+    },
+  });
+  assert.ok(revived, 'a hostile with a brain was slain');
+  const reviveAt = booked.find((entry) => entry.startsWith('resume@'))?.match(/^resume@(\d+)/)?.[1];
+  assert.ok(reviveAt && Number(reviveAt) > SLAY_AT && Number(reviveAt) < REVIVE_RELEASE,
+    `the mode revived the slain bot while the hold held (${booked.join(', ')})`);
+  assert.deepEqual(booked, [`resume@${reviveAt} from 1`, `park@${reviveAt}`, `resume@${REVIVE_RELEASE} from ${reviveAt}`],
+    `${revived.id}: revived under the hold, its brain is parked again at the revive, and the release's resume books the held time after it`);
+  reviveLine = `; ${revived.id} revived at tick ${reviveAt} under the hold stays parked until the release at ${REVIVE_RELEASE}`;
+}
+
 // ---- the undo answers what the held step said: a module made worse, and a fire, held throughout --------------------------
 {
   const said = [];
@@ -162,6 +206,7 @@ assert.equal(struckBurstAfter, 0, `the hull the bot lost while it stood books no
   assert.equal(combat.fire.burning, false, 'and the held hull is not burning');
   assert.ok(said.every((entry) => entry.repaired !== true), 'nothing the undo says plays a repair');
   console.log(`devBattleHoldEdges.selftest: the brains park at the hold and resume at the release, a bot hurt while it stood books `
-    + `no burst; held throughout, ${worse.length} worse module states and a fire were each answered by the undo (${[...answered].join(', ')}) PASS`);
+    + `no burst; held throughout, ${worse.length} worse module states and a fire were each answered by the undo (${[...answered].join(', ')})`
+    + `${reviveLine} PASS`);
 }
 process.exit(0);
