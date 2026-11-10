@@ -152,12 +152,11 @@ const rewriteRoutes = (documentRoot: string): Connect.NextHandleFunction => (req
 // (physics stream, 2026-10-16; the coordinator's ruling with the MP lane) the manifests are served on their format's route,
 // and the production before them keeps its own files, frozen byte for byte, so a tab left open at the deploy that hosts
 // or is elected still decodes its own format and its own world (collisionManifestRoutes.selftest). (The maps lane,
-// 2026-10-20; the coordinator's ruling) this build's at /mp-collision/v3/ (the v5 codec), production 228's at
-// /mp-collision/v2/ (server/world-collision-manifests-228, ed0f3e31b's); production 224's at /mp-collision/ are retired
-// (the build-mismatch refusal sends an older tab to Refresh).
+// 2026-10-20; the coordinator's ruling) this build's at /mp-collision/v3/ (the v5 codec). Production 224's at /mp-collision/
+// and production 228's at /mp-collision/v2/ are retired (272: the deploys after them have shipped, and the build-mismatch
+// refusal sends an older tab to Refresh).
 const COLLISION_MANIFEST_SOURCES: ReadonlyArray<{ route: string; dir: string }> = [
   { route: '/mp-collision/v3', dir: resolve(dirname(fileURLToPath(import.meta.url)), 'server/world-collision-manifests') },
-  { route: '/mp-collision/v2', dir: resolve(dirname(fileURLToPath(import.meta.url)), 'server/world-collision-manifests-228') },
 ];
 
 function collisionManifestFiles(dir: string): Array<{ name: string; path: string }> {
@@ -179,7 +178,7 @@ const collisionManifestPlugin = () => ({
     const files = new Map<string, Map<string, string>>();
     server.middlewares.use((req, res, next) => {
       const url = req.url || '';
-      // (each route its own prefix: '/mp-collision/v3/' and '/mp-collision/v2/' never overlap)
+      // (each route its own prefix, so a new format's route never overlaps another's)
       const source = COLLISION_MANIFEST_SOURCES.find((entry) => url.startsWith(`${entry.route}/`));
       if (!source) { next(); return; }
       if (!files.has(source.route)) files.set(source.route, new Map(collisionManifestFiles(source.dir).map((entry) => [entry.name, entry.path])));

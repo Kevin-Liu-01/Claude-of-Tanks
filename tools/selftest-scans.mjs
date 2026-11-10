@@ -64,8 +64,7 @@ const imports = (...entries) => Object.freeze({ imports: Object.freeze(entries) 
 export const SELFTEST_SCANS = Object.freeze({
   // ---- receipts and helpers that list this checkout's sources
   'server/collisionManifestIndex.selftest.mjs': lists('server/world-collision-manifests/*.json'),
-  'server/collisionManifestRoutes.selftest.mjs': lists('server/world-collision-manifests-228/*.json', 'src/**/*.{ts,mjs,js}',
-    'server/**/*.{ts,mjs,js}'),
+  'server/collisionManifestRoutes.selftest.mjs': lists('src/**/*.{ts,mjs,js}', 'server/**/*.{ts,mjs,js}'),
   'server/dedicatedWorldCollision.selftest.mjs': lists('server/world-collision-manifests/*.json'),
   'src/audio/audioEngine.selftest.mjs': lists('src/mp/**/*.{ts,mjs}', 'src/sim/**/*.{ts,mjs}', 'server/**/*.{ts,mjs}'),
   'src/audio/soundAssets.selftest.mjs': lists('src/audio/*.ts'),
@@ -154,7 +153,7 @@ export const SELFTEST_SCANS = Object.freeze({
   'tools/tank-assets-store.mjs': lists('public/icons/tank-assets/**'),
   'tools/vercel-config.selftest.mjs': lists('api/*.ts'),
   'tools/viteGlslMinify.selftest.mjs': lists('src/**/*.ts'),
-  'vite.config.ts': lists('server/world-collision-manifests/*.json', 'server/world-collision-manifests-228/*.json'),
+  'vite.config.ts': lists('server/world-collision-manifests/*.json'),
 
   // 248 (selftest-scans hygiene): listings the receipts gained in 240-247
   // the Watch seat ledger never reaches the network: every src/mp module is read
