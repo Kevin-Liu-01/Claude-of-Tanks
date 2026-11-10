@@ -3,7 +3,9 @@
 // seats' port (main.ts) called settings.toggle(), whose close asked for the pointer lock with no desktop gesture, and a
 // refused request raised the click-to-resume veil over the shared screen that no phone could clear. Both ports now run
 // togglePhonePause (src/ui/phonePause.ts), each keeping its own guard: the single pairing isBattleActive (the player's own
-// battle settings), the couch battlePhase.isBattle() (a dead seat 1 must not take Pause from the other seats).
+// battle settings), the couch seats stateCore's couchSeatsActive(game) (a dead seat 1 must not take Pause from the other
+// seats; round 8 merge review r1: the couch session's own reader, not any battle phase, since the lobby outlives its
+// battles; couchRuntime.selftest drives the port).
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 
@@ -11,7 +13,7 @@ import { readFileSync } from 'node:fs';
 {
   const read = (path) => readFileSync(new URL(path, import.meta.url), 'utf8');
   const ports = [
-    ['main.ts', read('../main.ts'), /togglePause: \(\) => togglePhonePause\(settings, \(\) => battlePhase\.isBattle\(\)\),/],
+    ['main.ts', read('../main.ts'), /togglePause: \(\) => togglePhonePause\(settings, \(\) => couchSeatsActive\(game\)\),/],
     ['settings.ts', read('./settings.ts'), /togglePause: \(\) => togglePhonePause\(\{[^\n]*\}, isBattleActive\),/],
   ];
   for (const [name, source, binding] of ports) {
