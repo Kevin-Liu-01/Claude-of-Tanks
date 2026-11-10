@@ -1469,6 +1469,165 @@ export function buildDryStoneWallHead(seed: number, thick: number, height: numbe
   return merge(parts);
 }
 
+// ---------------------------------------------------------------------------
+// (buildings-272, the Caldera wall; the blind critic on Caldera: "a tall, crisp block wall that zigzags across the open
+// paddy") Aso's farmstead walls: knee-high banks of the caldera's own dark lava boulders, rough and faceted, laid dry two
+// high on a packed hearting with a ragged top of boulders across it, never coursed. Caldera only (props wallStyle
+// 'lava'): its wallstone module, the module's rubble and the runs' heads. Their own streams, named as the dry wall's.
+// ---------------------------------------------------------------------------
+
+/** The lava wall module's height before its run's family scale (m): 0.55-0.8 m of it stands above the ground. */
+export const LAVA_WALL_H = 0.74;
+
+/**
+ * One lava boulder: an icosahedron's twelve corners pulled in and out (faceted: vesicular lava, not water-worn stone), its
+ * lower corners pressed up into a bed, radii (rx, ry, rz); a window of the field print's face band on it at the dry
+ * wall's density; the faces `hide` names (by their outward normal: the ground's, the hearting's) left out.
+ */
+function lavaBoulder(rx: number, ry: number, rz: number, r: Rng,
+  hide: ((nx: number, ny: number, nz: number) => boolean) | null): THREE.BufferGeometry {
+  const ico = new THREE.IcosahedronGeometry(1, 0);
+  const p = ico.attributes.position;
+  const pull = new Map<string, number>();
+  for (let i = 0; i < p.count; i++) {
+    const key = `${p.getX(i).toFixed(3)},${p.getY(i).toFixed(3)},${p.getZ(i).toFixed(3)}`;
+    let k = pull.get(key);
+    if (k === undefined) pull.set(key, k = 0.76 + r() * 0.38);
+    const y = p.getY(i) < -0.5 ? p.getY(i) * 0.72 : p.getY(i);
+    p.setXYZ(i, p.getX(i) * k * rx, y * k * ry, p.getZ(i) * k * rz);
+  }
+  ico.computeVertexNormals(); // (non-indexed: each facet its own normal)
+  const n = ico.attributes.normal;
+  const du = r() * 8, place = r();
+  const extent = Math.max(2 * ry, 2 * rz) * DRY_UV, room = FIELD_STONE_FACE_V[1] - FIELD_STONE_FACE_V[0];
+  const squash = extent > room ? room / extent : 1;
+  const v0 = FIELD_STONE_FACE_V[0] + place * Math.max(0, room - extent * squash) + (extent * squash) / 2;
+  const pos: number[] = [], nrm: number[] = [], uvs: number[] = [];
+  for (let t = 0; t < p.count; t += 3) {
+    const nx = n.getX(t), ny = n.getY(t), nz = n.getZ(t);
+    if (hide && hide(nx, ny, nz)) continue;
+    for (let k = t; k < t + 3; k++) {
+      const x = p.getX(k), y = p.getY(k), z = p.getZ(k);
+      const [a, b] = Math.abs(nx) > 0.5 ? [z, y] : Math.abs(ny) > 0.5 ? [z, x] : [x, y];
+      pos.push(x, y, z); nrm.push(n.getX(k), n.getY(k), n.getZ(k)); uvs.push(du + a * DRY_UV, v0 + b * DRY_UV * squash);
+    }
+  }
+  ico.dispose();
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  g.setAttribute('normal', new THREE.Float32BufferAttribute(nrm, 3));
+  g.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
+  return g;
+}
+
+/**
+ * The lava wall module along +Z (local X across, base at y = 0): a battered hearting of packed small stone, the big
+ * boulders bedded at its foot on both faces, a lift of smaller ones set on and between them, and boulders laid across
+ * the top whose humps and hollows make its line. About 600 triangles; the faces the ground and the hearting hide left out.
+ */
+function lavaStoneModule(r: Rng, broken: boolean): THREE.BufferGeometry {
+  const parts: THREE.BufferGeometry[] = [];
+  const L = WALL_SEG, H = broken ? 0.26 + r() * 0.12 : LAVA_WALL_H, foot = 0.36, crown = 0.24;
+  const halfAt = (y: number) => foot + (crown - foot) * Math.min(1, Math.max(0, y / H));
+  const core = new THREE.BoxGeometry(2, 1, 2, 1, 1, 2);
+  const cp = core.attributes.position, coreH = H * 0.82;
+  for (let i = 0; i < cp.count; i++) {
+    const u = cp.getZ(i), y = (cp.getY(i) + 0.5) * coreH, side = Math.sign(cp.getX(i));
+    cp.setXYZ(i, side * (halfAt(y) - 0.09), y, u * (L / 2) * 0.995);
+  }
+  core.computeVertexNormals();
+  {
+    const cn = core.attributes.normal, cuv = core.attributes.uv;
+    const [h0, h1] = FIELD_STONE_HEARTING_V;
+    for (let i = 0; i < cp.count; i++) {
+      const up = Math.abs(cn.getY(i)) > 0.5, across = Math.abs(cn.getX(i)) > 0.5;
+      const t = up ? 0.5 + cp.getX(i) / (2 * foot) : Math.min(1, Math.max(0, cp.getY(i) / coreH));
+      cuv.setXY(i, (across || up ? cp.getZ(i) : cp.getX(i)) * DRY_UV, h0 + (h1 - h0) * t);
+    }
+  }
+  parts.push(tagStone(keepFaces(core, [0, 1, 2, 4, 5]), DRY_STONE_KIND.core));
+  for (const side of [-1, 1]) {
+    const hidden = (nx: number, ny: number) => ny < -0.55 || nx * side < -0.6;
+    // the foot: the biggest boulders, a third of a metre high, bedded in the ground, overlapping a little
+    let z = -L / 2 - r() * 0.3;
+    while (z < L / 2) {
+      const len = 0.46 + r() * 0.36, h = (broken ? 0.75 : 1) * (0.3 + r() * 0.14), d = 0.17 + r() * 0.07;
+      const b = lavaBoulder(d, h / 2, len / 2, r, hidden);
+      b.rotateY((r() - 0.5) * 0.5); b.rotateZ(side * (r() - 0.3) * 0.15);
+      parts.push(tagStone(b.translate(side * (halfAt(h * 0.5) - d * 0.4), h * 0.42, z + len / 2), DRY_STONE_KIND.face));
+      z += len * (0.78 + r() * 0.12);
+    }
+    if (broken) continue;
+    // the second lift: smaller boulders set back on the foot's, out of line with them
+    z = -L / 2 - r() * 0.25;
+    while (z < L / 2) {
+      const len = 0.32 + r() * 0.3, h = 0.22 + r() * 0.12, d = 0.13 + r() * 0.06;
+      const y = 0.3 + (r() - 0.5) * 0.06 + h * 0.4;
+      const b = lavaBoulder(d, h / 2, len / 2, r, hidden);
+      b.rotateY((r() - 0.5) * 0.5); b.rotateZ(side * (r() - 0.4) * 0.2);
+      parts.push(tagStone(b.translate(side * (halfAt(y) - d * 0.45), y, z + len / 2), DRY_STONE_KIND.face));
+      z += len * (0.8 + r() * 0.12);
+    }
+  }
+  if (!broken) {
+    // the top: boulders laid across it, their tops a hand or two apart in height
+    let z = -L / 2 + 0.02;
+    while (z < L / 2 - 0.05) {
+      const len = 0.3 + r() * 0.3, hh = 0.13 + r() * 0.09, w = crown + 0.02 + r() * 0.06;
+      const b = lavaBoulder(w, hh, len / 2, r, (_nx, ny) => ny < -0.55);
+      b.rotateY((r() - 0.5) * 0.4); b.rotateX((r() - 0.5) * 0.2);
+      parts.push(tagStone(b.translate((r() - 0.5) * 0.08, H - hh - r() * 0.11, z + len / 2), DRY_STONE_KIND.through));
+      z += len * (0.82 + r() * 0.12);
+    }
+  } else {
+    // the boulders that came off it, tumbled on both sides
+    for (let k = 0; k < 8; k++) {
+      const bs = 0.14 + r() * 0.14;
+      const b = lavaBoulder(bs * 1.2, bs * 0.6, bs, r, (_nx, ny) => ny < -0.55);
+      b.rotateY(r() * Math.PI);
+      parts.push(tagStone(b.translate((r() < 0.5 ? -1 : 1) * (0.45 + r() * 0.6), bs * 0.3, (r() - 0.5) * L * 0.9), DRY_STONE_KIND.tumbled));
+    }
+  }
+  // (as the dry module: nothing runs past the hearting's ends, so a terminal module reaches its post at every height)
+  const g = merge(parts), zEnd = (L / 2) * 0.995, gp = g.attributes.position;
+  for (let i = 0; i < gp.count; i++) gp.setZ(i, Math.max(-zEnd, Math.min(zEnd, gp.getZ(i))));
+  return g;
+}
+
+/** The lava module fitted to the dry module's envelope along the run (`box3`: its foot and ends), at its own breadth and
+ *  LAVA_WALL_H high; its own stream, named by the envelope as the dry module's. */
+export function lavaWallFor(box3: THREE.Box3): THREE.BufferGeometry {
+  const seed = Math.round((box3.max.x - box3.min.x) * 1e6 + (box3.max.y - box3.min.y) * 1e4 + box3.max.z * 1e3) ^ 0x1a7a;
+  const g = lavaStoneModule(dryStoneRng(seed), false);
+  g.computeBoundingBox();
+  const own = g.boundingBox!;
+  return fitToEnvelope(g, new THREE.Box3(new THREE.Vector3(own.min.x, box3.min.y, box3.min.z),
+    new THREE.Vector3(own.max.x, box3.min.y + LAVA_WALL_H, box3.max.z)));
+}
+
+/** A broken lava module: a low remnant of its foot and the boulders tumbled off it (a fixed stream). */
+export function lavaWallBroken(): THREE.BufferGeometry {
+  return lavaStoneModule(dryStoneRng(0x1a7b), true);
+}
+
+/**
+ * Where a lava wall ends or two runs meet: its boulders racked up a little broader and taller than the wall — two across
+ * at each lift, one big capstone on top. World-free: centred on its foot, its own stream (the seed names the place).
+ */
+export function buildLavaWallHead(seed: number, thick: number, height: number): THREE.BufferGeometry {
+  const r = dryStoneRng(seed ^ 0x1a70), parts: THREE.BufferGeometry[] = [];
+  const w = thick * 1.7 + 0.12 + r() * 0.08, lifts = height > 0.8 ? 3 : 2, hl = height / lifts;
+  for (let lift = 0; lift < lifts; lift++) {
+    const count = lift === lifts - 1 ? 1 : 2;
+    for (let j = 0; j < count; j++) {
+      const b = lavaBoulder(w / (2 * count) * 1.1, hl * 0.62, w * 0.32 * (0.9 + r() * 0.2), r, (_nx, ny) => ny < -0.55);
+      b.rotateY((r() - 0.5) * 0.4);
+      parts.push(b.translate(-w / 2 + (j + 0.5) * (w / count) + (r() - 0.5) * 0.05, lift * hl + hl * 0.5, (r() - 0.5) * 0.06));
+    }
+  }
+  return merge(parts);
+}
+
 /**
  * The scenery lane (wave 16): where a mud wall ends or opens, an eroded pier — a little broader and taller than the
  * wall, its arrises rubbed round, its top slumped to a worn dome, a lean of its own; no cap slab. World-free, centred

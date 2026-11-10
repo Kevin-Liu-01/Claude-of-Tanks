@@ -18,7 +18,7 @@
 // (the print's 0.7 repeats a metre, by place on each face). Pure geometry; no draws from any stream.
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
-import { wallStoneBox, wallStoneFor, type DestructiblePropType } from './inhabitKit.ts';
+import { LAVA_WALL_H, lavaWallBroken, lavaWallFor, wallStoneBox, wallStoneFor, type DestructiblePropType } from './inhabitKit.ts';
 import { deriveRuntimeStructureContactBand, type StructureCollisionRuntimeBand } from '../structureCollision.ts';
 
 const WALL_SEG = 3.0, UV = 0.7, Z0 = -WALL_SEG / 2, Z1 = WALL_SEG / 2;
@@ -202,6 +202,33 @@ export function dryStoneWallType(legacy: Omit<DestructiblePropType, 'mat'> & { m
       return full(box, true);
     },
     footprintBuild: () => full(wallStoneBox(footprintRng()), false),
+  };
+  Object.defineProperty(entry, 'contactBand', { enumerable: true, get: () => band });
+  Object.defineProperty(entry, 'fitGeometry', { enumerable: true, get: () => fit });
+  return entry;
+}
+
+/**
+ * (buildings-272) Caldera's lava-stone field wall (props wallStyle 'lava'; inhabitKit lavaWallFor): the dry-stone module's
+ * envelope still drawn from the pool's stream (wallStoneBox: its draws, its foot and ends) and its broken build's draws
+ * spent, the lava module built on it LAVA_WALL_H high at its own breadth; that module its contact band, the run's terrain
+ * fit and (from the fixed seed) the placement footprint. No snow load: no lava map carries snow.
+ */
+export function lavaWallType(legacy: Omit<DestructiblePropType, 'mat'> & { mat: string },
+  footprintRng: () => () => number): Omit<CoursedWallType, 'mat'> & { mat: string } {
+  let band: StructureCollisionRuntimeBand | undefined, fit: THREE.BufferGeometry | undefined;
+  const entry: Omit<CoursedWallType, 'mat'> & { mat: string } = {
+    ...legacy,
+    h: LAVA_WALL_H,
+    build: (rng) => {
+      const wall = lavaWallFor(wallStoneBox(rng));
+      band = deriveRuntimeStructureContactBand({ baked: [wall] });
+      fit?.dispose();
+      fit = wall.clone();
+      return wall;
+    },
+    broken: (rng) => { legacy.broken!(rng).dispose(); return lavaWallBroken(); },
+    footprintBuild: () => lavaWallFor(wallStoneBox(footprintRng())),
   };
   Object.defineProperty(entry, 'contactBand', { enumerable: true, get: () => band });
   Object.defineProperty(entry, 'fitGeometry', { enumerable: true, get: () => fit });

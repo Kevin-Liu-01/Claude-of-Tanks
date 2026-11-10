@@ -125,11 +125,13 @@ import {
   type DestructiblePropType,
   buildAdobePilaster,
   buildDryStoneWallHead,
+  buildLavaWallHead,
   civilianVehicleTypes,
+  LAVA_WALL_H,
 } from './maps/inhabitKit.ts';
 import { PROP_FRACTURE, fractureProp, fractureSeed } from './maps/propFracture.ts';
 import { fenceTypes, ironRailingType } from './maps/fenceKit.ts';
-import { coursedWallType, dryStoneWallType } from './maps/coursedWallKit.ts';
+import { coursedWallType, dryStoneWallType, lavaWallType } from './maps/coursedWallKit.ts';
 import { adobeCrownFor, adobeWallType } from './maps/adobeWallKit.ts';
 import { traceTerraceRisers, type TerraceRiserZone } from './maps/terraceRisers.ts';
 import { settleLightWreckSteps } from './maps/lightWreck.ts'; // E1: a fracture-ready light kind's settled wreck
@@ -609,6 +611,8 @@ interface PropsSettings {
   maxSpread: number;
   spacingPad: number;
   wallRuns: WallRun[] | null;
+  /** (buildings-272) runs a map took up: their draws spent in their old place before wallRuns', nothing built. */
+  retiredWallRuns?: WallRun[];
   well: boolean;
   hayCrates: boolean;
   fences: boolean;
@@ -4774,6 +4778,8 @@ ${snowCap ? `
     // top, so a breached module loses it with its stones)
     // (props lane A #6: the coursed module in its region's build, maps/coursedWallKit.ts: the legacy collision and fit)
     ...(sourcedStoneIsBrick(mapId) ? { wallstone: coursedWallType(regionalArchitecture?.id, COURSED_WALLSTONE, () => mulberry32(0x0f0f7)) }
+      // (buildings-272: Caldera's knee-high lava-stone bank on the dry module's envelope and draws: coursedWallKit.ts)
+      : P.wallStyle === 'lava' ? { wallstone: lavaWallType({ ...DESTRUCTIBLE_TYPES.wallstone, mat: fieldWallBucket }, () => mulberry32(0x0f0f7)) }
       // (props lane A, r2 sweep: the drawn module's top stones crowned, the legacy's collision and fit: coursedWallKit.ts)
       : { wallstone: dryStoneWallType({ ...DESTRUCTIBLE_TYPES.wallstone, mat: fieldWallBucket }, snowCap ? withSnowLoad : null, () => mulberry32(0x0f0f7)) }),
     // the mud wall on its own worn render (fieldMudSurface.ts), never the house plaster
@@ -6908,7 +6914,7 @@ ${snowCap ? `
   const wallDressing = createWallDressing({
     ground: heightField, snow: snowCap, mobile: mobileProps, adobeBucket: adobeWallBucket, mudUv: ADOBE_UV_PER_M,
     plainV: adobeWallBucket === 'fieldMud' ? FIELD_MUD_PLAIN_V : undefined,
-    adobeApronCoarse: P.adobeApronCoarse === true,
+    adobeApronCoarse: P.adobeApronCoarse === true, lava: P.wallStyle === 'lava',
     pierCap: brickPierCapFor(regionalArchitecture?.id),
     sand: adobeWallBucket === 'fieldMud' && !!mudEarthOfGround((cfg as { sky?: { lighting?: { groundAlbedoHex?: number } } } | null)?.sky?.lighting?.groundAlbedoHex),
     turf: wallTurfOn ? {
@@ -6921,8 +6927,12 @@ ${snowCap ? `
     x1: number,
     z1: number,
     gapAt = -1,
+    // (buildings-272) a run the map took up: every draw spent as it was, nothing built, recorded or dressed
+    retired = false,
   ): void {
     const style = P.wallStyle || 'fieldstone';
+    // (Caldera's lava bank: knee-high and broader at its foot, its heads its own boulders)
+    const lava = style === 'lava';
     // the posts, the breach stubs and the tumbled blocks are the wall's own stone (the field walls' rubble print) or mud
     const wallB = style === 'adobe' ? wallDressing.adobeBucket : fieldWallBucket;
     const breachUv = style === 'adobe' ? wallDressing.mudUv : 0.7; // (the mud print is one tile a module)
@@ -6936,6 +6946,7 @@ ${snowCap ? `
     const yaw = Math.atan2(tx, tz); // module runs along local +z
     const thick = style === 'adobe' ? 0.52 : 0.46;
     const runH = 1.0 + rng() * 0.15; // family height scale
+    const footHalf = lava ? 0.4 : 0.23; // (where the foot's stones and the tumbled ones lie off the run's line)
     let prevBuilt = false;
     // the scenery lane (wave 20, "how things meet the ground"): each built island of the run gets its foot — the
     // stones settled at a dry-stone wall's foot, half sunk on both faces, or the mud apron and spalled lumps round an
@@ -6943,11 +6954,18 @@ ${snowCap ? `
     // the island's place; the props stream draws exactly what it drew.
     let islandFrom = 0;
     function dressIsland(ta: number, tb: number): void {
-      if (style !== 'adobe' && sourcedStoneIsBrick(mapId)) return;
-      const dressed = wallDressing.island(style === 'adobe', x0 + tx * ta, z0 + tz * ta, x0 + tx * tb, z0 + tz * tb, style === 'adobe' ? thick * 0.5 : 0.23);
+      if (retired || (style !== 'adobe' && sourcedStoneIsBrick(mapId))) return;
+      const dressed = wallDressing.island(style === 'adobe', x0 + tx * ta, z0 + tz * ta, x0 + tx * tb, z0 + tz * tb, style === 'adobe' ? thick * 0.5 : footHalf);
       for (const part of dressed.wall) buckets[wallB].push(part);
     }
     function endPost(px: number, pz: number, out: 1 | -1): void {
+      if (retired) {
+        // (its head's print draws, spent on a stand-in: the same four whatever the head)
+        const standIn = box(0.4, 0.4, 0.4, 0.7);
+        if (wallB === 'fieldStone') wallDressing.stoneUv(standIn, rng); else jitterUV(standIn, rng);
+        standIn.dispose();
+        return;
+      }
       const py = heightField.getHeightAt(px, pz) - 0.15;
       const ph = runH * 1.05 + 0.3;
       // the scenery lane (wave 16, "a miniature castle battlement"): a dry-stone run ends in a rubble wall head and a mud
@@ -6965,6 +6983,8 @@ ${snowCap ? `
         // at its family height, scaled up to 6 % more)
         let head = style === 'adobe'
           ? buildAdobePilaster(seedAt, pier ? thick * 1.9 : thick, (ph - 0.15) * (pier ? 1.12 : 1), adobeCrownFor(regionalArchitecture?.id))
+          // (a lava head a hand over the bank, a corner's a little more)
+          : lava ? buildLavaWallHead(seedAt, pier ? thick * 1.25 : thick, pier ? runH * LAVA_WALL_H * 1.08 + 0.2 : runH * LAVA_WALL_H + 0.1)
           : buildDryStoneWallHead(seedAt, pier ? thick * 2.1 : thick, pier ? runH * 1.15 * 1.06 + 0.24 : runH * 0.98 + 0.12);
         if (wallB === 'fieldStone') wallDressing.stoneUv(head, rng); else jitterUV(head, rng);
         if (corner && !pier) { head.dispose(); return; }
@@ -6974,7 +6994,7 @@ ${snowCap ? `
         buckets[wallB].push(head.translate(corner ? corner.x : px, py, corner ? corner.z : pz));
         if (corner) return; // (a corner sheds no stones past an end it does not have)
         // (wave 34, "nothing bedded": the stones the head lost tumbled out past the end; a stream named by its place)
-        const fallen = wallDressing.tumble(style === 'adobe', px, pz, tx * out, tz * out, thick * 0.5);
+        const fallen = wallDressing.tumble(style === 'adobe', px, pz, tx * out, tz * out, lava ? footHalf : thick * 0.5);
         if (fallen) buckets[wallB].push(fallen);
         return;
       }
@@ -6995,14 +7015,14 @@ ${snowCap ? `
         if (wallB === 'fieldStone') wallDressing.stoneUv(stub, rng); else jitterUV(stub, rng);
         stub.rotateY(yaw);
         stub.translate(x, y + height / 2, z);
-        buckets[wallB].push(wallDressing.breach(breachKind, x, y, z, yaw, thick, height, breachT < 0.5 ? -1 : 1));
+        if (!retired) buckets[wallB].push(wallDressing.breach(breachKind, x, y, z, yaw, thick, height, breachT < 0.5 ? -1 : 1));
         const drawn = drawnPlanRecord([stub], y + 0.15, 0.05);
         stub.dispose();
-        if (drawn) breachRubbleFootprints.push(drawn);
+        if (drawn && !retired) breachRubbleFootprints.push(drawn);
       }
       const mid = (t0 + t1) / 2;
-      const spill = breachKind === 'brick' ? null
-        : wallDressing.breachTumble(style === 'adobe', x0 + tx * mid, z0 + tz * mid, tz, -tx, thick * 0.5);
+      const spill = breachKind === 'brick' || retired ? null
+        : wallDressing.breachTumble(style === 'adobe', x0 + tx * mid, z0 + tz * mid, tz, -tx, lava ? footHalf : thick * 0.5);
       if (spill) buckets[wallB].push(spill);
       for (let blockIndex = 0; blockIndex < 5; blockIndex++) {
         const breachT = 0.2 + rng() * 0.6;
@@ -7017,6 +7037,7 @@ ${snowCap ? `
         const groundY = heightField.getHeightAt(x, z);
         block.translate(x, groundY + size * 0.3, z);
         const drawn = drawnPlanRecord([block], groundY, 0.05);
+        if (retired) { block.dispose(); continue; }
         if (!spill) buckets[wallB].push(breachRubble(breachKind === 'brick', wallB === 'fieldStone', x, z, size, spin, (gx, gz) => heightField.getHeightAt(gx, gz)));
         block.dispose(); // (the r2 sweep: the box drew; its draws and its footprint record stay, maps/wallBreachRubble.ts draws the piece)
         if (drawn) breachRubbleFootprints.push(drawn);
@@ -7067,8 +7088,10 @@ ${snowCap ? `
       // the run, so two turned ends never share a face where they overlap)
       const turn = (Math.imul(k + 1, 0x9e3779b1) ^ Math.imul(Math.round(x0 * 8 + z0 * 5), 0x85ebca6b)) >>> 31 ? Math.PI : 0;
       const nudge = k % 2 ? 0.004 : -0.004;
+      const moduleScale = runH * (0.94 + rng() * 0.12), tiltZ = (rng() - 0.5) * 0.02;
+      if (retired) { prevBuilt = true; continue; }
       const record = addDestructible(wallKind, cx + tz * nudge, cy - 0.13, cz - tx * nudge, yaw + turn,
-        runH * (0.94 + rng() * 0.12), tiltX, (rng() - 0.5) * 0.02);
+        moduleScale, tiltX, tiltZ);
       // Preserve seeded placement/breaches. Once the shared kit is built,
       // fit this same slot to a continuous, grounded masonry span.
       wallSpans.set(record, { x0: x0 + tx * t0, z0: z0 + tz * t0,
@@ -7100,6 +7123,10 @@ ${snowCap ? `
     for (const [x, z] of ends) {
       if (wallCorners.some((c) => Math.hypot(c.x - x, c.z - z) < WALL_CORNER_M)) continue;
       if (ends.filter(([ex, ez]) => Math.hypot(ex - x, ez - z) < WALL_CORNER_M).length >= 2) wallCorners.push({ x, z, built: false });
+    }
+    // (buildings-272) the runs a map took up first, where they stood in its list, so every later draw is the one it was
+    for (const wallRun of P.retiredWallRuns ?? []) {
+      addWallRun(wallRun[0], wallRun[1], wallRun[2], wallRun[3], wallRun[4] ?? -1, true);
     }
     for (const wallRun of wallRuns) {
       addWallRun(wallRun[0], wallRun[1], wallRun[2], wallRun[3], wallRun[4] ?? -1);

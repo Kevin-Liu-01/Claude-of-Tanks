@@ -103,10 +103,10 @@
       "concealers": 1139
     },
     "caldera": {
-      "bytes": 1667300,
-      "sha256": "282fb4f48d7ca70b9a6203c6ec27be313c7585a7473310fe5c4194911dd671c2",
-      "obstacles": 2923,
-      "colliders": 3086,
+      "bytes": 1627302,
+      "sha256": "6b493c40edbb323a869a8565ac107245cbc78ea31e570dfd1d84201a4c50d30c",
+      "obstacles": 2796,
+      "colliders": 2959,
       "concealers": 1035
     },
     "foundry": {
