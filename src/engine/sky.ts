@@ -2133,26 +2133,6 @@ export function createSky(scene: THREE.Scene, renderer: THREE.WebGLRenderer): Sk
     }
   };
 
-  // Sourced-HDRI environment override (experiment flag; null = procedural
-  // bake, the shipping configuration). Set to an equirect .hdr URL to test.
-  const HDRI_ENV_URL: string | null = null;
-  let hdriPromise: Promise<THREE.DataTexture> | null = null;
-  const loadHdriEnvironment = (url: string): void => {
-    if (!hdriPromise) {
-      hdriPromise = import('three/examples/jsm/loaders/RGBELoader.js')
-        .then(({ RGBELoader }) => new RGBELoader().loadAsync(url));
-    }
-    hdriPromise.then((tex) => {
-      withEnvironmentRenderState(renderer, () => environments.install(
-        null, () => environmentGenerator().fromEquirectangular(tex),
-        Math.max(preset.envIntensity, ENV_INTENSITY_FLOOR),
-        () => enforceEnvValidity(renderer, scene),
-      ));
-    }).catch((error: RuntimeValue) => console.warn(
-      '[sky] HDRI env failed, procedural bake kept —', errorMessage(error),
-    ));
-  };
-
   // Round 65: the environment of the physically based dome — a second box sharing the dome's material (the
   // LUT and every uniform by reference) inside PMREMGenerator's far plane; the Preetham bake stays the fallback.
   if (atmosphereLuts) {
@@ -2210,16 +2190,6 @@ export function createSky(scene: THREE.Scene, renderer: THREE.WebGLRenderer): Sk
       // Refresh their renderer lifetime before baking reflections from the dome.
       refreshAtmosphere();
       atmosphereKeySuffix = environmentKeySuffix();
-      // Deep-hunt IBL experiment (2026-07): sourced Poly Haven HDRI as
-      // scene.environment instead of the procedural-sky bake. Judged worse —
-      // the HDRI's baked-in sun cannot track the per-map sun azimuth /
-      // elevation driving the CSM, so specular highlights detach from the
-      // shadow direction on 3 of 4 maps. Flag kept for future re-testing
-      // with per-map matched HDRIs.
-      if (HDRI_ENV_URL) {
-        loadHdriEnvironment(HDRI_ENV_URL);
-        return;
-      }
       // MOBILE r4: some iOS GPUs poison the PMREM bake (NaN texels) and the
       // IBL term blackens every lit material (proven on-device by the r3
       // watchdog: rescue 'environment-off'). Validate after EVERY bake — the
