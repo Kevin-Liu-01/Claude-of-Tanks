@@ -58,6 +58,7 @@ import { createParticleSystem } from './particles.ts';
     explosionLight: new THREE.PointLight(0xff7f38, 0, 13, 2), explosionPeak: 520, groundY: () => 0,
     explosionFlashAgeS: () => 99, flashExplosion: () => {}, setLateFxActive: () => {}, setColumnCap: () => {},
     setLightTintShading: () => {}, setMuzzleExposure: () => {}, stampTrackPrint: () => {},
+    setClockShift: () => {},
   };
   const actor = { uid: 'foe0', x: 0, y: 0.3, z: 0, yaw: 0.4, turretYaw: 0, lengthM: 7, widthM: 3.6, heightM: 2.4, pivot: [0, 1.5, 0] };
   const cin = createStudioCinematics({ port, scene: new THREE.Scene(), light: new THREE.PointLight(0xfff0dc, 0, 18, 2),

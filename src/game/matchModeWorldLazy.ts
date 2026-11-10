@@ -11,6 +11,7 @@
 // markers are in from the battle's first frame on any network; the idle fetch only makes that wait free.
 import * as THREE from 'three';
 import type { createMatchModeWorldPresentation, MatchModeWorldPresentation } from './matchModeWorldPresentation.ts';
+import { createLazyChunk } from '../app/lazyChunk.ts';
 
 type PresentationOptions = Parameters<typeof createMatchModeWorldPresentation>[1];
 type PresentationState = Parameters<MatchModeWorldPresentation['update']>[0];
@@ -45,18 +46,25 @@ export function createLazyMatchModeWorldPresentation(
   root.name = 'match-mode-objectives-host';
   scene.add(root);
   let presentation: MatchModeWorldPresentation | null = null;
-  let loading: Promise<void> | null = null;
   let disposed = false;
   let pending: { state: PresentationState; timeS: number } | null = null;
+  // (2026-11-02 audit R6, round 2 U35) one app/lazyChunk.ts chunk: a failed module was asked again, and warned, by the
+  // next mode state, every frame a mode's state arrives (mainFrameRuntime.ts); now the next mode state asks under the one
+  // policy (at once after one failure, then past its backoff; the kept failure in between, one warning per ask)
+  const chunk = createLazyChunk(load);
+  let asked: Promise<unknown> | null = null;
+  let loading: Promise<void> = Promise.resolve();
   const start = (): Promise<void> => {
-    loading ??= load().then((module) => {
+    const ask = chunk.load();
+    if (ask === asked) return loading;
+    asked = ask;
+    loading = ask.then((module) => {
       if (disposed) return;
       // the real presentation's root under this one (it only adds its root to its parent)
       presentation = module.createMatchModeWorldPresentation(root as unknown as THREE.Scene, options);
       if (pending) presentation.update(pending.state, pending.timeS);
       pending = null;
     }, (error: unknown) => {
-      loading = null; // the next mode state tries again
       onError(error);
     });
     return loading;

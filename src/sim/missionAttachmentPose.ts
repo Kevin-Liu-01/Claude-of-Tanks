@@ -5,7 +5,7 @@ import {missionAttachmentFor,missionAttachmentTurretPivot,DRONE_DOCK_HEIGHT_M,ty
 import * as detMath from './detMath.ts';
 export interface MissionCarrierPose {
  pos:Vector3;yaw:number;turretYaw?:number;gunPitch?:number;visualPitch?:number;visualRoll?:number;
- _susp?:{p:number;r:number};_swayEst?:number;_flinch?:{p:number;r:number};
+ _susp?:{p:number;r:number};_swayEst?:number;
 }
 const euler=new Euler(0,0,0,'YXZ'),canonical=new Quaternion(),chassis=new Quaternion(),turn=new Quaternion(),direction=new Vector3();
 const yAxis=new Vector3(0,1,0);
@@ -13,8 +13,9 @@ const yAxis=new Vector3(0,1,0);
  * is module-owned: fixed-step owners already advance entities sequentially. */
 export function missionAttachmentPose(spec:MissionCarrierSpec,state:MissionCarrierPose,position:Vector3,orientation:Quaternion):void {
  const seat=missionAttachmentFor(spec),pitch=state.visualPitch??0,roll=state.visualRoll??0;
- const extraPitch=(state._susp?.p??0)*2.2-(state._flinch?.p??0);
- const extraRoll=(state._susp?.r??0)*1.9+(state._swayEst??0)*2.4+(state._flinch?.r??0);
+ // the hit/recoil rock is the visual's own (audit M9): the launch frame is the simulated hull's
+ const extraPitch=(state._susp?.p??0)*2.2;
+ const extraRoll=(state._susp?.r??0)*1.9+(state._swayEst??0)*2.4;
  chassis.setFromEuler(euler.set(-pitch-extraPitch,state.yaw,roll+extraRoll));
  position.set(seat.x+(seat.payloadOffset?.[0]??0),seat.y+DRONE_DOCK_HEIGHT_M,seat.z+(seat.payloadOffset?.[1]??0));orientation.copy(chassis);
  if(seat.frame==='turret'){

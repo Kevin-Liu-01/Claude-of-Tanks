@@ -15,7 +15,7 @@ const restoreCanvas = installCanvasFixture();
 
 function geometryHash(tank){const hash=crypto.createHash('sha256');tank.root.traverse(o=>{if(o.geometry?.attributes.position){const p=o.geometry.attributes.position.array;hash.update(new Uint8Array(p.buffer,p.byteOffset,p.byteLength));}});return hash.digest('hex');}
 function oldStabilizedAngles(state){
- const extraPitch=state._susp.p*2.2-state._flinch.p,extraRoll=state._susp.r*1.9+state._swayEst*2.4+state._flinch.r;
+ const extraPitch=state._susp.p*2.2,extraRoll=state._susp.r*1.9+state._swayEst*2.4;
  if(Math.abs(extraPitch)+Math.abs(extraRoll)<=1e-6)return {yaw:state.turretYaw,pitch:-state.gunPitch};
  const c=Math.cos(state.gunPitch),direction=new Vector3(Math.sin(state.turretYaw)*c,Math.sin(state.gunPitch),Math.cos(state.turretYaw)*c);
  direction.applyQuaternion(new Quaternion().setFromEuler(new Euler(-state.visualPitch,state.yaw,state.visualRoll,'YXZ')));
@@ -31,9 +31,9 @@ for(const id of ['jpz_e100','strv103b','strv103a','udes03','m1a1_abrams_hc','lec
  const spec=getSpec(id),tank=createTank(id,null,{proceduralOnly:true,quality:'low',camoSeed:4242}),state=createTankState(spec,new Vector3(1,2,3),.3);
  const beforeGeometry=geometryHash(tank),turret=tank.root.getObjectByName('rig_turret'),gun=tank.root.getObjectByName('rig_gun');
  const arc=casemateGunYawLimit(spec),yaws=Number.isFinite(arc)?[-arc,0,arc]:[-2.4,.7,2.8];
- for(const yaw of yaws)for(const pitch of[-.1,.25])for(const [sp,sr,sway,fp,fr]of cases){
+ for(const yaw of yaws)for(const pitch of[-.1,.25])for(const [sp,sr,sway]of cases){// columns 4-5 were the retired sim hit-flinch rock (audit M9: the visual's own)
   state.turretYaw=yaw;state.gunPitch=pitch;state.visualPitch=.47;state.visualRoll=-.52;
-  state._susp.p=sp;state._susp.r=sr;state._swayEst=sway;state._flinch.p=fp;state._flinch.r=fr;
+  state._susp.p=sp;state._susp.r=sr;state._swayEst=sway;
   const previous=JSON.stringify(state),old=oldStabilizedAngles(state);tank.syncFromState(state,0);
   assert.equal(JSON.stringify(state),previous,id+': presentation must not mutate authoritative aiming or body state');
   assert.equal(gun.rotation.x,old.pitch,id+': main elevation and stabilization unchanged');

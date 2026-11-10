@@ -135,6 +135,16 @@ export const MANUAL_SUITES = Object.freeze({
     'server/botObjectives.selftest.mjs',
     'src/game/ai.lastRun.selftest.mjs',
     'src/game/ai.levels.selftest.mjs',
+    // 2026-11-07 round 6 V4 (2026-11-02 audit M7; fix-ups r1 to r6): the Watch hand-back's cases that repeat one of
+    // ai.watchResume's at another length, height or branch, split off it (a level route's 30 s park off its way and its
+    // toggles, the causeway's drop over the gun's band and its crest toggle, the dwell off and onto a 2.2 m rock, from
+    // the last obstacle list, off a tiered rock's top and first tier, onto its second tier, up a formation's caps and
+    // onto a 1 m box's top under a deck's end), and the only case of the walk's last point under a deck the field
+    // publishes (a spot read stood put there only within 1.5 m of the deck's end): 3.9-4.9 s of user CPU at load
+    // 29-62 (4.4-7.5 s at load 70-160), the import 1.5-1.8 s of it. Of the round's 76 mutants of ai.ts 69 fail one of
+    // the two receipts, two of them this file alone (that last point, and the obstacle list's branch, a fixture's
+    // path); seven readings of the ground under a deck fail neither (round 6 bots NOTES, fix-up r6)
+    'src/game/ai.watchResumeLevels.selftest.mjs',
     'src/sim/botRouteClearance.selftest.mjs',
     'src/sim/botVerdantApproach.selftest.mjs',
     'tools/mode-aggression-harness.selftest.mjs',
@@ -147,6 +157,24 @@ export const MANUAL_SUITES = Object.freeze({
     'src/sim/droneRecon.selftest.mjs',
     'src/sim/gunshipEscortMaps.selftest.mjs',
     'src/sim/missileRoles.selftest.mjs',
+    // 2026-11-06 round 5 S2: a teammate ram on the solo step and in a room, followed to the page's audio and phone (a battle
+    // on Verdant and a room start, about 10 s of user CPU); its listener census and the phone's cue stay default
+    // (src/sim/teammateRamListeners.selftest.mjs), the sim halves are ramModuleLaw.selftest's
+    'src/sim/teammateRam.selftest.mjs',
+    // round 8 Y1 review r1 (2026-11-02 audit, sm-fix, round 8): the page-step halves of three default receipts, each a battle
+    // seated by setupBattle and stepped by simStep (the page import, a world and the staged roster's anatomy: about 4-5 s
+    // of user CPU each at load 50-65); their owners stay default: couchSessionLifecycle (the session's edges on stand-ins,
+    // 0.7 s), twinMuzzleParity (the selector on the authority at a steep lay and across a revive, the screens through
+    // deaths, a restart and two missiles a life, the census and the solo wiring: about 3.4-6.5 s at load 37-93 since the
+    // residual round) and
+    // devBattleHold (the hold's edge table and the undo's events on stand-ins)
+    'src/game/couchSessionBattle.selftest.mjs',
+    'src/game/twinMuzzleSolo.selftest.mjs',
+    'src/game/devBattleHoldEdges.selftest.mjs',
+    // round 8 Y4 (2026-11-02 audit, sm-fix, ROUND8 amendment 4): a couch battle's Battle Again through main's intent and
+    // Garage handler, seated twice by the page's setupBattle (a page import, a world and the staged roster's anatomy: about
+    // 4 s of user CPU at load 50-60); the replay rule and main's bindings stay default (battleEntryIntent, mainFlowPorts)
+    'src/game/couchRematch.selftest.mjs',
   ], { hits: true }),
   perf: suite('host-time budgets (tick cost, soaks, heap plateaus, restore timing): they measure the machine as much as the code', [
     'server/collisionRestoreIndex.selftest.mjs',
@@ -807,6 +835,12 @@ export const MANUAL_SUITES = Object.freeze({
     'tools/black-world.browser.selftest.mjs',
     'tools/destruction-first-use.browser.selftest.mjs',
     'tools/source-dimension-frame.browser.selftest.mjs',
+  ]),
+  // round 5 U12 (2026-11-02 audit, sm-fix): the census's two houses cost about 1.7 s of its 4.1-4.4 s of CPU; the default
+  // receipt (src/fx/fxClockStampCensus.selftest.mjs) runs the rest of it and leaves what only their destruction stamps or
+  // reaches, wherever it lives (the houses' modules, structureMask's crumble fronts, the rubble bodies), to this one
+  fx: suite('the fx-clock stamp census whole: two houses brought down (stages, sections, collapse bodies, the hanging sweep) before the rebase, and every fx-clock site\'s reach', [
+    'src/fx/fxClockStampCensusFull.selftest.mjs',
   ]),
   media: suite('the media lane\'s fleet backlog: every production vehicle leads a take, and every fleet take clears its battlefield survey (the media lane\'s local dumps: run it where they are)', [
     'tools/media-r5/fleet-coverage.selftest.mjs',

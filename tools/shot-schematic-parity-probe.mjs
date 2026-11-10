@@ -8,12 +8,13 @@ import { tmpdir } from 'node:os';
 import { createHash } from 'node:crypto';
 import { createServer } from 'vite';
 import puppeteer from 'puppeteer';
-import { createCaptureLock } from './capture-lock.mjs';
+import { openCaptureHold } from './capture-hold.mjs';
 
 const option = (name, fallback = '') => process.argv.find(arg => arg.startsWith(`--${name}=`))?.slice(name.length + 3) ?? fallback;
 const output = option('out'), port = Number(option('port', '5944'));
 if (!output || !Number.isInteger(port) || port < 1024 || port > 65535) throw new Error('Require --out=/absolute/new-directory and valid --port');
-const out = resolve(output), lock = createCaptureLock();
+const out = resolve(output);
+let captureHold = null; // the capture hold (tools/capture-hold.mjs openCaptureHold); this probe keeps its own signal handlers
 await mkdir(out); // preserve failed runs, never overwrite their receipt
 const paths = ['src/ui/shotSchematic.ts', 'src/ui/shotSchematicClient.ts', 'src/ui/shotSchematicWorker.ts',
   'src/ui/shotSchematicReference.test.ts', 'src/ui/shotSchematicBrowser.test.ts', 'tools/shot-schematic-parity-probe.mjs',
@@ -24,7 +25,7 @@ const report = { schemaVersion: 1, protocol: 'shot-schematic-native-pixel-parity
   scope: 'exact decoded RGBA on native Chromium; source-module fixture, not game performance certification',
   startedAt: new Date().toISOString(), source: await manifest(), errors: [], cleanupErrors: [],
   failedResponses: [], failedResponsesDropped: 0, pass: false };
-let server, browser, cacheDir, heartbeat, leased = false, interrupted = null;
+let server, browser, cacheDir, leased = false, interrupted = null;
 let closingBrowser;
 async function withinDeadline(work, ms, label) {
   let timer;
@@ -67,12 +68,12 @@ try {
   // release another owner's lock. On queued interruption this CLI exits after
   // writing its receipt, so its pending acquire cannot subsequently run. The
   // unchanged FIFO reaps that dead PID's ticket on its next queue scan.
-  const acquisition = lock.acquire(30 * 60 * 1000).then(() => {
+  const acquisition = openCaptureHold({ label: 'shot-schematic-parity-probe', timeoutMs: 30 * 60 * 1000, signals: [] }).then((held) => {
+    captureHold = held;
     leased = true;
-    if (interrupted) lock.release(); // Admission racing with our signal is ours.
+    if (interrupted) void held.release(); // Admission racing with our signal is ours.
   });
   await Promise.race([acquisition, interruption]); active();
-  heartbeat = setInterval(() => lock.refresh(), 30_000); heartbeat.unref();
   cacheDir = await mkdtemp(join(tmpdir(), 'cot-schematic-vite-'));
   report.optimizerCache = { path: cacheDir, private: true, noDiscovery: true, removed: false };
   active();
@@ -138,8 +139,7 @@ finally {
     try { await rm(cacheDir, { recursive: true, force: true }); report.optimizerCache.removed = true; }
     catch (error) { report.cleanupErrors.push(String(error)); }
   }
-  clearInterval(heartbeat);
-  if (leased) lock.release();
+  if (leased) await captureHold?.release();
   process.off('SIGINT', onInt); process.off('SIGTERM', onTerm);
   report.interrupted = interrupted;
   report.capture = { acquired: leased, releaseAttempted: leased,

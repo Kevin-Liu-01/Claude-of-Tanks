@@ -182,13 +182,21 @@ for (const end of ['deadline', 'dispose']) {
   if (end === 'deadline') h.advance(100); else h.client.dispose();
   assert.equal(await a, null); assert.equal(await b, null);
   assert.equal(h.workers[0].terminated, 1);
-  assert.equal(h.client.available(), false);
+  // (2026-11-02 audit R6) a deadline is one failure, not the session's (src/workerClientHealth.ts); a dispose is the end
+  assert.equal(h.client.available(), end === 'deadline');
   assert.equal(h.timers.size, 0);
   for (const item of pending) item.resolve(h.bitmap(item.image));
   await flush(); assert.ok(h.bitmaps.every(value => value.closes === 1));
   assert.equal(h.conversions.length, 1, 'late completion never starts the remaining images');
   assert.equal(h.workers[0].posts.length, 0);
-  assert.equal(await h.client.compose(input()), null);
+  if (end === 'dispose') assert.equal(await h.client.compose(input()), null);
+  else {
+    h.state.convert = null;
+    const later = h.client.compose(input());
+    assert.equal(h.workers.length, 2, 'the next set starts a fresh worker');
+    h.workers[1].ready(); await flush(); h.workers[1].complete(); assert.ok(await later);
+    h.client.dispose();
+  }
 }
 
 // Each image owns its own native conversion interval, even when a preparation
@@ -238,7 +246,7 @@ for (const boundary of ['before-first', 'after-first']) {
       next = h.client.compose(input({ key: 'queued' }));
       if (end === 'dispose') h.client.dispose(); else h.advance(100);
       assert.equal(await first, null); assert.equal(await next, null);
-      assert.equal(h.client.available(), false);
+      assert.equal(h.client.available(), end === 'deadline', 'a deadline is one failure (audit R6), a dispose the end');
       assert.equal(h.workers[0].terminated, 1); assert.equal(h.timers.size, 0);
     }
     assert.equal(turns.length, turnCount, 'no replacement preparation while the old boundary is held');
@@ -257,7 +265,8 @@ for (const boundary of ['before-first', 'after-first']) {
       assert.equal(h.client.available(), true);
     } else {
       assert.equal(turns.length, turnCount, 'disposed/deadline turns cannot reacquire the worker');
-      assert.equal(await h.client.compose(input()), null);
+      if (end === 'dispose') assert.equal(await h.client.compose(input()), null);
+      else assert.equal(h.workers.length, 1, 'and the abandoned turn started no worker of its own');
     }
     h.client.dispose();
     assert.equal(h.timers.size, 0); assert.ok(h.bitmaps.every(value => value.closes === 1));
@@ -295,7 +304,7 @@ for (const failure of ['throw-before-first', 'reject-after-first']) {
     turns[1].reject(new Error('paint deadline')); await flush();
   }
   assert.equal(await first, null); assert.equal(await queued, null);
-  assert.equal(h.client.available(), false); assert.equal(h.workers[0].terminated, 1);
+  assert.equal(h.client.available(), true, 'one failure (audit R6)'); assert.equal(h.workers[0].terminated, 1);
   assert.equal(h.workers[0].posts.length, 0); assert.equal(h.timers.size, 0);
   assert.equal(h.conversions.length, Number(failure === 'reject-after-first'));
   assert.ok(h.bitmaps.every(value => value.closes === 1));
@@ -335,9 +344,31 @@ for (const failure of ['post', 'protocol', 'duplicate-ready', 'worker-error', 'm
     if (failure === 'message-error') h.workers[0].onmessageerror();
   }
   assert.equal(await a, null, failure); assert.equal(await b, null, failure);
-  assert.equal(h.client.available(), false); assert.equal(h.workers[0].terminated, 1);
+  assert.equal(h.client.available(), true, `${failure}: one failure, not the session's (audit R6)`); assert.equal(h.workers[0].terminated, 1);
   assert.equal(h.timers.size, 0);
   if (failure === 'post') assert.ok(h.bitmaps.every(value => value.closes === 1));
+}
+// (2026-11-02 audit R6) three failures in a row leave the client unavailable (every set composes on the main thread);
+// one completed set starts the count again
+{
+  const h = harness();
+  const start = (key) => {
+    const before = h.workers.length, job = h.client.compose(input({ key }));
+    if (h.workers.length > before) h.workers.at(-1).ready();
+    return job;
+  };
+  const fails = async () => {
+    const job = start(`k${h.workers.length}`); await flush(); h.workers.at(-1).onerror(); assert.equal(await job, null);
+  };
+  await fails(); await fails();
+  const good = start('good'); await flush(); h.workers.at(-1).complete(); assert.ok(await good);
+  await fails(); await fails();
+  assert.equal(h.client.available(), true, 'two since the completed set');
+  const timed = h.client.compose(input({ key: 'timed' })); h.advance(100); assert.equal(await timed, null);
+  assert.equal(h.client.available(), false, 'the third in a row');
+  const count = h.workers.length;
+  assert.equal(await h.client.compose(input({ key: 'after' })), null); assert.equal(h.workers.length, count);
+  assert.equal(h.timers.size, 0);
 }
 for (const create of [() => null, () => { throw new Error('CSP'); }]) {
   const h = harness(); h.state.create = create;

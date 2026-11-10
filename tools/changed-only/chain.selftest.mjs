@@ -22,8 +22,8 @@
 //   - (268) a partial chain (--steps) writes only the lines of the steps it ran: a step whose tool moved stays due and
 //     reads as its tool.
 //   - (268) every fixture chain is bounded by the CPU its process tree spends, never wall time (watchChild), and a
-//     tree's CPU keeps what its exited members spent; so is a synchronous child (budgetedSync, the rows read), node
-//     spawning node.
+//     tree's CPU keeps what its exited members spent; so is a synchronous child (budgetedSync, the rows read outside a
+//     chain), node spawning node; (round 8 Y10 s6-06) the chain's own rows read runs in its child groups, awaited.
 // First-party tooling: Kevin B. Liu.
 import assert from 'node:assert/strict';
 import { execFileSync, spawn } from 'node:child_process';
@@ -568,9 +568,15 @@ assert.ok(Date.now() - sleptAt > 2000, 'and one that outlives that much wall tim
 assert.equal(slept, 'rows', 'with its output the caller\'s');
 const runnerBudget = readFileSync(join(repo, 'tools/tank-regen-changed.mjs'), 'utf8');
 assert.match(runnerBudget, /watchChild\(child\.pid, \{ budgetS: timeoutS, hangS: HANG_S/, 'the runner budgets its CPU children through it');
-assert.match(readFileSync(join(repo, 'tools/changed-only/fingerprint.mjs'), 'utf8'),
-  /budgetedSync\(process\.execPath, \['--max-old-space-size=4096', join\(import\.meta\.dirname, 'rows-child\.mjs'\)/,
-  'the rows read is bounded through it');
+// (round 8 Y10 s6-06) Both rows reads run one command line (rowsChildArgv) under one CPU budget: a caller outside a chain
+// through budgetedSync, the chain through its own child groups and watchChild, awaited, so its stop reaches the read
+// (tools/changed-only/rowsReadStop.selftest.mjs stops a chain in the middle of one).
+const fingerprintSource = readFileSync(join(repo, 'tools/changed-only/fingerprint.mjs'), 'utf8');
+assert.match(fingerprintSource, /budgetedSync\(process\.execPath, rowsChildArgv\(root, tableModule\), \{\n\s*budgetS: ROWS_CPU_S/,
+  'the synchronous rows read is bounded through it');
+assert.match(fingerprintSource, /groups\.spawn\(process\.execPath, rowsChildArgv\(root, tableModule\)/, 'the chain\'s rows read starts in its groups');
+assert.match(fingerprintSource, /watchChild\(child\.pid, \{ budgetS: ROWS_CPU_S/, 'under the same CPU budget');
+assert.match(runnerBudget, /readRowsAsync\(root, childEnv, table\.path, \{ groups: children \}\)/, 'and the chain reads its rows that way');
 
 // 12 (268). A partial chain writes only the lines of the steps it ran: --steps=seats on a tree where fills' tool moved
 // (every fills id due) and one seats input moved (b1) runs seats on b1. Every other line of the table stays byte for

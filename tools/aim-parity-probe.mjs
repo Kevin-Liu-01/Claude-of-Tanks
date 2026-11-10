@@ -25,6 +25,7 @@ import { launchGuardedBrowser } from './browser-launch.mjs';
 import { createServer } from 'vite';
 import puppeteer from 'puppeteer';
 import { writeFileSync } from 'node:fs';
+import { waitForBootLoaded } from './game-readiness.mjs';
 
 const args = process.argv.slice(2);
 const opt = (n, f) => { const i = args.indexOf(`--${n}`); return i >= 0 ? args[i + 1] : f; };
@@ -69,7 +70,7 @@ await page.evaluateOnNewDocument(() => {
   try { localStorage.setItem('cot.settings.v1', JSON.stringify({ aiDifficulty: 'easy' })); } catch (_) { /* private */ }
 });
 await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 180000 });
-await page.waitForFunction('window.__GAME_READY === true', { timeout: 180000 });
+await waitForBootLoaded(page, { timeout: 180000 });
 await sleep(1500);
 
 // battle + lock

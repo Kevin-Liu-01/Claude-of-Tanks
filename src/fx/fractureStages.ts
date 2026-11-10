@@ -744,7 +744,12 @@ export function createFractureStages(o: FractureStagesOptions): FractureStages {
       }
       return laid.size;
     },
-    shiftTime(delta) { last += delta; },
+    shiftTime(delta) {
+      last += delta;
+      // (2026-11-02 audit R7) the fracture it owns keeps its own stamps (its collapse's face hold), and the sweep its age
+      fracture.shiftTime(delta);
+      if (hangingJob && hangingJob.at >= 0) hangingJob.at += delta;
+    },
     reset() {
       for (const m of warmed) { m.removeFromParent(); m.geometry.dispose(); }
       warmed.length = 0;

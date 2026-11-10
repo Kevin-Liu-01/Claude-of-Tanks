@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { Vector3 } from 'three';
 import { SIM_DT, applyShellKnock, createTankState, shellKnockMps, updateTank } from '../../sim/movement.ts';
-// The v1 checkpoint is the layout's origin; it is imported here only to prove byte-for-byte parity.
+// The sim checkpoint is the layout's one codec (audit 2026-11-02); the wire names it.
 import { applyMovementPredictionState, captureMovementPredictionState } from '../../sim/movementPredictionState.ts';
 import {
   MOVEMENT_CHECKPOINT_VALUES, MOVEMENT_CHECKPOINT_VERSION, applyMovementCheckpoint, captureMovementCheckpoint,
@@ -28,6 +28,10 @@ function drive(ticks) {
 assert.equal(MOVEMENT_CHECKPOINT_VERSION, 9,
   'bots lane (2026-10-02): the roof a hull rests on rides with the integrator; physics lane (2026-10-03): and its gravity tip, then the landing stroke and the dive, then the top track contact, then the side-to-side transfer, then the bump stops\' share of the dive; physics (268): then the body contact it rests on');
 assert.equal(MOVEMENT_CHECKPOINT_VALUES, 63, 'version 4 (48 values) + rebound, stroke, dive, dive rate + top contact + the held posture and its seated share (pitch, roll, their rates) + the stops\' share and its rate');
+
+// One codec: the wire's encoder and decoder are the sim's, so a layout change cannot reach one side only.
+assert.equal(captureMovementCheckpoint, captureMovementPredictionState, 'the wire capture is the sim codec');
+assert.equal(applyMovementCheckpoint, applyMovementPredictionState, 'the wire restore is the sim codec');
 
 const driven = drive(180);
 const ours = captureMovementCheckpoint(driven);

@@ -96,7 +96,8 @@ reads exactly as `bot`. Per mode:
 `game.player`. The fixed step drives a hull from its controller only while `aiCtl` is set, so the frame input
 (`playerFrameInput.ts`) is the only writer of the hull's input while it is driven. Leaving gives the controller back,
 and it resumes from the hull's live state. A driven hull's death plays the player's death flow (death camera, replay),
-then the watcher is back on the drone.
+then the watcher is back on the drone. Leaving inside the death beat ends the flow there, so no replay follows over the
+drone; a replay already on screen plays out (`battleResultPresentationRuntime.ts` leaveSeat).
 
 Receipts:
 - `src/game/watchSeat.selftest.mjs`: the ruleset entry, bot → player → bot leaves the hull identical, an exact replay
@@ -520,11 +521,15 @@ authority now refuses to start a wave on an empty pool). Campaign progress stays
 (`network: true`) never records an operation.
 
 Respawning modes (Capture the Flag, Zone Control, Turbo Ball, Mars, Gun Game, Drone, Infected and the Juggernaut
-hunters) revive the player through `mode:respawn`; Endless Horde and Frontline Assault never revive a human (their
-allied bots come back when a round is cleared or a sector falls, and in Frontline 30 s after a death too (`allyReviveS`,
-behind the last sector taken)). The killcam
-cancels its spectate and any pending ghost replay on the local player's revive so the
-camera returns to the tank instead of holding the wreck view (batch 27). Since
+hunters) revive the player through `mode:respawn`. Endless Horde and Frontline Assault have no respawn timer, and a
+solo human's death there ends the battle. Frontline never revives a human (its allied bots come back when a sector falls,
+and 20 s after a death too (`allyReviveS`, behind the last sector taken)). Endless Horde stands every fallen Alpha hull up
+when its next wave starts, humans too, so in a network room a fallen human comes back while another human holds. The
+killcam cancels its spectate and any pending ghost replay on the local player's revive so the
+camera returns to the tank instead of holding the wreck view (batch 27); where the revived hull ran the full death flow
+(a network Horde room, a Watch seat's allied bot), the result runtime hands its HUD and camera back too (round 5 U4), and
+the revived hull's later deaths run that flow again: the death camera, the replay and the ally chase, or at a verdict the
+kill cam of that death (before, only a hull's first death got it; round 5 U4, kept in round 6 V5, Kevin may overrule). Since
 2026-09-15 the death hand-off to the ally chase and its garage bar never starts while the
 ruleset revives the player; the HUD counts the revive down ("BACK IN n", from the death
 event or the frame-observed destroyed state) until the revive lands.

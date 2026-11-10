@@ -23,6 +23,7 @@ import type {
   ControlFrame, EntityRow, InputMessage, RosterEntry, ShellRow, SnapshotFrame, TeamId, ViewerState, WireEvent,
 } from '../wire/index.ts';
 import { captureMovementCheckpoint } from './movementCheckpoint.ts';
+import { hullBodyRowFlags } from './hullBodyRow.ts';
 
 export interface ScriptedBot {
   entityId: number;
@@ -68,6 +69,8 @@ export interface ScriptedServerOptions {
   ammo?: number;
   /** Ends the match with this verdict at the tick (null = never). */
   verdictAtTick?: { tick: number; verdict: number; reason: string } | null;
+  /** The battle this server plays (WelcomeMessage.battleId, round 3 A3): 0, a match's first; a restarted battle's own. */
+  battleId?: number;
 }
 
 interface ServerEntity {
@@ -157,6 +160,7 @@ export class ScriptedMatchServer {
   readonly maxTicksAhead: number;
   readonly reloadS: number;
   readonly verdictAtTick: { tick: number; verdict: number; reason: string } | null;
+  readonly battleId: number;
   readonly stats: ScriptedServerStats = {
     ticks: 0, snapshotsSent: 0, keyframesSent: 0, inputFrames: 0, inputControlsApplied: 0, inputHeld: 0,
     inputRejected: 0, lateInputs: 0, eventsSent: 0, shotsFired: 0, bytesSent: 0,
@@ -189,7 +193,9 @@ export class ScriptedMatchServer {
     reloadS = 2,
     ammo = 40,
     verdictAtTick = null,
+    battleId = 0,
   }: ScriptedServerOptions) {
+    this.battleId = battleId;
     this.clock = clock;
     this.heightField = heightField;
     this.specFor = specFor;
@@ -235,6 +241,8 @@ export class ScriptedMatchServer {
     entity.combat.destroyed = false;
     entity.hp = entity.maxHp;
     entity.reloadS = 0;
+    // the authority's revive event (matchModes.ts reviveAtSpawn), which every viewer receives
+    this.broadcastEvent({ kind: 'mode_respawn', payload: { id: entity.playerId, team: entity.team === TEAM.BRAVO ? 'bravo' : 'alpha' } });
   }
 
   /** A destroyed prop for the persistent destroyed list. */
@@ -243,6 +251,11 @@ export class ScriptedMatchServer {
     this.destroyed = [...this.destroyed, index].sort((a, b) => a - b);
     this.destructibleRevision++;
     this.broadcastEvent({ kind: 'world_prop_destroyed', payload: { obstacleIndex: index, kind: 'fence', cause: 'script' } });
+  }
+
+  /** A structure's stage for the destruction log (the fixture models no structures: the event alone, as the authority sends it). */
+  structureStage(structureId: number, stage: 'damaged' | 'breached' | 'collapsed'): void {
+    this.broadcastEvent({ kind: 'structure_stage', payload: { structureId, stage, cx: 10, cz: 20 } });
   }
 
   private createEntity(
@@ -324,6 +337,7 @@ export class ScriptedMatchServer {
         mode: 'standard',
         rulesetJson: '{"mode":"standard"}',
         roster: this.roster(),
+        battleId: this.battleId,
       }));
       return;
     }
@@ -566,8 +580,8 @@ export class ScriptedMatchServer {
       gunReload: reload, gunReloadTotal: quantizeReloadS(this.reloadS), gunReloadKind: reload > 0 ? RELOAD_KIND.SHELL : RELOAD_KIND.READY,
       magazineRounds: 0, magazineCapacity: 0, shellSlot: entity.shellSlot,
       ammo0: entity.ammo, ammo1: 0, ammo2: 0,
-      flags: (entity.combat.destroyed ? ENTITY_FLAGS.DESTROYED : 0) | (state.grounded ? 0 : ENTITY_FLAGS.AIRBORNE) |
-        (state.overturned ? ENTITY_FLAGS.OVERTURNED : 0) | (entity.lastFireTick === this.tick ? ENTITY_FLAGS.FIRING : 0),
+      flags: (entity.combat.destroyed ? ENTITY_FLAGS.DESTROYED : 0) | hullBodyRowFlags(state) |
+        (entity.lastFireTick === this.tick ? ENTITY_FLAGS.FIRING : 0),
       eraSpent: [],
     };
   }

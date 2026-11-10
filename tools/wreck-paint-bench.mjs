@@ -8,7 +8,7 @@ import { createRequire } from 'node:module';
 import { arch, cpus, platform } from 'node:os';
 import { dirname, isAbsolute, join, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
-import { createCaptureLock } from './capture-lock.mjs';
+import { openCaptureHold } from './capture-hold.mjs';
 
 const TOOL = fileURLToPath(import.meta.url);
 export const RECIPES = Object.freeze([
@@ -194,7 +194,8 @@ export function registerCancellation(getOwner, emitter = process) {
   let interrupted = false;
   const stop = () => { interrupted = true; getOwner()?.stop('Interrupted'); };
   emitter.on('SIGINT', stop); emitter.on('SIGTERM', stop);
-  return { isInterrupted: () => interrupted,
+  // interrupt(): the same stop for the capture hold's own (past the cap with a waiter; round 2 U38)
+  return { isInterrupted: () => interrupted, interrupt: () => stop(),
     dispose() { emitter.off('SIGINT', stop); emitter.off('SIGTERM', stop); } };
 }
 
@@ -284,13 +285,17 @@ async function run(options) {
       'Medians/min/max are observations with no timing threshold, statistical significance or performance pass claim'],
   };
   const write = () => writeFileSync(join(options.out, 'report.json'), JSON.stringify(report, null, 2) + '\n');
-  const lock = createCaptureLock(); let owner = null, refresh;
+  let hold; let owner = null;
   const cancellation = registerCancellation(() => owner);
   try {
     write(); console.log(`[wreck-paint-bench] stage=capture_lock pid=${process.pid} output=${options.out}`);
-    await lock.acquire(45 * 60 * 1000);
+    // signals: [] (round 2 U38): registerCancellation owns SIGINT/SIGTERM, so the worker closes, then the lease goes, then the
+    // report is written; the hold's own stop reaches the run the same way
+    hold = await openCaptureHold({ label: 'wreck-paint-bench', timeoutMs: 45 * 60 * 1000, signals: [] });
+    hold.signal.addEventListener('abort', () => {
+      report.errors.push(`Capture hold stopped: ${hold.signal.reason?.message ?? hold.signal.reason}`); cancellation.interrupt();
+    }, { once: true });
     report.captureAcquiredAt = new Date().toISOString();
-    refresh = setInterval(() => lock.refresh(), 30000); refresh.unref();
     assert.equal(cancellation.isInterrupted(), false, 'Interrupted while queued; no worker admitted');
     assert.deepEqual(identities(), report.sourceIdentities, 'Source changed while queued');
     assert.deepEqual(acquisition(), report.acquisition, 'Acquisition tool changed while queued');
@@ -310,7 +315,7 @@ async function run(options) {
     // sampleWorker awaits close on every result, including spawn failure,
     // timeout and repeated cancellation, before this lease can be released.
     if (owner) { owner.stop('Parent cleanup'); await owner.done; owner = null; }
-    clearInterval(refresh); lock.release(); report.captureLeaseReleased = true;
+    await hold?.release(); report.captureLeaseReleased = true;
     report.interrupted = cancellation.isInterrupted(); cancellation.dispose();
     report.finishedAt = new Date().toISOString(); report.ok = !report.interrupted && !report.errors.length && report.exactOutputParity === true;
     write();

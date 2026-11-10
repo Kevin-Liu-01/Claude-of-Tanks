@@ -12,7 +12,7 @@ import { transform, transformConstructor } from './wreck-build-profile.mjs';
 const toolSource = readFileSync(new URL('./wreck-build-profile.mjs', import.meta.url), 'utf8');
 assert.match(toolSource, /const cancellation = registerProfileCancellation\(\(\) => child\)/);
 assert.doesNotMatch(toolSource, /process\.once\(['"]SIG(?:INT|TERM)['"]/);
-assert.ok(toolSource.indexOf('lock.release();') < toolSource.indexOf('cancellation.dispose();'),
+assert.ok(toolSource.indexOf('await hold?.release();') < toolSource.indexOf('cancellation.dispose();'),
   'signal handlers remain installed through lease release after awaited worker completion');
 const emitter = new EventEmitter(), kills = [];
 let child = null;
@@ -30,6 +30,9 @@ cancellation.dispose(); cancellation.dispose();
 assert.equal(emitter.listenerCount('SIGINT'), 0);
 assert.equal(emitter.listenerCount('SIGTERM'), 0);
 assert.equal(cancellation.isInterrupted(), true, 'cleanup retains interruption evidence');
+// (round 2 U38) the capture hold's own stop (past the cap with a waiter) stops the worker as a signal does
+assert.match(toolSource, /openCaptureHold\(\{[^\n]*signals: \[\]/, 'its own handler is the one signal owner');
+assert.match(toolSource, /hold\.signal\.addEventListener\('abort', \(\) => \{\n[^\n]*cancellation\.interrupt\(\);/, 'the hold\'s stop reaches the worker');
 
 const wreckSource = readFileSync(new URL('../src/world/wrecks.ts', import.meta.url), 'utf8');
 const geometrySource = readFileSync(new URL('../src/world/exactWreckGeometry.ts', import.meta.url), 'utf8');

@@ -242,7 +242,9 @@ export const DECLARED_DYNAMIC = Object.freeze({
   },
   'tools/capture-lock.mjs': {
     // 266 re-pin: release priority reads the queue's tickets to name a release ticket and to see one waiting (scheduling)
-    pin: '8d9ee43203067ad3',
+    // 2026-11-04 re-pin (sm-fix tools-chains, audit S4): the owned lock directory and its tomb, the session mutex and its
+    // pid file, a holder's ppid walk and start time, the place stamps: lock state and process state (scheduling)
+    pin: '7ef9007a34037252',
     reads: [],
     note: 'reads and writes the machine-wide /tmp/cot-shots.lock and queue (owner, tickets, logs) and runs ps on their holders: scheduling only, never what a step writes',
   },
@@ -303,6 +305,9 @@ export const DECLARED_DYNAMIC = Object.freeze({
   'tools/isolated-capture-browser.mjs': {
     pin: 'e3b0c44298fc1c14',
     reads: [],
+    // 2026-11-04 (sm-fix tools-chains, audit S4): the capture hold it takes (withCaptureHold: refresh, signals, the
+    // release after the browser) only schedules; its own prepare starts this server, so the hold's Vite child never runs
+    scheduleOnly: ['tools/capture-hold.mjs'],
     note: 'starts the Vite server and guarded browser the gate measures in and removes its own temporary Vite cache: process state and a scratch directory, never a file the step keys',
   },
   // 266: the GPU tools' server guard. It stats a requested path only to tell a public file from a module, and refuses

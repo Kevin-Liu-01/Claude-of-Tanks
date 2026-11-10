@@ -26,6 +26,7 @@ import type { RoomActorState, RoomSocketRecord } from '../../../src/mp/room/room
 import { ROOM_KEEPALIVE_REQUEST, ROOM_KEEPALIVE_RESPONSE, parseRoomRoute } from '../../../src/mp/room/protocol.ts';
 import type { RoomEnvelope } from '../../../src/mp/room/protocol.ts';
 import { createMatchHost } from './matchHost.ts';
+import { endEvent, mayDeallocate } from './eventEnd.ts';
 import { MAX_PENDING_SOCKETS, MAX_SOCKETS, allowedOrigin, frameText, isWebSocketUpgrade, json } from './util.ts';
 
 interface SocketAttachment extends RoomSocketRecord {
@@ -186,14 +187,21 @@ export class Room extends DurableObject<Env> {
     ws.serializeAttachment(attachment);
   }
 
+  /** Every event ends here (eventEnd.ts): the alarm applied after the work, the retired sockets closed whatever happened. */
+  #endEvent<T>(work: () => T | Promise<T>): Promise<T> {
+    return endEvent(work, { applyAlarm: () => this.#applyAlarm(), flushCloses: () => this.#flushCloses() });
+  }
+
   async #applyAlarm(): Promise<void> {
     const wanted = this.#alarmWanted === undefined ? (this.#actor?.nextDeadline() ?? null) : this.#alarmWanted;
     this.#alarmWanted = undefined;
     if (wanted === null) {
       if (this.#nextAlarm !== null) await this.ctx.storage.deleteAlarm();
       this.#nextAlarm = null;
-      // Only an empty room with no live socket may deallocate; storage input gates serialize this with admissions.
-      if (this.#actor?.empty && this.#storageUsed) {
+      // Only an empty room with no live socket may deallocate (eventEnd.ts mayDeallocate, PadPair's rule too); storage
+      // input gates serialize this with admissions.
+      const actor = this.#actor;
+      if (mayDeallocate({ holdsState: !actor || !actor.empty, actorSockets: actor?.socketCount ?? 0, alarmWanted: false, storageUsed: this.#storageUsed })) {
         await this.ctx.storage.deleteAll();
         this.#schemaReady = false;
         this.#storageUsed = false;
@@ -222,17 +230,17 @@ export class Room extends DurableObject<Env> {
     let pending = 0;
     for (const socketId of this.#sockets.keys()) if (!actor.socketRecord(socketId)?.playerId) pending++;
     if (this.ctx.getWebSockets().length >= MAX_SOCKETS || pending >= MAX_PENDING_SOCKETS) return json({ error: 'room_connections_full' }, 429);
-    const pair = new WebSocketPair();
-    const ws = pair[1];
-    const socketId = crypto.randomUUID();
-    this.ctx.acceptWebSocket(ws);
-    this.#sockets.set(socketId, ws);
-    this.#ids.set(ws, socketId);
-    actor.handleOpen(socketId);
-    this.#attach(ws, socketId);
-    await this.#applyAlarm();
-    this.#flushCloses();
-    return new Response(null, { status: 101, webSocket: pair[0] });
+    return this.#endEvent(() => {
+      const pair = new WebSocketPair();
+      const ws = pair[1];
+      const socketId = crypto.randomUUID();
+      this.ctx.acceptWebSocket(ws);
+      this.#sockets.set(socketId, ws);
+      this.#ids.set(ws, socketId);
+      actor.handleOpen(socketId);
+      this.#attach(ws, socketId);
+      return new Response(null, { status: 101, webSocket: pair[0] });
+    });
   }
 
   async webSocketMessage(ws: WebSocket, data: string | ArrayBuffer): Promise<void> {
@@ -244,22 +252,21 @@ export class Room extends DurableObject<Env> {
       return;
     }
     const text = frameText(data);
-    if (text === null) {
-      this.#close(socketId, 'invalid_payload');
-      actor.handleClose(socketId);
-      await this.#applyAlarm();
-      this.#flushCloses();
-      return;
-    }
-    await actor.handleMessage(socketId, text);
-    if (this.#sockets.has(socketId)) this.#attach(ws, socketId);
-    await this.#applyAlarm();
-    this.#flushCloses();
+    await this.#endEvent(async () => {
+      if (text === null) {
+        this.#close(socketId, 'invalid_payload');
+        actor.handleClose(socketId);
+        return;
+      }
+      await actor.handleMessage(socketId, text);
+      if (this.#sockets.has(socketId)) this.#attach(ws, socketId);
+    });
   }
 
   async webSocketClose(ws: WebSocket, code = 1000, reason = ''): Promise<void> {
-    const socketId = this.#ids.get(ws);
-    if (socketId) {
+    await this.#endEvent(() => {
+      const socketId = this.#ids.get(ws);
+      if (!socketId) return;
       this.#sockets.delete(socketId);
       this.#ids.delete(ws);
       this.#actor?.handleClose(socketId);
@@ -268,9 +275,7 @@ export class Room extends DurableObject<Env> {
       // the object closed itself (#close) needs no echo; a close without a status (1005) cannot be echoed and is
       // left to the runtime (echoing it as 1000 crashed the runtime under vitest, 2026-09-28).
       try { ws.close(code, reason); } catch { /* already closed, or a code the runtime refuses to echo */ }
-    }
-    await this.#applyAlarm();
-    this.#flushCloses();
+    });
   }
 
   async webSocketError(ws: WebSocket): Promise<void> {
@@ -279,8 +284,6 @@ export class Room extends DurableObject<Env> {
 
   async alarm(): Promise<void> {
     this.#nextAlarm = null;
-    if (this.#actor) await this.#actor.tick();
-    await this.#applyAlarm();
-    this.#flushCloses();
+    await this.#endEvent(async () => { if (this.#actor) await this.#actor.tick(); });
   }
 }

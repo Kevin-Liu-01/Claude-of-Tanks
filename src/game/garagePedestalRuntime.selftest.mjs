@@ -502,7 +502,8 @@ async function flushMicrotasks() { for (let i = 0; i < 12; i++) await Promise.re
   h.runtime.dispose();
 }
 
-// Disposal cancels producers, not retained visual/GPU residency.
+// Disposal cancels producers and retires the residency the pedestal holds (2026-11-02 audit R5, round 2: this case
+// pinned the hazard the audit named, a dispose that left the cached heroes and their GPU resources in the scene).
 {
   const frame = deferred(), delayedFrames = [];
   const h = createHarness({ delayedFrames });
@@ -515,10 +516,13 @@ async function flushMicrotasks() { for (let i = 0; i < 12; i++) await Promise.re
   const incoming = h.visuals[1];
   h.runtime.dispose();
   frame.resolve(); await pending;
-  assert.equal(h.runtime.current, current);
+  assert.equal(h.runtime.current, null);
   assert.ok(incoming.root.parent === null);
-  assert.deepEqual(graphLabels(h.scene.children), graphLabels([current.root]));
-  assert.deepEqual(h.releasedResources, []);
+  assert.ok(current.root.parent === null, 'the shown hero leaves the scene with the pedestal');
+  assert.deepEqual(graphLabels(h.scene.children), []);
+  assert.deepEqual(h.releasedResources, ['alpha/geometry', 'alpha/material', 'alpha/texture',
+    'bravo/geometry', 'bravo/material', 'bravo/texture'], 'every hero the pedestal held frees its resources, once');
+  assert.deepEqual(h.disposed, ['alpha', 'bravo']);
   await h.runtime.set('charlie');
   h.watchdog.callback();
   assert.equal(h.visuals.length, 2);
@@ -623,10 +627,12 @@ for (const reason of ['selection', 'same-id', 'return-current', 'battle', 'dispo
   pause.resolve();
   await pending;
   assert.equal(h.runtime.current, latest, `${reason}: stale completion cannot replace the hero`);
-  assert.deepEqual(h.disposed, ['bravo'], `${reason}: canceled resources are disposed exactly once`);
+  // (2026-11-02 audit R5, round 2) the pedestal's dispose also retires the hero it showed, once
+  const retired = reason === 'dispose';
+  assert.deepEqual(h.disposed, retired ? ['alpha', 'bravo'] : ['bravo'], `${reason}: canceled resources are disposed exactly once`);
   assert.ok(privateVisual.root.parent === null);
   assert.equal(h.runtime.cacheIds.includes('bravo'), reason === 'same-id');
-  assert.deepEqual(graphLabels(h.scene.children), graphLabels([latest.root]));
+  assert.deepEqual(graphLabels(h.scene.children), retired ? [] : graphLabels([latest.root]));
   h.runtime.dispose();
 }
 {

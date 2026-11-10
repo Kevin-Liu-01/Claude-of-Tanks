@@ -488,7 +488,11 @@ const SEAT = { cx: 0.1, cz: 0.2, deckY: 1.5, openR: 0.78, rimR: 0.84, skirt: 0.0
     'the cut and the plate come after the sweep captured the live materials, on the planned dents, the turret still seated');
   assert.match(core, /burnU\.uBurnT\.value = ageS;\s*(?:\/\/[^\n]*\n\s*)*turretRing\.ramp\(ageS\);/, 'the clock at the kill');
   assert.match(core, /burnU\.uBurnT\.value = wreckAge;\s*turretRing\.ramp\(wreckAge\);/, 'and every frame after');
-  assert.match(core, /resetLiveCrumple\(\);\s*turretRing\.hide\(\);/, 'the rematch undoes it');
+  // (2026-11-02 audit F10, 03b7e95738; round 3 A8) resetDestroyed's disposed-visual guard sits between the two: the crumple
+  // reset is idempotent and touches no GPU resource, the ring's hide runs only on a visual still live (moveWreck 'reset')
+  assert.match(core,
+    /resetLiveCrumple\(\);\s*(?:\/\/[^\n]*\n\s*)*const wasWreck = destroyed;\s*if \(moveWreck\(\{ kind: 'reset' \}\) !== 'reset'\) return;\s*turretRing\.hide\(\);/,
+    'the rematch undoes it (a disposed visual stops at the guard first)');
   assert.match(core, /dispose\(\) \{\s*equipmentDamage\.dispose\(\);\s*turretRing\.dispose\(\);/, 'and dispose frees it');
 }
 console.log('turretRingWell selftest: ok');

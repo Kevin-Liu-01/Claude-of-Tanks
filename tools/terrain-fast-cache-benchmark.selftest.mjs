@@ -123,7 +123,8 @@ for (const failure of [null, 'acquire', 'measure']) {
   } });
   if (failure) await assert.rejects(pending, new RegExp(failure));
   else assert.equal(await pending, 'receipt');
-  assert.deepEqual(calls, failure === 'acquire' ? ['acquire', 'release'] : ['acquire', 'measure', 'release']);
+  // (round 2 U38) held through withCaptureHold: a wait that fails held nothing, so nothing is released
+  assert.deepEqual(calls, failure === 'acquire' ? ['acquire'] : ['acquire', 'measure', 'release']);
 }
 
 console.log('terrain fast cache experiment selftest passed');

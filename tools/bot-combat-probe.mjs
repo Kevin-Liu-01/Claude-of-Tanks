@@ -8,6 +8,7 @@ import { mkdirSync, writeFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { createServer } from 'vite';
 import puppeteer from 'puppeteer';
+import { waitForBootLoaded } from './game-readiness.mjs';
 
 const args = process.argv.slice(2);
 const opt = (name, fallback) => {
@@ -42,7 +43,7 @@ try {
   await page.goto(`http://localhost:${server.config.server.port}/?nosplash=1&tier=desktop`, {
     waitUntil: 'domcontentloaded', timeout: 120000,
   });
-  await page.waitForFunction('window.__GAME_READY === true', { timeout: 180000 });
+  await waitForBootLoaded(page, { timeout: 180000 });
   result = await page.evaluate(async ({ durationS, tankId: playerTank, mapId: battleMap }) => {
     const D = window.__DEBUG;
     const g = D.game;

@@ -52,8 +52,9 @@ function rig(id, options = {}) {
   state._susp.p = 0.032;
   state._susp.r = -0.021;
   state._swayEst = 0.013;
-  state._flinch.p = 0.018;
-  state._flinch.r = -0.012;
+  // the hit/recoil rock is the visual's own spring (audit M9): ring it, then hold the frame
+  visual.hitFlinch(0.6, -0.8, 1.4, state.yaw);
+  visual.syncFromState(state, 0.03);
   visual.syncFromState(state, 0);
 
   const canonicalHull = new THREE.Quaternion().setFromEuler(new THREE.Euler(
@@ -77,9 +78,12 @@ function rig(id, options = {}) {
   visual.recoilKick(0, 1);
   visual.syncFromState(state, 0.12); // inside the out-of-battery hold
   near(recoilG.position.z, -0.13, 1e-6, 'leclerc_s2: 120 mm-class throw at hold');
-  assert.ok(visual.root.getObjectByName('rig_gun').rotation.x < -0.013,
+  // measured on the bore in the world: the stabilizer also counter-rotates the gun against the shot's hull rock, which
+  // (audit M9) the visual now draws on every state it syncs, a headless one too
+  assert.ok(Math.asin(visual.gunDirWorld(new THREE.Vector3()).y) > 0.013,
     'leclerc_s2: cradle rock rides the stroke');
-  assert.ok(state._flinch.pv !== 0, 'leclerc_s2: hull-rock impulse routed to the sim mirror');
+  assert.ok(Math.abs(visual.root.rotation.x) > 1e-3 && !('_flinch' in state),
+    'leclerc_s2: the shot rocks the drawn hull on the visual\'s own spring and never writes the sim state');
   visual.syncFromState(state, 0.70); // past back+hold+return (0.79 s)
   visual.syncFromState(state, 0.05);
   near(recoilG.position.z, 0, 1e-9, 'leclerc_s2: recuperated to battery');
@@ -91,7 +95,7 @@ function rig(id, options = {}) {
   visual.recoilKick(0, 0.36); // the shared belt scale (shotRecoilScale)
   visual.syncFromState(state, 0.06); // inside the rapid hold window
   near(recoilG.position.z, -0.066, 1e-6, 'bmp3: 30 mm rapid throw');
-  assert.ok(visual.root.getObjectByName('rig_gun').rotation.x < -0.011,
+  assert.ok(Math.asin(visual.gunDirWorld(new THREE.Vector3()).y) > 0.011,
     'bmp3: rapid cradle pitch remains visible despite stabilization');
   visual.syncFromState(state, 0.22); // t=0.28 = complete rapid cycle
   near(recoilG.position.z, 0, 1e-9, 'bmp3: back in battery before the 0.42 s belt refire');

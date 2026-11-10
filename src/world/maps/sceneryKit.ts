@@ -24,6 +24,7 @@ import { stream } from './craftMesh.ts';
 import { bevelBox } from './bevelBox.ts';
 import { spentDraws } from './brokenDraws.ts';
 import { deriveRuntimeStructureContactBand, type StructureCollisionRuntimeBand } from '../structureCollision.ts';
+import { builtValue } from './buildLatch.ts';
 // (props census #11: the wayside shrine, the crosses and the Mekong tomb live in waysideKit.ts)
 import { WAYSIDE_DESTRUCTIBLE_TYPES } from './waysideKit.ts';
 
@@ -87,8 +88,10 @@ function mulberry32(a: number): Rng {
  * contact band is frozen as the pool's (DestructiblePropType.contactBand), its fixed-seed build the placement footprint;
  * the new build draws from a stream of its own, seeded from the legacy's first two draws and `salt`. `plan` hands the
  * legacy's measured layout (a stack's length and courses) to the new build, so the drawn stack stands in its collider.
+ * (2026-11-02 audit R2: buildLatch.ts) the band is the build's: read before it, it throws (the props refit's fallback,
+ * a band derived from the drawn module, was a different collision record set with no error).
  */
-function onLegacyCollision<T extends DestructiblePropType, P>(entry: T, legacy: (rng: Rng, plan?: P) => THREE.BufferGeometry,
+function onLegacyCollision<T extends DestructiblePropType, P>(kind: string, entry: T, legacy: (rng: Rng, plan?: P) => THREE.BufferGeometry,
   rebuilt: (rng: Rng, plan: P) => THREE.BufferGeometry, salt: number, plan: () => P): T & { contactBand?: StructureCollisionRuntimeBand } {
   let band: StructureCollisionRuntimeBand | undefined;
   const out = {
@@ -103,7 +106,7 @@ function onLegacyCollision<T extends DestructiblePropType, P>(entry: T, legacy: 
     },
     footprintBuild: () => legacy(mulberry32(0x0f0f7)),
   };
-  return Object.defineProperty(out, 'contactBand', { enumerable: true, get: () => band });
+  return Object.defineProperty(out, 'contactBand', { enumerable: true, get: () => builtValue(band, kind, 'contactBand') });
 }
 
 /**
@@ -960,6 +963,27 @@ function bWeedStackBroken(rng: Rng): THREE.BufferGeometry {
 // ---------------------------------------------------------------------------------------------- the registry
 
 /**
+ * (2026-11-02 audit R2) The kinds rebuilt on their legacy's collision (onLegacyCollision), a fresh set: each entry records
+ * its pool's contact band in its own build. The props build takes a set of its own (props.ts LOCAL_TYPES, as it does the
+ * wall and fence kits), so a world's band is its own build's, never the last world's from this module's one set (that
+ * world's band, at its own stream's draws); the registry below keeps one set for the kinds' records and footprints.
+ */
+export function sceneryLegacyCollisionTypes() {
+  return {
+    windpump: onLegacyCollision('windpump', { cls: 'topple', mat: 'baked', contact: 'ob', r: 2.4, h: 13.9, hw: 1.4, hl: 1.4, groundR: 1.35, build: bWindPump, broken: null, keep: 0.86, crushMin: 2.0 },
+      bWindPumpLegacy, bWindPump, 0x3a1d01, () => undefined),
+    // the mill yard (the map-revival lane, 2026-10-05, Longleaf round 2): solid stacks a hull breaks only by ramming
+    lumberstack: onLegacyCollision('lumberstack', { cls: 'break', mat: 'baked', contact: 'ob', r: 2.7, h: 2.0, hw: 1.25, hl: 2.4, build: bLumberStackLegacy, broken: bLumberStackBroken, collider: true, keep: 0.86, crushMin: 2.4 },
+      bLumberStackLegacy, bLumberStack, 0x3a1d03, lumberPlan),
+    // (the map-revival lane, 2026-10-07, Tidegate Polders step 4) the Dutch Bosman windmotor: its tower's legs' square and
+    // the brick pump house at its foot (2.9 m off the -Z side) in the footprint
+    windmotor: onLegacyCollision('windmotor', { cls: 'topple', mat: 'baked', contact: 'ob', r: 3.2, h: 16.6, hw: 1.6, hl: 3.8, groundR: 1.6, build: bWindMotor, broken: null, keep: 0.86, crushMin: 2.0 },
+      bWindMotorLegacy, bWindMotor, 0x3a1d02, () => undefined),
+  };
+}
+const LEGACY_COLLISION_TYPES = sceneryLegacyCollisionTypes();
+
+/**
  * The scenery destructibles (merged into the props type registry after the inhabiting kit's, so no existing kind
  * moves). Footprints follow the visible geometry: the shrine's pillar plinth, the cross's footing, the pump's four
  * legs' square. Every one is shoot-through but the stone shrine, which a hull breaks only at a real overrun.
@@ -970,19 +994,16 @@ export const SCENERY_DESTRUCTIBLE_TYPES = {
   orthodoxcross: WAYSIDE_DESTRUCTIBLE_TYPES.orthodoxcross,
   // (props lane A, the r2 sweep, 2026-10-16: the rebuilt windpump, windmotor and lumber stack on their legacy's draws and
   // collision: onLegacyCollision)
-  windpump: onLegacyCollision({ cls: 'topple', mat: 'baked', contact: 'ob', r: 2.4, h: 13.9, hw: 1.4, hl: 1.4, groundR: 1.35, build: bWindPump, broken: null, keep: 0.86, crushMin: 2.0 },
-    bWindPumpLegacy, bWindPump, 0x3a1d01, () => undefined),
+  windpump: LEGACY_COLLISION_TYPES.windpump,
   tomb: WAYSIDE_DESTRUCTIBLE_TYPES.tomb,
   strawstack: { cls: 'break', mat: 'straw', contact: 'ob', r: 1.6, h: 5.1, shape: 'circle', collisionR: 1.35, build: bStrawStack,
     broken: (rng: Rng) => strawStackWreck(spentDraws(bStrawStackBroken, rng, 0x3a1d04)) },
   // the mill yard (the map-revival lane, 2026-10-05, Longleaf round 2): solid stacks a hull breaks only by ramming
-  lumberstack: onLegacyCollision({ cls: 'break', mat: 'baked', contact: 'ob', r: 2.7, h: 2.0, hw: 1.25, hl: 2.4, build: bLumberStackLegacy, broken: bLumberStackBroken, collider: true, keep: 0.86, crushMin: 2.4 },
-    bLumberStackLegacy, bLumberStack, 0x3a1d03, lumberPlan),
+  lumberstack: LEGACY_COLLISION_TYPES.lumberstack,
   logdeck: { cls: 'break', mat: 'baked', contact: 'ob', r: 4.1, h: 1.95, hw: 2.1, hl: 3.5, build: bLogDeck, broken: bLogDeckBroken, collider: true, keep: 0.86, crushMin: 2.6 },
   // (the map-revival lane, 2026-10-07, Tidegate Polders step 4; last, so no kind before it moves) the Dutch Bosman
   // windmotor: its tower's legs' square and the brick pump house at its foot (2.9 m off the -Z side) in the footprint
-  windmotor: onLegacyCollision({ cls: 'topple', mat: 'baked', contact: 'ob', r: 3.2, h: 16.6, hw: 1.6, hl: 3.8, groundR: 1.6, build: bWindMotor, broken: null, keep: 0.86, crushMin: 2.0 },
-    bWindMotorLegacy, bWindMotor, 0x3a1d02, () => undefined),
+  windmotor: LEGACY_COLLISION_TYPES.windmotor,
   // (appended after main's windmotor: every kind before it keeps its place in the props registry)
   strawrick: { cls: 'break', mat: 'straw', contact: 'ob', r: 4.8, h: 4.6, hw: 1.6, hl: 4.4, build: bStrawRick,
     broken: (rng: Rng) => strawRickWreck(spentDraws(bStrawRickBroken, rng, 0x3a1d05)) },

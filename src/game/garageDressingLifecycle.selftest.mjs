@@ -120,7 +120,7 @@ assert.match(main,
 // inside it, in order, not within a character distance: 2026-10-13 (integ/222) the battle loader's idle preloads (the
 // pending map's loading art, 77c55d021, and its blurred placeholders, 03b3001d6) moved the call past the old 500-char
 // window while the block itself was unchanged.
-const readyAt = main.indexOf('window.__GAME_READY = true;');
+const readyAt = main.indexOf('bootReadiness.markReady();'); // (2026-11-02 audit S3) the boot latch
 const bootReportAt = main.indexOf('window.__BOOT_TIMINGS = BOOT_TIMINGS;', readyAt);
 assert(readyAt >= 0 && bootReportAt > readyAt, 'the post-ready block ends at the boot_ready report');
 const armAt = main.indexOf('scheduleGarageDressingBuild()', readyAt);

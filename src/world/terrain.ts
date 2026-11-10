@@ -23,8 +23,8 @@ import { applySourcedTerrain, prepareSourcedTerrain, resolveSourcedTerrainPalett
   type TerrainPaletteId, type TerrainSourcePreparation } from './sourcedTextures.ts';
 import type { HorizonMapConfig, HorizonRingPipeline } from './maps/horizon.ts';
 // The visual horizon installs its ring (horizonRingHook.ts); the authority's height field must not carry it.
-import { horizonRing, horizonRingSupplyFor, type HorizonRing } from './horizonRingHook.ts';
-import { hinterlandSupplyFor } from './hinterlandHook.ts';
+import { horizonRing, type HorizonRing, type HorizonRingSupply } from './horizonRingHook.ts';
+import type { HinterlandSupply } from './hinterlandHook.ts';
 // MOBILE r1: central tier texture scale (desktop returns sizes unchanged)
 import { onPresetChange, resolvePresetName, texSize } from '../engine/quality.ts';
 import { terrainWallSkyLift } from '../engine/groundBounce.ts';
@@ -829,6 +829,9 @@ interface TerrainChunk {
 interface TerrainStreamOptions {
   streamFarLods?: boolean;
   focus?: SpawnPoint;
+  /** (2026-11-02 audit R1) the world build's own horizon ring and Hinterland supplies (map.ts), handed to this build only */
+  horizonRingSupply?: HorizonRingSupply | null;
+  hinterlandSupply?: HinterlandSupply | null;
 }
 
 interface TerrainStreamingStats {
@@ -1631,6 +1634,12 @@ function* heightFieldBuildSteps(
   // the map-borders lane (wave 2): set while buildRoadElevationGrid authors its second pass of road nodes on the
   // landform's rim (heightAt's rim lift)
   let authoringOnLandform = false;
+  /** (2026-11-02 audit M9) `read` with the rim lift on the landform's (heightAt), restored on the way out, a throw included. */
+  function onLandformRim<R>(read: () => R): R {
+    const was = authoringOnLandform;
+    authoringOnLandform = true;
+    try { return read(); } finally { authoringOnLandform = was; }
+  }
 
   // --- base noise: fBm detail + domain-warped ridge, and a smooth variant ---
   function core(x: number, z: number): { d: number; s: number } {
@@ -1809,6 +1818,16 @@ function* heightFieldBuildSteps(
   let liquidIndex: Uint32Array | null = null;
   let quarryFloorY: number | null = null;
   let landformPhase: 'legacy-support' | 'authored-relief' = 'legacy-support';
+  // (2026-11-02 audit M9) the landform's phase: 'legacy-support' while the supports are authored on the classic surface,
+  // then 'authored-relief' for good (enterAuthoredRelief: the rail cuttings' portals, at the latest the frozen supports);
+  // a read of the finished surface before then holds the authored phase for that read alone (withAuthoredRelief),
+  // restored on the way out, a throw included (was a hand-rolled save and restore at each site)
+  const enterAuthoredRelief = (): void => { landformPhase = 'authored-relief'; };
+  function withAuthoredRelief<R>(read: () => R): R {
+    const phase = landformPhase;
+    landformPhase = 'authored-relief';
+    try { return read(); } finally { landformPhase = phase; }
+  }
   const liquidIndexWords = Math.ceil(_MARSHES.length / 32);
   // Round 61 (2026-09-24): the bridge decks, resolved after the road plane and the liquid surfaces are frozen (below);
   // every construction query before that sees none, so the road grid, the pads and the liquid fit are untouched.
@@ -2145,14 +2164,19 @@ function* heightFieldBuildSteps(
   function clearanceReference(): Float32Array {
     if (clearanceRef) return clearanceRef;
     const n = (4 * CLEARANCE_SIDE_M) / CLEARANCE_STEP_M, raw = new Float32Array(n), half = CLEARANCE_SIDE_M / 2;
+    // (2026-11-02 audit M9) the raw ring read without the clearance, the flag restored on the way out, a throw included
+    // (a lazy first read can come at runtime: a flag left set would drop the clearance from every later outland query)
     clearanceBuilding = true;
-    for (let i = 0; i < n; i++) {
-      const s = i * CLEARANCE_STEP_M, side = Math.floor(s / CLEARANCE_SIDE_M), p = s - side * CLEARANCE_SIDE_M;
-      const x = side === 0 ? -half + p : side === 1 ? half : side === 2 ? half - p : -half;
-      const z = side === 0 ? half : side === 1 ? half - p : side === 2 ? -half : -half + p;
-      raw[i] = outlandBaseHeightAt(x, z);
+    try {
+      for (let i = 0; i < n; i++) {
+        const s = i * CLEARANCE_STEP_M, side = Math.floor(s / CLEARANCE_SIDE_M), p = s - side * CLEARANCE_SIDE_M;
+        const x = side === 0 ? -half + p : side === 1 ? half : side === 2 ? half - p : -half;
+        const z = side === 0 ? half : side === 1 ? half - p : side === 2 ? -half : -half + p;
+        raw[i] = outlandBaseHeightAt(x, z);
+      }
+    } finally {
+      clearanceBuilding = false;
     }
-    clearanceBuilding = false;
     const ref = new Float32Array(n), reach = 4;
     for (let i = 0; i < n; i++) {
       let sum = 0;
@@ -2663,9 +2687,7 @@ function* heightFieldBuildSteps(
     if (!placementOnly && T.bridges?.length) levelViaductSpanNodes(authoringRoads, nodeElev);
     // the map-borders lane (wave 2): the same law run a second time on the landform's rim; from 430 m, where the rim
     // begins, the grades follow it (blended in by 460 m below), inside it every grade is the classic pass's to the bit
-    authoringOnLandform = !placementOnly;
-    const rimElev = placementOnly ? null : authoringRoads.map((nodes) => nodes.map(([rx, rz]) => heightAt(rx, rz, false, false)));
-    authoringOnLandform = false;
+    const rimElev = placementOnly ? null : onLandformRim(() => authoringRoads.map((nodes) => nodes.map(([rx, rz]) => heightAt(rx, rz, false, false))));
     if (rimElev) levelViaductSpanNodes(authoringRoads, rimElev);
     // (the landform pass's portal tails continue the authored grade to the edge — gradeRoadPortals' shallow cut through
     // the classic rim's berm — and where that grade climbs over the landform's own ground the tail comes down to it, at
@@ -2673,8 +2695,7 @@ function* heightFieldBuildSteps(
     // the rim the grades were authored on, so its tails stand as authored.)
     const capPortalTails = (elev: number[][], lines: readonly (readonly RoadPoint[])[]): void => {
       if (border.settings.classic) return;
-      authoringOnLandform = true;
-      for (let r = 0; r < lines.length; r++) {
+      onLandformRim(() => { for (let r = 0; r < lines.length; r++) {
         const row = elev[r], nodes = lines[r];
         let capped = false;
         for (let i = 0; i < nodes.length; i++) {
@@ -2690,8 +2711,7 @@ function* heightFieldBuildSteps(
           const run = detMath.hypot(nodes[i][0] - nodes[j][0], nodes[i][1] - nodes[j][1]);
           row[i] = Math.max(row[i], row[j] - 0.15 * run);
         }
-      }
-      authoringOnLandform = false;
+      } });
     };
     if (!placementOnly && !inheritedRoads && T.roads !== 'country' && T.roads.paths) {
       const offset = T.roads.grid ? T.roads.grid.xs.length + T.roads.grid.zs.length : 0;
@@ -2920,7 +2940,7 @@ function* heightFieldBuildSteps(
   // Round 63 (2026-09-24): the rail cuttings' portals read the finished authored surface — every road, pad, lake and
   // trench constraint frozen above — and the rule then applies to every final query, inside the square and past it.
   if (railCuttings !== null) {
-    landformPhase = 'authored-relief';
+    enterAuthoredRelief();
     for (let i = 0; i < railCuttings.length; i++) {
       railCuttingPortalYs[i] = heightAt(railCuttings[i].px, railCuttings[i].pz, true, true);
     }
@@ -2930,23 +2950,19 @@ function* heightFieldBuildSteps(
   // the built mounds' crests: the finished ground at each centre (sampled in the final phase; moundCrestYs is still null
   // here, so no mound sees another) plus its height
   if (mounds.length) {
-    const phase = landformPhase;
-    landformPhase = 'authored-relief';
-    moundCrestYs = Float64Array.from(mounds, (m) => heightAt(m.x, m.z, true, true) + m.height);
-    landformPhase = phase;
+    moundCrestYs = withAuthoredRelief(() => Float64Array.from(mounds, (m) => heightAt(m.x, m.z, true, true) + m.height));
   }
   // (2026-10-12, item 4) the paddies' floors: the finished ground's median over each (sampled before any paddy is built),
   // then their water joins the canals at those floors
   if (compiledPaddies !== null) {
-    const phase = landformPhase;
-    landformPhase = 'authored-relief';
-    resolvePaddyFloors(compiledPaddies, (x, z) => heightAt(x, z, true, true));
-    compiledCanals = compileCanals([...(T.canals ?? []), ...paddyCanals(compiledPaddies)]);
-    landformPhase = phase;
+    withAuthoredRelief(() => {
+      resolvePaddyFloors(compiledPaddies, (x, z) => heightAt(x, z, true, true));
+      compiledCanals = compileCanals([...(T.canals ?? []), ...paddyCanals(compiledPaddies)]);
+    });
   }
   // Explicit second phase: all legacy support targets above are frozen.
   // Exact mesh/physics and the existing one-metre live cache share this surface.
-  landformPhase = 'authored-relief';
+  enterAuthoredRelief();
   const getHeightAt = (x: number, z: number): number => heightAt(x, z, true, true);
   const _scratchN = new THREE.Vector3();
   const NEPS = 1.2;
@@ -3235,10 +3251,12 @@ function* heightFieldBuildSteps(
 
   /** Round 63: the final surface with the rail cuttings suspended (the exclusion measures the cut against it). */
   function uncutHeightAt(x: number, z: number): number {
+    // (2026-11-02 audit M9) the live field's one mode, held for this read alone and restored on the way out, a throw
+    // included: left set, the field (collision too) would lose its cuttings for every later caller and part from the
+    // authority's surface (no closure allocated: noVeg reads this per candidate)
+    const was = railCuttingsSuspended;
     railCuttingsSuspended = true;
-    const h = heightAt(x, z, true, true);
-    railCuttingsSuspended = false;
-    return h;
+    try { return heightAt(x, z, true, true); } finally { railCuttingsSuspended = was; }
   }
 
   function* measureHeightRange(): Generator<number, [number, number], void> {
@@ -8609,11 +8627,9 @@ function* createSplatMaterialSteps(
   const landBakeN = mask.image.width;
   // ground lane (2026-10-04): the land use's tier (landUseTierOf) from the live preset, kept current across changes
   const landTier = { value: landUseTierOf(resolvePresetName()) };
-  const offLandTier = onPresetChange(() => { landTier.value = landUseTierOf(resolvePresetName()); });
   // Ultra Low (2026-10-13): the splat's cheapest variant from the live preset (both Ultra Low presets end in 'ultralow';
   // read inline: the streaming receipts evaluate these steps in a sandbox that supplies only resolvePresetName)
   const liteTerrain = { value: resolvePresetName().endsWith('ultralow') ? 1 : 0 };
-  const offLiteTerrain = onPresetChange(() => { liteTerrain.value = resolvePresetName().endsWith('ultralow') ? 1 : 0; });
   const landBake = landUse.landA[0] > 0 ? new Uint8Array(landBakeN * landBakeN * 4 * LAND_BAKE_LAYERS) : null;
   // (260, the rooms census: 64 rows of the bake were one 191 ms step under load) sixteen rows a checkpoint
   if (landBake) yield* bakeLandUseSteps(landUseProfile, landBakeN, MAP_SIZE, landBake, 16);
@@ -8630,6 +8646,13 @@ function* createSplatMaterialSteps(
   };
 
   const mat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 1.0, metalness: 0.0 });
+  // (2026-11-02 audit R1) the live preset subscriptions start with the material that ends them: subscribed before the
+  // land-use bake's yields, a build cancelled during them left both listeners in the global set for good. Read again here,
+  // so a change during the bake is not missed.
+  const offLandTier = onPresetChange(() => { landTier.value = landUseTierOf(resolvePresetName()); });
+  const offLiteTerrain = onPresetChange(() => { liteTerrain.value = resolvePresetName().endsWith('ultralow') ? 1 : 0; });
+  landTier.value = landUseTierOf(resolvePresetName());
+  liteTerrain.value = resolvePresetName().endsWith('ultralow') ? 1 : 0;
   mat.addEventListener('dispose', () => { offLandTier(); });
   mat.addEventListener('dispose', () => { offLiteTerrain(); }); // Ultra Low (2026-10-13)
   // round 72b: the ring's surface atlas uniforms — off (amplitude 0, uRingDraw 0) until the ring binds its bake
@@ -9375,8 +9398,9 @@ export async function buildTerrainMeshesAsync(
   streamOpts: TerrainStreamOptions | null = null,
   sourcePreparation = prepareSourcedTerrain(cfg?.id || 'verdant', cfg?.splat || {}, { worker: true }),
 ): Promise<THREE.Group> {
+  const owned: { material: THREE.Material | null } = { material: null };
   const g: Iterator<TerrainBuildProgress, THREE.Group, void> =
-    terrainBuildSteps(heightField, engineCtx, cfg, streamOpts, sourcePreparation);
+    terrainBuildSteps(heightField, engineCtx, cfg, streamOpts, sourcePreparation, owned);
   let completed = false;
   try {
     let r = g.next();
@@ -9397,6 +9421,8 @@ export async function buildTerrainMeshesAsync(
       try { sourcePreparation.cancel?.(); } catch { /* preserve the original build failure */ }
       // Close private CPU continuations; this is not partial asset disposal.
       try { g.return?.(); } catch { /* preserve the original pacing failure */ }
+      // (audit R1) but the splat material it made goes with it, and with it its live preset subscriptions
+      try { owned.material?.dispose(); } catch { /* preserve the original pacing failure */ }
     }
   }
 }
@@ -9411,7 +9437,6 @@ export async function finishHorizonRingAsync(
 ): Promise<void> {
   const stage = group.userData.finishHorizonRing as (() => Generator<TerrainBuildProgress, void, void>) | undefined;
   if (!stage) return;
-  delete group.userData.finishHorizonRing;
   const steps = stage();
   let completed = false;
   try {
@@ -9422,8 +9447,11 @@ export async function finishHorizonRingAsync(
     }
     completed = true;
   } finally {
+    // (2026-11-02 audit R1) the stage leaves the group once it has drained: deleted first, a cancelled drain left a
+    // ringless group with nothing to finish it
+    if (completed) delete group.userData.finishHorizonRing;
     // a cancelled build (its pacing threw): close the stage's private continuations
-    if (!completed) { try { steps.return?.(); } catch { /* preserve the original failure */ } }
+    else { try { steps.return?.(); } catch { /* preserve the original failure */ } }
   }
 }
 
@@ -9529,6 +9557,7 @@ function* terrainBuildSteps(
   cfg: TerrainMapConfig | null,
   streamOpts: TerrainStreamOptions | null = null,
   sourcePreparation: TerrainSourcePreparation | null = null,
+  owned: { material: THREE.Material | null } | null = null,
 ): Generator<TerrainBuildProgress, THREE.Group, void> {
   const group = new THREE.Group();
   group.name = 'terrain';
@@ -9563,6 +9592,9 @@ function* terrainBuildSteps(
     }
   }
   const { material: mat, textures: splatTextures, sourcedReady } = materialStep.value;
+  // (2026-11-02 audit R1) the material is the driver's to dispose until the group returns with it (its dispose ends the
+  // live preset subscriptions): a build closed during the chunk rows dropped it with both listeners still subscribed
+  if (owned) owned.material = mat;
   // ground lane: the two-formation bedrock's boundary at its share of the field's height span (S.formation)
   {
     const form = (cfg?.splat as { formation?: TerrainFormation } | undefined)?.formation;
@@ -9704,17 +9736,18 @@ function* terrainBuildSteps(
   // answer; nothing waits for it — the pipeline is built here meanwhile when it has not answered, and its answer is taken
   // the moment it arrives. Any other build makes the ring here, after the chunks. The ring reads nothing the chunks, the
   // water, the vegetation or the props write, and stays the terrain's first child: the same ring.
-  const ringSource = horizonRingSupplyFor(cfg);
+  const ringSource = streamOpts?.horizonRingSupply ?? null;
   // (the horizons stream, 2026-10-13, HL-3) a migrated map — its file's `hinterland` block, or a lab draft under
   // ?hinterland=1 — takes the Hinterland in place of the old ring: the world build supplies it (hinterlandHook.ts) and it
   // stands where the ring stood, the terrain's first child; the battlefield, its collision and the authority are untouched
-  const hinterlandSource = hinterlandSupplyFor(cfg);
+  const hinterlandSource = streamOpts?.hinterlandSupply ?? null;
   function* hinterlandStage(): Generator<TerrainBuildProgress, void, void> {
     // (horizons-240) the battlefield's own sheets carried past the edge (hinterland/groundDetail.ts)
     const ground = { textures: splatTextures, layerMeans: (mat.userData as { layerMeans?: unknown }).layerMeans,
       roadTint: (cfg?.splat as { roadTint?: readonly number[] } | undefined)?.roadTint,
       tints: ['tintA', 'tintB', 'tintC'].map((k) => (cfg?.splat as Record<string, readonly number[] | undefined> | undefined)?.[k]) };
-    const steps = hinterlandSource!.buildSteps({ engineCtx, heightField, ground });
+    // (2026-11-02 audit R1) and the old ring for the land's place, should the worker fail after this
+    const steps = hinterlandSource!.buildSteps({ engineCtx, heightField, ground, fallback: () => ringStage() });
     let step = steps.next();
     while (!step.done) {
       yield [CHUNKS * CHUNKS + 1, CHUNKS * CHUNKS + 2, false];
@@ -9725,7 +9758,11 @@ function* terrainBuildSteps(
     yield [CHUNKS * CHUNKS + 1, CHUNKS * CHUNKS + 2, true];
   }
   function* horizonRingStage(): Generator<TerrainBuildProgress, void, void> {
-    if (hinterlandSource) { yield* hinterlandStage(); return; }
+    // (audit R1) a Hinterland whose worker has already failed brings no land: the old ring stands in its place
+    if (hinterlandSource && !hinterlandSource.failed) { yield* hinterlandStage(); return; }
+    yield* ringStage();
+  }
+  function* ringStage(): Generator<TerrainBuildProgress, void, void> {
     let ringPipeline: HorizonRingPipeline | null = ringSource ? ringSource.take() : null;
     if (ringSource && !ringPipeline) {
       const pipelineSteps = horizonRingGeometrySteps(cfg, 1337, heightField, {

@@ -12,7 +12,7 @@
 import assert from 'node:assert/strict';
 import { ARCHITECTURE_STYLES, buildRegionalParts } from './index.ts';
 import { PartSink, streamFrom } from './geometry.ts';
-import { dressedQuoin, setFacadeCraft, thatchCourses, withFacade } from './facade.ts';
+import { dressedQuoin, thatchCourses, withFacade, withFacadeCraft } from './facade.ts';
 import { paintDressedStoneBuffers, paintLimewash, paintNipaThatch, paintRegionalSurfaceBuffers } from '../../regionalSurfaces.ts';
 import { withGroundCoverHoles } from '../../sceneryPlan.ts';
 
@@ -64,9 +64,7 @@ for (const style of ARCHITECTURE_STYLES) {
   for (const id of Object.keys(style.builders)) {
     for (const [seed, wall] of [[11, 'stone'], [29, 'plaster2'], [47, 'plaster'], [83, 'plaster3']]) {
       const desk = build(style, id, seed, wall, 'desktop'), mob = build(style, id, seed, wall, 'mobile');
-      setFacadeCraft(false);
-      const plain = build(style, id, seed, wall, 'desktop'), plainMob = build(style, id, seed, wall, 'mobile');
-      setFacadeCraft(true);
+      const [plain, plainMob] = withFacadeCraft(false, () => [build(style, id, seed, wall, 'desktop'), build(style, id, seed, wall, 'mobile')]);
       assert.deepEqual(structure(desk.parts), structure(plain.parts), `${style.id}/${id} seed ${seed}: the craft adds and moves no structure`);
       assert.deepEqual(structure(desk.parts), structure(mob.parts), `${style.id}/${id} seed ${seed}: the phone's structure is the desktop's`);
       assert.deepEqual(everything(mob.parts), everything(plainMob.parts), `${style.id}/${id} seed ${seed}: a phone builds no craft`);

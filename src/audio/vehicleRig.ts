@@ -250,8 +250,9 @@ export function createVehicleRig(deps: RigDeps, id: string, identity: VehicleAud
   const whines = new Map<WhineKind, Layer>();
 
   function makeLayer(asset: string, dest: AudioNode): Layer {
-    // A live loop's buffer must outlive the library's idle eviction.
-    library.pin([asset]);
+    // A live loop's buffer must outlive the library's idle eviction (the rigs' pins: the engine releases them with the
+    // battle's rigs, never the battle warm).
+    library.pin([asset], false, 'rigs');
     const gain = ctx.createGain();
     gain.gain.value = 0;
     gain.connect(dest);

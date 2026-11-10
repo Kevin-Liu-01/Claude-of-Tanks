@@ -21,6 +21,7 @@ import { readPhaseEnvironment } from './phase-environment-receipt.mjs';
 import {resourceOwnershipInventory} from './resource-ownership-inventory.mjs';
 import { installPhaseResourceFrameAccounting, beginPhaseResourceFrameSample,
   hasFreshPhaseResourceFrame } from './phase-resource-frame-accounting.mjs';
+import { BOOT_LOADED_EXPRESSION, readinessExpression } from './game-readiness.mjs';
 
 const argv = process.argv.slice(2);
 const option = (name, fallback) => {
@@ -793,7 +794,7 @@ if (production && trace) url.searchParams.set('debug', '1');
 let report;
 try {
   await page.goto(url.href, { waitUntil: 'domcontentloaded', timeout: 360_000 });
-  await page.waitForFunction('window.__GAME_READY === true && window.__DEBUG?.renderer', {
+  await page.waitForFunction(`${BOOT_LOADED_EXPRESSION} && !!window.__DEBUG?.renderer`, {
     timeout: 360_000,
   });
   await page.evaluate(installPhaseResourceFrameAccounting);
@@ -811,7 +812,7 @@ try {
     });
   }, { player: RESOURCE_PLAYER, roster: RESOURCE_ROSTER });
   await page.waitForFunction(
-    'window.__DEBUG.game.phase === "battle" && window.__DEBUG.game.preBattleS <= 0',
+    readinessExpression('controlsReleased'),
     { timeout: 180_000 },
   );
   await page.waitForFunction(
@@ -831,7 +832,7 @@ try {
   }
 
   await page.evaluate(() => window.__DEBUG.enterGarage());
-  await page.waitForFunction('window.__DEBUG.game.phase === "garage"', {
+  await page.waitForFunction(readinessExpression('garage'), {
     timeout: 30_000,
   });
   await sleep(3000);

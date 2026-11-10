@@ -25,9 +25,9 @@ left the tree with the cutover of 2026-09-29 (`docs/MULTIPLAYER-V2.md` §13.10).
 
 Frames are UTF-8 JSON envelopes (`src/mp/room/protocol.ts`), text or binary in,
 binary out. The room protocol, policy and limits (28 players + 8 spectators,
-14 per side, 30 s admin grace, 8 s host grace, 10 s report interval, 24 h expiry,
-chat history 48, 120 messages / 10 s, 8 KB signals, 6 relay grants per seat and
-96 per room a minute) live in `src/mp/room/` and are documented in
+14 per side, 30 s admin grace, 8 s host grace, 30 s report interval, 90 s report
+budget, 24 h expiry, chat history 48, 120 messages / 10 s, 8 KB signals, 6 relay
+grants per seat and 96 per room a minute) live in `src/mp/room/` and are documented in
 `docs/MULTIPLAYER-V2.md` §13.2, its addendum §13.2.1 and §13.14.
 
 ## Relay credentials (2026-10-02, `docs/MULTIPLAYER-V2.md` §13.14)
@@ -61,12 +61,13 @@ socket alone. Without the secrets — or when the provider fails — the grant i
    checks the seats, the host, the phase, the generation and the size, adds
    `from`, relays, and never parses SDP (`signal_target` / `signal_generation` /
    `signal_phase` / `signal_size`).
-4. The host reports (`match_report`, every 10 s and on every phase change, with
+4. The host reports (`match_report`, every 30 s and on every phase change, with
    its tick): `playing` moves the room to `playing`; `ended` with a verdict
    records `lastResult`, returns the room to `waiting`, clears readiness and the
    election, and broadcasts `match_status ended`.
-5. The host's room socket absent for 8 s (an alarm), its reports silent for 30 s
-   (an alarm), a leave, a kick or a decline (P1b: at once, to the next candidate —
+5. The host's room socket absent for 8 s (an alarm), its reports silent for 90 s
+   (three intervals; an alarm), a leave, a kick or a decline (P1b: at once, to the
+   next candidate —
    willing first, a declined commander as the last resort, never a seat that
    already stepped down by declining while hosting this match): the room elects
    the next host, `generation + 1`, and broadcasts `host_changed { hostId,
@@ -197,7 +198,7 @@ in `package.json` until an integrator with the lockfile removes it.
 ## Cost
 
 Free plan: Durable Object requests and storage within the daily allowance; the
-Worker relays a few dozen signaling messages per join and one report every 10 s
+Worker relays a few dozen signaling messages per join and one report every 30 s
 per running match, nothing per tick, plus one relay request (and one TURN
 subrequest) per seat at a start and per migration window. Game traffic runs
 between the browsers.

@@ -318,6 +318,66 @@ console.log('effect attachment selftest passed');
     if (documentBefore) Object.defineProperty(globalThis, 'document', documentBefore); else delete globalThis.document;
   }
 
+  // (round 8 Y6, s4-05) one writer of the muzzle light's pulse: a shot whose muzzle point is not finite (the
+  // black-screen-228 RC6 case flashLight's guard refuses) lights nothing and leaves the pulse burning where it was. The
+  // carry was a second writer (carryLight) its callers ran even when the guard refused the pulse: another gun's pulse,
+  // still burning, took the new shooter's velocity and slid off its gun, and a turning shooter's NaN velocity (a NaN muzzle
+  // x or z through the yaw-rate swing) parked the light at a NaN place every frame after, past a battle reset. (The phone
+  // tier resolved above holds for the rest of the process; the light's path is the same on every tier.)
+  {
+    globalThis.document = { createElement(tag) { if (tag !== 'canvas') throw new Error(tag); return createCanvas(1, 1); } };
+    try {
+      /** Gun a (10 m/s along +Z) fires; then, in the same frame (inside MUZZLE_LIGHT_S), gun b's shot does what `second`
+       *  says; the muzzle light 50 ms on, and again after a battle reset and one more frame. */
+      const lightAfter = (second) => {
+        const handlers = new Map();
+        const bus = { on(type, fn) { handlers.set(type, fn); return () => handlers.delete(type); }, emit(type, payload) { handlers.get(type)?.(payload); } };
+        const scene = new THREE.Scene();
+        const fx = createFx({ anisotropy: 4, scene }, { getHeightAt: () => 0 }, { seed: 91 });
+        fx.bindBus(bus);
+        scene.add(fx.group);
+        const camera = new THREE.PerspectiveCamera();
+        camera.position.set(-12, 4, 6); camera.lookAt(0, 2, 4); camera.updateMatrixWorld();
+        const a = { visual: {}, state: { pos: new THREE.Vector3(0, 0, 0), yaw: 0, speed: 10, yawRate: 0, verticalSpeed: 0 } };
+        // gun b drives along -X (yaw -90 deg) 20 m off, turning or not as the case asks
+        const b = { visual: {}, state: { pos: new THREE.Vector3(20, 0, 0), yaw: -Math.PI / 2, speed: 10, yawRate: 0, verticalSpeed: 0 } };
+        const resolve = (id) => (id === 'a' ? a : id === 'b' ? b : null);
+        fx.update(1 / 60, [], camera, resolve);
+        bus.emit('shell:fired', { shellId: 1, shooterId: 'a', shellType: 'HEAT', caliberMm: 120, muzzlePos: [0, 2.3, 5.5], dir: [0, 0, 1] });
+        second?.(bus, fx, b);
+        fx.update(0.05, [], camera, resolve);
+        const light = fx.group.getObjectByName('fx:muzzleLight');
+        const now = light.position.clone();
+        fx.resetAll();
+        fx.update(1 / 60, [], camera, resolve);
+        return { now, reset: light.position.clone() };
+      };
+      const alone = lightAfter(null);
+      const same = (run, label) => {
+        if (![...run.now.toArray(), ...run.reset.toArray()].every(Number.isFinite)) {
+          throw new Error(`${label}: the muzzle light is at a non-finite place (${run.now.toArray()}; after a reset ${run.reset.toArray()})`);
+        }
+        for (const k of ['x', 'y', 'z']) near(run.now[k], alone.now[k], `${label}: the light stays on gun a's pulse (${k})`, 1e-6);
+      };
+      // gun b, still on its course, fires with a NaN muzzle height: its velocity is finite, and a's pulse took it
+      same(lightAfter((bus) => bus.emit('shell:fired', { shellId: 2, shooterId: 'b', shellType: 'HEAT', caliberMm: 120,
+        muzzlePos: [14.5, NaN, 0], dir: [-1, 0, 0] })), 'a refused cannon pulse (NaN muzzle height)');
+      // gun b, turning, fires with a NaN muzzle x: its swing makes its velocity NaN, and the light went to NaN
+      same(lightAfter((bus, fx, b) => {
+        b.state.yawRate = 0.5;
+        bus.emit('shell:fired', { shellId: 2, shooterId: 'b', shellType: 'HEAT', caliberMm: 120, muzzlePos: [NaN, 2.3, 0], dir: [-1, 0, 0] });
+      }), 'a refused cannon pulse from a turning gun (NaN muzzle x)');
+      // a rocket's ignition (fx.muzzleFlash's rocket path) lights the same pulse
+      same(lightAfter((bus, fx, b) => {
+        b.state.yawRate = 0.5;
+        fx.muzzleFlash(new THREE.Vector3(NaN, 2.3, 0), new THREE.Vector3(-1, 0, 0), 80, true, 'b');
+      }), 'a refused rocket pulse from a turning launcher (NaN muzzle x)');
+      console.log('effectAttachments.selftest: a refused muzzle-light pulse leaves the burning one where it was (no slide, no NaN, none after a reset)');
+    } finally {
+      if (documentBefore) Object.defineProperty(globalThis, 'document', documentBefore); else delete globalThis.document;
+    }
+  }
+
   // the Studio's cinematic blast layered over it: fireball, flash disc and sparks carry, propellant, dust and grit stay
   const cine = (muzzleVel) => {
     let a = 0x5eed;

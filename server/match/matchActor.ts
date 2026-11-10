@@ -14,15 +14,16 @@ import type { DestructionLogEntry } from '../../src/sim/destructionEvents.ts';
 import { quantizeDestructionEntry } from '../../src/mp/wire/destructionLog.ts';
 import { requireAuthorityFleet } from '../../src/vehicles/authorityFleet.ts';
 import { createAuthoritativeMatch } from '../../src/sim/authoritativeMatch.ts';
-import { camoSelectionBonus } from '../../src/sim/camoPaint.ts';
+import { camoSelectionBonus, planBotPaints } from '../../src/sim/camoPaint.ts';
 import type { BotCamo } from '../../src/sim/camoPaint.ts';
 import { stockCamoPatternIdFor } from '../../src/vehicles/camoPolicy.ts';
 import type {
   AuthoritativeEntity, AuthoritativeMatch, AuthoritativePlayerInput, AuthoritativePlayerRecord, AuthoritativeWorldCollision,
 } from '../../src/sim/authoritativeMatch.ts';
-import { matchRulesetFor, terrainVariantFor, type MatchRuleset } from '../../src/sim/matchRuleset.ts';
+import { endingHoldExpired, matchRulesetFor, terrainVariantFor, type MatchRuleset } from '../../src/sim/matchRuleset.ts';
 import { normalizeGameMode, type GameModeId } from '../../src/sim/matchModes.ts';
 import { SIM_DT } from '../../src/sim/movement.ts';
+import { applyAuthorityRow } from '../../src/mp/match/authorityRow.ts';
 import { createDedicatedWorldCollision } from '../dedicatedWorldCollision.ts';
 import type { WorldKernelModule } from '../../src/world/wasmWorldKernels.ts';
 import {
@@ -35,7 +36,7 @@ import type {
   EntityRow, EventMessage, HelloMessage, InputMessage, ResumeHintMessage, RosterEntry, ShellRow, SnapshotFrame, SnapshotMeta, WireEvent, WireMessage,
 } from '../../src/mp/wire/messages.ts';
 import { captureShellSnapshot, type QuantizedShellSnapshot, type SnapshotShellSource } from '../../src/sim/worldSnapshot.ts';
-import { dequantizeAngle, dequantizePosition, dequantizeVelocity } from '../../src/mp/wire/quantize.ts';
+import { dequantizePosition } from '../../src/mp/wire/quantize.ts';
 import { estimateEntityRowBytes } from '../../src/mp/wire/rows.ts';
 import { createEventPayloadCache } from '../../src/mp/wire/eventPayload.ts';
 import { MATCH_BUILD, compareMatchBuilds, matchBuildRefusalCode, matchBuildRefused } from '../../src/mp/wire/matchBuild.ts';
@@ -50,6 +51,7 @@ import { createLagCompensation, createLatencyTracker, type LagCompensation, type
 import { createFixedStepLoop, type FixedStepLoop } from './loop.ts';
 import { createViewerPublisher, keyframeSlotFor, type ViewerPublisher } from './publisher.ts';
 import { createChatLimiter, normalizeChatText, type ChatLimiter } from './chat.ts';
+import { createUnseenShellMarks, type UnseenShellMarks } from './unseenShellMarks.ts';
 import type { ClientLink } from './link.ts';
 import { silentLogger, type Logger } from './log.ts';
 import type { SeatClaims } from './seatToken.ts';
@@ -112,6 +114,20 @@ export interface MatchActorResume {
    * the clients' controls aimed that far ahead. Without it the loop starts at `tick` when it starts.
    */
   dueAtMs?: number;
+  /**
+   * The phase the old host was in (audit M1, 2026-11-02; 'playing' when absent). Every resume used to skip the countdown
+   * and run, so a host lost during the countdown went live at once while its peers were still in their covered entry,
+   * and a keyframe sealed after the verdict resumed as a running match. Now a countdown resumes with `countdownMs` left
+   * and an ended match stays ended with its `verdict` (the authority's restoreVerdict: no event, the hold spent).
+   */
+  phase?: 'countdown' | 'playing' | 'ended';
+  countdownMs?: number;
+  verdict?: { result: 'alpha' | 'bravo' | 'draw'; reason: string } | null;
+  /**
+   * The battle this actor plays (round 3 A3; WelcomeMessage.battleId, u32): the resumed battle's (the sealed keyframe's),
+   * or a fallback restart's own (migrationState.ts migrationFallback). Absent: 0, a match's first battle.
+   */
+  battleId?: number;
 }
 
 export interface MatchActorOptions {
@@ -134,6 +150,8 @@ export interface MatchActorOptions {
   resume?: MatchActorResume | null;
   log?: Logger;
   onVerdict?: (verdict: MatchVerdict) => void;
+  /** The actor stopped (its own end after the verdict's linger, or a stop() from its owner); called once, after its clients are detached. */
+  onStop?: (reason: CloseReasonId) => void;
   now?: () => number;
   schedule?: (callback: () => void, delayMs: number) => () => void;
   /** Start the loop and the countdown immediately (default true). */
@@ -223,6 +241,57 @@ export interface ActorClientStats {
   interest: InterestStats;
 }
 
+/**
+ * The match's one phase (audit M3, 2026-11-02), owned by the actor and read through MatchActor.phase: the authority's
+ * loading | countdown | playing, then `ending` (the verdict is in and the ruleset's ending hold runs: the field alive,
+ * guns silent), `ended` (the hold is spent: the field stands still while the actor lingers, publishing it) and
+ * `stopped` (the actor released the room). Before, the authority's MatchPhase stopped at playing, the actor layered
+ * `ended`/`stopped` booleans on it, and the full phase was rebuilt three ways (the actor's stats, the control API and
+ * the LAN host's status, which fell back to 'unknown').
+ */
+export type MatchActorPhase = 'loading' | 'countdown' | 'playing' | 'ending' | 'ended' | 'stopped';
+
+const battleClockScreens = new WeakMap<object, { offsetS: number; screen: Record<string, unknown> }>();
+/** A smoke screen with its launch time on the battle clock (one copy per screen and offset: the frames reuse it). */
+function smokeOnBattleClock(screen: unknown, offsetS: number): unknown {
+  if (!screen || typeof screen !== 'object' || typeof (screen as { born?: unknown }).born !== 'number') return screen;
+  const cached = battleClockScreens.get(screen);
+  if (cached && cached.offsetS === offsetS) return cached.screen;
+  const shifted = { ...(screen as Record<string, unknown>), born: Math.round(((screen as { born: number }).born + offsetS) * 1000) / 1000 };
+  battleClockScreens.set(screen, { offsetS, screen: shifted });
+  return shifted;
+}
+
+/**
+ * An authority meta on the battle clock the clients read (a resumed actor's: the authority's own clock plus what the old
+ * hosts had played, `resumedBattleTimeMs`): its battleTimeMs and every smoke screen's launch time (round 2 U2). A client
+ * ages a network screen by its battle clock (battlePresentation.ts game.timeS, auxiliaryPresentation.ts), so on a
+ * resumed host every screen read as launched `resumedBattleTimeMs` ago: past SMOKE_DURATION_S, it was never drawn. The
+ * migration keyframe's meta goes through it too (matchHostCore.ts buildKeyframe), so a resume reads every screen on one
+ * clock (migrationState.ts applyResumeState).
+ */
+export function metaOnBattleClock(meta: Record<string, unknown> | null, resumedBattleTimeMs: number): Record<string, unknown> | null {
+  if (!resumedBattleTimeMs || !meta) return meta;
+  const screens = meta.smokeScreens;
+  const offsetS = resumedBattleTimeMs / 1000;
+  return {
+    ...meta, battleTimeMs: (Number(meta.battleTimeMs) || 0) + resumedBattleTimeMs,
+    ...(Array.isArray(screens) && screens.length ? { smokeScreens: screens.map((screen) => smokeOnBattleClock(screen, offsetS)) } : {}),
+  };
+}
+/** The phase in the rooms' status vocabulary (MatchHostStatus.phase): the hold and its end are both 'ended'. */
+export type MatchStatusPhase = 'loading' | 'countdown' | 'playing' | 'ended' | 'stopped';
+
+/** The one status reading of a match phase (the control API, the LAN host, the actor's stats and the host core's reports). */
+export function matchStatusPhase(phase: MatchActorPhase): MatchStatusPhase {
+  return phase === 'ending' ? 'ended' : phase;
+}
+
+/** A match past its verdict, or stopped: a new start may replace it. */
+export function matchConcluded(phase: MatchActorPhase): boolean {
+  return phase === 'ending' || phase === 'ended' || phase === 'stopped';
+}
+
 export interface MatchActorStats {
   roomId: string;
   mapId: string;
@@ -263,6 +332,8 @@ export interface MatchActor {
   /** The ruleset the match plays by (the WELCOME's rulesetJson): the mode's table bent by the room's arrangement. */
   readonly ruleset: MatchRuleset;
   readonly tick: number;
+  /** The match's phase (MatchActorPhase): the one reading every status and restart gate goes through. */
+  readonly phase: MatchActorPhase;
   readonly ended: boolean;
   readonly stopped: boolean;
   readonly authority: AuthoritativeMatch;
@@ -281,6 +352,8 @@ export interface MatchActor {
   wireIdOf(playerId: string): number | null;
   /** Battle time the actor resumed at (0 for a fresh match): every published battle clock adds it. */
   readonly resumedBattleTimeMs: number;
+  /** The battle this actor plays (MatchActorResume.battleId; 0 for a match's first battle): its WELCOMEs and keyframes carry it. */
+  readonly battleId: number;
   /**
    * The row an entity was restored from at a migration (`applyResumeState` names it): a later RESUME_HINT from that
    * entity's own seat is applied only when it is newer than this row and within the distance the hull could have driven
@@ -318,11 +391,15 @@ interface ActorClient {
   droppedSnapshots: number;
   malformed: number;
   pressureSinceMs: number | null;
+  /** The first snapshot backpressure withheld since this client's last published one (SNAPSHOT_STARVED_CLOSE_MS); null while it is fed. */
+  starvedSinceMs: number | null;
   /** When the WELCOME went out: the start of the client's entry grace (ENTRY_BACKPRESSURE_GRACE_MS). */
   welcomedAtMs: number;
   /** The message-rate token bucket: `tokens` refill at MAX_MESSAGES_PER_SECOND up to MESSAGE_BURST. */
   rate: { tokens: number; lastMs: number };
   closing: boolean;
+  /** The rounds this client's frames showed that left its view in flight (round 2 U31; bounded, round 3 A13). */
+  unseenMarks: UnseenShellMarks;
 }
 
 /**
@@ -343,6 +420,16 @@ export const VIEWER_CHECKPOINT_EVERY_SNAPSHOTS = 1;
 const BACKPRESSURE_SOFT_BYTES = 64 * 1024;
 const BACKPRESSURE_HARD_BYTES = 512 * 1024;
 const BACKPRESSURE_SUSTAINED_MS = 2000;
+/**
+ * The longest a viewer may go without a published snapshot while backpressure withholds them (audit S1, 2026-11-02),
+ * outside its entry grace (inside it: the entry's sustained limit). The skip band (SNAPSHOT_SKIP_BYTES up to the soft
+ * bound) never closed a link, and the soft band's clock restarted whenever a reading dipped to the soft bound or
+ * under, so a link stalled in the skip band, or swinging across the soft bound, starved its viewer indefinitely. This
+ * clock runs from the first withheld snapshot across both bands and every dip, and only a published snapshot stops it.
+ * Past it the link closes as BACKPRESSURE "starved" and the seat comes back on a fresh link with a keyframe. It is past
+ * the client's own stall clock (5 s, match/recovery.ts), so a client that can still ask for a fresh link does so first.
+ */
+export const SNAPSHOT_STARVED_CLOSE_MS = 10_000;
 /**
  * 2026-10-10 (the black-screen lane; an ABBA under load ~110: the room found the creator's tab silent while its own entry
  * blocked it and elected the next seat, whose actor then closed both peers, the demoted creator and the third seat, with
@@ -377,7 +464,10 @@ const MAX_MESSAGES_PER_SECOND = 150;
  * closed in about a second).
  */
 const MESSAGE_BURST = 900;
-/** A viewer frame's shells at most (the world snapshot's own bound). */
+/**
+ * A viewer frame's shells at most (the world snapshot's own bound). At most MAX_UNSEEN_SHELLS, so every round that leaves
+ * a view in flight is named in the frame it left (unseenShellMarks.ts, round 3 A13).
+ */
 const MAX_VIEW_SHELLS = 256;
 const MAX_MALFORMED = 20;
 const TICK_MS = SIM_DT * 1000;
@@ -395,7 +485,7 @@ function clampI16(value: number): number {
 export function createMatchActor(options: MatchActorOptions): MatchActor {
   const {
     roomId, mapId, seed, seats, bots = [], battleLimitS, world = 'dedicated', worldKernels = null,
-    log = silentLogger, onVerdict, now = () => performance.now(), schedule, autoStart = true,
+    log = silentLogger, onVerdict, onStop, now = () => performance.now(), schedule, autoStart = true,
     endedLingerTicks, resume = null, build = MATCH_BUILD, profile, uplinkTargetBps = HOST_UPLINK_TARGET_BPS, frameView = 'observe',
   } = options;
   if (!/^[a-zA-Z0-9_-]{1,48}$/.test(roomId)) throw new TypeError('roomId must be a safe id');
@@ -403,6 +493,14 @@ export function createMatchActor(options: MatchActorOptions): MatchActor {
       || (resume.dueAtMs !== undefined && !Number.isFinite(resume.dueAtMs)))) {
     throw new TypeError('resume needs an integer tick >= 0, a finite battleTimeMs >= 0 and a finite dueAtMs if any');
   }
+  if (resume && ((resume.phase !== undefined && resume.phase !== 'countdown' && resume.phase !== 'playing' && resume.phase !== 'ended')
+      || (resume.countdownMs !== undefined && !(resume.countdownMs >= 0 && Number.isFinite(resume.countdownMs))))) {
+    throw new TypeError('resume phase must be countdown, playing or ended, and its countdownMs finite and >= 0');
+  }
+  if (resume && resume.battleId !== undefined && !(Number.isInteger(resume.battleId) && resume.battleId >= 0 && resume.battleId <= 0xffffffff)) {
+    throw new TypeError('resume battleId must be a u32');
+  }
+  const battleId = resume?.battleId ?? 0;
   const mode: GameModeId = normalizeGameMode(options.mode ?? 'standard');
   const ruleset = options.ruleset && options.ruleset.mode === mode ? options.ruleset : matchRulesetFor(mode);
   const snapshotHz = options.snapshotHz ?? SNAPSHOT_HZ;
@@ -419,6 +517,10 @@ export function createMatchActor(options: MatchActorOptions): MatchActor {
   const sustainedPressureLimitMs = (client: ActorClient, nowMs: number): number => (
     nowMs - client.welcomedAtMs < entryBackpressureGraceMs ? entryBackpressureSustainedMs : BACKPRESSURE_SUSTAINED_MS
   );
+  /** The time without a published snapshot that closes this client (SNAPSHOT_STARVED_CLOSE_MS; the entry's sustained limit in its grace). */
+  const starvedLimitMs = (client: ActorClient, nowMs: number): number => (
+    nowMs - client.welcomedAtMs < entryBackpressureGraceMs ? entryBackpressureSustainedMs : SNAPSHOT_STARVED_CLOSE_MS
+  );
   /** The buffered bytes that close this client at once: ENTRY_BACKPRESSURE_HARD_BYTES while it is in its entry grace. */
   const hardPressureBytes = (client: ActorClient, nowMs: number): number => (
     nowMs - client.welcomedAtMs < entryBackpressureGraceMs ? ENTRY_BACKPRESSURE_HARD_BYTES : BACKPRESSURE_HARD_BYTES
@@ -426,9 +528,11 @@ export function createMatchActor(options: MatchActorOptions): MatchActor {
   const checkpointEverySnapshots = VIEWER_CHECKPOINT_EVERY_SNAPSHOTS;
   const actorLog = log.child({ room: roomId, map: mapId });
   const publishFailures = new WeakSet<object>();
-  // A resumed match skips the countdown and its clock limit counts from where the old host left it.
+  // A resumed match continues its countdown or its battle where the old host left it (MatchActorResume.phase), its clock
+  // limit counting from the battle time already played.
   const resumedBattleTimeMs = resume ? Math.round(resume.battleTimeMs) : 0;
-  const countdownS = resume ? 0 : options.countdownS ?? 5;
+  const resumedVerdict = resume?.phase === 'ended' && resume.verdict ? resume.verdict : null;
+  const countdownS = resume ? (resume.phase === 'countdown' ? (resume.countdownMs ?? 0) / 1000 : 0) : options.countdownS ?? 5;
   const rulesetLimitS = typeof ruleset.timeLimitS === 'number' && Number.isFinite(ruleset.timeLimitS) ? ruleset.timeLimitS : null;
   const effectiveBattleLimitS = battleLimitS != null ? Math.max(1, battleLimitS - resumedBattleTimeMs / 1000)
     : resume && rulesetLimitS !== null ? Math.max(1, rulesetLimitS - resumedBattleTimeMs / 1000) : undefined;
@@ -457,16 +561,19 @@ export function createMatchActor(options: MatchActorOptions): MatchActor {
     });
     rosterEntries.push({ entityId, seat: spec.seat, team: TEAM_ID[spec.team], bot: false, connected: false, playerId: spec.playerId, name: spec.name, specId: spec.specId });
   }
-  for (const bot of bots) {
+  // (268, item 6; round 8 Y1 s4-06) each bot's paint is the match's roll at its roster index, or the roster's on a resumed
+  // match: the one rule (sim/camoPaint.ts planBotPaints) a client's guess before the WELCOME reads too. The authority takes
+  // it as the record's paint, its bonus with it; the WELCOME's roster carries it below, so every client paints what the
+  // authority scores
+  const botPaints = planBotPaints(seats, bots, seed, mapId);
+  bots.forEach((bot, ordinal) => {
     if (seatOfPlayer.has(bot.playerId) || entityIdOf.has(bot.playerId)) throw new TypeError(`duplicate bot ${bot.playerId}`);
     const entityId = nextEntityId++;
     entityIdOf.set(bot.playerId, entityId);
-    // (268, item 6) a bot's paint is the authority's roll (or the roster's, resumed), its bonus with it; the WELCOME's roster
-    // carries it below, so every client paints what the authority scores
     players.push({ id: bot.playerId, specId: bot.specId, team: bot.team, bot: true, difficulty: bot.difficulty ?? 'normal',
-      ...(bot.camo ? { camo: bot.camo } : {}) });
+      camo: botPaints[ordinal] });
     rosterEntries.push({ entityId, seat: NO_SEAT, team: TEAM_ID[bot.team], bot: true, connected: true, playerId: bot.playerId, name: bot.name, specId: bot.specId });
-  }
+  });
   if (players.length < 1 || players.length > MAX_ENTITIES) throw new TypeError(`rooms field 1..${MAX_ENTITIES} entities`);
   // Every hull's armor, modules, crew and hit shells are finalized before the authority reads them (spectators ride no hull).
   requireAuthorityFleet(players.map((player) => player.specId));
@@ -488,6 +595,8 @@ export function createMatchActor(options: MatchActorOptions): MatchActor {
     });
     lagComp = createLagCompensation({ entities: authority.entities });
     bound.hook = lagComp;
+    // an ended match resumes ended: the first tick settles the verdict it carried (settleVerdict), the field stays still
+    if (resumedVerdict) authority.restoreVerdict(resumedVerdict.result, resumedVerdict.reason);
   } catch (error) {
     releaseWorld();
     throw error;
@@ -504,6 +613,8 @@ export function createMatchActor(options: MatchActorOptions): MatchActor {
   const viewEntities: AuthoritativeEntity[] = [];
   const viewShells: SnapshotShellSource[] = [];
   const viewQuantizedShells: QuantizedShellSnapshot[] = [];
+  /** The authority's round behind each viewQuantizedShells entry (the observe view only). */
+  const viewShellSources: SnapshotShellSource[] = [];
   let frameMeta: SnapshotMeta | null = null;
   let frameMetaTick = -1;
   // the snapshot budget's scratch (buildFrame): the due mid and far rows of one viewer's frame, reused for every frame
@@ -524,6 +635,11 @@ export function createMatchActor(options: MatchActorOptions): MatchActor {
   let rowCacheTick = -1;
   let sortedDestroyed: number[] = [];
   let destroyedRevision = -1;
+  let destroyedLength = -1;
+  /** For each sorted index, its position in the authority's list (where its fall is, round 2 U27). */
+  let sortedDestroyedAt: number[] = [];
+  /** A viewer's falls in the sorted order, by the authority's falls array (a new array whenever the list grows). */
+  let sortedFallsFor = new WeakMap<readonly number[], number[]>();
   // destruction (docs/DESTRUCTION.md §8.2): the authority's log, copied for the frames whenever it grows
   let destructionFrameLog: DestructionLogEntry[] = [];
   const totals = { bytesOut: 0, bytesIn: 0, snapshots: 0, keyframes: 0, droppedSnapshots: 0, backpressureCloses: 0, events: 0, malformed: 0, rejectedInputs: 0 };
@@ -549,8 +665,7 @@ export function createMatchActor(options: MatchActorOptions): MatchActor {
 
   /** The battle clock as the clients read it: the authority's, plus what the old host had already played. */
   function metaWithResumedClock(meta: Record<string, unknown> | null): Record<string, unknown> | null {
-    if (!resumedBattleTimeMs || !meta) return meta;
-    return { ...meta, battleTimeMs: (Number(meta.battleTimeMs) || 0) + resumedBattleTimeMs };
+    return metaOnBattleClock(meta, resumedBattleTimeMs);
   }
 
   function send(client: ActorClient, bytes: Uint8Array): boolean {
@@ -592,14 +707,37 @@ export function createMatchActor(options: MatchActorOptions): MatchActor {
     }
   }
 
+  /**
+   * The actor's own reliable events (roster changes, the room service's and the host's) wait while a batch is going out
+   * and follow it, stamped with the tick being stepped (audit M3, 2026-11-02): a detach inside a send loop (a send that
+   * threw) broadcast its roster event re-entrantly, so the remaining clients received it ahead of the batch being sent,
+   * stamped loop.tick, one tick behind that batch's during a step (the loop advances its tick after the callback).
+   */
+  const queuedEvents: WireEvent[] = [];
+  let sendingEvents = 0;
+  let steppingTick: number | null = null;
   function broadcastEvent(event: WireEvent): void {
-    const message: EventMessage = { type: MESSAGE_TYPE.EVENT, tick: loop.tick, events: [event] };
-    let bytes: Uint8Array;
-    try { bytes = encodeMessage(message); } catch (error) {
-      actorLog.warn('event dropped', { kind: event.kind, error: String(error) });
-      return;
+    queuedEvents.push(event);
+    flushQueuedEvents();
+  }
+
+  function flushQueuedEvents(): void {
+    if (sendingEvents > 0) return;
+    sendingEvents++;
+    try {
+      while (queuedEvents.length) {
+        const event = queuedEvents.shift()!;
+        const message: EventMessage = { type: MESSAGE_TYPE.EVENT, tick: steppingTick ?? loop.tick, events: [event] };
+        let bytes: Uint8Array;
+        try { bytes = encodeMessage(message); } catch (error) {
+          actorLog.warn('event dropped', { kind: event.kind, error: String(error) });
+          continue;
+        }
+        for (const client of clients.keys()) if (send(client, bytes)) { client.events++; totals.events++; }
+      }
+    } finally {
+      sendingEvents--;
     }
-    for (const client of clients.keys()) if (send(client, bytes)) { client.events++; totals.events++; }
   }
 
   function rateLimited(client: ActorClient, nowMs: number): boolean {
@@ -653,8 +791,8 @@ export function createMatchActor(options: MatchActorOptions): MatchActor {
    * A viewer's own newest authority row from the host it lost (P3b): applied to its entity only when this actor resumed
    * a migration, the entity was restored from the migration state, no hint was taken for it yet, the row is newer than
    * the restored one and older than the resume tick, and it lies within the distance the hull could have driven since
-   * the restored row (top speed × the ticks between, with a margin) — pose fields only, never combat state. A client
-   * never places itself: outside those bounds the hint is refused and counted.
+   * the restored row (top speed × the ticks between, with a margin) — the pose and its body bits only, never combat state.
+   * A client never places itself: outside those bounds the hint is refused and counted.
    */
   function receiveResumeHint(client: ActorClient, hint: ResumeHintMessage): void {
     const entity = client.entity;
@@ -673,17 +811,12 @@ export function createMatchActor(options: MatchActorOptions): MatchActor {
     const allowedM = (hint.tick - restoredTick) * SIM_DT * topSpeedMps(entity) * 1.25 + 3;
     const movedM = Math.hypot(x - restoredX[entityId]!, z - restoredZ[entityId]!);
     if (movedM > allowedM) { refuse('tooFar'); actorLog.warn('resume hint refused', { player: client.playerId, movedM: Math.round(movedM * 10) / 10, allowedM: Math.round(allowedM * 10) / 10 }); return; }
-    const tank = entity.state;
-    tank.pos.x = x;
-    tank.pos.y = dequantizePosition(hint.y);
-    tank.pos.z = z;
-    tank.yaw = dequantizeAngle(hint.yaw);
-    tank.speed = dequantizeVelocity(hint.speed);
-    tank.verticalSpeed = dequantizeVelocity(hint.verticalSpeed);
-    tank.turretYaw = dequantizeAngle(hint.turretYaw);
-    tank.gunPitch = dequantizeAngle(hint.gunPitch);
-    tank.visualPitch = dequantizeAngle(hint.pitch);
-    tank.visualRoll = dequantizeAngle(hint.roll);
+    // The hint is the seat's newest row of its own hull from the host it lost, and seats as a row does: pose, ground
+    // contact and body mode from its body bits, then the spring and ride on that pose (authorityRow.ts applyAuthorityRow,
+    // the restore's own owner; round 3 A14). Before, the hint carried no body bits: its contact was read from its height
+    // over the terrain field (a hull on a roof or a bridge read as airborne and dropped onto its support in a tick) and
+    // the restored row's body mode stood under the newer pose (a hull that had righted came back tumbling).
+    applyAuthorityRow(entity.state, hint);
     hinted[entityId] = 1;
     resumeHints.applied++;
     actorLog.info('resume hint applied', { player: client.playerId, tick: hint.tick, restoredTick, movedM: Math.round(movedM * 100) / 100 });
@@ -767,6 +900,14 @@ export function createMatchActor(options: MatchActorOptions): MatchActor {
 
   function deliverEvents(tick: number): void {
     if (authority.pendingEventCount === 0) return;
+    sendingEvents++;
+    try { deliverEventBatches(tick); } finally { sendingEvents--; }
+    // a roster change a failed send raised in the batches goes out after them (flushQueuedEvents)
+    flushQueuedEvents();
+    authority.afterEventBroadcast();
+  }
+
+  function deliverEventBatches(tick: number): void {
     for (const client of clients.keys()) {
       const events = authority.eventsForViewer(client.viewerId);
       if (!events.length) continue;
@@ -786,7 +927,6 @@ export function createMatchActor(options: MatchActorOptions): MatchActor {
       }
       if (send(client, bytes)) { client.events += events.length; totals.events += events.length; }
     }
-    authority.afterEventBroadcast();
   }
 
   function rowFor(entity: AuthoritativeEntity, entityId: number, tick: number): EntityRow {
@@ -805,12 +945,33 @@ export function createMatchActor(options: MatchActorOptions): MatchActor {
 
   function destroyedList(meta: Record<string, unknown> | null): number[] {
     const revision = Number(meta?.destructibleRevision) || 0;
-    if (revision !== destroyedRevision) {
-      const indices = Array.isArray(meta?.destroyedObstacleIndices) ? meta.destroyedObstacleIndices as number[] : [];
-      sortedDestroyed = [...new Set(indices.filter((index) => Number.isInteger(index) && index >= 0))].sort((a, b) => a - b);
+    const indices = Array.isArray(meta?.destroyedObstacleIndices) ? meta.destroyedObstacleIndices as number[] : [];
+    if (revision !== destroyedRevision || indices.length !== destroyedLength) {
+      // the first position of each valid index, sorted by index (a restore may grow the list inside one revision)
+      const first = new Map<number, number>();
+      for (let at = 0; at < indices.length; at++) {
+        const index = indices[at]!;
+        if (Number.isInteger(index) && index >= 0 && !first.has(index)) first.set(index, at);
+      }
+      sortedDestroyed = [...first.keys()].sort((a, b) => a - b);
+      sortedDestroyedAt = sortedDestroyed.map((index) => first.get(index)!);
+      sortedFallsFor = new WeakMap();
       destroyedRevision = revision;
+      destroyedLength = indices.length;
     }
     return sortedDestroyed;
+  }
+
+  /** The viewer's falls for destroyedList's order (round 2, U27): none where the authority names none or a list it lacks. */
+  function destroyedFalls(meta: Record<string, unknown> | null): number[] | undefined {
+    const falls = Array.isArray(meta?.destroyedObstacleFalls) ? meta.destroyedObstacleFalls as number[] : null;
+    if (!falls || falls.length !== destroyedLength || !sortedDestroyed.length) return undefined;
+    let sorted = sortedFallsFor.get(falls);
+    if (!sorted) {
+      sorted = sortedDestroyedAt.map((at) => falls[at] ?? 0);
+      sortedFallsFor.set(falls, sorted);
+    }
+    return sorted;
   }
 
   /**
@@ -835,7 +996,7 @@ export function createMatchActor(options: MatchActorOptions): MatchActor {
       for (const shell of viewShells) {
         if (viewQuantizedShells.length >= MAX_VIEW_SHELLS) break;
         const captured = captureShellSnapshot(shell);
-        if (captured) viewQuantizedShells.push(captured);
+        if (captured) { viewQuantizedShells.push(captured); viewShellSources.push(shell); }
       }
       meta = authority.snapshotMeta(client.viewerId);
     }
@@ -923,7 +1084,10 @@ export function createMatchActor(options: MatchActorOptions): MatchActor {
         shellType: shellTypeIndex(shell.type), flags: shell.guided ? SHELL_FLAGS.GUIDED : 0,
       });
     }
+    // the rounds that left this view in flight (the observe view: the bench's snapshot view holds no rounds to ask)
+    const unseenShells = frameView === 'snapshot' ? undefined : client.unseenMarks.frame(tick, viewQuantizedShells, viewShellSources);
     viewQuantizedShells.length = 0;
+    viewShellSources.length = 0;
     // the frame meta is every viewer's the same in a tick (phase, clocks, verdict, smoke, revision): captured once
     if (frameMetaTick !== tick) { frameMeta = captureMeta(metaWithResumedClock(meta), ended); frameMetaTick = tick; }
     const margin = client.input.marginTicks;
@@ -936,12 +1100,23 @@ export function createMatchActor(options: MatchActorOptions): MatchActor {
       inputMarginTicks: margin == null ? INPUT_MARGIN_UNKNOWN : Math.max(-128, Math.min(126, margin)),
       meta: frameMeta!,
       destroyed: destroyedList(meta),
+      destroyedFalls: destroyedFalls(meta),
       destruction: destructionLog(meta),
       entities,
       shells,
+      ...(unseenShells ? { unseenShells } : {}),
       viewer: client.entity ? captureViewerState(client.entityId, meta?.localPrediction, snapshotIndex % checkpointEverySnapshots === 0) : null,
       modeStateJson: meta?.modeState ? JSON.stringify(meta.modeState) : null,
     };
+  }
+
+  /** Backpressure withheld this client's snapshot: true when that closed it (starved past its limit). */
+  function starved(client: ActorClient, nowMs: number): boolean {
+    client.starvedSinceMs ??= nowMs;
+    if (nowMs - client.starvedSinceMs <= starvedLimitMs(client, nowMs)) return false;
+    totals.backpressureCloses++;
+    detach(client, CLOSE_REASON.BACKPRESSURE, 'starved');
+    return true;
   }
 
   function publishSnapshots(tick: number): void {
@@ -963,14 +1138,18 @@ export function createMatchActor(options: MatchActorOptions): MatchActor {
         else if (nowMs - client.pressureSinceMs > sustainedPressureLimitMs(client, nowMs)) {
           totals.backpressureCloses++;
           detach(client, CLOSE_REASON.BACKPRESSURE, 'sustained');
+          continue;
         }
+        starved(client, nowMs);
         continue;
       }
       client.pressureSinceMs = null;
       if (buffered > SNAPSHOT_SKIP_BYTES) {
-        // a slow peer: this snapshot is skipped (the next one is fresher than a queued copy of this one would be)
+        // a slow peer: this snapshot is skipped (the next one is fresher than a queued copy of this one would be); a
+        // transient skip never closes the link, a viewer starved past its limit does (SNAPSHOT_STARVED_CLOSE_MS)
         client.droppedSnapshots++;
         totals.droppedSnapshots++;
+        starved(client, nowMs);
         continue;
       }
       let published: { bytes: Uint8Array; keyframe: boolean } | null;
@@ -1001,6 +1180,7 @@ export function createMatchActor(options: MatchActorOptions): MatchActor {
       if (send(client, published.bytes)) {
         totals.snapshots++;
         if (published.keyframe) totals.keyframes++;
+        client.starvedSinceMs = null;
       }
       if (profile) profile.sendMs += profile.clock() - sent;
     }
@@ -1035,6 +1215,11 @@ export function createMatchActor(options: MatchActorOptions): MatchActor {
 
   function onTick(tick: number, dt: number): void {
     if (stopped) return;
+    steppingTick = tick;
+    try { stepTick(tick, dt); } finally { steppingTick = null; }
+  }
+
+  function stepTick(tick: number, dt: number): void {
     // battle endings (2026-09-25): the authority keeps stepping through the ruleset's post-verdict hold
     // (guns silenced, shells in flight landing, the mode controller settling — authoritativeMatch endingHoldS)
     // and stands still by itself once the hold expires, so the ending replay or camera beat plays over a live field.
@@ -1086,6 +1271,7 @@ export function createMatchActor(options: MatchActorOptions): MatchActor {
     for (const client of [...clients.keys()]) detach(client, reason, detail);
     releaseWorld();
     actorLog.info('actor stopped', { reason, tick: loop.tick });
+    try { onStop?.(reason); } catch (error) { actorLog.error('stop callback failed', { error: String(error) }); }
   }
 
   const revokedPlayers = new Set<string>();
@@ -1130,8 +1316,9 @@ export function createMatchActor(options: MatchActorOptions): MatchActor {
       input: createSeatInputBuffer(),
       publisher: createViewerPublisher({ keyframeSlotTicks: keyframeSlotFor(claims.seat), snapshotEveryTicks }),
       interest: createViewerInterest(), latency: createLatencyTracker(), chat: createChatLimiter(),
-      bytesOut: 0, bytesIn: 0, events: 0, droppedSnapshots: 0, malformed: 0, pressureSinceMs: null, welcomedAtMs: now(),
+      bytesOut: 0, bytesIn: 0, events: 0, droppedSnapshots: 0, malformed: 0, pressureSinceMs: null, starvedSinceMs: null, welcomedAtMs: now(),
       rate: { tokens: MESSAGE_BURST, lastMs: now() }, closing: false,
+      unseenMarks: createUnseenShellMarks(),
     };
     clients.set(client, true);
     clientBySeat.set(client.seat, client);
@@ -1147,9 +1334,11 @@ export function createMatchActor(options: MatchActorOptions): MatchActor {
       protocolVersion: PROTOCOL_VERSION, tickHz: TICK_HZ, snapshotHz,
       seat: client.seat, entityId, team: TEAM_ID[seatSpec.team],
       serverTick: loop.tick, serverTimeMs: serverTimeMs(loop.tick), seed: seed >>> 0, capabilities: client.capabilities,
-      roomId, mapId, mode, rulesetJson, roster: rosterEntries.map((row) => ({ ...row })),
+      roomId, mapId, mode, rulesetJson, roster: rosterEntries.map((row) => ({ ...row })), battleId,
     });
-    if (!welcomed) return false;
+    // a link that closed under the WELCOME (send returns false on a closed link, without a throw) leaves the seat now
+    // (audit M3, 2026-11-02): before, the client stayed seated and marked connected until a close event that may not follow
+    if (!welcomed) { detach(client, CLOSE_REASON.NONE, 'welcome not sent'); return false; }
     actorLog.info('client welcomed', { seat: client.seat, player: client.playerId, spectator, build: hello.clientBuild.slice(0, 32) });
     if (entity) broadcastEvent({ kind: 'roster', payload: { entityId, playerId: client.playerId, connected: true } });
     return true;
@@ -1184,12 +1373,18 @@ export function createMatchActor(options: MatchActorOptions): MatchActor {
     return totals;
   }
 
+  function phaseOf(): MatchActorPhase {
+    if (stopped) return 'stopped';
+    if (ended || authority.result) return endingHoldExpired(ruleset, authority.resultTimeS, authority.timeS) ? 'ended' : 'ending';
+    return authority.phase;
+  }
+
   function stats(): MatchActorStats {
     let spectators = 0;
     for (const client of clients.keys()) if (client.spectator) spectators++;
     const lag = lagComp.stats;
     return {
-      roomId, mapId, mode, tick: loop.tick, phase: ended ? 'ended' : authority.phase,
+      roomId, mapId, mode, tick: loop.tick, phase: matchStatusPhase(phaseOf()),
       clients: clients.size, spectators, seatsFilled: clients.size - spectators, bots: bots.length,
       ...totals,
       tickMs: loop.tickCost.summary(),
@@ -1211,6 +1406,7 @@ export function createMatchActor(options: MatchActorOptions): MatchActor {
     roomId,
     ruleset,
     get tick() { return loop.tick; },
+    get phase() { return phaseOf(); },
     get ended() { return ended; },
     get stopped() { return stopped; },
     authority,
@@ -1221,6 +1417,7 @@ export function createMatchActor(options: MatchActorOptions): MatchActor {
     entityForWireId: (entityId) => entityByWireId.get(entityId) ?? null,
     wireIdOf: (playerId) => entityIdOf.get(playerId) ?? null,
     resumedBattleTimeMs,
+    battleId,
     noteRestoredRow(entityId, tick, x, z) {
       if (!Number.isInteger(entityId) || entityId < 1 || entityId > MAX_ENTITIES || !Number.isInteger(tick) || tick < 0) return;
       restoredTicks[entityId] = tick;

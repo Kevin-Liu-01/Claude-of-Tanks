@@ -2,10 +2,11 @@
  * lightModelCore.ts — the boot half of the light model (2026-10-02, the boot-weight pass): its types, the authored
  * (legacy) rig that the Garage's enclosed bay, the Preetham tier and a galaxy sky keep, the QA tuning hook, and the
  * hand-off to the grounded model (lightModel.ts). The grounded model (the atmosphere integral, the derived sun, the
- * exposure law) lights only an open sky, so it loads behind the battle entry (loadGroundedLightModel: the battle
- * atmosphere's covered acquisition and the capture staging await it), and the core hands it the atmosphere it integrates,
- * so its chunk imports nothing at runtime. Until it is loaded every resolve is the authored rig, which is exactly the
- * light of every presentation that never loads it. No DOM, no WebGL.
+ * exposure law) lights only an open sky, so it loads behind the battle entry (battleAtmosphereAccess.ts's chunk over
+ * importGroundedLightModel here: the battle atmosphere's prepare, which a battle entry asks at once, and the capture
+ * staging await it), and the core hands it the atmosphere it integrates, so its chunk imports nothing at runtime. Until
+ * it is loaded every resolve is the authored rig, which is exactly the light of every presentation that never loads it.
+ * No DOM, no WebGL.
  */
 import { CLOUDSCAPE_REGIMES, type CloudscapeConfig } from './cloudscapes.ts';
 import { ATMO_GROUND_KM, ATMO_MEDIUM, ATMO_STEPS, ATMO_TOP_KM, type AtmosphereParams } from './atmosphere.ts';
@@ -304,16 +305,25 @@ const GROUNDED_ENV: GroundedLightEnv = Object.freeze({
   groundAlbedo: DEFAULT_GROUND_ALBEDO, referenceIlluminance: EXPOSURE_REFERENCE_ILLUMINANCE,
 });
 let grounded: GroundedLightResolver | null = null;
-let groundedLoad: Promise<void> | null = null;
 /**
- * The grounded model, loaded once behind the battle entry (the battle atmosphere's acquisition, the capture staging).
- * It never rejects: a failed chunk keeps the authored rig and the next call retries.
+ * Import the grounded model and install it. Its one caller is the main thread's lazy chunk (battleAtmosphereAccess.ts
+ * groundedLightChunk: the battle atmosphere's prepare and loadGroundedLightModel, the capture staging), which holds it
+ * under the one lazy-chunk policy. (round 3 A4) It rejects when the chunk does not arrive and keeps no memo of its own:
+ * its memo was cleared on a failure and asked again at once by the next call, every Studio sun-dial move; and this module
+ * also rides the horizon ring and hinterland worker graphs, which do not carry that policy (app/lazyChunk.ts). (round 4
+ * E9) That chunk is its policy: app/lazyChunkSites.selftest.mjs fails any other use of it in a .ts module under src and
+ * any other runtime import of lightModel.ts. The Node receipts call it to install the model.
  */
-export function loadGroundedLightModel(): Promise<void> {
-  return groundedLoad ??= import('./lightModel.ts').then(
-    (module) => { grounded = module.groundedLightModel(GROUNDED_ENV); },
-    () => { groundedLoad = null; },
-  );
+export function importGroundedLightModel(): Promise<void> {
+  return import('./lightModel.ts').then((module) => { grounded = module.groundedLightModel(GROUNDED_ENV); });
+}
+/**
+ * (round 5 U8) Whether the grounded model is installed. The import above installs it a moment before the chunk holding it
+ * reads 'ready' (that state follows when the import's promise settles), so a light applied in between is lit with it
+ * (battleAtmosphereAccess.ts: a relight's landing).
+ */
+export function groundedLightModelInstalled(): boolean {
+  return grounded !== null;
 }
 
 /**

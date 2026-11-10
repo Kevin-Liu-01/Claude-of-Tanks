@@ -96,7 +96,11 @@ export function createEndOverlayRuntime({
       root.style.background = 'none';
       root.style.justifyContent = 'flex-end';
       root.style.paddingBottom = '5vh';
-      root.style.display = 'flex';
+      // (2026-11-02 audit F8) once the end screen adopted the Return button (endScreen.ts adoptEndOverlay) this root is an
+      // empty fixed full-screen layer (inset 0, z 70) that only body.cot-es-armed hid: it stays down, whatever order
+      // endScreen.hide() and this overlay's hide() run in
+      const adopted = returnButton.parentNode != null && returnButton.parentNode !== root;
+      root.style.display = adopted ? 'none' : 'flex';
     },
     hide,
   };

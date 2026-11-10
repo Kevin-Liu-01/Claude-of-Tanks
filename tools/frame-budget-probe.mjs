@@ -49,10 +49,12 @@
 // camera), and every sample records the geometries streamed while it ran (streamedDuring: 0 when the settle held).
 
 import { launchGuardedBrowser } from './browser-launch.mjs';
+import { openCaptureHold } from './capture-hold.mjs';
+import { heldItemOutcome, heldRunExitCode, heldStopWhy } from './held-items.mjs';
 import path from 'node:path';
 import os from 'node:os';
 import { execSync } from 'node:child_process';
-import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { preview } from 'vite';
 import puppeteer from 'puppeteer';
 import {
@@ -60,13 +62,15 @@ import {
   resolveHullRelativePose, sleep,
 } from './map-probe-runtime.mjs';
 import { selectMapViews } from './map-view-probe-views.mjs';
-import { CAPTURE_QUEUE_DIR, createCaptureLock } from './capture-lock.mjs';
+import { CAPTURE_QUEUE_DIR, claimSessionMutex, createCaptureLock, reapDeadSessionMutex, releaseSessionMutexAt,
+  sessionMutexHeldByAncestor, sessionMutexState } from './capture-lock.mjs';
 import { settleResidencyTerrain } from './world-residency-acquisition.mjs';
 import { captureLuminance, encodeLum } from './frame-capture-compare.mjs';
 import {
   FRAME_PASS_TIMER_PROTOCOL, MID_RANGE_PROXIES, installFramePassTimer, pairDeltas, projectFrameMs, proxyRatios,
   summarizePassFrames,
 } from './frame-pass-timer.mjs';
+import { BOOT_LOADED_EXPRESSION } from './game-readiness.mjs';
 
 const TOOL = 'frame-budget-probe';
 const DEFAULTS = Object.freeze({
@@ -821,18 +825,41 @@ export function foreignGpuCpu() {
   } catch { return { cpu: -1, processes: -1 }; }
 }
 
-/** The FIFO, then (optionally) the session mutex — taken only while the FIFO is ours; a busy mutex returns the FIFO. */
+/**
+ * The FIFO, then (optionally) the session mutex — taken only while the FIFO is ours; a busy mutex returns the FIFO.
+ * Nested holds (2026-11-02 audit S4): COT_LANE_HOLD=1 skipped both with no check that any hold backed it, so a leftover
+ * export ran GPU probes unlocked. A child of a hold nests in the FIFO through the hold's token (capture-lock nestedEnv), or
+ * on COT_LANE_HOLD=1 (a lane-hold helper's probe) only when the FIFO's live owner is an ancestor of it: acquire() checks
+ * both against the live owner record and otherwise queues. It nests in the session mutex only while the mutex's live owner
+ * is an ancestor (`mutexNested`), where it used to wait behind its own parent.
+ * (round 2 U38 review) The FIFO half holds through the one wrapper (tools/capture-hold.mjs openCaptureHold). Its five
+ * callers (this probe, time-to-battle-probe, battle-spike-census, battle-memory-probe, shadow-cache-truth) held the lock with
+ * their own refresh timers and no cap, so past the 20-min cap each kept it however many waited: time-to-battle-probe's
+ * budget is 60 min, battle-spike-census has none by default, battle-memory-probe and shadow-cache-truth none at all. Now
+ * past the cap with anyone waiting the hold's `signal` aborts, its guarded browsers are stopped after the grace and its
+ * launches refused, and a work still running then loses the FIFO; a signal lets the caller's finally run. The turn given
+ * back is the hold's release, and the mutex is still taken only while the FIFO is held. `hold` is the wrapper's options (the
+ * label is the script's name; `signals: []` for a caller with its own SIGINT/SIGTERM handler). Resolves { round, signal, refresh, release }:
+ * release() lets the mutex go, then the FIFO, and resolves once the hold is out.
+ */
 export async function acquireProbeLocks({ sessionMutex = null, log = () => {}, fifoTimeoutMs = 3 * 60 * 60 * 1000,
   mutexWaitMs = 60_000, mutexIdleWaitMs = 45 * 60_000, lock = createCaptureLock(), tryMutex = defaultTryMutex,
-  releaseMutex = defaultReleaseMutex, pause = sleep, mutexBusy = defaultMutexBusy, holderQueued = defaultHolderQueued } = {}) {
-  // a lane hold (one ticket for several probe steps, tools/tmp-lane-hold.mjs) already holds the FIFO and the mutex for
-  // the steps it spawns with COT_LANE_HOLD=1: they take nothing and release nothing
-  if (process.env.COT_LANE_HOLD === '1') { log('the capture FIFO and the session mutex are the lane hold\'s'); return { round: 0, release: () => {}, refresh: () => {} }; }
+  releaseMutex = defaultReleaseMutex, pause = sleep, mutexBusy = defaultMutexBusy, holderQueued = defaultHolderQueued,
+  mutexNested = defaultMutexNested, hold: holdOptions = {} } = {}) {
   let ticket = null; // the first ticket: our place in the FIFO, kept across a turn given back
   for (let round = 1; ; round++) {
-    await lock.acquire(fifoTimeoutMs, ticket ? { ticket } : {});
+    const hold = await openCaptureHold({ label: path.basename(process.argv[1] ?? 'probe-locks').replace(/\.m?js$/, ''), ...holdOptions, lock,
+      timeoutMs: fifoTimeoutMs, ...(ticket ? { ticket } : {}) });
     ticket ??= lock.lastTicket ?? null;
-    if (!sessionMutex) return { round, release: () => lock.release(), refresh: () => lock.refresh() };
+    const handle = (mutexHeld) => ({ round, signal: hold.signal, refresh: () => lock.refresh(),
+      release: () => { if (mutexHeld) releaseMutex(sessionMutex); return hold.release(); } });
+    // nothing of the hold outlives a refusal or its stop (a signal while the mutex is waited for)
+    const giveUp = async (error) => { await hold.release(); return error; };
+    if (!sessionMutex) return handle(false);
+    if (mutexNested(sessionMutex)) {
+      log(`session mutex held by an ancestor of this process: nested in it (round ${round})`);
+      return handle(false);
+    }
     // a holder queued behind us cannot release while we hold the head: give the turn back at once; any other holder
     // (between its own captures) gets mutexWaitMs
     const queued = holderQueued(sessionMutex);
@@ -840,13 +867,35 @@ export async function acquireProbeLocks({ sessionMutex = null, log = () => {}, f
     for (;;) {
       if (tryMutex(sessionMutex)) {
         log(`capture FIFO and session mutex held (round ${round})`);
-        return { round, refresh: () => lock.refresh(), release: () => { releaseMutex(sessionMutex); lock.release(); } };
+        return handle(true);
       }
       if (queued || Date.now() - started >= mutexWaitMs) break;
+      if (hold.signal.aborted) throw await giveUp(hold.signal.reason);
       lock.refresh();
       await pause(500);
     }
-    lock.release();
+    if (lock.nested) {
+      // (round 2 Q20) nested in an ancestor's FIFO hold (its token, or COT_LANE_HOLD under its live hold): giving the turn
+      // back frees nothing, since the ancestor keeps the FIFO, so this looped for good in 45-minute rounds. A mutex holder
+      // queued behind that hold can never free it: refused at once. Any other holder gets one bounded wait.
+      if (queued) {
+        throw await giveUp(new Error(`session mutex ${sessionMutex}: its holder is queued behind the FIFO hold this probe is nested in (an ancestor's), so `
+          + 'it can never free; run the probe without --session-mutex, or under the mutex\'s holder'));
+      }
+      const waitFrom = Date.now();
+      while (Date.now() - waitFrom < mutexIdleWaitMs) {
+        await pause(5_000);
+        if (hold.signal.aborted) throw await giveUp(hold.signal.reason);
+        lock.refresh();
+        if (tryMutex(sessionMutex)) {
+          log(`session mutex held, nested in an ancestor's FIFO hold (round ${round})`);
+          return handle(true);
+        }
+      }
+      throw await giveUp(new Error(`session mutex ${sessionMutex} still busy after ${Math.round(mutexIdleWaitMs / 60_000)} min, nested in an ancestor's FIFO hold `
+        + '(giving the turn back would free nothing)'));
+    }
+    await hold.release();
     log(`session mutex busy at the FIFO head (its holder ${queued ? 'is queued behind us' : `kept it ${Math.round(mutexWaitMs / 1000)} s`}): `
       + `turn given back; re-entering at our place once it is free (round ${round})`);
     // no ticket while the holder works, then our original ticket: the next head is not the same standoff, and the
@@ -856,13 +905,35 @@ export async function acquireProbeLocks({ sessionMutex = null, log = () => {}, f
     await pause(2_000);
   }
 }
+/**
+ * (round 3 A5) One owner of a probe unit's end under the pair's hold (acquireProbeLocks): 'done', 'failed' or 'left'.
+ * The hold's cap stop lands mid-unit as a rule: its signal aborts at a cap check and its guarded browsers are stopped one
+ * grace later, while a unit (a frame-budget slot, a memory scenario, a spike battle, a shadow map, a time-to-battle build)
+ * runs for minutes. Each caller read the signal only before a unit, so the unit the stop cut was counted as failed, or
+ * crashed the tool (tools/probe-unit-stop.selftest.mjs). A unit the hold's stop came before, or that throws once it came
+ * (its browser stopped under it), is 'left' for the next run; one that throws while the hold holds is 'failed'; one that
+ * returns is 'done' (what finished after the stop is whole). `unit(signal)` runs the unit; { outcome, value, error, why }.
+ * (round 4 review) The rule is tools/held-items.mjs heldItemOutcome's, the long hold users' runHeldItem without its
+ * checkpoint (this pair's hold has none between units): one owner, where this was a copy.
+ */
+export function runProbeUnit(locks, unit) { return heldItemOutcome(locks.signal, unit); }
+/** Why the pair's hold was stopped, in one line (the lock's cap with a waiter, a budget, a signal): held-items' heldStopWhy. */
+export const probeStopWhy = heldStopWhy;
+/** A run with units left for the next one exits 3, unless a signal (128 + n) or a failure already set its code
+ *  (held-items' heldRunExitCode, whose failure, `heldRunExitCode({ failed: true })`, outranks this 3 and never a signal's). */
+export function markUnitsLeft() { heldRunExitCode({ left: true }); }
+
 function mutexOwner(dir) {
   try { return Number(readFileSync(path.join(dir, 'pid'), 'utf8').trim()) || null; } catch { return null; }
 }
+// (2026-11-02 audit S4) the session mutex is an owned lock directory (capture-lock.mjs claimSessionMutex): a killed
+// holder's mutex is reaped, where a bare mkdir stayed held for good and cost every later round its 45-minute wait
 function defaultMutexBusy(dir) {
-  const owner = mutexOwner(dir);
-  if (!owner) return existsSync(dir);
-  try { process.kill(owner, 0); return true; } catch { return false; } // a dead owner's mutex is stale
+  const { state } = sessionMutexState(dir);
+  return state === 'live' || state === 'unowned';
+}
+function defaultMutexNested(dir) {
+  return sessionMutexHeldByAncestor(dir);
 }
 function defaultHolderQueued(dir) {
   const owner = mutexOwner(dir);
@@ -870,13 +941,11 @@ function defaultHolderQueued(dir) {
   try { return readdirSync(CAPTURE_QUEUE_DIR).some((name) => name.endsWith(`-${owner}.t`)); } catch { return false; }
 }
 function defaultTryMutex(dir) {
-  try { mkdirSync(dir); writeFileSync(path.join(dir, 'pid'), String(process.pid)); return true; } catch { return false; }
+  if (claimSessionMutex(dir)) return true;
+  return reapDeadSessionMutex(dir) && Boolean(claimSessionMutex(dir));
 }
 function defaultReleaseMutex(dir) {
-  try {
-    const owner = readFileSync(path.join(dir, 'pid'), 'utf8').trim();
-    if (owner === String(process.pid)) rmSync(dir, { recursive: true, force: true });
-  } catch { /* already gone */ }
+  releaseSessionMutexAt(dir);
 }
 
 export async function openPreview(root, port) {
@@ -1080,7 +1149,7 @@ async function measureOnPage(page, options, slot, { w0, h0, allies, enemies }, g
   const gotoAt = Date.now();
   const query = [`nosplash=1`, `tier=${options.tier}`, slot.query].filter(Boolean).join('&');
   await page.goto(`http://127.0.0.1:${options.port}/?${query}`, { waitUntil: 'domcontentloaded', timeout: 180000 });
-  await page.waitForFunction('window.__GAME_READY === true', { timeout: 300000 });
+  await page.waitForFunction(BOOT_LOADED_EXPRESSION, { timeout: 300000 });
   const readyMs = Date.now() - gotoAt;
   const catalog = await page.evaluate(() => window.__DEBUG.game.allTanks.map((e) => e.specId));
   const opponents = pinnedOpponents(catalog, options.spec, allies + enemies);
@@ -1184,7 +1253,10 @@ async function measureOnPage(page, options, slot, { w0, h0, allies, enemies }, g
     pageErrors: errors };
 }
 
-async function run(options) {
+/** One probe run over the slots still to measure. `deps` (round 3 A5) are the run's outside world, for a receipt that
+ *  drives it without a browser: the locks, the browser launch, the preview server and the slot's measurement. */
+export async function runFrameProbe(options, { acquireLocks = acquireProbeLocks, launchBrowser = (launchOptions) => launchGuardedBrowser(puppeteer, launchOptions),
+  openServer = openPreview, measure = measureSlot } = {}) {
   mkdirSync(options.out, { recursive: true });
   const log = (line) => console.log(`[${TOOL} ${new Date().toISOString().slice(11, 19)}] ${line}`);
   const slotFile = (key) => path.join(options.out, `${options.tag}-${key}.json`);
@@ -1196,7 +1268,7 @@ async function run(options) {
     try { return !!JSON.parse(readFileSync(slotFile(s.key), 'utf8')).failed; } catch { return true; }
   });
   if (!todo.length) { log('every slot is already measured'); return { ok: true, remaining: 0 }; }
-  const locks = await acquireProbeLocks({ sessionMutex: options.sessionMutex, log });
+  const locks = await acquireLocks({ sessionMutex: options.sessionMutex, log });
   const refresh = setInterval(() => locks.refresh(), 30000);
   refresh.unref();
   const machine = { cores: os.cpus().length, loadStart: loadAverage(), samples: [] };
@@ -1240,23 +1312,34 @@ async function run(options) {
     return { action: 'measure', accepted: j.accepted };
   };
   try {
-    browser = await launchGuardedBrowser(puppeteer, { headless: 'new', protocolTimeout: 900000,
+    browser = await launchBrowser({ headless: 'new', protocolTimeout: 900000,
       args: [...MAP_PROBE_BROWSER_ARGS, '--enable-precise-memory-info', '--window-size=1920,1080'] });
     const queue = [...todo];
     let revisited = false;
     for (let qi = 0; qi < queue.length; qi++) {
       const slot = queue[qi];
       try {
-        if (options.budgetMin && (Date.now() - started) / 60000 > options.budgetMin) { remaining++; continue; }
+        // its own budget, or the hold's stop (the lock's cap with a waiter, a signal): the slots left are the next hold's
+        if ((options.budgetMin && (Date.now() - started) / 60000 > options.budgetMin) || locks.signal.aborted) { remaining++; continue; }
         if (serving !== slot.root) {
           if (server) await server.close();
-          server = await openPreview(slot.root, options.port);
+          server = await openServer(slot.root, options.port);
           serving = slot.root;
         }
         const loadBefore = +os.loadavg()[0].toFixed(2), foreignBefore = foreignGpuCpu(), slotStarted = Date.now();
         let record;
+        // (round 3 A5) a slot the hold's stop cut (its browser stopped under it) is the next hold's, never a FAILED run
+        const unit = await runProbeUnit(locks, () => measure(browser, options, slot, options.sceneCheck ? gateFor(slot, queue, qi) : null));
+        if (unit.outcome === 'left') {
+          remaining++;
+          log(`${slot.key} left for the next hold: ${unit.why}`);
+          writeFileSync(slotFile(slot.key), JSON.stringify({ failed: `left for the next hold: ${unit.why}`, left: true, key: slot.key, label: slot.label,
+            mapId: slot.mapId }, null, 1));
+          continue;
+        }
         try {
-          record = await measureSlot(browser, options, slot, options.sceneCheck ? gateFor(slot, queue, qi) : null);
+          if (unit.outcome === 'failed') throw unit.error;
+          record = unit.value;
           record.label = slot.label; record.key = slot.key; record.root = slot.root; record.query = slot.query;
           record.load1 = { before: loadBefore, after: +os.loadavg()[0].toFixed(2) };
           record.foreignGpu = { before: foreignBefore, after: foreignGpuCpu() };
@@ -1302,7 +1385,7 @@ async function run(options) {
     clearInterval(refresh);
     if (browser) await browser.close().catch(() => {});
     if (server) await server.close().catch(() => {});
-    locks.release();
+    await locks.release();
   }
   machine.loadEnd = loadAverage();
   // the slots the agreement set aside and the budget left unmeasured are the next hold's (their records say failed)
@@ -1311,7 +1394,14 @@ async function run(options) {
     writtenAt: new Date().toISOString(), options, machine, remaining, voided,
     scenes: Object.fromEntries([...staging].map(([k, v]) => [k, v.history])), node: process.version }, null, 1));
   log(`${ok ? 'done' : 'FAILED'}${remaining ? ` (${remaining} slot(s) left for the next hold)` : ''}${voided ? ` — ${voided} slot(s) VOID` : ''}`);
-  if (ok && remaining) process.exitCode = 3;
+  // (round 5 U9) the run sets its exit code, as battle-memory-probe's and shadow-cache-truth's runs do: a failed slot
+  // 1, never over a signal's 128 + n (heldRunExitCode; `= 1` set it over the signal), else slots left 3. The CLI set
+  // the 1 after the run, where no receipt reached it. tools/probe-unit-stop.selftest.mjs pins both halves:
+  // 'frame-budget-probe failure writer' (no signal: a FAILED slot exits 1, alone or beside a slot left; this line is
+  // the CLI's only exit 1 for a FAILED slot) and 'frame-budget-probe SIGTERM after a failure' (its 1 is never over
+  // a signal's 128 + n)
+  if (!ok) heldRunExitCode({ failed: true });
+  else if (remaining) markUnitsLeft();
   return { ok, remaining };
 }
 
@@ -1524,7 +1614,7 @@ if (isMainModule(import.meta.url)) {
     writeFileSync(path.join(outDir, 'frame-report.md'), md);
     console.log(md);
   } else {
-    const result = await run(options);
-    if (!result.ok) process.exitCode = 1;
+    // the run sets its exit code (round 5 U9): a failure 1, never over a signal's 128 + n; slots left 3
+    await runFrameProbe(options);
   }
 }

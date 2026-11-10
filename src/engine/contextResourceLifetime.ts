@@ -6,10 +6,20 @@
  * INVALID_OPERATION. Track allocations, and retire only that stale deletion.
  * Drawing and current-context validation remain entirely native.
  */
+export interface ContextResourceLifetime {
+  /**
+   * (2026-11-02 audit R3) count one loss (idempotent per event). The canvas listener calls it, and the context recovery
+   * calls it first on the same event (contextRecovery.ts beforeLost), so the generation moves before any owner's
+   * onLost whatever order the listeners were registered in.
+   */
+  noteLost(event?: unknown): void;
+  dispose(): void;
+}
+
 export function installContextResourceLifetime(
   gl: WebGL2RenderingContext,
   canvas: Pick<HTMLCanvasElement, 'addEventListener' | 'removeEventListener'>,
-): { dispose(): void } {
+): ContextResourceLifetime {
   let generation = 0;
   const generations = new WeakMap<object, number>();
   const restoreMethods: Array<() => void> = [];
@@ -44,9 +54,18 @@ export function installContextResourceLifetime(
   protect(gl.createSampler, gl.deleteSampler, (create, remove) => { gl.createSampler = create; gl.deleteSampler = remove; });
   protect(gl.createTransformFeedback, gl.deleteTransformFeedback, (create, remove) => { gl.createTransformFeedback = create; gl.deleteTransformFeedback = remove; });
   protect(gl.fenceSync, gl.deleteSync, (create, remove) => { gl.fenceSync = create; gl.deleteSync = remove; });
-  const lost = () => { generation++; };
+  const counted = new WeakSet<object>();
+  const noteLost = (event?: unknown): void => {
+    if (event && typeof event === 'object') {
+      if (counted.has(event)) return;
+      counted.add(event);
+    }
+    generation++;
+  };
+  const lost = (event: Event) => { noteLost(event); };
   canvas.addEventListener('webglcontextlost', lost);
   return {
+    noteLost,
     dispose() {
       canvas.removeEventListener('webglcontextlost', lost);
       for (const restore of restoreMethods) restore();

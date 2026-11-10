@@ -154,12 +154,14 @@ function garageDisplayAtlasLowTier(): boolean {
 }
 
 /**
- * Start the one atlas load (idempotent). Called from a display's first render, never on the boot or switch path; a
- * headless build (no document) never loads it. `lowTier` decodes it at half size (2.8 MB instead of 11.2 MB): every
- * display armed by armGarageDisplayAtlas asks for it on a mobile device.
+ * Start the one atlas load (idempotent while it loads or once it is ready). Called from a display's first render, never
+ * on the boot or switch path; a headless build (no document) never loads it. `lowTier` decodes it at half size (2.8 MB
+ * instead of 11.2 MB): every display armed by armGarageDisplayAtlas asks for it on a mobile device. A failed load is not
+ * the session's last word (2026-11-02 audit, 05-ui-2 #5: one dropped fetch left every display on its dark placeholder
+ * until a reload): the next display that first renders, the next Garage pack's, asks again.
  */
 export function ensureGarageDisplayAtlas({ anisotropy = 4, lowTier = garageDisplayAtlasLowTier() }: { anisotropy?: number; lowTier?: boolean } = {}): void {
-  if (status !== 'idle' || typeof document === 'undefined') return;
+  if ((status !== 'idle' && status !== 'failed') || typeof document === 'undefined') return;
   status = 'loading';
   const scale = lowTier ? 0.5 : 1;
   Promise.all([
@@ -237,6 +239,7 @@ export function garageDisplayAtlasTestHooks(): {
   inject(albedoTexture: THREE.Texture, emissiveTexture: THREE.Texture): void;
   reset(): void;
   materialCount(): number;
+  status(): AtlasStatus;
 } {
   return {
     inject(albedoTexture, emissiveTexture) {
@@ -246,5 +249,6 @@ export function garageDisplayAtlasTestHooks(): {
     },
     reset() { albedo = null; emissive = null; status = 'idle'; },
     materialCount() { return displayMaterials.size + decalMaterials.size; },
+    status: () => status,
   };
 }

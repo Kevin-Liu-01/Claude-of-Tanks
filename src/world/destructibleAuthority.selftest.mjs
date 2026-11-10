@@ -20,7 +20,7 @@ import { createPropCrushPresentation } from './propCrushPresentation.ts';
 import { CIVILIAN_VEHICLE_RECEIPTS } from './maps/civilianVehicleKit.ts';
 import { DESTRUCTIBLE_BUILDING_TYPES } from './maps/structureKit.ts';
 import { isFortifiedCoverRecord } from '../sim/fortifiedCover.ts';
-import { shellSparesStoppedRecord } from './collision.ts';
+import { setCrushedRecords, shellSparesStoppedRecord } from './collision.ts';
 
 const source = readFileSync(new URL('./props.ts', import.meta.url), 'utf8');
 const start = source.indexOf('  const D_CELL = 8;');
@@ -34,7 +34,7 @@ assert.ok(source.slice(start, end).includes(BROKEN_JOIN), 'the runtime tail join
 const SHELL_JOIN = 'yield* joinStructureShells(); // (Plan W)';
 assert.ok(source.slice(start, end).includes(SHELL_JOIN), 'the runtime tail joins the structure shell pool (Plan W)');
 const runtimeSource = stripTypeScriptTypes(`function fixture() {${source.slice(start, end).replace(BROKEN_JOIN, 'void 0;').replace(SHELL_JOIN, 'joinStructureShells(); // (Plan W)')}
-return { crushDestructible, resetDestructibles, updateProps, crushAnims, pendingBlasts, registerDestructibles };
+return { crushDestructible, crushProp, resetDestructibles, updateProps, crushAnims, pendingBlasts, registerDestructibles };
 }`);
 const runtimeBody = runtimeSource.slice(runtimeSource.indexOf('{') + 1, runtimeSource.lastIndexOf('}'));
 
@@ -45,8 +45,10 @@ function seeded(seed) {
   };
 }
 
+// (2026-11-02 audit R2) a toss-class kind (a rammed churn's ballistic arc): no map lays one today, the runtime keeps the path
+const FIXTURE_TYPES = { tossbarrel: { ...DESTRUCTIBLE_TYPES.barrel, cls: 'toss' } };
 function makeRecord(kind, index, x, z, pools, rng) {
-  const meta = DESTRUCTIBLE_TYPES[kind];
+  const meta = FIXTURE_TYPES[kind] ?? DESTRUCTIBLE_TYPES[kind];
   let pool = pools.get(kind);
   if (!pool) {
     pool = { meta, mats4: [], records: [], nBroken: 0 };
@@ -99,11 +101,11 @@ function fixture(specs = [['crate', 0, 0], ['wallstone', 0, 0], ['barrel', 0, 0]
   const events = [];
   seam.setDestroyedEventSink((event) => events.push(event));
   const context = {
-    THREE, ...seam, ...loose, createLoosePropBodies, setToppleAxis, settledToppleAngle,
+    THREE, ...seam, ...loose, createLoosePropBodies, setToppleAxis, settledToppleAngle, setCrushedRecords,
     registerWorldNightLighting, setWorldNightFixtureActive, mats,
     destructibles: records, dPools: pools, obstacles, looseRecords: bodies, activeLoose: [],
     heightField: { getHeightAt: () => 0, getNormalAt: () => ({ x: 0, y: 1, z: 0 }) },
-    group, mapId: 'authority-fixture', seed: 7719, drng: rng, mulberry32: seeded,
+    group, mapId: 'authority-fixture', worldKey: 'authority-fixture', seed: 7719, drng: rng, mulberry32: seeded,
     utilityNetwork: null, poleIM: null, crushables: records.flatMap((r) => r.loopRef ? [r.loopRef] : []),
     // Poles are absent. The tested runtime still executes every destruction/
     // loose-body/reset function; only unrelated earlier pole LOD is inert.
@@ -154,7 +156,7 @@ function fixture(specs = [['crate', 0, 0], ['wallstone', 0, 0], ['barrel', 0, 0]
     material.dispose(); Object.values(mats).forEach(mat => mat.dispose());
     group.removeFromParent(); seam.setDestroyedEventSink(null);
   }
-  return { ...runtime, records, pools, events, dispose };
+  return { ...runtime, records, pools, events, crushables: context.crushables, obstacles, dispose };
 }
 
 function assertCoverIntact(f, label) {
@@ -294,6 +296,94 @@ for (const [mode, cap] of [['sweep', 3], ['impact', 6]]) {
     else seam.notifyShellImpact(0, 0.2, 0, { r: 4.6, he: true });
     assert.equal(f.records.filter((r) => r.state).length, cap, `${mode}: original per-call cap preserved`);
   } finally { f.dispose(); }
+}
+
+// ---- 2026-11-02 audit M9: a cosmetic caller that reaches cover is refused by breakRecord itself (not by its callers' habit):
+// a crushable entry naming a wall (a new hull-loop path, a kit gone wrong) leaves its records closed
+const guarded = fixture([['wallstone', 0, 0], ['barrel', 0, 0]]);
+try {
+  guarded.crushables.push({ x: 0, y: 0, z: 0, r: 1.6, h: 1.15, recIdx: 0, kind: 'wallstone', toppled: false });
+  const warn = console.warn; console.warn = () => {};
+  try { assert.equal(guarded.crushProp(guarded.crushables.length - 1, 1, 0, 8), false, 'the hull loop cannot break a wall'); }
+  finally { console.warn = warn; }
+  assertCoverIntact(guarded, 'cosmetic caller on cover');
+  assert.ok(guarded.crushDestructible(0, 1, 0, 8, 'ram'), 'the authority\'s crush still breaks it');
+} finally { guarded.dispose(); }
+
+// ---- 2026-11-02 audit M9: the page world's crush writes what the headless authority's writes, record for record
+// (collision.ts setCrushedRecords): the movement record ghost, the shell record ghost and out of the casts
+{
+  const { createHeadlessCollisionWorld } = await import('./headlessCollisionWorld.ts');
+  const { packWorldCollision } = await import('../../tools/headlessWorldCollision.mjs');
+  const page = fixture([['crate', 0, 0], ['wallstone', 3, 0], ['wallstone', 6, 0]]);
+  try {
+    const colliders = page.records.flatMap((r) => r.col ? [r.col] : []);
+    const headless = createHeadlessCollisionWorld({ mapId: 'authority-fixture',
+      heightField: { getHeightAt: () => 0, getNormalAt: () => new THREE.Vector3(0, 1, 0) },
+      manifest: packWorldCollision({ obstacles: page.obstacles, colliders, concealers: [] }) });
+    const flags = (r) => r ? [!!r.crushed, !!r.dead] : null;
+    for (const [i, record] of page.records.entries()) {
+      assert.ok(page.crushDestructible(i, 1, 0, 8, 'ram'), `${record.kind}: the page world breaks it`);
+      const ob = headless.getObstacles().find((o) => o.propIdx === i);
+      assert.ok(headless.crushObstacle(ob), `${record.kind}: the headless world crushes it`);
+      const col = headless.getColliders().find((c) => c.propIdx === i);
+      assert.deepEqual(flags(record.ob), flags(ob), `${record.kind}: the same movement record flags in both worlds`);
+      assert.deepEqual(flags(record.col), flags(col), `${record.kind}: the same shell record flags in both worlds`);
+    }
+    page.resetDestructibles();
+    for (const record of page.records) assert.deepEqual([flags(record.ob), flags(record.col)], [[false, false], record.col ? [false, false] : null],
+      `${record.kind}: the rematch stands every record`);
+  } finally { page.dispose(); }
+}
+
+// ---- 2026-11-02 audit R2: a tossed prop lands where it landed the battle before (the build's destruction stream, never
+// reset, gave each toss its scatter: another landing per rematch, per peer and per late joiner's settled restore)
+{
+  const tossed = fixture([['tossbarrel', 0, 0], ['crate', 4, 0]]);
+  try {
+    const landing = () => {
+      assert.ok(tossed.crushDestructible(0, 1, 0.3, 8, 'ram'), 'the toss record flies');
+      for (let i = 0; i < 120 && tossed.crushAnims.length; i++) tossed.updateProps(1 / 60);
+      assert.equal(tossed.crushAnims.length, 0, 'the toss lands');
+      const m = new THREE.Matrix4();
+      tossed.pools.get('tossbarrel').imI.getMatrixAt(tossed.records[0].slot, m);
+      return m.elements.map((v) => Math.round(v * 1e6));
+    };
+    const first = landing();
+    tossed.crushDestructible(1, 1, 0, 8, 'ram'); // another break between the battles
+    tossed.resetDestructibles();
+    assert.deepEqual(landing(), first, 'the rematch\'s toss lands where the first battle\'s did');
+  } finally { tossed.dispose(); }
+}
+
+// ---- (round 2 U28) the authority's crush of cover never waits on draw readiness: a prop whose pool has no intact
+// instances yet (finalizeDestructiblePools runs before any battle today, so this is the guard) still opens its movement and
+// shell records; a cosmetic path still opens nothing (before: breakRecord returned on the pool before the transition)
+{
+  const undrawn = fixture([['wallstone', 0, 0], ['crate', 4, 0]]);
+  const pool = undrawn.pools.get('wallstone');
+  const imI = pool.imI;
+  try {
+    pool.imI = null;
+    seam.notifyShellImpact(0, 0.1, 0, { r: 4.6, he: true });
+    assert.equal(undrawn.records[0].ob.crushed, false, 'undrawn: a cosmetic burst still opens no cover');
+    assert.ok(undrawn.crushDestructible(0, 1, 0, 8, 'ram'), 'undrawn: the authority\'s crush breaks it');
+    assert.deepEqual([undrawn.records[0].state, undrawn.records[0].ob.crushed, undrawn.records[0].col?.dead ?? true], [1, true, true],
+      'undrawn: its movement and shell records open (collision never waits on draw readiness)');
+  } finally { pool.imI = imI; undrawn.dispose(); }
+}
+
+// ---- (round 2 U13) a reset leaves no press state on the world's records: the hull's press is the battle's own ledger
+// (sim/crushPress.ts); the reset wrote two dead fields onto every movement record
+{
+  const pressed = fixture([['crate', 0, 0], ['wallstone', 4, 0]]);
+  try {
+    pressed.crushDestructible(0, 1, 0, 8, 'ram');
+    pressed.resetDestructibles();
+    for (const record of pressed.records) {
+      assert.ok(record.ob && !('_pressS' in record.ob) && !('_pressT' in record.ob), `${record.kind}: no press fields on its record`);
+    }
+  } finally { pressed.dispose(); }
 }
 
 console.log('destructibleAuthority.selftest: cosmetic/authority boundary, actual solo/network callers, fixed pools, deferred blasts and rematch reset passed');

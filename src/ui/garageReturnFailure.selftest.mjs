@@ -83,6 +83,72 @@ assert.equal(formatted.textContent, 'The battle could not start. Back in the Gar
   if (realNavigator) Object.defineProperty(globalThis, 'navigator', realNavigator); else delete globalThis.navigator;
   delete globalThis.document;
 }
+// 2026-11-02 audit (05-ui-2 #8): a reload offline waits for the network as a declared state: the action shows disabled
+// (a press used to be ignored silently) and the browser's online event enables it again; a hide stops the wait.
+{
+  const made = [];
+  globalThis.document = { createElement: () => {
+    const listeners = {};
+    const button = { hidden: false, disabled: false, type: '', className: '', innerHTML: '', querySelector: () => ({ textContent: '' }),
+      addEventListener: (kind, fn) => { listeners[kind] = fn; }, click: () => listeners.click?.() };
+    made.push(button);
+    return button;
+  } };
+  const page = new EventTarget();
+  let online = 0;
+  const realAdd = page.addEventListener.bind(page);
+  const realRemove = page.removeEventListener.bind(page);
+  page.addEventListener = (kind, fn) => { if (kind === 'online') online += 1; realAdd(kind, fn); };
+  page.removeEventListener = (kind, fn) => { if (kind === 'online') online -= 1; realRemove(kind, fn); };
+  globalThis.window = page;
+  const realNavigator = Object.getOwnPropertyDescriptor(globalThis, 'navigator');
+  const network = { onLine: false };
+  Object.defineProperty(globalThis, 'navigator', { value: network, configurable: true, writable: true });
+  const reloaded = [];
+  globalThis.location = { reload: () => reloaded.push(true) };
+  const footer = { children: [], append(child) { this.children.push(child); } };
+  const presenter = createGarageReturnFailurePresenter(() => ({ body: { textContent: '' }, footer, setTitle() {}, open() {},
+    close() {} }), () => 'The battle could not start');
+  const chunk = new TypeError('Failed to fetch dynamically imported module: https://x/assets/battleLoad-1a2b3c4d.js');
+  presenter(chunk);
+  const action = footer.children[0];
+  assert.equal(action.disabled, true, 'offline, the reload shows it waits');
+  assert.equal(online, 1, 'and listens for the network');
+  action.click();
+  assert.deepEqual(reloaded, [], 'a press while offline reloads nothing');
+  network.onLine = true;
+  page.dispatchEvent(new Event('online'));
+  assert.equal(action.disabled, false, 'the network back enables it');
+  assert.equal(online, 0, 'and the wait ends');
+  action.click();
+  assert.deepEqual(reloaded, [true]);
+  network.onLine = false;
+  presenter(chunk);
+  assert.equal(online, 1);
+  presenter.hide();
+  assert.equal(online, 0, 'a hide stops the wait');
+  presenter(new Error('a build failure'), () => {});
+  assert.equal(action.disabled, false, 'a retry (no reload) never waits for the network');
+  assert.equal(online, 0);
+  // (round 2) the notice closing itself (its close button, Escape through the stack, another modal opening) ends the
+  // wait too: the online listener used to stay until the network came back and re-enabled a closed notice's button
+  {
+    let fake = null;
+    const notice = createGarageReturnFailurePresenter((onClose) => {
+      fake = { body: { textContent: '' }, footer: { children: [], append(child) { this.children.push(child); } },
+        setTitle() {}, open() {}, close() { onClose?.(); } };
+      return fake;
+    }, () => 'The battle could not start');
+    notice(chunk);
+    assert.equal(online, 1, 'offline, the reload waits for the network');
+    fake.close({ restoreFocus: true }); // the modal's own close (createModal calls its onClose), not the presenter's hide
+    assert.equal(online, 0, 'a notice that closed itself stops the wait');
+  }
+  delete globalThis.window;
+  delete globalThis.location;
+  if (realNavigator) Object.defineProperty(globalThis, 'navigator', realNavigator); else delete globalThis.navigator;
+  delete globalThis.document;
+}
 {
   const { isNetworkFailure } = await import('./garageReturnFailure.ts');
   assert.equal(isNetworkFailure(new TypeError('Failed to fetch dynamically imported module: https://x/assets/a-1.js'), true), true);
@@ -111,7 +177,13 @@ assert.match(main, /void battleAgainAction\.run\(\)/,
   'the bus must use the action-scoped failure owner');
 assert.match(main, /loadFailure: \(\) => import\('\.\/ui\/garageReturnFailure\.ts'\)/,
   'the failure notice must remain outside successful boot and return acquisition');
-assert.match(main, /if \(!button \|\| button\.disabled\) return false;\s*button\.click\(\);\s*return true;/,
+// (round 8 Y4 s3-04) Battle Again replays the entry through the Garage's own press (garage.replayEntry), never a click on
+// a button (battleEntryIntent.selftest and mainFlowPorts.selftest drive it): a disabled control still starts nothing
+assert.match(main, /triggerBattle: \(\) => replayBattleEntry\(battleEntryIntent, \{\s*replay: \(entry\) => garage\.replayEntry\(entry\),/,
+  "Battle Again replays through the Garage's own press");
+assert.doesNotMatch(main, /button\.click\(\)/, 'no battle trigger clicks a button');
+const garageSource = await readFile(new URL('./garage.ts', import.meta.url), 'utf8');
+assert.match(garageSource, /const control = watch \? setupWatch : battleBtn;\s*if \(control\.disabled\) return false;/,
   'only the real enabled Garage control acknowledges a battle trigger');
 
 const endScreen = await readFile(new URL('./endScreen.ts', import.meta.url), 'utf8');

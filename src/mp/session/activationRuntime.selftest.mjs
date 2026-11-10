@@ -1,15 +1,18 @@
 import assert from 'node:assert/strict';
 import { createActivationRuntime } from './activationRuntime.ts';
+import { createAppLifecycle } from '../../game/appLifecycle.ts';
+import { createStudioLeftWorld } from '../../world/studioLeftWorld.test-support.mjs';
 
-function createHarness({ spectator = false, observerReady = true, cameraReady = true, gunship = false } = {}) {
-  const calls = [];
+function createHarness({ spectator = false, observerReady = true, cameraReady = true, gunship = false, phase = 'garage', calls = [], world: givenWorld = null } = {}) {
   let constructing = true;
-  const world = { resetDestructibles: () => calls.push(['resetWorld']) };
+  const world = givenWorld ?? { resetDestructibles: () => calls.push(['resetWorld']) };
   const game = {
     mapId: null,
-    phase: 'garage',
+    phase,
     player: { aerial: gunship ? {kind:'gunship'} : undefined, spec: { id: 'm1a1_abrams_hc' }, visual: { id: 'visual' }, equip: { rammer: true }, state: { yaw: 1.2 } },
   };
+  // (2026-11-02 audit F1) the session's lifecycle announces the phase the activation moves
+  createAppLifecycle({ game, announce: ({ phase }) => calls.push(['phase', phase]) });
   const bridge = { setPerspective: (id) => calls.push(['perspective', id]) };
   const runtime = createActivationRuntime({
     game,
@@ -65,7 +68,6 @@ function createHarness({ spectator = false, observerReady = true, cameraReady = 
       resetBattleResult: () => calls.push(['result']),
       setGarageSpots: (value) => calls.push(['spots', value]),
       setGarageSunTrim: (value) => calls.push(['sun', value]),
-      emitPhaseChange: (phase) => calls.push(['phase', phase]),
       emitConsumableReset: () => calls.push(['consumableEvent']),
       stopShowroom: () => calls.push(['showroom']),
     },
@@ -85,6 +87,15 @@ function createHarness({ spectator = false, observerReady = true, cameraReady = 
     },
   });
   return { calls, game };
+}
+
+// (2026-11-02 audit F1 review) a round that activates over the Studio's scene (studio -> battle is no edge) is refused
+// before any presentation moves: the phase write used to throw after the HUD, the map and the Garage had changed
+{
+  const calls = [];
+  assert.throws(() => createHarness({ phase: 'studio', calls }),
+    (error) => error?.name === 'AppPhaseTransitionError' && error.from === 'studio' && error.to === 'battle');
+  assert.deepEqual(calls, [], 'nothing moved and nothing was announced');
 }
 
 const player = createHarness();
@@ -112,7 +123,16 @@ assert.throws(
 );
 assert.throws(() => createHarness({ spectator: true, cameraReady: false }), /observer camera could not be prepared/);
 
-console.log('activationRuntime.selftest: player, spectator, and activation order pass');
+// (round 3 A7/M4) A network round on a battlefield the Studio planned crushes on and never gave back (its teardown threw
+// before releaseCrushes): the activation takes its falls and sweeps for the battle.
+{
+  const left = createStudioLeftWorld();
+  createHarness({ world: left.world });
+  assert.equal(left.fallsWithUpdate(), true, 'a tree the round fells falls with its frames (before: the Studio\'s timeline held it)');
+  assert.equal(left.world.sweeps, true, 'the round\'s crush sweeps run');
+}
+
+console.log('activationRuntime.selftest: player, spectator, activation order and a Studio-left world pass');
 
 const pilot=createHarness({gunship:true});
 assert.equal(pilot.game.phase,'battle');

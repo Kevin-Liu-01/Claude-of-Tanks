@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 import { launchGuardedBrowser } from './browser-launch.mjs';
-import { acquireCaptureLock as acquireLock, refreshCaptureLock, releaseCaptureLock as releaseLock } from './capture-lock.mjs';
+import { openCaptureHold } from './capture-hold.mjs';
 // sfx-smoke.mjs — end-to-end gate for the generated SFX banks
 // (src/audio/audioEngine.ts, assets in public/audio/sfx/).
 //
@@ -30,6 +30,8 @@ import { acquireCaptureLock as acquireLock, refreshCaptureLock, releaseCaptureLo
 import { createServer } from 'vite';
 import puppeteer from 'puppeteer';
 import { bandEnergy } from './audio/pcm.mjs';
+import { waitForBootLoaded } from './game-readiness.mjs';
+import { pageLoadBudget } from './tool-page-load.mjs';
 import { GUN_LADDER, LADDER_BANKS, LADDER_HZ } from './audio/gun-ladder.mjs';
 import { loudestTakes } from './audio/held-takes.mjs';
 import { mkdirSync, readFileSync, writeFileSync, rmSync } from 'node:fs';
@@ -39,8 +41,10 @@ const outDir = resolve('shots/sfx-smoke');
 mkdirSync(outDir, { recursive: true });
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
-// The page's first load (a cold private dep cache under a busy machine's load can take minutes): COT_PAGE_TIMEOUT_MS.
-const PAGE_MS = Number(process.env.COT_PAGE_TIMEOUT_MS) || 90000;
+// The page's first load (a cold private dep cache under a busy machine's load can take minutes): the tools' page budget
+// (tool-page-load.mjs: 180 s navigation, COT_NAV_TIMEOUT_MS; this tool's ready wait 90 s, COT_READY_TIMEOUT_MS; one retry
+// of a failed load, COT_NAV_RETRIES)
+const { navTimeoutMs: NAV_MS, readyTimeoutMs: READY_MS, retries: LOAD_RETRIES } = pageLoadBudget({ readyTimeoutMs: 90000 });
 
 /** Write interleaved stereo Int16 PCM as a RIFF/WAVE file. */
 function writeWav(path, i16, sampleRate) {
@@ -77,10 +81,7 @@ function analyze(i16, sampleRate) {
   };
 }
 
-await acquireLock(15 * 60 * 1000);
-process.on('exit', releaseLock);
-const lockRefresher = setInterval(() => { refreshCaptureLock(); }, 60 * 1000);
-lockRefresher.unref();
+const hold = await openCaptureHold({ label: 'sfx-smoke', timeoutMs: 15 * 60 * 1000 });
 
 const port = 7600 + Math.floor(Math.random() * 300);
 // A private dep cache: node_modules (and its .vite) can be shared between checkouts.
@@ -123,11 +124,11 @@ async function openPage() {
   page.on('pageerror', (err) => consoleErrors.push(String(err)));
   for (let attempt = 0; ; attempt++) {
     try {
-      await page.goto(url, { waitUntil: 'domcontentloaded', timeout: PAGE_MS });
-      await page.waitForFunction('window.__GAME_READY === true', { timeout: PAGE_MS });
+      await page.goto(url, { waitUntil: 'domcontentloaded', timeout: NAV_MS });
+      await waitForBootLoaded(page, { timeout: READY_MS });
       break;
     } catch (err) {
-      if (attempt >= 1) throw err;
+      if (attempt >= LOAD_RETRIES) throw err;
       console.warn(`[sfx-smoke] load attempt failed (${err.message}) — retrying`);
       consoleErrors.length = 0;
     }
@@ -269,7 +270,8 @@ try {
     { name: 'he_splash', ev: 'shell:hit', p: hit('he_splash', false, 120), holdMs: 2400, expect: ['he_armor', 'expl_he_medium'] },
     { name: 'shell_ground', ev: 'shell:expired', p: `{shellId:${++shellId}, pos:window.__P.pos(8,-1.5,20), hitTerrain:true, caliberMm:105}`, holdMs: 1500, expect: ['ground_'] },
     { name: 'bullet_ground', ev: 'shell:expired', p: `{shellId:${++shellId}, pos:window.__P.pos(4,-1.5,9), hitTerrain:true, caliberMm:7.62}`, holdMs: 900, minRms: 1e-4, expect: ['bullet_dirt'] },
-    // destruction and contact
+    // destruction and contact. The mixer hears a hull die once a life (2026-11-02 audit F11: a re-sent network death
+    // adds no second wreck), and the sim enemy stays alive under these synthetic deaths: each one revives it first.
     { name: 'tank_explosion', ev: 'tank:destroyed', holdMs: 5200,
       p: `{id:window.__P.enemyId, specId:'t90am', pos:window.__P.pos(0,-1.5,30), killerId:window.__P.playerId, cause:'ammorack'}`,
       expect: ['tank_explode_ammo', 'debris_metal', 'cookoff_loop'] },
@@ -293,7 +295,9 @@ try {
 
   const sceneLogs = {};
   const sceneAudio = {};
+  const reviveEnemy = () => emit('mode:respawn', '{id:window.__P.enemyId}');
   for (const sc of SCENES) {
+    if (sc.ev === 'tank:destroyed') await reviveEnemy();
     const mark = await page.evaluate(() => window.__P.sfxMark());
     await tapStart();
     await sleep(250);
@@ -406,8 +410,10 @@ try {
     await emit('shell:fired', fire(i % 2 ? 120 : 125, -14 + i * 4, 9 + (i % 3) * 3));
     await sleep(35);
   }
+  await reviveEnemy();
   await emit('tank:destroyed', `{id:window.__P.enemyId, specId:'t90am', pos:window.__P.pos(-6,-1.5,24), killerId:window.__P.playerId, cause:'ammorack'}`);
   await sleep(120);
+  await reviveEnemy();
   await emit('tank:destroyed', `{id:window.__P.enemyId, specId:'t90am', pos:window.__P.pos(9,-1.5,21), killerId:window.__P.playerId, cause:'ammorack'}`);
   await sleep(4500);
   const vI16 = await tapStopAndFetch();
@@ -434,8 +440,7 @@ try {
 } finally {
   try { await browser.close(); } catch (_) { /* fine */ }
   try { await server.close(); } catch (_) { /* fine */ }
-  clearInterval(lockRefresher);
-  releaseLock();
+  await hold.release();
 }
 
 writeFileSync(join(outDir, 'report.json'), JSON.stringify(report, null, 2));

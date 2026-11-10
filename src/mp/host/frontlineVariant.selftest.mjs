@@ -102,7 +102,9 @@ assert.match(actor, /createDedicatedWorldCollision\(mapId, \{ retain: true, vari
 // the clients choose the battlefield from the same table (no mode literal: the solo battle and the network session)
 const main = readFileSync(new URL('../../main.ts', import.meta.url), 'utf8');
 const session = readFileSync(new URL('../session/browserComposition.ts', import.meta.url), 'utf8');
-assert.equal((main.match(/pendingTerrainVariant = terrainVariantFor\(/g) ?? []).length, 2, 'the solo battle reads the mode\'s variant');
+// (2026-11-02 audit F2) every solo entry records the mode's variant in the one solo intent record (battleEntryIntent.ts),
+// through the entry's recordIntent once accepted (retries included)
+assert.equal((main.match(/terrainVariant: terrainVariantFor\(/g) ?? []).length, 1, 'the solo battle reads the mode\'s variant');
 assert.match(session, /const terrainVariant: TerrainVariant = terrainVariantFor\(active\.mode\)/, 'and the network session');
 for (const source of [main, session]) assert.doesNotMatch(source, /'frontline_assault' \? 'assault-trenches'/);
 

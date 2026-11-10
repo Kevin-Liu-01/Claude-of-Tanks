@@ -13,7 +13,7 @@ import { execFileSync } from 'node:child_process';
 import { dirname, isAbsolute, join, relative, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { gzipSync, gunzipSync } from 'node:zlib';
-import { createCaptureLock } from './capture-lock.mjs';
+import { openCaptureHold } from './capture-hold.mjs';
 import { SOURCE_COMPOSITION_PROTOCOL, urbanCompositionCases, compositionPlan,
   compareRgba, validateCompositionTrial, measureSourceComposition } from './sourced-image-composition.mjs';
 import { SOURCE_WORKER_PROTOCOL, extractWorkerComposer, extractMainComposer, validateWorkerReply } from './sourced-image-worker.mjs';
@@ -277,9 +277,9 @@ async function runCompositionProbe(args) {
     'Queued interruption uses existing FIFO dead-ticket semantics. Only owned browser/server/context/lease resources are cleaned up.',
   ];
   await writeFile(join(settings.out, 'admission.json'), JSON.stringify({ before, settings, startedAt: report.startedAt }), { flag: 'wx' });
-  const lock = createCaptureLock();
+  let hold;
   const workerOwner = { page: null };
-  let browser, server, refresher, deadline, closing, interrupted, admitted = false;
+  let browser, server, deadline, closing, interrupted, admitted = false;
   const closeBrowser = () => {
     if (!browser) return Promise.resolve();
     return closing ??= (async () => {
@@ -292,9 +292,8 @@ async function runCompositionProbe(args) {
   const interrupt = signal => { interrupted = signal; void closeBrowser(); };
   const onInt = () => interrupt('SIGINT'), onTerm = () => interrupt('SIGTERM');
   try {
-    await lock.acquire(45 * 60 * 1000); admitted = true;
+    hold = await openCaptureHold({ label: 'sourced-image-composition-probe', timeoutMs: 45 * 60 * 1000, signals: [] /* its own signal handler stops the run */ }); admitted = true;
     process.on('SIGINT', onInt); process.on('SIGTERM', onTerm);
-    refresher = setInterval(() => lock.refresh(), 30000); refresher.unref();
     deadline = setTimeout(() => interrupt('Overall deadline'), settings.timeoutMs);
     const require = createRequire(join(settings.dependencyRoot, 'package.json'));
     const { createServer } = await import(pathToFileURL(require.resolve('vite')).href);
@@ -358,10 +357,9 @@ async function runCompositionProbe(args) {
     clearTimeout(deadline);
     await closeBrowser();
     if (server) await bounded(() => server.close(), 5000, 'Server close').catch(error => report.cleanupErrors.push(String(error)));
-    clearInterval(refresher);
     // Never admit the next capture while our browser is still known alive.
     if (admitted && (!browser || report.browserExitConfirmed)) {
-      lock.release(); report.ownedLeaseReleaseCalled = true;
+      await hold?.release(); report.ownedLeaseReleaseCalled = true;
     }
     process.removeListener('SIGINT', onInt); process.removeListener('SIGTERM', onTerm);
     report.after = await snapshot(persistent).catch(error => { report.errors.push(String(error)); return null; });

@@ -8,6 +8,7 @@
 // (recordLattice, kept in the kit's plan beside its houses) so the damage reading (damage.ts describeLattice) brings
 // the frame down as its members, not as a shaft's drums.
 import { PartSink, type RegionalBucket, type Rgb, type Vec3 } from './geometry.ts';
+import { registerBuildScope } from '../buildScopes.ts';
 /** A solid beside a builder's frames (an intake shed, a bin house) recorded as a house body for the damage reading. */
 export { recordBody as recordFrameHouse } from './house.ts';
 
@@ -51,6 +52,7 @@ export function latticeReadingOfParts(parts: Readonly<Record<string, readonly { 
 }
 
 let latticeSink: LatticeReading[] | null = null;
+registerBuildScope('lattice', () => latticeSink !== null); // (2026-11-02 audit R1: buildScopes.ts)
 /** Run a kit build keeping every lattice frame it lays (index.ts buildRegionalParts). */
 export function withLattices<T>(build: () => T): [T, LatticeReading[]] {
   const prior = latticeSink, list: LatticeReading[] = [];

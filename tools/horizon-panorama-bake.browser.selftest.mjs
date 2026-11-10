@@ -23,7 +23,7 @@ import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import puppeteer from 'puppeteer';
 import { createServer } from 'vite';
-import { createCaptureLock } from './capture-lock.mjs';
+import { openCaptureHold } from './capture-hold.mjs';
 import { nativeBrowserLaunchOptions, verifyNativeBrowserLaunch } from './native-browser-launch.mjs';
 
 // Saltwind's published sky and the battlefield's ground and rock means as the wave-47 capture recorded them (paircap's
@@ -70,12 +70,11 @@ async function bounded(promise, ms, label) {
 }
 
 const measureRuns = Math.max(0, Math.floor(Number(process.env.HORIZON_BAKE_MEASURE ?? 0)) || 0);
-const lock = createCaptureLock();
+let hold;
 const report = { sourceHash: sourceHash(), errors: [] };
-let server, browser, refresh;
+let server, browser;
 try {
-  await lock.acquire(45 * 60_000);
-  refresh = setInterval(() => lock.refresh(), 30_000); refresh.unref();
+  hold = await openCaptureHold({ label: 'horizon-panorama-bake.browser.selftest', timeoutMs: 45 * 60_000 });
   server = await createServer({ root: process.cwd(), logLevel: 'error',
     server: { host: '127.0.0.1', port: 0, hmr: false, watch: null },
     plugins: [{ name: 'horizon-panorama-bake-fixture', enforce: 'pre', configureServer(instance) {
@@ -139,7 +138,7 @@ try {
     try { await bounded(server.close(), 10_000, 'server close'); }
     catch (error) { report.errors.push(String(error)); }
   }
-  clearInterval(refresh); lock.release();
+  await hold?.release();
 }
 report.ok = report.errors.length === 0;
 console.log(JSON.stringify(report, null, 2));

@@ -18,6 +18,15 @@
 // the own hull charging a VT4A1 bot each driver built from the same seed and roster index, through the opening, spotting,
 // the engagement and its hits, the two hulls' contact (sim/tankPairContact.ts) and the bot's destruction. Negative controls: one input on one side moved by a billionth at tick 300, the page's
 // ammunition switch a tick late, and the real-AI bot's heading a billionth off at tick 600, each found at its tick.
+// Spotting (2026-11-02 audit M6; 268): both drivers build it through one construction (sim/matchSpotting.ts: the
+// stagger stream from the battle's seed, each hull's paint bonus, its kit from combat.equip) and step it at the same point
+// of the tick, so what each hull's team sees of the other is compared every tick too in the scripted battle; the page is
+// set up on the receipt's seed, which the authority is seated with. Negative control: the authority's battle seed one off
+// (its combat stream kept equal) is found at the first spotting check, the stagger the solo step once drew from a seed of
+// its own.
+// Every section runs, a red one included, and the receipt fails at the end with each failure listed, rethrowing the
+// first one's own error (round 5 S1). The two Mars sections red on 268 run last (round 6 V8), so a new red elsewhere
+// is the first failure and keys apart from the inherited one.
 import assert from 'node:assert/strict';
 import { Euler, Group, Matrix4, Quaternion, Vector3 } from 'three';
 import { createAuthoritativeMatch } from './authoritativeMatch.ts';
@@ -89,23 +98,36 @@ const foeShellSlot = (tick) => ((tick >= 100 && tick < 140) || (tick >= 250 && t
 const FOE_PRESSES = new Map([[70, 1 << 0], [160, 1 << 6], [220, 1 << 7], [330, 1 << 3], [380, 1 << 1]]);
 
 /**
+ * The two drivers' collision worlds on MAP for one run, released when it ends, a throw inside it included (round 5 S1:
+ * a failed section no longer ends the process, so its worlds are released before the next section builds its own).
+ */
+async function withWorlds(body) {
+  const authorityWorld = createDedicatedWorldCollision(MAP), pageWorld = createDedicatedWorldCollision(MAP);
+  try {
+    return await body(authorityWorld, pageWorld);
+  } finally {
+    authorityWorld.release?.();
+    pageWorld.release?.();
+  }
+}
+
+/**
  * The battle on both steps for `ticks` ticks; `perturb(tick, side, id, input)` may change one side's input. Returns the
  * first tick and field where the two worlds differ (null when they never do) and what the scenario exercised.
  */
-async function run(ticks, perturb = null, { fourthShell = false } = {}) {
+async function run(ticks, perturb = null, { fourthShell = false, authoritySeed = SEED } = {}) {
   // a fourth shell (the second's, stocked as it is) on the own hull's spec, which both sides read, before either seats it
   const ownShells = getSpec(OWN_SPEC).gun.shells;
   if (fourthShell) ownShells.push({ ...ownShells[1], name: `${ownShells[1].name} (fourth slot)` });
   const chosen = fourthShell ? 3 : 1;
   try {
-    return await runBattle(ticks, perturb, chosen);
+    return await withWorlds((authorityWorld, pageWorld) => runBattle(authorityWorld, pageWorld, ticks, perturb, chosen, authoritySeed));
   } finally {
     if (fourthShell) ownShells.pop();
   }
 }
 
-async function runBattle(ticks, perturb, chosen) {
-  const authorityWorld = createDedicatedWorldCollision(MAP), pageWorld = createDedicatedWorldCollision(MAP);
+async function runBattle(authorityWorld, pageWorld, ticks, perturb, chosen, authoritySeed) {
   const authored = pageWorld.heightField._layout.spawns;
   const spawnOf = (point) => ({ pos: [point.x, pageWorld.heightField.getHeightAt(point.x, point.z), point.z], yaw: point.yaw ?? 0 });
   pageWorld.spawnPoints = { player: spawnOf(authored.player), enemies: authored.enemies.map(spawnOf) };
@@ -125,7 +147,7 @@ async function runBattle(ticks, perturb, chosen) {
   // the online driver's authority on the same battlefield, the same hulls where the page put them (the player's equipment as
   // the page's: none stored; the hostile's the bots' default on both)
   // (the page rolled the hostile's paint at its slot in the full roster: it rides to the authority as a resumed roster's would)
-  const match = createAuthoritativeMatch({ mapId: MAP, seed: SEED, countdownS: 0, worldCollision: authorityWorld, players: [
+  const match = createAuthoritativeMatch({ mapId: MAP, seed: authoritySeed, countdownS: 0, worldCollision: authorityWorld, players: [
     { id: own.id, specId: own.specId, team: 'alpha', equipment: [], camoBonus: own.camoBonus, spawn: { x: own.state.pos.x, z: own.state.pos.z, yaw: own.state.yaw } },
     { id: foe.id, specId: foe.specId, team: 'bravo', bot: true, camo: foe.camo, spawn: { x: foe.state.pos.x, z: foe.state.pos.z, yaw: foe.state.yaw + Math.PI } },
   ] });
@@ -145,7 +167,8 @@ async function runBattle(ticks, perturb, chosen) {
   // the own hull's third slot emptied on both sides: asking for it is refused
   own.combat.ammo[EMPTY_SLOT] = 0;
   authorityOf(own).combat.ammo[EMPTY_SLOT] = 0;
-  game.combatRng = mulberry32(SEED);
+  // the page's combat stream is the authority's (a reseeded authority differs in its spotting stagger alone)
+  game.combatRng = mulberry32(authoritySeed);
   const bus = createBus(() => {});
   const pageEmit = (type, payload) => bus.emit(type, payload);
   const denied = { page: [], authority: [] };
@@ -176,6 +199,8 @@ async function runBattle(ticks, perturb, chosen) {
     fire: tick % 150 === 90 || tick === DENIED_FIRE_TICK, shellSlot: ownShellSlot(tick, chosen), actionBits: 0, aimLocked: false,
     ...encodeAimIntent(self.state.pos, { x: other.state.pos.x, y: other.state.pos.y + 1.5, z: other.state.pos.z }) });
   let divergence = null;
+  let spottedTicks = 0;
+  const seen = [], shells = [];
   for (let tick = 0; tick < ticks && !divergence; tick++) {
     currentTick = tick;
     const ownInput = inputFor(tick, authorityOf(own), authorityOf(foe));
@@ -194,11 +219,19 @@ async function runBattle(ticks, perturb, chosen) {
       const index = page.findIndex(([, bytes], i) => bytes !== authority[i][1]);
       if (index >= 0) divergence = { tick, hull: entity === own ? 'own' : 'foe', field: page[index][0] };
     }
+    // what each hull's team sees of the other: the authority's viewer filter and the page's spotting, the same rule
+    for (const viewer of game.tanks) {
+      if (divergence) break;
+      const other = viewer === own ? foe : own;
+      match.observeForViewer(viewer.id, seen, shells);
+      const authoritySees = seen.some((entity) => entity.id === other.id);
+      const pageSees = other.team === viewer.team || other.combat.destroyed || game.spotting.isSpotted(other.id, viewer.team, viewer);
+      if (authoritySees !== pageSees) divergence = { tick, hull: viewer === own ? 'own' : 'foe', field: `sees ${other === own ? 'own' : 'foe'}` };
+      if (pageSees) spottedTicks++;
+    }
   }
-  const exercised = { ownHp: own.combat.hp / own.combat.maxHp, foeHp: foe.combat.hp / foe.combat.maxHp, denied,
+  const exercised = { ownHp: own.combat.hp / own.combat.maxHp, foeHp: foe.combat.hp / foe.combat.maxHp, spottedTicks, denied,
     shots: shots.map(({ tick, slot }) => [tick, slot]), foeSlots, foeSmokeS: foe.combat.auxiliary?.smoke?.born ?? null };
-  authorityWorld.release?.();
-  pageWorld.release?.();
   return { divergence, exercised, own: own.state, foe: foe.state };
 }
 
@@ -211,7 +244,9 @@ async function runBattle(ticks, perturb, chosen) {
  */
 const AI_FOE_SPEC = 'vt4a1';
 async function runRealAi(ticks, perturb = null, { foeRecord = {} } = {}) {
-  const authorityWorld = createDedicatedWorldCollision(MAP), pageWorld = createDedicatedWorldCollision(MAP);
+  return withWorlds((authorityWorld, pageWorld) => realAiBattle(authorityWorld, pageWorld, ticks, perturb, foeRecord));
+}
+async function realAiBattle(authorityWorld, pageWorld, ticks, perturb, foeRecord) {
   const authored = pageWorld.heightField._layout.spawns;
   const spawnOf = (point) => ({ pos: [point.x, pageWorld.heightField.getHeightAt(point.x, point.z), point.z], yaw: point.yaw ?? 0 });
   pageWorld.spawnPoints = { player: spawnOf(authored.player), enemies: authored.enemies.map(spawnOf) };
@@ -287,68 +322,125 @@ async function runRealAi(ticks, perturb = null, { foeRecord = {} } = {}) {
   }
   Object.assign(exercised, { movedM: Math.hypot(foe.state.pos.x - start.x, foe.state.pos.z - start.z), botHp: foe.combat.hp / foe.combat.maxHp,
     ownHp: own.combat.hp / own.combat.maxHp, paint });
-  authorityWorld.release?.();
-  pageWorld.release?.();
   return { divergence, exercised };
+}
+
+// ---- every section runs (round 5 S1, 2026-11-06): a section whose assertion fails is recorded and the next one still
+// runs, and the receipt fails at the end with every failure listed on stderr, then rethrows the first failure's own
+// error, so the receipt's failure identity (tools/gate.mjs failureSignature/failureKey: the uncaught error's header and
+// its actual/expected/operator) is the one the old fail-fast run gave for the same first red. 268's Mars coverage (owed
+// to its core-parity lane: TESTS-OWED 2026-11-06) stopped the receipt before its later controls (the Mars nudge, the
+// reseeded spotting), so they never ran on a tree where Mars is red. Each section's assertions are the ones it had;
+// only the runner is new.
+// The order (round 6 V8, 2026-11-07): the lane's and the release gate's classifiers key a red receipt by its first
+// failure alone, so a section that runs after an inherited red can turn red unseen (keyed inherited, never blocking).
+// 268's two red Mars sections, the bot's death and its respawn, therefore run last: every control, and the zone, run
+// before them. Only the respawn sits behind the death check, and it is red on 268 too.
+const failures = [];
+const passed = [];
+async function section(name, body) {
+  try {
+    const note = await body();
+    passed.push(name);
+    console.log(`driverStepParity: PASS ${name}${note ? ` (${note})` : ''}`);
+  } catch (error) {
+    failures.push({ name, error });
+    console.log(`driverStepParity: FAIL ${name}: ${error?.message ?? error}`);
+  }
 }
 
 // ---- the same seed, world, hulls and inputs: byte-identical every tick ------------------------------------------------
 const TICKS = 900;
-const same = await run(TICKS);
-assert.equal(same.divergence, null, `the local step and the authority's step part at ${JSON.stringify(same.divergence)}`);
-assert.ok(same.exercised.foeHp < 1, `the own shots hit the hostile on both sides (${(same.exercised.foeHp * 100).toFixed(1)} % hp)`);
-assert.ok(same.exercised.ownHp < 1, `and the own hull took damage, the hostile's shots and a crash (${(same.exercised.ownHp * 100).toFixed(1)} % hp)`);
-assert.ok(Math.abs(same.own.turretYaw) > 0.5, 'the turret laid its gun round onto the target');
-const { denied, shots, foeSlots, foeSmokeS } = same.exercised;
-assert.ok(Math.abs(foeSmokeS - 161 / 60) < 1e-9, `the bot's smoke fired the tick it was pressed, on both sides (${foeSmokeS})`);
-assert.deepEqual(foeSlots, [[120, 1], [200, 0], [260, 1]], `the bot switched its ammunition without firing, on both sides (${JSON.stringify(foeSlots)})`);
-assert.deepEqual(shots, [[90, 0], [540, 1]], `the own hull fired its first slot, then its second, and nothing on the refused slot (${JSON.stringify(shots)})`);
-assert.deepEqual(denied.page, denied.authority, 'the same ammunition refusals on both sides, tick for tick');
-assert.deepEqual(denied.page.map(({ tick, slot, reason }) => [tick, slot, reason]), [[460, EMPTY_SLOT, 'AMMO_EMPTY']],
-  `the emptied slot is refused once, when first asked for (${JSON.stringify(denied.page)})`);
+let same = null;
+await section('the scripted battle, byte-identical', async () => {
+  same = await run(TICKS);
+  assert.equal(same.divergence, null, `the local step and the authority's step part at ${JSON.stringify(same.divergence)}`);
+  assert.ok(same.exercised.foeHp < 1, `the own shots hit the hostile on both sides (${(same.exercised.foeHp * 100).toFixed(1)} % hp)`);
+  assert.ok(same.exercised.ownHp < 1, `and the own hull took damage, the hostile's shots and a crash (${(same.exercised.ownHp * 100).toFixed(1)} % hp)`);
+  assert.ok(Math.abs(same.own.turretYaw) > 0.5, 'the turret laid its gun round onto the target');
+  assert.ok(same.exercised.spottedTicks > TICKS, `both teams spot each other on both sides, tick for tick (${same.exercised.spottedTicks} hull-ticks)`);
+  const { denied, shots, foeSlots, foeSmokeS } = same.exercised;
+  assert.ok(Math.abs(foeSmokeS - 161 / 60) < 1e-9, `the bot's smoke fired the tick it was pressed, on both sides (${foeSmokeS})`);
+  assert.deepEqual(foeSlots, [[120, 1], [200, 0], [260, 1]], `the bot switched its ammunition without firing, on both sides (${JSON.stringify(foeSlots)})`);
+  assert.deepEqual(shots, [[90, 0], [540, 1]], `the own hull fired its first slot, then its second, and nothing on the refused slot (${JSON.stringify(shots)})`);
+  assert.deepEqual(denied.page, denied.authority, 'the same ammunition refusals on both sides, tick for tick');
+  assert.deepEqual(denied.page.map(({ tick, slot, reason }) => [tick, slot, reason]), [[460, EMPTY_SLOT, 'AMMO_EMPTY']],
+    `the emptied slot is refused once, when first asked for (${JSON.stringify(denied.page)})`);
+  return `${TICKS} ticks, ${same.exercised.spottedTicks} hull-ticks spotted`;
+});
 
 // ---- negative control: one input on one side moved by a billionth is a different world, found at its tick ------------
 const SEEDED = 300;
-const nudged = await run(SEEDED + 30, (tick, side, id, input) => (tick === SEEDED && side === 'page' && input.throttle > 0
-  ? { ...input, throttle: input.throttle + 1e-9 } : null));
-assert.ok(nudged.divergence, 'a throttle a billionth higher on the page at tick 300 is caught');
-assert.equal(nudged.divergence.tick, SEEDED, `at the tick it was seeded (${JSON.stringify(nudged.divergence)})`);
+let nudged = null;
+await section('control: a throttle a billionth off', async () => {
+  nudged = await run(SEEDED + 30, (tick, side, id, input) => (tick === SEEDED && side === 'page' && input.throttle > 0
+    ? { ...input, throttle: input.throttle + 1e-9 } : null));
+  assert.ok(nudged.divergence, 'a throttle a billionth higher on the page at tick 300 is caught');
+  assert.equal(nudged.divergence.tick, SEEDED, `at the tick it was seeded (${JSON.stringify(nudged.divergence)})`);
+  return `caught at tick ${nudged.divergence.tick} (${nudged.divergence.field})`;
+});
 // ---- a fourth slot fires as the fourth on both sides ------------------------------------------------------------------
-const four = await run(TICKS, null, { fourthShell: true });
-assert.equal(four.divergence, null, `with a fourth shell the two steps part at ${JSON.stringify(four.divergence)}`);
-assert.deepEqual(four.exercised.shots, [[90, 0], [540, 3]], `the fourth slot fired as the fourth (${JSON.stringify(four.exercised.shots)})`);
+let four = null;
+await section('a fourth shell fires as the fourth', async () => {
+  four = await run(TICKS, null, { fourthShell: true });
+  assert.equal(four.divergence, null, `with a fourth shell the two steps part at ${JSON.stringify(four.divergence)}`);
+  assert.deepEqual(four.exercised.shots, [[90, 0], [540, 3]], `the fourth slot fired as the fourth (${JSON.stringify(four.exercised.shots)})`);
+});
 
 // ---- the real AI on both drivers, through the engagement ---------------------------------------------------------------
 // 3000 ticks: the opening, the sighting near 1780, the shots both ways, the hulls' contact and the bot's destruction
 const REAL_AI_TICKS = 3000;
-const real = await runRealAi(REAL_AI_TICKS);
-assert.equal(real.divergence, null, `the real AI parts the two drivers at ${JSON.stringify(real.divergence)}`);
-assert.ok(real.exercised.movedM > 200, `the bot drove its opening route and the engagement (${real.exercised.movedM.toFixed(0)} m)`);
-assert.ok(real.exercised.sightedAt !== null, 'the bot sighted the own hull');
-assert.ok(real.exercised.pulls >= 1, `the bot fired (${real.exercised.pulls} trigger pulls)`);
-assert.ok(real.exercised.closestM < 10, `the two hulls met (${real.exercised.closestM.toFixed(1)} m apart at the closest)`);
-// (wrecks-270, 11-07) the engagement ends in a destruction, either way round: verdant's ten hulks (five before) turn the
-// meeting so the bot now kills the own hull at 20.9 % hp of its own, and 3000 to 4800 ticks end alike; the two drivers stay
-// byte-identical through it, which is what this run pins
-const destroyed = real.exercised.botHp === 0 ? 'the bot' : real.exercised.ownHp === 0 ? 'the own hull' : null;
-assert.ok(destroyed, `one hull destroyed the other (bot ${(real.exercised.botHp * 100).toFixed(1)} %, own ${(real.exercised.ownHp * 100).toFixed(1)} % hp)`);
-// (268, item 6) one bot paint rule: both drivers rolled the bot's paint from the match seed at its roster index (1), and an
-// index slip would show (the seed rolls another paint at 0); a paint the authority is handed instead parts them at tick 0
-assert.deepEqual(real.exercised.paint, { page: botCamoRoll(SEED, 1, MAP), authority: botCamoRoll(SEED, 1, MAP) },
-  `both drivers painted the bot by the roll (${JSON.stringify(real.exercised.paint)})`);
-assert.notEqual(botCamoRoll(SEED, 0, MAP), botCamoRoll(SEED, 1, MAP), 'the seed rolls another paint one slot over');
-const wrongPaint = await runRealAi(3, null, { foeRecord: { camo: real.exercised.paint.page === 'auto' ? 'factory' : 'auto' } });
-assert.deepEqual(wrongPaint.divergence, { tick: 0, hull: 'bot', field: 'camo' }, `a bot handed the other paint is caught (${JSON.stringify(wrongPaint.divergence)})`);
+let real = null;
+await section('the real AI, byte-identical', async () => {
+  real = await runRealAi(REAL_AI_TICKS);
+  assert.equal(real.divergence, null, `the real AI parts the two drivers at ${JSON.stringify(real.divergence)}`);
+  assert.ok(real.exercised.movedM > 200, `the bot drove its opening route and the engagement (${real.exercised.movedM.toFixed(0)} m)`);
+  assert.ok(real.exercised.sightedAt !== null, 'the bot sighted the own hull');
+  assert.ok(real.exercised.pulls >= 1, `the bot fired (${real.exercised.pulls} trigger pulls)`);
+  assert.ok(real.exercised.closestM < 10, `the two hulls met (${real.exercised.closestM.toFixed(1)} m apart at the closest)`);
+  // (wrecks-270, 11-07) the engagement ends in a destruction, either way round: verdant's ten hulks (five before) turn the
+  // meeting so the bot now kills the own hull at 20.9 % hp of its own, and 3000 to 4800 ticks end alike; the two drivers stay
+  // byte-identical through it, which is what this run pins
+  const destroyed = real.exercised.botHp === 0 ? 'the bot' : real.exercised.ownHp === 0 ? 'the own hull' : null;
+  assert.ok(destroyed, `one hull destroyed the other (bot ${(real.exercised.botHp * 100).toFixed(1)} %, own ${(real.exercised.ownHp * 100).toFixed(1)} % hp)`);
+  // (268, item 6) one bot paint rule: both drivers rolled the bot's paint from the match seed at its roster index (1), and an
+  // index slip would show (the seed rolls another paint at 0); a paint the authority is handed instead parts them at tick 0
+  assert.deepEqual(real.exercised.paint, { page: botCamoRoll(SEED, 1, MAP), authority: botCamoRoll(SEED, 1, MAP) },
+    `both drivers painted the bot by the roll (${JSON.stringify(real.exercised.paint)})`);
+  assert.notEqual(botCamoRoll(SEED, 0, MAP), botCamoRoll(SEED, 1, MAP), 'the seed rolls another paint one slot over');
+  return `${REAL_AI_TICKS} ticks, paint '${real.exercised.paint.page}'`;
+});
+await section('control: a bot handed the other paint', async () => {
+  const wrongPaint = await runRealAi(3, null, { foeRecord: { camo: real?.exercised.paint.page === 'auto' ? 'factory' : 'auto' } });
+  assert.deepEqual(wrongPaint.divergence, { tick: 0, hull: 'bot', field: 'camo' }, `a bot handed the other paint is caught (${JSON.stringify(wrongPaint.divergence)})`);
+});
 const BOT_NUDGE = 600;
-const botNudged = await runRealAi(BOT_NUDGE + 20, (tick, foe) => { if (tick === BOT_NUDGE) foe.state.yaw += 1e-9; });
-assert.ok(botNudged.divergence, 'the bot\'s heading a billionth off on the page is caught');
-assert.equal(botNudged.divergence.tick, BOT_NUDGE, `at the tick it was seeded (${JSON.stringify(botNudged.divergence)})`);
+let botNudged = null;
+await section('control: the bot\'s heading a billionth off', async () => {
+  botNudged = await runRealAi(BOT_NUDGE + 20, (tick, foe) => { if (tick === BOT_NUDGE) foe.state.yaw += 1e-9; });
+  assert.ok(botNudged.divergence, 'the bot\'s heading a billionth off on the page is caught');
+  assert.equal(botNudged.divergence.tick, BOT_NUDGE, `at the tick it was seeded (${JSON.stringify(botNudged.divergence)})`);
+  return `caught at tick ${botNudged.divergence.tick} (${botNudged.divergence.field})`;
+});
 
 const SWITCH = 200;
-const late = await run(SWITCH + 30, (tick, side, id, input) => (tick === SWITCH && side === 'page' && input.shellSlot === 1
-  ? { ...input, shellSlot: 0 } : null));
-assert.ok(late.divergence, 'the page switching its ammunition a tick late is caught');
-assert.equal(late.divergence.tick, SWITCH, `at the switch's tick (${JSON.stringify(late.divergence)})`);
+let late = null;
+await section('control: the page\'s ammunition switch a tick late', async () => {
+  late = await run(SWITCH + 30, (tick, side, id, input) => (tick === SWITCH && side === 'page' && input.shellSlot === 1
+    ? { ...input, shellSlot: 0 } : null));
+  assert.ok(late.divergence, 'the page switching its ammunition a tick late is caught');
+  assert.equal(late.divergence.tick, SWITCH, `at the switch's tick (${JSON.stringify(late.divergence)})`);
+  return `caught at tick ${late.divergence.tick} (${late.divergence.field})`;
+});
+
+// ---- negative control: a spotting stagger drawn from another seed is a different world (the solo step's old own seed)
+let reseeded = null;
+await section('control: an authority seeded one off', async () => {
+  reseeded = await run(60, null, { authoritySeed: SEED + 1 });
+  assert.ok(reseeded.divergence && reseeded.divergence.field.startsWith('sees'),
+    `an authority seeded one off is caught on what a team sees, at the first check (${JSON.stringify(reseeded.divergence)})`);
+  return `caught at tick ${reseeded.divergence.tick} (${reseeded.divergence.field})`;
+});
 
 // ---- (268, Main item 8) an objective mode on both drivers: Mars (zone control, the seeded boost caches, its low gravity
 // and respawns), the own hull scripted through a cache's pickup, rams that bring two buildings down and a fight to the bot's
@@ -358,7 +450,9 @@ assert.equal(late.divergence.tick, SWITCH, `at the switch's tick (${JSON.stringi
 const MODE_FOE_SPEC = 'm41a3';
 const bits = (value) => Buffer.from(new Float64Array([value]).buffer).toString('hex');
 async function runModeBattle(ticks, perturb = null) {
-  const authorityWorld = createDedicatedWorldCollision(MAP), pageWorld = createDedicatedWorldCollision(MAP);
+  return withWorlds((authorityWorld, pageWorld) => modeBattle(authorityWorld, pageWorld, ticks, perturb));
+}
+async function modeBattle(authorityWorld, pageWorld, ticks, perturb) {
   const authored = pageWorld.heightField._layout.spawns;
   const spawnOf = (point) => ({ pos: [point.x, pageWorld.heightField.getHeightAt(point.x, point.z), point.z], yaw: point.yaw ?? 0 });
   pageWorld.spawnPoints = { player: spawnOf(authored.player), enemies: authored.enemies.map(spawnOf) };
@@ -470,24 +564,52 @@ async function runModeBattle(ticks, perturb = null) {
     if (exercised.killedAt !== null && tick - exercised.killedAt >= 240) break;
   }
   exercised.zoneOwners = [...exercised.zoneOwners];
-  authorityWorld.release?.();
-  pageWorld.release?.();
   return { divergence, exercised, shed: shed.id, foe: foe.id };
 }
-const MODE_TICKS = 6000;
-const mars = await runModeBattle(MODE_TICKS);
-assert.equal(mars.divergence, null, `Mars parts the two drivers at ${JSON.stringify(mars.divergence)}`);
-assert.ok(mars.exercised.cachesDropped >= 2 && mars.exercised.collectedAt !== null,
-  `the seeded caches dropped alike (${mars.exercised.cachesDropped}) and the own hull took one at tick ${mars.exercised.collectedAt}`);
-assert.ok(mars.exercised.collapses.length >= 2 && mars.exercised.collapses.includes(mars.shed), `two buildings came down alike (${mars.exercised.collapses})`);
-assert.ok(mars.exercised.killedAt !== null && mars.exercised.turretIds.includes(mars.foe),
-  `the bot was destroyed (tick ${mars.exercised.killedAt}) and its turret flew as a body, alike`);
-assert.ok(mars.exercised.foeDeaths >= 2, `the bot respawned on its slot and fought again, alike (${mars.exercised.foeDeaths} deaths)`);
-assert.ok(mars.exercised.zoneOwners.length >= 1, `a zone was taken, alike (${mars.exercised.zoneOwners})`);
 const MODE_NUDGE = 1200;
-const marsNudged = await runModeBattle(MODE_NUDGE + 20, (tick, own) => { if (tick === MODE_NUDGE) own.state.yaw += 1e-9; });
-assert.deepEqual(marsNudged.divergence?.tick, MODE_NUDGE, `Mars: the own heading a billionth off on the page at ${MODE_NUDGE} is caught there (${JSON.stringify(marsNudged.divergence)})`);
+let marsNudged = null;
+await section('control: Mars, the own heading a billionth off', async () => {
+  marsNudged = await runModeBattle(MODE_NUDGE + 20, (tick, own) => { if (tick === MODE_NUDGE) own.state.yaw += 1e-9; });
+  assert.deepEqual(marsNudged.divergence?.tick, MODE_NUDGE, `Mars: the own heading a billionth off on the page at ${MODE_NUDGE} is caught there (${JSON.stringify(marsNudged.divergence)})`);
+  return `caught at tick ${marsNudged.divergence.tick} (${marsNudged.divergence.field ?? marsNudged.divergence.hull})`;
+});
 
+const MODE_TICKS = 6000;
+// the run, then each of its coverage assertions on its own, so a red one lists every miss beside it; the two red on 268
+// (the bot's death, its respawn: TESTS-OWED 2026-11-06) come last, so no other section runs behind them (round 6 V8)
+let mars = null;
+await section('Mars, byte-identical', async () => {
+  mars = await runModeBattle(MODE_TICKS);
+  assert.equal(mars.divergence, null, `Mars parts the two drivers at ${JSON.stringify(mars.divergence)}`);
+  return `${MODE_TICKS} ticks`;
+});
+if (mars) {
+  await section('Mars: the caches', () => {
+    assert.ok(mars.exercised.cachesDropped >= 2 && mars.exercised.collectedAt !== null,
+      `the seeded caches dropped alike (${mars.exercised.cachesDropped}) and the own hull took one at tick ${mars.exercised.collectedAt}`);
+  });
+  await section('Mars: the rammed buildings', () => {
+    assert.ok(mars.exercised.collapses.length >= 2 && mars.exercised.collapses.includes(mars.shed), `two buildings came down alike (${mars.exercised.collapses})`);
+  });
+  await section('Mars: a zone', () => {
+    assert.ok(mars.exercised.zoneOwners.length >= 1, `a zone was taken, alike (${mars.exercised.zoneOwners})`);
+  });
+  await section('Mars: the bot\'s death and its turret', () => {
+    assert.ok(mars.exercised.killedAt !== null && mars.exercised.turretIds.includes(mars.foe),
+      `the bot was destroyed (tick ${mars.exercised.killedAt}) and its turret flew as a body, alike`);
+  });
+  await section('Mars: the respawn', () => {
+    assert.ok(mars.exercised.foeDeaths >= 2, `the bot respawned on its slot and fought again, alike (${mars.exercised.foeDeaths} deaths)`);
+  });
+}
+
+if (failures.length) {
+  console.error(`driverStepParity.selftest: ${failures.length} of ${failures.length + passed.length} sections failed (every section ran):`);
+  for (const { name, error } of failures) console.error(`--- FAIL ${name}\n${error?.stack ?? error}`);
+  throw failures[0].error;
+}
+
+const { denied } = same.exercised;
 console.log(`driverStepParity.selftest: ${MAP} 1v1, ${TICKS} ticks, both hulls byte-identical on the local step (game/state.ts simStep) and the `
   + `authority's (sim/authoritativeMatch.ts), the page's controls through the authority's input stage (sim/playerInputStage.ts): `
   + `drive, turn, gun lay, a crash, shots, hits, knock, bloom and reload (hostile at ${(same.exercised.foeHp * 100).toFixed(1)} % hp, `
@@ -503,4 +625,6 @@ console.log(`driverStepParity.selftest: ${MAP} 1v1, ${TICKS} ticks, both hulls b
   + `Mars on both drivers byte-identical (hulls, mode state, destruction logs, turret bodies, every live round): ${mars.exercised.cachesDropped} caches `
   + `dropped and one taken at tick ${mars.exercised.collectedAt}, buildings ${mars.exercised.collapses.join(' and ')} rammed down, the ${MODE_FOE_SPEC} `
   + `killed ${mars.exercised.foeDeaths} times (respawned on its slot) and its turret flown from tick ${mars.exercised.killedAt}, zones ${mars.exercised.zoneOwners.join(', ')}; `
-  + `the own heading a billionth off caught at tick ${marsNudged.divergence.tick} (${marsNudged.divergence.field ?? marsNudged.divergence.hull})`);
+  + `the own heading a billionth off caught at tick ${marsNudged.divergence.tick} (${marsNudged.divergence.field ?? marsNudged.divergence.hull}); `
+  + `spotting compared every tick of the scripted battle (${same.exercised.spottedTicks} hull-ticks spotted), a stagger seed one off caught at `
+  + `tick ${reseeded.divergence.tick}`);

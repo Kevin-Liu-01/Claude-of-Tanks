@@ -265,6 +265,18 @@ function deformationVectors() {
   read(3);
   op({ op: 'crater', x: 4, z: 4, radius: 3, depth: 1, rim: 0.4, seed: 4242 }, () => overlay.addCrater(4, 4, 3, 1, 0.4, 4242));
   read(4);
+  // (2026-11-02 audit S2) the reset left the clock unset: a heap laid before the next clock step stands whole at once; a
+  // heap laid on the clock rises, every rise over the ground stands still on the clock, and a step back into one moves it
+  const heap = (cx, cz, hw, hd, yaw, h) => op({ op: 'rubble', cx, cz, hw, hd, yaw, h, t0: null }, () => overlay.addRubble(cx, cz, hw, hd, yaw, h, undefined));
+  const readAt = (phase) => { ops.push({ op: 'read', phase, result: null }); read(phase); };
+  heap(30, 30, 6, 8, 0.3, 1.5);
+  readAt(5);
+  op({ op: 'setTime', t: 20 }, () => overlay.setTime(20));
+  heap(-60, 30, 5, 5, 1, 1.2);
+  op({ op: 'setTime', t: 21 }, () => overlay.setTime(21));
+  readAt(6);
+  for (const t of [40, 41, 20.5]) op({ op: 'setTime', t }, () => overlay.setTime(t));
+  readAt(7);
   return { source: 'src/sim/terrainDeformation.ts', sourceSha256: sha('src/sim/terrainDeformation.ts'), ops, reads,
     revision: overlay.revision, maxRaiseM: num(overlay.maxRaiseM) };
 }

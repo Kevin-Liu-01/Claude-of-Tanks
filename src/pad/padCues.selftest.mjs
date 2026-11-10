@@ -44,6 +44,14 @@ assert.equal(cue('tank:destroyed', { id: 'b2', killerId: 'b3' }), null);
 assert.equal(cue('player:spotted', { timeS: 3 }).c, 'spotted');
 assert.equal(cue('player:spotted', { timeS: 3 }, seat), null);
 assert.equal(cue('ui:consumableDenied', {}).c, 'denied');
+// (round 8 merge review r1) the input stage's refusal of a shell pick names its tank: that tank's phone feels it, a couch
+// seat's included; no other tank's, and not the page player's for another seat's refusal
+assert.equal(cue('ammo_selection_denied', { id: 's3', slot: 1, reason: 'AMMO_EMPTY', guided: false }, seat).c, 'denied');
+assert.equal(cue('ammo_selection_denied', { id: 'p1', slot: 2, reason: 'AMMO_EMPTY', guided: true }).c, 'denied');
+assert.equal(cue('ammo_selection_denied', { id: 's3', slot: 1 }), null, "another seat's refusal is not the player's");
+assert.equal(cue('ammo_selection_denied', { id: 'p1', slot: 1 }, seat), null);
+assert.equal(cue('ammo_selection_denied', { slot: 1 }, { id: null, player: true }), null, 'no tank, no cue');
+assert.ok(PAD_CUE_EVENTS.includes('ammo_selection_denied'), 'a receiver listens for it');
 assert.equal(cue('ui:autoAimState', { on: true }).c, 'lock');
 assert.equal(cue('ui:autoAimState', { on: false, reason: 'AUTO-AIM OFF' }).c, 'unlock');
 assert.equal(cue('ui:autoAimState', { on: true }, seat), null);

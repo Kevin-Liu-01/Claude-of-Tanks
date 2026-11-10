@@ -349,4 +349,27 @@ function maxStep(presented, from = 1) {
   assert.throws(() => new LocalPredictor(SPEC, { heightField: null }));
 }
 
+// ------------------------------------------------------------ a row's body bits with no checkpoint (round 2, Q7)
+// applyAuthorityRow restores ground contact and the body mode from the row (wire 10, hullBodyRow.ts); a viewer section
+// without a movement checkpoint leaves them as the row set them, so the rewind's state is the row's. The old projection
+// (tumbling = overturned || autoRighting) made a plain tumble a supported hull here.
+{
+  const p = new LocalPredictor(SPEC, { heightField: FIELD });
+  const here = createReference(0, 0);
+  p.reconcile({ tick: 0, row: rowOf(here), viewer: null }, () => null, 0);
+  const noCheckpoint = { ...viewerOf(here), movementVersion: 0, movementFlags: 0, movementValues: [] };
+  p.reconcile({ tick: 2, row: rowOf(here, ENTITY_FLAGS.TUMBLING), viewer: noCheckpoint }, () => null, 2);
+  const sim = p.simulationState;
+  assert.equal(sim._body.tumbling, true, 'a plain tumble (TUMBLING alone) rewinds into the rigid phase');
+  assert.equal(sim.overturned, false, 'neither overturned');
+  assert.equal(sim._body.autoRighting, false, 'nor righting');
+  assert.equal(p.holdsRestingHull, false, 'a tumbling authority hull is never held at rest');
+  p.reconcile({ tick: 4, row: rowOf(here, ENTITY_FLAGS.TUMBLING | ENTITY_FLAGS.AUTO_RIGHTING | ENTITY_FLAGS.OVERTURNED), viewer: noCheckpoint }, () => null, 4);
+  assert.equal(p.simulationState._body.autoRighting, true, 'the righting sub-state');
+  assert.equal(p.simulationState.overturned, true);
+  p.reconcile({ tick: 6, row: rowOf(here), viewer: noCheckpoint }, () => null, 6);
+  assert.equal(p.simulationState._body.tumbling, false, 'a row without a rigid bit is a supported hull');
+  assert.equal(p.simulationState.overturned, false);
+}
+
 console.log('mp prediction: exact replay with matching controls, divergence corrected inside the 110/160/75 ms envelopes with ≤ 0.2 m releases, hard snap at 7 m, death/respawn, resting hold, stale presented hulls seated at the rewind, a hull resting on a roof replayed on it, collision adapter pass');

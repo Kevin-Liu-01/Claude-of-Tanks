@@ -155,9 +155,12 @@ for (const runtime of ['lobbyPreloader', 'activationRuntime', 'browserCompositio
   assert.doesNotMatch(main, new RegExp(`import \\{[^}]*create[^}]*\\} from './mp/session/${runtime}\\.ts'`),
     `${runtime} must stay out of the pristine Garage graph`);
 }
-assert.match(networkCompositionAccess,
-  /pending = request[\s\S]{0,180}pending === request[\s\S]{0,80}pending = null/,
-  'a failed first-visit network composition transfer must remain retryable');
+// (round 2 U35) retryable under the one lazy-chunk policy (app/lazyChunk.ts: at once after one failure, then past its
+// backoff), not the memo its failure cleared, asked again at once by every call
+assert.match(networkCompositionAccess, /const chunk = createLazyChunk\(/,
+  'a failed first-visit network composition transfer must remain retryable (one app/lazyChunk.ts chunk)');
+assert.match(networkCompositionAccess, /const preload = \(\): Promise<T> => chunk\.load\(\)/,
+  'every network intent asks through that one chunk');
 assert.doesNotMatch(playSurfaceComposition, /^\s*preloadKillcamModule,$/m,
   'cold composition must not read the later killcam binding from its temporal dead zone');
 assert.match(playSurfaceComposition, /\(\) => preloadKillcamModule\(\)/,
@@ -174,7 +177,8 @@ assert.match(browserComposition,
 const networkWorldAdapter = main.slice(main.indexOf('loadWorld: (mapId: string'),
   main.indexOf('recordTrace: (trace) => { window.__NETWORK_LOAD = trace; }'));
 // batch 27 (2026-09-15): a Frontline Assault room also hands the trench terrain variant through
-const coveredWorldOptions = /ensureWorld\(mapId, onProgress, \{ precompile: false, atmosphere: 'covered-battle', \.\.\.\(terrainVariant \? \{ terrainVariant \} : \{\}\) \}\)/;
+// (2026-11-02 audit F2) passed whole, null included: a standard room never inherits a solo sortie's trench variant
+const coveredWorldOptions = /ensureWorld\(mapId, onProgress, \{ precompile: false, atmosphere: 'covered-battle', terrainVariant \}\)/;
 assert.match(networkWorldAdapter, coveredWorldOptions,
   'network acquisition must defer Garage-light compilation and select covered battle atmosphere');
 assert.doesNotMatch(networkWorldAdapter.replace("atmosphere: 'covered-battle'", "atmosphere: 'garage'"),

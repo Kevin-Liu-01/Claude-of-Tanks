@@ -40,6 +40,21 @@ assert.notDeepEqual(planFromRoom(room, { seed: 8 }).bots.map((bot) => bot.specId
   const roster = fromRoom.seats.map((seat) => ({ seat: seat.seat, team: seat.team === 'bravo' ? 1 : seat.team === 'spectator' ? 2 : 0, bot: false, playerId: seat.playerId, name: seat.name, specId: seat.specId }));
   const elected = planFromRoster(roster, painted);
   assert.deepEqual([camoOf(elected, 'alice'), camoOf(elected, 'bob')], ['auto', 'winter'], 'an elected host\'s roster fallback reads the camo from the room snapshot');
+  // round 8 Y2 (s4-04): the fallback's sources in order. A player still in the room keeps its room loadout (no resume
+  // extras: the countdown restart's path); one who left the room names none, so its hull takes the authority's defaults
+  // (matchHostCore.selftest [3] boots it), never an empty loadout ([] read as no equipment and no items)
+  const seatOf = (planned, id) => planned.seats.find((seat) => seat.playerId === id);
+  const alice = painted.players.find((player) => player.id === 'alice');
+  assert.deepEqual([seatOf(elected, 'alice').equipment, seatOf(elected, 'alice').consumables], [alice.equipment, alice.consumables ?? []],
+    'a present player keeps the room\'s equipment and items');
+  const departed = structuredClone(painted);
+  departed.players = departed.players.filter((player) => player.id !== 'bob');
+  const withoutBob = planFromRoster(roster, departed);
+  assert.deepEqual([seatOf(withoutBob, 'bob').equipment, seatOf(withoutBob, 'bob').consumables, seatOf(withoutBob, 'bob').camo], [null, null, null],
+    'a player who left the room names no loadout: the authority\'s defaults, the factory paint');
+  assert.deepEqual(seatOf(withoutBob, 'alice'), seatOf(elected, 'alice'), 'and the players still in the room are untouched by it');
+  assert.deepEqual(planFromRoster(roster, null).seats.map((seat) => [seat.equipment, seat.consumables, seat.camo]), roster.map(() => [null, null, null]),
+    'no room snapshot at all: every seat takes the defaults');
 }
 
 const matchStart = { matchId: 'm1', round: 1, mapId: 'verdant', mode: 'standard', seed: 7, seat: 0, team: 'alpha', seatToken: 't', matchUrl: 'rtc://PLAN01/1', hostId: 'alice', expiresAt: 9 };

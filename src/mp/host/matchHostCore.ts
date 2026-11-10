@@ -11,7 +11,7 @@
  */
 import type { DestructionLogEntry } from '../../sim/destructionEvents.ts';
 import { quantizeDestructionEntry } from '../wire/destructionLog.ts';
-import { createMatchActor } from '../../../server/match/matchActor.ts';
+import { createMatchActor, matchStatusPhase, metaOnBattleClock } from '../../../server/match/matchActor.ts';
 import { ensureAuthorityFleet } from '../../vehicles/authorityFleet.ts';
 import { hostRulesetFor } from './hostRuleset.ts';
 import type { ActorWorldCollision, MatchActor } from '../../../server/match/matchActor.ts';
@@ -20,12 +20,12 @@ import { captureEntityRow, captureMeta, createEraIndexer } from '../../../server
 import type { EraIndexer } from '../../../server/match/entityRows.ts';
 import { CLOSE_REASON, INPUT_MARGIN_UNKNOWN, MAX_CLIENT_MESSAGE_BYTES, MESSAGE_TYPE, NO_TICK, TICK_MS } from '../wire/constants.ts';
 import type { CloseReasonId } from '../wire/constants.ts';
-import { decodeMessage } from '../wire/codec.ts';
-import type { EntityRow, SnapshotFrame } from '../wire/messages.ts';
+import { decodeMessage, encodeMessage } from '../wire/codec.ts';
+import type { EntityRow, SnapshotFrame, WireEvent } from '../wire/messages.ts';
 import { ROOM_MATCH_KEYFRAME_INTERVAL_MS, ROOM_MATCH_POLL_MS } from '../room/protocol.ts';
 import { verifySeatTokenWeb } from './seatTokenWeb.ts';
 import {
-  applyResumeState, captureEntityExtras, chunkMigrationBlob, deriveMigrationKey, encodeBootConfig, encodeMigrationKeyframe, sealMigrationBlob,
+  applyResumeState, captureEntityExtras, chunkMigrationBlob, deriveMigrationKey, encodeBootConfig, encodeMigrationKeyframe, resumePhaseOf, sealMigrationBlob,
 } from './migrationState.ts';
 import type { MigrationKeyframe } from './migrationState.ts';
 import { MIGRATION_EVENT_KIND } from './hostProtocol.ts';
@@ -34,6 +34,7 @@ import { loadCollisionWorld, loadWorldKernels } from './worldCollision.ts';
 import { simKernelsFailureReason, type SimKernelsStatus } from '../../world/simKernelsStatus.ts';
 import { terrainVariantFor } from '../../sim/matchRuleset.ts';
 import { prepareAuthorityGround } from '../../sim/authoritativeMatch.ts';
+import { RESUME_HOLD_MS } from '../match/recovery.ts';
 
 type TimerHandle = unknown;
 
@@ -54,8 +55,6 @@ export interface MatchHostCoreOptions {
   helloTimeoutMs?: number;
   /** Ticks the actor keeps publishing after the verdict (the actor's default otherwise). */
   endedLingerTicks?: number;
-  /** The longest a migrated host holds its world still for the awaited seats (RESUME_HOLD_MS; 0 = never hold). */
-  resumeHoldMs?: number;
   /** This host's build line for the same-wire check (the actor's default, MATCH_BUILD, otherwise). */
   build?: string;
 }
@@ -66,10 +65,13 @@ export interface MatchHostCoreOptions {
  * with speed (its newest row, captured while it drove) rolled on under the empty input — a released throttle coasts
  * at 3.5 m/s², 9-17 m from 8-11 m/s — while the peers were still re-offering, and each peer's first frame from the new
  * host showed it that far from the last one it saw. Now the world stands still, as it did through the outage, until
- * every seat that was in the match is back or this much time has passed: the seats are welcomed together against the
- * still world (their own-row hints land before the first tick), then the loop starts at the resume tick.
+ * every seat that was in the match is back or RESUME_HOLD_MS has passed: the seats are welcomed together against the
+ * still world (their own-row hints land before the first tick), then the loop starts at the resume tick. The bound
+ * lives beside the seat's stall clock (match/recovery.ts), which allows it on a link to a newly elected host.
  */
-export const RESUME_HOLD_MS = 3_000;
+export { RESUME_HOLD_MS };
+/** Frames a gated link holds before the actor admits it (a link opened during the boot, a HELLO held or verifying); more are dropped. */
+const MAX_GATED_FRAMES = 64;
 
 /** What a world build reads from a boot or a preparation. */
 type WorldConfig = Pick<HostBootConfig, 'mapId' | 'mode' | 'manifestBase' | 'simKernelsUrl'>;
@@ -106,6 +108,13 @@ interface PortLink extends ClientLink {
 }
 
 const CONFIG_INTERVAL_MS = 10_000;
+/**
+ * The least time between two migration keyframes when mode events call for them (round 2 U2): the mode checkpoint a
+ * keyframe seals is dated at its capture, and a resume from one dated before a mode event replays or loses that event.
+ * A keyframe follows a mode event within a housekeeping beat, at most twice a second however many events come (a busy
+ * Turbo Ball scrum, a flapping zone), against the cadence's once every ROOM_MATCH_KEYFRAME_INTERVAL_MS.
+ */
+export const MODE_KEYFRAME_SPACING_MS = 500;
 /**
  * How long a link may stay open without its HELLO (2026-10-11, the MP lane): 5 s closed seats whose HELLO was merely late —
  * a host main thread inside a long task holds the frame on its way to this thread, a starved seat sends it late, a
@@ -153,7 +162,6 @@ export function createMatchHostCore({
   reportIntervalMs = ROOM_MATCH_POLL_MS,
   helloTimeoutMs = HELLO_TIMEOUT_MS,
   endedLingerTicks,
-  resumeHoldMs = RESUME_HOLD_MS,
   build,
 }: MatchHostCoreOptions): MatchHostCore {
   let actor: MatchActor | null = null;
@@ -170,7 +178,8 @@ export function createMatchHostCore({
   // playerId: the room-authenticated peer that opened the link; a HELLO may only claim that peer's own seat
   const gates = new Map<number, { state: 'hello' | 'verifying' | 'attached'; queue: Uint8Array[]; timer: TimerHandle | null; playerId: string }>();
   // Links opened before the actor exists (peers offer the moment the room elects a host, before its boot is done):
-  // their opens and frames wait here and replay once the actor runs.
+  // their opens and frames wait here and replay once the actor runs. The host runtime told each seat its HELLO waits for
+  // the boot (matchHost.ts bootHoldNotice, on the main thread, round 4 F0).
   const pendingOpens: Array<{ peer: number; label: string; playerId: string; frames: Uint8Array[] }> = [];
   // seats the room removed before the actor ran: revoked as soon as it boots
   const pendingRevokes = new Set<string>();
@@ -178,7 +187,14 @@ export function createMatchHostCore({
   let lastReportMs = -Infinity;
   let lastReportPhase = '';
   let lastKeyframeMs = -Infinity;
+  // the authority's mode events the newest sealed keyframe holds (modeEventSerial at its capture)
+  let keyframedModeEvents = 0;
   let lastConfigMs = -Infinity;
+  // the boot configuration's sealed chunks (round 8 Y2, s4-04): sealed once at the boot, as the configuration never
+  // changes for an actor; null before the seal, or when it failed (logged once: the seats then hold none for the actor's
+  // life; before, each attach and each cadence beat re-sealed, so retried, a seal WebCrypto refuses for the same key and
+  // payload every time)
+  let configChunks: WireEvent[] | null = null;
   let keyframeSeq = 0;
   let configSeq = 0;
   let migrationKeyframes = 0;
@@ -187,8 +203,9 @@ export function createMatchHostCore({
   // One 'ended' report closes the match in the room (P1 records the verdict and the room is back to waiting): every report
   // after it is invalid_command there, so the cadence and the stop report end with it.
   let endedReported = false;
-  // the resume hold (RESUME_HOLD_MS): the seats awaited, those back, their deferred welcomes, and how it ended
-  let hold: { awaited: Set<string>; arrived: Set<string>; attaches: Array<() => void>; startedMs: number; timer: TimerHandle | null } | null = null;
+  // the resume hold (RESUME_HOLD_MS): the seats awaited, the held links back (by peer, in arrival order) with their
+  // deferred welcomes, and how it ended
+  let hold: { awaited: Set<string>; held: Map<number, { playerId: string; attach: () => void }>; startedMs: number; timer: TimerHandle | null } | null = null;
   let holdStats: HostCoreStats['resumeHold'] = null;
   const era: EraIndexer = createEraIndexer();
 
@@ -217,6 +234,7 @@ export function createMatchHostCore({
         closed = true;
         links.delete(peer);
         gates.delete(peer);
+        hold?.held.delete(peer);
         messageListener = null;
         closeListener = null;
         post({ type: 'link_close', peer, reason, detail });
@@ -230,6 +248,8 @@ export function createMatchHostCore({
         closed = true;
         links.delete(peer);
         gates.delete(peer);
+        // a held seat whose link went is no longer back (audit M1: it stayed counted, and the hold released for it)
+        hold?.held.delete(peer);
         const notify = closeListener;
         messageListener = null;
         closeListener = null;
@@ -239,6 +259,8 @@ export function createMatchHostCore({
   }
 
   function openLink(peer: number, label: string, playerId: string): void {
+    // a stopped core (its match over, or stopped by its owner) admits no link: the main thread closes the channel
+    if (stopped || disposed) { post({ type: 'link_close', peer, reason: CLOSE_REASON.MATCH_ENDED, detail: 'host stopped' }); return; }
     if (!actor || !config) { pendingOpens.push({ peer, label, playerId, frames: [] }); return; }
     const previous = links.get(peer);
     if (previous) previous.closedByMain();
@@ -256,7 +278,7 @@ export function createMatchHostCore({
   function admit(peer: number, bytes: Uint8Array): void {
     if (!actor) {
       const pending = pendingOpens.find((entry) => entry.peer === peer);
-      if (pending && pending.frames.length < 64) pending.frames.push(bytes);
+      if (pending && pending.frames.length < MAX_GATED_FRAMES) pending.frames.push(bytes);
       return;
     }
     const link = links.get(peer);
@@ -264,7 +286,8 @@ export function createMatchHostCore({
     const live = actor;
     if (!link || !gate || !live || !config) return;
     if (gate.state === 'attached') { link.deliver(bytes); return; }
-    if (gate.state === 'verifying') { gate.queue.push(bytes); return; }
+    // a HELLO under verification or held for the resume hold: bounded by count, not only by the hold's time (audit M1)
+    if (gate.state === 'verifying') { if (gate.queue.length < MAX_GATED_FRAMES) gate.queue.push(bytes); return; }
     gate.state = 'verifying';
     const decoded = decodeMessage(bytes, { maxBytes: MAX_CLIENT_MESSAGE_BYTES });
     if (!decoded.ok || decoded.message.type !== MESSAGE_TYPE.HELLO) {
@@ -291,16 +314,18 @@ export function createMatchHostCore({
         gate.state = 'attached';
         const attached = live.attach(link, hello, verified.claims);
         if (!attached) { gates.delete(peer); return; }
+        // the seat holds the sealed configuration from its WELCOME on (round 8 Y2, s4-04): it followed within a
+        // housekeeping beat, sealed afresh, and a seat whose host went in that beat booted from the room's snapshot
+        // (planFromRoster). To this seat alone (fix-up r1): the seats welcomed before it hold it already
+        deliverConfigTo(link, live);
         for (const queued of gate.queue.splice(0)) link.deliver(queued);
-        // a seat welcomed after the boot (late, re-HELLOed, or back after a reconnect) holds the sealed configuration
-        // within a housekeeping beat, not at the next CONFIG_INTERVAL_MS: elected inside that window, it could not resume
-        lastConfigMs = -Infinity;
       };
-      // during the resume hold the seat waits, its frames queued, and is welcomed with the others when the world moves
+      // during the resume hold the seat waits, its frames queued, and is welcomed with the others when the world moves;
+      // it hears how long the hold may still last (round 3 B1/X6)
       if (hold) {
-        hold.attaches.push(attachNow);
-        hold.arrived.add(verified.claims.playerId);
-        if ([...hold.awaited].every((playerId) => hold!.arrived.has(playerId))) releaseHold('seats');
+        hold.held.set(peer, { playerId: verified.claims.playerId, attach: attachNow });
+        noticeHeld(peer, RESUME_HOLD_MS - (now() - hold.startedMs));
+        if (arrivedSeats(hold) === hold.awaited.size) releaseHold('seats');
         return;
       }
       attachNow();
@@ -309,30 +334,58 @@ export function createMatchHostCore({
     });
   }
 
+  /**
+   * Tell a seat its HELLO is held, and for how long at most (round 3 B1/X6; wire HOLD, before its WELCOME): the resume
+   * hold, what is left of RESUME_HOLD_MS. The seat's stall clock waits that long (MatchClient receiveHold). Before, nothing
+   * reached a held seat until its WELCOME: its clock allowed a fixed bound (the boot's whole bound and the hold) on a link
+   * to a newly elected host alone, and nothing at all on a kept host's (matchSession.ts bootKeptHost, at the room's same
+   * generation), which holds its seats the same way. Through the boot, before this core's actor runs, the host runtime
+   * tells it, on the main thread (matchHost.ts bootHoldNotice; round 4 F0: this core told it once it ran, which a Worker
+   * still evaluating its chunk put off past the seat's stall clock).
+   */
+  function noticeHeld(peer: number, holdMs: number): void {
+    const copy = encodeMessage({ type: MESSAGE_TYPE.HOLD, holdMs: Math.max(0, Math.min(0xffffffff, Math.ceil(holdMs))) }).slice();
+    post({ type: 'link_send', peer, bytes: copy.buffer }, [copy.buffer]);
+  }
+
+  /** The awaited seats back in the hold: a held link per seat, still open (a closed link leaves `held`). */
+  function arrivedSeats(current: NonNullable<typeof hold>): number {
+    const back = new Set<string>();
+    for (const entry of current.held.values()) if (current.awaited.has(entry.playerId)) back.add(entry.playerId);
+    return back.size;
+  }
+
   /** The resume hold ends: every seat that came back is welcomed against the still world, then the loop starts. */
   function releaseHold(reason: 'seats' | 'timeout'): void {
     const current = hold;
     if (!current) return;
     hold = null;
     if (current.timer !== null) { clearTimer(current.timer); current.timer = null; }
-    const arrived = [...current.awaited].filter((playerId) => current.arrived.has(playerId));
-    holdStats = { heldMs: Math.round(now() - current.startedMs), released: reason, awaited: current.awaited.size, arrived: arrived.length };
+    const arrived = arrivedSeats(current);
+    holdStats = { heldMs: Math.round(now() - current.startedMs), released: reason, awaited: current.awaited.size, arrived };
     const live = actor;
     if (!live || stopped || live.stopped) return;
     // welcomed at the resume tick, in arrival order; each seat's own-row hint (queued behind its HELLO) lands now, before any tick
-    for (const attach of current.attaches.splice(0)) attach();
+    const attaches = [...current.held.values()];
+    current.held.clear();
+    for (const { attach } of attaches) attach();
     live.start();
     post({ type: 'stats', stats: stats()! });
+    const back = new Set(attaches.map((entry) => entry.playerId));
     log('info', 'resume hold released', { reason, heldMs: holdStats.heldMs, awaited: holdStats.awaited, arrived: holdStats.arrived,
-      missing: [...current.awaited].filter((playerId) => !current.arrived.has(playerId)) });
+      missing: [...current.awaited].filter((playerId) => !back.has(playerId)) });
   }
 
   // ------------------------------------------------------------ reports and migration state
 
+  /**
+   * The report's phase: the actor's status phase (matchActor.ts matchStatusPhase). The report has no word for a stopped
+   * actor: a stop before any verdict reports the authority's own phase, the last heartbeat (the main thread's drain
+   * holds back every non-ended report of a stopped host), and one after it reports the end.
+   */
   function currentPhase(live: MatchActor): HostMatchReport['phase'] {
-    if (live.ended) return 'ended';
-    const phase = live.authority.phase;
-    return phase === 'countdown' ? 'countdown' : phase === 'playing' ? 'playing' : 'loading';
+    const phase = matchStatusPhase(live.phase);
+    return phase !== 'stopped' ? phase : live.authority.result ? 'ended' : live.authority.phase;
   }
 
   function report(live: MatchActor, nowMs: number): void {
@@ -365,16 +418,20 @@ export function createMatchHostCore({
     const destroyed = Array.isArray(meta.destroyedObstacleIndices)
       ? [...new Set((meta.destroyedObstacleIndices as number[]).filter((index) => Number.isInteger(index) && index >= 0))].sort((a, b) => a - b) : [];
     const battleTimeMs = Math.round(live.authority.timeS * 1000) + live.resumedBattleTimeMs;
+    // the meta on the battle clock, its smoke screens too, as the actor's own frames carry it (round 2 U2)
+    const battleMeta = metaOnBattleClock(meta, live.resumedBattleTimeMs) ?? meta;
     // destruction (docs/DESTRUCTION.md §8.3): the sealed keyframe carries the whole log, as the wire quantizes it
     const destruction = Array.isArray(meta.destructionLog)
       ? (meta.destructionLog as DestructionLogEntry[]).map(quantizeDestructionEntry) : [];
     const frame: SnapshotFrame = {
       tick, serverTimeMs, ackedInputTick: NO_TICK, ackedFireSeq: 0, ackedActionSeq: 0, inputMarginTicks: INPUT_MARGIN_UNKNOWN,
-      meta: captureMeta({ ...meta, battleTimeMs }, live.ended), destroyed, destruction, entities, shells: [], viewer: null,
+      meta: captureMeta({ ...battleMeta, battleTimeMs }, live.ended), destroyed, destruction, entities, shells: [], viewer: null,
       modeStateJson: meta.modeState ? JSON.stringify(meta.modeState) : null,
     };
-    const phase = live.ended || live.authority.result ? 'ended' : live.authority.phase === 'countdown' ? 'countdown' : 'playing';
-    return { tick, battleTimeMs, phase, frame, entities: captureEntityExtras(live), modeCheckpoint: live.authority.captureModeCheckpoint() };
+    const status = currentPhase(live);
+    const phase = status === 'ended' ? 'ended' : status === 'playing' ? 'playing' : 'countdown';
+    return { tick, battleTimeMs, timeS: live.authority.timeS, phase, frame, entities: captureEntityExtras(live), modeCheckpoint: live.authority.captureModeCheckpoint(),
+      ...(live.battleId ? { battleId: live.battleId } : {}) };
   }
 
   async function broadcastSealed(kind: typeof MIGRATION_EVENT_KIND[keyof typeof MIGRATION_EVENT_KIND], id: number, tick: number, plain: Uint8Array): Promise<void> {
@@ -391,6 +448,7 @@ export function createMatchHostCore({
     if (!live || live.stopped || sealing) return;
     sealing = true;
     try {
+      keyframedModeEvents = live.authority.modeEventSerial;
       const keyframe = buildKeyframe(live);
       await broadcastSealed(MIGRATION_EVENT_KIND.KEYFRAME, ++keyframeSeq, keyframe.tick, encodeMigrationKeyframe(keyframe));
       migrationKeyframes++;
@@ -401,13 +459,28 @@ export function createMatchHostCore({
     }
   }
 
-  async function broadcastConfig(): Promise<void> {
-    const live = actor;
-    if (!live || live.stopped || !config) return;
+  /**
+   * The delivery of the boot configuration (round 8 Y2, s4-04): its sealed chunks to the seat just welcomed, right after
+   * its WELCOME (deliverConfigTo), and to every seat on the CONFIG_INTERVAL_MS cadence (deliverConfig). Every welcomed
+   * seat holds it, so an elected host boots from it. Fix-up r1 (both review lenses): the WELCOME's delivery was a
+   * broadcast, so seats welcomed together (a resume hold's release attaches its seats in one loop, a match start's HELLOs
+   * verify together) took N(N+1)/2 copies of it, the first seat N, ahead of its first snapshots; now each takes one.
+   */
+  function deliverConfig(live: MatchActor): void {
+    if (!configChunks || live.stopped) return;
+    for (const event of configChunks) live.broadcastEvent(event);
+  }
+  /**
+   * One seat's copy on its own link, each chunk an EVENT stamped with the actor's tick as the actor's own events are
+   * (the actor has no per-seat event send; noticeHeld writes to one seat's link the same way). An encode that throws is
+   * logged and leaves the attach whole: the cadence delivers the configuration again.
+   */
+  function deliverConfigTo(link: PortLink, live: MatchActor): void {
+    if (!configChunks || live.stopped || link.closed) return;
     try {
-      await broadcastSealed(MIGRATION_EVENT_KIND.CONFIG, ++configSeq, live.tick, encodeBootConfig(config));
+      for (const event of configChunks) link.send(encodeMessage({ type: MESSAGE_TYPE.EVENT, tick: live.tick, events: [event] }));
     } catch (error) {
-      log('warn', 'migration config failed', { error: error instanceof Error ? error.message : String(error) });
+      log('warn', 'migration config to a seat failed', { peer: link.peer, error: error instanceof Error ? error.message : String(error) });
     }
   }
 
@@ -419,10 +492,19 @@ export function createMatchHostCore({
     const phase = currentPhase(live);
     if (phase !== lastReportPhase || nowMs - lastReportMs >= reportIntervalMs || (live.authority.result && !verdictReported)) report(live, nowMs);
     if (!live.stopped && live.authority.phase !== 'loading') {
-      if (nowMs - lastKeyframeMs >= keyframeIntervalMs) { lastKeyframeMs = nowMs; void broadcastKeyframe(); }
-      if (nowMs - lastConfigMs >= configIntervalMs) { lastConfigMs = nowMs; void broadcastConfig(); }
+      // the cadence, and a mode event since the newest keyframe (round 2 U2: a mode's goal, wave, capture or revive in the
+      // gap was replayed or lost by a resume from a keyframe dated before it); a keyframe still sealing defers it a beat
+      const modeEventsSince = live.authority.modeEventSerial !== keyframedModeEvents && nowMs - lastKeyframeMs >= MODE_KEYFRAME_SPACING_MS;
+      if (!sealing && (nowMs - lastKeyframeMs >= keyframeIntervalMs || modeEventsSince)) { lastKeyframeMs = nowMs; void broadcastKeyframe(); }
+      if (nowMs - lastConfigMs >= configIntervalMs) { lastConfigMs = nowMs; deliverConfig(live); }
     }
-    if (live.stopped) { post({ type: 'stats', stats: stats()! }); return; }
+    if (live.stopped) {
+      post({ type: 'stats', stats: stats()! });
+      // the actor ended itself (its linger after the verdict ran out): the core is stopped too (audit M1/M3: it stayed
+      // open, kept every link and admitted re-offering peers onto a stopped actor)
+      stop(CLOSE_REASON.MATCH_ENDED, 'match over');
+      return;
+    }
     housekeeping = setTimer(housekeep, HOUSEKEEPING_MS);
   }
 
@@ -465,7 +547,12 @@ export function createMatchHostCore({
     // (it starts beside the migration key now: a failure is the Promise.all's below, never an unhandled rejection meanwhile)
     fleetTimed.catch(() => {});
     migrationKey = await deriveMigrationKey(next.hostSecret);
-    const [world] = await Promise.all([worldTimed, fleetTimed]);
+    // the boot configuration, sealed once beside the world load (round 8 Y2, s4-04)
+    const sealedConfig = sealMigrationBlob(migrationKey, encodeBootConfig(next)).catch((error: unknown) => {
+      log('warn', 'migration config failed', { error: error instanceof Error ? error.message : String(error) });
+      return null;
+    });
+    const [world, , configBlob] = await Promise.all([worldTimed, fleetTimed, sealedConfig]);
     // a core stopped while its world loaded (the seat left the battle mid-entry) never starts an actor: its stop found none to stop
     if (bootGeneration !== generation || disposed || stopped) return;
     const resume = next.resume;
@@ -479,7 +566,10 @@ export function createMatchHostCore({
       ...(endedLingerTicks !== undefined ? { endedLingerTicks } : {}),
       // the resume tick was due as the boot arrived (MatchSession fixes it from the wall just before): the loop starts on that
       // timeline, the ticks spent loading the world and holding for the seats skipped (267)
-      resume: resume ? { tick: resume.resumeTick, battleTimeMs: resume.battleTimeMs, dueAtMs: bootStarted } : null,
+      // and in the phase the old host was in (audit M1: a countdown with its time left, an ended match with its verdict)
+      // the battle it plays (round 3 A3): the resumed battle's, or a fallback restart's own; its WELCOMEs and keyframes carry it
+      resume: resume ? { tick: resume.resumeTick, battleTimeMs: resume.battleTimeMs, dueAtMs: bootStarted, ...resumePhaseOf(resume),
+        ...(resume.battleId ? { battleId: resume.battleId } : {}) } : null,
       ...(next.snapshotHz !== undefined ? { snapshotHz: next.snapshotHz } : {}),
       ...(build !== undefined ? { build } : {}),
       onVerdict: () => { const live = actor; if (live) report(live, now()); },
@@ -493,6 +583,11 @@ export function createMatchHostCore({
       if (applied.skipped) log('warn', 'resume rows without an entity', { skipped: applied.skipped });
       if (applied.destroyedUnknown) log('warn', 'resume destroyed props this world does not have', { unknown: applied.destroyedUnknown });
     }
+    configChunks = configBlob ? chunkMigrationBlob(MIGRATION_EVENT_KIND.CONFIG, ++configSeq, created.tick, configBlob) : null;
+    // the cadence counts from the seal (fix-up r1): no seat is attached yet, and each takes its copy at its WELCOME. Its
+    // first beat re-sent the configuration to every seat welcomed by then, at once: those of a match start, and those a
+    // resume hold released (the hold, RESUME_HOLD_MS, ends inside CONFIG_INTERVAL_MS of the seal)
+    lastConfigMs = now();
     actor = created;
     booted = true;
     endedReported = false;
@@ -501,18 +596,18 @@ export function createMatchHostCore({
     // A migration with other seats in it holds the world still until they are back (RESUME_HOLD_MS); anything else runs now.
     const seatIds = new Set(next.seats.filter((seat) => seat.team !== 'spectator').map((seat) => seat.playerId));
     const awaited = resume ? [...new Set(resume.holdForSeats ?? [])].filter((playerId) => seatIds.has(playerId)) : [];
-    if (awaited.length && resumeHoldMs > 0) {
-      const current = { awaited: new Set(awaited), arrived: new Set<string>(), attaches: [] as Array<() => void>, startedMs: now(), timer: null as TimerHandle | null };
+    if (awaited.length) {
+      const current = { awaited: new Set(awaited), held: new Map<number, { playerId: string; attach: () => void }>(), startedMs: now(), timer: null as TimerHandle | null };
       hold = current;
       holdStats = { heldMs: 0, released: null, awaited: awaited.length, arrived: 0 };
-      current.timer = setTimer(() => { current.timer = null; if (hold === current) releaseHold('timeout'); }, resumeHoldMs);
+      current.timer = setTimer(() => { current.timer = null; if (hold === current) releaseHold('timeout'); }, RESUME_HOLD_MS);
     } else {
       created.start();
     }
     const bootMs = Math.round(now() - bootStarted);
     post({ type: 'ready', tick: created.tick, entities: created.authority.entities.length, resumed: !!resume, kernels: kernelsStatusOf(world, next),
       timings: { worldMs, fleetMs, actorMs: Math.round(now() - actorStarted), bootMs, prepared: bootedPrepared === true } });
-    log('info', 'host actor booted', { tick: created.tick, entities: created.authority.entities.length, restored, destroyedRestored, resumed: !!resume, holdFor: awaited.length && resumeHoldMs > 0 ? awaited.length : 0,
+    log('info', 'host actor booted', { tick: created.tick, entities: created.authority.entities.length, restored, destroyedRestored, resumed: !!resume, holdFor: awaited.length,
       bootMs: Math.round(now() - bootStarted), prepared: bootedPrepared });
     for (const playerId of pendingRevokes) created.revokeSeat(playerId);
     pendingRevokes.clear();
@@ -535,7 +630,7 @@ export function createMatchHostCore({
       droppedTicks: summary.loop.droppedTicks, stalls: summary.loop.stalls, lateWakeupMaxMs: summary.loop.lateWakeupMaxMs, verdict: summary.verdict,
       snapshotHz: summary.snapshotHz, snapshotSkips: summary.droppedSnapshots, interest: summary.interest,
       resumeHints: { applied: summary.resumeHints.applied, rejected: summary.resumeHints.rejected },
-      resumeHold: holdStats ? { ...holdStats, ...(hold ? { heldMs: Math.round(now() - hold.startedMs), arrived: [...hold.awaited].filter((playerId) => hold!.arrived.has(playerId)).length } : {}) } : null,
+      resumeHold: holdStats ? { ...holdStats, ...(hold ? { heldMs: Math.round(now() - hold.startedMs), arrived: arrivedSeats(hold) } : {}) } : null,
     };
   }
 

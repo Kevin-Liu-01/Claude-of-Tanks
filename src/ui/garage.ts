@@ -39,12 +39,19 @@ import { equipIconId, equipIconSVG } from './equipIcons.ts';
 import { EQUIPMENT_EMPTY_ID, createGarageEquipmentPicker } from './garageEquipmentPicker.ts';
 import { createGarageConsumables, type GarageConsumables } from './garageConsumables.ts';
 import { createPickerMenu, panelRoom, type PickerMenu } from './components/pickerMenu.ts';
-import { closeSurface, openSurface, type TransientSurface } from './components/surfaceStack.ts';
+import { closeSurface, closeSurfacesWithin, openSurface, sweepHiddenSurfaces, type TransientSurface } from './components/surfaceStack.ts';
+import { createGarageScreen, createLazyOpener, createLazyPanelToggle, type GarageScreenTicket } from './garageScreen.ts';
+// (2026-11-02 audit S3) the product's boot latch, read only through gameReady.ts (never its harness mirror, the flag the
+// tools wait on)
+import { gameReady } from './gameReady.ts';
 import { tierChipHTML } from './heroCardChips.ts';
+import { heroCardChunk } from './heroCardChunk.ts';
 import { uiIconSVG } from './uiIcons.ts';
 import { keycap, rules, scale20, segmented, setRoving, statChip, tag, wireRoving } from './components/components.ts';
 import { revealWhenReady } from './components/reveal.ts';
 import { markLoadFailed, pressFailed } from './components/loadFailure.ts';
+import { createLazyChunk, importAll } from '../app/lazyChunk.ts';
+import { CouchChunkError } from '../app/couchOpener.ts';
 import { BRAND_WORDMARK_HTML, brandMarkSVG } from './brandMark.ts';
 import { CAMPAIGN_ENEMY_NATIONS, CAMPAIGN_OPERATIONS, campaignLadder, campaignSummary } from '../game/campaignOperations.ts';
 import { mapRegionTags, regionTagIcon } from './regionTags.ts';
@@ -200,13 +207,33 @@ interface GarageOptions {
   readonly onSelect?: (specId: string) => void;
   readonly onGameModeSelect?: (mode: GameModeId) => void;
   readonly onGameModeIntent?: () => void;
+  /**
+   * The BATTLE press's start. `announce` is the press's own `ui:battleStart`, handed to the entry, which runs it once
+   * it accepts the start (round 4 F1; main.ts: the solo entry's begin): a press that waits for a Garage return in
+   * flight and is then refused announces nothing. (round 8 Y4 residual fix-up r1) Returns the entry's settle, which the
+   * Garage waits on to be the player's again (garageScreen.ts enter): it settles after the activation for a start that
+   * runs, and with the Garage still showing for one refused or failed before it. Nothing returned: the player's at once.
+   */
   readonly onBattle?: (
     specId: string,
     mapId: string,
     options: { readonly gameMode: GameModeId; readonly campaignOperationId?: string; readonly watch?: boolean; readonly couch?: CouchBattle },
-  ) => void;
-  /** Couch mode (docs/COUCH-MODE.md): open the lobby over the Deploy screen; its Start deploys the seats here. */
-  readonly onCouch?: (request: { readonly gameMode: GameModeId; start(couch: CouchBattle): void }) => void;
+    announce: () => void,
+  ) => PromiseLike<unknown> | undefined;
+  /**
+   * Couch mode (docs/COUCH-MODE.md): open the lobby over the Deploy screen; its Start deploys the seats here. (round 8 Y4
+   * s3-03) A lazy opener: the lobby opens only while `ticket` holds (the Garage that asked still shows, and no press has
+   * handed the player on since), with `trigger` as the modal's; the promise rejects with a CouchChunkError when a chunk did
+   * not arrive (the press reports it), and with the open step's own error otherwise (the press logs it). (round 8 Y4
+   * residual) A Couch press while the chunks load is not a second request: this one opens for the newest press (its
+   * ticket, and the mode and Start it reads).
+   */
+  readonly onCouch?: (request: {
+    readonly gameMode: GameModeId;
+    readonly ticket: Pick<GarageScreenTicket, 'current'>;
+    readonly trigger: HTMLElement;
+    start(couch: CouchBattle): boolean;
+  }) => Promise<unknown>;
   readonly onPlayRequest?: (request: PlayRequest) => void;
   readonly onPlayModeIntent?: (mode: BattleMode) => void;
   readonly onBattleIntent?: (request: { readonly specId: string; readonly mapId: string }) => void;
@@ -228,16 +255,27 @@ interface GarageOptions {
   readonly onOverlayChange?: () => void;
   /** The player's own key for a vehicle action's binding (main.ts: the input layer's label), for the actions row. */
   readonly actionKeyFor?: (binding: VehicleActionBinding) => string | null | undefined;
+  /**
+   * (round 3 B2, review r1) Asked before a battle press does anything: true when no battle may take the scene now
+   * (main.ts: the solo entry's own refusal, which brings back the way out, a failed Garage return's notice and Retry).
+   * A refused press clicks nothing and starts nothing. (A press refused later, after a Garage return it waited for, is
+   * the entry's: it announced nothing yet, round 4 F1.)
+   */
+  readonly refusesBattle?: () => boolean;
 }
 
 export interface GarageRuntime {
   readonly root: HTMLElement;
-  /** Place the stage's numbered hotspots for this Garage frame (the frame runtime calls it after the showroom moves). */
-  frameHotspots(camera: PerspectiveCamera, model: Object3D | null): void;
-  isOpen: boolean;
+  /** Place the stage's numbered hotspots for this Garage frame (the frame runtime calls it after the showroom moves).
+   *  `modelSpecId` names the vehicle `model` shows: the plates stand only on the vehicle their figures describe. */
+  frameHotspots(camera: PerspectiveCamera, model: Object3D | null, modelSpecId?: string | null): void;
+  /** Read-only: the screen's one open state (garageScreen.ts); show() and hide() are its only writers. */
+  readonly isOpen: boolean;
   show(selected?: string): void;
   hide(): void;
   drainThumbs(): void;
+  /** The battle loader's cover (main): decorative work holds under it, and (round 8 Y4 residual fix-up r1) the Garage is
+   *  not the player's there (its keys and lazy openers wait: garageScreen.ts `covered`). */
   setDecorativeWorkGate(covered: () => boolean): void;
   getStageRect(centred?: boolean): { x: number; y: number; w: number; h: number };
   /** The room the turntable keeps whole in, left to right (CSS px): the window's, past the readout column. */
@@ -259,6 +297,14 @@ export interface GarageRuntime {
   /** The battle did not start because part of the game did not arrive (main.ts presentFailure): the Battle button keeps
    *  the kit's error state, and its next press (any launch) reloads the page once online. */
   noteBattleLoadFailed(): void;
+  /**
+   * Battle Again (round 8 Y4 s3-04): the press the last entry came from, replayed through its own handler (never a
+   * click on a button): the Deploy foot's Watch, a couch battle with the seats given (the Couch lobby's Start), or
+   * BATTLE. False when the press could not start (its control is disabled, nothing is selected, the launch refused).
+   */
+  replayEntry(entry: { readonly watch: boolean; readonly couch: CouchBattle | null }): boolean;
+  /** The couch lobby over the Garage through the Couch press (a couch rematch with no phone here); false if it cannot. */
+  openCouch(): boolean;
   /** Test drive a vehicle (default: the selected one) on the proving ground; false when it cannot launch now. */
   testDrive(specId?: string | null): boolean;
   setSelectedMap(mapId: string): void;
@@ -501,7 +547,20 @@ const SHELL_TYPE_COLOR: Readonly<Record<string, string>> = {
 const camoSwatchPaintVersion = new WeakMap();
 const camoSwatchAccess = createCamoSwatchAccess({
   load: () => import('./camoSwatchPainter.ts'),
-  isPlayable: () => window.__GAME_READY === true,
+  isPlayable: () => gameReady.state === 'ready',
+  // (2026-11-02 audit F5) while the game is not playable its wait is the shared one (gameReady.ts, the boot latch's
+  // ready edge); once it is, the access's own post-ready delay is an ordinary timer
+  schedule: (callback, delayMs) => {
+    const state = gameReady.state;
+    if (state === 'waiting') return { cancelReady: gameReady.whenReady(callback) };
+    // a halted boot paints no swatch until a press promotes the request
+    return state === 'ready' ? { timer: setTimeout(callback, delayMs) } : {};
+  },
+  cancel: (handle) => {
+    const scheduled = handle as { cancelReady?: () => void; timer?: ReturnType<typeof setTimeout> } | null;
+    scheduled?.cancelReady?.();
+    if (scheduled?.timer !== undefined) clearTimeout(scheduled.timer);
+  },
 });
 
 function scheduleCamoSwatchLoad(immediate = false) {
@@ -530,10 +589,12 @@ function camoSwatchSurface(canvas: HTMLCanvasElement): UiCanvas {
 
 // 2026-10-13 (the perf stream): the picker's cold swatches drain only while the Garage is open and uncovered
 // (camoSwatchPainter.ts setCamoSwatchDrainGate); main.ts adds the battle loader's cover through setDecorativeWorkGate.
-let garageSwatchOpen = false;
+// (2026-11-02 audit F5) the open half is the Garage screen's own state (garageScreen.ts), not a second flag. (round 8 Y4
+// residual fix-up r1) The cover is the screen's too (createGarageScreen `covered`): the Garage is not the player's under it
+let garageSwatchOpen: () => boolean = () => false;
 let garageSwatchCover: () => boolean = () => false;
 let swatchGateInstalled = false;
-const swatchDrainOpen = (): boolean => garageSwatchOpen && !garageSwatchCover();
+const swatchDrainOpen = (): boolean => garageSwatchOpen() && !garageSwatchCover();
 
 function queueExactCamoSwatch(
   canvas: HTMLCanvasElement,
@@ -618,6 +679,12 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     ? 'publicNav.language.switchToChinese'
     : 'publicNav.language.switchToEnglish');
   ensureFonts();
+  // the screen's one open-state owner (2026-11-02 audit F5): its epoch is what every lazy opener checks after its load.
+  // (round 8 Y4 residual fix-up r1) main's battle-loader gate (setDecorativeWorkGate: battleLoad.covering) is a cover over
+  // it: under a battle's loader (a network round's too, whose activation hides the Garage only after its covered load)
+  // the Garage is not the player's: its keys do nothing and a lazy opener opens nothing
+  const garageScreen = createGarageScreen({ covered: () => garageSwatchCover() });
+  garageSwatchOpen = () => garageScreen.isOpen;
   const root = document.createElement('div');
   root.className = 'cot-garage';
   root.innerHTML =
@@ -856,8 +923,9 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
   // The Service Record dialog renders only while open: a garage return after battle
   // refreshes just the button's badges, never a hidden tab of medal artwork.
   let serviceRecord: ReturnType<typeof createServiceRecordDialog> | null = null;
-  let recordOpening = false;
-  let recordOpenRevision = 0;
+  // (round 8 Y4 residual) its press, a lazy opener (garageScreen.ts createLazyOpener): a close while the record loads
+  // cancels it, and a press after that close or after a hand-off is the one it opens for
+  const recordOpener = createLazyOpener<HTMLElement>(garageScreen);
   const recordNames: RecordViewNames = {
     vehicle: (id) => {
       const vehicle = allSpecs.find((spec) => spec.id === id);
@@ -924,6 +992,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     let fleet: FleetTakesModule | null = null;
     let fleetIndex: FleetTakeIndex | null = null;
     let fleetRequest: Promise<void> | null = null;
+    const fleetTakesChunk = createLazyChunk(() => import('./fleetTakes.ts'));
     let player: FleetTakePlayer | null = null;
     const show = (i: number, imageUrl = FEATURED_SHOTS[i].img): void => {
       front ^= 1;
@@ -986,11 +1055,11 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     let panelVisible = typeof IntersectionObserver !== 'function';
     const requestFleetTakes = (): Promise<void> => {
       if (!panelVisible) return Promise.resolve();
-      fleetRequest ??= import('./fleetTakes.ts').then(async (module) => {
+      fleetRequest ??= fleetTakesChunk.load().then(async (module) => {
         fleet = module;
         fleetIndex = await module.loadFleetTakes();
         applyVehicleTake();
-      }, () => { fleetRequest = null; });
+      }).catch(() => { fleetRequest = null; }); // (audit R6: lazyChunk asks the chunk again; the index's fetch too)
       return fleetRequest;
     };
     if (typeof IntersectionObserver === 'function') {
@@ -1008,15 +1077,13 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
       });
     };
     const activateWhenPlayable = () => {
-      if (window.__GAME_READY === true) {
-        if (typeof requestIdleCallback === 'function') {
-          requestIdleCallback(() => activate('low'), { timeout: 1400 });
-        } else setTimeout(() => activate('low'), 500);
-        return;
-      }
-      setTimeout(activateWhenPlayable, 120);
+      if (typeof requestIdleCallback === 'function') {
+        requestIdleCallback(() => activate('low'), { timeout: 1400 });
+      } else setTimeout(() => activate('low'), 500);
     };
-    activateWhenPlayable();
+    gameReady.whenReady(activateWhenPlayable);
+    // a hidden Garage rotates nothing (its 8 s interval ran through every battle after one hover); a hover re-arms it
+    garageScreen.onHide(() => { if (timer) { clearInterval(timer); timer = 0; } });
     const engageGallery = () => { engaged = true; activate('high'); arm(); };
     shotEl.addEventListener('pointerenter', engageGallery, { once: true });
     shotEl.addEventListener('focusin', engageGallery, { once: true });
@@ -1356,6 +1423,9 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
   let battleGameMode: GameModeId = 'standard';
   let vehicleLocked = false;
   let roomStatus: GarageRoomStatus | null = null;
+  // the battle button's word, from the room status alone (2026-11-02 audit F5: a tank switch in a room relabelled it
+  // "Battle" under the room's reminder until the next status push)
+  const battleWord = (): string => t(roomStatus ? 'garage.multiplayer.room' : 'garage.battle');
   const garageVariants = Array.isArray(opts.garageVariants) ? opts.garageVariants : [];
   let selectedGarageVariantId = garageVariants.some((variant) =>
     variant.id === opts.selectedGarageVariantId)
@@ -1448,31 +1518,36 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     emit('ui:click', {});
     window.location.href = hrefForLocale(garageGalleryHref(selectedId, layer), getLocale());
   };
-  const isRecordOpen = () => serviceRecord?.isOpen() || recordOpening;
+  // (round 8 Y4 residual) a record still loading counts as open (the trigger's press closes it) only while its newest
+  // press holds: after a hand-off the trigger's press asks for it again
+  const isRecordOpen = () => serviceRecord?.isOpen() || recordOpener.wanted;
   const openServiceRecord = async (opener?: HTMLElement) => {
-    if (recordOpening || reloadsForFailure(recordTrigger, 'cot-record-load', t('garage.record.loadError'))) return;
+    if (reloadsForFailure(recordTrigger, 'cot-record-load', t('garage.record.loadError'))) return;
     closeGarageVariantMenu(); setGaragePanel('');
-    const revision = ++recordOpenRevision;
     const trigger = opener ?? (document.activeElement instanceof HTMLElement ? document.activeElement : recordTrigger);
-    recordOpening = true;
+    // (round 8 Y4 fix-up r3) a lazy opener like the others (audit F5): a close cancels it, the Garage's ticket lapses at a
+    // hide or a hand-off, so a record landing after BATTLE opens nothing over the loader. (residual) A press while it
+    // loads is the press it opens for: the phone menu's used to return at the latch here
+    const opening = recordOpener.press(trigger);
+    if (!opening) return;
     try {
       const [{ createServiceRecordDialog }] = await Promise.all([
         import('./serviceRecordDialog.ts'), import('./serviceRecord.css'), import('./richTooltip.css'),
       ]);
-      if (revision !== recordOpenRevision) return;
+      if (!opening.current()) return;
       serviceRecord ??= createServiceRecordDialog(recordNames, () => {
         recordTrigger.setAttribute('aria-expanded', 'false'); refreshServiceRecord();
       });
-      serviceRecord.open(trigger); recordTrigger.setAttribute('aria-expanded', 'true'); refreshServiceRecord();
+      serviceRecord.open(opening.press); recordTrigger.setAttribute('aria-expanded', 'true'); refreshServiceRecord();
     } catch {
       // a failed chunk fetch says so where the player looks (it was a tip on the trigger only): the trigger's error state
       // and Reload page (the loading census 262: the toast had none)
       reportLoadFailure('cot-record-load', t('garage.record.loadError'), [recordTrigger]);
     }
-    finally { recordOpening = false; }
+    finally { recordOpener.settle(opening); }
   };
   const closeServiceRecord = ({ restoreFocus = true } = {}) => {
-    recordOpenRevision++; serviceRecord?.close({ restoreFocus });
+    recordOpener.cancel(); serviceRecord?.close({ restoreFocus });
   };
   const isMobileNavigationOpen = () => !mobileNavMenu.hidden;
   // the Garage's transient surfaces (components/surfaceStack.ts): the phone's navigation menu, the folded layout's dossier
@@ -2050,7 +2125,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     if (reloadsForFailure(option, 'cot-custom-camo', t('garage.camo.customStudioRetryTitle'))) return;
     option?.setAttribute('aria-busy', 'true');
     try {
-      await customCamoStudioAccess?.open();
+      await customCamoStudioAccess?.open(garageScreen.ticket().current);
     } catch (error) {
       customCamoStudioFailed = true;
       reportLoadFailure('cot-custom-camo', t('garage.camo.customStudioRetryTitle'), [option]);
@@ -2155,10 +2230,16 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
           requeueThumb: requeueTankThumbs,
         });
       });
-      // the studio's module loads on intent: a pointer or the focus near the sheet's last swatch
+      // the studio's module loads on intent: a pointer or the focus near the sheet's last swatch. (round 2 U35) Its chunk is
+      // an opener's (customCamoStudioAccess.ts keeps any failure): an intent never spends that one try offline, and one that
+      // failed marks the swatch as a failed press does, so the next press reloads (a loaded or failed studio asks nothing)
       const preloadStudio = (event: Event): void => {
         if (!eventElement(event)?.closest(`[data-id="${CUSTOM_CAMO_ID}"]`)) return;
-        customCamoStudioAccess?.preload().catch(() => { /* the press says so */ });
+        if (customCamoStudioFailed || customCamoStudioAccess?.peek() || navigator.onLine === false) return;
+        customCamoStudioAccess?.preload().catch(() => {
+          customCamoStudioFailed = true;
+          markLoadFailed([makeOwnOption()], t('garage.camo.customStudioRetryTitle'));
+        });
       };
       host.addEventListener('pointerover', preloadStudio);
       host.addEventListener('focusin', preloadStudio);
@@ -2227,9 +2308,10 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
   // the picker's projections (equipmentPreview.ts) load as the picker opens, ahead of its first hover (the tooltip waits
   // 360 ms) and its first fit: they left the game's boot entry (UI-LOCKDOWN E, 2026-10-25)
   let equipmentPreview: EquipmentPreviewModule | null = null;
-  let equipmentPreviewLoad: Promise<EquipmentPreviewModule> | null = null;
-  const loadEquipmentPreview = (): Promise<EquipmentPreviewModule> =>
-    (equipmentPreviewLoad ??= import('./equipmentPreview.ts').then((module) => (equipmentPreview = module)));
+  // (2026-11-02 audit R6) under the one lazy-chunk policy (app/lazyChunk.ts): `??=` kept a failed chunk, and a choice
+  // waits on it, so no equipment could be fitted for the session; the next hover or choice asks again
+  const equipmentPreviewChunk = createLazyChunk(() => import('./equipmentPreview.ts').then((module) => (equipmentPreview = module)));
+  const loadEquipmentPreview = (): Promise<EquipmentPreviewModule> => equipmentPreviewChunk.load();
 
   const curLoadout = () =>
     selectedId ? loadEquipment(selectedId, specById.get(selectedId)) : [];
@@ -2778,7 +2860,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     favouritesOnly = false;
     renderFavourites();
     setRosterFacetFilter(rosterFacetMatch);
-    void facetPanel?.then((panel) => panel.clear(), () => {});
+    if (facetPanel.state === 'ready' || facetPanel.state === 'loading') void facetPanel.load().then((panel) => panel.clear(), () => {});
   });
   const rosterSearchInput = requiredElement<HTMLInputElement>(rosterSearch, 'input');
   rosterSearchInput.addEventListener('input', () => {
@@ -2816,17 +2898,18 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     if (facetSelectTimer !== null) clearTimeout(facetSelectTimer);
     facetSelectTimer = setTimeout(() => {
       facetSelectTimer = null;
+      // (2026-11-02 audit F5) a filter change just before a battle press never changes the selection after the entry
+      // (round 8 Y4 residual fix-up r1: nor under its loader, before the activation's hide)
+      if (!garageScreen.interactive) return;
       if (facetVisible(selectedId) || vehicleLocked) return;
       const first = (specsByCountry.get(countryFilter) || []).find((spec) => facetVisible(spec.id));
       if (first) api.setSelected(first.id);
     }, 320);
   }
   let facetSelectTimer: ReturnType<typeof setTimeout> | null = null;
-  let facetPanel: Promise<GarageFacetPanel> | null = null;
-  facetToggle.addEventListener('click', () => {
-    emit('ui:click', {});
-    // (the panel's strings load beside it: it mounts once they are resident, so it never shows a raw key)
-    facetPanel ??= Promise.all([import('./garageFacetPanel.ts'), import('./garageFacetPanel.css'),
+  // (audit R6) an opener: a chunk that did not arrive marks the toggle, and its next press reloads (components/loadFailure.ts)
+  // (the panel's strings load beside it: it mounts once they are resident, so it never shows a raw key)
+  const facetPanel = createLazyChunk((): Promise<GarageFacetPanel> => Promise.all([import('./garageFacetPanel.ts'), import('./garageFacetPanel.css'),
       import('./fleetStrings.ts').then((strings) => strings.ensureFleetStrings())])
       .then(([{ mountGarageFacetPanel }]) => mountGarageFacetPanel({
         anchor: countryRailEl,
@@ -2835,8 +2918,22 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
         setFilter: setRosterFacetFilter,
         click: () => emit('ui:click', {}),
         onOpenChange: (open) => root.classList.toggle('facets-open', open),
-      }));
-    facetPanel.then((panel) => panel.toggle(), () => { facetPanel = null; });
+      })), { opener: true });
+  // (2026-11-02 audit F5) a press while the panel loads means open (a second impatient press used to close it again), a
+  // press after the mount toggles, and the mount opens it only while the Garage still shows the latest press's span; the
+  // load is the opener chunk above, whose failure marks the button (integration: garage-ui's toggle over loaders-workers'
+  // chunk, IR3)
+  const facetPanelToggle = createLazyPanelToggle(garageScreen, () => {
+    const loading = facetPanel.load();
+    // (audit R6) a failed load marks the button (the toggle goes back to idle; the next press reloads)
+    void loading.then(() => {}, () => reportLoadFailure('cot-facets-load', t('loadFailed.generic'), [facetToggle]));
+    return loading;
+  });
+  facetToggle.addEventListener('click', () => {
+    emit('ui:click', {});
+    // (audit R6) after a failed load the press reloads the page once online
+    if (reloadsForFailure(facetToggle, 'cot-facets-load', t('loadFailed.generic'))) return;
+    facetPanelToggle.press();
   });
   // --- END roster filter ------------------------------------------------------
 
@@ -3021,9 +3118,11 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     }
     ensureTankThumbs(allSpecs, { canWork: () => api.isOpen });
   };
-  // The card module and its stylesheet load together at this lazy boundary (no static CSS import in a graph).
-  Promise.all([import('./heroCard.ts'), import('./heroCard.css')])
-    .then(([module]) => {
+  // The card module and its stylesheet load together at this lazy boundary (no static CSS import in a graph): the
+  // document's one hero card load (heroCardChunk.ts, 2026-11-02 audit R6), so a sheet that failed anywhere keeps the
+  // portraits here, never an unstyled card.
+  heroCardChunk.load()
+    .then((module) => {
       heroCards = module;
       return module.mountRosterHeroCards(cardsEl, cardById, selectedId, (id) => legacyPortraits([id]));
     })
@@ -3320,26 +3419,30 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
   let calloutsShown = false;
   try { calloutsShown = sessionStorage.getItem(CALLOUTS_KEY) === '1'; } catch (_) { /* this page only */ }
   let hotspots: GarageHotspots | null = null;
-  let hotspotsLoading = false;
+  // (audit R6) an opener: a chunk that did not arrive marks the callouts button, and its next press reloads
+  const hotspotsChunk = createLazyChunk(() => Promise.all([import('./garageHotspots.ts'), import('./garageHotspots.css')]), { opener: true });
   // where the plates may stand: the stage the tank is framed in, less the name, its identity and the band under them
   const hotspotRoom: HotspotRoom = { stage: () => stageCallouts ?? api.getStageRect(false),
     avoid: () => [...lowerThird.querySelectorAll('.cot-lt-name, .cot-lt-id, .cot-lt-band > *'), root.querySelector('.cot-eqpick.open')] };
   let hotspotFacts: HotspotFacts | null = null;
+  // the vehicle the figures describe
+  let hotspotFactsSpecId: string | null = null;
   const setHotspotFacts = (facts: HotspotFacts | null): void => {
     hotspotFacts = facts;
     if (calloutsShown && hotspots) { hotspots.setFacts(facts); opts.onOverlayChange?.(); }
   };
+  // one shared ready wait, however many presses come before it (each press started its own poll chain)
+  let hotspotsAwaitingReady = false;
   const loadHotspots = (): void => {
-    if (hotspots || hotspotsLoading) return;
-    if (window.__GAME_READY !== true) { setTimeout(loadHotspots, 300); return; }
-    hotspotsLoading = true;
+    if (hotspots || hotspotsChunk.state !== 'idle') return;
+    if (gameReady.state !== 'ready') { if (!hotspotsAwaitingReady) { hotspotsAwaitingReady = true; gameReady.whenReady(() => { hotspotsAwaitingReady = false; loadHotspots(); }); } return; }
     // the hotspots' sheet rides with their module, off the Garage's first paint
-    void Promise.all([import('./garageHotspots.ts'), import('./garageHotspots.css')]).then(([{ createGarageHotspots }]) => {
+    void hotspotsChunk.load().then(([{ createGarageHotspots }]) => {
       // over the Garage's edge bands (which dim the scene), under every panel
       hotspots = createGarageHotspots(root, hotspotRoom, root.querySelector('.band-r')?.nextElementSibling ?? null);
       hotspots.setFacts(calloutsShown ? hotspotFacts : null);
       opts.onOverlayChange?.();
-    }, () => { hotspotsLoading = false; });
+    }, () => reportLoadFailure('cot-hotspots-load', t('loadFailed.generic'), [calloutsButton]));
   };
   const calloutsButton = requiredElement<HTMLButtonElement>(root, '[data-lt-callouts]');
   function setCallouts(on: boolean): void {
@@ -3351,7 +3454,10 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     else loadHotspots();
     opts.onOverlayChange?.();
   }
-  calloutsButton.addEventListener('click', () => { emit('ui:click', {}); setCallouts(!calloutsShown); });
+  calloutsButton.addEventListener('click', () => {
+    emit('ui:click', {});
+    if (!reloadsForFailure(calloutsButton, 'cot-hotspots-load', t('loadFailed.generic'))) setCallouts(!calloutsShown);
+  });
   if (calloutsShown) setCallouts(true);
   const lowerName = requiredElement<HTMLElement>(lowerThird, '.cot-lt-name');
   const lowerId = requiredElement<HTMLElement>(lowerThird, '.cot-lt-id');
@@ -3429,6 +3535,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     const reloadS = stockReloadS * eqM.reload;
     const reloadLabel = autoloader ? t('garage.stat.magazineReload') : t('garage.stat.reload');
     const aimS = spec.gun.aimTimeS * eqM.aimTime;
+    hotspotFactsSpecId = spec.id;
     setHotspotFacts({
       // every plate reads as figures alone (a word in one of the four stood in the figures' face below the floor), and
       // only figures the overview beside it does not show: its reload, traverse, power to weight and speed stay there
@@ -3655,7 +3762,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     renderStats(spec);
     featuredPanel?.setVehicle(specId); // the battle gallery shows this tank's own take where there is one
     battleBtn.disabled = false;
-    requiredElement<HTMLElement>(battleBtn, '.battle-word').textContent = t('garage.battle');
+    requiredElement<HTMLElement>(battleBtn, '.battle-word').textContent = battleWord();
     camosEl.style.display = '';
     refreshCamoSel(); // CAMO PICKER SECTION: highlight this tank's pattern
     // camo r4: warm this tank's pattern bakes in the background so picker
@@ -3695,22 +3802,56 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
       watch?: boolean;
       couch?: CouchBattle;
     } = {},
-  ): void {
-    // Battle entry must be unstoppable: the pre-battle emits fan out to five+
-    // subscribers (audio click, pointer-lock grab, killcam/shot-log resets…)
-    // and any one of them throwing in an exotic environment would silently
-    // block onBattle — a BATTLE button that does nothing is the worst failure
-    // mode. Contain their failures; the phase flip always runs.
+  ): boolean {
+    // Battle entry must be unstoppable: a listener throwing in an exotic environment must never block onBattle — a
+    // BATTLE button that does nothing is the worst failure mode. The press's one emit before onBattle is its click
+    // (ui:click), contained here. (round 4 F1) Its ui:battleStart, whose listeners fan out (the pointer-lock grab,
+    // settings' battle state, the play surface, killcam and shot-log resets…), is the `announce` handed to the entry:
+    // it contains its own listeners' failures, and the entry runs it once it accepts the start
+    // (soloBattleEntryRuntime.ts run(), which contains a throw the same way).
     // (a battle that could not start because part of the game did not arrive cannot start in this document: the press
     // reloads the page once online, noteBattleLoadFailed)
-    if (pressFailed(battleBtn)) return;
+    if (pressFailed(battleBtn)) return false;
+    // (round 3 B2, review r1) a press no battle may follow does nothing: its owner shows the way out instead (a check
+    // that throws refuses nothing, and the entry decides again)
+    let refused = false;
+    try { refused = opts.refusesBattle?.() === true; } catch (err) { console.error('[garage] battle refusal check failed:', err); }
+    if (refused) return false;
     try {
       if (emitClick) emit('ui:click', {});
-      emit('ui:battleStart', { specId, mapId });
     } catch (err) {
-      console.error('[garage] battle-start listener failed:', err);
+      console.error('[garage] click listener failed:', err);
     }
-    if (onBattle) onBattle(specId, mapId, campaignOperationId ? { gameMode, campaignOperationId } : watch ? { gameMode, watch } : couch ? { gameMode, couch } : { gameMode }); // MAP-CONFIG WIRING
+    // (round 4 F1) the press's battle announcement is its entry's to run, once the entry accepts the start (inside this
+    // task unless a Garage return is in flight): announced here, a start refused after that return's wait left the
+    // pointer lock, the battle settings, the hidden play surface and the loading hold over the return's notice. (round 5
+    // Q2) An entry that waits asks for the pointer lock in this task, the press's gesture, and releases it if refused
+    // (soloBattleEntryRuntime.ts holdPointerLock)
+    const announce = (): void => {
+      try {
+        emit('ui:battleStart', { specId, mapId });
+      } catch (err) {
+        console.error('[garage] battle-start listener failed:', err);
+      }
+    };
+    const options = campaignOperationId ? { gameMode, campaignOperationId } : watch ? { gameMode, watch } : couch ? { gameMode, couch } : { gameMode };
+    if (!onBattle) return false;
+    // (round 8 Y4 s3-03, review r2) the start is handed on: a lazy opener still loading (the couch lobby, Deploy, the tech
+    // tree…) opens nothing over the loader, though the Garage shows under it until the activation hides it. (residual
+    // fix-up r1) And until the start ends the Garage is not the player's (garageScreen.ts enter): a press under the loader
+    // (the T key, a focused trigger) opens nothing and its keys do nothing. The entry's settle gives it back when the start
+    // ended with the Garage still showing (refused, or failed before its activation); the activation's hide ends it first
+    const giveBack = garageScreen.enter();
+    let settled: PromiseLike<unknown> | undefined;
+    try {
+      settled = onBattle(specId, mapId, options, announce); // MAP-CONFIG WIRING
+    } catch (err) {
+      giveBack();
+      throw err;
+    }
+    if (settled && typeof settled.then === 'function') void Promise.resolve(settled).finally(giveBack);
+    else giveBack();
+    return true;
   }
 
   /** The proving ground with this vehicle (the dossier's button, the Gallery's link): never inside a room's lobby. */
@@ -3732,6 +3873,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     closeMobileNavigation();
     setGaragePanel('');
     emit('ui:click', {});
+    garageScreen.handOff(); // (round 8 Y4 s3-03) the room press hands the player on: no lazy opener lands over its menu
     // a room hosts the battle modes only: a practice mode (the range) opens it on Standard
     opts.onPlayRequest?.({ mode, specId: selectedId, mapId: selectedMapId, gameMode: isPracticeMode(battleGameMode) ? 'standard' : battleGameMode });
   }
@@ -3743,6 +3885,8 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     closeBattleMenu();
     if (opts.onPlayRequest) {
       try { emit('ui:click', {}); } catch (_) { /* presentation-only */ }
+      // (round 8 Y4 s3-03, review r2) the press hands the player on now: its solo start can wait on the play menu's chunk
+      garageScreen.handOff();
       opts.onPlayRequest({
         mode: watch ? 'solo' : battleMode,
         gameMode: battleGameMode,
@@ -3767,6 +3911,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     const start = () => launchBattle(specId, mapId, { emitClick: false, gameMode: 'frontline_assault', campaignOperationId: operationId });
     if (opts.onPlayRequest) {
       try { emit('ui:click', {}); } catch (_) { /* presentation-only */ }
+      garageScreen.handOff(); // (round 8 Y4 s3-03) as the BATTLE press
       opts.onPlayRequest({ mode: 'solo', gameMode: 'frontline_assault', specId, mapId, startSolo: start });
       return;
     }
@@ -3794,10 +3939,13 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
   // battlefieldFacts (its name, landscape and the maps-r1 stills; the Rooms host's picker reads the same). It loads with
   // its first opening (the boot graph keeps no picker).
   let deployField: { picker: import('./battlefieldPicker.ts').BattlefieldPicker; cards: () => import('./battlefieldPicker.ts').BattlefieldCard[] } | null = null;
-  let deployFieldLoad: Promise<void> | null = null;
+  // (audit R6) an opener: a chunk that did not arrive marks the battlefield button, and its next press reloads
+  const deployFieldChunk = createLazyChunk(() => Promise.all([import('./battlefieldPicker.ts'), import('./pickerText.ts'), import('./battlefieldFacts.ts')]), { opener: true });
   /** A phone's column scroll before the picker scrolled it into view (restored when the picker closes). */
   let deployFieldColumnScroll: number | null = null;
   function openDeployField(): void {
+    const fieldTrigger = root.querySelector<HTMLElement>('[data-deploy-field]');
+    if (reloadsForFailure(fieldTrigger, 'cot-deploy-field-load', t('loadFailed.generic'))) return;
     const pop = requiredElement<HTMLElement>(root, '[data-deploy-field-pop]');
     if (!pop.firstChild) {
       pop.innerHTML = `<div class="cot-deploy-field-head">${uiIconSVG('map', 16)}<span id="cot-deploy-field-label">${t('garage.battlefield.heading')}</span>` +
@@ -3838,9 +3986,11 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
       deployField.picker.focus();
       return;
     }
-    deployFieldLoad ??= Promise.all([import('./battlefieldPicker.ts'), import('./pickerText.ts'), import('./battlefieldFacts.ts')]).then(([
+    void deployFieldChunk.load().then(([
       { createBattlefieldPicker }, { pickerText }, { battlefieldFacts },
     ]) => {
+      // (one picker: an opening while the chunk was in flight waits on the same load)
+      if (deployField) { if (!pop.hidden) deployField.picker.focus(); return; }
       const cards = (): import('./battlefieldPicker.ts').BattlefieldCard[] => battlefieldCards(battlefieldFacts);
       const regions = [...new Set(maps.flatMap((map) => mapRegionTags(map.id)))];
       const picker = createBattlefieldPicker(requiredElement<HTMLElement>(pop, '[data-deploy-bf]'), {
@@ -3855,8 +4005,8 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
         },
       });
       deployField = { picker, cards };
-    }, () => { deployFieldLoad = null; });
-    void deployFieldLoad.then(() => { if (!pop.hidden) deployField?.picker.focus(); });
+      if (!pop.hidden) picker.focus();
+    }, () => { closeDeployField(); reportLoadFailure('cot-deploy-field-load', t('loadFailed.generic'), [fieldTrigger]); });
   }
   /** The cards a mode can play: all of them, or the one its ruleset lays its range on (the proving ground's). */
   const playableFields = (cards: import('./battlefieldPicker.ts').BattlefieldCard[]): import('./battlefieldPicker.ts').BattlefieldCard[] => {
@@ -3924,9 +4074,11 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
   }
   // Deploy's sheet (deploy.css) rides off the game entry: it loads once the Garage is playable and idle, or at the first
   // open, which waits for it, so the screen never paints unstyled (a failed load still opens it).
-  let deployStyles: Promise<void> | null = null;
+  // (2026-11-02 audit R6) under the one lazy-chunk policy (app/lazyChunk.ts): `??=` kept a failure from the idle preload
+  // for the session; now a failed sheet stands (asked again it would not apply), and a failed screen module is asked
+  // again by the next open (importAll: the sheet's failure is never hidden by the module's)
   let deployStyled = false;
-  const ensureDeployStyles = (): Promise<void> => (deployStyles ??= Promise.all([import('./deploy.css'), import('./deployScreen.ts')])
+  const deployStylesChunk = createLazyChunk(() => importAll([import('./deploy.css'), import('./deployScreen.ts')])
     .then(([, { mountDeployScreen }]) => {
       deployScreen = mountDeployScreen({
         menu: battleMenu, options: soloOptions, mapIds: new Set(maps.map((map) => map.id)),
@@ -3962,17 +4114,28 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
       if (battleMenu.dataset.deployTab === 'campaign') deployScreen.brief();
       deployStyled = true;
     }));
+  const ensureDeployStyles = (): Promise<void> => deployStylesChunk.load();
   const preloadDeployStyles = (): void => {
-    if (window.__GAME_READY !== true) { setTimeout(preloadDeployStyles, 250); return; }
     if (typeof requestIdleCallback === 'function') requestIdleCallback(() => { void ensureDeployStyles(); }, { timeout: 2000 });
     else setTimeout(() => { void ensureDeployStyles(); }, 800);
   };
-  preloadDeployStyles();
+  gameReady.whenReady(preloadDeployStyles);
+  // (a failed load still opens the screen, this once: the next open asks the chunk again, app/lazyChunk.ts)
+  let deployOpenUnstyled = false;
   function openBattleMenu(): void {
-    if (!deployStyled) {
-      void ensureDeployStyles().then(openBattleMenu, () => { deployStyled = true; openBattleMenu(); });
+    if (!deployStyled && !deployOpenUnstyled) {
+      // (2026-11-02 audit F5) the sheet's load can outlast the Garage: a battle entered meanwhile must not find a modal
+      // Deploy on the surface stack (it took the battle's first Escape)
+      const ticket = garageScreen.ticket();
+      const reopen = (): void => { if (ticket.current()) openBattleMenu(); };
+      void ensureDeployStyles().then(reopen, () => {
+        if (!ticket.current()) return;
+        deployOpenUnstyled = true;
+        openBattleMenu();
+      });
       return;
     }
+    deployOpenUnstyled = false;
     openSurface(deploySurface, battleModeBtn);
     renderBattleOptions();
     renderDeployTank();
@@ -3994,7 +4157,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     battleMenuScroll.scrollTop = 0;
     // the mode picker takes the focus on the chosen mode (the screen's close until the picker has loaded)
     requiredElement<HTMLButtonElement>(battleMenu, '[data-battle-close]').focus({ preventScroll: true });
-    void openDeployModes().then(() => { if (battleMenu.classList.contains('open')) deployModes?.focus(); });
+    void openDeployModes().then(() => { if (battleMenu.classList.contains('open')) deployModes?.focus(); }, () => {});
   }
   function setBattleMode(nextMode: string | undefined): void {
     if (!nextMode || !(nextMode in battleModeMeta)) return;
@@ -4111,10 +4274,10 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     facts: [], media: { poster: deployModeArt(id) }, description: '', rules: [],
   }));
   let deployModes: import('./modePicker.ts').ModePicker | null = null;
-  let deployModesLoad: Promise<void> | null = null;
   let deployModeCards: (() => import('./modePicker.ts').ModeCard[]) | null = null;
-  function openDeployModes(): Promise<void> {
-    deployModesLoad ??= Promise.all([import('./modePicker.ts'), import('./pickerText.ts')]).then(([{ createModePicker }, { pickerText }]) => {
+  // (audit R6) the Deploy sheet's mode picker, loaded in idle time and with the sheet (no trigger of its own): a chunk
+  // that did not arrive leaves the sheet without it, and the next opening asks again (app/lazyChunk.ts)
+  const deployModesChunk = createLazyChunk(() => importAll([import('./modePicker.ts'), import('./pickerText.ts')]).then(([{ createModePicker }, { pickerText }]) => {
       const cards = modeCards;
       deployModeCards = cards;
       deployModes = createModePicker(requiredElement<HTMLElement>(battleMenu, '[data-deploy-modes]'), {
@@ -4126,8 +4289,9 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
           if (id === 'standard') setBattleMode('solo'); else setBattleGameMode(id);
         },
       });
-    }, () => { deployModesLoad = null; });
-    return deployModesLoad;
+    }));
+  function openDeployModes(): Promise<void> {
+    return deployModesChunk.load();
   }
   const idleLoad = (globalThis as { requestIdleCallback?: (run: () => void) => number }).requestIdleCallback;
   if (idleLoad) idleLoad(() => void openDeployModes()); else setTimeout(() => void openDeployModes(), 1200);
@@ -4136,9 +4300,14 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
   // the card itself still opens the Deploy screen. The menus are made at its first press.
   const quickBtn = requiredElement<HTMLButtonElement>(root, '[data-battle-quick]');
   let quickMenus: { readonly mode: PickerMenu; readonly field: PickerMenu } | null = null;
-  let quickLoad: Promise<void> | null = null;
+  // (audit R6) an opener: a chunk that did not arrive marks the corner button, and its next press reloads
+  const quickChunk = createLazyChunk(() => import('./battlefieldFacts.ts'), { opener: true });
   function openQuickMenus(): void {
-    quickLoad ??= import('./battlefieldFacts.ts').then(({ battlefieldFacts }) => {
+    if (reloadsForFailure(quickBtn, 'cot-quick-load', t('loadFailed.generic'))) return;
+    // (2026-11-02 audit F5) the menus open only while the Garage that asked still shows
+    const ticket = garageScreen.ticket();
+    void quickChunk.load().then(({ battlefieldFacts }) => {
+      if (quickMenus) return;
       const hosts = requiredElement<HTMLElement>(root, '[data-battle-quick-hosts]');
       const field = createPickerMenu(requiredElement<HTMLElement>(hosts, '[data-quick-field]'), {
         id: 'garage-quick-battlefield', label: t('garage.battlefield.heading'), layout: 'cards', text: pickerText(),
@@ -4159,9 +4328,8 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
         },
       });
       quickMenus = { mode, field };
-    }, () => { quickLoad = null; });
-    void quickLoad.then(() => {
-      if (!quickMenus) return;
+    }, () => reportLoadFailure('cot-quick-load', t('loadFailed.generic'), [quickBtn])).then(() => {
+      if (!quickMenus || !ticket.current()) return;
       quickMenus.mode.setValue(battleGameMode);
       quickMenus.mode.open(quickBtn);
     });
@@ -4221,26 +4389,52 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
   const setupWatch = requiredElement<HTMLButtonElement>(battleMenu, '[data-battle-watch]');
   setupWatch.addEventListener('click', () => { if (!setupWatch.disabled) battle(true); });
   const setupCouch = requiredElement<HTMLButtonElement>(battleMenu, '[data-battle-couch]');
-  setupCouch.addEventListener('click', () => {
-    if (setupCouch.disabled || !selectedId || !opts.onCouch) return;
-    const specId = selectedId;
-    const mapId = fieldMapId();
-    const gameMode = battleGameMode;
-    opts.onCouch({ gameMode, start: (couch) => { closeBattleMenu(); launchBattle(specId, mapId, { gameMode, couch }); } });
-  });
+  // (round 8 Y4 s3-03) the couch lobby is one of the Garage's lazy openers (2026-11-02 audit F5): the press takes the
+  // Garage's ticket (main's onCouch opens the lobby only while it holds, src/app/couchOpener.ts), and a chunk that did not
+  // arrive is the kit's failure (the button's error state, Reload page). (review r2) A lobby that failed to open once
+  // loaded (its socket, a bug) is not a failed chunk: the button stays a press, and the console keeps the cause either way.
+  // (residual) A press while the chunks load asks for nothing more: it is the press they open the lobby for (its ticket,
+  // its Deploy selection; createLazyOpener), so after a hand-off whose start was refused the next press is not lost
+  const couchOpener = createLazyOpener<{ readonly specId: string; readonly mapId: string; readonly gameMode: GameModeId }>(garageScreen);
+  const openCouch = (): boolean => {
+    const onCouch = opts.onCouch;
+    if (setupCouch.disabled || !selectedId || !onCouch) return false;
+    if (reloadsForFailure(setupCouch, 'cot-couch-load', t('loadFailed.generic'))) return false;
+    const opening = couchOpener.press({ specId: selectedId, mapId: fieldMapId(), gameMode: battleGameMode });
+    if (!opening) return true;
+    const request = {
+      get gameMode() { return opening.press.gameMode; }, ticket: opening, trigger: setupCouch,
+      start: (couch: CouchBattle) => {
+        const { specId, mapId, gameMode } = opening.press;
+        closeBattleMenu();
+        return launchBattle(specId, mapId, { gameMode, couch });
+      },
+    };
+    void Promise.resolve().then(() => onCouch(request))
+      .catch((error: unknown) => {
+        if (!(error instanceof CouchChunkError)) { console.error('[couch] the lobby failed to open', error); return; }
+        reportLoadFailure('cot-couch-load', t('loadFailed.generic'), [setupCouch]);
+        console.warn('[couch] a couch chunk did not arrive', error);
+      })
+      .finally(() => { couchOpener.settle(opening); });
+    return true;
+  };
+  setupCouch.addEventListener('click', () => { openCouch(); });
   // The mode settings and the TEAMS switch load with the battle menu's first render (round 2, the critic's E3: the TEAMS
   // control grew the game's entry chunk); MONO's switch leads with the selected vehicle's flag
   let arrangementPanel: { render(mode: GameModeId): void; close(): void } | null = null;
-  let arrangementPanelLoad: Promise<void> | null = null;
+  // (2026-11-02 audit R6) under the one lazy-chunk policy (app/lazyChunk.ts): `??=` kept a failed chunk (unhandled), and
+  // the mode settings and the TEAMS switch never rendered for the session; the next render asks again
+  const arrangementPanelChunk = createLazyChunk(() => import('./battleArrangementPanel.ts').then(({ createBattleArrangementPanel }) => {
+    arrangementPanel = createBattleArrangementPanel(soloOptions, {
+      playerCountry: () => countryOfVehicle(selectedId, specs.find((spec) => spec.id === selectedId)?.nation),
+      customSides: sidesCustom,
+    });
+    arrangementPanel.render(battleGameMode);
+  }));
   const renderArrangementPanel = (): void => {
     if (arrangementPanel) { arrangementPanel.render(battleGameMode); return; }
-    arrangementPanelLoad ??= import('./battleArrangementPanel.ts').then(({ createBattleArrangementPanel }) => {
-      arrangementPanel = createBattleArrangementPanel(soloOptions, {
-        playerCountry: () => countryOfVehicle(selectedId, specs.find((spec) => spec.id === selectedId)?.nation),
-        customSides: sidesCustom,
-      });
-      arrangementPanel.render(battleGameMode);
-    });
+    void arrangementPanelChunk.load();
   };
   // The Deploy screen (brand-ui S3). Every chip and rule reads the mode's ruleset (sim/matchRuleset.ts), so the screen
   // never promises a rule the battle does not keep.
@@ -4652,18 +4846,26 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
   // photo mode (the direction's Photo action): loaded at its first use, off the game entry
   const photoButton = requiredElement<HTMLButtonElement>(root, '[data-lt-photo]');
   let photo: GaragePhotoControl | null = null;
-  let photoMode: Promise<typeof import('./photoMode.ts')> | null = null;
+  // (audit R6) an opener: a chunk that did not arrive marks the Photo button, and its next press reloads
+  // the photo mode's sheet loads beside its module, at the boundary (the runtime-styles rule: only main.ts imports CSS statically)
+  const photoMode = createLazyChunk(() => Promise.all([import('./photoMode.ts'), import('./photoMode.css')]).then(([mode]) => mode), { opener: true });
+  // the open photo mode's close (the Garage's hide puts it away: it outlived the screen)
+  let closePhoto: (() => void) | null = null;
   function openPhoto(): void {
     if (!photo || !api.isOpen || battleMenu.classList.contains('open')) return;
+    if (reloadsForFailure(photoButton, 'cot-photo-load', t('loadFailed.generic'))) return;
     const control = photo;
+    const ticket = garageScreen.ticket();
     emit('ui:click', {});
-    // the photo mode's sheet loads beside its module, at the boundary (the runtime-styles rule: only main.ts imports CSS statically)
-    photoMode ??= Promise.all([import('./photoMode.ts'), import('./photoMode.css')]).then(([mode]) => mode);
-    void photoMode.then(({ openPhotoMode }) => openPhotoMode({
-      stage: control.stage, showroom: control.showroom, still: control.still, keycap, segmented, wireRoving,
-      fileName: () => `claude-of-tanks_${selectedId || 'garage'}_${new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-')}.png`,
-      click: () => emit('ui:click', {}), onClose: () => photoButton.focus(),
-    })).catch(() => { photoMode = null; });
+    void photoMode.load().then(({ openPhotoMode }) => {
+      // (2026-11-02 audit F5) the Garage that asked must still show, and Deploy not have opened over it meanwhile
+      if (!ticket.current() || battleMenu.classList.contains('open')) return;
+      closePhoto = openPhotoMode({
+        stage: control.stage, showroom: control.showroom, still: control.still, keycap, segmented, wireRoving,
+        fileName: () => `claude-of-tanks_${selectedId || 'garage'}_${new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-')}.png`,
+        click: () => emit('ui:click', {}), onClose: () => { closePhoto = null; if (garageScreen.isOpen) photoButton.focus(); },
+      });
+    }, () => reportLoadFailure('cot-photo-load', t('loadFailed.generic'), [photoButton]));
   }
   photoButton.addEventListener('click', openPhoto);
   requiredElement<HTMLElement>(root, '[data-nav="github"]').addEventListener('click', () => {
@@ -4682,28 +4884,39 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
   // The tech tree (252): every national tree over the Garage, read-only. The screen, its sheet, its strings and the tree
   // data load on the first open (no boot cost); Select takes the node's build into the Garage.
   const techTreeTrigger = requiredElement<HTMLButtonElement>(root, '.cot-techtree-trigger');
-  let techTreeOpening = false;
+  // (round 8 Y4 residual) its press, a lazy opener (garageScreen.ts createLazyOpener): a press while the tree loads is the
+  // press it opens for (the bar's trigger or the phone menu's), so after a hand-off whose start was refused that press is
+  // not lost (before: it returned at a latch, and the tree landed on the first press's lapsed ticket)
+  const techTreeOpener = createLazyOpener<HTMLElement | null>(garageScreen);
+  // the open tech tree (the Garage's hide closes it: it is a body-level modal the Garage root's display never reached)
+  let techTreeScreen: { close(options?: { restoreFocus?: boolean }): void } | null = null;
   const openTechTree = async (opener: HTMLElement | null): Promise<void> => {
-    if (techTreeOpening || reloadsForFailure(techTreeTrigger, 'cot-techtree-load', t('garage.techTree.loadError'))) return;
+    if (reloadsForFailure(techTreeTrigger, 'cot-techtree-load', t('garage.techTree.loadError'))) return;
     emit('ui:click', {});
-    techTreeOpening = true;
     closeMobileNavigation();
     setGaragePanel('');
+    const opening = techTreeOpener.press(opener);
+    if (!opening) return;
     try {
       const [{ createTechTreeScreen }] = await Promise.all([
-        import('./techTree.ts'), import('./techTree.css'), import('./heroCard.css'),
+        import('./techTree.ts'), import('./techTree.css'), heroCardChunk.load(),
         import('./techTreeStrings.ts').then((strings) => strings.ensureTechTreeStrings()),
       ]);
+      // (2026-11-02 audit F5) a Garage that hid during the load, or handed the player on since its newest press, opens
+      // nothing over what replaced it
+      if (!opening.current()) return;
       const screen = createTechTreeScreen({
         vehicles: specById,
         selectedId,
         onPick: (specId) => { if (specId !== selectedId && applySelection(specId)) onSelect?.(specId); },
         onClose: () => {
           techTreeTrigger.setAttribute('aria-expanded', 'false');
+          if (techTreeScreen === screen) techTreeScreen = null;
           screen.dispose();
         },
       });
-      screen.open(opener);
+      techTreeScreen = screen;
+      screen.open(opening.press);
       techTreeTrigger.setAttribute('aria-expanded', 'true');
     } catch (err) {
       // a failed chunk fetch says so (it reached the console only), with a Retry that runs the same open; the next press
@@ -4712,7 +4925,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
       reportLoadFailure('cot-techtree-load', t('garage.techTree.loadError'),
         [techTreeTrigger, root.querySelector<HTMLElement>('[data-mobile-nav="techTree"]')]);
     } finally {
-      techTreeOpening = false;
+      techTreeOpener.settle(opening);
     }
   };
   techTreeTrigger.addEventListener('click', () => { void openTechTree(techTreeTrigger); });
@@ -4740,7 +4953,10 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     setGaragePanel('');
   });
   function onKey(e: KeyboardEvent): void {
-    if (!api.isOpen) return;
+    // (round 8 Y4 residual fix-up r1) the Garage's keys are the player's only while it is: not under a start's loader nor
+    // a cover (garageScreen.ts interactive). The listener stays from show() to hide(), and the Garage showed under the
+    // loader, so T opened the tree over it and B, F, the arrows acted on the Garage beneath
+    if (!garageScreen.interactive) return;
     const target = eventElement(e);
     if (target?.closest('.cot-modal')) return;
     // an open picker menu (the compare rival) owns its keys: F, / and the arrows are its own there
@@ -4759,6 +4975,9 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     // The Deploy screen covers the showroom: behind it only Enter (deploy) and Escape (above) act.
     const deployOpen = battleMenu.classList.contains('open');
     if (!typing && !deployOpen && !e.metaKey && !e.ctrlKey && !e.altKey) {
+      // (round 8 Y4 residual fix-up r1) a shortcut that acts is one press: a held key's auto-repeat (e.repeat) does nothing
+      // more and keeps its default prevented (a held T sounded the tree's click per keydown while it loaded; F, I and R
+      // flipped their toggles at the repeat rate). The stations and G only go somewhere, so a repeat changes nothing
       const stationKey = /^Digit([1-5])$/.exec(e.code);
       if (e.key === '/') { rosterSearchInput.focus(); e.preventDefault(); return; }
       if (stationKey && document.body.dataset.cotPanels === 'persistent') {
@@ -4766,25 +4985,27 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
         e.preventDefault();
         return;
       }
-      if (e.code === 'KeyB') { emit('ui:click', {}); openBattleMenu(); e.preventDefault(); return; }
+      if (e.code === 'KeyB') { if (!e.repeat) { emit('ui:click', {}); openBattleMenu(); } e.preventDefault(); return; }
       // the Garage's own key (its nav item advertises G): back to the showroom's overview from any station
       if (e.code === 'KeyG') {
         if (document.body.dataset.cotPanels === 'persistent' && station !== 'overview') setStation('overview');
         e.preventDefault();
         return;
       }
-      if (e.code === 'KeyV') { openSelectedInGallery(); e.preventDefault(); return; }
-      if (e.code === 'KeyT') { void openTechTree(techTreeTrigger); e.preventDefault(); return; }
-      if (e.code === 'KeyF') { toggleFavourite(selectedId); e.preventDefault(); return; }
-      if (e.code === 'KeyP' && photo) { openPhoto(); e.preventDefault(); return; }
+      if (e.code === 'KeyV') { if (!e.repeat) openSelectedInGallery(); e.preventDefault(); return; }
+      if (e.code === 'KeyT') { if (!e.repeat) void openTechTree(techTreeTrigger); e.preventDefault(); return; }
+      if (e.code === 'KeyF') { if (!e.repeat) toggleFavourite(selectedId); e.preventDefault(); return; }
+      if (e.code === 'KeyP' && photo) { if (!e.repeat) openPhoto(); e.preventDefault(); return; }
       if (e.code === 'KeyI' && document.body.dataset.cotPanels === 'persistent') {
-        emit('ui:click', {});
-        setCallouts(!calloutsShown);
+        if (!e.repeat) {
+          emit('ui:click', {});
+          setCallouts(!calloutsShown);
+        }
         e.preventDefault();
         return;
       }
-      if (e.code === 'KeyR') { recordTrigger.click(); e.preventDefault(); return; }
-      if (e.code === 'F1') { openDocs(); e.preventDefault(); return; }
+      if (e.code === 'KeyR') { if (!e.repeat) recordTrigger.click(); e.preventDefault(); return; }
+      if (e.code === 'F1') { if (!e.repeat) openDocs(); e.preventDefault(); return; }
     }
     if (typing) return;
     // the bare screen's arrows go to the mode picker (a dropdown or a segmented control keeps its own)
@@ -4802,22 +5023,24 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     else if (e.code === 'ArrowRight') { step(1); e.preventDefault(); }
     else if ((e.code === 'Home' || e.code === 'End') && target?.closest('.cot-cards')) { stepToEnd(e.code === 'End'); e.preventDefault(); }
     else if (e.code === 'Enter' || e.code === 'NumpadEnter') {
-      // the bare screen's Enter deploys; every control keeps its own
+      // the bare screen's Enter deploys; every control keeps its own (residual fix-up r1: a held Enter deploys once)
       if (target?.closest('button,input,select,a,[role="button"]')) return;
-      battle();
+      if (!e.repeat) battle();
       e.preventDefault();
     }
   }
 
-  let hasPresented = false;
   const api: GarageRuntime = {
     root,
-    isOpen: false,
+    get isOpen() { return garageScreen.isOpen; },
     // the hotspots show on the docked overview, never over Deploy, a panel or a folded layout
-    frameHotspots(camera, model) {
+    frameHotspots(camera, model, modelSpecId = null) {
       noteHeroModel(model);
       if (!calloutsShown || !hotspots) return;
-      hotspots.frame(camera, model, api.isOpen && document.body.dataset.cotPanels === 'persistent'
+      // (2026-11-02 audit, 05-ui-2 #9) the figures follow the selection at once and the model when it lands: on the
+      // previous tank's model (a switch still landing past the pedestal's grace) the plates wait
+      const described = !modelSpecId || !hotspotFactsSpecId || modelSpecId === hotspotFactsSpecId;
+      hotspots.frame(camera, described ? model : null, api.isOpen && document.body.dataset.cotPanels === 'persistent'
         && root.dataset.station === 'overview' && !battleMenu.classList.contains('open'));
     },
 
@@ -4829,16 +5052,26 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
       queueBarFit();
       queueStageMeasure();
       // The full play menu also owns mode selection; reconcile it on return.
+      // (2026-11-02 audit F5) only a solo choice follows it: setBattleGameMode is a solo choice, and a Private or LAN
+      // pick made in this Garage is not undone by coming back to it
       try {
         const remembered = localStorage.getItem('cot.game.mode.v1');
-        if (remembered && normalizeGameMode(remembered) !== battleGameMode) setBattleGameMode(remembered);
+        if (battleMode === 'solo' && remembered && normalizeGameMode(remembered) !== battleGameMode) setBattleGameMode(remembered);
       } catch (_) { /* session-only mode choice */ }
       refreshServiceRecord();
       closeGarageVariantMenu();
       setGaragePanel('');
+      // (2026-11-02 audit F5, round 2) a surface left open under a hidden screen keeps its place on the stack and takes
+      // the Garage's first Escape; the return sweeps it here, while the Garage is still display:none (the stack is empty
+      // on every other show, and an empty sweep reads no layout). A guard: (round 3 B11) the battle's own two, the touch
+      // ammo rack and the ally picker, close on the HUD's hidden edge (hud.ts endBattle), which the return runs first
+      sweepHiddenSurfaces();
       root.style.display = 'block';
-      const firstPresentation = !hasPresented;
-      if (firstPresentation && document.getElementById('cot-boot')) {
+      const firstPresentation = garageScreen.phase === 'unpresented';
+      // (round 2) only while the splash still covers: bootScreen.ts dismiss() fires cot:boot-dismiss, then fades the
+      // splash (cot-boot-out) and drops it 620 ms later, so a first show inside the fade waited for a dismiss that had
+      // already happened and left the Garage visibility:hidden for the session
+      if (firstPresentation && document.querySelector('#cot-boot:not(.cot-boot-out)')) {
         root.classList.add('awaiting-boot');
         document.addEventListener('cot:boot-dismiss', () => {
           root.classList.remove('awaiting-boot');
@@ -4853,16 +5086,13 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
       // The transition veil already gives us a frame boundary, so re-attach
       // the animation class on that boundary instead.
       const reopening = !firstPresentation && !api.isOpen;
-      hasPresented = true;
       root.classList.remove('enter');
       if (reopening) {
         requestAnimationFrame(() => {
           if (api.isOpen) root.classList.add('enter');
         });
       }
-      if (!api.isOpen) window.addEventListener('keydown', onKey);
-      api.isOpen = true;
-      garageSwatchOpen = true;
+      if (garageScreen.show() !== 'already') window.addEventListener('keydown', onKey);
       api.setSelected(specById.has(selected) ? selected : selectedId);
       statsEl.scrollTop = 0;
       // The hidden garage reports a zero-width rail during initial creation.
@@ -4873,6 +5103,10 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
 
     /** Close the garage screen. */
     hide() {
+      if (api.isOpen) window.removeEventListener('keydown', onKey);
+      // the state first (2026-11-02 audit F5): every lazy opener's ticket lapses here, so a load that lands after this
+      // opens nothing, and the Garage's own closers (the featured rotation) run
+      garageScreen.hide();
       customCamoStudioAccess?.peek()?.close({ restoreFocus: false, immediate: true });
       technicalModal.close({ restoreFocus: false, immediate: true });
       closeServiceRecord({ restoreFocus: false });
@@ -4880,17 +5114,30 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
       closeGarageVariantMenu();
       closeBattleMenu();
       setGaragePanel('');
-      void facetPanel?.then((panel) => panel.close(), () => {});
+      // the surfaces the old hide missed: the equipment and consumables pickers (the equipment's Tab trap stayed on the
+      // document), the rival and quick picker menus (body top layer), the tech tree and photo mode, and the filter's
+      // auto-select timer, which could change the selection after the battle entry began
+      closeEqPicker({ restoreFocus: false });
+      garageConsumables?.close({ restoreFocus: false });
+      rivalMenu?.close();
+      quickMenus?.mode.close();
+      quickMenus?.field.close();
+      techTreeScreen?.close({ restoreFocus: false });
+      closePhoto?.();
+      facetPanelToggle.panel?.close();
+      if (facetSelectTimer !== null) { clearTimeout(facetSelectTimer); facetSelectTimer = null; }
       root.style.display = 'none';
-      if (api.isOpen) window.removeEventListener('keydown', onKey);
-      api.isOpen = false;
-      garageSwatchOpen = false;
+      // and whatever else stands open from the Garage, or no longer shows: none keeps a place on the stack (and the
+      // battle's first Escape) under a hidden page
+      closeSurfacesWithin(root);
+      sweepHiddenSurfaces();
     },
 
     /** Normalize packaged tank portraits (screenshot compatibility). */
     drainThumbs() { drainTankThumbs(); heroCards?.drainHeroCards(cardsEl); },
 
-    /** 2026-10-13: decorative Garage work (the picker's cold swatches) also holds while `covered()` is true. */
+    /** 2026-10-13: decorative Garage work (the picker's cold swatches) also holds while `covered()` is true. (round 8 Y4
+     *  residual fix-up r1) And the Garage is not the player's then (garageScreen.ts `covered`): its keys and openers wait. */
     setDecorativeWorkGate(covered: () => boolean) { garageSwatchCover = covered; },
 
     /** The rect the showroom frames the hero in (CSS pixels, measureStage); `centred: false` is the whole free stage (the
@@ -4948,7 +5195,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     /** Reflect persistent multiplayer membership beneath the main battle action. */
     setRoomStatus(status: GarageRoomStatus | null = null) {
       roomStatus = status;
-      requiredElement<HTMLElement>(battleBtn, '.battle-word').textContent = t(status ? 'garage.multiplayer.room' : 'garage.battle');
+      requiredElement<HTMLElement>(battleBtn, '.battle-word').textContent = battleWord();
       battleBtn.setAttribute('aria-label', status ? t('garage.battle.roomReminder')
         : t('garage.battle.startRulesAria', { label: (battleRuleMeta[battleGameMode] || battleModeMeta.solo).label }));
       root.classList.toggle('has-room', !!status);
@@ -4991,7 +5238,13 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
       }));
       vehicleLocked = ready;
       root.classList.toggle('vehicle-locked', vehicleLocked);
-      closeEqPicker();
+      // (2026-11-02 audit 05-ui-2 #6, round 2) a tank the room holds closes both pickers: a choice in either would
+      // save over it. Only the hold does: this runs on every lobby update (a member joins, readies or picks a tank),
+      // and an unconditional close shut the player's open picker mid-choice. Neither picker opens while it is held.
+      if (vehicleLocked) {
+        closeEqPicker();
+        garageConsumables?.close({ restoreFocus: false });
+      }
     },
 
     isVehicleLocked() { return vehicleLocked; },
@@ -5022,6 +5275,23 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     noteBattleLoadFailed() {
       markLoadFailed([battleBtn], t('battle.entryFailed.reload'));
     },
+
+    replayEntry({ watch, couch }) {
+      if (couch) {
+        if (setupCouch.disabled || !selectedId) return false;
+        closeBattleMenu();
+        return launchBattle(selectedId, fieldMapId(), { gameMode: battleGameMode, couch });
+      }
+      // the Watch and BATTLE presses, as their clicks run them (a disabled control starts nothing). (review r2) The replay
+      // is not a press: it sounds the handler's own ui:click, where the old click on the button sounded its confirm role;
+      // the player's Battle Again press sounded its own confirm in the end screen's dialog, and ui_deploy follows the load
+      const control = watch ? setupWatch : battleBtn;
+      if (control.disabled) return false;
+      battle(watch);
+      return true;
+    },
+
+    openCouch: () => openCouch(),
 
     testDrive(specId?: string | null) {
       return startTestDrive(specId ?? selectedId);

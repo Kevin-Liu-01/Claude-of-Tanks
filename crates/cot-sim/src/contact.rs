@@ -8,6 +8,10 @@
 //! the map's height function; here the caller supplies them ([`ContactLattice::set_vertex`],
 //! [`ContactLattice::set_flip`]) — eagerly from a fixture, or on demand when
 //! [`ContactLattice::sample`] reports the cell it is missing.
+//!
+//! Every corner and every fold's split is written once (2026-11-02 audit S2): the answers and the last-cell cache rely
+//! on a known corner and a decided split never changing, so the lattice refuses a write that would change one
+//! ([`LatticeRefusal`]) instead of trusting its host to never make it.
 
 /// The square's side, metres (`SIZE`).
 pub const SIZE: f64 = 1024.0;
@@ -67,6 +71,17 @@ pub enum Sample {
     MissingFlip(usize, usize),
 }
 
+/// Why the lattice refused a write: it would change what an answer already read, or it lacks what the write needs.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum LatticeRefusal {
+    /// The corner or cell lies off the lattice.
+    OutOfRange,
+    /// The corner is known at another height, or the split is decided the other way.
+    Conflict,
+    /// A fold's split is decided from its four corners, and one is not yet known.
+    CornersMissing,
+}
+
 /// The lattice: Float32 corner heights, which corners are known, and each fold cell's split.
 pub struct ContactLattice {
     heights: Vec<f32>,
@@ -110,12 +125,27 @@ impl ContactLattice {
         (self.exact[ix] + STEP * 0.5, self.exact[iz] + STEP * 0.5)
     }
 
-    /// Supply corner (ix, iz)'s height (stored as Float32, as the TypeScript stores it).
+    /// Supply corner (ix, iz)'s height (stored as Float32, as the TypeScript stores it). Write-once: the same Float32
+    /// again is no change, another one is refused.
     #[inline]
-    pub fn set_vertex(&mut self, ix: usize, iz: usize, height: f64) {
+    pub fn set_vertex(&mut self, ix: usize, iz: usize, height: f64) -> Result<(), LatticeRefusal> {
+        if ix >= N || iz >= N {
+            return Err(LatticeRefusal::OutOfRange);
+        }
         let i = iz * N + ix;
-        self.heights[i] = height as f32;
+        let value = height as f32;
+        if self.vertex_ready(ix, iz) {
+            return if self.heights[i].to_bits() == value.to_bits() { Ok(()) } else { Err(LatticeRefusal::Conflict) };
+        }
+        self.heights[i] = value;
         self.ready[i >> 3] |= 1 << (i & 7);
+        Ok(())
+    }
+
+    /// Corner (ix, iz)'s Float32 height (0 while unknown).
+    #[inline]
+    pub fn vertex_height(&self, ix: usize, iz: usize) -> f32 {
+        self.heights[iz * N + ix]
     }
 
     /// Whether corner (ix, iz) is known.
@@ -125,23 +155,35 @@ impl ContactLattice {
         self.ready[i >> 3] & (1 << (i & 7)) != 0
     }
 
-    /// Decide fold cell (ix, iz)'s split from its centre's height (Float32-rounded, as `Math.fround` rounds it).
-    pub fn set_flip_from_centre(&mut self, ix: usize, iz: usize, centre: f64) {
+    /// Decide fold cell (ix, iz)'s split from its centre's height (Float32-rounded, as `Math.fround` rounds it), once
+    /// its four corners are known (the split is theirs to decide). Write-once, as [`ContactLattice::set_flip`].
+    pub fn set_flip_from_centre(&mut self, ix: usize, iz: usize, centre: f64) -> Result<(), LatticeRefusal> {
+        if ix >= CELLS || iz >= CELLS {
+            return Err(LatticeRefusal::OutOfRange);
+        }
+        if [(ix, iz), (ix + 1, iz), (ix, iz + 1), (ix + 1, iz + 1)].iter().any(|&(vx, vz)| !self.vertex_ready(vx, vz)) {
+            return Err(LatticeRefusal::CornersMissing);
+        }
         let (a, b, c, d) = self.corners(ix, iz);
-        let flipped = cell_flipped(a, b, c, d, centre as f32 as f64);
-        self.flips[iz * CELLS + ix] = if flipped { 2 } else { 1 };
+        self.set_flip(ix, iz, cell_flipped(a, b, c, d, centre as f32 as f64))
     }
 
-    /// Set fold cell (ix, iz)'s split directly (from a fixture that recorded it).
+    /// Set fold cell (ix, iz)'s split directly (from a fixture that recorded it). Write-once: the same split again is no
+    /// change, the other one is refused.
     #[inline]
-    pub fn set_flip(&mut self, ix: usize, iz: usize, flipped: bool) {
-        self.flips[iz * CELLS + ix] = if flipped { 2 } else { 1 };
-    }
-
-    /// Raw access for a host that fills the lattice in place (the WebAssembly bindings).
-    pub fn raw_parts(&mut self) -> (&mut [f32], &mut [u8], &mut [u8]) {
-        self.last = None;
-        (&mut self.heights, &mut self.ready, &mut self.flips)
+    pub fn set_flip(&mut self, ix: usize, iz: usize, flipped: bool) -> Result<(), LatticeRefusal> {
+        if ix >= CELLS || iz >= CELLS {
+            return Err(LatticeRefusal::OutOfRange);
+        }
+        let state = if flipped { 2 } else { 1 };
+        match self.flips[iz * CELLS + ix] {
+            0 => {
+                self.flips[iz * CELLS + ix] = state;
+                Ok(())
+            }
+            known if known == state => Ok(()),
+            _ => Err(LatticeRefusal::Conflict),
+        }
     }
 
     #[inline]
@@ -243,11 +285,39 @@ mod tests {
         assert!(matches!(lattice.sample(1.0, 1.0), Sample::MissingVertex(_, _)));
         for iz in 0..N {
             for ix in 0..N {
-                lattice.set_vertex(ix, iz, 2.5);
+                lattice.set_vertex(ix, iz, 2.5).unwrap();
             }
         }
         assert_eq!(lattice.sample(1.0, 1.0), Sample::Height(2.5));
         assert_eq!(lattice.sample(600.0, 0.0), Sample::OffSquare);
         assert_eq!(lattice.sample(f64::NAN, 0.0), Sample::Height(0.0));
+    }
+
+    /// 2026-11-02 audit S2: a corner and a split are written once; the answers (and the last-cell cache) keep them.
+    #[test]
+    fn corners_and_splits_are_written_once() {
+        let mut lattice = ContactLattice::new();
+        // a steep convex fold: a + d - b - c = 3 > 1, the steepest edge 2 > 0.75
+        let (ix, iz) = (400, 400);
+        assert_eq!(lattice.set_flip_from_centre(ix, iz, 1.0), Err(LatticeRefusal::CornersMissing), "a split waits for its corners");
+        for (vx, vz, h) in [(ix, iz, 0.0), (ix + 1, iz, -1.0), (ix, iz + 1, -1.0), (ix + 1, iz + 1, 1.0)] {
+            lattice.set_vertex(vx, vz, h).unwrap();
+        }
+        let (x, z) = (lattice.vertex_coordinate(ix) + 0.3, lattice.vertex_coordinate(iz) + 0.2);
+        assert_eq!(lattice.sample(x, z), Sample::MissingFlip(400, 400), "a fold asks for its split");
+        // the centre nearer the a–d midpoint (0.5) than the b–c one (-1) by more than the preference
+        lattice.set_flip_from_centre(ix, iz, 0.5).unwrap();
+        let Sample::Height(before) = lattice.sample(x, z) else { panic!("the cell is answered") };
+        assert_eq!(lattice.cell_flipped_at(x, z), Ok(true));
+        assert_eq!(lattice.set_vertex(ix + 1, iz + 1, 1.0), Ok(()), "the same corner again is no change");
+        assert_eq!(lattice.set_vertex(ix + 1, iz + 1, 1.0 + 1e-9), Ok(()), "nor one that rounds to the same Float32");
+        assert_eq!(lattice.set_vertex(ix + 1, iz + 1, 4.0), Err(LatticeRefusal::Conflict), "a known corner never moves");
+        assert_eq!(lattice.set_flip(ix, iz, true), Ok(()));
+        assert_eq!(lattice.set_flip(ix, iz, false), Err(LatticeRefusal::Conflict), "a decided split never turns");
+        assert_eq!(lattice.set_flip_from_centre(ix, iz, -1.0), Err(LatticeRefusal::Conflict));
+        assert_eq!(lattice.sample(x, z), Sample::Height(before), "the answer stands");
+        assert_eq!(lattice.cell_flipped_at(x, z), Ok(true));
+        assert_eq!(lattice.set_vertex(N, 0, 1.0), Err(LatticeRefusal::OutOfRange));
+        assert_eq!(lattice.set_flip(CELLS, 0, true), Err(LatticeRefusal::OutOfRange));
     }
 }

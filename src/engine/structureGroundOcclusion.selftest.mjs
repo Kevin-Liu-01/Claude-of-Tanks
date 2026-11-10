@@ -12,7 +12,7 @@ import {
   packRecordOccluders, prismSkyOcclusion, sgoRectOf, shapeFootprint,
 } from './structureGroundOcclusionBake.ts';
 import { STRUCTURE_GROUND_OCCLUSION_GLSL, SGO_GATE_M, SGO_RETURN } from './structureGroundOcclusion.ts';
-import { loadGroundedLightModel, resolveDeckBeam, resolveLightModel, luminance } from './lightModelCore.ts';
+import { importGroundedLightModel, resolveDeckBeam, resolveLightModel, luminance } from './lightModelCore.ts';
 import { deriveSun, OVERCAST_DIRECT_CUT } from './lightModel.ts';
 import { skyPresetToAtmosphere } from './atmosphere.ts';
 import { DEFAULT_SKY_PRESET } from './sky.ts';
@@ -149,7 +149,7 @@ assert.match(runtime, /new Worker\(new URL\('\.\/structureGroundOcclusionWorker\
 assert.match(runtime, /renderer\.copyTextureToTexture\(src, texture, null, new THREE\.Vector2\(i0, j0\)\)/, 'a re-bake patches in place');
 
 // ---- 5. the thin deck's beam (cloudscapes.ts deckBeam)
-await loadGroundedLightModel();
+await importGroundedLightModel();
 const irr = [0.11, 0.125, 0.16];
 const whiteout = getMapConfig('whiteout');
 // (the Whiteout round, after wave 342a) Whiteout's stratus passes a quarter of the beam, at or under the snow relief's limit;

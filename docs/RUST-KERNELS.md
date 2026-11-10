@@ -21,6 +21,34 @@ reading a record's crushed state itself, since a match changes it. A world built
 (`createHeadlessCollisionWorld`) gets its own instance: its own lattice, overlay and record table. The module imports one
 function, `env.terrain_height`, the map's height function.
 
+## Protocols (2026-11-02 audit S2)
+
+One instance keeps one world's state across calls, so the calls that only make sense in an order carry that order in
+the kernel (`crates/cot-sim-wasm` `State`), checked per call. A call out of order, or naming a stale walk or handle, is
+refused with a code (`REFUSED_*`) and never answered from a half-made state. `protocol_refusal` names the last checked
+call's code, 0 when it was taken, so the host tells a refused NaN or null from an answer (round 2 U37).
+`src/world/wasmWorldKernels.ts` asserts on every refusal, a refused sample's NaN included, so a host's slip throws where
+it happens; a NaN the kernel answered (its ground's) passes.
+
+- **Contact lattice:** each corner and fold split is written once (`lattice_set_vertex`, `lattice_fill`,
+  `lattice_set_flip_from_centre`): the same value again is taken, another refused, a split waits for its corners. There
+  is no raw write pointer. `contact_status` is the last call's, `contact_cell_flipped`'s included.
+- **A hull's support:** `support_query` (refused before `records_load`) → the host writes the candidates' flags →
+  `support_begin` at the same point (refused with no query since the last begin, or at another point) → the samples
+  (refused between a query and its begin: NaN, or −1 for a count; only a `beginHull` that threw leaves a hull there, and
+  the host throws on such a sample).
+- **The clearance walks:** `clearance_begin` returns the walk's id, which its `*_next` and `clearance_entry` calls name.
+  A walk begun inside another supersedes it, and the outer walk's next call is refused (`WALK_STALE`); `records_load`
+  ends any walk. `clearance_entry` is NaN for a superseded walk (refused) and for an open one whose lane has handed out
+  no record yet (taken); the host's error names which.
+- **Grids:** a handle names a grid of the instance that made it; one never made, or freed (`grid_free`), is refused. The
+  hosts build a world's grids once, with its instance.
+- **The overlay mirror:** the kernel's clock is unset (NaN, `overlay_time`) on a fresh or reset overlay, as the
+  TypeScript's `clockS`. A heap goes over with the start the overlay resolved: `overlay_add_rubble` takes no other, so
+  the kernel's clock never decides a start and a heap rises the same whether it was laid before or after a `set_time`.
+  The host asserts the copy in step: each crater admitted (the bind's replay included), the revisions after every
+  change, the clocks at the bind, every step and every reset.
+
 ## Turning them off
 
 - **Dedicated server:** on unless `COT_SIM_KERNELS=ts` (`server/match/simKernels.ts`). The server compiles
@@ -29,19 +57,63 @@ function, `env.terrain_height`, the map's height function.
 - **Browser host and solo battles:** on unless `?simKernels=ts`. The lazy chunks read the flag and carry the asset URL;
   nothing loads at boot. A module that does not arrive or compile leaves that host or battle on the TypeScript.
   - A multiplayer host's Worker fetches and compiles the module. The choice stays with the host: it is never sealed into
-    the migration config.
+    the migration config. Its boot (and a standby's preparation) waits for the module before it builds the world, so the
+    fetch, its answer and its bytes, has `HOST_KERNELS_FETCH_MS` (15 s, `src/mp/host/worldCollision.ts`) from its start
+    (round 5 Q1, review r2): past it the request is aborted and the world is built on the TypeScript, reported
+    `timeout`, inside the boot's own 30 s bound (`ELECTED_HOST_BOOT_MS`). Before, a request that never answered held
+    the boot until that bound failed it, and the room elected another seat. The 15 s fallback holds where the module's
+    own request stalls or crawls: the boot fetches the map's collision manifest only after the module, and a manifest is
+    6 to 34 times the module's bytes (gzipped), so a link slow enough to cut the module at 15 s also holds a manifest
+    the browser has not cached past the boot's bound, and that boot fails at 30 s with or without the bound. A
+    standby's preparation, which starts 20 s after the seat is welcomed as a peer (`STANDBY_HOST_DELAY_MS`) and may
+    have minutes before any boot needs its world, is held to the same bound: where the module takes longer than 15 s,
+    the standby builds its world on the TypeScript, and a migration onto it once that world is built reuses it, so the
+    new host runs on the TypeScript too, reported `timeout` (the same match, without the kernels' tick saving). A
+    migration that comes before that world is built waits for it inside the boot's 30 s bound, so on a link slow
+    enough to cut the module, where the preparation's manifest crawls too, it fails as above unless that world is built
+    inside those 30 s.
   - A solo battle steps on the main thread over the rendered world (`game/state.ts`). There the kernels take the hulls'
     support: `src/world/soloWorldKernels.ts` gives each world its own instance, its grid loaded in the order of the
-    world's own obstacle grid, its ground mirrored from the battle's overlay. A world binds them when its hulls first
-    need support; one that steps before the module is ready stays on the TypeScript.
+    world's own obstacle grid, its ground mirrored from the battle's overlay. Each battle chooses once, at its setup
+    (2026-11-02 audit S2): set up once the module is ready, it rides the kernels for its hulls' support and its obstacle
+    query alike; set up before, it stays on the TypeScript to its end, and the next battle on that world rides them.
+    The battle entry waits for the module (round 3 X10): the covered entry's ask for the solo authority
+    (`preloadSoloAuthority`, the preload of `game/soloBattleAccess.ts`, beside the world in its barrier) resolves once
+    the kernels are installed or failed, or `SOLO_KERNELS_ENTRY_WAIT_MS` (3 s, `game/soloBattleRuntime.ts`) after that
+    ask has the chunk: after its transfer, when that is still in flight, since the chunk's body starts the load. The
+    bound is each ask's own (round 4 F3), so a garage dwell after the Battle intent, whose ask first loads the chunk,
+    does not spend the entry's while the load is younger than its deadline (below); a dwell that outlasts the deadline
+    with the load still pending leaves the entry no wait. A battle rides the kernels when they land within its entry's
+    bound or before the rest of its barrier ends; otherwise it is set up on the TypeScript and the load goes on. While
+    it is pending, each later entry, a Battle Again included, waits up to 3 s of its own again, and the first battle set
+    up after the load lands rides them. The load has one deadline of its own (round 5 Q1):
+    `SOLO_KERNELS_LOAD_DEADLINE_MS` (15 s) from its start, the chunk's body at its first ask. No entry waits for the
+    kernels past it: every entry after the deadline goes on at once, so a load that never answers costs only the entries
+    within the deadline, each up to 3 s past the rest of its barrier (one that begins near the deadline goes on at it).
+    The deadline ends the waits, not the load (round 5 review r1). The load's request (`src/world/soloWorldKernels.ts`)
+    is held to the same deadline from its own start: one with no answer by then is aborted and the load fails, reported
+    `timeout`, nothing installed, and every later battle runs on the TypeScript. So the rule above (a battle rides the
+    kernels that land before the rest of its barrier ends) holds past the deadline only for a load whose request was
+    answered within it. An answered load is never cut, however slow its body or late its compile: it is installed when
+    it lands, and only then does `__SIM_KERNELS` say `wasm`. The deadline asks for the answer's headers within 15 s (a
+    few hundred bytes behind what is already queued on the link), not the 117 KB module, so a slow link shared with the
+    Battle intent's preload wave does not cut a live load; argued, not measured, since no receipt throttles a browser's
+    link. A response whose body stalls after its headers is not aborted (on HTTP/2 it holds one stream, not a
+    connection) and is reported only when it settles: until then its battles run on the TypeScript and `__SIM_KERNELS`
+    stays unset, as for a kernels chunk that never lands (the one silent window, below). The wait never rejects: an
+    installer or a failure report that throws leaves the TypeScript, and the entry goes on.
   - `?simKernels=wasm-check` runs both in a solo battle: the TypeScript drives, every answer of the kernels is compared,
     and `window.__SIM_KERNELS.check` counts the comparisons and mismatches.
 
 ## A fallback is reported
 
-Every path keeps its fallback to the TypeScript, and none of them is silent. `src/world/simKernelsStatus.ts` names the
-cause: `csp` (a Content Security Policy without `'wasm-unsafe-eval'`), `http_<status>`, `network`, `compile`, `link`,
-`missing` (a server image without the binary), `no_webassembly` or `error`. `off` means an opt-out.
+Every path keeps its fallback to the TypeScript, and every failed load is reported. One window stays silent: a solo load
+whose request was answered within its deadline but whose body or compile never ends, or whose kernels chunk never lands,
+has not failed, so its battles run on the TypeScript with `__SIM_KERNELS` unset until it settles (above).
+`src/world/simKernelsStatus.ts` names the cause: `csp` (a Content Security Policy without `'wasm-unsafe-eval'`),
+`http_<status>`, `network`, `timeout` (a solo load's request with no answer by its deadline, or a host's fetch without
+the module's bytes by `HOST_KERNELS_FETCH_MS`), `compile`, `link`, `missing` (a server image without the binary),
+`no_webassembly` or `error`. `off` means an opt-out.
 
 - **Browser host:** its Worker's `ready` carries `kernels: { mode, reason }`.
 - **Solo battle:** `soloBattleRuntime.ts` reports its load failure.
@@ -57,6 +129,9 @@ cause: `csp` (a Content Security Policy without `'wasm-unsafe-eval'`), `http_<st
 | Command | Proves |
 |---|---|
 | `cargo test -p cot-sim` | Every port against the TypeScript's golden vectors (`tools/port-golden-vectors.mjs`) |
+| `cargo test -p cot-sim-wasm --lib` | The cross-call protocols, each on an instance's own state or, through the exports, on the instance's statics under `tests::exports()`: one such test at a time, and one that calls an export without it fails the run (round 4 E15; a native test links `terrain_height`) |
+| `node src/world/wasmKernelProtocols.selftest.mjs` | The protocols on the committed package: its raw exports and the production seam |
+| `node src/world/wasmKernelRefusals.selftest.mjs` | Each refusal named by the call it refused, asserted at the seam (a refused sample's NaN, a walk's missing entry, a replayed crater); a heap's start is the one it was given |
 | `node tools/build-cot-sim-wasm.mjs --check` | The committed binary is the clean rebuild |
 | `node src/world/wasmWorldKernels.selftest.mjs` (core suite) | Parity through the production seam, and a match's digests |
 | `node tools/rust-kernel-tick-ab.mjs --map=<id> --bots=30` | Tick CPU against the TypeScript at 16 a side, digests every 300 ticks |
@@ -65,6 +140,8 @@ cause: `csp` (a Content Security Policy without `'wasm-unsafe-eval'`), `http_<st
 | `node tools/sim-determinism-audit.mjs --craters --kernels` | A match on the kernels against one on the TypeScript, the dug ground included |
 | `node tools/solo-kernels-probe.mjs --check` | A solo battle in Chrome: `wasm-check`'s comparison, then the sim step A B B A |
 | `node src/world/simKernelsReport.selftest.mjs`, `src/mp/host/hostStandby.selftest.mjs` | A fallback's reason named and reported: the host core's `ready` (`off`, a refused module's `http_404`, `wasm`) |
+| `node src/game/soloKernelEntry.selftest.mjs` | The solo load's bounds (round 5 Q1): an entry waits up to 3 s of its own while the load is younger than its deadline, at once after it; a request with no answer is aborted (`timeout`); an answered load is installed however late |
+| `node src/mp/host/hostKernelsFetch.selftest.mjs` | The host's fetch bound (round 5 Q1): a request with no answer, or a body that stalls, is aborted at `HOST_KERNELS_FETCH_MS`, and the boot goes live on the TypeScript, its `ready` `ts`/`timeout`; through the host runtime too, with an unprepared boot's room before its boot timer (`ELECTED_HOST_BOOT_MS`) |
 
 Changing a ported TypeScript function means regenerating its vectors (`node tools/port-golden-vectors.mjs`) and
 porting the change to its Rust file; `cargo test` fails until both agree.

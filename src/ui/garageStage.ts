@@ -32,6 +32,7 @@ import {
 import type { HallMesh } from './garageHallKit.ts';
 import { buildVerdantFloorAlbedoSteps, VERDANT_FLOOR_TEXELS } from './garageVerdantFloor.ts';
 import { buildVerdantHallParts, verdantHallShutter } from './garageVerdantHall.ts';
+import { createGarageVariantReveal } from './garageVariantReveal.ts';
 
 type RandomSource = () => number;
 type SignWear = [boolean, number, number, number, number];
@@ -354,6 +355,8 @@ export function* createGarageStageSteps(
     return m;
   };
   const disposables: Array<{ dispose(): void }> = [];
+  // set by dispose(): idle slices and the variant reveal queued before it do nothing after it
+  let stageDisposed = false;
   const track = <T extends { dispose(): void }>(o: T): T => { disposables.push(o); return o; };
 
   const HW = GARAGE_FLOOR_SIZE_M / 2; // camera at +8.2/+8.8 stays well inside
@@ -862,9 +865,11 @@ export function* createGarageStageSteps(
   };
   {
     const idle = (globalThis as { requestIdleCallback?: (cb: () => void, opts?: { timeout: number }) => number }).requestIdleCallback;
+    // (06-ui-3 #7) every slice of the chain asks whether the stage was disposed since it was queued
     const later = (work: () => void, timeout: number): void => {
-      if (typeof idle === 'function') idle(work, { timeout });
-      else setTimeout(work, Math.min(timeout, 200));
+      const run = (): void => { if (!stageDisposed) work(); };
+      if (typeof idle === 'function') idle(run, { timeout });
+      else setTimeout(run, Math.min(timeout, 200));
     };
     const paintDeck = (): void => {
       if (!platformKit) return;
@@ -897,6 +902,7 @@ export function* createGarageStageSteps(
     if (typeof document !== 'undefined') {
       later(() => {
         void loadPlatformKit().then((kit) => {
+          if (stageDisposed) return;
           platformKit = kit;
           buildHallSigns(kit);
           showPlatformCollar(platformCollarWanted);
@@ -1682,7 +1688,6 @@ export function* createGarageStageSteps(
   const verdantLightIntensities = new Map(
     verdantLights.map((light) => [light, light.intensity] as const),
   );
-  let variantPresentationGeneration = 0;
   const ENVIRONMENT_REVEAL_ATTEMPTS = 3;
   const waitForEnvironmentRetry = (attempt: number): Promise<void> => (
     new Promise((resolve) => setTimeout(resolve, 120 * (attempt + 1)))
@@ -1718,12 +1723,11 @@ export function* createGarageStageSteps(
     requestRender();
   };
 
-  const setVariant = (variantId: string): string => {
-    const variant = getGarageVariant(variantId);
-    const presentationGeneration = ++variantPresentationGeneration;
+  // The variant's own look: the floor, wall, podium and lamp tints. Applied only with its scene (2026-11-02 audit,
+  // 06-ui-3 #7: they used to change at the request, over the old pack, for the whole decode, and stayed after a failed
+  // reveal).
+  const applyVariantTints = (variant: ReturnType<typeof getGarageVariant>): void => {
     const neutral = new THREE.Color(0xffffff);
-    group.userData.garageVariantId = variant.id;
-    group.userData.garageMapId = variant.mapId;
     // Canvas albedo already carries the grime and corrugation. Blend the
     // location hue toward neutral before multiplication so climate identity
     // reads without crushing wall detail into black.
@@ -1746,45 +1750,42 @@ export function* createGarageStageSteps(
     rimRingMat.emissive.copy(platformEdge).multiplyScalar(edgeGlow);
     lampMat.color.setHex(variant.lightTint);
     lensMat.emissive.setHex(variant.lightTint);
+  };
+  // Keep the complete previous scene visible while the one requested pack
+  // decodes and uploads offscreen. The visual handoff is atomic: no white
+  // clear frame, missing horizon, or half-compiled material can appear, and
+  // the tints, scene mode and variant name change together (garageVariantReveal.ts).
+  const variantReveal = createGarageVariantReveal<GarageArchitectureStats>({
+    whenReady: () => architecture.whenReady(),
+    reveal: (variantId, stats, attempt) => {
+      const variant = getGarageVariant(variantId);
+      group.userData.garageVariantId = variant.id;
+      group.userData.garageMapId = variant.mapId;
+      applyVariantTints(variant);
+      applyVariantSceneMode(variant.id, stats);
+      if (attempt > 0) {
+        group.userData.garageArchitectureError = '';
+        group.userData.garageArchitectureAttempts = attempt;
+      }
+    },
+    // Preserve the last complete Garage instead of exposing the clear
+    // color. Diagnostics retain the failure so a later selection can
+    // retry rather than silently declaring the empty frame ready.
+    fail: (_variantId, error, attempts) => {
+      group.userData.garageArchitectureError = error;
+      group.userData.garageArchitectureAttempts = attempts;
+      requestRender();
+    },
+    wait: waitForEnvironmentRetry,
+    attempts: ENVIRONMENT_REVEAL_ATTEMPTS,
+  });
+
+  const setVariant = (variantId: string): string => {
+    const variant = getGarageVariant(variantId);
+    group.userData.garageVariantRequested = variant.id;
     const architectureStats = architecture.setVariant(variant);
     const isVerdant = variant.id === 'verdant_motor_pool';
-    if (isVerdant || architectureStats.ready) {
-      applyVariantSceneMode(variant.id, architectureStats);
-    } else {
-      // Keep the complete previous scene visible while the one requested pack
-      // decodes and uploads offscreen. The visual handoff is atomic: no white
-      // clear frame, missing horizon, or half-compiled material can appear.
-      queueMicrotask(() => {
-        if (presentationGeneration !== variantPresentationGeneration) return;
-        void (async () => {
-          let lastError = '';
-          for (let attempt = 0; attempt < ENVIRONMENT_REVEAL_ATTEMPTS; attempt += 1) {
-            try {
-              const readyStats = await architecture.whenReady();
-              if (presentationGeneration !== variantPresentationGeneration) return;
-              if (readyStats.ready) {
-                applyVariantSceneMode(variant.id, readyStats);
-                group.userData.garageArchitectureError = '';
-                group.userData.garageArchitectureAttempts = attempt + 1;
-                return;
-              }
-            } catch (error) {
-              lastError = error instanceof Error ? error.message : String(error);
-            }
-            if (presentationGeneration !== variantPresentationGeneration) return;
-            if (attempt + 1 < ENVIRONMENT_REVEAL_ATTEMPTS) {
-              await waitForEnvironmentRetry(attempt);
-            }
-          }
-          // Preserve the last complete Garage instead of exposing the clear
-          // color. Diagnostics retain the failure so a later selection can
-          // retry rather than silently declaring the empty frame ready.
-          group.userData.garageArchitectureError = lastError || 'environment did not become ready';
-          group.userData.garageArchitectureAttempts = ENVIRONMENT_REVEAL_ATTEMPTS;
-          requestRender();
-        })();
-      });
-    }
+    variantReveal.request(variant.id, isVerdant || architectureStats.ready ? architectureStats : null);
     return variant.id;
   };
   setVariant(initialVariantId);
@@ -1800,6 +1801,9 @@ export function* createGarageStageSteps(
     },
     stats: () => architecture.stats(),
     dispose() {
+      // (06-ui-3 #7) a reveal or an idle platform slice in flight stops here
+      stageDisposed = true;
+      variantReveal.dispose();
       architecture.dispose();
       for (const o of disposables) if (o && o.dispose) o.dispose();
     },

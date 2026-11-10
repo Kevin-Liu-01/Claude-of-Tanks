@@ -5,7 +5,8 @@ import puppeteer from 'puppeteer';
 import { mkdirSync, writeFileSync, readFileSync, existsSync, unlinkSync } from 'node:fs';
 import { resolve, join, dirname } from 'node:path';
 import { execFileSync } from 'node:child_process';
-import { createCaptureLock, ticketAt } from '../capture-lock.mjs';
+import { openCaptureHold } from '../capture-hold.mjs';
+import { ticketAt } from '../capture-lock.mjs';
 import { MAP_IDS } from '../../src/world/maps/catalog.ts';
 import { waterScene, frameScene, MAP_SUN_MODES } from './recipes.mjs';
 import { productionPreset } from '../../src/game/studioProduction.ts';
@@ -138,13 +139,14 @@ async function films(page, row) {
     }
   }
 }
-const lock=createCaptureLock(); let server,browser;
+let server,browser;
 // --ticket-stamp joins the capture queue at that place, as cinema.mjs's does (the media lane's slot, one ticket at a time)
-await lock.acquire(45*60*1000, args['ticket-stamp'] ? { ticket: ticketAt(Number(args['ticket-stamp'])) } : undefined);
+// deterministic Studio stills (no timing measured): they share the lock with other renders (2026-11-02 audit S4)
+// the hold is tools/capture-hold.mjs openCaptureHold's (round 2 U38); this tool keeps its own signal handler
+const hold=await openCaptureHold({ label: 'produce', timeoutMs: 45*60*1000, lockClass: 'render', signals: [], ...(args['ticket-stamp'] ? { ticket: ticketAt(Number(args['ticket-stamp'])) } : {}) });
 let interrupted=false;
 const stop=()=>{interrupted=true;void browser?.close().catch(()=>{});};
 process.once('SIGINT',stop);process.once('SIGTERM',stop);
-const lease=setInterval(()=>lock.refresh?.(),30000);lease.unref();
 try {
   server=await createServer({root:process.cwd(),logLevel:'error',server:{host:'127.0.0.1',port,strictPort:true,hmr:false,watch:{ignored:['**/*']}}}); await server.listen();
   // Our signal handler owns shutdown and the receipt/lock finally block.
@@ -229,7 +231,7 @@ try {
   const stills=receipt.maps.flatMap(row=>row.stills);
   for(let i=0;i<stills.length;i+=12) await contactSheet(stills.slice(i,i+12),join(out,`map-sheet-${1+i/12}.jpg`),'CLAUDE OF TANKS / MAP PRODUCTION');
 } finally {
-  await browser?.close(); await server?.close(); clearInterval(lease); lock.release();
+  await browser?.close(); await server?.close(); await hold.release();
   process.removeListener('SIGINT',stop);process.removeListener('SIGTERM',stop);
   if(interrupted)receipt.errors.push({error:'Capture interrupted; this batch is incomplete'});
   if(sourceDigest()!==fingerprint) receipt.errors.push({error:'Rendering inputs changed during capture; discard this batch'});

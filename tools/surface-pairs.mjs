@@ -20,6 +20,7 @@ import puppeteer from 'puppeteer';
 import { mkdirSync, writeFileSync, appendFileSync, existsSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { launchGuardedBrowser } from './browser-launch.mjs';
+import { readinessExpression } from './game-readiness.mjs';
 import { TRANSIENT_SURFACES } from '../src/ui/transientSurfaceRegistry.ts';
 
 const option = (name, fallback = '') => process.argv.slice(2).find((arg) => arg.startsWith(`--${name}=`))?.slice(name.length + 3) ?? fallback;
@@ -300,7 +301,9 @@ async function runPage(browser, run, lang, pageName) {
       await rest();
       if (!(await openRow(first))) {
         if ((await press('.cot-battle')) === 'pressed') {
-          await page.waitForFunction(() => document.body.classList.contains('cot-in-battle') || !!document.querySelector('.cot-hud:not([hidden])'), { timeout: 180_000 }).catch(() => {});
+          // (2026-11-02 audit S3, round 2 U40) the battle owns the screen: the lifecycle's own edge (tools/game-readiness.mjs),
+          // not a body class or the HUD's attribute read by hand
+          await page.waitForFunction(readinessExpression('battleRevealed'), { timeout: 180_000 }).catch(() => {});
           await settle(2000);
           judge({ layout: run, lang, scenario: 'battle', a: first.id }, await stateOwned([]), [], { focus: null });
         }

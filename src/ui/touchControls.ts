@@ -486,6 +486,14 @@ export function createTouchControls({
     joyPointer = null; input.setVirtualMove(0, 0); knob.style.transform = 'translate(0px,0px)';
     aimPointer = null; aimPts.clear(); pinchRef = -1;
   }
+  // (U23, round 2) the climb rail's own hold. The virtual handbrake is shared (a phone pad's held button, the Watch climb
+  // rail press it too), so a layout change or a battle exit releases only the hold this rail made.
+  let climbHeld = false;
+  function releaseClimb(): void {
+    if (!climbHeld) return;
+    climbHeld = false;
+    input.releaseVirtual('handbrake');
+  }
   function syncLayout(): void {
     layout = wantsTouchLayout();
     document.body.classList.toggle('cot-touch-layout', layout);
@@ -495,7 +503,8 @@ export function createTouchControls({
     const aircraft=getFlightKind()==='gunship';
     scope.innerHTML=`${aircraft?uiIconSVG('zoomIn',34):SCOPE}<span class="lb">${t(aircraft?'gallery.view.modeDockHelpZoom':'touch.scope')}</span>`;
     scope.setAttribute('aria-label',t(aircraft?'action.zoomIn':'touch.scopeAria'));
-    if (!layout || !battle) { resetMove(); cancelFireGesture(); }
+    // (2026-11-02 audit F8) the flight's climb rail holds the virtual handbrake: a hidden rail may never see the lift
+    if (!layout || !battle) { resetMove(); cancelFireGesture(); releaseClimb(); }
   }
 
   // -------------------------------------------------------------------------
@@ -694,8 +703,7 @@ export function createTouchControls({
   // touch: the fire gesture AND the joystick / aim pad / pinch (2026-09-14 touch QA: the
   // knob stayed 40 px off centre and the tank kept driving after a backgrounded hold).
   const climb=document.createElement('button');climb.type='button';climb.className='flight-climb';climb.innerHTML=`${uiIconSVG('moveForward',21)}<span>${t('flight.climb')}</span>`;climb.setAttribute('aria-label',t('flight.climb'));root.append(climb);
-  climb.addEventListener('pointerdown',e=>{e.preventDefault();e.stopPropagation();climb.setPointerCapture(e.pointerId);input.pressVirtual('handbrake');});
-  const releaseClimb=()=>input.releaseVirtual('handbrake');
+  climb.addEventListener('pointerdown',e=>{e.preventDefault();e.stopPropagation();climb.setPointerCapture(e.pointerId);climbHeld=true;input.pressVirtual('handbrake');});
   climb.addEventListener('pointerup',releaseClimb);climb.addEventListener('pointercancel',releaseClimb);climb.addEventListener('lostpointercapture',releaseClimb);
   const releaseAllTouch = (): void => { cancelFireGesture(); resetMove(); releaseClimb(); };
   window.addEventListener('blur', releaseAllTouch);

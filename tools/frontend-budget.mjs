@@ -264,6 +264,21 @@ export const BUNDLE_BUDGETS = Object.freeze({
   //   matchRuleset +103, camoPolicy +93 (the Kaitaku coat, the AA paints), crewVoice +68 (da, pt-BR, en-AU, af),
   //   roleProfiles +66; materials -185. Home +9 B, docs +11 B, 404 -5 B stay inside their slack; pad's 14th request
   //   (padProtocol) is phone-feel-269's own pin in tools/bundle-budget.json.
+  // 2026-11-07 (the implicit state machine fixes' integration, round five merge, item U3; Kevin: "id like you to resolve
+  //   all of them"; the round's brief re-pins the byte rows alone, with attribution against origin/main's
+  //   build): re-pinned at item/sm-fix5-merge 809bb9cb28's build (Node 24.22.1, vite 8.3.5, rolldown 1.2.15) over main
+  //   baff0f6924 built beside it on the same node_modules (game 1,176,072 B, entry 249,403 B, within the 268 pins).
+  //   Requests unchanged at 127 / 128 / 73 / 8 / 12 / 7, and every page's boot chunk names equal main's. Game +14,543 B
+  //   brotli, entry +6,797 B, cn +14,564 B, Gallery +2,883 B, home +144 B, docs +152 B, 404 +210 B: the audit's owners
+  //   from rounds one to five (app lifecycle, battle entry and Garage return, input and pointer lock, the result and
+  //   death-flow runtimes, holds, battle mode). By boot chunk, brotli [raw]: main +6,797 [+22,103] (the entry), playMode
+  //   +2,479 [+7,398] (round four's grouped boot leaves: app lifecycle, battle input owner, battle mode, kill-cam claim,
+  //   pre-battle countdown), turretSeatPlane +1,310 [+3,259], tankFactoryCore +783 [+2,899], garageStage +649 [+1,632],
+  //   collision +433 [+1,229], vehicleActions +431 [+1,387], materials +364 [+1,309], terrainDeformation +212, brandMark
+  //   +206, programWarm +178 (named holds), quality +131, i18n +121 (the chunk every page loads: with publicPages +18 and
+  //   notFound +84 it is the whole of home's, docs' and 404's growth), the rest under 100 B each. Round four's head
+  //   f60d0aa200 read game 1,190,261 and entry 255,828: round five adds game +354 B and entry +372 B (main.js carries
+  //   flow's Q2 pointer-lock hold, soloBattleEntryRuntime.ts, and input.ts's withdrawn request), Gallery -77 B (noise).
   // 2026-11-07 (integrator 269, the single end re-pin at integ/269's build; Node 24.22.1; Main's brief: one bundle re-pin
   //   with attribution): game +13,296 B brotli over 268's measured build (1,176,116 B, its pin), cn +13,318 B, Gallery
   //   +11,949 B; requests held at 127 / 128 / 73 (the Redback's datums, redbackDatums.ts, fold into fleetLayouts; alone
@@ -277,6 +292,48 @@ export const BUNDLE_BUDGETS = Object.freeze({
   //   anchors +214, the en-US catalog +134, structureGroundOcclusion +129, roleProfiles +109, turretSeatPlane +98,
   //   garageStage +66; materials -158, crewVoice -121. Gallery adds vehicleFacets +105. Home +8 B, docs -10 B and 404 +5 B
   //   stay inside their slack; pad's row is phone-feel-269's in tools/bundle-budget.json, held.
+  // 2026-11-08 (the implicit state machine fixes' round eight, item Y0; Kevin: "id like you to resolve all of them"):
+  //   integ/269 21d5c7fd30 merged into item/sm-fix-integration b03868e697 (round five's re-pin above, over 268) carries
+  //   both re-pins above; neither fits the merge, since each side grew the same pages over 268. Re-pinned at
+  //   item/sm-fix8-269's build (Node 24.22.1, vite 8.3.5, rolldown 1.2.15; the same node_modules) at the measures, the
+  //   byte rows that missed only. Against both parents' pins: game 1,204,277 B brotli (+13,662 over ours 1,190,615,
+  //   +14,865 over 269's 1,189,412), entry 257,684 (+1,484 over ours 256,200, +7,025 over 269's 250,659), cn 1,249,096
+  //   (+13,754 over ours 1,235,342, +14,956 over 269's 1,234,140), Gallery 759,827 (+12,259 over ours 747,568, +3,193
+  //   over 269's 756,634). Each is the two sides' own growth over 268's measured build summed (game: ours +14,543, 269's
+  //   +13,296; entry +6,797 and +1,212; cn +14,564 and +13,318; Gallery +2,883 and +11,949) plus 366, 272, 436 and 310 B:
+  //   both sides edit the same chunks (main, the audio engine, the fleet), and brotli does not add across them.
+  //   Requests unchanged at 127 / 128 / 73 / 8 / 12 / 7 (check:bundle PASS, tools/bundle-budget.json untouched). Home
+  //   28,756, docs 37,096 and 404 18,677 measure within the larger of the two pins (ours), which they keep.
+  // 2026-11-08 (the implicit state machine fixes' round seven merge, item V11, after origin/main 21d5c7fd30 (269) merged in;
+  //   Kevin: "id like you to resolve all of them"): both re-pins above kept; the byte rows re-pinned at item/sm-fix7-merge
+  //   e71b3e5ee9's build (Node 24.22.1, vite 8.3.5, rolldown 1.2.15). The local build and the release way (the build with
+  //   VERCEL_GIT_COMMIT_SHA set, as vercel build sets it for tools/appVersion.ts) are byte-identical: a clean worktree
+  //   stamps the same commit from git, and the stamp (__COT_MATCH_BUILD__) rides only in browserComposition (lazy) and the
+  //   host Worker, 0 B on every row here. Over main 21d5c7fd30 built beside it on the same node_modules (game 1,189,441 B,
+  //   entry 250,688 B, within 269's pins): game +14,685 B brotli, entry +6,845 B, cn +14,776 B, Gallery +3,193 B, docs
+  //   +119 B, 404 +203 B; home +114 B stays inside its slack (its row held). Requests unchanged at 127 / 128 / 73 / 8 / 12
+  //   / 7, and no page's boot files changed. By boot chunk, brotli [raw]: main +6,845 [+22,093] (the entry), playMode
+  //   +2,474 [+7,398], turretSeatPlane +1,323 [+3,259], tankFactoryCore +1,024 [+2,896], garageStage +605 [+1,632],
+  //   vehicleActions +457 [+1,387], materials +439 [+1,306], collision +324 [+1,229], brandMark +216, terrainDeformation
+  //   +212, programWarm +178, quality +131, i18n +120 (with publicPages -11 and notFound +78, the whole of home's, docs'
+  //   and 404's growth), medalArt +94, rosterState +81, the rest under 70 B each; the Gallery's gallery.js +223. It is the
+  //   branch's share named in round five's re-pin above (rounds one to six; round six's own +4 B: main.ts's result
+  //   presentation releasing through input.releaseLock), now over 269's code. The stamp reaches these rows one way: the
+  //   entry names the stamped chunks (browserComposition, browserHostPort, matchHostWorker) by their hashes, which move
+  //   with every commit (32 bytes of main.js, raw equal). Three commits of the same code read the entry at 257,533 B
+  //   (e71b3e5ee9), 257,562 B (99e46f93c9) and 257,710 B (e09e561ed2): a 177 B spread, past BUNDLE_SLACK's 96 B on the
+  //   entry (264c's "+170 B" was this). The game, cn and entry rows take the largest build's (e09e561ed2: game
+  //   1,204,303 B, cn 1,249,122 B, entry 257,710 B), as 264c took the larger.
+  // 2026-11-09 (the implicit state machine fixes' round eight, item Y0b; Kevin: "id like you to resolve all of them"):
+  //   round seven's integration 3e4bf3c4db merged into round eight's H0 d8a6b5e623, each of which merged 269 with its own
+  //   re-pin (the two entries above). The merged build (item/sm-fix8-y0b 8ef46d8770; Node 24.22.1, vite 8.3.5, rolldown
+  //   1.2.15, the same node_modules) reads game 1,204,144 B brotli, entry 257,551 B, cn 1,248,963 B, Gallery 759,827 B,
+  //   home 28,756 B, docs 37,096 B, 404 18,677 B; requests 127 / 128 / 73 / 8 / 12 / 7 (pad 14), unchanged. No row
+  //   missed the larger of the two parents' pins: the merge adds no code of its own over them (round six's main.ts
+  //   releaseLock is inside round seven's figures; the audio engine is a lazy chunk). Game, cn and the entry keep round
+  //   seven's largest-of-three-builds pins (1,204,303 / 1,249,122 / 257,710): this build sits 159 B under each, inside
+  //   the entry's commit-hash spread (201 B over five commits) that BUNDLE_SLACK's 96 B does not cover. Home, docs and 404
+  //   re-pinned at this build (stable at 28,756 / 37,096 / 18,677 over every build of either parent since 269).
   // 2026-11-09 (integrator 270, the single end re-pin at integ/270's build; Node 24.22.1): game +5,200 B brotli over 269's
   //   measured build (21d5c7fd30, equal to main 72addd0635 for the bundle; 1,189,441 B), cn +5,651 B, Gallery +273 B;
   //   requests held at 127 / 128 / 73 (Air Support's three boot leaves, sim/playerActions, game/strikeViewState and
@@ -287,12 +344,29 @@ export const BUNDLE_BUDGETS = Object.freeze({
   //   strike strings), crewVoice +222 (the 21 world packs), gameModeCatalog +109 (the fourteenth mode), battleLoad +93,
   //   icons +87, icon +70 and the design tokens +68 (on every page). Home +143 B, docs
   //   +123 B and 404 +57 B (the same shared chunks) are re-pinned at their measures; pad's row is held.
-  game: { brotliBytes: 1194641, requests: 127, entryBrotliBytes: 251574 },
-  cn: { brotliBytes: 1239820, requests: 128, entryBrotliBytes: 251574 },
-  gallery: { brotliBytes: 756907, requests: 73 },
+  // 2026-11-09 (the implicit state machine fixes' round eight merge, item Y11; Kevin: "id like you to resolve all of
+  //   them"): the ten round-eight clusters over H8 1bf9654a97 (the Y0b entry above) with origin/main 1b10803a6b (270, the
+  //   entry above it) merged in; both histories kept. Re-pinned at item/sm-fix8-merge 4a9a1f14f7's builds (Node 24.22.1,
+  //   vite 8.3.5, rolldown 1.2.15, the same node_modules; package-lock.json unchanged by 270): the local build and the
+  //   release way (VERCEL_GIT_COMMIT_SHA set, stamp v1.0.0+g4a9a1f14f) are byte-identical, so the larger is either: game
+  //   1,210,986 B brotli, cn 1,256,211 B, entry 259,227 B, Gallery 760,044 B (5b1a68e304's build read the entry at
+  //   259,062 B, the commit-hash spread). Over 270's measured build (its pins): game +16,345, cn +16,391, entry +7,653,
+  //   Gallery +3,137. Over H8's (Y0b's 8ef46d8770): game +6,842, cn +7,248, entry +1,676, Gallery +217, of which 270's
+  //   own growth over 269 is game +5,200, cn +5,651, entry +886, Gallery +273, so round eight's clusters add about
+  //   +1,642 / +1,597 / +790 B on game / cn / entry and nothing on the Gallery (brotli does not add across shared
+  //   chunks). By boot chunk, raw over H8's build (vite's report): main +4,840 (270's boot wiring; round eight's couch
+  //   opener, phone pause rule and visibility rule in main), vehicleActions +9,650 (270's three Air Support leaves; the
+  //   couch session owner and the body-class reasons, which joined it to hold the requests), matchRuleset +2,100 and the
+  //   en-US catalog +1,950 (270's mode), crewVoice +470 and gameModeCatalog +350 (270), stateCore +150 (the couch session's
+  //   reads), phonePause +70 (H8's battleTimeChoices chunk, which phonePause.ts joined). Requests held at 127 / 128 / 73
+  //   / 8 / 12 / 7 (pad 14): couchSeats and bodyFlags, alone two more game and cn boot requests, ride vehicleActions
+  //   (vite.config.ts). Home 28,923, docs 37,228 and 404 18,739 measure within their slack over the held pins.
+  game: { brotliBytes: 1210986, requests: 127, entryBrotliBytes: 259227 },
+  cn: { brotliBytes: 1256211, requests: 128, entryBrotliBytes: 259227 },
+  gallery: { brotliBytes: 760044, requests: 73 },
   home: { brotliBytes: 28785, requests: 8 },
   docs: { brotliBytes: 37100, requests: 12 },
-  notFound: { brotliBytes: 18531, requests: 7 },
+  notFound: { brotliBytes: 18677, requests: 7 },
 });
 /** Byte noise between two builds of the same code (chunk hashes in import specifiers); requests have none. */
 const BUNDLE_SLACK = { brotliBytes: 160, entryBrotliBytes: 96, requests: 0 };

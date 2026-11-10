@@ -8,6 +8,7 @@ import path from 'node:path';
 import puppeteer from 'puppeteer';
 import { scoreGarageQuality } from '../src/ui/garageQualityRubric.ts';
 import { withGarageWorkshopProfile } from './garage-workshop-profile.mjs';
+import { BOOT_LOADED_EXPRESSION } from './game-readiness.mjs';
 
 const argv = process.argv.slice(2);
 const option = (name, fallback = '') => {
@@ -74,7 +75,7 @@ const stopFrameProbe = async (name) => page.evaluate(async (key) => {
 
 try {
   await page.goto(`${baseUrl}/?nosplash=1&qa=1`, { waitUntil: 'networkidle0', timeout: 60_000 });
-  await page.waitForFunction(() => window.__GAME_READY === true && window.__GARAGE_WORKSHOP,
+  await page.waitForFunction(`${BOOT_LOADED_EXPRESSION} && !!window.__GARAGE_WORKSHOP`,
     { timeout: 60_000 });
   await page.waitForFunction(() => {
     const architecture = window.__GARAGE_WORKSHOP.stats().architecture;
@@ -271,12 +272,12 @@ try {
   await page.evaluate((id) => localStorage.setItem('cot.garage.variant', id), persistedOutdoorId);
   const persistedReloadStartedAt = Date.now();
   await page.reload({ waitUntil: 'domcontentloaded', timeout: 60_000 });
-  await page.waitForFunction((id) => {
+  await page.waitForFunction(`${BOOT_LOADED_EXPRESSION} && (() => {
     const stats = window.__GARAGE_WORKSHOP?.stats();
-    return window.__GAME_READY === true && stats?.selected === id
+    return stats?.selected === ${JSON.stringify(persistedOutdoorId)}
       && stats?.architecture?.ready === true
       && stats.architecture.presented === true;
-  }, { timeout: 60_000 }, persistedOutdoorId);
+  })()`, { timeout: 60_000 });
   const persistedReload = await page.evaluate((id, elapsedMs) => {
     const stats = window.__GARAGE_WORKSHOP.stats();
     return {

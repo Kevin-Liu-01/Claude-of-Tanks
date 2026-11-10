@@ -24,6 +24,7 @@ import { mkdir, writeFile } from 'node:fs/promises';
 import { resolve, join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { uniqueIds } from './id-list.mjs';
+import { waitForBootLoaded } from './game-readiness.mjs';
 
 const arg = (name, fallback = '') => process.argv.find(a => a.startsWith(`--${name}=`))?.slice(name.length + 3) ?? fallback;
 const plan = (arg('plan') || `${arg('side', 'before')}:${arg('part', 'desk')}`).split(',').filter(Boolean)
@@ -124,7 +125,7 @@ async function captureItem({ side, part }, ids) {
 
   if (part === 'killcam') {
     await page.goto(`${base}/`, { waitUntil: 'domcontentloaded', timeout: 240000 });
-    await page.waitForFunction('window.__GAME_READY === true', { timeout: 240000, polling: 250 });
+    await waitForBootLoaded(page, { timeout: 240000, polling: 250 });
     for (const id of ids) {
       if (Date.now() - holdStart > HOLD_LIMIT_MS) { receipts.skipped.push(`${side}:${part}:${id}`); continue; }
       try {

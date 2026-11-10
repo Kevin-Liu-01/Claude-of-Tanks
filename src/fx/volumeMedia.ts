@@ -1061,7 +1061,14 @@ export function createVolumeMedia(o: VolumeMediaOptions): VolumeMedia {
       if (rec[ob + 7] > 0) rec[ob + 3] += delta;
     }
     if (Number.isFinite(liveUntil)) liveUntil += delta;
+    // (round 3 B5) the instance copies' births too: the drawn ones are right before the next sort rewrites them, and the
+    // ones past the drawn count (last drawn earlier) keep no pre-rebase time
+    const pb = gpu[ATTRS.indexOf('aPB')];
+    for (let i = 3; i < pb.length; i += 4) pb[i] += delta;
+    attrs[ATTRS.indexOf('aPB')].needsUpdate = true;
     for (const g of glowP) if (g.w > -1e8) g.w += delta;
+    // (2026-11-02 audit R7) the embers' births are fx-clock stamps too (a forward rebase expired them at once)
+    for (const e of emberP) if (e.w > -1e8) e.w += delta;
   }
 
   function reset(): void {

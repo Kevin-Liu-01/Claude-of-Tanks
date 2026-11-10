@@ -2218,6 +2218,9 @@ interface RulesetCombatState {
   ammo: number[];
   ammoCapacity: number[];
   equipMults?: Partial<Record<string, number>>;
+  /** The reload factor the ruleset folded into this life's equipMults (applyRulesetToCombat), kept so a re-equip folds it
+   *  into its new object (equipmentRules.ts applyEquipmentToCombat). Absent: no fold. */
+  rulesetReload?: number;
   /** Multiplies every hit point lost (damage.ts hull sites and ramming). */
   modeDamageTakenScale?: number;
   /** False keeps modules, crew and fires intact (damage.ts rollModuleDamage / rollCrewHit). */
@@ -2230,8 +2233,10 @@ interface RulesetShellSpec { readonly type?: string }
 /**
  * Stamp a freshly created combat state with the ruleset: hull hit points (times the wave / health scale
  * the mode controller hands to a revive), the damage-taken scale, the reload multiplier folded into the
- * equipment multipliers, and the ammunition channels. Call it after applyEquipmentToCombat so the
- * reload fold survives; spawn and revive both go through it, in the browser sim and the authority.
+ * equipment multipliers, and the ammunition channels. Spawn and revive both go through it, after
+ * applyEquipmentToCombat, in the browser sim and the authority. The reload fold is also recorded on the
+ * state (rulesetReload): a later applyEquipmentToCombat (a live re-equip) replaces equipMults whole and
+ * folds the record into its new object, so the fold survives it (round 3 B7 review, 2026-11-06).
  */
 export function applyRulesetToCombat(
   combat: RulesetCombatState,
@@ -2251,7 +2256,10 @@ export function applyRulesetToCombat(
   if (ruleset.reloadScale !== 1) {
     const mults = combat.equipMults || (combat.equipMults = {});
     const current = mults.reload;
-    mults.reload = (Number.isFinite(current) ? current! : 1) * rulesetReloadMultiplier(ruleset);
+    const fold = rulesetReloadMultiplier(ruleset);
+    mults.reload = (Number.isFinite(current) ? current! : 1) * fold;
+    const recorded = combat.rulesetReload;
+    combat.rulesetReload = (typeof recorded === 'number' && Number.isFinite(recorded) ? recorded : 1) * fold;
   }
   if (ruleset.ammo === 'he_only' && Array.isArray(shells) && combat.ammoCapacity.length) {
     const capacities = combat.ammoCapacity.map((authored, slot) =>

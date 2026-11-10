@@ -89,6 +89,25 @@ access.presentation.tick(.1, .5);
 assert.deepEqual(timing.at(-1), [.1, .5], 'the lazy presentation proxy preserves raw timing separately');
 assert.equal(await access.loadRuntime(), runtime, 'runtime acquisition is idempotent');
 
+// (2026-11-02 audit F1 review) the module and the effects load over seconds after the press: a battle that started
+// meanwhile keeps its scene (the Studio's entry would have been refused mid-flight), and the press is dropped
+{
+  let lateEnters = 0;
+  let latePhase = 'garage';
+  let releaseModule;
+  const moduleArrives = new Promise((resolve) => { releaseModule = resolve; });
+  const late = createStudioAccess({
+    loadModule: async () => { await moduleArrives; return { createStudio: () => ({ active: false, tick() {}, async enter() { lateEnters += 1; } }) }; },
+    async preloadFxModule() {}, async ensureFxRuntime() { return {}; }, prepareRuntime() {}, createContext: () => ({}),
+    getPhase: () => latePhase, keyTarget: null, onPending: () => {},
+  });
+  late.open();
+  latePhase = 'battle'; // a Play-menu start or a room activation while the Studio's code downloads
+  releaseModule();
+  await new Promise((resolve) => setTimeout(resolve, 0));
+  assert.equal(lateEnters, 0, 'no Studio entry over the battle that took the scene');
+}
+
 let attempts = 0;
 const retrying = createStudioAccess({
   async loadModule() {

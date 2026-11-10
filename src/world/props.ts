@@ -76,7 +76,7 @@ import { createFieldWallLod, placeFieldBoundaryWorks } from './fieldBoundaryWork
 import { TREE_ARCHETYPES, TREE_GEOMETRY_SCALE, type TreeSpecies } from './treeSpecies.ts';
 import type { GroundCoverHole, SceneryMapConfig } from './sceneryPlan.ts';
 type SceneryHardstand = { x: number; z: number; width: number; length: number; yawDeg?: number };
-import { SCENERY_DESTRUCTIBLE_TYPES } from './maps/sceneryKit.ts';
+import { SCENERY_DESTRUCTIBLE_TYPES, sceneryLegacyCollisionTypes } from './maps/sceneryKit.ts';
 import {
   AMMOBOX_LEGACY, bSandbagBroken, buildCampFireRing, buildHedgehogBeam, buildSandbagBedding, buildSandbagHeap, buildSandbagStack, fieldworksTypes,
   paintBurlap,
@@ -183,7 +183,7 @@ import {
 import {
   addCatalogExterior, addConnectedExterior, carryExteriorChimneyTops, exteriorChimneyTops,
 } from './maps/exteriorDetailKit.ts';
-import { registerWorldDestructibles, emitBreakFx, emitDestroyed } from './destructibles.ts';
+import { registerWorldDestructibles, emitBreakFx, emitDestroyed, worldBuildKey } from './destructibles.ts';
 import { setToppleAxis, settledToppleAngle } from './topple.ts';
 import { createUtilityNetwork } from './utilityNetwork.ts';
 import { createUtilityWires, proceduralPoleParts, utilityConductorsOf, utilityPoleDistanceGeometry, utilityPoleGeometry } from './maps/utilityPoles.ts';
@@ -194,7 +194,7 @@ import {
 import { townRowPlotClear } from './townRowAdditions.ts';
 import {
   cloneCollisionRecord, collisionFootprintContainsPoint, convexHull2, setCircleShape, setCompoundShape, setConvexShape,
-  setObbShape, DENSE_HUT_SLAB_KINDS, type SimpleCollisionShape,
+  setCrushedRecords, setObbShape, DENSE_HUT_SLAB_KINDS, type SimpleCollisionShape,
 } from './collision.ts';
 import {
   applyRockCollisionProfile, localShellSlabs, placeLocalShellSlabs, rockCollisionProfile, rockFootprint, rockFormOf, rockGroundAt,
@@ -299,6 +299,7 @@ import { MATCH_OBJECTIVE_LAYOUTS } from '../sim/matchObjectiveLayouts.ts';
 import { geologyBoulderSite, restsOnTalus, TALUS_DEG } from './landformGeology.ts';
 import { createPropCrushPresentation } from './propCrushPresentation.ts';
 import { installPaneStackDepth } from './paneStack.ts';
+import { assertNoBuildScopeOpen } from './maps/buildScopes.ts';
 import { climateOf, surfaceOf } from './maps/buildingStyleTable.ts';
 import { AppearanceLedger } from './maps/regional/appearance.ts';
 
@@ -782,6 +783,8 @@ export interface TownRowEntry {
 export interface PropsMapConfig {
   id: string;
   props?: Partial<PropsSettings>;
+  /** The Frontline Assault trench variant's build (worldBuildConfig.ts): its own world beside the map's standard one. */
+  assaultTrenches?: boolean;
 }
 
 interface PlacedBuilding {
@@ -884,8 +887,6 @@ interface PropsDestructibleMeta extends Omit<DestructiblePropType, 'cls' | 'mat'
 
 interface PropsCollisionRecord extends CollisionRecord {
   __looseStamp?: number;
-  _pressS?: number;
-  _pressT?: number;
   hedgehogId?: number;
 }
 
@@ -3361,6 +3362,9 @@ function registerDestructibleContact(
   recordIndex: number,
 ): void {
   if (meta.contact === 'ob') {
+    // (2026-11-02 audit M9) a loose body is kicked, never broken (breakRecord): cover records on one would turn ghost under
+    // the authority's crush while the prop still stands, and a cosmetic kick would reach them
+    if (meta.cls === 'physics') throw new Error(`world/props: ${record.kind} is a loose physics kind with cover records (contact 'ob')`);
     registerDestructibleObstacle(context, meta, record, recordIndex);
     return;
   }
@@ -3770,6 +3774,8 @@ export async function createPropsAsync(
     // builders up front
     if (!wreckPrefetch) wreckWorker?.prepare();
     while (!r.done) {
+      // (2026-11-02 audit R1) every slice hands control back: no kit's ambient build slot may be open across it
+      assertNoBuildScopeOpen('props build');
       const sliceMs = performance.now() - nextStartedAt;
       synchronousMs += sliceMs;
       const step = r.value;
@@ -3990,9 +3996,12 @@ function* propsBuildSteps(
   P.rockSoilTone = (cfg as { props?: { rockSoilTone?: ToneFunction } } | null)?.props?.rockSoilTone
     ?? (cfg as { splat?: { dirtTone?: ToneFunction } } | null)?.splat?.dirtTone ?? null;
   const mapId = cfg ? cfg.id : 'verdant';
+  // (2026-11-02 audit R2) the world's own identity, its map and its terrain variant: the trench variant of a map is another
+  // world (its destructible registration, its deferred structure measures), never the standard world's replacement
+  const worldKey = worldBuildKey(cfg);
   // (battle-spikes-253) another battlefield's deferred structure measures (structureDamageSeam.ts), in slices, before this
   // build describes its first building and the queue would take them all in one go
-  while (measureOtherMapStructures(mapId, 6) > 0) yield { fine: true, progress: false, stage: 'other-map-measures' };
+  while (measureOtherMapStructures(worldKey, 6) > 0) yield { fine: true, progress: false, stage: 'other-map-measures' };
   // (the maps lane, 228) a map's civic plan sets its props settings over the map's own (no map config edited)
   const civicPlan = civicPlanFor(mapId);
   if (civicPlan) applyCivicOverlay(civicPlan, P as Parameters<typeof applyCivicOverlay>[1]);
@@ -4743,6 +4752,9 @@ ${snowCap ? `
     // 72-triangle crates of before on the baked finish: the same kind, record and draws (bAmmobox spends the legacy
     // builder's draws), no collider either way (a crushable 'loop' contact), so every host places the same stacks
     ...(mobileProps ? { ammobox: { ...DESTRUCTIBLE_TYPES.ammobox, mat: 'baked' as const, build: AMMOBOX_LEGACY.build, broken: AMMOBOX_LEGACY.broken } } : {}),
+    // (2026-11-02 audit R2) the windpump, lumber stack and windmotor of this build (maps/sceneryKit.ts): each records its
+    // pool's contact band in this world's build, never the module's one set the last world built
+    ...sceneryLegacyCollisionTypes(),
     sandbagbig: {
       cls: 'break', mat: 'burlap', contact: 'ob', collider: true, r: 2.0, h: 1.35, keep: 0.97,
       build: () => buildSandbagStack('sandbagbig'),
@@ -5267,7 +5279,7 @@ ${snowCap ? `
     if (!state) return;
     const style = regionalArchitecture?.id ?? null;
     const anatomy = describeStructure({
-      structureIdx, mapId, builder, style, parts: parts as Readonly<Record<string, readonly THREE.BufferGeometry[]>>,
+      structureIdx, mapId, buildKey: worldKey, builder, style, parts: parts as Readonly<Record<string, readonly THREE.BufferGeometry[]>>,
       w: maxX - minX, d: maxZ - minZ, h: maxY, placement: { x, y, z, yaw }, massClass: state.massClass,
     });
     structureDamage.set(structureIdx, { builder, style, anatomy });
@@ -5280,6 +5292,9 @@ ${snowCap ? `
   // A structure whose packet moves or reads its records before then (a carriageway building, a foundry donor, the
   // wharf's fishery) derives everything here, as every structure does in the Node builds.
   const shellPool = structureShellPoolFor(sourceApplication.worker === true);
+  // (2026-11-02 audit R1) a cancelled build stops the shell pool's workers too (only the join disposed them: a build
+  // cancelled before it left up to four cot-structure-shells workers running)
+  sourceApplication.signal?.addEventListener('abort', () => shellPool?.dispose(), { once: true });
   let shellsJoined = false;
   // (perf-248) the burnt vehicles' and the broken carts' bodies, built off the main thread (brokenVehiclePool.ts): posted
   // as their pools finalize, taken at joinBrokenVehicles; a cancelled build stops the pool's workers
@@ -12668,13 +12683,16 @@ ${snowCap ? `
       utilityWires?.rebuild(spans);
     }
   }
+  /** A tossed prop's tumble rate (rad/s), seeded by its pool slot: the runner's first tick and the overflow snap agree. */
+  const tossSpinOf = (index: number): number => 5.0 + mulberry32((index + 3) * 2654435761)() * 4.5;
   function pushCrushAnim(a: CrushAnimation): void {
     if (crushAnims.length >= MAX_CRUSH_ANIMS) {
       const old = crushAnims.shift(); // snap-finish the oldest
       if (!old) return;
       if (!old.placement) { old.im.getMatrixAt(old.index, _cm); old.placement = _cm.clone(); }
       if (old.type === 'toss') {
-        if (old.spin == null) { old.spin = 6; old.r = old.h * 0.35; }
+        // (2026-11-02 audit R2) its own seeded tumble, as the runner gives it (was a fixed 6 rad/s: another landing pose)
+        if (old.spin == null) { old.spin = tossSpinOf(old.index); old.r = old.h * 0.35; }
         poseTossed(old, old.dur);
       } else {
         poseToppled(old, old.maxAng);
@@ -12738,11 +12756,15 @@ ${snowCap ? `
       // settling on their side. Persists via the anim's final pose.
       const th = 2.2 + Math.min(speed, 12) * 0.55;
       setToppleAxis(_cax, dx, dz);
+      // (2026-11-02 audit R2) the throw's scatter is the record's own (its kind's pool slot and its seat), never a draw
+      // from the build's destruction stream: that stream's position was the build's draws plus every toss before this
+      // one in the session and was never reset, so a churn landed elsewhere per rematch, per peer and per settled restore
+      const scatter = mulberry32(((rec.slot + 11) * 2654435761) ^ Math.round(rec.x * 64) ^ (Math.round(rec.z * 64) << 12) ^ (seed + 9001));
       pushCrushAnim({
         type: 'toss', im: pool.imI!, index: rec.slot,
         x: rec.x, y: rec.y, z: rec.z, h: rec.h,
-        vx: (dx / directionLength) * th + (drng() - 0.5) * 1.2,
-        vz: (dz / directionLength) * th + (drng() - 0.5) * 1.2,
+        vx: (dx / directionLength) * th + (scatter() - 0.5) * 1.2,
+        vz: (dz / directionLength) * th + (scatter() - 0.5) * 1.2,
         vy: 2.6 + Math.min(speed, 12) * 0.30,
         ax: _cax.x, az: _cax.z,
         t: settled ? 1.5 : 0, placement: null, dur: 1.5,
@@ -12771,6 +12793,16 @@ ${snowCap ? `
     pool.imB.instanceMatrix.needsUpdate = true;
   }
 
+  // (2026-11-02 audit M9) a prop's collision records (its movement and shell records, a clutter's whole set) through the
+  // one crush transition both worlds run (collision.ts setCrushedRecords); `warnedCosmeticCover` says a refusal once
+  const _noRecords: CollisionRecord[] = [];
+  let warnedCosmeticCover = false;
+  function crushRecordsOf(rec: DestructibleRecord, crushed: boolean): void {
+    if (rec.clutter) { setCrushedRecords(rec.clutter.obstacles, rec.clutter.colliders, crushed); return; }
+    if (!rec.ob && !rec.col) return;
+    setCrushedRecords(rec.ob ? [rec.ob] : _noRecords, rec.col ? [rec.col] : _noRecords, crushed);
+  }
+
   /**
    * Break/topple/toss one destructible record. All trigger paths land here
    * (hull-overrun obstacle seam, hull-radius loop, shell sweep/impact).
@@ -12779,6 +12811,8 @@ ${snowCap ? `
    * @param {number} [speed=0] impact speed m/s (hull overrun) — debris throw
    *   inherits it; 0 = shell-grade base energy
    * @param {string} [cause='shell'] 'ram' | 'shell' | 'blast'
+   * @param {boolean} [authority=false] the authority's crush (the crushObstacle seam: solo hit resolution, a network
+   *   destruction event, the Studio's plan); every other caller is presentation and may not open cover
    * @returns {boolean} true if the record broke now
    */
   function breakRecord(
@@ -12788,23 +12822,38 @@ ${snowCap ? `
     speed = 0,
     cause: LoosePropKickCause = 'shell',
     settled = false,
+    authority = false,
   ): boolean {
     const rec = destructibles[idx];
     if (!rec || rec.state) return false;
+    // (2026-11-02 audit M9) cover (a movement or a shell record) opens only by the authority's crush: a cosmetic path
+    // (a shell's flight or burst, a drum chain, the hull loop) that reaches one is refused here, not by its callers' habit
+    if (!authority && (rec.ob || rec.col)) {
+      if (!warnedCosmeticCover) { warnedCosmeticCover = true; console.warn(`[props] a cosmetic break reached ${rec.kind}'s cover records: refused`); }
+      return false;
+    }
     const pool = dPools.get(rec.kind);
-    if (!rec.clutter && (!pool || !pool.imI)) return false;
+    // (round 2 U28) whether the prop draws (a clutter set, or a pool finalized with its intact instances): the authority's
+    // crush of cover opens it whether or not it does — collision never waits on draw readiness (every pool is finalized
+    // before a battle today, finalizeDestructiblePools, so the undrawn case is a guard, not a path)
+    const drawn = !!rec.clutter || !!pool?.imI;
+    if (!drawn && !(authority && (rec.ob || rec.col))) return false;
     // Loose dressing is displaced, never consumed. Shells/blasts kick it too,
     // and a later tank can push the exact same object again after it settles.
+    // (a physics kind carries no cover record, the build throws on one, so an undrawn one returned above)
     if (rec.cls === 'physics') return kickLooseRecord(idx, dx, dz, speed, cause);
     rec.state = 1;
     if (pool?.imI) setWorldNightFixtureActive(pool.imI, rec.slot, false);
-    if (rec.ob) rec.ob.crushed = true;          // ghost for collision + AI
-    if (rec.col) rec.col.dead = true;           // shells/LOS pass the breach
+    // ghost for collision + AI; shells/LOS pass the breach (collision.ts setCrushedRecords: the headless world's transition)
+    crushRecordsOf(rec, true);
     if (rec.loopRef) rec.loopRef.toppled = true; // stop the main.ts loop
     const l = Math.hypot(dx, dz) || 1;
-    if (rec.clutter) rec.clutter.setCrushed(true);
-    else if (pool && crushPress.takes(idx, cause, dx, dz, settled)) { /* drawn by the press: its paint and its crumple */ }
-    else if (pool) animateBrokenRecord(rec, pool, dx, dz, speed, l, settled);
+    if (rec.clutter) rec.clutter.setCrushed(true); // (its pose; its records' flags are crushRecordsOf's above)
+    // (round 2 U28) undrawn: its collision opened above and it has no pose; its burst and its sound below still run
+    // (round 3 B13: the round-two ruling called this path presentation-free, which it is not; a guard today, see `drawn`)
+    else if (!pool?.imI) { /* nothing to pose */ }
+    else if (crushPress.takes(idx, cause, dx, dz, settled)) { /* drawn by the press: its paint and its crumple */ }
+    else animateBrokenRecord(rec, pool, dx, dz, speed, l, settled);
     // Late joiners restore persistent destruction without replaying its blast.
     if (settled) return true;
     // Explosive decoration chains next tick through the cosmetic-only impact
@@ -12868,7 +12917,7 @@ ${snowCap ? `
     cause: LoosePropKickCause = 'ram',
     settled = false,
   ): boolean {
-    return breakRecord(propIdx, dx, dz, speed, cause, settled);
+    return breakRecord(propIdx, dx, dz, speed, cause, settled, true);
   }
 
   // Cosmetic shell paths (effects.ts forwards flight/impact presentation).
@@ -12982,7 +13031,7 @@ ${snowCap ? `
     }
   }
   const registerDestructibles = (): (() => void) => registerWorldDestructibles({
-    key: mapId,
+    key: worldKey,
     isActive: () => {
       for (let o: THREE.Object3D | null = group; o; o = o.parent) {
         if (o.visible === false) return false;
@@ -13197,7 +13246,7 @@ ${snowCap ? `
         a.im.getMatrixAt(a.index, _cm);
         a.placement = _cm.clone();
         if (a.type === 'toss') {
-          a.spin = 5.0 + mulberry32((a.index + 3) * 2654435761)() * 4.5;
+          a.spin = tossSpinOf(a.index);
           a.r = a.h * 0.35;
         } else {
           // random hinge-axis wobble so simultaneous topples de-sync
@@ -13235,12 +13284,8 @@ ${snowCap ? `
    * topples righted and any in-flight anims dropped.
    */
   function restoreDestructibleRecord(rec: DestructibleRecord): void {
-    if (rec.ob) {
-      rec.ob.crushed = false;
-      rec.ob._pressS = 0;
-      rec.ob._pressT = -1e9;
-    }
-    if (rec.col) rec.col.dead = false;
+    crushRecordsOf(rec, false); // (2026-11-02 audit M9) every cover record of the prop stands again
+    // (round 2 U13) a hull's press is the battle's own ledger (sim/crushPress.ts), not a field on the record
     if (rec.loopRef) rec.loopRef.toppled = false;
     if (rec.body) {
       resetLoosePropBody(rec.body);

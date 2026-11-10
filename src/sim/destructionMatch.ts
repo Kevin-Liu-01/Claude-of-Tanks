@@ -58,7 +58,8 @@ export const CRATERS_PER_TICK = 4;
 
 /**
  * The log's wire budget (security audit 2026-10-22, C3; docs/DESTRUCTION.md §8.5). A keyframe carries the whole log
- * beside the entity rows, the shells, the mode state and the destroyed set inside one 64 KB message, so a log that
+ * beside the entity rows, the shells, the mode state and the destroyed set inside one 64 KB message (the set's falls,
+ * wire 11, take only the room left: mp/wire/destroyedSet.ts), so a log that
  * outgrew it stopped every viewer's snapshots and the migration keyframe for the rest of the match. Stage and crater
  * entries are finite by construction (three transitions a structure, `maxCraters`), and the budget keeps room for every
  * one still possible. Breaches are not finite, so they are logged while the rest of the budget lasts: holes up to

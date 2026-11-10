@@ -93,9 +93,15 @@ export interface RosterPlanEntry {
 const TEAM_NAMES = ['alpha', 'bravo', 'spectator'] as const;
 
 /**
- * The plan from the authority's own roster (every seat, connected or not, and every bot) with the equipment the room
- * snapshot still names per player: what an elected host boots from when the old host's configuration blob never
- * arrived (a seat promoted within its first seconds).
+ * The plan from the authority's own roster (every seat, connected or not, and every bot): what an elected host boots
+ * from when it holds no readable sealed configuration. matchHostCore sends that configuration to each seat right after
+ * its WELCOME (round 8 Y2, s4-04), so this is the path of a blob that does not open or decode, and the standby's
+ * preparation. A seat's loadout has one source, in this order: the sealed configuration (the elected host's plan, not
+ * here); else the room snapshot for a player still in the room (its equipment, consumables and camo; a running match
+ * refuses loadout edits, roomPolicy assertWaiting, so these are its match-start loadout); else the defaults, for a player
+ * who left the room while its hull stays in the match: null equipment and consumables, which the authority turns into
+ * the vehicle's default loadout and consumable trio, and no camo (the factory scheme). It read [] before: an EMPTY
+ * equipment loadout for the departed seat's hull.
  */
 export function planFromRoster(roster: readonly RosterPlanEntry[], room: RoomSnapshot | null): HostBootPlan {
   const seats: HostBootSeat[] = [];
@@ -110,7 +116,7 @@ export function planFromRoster(roster: readonly RosterPlanEntry[], room: RoomSna
     const player = room?.players.find((candidate) => candidate.id === entry.playerId) ?? null;
     seats.push({
       seat: entry.seat, playerId: entry.playerId, name: entry.name, team, specId: entry.specId,
-      equipment: player ? player.equipment.slice() : [], consumables: player ? (player.consumables ?? []).slice() : [],
+      equipment: player ? player.equipment.slice() : null, consumables: player ? (player.consumables ?? []).slice() : null,
       camo: player ? player.camo : null,
     });
   }

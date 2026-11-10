@@ -34,6 +34,7 @@ import { HeadlessMatchClientDriver, MatchClient } from '../src/mp/match/index.ts
 import { RecordingPresentation, bindMatchPresentation, createPredictionWorld } from '../src/mp/presentation/index.ts';
 import { ScriptedMatchServer } from '../src/mp/match/scriptedServer.test-support.ts';
 import { MESSAGE_TYPE, NO_ENTITY, TEAM, TICK_HZ, decodeMessage, encodeMessage } from '../src/mp/wire/index.ts';
+import { MATCH_PHASE, TRANSPORT_STATE } from './mp-states.mjs';
 
 const TICK_MS = 1000 / TICK_HZ;
 const SEAT_SECRET = 'mp-client-soak-seat-secret-0123456789';
@@ -152,12 +153,12 @@ async function createActorServer({ clock, clientCount, seats, mapId, seed, snaps
       const link = {
         label: 'soak',
         get bufferedAmount() { return transport.bufferedBytes; },
-        get closed() { return transport.state === 'closed'; },
+        get closed() { return transport.state === TRANSPORT_STATE.closed; },
         send(bytes) {
-          if (!transport.send(bytes) && transport.state !== 'open') throw new Error('link closed');
+          if (!transport.send(bytes) && transport.state !== TRANSPORT_STATE.open) throw new Error('link closed');
         },
         close(reason, detail = '') {
-          if (transport.state === 'closed') return;
+          if (transport.state === TRANSPORT_STATE.closed) return;
           transport.send(encodeMessage({ type: MESSAGE_TYPE.CLOSE, reason, detail }));
           transport.close('server', detail);
         },
@@ -175,10 +176,10 @@ async function createActorServer({ clock, clientCount, seats, mapId, seed, snaps
         actor.attach(link, decoded.message, verified.claims);
       });
       transport.onState((change) => {
-        if (change.state === 'closed') closeListener?.();
-        if (change.state === 'reconnecting' || (change.state === 'open' && change.resumed)) admitted = false;
+        if (change.state === TRANSPORT_STATE.closed) closeListener?.();
+        if (change.state === TRANSPORT_STATE.reconnecting || (change.state === TRANSPORT_STATE.open && change.resumed)) admitted = false;
       });
-      if (transport.state === 'idle') transport.open();
+      if (transport.state === TRANSPORT_STATE.idle) transport.open();
     },
     advance: (t) => actor.advance(t),
     stats: () => {
@@ -321,7 +322,7 @@ export async function runClientSoak({
     if (gates.maxCorrectionStepM > 0.25) failures.push(`correction release ${gates.maxCorrectionStepM.toFixed(3)} m`);
     if (gates.intrinsicAckLagP50 > rttTicks + intervalTicks) failures.push(`ack lag p50 ${gates.intrinsicAckLagP50} (raw ${gates.ackLagP50}) > RTT ${rttTicks} + ${intervalTicks} ticks (one snapshot at ${snapshotHz} Hz)`);
     if (gates.missingBaselines > gates.keyframeRecoveries) failures.push(`missing baselines ${gates.missingBaselines} > recoveries ${gates.keyframeRecoveries}`);
-    if (stats.phase !== 'live') failures.push(`phase ${stats.phase}`);
+    if (stats.phase !== MATCH_PHASE.live) failures.push(`phase ${stats.phase}`);
     if (entry.presentation.frames.length === 0) failures.push('the presentation adapter saw no frames');
     if (entry.client.ownEntityId === NO_ENTITY) failures.push('not seated');
     return {

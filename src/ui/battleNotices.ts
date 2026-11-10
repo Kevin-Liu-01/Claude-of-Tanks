@@ -5,6 +5,7 @@
 // the centre's two rows. The kit (components/notice.ts) loads on the first one, so a boot module that may raise one gains
 // a few bytes, never the kit; the killcam's veil hides the region (battleHudLayout.css body.cot-kc-live).
 // Copyright © 2026 Kevin B. Liu.
+import { createLazyChunk } from '../app/lazyChunk.ts';
 import type { ToastOptions } from './components/notice.ts';
 import { markDatum } from './dom.ts';
 
@@ -22,29 +23,27 @@ export interface BattleNoticePort {
   dismiss(id: string): void;
 }
 
-let kit: Promise<typeof import('./components/notice.ts')> | null = null;
+// (2026-11-02 audit R6) the kit under the one lazy-chunk policy (app/lazyChunk.ts): `??=` kept a failed import for the
+// document, so after one failed notice chunk every later battle notice (the parked aim warnings, the pointer lock's
+// prompt, the network's banner) was dropped; the next notice asks again
+const kit = createLazyChunk(() => import('./components/notice.ts').then((module) => {
+  module.noticeRegion(REGION, { placement: 'top', className: 'cot-battle-notices', limit: 1 });
+  // (the battle's one place for its toasts, however many come and go: surfaceRegistry.ts toasts)
+  const region = document.querySelector<HTMLElement>('.cot-c-notices.cot-battle-notices');
+  if (region) markDatum(region, 'toasts');
+  return module;
+}));
 
 // (the HUD's lanes make room under a shown toast, battleHudLayout.ts: told when one comes, and when one has gone, after
 // the kit's 200 ms exit)
 const relayout = (): void => { window.dispatchEvent(new Event('cot-hud-relayout')); };
 
-function loadKit(): Promise<typeof import('./components/notice.ts')> {
-  kit ??= import('./components/notice.ts').then((module) => {
-    module.noticeRegion(REGION, { placement: 'top', className: 'cot-battle-notices', limit: 1 });
-    // (the battle's one place for its toasts, however many come and go: surfaceRegistry.ts toasts)
-    const region = document.querySelector<HTMLElement>('.cot-c-notices.cot-battle-notices');
-    if (region) markDatum(region, 'toasts');
-    return module;
-  });
-  return kit;
-}
-
 export const battleNotices: BattleNoticePort = {
   show(options) {
-    void loadKit().then((module) => { module.notify({ ...options, region: REGION }); relayout(); }, () => {});
+    void kit.load().then((module) => { module.notify({ ...options, region: REGION }); relayout(); }, () => {});
   },
-  // (nothing to do before the kit has loaded: no toast was raised)
+  // (nothing to do before the kit has loaded or while it is failed: no toast was raised; a dismiss never fetches)
   dismiss(id) {
-    if (kit) void kit.then((module) => { module.dismissNotice(id); setTimeout(relayout, 220); }, () => {});
+    if (kit.state === 'ready' || kit.state === 'loading') void kit.load().then((module) => { module.dismissNotice(id); setTimeout(relayout, 220); }, () => {});
   },
 };

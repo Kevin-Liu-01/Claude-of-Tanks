@@ -20,13 +20,19 @@ import { routeShadowOnlyLayer } from './renderLayers.ts';
 import { installOpaqueProgramOrder } from './opaqueProgramOrder.ts';
 import { installContextResourceLifetime } from './contextResourceLifetime.ts';
 
-import { createContextRecovery, type ContextRecoveryOwner, type RecoveryNotice } from './contextRecovery.ts';
+import {
+  createContextRecovery, type ContextRecoveryOwner, type RecoveryNotice, type RecoveryOutcome, type RecoveryState,
+} from './contextRecovery.ts';
 import { shapeLampPointLights } from './lampLightShape.ts';
 
 type GameRenderer = THREE.WebGLRenderer & {
   userData: {
     outputResolution?: OutputResolution;
     contextRecovery?: ContextRecoveryOwner;
+    /** (2026-11-02 audit R3) the recovery machine's state, read by other owners (the black-world guard). */
+    contextRecoveryState?: () => RecoveryState;
+    /** (2026-11-02 audit R3) a lose/restore cycle through the recovery machine, with its typed outcome (guard H4). */
+    requestContextRestore?: () => Promise<RecoveryOutcome>;
   };
 };
 
@@ -66,7 +72,8 @@ export function createRenderer(container: HTMLElement): GameRenderer {
     powerPreference: 'high-performance',
     stencil: false,
   }) as GameRenderer;
-  // Install before scene resources are allocated, and before recovery listeners.
+  // Install before scene resources are allocated. Its loss count runs before the recovery's owner by code (beforeLost),
+  // not by listener order.
   const contextResources = installContextResourceLifetime(renderer.getContext() as WebGL2RenderingContext, renderer.domElement);
   // WebGLRenderer is not an Object3D and therefore has no built-in userData.
   // Reserve a small integration bag for lifecycle hooks installed by main.ts.
@@ -91,9 +98,15 @@ export function createRenderer(container: HTMLElement): GameRenderer {
     owner: () => renderer.userData.contextRecovery,
     // Three replaces shadowMap before dispatching our restoration listener.
     beforeRestore: () => routeShadowOnlyLayer(renderer),
+    beforeLost: (event) => contextResources.noteLost(event),
     recordLoss: noteGraphicsContextLoss,
     notice: showContextLossOverlay,
   });
+  renderer.userData.contextRecoveryState = () => recovery.state;
+  renderer.userData.requestContextRestore = () => {
+    const lose = renderer.getContext().getExtension('WEBGL_lose_context');
+    return lose ? recovery.request(lose) : Promise.resolve<RecoveryOutcome>('failed');
+  };
   // (240) the night pool's town lamps light as lanterns: their halo kept, dark up the facade over them (lampLightShape.ts;
   // its own line of the chunk, apart from the falloff floor's)
   shapeLampPointLights();

@@ -155,6 +155,43 @@ export function createGaragePhasePresentationRuntime({
     },
   });
 
+  // 2026-11-02 audit R5: one restore at a time. An overlapping caller joins the restore in flight instead of starting
+  // a second upload or replacing its abandonment check; it shares the receipt when that restore left the Garage
+  // resident, and otherwise (abandoned, failed, or superseded by a context loss) runs its own if it still wants one.
+  let restoreInFlight: Promise<GaragePresentationRestoreReceipt> | null = null;
+  const runRestore = async (isCurrent?: () => boolean): Promise<GaragePresentationRestoreReceipt> => {
+    restoreIsCurrent = isCurrent;
+    try {
+      const renewed = await gpuResidency.resume();
+      if (!renewed) {
+        await restorePresentation(false);
+      }
+    } finally {
+      restoreIsCurrent = undefined;
+    }
+    if (!restoreReceipt) {
+      throw new Error('Garage GPU restoration completed without a receipt');
+    }
+    return restoreReceipt;
+  };
+  const restoreGpu = async (isCurrent?: () => boolean): Promise<GaragePresentationRestoreReceipt> => {
+    while (restoreInFlight) {
+      const joined = restoreInFlight;
+      try {
+        const receipt = await joined;
+        if (gpuResidency.diagnostics().phase === 'resident' || (isCurrent && !isCurrent())) return receipt;
+      } catch (error) {
+        if (isCurrent && !isCurrent()) throw error;
+      }
+      if (restoreInFlight === joined) restoreInFlight = null;
+    }
+    const run = runRestore(isCurrent);
+    restoreInFlight = run;
+    const clear = (): void => { if (restoreInFlight === run) restoreInFlight = null; };
+    run.then(clear, clear);
+    return run;
+  };
+
   const setActive = (active: boolean): void => {
     if (spotA.visible === active) return;
     if (!active) lighting.setFarCascadeDormant(false);
@@ -210,21 +247,7 @@ export function createGaragePhasePresentationRuntime({
     swapWorld: sceneResidency.swapWorld,
     setWorldActive: sceneResidency.setWorldActive,
     invalidateGpu: gpuResidency.invalidate,
-    async restoreGpu(isCurrent?: () => boolean) {
-      restoreIsCurrent = isCurrent;
-      try {
-        const renewed = await gpuResidency.resume();
-        if (!renewed) {
-          await restorePresentation(false);
-        }
-      } finally {
-        restoreIsCurrent = undefined;
-      }
-      if (!restoreReceipt) {
-        throw new Error('Garage GPU restoration completed without a receipt');
-      }
-      return restoreReceipt;
-    },
+    restoreGpu,
     diagnostics: () => ({
       scene: { ...sceneResidency.stats },
       gpu: gpuResidency.diagnostics(),

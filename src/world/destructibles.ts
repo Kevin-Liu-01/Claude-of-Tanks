@@ -12,10 +12,11 @@
 // obstacles and shell colliders require the authoritative crushObstacle seam;
 // cosmetic proximity must never open cover that the authority still retains.
 //
-// Worlds are CACHED per mapId and reused across battles (main.ts worldCache),
-// with only the active one visible — handlers register keyed by mapId
-// (a rebuild of the same map replaces its entry) and are dispatched only when
-// their world group is actually visible in the scene graph.
+// Worlds are CACHED per build key and reused across battles (main.ts worldCache),
+// with only the active one visible — handlers register keyed by the world's
+// build key (worldBuildKey: the map and its terrain variant; a rebuild of the
+// same world replaces its entry) and are dispatched only when their world group
+// is actually visible in the scene graph.
 
 type BreakFxProvider = (
   kind: string,
@@ -136,8 +137,20 @@ export function emitDestroyed(event: DestroyedPropEvent): void {
 const worlds: WorldDestructibleEntry[] = [];
 
 /**
- * props.ts registers one entry per built world (keyed by mapId — rebuilding a
- * map replaces its stale entry instead of stacking).
+ * The key a built world registers under (2026-11-02 audit R2): its map and its terrain variant, as the world build
+ * coordinator keys its cache ('mapId', or 'mapId#assault-trenches' for the Frontline Assault variant). The standard world
+ * and its trench variant are two worlds (desktop caches them side by side); keyed by the map id alone the variant's
+ * registration replaced the standard world's entry, so the standard world's shells broke nothing for the rest of the
+ * session, and a cancelled variant build registered over it too.
+ */
+export function worldBuildKey(config: { readonly id?: string | null; readonly assaultTrenches?: boolean } | null | undefined): string {
+  const id = config?.id || 'verdant';
+  return config?.assaultTrenches ? `${id}#assault-trenches` : id;
+}
+
+/**
+ * props.ts registers one entry per built world (keyed by worldBuildKey — rebuilding a
+ * world replaces its stale entry instead of stacking).
  * @param {{key:string, isActive:function():boolean,
  *   sweep:function(number,number,number,number,number,number):void,
  *   impact:function(number,number,number,{r:number,he:boolean}):void}} entry

@@ -324,8 +324,9 @@ assert.match(mainSource, /createCombatWarmComposition\(\{/,
 assert.match(battleWarmSource,
   /function warmStudioEffects[\s\S]{0,1400}createOpaqueLoadingYielder\(10, 64\)[\s\S]{0,1400}warmTexturesChunked\(yieldForLoad\)/,
   'direct Studio entry must prepare full-quality FX through the opaque frame-budget scheduler');
+// (2026-11-02 audit F9: the build takes its session's token first, 600 for the line)
 assert.match(studioSource,
-  /async function replaceLoadActors\([\s\S]{0,500}await yieldForFrameBudget\(\)[\s\S]{0,300}for \(const cfg of json\.actors \|\| \[\]\)[\s\S]{0,120}addActor\(cfg\);[\s\S]{0,100}await yieldForFrameBudget\(\)/,
+  /async function replaceLoadActors\([\s\S]{0,600}await yieldForFrameBudget\(\)[\s\S]{0,300}for \(const cfg of json\.actors \|\| \[\]\)[\s\S]{0,120}addActor\(cfg\);[\s\S]{0,100}await yieldForFrameBudget\(\)/,
   'Studio actor replacement must yield before and between full-quality procedural actors');
 // Validate the scheduler binding and awaited call in the actual load function.
 // Input validation and comments may grow without changing the scheduling contract.
@@ -379,7 +380,7 @@ assert.match(garageReturnRuntimeSource, /ui\.hideHud\(\)/,
 assert.match(mainSource, /hideHud: \(\) => currentHud\(\)\?\.setMode\?\.\('hidden'\)/,
   'returning from pristine Studio must reach the garage without a battle HUD');
 assert.match(studioSource,
-  /actors\.push\(a\);[\s\S]{0,260}if \(!loading\) bindStoryboardTracks\(\)/,
+  /actors\.push\(a\);[\s\S]{0,260}if \(!sceneLoad\.held\) bindStoryboardTracks\(\)/, // (round 2 U36) the load's session holder
   'Studio batch loads must not rebuild timeline bindings for every intermediate actor');
 assert.match(mainSource,
   /if \(!STUDIO_BOOT_INTENT\) lighting\.setFarCascadeDormant\(true\);/,
@@ -692,8 +693,10 @@ assert.match(hudSource,
 assert.match(deploymentShadowWarmSource,
   /const prime = async[\s\S]{0,6500}preservePrimedCascadesForNextFrame\(\)/,
   'covered cascade slices must hand their exact maps to the first full frame');
+// (integration, engine-gpu's audit R4 castShadow holds: their note and hold loop sit between the signature and the batch's
+// render, 1,321 characters where the base had 1,004)
 assert.match(deploymentShadowWarmSource,
-  /async function warmCasterBatches\([\s\S]{0,1200}observeRender\('caster-batch', batchTimes\.length, firstLight\)[\s\S]{0,500}await yieldCovered\(yieldForBudget\)/,
+  /async function warmCasterBatches\([\s\S]{0,1600}observeRender\('caster-batch', batchTimes\.length, firstLight\)[\s\S]{0,500}await yieldCovered\(yieldForBudget\)/,
   'deployment shadows must upload caster resources in bounded depth-only batches');
 assert.match(deploymentShadowWarmSource,
   /const observeRender: ObserveShadowWarm = \(phase, index, light, render = shadowOnlyWarm\)/,
@@ -704,8 +707,10 @@ assert.match(deploymentShadowWarmSource,
 assert.match(deploymentShadowWarmSource,
   /scene\.overrideMaterial = uploadMaterial;[\s\S]{0,160}observeRender\('geometry-upload', index\+\+, light, warmRender\)[\s\S]{0,180}scene\.overrideMaterial = priorOverrideMaterial/,
   'deployment geometry must upload through one shared shader and always restore production materials');
+// (integration: since engine-gpu's audit R4 the casters come back through their named holds, castShadowHolds.ts
+// releaseCastShadowHold, which restores what the warm's holds wrote)
 assert.match(deploymentShadowWarmSource,
-  /function restoreCasterState\([\s\S]{0,240}object\.castShadow = true;[\s\S]{0,220}object\.autoUpdate = autoUpdate/,
+  /function restoreCasterState\([\s\S]{0,400}(?:object\.castShadow = true;|releaseCastShadowHold\(object, state\);)[\s\S]{0,220}object\.autoUpdate = autoUpdate/,
   'deployment shadow warming must restore every caster and pinned LOD state');
 assert.match(deploymentShadowWarmSource,
   /preservePrimedCascadesForNextFrame\(\);[\s\S]{0,100}restoreCasterState\(casterState\);[\s\S]{0,60}primed = true/,
@@ -760,7 +765,8 @@ assert.match(playerFrameInputSource,
 assert.doesNotMatch(battleRolloutSource, /snapArcade/,
   'openBattle must never visibly re-snap the camera after the loader fade');
 assert.match(soloBattleEntrySource,
-  /enterGarage\(\);\s*lifecycle\.uncoverRendering\(\);\s*await nextFrame\(\);\s*await battleLoad\.hide\?\.\(\);/,
+  // (2026-11-02 audit F3 review) a recovery return that failed has no Garage to paint; a restored one still paints first
+  /await enterGarage\(\);\s*returned = true;[\s\S]{0,240}lifecycle\.uncoverRendering\(\);\s*if \(returned\) await nextFrame\(\);\s*await battleLoad\.hide\?\.\(\);/,
   'battle-entry failures must paint the restored Garage before fading the loader');
 // A room start mounts its opaque cover synchronously (the intent cover) before the composition chunk's first await.
 assert.match(intentCoverSource, /coverRendering\(\);\s*resetRoundState\(game\);\s*battleLoad\.show\(\{/,

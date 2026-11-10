@@ -553,19 +553,23 @@ test('queued diagnostics obey the exact production phase/world/entry guards', ()
   assert.deepEqual(run('battle', 'day', { illuminance: 1.5 }), { nightRadianceScale: 0.5 }, 'a closed deck by day is low light too');
   assert.deepEqual(run('garage', 'night', { illuminance: 0.2 }), {});
   assert.deepEqual(run('garage', 'sunset', { illuminance: 0.494 }), {});
-  assert.match(main, /import \{ EXPOSURE_REFERENCE_ILLUMINANCE, loadGroundedLightModel \} from '\.\/engine\/lightModelCore\.ts';/);
+  // (round 3 A4) the grounded model's loader moved to battleAtmosphereAccess.ts (its lazy chunk); the meter stays the core's
+  assert.match(main, /import \{ EXPOSURE_REFERENCE_ILLUMINANCE \} from '\.\/engine\/lightModelCore\.ts';/);
   assert.match(main, /signal, measureTimings: true, \.\.\.currentSceneWatchdogOptions\(\)/);
 });
 
 test('real intent, Garage teardown and network activation invalidate old same-world timers', () => {
   const main = readFileSync(new URL('../main.ts', import.meta.url), 'utf8');
   const bodies = [
-    main.match(/bus\.on\('ui:battleStart', \(\) => \{([\s\S]*?)\n\}\);/)[1],
-    main.match(/invalidate: \(\) => \{ (battleWarmGeneration \+= 1;[^}]+)\}/)[1],
+    // (2026-11-02 audit F2) a real intent invalidates at the entry lifecycle's acceptance, which always precedes the
+    // start that arms the next request (it used to be the ui:battleStart listener, which had to arrive first)
+    main.match(/onEntry: \(\) => \{ ([^}]+)\},/)[1],
+    main.match(/invalidate: \(\) => \{ (battleWarmHold\.invalidate\(\);[^}]+)\}/)[1],
     main.match(/setNetworkSpectator: \(value: boolean\) => \{([\s\S]*?)\n\s+\},/)[1],
   ];
   for (const body of bodies) {
     const invoke = new Function('value', `let sceneWatchdogEntryGeneration = 1, battleWarmGeneration = 1, coveredBattleWatchdog = () => {};
+      const battleWarmHold = { invalidate() {} };
       const playSurface = { hideForBattle() {} }, networkSession = { setSpectator() {} };
       const garageModePreview = { current: null, clear() { this.current = null; } }; // battle entry also clears the Garage mode preview (f94f3ebe5)
       const pedestal = { current: null }, clearJuggernautVisual = () => {}; // and the garage hull's Juggernaut aura (16f624704)
@@ -633,10 +637,12 @@ for (const kind of ['sync', 'async', 'schedule', 'reporter']) {
   const armBody = main.match(/scheduleBlackWatchdog: \(covered: boolean\) => \{([\s\S]+?)\n      \},\n    \},/)[1]
     .replace(": Omit<Parameters<typeof scheduleSceneWatchdog>[0], 'delayMs'>", '');
   const consumeBody = main.match(/runSceneWatchdog: async \(assertCurrent: \(\) => void\) => \{([\s\S]+?)\n    \},/)[1];
-  const invalidateBody = main.match(/bus\.on\('ui:battleStart', \(\) => \{([\s\S]*?)\n\}\);/)[1];
+  const invalidateBody = main.match(/onEntry: \(\) => \{ ([^}]+)\},/)[1];
+  const battleStartBody = main.match(/bus\.on\('ui:battleStart', \(\) => \{([\s\S]*?)\n\}\);/)[1];
   const timers = [], draws = [];
-  const nav = { webdriver: false }, game = { phase: 'battle' }, world = { mapId: 'urban' };
-  const create = new Function('navigator', 'game', 'currentWorld', 'runSceneWatchdogNow',
+  // (2026-11-02 audit S3) main reads the page's automation path (src/app/automationPath.ts), not navigator.webdriver
+  const automation = { harness: false }, game = { phase: 'battle' }, world = { mapId: 'urban' };
+  const create = new Function('harnessPath', 'game', 'currentWorld', 'runSceneWatchdogNow',
     'scheduleSceneWatchdog', 'runSceneBlackWatchdogAsync', `
       let sceneWatchdogEntryGeneration = 0, coveredBattleWatchdog = null;
       const studio = { active: false }, renderer = {}, scene = {}, camera = {}, playSurface = { hideForBattle() {} };
@@ -645,9 +651,9 @@ for (const kind of ['sync', 'async', 'schedule', 'reporter']) {
       const pedestal = { current: null }, clearJuggernautVisual = () => {};
       const currentSceneWatchdogOptions = () => ({});
       return { arm: covered => { ${armBody} }, consume: async assertCurrent => { ${consumeBody} },
-        pending: () => coveredBattleWatchdog, invalidate: () => { ${invalidateBody} } };
+        pending: () => coveredBattleWatchdog, invalidate: () => { ${invalidateBody} }, battleStart: () => { ${battleStartBody} } };
     `);
-  const h = create(nav, game, () => world, runSceneWatchdogNow,
+  const h = create(() => automation.harness, game, () => world, runSceneWatchdogNow,
     options => timers.push(options), async (_renderer, _scene, _camera, options) => {
       assert.equal(options.isCurrent(), true); draws.push(options);
       return { before: 18, after: null, rescued: false, stage: null };
@@ -668,11 +674,11 @@ for (const kind of ['sync', 'async', 'schedule', 'reporter']) {
   assert.equal(timers.length, 1);
   assert.equal(timers[0].delayMs, 1800, 'legacy direct/no-cover path retains its original delay');
   assert.equal(h.pending(), null);
-  nav.webdriver = true;
+  automation.harness = true;
   h.arm(true);
   await h.consume(() => {});
-  assert.equal(draws.length, 1, 'webdriver keeps its explicit existing opt-out');
-  nav.webdriver = false;
+  assert.equal(draws.length, 1, 'the harness path keeps its explicit existing opt-out');
+  automation.harness = false;
   const garage = readFileSync(new URL('../ui/garage.ts', import.meta.url), 'utf8');
   const garageTree = ts.createSourceFile('garage.ts', garage, ts.ScriptTarget.Latest, true);
   const launches = [];
@@ -684,13 +690,20 @@ for (const kind of ['sync', 'async', 'schedule', 'reporter']) {
   assert.equal(launches.length, 1, 'extract only launchBattle, independent of its neighboring functions');
   const launchCode = stripTypeScriptTypes(launches[0].getText(garageTree));
   const bus = createBus();
-  bus.on('ui:battleStart', h.invalidate);
+  bus.on('ui:battleStart', h.battleStart);
   // (264) launchBattle asks the load-failure kit whether the Battle button's chunk failed (pressFailed(battleBtn)): stubbed false
+  // (audit F2) onBattle is the entry: its acceptance invalidates, then its start arms. (round 8 Y4 s3-03) The start it
+  // hands on hands the Garage screen on (garageScreen.enter since the residual fix-up r1, its give-back run on the entry's
+  // settle; garageOpenState.selftest drives it): stubbed
   const launch = new Function('emit', 'onBattle', `
-    const battleGameMode = 'standard'; const pressFailed = () => false, battleBtn = null; ${launchCode}; return launchBattle;
-  `)(bus.emit, () => h.arm(true));
+    const battleGameMode = 'standard'; const pressFailed = () => false, battleBtn = null;
+    const garageScreen = { handOff() {}, enter: () => () => {} };
+    ${launchCode}; return launchBattle;
+  `)(bus.emit, () => { h.invalidate(); h.arm(true); });
   launch('m1a1', 'urban');
   assert.equal(typeof h.pending(), 'function', 'actual Garage launch invalidates BEFORE onBattle arms the new request');
+  bus.emit('ui:battleStart', {});
+  assert.equal(typeof h.pending(), 'function', '(audit F2) a battle start announced after the arm cannot clear it');
   await h.consume(() => {});
   assert.equal(draws.length, 2, 'ui:battleStart cannot clear the newly armed held-entry request');
   passed++;

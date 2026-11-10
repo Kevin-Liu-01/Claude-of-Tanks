@@ -674,6 +674,15 @@ function refreshModuleState(m: CombatModuleState): ModuleStateName {
 }
 
 /**
+ * Set a module's hit points (floored at 0) and derive its stage through refreshModuleState: the module law's one writer
+ * for code outside this file (sim/impact.ts crashes and lethal rams; 2026-11-02 audit M6 — impact.ts re-implemented it).
+ */
+export function setModuleHp(m: CombatModuleState, hp: number): ModuleStateName {
+  m.hp = Math.max(0, hp);
+  return refreshModuleState(m);
+}
+
+/**
  * Shared per-intersection module damage: damage-chance roll, moduleDmg roll,
  * then an engine-compartment fire roll. RNG order per module is fixed:
  * chance → moduleDmg → fire.

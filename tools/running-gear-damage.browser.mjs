@@ -2,12 +2,12 @@
 import assert from 'node:assert/strict';
 import {mkdirSync,writeFileSync} from 'node:fs';
 import {resolve} from 'node:path';
-import {createCaptureLock} from './capture-lock.mjs';
+import { openCaptureHold } from './capture-hold.mjs';
 import {withMapProbeSession,openGamePage,beginSoloBattle,applyGroundPose} from './map-probe-runtime.mjs';
 const out=resolve('.qa-dev/running-gear-damage');mkdirSync(out,{recursive:true});
-const lock=createCaptureLock();let refresh;
+let hold;
 try{
- await lock.acquire(45*60*1000);refresh=setInterval(()=>lock.refresh(),30000);
+ hold = await openCaptureHold({ label: 'running-gear-damage', timeoutMs: 45*60*1000 });
  await withMapProbeSession({root:process.cwd(),cacheDir:resolve('.qa-dev/gear-vite-cache')},async({browser,port})=>{
   const {page,errors}=await openGamePage(browser,{port,viewport:{width:1440,height:900}});
   await beginSoloBattle(page,{specId:'m1a1_abrams_hc',mapId:'verdant',gameMode:'zone_control'});
@@ -78,4 +78,4 @@ try{
   writeFileSync(resolve(out,'report.json'),JSON.stringify({pass:true,before,after,objective,errors},null,2));
   console.log('Live track flight, ground contact, moving-tank independence, repair and capture-area surface fit passed');
  });
-}finally{clearInterval(refresh);lock.release();}
+}finally{await hold?.release();}

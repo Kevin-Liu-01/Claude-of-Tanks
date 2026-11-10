@@ -12,9 +12,12 @@ assert.equal(wiring.split("import('./ui/garageReturnFailure.ts')").length, 2,
   'exactly one lazy failure import, replaced only with a controlled deferred transfer');
 const compose = new Function('createBattleAgainAction', 'garageReturn', 'game',
   'onlineMatch', 'bus', 'console', 'loadFailure', `
+  // (2026-11-02 audit F2) the entry's identity is the entry lifecycle's serial, not the scene watchdog counter
+  const battleEntryLifecycle = { entrySerial: 0 };
   let sceneWatchdogEntryGeneration = 0;
   ${wiring.replace("import('./ui/garageReturnFailure.ts')", 'loadFailure()')}
-  return { run: battleAgainAction.run, advanceEntry() { sceneWatchdogEntryGeneration++; } };
+  return { run: battleAgainAction.run, advanceEntry() { battleEntryLifecycle.entrySerial++; },
+    advanceWatchdog() { sceneWatchdogEntryGeneration++; } };
 `);
 function deferred() {
   let resolve, reject;
@@ -24,7 +27,7 @@ function deferred() {
 async function flush() { for (let index = 0; index < 6; index++) await Promise.resolve(); }
 function fixture() {
   const events = new Map(), logs = [], notices = [], closes = [], imports = [];
-  const game = { phase: 'ended' }, onlineMatch = { current: null };
+  const game = { phase: 'garage' }, onlineMatch = { current: null };
   let actionCalls = 0, nextAction = () => Promise.resolve();
   const show = createGarageReturnFailurePresenter(() => ({
     body: { textContent: '' }, setTitle() {},
@@ -91,6 +94,32 @@ for (const change of ['phase', 'epoch', 'room']) {
   if (change === 'room') f.onlineMatch.current = { room: {} };
   f.imports[0].resolve(f.module); await old;
   assert.equal(f.notices.length, 0, `${change}: post-import ownership check`);
+}
+
+// (2026-11-02 audit F2) A spectator switch or a scene-watchdog re-arm is not a new battle entry: the failed Battle
+// Again keeps its notice (the actual main wiring read the watchdog counter as the entry's identity).
+{
+  const f = fixture();
+  f.setAction(async () => { throw new Error('old'); });
+  const old = f.run(); await flush();
+  f.advanceWatchdog();
+  f.imports[0].resolve(f.module); await old;
+  assert.equal(f.notices.length, 1, 'a watchdog/spectator generation change keeps the failed rematch notice');
+}
+
+// (audit F3) A Battle Again refused because a Leave holds the Garage return is no failure: no notice, no import.
+{
+  const f = fixture();
+  f.setAction(async () => {
+    throw Object.assign(new Error('The Garage return is busy with leave; battleAgain was not started.'), {
+      name: 'GarageReturnBusyError', code: 'garage_return_busy',
+    });
+  });
+  await f.run(); await flush();
+  assert.equal(f.imports.length, 0, 'a busy refusal loads no failure notice');
+  assert.equal(f.notices.length, 0);
+  await f.run();
+  assert.equal(f.actionCalls, 2, 'a busy refusal releases the action latch');
 }
 
 {

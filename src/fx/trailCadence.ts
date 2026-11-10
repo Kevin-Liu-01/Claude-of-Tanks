@@ -38,6 +38,9 @@ interface TrailCadence {
   readonly aux: Float64Array;
   /** sources called within the idle window (diagnostics) */
   active(now: number): number;
+  /** (2026-11-02 audit R7) move every source's last-call time by `delta` (the fx clock's rebase, timeShift.ts); the
+   *  caller's aux values are its own to move */
+  shiftTime(delta: number): void;
   reset(): void;
 }
 
@@ -136,6 +139,9 @@ export function createTrailCadence(slots = 64, matchM = 1.6, idleS = 0.4): Trail
       let n = 0;
       for (let i = 0; i < slots; i++) if (kinds[i] >= 0 && now - st[i] <= idleS && now >= st[i]) n++;
       return n;
+    },
+    shiftTime(delta) {
+      for (let i = 0; i < slots; i++) st[i] += delta;
     },
     reset() {
       kinds.fill(-1); dist.fill(0); wait.fill(0); svx.fill(0); svz.fill(0); aux.fill(0);
