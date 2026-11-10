@@ -214,6 +214,8 @@ export interface DamageTarget {
   spec: DamageTankSpec & { armor: DamageArmorModel };
   state: DamageTankState;
   combat: CombatState;
+  /** False while a mode holds the hull out of play (a rescued AC-130 escort, a benched wave hostile); absent is active. */
+  modeActive?: boolean;
 }
 
 export type PlateHit = ArmorPlateIntersection;
@@ -2177,6 +2179,8 @@ export function resolveHeBurst(
   for (const tank of tanks) {
     if (direct && tank === directTarget) continue;
     if (tank.combat.destroyed) continue;
+    // a hull out of play takes no splash, as the direct trace skips it (improve-271 plan 011)
+    if (tank.modeActive === false) continue;
     const event = resolveHeSplashTarget(shell, burstPoint, tank, radiusM, dmgRoll, rng);
     if (event) events.push(event);
   }
