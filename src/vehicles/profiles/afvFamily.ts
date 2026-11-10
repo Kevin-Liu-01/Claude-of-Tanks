@@ -112,24 +112,6 @@ function radioPair(P: AfvBuilderPort, y: number, z: number, seed: number, spread
   }
 }
 
-function smokePair(
-  P: AfvBuilderPort,
-  x: number,
-  y: number,
-  z: number,
-  count: number,
-  seed: number,
-  pitch = -0.42,
-): void {
-  for (const side of [-1, 1]) {
-    mount(P, 'turret', FITTINGS.smokeBank({
-      mats: P.mats, count, r: 0.040, len: 0.27, spacing: 0.095,
-      splay: side * 1.02, pitch, arc: 0.60, slot: 'detail',
-      rotation: [0, 0, -side * 0.10], seed: seed + (side > 0 ? 1 : 0),
-    }), side * x, y, z);
-  }
-}
-
 function sideArmorCourse(P: AfvBuilderPort, o: SideArmorOptions = {}): void {
   const count = o.count || 7;
   for (const side of [-1, 1]) for (let i = 0; i < count; i++) {
