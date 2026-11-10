@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { createHash, createPrivateKey, createPublicKey, sign, verify } from 'node:crypto';
 import { createReadStream } from 'node:fs';
-import { lstat, readFile, realpath } from 'node:fs/promises';
+import { lstat, mkdir, readFile, realpath, rename, writeFile } from 'node:fs/promises';
 import { basename, dirname, join, resolve, sep } from 'node:path';
 import { PROJECT_CREATOR, PROJECT_COPYRIGHT } from '../src/authorship.ts';
 
@@ -23,7 +23,49 @@ export function coveredPath(path) {
 // each directory's real path is resolved once.
 const HASH_WINDOW = 16;
 const WHOLE_READ_BYTES = 8 * 1024 * 1024;
-async function fileReceipt(root, realRoot, realDirs, path) {
+// The digest cache (272, the owner's changed-only rule): a file whose working copy equals Git's index is the bytes of
+// its index blob, so its digest is keyed by the blob id and reused from the last --write that hashed that blob. The
+// caller passes the clean blob ids (cleanBlobIds over `git ls-files -s -z` and `git diff-files --name-only -z`, which
+// lists every working file that may differ from its index entry); any other file is read and hashed. The store lives
+// outside the tree (node_modules/.cache/cot-asset-provenance) and holds the digests this run used: a store that fails
+// to parse is ignored and rewritten. --check and verifyReceipt never pass a cache: they read every byte.
+export function cleanBlobIds(stageListing, dirtyListing) {
+  const dirty = new Set(dirtyListing.split('\0').filter(Boolean)), clean = new Map();
+  for (const row of stageListing.split('\0')) {
+    const match = /^(\d{6}) ([0-9a-f]{40,64}) 0\t(.+)$/s.exec(row);
+    if (match && match[1] !== '120000' && match[1] !== '160000' && !dirty.has(match[3])) clean.set(match[3], match[2]);
+  }
+  return clean;
+}
+const DIGEST_STORE_VERSION = 1;
+export async function openDigestCache(dir, cleanBlobs) {
+  const file = join(dir, 'digests.json');
+  let stored = {};
+  try {
+    const parsed = JSON.parse(await readFile(file, 'utf8'));
+    if (parsed?.version === DIGEST_STORE_VERSION && parsed.digests && typeof parsed.digests === 'object') stored = parsed.digests;
+  } catch { /* absent or corrupt: every file is hashed and the store is rewritten */ }
+  const used = {};
+  let reused = 0;
+  return {
+    get(path, bytes) {
+      const blob = cleanBlobs.get(path);
+      const entry = blob && Object.hasOwn(stored, blob) ? stored[blob] : null;
+      if (!Array.isArray(entry) || entry[0] !== bytes || !/^[0-9a-f]{64}$/.test(entry[1] ?? '')) return null;
+      used[blob] = entry; reused++;
+      return entry[1];
+    },
+    put(path, bytes, digest) { const blob = cleanBlobs.get(path); if (blob) used[blob] = [bytes, digest]; },
+    get reused() { return reused; },
+    async save() {
+      await mkdir(dir, { recursive: true });
+      const temporary = `${file}.${process.pid}.tmp`;
+      await writeFile(temporary, JSON.stringify({ version: DIGEST_STORE_VERSION, digests: used }) + '\n');
+      await rename(temporary, file);
+    },
+  };
+}
+async function fileReceipt(root, realRoot, realDirs, path, cache) {
   assert.ok(coveredPath(path), `Path outside reviewed scope: ${path}`);
   const full = resolve(root, path);
   const info = await lstat(full);
@@ -32,12 +74,16 @@ async function fileReceipt(root, realRoot, realDirs, path) {
   const dir = dirname(full);
   if (!realDirs.has(dir)) realDirs.set(dir, realpath(dir));
   assert.ok(join(await realDirs.get(dir), basename(full)).startsWith(realRoot + sep), `Path escapes repository: ${path}`);
+  const cached = cache?.get(path, info.size);
+  if (cached) return { path, bytes: info.size, sha256: cached };
   const hash = createHash('sha256');
   if (info.size <= WHOLE_READ_BYTES) hash.update(await readFile(full));
   else for await (const chunk of createReadStream(full, { highWaterMark: 1024 * 1024 })) hash.update(chunk);
-  return { path, bytes: info.size, sha256: hash.digest('hex') };
+  const digest = hash.digest('hex');
+  cache?.put(path, info.size, digest);
+  return { path, bytes: info.size, sha256: digest };
 }
-export async function createReceipt(root, paths, revision) {
+export async function createReceipt(root, paths, revision, { cache = null } = {}) {
   const scope = [...new Set(paths.filter(coveredPath))].sort();
   const realRoot = await realpath(root), realDirs = new Map();
   // Paths start in order; after a failure no new one starts, the ones in flight finish, and the first failure in
@@ -47,12 +93,13 @@ export async function createReceipt(root, paths, revision) {
   const worker = async () => {
     while (next < scope.length && !failures.length) {
       const index = next++;
-      try { files[index] = await fileReceipt(root, realRoot, realDirs, scope[index]); } catch (error) { failures.push({ index, error }); }
+      try { files[index] = await fileReceipt(root, realRoot, realDirs, scope[index], cache); } catch (error) { failures.push({ index, error }); }
     }
   };
   await Promise.all(Array.from({ length: Math.min(HASH_WINDOW, scope.length) }, worker));
   if (failures.length) throw failures.sort((a, b) => a.index - b.index)[0].error;
   assert.ok(files.length, 'No files in provenance scope');
+  await cache?.save();
   return {
     schema: 'cot-asset-provenance-v1', project: 'Claude of Tanks',
     creator: PROJECT_CREATOR, copyright: PROJECT_COPYRIGHT,

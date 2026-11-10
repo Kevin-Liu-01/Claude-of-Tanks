@@ -92,6 +92,8 @@ export const SELFTEST_FIXTURE_KEYED_FILES = Object.freeze([
   'tools/changed-only/fleet-partition.selftest.mjs',
   // the release plan and its CLI driven with fake runners; the planned tools are argument lists
   'tools/tank-release-plan.selftest.mjs',
+  // the provenance CLI's blob-keyed digest cache (272) on a Git repository it writes in tmpdir; never this checkout's index
+  'tools/asset-provenance.selftest.mjs',
 ]);
 
 // Receipts that run only on fixture repositories they write in tmpdir: keyed by the receipt and the code its

@@ -237,10 +237,14 @@ export const SELFTEST_SCANS = Object.freeze({
   'tools/selftest-cache.mjs': caller("closureOf: the directories a receipt's closure names, its declared fixture patterns " +
     'and the patterns of this table, under the root its caller gives'),
   'tools/shared-main-preflight.mjs': caller('git diff --name-only between the two commits its caller names'),
+  // 272: --write's digest cache also reads `git ls-files -s` and `git diff-files --name-only` of that root
+  'tools/asset-provenance.mjs': caller('git ls-files of the --root its caller names (npm run build: this checkout; its receipt: ' +
+    'a fixture repository in tmpdir)'),
 
   // ---- only outside this checkout's sources
   'tools/capture-lock.mjs': outside('the capture queue directory (tmpdir, or the queueDir its caller passes)'),
   'tools/capture-lock.selftest.mjs': outside('its own queue directories under tmpdir'),
+  'tools/asset-provenance.selftest.mjs': outside('the fixture repository its digest-cache cases create under tmpdir'),
   'tools/genHeroCards.mjs': outside('its own output directory (--out, .qa-dev/hero-cards by default): the layers it wrote, for tank-layers.json'),
   'tools/frontend-budget.selftest.mjs': outside('its fixture runs under tmpdir'),
   'tools/run-selftests.selftest.mjs': outside('the fixture repositories its caches and runner children work in, under tmpdir'),
