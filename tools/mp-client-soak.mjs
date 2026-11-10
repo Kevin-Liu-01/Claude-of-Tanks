@@ -10,7 +10,7 @@
  *   node tools/mp-client-soak.mjs --clients=8 --seconds=30 --rtt=160 --jitter=40 --loss=0.05 --map=alpine
  *   node tools/mp-client-soak.mjs --json                machine-readable report
  *   node tools/mp-client-soak.mjs --clients=1 --bots=31 --world=dedicated --kernels --rtt=0 --jitter=0 --loss=0
- *                                                       a solo battle on a local host (RUST-ENGINE-DECISION §7 step 5):
+ *                                                       a solo battle on a local host (the kernel decision's step 5):
  *                                                       the actor on the map's world and its kernels, 16 a side
  *
  * Gates (exit 1 when any fails): no hard snaps; remote and own presented pose

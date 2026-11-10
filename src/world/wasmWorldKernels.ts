@@ -1,5 +1,5 @@
 /**
- * The world's WebAssembly kernels (workstream #3, the Rust core's steps; RUST-ENGINE-DECISION §7): the terrain contact
+ * The world's WebAssembly kernels (workstream #3, the Rust core's steps; docs/RUST-KERNELS.md): the terrain contact
  * surface, the obstacle grids, a hull's structure support and the bots' clearance scans, answered by crates/cot-sim-wasm
  * behind their TypeScript interfaces, bit for bit — the same Float32 lattice filled from the same height function at the
  * same exact coordinates, the same fold splits, the same grid visitation order, the match's deformed ground mirrored

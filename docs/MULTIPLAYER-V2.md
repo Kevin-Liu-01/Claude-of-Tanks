@@ -2665,7 +2665,7 @@ now read the room size rules (same behaviour).
 
 ### 13.31 A solo battle on a local host (2026-10-25): retired 2026-10-29
 
-RUST-ENGINE-DECISION §7 step 5 put a free sortie on this stack: the solo local host (255, `?soloAuthority=host`) and then
+Step 5 of the kernel decision (docs/RUST-KERNELS.md "The decision") put a free sortie on this stack: the solo local host (255, `?soloAuthority=host`) and then
 the solo sim Worker (261-264). Both played the player's seat through the match client, with its prediction,
 interpolation and stall clock. The owner's 2026-10-29 ruling retires both (§13.32). Removed in item/core-two-drivers-265,
 and git keeps them:

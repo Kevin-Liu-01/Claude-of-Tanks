@@ -160,7 +160,7 @@ one multiplayer path for everything.
 Why: from release 261 to 264 a solo quick battle ran the core in a Worker and drove the player's seat through the
 multiplayer client (`MatchClient` over an in-page loopback; `main.ts` counted it as a network match). The owner felt it:
 "rubberbanding on a LOCAL game", inputs 2-12 ticks ahead, other tanks 100-200 ms behind, and a ram "slingshot".
-RUST-ENGINE-DECISION §7 step 5 (the solo sim Worker) is retired. Any future off-thread local simulation must be a local
+The solo sim Worker (step 5 of the kernel decision, docs/RUST-KERNELS.md "The decision") is retired. Any future off-thread local simulation must be a local
 driver, with no prediction or interpolation, and needs the owner's OK after they have played it.
 
 Guards, in `npm test`, each with seeded violations it must catch:
