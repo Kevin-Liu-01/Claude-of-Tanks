@@ -61,3 +61,9 @@ survive reset. Network event IDs will be needed for deduplication.
 The structure mask patches every props bucket material (its depth materials too)
 at world activation: keep its only fragment discard the desktop hole cut (early
 depth), and touch the seam's shadows on every frame the GPU moves a building.
+The muzzle light sits 0.15 m behind its own gun's muzzle, so that gun's forward
+faces would take hundreds of suns: a gun's pulse claims its near field
+(`boundGunNearField`, `engine/muzzleNearField.ts`), which every cascade-shadow
+material bounds at `MUZZLE_NEAR_SUN_K` x the sun within a capsule round that gun.
+A new gun pulse of the muzzle light calls it too; the hull, ground and other
+vehicles keep the bare light.
