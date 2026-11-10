@@ -531,8 +531,10 @@ function assertRejectedWreckRetry(code = placementSource) {
     'null bake retries the same donor after rejected terrain');
   assertNoPlacement(f);
   f.state.nullBake = false;
+  // (wrecks-270, 11-09) each donor on its own seat 10 m apart: props.ts hulkMeetsTallSolid refuses a hulk through one
+  // placed before it, so a second hulk on the first one's seat is (rightly) rejected
   for (const [index, id] of wreckCast.entries()) {
-    assert.deepEqual(attemptWreck(f), { placed: true, selected: id });
+    assert.deepEqual(attemptWreck(f, 12 + index * 10, 24), { placed: true, selected: id });
     assert.equal(f.selectedSlots(), index + 1, 'only a completed placement consumes one slot');
   }
   assert.deepEqual(f.outputs.tankWreckSpots.map(spot => spot.specId), wreckCast,
