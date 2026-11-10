@@ -24,7 +24,7 @@ import { createPicker, readMemory } from './components/picker.ts';
 import { pickerText } from './pickerText.ts';
 import type { ToastOptions } from './components/notice.ts';
 import { CUSTOM_CAMO_ID, camoTagNation, customCamoPatternId } from '../vehicles/camoPolicy.ts';
-import { createInfoButton } from './contextInfo.ts';
+import { closeContextInfo, createInfoButton } from './contextInfo.ts';
 import { containModalTab, createModal } from './modal.ts';
 // EQUIPMENT SYSTEM: full catalog + slot logic (game/equipment.ts), the
 // white-silhouette icon set (equipIcons.ts), and the spotting-side math the
@@ -4683,6 +4683,8 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
   // data load on the first open (no boot cost); Select takes the node's build into the Garage.
   const techTreeTrigger = requiredElement<HTMLButtonElement>(root, '.cot-techtree-trigger');
   let techTreeOpening = false;
+  /** The open tree, so hide() can close it (improve-271 plan 026). */
+  let techTreeScreen: { close(options?: { readonly restoreFocus?: boolean }): void } | null = null;
   const openTechTree = async (opener: HTMLElement | null): Promise<void> => {
     if (techTreeOpening || reloadsForFailure(techTreeTrigger, 'cot-techtree-load', t('garage.techTree.loadError'))) return;
     emit('ui:click', {});
@@ -4700,9 +4702,11 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
         onPick: (specId) => { if (specId !== selectedId && applySelection(specId)) onSelect?.(specId); },
         onClose: () => {
           techTreeTrigger.setAttribute('aria-expanded', 'false');
+          if (techTreeScreen === screen) techTreeScreen = null;
           screen.dispose();
         },
       });
+      techTreeScreen = screen;
       screen.open(opener);
       techTreeTrigger.setAttribute('aria-expanded', 'true');
     } catch (err) {
@@ -4739,8 +4743,19 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
   requiredElement<HTMLElement>(root, '.cot-settings-slot').addEventListener('pointerdown', () => {
     setGaragePanel('');
   });
+  /** A shown modal box ([aria-modal="true"], laid out) outside the Garage's own root: the tech tree, a dossier, a kit modal. */
+  function foreignModalOpen(): boolean {
+    for (const box of document.querySelectorAll<HTMLElement>('[aria-modal="true"]')) {
+      if (!root.contains(box) && box.getClientRects().length > 0) return true;
+    }
+    return false;
+  }
+
   function onKey(e: KeyboardEvent): void {
     if (!api.isOpen) return;
+    // (improve-271 plan 026) an open modal surface the Garage did not render (the tech tree, an info dossier, a kit modal)
+    // owns the keyboard even while the focus rests on the page body: nothing behind it deploys, switches or leaves
+    if (foreignModalOpen()) return;
     const target = eventElement(e);
     if (target?.closest('.cot-modal')) return;
     // an open picker menu (the compare rival) owns its keys: F, / and the arrows are its own there
@@ -4876,6 +4891,9 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
       customCamoStudioAccess?.peek()?.close({ restoreFocus: false, immediate: true });
       technicalModal.close({ restoreFocus: false, immediate: true });
       closeServiceRecord({ restoreFocus: false });
+      // (improve-271 plan 026) the tech tree and the info dossiers never outlive the Garage (over the cover or a battle)
+      techTreeScreen?.close({ restoreFocus: false });
+      closeContextInfo();
       closeMobileNavigation();
       closeGarageVariantMenu();
       closeBattleMenu();
