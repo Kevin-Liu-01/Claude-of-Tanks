@@ -772,6 +772,12 @@ interface FlagPitchRules {
    * some 200 m further back; round 3, the critic's M5).
    */
   readonly respawnBackM?: number | null;
+  /**
+   * Carrying a flag reveals the carrier to every viewer (Main's ruling on audit finding 53, 2026-11-09: standard CTF).
+   * A carried flag publishes its carrier's position, so this stays true while flags publish positions: the authority's
+   * spotting filter reveals the carrier by name ('flag_carrier') and the snapshot places no hull the viewer cannot see.
+   */
+  readonly carrierRevealed?: boolean;
 }
 /** Infected survivors: unengaged survivors close on their own living centroid and hold together within this. */
 interface InfectionBotRules {
@@ -1547,7 +1553,7 @@ const BASE_RULESETS: Readonly<Record<GameModeId, MatchRuleset>> = Object.freeze(
     // match, a capture in 3 of 8, 6 draws, first pickup 94 s, nearly every carrier killed on its run): the bases 320 m
     // apart (was 400) and a carrier at full speed (was 85 %). The A/B over the same seeds: 1.38 captures, a capture in 6
     // of 8, 2 draws, first pickup 64 s; the shorter pitch alone 0.88 / 6 / 3, the full-speed carrier alone 0.88 / 4 / 4
-    flagPitch: Object.freeze({ baseAxisM: 320, respawnBackM: 100, carrierSpeedScale: 1 }) }),
+    flagPitch: Object.freeze({ baseAxisM: 320, respawnBackM: 100, carrierSpeedScale: 1, carrierRevealed: true }) }),
   // Zones: respawning hold-the-ground play; the 750-point target resolves inside the clock.
   zone_control: Object.freeze({ ...STANDARD, mode: 'zone_control', respawnS: 6, scoresKills: true }),
   // Turbo Ball: arcade physics — 0.6 g so hulls and shells fly, 1.85× speed, tough hulls, half

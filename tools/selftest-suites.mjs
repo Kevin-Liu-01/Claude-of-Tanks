@@ -1782,6 +1782,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/sim/combatMaintenance.selftest.mjs',
     'src/sim/spotting.selftest.mjs',
     'src/sim/hiddenShotEvents.selftest.mjs', // 242 security round 2 (3a55e00a60, the hidden-shooter shell_hit); in no suite since
+    'src/sim/flagCarrierReveal.selftest.mjs', // Main's ruling on audit finding 53 (2026-11-09): the flag carrier is a named reveal
     'src/sim/spottingHullBushGrid.selftest.mjs',
     'src/sim/shellSurface.selftest.mjs',
     // 2026-11-03 (impact-materials-269): what a round struck, every fleet plate's material, stamped by the damage law

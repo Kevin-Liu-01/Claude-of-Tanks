@@ -2532,7 +2532,10 @@ export function createAuthoritativeMatch({
     const entity = entityById.get(entityId);
     return Boolean(entity && entity.modeActive !== false &&
       (!viewer || entity.team === viewer.team || entity.combat.destroyed ||
-        spotting.isSpotted(entity.id, viewer.team, viewer)));
+        spotting.isSpotted(entity.id, viewer.team, viewer) ||
+        // a named reveal to every viewer: the flag carrier, whose position its carried flag publishes (Main's ruling on
+        // audit finding 53, 2026-11-09), so the mode state never places a hull the snapshot hides
+        modeController.revealReason(entity.id) !== null));
   }
 
   /**
