@@ -318,6 +318,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'tools/publicBuildEnv.selftest.mjs',
     'tools/vercel-output-immutable.selftest.mjs',
     'tools/typescriptToolchain.selftest.mjs',
+    // 272: the committed WebAssembly kernel against its manifest's Rust sources (no toolchain; well under a second)
+    'tools/sim-kernel-manifest.selftest.mjs',
     'tools/existing-document-route.selftest.mjs',
     'tools/geometry-gate-policy.selftest.mjs',
     'tools/tank-sealed-check.selftest.mjs',

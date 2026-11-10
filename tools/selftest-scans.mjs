@@ -183,6 +183,8 @@ export const SELFTEST_SCANS = Object.freeze({
   // censusFiles: the sources, the public sheets and the site documents
   'tools/style-literal-census.mjs': lists('src/**/*.{css,ts,mts}', 'public/**/*.css', 'site/**/*.html'),
   'tools/viteCssInTsMinify.selftest.mjs': lists('src/**/*.ts'),
+  // the kernel sources the build compiles: the .rs files of the two crates' src directories
+  'tools/sim-kernel-manifest.selftest.mjs': lists('crates/cot-sim/src/*.rs', 'crates/cot-sim-wasm/src/*.rs'),
 
   // ---- git's index (live receipts: selection only)
   // the scene-link codec round-trips every tracked take; its sink audit reads the Studio's own sources
