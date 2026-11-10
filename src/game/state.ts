@@ -3088,25 +3088,31 @@ function createAerialCallbacks(game: SoloGameState): NonNullable<SoloGameState['
  */
 /** The solo battle's side of Air Support's rounds: its tanks, its spotting (the mode's sides mapped to its teams), its
  *  ground, its shell ids, and the round announced to the presentation as the authority announces it (mode:strike_round). */
-const _airFireContexts = new WeakMap<SoloGameState, AirSupportFireContext<SoloEntity>>();
+/** The step's world and bus, refreshed on every call: a later battle on the same page game aims at its own ground and
+ *  announces on its own bus (improve-271 plan 032; the first battle's closures kept its world and bus). */
+interface AirFireRef { world: SoloWorld; bus: EventBus }
+const _airFireContexts = new WeakMap<SoloGameState, { context: AirSupportFireContext<SoloEntity>; ref: AirFireRef }>();
 function airSupportFireContext(game: SoloGameState, bus: EventBus, world: SoloWorld): AirSupportFireContext<SoloEntity> {
-  let context = _airFireContexts.get(game);
-  if (!context) {
-    context = {
+  let entry = _airFireContexts.get(game);
+  if (!entry) {
+    const ref: AirFireRef = { world, bus };
+    entry = { ref, context: {
       entities: game.tanks,
       isSpotted: (id, team) => (game.spotting ? game.spotting.isSpotted(id, team === 'alpha' ? 'player' : 'enemy') : true),
       teamOf: (entity) => (entity.team === 'enemy' ? 'bravo' : 'alpha'),
-      terrainHeight: (x, z) => groundFor(world).field.getHeightAt(x, z),
+      terrainHeight: (x, z) => groundFor(ref.world).field.getHeightAt(x, z),
       nextId: () => game.nextShellId++,
       launch: (shell, strike) => {
         game.shells.push(shell as SoloGameState['shells'][number]);
-        bus.emit('mode:strike_round', strikeRoundPayload(shell, strike));
+        ref.bus.emit('mode:strike_round', strikeRoundPayload(shell, strike));
       },
-    };
-    _airFireContexts.set(game, context);
+    } };
+    _airFireContexts.set(game, entry);
   }
-  context.entities = game.tanks;
-  return context;
+  entry.ref.world = world;
+  entry.ref.bus = bus;
+  entry.context.entities = game.tanks;
+  return entry.context;
 }
 
 export function simStep(

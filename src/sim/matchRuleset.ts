@@ -1405,6 +1405,12 @@ export const TERRAIN_VARIANTS: readonly TerrainVariant[] = Object.freeze(['assau
 export function terrainVariantFor(mode: GameModeId | string | null | undefined): TerrainVariant | null {
   return (BASE_RULESETS as Readonly<Record<string, MatchRuleset>>)[String(mode)]?.terrainVariant ?? null;
 }
+/** The world cache key a battle in `mode` on `mapId` builds: `map#variant` for a mode that plays a variant, else the bare id
+ *  (the world coordinator keys a variant's build and cache by it; a prefetch of the bare id builds a world the battle never uses). */
+export function worldKeyFor(mapId: string, mode: GameModeId | string | null | undefined): string {
+  const variant = terrainVariantFor(mode);
+  return variant ? `${mapId}#${variant}` : mapId;
+}
 
 export interface CampaignRulesetInput {
   /** 1-based ladder difficulty. */
@@ -1702,6 +1708,68 @@ export const RULESET_SCORE_TARGETS: Readonly<Record<string, number>> = Object.fr
   // three minutes, before a crew had earned a call-in); about six to eight minutes at the usual two-to-one sector split
   air_support: 2000,
 });
+/** The arrangement fields Deploy offers beyond the sides, and which modes take each (improve-271 plan 027). */
+export type ArrangementChoiceField = 'scoreTarget' | 'respawnS' | 'waveSize' | 'waveStep' | 'holdS' | 'juggernautRole';
+/** Whether `mode` takes `field`: one rule the clamp (normalizeTeamArrangement) and Deploy's choices (arrangementChoices) read. */
+function arrangementFieldApplies(mode: GameModeId | string, field: ArrangementChoiceField): boolean {
+  switch (field) {
+    case 'scoreTarget':
+    case 'respawnS': return Object.prototype.hasOwnProperty.call(RULESET_SCORE_TARGETS, mode);
+    case 'waveSize':
+    case 'waveStep': return mode === 'endless_horde';
+    case 'holdS': return mode === 'frontline_assault';
+    case 'juggernautRole': return mode === 'juggernaut';
+  }
+}
+/** The winning score's clamp per mode (the authority applies it; Deploy offers only values inside it). */
+const SCORE_TARGET_RANGES: Readonly<Record<string, readonly [number, number]>> = Object.freeze({
+  capture_the_flag: [1, 9], turbo_ball: [1, 15], drone: [5, 100],
+});
+const SCORE_TARGET_RANGE: readonly [number, number] = [100, 2000];
+const RESPAWN_RANGE: readonly [number, number] = [2, 15];
+const WAVE_STEP_RANGE: readonly [number, number] = [0, 3];
+const HOLD_RANGE: readonly [number, number] = [10, 60];
+/** The values Deploy offers before a mode's own default joins them (each inside its clamp). */
+const OFFERED_SCORE_TARGETS: Readonly<Record<string, readonly number[]>> = Object.freeze({
+  capture_the_flag: [1, 3, 5, 7, 9], turbo_ball: [3, 5, 7, 10, 15], drone: [5, 10, 20, 30, 50],
+});
+const OFFERED_SCORE_TARGET = [250, 500, 750, 1000, 1500, 2000];
+const OFFERED_RESPAWN_S = [2, 3, 6, 10, 15];
+const OFFERED_WAVE_STEP = [0, 1, 2, 3];
+const OFFERED_HOLD_S = [10, 20, 30, 45, 60];
+
+/** Deploy's choices for each arrangement field `mode` takes (a field it does not take is absent), in order. */
+export interface ArrangementChoices {
+  readonly scoreTarget?: readonly number[];
+  readonly respawnS?: readonly number[];
+  readonly waveSize?: readonly number[];
+  readonly waveStep?: readonly number[];
+  readonly holdS?: readonly number[];
+  readonly juggernautRole?: readonly ('boss' | 'hunter')[];
+}
+/** `offered` with the mode's own default when it is missing, ascending (Air Support's 8 s respawn joins 2, 3, 6, 10, 15). */
+const withDefault = (offered: readonly number[], fallback: number | null | undefined): readonly number[] =>
+  Object.freeze([...new Set(fallback == null || !Number.isFinite(fallback) ? offered : [...offered, fallback])].sort((a, b) => a - b));
+/**
+ * The values Deploy's further options offer for `mode`, read from this table: the mode's default is always among them and
+ * every one survives the clamp the authority applies (improve-271 plan 027: Air Support's 8 s respawn had no option).
+ */
+export function arrangementChoices(mode: GameModeId): ArrangementChoices {
+  const base = BASE_RULESETS[mode];
+  if (!base || base.provingGround) return Object.freeze({});
+  const out: { -readonly [K in keyof ArrangementChoices]: ArrangementChoices[K] } = {};
+  if (arrangementFieldApplies(mode, 'scoreTarget')) out.scoreTarget = withDefault(OFFERED_SCORE_TARGETS[mode] ?? OFFERED_SCORE_TARGET, RULESET_SCORE_TARGETS[mode]);
+  if (arrangementFieldApplies(mode, 'respawnS')) out.respawnS = withDefault(OFFERED_RESPAWN_S, base.respawnS);
+  if (arrangementFieldApplies(mode, 'waveSize')) {
+    const [lo, hi] = TEAM_ARRANGEMENT_LIMITS.waveSize;
+    out.waveSize = Object.freeze(Array.from({ length: hi - lo + 1 }, (_, i) => lo + i));
+  }
+  if (arrangementFieldApplies(mode, 'waveStep')) out.waveStep = withDefault(OFFERED_WAVE_STEP, base.horde?.waveStep);
+  if (arrangementFieldApplies(mode, 'holdS')) out.holdS = withDefault(OFFERED_HOLD_S, base.assault?.holdS);
+  if (arrangementFieldApplies(mode, 'juggernautRole')) out.juggernautRole = Object.freeze(['boss', 'hunter'] as const);
+  return Object.freeze(out);
+}
+
 /** A flag carrier drives at this share of the mode speed (Capture the Flag). */
 export const FLAG_CARRIER_SPEED_SCALE = 0.85;
 /** Share of maximum hull repaired on every surviving attacker when a Horde wave is cleared (the Horde's `waveRepair`). */
@@ -1816,7 +1884,7 @@ export function normalizeTeamArrangement(mode: GameModeId, input: TeamArrangemen
   if (BASE_RULESETS[mode].provingGround) return input.movingTargets === true ? Object.freeze({ movingTargets: true }) : null;
   let allies = input.allies == null ? null : clampInt(input.allies, TEAM_ARRANGEMENT_LIMITS.allies[mode]);
   const enemies = input.enemies == null ? null : clampInt(input.enemies, TEAM_ARRANGEMENT_LIMITS.enemies[mode]);
-  const waveSize = mode === 'endless_horde' && input.waveSize != null
+  const waveSize = arrangementFieldApplies(mode, 'waveSize') && input.waveSize != null
     ? clampInt(input.waveSize, TEAM_ARRANGEMENT_LIMITS.waveSize) : null;
   // TEAM NATIONS: only 'random' is stored; mono is the absent default (old stores, old rooms and the retired
   // alliedNation 'player' all read as MONO)
@@ -1824,13 +1892,13 @@ export function normalizeTeamArrangement(mode: GameModeId, input: TeamArrangemen
   const enemyNation = typeof input.enemyNation === 'string' && /^[a-z_]{2,24}$/.test(input.enemyNation) ? input.enemyNation : null;
   const marsGravity = mode === 'mars' && isMarsGravityId(input.marsGravity) ? input.marsGravity : null;
   const marsCaches = mode === 'mars' && isMarsCachesId(input.marsCaches) ? input.marsCaches : null;
-  const juggernautRole = mode === 'juggernaut' && (input.juggernautRole === 'hunter' || input.juggernautRole === 'boss') ? input.juggernautRole : null;
-  const hasScore = Object.prototype.hasOwnProperty.call(RULESET_SCORE_TARGETS, mode);
-  const scoreTarget = hasScore && Number.isFinite(input.scoreTarget) ? clampInt(input.scoreTarget!,
-    mode === 'capture_the_flag' ? [1, 9] : mode === 'turbo_ball' ? [1, 15] : mode === 'drone' ? [5, 100] : [100, 2000]) : null;
-  const respawnS = hasScore && Number.isFinite(input.respawnS) ? clampInt(input.respawnS!, [2, 15]) : null;
-  const waveStep = mode === 'endless_horde' && Number.isFinite(input.waveStep) ? clampInt(input.waveStep!, [0, 3]) : null;
-  const holdS = mode === 'frontline_assault' && Number.isFinite(input.holdS) ? clampInt(input.holdS!, [10, 60]) : null;
+  const juggernautRole = arrangementFieldApplies(mode, 'juggernautRole') && (input.juggernautRole === 'hunter' || input.juggernautRole === 'boss') ? input.juggernautRole : null;
+  // (improve-271 plan 027) which fields a mode takes, and their clamps, are the table Deploy's choices read
+  const scoreTarget = arrangementFieldApplies(mode, 'scoreTarget') && Number.isFinite(input.scoreTarget)
+    ? clampInt(input.scoreTarget!, SCORE_TARGET_RANGES[mode] ?? SCORE_TARGET_RANGE) : null;
+  const respawnS = arrangementFieldApplies(mode, 'respawnS') && Number.isFinite(input.respawnS) ? clampInt(input.respawnS!, RESPAWN_RANGE) : null;
+  const waveStep = arrangementFieldApplies(mode, 'waveStep') && Number.isFinite(input.waveStep) ? clampInt(input.waveStep!, WAVE_STEP_RANGE) : null;
+  const holdS = arrangementFieldApplies(mode, 'holdS') && Number.isFinite(input.holdS) ? clampInt(input.holdS!, HOLD_RANGE) : null;
   // the field limit (player included) holds whatever the two sides ask for: the enemy count is kept — it is
   // the number the player typed for a "1 v 20" — and the allied bots yield
   if (!isWaveMode(mode) && (allies != null || enemies != null)) {

@@ -149,6 +149,26 @@ for (const file of sources) {
   assert.doesNotMatch(text, /progression\/|ratedTier|tierNote/, `${file} reaches nothing of the progression work`);
 }
 
+// ------------------------------------------------------------------------------------------------ keyboard (improve-271 plan 026)
+// The tree owns the keyboard while it is open: it takes the focus a board press or an open leaves on no node, the Garage
+// yields every key to a shown modal box outside its root (the page body's focus included), and the Garage's hide()
+// closes the tree and the info dossiers (neither outlives it over the cover or a battle)
+{
+  const tree = readFileSync(new URL('../ui/techTree.ts', import.meta.url), 'utf8');
+  assert.match(tree, /root\.setAttribute\('aria-modal', 'true'\);\s*(?:\/\/[^\n]*\n\s*)*root\.tabIndex = -1;/, 'the tree root takes focus');
+  assert.match(tree, /board\.addEventListener\('pointerdown', \(event\) => \{\s*if \(event\.button !== 0\) return;\s*(?:\/\/[^\n]*\n\s*)*if \(!root\.contains\(document\.activeElement\)\) root\.focus\(\{ preventScroll: true \}\);/,
+    'a board press keeps the keyboard in the tree');
+  assert.match(tree, /if \(node\) node\.focus\(\{ preventScroll: true \}\);\s*else root\.focus\(\{ preventScroll: true \}\);/, 'an open with no node focuses the tree');
+  const garage = readFileSync(new URL('../ui/garage.ts', import.meta.url), 'utf8');
+  assert.match(garage, /function onKey\(e: KeyboardEvent\): void \{\s*if \(!api\.isOpen\) return;\s*(?:\/\/[^\n]*\n\s*)*if \(foreignModalOpen\(\)\) return;/,
+    'the Garage yields every key to an open foreign modal surface first');
+  assert.match(garage, /function foreignModalOpen\(\): boolean \{\s*for \(const box of document\.querySelectorAll<HTMLElement>\('\[aria-modal="true"\]'\)\) \{\s*if \(!root\.contains\(box\) && box\.getClientRects\(\)\.length > 0\) return true;/,
+    'a foreign modal is any shown aria-modal box outside the Garage');
+  assert.match(garage, /hide\(\) \{[\s\S]{0,600}techTreeScreen\?\.close\(\{ restoreFocus: false \}\);\s*closeContextInfo\(\);/, 'hide() closes the tree and the dossiers');
+  assert.match(garage, /techTreeScreen = screen;\s*screen\.open\(opener\);/, 'the open tree is kept for hide()');
+  assert.match(garage, /if \(techTreeScreen === screen\) techTreeScreen = null;/, 'and let go when it closes');
+}
+
 // ------------------------------------------------------------------------------------------------ pin
 const digest = createHash('sha256').update(JSON.stringify(TECH_TREES)).digest('hex').slice(0, 16);
 // 2026-10-26 re-pin (257): every tree re-tiered by capability and re-laid (RETIER-257.md), keeping the owner's anchors and

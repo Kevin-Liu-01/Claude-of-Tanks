@@ -58,6 +58,9 @@ assert.deepEqual(Object.keys(SETTINGS_OPTION_ICONS).sort(), [
 // framing and field of view at their ranges, the kit's segmented control for the shoulder, and a named reset on each row
 {
   const source = readFileSync(new URL('./settings.ts', import.meta.url), 'utf8');
+  // (improve-271 plan 028) a preset picked in the same visit as a language switch is applied before the reload
+  assert.match(source, /\(locale\) => \{\s*(?:\/\/[^\n]*\n\s*)*commitGraphics\(\);\s*setLocale\(locale\);[\s\S]{0,300}window\.location\.assign\(/,
+    'the language switch commits the staged graphics preset before it navigates');
   assert.match(source, /cameraCard\(body\);/, 'the Gameplay tab carries the Camera card');
   for (const key of ['cameraHeight', 'cameraDistance', 'cameraFraming', 'cameraFov']) {
     assert.match(source, new RegExp(String.raw`slider\(t\('settings\.camera\.[a-z]+'\), '${key}'`), `${key} is a slider row`);

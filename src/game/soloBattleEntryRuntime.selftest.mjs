@@ -336,4 +336,11 @@ assert.match(pendingComposition, /describePendingMap: \(specId: string, mapId: s
 // (2026-10-26, the owner: "fix team lists in loading state") the cover lists both planned teams from its first frame
 assert.match(pendingComposition, /describePendingMap:[\s\S]{0,400}plannedCardTeams\(specId, \{/, 'the pending cover plans the battle\'s teams');
 
+// (improve-271 plan 034) the solo countdown opens the Frontline brief once per sortie (its show runs every count frame):
+// latched in the countdown's show, the latch reset when the count rolls out and when the Garage takes the screen
+assert.match(pendingComposition, /if \(game\.gameMode === 'frontline_assault' && !briefShownForCountdown\) \{\s*briefShownForCountdown = true;\s*if \(!missionBrief\.isShowing\(\)\) missionBrief\.show\(/,
+  'the countdown opens the brief only when the sortie has not shown it');
+assert.match(pendingComposition, /bus\.on\('battle:rollout', \(\) => \{ briefShownForCountdown = false; \}\);/, 'the latch resets when the count rolls out');
+assert.match(pendingComposition, /missionBrief\.hide\(\);\s*briefShownForCountdown = false;/, 'and when the Garage takes the screen');
+
 console.log('soloBattleEntryRuntime.selftest: selection, the named pending cover and covered failure recovery pass');

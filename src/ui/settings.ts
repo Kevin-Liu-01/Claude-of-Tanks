@@ -1687,6 +1687,8 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
     mountSeg(langRow, segmented({ label: t('settings.language.label'), className: 'cot-set-lang', value: getLocale(),
       options: getSupportedLocales().map((locale) => ({ value: locale, label: t('settings.language.' + (locale === 'zh-CN' ? 'zh' : 'en')) })) }),
       () => getLocale(), (locale) => {
+        // (improve-271 plan 028) a preset picked in this visit is applied before the reload (the panel never closes)
+        commitGraphics();
         setLocale(locale);
         // Most screens are constructed once and own translated DOM. Reloading
         // is the only atomic way to avoid a mixed-language Garage or battle.

@@ -234,6 +234,33 @@ export function objectiveMarkers(state: ObjectiveStateView | null | undefined): 
   return out;
 }
 
+// (improve-271 plan 023) the one derivation, retained: the world presentation (every rendered frame) and the minimap
+// (15 to 30 Hz) read the same markers without rebuilding, sorting and keying them per frame. A room's mode state is a new
+// object per snapshot; the local battle's controller state is ONE object mutated in place each fixed step, so the key is
+// the state's reference with the battle clock the step advances (game.timeS) and the viewing side (a watched battle's
+// seat change can flip it between steps).
+let retainedState: ObjectiveStateView | null = null;
+let retainedTimeS = Number.NaN;
+let retainedTeam: ObjectiveTeamId = 'alpha';
+let retainedMarkers: readonly ObjectiveMarker[] = [];
+let retainedRevision = 0;
+/** The markers for `state` at battle time `timeS`, derived once per change; callers must not mutate the array. */
+export function objectiveMarkersFor(state: ObjectiveStateView | null | undefined, timeS: number): readonly ObjectiveMarker[] {
+  if (!state) return EMPTY_MARKERS;
+  const team = perspectiveOf(state);
+  if (state !== retainedState || !Object.is(timeS, retainedTimeS) || team !== retainedTeam) {
+    retainedState = state;
+    retainedTimeS = timeS;
+    retainedTeam = team;
+    retainedMarkers = objectiveMarkers(state);
+    retainedRevision++;
+  }
+  return retainedMarkers;
+}
+/** Which derivation objectiveMarkersFor last returned: a change means the markers were derived again. */
+export function objectiveMarkersRevision(): number { return retainedRevision; }
+const EMPTY_MARKERS: readonly ObjectiveMarker[] = Object.freeze([]);
+
 /** The markers a mode places on the team spawns themselves (the map skips its generic base rings then). */
 export function markersStandOnSpawns(markers: readonly ObjectiveMarker[]): boolean {
   return markers.some((marker) => marker.kind === 'spawn' || marker.kind === 'flagBase' || marker.kind === 'goal');

@@ -24,7 +24,7 @@ import { createPicker, readMemory } from './components/picker.ts';
 import { pickerText } from './pickerText.ts';
 import type { ToastOptions } from './components/notice.ts';
 import { CUSTOM_CAMO_ID, camoTagNation, customCamoPatternId } from '../vehicles/camoPolicy.ts';
-import { createInfoButton } from './contextInfo.ts';
+import { closeContextInfo, createInfoButton } from './contextInfo.ts';
 import { containModalTab, createModal } from './modal.ts';
 // EQUIPMENT SYSTEM: full catalog + slot logic (game/equipment.ts), the
 // white-silhouette icon set (equipIcons.ts), and the spotting-side math the
@@ -236,7 +236,7 @@ interface GarageOptions {
   }) => Promise<unknown>;
   readonly onPlayRequest?: (request: PlayRequest) => void;
   readonly onPlayModeIntent?: (mode: BattleMode) => void;
-  readonly onBattleIntent?: (request: { readonly specId: string; readonly mapId: string }) => void;
+  readonly onBattleIntent?: (request: { readonly specId: string; readonly mapId: string; readonly gameMode: GameModeId }) => void;
   readonly onStudioIntent?: () => void;
   /** Open the Studio (main.ts: its lazy access boundary's own open, the one F8 takes in the Garage). */
   readonly onStudio?: () => void;
@@ -4226,7 +4226,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
       if (!selectedId) return;
       try {
         if (battleMode === 'solo') {
-          opts.onBattleIntent?.({ specId: selectedId, mapId: fieldMapId() });
+          opts.onBattleIntent?.({ specId: selectedId, mapId: fieldMapId(), gameMode: battleGameMode });
         } else {
           // Opening a room is not solo-battle intent. Warming the bot roster and
           // current garage map here made the lobby compete with irrelevant
@@ -4952,11 +4952,22 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
   requiredElement<HTMLElement>(root, '.cot-settings-slot').addEventListener('pointerdown', () => {
     setGaragePanel('');
   });
+  /** A shown modal box ([aria-modal="true"], laid out) outside the Garage's own root: the tech tree, a dossier, a kit modal. */
+  function foreignModalOpen(): boolean {
+    for (const box of document.querySelectorAll<HTMLElement>('[aria-modal="true"]')) {
+      if (!root.contains(box) && box.getClientRects().length > 0) return true;
+    }
+    return false;
+  }
+
   function onKey(e: KeyboardEvent): void {
     // (round 8 Y4 residual fix-up r1) the Garage's keys are the player's only while it is: not under a start's loader nor
     // a cover (garageScreen.ts interactive). The listener stays from show() to hide(), and the Garage showed under the
     // loader, so T opened the tree over it and B, F, the arrows acted on the Garage beneath
     if (!garageScreen.interactive) return;
+    // (improve-271 plan 026) an open modal surface the Garage did not render (the tech tree, an info dossier, a kit modal)
+    // owns the keyboard even while the focus rests on the page body: nothing behind it deploys, switches or leaves
+    if (foreignModalOpen()) return;
     const target = eventElement(e);
     if (target?.closest('.cot-modal')) return;
     // an open picker menu (the compare rival) owns its keys: F, / and the arrows are its own there
@@ -5110,6 +5121,9 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
       customCamoStudioAccess?.peek()?.close({ restoreFocus: false, immediate: true });
       technicalModal.close({ restoreFocus: false, immediate: true });
       closeServiceRecord({ restoreFocus: false });
+      // (improve-271 plan 026) the tech tree and the info dossiers never outlive the Garage (over the cover or a battle)
+      techTreeScreen?.close({ restoreFocus: false });
+      closeContextInfo();
       closeMobileNavigation();
       closeGarageVariantMenu();
       closeBattleMenu();

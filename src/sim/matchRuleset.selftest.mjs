@@ -376,4 +376,29 @@ assert.equal(rulesetAllyCap(standard, 6), 6); assert.equal(rulesetAllyCap(horde,
   assert.deepEqual(couchSeatSides('standard', 'teams', 0), []);
 }
 
+// (improve-271 plan 027) Deploy's further options come from the ruleset: for every mode, each arrangement field it takes
+// offers its default among the choices, and every choice survives the authority's clamp unchanged (Air Support's 8 s
+// respawn had no option among the UI's 2, 3, 6, 10, 15)
+{
+  const { arrangementChoices, normalizeTeamArrangement: clamp, matchRulesetFor: rulesFor, RULESET_SCORE_TARGETS: targets } = await import('./matchRuleset.ts');
+  let checked = 0;
+  for (const mode of GAME_MODE_IDS) {
+    const choices = arrangementChoices(mode);
+    const rules = rulesFor(mode);
+    const defaults = { scoreTarget: targets[mode], respawnS: rules.respawnS, waveSize: rules.horde?.waveSize, waveStep: rules.horde?.waveStep,
+      holdS: rules.assault?.holdS, juggernautRole: 'boss' };
+    for (const [field, values] of Object.entries(choices)) {
+      assert.ok(values.length >= 2, `${mode}.${field} offers a choice`);
+      assert.ok(values.includes(defaults[field]), `${mode}.${field}: the default ${defaults[field]} is among ${values}`);
+      for (const value of values) {
+        assert.equal(clamp(mode, { [field]: value })?.[field], value, `${mode}.${field}: ${value} survives the clamp`);
+        checked++;
+      }
+    }
+  }
+  assert.deepEqual(arrangementChoices('air_support').respawnS, [2, 3, 6, 8, 10, 15], 'Air Support offers its own 8 s respawn');
+  assert.deepEqual(Object.keys(arrangementChoices('standard')), [], 'Standard takes none of them');
+  assert.ok(checked > 40, `every offered value checked (${checked})`);
+}
+
 console.log('matchRuleset: per-mode values, determinism, campaign difficulty fold, team arrangement clamps, horde wave law, rule-card lines, spawn stamps, ammo/reload helpers, the post-verdict hold, the counter-drone airframe threshold (hitsToDown 1.1, clear of every capped burst sum) and the couch rules verified');
