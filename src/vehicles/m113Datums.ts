@@ -13,7 +13,9 @@ export const M113_BASE = Object.freeze({
   // at most, the release check's clip audit); between the tracks the hull runs down to sideLowY and the belly
   length: 4.863, roofY: 1.86, noseY: 0.99, glacisRun: 0.79, sideLowY: 0.80, shroudY: 0.97, hw: 1.27, tubHw: 0.93, bellyY: 0.43,
   xc: 1.15, trackW: 0.38, wheelR: 0.305, wheelY: 0.39, wheelPitch: 0.70, firstWheelBack: 1.00, sprocketBack: 0.34,
-  idlerFromRear: 0.32,
+  // the idler's centre (272: 0.56 stood it 0.17 m over the road wheels' centres; the M163's side photographs 06 and 09 put
+  // it about 0.07 m over them, its top level with the bottoms of the A2's rear fuel tanks, Commons photo 07)
+  idlerFromRear: 0.32, idlerY: 0.46,
 });
 /** The turret ring's distance behind the nose (the AS4 profile; the FSV's and MRV's turrets over the fighting
  * compartment behind the driver; the A3's commander's cupola on the roof's centre behind the engine, ahead of the cargo

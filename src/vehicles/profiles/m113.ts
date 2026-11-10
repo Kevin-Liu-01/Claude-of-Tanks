@@ -104,6 +104,16 @@ function addSpareTows(P: TankBuilderPort, x: number, y: number, z: number): void
   }
 }
 
+/** A solid from a side profile [z, y] (hull frame) extruded across x from lo to hi: sectionSolid's stations along +z,
+ * turned a quarter about y. */
+function sideProfileSolid(profile: readonly (readonly [number, number])[], lo: number, hi: number) {
+  const ring = profile.map(([z, y]) => [-z, y] as SectionPoint);
+  let area = 0;
+  for (let i = 0; i < ring.length; i++) area += ring[i][0] * ring[(i + 1) % ring.length][1] - ring[(i + 1) % ring.length][0] * ring[i][1];
+  const wound = area > 0 ? ring : [...ring].reverse();
+  return KIT.xform(sectionSolid([{ z: lo, ring: wound }, { z: hi, ring: wound }]), 0, 0, 0, 0, Math.PI / 2, 0);
+}
+
 /** The M113 hull, its running gear, its fittings and the mark's hull kit, no turret: each mark's first four steps, and the
  * M163 VADS's M741 carrier alone (the twin-aa lane: `yield* buildM113HullSteps(P, 'm741')`, its turret on M741_RING;
  * `{ a2FuelTanks: true }` for the M741A1's external tanks). */
@@ -148,7 +158,7 @@ export function* buildM113HullSteps(P: TankBuilderPort, mark: M113HullMark,
   // ---------------------------------------------------------------- running gear (no return rollers) --
   buildRunningGear(P, {
     style: 'dished', wheelR: B.wheelR, wheelW: 0.26, wheelY: B.wheelY, xc: B.xc, wheelZs: [...D.wheelZs],
-    sprocket: { z: D.noseZ - B.sprocketBack, y: 0.63, r: 0.24 }, idler: { z: D.sternZ + B.idlerFromRear, y: 0.56, r: 0.24 },
+    sprocket: { z: D.noseZ - B.sprocketBack, y: 0.63, r: 0.24 }, idler: { z: D.sternZ + B.idlerFromRear, y: B.idlerY, r: 0.24 },
     rollers: [], trackW: B.trackW, topY: 0.74, botY: 0.03, contactZF: D.wheelZs[0], contactZR: D.wheelZs.at(-1),
     paintedEnds: true, coveredTop: false, arms: true, sprocketTeeth: true,
   });
@@ -156,13 +166,32 @@ export function* buildM113HullSteps(P: TankBuilderPort, mark: M113HullMark,
   yield 'buildM113RunningGear';
 
   // ---------------------------------------------------------------- hull fittings --
-  // the trim vane folded flat over the glacis on its hinges and stays (the FSV's and the AS4's photographs); on the A3, the
-  // M741 and the MRV the driver's vision notch cut down from its top edge ahead of his periscopes and two small square
-  // holes (the M163's Commons photos 00, 03, 05, 06 and 09, the twin-aa lane's critic; the Puckapunyal MRV's front)
-  {
+  // the trim vane folded flat over the glacis on its hinges and stays (the FSV's and the AS4's photographs); on the A3 and
+  // the M741 the driver's vision notch cut down from its top edge ahead of his periscopes and two small square holes (the
+  // M163's Commons photos 00, 03, 05, 06 and 09, the twin-aa lane's critic). The MRV's is its front buoyancy pod (272:
+  // every MRV photograph, the Puckapunyal front 3/4, the Perth 2018 and 2020 fronts and the 2025 profile): a deep box
+  // across the hull's width over the glacis, its flat top 0.26 m under the roof from the lamps' guards to the nose, its
+  // front face over the nose with a crease two thirds down and the lower face tucked back to the glacis' foot; the
+  // driver's notch, 0.20 m wide and 0.22 m deep, cut through its top a little left of the centre line; no square holes,
+  // one raised flap plate right of the notch and the latches along its foot
+  if (mark === 'mrv') {
+    const N = D.noseZ, yTop = 1.60, notchX = 0.30, notchW = 0.20, notchD = 0.22, hw = B.hw - 0.01;
+    // (the back edge runs 3 cm inside the glacis from the top's root to the nose, so the pod reads seated on the plate)
+    const glacisZ = (y: number): number => N - (y - B.noseY) / (B.roofY - B.noseY) * B.glacisRun;
+    const pod = (top: number): (readonly [number, number])[] => [[glacisZ(top) - 0.03, top], [N - 0.06, top], [N + 0.02, top - 0.04],
+      [N + 0.04, 1.28], [N - 0.02, 1.02], [N - 0.05, 1.00]];
+    const [na, nb] = [notchX - notchW / 2, notchX + notchW / 2];
+    P.addEquipment('hull', sideProfileSolid(pod(yTop), -hw, na));
+    P.addEquipment('hull', sideProfileSolid(pod(yTop), nb, hw));
+    // (the notch's floor at its depth, the face below it the pod's own)
+    P.addEquipment('hull', sideProfileSolid([[glacisZ(yTop - notchD) - 0.03, yTop - notchD], [N + 0.032, yTop - notchD],
+      [N + 0.04, 1.28], [N - 0.02, 1.02], [N - 0.05, 1.00]], na, nb));
+    P.add('hullDetail', box(0.26, 0.20, 0.012), notchX - 0.55, 1.44, N + 0.033);
+    for (const x of [-0.95, -0.40, 0.55, 0.95]) P.add('hullDark', box(0.08, 0.07, 0.05), x, 1.07, N + 0.005, 0.23, 0, 0);
+  } else {
     const [y0, z0] = onGlacis(0.10, 0.03), [y1, z1] = onGlacis(0.86, 0.03);
     const len = Math.hypot(z1 - z0, y1 - y0);
-    if (a3 || m741 || mark === 'mrv') {
+    if (a3 || m741) {
       const notchX = 0.60, notchW = 0.20, notchD = 0.22, at = (f: number): [number, number] => [y0 + f * (y1 - y0), z0 + f * (z1 - z0)];
       const [by, bz] = at((len - notchD) / 2 / len), [ty, tz] = at((len - notchD / 2) / len);
       P.addEquipment('hull', xform(box(2.14, 0.035, len - notchD), 0, 0, 0, glacis, 0, 0), 0, by, bz);
@@ -228,26 +257,23 @@ export function* buildM113HullSteps(P: TankBuilderPort, mark: M113HullMark,
   };
   // the M113A2's armoured fuel tanks either side of the ramp (Commons photo 07 of the M163's rear: 0.43 m deep, the 17 in
   // the A2's tanks add to its length in TM 9-2350-277). The twin-aa lane's r7 read of 07 (builder V and the coordinator):
-  // they sit low on the plate just over the track's ends, their bottoms 0.76 m up at the top of the idlers' rims so the
-  // idlers and the track's rear wraps show under them; 0.50 m tall, a vertical rear face for the lower half carrying a
+  // they sit low on the plate just over the track's ends, the idlers and the track's rear wraps under them (272: their
+  // bottoms 0.63 m up, level with the rear plate's foot between the tracks as in 07, the idler's top 0.07 m over them; at
+  // 0.76 m they rode the old idler's rims, at 0.45 m they hung below the plate's foot); 0.50 m tall, a vertical rear face for the lower half carrying a
   // tail light, then a face sloping 45 degrees forward over the upper half to a short flat top at the plate; on the right
   // tank a flat hinged lid on the slope carrying the filler cap, on the left a recessed channel down the slope between two
   // ridges and the cap on the slope beside it; plain outer faces (r8: nothing on or under them; each tank hangs on the
   // rear plate by its front face)
   const addA2FuelTanks = (): void => {
-    const z0 = D.sternZ, z1 = D.sternZ - 0.43, yLo = 0.76, yTop = 1.26, yFace = yLo + 0.5 * (yTop - yLo), run = yTop - yFace;
+    const z0 = D.sternZ, z1 = D.sternZ - 0.43, yLo = 0.63, yTop = 1.13, yFace = yLo + 0.5 * (yTop - yLo), run = yTop - yFace;
     const slope = Math.atan2(yTop - yFace, run), slopeLen = Math.hypot(yTop - yFace, run);
     const onSlope = (u: number, out: number): [number, number] => [yFace + u * (yTop - yFace) + out * Math.cos(slope),
       z1 + u * run - out * Math.sin(slope)];
-    // the tank's side profile [z, y], extruded across x (sectionSolid's stations along +z, turned a quarter about y)
+    // the tank's side profile [z, y], extruded across x
     const profile = [[z0, yLo], [z1, yLo], [z1, yFace], [z1 + run, yTop], [z0, yTop]] as const;
-    const ring = profile.map(([z, y]) => [-z, y] as SectionPoint);
-    let area = 0;
-    for (let i = 0; i < ring.length; i++) area += ring[i][0] * ring[(i + 1) % ring.length][1] - ring[(i + 1) % ring.length][0] * ring[i][1];
-    const wound = area > 0 ? ring : [...ring].reverse();
     for (const s of [-1, 1] as const) {
       const lo = s < 0 ? -1.31 : 0.86, hi = s < 0 ? -0.86 : 1.31, x = s * 1.085, w = hi - lo;
-      P.addEquipment('hull', xform(sectionSolid([{ z: lo, ring: wound }, { z: hi, ring: wound }]), 0, 0, 0, 0, Math.PI / 2, 0));
+      P.addEquipment('hull', sideProfileSolid(profile, lo, hi));
       if (s < 0) {
         // the right tank's flat hinged lid on the slope, its hinge along the slope's top edge, the filler cap on it
         const [ly, lz] = onSlope(0.5, 0.006);
