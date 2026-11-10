@@ -45,9 +45,13 @@ const TICK_MS = 1000 / 60;
 // a world of thirty crushable props far outside the battlefield (nobody drives into them): the destroyed list under test
 const makeWorld = () => {
   const obstacles = Array.from({ length: 30 }, (_, index) => ({ min: [900 + index * 3, 0, 900], max: [901 + index * 3, 2, 901], crushable: true, kind: 'fence', crushed: false, shape2: null }));
+  // prop 9 is a tree under a canopy that conceals (improve-271 plan 029: a restore must fell its concealer too)
+  Object.assign(obstacles[9], { kind: 'tree', treeIdx: 0, shape2: { kind: 'circle', cx: 927.5, cz: 900.5, r: 0.5 } });
+  const concealers = [{ x: 927.5, z: 900.5, r: 6, add: 0.5 }, { x: 960, z: 940, r: 6, add: 0.5 }];
   return {
-    mapId: 'verdant', obstacles, crushes: 0,
+    mapId: 'verdant', obstacles, concealers, crushes: 0,
     getObstacles: () => obstacles,
+    getConcealment: () => concealers,
     queryObstacles(minX, minZ, maxX, maxZ, out) { out.length = 0; for (const o of obstacles) if (o.max[0] >= minX && o.min[0] <= maxX && o.max[2] >= minZ && o.min[2] <= maxZ) out.push(o); return out; },
     raycast: () => null,
     crushObstacle(obstacle) { if (obstacle.crushed) return false; obstacle.crushed = true; this.crushes++; return true; },
@@ -111,6 +115,9 @@ assert.deepEqual(applied, { restored: 4, skipped: 0, destroyedRestored: 3, destr
 // the destroyed props (world state audit, 2026-10-01): crushed in the new host's world, no event, the revision continued
 assert.deepEqual(worldB.obstacles.map((o, index) => (o.crushed ? index : -1)).filter((index) => index >= 0), [3, 9, 27], 'the old host\'s felled props lie felled in the new host\'s collision world');
 assert.equal(worldB.crushes, 3, 'through the world\'s crush seam');
+assert.deepEqual(worldB.concealers.map((disc) => !!disc.dead), [true, false], 'the restored felled tree stops concealing; the standing one still conceals');
+assert.deepEqual(b.authority.restoreDestroyedObstacles([9], 7), { restored: 1, unknown: 0 }, 'restoring a felled tree again is harmless');
+assert.deepEqual(worldB.concealers.map((disc) => !!disc.dead), [true, false], 'and fells nothing more');
 const restoredMeta = b.authority.snapshot({ tick: decoded.tick, serverTimeMs: Math.round(decoded.tick * TICK_MS), viewerId: 'migration', ackInputSeq: null }).meta;
 assert.deepEqual(restoredMeta.destroyedObstacleIndices, [3, 9, 27], 'the persistent list every snapshot carries continues');
 assert.equal(restoredMeta.destructibleRevision, 7, 'the revision continues from the old host: every peer\'s persistent-state check stays monotonic');

@@ -1502,6 +1502,8 @@ export function createAuthoritativeMatch({
       if (!obstacle.crushed) {
         if (worldCollision && typeof worldCollision.crushObstacle === 'function') worldCollision.crushObstacle(obstacle, 0, 1, 0);
         obstacle.crushed = true;
+        // a felled tree stops concealing on the new host too, as on the live path (improve-271 plan 029)
+        if (obstacle.treeIdx != null && obstacle.shape2) fellConcealersAt(worldConcealers, obstacle.shape2.cx, obstacle.shape2.cz);
       }
       if (!destroyedObstacleSet.has(index)) { destroyedObstacleIndices.push(index); destroyedObstacleSet.add(index); }
       restored++;
