@@ -1,5 +1,5 @@
 {
- "generatedAt": "2026-11-09T06:37:06.437Z",
+ "generatedAt": "2026-11-09T16:17:23.557Z",
  "res": 256,
  "minArea": 6,
  "note": "Sealed-hull ledger: per-tank open (true opening), inside-out, see-through and netting pixel totals over the 33 census views, one row per playable id, each measured in the census frame recorded on its row (frame: [x, y, z, radius] in the tank root, so an unrelated extremity edit never moves the pixel grid). Gate: a tank may not exceed its ledger open px, nor its see-through px (the world seen through glass, markings or undeclared alpha-cut parts), by more than max(12, 10%), and a sealed tank must stay sealed; its netting px (sky between declared alpha-cut net and leaf dressing, netSeeThroughPx) must stay within max(12, 2%) of the row either way; an open row may not open in a view outside its openViewNames. The frame is fixed: a build whose own frame is within min(0.5 m, 15%) of it is judged in it; past that it fails OUT OF FRAME or FRAME STALE, the only cases --reframe serves (no column may exceed the row in the row's frame; never past half again the row's first frame). A plain update never changes a row; --tighten-ledger lowers one, --accept-see-through=<id>:<reason> raises see-through or netting and --reframe=<id>:<reason> re-frames, each recorded in the row's accepts history. (guards 229, 2026-10-20: every row re-measured in its recorded frame on integ/229 93cfe22c21.)",
@@ -236,7 +236,7 @@
    "openPx": 0,
    "openViews": 0,
    "insideOutPx": 82,
-   "seeThroughPx": 72,
+   "seeThroughPx": 404,
    "netSeeThroughPx": 0,
    "tris": 83592,
    "frame": [
@@ -244,6 +244,18 @@
     1.6,
     0.15,
     4.3
+   ],
+   "accepts": [
+    {
+     "kind": "see-through",
+     "reason": "release 268 bmp3_rok draws the fleet BMP-3 hull, whose soot marking seats read as see-through edge pixels exactly as on bmp3 (ledger 418)",
+     "by": "kevinliu",
+     "date": "2026-11-02",
+     "from": {
+      "seeThroughPx": 72,
+      "netSeeThroughPx": 0
+     }
+    }
    ]
   },
   "bmp3m_dragun125": {
@@ -399,7 +411,7 @@
    "openViews": 0,
    "insideOutPx": 278,
    "seeThroughPx": 0,
-   "netSeeThroughPx": 3877,
+   "netSeeThroughPx": 683,
    "tris": 111764,
    "frame": [
     0,
@@ -416,6 +428,26 @@
      "from": {
       "seeThroughPx": 0,
       "netSeeThroughPx": 4003
+     }
+    },
+    {
+     "kind": "see-through",
+     "reason": "release 268 rebuilt C2 prototype (owner 2026-11-01) carries its own ghillie suit entry (ghillieFleetSuits.ts), the declared netting moved with the new turret and hull (base already read 3298 against 3877)",
+     "by": "kevinliu",
+     "date": "2026-11-02",
+     "from": {
+      "seeThroughPx": 0,
+      "netSeeThroughPx": 3877
+     }
+    },
+    {
+     "kind": "see-through",
+     "reason": "270 the lane trimmed the C2 prototype suit on blind A/B findings (flank and rear drapes removed, roof net inside the outline, garnish thinned), so its netting shrinks 2626 to 683 px",
+     "by": "italy-korea-bmp-267",
+     "date": "2026-11-09",
+     "from": {
+      "seeThroughPx": 0,
+      "netSeeThroughPx": 2626
      }
     }
    ]
@@ -728,7 +760,7 @@
   },
   "chieftain_mk10": {
    "sealed": true,
-   "openPx": 73,
+   "openPx": 0,
    "openViews": 0,
    "insideOutPx": 208,
    "seeThroughPx": 0,
@@ -745,15 +777,51 @@
    "sealed": true,
    "openPx": 0,
    "openViews": 0,
-   "insideOutPx": 304,
+   "insideOutPx": 171,
    "seeThroughPx": 0,
    "netSeeThroughPx": 0,
-   "tris": 89370,
+   "tris": 112475,
    "frame": [
-    0,
-    1.45,
-    1.65,
-    6.1
+    0.05,
+    2.1,
+    1.7,
+    6.2
+   ],
+   "accepts": [
+    {
+     "kind": "reframe",
+     "reason": "rebuilt on the chieftain_mk10 castings and kit, its build frame is that row's frame [0.05, 2.1, 1.7, 6.2], and its smoke tubes are now closed lathes (0 open px)",
+     "by": "italy-korea-bmp-267",
+     "date": "2026-11-08",
+     "from": {
+      "sealed": true,
+      "openPx": 0,
+      "openViews": 0,
+      "seeThroughPx": 0,
+      "netSeeThroughPx": 0,
+      "frame": [
+       0,
+       1.45,
+       1.65,
+       6.1
+      ]
+     },
+     "to": [
+      0.05,
+      2.1,
+      1.7,
+      6.2
+     ],
+     "oldFrameCensus": {
+      "sealed": true,
+      "openPx": 0,
+      "openViews": 0,
+      "openViewNames": [],
+      "seeThroughPx": 0,
+      "seeThroughViews": 0,
+      "netSeeThroughPx": 0
+     }
+    }
    ]
   },
   "cv90": {
@@ -1023,15 +1091,51 @@
    "sealed": true,
    "openPx": 0,
    "openViews": 0,
-   "insideOutPx": 224,
-   "seeThroughPx": 217,
+   "insideOutPx": 172,
+   "seeThroughPx": 167,
    "netSeeThroughPx": 0,
-   "tris": 94974,
+   "tris": 84537,
    "frame": [
     0,
-    1.35,
+    2.05,
     1.05,
-    5.5
+    5.7
+   ],
+   "accepts": [
+    {
+     "kind": "reframe",
+     "reason": "release 268 K1E1 rebuild from photographs carries the two turret whip antennas the photographs show, their tips at 4.14 m set the build's census frame",
+     "by": "kevinliu",
+     "date": "2026-11-02",
+     "from": {
+      "sealed": true,
+      "openPx": 0,
+      "openViews": 0,
+      "seeThroughPx": 217,
+      "netSeeThroughPx": 0,
+      "frame": [
+       0,
+       1.35,
+       1.05,
+       5.5
+      ]
+     },
+     "to": [
+      0,
+      2.05,
+      1.05,
+      5.7
+     ],
+     "oldFrameCensus": {
+      "sealed": true,
+      "openPx": 0,
+      "openViews": 0,
+      "openViewNames": [],
+      "seeThroughPx": 210,
+      "seeThroughViews": 12,
+      "netSeeThroughPx": 0
+     }
+    }
    ]
   },
   "k21": {

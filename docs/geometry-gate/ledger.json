@@ -1,5 +1,5 @@
 {
- "generatedAt": "2026-11-06T08:32:49.007Z",
+ "generatedAt": "2026-11-09T20:58:52.474Z",
  "gate": "every component >= its registered floor (90 fleet / 92 exemplar / 99 historical preservation); min is the headline; preservation is not source fidelity",
  "passed": 45,
  "total": 155,
@@ -505,16 +505,13 @@
   },
   {
    "id": "chieftain3",
-   "geoMin": 0,
+   "geoMin": 40,
    "requiredMinimum": 90,
    "qualityBar": "fleet",
    "gatePassed": false,
    "components": {
-    "hullCurves": 0,
-    "stations": 0,
-    "turretCurves": 0,
-    "wholeCurves": 0,
-    "dims": 40.4,
+    "wholeCurves": 94.8,
+    "dims": 40,
     "floaters": 100
    },
    "comparisonPurpose": "source-fidelity"
@@ -834,16 +831,16 @@
   },
   {
    "id": "bmp3",
-   "geoMin": 39.4,
+   "geoMin": 25.7,
    "requiredMinimum": 90,
    "qualityBar": "fleet",
    "gatePassed": false,
    "components": {
-    "hullCurves": 57.8,
-    "stations": 78.2,
-    "turretCurves": 39.4,
-    "wholeCurves": 52.6,
-    "dims": 100,
+    "hullCurves": 61.4,
+    "stations": 51.4,
+    "turretCurves": 25.7,
+    "wholeCurves": 42.4,
+    "dims": 91.8,
     "floaters": 100
    },
    "comparisonPurpose": "source-fidelity"
@@ -882,16 +879,16 @@
   },
   {
    "id": "c1_ariete_preserie",
-   "geoMin": 47.4,
+   "geoMin": 43.8,
    "requiredMinimum": 90,
    "qualityBar": "fleet",
    "gatePassed": false,
    "components": {
-    "hullCurves": 55.6,
-    "stations": 66,
-    "turretCurves": 59,
-    "wholeCurves": 47.4,
-    "dims": 97.9,
+    "hullCurves": 53.9,
+    "stations": 64,
+    "turretCurves": 54.4,
+    "wholeCurves": 43.8,
+    "dims": 90.6,
     "floaters": 100
    },
    "comparisonPurpose": "source-fidelity"
@@ -1017,16 +1014,16 @@
   },
   {
    "id": "bmp2",
-   "geoMin": 60.2,
+   "geoMin": 48.9,
    "requiredMinimum": 90,
    "qualityBar": "fleet",
    "gatePassed": false,
    "components": {
-    "hullCurves": 66.3,
-    "stations": 61.5,
-    "turretCurves": 70.6,
-    "wholeCurves": 60.2,
-    "dims": 97.3,
+    "hullCurves": 65.5,
+    "stations": 48.9,
+    "turretCurves": 62.8,
+    "wholeCurves": 54,
+    "dims": 100,
     "floaters": 100
    },
    "comparisonPurpose": "source-fidelity"
@@ -2116,12 +2113,12 @@
   },
   {
    "id": "k21",
-   "geoMin": 94.8,
+   "geoMin": 96,
    "requiredMinimum": 92,
    "qualityBar": "exemplar",
    "gatePassed": true,
    "components": {
-    "wholeCurves": 94.8,
+    "wholeCurves": 96,
     "dims": 100,
     "floaters": 100
    },

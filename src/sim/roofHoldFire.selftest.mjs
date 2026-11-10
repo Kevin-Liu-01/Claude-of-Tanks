@@ -384,7 +384,9 @@ for (const [targetId, aspect, range, least] of [['m551a1_tts', 90, 200, 6], ['cv
 }
 // 14. GUARD: a pillbox (fortified cover, world/collision.ts) between a station and the BMP-2 behind it, on Foundry's own
 //    collision shard and the multiplayer host's authority: no round goes into the bunker; the BMP-2 driven clear of it
-//    draws fire.
+//    draws fire. The K1 lays its gun on the BMP-2 in both phases (aimYaw is a world bearing: left at 0 its turret faces
+//    world +Z and the clear BMP-2 sits 59° off its left side, across the loader's M60 from the commander's K6 on the
+//    right cupola since 269, where the stations' interlock rightly holds the K6).
 {
   const world = createDedicatedWorldCollision('foundry');
   const bunker = world.getObstacles().find((record) => record.kind === 'bunker');
@@ -398,9 +400,10 @@ for (const [targetId, aspect, range, least] of [['m551a1_tts', 90, 200, 6], ['cv
   const shots = () => k1.combat.auxiliary.shots;
   const place = (entity, x, z, yaw) => { entity.state.pos.set(x, ground(x, z), z); entity.state.yaw = yaw; entity.state.speed = 0; };
   const idle = { throttle: 0, steer: 0, brake: true, fire: false, shellSlot: 0, aimYaw: 0, aimPitch: 0, actionBits: 0, aimLocked: false, aimDistance: 300 };
+  const laidOn = (x, z) => ({ ...idle, aimYaw: Math.atan2(x - (cx - 30), z - cz) });
   for (let tick = 0; tick < 300; tick++) {
     place(k1, cx - 30, cz, Math.PI / 2); place(ifv, cx + 14, cz, 0);
-    match.step({ dt: SIM_DT, inputs: new Map([['k1', idle], ['ifv', idle]]) }); match.eventsForViewer('__audit__'); match.afterEventBroadcast();
+    match.step({ dt: SIM_DT, inputs: new Map([['k1', laidOn(cx + 14, cz)], ['ifv', idle]]) }); match.eventsForViewer('__audit__'); match.afterEventBroadcast();
   }
   const muzzle = new Vector3(cx - 30, ground(cx - 30, cz) + 2.6, cz), aim = new Vector3(cx + 14, ground(cx + 14, cz) + 1.2, cz);
   const ray = aim.clone().sub(muzzle), hit = world.raycast(muzzle, ray.clone().normalize(), ray.length());
@@ -408,7 +411,7 @@ for (const [targetId, aspect, range, least] of [['m551a1_tts', 90, 200, 6], ['cv
   assert.equal(shots(), 0, 'no roof round into the pillbox');
   for (let tick = 0; tick < 300; tick++) {
     place(k1, cx - 30, cz, Math.PI / 2); place(ifv, cx + 14, cz + 26, 0);
-    match.step({ dt: SIM_DT, inputs: new Map([['k1', idle], ['ifv', idle]]) }); match.eventsForViewer('__audit__'); match.afterEventBroadcast();
+    match.step({ dt: SIM_DT, inputs: new Map([['k1', laidOn(cx + 14, cz + 26)], ['ifv', idle]]) }); match.eventsForViewer('__audit__'); match.afterEventBroadcast();
   }
   assert.ok(shots() > 0, `the BMP-2 clear of the pillbox draws fire (${shots()})`);
   world.release?.();

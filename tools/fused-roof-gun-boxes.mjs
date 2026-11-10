@@ -47,8 +47,20 @@ const CENTURION_WHIPS = Object.freeze({ triangles: 136, tallest: true, boxes: Ob
 const T90MS_REAR_WHIP = Object.freeze({ triangles: 60, tallest: false, boxes: Object.freeze([
   Object.freeze([-0.816, 2.236, -2.404, -0.775, 2.933, -2.369]),
 ]) });
+// The Chieftain Mk 5 X source, for the Mk 3 measured on it (271, Main: "declare the three 2.05 m turret whips as thin
+// tops", the kit the owner restored 2026-11-03, against the source's 1.35 m whips): three whips fused into Object_9, each
+// a 1.348 m rod of 50 triangles, on the left cheek (z 0.37, to 3.55 m), the right rear (z -0.97, to 3.81 m) and the right
+// front (z 0.48, to 3.74 m). Each box holds one welded rod whole and nothing else of the print (picked with pickboxes.py:
+// 3 pieces, 150 triangles, 150 in the boxes). chieftain5 keeps its whole-against-whole comparison: with the whips aside
+// its source body measures 2.573 m against the build's 2.761 (88.6 -> 40), a body gap the whips' raster had hidden.
+const CHIEFTAIN5_WHIPS = Object.freeze({ triangles: 150, tallest: true, boxes: Object.freeze([
+  Object.freeze([-1.1644, 2.2027, 0.3544, -1.1401, 3.5517, 0.3787]),
+  Object.freeze([0.8039, 2.4608, -0.982, 0.8283, 3.8099, -0.9577]),
+  Object.freeze([0.9563, 2.3882, 0.4701, 0.9806, 3.7373, 0.4944]),
+]) });
 export const FUSED_ANTENNA_BOXES = Object.freeze({
   centurion3: CENTURION_WHIPS, centurion5_2: CENTURION_WHIPS, strv81: CENTURION_WHIPS, t90ms_tagil: T90MS_REAR_WHIP,
+  chieftain3: CHIEFTAIN5_WHIPS,
 });
 
 // Stowage a source fuses into its meshes (267, Main 2026-10-31: drums, drum cradles and stowage racks or baskets leave the

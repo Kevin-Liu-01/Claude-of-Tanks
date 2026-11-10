@@ -23,7 +23,7 @@ export const ORACLE_PINS = Object.freeze({
   '/models/community-candidates/bmp3m_dragun125_x_assembled_20260918.glb': pin('d79a8383dd79d8dfefc98ae47b9b12d6c60bac55df3eb1671266fef6029fc8e8'), // bmp3m_dragun125 (certificate)
   '/models/community-candidates/challenger1_x_source.glb': pin('90a18f59e64509211fa15e4298fba40443766b8dbd9e6cfb1e7858ecad8f4e64'), // challenger1_mk3 (certificate)
   '/models/community-candidates/challenger3_td_x_source.glb': pin('6e3b3983f040319d9dd5c55fdcf850d438a6c0656ae46a62908f0c4baa387386'), // challenger3_td (certificate)
-  '/models/community-candidates/chieftain5_x_source.glb': pin('2a781a798e4ffe8f99ab9f6750b8db8e132b236de51a021cac28cbb82f268e79'), // chieftain5 (certificate)
+  '/models/community-candidates/chieftain5_x_source.glb': pin('2a781a798e4ffe8f99ab9f6750b8db8e132b236de51a021cac28cbb82f268e79'), // chieftain5, chieftain3 (certificate)
   '/models/community-candidates/chieftain_mk10_x_source.glb': pin('252e45ee57928c6256252fa7dcdba8c42bfc2c2c86a6d4548ea68291b45c6f85'), // chieftain_mk10 (certificate)
   '/models/community-candidates/cv90105_tml_x_source.glb': pin('6e5770019f47d2c3de157e4eee77257e0f7ad1680b18b0655a1197362070efcc'), // cv90105_tml (certificate)
   '/models/community-candidates/cv90_mkiv_x_source.glb': pin('29160cf92e8e2221cf8b441626f871104dafde6b3ef5a80d3ec91d1fe3c8649a'), // cv90_mk4 (certificate)
@@ -124,7 +124,6 @@ export const ORACLE_PINS = Object.freeze({
     "the only version on this machine; the 09-12 row scored 0 (whole 7.9), this file whole 80.2"), // fv510
   '/models/tanks/community/m2_bradley_ifv.glb': pin('0d3f779a17a549f7206281331731af4400db7eb1d6907ae6ab7e504cbcfb3d10'), // m3a2_bradley (270: the source turret moved there in the 269 swap)
   '/models/tanks/community/recovered/challenger1.glb': pin('aab22967e5d66d7c122fdb8d7fe83dcc9f43c506d1454af58e30749f91134d27'), // challenger1_mk2
-  '/models/tanks/community/recovered/chieftain5.glb': pin('c5d9e375b065e25eb23803608208d201781f3bab5c78b0349f42fd705eeb5f7c'), // chieftain3
   '/models/tanks/community/recovered/leopard2_proto.glb': pin('749d03ae92863ddda0a388501f54c19f7d460a149ab81e230f3e1602e5148fb5'), // leopard2_proto
   '/models/tanks/community/recovered/m46_patton.glb': pin('1dc7d3e2b17e5eee6e3543313135258ff5679b51e95c832cadee52511dd8f2ff'), // m46_patton
   '/models/tanks/community/recovered/m47_patton.glb': pin('aacc768f798c6fc8fa484b5f19ba40d7d568e0965079efdaf6c252182ad6e14e'), // m47_patton

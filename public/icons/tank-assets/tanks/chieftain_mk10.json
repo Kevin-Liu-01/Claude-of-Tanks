@@ -449,17 +449,17 @@
       }
     ]
   },
-  "geometryHash": "239e0e5f",
+  "geometryHash": "a2261402",
   "metadataHash": "a857074d",
   "presentationAnchor": {
-    "xM": 0.0065,
-    "zM": 0.151
+    "xM": 0.0081,
+    "zM": 0.1467
   },
-  "presentationHash": "884c5cf5",
+  "presentationHash": "b7249a48",
   "presentationProjection": {
     "centerYM": 2.1245,
-    "topHalfM": 7.4284,
-    "sideHalfM": 3.7142
+    "topHalfM": 7.433,
+    "sideHalfM": 3.7165
   },
   "appearance": {
     "version": 1,
@@ -506,40 +506,39 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 26488,
-      "sha256": "4b7649814f74ec9140b3a501d3b75ae147766772ce36e66bc7d044fff6d554d3"
+      "bytes": 26378,
+      "sha256": "d92e1b94800142602ef6343e905105ed83eb2b52b271c65ab6ec48683c0a12be"
     },
     "modulesSide": {
       "file": "chieftain_mk10_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 20104,
-      "sha256": "57db6b26719f801ecfa1279e4a266b434d2c60fe9499e21681dcfabb0ef2ca44"
+      "bytes": 20150,
+      "sha256": "d9344e737c278a1f18e93f8fb3123395e2f2510265320f8a082fd0f6c6b41c47"
     },
     "crewSide": {
       "file": "chieftain_mk10_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 17704,
-      "sha256": "5b9da73ce411c3cd2bfd18009193982f42f0c96d9aec40474c2dcc19063ba0be"
+      "bytes": 17588,
+      "sha256": "4091bf90923b34d5e4b20805f67dcb9825209da7dbbf29c98e191aeba8b8ee22"
     },
     "angle": {
       "file": "chieftain_mk10_angle.webp",
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 23498,
-      "sha256": "3147fac2c7cabe4645f71b259bc63773c316bbb30b223c6c4a516a836d17f9e0",
+      "bytes": 23404,
+      "sha256": "97c322e0c7f69e068b8a1b9454542120d3cb1fc8531b573fec04512ddc9c62a4",
       "thumbnail": {
         "file": "thumbs/chieftain_mk10_angle.webp",
         "width": 256,
         "height": 256,
         "mime": "image/webp",
-        "bytes": 9970,
-        "sha256": "220c90f5381e920534ee7f9b12d7da689837537d5afad75cd9503bcc855b2765",
-        "frame": [16,104,225,250]
+        "bytes": 9952,
+        "sha256": "ae1271b296c31290b079f29b6fc1c188969b0949c4c977bc7aae9013ea11d180"
       }
     },
     "top": {
@@ -547,16 +546,16 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 9222,
-      "sha256": "87f0ebbce3221551a5730e71ec75f6b58a5d6729d34c4b0f554624b1c12c6999"
+      "bytes": 9476,
+      "sha256": "e5c3eff9440ec78184ba53efb53c6ce25f68274cbe6e3bcd4321b8f8069d1b91"
     },
     "side": {
       "file": "chieftain_mk10_side.webp",
       "width": 512,
       "height": 256,
       "mime": "image/webp",
-      "bytes": 7916,
-      "sha256": "deb05d79d1bc0a1958c0dc3d625af27c0e7ae453843e6bf5bdced7378349f2aa"
+      "bytes": 9084,
+      "sha256": "e589058c99d1fe5fb1161a8dccca8533cfb784b00f52fb1f13d2a887f4761fda"
     },
     "topSilhouette": {
       "file": "chieftain_mk10_top_silhouette.png",
@@ -564,15 +563,15 @@
       "height": 128,
       "mime": "image/png",
       "bytes": 1339,
-      "sha256": "95636d3bbe0426bebe059eb3c6eaed497ecdc9124536653deca9af6e05d83582"
+      "sha256": "398950c1ea83f5b092129deac6e39589c172fa239fb1e9ebad8b00e94f28adb9"
     },
     "sideSilhouette": {
       "file": "chieftain_mk10_side_silhouette.png",
       "width": 256,
       "height": 128,
       "mime": "image/png",
-      "bytes": 4217,
-      "sha256": "2491dc6a2c55de73922f9c655f5a0bc32e622200f22d567d055a3c9ffafb0820"
+      "bytes": 4160,
+      "sha256": "7bfb0f735e58914336024571e6ccfb93e50540a5ff297c1e226a4fd9bb4aa592"
     },
     "markings": {
       "file": "chieftain_mk10_markings.png",
@@ -585,8 +584,8 @@
     "technicalLabels": {
       "file": "chieftain_mk10_technical.json",
       "mime": "application/json",
-      "bytes": 4214,
-      "sha256": "9e369bf9ac101575d14685fcbf774e1d42a3faab7ee87e0047fcee66317f1f04"
+      "bytes": 4213,
+      "sha256": "f23bf0a9c84e0fc39338ae2537782fc56de1ba02dcfe0118c3c86160add5f9a9"
     }
   }
 }

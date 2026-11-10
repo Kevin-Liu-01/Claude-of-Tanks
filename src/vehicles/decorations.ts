@@ -3276,6 +3276,10 @@ const JAPAN_74_DECOR: Readonly<Record<'type74' | 'stb1', () => DecorManifestRow[
   stb1: (): DecorManifestRow[] => [],
 });
 
+/** 271: the italy-korea-bmp-267 lane's builds that draw their own smoke dischargers, and chieftain5 and chieftain_mk10. */
+const ITALY_KOREA_BMP_DRAWN_SMOKE: readonly string[] = ['c2_ariete_proto', 'c1_ariete_proto_serie1', 'c1_ariete_preserie',
+  'k2b', 'k1e1', 'k21', 'bmp2', 'bmp3', 'bmp3_rok', 'bwp1', 'chieftain3', 'chieftain_mk9', 'chieftain5', 'chieftain_mk10'];
+
 // ---------------------------------------------------------------------------------------------------------------
 // Release 269 (lane abrams-bradley-269): the lived-in loads of the M1A1s and the Bradleys
 // ---------------------------------------------------------------------------------------------------------------
@@ -3577,6 +3581,10 @@ function baseDecorManifest(spec: FleetTankSpec, rng: Rng): DecorManifestRow[] {
   // Wegmann banks carry it there, so it takes no decor pair beside them.
   if (spec.id === 'm41a3' || spec.id === 'm41_bw' || spec.id === 'm41_jgsdf') return [{ kit: 'smoke', p: 1, v: { v: '6' }, slot: ['turretCheekPair', {}] }];
   if (spec.id === 'm41dk1') return [];
+  // 267 (owner: "now update the ... carro 45t"): the rebuilt Carro authors its complete kit (five-tube banks on the roof
+  // shoulders, which carry the smoke consumable, bustle bins and basket, twin whips, the Breda, bow and stern clevises):
+  // the field load's second smoke pair, roof cargo and bow shackles doubled it and crossed the new upper plates.
+  if (spec.id === 'carro45t') return [];
   // the T49's M551 turret carries its own smoke banks and searchlight (profiles/m41.ts)
   if (spec.id === 't49') return [];
   // the T95 carries its own pioneer tools, tow cables and jack on the turtle back (profiles/t95.ts)
@@ -3818,6 +3826,11 @@ function baseDecorManifest(spec: FleetTankSpec, rng: Rng): DecorManifestRow[] {
   if (spec.id === 'pt91a_twardy' || spec.id === 't84bm_oplot_m' || spec.id === 't90a_burlak_proto') {
     return manifest.filter(row => row.kit !== 'smoke');
   }
+  // 271 (Main on italy-korea-bmp-267, until the fleet's one rule lands: the pair dresses only a build with no drawn
+  // banks): the lane's ids and the two Chieftains it shares parts with draw their own dischargers, so the decor pair
+  // doubled their salvo (the Mk 3 28 against its 16 drawn mouths, the Mk 9 and Mk 10 24 against 12, the BMP-2 18 against
+  // its 902V 3+3)
+  if (ITALY_KOREA_BMP_DRAWN_SMOKE.includes(spec.id)) return manifest.filter(row => row.kit !== 'smoke');
   // 266 (owner: "clean up and smooth out the goofy parts" on the AMX-40 prototype and the Leclerc S1, S2 and SXXI):
   // both photo critics read the loose roof loads as clutter against the Saumur photos (a cooler box, a duffel and a drum
   // stacked on the commander's station, a bedroll blob, a round lamp on a post), and the rolls, tarps and links hung on

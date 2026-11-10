@@ -258,13 +258,8 @@ const LOCAL_REFERENCE_OVERRIDES = {
   // them on their photo packet (docs/references/photos/t64-20261031.json, tools/photo-reference-policy.mjs).
   t64bv_donbas: { source:'glb', glb:{ path:'/models/community-candidates/t64bv_donbass_manako.glb', turretNode:'^default279$', gunNode:'^default280$', gunFollowers:'^default$', autoPivot:true, turretFollowers:'^(?:default(?:001|002|007|008|009|010|011|012|013|014|015|016|017|018|019|020|021|022|023|024|025|026|027|028|029|030|031|032|033|036|039|042|045|048|051|054|057|058|059|060|061|062|063|065|066|067|070|071|074|076|077|082|084|085|087|088|236|244|245|247|249|252|253|254|255|256|260|261|262|275|276|281|282)|(?:Cube|Cylinder|Vert)(?:\\.?\\d{3})?)$' } },
   ua_t80bv: { source:'glb', glb:{ path:'/models/community-candidates/t80bv_ua_manako.glb', turretNode:'^bashnya$', yawOffset:Math.PI, autoPivot:true, gunComponentMasks:false } },
-  c1_ariete_proto_serie1: { source:'glb', glb:{ path:'/models/community-candidates/ariete_c1_arrafi.glb', turretNode:'^Object_5$', gunNode:'^Object_7$', autoPivot:true, turretFollowers:'^Object_(?:2|6)$' } },
-  // C2/AMV is authored as an upgrade package on the same C1 chassis. Reuse
-  // the supplied Arrafi print for the shared hull/running-gear comparison;
-  // C2-only armor remains a procedural delta rather than an external model.
-  c2_ariete_proto: { source:'glb', glb:{ path:'/models/community-candidates/ariete_c1_arrafi.glb', turretNode:'^Object_5$', gunNode:'^Object_7$', autoPivot:true, turretFollowers:'^Object_(?:2|6)$' } },
+  // 268 (Main ruling 2026-10-28: "where a rebuild's registered oracle shows a different (later) variant, unregister it"): c1_ariete_proto_serie1 and c2_ariete_proto are rebuilt from photographs as the 1986-88 C1 prototype and the C2 prototype (profiles/italy.ts buildArieteMkSteps), and k1e1 as the K1E1 (profiles/k1e1.ts). Their oracles show other variants: ariete_c1_arrafi.glb the series C1 Ariete, k1a1_kojf.glb the K1A1 (fleet id k1a1). Fidelity is first-party-unregistered, N/A; stage A takes them on their photo packets (docs/references/photos/, tools/photo-reference-policy.mjs) and the blind photo critic is their visual bar. The oracle files and the gate records are untouched.
   // Carro 45t: owner-approved roof redesign, docs/references/concepts/carro45t-roof-20260929.json.
-  k1e1: { source:'glb', glb:{ path:'/models/community-candidates/k1a1_kojf.glb', turretNode:'^vehicle#k1a1_turret_0$', gunNode:'^vehicle#k1a1_cannon_10$', autoPivot:true, turretFollowers:'^vehicle#(?:k1a1_(?:cage|smokecaps|noeffect01)_turret_\\d+|k1a1_cannonbase_9|antenna_short_7)$' } },
   // t90a_burlak_proto (267, Main's ruling): the T-90A X source's hull under the Burlak X source's turret
   // (tools/t90-x-reference-overrides.ts); the AW print t-90a_burlak_armored_warfare.glb is retired as its gate oracle.
   challenger1_mk2: { source:'glb', glb:{ path:'/models/tanks/community/recovered/challenger1.glb', paintUntextured:true, turretNode:'^Turret$', gunNode:'^Gun$', autoPivot:true, turretFollowers:'vehicle#(?:ammo_|antenna_|bone_mg_aa_|ex_decor_(?:0[1-3]|0[5-9]|1[0-2])_|hatch_0[2-5]_)', gunFollowers:'vehicle#(?:gun_mask_|bone_mg_gun_twin_)' } },
@@ -473,14 +468,9 @@ const LOCAL_REFERENCE_OVERRIDES = {
   // repaired). Configs are the retired registrations verbatim.
   // 264 (Main ruling 2026-10-28: "where a rebuild's registered oracle shows a different (later) variant, unregister it"): leo2a4 is rebuilt on the release-262 Leopard 2 hull (fidelity first-party-unregistered, N/A; the blind photo critic is its visual bar). Its oracle leo2a6_buh.glb shows a Leopard 2A6 (fleet id leo2a6): re-register it there later.
   // 267 (Main ruling 2026-10-28: "where a rebuild's registered oracle shows a different (later) variant, unregister it"): kf51_evo is rebuilt as the Eurosatory KF51 EVO (profiles/kf51Evo.ts) and kf51_u is the KF51-U (fidelity first-party-unregistered, N/A; the blind photo critic is their visual bar). Their oracle kf51_grip420.glb shows the 2022 KF51 Panther demonstrator (fleet id kf51_panther, scored on its own source).
-  // chieftain3 (graduated 2026-08-04, the 18th — UK's first): retired
-  // userdrops5 registration — measurement-only (Z-up print).
-  chieftain3: {
-    source:'glb',
-    glb:{ path:'/models/tanks/community/recovered/chieftain5.glb',
-      turretNode:'^Turret$', gunNode:'^Gun$', autoPivot:true,
-      pitchOffset:-Math.PI/2, paintUntextured:true },
-  },
+  // chieftain3 (graduated 2026-08-04, the 18th — UK's first) measured against the retired userdrops5 print
+  // (recovered/chieftain5.glb) until 271: the print lay on its nose in the gate frame (reference height 10.79 m, hull
+  // 2.19 m). It is registered to the Mk 5 X source it is built on (second-wave-x-reference-overrides.ts, Main 271).
   // m1a1_abrams_hc (graduated 2026-08-04, the 17th): retired specs.ts SEPv2
   // registration — measurement-only.
   m1a2_legacy: {
@@ -903,6 +893,9 @@ function visibleBox(root) {
     if (!isRenderNode(o) || !baseVisible.get(o) || hiddenRoofFittings?.has(o)) return;
     if (!o.geometry.boundingBox) o.geometry.computeBoundingBox();
     if (!o.geometry.boundingBox) return;
+    // a mesh whose every triangle was set aside (271: a whip mesh of its own, all of it in its antenna span) keeps an
+    // empty box, whose infinite corners would make the whole box infinite
+    if (o.geometry.boundingBox.isEmpty()) return;
     local.copy(o.geometry.boundingBox);
     if (o.isInstancedMesh) {
       for (let i=0; i<o.count; i++) {

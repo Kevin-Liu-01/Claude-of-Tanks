@@ -17,12 +17,12 @@ Run times: `tools/selftest-durations.json`, else this machine's latest observati
 |---|---:|---:|
 | KEEP | 1797 | 279.7 |
 | MERGE | 0 | 0.0 |
-| MANUAL | 673 | 1181.5 |
+| MANUAL | 674 | 1183.4 |
 | RETIRE | 2 | 0.7 |
 
 | Suite run | Receipts | CPU-min | Simulated wall (min) |
 |---|---:|---:|---:|
-| Before: every receipt (npm test without the tiers) | 2471 | 1461.6 | 250.7 |
+| Before: every receipt (npm test without the tiers) | 2472 | 1463.5 | 250.9 |
 | After: the default tier | 1797 | 279.7 | 64.0 |
 
 Default tier: 19.1 % of the whole registry's CPU; 30.5 % of the 916 CPU-min the snapshot gave for the 1,863 receipts it timed. Its wall: 0.2 min exclusive receipts, 45.1 min pool, 18.6 min browser receipts.
@@ -37,7 +37,7 @@ Default tier: 19.1 % of the whole registry's CPU; 30.5 % of the 916 CPU-min the 
 | `sims` | 12 | 5.0 | drone, missile, escort and counter-drone scenario runs |
 | `perf` | 4 | 2.5 | host-time budgets (tick cost, soaks, heap plateaus, restore timing): they measure the machine as much as the code |
 | `fleet` | 62 | 282.3 | fleet-wide vehicle sweeps: every playable tank built (the HIGH, LOW and default fleet passes, the lazy facade, floor clearance, vertex colours, national and fleet-wide fitting sweeps) and the whole-fleet anatomy check (tank:anatomy:check); then `node tools/gen-combat-anatomy.mjs --check --jobs=4`, `node tools/gen-vehicle-marking-seats.mjs --check`, `node tools/module-hit-probe.mjs`, `node tools/tank-assets-check.mjs --views armorSide,modulesSide,crewSide --skip-bore`, `node tools/spare-track-placement-check.mjs --ids=all --ledger=docs/geometry-gate/spare-track.json --check --quiet`, `node tools/interior-fill-exposure.mjs --all --check --jobs=4` |
-| `tanks` | 418 | 316.3 | per-tank and per-family pins (id-scoped: lane mode and tank:release:check run the ones naming or reading the lane's ids) |
+| `tanks` | 419 | 318.2 | per-tank and per-family pins (id-scoped: lane mode and tank:release:check run the ones naming or reading the lane's ids) |
 | `world` | 138 | 406.8 | world-wide map builds: scenery, structure collision, buildings, the wreck bake, the collision shards, civic areas, horizons and map content |
 | `ui` | 7 | 8.6 | heavy interface paint and layout sweeps |
 | `browser` | 4 | 24.7 | strenuous real-battle browser receipts (a GPU and the capture lock each) |
@@ -143,7 +143,7 @@ Sim determinism and driver boundaries, the authority rules, armour/ballistics/da
 
 None. Folding receipts saves only process starts (about a second each) and would need a per-assertion coverage review; the CPU is in the receipts that build tanks and maps, which moved to manual suites instead.
 
-## MANUAL (673)
+## MANUAL (674)
 
 | Receipt | Run (s) | Decision | Reason | Coverage now |
 |---|---:|---|---|---|
@@ -234,6 +234,7 @@ None. Folding receipts saves only process starts (about a second each) and would
 | `tools/gallery-shell.selftest.mjs` | 122 | MANUAL (ui) | ui: heavy interface paint and layout sweeps, 122 s: 2026-10-24 (brand-ui 247, the public-site perf pass): the Gallery's nation and class rows ship in its first la | test:heavy -- ui; test:recommend flags it when its inputs change |
 | `src/vehicles/profiles/lvkv9040.selftest.mjs` | 121 | MANUAL (tanks) | per-tank pin (lvkv9040, cv90_mk4), 121 s: Release 269: the Lvkv 9040 (profiles/lvkv9040.ts on the fleet's CV90 Mk IV hull, profiles/cv90MkivSourceX.ts w | test:heavy -- tanks; lane mode and tank:release:check run it for its ids |
 | `src/world/structureCollisionRaster.selftest.mjs` | 120 | MANUAL (world) | world: world-wide map builds, 120 s | test:heavy -- world; test:recommend flags it when its inputs change |
+| `src/vehicles/profiles/italyKoreaBmpPhotos.selftest.mjs` | 119 | MANUAL (tanks) | per-tank pin (c1_ariete_proto_serie1, c2_ariete_proto, k1e1, k2b, ...), 119 s: release 268: the photo-route rebuilds (the C1 and C2 Ariete prototypes, the K1E1, the K2B, the BMP-3 (ROK) and | test:heavy -- tanks; lane mode and tank:release:check run it for its ids |
 | `src/vehicles/suitRoofDecor.selftest.mjs` | 117 | MANUAL (tanks) | per-tank pin (cv9040c, c2_ariete_proto), 117 s: 266 (the net-hoop class): no decor stows under a field suit's roof or deck cloth, on every field-suited hull | test:heavy -- tanks; lane mode and tank:release:check run it for its ids |
 | `src/vehicles/smokeLauncherFleet.selftest.mjs` | 116 | MANUAL (fleet) | fleet: fleet-wide vehicle sweeps, 116 s | test:heavy -- fleet; test:recommend flags it when its inputs change |
 | `src/vehicles/launcherDecorKeepOut.selftest.mjs` | 115 | MANUAL (tanks) | per-tank pin (griffin_viper), 115 s: 2026-10-30 (the owner: "for tanks like griffin, dont allow decorations to be on the missile pods"): every laun | test:heavy -- tanks; lane mode and tank:release:check run it for its ids |
@@ -571,7 +572,7 @@ None. Folding receipts saves only process starts (about a second each) and would
 | `src/vehicles/profiles/chieftain10X.selftest.mjs` | 19 | MANUAL (tanks) | per-tank pin (chieftain_mk10), 19 s | test:heavy -- tanks; lane mode and tank:release:check run it for its ids |
 | `src/vehicles/profiles/chieftain10XBasket.selftest.mjs` | 19 | MANUAL (tanks) | per-tank pin (chieftain_mk10), 19 s | test:heavy -- tanks; lane mode and tank:release:check run it for its ids |
 | `src/vehicles/profiles/chieftain10XFenderCases.selftest.mjs` | 19 | MANUAL (tanks) | per-tank pin (chieftain_mk10), 19 s | test:heavy -- tanks; lane mode and tank:release:check run it for its ids |
-| `src/vehicles/profiles/chieftainFidelity.selftest.mjs` | 19 | MANUAL (tanks) | per-tank pin (chieftain3, chieftain_mk9), 19 s | test:heavy -- tanks; lane mode and tank:release:check run it for its ids |
+| `src/vehicles/profiles/chieftainFidelity.selftest.mjs` | 19 | MANUAL (tanks) | per-tank pin (chieftain5, chieftain3, chieftain_mk10, chieftain_mk9), 19 s: The Chieftain marks on the source-built castings (release 268b, owner 2026-11-02: "the cheiftain mk 3 and mk 9 | test:heavy -- tanks; lane mode and tank:release:check run it for its ids |
 | `src/vehicles/profiles/cv90MkivCaliber.selftest.mjs` | 19 | MANUAL (tanks) | per-tank pin (cv90_mk4), 19 s | test:heavy -- tanks; lane mode and tank:release:check run it for its ids |
 | `src/vehicles/profiles/griffinAssembledHull.selftest.mjs` | 19 | MANUAL (tanks) | per-tank pin (griffin50mm), 19 s | test:heavy -- tanks; lane mode and tank:release:check run it for its ids |
 | `src/vehicles/profiles/kf51bTurretCenter.selftest.mjs` | 19 | MANUAL (tanks) | per-tank pin (kf51_u), 19 s | test:heavy -- tanks; lane mode and tank:release:check run it for its ids |

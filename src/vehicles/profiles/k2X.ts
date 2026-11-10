@@ -403,10 +403,13 @@ type GunFrontPort = Pick<TankBuilderPort, 'add' | 'addEquipment'>;
 /** The K2's measured gun front on any K2 trunnion (gun-relative): the raked mantlet, the gunner's sight hood and the
  * collar. The K2B's prototype front (korea.ts) seats the same stock in its well. */
 /** The K2's gun front on a gun frame of its own. `minDropM` (default none) trims the mantlet's lower rear corner to that
- * depth under the bore, for a hull whose deck it would otherwise sweep. */
-export function addK2GunFront(P: GunFrontPort, minDropM?: number): void { addGunMantlet(P, minDropM); }
+ * depth under the bore, for a hull whose deck it would otherwise sweep. `revealSeatM` (default 0; r269s3, the K2B) sets
+ * the sight hood's side reveals that far proud of its lid's sides and rear and under its top, faces they shared. */
+export function addK2GunFront(P: GunFrontPort, minDropM?: number, revealSeatM = 0): void {
+  addGunMantlet(P, minDropM, revealSeatM);
+}
 
-function addGunMantlet(P: GunFrontPort, minDropM?: number): void {
+function addGunMantlet(P: GunFrontPort, minDropM?: number, revealSeatM = 0): void {
   const floor = minDropM === undefined ? -Infinity : GUN_Y - minDropM;
   // The source face retreats at its top and bottom; the old full-height box
   // protruded 0.28 m above the real forward face at canonical Z2.36.
@@ -416,14 +419,14 @@ function addGunMantlet(P: GunFrontPort, minDropM?: number): void {
     [2.34023,1.740],[2.310,1.771],[2.307,1.897],
     [2.042,1.897],[2.040,1.64502],
   ] as const).map(([y, z]) => [Math.max(y, floor), z] as const)));
-  addGunHood(P);
+  addGunHood(P, revealSeatM);
   // Source circular collar stands ahead of the raked face, not hidden in a
   // rectangular armored block. The ordinary circular barrel remains native.
   P.addEquipment('gunMount',cylZ(.1803,.23,28),0,.01045,2.29337-GUN_Z);
   P.addEquipment('gunMountDark',cylZ(.188,.026,28),0,.01045,2.184-GUN_Z);
 }
 
-function addGunHood(P: GunFrontPort): void {
+function addGunHood(P: GunFrontPort, seat = 0): void {
   // Two differently sloped cover sheets with real side reveals, thin skins
   // and a positive-X optical opening. No box fills the space under the lid.
   P.addEquipment('gunMount',gunPrism(-.2898,.4028,[
@@ -432,9 +435,9 @@ function addGunHood(P: GunFrontPort): void {
   P.addEquipment('gunMount',gunPrism(-.2969,.4128,[
     [2.5084,1.74772],[2.4805,2.151],[2.5125,2.151],[2.54043,1.74772],
   ]));
-  for(const [x0,x1] of [[-.2969,-.277],[.394,.4128]]) {
+  for(const [x0,x1] of [[-.2969-seat,-.277],[.394,.4128+seat]]) {
     P.addEquipment('gunMount',gunPrism(x0,x1,[
-      [2.332,1.74772],[2.32973,2.23422],[2.5125,2.151],[2.54043,1.74772],
+      [2.332,1.74772+seat],[2.32973,2.23422],[2.5125-seat,2.151],[2.54043-seat,1.74772+seat],
     ]));
   }
   P.addEquipment('gunMount',gunPrism(-.2969,.012,[

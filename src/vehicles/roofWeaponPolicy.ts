@@ -14,8 +14,8 @@ export const NO_ROOF_WEAPON: Readonly<Record<string, string>> = Object.freeze({
   bmp3: 'BMP-3: 100 mm 2A70, 30 mm 2A72, a coaxial PKT and two bow PKTs; no roof machine gun on the turret.',
   bmp3_rok: 'BMP-3 in Republic of Korea service: the standard BMP-3 armament (2A70, 2A72, coaxial and bow PKTs); no roof '
     + 'machine gun.',
-  bwp1: 'BWP-1 upgraded with the ZSSW-30 unmanned turret (30 mm Mk 44S, Spike-LR, coaxial UKM-2000): its 7.62 is the '
-    + 'coaxial gun; no roof machine gun.',
+  bwp1: 'BWP-1M "Puma" demonstrator with the unmanned Rafael RCWS-30 station (30 mm cannon, coaxial 7.62, one Spike-LR '
+    + 'canister): its 7.62 is the coaxial gun; no roof machine gun.',
   bmp2: 'BMP-2: 30 mm 2A42, a coaxial 7.62 mm PKT and the 9M113 Konkurs launcher on the turret roof; no roof machine gun.',
   m2a2_bradley: 'M2A2 Bradley: 25 mm M242, a coaxial M240C and the twin TOW launcher; no pintle or roof machine gun.',
   m3a3_bradley: 'M3A3 Bradley CFV: 25 mm M242, a coaxial M240C and two twin TOW launchers (269, the owner\'s second on the '

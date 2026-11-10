@@ -24,7 +24,8 @@ const mounts: Readonly<Record<string, readonly LauncherMuzzle[]>> = {
   // 269: the source turret is the M3A2's, the classic turret the M2A2's (modern3.ts buildM2A2Bradley)
   m3a2_bradley: bradley,
   ua_m2a3_bradley: bradley,
-  bmp2: [turret(.06, .655 + .025 * detMath.sin(.02), .155 + .025 * detMath.cos(.02), .02)],
+  // 267: the full-length 9M113 container on the 9P135M post (profiles/bmpBoatHull.ts), its front ring's mouth
+  bmp2: [turret(.05, .655 + .03 * detMath.sin(.02), .32 + .03 * detMath.cos(.02), .02)],
   spz_puma: [mouth(1.19, -.02, .465), mouth(1.41, -.02, .465)],
   puma_s1: [-.1005,.1005].map(dx => mouth(1.366+dx,-.0462,.7294)),
   // 269: the Spike LR2 twin launcher's canister faces on the turret's left wall (profiles/redback.ts, leftX + 0.11)
@@ -45,7 +46,8 @@ const mounts: Readonly<Record<string, readonly LauncherMuzzle[]>> = {
   // 267: the front caps of the two armoured Ataka boxes, two tubes side by side in each box's outboard part
   // (profiles/bmpt72Station.ts: tubes x .905 / 1.075, axis y .985, cap faces z .985)
   bmpt_terminator2: [-1, 1].flatMap(s => [.905, 1.075].map(x => turret(s * x, .985, .985))),
-  bwp1: [turret(.28, 1.11, .76)],
+  // 267: the Spike-LR canister on the RCWS-30's right arm (profiles/bwp1Rcws30.ts), its front collar's mouth
+  bwp1: [turret(-.88, .51, .705)],
   // 268: the classic TOW pod on the turret's LEFT, turret-fixed, its two collar mouths one over the other
   // (profiles/bradleyClassicTurret.ts); the M2A2's since 269, whose ODS rebuild (T2) stows the launcher flush on the left
   // wall behind the front corner plate (bradleyClassicTurretLayout.ts CLASSIC_TOW_CELLS)

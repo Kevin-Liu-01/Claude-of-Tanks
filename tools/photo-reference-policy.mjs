@@ -26,6 +26,18 @@ const PHOTO_REFERENCE_PACKETS=Object.freeze({
   'docs/references/photos/type90b-20261031.json':Object.freeze(['type90b']),
   'docs/references/photos/type10-tk-x-20261031.json':Object.freeze(['type10_tk_x']),
   'docs/references/photos/type10b-20261031.json':Object.freeze(['type10b']),
+  // 268 (the owner, 2026-11-01: "now update the ... bmp 3 rok, bwp-1"): the BMP-3 in ROK service on the fleet's BMP-3
+  // hull and the BWP-1 under the RCWS-30, built from photographs with no 3D model to follow
+  'docs/references/photos/bmp-family-20261101.json':Object.freeze(['bmp3_rok','bwp1']),
+  // 268 (the owner, 2026-11-01: "now update the c2 protottype, c1 prototype s1 ... K2B ... k1e1"): the C1 and C2 Ariete
+  // prototypes, the K1E1 and the K2B, rebuilt from photographs; the prints the first three were registered to (the series
+  // C1 Ariete, the K1A1) show other variants and are deregistered (Main's ruling 2026-10-28); the K2B had no 3D target
+  'docs/references/photos/ariete-prototypes-20261101.json':Object.freeze(['c1_ariete_proto_serie1','c2_ariete_proto']),
+  'docs/references/photos/korea-k1e1-k2b-20261101.json':Object.freeze(['k1e1','k2b']),
+  // 269 (the owner, 2026-11-02: "also update the cheiftainn mk 3 and mk 9"): the Chieftain Mk 9 on the source-built Mk 10
+  // castings without Stillbrew (the Mk 5 to the Mk 9 looked externally the same), proved by photographs of its base Mk 6
+  // and of 1979-90 BAOR Chieftains, with no 3D model to follow
+  'docs/references/photos/chieftain-mk9-20261102.json':Object.freeze(['chieftain_mk9']),
   // 267 (Main 2026-10-28 and 2026-10-29, as the 2A4-era Leopards): the Eurosatory 2024 KF51 Panther EVO and KF51-U,
   // rebuilt from photographs, their registered print (the 2022 demonstrator) unregistered
   'docs/references/photos/kf51-evo-20261101.json':Object.freeze(['kf51_evo']),

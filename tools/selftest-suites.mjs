@@ -3215,6 +3215,9 @@ export const SELFTEST_SUITES = Object.freeze({
     // Patton continuity, low-turret and M48 roof-seating receipts
     'src/vehicles/profiles/pattonCastProportions.selftest.mjs',
     'src/vehicles/profiles/pattonGunClearance.selftest.mjs',
+    // release 268: the photo-route rebuilds (the C1 and C2 Ariete prototypes, the K1E1, the K2B, the BMP-3 (ROK) and
+    // the BWP-1 under the RCWS-30) hold their packets
+    'src/vehicles/profiles/italyKoreaBmpPhotos.selftest.mjs',
     'src/vehicles/profiles/m60a2Starship.selftest.mjs',
     'src/vehicles/profiles/sheridan.selftest.mjs',
     'src/vehicles/profiles/sheridanTtsAttachmentSeats.selftest.mjs',
