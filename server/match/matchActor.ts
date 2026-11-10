@@ -536,14 +536,12 @@ export function createMatchActor(options: MatchActorOptions): MatchActor {
   const checkpointEverySnapshots = VIEWER_CHECKPOINT_EVERY_SNAPSHOTS;
   const actorLog = log.child({ room: roomId, map: mapId });
   const publishFailures = new WeakSet<object>();
-  // A resumed match continues its countdown or its battle where the old host left it (MatchActorResume.phase), its clock
-  // limit counting from the battle time already played.
+  // A resumed match continues its countdown or its battle where the old host left it (MatchActorResume.phase); its battle
+  // clock continues from the newest frame's time (the HUD's): the authority runs its mode clock and its full clock limit
+  // on that one clock (272, improve-271 plan 010).
   const resumedBattleTimeMs = resume ? Math.round(resume.battleTimeMs) : 0;
   const resumedVerdict = resume?.phase === 'ended' && resume.verdict ? resume.verdict : null;
   const countdownS = resume ? (resume.phase === 'countdown' ? (resume.countdownMs ?? 0) / 1000 : 0) : options.countdownS ?? 5;
-  const rulesetLimitS = typeof ruleset.timeLimitS === 'number' && Number.isFinite(ruleset.timeLimitS) ? ruleset.timeLimitS : null;
-  const effectiveBattleLimitS = battleLimitS != null ? Math.max(1, battleLimitS - resumedBattleTimeMs / 1000)
-    : resume && rulesetLimitS !== null ? Math.max(1, rulesetLimitS - resumedBattleTimeMs / 1000) : undefined;
 
   // ---- roster: seats first (entity ids in seat order), then bots
   const players: AuthoritativePlayerRecord[] = [];
@@ -596,7 +594,7 @@ export function createMatchActor(options: MatchActorOptions): MatchActor {
     const bound: { hook: LagCompensation | null } = { hook: null };
     authority = createAuthoritativeMatch({
       players, mapId, seed, countdownS, gameMode: mode, ruleset,
-      ...(effectiveBattleLimitS != null ? { battleLimitS: effectiveBattleLimitS } : {}),
+      ...(battleLimitS != null ? { battleLimitS } : {}), resumedAtS: resumedBattleTimeMs / 1000,
       worldCollision: collision,
       shellRewind: { begin: (shell) => bound.hook?.begin(shell), end: (shell) => bound.hook?.end(shell) },
       ...(profile ? { profile } : {}),
