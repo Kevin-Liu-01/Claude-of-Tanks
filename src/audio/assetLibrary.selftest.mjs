@@ -120,4 +120,85 @@ assert.ok(mobile.pick('gun_120_close', Math.random), 'and still picks it');
   await gated.idle();
 }
 
-console.log('assetLibrary.selftest: pinned battle set survives eviction, idle extras evicted and reloaded, voice bytes apart, takes by index, mobile variant cap, idle() awaits every load in flight passed');
+// (improve-271, plan 018) a file the network failed is asked for again later; a missing or undecodable file is final
+{
+  const { VOICE_PACKS } = await import('./voiceManifest.generated.ts');
+  const ok = () => ({ ok: true, status: 200, arrayBuffer: async () => new ArrayBuffer(16) });
+  const counted = (rule) => {
+    const urls = [];
+    return { urls, fetchImpl: async (url) => { urls.push(String(url)); return rule(String(url), urls.filter((u) => u === String(url)).length); } };
+  };
+  const settle = () => new Promise((resolve) => setTimeout(resolve, 0));
+  // (a) a network error on the first try: idle again, and the next load after the wait makes it ready
+  {
+    const net = counted((url, nth) => { if (nth === 1) throw new TypeError('Failed to fetch'); return ok(); });
+    const lib = createAssetLibrary({ ...options, fetchImpl: net.fetchImpl });
+    await lib.load(['pen_heavy']);
+    assert.ok(!lib.has('pen_heavy'), 'nothing decoded on the first try');
+    await lib.load(['pen_heavy']);
+    assert.equal(net.urls.length, SFX_ASSETS.pen_heavy.n, 'not again before the wait is over');
+    assert.equal(lib.pick('pen_heavy', () => 0), null);
+    assert.equal(net.urls.length, SFX_ASSETS.pen_heavy.n, 'a pick during the wait starts nothing');
+    now += 2000;
+    await lib.load(['pen_heavy']);
+    assert.ok(lib.has('pen_heavy'), 'the next load makes it ready');
+    assert.equal(net.urls.length, 2 * SFX_ASSETS.pen_heavy.n);
+  }
+  // (b) a 404 (and a decode error) is final: never fetched again by a load or a pick
+  {
+    const missing = counted(() => ({ ok: false, status: 404, arrayBuffer: async () => new ArrayBuffer(0) }));
+    const lib = createAssetLibrary({ ...options, fetchImpl: missing.fetchImpl });
+    await lib.load(['ram_heavy']);
+    now += 60_000;
+    await lib.load(['ram_heavy']);
+    assert.equal(lib.pick('ram_heavy', () => 0), null);
+    await lib.idle();
+    assert.equal(missing.urls.length, SFX_ASSETS.ram_heavy.n, 'a missing file is not asked for again');
+  }
+  // (c) three network failures: the sound stays failed and is not fetched a fourth time
+  {
+    const down = counted(() => { throw new TypeError('Failed to fetch'); });
+    const lib = createAssetLibrary({ ...options, fetchImpl: down.fetchImpl });
+    for (let i = 0; i < 6; i++) { await lib.load(['smoke_burst']); now += 10_000; lib.pick('smoke_burst', () => 0); await lib.idle(); }
+    assert.equal(down.urls.length, 3 * SFX_ASSETS.smoke_burst.n, 'three tries in all');
+  }
+  // (d) one variant the network failed: the sound plays its others, the next load fetches that variant alone, its bytes
+  // counted once
+  {
+    const id = 'gun_120_close';
+    const partial = counted((url, nth) => { if (url.endsWith(`/${id}_0.webm`) && nth === 1) throw new TypeError('reset'); return ok(); });
+    const lib = createAssetLibrary({ ...options, fetchImpl: partial.fetchImpl });
+    await lib.load([id]);
+    assert.ok(lib.has(id) && lib.variant(id, 0) === null && lib.variant(id, 1), 'ready with the variants it has');
+    const before = lib.stats().sfxMb;
+    now += 2000;
+    await lib.load([id]);
+    assert.ok(lib.variant(id, 0), 'the failed variant refilled');
+    assert.equal(partial.urls.filter((u) => u.endsWith(`/${id}_1.webm`)).length, 1, 'only the failed variant is fetched again');
+    const whole = createAssetLibrary({ ...options });
+    await whole.load([id]);
+    assert.ok(lib.stats().sfxMb > before && lib.stats().sfxMb === whole.stats().sfxMb, 'its bytes counted once');
+    await lib.load([id]);
+    assert.equal(partial.urls.length, SFX_ASSETS[id].n + 1, 'nothing more once whole');
+  }
+  // (e) a crew pack: a take the network failed is fetched again by the next loadVoice after the wait, that take alone
+  {
+    const [line, takes] = Object.entries(VOICE_PACKS.ru).find(([, t]) => t.length >= 2);
+    const voice = counted((url, nth) => { if (url.endsWith(`/ru/${line}_1.webm`) && nth === 1) throw new TypeError('reset'); return ok(); });
+    const lib = createAssetLibrary({ ...options, fetchImpl: voice.fetchImpl });
+    await lib.loadVoice('ru');
+    const fetchedBefore = voice.urls.length;
+    assert.ok(lib.voice('ru', line, () => 0, 0), 'the pack plays without the failed take');
+    await lib.loadVoice('ru');
+    assert.equal(voice.urls.length, fetchedBefore, 'not before the wait is over');
+    now += 2000;
+    await lib.loadVoice('ru');
+    assert.equal(voice.urls.length, fetchedBefore + 1, 'that take alone again');
+    const take0 = lib.voice('ru', line, () => 0, 0), take1 = lib.voice('ru', line, () => 0, 1);
+    assert.ok(take1 && take1 !== take0, 'and it plays as its own take');
+    assert.ok(takes.length >= 2 && lib.voiceReady('ru'));
+    await settle();
+  }
+}
+
+console.log('assetLibrary.selftest: pinned battle set survives eviction, idle extras evicted and reloaded, voice bytes apart, takes by index, mobile variant cap, idle() awaits every load in flight, a network failure retried (a missing file never) passed');
