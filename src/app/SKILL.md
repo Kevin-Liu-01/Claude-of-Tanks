@@ -28,7 +28,9 @@ its bar) the first time a watched battle loads; main.ts keeps only the lazy owne
   retain a stale world/player instead of consulting the supplied owner.
 - Retain scratch objects across frames; avoid per-frame object allocation.
 - Keep optional implementations demand-loaded. Concurrent preloads share
-  one request; failed lazy construction remains retryable.
+  one request; lazy construction that fails after its chunk arrived remains
+  retryable, while a chunk that did not arrive is never requested again in the
+  document (its trigger's next press reloads; `src/ui/components/loadFailure.ts`).
 - Derive adapter types from their subsystem owner and validate required
   functions before activating a dynamically loaded integration.
 - Warm work must honor generation cancellation and the common reset/dispose

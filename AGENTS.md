@@ -18,7 +18,7 @@ worktree and never stage generated tank work wholesale.
 <!-- agent-docs:fill:architecture -->
 - `docs/DEVELOPMENT.md#publishing-to-shared-main` — shared Codex/Claude integration,
   overlap review and preflight; read before integrating or publishing changes.
-- `docs/ARCHITECTURE.md` — original module contracts and simulation invariants.
+- `docs/ARCHITECTURE.md` — binding conventions in §1, including §1.6; §2 onward is the original module plan.
 - `docs/AUDIO.md` — the sound engine and how its sounds were generated (ElevenLabs
   catalog, takes, selection, mastering, crew script and cast); read before changing
   `src/audio/` or regenerating sounds.
