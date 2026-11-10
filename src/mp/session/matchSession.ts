@@ -992,7 +992,14 @@ export class MatchSession {
     try {
       await host.start(config);
     } catch (error) {
-      if (this.host === host) this.host = null;
+      // A newer election replaced or cleared this host while it booted (its stop rejected the start): the newer migration
+      // owns the role and the status flags, and this seat can still host, so nothing is declined (improve-271 plan 005).
+      // Checked before the host is cleared below, or it would always look superseded.
+      if (this.host !== host || this.runningGeneration !== change.generation) {
+        this.log('info', 'elected host superseded while booting', { generation: change.generation, running: this.runningGeneration });
+        return;
+      }
+      this.host = null;
       this.log('error', 'elected host failed to boot', { error: error instanceof Error ? error.message : String(error) });
       this.p2pListeners.emit({ kind: 'migration', phase: 'failed', hostId: me, generation: change.generation, role: this.role, detail: 'boot failed' });
       this.migrationActive = false;

@@ -15,6 +15,8 @@ import { RecordingPresentation } from '../presentation/adapter.ts';
 import { Listeners } from '../transport/transport.ts';
 import { RtcWorld } from '../transport/rtcDouble.test-support.ts';
 import { createInProcessHostPort } from '../host/inProcessHost.ts';
+import { createHostPortPair } from '../host/hostProtocol.ts';
+import { createMatchHostCore } from '../host/matchHostCore.ts';
 import { signSeatToken } from '../../../server/match/seatToken.ts';
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -283,3 +285,53 @@ console.log('matchSessionP2p.selftest: the re-entry decline and its fallback boo
 }
 for (const core of cores) core.dispose();
 console.log('matchSessionP2p.selftest: an election onto a seat whose match link is already closed boots nothing and throws nothing');
+
+// ---- (improve-271 plan 005) an elected seat whose host is still booting when the room elects another seat follows the
+//      new host as a peer and does not decline as unable (the stop it saw was the newer election's, not a failed boot); a
+//      boot that fails on its own still declines as unable
+{
+  // a host thread whose world builds for 600 ms (a browser fetching and building the shards), or fails to
+  const hostPort = (buildWorld) => () => {
+    const pair = createHostPortPair();
+    cores.push(createMatchHostCore({ port: pair.worker, buildWorld, reportIntervalMs: 500 }));
+    return pair.main;
+  };
+  const electedPeer = async (createHostPort, matchId) => {
+    const { transport, client, session } = await joinedClient();
+    session.dispose();
+    const hostSecret = createHash('sha256').update(`${SEAT_SECRET}:${matchId}`).digest('hex');
+    const token = signSeatToken(hostSecret, { v: 1, roomId: roomCode, seat: 0, playerId: 'me', name: 'Me', team: 'alpha', specId: 'm1a1_abrams_hc', iat: Date.now() - 1000, exp: Date.now() + 3_600_000 });
+    const peer = new MatchSession({
+      room: client, clock: () => performance.now(),
+      createPresentation: () => { const presentation = new RecordingPresentation(8); return { adapter: presentation, controls: null, prediction: null, dispose: () => presentation.dispose() }; },
+      p2p: { createPeerConnection: world.createPeerConnection, createHostPort, manifestBase: null, tier: 'desktop', countdownS: 1, standbyHost: false },
+    });
+    const events = [];
+    peer.onP2p((event) => events.push(event));
+    peer.start();
+    transport.deliver({ type: 'room_state', payload: { room: snapshotWith({ transport: 'p2p', hostId: 'other', generation: 1, since: 2000 }) } });
+    transport.deliver({ type: 'match_start', payload: { matchId, round: 1, mapId: 'verdant', mode: 'standard', seed: 7, seat: 0, team: 'alpha', seatToken: token, matchUrl: p2pMatchUrl(roomCode, 1), hostId: 'other', expiresAt: Date.now() + 3_600_000 } });
+    await until(() => peer.phase === 'match' && peer.role === 'peer', 'the peer entered');
+    transport.deliver({ type: 'host_changed', payload: { hostId: 'me', generation: 2, resumeTick: 0, reason: 'timeout', hostSecret } });
+    await until(() => peer.role === 'host', 'the elected seat boots its host');
+    return { transport, client, peer, events };
+  };
+  const unable = (transport) => transport.outbound.filter((envelope) => envelope.payload?.command?.type === 'host_decline' && envelope.payload.command.unable === true);
+
+  const superseded = await electedPeer(hostPort(async () => { await sleep(600); return 'terrain'; }), 'm5-0000abba');
+  assert.notEqual(superseded.peer.matchHost?.state, 'live', 'still booting');
+  superseded.transport.deliver({ type: 'host_changed', payload: { hostId: 'other', generation: 3, resumeTick: 0, reason: 'timeout' } });
+  await until(() => superseded.peer.role === 'peer', 'the seat follows the newer host');
+  await sleep(1000);
+  assert.equal(unable(superseded.transport).length, 0, 'a boot stopped by a newer election declines nothing');
+  assert.equal(superseded.peer.role, 'peer');
+  assert.equal(superseded.events.some((event) => event.kind === 'migration' && event.phase === 'failed'), false, 'and reports no failed migration');
+  superseded.peer.dispose(); superseded.client.dispose();
+
+  const failing = await electedPeer(hostPort(async () => { await sleep(100); throw new Error('the shards did not arrive'); }), 'm6-0000b00b');
+  await until(() => unable(failing.transport).length > 0, 'the failed boot declines as unable', 5000);
+  assert.ok(failing.events.some((event) => event.kind === 'migration' && event.phase === 'failed' && event.detail === 'boot failed'));
+  failing.peer.dispose(); failing.client.dispose();
+}
+for (const core of cores) core.dispose();
+console.log('matchSessionP2p.selftest: a booting host superseded by a newer election follows it without declining; a boot that fails on its own declines as unable');
