@@ -9419,7 +9419,10 @@ ${snowCap ? `
           [x + u * hx * c + v * hz * s, z - u * hx * s + v * hz * c] as const);
         for (const list of [obstacles, sceneryTrees] as const) {
           for (const ob of list) {
-            if (ob.kind === 'tank-wreck' || ob.max[1] - ob.min[1] < 0.5) continue;
+            // (wrecks-270, 11-09) nor through a hulk placed before it: the census found the lane's later passes seating
+            // a hulk on one already there (Whiteout's Strv 103 0.4 m from its Leopard 1A5;
+            // Reservoir, Copper Mesa, Mars, Blackglass and Skybridge 0.6-6.9 m apart), two hulls through each other
+            if (ob.kind !== 'tank-wreck' && ob.max[1] - ob.min[1] < 0.5) continue;
             if (ob.max[0] < x - r || ob.min[0] > x + r || ob.max[2] < z - r || ob.min[2] > z + r) continue;
             for (const poly of shapePolygons(ob)) if (polygonGap(hull, poly).gap < -0.1) return true;
           }

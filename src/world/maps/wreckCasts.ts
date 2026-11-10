@@ -76,8 +76,10 @@ export const WRECK_CASTS = {
     'cold-war', ['Australia'], 9, ['centurion5_1_aus', 'centurion5_2', 'leo1a5', 'leo1a2a1', 'm41a3']),
   delta: cast('the braided Jamuna, Bangladesh, December 1971', 'cold-war', ['India', 'Pakistan'], 10,
     ['type59', 't55a', 'vickers_mk1', 'm48a3_patton', 'centurion5_2', 'm41a3']),
-  desert: cast('the Dahar edge, southern Tunisia: the Tunisian and Libyan armour of the 1980s', 'cold-war',
-    ['Tunisia', 'Libya'], 11, ['m60a3', 'm48a5_patton', 'm41a3', 't55a', 't62_1975', 'type59'], DESERT),
+  // (Main, 2026-11-09) the desert ruling: its judged pairs had to differ by 0 px over 8/255 outside the hulk silhouettes;
+  // they differ by 4 to 23 px, all within 12 px of a hulk's edge, so the map reverts unjudged, whole to base, as verdant did
+  desert: baseCast('the Dahar edge, southern Tunisia: the Tunisian and Libyan armour of the 1980s', 'cold-war',
+    ['Tunisia', 'Libya'], ['m60a3', 'type59', 'm48a5_patton', 't62_1975']),
   fjord: cast('the Ofotfjord and Bjerkvik, Nordland (May 1940): today\'s armour of the Narvik campaign\'s nations', 'modern',
     ['Norway', 'France', 'Poland', 'UK', 'Germany'], 10, ['leo2a7v', 'cv90', 'leclerc_s2', 'pt91a_twardy', 'challenger2', 'warrior_tes_h']),
   foundry: cast('the Völklingen ironworks on the Saar (March 1945): today\'s US and German armour', 'modern', ['USA', 'Germany'], 10,
@@ -96,8 +98,11 @@ export const WRECK_CASTS = {
   moon: cast('the Taurus-Littrow valley, December 1972: no war was fought here', 'cold-war', [], 0, []),
   oasis: cast('Siwa, Egypt\'s Western Desert: the Libyan-Egyptian war of July 1977 and the Egyptian armour after it',
     'cold-war', ['Egypt', 'Libya'], 10, ['t55a', 't62_1975', 'm60a3', 'm1a1', 'type59'], DESERT),
-  orchard: cast('the Chouf, Mount Lebanon, June 1982', 'cold-war', ['Israel', 'Syria'], 12,
-    ['merkava1b', 'magach3', 'magach6b', 'shot_kal', 't55a', 't62_1975', 't72m1_jaguar']),
+  // (Main, 2026-11-09) Orchard's lane cast cost the desktop chase view 2.8-4.6 ms a frame (main's five 0.3 ms), and the
+  // in-page bisection put it on the three hulks nearest the spawn on the camera's axis (92-202 m); trimming them would
+  // move more than two judged hulks, and the map lost its round-6 A/B 3-4. It reverts whole to base, as desert did
+  orchard: baseCast('the Chouf, Mount Lebanon, June 1982', 'cold-war', ['Israel', 'Syria'],
+    ['merkava1b', 'm60a1', 'centurion5_2', 't62_1975', 't72m1_jaguar']),
   polders: cast('the Scheldt polders (autumn 1944): today\'s Canadian, British and German armour', 'modern', ['Canada', 'UK', 'Germany'],
     10, ['leo2a4m_can', 'challenger2', 'ajax', 'warrior_tes_h', 'spz_puma', 'kf41_lynx']),
   railyard: cast('a junction on the coalfield (the Ruhr, Upper Silesia), the Cold War', 'cold-war',
