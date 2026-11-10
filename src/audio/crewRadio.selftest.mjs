@@ -283,4 +283,31 @@ for (const lang of CREW_LANGUAGES) {
   assert.equal(radio.log.at(-1)?.id, 'victory', 'and cuts in once its take lands');
 }
 
-console.log('crewRadio.selftest: radio discipline, interrupts, stale drops, complete packs without fallback, damage, live crew switching and lines that commit when they play passed');
+// (improve-271, plan 019) a cut line's release click never plays inside the next transmission, and its bed fade-out is
+// unscheduled before the new line's bed is set; a line played out keeps its release click
+{
+  const { ctx, radio } = harness();
+  radio.say('penetration');
+  const keyOuts = () => ctx.started.filter((node) => node.buffer?.tag === 'radio_key_out');
+  const first = keyOuts()[0];
+  const bedGain = ctx.started.find((node) => node.buffer?.tag === 'radio_static_loop').outputs[0].outputs[0];
+  assert.equal(bedGain.kind, 'gain');
+  ctx.advance(0.3);
+  const marks = bedGain.gain.events.length;
+  assert.equal(radio.say('fire'), true, 'a survival call cuts the report');
+  assert.ok(first.stopped !== null && first.stopped < first.started.at, `the cut line's key-out stopped before its start (${first.stopped} < ${first.started.at})`);
+  const after = bedGain.gain.events.slice(marks);
+  const cancel = after.findIndex(([kind]) => kind === 'cancel');
+  const newBed = after.findIndex(([kind, value]) => kind === 'target' && value > 0);
+  assert.ok(cancel >= 0 && cancel < newBed, 'the bed\'s schedule cancelled before the new line\'s bed is set');
+  const second = keyOuts()[1];
+  assert.equal(second.stopped, null, 'the new line keeps its own release');
+  ctx.advance(5);
+  radio.update();
+  radio.say('reloading');
+  ctx.advance(0.1);
+  assert.equal(second.stopped, null, 'control: a line played to its end still gets its key-out click');
+  second.onended?.();
+}
+
+console.log('crewRadio.selftest: radio discipline, interrupts, stale drops, complete packs without fallback, damage, live crew switching and lines that commit when they play, a cut line\'s release and bed fade cancelled passed');

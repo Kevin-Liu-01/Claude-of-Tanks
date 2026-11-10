@@ -157,8 +157,22 @@ export function createCrewRadio({ mixer, library, random, initialLanguage = 'en-
     bed = source;
   }
 
+  /**
+   * (improve-271, plan 019) The line's elements still to come (its release click, an interference crackle), stopped when
+   * the line is cut so none plays inside the next transmission; each leaves the list when it ends.
+   */
+  const lineTail: AudioBufferSourceNode[] = [];
+  function holdUntilEnded(src: AudioBufferSourceNode, g: GainNode): void {
+    lineTail.push(src);
+    src.onended = () => {
+      try { g.disconnect(); } catch { /* detached */ }
+      const at = lineTail.indexOf(src);
+      if (at >= 0) lineTail.splice(at, 1);
+    };
+  }
+
   /** A keyed element of the net (key-up, release) into the headset speaker; its length, or 0 while it decodes. */
-  function key(id: 'radio_key_in' | 'radio_key_out', when: number, gain: number): number {
+  function key(id: 'radio_key_in' | 'radio_key_out', when: number, gain: number, tail = false): number {
     const buffer = library.pick(id, random);
     if (!buffer) return 0;
     const src = ctx.createBufferSource();
@@ -168,7 +182,8 @@ export function createCrewRadio({ mixer, library, random, initialLanguage = 'en-
     src.connect(g);
     g.connect(speaker);
     src.start(when);
-    src.onended = () => { try { g.disconnect(); } catch { /* detached */ } };
+    if (tail) holdUntilEnded(src, g);
+    else src.onended = () => { try { g.disconnect(); } catch { /* detached */ } };
     return buffer.duration;
   }
 
@@ -212,11 +227,18 @@ export function createCrewRadio({ mixer, library, random, initialLanguage = 'en-
         src.stop(t + 0.06);
       } catch { /* stopped */ }
     }
-    currentEnd = ctx.currentTime;
+    // (plan 019) the cut line's release click and crackle never play, and its bed fade-out is unscheduled
+    const now = ctx.currentTime;
+    for (const tailSrc of lineTail) {
+      try { tailSrc.stop(now); } catch { /* not started or stopped */ }
+    }
+    lineTail.length = 0;
+    currentEnd = now;
     currentPri = -1;
     currentYields = false;
     currentGroup = null;
-    bedGain.gain.setTargetAtTime(0, ctx.currentTime, 0.05);
+    bedGain.gain.cancelScheduledValues(now);
+    bedGain.gain.setTargetAtTime(0, now, 0.05);
     mixer.duckForVoice(false);
   }
 
@@ -252,7 +274,7 @@ export function createCrewRadio({ mixer, library, random, initialLanguage = 'en-
     const bedLevel = damage === 2 ? 0.175 : damage === 1 ? 0.112 : 0.07;
     bedGain.gain.setTargetAtTime(bedLevel, startAt - 0.02, 0.02);
     bedGain.gain.setTargetAtTime(0, startAt + dur + 0.05, 0.04);
-    const outS = key('radio_key_out', startAt + dur + 0.02, damage === 2 ? 0.2 : 0.15);
+    const outS = key('radio_key_out', startAt + dur + 0.02, damage === 2 ? 0.2 : 0.15, true);
     if (damage >= 1 && library.has('radio_interference') && random() < 0.6) {
       const crackle = library.pick('radio_interference', random);
       if (crackle) {
@@ -263,7 +285,7 @@ export function createCrewRadio({ mixer, library, random, initialLanguage = 'en-
         c.connect(cg);
         cg.connect(input);
         c.start(startAt + random() * dur * 0.7);
-        c.onended = () => { try { cg.disconnect(); } catch { /* detached */ } };
+        holdUntilEnded(c, cg);
       }
     }
     mixer.duckForVoice(true);
