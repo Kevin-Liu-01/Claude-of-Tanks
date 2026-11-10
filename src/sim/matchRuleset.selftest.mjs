@@ -165,7 +165,7 @@ assert.deepEqual({ ...ctf.flagBots }, { recoverShare: 0.5, recoverMin: 2, huntWh
   escortAheadM: 24, escortSideM: 22, defendShare: 0.15, defendMinSquad: 6, interceptLeadS: 2.5,
   raidStageM: 120, raidHoldInM: 25, raidGroupM: 70, raidMinGroup: 2, raidWaitS: 12 },
   'the flag bots run the flags: half recover, the rest raid back as a group; a carrier\'s team escorts it, four strong, no guard home (round 3b)');
-assert.deepEqual({ ...ctf.flagPitch }, { baseAxisM: 320, respawnBackM: 100, carrierSpeedScale: 1 }, 'the bases 320 m apart, a revive 100 m behind its own (round 3b), a carrier at full speed (gameplay-modes-233)');
+assert.deepEqual({ ...ctf.flagPitch }, { baseAxisM: 320, respawnBackM: 100, carrierSpeedScale: 1, carrierRevealed: true }, 'the bases 320 m apart, a revive 100 m behind its own (round 3b), a carrier at full speed (gameplay-modes-233) and revealed to every viewer (Main, finding 53)');
 {
   const ball = matchRulesetFor('turbo_ball');
   assert.deepEqual([ball.ballBots.strikers, ball.ballBots.strikerHoldS, ball.ballBots.swapM, ball.ballBots.leadMaxS, ball.ballBots.screens,

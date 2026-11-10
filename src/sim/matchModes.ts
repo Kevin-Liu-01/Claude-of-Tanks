@@ -485,6 +485,9 @@ interface WaveCheckpoint {
     attack?: [string, AttackStage][] };
 }
 
+/** Why every viewer sees a hull its side has not spotted (the authority's spotting filter reads it). */
+export type ModeRevealReason = 'flag_carrier';
+
 export interface MatchModeResult {
   result: ObjectiveTeam | 'draw';
   reason: string;
@@ -543,6 +546,9 @@ export interface MatchModeController<
   restoreCheckpoint(checkpoint: ModeCheckpoint): void;
   /** A bravo hunter's search record (round 8 Y2: receipts and probes read the phase), a copy; null before it has one. */
   huntSearchOf(entity: Pick<MatchModeEntity, 'id'>): HuntSearch | null;
+  /** The mode's named reveal of a hull to every viewer, or null (Main's ruling on audit finding 53: a flag carrier,
+   *  whose position its carried flag publishes). Allocation-free: the filter asks it for every hull and viewer. */
+  revealReason(entityId: string): ModeRevealReason | null;
 }
 
 
@@ -2954,6 +2960,11 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
     },
     lineGuardFallbacks() {
       return lineGuardFallbackLog;
+    },
+    revealReason(entityId) {
+      if (!ruleset.flagPitch?.carrierRevealed) return null;
+      const flag = flagCarriedBy(entityId);
+      return flag && flag.status === 'carried' ? 'flag_carrier' : null;
     },
     captureCheckpoint(elapsedS) {
       // the wave rules the ruleset names (its horde, its assault), never a mode-id literal (round 3, the critic's E-R2-7)
