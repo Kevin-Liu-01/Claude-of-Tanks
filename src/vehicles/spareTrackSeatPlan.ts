@@ -53,7 +53,6 @@ export const SPARE_TRACK_SEAT_PLAN: Readonly<Record<string, Readonly<Record<stri
   },
   "m3a3_bradley": {
     "fitting@hull(-0.62,1.68,2.46)": [-0.69031, 1.67283, 2.61236, 0.23375, 0.66672, 0.23556, 0.66735, 1],
-    "fitting@turret(-0.48,0.59,-1.04)": [0.27775, 0.69926, 0.20107, 0.01219, 0, 0, 0.99993, 1],
   },
   "merkava3d": {
     "merkava3d-basket-links@turret(-0.45,0.48,-2.78)": 1,
