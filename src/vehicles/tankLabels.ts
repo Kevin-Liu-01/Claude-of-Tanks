@@ -478,6 +478,11 @@ const LABEL_OVERRIDES: Readonly<Record<string, TankLabelOverride>> = Object.free
   // t84bm_oplot_m (the welded Duplet turret before the armoured bustle compartment, in its wartime field kit) is the
   // 2000 serial T-84U Oplot, Object 478DU9. The new T-84BM Oplot-M (478DU9-1) and Oplot-T (478DU9-T) are bm_oplot_m and
   // bm_oplot_t. The ids stay: saves, rooms, replays and the Gallery key on them.
+  // release 269: the 152 mm line
+  object292: { displayName: 'Object 292', shortName: 'Obj. 292', searchAliases: ['Obiekt 292', 'Объект 292', 'T-80 152', 'LP-83'] },
+  object477_molot: { displayName: 'Object 477 Molot', shortName: 'Molot', searchAliases: ['Object 477A', 'Obyekt 477', 'Boxer', 'Hammer', 'Объект 477', 'Молот'] },
+  object195: { displayName: 'Object 195', shortName: 'Obj. 195', searchAliases: ['T-95', 'Obyekt 195', 'Объект 195', 'Sovershenstvovanie-88'] },
+  t14_152: { displayName: 'T-14 152', shortName: 'T-14 152', searchAliases: ['T-14 Armata 152', 'Armata 152 mm', 'T-14 2A83'] },
   t84: {
     displayName: 'Object 478DU2', shortName: 'Object 478DU2',
     searchAliases: ['T-84', 'T-84 prototype', 'T-84 Oplot', 'Obyekt 478DU2', 'Ob. 478DU2'],

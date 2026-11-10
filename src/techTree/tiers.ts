@@ -53,6 +53,8 @@ const TIERS: Readonly<Record<string, TreeTier>> = Object.freeze({
   leopard_as1: 1, m113a1_fsv: 1, m113a1_mrv: 1, m113a3: 2, m113as4: 3, m1a1_aim_sa_aus: 8, m1a2_sepv3_aus: 9, redback: 6,
   // 269: the M163 VADS (a 20 mm gun a tier under the 35 mm Gepard)
   m163_vads: 4,
+  // the 152 mm line (Main ruled the tiers 2026-11-04 on the lane's fairness numbers)
+  object292: 7, object477_molot: 9, object195: 10, t14_152: 10,
 });
 
 const NUMERALS = ['', 'I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X'] as const;

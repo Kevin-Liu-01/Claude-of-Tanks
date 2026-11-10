@@ -69,6 +69,7 @@ import { COMBAT_ANATOMY_CALIBRATIONS as CALIBRATIONS_PATTON } from './combatAnat
 import { COMBAT_ANATOMY_CALIBRATIONS as CALIBRATIONS_POLAND } from './combatAnatomyGroups/poland.generated.ts';
 import { COMBAT_ANATOMY_CALIBRATIONS as CALIBRATIONS_PUMAS1SOURCEX } from './combatAnatomyGroups/pumaS1SourceX.generated.ts';
 import { COMBAT_ANATOMY_CALIBRATIONS as CALIBRATIONS_RUSSIA } from './combatAnatomyGroups/russia.generated.ts';
+import { COMBAT_ANATOMY_CALIBRATIONS as CALIBRATIONS_RUSSIA152 } from './combatAnatomyGroups/russia152.generated.ts';
 import { COMBAT_ANATOMY_CALIBRATIONS as CALIBRATIONS_SABRAMK2SOURCEX } from './combatAnatomyGroups/sabraMk2SourceX.generated.ts';
 import { COMBAT_ANATOMY_CALIBRATIONS as CALIBRATIONS_SHERIDAN } from './combatAnatomyGroups/sheridan.generated.ts';
 import { COMBAT_ANATOMY_CALIBRATIONS as CALIBRATIONS_SINOSOVIETCONCEPTS } from './combatAnatomyGroups/sinoSovietConcepts.generated.ts';
@@ -171,6 +172,7 @@ export const COMBAT_ANATOMY_CALIBRATIONS: Readonly<Record<string, CombatAnatomyC
   CALIBRATIONS_POLAND,
   CALIBRATIONS_PUMAS1SOURCEX,
   CALIBRATIONS_RUSSIA,
+  CALIBRATIONS_RUSSIA152,
   CALIBRATIONS_SABRAMK2SOURCEX,
   CALIBRATIONS_SHERIDAN,
   CALIBRATIONS_SINOSOVIETCONCEPTS,

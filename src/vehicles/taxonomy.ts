@@ -118,6 +118,8 @@ const ERA_VEHICLE_IDS: Readonly<Record<VehicleEra, readonly string[]>> = Object.
     // release 269: the second air-defence round: the ItPsv 90 Marksman (1990, as the 2K22M), the ItPsv Leopard 2 (2016),
     // the Lvkv 9040 (the 1990s CV90 family), the K30 Biho (1999) and the PZA Loara (2004)
     'marksman_t55', 'itpsv_leopard2', 'lvkv9040', 'k30_biho', 'pza_loara',
+    // release 269: the Object 292, a T-80BV under a 152 mm turret (the 152 mm line's clean-sheet tanks are next generation)
+    'object292',
   ]),
   // A new generation: clean-sheet architectures past the third-generation tank (uncrewed turrets and crew capsules,
   // 130 mm-class guns, hybrid drives), whether fielded, prototypes or concepts. The T-14 Armata is the yardstick.
@@ -125,6 +127,8 @@ const ERA_VEHICLE_IDS: Readonly<Record<VehicleEra, readonly string[]>> = Object.
     't14_armata', 'object148_proto', 'kurganets25', 'object695', 'bmp3m_dragun125',
     'kf51_panther', 'kf51_evo', 'kf51_u', 'm1a3', 'abramsx', 'griffin50mm',
     'type100', 'ztz100', 'ztz100_prototype', 'ztz20', 'ztz20_prototype', 'pl01', 'pl01_105', 'upior', 'raiju_ifv',
+    // release 269: the Russian 152 mm line's clean-sheet tanks (the Object 292 is a T-80U and modern)
+    'object477_molot', 'object195', 't14_152',
   ]),
 });
 

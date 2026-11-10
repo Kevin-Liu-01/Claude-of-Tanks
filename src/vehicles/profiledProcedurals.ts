@@ -71,6 +71,7 @@ import { MERKAVA_X_PROFILES } from './profiles/merkavaX.ts';
 import { K2_X_PROFILES } from './profiles/k2X.ts';
 import { KF51_X_PROFILES } from './profiles/kf51X.ts';
 import { T14_X_PROFILES } from './profiles/t14X.ts';
+import { RUSSIA_152_PROFILES } from './profiles/russia152.ts';
 import { KURGANETS_X_PROFILES } from './profiles/kurganetsX.ts';
 import { LEOPARD_A6_X_PROFILES } from './profiles/leopardA6X.ts';
 import { LEOPARD_A6_UA_PROFILES } from './profiles/leopardA6Ua.ts';
@@ -235,6 +236,7 @@ export const PROCEDURAL_PROFILES: VehicleProfileRecord = {
   ...K2_X_PROFILES,
   ...KF51_X_PROFILES,
   ...T14_X_PROFILES,
+  ...RUSSIA_152_PROFILES,
   ...KURGANETS_X_PROFILES,
   // 268: the twin-cannon air-defence round
   ...GM352_AIR_DEFENSE_PROFILES,

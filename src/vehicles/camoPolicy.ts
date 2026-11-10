@@ -1003,6 +1003,10 @@ const DEFAULT_CAMO_PATTERN_BY_TANK_ID: Readonly<Record<string, CamoPatternId>> =
   m1a1_aim_sa_aus: 'paint_leopard_as1',
   m1a2_sepv3_aus: 'paint_leopard_as1',
   redback: 'paint_leopard_as1',
+  // the 152 mm line: the Object 292 in the plain green Kubinka shows it in, and the Molot, the 152 mm line's other Soviet prototype, in
+  // the same: the national Russian plain (the service presets are a cold-war amoeba and the T-90M's digital)
+  object292: 'national_ru',
+  object477_molot: 'national_ru',
 });
 
 /** The stock appearance, independent of the player's saved selection. */

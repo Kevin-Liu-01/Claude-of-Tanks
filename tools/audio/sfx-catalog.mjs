@@ -79,6 +79,10 @@ const GUN_REPORTS = [
   // 150 Hz and the calibre ladder inverted; "earth-shaking" still rumbled broadband (0.75–0.83 under 150 Hz, level with
   // the 76 mm in the game's capture). The engine turns a brake's blast by the row's brake, so the boom is all depth.)
   ['gun_170', '170 mm long heavy gun with a muzzle brake', 'a colossal, very deep boom', 'superheavy'],
+  // release 269 (owner 2026-11-04, the Russian 152 mm line): the three long 152 mm smoothbores, each its own row
+  ['gun_152lp83', '152 mm long smoothbore tank cannon', 'an enormous, very deep, hard-hitting boom', 'superheavy'],
+  ['gun_152_2a73', '152 mm smoothbore tank cannon in an armoured casing', 'an enormous, deep, thudding boom', 'superheavy'],
+  ['gun_152_2a83', '152 mm long high-velocity smoothbore tank cannon', 'a colossal, very deep boom with a hard front', 'superheavy'],
 ];
 // The recoil past the loader: lighter guns clack, the big ones slam; the distant boom by size.
 const RECOIL = { light: 'a hard steel clack', medium: 'a heavy steel slam', heavy: 'a violent heavy steel slam', superheavy: 'a violent, massive steel slam' };
@@ -87,6 +91,8 @@ const LONG = { light: 4.5, medium: 5, heavy: 5, superheavy: 5.5 };
 // Banks where fewer takes than variants passed the critic in the first full run get more (their prompts pass, at a lower rate).
 const MORE_TAKES = {
   gun_76_close: 14, gun_76_own: 12, gun_105_own: 12, gun_165_own: 12, gun_152h_own: 12, gun_152gl_own: 12, gun_152gl_interior: 10,
+  // release 269: the 152 mm line's hatch reports, at the other 152 mm banks' rate
+  gun_152lp83_own: 12, gun_152_2a73_own: 12, gun_152_2a83_own: 12,
   ac_30_close: 16, ac_20_own: 12, ac_25_own: 12, ac_30_own: 24,
   // banks whose takes the ear proxy passed fewer than their variants, topped up
   ac_20_close: 16, ac_25_close: 16, ac_35_close: 16, ac_40_close: 20, ac_50_close: 16, ac_40_own: 40, ac_50_own: 14,
@@ -221,6 +227,13 @@ const mechanisms = [
     ['case_eject_brass_light', `a spent 90 mm brass tank gun case thrown out of the breech onto the steel turret floor: a bright ringing brass clang, a bounce and a short rolling rattle`, 1.6],
     ['case_eject_steel', `a spent 100 mm lacquered steel tank gun case thrown out of the breech onto the steel turret floor: a hard, dull steel clank, a bounce and a short scraping roll`, 1.6],
     ['case_eject_brass_heavy', `an enormous spent brass cartridge case of a 152 mm gun pulled out of the breech and dropped on the steel floor: a deep heavy brass clang, a hollow boom of the long case and a slow rolling rumble`, 2.2],
+    // release 269: the 152 mm two-piece round's autoloaders (weaponAudio.ts heavyLoad): the same mechanisms, a heavier round
+    ['autoloader_carousel_152', `a tank's big carousel autoloader turning under an unmanned turret to bring up the next 152 mm round: a heavy electric motor drone with deep chain and ratchet clatter, stopping with a massive clunk`, 2.2],
+    ['autoloader_lift_152', `a tank autoloader lifting a heavy 152 mm ammunition cassette up to the breech: a laboured electric-hydraulic whine and a deep, heavy steel clunk as it locks`, 1.5],
+    ['autoloader_chain_ram_152', `a tank autoloader's chain rammer driving a heavy 152 mm round into the breech: a long steel chain rattle ending in a deep, hard seating thud`, 1.2],
+    ['bustle_index_152', `a turret bustle autoloader indexing a heavy 152 mm round into line: a strained servo whir and a deep, heavy mechanical clack`, 1.4],
+    ['bustle_ram_152', `a turret bustle autoloader's electric rammer pushing a heavy 152 mm round into the breech: a slow servo whine and a deep, solid seating clunk`, 1.3],
+    ['stub_port_eject_152', `the large spent steel stub of a 152 mm charge thrown out through the ejection hatch in the turret rear: the spring-loaded hatch flap banging open, a heavy steel clank as the stub flies out, the flap slamming shut`, 1.5],
     ['stub_port_eject', `the spent steel stub of a 125 mm charge thrown out through the small ejection hatch in the turret rear: the spring-loaded hatch flap banging open, a steel clank as the stub flies out, the flap slamming shut`, 1.4],
     ['stub_catch', `the spent steel stub of a 125 mm charge caught by a tank's autoloader and dropped back into its empty cassette tray: a hard steel clunk into a metal tray and a short rattle`, 1.1],
     ['vent_tube_eject', `the tiny spent brass vent tube primer flicked out of the breech of a rifled tank gun: a small, light metallic tink and a brief skitter on steel`, 0.8],

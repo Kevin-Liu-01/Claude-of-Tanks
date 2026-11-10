@@ -74,6 +74,7 @@ export const VEHICLE_MARKING_SEAT_GROUP_LOADERS: Readonly<Record<string, () => P
   "poland": () => import('./vehicleMarkingSeatGroups/poland.generated.ts'),
   "pumaS1SourceX": () => import('./vehicleMarkingSeatGroups/pumaS1SourceX.generated.ts'),
   "russia": () => import('./vehicleMarkingSeatGroups/russia.generated.ts'),
+  "russia152": () => import('./vehicleMarkingSeatGroups/russia152.generated.ts'),
   "sabraMk2SourceX": () => import('./vehicleMarkingSeatGroups/sabraMk2SourceX.generated.ts'),
   "sheridan": () => import('./vehicleMarkingSeatGroups/sheridan.generated.ts'),
   "sinoSovietConcepts": () => import('./vehicleMarkingSeatGroups/sinoSovietConcepts.generated.ts'),

@@ -253,5 +253,8 @@ const digest = createHash('sha256').update(JSON.stringify(TECH_TREES)).digest('h
 // after the M113A3 on its lane 1 (the owner, 2026-11-04: "also add the m163 VADS"); the merge of main 72addd0635
 // (release 269): both sides' trees together. (Pinned 3a59594b312e8b40 at the merge.)
 // 271 (integration): the T95 (270) and the twin-aa round's trees together; re-pinned at the merge (6a5a7ecd456ca7fd).
-assert.equal(digest, '6a5a7ecd456ca7fd', `tree content changed: re-pin to ${digest} if deliberate`);
+// russia-152 (main 3f31c66abc): Russia's 152 mm line on from the T-80U along its row (Object 292 VII, Object 477
+// Molot IX, Object 195 X) with the T-14 152 beside the Object 195 at X (Main's tiers, 2026-11-04); its own pin was
+// 7c47bfa998d2369b. 271 (integration): merged after the twin-aa round; re-pinned at the merge (98286838a838e422).
+assert.equal(digest, '98286838a838e422', `tree content changed: re-pin to ${digest} if deliberate`);
 console.log(`techTree: ${TECH_TREES.length} trees, ${drawn.length} vehicles, pin ${digest}`);

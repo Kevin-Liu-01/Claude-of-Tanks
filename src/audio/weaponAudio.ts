@@ -73,7 +73,8 @@ export type WeaponKey =
   | '20/belt' | '25/belt' | '30/belt' | '35/belt' | '40/belt' | '50/belt'
   | '76/unitary_brass' | '84/unitary_brass' | '90/unitary_brass' | '100/unitary_brass' | '100lp/unitary_brass' | '105/unitary_brass'
   | '120/combustible' | '120/separate_bag' | '125/two_piece' | '130/combustible'
-  | '152/separate_case' | '152n/separate_case' | '152/caseless' | '165/separate_bag' | '170/separate_case'
+  | '152/separate_case' | '152n/separate_case' | '152/caseless' | '152-lp83/two_piece' | '152-2a73/two_piece'
+  | '152-2a83/two_piece' | '165/separate_bag' | '170/separate_case'
   | '220/rocket' | 'guided/missile'
   | 'ac130-30/belt' | 'ac130-105/unitary_brass' | 'ac130-missile/missile';
 
@@ -225,6 +226,24 @@ export const WEAPON_ROWS: { readonly [K in WeaponKey]: WeaponRow } = Object.free
     brake: 'none', weight: 'heavy',
     loudDb: 147, closeFadeM: [148, 400], farFadeM: [100, 460], tailRate: 0.84, tailGain: 0.9, actionDelayS: 0.2, spent: 'scavenger_blast',
   }),
+  // Release 269 (owner 2026-11-04: the Russian 152 mm line): the three high-velocity 152 mm smoothbores, each its own row
+  // (its gun's soundProfile picks it, REPORT_TRIMS), separate-loading like the 125 mm (a projectile, then a charge with a
+  // stub), louder and deeper than the 125 mm and the 130 mm, the long tubes carrying their thunder further.
+  '152-lp83/two_piece': cannon('152-lp83/two_piece', 152, 'two_piece', 'gun_152lp83', {
+    ordnance: 'LP-83 152.4 mm smoothbore (Object 292)', rifling: 'smoothbore', barrel: 'long, no fume extractor', brake: 'none',
+    weight: 'superheavy',
+    loudDb: 151, closeFadeM: [158, 440], farFadeM: [20, 500], tailRate: 0.83, tailGain: 0.96, actionDelayS: 0.19, spent: 'case_eject_stub',
+  }),
+  '152-2a73/two_piece': cannon('152-2a73/two_piece', 152, 'two_piece', 'gun_152_2a73', {
+    ordnance: 'the Perm 152 mm smoothbore, btvt\'s 2A73, in its armoured casing (Object 477 Molot)', rifling: 'smoothbore',
+    barrel: 'long, cased', brake: 'none', weight: 'superheavy',
+    loudDb: 151, closeFadeM: [158, 440], farFadeM: [20, 500], tailRate: 0.82, tailGain: 0.97, actionDelayS: 0.19, spent: 'case_eject_stub',
+  }),
+  '152-2a83/two_piece': cannon('152-2a83/two_piece', 152, 'two_piece', 'gun_152_2a83', {
+    ordnance: '2A83 152 mm smoothbore (Object 195, T-14 152)', rifling: 'smoothbore', barrel: 'long (about L/52)', brake: 'none',
+    weight: 'superheavy',
+    loudDb: 152, closeFadeM: [160, 450], farFadeM: [20, 520], tailRate: 0.81, tailGain: 0.98, actionDelayS: 0.19, spent: 'case_eject_stub',
+  }),
   '165/separate_bag': cannon('165/separate_bag', 165, 'separate_bag', 'gun_165', {
     ordnance: '165 mm L9A1 demolition gun (Centurion AVRE)', rifling: 'rifled', barrel: 'short', brake: 'none', weight: 'superheavy',
     loudDb: 148, closeFadeM: [150, 410], farFadeM: [100, 470], tailRate: 0.8, tailGain: 0.95, actionDelayS: 0.22, spent: 'vent_tube_eject',
@@ -308,6 +327,10 @@ const REPORT_TRIMS: Readonly<Record<string, WeaponReportTrim>> = Object.freeze({
   'arkan-launch': { rate: 1.03, gainDb: 0, launcher: true },
   'ataka-launch': { rate: 0.97, gainDb: 0.5, launcher: true, twin: true },
   'shillelagh-launch': { rate: 0.88, gainDb: 0.5, launcher: true },
+  // Release 269: the Russian 152 mm line's guns, each its own row
+  'lp-83': { rate: 1, gainDb: 0, key: '152-lp83/two_piece' },
+  '2a73': { rate: 1, gainDb: 0, key: '152-2a73/two_piece' },
+  '2a83': { rate: 1, gainDb: 0, key: '152-2a83/two_piece' },
   'gunship-autocannon': { rate: 1, gainDb: 0, key: 'ac130-30/belt' },
   'gunship-howitzer': { rate: 1, gainDb: 0, key: 'ac130-105/unitary_brass' },
   'gunship-missile': { rate: 1, gainDb: 0, key: 'ac130-missile/missile' },
@@ -649,6 +672,10 @@ const HANDLED: Readonly<Record<RoundWeight, { grab: string; ram: string; open: s
   superheavy: { grab: 'shell_grab_superheavy', ram: 'shell_ram_staff', open: 'breech_open_heavy', close: 'breech_close_heavy' },
 });
 
+/** A 152 mm two-piece round's autoloader (release 269: the 152 mm line's carousels and bustle conveyors): the same
+ * mechanism as the 125 mm's, heard with its heavier round. */
+const heavyLoad = (row: WeaponRow, asset: string): string => (row.build === 'two_piece' && row.boreMm >= 146 ? `${asset}_152` : asset);
+
 /** Each cue's recording for a row (the handling cues by weight, the spent case by construction). */
 function cueAsset(type: ReloadCueType, row: WeaponRow): string {
   const hands = HANDLED[row.weight];
@@ -659,7 +686,7 @@ function cueAsset(type: ReloadCueType, row: WeaponRow): string {
     case 'ram': return hands.ram;
     case 'caseEject': return row.spent ?? 'case_eject_brass';
     case 'stubEject': return 'case_eject_stub';
-    case 'stubPort': return 'stub_port_eject';
+    case 'stubPort': return heavyLoad(row, 'stub_port_eject');
     case 'stubCatch': return 'stub_catch';
     case 'ventEject': return 'vent_tube_eject';
     case 'ventLoad': return 'vent_tube_load';
@@ -668,12 +695,12 @@ function cueAsset(type: ReloadCueType, row: WeaponRow): string {
     case 'ammoDoorClose': return 'ammo_door_close';
     case 'bagCharge': return 'bag_charge_load';
     case 'caseCharge': return 'charge_case_load';
-    case 'carouselTurn': return 'autoloader_carousel';
+    case 'carouselTurn': return heavyLoad(row, 'autoloader_carousel');
     case 'basketTurn': return 'basket_turn';
-    case 'cassetteLift': return 'autoloader_lift';
-    case 'chainRam': case 'chargeChainRam': return 'autoloader_chain_ram';
-    case 'bustleIndex': return 'bustle_index';
-    case 'bustleRam': return 'bustle_ram';
+    case 'cassetteLift': return heavyLoad(row, 'autoloader_lift');
+    case 'chainRam': case 'chargeChainRam': return heavyLoad(row, 'autoloader_chain_ram');
+    case 'bustleIndex': return heavyLoad(row, 'bustle_index');
+    case 'bustleRam': return heavyLoad(row, 'bustle_ram');
     case 'magazineDrop': return 'magazine_drop';
     case 'caseOutside': return 'case_eject_outside';
     case 'ifvLoad': return 'ifv_autoloader';

@@ -677,6 +677,18 @@
    "name": "Object 148 Proto",
    "card": "/brand/og-r2/tanks/object148_proto-card.jpg"
   },
+  "object195": {
+   "name": "Object 195",
+   "card": null
+  },
+  "object292": {
+   "name": "Object 292",
+   "card": null
+  },
+  "object477_molot": {
+   "name": "Object 477 Molot",
+   "card": null
+  },
   "object695": {
    "name": "Object 695",
    "card": "/brand/og-r2/tanks/object695-card.jpg"
@@ -812,6 +824,10 @@
   "strv81": {
    "name": "Stridsvagn 81",
    "card": "/brand/og-r2/tanks/strv81-card.jpg"
+  },
+  "t14_152": {
+   "name": "T-14 152",
+   "card": null
   },
   "t14_armata": {
    "name": "T-14 Armata",
