@@ -185,6 +185,17 @@ for (const resume of [{ tick: -1, battleTimeMs: 0 }, { tick: 1.5, battleTimeMs: 
   assert.equal(hints().reasons.notRestored, 1, 'an entity the new host saw itself (not restored from the keyframe) takes no hint');
   w.send(hintFor(1100, 0, 0)); await flush();
   assert.equal(hints().reasons.noSeat, 1, 'a spectator has no hull to hint');
+  // (improve-271 plan 006) inside the horizontal bound, the other pose fields are bounded too: no hint places a hull in the
+  // air or gives it a speed past its top speed
+  const y0 = p1Entity.state.pos.y;
+  const before = JSON.stringify({ pos: p1Entity.state.pos, speed: p1Entity.state.speed, verticalSpeed: p1Entity.state.verticalSpeed, gunPitch: p1Entity.state.gunPitch });
+  p1.send(hintFor(1100, x0 + 1, z0, y0 + 500)); await flush();
+  assert.equal(hints().reasons.tooHigh, 1, 'a hint 500 m above the restored row is refused');
+  p1.send({ ...hintFor(1100, x0 + 1, z0, y0), speed: quantizeVelocity(300) }); await flush();
+  assert.equal(hints().reasons.tooFast, 1, 'a speed of 300 m/s is refused');
+  p1.send({ ...hintFor(1100, x0 + 1, z0, y0), verticalSpeed: quantizeVelocity(300) }); await flush();
+  assert.equal(hints().reasons.tooFast, 2, 'a vertical speed of 300 m/s is refused');
+  assert.equal(JSON.stringify({ pos: p1Entity.state.pos, speed: p1Entity.state.speed, verticalSpeed: p1Entity.state.verticalSpeed, gunPitch: p1Entity.state.gunPitch }), before, 'and the hull is unchanged');
   assert.equal(hints().applied, 0);
   p1.send(hintFor(1100, x0 + 20, z0 - 4, 7)); await flush();
   assert.equal(hints().applied, 1, 'a newer row within the bound is applied');
@@ -193,7 +204,7 @@ for (const resume of [{ tick: -1, battleTimeMs: 0 }, { tick: 1.5, battleTimeMs: 
   p1.send(hintFor(1150, x0 + 25, z0)); await flush();
   assert.equal(hints().reasons.repeated, 1, 'one hint per entity per resume');
   assert.equal(hints().applied, 1);
-  assert.equal(hints().rejected, 7);
+  assert.equal(hints().rejected, 10);
   await advance(actor, 6);
   const own = p1.frames.at(-1).entities.find((row) => row.entityId === 1);
   assert.ok(own && Math.abs(own.x / 1000 - (x0 + 20)) < 2, `the next rows carry the hinted pose (${(own.x / 1000 - x0).toFixed(2)} m from the restored one)`);
@@ -253,6 +264,26 @@ for (const resume of [{ tick: -1, battleTimeMs: 0 }, { tick: 1.5, battleTimeMs: 
   assert.equal(fresh.stats().resumeHints.reasons.noResume, 1, 'an actor that did not resume a migration refuses every hint');
   fresh.stop();
   console.log('matchActorResume.selftest: the migration seed — older / future / too far / unrestored / spectator / repeated refused, one bounded hint applied, none on a fresh actor');
+}
+// ---- (improve-271 plan 006) a hint's gun pitch past the gun's elevation is clamped to it, not refused: the rest of a true
+// row still lands (a rounding difference must never cost the seat its pose)
+{
+  const actor = createMatchActor({ roomId: 'resumed-hint-pitch', mapId: 'verdant', seed: 36, seats, bots, world: 'terrain', now, schedule, resume: { tick: 1200, battleTimeMs: 30_000 } });
+  const p1Entity = actor.entityForWireId(1);
+  const { x: x0, y: y0, z: z0 } = p1Entity.state.pos;
+  actor.noteRestoredRow(1, 1000, x0, z0);
+  const p1 = attachViewer(actor, 0, 'p1');
+  await flush();
+  p1.send({
+    type: MESSAGE_TYPE.RESUME_HINT, tick: 1100, x: quantizePosition(x0 + 4), y: quantizePosition(y0), z: quantizePosition(z0), speed: quantizeVelocity(5), verticalSpeed: 0,
+    yaw: 0, pitch: 0, roll: 0, turretYaw: 0, gunPitch: quantizeAngle(1.5),
+  });
+  await flush();
+  assert.equal(actor.stats().resumeHints.applied, 1, 'the row is applied');
+  const elevation = p1Entity.spec.gunElevationDeg * Math.PI / 180;
+  assert.ok(p1Entity.state.gunPitch <= elevation + 0.05 + 1e-9 && p1Entity.state.gunPitch > elevation - 1e-3, `a gun pitch of 1.5 rad is clamped to the gun's elevation (${p1Entity.state.gunPitch.toFixed(3)} rad, elevation ${elevation.toFixed(3)})`);
+  assert.ok(Math.abs(p1Entity.state.pos.x - (x0 + 4)) < 1e-3, 'and the pose lands');
+  actor.stop();
 }
 // ---- (268, item 6) host migration keeps every bot's paint: the old authority's roll rides each seat's WELCOME roster into the
 // elected host's plan (host/hostPlan.ts planFromRoster), and the resumed actor restores it instead of rolling again
