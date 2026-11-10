@@ -266,8 +266,13 @@ denies camera, microphone, geolocation, payment, USB, serial, HID and Bluetooth,
 `X-Frame-Options: SAMEORIGIN` and `Cross-Origin-Opener-Policy: same-origin`
 (one `/:path(.*)` header rule; 2026-10-01). The site opens no popup it talks to
 (external links are `noopener`) and nothing embeds it from another origin; a
-future portal or app embed needs `frame-ancestors`/XFO revisited first. There is
-no enforced CSP yet: the inline scripts would need build-time hashes.
+future portal or app embed needs `frame-ancestors`/XFO revisited first. The
+`Content-Security-Policy` (`script-src`) is enforced since 272 (report-only from
+243): every inline script a built document carries is named by its SHA-256,
+computed by `tools/contentSecurityPolicy.mjs`. After changing an inline script,
+run `node tools/contentSecurityPolicy.mjs --write` and a build in the same change;
+`tools/contentSecurityPolicy.selftest.mjs` fails until the header matches and
+checks every built document when `dist/` exists.
 
 ### Capture-lock wait (2026-09-25)
 
