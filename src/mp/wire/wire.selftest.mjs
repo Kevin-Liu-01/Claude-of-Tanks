@@ -644,3 +644,69 @@ console.log(`wire.selftest: 600 rounds of every message type and ${frames} delta
   assert.equal(decodeMessage(dupBytes).error?.code, 'invalid_message', 'a duplicate row out of order is refused');
   console.log(`wire.selftest: the merge-walk apply equals the general algorithm on ${checked} deltas, shuffled and over unsorted baselines`);
 }
+
+// ------------------------------------------------------------ wire 10: unchanged mode state and smoke text (improve-271 plan 020)
+// A delta whose mode-state JSON or smoke text equals its baseline's omits it (a flag bit) and the decoder copies the
+// baseline's; a changed string is sent; a keyframe carries both; a client whose baseline is older than the previous frame
+// (it missed one) still ends with the right strings, because the delta is against the acknowledged baseline.
+{
+  const { encodeSnapshotFrame } = await import('./codec.ts');
+  const { SNAPSHOT_FLAGS } = await import('./constants.ts');
+  const OMITTED = SNAPSHOT_FLAGS.MODE_STATE_UNCHANGED | SNAPSHOT_FLAGS.SMOKE_UNCHANGED;
+  const flagsOf = (bytes) => bytes[10];
+  const decodeAgainst = (bytes, baseline) => decodeMessage(bytes, { resolveBaseline: (tick) => (baseline && baseline.tick === tick ? baseline : null) });
+  const stateA = JSON.stringify({ id: 'capture_the_flag', score: { alpha: 1, bravo: 0 }, flags: [{ team: 'alpha', x: 12.5, z: -40 }], playerAmmo: 40 });
+  const stateB = JSON.stringify({ id: 'capture_the_flag', score: { alpha: 2, bravo: 0 }, flags: [{ team: 'alpha', x: 12.5, z: -40 }], playerAmmo: 39 });
+  const smokeA = JSON.stringify([{ x: 100.5, y: 3, z: -20.25, yaw: 1.5, born: 812.5 }]);
+  const smokeB = JSON.stringify([{ x: 100.5, y: 3, z: -20.25, yaw: 1.5, born: 812.5 }, { x: 140, y: 3, z: -22, yaw: 1.4, born: 830 }]);
+  const withStrings = (frame, modeStateJson, smokeJson) => ({ ...frame, modeStateJson, meta: { ...frame.meta, ...(smokeJson ? { smokeJson } : { smokeJson: undefined }) } });
+  const check = (frame, baseline, label) => {
+    const bytes = encodeSnapshotFrame(frame, baseline);
+    assert.deepEqual(bytes, encodeMessage(buildSnapshotPacket(frame, baseline), baseline), `${label}: the packet path writes the same bytes`);
+    const decoded = decodeAgainst(bytes, baseline);
+    assert.ok(decoded.ok, `${label}: ${decoded.ok ? '' : decoded.error.message}`);
+    const result = applySnapshotPacket(decoded.message, baseline);
+    assert.equal(result.modeStateJson, frame.modeStateJson, `${label}: the mode state`);
+    assert.equal(result.meta.smokeJson ?? '', frame.meta.smokeJson ?? '', `${label}: the smoke text`);
+    return { bytes, result };
+  };
+  let cases = 0;
+  for (let n = 0; n < 40; n++) {
+    const key = withStrings(randomFrame(6000 + n * 100, int(0, 20)), stateA, smokeA);
+    const keyframe = check(key, null, 'keyframe');
+    assert.equal(flagsOf(keyframe.bytes) & OMITTED, 0, 'a keyframe carries both whole');
+    // unchanged: both omitted, both restored, and the delta shorter by both strings
+    const same = withStrings(evolveFrame(key, key.tick + 3), stateA, smokeA);
+    const unchanged = check(same, key, 'unchanged');
+    assert.equal(flagsOf(unchanged.bytes) & OMITTED, OMITTED, 'both unchanged strings omitted');
+    const sent = encodeMessage(buildSnapshotPacket(withStrings(same, stateA + ' ', smokeA + ' '), key), key);
+    assert.ok(unchanged.bytes.byteLength + stateA.length + smokeA.length < sent.byteLength, 'the omitted strings cost nothing');
+    // changed: sent whole
+    const changed = withStrings(evolveFrame(same, same.tick + 3), stateB, smokeB);
+    const moved = check(changed, unchanged.result, 'changed');
+    assert.equal(flagsOf(moved.bytes) & OMITTED, 0, 'changed strings are sent');
+    // one changed, one not
+    const half = withStrings(evolveFrame(changed, changed.tick + 3), stateB, smokeA);
+    const halfBytes = check(half, moved.result, 'half').bytes;
+    assert.equal(flagsOf(halfBytes) & OMITTED, SNAPSHOT_FLAGS.MODE_STATE_UNCHANGED, 'only the unchanged one omitted');
+    // a client that missed `half`: its acknowledged baseline is `changed` (stateB, smokeB); the next frame against it
+    const next = withStrings(evolveFrame(half, half.tick + 3), stateB, smokeA);
+    const late = check(next, moved.result, 'against an older baseline');
+    assert.equal(flagsOf(late.bytes) & OMITTED, SNAPSHOT_FLAGS.MODE_STATE_UNCHANGED, 'compared with the acknowledged baseline, never the previous frame');
+    // no mode state, no smoke: nothing to omit
+    const none = withStrings(evolveFrame(next, next.tick + 3), null, '');
+    assert.equal(flagsOf(check(none, late.result, 'none').bytes) & OMITTED, 0);
+    // an omitted string without its baseline is a missing baseline, never an empty string
+    const orphan = decodeMessage(unchanged.bytes, { resolveBaseline: () => null });
+    assert.equal(orphan.ok, false);
+    assert.equal(orphan.error.code, 'missing_baseline');
+    cases += 6;
+  }
+  // a keyframe claiming an omitted string is refused
+  const key = encodeSnapshotFrame(withStrings(randomFrame(9500, 3), stateA, smokeA), null);
+  const forged = key.slice();
+  forged[10] |= SNAPSHOT_FLAGS.MODE_STATE_UNCHANGED;
+  assert.equal(decodeMessage(forged).ok, false, 'a keyframe never omits its mode state');
+  assert.equal(WIRE_VERSION, 10, 'the layout moved: wire 10');
+  console.log(`wire.selftest: wire 10 omits an unchanged mode state and smoke text and restores them from the acknowledged baseline (${cases} cases)`);
+}

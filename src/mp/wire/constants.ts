@@ -21,7 +21,10 @@ import { PLAYER_ACTION_BITS } from '../../sim/playerActions.ts';
 // fixed table, numbers as varints at 4 decimals), length-prefixed: a 14v14 viewer's event bytes fall by about two thirds.
 // 9 (consumables-260, 2026-10-26): the viewer's equipment multipliers gain `power` (VIEWER_EQUIPMENT), a Governor
 // Override's engine burst (sim/consumableRules.ts), so the predictor drives at the authority's power.
-export const WIRE_VERSION = 9;
+// 10 (improve-271 plan 020, 2026-11-09): a delta snapshot whose mode-state JSON or smoke text equals its baseline's omits
+// it (SNAPSHOT_FLAGS.MODE_STATE_UNCHANGED, SMOKE_UNCHANGED) and the decoder copies the baseline's: the whole mode state
+// rode every snapshot to every viewer (CTF 7v7: 60 % of a viewer's snapshot bytes) although it rarely changes.
+export const WIRE_VERSION = 10;
 /**
  * 2 (P3b, 2026-09-29): entity rows carry the authority tick they were captured at (`EntityRow.tick`, ROW_GROUP.AGE on the
  * wire when it predates the packet) so the host's interest tiers may hold a far entity's row across snapshots and the
@@ -203,6 +206,10 @@ export const SNAPSHOT_FLAGS = Object.freeze({
   HAS_VERDICT: 1 << 3,
   /** The packet carries destruction log entries (docs/DESTRUCTION.md §8.2). */
   HAS_DESTRUCTION: 1 << 4,
+  /** wire 10: the mode-state JSON equals the baseline's and is omitted (a delta with HAS_MODE_STATE only). */
+  MODE_STATE_UNCHANGED: 1 << 5,
+  /** wire 10: the meta's smoke text equals the baseline's (non-empty) and is omitted (a delta only). */
+  SMOKE_UNCHANGED: 1 << 6,
 } as const);
 
 /** Entity row groups (a varint mask, low bits are the motion groups that change every interval). */

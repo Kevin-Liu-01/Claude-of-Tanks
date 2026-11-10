@@ -61,15 +61,18 @@ Server → client
 ## SNAPSHOT
 
 ```
-u32 tick, u32 serverTimeMs, u8 flags (SNAPSHOT_FLAGS: KEYFRAME, HAS_VIEWER, HAS_MODE_STATE, HAS_VERDICT)
+u32 tick, u32 serverTimeMs, u8 flags (SNAPSHOT_FLAGS: KEYFRAME, HAS_VIEWER, HAS_MODE_STATE, HAS_VERDICT, HAS_DESTRUCTION,
+  MODE_STATE_UNCHANGED, SMOKE_UNCHANGED)
 u32 baseTick (NO_TICK on keyframes), u32 ackedInputTick, u16 ackedFireSeq, u16 ackedActionSeq
 i8 inputMarginTicks (how many ticks early the newest input arrived; negative = late; 127 = unknown)
-u8 phase, u16 countdownMs, u32 battleTimeMs, u8 verdict, [string verdictReason if HAS_VERDICT], u32 destructibleRevision
+u8 phase, u16 countdownMs, u32 battleTimeMs, u8 verdict, [string verdictReason if HAS_VERDICT], u32 destructibleRevision,
+[string smokeJson ≤ 32768 unless SMOKE_UNCHANGED]
 destroyed set (keyframe: every destroyed obstacle index; delta: indices destroyed since the baseline; wire 6: below)
 u8 entityCount, entity rows ...
 u8 removedCount, u8 entityId ... (entities in the baseline that are hidden now)
 u16 shellCount, shells: u16 id, u8 shooterEntityId, 3 × i32 pos mm, 3 × i16 vel dm/s, u8 shellType, u8 flags (GUIDED)
-[HAS_VIEWER] viewer section, [HAS_MODE_STATE] string modeStateJson ≤ 8192
+[HAS_VIEWER] viewer section, [HAS_MODE_STATE and not MODE_STATE_UNCHANGED] string modeStateJson ≤ 8192
+[HAS_DESTRUCTION] u32 destructionBase, destruction log entries
 ```
 
 An *index list* is `varint count`, then the first index and the gaps
@@ -239,3 +242,16 @@ Nothing else in the layout moved. The snapshot encoder writes the same bytes fro
 (`codec.ts encodeSnapshotFrame`, `rows.ts writeEntityRowDelta`), and a client merges sorted patches into its baseline
 without maps (`applySnapshotPacket`), with the same frames. Receipts: `eventPayload.selftest.mjs`, and in
 `wire.selftest.mjs` the direct encoder against the packet path and the merged apply against the general algorithm.
+
+### Unchanged mode state and smoke text (wire 10, 2026-11-09, improve-271 plan 020)
+
+`WIRE_VERSION` 10: two snapshot flag bits. `MODE_STATE_UNCHANGED` (bit 5, with `HAS_MODE_STATE`): the mode-state JSON
+equals the baseline's and is omitted. `SMOKE_UNCHANGED` (bit 6): the meta's smoke text is non-empty, equals the
+baseline's and is omitted. The decoder copies each omitted string from the acknowledged baseline (`missing_baseline`
+without it); a keyframe never sets either bit (`invalid_message`). Both encoders compare each string with the baseline
+the delta is written against, never with the previous frame, so a viewer that missed a snapshot still ends with the right
+strings. The mode state rode every snapshot to every viewer whole: in Capture the Flag at 7v7 it was 60 to 70 % of a
+viewer's snapshot bytes (`tools/mp-scale-bench.mjs --mode=<id>` prints the share). The host counts the strings it
+expects to send against the viewer's row budget (`interestTiers.ts snapshotRowBudgetBytes`, `blobBytes`). Receipts: in
+`wire.selftest.mjs` the omitted strings restored, changed strings sent, a keyframe carrying both, a delta against an
+older acknowledged baseline, and a forged keyframe refused.

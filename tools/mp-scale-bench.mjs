@@ -12,11 +12,13 @@
 // Rooms are `<teamSize>v<teamSize>:<humans>`; a team size over the room's 14 is the dev override (MAX_ENTITIES 64).
 //   node --max-old-space-size=4096 tools/mp-scale-bench.mjs [--map=verdant] [--seconds=20] [--warm=4]
 //     [--rooms=1v1:2,7v7:2,7v7:14,14v14:2,14v14:14,14v14:28,32v32:28,32v32:63] [--snapshot-hz=20] [--uplink=<bps>, 0: no budget]
-//     [--json=out.json]
+//     [--mode=standard] [--json=out.json]
+// `--mode` plays the room in that game mode (its ruleset); viewer 0's line then says how much of its snapshot stream is the
+// mode-state JSON and the smoke text (each string with its length prefix).
 import { writeFileSync } from 'node:fs';
 import '../src/vehicles/tankFactory.ts';
 import { ALL_TANK_IDS, getSpec } from '../src/vehicles/specs.ts';
-import { MESSAGE_TYPE, NO_TICK, PROTOCOL_VERSION, TICK_HZ } from '../src/mp/wire/constants.ts';
+import { MESSAGE_TYPE, NO_TICK, PROTOCOL_VERSION, SNAPSHOT_FLAGS, TICK_HZ } from '../src/mp/wire/constants.ts';
 import { buildSnapshotPacket, decodeMessage, encodeMessage, peekMessageType } from '../src/mp/wire/codec.ts';
 import { quantizeAimDistance, quantizeAngle } from '../src/mp/wire/quantize.ts';
 import { encodeEventPayload } from '../src/mp/wire/eventPayload.ts';
@@ -33,6 +35,10 @@ const snapshotHz = Number(arg('snapshot-hz', 20));
 const roomsArg = arg('rooms', '1v1:2,7v7:2,7v7:14,14v14:2,14v14:14,14v14:28,32v32:28,32v32:63');
 const uplinkTargetBps = arg('uplink', '') === '' ? undefined : Number(arg('uplink', ''));
 const jsonOut = arg('json', '');
+const mode = arg('mode', 'standard');
+const utf8 = new TextEncoder();
+// a wire string's bytes: its varint length and its UTF-8 (src/mp/wire/bytes.ts ByteWriter.string)
+const wireStringBytes = (value) => { const length = utf8.encode(value ?? '').byteLength; return length + (length < 0x80 ? 1 : length < 0x4000 ? 2 : 3); };
 const TICK_MS = 1000 / TICK_HZ;
 const specs = ALL_TANK_IDS.filter((id) => ['mbt', 'medium', 'heavy', 'light'].includes(getSpec(id).role)).slice(0, 14);
 // --views=snapshot,observe,observe,snapshot: each room once per view in that order (an in-process A/B of the frame view)
@@ -71,7 +77,7 @@ for (const baseRoom of rooms) for (const frameView of views) {
   }
   const profile = { clock: () => performance.now(), stepMs: 0, spottingMs: 0, eventsMs: 0, buildMs: 0, viewMs: 0, encodeMs: 0, sendMs: 0, ticks: 0, frames: 0 };
   const actor = createMatchActor({
-    roomId: `scale-${room.teamSize}v${room.teamSize}-${room.humans}`, mapId, seed: 1337, countdownS: 0, seats, bots,
+    roomId: `scale-${room.teamSize}v${room.teamSize}-${room.humans}`, mapId, mode, seed: 1337, countdownS: 0, seats, bots,
     world: 'dedicated', snapshotHz, now: () => nowMs, schedule: () => () => {}, profile,
     ...(uplinkTargetBps !== undefined ? { uplinkTargetBps } : {}), frameView,
   });
@@ -81,6 +87,7 @@ for (const baseRoom of rooms) for (const frameView of views) {
     const viewer = {
       index, link, queue: [], ackTick: NO_TICK, fireSeq: 0,
       snapshotBytes: 0, keyframeBytes: 0, keyframes: 0, deltaBytes: 0, deltas: 0, eventBytes: 0, fullBytes: 0, measured: false,
+      modeStateBytes: 0, smokeBytes: 0,
     };
     link.client.onMessage((bytes) => viewer.queue.push(bytes));
     const hello = { type: MESSAGE_TYPE.HELLO, protocolVersion: PROTOCOL_VERSION, capabilities: 0, token: '', clientBuild: 'scale' };
@@ -147,6 +154,11 @@ for (const baseRoom of rooms) for (const frameView of views) {
         }
         if (measuring) {
           viewer.snapshotBytes += bytes.byteLength;
+          // what of it is the two JSON blobs, as sent: an absent mode state costs nothing, and since wire 10 a string equal to
+          // the baseline's is omitted (its flag bit; the decoded packet holds the baseline's copy)
+          const flags = bytes[10];
+          if (decoded.message.modeStateJson != null && !(flags & SNAPSHOT_FLAGS.MODE_STATE_UNCHANGED)) viewer.modeStateBytes += wireStringBytes(decoded.message.modeStateJson);
+          if (!(flags & SNAPSHOT_FLAGS.SMOKE_UNCHANGED)) viewer.smokeBytes += wireStringBytes(decoded.message.meta.smokeJson);
           if (decoded.message.keyframe) { viewer.keyframeBytes += bytes.byteLength; viewer.keyframes++; } else { viewer.deltaBytes += bytes.byteLength; viewer.deltas++; }
         }
       } else {
@@ -215,6 +227,7 @@ for (const baseRoom of rooms) for (const frameView of views) {
       keyframeShare: viewerMean('keyframeBytes') / Math.max(1, viewerMean('snapshotBytes')),
       meanKeyframeB: viewerMean('keyframeBytes') / Math.max(1, viewerMean('keyframes')), meanDeltaB: viewerMean('deltaBytes') / Math.max(1, viewerMean('deltas')),
       fullKbpsViewer0: kbps(v0.fullBytes), deltaKbpsViewer0: kbps(v0.snapshotBytes),
+      modeStateKbpsViewer0: kbps(v0.modeStateBytes), smokeKbpsViewer0: kbps(v0.smokeBytes),
     },
     client: {
       applyUs: (client.decodeMs / Math.max(1, client.decoded)) * 1000, sampleUs: (client.sampleMs / Math.max(1, client.samples)) * 1000, failures: client.failures,
@@ -229,10 +242,11 @@ for (const baseRoom of rooms) for (const frameView of views) {
   const h = row.host;
   console.log(`${row.room.padEnd(18)} ${String(row.entities).padStart(3)} ent ${String(row.humans).padStart(2)} viewers | tick p50 ${h.tickP50.toFixed(2)} p95 ${h.tickP95.toFixed(2)} ms: step ${h.stepMs.toFixed(2)} (spot ${h.spottingMs.toFixed(2)}) events ${h.eventsMs.toFixed(2)} build ${h.buildMs.toFixed(2)} encode ${h.encodeMs.toFixed(2)} send ${h.sendMs.toFixed(2)} | frame build ${h.perFrameUs.build.toFixed(0)} us (view ${h.perFrameUs.view.toFixed(0)}) encode ${h.perFrameUs.encode.toFixed(0)} us | host up ${h.uplinkKbps.toFixed(0)} kbit/s, per viewer ${row.viewer.snapshotKbps.toFixed(1)} + events ${row.viewer.eventKbps.toFixed(1)} kbit/s (key ${row.viewer.meanKeyframeB.toFixed(0)} B, delta ${row.viewer.meanDeltaB.toFixed(0)} B; full ${row.viewer.fullKbpsViewer0.toFixed(1)}) | client apply ${row.client.applyUs.toFixed(0)} us, sample ${row.client.sampleUs.toFixed(0)} us | tiers ${row.tiers.population.join('/')} deferred ${row.tiers.deferred} | burst p50 ${(row.burst.p50 / 1024).toFixed(1)} p95 ${(row.burst.p95 / 1024).toFixed(1)} max ${(row.burst.max / 1024).toFixed(1)} KB`);
   console.log(`   worst tick ${row.worstTick.tick}: ${(row.worstTick.bytes / 1024).toFixed(1)} KB, snapshots ${(row.worstTick.snapshotBytes / 1024).toFixed(1)} KB with ${row.worstTick.keyframes} keyframes`);
+  console.log(`   viewer 0 (${mode}): snapshots ${row.viewer.deltaKbpsViewer0.toFixed(1)} kbit/s (${(v0.snapshotBytes / seconds).toFixed(0)} B/s), of which mode state ${row.viewer.modeStateKbpsViewer0.toFixed(1)} kbit/s (${(v0.modeStateBytes / seconds).toFixed(0)} B/s, ${((100 * v0.modeStateBytes) / Math.max(1, v0.snapshotBytes)).toFixed(1)} %) and smoke ${row.viewer.smokeKbpsViewer0.toFixed(1)} kbit/s (${(v0.smokeBytes / seconds).toFixed(0)} B/s, ${((100 * v0.smokeBytes) / Math.max(1, v0.snapshotBytes)).toFixed(1)} %)`);
   console.log(`   viewer 0 events: ${Object.entries(row.eventKinds).map(([kind, e]) => `${kind} ${e.count} (${e.kbps.toFixed(1)} kbit/s)`).join(', ')}`);
   actor.stop();
   await flush();
 }
 if (keyCounts) console.log(`keys: ${[...keyCounts].sort((a, b) => b[1] - a[1]).map(([key, count]) => `${key}:${count}`).join(' ')}`);
-if (jsonOut) writeFileSync(jsonOut, `${JSON.stringify({ mapId, seconds, snapshotHz, results }, null, 2)}\n`);
+if (jsonOut) writeFileSync(jsonOut, `${JSON.stringify({ mapId, mode, seconds, snapshotHz, results }, null, 2)}\n`);
 process.exit(0);
