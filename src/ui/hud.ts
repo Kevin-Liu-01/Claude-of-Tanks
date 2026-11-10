@@ -48,7 +48,7 @@ import { canSelfRightTank } from '../sim/rollover.ts';
 // same table the sim applies (sim/matchRuleset.ts)
 import { RULESET_SCORE_TARGETS, matchRulesetFor, rulesetLines, type MatchRuleset } from '../sim/matchRuleset.ts';
 import { GAME_MODE_DEFINITIONS, isPracticeMode, normalizeGameMode } from '../sim/gameModeCatalog.ts';
-import { markersStandOnSpawns, objectiveMarkers, type ObjectiveMarker, type ObjectiveStateView } from './minimapObjectives.ts';
+import { markersStandOnSpawns, objectiveMarkersFor, type ObjectiveMarker, type ObjectiveStateView } from './minimapObjectives.ts';
 import {
   OBJECTIVE_PALETTE, badgeLetter, drawBallGlyph, drawCheck, drawGoalGlyph, drawHexBadge, drawLaneGlyph, drawPennant, drawStrikeFootprint, drawStrikeGlyph, type StrikeGlyphKind,
   drawPickupGlyph, drawProgressArc, drawSpawnGlyph, laneLetter, sideColor, sideFill, type GlyphLetter,
@@ -8008,7 +8008,8 @@ export function initHud(bus: EventBus): HudRuntime {
     // tactical map 2026-09-15: modes whose objectives stand on the spawns
     // (flag bases, goals) or that carry their own spawn markers skip the
     // generic base rings; every other objective is drawn by kind.
-    const markers = objectiveMarkers(frame.matchModeState);
+    // the one derivation, retained per change of the mode state (improve-271 plan 023: the world stage reads the same)
+    const markers = objectiveMarkersFor(frame.matchModeState, frame.timeS);
     if (spawnFlags && !markersStandOnSpawns(markers)) drawMinimapBases(plMapX, plMapY);
     // the sector chips under the score read the same markers, at the map's own cadence (15 to 30 Hz)
     teamPips.updateSectors(markers);

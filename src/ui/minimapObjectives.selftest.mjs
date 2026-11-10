@@ -1,7 +1,9 @@
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 
-import { objectiveMarkers, markersStandOnSpawns, zoneLetter, objectiveSide } from './minimapObjectives.ts';
+import { objectiveMarkers, objectiveMarkersFor, objectiveMarkersRevision, markersStandOnSpawns, zoneLetter, objectiveSide } from './minimapObjectives.ts';
+import { Scene } from 'three';
+import { createMatchModeWorldPresentation } from '../game/matchModeWorldPresentation.ts';
 import { OBJECTIVE_PALETTE, sideColor, sideFill } from './objectiveGlyphs.ts';
 import { TOKENS } from './tokens/tokens.ts';
 import { setActiveTokens } from './tokens/tokenSelection.ts';
@@ -126,7 +128,7 @@ assert.match(sideFill('neutral'), /^rgba\(/);
 // wiring: the HUD paints the markers from this derivation after the roster bases, the world
 // presentation mirrors them, and the sim publishes the spawn centres the markers rely on
 const hudSource = await readFile(new URL('./hud.ts', import.meta.url), 'utf8');
-assert.match(hudSource, /const markers = objectiveMarkers\(frame\.matchModeState\);\s*if \(spawnFlags && !markersStandOnSpawns\(markers\)\) drawMinimapBases\(plMapX, plMapY\);/,
+assert.match(hudSource, /const markers = objectiveMarkersFor\(frame\.matchModeState, frame\.timeS\);\s*if \(spawnFlags && !markersStandOnSpawns\(markers\)\) drawMinimapBases\(plMapX, plMapY\);/,
   'the minimap skips its generic base rings when the mode marks the spawns itself');
 assert.match(hudSource, /drawMinimapObjectives\(markers, frame\.timeS, plMapX, plMapY, !!player\?\.combat\?\.destroyed\)/);
 assert.match(hudSource, /export interface HudMatchModeState extends ObjectiveStateView/);
@@ -137,7 +139,11 @@ assert.match(hudSource, /paintMinimapShorelines\(context, features\.liquidPatche
 assert.match(hudSource, /paintMinimapShoreBands\(context, mask, palette\.waterStroke, MINIMAP_WATERLINE_RIM\)/,
   'and so does the world\'s visible-water raster (phase 2)');
 const worldSource = await readFile(new URL('../game/matchModeWorldPresentation.ts', import.meta.url), 'utf8');
-assert.match(worldSource, /const marks = objectiveMarkers\(state\);/, 'the world presentation derives the same markers');
+assert.match(worldSource, /const changed = deriveViews\(objectiveMarkersFor\(state, timeS\)\);/, 'the world presentation derives the same markers');
+// (improve-271 plan 023) neither consumer derives its own copy, and the world's frame stage keeps no per-frame filter
+assert.doesNotMatch(hudSource, /objectiveMarkers\(/, 'the minimap reads the retained derivation');
+assert.doesNotMatch(worldSource, /objectiveMarkers\(/, 'the world reads the retained derivation');
+assert.doesNotMatch(worldSource, /marks\.filter\(|markers\.filter\(/, 'the world stage filters no marker list per frame');
 assert.match(worldSource, /from '\.\.\/ui\/objectiveGlyphs\.ts'/, 'world icons are rasterised from the shared glyphs');
 const simSource = await readFile(new URL('../sim/matchModes.ts', import.meta.url), 'utf8');
 assert.match(simSource, /spawns: state\.spawns\.map\(\(spawn\) => \(\{ \.\.\.spawn \}\)\)/, 'serialize clones the spawn centres');
@@ -156,4 +162,34 @@ assert.match(simSource, /spawns: state\.spawns\.map\(\(spawn\) => \(\{ \.\.\.spa
   assert.equal(objectiveMarkers(state).find(m => m.status === 'holding').side, 'enemy');
 }
 
-console.log('minimapObjectives.selftest: sides, zones, flags, sectors, turbo, horde, spawns and wiring passed');
+// (improve-271 plan 023) the derivation is retained: once per change of the mode state (a new object, the battle clock
+// that the local step advances while mutating its state in place, the viewing side), never once per rendered frame
+{
+  const zones = [0, 1].map((i) => ({ id: `z${i}`, x: i * 80, y: 0, z: 0, control: 0, owner: null, contested: false }));
+  const state = { ...base, id: 'zone_control', label: 'Zone Control', target: null, score: { alpha: 0, bravo: 0 },
+    horde: null, playerAmmo: null, playerAmmoCapacity: null, zones };
+  const view = createMatchModeWorldPresentation(new Scene());
+  const before = objectiveMarkersRevision();
+  for (let frame = 0; frame < 1000; frame++) view.update(state, 12);
+  const first = objectiveMarkersFor(state, 12);
+  assert.equal(objectiveMarkersRevision() - before, 1, 'a thousand frames on one mode state derive its markers once');
+  assert.equal(objectiveMarkersFor(state, 12), first, 'the minimap reads the same retained markers');
+  // the local step mutates its state in place and advances the clock: the next frame derives again
+  zones[0].owner = 'alpha'; zones[0].control = 1;
+  view.update(state, 12 + 1 / 60);
+  assert.equal(objectiveMarkersRevision() - before, 2, 'a stepped state derives again');
+  assert.equal(objectiveMarkersFor(state, 12 + 1 / 60).find((mark) => mark.kind === 'zone').side, 'own');
+  assert.equal(view.root.getObjectByName('capture-zone-1').userData.markerMaterial.color.getHex(), 0x6fe887,
+    'and the world shows the new owner (the own side\'s colour, matchModeWorldPresentation.selftest ALLY)');
+  // a new object (a room's next snapshot) derives again; so does the viewing side flipped between steps
+  view.update({ ...state, zones: zones.map((zone) => ({ ...zone })) }, 12 + 1 / 60);
+  assert.equal(objectiveMarkersRevision() - before, 3, 'a new state object derives again');
+  const flipped = { ...state };
+  view.update(flipped, 13);
+  flipped.perspectiveTeam = 'bravo';
+  view.update(flipped, 13);
+  assert.equal(objectiveMarkersRevision() - before, 5, 'a flipped viewing side derives again');
+  view.dispose();
+}
+
+console.log('minimapObjectives.selftest: sides, zones, flags, sectors, turbo, horde, spawns and wiring passed; one derivation per mode-state change');
