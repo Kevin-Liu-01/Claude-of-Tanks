@@ -6,7 +6,8 @@ import assert from 'node:assert/strict';
 import '../vehicles/tankFactory.ts';
 import { createAuthoritativeMatch } from './authoritativeMatch.ts';
 import { PLAYER_ACTION_BITS } from './playerActions.ts';
-import { GOVERNOR_POWER_MULT, RATIONS_AIM_MULT } from './consumableRules.ts';
+import { GOVERNOR_POWER_MULT, LARGE_REPAIR_RATE_MULT, RATIONS_AIM_MULT, RATIONS_RELOAD_MULT, applyConsumableMultipliers, createConsumableState } from './consumableRules.ts';
+import { matchRulesetFor } from './matchRuleset.ts';
 import { VIEWER_EQUIPMENT } from '../mp/wire/constants.ts';
 
 assert.ok(VIEWER_EQUIPMENT.includes('power'), 'the viewer row carries engine power');
@@ -105,4 +106,41 @@ realistic.step({ dt: 1 / 60, inputs: new Map([['p', input(PLAYER_ACTION_BITS.REP
 const denied = realistic.snapshot({ tick: 1, serverTimeMs: 16, viewerId: 'p', ackInputSeq: 1 }).events
   .find((event) => event.type === 'consumable_denied');
 assert.equal(denied?.reason, 'RULESET', 'a mode without consumables says so');
+
+// improve-271 plan 008: an item composes on top of whatever the multipliers hold, so a mode's stamp made after the
+// consumable state exists (the Juggernaut's half reload) survives every use and expiry
+{
+  const reloadScale = matchRulesetFor('juggernaut').juggernaut.reloadScale;
+  const jugg = createAuthoritativeMatch({ gameMode: 'juggernaut', countdownS: 0, players: [
+    { id: 'boss', specId: 'm1a1_abrams_hc', team: 'alpha', consumables: ['rations', 'repair', 'first_aid'], spawn: { x: -200, z: -300, yaw: 0 } },
+    { id: 'hunter', specId: 'm1a1_abrams_hc', team: 'bravo', spawn: { x: 200, z: 300, yaw: Math.PI } },
+  ] });
+  jugg.onMatchReady();
+  const boss = jugg.entityById.get('boss');
+  const stamped = boss.combat.equipMults.reload;
+  assert.ok(stamped <= reloadScale + 1e-12, `the boss carries the ruleset's ${reloadScale} on its equipment (${stamped})`);
+  jugg.step({ dt: 1 / 60, inputs: new Map([['boss', input(PLAYER_ACTION_BITS.REPAIR)]]) });
+  assert.equal(boss.combat.equipMults.reload, stamped * RATIONS_RELOAD_MULT, 'Rations on top of the stamp');
+  for (let tick = 0; tick < 41 * 60; tick++) jugg.step({ dt: 1 / 60, inputs: new Map() });
+  assert.equal(boss.combat.equipMults.reload, stamped, 'the stamp is back, exactly, when Rations end');
+}
+// the rules alone: a stamp at any time is kept; fifty uses and expiries leave the value exact (no drift)
+{
+  for (const factor of [RATIONS_RELOAD_MULT, RATIONS_AIM_MULT, LARGE_REPAIR_RATE_MULT, GOVERNOR_POWER_MULT]) assert.ok(factor > 0, 'every item factor is non-zero');
+  const combat = { equipMults: { reload: 0.9 } };
+  const state = createConsumableState(['rations', 'repair_large'], () => ({ charges: 99, cooldownS: 0, durationS: 40 }), combat);
+  combat.equipMults.reload *= 0.5; // a mode's stamp after the state exists
+  const start = combat.equipMults.reload;
+  let without = start;
+  for (let n = 0; n < 50; n++) {
+    const t = n * 100;
+    state.until.rations = t + 40;
+    applyConsumableMultipliers(state, combat, t);
+    assert.ok(Math.abs(combat.equipMults.reload - without * RATIONS_RELOAD_MULT) < 1e-12, `use ${n}: Rations on the live value`);
+    if (n === 25) { combat.equipMults.reload *= 0.8; without *= 0.8; } // a stamp while an item runs is kept too
+    applyConsumableMultipliers(state, combat, t + 41);
+  }
+  assert.ok(Math.abs(combat.equipMults.reload - start * 0.8) < 1e-12, `no drift over fifty uses (${combat.equipMults.reload} vs ${start * 0.8})`);
+  assert.equal(combat.equipMults.power, 1, 'an untouched multiplier stays exactly 1');
+}
 console.log('consumableAuthority.selftest: seat loadouts, replicated uses, predicted multipliers, the APS interception and the ruleset refusal passed');

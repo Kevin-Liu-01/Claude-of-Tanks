@@ -207,8 +207,13 @@ export interface ConsumableState {
   readonly charges: (number | null)[];
   /** Sim second each timed item ends (0 = inactive), by item. */
   readonly until: Record<ConsumableId, number>;
-  /** The equipment's multipliers before any item bent them (captured once per life). */
+  /** Each multiplier without the items' factors: the equipment's at creation, re-read whenever another owner (a mode's
+   *  stamp, such as the Juggernaut's half reload) changed the live value since this state last wrote it. */
   readonly base: Record<ConsumableMultKey, number>;
+  /** The item factor last applied per multiplier (1: none). */
+  readonly applied: Record<ConsumableMultKey, number>;
+  /** The value this state last wrote per multiplier: a live value that differs was set by someone else. */
+  readonly written: Record<ConsumableMultKey, number>;
   /** The spotting equipment ids with Fresh Foliage's, kept so a spotting pass allocates nothing. */
   readonly spotIds: string[];
 }
@@ -248,13 +253,17 @@ export function createConsumableState(
   for (const item of CONSUMABLE_CATALOG) until[item.id] = 0;
   const mults = combat.equipMults ?? (combat.equipMults = {});
   const base = {} as Record<ConsumableMultKey, number>;
-  for (const key of MULT_KEYS) base[key] = typeof mults[key] === 'number' ? mults[key] as number : 1;
+  const applied = {} as Record<ConsumableMultKey, number>;
+  const written = {} as Record<ConsumableMultKey, number>;
+  for (const key of MULT_KEYS) { base[key] = written[key] = typeof mults[key] === 'number' ? mults[key] as number : 1; applied[key] = 1; }
   const state: ConsumableState = {
     items: items.slice(),
     readyAt: items.map(() => 0),
     charges: items.map((id) => timing(id).charges),
     until,
     base,
+    applied,
+    written,
     spotIds: [...(combat.equip ?? []), CONSUMABLE_FOLIAGE_EQUIPMENT],
   };
   applyConsumableMultipliers(state, combat, 0);
@@ -266,14 +275,27 @@ export function consumableActive(state: ConsumableState | null | undefined, id: 
   return !!state && state.until[id] > timeS;
 }
 
-/** The equipment multipliers with every active item folded in (the equipment's own values times the items'). */
+/** The equipment multipliers with every active item folded in: the value without items times the items' factors.
+ *  A value another owner set since the last call is that owner's (a mode stamped the multiplier after this state was
+ *  made: improve-271 plan 008, the Juggernaut lost its half reload on its first item); it becomes the new base, so the
+ *  stamp survives every use and expiry. With no other owner the arithmetic is the plain base times factor. */
 export function applyConsumableMultipliers(state: ConsumableState, combat: ConsumableCombat, timeS: number): void {
   const mults = combat.equipMults ?? (combat.equipMults = {});
   const rations = consumableActive(state, 'rations', timeS);
-  mults.reload = state.base.reload * (rations ? RATIONS_RELOAD_MULT : 1);
-  mults.aimTime = state.base.aimTime * (rations ? RATIONS_AIM_MULT : 1);
-  mults.repair = state.base.repair * (consumableActive(state, 'repair_large', timeS) ? LARGE_REPAIR_RATE_MULT : 1);
-  mults.power = state.base.power * (consumableActive(state, 'governor_override', timeS) ? GOVERNOR_POWER_MULT : 1);
+  composeItemFactor(state, mults, 'reload', rations ? RATIONS_RELOAD_MULT : 1);
+  composeItemFactor(state, mults, 'aimTime', rations ? RATIONS_AIM_MULT : 1);
+  composeItemFactor(state, mults, 'repair', consumableActive(state, 'repair_large', timeS) ? LARGE_REPAIR_RATE_MULT : 1);
+  composeItemFactor(state, mults, 'power', consumableActive(state, 'governor_override', timeS) ? GOVERNOR_POWER_MULT : 1);
+}
+
+function composeItemFactor(state: ConsumableState, mults: NonNullable<ConsumableCombat['equipMults']>, key: ConsumableMultKey, factor: number): void {
+  const live = typeof mults[key] === 'number' ? mults[key] as number : 1;
+  // every item factor is a non-zero constant, so the division is safe
+  if (live !== state.written[key]) state.base[key] = live / state.applied[key];
+  const value = state.base[key] * factor;
+  mults[key] = value;
+  state.written[key] = value;
+  state.applied[key] = factor;
 }
 
 /** The ids the spotting system reads for a crew: its equipment, with Fresh Foliage's while it is active. */
