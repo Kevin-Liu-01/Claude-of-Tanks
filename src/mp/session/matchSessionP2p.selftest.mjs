@@ -199,6 +199,12 @@ console.log('matchSessionP2p.selftest: the host boot and its reports, the start 
   // nobody else could host: no election comes; after the wait it boots afresh through the election path
   await until(() => quick.role === 'host', 'the fallback fresh boot', 5000);
   await until(() => quick.matchHost?.state === 'live', 'the fallback host live', 10_000);
+  // (improve-271 plan 001) the fallback boots under the room's own generation: the room kept this seat as host without
+  // moving its generation (a preference decline with nobody to take over), and refuses a report under any other as host_only
+  await until(() => transport.outbound.some((envelope) => envelope.payload?.command?.type === 'match_report'), 'the fallback host reports', 10_000);
+  const fallbackReports = transport.outbound.filter((envelope) => envelope.payload?.command?.type === 'match_report').map((envelope) => envelope.payload.command);
+  assert.deepEqual([...new Set(fallbackReports.map((report) => report.generation))], [3], `every report carries the room's generation (${fallbackReports.map((report) => report.generation).join(', ')})`);
+  assert.equal(quick.role, 'host', 'still hosting: no host_only step-down');
   assert.ok(quickEvents.some((event) => event.kind === 'migration' && event.phase === 'begin' && event.hostId === 'me'), 'the fallback rode the election path');
   await quick.leaveMatch('done');
   const departure = transport.outbound.filter((envelope) => envelope.payload?.command?.type === 'host_decline').at(-1);

@@ -775,12 +775,10 @@ export class MatchSession {
       void this.room.declineHost(true).catch(() => { /* the room may predate the command */ });
       const timers = this.transportOptions as Partial<WebSocketTransportOptions>;
       const setTimer = timers.setTimer ?? ((callback, delayMs) => setTimeout(callback, delayMs));
-      const client = this.matchClient;
       setTimer(() => {
         if (this.currentRound !== round || this.host || this.room.hostId !== me || !this.migrating) return;
         // No election came: the room kept this seat (no other commander). Boot fresh through the election path.
-        void this.handleHostChanged({ hostId: me, generation: this.room.generation + 1, resumeTick: 0, reason: 'declined', hostSecret: this.hostSecret ?? undefined });
-        void client;
+        void this.bootReentryFallback(round);
       }, this.p2pOptions?.reentryElectionWaitMs ?? 10_000);
     }
     if (hostId === me && this.canHost && this.hostSecret && !reentryAsNamedHost) {
@@ -901,6 +899,27 @@ export class MatchSession {
       return;
     }
     this.peerTransport?.retarget('host changed');
+  }
+
+  /**
+   * The re-entry fallback (§13.2.1: the room kept this seat as host because no other commander could take over): boot
+   * afresh as the elected path does, under the room's own generation. A preference decline with nobody to take over moves
+   * no generation, and the room refuses a report under any other (`host_only`): the fallback used to invent generation + 1
+   * to pass the election guard, and its host stepped down to a peer of itself (improve-271 plan 001).
+   */
+  private async bootReentryFallback(round: SessionRound): Promise<void> {
+    const client = this.matchClient;
+    const migrating = this.migrating;
+    if (!client || this.currentRound !== round || !migrating || migrating.state === 'closed') return;
+    const me = this.room.playerId;
+    const change: RoomHostChangedPayload = { hostId: me, generation: this.room.generation, resumeTick: 0, reason: 'declined', hostSecret: this.hostSecret ?? undefined };
+    this.migrationsSeen++;
+    this.migrationActive = true;
+    const previousHostId = this.servingHostId;
+    this.servingHostId = me;
+    this.migrationHostId = me;
+    this.p2pListeners.emit({ kind: 'migration', phase: 'begin', hostId: me, generation: change.generation, role: this.role, detail: change.reason });
+    await this.becomeHost(client, round, change, migrating, previousHostId);
   }
 
   private async becomeHost(client: MatchClient, round: SessionRound, change: RoomHostChangedPayload, migrating: MigratingTransport, previousHostId: string | null = null): Promise<void> {
