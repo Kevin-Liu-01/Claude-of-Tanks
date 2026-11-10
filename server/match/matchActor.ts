@@ -255,7 +255,7 @@ export interface MatchActorStats {
 export interface ResumeHintStats {
   applied: number;
   rejected: number;
-  reasons: { noResume: number; notRestored: number; repeated: number; older: number; future: number; tooFar: number; noSeat: number; late: number };
+  reasons: { noResume: number; notRestored: number; repeated: number; older: number; future: number; tooFar: number; tooHigh: number; tooFast: number; noSeat: number; late: number };
 }
 
 export interface MatchActor {
@@ -391,6 +391,14 @@ function teamOf(entity: AuthoritativeEntity): SeatTeam {
 function clampI16(value: number): number {
   return value < -32768 ? -32768 : value > 32767 ? 32767 : value;
 }
+
+/** A resume hint's vertical speed bound (m/s): a hull falling from a ~45 m drop; a true row never climbs or falls faster. */
+const RESUME_HINT_MAX_VERTICAL_MPS = 30;
+/** A resume hint's gun pitch is clamped (never refused) to the gun's limits with this slack (rad): rounding must not refuse a true row. */
+const RESUME_HINT_PITCH_SLACK_RAD = 0.05;
+/** The resume hint's pitch limit (rad, either way) for a spec that declares no elevation or depression. */
+const RESUME_HINT_FALLBACK_PITCH_RAD = 0.6;
+const DEG_TO_RAD = Math.PI / 180;
 
 export function createMatchActor(options: MatchActorOptions): MatchActor {
   const {
@@ -531,6 +539,8 @@ export function createMatchActor(options: MatchActorOptions): MatchActor {
   const restoredTicks = new Int32Array(MAX_ENTITIES + 1).fill(-1);
   const restoredX = new Float64Array(MAX_ENTITIES + 1);
   const restoredZ = new Float64Array(MAX_ENTITIES + 1);
+  // the restored row's height (the entity's own, written before noteRestoredRow): bounds a hint's climb like its drive
+  const restoredY = new Float64Array(MAX_ENTITIES + 1);
   const hinted = new Uint8Array(MAX_ENTITIES + 1);
   // an entity this resumed actor has already driven from its seat's inputs: its pose is this authority's own, so a
   // later hint is stale (a withheld hint sent mid-fight would teleport the hull; security audit 2026-10-22)
@@ -538,7 +548,7 @@ export function createMatchActor(options: MatchActorOptions): MatchActor {
   const RESUME_HINT_WINDOW_TICKS = TICK_HZ * 10;
   // the tick the resumed loop started from (past resume.tick by the ticks the world stood still, MatchActorResume.dueAtMs)
   let resumedFromTick = resume ? resume.tick : 0;
-  const resumeHints: ResumeHintStats = { applied: 0, rejected: 0, reasons: { noResume: 0, notRestored: 0, repeated: 0, older: 0, future: 0, tooFar: 0, noSeat: 0, late: 0 } };
+  const resumeHints: ResumeHintStats = { applied: 0, rejected: 0, reasons: { noResume: 0, notRestored: 0, repeated: 0, older: 0, future: 0, tooFar: 0, tooHigh: 0, tooFast: 0, noSeat: 0, late: 0 } };
   let ended = false;
   let stopped = false;
   let verdict: MatchVerdict | null = null;
@@ -672,16 +682,33 @@ export function createMatchActor(options: MatchActorOptions): MatchActor {
     const z = dequantizePosition(hint.z);
     const allowedM = (hint.tick - restoredTick) * SIM_DT * topSpeedMps(entity) * 1.25 + 3;
     const movedM = Math.hypot(x - restoredX[entityId]!, z - restoredZ[entityId]!);
-    if (movedM > allowedM) { refuse('tooFar'); actorLog.warn('resume hint refused', { player: client.playerId, movedM: Math.round(movedM * 10) / 10, allowedM: Math.round(allowedM * 10) / 10 }); return; }
+    if (!(movedM <= allowedM)) { refuse('tooFar'); actorLog.warn('resume hint refused', { player: client.playerId, movedM: Math.round(movedM * 10) / 10, allowedM: Math.round(allowedM * 10) / 10 }); return; }
+    // (improve-271 plan 006) every other field is bounded before anything is written: a hull climbs no further than it
+    // could drive, never past its top speed (the mode's multiplier included), and its gun stays inside its own limits.
+    // The angles (yaw, turret yaw, visual pitch and roll) are wrapped into one turn by their dequantization.
+    const y = dequantizePosition(hint.y);
+    const climbedM = Math.abs(y - restoredY[entityId]!);
+    if (!(climbedM <= allowedM)) { refuse('tooHigh'); actorLog.warn('resume hint refused', { player: client.playerId, climbedM: Math.round(climbedM * 10) / 10, allowedM: Math.round(allowedM * 10) / 10 }); return; }
+    const speed = dequantizeVelocity(hint.speed);
+    const verticalSpeed = dequantizeVelocity(hint.verticalSpeed);
+    const multiplier = entity.modeSpeedMultiplier ?? 1;
+    const modeSpeed = Number.isFinite(multiplier) ? Math.max(1, multiplier) : 1;
+    if (!(Math.abs(speed) <= topSpeedMps(entity) * modeSpeed * 1.25) || !(Math.abs(verticalSpeed) <= RESUME_HINT_MAX_VERTICAL_MPS)) {
+      refuse('tooFast'); actorLog.warn('resume hint refused', { player: client.playerId, speed, verticalSpeed }); return;
+    }
+    const gun = entity.spec as { gunElevationDeg?: number; gunDepressionDeg?: number };
+    const maxPitch = typeof gun.gunElevationDeg === 'number' && Number.isFinite(gun.gunElevationDeg) ? gun.gunElevationDeg * DEG_TO_RAD + RESUME_HINT_PITCH_SLACK_RAD : RESUME_HINT_FALLBACK_PITCH_RAD;
+    const minPitch = typeof gun.gunDepressionDeg === 'number' && Number.isFinite(gun.gunDepressionDeg) ? -gun.gunDepressionDeg * DEG_TO_RAD - RESUME_HINT_PITCH_SLACK_RAD : -RESUME_HINT_FALLBACK_PITCH_RAD;
+    const gunPitch = Math.min(maxPitch, Math.max(minPitch, dequantizeAngle(hint.gunPitch)));
     const tank = entity.state;
     tank.pos.x = x;
-    tank.pos.y = dequantizePosition(hint.y);
+    tank.pos.y = y;
     tank.pos.z = z;
     tank.yaw = dequantizeAngle(hint.yaw);
-    tank.speed = dequantizeVelocity(hint.speed);
-    tank.verticalSpeed = dequantizeVelocity(hint.verticalSpeed);
+    tank.speed = speed;
+    tank.verticalSpeed = verticalSpeed;
     tank.turretYaw = dequantizeAngle(hint.turretYaw);
-    tank.gunPitch = dequantizeAngle(hint.gunPitch);
+    tank.gunPitch = gunPitch;
     tank.visualPitch = dequantizeAngle(hint.pitch);
     tank.visualRoll = dequantizeAngle(hint.roll);
     hinted[entityId] = 1;
@@ -1226,6 +1253,7 @@ export function createMatchActor(options: MatchActorOptions): MatchActor {
       restoredTicks[entityId] = tick;
       restoredX[entityId] = x;
       restoredZ[entityId] = z;
+      restoredY[entityId] = entityByWireId.get(entityId)?.state.pos.y ?? Number.NaN;
       hinted[entityId] = 0;
       driven[entityId] = 0;
     },
