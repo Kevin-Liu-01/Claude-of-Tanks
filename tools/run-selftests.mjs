@@ -8,6 +8,7 @@ import { SELFTEST_SUITES } from './selftest-suites.mjs';
 import { defaultTierFiles, manualSuiteFiles, manualSuiteOf, parseSuiteNames } from './selftest-tiers.mjs';
 import { captureQueueHasWaiters, runSelftestCpuPool } from './selftest-cpu-pool.mjs';
 import { isStarved } from './selftest-verdict.mjs';
+import { installRefusal } from './changed-only/fingerprint.mjs';
 import { createSelftestCache, REPO_ROOT, SELFTEST_BROAD_DIRS } from './selftest-cache.mjs';
 import { resolveSelftestCacheDir } from './selftest-cache-dir.mjs';
 import { createHash } from 'node:crypto';
@@ -536,7 +537,11 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
   let command;
   try { command = selftestCommand(process.argv.slice(2)); }
   catch (error) { console.error(error.message); process.exitCode = 2; }
-  if (command) {
+  // A stale install never runs or records receipts (272): the cache keys a PASS on package-lock.json, and worktrees share
+  // one store, so a PASS recorded on another install would be reused by checkouts that have the lock's.
+  const refusal = command ? installRefusal(REPO_ROOT) : null;
+  if (refusal) { console.error(`[selftests] ${refusal}`); process.exitCode = 1; }
+  else if (command) {
     const { name: suiteName, files: suite } = command;
     const childEnv = selftestChildEnv();
     // Gate P18: proofs are keyed on the root commit; the first run adopts the URL-keyed store.
