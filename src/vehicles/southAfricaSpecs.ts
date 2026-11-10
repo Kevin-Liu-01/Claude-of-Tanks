@@ -98,13 +98,14 @@ olifant_mk1b.gun = {
 // Stone and Buffalo Green was introduced to AFVs" in 1994): MRG Stone under broad interlocking bands of Military Dark Earth
 // and Buffalo Green in about equal shares, a third or so of the stone showing (the NATO painter: its second patch colour
 // draws the long bands, its first the bars along them; at the reference size, 0.5). The darkest colour is an earth brown,
-// not a green: the 269 coat's sand under two greens in blotches read woodland, with no brown (blind critics, 2026-11-04).
+// not a green, and a faded grey earth, not chocolate (272 critics): the 269 coat's sand under two greens in blotches read
+// woodland, with no brown (blind critics, 2026-11-04).
 // The 1991-94 tanks probably left the works in plain BS 381C 450 Dark Earth, the SADF's armour colour of 1975-94, but no
 // photograph of a Mk 1B in it is known, and the owner rules out plain coats (2026-11-03). The Mk 2 wears the same three
 // colours in the woodland painter's smaller patches (olifantMk2Specs.ts); the Mk 1 the SADF brown under green and black.
 olifant_mk1b.visual = {
   ...olifant_mk1b.visual,
-  scheme: 'nato', base: '#a8957c', weather: '#b3a28a', patches: ['#636954', '#5a4836'],
+  scheme: 'nato', base: '#a8957c', weather: '#b3a28a', patches: ['#5a5f4d', '#584c3f'],
   marking: 'number', number: '31B', camoScale: 0.5, patchK: 1.2,
 };
 
