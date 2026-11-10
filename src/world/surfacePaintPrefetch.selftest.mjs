@@ -94,6 +94,44 @@ assert.deepEqual(digest(drain(paintFieldMudBuffers(256))), digest(drain(paintFie
 }
 assert.equal(startSurfacePaints([], () => { throw new Error('no worker for nothing'); }), null);
 
+// (improve-271) the props build awaits a taken print with no deadline of its own: a worker silent past its deadline, or
+// one that fails, rejects every print it holds (each is painted where it is taken), is terminated and takes no more
+// prints; a worker that cannot start leaves every print to be painted where it stands
+{
+  let now = 0, serial = 0;
+  const live = new Map();
+  const timers = {
+    set(callback, ms) { const h = ++serial; live.set(h, { at: now + ms, callback }); return h; },
+    clear(h) { live.delete(h); },
+    advance(ms) { now += ms; for (const [h, t] of [...live]) if (t.at <= now && live.delete(h)) t.callback(); },
+  };
+  const hayKey = surfacePaintKey({ kind: 'hay', size: 512, seed: HAY_PRINT_SEED });
+  const port = () => ({ posted: [], terminated: 0, postMessage(job) { this.posted.push(job); }, terminate() { this.terminated++; },
+    onmessage: null, onerror: null });
+  let silentPort;
+  const silent = startSurfacePaints([{ kind: 'hay', size: 512, seed: HAY_PRINT_SEED }], () => (silentPort = port()), () => 0, timers);
+  const held = silent.take(hayKey);
+  timers.advance(14_999);
+  timers.advance(1);
+  await assert.rejects(held, /Surface paint worker went silent/, 'a silent worker\'s print fails at the deadline');
+  assert.equal(silentPort.terminated, 1);
+  silent.add([{ kind: 'fieldStone', size: 512, seed: FIELD_STONE_PRINT_SEED, lithology: 'chalk' }]);
+  assert.equal(silentPort.posted.length, 1, 'nothing more is posted to it');
+  assert.equal(silent.take(surfacePaintKey({ kind: 'fieldStone', size: 512, seed: FIELD_STONE_PRINT_SEED, lithology: 'chalk' })), null,
+    'a later print is painted where it stands');
+  silent.dispose();
+  let failingPort;
+  const failing = startSurfacePaints([{ kind: 'hay', size: 512, seed: HAY_PRINT_SEED }], () => (failingPort = port()), () => 0, timers);
+  const lost = failing.take(hayKey);
+  failingPort.onerror({ message: 'boom' });
+  await assert.rejects(lost, /Surface paint worker failed: boom/);
+  assert.equal(failing.stats.failed, 1);
+  failing.dispose();
+  assert.equal(live.size, 0, 'no deadline left armed');
+  const none = startSurfacePaints([{ kind: 'hay', size: 512, seed: HAY_PRINT_SEED }], () => { throw new Error('no Worker'); }, () => 0, timers);
+  assert.equal(none.take(hayKey), null, 'a worker that cannot start: painted where it stands, the world build not failed');
+}
+
 // (battle-spikes-253) a kit's render prints are added once the map's kits have loaded: planned with the fixed prints, a
 // lazily loaded architecture style failed the whole world build in the browser ("Architecture style franconian is not
 // loaded"; Node had loaded it). The fixed plan reads no style; the kit plan is added to the same worker after kitsReady.
@@ -168,4 +206,4 @@ for (const id of ['verdant', 'urban', 'desert', 'fjord']) {
 }
 assert.deepEqual(plannedSurfacePaints({ id: 'verdant', props: {} }, 1337).filter((r) => r.noiseSeed !== undefined).map((r) => r.noiseSeed),
   [1344, 1344, 1344, 1344], 'another props seed, another noise');
-console.log('surfacePaintPrefetch: the worker\'s prints are the props build\'s texel for texel (straw, dry stone, chalk, the mud render, the kit lime render and limewash, seven rock tiles, three kit tiles), handed over once by exact arguments, failures where taken, settled tiles only to their registered noise, the plan by wall style PASS');
+console.log('surfacePaintPrefetch: the worker\'s prints are the props build\'s texel for texel (straw, dry stone, chalk, the mud render, the kit lime render and limewash, seven rock tiles, three kit tiles), handed over once by exact arguments, failures where taken, settled tiles only to their registered noise, the plan by wall style, a silent or failed worker\'s prints painted where taken PASS');
