@@ -43,7 +43,8 @@ const world = () => ({ mapId: 'verdant', heightField: { getHeightAt: () => 0, ge
 }
 
 const shellViews = { callerSeen: 0, callerHidden: 0 };
-function run({ bots = [], shootDown = false, migrateAt = null } = {}) {
+function run({ bots = [], shootDown = false, migrateAt = null, warmTicks = 30, splitAt = null } = {}) {
+  const seam = [];
   const make = (resume) => createMatchActor({ roomId: 'air-support', mapId: 'verdant', mode: 'air_support', seed: 77, seats, bots,
     ruleset: matchRulesetFor('air_support'), world: world(), countdownS: 0, autoStart: false, now: () => 0, schedule: () => () => {}, resume });
   const actor = make(null), sim = actor.authority;
@@ -81,7 +82,7 @@ function run({ bots = [], shootDown = false, migrateAt = null } = {}) {
       }
     }
   };
-  tick(30);
+  tick(warmTicks);
   const call = (kind, target) => {
     const caller = sim.entityById.get('caller');
     fund();
@@ -110,6 +111,29 @@ function run({ bots = [], shootDown = false, migrateAt = null } = {}) {
       assert.deepEqual(second.authority.modeController.airSupport.capture(), air.capture(), 'the ledger and the strikes survive a host change');
       second.stop();
     }
+    if (splitAt === kind) {
+      // improve-271 plan 007: a host change in the middle of the run fires every round exactly once across the seam,
+      // from a checkpoint with the round counts and from one an older host sealed without them
+      const strike = air.strikes.find((s) => s.kind === kind);
+      while (!(strike.fired > 0 && strike.fired < R[kind].rounds)) tick(1);
+      const before = log.filter((e) => e.type === 'mode_strike_round' && e.strikeId === strike.id).length;
+      const checkpoint = JSON.parse(JSON.stringify(sim.captureModeCheckpoint()));
+      const legacy = JSON.parse(JSON.stringify(checkpoint));
+      for (const saved of legacy.mode.air.strikes) { delete saved.fired; delete saved.firedAux; }
+      for (const saved of [checkpoint, legacy]) {
+        const next = make({ tick: Math.round(sim.timeS * 60), battleTimeMs: Math.round(sim.timeS * 1000) });
+        next.authority.restoreModeCheckpoint(saved);
+        next.authority.onMatchReady();
+        let after = 0;
+        for (let n = 0; n < 60 * 4; n++) {
+          next.authority.step({ dt: 1 / 60, inputs: new Map() });
+          after += next.authority.eventsForViewer('e1').filter((e) => e.type === 'mode_strike_round' && e.strikeId === strike.id).length;
+          next.authority.afterEventBroadcast();
+        }
+        seam.push(before + after);
+        next.stop();
+      }
+    }
     if (shootDown && kind === 'strafe') {
       // e1's rounds through the jet while it comes in: the strike falls before its gun opens, and no round of it leaves
       const strike = air.strikes.find((s) => s.kind === 'strafe');
@@ -125,7 +149,7 @@ function run({ bots = [], shootDown = false, migrateAt = null } = {}) {
   }
   tick(60 * 45);
   actor.stop();
-  return { log, air, sim, paid };
+  return { log, air, sim, paid, seam };
 }
 
 const first = run();
@@ -137,6 +161,22 @@ const strikeOf = new Map(called.map((e) => [e.strikeId, e]));
 const rounds = first.log.filter((e) => e.type === 'mode_strike_round');
 const roundStrike = new Map(rounds.map((e) => [e.shellId, strikeOf.get(e.strikeId)]));
 assert.ok(rounds.length > 40, `rounds fired (${rounds.length})`);
+// improve-271 plan 007: each round of each strike fires exactly once (a float window fired some on two ticks: the
+// AC-130's 30 mm 119 for a rule of 60), whenever in the match the strike is called
+const RULE_ROUNDS = { artillery: R.artillery.rounds, strafe: R.strafe.rounds, bomb: 1,
+  gunship: Math.floor(R.gunship.orbitS / R.gunship.cannonEveryS) + Math.floor(R.gunship.orbitS / R.gunship.howitzerEveryS) };
+const roundsByKind = (result) => {
+  const kindOf = new Map(result.log.filter((e) => e.type === 'mode_strike_called').map((e) => [e.strikeId, e.kind]));
+  const count = { artillery: 0, strafe: 0, bomb: 0, gunship: 0 };
+  for (const e of result.log) if (e.type === 'mode_strike_round') count[kindOf.get(e.strikeId)]++;
+  return count;
+};
+for (const [label, result] of [['30 ticks', first], ['120 ticks', run({ warmTicks: 120 })], ['1800 ticks', run({ warmTicks: 1800 })]]) {
+  const count = roundsByKind(result);
+  for (const kind of ['artillery', 'strafe', 'bomb']) assert.equal(count[kind], RULE_ROUNDS[kind], `${label}: ${kind} fires ${RULE_ROUNDS[kind]} rounds (${count[kind]})`);
+  // the gunship engages only a spotted enemy in reach: a round with nothing to fire at is spent, never fired twice
+  assert.ok(count.gunship > 0 && count.gunship <= RULE_ROUNDS.gunship, `${label}: gunship at most ${RULE_ROUNDS.gunship} rounds (${count.gunship})`);
+}
 const arrivals = first.log.filter((e) => (e.type === 'shell_hit' || e.type === 'shell_impact') && roundStrike.has(e.shellId));
 assert.ok(arrivals.length > 10, `strike rounds arrived (${arrivals.length})`);
 let earliest = Infinity;
@@ -175,6 +215,10 @@ assert.equal(digest(second.log), digest(first.log), 'a replay fires the same str
 }
 // migration: the ledger, the cooldowns and a strike in the air carry across a host change
 run({ migrateAt: 'bomb' });
+{
+  const { seam } = run({ splitAt: 'strafe' });
+  assert.deepEqual(seam, [R.strafe.rounds, R.strafe.rounds], `a strafing run split by a host change fires ${R.strafe.rounds} rounds (${seam})`);
+}
 
 // bots: an enemy bot with points calls on the caller it spots, and a bot inside a bomb's footprint evades
 {

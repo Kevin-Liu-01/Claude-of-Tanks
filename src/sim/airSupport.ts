@@ -45,10 +45,14 @@ export interface AirStrike {
   /** Brought down: when and by whom (null while it flies). */
   downedS: number | null;
   downedBy: string | null;
+  /** Rounds of its stream that have left (the gunship's 30 mm), and of the gunship's 152 mm (improve-271 plan 007: each
+   *  round fires once). Absent in a strike an older host sealed: sim/airSupportFire.ts counts what was due by then. */
+  fired?: number;
+  firedAux?: number;
 }
 
 /** A strike as anyone may see it: its record without its caller (the flight, the footprint and the rounds need no more). */
-export type PublicStrike = Omit<AirStrike, 'callerId'>;
+export type PublicStrike = Omit<AirStrike, 'callerId' | 'fired' | 'firedAux'>;
 
 /** What the HUD, the minimap, the world and the sounds read of the strikes, per viewer. */
 export interface AirSupportView {
@@ -316,7 +320,7 @@ export function createAirSupport<Entity extends AirSupportEntity>(options: AirSu
     const record: AirStrike = {
       id: nextId++, kind, team: teamOf(entity), callerId: entityId,
       x, y: terrainHeight(x, z), z, heading, calledS: timeS, landsS, endS: strikeEndS(rules, kind, landsS),
-      hp: strike.hp, maxHp: strike.hp, downedS: null, downedBy: null,
+      hp: strike.hp, maxHp: strike.hp, downedS: null, downedBy: null, fired: 0, firedAux: 0,
     };
     strikes.push(record);
     emit('mode_strike_called', { strikeId: record.id, kind, team: record.team, x: record.x, y: record.y, z: record.z,
@@ -552,7 +556,8 @@ export function createAirSupport<Entity extends AirSupportEntity>(options: AirSu
     const viewer = viewerId ? byId.get(viewerId) : undefined;
     const out: AirSupportView = {
       nowS,
-      strikes: strikes.map(({ callerId, ...rest }) => ({ ...rest, mine: !!viewer && callerId === viewer.id })),
+      // the round counters are the host's bookkeeping: the view stays the record it always was
+      strikes: strikes.map(({ callerId, fired: _fired, firedAux: _firedAux, ...rest }) => ({ ...rest, mine: !!viewer && callerId === viewer.id })),
     };
     if (viewer) {
       out.points = Math.floor(points.get(viewer.id) ?? 0);
