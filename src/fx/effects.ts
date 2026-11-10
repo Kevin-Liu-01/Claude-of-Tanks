@@ -70,6 +70,7 @@ import { createTrailCadence } from './trailCadence.ts';
 import { craterWobblePhases, type TerrainDeformation } from '../sim/terrainDeformation.ts';
 import { mapCratersOn } from '../world/mapCraters.ts';
 import { registerGroundKeyLight } from '../engine/groundKeyLights.ts';
+import { muzzleNearRadiusM, publishMuzzleNearField, releaseMuzzleNearField } from '../engine/muzzleNearField.ts';
 import { resolveGroundReduxProfile } from '../world/groundRedux.ts';
 import { classifyTerrain } from './surfaceLooks.ts';
 import { createCraterMarks, markKindFor, type CraterClimate, type CraterMarks } from './craterMarks.ts';
@@ -824,6 +825,18 @@ const MUZZLE_LIGHT_SNOW_K = 0.33, MUZZLE_LIGHT_SAND_K = 0.66;
 /** The muzzle light's hue by day ("r5: less saturated kiss"), and (240) at night a propellant flame's warm yellow-orange
  *  (muzzleLightPulse, by the dark level) */
 const MUZZLE_LIGHT_HEX = 0xffe4c4, MUZZLE_NIGHT_HEX = 0xffb06a;
+/** the muzzle light's attack (s; applyLight's r7 note) */
+const MUZZLE_LIGHT_ATTACK_S = 0.042;
+/** (271) the most of its peak a gun's pulse reaches (its attack x its pow-2 decay over MUZZLE_LIGHT_S: ~0.52), for the
+ *  near field of its own gun (engine/muzzleNearField.ts) */
+const MUZZLE_LIGHT_ENVELOPE_MAX = (() => {
+  let most = 0;
+  for (let i = 1; i < 256; i++) {
+    const t = MUZZLE_LIGHT_S * i / 256;
+    most = Math.max(most, Math.pow(1 - t / MUZZLE_LIGHT_S, 2) * THREE.MathUtils.smoothstep(t, 0, MUZZLE_LIGHT_ATTACK_S));
+  }
+  return most;
+})();
 /** (EF.10) the local lights' gains on the smoke and dust they reach (a radiance gain on the medium's own colour, at the
  *  light; falling off as (1 - d / range)^2): a headlight's beam, a flash at its peak, a wreck's fire at its mean */
 const LOCAL_HEADLIGHT_GAIN = 1.4, LOCAL_FLASH_GAIN = 2.4, LOCAL_FIRE_GAIN = 1.5;
@@ -1512,6 +1525,9 @@ function* createFxSteps(
   ];
   timeShifts.on('lights', (delta) => { for (const state of lightStates) state.bornAt += delta; });
 
+  /** (271) the gun whose pulse the muzzle light carries: its line of fire and its near-field radius (m; 0 for a pulse
+   *  that is no gun's: a rack's rocket, a missile's launch, a gunship's lens) */
+  const gunNear = { bore: new THREE.Vector3(0, 0, 1), radius: 0 };
   /** (233) a gun's muzzle light by its bore and the ground under its muzzle: peak (x MUZZLE_LIGHT_PEAK) and reach (m) */
   const muzzlePulse = { peakK: 1, range: MUZZLE_LIGHT_RANGE };
   function muzzleLightPulse(caliberMm: number, x: number, z: number): typeof muzzlePulse {
@@ -1535,6 +1551,7 @@ function* createFxSteps(
   function applyLight(state: LightState): void {
     if (replaySuppressed) {
       state.light.intensity = 0;
+      if (state.light === muzzleLight) releaseMuzzleNearField(gunNear);
       return;
     }
     const age = lightAge(state);
@@ -1552,7 +1569,7 @@ function* createFxSteps(
     // muzzle light ATTACKS over ~40 ms instead of stamping full peak on the
     // ignition frame — t=0/17 ms keep the hull camo legible, while the
     // composed 50 ms frame (and the 60 ms petal beat) still catch ~full peak.
-    if (state.light === muzzleLight) v *= THREE.MathUtils.smoothstep(age, 0.0, 0.042);
+    if (state.light === muzzleLight) v *= THREE.MathUtils.smoothstep(age, 0.0, MUZZLE_LIGHT_ATTACK_S);
     // r6: fire is never a steady lamp — the blast light carries a two-band
     // flicker past its initial pop so the floor pool visibly LIVES while it
     // collapses (the static-stain fix's motion half).
@@ -1567,6 +1584,21 @@ function* createFxSteps(
     }
     // (black-screen-228 RC6) a scene light with a NaN intensity poisons every lit fragment, even at zero
     state.light.intensity = Number.isFinite(v) ? v : 0;
+    // (271) while a gun's pulse burns, its own gun takes it through the near field (muzzleNearField.ts)
+    if (state.light === muzzleLight) {
+      if (gunNear.radius > 0 && state.light.intensity > 0) publishMuzzleNearField(gunNear, state.light.position, gunNear.bore, gunNear.radius);
+      else releaseMuzzleNearField(gunNear);
+    }
+  }
+
+  /** (271) The muzzle pulse just lit is this gun's: its gun and mount take the light through the near field the point
+   *  light lacks (muzzleNearField.ts), sized so the pulse's peak gives its gun MUZZLE_NEAR_SUN_K x the scene's sun. */
+  function boundGunNearField(state: LightState, bore: THREE.Vector3): void {
+    if (state.light !== muzzleLight || !(bore.lengthSq() > 1e-8)) return;
+    const rig = (engineCtx.scene?.userData as { lightRig?: { sunIntensity?: number } } | undefined)?.lightRig;
+    gunNear.bore.copy(bore).normalize();
+    gunNear.radius = muzzleNearRadiusM(state.peak * MUZZLE_LIGHT_ENVELOPE_MAX * A11Y.flash, rig?.sunIntensity ?? 4.5);
+    applyLight(state);
   }
 
   /**
@@ -1575,6 +1607,7 @@ function* createFxSteps(
    * policy's muzzleLight gain; every other pulse passes none and keeps its place. A second writer (carryLight) once set the
    * carry after this call even when the guard refused the pulse, so the pulse still burning (another gun's, maybe) slid
    * along the new shooter's motion, or, from a turning shooter's NaN velocity, sat at a NaN place every frame after.
+   * Returns whether it lit the pulse: (271) a gun binds its near field (boundGunNearField) only to a pulse this call lit.
    */
   function flashLight(
     state: LightState,
@@ -1586,16 +1619,20 @@ function* createFxSteps(
     hex?: number,
     range?: number,
     vel: Readonly<MutableVec3> = ZERO_VEL,
-  ): void {
-    // (black-screen-228 RC6) a pulse with a non-finite place never moves a light there
-    if (!(Number.isFinite(pos.x) && Number.isFinite(pos.y) && Number.isFinite(pos.z))) return;
+  ): boolean {
+    // (black-screen-228 RC6) a pulse with a non-finite place never moves a light there; (271) false: nothing was lit
+    if (!(Number.isFinite(pos.x) && Number.isFinite(pos.y) && Number.isFinite(pos.z))) return false;
     state.light.position.copy(pos);
     state.origin.copy(pos);
     // a non-finite component carries nothing (a finite place keeps a finite light, by construction)
     state.carry.set(Number.isFinite(vel[0]) ? vel[0] * MUZZLE_LIGHT_CARRY : 0, Number.isFinite(vel[1]) ? vel[1] * MUZZLE_LIGHT_CARRY : 0,
       Number.isFinite(vel[2]) ? vel[2] * MUZZLE_LIGHT_CARRY : 0);
-    // (233) the muzzle light's reach: its gun's (muzzleLightPulse), the 12 m default for every other muzzle-light pulse
-    if (state.light === muzzleLight) state.light.distance = range && range > 0 ? range : MUZZLE_LIGHT_RANGE;
+    // (233) the muzzle light's reach: its gun's (muzzleLightPulse), the 12 m default for every other muzzle-light pulse;
+    // (271) a pulse lights no gun's near field until its gun claims it (boundGunNearField)
+    if (state.light === muzzleLight) {
+      state.light.distance = range && range > 0 ? range : MUZZLE_LIGHT_RANGE;
+      gunNear.radius = 0;
+    }
     // (fx 9: 8t) the pulse's own reach (the pooled explosion light: 13 m unless the pulse asks less)
     if (state.light === explosionLight) {
       state.range = range && range > 0 ? range : 13;
@@ -1621,6 +1658,7 @@ function* createFxSteps(
     state.dur = durS && durS > 0 ? durS : state.baseDur;
     state.pow = pow && pow > 0 ? pow : state.basePow;
     applyLight(state);
+    return true;
   }
 
   // ---- atmospherics lane (begin): the projectile tracers (projectileTracers.ts) draw every ballistic round in flight
@@ -6838,7 +6876,8 @@ function* createFxSteps(
       const pulse = muzzleLightPulse(caliber, p.x, p.z);
       const peak = MUZZLE_LIGHT_PEAK * pulse.peakK * lightK * muzzleLightScale;
       if (!(muzzleLight.intensity > peak)) {
-        flashLight(lightStates[0], p, peak, 0, undefined, undefined, undefined, pulse.range, _shotVel);
+        // (271) a refused pulse (a non-finite place) binds no near field: the pulse still burning stays its own gun's
+        if (flashLight(lightStates[0], p, peak, 0, undefined, undefined, undefined, pulse.range, _shotVel)) boundGunNearField(lightStates[0], d);
       }
     },
     smoke: (p,scale,density=1,life=2.4,wind=null) => {
@@ -7541,8 +7580,9 @@ function* createFxSteps(
       _sv.y += 0.10;
       // (233) by the bore and the ground under the muzzle (muzzleLightPulse)
       const pulse = muzzleLightPulse(caliberMm, _sv.x, _sv.z);
-      flashLight(lightStates[0], _sv, MUZZLE_LIGHT_PEAK * pulse.peakK * lightK * muzzleLightScale, 0,
-        undefined, undefined, undefined, pulse.range, _shotVel);
+      // (271) a refused pulse binds no near field (the flash site's note)
+      if (flashLight(lightStates[0], _sv, MUZZLE_LIGHT_PEAK * pulse.peakK * lightK * muzzleLightScale, 0,
+        undefined, undefined, undefined, pulse.range, _shotVel)) boundGunNearField(lightStates[0], dir);
     },
 
     /** Tank-on-tank metal contact: lateral sparks, track debris and a low
@@ -8346,8 +8386,10 @@ function* createFxSteps(
       muzzleRingCursor = 0;
       impactDecals.clearAll();
       resetEquipmentDamage();
-      // (round 8 Y6, s4-05) a battle reset ends every pulse: no carry outlives it
+      // (round 8 Y6, s4-05) a battle reset ends every pulse: no carry outlives it; (271) nor a gun's near field
       for (const st of lightStates) { st.bornAt = -1e9; st.light.intensity = 0; st.carry.set(0, 0, 0); }
+      gunNear.radius = 0;
+      releaseMuzzleNearField(gunNear);
     },
 
     setAuxiliaryClock(clock: (() => number) | null): boolean {
@@ -8431,8 +8473,9 @@ function* createFxSteps(
       _sv.y += 0.10;
       // (233) a gun's by its bore and the ground under the muzzle (muzzleLightPulse); (240) a rocket's too, at its motor's 0.3
       const pulse = muzzleLightPulse(caliberMm, _sv.x, _sv.z);
-      flashLight(lightStates[0], _sv, MUZZLE_LIGHT_PEAK * (rocket ? 0.3 : 1) * pulse.peakK * muzzleLightScale, ageS,
+      const lit = flashLight(lightStates[0], _sv, MUZZLE_LIGHT_PEAK * (rocket ? 0.3 : 1) * pulse.peakK * muzzleLightScale, ageS,
         undefined, undefined, undefined, pulse.range);
+      if (lit && !rocket) boundGunNearField(lightStates[0], dir);
     },
 
     /**

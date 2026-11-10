@@ -89,7 +89,7 @@ const SEMANTICS = {
 {
   // the combat flash light
   const flash = effects.slice(effects.indexOf('  function flashLight('), effects.indexOf('  // --- tracer instanced mesh'));
-  assert.match(flash, /if \(!\(Number\.isFinite\(pos\.x\) && Number\.isFinite\(pos\.y\) && Number\.isFinite\(pos\.z\)\)\) return;\s*state\.light\.position\.copy\(pos\);/,
+  assert.match(flash, /if \(!\(Number\.isFinite\(pos\.x\) && Number\.isFinite\(pos\.y\) && Number\.isFinite\(pos\.z\)\)\) return(?: false)?;\s*state\.light\.position\.copy\(pos\);/,
     'a pulse at a non-finite place never moves the light');
   assert.match(flash, /const ground = groundY\(pos\.x, pos\.z\);\s*const h = Number\.isFinite\(ground\) \? Math\.max\(1, pos\.y - ground\) : 1;/,
     'a non-finite ground height never reaches the peak cap');

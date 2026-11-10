@@ -54,6 +54,7 @@ import type { AtmosphereParams } from './atmosphere.ts';
 import { bindMaterialEnvIntensity } from './materialEnvIntensity.ts';
 import { limitPointLightFalloff } from './renderer.ts';
 import { shapeLampPointLights } from './lampLightShape.ts';
+import { attachMuzzleNearField } from './muzzleNearField.ts';
 
 /** What sky.ts publishes on scene.userData.atmosphere that the grounded light model reads (sky.ts AtmospherePublishedState). */
 interface AtmosphereLightInputs {
@@ -1824,6 +1825,8 @@ export function createLighting(
           csmHook(shader, rdr);
           attachGroundBounceUniforms(shader, groundBounceUniforms);
           if (extraHook) extraHook(shader, rdr);
+          // (271) a gun's own muzzle light reaches its gun through a near field (muzzleNearField.ts)
+          attachMuzzleNearField(shader);
           // 2026-10-08 (the world-ibl lane, with the fleet lane): the material's own envMapIntensity, which three
           // overwrites with the scene's on every draw, back on its share of the sky light (materialEnvIntensity.ts)
           bindMaterialEnvIntensity(shader, mat);

@@ -32,12 +32,13 @@ const setupSource = declaration(lightingSource, 'setupShadowMaterial', true);
 // round 69 (2026-09-25): the method also binds the ground-bounce rig; the sandbox injects inert stubs for it.
 // (2026-10-03: and the cloud shade's — cloudShadeMap.ts; off here, as on the phone tier; 2026-10-05: its unit count)
 // (2026-10-08: and the material's own share of the sky light — the real binding, materialEnvIntensity.ts)
+// (271: and the muzzle light's near field on every lit program — muzzleNearField.ts; inert here)
 const createSetupWith = new Function('csm', 'buildCoverageMipmaps', 'attachGroundBounceUniforms', 'groundBounceUniforms',
   'cloudShadeOn', 'attachCloudShadeUniforms', 'cloudShadeUniforms', 'programTextureUnits', 'physicalParsWithoutDfgLut', 'THREE',
-  'cascadeCount', 'scene', 'CLOUD_SHADE_SAMPLER_BUDGET', 'bindMaterialEnvIntensity',
+  'cascadeCount', 'scene', 'CLOUD_SHADE_SAMPLER_BUDGET', 'bindMaterialEnvIntensity', 'attachMuzzleNearField',
   `${stripTypeScriptTypes(`const owner = { ${setupSource} };`)}\nreturn owner.setupShadowMaterial;`);
 const createSetup = (csmArg, mips, attach, bounce) => createSetupWith(csmArg, mips, attach, bounce, false, () => {}, {},
-  () => ({ fragment: 0, vertex: 0, total: 0, dfg: false }), () => null, THREE, 3, {}, 16, bindMaterialEnvIntensity);
+  () => ({ fragment: 0, vertex: 0, total: 0, dfg: false }), () => null, THREE, 3, {}, 16, bindMaterialEnvIntensity, () => {});
 function cropApi(group, engineCtx, finalize = finalizeSource, three = THREE) {
   return new Function('THREE', 'mergeGeometries', 'group', 'engineCtx',
     `${stripTypeScriptTypes(`${replaceSource}\n${hookSource}\n${finalize}`)}
