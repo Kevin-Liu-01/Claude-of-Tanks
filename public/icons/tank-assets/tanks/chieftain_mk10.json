@@ -449,17 +449,17 @@
       }
     ]
   },
-  "geometryHash": "a245357f",
+  "geometryHash": "a2261402",
   "metadataHash": "a857074d",
   "presentationAnchor": {
-    "xM": 0.007,
-    "zM": 0.1509
+    "xM": 0.0081,
+    "zM": 0.1467
   },
-  "presentationHash": "ec041a25",
+  "presentationHash": "b7249a48",
   "presentationProjection": {
     "centerYM": 2.1245,
-    "topHalfM": 7.4285,
-    "sideHalfM": 3.7142
+    "topHalfM": 7.433,
+    "sideHalfM": 3.7165
   },
   "appearance": {
     "version": 1,
@@ -506,39 +506,39 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 26408,
-      "sha256": "17a9f8107cf70edc651e70e8f0111879d7a0b3d02a2d2d4a08bb39c702b996ff"
+      "bytes": 26378,
+      "sha256": "d92e1b94800142602ef6343e905105ed83eb2b52b271c65ab6ec48683c0a12be"
     },
     "modulesSide": {
       "file": "chieftain_mk10_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 20104,
-      "sha256": "9a92630689837c610b726a26188746fb20ef565d6bd84cbca483a1c19688b8eb"
+      "bytes": 20150,
+      "sha256": "d9344e737c278a1f18e93f8fb3123395e2f2510265320f8a082fd0f6c6b41c47"
     },
     "crewSide": {
       "file": "chieftain_mk10_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 17664,
-      "sha256": "f4a51ec6293ffcca3f9cd84ca63fd219fffb08c0a9e739568b34b6be5f7a4bca"
+      "bytes": 17588,
+      "sha256": "4091bf90923b34d5e4b20805f67dcb9825209da7dbbf29c98e191aeba8b8ee22"
     },
     "angle": {
       "file": "chieftain_mk10_angle.webp",
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 23468,
-      "sha256": "aea177ffd1ce9c2f361f212d4b14ac7b2c07a68ad494aef0766fa9bd554d96c5",
+      "bytes": 23404,
+      "sha256": "97c322e0c7f69e068b8a1b9454542120d3cb1fc8531b573fec04512ddc9c62a4",
       "thumbnail": {
         "file": "thumbs/chieftain_mk10_angle.webp",
         "width": 256,
         "height": 256,
         "mime": "image/webp",
-        "bytes": 9972,
-        "sha256": "d2dc6014c573abf6553329cd83b9d7d3776c90d68b9c2c7ad1586f708f56d2bb"
+        "bytes": 9952,
+        "sha256": "ae1271b296c31290b079f29b6fc1c188969b0949c4c977bc7aae9013ea11d180"
       }
     },
     "top": {
@@ -546,32 +546,32 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 9216,
-      "sha256": "794c7cb37cf85ee2349cd99fd8930b5773c33dffc481c3b50aa587f3362eb5c4"
+      "bytes": 9476,
+      "sha256": "e5c3eff9440ec78184ba53efb53c6ce25f68274cbe6e3bcd4321b8f8069d1b91"
     },
     "side": {
       "file": "chieftain_mk10_side.webp",
       "width": 512,
       "height": 256,
       "mime": "image/webp",
-      "bytes": 7950,
-      "sha256": "d2aa38f64967d7358bab8d5c5b9cc171c0b17a8eb37acd6fc21a87745001e0dd"
+      "bytes": 9084,
+      "sha256": "e589058c99d1fe5fb1161a8dccca8533cfb784b00f52fb1f13d2a887f4761fda"
     },
     "topSilhouette": {
       "file": "chieftain_mk10_top_silhouette.png",
       "width": 128,
       "height": 128,
       "mime": "image/png",
-      "bytes": 1338,
-      "sha256": "309e6be7ea229b51ee4199ef1adfcd178f731c868df8a85129bbe858eb1b68a6"
+      "bytes": 1339,
+      "sha256": "398950c1ea83f5b092129deac6e39589c172fa239fb1e9ebad8b00e94f28adb9"
     },
     "sideSilhouette": {
       "file": "chieftain_mk10_side_silhouette.png",
       "width": 256,
       "height": 128,
       "mime": "image/png",
-      "bytes": 4211,
-      "sha256": "6ea7fc49d101182242c147911fd121f9013a200685bd706052adc7b7005d6b24"
+      "bytes": 4160,
+      "sha256": "7bfb0f735e58914336024571e6ccfb93e50540a5ff297c1e226a4fd9bb4aa592"
     },
     "markings": {
       "file": "chieftain_mk10_markings.png",
@@ -584,8 +584,8 @@
     "technicalLabels": {
       "file": "chieftain_mk10_technical.json",
       "mime": "application/json",
-      "bytes": 4214,
-      "sha256": "535999339407655d42d148c38525c115639d8397565bb210292c753a1f775894"
+      "bytes": 4213,
+      "sha256": "f23bf0a9c84e0fc39338ae2537782fc56de1ba02dcfe0118c3c86160add5f9a9"
     }
   }
 }

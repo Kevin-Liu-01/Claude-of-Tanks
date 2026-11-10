@@ -3213,6 +3213,10 @@ const JAPAN_74_DECOR: Readonly<Record<'type74' | 'stb1', () => DecorManifestRow[
   stb1: (): DecorManifestRow[] => [],
 });
 
+/** 271: the italy-korea-bmp-267 lane's builds that draw their own smoke dischargers, and chieftain5 and chieftain_mk10. */
+const ITALY_KOREA_BMP_DRAWN_SMOKE: readonly string[] = ['c2_ariete_proto', 'c1_ariete_proto_serie1', 'c1_ariete_preserie',
+  'k2b', 'k1e1', 'k21', 'bmp2', 'bmp3', 'bmp3_rok', 'bwp1', 'chieftain3', 'chieftain_mk9', 'chieftain5', 'chieftain_mk10'];
+
 export function decorManifestFor(spec: FleetTankSpec, rng: Rng): DecorManifestRow[] {
   const twin = DECOR_TWIN.get(spec.id);
   if (twin) return decorManifestFor({ ...spec, id: twin }, rng);
@@ -3560,6 +3564,11 @@ export function decorManifestFor(spec: FleetTankSpec, rng: Rng): DecorManifestRo
   if (spec.id === 'pt91a_twardy' || spec.id === 't84bm_oplot_m' || spec.id === 't90a_burlak_proto') {
     return manifest.filter(row => row.kit !== 'smoke');
   }
+  // 271 (Main on italy-korea-bmp-267, until the fleet's one rule lands: the pair dresses only a build with no drawn
+  // banks): the lane's ids and the two Chieftains it shares parts with draw their own dischargers, so the decor pair
+  // doubled their salvo (the Mk 3 28 against its 16 drawn mouths, the Mk 9 and Mk 10 24 against 12, the BMP-2 18 against
+  // its 902V 3+3)
+  if (ITALY_KOREA_BMP_DRAWN_SMOKE.includes(spec.id)) return manifest.filter(row => row.kit !== 'smoke');
   // 266 (owner: "clean up and smooth out the goofy parts" on the AMX-40 prototype and the Leclerc S1, S2 and SXXI):
   // both photo critics read the loose roof loads as clutter against the Saumur photos (a cooler box, a duffel and a drum
   // stacked on the commander's station, a bedroll blob, a round lamp on a post), and the rolls, tarps and links hung on

@@ -3425,17 +3425,17 @@
       }
     ]
   },
-  "geometryHash": "deefc33a",
+  "geometryHash": "abfdf79a",
   "metadataHash": "ba469a33",
   "presentationAnchor": {
-    "xM": 0.002,
-    "zM": 0.0811
+    "xM": 0.0021,
+    "zM": 0.0809
   },
-  "presentationHash": "84cfdb19",
+  "presentationHash": "5517d8a1",
   "presentationProjection": {
     "centerYM": 2.0296,
-    "topHalfM": 6.834,
-    "sideHalfM": 3.417
+    "topHalfM": 6.8342,
+    "sideHalfM": 3.4171
   },
   "appearance": {
     "version": 1,
@@ -3485,15 +3485,15 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 25910,
-      "sha256": "db3dde78f004006d5b2c72b3e635ca363b0db151af821db75f14ebc4bf21b878",
+      "bytes": 25778,
+      "sha256": "da4a1bec2f645fc41086d1a727487ff65013f2e468bc41e3e7d01224490928f3",
       "thumbnail": {
         "file": "thumbs/c2_ariete_proto_angle.webp",
         "width": 256,
         "height": 256,
         "mime": "image/webp",
-        "bytes": 10434,
-        "sha256": "be68418e85053a21d6504bbac68cd4bd738763c5ffd3dc94e5999ffd1aba5442"
+        "bytes": 10364,
+        "sha256": "046484ea561cfd4af10c23d4a468e6c1143f70d5293b82684f7dbf7d2df069cd"
       }
     },
     "top": {
@@ -3501,56 +3501,56 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 14486,
-      "sha256": "f7fa83456afd64708b58f2b13dc5fd3c89dacb405e9a7e90bf24585aad7ca59b"
+      "bytes": 14424,
+      "sha256": "133d5f9f18cdae0b8536cd90de1a7000db3baf0471fe90b55ddc66d20ebfabbd"
     },
     "side": {
       "file": "c2_ariete_proto_side.webp",
       "width": 512,
       "height": 256,
       "mime": "image/webp",
-      "bytes": 11520,
-      "sha256": "612ac44271a89d3b47db900a6151b22e905507cca99d59421220058dfa3090e2"
+      "bytes": 11410,
+      "sha256": "0b9b218211aa99d36fd9a3945d7a31852e4ea77ed67382bdf76fbd6f21cf31c4"
     },
     "topSilhouette": {
       "file": "c2_ariete_proto_top_silhouette.png",
       "width": 128,
       "height": 128,
       "mime": "image/png",
-      "bytes": 1487,
-      "sha256": "1914ac448245ebc9b2dc8fcd6820c02ef989c0761082df506f81c7489cb9b41f"
+      "bytes": 1490,
+      "sha256": "fbbddcbec5f569e1cc08de36ac23174d2cea376b7f9d4f15958689a9cc9d5054"
     },
     "sideSilhouette": {
       "file": "c2_ariete_proto_side_silhouette.png",
       "width": 256,
       "height": 128,
       "mime": "image/png",
-      "bytes": 4534,
-      "sha256": "ee52c81a99ea030aeb1565a8caa8c66b84a8fcb9f334c6585e613854fafb5cbc"
+      "bytes": 4520,
+      "sha256": "4f7948a697c09039e693ac5bfd401b029a811331f023207a7c8ac5a1525478f1"
     },
     "armorSide": {
       "file": "c2_ariete_proto_armor_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 30910,
-      "sha256": "c3da6c082e7f92e52fcdc7c1eef7ed93bac015202371735bbfad14cd9a7ec497"
+      "bytes": 30764,
+      "sha256": "dec2b028d38598b0ed8f90113dcd9a8ec84dc2f221d5daa586bbdcc47bdfd081"
     },
     "modulesSide": {
       "file": "c2_ariete_proto_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 27978,
-      "sha256": "ce07e7f96ca0d6e1371286eece6dcb6ab1e5d4f71441de0c4d44a369462cbc9c"
+      "bytes": 27820,
+      "sha256": "962ced4cfdd2f3dba9980020d7480d833f88cf845eb92ac4da27e6337a710966"
     },
     "crewSide": {
       "file": "c2_ariete_proto_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 24320,
-      "sha256": "28c9686a0fd938de5e4bd4365d9f734cc8579ce928eed3d72021e5937ea052e7"
+      "bytes": 24068,
+      "sha256": "2ce76bfd695254242b3fb645fb1cf492e65d5bceb5feb23a15ff23486678ec94"
     },
     "markings": {
       "file": "c2_ariete_proto_markings.png",
@@ -3563,8 +3563,8 @@
     "technicalLabels": {
       "file": "c2_ariete_proto_technical.json",
       "mime": "application/json",
-      "bytes": 5294,
-      "sha256": "8a85432ed773f0c6e37ee0992283268d3edf1be7e762318ff01ecfe0cf3a90a8"
+      "bytes": 5297,
+      "sha256": "07fd19d26ba7cf89552f45189600c16bb04479416c2425ce4d9219d8a98b034c"
     }
   }
 }

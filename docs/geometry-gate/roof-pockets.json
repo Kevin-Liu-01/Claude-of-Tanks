@@ -57,7 +57,7 @@
   "challenger3_td_rws": {"turretRaisedCm2":0,"turretBaseCm2":0,"hullCm2":1912,"pockets":2,"geometry":{"hull":"811e2418a467b5bb","turret":"c5e6be50be5cb5d5","gun":"e00918ab77324c17"}},
   "challenger_x": {"turretRaisedCm2":0,"turretBaseCm2":948,"hullCm2":0,"pockets":2,"geometry":{"hull":"f334aefc688d49d5","turret":"1aecf6596e073dea","gun":"ede582db845c0d6f"}},
   "challenger_x_sleek": {"turretRaisedCm2":0,"turretBaseCm2":2480,"hullCm2":0,"pockets":4,"geometry":{"hull":"5a87a26aee492ffc","turret":"d116b2377327899c","gun":"9676f3bc1b5db60b"}},
-  "chieftain3": {"turretRaisedCm2":0,"turretBaseCm2":0,"hullCm2":0,"pockets":0,"geometry":{"hull":"572ad097aa74a1cc","turret":"9adf21e29fe9d9f2","gun":"3865e876373745be"}},
+  "chieftain3": {"turretRaisedCm2":0,"turretBaseCm2":0,"hullCm2":0,"pockets":0,"geometry":{"hull":"70daef9937665908","turret":"9adf21e29fe9d9f2","gun":"3865e876373745be"}},
   "chieftain5": {"turretRaisedCm2":0,"turretBaseCm2":0,"hullCm2":0,"pockets":0,"geometry":{"hull":"1a2f43a1bbdb864c","turret":"1ccf4a1a3169c934","gun":"b1535e564074f8e3"}},
   "chieftain_mk10": {"turretRaisedCm2":1972,"turretBaseCm2":832,"hullCm2":6560,"pockets":21,"geometry":{"hull":"3adedfc440107ed0","turret":"7aacafdd2602c8a2","gun":"3f68eb9128176147"}},
   "chieftain_mk9": {"turretRaisedCm2":0,"turretBaseCm2":0,"hullCm2":0,"pockets":0,"geometry":{"hull":"0bb40f91c7bedd76","turret":"e65ef1303dcc62b8","gun":"f3a5187f7a848fbe"}},

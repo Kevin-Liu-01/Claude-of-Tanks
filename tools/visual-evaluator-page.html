@@ -256,9 +256,7 @@ const CRITIC_REFERENCE_OVERRIDES = {
     ] } },
   // 264 (Main ruling 2026-10-28, as tools/procedural-fidelity.html): leo2a4 is rebuilt on the release-262 Leopard 2 hull; its old oracle (a Leopard 2A6) is unregistered here too.
   // 267 (Main ruling 2026-10-28, as tools/procedural-fidelity.html): kf51_evo is rebuilt as the KF51 EVO; its old oracle (the 2022 KF51 Panther) is unregistered here too.
-  chieftain3: { source:'glb', glb:{ path:'/models/tanks/community/recovered/chieftain5.glb',
-    turretNode:'^Turret$', gunNode:'^Gun$', autoPivot:true,
-    pitchOffset:-Math.PI/2, paintUntextured:true } },
+  chieftain3: SECOND_WAVE_X_REFERENCE_OVERRIDES.chieftain3, // 271: the Mk 5 X source it is built on (the print lay on its nose)
   m1a2_legacy: { source:'glb', glb:{ path:'/models/tanks/community/recovered/m1a2_sepv2.glb',
     turretNode:'^Turret$', gunNode:'^misc_b$', autoPivot:true, yawOffset:Math.PI,
     turretFollowers:'^(?:ammo_(?:5|box)|armor_turret|ex_armoc|ex_armor(?:_turret2?|_0[124]|_04_2|_[lr])?(?!_body)|ex_era_turret(?:_[23])?|ex_decor_04|glsaa_[6-8]|hatch_0[34]|mg_aamount_h|misc_a|optic_commander)$',

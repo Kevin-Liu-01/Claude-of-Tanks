@@ -1,5 +1,5 @@
 {
- "generatedAt": "2026-11-09T07:04:17.686Z",
+ "generatedAt": "2026-11-09T20:58:52.474Z",
  "gate": "every component >= its registered floor (90 fleet / 92 exemplar / 99 historical preservation); min is the headline; preservation is not source fidelity",
  "passed": 44,
  "total": 154,
@@ -504,22 +504,6 @@
    "comparisonPurpose": "source-fidelity"
   },
   {
-   "id": "chieftain3",
-   "geoMin": 0,
-   "requiredMinimum": 90,
-   "qualityBar": "fleet",
-   "gatePassed": false,
-   "components": {
-    "hullCurves": 0,
-    "stations": 0,
-    "turretCurves": 0,
-    "wholeCurves": 0,
-    "dims": 8.8,
-    "floaters": 100
-   },
-   "comparisonPurpose": "source-fidelity"
-  },
-  {
    "id": "t72bu_1989",
    "geoMin": 0,
    "requiredMinimum": 90,
@@ -852,6 +836,19 @@
     "turretCurves": 35.5,
     "wholeCurves": 41.9,
     "dims": 63.6,
+    "floaters": 100
+   },
+   "comparisonPurpose": "source-fidelity"
+  },
+  {
+   "id": "chieftain3",
+   "geoMin": 40,
+   "requiredMinimum": 90,
+   "qualityBar": "fleet",
+   "gatePassed": false,
+   "components": {
+    "wholeCurves": 94.8,
+    "dims": 40,
     "floaters": 100
    },
    "comparisonPurpose": "source-fidelity"

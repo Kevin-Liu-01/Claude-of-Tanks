@@ -150,6 +150,9 @@ function glacis(P: TankBuilderPort): void {
     rail.push([x, roof(z, x) + .110, z]);
   }
   add('hullDetail', tubeThrough(rail, .016, 8), 0, 0, 0);
+  // 271 (sealed census): the tube is open-ended, and its ends at z 2.06 showed their inner faces as open pixels; a ball
+  // closes each end over its upright
+  for (const end of [rail[0], rail[rail.length - 1]]) add('hullDetail', new THREE.SphereGeometry(.016, 8, 6), ...end);
   for (const [x, z] of [[-.84, 2.08], [-.74, 2.47], [0, 2.53], [.74, 2.47], [.84, 2.08]] as const) {
     add('hullDetail', cylY(.012, .012, .118, 6), x, roof(z, x) + .052, z);
   }
@@ -159,6 +162,8 @@ function glacis(P: TankBuilderPort): void {
     const u = new THREE.TorusGeometry(.040, .014, 6, 10, Math.PI).rotateY(Math.PI / 2).rotateX(Math.PI);
     add('hullDetail', u, side * .862, .995, 3.218);
     add('hullDetail', cylX(.012, .118, 8), side * .862, .990, 3.218);
+    // 271 (sealed census): the half torus is open at both arc ends (z +-0.04 here); a ball closes each
+    for (const dz of [-.040, .040]) add('hullDetail', new THREE.SphereGeometry(.014, 8, 6), side * .862, .995, 3.218 + dz);
   }
   for (const side of [-1, 1]) liftingEye(add, 'hullDetail', side * .86, roof(2.30, .86) - .002, 2.30, Math.PI / 2);
   // The Mk 5 hull's rear deck leaves slots down to the ground (chieftain5 lists them in contig-hidden.json): 4 cm at

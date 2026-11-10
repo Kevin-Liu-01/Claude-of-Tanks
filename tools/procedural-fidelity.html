@@ -461,14 +461,9 @@ const LOCAL_REFERENCE_OVERRIDES = {
   // repaired). Configs are the retired registrations verbatim.
   // 264 (Main ruling 2026-10-28: "where a rebuild's registered oracle shows a different (later) variant, unregister it"): leo2a4 is rebuilt on the release-262 Leopard 2 hull (fidelity first-party-unregistered, N/A; the blind photo critic is its visual bar). Its oracle leo2a6_buh.glb shows a Leopard 2A6 (fleet id leo2a6): re-register it there later.
   // 267 (Main ruling 2026-10-28: "where a rebuild's registered oracle shows a different (later) variant, unregister it"): kf51_evo is rebuilt as the Eurosatory KF51 EVO (profiles/kf51Evo.ts) and kf51_u is the KF51-U (fidelity first-party-unregistered, N/A; the blind photo critic is their visual bar). Their oracle kf51_grip420.glb shows the 2022 KF51 Panther demonstrator (fleet id kf51_panther, scored on its own source).
-  // chieftain3 (graduated 2026-08-04, the 18th — UK's first): retired
-  // userdrops5 registration — measurement-only (Z-up print).
-  chieftain3: {
-    source:'glb',
-    glb:{ path:'/models/tanks/community/recovered/chieftain5.glb',
-      turretNode:'^Turret$', gunNode:'^Gun$', autoPivot:true,
-      pitchOffset:-Math.PI/2, paintUntextured:true },
-  },
+  // chieftain3 (graduated 2026-08-04, the 18th — UK's first) measured against the retired userdrops5 print
+  // (recovered/chieftain5.glb) until 271: the print lay on its nose in the gate frame (reference height 10.79 m, hull
+  // 2.19 m). It is registered to the Mk 5 X source it is built on (second-wave-x-reference-overrides.ts, Main 271).
   // m1a1_abrams_hc (graduated 2026-08-04, the 17th): retired specs.ts SEPv2
   // registration — measurement-only.
   m1a2_legacy: {
@@ -891,6 +886,9 @@ function visibleBox(root) {
     if (!isRenderNode(o) || !baseVisible.get(o) || hiddenRoofFittings?.has(o)) return;
     if (!o.geometry.boundingBox) o.geometry.computeBoundingBox();
     if (!o.geometry.boundingBox) return;
+    // a mesh whose every triangle was set aside (271: a whip mesh of its own, all of it in its antenna span) keeps an
+    // empty box, whose infinite corners would make the whole box infinite
+    if (o.geometry.boundingBox.isEmpty()) return;
     local.copy(o.geometry.boundingBox);
     if (o.isInstancedMesh) {
       for (let i=0; i<o.count; i++) {
