@@ -17,6 +17,9 @@ root files supply boot wiring and small shared contracts.
 rendering subsystems. `runtimeTypes.ts` defines unvalidated runtime and JSON
 boundary values, not domain models. `productStats.ts` supplies dependency-free
 totals and template tokens; `authorship.ts` supplies first-party attribution.
+`workerCalls.ts` is the one rule for a request of an optional worker (a deadline,
+abandon on error or silence, the caller's own fallback, no restart of a worker
+that never answered); a new worker client uses it.
 `analytics.ts` is deferred public-page telemetry, separate from game boot.
 Read `docs/SYSTEMS.md` and `docs/DECISIONS.md` for cross-subsystem contracts.
 
