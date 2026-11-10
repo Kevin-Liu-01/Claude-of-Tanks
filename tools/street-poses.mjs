@@ -8,6 +8,11 @@
 // every arm of a pair shoots the same cameras whatever its own props.
 //
 //   node tools/street-poses.mjs --maps=autumn,caldera [--count=6] [--seed=271] --out=<poses-street.json>
+//
+// (amberford-lavoir-272) `--focus=x,z` aims every pose at one place instead (a square's corner, a set piece): the eye on
+// the carriageway band 12-40 m from it, looking at it at door height, the line of sight clear of every building and tall
+// solid but the focus's own (those within 8 m of it), poses 25 m apart; the same cameras whatever stands there.
+//   node tools/street-poses.mjs --maps=autumn --focus=-114,75 --count=6 --out=<poses-place.json>
 
 import { writeFileSync } from 'node:fs';
 import path from 'node:path';
@@ -16,7 +21,7 @@ import { buildWorldCollisionData } from './headlessWorldCollision.mjs';
 const EYE_UP_M = 3.4, AT_UP_M = 2.2, NEAR_M = 12, FAR_M = 15, ROAD_BAND_M = 8, SPACING_M = 30, TALL_M = 2, TRIES = 200000;
 
 function parse(argv) {
-  const out = { maps: [], count: 6, seed: 271, out: null };
+  const out = { maps: [], count: 6, seed: 271, out: null, focus: null };
   for (const arg of argv) {
     const m = /^--([a-z]+)=(.*)$/.exec(arg);
     if (!m) throw new Error(`unknown argument ${arg}`);
@@ -24,6 +29,7 @@ function parse(argv) {
     else if (m[1] === 'count') out.count = Number(m[2]);
     else if (m[1] === 'seed') out.seed = Number(m[2]);
     else if (m[1] === 'out') out.out = path.resolve(m[2]);
+    else if (m[1] === 'focus') out.focus = m[2].split(',').map(Number);
     else throw new Error(`unknown flag --${m[1]}`);
   }
   if (!out.maps.length || !out.out) throw new Error('--maps=<ids> and --out=<file> are required');
@@ -86,7 +92,9 @@ function segmentHitsBox(o, px, pz, qx, qz, stop) {
   return true;
 }
 
-async function posesFor(mapId, { count, seed }) {
+const FOCUS_NEAR_M = 12, FOCUS_FAR_M = 40, FOCUS_SPACING_M = 25, FOCUS_OWN_M = 8;
+
+async function posesFor(mapId, { count, seed, focus }) {
   let field = null, buildings = [], obstacles = [];
   await buildWorldCollisionData(mapId, {
     inspect: ({ dressing, flora, field: f }) => {
@@ -102,6 +110,27 @@ async function posesFor(mapId, { count, seed }) {
   const rng = mulberry32(hash(mapId) ^ seed);
   const poses = {}, taken = [], used = new Set();
   let tries = 0;
+  if (focus) {
+    const [fx, fz] = focus, fy = field.getHeightAt(fx, fz);
+    // the focus's own solids (what stands at the place: a set piece, the well) never block its view
+    const own = (o) => Math.hypot((o.min[0] + o.max[0]) / 2 - fx, (o.min[2] + o.max[2]) / 2 - fz) < FOCUS_OWN_M;
+    const blockers = obstacles.filter((o) => o.max[1] - o.min[1] > TALL_M && !own(o));
+    while (taken.length < count && tries++ < TRIES) {
+      const a = rng() * Math.PI * 2, d = FOCUS_NEAR_M + rng() * (FOCUS_FAR_M - FOCUS_NEAR_M);
+      const x = fx + Math.sin(a) * d, z = fz + Math.cos(a) * d;
+      if (field._roadDist(x, z) > ROAD_BAND_M) continue;
+      if ((field.getWaterMaskAt?.(x, z) ?? 0) > 0.02 || field.getNormalAt(x, z).y < 0.94) continue;
+      if (taken.some((p) => Math.hypot(p.x - x, p.z - z) < FOCUS_SPACING_M)) continue;
+      if (polys.some((b) => b.polys.some((poly) => nearestOnOutline(poly, x, z).inside || segmentCrosses(poly, x, z, fx, fz)))) continue;
+      if (blockers.some((o) => segmentHitsBox(o, x, z, fx, fz, FOCUS_OWN_M))) continue;
+      taken.push({ x, z });
+      poses[`street${taken.length}`] = {
+        cam: [x, field.getHeightAt(x, z) + EYE_UP_M, z], at: [fx, fy + AT_UP_M, fz], heading: tries, hitM: +d.toFixed(1),
+        building: { kind: 'focus', x: fx, z: fz },
+      };
+    }
+    return { buildings: buildings.length, tries, poses };
+  }
   while (taken.length < count && tries++ < TRIES) {
     // a candidate in the band round a seeded building (its outline's reach plus 12-15 m, any bearing)
     const pick = polys[(rng() * polys.length) | 0], a = rng() * Math.PI * 2, out = NEAR_M + rng() * (FAR_M - NEAR_M);
@@ -133,7 +162,8 @@ async function posesFor(mapId, { count, seed }) {
 }
 
 const options = parse(process.argv.slice(2));
-const out = { tool: 'street-poses', seed: options.seed, rule: `road band ${ROAD_BAND_M} m, facade ${NEAR_M}-${FAR_M} m, eye +${EYE_UP_M} m`, maps: {} };
+const out = { tool: 'street-poses', seed: options.seed, rule: options.focus ? `road band ${ROAD_BAND_M} m, focus (${options.focus}) ${FOCUS_NEAR_M}-${FOCUS_FAR_M} m, eye +${EYE_UP_M} m`
+  : `road band ${ROAD_BAND_M} m, facade ${NEAR_M}-${FAR_M} m, eye +${EYE_UP_M} m`, maps: {} };
 for (const mapId of options.maps) {
   out.maps[mapId] = await posesFor(mapId, options);
   const n = Object.keys(out.maps[mapId].poses).length;
