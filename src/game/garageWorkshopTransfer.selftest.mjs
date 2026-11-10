@@ -86,6 +86,9 @@ class FixtureWorker {
   }
   postMessage(request) {
     this.requests.push(request);
+    // (improve-271, plan 031) a worker that holds its answer, or fails on this request
+    if (FixtureWorker.mode === 'silent') return;
+    if (FixtureWorker.mode === 'error') { queueMicrotask(() => this.onerror?.({ message: 'fixture worker crashed' })); return; }
     const wire = fixture();
     this.fixtures.push(wire);
     queueMicrotask(() => {
@@ -100,6 +103,7 @@ class FixtureWorker {
   }
   terminate() { this.terminations++; }
 }
+FixtureWorker.mode = 'answer';
 
 function inspectNativeBindings(mesh) {
   const bindings = new Map();
@@ -303,4 +307,70 @@ try {
   else delete globalThis.window;
 }
 
-console.log('garageWorkshopTransfer.selftest: public worker roundtrip, exact arrays/counts, packed colors, clones, native Three divisors and shared disposal pass');
+// (improve-271, plan 031) a silent or failed worker cannot hang Return to Garage: the request rejects (garageDressing.ts
+// then builds the exhibit in line), a dead worker is terminated and never posted to again, and after one that had
+// answered the next request starts a fresh worker; an answering worker leaves no deadline armed
+{
+  let now = 0, serial = 0;
+  const live = new Map();
+  const timers = {
+    set(callback, ms) { const h = ++serial; live.set(h, { at: now + ms, callback }); return h; },
+    clear(h) { live.delete(h); },
+    advance(ms) { now += ms; for (const [h, t] of [...live]) if (t.at <= now && live.delete(h)) t.callback(); },
+  };
+  const settle = (promise) => promise.then(() => 'resolved', (error) => error.message);
+  try {
+    Object.defineProperty(globalThis, 'Worker', { configurable: true, value: FixtureWorker });
+    Object.defineProperty(globalThis, 'window', { configurable: true, value: { setTimeout } });
+    // (a) a worker that never answers: rejected within the deadline, terminated, not replaced (it never answered: 264)
+    workers.length = 0;
+    FixtureWorker.mode = 'silent';
+    let silent = createGarageWorkshopTransfer(shadowCtx, { timers });
+    const held = settle(silent.createVisual('m1a1_abrams_hc', 1));
+    timers.advance(29_999);
+    assert.equal(live.size, 1, 'not before the first-answer deadline');
+    timers.advance(1);
+    assert.equal(await held, 'Garage workshop worker went silent');
+    assert.equal(workers[0].terminations, 1, 'the silent worker is terminated');
+    assert.equal(await settle(silent.createVisual('m1a1_abrams_hc', 2)), 'Garage workshop worker unavailable');
+    assert.equal(workers.length, 1, 'a worker that never answered is not started again');
+    assert.equal(workers[0].requests.length, 1, 'nothing posted to the dead worker');
+    silent.dispose(); silent = null;
+    // (b) an error after an answer: the pending request rejects AND the next request starts a NEW worker
+    workers.length = 0;
+    FixtureWorker.mode = 'answer';
+    const failing = createGarageWorkshopTransfer(shadowCtx, { timers });
+    const answered = await failing.createVisual('m1a1_abrams_hc', 3);
+    assert.equal(live.size, 0, 'an answering worker leaves no deadline armed');
+    FixtureWorker.mode = 'error';
+    assert.equal(await settle(failing.createVisual('m1a1_abrams_hc', 4)), 'Garage workshop worker failed: fixture worker crashed');
+    assert.equal(workers[0].terminations, 1);
+    FixtureWorker.mode = 'answer';
+    const fresh = await failing.createVisual('m1a1_abrams_hc', 5);
+    assert.equal(workers.length, 2, 'a fresh worker after the failure (constructions counted)');
+    assert.equal(workers[0].requests.length, 2, 'the dead worker took nothing more');
+    // a slow build is not a silent one: the deadline runs from the worker's last batch
+    FixtureWorker.mode = 'silent';
+    const slow = settle(failing.createVisual('m1a1_abrams_hc', 6));
+    timers.advance(14_000);
+    const last = workers[1].requests.at(-1), wire = fixture();
+    workers[1].onmessage({ data: { ok: true, requestId: last.requestId, kind: 'begin', specId: last.specId, buildMs: 14_000,
+      materials: wire.materials, geometryCount: wire.geometries.length, nodeCount: wire.nodes.length, payload: wire.payload } });
+    timers.advance(14_000);
+    workers[1].onmessage({ data: { ok: true, requestId: last.requestId, kind: 'geometries', geometries: wire.geometries } });
+    workers[1].onmessage({ data: { ok: true, requestId: last.requestId, kind: 'nodes', nodes: wire.nodes } });
+    workers[1].onmessage({ data: { ok: true, requestId: last.requestId, kind: 'complete' } });
+    assert.equal(await slow, 'resolved', 'batches reset the deadline');
+    FixtureWorker.mode = 'answer';
+    answered.dispose(); fresh.dispose();
+    failing.dispose();
+  } finally {
+    FixtureWorker.mode = 'answer';
+    if (originalWorker) Object.defineProperty(globalThis, 'Worker', originalWorker);
+    else delete globalThis.Worker;
+    if (originalWindow) Object.defineProperty(globalThis, 'window', originalWindow);
+    else delete globalThis.window;
+  }
+}
+
+console.log('garageWorkshopTransfer.selftest: public worker roundtrip, exact arrays/counts, packed colors, clones, native Three divisors and shared disposal, silent and failed workers settle (plan 031) pass');
