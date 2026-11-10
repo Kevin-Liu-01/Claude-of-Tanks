@@ -165,7 +165,7 @@ assert.deepEqual({ ...ctf.flagBots }, { recoverShare: 0.5, recoverMin: 2, huntWh
   escortAheadM: 24, escortSideM: 22, defendShare: 0.15, defendMinSquad: 6, interceptLeadS: 2.5,
   raidStageM: 120, raidHoldInM: 25, raidGroupM: 70, raidMinGroup: 2, raidWaitS: 12 },
   'the flag bots run the flags: half recover, the rest raid back as a group; a carrier\'s team escorts it, four strong, no guard home (round 3b)');
-assert.deepEqual({ ...ctf.flagPitch }, { baseAxisM: 320, respawnBackM: 100, carrierSpeedScale: 1 }, 'the bases 320 m apart, a revive 100 m behind its own (round 3b), a carrier at full speed (gameplay-modes-233)');
+assert.deepEqual({ ...ctf.flagPitch }, { baseAxisM: 320, respawnBackM: 100, carrierSpeedScale: 1, carrierRevealed: true }, 'the bases 320 m apart, a revive 100 m behind its own (round 3b), a carrier at full speed (gameplay-modes-233) and revealed to every viewer (Main, finding 53)');
 {
   const ball = matchRulesetFor('turbo_ball');
   assert.deepEqual([ball.ballBots.strikers, ball.ballBots.strikerHoldS, ball.ballBots.swapM, ball.ballBots.leadMaxS, ball.ballBots.screens,
@@ -399,6 +399,22 @@ assert.equal(rulesetAllyCap(standard, 6), 6); assert.equal(rulesetAllyCap(horde,
   assert.deepEqual(arrangementChoices('air_support').respawnS, [2, 3, 6, 8, 10, 15], 'Air Support offers its own 8 s respawn');
   assert.deepEqual(Object.keys(arrangementChoices('standard')), [], 'Standard takes none of them');
   assert.ok(checked > 40, `every offered value checked (${checked})`);
+}
+
+// improve-271 plan 012: the rules the mode-id literals used to decide, read from the ruleset (the old literals' values)
+{
+  const kills = ['zone_control', 'mars', 'air_support', 'drone', 'gun_game', 'juggernaut', 'realistic', 'ac130'];
+  const footprints = { capture_the_flag: { radiusM: 12 }, turbo_ball: { radiusM: 18, arena: true } };
+  const middles = { turbo_ball: { kind: 'kickoff', radiusM: 12, reliefM: 3, arena: true }, ac130: { kind: 'extraction', radiusM: 30, reliefM: 7 } };
+  for (const mode of GAME_MODE_IDS) {
+    const ruleset = matchRulesetFor(mode);
+    assert.equal(ruleset.elimination === true, mode === 'standard' || mode === 'realistic', `${mode}: elimination`);
+    assert.equal(ruleset.scoresKills === true, kills.includes(mode), `${mode}: kill scoring`);
+    assert.deepEqual(ruleset.objectiveFootprint ?? null, footprints[mode] ?? null, `${mode}: objective footprint`);
+    assert.deepEqual(ruleset.middleReserve ?? null, middles[mode] ?? null, `${mode}: middle reserve`);
+    assert.equal(ruleset.routePush === true, mode !== 'standard', `${mode}: bot routes pushed toward the objective`);
+    assert.equal(ruleset.terrainVariant === 'assault-trenches', mode === 'frontline_assault', `${mode}: trench terrain`);
+  }
 }
 
 console.log('matchRuleset: per-mode values, determinism, campaign difficulty fold, team arrangement clamps, horde wave law, rule-card lines, spawn stamps, ammo/reload helpers, the post-verdict hold, the counter-drone airframe threshold (hitsToDown 1.1, clear of every capped burst sum) and the couch rules verified');

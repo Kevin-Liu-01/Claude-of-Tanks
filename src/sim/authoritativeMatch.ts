@@ -125,7 +125,7 @@ import { consumeAmmunition, hasAmmunition } from './ammunition.ts';
 import { createMatchModeController, normalizeGameMode } from './matchModes.ts';
 import {
   applyRulesetToCombat, rulesetSeatHullScale, endingHoldExpired, ENDING_HOLD_LIMIT_S, matchRulesetFor, refillUnlimitedAmmunition,
-  consumableTiming, rulesetConsumableGate, rulesetLoadout, rulesetObjectiveAxisM, rulesetUnlimitedFor,
+  consumableTiming, rulesetConsumableGate, rulesetLoadout, rulesetObjectiveAxisM, rulesetUnlimitedFor, terrainVariantFor,
   type MatchRuleset,
   type RulesetPhysics,
 } from './matchRuleset.ts';
@@ -856,9 +856,10 @@ export function createAuthoritativeMatch({
   // A browser world or dedicated collision lease already owns the exact field.
   // Do not bake a second 5.5 MB field merely to obtain its existing layout.
   const suppliedHeightField = worldCollision?.heightField;
-  // batch 27: a Frontline Assault authority bakes the trench variant so its sectors sit in the carved lines
+  // batch 27: a Frontline Assault authority bakes the trench variant so its sectors sit in the carved lines (the
+  // ruleset's terrainVariant names it)
   const normalizedGameMode = normalizeGameMode(gameMode);
-  const shared = suppliedHeightField ? null : sharedTerrain(mapId, normalizedGameMode === 'frontline_assault');
+  const shared = suppliedHeightField ? null : sharedTerrain(mapId, terrainVariantFor(normalizedGameMode) === 'assault-trenches');
   // destruction (docs/DESTRUCTION.md §7): the match's ground is the shared field plus this match's overlay (rubble
   // mounds, craters); the base is never touched, so a shared terrain carries no stamp into another match
   const baseHeightField = suppliedHeightField || shared!.heightField;
@@ -2593,7 +2594,22 @@ export function createAuthoritativeMatch({
     const entity = entityById.get(entityId);
     return Boolean(entity && entity.modeActive !== false &&
       (!viewer || entity.team === viewer.team || entity.combat.destroyed ||
-        spotting.isSpotted(entity.id, viewer.team, viewer)));
+        spotting.isSpotted(entity.id, viewer.team, viewer) ||
+        // a named reveal to every viewer: the flag carrier, whose position its carried flag publishes (Main's ruling on
+        // audit finding 53, 2026-11-09), so the mode state never places a hull the snapshot hides
+        modeController.revealReason(entity.id) !== null));
+  }
+
+  /**
+   * The one shell rule snapshot() and observeForViewer() share (improve-271 plan 014: snapshot() hid what
+   * observeForViewer() sent): a viewer sees a round whose shooter is gone or observed, and every airstrike's round, which
+   * flies from its aircraft or battery, never from the caller's hull (sim/airSupportFire.ts; the owner, 2026-11-05: strike
+   * footprints and headings are public).
+   */
+  function viewerSeesShell(viewer: AuthoritativeEntity | undefined, shell: SnapshotShellSource): boolean {
+    if (typeof (shell as { strikeId?: number }).strikeId === 'number') return true;
+    const shooter = entityById.get(String(shell.shooterId));
+    return !shooter || canObserveEntity(viewer, shooter.id);
   }
 
   /** The fields of a world event that say how it was dealt (withheld from a viewer that does not see the source). */
@@ -2774,10 +2790,7 @@ export function createAuthoritativeMatch({
       const canObserve = (_id: string, source: SnapshotEntitySource): boolean => {
         return canObserveEntity(viewer, String(source.id));
       };
-      const canObserveShell = (_id: string, shell: SnapshotShellSource): boolean => {
-        const shooter = entityById.get(String(shell.shooterId));
-        return !shooter || canObserve(viewerId, shooter);
-      };
+      const canObserveShell = (_id: string, shell: SnapshotShellSource): boolean => viewerSeesShell(viewer, shell);
       return captureWorldSnapshot({
         tick,
         serverTimeMs,
@@ -2801,11 +2814,7 @@ export function createAuthoritativeMatch({
         if (entity.id === viewerId || canObserveEntity(viewer, entity.id)) entitiesOut.push(entity);
       }
       for (const shell of shells) {
-        const shooter = entityById.get(String(shell.shooterId));
-        // an airstrike's round flies from its aircraft or battery: every viewer sees it come in (sim/airSupportFire.ts)
-        if (!shooter || typeof (shell as { strikeId?: number }).strikeId === 'number' || canObserveEntity(viewer, shooter.id)) {
-          shellsOut.push(shell as unknown as SnapshotShellSource);
-        }
+        if (viewerSeesShell(viewer, shell as unknown as SnapshotShellSource)) shellsOut.push(shell as unknown as SnapshotShellSource);
       }
     },
 

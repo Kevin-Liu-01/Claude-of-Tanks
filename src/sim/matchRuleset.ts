@@ -772,6 +772,12 @@ interface FlagPitchRules {
    * some 200 m further back; round 3, the critic's M5).
    */
   readonly respawnBackM?: number | null;
+  /**
+   * Carrying a flag reveals the carrier to every viewer (Main's ruling on audit finding 53, 2026-11-09: standard CTF).
+   * A carried flag publishes its carrier's position, so this stays true while flags publish positions: the authority's
+   * spotting filter reveals the carrier by name ('flag_carrier') and the snapshot places no hull the viewer cannot see.
+   */
+  readonly carrierRevealed?: boolean;
 }
 /** Infected survivors: unengaged survivors close on their own living centroid and hold together within this. */
 interface InfectionBotRules {
@@ -1272,6 +1278,18 @@ export interface MatchRuleset {
    * read a battle only where this is true. The practice modes play without a record (nothing to farm on a range).
    */
   readonly records: boolean;
+  /** The battle ends when a side is wiped out (Standard, Realistic): the controller's usesElimination. */
+  readonly elimination?: boolean;
+  /** A confirmed enemy destruction scores for the killer's side (the zone modes, Drone, Gun Game, Juggernaut, Realistic, AC-130). */
+  readonly scoresKills?: boolean;
+  /** The ground each side's own objective (a flag base, a goal) reserves in placement; `arena` keeps it inside the
+   *  mode arena's half-extent (sim/matchPlacement.ts). */
+  readonly objectiveFootprint?: { readonly radiusM: number; readonly arena?: boolean };
+  /** The middle point placement reserves: Turbo Ball's kick-off spot (the map's authored one where it has one) or the
+   *  AC-130's extraction, with the footprint's radius and relief. */
+  readonly middleReserve?: { readonly kind: 'kickoff' | 'extraction'; readonly radiusM: number; readonly reliefM: number; readonly arena?: boolean };
+  /** The bots' routes are pushed toward the mode's objective (sim/modeRoutePush.ts); Standard's hunt on their own. */
+  readonly routePush?: boolean;
   /** The proving ground's range: the firing line, the lanes, the reference plates and the moving-target option. */
   readonly provingGround?: ProvingGroundRules;
   /** A watched battle (WATCH_RULES): no human seat, every seat a bot's, and the watcher's camera and seat rules. */
@@ -1412,6 +1430,12 @@ export function worldKeyFor(mapId: string, mode: GameModeId | string | null | un
   return variant ? `${mapId}#${variant}` : mapId;
 }
 
+/** The ground a mode's placement reserves for its objectives (sim/matchPlacement.ts reads it by the mode alone, as the
+ *  world's clearings do): each side's objective footprint and the middle reserve (null: an unknown mode). */
+export function objectivePlacementFor(mode: GameModeId | string | null | undefined): Pick<MatchRuleset, 'objectiveFootprint' | 'middleReserve'> | null {
+  return (BASE_RULESETS as Readonly<Record<string, MatchRuleset>>)[String(mode)] ?? null;
+}
+
 export interface CampaignRulesetInput {
   /** 1-based ladder difficulty. */
   readonly difficulty: number;
@@ -1457,7 +1481,7 @@ const STANDARD: MatchRuleset = Object.freeze({
   ammo: 'spec', equipmentSlots: 3, consumables: true, criticalDamage: true, jumpMps: null, recoilLaunchScale: 1, shellKnockScale: 0.3,
   respawnS: null, respawnSafeM: 75, timeLimitS: 900, timeout: 'draw', endingHoldS: ENDING_HOLD_S,
   allies: null, enemies: null, assault: null, horde: null, enemyNation: null, teamNations: DEFAULT_TEAM_NATIONS,
-  destruction: DESTRUCTION_ON, terrainVariant: null, records: true,
+  destruction: DESTRUCTION_ON, terrainVariant: null, records: true, routePush: true,
 });
 
 // Per-side doctrines (gameplay-modes-228). Each is a partial over CLASSIC_BOT_DOCTRINE; see BotDoctrine for the knobs.
@@ -1512,7 +1536,8 @@ const BALL_DOCTRINE: Partial<BotDoctrine> = Object.freeze({
 // refill only the gunship there). Unlimited rounds turn every cache into a repair (cacheHealChance): an ammunition cache
 // could never be taken.
 const BASE_RULESETS: Readonly<Record<GameModeId, MatchRuleset>> = Object.freeze({
-  standard: STANDARD,
+  // the elimination battle: the side wiped out loses, and its bots hunt on their own (no objective to push toward)
+  standard: Object.freeze({ ...STANDARD, elimination: true, routePush: false }),
   // Flags: respawning objective play on the standard physics; the controller slows a carrier.
   // gameplay-modes-228 (owner 2026-10-18: "increase aggression of bots trying to capturing flag"): the flags are run,
   // not brawled over — half the squad recovers a taken home flag (a capture needs it home) and the rest raid back,
@@ -1525,7 +1550,7 @@ const BASE_RULESETS: Readonly<Record<GameModeId, MatchRuleset>> = Object.freeze(
   // revive stands 100 m behind its own flag base (flagPitch.respawnBackM; at the deployment, 200 m further back, a robbed
   // team's revives chased the carrier from behind its run's start), and a carrier takes 4 escorts with no guard left home
   // (the A/B over seeds 401-402: pursuers within 120 m 0.28 -> 0.38, escorts within 80 m 0.32 -> 0.47, captures 2 a match)
-  capture_the_flag: Object.freeze({ ...STANDARD, mode: 'capture_the_flag', respawnS: 6,
+  capture_the_flag: Object.freeze({ ...STANDARD, mode: 'capture_the_flag', respawnS: 6, objectiveFootprint: Object.freeze({ radiusM: 12 }),
     bots: Object.freeze({ alpha: FLAG_DOCTRINE, bravo: FLAG_DOCTRINE }),
     flagBots: Object.freeze({ recoverShare: 0.5, recoverMin: 2, huntWhenHomeFlagTaken: false, escorts: 4, carrierGuards: 0,
       escortAheadM: 24, escortSideM: 22, defendShare: 0.15, defendMinSquad: 6, interceptLeadS: 2.5,
@@ -1534,9 +1559,9 @@ const BASE_RULESETS: Readonly<Record<GameModeId, MatchRuleset>> = Object.freeze(
     // match, a capture in 3 of 8, 6 draws, first pickup 94 s, nearly every carrier killed on its run): the bases 320 m
     // apart (was 400) and a carrier at full speed (was 85 %). The A/B over the same seeds: 1.38 captures, a capture in 6
     // of 8, 2 draws, first pickup 64 s; the shorter pitch alone 0.88 / 6 / 3, the full-speed carrier alone 0.88 / 4 / 4
-    flagPitch: Object.freeze({ baseAxisM: 320, respawnBackM: 100, carrierSpeedScale: 1 }) }),
+    flagPitch: Object.freeze({ baseAxisM: 320, respawnBackM: 100, carrierSpeedScale: 1, carrierRevealed: true }) }),
   // Zones: respawning hold-the-ground play; the 750-point target resolves inside the clock.
-  zone_control: Object.freeze({ ...STANDARD, mode: 'zone_control', respawnS: 6 }),
+  zone_control: Object.freeze({ ...STANDARD, mode: 'zone_control', respawnS: 6, scoresKills: true }),
   // Turbo Ball: arcade physics — 0.6 g so hulls and shells fly, 1.85× speed, tough hulls, half
   // damage, quick reloads, HE only with unlimited rounds, no equipment or consumables, 3 s
   // respawns, a ten-minute clock.
@@ -1545,6 +1570,9 @@ const BASE_RULESETS: Readonly<Record<GameModeId, MatchRuleset>> = Object.freeze(
     damageScale: 0.5, reloadScale: 0.7, ammo: 'unlimited', equipmentSlots: 0, consumables: false,
     criticalDamage: false, jumpMps: 13, recoilLaunchScale: 12, shellKnockScale: 2.5, respawnS: 3, timeLimitS: 600,
     destruction: DESTRUCTION_OFF,
+    // the goals and the kick-off spot stand inside the arena
+    objectiveFootprint: Object.freeze({ radiusM: 18, arena: true }),
+    middleReserve: Object.freeze({ kind: 'kickoff', radiusM: 12, reliefM: 3, arena: true }),
     // gameplay-modes-228 ("pursuing ball"): two strikers on an intercept course, screens and a keeper, at most three a
     // team on the ball; strikers jump at it and shoot it toward the goal; the goals sit goalAxisM apart (A/B-chosen).
     // Round 3b (the critic's M6: the nearest bot 65-67 m from the ball, the crowd cap broken on Coastal): the support
@@ -1633,10 +1661,10 @@ const BASE_RULESETS: Readonly<Record<GameModeId, MatchRuleset>> = Object.freeze(
   // hulls, a lighter recoil launch than Turbo Ball — on the zone objective with 6 s respawns, unlimited
   // rounds and a twelve-minute clock; the boost caches (repairs, under unlimited rounds) are the mode controller's.
   mars: Object.freeze({
-    ...STANDARD, mode: 'mars', mars: MARS_DEFAULT_RULES, gravityScale: 0.38, physics: MARS_PHYSICS, speedMultiplier: 1.25, hpScale: 1.2, damageScale: 0.9,
+    ...STANDARD, mode: 'mars', scoresKills: true, mars: MARS_DEFAULT_RULES, gravityScale: 0.38, physics: MARS_PHYSICS, speedMultiplier: 1.25, hpScale: 1.2, damageScale: 0.9,
     reloadScale: 0.9, ammo: 'unlimited', jumpMps: 9.5, recoilLaunchScale: 3, shellKnockScale: 0.9, respawnS: 6, timeLimitS: 720,
   }),
-  juggernaut: Object.freeze({ ...STANDARD, mode: 'juggernaut', ammo: 'unlimited', allies: 0, enemies: 12, respawnS: 6, timeLimitS: 600,
+  juggernaut: Object.freeze({ ...STANDARD, mode: 'juggernaut', scoresKills: true, ammo: 'unlimited', allies: 0, enemies: 12, respawnS: 6, timeLimitS: 600,
     juggernaut: Object.freeze({ team: 'alpha', hpScale: 8, reloadScale: .5, speedScale: .9 }) }),
   // Infected (owner 2026-10-17, the zombies): sturdy survivors (150 % hull) against five fragile infected (35 %) that hunt
   // the nearest survivor at +30 % speed with no reload bonus and come back 5 s after every death, a converted survivor's
@@ -1671,16 +1699,17 @@ const BASE_RULESETS: Readonly<Record<GameModeId, MatchRuleset>> = Object.freeze(
       spawnRingM: Object.freeze([70, 120] as const), fallbackRingM: Object.freeze([120, 200] as const), spawnSectors: 3, sectorWidthDeg: 60, sectorSpreadDeg: 70,
       spawnMinHumanM: 60, spawnOutOfSight: true, sightRangeM: 450, sightStepM: 8, sightEyeM: 2.4, sightHullM: 1.5,
       sightMarginM: 1, sightLeadM: 0, spawnCandidates: 12 }) }) }),
-  realistic: Object.freeze({ ...STANDARD, mode: 'realistic', alwaysVisible: false, moduleOnlyDamage: true, consumables: false }),
-  gun_game: Object.freeze({ ...STANDARD, mode: 'gun_game', respawnS: 4, ammo: 'unlimited', timeLimitS: 900,
+  realistic: Object.freeze({ ...STANDARD, mode: 'realistic', elimination: true, scoresKills: true, alwaysVisible: false, moduleOnlyDamage: true, consumables: false }),
+  gun_game: Object.freeze({ ...STANDARD, mode: 'gun_game', scoresKills: true, respawnS: 4, ammo: 'unlimited', timeLimitS: 900,
     gunGame: Object.freeze({ killsPerWeapon: 2 }) }),
-  drone: Object.freeze({ ...STANDARD, mode: 'drone', aerial: 'drone', counterDrone: true, respawnS: 6, timeLimitS: 600, scoreTarget: 20 }),
-  ac130: Object.freeze({ ...STANDARD, mode: 'ac130', aerial: 'gunship', allies: 4, enemies: 12, alwaysVisible: true, equipmentBan: SCOUTING_OFF,
+  drone: Object.freeze({ ...STANDARD, mode: 'drone', scoresKills: true, aerial: 'drone', counterDrone: true, respawnS: 6, timeLimitS: 600, scoreTarget: 20 }),
+  ac130: Object.freeze({ ...STANDARD, mode: 'ac130', scoresKills: true,
+    middleReserve: Object.freeze({ kind: 'extraction', radiusM: 30, reliefM: 7 }), aerial: 'gunship', allies: 4, enemies: 12, alwaysVisible: true, equipmentBan: SCOUTING_OFF,
     ammo: 'unlimited', consumables: false, timeLimitS: 480, timeout: 'defeat',
     destruction: Object.freeze({ ...DESTRUCTION_ON, craterScale: 1.25 }) }),
   // Air Support (air-support-270): Zone Control's three sectors, 8 s respawns and a twelve-minute clock, with the support
   // ledger and the three airstrikes; the vehicle's own loadout (the strikes are the mode's firepower, not the guns)
-  air_support: Object.freeze({ ...STANDARD, mode: 'air_support', respawnS: 8, timeLimitS: 720, airSupport: AIR_SUPPORT_RULES }),
+  air_support: Object.freeze({ ...STANDARD, mode: 'air_support', scoresKills: true, respawnS: 8, timeLimitS: 720, airSupport: AIR_SUPPORT_RULES }),
   // Proving ground (v2 progression, 2026-10-17): the player alone on the firing line, one target hull per lane (no allied
   // bots, no AI on the targets), every target always in sight, unlimited rounds of the tank's own loadout, a destroyed hull
   // back on its mark in 3 s, no clock and no record. The standard physics, damage and destruction apply unchanged, so every

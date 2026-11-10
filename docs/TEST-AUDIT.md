@@ -15,15 +15,15 @@ Run times: `tools/selftest-durations.json`, else this machine's latest observati
 
 | Decision | Receipts | CPU-min |
 |---|---:|---:|
-| KEEP | 1797 | 279.7 |
+| KEEP | 1798 | 279.7 |
 | MERGE | 0 | 0.0 |
 | MANUAL | 674 | 1183.4 |
 | RETIRE | 2 | 0.7 |
 
 | Suite run | Receipts | CPU-min | Simulated wall (min) |
 |---|---:|---:|---:|
-| Before: every receipt (npm test without the tiers) | 2472 | 1463.5 | 250.9 |
-| After: the default tier | 1797 | 279.7 | 64.0 |
+| Before: every receipt (npm test without the tiers) | 2473 | 1463.5 | 250.9 |
+| After: the default tier | 1798 | 279.7 | 64.0 |
 
 Default tier: 19.1 % of the whole registry's CPU; 30.5 % of the 916 CPU-min the snapshot gave for the 1,863 receipts it timed. Its wall: 0.2 min exclusive receipts, 45.1 min pool, 18.6 min browser receipts.
 
@@ -822,7 +822,7 @@ None. Folding receipts saves only process starts (about a second each) and would
 | `tools/media-r5/fleet-coverage.selftest.mjs` | n/a | MANUAL (media) | media: the media lane's fleet backlog, n/a s: 267: the fleet's media backlog (every vehicle leads a take, the survey bars): the manual media suite | test:heavy -- media; test:recommend flags it when its inputs change |
 | `tools/mp-rooms-entry.browser.selftest.mjs` | n/a | MANUAL (ui) | ui: heavy interface paint and layout sweeps, n/a s: 268 (the 267 production smoke): the multiplayer end-to-end opens the rooms panel the way the Garage's layout o | test:heavy -- ui; test:recommend flags it when its inputs change |
 
-## KEEP (1797)
+## KEEP (1798)
 
 | Receipt | Run (s) | Decision | Reason | Coverage now |
 |---|---:|---|---|---|
@@ -2522,6 +2522,7 @@ None. Folding receipts saves only process starts (about a second each) and would
 | `src/sim/botEvents.selftest.mjs` | n/a | KEEP | simulation rule, n/a s: 2026-11-02 audit M6: shots, hits and blocked shots reach the bots through one delivery on both drivers | default tier (npm test, the release gate; lane mode by its closure) |
 | `src/sim/crushPress.selftest.mjs` | n/a | KEEP | simulation rule, n/a s: 2026-11-02 audit M6: the crush press is the battle's, per hull and record, on both drivers | default tier (npm test, the release gate; lane mode by its closure) |
 | `src/sim/droneLife.selftest.mjs` | n/a | KEEP | simulation rule, n/a s: 2026-11-02 audit M4: a carrier's revive retires its airframe in flight; a restored airframe keeps its velocity | default tier (npm test, the release gate; lane mode by its closure) |
+| `src/sim/flagCarrierReveal.selftest.mjs` | n/a | KEEP | simulation rule, n/a s: Main's ruling on audit finding 53 (2026-11-09): the flag carrier is a named reveal | default tier (npm test, the release gate; lane mode by its closure) |
 | `src/sim/groundContactCopies.selftest.mjs` | n/a | KEEP | simulation rule, n/a s: 2026-11-02 audit M8: ground contact's two copies have one writer, a checkpoint restore included | default tier (npm test, the release gate; lane mode by its closure) |
 | `src/sim/hullBodyMode.selftest.mjs` | n/a | KEEP | simulation rule, n/a s: 2026-11-02 audit M8: one owner for the hull body mode; no overturned or righting latch outside the rigid phase | default tier (npm test, the release gate; lane mode by its closure) |
 | `src/sim/hullLifeParity.selftest.mjs` | n/a | KEEP | simulation rule, n/a s: 2026-11-02 audit M6: a revive's crash memory and the rollover gate, alike on both drivers | default tier (npm test, the release gate; lane mode by its closure) |
