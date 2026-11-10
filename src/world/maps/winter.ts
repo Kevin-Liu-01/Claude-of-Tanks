@@ -310,7 +310,7 @@ export default {
       { structure: 'depot', x: -149.23, z: -16.1, yawDeg: -166.6, terrace: true },
       { structure: 'woodshed', x: -137.75, z: -26.24, yawDeg: -166.6, terrace: true },
     ],
-    destructibleBuildings: ['saunahut', 'alpinerefuge', 'fieldhospital', 'huntingblind', 'leanto'],
+    destructibleBuildings: ['fieldhut', 'alpinerefuge', 'fieldhospital', 'huntingblind', 'leanto'],
     buildingLat: [12, 3], sideSkip: 0.10,
     // round 48: the three strongpoints follow the new lanes — the brawl in
     // the terrace village, the scout on the north-east moraine knoll, the

@@ -32,7 +32,6 @@ import { isMainModule, mapProbeLaunchOptions, sleep } from './map-probe-runtime.
 import { settleMapTextures } from './map-environment-acquisition.mjs';
 import { PINNED_SCENE, configurePinnedScene } from './pinned-scene-acquisition.mjs';
 import { censusShotView } from './visual-census.mjs';
-import { grassSettled } from './frame-budget-probe.mjs';
 import { MAP_IDS } from '../src/world/maps/mapIds.ts';
 
 const TOOL = 'building-style-shots';
@@ -40,7 +39,8 @@ const DEVICES = Object.freeze({
   desktop: { width: 1920, height: 1080, deviceScaleFactor: 1, isMobile: false, hasTouch: false, query: 'tier=desktop', preset: 'high' },
   phone: { width: 844, height: 390, deviceScaleFactor: 3, isMobile: true, hasTouch: true, query: 'tier=mobile', preset: null },
 });
-const POSES = Object.freeze(['chase', 'chase2', 'long']);
+// (buildings-271) the street poses come only from a posesFrom manifest (tools/street-poses.mjs): the 12-15 m facade view
+const POSES = Object.freeze(['chase', 'chase2', 'long', 'street1', 'street2', 'street3', 'street4', 'street5', 'street6']);
 
 function parse(argv) {
   const out = { root: process.cwd(), out: null, jobs: null, waitHours: 16, tag: 'v1', pairMinutes: 10 };
@@ -61,6 +61,7 @@ function parse(argv) {
   for (const job of out.jobs) {
     job.dist = path.resolve(job.dist);
     job.poses ??= [...POSES];
+    if (job.posesFrom) job.pinned = JSON.parse(readFileSync(path.resolve(job.posesFrom), 'utf8'));
     if (!DEVICES[job.device]) throw new Error(`${job.name}: unknown device ${job.device}`);
     for (const id of job.maps) if (!MAP_IDS.includes(id)) throw new Error(`${job.name}: unknown map ${id}`);
     for (const p of job.poses) if (!POSES.includes(p)) throw new Error(`${job.name}: unknown pose ${p}`);
@@ -121,6 +122,11 @@ function pagePlan({ buildings, range, longRange }) {
 
 /** The scene time the clouds are drawn at, and the frames traced there before the layer is held. */
 const CLOUD_TIME_S = 0, CLOUD_FRAMES = 48;
+// (ground-269's ab23, 5815c5b1bc: foundry at load 300 drew 36 of the 48 frames in 180 s) the hold's wait, longer where
+// the machine is busy
+const CLOUD_HOLD_S = Number(process.env.BUILDING_SHOTS_CLOUD_HOLD_S) || 180;
+// the ground settle's wait (s): 90 by default; a loaded machine's desktop Autumn needed more (four of 24 frames shot unsettled)
+const SETTLE_S = Number(process.env.BUILDING_SHOTS_SETTLE_S) || 90;
 
 /**
  * The cloud layer pinned (page side): at CLOUD_TIME_S, a fresh trace sequence, its drift held (the frame's dt 0) while
@@ -136,16 +142,73 @@ function pinClouds(release = false) {
       vc.beforeSceneRender = (renderer, camera, dt, ...rest) => {
         const pin = vc.__pin;
         if (!pin.held) return live(renderer, camera, dt, ...rest);
+        // (ground-269's ab19 A/A: the near blades swayed between two base frames) the grass's wind held with the sky
+        window.__DEBUG.world?._tallGrass?.setWindTime?.(0);
         live(renderer, camera, 0, ...rest);
         if (pin.left > 0 && --pin.left === 0) vc.frozen = true;
       };
     }
     vc.frozen = false;
+    // (ground-269's ab20 A/A: 2.5 % of an urban chase frame, the near blades round the hull) the grass's pressure field
+    // springs back from the staging drive for a minute; cleared at each pin, the standing hulls stamp the same field
+    const grass = window.__DEBUG.world?._tallGrass;
+    if (!${release}) { grass?.pressure?.clear(); grass?.pressureFine?.clear(); }
     if (${release}) { vc.__pin.held = false; return true; }
     vc.setCaptureTime(${CLOUD_TIME_S}, true);
     Object.assign(vc.__pin, { held: true, left: ${CLOUD_FRAMES} });
     return false;
   })()`;
+}
+
+/**
+ * The grass rings (near, mid, far) and the ground litter built, and the rings' published counts unchanged for 1.5 s
+ * (ground-269's ab21 A/A, f26a717570: the mid ring was not waited for, so the arm shot first drew fewer near blades) and
+ * over 30 rendered frames (ground-269's ab22, 56f6aa65d7: at load 200 frames came a second apart, so 1.5 s held no update
+ * at all and the sward kept filling after the check passed).
+ */
+function groundSettled() {
+  const W = window.__DEBUG.world, g = W?._tallGrass?.getState?.(), l = W?._litter?.getState?.();
+  if (!window.__gsFrames) {
+    window.__gsFrames = { n: 0 };
+    const tick = () => { window.__gsFrames.n++; requestAnimationFrame(tick); };
+    requestAnimationFrame(tick);
+  }
+  // (ground-269's ab22, 2c2d4bf757: the vegetation's grass carpet and chunks still filling, on phone with no tall grass)
+  // no visible grass chunk unbuilt and the carpet idle; (27beaa0e2c, whiteout chase: a terrain level mounting between the
+  // arms) the terrain stream's built count, all in the signature
+  const v = W?.getGrassWorkState?.();
+  const idle = (!g || !g.enabled || (!g.near.pending && !g.mid.pending && !g.far.pending)) && (!l || !l.pending)
+    && (!v || (!v.pendingVisible && !v.carpet?.pending));
+  const sig = (g ? [g.near, g.mid, g.far].map((r) => `${r.count}/${r.publishes}`).join() : '')
+    + (v ? `|${v.built}/${v.carpet?.publishedGeneration}` : '') + `|${W?._buildDetail?.terrain?.streamedGeometryCount ?? ''}`;
+  const now = performance.now(), frame = window.__gsFrames.n, last = window.__gsSettle;
+  const same = last && last.sig === sig;
+  window.__gsSettle = { sig, since: same ? last.since : now, sinceFrame: same ? last.sinceFrame : frame };
+  return idle && now - window.__gsSettle.since > 1500 && frame - window.__gsSettle.sinceFrame >= 30;
+}
+
+/**
+ * Holds the grass rings and the ground litter as published (page side), `on` from the settle to the screenshot: the cloud
+ * pin takes minutes on a loaded machine and the streaming would go on filling the sward through it (ground-269,
+ * 56f6aa65d7). Returns the rings', the vegetation grass's and the terrain stream's counts, which each arm records so the arms of a pose can be compared.
+ */
+function pageFreezeGround(on) {
+  const W = window.__DEBUG.world, g = W?._tallGrass, l = W?._litter;
+  if (g && !g.__gsHold) {
+    const update = g.update;
+    g.update = (dt, cam, focus, fwd, fill) => update.call(g, dt, cam, focus, fwd, window.__gsHold ? false : fill);
+    g.__gsHold = true;
+  }
+  if (l && !l.__gsHold) {
+    const update = l.update;
+    l.update = (cam) => { if (!window.__gsHold) update.call(l, cam); };
+    l.__gsHold = true;
+  }
+  window.__gsHold = on;
+  const s = g?.getState?.(), v = W?.getGrassWorkState?.();
+  return (s ? [s.near, s.mid, s.far].map((r) => `${r.count}/${r.publishes}`).join() : '')
+    + (v ? `|${v.built}/${v.pendingVisible}/${v.carpet?.publishedGeneration}/${v.carpet?.pending}` : '')
+    + `|${W?._buildDetail?.terrain?.streamedGeometryCount ?? ''}`;
 }
 
 /** The pinned layer held (its frames traced), or no layer. */
@@ -159,6 +222,9 @@ function externalPoseScript(pose) {
     const D = window.__DEBUG, V = D.camera.position.constructor;
     D.rig.setExternalPose(new V(...${JSON.stringify(pose.cam)}), new V(...${JSON.stringify(pose.at)}), ${pose.fov});
     ${pinClouds(true)};
+    // (ground-269's ab22, 27beaa0e2c, whiteout chase: streaks near 200 m where one arm drew a chunk on its coarser level
+    // while the stream built the finer one) every level this camera wants, built before the first update
+    D.world.warmTerrainLookahead?.(D.camera.position, 512);
     D.world.update(0, D.camera.position, D.camera.getWorldDirection(new V()), null);
     D.lighting.updateFrustums();
     D.lighting.update(true);
@@ -221,21 +287,28 @@ async function shootMap(entry, options, frames) {
   const plan = await page.evaluate(pagePlan, { buildings: stage.buildings, range: 36, longRange: 230 });
   const receipt = { buildings: stage.buildings.length, clusters: plan.clusters, poses: {} };
   for (const name of options.poses) {
-    const p = plan[name];
+    // (buildings-271) a job's `posesFrom` manifest: the other arm's cameras, so a pair frames one place even where the arm's
+    // own footprints moved its densest cluster (Amberford's square frontage moved the cluster 40 m: the pairs set a farmhouse
+    // street against a market green, and the votes judged the framing)
+    const pinned = options.pinned?.maps?.[mapId]?.poses?.[name];
+    const p = pinned ? (pinned.skipped ? null : { cam: pinned.cam, at: pinned.at, heading: pinned.heading, hitM: pinned.hitM }) : plan[name];
     if (!p) { receipt.poses[name] = { skipped: true }; continue; }
     const resolved = await page.evaluate(externalPoseScript({ ...p, fov: name === 'long' ? 50 : 60 }));
     await sleep(900);
-    const settled = await page.waitForFunction(grassSettled, { timeout: 8000, polling: 250 }).then(() => true, () => false);
+    await page.evaluate(() => { window.__gsSettle = null; });
+    const settled = await page.waitForFunction(groundSettled, { timeout: SETTLE_S * 1000, polling: 250 }).then(() => true, () => false);
+    const grassAtSettle = await page.evaluate(pageFreezeGround, true);
     await page.evaluate(pinClouds());
     // (48 frames: the long view of a big town under a loaded machine draws a few a second)
-    const cloudsPinned = await page.waitForFunction(cloudsHeld, { timeout: 180_000, polling: 250 }).then(() => true, () => false);
+    const cloudsPinned = await page.waitForFunction(cloudsHeld, { timeout: CLOUD_HOLD_S * 1000, polling: 250 }).then(() => true, () => false);
     if (!cloudsPinned) {
       const left = await page.evaluate(() => window.__DEBUG.scene.userData.volumetricClouds?.__pin?.left ?? null);
-      throw new Error(`${mapId} ${name}: the cloud layer did not hold within 180 s (${left} of ${CLOUD_FRAMES} frames left)`);
+      throw new Error(`${mapId} ${name}: the cloud layer did not hold within ${CLOUD_HOLD_S} s (${left} of ${CLOUD_FRAMES} frames left)`);
     }
     const file = path.join(frames, `${mapId}-${name}.png`);
     await page.screenshot({ path: file, type: 'png' });
-    receipt.poses[name] = { ...p, resolved, grassSettled: settled, clouds: { timeS: CLOUD_TIME_S, frames: CLOUD_FRAMES }, file: path.basename(file) };
+    const grass = { settle: grassAtSettle, shot: await page.evaluate(pageFreezeGround, false) };
+    receipt.poses[name] = { ...p, resolved, grassSettled: settled, grass, clouds: { timeS: CLOUD_TIME_S, frames: CLOUD_FRAMES }, file: path.basename(file) };
   }
   receipt.errors = entry.errors.splice(0);
   return receipt;
@@ -251,8 +324,11 @@ async function main(argv) {
       : { tool: TOOL, device: job.device, dist: job.dist, maps: {} };
   }
   const order = [...new Set(options.jobs.flatMap((job) => job.maps))];
-  const pairs = order.flatMap((mapId) => options.jobs.filter((job) => job.maps.includes(mapId) && !job.manifest.maps[mapId])
-    .map((job) => ({ job, mapId })));
+  // (Main 11-06, ground-269's grass-order finding) the jobs run in turn on every other map, so no arm is always shot first
+  const pairs = order.flatMap((mapId, i) => {
+    const jobs = options.jobs.filter((job) => job.maps.includes(mapId) && !job.manifest.maps[mapId]);
+    return (i % 2 ? jobs.reverse() : jobs).map((job) => ({ job, mapId }));
+  });
   if (!pairs.length) { console.log(`[${TOOL}] every pair is shot`); return 0; }
   const label = `${TOOL} ${path.basename(options.out)}`;
   setBrowserGuardContext({ hold: label });
@@ -294,7 +370,8 @@ async function main(argv) {
         const shooting = (async () => {
           const live = await entry.page.evaluate(() => window.__DEBUG?.world?.mapId ?? null).catch(() => null);
           if (live !== mapId) await stageMap(entry, mapId);
-          const receipt = await shootMap({ ...entry, mapId }, { poses: job.poses }, job.frames);
+          const receipt = await shootMap({ ...entry, mapId }, { poses: job.poses, pinned: job.pinned }, job.frames);
+          if (job.pinned) receipt.posesFrom = job.posesFrom;
           receipt.ms = Date.now() - started;
           job.manifest.maps[mapId] = receipt;
           writeFileSync(job.manifestFile, `${JSON.stringify(job.manifest, null, 2)}\n`);

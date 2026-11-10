@@ -170,7 +170,7 @@ export default {
       'warehouse', 'boatshed', 'chapel', 'cornershop', 'ruin', 'netyard', 'depot', 'logcabin',
       'warehouse', 'boatshed', 'netyard', 'logcabin', 'alpine', 'depot', 'woodshed', 'chapel',
       'boatshed', 'warehouse', 'logcabin', 'ruin', 'netyard', 'depot'],
-    destructibleBuildings: ['fishershack', 'saunahut', 'alpinerefuge', 'quonsethut'],
+    destructibleBuildings: ['fishershack', 'saunahut', 'alpinerefuge', 'fieldhut'],
     tacticalBeats: [
       // 2026-10-03 (maps lane B): the gate moves from (-286, 62), 33 m from Verdant's western post, down the cliff road
       // to its southern bend (the layout brief's skeleton rule: no strongpoint within 60 m of one of Verdant's)
@@ -179,7 +179,7 @@ export default {
       { id: 'harbor-watch', role: 'scout', x: 206, z: -184, yawDeg: -12,
         structure: 'fishershack', outcrop: { count: 4, radius: 8, scaleMax: 2.7 } },
       { id: 'northern-service-yard', role: 'support', x: -252, z: 286, yawDeg: 28,
-        structure: 'quonsethut', redoubt: true, outcrop: { count: 5, radius: 9 }, wreck: true, wreckOffsetX: 15 },
+        structure: 'fieldhut', redoubt: true, outcrop: { count: 5, radius: 9 }, wreck: true, wreckOffsetX: 15 },
     ],
     // 2026-10-03 (maps lane B, gauntlet wave 28: "the town and an inland lighthouse sit on a wide, flat meadow … an
     // Atlantic coastal plain rather than a fjord harbour"): the town is the harbour's — its buildings, plaza and street

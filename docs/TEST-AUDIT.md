@@ -15,15 +15,15 @@ Run times: `tools/selftest-durations.json`, else this machine's latest observati
 
 | Decision | Receipts | CPU-min |
 |---|---:|---:|
-| KEEP | 1795 | 279.7 |
+| KEEP | 1797 | 279.7 |
 | MERGE | 0 | 0.0 |
 | MANUAL | 673 | 1181.5 |
 | RETIRE | 2 | 0.7 |
 
 | Suite run | Receipts | CPU-min | Simulated wall (min) |
 |---|---:|---:|---:|
-| Before: every receipt (npm test without the tiers) | 2469 | 1461.6 | 250.7 |
-| After: the default tier | 1795 | 279.7 | 64.0 |
+| Before: every receipt (npm test without the tiers) | 2471 | 1461.6 | 250.7 |
+| After: the default tier | 1797 | 279.7 | 64.0 |
 
 Default tier: 19.1 % of the whole registry's CPU; 30.5 % of the 916 CPU-min the snapshot gave for the 1,863 receipts it timed. Its wall: 0.2 min exclusive receipts, 45.1 min pool, 18.6 min browser receipts.
 
@@ -821,7 +821,7 @@ None. Folding receipts saves only process starts (about a second each) and would
 | `tools/media-r5/fleet-coverage.selftest.mjs` | n/a | MANUAL (media) | media: the media lane's fleet backlog, n/a s: 267: the fleet's media backlog (every vehicle leads a take, the survey bars): the manual media suite | test:heavy -- media; test:recommend flags it when its inputs change |
 | `tools/mp-rooms-entry.browser.selftest.mjs` | n/a | MANUAL (ui) | ui: heavy interface paint and layout sweeps, n/a s: 268 (the 267 production smoke): the multiplayer end-to-end opens the rooms panel the way the Garage's layout o | test:heavy -- ui; test:recommend flags it when its inputs change |
 
-## KEEP (1795)
+## KEEP (1797)
 
 | Receipt | Run (s) | Decision | Reason | Coverage now |
 |---|---:|---|---|---|
@@ -2575,6 +2575,7 @@ None. Folding receipts saves only process starts (about a second each) and would
 | `src/vehicles/wreckLifecycle.selftest.mjs` | n/a | KEEP | vehicle rule, n/a s: 2026-11-02 audit F10: one wreck state per visual: cook-off upgrade, reset cursors, disposed latch | default tier (npm test, the release gate; lane mode by its closure) |
 | `src/vehicles/wreckTurretMode.selftest.mjs` | n/a | KEEP | vehicle rule, n/a s: 2026-11-02 audit F10: one declared turret mode; late physics hands over to the authority | default tier (npm test, the release gate; lane mode by its closure) |
 | `src/world/battleResetLeftovers.selftest.mjs` | n/a | KEEP | world rule, n/a s: 2026-11-02 audit R2: what a cached world carried into the next battle (Studio sweeps, the toss stream, water, | default tier (npm test, the release gate; lane mode by its closure) |
+| `src/world/buildingContacts.selftest.mjs` | n/a | KEEP | world rule, n/a s: buildings-271 (Main 2026-11-08, for the ground lane): each regional building's plinth, eave, apron and doors i | default tier (npm test, the release gate; lane mode by its closure) |
 | `src/world/concealerIndex.selftest.mjs` | n/a | KEEP | world rule, n/a s: 2026-11-02 audit M9: a felled tree's canopy found in constant time; a whole destroyed set restores linearly (c | default tier (npm test, the release gate; lane mode by its closure) |
 | `src/world/crushRecords.selftest.mjs` | n/a | KEEP | world rule, n/a s: 2026-11-02 audit M9: one crush transition for a destructible's records in the page and headless worlds, the gu | default tier (npm test, the release gate; lane mode by its closure) |
 | `src/world/destructibleWorldKey.selftest.mjs` | n/a | KEEP | world rule, n/a s: 2026-11-02 audit R2: a map's trench variant registers and queues its measures as its own world (build key) | default tier (npm test, the release gate; lane mode by its closure) |
@@ -2582,6 +2583,7 @@ None. Folding receipts saves only process starts (about a second each) and would
 | `src/world/felledTrees.selftest.mjs` | n/a | KEEP | world rule, n/a s: 2026-11-02 audit M9: a felled tree, its trunk record and its canopy fall and stand together (felledTrees.ts) | default tier (npm test, the release gate; lane mode by its closure) |
 | `src/world/hinterland/hinterlandLifetime.selftest.mjs` | n/a | KEEP | world rule, n/a s: 2026-11-02 audit R1: the world owns its Hinterland; ring fallback; one root | default tier (npm test, the release gate; lane mode by its closure) |
 | `src/world/mapAmbienceEntryAsk.selftest.mjs` | n/a | KEEP | world rule, n/a s: 2026-11-02 audit R6 (round 4 F2 review): a battle entry asks the map's air at once whatever the backoff a Stud | default tier (npm test, the release gate; lane mode by its closure) |
+| `src/world/maps/buildingTypes.selftest.mjs` | n/a | KEEP | world rule, n/a s: buildings-271 (2026-11-06, Main: a type wrong for the place cannot be placed): every building type's years and | default tier (npm test, the release gate; lane mode by its closure) |
 | `src/world/maps/kitBuildLatch.selftest.mjs` | n/a | KEEP | world rule, n/a s: 2026-11-02 audit R2: the wall and fence kits' bands and fit throw when read before their build | default tier (npm test, the release gate; lane mode by its closure) |
 | `src/world/maps/mapBuildScopes.selftest.mjs` | n/a | KEEP | world rule, n/a s: 2026-11-02 audit R1: kit build slots in one registry, asserted at yields; no cross-build latches | default tier (npm test, the release gate; lane mode by its closure) |
 | `src/world/propsShellPoolCancel.selftest.mjs` | n/a | KEEP | world rule, n/a s: 2026-11-02 audit R1: a cancelled props build stops its shell pool's workers | default tier (npm test, the release gate; lane mode by its closure) |

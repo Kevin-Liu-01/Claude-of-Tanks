@@ -98,8 +98,11 @@ export function sheetHall(sink: PartSink, spec: HallSpec, variant: () => number)
         s.recess = 0.13;
         try { windowUnit(s, face, o.u, y0 + o.y0, o.w, o.h, { frame: shade(spec.trim, 1.3), frameWidth: 0.05, frameOut: 0.03, bars: 'two', surround: null, sill: null, shutters: null }, variant, 0.1); }
         finally { s.recess = 0; }
-        // the sheet's back, seen from the hall's floor (the pane a single face out to the yard)
-        const B = (uu: number, yy: number): Vec3 => facePoint(face, uu, yy, -0.118);
+        // the sheet's back, seen from the hall's floor (the pane a single face out to the yard): behind every place the
+        // light's pane may stand (windowUnit: a curtain pane at the recess + 0.012, -0.118; a glass pane leaning about
+        // recess + 0.01, -0.126 to -0.113), inside the lining's 0.17 m. At -0.118 it stood level with or before the pane,
+        // and a look from the yard met the back's inward face first (regionalArchitecture: wadirum/depot, 12 of 365 hits)
+        const B = (uu: number, yy: number): Vec3 => facePoint(face, uu, yy, -0.136);
         s.quad('glass', B(o.u + o.w / 2, y0 + o.y0), B(o.u - o.w / 2, y0 + o.y0), B(o.u - o.w / 2, y0 + o.y0 + o.h), B(o.u + o.w / 2, y0 + o.y0 + o.h), { decor: true });
         // the cut's lining: the sheet's flashing round the opening, back to the light's frame
         const c = { colour: shade(spec.trim, 1.15), decor: true };

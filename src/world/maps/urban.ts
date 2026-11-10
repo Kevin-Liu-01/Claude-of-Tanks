@@ -232,7 +232,7 @@ export default {
     plan: PLAN, // consumed by blockFill for the block interiors
     destructibleBuildings: [
       'guardpost', 'checkpointhut', 'fieldhospital', 'transformershed', 'motorpool',
-      'securityoffice', 'servicegarage', 'relaystation', 'corneroffice',
+      'securityoffice', 'servicegarage', 'corneroffice',
     ],
     // Mirror pairs across the spur's crest, and posts on the crest itself (equally far from both teams): a garage
     // yard in each valley suburb, the castle forecourt and the bypass gap.

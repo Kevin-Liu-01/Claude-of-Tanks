@@ -135,7 +135,7 @@ export default {
     // map revival lane 2 (2026-10-05): the Savoyard kit (maps/regional/savoyard.ts)
     architecture: BUILDING_STYLES.alpine.kit,
     plan: [],
-    destructibleBuildings: ['alpinerefuge', 'saunahut', 'huntingblind', 'fieldhospital'],
+    destructibleBuildings: ['alpinerefuge', 'fieldhut', 'huntingblind', 'fieldhospital'],
     // the Hospice beside the north-shore road, and the Grande Croix chapel at the foot of the southern climb
     // (round 4, wave 182: "a small hut where the stone hospice should read"): the hospice on a plot of its own size (the
     // warehouse's 16 x 24 m), its long side along the road, its chapel at the north-east end

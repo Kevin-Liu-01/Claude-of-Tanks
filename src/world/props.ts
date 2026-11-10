@@ -59,6 +59,9 @@ import { URBAN_BUILDERS } from './maps/urbanKit.ts';
 import { dressMapExtrasSteps, railBedSpans, type AnimatedDressing } from './maps/mapKits.ts'; // content_breadth r2
 import { STEEL_ATLAS_SIZE, STEEL_ATLAS_SIZE_MOBILE, makeSteelAtlas, steelAtlasNeeded, type SteelAtlasTextures } from './propsSteelAtlas.ts'; // round 75
 import { planYardDressing, yardStructureKinds, type YardFamily, type YardStructure } from './yardDressing.ts'; // round 75
+import { contactReader, type BuildingGroundContact } from './buildingContacts.ts'; // buildings-271: the ground lane's contacts
+import { planDoorsteps, type DoorstepFamily } from './doorstepDressing.ts'; // buildings-271 R4: the doorsteps
+import { buildDoorstepFamily } from './maps/doorstepKit.ts'; // buildings-271 R4
 import { buildYardFamily, yardInstanceLivery, type YardMaterial } from './maps/yardClutterKit.ts'; // round 75
 import {
   applyRockShaderHook, boulderSectionRadius, boulderSections, boulderVariantFormSteps, createRockDepthMaterial, legacyRockVariant, makeRockDetail,
@@ -698,6 +701,11 @@ interface PropsSettings {
   industrialCladding?: 'brick' | 'steel';
   /** Round 75: the yard dressing budget (pieces) around the industrial structures; default 4.5 a structure, at most 140. */
   yardDressing?: number;
+  /**
+   * (buildings-271 R4) the doorsteps' piece budget (world/doorstepDressing.ts plans from each regional building's doors,
+   * maps/doorstepKit.ts builds): pots, a bench, casks, a log stack, a cart by the doors. Absent or 0, none
+   */
+  doorsteps?: number;
   /** Round 75 item 6: derived at build from the map's splat dirt tone — the boulders' soil skirt. The Redrock lane (round
    * 9): a map whose boulders lie on sand, not soil, authors its sand's tone here (Redrock's red dirt drew a stamped red
    * blotch under every boulder on the orange sand). */
@@ -797,6 +805,12 @@ interface PlacedBuilding {
   kind?: string;
   /** The landmarks lane (2026-10-05): a set piece's kind (landmarks/plan.ts) — a footprint, not a planned building. */
   landmark?: string;
+  /**
+   * (buildings-271, for the ground lane) a regional building's ground contacts at its pose now: plinth outlines, eave,
+   * the apron its facade craft lays, the ground-floor doors (buildingContacts.ts); a building without a regional plan has
+   * none. A function, so a building moved out of a carriageway after it was placed reads its final pose.
+   */
+  contacts?: () => BuildingGroundContact[];
 }
 
 interface TacticalBeatFeature {
@@ -5189,6 +5203,12 @@ ${snowCap ? `
   }
 
   const buildingFeatures: PlacedBuilding[] = [];
+  // (buildings-271) a regional build's ground contacts, read at the feature's pose whenever asked (buildingContacts.ts)
+  const withContacts = (feature: PlacedBuilding, parts: object): PlacedBuilding => {
+    const read = contactReader(parts, !mobileProps);
+    if (read) feature.contacts = () => read(feature.x, feature.z, feature.rot);
+    return feature;
+  };
   let wharfFishery: FisheryPacket | null = null;
   const foundryDonors: FoundryDonor[] | null = mapId === 'foundry' && P.foundryServiceCourt ? [] : null;
   let reconformFoundryFoundations: (() => void) | null = null;
@@ -5774,7 +5794,7 @@ ${snowCap ? `
     _quat.setFromAxisAngle(_upAxis, rot);
     _mat4.compose(_posv.set(px, fit.y + 0.05, pz), _quat, _one);
     mergeInto(buckets, tmp, _mat4);
-    buildingFeatures.push({ x: px, z: pz, w: info.w, d: info.d, rot, kind: structureId });
+    buildingFeatures.push(withContacts({ x: px, z: pz, w: info.w, d: info.d, rot, kind: structureId }, tmp));
     linkStructureFeature();
     if (body) regionalBodies.set(buildingFeatures[buildingFeatures.length - 1], body);
     if (mapId === 'mangrove' && structureId === 'fishery' && !wharfFishery) {
@@ -5864,7 +5884,7 @@ ${snowCap ? `
     _quat.setFromAxisAngle(_upAxis, entry.rot);
     _mat4.compose(_posv.set(entry.x, fit.y + 0.05, entry.z), _quat, _one);
     mergeInto(buckets, tmp, _mat4);
-    buildingFeatures.push({ x: entry.x, z: entry.z, w: info.w, d: info.d, rot: entry.rot, kind: entry.structure });
+    buildingFeatures.push(withContacts({ x: entry.x, z: entry.z, w: info.w, d: info.d, rot: entry.rot, kind: entry.structure }, tmp));
     linkStructureFeature();
     placedB.push({ x: entry.x, z: entry.z, rr: Math.max(info.w, info.d) * 0.75 });
     if (carriageway) {
@@ -6007,7 +6027,7 @@ ${snowCap ? `
         _quat.setFromAxisAngle(_upAxis, entry.rot);
         _mat4.compose(_posv.set(entry.x, fit.y + 0.05, entry.z), _quat, _one);
         mergeInto(buckets, tmp, _mat4);
-        buildingFeatures.push({ x: entry.x, z: entry.z, w: info.w, d: info.d, rot: entry.rot });
+        buildingFeatures.push(withContacts({ x: entry.x, z: entry.z, w: info.w, d: info.d, rot: entry.rot }, tmp));
         placedB.push({ x: entry.x, z: entry.z, rr: Math.max(info.w, info.d) * 0.75 });
         if (entry.rubbleRng !== undefined && entry.rubbleX !== undefined && entry.rubbleZ !== undefined && entry.rubbleR !== undefined) {
           addRubblePile(entry.rubbleX, entry.rubbleZ, entry.rubbleR, mulberry32(entry.rubbleRng));
@@ -6130,7 +6150,7 @@ ${snowCap ? `
       _quat.setFromAxisAngle(_upAxis, rot);
       _mat4.compose(_posv.set(x, fit.y + 0.05, z), _quat, _one);
       mergeInto(buckets, tmp, _mat4);
-      buildingFeatures.push({ x, z, w: info.w, d: info.d, rot });
+      buildingFeatures.push(withContacts({ x, z, w: info.w, d: info.d, rot }, tmp));
       placedB.push({ x, z, rr: Math.max(info.w, info.d) * 0.75 });
       stripAABBs.push({ x, z, hx, hz });
       addStreetRubble(ruined, rx, rz, nx, nz, offset, depth);
@@ -11700,6 +11720,43 @@ ${snowCap ? `
     };
   }
   yield* placeYardDressing();
+
+  // -------------------------------------------------------------------------
+  // buildings-271 R4: THE DOORSTEPS — pots, a bench, casks, a log stack and a cart against the walls beside each regional
+  // building's doors (world/doorstepDressing.ts from the buildings' ground contacts, maps/doorstepKit.ts). As the yard
+  // dressing: every piece a transformed copy of its family folded into the baked bucket (no draw of its own), each a
+  // small prop a hull or a round breaks. Opt-in per map (props.doorsteps, the piece budget).
+  // -------------------------------------------------------------------------
+  function* placeDoorstepDressing(): Generator<PropsBuildSlice, void, void> {
+    const budget = P.doorsteps ?? 0;
+    if (!(budget > 0)) return;
+    const contacts = buildingFeatures.flatMap((b) => b.contacts?.() ?? []);
+    if (!contacts.length) return;
+    const plan = planDoorsteps(contacts, heightField, obstacles, seed, { budget });
+    const families = new Map<DoorstepFamily, THREE.BufferGeometry>();
+    const pos = new THREE.Vector3(), scl = new THREE.Vector3(1, 1, 1), q = new THREE.Quaternion(), m = new THREE.Matrix4();
+    let triangles = 0;
+    for (const p of plan) {
+      let built = families.get(p.family);
+      if (!built) { built = buildDoorstepFamily(p.family); families.set(p.family, built); }
+      const piece = built.clone();
+      q.setFromAxisAngle(_upAxis, p.yaw);
+      m.compose(pos.set(p.x, p.y - 0.02, p.z), q, scl);
+      piece.applyMatrix4(m);
+      conformYardPiece(piece, buckets.baked);
+      buckets.baked.push(piece);
+      breakableSmallProp(`prop-doorstep-${p.family}`, [piece], { obstacles, colliders, clutter: (c) => pendingClutter.push(c) });
+      triangles += Math.floor((piece.index?.count ?? piece.getAttribute('position').count) / 3);
+    }
+    for (const g of families.values()) g.dispose();
+    yield { fine: true, stage: 'doorsteps' };
+    const perFamily: Record<string, number> = {}, perDoor: Record<string, number> = {};
+    for (const p of plan) perFamily[p.family] = (perFamily[p.family] ?? 0) + 1;
+    for (const c of contacts) for (const d of c.doors) perDoor[d.kind] = (perDoor[d.kind] ?? 0) + 1;
+    group.userData.doorsteps = { doors: contacts.reduce((n, c) => n + c.doors.length, 0), perDoor, budget, placed: plan.length,
+      families: families.size, perFamily, triangles, draws: 0 };
+  }
+  yield* placeDoorstepDressing();
 
   // -------------------------------------------------------------------------
   // 2026-10-03 (the scenery lane): the map's authored landscape features and landmarks (world/scenery.ts) — its rock

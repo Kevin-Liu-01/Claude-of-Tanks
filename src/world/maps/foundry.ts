@@ -162,9 +162,10 @@ export default {
     // (the map-revival lane, 2026-10-06, wave 137: the critics read the Nissen hut as a poly-tunnel out of place in a German
     // works; the recorded one beside the west street becomes a brick office of about its footprint, and the pool
     // offers it no more)
+    // (buildings-271, the building types' years: no radio-relay hut before 1950, so the March 1945 works' pool offers none)
     destructibleBuildings: [
       'transformershed', 'motorpool', 'checkpointhut',
-      'securityoffice', 'servicegarage', 'relaystation', 'corneroffice',
+      'securityoffice', 'servicegarage', 'corneroffice',
     ],
     townLightPlanSwaps: { quonsethut: 'securityoffice' },
     tacticalBeats: [

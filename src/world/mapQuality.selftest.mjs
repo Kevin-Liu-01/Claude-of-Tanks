@@ -1,6 +1,8 @@
 import assert from 'node:assert/strict';
 import { getMapConfig, MAP_IDS } from './maps/index.ts';
 import { ARCHITECTURE_STYLES } from './maps/regional/index.ts';
+import { BUILDING_TYPES, typeFitsSetting } from './maps/buildingTypes.ts';
+import { BUILDING_STYLES } from './maps/buildingStyleTable.ts';
 import { isLayoutBriefMap } from './maps/layoutBriefMaps.ts';
 import { createHeightField, createLayout } from './terrain.ts';
 import { roadNetworkComponentCount } from './maps/roadEndpoints.ts';
@@ -274,12 +276,15 @@ for (const family of repairedHeavyFamilies) {
   assert.ok(maps.length >= 5,
     `${family}: repaired heavyweight family is exercised across at least five city/industrial maps`);
 }
+// (buildings-271: a type wrong for a map's years cannot be placed, buildingTypes.ts, so a family is owed only on the city
+// maps whose setting admits it — the relay hut is post-1950 and 1937 Shanghai, the 1940s Ruhr and 1944 Urban took it out)
 for (const family of repairedLightFamilies) {
-  const maps = cityMaterialMaps.filter((mapId) => (
+  const eligible = cityMaterialMaps.filter((mapId) => !BUILDING_TYPES[family] || typeFitsSetting(family, BUILDING_STYLES[mapId].setting));
+  const maps = eligible.filter((mapId) => (
     getMapConfig(mapId).props.destructibleBuildings.includes(family)
   ));
-  assert.ok(maps.length >= 5,
-    `${family}: repaired light-building family is exercised across at least five city/industrial maps`);
+  assert.ok(maps.length >= Math.min(5, eligible.length) && maps.length >= 3,
+    `${family}: repaired light-building family is exercised across at least five city/industrial maps (or every one whose era admits it, and never fewer than three): ${maps.join(', ')} of ${eligible.join(', ')}`);
 }
 
 assert.ok(polePolicyByMap.get('verdant').pairs > 0 && polePolicyByMap.get('verdant').singles > 0,

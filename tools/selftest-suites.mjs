@@ -2705,6 +2705,9 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/maps/wellKit.selftest.mjs', // 2026-10-13 the looks lane: each place's village well and square monument
     'src/world/propsTextureRows.selftest.mjs',
     'src/world/yardDressing.selftest.mjs',
+    // buildings-271 (Main 2026-11-08, for the ground lane): each regional building's plinth, eave, apron and doors in world
+    // metres from the live plans, deterministic, its doors on their plinths facing out; counts pinned on Autumn and Caldera
+    'src/world/buildingContacts.selftest.mjs',
     'src/world/rockDressing.selftest.mjs',
     'src/world/rockCollision.selftest.mjs', // 2026-10-07 the hitbox lane: a stone's colliders from its own mesh
     'src/world/crushedStones.selftest.mjs', // 2026-10-10 the hitbox lane, round 3: a crushed stone splits and presses into its ground
@@ -2948,6 +2951,9 @@ export const SELFTEST_SUITES = Object.freeze({
     // buildings-270 (2026-11-05): the building-style table — one row per battlefield, its map's kit, measured against the
     // kit's houses, with its photographs; and each building's look from its row's variation, no two neighbours alike
     'src/world/maps/buildingStyleTable.selftest.mjs',
+    // buildings-271 (2026-11-06, Main: a type wrong for the place cannot be placed): every building type's years and cultures,
+    // every map's setting, and every generic type a map places fitting it
+    'src/world/maps/buildingTypes.selftest.mjs',
     'src/world/maps/regional/appearance.selftest.mjs',
     'src/world/maps/northStation.selftest.mjs', // 2026-10-07: Suzhou's North Station a terminus on its own ground (mullions, pointed shed, forecourt, tracks)
     'src/world/maps/regional/yards.selftest.mjs', // 2026-10-03: the yards round a kit's houses, clear of roads, plots, objectives and pads
