@@ -213,6 +213,59 @@ function channelMean(bytes, channel) {
   assert.match(readFileSync(new URL('./sky.ts', import.meta.url), 'utf8'), /const linking = volumetricClouds\.warmAsync\(\);\s*if \(tick\) await tick\(\);\s*await linking;/,
     'the sky\'s chunked warm submits the link before its next frame and awaits it');
 }
+
+// ---- (improve-271, plan 015) a WebGL context restore empties every render target and three makes a new renderer.info:
+// the noise volumes (render targets, no CPU copy) are baked again, on the next frame or the next covered warm; the same
+// lifetime bakes once; nothing is baked into a lost context
+{
+  const layer = Object.create(VolumetricCloudLayer.prototype);
+  let lost = false, finishCompile = null;
+  const compiled = [];
+  const draws = [];
+  const renderer = {
+    info: { lifetime: 1 }, xr: { enabled: false }, toneMapping: THREE.NoToneMapping, autoClear: true,
+    getRenderTarget: () => null, getActiveCubeFace: () => 0, getActiveMipmapLevel: () => 0, setRenderTarget() {},
+    render: (mesh) => draws.push(mesh.material.name),
+    getContext: () => ({ isContextLost: () => lost }), properties: { get: () => ({}) }, state: { bindTexture() {}, unbindTexture() {} },
+    compileAsync: (scene) => { compiled.push(scene.children.map((mesh) => mesh.material.name)); return new Promise((r) => { finishCompile = r; }); },
+  };
+  let bound = 0;
+  Object.assign(layer, {
+    renderer, preset: {}, atmosphere: { active: true }, noise: { weather: {}, streets: {}, blue: {}, local: {} }, volumes: null, volumesLife: null,
+    trace: 'trace-target', traceMaterial: new THREE.ShaderMaterial({ name: 'trace' }), resolveMaterial: new THREE.ShaderMaterial({ name: 'resolve' }),
+    bsmMaterial: new THREE.ShaderMaterial({ name: 'bsm' }), shadeMaterial: new THREE.ShaderMaterial({ name: 'shade' }),
+    linkPending: null, dome: { visible: true }, farShadeValid: true,
+    syncTier() {}, bindNoise() { bound++; }, warm() {}, dropCloudShade() {},
+  });
+  const bakes = () => draws.filter((n) => n === 'VolumetricCloudBakeShape').length / CLOUD_SHAPE_TEXELS;
+  assert.equal(layer.ensureVolumes(), true);
+  const first = layer.volumes;
+  assert.equal(bakes(), 1, 'baked once');
+  assert.equal(layer.ensureVolumes(), true);
+  assert.equal(bakes(), 1, 'control: the same context and renderer info bake once');
+  let freed = 0;
+  for (const rt of first.targets) { const dispose = rt.dispose.bind(rt); rt.dispose = () => { freed++; dispose(); }; }
+  lost = true;
+  renderer.info = { lifetime: 2 };
+  assert.equal(layer.ensureVolumes(), false, 'nothing baked into a lost context');
+  assert.equal(bakes(), 1);
+  lost = false;
+  assert.equal(layer.ensureVolumes(), true);
+  assert.equal(bakes(), 2, 'the restored context bakes the volumes again');
+  assert.ok(layer.volumes !== first && layer.volumes.shape !== first.shape, 'new volumes');
+  assert.equal(freed, first.targets.length, 'the last lifetime\'s targets freed');
+  assert.equal(layer.farShadeValid, false, 'the far shade is cut again from the new volumes');
+  assert.ok(bound >= 2, 'the trace bound to them');
+  // the covered warm after a restore submits the bakes and bakes them once linked (no main-thread bake on a live frame)
+  renderer.info = { lifetime: 3 };
+  const warming = layer.warmAsync();
+  assert.ok(compiled[0].includes('VolumetricCloudBakeShape'), 'the warm links the bakes again');
+  finishCompile();
+  await warming;
+  assert.equal(bakes(), 3, 'and bakes the volumes once linked');
+  assert.equal(layer.volumesLife, renderer.info);
+  for (const rt of layer.volumes.targets) rt.dispose();
+}
 // ---- perf-249 (the battle-scale traces: a tier change in battle made the next frame's trace read the ray march's link
 // synchronously, 0.4 s at 7 v 7 and seconds at 14 v 14): a live frame's tier change links the new tier's trace in
 // parallel at the quad's variant and keeps drawing the old tier until it is linked; the warms (immediate) swap at once;

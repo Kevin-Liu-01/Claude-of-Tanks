@@ -733,6 +733,9 @@ export class VolumetricCloudLayer {
   private targetHeight = 0;
   private readonly noise: CloudNoiseTextures = { weather: null, streets: null, blue: null, local: null };
   private volumes: CloudVolumeTextures | null = null;
+  /** (improve-271, plan 015) The renderer lifetime the volumes were baked in: render targets keep no CPU copy, so after a
+   *  WebGL context restore (three makes a new renderer.info) they are empty and ensureVolumes() bakes them again. */
+  private volumesLife: THREE.WebGLRenderer['info'] | null = null;
   private preset: CloudLayerPreset | null = null;
   private presetKey = '';
   private readonly weatherShift = new THREE.Vector2();
@@ -1013,11 +1016,18 @@ export class VolumetricCloudLayer {
     this.medium.tTurb.value = v?.turbulence ?? null;
   }
 
-  /** Bake the noise volumes on the GPU (once; the first warm or the first active frame). */
+  /**
+   * Bake the noise volumes on the GPU (once a renderer lifetime; the first warm or the first active frame). After a context
+   * restore that first frame is the recovery's covered render (main.ts onRestored: the loop holds until post.render(0)
+   * confirms the scene), so the rebake never lands on an uncovered live frame. Nothing is baked into a lost context.
+   */
   private ensureVolumes(): boolean {
-    if (this.volumes) return true;
+    if (this.volumes && this.volumesLife === this.renderer.info) return true;
+    if ((this.renderer.getContext() as { isContextLost?: () => boolean }).isContextLost?.()) return false;
+    if (this.volumes) this.dropVolumes();
     try {
       this.volumes = bakeCloudVolumes(this.renderer);
+      this.volumesLife = this.renderer.info;
     } catch (error) {
       console.warn('[clouds] the noise volumes could not be baked', error);
       return false;
@@ -1094,6 +1104,18 @@ export class VolumetricCloudLayer {
   /** Whether the clouds cast shadows this frame (the shade map the lit materials read; the ring's horizon shade follows it). */
   get shadowsActive(): boolean {
     return this.active && (this.preset?.shadowPattern ?? 0) > 0 && (this.preset?.coverage ?? 0) > 0;
+  }
+
+  /** Volumes from a past renderer lifetime: their targets are freed (their GPU side is gone already), the trace and the
+   *  shade map stop reading them, and the far shade is cut again from the next bake. */
+  private dropVolumes(): void {
+    for (const rt of this.volumes?.targets ?? []) {
+      try { rt.dispose(); } catch { /* a lost context's target */ }
+    }
+    this.volumes = null;
+    this.volumesLife = null;
+    this.farShadeValid = false;
+    this.bindNoise();
   }
 
   private refreshLifetime(): void {
@@ -1893,7 +1915,7 @@ export class VolumetricCloudLayer {
     const renderer = this.renderer as THREE.WebGLRenderer & { compileAsync?: THREE.WebGLRenderer['compileAsync'] };
     if (typeof renderer.compileAsync !== 'function') { this.warm(); return Promise.resolve(); }
     this.syncTier(true);
-    const bake = this.volumes ? null : cloudVolumeBake();
+    const bake = this.volumes && this.volumesLife === this.renderer.info ? null : cloudVolumeBake();
     const scene = new THREE.Scene();
     const camera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
     // each program at the geometry it draws: the layer's passes through three's FullScreenQuad (position and uv, no
@@ -1930,9 +1952,11 @@ export class VolumetricCloudLayer {
       quadGeometry.dispose();
       if (bake) {
         // the bake's programs are linked: its draws read no link synchronously (a failed bake leaves ensureVolumes to retry)
-        if (!this.volumes) {
+        if (!this.volumes || this.volumesLife !== this.renderer.info) {
+          if (this.volumes) this.dropVolumes();
           try {
             this.volumes = bake.bake(this.renderer);
+            this.volumesLife = this.renderer.info;
             this.bindNoise();
           } catch (error) {
             console.warn('[clouds] the noise volumes could not be baked', error);
