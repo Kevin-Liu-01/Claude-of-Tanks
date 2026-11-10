@@ -389,6 +389,15 @@ export interface ModeCheckpoint {
   /** The wave modes' own state (round 2, the critic's E12: a migrated host restarted Endless Horde at wave 1 and Frontline
    *  at its first sector, every hostile revived). Mode time throughout (the elapsedS base). */
   waves?: WaveCheckpoint;
+  /** The objectives (improve-271 plan 009: a migrated host restarted Capture the Flag, Zone Control, Turbo Ball and
+   *  Gravity Mode at 0-0, flags home, zones neutral, the ball on the spot). Each is absent in a checkpoint an older host
+   *  sealed, and then keeps its fresh value. Mode time throughout. */
+  flags?: FlagState[];
+  zones?: { id: string; control: number; owner: ObjectiveTeam | null; contested: boolean }[];
+  /** The ball, when it was last struck (null: never) and the idle-reset clock's start. */
+  ball?: BallState & { touchAtS: number | null; activeAtS: number };
+  /** Gravity Mode's boost caches: the next drop, the pickup sequence and the pickups on the ground. */
+  caches?: { nextAtS: number; sequence: number; pickups: PickupState[] };
 }
 /** Endless Horde's wave and queue, Frontline's line, counter-attack and trickle, and which pool identities rest. */
 interface WaveCheckpoint {
@@ -2710,7 +2719,11 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
       } : null;
       return { elapsedS, score: { ...score }, weaponKills: [...weaponKills], teams: entities.map(entity => [entity.id, teamOf(entity)]),
         respawns: [...respawnAt].map(([key, value]) => [key, { ...value }]), destroyed: [...destroyed], scored: [...scoredDeaths], ...(escort?{escortRescued:escort.capture(),support:{ammoAt,healAt,sequence:pickupSequence,pickups:pickups.map(p=>({...p}))}}:{}),
-        ...(waves ? { waves } : {}), ...(air ? { air: air.capture() } : {}) };
+        ...(waves ? { waves } : {}), ...(air ? { air: air.capture() } : {}),
+        ...(flags.length ? { flags: flags.map((flag) => ({ ...flag })) } : {}),
+        ...(zones.length ? { zones: zones.map((zone) => ({ id: zone.id, control: zone.control, owner: zone.owner, contested: zone.contested })) } : {}),
+        ...(ball ? { ball: { ...ball, touchAtS: Number.isFinite(lastBallTouchS) ? lastBallTouchS : null, activeAtS: ballActiveAtS } } : {}),
+        ...(ruleset.mars ? { caches: { nextAtS: nextMarsCacheAtS, sequence: pickupSequence, pickups: pickups.map((p) => ({ ...p })) } } : {}) };
     },
     restoreCheckpoint(checkpoint) {
       score.alpha = checkpoint.score.alpha; score.bravo = checkpoint.score.bravo;
@@ -2730,6 +2743,30 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
       if(checkpoint.support){ammoAt=checkpoint.support.ammoAt;healAt=checkpoint.support.healAt;pickupSequence=checkpoint.support.sequence;pickups.length=0;pickups.push(...checkpoint.support.pickups.map(p=>({...p})));}
       if (checkpoint.waves) restoreWaves(checkpoint.waves);
       if (air && checkpoint.air) air.restore(checkpoint.air);
+      for (const saved of checkpoint.flags ?? []) {
+        const flag = flagForTeam(saved.team);
+        if (!flag) continue;
+        flag.x = saved.x; flag.y = saved.y; flag.z = saved.z;
+        flag.status = saved.status; flag.carrierId = saved.carrierId; flag.returnAtS = saved.returnAtS;
+        // the carrier drives slowed again (the stamp above reset every hull); the flag follows it from the next step on
+        // (syncCarriedFlag), once the resume has put the hulls where the newest frame had them
+        const carrier = flag.status === 'carried' && flag.carrierId ? entityById.get(flag.carrierId) : null;
+        if (carrier) stampPhysics(carrier, baseSpeed * (ruleset.flagPitch?.carrierSpeedScale ?? FLAG_CARRIER_SPEED_SCALE));
+      }
+      for (const saved of checkpoint.zones ?? []) {
+        const live = zones.find((candidate) => candidate.id === saved.id);
+        if (live) { live.control = saved.control; live.owner = saved.owner; live.contested = saved.contested; }
+      }
+      if (ball && checkpoint.ball) {
+        const saved = checkpoint.ball;
+        ball.x = saved.x; ball.y = saved.y; ball.z = saved.z; ball.vx = saved.vx; ball.vy = saved.vy; ball.vz = saved.vz;
+        ball.lastTouchId = saved.lastTouchId;
+        lastBallTouchS = saved.touchAtS ?? -Infinity; ballActiveAtS = saved.activeAtS;
+      }
+      if (ruleset.mars && checkpoint.caches) {
+        nextMarsCacheAtS = checkpoint.caches.nextAtS; pickupSequence = checkpoint.caches.sequence;
+        pickups.length = 0; pickups.push(...checkpoint.caches.pickups.map((p) => ({ ...p })));
+      }
     },
     serialize,
   };

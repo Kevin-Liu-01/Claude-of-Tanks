@@ -122,7 +122,7 @@ import {
 import { consumeAmmunition, hasAmmunition } from './ammunition.ts';
 import { createMatchModeController, normalizeGameMode } from './matchModes.ts';
 import {
-  applyRulesetToCombat, rulesetSeatHullScale, endingHoldExpired, isWaveMode, matchRulesetFor, refillUnlimitedAmmunition,
+  applyRulesetToCombat, rulesetSeatHullScale, endingHoldExpired, matchRulesetFor, refillUnlimitedAmmunition,
   consumableTiming, rulesetConsumableGate, rulesetLoadout, rulesetObjectiveAxisM, rulesetUnlimitedFor,
   type MatchRuleset,
   type RulesetPhysics,
@@ -2762,9 +2762,10 @@ export function createAuthoritativeMatch({
     },
 
     captureModeCheckpoint() {
-      // the wave modes carry their waves, line and queue too (round 2: a migrated host restarted them from the beginning)
-      if (!['juggernaut', 'infected', 'realistic', 'gun_game', 'drone', 'ac130'].includes(normalizedGameMode) && !isWaveMode(normalizedGameMode)
-        && !ruleset.airSupport) return null;
+      // every mode with a controller of its own carries its state (score, flags, zones, ball, waves, air; improve-271
+      // plan 009: a list of modes here left CTF, Zone Control, Turbo Ball and Gravity Mode to restart at 0-0); Standard,
+      // which the snapshot above also sends no mode state for, resumes from the rows alone
+      if (normalizedGameMode === 'standard') return null;
       const flightStates: NewModeCheckpoint['flights'] = [];
       for (const entity of entities) { const flight = captureAerial(entity); if (flight) flightStates.push({ id: entity.id, flight }); }
       return { mode: modeController.captureCheckpoint(timeS + modeTimeOffsetS), flights: flightStates };
