@@ -5273,6 +5273,8 @@ ${snowCap ? `
   // A structure whose packet moves or reads its records before then (a carriageway building, a foundry donor, the
   // wharf's fishery) derives everything here, as every structure does in the Node builds.
   const shellPool = structureShellPoolFor(sourceApplication.worker === true);
+  // (improve-271, plan 037) a cancelled build stops the shell pool's workers too (dispose() is idempotent)
+  sourceApplication.signal?.addEventListener('abort', () => shellPool?.dispose(), { once: true });
   let shellsJoined = false;
   // (perf-248) the burnt vehicles' and the broken carts' bodies, built off the main thread (brokenVehiclePool.ts): posted
   // as their pools finalize, taken at joinBrokenVehicles; a cancelled build stops the pool's workers
@@ -5348,38 +5350,42 @@ ${snowCap ? `
   function* joinStructureShells(): Generator<PropsBuildSlice, void, void> {
     if (!shellPool || shellsJoined) return;
     shellsJoined = true;
-    const replacements = new Map<CollisionRecord, CollisionRecord[]>();
-    for (const pending of pendingShells) {
-      let bands = shellPool.take(pending.job);
-      if (!bands) {
-        try {
-          bands = deriveRuntimeStructureShellBands(unpackStructureShellWire(shellPool.wire(pending.job)));
-        } catch (error) {
-          throw new Error(`${pending.id}: unable to derive structure collision`, { cause: error });
+    // (plan 037) the pool's workers end with the join, whether it completes, throws or the build is returned mid-join
+    try {
+      const replacements = new Map<CollisionRecord, CollisionRecord[]>();
+      for (const pending of pendingShells) {
+        let bands = shellPool.take(pending.job);
+        if (!bands) {
+          try {
+            bands = deriveRuntimeStructureShellBands(unpackStructureShellWire(shellPool.wire(pending.job)));
+          } catch (error) {
+            throw new Error(`${pending.id}: unable to derive structure collision`, { cause: error });
+          }
         }
+        const shells: CollisionRecord[] = [];
+        for (const band of bands) {
+          const shell = appendStructureCollisionBand(shells, band, pending.x, pending.baseY, pending.z, pending.yaw);
+          shell.kind = 'structure';
+          shell.structureIdx = pending.structureIdx;
+        }
+        replacements.set(pending.placeholder, shells);
+        const described = structureDamage.get(pending.structureIdx);
+        const state = described ? createStructureDamage([pending.contact], shells).structures[0] : null;
+        if (described && state) described.anatomy.massClass = state.massClass;
+        yield { fine: true, progress: false, stage: 'structure-shells-join' };
       }
-      const shells: CollisionRecord[] = [];
-      for (const band of bands) {
-        const shell = appendStructureCollisionBand(shells, band, pending.x, pending.baseY, pending.z, pending.yaw);
-        shell.kind = 'structure';
-        shell.structureIdx = pending.structureIdx;
+      const joined: CollisionRecord[] = [];
+      for (const record of colliders) {
+        const shells = replacements.get(record);
+        if (shells) for (const shell of shells) joined.push(shell);
+        else joined.push(record);
       }
-      replacements.set(pending.placeholder, shells);
-      const described = structureDamage.get(pending.structureIdx);
-      const state = described ? createStructureDamage([pending.contact], shells).structures[0] : null;
-      if (described && state) described.anatomy.massClass = state.massClass;
-      yield { fine: true, progress: false, stage: 'structure-shells-join' };
+      colliders.length = 0;
+      for (const record of joined) colliders.push(record);
+      pendingShells.length = 0;
+    } finally {
+      shellPool.dispose();
     }
-    const joined: CollisionRecord[] = [];
-    for (const record of colliders) {
-      const shells = replacements.get(record);
-      if (shells) for (const shell of shells) joined.push(shell);
-      else joined.push(record);
-    }
-    colliders.length = 0;
-    for (const record of joined) colliders.push(record);
-    pendingShells.length = 0;
-    shellPool.dispose();
   }
   /** The building just pushed onto the features is the structure just placed (its placement reads back from it). */
   function linkStructureFeature(): void {

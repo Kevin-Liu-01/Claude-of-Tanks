@@ -99,6 +99,15 @@ assert.match(props, /if \(steal\?\.\(\)\) \{/, 'and derives the newest unanswere
 assert.match(props, /joinStructureShells\(\); \/\/ \(Plan W\) no pooled structure outlives the build/);
 assert.match(props, /throw new Error\(`\$\{id\}: structure shell record read \(\$\{key\}\) before the build joined the pool`\);/);
 assert.match(props, /const shellPool = structureShellPoolFor\(sourceApplication\.worker === true\);/, 'workers only in the async build');
+// (improve-271, plan 037) a cancelled build stops its shell workers, and a join that throws or is returned mid-way too
+// (the headless build takes no abort signal, so the wiring is read from the source; the pool's half is driven below)
+assert.match(props, /const shellPool = structureShellPoolFor\(sourceApplication\.worker === true\);\n(?:\s*\/\/[^\n]*\n)*\s*sourceApplication\.signal\?\.addEventListener\('abort', \(\) => shellPool\?\.dispose\(\), \{ once: true \}\);/,
+  'an aborted build disposes the shell pool');
+{
+  const join = props.slice(props.indexOf('function* joinStructureShells()'), props.indexOf('function linkStructureFeature()'));
+  assert.match(join, /try \{[\s\S]*\} finally \{\s*shellPool\.dispose\(\);\s*\}\s*\}\s*\/\*\*/, 'the join releases the workers in a finally');
+  assert.equal(join.match(/shellPool\.dispose\(\)/g)?.length, 1, 'and only there');
+}
 // ---- 4. work stealing (2026-10-15, the perf lane): the main thread takes the newest unanswered job, its bands stand as
 // the answer, a worker's late reply for it is dropped, and the join's wait settles once every job is answered
 {
@@ -126,6 +135,15 @@ assert.match(props, /const shellPool = structureShellPoolFor\(sourceApplication\
     assert.equal(workerPool.steal(), null, 'nothing is left to steal');
     assert.deepEqual({ answered: workerPool.stats.answered, stolen: workerPool.stats.stolen }, { answered: 3, stolen: 1 });
     workerPool.dispose();
+    // (plan 037) disposal is idempotent: a second dispose (the abort's and the join's) terminates no worker twice
+    const terminated = new Map();
+    globalThis.Worker = class { constructor() { this.onmessage = null; terminated.set(this, 0); } postMessage() {} terminate() { terminated.set(this, terminated.get(this) + 1); } };
+    const twice = structureShellPoolFor(true);
+    for (let i = 0; i < 6; i++) twice.post(buckets);
+    assert.ok(terminated.size >= 1, 'workers started');
+    twice.dispose();
+    twice.dispose();
+    assert.ok([...terminated.values()].every((n) => n === 1), 'every worker terminated exactly once');
   } finally {
     if (realWorker) globalThis.Worker = realWorker; else delete globalThis.Worker;
   }
@@ -139,4 +157,4 @@ for (const module of ['src/world/structureShellPool.ts', 'src/world/structureShe
   assert.ok(!boot.has(module), `${module} stays out of the boot graph`);
 }
 
-console.log(`structureShellPool.selftest: the wire answers every read exactly; the pooled Verdant build (${posted} structures) equals the inline one; the join stands before every scan`);
+console.log(`structureShellPool.selftest: the wire answers every read exactly; the pooled Verdant build (${posted} structures) equals the inline one; the join stands before every scan; a cancelled or failed build stops its workers (plan 037)`);
