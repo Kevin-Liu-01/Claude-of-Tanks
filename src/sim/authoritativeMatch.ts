@@ -123,7 +123,7 @@ import { consumeAmmunition, hasAmmunition } from './ammunition.ts';
 import { createMatchModeController, normalizeGameMode } from './matchModes.ts';
 import {
   applyRulesetToCombat, rulesetSeatHullScale, endingHoldExpired, matchRulesetFor, refillUnlimitedAmmunition,
-  consumableTiming, rulesetConsumableGate, rulesetLoadout, rulesetObjectiveAxisM, rulesetUnlimitedFor,
+  consumableTiming, rulesetConsumableGate, rulesetLoadout, rulesetObjectiveAxisM, rulesetUnlimitedFor, terrainVariantFor,
   type MatchRuleset,
   type RulesetPhysics,
 } from './matchRuleset.ts';
@@ -812,9 +812,10 @@ export function createAuthoritativeMatch({
   // A browser world or dedicated collision lease already owns the exact field.
   // Do not bake a second 5.5 MB field merely to obtain its existing layout.
   const suppliedHeightField = worldCollision?.heightField;
-  // batch 27: a Frontline Assault authority bakes the trench variant so its sectors sit in the carved lines
+  // batch 27: a Frontline Assault authority bakes the trench variant so its sectors sit in the carved lines (the
+  // ruleset's terrainVariant names it)
   const normalizedGameMode = normalizeGameMode(gameMode);
-  const shared = suppliedHeightField ? null : sharedTerrain(mapId, normalizedGameMode === 'frontline_assault');
+  const shared = suppliedHeightField ? null : sharedTerrain(mapId, terrainVariantFor(normalizedGameMode) === 'assault-trenches');
   // destruction (docs/DESTRUCTION.md §7): the match's ground is the shared field plus this match's overlay (rubble
   // mounds, craters); the base is never touched, so a shared terrain carries no stamp into another match
   const baseHeightField = suppliedHeightField || shared!.heightField;

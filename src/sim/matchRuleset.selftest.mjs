@@ -376,4 +376,20 @@ assert.equal(rulesetAllyCap(standard, 6), 6); assert.equal(rulesetAllyCap(horde,
   assert.deepEqual(couchSeatSides('standard', 'teams', 0), []);
 }
 
+// improve-271 plan 012: the rules the mode-id literals used to decide, read from the ruleset (the old literals' values)
+{
+  const kills = ['zone_control', 'mars', 'air_support', 'drone', 'gun_game', 'juggernaut', 'realistic', 'ac130'];
+  const footprints = { capture_the_flag: { radiusM: 12 }, turbo_ball: { radiusM: 18, arena: true } };
+  const middles = { turbo_ball: { kind: 'kickoff', radiusM: 12, reliefM: 3, arena: true }, ac130: { kind: 'extraction', radiusM: 30, reliefM: 7 } };
+  for (const mode of GAME_MODE_IDS) {
+    const ruleset = matchRulesetFor(mode);
+    assert.equal(ruleset.elimination === true, mode === 'standard' || mode === 'realistic', `${mode}: elimination`);
+    assert.equal(ruleset.scoresKills === true, kills.includes(mode), `${mode}: kill scoring`);
+    assert.deepEqual(ruleset.objectiveFootprint ?? null, footprints[mode] ?? null, `${mode}: objective footprint`);
+    assert.deepEqual(ruleset.middleReserve ?? null, middles[mode] ?? null, `${mode}: middle reserve`);
+    assert.equal(ruleset.routePush === true, mode !== 'standard', `${mode}: bot routes pushed toward the objective`);
+    assert.equal(ruleset.terrainVariant === 'assault-trenches', mode === 'frontline_assault', `${mode}: trench terrain`);
+  }
+}
+
 console.log('matchRuleset: per-mode values, determinism, campaign difficulty fold, team arrangement clamps, horde wave law, rule-card lines, spawn stamps, ammo/reload helpers, the post-verdict hold, the counter-drone airframe threshold (hitsToDown 1.1, clear of every capped burst sum) and the couch rules verified');
