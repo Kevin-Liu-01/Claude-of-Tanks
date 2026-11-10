@@ -253,10 +253,45 @@ assert.match(entryComposition.slice(0, entryComposition.indexOf('\n});')),
   await make(() => null).beginSelected({ mapId: 'alpine', gameMode: 'frontline_assault', campaignOperationId: 'iron_ridge' });
   assert.deepEqual(covers[0], ['cover', { mapId: 'alpine', modeId: 'frontline_assault', campaign: true, campaignOperationId: 'iron_ridge' }]);
 }
+// (improve-271 plan 034) a failed entry whose Garage return also rejects still releases the cover and the loader, and the
+// notice names the entry's own failure, not the return's
+{
+  const steps = [];
+  let shown = null;
+  const doubleLifecycle = createBattleEntryLifecycle({ nextFrame: async () => {}, now: () => 0 });
+  const uncover = doubleLifecycle.uncoverRendering.bind(doubleLifecycle);
+  doubleLifecycle.uncoverRendering = () => { steps.push('uncover'); uncover(); };
+  const failing = createSoloBattleEntryRuntime({
+    lifecycle: doubleLifecycle,
+    loading: { async begin() { throw new Error('cold chunk failed'); } },
+    battleLoad: { showPending: () => {}, hide: async () => { steps.push('hide'); } },
+    audio: { loadingOn() {} },
+    enterGarage: async () => { steps.push('garage'); throw new Error('superseded return'); },
+    nextFrame: async () => { steps.push('frame'); },
+    isVisibleSpecId: () => true, getSelectedSpecId: () => 'm1a1_abrams_hc', getSelectedMapId: () => 'desert',
+    reportError: (label) => steps.push(`error:${label}`),
+    presentFailure: async (error) => { shown = error.message; },
+    onFailure() {},
+  });
+  await failing.beginSelected({ mapId: 'desert' });
+  assert.deepEqual(steps, ['error:[battle] entry failed', 'garage', 'error:[battle] Garage return after a failed entry', 'uncover', 'frame', 'hide'],
+    'a rejected Garage return is reported and the cover and the loader are still released');
+  assert.equal(doubleLifecycle.renderingCovered, false, 'the rendering is uncovered');
+  assert.equal(doubleLifecycle.pending, false, 'the entry latch is released');
+  assert.equal(shown, 'cold chunk failed', 'the notice names the entry\'s own failure');
+}
+
 const pendingComposition = await readFile(new URL('../main.ts', import.meta.url), 'utf8');
 assert.match(pendingComposition, /describePendingMap: \(specId: string, mapId: string \| null, options\?: SoloBattleLoadingStartOptions\) => \{\n    const resolved = battleIntent\.peekMap\(specId, mapId \|\| worldRuntime\.pendingMapId\);/,
   'the composition names the map the intent will consume, from the same pending map the loading owner falls back to');
 // (2026-10-26, the owner: "fix team lists in loading state") the cover lists both planned teams from its first frame
 assert.match(pendingComposition, /describePendingMap:[\s\S]{0,400}plannedCardTeams\(specId, \{/, 'the pending cover plans the battle\'s teams');
+
+// (improve-271 plan 034) the solo countdown opens the Frontline brief once per sortie (its show runs every count frame):
+// latched in the countdown's show, the latch reset when the count rolls out and when the Garage takes the screen
+assert.match(pendingComposition, /if \(game\.gameMode === 'frontline_assault' && !briefShownForCountdown\) \{\s*briefShownForCountdown = true;\s*if \(!missionBrief\.isShowing\(\)\) missionBrief\.show\(/,
+  'the countdown opens the brief only when the sortie has not shown it');
+assert.match(pendingComposition, /bus\.on\('battle:rollout', \(\) => \{ briefShownForCountdown = false; \}\);/, 'the latch resets when the count rolls out');
+assert.match(pendingComposition, /missionBrief\.hide\(\);\s*briefShownForCountdown = false;/, 'and when the Garage takes the screen');
 
 console.log('soloBattleEntryRuntime.selftest: selection, the named pending cover and covered failure recovery pass');

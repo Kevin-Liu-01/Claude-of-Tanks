@@ -1116,6 +1116,11 @@ const garagePhasePresentation = createGaragePhasePresentationRuntime({
 });
 // campaign slice 5 (2026-09-14): the mission brief card for Frontline Assault sorties
 const missionBrief = createMissionBrief();
+// (improve-271 plan 034) the solo countdown opens the brief once per sortie: set when it opens it, reset when the count
+// rolls out and when the Garage takes the screen, so the BRIEF button can dismiss it during the count and a long warm
+// hold never re-opens a brief that had faded
+let briefShownForCountdown = false;
+bus.on('battle:rollout', () => { briefShownForCountdown = false; });
 let pendingCampaignOperationId: string | null = null;
 // transitions-249: the Garage's light set is up; the kill-cam's replay lights leave the light count while it is
 // (killcam.ts setBattleLights), so a return relinks nothing its boot linked
@@ -1123,6 +1128,7 @@ let garageLightsUp = true;
 const setGarageSpots = (active: boolean): void => {
   if (active) {
     battleAtmosphere.reset(); nightLighting.reset(); frontline.reset(); mapAmbience.reset(); missionBrief.hide();
+    briefShownForCountdown = false;
     lighting.setBattleLitSet(false);
   }
   garagePhasePresentation.setActive(active);
@@ -3781,8 +3787,9 @@ const battleFrame = createBattleFrameRuntime({
       // batch 19: the rules of engagement sit under the count (Standard shows none)
       currentHud()?.setPreBattleRules(game.ruleset);
       // campaign slice 5: the solo countdown opens the mission brief once per sortie
-      if (game.gameMode === 'frontline_assault' && !missionBrief.isShowing()) {
-        missionBrief.show({ operationId: pendingCampaignOperationId, mapId: game.mapId, durationS: seconds + 14 });
+      if (game.gameMode === 'frontline_assault' && !briefShownForCountdown) {
+        briefShownForCountdown = true;
+        if (!missionBrief.isShowing()) missionBrief.show({ operationId: pendingCampaignOperationId, mapId: game.mapId, durationS: seconds + 14 });
       }
     },
     // once a battle, solo and network alike; a network battle joined after its count rolls out late (no cues)

@@ -121,10 +121,17 @@ export function createSoloBattleEntryRuntime({
       reportError('[battle] entry failed', error);
       try { onFailure(error); } catch (_) { /* a beacon never changes recovery */ }
       audio.loadingOn(false);
-      await enterGarage();
-      lifecycle.uncoverRendering();
-      await nextFrame();
-      await battleLoad.hide?.();
+      // (improve-271 plan 034) the cover and the opaque loader are released even when the Garage return itself rejects
+      // (a superseded return, a changed graphics context): the page is never left behind a loader with no notice
+      try {
+        await enterGarage();
+      } catch (returnError) {
+        reportError('[battle] Garage return after a failed entry', returnError);
+      } finally {
+        lifecycle.uncoverRendering();
+        await nextFrame();
+        await battleLoad.hide?.();
+      }
       // Entry resilience (2026-09-25): the player used to be returned to the
       // Garage with nothing but a console line. The notice comes last so it
       // opens over a painted Garage, and its own failure is only reported.
