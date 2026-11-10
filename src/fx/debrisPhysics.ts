@@ -85,6 +85,9 @@ export interface DebrisPhysics {
   /** Drop everything (a new battle, a Studio scene load). */
   reset(): void;
   stats(): { bodies: number; awake: number; waiting: number; handles: number; timeS: number };
+  /** (improve-271, plan 016) The bodies the pool can take now: its free slots and the sleepers that would give way (a
+   *  piece asleep awaiting its release never does). */
+  room(): number;
 }
 
 export function createDebrisPhysics(options: DebrisPhysicsOptions = {}): DebrisPhysics {
@@ -152,10 +155,18 @@ export function createDebrisPhysics(options: DebrisPhysicsOptions = {}): DebrisP
     r[2] = z + 2 * (qx * cy - qy * cx);
   }
 
+  /** A sleeper that may give way: never a piece asleep awaiting its release (a collapse's panel standing where it stood
+   *  until its time; frozen there it would hang over the heap). improve-271, plan 016. */
+  function evictable(slot: number): boolean {
+    if (!world.active[slot] || !world.asleep[slot]) return false;
+    const handle = slotHandle[slot]!;
+    return handle < 0 || handleResting[handle] !== 1;
+  }
+
   function evictOldestSleeper(): boolean {
     let oldest = -1, age = -1;
     for (let slot = 0; slot < capacity; slot++) {
-      if (!world.active[slot] || !world.asleep[slot]) continue;
+      if (!evictable(slot)) continue;
       if (world.age[slot] > age) { age = world.age[slot]; oldest = slot; }
     }
     if (oldest < 0) return false;
@@ -359,8 +370,11 @@ export function createDebrisPhysics(options: DebrisPhysicsOptions = {}): DebrisP
     release(handle) {
       if (handle < 0 || handle >= handleCapacity || !handleLive[handle]) return;
       const slot = handleSlot[handle];
-      if (slot !== HANDLE_NONE) { world.remove(slot); slotHandle[slot] = HANDLE_NONE; } else waiting--;
-      if (handleResting[handle]) { handleResting[handle] = 0; waiting--; }
+      // counted in `waiting` once: outside the world, or in it asleep awaiting its release (plan 016: a resting piece
+      // outside the world was counted off twice, and releaseDue then stopped looking at every later piece)
+      if (slot === HANDLE_NONE || handleResting[handle]) waiting--;
+      if (slot !== HANDLE_NONE) { world.remove(slot); slotHandle[slot] = HANDLE_NONE; }
+      handleResting[handle] = 0;
       handleLive[handle] = 0;
       handleSlot[handle] = HANDLE_NONE;
       handleShape[handle] = null;
@@ -377,6 +391,11 @@ export function createDebrisPhysics(options: DebrisPhysicsOptions = {}): DebrisP
     },
     stats() {
       return { bodies: world.count, awake: world.awakeCount, waiting, handles, timeS };
+    },
+    room() {
+      let n = 0;
+      for (let slot = 0; slot < capacity; slot++) if (!world.active[slot] || evictable(slot)) n++;
+      return n;
     },
   };
   return pool;

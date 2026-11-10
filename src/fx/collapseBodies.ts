@@ -1673,9 +1673,9 @@ export function createCollapseBodies(o: CollapseBodiesOptions): CollapseBodies {
     if (p.handle < 0) return;
     const kind = p.piece.kind;
     const keen = kind === 'drum' || kind === 'roof';
-    // room for its parts (sleepers give way; awake bodies do not): a panel without it stays whole rather than lose parts
-    const capacity = (pool.world as { capacity?: number }).capacity ?? 128;
-    if (!keen && capacity - pool.world.awakeCount + 1 < p.parts.length) { p.broken = false; return; }
+    // room for its parts (free slots and sleepers that give way; awake bodies and pieces awaiting their release do not,
+    // improve-271 plan 016): a panel without it stays whole rather than lose parts
+    if (!keen && pool.room() + 1 < p.parts.length) { p.broken = false; return; }
     pool.framePoseAt(p.handle, pose);
     pool.velocity(p.handle, vel);
     byHandle.delete(p.handle);
