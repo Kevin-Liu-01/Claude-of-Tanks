@@ -42,6 +42,7 @@ const world = () => ({ mapId: 'verdant', heightField: { getHeightAt: () => 0, ge
   assert.equal(killSourceOf(null, { reloadGroup: 'strike-artillery' }), 'artillery');
 }
 
+const shellViews = { callerSeen: 0, callerHidden: 0 };
 function run({ bots = [], shootDown = false, migrateAt = null } = {}) {
   const make = (resume) => createMatchActor({ roomId: 'air-support', mapId: 'verdant', mode: 'air_support', seed: 77, seats, bots,
     ruleset: matchRulesetFor('air_support'), world: world(), countdownS: 0, autoStart: false, now: () => 0, schedule: () => () => {}, resume });
@@ -65,6 +66,19 @@ function run({ bots = [], shootDown = false, migrateAt = null } = {}) {
       sim.afterEventBroadcast();
       // the enemy holds still where we put it (the test reads the strikes, not the driving)
       for (const id of ['caller', 'e1', 'e2']) { const e = sim.entityById.get(id); if (!e.combat.destroyed) { e.state.pos.set(at[id][0], 0, at[id][1]); e.state.speed = 0; } }
+      // improve-271 plan 014: snapshot() and observeForViewer() send a viewer the same shells (one rule: a strike's round
+      // is public, as its footprint and heading are; the owner, 2026-11-05), whether or not the viewer sees the caller
+      if (Math.round(sim.timeS * 60) % 6 === 0) {
+        const entitiesOut = [], shellsOut = [];
+        sim.observeForViewer('e1', entitiesOut, shellsOut);
+        if (shellsOut.some((shell) => typeof shell.strikeId === 'number')) {
+          const tickNow = Math.round(sim.timeS * 60);
+          const snap = sim.snapshot({ tick: tickNow, serverTimeMs: tickNow * 1000 / 60, viewerId: 'e1', ackInputSeq: null });
+          assert.deepEqual(snap.shells.map((shell) => shell.id).sort(), shellsOut.map((shell) => shell.id).sort(),
+            `tick ${tickNow}: snapshot() and observeForViewer() agree on the strike rounds`);
+          shellViews[entitiesOut.some((entity) => entity.id === 'caller') ? 'callerSeen' : 'callerHidden']++;
+        }
+      }
     }
   };
   tick(30);
@@ -115,6 +129,7 @@ function run({ bots = [], shootDown = false, migrateAt = null } = {}) {
 }
 
 const first = run();
+assert.ok(shellViews.callerHidden > 0, `strike rounds compared for a viewer that does not see the caller (${JSON.stringify(shellViews)})`);
 const called = first.log.filter((e) => e.type === 'mode_strike_called');
 assert.deepEqual(called.map((e) => e.kind), ['recon', 'artillery', 'strafe', 'bomb', 'gunship'], 'every call-in was accepted, in order');
 // the warning: every round of every strike leaves no earlier than its call and arrives no earlier than its warning's end
