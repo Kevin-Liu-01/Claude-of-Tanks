@@ -205,6 +205,33 @@ stage = 'case 4';
   session.dispose(); client.dispose();
 }
 
+// ---- the room elects THIS seat while it is still loading a fresh match it entered as a peer (the named host left): its
+//      match_start carries no secret, the election's copy does; the seat hosts with it (improve-271 plan 002: it used to
+//      find no secret and decline as unable, which ends a two-commander match at once)
+stage = 'case 4b';
+{
+  let release = null;
+  const held = new Promise((resolve) => { release = resolve; });
+  const { transport, session, client, counts } = await seat({ presentationGate: () => held });
+  const { matchId, hostSecret } = start(transport, { hostId: 'other' });
+  await until(() => counts.presentations === 1, 'the entry began');
+  transport.deliver({ type: 'host_changed', payload: { hostId: 'me', generation: 2, resumeTick: 0, reason: 'left', hostSecret } });
+  await sleep(20);
+  release();
+  await until(() => session.phase === 'match', 'the round entered');
+  const pump = setInterval(() => session.update(performance.now(), 1 / 60), 16);
+  const unable = transport.outbound.filter((envelope) => envelope.payload?.command?.type === 'host_decline' && envelope.payload.command.unable === true);
+  assert.equal(unable.length, 0, 'no unable decline from a seat that can host');
+  assert.equal(session.role, 'host', 'the elected seat hosts');
+  await until(() => reportsOf(transport).length >= 1, 'the elected host reports', 10_000);
+  const first = reportsOf(transport)[0].payload.command;
+  assert.equal(first.matchId, matchId);
+  assert.equal(first.generation, 2, "the host boots under the election's generation");
+  clearInterval(pump);
+  stage += ' leave'; await session.leaveMatch('done');
+  session.dispose(); client.dispose();
+}
+
 // ---- a peer sends none
 stage = 'case 5';
 {
@@ -316,4 +343,4 @@ await sleep(50);
 assert.ok(cores.every((core) => !core.actor || core.actor.stopped), 'no actor outlives its core');
 peakRss = Math.max(peakRss, process.memoryUsage().rss);
 assert.ok(peakRss < 1e9, `memory stayed bounded (peak RSS ${(peakRss / 1e6).toFixed(0)} MB)`);
-console.log('matchSessionEntryReports.selftest: the elected host reports loading through a slow entry and stops at its actor\'s first report; the ceiling, host_only and a new election stop them; a peer and a running match send none; a re-entry decline is withdrawn at the welcome; a core stopped during its world load starts no actor; a match_start re-sent during loading joins the entry in flight, another match supersedes it');
+console.log('matchSessionEntryReports.selftest: the elected host reports loading through a slow entry and stops at its actor\'s first report; the ceiling, host_only and a new election stop them; a seat elected while loading hosts with the election\'s secret; a peer and a running match send none; a re-entry decline is withdrawn at the welcome; a core stopped during its world load starts no actor; a match_start re-sent during loading joins the entry in flight, another match supersedes it');

@@ -759,8 +759,13 @@ export class MatchSession {
     // was sent when it hosted, while the room may have elected another host since (its host_changed is newer).
     const hostId = this.room.hostId ?? payload.hostId ?? null;
     this.servingHostId = hostId;
+    // The payload's secret first (the host's own match_start); else the room's newest election when it names this seat: a
+    // seat elected while it loaded entered as a peer, and only the election's copy carries the secret (improve-271 plan 002)
+    const elected = this.room.lastHostChanged;
+    const electedSecret = elected && elected.hostId === me ? elected.hostSecret : undefined;
+    const usable = (value: unknown): value is string => typeof value === 'string' && value.length >= 16;
     const secret = (payload as { hostSecret?: unknown }).hostSecret;
-    this.hostSecret = typeof secret === 'string' && secret.length >= 16 ? secret : null;
+    this.hostSecret = usable(secret) ? secret : usable(electedSecret) ? electedSecret : null;
     let inner: Transport;
     this.runningGeneration = Math.max(parseP2pMatchUrl(payload.matchUrl)?.generation ?? 0, this.room.generation);
     // Named host for a match already playing (a reload inside the host grace): this seat holds no state to resume from,
