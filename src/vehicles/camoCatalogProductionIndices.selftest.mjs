@@ -93,8 +93,9 @@ assert.deepEqual(now.ids.slice(baseline.ids.length), ['paint_m6_linebacker', ...
   'paint_x1a2_carcara', 'paint_osorio_p1', 'paint_ee_t3_osorio', 'paint_ee_t4_osorio', 'paint_m41dk1', 'paint_cv9035dk',
   'paint_m41_bw', 'paint_m41_jgsdf', 'paint_leo2a7dk', 'paint_centurion5_2dk', 'paint_type90b', 'paint_type10', 'paint_bmpt_terminator',
   'paint_magach3', 'paint_magach6b', 'paint_magach7c', 'paint_x1_pioneiro',
-  'paint_semel', 'paint_olifant_mk1b', 'paint_olifant_mk1', 'paint_olifant_mk1a', 'paint_leopard_as1', 'paint_m113a1_fsv', 'paint_m113a1_mrv'],
-  'only the M6 Linebacker paint, the release-233 Signatures, the Type 10 Kaitaku paint, the Christian II paint, the 262 Oplot paints, both Challenger 3 TD paints, the T-84U 2000 three-tone and the three PT-84 paints (262), then the release-265 Signatures and the Centurion family\'s three paints (Sho\'t Kal, Olifant Mk 2, Mk 5/1), then the Danish coats, the Challenger 1 paints, the Brazilian coats and the Danish and Bundeswehr/JGSDF M41 and CV9035 DK coats (266), then the 267 coats and the original BMPT Terminator\'s three-tone, append, after GT');
+  'paint_semel', 'paint_olifant_mk1b', 'paint_olifant_mk1', 'paint_olifant_mk1a', 'paint_leopard_as1', 'paint_m113a1_fsv', 'paint_m113a1_mrv',
+  'paint_olifant_mk1b_2'],
+  'only the M6 Linebacker paint, the release-233 Signatures, the Type 10 Kaitaku paint, the Christian II paint, the 262 Oplot paints, both Challenger 3 TD paints, the T-84U 2000 three-tone and the three PT-84 paints (262), then the release-265 Signatures and the Centurion family\'s three paints (Sho\'t Kal, Olifant Mk 2, Mk 5/1), then the Danish coats, the Challenger 1 paints, the Brazilian coats and the Danish and Bundeswehr/JGSDF M41 and CV9035 DK coats (266), then the 267 coats and the original BMPT Terminator\'s three-tone, then the 269 lines and the Olifant Mk 1B\'s 272 repaint, append, after GT');
 assert.deepEqual(now.catalog.slice(0, baseline.catalog.length), baseline.catalog, 'the garage picker lists production\'s schemes in order');
 assert.deepEqual(now.catalog.slice(baseline.catalog.length), ['paint_m6_linebacker', ...RELEASE_233_SIGNATURES, 'paint_type10_dozer', 'paint_christian2',
   'paint_bm_oplot_m', 'paint_bm_oplot_t',
@@ -105,7 +106,8 @@ assert.deepEqual(now.catalog.slice(baseline.catalog.length), ['paint_m6_lineback
   'paint_x1a2_carcara', 'paint_osorio_p1', 'paint_ee_t3_osorio', 'paint_ee_t4_osorio', 'paint_m41dk1', 'paint_cv9035dk',
   'paint_m41_bw', 'paint_m41_jgsdf', 'paint_leo2a7dk', 'paint_centurion5_2dk', 'paint_type90b', 'paint_type10', 'paint_bmpt_terminator',
   'paint_magach3', 'paint_magach6b', 'paint_magach7c', 'paint_x1_pioneiro',
-  'paint_semel', 'paint_olifant_mk1b', 'paint_olifant_mk1', 'paint_olifant_mk1a', 'paint_leopard_as1', 'paint_m113a1_fsv', 'paint_m113a1_mrv']);
+  'paint_semel', 'paint_olifant_mk1b', 'paint_olifant_mk1', 'paint_olifant_mk1a', 'paint_leopard_as1', 'paint_m113a1_fsv', 'paint_m113a1_mrv',
+  'paint_olifant_mk1b_2']);
 
 // Every production id, as a saved selection, paints the same scheme (label, preset recipe and the resolved visual on
 // ten reference hulls: US, Russian, German, British, Chinese, Korean, IDF, X-series and brand).
@@ -147,9 +149,9 @@ const ADDED_SINCE_PRODUCTION = ['type10_dozer', 'christian2', 'bm_oplot_m', 'bm_
   // release 269, the plain-coat pass (owner 2026-11-03: "any tank without a proper camo need a proper camoo"): the three
   // Magachs off the Merkava 2D's plain service grey and the X1 Pioneiro off its spec's plain coat, each in its own paint
   'magach3', 'magach6b', 'magach7c', 'x1_pioneiro',
-  // release 269: the South Africa line in its four coats (the Semel's, the Mk 1's, the Mk 1A's and the Mk 1B's; the TTD
-  // wears the Mk 1B's below)
-  'semel', 'olifant_mk1', 'olifant_mk1a', 'olifant_mk1b',
+  // release 269: the South Africa line in its coats (the Semel's, the Mk 1's and the Mk 1A's; the TTD wears the Mk 1B's
+  // 269 coat below, the Mk 1B its 272 repaint after these lists)
+  'semel', 'olifant_mk1', 'olifant_mk1a',
   // release 269: the Leopard AS1 in the Australian disruptive three-tone (the rest of the line wears it below), the M113A1
   // FSV and MRV each in its own RAAC field coat (owner 2026-11-03: no plain coats)
   'leopard_as1', 'm113a1_fsv', 'm113a1_mrv'];
@@ -179,6 +181,9 @@ const ADDED_IN_DONOR_COAT = { t55a: 't62_1975', t64bv: 't64bv1', t64b1v_2022: 't
   centurion13: 'centurion5_2', centurion5_avre: 'centurion5_2', strv105: 'strv81', leo1a2a1: 'leo1a5',
   // release 268: the M3A2 Bradley wears the M2A2's stock coat (its M2A2 spec's visual)
   m3a2_bradley: 'm2a2_bradley' };
+// Added since production and repainted under a new paint id, the old id keeping its recipe for the hulls and saved
+// selections still wearing it (272: the Olifant Mk 1B in the SANDF's 1994 three-colour; the TTD keeps paint_olifant_mk1b).
+const ADDED_IN_REPAINT = { olifant_mk1b: 'paint_olifant_mk1b_2' };
 // Added since production in a Signature of its own, appended after the earlier ids (release 265: the Longwei family).
 const ADDED_WITH_SIGNATURE = ['ztz99a2_qinglong', 'vt4a1_baihu', 't72b3_zhuque', 't72b3m_xuanwu'];
 // release 262: the fourth batch's Leopard 2A3 wears the 2A3 OTCO's coat (it carries that build's paint and combat data)
@@ -201,7 +206,8 @@ const ADDED_IN_EXISTING_COAT = { m48a3_patton: 'summer', m48a2ga2: 'service_leo2
   m113a3: 'merdc' };
 assert.equal(Object.keys(now.tanks).length, Object.keys(baseline.tanks).length + ADDED_SINCE_PRODUCTION.length
   + Object.keys(ADDED_IN_DONOR_COAT).length + ADDED_WITH_SIGNATURE.length + Object.keys(ADDED_IN_EXISTING_COAT).length
-  + Object.keys(ADDED_WEARING_PRODUCTION_PAINT).length + ADDED_IN_SPEC_COAT.length + Object.keys(ADDED_IN_NATION_COAT).length,
+  + Object.keys(ADDED_WEARING_PRODUCTION_PAINT).length + ADDED_IN_SPEC_COAT.length + Object.keys(ADDED_IN_NATION_COAT).length
+  + Object.keys(ADDED_IN_REPAINT).length,
   'the same fleet, plus the tanks added since');
 for (const id of ADDED_WITH_SIGNATURE) assert.equal(now.tanks[id]?.stock, `sig_${id}`, `${id} wears its own Signature`);
 for (const [id, coat] of Object.entries(ADDED_IN_NATION_COAT)) assert.equal(now.tanks[id]?.stock, coat, `${id} wears ${coat}`);
@@ -209,6 +215,7 @@ for (const id of ADDED_IN_SPEC_COAT) assert.equal(now.tanks[id]?.stock, null, `$
 for (const id of ADDED_SINCE_PRODUCTION) assert.equal(now.tanks[id]?.stock, `paint_${id}`, `${id} wears its own stock paint`);
 for (const [id, donor] of Object.entries(ADDED_IN_DONOR_COAT)) assert.equal(now.tanks[id]?.stock, now.tanks[donor]?.stock, `${id} wears ${donor}'s stock`);
 for (const [id, stock] of Object.entries(ADDED_IN_EXISTING_COAT)) assert.equal(now.tanks[id]?.stock, stock, `${id} wears ${stock}`);
+for (const [id, stock] of Object.entries(ADDED_IN_REPAINT)) assert.equal(now.tanks[id]?.stock, stock, `${id} wears its repaint ${stock}`);
 for (const [id, donor] of Object.entries(ADDED_WEARING_PRODUCTION_PAINT)) {
   // its own factory coat (its number) and its own per-id map picks; the stock and the selection are the donor's
   assert.deepEqual([now.tanks[id]?.selection, now.tanks[id]?.stock], [now.tanks[donor].selection, now.tanks[donor].stock],

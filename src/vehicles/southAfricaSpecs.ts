@@ -93,11 +93,16 @@ olifant_mk1b.gun = {
   ...olifant_mk1b.gun, reloadS: 7.0, baseAccuracy: 0.27, aimTimeS: 1.9,
   shells: olifant_mk1b.gun.shells.map((shell, i) => i === 0 ? { ...shell, pen100Mm: 510, pen1000Mm: 480, pen2000Mm: 450 } : shell),
 };
-// the SANDF's three-tone of the 1990s as the Tempe tank wears it: sand under a mid green and a dark green in broad soft
-// patches (the blotch painter; the Mk 2's woodland coat is browner and its patches smaller); the TTD wore the same
+// The SANDF's three-colour camouflage of 1994 as the Tempe tank wears it (272; the SA Armour Museum's Mk 1B in TE's
+// DSCF4690-4692, Dewald Venter; Hataka's South African Army set: "the new 3-colour camouflage of Military Dark Earth, MRG
+// Stone and Buffalo Green was introduced to AFVs" in 1994): MRG Stone under Buffalo Green and Military Dark Earth in broad
+// soft patches (the blotch painter). The darkest colour is a brown, not a green: the 269 coat's sand under two greens read
+// woodland, with no brown (blind critics, 2026-11-04). The 1991-94 tanks probably left the works in plain BS 381C 450 Dark
+// Earth, the SADF's armour colour of 1975-94, but no photograph of a Mk 1B in it is known, and the owner rules out plain
+// coats (2026-11-03). The Mk 2 wears the same three colours in the woodland painter's smaller patches (olifantMk2Specs.ts).
 olifant_mk1b.visual = {
   ...olifant_mk1b.visual,
-  scheme: 'blotch', base: '#a7936b', weather: '#b3a07a', patches: ['#5d6a43', '#3e4a35'],
+  scheme: 'blotch', base: '#a8957c', weather: '#b3a28a', patches: ['#626850', '#4e3f30'],
   marking: 'number', number: '31B', camoScale: 0.72, patchK: 2.0,
 };
 
@@ -127,12 +132,15 @@ Object.assign(ttd.dims, { hullLengthM: 7.72, overallLengthM: 10.06, widthM: 3.67
 // the GT3's 105 mm and the Mk 2's rounds (olifantMk2Specs.ts)
 ttd.gun = { ...ttd.gun, caliberMm: 105, reloadS: 6.4, baseAccuracy: 0.24, aimTimeS: 1.65,
   shells: registries.tankSpecs.olifant_mk2.gun.shells.map((shell) => ({ ...shell })) };
-// the SANDF's three-tone as the demonstrator wore it, the Mk 1B's: sand under a mid green and a dark green in broad soft
-// patches (the parade, mobility and museum photographs)
+// the SANDF's three-tone as the demonstrator wore it, the Mk 1B's of 269: sand under a mid green and a dark green in broad
+// soft patches (the parade, mobility and museum photographs). Its Factory coat is the paint paint_olifant_mk1b, whose
+// recipe these colours hold exactly: the Mk 1B moved to the 1994 three-colour (272), and a published paint keeps its
+// recipe under its id (tools/gen-authored-paint-catalog.mjs), so the TTD and every saved selection draw what they did.
+// (Before 272 these were a shade off the paint, #ab976f/#b6a37d/#5f6b45 at 0.78; the Factory coat painted the paint's.)
 ttd.visual = {
   ...ttd.visual,
-  scheme: 'blotch', base: '#ab976f', weather: '#b6a37d', patches: ['#5f6b45', '#3e4a35'],
-  marking: 'number', number: '01', camoScale: 0.78, patchK: 2.0,
+  scheme: 'blotch', base: '#a7936b', weather: '#b3a07a', patches: ['#5d6a43', '#3e4a35'],
+  marking: 'number', number: '01', camoScale: 0.72, patchK: 2.0,
 };
 
 // The marks' measured gun depression by yaw (tools/gun-depression-sweep.mjs --no-suit, 2026-11-02): the Semel and the Mk 1

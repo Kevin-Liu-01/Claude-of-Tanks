@@ -2,7 +2,7 @@
 // Round 31/32 (owner 2026-09-20/21): every distinct authored paint in the fleet as a reusable catalog entry, named for
 // its nation and pattern (never a vehicle); recipes that already exist as a named Signature / Service / national preset
 // are not repeated, and scale / patch / cell knobs never split one paint into two.
-// 64 entries over 144 vehicles.
+// 65 entries over 144 vehicles.
 
 export const AUTHORED_PAINT_IDS = Object.freeze([
   'paint_amx40',
@@ -46,6 +46,7 @@ export const AUTHORED_PAINT_IDS = Object.freeze([
   'paint_olifant_mk1',
   'paint_olifant_mk1a',
   'paint_olifant_mk1b',
+  'paint_olifant_mk1b_2',
   'paint_olifant_mk2',
   'paint_osorio_p1',
   'paint_osorio_p2',
@@ -127,7 +128,8 @@ export const AUTHORED_PAINT_ENTRIES: readonly AuthoredPaintEntry[] = Object.free
   {id: 'paint_object695_x',lead: 'object695',sourceTankIds: ['object695'],nation: 'Russia',label: 'Russian Digital Woodland III',tags: ['ru','woodland','digital','signature'],visual: {scheme: 'digital',base: '#4f5a44',weather: '#5c6647',patches: ['#7d8664','#33402c','#6f7570'],camoScale: 0.34}},
   {id: 'paint_olifant_mk1',lead: 'olifant_mk1',sourceTankIds: ['olifant_mk1'],nation: 'South Africa',label: 'SANDF Three-Tone Woodland',tags: ['woodland','organic','signature'],visual: {scheme: 'nato',base: '#76684d',weather: '#827456',patches: ['#4b5535','#2a2720'],camoScale: 0.55,patchK: 1.3}},
   {id: 'paint_olifant_mk1a',lead: 'olifant_mk1a',sourceTankIds: ['olifant_mk1a'],nation: 'South Africa',label: 'SANDF Disruptive Desert',tags: ['desert','organic','signature'],visual: {scheme: 'merdc',base: '#a08b63',weather: '#ab9770',patches: ['#6c5a3d','#c8b48c','#3b3428'],camoScale: 0.6,patchK: 1.2}},
-  {id: 'paint_olifant_mk1b',lead: 'olifant_mk1b',sourceTankIds: ['olifant_mk1b','ttd'],nation: 'South Africa',label: 'SANDF Blotch Desert',tags: ['desert','organic','signature'],visual: {scheme: 'blotch',base: '#a7936b',weather: '#b3a07a',patches: ['#5d6a43','#3e4a35'],camoScale: 0.72,patchK: 2}},
+  {id: 'paint_olifant_mk1b',lead: 'ttd',sourceTankIds: ['ttd'],nation: 'South Africa',label: 'SANDF Blotch Desert',tags: ['desert','organic','signature'],visual: {scheme: 'blotch',base: '#a7936b',weather: '#b3a07a',patches: ['#5d6a43','#3e4a35'],camoScale: 0.72,patchK: 2}},
+  {id: 'paint_olifant_mk1b_2',lead: 'olifant_mk1b',sourceTankIds: ['olifant_mk1b'],nation: 'South Africa',label: 'SANDF Blotch Desert II',tags: ['desert','organic','signature'],visual: {scheme: 'blotch',base: '#a8957c',weather: '#b3a28a',patches: ['#626850','#4e3f30'],camoScale: 0.72,patchK: 2}},
   {id: 'paint_olifant_mk2',lead: 'olifant_mk2',sourceTankIds: ['olifant_mk2'],nation: 'South Africa',label: 'SANDF Woodland Desert',tags: ['desert','organic','signature'],visual: {scheme: 'woodland',base: '#a08e66',weather: '#ad9c76',patches: ['#5c6644','#7a6142'],camoScale: 0.6}},
   {id: 'paint_osorio_p1',lead: 'osorio_p1',sourceTankIds: ['osorio_p1'],nation: 'Brazil',label: 'Brazilian Blotch Woodland II',tags: ['woodland','organic','signature'],visual: {scheme: 'blotch',base: '#6a5644',weather: '#72634c',patches: ['#3c3f33'],camoScale: 0.48,patchK: 2}},
   {id: 'paint_osorio_p2',lead: 'osorio_p2',sourceTankIds: ['osorio_p2'],nation: 'Brazil',label: 'Brazilian Blotch Woodland III',tags: ['woodland','organic','signature'],visual: {scheme: 'blotch',base: '#5e4232',weather: '#664a35',patches: ['#323a2c'],camoScale: 0.48,patchK: 2.2}},
