@@ -92,7 +92,7 @@ rename branch itself uses `--initial` on a clean tree, once.
 
 ### The versioned gate: `tools/gate.mjs` (2026-10-01)
 
-Codex, Claude and CI run the same gate from the checkout under test. It replaces the gate half of
+Codex and Claude run the same gate from the checkout under test. It replaces the gate half of
 the generated landing chain (`.qa-dev/landing/gen-chain.py` writing `release-then-deploy-*.sh` into
 a session scratchpad), which was not versioned and was lost once with a scratchpad.
 
@@ -136,10 +136,8 @@ once more to tell an **unstable** baseline message from a **changed** one. A rec
 Flaky and unstable are reported and block only with `--strict`. This replaces the exit-status
 comparison of 2026-09-30 (below), which let a new defect inside an old red pass.
 
-`.github/workflows/ci.yml` runs the static steps (`typecheck`, `build`, `i18n`, `budget`, `workers`)
-through this gate on every pull request and push to main, on a blobless sparse checkout without
-`public/media`, `public/icons`, `public/maps` and `docs/references` (the build reads none of them). It
-has no secrets and no deploy; a receipts job follows once main is green.
+CI runs none of these steps: `.github/workflows/` holds only `localization.yml`, which runs
+`npm run i18n:check`. Every other check runs through a manual `node tools/gate.mjs`.
 
 ### Releasing: `tools/release.mjs` (2026-10-01)
 
@@ -433,8 +431,8 @@ or a fixed JSON array of ICE servers (another provider): `COT_TURN_ICE_SERVERS_J
 (2026-10-01; eight hours before): a connection lives one match. `COT_TURN_TTL_SECONDS` may shorten the lease to twenty
 minutes and can no longer lengthen it. `COT_STUN_URLS` names the STUN servers a grant carries when no relay can be
 minted (unset on the LAN helper: a LAN needs host candidates only). Long-lived provider secrets must never use the
-`VITE_` prefix or enter the browser bundle. `/api/ice` mints nothing any more: for one release it answers the official
-STUN servers to tabs loaded before the move, then it goes.
+`VITE_` prefix or enter the browser bundle. `/api/ice` is gone: relay credentials come only from the room
+(docs/MULTIPLAYER-V2.md §13.14), and `api/` holds no ICE route.
 
 Before certifying private rooms in production, check the room Worker:
 
@@ -522,10 +520,10 @@ acknowledgement, tick-cost and control gates can each be starved on a loaded mac
 deploy annd manually recommended annd triggered by ME").** `tools/selftest-tiers.mjs` splits the registry; the audit of
 every receipt (decision, reason, where its coverage lives) is `docs/TEST-AUDIT.md`.
 
-| Tier | What runs it | Size (266 audit) |
+| Tier | What runs it | Size (docs/TEST-AUDIT.md) |
 |---|---|---|
-| Default | `npm test`, the release gate (`tools/gate.mjs`), tank:release:check's embedded suite; lane mode runs the part a diff reaches | 1,454 receipts, ~114 CPU-min, ~17 min wall on an idle machine (before: 2,122 receipts, ~1,227 CPU-min, ~207 min) |
-| Manual | only `npm run test:heavy -- <suite...>`, triggered by the owner | 667 receipts in 10 suites, ~1,114 CPU-min |
+| Default | `npm test`, the release gate (`tools/gate.mjs`), tank:release:check's embedded suite; lane mode runs the part a diff reaches | 1,543 receipts, ~227 CPU-min, ~60 min simulated wall (before the tiers: 2,205 receipts, ~1,395 CPU-min, ~242 min) |
+| Manual | only `npm run test:heavy -- <suite...>`, triggered by the owner | 661 receipts in 11 suites, ~1,167 CPU-min |
 
 - **Manual suites**: `balance` (round-robin duels and `balance-matchups --check`), `pacing` (the battlePacing shards and
   judge, placement, deployment), `bots`, `sims` (drone, missile, escort and counter-drone runs), `perf` (host-time

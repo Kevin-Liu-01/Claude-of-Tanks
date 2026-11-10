@@ -49,7 +49,8 @@ Pass rule:
   page's address. With `src/pad/padCues.ts` (which events are cues) the phone's page never imports it: a module both
   sides import rides whole to the phone, so each export lives on the side that runs it
   (`src/pad/padPhoneHalf.selftest.mjs`).
-- `src/pad/padReceiver.ts` + `src/pad/padConnectCard.ts`: the desktop side, one lazy chunk behind `src/pad/padAccess.ts`.
+- `src/pad/padReceiver.ts` + `src/pad/padConnectCard.ts`: the desktop side, one lazy chunk that the Settings panel
+  imports on demand (`src/ui/settings.ts`).
 - `site/pad.html` + `src/pad/padPage.ts` + `src/pad/pad.css`: the phone page.
 - `src/pad/qr.ts`: a small QR encoder (byte mode, level M), drawn as SVG.
 

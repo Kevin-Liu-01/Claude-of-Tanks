@@ -1,6 +1,7 @@
 # Couch mode — up to eight phones, one big screen
 
-Design note, not built. The owner's words (2026-11-01): "could we also hypotehtically do this with people connecting via
+Step 1 is built: the lobby, its numbered seats and the shared camera (`src/app/couchRuntime.ts`,
+`src/game/couchSeats.ts`, `src/ui/couchLobby.ts`, `tools/couch-e2e.browser.mjs`); steps 2 to 4 are not. The owner's words (2026-11-01): "could we also hypotehtically do this with people connecting via
 qr code from their phones to a host of a computer for claude of tanks? i think that will be so much faster and easier.
 sort of like a console split screen, up to 8 people that you can share on a big screen?"
 
