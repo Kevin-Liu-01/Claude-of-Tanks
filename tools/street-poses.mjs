@@ -115,21 +115,25 @@ async function posesFor(mapId, { count, seed, focus }) {
     // the focus's own solids (what stands at the place: a set piece, the well) never block its view
     const own = (o) => Math.hypot((o.min[0] + o.max[0]) / 2 - fx, (o.min[2] + o.max[2]) / 2 - fz) < FOCUS_OWN_M;
     const blockers = obstacles.filter((o) => o.max[1] - o.min[1] > TALL_M && !own(o));
+    // (the focus's own plan is published among the buildings: a set piece's footprint) never a building between
+    const others = polys.filter((b) => Math.hypot(b.cx - fx, b.cz - fz) >= FOCUS_OWN_M && !b.polys.some((poly) => nearestOnOutline(poly, fx, fz).inside));
+    const rejects = { road: 0, ground: 0, spacing: 0, building: 0, solid: 0 };
     while (taken.length < count && tries++ < TRIES) {
       const a = rng() * Math.PI * 2, d = FOCUS_NEAR_M + rng() * (FOCUS_FAR_M - FOCUS_NEAR_M);
       const x = fx + Math.sin(a) * d, z = fz + Math.cos(a) * d;
-      if (field._roadDist(x, z) > ROAD_BAND_M) continue;
-      if ((field.getWaterMaskAt?.(x, z) ?? 0) > 0.02 || field.getNormalAt(x, z).y < 0.94) continue;
-      if (taken.some((p) => Math.hypot(p.x - x, p.z - z) < FOCUS_SPACING_M)) continue;
-      if (polys.some((b) => b.polys.some((poly) => nearestOnOutline(poly, x, z).inside || segmentCrosses(poly, x, z, fx, fz)))) continue;
-      if (blockers.some((o) => segmentHitsBox(o, x, z, fx, fz, FOCUS_OWN_M))) continue;
+      if (field._roadDist(x, z) > ROAD_BAND_M) { rejects.road++; continue; }
+      if ((field.getWaterMaskAt?.(x, z) ?? 0) > 0.02 || field.getNormalAt(x, z).y < 0.94) { rejects.ground++; continue; }
+      if (taken.some((p) => Math.hypot(p.x - x, p.z - z) < FOCUS_SPACING_M)) { rejects.spacing++; continue; }
+      if (others.some((b) => b.polys.some((poly) => nearestOnOutline(poly, x, z).inside || segmentCrosses(poly, x, z, fx, fz)))) { rejects.building++; continue; }
+      if (blockers.some((o) => segmentHitsBox(o, x, z, fx, fz, FOCUS_OWN_M))) { rejects.solid++; continue; }
       taken.push({ x, z });
       poses[`street${taken.length}`] = {
         cam: [x, field.getHeightAt(x, z) + EYE_UP_M, z], at: [fx, fy + AT_UP_M, fz], heading: tries, hitM: +d.toFixed(1),
         building: { kind: 'focus', x: fx, z: fz },
       };
     }
-    return { buildings: buildings.length, tries, poses };
+    if (taken.length < count) console.log(`street-poses: ${mapId} focus rejects ${JSON.stringify(rejects)}`);
+    return { buildings: buildings.length, tries, rejects, poses };
   }
   while (taken.length < count && tries++ < TRIES) {
     // a candidate in the band round a seeded building (its outline's reach plus 12-15 m, any bearing)
