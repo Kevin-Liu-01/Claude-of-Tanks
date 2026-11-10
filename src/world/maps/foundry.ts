@@ -128,27 +128,25 @@ export default {
     architecture: BUILDING_STYLES.foundry.kit,
     sourcedPalette: 'ironworks',
     foundryServiceCourt: { sites: [
-      { planIndex: 2, kind: 'depot', x: 163, z: -106, yawDeg: 0 },
+      { planIndex: 2, kind: 'containerRow', x: 163, z: -106, yawDeg: 0 },
       { planIndex: 3, kind: 'gantry', x: 71.5, z: -96, yawDeg: 0 },
       { planIndex: 4, kind: 'stack', x: 133, z: -110, yawDeg: 0 },
       { planIndex: 5, kind: 'shed', x: 117, z: -123, yawDeg: -90 },
       { planIndex: 7, kind: 'factory', x: 117, z: -105, yawDeg: -90 },
       { planIndex: 9, kind: 'warehouse', x: 94, z: -70, yawDeg: 180 },
     ] },
-    plan: ['firestation', 'foundryoffice', 'depot', 'gantry', 'stack', 'shed',
-      'watertower', 'factory', 'depot', 'warehouse', 'depot', 'cornershop',
+    plan: ['firestation', 'foundryoffice', 'containerRow', 'gantry', 'stack', 'shed',
+      'watertower', 'factory', 'depot', 'warehouse', 'containerRow', 'cornershop',
       'rowhouse', 'factory', 'ruin', 'stack', 'depot', 'gantry',
-      'depot', 'warehouse', 'shed', 'factory', 'stack', 'depot',
-      'depot', 'gantry', 'warehouse', 'ruin', 'depot', 'watertower',
-      'factory', 'shed', 'depot', 'warehouse', 'stack', 'depot',
-      'gantry', 'depot', 'ruin', 'warehouse', 'factory', 'shed'],
+      'containerRow', 'warehouse', 'shed', 'factory', 'stack', 'containerRow',
+      'depot', 'gantry', 'warehouse', 'ruin', 'containerRow', 'watertower',
+      'factory', 'shed', 'containerRow', 'warehouse', 'stack', 'depot',
+      'gantry', 'containerRow', 'ruin', 'warehouse', 'factory', 'shed'],
     // The blast furnace block between the casting street and the ore yard: the casting house and the furnaces' two
     // stacks; east of the rail fan, the rolling mill's warehouse. They stand across the approach lanes.
     // the works stand as PR #9's head seated them (the owner's town-plan ruling, 2026-10-03), whatever the deployment
     // corridors now do to the ground under them; the planned sites below are what that plan was built from
-    // (buildings-271, the building types' years: no shipping container before 1956) the recorded yard's container rows
-    // stand as goods depots, each at its recorded seat from its recorded stream
-    townPlan: TOWN_PLANS.foundry.map((e) => (e.structure === 'containerRow' ? { ...e, structure: 'depot' } : e)),
+    townPlan: TOWN_PLANS.foundry,
     townLightPlan: TOWN_LIGHT_PLANS.foundry,
     // the map-revival lane (2026-10-06): the blast-furnace line. The recorded block at (-74, -29) gets a furnace either
     // side along its own width, each replayed from the block's stream (props.townPlanAdditions), so the three
@@ -163,6 +161,7 @@ export default {
     // (the map-revival lane, 2026-10-06, wave 137: the critics read the Nissen hut as a poly-tunnel out of place in a German
     // works; the recorded one beside the west street becomes a brick office of about its footprint, and the pool
     // offers it no more)
+    // (buildings-271, the building types' years: no radio-relay hut before 1950, so the March 1945 works' pool offers none)
     destructibleBuildings: [
       'transformershed', 'motorpool', 'checkpointhut',
       'securityoffice', 'servicegarage', 'corneroffice',

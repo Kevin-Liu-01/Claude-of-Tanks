@@ -51,7 +51,7 @@ export const BUILDING_TYPES = {
   // military and field
   checkpointhut: { years: MODERN(1900) }, guardpost: { years: ANY }, commandtent: { years: MODERN(1900) },
   fieldhospital: { years: MODERN(1900) }, fieldHeadquarters: { years: MODERN(1900) },
-  quonsethut: { years: MODERN(1941) }, containerRow: { years: MODERN(1956) },
+  quonsethut: { years: MODERN(1941) }, containerRow: { years: MODERN(1850) }, // (a freight row: before the ISO box, 1966, the rail kit's row draws its period's freight, maps/periodFreight.ts)
   // the modern city: a tower, a deck, a mall, a mast (the futuristic towers belong to the off-world future)
   megatower: { years: MODERN(1970) }, terracetower: { years: MODERN(1970) }, broadcasttower: { years: MODERN(1955) },
   parkingdeck: { years: MODERN(1950) }, shoppingCentre: { years: MODERN(1955) },

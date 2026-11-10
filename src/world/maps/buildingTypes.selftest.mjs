@@ -35,7 +35,8 @@ assert.equal(typeFitsSetting('caravanserai', S('titan_gorge')), false, 'a carava
 assert.equal(typeFitsSetting('caravanserai', S('desert')), true, 'a caravanserai in the Dahar');
 assert.equal(typeFitsSetting('arcology', S('blackglass')), false, 'an arcology over 1937 Shanghai');
 assert.equal(typeFitsSetting('megatower', S('skybridge')), false, 'a 1970s tower in 1960s Page');
-assert.equal(typeFitsSetting('containerRow', S('railyard')), false, 'a container row in 1945');
+// (a freight row fits 1945: the rail kit's row draws that year's freight there, periodFreight.selftest)
+assert.equal(typeFitsSetting('containerRow', S('railyard')), true, 'a freight row in 1945');
 assert.equal(typeFitsSetting('habmodule', S('mars')), true, 'a habitat module on Mars');
 assert.equal(typeFitsSetting('nosuchtype', S('urban')), false, 'a type without a row stands nowhere');
 assert.deepEqual(misplacedTypes('alpine', S('alpine'), { plannedSites: [{ structure: 'onionchurch' }] }), ['alpine: onionchurch'],
