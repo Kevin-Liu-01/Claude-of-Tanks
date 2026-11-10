@@ -482,8 +482,13 @@ export function createTouchControls({
   function wantsTouchLayout(): boolean {
     return input.isTouchLayout();
   }
-  function resetMove(): void {
+  // (improve-271 plan 024) the joystick's own release clears the drive only: the aiming thumb (and its pinch) keeps
+  // aiming; leaving the layout and a blur or a hidden page clear both (resetMove)
+  function resetJoy(): void {
     joyPointer = null; input.setVirtualMove(0, 0); knob.style.transform = 'translate(0px,0px)';
+  }
+  function resetMove(): void {
+    resetJoy();
     aimPointer = null; aimPts.clear(); pinchRef = -1;
   }
   function syncLayout(): void {
@@ -496,6 +501,8 @@ export function createTouchControls({
     scope.innerHTML=`${aircraft?uiIconSVG('zoomIn',34):SCOPE}<span class="lb">${t(aircraft?'gallery.view.modeDockHelpZoom':'touch.scope')}</span>`;
     scope.setAttribute('aria-label',t(aircraft?'action.zoomIn':'touch.scopeAria'));
     if (!layout || !battle) { resetMove(); cancelFireGesture(); }
+    // (improve-271 plan 024) a preset chosen in Settings shows on the chip at the next phase, resize or rotation
+    renderGraphicsButton();
   }
 
   // -------------------------------------------------------------------------
@@ -534,7 +541,7 @@ export function createTouchControls({
     updateJoy(e);
   });
   joy.addEventListener('pointermove', (e) => { if (e.pointerId === joyPointer) updateJoy(e); });
-  const endJoy = (e: PointerEvent): void => { if (e.pointerId === joyPointer) resetMove(); };
+  const endJoy = (e: PointerEvent): void => { if (e.pointerId === joyPointer) resetJoy(); };
   joy.addEventListener('pointerup', endJoy); joy.addEventListener('pointercancel', endJoy);
   joy.addEventListener('lostpointercapture', endJoy);
 
