@@ -338,7 +338,7 @@ export function restoreAerial(entity: AerialEntity, checkpoint: AerialCheckpoint
     const saved = checkpoint.shell;
     direction.fromArray(saved.velocity).normalize();
     const shell = createShell(DRONE_WARHEAD, entity.id, !!entity.isPlayer, new Vector3().fromArray(saved.pos), direction, nextId());
-    shell.vel.fromArray(saved.velocity); shell.ageS = saved.ageS; shell.distM = saved.distM; shell.gravityMps2 = 0; shell.vel.set(0,0,0);
+    shell.vel.fromArray(saved.velocity); shell.ageS = saved.ageS; shell.distM = saved.distM; shell.gravityMps2 = 0;
     flight.shell = shell; flight.shellId = shell.id; launchShell(shell);
   }
 }

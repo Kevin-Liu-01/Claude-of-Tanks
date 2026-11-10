@@ -28,6 +28,9 @@ for(const mode of ['gun_game','infected','drone','ac130','juggernaut']){
  const keyframe={tick,battleTimeMs,phase:'playing',modeCheckpoint:sim.captureModeCheckpoint(),entities:captureEntityExtras(first),frame:{tick,serverTimeMs:battleTimeMs,ackedInputTick:0xffffffff,ackedFireSeq:0,ackedActionSeq:0,inputMarginTicks:127,meta:captureMeta({...snapshot.meta,battleTimeMs},false),destroyed:[],entities:sim.entities.map(e=>captureEntityRow(e,first.wireIdOf(e.id),era,tick)),shells:[],viewer:null,modeStateJson:null}};
  const saved=decodeMigrationKeyframe(encodeMigrationKeyframe(keyframe));
  const second=make({tick,battleTimeMs});applyResumeState(second,saved);const restored=second.authority.entityById.get('pilot');
+ // improve-271 plan 013: a drone in flight keeps its velocity across the handoff (it was zeroed and re-accelerated)
+ if(mode==='drone'){const before=keyframe.modeCheckpoint.flights.find(f=>f.id==='pilot')?.flight.shell,after=second.authority.captureModeCheckpoint().flights.find(f=>f.id==='pilot')?.flight.shell;
+  assert.ok(before&&Math.hypot(...before.velocity)>1,'drone: in flight and moving at the capture');assert.deepEqual(after.velocity,before.velocity,'drone: the restored drone keeps its velocity');}
  if(mode==='ac130'){assert.ok(second.authority.modeController.state.pickups.some(p=>p.airDrop),'parachuting supply survives encrypted migration');assert.equal(second.authority.modeController.requestSupply('pilot','ammo',sim.timeS),false,'shared drop cooldown survives migration');}
  assert.equal(restored.team,pilot.team,`${mode}: faction survives host change`);
  assert.equal(restored.spec.gun.shells[0].name,pilot.spec.gun.shells[0].name,`${mode}: weapon survives host change`);
