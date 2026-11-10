@@ -15,15 +15,15 @@ Run times: `tools/selftest-durations.json`, else this machine's latest observati
 
 | Decision | Receipts | CPU-min |
 |---|---:|---:|
-| KEEP | 1547 | 274.1 |
+| KEEP | 1548 | 274.2 |
 | MERGE | 0 | 0.0 |
 | MANUAL | 667 | 1181.8 |
 | RETIRE | 2 | 0.7 |
 
 | Suite run | Receipts | CPU-min | Simulated wall (min) |
 |---|---:|---:|---:|
-| Before: every receipt (npm test without the tiers) | 2215 | 1456.2 | 250.0 |
-| After: the default tier | 1547 | 274.1 | 64.0 |
+| Before: every receipt (npm test without the tiers) | 2216 | 1456.3 | 250.0 |
+| After: the default tier | 1548 | 274.2 | 64.0 |
 
 Default tier: 18.8 % of the whole registry's CPU; 29.9 % of the 916 CPU-min the snapshot gave for the 1,863 receipts it timed. Its wall: 0.2 min exclusive receipts, 45.1 min pool, 18.6 min browser receipts.
 
@@ -814,7 +814,7 @@ None. Folding receipts saves only process starts (about a second each) and would
 | `tools/media-r5/fleet-coverage.selftest.mjs` | n/a | MANUAL (media) | media: the media lane's fleet backlog, n/a s: 267: the fleet's media backlog (every vehicle leads a take, the survey bars): the manual media suite | test:heavy -- media; test:recommend flags it when its inputs change |
 | `tools/mp-rooms-entry.browser.selftest.mjs` | n/a | MANUAL (ui) | ui: heavy interface paint and layout sweeps, n/a s: 268 (the 267 production smoke): the multiplayer end-to-end opens the rooms panel the way the Garage's layout o | test:heavy -- ui; test:recommend flags it when its inputs change |
 
-## KEEP (1547)
+## KEEP (1548)
 
 | Receipt | Run (s) | Decision | Reason | Coverage now |
 |---|---:|---|---|---|
@@ -1139,6 +1139,7 @@ None. Folding receipts saves only process starts (about a second each) and would
 | `src/game/armorPanelsOnDemand.selftest.mjs` | 6.8 | KEEP | game flow, 6.8 s: 265 (the world-reds lane, Main: every vehicle's panels baked at staging, the overlay off by default): no bake | default tier (npm test, the release gate; lane mode by its closure) |
 | `src/ui/garageFacetFilter.selftest.mjs` | 6.8 | KEEP | interface contract, 6.8 s: Receipt: the Garage roster filter narrows the real fleet by class, role, era and facet search, its chip counts | default tier (npm test, the release gate; lane mode by its closure) |
 | `src/vehicles/gunFacePlates.selftest.mjs` | 6.8 | KEEP | vehicle rule, 6.8 s: 262: every forward turret face over a mantlet or gun-notch plate reads it (combatAnatomy.ts gunFacePlate) | default tier (npm test, the release gate; lane mode by its closure) |
+| `src/fx/volumeCardBody.selftest.mjs` | 6.7 | KEEP | effects contract, 6.7 s: dust-orient-271: a media card's aspect is its body's shape in the world, never the screen's | default tier (npm test, the release gate; lane mode by its closure) |
 | `tools/viteCssInTsMinify.selftest.mjs` | 6.6 | KEEP | tool contract, 6.6 s: 2026-10-18 (brand-ui BUI-F3): the CSS-in-TS minifier keeps every literal the same stylesheet (Lightning CSS) | default tier (npm test, the release gate; lane mode by its closure) |
 | `tools/owner-kit-targets.selftest.mjs` | 6.1 | KEEP | tool contract, 6.1 s: 262 (Main's ruling on the owner's Oplot kit): each set-aside owner-kit part is one rigid group under its rig | default tier (npm test, the release gate; lane mode by its closure) |
 | `src/audio/audioEngine.selftest.mjs` | 6.0 | KEEP | audio contract, 6.0 s | default tier (npm test, the release gate; lane mode by its closure) |

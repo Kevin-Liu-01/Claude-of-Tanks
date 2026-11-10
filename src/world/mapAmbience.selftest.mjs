@@ -6,7 +6,7 @@ import { MAP_IDS } from './maps/mapIds.ts';
 import {
   AMBIENCE_KINDS, AMBIENCE_TIMES, MAP_AMBIENCE, ambienceCount, ambienceHash, ambienceLayersFor, ambienceTimeOf,
 } from './mapAmbienceTable.ts';
-import { ambienceSeeds, createMapAmbience } from './mapAmbience.ts';
+import { AMBIENCE_STREAK_TURN, ambienceSeeds, createMapAmbience } from './mapAmbience.ts';
 import { LATE_FX_LAYER } from '../fx/layers.ts';
 
 // every battlefield has a row of at most two layers (two draws); the Moon carries nothing
@@ -116,5 +116,17 @@ assert.ok(air.group.parent === null);
 assert.equal(scene.userData.mapAmbience, undefined);
 air.dispose();
 assert.throws(() => air.prepare(1, 'verdant', 'day'));
+
+// (dust-orient-271, the owner 2026-11-09 looking down on Redrock: the blown grit "all like parallel with each other") a
+// streak is drawn along its own grain's path, never the one mean wind: a seeded turn and a gust's swing about the vertical
+// and a hop, so from above the sand is a field with a tendency, not combed dashes
+{
+  const src = readFileSync(new URL('./mapAmbience.ts', import.meta.url), 'utf8');
+  const streak = src.slice(src.indexOf('#elif defined( MOTION_STREAK )'), src.indexOf('vec4 head = viewMatrix'));
+  assert.match(streak, /float turn = \( fract\( aRand\.x \* 9\.71 \+ aSeed\.w \* 3\.17 \) - 0\.5 \)/, 'each grain its own seeded turn');
+  assert.match(streak, /vel = vec3\( vel\.x \* tc - vel\.z \* ts, vel\.y \+ length\( vel\.xz \)/, 'the tail follows the turned, hopping path');
+  const { spread, swing, hop } = AMBIENCE_STREAK_TURN;
+  assert.ok(spread >= 0.2 && spread + swing <= 0.6 && hop > 0 && hop < 0.5, 'a spread round the wind, never a random field');
+}
 
 console.log('mapAmbience.selftest: 33 maps, at most two late-FX draws each, seeded cards, tier/time gates, pinned frames');
