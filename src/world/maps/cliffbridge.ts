@@ -56,62 +56,133 @@ const SOUTH_TOWN = [
   { structure: 'chapel', x: -160, z: -246, yawDeg: 5 },
   { structure: 'cottage', x: 84, z: -262, yawDeg: -20 },
 ];
-// The Ronda street walls (map revival lane 2, 2026-10-05): below each square the three roads leave the crossroads
-// between terraces of town houses, their fronts on one building line 5.5 m from the carriageway's centre (every part
-// clear of the road's edge), the eaves of each house 0.3 m from the next one's. Each slot was laid from the house its
-// own draw builds and its mirror's, so the north terraces are this list mirrored. They stand after every earlier site:
-// the 36 buildings above keep their places and their streams, and the posada keeps its yard before its door.
+// The Ronda street walls (map revival lane 2, 2026-10-05; cliffbridge-lanes-272, 2026-11-10): below each square the three
+// roads leave the crossroads between terraces of town houses. (272, the owner: "how buildings sit next to each other ...
+// make a whole area feel lived in"; the census: 8-12 m roads where Ronda has 3-5 m lanes) Each terrace stands in
+// party-walled blocks, its houses' plinths 3 cm apart, on one building line 5 m from the main street's centre and 4.5 m
+// from the ford roads' (it was 5.5 m with 0.3 m eaves between the houses). The corner house of each block fronts the main
+// street with its gable on the side road; a 4 m callejon opens between the two blocks of each long row and runs back
+// between the patios' walls (PATIO_WALLS). Every slot is laid from the house its own stream builds (its index in the plan,
+// unchanged), so the north town's are its own, on the south's lines mirrored: the twins differ by their houses' sizes, the
+// blocks and the lanes stand where the mirror puts them. They stand after every earlier site: the 36 buildings above keep
+// their places and their streams, and the posada keeps its yard before its door.
 const SOUTH_STREETS = [
-  // the main street below the square, west side, and south of the crossroads
-  { structure: 'rowhouse', x: -13.06, z: -267.97, yawDeg: 90, terrace: true },
-  { structure: 'rowhouse', x: -12.22, z: -239.34, yawDeg: 90, terrace: true },
-  { structure: 'cottage', x: -10.47, z: -230.2, yawDeg: 90, terrace: true },
-  // the main street south of the crossroads, east side
-  { structure: 'cottage', x: 11.03, z: -267.52, yawDeg: -90, terrace: true },
-  // the west ford road, south side
-  { structure: 'cottage', x: -24.45, z: -263.93, yawDeg: -6.8, terrace: true },
-  { structure: 'cottage', x: -32.42, z: -264.41, yawDeg: -6.8, terrace: true },
-  { structure: 'cottage', x: -40.18, z: -265.8, yawDeg: -6.8, terrace: true },
-  { structure: 'cottage', x: -47.31, z: -266.33, yawDeg: -6.8, terrace: true },
-  { structure: 'cottage', x: -54.2, z: -267.55, yawDeg: -6.8, terrace: true },
-  // the west ford road, north side
-  { structure: 'cottage', x: -22.59, z: -241.73, yawDeg: 173.2, terrace: true },
-  { structure: 'cottage', x: -29.53, z: -243.16, yawDeg: 173.2, terrace: true },
-  { structure: 'rowhouse', x: -39.7, z: -242.15, yawDeg: 173.2, terrace: true },
-  { structure: 'cottage', x: -49.86, z: -244.95, yawDeg: 173.2, terrace: true },
-  { structure: 'cottage', x: -57.83, z: -246.04, yawDeg: 173.2, terrace: true },
-  { structure: 'cottage', x: -65.28, z: -246.79, yawDeg: 173.2, terrace: true },
-  // the east road, north side
-  { structure: 'cottage', x: 16.32, z: -244.77, yawDeg: -160, terrace: true },
-  { structure: 'cottage', x: 23.9, z: -247.09, yawDeg: -160, terrace: true },
-  { structure: 'rowhouse', x: 33.19, z: -249.29, yawDeg: -160, terrace: true },
-  { structure: 'cottage', x: 41.6, z: -253.39, yawDeg: -160, terrace: true },
-  { structure: 'cottage', x: 48.26, z: -255.99, yawDeg: -160, terrace: true },
-  { structure: 'rowhouse', x: 57.42, z: -258.65, yawDeg: -160, terrace: true },
+  // the main street below the square, west side, south of the crossroads (its gable on the west road)
+  { structure: 'rowhouse', x: -10.89, z: -262.18, yawDeg: 90, terrace: true },
+  // the main street, west side, north of the crossroads, and the cottage behind its party wall
+  { structure: 'rowhouse', x: -11.25, z: -241.24, yawDeg: 90, terrace: true },
+  { structure: 'cottage', x: -9.67, z: -233.2, yawDeg: 90, terrace: true },
+  // the main street south of the crossroads, east side (its gable on the east road)
+  { structure: 'cottage', x: 10.22, z: -263.75, yawDeg: -90, terrace: true },
+  // the west road, south side: the crossroads block, then the lane, then the end block
+  { structure: 'cottage', x: -20.22, z: -261.32, yawDeg: -6.84, terrace: true },
+  { structure: 'cottage', x: -26.89, z: -262.43, yawDeg: -6.84, terrace: true },
+  { structure: 'cottage', x: -33.27, z: -262.74, yawDeg: -6.84, terrace: true },
+  { structure: 'cottage', x: -43.37, z: -263.97, yawDeg: -6.84, terrace: true },
+  { structure: 'cottage', x: -49.66, z: -265.65, yawDeg: -6.84, terrace: true },
+  // the west road, north side: the crossroads block, the lane, the long block
+  { structure: 'cottage', x: -20.5, z: -242.79, yawDeg: 173.16, terrace: true },
+  { structure: 'cottage', x: -27.11, z: -244.21, yawDeg: 173.16, terrace: true },
+  { structure: 'rowhouse', x: -39.79, z: -244.07, yawDeg: 173.16, terrace: true },
+  { structure: 'cottage', x: -48.11, z: -246.04, yawDeg: 173.16, terrace: true },
+  { structure: 'cottage', x: -54.51, z: -247.42, yawDeg: 173.16, terrace: true },
+  { structure: 'cottage', x: -61.23, z: -247.61, yawDeg: 173.16, terrace: true },
+  // the east road, north side: the crossroads block, the lane, the end block
+  { structure: 'cottage', x: 9.91, z: -243.83, yawDeg: -160.02, terrace: true },
+  { structure: 'cottage', x: 16.32, z: -246.7, yawDeg: -160.02, terrace: true },
+  { structure: 'rowhouse', x: 24.66, z: -247.62, yawDeg: -160.02, terrace: true },
+  { structure: 'cottage', x: 35.36, z: -252.5, yawDeg: -160.02, terrace: true },
+  { structure: 'cottage', x: 41.25, z: -254.83, yawDeg: -160.02, terrace: true },
+  { structure: 'rowhouse', x: 49.69, z: -257.88, yawDeg: -160.02, terrace: true },
+];
+const NORTH_STREETS = [
+  // the south list's houses in its order, on its lines mirrored
+  { structure: 'rowhouse', x: -12.22, z: 262.71, yawDeg: 90, terrace: true },
+  { structure: 'rowhouse', x: -11.39, z: 240.7, yawDeg: 90, terrace: true },
+  { structure: 'cottage', x: -9.22, z: 231.89, yawDeg: 90, terrace: true },
+  { structure: 'cottage', x: 9.86, z: 263.37, yawDeg: -90, terrace: true },
+  { structure: 'cottage', x: -22.73, z: 262.41, yawDeg: -173.16, terrace: true },
+  { structure: 'cottage', x: -29.37, z: 262.53, yawDeg: -173.16, terrace: true },
+  { structure: 'cottage', x: -35.89, z: 263.98, yawDeg: -173.16, terrace: true },
+  { structure: 'cottage', x: -46.64, z: 264.94, yawDeg: -173.16, terrace: true },
+  { structure: 'cottage', x: -53.11, z: 266.1, yawDeg: -173.16, terrace: true },
+  { structure: 'cottage', x: -20.55, z: 243.21, yawDeg: 6.84, terrace: true },
+  { structure: 'cottage', x: -27.01, z: 244.17, yawDeg: 6.84, terrace: true },
+  { structure: 'rowhouse', x: -40.54, z: 243.59, yawDeg: 6.84, terrace: true },
+  { structure: 'cottage', x: -49.77, z: 246.96, yawDeg: 6.84, terrace: true },
+  { structure: 'cottage', x: -56.73, z: 247.22, yawDeg: 6.84, terrace: true },
+  { structure: 'cottage', x: -63.55, z: 248.1, yawDeg: 6.84, terrace: true },
+  { structure: 'cottage', x: 9.6, z: 244.1, yawDeg: -19.98, terrace: true },
+  { structure: 'cottage', x: 16.33, z: 245.73, yawDeg: -19.98, terrace: true },
+  { structure: 'rowhouse', x: 25.23, z: 248.07, yawDeg: -19.98, terrace: true },
+  { structure: 'cottage', x: 36.43, z: 253.73, yawDeg: -19.98, terrace: true },
+  { structure: 'cottage', x: 42.9, z: 255.9, yawDeg: -19.98, terrace: true },
+  { structure: 'rowhouse', x: 50.67, z: 257.62, yawDeg: -19.98, terrace: true },
 ];
 // The square walls (map revival lane 2, round 2, 2026-10-05; gauntlet wave 108b: "squares and streets are open rutted
 // dirt fields ... Ronda wants squares enclosed by facades"): town houses close each market square's sides either side of
 // the casa consistorial and the church, fronting the square on its building lines, and the south side of the east road
-// below the crossroads. Laid like the street walls (each slot from its own house and its mirror's, 0.3 m eaves, the
-// carriageways, the squares, the strongpoints and every door yard 6 m deep kept clear); they stand after every earlier
-// site, so the 78 buildings above keep their places and their streams.
+// below the crossroads (272: that pair party-walled to the main street's corner house, on the east road's building line).
+// They stand after every earlier site, so the 78 buildings above keep their places and their streams.
 const SQUARE_WALLS = [
-  // the square's west wall, south of the casa consistorial
   { structure: 'rowhouse', x: -48.27, z: -185.63, yawDeg: 90, terrace: true },
-  // the west wall, north of it
   { structure: 'rowhouse', x: -49.18, z: -133.48, yawDeg: 90, terrace: true },
-  // the east wall, south of the church
   { structure: 'rowhouse', x: 47.69, z: -195.32, yawDeg: -90, terrace: true },
   { structure: 'cottage', x: 46.33, z: -185.68, yawDeg: -90, terrace: true },
-  // the east wall, north of the church (short of the bridgehead tower)
   { structure: 'rowhouse', x: 47.7, z: -157.7, yawDeg: -90, terrace: true },
   { structure: 'rowhouse', x: 47.68, z: -146.38, yawDeg: -90, terrace: true },
   { structure: 'cottage', x: 46.04, z: -136.22, yawDeg: -90, terrace: true },
-  // the south wall, west of the main street
   { structure: 'rowhouse', x: -25.89, z: -222.43, yawDeg: 0, terrace: true },
-  // the east road, south side (the swell's flank climbs past these two)
-  { structure: 'cottage', x: 22.34, z: -269.19, yawDeg: 20, terrace: true },
-  { structure: 'cottage', x: 29.83, z: -271.95, yawDeg: 20, terrace: true },
+  // the east road, south side, party-walled to the main street's corner house
+  { structure: 'cottage', x: 18.9, z: -266.45, yawDeg: 19.98, terrace: true },
+  { structure: 'cottage', x: 25.1, z: -268.74, yawDeg: 19.98, terrace: true },
+];
+const SQUARE_WALLS_NORTH = [
+  ...SQUARE_WALLS.slice(0, 8).map(mirrorSite),
+  { structure: 'cottage', x: 18.27, z: 265.94, yawDeg: 160.02, terrace: true },
+  { structure: 'cottage', x: 24.8, z: 268.25, yawDeg: 160.02, terrace: true },
+];
+// The patios (cliffbridge-lanes-272): behind each block its walled patio, 5.5 m deep past the block's deepest house (a
+// side wall at each end of the block, the back wall along the block): the lane between two blocks runs between their side
+// walls, and behind the west road's long north block a back lane stays open to the square's south houses. The first east
+// road block keeps the posada's yard behind it and no walls. South town then north, each run [x0, z0, x1, z1, no breach].
+const PATIO_WALLS: [number, number, number, number, number][] = [
+  [-18.31, -232.38, -31.64, -233.98, -1],
+  [-18.52, -230.59, -18.31, -232.38, -1],
+  [-30.84, -240.68, -31.64, -233.98, -1],
+  [-35.86, -232.37, -66, -235.98, -1],
+  [-35.21, -237.83, -35.86, -232.37, -1],
+  [-65.11, -243.4, -66, -235.98, -1],
+  [-15.66, -270.76, -35.06, -273.09, -1],
+  [-15.79, -269.65, -15.66, -270.76, -1],
+  [-35.82, -266.73, -35.06, -273.09, -1],
+  [-38.92, -274.52, -51.67, -276.05, -1],
+  [-39.79, -267.24, -38.92, -274.52, -1],
+  [-52.33, -270.59, -51.67, -276.05, -1],
+  [12.4, -274.23, 24.8, -278.74, -1],
+  [13.8, -270.39, 12.4, -274.23, -1],
+  [26.68, -273.57, 24.8, -278.74, -1],
+  [35.97, -241.87, 58.6, -250.1, -1],
+  [34.09, -247.04, 35.97, -241.87, -1],
+  [56.63, -255.51, 58.6, -250.1, -1],
+  [-18.47, 233.23, -31.41, 234.78, -1],
+  [-18.96, 229.21, -18.47, 233.23, -1],
+  [-30.71, 240.61, -31.41, 234.78, -1],
+  [-35.87, 231.23, -68.5, 235.15, -1],
+  [-35.21, 236.7, -35.87, 231.23, -1],
+  [-67.43, 244.09, -68.5, 235.15, -1],
+  [-18.2, 272.02, -38.06, 274.4, -1],
+  [-18.42, 270.2, -18.2, 272.02, -1],
+  [-38.72, 268.92, -38.06, 274.4, -1],
+  [-42.02, 274.98, -55.02, 276.54, -1],
+  [-42.77, 268.76, -42.02, 274.98, -1],
+  [-55.67, 271.08, -55.02, 276.54, -1],
+  [11.81, 273.4, 24.79, 278.12, -1],
+  [13.16, 269.69, 11.81, 273.4, -1],
+  [26.72, 272.83, 24.79, 278.12, -1],
+  [37.19, 241.77, 58.87, 249.65, -1],
+  [34.6, 248.89, 37.19, 241.77, -1],
+  [56.99, 254.82, 58.87, 249.65, -1],
 ];
 // The ruined mills on the gorge floor beside the viaduct's piers (their mirrors stand on the north half of the floor).
 const MILLS = [
@@ -299,8 +370,8 @@ export default {
     // Every building is an authored site (the towns are mirror images), so the roadside builder places none.
     plan: [],
     plannedSites: [...SOUTH_TOWN, ...SOUTH_TOWN.map(mirrorSite), ...MILLS, ...SOUTH_FARMS,
-      ...[...MILLS, ...SOUTH_FARMS].map(mirrorSite), ...SOUTH_STREETS, ...SOUTH_STREETS.map(mirrorSite),
-      ...SQUARE_WALLS, ...SQUARE_WALLS.map(mirrorSite)],
+      ...[...MILLS, ...SOUTH_FARMS].map(mirrorSite), ...SOUTH_STREETS, ...NORTH_STREETS,
+      ...SQUARE_WALLS, ...SQUARE_WALLS_NORTH],
     destructibleBuildings: ['guardpost', 'fieldhut', 'leanto', 'huntingblind', 'commandtent'],
     blockFill: false, extraKits: [], buildingLat: [20, 5], spacingPad: 12, sideSkip: .12, maxSpread: 3.2,
     // Three strongpoint pairs, each the other's mirror across the gorge: the tollhouses at the bridgeheads, the rim
@@ -323,6 +394,8 @@ export default {
     wallRuns: [
       [-280, -150, -190, -170, 2], [-280, 150, -190, 170, 2], [-360, -280, -290, -310, 1], [-360, 280, -290, 310, 1],
       [180, -150, 250, -140, 3], [180, 150, 250, 140, 3], [330, -320, 400, -300, 2], [330, 320, 400, 300, 2],
+      // (272) and the towns' patio walls
+      ...PATIO_WALLS,
     ],
     // no overhead line along the main road: it runs over the viaduct and through the two old squares
     well: false, hayCrates: true, fences: true, telegraph: false, carts: true, logs: true,
