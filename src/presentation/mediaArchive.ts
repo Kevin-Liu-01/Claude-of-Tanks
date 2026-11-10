@@ -63,11 +63,13 @@ interface MediaArchiveOptions {
 }
 
 let manifestPromise: Promise<PresentationManifest> | undefined;
+/** The archive's failure sentence (the manifest's own error names its HTTP status). */
+const ARCHIVE_UNAVAILABLE = 'Presentation archive unavailable';
 
 function loadPresentationManifest(): Promise<PresentationManifest> {
   if (!manifestPromise) {
     const archive = fetch(MANIFEST_URL).then((response) => {
-      if (!response.ok) throw new Error(`Presentation archive unavailable (${response.status})`);
+      if (!response.ok) throw new Error(`${ARCHIVE_UNAVAILABLE} (${response.status})`);
       return response.json() as Promise<PresentationManifest>;
     });
     // Capture files are optional; the bundled archive remains available on its own.
@@ -246,8 +248,13 @@ export function autoMountMediaArchives(scope: ParentNode = document): void {
       kinds,
       filters: root.dataset.filters !== 'false',
     }).catch((error: RuntimeValue) => {
-      const message = error instanceof Error ? error.message : String(error);
-      root.innerHTML = `<p class="media-archive-count">${message}</p>`;
+      // (improve-271 plan 028) a failed fetch's text can quote the response body: the page shows the archive's own fixed
+      // sentence as text, and the raw error goes to the console
+      console.warn('[media-archive] the archive could not load', error);
+      const notice = document.createElement('p');
+      notice.className = 'media-archive-count';
+      notice.textContent = ARCHIVE_UNAVAILABLE;
+      root.replaceChildren(notice);
     });
   }
 }

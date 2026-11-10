@@ -938,6 +938,8 @@ export function createEndScreen(bus: EventBus, host: HTMLElement): EndScreenRunt
   }
 
   function renderRematchPanel(panel: HTMLElement): void {
+    // (improve-271 plan 028) a room update rebuilds the panel: the focused action (Ready, Start) keeps the focus
+    const focused = panel.contains(document.activeElement) ? (document.activeElement as HTMLElement).dataset.esAction ?? null : null;
     panel.textContent = '';
     const context = roomContext;
     if (!context?.state) {
@@ -954,6 +956,7 @@ export function createEndScreen(bus: EventBus, host: HTMLElement): EndScreenRunt
     renderRoomHeading(info, state, nextRound);
     renderRoomPlayers(info, state, playerId);
     renderRoomActions(panel, context, me, active.length, readyCount, nextRound);
+    if (focused) panel.querySelector<HTMLElement>(`[data-es-action="${focused}"]`)?.focus({ preventScroll: true });
   }
 
   function renderTeamRosterRow(
