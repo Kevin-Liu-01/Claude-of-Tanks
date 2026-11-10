@@ -232,6 +232,43 @@ stage = 'case 4b';
   session.dispose(); client.dispose();
 }
 
+// ---- the named host of a fresh match that fails its world load, or leaves while loading, tells the room it cannot host
+//      (improve-271 plan 003: it left silently, and its peers offered to a seat with no acceptor until the 60 s link window)
+const unableDeclines = (transport) => transport.outbound.filter((envelope) => envelope.payload?.command?.type === 'host_decline')
+  .map((envelope) => envelope.payload.command).filter((command) => command.declined === true && command.unable === true);
+stage = 'case 4c';
+{
+  const { transport, session, client } = await seat({ presentationGate: () => Promise.reject(new Error('the world failed to load')) });
+  start(transport);
+  await until(() => unableDeclines(transport).length > 0, 'the unable decline after a failed load', 5000);
+  assert.equal(unableDeclines(transport).length, 1, 'declined once');
+  assert.equal(session.phase, 'lobby');
+  session.dispose(); client.dispose();
+}
+stage = 'case 4d';
+{
+  let release = null;
+  const held = new Promise((resolve) => { release = resolve; });
+  const { transport, session, client, counts } = await seat({ presentationGate: () => held });
+  start(transport);
+  await until(() => counts.presentations === 1, 'the entry began');
+  await session.leaveMatch('garage');
+  assert.equal(unableDeclines(transport).length, 1, 'a Garage return while loading declines as unable, once');
+  release();
+  session.dispose(); client.dispose();
+}
+stage = 'case 4e';
+{
+  const { transport, session, client } = await seat({ presentationGate: () => Promise.reject(new Error('the world failed to load')) });
+  const phases = [];
+  session.onPhase(({ phase }) => phases.push(phase));
+  start(transport, { hostId: 'other' });
+  await until(() => phases.includes('loading') && session.phase === 'lobby', 'the failed peer entry', 5000);
+  await sleep(50);
+  assert.equal(transport.outbound.filter((envelope) => envelope.payload?.command?.type === 'host_decline').length, 0, 'a peer whose load failed sends no decline');
+  session.dispose(); client.dispose();
+}
+
 // ---- a peer sends none
 stage = 'case 5';
 {
@@ -343,4 +380,4 @@ await sleep(50);
 assert.ok(cores.every((core) => !core.actor || core.actor.stopped), 'no actor outlives its core');
 peakRss = Math.max(peakRss, process.memoryUsage().rss);
 assert.ok(peakRss < 1e9, `memory stayed bounded (peak RSS ${(peakRss / 1e6).toFixed(0)} MB)`);
-console.log('matchSessionEntryReports.selftest: the elected host reports loading through a slow entry and stops at its actor\'s first report; the ceiling, host_only and a new election stop them; a seat elected while loading hosts with the election\'s secret; a peer and a running match send none; a re-entry decline is withdrawn at the welcome; a core stopped during its world load starts no actor; a match_start re-sent during loading joins the entry in flight, another match supersedes it');
+console.log('matchSessionEntryReports.selftest: the elected host reports loading through a slow entry and stops at its actor\'s first report; the ceiling, host_only and a new election stop them; a seat elected while loading hosts with the election\'s secret; a named host whose load fails or that leaves while loading declines as unable, a peer does not; a peer and a running match send none; a re-entry decline is withdrawn at the welcome; a core stopped during its world load starts no actor; a match_start re-sent during loading joins the entry in flight, another match supersedes it');

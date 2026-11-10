@@ -410,7 +410,11 @@ export class MatchSession {
       presentation = await this.createPresentation(round);
     } catch (error) {
       this.closeEarlyPeerLink(early, 'presentation failed');
-      if (generation === this.generation) { this.currentRound = null; this.setPhase('lobby', 'presentation failed'); }
+      if (generation === this.generation) {
+        this.declineUnbootedHost(round);
+        this.currentRound = null;
+        this.setPhase('lobby', 'presentation failed');
+      }
       throw error;
     }
     if (generation !== this.generation || this.disposed) { this.closeEarlyPeerLink(early, 'round superseded'); presentation.dispose(); throw new Error('round superseded'); }
@@ -1066,6 +1070,7 @@ export class MatchSession {
     const host = this.host;
     // an early peer link no match client owns yet (openEarlyPeerLink): the client's leave would have closed it
     const unowned = client ? null : this.migrating;
+    const round = this.currentRound;
     const handedOff = this.handedOff;
     this.handedOff = false;
     // a left entry is never joined: the next start of the same match enters afresh
@@ -1094,9 +1099,25 @@ export class MatchSession {
       if (this.room.phase === 'joined' && !handedOff) void this.room.declineHost(true, { unable: true }).catch(() => { /* the room may predate the command */ });
       this.declinedHosting = true;
       this.p2pListeners.emit({ kind: 'role', role: null, generation: this.room.generation });
+    } else if (round && !handedOff && reason !== 'rematch' && reason !== 'superseded') {
+      // the named host leaving before its actor existed (a Garage return while loading)
+      this.declineUnbootedHost(round);
     }
     presentation?.dispose();
     if (!this.disposed) this.setPhase('lobby', reason);
+  }
+
+  /**
+   * The seat the room names host of this p2p round leaves it before its host existed (the world failed to load, a Garage
+   * return while loading): it tells the room it cannot host (`unable`, §13.2.1 "on every path that cannot host"), so the
+   * room elects another seat, or ends the match when nobody else can, instead of its peers offering to a seat with no
+   * acceptor until the link window (improve-271 plan 003).
+   */
+  private declineUnbootedHost(round: SessionRound): void {
+    if (this.host || !parseP2pMatchUrl(round.matchStart.matchUrl) || this.room.phase !== 'joined') return;
+    if (this.room.matchStart?.matchId !== round.matchStart.matchId || this.room.hostId !== this.room.playerId) return;
+    this.declinedHosting = true;
+    void this.room.declineHost(true, { unable: true }).catch(() => { /* the room may predate the command */ });
   }
 
   dispose(): void {
