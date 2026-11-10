@@ -232,8 +232,7 @@ export function installBattleRecords(bus: ProfileEventBus | null | undefined): v
   installedBuses.add(bus);
 
   let tally: BattleTally | null = null;
-  bus.on('ui:battleStart', (payload) => {
-    const event = recordOf(payload) ?? {};
+  const startTally = (event: Record<string, RuntimeValue>): void => {
     tally = {
       playerId: firstString(event.playerId, event.entityId, event.specId),
       vehicleId: firstString(event.specId, event.vehicleId),
@@ -242,6 +241,24 @@ export function installBattleRecords(bus: ProfileEventBus | null | undefined): v
       damage: 0,
       startedAt: Date.now(),
     };
+  };
+  // (improve-271 plan 033) the Garage's BATTLE and room entry announce a battle with ui:battleStart; a local battle begun
+  // elsewhere (the report's NEXT or RETRY, the Play menu's ladder: main.ts beginLocalBattle) is named by
+  // battle:localBegin, and its tally starts when the battle phase arrives with none armed, as the Service Record's does
+  let localBegin: Record<string, RuntimeValue> | null = null;
+  let phase = '';
+  bus.on('ui:battleStart', (payload) => {
+    localBegin = null;
+    startTally(recordOf(payload) ?? {});
+  });
+  bus.on('battle:localBegin', (payload) => { localBegin = recordOf(payload) ?? {}; });
+  bus.on('phase:change', (payload) => {
+    const next = firstString(recordOf(payload)?.phase);
+    // a battle left without its result (a quit) drops its tally, so the next battle never inherits it
+    if (phase === 'battle' && next !== 'battle') tally = null;
+    if (next === 'battle' && !tally) startTally(localBegin ?? {});
+    if (next === 'battle') localBegin = null;
+    phase = next;
   });
   bus.on('shell:hit', (payload) => {
     const event = recordOf(payload) ?? {};

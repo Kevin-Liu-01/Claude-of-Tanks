@@ -3324,6 +3324,9 @@ function beginLocalBattle({
   pendingCampaignOperationId = gameMode === 'frontline_assault' ? campaignOperationId : null;
   // batch 19: a ladder operation always fights on its own map, whatever the Garage has selected
   const operation = campaignOperationById(pendingCampaignOperationId);
+  // (improve-271 plan 033) the profile counts this battle under its vehicle and map: these entries skip the Garage's
+  // ui:battleStart, whose other owners (Battle Again among them) must not see a report-driven start
+  bus.emit('battle:localBegin', { specId, mapId: operation?.mapId ?? mapId });
   return soloBattleEntry.beginSelected({
     // Mars changes the rules and sky on the selected battlefield.
     specId, mapId: operation?.mapId ?? mapId, randomRoster, gameMode, campaignOperationId: pendingCampaignOperationId,
