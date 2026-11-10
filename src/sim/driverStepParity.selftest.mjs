@@ -391,6 +391,7 @@ await section('a fourth shell fires as the fourth', async () => {
 // 3000 ticks: the opening, the sighting near 1780, the shots both ways, the hulls' contact and the bot's destruction
 const REAL_AI_TICKS = 3000;
 let real = null;
+let destroyed = null;
 await section('the real AI, byte-identical', async () => {
   real = await runRealAi(REAL_AI_TICKS);
   assert.equal(real.divergence, null, `the real AI parts the two drivers at ${JSON.stringify(real.divergence)}`);
@@ -401,7 +402,7 @@ await section('the real AI, byte-identical', async () => {
   // (wrecks-270, 11-07) the engagement ends in a destruction, either way round: verdant's ten hulks (five before) turn the
   // meeting so the bot now kills the own hull at 20.9 % hp of its own, and 3000 to 4800 ticks end alike; the two drivers stay
   // byte-identical through it, which is what this run pins
-  const destroyed = real.exercised.botHp === 0 ? 'the bot' : real.exercised.ownHp === 0 ? 'the own hull' : null;
+  destroyed = real.exercised.botHp === 0 ? 'the bot' : real.exercised.ownHp === 0 ? 'the own hull' : null;
   assert.ok(destroyed, `one hull destroyed the other (bot ${(real.exercised.botHp * 100).toFixed(1)} %, own ${(real.exercised.ownHp * 100).toFixed(1)} % hp)`);
   // (268, item 6) one bot paint rule: both drivers rolled the bot's paint from the match seed at its roster index (1), and an
   // index slip would show (the seed rolls another paint at 0); a paint the authority is handed instead parts them at tick 0
