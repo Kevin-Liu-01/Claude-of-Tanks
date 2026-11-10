@@ -2839,10 +2839,10 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
     definition,
     ruleset,
     state,
-    usesElimination: id === 'standard' || id === 'realistic',
+    usesElimination: ruleset.elimination === true,
     airSupport: air,
     recordDestruction(victimId, killerId, supportKill = false) {
-      if (result || (objective !== 'zone_control' && !['drone', 'gun_game', 'juggernaut', 'realistic', 'ac130'].includes(id)) || !killerId || killerId === victimId || scoredDeaths.has(victimId)) return;
+      if (result || !ruleset.scoresKills || !killerId || killerId === victimId || scoredDeaths.has(victimId)) return;
       const victim=entities.find(entity=>entity.id===victimId);
       const killer=entities.find(entity=>entity.id===killerId);
       if (!victim?.combat.destroyed || !killer || victim.modeActive===false || teamOf(victim)===teamOf(killer)) return;
