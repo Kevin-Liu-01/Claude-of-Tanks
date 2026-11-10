@@ -65,7 +65,12 @@ export interface WorkerCalls<R> {
 }
 
 const DEFAULT_TIMERS: WorkerCallTimers = {
-  set: (callback, ms) => globalThis.setTimeout(callback, ms),
+  set: (callback, ms) => {
+    const handle = globalThis.setTimeout(callback, ms);
+    // (Node, the receipts) a pending deadline never holds the process open
+    (handle as { unref?: () => void }).unref?.();
+    return handle;
+  },
   clear: (handle) => globalThis.clearTimeout(handle as ReturnType<typeof globalThis.setTimeout>),
 };
 
