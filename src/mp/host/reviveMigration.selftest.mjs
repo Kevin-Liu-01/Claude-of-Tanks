@@ -29,11 +29,20 @@ await ensureAuthorityFleet(seats.map((seat) => seat.specId));
 const world = () => ({ mapId: 'verdant', heightField: { getHeightAt: () => 0, getGroundType: () => 'hard', getNormalAt: () => new Vector3(0, 1, 0) }, getObstacles: () => [] });
 const inputs = new Map();
 const era = createEraIndexer();
+/**
+ * The actor's frame at `tick` in the shape the host sends it (server/match/matchActor.ts frames, matchHostCore.ts's
+ * keyframe), its mode state included (round 8 H9): a resume whose newest frame is newer than the keyframe writes that
+ * state over the keyframe's checkpoint (migrationState.ts checkpointAtNewestFrame), and a frame without it skipped that
+ * rewrite, the path every real migration in a mode takes (huntSearchMigration.selftest's hostFrame).
+ */
 const frameOf = (actor, tick) => {
   const authority = actor.authority, battleTimeMs = Math.round(authority.timeS * 1000);
   const snap = authority.snapshot({ tick, serverTimeMs: battleTimeMs, viewerId: 'migration', ackInputSeq: null });
-  return { tick, serverTimeMs: battleTimeMs, ackedInputTick: 0xffffffff, ackedFireSeq: 0, ackedActionSeq: 0, inputMarginTicks: 127, meta: captureMeta({ ...snap.meta, battleTimeMs }, false), destroyed: [], entities: authority.entities.map((entity) => captureEntityRow(entity, actor.wireIdOf(entity.id), era, tick)), shells: [], viewer: null, modeStateJson: null };
+  return { tick, serverTimeMs: battleTimeMs, ackedInputTick: 0xffffffff, ackedFireSeq: 0, ackedActionSeq: 0, inputMarginTicks: 127, meta: captureMeta({ ...snap.meta, battleTimeMs }, false), destroyed: [], entities: authority.entities.map((entity) => captureEntityRow(entity, actor.wireIdOf(entity.id), era, tick)), shells: [], viewer: null,
+    modeStateJson: snap.meta?.modeState ? JSON.stringify(snap.meta.modeState) : null };
 };
+/** A case is built only when its resume took that path: a newest frame newer than the keyframe, with the mode state. */
+const throughNewestFrame = (state, keyframe) => state.frame.tick > (keyframe?.tick ?? Infinity) && typeof state.frame.modeStateJson === 'string';
 const keyframeOf = (actor, tick) => {
   const sim = actor.authority;
   return decodeMigrationKeyframe(encodeMigrationKeyframe({ tick, battleTimeMs: Math.round(sim.timeS * 1000), timeS: sim.timeS, phase: 'playing', modeCheckpoint: sim.captureModeCheckpoint(), entities: captureEntityExtras(actor), frame: frameOf(actor, tick) }));
@@ -88,6 +97,9 @@ function handoff({ ruleset, killBeforeKeyframe, respawnsTold, keyframeLife = nul
   const { state } = resumeStateFromRetained(keyframe, 0, latest, 1500, [], [], respawnsTold ? [['ifv', respawnTick], ['mbt', keyframe.tick - 30]] : []);
   const fresh = make({ tick: state.tick, battleTimeMs: state.battleTimeMs });
   applyResumeState(fresh, state);
+  assert.ok(throughNewestFrame(state, keyframe), `${ruleset.mode}: setup, the resume runs through the newest frame's mode state `
+    + `(checkpointAtNewestFrame): the newest frame (tick ${state.frame.tick}, mode state ${state.frame.modeStateJson ? 'carried' : 'missing'}) `
+    + `against the keyframe (tick ${keyframe.tick})`);
   return { old, fresh, oldIfv: ifv, state };
 }
 
