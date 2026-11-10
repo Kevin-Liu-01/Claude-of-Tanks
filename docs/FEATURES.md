@@ -19,7 +19,7 @@ stack, authoring tools, test rigs, and public presentation.
 | Battlefields | 33 authored and destructible maps |
 | Simulation | Fixed 60 Hz movement and combat rules |
 | Presentation | Direct Three.js WebGL rendering with adaptive quality |
-| Modes | Regular Battle, Capture the Flag, Zone Control, Turbo Ball, Endless Horde, Frontline Assault (campaign ladder), Gravity Mode, Juggernaut, Infected, Realistic, Gun Game, Drone and AC-130; one ruleset per mode; solo, private and LAN deployment |
+| Modes | Regular Battle, Capture the Flag, Zone Control, Turbo Ball, Endless Horde, Frontline Assault (campaign ladder), Gravity Mode, Juggernaut, Infected, Realistic, Gun Game, Drone, AC-130 and Air Support; one ruleset per mode; solo, private and LAN deployment |
 | Platforms | Desktop and mobile browsers |
 | Authoring | Scene Studio and Tank Gallery surface markup |
 | Progression | No currency, experience grind, or tech-tree lock |
@@ -196,7 +196,7 @@ Relevant implementation:
 - src/game/ai.ts
 - server/authoritativeBots.selftest.mjs
 
-## Thirty generated battlefields
+## Thirty-three generated battlefields
 
 The game includes:
 
@@ -381,10 +381,12 @@ Network clients send control intent, not trusted outcomes. Position, spotting,
 hits, damage, reload completion, destructibles, and victory are resolved by
 authority.
 
-LAN and private rooms separate ordered reliable control from replaceable state.
-Lobby commands, combat events, and errors use the reliable channel. Live input
-and viewer-filtered 20 Hz snapshots use an unordered, zero-retransmit state
-channel with acknowledgements, edge redundancy, deltas, and periodic keyframes.
+LAN and private rooms carry each seat's match traffic on one reliable, ordered
+WebRTC data channel to the elected host (`match`,
+`src/mp/transport/webRtcTransport.ts`): the handshake, live input, viewer-filtered
+20 Hz snapshots, combat events and errors. The channel's buffered amount is its
+backpressure; snapshots carry acknowledgements, edge redundancy, deltas and
+periodic keyframes (docs/MULTIPLAYER-V2.md §13.7).
 
 Remote vehicles use buffered interpolation and bounded extrapolation. The local
 vehicle predicts the shared movement code and replays unacknowledged input
@@ -409,10 +411,19 @@ returns the authoritative host identity and the lobby replaces the label. Old
 room-code-only links remain valid.
 
 A non-host can reload while the host's room is waiting and reattach with the
-stable browser player identity. Reloading the browser host ends browser-owned
-authority; host migration is not claimed.
+stable browser player identity. If the host's browser leaves or reloads, the room
+elects another seat, which opens the newest sealed keyframe of every entity,
+restores the match from it and hosts on while the peers reconnect
+(docs/MULTIPLAYER-V2.md §13.7 "Migration, both sides"; `src/mp/host/migrationState.ts`).
 
 See docs/MULTIPLAYER-V2.md.
+
+A phone can be the controller: the Settings panel shows a QR code, the phone opens `/pad`, and its sticks and
+buttons reach the game over WebRTC, with a capped relay as the fallback (docs/PHONE-CONTROLLER.md, `src/pad/`).
+
+Couch play seats up to eight phones on one big screen: the host opens a lobby, each phone scans in to a numbered seat
+and drives its own tank, and one shared camera frames every living seat (docs/COUCH-MODE.md, step 1;
+`src/app/couchRuntime.ts`, `src/game/couchSeats.ts`, `src/ui/couchLobby.ts`).
 
 ## Results and combat presentation
 

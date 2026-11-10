@@ -171,7 +171,7 @@ guidance, suspension, ammunition, anatomy, and control behavior while remaining 
 
 <table>
 <tr>
-<td width="50%"><img src="public/media/site50-r14/stills/s26-minaret-fire.webp" alt="A Merkava Mk 3D fires at Sunscar Oasis"><br><sub><b>Thirty worlds:</b> terrain, roads, structures, foliage, fog, sky, lighting, cover, collision, minimap, and dedicated-server descriptors.</sub></td>
+<td width="50%"><img src="public/media/site50-r14/stills/s26-minaret-fire.webp" alt="A Merkava Mk 3D fires at Sunscar Oasis"><br><sub><b>Thirty-three worlds:</b> terrain, roads, structures, foliage, fog, sky, lighting, cover, collision, minimap, and dedicated-server descriptors.</sub></td>
 <td width="50%"><img src="public/media/site50-r14/stills/s19-roof-tiles.webp" alt="Roof tiles rain down as a PL-01 fires up the street"><br><sub><b>Shared world kit:</b> destructible buildings, camps, wreck families, debris, utility lines, loose physical props, and narrow hitboxes.</sub></td>
 </tr>
 <tr>

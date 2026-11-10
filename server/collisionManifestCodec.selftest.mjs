@@ -364,7 +364,10 @@ for (const [tool, args] of [
   ['capture-world-collision-manifests.mjs', ['--migrate=true']],
 ]) {
   const child = spawnSync(process.execPath, [fileURLToPath(new URL(`../tools/${tool}`, import.meta.url)), ...args], {
-    encoding: 'utf8', timeout: 10_000, env: { ...process.env, PATH: '' },
+    // An empty PATH: a browser the retired option might start fails with ENOENT. The keys are named (272) so the result
+    // cache can key this receipt; NODE_OPTIONS and the observer's two keep the runner's preloads in the child.
+    encoding: 'utf8', timeout: 10_000, env: { PATH: '', NODE_OPTIONS: process.env.NODE_OPTIONS,
+      COT_SELFTEST_OBSERVE_DIR: process.env.COT_SELFTEST_OBSERVE_DIR, COT_SELFTEST_OBSERVE_ROOT: process.env.COT_SELFTEST_OBSERVE_ROOT },
   });
   assert.equal(child.status, 1, `${tool} rejects retired migration`);
   assert.match(child.stderr, /--migrate is retired/);

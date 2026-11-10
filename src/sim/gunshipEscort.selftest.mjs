@@ -2,7 +2,8 @@ import assert from 'node:assert/strict';
 import { createMatchModeController } from './matchModes.ts';
 import { ESCORT_RULES } from './gunshipEscort.ts';
 import { matchRulesetFor } from './matchRuleset.ts';
-import { arrangeModeRoster } from '../mp/host/modeRoster.ts';
+import { planRoomBots } from '../mp/room/roomBots.ts';
+import { defaultRoomSettings } from '../mp/room/roomPolicy.ts';
 import { createMatchPlacement } from './matchPlacement.ts';
 import { objectiveMarkers } from '../ui/minimapObjectives.ts';
 import { Vector3 } from 'three';
@@ -37,7 +38,7 @@ const make=entities=>createMatchModeController({mode:'ac130',entities,revive(){t
 }
 {
  const seats=[{playerId:'a',team:'alpha',specId:'m1a1_abrams_hc'},{playerId:'b',team:'bravo',specId:'m1a1_abrams_hc'}],bots=[];
- arrangeModeRoster('ac130',null,seats,bots);assert.ok(seats.every(s=>s.team==='alpha'));
+ planRoomBots(defaultRoomSettings({gameMode:'ac130'}),seats,bots,0);// the room's own seating at match startassert.ok(seats.every(s=>s.team==='alpha'));
  assert.equal(bots.filter(b=>b.team==='alpha').length,4,'human pilots never replace the ground escort');
  assert.equal(matchRulesetFor('ac130').allies,4);
  const field={size:1024,getHeightAt:()=>0,getNormalAt:()=>({y:1}),getWaterMaskAt:()=>0};

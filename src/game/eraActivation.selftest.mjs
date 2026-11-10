@@ -43,7 +43,7 @@ assert.match(audioSource, /isEraActivation\(event\)[\s\S]{0,80}'era_det'/,
   'audio emits an additive ERA detonation for pass-through hits');
 assert.match(feedbackSource, /stripActivatedEra\(event, target\.visual\)/,
   'live tank visual consumes the activated cassette');
-assert.match(mainSource, /createCombatFeedbackRuntime\((?:legacyPort\()?\{/,
+assert.match(mainSource, /createCombatFeedbackRuntime\(\{/,
   'composition root installs the typed combat-feedback owner');
 
 console.log('eraActivation.selftest: simulation events drive blast, audio, and visual depletion');

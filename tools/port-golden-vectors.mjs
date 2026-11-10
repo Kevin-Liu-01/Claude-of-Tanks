@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * port-golden-vectors.mjs — the TypeScript simulation as the oracle for its
- * Rust port (docs/PORT-BEVY.md "Parity").
+ * Rust port (docs/RUST-KERNELS.md "Receipts").
  *
  * Evaluates the ported functions on fixed inputs through the TypeScript
  * modules under src/ and writes the results, as exact doubles, to

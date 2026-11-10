@@ -3411,7 +3411,7 @@ function plannedCardTeams(specId: string, request: { randomRoster: boolean; game
  * A local battle (solo quick battle, campaign, Proving Ground, Watch, the Jev opponent): the local driver. The shared core
  * steps on the page (game/state.ts simStep), with input, the fixed step and the render in one frame. No match client,
  * prediction, interpolation, input-delay buffer, loopback, room or wire message: nothing from src/mp (the owner,
- * 2026-10-29: "rubberbanding on a LOCAL game"; RUST-ENGINE-DECISION §7 step 5, the solo sim Worker, is retired;
+ * 2026-10-29: "rubberbanding on a LOCAL game"; the solo sim Worker, step 5 of the kernel decision, is retired;
  * docs/ARCHITECTURE.md "One core, two drivers", tools/driver-boundaries.selftest.mjs).
  */
 function beginLocalBattleEntry(

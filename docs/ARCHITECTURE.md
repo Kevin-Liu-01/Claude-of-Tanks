@@ -1,10 +1,11 @@
 # ARCHITECTURE.md — original implementation contract
 
-> Historical document. This was the locked nine-module plan used during the
-> original parallel implementation. It is retained as build provenance, but it
-> is not the current runtime architecture. Use [SYSTEMS.md](SYSTEMS.md) for
-> current ownership and data flow, [MULTIPLAYER-V2.md](MULTIPLAYER-V2.md)
-> for network behavior, and [DEVELOPMENT.md](DEVELOPMENT.md) for verification.
+> §1 (global conventions), including §1.6 "One core, two drivers", is binding
+> and current. §2 onward is historical: the locked nine-module plan used during
+> the original parallel implementation, retained as build provenance and not the
+> current runtime architecture. Use [SYSTEMS.md](SYSTEMS.md) for current
+> ownership and data flow, [MULTIPLAYER-V2.md](MULTIPLAYER-V2.md) for network
+> behavior, and [DEVELOPMENT.md](DEVELOPMENT.md) for verification.
 
 Nine builder agents implement the modules below **in parallel, without talking to each
 other**. This document is the ONLY shared truth. If something here conflicts with a
@@ -159,7 +160,7 @@ one multiplayer path for everything.
 Why: from release 261 to 264 a solo quick battle ran the core in a Worker and drove the player's seat through the
 multiplayer client (`MatchClient` over an in-page loopback; `main.ts` counted it as a network match). The owner felt it:
 "rubberbanding on a LOCAL game", inputs 2-12 ticks ahead, other tanks 100-200 ms behind, and a ram "slingshot".
-RUST-ENGINE-DECISION §7 step 5 (the solo sim Worker) is retired. Any future off-thread local simulation must be a local
+The solo sim Worker (step 5 of the kernel decision, docs/RUST-KERNELS.md "The decision") is retired. Any future off-thread local simulation must be a local
 driver, with no prediction or interpolation, and needs the owner's OK after they have played it.
 
 Guards, in `npm test`, each with seeded violations it must catch:
